@@ -8088,6 +8088,12 @@
 
             return `
             ${opts.bare ? '' : '<div class="pm-settings-section">'}
+                ${inBattle ? '' : `<div class="pm-set-group">
+                    <div class="pm-set-group-title">Demo</div>
+                    <div class="pm-set-toggles">
+                        <label class="pm-toggle"><input type="checkbox" ${(typeof demoModeOn === 'function' && demoModeOn()) ? 'checked' : ''} onchange="if(typeof setDemoMode==='function')setDemoMode(this.checked);${RJ}"><span class="pm-toggle-label">Demo</span><span class="pm-toggle-hint">the demo set only: ${(typeof DEMO_RULES !== 'undefined') ? DEMO_RULES.starters.length : 16} starter champs, ${(typeof DEMO_RULES !== 'undefined') ? DEMO_RULES.unlocks.length : 16} more to unlock, ${(typeof DEMO_RULES !== 'undefined') ? DEMO_RULES.arenas.length : 9} arenas. Off = the whole game. Online, the host's switch decides for the room.</span></label>
+                    </div>
+                </div>`}
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">Display</div>
                     ${inBattle ? `<div class="pm-set-toggles">
@@ -9337,6 +9343,10 @@
            you: data.js hqUnitBuyable reads the union of door.hq.defeated + the synced blob) | null (buyable) */
         function _shopLockReason(race) {
             if (typeof isRace3DReady === 'function' && !isRace3DReady(race)) return 'model';
+            /* THE DEMO (2026-11-10, data.js DEMO_RULES): with the Demo switch on the Shop sells the demo roster's unlocks only —
+               a champ outside the 32 is not for sale ('demo'). A demo unlock is bought the way every unit is: once one fell
+               to you in a match (the defeated ledger below, PvP and VS CPU count), for the unit price or a free token. */
+            if (typeof demoModeOn === 'function' && demoModeOn() && !demoRaceIn(race)) return 'demo';
             if (typeof isUnitOwned === 'function' && isUnitOwned(race)) return null;
             if (typeof window.hqUnitBuyable === 'function') {
                 const p = (window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function') ? window.ProfileSystem.getActiveProfile() : null;
@@ -9376,7 +9386,7 @@
                 ? `<span class="shop-card-tag owned">✓ OWNED</span>`
                 : (_shopBuyable(race)
                     ? `<span class="shop-card-tag price">💰 ${price}</span>`
-                    : (_shopLockReason(race) === 'defeat' ? `<span class="shop-card-tag soon">🔒 DEFEAT ONE FIRST</span>` : `<span class="shop-card-tag soon">🔒 3D MODEL SOON</span>`));
+                    : (_shopLockReason(race) === 'defeat' ? `<span class="shop-card-tag soon">🔒 DEFEAT ONE FIRST</span>` : _shopLockReason(race) === 'demo' ? `<span class="shop-card-tag soon">🔒 NOT IN THE DEMO</span>` : `<span class="shop-card-tag soon">🔒 3D MODEL SOON</span>`));
             const featuredRibbon = opts.featured ? `<div class="shop-ribbon">FEATURED</div>` : '';
             return `<div class="shop-card${selected}${lockedCls}" onclick="window._shopSelect('${race.replace(/'/g, "\\'")}')">
                 ${featuredRibbon}
@@ -9453,7 +9463,7 @@
                 ? '<div class="cdx-hero-price owned">✓ OWNED</div>'
                 : (_shopBuyable(race)
                     ? `<div class="cdx-hero-price">💰 ${price}</div>`
-                    : (_shopLockReason(race) === 'defeat' ? '<div class="cdx-hero-price soon">🔒 DEFEAT ONE FIRST</div>' : '<div class="cdx-hero-price soon">🔒 COMING SOON</div>'));
+                    : (_shopLockReason(race) === 'defeat' ? '<div class="cdx-hero-price soon">🔒 DEFEAT ONE FIRST</div>' : _shopLockReason(race) === 'demo' ? '<div class="cdx-hero-price soon">🔒 NOT IN THE DEMO</div>' : '<div class="cdx-hero-price soon">🔒 COMING SOON</div>'));
             // Full preview-before-buy: the shop never hides what you are buying.
             return `
                 ${_codexHeroHtml(race, { priceTag })}
@@ -9465,6 +9475,7 @@
 
         function _shopFilteredRaces() {
             let races = AVAILABLE_RACES.filter(r => RACE_PROFILES[r]);
+            if (typeof demoModeOn === 'function' && demoModeOn()) races = races.filter(r => demoRaceIn(r));   // THE DEMO: the Shop lists the demo roster
             if (_shopFilterOwn === 'owned') races = races.filter(r => isUnitOwned(r));
             if (_shopFilterOwn === 'locked') races = races.filter(r => !isUnitOwned(r));
             if (_shopSearch.trim()) {

@@ -2027,9 +2027,15 @@
            forms a weather opposite to one up (spawnWeather, a dungeon floor's sky); a cast weather is the newer one and
            drives the opposite one off on the spot (battle.js summonWeather); tickWeather settles any pair left, the
            newer one staying. The weather that leaves takes its rules with it (its heal cut, its rain, its eye). */
+        /* 🌧 ONE WET WEATHER AT A TIME (mondo 2026-11-10, open rule 11 "B": "a new rain replaces the one up"): two
+           DIFFERENT wet weathers (Thunderstorm, Hurricane, Blood Rain, Blizzard) no longer share the sky either. They
+           ride the same three paths as the opposites: a cast one drives the wet one up off, the natural roll never forms
+           a second one, tickWeather settles a leftover pair (the newer stays). The SAME weather cast again still renews
+           the one up (battle.js summonWeather). Two dry weathers may still stand together. */
         function weathersOppose(a, b) {
             const da = WEATHER_REGISTRY[a], db = WEATHER_REGISTRY[b];
-            return !!(da && db && da.sky && db.sky && da.sky !== db.sky);
+            if (!(da && db && da.sky && db.sky)) return false;
+            return da.sky !== db.sky || (da.sky === 'wet' && a !== b);
         }
         function weatherOpposedUp(type) {
             return (state.activeWeather || []).filter(w => w && weathersOppose(w.type, type));
@@ -3392,9 +3398,10 @@
         function cpu3DRaceForSlot(defaultRace, taken) {
             if (typeof isRace3DReady !== 'function') return undefined;
             const free = r => !(Array.isArray(taken) && taken.includes(r));   // ONE OF EACH
-            if (defaultRace && isRace3DReady(defaultRace) && free(defaultRace)) return defaultRace;
+            const _demoOk = r => typeof demoModeOn !== 'function' || !demoModeOn() || demoRaceIn(r);   // THE DEMO: the CPU fields the demo roster
+            if (defaultRace && isRace3DReady(defaultRace) && free(defaultRace) && _demoOk(defaultRace)) return defaultRace;
             if (typeof AVAILABLE_RACES === 'undefined') return undefined;
-            const any3D = AVAILABLE_RACES.filter(r => isRace3DReady(r));
+            const any3D = ((typeof demoRacePool === 'function') ? demoRacePool(AVAILABLE_RACES) : AVAILABLE_RACES).filter(r => isRace3DReady(r));
             const anyFree = any3D.filter(free);
             if (anyFree.length) return anyFree[0];
             if (any3D.length) return any3D[0];
@@ -3429,6 +3436,20 @@
             });
             return out;
         }
+
+        /* THE DEMO (mondo 2026-11-10, data.js DEMO_RULES): while the Demo switch is on, a team may field only the demo
+           roster. teamDemoBarredRaces(races) → the races on it that are outside the 32 (first-seen order; [] with the switch
+           off). Ownership of an unlock is the seat's own business (isUnitUnlocked): a host can not read a guest's account. */
+        function teamDemoBarredRaces(races) {
+            if (typeof demoModeOn !== 'function' || !demoModeOn() || typeof demoRaceIn !== 'function') return [];
+            const out = [];
+            (races || []).forEach(r => {
+                const k = normalizeRaceKey(r && typeof r === 'object' ? r.race : r);
+                if (k && !out.includes(k) && !demoRaceIn(k)) out.push(k);
+            });
+            return out;
+        }
+        if (typeof window !== 'undefined') window.teamDemoBarredRaces = teamDemoBarredRaces;
 
         function makeDefaultPartyMeta() {
             const out = {
@@ -3545,6 +3566,7 @@
                 const ready3D = pool.filter(r => isRace3DReady(r));
                 if (ready3D.length) pool = ready3D;
             }
+            if (typeof demoRacePool === 'function') pool = demoRacePool(pool);   // THE DEMO: a random roll stays inside the demo roster
             if (ownedOnly && typeof isUnitUnlocked === 'function') {
                 const owned = pool.filter(r => isUnitUnlocked(r));
                 if (owned.length) pool = owned;
@@ -4577,6 +4599,7 @@
                 const plan = plans[randInt(plans.length)];
                 let pool = AVAILABLE_RACES.filter(r => RACE_BASE_STATS[r]);
                 if (typeof isRace3DReady === 'function') { const r3 = pool.filter(r => isRace3DReady(r)); if (r3.length) pool = r3; }
+                if (typeof demoRacePool === 'function') pool = demoRacePool(pool);   // THE DEMO: the hard CPU drafts from the demo roster
                 if (pool.length < size) return null;
                 const mv = st => (typeof moveFromSpd === 'function') ? moveFromSpd(st.spd || 0) : 3;
                 const score = {

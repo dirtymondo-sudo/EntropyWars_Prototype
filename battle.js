@@ -837,7 +837,7 @@
             shadowRealm:  { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
             link:         { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true, twoClick: true },
             transfer:     { minRange: 0, offensive: false, allyOnly: true, fogExempt: true, noStrikeLeap: true, twoClick: true },
-            cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true, enemyRemainsOnly: true },
+            cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true, notOwnGrave: true },
             // CHAMP_REWORK_PLAN §5.3 (Phase 6, 2026-09-08):
             // steal — a grab: the hit lands, then the target's Keys / items
             //   change hands (stealKeys / stealItems; Hit a Lick — the pirate's
@@ -5196,6 +5196,13 @@
                 return fired;
             } finally {
                 _chainDepth = depth;
+                /* 👁 EVERY ARRIVAL SETS OFF OVERWATCH (mondo 2026-11-10, open rule 6 "C"): a walk, jump and climb fire it
+                   themselves after their own slide (doMove / doJump / the climb); every other way a body ends up on a
+                   square — pushed, pulled, thrown, dashed, teleported, through a door — fires it here, where the body came
+                   to rest (a body the chain moved on is the next arrival's). One shot per Guard stance as before. */
+                if (via !== 'move' && via !== 'climb' && !moved() && typeof checkOverwatchTriggers === 'function') {
+                    try { checkOverwatchTriggers(unit); } catch (e) { console.warn('[overwatch] arrival', e); }
+                }
                 if (fired) {
                     _chainFired += fired;
                     _chainFloat(unit, depth);
@@ -10793,6 +10800,7 @@
                the payload (partnerId / allyId) because the spell resolver is
                the only thing that knows both ends. */
             if (payload.id === 'feared' && sourceUnit) target._fearSourceId = sourceUnit.id;
+            if (payload.id === 'charm' && sourceUnit) target._charmSourceId = sourceUnit.id;   // 💋 the charmer it cannot raise a hand to (getCharmer)
             if (payload.id === 'tethered' && sourceUnit) target._tetherCasterId = sourceUnit.id;
             /* THE SPELL AUDIT Batch D: Barbed Rope's rope carries its own drag damage a tile (null = STATUS_DEFS' 20);
                Restless's Haunted jumps when its bearer dies (_restlessHauntJump). Plain unit fields — state-sync carries them. */
@@ -13586,9 +13594,12 @@
            eating it healed nothing at full HP and pushed that ally's respawn back 2 rounds). One rule for every corpse
            cast: unconsumed remains, and a kind wearing enemyRemainsOnly (Cannibalize, Carrion Feast) eats only an
            ENEMY's remains. Raise the Dead keeps both sides (its text: "an ally's gravestone or an enemy's pile of bones"). */
+        /* EITHER SIDE'S REMAINS (mondo 2026-11-10, open rule 1 "B": "an ally's remains can be eaten too"): Cannibalize and
+           Carrion Feast feed on an enemy's bones OR an ally's gravestone (same heal, same +corpseDelay on a body still
+           down). The one grave still barred is the feeder's own left grave (notOwnGrave). */
         function spellCorpseUsable(unit, spell, corpse) {
             if (!corpse || !corpse.dead || corpse._corpseConsumed) return false;
-            if (_kindMeta(spell).enemyRemainsOnly && (corpse._remainsOf === unit.id || !isEnemyUnit(corpse, unit))) return false;   // a left grave: its unit's own (FFA)
+            if (_kindMeta(spell).notOwnGrave && corpse._remainsOf === unit.id) return false;   // a left grave: its unit's own
             /* THE GRAVES STAY: a grave outlives its unit's respawn, so someone can be standing on it — Raise the Dead
                claws its zombie out of THAT square, so a body or a standing turret / summon / zombie on it blocks the raise */
             if (spell && spell.kind === 'raiseDead') {
@@ -14535,11 +14546,14 @@
             if (ms > 0) _juiceLastStopAt = now;
             return ms;
         }
-        function _juiceHitFx(target, w, hs, kill) {
+        function _juiceHitFx(target, w, hs, kill, source) {
             if (!_juiceOn() || !target) return;
             const V = (typeof window !== 'undefined') ? window.VFX3D : null;
             if (!V || typeof V.juiceHit !== 'function') return;
-            try { V.juiceHit(target.x, target.y, w, hs, kill ? 1 : 0, target.id); } catch (e) {}
+            /* THE HIT SIDE (2026-11-11): the attacker's ID rides along (never the unit) — its ring pings and an arrowhead
+               on the victim's ring points at it, on each seat that can see it (three-renderer.js hitSide) */
+            const srcId = (source && source.id != null && source.id !== target.id) ? source.id : null;
+            try { V.juiceHit(target.x, target.y, w, hs, kill ? 1 : 0, target.id, srcId); } catch (e) {}
         }
 
         function triggerHitstop(durationMs) {
@@ -14831,6 +14845,9 @@
             else if (wm < 0.999) o._hitWeak = -1;
             if (info.kill) o._hitKill = 1;
             if (info.weight >= 0 && info.weight <= 3) o._hitW = info.weight | 0;
+            /* THE HIT SIDE part 3 (2026-11-11): whose unit lost the HP — a plain player number, so each seat paints the
+               number's edge in ITS OWN view of that side (cyan-blue = your unit, pink-red = theirs) */
+            if (target.player != null) o._hitP = target.player;
             return o;
         }
 
@@ -14867,7 +14884,18 @@
                CRIT / BACKSTAB kind that lands with the number like every other word (_hitReadCritPop) */
             const FC = FL.crit || {};
             const critOn = !!opts._hitCrit && FL.stamp !== false, critText = critOn && FC.as === 'text';
+            /* THE HIT SIDE part 3: the victim's side from this seat, by the team ring's own rule and in its own colour
+               (three-renderer.js _isAllyPlayer / TEAM_RING_*); null = no edge (the part is off, or no renderer) */
+            let side = null;
+            try {
+                const W = (typeof window !== 'undefined') ? window : null;
+                if (W && opts._hitP != null && typeof W._ewHitSideOn === 'function' && W._ewHitSideOn('C')
+                    && typeof W._ewHitSideAlly === 'function' && typeof W._ewHitSideHex === 'function') {
+                    side = '#' + ('00000' + (W._ewHitSideHex(!!W._ewHitSideAlly(Number(opts._hitP))) >>> 0).toString(16)).slice(-6);
+                }
+            } catch (_e) { side = null; }
             return {
+                side,
                 color: (tintable && !own && FL.elem !== false) ? col : null,
                 glowColor: col || '#ff5a3a',
                 scale: own ? 1 : Math.min(maxScale * 1.35, (1 + f * (maxScale - 1)) * punch),
@@ -14887,6 +14915,44 @@
            re-painted and re-sized here without touching the renderer.
            The tween centres it with translate(-50%,-50%), so a bigger canvas
            (the swell, the stamp's margin) stays on its anchor. */
+        /* THE HIT SIDE part 3 (2026-11-11, plan https://claude.ai/artifact/W2nQT5ZYg5h3jCRPk7F7eT): the number keeps
+           its element colour; its dark EDGE takes the victim's side colour (cyan-blue = your unit lost the HP, pink-red
+           = theirs), so the number alone says who was hit. sil = the pop's solid ink (the digits and their outline; the
+           soft shadow and the halo fall under the alpha cut) painted flat in the side colour. The RIM is sil grown d px
+           (drawn under the number: a crisp edge outside its outline); the BAND is sil minus sil shrunk k px = the
+           outline's outer dark part (drawn over the number; the thin black line against the digits stays, so the
+           colour never touches the fill). lineW = the stock pop's outline width (three-renderer.js stamps
+           canvas._ewLineW; 0 = the Floating text look draws no line: the rim alone). */
+        function _hitReadSideEdge(snap, w, h, lineW, rgb) {
+            const sil = document.createElement('canvas'); sil.width = w; sil.height = h;
+            const sc = sil.getContext('2d');
+            const src = snap.getContext('2d').getImageData(0, 0, w, h).data, out = sc.createImageData(w, h), o = out.data;
+            for (let i = 0; i < src.length; i += 4) {
+                const a = src[i + 3];
+                if (a < 186) continue;
+                o[i] = rgb[0]; o[i + 1] = rgb[1]; o[i + 2] = rgb[2]; o[i + 3] = a >= 236 ? 255 : Math.round((a - 186) / 50 * 255);
+            }
+            sc.putImageData(out, 0, 0);
+            const d = Math.max(2, Math.round((lineW > 0 ? lineW : h * 0.04) * 0.6)), k = lineW > 0 ? Math.max(1, lineW * 0.62) : 0;
+            const rim = document.createElement('canvas'); rim.width = w + 2 * d; rim.height = h + 2 * d;
+            const rc = rim.getContext('2d');
+            for (let j = 0; j < 12; j++) { const an = j * Math.PI / 6; rc.drawImage(sil, d + Math.cos(an) * d, d + Math.sin(an) * d); }
+            rc.drawImage(sil, d, d);
+            let band = null;
+            if (k > 0) {
+                const er = document.createElement('canvas'); er.width = w; er.height = h;
+                const ec = er.getContext('2d');
+                ec.drawImage(sil, 0, 0);
+                ec.globalCompositeOperation = 'destination-in';
+                for (let j = 0; j < 8; j++) { const an = j * Math.PI / 4; ec.drawImage(sil, Math.cos(an) * k, Math.sin(an) * k); }
+                band = document.createElement('canvas'); band.width = w; band.height = h;
+                const bc = band.getContext('2d');
+                bc.drawImage(sil, 0, 0);
+                bc.globalCompositeOperation = 'destination-out';
+                bc.drawImage(er, 0, 0);
+            }
+            return { rim, band, d };
+        }
         function _hitReadDress3D(hr, c) {
             try {
                 if (!c || c.tagName !== 'CANVAS' || c._hitRead) return;
@@ -14923,7 +14989,11 @@
                 const gs = hr.glyph ? Math.round(h * 0.46) : 0;       // glyph box
                 // The ink's own margins inside the stock pop (three-renderer
                 // _buildFloatTextCanvas) — the layout stacks pops by them.
-                const mX = c._ewMarginX || 0, mT = c._ewMarginTop || 0, mB = c._ewMarginBot || 0;
+                /* THE HIT SIDE part 3: the edge in the victim's side colour (its rim is ink: the margins give it room) */
+                let E = null;
+                if (hr.side) { try { E = _hitReadSideEdge(snap, w, h, Number(c._ewLineW) || 0, _hitReadRgb(hr.side)); } catch (_e2) { E = null; } }
+                const eD = E ? E.d : 0;
+                const mX = Math.max(0, (c._ewMarginX || 0) - eD), mT = Math.max(0, (c._ewMarginTop || 0) - eD), mB = Math.max(0, (c._ewMarginBot || 0) - eD);
                 /* THE NUMBER IS THE HERO (mondo 2026-10-17): the CRIT stamp
                    sits on the number's top-right SHOULDER, clear of the
                    digits — it used to be stamped across the last digit.
@@ -14963,7 +15033,9 @@
                     ctx.drawImage(snap, padX, padY);
                     ctx.restore();
                 }
+                if (E) ctx.drawImage(E.rim, padX - E.d, padY - E.d);
                 ctx.drawImage(snap, padX, padY);
+                if (E && E.band) ctx.drawImage(E.band, padX, padY);
                 if (hr.glyph) _hitReadGlyph(ctx, hr, padX * 0.55, padY + h / 2, gs);
                 if (G) _hitReadStamp(ctx, padX + sCx, padY + sCy, sFs, S, G);
                 c.style.width = Math.round(W * hr.scale) + 'px';
@@ -15137,6 +15209,8 @@
             el.style.setProperty('--hr-scale', hr.scale.toFixed(3));
             if (hr.resist) el.classList.add('hr-resist');
             if (hr.kill) el.classList.add('hr-kill');
+            // THE HIT SIDE part 3 on the 2D board: a thin rim in the victim's side colour round the number
+            if (hr.side) el.style.filter = (hr.resist ? 'saturate(0.35) brightness(0.78) ' : '') + 'drop-shadow(0 0 1px ' + hr.side + ') drop-shadow(0 0 1px ' + hr.side + ')';
             if (hr.glyph) {
                 const g = document.createElement('span');
                 g.className = 'hr-glyph';
@@ -15189,9 +15263,14 @@
                     if (state.fogOfWar && state.activePlayer !== _viewer && !_isTileVisibleToViewer(x, y)) return;
                 }
             }
+            /* THE NUMBER WAITS FOR THE LENS (shot grammar): a buff / heal / shield / status number on a body the live
+               spell shot has not framed yet pops when the lens shows that body (or the shot ends) */
+            if (!opts._sgWaited && _shotGNumberWaits(x, y, textValue, kind, opts)) return;
             /* THE FRAME GUARD: a number on a unit during a live spell shot →
                that unit stays in frame for the rest of the shot. */
             if (_cineGuard) _cineGuardNoteHit(x, y, kind, opts);
+            /* THE SHOT GRAMMAR: the camera holds on that body while its number is read */
+            _shotGNoteRead(x, y, kind, opts);
 
             /* Record juice (plan §5.2 #1): a damage number that beats the
                VIEWER's own Biggest Hit board grows, glows and kicks the
@@ -15494,6 +15573,10 @@
             if (!unit) return 0;
             const stunned = getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove);
             if (stunned) return 0;
+            /* 🔬 MINIMIZED IS HARDER TO HIT (mondo 2026-11-10, open rule 8 "B", his pick on the card: "Dodge at the 25% cap"):
+               a shrunk unit dodges basic attacks at the game's own top dodge (data.js EVASION_CAP), whatever its MOV.
+               Hard CC above still drops it to zero; spells still always land; a back-arc swing still can't be dodged. */
+            if (unitHasStatus(unit, 'minimize')) return (typeof EVASION_CAP !== 'undefined') ? EVASION_CAP : 0.25;
             return evasionChanceFromStats(getEffectiveMove(unit) || 0);
         }
 
@@ -25774,6 +25857,8 @@
            for the killing-blow finisher below. */
         function _acChromeFlash(kind) {
             if (!_acChromeEl || !_acChromeState) return;
+            /* THE SHOT GRAMMAR: the white cut frame only rides a cut that happened (a held / dropped / glided cut flashes nothing) */
+            if (kind === 'cut' && typeof _shotG !== 'undefined' && _shotG.noCutAt && performance.now() - _shotG.noCutAt < 2) return;
             const f = _acChromeEl.querySelector('.acam-flash');
             if (!f) return;
             f.classList.remove('pop', 'cut');
@@ -26557,8 +26642,17 @@
                it reads as the end of the shot); a smaller turn keeps its glide. Camera only, viewer-local. */
             _returnCut(o) {
                 if (!o || !Number.isFinite(o.yaw) || !Number.isFinite(this.yaw)) return false;
-                const d = ((((o.yaw - this.yaw) % 360) + 540) % 360) - 180;
-                if (Math.abs(d) <= RETURN_CUT_YAW_DEG) return false;
+                let d = ((((o.yaw - this.yaw) % 360) + 540) % 360) - 180;
+                /* THE SHOT GRAMMAR, pass 2: the lens is DRAWN turned by the clear angle's held offset, which eases out on
+                   a glide home — the turn the player sees runs from the drawn heading (recorded: a return the rig
+                   measured as 17° swung the lens 39° while it craned out 44° and zoomed out ×8) */
+                if (!window.EW_NO_SHOT_GRAMMAR) {
+                    try {
+                        const ca = (typeof ThreeCamera !== 'undefined' && ThreeCamera.clearAngleState) ? ThreeCamera.clearAngleState() : null;
+                        if (ca && Number.isFinite(ca.delta) && ca.delta) d = ((((o.yaw - (this.yaw + ca.delta)) % 360) + 540) % 360) - 180;
+                    } catch (e) {}
+                }
+                if (Math.abs(d) <= RETURN_CUT_YAW_DEG && !this._returnIsBusy(o, Math.abs(d))) return false;
                 this._stop();
                 this._poseGen = (this._poseGen | 0) + 1;   // THE HELD FRAME: the cut home leaves the shot's frame
                 if (Number.isFinite(o.x)) this.x = this._tx = o.x;
@@ -26572,6 +26666,36 @@
                 if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
                 this._apply();
                 return true;
+            },
+
+            /* THE SHOT GRAMMAR (2026-11-10, rule 11 "home: one cut back to the board"): a glide home that turns AND pans /
+               cranes / zooms at once (recorded: a zone shot's 650 ms return turning 35° while it tilted 50°, zoomed ×1.7
+               and panned 3 squares) is the "zoom in/out and spin/rotate/pan at the same time" mondo named — it cuts too.
+               A return that only cranes out over the same spot, or is already close, keeps its glide.
+               EW_NO_SHOT_GRAMMAR = the yaw-only rule. */
+            /* THE GUARD CUTS (2026-11-10, three-camera.js _guardStepCheck): the frame guard's correction jumped more than a
+               square (the hit landing while the lens held the travel, a body coming into the shot) — it lands as a CUT on
+               the same angle when the shot grammar allows one here (half a second from the last cut and from the shot's
+               end), and that counts as the shot's cut; otherwise it eases in. EW_NO_GUARD_CUT = always ease. */
+            _guardMayCut(sq) {
+                if (window.EW_NO_GUARD_CUT || this._cineShotId == null || !_shotGrammarLive()) return false;
+                const now = performance.now(), gap = actionMs(SHOT_GRAMMAR_MIN_CUT_MS);
+                if (_shotG.lastCutAt > 0 && now - _shotG.lastCutAt < gap) return false;
+                const endAt = _shotGEndAt();
+                if (endAt > 0 && now + gap > endAt) return false;
+                _shotG.lastCutAt = now; _shotG.cuts++;
+                _shotGLog('guard cut ' + (+sq || 0).toFixed(2) + ' sq');
+                if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate({ guard: true });
+                return true;
+            },
+
+            _returnIsBusy(o, turn) {
+                if (window.EW_NO_SHOT_GRAMMAR) return false;
+                const pan = (Number.isFinite(o.x) && Number.isFinite(o.y)) ? Math.hypot(o.x - this.x, o.y - this.y) : 0;
+                const tiltD = Number.isFinite(o.tilt) ? Math.abs(o.tilt - this.tilt) : 0;
+                const z0 = Math.max(0.05, this.zoom), z1 = Number.isFinite(o.zoom) ? Math.max(0.05, o.zoom) : z0;
+                const zr = Math.max(z1 / z0, z0 / z1);
+                return (turn > 25 && (pan > 1.2 || tiltD > 12 || zr > 1.3)) || (pan > 2 && (tiltD > 15 || zr > 1.5));
             },
 
             // Natural (un-overridden) focal height at a tile — the same value
@@ -33209,6 +33333,14 @@
            (a long-standing descent-cam bug, fixed here for the new beats). */
         function _cineBeatMove(opts) {
             if (_cineDirectingSeq != null) _cineLazyClaim();   // SPELL DIRECTOR: a director's move claims the shot
+            /* THE SHOT GRAMMAR (2026-11-10): a glide that is really a cut cuts, a glide nobody will see land is not
+               started, a move off a body whose number is up waits for the read */
+            if (opts && !opts._sgPass && _shotGrammarLive()) {
+                if (_shotG.bundle && !opts._sgDeferred) { _shotG.bundle.items.push([_cineBeatMove, opts]); return; }
+                const v = _shotGrammarMove(opts);
+                if (v && typeof v === 'object') opts = { ...opts, ...v };   // pass 2: a drift clamped to SHOT_GRAMMAR_DRIFT_MAX
+                else if (v !== 'go') return;
+            }
             const _keep = boardCameraResetTimer;
             boardCameraResetTimer = null;
             camera.moveTo(opts);
@@ -33222,6 +33354,17 @@
            (the 2D _apply smoother and ThreeCamera's damped follow) to jump. */
         function _cineHardCut(opts) {
             if (_cineDirectingSeq != null) _cineLazyClaim();   // SPELL DIRECTOR: a director's cut claims the shot
+            /* THE SHOT GRAMMAR (2026-11-10): a cut that barely changes the frame glides, a cut off a body whose number
+               is up waits for the read, a cut nobody will see is dropped */
+            if (opts && !opts._sgPass && _shotGrammarLive()) {
+                if (_shotG.bundle && !opts._sgDeferred) { _shotG.noCutAt = performance.now(); _shotG.bundle.items.push([_cineHardCut, opts]); return; }
+                if (_shotGrammarCut(opts) !== 'go') return;
+            }
+            if (camera._cineShotId != null) { _shotG.lastCutAt = performance.now(); _shotG.cuts++; }
+            if (_shotGrammarLive()) {
+                _shotGAdvanceGuard();
+                if (!_shotG.cutThisTask) { _shotG.cutThisTask = true; Promise.resolve().then(() => { _shotG.cutThisTask = false; }); }
+            }
             camera._stop();
             camera.x = camera._tx = opts.x ?? camera._tx;
             camera.y = camera._ty = opts.y ?? camera._ty;
@@ -33234,6 +33377,260 @@
             if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
             camera._apply();
         }
+
+        /* ═══ THE SHOT GRAMMAR (2026-11-10) ═══════════════════════════════════
+           mondo: "there are a lot of times when the camera spins around/pans when a cut would be better, or vice versa
+           ... zoom in/out and spin/rotate/pan at the same time but then it cuts to a different angle anyway ... it will
+           cut too early away from the spell landing or the person taking damage ... completely rethink these spell
+           animation camera shots". Every spell shot's moves and cuts — the three rigs, the family directors, the bespoke
+           sequences, the kit shots, the VFX retargets — go through _cineBeatMove / _cineHardCut, so the grammar lives
+           HERE, once, under all of them (memory spell-camera-grammar-20261110, docs/notes/spells-vfx.md "THE SHOT
+           GRAMMAR"):
+           · CUT OR MOVE, NEVER BOTH: a glide that turns more than SHOT_GRAMMAR_TURN and also zooms / pans / tilts, or
+             turns more than SHOT_GRAMMAR_TURN_ALONE on its own, or crash-zooms across the board, is a CUT to its end
+             frame. The shot's first beat is a cut unless the lens is already nearly there (no more swoop from the
+             board view round to the caster's face). A FOLLOW (a retarget riding a thrown / dashing body) stays a glide.
+           · NO JUMP CUTS: a cut that barely changes the frame is a short glide.
+           · NO MOVE A CUT THROWS AWAY: a glide that cannot land before the shot ends is not started; a cut that would
+             be on screen for less than SHOT_GRAMMAR_MIN_CUT_MS is dropped; cuts stand SHOT_GRAMMAR_MIN_CUT_MS apart.
+           · HOLD THE HIT: from a number popping on a body (not the caster's own), the camera stays on that body for
+             SHOT_GRAMMAR_READ_MS: a beat that looks elsewhere or pulls out wide waits for the read (with the beats
+             issued alongside it), then plays if the shot still has room (a newer beat replaces it); a beat that only
+             swings round / re-angles the body being read is dropped.
+           Kill switch: window.EW_NO_SHOT_GRAMMAR = true. Probe: window._shotGrammarState(). */
+        const SHOT_GRAMMAR_TURN = 40;
+        const SHOT_GRAMMAR_TURN_ALONE = 75;
+        const SHOT_GRAMMAR_READ_MS = 1000;
+        const SHOT_GRAMMAR_MIN_CUT_MS = 500;
+        /* THE SHOT GRAMMAR, pass 2 (2026-11-10, the after run of all 885 spells): a glide must land and HOLD its frame
+           this long before the shot ends (a god shot that landed 60-200 ms before the cut home was thrown away), and a
+           drift that is kept as a glide turns at most SHOT_GRAMMAR_DRIFT_MAX (the windup orbits turned 40-50° while they
+           zoomed, then a cut threw the arc away) */
+        const SHOT_GRAMMAR_LAND_HOLD_MS = 400;
+        const SHOT_GRAMMAR_DRIFT_MAX = 24;
+        const SHOT_GRAMMAR_NUMBER_WAIT_MS = 3000;
+        const _shotG = { seq: null, beats: 0, cuts: 0, lastCutAt: 0, noCutAt: 0, lock: null, gen: 0, bundle: null, log: [], cutThisTask: false };
+        function _shotGrammarLive() {
+            if (window.EW_NO_SHOT_GRAMMAR) return false;
+            if (camera._cineShotId == null || state.phase !== 'battle' || state.cameraDisabled || _skipVisuals()) return false;
+            if (_shotG.seq !== camera._cineShotId) {
+                _shotG.seq = camera._cineShotId; _shotG.beats = 0; _shotG.cuts = 0; _shotG.lastCutAt = 0;
+                _shotG.lock = null; _shotG.gen++; _shotG.bundle = null;
+            }
+            return true;
+        }
+        function _shotGLog(msg) {
+            const L = _shotG.log;
+            L.push(Math.round(performance.now()) + ' #' + _shotG.seq + ' ' + msg);
+            if (L.length > 60) L.splice(0, L.length - 60);
+        }
+        const _sgNorm = a => ((a % 360) + 540) % 360 - 180;
+        /* the frame a beat (isCut false: a moveTo — unnamed axes keep the glide's target) or a cut asks for, and how
+           far it is from the frame the lens shows now */
+        function _shotGFrame(o, isCut) {
+            const tgt = (k, live) => (camera[k] !== undefined && Number.isFinite(camera[k])) ? camera[k] : live;
+            const x = o.x ?? tgt('_tx', camera.x), y = o.y ?? tgt('_ty', camera.y);
+            const yaw = o.yaw ?? (isCut ? camera.yaw : tgt('_tyaw', camera.yaw));
+            const tilt = (o.tilt !== undefined) ? Math.min(CINE_SHOT_TILT_MAX, o.tilt) : (isCut ? camera.tilt : tgt('_tt', camera.tilt));
+            let zoom = isCut ? camera.zoom : tgt('_tz', camera.zoom);
+            if (o.zoom !== undefined && (isCut || o._allowZoomChange)) zoom = o.zoom;
+            const z0 = Math.max(0.05, camera.zoom), z1 = Math.max(0.05, zoom);
+            return { x, y, yaw, tilt, zoom,
+                turn: Math.abs(_sgNorm(yaw - camera.yaw)), tiltD: Math.abs(tilt - camera.tilt),
+                zr: Math.max(z1 / z0, z0 / z1), zoomOut: z1 < z0, pan: Math.hypot(x - camera.x, y - camera.y) };
+        }
+        function _shotGEndAt() {
+            const e = camera._cineShotEnd;
+            const shotEnd = (e && e.seq === camera._cineShotId) ? e.at : 0;
+            const hold = window.EW_NO_IMPACT_HOLD ? 0 : (camera._impactHoldUntil || 0);
+            return Math.max(shotEnd, hold);
+        }
+        /* a number popped on a body while a spell shot is live: the frame holds on it for the read (called from the
+           floating-number layer, which the guest runs off the host's relayed numbers — RULE #2) */
+        function _shotGNoteRead(x, y, kind, opts) {
+            if (!_shotGrammarLive()) return;
+            if (!((opts && opts._dmgAmt > 0) || _CINE_GUARD_HIT_KINDS.has(kind))) return;
+            const u = (typeof unitAt === 'function') ? unitAt(x, y) : null;
+            if (!u || u.id === camera._cineShotUnitId || !_cineActorVisible(u)) return;
+            const now = performance.now();
+            if (!_shotG.lock || now >= _shotG.lock.until) _shotG.lock = { ids: new Set(), until: 0 };
+            _shotG.lock.ids.add(u.id);
+            _shotG.lock.until = Math.max(_shotG.lock.until, now + actionMs(SHOT_GRAMMAR_READ_MS));
+            _cineHoldImpactFor(actionMs(SHOT_GRAMMAR_READ_MS));   // …and the way home waits for it too (every rig, not only the offensive)
+        }
+        /* THE NUMBER WAITS FOR THE LENS (2026-11-10, the after run of all 885 spells): a party buff, a shield or a
+           drain's heal popped its numbers at the cast on bodies the shot had not framed yet — the shot opens with a cut
+           on the caster and the party shot comes ~640 ms later, so "+2 ATK" on three allies played to an empty frame
+           (War Cry, Rally Command, Iron Bulwark, Shield Bash, the drains' heal on the caster while the lens is on the
+           victim...), and the frame guard and the read lock then chased those off-screen numbers (the lens backed off
+           the caster on its own, the party shot was held back 360 ms). A NON-DAMAGE number on a body outside the shot's
+           frame now waits until the lens shows that body (the party shot, the cut home) or SHOT_GRAMMAR_NUMBER_WAIT_MS
+           passes, and pops then (with its guard note and read). A damage number never waits:
+           the hit lands with it. Viewer-local: each seat waits on its own lens (the guest's numbers come in on the
+           floating-text relay and run this same layer — RULE #2). Kill switch: window.EW_NO_NUMBER_WAIT = true. */
+        const _SG_HIT_TEXT_KINDS = new Set(['damage', 'crit', 'overkill', 'dodge', 'miss', 'protect-block', 'block', 'record', 'record-near']);
+        const _sgWaitQ = [];
+        let _sgWaitTimer = 0;
+        function _shotGBodyInFrame(x, y, uid) {
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.worldToScreen || typeof ThreeCamera === 'undefined') return true;
+                const cam = ThreeCamera.getCamera && ThreeCamera.getCamera();
+                const cv = ThreeRenderer.getCanvas && ThreeRenderer.getCanvas();
+                if (!cam || !cv || !cv.clientWidth || !cv.clientHeight) return true;
+                cam.updateMatrixWorld();   // a cut this same tick has moved the lens but not drawn yet
+                const W = cv.clientWidth, H = cv.clientHeight;
+                let sx, sy;
+                /* the middle of the drawn body (its model's feet-to-top box), else a chest-high point over the tile */
+                const b = (uid != null && ThreeRenderer.unitScreenBox) ? ThreeRenderer.unitScreenBox(uid) : null;
+                if (b) { const r = cv.getBoundingClientRect(); sx = b.x - r.left; sy = b.y - r.top; }
+                else {
+                    const s = ThreeRenderer.worldToScreen(x, y, (CONFIG.tileSize || BASE_TILE) * 0.45);
+                    if (!s) return false;      // behind the lens
+                    sx = s.x; sy = s.y;
+                }
+                return sx >= W * 0.03 && sx <= W * 0.97 && sy >= H * 0.11 && sy <= H * 0.89;   // inside the letterbox
+            } catch (e) { return true; }
+        }
+        function _shotGNumberWaits(x, y, text, kind, opts) {
+            if (window.EW_NO_NUMBER_WAIT || !_shotGrammarLive()) return false;
+            if ((opts && opts._dmgAmt > 0) || _SG_HIT_TEXT_KINDS.has(kind)) return false;
+            const u = (typeof unitAt === 'function') ? unitAt(x, y) : null;
+            if (!u || u.dead || _shotGBodyInFrame(x, y, u.id)) return false;
+            _sgWaitQ.push({ x, y, text, kind, opts: { ...(opts || {}), _sgWaited: true }, seq: camera._cineShotId, uid: u.id,
+                until: performance.now() + actionMs(SHOT_GRAMMAR_NUMBER_WAIT_MS) });
+            _shotGLog('number on ' + u.id + ' waits for the lens');
+            if (!_sgWaitTimer) _sgWaitTimer = window.setTimeout(_shotGWaitTick, 50);
+            return true;
+        }
+        function _shotGWaitTick() {
+            _sgWaitTimer = 0;
+            const now = performance.now();
+            for (let i = 0; i < _sgWaitQ.length;) {
+                const q = _sgWaitQ[i];
+                const u = (state.units || []).find(v => v.id === q.uid);
+                if (u && !u.dead && Number.isFinite(u.x) && Number.isFinite(u.y)) { q.x = u.x; q.y = u.y; }   // it rides a body that moved
+                /* (it keeps waiting past the shot's end: the last frame can hold ~1 s before the cut home shows the body) */
+                const over = now >= q.until || state.phase !== 'battle' || window.EW_NO_NUMBER_WAIT;
+                if (over || _shotGBodyInFrame(q.x, q.y, u && !u.dead ? u.id : null)) {
+                    _sgWaitQ.splice(i, 1);
+                    try { if (state.phase === 'battle') _realShowFloatingTextAtTile(q.x, q.y, q.text, q.kind, q.opts); } catch (e) {}
+                    continue;
+                }
+                i++;
+            }
+            if (_sgWaitQ.length) _sgWaitTimer = window.setTimeout(_shotGWaitTick, 50);
+        }
+        /* would this frame leave a body whose number is still being read? */
+        function _shotGLeavesRead(f, isCut, o) {
+            const L = _shotG.lock;
+            if (!L || performance.now() >= L.until || (o && o._sgFollow)) return false;
+            let near = Infinity;
+            for (const id of L.ids) {
+                const u = (state.units || []).find(v => v.id === id);
+                if (u) near = Math.min(near, Math.hypot(f.x - u.x, f.y - u.y));
+            }
+            if (near === Infinity) return false;
+            if (near > 2.2) return 'away';                        // it looks somewhere else
+            if (f.zoomOut && f.zr > 1.3) return 'wide';           // it pulls out wide off the hit
+            if (isCut ? f.turn > 25 : f.turn > 30) return 'turn'; // it swings round / re-angles the hit
+            return false;
+        }
+        /* hold a beat (and the beats issued with it in this same turn) until `ms` from now; a newer beat replaces it */
+        function _shotGDefer(fn, o, ms, why) {
+            const gen = ++_shotG.gen, seq = camera._cineShotId;
+            const items = [[fn, o]];
+            _shotG.bundle = { gen, items };
+            Promise.resolve().then(() => { if (_shotG.bundle && _shotG.bundle.gen === gen) _shotG.bundle = null; });
+            _shotGLog(why + ' waits ' + Math.round(ms) + 'ms');
+            window.setTimeout(() => {
+                if (_shotG.gen !== gen || camera._cineShotId !== seq || !_shotGrammarLive()) return;
+                for (const [f, op] of items) f({ ...op, _sgDeferred: true });
+            }, Math.max(0, ms));
+        }
+        /* a beat's glide: 'go' (moveTo it), or handled here (cut / held / dropped) */
+        function _shotGrammarMove(o) {
+            const f = _shotGFrame(o, false);
+            const now = performance.now(), dur = Math.max(100, o.duration ?? 400);
+            const first = _shotG.beats === 0;
+            const reframes = f.turn >= 25 || f.zr >= 1.35 || f.pan >= 1.0 || f.tiltD >= 10;
+            const lv = _shotGLeavesRead(f, false, o);
+            /* a re-angle of the body being read is dropped (played after the read it shows nothing new); a look away or a
+               pull-out waits for the read */
+            if (lv === 'turn') { _shotGLog('re-angle of the hit dropped'); return 'dropped'; }
+            if (lv) { _shotGDefer(_cineBeatMove, o, _shotG.lock.until - now, 'move off the hit'); return 'held'; }
+            const endAt = _shotGEndAt();
+            /* (pass 2: it must land AND hold its frame SHOT_GRAMMAR_LAND_HOLD_MS before the shot ends — a pull-out that
+               lands 200 ms before the cut home only shows the cut throwing it away) */
+            if (!first && reframes && endAt > 0 && now + dur + actionMs(SHOT_GRAMMAR_LAND_HOLD_MS) > endAt) { _shotGLog('glide dropped: the shot ends first'); return 'dropped'; }
+            _shotG.beats++;
+            _shotG.gen++;
+            if (!o._sgFollow) {
+                const cutIt = (f.turn > SHOT_GRAMMAR_TURN && (f.zr > 1.3 || f.pan > 1.2 || f.tiltD > 12))
+                    || f.turn > SHOT_GRAMMAR_TURN_ALONE
+                    || (f.zr > 2.2 && (f.pan > 1.5 || f.tiltD > 12))
+                    || (first && (f.turn > 25 || f.zr > 1.6 || f.pan > 2.5));
+                if (cutIt) {
+                    _shotGLog('glide -> cut (turn ' + Math.round(f.turn) + ', zoom x' + f.zr.toFixed(2) + ', pan ' + f.pan.toFixed(1) + (first ? ', opening' : '') + ')');
+                    _cineHardCut({ x: f.x, y: f.y, zoom: f.zoom, tilt: f.tilt, yaw: f.yaw,
+                        elevZ: o.elevZ ?? -1, _sgPass: true });
+                    return 'cut';
+                }
+                /* a drift turns at most SHOT_GRAMMAR_DRIFT_MAX (pass 2): the glide keeps its way round, less far */
+                if (o.yaw !== undefined && f.turn > SHOT_GRAMMAR_DRIFT_MAX) {
+                    const dy = _sgNorm(f.yaw - camera.yaw);
+                    _shotGLog('drift ' + Math.round(f.turn) + '° -> ' + SHOT_GRAMMAR_DRIFT_MAX + '°');
+                    return { yaw: camera.yaw + Math.sign(dy) * SHOT_GRAMMAR_DRIFT_MAX };
+                }
+            }
+            return 'go';
+        }
+        /* the shot's opening frame is far from the lens (it would be a swoop): cut to it */
+        function _shotGOpenIsCut(pose) {
+            if (_shotG.beats > 0) return false;
+            const f = _shotGFrame({ ...pose, _allowZoomChange: true }, false);
+            return f.turn > 25 || f.zr > 1.6 || f.pan > 2.5 || f.tiltD > 15;
+        }
+        /* a hard cut: 'go', or handled here (glide / held / dropped) */
+        function _shotGrammarCut(o) {
+            const f = _shotGFrame(o, true);
+            const now = performance.now();
+            const lv = _shotGLeavesRead(f, true, o);
+            if (lv === 'turn') { _shotG.noCutAt = now; _shotGLog('re-angle cut of the hit dropped'); return 'dropped'; }
+            if (lv) { _shotG.noCutAt = now; _shotGDefer(_cineHardCut, o, _shotG.lock.until - now, 'cut off the hit'); return 'held'; }
+            const endAt = _shotGEndAt();
+            if (_shotG.beats > 0 && endAt > 0 && now + actionMs(SHOT_GRAMMAR_MIN_CUT_MS) > endAt) { _shotG.noCutAt = now; _shotGLog('cut dropped: the shot ends first'); return 'dropped'; }
+            /* cuts at least SHOT_GRAMMAR_MIN_CUT_MS apart: a cut on the last one's heels waits (a newer beat replaces it) */
+            const gap = actionMs(SHOT_GRAMMAR_MIN_CUT_MS);
+            /* (a cut in the same frame as the last one replaces it — nothing was drawn between them) */
+            if (_shotG.beats > 0 && _shotG.lastCutAt > 0 && now - _shotG.lastCutAt < gap && now - _shotG.lastCutAt > 4) {
+                _shotG.noCutAt = now; _shotGDefer(_cineHardCut, o, _shotG.lastCutAt + gap - now, 'cut too soon'); return 'held';
+            }
+            const first = _shotG.beats === 0;
+            _shotG.beats++;
+            _shotG.gen++;
+            if (!first && f.turn < 15 && f.tiltD < 8 && f.zr < 1.25 && f.pan < 0.9) {
+                _shotG.noCutAt = now;
+                _shotGLog('jump cut -> glide');
+                _cineBeatMove({ x: f.x, y: f.y, zoom: f.zoom, tilt: f.tilt, yaw: f.yaw, elevZ: o.elevZ ?? -1,
+                    duration: actionMs(300), easing: 'easeInOut', _allowZoomChange: true, _bypassCap: true,
+                    _fogAllowed: true, _sgPass: true });
+                return 'glide';
+            }
+            return 'go';
+        }
+        /* a director's cut a moment before the frame guard's own cast -> hit switch IS that switch: the guard moves on
+           with the cut, so the clear angle picks this cut's angle for the bodies the cut is about (the switch a frame
+           later re-picked the angle and snapped it — two cuts 16-110 ms apart) */
+        function _shotGAdvanceGuard() {
+            const G = _cineGuard;
+            if (!G || G.phase === 'all' || !_cineGuardLive(G)) return;
+            const now = performance.now(), soon = actionMs(250);
+            if (G.phase === 'cast' && G.castAt != null && G.castAt - now <= soon) G.phase = 'travel';
+            if (G.phase === 'travel' && G.hitAt != null && G.hitAt - now <= soon) G.phase = 'hit';
+        }
+        window._shotGrammarState = () => ({ off: !!window.EW_NO_SHOT_GRAMMAR, seq: _shotG.seq, beats: _shotG.beats, cuts: _shotG.cuts,
+            read: (_shotG.lock && performance.now() < _shotG.lock.until) ? { ids: [..._shotG.lock.ids], left: Math.round(_shotG.lock.until - performance.now()) } : null,
+            endIn: Math.round(_shotGEndAt() - performance.now()), log: _shotG.log.slice(-20) });
 
         /* ═══ THE FRAME GUARD (2026-10-05) ═══════════════════════════════════
            "The action camera completely misses the target" — a flyer framed at
@@ -33382,8 +33779,49 @@
             };
             const all = G.phase === 'all';
             if (G.phase === 'cast' || all || (G.phase === 'hit' && G.keepCaster)) add(G.casterId, true);
-            if (G.phase === 'hit' || all) { let first = true; G.hit.forEach(id => { add(id, false, first); first = false; }); }
+            if (G.phase === 'hit' || all) {
+                let first = true;
+                G.hit.forEach(id => {
+                    const pr = first && (!G.armed || G.armed.has(id));
+                    add(id, false, pr);
+                    if (pr) first = false;
+                    if (!window.EW_NO_GUARD_LANDING) _cineGuardLandingPts(G, id, pts);
+                });
+            }
             return pts.length ? pts : null;
+        }
+        /* THE LANDING IN THE HIT FRAME (2026-11-10, spell camera rethink pass 3): a knocked-back body used to be framed
+           where it stood, so ~600 ms after the hit cut the frame guard slid after it 1-2 squares as it flew (recorded:
+           Gale, Fire Hose, Tsunami, Sonic Breaker, Wing Gust, Body Check). A guarded victim that is going somewhere — the
+           cast's forecast landing, or a logical tile the drawn body has not reached yet (a chained knock) — keeps that
+           spot in frame too, so the hit's frame already holds the whole flight and the guard holds still while it plays.
+           Kill switch: window.EW_NO_GUARD_LANDING = true. */
+        function _cineGuardLandingPts(G, id, pts) {
+            const u = (state.units || []).find(x => x.id === id);
+            if (!u || u.dead || !_cineActorVisible(u)) return;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            let ok = false;
+            try { ok = !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitWorldPos && ThreeRenderer.getUnitWorldPos(u.id, _cineGuardPos)); } catch (e) { ok = false; }
+            if (!ok) return;
+            const m = G.moves ? G.moves.get(id) : null;
+            /* the logic already moved it (the forecast's start tile is behind it): the truth is its tile; else the forecast */
+            let lx = u.x, ly = u.y;
+            if (m && u.x === m.fromX && u.y === m.fromY) { lx = m.x; ly = m.y; }
+            const wx = lx * ts + ts / 2, wz = ly * ts + ts / 2;
+            /* …and a body lifted off its ground (a lift-and-drop, a toss — not a flyer at its own height) keeps the ground it
+               comes down on in frame, so the frame holds the rise and the fall instead of riding them */
+            let gy = _cineGuardPos[1];
+            try {
+                const ez = (typeof unitElevationZ === 'function') ? unitElevationZ(u) : null;
+                if (Number.isFinite(ez) && _cineGuardPos[1] - ez > ts * 0.5) gy = ez;
+            } catch (e) {}
+            if (Math.hypot(wx - _cineGuardPos[0], wz - _cineGuardPos[2]) < ts * 0.5 && gy === _cineGuardPos[1]) return;
+            let h = ts * 0.95;
+            try { if (ThreeRenderer.getUnitVisualHeight) h = ThreeRenderer.getUnitVisualHeight(u.id) || h; } catch (e) {}
+            let _bk = 1;
+            try { if (ThreeRenderer.bodyScale) _bk = Math.min(1, +ThreeRenderer.bodyScale() || 1); } catch (e) {}
+            pts.push([wx, gy + h * 0.12, wz]);
+            pts.push([wx, gy + h + ts * 0.35 * _bk, wz, CINE_GUARD_HEAD_ROOM]);
         }
         /* o: { seq, cine (false = the tactical pan, keyed to the board camera
            sequence), caster, victimIds, castUntilMs (the caster is guarded
@@ -33400,15 +33838,29 @@
                 until: performance.now() + Math.max(0, o.totalMs || 0) + actionMs(150),
                 timers: []
             };
+            /* THE GUARD HOLDS ITS FRAME (2026-11-10): the body the shot is about is one the shot was armed with — a number
+               that pops mid-shot keeps its body in frame but never makes it the frame's subject (a party shield's first
+               ally number used to pull the self-cast hero shot two squares back to centre that ally) */
+            G.armed = new Set(G.hit);
+            /* THE LANDING IN THE HIT FRAME: the cast's forecast landings (a push, a pull, a hurl) */
+            const _cc = _cineCastCtx;
+            G.moves = (_cc && _cc.moves && _cc.moves.length && _cc.casterId === casterId && performance.now() - _cc.at < 6000)
+                ? new Map(_cc.moves.map(m => [m.id, m])) : null;
             G.api = { points: () => _cineGuardPoints(G), subjects: () => _cineGuardSubjects(G), bodies: _cineGuardBodies };
             if (!o.all) {
                 const castUntil = Math.max(0, o.castUntilMs || 0);
                 const hitFrom = Math.max(castUntil, o.hitFromMs ?? castUntil);
+                G.castAt = performance.now() + castUntil; G.hitAt = performance.now() + hitFrom;   // THE SHOT GRAMMAR (_shotGAdvanceGuard)
                 G.timers.push(setTimeout(() => { if (G.phase === 'cast') G.phase = 'travel'; }, castUntil));
                 G.timers.push(setTimeout(() => { G.phase = 'hit'; }, hitFrom));
             }
             _cineGuard = G;
             camera._frameGuard = G.api;
+            /* THE SHOT GRAMMAR: every rig arms the guard with its shot's length — the grammar's "will this be seen" clock */
+            if (G.cine && o.seq != null) camera._cineShotEnd = { seq: o.seq, at: performance.now() + Math.max(0, o.totalMs || 0) };
+            /* …and a rig that cut BEFORE arming it (the opening cut) re-syncs now, so the clear angle picks the cut's angle
+               for these bodies before the cut is drawn (three-camera.js: a pick a frame later would be a second cut) */
+            if (G.cine && _shotG.cutThisTask && camera._cineShotId === o.seq && _shotGrammarLive() && typeof camera._apply === 'function') camera._apply();
             return G;
         }
         /* A number popped on a unit during the live shot: that unit was hit,
@@ -33421,8 +33873,14 @@
             if (!((opts && opts._dmgAmt > 0) || _CINE_GUARD_HIT_KINDS.has(kind))) return;
             const u = (typeof unitAt === 'function') ? unitAt(x, y) : null;
             if (!u || u.id === G.casterId) return;
+            const fresh = !G.hit.has(u.id) || (G.phase !== 'all' && G.phase !== 'hit');
             G.hit.add(u.id);
             if (G.phase !== 'all') G.phase = 'hit';
+            /* THE CUT'S OWN FRAME (three-camera.js): a number in the same task as the shot's cut (nothing drawn since) re-syncs,
+               so the cut is drawn already framing this body instead of sliding to it a frame later */
+            if (fresh && G.cine && _shotG.cutThisTask && camera._cineShotId === G.seq && _shotGrammarLive() && typeof camera._apply === 'function') {
+                try { camera._apply(); } catch (e) {}
+            }
         }
         /* The bodies a shot is about: the relayed list when the host sent one
            (the guest frames exactly what the host does), else the shot's own
@@ -33834,8 +34292,10 @@
                         if (!(_cz > 0) || !Number.isFinite(_cy)) return;
                         if (Math.abs(((camera.yaw - _cy) % 360 + 540) % 360 - 180) > 2 || Math.abs(camera.zoom / _cz - 1) > 0.04) return;   // a beat is moving
                         if (Math.hypot((camera._tx ?? camera.x) - sx, (camera._ty ?? camera.y) - sy) > 1.2) return;   // not on the caster
+                        /* THE SHOT GRAMMAR (2026-11-10): a push-in only — the 12° orbit that rode with it made the hold a
+                           two-axis move the cut then threw away (EW_NO_SHOT_GRAMMAR keeps the orbit) */
                         _cineBeatMove({
-                            zoom: _cz * 1.16, yaw: _cy + _sideSign * 12,
+                            zoom: _cz * 1.16, ...(window.EW_NO_SHOT_GRAMMAR ? { yaw: _cy + _sideSign * 12 } : {}),
                             duration: Math.max(actionMs(300), cutMs - _dFrom - actionMs(40)), easing: 'linear',
                             _allowZoomChange: true, _bypassCap: true, _fogAllowed: fogAllowed || undefined
                         });
@@ -33971,6 +34431,7 @@
                 px = z > 0 ? window._getElevationPx(z) : 0;
             }
             _cineBeatMove({
+                _sgFollow: true,   // THE SHOT GRAMMAR: a retarget rides the action (a ricochet, a flung body): it glides, even off a hit
                 x: point.x, y: point.y,
                 elevZ: px + ts * CINE_FOCAL_RISE + (opts.elevPx || 0),
                 ...(opts.zoom !== undefined ? { zoom: opts.zoom, _allowZoomChange: true } : {}),
@@ -34221,16 +34682,26 @@
            the boom tweens the other, so the subject holds size and the WORLD
            stretches. Restores the renderer's own FOV on release. */
         let _cineFovBase = null;
+        let _cineDzGen = 0;   // a release (or a newer zoom) stops the running tween writing the lens
+        /* THE LENS COMES BACK ON THE CUT (three-camera.js): the lens to come back to — a restore still waiting for its cut
+           is it, not the narrowed lens on screen */
+        function _cineFovBaseNow(TC) {
+            const p = (TC.fovAtCut && !window.EW_NO_LENS_AT_CUT) ? TC.fovAtCut() : null;
+            return p != null ? p : TC.getFOV();
+        }
         function cineDollyZoom(fovDelta, ms, opts = {}) {
             const TC = (typeof ThreeCamera !== 'undefined') ? ThreeCamera : null;
             if (!TC || !TC.setFOV || !TC.getFOV) return;
-            if (_cineFovBase == null) _cineFovBase = TC.getFOV();
+            if (_cineFovBase == null) _cineFovBase = _cineFovBaseNow(TC);
+            if (TC.setFOVAtCut) TC.setFOVAtCut(null);   // this zoom owns the lens now; its own release names the way back
             const base = _cineFovBase;
+            const gen = ++_cineDzGen;
             const dur = Math.max(120, Number(ms) || 600);
             const t0 = performance.now();
             const zoom0 = camera._tz;
             const zoomMult = opts.zoomMult != null ? opts.zoomMult : 1;
             const step = () => {
+                if (gen !== _cineDzGen) return;
                 if (state.phase !== 'battle') { cineDollyZoomRelease(); return; }
                 const k = Math.min(1, (performance.now() - t0) / dur);
                 const e = k * k * (3 - 2 * k);
@@ -34241,14 +34712,23 @@
                     camera._apply();
                 }
                 if (k < 1) requestAnimationFrame(step);
-                else if (opts.hold !== true) window.setTimeout(cineDollyZoomRelease, opts.holdMs ?? 220);
+                else if (opts.hold !== true) window.setTimeout(() => { if (gen === _cineDzGen) cineDollyZoomRelease(); }, opts.holdMs ?? 220);
             };
             requestAnimationFrame(step);
         }
-        function cineDollyZoomRelease() {
+        /* THE LENS COMES BACK ON THE CUT (2026-11-10, three-camera.js): the release names the lens to come back to and
+           the next cut puts it back (a shot that ends on a glide eases it back along the glide) — it used to jump back in
+           one frame mid-hold, and the frame guard then slid the eye a square to re-frame the victim. opts.now = at once
+           (the sniper's first-person eye leaving, the battle over); EW_NO_LENS_AT_CUT = always at once. */
+        function cineDollyZoomRelease(opts) {
             const TC = (typeof ThreeCamera !== 'undefined') ? ThreeCamera : null;
+            _cineDzGen++;
             if (_cineFovBase != null && TC && TC.setFOV) {
-                try { TC.setFOV(_cineFovBase); } catch (e) {}
+                const now = !!(opts && opts.now) || state.phase !== 'battle' || window.EW_NO_LENS_AT_CUT || !TC.setFOVAtCut;
+                try {
+                    if (now) { if (TC.setFOVAtCut) TC.setFOVAtCut(null); TC.setFOV(_cineFovBase); }
+                    else TC.setFOVAtCut(_cineFovBase);
+                } catch (e) {}
             }
             _cineFovBase = null;
         }
@@ -35227,7 +35707,9 @@
             const TC = (typeof ThreeCamera !== 'undefined') ? ThreeCamera : null;
             if (!TC || !TC.setFOV || !TC.getFOV) return;
             if (_cineFovRaf) { cancelAnimationFrame(_cineFovRaf); _cineFovRaf = null; }
-            if (_cineFovBase == null) _cineFovBase = TC.getFOV();
+            if (_cineFovBase == null) _cineFovBase = _cineFovBaseNow(TC);
+            if (TC.setFOVAtCut) TC.setFOVAtCut(null);
+            const gen = ++_cineDzGen;   // a dolly zoom still running stops writing the lens (and a release stops this one)
             if (opts.fromFov != null) { try { TC.setFOV(opts.fromFov); } catch (err) {} }
             const from = TC.getFOV();
             const dur = Math.max(60, Number(ms) || 500);
@@ -35235,7 +35717,7 @@
             const inout = opts.ease === 'inout';
             const step = () => {
                 _cineFovRaf = null;
-                if (!_cineBeatOk(sequenceId)) return;
+                if (gen !== _cineDzGen || !_cineBeatOk(sequenceId)) return;
                 const k = Math.min(1, (performance.now() - t0) / dur);
                 const e = inout ? (k * k * (3 - 2 * k)) : (1 - Math.pow(1 - k, 3));
                 try { TC.setFOV(from + (toFov - from) * e); } catch (err) {}
@@ -35326,7 +35808,7 @@
                 window._ewFpHideUid = null;
             }
             if (_cineFovRaf) { cancelAnimationFrame(_cineFovRaf); _cineFovRaf = null; }
-            cineDollyZoomRelease();
+            cineDollyZoomRelease({ now: true });   // the scope's lens never outlives the first-person eye
         }
 
         /* ═══════════════════════════════════════════════════════════════════
@@ -35700,6 +36182,10 @@
             };
             if (window.EW_NO_OPEN_CUT) return glide();
             if (_cineYawGap(pose.yaw, camera.yaw) > RETURN_CUT_YAW_DEG) return _cineHardCut(pose);
+            /* THE SHOT GRAMMAR (rule 4, the shot opens with a cut): a self-cast's opening glide (a camera.moveTo, not a
+               _cineBeatMove) pushed in ×10 and pitched down 27° on its way to the hero angle — a swoop the grammar's beat
+               layer never saw. An opening that reframes is a cut here too. */
+            if (!viaBeat && _shotGrammarLive() && _shotGOpenIsCut(pose)) return _cineHardCut(pose);
             const lens0 = _cineLensYaw();
             glide();
             if (typeof ThreeCamera === 'undefined' || !ThreeCamera.clearAngleState) return;
@@ -35839,6 +36325,9 @@
         /* The kill confirm: a heavy / ultimate hit that killed gets the glam
            cam on the caster, inside the window. */
         function _spellDirKillConfirm(c) {
+            /* THE SHOT GRAMMAR (2026-11-10, rule 7): a kill keeps the close-up on the body (mondo: "after death close-up
+               glide, no cut") — the cut back to the caster's glam left the death half a second in */
+            if (!window.EW_NO_SHOT_GRAMMAR) return;
             if (c.weight !== 'heavy' && c.weight !== 'ultimate') return;
             const at = c.impact + Math.min(actionMs(460), Math.round(c.timings.targetHold * 0.45));
             c.at(at, () => {
@@ -38124,6 +38613,9 @@
                         for (const h of plan.hits) if (h && h.unit && h.unit.id !== unit.id && !h.support && !ids.includes(h.unit.id)) ids.push(h.unit.id);   // a body only healed keeps the support shot's own framing
                         for (const m of plan.moves) if (m && m.unit && m.unit.id !== unit.id && !ids.includes(m.unit.id)) ids.push(m.unit.id);
                         _cineCastCtx.hitIds = ids;
+                        /* THE LANDING IN THE HIT FRAME: where each pushed / pulled / thrown body ends up */
+                        _cineCastCtx.moves = plan.moves.filter(m => m && m.unit && m.unit.id !== unit.id && Number.isFinite(m.x) && Number.isFinite(m.y)
+                            && (m.x !== m.fromX || m.y !== m.fromY)).map(m => ({ id: m.unit.id, x: m.x, y: m.y, fromX: m.fromX, fromY: m.fromY }));
                     }
                 } catch (e) {}
             }
@@ -39923,7 +40415,7 @@
                 /* the feel layer on both ends (kill confirm per weight, the
                    world flinch, the guest's own freeze) — relayed by online.js */
                 if (damageType !== 'dot' && !_skipVisuals() && !_bufferingRoundEvents) {
-                    _juiceHitFx(target, _juiceW, _impactFreezeMs, _lethalHit);
+                    _juiceHitFx(target, _juiceW, _impactFreezeMs, _lethalHit, sourceUnit);
                     /* THE IMPACT HOLD: a hit that lands while an action shot is live keeps the camera on it through
                        the flash and the number, however late the spell's own clock landed it */
                     if (camera._cineShotId != null || _cineImpactHoldLeft() > 0) {
@@ -39981,7 +40473,11 @@
                     /* THE GORE: the spray flies away from the attacker; a kill pumps
                        from the dying body's own neck (primitives only: the relay) */
                     const _bloodSrc = (sourceUnit && sourceUnit.id !== target.id) ? sourceUnit : null;
-                    _vfxBlood(target.x, target.y, _bloodTier, {
+                    /* THE BLOOD WHERE THE HIT LANDS (2026-11-10, mondo: Infernal Hurl's "blood splatter was on the tile
+                       they were originally on, not the tile they got thrown to"): a throw pays its damage on the impact
+                       frame, one line before the body's tile changes, so the caller names the landing (opts.bloodAt) */
+                    const _bloodAt = (opts.bloodAt && Number.isFinite(opts.bloodAt.x) && Number.isFinite(opts.bloodAt.y)) ? opts.bloodAt : target;
+                    _vfxBlood(_bloodAt.x, _bloodAt.y, _bloodTier, {
                         damage: finalDamage,
                         hpFrac: (target.maxHp > 0) ? Math.max(0, target.hp) / target.maxHp : 0,
                         fromX: _bloodSrc ? _bloodSrc.x : null,
@@ -39990,7 +40486,8 @@
                     });
                 } else if (target.hp <= 0) {
                     /* THE GORE: a bleed / burn / poison tick that kills still ends in the finisher's blood */
-                    _vfxBlood(target.x, target.y, 'killing_blow', { damage: finalDamage, hpFrac: 0, unitId: target.id });
+                    const _bloodAt2 = (opts.bloodAt && Number.isFinite(opts.bloodAt.x) && Number.isFinite(opts.bloodAt.y)) ? opts.bloodAt : target;
+                    _vfxBlood(_bloodAt2.x, _bloodAt2.y, 'killing_blow', { damage: finalDamage, hpFrac: 0, unitId: target.id });
                 }
                 if (sourceUnit && typeNote && !(_sink && _sink.hits > 1)) {
                     const dlg = [];
@@ -44716,7 +45213,7 @@
             state.boardTerrain = [];
             state.placed = false;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -45022,7 +45519,13 @@
                seat always gets it, whatever its fog: a player's own throw / push / pull / teleport is never hidden from
                them. Every other seat judges it as before (_logVisible here, online.js _gvLogShows for the guest). */
             const ac = (o && o.actor) ? ((typeof o.actor === 'object') ? (o.actor.player | 0) : (o.actor | 0)) : 0;
-            const entry = (vis === 1 || vis === 2 || hp || zn || sn || ac > 0) ? { m: msg } : msg;
+            /* o.mine (11-11): a line an online GUEST writes on its own screen for its own refused click (the pick was
+               never sent, so the host never logs it). The host's next snapshot replaces the guest's whole log, which
+               wiped these lines within a second or two; tagged `lg`, online.js _applyRemoteState puts them back where
+               they stood (lgN = the host lines above it). Solo and host: a plain line, nothing changes. */
+            const mineG = !!(o && o.mine && window._NET && window._NET.online && window._NET.role === 'guest');
+            const entry = (vis === 1 || vis === 2 || hp || zn || sn || ac > 0 || mineG) ? { m: msg } : msg;
+            if (mineG) { entry.lg = 1; entry.lgN = state.logEntries.filter(e => !(e && typeof e === 'object' && e.lg)).length; }
             if (vis === 1 || vis === 2) entry.v = vis;
             if (ac > 0) entry.a = ac;
             if (hp) entry.h = hp;
@@ -45331,7 +45834,7 @@
                 case 'revive':        return 'Select a fallen ally to revive with ' + nm + '.';
                 case 'raiseDead':     return nm + ': select a fallen unit\'s remains — an ally\'s gravestone or an enemy\'s bones — to raise a zombie.';
                 case 'summonUnit':    return nm + ': select an empty tile beside you to call it to.';
-                case 'cannibalize':   return nm + ': select a fallen enemy\'s remains within reach to feed on.';
+                case 'cannibalize':   return nm + ': select a fallen unit\'s remains within reach to feed on.';
                 case 'possess':       return nm + ': select an enemy to take control of.';
                 case 'door':          return nm + ': pick an empty tile within ' + (spell.range || 4) + ' — a door opens there and its twin opens beside you. Or click one of your doors to open / shut it (free).';
                 case 'doorBreach':    return nm + ': select an enemy you can see — you come through beside them and strike from behind.';
@@ -49192,7 +49695,7 @@
                 const row = rows.find(t => t.x === x && t.y === y && (!clickedUnit || !t.unit || t.unit.id === clickedUnit.id))
                     || rows.find(t => t.x === x && t.y === y);
                 if (row) { selectTargetFromMenu(x, y, row.unit ? row.unit.z : undefined); return true; }
-                addLog(_outOfReachLine(actingUnit, clickedUnit), actingUnit.player);
+                addLog(_outOfReachLine(actingUnit, clickedUnit), actingUnit.player, null, { mine: true });
                 playErrorSfx();
                 markDirty('board', 'hud');
                 renderIfDirty();
@@ -49210,7 +49713,7 @@
                     /* the solo click's fog gate first: a fogged tile is out of sight unless the kind casts into fog */
                     const _gFog = state.fogOfWar && !_kindMeta(spell).fogExempt && !computeVisibleTiles(state.activePlayer).has(posKey(x, y));
                     if (!_gFog && (_mtcReachesPick(actingUnit, spell, x, y, z) || findSpellApproachTile(actingUnit, spell, x, y, z))) return false;
-                    addLog(_gFog ? outOfSightMessage(actingUnit, x, y) : `${_ctSp(spell.name)}: that tile is out of range or line of sight.`, actingUnit.player);
+                    addLog(_gFog ? outOfSightMessage(actingUnit, x, y) : `${_ctSp(spell.name)}: that tile is out of range or line of sight.`, actingUnit.player, null, { mine: true });
                     playErrorSfx();
                     markDirty('board', 'hud');
                     renderIfDirty();
@@ -49226,7 +49729,7 @@
                 }
                 /* a unit spell aimed off its list (an empty tile, an enemy out of reach): refused like the solo click —
                    the guest's pick used to land on the tile ("→ Checkerboard I4") and its CONFIRM did nothing */
-                addLog(_outOfReachLine(actingUnit, cu), actingUnit.player);
+                addLog(_outOfReachLine(actingUnit, cu), actingUnit.player, null, { mine: true });
                 playErrorSfx();
                 markDirty('board', 'hud');
                 renderIfDirty();
@@ -49234,7 +49737,7 @@
             }
             if (mode === 'item' && actionModeNeedsTargetConfirm()
                 && !_itemTargetTeamOk(actingUnit, state.selectedTool, x, y, z)) {
-                addLog(ITEM_RULES[state.selectedTool]?.baneType ? 'Choose an enemy target.' : 'Choose a living friendly unit.', actingUnit.player);
+                addLog(ITEM_RULES[state.selectedTool]?.baneType ? 'Choose an enemy target.' : 'Choose a living friendly unit.', actingUnit.player, null, { mine: true });
                 playErrorSfx();
                 markDirty('board', 'hud');
                 renderIfDirty();
@@ -49297,6 +49800,23 @@
         /* the line a target-list click off the list gets (it read "Target is no longer valid." for an enemy that never
            was in reach — PvP playtest 2026-10-23) */
         function _outOfReachLine(actingUnit, clickedUnit) {
+            /* 💋 THE CHARM LINE ON A BOARD CLICK (11-11, two-seat check of rule 7 B): the charmer is off a charmed unit's
+               attack list and off its unit-aimed offensive casts, so a click on it was refused here as "out of reach"
+               (wrong reason) and the engine's own Charm line (doAttack / doSpell) never ran. Same words as the engine. */
+            {
+                const _orCharmer = (typeof getCharmer === 'function') ? getCharmer(actingUnit) : null;
+                if (_orCharmer && clickedUnit && !clickedUnit.dead && clickedUnit.id === _orCharmer.id
+                    && (!visionGatesTargeting(actingUnit) || isInVision(actingUnit, clickedUnit.x, clickedUnit.y))) {
+                    if (state.actionMode === 'attack') return `💋 ${_ctName(actingUnit)} is charmed and cannot attack ${_ctName(_orCharmer)}!`;
+                    if (state.actionMode === 'spell') {
+                        const _orSp = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
+                            || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                        const _orM = _orSp ? _kindMeta(_orSp) : null;
+                        if (_orM && _orM.offensive && !_orM.tileTargeted && !_orM.directional)
+                            return `💋 ${_ctName(actingUnit)} is charmed and cannot cast ${_ctSp(_orSp.name)} at ${_ctName(_orCharmer)}!`;
+                    }
+                }
+            }
             if (clickedUnit && !clickedUnit.dead && clickedUnit.id !== actingUnit.id && isEnemyUnit(actingUnit, clickedUnit)
                 && (!visionGatesTargeting(actingUnit) || isInVision(actingUnit, clickedUnit.x, clickedUnit.y)))   // never name a fogged body
                 return `${_ctName(clickedUnit)} is out of reach this turn.`;
@@ -52026,12 +52546,24 @@
             const careerStats = loadCareerStats();
             const _profileUsername = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : null;
             const streakHtml = !isNoContest && playerWon && careerStats.currentWinStreak >= 2 ? `<span class="vic-streak">🔥 ${careerStats.currentWinStreak} WIN STREAK</span>` : '';
-            const namePrefix = _profileUsername ? `<b class="vic-callsign">${escapeHtml(_profileUsername)}</b> ` : '';
+            /* THE NAME ON THE RESULT (playtest 2026-11-05 F5: "Player is defeated."): a profile nobody named yet is "You",
+               never the placeholder "Player"; a named profile keeps its call sign */
+            const _named = !!_profileUsername && String(_profileUsername).trim().toLowerCase() !== 'player';
+            const namePrefix = `<b class="vic-callsign">${_named ? escapeHtml(_profileUsername) : 'You'}</b> `;
+            const _vHold = _named ? 'holds the field.' : 'hold the field.', _vDown = _named ? 'is defeated' : 'are defeated';
+            /* a forfeit says so, and who (the pause menu's FORFEIT, a seat that never reconnected, a turn held too long) */
+            const _ff = (!isNoContest && !_encEsc) ? _forfeitOfThisMatch() : null;
+            const _ffMine = !!_ff && _ff.by === (ONLINE_RULES.active ? viewer : 1);
+            const _ffLine = !_ff ? '' : _ffMine
+                ? ({ disconnect: 'You were disconnected too long. The match is forfeit.', timer: 'You held the turn too long. The match is forfeit.' }[_ff.how] || 'You forfeited the match.')
+                : ({ disconnect: 'Your opponent did not reconnect in time. They forfeit the match.', timer: 'Your opponent held the turn too long. They forfeit the match.' }[_ff.how] || 'Your opponent forfeited the match.');
+            resultOverlay.classList.toggle('vic-online', !!ONLINE_RULES.active);
             vicSubtitle.innerHTML = isNoContest
                 ? `Match ${state.matchNumber} voided — the units could not engage.`
                 : (_encEsc && _encEsc.retreat) ? (namePrefix + 'slipped out of the fight. Nothing won, nothing lost · ' + escapeHtml(String((_encEsc.label || _encEsc.race || 'the native')).toUpperCase()) + ' STILL HAS THE ROOM')
-                : (_encEsc && _encEsc.escLoss) ? (namePrefix + 'is defeated · THE PARTY IS DOWN · ' + escapeHtml(_encEsc.escaped.join(', ').toUpperCase()) + ' GOT OUT')
-                : (namePrefix + (playerWon ? 'holds the field.' : 'is defeated.') + ((_encEsc && _encEsc.escaped && _encEsc.escaped.length) ? ' · ' + _encEsc.escaped.length + ' ESCAPED' : '') + ' ' + streakHtml);
+                : _ffLine ? (escapeHtml(_ffLine) + ' ' + streakHtml)
+                : (_encEsc && _encEsc.escLoss) ? (namePrefix + _vDown + ' · THE PARTY IS DOWN · ' + escapeHtml(_encEsc.escaped.join(', ').toUpperCase()) + ' GOT OUT')
+                : (namePrefix + (playerWon ? _vHold : _vDown + '.') + ((_encEsc && _encEsc.escaped && _encEsc.escaped.length) ? ' · ' + _encEsc.escaped.length + ' ESCAPED' : '') + ' ' + streakHtml);
 
             let particleHtml = '';
             if (playerWon && !use3d) {
@@ -52158,6 +52690,7 @@
                 facts.push(_winCondLabels[state._winCondition] + (_sc ? ` <b class="vic-fact-score"><span class="p1">${_sc[0]}</span> – <span class="p2">${_sc[1]}</span></b>` : ''));
             }
             if (state.suddenDeathActive && state._winCondition !== 'sudden_death') facts.push('⚡ SUDDEN DEATH');
+            if (_ff) facts.push('<b class="vic-fact-forfeit">🏳 FORFEIT</b>');
             vicMatchInfo.innerHTML = facts.map(f => `<span class="vic-fact">${f}</span>`).join('<span class="vic-fact-dot">·</span>');
 
             } catch (e) { _vicFail('the fact line', e); }
@@ -52244,12 +52777,21 @@
 
             } catch (e) { _vicFail('rewards + achievements', e); }
             try {
+            /* the bar's own buttons, as they stand now (the bar is rebuilt after an encounter, so never the boot-time handle) */
+            const _nmb = document.getElementById('nextMatchBtn') || nextMatchBtn, _sob = document.getElementById('startOverBtn');
             if (ONLINE_RULES.active) {
-                if (nextMatchBtn) nextMatchBtn.textContent = 'Request Rematch';
-                if (document.getElementById('startOverBtn')) document.getElementById('startOverBtn').style.display = 'none';
+                if (_nmb) _nmb.textContent = 'Request Rematch';
+                if (_sob) _sob.style.display = 'none';
+                _vicRematchNote('Both players must agree to a rematch. Same room, same round count.', '');
+            } else {
+                /* an offline result after an online one (end screens 2026-11-10: VS CPU after a room showed "RECONNECTING…"
+                   on the next-match button and no BACK TO PARTY BUILDER): the bar's offline words and buttons come back */
+                if (_nmb && !_nmb.classList.contains('enc-return')) _nmb.textContent = 'Find Next Match';
+                if (_sob) _sob.style.display = '';
+                _vicRematchNote('', '');
             }
 
-            nextMatchBtn.disabled = false;
+            if (_nmb) _nmb.disabled = false;
             if (exportLastMatchBtn) exportLastMatchBtn.disabled = !state.lastCompletedMatch;
             if (exportMatchHistoryBtn) exportMatchHistoryBtn.disabled = !state.matchHistory.length;
 
@@ -55183,7 +55725,7 @@
             hideResultOverlay();
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -55356,7 +55898,7 @@
                 state.matchNumber += 1;
                 state.winner = null;
                 state._winLogged = false;
-                state._winCondition = null; state._winCause = null;
+                state._winCondition = null; state._winCause = null; state._forfeit = null;
                 state._endingReason = null;
                 state._stalemateRounds = 0;
                 state._lastActivityTotal = 0;
@@ -55543,7 +56085,7 @@
             }
             state.aiThinking = false;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -55984,7 +56526,7 @@
             state.selectedTool = null;
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56019,7 +56561,7 @@
             state.pendingTarget = null;
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56057,6 +56599,28 @@
             }
         }
 
+        /* THE FORFEIT ON THE RECORD (end screens 2026-11-10: a forfeit's result screen read like any win or loss, "4 v 4
+           STANDING" and nothing else): who gave the match up and how (quit = the pause menu, disconnect = never came back,
+           timer = held the turn too long). Cleared wherever a match clears its win condition (startTime is each seat's
+           own, so no key could match across seats). Plain data (a seat number), it rides the host's snapshot to the
+           guest; the result screen prints it as a fact and a subtitle. No rule reads it. */
+        function _forfeitMark(by, how) { state._forfeit = { by: by, how: how || 'quit' }; }
+        function _forfeitOfThisMatch() { const f = state._forfeit; return (f && state.winner && (f.by === 1 || f.by === 2) && f.by !== state.winner) ? f : null; }
+        window._forfeitMark = _forfeitMark;
+        /* THE REMATCH LINE: one status line over the result screen's command bar (online: who asked, who is waiting, who
+           left, how long a dropped seat is held). online.js writes it wherever it sets the rematch button. */
+        function _vicRematchNote(text, tone) {
+            let n = document.getElementById('vicRematchNote');
+            if (!n) {
+                if (!resultOverlay || !text) return;
+                n = document.createElement('div'); n.id = 'vicRematchNote'; n.setAttribute('role', 'status');
+                resultOverlay.appendChild(n);
+            }
+            n.textContent = text || '';
+            n.className = 'vic-rematch-note' + (text ? ' on' : '') + (tone ? ' ' + tone : '');
+        }
+        window._vicRematchNote = _vicRematchNote;
+
         function forfeitMatch() {
             if (state.phase !== 'battle' || state.winner) return;
             clearAiSafetyTimer();
@@ -56064,6 +56628,7 @@
             const localP = getLocalPlayer();
             const enemyP = localP === 1 ? 2 : 1;
             state.winner = enemyP;
+            _forfeitMark(localP, 'quit');
             addLog(`Player ${localP} forfeits the match.`);
             checkWin();
         }
@@ -56147,7 +56712,7 @@
             }
             state.aiThinking = false;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56353,7 +56918,7 @@
                 2: null
             };
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -60921,7 +61486,10 @@
                    the source, then the unit is done (human and CPU alike; the
                    status wears off with the round tick). */
                 if (unitHasStatus(nextUnit, 'feared') && STATUS_DEFS.feared?.fear) {
-                    _fearFleeMove(nextUnit);
+                    /* ONE FLEE ENDS THE FEAR (mondo 2026-11-10, open rule 10 "B": "Fear ends after the first flee, whatever
+                       its length"): the flight spends this activation as before, and the status comes off with it. A
+                       cornered unit that had nowhere to run did not flee: it stays Feared for its count. */
+                    if (_fearFleeMove(nextUnit) && !nextUnit.dead && !nextUnit._dying) clearStatus(nextUnit, 'feared');
                     nextUnit.ap = 0;
                     nextUnit.movesThisTurn = UNIT_MAX_MOVES;
                     scheduleBoardRender();
@@ -65259,6 +65827,7 @@
             isAllyUnit, isEnemyUnit, _isFFA,
             /* Provoke reads for ai.js (the taunter unit; THE SPELL AUDIT Batch D's decoy straw) */
             getTauntTargeter: (u) => (typeof window.getTauntTargeter === 'function' ? window.getTauntTargeter(u) : null),
+            getCharmer: (u) => (typeof window.getCharmer === 'function' ? window.getCharmer(u) : null),   // 💋 rule 7 B
             getTauntDecoy: (u) => (typeof window.getTauntDecoy === 'function' ? window.getTauntDecoy(u) : null),
             unitAt, canFly, isUnitAirborne, airborneUnitAt, getMinFlyingZ, getMaxFlyingZ,
             isFlightCrippled, forceGroundUnit,
@@ -66379,6 +66948,8 @@
             // this drum, unit-targeted offensive casts collapse to the
             // challenger alone — mirrors the doSpell gate exactly.
             if (isOffensive && !_skm.tileTargeted && !_skm.directional) {
+                const _drumCharmer = getCharmer(unit);   // 💋 never the charmer (rule 7 B)
+                if (_drumCharmer) for (let i = targets.length - 1; i >= 0; i--) { if (targets[i].unit && targets[i].unit.id === _drumCharmer.id) targets.splice(i, 1); }
                 const _drumTaunter = getTauntTargeter(unit);
                 if (_drumTaunter && targets.some(t => t.unit && t.unit.id === _drumTaunter.id)) {
                     return targets.filter(t => !t.unit || !isEnemyUnit(unit, t.unit) || t.unit.id === _drumTaunter.id);
@@ -66467,6 +67038,8 @@
             // whenever the challenger is on offer (castable now OR via approach)
             // — mirrors the drum's and doSpell's gate.
             if (isOffensive && !_skm.tileTargeted && !_skm.directional) {
+                const _apCharmer = getCharmer(unit);   // 💋 never the charmer (rule 7 B)
+                if (_apCharmer) for (let i = out.length - 1; i >= 0; i--) { if (out[i].unit && out[i].unit.id === _apCharmer.id) out.splice(i, 1); }
                 const _taunter = getTauntTargeter(unit);
                 if (_taunter && (out.some(t => t.unit && t.unit.id === _taunter.id)
                     || (haveSet && haveSet.has(_taunter.id)))) {
@@ -66861,6 +67434,12 @@
             // 🗯 Provoke: while the challenger is attackable, they are the ONLY
             // enemy unit in the drum — mirrors the doAttack gate.
             {
+                const _atkDrumCharmer = getCharmer(unit);   // 💋 never the charmer (rule 7 B)
+                if (_atkDrumCharmer) {
+                    for (let i = targets.length - 1; i >= 0; i--) {
+                        if (targets[i].unit && targets[i].unit.id === _atkDrumCharmer.id) targets.splice(i, 1);
+                    }
+                }
                 const _atkDrumTaunter = getTauntTargeter(unit);
                 if (_atkDrumTaunter && targets.some(t => t.unit && t.unit.id === _atkDrumTaunter.id)) {
                     for (let i = targets.length - 1; i >= 0; i--) {
@@ -68080,7 +68659,7 @@
         }
         function _aimRefused(actingUnit, line) {
             if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
-            addLog(line, actingUnit.player);
+            addLog(line, actingUnit.player, null, { mine: true });
             playErrorSfx();
             markDirty('board', 'hud');
             renderIfDirty();
@@ -70328,8 +70907,10 @@
 
         /* ── Guard / Overwatch reaction shot ─────────────────────────────
            doGuard (ui.js) arms ONE reaction shot alongside the defensive
-           stance: the first ENEMY unit to finish a move or jump inside the
-           guardian's attack range — range + LOS + team vision checked, the
+           stance: the first ENEMY unit to END UP inside the guardian's attack
+           range, by any arrival (a walk, jump or climb here; a push, pull,
+           throw, dash, teleport or door through resolveTileArrival, mondo
+           2026-11-10 rule 6 C) — range + LOS + team vision checked, the
            same gates a real attack obeys — takes a snap shot at counter
            power (getCounterDamage: reduced, no crit, no dodge). One shot
            per stance; the stance's own round reset disarms it. Engine-side
@@ -70347,6 +70928,7 @@
                 if (!g._overwatchArmed) continue;
                 if (!unitHasStatus(g, 'guarding')) { g._overwatchArmed = false; continue; }
                 if (!isEnemyUnit(g, mover)) continue;
+                if (getCharmer(g)?.id === mover.id) continue;   // 💋 a charmed guard holds its shot for its charmer (rule 7 B)
                 if (isUnitRealmShieldedFrom(mover, g)) continue;   // 🌑 a watcher in the Shadow Realm sees no one out here
                 const d = combatDist(g.x, g.y, g.z ?? 0, mover.x, mover.y, mover.z ?? 0);
                 if (d < 1 || d > getEffectiveRange(g)) continue;
@@ -70965,6 +71547,20 @@
             return taunter;
         }
         window.getTauntTargeter = getTauntTargeter;
+
+        /* ── 💋 Charm: no hand raised to the charmer (mondo 2026-11-10, open rule 7 "B") ──
+           A Charmed unit still cannot move and can still act, but it "cannot attack or cast at the charmer": returns the
+           living enemy that charmed `unit`, else null. The mirror of Provoke — doAttack / doSpell refuse a basic attack
+           and a unit-targeted offensive cast AT that unit, the target drums and the quick menu drop it, ai.js never
+           picks it. Tile / area / directional casts stay free (the same line Provoke draws). _charmSourceId is a unit
+           field stamped in applyStatusPayload, so state-sync carries it. */
+        function getCharmer(unit) {
+            if (!unit || !unit._charmSourceId || !unitHasStatus(unit, 'charm')) return null;
+            const c = state.units.find(u => u.id === unit._charmSourceId && !u.dead && !u._dying);
+            if (!c || !isEnemyUnit(unit, c)) return null;
+            return c;
+        }
+        window.getCharmer = getCharmer;
 
         /* ── Hex of Toil (2026-07-17): acting feeds the curse ─────────────────
            A `hexed` unit takes flat armor-ignoring chip damage every time it
@@ -73609,6 +74205,14 @@
                     return 0;
                 }
             }
+            {   // 💋 Charm (rule 7 B): no basic attack at the charmer
+                const _atkCharmer = getCharmer(unit);
+                if (_atkCharmer && target && target.id === _atkCharmer.id) {
+                    addLog(`💋 ${_ctName(unit)} is charmed and cannot attack ${_ctName(_atkCharmer)}!`, _clickSeat());
+                    playErrorSfx();
+                    return 0;
+                }
+            }
             const _atkTaunter = getTauntTargeter(unit);
             if (_atkTaunter && target && target.id !== _atkTaunter.id && isEnemyUnit(unit, target)) {
                 const _tntD = combatDist(unit.x, unit.y, unit.z ?? 0, _atkTaunter.x, _atkTaunter.y, _atkTaunter.z ?? 0);
@@ -74289,7 +74893,7 @@
                 /* Clash: the melee gap-closer counts as a melee exchange — the
                    defender's riposte stays live (counters are a JRPG staple). */
                 const _wardIntercepted = !evaded && _wardPledged && !target._guardedBy;
-                if (!evaded && !_wardIntercepted && !target.dead && !target._dying && (d === 1 || _clashLeap) && _atkArc !== 'back' && rollCounter(target)) {
+                if (!evaded && !_wardIntercepted && !target.dead && !target._dying && (d === 1 || _clashLeap) && _atkArc !== 'back' && getCharmer(target)?.id !== unit.id /* 💋 no counter at the charmer (rule 7 B) */ && rollCounter(target)) {
                     const counterDmg = getCounterDamage(target);
                     target._matchCounters = (target._matchCounters || 0) + 1;
 
@@ -78510,6 +79114,16 @@
             // castable-at (range + LOS + vision). Tile-targeted AoEs, lines and
             // support casts stay free — the taunt binds the blade, not the
             // battlefield.
+            {   // 💋 Charm (rule 7 B): no unit-targeted offensive cast at the charmer (tile / area / directional casts stay free)
+                const _spCharmer = getCharmer(unit);
+                const _spCm = _kindMeta(spell);
+                if (_spCharmer && _spCm.offensive && !_spCm.tileTargeted && !_spCm.directional
+                    && _spellClickTarget && _spellClickTarget.id === _spCharmer.id) {
+                    addLog(`💋 ${_ctName(unit)} is charmed and cannot cast ${_ctSp(spell.name)} at ${_ctName(_spCharmer)}!`, _clickSeat());
+                    playErrorSfx();
+                    return 0;
+                }
+            }
             {
                 const _spTaunter = getTauntTargeter(unit);
                 const _spMeta = _kindMeta(spell);
@@ -81512,7 +82126,7 @@
                    the remains consumed (no revive, no raising). */
                 const corpse = corpseRemainsAt(unit, spell, x, y);   // THE GRAVES STAY: a left grave feeds too
                 if (!corpse) {
-                    addLog("Target an enemy's remains — a fallen enemy's bones.", _clickSeat());
+                    addLog("Target a fallen unit's remains — an enemy's bones or an ally's gravestone.", _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -85012,7 +85626,8 @@
                             const colBonus = spell.collisionBonus || 50;
                             applyDamageToUnit(throwTarget, totalDmg + colBonus, `${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true,   // THE HEIGHT PAID ONCE: the levels are in the raw
+                                bloodAt: { x, y }   // THE BLOOD WHERE THE HIT LANDS: the body is on the landing tile
                             });
                             applyDamageToUnit(collisionTarget, colBonus, `${spell.name} collision: `, {
                                 sourceUnit: unit, damageType: 'physical',
@@ -85058,7 +85673,8 @@
 
                             applyDamageToUnit(throwTarget, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true,   // THE HEIGHT PAID ONCE: the levels are in the raw
+                                bloodAt: { x, y }   // THE BLOOD WHERE THE HIT LANDS: the body is on the landing tile
                             });
                             applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
                             /* 🧭 the throw's heading rides the landing: onto ice it glides on, onto a bomb it is thrown back */

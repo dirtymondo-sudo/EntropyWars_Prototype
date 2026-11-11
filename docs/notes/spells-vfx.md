@@ -1606,6 +1606,17 @@ there should be lots of blood. Is there more than one death animation that can b
   meshes = 64 draws). EW_NO_FX_BATCH keeps the old 64 meshes. Particle records = 512 + 256 (the stains live in the
   world pool); stains are `decor`: a full pool recycles them first.
 
+## THE BLOOD WHERE THE HIT LANDS — throws (2026-11-10)
+mondo: "used infernal hurl to throw someone but their blood splatter was on the tile they were originally on, not the
+tile they got thrown to". battle.js `_applyThrowLanding` (kind `skyThrow`: Infernal Hurl, Abduction Beam, Rocket Toss,
+Dragon Toss) pays the damage on the impact frame one line BEFORE it writes the body's new tile, and applyDamageToUnit
+fired the blood at `target.x/y` = the grab tile. Now the two throw hits (plain landing + the collision) pass
+`bloodAt: { x, y }` (the landing) and applyDamageToUnit's two `_vfxBlood` calls use it. Display only; the damage maths
+still runs from the old tile as before. Online: fireBlood is relayed with its tile, so the guest gets the landing too.
+Audit of the rest of forced movement: resolveForcedSlide writes the tile before its slam damage; pushes / tackles hit
+first and then slide (blood where it was hit); Sky Drop lands on its own tile; Trapdoor hits, then drops the body
+through; the storm fling does no hit of its own. Proof /mnt/project-files/throw-blood-20261110/ (tools/throw.js).
+
 ## THE FALL FROM THE AIR — midair deaths (2026-10-22)
 mondo: "if a unit dies in the air their blood splat stays floating in the air, please fix. Consider a separate death
 animation and blood for units that die in the air since they would have to fall to the ground too". Display only: no
@@ -3546,3 +3557,171 @@ his shot; Horn Toss zoom 0.56 → 0.93. Kill switch `window.EW_NO_CLEAR_DROP = t
 `window._clearDropState()`. Viewer-local camera, nothing relayed (a guest frames its own drop pick from state-sync).
 Proof /mnt/project-files/throw-camera/ (infernal_hurl_before_after.jpg, horn_toss_before_after.jpg). Teleport shares the sky
 path (solid) and was not driven on screen.
+
+## THE SHOT GRAMMAR — every spell shot cuts or moves, never both (2026-11-10, battle.js + three-camera.js)
+mondo: "a lot of times the camera spins around/pans when a cut would be better, or vice versa ... spazzing out bc its trying
+to zoom in/out and spin/rotate/pan at the same time but then it cuts to a different angle anyway ... it will cut too early
+away from the spell landing or the person taking damage ... completely rethink these spell animation camera shots".
+The grammar (approved by mondo 11-10, memory `spell-camera-grammar-20261110`): four shots (CAST, HIT, FOLLOW, REVEAL); cut
+OR move, never both; no move a cut throws away; the shot opens with a cut; cut on the release, land on the impact; hold the
+hit >= 1 s; a kill keeps the close-up; cuts >= 0.5 s apart, no jump cuts; auto helpers decide AT the cut; one cut home.
+
+What the recordings showed (every spell recorded with Action Cam on, the real HUD cast, every drawn frame logged; tools
+/mnt/project-files/spell-camera-20261110/tools, table /mnt/project-files/spell-camera-20261110/):
+1. ENTRY SWOOP: every rig's opening beat was a 380-560 ms glide from the board view to the caster that turned up to 180°,
+   zoomed x3-15, tilted and panned at once, then the shot cut away anyway.
+2. The windup drift orbited 12° while it pushed in (turn + zoom).
+3. AUTO TURN: THE CLEAR ANGLE re-picked from the director's heading on every sig change (a push-in, a refit, a new body) and
+   eased the lens 50-160° round on its own, mid-beat, a moment after a cut. Its pick for a cut also came a frame late (the
+   cut is consumed by the sync camera._apply() runs, before the rig arms the frame guard): a second cut 16-110 ms later.
+4. The groundAoe 'print' pull-back turned + zoomed + tilted after the hit, then the return cut threw it away.
+5. The kill confirm cut from the dying body back to the caster.
+6. multiHit alternated ±60° re-angle cuts every 180 ms.
+7. The return home glided (turn + tilt + zoom + pan) when it turned less than 60°.
+
+The fix lives under every shot (rigs, family directors, bespoke sequences, kit shots, VFX retargets all move through
+_cineBeatMove / _cineHardCut), nothing per spell:
+- battle.js `_shotGrammarMove` (in _cineBeatMove): a glide that turns > SHOT_GRAMMAR_TURN (40°) together with a zoom / pan /
+  tilt, turns > 75° alone, crash-zooms across the board, or is the shot's opening reframe, is a CUT to its end frame. A
+  FOLLOW (`_sgFollow`: `_cineRetargetShot` riding a thrown / dashing body) stays a glide. A reframing glide that cannot land
+  before the shot ends is not started.
+- `_shotGrammarCut` (in _cineHardCut): a cut that barely changes the frame is a 300 ms glide; a cut the shot ends within
+  SHOT_GRAMMAR_MIN_CUT_MS (500) of is dropped; a cut within 500 ms of the last waits (a cut in the same frame replaces it).
+- HOLD THE HIT `_shotGNoteRead` (from the floating-number layer, so the guest runs it off the relayed numbers): a number on a
+  body that is not the caster locks it for SHOT_GRAMMAR_READ_MS (1 s) and holds the way home (`_cineHoldImpactFor`). A beat
+  that looks away or pulls out wide waits for the read (`_shotGDefer`, with the beats issued in the same turn; a newer beat
+  replaces it); a beat that only re-angles the body being read is dropped (multiHit's flurry now holds one angle).
+- The self-cast's opening (`_cineOpenBeat`, a camera.moveTo the beat layer never saw) cuts when it reframes (`_shotGOpenIsCut`).
+- The windup drift is a push-in only; `_spellDirKillConfirm` no longer cuts off a death.
+- `_shotGAdvanceGuard`: a cut within 250 ms before the frame guard's own cast -> travel -> hit switch moves the guard on with
+  the cut; `_cineArmFrameGuard` re-syncs (camera._apply) when the rig cut in the same task, so the clear angle picks the
+  cut's angle for the right bodies before the cut is drawn.
+- `camera._returnIsBusy`: a return home that turns > 25° with a pan / tilt / zoom, or pans > 2 squares with a crane, cuts.
+- three-camera.js THE CLEAR ANGLE: picks at a cut (pending until the first pick with bodies in the SAME drawn frame,
+  `_caFrameNo` / `_caCutFrame`), lands with it (the smoother snaps); later picks are mid-beat: only for a blocked view
+  (0.8 better), at most CA_MIDBEAT_MAX (30°) from the cut's own angle, eased over CA_EASE_GRAMMAR_S (0.55 s).
+Viewer-local camera code; host and guest run the same rigs on the relayed shot, the read lock comes off the numbers both
+draw, nothing new is relayed (RULE #2). Kill switch `window.EW_NO_SHOT_GRAMMAR = true` (the old behaviour, both files).
+Probe `window._shotGrammarState()` (seq, beats, cuts, the read lock, the shot's end, the last 20 decisions);
+`ThreeCamera.clearAngleState()` now carries cut / heels / dt.
+Known leftovers (not the grammar): a knocked-back SECOND body can slide out at the frame edge while the frame guard follows
+(AUTO MOVE / CUT AWAY on Big Kick, Wing Attack, Tsunami); party buffs pop their numbers at the cast, before the party shot.
+
+### THE SHOT GRAMMAR, pass 2 (2026-11-10, from the after run of all 885 spells)
+Before the grammar 120 of 877 recorded casts were clean, after PR #1094 770 of 876, with pass 2 807 of 876 (per-spell table:
+/mnt/project-files/spell-camera-20261110/SPELL_CAMERA_TABLE.md; the 105 flagged + 30 clean spells re-recorded on pass 2:
+43 of the flagged now clean, 1 of the 30 clean picked up a small guard drift). Pass 2 fixes the shared causes of the leftovers:
+- THE NUMBER WAITS FOR THE LENS (`_shotGNumberWaits` / `_shotGWaitTick`, in `_realShowFloatingTextAtTile_impl` before the
+  guard note): a NON-damage number (buff, heal, shield, status, MP...) on a body outside the live shot's letterbox waits until
+  the lens shows that body (also past the shot's end: its last frame can hold ~1 s before the cut home) or
+  SHOT_GRAMMAR_NUMBER_WAIT_MS (3 s) passes, then pops with its guard note and read. It
+  was: the shot opens on the caster, the party buff / shield numbers popped on the allies at the cast to an empty frame (War
+  Cry, Rally Command, Iron Bulwark, Shield Bash, Astral Barrier...), the frame guard then backed the lens off the caster on
+  its own and the read lock held the party shot back; a drain's heal on the caster popped while the lens was on the victim.
+  Damage numbers never wait. Viewer-local (the guest's relayed numbers run the same layer). Kill switch
+  `window.EW_NO_NUMBER_WAIT = true`. The in-frame test projects the middle of the drawn body
+  (`ThreeRenderer.unitScreenBox`, after `cam.updateMatrixWorld()` so a cut in the same tick counts) inside 3-97% x 11-89%
+  of the canvas.
+- A reframing glide must land and hold SHOT_GRAMMAR_LAND_HOLD_MS (400) before the shot ends, or it is not started (the
+  debuff family's god-shot pull-out landed 60-200 ms before the cut home).
+- A drift kept as a glide turns at most SHOT_GRAMMAR_DRIFT_MAX (24°), same way round (the windup orbits `_capOrbit` turned
+  40-50° while they zoomed, then the hit cut threw the arc away).
+- `camera._returnCut` measures the turn home from the DRAWN heading (logical yaw + `ThreeCamera.clearAngleState().delta`):
+  the held clear-angle offset easing out made a "17°" glide home swing 39° while it craned out and zoomed out ×8.
+Still left: the frame guard's own correction eases in over ~0.4 s after a hit (AUTO MOVE, ~45 spells, about 1 square; the
+next step would land it with the cut), the clear angle's 30° unblock nudge on shield casts, drop / leap attacks land the
+victim just under the bottom letterbox bar (Descending Wrath, Predator Drop, Divine Swoop, Feral Dive), a knocked-back
+second body slides out while the guard follows the first (Tsunami, Gale, Body Check). Recorder limits, not the camera:
+two-step casts (Horn Toss, Fifty Times Its Weight, Swing Door, Suplex) and remains / high-ground / chess spells need a setup
+the recorder does not make. Recorder + analyser: /mnt/project-files/spell-camera-20261110/tools (sc-an.js skips a held
+number's first call and judges a number on the first frame drawn after it pops).
+
+### THE SHOT GRAMMAR, pass 3: the frame guard decides at the cut (2026-11-10)
+The leftover of pass 2: the lens slid about a square on its own after a hit on ~50 spells (AUTO MOVE). Instrumented runs
+(`_ewFrameGuard().solve` + FOV per frame) found four shared causes, all fixed in the shared camera code:
+- THE LENS COMES BACK ON THE CUT (three-camera.js `setFOVAtCut` / `fovAtCut` / `_fovAtCutTick`, battle.js
+  `cineDollyZoomRelease`): the control family's Vertigo push (`cineDollyZoom(-11, …)`) and the executions' lens tricks gave
+  the lens back on a 220 ms timer: FOV 34° → 45° in one frame while the shot still held the victim, then the frame guard
+  (which had dollied back for the narrow lens) let go and the eye slid 1.1 squares in (Cordyceps, Brainwash, Eyes Go Black,
+  Into The Sack). The release now names the lens to come back to; the next cut (`snapImmediate`) restores it on its own
+  frame, a shot that ends on a glide eases it back over 0.45 s, 8 s without a cut eases it too, the battle ending restores
+  it at once. While a restore waits, `setFOV` sets its destination (like the swoop's rule) and the next lens trick takes it
+  as its base. The sniper POV's first-person lens still goes back at once (`{ now: true }`). A release stops the running
+  tween (`_cineDzGen`). Kill switch `window.EW_NO_LENS_AT_CUT = true`.
+- THE GUARD HOLDS ITS FRAME (three-camera.js `_fgSolve(…, H)`, `_fgHold`, `_fgBeatKey` = the hand-off key + a cut
+  counter): within one beat (one rig on one subject aimed one way, since the last cut) the correction only grows; the slide
+  stays put unless a body needs it moved. It used to re-solve from scratch every frame and relax the moment a body's need
+  shrank (a lens widening, a number's body leaving, a push-in ending). Probe: `frameGuardState().held`. Kill switch
+  `window.EW_NO_GUARD_HOLD = true`.
+- THE LANDING IN THE HIT FRAME (battle.js `_cineGuardLandingPts`, `_cineCastCtx.moves` from `forecastSpellPlan`'s
+  `plan.moves`, `G.moves`): a pushed / pulled / thrown victim keeps its landing tile in frame from the hit on (the forecast
+  landing, or its logical tile once the logic moved it, so chained knocks count), and a body lifted more than half a square
+  off its ground (`unitElevationZ`) keeps that ground in frame. It was: the hit cut framed the body where it stood and
+  ~600 ms later the guard slid 1-2 squares after it (Gale, Fire Hose, Tsunami, Sonic Breaker, Wing Gust, Body Check, Stone
+  Drop). Kill switch `window.EW_NO_GUARD_LANDING = true`.
+- THE GUARD CUTS (three-camera.js `_guardStepCheck`, battle.js `camera._guardMayCut`): a correction that jumps 1.6+
+  squares inside 0.15 s (the hit beginning while the lens held the travel or the caster, with no cut of its own: Probe,
+  High Noon, Chivalry, Stone Drop's lift) lands as a cut on the same angle when the grammar allows a cut (half a second from
+  the last cut and from the shot's end; it counts as the shot's cut and logs "guard cut"). Smaller jumps still ease in (a
+  cut that small on the same angle is a jump cut). `snapImmediate({ guard: true })` keeps the hold and skips the clear
+  angle's re-pick (it already ran for that frame). Kill switch `window.EW_NO_GUARD_CUT = true`. Probe
+  `ThreeCamera.guardCutState()` ({ at, sq, cut: false = refused }).
+- THE CUT'S OWN FRAME (three-camera.js `_snapFrame`, battle.js `_cineGuardNoteHit`): a cut is drawn on the next render, so
+  every sync in the rAF frame of the cut snaps again (`camera._apply()` runs `sync` at once and the render then skips its
+  own), and a number popping in the same task as the cut re-syncs: the party shield numbers that pop with the self-cast
+  hero shot's cut are framed by the cut instead of the guard sliding back two squares a frame later.
+- A body noted by a number mid-shot is never the frame's subject (`G.armed`): only a body the shot was armed with gets the
+  primary windows (CINE_GUARD_HIT_HIGH / LOW), so the first ally number of a party buff no longer pulls the hero shot round
+  to centre that ally.
+Viewer-local camera state; the guest runs the same guard on its relayed shots and numbers (it has no cast forecast, so its
+landing comes from the logical tile once the state sync moves it). Nothing new is relayed (RULE #2).
+Recorded: the 58 spells still flagged after pass 2 (whose cast went off) plus 28 clean ones re-recorded on pass 3: 25 of the
+flagged are now clean (AUTO MOVE 45 -> 25, CUT AWAY 10 -> 0, HIT UNSEEN 5 -> 1), 1 of the 28 clean picked up a 1-square
+guard growth (Marrowstorm: its fourth body's number lands late). Whole game: 832 of 876 clean casts (807 after pass 2, 120
+before the grammar); table /mnt/project-files/spell-camera-20261110/SPELL_CAMERA_TABLE.md. Still left: leap / drop attacks
+ride the caster's jump (Divine Swoop, Feral Dive, Descending Wrath), the clear angle's 20-30° nudge round a blocking body
+(Space Disco, Round Up), guard steps under 1.6 squares (strike family ~1 square: the eye's floor under a push-in), short
+re-framing glides right after some opening cuts, and the board camera still easing from the target preview when a bespoke
+shot opens late (Colossal Crush, Crop Circle, Headshot).
+
+## THE HIT SIDE — who hit whom reads at the hit (2026-11-11, PvP demo list item 3 "readability under pressure"; plan https://claude.ai/artifact/W2nQT5ZYg5h3jCRPk7F7eT, mondo: "Build 1-4")
+The two-seat check found every side cue buried at the hit: the victim's ring under the impact circles and danger plates, the
+body white (his hit blink: KEPT as it is), the number in the element colour on both seats, a fire ultimate a flat white wall on
+the victim's screen for about a second. Looks only, shared code for every attack and spell; no rule reads any of it.
+- **1 THE FLARE** (three-renderer.js `hitSide` / `_updateHitSides`): on the hit frame a ring in the VICTIM's side colour
+  (the team ring's own rule and colours: `_isAllyPlayer`, `TEAM_RING_ALLY_COLOR` cyan-blue = yours, `TEAM_RING_ENEMY_COLOR`
+  pink-red = theirs) pops a little wider than the unit's ring (peak 1.24 + 0.04 per weight step), holds the freeze, settles
+  back onto the ring over ~0.6 s. Canvas texture on a `MeshBasicMaterial` (no custom shader, so WebGPU needs no node
+  program), normal blending over a dark keyline, `renderOrder` `_HS_ORDER` 400: after every VFX layer (particle batches
+  99-103, signature meshes 150-218), before the floating text and plates (5000+). At 170 the firestorm shells (205-212)
+  washed the near half out. Depth-tested with the team ring's polygonOffset, so walls and bodies still hide it.
+- **2 THE ATTACKER TELL**: the attacker's ring pings once in ITS side colour (0.46 s, one ping per volley) and an arrowhead
+  in that colour sits just outside the victim's flare, pointing at the attacker. Only when this seat may see the attacker
+  (`_hitSideSees`: the concealment rule + the fog renderer's visible set): a hit out of the dark never points home.
+  THE ROOF FIX (same day, the review on PR #1106): the tile set alone was not enough. An enemy in a roofed room stands on
+  a LIT square with its body hidden (`_unitLosSeen`, the Z-exact unit fog), and the arrowhead still pointed at it. Now
+  `_hitSideSees(unit, entry)` = the body is drawn on this screen (`entry.group.visible`: held, other realm, fogged,
+  concealed) AND not concealed AND, under fog, square lit AND `_unitLosSeen`; `_updateHitSides` asks again every frame
+  for the arrowhead, so an attacker that leaves sight takes its arrowhead with it. Probe: tools/roof_probe.js in
+  /mnt/project-files/hit-readability-20261111/ (stubs the 3D sight probe over one enemy on a lit square).
+- **3 THE NUMBER EDGE** (battle.js `_hitReadSideEdge` in `_hitReadDress3D`; 2D board `_hitReadDressDom`): the number keeps
+  its element fill and the thin black line next to the digits; the outer dark band and a small rim outside it take the
+  victim's side colour. Runs on the finished canvas, so the UI Maker Floating text look still applies underneath.
+  three-renderer.js `_buildFloatTextCanvas` hands over the outline width (`c._ewLineW`).
+- **4 THE STEP BACK + THE TAME FIRE** (three-vfx-effects.js `_hsNote` / `_hsBackAt` / `_hsTame`, three-vfx.js `_batchFlush`):
+  for 0.4 s after a hit lands on a square, see-through signature meshes centred on it and the flash / ground-ring
+  particles on it draw at half strength, easing back over 0.16 s. A FIRE spell (the Riot context's new `fire` flag, from
+  the spell's element) gets its shells' colours clamped (no white heart: g ≤ 0.84, b ≤ 0.34 of the max), gain ≤ 1.2 and
+  half strength, so stacked additive shells stay red-orange-yellow; on a hit with no area the firestorm column is cut to
+  1.5 squares and narrowed with it (`_hsFireH`; Dragonfire's was 3.4 × its breath scale and 4 squares wide at the top) and
+  `spawnFlameBurst3D` is capped the same; big fire meshes and billboards fade inside ~2 squares of the lens (per mesh /
+  per particle, no shader change). The capstone bloom's thin light column keeps its height (it is the ultimate's stamp,
+  not fire) at the stepped-back strength.
+- **Hook + relay**: battle.js `_juiceHitFx(target, w, hs, kill, source)` -> `VFX3D.juiceHit(tx, ty, w, hsMs, kill, unitId,
+  srcId)` -> `ThreeAnim.hitBlink` + `ThreeAnim.hitSide`. online.js already relays juiceHit (`_VFXX_ANCHORS.juiceHit`), the
+  attacker rides as an ID (RULE #2, never the unit). The floating-text relay's `hit` gains `s` (the victim's player) and
+  `wt` (the hit weight, which was never relayed: the guest's numbers were always weight 0). Each seat works its own sides
+  out from its own `_isAllyPlayer`, so host and guest see opposite colours on the same hit.
+- **Off switches** (console, live): `window.EW_NO_HIT_SIDE = true` (all), `EW_NO_HIT_SIDE_A` (flare), `_B` (attacker
+  tell), `_C` (number edge), `_D` (step back + fire). Over reloads: localStorage `ew_hitside` / `ew_hitside_a` … `_d` = `off`.
+- Probes: `window._ewHitSideOn(part)`, `window._ewHitSideAlly(player)`, `ThreeVFXEffects._hsLive()`.

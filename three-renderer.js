@@ -2831,8 +2831,37 @@ const ThreeRenderer = (function () {
                 THREE.SpotLight = class extends SL { constructor(color, intensity, distance, angle, penumbra, decay) { super(color, intensity, distance, angle, penumbra, decay === undefined ? 1 : decay); } };
                 THREE.SpotLight._ewLegacyDecay = true;
             }
+            _ewLightReachPatch(SC);
             return true;
         } catch (e) { console.warn('[ThreeRenderer] the legacy light patch failed', e); return false; }
+    }
+    /* THE LIGHT'S REACH (2026-11-10, the PvP demo's frame rate; the classic renderer). Every lit pixel ran the whole light
+       maths (the fall-off, then Lambert / Blinn-Phong / the PBR lobes) for EVERY point and spot light in the scene: a fight
+       has 13 point lights, of which 5 are dark spares at intensity 0 (kept so the shaders never rebuild) and 8 are unit
+       lights that reach 2.5 squares, so nearly every pixel computed 13 lights to add 13 zeros. Now a point light is skipped
+       for a pixel when its colour is black, or when the pixel is past its `distance` (with a decay above 0: exactly where
+       the fall-off above returns 0); a spot light when three's own directLight.visible (colour after fall-off and cone is
+       not black) is false. What is skipped added exactly 0, so the picture is the same (proof: 6 of 921,600 pixels moved by
+       one step of 255, the compiler's rounding). Measured on the Mount Shasta Arena's ground alone, software raster:
+       148 ms a frame -> 115 ms (all point lights hidden: 108 ms). Chunk patch, so it is read ONCE at load: every light on
+       every pixel again with localStorage ew_lightsEveryPixel = '1' (or window.EW_LIGHTS_EVERY_PIXEL = true before the
+       game's scripts), then reload. The node renderer has its own lamp list (WEBGPU_PLAN W9) and is not touched. */
+    function _ewLightReachPatch(SC) {
+        try {
+            var every = false;
+            try { every = (typeof window !== 'undefined' && window.EW_LIGHTS_EVERY_PIXEL === true) || (typeof localStorage !== 'undefined' && localStorage.getItem('ew_lightsEveryPixel') === '1'); } catch (e0) {}
+            var lf = SC.lights_fragment_begin || '';
+            if (every || lf.indexOf('EW_LIGHT_REACH') >= 0) return;
+            var call = 'RE_Direct( directLight, geometryPosition, geometryNormal, geometryViewDir, geometryClearcoatNormal, material, reflectedLight );';
+            var parts = lf.split(call);   // in order: the point lights, the spot lights, the sun lights, the directional lights
+            var head = 'pointLight = pointLights[ i ];\n\t\tgetPointLightInfo', decl = 'PointLight pointLight;';
+            if (parts.length !== 5 || parts[0].indexOf(head) < 0 || parts[0].indexOf(decl) < 0 || parts[1].indexOf('getSpotLightInfo') < 0 || (SC.lights_pars_begin || '').indexOf('light.visible = ( light.color != vec3( 0.0 ) );') < 0) {
+                console.warn('[ThreeRenderer] the light reach patch did not find its anchors in three.js ' + THREE.REVISION + ' — every light on every pixel, as before'); return;
+            }
+            var point = parts[0].replace(decl, decl + '\n\tvec3 ewLV;')
+                .replace(head, 'pointLight = pointLights[ i ];\n\t\tewLV = pointLight.position - geometryPosition;\n\t\tif ( pointLight.color != vec3( 0.0 ) && ( pointLight.distance <= 0.0 || pointLight.decay <= 0.0 || dot( ewLV, ewLV ) < pointLight.distance * pointLight.distance ) ) {\n\t\tgetPointLightInfo');
+            SC.lights_fragment_begin = '// EW_LIGHT_REACH\n' + point + call + '\n\t\t}' + parts[1] + 'if ( directLight.visible ) ' + call + parts[2] + call + parts[3] + call + parts[4];
+        } catch (e) { console.warn('[ThreeRenderer] the light reach patch failed', e); }
     }
     _ewLegacyLightPatch();
     /* ══ THE UNIT POP (2026-10-16, mondo: "make the units/characters pop a little more compared to the ground and objects
@@ -30975,6 +31004,7 @@ const ThreeRenderer = (function () {
         // transparent margin around the inked glyphs (CSS px at scale 1) —
         // pops stack by what you can SEE, not by their padded boxes.
         c._ewHero = isNumber;
+        c._ewLineW = lineK > 0 ? outlineW * lineK : 0;   // THE HIT SIDE part 3 (battle.js _hitReadSideEdge): the outline's width, 0 = no line
         var inkH = fontSize * 0.95 + outlineW * 2;
         var lineInk = outlineW * 1.2 * Math.max(1, lineK);
         c._ewMarginX = Math.max(0, padX - lineInk);
@@ -32250,6 +32280,230 @@ const ThreeRenderer = (function () {
         for (var d = 0; d < done.length; d++) _hitBlinks.delete(done[d]);
     }
 
+    /* ── THE HIT SIDE (2026-11-11, the PvP demo list's "readability under pressure"; plan
+       https://claude.ai/artifact/W2nQT5ZYg5h3jCRPk7F7eT, mondo: "Build 1-4") ───────────────────────────────────────────
+       At the hit every cue that says WHOSE unit was hit was buried: the ring under the impact circle and the danger
+       plates, the body white (the hit blink, his own ask: kept as it is), the number in the element's colour on both
+       seats. Parts 1 + 2 live here (3 = battle.js _hitReadSideEdge, 4 = three-vfx.js THE STEP BACK):
+         1 THE FLARE: on the hit frame a ring in the VICTIM's side colour (the team ring's own, _isAllyPlayer: cyan-blue
+           yours, pink-red theirs) pops a little wider than its ring and draws ABOVE the impact VFX (_HS_ORDER, past
+           the particle batches 99-103 and every signature mesh, 150-218; normal blending over a dark keyline, so an
+           additive white flash under it cannot wash the colour out), holds the freeze, then settles onto the ring.
+         2 THE ATTACKER TELL: the attacker's ring pings once in ITS side colour and an arrowhead in that colour sits on
+           the victim's ring, pointing at the attacker. Both only when this seat can see the attacker (the fog
+           renderer's own visible set + the concealment rule): a hit out of the dark never points at where it came from.
+       Real clock (performance.now), like the blink: the freeze stops _animNow. The marks ride the hit-fx layer in world
+       space and follow their unit each frame (a knockback carries them). Called by three-vfx-effects.js juiceHit, which
+       online.js relays (vfx3d-x) with the attacker's id; every seat works its own sides out, nothing else is relayed.
+       Off: window.EW_NO_HIT_SIDE = true (all four parts) or EW_NO_HIT_SIDE_A (flare) / _B (attacker tell) / _C (number
+       edge) / _D (the VFX step back); localStorage ew_hitside / ew_hitside_a … _d = 'off' does the same over reloads. */
+    var _hitSides = [];            // live marks: { kind: 'flare' | 'pulse' | 'arrow', uid, src, ally, t0, ms, hold, peak, holder, mat, ang }
+    var _hitSideTex = {}, _hitSideGeo = null, _hitSideLs = {}, _hsV = null, _hsV2 = null;
+    var _HS_BAND = 0.70;           // the ring texture's band sits at this share of its half size
+    var _HS_ORDER = 400;           // over every VFX layer (the signature meshes end at 218), under the floating text and the plates (5000+)
+    function _hitSideOn(part) {
+        if (typeof window === 'undefined') return false;
+        if (window.EW_NO_HIT_SIDE) return false;
+        if (part && window['EW_NO_HIT_SIDE_' + part]) return false;
+        var keys = part ? ['ew_hitside', 'ew_hitside_' + String(part).toLowerCase()] : ['ew_hitside'];
+        for (var i = 0; i < keys.length; i++) {
+            var k = keys[i];
+            if (_hitSideLs[k] === undefined) { _hitSideLs[k] = 'on'; try { if (localStorage.getItem(k) === 'off') _hitSideLs[k] = 'off'; } catch (e) {} }
+            if (_hitSideLs[k] === 'off') return false;
+        }
+        return true;
+    }
+    if (typeof window !== 'undefined') {
+        window._ewHitSideOn = _hitSideOn;   // battle.js (the number edge) + three-vfx.js / three-vfx-effects.js (the step back) ask here
+        /* the side a player's unit is on from THIS seat, by the team ring's own rule: true = the viewer's own */
+        window._ewHitSideAlly = function (player) { return _isAllyPlayer(player); };
+        window._ewHitSideHex = function (ally) { return ally ? TEAM_RING_ALLY_COLOR : TEAM_RING_ENEMY_COLOR; };
+    }
+    function _hitSideCss(hex, k) {   // k < 0 darkens toward black, k > 0 lightens toward white
+        var r = (hex >> 16) & 255, g = (hex >> 8) & 255, b = hex & 255;
+        if (k < 0) { r *= 1 + k; g *= 1 + k; b *= 1 + k; } else { r += (255 - r) * k; g += (255 - g) * k; b += (255 - b) * k; }
+        return 'rgb(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ')';
+    }
+    function _hitSideCanvasTex(c) {
+        var t = new THREE.CanvasTexture(c);
+        t.minFilter = THREE.LinearFilter; t.generateMipmaps = false;   // no mip chain: on WebGPU building one is a render pass in the hit's own frame
+        return t;
+    }
+    function _hitSideRingTex(ally) {
+        var key = ally ? 'ringA' : 'ringE';
+        if (_hitSideTex[key]) return _hitSideTex[key];
+        var S = 256, c = document.createElement('canvas'); c.width = c.height = S;
+        var g = c.getContext('2d'), m = S / 2, R = m * _HS_BAND, col = ally ? TEAM_RING_ALLY_COLOR : TEAM_RING_ENEMY_COLOR;
+        var ring = function (w, style, alpha) { g.globalAlpha = alpha; g.beginPath(); g.arc(m, m, R, 0, Math.PI * 2); g.lineWidth = w; g.strokeStyle = style; g.stroke(); };
+        // the soft halo, the dark keyline that holds the colour over a white flash, the band, the hot core
+        var glow = g.createRadialGradient(m, m, R * 0.35, m, m, R);   // a wash of the side colour inside the ring, strongest at the line
+        glow.addColorStop(0, _hitSideCss(col, 0).replace('rgb(', 'rgba(').replace(')', ',0)'));
+        glow.addColorStop(1, _hitSideCss(col, 0).replace('rgb(', 'rgba(').replace(')', ',0.30)'));
+        g.fillStyle = glow; g.beginPath(); g.arc(m, m, R, 0, Math.PI * 2); g.fill();
+        for (var i = 0; i < 5; i++) ring(S * (0.22 - i * 0.03), _hitSideCss(col, 0), 0.10);
+        ring(S * 0.104, _hitSideCss(col, -0.82), 0.92);
+        ring(S * 0.070, _hitSideCss(col, 0), 1);
+        ring(S * 0.022, _hitSideCss(col, 0.6), 1);
+        g.globalAlpha = 1;
+        return (_hitSideTex[key] = _hitSideCanvasTex(c));
+    }
+    function _hitSideArrowTex(ally) {
+        var key = ally ? 'arrA' : 'arrE';
+        if (_hitSideTex[key]) return _hitSideTex[key];
+        var S = 128, c = document.createElement('canvas'); c.width = c.height = S;
+        var g = c.getContext('2d'), col = ally ? TEAM_RING_ALLY_COLOR : TEAM_RING_ENEMY_COLOR;
+        var path = function () {   // a notched arrowhead, tip up (+v)
+            g.beginPath(); g.moveTo(S * 0.50, S * 0.14); g.lineTo(S * 0.86, S * 0.80); g.lineTo(S * 0.50, S * 0.60); g.lineTo(S * 0.14, S * 0.80); g.closePath();
+        };
+        g.lineJoin = 'round';
+        path(); g.globalAlpha = 0.9; g.lineWidth = S * 0.16; g.strokeStyle = _hitSideCss(col, -0.82); g.stroke();
+        g.globalAlpha = 1;
+        path(); g.fillStyle = _hitSideCss(col, 0); g.fill();
+        path(); g.lineWidth = S * 0.035; g.strokeStyle = _hitSideCss(col, 0.6); g.stroke();
+        return (_hitSideTex[key] = _hitSideCanvasTex(c));
+    }
+    function _hitSideAdd(h, order) {
+        if (!_hitSideGeo) _hitSideGeo = new THREE.PlaneGeometry(1, 1);
+        var mat = new THREE.MeshBasicMaterial({
+            map: (h.kind === 'arrow') ? _hitSideArrowTex(h.ally) : _hitSideRingTex(h.ally),
+            transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false,
+            polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4   // the team ring's own way of clearing the floor it lies on
+        });
+        var mesh = new THREE.Mesh(_hitSideGeo, mat);
+        mesh.rotation.x = -Math.PI / 2;      // flat on the ground, the texture's top toward world -Z
+        mesh.renderOrder = order;
+        mesh.raycast = function () {};       // never a pick target
+        var holder = new THREE.Group();
+        holder.add(mesh);
+        holder.visible = false;
+        holder._ew_hitSide = true;
+        hitFxGroup.add(holder);
+        h.holder = holder; h.mat = mat;
+        _hitSides.push(h);
+    }
+    function _hitSideFree(h) {
+        if (h.holder && h.holder.parent) h.holder.parent.remove(h.holder);
+        if (h.mat) { try { h.mat.dispose(); } catch (e) {} }   // the plane and the four textures are shared: kept
+        h.holder = h.mat = null;
+    }
+    function _hitSideFind(uid, kind) {
+        for (var i = 0; i < _hitSides.length; i++) if (_hitSides[i].uid === uid && _hitSides[i].kind === kind) return _hitSides[i];
+        return null;
+    }
+    function _hitSideDrop(uid, kind) {
+        for (var i = _hitSides.length - 1; i >= 0; i--) {
+            var h = _hitSides[i];
+            if (h.uid === uid && h.kind === kind) { _hitSideFree(h); _hitSides.splice(i, 1); }
+        }
+    }
+    function _hitSideClear() {
+        for (var i = 0; i < _hitSides.length; i++) _hitSideFree(_hitSides[i]);
+        _hitSides.length = 0;
+    }
+    /* may this seat be shown where that unit stands? Only what the screen already draws: the body itself is on screen (the
+       per-frame pass above hides a held body, the other realm's units and a fogged or concealed enemy), it is not
+       concealed, and under fog its square is lit AND the 3D line of sight reaches it (_unitLosSeen: an enemy in a roofed
+       room stands on a lit square with its body hidden; the tile test alone pointed the arrowhead at it, PR #1106 review) */
+    function _hitSideSees(u, ue) {
+        try {
+            if (!ue || !ue.group || ue.group.visible === false) return false;
+            var vp = _viewerPlayerNum();
+            if (u.player === vp) return true;
+            if (_isConcealedFromViewer(u, vp)) return false;
+            if (state && state.fogOfWar) {
+                if (typeof window._isTileVisibleToViewer === 'function' && !window._isTileVisibleToViewer(u.x, u.y)) return false;
+                if (!_unitLosSeen(u, vp)) return false;
+            }
+        } catch (e) { return false; }
+        return true;
+    }
+    function hitSide(victimId, attackerId, opts) {
+        if (victimId == null || !hitFxGroup || _ewAnimsOff() || !_hitSideOn()) return;
+        opts = opts || {};
+        var vu = _findUnit(victimId), ve = _getUnitEntry(victimId);
+        if (!vu || !ve || !ve.group) return;
+        var w = Math.max(0, Math.min(3, Number(opts.weight) || 0)), kill = !!opts.kill;
+        var hold = Math.max(0, Number(opts.holdMs) || 0), now = performance.now();
+        var ms = Math.max(620, hold + 470) + (kill ? 140 : 0);
+        if (_hitSideOn('A')) {
+            _hitSideDrop(victimId, 'flare');   // a second hit on the same body restarts its flare
+            _hitSideAdd({ kind: 'flare', uid: victimId, ally: _isAllyPlayer(vu.player), t0: now, hold: hold, ms: ms,
+                peak: 1.24 + 0.04 * w + (kill ? 0.05 : 0) }, _HS_ORDER);
+        }
+        if (attackerId == null || attackerId === victimId || !_hitSideOn('B')) return;
+        var au = _findUnit(attackerId), ae = _getUnitEntry(attackerId);
+        if (!au || au.dead || !ae || !ae.group || !_hitSideSees(au, ae)) return;
+        var allyA = _isAllyPlayer(au.player), ping = _hitSideFind(attackerId, 'pulse');
+        if (!ping || now - ping.t0 > 120) {    // one ping for an area spell's whole volley
+            _hitSideDrop(attackerId, 'pulse');
+            _hitSideAdd({ kind: 'pulse', uid: attackerId, ally: allyA, t0: now, hold: 0, ms: 460, peak: 1.42 }, _HS_ORDER);
+        }
+        _hitSideDrop(victimId, 'arrow');
+        _hitSideAdd({ kind: 'arrow', uid: victimId, src: attackerId, ally: allyA, t0: now, hold: hold, ms: ms, ang: null, dx: 0, dz: 0 }, _HS_ORDER + 1);
+    }
+    /* the unit's ring in world space: its group's x / z, the ring plane's own height (a draped ring's too) */
+    function _hitSideAt(ue, out) {
+        ue.group.getWorldPosition(out);
+        var ret = ue.reticle, pos = ret && ret.geometry && ret.geometry.attributes && ret.geometry.attributes.position;
+        if (pos && pos.count) {
+            _hsV2 = _hsV2 || new THREE.Vector3();
+            ret.updateWorldMatrix(true, false);
+            out.y = _hsV2.fromBufferAttribute(pos, 0).applyMatrix4(ret.matrixWorld).y;
+        } else out.y += SELECTED_RING_OFFSET;
+        return out;
+    }
+    function _updateHitSides() {
+        if (!_hitSides.length) return;
+        var now = performance.now(), ts = CONFIG.tileSize || BASE_TILE;
+        var R = 0.42 * (Number(_retLookU.uRSize.value) || 1) * ts;   // the ring line's own radius (the reticle shader's R)
+        _hsV = _hsV || new THREE.Vector3();
+        for (var i = _hitSides.length - 1; i >= 0; i--) {
+            var h = _hitSides[i], el = now - h.t0, ue = _getUnitEntry(h.uid);
+            if (el >= h.ms || !ue || !ue.group || !hitFxGroup || !h.holder || h.holder.parent !== hitFxGroup) {
+                _hitSideFree(h); _hitSides.splice(i, 1); continue;
+            }
+            var s, o, show = ue.group.visible !== false;
+            if (h.kind === 'pulse') {
+                var t = el / h.ms;
+                s = 1 + (h.peak - 1) * (1 - Math.pow(1 - t, 3)); o = 0.95 * Math.pow(1 - t, 1.5);
+            } else {
+                // pop in 70 ms, hold the freeze (140 ms at least), then settle back onto the ring while it fades
+                var pop = 1 - Math.pow(1 - Math.min(1, el / 70), 3), t0s = Math.max(h.hold, 140);
+                var u = el <= t0s ? 0 : Math.min(1, (el - t0s) / Math.max(1, h.ms - t0s));
+                s = (h.kind === 'flare') ? (0.94 + (h.peak - 0.94) * pop) - (h.peak - 1) * _easeInOut(u) : 0.8 + 0.2 * pop;
+                o = pop * (u < 0.3 ? 1 : 1 - (u - 0.3) / 0.7);
+            }
+            _hitSideAt(ue, _hsV);
+            if (h.kind === 'arrow') {
+                var ae = _getUnitEntry(h.src), asu = _findUnit(h.src);
+                if (!asu || !_hitSideSees(asu, ae)) show = false;   // the attacker left this seat's sight while the arrowhead was up: it goes too
+                else if (ae && ae.group) {
+                    _hsV2 = _hsV2 || new THREE.Vector3();
+                    var vx = _hsV.x, vz = _hsV.z;
+                    ae.group.getWorldPosition(_hsV2);
+                    var dx = _hsV2.x - vx, dz = _hsV2.z - vz, len = Math.sqrt(dx * dx + dz * dz);
+                    if (len > ts * 0.2) { h.dx = dx / len; h.dz = dz / len; h.ang = Math.atan2(-h.dx, -h.dz); }
+                }
+                if (h.ang === null) show = false;
+                else {
+                    var out = R * 1.3 + ts * 0.19;       // just outside the flare's widest reach
+                    _hsV.x += h.dx * out; _hsV.z += h.dz * out; _hsV.y += 0.6;
+                    h.holder.rotation.y = h.ang;
+                    var as = ts * 0.44 * s;
+                    h.holder.scale.set(as, 1, as);
+                }
+            } else {
+                _hsV.y += 0.4;
+                var size = 2 * R * s / _HS_BAND;
+                h.holder.scale.set(size, 1, size);
+            }
+            hitFxGroup.worldToLocal(_hsV);
+            h.holder.position.copy(_hsV);
+            h.mat.opacity = Math.max(0, Math.min(1, o));
+            h.holder.visible = show && o > 0.01;
+        }
+    }
+
     function _updateFlashTweens() {
         var now = _animNow();
         var toRemove = [];
@@ -32682,6 +32936,7 @@ const ThreeRenderer = (function () {
         _updateUnitSelfGlow();
         _updateDecoyEntries();
         _updateHitBlinks();   // THE HIT BLINK: after the self glow, so its white wins this frame
+        _updateHitSides();    // THE HIT SIDE: the flare / the attacker tell, on the real clock like the blink
     }
 
     function _clearAnimations() {
@@ -32700,6 +32955,7 @@ const ThreeRenderer = (function () {
         _flashTweens.clear();
         _hitBlinks.forEach(function (b, uid) { _hitBlinkRestore(b); });
         _hitBlinks.clear();
+        _hitSideClear();
         _strikeTweens.clear();
         _clipTravelTweens.clear();
         _throwTweens.clear();   // a match reset never leaves a body on an arc (it blocks the turn now)
@@ -44058,7 +44314,7 @@ const ThreeRenderer = (function () {
         var V4 = function () { return T.uniform(new THREE.Vector4()).setGroup(T.renderGroup); };
         var F = function (v) { return T.uniform(v).setGroup(T.renderGroup); };
         /* kept across a rebuilt renderer (W4, device lost): the dressed materials, twins and cached Fn graphs read these nodes */
-        if (!_ewNodeU) _ewNodeU = { T: T, G: G, hfog: V4(), bfog: V4(), bfog2: V4(), bfog3: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), fflow: F(new THREE.Vector2()), dressed: {} };
+        if (!_ewNodeU) _ewNodeU = { T: T, G: G, hfog: V4(), bfog: V4(), bfog2: V4(), bfog3: V4(), ao: V4(), ao2: V4(), ftime: F(0), ftile: F(1), triCut: F(0.0005), fflow: F(new THREE.Vector2()), dressed: {} };
         _ewNodeTick();
         /* the height fog: the scene's FogExp2 node, with the floor term folded in exactly as the GLSL patch does */
         /* THE ONE FOG (2026-10-12): three keys every lit build on the fog NODE, and a fog node reads one fog object, so each
@@ -44143,7 +44399,7 @@ const ThreeRenderer = (function () {
         if (U.bfog) { U.bfog.value.set(_EW_BFOG.x, _EW_BFOG.y, _EW_BFOG.z, _EW_BFOG.w); U.bfog2.value.set(_EW_BFOG2.x, _EW_BFOG2.y, _EW_BFOG2.z, _EW_BFOG2.w); U.bfog3.value.set(_EW_BFOG3.x, _EW_BFOG3.y, _EW_BFOG3.z, _EW_BFOG3.w); }
         U.ao.value.set(_HQ_AO.x, _HQ_AO.y, _HQ_AO.z, _HQ_AO.w);
         U.ao2.value.set(_HQ_AO2.x, _HQ_AO2.y, _HQ_AO2.z, _HQ_AO2.w);
-        U.ftime.value = _fluidTimeUniform.value; U.ftile.value = _fluidTileUniform.value;
+        U.ftime.value = _fluidTimeUniform.value; U.ftile.value = _fluidTileUniform.value; U.triCut.value = _hqTriCutU.value;
         if (_fluidFlowUniform.value) U.fflow.value.copy(_fluidFlowUniform.value);
     }
     /* a node material's diffuse colour × f(), after three's own (colour, map, vertex colour, opacity, alpha test) */
@@ -44229,17 +44485,29 @@ const ThreeRenderer = (function () {
             var wp = T.positionWorld, w = T.abs(T.normalize(T.normalWorldGeometry)).toVar();
             w.assign(w.mul(w).mul(w).mul(w)); w.divAssign(w.x.add(w.y).add(w.z).add(0.0001));
             var uy = wp.xz.div(TM), ux = wp.zy.div(TM), uz = wp.xy.div(TM);
-            var tri = function (t, s) { return T.texture(t, uy.mul(s)).mul(w.y).add(T.texture(t, ux.mul(s)).mul(w.x)).add(T.texture(t, uz.mul(s)).mul(w.z)); };
+            /* THE WEIGHTED SHEETS (see _hqTerrainMat): a read with no weight is skipped; derivatives are made outside the branches */
+            var cut = _ewNodeU.triCut, uyv = T.vec2(uy).toVar(), uxv = T.vec2(ux).toVar(), uzv = T.vec2(uz).toVar();
+            var gyx = T.dFdx(uyv).toVar(), gyy = T.dFdy(uyv).toVar(), gxx = T.dFdx(uxv).toVar(), gxy = T.dFdy(uxv).toVar(), gzx = T.dFdx(uzv).toVar(), gzy = T.dFdy(uzv).toVar();
+            var tri = function (t, s, gate) {
+                var o = T.vec4(0).toVar();
+                var body = function () {
+                    T.If(w.y.greaterThan(cut), function () { o.addAssign(T.texture(t, uyv.mul(s)).grad(gyx.mul(s), gyy.mul(s)).mul(w.y)); });
+                    T.If(w.x.greaterThan(cut), function () { o.addAssign(T.texture(t, uxv.mul(s)).grad(gxx.mul(s), gxy.mul(s)).mul(w.x)); });
+                    T.If(w.z.greaterThan(cut), function () { o.addAssign(T.texture(t, uzv.mul(s)).grad(gzx.mul(s), gzy.mul(s)).mul(w.z)); });
+                };
+                if (gate) T.If(gate.greaterThan(cut), body); else body();
+                return o;
+            };
             var tint = function (v, t) { return t ? v.mul(T.vec4(t.r, t.g, t.b, 1)) : v; };   // THE SHEET LOOKS (2026-10-24)
+            var bl = T.attribute('aBlend', 'vec2');
             var c = tint(tri(map, 1), D.tFloor).toVar();
-            var cliff = tint(tri(D.cliff || map, D.cliffK || 1), D.tCliff), path = tint(tri(D.path || map, 1), D.tPath);
+            var cliff = tint(tri(D.cliff || map, D.cliffK || 1, bl.x), D.tCliff), path = tint(tri(D.path || map, 1, bl.y), D.tPath);
             if (pal.length && builder.geometry && builder.geometry.hasAttribute('aPaintA')) {
                 var A = T.attribute('aPaintA', 'vec3'), B = T.attribute('aPaintB', 'vec3'), C = T.attribute('aPaintC', 'vec3');
                 var W = [A.x, A.y, A.z, B.x, B.y, B.z, C.x, C.y], pc = T.vec4(0).toVar(), pw = T.float(0).toVar();
-                pal.forEach(function (t, i) { pc.addAssign(T.texture(t, uy).mul(W[i])); pw.addAssign(W[i]); });
+                pal.forEach(function (t, i) { T.If(W[i].greaterThan(cut), function () { pc.addAssign(T.texture(t, uyv).grad(gyx, gyy).mul(W[i])); }); pw.addAssign(W[i]); });
                 T.If(pw.greaterThan(0.001), function () { c.assign(T.mix(c, pc.div(pw), T.clamp(pw, 0, 1))); });
             }
-            var bl = T.attribute('aBlend', 'vec2');
             c.assign(T.mix(c, path, bl.y));
             c.assign(T.mix(c, cliff.mul(T.vec4(0.92, 0.92, 0.92, 1)), bl.x));
             c.rgb.mulAssign(T.attribute('aAO', 'float'));
@@ -64623,6 +64891,13 @@ const ThreeRenderer = (function () {
         var L = _hqSheetLook(info), mine = !!(f.side || own);
         return { key: f.side || own || info.cliff, zoom: (f.sideZoom != null) ? _hqZoomOf(f.sideZoom) : (mine ? 1 : L.cliffZoom), tint: (f.sideTint != null) ? _hqTintOf(f.sideTint) : (mine ? null : L.cliff) };
     }
+    /* THE WEIGHTED SHEETS (2026-11-10, the PvP demo's frame rate): the field's shader read all three sheets (floor, cliff, path) on
+       all three world axes, and every painted sheet, for every pixel: 9 to 17 filtered reads (8x anisotropic), though on flat
+       ground only ONE has any weight (the floor from above; the side axes weigh 0, the cliff and path blends are 0). A read whose
+       weight is under 0.0005 (a twentieth of one percent: under an eighth of one colour step) is now skipped. The reads sit in
+       branches, so each takes the mip level from derivatives made OUTSIDE the branch (textureGrad): the same level the plain
+       read picked. Both renderers (the node look: _ewNodeTerrain). Back to every read: window.EW_TERRAIN_ALL_SAMPLES = true (live). */
+    var _hqTriCutU = { get value() { return (typeof window !== 'undefined' && window.EW_TERRAIN_ALL_SAMPLES) ? -1 : 0.0005; }, set value(v) {} };
     function _hqTerrainMat(info, S) {
         var floorTex = _hzTex(info.floor) || _hzTex('grass_2'), cliffTex = _hzTex(info.cliff) || _hzTex('cliff') || floorTex, pathTex = _hzTex(info.path) || _hzTex('dirt_2') || floorTex;   // 2026-09-21: the fallback is the plain cliff sheet, never rock_wall_1's glyphs
         var m = new THREE.MeshPhongMaterial({ map: floorTex || null, color: 0xffffff, shininess: S.open ? 4 : 6, specular: S.open ? 0x0e0e0e : 0x161616, vertexColors: false });
@@ -64649,7 +64924,7 @@ const ThreeRenderer = (function () {
                 pf += 'varying vec3 vPaintA;\nvarying vec3 vPaintB;\nvarying vec3 vPaintC;\n';
                 var W = ['vPaintA.x', 'vPaintA.y', 'vPaintA.z', 'vPaintB.x', 'vPaintB.y', 'vPaintB.z', 'vPaintC.x', 'vPaintC.y'];
                 pb = ' float pW = 0.0; vec4 pCol = vec4(0.0);\n';
-                palTex.forEach(function (t, i) { pb += ' pCol += texture2D( tPaint' + i + ', triUy ) * ' + W[i] + '; pW += ' + W[i] + ';\n'; });
+                palTex.forEach(function (t, i) { pb += ' if ( ' + W[i] + ' > uTriCut ) pCol += textureGrad( tPaint' + i + ', triUy, triGyX, triGyY ) * ' + W[i] + '; pW += ' + W[i] + ';\n'; });
                 pb += ' if ( pW > 0.001 ) texelColor = mix( texelColor, pCol / pW, clamp( pW, 0.0, 1.0 ) );\n';
             }
             sh.vertexShader = pv + sh.vertexShader;
@@ -64664,11 +64939,12 @@ const ThreeRenderer = (function () {
             sh.vertexShader = 'attribute vec2 aBlend;\nattribute float aAO;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.vertexShader
                 .replace('#include <uv_vertex>', '#include <uv_vertex>\nvBlend = aBlend;\nvAO = aAO;')
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvTriPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvTriN = normalize(mat3(modelMatrix) * objectNormal);');
-            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nuniform float uCliffK;\nuniform vec3 uFloorT;\nuniform vec3 uCliffT;\nuniform vec3 uPathT;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
-                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec4 texelColor = texture2D( map, triUy ) * triW.y + texture2D( map, triUx ) * triW.x + texture2D( map, triUz ) * triW.z;\n texelColor.rgb *= uFloorT;\n vec4 cliffColor = texture2D( tCliff, triUy * uCliffK ) * triW.y + texture2D( tCliff, triUx * uCliffK ) * triW.x + texture2D( tCliff, triUz * uCliffK ) * triW.z;\n cliffColor.rgb *= uCliffT;\n vec4 pathColor = texture2D( tPath, triUy ) * triW.y + texture2D( tPath, triUx ) * triW.x + texture2D( tPath, triUz ) * triW.z;\n pathColor.rgb *= uPathT;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
+            sh.uniforms.uTriCut = _hqTriCutU;   // THE WEIGHTED SHEETS (below)
+            sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nuniform float uCliffK;\nuniform float uTriCut;\nuniform vec3 uFloorT;\nuniform vec3 uCliffT;\nuniform vec3 uPathT;\nvarying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
+                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec2 triGyX = dFdx( triUy ); vec2 triGyY = dFdy( triUy ); vec2 triGxX = dFdx( triUx ); vec2 triGxY = dFdy( triUx ); vec2 triGzX = dFdx( triUz ); vec2 triGzY = dFdy( triUz );\n vec4 texelColor = vec4( 0.0 );\n if ( triW.y > uTriCut ) texelColor += textureGrad( map, triUy, triGyX, triGyY ) * triW.y; if ( triW.x > uTriCut ) texelColor += textureGrad( map, triUx, triGxX, triGxY ) * triW.x; if ( triW.z > uTriCut ) texelColor += textureGrad( map, triUz, triGzX, triGzY ) * triW.z;\n texelColor.rgb *= uFloorT;\n vec4 cliffColor = vec4( 0.0 );\n if ( vBlend.x > uTriCut ) { if ( triW.y > uTriCut ) cliffColor += textureGrad( tCliff, triUy * uCliffK, triGyX * uCliffK, triGyY * uCliffK ) * triW.y; if ( triW.x > uTriCut ) cliffColor += textureGrad( tCliff, triUx * uCliffK, triGxX * uCliffK, triGxY * uCliffK ) * triW.x; if ( triW.z > uTriCut ) cliffColor += textureGrad( tCliff, triUz * uCliffK, triGzX * uCliffK, triGzY * uCliffK ) * triW.z; }\n cliffColor.rgb *= uCliffT;\n vec4 pathColor = vec4( 0.0 );\n if ( vBlend.y > uTriCut ) { if ( triW.y > uTriCut ) pathColor += textureGrad( tPath, triUy, triGyX, triGyY ) * triW.y; if ( triW.x > uTriCut ) pathColor += textureGrad( tPath, triUx, triGxX, triGxY ) * triW.x; if ( triW.z > uTriCut ) pathColor += textureGrad( tPath, triUz, triGzX, triGzY ) * triW.z; }\n pathColor.rgb *= uPathT;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
                 .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
         };
-        m.customProgramCacheKey = function () { return 'hqTerrainTri' + (palTex.length ? 'P' + palTex.length : ''); };
+        m.customProgramCacheKey = function () { return 'hqTerrainTri2' + (palTex.length ? 'P' + palTex.length : ''); };
         _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex, cliffK: 1 / look.cliffZoom, tFloor: look.floor, tCliff: look.cliff, tPath: look.path });   // WEBGPU W1: the same sheets for the node renderer
         return m;
     }
@@ -71324,10 +71600,10 @@ const ThreeRenderer = (function () {
             var cob = _hqMat('cobblestone', 1, 1, { color: 0xc8c0b0, shininess: 4 });
             var flatUV = function (geo) { var p = geo.attributes.position, uv = geo.attributes.uv; for (var i = 0; i < p.count; i++) uv.setXY(i, p.getX(i) / (1.2 * U), p.getY(i) / (1.2 * U)); uv.needsUpdate = true; return geo; };
             var path = new THREE.Mesh(flatUV(new THREE.RingGeometry(4.6 * U, 6.2 * U, 48)), cob);
-            path.rotation.x = -Math.PI / 2; path.position.y = 0.006 * U; g.add(path);
+            path.rotation.x = -Math.PI / 2; path.position.y = 0.03 * U; g.add(path);   // 0.006 -> 0.03 (2026-11-10): the floor showed through the stones in patches from a battle camera's height
             var inner = new THREE.Mesh(flatUV(new THREE.RingGeometry(1.7 * U, 2.4 * U, 40)), cob);
-            inner.rotation.x = -Math.PI / 2; inner.position.y = 0.006 * U; g.add(inner);
-            [0, Math.PI / 2, Math.PI, -Math.PI / 2].forEach(function (a) { var spoke = new THREE.Mesh(new THREE.PlaneGeometry(1.0 * U, 2.4 * U), _hqMat('cobblestone', 1, 2, { color: 0xc8c0b0, shininess: 4 })); spoke.rotation.x = -Math.PI / 2; spoke.rotation.z = a; spoke.position.set(Math.sin(a) * 3.5 * U, 0.007 * U, -Math.cos(a) * 3.5 * U); g.add(spoke); });
+            inner.rotation.x = -Math.PI / 2; inner.position.y = 0.03 * U; g.add(inner);
+            [0, Math.PI / 2, Math.PI, -Math.PI / 2].forEach(function (a) { var spoke = new THREE.Mesh(new THREE.PlaneGeometry(1.0 * U, 2.4 * U), _hqMat('cobblestone', 1, 2, { color: 0xc8c0b0, shininess: 4 })); spoke.rotation.x = -Math.PI / 2; spoke.rotation.z = a; spoke.position.set(Math.sin(a) * 3.5 * U, 0.034 * U, -Math.cos(a) * 3.5 * U); g.add(spoke); });
             var hedge = _hqMat('leaves_2', 2, 1, { color: 0x5a7a3a, shininess: 4 });
             var n = 28, R = 7.0;
             for (var i = 0; i < n; i++) {
@@ -71559,15 +71835,18 @@ const ThreeRenderer = (function () {
             if (_hq) _hq.tickers.push(function (dt, now) { _torchFlicker(entry, now * 0.001, false); });
             return g;
         },
-        crystal_cluster: function (U) {
+        crystal_cluster: function (U, p) {
             /* THE CRYSTAL MODELS (2026-11-02, mondo: the crystal cones out of the game) → THE GEMS (2026-11-02): each placed
                cluster is its own gem (seeded per prop) grown in that gem's habit, the soft glow over it in the gem's colour */
             var g = new THREE.Group();
             var seed = (_hqProcSeed++) * 1.9;
             var rnd = _gemRng(Math.floor(seed * 7919) + 101);
             var gem = _gemPick(rnd);
-            g.add(_gemCluster(rnd, 1.35 * U, gem));
-            var glow = _hzGlowSprite(2.2 * U, _GEMS[gem].color, 0.28, 0, 0, 0); glow.position.y = 0.7 * U; g.add(glow);
+            /* THE GREAT CRYSTALS (2026-11-10, the battle map polish): a row's own `h` grows the cluster (a board's cover on a 3.5 m square:
+               the 1.4 m gem read as a speck there); no `h` = the 1.4 m cluster it always was */
+            var gs = (p && +p.h > 0) ? (+p.h / 1.4) : 1;
+            g.add(_gemCluster(rnd, 1.35 * gs * U, gem));
+            var glow = _hzGlowSprite(2.2 * gs * U, _GEMS[gem].color, 0.28, 0, 0, 0); glow.position.y = 0.7 * gs * U; g.add(glow);
             if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; glow.material.opacity = 0.22 + 0.1 * Math.sin(t * 1.7); });
             return g;
         },
@@ -89487,6 +89766,7 @@ const ThreeRenderer = (function () {
         startCarryHoldTween, endCarryHold, hasCarryHold,
         setTimeWarp,
         hitBlink,
+        hitSide,
         /* THE STRIKE FRAME (2026-09-09): played-ms into the clip the unit's
            cast / attack chain would play at which the hit lands; -1 = no
            rigged library clip (sprite, Meshy fallback, unknown kind). */
@@ -90078,6 +90358,11 @@ window.ThreeAnim = {
     // THE HIT BLINK: solid white for the freeze, then white blinks (real clock; see hitBlink in the renderer)
     hitBlink: function(unitId, holdMs, opts) {
         if (ThreeRenderer.isActive() && ThreeRenderer.hitBlink) ThreeRenderer.hitBlink(unitId, holdMs, opts);
+    },
+
+    // THE HIT SIDE: the victim's ring flares in its side colour over the VFX, the attacker's ring pings, an arrowhead points at it
+    hitSide: function(victimId, attackerId, opts) {
+        if (ThreeRenderer.isActive() && ThreeRenderer.hitSide) ThreeRenderer.hitSide(victimId, attackerId, opts);
     },
 
     // Death slow-mo etc: run combat animation at `scale` speed for `durationMs`.

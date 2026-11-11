@@ -92,6 +92,8 @@ const ThreeCamera = (function () {
            on the live lens (getCameraMode re-applies the preset every turn; it used to pop the walker's 52° to 45°
            mid-crane) */
         if (_seedFrom && _seedFrom.fov) { _seedFrom.fovTo = f; return; }
+        /* THE LENS COMES BACK ON THE CUT: while a restore waits for its cut, a preset's FOV becomes its destination */
+        if (_fovAtCut) { _fovAtCut.f = f; return; }
         if (threeCamera && Math.abs(threeCamera.fov - f) > 0.01) {
             threeCamera.fov = f;
             threeCamera.updateProjectionMatrix();
@@ -99,14 +101,64 @@ const ThreeCamera = (function () {
     }
     function getFOV() { return threeCamera ? threeCamera.fov : FOV; }
 
+    /* ══ THE LENS COMES BACK ON THE CUT (2026-11-10, spell camera rethink pass 3) ══
+       mondo: "spazzing out bc its trying to zoom in/out ... at the same time". A spell shot's lens trick (battle.js
+       cineDollyZoom: the Vertigo push of the control family, the executions' wide lens) gave the lens back with a
+       timer: 220 ms after the push the FOV jumped 34° → 45° in ONE frame while the shot still held the victim (a
+       visible pop out), and the frame guard, which had dollied back to keep the victim framed in the narrow lens, let
+       go and the eye slid 1.1 squares forward over 0.4 s (recorded: Cordyceps, Brainwash, Eyes Go Black, Into The
+       Sack). Now the release only NAMES the lens to come back to: the next cut (snapImmediate) puts it back on the
+       cut's own frame, so nobody sees it change; a shot that ends without a cut (a glide home) eases it back over
+       LENS_RESTORE_EASE_S along that glide; no cut within LENS_RESTORE_MAX_S eases it back too. Viewer-local camera
+       state (the guest runs the same shot on its relayed beats). Kill switch: window.EW_NO_LENS_AT_CUT = true (battle.js
+       releases at once, the old pop). Probe: ThreeCamera.fovAtCut(). */
+    const LENS_RESTORE_EASE_S = 0.45;
+    const LENS_RESTORE_MAX_S = 8;
+    let _fovAtCut = null;   // { f, at, ease: null | { t0, from } }
+    function setFOVAtCut(deg) {
+        if (deg == null) { _fovAtCut = null; return; }
+        const f = Math.max(10, Math.min(90, Number(deg) || FOV));
+        if (_seedFrom && _seedFrom.fov) { _seedFrom.fovTo = f; _fovAtCut = null; return; }
+        if (!threeCamera || Math.abs(threeCamera.fov - f) <= 0.01) { _fovAtCut = null; return; }
+        _fovAtCut = { f: f, at: performance.now() / 1000, ease: null };
+    }
+    function fovAtCut() { return _fovAtCut ? _fovAtCut.f : null; }
+    function _fovAtCutApply() {
+        const P = _fovAtCut;
+        _fovAtCut = null;
+        if (P && threeCamera && Math.abs(threeCamera.fov - P.f) > 0.01) { threeCamera.fov = P.f; threeCamera.updateProjectionMatrix(); }
+    }
+    /* per frame (sync): hold while the shot is live, ease back once it ended without a cut */
+    function _fovAtCutTick(cam, nowS) {
+        const P = _fovAtCut;
+        if (!P || !threeCamera) return;
+        if (_seedFrom && _seedFrom.fov) { _seedFrom.fovTo = P.f; _fovAtCut = null; return; }
+        if (typeof state === 'undefined' || !state || state.phase !== 'battle') { _fovAtCutApply(); return; }
+        const live = !!(cam && cam._cineShotId != null);
+        if (!P.ease && live && nowS - P.at < LENS_RESTORE_MAX_S) return;
+        if (!P.ease) P.ease = { t0: nowS, from: threeCamera.fov };
+        const u = Math.max(0, Math.min(1, (nowS - P.ease.t0) / LENS_RESTORE_EASE_S));
+        const k = u * u * (3 - 2 * u);
+        threeCamera.fov = P.ease.from + (P.f - P.ease.from) * k;
+        threeCamera.updateProjectionMatrix();
+        if (u >= 1) _fovAtCut = null;
+    }
+
     function markUserInput() {
         _smoothOverride = 10;
     }
 
-    function snapImmediate() {
+    function snapImmediate(o) {
         if (_seedUntil > performance.now() / 1000) return;   // the encounter's seed is easing — never cut it
         _initialized = false;
+        _snapFrame = _caFrameNo;   // THE CUT'S OWN FRAME
+        _fgCutNo++;        // THE GUARD HOLDS ITS FRAME: a cut starts a new beat…
+        if (o && o.guard && _fgHold) _fgHold.key = _fgHold.key.replace(/#\d+$/, '#' + _fgCutNo);   // …but THE GUARD'S CUT keeps the frame it cut to
+        /* THE SHOT GRAMMAR: the clear angle picks with this cut — not on THE GUARD'S CUT (o.guard), which is drawn on the
+           frame it is decided in (the clear angle already ran for it; a pick a frame later would be a second cut) */
+        if (!(o && o.guard)) { _caCutPend = true; _caSnapAt = performance.now() / 1000; _caCutFrame = _caFrameNo; }
         _fgCarry = null;   // THE GUARD'S HAND-OFF: a cut starts its frame clean
+        _fovAtCutApply();  // THE LENS COMES BACK ON THE CUT
     }
 
     function _damp(current, target, smoothTime, dt) {
@@ -556,7 +608,7 @@ const ThreeCamera = (function () {
        canvas for THE DEBRIEF's stage. center: dolly IN as well as out (the
        tightest D that fits) and put the bodies in the MIDDLE of the window
        instead of the least slide — a composition, not a correction. */
-    function _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW) {
+    function _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW, H) {
         const xa = W[0], xb = W[1], ya = W[2], yb = W[3];
         const n = pts.length;
         const X = new Array(n), Y = new Array(n), Z = new Array(n);
@@ -572,7 +624,9 @@ const ThreeCamera = (function () {
             const w = PW ? PW[i] : null;
             if (z < zMin || x < z * (w ? w[0] : xa) || x > z * (w ? w[1] : xb) || y < z * (w ? w[2] : ya) || y > z * (w ? w[3] : yb)) fits = false;
         }
-        if (fits && !center) return 0;
+        /* THE GUARD HOLDS ITS FRAME: H = the correction this beat already showed (null = none) */
+        if (center) H = null;
+        if (fits && !center && !(H && (H.D > 0 || H.sx || H.sy))) return 0;
         const box = function (D) {
             let xLo = -Infinity, xHi = Infinity, yLo = -Infinity, yHi = Infinity;
             for (let i = 0; i < n; i++) {
@@ -592,22 +646,34 @@ const ThreeCamera = (function () {
             if (xLo > xHi || yLo > yHi) return null;
             return [xLo, xHi, yLo, yHi];
         };
-        let lo = center ? (zMin - zLow) : Math.max(0, zMin - zLow), hi = tileSize * 60;
-        if (!box(hi)) return null;
-        if (box(lo)) hi = lo;
+        let D, b;
+        if (fits && !center) { D = 0; b = box(0); }
         else {
-            for (let k = 0; k < 22; k++) {
-                const mid = (lo + hi) / 2;
-                if (box(mid)) hi = mid; else lo = mid;
+            let lo = center ? (zMin - zLow) : Math.max(0, zMin - zLow), hi = tileSize * 60;
+            if (!box(hi)) return null;
+            if (box(lo)) hi = lo;
+            else {
+                for (let k = 0; k < 22; k++) {
+                    const mid = (lo + hi) / 2;
+                    if (box(mid)) hi = mid; else lo = mid;
+                }
             }
+            /* a breath of slack past the exact fit, so a body never sits ON the margin */
+            D = hi + tileSize * 0.2;
+            b = box(D);
+            if (!b) { D = hi; b = box(D); }
         }
-        /* a breath of slack past the exact fit, so a body never sits ON the margin */
-        let D = hi + tileSize * 0.2;
-        let b = box(D);
-        if (!b) { D = hi; b = box(D); }
-        if (!b) return null;
-        const sx = center ? (b[0] + b[1]) / 2 : Math.min(b[1], Math.max(b[0], 0));
-        const sy = center ? (b[2] + b[3]) / 2 : Math.min(b[3], Math.max(b[2], 0));
+        if (!b) return fits ? 0 : null;
+        /* THE GUARD HOLDS ITS FRAME: within a beat the correction only grows — the dolly back the beat already showed
+           stays (a wider box), and the slide stays where it was unless a body needs it moved */
+        let px = 0, py = 0;
+        if (H) {
+            if (H.D > D) { const bh = box(H.D); if (bh) { D = H.D; b = bh; } }
+            px = H.sx || 0; py = H.sy || 0;
+        }
+        const sx = center ? (b[0] + b[1]) / 2 : Math.min(b[1], Math.max(b[0], px));
+        const sy = center ? (b[2] + b[3]) / 2 : Math.min(b[3], Math.max(b[2], py));
+        if (!center && D === 0 && Math.abs(sx) < 1e-6 && Math.abs(sy) < 1e-6) return 0;
         return { sx: sx, sy: sy, D: D };
     }
     function _frameGuardSolve(cam, ex, ey, ez, lx, ly, lz, floorY) {
@@ -650,8 +716,12 @@ const ThreeCamera = (function () {
         if (!(dl > 1e-6)) return null;
         dx /= dl; dy /= dl; dz /= dl;
         let B = _fgBasis(dx, dy, dz, yawRad);
-        let res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW);
-        if (res === 0) { _frameGuardLast = { n: pts.length, framed: true }; return null; }
+        /* THE GUARD HOLDS ITS FRAME (2026-11-10): the correction this beat already showed (one shot rig on one subject,
+           aimed one way, since the last cut) */
+        const hKey = (center || (typeof window !== 'undefined' && window.EW_NO_GUARD_HOLD)) ? null : _fgBeatKey(cam);
+        const H = (hKey && _fgHold && _fgHold.key === hKey) ? _fgHold : null;
+        let res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW, H);
+        if (res === 0) { _fgHold = hKey ? { key: hKey, sx: 0, sy: 0, D: 0 } : null; _frameGuardLast = { n: pts.length, framed: true }; return null; }
         let reaimed = false;
         if (!res) {
             /* No answer along this gaze — a lens looking UP whose dolly back
@@ -668,11 +738,12 @@ const ThreeCamera = (function () {
             if (res === 0) res = { sx: 0, sy: 0, D: 0 };
             if (!res) { _frameGuardLast = { n: pts.length, framed: false, failed: true }; return null; }
         }
+        _fgHold = (hKey && !reaimed) ? { key: hKey, sx: res.sx, sy: res.sy, D: res.D } : null;
         const ox = res.sx * B.rx + res.sy * B.ux;
         const oy = res.sy * B.uy;
         const oz = res.sx * B.rz + res.sy * B.uz;
         const bx = ex + ox, by = ey + oy, bz = ez + oz;
-        _frameGuardLast = { n: pts.length, framed: false, slide: [res.sx, res.sy], dolly: res.D, reaimed: reaimed };
+        _frameGuardLast = { n: pts.length, framed: false, slide: [res.sx, res.sy], dolly: res.D, reaimed: reaimed, held: !!H };
         /* THE GUARD'S HAND-OFF: the correction the frame on screen carries (a re-aimed gaze is not carried: the bare
            rig's own gaze differs from it) */
         /* `last` = this frame's world offsets (eye, gaze), so a shot that hands STRAIGHT into a glide home (the key
@@ -682,6 +753,50 @@ const ThreeCamera = (function () {
         return [bx - dx * res.D, by - dy * res.D, bz - dz * res.D,
                 bx + dx * dl, by + dy * dl, bz + dz * dl];
     }
+    /* ══ THE GUARD HOLDS ITS FRAME + THE GUARD CUTS (2026-11-10, spell camera rethink pass 3) ══
+       mondo: "the camera spins around/pans when a cut would be better ... it will cut too early away from the spell
+       landing or the person taking damage". The guard re-solved its correction every frame from scratch, so the frame
+       slid on its own about a square, ~0.4 s at a time, whenever what it guarded changed mid-shot (recorded on ~50
+       spells): a body left its window and the correction let go (the eye slid forward again), a body was added or the
+       hit began and the correction grew (the eye slid back or across). Now:
+       · HOLD: within one beat (one rig on one subject aimed one way, since the last cut) the correction only grows —
+         a dolly back the beat showed stays, and the slide only moves when a body needs it to. A new beat or a cut starts
+         it clean. Kill switch: window.EW_NO_GUARD_HOLD = true.
+       · CUT: a correction that jumps more than GUARD_CUT_SQ squares inside GUARD_CUT_WIN_S (the hit landing while the
+         lens held the travel, a body coming into the shot) lands as a CUT on the same angle when the shot's grammar
+         allows one (battle.js camera._guardMayCut: half a second from the last cut and from the shot's end), instead
+         of a 2-3 square slide; a smaller one still eases in (a cut that small on the same angle is a jump cut, which
+         the grammar never makes). Kill switch: window.EW_NO_GUARD_CUT = true.
+       Viewer-local camera state (the guest's camera runs the same guard off its relayed shots). Probe:
+       ThreeCamera.frameGuardState() (held: the beat's correction kept), ThreeCamera.guardCutState(). */
+    const GUARD_CUT_SQ = 1.6;
+    const GUARD_CUT_WIN_S = 0.15;
+    let _fgCutNo = 0;       // ++ on every cut (snapImmediate)
+    let _snapFrame = -1;    // THE CUT'S OWN FRAME: the rAF frame (_caFrameNo) the last cut happened in
+    let _fgHold = null;     // { key, sx, sy, D }
+    let _fgSteps = [];      // the guard's eye offset over the last GUARD_CUT_WIN_S: { t, x, y, z, key }
+    let _fgCutLast = null;  // probe: { at, sq }
+    function _fgBeatKey(cam) {
+        const k = _fgCarryKey(cam);
+        return k == null ? null : k + '#' + _fgCutNo;
+    }
+    function _guardStepCheck(cam, ox, oy, oz, t) {
+        const key = (typeof window !== 'undefined' && window.EW_NO_GUARD_CUT) ? null : _fgBeatKey(cam);
+        if (!key) { _fgSteps.length = 0; return false; }
+        if (_fgSteps.length && _fgSteps[_fgSteps.length - 1].key !== key) _fgSteps.length = 0;
+        _fgSteps.push({ t: t, x: ox, y: oy, z: oz, key: key });
+        while (_fgSteps.length > 1 && t - _fgSteps[0].t > GUARD_CUT_WIN_S) _fgSteps.shift();
+        const a = _fgSteps[0];
+        const sq = Math.hypot(ox - a.x, oy - a.y, oz - a.z) / tileSize;
+        if (sq < GUARD_CUT_SQ) return false;
+        let ok = false;
+        try { ok = typeof cam._guardMayCut === 'function' && !!cam._guardMayCut(sq); } catch (e) { ok = false; }
+        _fgCutLast = { at: Math.round(t * 1000), sq: +sq.toFixed(2), cut: ok };
+        if (!ok) return false;
+        _fgSteps.length = 0;
+        return true;
+    }
+    function guardCutState() { return _fgCutLast; }
     /* THE GUARD'S HAND-OFF: the frame a carried correction belongs to — the cinematic rig on one subject, aimed where
        the controller is headed (its target zoom / pitch / heading: a new move on the same body is another frame) */
     function _fgCarryKey(cam) {
@@ -743,8 +858,17 @@ const ThreeCamera = (function () {
     const CA_CANDS = [0, 30, -30, 55, -55, 80, -80, 110, -110, 145, -145, 180];
     const CA_RECHECK_MS = 400;
     const CA_EASE_S = 0.22;
+    const CA_EASE_GRAMMAR_S = 0.55;   // THE SHOT GRAMMAR: a mid-beat turn (a body now blocked) is slow, never a whip
+    const CA_MIDBEAT_MAX = 30;        // …and small: mid-beat the lens drifts at most this far off the cut's angle (a pull
+                                      // that bunches the bodies up made it re-pick 160° round in the middle of the push-in)
     let _caSig = '', _caShot = null, _caDelta = 0, _caWant = 0, _caAt = 0, _caSnapAt = 0, _caCost = 0, _caLast = null, _caT = 0;
     let _caHold = null;   // THE STEADY CRANE: a finished shot's angle { key, from, t0 }
+    let _caCutPend = false, _caCutWant = 0, _caCutFrame = -1, _caFrameNo = 0;
+    /* the drawn-frame counter (a rAF tick ahead of the render loop): "same frame" = nothing drawn since the cut */
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        const _caTick = () => { _caFrameNo++; window.requestAnimationFrame(_caTick); };
+        window.requestAnimationFrame(_caTick);
+    }   // THE SHOT GRAMMAR: a cut the clear angle has not picked for yet (see _clearAngle)
     function _caReset() { _caSig = ''; _caShot = null; _caDelta = 0; _caWant = 0; _caAt = 0; _caCost = 0; _caHold = null; }
     /* the shot is over but its frame holds (the CPU's parked last beat, a press-turn hold): the lens keeps the angle it
        turned to (it used to swing back to the director's heading in one frame — a jump of up to 180° round the pivot),
@@ -843,15 +967,31 @@ const ThreeCamera = (function () {
         const ids = subs.map(s => s.id).join(',');
         const sig = cam._cineShotId + '|' + ids + '|' + Math.round(P.yaw * 57.3) + '|' + Math.round(P.tilt * 57.3)
             + '|' + Math.round(P.px / ts * 4) + '|' + Math.round(P.pz / ts * 4) + '|' + Math.round(P.dist / ts * 4);
-        const cut = !_initialized;
-        if (cut) _caSnapAt = nowS;
+        const _sgC = !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR);
+        /* THE SHOT GRAMMAR (2026-11-10): the angle is picked AT a cut and lands with it. A director's cut is consumed by
+           the sync its own camera._apply() runs, often before the rig has armed the frame guard (no bodies yet): the cut
+           stays pending and the first pick with bodies IN THE SAME FRAME (nothing drawn since the cut — battle.js
+           re-syncs when the guard is armed right after a cut) is the cut's pick. A pick in a later frame is a mid-beat
+           one: it used to land as a second cut a frame later (a flurry) or ease the lens round up to 135° just after the
+           cut; now it may only drift slowly, CA_MIDBEAT_MAX at most from the cut's own angle, for a blocked view. */
+        const sameFrame = _sgC && _caFrameNo === _caCutFrame;
+        const cut = !_initialized || (_sgC && _caCutPend && sameFrame);
+        _caCutPend = false;
+        if (!_initialized) _caSnapAt = nowS;
         const newShot = _caShot !== cam._cineShotId;
         const resig = sig !== _caSig;
+        /* a re-pick on the cut's heels (its bodies changed before anything was drawn) belongs to the cut too, but keeps the
+           cut's own pick unless that is clearly worse; EW_NO_SHOT_GRAMMAR = the old 0.15 s window */
+        const onHeels = !cut && resig && (_sgC ? sameFrame : nowS - _caSnapAt < 0.15);
+        const atCut = cut || onHeels;
         const recheck = (nowS - _caAt) * 1000 >= CA_RECHECK_MS;
         if (resig || recheck || newShot) {
             _caAt = nowS;
             if (!about) {
-                if (resig || newShot) _caWant = 0;   // a beat about something else; mid-beat (a flung body) the held angle stays
+                /* a beat about something else; mid-beat (a flung body) the held angle stays — under THE SHOT GRAMMAR a glide
+                   off the subjects keeps it too (it only goes back to the director's own heading on a cut) */
+                const _sgA = !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR);
+                if (newShot || (_sgA ? atCut : resig)) { _caWant = 0; if (_sgA) _caCutWant = 0; }
             } else {
                 const clear = ts * 0.45;
                 const sinT = Math.sin(P.tilt), cosT = Math.cos(P.tilt);
@@ -866,33 +1006,45 @@ const ThreeCamera = (function () {
                     return _caOccl(e[0], Math.max(e[1], P.floorY), e[2], P.px, P.py, P.pz, subs, bodies, clear, stopAt)
                         + Math.abs(d) / Math.PI * 1.2;
                 };
-                const held = resig || newShot ? 0 : _caWant;
+                /* THE SHOT GRAMMAR (2026-11-10, mondo: the camera "is spazzing out bc its trying to zoom in/out and spin/rotate/pan
+                   at the same time"): the angle is picked AT a cut (or a new shot) and kept through the beat — a drift, a
+                   push-in, a refit of the pivot or a new body in the hit used to re-pick from the director's own heading and
+                   swing the lens up to 55° on its own a moment after the cut. Mid-beat it only turns for a clearly better
+                   view of a body that is now blocked, and then slowly. EW_NO_SHOT_GRAMMAR = the old re-pick. */
+                const _sg = !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR);
+                const held = (_sg ? (cut || (newShot && !onHeels)) : (newShot || resig)) ? 0 : _caWant;
                 const heldCost = costOf(held, Infinity);
                 let best = held, bestCost = heldCost;
                 if (heldCost > 0.05 + Math.abs(held) / Math.PI * 1.2) {
                     for (const dd of CA_CANDS) {
                         const d = dd * DEG2RAD;
                         if (Math.abs(d - held) < 1e-3) continue;
+                        if (_sg && !atCut && Math.abs(d - (newShot ? 0 : _caCutWant)) > (CA_MIDBEAT_MAX + 1) * DEG2RAD) continue;
                         const c = costOf(d, bestCost);
                         if (c < bestCost - 1e-3) { best = d; bestCost = c; }
                     }
                 }
                 /* a recheck in the middle of a beat only turns a lens that is now blocked, and only for a clearly better one */
-                if (!resig && !newShot && !(bestCost < heldCost - 0.8)) best = held;
+                if (_sg ? !atCut : (!newShot && !resig)) { if (!(bestCost < heldCost - 0.8)) best = held; }
+                if (_sg && onHeels && !(bestCost < heldCost - 0.3)) best = held;   // the cut's own pick stays unless clearly worse
                 _caWant = best;
+                if (_sg && (atCut || newShot)) _caCutWant = atCut ? best : 0;   // mid-beat drift is bounded from the cut's own pick
                 _caCost = Math.min(bestCost, heldCost);
             }
-            _caLast = { want: Math.round(_caWant * 57.3), cost: +_caCost.toFixed(2), about: about, n: subs.length, sig: resig, shot: newShot, id: cam._cineShotId };   // id: whose pick this is (battle.js THE CLEAN OPEN)
+            _caLast = { want: Math.round(_caWant * 57.3), cost: +_caCost.toFixed(2), about: about, n: subs.length, sig: resig, shot: newShot, id: cam._cineShotId, cut: cut, heels: onHeels, dt: Math.round((nowS - _caSnapAt) * 1000) };   // id: whose pick this is (battle.js THE CLEAN OPEN)
             _caSig = sig;
         }
         /* a cut (or a re-pick right on a cut's heels) lands on the angle; anything else eases (a shot opens on a glide
            from the board, so its first beat eases in from the director's own yaw) */
         if (newShot && !cut && !_caHold) _caDelta = 0;   // (a held angle eases on into the next shot's)
         _caHold = null;
-        if (cut || (resig && nowS - _caSnapAt < 0.15)) _caDelta = _caWant;
-        else if (_caDelta !== _caWant) {
+        if (_sgC ? atCut : (cut || (resig && nowS - _caSnapAt < 0.15))) {
+            if (_sgC && _initialized && Math.abs(_caWant - _caDelta) > 0.005) _initialized = false;   // lands as part of the cut (not drawn yet)
+            _caDelta = _caWant;
+        } else if (_caDelta !== _caWant) {
             const dtS = _caT > 0 ? Math.min(_stepCap(), Math.max(0.001, nowS - _caT)) : 0.016;
-            _caDelta += (_caWant - _caDelta) * (1 - Math.exp(-dtS / CA_EASE_S));
+            const _ease = (typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR) ? CA_EASE_S : CA_EASE_GRAMMAR_S;
+            _caDelta += (_caWant - _caDelta) * (1 - Math.exp(-dtS / _ease));
             if (Math.abs(_caWant - _caDelta) < 0.002) _caDelta = _caWant;
         }
         _caT = nowS;
@@ -903,6 +1055,7 @@ const ThreeCamera = (function () {
 
     function sync(cam) {
         if (!threeCamera) return;
+        if (_fovAtCut) _fovAtCutTick(cam, performance.now() / 1000);   // THE LENS COMES BACK ON THE CUT (before the guard reads the lens)
 
         const ts = tileSize;
         const elevStep = ts * ELEV_STEP_RATIO;
@@ -1424,7 +1577,13 @@ const ThreeCamera = (function () {
                 targetLookX, targetLookY, targetLookZ, floorY);
             /* a frame the guard found already framed carries nothing on */
             if (!_fgOut && _frameGuardLast && _frameGuardLast.framed) { _fgCarry = null; _fgCarryLast = null; }
-        } else _frameGuardLast = null;
+            /* THE GUARD CUTS: a correction that jumps lands as a cut (the snap below draws this frame at once); a live guard
+               with no body to keep this frame (the travel) counts as no correction */
+            if (!(_frameGuardLast && _frameGuardLast.failed)) {
+                _guardStepCheck(cam, _fgOut ? _fgOut[0] - targetPosX : 0, _fgOut ? _fgOut[1] - targetPosY : 0,
+                    _fgOut ? _fgOut[2] - targetPosZ : 0, performance.now() / 1000);
+            } else _fgSteps.length = 0;
+        } else { _frameGuardLast = null; _fgSteps.length = 0; }
         /* THE GUARD'S HAND-OFF: no live guard this frame (the shot ended, or its guard ran out) — the frame it was
            showing carries on (see _fgCarryApply) */
         if (!_fgOut && !_frameGuardLast && _fgCarry) {
@@ -1459,6 +1618,10 @@ const ThreeCamera = (function () {
         if (!isFinite(targetPosX + targetPosY + targetPosZ + targetLookX + targetLookY + targetLookZ)) return;
         if (_initialized && !isFinite(_smoothPosX + _smoothPosY + _smoothPosZ + _smoothLookX + _smoothLookY + _smoothLookZ)) _initialized = false;
         const seeded = _seed ? _consumeSeed(now) : false;   // the seeded frame renders the seed itself
+        /* THE CUT'S OWN FRAME (2026-11-10): a cut is drawn on the next render, so every sync in the frame it happened in
+           belongs to it — a body the guard learned of right after the cut (a number popping in the same task, the guard
+           armed after the rig cut) re-snaps the cut's frame instead of sliding in once it is on screen */
+        if (_initialized && _snapFrame === _caFrameNo && !seeded && !_seedFrom && !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR)) _initialized = false;
         /* THE ARRIVAL: a swoop whose window elapsed between two frames LANDS here — the deferred lens written, the
            record dropped (it used to linger, and setFOV's guard would then defer every later preset for good) */
         if (_seedFrom && !seeded && !_seedHoldOn && now >= _seedUntil) {
@@ -1846,6 +2009,8 @@ const ThreeCamera = (function () {
         getBaseDist,
         setFOV,
         getFOV,
+        setFOVAtCut,
+        fovAtCut,
         getCamera,
         getFocalWorld,
         markUserInput,
@@ -1856,6 +2021,7 @@ const ThreeCamera = (function () {
         seedState,
         frameGuardState,
         guardCarryState,
+        guardCutState,
         steadyBoardState,
         steadyCraneState,
         boardLiftAt,
@@ -1964,6 +2130,10 @@ var EWCine = (function () {
         if (C.panel) return C.panel;
         var p = el('div', 'ew-cine-panel'); p.id = 'ewCinePanel';
         var rec = el('div', 'ew-cine-rec'); rec.id = 'ewCineRec'; document.body.appendChild(rec);
+        /* THE WAY OUT IS ALWAYS ON SCREEN (playtest 2026-11-05 F4: Pause > CAMERA hid the whole HUD and took the mouse with
+           no word on how to leave): one line of keys while the mouse flies the camera or a path plays. DOM only, so it is
+           in no still and no video (they read the canvas alone). */
+        var hint = el('div', 'ew-cine-hint'); hint.id = 'ewCineHint'; document.body.appendChild(hint);
         var row1 = el('div', 'ew-cine-row'), row2 = el('div', 'ew-cine-row');
         function btn(row, label, fn, id) { var b = el('button', 'ew-cine-btn', label); if (id) b.id = id; b.addEventListener('click', function (e) { e.preventDefault(); fn(); b.blur(); }); row.appendChild(b); return b; }
         function slider(row, label, min, max, step, get, set) {
@@ -1978,7 +2148,7 @@ var EWCine = (function () {
         btn(row1, 'RECORD', function () { recToggle(); }, 'ewCineRecBtn');
         var syncSpeed = slider(row1, 'SPEED', 1, 80, 1, function () { return C.speed; }, function (v) { C.speed = v; });
         var syncLens = slider(row1, 'LENS', 12, 90, 1, function () { return C.tFov; }, function (v) { C.tFov = v; });
-        btn(row1, 'EXIT', function () { exit(); });
+        btn(row1, 'EXIT', function () { exit(); }).classList.add('back');
         btn(row2, '+ KEY', function () { keyAdd(); }, 'ewCineKeyBtn');
         btn(row2, 'UNDO KEY', function () { keyUndo(); });
         btn(row2, 'PLAY', function () { play(null, {}); });
@@ -2001,6 +2171,12 @@ var EWCine = (function () {
         var kb = document.getElementById('ewCineKeyBtn'); if (kb) kb.textContent = '+ KEY (' + C.path.length + ')';
         var rb = document.getElementById('ewCineRecBtn'); if (rb) { rb.textContent = C.rec ? 'STOP REC' : 'RECORD'; rb.classList.toggle('hot', !!C.rec); }
         var r = document.getElementById('ewCineRec'); if (r) r.classList.toggle('on', !!(C.on && C.rec));
+        var h = document.getElementById('ewCineHint');
+        if (h) {
+            var hOn = C.on && (C.look || C.play);
+            h.classList.toggle('on', !!hOn);
+            if (hOn) h.innerHTML = C.play ? '<b>ESC</b> STOP THE PATH' : '<b>WASD</b> FLY · <b>MOUSE</b> LOOK · <b>ESC</b> FREE THE MOUSE + PANEL · <b>F8</b> EXIT';
+        }
     }
 
     /* ── THE HUD: every layer over the canvas fades out (opacity, never display: the canvas's box must not move) ── */
@@ -2011,7 +2187,7 @@ var EWCine = (function () {
             var sibs = e.parentElement.children;
             for (var i = 0; i < sibs.length; i++) {
                 var s = sibs[i];
-                if (s === e || s === C.panel || s.id === 'ewCineToast' || s.id === 'ewCineRec' || s.tagName === 'SCRIPT' || s.tagName === 'STYLE' || s.tagName === 'LINK') continue;
+                if (s === e || s === C.panel || s.id === 'ewCineToast' || s.id === 'ewCineRec' || s.id === 'ewCineHint' || s.tagName === 'SCRIPT' || s.tagName === 'STYLE' || s.tagName === 'LINK') continue;
                 C.hidden.push([s, s.style.opacity, s.style.pointerEvents]);
                 s.style.opacity = '0'; s.style.pointerEvents = 'none';
             }
@@ -2264,7 +2440,9 @@ var EWCine = (function () {
         if (C.play) { if (k === 'escape' || k === 'enter') stop(); return; }
         if (MOVE[k]) { C.keys[k] = true; return; }
         if (e.repeat) return;
-        if (k === 'escape') { if (!locked() && performance.now() - C.freedAt > 400) exit(); return; }
+        /* a browser frees a locked mouse on Esc by itself and never sends the key; where the key does arrive with the
+           mouse still held (a kiosk / an embedded view), it frees the mouse here, so Esc is never a dead key */
+        if (k === 'escape') { if (locked()) lockSet(false); else if (performance.now() - C.freedAt > 400) exit(); return; }
         if (k === 'e') { lockSet(!locked()); return; }
         if (k === 'p') { C.want.photo = true; return; }
         if (k === 'm') { C.want.map = true; return; }

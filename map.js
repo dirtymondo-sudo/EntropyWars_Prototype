@@ -127,6 +127,9 @@
                through it (_goToPlayHub → _menuScenePlayBeat; the beat lives in
                three-renderer.js ThreeRenderer.menu) */
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.menu && ThreeRenderer.menu.active()) ThreeRenderer.menu.reset(); } catch (e) {}
+            /* THE INVITE LINK (PvP demo lobby, 2026-11-11): a page opened from ?join=CODE goes from ENTER to the team pick
+               ("JOINING ROOM X"); DEPLOY joins that room (_sqDeploy → window._goToInviteJoin) */
+            if (window._ewInvite) { _hqHome = false; _openSquadDesk('online', 'invite'); }
         }
 
         window._goToPlayHub = function(opts) {
@@ -173,6 +176,13 @@
                 if (cpu) cpu.style.display = opts.classic ? '' : 'none';
             } catch (e) {}
             try { const hs = document.getElementById('playHubSquad'); if (hs) hs.innerHTML = opts.classic ? '' : ((window._ewSquad && window._ewSquad.mode === 'online') ? window._sqStripHtml(window._ewSquad, { change: true }) : ''); } catch (e) {}
+            /* THE ROOM (PvP demo lobby, 2026-11-11): the name the opponent sees (CHANGE renames the profile) and the
+               "N players online · N searching" line (online.js) — online only */
+            try {
+                const nm = document.getElementById('playHubName'), on = document.getElementById('playHubOnline');
+                if (nm) { if (opts.classic) nm.innerHTML = ''; else if (typeof window._lrPaintNamePlate === 'function') window._lrPaintNamePlate(false); }
+                if (on) { if (opts.classic) on.style.display = 'none'; else if (typeof window._lrPaintOnline === 'function') window._lrPaintOnline(); }
+            } catch (e) {}
             try {
                 var prof = window.ProfileSystem && window.ProfileSystem.getActiveProfile();
                 var eloTag = document.getElementById('playHubEloTag');
@@ -307,7 +317,19 @@
         function _sqDups(slots) { return (typeof teamDuplicateRaces === 'function') ? teamDuplicateRaces((slots || []).map(_sqRaceKey)) : []; }
         /* HOMOSAPIEN OUT (mondo, 2026-10-23): a race that left the roster (state.js teamRemovedRaces). The team is kept, flagged,
            and does not cross until the forge swaps it out; a bigger sheet still crosses when THE PICK can leave it on file. */
-        function _sqGone(slots) { return (typeof teamRemovedRaces === 'function') ? teamRemovedRaces((slots || []).map(_sqRaceKey)) : []; }
+        /* THE DEMO (2026-11-10, data.js DEMO_RULES): with the Demo switch on, a champ outside the demo roster (or an unlock
+           this account does not own yet) is held back the same way — the team is kept, flagged, and does not cross */
+        function _sqDemoBar(slots) {
+            if (typeof demoModeOn !== 'function' || !demoModeOn() || typeof isUnitUnlocked !== 'function') return [];
+            const out = [];
+            (slots || []).map(_sqRaceKey).forEach(r => { if (r && out.indexOf(r) < 0 && !isUnitUnlocked(r)) out.push(r); });
+            return out;
+        }
+        function _sqGone(slots) {
+            const gone = (typeof teamRemovedRaces === 'function') ? teamRemovedRaces((slots || []).map(_sqRaceKey)) : [];
+            _sqDemoBar(slots).forEach(r => { if (gone.indexOf(r) < 0) gone.push(r); });
+            return gone;
+        }
         function _sqGoneBlock(t) {
             const gone = _sqGone(t.slots);
             if (!gone.length) return [];
@@ -316,7 +338,12 @@
             const left = new Set(t.slots.map(_sqRaceKey).filter(r => gone.indexOf(r) < 0)).size;
             return left < SQ_DEPLOY ? gone : [];
         }
-        function _sqGoneText(d) { return 'Out of the game: ' + d.map(r => _sqRaceLabel({ race: r })).join(', '); }
+        function _sqGoneText(d) {
+            const demo = (typeof demoModeOn === 'function' && demoModeOn()) ? d.filter(r => !(typeof teamRemovedRaces === 'function' && teamRemovedRaces([r]).length)) : [];
+            const gone = d.filter(r => demo.indexOf(r) < 0);
+            const names = l => l.map(r => _sqRaceLabel({ race: r })).join(', ');
+            return [gone.length ? 'Out of the game: ' + names(gone) : '', demo.length ? 'Not in the Demo: ' + names(demo) : ''].filter(Boolean).join(' · ');
+        }
         /* the team cannot cross as it stands: the deployed members repeat a race (or a bigger sheet has too few different races to pick from) */
         function _sqTwice(t) {
             const n = t.slots.length;
@@ -437,8 +464,12 @@
             if (!body) return;
             const kicker = document.getElementById('sqKicker'), sub = document.getElementById('sqSub'), count = document.getElementById('sqCount'), foot = document.getElementById('sqFoot');
             const online = _sqMode === 'online';
-            if (kicker) kicker.textContent = online ? 'ONLINE PVP' : 'PLAY VS CPU';
-            if (sub) sub.textContent = online ? ('Online · ' + SQ_DEPLOY + 'v' + SQ_DEPLOY + ' (the 4v4 / 5v5 switch sets it). Pick the team you queue with.') : (SQ_DEPLOY === 5 ? 'Pick a team of 5, then pick the map (5v5 on the 9×9 and 11×11 arenas).' : 'Pick a team, then pick the map.');
+            /* THE ROOM (PvP demo lobby, 2026-11-11): the title bar's third line did not fit the bar (cut off, with a scrollbar)
+               online — the kicker carries the team size (it follows the 4v4 / 5v5 switch) and, from an invite link, the room
+               being joined; the online sub line stays empty (styles-base.css hides an empty one) */
+            const invite = online && _sqNext === 'invite' && window._ewInvite;
+            if (kicker) kicker.textContent = online ? ('ONLINE PVP · ' + (invite ? 'JOINING ROOM ' + window._ewInvite : SQ_DEPLOY + 'V' + SQ_DEPLOY)) : 'PLAY VS CPU';
+            if (sub) sub.textContent = online ? '' : (SQ_DEPLOY === 5 ? 'Pick a team of 5, then pick the map (5v5 on the 9×9 and 11×11 arenas).' : 'Pick a team, then pick the map.');
             const presets = _sqPresets();
             const max = (window.ProfileSystem && window.ProfileSystem.MAX_TEAM_PRESETS) || 20;
             const saved = _sqSavedCount();   // THE RANDOM TEAM is not a saved team
@@ -559,6 +590,10 @@
                animation (a scale about the centre) never shrinks the bar the row is kept under. */
             let hr = null;
             if (head && head.getClientRects().length) {
+                /* THE ROOM (PvP demo lobby, 2026-11-11): the UI Maker's 112 px title bar was a few px shorter than its words
+                   (kicker + title), so a scrollbar stood in the bar; a bar that overflows by a sliver shows the sliver */
+                head.style.removeProperty('overflow');
+                if (head.scrollHeight > head.clientHeight && head.scrollHeight - head.clientHeight <= 10) head.style.setProperty('overflow', 'visible', 'important');
                 head.style.removeProperty('max-width');
                 let b = head.getBoundingClientRect(), cx = b.left + b.width / 2, w = head.offsetWidth, left = cx - w / 2;
                 if (w > 0 && left + w > innerWidth - 6) {
@@ -886,6 +921,7 @@
                 if (_sqMode === 'cpu') _sqToDesk();
                 else if (_sqNext === 'quickplay') window._goToQuickPlay();
                 else if (_sqNext === 'friendly') window._goToFriendlyMatch();
+                else if (_sqNext === 'invite') window._goToInviteJoin();   // THE INVITE LINK
                 else _showPlayHubPage({ classic: false });
             }, 900);
         }
@@ -921,6 +957,7 @@
             try { playSfx('uiButtonConfirm'); } catch (e) {}
             window._ewSquad = null;
             window._sqRandomDrop();   // THE RANDOM TEAM
+            if (_sqNext === 'invite') { window._ewInvite = null; _sqNext = 'hub'; }   // THE INVITE LINK: backing out drops it
             window._ewRosterScope = 'owned';
             state.gameState = GS.MAIN_MENU;
             window._hqReturnOrMenu();
@@ -7678,6 +7715,17 @@
             _resetLobbyPages('lobbyFriendlyMain');
             _showTitlePage('lobbyPage');
         };
+        /* THE INVITE LINK (PvP demo lobby, 2026-11-11): the squad deployed, straight into the friend's room — a dead code
+           stays on Friendly with the code typed in and a line saying so (online.js _lrJoinInvite) */
+        window._goToInviteJoin = function() {
+            if (!_sqArmed('online')) { _openSquadDesk('online', 'invite'); return; }
+            state.gameState = GS.LOBBY;
+            window._ewRosterScope = 'all';
+            _sqNext = 'hub';   // after this room, the squad desk's next stop is the online hub again
+            _resetLobbyPages('lobbyFriendlyMain');
+            _showTitlePage('lobbyPage');
+            if (typeof window._lrJoinInvite === 'function') window._lrJoinInvite();
+        };
 
         window._goToVsCpu = function(o) {
             playSfx('uiButtonConfirm');
@@ -7990,6 +8038,8 @@
         }
 
         function _resetLobbyPages(showId) {
+            /* THE ROOM: online.js owns the lobby's pages (the windows over the whole page vs the old card) */
+            if (typeof window._lobbyShowPage === 'function') { window._lobbyShowPage(showId); return; }
             ['lobbyQuickPlay', 'lobbyFriendlyMain', 'lobbyHosting', 'lobbyJoining', 'lobbyConnected'].forEach(function(p) {
                 var el = document.getElementById(p);
                 if (el) el.style.display = p === showId ? 'block' : 'none';

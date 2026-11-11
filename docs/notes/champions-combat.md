@@ -4949,6 +4949,59 @@ Report: /mnt/project-files/pvp-playtest-20261109/PVP_PLAYTEST_REPORT.md. Proof: 
 - Undefined-name sweep of online.js (eslint no-undef, globals = every top-level name of the 21 game scripts + index.html
   inline scripts + `window.X =` writes): `showVictoryScreen` was the only one; clean now. server.js clean (node globals).
 
+## THE HOST'S RELOAD, RESTORED (2026-11-11, token 20261111-hostrestore-02-cors) — online.js only
+
+The seat is held while a page reloads (PR #1075), but the match lives on the host's page, so a host reload still ended
+it for both seats (PR #1102 only made that a clear notice). Now the host's reload keeps the match.
+
+- **The save.** `_hostSaveWrite(force)`: the host writes its own whole match (`_serializeState` unfiltered + `_packClock`
+  + `_matchId`) to sessionStorage `ew_hostSave` (about 90 KB) after a state-sync (1.5 s throttle), on the 2 s seat-hold
+  beat and on `pagehide`. Only a QUIET board with a unit up is kept (`_ewRecoverySnapshotReady`, no action / walk / death
+  in flight, `_blitzActiveUnitId` set; simul needs no unit), so a restored match always has somebody whose turn it is.
+- **The restore.** `_hostRestoreBegin()` runs from the rejoin answer when the page booted into a rejoin as host: same
+  match id or nothing; `NET._hostRestoring` holds the recovery poll (it used to answer `recovery-unavailable` at once);
+  `_recoveryArenaWait(data, then)` surveys the arena's room first; then `_applyRemoteState(save)` (the reloaded guest's
+  path; `_restoreOnlineContext` gives the host its seat + controllers). The poll then sends the guest the snapshot as
+  after any drop. No save / another match's save / a save that will not apply = the old notice.
+- **Mid-action reload = that action is undone for both seats** (the last quiet save is laid back). Known: a host can
+  undo its own action by reloading while it plays. Not closed; say so if it matters.
+- Cleared with the session (NET reset, backToMainMenu, `_recoveryFailure`). The save never leaves the host's browser.
+- Two-seat proof (Chromium x2, Hell Arena TDM): host reload on its own turn, on the guest's turn, in round 5 after
+  kills (state identical before/after: HP, AP, MP, kills, log, graves), mid-walk (rolled back, both agree); play went on
+  through fights and rounds; forfeit gave both result screens; rematch started by itself; a guest reload after a host
+  restore came back; with the save blocked both seats still get the notice. Back in 30-40 s in the sandbox. 0 page errors.
+  Shots /mnt/project-files/pvp-verify-20261110/host_restore_*.jpg. The live tier popup can show again on the reloaded
+  page (display only, same as a guest reload). Not checked: CLASH / simul restore, real WebGPU, real network.
+
+## THE RELOAD, TWO SEATS (2026-11-10, token 20261111-reloadroom-01-cors) — online.js only
+Two-seat check of PR #1072-#1075 plus traps, CLASH and the end-of-round relays (two Chromium pages, shared playtest
+harness, shots in `/mnt/project-files/pvp-verify-20261110/`). All of #1072-#1075 held. Five things fixed:
+- **THE ROOM ON A RELOAD:** a guest that reloaded came back on the bare baked board (voxel columns, no site room): the
+  recovery snapshot's `applyGameMode` ran before the fresh page had surveyed the arena room, and the renderer latches the
+  room once (`_arenaLatch`). `_recoveryArenaWait` (in the `recovery-snapshot` handler, now `_onRecoverySnapshot`) runs
+  `_hqArenaWarm` first and applies after it, capped at `RECOVERY_ARENA_WAIT_MS` (30 s, inside the 60 s restore window);
+  a page still in its fight waits for nothing. The fight's map id is kept in sessionStorage `ew_rejoinMap` (written by
+  the seat-hold interval) so the boot rejoin starts the survey while the socket connects.
+- **THE HOST'S RELOAD:** the match lives on the host's page. A reloaded host sat in 'setup' with the title screen's
+  default units, sent THAT as the recovery snapshot, the guest applied it, and both seats sat on a dead board. A page that
+  booted into a rejoin (`NET._bootRejoin`) and is not in a battle now answers `recovery-unavailable`, so both seats get
+  server.js failRecovery's notice ("The host page lost its active match") in ~20 s. Restoring the host's match from its
+  own saved snapshot is NOT built (offered to mondo). `backToMainMenu`'s online teardown also runs for a boot-rejoin page.
+- **THE SQUAD ON A RELOAD:** `NET._squad` died with the page, so a reloaded seat's REMATCH opened the party builder
+  while the other seat sat locked. Kept in sessionStorage `ew_rejoinSquad`, restored at the boot rejoin.
+- **THE CHIP LEAVES WITH THE ROOM (F8):** `#netStatusIndicator` is hidden when `!NET.online || !NET.roomCode`.
+- **`eor-focus` on a half square:** a weather callout's dive is the mean of its tiles (4.5,4.5); no fog set holds a half
+  square, so the guest never got that camera move. Host filter + guest gate round to the nearest square.
+- Checked and fine, both seats: guest To the Moon landing pick + own throw line into fog, host Infernal Hurl, Swing Door
+  prompt kept off both logs, Fire for Effect mark + detonation, Scrap Mine / Tesla Coil (`_deployedObjects`, on both
+  boards), hidden Snare (`state.traps` empty on the guest until sprung), CLASH (no MOVE, no throws by design, in sync),
+  result-screen drop + rematch, rematch keeps 5 rounds, closed tab -> VICTORY at 90 s from either seat.
+- Not bugs: CLASH's ROUNDS stepper stays at "∞"; a ground unit may stand under a flyer; the host's `_fullLogEntries` holds
+  every line (the fog filter runs at render: compare seats with `_logVisible`).
+- Harness: pick races in the party builder by clicking the ROSTER tab, the slot, then the card (a pick jumps to ABILITIES);
+  `location.reload()` through `ph eval` reloads a seat; `location.href='about:blank'` closes its tab.
+
+
 ## THE CAMERA SHOWS SOMETHING (2026-11-09, token 20261109-camnothing-01-cors) — battle.js, state.js, online.js
 mondo: "Still lots of camera issues, like the end of round camera focusing on nothing or action camera focusing on nothing
 ... might be from when i move the camera around and then the automatic camera takes over, or it just seems like a lot of
@@ -5032,6 +5085,7 @@ now: cut to the close-up, cut back to the player's own angle on the shielded uni
 Not compared: the `buff` family's glam beat (Protect ends the turn; it still opens with the new rule). Not run with two
 seats (the guest runs the same rigs on the relayed shot). Tools + proof: /mnt/project-files/pupil-shield-camera-20261110/.
 
+<<<<<<< HEAD
 ## THE HURRICANE'S RAIN (2026-11-11)
 mondo: "During a hurricane, there is rain on the screen, but I saw some grass tiles on fire ... Rain should always put out fire."
 - Cause: the Hurricane is a homing storm, so `w.tiles` is only its eye square; `soaks` only reached that one square while the
@@ -5045,3 +5099,41 @@ mondo: "During a hurricane, there is rain on the screen, but I saw some grass ti
 - Audit: Thunderstorm, Blood Rain = global + soaks (fine). Blizzard = snow, freezes its trail (ice on fire = water, PR #974).
   Tesseract Storm = geometry shards, not water. Hurricane has no Summon spell (natural roll only).
 - Proof (VS CPU, Mount Shasta Arena): /mnt/project-files/hurricane-rain-20261111/.
+=======
+## THE SIX RULE ANSWERS (2026-11-10, mondo's answers on the "PvP demo set and open rules" doc: 1B 2A 3A 4A 5A 6C 7B 8B 9A 10B 11B 12A)
+Kept as they were (A): delayed blasts hit enemies only (2), Guard restores twice (3), a thrown body can land on an ally (4), a
+tackle into a wall pays its bonus and the slam (5), Marked is used up by a physical hit / basic attack only (9), the R10 storm bolt
+runs through water / metal squares only (12). Changed:
+- 1 EITHER SIDE'S REMAINS: Cannibalize and Carrion Feast eat an enemy's bones OR an ally's gravestone (battle.js
+  spellCorpseUsable; SPELL_KIND_META `notOwnGrave` bars only the feeder's own left grave). Same heal, same +corpseDelay on a body
+  still down, ally or enemy. ai.js picks an enemy's remains first, an ally's only when none is in reach.
+- 6 EVERY ARRIVAL SETS OFF OVERWATCH: resolveTileArrival's `finally` calls checkOverwatchTriggers for every `via` but 'move' and
+  'climb' (those call it themselves after their own slide), where the body came to rest: pushed, pulled, thrown, dashed,
+  teleported, through a door. One shot per Guard stance as before; fog / invisible / range / LOS gates unchanged. Host-side like
+  the walk's shot, same relays.
+- 7 NO HAND RAISED TO THE CHARMER: battle.js getCharmer(unit) (unit._charmSourceId, stamped in applyStatusPayload, dropped by
+  STATUS_DEFS.charm.onRemove). A Charmed unit cannot basic-attack, counter, Overwatch-shoot or aim a unit-targeted offensive cast
+  at its charmer (doAttack / doSpell gates, the three target drums, hud.js quick menu rows, ai.js getTargetPriority + the ward
+  forecast). Tile / area / directional casts stay free, like Provoke. It still cannot move; it may act on anyone else.
+- 8 MINIMIZED IS HARDER TO HIT (his card pick: "Dodge at the 25% cap"): getEvasionChance returns data.js EVASION_CAP (0.25) for
+  a unit with `minimize`; hard CC still zeroes it, spells still always land, a back-arc swing still can't be dodged.
+- 10 ONE FLEE ENDS THE FEAR: the feared activation clears `feared` after _fearFleeMove actually ran; a cornered unit that
+  cowered keeps it.
+- 11 ONE WET WEATHER AT A TIME: state.js weathersOppose is also true for two DIFFERENT wet weathers (Thunderstorm, Hurricane,
+  Blood Rain, Blizzard), so the three opposite-weather paths apply: a cast one drives the one up off, the natural roll never forms
+  a second, tickWeather settles a leftover pair. The same weather recast still renews. Two dry weathers may stand together.
+Status page lines (charm, feared, minimize), the two feed spells' text, Pixie Prank's text and the FACING lesson's Overwatch line
+were rewritten to match. Not played in a browser (boot + function probe only); not run with two seats.
+
+## THE CHARM LINE ON A BOARD CLICK + THE GUEST'S OWN REFUSAL LINES (2026-11-11)
+Two-seat check of rule 7 B found the guest got no reason when it clicked its charmer. Two causes, both fixed:
+- battle.js `_outOfReachLine`: the charmer is off a charmed unit's attack list and off its unit-aimed offensive casts, so a board
+  click on it was refused as "X is out of reach this turn." Now it returns the engine's own Charm line ("is charmed and cannot
+  attack …" / "cannot cast <spell> at …"), solo, host and guest alike. Area / tile / directional casts are untouched.
+- A guest's refused click is written on the guest only (the pick is never sent). online.js `_applyRemoteState` replaced the whole
+  log with each host snapshot, so every such line was wiped within a second or two. battle.js addLog `o.mine` tags these lines
+  (`lg`, `lgN` = host lines above it) and `_applyRemoteState` puts them back in place. Call sites: `_ewGuestBoardPick` (attack,
+  unit spell, tile spell, item) and `_aimRefused`. A shorter host log (new match) drops them.
+- Proof: two real seats, guest's charmed unit clicks its charmer with ATTACK then Shrink Ray armed; both lines stay in the guest's
+  log through four host updates, in order, and never appear in the host's log. /mnt/project-files/demo-set-20261110/rule-proof/.
+>>>>>>> origin/main
