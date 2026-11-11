@@ -7999,6 +7999,14 @@
             const aaMode = (typeof ThreePost!=='undefined'&&ThreePost.getAA) ? ThreePost.getAA() : (fxaaOn ? 'fxaa' : 'off');   // THE POST PASS 7.5: off / FXAA / SMAA
             /* THE RENDER SCALE (2026-11-10): one stored ratio, two rows. Fast = ratio 1 and Native = the screen's own, as they
                always were; a share in between lights neither of them, and the Render Scale row below shows which share is on. */
+            /* WEBGPU BY DEFAULT (2026-11-11): the Renderer row. Auto = WebGPU where it works, else the classic renderer (index.html
+               decides at load); a pick is stored and applies on reload, so the row offers the reload when the two differ. */
+            const gpuNow = (typeof window!=='undefined'&&window.EW_GPU_PICK) || 'auto';
+            const gpuPick = (typeof window!=='undefined'&&window.EW_GPU_PICK_NEXT) || (gpuNow==='webgl2' ? '' : gpuNow);
+            const gpuPending = !!(typeof window!=='undefined'&&window.EW_GPU_PICK_NEXT&&window.EW_GPU_PICK_NEXT!==gpuNow);
+            let gpuRuns = ''; try { gpuRuns = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.gpuStatus) ? String(ThreeRenderer.gpuStatus()).split(' (')[0].split(' [')[0] : ''; } catch (e) {}
+            const gpuHint = (gpuRuns ? `drawing with ${gpuRuns} now` : 'the renderer starts with the first 3D view') +
+                (gpuPending ? '; your pick applies when the page reloads' : gpuNow==='auto' ? '; Auto uses WebGPU where your browser and graphics card support it and WebGL where they do not' : gpuNow==='webgl2' ? '; a link picked the test renderer (WebGL 2 backend): pick one here to leave it' : '; picked by you: Auto chooses for this machine');
             const _rsInfo = (typeof ThreePost!=='undefined'&&ThreePost.getRenderScale) ? ThreePost.getRenderScale() : null;
             const rsNative = _rsInfo ? _rsInfo.native : Math.min((typeof window!=='undefined'&&window.devicePixelRatio)||1,2);
             const rsRatio = (typeof window!=='undefined'&&window._ewPixelRatio>0) ? window._ewPixelRatio : (_rsInfo ? _rsInfo.ratio : rsNative);
@@ -8215,6 +8223,16 @@
                     </div>
                     <div class="pm-set-toggles" style="margin-top:8px">
                         <label class="pm-toggle"><input type="checkbox" ${looksOn ? 'checked' : ''} onchange="if(window._setSceneLooks)window._setSceneLooks(this.checked);${RJ}"><span class="pm-toggle-label">Map Looks</span><span class="pm-toggle-hint">${!looksOn ? 'off: every area keeps your settings: your fog colour, night mood and bloom, no map grade, and any tint, dither, pixelate, grain, vignette or CRT you have not set yourself stays off' : lookNow ? 'wearing ' + lookNow + ' under your settings — a slider you move wins over it' : 'a map or a room may fill in any setting you have left at its default; a slider you move wins'}</span></label>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Renderer</span>
+                        <div class="pm-seg-group">
+                            ${[['auto','Auto'],['webgpu','WebGPU'],['webgl','WebGL']].map(o=>`<button class="pm-seg-btn${gpuPick===o[0] ? ' active' : ''}" onclick="if(window._ewSetGpuPick)window._ewSetGpuPick('${o[0]}');${RJ}">${o[1]}</button>`).join('')}
+                            ${gpuPending ? `<button class="pm-seg-btn" style="border-color:#4c4;color:#8f8" onclick="if(window._ewGpuReload)window._ewGpuReload()">Reload now</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">${gpuHint}</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Pixel Ratio</span>
