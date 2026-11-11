@@ -2978,10 +2978,20 @@ const ThreePost = (function () {
         if (c.depthRenderTarget) c.depthRenderTarget.setSize(ds.x, ds.y);
         for (var i = 0; i < c.passes.length; i++) c.passes[i].setSize(ds.x, ds.y);
     }
+    /* THE ZERO STRENGTH ON THE CLASSIC CHAIN (2026-11-11, mondo tapped "Turn it off at 0"): this chain's N8AO floored its
+       intensity at 0.5 (see _ppSync), so the shipped AO strength 0 still drew a faint contact shading through 7 of the
+       frame's 15 renders (about 13 % of a fight frame on the software raster). At strength 0 the AO passes (N8AO, or the
+       classic AO + its multiply) now rest, as on the node chain; the slider brings them back the frame it moves above 0.
+       The row and the setting stay. Off: window.EW_AO_AT_ZERO = true (live; the same switch as the node chain's). */
+    function _ppAoLive() {
+        if (!(_ssaoPass && _ssaoPass.enabled)) return false;
+        if (typeof window !== 'undefined' && window.EW_AO_AT_ZERO) return true;
+        return _ssaoPass.aoMat.uniforms.uStrength.value > 0;
+    }
     /* pass A's effect list from the stand-ins; rebuilt (a new EffectPass in the same slot) only when the list changes */
     function _ppPassA(force) {
         var P = _pp, PP = P.lib, fx = P.fx;
-        var aa = _aaResolve(), aoClassic = !!(_ssaoPass && _ssaoPass.enabled) && !(P.n8 && _ssaoMode() === 'n8ao');
+        var aa = _aaResolve(), aoClassic = _ppAoLive() && !(P.n8 && _ssaoMode() === 'n8ao');
         var bloom = !!(_bloomPass && _bloomPass.enabled), tone = !!_hdr;
         var sig = aa + '|' + (aoClassic ? 1 : 0) + '|' + (bloom ? 1 : 0) + '|' + (tone ? 1 : 0);
         P.aoClassic = aoClassic;
@@ -3002,7 +3012,7 @@ const ThreePost = (function () {
     function _ppSync() {
         var P = _pp, fx = P.fx;
         // the AO: classic pass / N8AO, by the player's AO Quality row
-        var aoOn = !!(_ssaoPass && _ssaoPass.enabled), wantN8 = aoOn && _ssaoMode() === 'n8ao';
+        var aoOn = _ppAoLive(), wantN8 = aoOn && _ssaoMode() === 'n8ao';
         if (wantN8 && !P.n8) _ppN8Load();
         _ppPassA(false);
         P.aoPass.enabled = aoOn && P.aoClassic;
