@@ -3237,7 +3237,11 @@
                         // Range wash keyed to what the spell DOES: red for
                         // anything that hurts, green for ally-serving zones,
                         // purple only for genuinely neutral utility.
-                        const _rangeCls = _DMG_SPELL_KINDS[spell.kind] ? 'spell-range-dmg'
+                        /* THE AIM SIDE (data.js spellAimSide) first: Purify (kind cleanseArea, no payload fields) read
+                           'both' above and painted the neutral purple */
+                        const _gSide = _aimSide(spell);
+                        const _rangeCls = _gSide === 'help' ? 'heal-range'
+                          : (_DMG_SPELL_KINDS[spell.kind] && _gSide !== 'neutral') ? 'spell-range-dmg'
                           : (_gTT === 'ally') ? 'heal-range' : 'spell-range';
                         _hlCache.set(posKey(cx, cy), _rangeCls);
                       }
@@ -14936,7 +14940,11 @@
 
             const footprint = getSpellAoeFootprint(spell, x, y, unit);
             if (footprint.length > 0) {
-                const isHeal = ['heal', 'healAll'].includes(spell.kind);
+                /* THE AIM SIDE (data.js spellAimSide): green = heals / supports and deals no damage (Purify, Sanctuary,
+                   Iron Dome), purple = a neutral area (a weather, a room), red = it hurts */
+                const _side = _aimSide(spell);
+                const isHeal = _side === 'help';
+                const _softCol = _side === 'neutral' ? EW_PREVIEW.util : EW_PREVIEW.hit;
 
                 if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                     /* SPARED ALLIES (Keys vs Keys matchup: Spike the Ball painted the Quarterback's own team red): a footprint
@@ -14944,7 +14952,7 @@
                        wears a dim grey plate, not the crimson "will be hit" one. Friendly fire / a soaked ally the chain
                        reaches stays crimson. */
                     let _spared = null;
-                    if (!isHeal && typeof isAllyUnit === 'function') {
+                    if (_side === 'harm' && typeof isAllyUnit === 'function') {
                         const _allyTiles = footprint.filter(t => (state.units || []).some(u => !u.dead && u !== unit
                             && u.x === t.x && u.y === t.y && isAllyUnit(u, unit)));
                         const _plan = (_allyTiles.length && typeof forecastSpellPlan === 'function')
@@ -14963,12 +14971,12 @@
                         if (_spared && _spared.has(t.x + ',' + t.y)) return { x: t.x, y: t.y, color: 0x9aa0b4, opacity: 0.32, cursor: isCenter };
                         return {
                             x: t.x, y: t.y,
-                            color: isHeal ? (isCenter ? 0x33ff33 : 0x22cc22) : EW_PREVIEW.hit,
-                            opacity: isHeal ? (isCenter ? 0.55 : 0.38) : (isCenter ? 0.95 : 0.85),
+                            color: isHeal ? (isCenter ? EW_PREVIEW.help : EW_PREVIEW.helpSoft) : _softCol,
+                            opacity: (isHeal || _side === 'neutral') ? (isCenter ? 0.55 : 0.38) : (isCenter ? 0.95 : 0.85),
                             cursor: isCenter   // yellow corner brackets on the impact tile
                         };
                     });
-                    ThreeRenderer.setOverlay('aoe', overlayTiles, 0xff3333, 0.35);
+                    ThreeRenderer.setOverlay('aoe', overlayTiles, isHeal ? EW_PREVIEW.helpSoft : _softCol === EW_PREVIEW.hit ? 0xff3333 : _softCol, 0.35);
                     _aoePreview3dActive = true;
                 }
             } else {
@@ -14976,11 +14984,16 @@
                 if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                     const isHealKind = ['heal', 'selfHeal', 'seedHeal', 'revive', 'cleanse'].includes(spell.kind);
                     const isBuffKind = ['buff', 'shield', 'aoeShield', 'warCry'].includes(spell.kind);
+                    const _side1 = _aimSide(spell);
                     let singleColor = EW_PREVIEW.hit;
-                    if (isHealKind) singleColor = 0x33ff33;
+                    if (isHealKind) singleColor = EW_PREVIEW.help;
                     else if (isBuffKind) singleColor = 0x4488ff;
                     /* a cast that moves bodies and hurts nobody (teleport, swap, rally…) paints its aim as a move */
                     else if (!spellHasDamage(spell) && _BODY_MOVE_KINDS[spell.kind]) singleColor = EW_PREVIEW.self;
+                    /* THE AIM SIDE: any other cast that helps is green, a placement wears the place plate, a neutral
+                       cast the utility one; red is only what hurts */
+                    else if (_side1 === 'help') singleColor = EW_PREVIEW.help;
+                    else if (_side1 === 'neutral') singleColor = _PLACE_KINDS[spell.kind] || /^(summonUnit|deployObject|deployPair|raiseDead)$/.test(spell.kind) ? EW_PREVIEW.place : EW_PREVIEW.util;
                     /* …and an aim tile the cast can't land on reads as a dim grey
                        "no" plate instead of the same blue as a legal one. */
                     let _aimOpacity = singleColor === EW_PREVIEW.hit ? 0.9 : 0.5;
@@ -15157,6 +15170,10 @@
             }
             if (tiles.length === 0) tiles.push({ x: unit.x, y: unit.y });
 
+            /* THE AIM SIDE (data.js spellAimSide): a self cast that helps and deals no damage is green whatever its kind
+               (a self-centred cleanse, a rally), a neutral one purple; the kinds above keep their green */
+            const _selfSide = _aimSide(spell);
+            const _selfGreen = _selfSide === 'help' || (isHeal && _selfSide !== 'harm');
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                 const overlayTiles = tiles.map(t => {
                     const isCenter = (t.x === unit.x && t.y === unit.y) || _rndKeys.has(t.x + ',' + t.y);
@@ -15164,11 +15181,11 @@
                     if (kind === 'escape') return { x: t.x, y: t.y, color: EW_PREVIEW.self, opacity: 0.35 };
                     return {
                         x: t.x, y: t.y,
-                        color: isHeal ? (isCenter ? 0x33ff33 : 0x22cc22) : EW_PREVIEW.hit,
+                        color: _selfGreen ? (isCenter ? EW_PREVIEW.help : EW_PREVIEW.helpSoft) : _selfSide === 'neutral' ? EW_PREVIEW.util : EW_PREVIEW.hit,
                         opacity: isCenter ? 0.9 : (_rndRow ? 0.3 : 0.8)
                     };
                 });
-                ThreeRenderer.setOverlay('aoe', overlayTiles, 0xff3333, 0.35);
+                ThreeRenderer.setOverlay('aoe', overlayTiles, _selfGreen ? EW_PREVIEW.helpSoft : _selfSide === 'neutral' ? EW_PREVIEW.util : 0xff3333, 0.35);
                 _aoePreview3dActive = true;
                 return;
             }
@@ -16135,7 +16152,12 @@
              hit    → crimson solid plate with an inner frame (what WILL take damage; loud)
              self   → blue: the caster's own move (arrow, hologram, landing plate)
              forced → purple: any other body the cast moves (push, pull, throw, swap, rally) */
-        const EW_PREVIEW = { reach: 0xffa040, hit: 0xff2a2a, self: 0x3399ff, forced: 0xbb66ff };
+        /* 2026-11-11 (mondo: Purify's area on his own unit was red): help / helpSoft = the green plate of a cast that heals or
+           supports and deals no damage, util = a neutral cast's area, place = a placement's tile. Which one a cast wears is
+           data.js spellAimSide; each hex is one the UI Maker already colours (three-renderer _HL_HEX_KIND: heal, util, place). */
+        const EW_PREVIEW = { reach: 0xffa040, hit: 0xff2a2a, self: 0x3399ff, forced: 0xbb66ff,
+            help: 0x33ff33, helpSoft: 0x22cc22, util: 0xaa33ff, place: 0x44aaff };
+        const _aimSide = sp => (typeof spellAimSide === 'function') ? spellAimSide(sp) : 'harm';
         window.EW_PREVIEW = EW_PREVIEW;
 
         /* Every body a forecast plan moves: one arrow from where it stands to where it ENDS (a slide that rebounds,
