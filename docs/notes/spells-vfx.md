@@ -3698,6 +3698,12 @@ the victim's screen for about a second. Looks only, shared code for every attack
 - **2 THE ATTACKER TELL**: the attacker's ring pings once in ITS side colour (0.46 s, one ping per volley) and an arrowhead
   in that colour sits just outside the victim's flare, pointing at the attacker. Only when this seat may see the attacker
   (`_hitSideSees`: the concealment rule + the fog renderer's visible set): a hit out of the dark never points home.
+  THE ROOF FIX (same day, the review on PR #1106): the tile set alone was not enough. An enemy in a roofed room stands on
+  a LIT square with its body hidden (`_unitLosSeen`, the Z-exact unit fog), and the arrowhead still pointed at it. Now
+  `_hitSideSees(unit, entry)` = the body is drawn on this screen (`entry.group.visible`: held, other realm, fogged,
+  concealed) AND not concealed AND, under fog, square lit AND `_unitLosSeen`; `_updateHitSides` asks again every frame
+  for the arrowhead, so an attacker that leaves sight takes its arrowhead with it. Probe: tools/roof_probe.js in
+  /mnt/project-files/hit-readability-20261111/ (stubs the 3D sight probe over one enemy on a lit square).
 - **3 THE NUMBER EDGE** (battle.js `_hitReadSideEdge` in `_hitReadDress3D`; 2D board `_hitReadDressDom`): the number keeps
   its element fill and the thin black line next to the digits; the outer dark band and a small rim outside it take the
   victim's side colour. Runs on the finished canvas, so the UI Maker Floating text look still applies underneath.
