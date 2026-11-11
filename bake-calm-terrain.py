@@ -1013,7 +1013,7 @@ def bake_flagstone(seed=341, a=0x56534c, b=0x6f6b62, joint=0x302d27, moss=0.7):
 
 # ── THE SANDSTONE FLAGS (Babel's floor: his bricks_1 under the room's tan): the flagstones in a warm sandstone ─────────────────
 def bake_sandstone(seed=401):
-    return bake_flagstone(seed, a=0x8a7454, b=0xa48a66, joint=0x4a3c2c, moss=0.25)
+    return bake_flagstone(seed, a=0x70502e, b=0x865e38, joint=0x3a2816, moss=0.25)   # his bricks_1 x the room's 0xd8a878 = 93/69/43
 
 
 # ── THE CASTLE BRICK (bricks_2, castle_wall): small weathered bricks in courses, brown-grey, moss in the joints ──────────────────

@@ -1910,7 +1910,7 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
 - VALUES moved on the real boards: castle brick up to his bricks_2 value (L 0.36, Walls of Camelot read near-black), damask up a
   step (the lodge walls stand in shade), clouds up twice to L 0.82 (Heaven's cloud deck read as dust at L 0.62 and 0.70; his cloud_2 x the room's 0xeef0ff shows 187-199 on screen), beach sand down to
   L 0.58 (blew out on Bermuda in daylight), Mars dust warmer and a step darker (read pale beige against his orange-brown floor:
-  sheet mean now 122/82/58). Lesson again: sample the floor on HIS board's screenshot and the calm one, same spot, before shipping.
+  sheet mean now 122/82/58), sandstone flags down to his bricks_1 x the room's 0xd8a878 (93/69/43; now 110/85/60). Lesson again: sample the floor on HIS board's screenshot and the calm one, same spot, before shipping.
 - THE TWO SANDS: _calmKeyOf turns desert → calm_sand_beach where _ewSandBeach() (Bermuda), so the beach keeps its pale sand.
 - THE CALM LIQUIDS: _CALM.liquids = [colour, opacity, glow] for poison, poison_bog, purple_bog, swamp (the black ooze), oil, blood
   (the first poison green, 0x34561a, read as grass on Stonehenge: poison is now an acid green with a faint glow of its own);
