@@ -63941,7 +63941,7 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         calm_checker:    ['calm_checker_1.png', 'checkerboard', 'Marble checks'],
         calm_damask:     ['calm_damask_1.png', 'damask', 'Damask wallpaper'],
         calm_carpet:     ['calm_carpet_1.png', 'carpet_4', 'Red carpet'],
-        calm_marsdust:   ['calm_marsdust_1.png', 'moon_2', 'Mars dust (pale)'],   // Mars's floor: his moon_2 wore the room's tan there
+        calm_marsdust:   ['calm_marsdust_1.png', 'moon_2', 'Mars floor dust'],   // Mars's floor: his moon_2 wore the room's tan there
         calm_sandstone:  ['calm_sandstone_1.png', 'bricks_1', 'Sandstone flags'],   // Babel's floor: his bricks_1 wore the room's tan there
     },
     of: {
