@@ -1109,6 +1109,7 @@
                         N._rematchState = null;
                         N.rejoinToken = null;
                         N._bootRejoin = false;
+                        N._hostRestoring = false;
                         N.socket = null;
                     }
                     try { if (typeof window._ewResetOnlineMatchFlags === 'function') window._ewResetOnlineMatchFlags(true); } catch (e) {}   // THE NEXT ROOM
@@ -1116,6 +1117,7 @@
                         sessionStorage.removeItem('ew_rejoinToken');
                         sessionStorage.removeItem('ew_rejoinRoom');
                         sessionStorage.removeItem('ew_rejoinRole');
+                        sessionStorage.removeItem('ew_hostSave');
                     } catch (e) {}
                     state.controllers = { 1: CTRL.LOCAL, 2: CTRL.AI };
                     /* The guest's party builder wrote builderSelectedPlayer=2
@@ -3638,7 +3640,8 @@
                 NET.rejoinToken = null;
                 NET._bootRejoin = false;
                 NET._squadKept = false;
-                try { sessionStorage.removeItem('ew_rejoinMap'); sessionStorage.removeItem('ew_rejoinSquad'); } catch (e) {}
+                try { sessionStorage.removeItem('ew_rejoinMap'); sessionStorage.removeItem('ew_rejoinSquad'); sessionStorage.removeItem('ew_hostSave'); } catch (e) {}
+                NET._hostRestoring = false;
                 NET.friendlyConfig = null;
                 NET._roomDemo = undefined;   // THE DEMO: the last room's switch never follows the seat out
                 NET._squad = null;   // THE SQUAD DESK: the lobby's copy (window._ewSquad stays for the next queue)
@@ -4154,7 +4157,7 @@
                 NET.connected = false;
                 NET._wasInMatch = false;
                 if (window._ewReleaseRecoveryWork) window._ewReleaseRecoveryWork(false);
-                try { ['ew_rejoinToken', 'ew_rejoinRoom', 'ew_rejoinRole', 'ew_rejoinMap', 'ew_rejoinSquad'].forEach(function(k) { sessionStorage.removeItem(k); }); } catch (e) {}
+                try { ['ew_rejoinToken', 'ew_rejoinRoom', 'ew_rejoinRole', 'ew_rejoinMap', 'ew_rejoinSquad', 'ew_hostSave'].forEach(function(k) { sessionStorage.removeItem(k); }); } catch (e) {}
                 var panel = document.createElement('div');
                 panel.id = 'reconnectOverlay';
                 /* a PS1 window with a red way out (end screens 2026-11-10: it was a bare strip with the browser's own grey button) */
@@ -4204,7 +4207,8 @@
                            and is not in a battle answers "unavailable", so both seats get the server's own notice (server.js
                            failRecovery: "The host page lost its active match"). */
                         var _bootLost = NET._bootRejoin && !(st && st.phase === 'battle');
-                        if (_bootLost || !st || !Array.isArray(st.units) || !st.units.length || (st.phase !== 'battle' && st.phase !== 'setup')) {
+                        if (NET._hostRestoring) { /* THE HOST'S RELOAD, RESTORED: its own save is being laid back; answer once it is */ }
+                        else if (_bootLost || !st || !Array.isArray(st.units) || !st.units.length || (st.phase !== 'battle' && st.phase !== 'setup')) {
                             NET.socket.emit('recovery-unavailable', { id: id, matchId: NET.matchId });
                         } else if (!st._actionExecuting && !st._walkAnimActive && !st.aiThinking &&
                             (typeof window._ewRecoverySnapshotReady !== 'function' || window._ewRecoverySnapshotReady())) {
@@ -4309,6 +4313,8 @@
                                     } else _recoveryFailure('The match ended, but its result could not be restored.');
                                     return;
                                 }
+                                /* THE HOST'S RELOAD, RESTORED: a host page that booted into this rejoin lays its own save back */
+                                if (NET._bootRejoin && resp.role === 'host') { try { _hostRestoreBegin(); } catch (e) { NET._hostRestoring = false; } }
                                 ewToast(resp.waitingForOpponent ? 'Connected — waiting for your opponent.' : 'Connected — restoring the match.', 2000);
                             } else {
                                 console.log('[NET] Rejoin failed:', resp && resp.error);
@@ -4551,7 +4557,7 @@
                    inside the restore window. A page still in its fight (a socket drop) has its room and waits for nothing.
                    Viewer-local, nothing on `state`. */
                 var RECOVERY_ARENA_WAIT_MS = 30000, _rcArena = { key: null, done: true };
-                function _recoveryArenaWait(data) {
+                function _recoveryArenaWait(data, then) {
                     try {
                         var st = window._gameState, ctx = data && data.state && data.state._onlineContext, id = ctx && ctx.mapModeId;
                         if (!id || typeof window.hqArenaOf !== 'function') return false;
@@ -4564,7 +4570,7 @@
                         var go = function() {
                             if (_rcArena.key !== key || _rcArena.done) return;
                             _rcArena.done = true;
-                            _onRecoverySnapshot(data);
+                            if (typeof then === 'function') then(); else _onRecoverySnapshot(data);
                         };
                         var p = null;
                         try { p = (typeof window._hqArenaWarm === 'function') ? window._hqArenaWarm(id, true) : null; } catch (e) { p = null; }
@@ -4576,6 +4582,40 @@
                         setTimeout(go, RECOVERY_ARENA_WAIT_MS);
                         return true;
                     } catch (e) { return false; }
+                }
+                /* THE HOST'S RELOAD, RESTORED (2026-11-11): the seat is held while a page reloads (PR #1075), but the match
+                   lives on the host's page, so a host reload still ended it for both seats. The host now keeps its own
+                   whole match in sessionStorage while it plays (_hostSaveWrite, taken only on a quiet board with a unit
+                   up) and a host page that boots into a rejoin lays it back: the arena's room first (the same wait the
+                   guest's reload uses), then the same state path a reloaded guest takes, with the host's seat and
+                   controllers (_restoreOnlineContext). The recovery poll then sends the guest its snapshot as after any
+                   drop, so both seats land on the same state; an action that was mid-flight at the reload is undone for
+                   both. No save, another match's save, or a save that will not apply = the old "host page lost its
+                   active match" notice. Nothing new on `state`; the save never leaves the host's own browser. */
+                function _hostRestoreBegin() {
+                    var save = null;
+                    try { save = JSON.parse(sessionStorage.getItem('ew_hostSave') || 'null'); } catch (e) { save = null; }
+                    if (!save || !NET.matchId || save._matchId !== NET.matchId || save.phase !== 'battle' || save.winner
+                        || !Array.isArray(save.units) || !save.units.length) return false;
+                    delete save._hostSaveAt;
+                    NET._hostRestoring = true;
+                    var data = { id: 'host:' + NET.matchId, state: save };
+                    var go = function() {
+                        if (!NET._hostRestoring) return;
+                        if (!NET.online || NET.role !== 'host' || NET._recoveryFailed || save._matchId !== NET.matchId) { NET._hostRestoring = false; return; }
+                        if (_recoveryArenaWait(data, go)) return;
+                        var ok = false, st = window._gameState;
+                        try { ok = _applyRemoteState(save) && st && st.phase === 'battle'; } catch (e) { console.warn('[NET] host restore failed', e); ok = false; }
+                        NET._hostRestoring = false;
+                        if (ok) {
+                            NET._bootRejoin = false;
+                            NET.lastSyncJson = '';
+                            NET._leanSent = null;
+                            console.log('[NET] Host match restored from this page\'s own save');
+                        }
+                    };
+                    go();
+                    return true;
                 }
                 function _onRecoverySnapshot(data) {
                     if (!NET.online || NET.role !== 'guest' || !data || data.id !== NET._recoveryId ||
@@ -6777,6 +6817,7 @@
                     _packClock(s);
                     s._matchId = NET.matchId;
                     NET.socket.emit('state-sync', s);
+                    _hostSaveWrite(false);   // THE HOST'S RELOAD, RESTORED: the host's own save follows the board
                 } catch (e) {
                     console.error('[NET] Serialize error:', e);
                 }
@@ -7210,7 +7251,35 @@
                 });
             };
 
+            /* THE HOST'S RELOAD, RESTORED: the host's own whole match (unfiltered: this is the host's own browser), kept
+               for its own reload. Only a quiet board with a unit up is kept (no action, walk or death in flight), so a
+               restored match always has somebody whose turn it is; a busy board keeps the last quiet save. */
+            var _hostSaveAt = 0;
+            function _hostSaveWrite(force) {
+                try {
+                    var st = window._gameState;
+                    if (!NET.online || NET.role !== 'host' || !NET.matchId || !st || st.phase !== 'battle' || st.winner) return;
+                    if (NET._recovering || NET._recoveryFailed || NET._hostRestoring || NET._bootRejoin) return;
+                    if (st._actionExecuting || st._walkAnimActive || st.aiThinking) return;
+                    var _simul = typeof window._isSimulMode === 'function' && window._isSimulMode();
+                    if (!st._blitzActiveUnitId && !_simul) return;
+                    if (typeof window._ewRecoverySnapshotReady === 'function' && !window._ewRecoverySnapshotReady()) return;
+                    var now = Date.now();
+                    if (!force && now - _hostSaveAt < 1500) return;
+                    var s = _serializeState();
+                    if (!s) return;
+                    _packClock(s);
+                    s._matchId = NET.matchId;
+                    s._hostSaveAt = now;
+                    sessionStorage.setItem('ew_hostSave', _ewSafeStringify(s));
+                    _hostSaveAt = now;
+                } catch (e) {}
+            }
+            window._ewHostSaveWrite = _hostSaveWrite;
+            window.addEventListener('pagehide', function() { _hostSaveWrite(true); });
+
             setInterval(function() {
+                _hostSaveWrite(false);
                 /* THE SEAT HOLD (index.html): an online battle keeps a worker telling the server this page is alive, so a
                    page busy building a board or reloading keeps its seat past the socket's heartbeat; off at the result */
                 try {
