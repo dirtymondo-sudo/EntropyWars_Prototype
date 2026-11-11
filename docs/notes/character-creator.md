@@ -1822,4 +1822,14 @@ is pushed onto `EW_MH_LOOKS.skins` after the generated block, like the werewolf 
 the custom ones).
 
 **STATE** - the shape was measured on `mpfb_female` (it applies to every MPFB body by base index; untested on the male bodies).
-Not verified in the running creator in this delivery: assets + data only, `node --check` (this checkout has no test files).
+
+**THE LIKENESS SWITCH (same day, the merge thread; mondo: "hide behind a switch anyway, im really just testing something")** -
+both picks are hidden unless the browser turned them on: open the game once with `?likeness=1` (remembered in localStorage
+`ew_likeness`; `?likeness=0` turns it off). sprites.js `EW_LIKENESS_PICKS` / `ewPickSwitchedOff(id)`; party-builder.js `pickOff`
+filters the shaped-head list and the skin tiles (a worn pick stays listed so it can be taken off). The enums / limits keep the
+keys, so a saved look with the likeness still draws anywhere. A new likeness = add its keys to `EW_LIKENESS_PICKS`.
+**THE MANIFEST** - `mpfb_shapes.glb` changes in place, so ASSET_MANIFEST.json must carry its new [bytes, sha1[:12]] (the branch
+missed it: the game would have kept fetching the old `?h=`); `skin_morgan.jpg` is listed too.
+**CHECKED** in the real creator (Chromium, WebGL2, MPFB female, OUTFIT > Head > Creature heads > Morgan, SKIN > Morgan): switch
+off = neither pick listed; on = both listed, head reshapes, skin draws, no page errors. Shots: project files custom-head-20261111/.
+Not checked: the male bodies, WebGPU.

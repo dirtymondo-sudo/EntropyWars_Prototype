@@ -4885,6 +4885,18 @@ const EW_MPFB_FACE_SLIDERS = [
 ];
 EW_APPEARANCE_LIMITS.wolfHead = [0, 1, 0];   // (one-sided: the target has no minus end)
 EW_APPEARANCE_LIMITS.morganHead = [0, 1, 0];   // (one-sided, THE CUSTOM SHAPES)
+/* THE LIKENESS SWITCH (2026-11-11, mondo: "hide behind a switch anyway, im really just testing something"): the face-likeness picks
+   (the morganHead shaped head + the "morgan" skin) are NOT shown in the creator unless this browser turned them on: open the game
+   once with ?likeness=1 in the address (remembered; ?likeness=0 turns it off again). The data stays valid either way, so a look
+   saved with the likeness still draws; a pick that is worn stays listed so it can be taken off. party-builder.js asks ewPickSwitchedOff. */
+const EW_LIKENESS_PICKS = { morganHead: 1, morgan: 1 };
+const EW_LIKENESS_ON = (function () {
+  try {
+    if (typeof location !== 'undefined') { const q = /[?&]likeness=([01])\b/.exec(location.search || ''); if (q) { try { localStorage.setItem('ew_likeness', q[1]); } catch (e) {} return q[1] === '1'; } }
+    return typeof localStorage !== 'undefined' && localStorage.getItem('ew_likeness') === '1';
+  } catch (e) { return false; }
+})();
+function ewPickSwitchedOff(id) { return !EW_LIKENESS_ON && EW_LIKENESS_PICKS[id] === 1; }
 EW_APPEARANCE_LIMITS.catEars = [0, 1, 0]; EW_APPEARANCE_LIMITS.felineEars = [0, 1, 0];
 /* THE SHAPED HEADS: the Creature heads that are a reshape of the body's own head (a MakeHuman target, 0..1), not a model worn over it.
    One head at a time with the model heads: a shaped head picked takes the model head off, and the other way round. [key, label] */
@@ -5660,7 +5672,7 @@ if (typeof window !== 'undefined') {
   window.EW_CREATOR_NAMES = EW_CREATOR_NAMES; window.creatorName = creatorName; window.creatorRenamed = creatorRenamed; window.setCreatorName = setCreatorName;   // THE RENAMED PICKS
   window.creatorNamesList = creatorNamesList; window.creatorNamesReset = creatorNamesReset; window.creatorPickLabel = creatorPickLabel;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
-  window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_SHAPE_HEADS = EW_SHAPE_HEADS; window.EW_SHAPE_EARS = EW_SHAPE_EARS; window.EW_FACE_RESET_KEYS = EW_FACE_RESET_KEYS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
+  window.ewPickSwitchedOff = ewPickSwitchedOff; window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_SHAPE_HEADS = EW_SHAPE_HEADS; window.EW_SHAPE_EARS = EW_SHAPE_EARS; window.EW_FACE_RESET_KEYS = EW_FACE_RESET_KEYS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
   window.EW_MPFB_DEFAULT_FACES = EW_MPFB_DEFAULT_FACES; window.mpfbFacePatch = mpfbFacePatch;   // THE DEFAULT FACES
   window.EW_MPFB_FACE_PRESETS = EW_MPFB_FACE_PRESETS;   // THE FACE PRESETS (bake-faces.js)
   window.EW_APPEARANCE_ENUMS = EW_APPEARANCE_ENUMS;
