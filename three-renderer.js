@@ -44649,7 +44649,20 @@ const ThreeRenderer = (function () {
         return true;
     }
     function _ewInstAttr(o, a) {
-        var im = o.instanceMatrix, ic = o.instanceColor, st = a.data.stride, A;
+        var im = o.instanceMatrix, ic = o.instanceColor, st, A;
+        /* THE BLACK BLOOD (2026-11-11, mondo on WebGPU: "black ink blot looking things" with the blood): three 0.186 keeps the
+           instance colours in a PLAIN instanced attribute (a copy of the first mesh's instanceColor), not in an interleaved
+           buffer, so the branch below never matched it and every mesh on a shared build drew with the FIRST mesh's colours:
+           the particle batches and the blood drops read another batch's tints, black where that batch had none. A mesh on
+           another mesh's build now gets its own colour attribute here too. */
+        if (!a.isInterleavedBufferAttribute) {
+            if (ic && ic.array && a.array !== ic.array) {
+                if (!o._ew_icp || o._ew_icp.array !== ic.array) { o._ew_icp = new THREE.InstancedBufferAttribute(ic.array, 3); o._ew_icp.setUsage(a.usage); o._ew_icp.version = ic.version; }
+                return o._ew_icp;
+            }
+            return a;
+        }
+        st = a.data.stride;
         if (st === 16 && a.data.array !== im.array) {
             if (!o._ew_ib || o._ew_ib.array !== im.array) {
                 o._ew_ib = new THREE.InstancedInterleavedBuffer(im.array, 16, 1); o._ew_ib.setUsage(a.data.usage); o._ew_ib.version = im.version; o._ew_ia = {};
@@ -44689,6 +44702,11 @@ const ThreeRenderer = (function () {
                 /* a node attribute (not the geometry's): the instancing's matrices (an instanced interleaved buffer, 16 floats)
                    or its colours (an interleaved buffer, 3 floats); three's own flag on these reads false, so they are told
                    apart by kind and by not being the geometry's */
+                if (a && !a.isInterleavedBufferAttribute && a.isInstancedBufferAttribute && a.itemSize === 3 && o.instanceColor && geoA.indexOf(a) < 0) {
+                    var mineC = _ewInstAttr(o, a);   // three 0.186: the instance colours, a plain instanced attribute (THE BLACK BLOOD)
+                    if (mineC !== a) { out[i] = mineC; sub = true; }
+                    continue;
+                }
                 if (!a || !a.isInterleavedBufferAttribute || !a.data || geoA.indexOf(a) >= 0 || geoA.indexOf(a.data) >= 0) continue;
                 if (!(a.data.isInstancedInterleavedBuffer && a.data.stride === 16) && a.data.stride !== 3) continue;
                 var mine = _ewInstAttr(o, a);
@@ -44714,6 +44732,11 @@ const ThreeRenderer = (function () {
         if (cb && ic && cb.array === ic.array && cb.version !== ic.version) {
             cb.clearUpdateRanges(); for (k = 0; k < ic.updateRanges.length; k++) cb.addUpdateRange(ic.updateRanges[k].start, ic.updateRanges[k].count);
             ic.clearUpdateRanges(); cb.version = ic.version;
+        }
+        var cp = o._ew_icp;
+        if (cp && ic && cp.array === ic.array && cp.version !== ic.version) {
+            cp.clearUpdateRanges(); for (k = 0; k < ic.updateRanges.length; k++) cp.addUpdateRange(ic.updateRanges[k].start, ic.updateRanges[k].count);
+            ic.clearUpdateRanges(); cp.version = ic.version;
         }
     }
     function _ewKeepStats() {
