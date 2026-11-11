@@ -1609,3 +1609,41 @@ this is the largest single GPU lever in the game.
   1372 × 771 467 ms, 50 % 1024 × 576 336 ms. Every step clicked in the pause menu's Video tab; the walk redraws at the
   new size too. Screens: /mnt/project-files/perf-webgpu-20261109/render-scale/.
 - The F3 lens's Resolution row is still the session-only preview (it can also go ABOVE the cap, uncapped Native).
+
+## THE WEIGHTED SHEETS + THE LIGHT'S REACH (2026-11-10, the PvP demo's frame rate: mondo's friend on a weak Chrome PC)
+The friend's Chrome runs the DEFAULT renderer (the classic WebGLRenderer, `ew_gpu` unset), not the node renderer mondo
+plays on, so THE FRAME RATE PLAN 1's AO skip (node chain only) does nothing there. Measured first, on the Mount Shasta
+Arena 12x12, 4v4, classic renderer, 1280x720, software raster (llvmpipe; shares are true, milliseconds are the sandbox's):
+172 draws, 425K triangles, 15 renders a frame (scene 1, N8AO 7, SMAA 3, tilt-shift 2, ray source 1, frame 1).
+Hiding one thing at a time: the screen passes are about 20 % of the frame (N8AO alone about 13 %), the GROUND about 30 %,
+though it is 10 draws and 89K triangles: it fills the screen and its shader is the most expensive one in a fight.
+Both fixes change what a pixel COMPUTES, not what it shows; nothing is relayed, online is untouched.
+- **THE WEIGHTED SHEETS** (three-renderer.js `_hqTerrainMat`, the node look `_ewNodeTerrain`). The field read floor, cliff
+  and path on three world axes plus every painted sheet for every pixel: 9 to 17 reads at 8x anisotropic. A read whose
+  weight is under 0.0005 is skipped (flat ground: 1 read). The reads sit in branches, so they use textureGrad / `.grad()`
+  with derivatives taken outside the branch (same mip level; on WebGPU a plain sample inside a branch is not even legal).
+  Proof, ground alone, switch flipped live, frames otherwise bit-identical: classic 3,626 of 921,600 pixels differ, node
+  (webgl2 backend) 2,340, every one by ONE step of 255. Ground-only frame: 200 ms -> 165 ms (classic). The program key
+  is `hqTerrainTri2`. Off, live: `window.EW_TERRAIN_ALL_SAMPLES = true` (note: the off path keeps textureGrad, which
+  llvmpipe runs SLOWER than the old plain reads, 250 ms: compare against the numbers here, not against the switch).
+- **THE LIGHT'S REACH** (three-renderer.js `_ewLightReachPatch`, classic renderer only: a ShaderChunk patch of
+  `lights_fragment_begin`). A fight has 13 point lights: 5 dark spares at intensity 0 (`ew void key` + 3 unnamed at
+  y -99999, `ew key light`) and 8 unit lights reaching 320 units (2.5 squares). Every lit pixel of every Lambert / Phong
+  / Standard material ran fall-off + BRDF for all 13. A point light is now skipped when its colour is black or the pixel
+  is past its `distance` (decay > 0: exactly where the legacy fall-off returns 0); a spot light when three's own
+  `directLight.visible` is false. Proof: 6 of 921,600 pixels differ by one step. Ground-only draw: 148 ms -> 115 ms
+  (all point lights hidden: 108 ms). Off: localStorage `ew_lightsEveryPixel = '1'` (or `window.EW_LIGHTS_EVERY_PIXEL =
+  true` before the scripts) and reload: a chunk patch is read once.
+- Both together, the whole fight frame (draw to a forced 1-pixel readback, 20 frames x 3 runs): 395 ms -> 350 ms, 11 %.
+  A real GPU will not give the same share: nobody has timed one. Screens: /mnt/project-files/perf-pvp-demo-20261110/.
+- HOW TO A/B A CHUNK PATCH LIVE (harness only): three's program key for a built-in material does not hash the chunk
+  text, so after swapping `THREE.ShaderChunk.x` every lit material needs a new `customProgramCacheKey` AND
+  `needsUpdate`, or the old program is reused and the comparison measures nothing (it did, once).
+- HOW TO TIME A FRAME HERE: rAF intervals quantise to 16.7 ms and half the rAFs draw nothing; `gl.finish()` returns at
+  once in Chrome. Time from the frame's first `renderer.render` to a 1-pixel `readPixels` of the screen instead (+-5 %).
+- **THE ZERO STRENGTH ON THE CLASSIC CHAIN** (2026-11-11, mondo tapped "Turn it off at 0"; three-post.js `_ppAoLive`).
+  The pmndrs chain drew N8AO at intensity 0.5 even at AO strength 0 (`Math.max(0.5, strength * 2.5)`). At strength 0
+  its AO passes (N8AO, or the classic AO + multiply) now rest, as the node chain's do: 15 renders a frame -> 8, the fight
+  frame 376 ms -> 330 ms (12 %, software raster, switch flipped live). The picture loses a faint contact shading. N8AO is
+  not even downloaded until the slider goes above 0. Off, live: `window.EW_AO_AT_ZERO = true` (the node chain's switch).
+  Screens: /mnt/project-files/perf-pvp-demo-20261110/ao_off_at_zero_{old,new}.jpg.

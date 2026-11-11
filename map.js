@@ -307,7 +307,19 @@
         function _sqDups(slots) { return (typeof teamDuplicateRaces === 'function') ? teamDuplicateRaces((slots || []).map(_sqRaceKey)) : []; }
         /* HOMOSAPIEN OUT (mondo, 2026-10-23): a race that left the roster (state.js teamRemovedRaces). The team is kept, flagged,
            and does not cross until the forge swaps it out; a bigger sheet still crosses when THE PICK can leave it on file. */
-        function _sqGone(slots) { return (typeof teamRemovedRaces === 'function') ? teamRemovedRaces((slots || []).map(_sqRaceKey)) : []; }
+        /* THE DEMO (2026-11-10, data.js DEMO_RULES): with the Demo switch on, a champ outside the demo roster (or an unlock
+           this account does not own yet) is held back the same way — the team is kept, flagged, and does not cross */
+        function _sqDemoBar(slots) {
+            if (typeof demoModeOn !== 'function' || !demoModeOn() || typeof isUnitUnlocked !== 'function') return [];
+            const out = [];
+            (slots || []).map(_sqRaceKey).forEach(r => { if (r && out.indexOf(r) < 0 && !isUnitUnlocked(r)) out.push(r); });
+            return out;
+        }
+        function _sqGone(slots) {
+            const gone = (typeof teamRemovedRaces === 'function') ? teamRemovedRaces((slots || []).map(_sqRaceKey)) : [];
+            _sqDemoBar(slots).forEach(r => { if (gone.indexOf(r) < 0) gone.push(r); });
+            return gone;
+        }
         function _sqGoneBlock(t) {
             const gone = _sqGone(t.slots);
             if (!gone.length) return [];
@@ -316,7 +328,12 @@
             const left = new Set(t.slots.map(_sqRaceKey).filter(r => gone.indexOf(r) < 0)).size;
             return left < SQ_DEPLOY ? gone : [];
         }
-        function _sqGoneText(d) { return 'Out of the game: ' + d.map(r => _sqRaceLabel({ race: r })).join(', '); }
+        function _sqGoneText(d) {
+            const demo = (typeof demoModeOn === 'function' && demoModeOn()) ? d.filter(r => !(typeof teamRemovedRaces === 'function' && teamRemovedRaces([r]).length)) : [];
+            const gone = d.filter(r => demo.indexOf(r) < 0);
+            const names = l => l.map(r => _sqRaceLabel({ race: r })).join(', ');
+            return [gone.length ? 'Out of the game: ' + names(gone) : '', demo.length ? 'Not in the Demo: ' + names(demo) : ''].filter(Boolean).join(' · ');
+        }
         /* the team cannot cross as it stands: the deployed members repeat a race (or a bigger sheet has too few different races to pick from) */
         function _sqTwice(t) {
             const n = t.slots.length;

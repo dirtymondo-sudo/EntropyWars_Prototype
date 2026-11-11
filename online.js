@@ -1088,7 +1088,12 @@
                        (server.js THE RESULT HOLD); the packet goes out ahead of the disconnect */
                     try { if (N && N.socket && N.socket.connected) N.socket.emit('leave-room'); } catch (e) {}
                     try { if (window._ewSeatHoldStop) window._ewSeatHoldStop(); } catch (e) {}   // THE SEAT HOLD
-                    try { if (N && N.socket) N.socket.disconnect(); } catch (e) {}
+                    /* offline BEFORE the socket drops: its 'disconnect' fires at once, and with the session still marked
+                       online it wrote "Reconnecting…" on the result bar this page is leaving (end screens 2026-11-10) */
+                    var _leavingSock = N && N.socket;
+                    if (N) N.online = false;
+                    try { if (_leavingSock) _leavingSock.disconnect(); } catch (e) {}
+                    try { var _pill = document.getElementById('netStatusIndicator'); if (_pill) _pill.remove(); } catch (e) {}   // the room chip leaves with the room
                     if (N) {
                         N.online = false;
                         N.connected = false;
@@ -1139,7 +1144,7 @@
            stayed up for good. It ends the match the way the pause menu's FORFEIT does: the winner on state, then
            checkWin -> finalizeMatch -> the result screen. On the host the engine owns the match; on a guest whose
            host never came back there is no engine left to send the result, so the guest ends its own mirror. */
-        window.triggerOnlineForfeitWin = function(forfeitPlayer) {
+        window.triggerOnlineForfeitWin = function(forfeitPlayer, reason) {
             var winner = forfeitPlayer === 1 ? 2 : 1;
             if (!state || state.winner || state._winCondition === 'draw') return;
             if (state.phase !== 'battle') {
@@ -1152,7 +1157,9 @@
             state.aiThinking = false;
             state.winner = winner;
             state.matchResult = { winner: winner, reason: 'forfeit' };
-            if (typeof addLog === 'function') addLog('Player ' + forfeitPlayer + ' forfeited (disconnect timeout). Player ' + winner + ' wins!');
+            var _ffTimer = reason === 'turn-timer';
+            if (typeof _forfeitMark === 'function') _forfeitMark(forfeitPlayer, _ffTimer ? 'timer' : 'disconnect');
+            if (typeof addLog === 'function') addLog('Player ' + forfeitPlayer + ' forfeited (' + (_ffTimer ? 'turn timer' : 'disconnect timeout') + '). Player ' + winner + ' wins!');
             if (_isGuest()) state._guestResultShown = true;   // the mirror's own result path must not open it twice
             checkWin();
             if (_isHost() && window._broadcastState) { try { window._broadcastState(); } catch (e) {} }
@@ -2031,9 +2038,10 @@
             });
 
             if (nextMatchBtn) {
-                nextMatchBtn.textContent = '✓ Rematch Requested — Waiting…';
+                nextMatchBtn.textContent = '✓ Rematch Requested';
                 nextMatchBtn.disabled = true;
             }
+            if (typeof window._vicRematchNote === 'function' && !(window._NET._rematchState[1] && window._NET._rematchState[2])) window._vicRematchNote('Rematch requested. Waiting for your opponent to accept.', 'wait');
             addLog(`Player ${me} wants a rematch.`);
 
             if (window._NET._rematchState[1] && window._NET._rematchState[2]) {
@@ -2215,6 +2223,7 @@
                            the payload (a hacked guest sent player:1 to make
                            the HOST forfeit and win instantly). */
                         state.winner = remoteP === 2 ? 1 : 2;
+                        if (typeof _forfeitMark === 'function') _forfeitMark(remoteP, 'quit');   // the result screen says who gave it up
                         addLog('Player ' + remoteP + ' forfeits the match.');
                         checkWin();
                         break;
@@ -2662,6 +2671,15 @@
                     if (_dupR.length) {
                         addLog('⚠️ Rejected opponent party config: the same unit twice (' + _dupR.join(', ') + ').');
                         console.warn('[NET GUARD] party-config rejected — duplicate race:', _dupR);
+                        return;
+                    }
+                }
+                /* THE DEMO (2026-11-10): a demo room refuses a champ outside the demo roster the same way */
+                if (typeof teamDemoBarredRaces === 'function') {
+                    var _demoR = teamDemoBarredRaces(data.meta.map(function (m) { return m && m.race; }).filter(Boolean));
+                    if (_demoR.length) {
+                        addLog('⚠️ Rejected opponent party config: not in the Demo roster (' + _demoR.join(', ') + ').');
+                        console.warn('[NET GUARD] party-config rejected — outside the demo roster:', _demoR);
                         return;
                     }
                 }
@@ -3556,6 +3574,21 @@
                     console.warn('[SQUAD] the room is ' + _need + 'v' + _need + ', the squad has ' + NET._squad.slots.length);
                     return false;
                 }
+                /* THE DEMO (2026-11-10): a demo room fields the demo roster only — a squad with a champ outside it (or an
+                   unlock this account does not own yet) never locks in; the status line says which */
+                if (typeof demoModeOn === 'function' && demoModeOn()) {
+                    var _dBar = NET._squad.slots.map(function (s) { return String((s && s.race) || '').toLowerCase(); })
+                        .filter(function (r, i, a) { return r && a.indexOf(r) === i && typeof isUnitUnlocked === 'function' && !isUnitUnlocked(r); });
+                    if (_dBar.length) {
+                        var _dNames = _dBar.map(function (r) { return (typeof RACE_PROFILES !== 'undefined' && RACE_PROFILES[r] && RACE_PROFILES[r].label) || r; }).join(', ');
+                        var _dt = document.getElementById('rrStatusText');
+                        if (_dt) _dt.textContent = 'This room plays the Demo roster. Not available: ' + _dNames + '. Leave and deploy a squad from the Demo roster.';
+                        var _dst = document.getElementById('rrMeState');
+                        if (_dst) { var _dsp = _dst.querySelector('span'); if (_dsp) _dsp.textContent = 'Not in the Demo'; }
+                        console.warn('[SQUAD] demo room: outside the demo roster or locked:', _dBar);
+                        return false;
+                    }
+                }
                 var seat = NET.myPlayer === 2 ? 2 : 1;
                 if (typeof window._ewApplySquad !== 'function' || !window._ewApplySquad(seat, NET._squad)) return false;
                 NET._waitingForOpponent = false;
@@ -3607,6 +3640,7 @@
                 NET._squadKept = false;
                 try { sessionStorage.removeItem('ew_rejoinMap'); sessionStorage.removeItem('ew_rejoinSquad'); } catch (e) {}
                 NET.friendlyConfig = null;
+                NET._roomDemo = undefined;   // THE DEMO: the last room's switch never follows the seat out
                 NET._squad = null;   // THE SQUAD DESK: the lobby's copy (window._ewSquad stays for the next queue)
                 if (window._ewReadyRoomClose) window._ewReadyRoomClose(true);
                 window._ewResetOnlineMatchFlags(true);   // THE NEXT ROOM: every per-match flag, the arena waits included
@@ -3642,7 +3676,10 @@
             };
 
             function _friendlyGetConfig() {
-                return { mode: _friendlyMode, mapId: _friendlyMapId, teamSize: _friendlySize, rounds: _friendlyRounds };
+                /* THE DEMO (2026-11-10): the host's Demo switch decides for the room — it rides the config, the guest reads it
+                   as NET._roomDemo (data.js demoModeOn) */
+                return { mode: _friendlyMode, mapId: _friendlyMapId, teamSize: _friendlySize, rounds: _friendlyRounds,
+                         demo: (typeof demoModeOn === 'function') ? !!demoModeOn() : false };
             }
 
             function _friendlyEmitConfig() {
@@ -4077,11 +4114,12 @@
                 var st = window._gameState;
                 return !!(st && (st.winner || st._winCondition === 'draw'));
             }
-            function _ewSetRematchBtn(text, disabled) {
+            /* note + tone = the result screen's rematch line (battle.js _vicRematchNote): every button state says in a
+               full sentence what is going on (end screens 2026-11-10) */
+            function _ewSetRematchBtn(text, disabled, note, tone) {
                 var b = document.getElementById('nextMatchBtn');
-                if (!b) return;
-                b.textContent = text;
-                b.disabled = !!disabled;
+                if (b) { b.textContent = text; b.disabled = !!disabled; }
+                if (note != null && typeof window._vicRematchNote === 'function') window._vicRematchNote(note, tone || '');
             }
 
             function _hideReconnectOverlay(keepPaused) {
@@ -4119,10 +4157,16 @@
                 try { ['ew_rejoinToken', 'ew_rejoinRoom', 'ew_rejoinRole', 'ew_rejoinMap', 'ew_rejoinSquad'].forEach(function(k) { sessionStorage.removeItem(k); }); } catch (e) {}
                 var panel = document.createElement('div');
                 panel.id = 'reconnectOverlay';
-                panel.style.cssText = 'position:fixed;top:20px;left:10%;width:80%;z-index:99999;padding:20px;background:#211824;color:white;text-align:center';
+                /* a PS1 window with a red way out (end screens 2026-11-10: it was a bare strip with the browser's own grey button) */
+                panel.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box;z-index:99999;padding:16px 22px 18px;' +
+                    'background:linear-gradient(180deg,#141a3a,#0a0d22);border:2px solid #d9dceb;box-shadow:0 0 0 2px #05060f,0 12px 34px rgba(0,0,0,0.7);color:#eef1ff;text-align:center;' +
+                    "font:13px/1.5 'IBM Plex Mono',monospace;letter-spacing:0.04em;";
                 var label = document.createElement('p');
+                label.style.cssText = 'margin:0 0 12px;overflow-wrap:anywhere;';
                 label.textContent = reason;
                 var button = document.createElement('button');
+                button.style.cssText = "appearance:none;cursor:pointer;padding:9px 22px;font:700 12px/1 'IBM Plex Mono',monospace;letter-spacing:0.14em;text-transform:uppercase;" +
+                    'color:#ffd0ca;background:linear-gradient(180deg,#4a1512,#2a0b09);border:2px solid #e0453a;border-radius:0;';
                 button.textContent = 'Return to Main Menu';
                 button.onclick = function() { window._ewHideReconnectBanner(); backToMainMenu(); };
                 panel.appendChild(label); panel.appendChild(button);
@@ -4254,7 +4298,7 @@
                                     _hideReconnectOverlay();
                                     NET.connected = true;
                                     NET._rematchState = null;
-                                    _ewSetRematchBtn('Request Rematch', false);
+                                    _ewSetRematchBtn('Request Rematch', false, 'Back in the room. Both players must agree to a rematch.', '');
                                     ewToast('Reconnected.', 2000);
                                     return;
                                 }
@@ -4279,7 +4323,7 @@
                                     NET._wasInMatch = false;
                                     NET.connected = false;
                                     _hideReconnectOverlay();
-                                    _ewSetRematchBtn('Room Closed', true);
+                                    _ewSetRematchBtn('Room Closed', true, 'The room has closed. No rematch from this room.', 'off');
                                     ewToast('The room has closed — a rematch is no longer possible.', 4000);
                                     return;
                                 }
@@ -4300,7 +4344,7 @@
                         NET._wasInMatch = true;
                         if (_ewPostMatch()) {
                             /* the result stays on screen; only the rematch waits for the socket */
-                            _ewSetRematchBtn('Reconnecting…', true);
+                            _ewSetRematchBtn('Reconnecting…', true, 'Connection lost. Reconnecting to the room. Your seat is held for 5 minutes.', 'wait');
                             ewToast('Connection lost — reconnecting…', 3000);
                             return;
                         }
@@ -4319,7 +4363,9 @@
                     NET.matchId = data.matchId;
                     /* a FAILED recovery left _recovering latched (state-sync is ignored while it is set); a fresh room
                        clears it (2026-10-21 PvP audit #15). A live recovery (_recoveryFailed false) is untouched. */
-                    if (NET._recoveryFailed) NET._recovering = false;
+                    /* the old room's "could not rejoin" window leaves with it (end screens 2026-11-10: a page reloaded on a
+                       closed room kept that window over the whole of its next match and its result screen) */
+                    if (NET._recoveryFailed) { NET._recovering = false; _hideReconnectOverlay(true); }
                     NET._recoveryFailed = false;
                     window._ewResetOnlineMatchFlags(false);   // THE NEXT ROOM: a fresh room starts from clean match flags
 
@@ -4469,11 +4515,11 @@
                         if (data.postMatch && data.reconnectable) {
                             /* THE RESULT HOLD: they dropped, their seat is kept — the rematch waits for them */
                             ewToast('Your opponent lost connection — waiting for them to come back.', 4000);
-                            _ewSetRematchBtn('Opponent Reconnecting…', true);
+                            _ewSetRematchBtn('Opponent Reconnecting…', true, 'Your opponent lost connection. Their seat is held for 5 minutes.', 'wait');
                             return;
                         }
                         ewToast('Your opponent left the match.', 4000);
-                        _ewSetRematchBtn('Opponent Left', true);
+                        _ewSetRematchBtn('Opponent Left', true, 'Your opponent left. No rematch from this room.', 'off');
                         return;
                     }
 
@@ -4569,7 +4615,7 @@
                         /* both seats are back on the result: votes cast before the drop are void on the server too */
                         NET._rematchState = null;
                         if (data.role !== NET.role) ewToast('Your opponent is back.', 2500);
-                        _ewSetRematchBtn('Request Rematch', false);
+                        _ewSetRematchBtn('Request Rematch', false, 'Both players are back. Both must agree to a rematch.', '');
                     }
                 });
                 NET.socket.on('match-generation', function(data) {
@@ -4597,13 +4643,13 @@
                         window.location.reload();
                     } else {
 
-                        ewToast('Your opponent failed to reconnect — you win by forfeit!', 5000);
+                        ewToast(data.reason === 'turn-timer' ? 'Your opponent held the turn too long. You win by forfeit!' : 'Your opponent failed to reconnect. You win by forfeit!', 5000);
                         if (typeof window.triggerOnlineForfeitWin === 'function') {
-                            window.triggerOnlineForfeitWin(forfeitPlayer);
+                            window.triggerOnlineForfeitWin(forfeitPlayer, data.reason);
                             /* the server closed the room with the forfeit: no rematch with nobody (the result screen
                                sets its button a moment after it opens, so this lands after it) */
                             NET.connected = false;
-                            setTimeout(function() { if (_ewPostMatch()) _ewSetRematchBtn('Opponent Left', true); }, 1500);
+                            setTimeout(function() { if (_ewPostMatch()) _ewSetRematchBtn('Opponent Left', true, 'Your opponent is gone and the room has closed. No rematch from this room.', 'off'); }, 1500);
                         } else {
 
                             if (typeof addLog === 'function') addLog('Opponent forfeited (disconnect timeout). You win!');
@@ -4641,6 +4687,11 @@
                 NET.socket.on('friendly-config', function(data) {
                     if (NET.role !== 'guest') return;
                     NET.friendlyConfig = data;
+                    if (data && typeof data.demo === 'boolean') {   // THE DEMO: the host's switch is the room's
+                        var _demoWas = NET._roomDemo;
+                        NET._roomDemo = data.demo;
+                        if (data.demo && !_demoWas && NET._squad && typeof window._ewSquadAutoLock === 'function') window._ewSquadAutoLock();   // say so at once if this squad is outside the demo roster
+                    }
                     if (data && data.mapId && typeof window._ewOnlineArenaPrep === 'function') window._ewOnlineArenaPrep(data.mapId);   // THE ARENAS ONLINE
 
                     var hostStatus = document.getElementById('lobbyHostStatus');
@@ -4749,6 +4800,7 @@
                                 btn.textContent = 'Accept Rematch';
                                 btn.disabled = false;
                             }
+                            if (typeof window._vicRematchNote === 'function') window._vicRematchNote('Your opponent wants a rematch. Press ACCEPT REMATCH to play again.', 'call');
                         }
 
                         if (NET._rematchState[1] && NET._rematchState[2]) {
@@ -7165,17 +7217,21 @@
                     var _hs = window._gameState;
                     var _holdOn = NET.online && NET.rejoinToken && NET.roomCode && _hs && _hs.phase === 'battle' && !_ewPostMatch() && !NET._recoveryFailed;
                     if (_holdOn && typeof window._ewSeatHoldStart === 'function') window._ewSeatHoldStart(NET.roomCode, NET.rejoinToken);
+                    else if (!_holdOn && !NET._wasInMatch && !NET._recovering && window._ewSeatHold && window._ewSeatHold.running && window._ewSeatHoldStop) window._ewSeatHoldStop();
                     /* THE ROOM ON A RELOAD: the fight's map is kept beside the rejoin keys, so a reloaded page surveys the
                        arena's room while its socket is still connecting */
                     if (_holdOn) { try { if (typeof activeGameMode !== 'undefined' && activeGameMode) sessionStorage.setItem('ew_rejoinMap', String(activeGameMode)); } catch (e) {} }
                     /* THE SQUAD ON A RELOAD: the squad rides along too, so a reloaded page's REMATCH fields the same squad by
                        itself (without it the page fell to the party builder while the other seat sat locked and waiting) */
                     if (_holdOn && NET._squad && !NET._squadKept) { try { sessionStorage.setItem('ew_rejoinSquad', JSON.stringify(NET._squad)); NET._squadKept = true; } catch (e) {} }
-                    else if (!_holdOn && !NET._wasInMatch && !NET._recovering && window._ewSeatHold && window._ewSeatHold.running && window._ewSeatHoldStop) window._ewSeatHoldStop();
                 } catch (e) {}
-                /* THE CHIP LEAVES WITH THE ROOM (PvP playtest 2026-11-09 F8, seen again in the two-seat check 2026-11-10): the
-                   chip was only ever written, never taken down, so "Online — Room XUCNZ" stayed over the menus, the party
-                   builder and the next room's Share Code screen after its room had closed */
+                if (!NET.online) {
+                    /* no session, no room chip (PvP playtest 2026-11-09 F8: the chip stayed up over later offline matches) */
+                    var _stale = document.getElementById('netStatusIndicator'); if (_stale) _stale.remove();
+                    return;
+                }
+                /* a session whose room is gone hides the chip too (two-seat check 2026-11-10: a reloaded host kept NET.online
+                   after its room closed) */
                 var ind = document.getElementById('netStatusIndicator');
                 if (!NET.online || !NET.roomCode) { if (ind && ind.style.display !== 'none') ind.style.display = 'none'; return; }
                 if (ind && ind.style.display === 'none') ind.style.display = '';

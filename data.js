@@ -7343,12 +7343,12 @@ const RACE_ABILITIES = {
           desc: 'The rot takes hold: a Single Enemy in melee joins the horde for its next 2 activations — yours to move and swing, melee only, with +1 ATK and +1 SPD stage. Applies Infected. Shambling Horde hits Infected targets harder. Bosses cannot be infected.' },
         /* §6.18 Cannibalize (Phase 5 wave B, 2026-09-08): corpse-targeted
            (the raiseDead targeting, `cannibalize` kind) — eat an ENEMY's unconsumed
-           remains within 2 tiles (enemyRemainsOnly, playtest 2026-11-07 H6): heal 35% max HP, the corpse's respawn
+           remains within 2 tiles (an ally's too since 2026-11-10, mondo's rule 1 B; never the feeder's own grave): heal 35% max HP, the corpse's respawn
            timer +2 rounds, the remains are gone (no revive, no raising). */
         { id: 'raceCannibalize', tier: 2, families: ['zombie'], spellType: 'unholy', element: 'poison', name: 'Cannibalize',
           type: 'heal', cost: 25, range: 2, apCost: 1,
           kind: 'cannibalize', healPct: 0.35, corpseDelay: 2,
-          desc: 'Feeds on a fallen enemy\'s remains (their bones) within 2 tiles. Heals 35% of max HP and, while that enemy is still down, delays its respawn by 2 rounds. A grave stays where a unit fell after it respawns, and can be fed on too. The remains are consumed.' },
+          desc: 'Feeds on a fallen unit\'s remains within 2 tiles: an enemy\'s bones or an ally\'s gravestone. Heals 35% of max HP and, while that unit is still down, delays its respawn by 2 rounds. A grave stays where a unit fell after it respawns, and can be fed on too. The remains are consumed.' },
         _mkCharge({ id: 'raceZombieRush', tier: 2, families: ['zombie'], spellType: 'unholy', name: 'Zombie Rush', dmg: 130, desc: 'Deals MEDIUM physical damage to a Single Enemy. The caster charges into melee first.' }),
         { id: 'raceOutbreak', upgradesBlock: ['upWiden'], tier: 3, families: ['zombie'], spellType: 'unholy', element: 'poison', name: 'Outbreak',
           type: 'debuff', cost: 55, range: 4, apCost: 1,
@@ -7526,7 +7526,7 @@ const RACE_ABILITIES = {
         { id: 'sigPixiePrank', name: 'Pixie Prank', tier: 1, families: ['pixie'], cost: 25, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', vfxElement: 'light', type: 'debuff', kind: 'debuff', range: 4,
           statusEffects: [{ id: 'minimize', duration: 2 }],
-          desc: 'A tap of the wand and they are pocket-sized. A Single Enemy within 4 tiles is Minimized for 2 rounds: −2 ATK stages. Cooldown: 2 rounds.' },
+          desc: 'A tap of the wand and they are pocket-sized. A Single Enemy within 4 tiles is Minimized for 2 rounds: −2 ATK stages, and it dodges basic attacks 25% of the time. Cooldown: 2 rounds.' },
         { id: 'sigFireflySwarm', name: 'Firefly Swarm', tier: 3, families: ['pixie'], cost: 75, apCost: 1, spellType: 'anomaly',
           vfxElement: 'light', element: 'lightning', type: 'damage', kind: 'splitBeam', damageType: 'magic', dmg: 120, range: 4,
           splitCount: 3, splitDmg: 60, splitRadius: 2, bonusVsStatus: { status: 'minimize', mult: 1.5 },
@@ -10203,7 +10203,7 @@ const RACE_ABILITIES = {
           type: 'heal', tier: 3, families: ['ghoulish'], cost: 20, range: 2, apCost: 1, cooldownRounds: 2,
           kind: 'cannibalize', healPct: 0.5, corpseDelay: 2,   // THE SPELL AUDIT Batch D: corpse-gated, like Cannibalize
           statStageBoost: { atk: 1 },
-          desc: 'Feeds on a fallen enemy\'s remains (their bones) within 2 tiles. Heals 50% of max HP and raises ATK by 1 stage. The remains are consumed and, while that enemy is still down, its respawn is delayed 2 rounds. A grave stays where a unit fell after it respawns, and can be fed on too.' },
+          desc: 'Feeds on a fallen unit\'s remains within 2 tiles: an enemy\'s bones or an ally\'s gravestone. Heals 50% of max HP and raises ATK by 1 stage. The remains are consumed and, while that unit is still down, its respawn is delayed 2 rounds. A grave stays where a unit fell after it respawns, and can be fed on too.' },
         SHARED_POISON_SWAMP,
     ],
     'gnome': [
@@ -12507,7 +12507,9 @@ const STATUS_DEFS = {
     /* 😱 Feared: hard CC. At its next activation the unit spends its move
        fleeing the source (_fearSourceId; battle.js _fearFleeMove picks the
        reachable tile farthest from it) and can neither attack nor cast —
-       the activation ends after the flight. 1 round. Terror Pounce ×1.5. */
+       the activation ends after the flight, and so does the fear (mondo
+       2026-11-10, rule 10 B: one flee ends it whatever its length; a
+       cornered unit that could not run keeps it). Terror Pounce ×1.5. */
     feared: {
         icon: '😱',
         glyph: '😱',
@@ -13392,9 +13394,10 @@ const STATUS_DEFS = {
         kind: 'debuff',
         category: 'status',
         stack: 'replace',
-        // Head over heels: a charmed unit can't move or act (its AI valuation
-        // and resist entry always treated it as hard CC — now it actually is).
+        // Head over heels: a charmed unit can't move, and (mondo 2026-11-10, rule 7 B) can't attack or
+        // cast at its charmer (battle.js getCharmer, _charmSourceId); everything else it may still do.
         blockMove: true,
+        onRemove(unit) { if (unit) delete unit._charmSourceId; },
         iconSrc: createStatusIconDataUri('💋', '#3a1a2a', '#ffd6e8', '#d45a8a')
     },
     /* (sirenSong deleted 2026-08-10 — the "lured 1 tile at end of round"
@@ -13550,7 +13553,7 @@ const STATUS_LIBRARY_DESCS = {
     haunted:   'Wracked by a restless spirit: takes 28 base damage at the end of every round (DEF and M DEF ignored). Boo hits Haunted targets harder.',
     corroded:  'Eaten by chemical fire: takes 44 base damage at the end of every round (DEF ignored). Counts as BOTH Burn and Poison for every payoff. Burn and Poison together become Corroded, and fire on a poison bog corrodes everyone in it. Water puts the fire out and leaves the Poison.',
     grievous:  'A wound that will not close: healing received is halved.',
-    feared:    'Paralysed with fear: no attacks, no spells. Every activation while it lasts is spent fleeing from what frightened it (a 1-round fear = one flee).',
+    feared:    'Paralysed with fear: no attacks, no spells. Its next activation is spent fleeing from what frightened it, and the fear ends with that flight. A unit with nowhere to run cowers and stays Feared.',
     possessed: 'A hostile will steers this body: the possessor\'s player controls the unit for its next activation(s), whole kit included.',
     infected:  'The rot spreads: the zombie\'s player controls the unit for 4 activations — melee only, but +1 ATK and +1 SPD stage.',
     stoneform: 'Turned to stone: cannot move or act (the turn is skipped) and immune to all damage, regenerating 15% max HP a round. Cannot be cleansed or dispelled.',
@@ -13590,11 +13593,11 @@ const STATUS_LIBRARY_DESCS = {
     hourglass: 'Carrying a secured Key — its charge empowers the bearer.',
     scanner:   'Scanned — this unit is revealed and tracked.',
     invisible: 'Cannot be seen or directly targeted by enemies. Attacking, an attack spell or taking a hit from an enemy reveals it; moving, buffs and heals do not.',
-    charm:     'Beguiled: cannot move at all while it lasts, but can still attack and cast. Evasion drops to zero.',
+    charm:     'Beguiled: cannot move at all while it lasts, and cannot attack or cast at the unit that charmed it. It can still attack and cast at anyone else. Evasion drops to zero.',
     indomitable: 'Refuses to die: the next killing blow leaves this unit at 1 HP.',
     contract:  'Bound by an infernal contract: 40% of any damage this unit deals is siphoned to the contract-holder as healing.',
     taunt:     'Provoked — must direct attacks at the taunter.',
-    minimize:  'Shrunk down to toy size: −2 ATK stages while it lasts.',
+    minimize:  'Shrunk down to toy size: −2 ATK stages while it lasts, and harder to hit: it dodges basic attacks 25% of the time. Spells still always land.',
     statLock:  'Stats are locked and cannot be raised or lowered.',
     quickened: 'Light on their feet: +1 move while it lasts.',
     hexed:     'Cursed: every move, jump, climb or spell cast feeds the hex and deals 36 base damage. Basic attacks do not.',
@@ -13723,6 +13726,65 @@ const ACCT_STARTER_UNITS = [
   'honda civic',    // the Sedan
 ];
 
+/* ══ THE DEMO (mondo 2026-11-10: the PvP demo set — "everyone can start off with the same 16 and can unlock up to 32") ══════════
+   An OPTIONAL filter, never a deletion: with the Demo switch on, the roster is these 32 champs and the map lists deal these
+   arenas; with it off the whole game is there as before. Nothing in AVAILABLE_RACES, the spell lists or the maps is touched.
+     starters  the 16 every player fields from the first match (owned by everyone while the Demo is on)
+     unlocks   the 16 more a player unlocks the way units are already unlocked (the Shop: ACCT_UNIT_PRICE / a free token)
+     arenas    the site ids the map lists deal (the 12×12 arenas of seven sites + the Training Room and the Holo Sim, which
+               are 8×8 VS CPU boards: an online room only deals 9–12 boards, so online plays the seven)
+     on        the SHIPPED default. false = off for everyone until a browser turns it on (Settings > Display > Demo, or
+               ?demo=1 / ?demo=0 in the address); true = the whole game ships as the demo (the server's Quick Play pool reads
+               hqArenaPvpPool, so it deals the demo arenas too).
+   Online the HOST's switch decides for the room (it rides friendly-config as `demo`; a guest reads NET._roomDemo).
+   The reads: demoModeOn() · demoRaceIn(race) · demoRaceFree(race) · demoArenaIn(mapId) · demoRacePool(list). */
+const DEMO_RULES = {
+    on: false,
+    starters: ['knight', 'zombie', 'bigfoot', 'door agent', 'catgirl', 'shadow entity', 'robinhood', 'martian',
+               'djinn', 'mummy', 'angel', 'mermaid', 'grey', 'mothman', 'honda civic', 'quarterback'],
+    unlocks:  ['general', 'nephilim', 'ki fighter', 'king kong', 'goatman', 'mantid', 'cosmic wraith', 'anubis',
+               'professor', 'starfish', 'dreameater', 'hippie', 'mushroom girl', 'ai', 'glitch', 'sidekick'],
+    arenas:   ['prebuilt_training', 'prebuilt_holosim', 'prebuilt_lookingglass', 'prebuilt_fairy_forest', 'prebuilt_technoticlan',
+               'prebuilt_stonehenge', 'prebuilt_revenge', 'prebuilt_northpole', 'prebuilt_hell'],
+};
+(function _demoBootRead() {   // the browser's own switch: ?demo=1|0 wins and is remembered, else the stored choice
+    if (typeof window === 'undefined') return;
+    try {
+        const q = (typeof location !== 'undefined' && location && typeof location.search === 'string') ? /[?&]demo=([01])\b/.exec(location.search) : null;
+        if (q) { window._ewDemoMode = q[1] === '1'; try { localStorage.setItem('ew_demo_mode', q[1]); } catch (e) {} return; }
+        const s = localStorage.getItem('ew_demo_mode');
+        if (s === '1' || s === '0') window._ewDemoMode = s === '1';
+    } catch (e) {}
+})();
+function demoModeOn() {
+    if (typeof window === 'undefined') return !!DEMO_RULES.on;
+    try { const N = window._NET; if (N && N.online && N.role === 'guest' && typeof N._roomDemo === 'boolean') return N._roomDemo; } catch (e) {}
+    if (typeof window._ewDemoMode === 'boolean') return window._ewDemoMode;
+    return !!DEMO_RULES.on;
+}
+function setDemoMode(on) {
+    if (typeof window === 'undefined') return;
+    window._ewDemoMode = !!on;
+    try { localStorage.setItem('ew_demo_mode', on ? '1' : '0'); } catch (e) {}
+}
+const _demoKey = r => String((r && typeof r === 'object' ? r.race : r) || '').toLowerCase();
+function demoRaceFree(race) { return DEMO_RULES.starters.indexOf(_demoKey(race)) >= 0; }
+function demoRaceIn(race) { const k = _demoKey(race); return DEMO_RULES.starters.indexOf(k) >= 0 || DEMO_RULES.unlocks.indexOf(k) >= 0; }
+/* a map id (a site, its `_delta` arena or a `_NxN_delta` cut) belongs to a demo site */
+function demoArenaIn(mapId) {
+    const id = String(mapId || '');
+    if (typeof EW_MAP_META !== 'undefined') { const row = EW_MAP_META.find(m => m && m.id === id); if (row && row.voxel) return false; }   // a site's old "Δ · voxel" board is not its arena
+    const site = (typeof hqSiteId === 'function') ? hqSiteId(id) : id.replace(/(_\d+x\d+)?_delta$/, '');
+    return DEMO_RULES.arenas.indexOf(site) >= 0 || DEMO_RULES.arenas.indexOf(id) >= 0;
+}
+/* a pool of races cut to the demo roster while the Demo is on (the CPU's picks, the random rolls); never an empty pool */
+function demoRacePool(list) {
+    if (!demoModeOn() || !Array.isArray(list)) return list;
+    const cut = list.filter(demoRaceIn);
+    return cut.length ? cut : list;
+}
+if (typeof window !== 'undefined') { window.DEMO_RULES = DEMO_RULES; window.demoModeOn = demoModeOn; window.setDemoMode = setDemoMode; window.demoRaceIn = demoRaceIn; window.demoRaceFree = demoRaceFree; window.demoArenaIn = demoArenaIn; window.demoRacePool = demoRacePool; }
+
 // PvP modes that bank account gold. Gauntlet/Challenge route through their own
 // campaign economy and are intentionally excluded here.
 const ACCT_PVP_MODES = ['arena', 'tdm', 'clash'];
@@ -13761,6 +13823,7 @@ function _ownedProfileRead() {
 function isUnitOwned(raceKey) {
   if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true; // dev override, view-layer only
   if (typeof isRace3DReady === 'function' && !isRace3DReady(raceKey)) return false;
+  if (demoModeOn() && demoRaceFree(raceKey)) return true;   // THE DEMO: the 16 starters are everyone's
   const prof = _ownedProfileRead();
   const acct = prof ? prof.account : null;
   /* THE ONE-WAY DOOR (2026-09-25, the user: "if you caught an enemy then why would you need to buy it in the shop? It should
@@ -13774,6 +13837,9 @@ function isUnitOwned(raceKey) {
 function isUnitUnlocked(raceKey) {
   if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true; // dev override, view-layer only
   if (typeof isRace3DReady === 'function' && !isRace3DReady(raceKey)) return false;
+  /* THE DEMO: the roster is the 32 — the 16 starters free, the 16 unlocks once they are on the account (isUnitOwned),
+     online and VS CPU alike; nothing outside the 32 is fielded while the switch is on */
+  if (demoModeOn()) return demoRaceIn(raceKey) && isUnitOwned(raceKey);
   if (unitRosterScope() === 'all') return true;   // THE ROSTER LOCK: online / the classic VS CPU / the range = the whole roster
   return isUnitOwned(raceKey);
 }
@@ -24858,14 +24924,16 @@ const CAMPAIGN_REGION_THEMES = {
    VISION replaced it — and every race's CRT was seeded with exactly the
    percent its old AWR gave, so no crit odds moved.)
    Combat context on top (battle.js): a crit deals ×1.8 damage
-   (Gunslinger ×2.0); back-arc attacks can't be dodged; a blinded
+   (Gunslinger ×2.0); back-arc attacks can't be dodged; a Minimized
+   target dodges at the 25% cap (mondo 2026-11-10); a blinded
    attacker misses half the time; hard CC (stun/freeze/root) sets EVA to 0;
    spells never crit and can't be dodged. */
 function critChanceFromStats(crt) {
   return Math.max(0, Math.min(1, (Number(crt) || 0) / 100));
 }
+const EVASION_CAP = 0.25;   // the top dodge: the formula's cap, and what a Minimized unit dodges at (battle.js getEvasionChance)
 function evasionChanceFromStats(move) {
-  return Math.min(0.25, 0.06 + Math.min(0.10, (move || 0) * 0.018));
+  return Math.min(EVASION_CAP, 0.06 + Math.min(0.10, (move || 0) * 0.018));
 }
 
 /* ── STAT LETTER GRADES (2026-08-29 stat rework, STAT_REWORK.md) ───────────
@@ -27640,7 +27708,7 @@ const TUTORIAL_LESSONS = [
               allow: ['move', 'attack', 'end'],
               goal: { type: 'attack', unit: 'p1-0', target: 'p2-0', arc: 'back' } },
             { id: 'guard', title: 'OVERWATCH',
-              say: 'SCOPE: <b>GUARD</b>. It ends the turn, raises DEF, wins back a little HP and MP, and arms <b>OVERWATCH</b> — the first enemy to finish a move inside SCOPE\'s range takes a reaction shot.',
+              say: 'SCOPE: <b>GUARD</b>. It ends the turn, raises DEF, wins back a little HP and MP, and arms <b>OVERWATCH</b> — the first enemy to end up inside SCOPE\'s range, however it got there, takes a reaction shot.',
               hint: 'GUARD',
               focus: { hud: 'guard' }, allow: ['guard', 'move', 'end'],
               goal: { type: 'guard', unit: 'p1-1' } },
@@ -63978,6 +64046,7 @@ function hqArenaPvpPool(teamSize) {
         if (m.sizeOf ? (e.w | 0) === S12 : (e.w | 0) !== S12) return false;   // THE ARENA SIZES: the 12 is the site's own row, the rest are `sizeOf` rows
         if (teamSize && hqArenaTeamFor(e.w) !== (teamSize | 0)) return false;   // a team size deals only its boards (4: the 10s + 12s, 5: the 9s + 11s)
         const site = hqSiteId(m.id);
+        if (demoModeOn() && !demoArenaIn(m.id)) return false;   // THE DEMO: the room / the queue deals the demo arenas only
         return !!m.arena || keep.includes(site);
     }).map(m => m.id);
 }

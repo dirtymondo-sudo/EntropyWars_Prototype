@@ -5060,3 +5060,28 @@ board 125+ -> 0, self facing along the row 144-157 -> 0, on an ally two squares 
 now: cut to the close-up, cut back to the player's own angle on the shielded units, short slide home.
 Not compared: the `buff` family's glam beat (Protect ends the turn; it still opens with the new rule). Not run with two
 seats (the guest runs the same rigs on the relayed shot). Tools + proof: /mnt/project-files/pupil-shield-camera-20261110/.
+
+## THE SIX RULE ANSWERS (2026-11-10, mondo's answers on the "PvP demo set and open rules" doc: 1B 2A 3A 4A 5A 6C 7B 8B 9A 10B 11B 12A)
+Kept as they were (A): delayed blasts hit enemies only (2), Guard restores twice (3), a thrown body can land on an ally (4), a
+tackle into a wall pays its bonus and the slam (5), Marked is used up by a physical hit / basic attack only (9), the R10 storm bolt
+runs through water / metal squares only (12). Changed:
+- 1 EITHER SIDE'S REMAINS: Cannibalize and Carrion Feast eat an enemy's bones OR an ally's gravestone (battle.js
+  spellCorpseUsable; SPELL_KIND_META `notOwnGrave` bars only the feeder's own left grave). Same heal, same +corpseDelay on a body
+  still down, ally or enemy. ai.js picks an enemy's remains first, an ally's only when none is in reach.
+- 6 EVERY ARRIVAL SETS OFF OVERWATCH: resolveTileArrival's `finally` calls checkOverwatchTriggers for every `via` but 'move' and
+  'climb' (those call it themselves after their own slide), where the body came to rest: pushed, pulled, thrown, dashed,
+  teleported, through a door. One shot per Guard stance as before; fog / invisible / range / LOS gates unchanged. Host-side like
+  the walk's shot, same relays.
+- 7 NO HAND RAISED TO THE CHARMER: battle.js getCharmer(unit) (unit._charmSourceId, stamped in applyStatusPayload, dropped by
+  STATUS_DEFS.charm.onRemove). A Charmed unit cannot basic-attack, counter, Overwatch-shoot or aim a unit-targeted offensive cast
+  at its charmer (doAttack / doSpell gates, the three target drums, hud.js quick menu rows, ai.js getTargetPriority + the ward
+  forecast). Tile / area / directional casts stay free, like Provoke. It still cannot move; it may act on anyone else.
+- 8 MINIMIZED IS HARDER TO HIT (his card pick: "Dodge at the 25% cap"): getEvasionChance returns data.js EVASION_CAP (0.25) for
+  a unit with `minimize`; hard CC still zeroes it, spells still always land, a back-arc swing still can't be dodged.
+- 10 ONE FLEE ENDS THE FEAR: the feared activation clears `feared` after _fearFleeMove actually ran; a cornered unit that
+  cowered keeps it.
+- 11 ONE WET WEATHER AT A TIME: state.js weathersOppose is also true for two DIFFERENT wet weathers (Thunderstorm, Hurricane,
+  Blood Rain, Blizzard), so the three opposite-weather paths apply: a cast one drives the one up off, the natural roll never forms
+  a second, tickWeather settles a leftover pair. The same weather recast still renews. Two dry weathers may stand together.
+Status page lines (charm, feared, minimize), the two feed spells' text, Pixie Prank's text and the FACING lesson's Overwatch line
+were rewritten to match. Not played in a browser (boot + function probe only); not run with two seats.

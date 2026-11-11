@@ -837,7 +837,7 @@
             shadowRealm:  { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
             link:         { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true, twoClick: true },
             transfer:     { minRange: 0, offensive: false, allyOnly: true, fogExempt: true, noStrikeLeap: true, twoClick: true },
-            cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true, enemyRemainsOnly: true },
+            cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true, notOwnGrave: true },
             // CHAMP_REWORK_PLAN §5.3 (Phase 6, 2026-09-08):
             // steal — a grab: the hit lands, then the target's Keys / items
             //   change hands (stealKeys / stealItems; Hit a Lick — the pirate's
@@ -5196,6 +5196,13 @@
                 return fired;
             } finally {
                 _chainDepth = depth;
+                /* 👁 EVERY ARRIVAL SETS OFF OVERWATCH (mondo 2026-11-10, open rule 6 "C"): a walk, jump and climb fire it
+                   themselves after their own slide (doMove / doJump / the climb); every other way a body ends up on a
+                   square — pushed, pulled, thrown, dashed, teleported, through a door — fires it here, where the body came
+                   to rest (a body the chain moved on is the next arrival's). One shot per Guard stance as before. */
+                if (via !== 'move' && via !== 'climb' && !moved() && typeof checkOverwatchTriggers === 'function') {
+                    try { checkOverwatchTriggers(unit); } catch (e) { console.warn('[overwatch] arrival', e); }
+                }
                 if (fired) {
                     _chainFired += fired;
                     _chainFloat(unit, depth);
@@ -10793,6 +10800,7 @@
                the payload (partnerId / allyId) because the spell resolver is
                the only thing that knows both ends. */
             if (payload.id === 'feared' && sourceUnit) target._fearSourceId = sourceUnit.id;
+            if (payload.id === 'charm' && sourceUnit) target._charmSourceId = sourceUnit.id;   // 💋 the charmer it cannot raise a hand to (getCharmer)
             if (payload.id === 'tethered' && sourceUnit) target._tetherCasterId = sourceUnit.id;
             /* THE SPELL AUDIT Batch D: Barbed Rope's rope carries its own drag damage a tile (null = STATUS_DEFS' 20);
                Restless's Haunted jumps when its bearer dies (_restlessHauntJump). Plain unit fields — state-sync carries them. */
@@ -13586,9 +13594,12 @@
            eating it healed nothing at full HP and pushed that ally's respawn back 2 rounds). One rule for every corpse
            cast: unconsumed remains, and a kind wearing enemyRemainsOnly (Cannibalize, Carrion Feast) eats only an
            ENEMY's remains. Raise the Dead keeps both sides (its text: "an ally's gravestone or an enemy's pile of bones"). */
+        /* EITHER SIDE'S REMAINS (mondo 2026-11-10, open rule 1 "B": "an ally's remains can be eaten too"): Cannibalize and
+           Carrion Feast feed on an enemy's bones OR an ally's gravestone (same heal, same +corpseDelay on a body still
+           down). The one grave still barred is the feeder's own left grave (notOwnGrave). */
         function spellCorpseUsable(unit, spell, corpse) {
             if (!corpse || !corpse.dead || corpse._corpseConsumed) return false;
-            if (_kindMeta(spell).enemyRemainsOnly && (corpse._remainsOf === unit.id || !isEnemyUnit(corpse, unit))) return false;   // a left grave: its unit's own (FFA)
+            if (_kindMeta(spell).notOwnGrave && corpse._remainsOf === unit.id) return false;   // a left grave: its unit's own
             /* THE GRAVES STAY: a grave outlives its unit's respawn, so someone can be standing on it — Raise the Dead
                claws its zombie out of THAT square, so a body or a standing turret / summon / zombie on it blocks the raise */
             if (spell && spell.kind === 'raiseDead') {
@@ -15499,6 +15510,10 @@
             if (!unit) return 0;
             const stunned = getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove);
             if (stunned) return 0;
+            /* 🔬 MINIMIZED IS HARDER TO HIT (mondo 2026-11-10, open rule 8 "B", his pick on the card: "Dodge at the 25% cap"):
+               a shrunk unit dodges basic attacks at the game's own top dodge (data.js EVASION_CAP), whatever its MOV.
+               Hard CC above still drops it to zero; spells still always land; a back-arc swing still can't be dodged. */
+            if (unitHasStatus(unit, 'minimize')) return (typeof EVASION_CAP !== 'undefined') ? EVASION_CAP : 0.25;
             return evasionChanceFromStats(getEffectiveMove(unit) || 0);
         }
 
@@ -45135,7 +45150,7 @@
             state.boardTerrain = [];
             state.placed = false;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -45750,7 +45765,7 @@
                 case 'revive':        return 'Select a fallen ally to revive with ' + nm + '.';
                 case 'raiseDead':     return nm + ': select a fallen unit\'s remains — an ally\'s gravestone or an enemy\'s bones — to raise a zombie.';
                 case 'summonUnit':    return nm + ': select an empty tile beside you to call it to.';
-                case 'cannibalize':   return nm + ': select a fallen enemy\'s remains within reach to feed on.';
+                case 'cannibalize':   return nm + ': select a fallen unit\'s remains within reach to feed on.';
                 case 'possess':       return nm + ': select an enemy to take control of.';
                 case 'door':          return nm + ': pick an empty tile within ' + (spell.range || 4) + ' — a door opens there and its twin opens beside you. Or click one of your doors to open / shut it (free).';
                 case 'doorBreach':    return nm + ': select an enemy you can see — you come through beside them and strike from behind.';
@@ -52445,12 +52460,24 @@
             const careerStats = loadCareerStats();
             const _profileUsername = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : null;
             const streakHtml = !isNoContest && playerWon && careerStats.currentWinStreak >= 2 ? `<span class="vic-streak">🔥 ${careerStats.currentWinStreak} WIN STREAK</span>` : '';
-            const namePrefix = _profileUsername ? `<b class="vic-callsign">${escapeHtml(_profileUsername)}</b> ` : '';
+            /* THE NAME ON THE RESULT (playtest 2026-11-05 F5: "Player is defeated."): a profile nobody named yet is "You",
+               never the placeholder "Player"; a named profile keeps its call sign */
+            const _named = !!_profileUsername && String(_profileUsername).trim().toLowerCase() !== 'player';
+            const namePrefix = `<b class="vic-callsign">${_named ? escapeHtml(_profileUsername) : 'You'}</b> `;
+            const _vHold = _named ? 'holds the field.' : 'hold the field.', _vDown = _named ? 'is defeated' : 'are defeated';
+            /* a forfeit says so, and who (the pause menu's FORFEIT, a seat that never reconnected, a turn held too long) */
+            const _ff = (!isNoContest && !_encEsc) ? _forfeitOfThisMatch() : null;
+            const _ffMine = !!_ff && _ff.by === (ONLINE_RULES.active ? viewer : 1);
+            const _ffLine = !_ff ? '' : _ffMine
+                ? ({ disconnect: 'You were disconnected too long. The match is forfeit.', timer: 'You held the turn too long. The match is forfeit.' }[_ff.how] || 'You forfeited the match.')
+                : ({ disconnect: 'Your opponent did not reconnect in time. They forfeit the match.', timer: 'Your opponent held the turn too long. They forfeit the match.' }[_ff.how] || 'Your opponent forfeited the match.');
+            resultOverlay.classList.toggle('vic-online', !!ONLINE_RULES.active);
             vicSubtitle.innerHTML = isNoContest
                 ? `Match ${state.matchNumber} voided — the units could not engage.`
                 : (_encEsc && _encEsc.retreat) ? (namePrefix + 'slipped out of the fight. Nothing won, nothing lost · ' + escapeHtml(String((_encEsc.label || _encEsc.race || 'the native')).toUpperCase()) + ' STILL HAS THE ROOM')
-                : (_encEsc && _encEsc.escLoss) ? (namePrefix + 'is defeated · THE PARTY IS DOWN · ' + escapeHtml(_encEsc.escaped.join(', ').toUpperCase()) + ' GOT OUT')
-                : (namePrefix + (playerWon ? 'holds the field.' : 'is defeated.') + ((_encEsc && _encEsc.escaped && _encEsc.escaped.length) ? ' · ' + _encEsc.escaped.length + ' ESCAPED' : '') + ' ' + streakHtml);
+                : _ffLine ? (escapeHtml(_ffLine) + ' ' + streakHtml)
+                : (_encEsc && _encEsc.escLoss) ? (namePrefix + _vDown + ' · THE PARTY IS DOWN · ' + escapeHtml(_encEsc.escaped.join(', ').toUpperCase()) + ' GOT OUT')
+                : (namePrefix + (playerWon ? _vHold : _vDown + '.') + ((_encEsc && _encEsc.escaped && _encEsc.escaped.length) ? ' · ' + _encEsc.escaped.length + ' ESCAPED' : '') + ' ' + streakHtml);
 
             let particleHtml = '';
             if (playerWon && !use3d) {
@@ -52577,6 +52604,7 @@
                 facts.push(_winCondLabels[state._winCondition] + (_sc ? ` <b class="vic-fact-score"><span class="p1">${_sc[0]}</span> – <span class="p2">${_sc[1]}</span></b>` : ''));
             }
             if (state.suddenDeathActive && state._winCondition !== 'sudden_death') facts.push('⚡ SUDDEN DEATH');
+            if (_ff) facts.push('<b class="vic-fact-forfeit">🏳 FORFEIT</b>');
             vicMatchInfo.innerHTML = facts.map(f => `<span class="vic-fact">${f}</span>`).join('<span class="vic-fact-dot">·</span>');
 
             } catch (e) { _vicFail('the fact line', e); }
@@ -52663,12 +52691,21 @@
 
             } catch (e) { _vicFail('rewards + achievements', e); }
             try {
+            /* the bar's own buttons, as they stand now (the bar is rebuilt after an encounter, so never the boot-time handle) */
+            const _nmb = document.getElementById('nextMatchBtn') || nextMatchBtn, _sob = document.getElementById('startOverBtn');
             if (ONLINE_RULES.active) {
-                if (nextMatchBtn) nextMatchBtn.textContent = 'Request Rematch';
-                if (document.getElementById('startOverBtn')) document.getElementById('startOverBtn').style.display = 'none';
+                if (_nmb) _nmb.textContent = 'Request Rematch';
+                if (_sob) _sob.style.display = 'none';
+                _vicRematchNote('Both players must agree to a rematch. Same room, same round count.', '');
+            } else {
+                /* an offline result after an online one (end screens 2026-11-10: VS CPU after a room showed "RECONNECTING…"
+                   on the next-match button and no BACK TO PARTY BUILDER): the bar's offline words and buttons come back */
+                if (_nmb && !_nmb.classList.contains('enc-return')) _nmb.textContent = 'Find Next Match';
+                if (_sob) _sob.style.display = '';
+                _vicRematchNote('', '');
             }
 
-            nextMatchBtn.disabled = false;
+            if (_nmb) _nmb.disabled = false;
             if (exportLastMatchBtn) exportLastMatchBtn.disabled = !state.lastCompletedMatch;
             if (exportMatchHistoryBtn) exportMatchHistoryBtn.disabled = !state.matchHistory.length;
 
@@ -55602,7 +55639,7 @@
             hideResultOverlay();
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -55775,7 +55812,7 @@
                 state.matchNumber += 1;
                 state.winner = null;
                 state._winLogged = false;
-                state._winCondition = null; state._winCause = null;
+                state._winCondition = null; state._winCause = null; state._forfeit = null;
                 state._endingReason = null;
                 state._stalemateRounds = 0;
                 state._lastActivityTotal = 0;
@@ -55962,7 +55999,7 @@
             }
             state.aiThinking = false;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56403,7 +56440,7 @@
             state.selectedTool = null;
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56438,7 +56475,7 @@
             state.pendingTarget = null;
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56476,6 +56513,28 @@
             }
         }
 
+        /* THE FORFEIT ON THE RECORD (end screens 2026-11-10: a forfeit's result screen read like any win or loss, "4 v 4
+           STANDING" and nothing else): who gave the match up and how (quit = the pause menu, disconnect = never came back,
+           timer = held the turn too long). Cleared wherever a match clears its win condition (startTime is each seat's
+           own, so no key could match across seats). Plain data (a seat number), it rides the host's snapshot to the
+           guest; the result screen prints it as a fact and a subtitle. No rule reads it. */
+        function _forfeitMark(by, how) { state._forfeit = { by: by, how: how || 'quit' }; }
+        function _forfeitOfThisMatch() { const f = state._forfeit; return (f && state.winner && (f.by === 1 || f.by === 2) && f.by !== state.winner) ? f : null; }
+        window._forfeitMark = _forfeitMark;
+        /* THE REMATCH LINE: one status line over the result screen's command bar (online: who asked, who is waiting, who
+           left, how long a dropped seat is held). online.js writes it wherever it sets the rematch button. */
+        function _vicRematchNote(text, tone) {
+            let n = document.getElementById('vicRematchNote');
+            if (!n) {
+                if (!resultOverlay || !text) return;
+                n = document.createElement('div'); n.id = 'vicRematchNote'; n.setAttribute('role', 'status');
+                resultOverlay.appendChild(n);
+            }
+            n.textContent = text || '';
+            n.className = 'vic-rematch-note' + (text ? ' on' : '') + (tone ? ' ' + tone : '');
+        }
+        window._vicRematchNote = _vicRematchNote;
+
         function forfeitMatch() {
             if (state.phase !== 'battle' || state.winner) return;
             clearAiSafetyTimer();
@@ -56483,6 +56542,7 @@
             const localP = getLocalPlayer();
             const enemyP = localP === 1 ? 2 : 1;
             state.winner = enemyP;
+            _forfeitMark(localP, 'quit');
             addLog(`Player ${localP} forfeits the match.`);
             checkWin();
         }
@@ -56566,7 +56626,7 @@
             }
             state.aiThinking = false;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56772,7 +56832,7 @@
                 2: null
             };
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -61340,7 +61400,10 @@
                    the source, then the unit is done (human and CPU alike; the
                    status wears off with the round tick). */
                 if (unitHasStatus(nextUnit, 'feared') && STATUS_DEFS.feared?.fear) {
-                    _fearFleeMove(nextUnit);
+                    /* ONE FLEE ENDS THE FEAR (mondo 2026-11-10, open rule 10 "B": "Fear ends after the first flee, whatever
+                       its length"): the flight spends this activation as before, and the status comes off with it. A
+                       cornered unit that had nowhere to run did not flee: it stays Feared for its count. */
+                    if (_fearFleeMove(nextUnit) && !nextUnit.dead && !nextUnit._dying) clearStatus(nextUnit, 'feared');
                     nextUnit.ap = 0;
                     nextUnit.movesThisTurn = UNIT_MAX_MOVES;
                     scheduleBoardRender();
@@ -65678,6 +65741,7 @@
             isAllyUnit, isEnemyUnit, _isFFA,
             /* Provoke reads for ai.js (the taunter unit; THE SPELL AUDIT Batch D's decoy straw) */
             getTauntTargeter: (u) => (typeof window.getTauntTargeter === 'function' ? window.getTauntTargeter(u) : null),
+            getCharmer: (u) => (typeof window.getCharmer === 'function' ? window.getCharmer(u) : null),   // 💋 rule 7 B
             getTauntDecoy: (u) => (typeof window.getTauntDecoy === 'function' ? window.getTauntDecoy(u) : null),
             unitAt, canFly, isUnitAirborne, airborneUnitAt, getMinFlyingZ, getMaxFlyingZ,
             isFlightCrippled, forceGroundUnit,
@@ -66798,6 +66862,8 @@
             // this drum, unit-targeted offensive casts collapse to the
             // challenger alone — mirrors the doSpell gate exactly.
             if (isOffensive && !_skm.tileTargeted && !_skm.directional) {
+                const _drumCharmer = getCharmer(unit);   // 💋 never the charmer (rule 7 B)
+                if (_drumCharmer) for (let i = targets.length - 1; i >= 0; i--) { if (targets[i].unit && targets[i].unit.id === _drumCharmer.id) targets.splice(i, 1); }
                 const _drumTaunter = getTauntTargeter(unit);
                 if (_drumTaunter && targets.some(t => t.unit && t.unit.id === _drumTaunter.id)) {
                     return targets.filter(t => !t.unit || !isEnemyUnit(unit, t.unit) || t.unit.id === _drumTaunter.id);
@@ -66886,6 +66952,8 @@
             // whenever the challenger is on offer (castable now OR via approach)
             // — mirrors the drum's and doSpell's gate.
             if (isOffensive && !_skm.tileTargeted && !_skm.directional) {
+                const _apCharmer = getCharmer(unit);   // 💋 never the charmer (rule 7 B)
+                if (_apCharmer) for (let i = out.length - 1; i >= 0; i--) { if (out[i].unit && out[i].unit.id === _apCharmer.id) out.splice(i, 1); }
                 const _taunter = getTauntTargeter(unit);
                 if (_taunter && (out.some(t => t.unit && t.unit.id === _taunter.id)
                     || (haveSet && haveSet.has(_taunter.id)))) {
@@ -67280,6 +67348,12 @@
             // 🗯 Provoke: while the challenger is attackable, they are the ONLY
             // enemy unit in the drum — mirrors the doAttack gate.
             {
+                const _atkDrumCharmer = getCharmer(unit);   // 💋 never the charmer (rule 7 B)
+                if (_atkDrumCharmer) {
+                    for (let i = targets.length - 1; i >= 0; i--) {
+                        if (targets[i].unit && targets[i].unit.id === _atkDrumCharmer.id) targets.splice(i, 1);
+                    }
+                }
                 const _atkDrumTaunter = getTauntTargeter(unit);
                 if (_atkDrumTaunter && targets.some(t => t.unit && t.unit.id === _atkDrumTaunter.id)) {
                     for (let i = targets.length - 1; i >= 0; i--) {
@@ -70747,8 +70821,10 @@
 
         /* ── Guard / Overwatch reaction shot ─────────────────────────────
            doGuard (ui.js) arms ONE reaction shot alongside the defensive
-           stance: the first ENEMY unit to finish a move or jump inside the
-           guardian's attack range — range + LOS + team vision checked, the
+           stance: the first ENEMY unit to END UP inside the guardian's attack
+           range, by any arrival (a walk, jump or climb here; a push, pull,
+           throw, dash, teleport or door through resolveTileArrival, mondo
+           2026-11-10 rule 6 C) — range + LOS + team vision checked, the
            same gates a real attack obeys — takes a snap shot at counter
            power (getCounterDamage: reduced, no crit, no dodge). One shot
            per stance; the stance's own round reset disarms it. Engine-side
@@ -70766,6 +70842,7 @@
                 if (!g._overwatchArmed) continue;
                 if (!unitHasStatus(g, 'guarding')) { g._overwatchArmed = false; continue; }
                 if (!isEnemyUnit(g, mover)) continue;
+                if (getCharmer(g)?.id === mover.id) continue;   // 💋 a charmed guard holds its shot for its charmer (rule 7 B)
                 if (isUnitRealmShieldedFrom(mover, g)) continue;   // 🌑 a watcher in the Shadow Realm sees no one out here
                 const d = combatDist(g.x, g.y, g.z ?? 0, mover.x, mover.y, mover.z ?? 0);
                 if (d < 1 || d > getEffectiveRange(g)) continue;
@@ -71384,6 +71461,20 @@
             return taunter;
         }
         window.getTauntTargeter = getTauntTargeter;
+
+        /* ── 💋 Charm: no hand raised to the charmer (mondo 2026-11-10, open rule 7 "B") ──
+           A Charmed unit still cannot move and can still act, but it "cannot attack or cast at the charmer": returns the
+           living enemy that charmed `unit`, else null. The mirror of Provoke — doAttack / doSpell refuse a basic attack
+           and a unit-targeted offensive cast AT that unit, the target drums and the quick menu drop it, ai.js never
+           picks it. Tile / area / directional casts stay free (the same line Provoke draws). _charmSourceId is a unit
+           field stamped in applyStatusPayload, so state-sync carries it. */
+        function getCharmer(unit) {
+            if (!unit || !unit._charmSourceId || !unitHasStatus(unit, 'charm')) return null;
+            const c = state.units.find(u => u.id === unit._charmSourceId && !u.dead && !u._dying);
+            if (!c || !isEnemyUnit(unit, c)) return null;
+            return c;
+        }
+        window.getCharmer = getCharmer;
 
         /* ── Hex of Toil (2026-07-17): acting feeds the curse ─────────────────
            A `hexed` unit takes flat armor-ignoring chip damage every time it
@@ -74028,6 +74119,14 @@
                     return 0;
                 }
             }
+            {   // 💋 Charm (rule 7 B): no basic attack at the charmer
+                const _atkCharmer = getCharmer(unit);
+                if (_atkCharmer && target && target.id === _atkCharmer.id) {
+                    addLog(`💋 ${_ctName(unit)} is charmed and cannot attack ${_ctName(_atkCharmer)}!`, _clickSeat());
+                    playErrorSfx();
+                    return 0;
+                }
+            }
             const _atkTaunter = getTauntTargeter(unit);
             if (_atkTaunter && target && target.id !== _atkTaunter.id && isEnemyUnit(unit, target)) {
                 const _tntD = combatDist(unit.x, unit.y, unit.z ?? 0, _atkTaunter.x, _atkTaunter.y, _atkTaunter.z ?? 0);
@@ -74708,7 +74807,7 @@
                 /* Clash: the melee gap-closer counts as a melee exchange — the
                    defender's riposte stays live (counters are a JRPG staple). */
                 const _wardIntercepted = !evaded && _wardPledged && !target._guardedBy;
-                if (!evaded && !_wardIntercepted && !target.dead && !target._dying && (d === 1 || _clashLeap) && _atkArc !== 'back' && rollCounter(target)) {
+                if (!evaded && !_wardIntercepted && !target.dead && !target._dying && (d === 1 || _clashLeap) && _atkArc !== 'back' && getCharmer(target)?.id !== unit.id /* 💋 no counter at the charmer (rule 7 B) */ && rollCounter(target)) {
                     const counterDmg = getCounterDamage(target);
                     target._matchCounters = (target._matchCounters || 0) + 1;
 
@@ -78929,6 +79028,16 @@
             // castable-at (range + LOS + vision). Tile-targeted AoEs, lines and
             // support casts stay free — the taunt binds the blade, not the
             // battlefield.
+            {   // 💋 Charm (rule 7 B): no unit-targeted offensive cast at the charmer (tile / area / directional casts stay free)
+                const _spCharmer = getCharmer(unit);
+                const _spCm = _kindMeta(spell);
+                if (_spCharmer && _spCm.offensive && !_spCm.tileTargeted && !_spCm.directional
+                    && _spellClickTarget && _spellClickTarget.id === _spCharmer.id) {
+                    addLog(`💋 ${_ctName(unit)} is charmed and cannot cast ${_ctSp(spell.name)} at ${_ctName(_spCharmer)}!`, _clickSeat());
+                    playErrorSfx();
+                    return 0;
+                }
+            }
             {
                 const _spTaunter = getTauntTargeter(unit);
                 const _spMeta = _kindMeta(spell);
@@ -81931,7 +82040,7 @@
                    the remains consumed (no revive, no raising). */
                 const corpse = corpseRemainsAt(unit, spell, x, y);   // THE GRAVES STAY: a left grave feeds too
                 if (!corpse) {
-                    addLog("Target an enemy's remains — a fallen enemy's bones.", _clickSeat());
+                    addLog("Target a fallen unit's remains — an enemy's bones or an ally's gravestone.", _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
