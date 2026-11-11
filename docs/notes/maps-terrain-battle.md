@@ -1966,3 +1966,10 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
 - THE 2D VIEW: the old voxel editor (map.js, FILE menu of the editor) drew his pixel sheets on its flat grid and palette
   (_meTerrainBg). It now shows the calm twin (the sheet the board draws) unless window.EW_NO_CALM_LOOK. The tile info card
   already went through _ewSandUrl (calm first). His pixel sheets stay in the editor.js picker (TERRAIN family).
+
+## NO "ARENA" IN MAP NAMES (2026-11-11, mondo: "take 'arena' out of the name of all the maps")
+A battle map wears its site's name: "Stonehenge", sized cuts "Stonehenge 10×10", test looks "Stonehenge (Calm)". Display only, ids unchanged
+(`<site>_delta`, `<site>_<S>x<S>_delta`). Where: data.js hqArenaEntry + hqArenaRegisterAll (the sized name) + HQ_LOOK_MAPS labels; map.js MS_MAP_LIST
+size tag is "12×12" (was "12×12 ARENA"); editor library says "BATTLE MAP: <SITE>"; hud.js UI Maker sample screens. HQ_ARENA_RULES.label is no longer
+read for names. Left as they are (not names): the Arena game MODE, the "ARENA MAPS" filter chip, the story desk's ARENA / FULL SITE format toggle.
+Until the voxel site boards go, a site's 16×16 voxel board and its 12×12 map share one name in the VS CPU list (told apart by the size).

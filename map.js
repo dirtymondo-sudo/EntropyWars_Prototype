@@ -9758,7 +9758,7 @@
             meta.filter(m => m.isDelta).forEach(m => {
                 /* THE ARENAS (E8, 2026-09-30): a site's Δ became its arena (data.js HQ_ARENA_RULES) — `arena` labels it; a complex
                    part's own Δ (`area`) stays registered for the HQ encounter fallback but the console never lists it */
-                list.push({ modeId: m.id, name: m.label, size: (m.w || 8) + '×' + (m.h || 8) + (m.arena ? ' ARENA' : ' Δ'), team: m.teamSize, floors: false, w: m.w || 8, h: m.h || 8, isPrebuilt: true, isDelta: true, arena: !!m.arena, area: m.area || null, tier: m.tier, biomes: m.biomes,
+                list.push({ modeId: m.id, name: m.label, size: (m.w || 8) + '×' + (m.h || 8) + (m.arena ? '' : ' Δ'), team: m.teamSize, floors: false, w: m.w || 8, h: m.h || 8, isPrebuilt: true, isDelta: true, arena: !!m.arena, area: m.area || null, tier: m.tier, biomes: m.biomes,
                             sizeOf: m.sizeOf || null, arenaSize: m.arenaSize || null });   // THE ARENA SIZES: a 9 / 10 / 11 cut rides its site's card (the SIZE field picks it)
             });
             return list;

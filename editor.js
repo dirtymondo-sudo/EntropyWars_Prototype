@@ -2421,7 +2421,7 @@
         var R = DOOR_HQ.rooms, items = Object.keys(R).filter(function (k) { var r = R[k]; return r && k !== PF_ROOM && !W.hqWorldDocIsOwn(k); }).map(function (k) {
             var r = R[k], S = r.shell || {};
             var ar = arenasOf(k);   // THE GAME ROOM EDITS: the room an arena is cut from says so (mondo could not find Skinwalker Ranch's)
-            return { label: String(r.label || k) + (ar.length ? '  ·  ' + ar.join(', ').toUpperCase() + ' ARENA' : '') + (ED.doc && ED.doc.rooms[k] ? '  ·  EDITED' : ''), sub: k + ' · ' + roomSize(r) + (r.terrain ? ' · terrain' : '') + (r.terrain && r.terrain.gen ? ' (generated)' : '') + ' · ' + (r.props || []).length + ' props', value: k };
+            return { label: String(r.label || k) + (ar.length ? '  ·  BATTLE MAP: ' + ar.join(', ').toUpperCase() : '') + (ED.doc && ED.doc.rooms[k] ? '  ·  EDITED' : ''), sub: k + ' · ' + roomSize(r) + (r.terrain ? ' · terrain' : '') + (r.terrain && r.terrain.gen ? ' (generated)' : '') + ' · ' + (r.props || []).length + ' props', value: k };
         }).sort(function (a, b) { return a.label < b.label ? -1 : 1; });
         pick('THE LIBRARY · a game room to look at or edit (your changes save into that room; the game and its arenas use them)', items, function (k) {
             if (ED.doc.rooms[k]) { enterRoom(k, 'world'); toast('GAME ROOM · ' + String(DOOR_HQ.rooms[k].label || k).toUpperCase() + ' · with your changes', 3500); return; }
