@@ -4949,6 +4949,30 @@ Report: /mnt/project-files/pvp-playtest-20261109/PVP_PLAYTEST_REPORT.md. Proof: 
 - Undefined-name sweep of online.js (eslint no-undef, globals = every top-level name of the 21 game scripts + index.html
   inline scripts + `window.X =` writes): `showVictoryScreen` was the only one; clean now. server.js clean (node globals).
 
+## THE HOST'S RELOAD, RESTORED (2026-11-11, token 20261111-hostrestore-02-cors) — online.js only
+
+The seat is held while a page reloads (PR #1075), but the match lives on the host's page, so a host reload still ended
+it for both seats (PR #1102 only made that a clear notice). Now the host's reload keeps the match.
+
+- **The save.** `_hostSaveWrite(force)`: the host writes its own whole match (`_serializeState` unfiltered + `_packClock`
+  + `_matchId`) to sessionStorage `ew_hostSave` (about 90 KB) after a state-sync (1.5 s throttle), on the 2 s seat-hold
+  beat and on `pagehide`. Only a QUIET board with a unit up is kept (`_ewRecoverySnapshotReady`, no action / walk / death
+  in flight, `_blitzActiveUnitId` set; simul needs no unit), so a restored match always has somebody whose turn it is.
+- **The restore.** `_hostRestoreBegin()` runs from the rejoin answer when the page booted into a rejoin as host: same
+  match id or nothing; `NET._hostRestoring` holds the recovery poll (it used to answer `recovery-unavailable` at once);
+  `_recoveryArenaWait(data, then)` surveys the arena's room first; then `_applyRemoteState(save)` (the reloaded guest's
+  path; `_restoreOnlineContext` gives the host its seat + controllers). The poll then sends the guest the snapshot as
+  after any drop. No save / another match's save / a save that will not apply = the old notice.
+- **Mid-action reload = that action is undone for both seats** (the last quiet save is laid back). Known: a host can
+  undo its own action by reloading while it plays. Not closed; say so if it matters.
+- Cleared with the session (NET reset, backToMainMenu, `_recoveryFailure`). The save never leaves the host's browser.
+- Two-seat proof (Chromium x2, Hell Arena TDM): host reload on its own turn, on the guest's turn, in round 5 after
+  kills (state identical before/after: HP, AP, MP, kills, log, graves), mid-walk (rolled back, both agree); play went on
+  through fights and rounds; forfeit gave both result screens; rematch started by itself; a guest reload after a host
+  restore came back; with the save blocked both seats still get the notice. Back in 30-40 s in the sandbox. 0 page errors.
+  Shots /mnt/project-files/pvp-verify-20261110/host_restore_*.jpg. The live tier popup can show again on the reloaded
+  page (display only, same as a guest reload). Not checked: CLASH / simul restore, real WebGPU, real network.
+
 ## THE RELOAD, TWO SEATS (2026-11-10, token 20261111-reloadroom-01-cors) — online.js only
 Two-seat check of PR #1072-#1075 plus traps, CLASH and the end-of-round relays (two Chromium pages, shared playtest
 harness, shots in `/mnt/project-files/pvp-verify-20261110/`). All of #1072-#1075 held. Five things fixed:
