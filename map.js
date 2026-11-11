@@ -9455,6 +9455,10 @@
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? ' active' : ''}" id="mmCreatorHiderBtn" onclick="window._toggleCreatorHider()">${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? 'Creator Item Hider: ON' : 'Creator Item Hider: OFF'}</button>
                         </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Face Lab (experimental) — in the character creator, a FACE LAB button by FACE CLOSE-UP opens a window that plays the MPFB body's face shapes: open mouth, talk (reads a line you type), lip flap, roll eyes, blink, wink, look around, laugh, moan, cry, scream and more, plus a slider for each of the 67 raw face shapes. Looks only, nothing saved. ?facelab=1 in the address turns it on too.</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn${window.EWFaceLab && window.EWFaceLab.enabled() ? ' active' : ''}" id="mmFaceLabBtn" onclick="window._toggleFaceLab()">${window.EWFaceLab && window.EWFaceLab.enabled() ? 'Face Lab: ON' : 'Face Lab: OFF'}</button>
+                        </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Unlock every vessel for testing. View-only — nothing is written to your account or the server, so it can't corrupt your roster. Toggle off to return to your real unlocks.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${window._DEV_UNLOCK_ALL ? ' active' : ''}" id="mmUnlockAllBtn" onclick="window._toggleUnlockAll()">${window._DEV_UNLOCK_ALL ? 'Unlock All Vessels: ON' : 'Unlock All Vessels: OFF'}</button>
@@ -9654,6 +9658,15 @@
             window.setCreatorHiderOn(on);
             const btn = document.getElementById('mmCreatorHiderBtn');
             if (btn) { btn.textContent = 'Creator Item Hider: ' + (on ? 'ON' : 'OFF'); btn.classList.toggle('active', on); }
+        };
+
+        // Settings → Developer: THE FACE LAB (2026-11-11) — the character creator's FACE LAB button on / off (three-renderer.js
+        // EW_FACE_LAB; localStorage ew_facelab, also ?facelab=1). An open creator shows the button the next time it draws.
+        window._toggleFaceLab = function() {
+            if (!window.EWFaceLab) return;
+            const on = window.EWFaceLab.setEnabled(!window.EWFaceLab.enabled());
+            const btn = document.getElementById('mmFaceLabBtn');
+            if (btn) { btn.textContent = 'Face Lab: ' + (on ? 'ON' : 'OFF'); btn.classList.toggle('active', on); }
         };
 
         // Settings → Developer: flip the view-layer unlock-all flag. Never
