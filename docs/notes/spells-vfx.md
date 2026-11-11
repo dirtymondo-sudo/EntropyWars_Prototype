@@ -3683,3 +3683,39 @@ ride the caster's jump (Divine Swoop, Feral Dive, Descending Wrath), the clear a
 (Space Disco, Round Up), guard steps under 1.6 squares (strike family ~1 square: the eye's floor under a push-in), short
 re-framing glides right after some opening cuts, and the board camera still easing from the target preview when a bespoke
 shot opens late (Colossal Crush, Crop Circle, Headshot).
+
+## THE HIT SIDE — who hit whom reads at the hit (2026-11-11, PvP demo list item 3 "readability under pressure"; plan https://claude.ai/artifact/W2nQT5ZYg5h3jCRPk7F7eT, mondo: "Build 1-4")
+The two-seat check found every side cue buried at the hit: the victim's ring under the impact circles and danger plates, the
+body white (his hit blink: KEPT as it is), the number in the element colour on both seats, a fire ultimate a flat white wall on
+the victim's screen for about a second. Looks only, shared code for every attack and spell; no rule reads any of it.
+- **1 THE FLARE** (three-renderer.js `hitSide` / `_updateHitSides`): on the hit frame a ring in the VICTIM's side colour
+  (the team ring's own rule and colours: `_isAllyPlayer`, `TEAM_RING_ALLY_COLOR` cyan-blue = yours, `TEAM_RING_ENEMY_COLOR`
+  pink-red = theirs) pops a little wider than the unit's ring (peak 1.24 + 0.04 per weight step), holds the freeze, settles
+  back onto the ring over ~0.6 s. Canvas texture on a `MeshBasicMaterial` (no custom shader, so WebGPU needs no node
+  program), normal blending over a dark keyline, `renderOrder` `_HS_ORDER` 400: after every VFX layer (particle batches
+  99-103, signature meshes 150-218), before the floating text and plates (5000+). At 170 the firestorm shells (205-212)
+  washed the near half out. Depth-tested with the team ring's polygonOffset, so walls and bodies still hide it.
+- **2 THE ATTACKER TELL**: the attacker's ring pings once in ITS side colour (0.46 s, one ping per volley) and an arrowhead
+  in that colour sits just outside the victim's flare, pointing at the attacker. Only when this seat may see the attacker
+  (`_hitSideSees`: the concealment rule + the fog renderer's visible set): a hit out of the dark never points home.
+- **3 THE NUMBER EDGE** (battle.js `_hitReadSideEdge` in `_hitReadDress3D`; 2D board `_hitReadDressDom`): the number keeps
+  its element fill and the thin black line next to the digits; the outer dark band and a small rim outside it take the
+  victim's side colour. Runs on the finished canvas, so the UI Maker Floating text look still applies underneath.
+  three-renderer.js `_buildFloatTextCanvas` hands over the outline width (`c._ewLineW`).
+- **4 THE STEP BACK + THE TAME FIRE** (three-vfx-effects.js `_hsNote` / `_hsBackAt` / `_hsTame`, three-vfx.js `_batchFlush`):
+  for 0.4 s after a hit lands on a square, see-through signature meshes centred on it and the flash / ground-ring
+  particles on it draw at half strength, easing back over 0.16 s. A FIRE spell (the Riot context's new `fire` flag, from
+  the spell's element) gets its shells' colours clamped (no white heart: g ≤ 0.84, b ≤ 0.34 of the max), gain ≤ 1.2 and
+  half strength, so stacked additive shells stay red-orange-yellow; on a hit with no area the firestorm column is cut to
+  1.5 squares and narrowed with it (`_hsFireH`; Dragonfire's was 3.4 × its breath scale and 4 squares wide at the top) and
+  `spawnFlameBurst3D` is capped the same; big fire meshes and billboards fade inside ~2 squares of the lens (per mesh /
+  per particle, no shader change). The capstone bloom's thin light column keeps its height (it is the ultimate's stamp,
+  not fire) at the stepped-back strength.
+- **Hook + relay**: battle.js `_juiceHitFx(target, w, hs, kill, source)` -> `VFX3D.juiceHit(tx, ty, w, hsMs, kill, unitId,
+  srcId)` -> `ThreeAnim.hitBlink` + `ThreeAnim.hitSide`. online.js already relays juiceHit (`_VFXX_ANCHORS.juiceHit`), the
+  attacker rides as an ID (RULE #2, never the unit). The floating-text relay's `hit` gains `s` (the victim's player) and
+  `wt` (the hit weight, which was never relayed: the guest's numbers were always weight 0). Each seat works its own sides
+  out from its own `_isAllyPlayer`, so host and guest see opposite colours on the same hit.
+- **Off switches** (console, live): `window.EW_NO_HIT_SIDE = true` (all), `EW_NO_HIT_SIDE_A` (flare), `_B` (attacker
+  tell), `_C` (number edge), `_D` (step back + fire). Over reloads: localStorage `ew_hitside` / `ew_hitside_a` … `_d` = `off`.
+- Probes: `window._ewHitSideOn(part)`, `window._ewHitSideAlly(player)`, `ThreeVFXEffects._hsLive()`.

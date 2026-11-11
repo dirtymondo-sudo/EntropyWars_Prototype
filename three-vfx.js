@@ -224,9 +224,21 @@ const ThreeVFX = (function () {
         c.g = Math.max(0, l + (c.g - l) * sat) * val;
         c.b = Math.max(0, l + (c.b - l) * sat) * val;
     }
+    /* THE HIT SIDE part 4 (2026-11-11, three-vfx-effects.js "THE STEP BACK + THE TAME FIRE"): the big fire billboards of
+       a FIRE spell (the riot context's `fire`) fade as they come within two squares of the lens (_batchFlush); a flash
+       or a ground ring on a square that was just hit draws at half strength for 0.4 s. Off: EW_NO_HIT_SIDE_D. */
+    var _HS_FIRE_BIG = { 'flame': 1, 'flame-hot': 1, 'fire-glow': 1, 'explosion-orange': 1 };
+    function _hsPartOn() {
+        try { return typeof window !== 'undefined' && typeof window._ewHitSideOn === 'function' && window._ewHitSideOn('D'); } catch (e) { return false; }
+    }
     /* spawn()'s hook: the particle is built, before its first write */
     function _rvApply(p, opts, sprite, poolType) {
         p._rvCol = null; p._rvEase = 0; p._rvFade = 0; p._rvBack = 0; p._rvWhite = false;
+        p._hsFire = 0;
+        if (poolType === 'sprite' && _HS_FIRE_BIG[sprite] && !opts.keep && !opts._zone && !opts.decor) {
+            var hc = _rvCtx();
+            if (hc && hc.fire && _hsPartOn()) p._hsFire = 1;
+        }
         if (!_rvOn() || poolType === 'glob' || sprite.indexOf('blood') === 0) return;
         if (opts.keep || opts._zone || opts.decor || opts.onComplete || opts.trail || opts.descent ||
             opts.seek || opts.orbit || opts.floorAt || opts.onLand) return;
@@ -2323,11 +2335,22 @@ const ThreeVFX = (function () {
             } else {
                 _bCamQ.identity(); _bCamP.set(0, 0, 0); _bFwd.set(0, 0, 0); _bRight.set(1, 0, 0); _bUp.set(0, 1, 0);
             }
+            /* THE HIT SIDE part 4: is a hit's step back live this frame? (three-vfx-effects.js _hsHits) */
+            var hsE = (typeof window !== 'undefined') ? window.ThreeVFXEffects : null, hsLive = false;
+            try { hsLive = !!(hsE && typeof hsE._hsLive === 'function' && hsE._hsLive() && typeof hsE._hsBackAt === 'function'); } catch (e) { hsLive = false; }
+            var hsTs = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128;
             for (i = 0; i < _particles.length; i++) {
                 var p = _particles[i];
                 if (!p.alive || p.poolType === 'glob' || !p.poolType) continue;
                 var t = Math.min(1, p.life / p.ml);
                 var op = _opAt(p, t);
+                if (hsLive && (_RV_FLASH[p.sprite] || _RV_GROUND_RINGS[p.sprite])) op *= hsE._hsBackAt(p.x, p.y);
+                if (p._hsFire && _bPersp && cam) {
+                    /* a fire billboard near the lens: all of it from two squares out, 15 % touching */
+                    var hw = _vfxToWorld(p.x, p.y, p.z), hdx = hw.x - _bCamP.x, hdy = hw.y - _bCamP.y, hdz = hw.z - _bCamP.z;
+                    var hd = Math.sqrt(hdx * hdx + hdy * hdy + hdz * hdz) - Math.max(p.size0, p.size1) * 0.5, hlo = hsTs * 0.35, hhi = hsTs * 2;
+                    if (hd < hhi) { var ht = hd <= hlo ? 0 : (hd - hlo) / (hhi - hlo); op *= 0.15 + 0.85 * ht * ht * (3 - 2 * ht); }
+                }
                 if (!(op > 0.001)) continue;
                 var type = p.poolType === 'sprite' ? 's' : (p.poolType === 'world' ? 'w' : 'q');
                 g = _batchGroup(type, p._blend === 'add', _getSpriteTexture(p.sprite));

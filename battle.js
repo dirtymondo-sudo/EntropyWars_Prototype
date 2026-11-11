@@ -14546,11 +14546,14 @@
             if (ms > 0) _juiceLastStopAt = now;
             return ms;
         }
-        function _juiceHitFx(target, w, hs, kill) {
+        function _juiceHitFx(target, w, hs, kill, source) {
             if (!_juiceOn() || !target) return;
             const V = (typeof window !== 'undefined') ? window.VFX3D : null;
             if (!V || typeof V.juiceHit !== 'function') return;
-            try { V.juiceHit(target.x, target.y, w, hs, kill ? 1 : 0, target.id); } catch (e) {}
+            /* THE HIT SIDE (2026-11-11): the attacker's ID rides along (never the unit) — its ring pings and an arrowhead
+               on the victim's ring points at it, on each seat that can see it (three-renderer.js hitSide) */
+            const srcId = (source && source.id != null && source.id !== target.id) ? source.id : null;
+            try { V.juiceHit(target.x, target.y, w, hs, kill ? 1 : 0, target.id, srcId); } catch (e) {}
         }
 
         function triggerHitstop(durationMs) {
@@ -14842,6 +14845,9 @@
             else if (wm < 0.999) o._hitWeak = -1;
             if (info.kill) o._hitKill = 1;
             if (info.weight >= 0 && info.weight <= 3) o._hitW = info.weight | 0;
+            /* THE HIT SIDE part 3 (2026-11-11): whose unit lost the HP — a plain player number, so each seat paints the
+               number's edge in ITS OWN view of that side (cyan-blue = your unit, pink-red = theirs) */
+            if (target.player != null) o._hitP = target.player;
             return o;
         }
 
@@ -14878,7 +14884,18 @@
                CRIT / BACKSTAB kind that lands with the number like every other word (_hitReadCritPop) */
             const FC = FL.crit || {};
             const critOn = !!opts._hitCrit && FL.stamp !== false, critText = critOn && FC.as === 'text';
+            /* THE HIT SIDE part 3: the victim's side from this seat, by the team ring's own rule and in its own colour
+               (three-renderer.js _isAllyPlayer / TEAM_RING_*); null = no edge (the part is off, or no renderer) */
+            let side = null;
+            try {
+                const W = (typeof window !== 'undefined') ? window : null;
+                if (W && opts._hitP != null && typeof W._ewHitSideOn === 'function' && W._ewHitSideOn('C')
+                    && typeof W._ewHitSideAlly === 'function' && typeof W._ewHitSideHex === 'function') {
+                    side = '#' + ('00000' + (W._ewHitSideHex(!!W._ewHitSideAlly(Number(opts._hitP))) >>> 0).toString(16)).slice(-6);
+                }
+            } catch (_e) { side = null; }
             return {
+                side,
                 color: (tintable && !own && FL.elem !== false) ? col : null,
                 glowColor: col || '#ff5a3a',
                 scale: own ? 1 : Math.min(maxScale * 1.35, (1 + f * (maxScale - 1)) * punch),
@@ -14898,6 +14915,44 @@
            re-painted and re-sized here without touching the renderer.
            The tween centres it with translate(-50%,-50%), so a bigger canvas
            (the swell, the stamp's margin) stays on its anchor. */
+        /* THE HIT SIDE part 3 (2026-11-11, plan https://claude.ai/artifact/W2nQT5ZYg5h3jCRPk7F7eT): the number keeps
+           its element colour; its dark EDGE takes the victim's side colour (cyan-blue = your unit lost the HP, pink-red
+           = theirs), so the number alone says who was hit. sil = the pop's solid ink (the digits and their outline; the
+           soft shadow and the halo fall under the alpha cut) painted flat in the side colour. The RIM is sil grown d px
+           (drawn under the number: a crisp edge outside its outline); the BAND is sil minus sil shrunk k px = the
+           outline's outer dark part (drawn over the number; the thin black line against the digits stays, so the
+           colour never touches the fill). lineW = the stock pop's outline width (three-renderer.js stamps
+           canvas._ewLineW; 0 = the Floating text look draws no line: the rim alone). */
+        function _hitReadSideEdge(snap, w, h, lineW, rgb) {
+            const sil = document.createElement('canvas'); sil.width = w; sil.height = h;
+            const sc = sil.getContext('2d');
+            const src = snap.getContext('2d').getImageData(0, 0, w, h).data, out = sc.createImageData(w, h), o = out.data;
+            for (let i = 0; i < src.length; i += 4) {
+                const a = src[i + 3];
+                if (a < 186) continue;
+                o[i] = rgb[0]; o[i + 1] = rgb[1]; o[i + 2] = rgb[2]; o[i + 3] = a >= 236 ? 255 : Math.round((a - 186) / 50 * 255);
+            }
+            sc.putImageData(out, 0, 0);
+            const d = Math.max(2, Math.round((lineW > 0 ? lineW : h * 0.04) * 0.6)), k = lineW > 0 ? Math.max(1, lineW * 0.62) : 0;
+            const rim = document.createElement('canvas'); rim.width = w + 2 * d; rim.height = h + 2 * d;
+            const rc = rim.getContext('2d');
+            for (let j = 0; j < 12; j++) { const an = j * Math.PI / 6; rc.drawImage(sil, d + Math.cos(an) * d, d + Math.sin(an) * d); }
+            rc.drawImage(sil, d, d);
+            let band = null;
+            if (k > 0) {
+                const er = document.createElement('canvas'); er.width = w; er.height = h;
+                const ec = er.getContext('2d');
+                ec.drawImage(sil, 0, 0);
+                ec.globalCompositeOperation = 'destination-in';
+                for (let j = 0; j < 8; j++) { const an = j * Math.PI / 4; ec.drawImage(sil, Math.cos(an) * k, Math.sin(an) * k); }
+                band = document.createElement('canvas'); band.width = w; band.height = h;
+                const bc = band.getContext('2d');
+                bc.drawImage(sil, 0, 0);
+                bc.globalCompositeOperation = 'destination-out';
+                bc.drawImage(er, 0, 0);
+            }
+            return { rim, band, d };
+        }
         function _hitReadDress3D(hr, c) {
             try {
                 if (!c || c.tagName !== 'CANVAS' || c._hitRead) return;
@@ -14934,7 +14989,11 @@
                 const gs = hr.glyph ? Math.round(h * 0.46) : 0;       // glyph box
                 // The ink's own margins inside the stock pop (three-renderer
                 // _buildFloatTextCanvas) — the layout stacks pops by them.
-                const mX = c._ewMarginX || 0, mT = c._ewMarginTop || 0, mB = c._ewMarginBot || 0;
+                /* THE HIT SIDE part 3: the edge in the victim's side colour (its rim is ink: the margins give it room) */
+                let E = null;
+                if (hr.side) { try { E = _hitReadSideEdge(snap, w, h, Number(c._ewLineW) || 0, _hitReadRgb(hr.side)); } catch (_e2) { E = null; } }
+                const eD = E ? E.d : 0;
+                const mX = Math.max(0, (c._ewMarginX || 0) - eD), mT = Math.max(0, (c._ewMarginTop || 0) - eD), mB = Math.max(0, (c._ewMarginBot || 0) - eD);
                 /* THE NUMBER IS THE HERO (mondo 2026-10-17): the CRIT stamp
                    sits on the number's top-right SHOULDER, clear of the
                    digits — it used to be stamped across the last digit.
@@ -14974,7 +15033,9 @@
                     ctx.drawImage(snap, padX, padY);
                     ctx.restore();
                 }
+                if (E) ctx.drawImage(E.rim, padX - E.d, padY - E.d);
                 ctx.drawImage(snap, padX, padY);
+                if (E && E.band) ctx.drawImage(E.band, padX, padY);
                 if (hr.glyph) _hitReadGlyph(ctx, hr, padX * 0.55, padY + h / 2, gs);
                 if (G) _hitReadStamp(ctx, padX + sCx, padY + sCy, sFs, S, G);
                 c.style.width = Math.round(W * hr.scale) + 'px';
@@ -15148,6 +15209,8 @@
             el.style.setProperty('--hr-scale', hr.scale.toFixed(3));
             if (hr.resist) el.classList.add('hr-resist');
             if (hr.kill) el.classList.add('hr-kill');
+            // THE HIT SIDE part 3 on the 2D board: a thin rim in the victim's side colour round the number
+            if (hr.side) el.style.filter = (hr.resist ? 'saturate(0.35) brightness(0.78) ' : '') + 'drop-shadow(0 0 1px ' + hr.side + ') drop-shadow(0 0 1px ' + hr.side + ')';
             if (hr.glyph) {
                 const g = document.createElement('span');
                 g.className = 'hr-glyph';
@@ -40352,7 +40415,7 @@
                 /* the feel layer on both ends (kill confirm per weight, the
                    world flinch, the guest's own freeze) — relayed by online.js */
                 if (damageType !== 'dot' && !_skipVisuals() && !_bufferingRoundEvents) {
-                    _juiceHitFx(target, _juiceW, _impactFreezeMs, _lethalHit);
+                    _juiceHitFx(target, _juiceW, _impactFreezeMs, _lethalHit, sourceUnit);
                     /* THE IMPACT HOLD: a hit that lands while an action shot is live keeps the camera on it through
                        the flash and the number, however late the spell's own clock landed it */
                     if (camera._cineShotId != null || _cineImpactHoldLeft() > 0) {
