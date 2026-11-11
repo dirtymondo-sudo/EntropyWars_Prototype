@@ -67363,6 +67363,12 @@ const ThreeRenderer = (function () {
         var Y = function (m) { return m * U + 0.3; };
         var V3 = function (x, y, z) { return new THREE.Vector3(x, y, z); };
         var place = function (g, x, y, z, rx, ry, rz) { g.applyMatrix4(new THREE.Matrix4().compose(V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), V3(1, 1, 1))); return g; };
+        /* THE GUNSHIP (2026-11-11, `bow: 'n'`): the ship runs bow NORTH — the keel, the bells, the pods, the windows and the canopy are
+           given in THE KEEL'S FRAME (x = along the keel, the nose +, z = across it) and turned onto the room (along = −z, across = x);
+           the outline, the belly, the sides, the lit strip, the guns and the lights stay in room metres. No `bow` = bow east, as before. */
+        var bowN = hl.bow === 'n', FR = bowN ? new THREE.Matrix4().makeRotationY(Math.PI / 2) : null;
+        var placeK = function (g, x, y, z, rx, ry, rz) { place(g, x, y, z, rx, ry, rz); if (FR) g.applyMatrix4(FR); return g; };
+        var AL = bowN ? function (x, z) { return -z; } : function (x, z) { return x; }, LA = bowN ? function (x, z) { return x; } : function (x, z) { return z; };
         var phong = function (map, col, emi, shin) { var m = new THREE.MeshPhongMaterial({ map: map || null, color: col, shininess: shin || 20, side: THREE.DoubleSide }); m.emissive = new THREE.Color(emi); return m; };
         var plateMat = phong(_hzTex(hl.plate_sheet || info.cliff), 0xc8ccd2, 0x2c323a, 18);
         var skinMat = phong(_hzTex(hl.skin || info.floor), 0xb0b8c4, 0x4a5460, 28);   // a self-lit lift: space has no fill light
@@ -67375,12 +67381,13 @@ const ThreeRenderer = (function () {
         var hull = new THREE.Group(); hull.name = 'hqHull'; hull._ew_hqPart = 'underside';
         var add = function (geo, mat) { var m = new THREE.Mesh(geo, mat); m.renderOrder = 1; m._ew_occSkip = true; m._ew_hqPart = 'underside'; hull.add(m); return m; };
         /* ── THE OUTLINE: a field cell is the ship where the field mesh draws it (its middle is not the void) ── */
-        var occ = new Uint8Array(cw * ch), xs0 = Infinity, xs1 = -Infinity, zs0 = Infinity, zs1 = -Infinity, i, j;
+        var occ = new Uint8Array(cw * ch), xs0 = Infinity, xs1 = -Infinity, zs0 = Infinity, zs1 = -Infinity, i, j;   // xs = along the keel, zs = across it
         for (j = 0; j < ch; j++) for (i = 0; i < cw; i++) {
             var mx = x0 + (i + 0.5) * res, mz = z0 + (j + 0.5) * res;
             if (hqTerrainVoidAt(info, mx, mz)) continue;
             occ[j * cw + i] = 1;
-            if (mx < xs0) xs0 = mx; if (mx > xs1) xs1 = mx; if (mz < zs0) zs0 = mz; if (mz > zs1) zs1 = mz;
+            var ma = AL(mx, mz), ml = LA(mx, mz);
+            if (ma < xs0) xs0 = ma; if (ma > xs1) xs1 = ma; if (ml < zs0) zs0 = ml; if (ml > zs1) zs1 = ml;
         }
         if (!isFinite(xs0)) return;
         var on = function (ii, jj) { return ii >= 0 && jj >= 0 && ii < cw && jj < ch && occ[jj * cw + ii] === 1; };
@@ -67388,15 +67395,19 @@ const ThreeRenderer = (function () {
         var zc = K ? (+K.z || 0) : 0, reach = Math.max(1, Math.abs(zs0 - zc), Math.abs(zs1 - zc));
         /* the stern face and the nose: the ends of the outline along the keel's band */
         var half = K ? (+K.half || 3.5) : 3.5, xStern = Infinity, xNose = -Infinity;
-        for (j = 0; j < ch; j++) { var zz = z0 + (j + 0.5) * res; if (Math.abs(zz - zc) > half) continue; for (i = 0; i < cw; i++) if (occ[j * cw + i]) { var xx = x0 + (i + 0.5) * res; if (xx < xStern) xStern = xx; if (xx > xNose) xNose = xx; } }
+        for (j = 0; j < ch; j++) for (i = 0; i < cw; i++) {
+            if (!occ[j * cw + i]) continue;
+            var cx = x0 + (i + 0.5) * res, cz = z0 + (j + 0.5) * res; if (Math.abs(LA(cx, cz) - zc) > half) continue;
+            var xx = AL(cx, cz); if (xx < xStern) xStern = xx; if (xx > xNose) xNose = xx;
+        }
         if (!isFinite(xStern)) { xStern = xs0; xNose = xs1; }
         xStern -= res / 2; xNose += res / 2;
         var depthAt = function (x, z) {
-            var dz = Math.abs(z - zc), d = plate + (tip - plate) * Math.min(1, dz / reach);
+            var dz = Math.abs(LA(x, z) - zc), d = plate + (tip - plate) * Math.min(1, dz / reach);
             if (K) {
                 var t = dz / (half + 2.5);
                 if (t < 1) {
-                    var al = (x - xStern) / Math.max(1, xNose - xStern);   // 0 the stern … 1 the nose
+                    var al = (AL(x, z) - xStern) / Math.max(1, xNose - xStern);   // 0 the stern … 1 the nose
                     var fore = al > 0.62 ? Math.pow(Math.max(0, Math.cos(Math.min(1, (al - 0.62) / 0.38) * Math.PI / 2)), 0.9) : 1, aft = al < 0.05 ? 0.8 + 0.2 * Math.max(0, al) / 0.05 : 1;
                     var kd = (+K.depth || 5) * Math.sqrt(1 - t * t) * fore * aft;
                     if (kd > d) d = kd;
@@ -67450,32 +67461,81 @@ const ThreeRenderer = (function () {
             if (r.ax === 'x') { g = new THREE.BoxGeometry(L * U, bt * U, 0.05 * U); strips.push(place(g, ((r.a + r.b) / 2) * U, Y(yS), (r.c + r.out * bo) * U)); }
             else { g = new THREE.BoxGeometry(0.05 * U, bt * U, L * U); strips.push(place(g, (r.c + r.out * bo) * U, Y(yS), ((r.a + r.b) / 2) * U)); }
         });
+        /* ── THE LEDGE STRIPS (the gunship, 2026-11-11, `ledges: true`): the same lit strip under the top edge of every raised block on
+           the deck (a plateau feature over the deck), only where its edge stands over something lower (a seam between two plates
+           of one height, or a side under a higher block, stays dark) ── */
+        if (hl.ledges) {
+            var lfs = ((room.terrain && room.terrain.features) || []).filter(function (f) { return f && f.k === 'plateau' && !f.r && f.w > 0 && f.d > 0 && typeof f.h === 'number' && f.h > deck + 1; });
+            lfs.forEach(function (f) {
+                var ax = f.x - f.w / 2, bx = f.x + f.w / 2, az = f.z - f.d / 2, bz = f.z + f.d / 2;
+                [[ax, az, bx, az, 0, -1], [ax, bz, bx, bz, 0, 1], [ax, az, ax, bz, -1, 0], [bx, az, bx, bz, 1, 0]].forEach(function (sd) {
+                    var L = Math.hypot(sd[2] - sd[0], sd[3] - sd[1]), n = Math.max(1, Math.round(L / 0.5)), r0 = -1;
+                    var flush = function (k1) {
+                        if (r0 < 0) return;
+                        var t0 = r0 / n, t1 = k1 / n, len = (t1 - t0) * L; r0 = -1; if (len < 0.4) return;
+                        var cx = sd[0] + (sd[2] - sd[0]) * (t0 + t1) / 2 + sd[4] * 0.04, cz = sd[1] + (sd[3] - sd[1]) * (t0 + t1) / 2 + sd[5] * 0.04;
+                        var g = sd[4] ? new THREE.BoxGeometry(0.06 * U, 0.12 * U, len * U) : new THREE.BoxGeometry(len * U, 0.12 * U, 0.06 * U);
+                        strips.push(place(g, cx * U, Y(f.h - 0.32), cz * U));
+                    };
+                    for (var k = 0; k < n; k++) {
+                        var t = (k + 0.5) / n, px = sd[0] + (sd[2] - sd[0]) * t, pz = sd[1] + (sd[3] - sd[1]) * t;
+                        var hin = hqTerrainHeight(info, px - sd[4] * 0.3, pz - sd[5] * 0.3), hout = hqTerrainHeight(info, px + sd[4] * 0.45, pz + sd[5] * 0.45);
+                        var ex = Math.abs(hin - f.h) < 0.3 && hout < f.h - 1;
+                        if (ex && r0 < 0) r0 = k; else if (!ex) flush(k);
+                    }
+                    flush(n);
+                });
+            });
+        }
         /* ── THE ENGINES: the keel's bells on the stern face, a nacelle under each pod with its own bell; the plumes astern ── */
         var bells = [], discs = [], plumes = [], skin = [], trim = [], plumeTex = _hqHullPlume();
         var exhaust = function (x, y, z, r, len) {
-            discs.push(place(new THREE.CircleGeometry(r * U, 20), x * U, Y(y), z * U, 0, -Math.PI / 2, 0));
-            discs.push(place(new THREE.CircleGeometry(r * 0.55 * U, 16), (x - 0.05) * U, Y(y), z * U, 0, -Math.PI / 2, 0));
-            plumes.push(place(new THREE.PlaneGeometry(len * U, r * 2.2 * U), (x - len / 2) * U, Y(y), z * U));
-            plumes.push(place(new THREE.PlaneGeometry(len * U, r * 2.2 * U), (x - len / 2) * U, Y(y), z * U, Math.PI / 2, 0, 0));
+            discs.push(placeK(new THREE.CircleGeometry(r * U, 20), x * U, Y(y), z * U, 0, -Math.PI / 2, 0));
+            discs.push(placeK(new THREE.CircleGeometry(r * 0.55 * U, 16), (x - 0.05) * U, Y(y), z * U, 0, -Math.PI / 2, 0));
+            plumes.push(placeK(new THREE.PlaneGeometry(len * U, r * 2.2 * U), (x - len / 2) * U, Y(y), z * U));
+            plumes.push(placeK(new THREE.PlaneGeometry(len * U, r * 2.2 * U), (x - len / 2) * U, Y(y), z * U, Math.PI / 2, 0, 0));
         };
-        var yBell = deck - depthAt(xStern + 0.5, zc) * 0.5;
+        var yBell = deck - depthAt(bowN ? zc : xStern + 0.5, bowN ? -(xStern + 0.5) : zc) * 0.5;
         (hl.bells || []).forEach(function (b) {
-            var r = +b.r || 1.3, z = zc + (+b.z || 0);
-            bells.push(place(new THREE.CylinderGeometry(r * U, r * 0.72 * U, 2.4 * U, 18, 1, true), (xStern - 1.15) * U, Y(yBell), z * U, 0, 0, Math.PI / 2));
-            trim.push(place(new THREE.CylinderGeometry(r * 0.74 * U, r * 0.74 * U, 0.5 * U, 18), (xStern + 0.05) * U, Y(yBell), z * U, 0, 0, Math.PI / 2));
-            exhaust(xStern - 2.3, yBell, z, r * 0.9, 30);
+            var r = +b.r || 1.3, z = zc + (+b.z || 0), yB = (b.y != null) ? +b.y : yBell;   // `y`: a bell on a raised block's face (the gunship's engine block)
+            bells.push(placeK(new THREE.CylinderGeometry(r * U, r * 0.72 * U, 2.4 * U, 18, 1, true), (xStern - 1.15) * U, Y(yB), z * U, 0, 0, Math.PI / 2));
+            trim.push(placeK(new THREE.CylinderGeometry(r * 0.74 * U, r * 0.74 * U, 0.5 * U, 18), (xStern + 0.05) * U, Y(yB), z * U, 0, 0, Math.PI / 2));
+            exhaust(xStern - 2.3, yB, z, r * 0.9, +b.len || 30);
         });
         (hl.pods || []).forEach(function (p) {
             var r = +p.r || 1.4, yP = deck - plate - r * 0.85, L = Math.max(2, p.x1 - p.x0), xm = (p.x0 + p.x1) / 2;
-            skin.push(place(new THREE.CylinderGeometry(r * U, r * U, L * U, 18), xm * U, Y(yP), p.z * U, 0, 0, Math.PI / 2));
-            skin.push(place(new THREE.SphereGeometry(r * U, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), p.x1 * U, Y(yP), p.z * U, 0, 0, -Math.PI / 2));
-            trim.push(place(new THREE.BoxGeometry(L * 0.7 * U, 0.35 * U, 0.5 * U), xm * U, Y(yP + r * 0.75), p.z * U));   // the pylon up to the pod's deck
-            bells.push(place(new THREE.CylinderGeometry(r * 1.05 * U, r * 0.8 * U, 1.8 * U, 16, 1, true), (p.x0 - 0.9) * U, Y(yP), p.z * U, 0, 0, Math.PI / 2));
-            exhaust(p.x0 - 1.75, yP, p.z, r * 0.9, 22);
+            skin.push(placeK(new THREE.CylinderGeometry(r * U, r * U, L * U, 18), xm * U, Y(yP), p.z * U, 0, 0, Math.PI / 2));
+            skin.push(placeK(new THREE.SphereGeometry(r * U, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), p.x1 * U, Y(yP), p.z * U, 0, 0, -Math.PI / 2));
+            trim.push(placeK(new THREE.BoxGeometry(L * 0.7 * U, 0.35 * U, 0.5 * U), xm * U, Y(yP + r * 0.75), p.z * U));   // the pylon up to the pod's deck
+            bells.push(placeK(new THREE.CylinderGeometry(r * 1.05 * U, r * 0.8 * U, 1.8 * U, 16, 1, true), (p.x0 - 0.9) * U, Y(yP), p.z * U, 0, 0, Math.PI / 2));
+            exhaust(p.x0 - 1.75, yP, p.z, r * 0.9, +p.len || 22);
         });
         /* ── THE BRIDGE'S WINDOWS ── */
         var wins = [];
-        (hl.windows || []).forEach(function (w) { var L = Math.abs(w.z1 - w.z0); wins.push(place(new THREE.PlaneGeometry(L * U, (w.h || 0.6) * U), (w.x + 0.04) * U, Y(w.y), ((w.z0 + w.z1) / 2) * U, 0, Math.PI / 2, 0)); });
+        (hl.windows || []).forEach(function (w) { var L = Math.abs(w.z1 - w.z0); wins.push(placeK(new THREE.PlaneGeometry(L * U, (w.h || 0.6) * U), (w.x + 0.04) * U, Y(w.y), ((w.z0 + w.z1) / 2) * U, 0, Math.PI / 2, 0)); });
+        /* ── THE CANOPY (the gunship, 2026-11-11): the bridge's glass, a flattened dome on its roof's fore edge (keel frame: x along,
+           z across, w across, l along, h tall, y its foot) ── */
+        var glass = [];
+        if (hl.canopy) {
+            var cn = hl.canopy, cg = new THREE.SphereGeometry(1, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+            cg.scale((+cn.l || 4) / 2 * U, (+cn.h || 1.4) * U, (+cn.w || 8) / 2 * U);
+            glass.push(placeK(cg, (+cn.x || 0) * U, Y(cn.y != null ? +cn.y : deck), (+cn.z || 0) * U));
+            var rim = new THREE.TorusGeometry(1, 0.06, 6, 40); rim.rotateX(Math.PI / 2); rim.scale((+cn.l || 4) / 2 * U, U, (+cn.w || 8) / 2 * U);
+            strips.push(placeK(rim, (+cn.x || 0) * U, Y((cn.y != null ? +cn.y : deck) + 0.05), (+cn.z || 0) * U));
+        }
+        /* ── THE GUNS (the gunship's wing guns, 2026-11-11, room metres): a mantlet on the casemate's outer face at x / z, the twin
+           barrels `len` m out of it `dir`ward (along `ax`, x by default), `gap` m apart, a muzzle ring on each ── */
+        (hl.guns || []).forEach(function (gn) {
+            var dir = gn.dir < 0 ? -1 : 1, len = +gn.len || 6, r = +gn.r || 0.3, gap = +gn.gap || 2, onX = gn.ax !== 'z', yG = (gn.y != null) ? +gn.y : deck + 4;
+            var rx = onX ? 0 : Math.PI / 2, rz = onX ? Math.PI / 2 : 0, out = function (d, s) { return onX ? [gn.x + dir * d, gn.z + s] : [gn.x + s, gn.z + dir * d]; };
+            var mw = gap + 2 * r + 1.4, m0 = out(0.6, 0);
+            trim.push(place(new THREE.BoxGeometry((onX ? 1.2 : mw) * U, (2 * r + 1.1) * U, (onX ? mw : 1.2) * U), m0[0] * U, Y(yG), m0[1] * U));
+            [-1, 1].forEach(function (s) {
+                var b0 = out(1.2 + len / 2, s * gap / 2), b1 = out(1.2 + len, s * gap / 2);
+                bells.push(place(new THREE.CylinderGeometry(r * U, r * 1.15 * U, len * U, 10), b0[0] * U, Y(yG), b0[1] * U, rx, 0, rz));
+                trim.push(place(new THREE.CylinderGeometry(r * 1.5 * U, r * 1.5 * U, 0.6 * U, 10), b1[0] * U, Y(yG), b1[1] * U, rx, 0, rz));
+            });
+        });
         if (skin.length) add(_hqHullMerge(skin), skinMat);
         if (trim.length) add(_hqHullMerge(trim), trimMat);
         if (bells.length) add(_hqHullMerge(bells), bellMat);
@@ -67483,6 +67543,7 @@ const ThreeRenderer = (function () {
         if (plumes.length) add(_hqHullMerge(plumes), glowMat(0x6ab8ff, 0.42, 0.1, 1.4, plumeTex));
         if (strips.length) add(_hqHullMerge(strips), glowMat(0x7fd8ff, 0.6, 0.15, 0.6));
         if (wins.length) add(_hqHullMerge(wins), glowMat(0xbfe8ff, 0.8, 0.08, 0.6));
+        if (glass.length) { var gm = new THREE.MeshPhongMaterial({ color: 0x18283a, specular: 0xa8dcff, shininess: 90, transparent: true, opacity: 0.9, side: THREE.DoubleSide }); gm.emissive = new THREE.Color(0x0e3550); add(_hqHullMerge(glass), gm); }
         /* ── the running lights ── */
         (hl.lights || []).forEach(function (L) {
             var spr = _hzGlowSprite((L.size || 2.2) * U, L.color, 0.9, 0, 0, 0); spr.position.set(L.x * U, Y(L.y != null ? L.y : deck + 0.2), L.z * U); spr.renderOrder = 2; spr._ew_occSkip = true;

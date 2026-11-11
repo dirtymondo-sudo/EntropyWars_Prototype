@@ -1966,3 +1966,34 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
 - THE 2D VIEW: the old voxel editor (map.js, FILE menu of the editor) drew his pixel sheets on its flat grid and palette
   (_meTerrainBg). It now shows the calm twin (the sheet the board draws) unless window.EW_NO_CALM_LOOK. The tile info card
   already went through _ewSandUrl (calm first). His pixel sheets stay in the editor.js picker (TERRAIN family).
+
+## THE GUNSHIP — the Spaceship redone lengthwise (2026-11-11, mondo: "redesign the spaceship. It just looks nothing like a spaceship at all ... keeping the square grid in mind and designing the map for interesting and strategic PVP play" · "why not put the spawn zones at either end of the ship")
+- Why the 10-28 ship didn't read: the 12×12 board was a small window on the middle of a 120 m deck (all you saw was flat plate +
+  crate blocks), and the room's `observatory` look (teal grade) turned the void green.
+- data.js HQ_AREA_SPECS.prebuilt_derelict: a COMPACT GUNSHIP drawn with hqDeckPlan on the 3.5 m lattice (34 × 28, x0 −59.5, z0 −49;
+  the board = cols 11..22, rows 8..19 = x/z −21..21), BOW NORTH, STERN SOUTH, the two spawns at the ends. The board is mirrored
+  port/starboard AND bow/stern. Plan source: the rows in data.js (drawn by a scratch script, plan per square):
+  `. 1 1 o o o o o o 1 1 .` ×2 (spawn deck + sponsons) · `. 1 . . o o o o . . 1 .` ×2 (the wells + pylons) ·
+  `1 / / / o o o o \ \ \ 1` (companionway) · `2 2 1 D o N N o D 1 2 2` ×2 (wing guns, step, dishes, nexus) · mirrored.
+  - THE SPINE (cols 3..8) bow to stern: spawn decks at both ends, the nexus hatch (marks: amber frame + rings) amidships.
+  - THE SPONSONS (bow) / ENGINE HOUSINGS (stern), one level up beside each spawn, joined to THE GUN DECK (wing roots, one level up)
+    by THE PYLON (one square, one level up) past THE WELL (a 2×2 opening to space either side of each spawn's exit → a 4-wide neck).
+  - THE WING GUNS: a 2×2 casemate two levels up on each gun deck (contested high ground, same distance from both spawns); twin
+    barrels out of the outer face (three-renderer.js `guns`).
+  - THE COMPANIONWAYS: a steel flight (ramp, 3 squares) from the spine up onto each gun deck's corner, rows 4 and 7.
+  - Cover: two sensor dishes either side of the hatch (squares 3/8 × 5/6, ghost walls).
+  - Off the board: the bridge (L1, canopy + lit windows) + nose + the airlock collar (north wall x 0); the engine block (L1, reactor
+    stack L2, five bells on the aft face z 35); the wings swept back with a nacelle under each tip (`pods`); docked fighters, lander,
+    rover, the old props re-homed; the docking arm off the starboard wing to the bay door (south wall x 33.25).
+- RULES LEARNT (bake-arenas judge on this void room):
+  - A void square between two plates reads as DECK: hqDeckPlan's `proud` 0.7 m puts plate samples (sub 3, cover 5 of 9) inside a
+    1-square gap. Voids must be 2 squares across, or open to the board edge.
+  - A 2-level drop next to a deck square reads that square as rock (the L2 plate's proud edge); keep L2 inside L1.
+  - The judge's reach is THE WALKER's (HQ_FIELD_RULES.box.climbM 1.46 m), not the battle's climb: a 3.5 m ledge region nobody can
+    walk up counts as walls against the cap. A 3-square ramp (tops 0.58 / 1.75 / 2.92 m) is the shortest walkable flight. The
+    guns + step + dishes still count (out 48 = cap on the 12, 27 = cap on the 9): any extra void/ledge on the board needs a flight.
+- Look: new HQ_ROOM_LOOKS `gunship` (dream preset, tintAmount 0.1, bloom 0, nightMood 0.3) replaces `observatory` on this room.
+- three-renderer.js _hqBuildStarship: `bow: 'n'` turns the keel-frame parts (keel, bells, pods, windows, canopy) onto a north bow;
+  new `bells[].y / .len`, `pods[].len`, `canopy {x,z,w,l,h,y}`, `guns [{x,z,y,dir,len,r,gap,ax}]` (room metres).
+- Moved with it: HQ_ARENA_RULES.within x 0; siteRooms.backDoors bay x 33.25; the stage frame deck x 600 (door x 0); the tape on
+  the nose. Picks 12/11/10/9 re-baked (12 @ 11,8; 11 @ 11,8; 10/9 @ 12,9).
