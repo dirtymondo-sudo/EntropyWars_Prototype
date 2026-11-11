@@ -53289,6 +53289,374 @@ const ThreeRenderer = (function () {
     var FACE_IDLE_KEYS = ['eyeBlinkLeft', 'eyeBlinkRight', 'eyeLookUpLeft', 'eyeLookUpRight', 'eyeLookDownLeft', 'eyeLookDownRight',
         'eyeLookInLeft', 'eyeLookInRight', 'eyeLookOutLeft', 'eyeLookOutRight', 'browInnerUp', 'browOuterUpLeft', 'browOuterUpRight',
         'mouthSmileLeft', 'mouthSmileRight', 'jawOpen'];
+    /* THE FACE LAB (2026-11-11, mondo: "Can you make some sort of experimental dev mode where i can mess with the mouth and eye
+       animations? And have buttons that like open their mouth and let them talk and roll their eyes and laugh and moan and cry and
+       scream and stuff ... I just wanna see what the capabilities are"). HIDDEN: Settings > Developer > Face Lab, or ?facelab=1 in the
+       address (remembered in this browser; ?facelab=0 turns it off). While it is on, the character creator (the forge's and Occam's
+       mirror) shows a FACE LAB button by FACE CLOSE-UP; it opens a window over the stage that drives the creator body's face.
+       - What an MPFB head has (all 10 MPFB bodies, the classic MPFB ones too; bake-mpfb.py): 67 face shapes in its own GLB = the 52
+         ARKit face units + 15 Oculus visemes, on a mesh that keeps MakeHuman's eyeballs, teeth and tongue. NO jaw or eye BONES (the
+         game_engine rig has none): the jaw opens and the eyes turn by shapes. The idle face (THE IDLE FACE) plays 16 of them; the
+         lab gives the creator stage's body all 67 while it is open (rig.faceLab: the geometry pass writes them all, ~12 MB more;
+         the board's bodies never get them). The classic bases and the Meshy race models have no face shapes at all.
+       - MOVES: timed blends of those shapes (+ a small turn of the Head bone after the clip while HEAD MOVES is on); TALK reads the
+         SAY line letter by letter into visemes; FLAP is the old jaw flap. RAW SHAPES: one slider per shape (a base the moves
+         add to); COPY POSE puts the sliders on the clipboard as JSON. The idle blinks keep going under it unless IDLE FACE is off.
+       - The pack beard / moustache rides the shapes of the face skin nearest it while the lab is open (else the chin went through it).
+       Cosmetic and local, the creator stage only (nothing relayed online); no sound. Console: EWFaceLab.open() / play('laugh') /
+       set('jawOpen', 0.5) / close(). */
+    var EW_FACE_LAB = (function () {
+        var KEY = 'ew_facelab', enabled = false;
+        try {
+            var q = typeof location !== 'undefined' ? /[?&]facelab=([01])\b/.exec(location.search || '') : null;
+            if (q) { try { localStorage.setItem(KEY, q[1]); } catch (e) {} enabled = q[1] === '1'; }
+            else enabled = typeof localStorage !== 'undefined' && localStorage.getItem(KEY) === '1';
+        } catch (e) { enabled = false; }
+        var L = { open: false, idle: true, head: true, hold: false, speed: 1, base: {}, move: null, t0: 0, phon: null, phonText: null,
+            say: 'Hello there! Do you want to fight me? Ha, really?', live: null, info: null, ui: null, timer: 0, cache: { at: -1, s: null } };
+        var nowS = function () { return (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000; };
+        var cl = function (x) { return x < 0 ? 0 : x > 1 ? 1 : x; };
+        var sm = function (x) { x = cl(x); return x * x * (3 - 2 * x); };
+        // the envelope of a move: up over ra, held, down over rb at the end of len
+        var env = function (t, len, ra, rb) { return Math.min(ra > 0 ? sm(t / ra) : 1, rb > 0 ? sm((len - t) / rb) : 1); };
+        var add = function (o, k, x) { if (x) o.v[k] = (o.v[k] || 0) + x; };
+        var both = function (o, k, x) { add(o, k + 'Left', x); add(o, k + 'Right', x); };
+        // the eyes: x > 0 = toward screen right (the character's left), y > 0 = up
+        var look = function (o, x, y) {
+            if (x > 0) { add(o, 'eyeLookOutLeft', x); add(o, 'eyeLookInRight', x); } else if (x < 0) { add(o, 'eyeLookInLeft', -x); add(o, 'eyeLookOutRight', -x); }
+            if (y > 0) both(o, 'eyeLookUp', y); else if (y < 0) both(o, 'eyeLookDown', -y);
+        };
+        var head = function (o, p, y, r, e) { o.h[0] += (p || 0) * e; o.h[1] += (y || 0) * e; o.h[2] += (r || 0) * e; };   // pitch + = chin down, yaw + = toward screen right, roll + = toward screen left
+        var setAll = function (o, vals, e) { for (var k in vals) { if (/^\*/.test(k)) both(o, k.slice(1), vals[k] * e); else add(o, k, vals[k] * e); } };
+        var pose = function (vals, h, ra) { return { pose: true, len: 2.6, ra: ra || 0.22, rb: 0.35, f: function (t, o, e) { setAll(o, vals, e); if (h) head(o, h[0], h[1], h[2], e); } }; };
+        var hash = function (n) { var x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+        /* TALK: the SAY line into visemes (the MPFB head's Oculus set) — one letter (or a th / ch / sh / ph / ng / oo / ee pair) a beat,
+           vowels longer, a space a short rest, , . ! ? a long one; each viseme fades over its neighbours */
+        var PH = { a: ['viseme_aa', 0.30, 0.12], e: ['viseme_E', 0.18, 0.11], i: ['viseme_I', 0.12, 0.10], o: ['viseme_O', 0.24, 0.12], u: ['viseme_U', 0.10, 0.11], y: ['viseme_I', 0.10, 0.08],
+            b: ['viseme_PP', 0, 0.07], m: ['viseme_PP', 0, 0.08], p: ['viseme_PP', 0, 0.07], f: ['viseme_FF', 0.04, 0.08], v: ['viseme_FF', 0.04, 0.07],
+            d: ['viseme_DD', 0.10, 0.06], t: ['viseme_DD', 0.08, 0.06], l: ['viseme_nn', 0.10, 0.07], n: ['viseme_nn', 0.08, 0.07],
+            k: ['viseme_kk', 0.12, 0.07], g: ['viseme_kk', 0.12, 0.07], c: ['viseme_kk', 0.12, 0.07], q: ['viseme_kk', 0.10, 0.07], x: ['viseme_kk', 0.10, 0.08],
+            s: ['viseme_SS', 0.04, 0.08], z: ['viseme_SS', 0.04, 0.07], j: ['viseme_CH', 0.08, 0.08], r: ['viseme_RR', 0.10, 0.07], w: ['viseme_U', 0.08, 0.07], h: ['viseme_aa', 0.12, 0.05] };
+        var PH2 = { th: ['viseme_TH', 0.08, 0.09], ch: ['viseme_CH', 0.08, 0.09], sh: ['viseme_CH', 0.06, 0.10], ph: ['viseme_FF', 0.04, 0.08], ng: ['viseme_nn', 0.10, 0.08], oo: ['viseme_U', 0.10, 0.14], ee: ['viseme_I', 0.12, 0.14] };
+        function phonemes(text) {
+            var s = String(text || '').toLowerCase(), out = [], t = 0.05, i = 0;
+            while (i < s.length) {
+                var c = s[i], two = s.substr(i, 2), p = PH2[two] || null, step = p ? 2 : 1;
+                if (!p) p = PH[c] || null;
+                if (p) { out.push({ k: p[0], jaw: p[1], t0: t, t1: t + p[2], q: c === '?' }); t += p[2]; }
+                else if (/[.,!?;:]/.test(c)) { out.push({ k: 'viseme_sil', jaw: 0, t0: t, t1: t + 0.28, mark: c }); t += 0.28; }
+                else if (/\s/.test(c)) { t += 0.05; }
+                i += step;
+            }
+            return { list: out, len: t + 0.25, marks: out.filter(function (x) { return x.mark === '!' || x.mark === '?'; }) };
+        }
+        var MOVES = {
+            // MOUTH
+            open: pose({ jawOpen: 0.85, viseme_aa: 0.35, '*mouthLowerDown': 0.4, '*mouthUpperUp': 0.25 }),
+            talk: { len: 3, talk: true, ra: 0.06, rb: 0.15, f: function (t, o, e) {
+                var P = L.phon; if (!P) return;
+                var ov = 0.045;
+                for (var i = 0; i < P.list.length; i++) {
+                    var p = P.list[i]; if (t < p.t0 - ov || t > p.t1 + ov) continue;
+                    var w = Math.min(sm((t - (p.t0 - ov)) / (2 * ov)), sm((p.t1 + ov - t) / (2 * ov))) * e;
+                    if (p.k !== 'viseme_sil') { add(o, p.k, w); add(o, 'jawOpen', 1.4 * p.jaw * w); }
+                }
+                P.marks.forEach(function (m) {   // ! = brows up + eyes wide, ? = brows up, both on the words before it
+                    var a = cl(1 - Math.abs(t - m.t0) / 0.6) * e;
+                    if (a > 0) { add(o, 'browInnerUp', 0.45 * a); both(o, 'browOuterUp', 0.4 * a); if (m.mark === '!') both(o, 'eyeWide', 0.3 * a); }
+                });
+                head(o, 0.025 * Math.sin(t * 7.3) + 0.015 * Math.sin(t * 3.1), 0.03 * Math.sin(t * 1.3), 0.02 * Math.sin(t * 2.2), e);
+            } },
+            flap: { len: 2.6, ra: 0.05, rb: 0.15, f: function (t, o, e) {   // the PS1 lip flap: the jaw on syllables, nothing else
+                var sy = t * 6.5, k = Math.floor(sy), ph = sy - k, amp = 0.2 + 0.35 * hash(k);
+                add(o, 'jawOpen', e * amp * Math.pow(Math.sin(Math.PI * ph), 1.5));
+                add(o, 'mouthFunnel', e * 0.15 * hash(k + 7));
+            } },
+            smile: pose({ '*mouthSmile': 0.9, '*cheekSquint': 0.35, '*eyeSquint': 0.2 }),
+            grin: pose({ '*mouthSmile': 1, '*mouthUpperUp': 0.45, '*mouthLowerDown': 0.4, '*mouthStretch': 0.2, jawOpen: 0.1, '*cheekSquint': 0.5, '*eyeSquint': 0.3 }),
+            smirk: pose({ mouthSmileLeft: 0.8, mouthDimpleLeft: 0.35, cheekSquintLeft: 0.35, mouthLeft: 0.15, browOuterUpRight: 0.35, eyeSquintLeft: 0.15 }, [0, 0, -0.05]),
+            kiss: pose({ mouthPucker: 1, mouthFunnel: 0.25, '*eyeBlink': 0.45, browInnerUp: 0.2 }, [-0.04, 0, 0.05]),
+            tongue: pose({ jawOpen: 0.35, tongueOut: 1, '*eyeSquint': 0.25, '*browOuterUp': 0.3 }),
+            puff: pose({ cheekPuff: 1, '*mouthPress': 0.3, mouthClose: 0.2, '*eyeWide': 0.2 }),
+            yawn: { len: 3.4, own: true, noBlink: true, f: function (t, o) {
+                var e = Math.min(sm(t / 1.1), sm((3.4 - t) / 1.2));
+                add(o, 'jawOpen', 1 * e); both(o, 'mouthStretch', 0.45 * e); both(o, 'mouthLowerDown', 0.3 * e);
+                both(o, 'eyeBlink', 0.92 * e); both(o, 'eyeSquint', 0.5 * e); add(o, 'browInnerUp', 0.6 * e); add(o, 'noseSneerLeft', 0.15 * e); add(o, 'noseSneerRight', 0.15 * e);
+                head(o, -0.22, 0, 0.04, e); o.e = Math.max(o.e, e);
+            } },
+            // EYES
+            blink: { len: 0.3, own: true, noBlink: true, f: function (t, o) { var b = t < 0.07 ? t / 0.07 : t < 0.11 ? 1 : t < 0.23 ? 1 - (t - 0.11) / 0.12 : 0; both(o, 'eyeBlink', b); o.e = Math.max(o.e, b); } },
+            winkL: { len: 0.75, ra: 0.1, rb: 0.22, noBlink: true, f: function (t, o, e) { add(o, 'eyeBlinkRight', e); add(o, 'eyeSquintRight', 0.4 * e); add(o, 'cheekSquintRight', 0.45 * e); add(o, 'mouthSmileRight', 0.45 * e); add(o, 'mouthSmileLeft', 0.15 * e); head(o, 0, 0, 0.06, e); } },
+            winkR: { len: 0.75, ra: 0.1, rb: 0.22, noBlink: true, f: function (t, o, e) { add(o, 'eyeBlinkLeft', e); add(o, 'eyeSquintLeft', 0.4 * e); add(o, 'cheekSquintLeft', 0.45 * e); add(o, 'mouthSmileLeft', 0.45 * e); add(o, 'mouthSmileRight', 0.15 * e); head(o, 0, 0, -0.06, e); } },
+            roll: { len: 1.9, own: true, noBlink: true, f: function (t, o) {
+                // the eyes from down-left, over the top, to down-right, back to the middle; the lids lag, the brows lift, a sigh after
+                var a0 = 200 * Math.PI / 180, a1 = -20 * Math.PI / 180, x, y, r = 0.95;
+                if (t < 0.3) { var u = sm(t / 0.3); x = Math.cos(a0) * r * u; y = Math.sin(a0) * r * u; }
+                else if (t < 1.2) { var th = a0 + (a1 - a0) * sm((t - 0.3) / 0.9); x = Math.cos(th) * r; y = Math.sin(th) * r; }
+                else { var u2 = 1 - sm((t - 1.2) / 0.35); x = Math.cos(a1) * r * u2; y = Math.sin(a1) * r * u2; }
+                look(o, x, y);
+                var e = Math.min(sm(t / 0.25), sm((1.9 - t) / 0.4)), up = cl(y);
+                both(o, 'eyeBlink', 0.12 * up); add(o, 'browInnerUp', 0.3 * e); both(o, 'browOuterUp', 0.45 * up);
+                both(o, 'mouthPress', 0.3 * e); add(o, 'mouthLeft', 0.18 * e);
+                var sigh = cl(1 - Math.abs(t - 1.55) / 0.25); both(o, 'eyeBlink', 0.8 * sigh); add(o, 'jawOpen', 0.06 * sigh);
+                head(o, -0.07 * up + 0.04 * sigh, 0, 0.07 * Math.sin(Math.PI * cl((t - 0.3) / 0.9)), 1); o.e = Math.max(o.e, e);
+            } },
+            lookL: { len: 2.4, own: true, f: function (t, o) { var ee = env(t, 2.4, 0.08, 0.25), eh = env(t, 2.4, 0.45, 0.45); look(o, -0.9 * ee, 0); head(o, 0, -0.32, 0, eh); o.e = Math.max(o.e, ee); } },
+            lookR: { len: 2.4, own: true, f: function (t, o) { var ee = env(t, 2.4, 0.08, 0.25), eh = env(t, 2.4, 0.45, 0.45); look(o, 0.9 * ee, 0); head(o, 0, 0.32, 0, eh); o.e = Math.max(o.e, ee); } },
+            lookU: { len: 2.4, own: true, f: function (t, o) { var ee = env(t, 2.4, 0.08, 0.25), eh = env(t, 2.4, 0.45, 0.45); look(o, 0, 0.9 * ee); add(o, 'browInnerUp', 0.25 * ee); both(o, 'browOuterUp', 0.25 * ee); head(o, -0.18, 0, 0, eh); o.e = Math.max(o.e, ee); } },
+            lookD: { len: 2.4, own: true, f: function (t, o) { var ee = env(t, 2.4, 0.08, 0.25), eh = env(t, 2.4, 0.45, 0.45); look(o, 0, -0.9 * ee); both(o, 'eyeBlink', 0.3 * ee); head(o, 0.2, 0, 0, eh); o.e = Math.max(o.e, ee); } },
+            cross: pose({ eyeLookInLeft: 1, eyeLookInRight: 1, browInnerUp: 0.3 }),
+            wide: pose({ '*eyeWide': 1, browInnerUp: 0.5, '*browOuterUp': 0.5 }, null, 0.12),
+            squint: pose({ '*eyeSquint': 1, '*cheekSquint': 0.35, '*browDown': 0.4 }),
+            shut: { pose: true, len: 2.6, ra: 0.18, rb: 0.3, noBlink: true, f: function (t, o, e) { both(o, 'eyeBlink', e); } },
+            // FEELINGS
+            laugh: { len: 2.8, ra: 0.2, rb: 0.5, f: function (t, o, e) {   // "ha-ha-ha": the jaw on 5 Hz pulses, the head back and bobbing
+                var p = Math.pow(Math.abs(Math.sin(Math.PI * 5.2 * t)), 0.7) * (1 - 0.25 * t / 2.8);
+                add(o, 'jawOpen', e * (0.2 + 0.4 * p)); both(o, 'mouthSmile', 0.95 * e); both(o, 'cheekSquint', 0.8 * e); both(o, 'eyeSquint', 0.6 * e);
+                both(o, 'eyeBlink', 0.35 * e); both(o, 'mouthUpperUp', 0.5 * e); both(o, 'mouthLowerDown', e * (0.2 + 0.25 * p)); both(o, 'mouthStretch', 0.15 * e); add(o, 'browInnerUp', 0.25 * e);
+                head(o, -0.12 - 0.04 * p, 0, 0.04 * Math.sin(t * 4.4), e);
+            } },
+            moan: { len: 3.2, ra: 0.9, rb: 0.9, noBlink: true, f: function (t, o, e) {   // a long "ohh": the lids half down, the brows up, the mouth an O that swells
+                both(o, 'eyeBlink', 0.7 * e); add(o, 'browInnerUp', 0.85 * e);
+                add(o, 'viseme_O', 0.55 * e); add(o, 'jawOpen', e * (0.22 + 0.06 * Math.sin(t * 5))); add(o, 'mouthFunnel', 0.35 * e); both(o, 'mouthLowerDown', 0.15 * e);
+                head(o, -0.14, 0.04 * Math.sin(t * 1.6), 0.08, e);
+            } },
+            cry: { len: 3.6, ra: 0.45, rb: 0.6, f: function (t, o, e) {   // sad brows, frown, squeezed eyes, a chin quiver and sobs that jerk the jaw + head
+                var ph = (t * 1.55) % 1, s = ph < 0.15 ? ph / 0.15 : Math.max(0, 1 - (ph - 0.15) / 0.35), qv = Math.sin(t * 2 * Math.PI * 9);
+                add(o, 'browInnerUp', e); both(o, 'browDown', 0.55 * e); both(o, 'eyeSquint', 0.65 * e); both(o, 'eyeBlink', e * (0.35 + 0.35 * s)); both(o, 'cheekSquint', 0.5 * e);
+                both(o, 'mouthFrown', e); both(o, 'mouthStretch', 0.45 * e); both(o, 'mouthLowerDown', 0.35 * e); both(o, 'mouthUpperUp', 0.25 * e);
+                add(o, 'mouthShrugLower', e * (0.3 + 0.12 * qv)); add(o, 'jawOpen', e * (0.08 + 0.3 * s)); both(o, 'noseSneer', 0.25 * e);
+                head(o, 0.16 + 0.06 * s, 0, 0.03 * Math.sin(t * 1.1), e);
+            } },
+            scream: { len: 2.4, ra: 0.12, rb: 0.5, noBlink: true, f: function (t, o, e) {   // everything open, the eyes wide, a tremble on the jaw + head
+                var n = 0.5 * Math.sin(t * 2 * Math.PI * 17) + 0.5 * Math.sin(t * 2 * Math.PI * 23);
+                add(o, 'jawOpen', e * (0.96 + 0.04 * n)); add(o, 'viseme_aa', 0.4 * e); both(o, 'mouthStretch', 0.9 * e); both(o, 'mouthUpperUp', 0.7 * e); both(o, 'mouthLowerDown', 0.7 * e); add(o, 'mouthFunnel', 0.1 * e);
+                both(o, 'eyeWide', e); add(o, 'browInnerUp', e); both(o, 'browOuterUp', 0.9 * e); both(o, 'noseSneer', 0.35 * e); both(o, 'cheekSquint', 0.15 * e);
+                head(o, -0.06 + 0.012 * n, 0.01 * n, 0, e);
+            } },
+            angry: pose({ '*browDown': 1, '*noseSneer': 0.55, '*eyeSquint': 0.45, '*mouthPress': 0.5, '*mouthFrown': 0.3, jawForward: 0.25, '*mouthUpperUp': 0.2 }, [0.07, 0, 0]),
+            surprised: pose({ '*eyeWide': 1, browInnerUp: 0.9, '*browOuterUp': 0.9, jawOpen: 0.4, mouthFunnel: 0.25 }, [-0.06, 0, 0], 0.1),
+            disgust: pose({ '*noseSneer': 1, mouthUpperUpLeft: 0.7, mouthUpperUpRight: 0.4, '*browDown': 0.5, '*eyeSquint': 0.4, '*mouthFrown': 0.3 }, [0, -0.1, -0.05]),
+            sad: pose({ browInnerUp: 0.9, '*browDown': 0.3, '*mouthFrown': 0.7, mouthShrugLower: 0.4, '*eyeBlink': 0.25, '*eyeLookDown': 0.3 }, [0.13, 0, 0]),
+            scared: { pose: true, len: 2.6, ra: 0.15, rb: 0.4, noBlink: true, f: function (t, o, e) {
+                var n = Math.sin(t * 2 * Math.PI * 11);
+                both(o, 'eyeWide', 0.9 * e); add(o, 'browInnerUp', e); both(o, 'browOuterUp', 0.4 * e); both(o, 'mouthStretch', 0.65 * e); add(o, 'jawOpen', e * (0.15 + 0.03 * n)); both(o, 'mouthLowerDown', 0.3 * e);
+                head(o, 0.05, 0.015 * n, 0, e);
+            } }
+        };
+        var GROUPS = [
+            ['MOUTH', [['open', 'OPEN MOUTH'], ['talk', 'TALK'], ['flap', 'LIP FLAP'], ['smile', 'SMILE'], ['grin', 'GRIN'], ['smirk', 'SMIRK'], ['kiss', 'KISS'], ['tongue', 'TONGUE OUT'], ['puff', 'PUFF CHEEKS'], ['yawn', 'YAWN']]],
+            ['EYES', [['blink', 'BLINK'], ['winkL', '◀ WINK'], ['winkR', 'WINK ▶'], ['roll', 'ROLL EYES'], ['lookL', '◀ LOOK'], ['lookR', 'LOOK ▶'], ['lookU', 'LOOK UP'], ['lookD', 'LOOK DOWN'], ['cross', 'CROSS-EYED'], ['wide', 'WIDE EYES'], ['squint', 'SQUINT'], ['shut', 'EYES SHUT']]],
+            ['FEELINGS', [['laugh', 'LAUGH'], ['moan', 'MOAN'], ['cry', 'CRY'], ['scream', 'SCREAM'], ['angry', 'ANGRY'], ['surprised', 'SURPRISED'], ['disgust', 'DISGUST'], ['sad', 'SAD'], ['scared', 'SCARED']]]
+        ];
+        function play(id) {
+            var M = MOVES[id]; if (!M) return false;
+            if (M.talk) { if (!L.phon || L.phonText !== L.say) { L.phon = phonemes(L.say); L.phonText = L.say; } }
+            L.move = id; L.t0 = nowS(); L.cache.at = -1;
+            return true;
+        }
+        function stop() { L.move = null; L.cache.at = -1; }
+        /* sample(now): the moves' shapes + head turn this frame (one per frame, shared by every face the lab drives) */
+        function sample(now) {
+            if (L.cache.at === now && L.cache.s) return L.cache.s;
+            var o = { v: {}, h: [0, 0, 0], e: 0, noBlink: false };
+            var M = L.move ? MOVES[L.move] : null;
+            if (M) {
+                var len = M.talk && L.phon ? L.phon.len : M.len, t = (now - L.t0) * L.speed;
+                if (t >= len && !L.hold) { L.move = null; }
+                else {
+                    if (L.hold) t = M.pose ? Math.min(t, len * 0.5) : t % len;
+                    var e = M.own ? 1 : env(t, len, M.ra || 0, M.rb || 0);
+                    M.f(t, o, e, len);
+                    if (!M.own) o.e = Math.max(o.e, e);
+                    o.noBlink = !!M.noBlink;
+                }
+            }
+            L.cache.at = now; L.cache.s = o;
+            return o;
+        }
+        /* THE PANEL: a PS1 window over the creator stage (draggable by its title; where it was left is remembered) */
+        var CSS = '#ewFaceLab{position:fixed;top:64px;right:16px;width:372px;max-width:calc(100vw - 32px);max-height:calc(100vh - 80px);z-index:9996;display:flex;flex-direction:column;box-sizing:border-box;background:rgba(14,12,9,.95);border:1px solid #c9ad6d;box-shadow:0 0 0 1px #000,0 10px 30px rgba(0,0,0,.6);color:#eee1be;font:12px/1.35 "DotGothic16",monospace}' +
+            '#ewFaceLab *{box-sizing:border-box}' +
+            '#ewFaceLab .fl-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 8px 7px 12px;background:linear-gradient(#3a2f1a,#1f180e);border-bottom:1px solid #c9ad6d;cursor:move;user-select:none;touch-action:none}' +
+            '#ewFaceLab .fl-head b{color:#f0cc83;letter-spacing:.14em;font-weight:400;font-size:13px}#ewFaceLab .fl-head small{color:#a89a78;letter-spacing:.1em;font-size:10px;margin-left:6px}' +
+            '#ewFaceLab .fl-body{overflow-y:auto;overflow-x:hidden;padding:6px 10px 10px;min-height:0}' +
+            '#ewFaceLab .fl-sec{margin:9px 0 5px;color:#c6b995;letter-spacing:.16em;font-size:10px;border-bottom:1px solid #3d3322;padding-bottom:2px}' +
+            '#ewFaceLab .fl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(98px,1fr));gap:5px}' +
+            '#ewFaceLab .fl-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center}' +
+            '#ewFaceLab .fl-btn{min-height:30px;padding:4px 6px;border:1px solid #6b5a38;background:rgba(0,0,0,.4);color:#eee1be;font:inherit;font-size:11px;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;white-space:normal;overflow-wrap:anywhere;line-height:1.15;text-align:center}' +
+            '#ewFaceLab .fl-btn:hover{border-color:#f0cc83;color:#fff3d0}#ewFaceLab .fl-btn.on{background:#5a4618;border-color:#f0cc83;color:#fff3d0}' +
+            '#ewFaceLab .fl-btn.playing{background:#1f5f3a;border-color:#5fd08a;color:#e8ffef}#ewFaceLab .fl-x{background:#5a1a1a;border-color:#d05f5f;color:#ffe0e0;min-width:30px}' +
+            '#ewFaceLab .fl-x:hover{background:#7a2424;border-color:#ff8a8a}#ewFaceLab .fl-go{background:#1f4f30;border-color:#5fd08a;color:#e8ffef}' +
+            '#ewFaceLab .fl-say{display:flex;gap:5px;margin-top:2px}#ewFaceLab .fl-say input{flex:1;min-width:0;background:#0b0a08;border:1px solid #6b5a38;color:#eee1be;font:inherit;font-size:12px;padding:5px 7px}' +
+            '#ewFaceLab .fl-note{color:#a89a78;font-size:10.5px;line-height:1.4;margin:6px 0 2px;overflow-wrap:anywhere}#ewFaceLab .fl-note b{color:#f0cc83;font-weight:400}' +
+            '#ewFaceLab details{border:1px solid #3d3322;margin:4px 0;background:rgba(0,0,0,.2)}#ewFaceLab summary{cursor:pointer;padding:5px 7px;color:#e7d6a8;letter-spacing:.1em;font-size:11px}' +
+            '#ewFaceLab .fl-sl{display:grid;grid-template-columns:minmax(0,1fr) 108px 32px;gap:6px;align-items:center;padding:2px 7px;font-size:10.5px}' +
+            '#ewFaceLab .fl-sl span{overflow-wrap:anywhere;line-height:1.15}#ewFaceLab .fl-sl input{width:100%;margin:0;accent-color:#f0cc83}#ewFaceLab .fl-sl i{font-style:normal;text-align:right;color:#a89a78}' +
+            '#ewFaceLab .fl-sl .fl-bar{grid-column:1/-1;height:2px;background:#2a2216;margin-top:-1px}#ewFaceLab .fl-sl .fl-bar>div{height:100%;width:0;background:#5fd08a}' +
+            '#ewFaceLab .fl-speed{display:grid;grid-template-columns:auto minmax(0,1fr) 40px;gap:6px;align-items:center;font-size:10.5px;color:#c6b995;margin-top:6px}#ewFaceLab .fl-speed input{width:100%;accent-color:#f0cc83}';
+        var SLIDER_GROUPS = [['EYES', /^eye/], ['BROWS', /^brow/], ['JAW', /^(jaw|mouthClose$)/], ['MOUTH', /^mouth/], ['CHEEKS + NOSE', /^(cheek|nose)/], ['TONGUE', /^tongue/], ['TALK SHAPES (VISEMES)', /^viseme_/]];
+        var nice = function (k) { return k.replace(/^viseme_/, 'viseme ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase(); };
+        function el(tag, attrs, kids) {
+            var e = document.createElement(tag);
+            if (attrs) for (var a in attrs) { if (a === 'text') e.textContent = attrs[a]; else if (a === 'cls') e.className = attrs[a]; else if (/^on/.test(a)) e.addEventListener(a.slice(2), attrs[a]); else e.setAttribute(a, attrs[a]); }
+            (kids || []).forEach(function (c) { if (c) e.appendChild(c); });
+            return e;
+        }
+        function build() {
+            if (typeof document === 'undefined') return null;
+            if (!document.getElementById('ewFaceLabCss')) { var st = document.createElement('style'); st.id = 'ewFaceLabCss'; st.textContent = CSS; document.head.appendChild(st); }
+            var ui = { moveBtns: {}, toggles: {}, sliders: {}, bars: {}, vals: {} };
+            var box = el('div', { id: 'ewFaceLab', role: 'dialog', 'aria-label': 'Face lab' });
+            var head0 = el('div', { cls: 'fl-head' }, [el('div', null, [el('b', { text: 'FACE LAB' }), el('small', { text: 'EXPERIMENTAL' })]),
+                el('button', { cls: 'fl-btn fl-x', title: 'Close the face lab', text: '✕', onclick: function () { api.close(); } })]);
+            var body = el('div', { cls: 'fl-body' });
+            ui.info = el('div', { cls: 'fl-note' });
+            body.appendChild(ui.info);
+            // the switches
+            var tog = function (key, label, title) {
+                var b = el('button', { cls: 'fl-btn', title: title, onclick: function () { L[key] = !L[key]; refreshToggles(); } });
+                b.textContent = label; ui.toggles[key] = [b, label]; return b;
+            };
+            body.appendChild(el('div', { cls: 'fl-row', style: 'margin-top:4px' }, [
+                tog('idle', 'IDLE FACE', 'The idle blinks + glances keep going under the moves'),
+                tog('head', 'HEAD MOVES', 'The moves turn the head a little (laugh back, cry down, look left / right)'),
+                tog('hold', 'HOLD / LOOP', 'A face stays on, a move loops, until STOP or another button'),
+                el('button', { cls: 'fl-btn fl-x', text: 'STOP', title: 'Stop the move', onclick: function () { stop(); } }),
+                el('button', { cls: 'fl-btn', text: 'FACE CLOSE-UP', onclick: function () { try { window.EWCharViewer && window.EWCharViewer.viewHead(); } catch (e) {} } })]));
+            var spd = el('input', { type: 'range', min: '0.25', max: '2', step: '0.05', value: String(L.speed) });
+            var spdV = el('span', { text: L.speed.toFixed(2) + 'x' });
+            spd.addEventListener('input', function () { L.speed = +spd.value || 1; spdV.textContent = L.speed.toFixed(2) + 'x'; });
+            body.appendChild(el('div', { cls: 'fl-speed' }, [el('span', { text: 'SPEED' }), spd, spdV]));
+            GROUPS.forEach(function (g) {
+                body.appendChild(el('div', { cls: 'fl-sec', text: g[0] }));
+                var grid = el('div', { cls: 'fl-grid' });
+                g[1].forEach(function (m) {
+                    var b = el('button', { cls: 'fl-btn', text: m[1], onclick: function () { if (L.move === m[0]) stop(); else play(m[0]); } });
+                    ui.moveBtns[m[0]] = b; grid.appendChild(b);
+                });
+                body.appendChild(grid);
+                if (g[0] === 'MOUTH') {
+                    var inp = el('input', { type: 'text', value: L.say, maxlength: '160', 'aria-label': 'What TALK says' });
+                    inp.addEventListener('keydown', function (e) { e.stopPropagation(); if (e.key === 'Enter') { L.say = inp.value; play('talk'); } });
+                    inp.addEventListener('keyup', function (e) { e.stopPropagation(); });
+                    inp.addEventListener('input', function () { L.say = inp.value; });
+                    body.appendChild(el('div', { cls: 'fl-sec', text: 'SAY (TALK READS THIS LINE)' }));
+                    body.appendChild(el('div', { cls: 'fl-say' }, [inp, el('button', { cls: 'fl-btn fl-go', text: 'SAY IT', onclick: function () { L.say = inp.value; play('talk'); } })]));
+                }
+            });
+            // the raw shapes
+            body.appendChild(el('div', { cls: 'fl-sec', text: 'RAW SHAPES (A BASE THE MOVES ADD TO)' }));
+            body.appendChild(el('div', { cls: 'fl-row' }, [
+                el('button', { cls: 'fl-btn', text: 'RESET SLIDERS', onclick: function () { L.base = {}; syncSliders(); } }),
+                el('button', { cls: 'fl-btn', text: 'COPY POSE', title: 'The slider values as JSON, for a thread to bake into an expression', onclick: function () {
+                    var out = {}; Object.keys(L.base).forEach(function (k) { if (L.base[k] > 0) out[k] = +L.base[k].toFixed(2); });
+                    var txt = JSON.stringify(out); try { navigator.clipboard.writeText(txt); ui.info.dataset.flash = 'Copied: ' + txt; } catch (e) { ui.info.dataset.flash = txt; }
+                } })]));
+            ui.slWrap = el('div');
+            body.appendChild(ui.slWrap);
+            box.appendChild(head0); box.appendChild(body);
+            // drag by the title
+            var drag = null;
+            head0.addEventListener('pointerdown', function (e) {
+                if (e.target && e.target.closest && e.target.closest('button')) return;
+                var r = box.getBoundingClientRect(); drag = { dx: e.clientX - r.left, dy: e.clientY - r.top }; try { head0.setPointerCapture(e.pointerId); } catch (_e) {}
+            });
+            head0.addEventListener('pointermove', function (e) {
+                if (!drag) return;
+                var x = Math.max(0, Math.min(window.innerWidth - 60, e.clientX - drag.dx)), y = Math.max(0, Math.min(window.innerHeight - 40, e.clientY - drag.dy));
+                box.style.left = x + 'px'; box.style.top = y + 'px'; box.style.right = 'auto';
+            });
+            head0.addEventListener('pointerup', function () { if (!drag) return; drag = null; try { localStorage.setItem('ew_facelab_pos', JSON.stringify([parseFloat(box.style.left) || 0, parseFloat(box.style.top) || 0])); } catch (e) {} });
+            try { var pos = JSON.parse(localStorage.getItem('ew_facelab_pos') || 'null'); if (pos && pos.length === 2 && pos[0] < window.innerWidth - 60 && pos[1] < window.innerHeight - 40) { box.style.left = pos[0] + 'px'; box.style.top = pos[1] + 'px'; box.style.right = 'auto'; } } catch (e) {}
+            ui.box = box;
+            ui.slKeys = '';
+            return ui;
+        }
+        function refreshToggles() { var ui = L.ui; if (!ui) return; for (var k in ui.toggles) ui.toggles[k][0].classList.toggle('on', !!L[k]); }
+        function syncSliders() { var ui = L.ui; if (!ui) return; for (var k in ui.sliders) { var v = L.base[k] || 0; ui.sliders[k].value = String(v); ui.vals[k].textContent = v.toFixed(2); } }
+        function buildSliders(names) {
+            var ui = L.ui; ui.slWrap.textContent = ''; ui.sliders = {}; ui.bars = {}; ui.vals = {};
+            var used = {};
+            SLIDER_GROUPS.concat([['OTHER', /./]]).forEach(function (g) {
+                var keys = names.filter(function (k) { return !used[k] && g[1].test(k); });
+                if (!keys.length) return;
+                keys.forEach(function (k) { used[k] = 1; });
+                var det = el('details', null, [el('summary', { text: g[0] + ' · ' + keys.length })]);
+                keys.forEach(function (k) {
+                    var s = el('input', { type: 'range', min: '0', max: '1', step: '0.01', value: String(L.base[k] || 0), 'aria-label': k });
+                    var v = el('i', { text: (L.base[k] || 0).toFixed(2) });
+                    s.addEventListener('input', function () { var x = +s.value || 0; if (x > 0) L.base[k] = x; else delete L.base[k]; v.textContent = x.toFixed(2); });
+                    var bar = el('div');
+                    det.appendChild(el('div', { cls: 'fl-sl', title: k }, [el('span', { text: nice(k) }), s, v, el('div', { cls: 'fl-bar' }, [bar])]));
+                    ui.sliders[k] = s; ui.vals[k] = v; ui.bars[k] = bar;
+                });
+                ui.slWrap.appendChild(det);
+            });
+        }
+        function uiTick() {
+            var ui = L.ui; if (!ui || !L.open) return;
+            var cv = typeof window !== 'undefined' ? window.EWCharViewer : null, st = cv && cv.dev ? cv.dev.state() : null;
+            // the stage gone (the creator closed): the lab closes with it
+            if (!st || !st.host || st.host.isConnected === false || !st.host.getClientRects().length) { api.close(); return; }
+            var info = cv && cv.faceLabInfo ? cv.faceLabInfo() : null;
+            if (!info || !info.ok) { try { info = cv.faceLab(true); } catch (e) { info = null; } }
+            var msg;
+            if (info && info.ok) {
+                if (ui.slKeys !== info.names.join(',')) { ui.slKeys = info.names.join(','); buildSliders(info.names); }
+                msg = 'This body: <b>' + info.n + ' face shapes</b> (' + info.names.filter(function (k) { return !/^viseme_/.test(k); }).length + ' ARKit + ' + info.names.filter(function (k) { return /^viseme_/.test(k); }).length + ' talk visemes) on one mesh with eyeballs, teeth + tongue. No jaw or eye bones: the jaw and eyes move by shapes.' + (info.headOff ? ' <b>A creature head covers the face.</b>' : '');
+            } else if (info && info.loading) msg = 'Loading the body\u2026';
+            else msg = '<b>No face shapes on this body.</b> Only the MPFB bodies have them (MPFB MALE / FEMALE, their heavy / thin / short, MPFB CLASSIC). The classic bases and the race models are one fused mesh with no face shapes or face bones.';
+            if (ui.info.dataset.flash) { msg = ui.info.dataset.flash; ui.flashN = (ui.flashN || 0) + 1; if (ui.flashN > 25) { delete ui.info.dataset.flash; ui.flashN = 0; } }
+            if (ui.msg !== msg) { ui.msg = msg; ui.info.innerHTML = msg; }
+            for (var m in ui.moveBtns) ui.moveBtns[m].classList.toggle('playing', L.move === m);
+            var lv = L.live;
+            if (lv && lv.D && lv.I) for (var k in ui.bars) { var j = lv.D[k], x = j != null ? lv.I[j] || 0 : 0; var w = Math.round(x * 100) + '%'; if (ui.bars[k].style.width !== w) ui.bars[k].style.width = w; }
+        }
+        var api = {
+            enabled: function () { return enabled; },
+            setEnabled: function (on) { enabled = !!on; try { localStorage.setItem(KEY, enabled ? '1' : '0'); } catch (e) {} if (!enabled) api.close(); try { window.dispatchEvent(new Event('ew-facelab')); } catch (e) {} return enabled; },
+            isOpen: function () { return L.open; },
+            open: function () {
+                if (typeof document === 'undefined') return false;
+                if (!L.ui) L.ui = build();
+                if (!L.ui) return false;
+                if (!L.ui.box.isConnected) document.body.appendChild(L.ui.box);
+                L.open = true; refreshToggles();
+                var cv = window.EWCharViewer;
+                try { if (cv) { L.info = cv.faceLab(true); cv.viewHead(); } } catch (e) { console.warn('[ThreeRenderer] face lab', e); }
+                if (!L.timer) L.timer = setInterval(uiTick, 120);
+                uiTick();
+                return true;
+            },
+            close: function () {
+                L.open = false; L.move = null;
+                if (L.timer) { clearInterval(L.timer); L.timer = 0; }
+                if (L.ui && L.ui.box.parentNode) L.ui.box.parentNode.removeChild(L.ui.box);
+                try { if (window.EWCharViewer && window.EWCharViewer.faceLab) window.EWCharViewer.faceLab(false); } catch (e) {}
+                L.live = null;
+            },
+            toggle: function () { return L.open ? (api.close(), false) : api.open(); },
+            play: play, stop: stop,
+            set: function (k, v) { v = +v || 0; if (v > 0) L.base[k] = cl(v); else delete L.base[k]; syncSliders(); },
+            pose: function (obj) { L.base = {}; for (var k in (obj || {})) if (obj[k] > 0) L.base[k] = cl(+obj[k]); syncSliders(); },
+            opt: function (k, v) { if (k in L && typeof L[k] !== 'object') { L[k] = v; refreshToggles(); } return L[k]; },
+            say: function (txt) { L.say = String(txt || ''); var inp = L.ui && L.ui.box.querySelector('.fl-say input'); if (inp) inp.value = L.say; return play('talk'); },
+            moves: function () { return GROUPS.map(function (g) { return [g[0], g[1].map(function (m) { return m[0]; })]; }); },
+            /* (the rig side) */
+            sample: sample, state: L
+        };
+        if (typeof window !== 'undefined') window.EWFaceLab = api;
+        return api;
+    })();
+    /* THE FACE LAB: a face-shape set out of the body's own GLB morphs (the idle face's 16, or all of them while the lab is open) */
+    function _ccFaceMorphFrom(src, dict, keys, count) {
+        var fmSrc = src.morphAttributes && src.morphAttributes.position;
+        if (!fmSrc || !dict) return null;
+        keys = keys.filter(function (k) { return dict[k] != null && fmSrc[dict[k]] && fmSrc[dict[k]].count === count; });
+        if (!keys.length) return null;
+        return { names: keys, arrays: keys.map(function (k) { var at = fmSrc[dict[k]], f = new Float32Array(count * 3); for (var fv = 0; fv < count; fv++) { f[fv * 3] = at.getX(fv); f[fv * 3 + 1] = at.getY(fv); f[fv * 3 + 2] = at.getZ(fv); } return f; }), rel: src.morphTargetsRelative !== false };
+    }
     /* THE ARM CLEARANCE (2026-11-05, mondo: "Almost all of the walk animations you added, their hands clip through their thighs as they
        swing ... Do the mpfb bodies not have like bones and collision and stuff to prevent this?"). A clip is bone ROTATIONS only, recorded
        on (or keyed for) a slimmer body, and nothing in a skinned rig stops a hand from passing through a thigh. This pass is that
@@ -54104,10 +54472,11 @@ const ThreeRenderer = (function () {
             var stockSkin = /^mpfb_/.test(mesh.name) && mesh.material && mesh.material.map ? mesh.material.map : null;   // THE MPFB BODIES: keep the stock skin
             /* THE IDLE FACE (2026-11-01): the MPFB head's own face shapes the idle face plays (blinks, glances, brows, a breath of
                jaw) are kept for the dressed body (its geometry is rebuilt below without morphs; writeGeometry puts them back) */
-            var faceMorph = null, fmDict = mesh.morphTargetDictionary, fmSrc = src.morphAttributes && src.morphAttributes.position;
-            if (stockSkin && fmDict && fmSrc && !(typeof window !== 'undefined' && window.EW_DISABLE_FACE_IDLE)) {
-                var fmKeep = FACE_IDLE_KEYS.filter(function (k) { return fmDict[k] != null && fmSrc[fmDict[k]] && fmSrc[fmDict[k]].count === pos.count; });
-                if (fmKeep.length) faceMorph = { names: fmKeep, arrays: fmKeep.map(function (k) { var at = fmSrc[fmDict[k]], f = new Float32Array(pos.count * 3); for (var fv = 0; fv < pos.count; fv++) { f[fv * 3] = at.getX(fv); f[fv * 3 + 1] = at.getY(fv); f[fv * 3 + 2] = at.getZ(fv); } return f; }), rel: src.morphTargetsRelative !== false };
+            var faceMorph = null, fmDict = mesh.morphTargetDictionary, fmSrc = src.morphAttributes && src.morphAttributes.position, fmAll = null;
+            if (stockSkin && fmDict && fmSrc) {
+                fmDict = Object.assign({}, fmDict);   // (THE FACE LAB: the body's own morph names, kept for rig.faceLab; the geometry below drops them)
+                fmAll = Object.keys(fmDict).filter(function (k) { return fmSrc[fmDict[k]] && fmSrc[fmDict[k]].count === pos.count; }).sort(function (x, y) { return fmDict[x] - fmDict[y]; });
+                if (!(typeof window !== 'undefined' && window.EW_DISABLE_FACE_IDLE)) faceMorph = _ccFaceMorphFrom(src, fmDict, FACE_IDLE_KEYS, pos.count);
             }
             mesh.geometry = geometry();
             // skin is matte-ish: a lumpy 30k-tri surface under a tight highlight shows every lump
@@ -54216,7 +54585,7 @@ const ThreeRenderer = (function () {
                 shells.eyes.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(0), 3));
                 shells.eyes.visible = false;
             }
-            var part = { jig: jig, faceMorph: faceMorph, stock: !!stockSkin, stockMap: stockSkin, mpfbBody: stockSkin ? mesh.name.replace(/^mpfb_/, '').replace(/[._]\d+$/, '') : null, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
+            var part = { jig: jig, faceMorph: faceMorph, fmAll: fmAll, fmDict0: fmAll ? fmDict : null, stock: !!stockSkin, stockMap: stockSkin, mpfbBody: stockSkin ? mesh.name.replace(/^mpfb_/, '').replace(/[._]\d+$/, '') : null, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
                 shell: shell, src: src, ids: ids, count: pos.count, Q: Q, weld: weld, repCount: repCount, adjOff: adjOff, adjIdx: adjIdx, triNbr: triNbr, height: H, minY: minY, headTris: headTris, headMask: headMask, faceUv: _ccFaceUv(Q, pos.count), landmarks: face, headBone: headBone,
                 limbs: limbs, bones: bones, nrmSrc: nrmA ? nrmA.array : null, shoulder: { x: Math.abs(shJ[0]) / H, t: TW.f((shJ[1] - minY) / H), z: shJ[2] / H }, arm: armW, siW: siW, swW: swW, skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, skullMap: null, fabricUrl: {}, patTex: {}, patPreview: {}, skirtOwner: 'bottom' };
             // the shoulder's vertices (the strap paths and the skin-depth reads search these)
@@ -57711,6 +58080,94 @@ const ThreeRenderer = (function () {
             set('browInnerUp', drift + f.lift * 0.6); set('browOuterUpLeft', f.lift); set('browOuterUpRight', f.lift * 0.9);
             set('mouthSmileLeft', f.smile); set('mouthSmileRight', f.smile * 0.9);
             set('jawOpen', breath);
+        }
+        /* THE FACE LAB (see EW_FACE_LAB): the face this frame = the idle face (when on; eased out under a move but its blinks) +
+           the raw sliders + the move, every shape clamped 0..1; the move's head turn goes on the Head bone after the clip (undone
+           first when the clip did not set the bone this frame); the pack beard / moustache follows the face (faceWearMorph) */
+        var _flQ = null;
+        function faceLabTick(part, dt, now) {
+            var m = part.body, D = m.morphTargetDictionary, I = m.morphTargetInfluences, L = EW_FACE_LAB.state;
+            if (!D || !I) return;
+            var S = EW_FACE_LAB.sample(now), k, j;
+            for (j = 0; j < I.length; j++) I[j] = 0;
+            if (L.idle && !(typeof window !== 'undefined' && window.EW_DISABLE_FACE_IDLE)) {
+                faceIdle(part, dt, now);
+                var keep = 1 - Math.min(1, S.e);
+                if (keep < 1) for (k in D) { if (!S.noBlink && (k === 'eyeBlinkLeft' || k === 'eyeBlinkRight')) continue; I[D[k]] *= keep; }
+            }
+            for (k in L.base) { j = D[k]; if (j != null) I[j] += L.base[k]; }
+            for (k in S.v) { j = D[k]; if (j != null) I[j] += S.v[k]; }
+            for (j = 0; j < I.length; j++) I[j] = I[j] < 0 ? 0 : I[j] > 1 ? 1 : I[j];
+            L.live = { D: D, I: I };
+            // the head turn (radians, in the body's own frame: pitch + = chin down, yaw + = toward screen right, roll + = toward screen left)
+            var sk = m.skeleton, hb = sk && part.headBone >= 0 ? sk.bones[part.headBone] : null;
+            if (hb && hb.parent) {
+                var hs = part.labHead || (part.labHead = { set: new THREE.Quaternion(), base: new THREE.Quaternion(), on: false });
+                if (hs.on && hb.quaternion.equals(hs.set)) hb.quaternion.copy(hs.base);   // (the clip left the bone: last frame's turn off first)
+                hs.on = false;
+                var h = S.h, hp = L.head ? h[0] : 0, hy = L.head ? h[1] : 0, hr = L.head ? h[2] : 0;
+                if (hp || hy || hr) {
+                    var Q = _flQ || (_flQ = { r: new THREE.Quaternion(), p: new THREE.Quaternion(), d: new THREE.Quaternion(), e: new THREE.Euler() });
+                    hs.base.copy(hb.quaternion);
+                    root.getWorldQuaternion(Q.r); hb.parent.getWorldQuaternion(Q.p);
+                    Q.p.premultiply(Q.r.invert());                                   // the head's parent in the body's frame
+                    Q.d.setFromEuler(Q.e.set(hp, hy, hr, 'YXZ'));
+                    Q.d.premultiply(Q.r.copy(Q.p).invert()).multiply(Q.p);          // the turn, in the parent's frame
+                    hb.quaternion.premultiply(Q.d);
+                    hs.set.copy(hb.quaternion); hs.on = true;
+                }
+            }
+            (part.wear || []).forEach(function (w) {
+                if (!w.facial || !w.mesh) return;
+                if (w.fmFor !== part.faceMorph || w.fmGeo !== w.mesh.geometry) { try { faceWearMorph(part, w); } catch (e) { w.fmFor = part.faceMorph; w.fmGeo = w.mesh.geometry; console.warn('[ThreeRenderer] face lab beard failed', e); } }
+                if (w.fmOn && w.mesh.morphTargetInfluences !== I) w.mesh.morphTargetInfluences = I;
+            });
+        }
+        /* the beard / moustache: each of its vertices takes the face shapes of the nearest skin vertex that ANY face shape moves (so a
+           long beard's tip rides the chin, not the neck); the influences are the body's own array */
+        function faceWearMorph(part, w) {
+            var fm = part.faceMorph, g = w.mesh.geometry;
+            w.fmFor = fm; w.fmGeo = g;
+            if (!fm || !part.faceLab) { faceWearOff(w); return; }
+            if (!part.fmMoved || part.fmMoved.fm !== fm) {
+                var mv = [], N = part.count, A = fm.arrays;
+                for (var v = 0; v < N; v++) for (var a = 0; a < A.length; a++) { var o = v * 3; if (Math.abs(A[a][o]) + Math.abs(A[a][o + 1]) + Math.abs(A[a][o + 2]) > 4e-4) { mv.push(v); break; } }
+                var SP = part.src.attributes.position.array, C = 0.02, grid = new Map();
+                mv.forEach(function (v0) { var key = Math.floor(SP[v0 * 3] / C) + ',' + Math.floor(SP[v0 * 3 + 1] / C) + ',' + Math.floor(SP[v0 * 3 + 2] / C), l = grid.get(key); if (l) l.push(v0); else grid.set(key, [v0]); });
+                part.fmMoved = { fm: fm, grid: grid, C: C, P: SP };
+            }
+            var M = part.fmMoved, P = w.base || g.attributes.position.array, n = P.length / 3, near = new Int32Array(n);
+            for (var i = 0; i < n; i++) {
+                var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], cx = Math.floor(x / M.C), cy = Math.floor(y / M.C), cz = Math.floor(z / M.C), best = -1, bd = Infinity;
+                for (var r = 0; r <= 8 && (best < 0 || (r - 1) * M.C < Math.sqrt(bd)); r++) for (var da = -r; da <= r; da++) for (var db = -r; db <= r; db++) for (var dc = -r; dc <= r; dc++) {
+                    if (Math.max(Math.abs(da), Math.abs(db), Math.abs(dc)) !== r) continue;
+                    var L0 = M.grid.get((cx + da) + ',' + (cy + db) + ',' + (cz + dc)); if (!L0) continue;
+                    for (var q = 0; q < L0.length; q++) { var jv = L0[q], ex = M.P[jv * 3] - x, ey = M.P[jv * 3 + 1] - y, ez = M.P[jv * 3 + 2] - z, d = ex * ex + ey * ey + ez * ez; if (d < bd) { bd = d; best = jv; } }
+                }
+                near[i] = best;
+            }
+            g.morphAttributes.position = fm.arrays.map(function (A, k) {
+                var f = new Float32Array(n * 3);
+                for (var i2 = 0; i2 < n; i2++) { var b = near[i2]; if (b < 0) continue; f[i2 * 3] = A[b * 3]; f[i2 * 3 + 1] = A[b * 3 + 1]; f[i2 * 3 + 2] = A[b * 3 + 2]; }
+                var at = new THREE.BufferAttribute(f, 3); at.name = fm.names[k]; return at;
+            });
+            g.morphTargetsRelative = fm.rel;
+            w.mesh.updateMorphTargets();
+            w.mesh.morphTargetInfluences = part.body.morphTargetInfluences;
+            w.fmOn = true;
+        }
+        function faceWearOff(w) {
+            if (!w.fmOn || !w.mesh) return;
+            var g = w.mesh.geometry; if (g) g.morphAttributes = {};
+            w.mesh.morphTargetInfluences = undefined; w.mesh.morphTargetDictionary = undefined;
+            w.fmOn = false;
+        }
+        function faceLabOff(part) {
+            var sk = part.body.skeleton, hb = sk && part.headBone >= 0 ? sk.bones[part.headBone] : null, hs = part.labHead;
+            if (hb && hs && hs.on && hb.quaternion.equals(hs.set)) hb.quaternion.copy(hs.base);
+            if (hs) hs.on = false;
+            (part.wear || []).forEach(function (w) { faceWearOff(w); w.fmFor = null; w.fmGeo = null; });
+            part.fmMoved = null;
         }
         var HAIR_SWAY = { colMax: 99, stiffness: 2.4, gravity: 0.9, drag: 0.38, rad: 0.012, maxRoot: 40, maxBend: 22,
             caps: [['Hips', 'neck', 0.21], ['LeftUpLeg', 'LeftLeg', 0.2], ['RightUpLeg', 'RightLeg', 0.2]] };   // (the cape's torso capsule, 0.34, stood hair off the back like a cape)
@@ -61235,7 +61692,7 @@ const ThreeRenderer = (function () {
             state.last = a;
             state.inUpdate = true;
             try { parts.forEach(function (p) { ensureShapes(p, a); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
-            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : '') + (p.eyePack && _ccEyeProxy ? '+e' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front, a.beltHeight, a.pantsTuck].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
+            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : '') + (p.eyePack && _ccEyeProxy ? '+e' : '') + (p.faceLab ? '+f' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, FACE_KEYS.concat(BODY_KEYS).map(function (k) { return a[k]; }).join(','), a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard, a.outer2, a.outerFront, a.outer2Front, a.beltHeight, a.pantsTuck].join('|');   // rev 10: + the extra layers, the beard (its volume); + the second outer layer
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             parts.forEach(function (p) { if (p.fitLater) wearFits(p); });   // THE QUICK PICKS: a garment set built in this update, no body rebuild after it
@@ -61274,6 +61731,30 @@ const ThreeRenderer = (function () {
             },
             /* dev (2026-11-05): the parts, for probes (THE CLOTH COLLISION's colStats; never used by the game) */
             devParts: function () { return parts; },
+            /* THE FACE LAB: faceLab(true) gives the MPFB body all its face shapes (the geometry again), faceLab(false) the idle face's 16;
+               both return { ok, n, names, headOff } (ok = a body with face shapes) */
+            faceLab: function (on) {
+                on = !!on;
+                var info = { ok: false, n: 0, names: [], headOff: false }, changed = false;
+                parts.forEach(function (p) {
+                    if (!p.fmAll || !p.fmAll.length) return;
+                    if (!!p.faceLab !== on) {
+                        p.faceLab = on; changed = true;
+                        if (!on) faceLabOff(p);
+                        var noIdle = typeof window !== 'undefined' && window.EW_DISABLE_FACE_IDLE;
+                        p.faceMorph = (on || !noIdle) ? _ccFaceMorphFrom(p.src, p.fmDict0, on ? p.fmAll : FACE_IDLE_KEYS, p.count) : null;
+                    }
+                    info.ok = true; info.n = p.faceMorph ? p.faceMorph.names.length : 0; info.names = p.faceMorph ? p.faceMorph.names.slice() : []; info.headOff = info.headOff || !!p.headOff;
+                });
+                if (changed && alive && state.last) { state.shapeKey = null; update(state.last); }
+                state.faceInfo = on ? info : null;
+                return info;
+            },
+            faceLabInfo: function () {
+                var fi = state.faceInfo;
+                if (fi) fi.headOff = parts.some(function (p) { return !!p.headOff; });
+                return fi;
+            },
             /* tick(): once per frame AFTER the mixer — the cloth collision pass (the skirt against the legs) */
             tick: function () {
                 if (!alive) return;
@@ -61292,7 +61773,7 @@ const ThreeRenderer = (function () {
                 if (parts.some(function (p) { return p.sway; })) { try { _swayTick(root, sdt, HAIR_SWAY, true); } catch (e) { if (!state.swayWarned) { state.swayWarned = true; console.warn('[ThreeRenderer] hair sway failed', e); } } }
                 for (var ji = 0; ji < parts.length; ji++) if (parts[ji].jig) { var jd = parts[ji].jig.dirty; try { jigTick(parts[ji], sdt, state.last); } catch (e) { if (!state.jigWarned) { state.jigWarned = true; console.warn('[ThreeRenderer] jiggle failed', e); } } if (jd && !parts[ji].jig.dirty) parts[ji].colDirty = true; }   // THE JIGGLE (re-weighted skin: THE CLOTH COLLISION's anchors again)
                 for (var ci = 0; ci < parts.length; ci++) if (parts[ci].colDirty && !(now * 1000 - (parts[ci].colAt || 0) < 150)) { try { collideFit(parts[ci]); } catch (e) { parts[ci].colDirty = false; if (!state.colWarned) { state.colWarned = true; console.warn('[ThreeRenderer] cloth collision fit failed', e); } } }   // THE CLOTH COLLISION (at most every 150 ms while a slider moves)
-                for (var fi = 0; fi < parts.length; fi++) if (parts[fi].faceMorph) { try { faceIdle(parts[fi], sdt, now); } catch (e) { if (!state.faceWarned) { state.faceWarned = true; console.warn('[ThreeRenderer] idle face failed', e); } } }   // THE IDLE FACE
+                for (var fi = 0; fi < parts.length; fi++) if (parts[fi].faceMorph) { try { if (parts[fi].faceLab && EW_FACE_LAB.isOpen()) faceLabTick(parts[fi], sdt, now); else faceIdle(parts[fi], sdt, now); } catch (e) { if (!state.faceWarned) { state.faceWarned = true; console.warn('[ThreeRenderer] idle face failed', e); } } }   // THE IDLE FACE
                 for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
             dispose: function () {
                 alive = false;
@@ -62686,6 +63167,13 @@ const ThreeRenderer = (function () {
            can't run here (caller keeps its 2D sprite). */
         /* dev (rev 9): the live stage record — probes read the posed skeleton / the rig (never used by the game) */
         dev: { state: function () { return _cv; }, model: function () { return _cv ? _cv.model : null; } },
+        /* THE FACE LAB (EW_FACE_LAB): all the face shapes on the stage's creator body (rig.faceLab), or back to the idle face's */
+        faceLab: function (on) {
+            var v = _cv;
+            if (!v || !v.appearanceRig || typeof v.appearanceRig.faceLab !== 'function') return { ok: false, loading: !!(v && !v.model) };
+            return v.appearanceRig.faceLab(on);
+        },
+        faceLabInfo: function () { var v = _cv; return v && v.appearanceRig && v.appearanceRig.faceLabInfo ? v.appearanceRig.faceLabInfo() : null; },
         mount: function (host, race, gender, opts) {
             if (!host || !_cvSupports(race, gender, opts && opts.appearance)) return false;
             /* THE HIDDEN STAGE (2026-09-20, the loading pass): the pre-match builder renders at boot behind

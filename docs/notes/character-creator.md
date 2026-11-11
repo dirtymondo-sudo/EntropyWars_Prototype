@@ -1833,3 +1833,37 @@ missed it: the game would have kept fetching the old `?h=`); `skin_morgan.jpg` i
 **CHECKED** in the real creator (Chromium, WebGL2, MPFB female, OUTFIT > Head > Creature heads > Morgan, SKIN > Morgan): switch
 off = neither pick listed; on = both listed, head reshapes, skin draws, no page errors. Shots: project files custom-head-20261111/.
 Not checked: the male bodies, WebGPU.
+
+## THE FACE LAB (2026-11-11, thread "Build a face animation dev mode")
+mondo: "Can you make some sort of experimental dev mode where i can mess with the mouth and eye animations? And have buttons
+that like open their mouth and let them talk and roll their eyes and laugh and moan and cry and scream and stuff ... I just
+wanna see what the capabilities are".
+
+**WHAT THE HEADS HAVE** - all 10 MPFB GLBs (male / female, heavy / thin / short of each, classic MPFB male / female) carry 67
+morphs on the body mesh: the 52 ARKit face units + 15 Oculus visemes (bake-mpfb.py), and the mesh keeps MakeHuman's eyeballs,
+teeth and tongue. The game_engine rig has NO jaw or eye bones: the jaw opens and the eyes turn by shapes. The classic bases and
+every Meshy race model are one fused mesh with no morphs and no face bones (nothing to drive without Blender work). A Meshy
+creature head (hideHead) covers the MPFB face.
+
+**SWITCH** - Settings > Developer > Face Lab (map.js `_toggleFaceLab`), or `?facelab=1` (remembered in localStorage
+`ew_facelab`; `?facelab=0` off). While on, both creators (the forge's, Occam's mirror) show FACE LAB next to FACE CLOSE-UP.
+
+**HOW** - three-renderer.js `EW_FACE_LAB` (module level, `window.EWFaceLab`): the moves table (`MOVES`: poses + timed moves,
+each a function of time writing shape weights + a head turn), `phonemes()` (TALK: the SAY line letter by letter, th / ch / sh /
+ph / ng / oo / ee pairs, into visemes with jaw; ! and ? lift the brows), `sample(now)` (one per frame), and the PS1 window
+(`#ewFaceLab`, draggable, position in `ew_facelab_pos`). Rig side (`_createAppearanceRig`): each part keeps the body's own
+morph names (`fmAll`, `fmDict0`); `rig.faceLab(true)` rebuilds `part.faceMorph` with all 67 (`_ccFaceMorphFrom`) and the
+geometry pass writes them (shapeKey `+f`); `faceLab(false)` goes back to the idle face's 16. Only `EWCharViewer.faceLab` calls
+it, so board bodies never carry the extra ~12 MB. `faceLabTick` (in `tick()`, instead of `faceIdle` while the window is open):
+zero, idle face (eased out under a move except its blinks), + the raw sliders, + the move, clamp 0..1; the head turn goes on the
+Head bone after the clip (undone first if the clip did not set the bone). The pack beard / moustache (`w.facial`) gets the face
+shapes of the nearest skin vertex any shape moves (`faceWearMorph`), sharing the body's influences, so it opens with the jaw.
+The creator stage is its own WebGLRenderer (also under WebGPU mode), so this is WebGL either way.
+
+**CONSOLE** - `EWFaceLab.open()`, `.play('laugh')`, `.say('text')`, `.set('jawOpen', .5)`, `.pose({...})`, `.opt('hold', true)`,
+`.stop()`, `.close()`. COPY POSE puts the sliders on the clipboard as JSON (for baking an expression later).
+
+**CHECKED** in the real creator (Chromium, WebGL2, 1600x900 + 1280x720): MPFB male + MPFB female, every move button, TALK
+frames, roll eyes frames, full beard following vs not, close puts the body back to 16 shapes and the beard's morphs off, no
+page errors. Shots: project files face-lab-20261111/. Not checked: Occam's mirror (same button + stage), the classic MPFB bodies.
+
