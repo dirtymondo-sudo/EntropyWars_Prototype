@@ -1839,3 +1839,8 @@ busy". An ADDITIONAL map; his Fairy Forest board and his sheets are untouched. P
   PR #782 lava (copy B turned, other scale, other way; it nudges copy A's lookup 0.035 and swells the glow); melt = red-dominant texels
   (r - b), glowing from their own colour x _CALM.lavaGlow (1.0). WebGPU twin: _ewNodeCalmFluid (tag k 'calmfluid'). No procedural
   blobs (his lava-lamp rule). The calm water on WebGPU is still its flat colour.
+- 2026-11-11, part 4 (mondo: "it's better but i feel like the dark parts are kind of distracting, can it just be the lava part, no
+  rocks" + "and yes do water too"): calm_lava_3.png = melt only (bake_lava v3: flow lines = 5 + 13 bands across the sheet bent by a
+  slow periodic warp, red -> orange -> yellow; no crust, no rafts, no blobs). Both copies now slide ALONG the lines (A 0.03/s,
+  B x0.37 at 0.045/s, not turned). WebGPU calm water: _ewNodeCalmWater (value-noise ripple normal -> normalNode via
+  cameraViewMatrix, colour drift, Schlick sky sheen + reflected sky noise, opacity firmed by the sheen), same maths as the GLSL.
