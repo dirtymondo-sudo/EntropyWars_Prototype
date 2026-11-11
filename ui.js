@@ -7453,7 +7453,7 @@
                 const state_ = u.dead ? 'KO' : where === 'bench' ? 'BENCH' : where === 'escaped' ? 'ESCAPED' : (state._blitzActiveUnitId === u.id ? 'ACTING' : '');
                 return `<div class="bp-unit${u.dead ? ' ko' : ''}${where !== 'field' ? ' off' : ''}">`
                     + `<span class="bp-face"${sprite ? ` style="background-image:url('${sprite}')"` : ''}>${state_ ? `<em>${state_}</em>` : ''}</span>`
-                    + `<span class="bp-id"><b>${_pauseEsc(nm)}</b><small>LV ${lvl} · ${_pauseEsc(String(race).toUpperCase())}</small>`
+                    + `<span class="bp-id"><b>${_pauseEsc(nm)}</b><small>LV ${lvl} · ${_pauseEsc(String(race).toUpperCase())}${(typeof unitMasteryChipHtml === 'function') ? unitMasteryChipHtml(u.ulv) : ''}</small>`
                     + `<span class="bp-vit"><em>HP</em>${bar('hp', hp, mhp)}<tt>${hp} / ${mhp}</tt></span>`
                     + (mmp > 0 ? `<span class="bp-vit"><em>MP</em>${bar('mp', mp, mmp)}<tt>${mp} / ${mmp}</tt></span>` : '')
                     + (chips ? `<span class="bp-chips">${chips}</span>` : '')
@@ -7628,7 +7628,7 @@
                         <div class="pm-unit-sprite" style="background-image:url('${sprite}')"></div>
                         <span class="pm-unit-name">${escapeHtml(unitDisplayName(u))}</span>
                     </div></td>
-                    <td class="pm-cls-cell">${escapeHtml((typeof getRaceLabel === 'function' ? getRaceLabel(u.race, u.gender) : (u.race || '')))}${lvl > 1 ? ` Lv${lvl}` : ''}</td>
+                    <td class="pm-cls-cell">${escapeHtml((typeof getRaceLabel === 'function' ? getRaceLabel(u.race, u.gender) : (u.race || '')))}${lvl > 1 ? ` Lv${lvl}` : ''}${(typeof unitMasteryChipHtml === 'function') ? unitMasteryChipHtml(u.ulv) : ''}</td>
                     ${cell('_matchKills')}
                     ${cell('_matchDeaths')}
                     ${cell('_matchAssists')}

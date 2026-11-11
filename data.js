@@ -13960,6 +13960,82 @@ const ACH_CHAMP_LINES = [
   { metric: 'deathless', name: 'Deathless Wins',  icon: '✨', tiers: [1, 10, 50, 100] },
 ];
 
+/* ═══ THE MASTERY LEVEL (mondo 2026-11-11: "a visible level for the units ... purely cosmetic ... tie the achievements
+   into the level progression") ═════════════════════════════════════════════════════════════════════════════════════
+   Every unit (race) has its own Mastery level that only says how much its owner plays it. It changes NO stat, rule or
+   reward. Nothing new is stored for the level itself: it is worked out from the unit's own achievement counters
+   (profile.progress.champs[race]: games, wins, kills, deathless), which already only grow and already sync to the
+   account, so a long-time player has levels from the first load and a second device shows the same numbers.
+     XP = 100 per finished match + 50 per win + 10 per kill + 25 per deathless win
+        + a milestone bonus for every tier the unit has reached on its own achievement lines (ACH_CHAMP_LINES):
+          tier I 100, II 250, III 750, IV 2,000, V 5,000.
+     A level costs 100 XP at level 1 and 25 more each level, up to 500 a level from level 17 on. No cap.
+   `games` is counted per unit beside the achievement lines (ACH_CHAMP_COUNTERS: a counter with no trophy of its own).
+   A profile from before the counter has wins but no games: a win is a finished match, so games is never read lower
+   than wins. The level's colour is its band (the same five tier colours the trophies use). */
+const ACH_CHAMP_COUNTERS = ['games'];
+const UNIT_MASTERY_RULES = {
+  perGame: 100, perWin: 50, perKill: 10, perDeathless: 25,
+  tierBonus: [100, 250, 750, 2000, 5000],
+  base: 100, step: 25, maxPerLevel: 500,
+  bands: [
+    { from: 1,   name: 'Bronze',   color: '#cd7f32' },
+    { from: 10,  name: 'Silver',   color: '#c0c0c0' },
+    { from: 25,  name: 'Gold',     color: '#ffd700' },
+    { from: 50,  name: 'Diamond',  color: '#b9f2ff' },
+    { from: 100, name: 'Entropic', color: '#b06af0' },
+  ],
+};
+/* a unit's counters -> its XP, with the parts (the profile page lists them) */
+function unitMasteryXp(bag) {
+  const R = UNIT_MASTERY_RULES;
+  const tot = m => { const c = bag && bag[m]; if (!c) return 0; const n = (Number(c.pvp) || 0) + (Number(c.cpu) || 0) + (Number(c.legacy) || 0); return n > 0 ? Math.floor(n) : 0; };
+  const wins = tot('wins'), kills = tot('kills'), deathless = tot('deathless'), games = Math.max(tot('games'), wins);
+  let bonus = 0, tiers = 0;
+  for (const spec of ACH_CHAMP_LINES) {
+    const n = tot(spec.metric);
+    (spec.tiers || []).forEach((th, i) => { if (n >= th) { bonus += R.tierBonus[Math.min(i, R.tierBonus.length - 1)] || 0; tiers++; } });
+  }
+  const xp = games * R.perGame + wins * R.perWin + kills * R.perKill + deathless * R.perDeathless + bonus;
+  return { xp, games, wins, kills, deathless, bonus, tiers };
+}
+function unitMasteryNeed(level) { const R = UNIT_MASTERY_RULES; return Math.min(R.base + R.step * (Math.max(1, level) - 1), R.maxPerLevel); }
+/* XP -> { level, into (XP inside this level), need (XP this level costs), pct } */
+function unitMasteryFromXp(xp) {
+  xp = Math.max(0, Math.floor(Number(xp) || 0));
+  const R = UNIT_MASTERY_RULES;
+  let level = 1, left = xp;
+  while (level < 100000) {
+    const need = unitMasteryNeed(level);
+    if (need >= R.maxPerLevel) { const k = Math.floor(left / need); level += k; left -= k * need; break; }
+    if (left < need) break;
+    left -= need; level++;
+  }
+  const need = unitMasteryNeed(level);
+  return { level, into: left, need, pct: Math.max(0, Math.min(1, left / need)), xp };
+}
+function unitMasteryBand(level) {
+  const b = UNIT_MASTERY_RULES.bands;
+  let out = b[0];
+  for (const x of b) if (level >= x.from) out = x;
+  return out;
+}
+/* the whole answer for one unit's counters */
+function unitMasteryOf(bag) {
+  const x = unitMasteryXp(bag), l = unitMasteryFromXp(x.xp), band = unitMasteryBand(l.level);
+  return Object.assign(x, l, { band: band.name, color: band.color });
+}
+/* a level that came over the wire (the Room's seats, the guest's party): a whole number 1..99999, else 0 = not shown */
+function unitMasteryClean(v) { v = Math.floor(Number(v)); return (isFinite(v) && v >= 1) ? Math.min(v, 99999) : 0; }
+/* the small plate every screen draws: "M 134" in the band's colour (styles-base.css .ml-chip). `title` = the hover line */
+function unitMasteryChipHtml(level, extraClass) {
+  level = unitMasteryClean(level);
+  if (!level) return '';
+  const band = unitMasteryBand(level);
+  return '<span class="ml-chip' + (extraClass ? ' ' + extraClass : '') + '" style="--ml:' + band.color + '" title="Mastery level ' + level + ' (' + band.name + '). Shows how much this unit is played. No effect on the fight.">'
+    + '<i>M</i>' + level + '</span>';
+}
+
 // Personal records (ACHIEVEMENTS_PLAN.md §5, Phase 3). Stored in
 // profile.progress.records[id][bucket] = { value, ts, meta } with SEPARATE
 // pvp and cpu boards (a best farmed vs Easy CPU never overwrites a real PvP
@@ -14019,7 +14095,7 @@ function mergeProgressBlobs(a, b) {
     v = Math.round(Number(v));
     return (isFinite(v) && v > 0 && v < 4e12) ? v : Date.now();
   };
-  const champMetrics = new Set(ACH_CHAMP_LINES.map(s => s.metric));
+  const champMetrics = new Set(ACH_CHAMP_LINES.map(s => s.metric).concat(ACH_CHAMP_COUNTERS));   // + the Mastery level's `games`
   const recDefs = {};
   for (const d of ACH_RECORD_DEFS) recDefs[d.id] = d;
 
@@ -25159,6 +25235,7 @@ Object.assign(window, {
   ACCT_STARTER_UNITS, ACCT_PVP_MODES, isUnitUnlocked, isUnitOwned, unitRosterScope, computeAccountMatchGold,
   ACH_CATALOG, ACH_CHAMP_LINES, ACH_TIER_NAMES, ACH_TIER_COLORS,
   ACH_MASTERY, ACH_TIER_REWARDS, ACH_RECORD_DEFS,
+  ACH_CHAMP_COUNTERS, UNIT_MASTERY_RULES, unitMasteryXp, unitMasteryNeed, unitMasteryFromXp, unitMasteryBand, unitMasteryOf, unitMasteryClean, unitMasteryChipHtml,
   mergeProgressBlobs, achUnlockKeyReward, achCountMasteredChamps, achComputeSyncRewards, hqFindsSyncPay,
   STEAM_STAT_DEFS, STEAM_ACH_DEFS, steamComputeStats, steamEvalAchievements,
   /* spell tree (Tree of Life selector) */

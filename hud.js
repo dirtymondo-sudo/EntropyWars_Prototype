@@ -3895,6 +3895,18 @@ function _hrlgMpPreviewChip(u, cls) {
 // Rendered inside HorologeMenu (not baked into the title element) so the
 // hover re-render actually refreshes the slice. Viewer-local by
 // construction — the forecast globals never sync online.
+/* THE MASTERY LEVEL (mondo 2026-11-11, data.js UNIT_MASTERY_RULES): the unit's cosmetic level plate, beside its type
+   badges on every unit card (mine and the opponent's). `u.ulv` is stamped at the match's start (battle.js _mlStampUnit)
+   and rides the host's snapshots; a unit without one (a CPU's) draws nothing. An <em>, so the UI Maker's type-badge
+   part (`> span`) leaves it alone. */
+function _mlChipEl(u) {
+  const lv = (u && typeof unitMasteryClean === 'function') ? unitMasteryClean(u.ulv) : 0;
+  if (!lv) return null;
+  const band = unitMasteryBand(lv);
+  return h('em', { key: 'ml', className: 'ml-chip', style: { '--ml': band.color },
+    title: 'Mastery level ' + lv + ' (' + band.name + '). Shows how much this unit is played. No effect on the fight.' },
+    h('i', null, 'M'), String(lv));
+}
 function _hrlgQuickVitals(panelKey) {
   const m = /^(enemy|ally)\|(.+)$/.exec(panelKey || '');
   if (!m) return null;
@@ -3914,8 +3926,8 @@ function _hrlgQuickVitals(panelKey) {
   const healPct = heal > 0 ? Math.max(0, Math.min(100 - hpPct, (heal / u.maxHp) * 100)) : 0;
   return h('div', { key: 'qv', className: 'hrlg-qvitals' + (ally ? ' ally' : ' enemy') },
     /* the clicked unit's TYPE badge(s) — the matchup intel, first thing under the name (the user 2026-10-07) */
-    (u.types && u.types.length) ? h('div', { className: 'hrlg-qtypes' },
-      u.types.slice(0, 2).map(t => h(TypeChip, { key: t, name: t }))) : null,
+    ((u.types && u.types.length) || _mlChipEl(u)) ? h('div', { className: 'hrlg-qtypes' },
+      (u.types || []).slice(0, 2).map(t => h(TypeChip, { key: t, name: t })), _mlChipEl(u)) : null,
     h('div', { className: 'hrlg-qv-row' },
       h('span', { className: 'hrlg-qv-lbl' }, 'HP'),
       h('span', { className: 'hrlg-thp' },
@@ -4116,8 +4128,8 @@ function _hrlgQuickCard(key, title, qv) {
     title && h('div', { className: 'hrlg-view-tab' }, title.node || h('span', { className: 'hrlg-view-tab-text' }, title.text)),
     qv,
     /* the type badges' own spot (UI Maker: under / on the portrait) — the copy in the bars hides then */
-    qu && qu.types && qu.types.length ? h('div', { className: 'hrlg-qp-types' },
-      qu.types.slice(0, 2).map(t => h(TypeChip, { key: t, name: t }))) : null,
+    qu && ((qu.types && qu.types.length) || _mlChipEl(qu)) ? h('div', { className: 'hrlg-qp-types' },
+      (qu.types || []).slice(0, 2).map(t => h(TypeChip, { key: t, name: t })), _mlChipEl(qu)) : null,
     _hrlgQuickStats(key),
   );
 }
@@ -4760,8 +4772,8 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
       subLine ? h('div', { className: 'hrlg-core-sub' }, subLine) : null,
       /* the unit's TYPE badge(s) — same canonical chips the target rows
          wear, so the player's own matchup profile reads at a glance */
-      (unitTypes && unitTypes.length) ? h('div', { className: 'hrlg-typerow' },
-        unitTypes.map(t => h(TypeChip, { key: t, name: t })),
+      ((unitTypes && unitTypes.length) || _mlChipEl(apUnit)) ? h('div', { className: 'hrlg-typerow' },
+        (unitTypes || []).map(t => h(TypeChip, { key: t, name: t })), _mlChipEl(apUnit),
       ) : null,
       /* HP/MP vitals directly under the portrait, then AP under those —
          the reading order the player actually wants. */
