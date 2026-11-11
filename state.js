@@ -414,7 +414,7 @@
             MULTIPLAYER_MODES.gauntlet.compatibleMaps = ['medium', 'large', 'xlarge'].concat(fulls, ['prebuilt_custommap']);
             /* Clash always plays on its fixed JRPG stage — no map picking. THE CLASH TEMPLE (2026-10-20): the stage is the Temple room's
                cut; the old voxel Temple stays pickable beside it in VS CPU (online deals only the stage — online.js). */
-            MULTIPLAYER_MODES.clash.compatibleMaps = ['clash_stage', 'clash_stage_voxel'];
+            MULTIPLAYER_MODES.clash.compatibleMaps = ['clash_stage'];   // the old voxel Temple left the game 2026-11-11 (mondo: "get rid of all the voxel maps")
             /* Mystery Dungeon never appears in the PvP map picker — its hub and
                generated floors are loaded directly by the MD runtime. */
             MULTIPLAYER_MODES.dungeon.compatibleMaps = [];
@@ -440,13 +440,6 @@
                 2: ['Vessel', 'Vessel', 'Vessel', 'Vessel'],
             },
         };
-        /* THE CLASH TEMPLE (2026-10-20): the old voxel Temple, kept under its own id (data.js hqClashStageRegister) */
-        GAME_MODES.clash_stage_voxel = Object.assign({}, GAME_MODES.clash_stage, {
-            id: 'clash_stage_voxel', label: 'Temple · voxel',
-            desc: 'The old 10×10 voxel temple plateau — two formation columns of 4 facing each other across the sanctum',
-            spawns: { 1: GAME_MODES.clash_stage.spawns[1].map(p => ({ x: p.x, y: p.y })), 2: GAME_MODES.clash_stage.spawns[2].map(p => ({ x: p.x, y: p.y })) },
-        });
-
         /* ── Mystery Dungeon board registrations ──────────────────────────────
            The Guild Hub is a real prebuilt map (built in data.js) that must NOT
            be in EW_MAP_META (no Δ variants, no picker card), so its GAME_MODES

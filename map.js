@@ -9751,8 +9751,7 @@
             /* Clash's fixed JRPG stage — only ever offered when the Clash mode
                is selected (it's the mode's sole compatible map). */
             list.push({ modeId: 'clash_stage', name: 'Temple', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true });
-            /* THE CLASH TEMPLE (2026-10-20): the stage is the Temple room's cut; the old voxel Temple stays beside it under Clash */
-            list.push({ modeId: 'clash_stage_voxel', name: 'Temple · voxel', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true });
+            /* THE CLASH TEMPLE (2026-10-20): the stage is the Temple room's cut (the old voxel Temple left the list 2026-11-11, mondo) */
             // The 8×8 Δ boards — one per launch map, played as-is in every mode
             // (Arena included: each carries its own centre nexus zone).
             meta.filter(m => m.isDelta).forEach(m => {

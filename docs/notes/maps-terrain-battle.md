@@ -1972,4 +1972,12 @@ A battle map wears its site's name: "Stonehenge", sized cuts "Stonehenge 10×10"
 (`<site>_delta`, `<site>_<S>x<S>_delta`). Where: data.js hqArenaEntry + hqArenaRegisterAll (the sized name) + HQ_LOOK_MAPS labels; map.js MS_MAP_LIST
 size tag is "12×12" (was "12×12 ARENA"); editor library says "BATTLE MAP: <SITE>"; hud.js UI Maker sample screens. HQ_ARENA_RULES.label is no longer
 read for names. Left as they are (not names): the Arena game MODE, the "ARENA MAPS" filter chip, the story desk's ARENA / FULL SITE format toggle.
-Until the voxel site boards go, a site's 16×16 voxel board and its 12×12 map share one name in the VS CPU list (told apart by the size).
+A site with a FULL SITE board (16×16 +) shares its name with its 12×12 map in the VS CPU list (told apart by the size).
+
+## THE VOXEL BOARDS ARE OUT (2026-11-11, mondo: "I think we are good to get rid of all the voxel maps")
+- Gone from the game (no roster row, no GAME_MODES entry, no PREBUILT_MAPS copy): the five "<Site> Δ · voxel" boards (Hell, Göbekli
+  Tepe, The Flying Dutchman, The Looking-Glass, The Bermuda Triangle: HQ_ARENA_RULES.voxelKeep and its registration removed), the
+  three "<Map> · voxel" boards hqArenaRegisterOwn kept (Holo Sim, Training Room, Fairy Forest 20×20) and Clash's "Temple · voxel"
+  (data.js hqClashStageRegister, map.js MS_MAP_LIST, state.js compatibleMaps + GAME_MODES.clash_stage_voxel).
+- NOT touched: the voxel editor, the authored board data in data.js (each arena still reads its old board's tints and layout), and
+  the 35 big site boards (16×16 to 24×24, the list with ARENA MAPS switched off; Gauntlet plays only those). His call, asked.
