@@ -32286,8 +32286,8 @@ const ThreeRenderer = (function () {
        plates, the body white (the hit blink, his own ask: kept as it is), the number in the element's colour on both
        seats. Parts 1 + 2 live here (3 = battle.js _hitReadSideEdge, 4 = three-vfx.js THE STEP BACK):
          1 THE FLARE: on the hit frame a ring in the VICTIM's side colour (the team ring's own, _isAllyPlayer: cyan-blue
-           yours, pink-red theirs) pops a little wider than its ring and draws ABOVE the impact VFX (renderOrder past
-           the particle batches 99-103 and the signature meshes 156-158; normal blending over a dark keyline, so an
+           yours, pink-red theirs) pops a little wider than its ring and draws ABOVE the impact VFX (_HS_ORDER, past
+           the particle batches 99-103 and every signature mesh, 150-218; normal blending over a dark keyline, so an
            additive white flash under it cannot wash the colour out), holds the freeze, then settles onto the ring.
          2 THE ATTACKER TELL: the attacker's ring pings once in ITS side colour and an arrowhead in that colour sits on
            the victim's ring, pointing at the attacker. Both only when this seat can see the attacker (the fog
@@ -32300,6 +32300,7 @@ const ThreeRenderer = (function () {
     var _hitSides = [];            // live marks: { kind: 'flare' | 'pulse' | 'arrow', uid, src, ally, t0, ms, hold, peak, holder, mat, ang }
     var _hitSideTex = {}, _hitSideGeo = null, _hitSideLs = {}, _hsV = null, _hsV2 = null;
     var _HS_BAND = 0.70;           // the ring texture's band sits at this share of its half size
+    var _HS_ORDER = 400;           // over every VFX layer (the signature meshes end at 218), under the floating text and the plates (5000+)
     function _hitSideOn(part) {
         if (typeof window === 'undefined') return false;
         if (window.EW_NO_HIT_SIDE) return false;
@@ -32335,9 +32336,13 @@ const ThreeRenderer = (function () {
         var g = c.getContext('2d'), m = S / 2, R = m * _HS_BAND, col = ally ? TEAM_RING_ALLY_COLOR : TEAM_RING_ENEMY_COLOR;
         var ring = function (w, style, alpha) { g.globalAlpha = alpha; g.beginPath(); g.arc(m, m, R, 0, Math.PI * 2); g.lineWidth = w; g.strokeStyle = style; g.stroke(); };
         // the soft halo, the dark keyline that holds the colour over a white flash, the band, the hot core
+        var glow = g.createRadialGradient(m, m, R * 0.35, m, m, R);   // a wash of the side colour inside the ring, strongest at the line
+        glow.addColorStop(0, _hitSideCss(col, 0).replace('rgb(', 'rgba(').replace(')', ',0)'));
+        glow.addColorStop(1, _hitSideCss(col, 0).replace('rgb(', 'rgba(').replace(')', ',0.30)'));
+        g.fillStyle = glow; g.beginPath(); g.arc(m, m, R, 0, Math.PI * 2); g.fill();
         for (var i = 0; i < 5; i++) ring(S * (0.22 - i * 0.03), _hitSideCss(col, 0), 0.10);
-        ring(S * 0.094, _hitSideCss(col, -0.82), 0.9);
-        ring(S * 0.066, _hitSideCss(col, 0), 1);
+        ring(S * 0.104, _hitSideCss(col, -0.82), 0.92);
+        ring(S * 0.070, _hitSideCss(col, 0), 1);
         ring(S * 0.022, _hitSideCss(col, 0.6), 1);
         g.globalAlpha = 1;
         return (_hitSideTex[key] = _hitSideCanvasTex(c));
@@ -32361,7 +32366,8 @@ const ThreeRenderer = (function () {
         if (!_hitSideGeo) _hitSideGeo = new THREE.PlaneGeometry(1, 1);
         var mat = new THREE.MeshBasicMaterial({
             map: (h.kind === 'arrow') ? _hitSideArrowTex(h.ally) : _hitSideRingTex(h.ally),
-            transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false
+            transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide, fog: false, toneMapped: false,
+            polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4   // the team ring's own way of clearing the floor it lies on
         });
         var mesh = new THREE.Mesh(_hitSideGeo, mat);
         mesh.rotation.x = -Math.PI / 2;      // flat on the ground, the texture's top toward world -Z
@@ -32413,7 +32419,7 @@ const ThreeRenderer = (function () {
         if (_hitSideOn('A')) {
             _hitSideDrop(victimId, 'flare');   // a second hit on the same body restarts its flare
             _hitSideAdd({ kind: 'flare', uid: victimId, ally: _isAllyPlayer(vu.player), t0: now, hold: hold, ms: ms,
-                peak: 1.2 + 0.035 * w + (kill ? 0.05 : 0) }, 170);
+                peak: 1.24 + 0.04 * w + (kill ? 0.05 : 0) }, _HS_ORDER);
         }
         if (attackerId == null || attackerId === victimId || !_hitSideOn('B')) return;
         var au = _findUnit(attackerId), ae = _getUnitEntry(attackerId);
@@ -32421,10 +32427,10 @@ const ThreeRenderer = (function () {
         var allyA = _isAllyPlayer(au.player), ping = _hitSideFind(attackerId, 'pulse');
         if (!ping || now - ping.t0 > 120) {    // one ping for an area spell's whole volley
             _hitSideDrop(attackerId, 'pulse');
-            _hitSideAdd({ kind: 'pulse', uid: attackerId, ally: allyA, t0: now, hold: 0, ms: 460, peak: 1.42 }, 170);
+            _hitSideAdd({ kind: 'pulse', uid: attackerId, ally: allyA, t0: now, hold: 0, ms: 460, peak: 1.42 }, _HS_ORDER);
         }
         _hitSideDrop(victimId, 'arrow');
-        _hitSideAdd({ kind: 'arrow', uid: victimId, src: attackerId, ally: allyA, t0: now, hold: hold, ms: ms, ang: null, dx: 0, dz: 0 }, 171);
+        _hitSideAdd({ kind: 'arrow', uid: victimId, src: attackerId, ally: allyA, t0: now, hold: hold, ms: ms, ang: null, dx: 0, dz: 0 }, _HS_ORDER + 1);
     }
     /* the unit's ring in world space: its group's x / z, the ring plane's own height (a draped ring's too) */
     function _hitSideAt(ue, out) {
@@ -32470,10 +32476,10 @@ const ThreeRenderer = (function () {
                 }
                 if (h.ang === null) show = false;
                 else {
-                    var out = R * 1.22 + ts * 0.17;      // just outside the flare's widest reach
+                    var out = R * 1.3 + ts * 0.19;       // just outside the flare's widest reach
                     _hsV.x += h.dx * out; _hsV.z += h.dz * out; _hsV.y += 0.6;
                     h.holder.rotation.y = h.ang;
-                    var as = ts * 0.36 * s;
+                    var as = ts * 0.44 * s;
                     h.holder.scale.set(as, 1, as);
                 }
             } else {

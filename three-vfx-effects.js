@@ -25903,8 +25903,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
         var ms = o.ms || 1500;
-        var h = _hsFireH(o.height || ts * 3.4, ts);   // THE HIT SIDE part 4: under 1.5 body heights on a hit with no area
+        var h0 = o.height || ts * 3.4;
+        var h = _hsFireH(h0, ts);   // THE HIT SIDE part 4: under 1.5 body heights on a hit with no area
         var r = o.radius || ts * 0.55;
+        if (h < h0) r *= Math.max(0.42, h / h0);   // … and the cut column keeps its shape (a wide bowl would sit on the squares beside it)
         var deep = o.deep != null ? o.deep : 0xd8380c, mid = o.mid != null ? o.mid : 0xff8a24, hot = o.hot != null ? o.hot : 0xffeec2;
         var group = new THREE.Group();
         group.position.set(wp.x, wp.y, wp.z);
