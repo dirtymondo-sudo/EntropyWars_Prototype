@@ -43826,7 +43826,7 @@ const ThreeRenderer = (function () {
        - render() before the async init() is a no-op (the node renderer throws there); setAnimationLoop already waits for it.
        The F3 lens reads this path too: per-draw counts through setRenderObjectFunction, GPU ms through three's timestamp
        queries — never on Firefox (its wgpu loses the device on timestampWrites), and only once F3 has been used on the device.
-       Off: ?ew_gpu=webgl (the default). ThreeRenderer.gpuStatus() / ?ewdiag=1 name the backend that really runs. */
+       Off: ?ew_gpu=webgl (Auto is the default since 2026-11-11: WebGPU where index.html's probe finds it working, else classic). ThreeRenderer.gpuStatus() / ?ewdiag=1 name the backend that really runs. */
     var _ewGpu = '';                 // '' = classic WebGLRenderer; 'webgpu' | 'webgl2' = the node renderer (the mode asked for)
     var _ewGpuInfo = { asked: 'webgl', why: '', ready: false, lost: '', drawErrs: 0, drawErr: '' };
     var _ewGpuDrawErrSeen = new WeakSet();
@@ -43847,6 +43847,7 @@ const ThreeRenderer = (function () {
     }
     function _ewGpuStatus() {
         var s = _ewGpuBackendName();
+        try { if (window.EW_GPU_WHY) s += ' [' + window.EW_GPU_WHY + ']'; } catch (e) {}   // WEBGPU BY DEFAULT: Auto / a pick, and why
         if (_ewGpuInfo.asked !== 'webgl' && !_ewGpu) s += ' — asked ' + _ewGpuInfo.asked + ' but ' + (_ewGpuInfo.why || 'the node lib did not load');
         if (_ewGpu && renderer && renderer.backend && renderer.backend.trackTimestamp) s += ' · GPU timestamps on';
         if (_ewGpu === 'webgpu' && _ewGpuInfo.limits) s += ' · ' + _ewGpuInfo.limits;
@@ -44660,7 +44661,20 @@ const ThreeRenderer = (function () {
         return true;
     }
     function _ewInstAttr(o, a) {
-        var im = o.instanceMatrix, ic = o.instanceColor, st = a.data.stride, A;
+        var im = o.instanceMatrix, ic = o.instanceColor, st, A;
+        /* THE BLACK BLOOD (2026-11-11, mondo on WebGPU: "black ink blot looking things" with the blood): three 0.186 keeps the
+           instance colours in a PLAIN instanced attribute (a copy of the first mesh's instanceColor), not in an interleaved
+           buffer, so the branch below never matched it and every mesh on a shared build drew with the FIRST mesh's colours:
+           the particle batches and the blood drops read another batch's tints, black where that batch had none. A mesh on
+           another mesh's build now gets its own colour attribute here too. */
+        if (!a.isInterleavedBufferAttribute) {
+            if (ic && ic.array && a.array !== ic.array) {
+                if (!o._ew_icp || o._ew_icp.array !== ic.array) { o._ew_icp = new THREE.InstancedBufferAttribute(ic.array, 3); o._ew_icp.setUsage(a.usage); o._ew_icp.version = ic.version; }
+                return o._ew_icp;
+            }
+            return a;
+        }
+        st = a.data.stride;
         if (st === 16 && a.data.array !== im.array) {
             if (!o._ew_ib || o._ew_ib.array !== im.array) {
                 o._ew_ib = new THREE.InstancedInterleavedBuffer(im.array, 16, 1); o._ew_ib.setUsage(a.data.usage); o._ew_ib.version = im.version; o._ew_ia = {};
@@ -44700,6 +44714,11 @@ const ThreeRenderer = (function () {
                 /* a node attribute (not the geometry's): the instancing's matrices (an instanced interleaved buffer, 16 floats)
                    or its colours (an interleaved buffer, 3 floats); three's own flag on these reads false, so they are told
                    apart by kind and by not being the geometry's */
+                if (a && !a.isInterleavedBufferAttribute && a.isInstancedBufferAttribute && a.itemSize === 3 && o.instanceColor && geoA.indexOf(a) < 0) {
+                    var mineC = _ewInstAttr(o, a);   // three 0.186: the instance colours, a plain instanced attribute (THE BLACK BLOOD)
+                    if (mineC !== a) { out[i] = mineC; sub = true; }
+                    continue;
+                }
                 if (!a || !a.isInterleavedBufferAttribute || !a.data || geoA.indexOf(a) >= 0 || geoA.indexOf(a.data) >= 0) continue;
                 if (!(a.data.isInstancedInterleavedBuffer && a.data.stride === 16) && a.data.stride !== 3) continue;
                 var mine = _ewInstAttr(o, a);
@@ -44725,6 +44744,11 @@ const ThreeRenderer = (function () {
         if (cb && ic && cb.array === ic.array && cb.version !== ic.version) {
             cb.clearUpdateRanges(); for (k = 0; k < ic.updateRanges.length; k++) cb.addUpdateRange(ic.updateRanges[k].start, ic.updateRanges[k].count);
             ic.clearUpdateRanges(); cb.version = ic.version;
+        }
+        var cp = o._ew_icp;
+        if (cp && ic && cp.array === ic.array && cp.version !== ic.version) {
+            cp.clearUpdateRanges(); for (k = 0; k < ic.updateRanges.length; k++) cp.addUpdateRange(ic.updateRanges[k].start, ic.updateRanges[k].count);
+            ic.clearUpdateRanges(); cp.version = ic.version;
         }
     }
     function _ewKeepStats() {
@@ -46575,6 +46599,7 @@ const ThreeRenderer = (function () {
     function _ewMakeBoardRenderer(cnv) {
         var mode = (typeof window !== 'undefined' && window.EW_GPU_MODE) || 'webgl';
         _ewGpuInfo.asked = mode;
+        try { window.EW_GPU_MADE = true; } catch (e) {}   // WEBGPU BY DEFAULT: Auto's probe no longer changes the mode of this load
         var G = (typeof window !== 'undefined') ? window.THREE_GPU : null;
         if (mode === 'webgpu' || mode === 'webgl2') {
             if (G && typeof G.WebGPURenderer === 'function') {
@@ -47162,11 +47187,17 @@ const ThreeRenderer = (function () {
                 });
             } catch (e) {}
             console.log('[ThreeRenderer] board renderer: ' + _ewGpuBackendName() + (_ewGpuInfo.limits ? ' · ' + _ewGpuInfo.limits : ''));
+            /* WEBGPU BY DEFAULT (2026-11-11): three fell back to its own WebGL 2 backend (the device was refused after the probe).
+               This load keeps drawing with it; on Auto the next load takes the classic renderer. */
+            try { if (_ewGpu === 'webgpu' && !(r.backend && r.backend.isWebGPUBackend) && typeof window._ewGpuFailed === 'function') window._ewGpuFailed('three fell back to WebGL 2', false); } catch (x) {}
             _shadowsDirty = true;
             try { r.shadowMap.needsUpdate = true; } catch (e) {}
         }, function (e) {
             _ewGpuInfo.why = 'init() failed: ' + (e && e.message || e);
             console.error('THREE.WebGPURenderer: init failed — ' + (e && e.message || e) + ' (?ew_gpu=webgl draws with the classic renderer)');
+            /* WEBGPU BY DEFAULT (2026-11-11): on Auto a renderer that cannot start is remembered and the page comes back on the
+               classic renderer by itself, once (a canvas that asked for WebGPU cannot be handed to WebGL). */
+            try { if (typeof window._ewGpuFailed === 'function') window._ewGpuFailed('init failed', true); } catch (x) {}
         });
     }
     /* THE LOST DEVICE (WEBGPU_PLAN W4, 2026-10-04). A WebGPU device can be lost (a driver reset, the GPU process restarting,
@@ -47179,7 +47210,11 @@ const ThreeRenderer = (function () {
     function _ewGpuRebuild(old) {
         if (!old || old !== renderer || old._ew_dead || !canvas) return false;
         var n = _ewGpuInfo.rebuilds = (_ewGpuInfo.rebuilds || 0) + 1;
-        if (n > 3) { console.error('[ThreeRenderer] the GPU device was lost ' + n + ' times — not rebuilding again (reload, or ?ew_gpu=webgl for the classic renderer)'); return false; }
+        if (n > 3) {
+            console.error('[ThreeRenderer] the GPU device was lost ' + n + ' times — not rebuilding again (reload, or ?ew_gpu=webgl for the classic renderer)');
+            try { if (typeof window._ewGpuFailed === 'function') window._ewGpuFailed('device lost ' + n + ' times', false); } catch (x) {}   // Auto: the next load draws classic
+            return false;
+        }
         old._ew_dead = true;
         var cb = old._ew_loopCb || null;
         try { old.setAnimationLoop(null); } catch (e) {}
