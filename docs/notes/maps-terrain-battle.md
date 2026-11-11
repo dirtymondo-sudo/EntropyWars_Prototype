@@ -2021,3 +2021,9 @@ A site with a FULL SITE board (16×16 +) shares its name with its 12×12 map in 
   new `bells[].y / .len`, `pods[].len`, `canopy {x,z,w,l,h,y}`, `guns [{x,z,y,dir,len,r,gap,ax}]` (room metres).
 - Moved with it: HQ_ARENA_RULES.within x 0; siteRooms.backDoors bay x 33.25; the stage frame deck x 600 (door x 0); the tape on
   the nose. Picks 12/11/10/9 re-baked (12 @ 11,8; 11 @ 11,8; 10/9 @ 12,9).
+
+## THE CALM TEST BOARDS ARE GONE (2026-11-11)
+mondo: "Can we get rid of the 'calm' maps? Arent all of the maps calm now? We dont need the duplicates". data.js HQ_LOOK_MAPS is
+EMPTY: Fairy Forest (Calm), Stonehenge (Calm) and Hell (Calm) (the PR #1112 / #1116 test boards, second cards of their own arenas)
+are no longer registered. THE CALM LOOK (CALM_TERRAIN, the default on every map), the ROOM tab Calm/Pixel switch,
+window.EW_NO_CALM_LOOK and his pixel sheets are untouched. The table + hqMapLook + the register stay for a later test look.
