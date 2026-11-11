@@ -28062,7 +28062,9 @@
             const rigs = document.getElementsByClassName('hrlg-rig');
             for (let ri = 0; ri < rigs.length; ri++) {
                 rigs[ri].querySelectorAll(':scope > .hrlg-side, :scope > .hrlg-hubwrap, .hrlg-panels > .hrlg-panel > *, '
-                    + '.hrlg-panels .hrlg-list > *, .hrlg-peek').forEach(push);
+                    + '.hrlg-panels .hrlg-list > *, .hrlg-peek, '
+                    // THE ONE BATTLE PANEL (hud.js _ewDeckCfg): its bays, its footer, the tabs over its right bay
+                    + ':scope.ewd > .ewd-bay:not(.ewd-ghost), :scope.ewd > .ewd-foot:not(.ewd-ghost), :scope.ewd .ewd-tabs').forEach(push);
             }
             document.querySelectorAll('.ew-scoreboard, .ew-matchmeta, .ew-tc-icon, #battleSubtitleBar.visible > *, .ew-descbar-inner, #ewMinimap')
                 .forEach(push);
@@ -32418,8 +32420,20 @@
                 /* the smooth pass (2026-10-24): the command menus all live inside a .hrlg-rig, so the look runs over the rigs
                    only (a whole-document query of ~10,000 nodes cost ~2 ms on a slow machine, several times a second) */
                 const rigs = document.getElementsByClassName('hrlg-rig'), menuEls = [];
+                /* THE ONE BATTLE PANEL (hud.js _ewDeckCfg, mondo 2026-11-11): one window along the bottom, so its bays are
+                   not side bands; the free part is found from their boxes below (deckBoxes) */
+                const deckBoxes = [];
+                let deckSub = false;
                 for (let ri = 0; ri < rigs.length; ri++) {
                     const rg = rigs[ri];
+                    if (rg.classList.contains('ewd')) {
+                        rg.querySelectorAll(':scope > .ewd-bay:not(.ewd-ghost), :scope > .ewd-foot:not(.ewd-ghost), .ewd-tabs').forEach(el => {
+                            const r = boxOf(el);
+                            if (r) deckBoxes.push(r);
+                        });
+                        if (rg.classList.contains('ewd-sub')) deckSub = true;
+                        continue;
+                    }
                     if (rg.classList.contains('hrlg-peek')) menuEls.push(rg);
                     rg.querySelectorAll(':scope > .hrlg-side, :scope > .hrlg-hubwrap, .hrlg-panels > .hrlg-panel, '
                         + '.hrlg-panels > .hrlg-panel > *, .hrlg-panels .hrlg-list > *, .hrlg-peek').forEach(el => menuEls.push(el));
@@ -32437,11 +32451,12 @@
                     else x1 = Math.min(x1, r.left);
                     if (_cfSolid || !el.closest('.hrlg-panel.bg')) lowTop = Math.min(lowTop, r.top);
                 });
+                if (deckBoxes.length) menu = true;
                 if (!menu) return _cfArea;
                 // THE SUB MENU RULE: the action menu alone keeps the plain framing
-                let sub = false;
+                let sub = deckSub;
                 for (let ri = 0; ri < rigs.length && !sub; ri++) {
-                    if (rigs[ri].classList.contains('hrlg-peek')) continue;
+                    if (rigs[ri].classList.contains('hrlg-peek') || rigs[ri].classList.contains('ewd')) continue;
                     sub = [...rigs[ri].querySelectorAll('.hrlg-panels > .hrlg-panel:not(.root)')].some(el => boxOf(el));
                 }
                 if (!sub) return (_cfArea = _CLEAR_ROOT);
@@ -32462,7 +32477,23 @@
                    than the strip beside the menus, it is the free part: full width (no sideways slide), the frame raised
                    over the panel. Tall menus (Abilities, the attack list, a quick list) keep the strip beside them. */
                 let above = false;
-                if (Number.isFinite(lowTop)) {
+                /* THE ONE BATTLE PANEL's free part: the biggest box its bays leave open, the whole width above the panel or
+                   the strip beside its tallest bay (a long list), the footer under all of them; the frame may rise over it
+                   as over THE LOW PANEL. A panel the UI Maker moved to the top of the screen is a top band. */
+                if (deckBoxes.length) {
+                    const low = [];
+                    deckBoxes.forEach(r => { if ((r.top + r.bottom) / 2 < midY) y0 = Math.max(y0, r.bottom); else low.push(r); });
+                    if (low.length) {
+                        const topOver = (a, b) => { let t = y1; low.forEach(r => { if (r.right > a + 2 && r.left < b - 2) t = Math.min(t, r.top); }); return t; };
+                        let best = { a: -1, x0, x1, t: y1 };
+                        const tryBox = (a, b) => { const t = topOver(a, b), ar = (b - a) * (t - y0); if (b > a && ar > best.a + 1) best = { a: ar, x0: a, x1: b, t }; };
+                        tryBox(x0, x1);
+                        low.forEach(r => { if (r.right > x0 && r.right < x1) tryBox(r.right, x1); if (r.left > x0 && r.left < x1) tryBox(x0, r.left); });
+                        x0 = best.x0; x1 = best.x1; y1 = best.t;
+                    }
+                    above = true;
+                }
+                if (!deckBoxes.length && Number.isFinite(lowTop)) {
                     const ay1 = Math.min(y1, lowTop);
                     if (ay1 - y0 >= cv.height * CLEAR_LOW_PANEL_MIN_H
                         && (cv.right - cv.left) * (ay1 - y0) > (x1 - x0) * (y1 - y0)) {
