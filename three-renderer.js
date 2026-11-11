@@ -4058,7 +4058,71 @@ const ThreeRenderer = (function () {
         '  totalEmissiveRadiance += vec3(1.0, 0.45, 0.1) * (smoothstep(0.45, 0.95, ewHeat) * 0.7);\n' +
         '}\n';
 
+    /* THE CALM GROUND's water + lava (see THE CALM GROUND by _hzTex): built in place of the sheet liquids on a calm board.
+       WATER: a dark, see-through body (the bed shows a little) whose surface normal moves — three octaves of value noise sliding
+       at different speeds and directions, in squares (uFluidTile), so a pool and a brook ripple as one sheet — the room's own lights
+       give the sun glints off it (Phong, tight highlight), and the sky's sheen rises toward grazing angles (Schlick fresnel). No
+       caustic web, no painted waves: one quiet colour that reads as depth, and a faint sky reflection (a slow cloud noise read along the reflected ray) so the surface moves even seen from above. LAVA: calm_lava (a cooling basalt crust, glowing seams)
+       one sheet per square, slowly warped so the crust creeps, the seams glowing from the sheet's own heat with a slow pulse; the
+       crust stays dark (environment value), only the heat is bright. On WebGPU the extras are skipped: the water is its flat colour,
+       the lava its sheet + the sheet as its glow. */
+    var _CALM_NOISE_GLSL =
+        'float cHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }\n' +
+        'float cNoise(vec2 p) { vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);\n' +
+        '  return mix(mix(cHash(i), cHash(i + vec2(1.0, 0.0)), u.x), mix(cHash(i + vec2(0.0, 1.0)), cHash(i + vec2(1.0, 1.0)), u.x), u.y); }\n' +
+        'float cRip(vec2 p, float t) { return cNoise(p * 6.0 + vec2(t * 0.55, t * 0.31)) * 0.55 + cNoise(p * 13.0 - vec2(t * 0.9, -t * 0.47)) * 0.3\n' +
+        '  + cNoise(p * 29.0 + vec2(-t * 1.4, t * 1.1)) * 0.15; }\n';
+    function _calmFluidMat(key) {
+        var lava = (key === 'lava'), deep = (key === 'deep_water'), mat;
+        if (lava) {
+            var tex = _hzTex('lava');   // calm_lava (calm board): trilinear, its own cache entry
+            mat = new THREE.MeshLambertMaterial({ map: tex || null, color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.85, emissiveMap: tex || null });
+        } else {
+            mat = new THREE.MeshPhongMaterial({ color: deep ? _CALM.deep : _CALM.water, specular: 0xb4c4c8, shininess: 140,
+                                                transparent: true, opacity: deep ? Math.min(1, _CALM.waterOp + 0.08) : _CALM.waterOp, depthWrite: false });
+        }
+        var night = ((document.body && document.body.dataset && document.body.dataset.cycle) || 'day') === 'night';
+        var sky = new THREE.Color(night ? 0x2a3a52 : 0x9db4c2);
+        mat.onBeforeCompile = function (sh) {
+            sh.uniforms.uFluidTime = _fluidTimeUniform; sh.uniforms.uFluidTile = _fluidTileUniform;
+            if (!_fluidFlowUniform.value) _fluidFlowUniform.value = new THREE.Vector2(0, 0);
+            sh.uniforms.uFluidFlow = _fluidFlowUniform;
+            sh.uniforms.uCalmSky = { value: sky }; sh.uniforms.uCalmGlow = { value: _CALM.lavaGlow };
+            sh.vertexShader = 'varying vec3 vCalmW;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvCalmW = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
+            var head = 'uniform float uFluidTime;\nuniform float uFluidTile;\nuniform vec2 uFluidFlow;\nuniform vec3 uCalmSky;\nuniform float uCalmGlow;\nvarying vec3 vCalmW;\n' + _CALM_NOISE_GLSL;
+            var f = head + sh.fragmentShader;
+            if (lava) {
+                f = f.replace('#include <map_fragment>',
+                    'vec2 cP = (vCalmW.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
+                    'float cT = uFluidTime;\n' +
+                    'vec2 cWarp = vec2(cNoise(cP * 1.7 + vec2(cT * 0.05, 0.0)), cNoise(cP * 1.7 + vec2(7.1, -cT * 0.04))) - 0.5;\n' +
+                    '#ifdef USE_MAP\n vec3 cLa = texture2D(map, cP + cWarp * 0.07 + vec2(cT * 0.006, cT * 0.004)).rgb;\n#else\n vec3 cLa = vec3(0.1, 0.05, 0.03);\n#endif\n' +
+                    'float cHeat = smoothstep(0.2, 0.8, cLa.r) * (0.72 + 0.4 * cNoise(cP * 0.8 + vec2(cT * 0.13, -cT * 0.09)));\n' +
+                    'diffuseColor.rgb *= cLa * 0.9;\n')
+                .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = cLa * cHeat * uCalmGlow;\n');
+            } else {
+                f = f.replace('#include <map_fragment>',
+                    '#include <map_fragment>\n' +
+                    'vec2 cP = (vCalmW.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
+                    'float cT = uFluidTime;\n' +
+                    'float cE = 0.012, cH0 = cRip(cP, cT);\n' +
+                    'vec3 cNw = normalize(vec3(-(cRip(cP + vec2(cE, 0.0), cT) - cH0) / cE * 0.05, 1.0, -(cRip(cP + vec2(0.0, cE), cT) - cH0) / cE * 0.05));\n' +
+                    'diffuseColor.rgb *= 0.88 + 0.22 * cNoise(cP * 0.9 + vec2(cT * 0.03, cT * 0.02));\n')
+                .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nnormal = normalize( ( viewMatrix * vec4( cNw, 0.0 ) ).xyz );\n')
+                .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' +
+                    '{ vec3 cV = normalize(cameraPosition - vCalmW); float cFr = 0.04 + 0.96 * pow(1.0 - clamp(dot(cNw, cV), 0.0, 1.0), 5.0);\n' +
+                    '  vec3 cR = reflect(-cV, cNw); float cSk = cNoise(cR.xz / max(cR.y, 0.2) * 1.3 + vec2(cT * 0.02, cT * 0.012));\n' +
+                    '  totalEmissiveRadiance += uCalmSky * (cFr * 0.55 + 0.05 * (0.4 + cSk)); diffuseColor.a = mix(diffuseColor.a, 1.0, cFr * 0.6); }\n');
+            }
+            sh.fragmentShader = f;
+        };
+        mat.customProgramCacheKey = function () { return 'ew_calm_fluid_' + (lava ? 'lava' : deep ? 'deep' : 'water'); };
+        mat._ew_fluidTop = true; mat._ew_fluidType = key; mat._ew_calm = true;
+        return mat;
+    }
+
     function _buildFluidTopMat(terrainKey) {
+        if ((terrainKey === 'water' || terrainKey === 'deep_water' || terrainKey === 'lava') && _calmOn()) return _calmFluidMat(terrainKey);   // THE CALM GROUND
         /* Tinted liquids (poison bogs / black ooze / oil) ride the WATER
            textures with a material tint — see _LIQUID_STYLES. */
         var style = _LIQUID_STYLES[terrainKey] || null;
@@ -34884,11 +34948,61 @@ const ThreeRenderer = (function () {
     // scenery doesn't need crisp 1:1 pixels, so we trade pixel-art sharpness for
     // trilinear mipmapping + anisotropy, which is the correct distance AA and
     // kills the buzzing. (In-world terrain still uses NearestFilter — unchanged.)
+    /* ══ THE CALM GROUND (2026-11-11, mondo: "the terrain pixel sprites are a little busy and distract from the 3d models on the board
+       ... make grass look like actual grass from a AAA RPG game and water and lava like actual water and lava ... more realistic, but
+       also less busy") ══ A TEST LOOK worn only by a board data.js HQ_LOOK_MAPS names with look 'calm' (Fairy Forest Arena (Calm), a
+       copy of the Fairy Forest Arena; the arena itself and every other map are untouched). The rule it follows is Riot's VFX style guide
+       (2017), section III p.13-14 "VALUE RANGE BY EACH DISCIPLINE": the ENVIRONMENT value range sits lowest, the CHARACTER range above
+       it, the VFX across both, the UI on top; p.19 the same for saturation ("avoid using 100% or 0% values"). So the ground here is
+       darker, greyer and much lower in local contrast than the 128 px pixel sheets, and the units are the brightest, most saturated
+       thing on the board.
+         · THE SHEETS (_CALM_SHEETS): realistic ground sheets made in code (bake-calm-terrain.py: periodic noise + drawn blades /
+           stones / plates, nothing downloaded), one per 3.5 m square like every board sheet, read through _hzTex in place of the
+           pixel sheet of the same key, trilinear + anisotropic (no pixel grid);
+         · THE FIELD (_hqTerrainMat / _hqBuildTerrain): the sheets carry their own colour (no room floorColor / sheet tints), almost no
+           shine, a slow world-space drift of value over metres (in the field's AO, so the WebGPU path gets it too) to hide the
+           repeat, and ragged path edges (noise in the path blend) in place of the smooth band;
+         · THE WATER + THE LAVA (_calmFluidMat): a dark, see-through water with moving ripples, sun glints and a sky sheen at grazing
+           angles (no caustic web); lava as a dark cooling crust whose seams glow and creep (two copies of calm_lava sliding).
+       Kill switch: window.EW_NO_CALM_LOOK = true (the board's next build draws the old sheets). Read once per build: a fight keeps
+       the look it was built with. WEBGL2 only proven; on WebGPU the sheets, the colours and the drift carry over, the water / lava
+       shader extras do not (plain colour + sheet there). */
+    var _CALM_BASE = 'https://cdn.entropywars.net/Assets/world/terrain/calm/';
+    var _CALM_SHEETS = { grass_2: 'calm_grass_1.png', dirt_2: 'calm_dirt_1.png', dirt_3: 'calm_dirt_1.png', dirt: 'calm_dirt_1.png',
+                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', lava: 'calm_lava_1.png' };
+    /* the tunables (live in the console as EW_CALM; a change shows at the board's next build) */
+    /* floorT / pathT / cliffT = the three sheet tints (the room's own sheet looks are its pixel sheets' and stay theirs): the path
+       sits a step UNDER the grass and warm, so the board centre is the calmest ground on it */
+    var _CALM = { floor: 0xffffff, floorT: [0.95, 1.08, 0.85], pathT: [0.72, 0.6, 0.5], cliffT: [0.85, 0.85, 0.82], drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.25 };
+    try { window.EW_CALM = _CALM; } catch (e) {}
+    function _calmOn() {
+        try {
+            if (typeof window !== 'undefined' && window.EW_NO_CALM_LOOK) return false;
+            var id = (typeof _arenaLatchId !== 'undefined' && _arenaLatchId) ? _arenaLatchId : null;
+            if (!id && typeof window !== 'undefined' && window.EW_CALM_FORCE) id = window.EW_CALM_FORCE;   // (proof only: a look on any board)
+            return !!id && typeof hqMapLook === 'function' && hqMapLook(id) === 'calm';
+        } catch (e) { return false; }
+    }
+    function _calmSheet(key) { return (_CALM_SHEETS[key] && _calmOn()) ? _CALM_BASE + _CALM_SHEETS[key] : null; }
+    /* the value drift (× the field's AO): two octaves over metres, ±drift */
+    function _calmDrift(x, z) {
+        if (typeof _hqTNoise !== 'function') return 1;
+        return 1 + _CALM.drift * (0.7 * _hqTNoise(x, z, _CALM.driftM, 917) + 0.3 * _hqTNoise(x + 31.7, z - 12.3, _CALM.driftM * 0.38, 923));
+    }
+    /* the ragged path edge: the path's blend (0..1) pushed by noise and sharpened, so the edge wanders instead of running as a band */
+    function _calmEdge(w, x, z) {
+        if (!(w > 0) || typeof _hqTNoise !== 'function') return w;
+        var n = 0.65 * _hqTNoise(x, z, _CALM.edgeM, 941) + 0.35 * _hqTNoise(x - 7.1, z + 3.3, _CALM.edgeM * 0.5, 947);
+        var t = (w - 0.5 + _CALM.edge * n) * 1.7 + 0.5;
+        t = t < 0 ? 0 : t > 1 ? 1 : t;
+        return t * t * (3 - 2 * t);
+    }
     var _hzTexCache = {};
     function _hzTex(terrainKey) {
-        var ck = terrainKey + _ewSandPart(terrainKey);   // THE TWO SANDS: the beach's desert caches apart
+        var calmUrl = _calmSheet(terrainKey);   // THE CALM GROUND: the realistic sheet in place of the pixel sheet (its own cache entry)
+        var ck = (calmUrl ? 'calm|' : '') + terrainKey + _ewSandPart(terrainKey);   // THE TWO SANDS: the beach's desert caches apart
         if (_hzTexCache[ck] !== undefined) { var hit = _hzTexCache[ck]; if (hit) _alJoin(hit._ew_alRec); return hit; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
-        var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? _ewSandUrl(terrainKey, TERRAIN_SPRITES[terrainKey][0]) : null;
+        var url = calmUrl || ((typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) ? _ewSandUrl(terrainKey, TERRAIN_SPRITES[terrainKey][0]) : null);
         if (!url && typeof terrainKey === 'string' && terrainKey.indexOf('urban:') === 0 && typeof URBAN_TEXTURES !== 'undefined') url = URBAN_TEXTURES[terrainKey.slice(6)] || null;   // THE URBAN PACK (2026-09-17): `urban:<Name>` reads sprites.js URBAN_TEXTURES
         /* 2026-09-21: a D.O.O.R. HQ texture name (`concrete`, `stone`, `teal`, `carpet`…) resolves here too — a terrain room's
            `cliff: 'concrete'` used to miss and fall back to rock_wall_1 (the glyph sheet on THE GARAGE's every wall) */
@@ -64902,16 +65016,19 @@ const ThreeRenderer = (function () {
         var floorTex = _hzTex(info.floor) || _hzTex('grass_2'), cliffTex = _hzTex(info.cliff) || _hzTex('cliff') || floorTex, pathTex = _hzTex(info.path) || _hzTex('dirt_2') || floorTex;   // 2026-09-21: the fallback is the plain cliff sheet, never rock_wall_1's glyphs
         var m = new THREE.MeshPhongMaterial({ map: floorTex || null, color: 0xffffff, shininess: S.open ? 4 : 6, specular: S.open ? 0x0e0e0e : 0x161616, vertexColors: false });
         m._ew_triplanar = true;   // THE ONE PIXEL DENSITY: the field samples by world position (uTriTM = the sheet), never by its UVs
-        if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
+        var calm = !!(_calmSheet(info.floor));   // THE CALM GROUND: the sheets carry their own colour — no room floorColor, no sheet tints, no shine
+        if (calm) { m.color.setHex(_CALM.floor); m.specular.setHex(0x050505); m.shininess = 2; m._ew_calm = true; }
+        else if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
         /* THE URBAN PACK (2026-09-17): a neon city's field is self-lit like its sprite prisms (lift 0.42) — the wet asphalt sheet went black under the night mood */
         m.emissive = m.color.clone().multiplyScalar((info.gen && info.gen.neon) ? 0.42 : (S.open ? 0.06 : 0.1));
+        if (calm) m.emissive.setHex(0x000000);   // THE CALM GROUND: the ground's lift off (the environment sits under the units, never glows up to them)
         /* THE HOLO SIM (2026-10-20): a self-lit floor sheet (the holo plates, _EMISSIVE_TERRAIN) — the emissive is multiplied by the
            sheet's own texel below, so only the plates' rims glow and the dark fill stays dark, as on the old board */
         if (_EMISSIVE_TERRAIN[info.floor]) m.emissive = new THREE.Color(_EMISSIVE_TERRAIN[info.floor].color).multiplyScalar(_EMISSIVE_TERRAIN[info.floor].intensity);
         /* THE GROUND GRIDS (EDITOR_PLAN E3): the painted sheets (terrain.paint's palette, ≤ 8) — one sampler each, top-projected, blended by
            three vec3 weights per vertex (aPaintA/B/C: sheets 1–3, 4–6, 7–8; a mesh without them — the outer ground — reads 0: unpainted) */
         var pal = (info.paint && info.paint.pal) ? info.paint.pal.slice(0, 8) : [], palTex = pal.map(function (k) { return _hzTex(k) || floorTex; });
-        var look = _hqSheetLook(info);
+        var look = calm ? { cliffZoom: 1, floor: new THREE.Color().fromArray(_CALM.floorT), cliff: new THREE.Color().fromArray(_CALM.cliffT), path: new THREE.Color().fromArray(_CALM.pathT) } : _hqSheetLook(info);
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
             sh.uniforms.uTriTM = { value: (info._TM || 1) };
@@ -64998,6 +65115,7 @@ const ThreeRenderer = (function () {
         _hq.outer = { hx: hx, hz: hz, ext: ext, yAt: yAt };
         var X0 = -(hx + ext), Z0 = -(hz + ext), nx = Math.ceil(2 * (hx + ext) / cs) + 1, nz = Math.ceil(2 * (hz + ext) / cs) + 1;
         var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2), idx = []; var aoO = new Float32Array(nx * nz); for (var ai = 0; ai < aoO.length; ai++) aoO[ai] = 1;
+        var calmO = !!(mat && mat._ew_calm);   // THE CALM GROUND: the field's value drift runs on past its edge
         for (var j = 0; j < nz; j++) { for (var i = 0; i < nx; i++) {
             var k = j * nx + i, px = X0 + i * cs, pz = Z0 + j * cs, h = yAt(px, pz);
             pos[k * 3] = px * U; pos[k * 3 + 1] = h * U; pos[k * 3 + 2] = pz * U;
@@ -65014,6 +65132,7 @@ const ThreeRenderer = (function () {
             }
             if (info.gen && info.gen.kind === 'city') { var eo = Math.hypot(Math.max(0, Math.abs(px) - hx), Math.max(0, Math.abs(pz) - hz)), ek = eo / 2.5; if (ek > 1) ek = 1; rk = Math.max(rk, ek); }   // THE STREETS IN THE PACK (2026-09-17): a city's outer ground is the cliff sheet (concrete), never the asphalt running to the fog
             blend[k * 2] = rk * rk * (3 - 2 * rk); blend[k * 2 + 1] = 0;
+            if (calmO) aoO[k] = _calmDrift(px, pz);
         } if ((j & 7) === 7 && _hqSliceDue()) yield; }
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): the outer ground lying inside a staged neighbour's frame is cut into its OWN mesh
            per neighbour (`_hq.outerSides[id]`) — drawn while that neighbour is not on the stage (the ground runs on as today),
@@ -67585,6 +67704,7 @@ const ThreeRenderer = (function () {
         var rng = _mulberry32((0x7e44 + nx * 31 + nz * 7) >>> 0);
         var pulse = function (mat, opAmp, spd) { _hq.fxPulse.push({ mat: mat, baseOp: mat.opacity, opAmp: opAmp, spd: spd, phase: rng() * Math.PI * 2 }); return mat; };
         var R = info.rules;
+        var calmF = !!_calmSheet(info.floor);   // THE CALM GROUND: ragged path edges + the value drift (below)
         /* ── THE FIELD: one indexed mesh, UVs in tiles, the blend per vertex ── */
         var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2), ao = new Float32Array(nx * nz);
         /* THE ROAD'S EDGE: the distance past the nearest road's edge (≤ 0 = on a road) — a city plan's streets */
@@ -67632,13 +67752,14 @@ const ThreeRenderer = (function () {
                 /* THE YARDS OPEN (2026-10-06): the ground between and behind the buildings is walked now — paved like the sidewalk, never the dark mass sheet */
                 if (info.yard && info.yard[k]) { sw = 1; rock = rockSl; }
             }
-            blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(pathW(px, pz), sw) * (1 - blend[k * 2]);
+            blend[k * 2] = rock * rock * (3 - 2 * rock); blend[k * 2 + 1] = Math.max(calmF ? _calmEdge(pathW(px, pz), px, pz) : pathW(px, pz), sw) * (1 - blend[k * 2]);
             ao[k] = _hqTerrainAoAt(info, px, pz, h, res);   // THE LIGHT PASS 2.3 (2026-09-21): the field's own occlusion
             if (ghN && Math.abs(info.H[k] - h) < 0.05 && ao[k] < 1) {   // THE GROUND UNDER: the hollow is read on the ground, not against a flank it no longer meets
                 var aoR = _hqLightRules().ao || {}, aoT2 = (aoR.terrain != null) ? aoR.terrain : 0.32;
                 var lapG = (ghN[j * nx + Math.max(0, i - 1)] + ghN[j * nx + Math.min(nx - 1, i + 1)] + ghN[Math.max(0, j - 1) * nx + i] + ghN[Math.min(nz - 1, j + 1) * nx + i] - 4 * ghN[k]) / res;
                 ao[k] = Math.max(ao[k], Math.max(0.5, 1 - aoT2 * Math.max(0, Math.min(1, lapG * 0.9))));
             }
+            if (calmF) ao[k] *= _calmDrift(px, pz);   // THE CALM GROUND: the slow value drift that hides the sheet's repeat
         } if (_hqSliceDue()) yield; }
         var idx = [], escalators = info.drawH ? [] : (room.terrain.features || []).filter(function (f) { return f.escalator; });   // THE JOINED FLIGHTS: the field runs on under an escalator, drawn at its ground
         /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `float: true` plateau keeps the field's own TOP (the
@@ -73814,8 +73935,8 @@ const ThreeRenderer = (function () {
         var wy = fl.y - (ctx.y0 || 0), dy = MY - wy;   // the surface in the pipe's frame (metres over its floor), the centre over it
         if (dy >= R - 0.1) return;   // under the bore's floor: nothing to see
         var cw = 2 * Math.sqrt(R * R - dy * dy) - 0.12, IN = 0.7, len = L + 0.3 + IN, key = fl.key || 'water';
-        var mat = _hqPassWaterMats[key];
-        if (!mat) { try { mat = _buildFluidTopMat(key); } catch (e) { mat = null; } if (!mat) return; _hqPassWaterMats[key] = mat; }
+        var pwk = key + (_calmOn() ? '|calm' : ''), mat = _hqPassWaterMats[pwk];   // THE CALM GROUND: a calm board's liquids cache apart
+        if (!mat) { try { mat = _buildFluidTopMat(key); } catch (e) { mat = null; } if (!mat) return; _hqPassWaterMats[pwk] = mat; }
         var geo = new THREE.PlaneGeometry(cw * U, len * U);
         var TMw = (info._TM || (info.tile || 2.5) * U), uv = geo.attributes.uv;
         for (var i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * cw * U / TMw, uv.getY(i) * len * U / TMw);
@@ -85183,7 +85304,7 @@ const ThreeRenderer = (function () {
        strata), after or among the plates. They now draw before the liquids, which draw before the plates. */
     var GROUND_SHEET_ORDER = -3;
     function _liqBlendMat(key, over) {
-        var mk = key + (over ? '|over' : '');
+        var mk = key + (over ? '|over' : '') + (_calmOn() ? '|calm' : '');   // THE CALM GROUND: a calm board's liquids cache apart
         if (_liqBlendMats[mk] !== undefined) return _liqBlendMats[mk];
         var m = null;
         try { m = _buildFluidTopMat(key); } catch (e) { m = null; }
@@ -85634,7 +85755,7 @@ const ThreeRenderer = (function () {
             _fieldSkinGeo = { ts: ts, geo: geo };
         }
         var matOf = function (key) {
-            var mk = key + '|' + ts;
+            var mk = key + '|' + ts + (_calmOn() ? '|calm' : '');   // THE CALM GROUND: a calm board's liquids cache apart
             if (_fieldSkinMats[mk]) return _fieldSkinMats[mk];
             var m = null;
             if (_FLUID_TERRAIN_SET[key]) {
