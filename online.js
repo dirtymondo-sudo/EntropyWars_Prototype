@@ -3833,10 +3833,10 @@
                 NET.socket = null;
                 try { if (sock) sock.disconnect(); } catch (e) {}
                 NET.connected = false; NET.role = null; NET.myPlayer = 1; NET.roomCode = null; NET.ranked = false;
-                NET._wasInMatch = false; NET._rematchState = null; NET.rejoinToken = null;
+                NET._wasInMatch = false; NET._rematchState = null; NET.rejoinToken = null; NET._bootRejoin = false; NET._squadKept = false;
                 try { var pill = document.getElementById('netStatusIndicator'); if (pill) pill.remove(); } catch (e) {}
                 try { if (typeof window._ewResetOnlineMatchFlags === 'function') window._ewResetOnlineMatchFlags(true); } catch (e) {}
-                try { ['ew_rejoinToken', 'ew_rejoinRoom', 'ew_rejoinRole'].forEach(function (k) { sessionStorage.removeItem(k); }); } catch (e) {}
+                try { ['ew_rejoinToken', 'ew_rejoinRoom', 'ew_rejoinRole', 'ew_rejoinMap', 'ew_rejoinSquad'].forEach(function (k) { sessionStorage.removeItem(k); }); } catch (e) {}
                 try { if (typeof window._ewHideReconnectBanner === 'function') window._ewHideReconnectBanner(); } catch (e) {}
             }
             function _lrReset() {
