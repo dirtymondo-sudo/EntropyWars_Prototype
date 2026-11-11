@@ -1583,9 +1583,10 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     return u ? u[0].toUpperCase() + u.slice(1) : label;
   };
   // one pick per tab (a tab of several, like underwear or horns, toggles each); the pack's own one-per-category rule still applies
-  const shapeHeads = window.EW_SHAPE_HEADS || [];
-  const shapeEars = window.EW_SHAPE_EARS || [];   // THE SHAPED EARS (2026-11-03): cat ears, a reshape of the body's own ears
   const shapeHeadOn = (k) => (+appearance[k] || 0) > 0.004;
+  const pickOff = (id, on) => !on && !!(window.ewPickSwitchedOff && window.ewPickSwitchedOff(id));   // THE LIKENESS SWITCH (sprites.js): hidden unless turned on or worn
+  const shapeHeads = (window.EW_SHAPE_HEADS || []).filter(([k]) => !pickOff(k, shapeHeadOn(k)));
+  const shapeEars = window.EW_SHAPE_EARS || [];   // THE SHAPED EARS (2026-11-03): cat ears, a reshape of the body's own ears
   const toggleWear = (t, id) => {
     const on = worn.includes(id);
     const patch = { wear: on ? worn.filter(x => x !== id) : (shelfMany(t) ? worn : worn.filter(x => shelfOf(x) !== t)).concat([id]) };
@@ -1839,7 +1840,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   /* THE LOOKS tiles: one MakeHuman pick row (skin / eye colour / brows / lashes), "Body's own" first */
   const mhLookList = (cat) => [['own', "Body's own"]].concat(((window.EW_MH_LOOKS || {})[{ mhSkin: 'skins', mhEyes: 'eyes', mhBrows: 'brows', mhLashes: 'lashes' }[cat]] || []).map(r => [r[0], r[1]]));
   const mhTiles = (cat, head, list, key) => {
-    const rows = (list || mhLookList(cat)).filter(([id]) => keepPick(cat, id, (appearance[cat] || 'own') === id)), cam = cat === 'mhSkin' ? 'body' : 'face';   // (THE HIDDEN PICKS)
+    const rows = (list || mhLookList(cat)).filter(([id]) => keepPick(cat, id, (appearance[cat] || 'own') === id) && !pickOff(id, (appearance[cat] || 'own') === id)), cam = cat === 'mhSkin' ? 'body' : 'face';   // (THE HIDDEN PICKS)
     if (!window.EW_MH_LOOKS || !rows.length) return null;
     return h(React.Fragment, { key: key || cat },
       head ? h('div', { className: 'pb-creator-colorlabel' + (cat === 'mhSkin' ? ' pb-cc-shelf-sub' : ''), 'data-cc-cam-own': cam }, head) : null,
