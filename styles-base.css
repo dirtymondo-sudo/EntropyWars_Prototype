@@ -7039,6 +7039,16 @@ body.diorama-3d .tile-underpass.jump::before {
 #squadDeskPage .sq-empty { margin: auto; padding: 28px 32px; border-radius: var(--hq-r); background: var(--hq-plate-scan), var(--hq-plate-bg); border: 1px solid var(--hq-plate-edge); box-shadow: var(--hq-frame); }
 #squadDeskPage .sq-empty-title { color: var(--hq-ink); text-shadow: var(--hq-tshadow); }
 #squadDeskPage .sq-empty-text { color: var(--hq-ink-mute); }
+/* THE ROOM (PvP demo lobby, 2026-11-11): the online title bar has no third line (the kicker carries it, map.js _sqRender),
+   and a short window (540 px) keeps BUILD YOUR FIRST TEAM and RANDOM TEAM on screen under the title bar */
+#squadDeskPage .sq-sub:empty { display: none; }
+@media (max-height: 620px) {
+    #squadDeskPage .sq-empty { padding: 12px 22px 14px; gap: 6px; }
+    #squadDeskPage .sq-empty-ring { width: 58px; height: 58px; margin-bottom: 0; }
+    #squadDeskPage .sq-empty-ring span { font-size: 1.9rem; }
+    #squadDeskPage .sq-empty-text { line-height: 1.35; }
+    #squadDeskPage .sq-empty .sq-cta-big { padding-top: 8px; padding-bottom: 8px; }
+}
 @keyframes sqHudPulse { 0%, 100% { box-shadow: inset 0 1px 0 var(--hq-row-lip), 0 2px 0 rgba(0,0,0,0.45), 0 0 0 0 var(--hq-sel-faint); } 50% { box-shadow: inset 0 1px 0 var(--hq-row-lip), 0 2px 0 rgba(0,0,0,0.45), 0 0 14px 2px var(--hq-sel-faint); } }
 
 /* the entrance: title, rule, then the cards fly in one after another */
@@ -7282,6 +7292,162 @@ body.diorama-3d .tile-underpass.jump::before {
 #lobbyQueueSearching.is-found .lq-cancel { visibility: hidden; }
 @keyframes lqPing { 0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.2); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.1); } }
 @media (prefers-reduced-motion: reduce) { .lq-radar i, .lq-sweep { animation: none !important; } }
+
+/* ══ THE ROOM (PvP demo lobby, 2026-11-11, mondo approved "Build as drawn") ════════════════════════════════════════════
+   Quick Play, Friendly and the Room are PS1 windows (.lr-win) laid over the whole lobby page instead of the old centred
+   card (.lobby-inner keeps only the "Both Players Joined" beat). The windows are on the UI Maker's lobby surface (hud.js:
+   .lr-win is a panel, .lr-k is muted text, READY / SEARCH / CREATE / JOIN are CONFIRM, LEAVE / CANCEL are BACK), so the
+   theme's skins, fonts and the red/green buttons reach them. Sizes were drawn for Press Start 2P; the short-height block
+   at the end keeps every window on a 540 px screen. online.js _lrRender fills the seats. */
+#lobbyPage.lr-on > .lobby-inner { display: none !important; }
+#lobbyPage .lobby-room { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 14px 16px; z-index: 3; box-sizing: border-box; }
+#lobbyPage .lobby-room * { box-sizing: border-box; }
+#lobbyPage .lr-frame { width: min(1120px, 100%); max-height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+    grid-template-areas: "head head" "seats rules" "foot foot"; gap: 12px; }
+#lobbyPage .lr-win { background: rgba(0,0,0,0.86); border: 1px solid rgba(255,255,255,0.9); border-radius: 10px; padding: 12px 16px; min-width: 0; color: #fff; }
+#lobbyPage .lr-k { font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: #bcbcbc; }
+#lobbyPage .lr-head { grid-area: head; display: flex; align-items: center; gap: 18px; padding: 10px 16px; }
+#lobbyPage .lr-titles { flex: 1 1 auto; min-width: 0; text-align: left; }
+#lobbyPage .lr-titles .lobby-kicker { margin: 0 0 4px; font-size: 10px; }
+#lobbyPage .lr-titles .lobby-title, #lobbyPage .lf-head .lobby-title { margin: 0; font-size: 30px; line-height: 1.05; }
+#lobbyPage .lr-code { display: flex; align-items: center; gap: 12px; flex: 0 0 auto; }
+#lobbyPage .lr-code-well { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 14px; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; background: rgba(0,0,0,0.22); }
+#lobbyPage .lr-code-well b { font-family: 'Press Start 2P', monospace; font-weight: 400; font-size: 24px; letter-spacing: 8px; padding-left: 8px; color: #fff; text-shadow: 0 0 18px rgba(201,165,255,0.45); }
+#lobbyPage .lobby-room .lobby-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+#lobbyPage .lobby-room .lobby-actions button { width: auto; min-width: 0; margin: 0; white-space: nowrap; }
+#lobbyPage .lr-copy.lobby-actions { flex-direction: column; flex-wrap: nowrap; gap: 6px; align-items: stretch; }
+#lobbyPage .lr-copy.lobby-actions button { min-width: 150px; padding: 7px 14px; font-size: 10px; }
+#lobbyPage .lr-copy.lobby-actions button.is-done { color: #3ccf6e !important; }
+#lobbyPage .lr-seats { grid-area: seats; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#lobbyPage .lr-seats .lr-seat { flex: 1 1 0; align-content: center; }
+#lobbyPage .lr-seat { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "tag lamp" "name name" "faces faces" "warn warn"; gap: 6px 10px; text-align: left; }
+#lobbyPage .lr-seat.p1 { border-color: var(--p1-color, #4da3ff); box-shadow: inset 4px 0 0 var(--p1-color, #4da3ff); }
+#lobbyPage .lr-seat.p2 { border-color: var(--p2-color, #ff5a6e); box-shadow: inset 4px 0 0 var(--p2-color, #ff5a6e); }
+#lobbyPage .lr-tag { grid-area: tag; font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; }
+#lobbyPage .lr-seat.p1 .lr-tag { color: var(--p1-color, #4da3ff); }
+#lobbyPage .lr-seat.p2 .lr-tag { color: var(--p2-color, #ff5a6e); }
+#lobbyPage .lr-tag em { font-style: normal; color: #bcbcbc; }
+#lobbyPage .lr-lamp { grid-area: lamp; display: inline-flex; align-items: center; gap: 7px; font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: #8a8494; white-space: nowrap; }
+#lobbyPage .lr-lamp i { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: #3a3644; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.25); }
+#lobbyPage .lr-lamp.is-ready { color: #3ccf6e; }
+#lobbyPage .lr-lamp.is-ready i { background: #3ccf6e; box-shadow: 0 0 10px #3ccf6e; }
+#lobbyPage .lr-lamp.is-in { color: #ffd200; }
+#lobbyPage .lr-lamp.is-in i { background: #ffd200; }
+#lobbyPage .lr-lamp.is-on i { animation: lrLamp .45s cubic-bezier(.2,1.8,.4,1); }
+#lobbyPage .lr-name { grid-area: name; font-family: 'Press Start 2P', monospace; font-size: 15px; line-height: 1.35; color: #fff; overflow-wrap: anywhere; }
+#lobbyPage .lr-name small { font-size: 9px; color: #ffd200; margin-left: 10px; letter-spacing: 0.1em; white-space: nowrap; }
+#lobbyPage .lr-name .lr-k { display: block; margin-top: 6px; letter-spacing: 0.08em; }
+#lobbyPage .lr-faces { grid-area: faces; display: flex; align-items: center; gap: 10px; min-width: 0; }
+#lobbyPage .lr-faces .sq-face { flex: 0 0 auto; width: 46px; height: 46px; border: 2px solid rgba(255,255,255,0.75); }
+#lobbyPage .lr-team { margin-left: 6px; font-family: 'Press Start 2P', monospace; font-size: 9px; line-height: 1.6; color: #bcbcbc; min-width: 0; overflow-wrap: anywhere; }
+#lobbyPage .lr-team b { display: block; color: #fff; font-size: 10px; font-weight: 400; }
+#lobbyPage .lr-warn { grid-area: warn; font-family: 'Press Start 2P', monospace; font-size: 8.5px; line-height: 1.6; color: #ff6b6b; }
+#lobbyPage .lr-seat.is-empty .lr-name { color: #bcbcbc; font-size: 12px; line-height: 1.5; }
+#lobbyPage .lr-seat.is-empty .lr-faces .sq-face { border-style: dashed; border-color: rgba(255,255,255,0.3); background: transparent; }
+#lobbyPage .lr-vs { align-self: center; font-family: 'Ghiya Strokes Italic', Georgia, serif; font-size: 20px; color: #61f180; line-height: 1; margin: -2px 0; }
+#lobbyPage .lr-rules { grid-area: rules; text-align: left; display: flex; flex-direction: column; }
+#lobbyPage .lr-win-hd { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding-bottom: 7px; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.18); }
+#lobbyPage .lr-win-hd b { font-family: 'Press Start 2P', monospace; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: #fff; font-weight: 400; }
+#lobbyPage .lr-row { display: grid; grid-template-columns: 8.6em minmax(0, 1fr); align-items: center; gap: 10px; min-height: 31px; padding: 3px 0; border-bottom: 1px dashed rgba(255,255,255,0.08); }
+#lobbyPage .lr-row:last-child { border-bottom: 0; }
+#lobbyPage .lr-v { font-family: 'Press Start 2P', monospace; font-size: 11px; color: #fff; line-height: 1.5; min-width: 0; overflow-wrap: anywhere; }
+#lobbyPage .lr-v small { display: block; font-size: 8.5px; color: #bcbcbc; line-height: 1.55; margin-top: 2px; letter-spacing: 0.03em; }
+#lobbyPage .lr-v small:empty { display: none; }
+#lobbyPage .lr-chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-start; }
+#lobbyPage .lr-v .ranked-size-btn { padding: 6px 10px; font-size: 10px; }
+#lobbyPage select.lr-sel { min-width: 220px; max-width: 100%; padding: 6px 10px; border: 1px solid rgba(255,255,255,0.6); border-radius: 6px; font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff; background: rgba(0,0,0,0.4); cursor: pointer; }
+#lobbyPage select.lr-sel option { background: #0b0b10; color: #fff; }
+#lobbyPage .lr-step { display: inline-flex; align-items: center; gap: 10px; }
+#lobbyPage .lr-step .ranked-size-btn { min-width: 30px; padding: 5px 8px; }
+#lobbyPage .lr-step b { font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; min-width: 30px; text-align: center; font-weight: 400; }
+#lobbyPage .lr-goal { font-family: 'Press Start 2P', monospace; font-size: 8.5px; line-height: 1.6; color: #bcbcbc; padding: 2px 0 6px; }
+#lobbyPage .lr-goal:empty { display: none; }
+#lobbyPage .lr-frame.is-guest .lr-host-only, #lobbyPage .lr-frame:not(.is-guest) .lr-guest-only { display: none !important; }
+#lobbyPage .lr-frame.is-quick .lr-code { display: none !important; }
+#lobbyPage .lr-foot { grid-area: foot; display: flex; align-items: center; gap: 16px; padding: 9px 14px; }
+#lobbyPage .lr-foot .lobby-back { margin: 0; padding: 9px 14px; font-size: 11px; flex: 0 0 auto; }
+#lobbyPage .lr-status { flex: 1 1 auto; min-width: 0; min-height: 0; margin: 0; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 10px; font-family: 'Press Start 2P', monospace; font-size: 10px; line-height: 1.6; color: #ffd200; text-align: center; }
+#lobbyPage .lr-status.is-go { color: #3ccf6e; }
+#lobbyPage .lr-status.is-bad { color: #ff6b6b; }
+#lobbyPage .lr-count { font-size: 20px; color: #3ccf6e; text-shadow: 0 0 14px rgba(60,207,110,0.6); display: inline-block; min-width: 1.2em; }
+#lobbyPage .lr-count.is-tick { animation: lrTick .35s cubic-bezier(.2,1.8,.4,1); }
+#lobbyPage .lr-foot .lobby-actions { flex: 0 0 auto; }
+#lobbyPage .lr-foot .lobby-actions button { min-width: 170px; padding: 11px 22px; font-size: 13px; }
+#lobbyPage button.lr-go:disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.6); }
+#lobbyPage button.lr-go.is-on { background: rgba(60,207,110,0.16) !important; }
+#lobbyPage .lr-note { font-family: 'Press Start 2P', monospace; font-size: 8px; line-height: 1.8; color: #8a8494; letter-spacing: 0.06em; }
+#lobbyPage .lobby-room .lobby-status { margin: 0; min-height: 0; font-family: 'Press Start 2P', monospace; font-size: 9px; line-height: 1.6; }
+#lobbyPage .lobby-room .lobby-status:empty { display: none; }
+/* the friendly door: two windows */
+#lobbyPage .lf-frame { width: min(980px, 100%); max-height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: "head head" "host join" "foot foot"; gap: 12px; }
+#lobbyPage .lf-head { grid-area: head; text-align: center; }
+#lobbyPage .lf-head .lobby-kicker { margin: 0 0 6px; }
+#lobbyPage .lf-host { grid-area: host; }
+#lobbyPage .lf-join { grid-area: join; }
+#lobbyPage .lf-win { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; padding: 18px 18px 20px; }
+#lobbyPage .lf-win .lr-win-hd { width: 100%; justify-content: center; }
+#lobbyPage .lf-win p { margin: 0; font-family: 'Press Start 2P', monospace; font-size: 10px; line-height: 1.7; color: #bcbcbc; max-width: 34ch; }
+#lobbyPage .lf-win .lobby-actions button { min-width: 210px; font-size: 13px; }
+#lobbyPage .lf-foot { grid-area: foot; display: flex; justify-content: center; }
+#lobbyPage .lf-foot .lobby-back { margin: 0; }
+#lobbyPage .lf-code { position: relative; display: flex; gap: 6px; cursor: text; }
+#lobbyPage .lf-code span { width: 40px; height: 48px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.6); border-radius: 6px; font-family: 'Press Start 2P', monospace; font-size: 20px; color: #fff; background: rgba(0,0,0,0.4); }
+#lobbyPage .lf-code.is-focus span.is-cur { border-color: #ffd200; box-shadow: 0 0 0 1px #ffd200; }
+#lobbyPage .lf-code.is-bad span { border-color: #ff6b6b; }
+#lobbyPage .lf-code input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; border: 0; padding: 0; font-size: 16px; color: transparent; background: transparent; caret-color: transparent; cursor: text; }
+/* Quick Play */
+#lobbyPage .lr-qp .lq-win { grid-area: seats; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+#lobbyPage .lq-win .lr-win-hd { width: 100%; }
+#lobbyPage .lq-win .sq-strip { margin: 0 auto; }
+#lobbyPage .lq-alone { font-family: 'Press Start 2P', monospace; font-size: 9px; line-height: 1.75; color: #bcbcbc; max-width: 40ch; }
+#lobbyPage .lq-alone b { color: #fff; font-weight: 400; }
+#lobbyPage .lq-win .lobby-actions button { padding: 8px 16px; font-size: 10px; }
+#lobbyPage #lobbyQueueSearching { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+#lobbyPage .lq-win .lq-radar { width: 118px; height: 118px; margin: 2px auto 0; }
+#lobbyPage .lq-win .lq-core { font-family: 'Press Start 2P', monospace; font-size: 16px; }
+#lobbyPage #lobbyQueueSearching .lobby-status { margin: 0; font-size: 10px; letter-spacing: 0.04em; }
+#lobbyPage .lr-elo { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: 0 0 auto; }
+#lobbyPage .lr-elo b { font-family: 'Press Start 2P', monospace; font-size: 16px; color: #ffd200; font-weight: 400; }
+#lobbyPage .lr-online, #playHubPage .lr-hub-online { font-family: 'Press Start 2P', monospace; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: #bcbcbc; display: flex; align-items: center; gap: 8px; }
+#lobbyPage .lr-online i, #playHubPage .lr-hub-online i { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: #3ccf6e; box-shadow: 0 0 8px #3ccf6e; }
+#playHubPage .lr-hub-online { justify-content: center; margin-top: 14px; font-size: 10px; line-height: 1.6; }
+/* the hub's name plate (the squad strip's look) */
+#playHubPage .lr-nameplate { margin-top: 8px; }
+#playHubPage .lr-nameplate .sq-strip-text b { overflow-wrap: anywhere; }
+#playHubPage .lr-nameplate.is-default .sq-strip-k { color: #ffd200; }
+#playHubPage .lr-nameplate input { width: 13em; max-width: 100%; padding: 6px 8px; border: 1px solid rgba(255,255,255,0.7); border-radius: 4px; background: rgba(0,0,0,0.55); color: #fff; font: inherit; font-size: 13px; outline: none; }
+#playHubPage .lr-nameplate input:focus { border-color: #ffd200; }
+#playHubPage .lr-nameplate .lr-name-btns { display: flex; gap: 6px; flex: 0 0 auto; }
+#playHubPage .lr-nameplate .lr-name-err { display: block; margin-top: 4px; font-size: 9px; line-height: 1.5; color: #ff6b6b; letter-spacing: 0.04em; }
+@keyframes lrLamp { 0% { transform: scale(2.2); } 100% { transform: scale(1); } }
+@keyframes lrTick { 0% { transform: scale(1.7); opacity: 0.4; } 100% { transform: scale(1); opacity: 1; } }
+@media (max-height: 620px) {
+    #lobbyPage .lobby-room { padding: 8px 14px; }
+    #lobbyPage .lr-frame, #lobbyPage .lf-frame { gap: 8px; }
+    #lobbyPage .lr-win { padding: 8px 12px; }
+    #lobbyPage .lr-head { padding: 6px 12px; }
+    #lobbyPage .lr-titles .lobby-title, #lobbyPage .lf-head .lobby-title { font-size: 24px; }
+    #lobbyPage .lr-code-well b { font-size: 20px; }
+    #lobbyPage .lr-faces .sq-face { width: 38px; height: 38px; }
+    #lobbyPage .lr-row { min-height: 27px; padding: 2px 0; }
+    #lobbyPage .lr-goal { padding-bottom: 3px; }
+    #lobbyPage .lr-foot { padding: 6px 12px; }
+    #lobbyPage .lr-foot .lobby-actions button { padding: 9px 18px; }
+    #lobbyPage .lf-win { padding: 12px 14px 14px; gap: 9px; }
+    #lobbyPage .lq-win { gap: 7px; }
+    #lobbyPage .lq-win .lq-radar { width: 92px; height: 92px; }
+    #lobbyPage .lq-win .lq-core { font-size: 14px; }
+    #playHubPage .lr-hub-online { margin-top: 8px; }
+}
+/* a narrow window (a phone held upright): one column */
+@media (max-width: 760px) {
+    #lobbyPage .lobby-room { align-items: flex-start; overflow-y: auto; }
+    #lobbyPage .lr-frame { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "seats" "rules" "foot"; max-height: none; }
+    #lobbyPage .lf-frame { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "host" "join" "foot"; max-height: none; }
+    #lobbyPage .lr-head { flex-wrap: wrap; }
+    #lobbyPage .lr-foot { flex-wrap: wrap; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) { #lobbyPage .lr-lamp i, #lobbyPage .lr-count { animation: none !important; } }
 
 /* ══ THE PHONE FIT + THE TOUCH CONTROLS (2026-10-01) ══ everything below is html.ew-mobile only (index.html: touch + a
    coarse pointer or a phone UA), so the desktop never sees a line of it. index.html scales a phone's page to fit and sets

@@ -385,6 +385,86 @@ function emitRoomFull(room, data) {
     }
 }
 
+/* ══ THE ROOM (PvP demo lobby, 2026-11-11, mondo approved "Build as drawn") ════════════════════════════════════════
+   Before a match the server referees the room. A friendly room no longer starts the moment the friend types the code:
+   both seats show their name and squad (lobby-seat), both press READY (lobby-ready), the server counts 3 s
+   (LOBBY_FRIENDLY_COUNT_MS) and only then sends room-full, which starts the match on the path it always took. A rule
+   change from the host (friendly-config) clears both READY lamps. A guest who leaves before the start frees the P2 seat
+   and the host keeps the room and its code; a host who leaves closes it (lobby-closed). Quick Play pairs as before, then
+   shows both seats for LOBBY_QUICK_COUNT_MS before room-full; a seat that leaves in that time sends the other back to
+   searching (lobby-cancelled). Both seats draw the room from lobby-state alone: nothing rides the game state. */
+const LOBBY_FRIENDLY_COUNT_MS = 3000;
+const LOBBY_QUICK_COUNT_MS = 5000;
+function lobbyStr(v, n) { return String(v == null ? '' : v).replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, n); }
+function lobbyCleanSeat(seat, fallbackName) {
+    const s = (seat && typeof seat === 'object') ? seat : {};
+    const faces = Array.isArray(s.faces) ? s.faces.slice(0, 5).map(f => ({
+        race: lobbyStr(f && f.race, 40).toLowerCase(),
+        gender: /^[a-z_]{1,12}$/.test(String(f && f.gender || '')) ? String(f.gender) : 'male',
+        unitName: lobbyStr(f && f.unitName, 24),
+    })).filter(f => f.race) : [];
+    return { name: lobbyStr(s.name, 16) || fallbackName || 'Player', team: lobbyStr(s.team, 32), faces };
+}
+function lobbyPayload(room, code) {
+    const seats = room.seats || {};
+    const seat = role => room[role] ? (seats[role] || { name: room[role + 'Username'] || (role === 'host' ? 'Player 1' : 'Player 2'), team: '', faces: [] }) : null;
+    const ready = room.ready || {};
+    return {
+        code, ranked: !!room.ranked, live: !!room._lobbyLive,
+        seats: { host: seat('host'), guest: seat('guest') },
+        ready: { host: !!ready.host, guest: !!ready.guest },
+        elo: room._lobbyElo || null,
+        config: room.ranked ? null : (room.friendlyConfig || null),
+        goIn: room._lobbyGoAt ? Math.max(0, Math.ceil((room._lobbyGoAt - Date.now()) / 1000)) : 0,
+    };
+}
+function lobbyBroadcast(room, code) {
+    if (rooms.get(code) !== room) return;
+    io.to(code).emit('lobby-state', lobbyPayload(room, code));
+}
+function lobbyStopCount(room) {
+    if (room._lobbyTimer) clearTimeout(room._lobbyTimer);
+    room._lobbyTimer = null;
+    room._lobbyGoAt = 0;
+}
+/* the countdown ran out: the match starts on today's path (room-full) */
+function lobbyStart(room, code) {
+    room._lobbyTimer = null;
+    if (rooms.get(code) !== room || !room._lobbyLive) return;
+    if (!room.host || !room.guest) { lobbyStopCount(room); lobbyBroadcast(room, code); return; }
+    if (!room.ranked && !(room.ready && room.ready.host && room.ready.guest)) { lobbyStopCount(room); lobbyBroadcast(room, code); return; }
+    room._lobbyLive = false;
+    room._lobbyGoAt = 0;
+    console.log(`[LOBBY] Room ${code} counted down — starting`);
+    if (room.ranked) {
+        emitRoomFull(room, room._lobbyFull || {});
+        return;
+    }
+    emitRoomFull(room, {
+        host: room.host,
+        guest: room.guest,
+        hostUsername: room.hostUsername,
+        guestUsername: room.guestUsername,
+        friendlyConfig: room.friendlyConfig || null
+    });
+}
+function lobbyCount(room, code, ms) {
+    if (room._lobbyTimer) return;
+    room._lobbyGoAt = Date.now() + ms;
+    room._lobbyTimer = setTimeout(() => lobbyStart(room, code), ms);
+    io.to(code).emit('lobby-go', { seconds: Math.round(ms / 1000) });
+    lobbyBroadcast(room, code);
+}
+function lobbyMaybeGo(room, code) {
+    if (!room._lobbyLive || room.ranked) return;
+    if (room.host && room.guest && room.ready && room.ready.host && room.ready.guest) lobbyCount(room, code, LOBBY_FRIENDLY_COUNT_MS);
+}
+/* the rules a READY agreed to: the drawn map is left out (Random draws again on every emit) */
+function lobbyRulesKey(cfg) {
+    if (!cfg || typeof cfg !== 'object') return '';
+    return JSON.stringify([cfg.mode, cfg.mapChoice != null ? cfg.mapChoice : cfg.mapId, cfg.boardChoice, cfg.teamSize, cfg.rounds, !!cfg.demo]);
+}
+
 // Each absent seat owns its deadline. Retiring a room/match invalidates all
 // callbacks as well as clearing timers (a queued callback may still execute).
 function clearDisconnectDeadlines(room) {
@@ -506,6 +586,7 @@ setInterval(() => {
     const now = Date.now();
     for (const [code, room] of rooms) {
         if (!room.guest && now - room.created > 2 * 60 * 60 * 1000) {
+            if (room._lobbyLive) io.to(code).emit('lobby-closed', { role: 'server', reason: 'stale' });   // THE ROOM: say so
             rooms.delete(code);
             console.log(`[IO] Cleaned stale room ${code}`);
         }
@@ -546,6 +627,7 @@ const RATE_LIMITS = {
     'state-sync':   { rate: 30, burst: 60 },   // host throttles to 50ms + heartbeat
     'relay':        { rate: 60, burst: 120 },  // VFX/floating-text bursts on big AOEs
     'party-config': { rate: 2,  burst: 6 },
+    'lobby':        { rate: 4,  burst: 12 },   // THE ROOM: lobby-seat / lobby-ready (each one re-sends the room to both seats)
 };
 const _rateBuckets = new Map(); // socketId -> { evt: { tokens, last } }
 function allowEvent(socketId, evt) {
@@ -952,7 +1034,13 @@ setInterval(() => {
                         rankedMode: rankedMode,
                         rejoinTokens,
                         _disconnected: null,
-                        _matchStarted: false
+                        _matchStarted: false,
+                        /* THE ROOM: both seats on screen for LOBBY_QUICK_COUNT_MS before the match starts */
+                        _lobbyLive: true,
+                        seats: { host: host.seat || null, guest: guest.seat || null },
+                        ready: { host: true, guest: true },
+                        _lobbyElo: { host: host.elo, guest: guest.elo },
+                        _lobbyQueue: { host: { teamSize: host.teamSize, rankedMode: host.rankedMode }, guest: { teamSize: guest.teamSize, rankedMode: guest.rankedMode } }
                     });
 
                     const hostSocket = io.sockets.sockets.get(host.socketId);
@@ -963,6 +1051,8 @@ setInterval(() => {
 
                     console.log(`[MM] Matched ${host.username} (${host.elo}) vs ${guest.username} (${guest.elo}) → Room ${code} on ${map.modeId} [${rankedMode}] (${actualTeamSize}v${actualTeamSize})`);
 
+                    const _lobbyRoom = rooms.get(code);
+                    const _lobbyState = lobbyPayload(_lobbyRoom, code);
                     if (hostSocket) {
                         hostSocket.emit('match-found', {
                             roomCode: code,
@@ -971,7 +1061,9 @@ setInterval(() => {
                             opponentElo: guest.elo,
                             mapModeId: map.modeId,
                             teamSize: actualTeamSize,
-                            rankedMode: rankedMode
+                            rankedMode: rankedMode,
+                            lobby: _lobbyState,
+                            countdown: Math.round(LOBBY_QUICK_COUNT_MS / 1000)
                         });
                     }
                     if (guestSocket) {
@@ -982,11 +1074,14 @@ setInterval(() => {
                             opponentElo: host.elo,
                             mapModeId: map.modeId,
                             teamSize: actualTeamSize,
-                            rankedMode: rankedMode
+                            rankedMode: rankedMode,
+                            lobby: _lobbyState,
+                            countdown: Math.round(LOBBY_QUICK_COUNT_MS / 1000)
                         });
                     }
 
-                    emitRoomFull(rooms.get(code), {
+                    /* THE ROOM: the VS screen counts down, then room-full starts the match as before */
+                    _lobbyRoom._lobbyFull = {
                         host: host.socketId,
                         guest: guest.socketId,
                         hostUsername: host.username,
@@ -995,7 +1090,8 @@ setInterval(() => {
                         mapModeId: map.modeId,
                         teamSize: actualTeamSize,
                         rankedMode: rankedMode
-                    });
+                    };
+                    lobbyCount(_lobbyRoom, code, LOBBY_QUICK_COUNT_MS);
 
                     break;
                 }
@@ -1006,6 +1102,7 @@ setInterval(() => {
         for (const idx of indices) {
             q.splice(idx, 1);
         }
+        if (indices.length) broadcastPlayerCount();   // THE ROOM: the paired seats left the queue
     }
 }, 3000);
 
@@ -1867,9 +1964,24 @@ app.delete('/api/maps/:id', limitMapWrite, async (req, res) => {
     }
 });
 
+/* THE ROOM (PvP demo lobby): a page holds a counter socket (query ewc=1) for its whole life and a game socket while it is
+   in a lobby or a match, so counting sockets counted each player in a room twice. Players online = the counter sockets
+   (every socket when no page sends the flag yet); searching = the humans in the Quick Play queues, per queue too, so the
+   hub can say "N searching" and Quick Play can say when nobody else is in the player's queue. */
 function broadcastPlayerCount() {
-    const count = io.engine.clientsCount;
-    io.emit('player-count', { count });
+    let count = 0;
+    for (const s of io.sockets.sockets.values()) {
+        if (s.handshake && s.handshake.query && s.handshake.query.ewc === '1') count++;
+    }
+    if (!count) count = io.engine.clientsCount;
+    let searching = 0;
+    const perQueue = {};
+    for (const key in queues) {
+        const humans = queues[key].filter(e => !e.isBot).length;
+        if (humans) perQueue[key] = humans;
+        searching += humans;
+    }
+    io.emit('player-count', { count, searching, queues: perQueue });
 }
 
 io.on('connection', (socket) => {
@@ -1927,11 +2039,43 @@ io.on('connection', (socket) => {
             created: Date.now(),
             rejoinTokens,
             _disconnected: null,
-            _matchStarted: false
+            _matchStarted: false,
+            /* THE ROOM: seats, READY lamps and the countdown live here until room-full */
+            _lobbyLive: true,
+            seats: { host: (data && data.seat) ? lobbyCleanSeat(data.seat, username) : null, guest: null },
+            ready: { host: false, guest: false }
         });
         socket.join(code);
         console.log(`[IO] Room ${code} created by ${username} (${socket.id})`);
         if (callback) callback({ code, rejoinToken: rejoinTokens.host });
+        lobbyBroadcast(rooms.get(code), code);
+    });
+
+    /* THE ROOM: a seat's name, squad faces and team name (shown to both seats) */
+    socket.on('lobby-seat', (data) => {
+        const found = findRoomBySocket(socket.id);
+        if (!found || !found.room._lobbyLive) return;
+        if (!allowEvent(socket.id, 'lobby')) return;
+        const { code, room } = found;
+        const role = room.host === socket.id ? 'host' : 'guest';
+        if (!room.seats) room.seats = { host: null, guest: null };
+        room.seats[role] = lobbyCleanSeat(data, room[role + 'Username']);
+        lobbyBroadcast(room, code);
+    });
+
+    /* THE ROOM: READY on or off; both on starts the server's countdown, either off stops it */
+    socket.on('lobby-ready', (data) => {
+        const found = findRoomBySocket(socket.id);
+        if (!found) return;
+        if (!allowEvent(socket.id, 'lobby')) return;
+        const { code, room } = found;
+        if (!room._lobbyLive || room.ranked) return;
+        const role = room.host === socket.id ? 'host' : 'guest';
+        if (!room.ready) room.ready = { host: false, guest: false };
+        room.ready[role] = !!(data && data.ready);
+        if (!room.ready[role] && room._lobbyTimer) lobbyStopCount(room);
+        lobbyMaybeGo(room, code);
+        lobbyBroadcast(room, code);
     });
 
     socket.on('join-room', (data, callback) => {
@@ -1943,8 +2087,12 @@ io.on('connection', (socket) => {
             if (callback) callback({ error: 'Room not found.' });
             return;
         }
-        if (room.guest) {
+        if (room.guest || room.ranked) {
             if (callback) callback({ error: 'Room is full.' });
+            return;
+        }
+        if (!room._lobbyLive) {
+            if (callback) callback({ error: 'That match has already started.' });
             return;
         }
 
@@ -1953,16 +2101,15 @@ io.on('connection', (socket) => {
         socket.join(code);
         console.log(`[IO] ${username} (${socket.id}) joined room ${code}`);
 
-        if (callback) callback({ ok: true, rejoinToken: room.rejoinTokens.guest });
+        /* THE ROOM: the guest takes the P2 seat; the match waits for both READY lamps and the countdown (lobbyStart) */
+        if (!room.seats) room.seats = { host: null, guest: null };
+        room.seats.guest = (data && data.seat) ? lobbyCleanSeat(data.seat, username) : null;
+        if (!room.ready) room.ready = { host: false, guest: false };
+        room.ready.guest = false;
 
-        emitRoomFull(room, {
-            host: room.host,
-            guest: room.guest,
-            hostUsername: room.hostUsername,
-            guestUsername: room.guestUsername,
+        if (callback) callback({ ok: true, rejoinToken: room.rejoinTokens.guest, lobby: lobbyPayload(room, code) });
 
-            friendlyConfig: room.friendlyConfig || null
-        });
+        lobbyBroadcast(room, code);
     });
 
     socket.on('friendly-config', (data) => {
@@ -1971,9 +2118,19 @@ io.on('connection', (socket) => {
         const { room } = found;
 
         if (room.host !== socket.id) return;
+        /* THE ROOM: a changed rule clears both READY lamps (nobody starts on rules they did not see) */
+        const _rulesChanged = room._lobbyLive && lobbyRulesKey(room.friendlyConfig) !== lobbyRulesKey(data);
         room.friendlyConfig = data;
 
         socket.to(found.code).emit('friendly-config', data);
+        if (room._lobbyLive) {
+            if (_rulesChanged && room.ready && (room.ready.host || room.ready.guest)) {
+                room.ready = { host: false, guest: false };
+                lobbyStopCount(room);
+                io.to(found.code).emit('lobby-rules-changed', {});
+            }
+            lobbyBroadcast(room, found.code);
+        }
     });
 
     // A filler bot (bots.js) announces itself right after connecting. We also
@@ -2010,7 +2167,8 @@ io.on('connection', (socket) => {
             joinedAt: Date.now(),
             teamSize: teamSize,
             rankedMode: rankedMode,
-            isBot: botSockets.has(socket.id)
+            isBot: botSockets.has(socket.id),
+            seat: (data && data.seat) ? lobbyCleanSeat(data.seat, username) : null   // THE ROOM: shown on the VS screen
         });
 
         console.log(`[MM] ${username} (ELO ${elo}${auth ? ' [verified]' : ''}${botSockets.has(socket.id) ? ' 🤖' : ''}) joined ${teamSize}v${teamSize} ${rankedMode} queue (${q.length} in queue)`);
@@ -2020,12 +2178,14 @@ io.on('connection', (socket) => {
             teamSize: teamSize,
             queueSize: q.length
         });
+        broadcastPlayerCount();   // THE ROOM: the hub's "N searching"
     });
 
     socket.on('queue-leave', () => {
         const removed = removeFromAllQueues(socket.id);
         if (removed) {
             console.log(`[MM] ${socket.id} left queue`);
+            broadcastPlayerCount();
         }
         socket.emit('queue-left', { ok: true });
     });
@@ -2445,9 +2605,9 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         console.log(`[IO] Disconnected: ${socket.id}`);
 
-        broadcastPlayerCount();
-
         removeFromAllQueues(socket.id);
+
+        broadcastPlayerCount();   // THE ROOM: after the queue drop, so "N searching" is already right
 
         authenticatedSockets.delete(socket.id);
         botSockets.delete(socket.id);
@@ -2464,6 +2624,29 @@ io.on('connection', (socket) => {
         room._rematchVotes = null;
         cancelRecovery(room);
         if (!room._outageAt) room._outageAt = Date.now();
+
+        /* THE ROOM: leaving before the countdown ran out. A friendly guest frees the P2 seat and the host keeps the
+           room and its code; a friendly host closes the room (the guest goes back to Friendly with a line saying so);
+           in Quick Play the other seat goes back to searching. */
+        if (!room._matchStarted && room._lobbyLive) {
+            clearDisconnectDeadlines(room);
+            lobbyStopCount(room);
+            if (!room.ranked && role === 'guest') {
+                room.guest = null;
+                room.guestUsername = null;
+                if (room.seats) room.seats.guest = null;
+                room.ready = { host: !!(room.ready && room.ready.host), guest: false };
+                room.rejoinTokens.guest = uuid();   // the next friend gets a fresh seat credential
+                console.log(`[LOBBY] guest left room ${code} — the host keeps it`);
+                socket.to(code).emit('lobby-left', { role });
+                lobbyBroadcast(room, code);
+                return;
+            }
+            console.log(`[LOBBY] ${role} left ${room.ranked ? 'Quick Play room' : 'room'} ${code} before the start — closing it`);
+            socket.to(code).emit(room.ranked ? 'lobby-cancelled' : 'lobby-closed', { role, queue: room._lobbyQueue ? room._lobbyQueue[role === 'host' ? 'guest' : 'host'] : null });
+            rooms.delete(code);
+            return;
+        }
 
         if (!room._matchStarted) {
             clearDisconnectDeadlines(room);

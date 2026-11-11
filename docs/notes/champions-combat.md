@@ -4949,6 +4949,30 @@ Report: /mnt/project-files/pvp-playtest-20261109/PVP_PLAYTEST_REPORT.md. Proof: 
 - Undefined-name sweep of online.js (eslint no-undef, globals = every top-level name of the 21 game scripts + index.html
   inline scripts + `window.X =` writes): `showVictoryScreen` was the only one; clean now. server.js clean (node globals).
 
+## THE HOST'S RELOAD, RESTORED (2026-11-11, token 20261111-hostrestore-02-cors) — online.js only
+
+The seat is held while a page reloads (PR #1075), but the match lives on the host's page, so a host reload still ended
+it for both seats (PR #1102 only made that a clear notice). Now the host's reload keeps the match.
+
+- **The save.** `_hostSaveWrite(force)`: the host writes its own whole match (`_serializeState` unfiltered + `_packClock`
+  + `_matchId`) to sessionStorage `ew_hostSave` (about 90 KB) after a state-sync (1.5 s throttle), on the 2 s seat-hold
+  beat and on `pagehide`. Only a QUIET board with a unit up is kept (`_ewRecoverySnapshotReady`, no action / walk / death
+  in flight, `_blitzActiveUnitId` set; simul needs no unit), so a restored match always has somebody whose turn it is.
+- **The restore.** `_hostRestoreBegin()` runs from the rejoin answer when the page booted into a rejoin as host: same
+  match id or nothing; `NET._hostRestoring` holds the recovery poll (it used to answer `recovery-unavailable` at once);
+  `_recoveryArenaWait(data, then)` surveys the arena's room first; then `_applyRemoteState(save)` (the reloaded guest's
+  path; `_restoreOnlineContext` gives the host its seat + controllers). The poll then sends the guest the snapshot as
+  after any drop. No save / another match's save / a save that will not apply = the old notice.
+- **Mid-action reload = that action is undone for both seats** (the last quiet save is laid back). Known: a host can
+  undo its own action by reloading while it plays. Not closed; say so if it matters.
+- Cleared with the session (NET reset, backToMainMenu, `_recoveryFailure`). The save never leaves the host's browser.
+- Two-seat proof (Chromium x2, Hell Arena TDM): host reload on its own turn, on the guest's turn, in round 5 after
+  kills (state identical before/after: HP, AP, MP, kills, log, graves), mid-walk (rolled back, both agree); play went on
+  through fights and rounds; forfeit gave both result screens; rematch started by itself; a guest reload after a host
+  restore came back; with the save blocked both seats still get the notice. Back in 30-40 s in the sandbox. 0 page errors.
+  Shots /mnt/project-files/pvp-verify-20261110/host_restore_*.jpg. The live tier popup can show again on the reloaded
+  page (display only, same as a guest reload). Not checked: CLASH / simul restore, real WebGPU, real network.
+
 ## THE RELOAD, TWO SEATS (2026-11-10, token 20261111-reloadroom-01-cors) — online.js only
 Two-seat check of PR #1072-#1075 plus traps, CLASH and the end-of-round relays (two Chromium pages, shared playtest
 harness, shots in `/mnt/project-files/pvp-verify-20261110/`). All of #1072-#1075 held. Five things fixed:
@@ -5085,3 +5109,15 @@ runs through water / metal squares only (12). Changed:
   a second, tickWeather settles a leftover pair. The same weather recast still renews. Two dry weathers may stand together.
 Status page lines (charm, feared, minimize), the two feed spells' text, Pixie Prank's text and the FACING lesson's Overwatch line
 were rewritten to match. Not played in a browser (boot + function probe only); not run with two seats.
+
+## THE CHARM LINE ON A BOARD CLICK + THE GUEST'S OWN REFUSAL LINES (2026-11-11)
+Two-seat check of rule 7 B found the guest got no reason when it clicked its charmer. Two causes, both fixed:
+- battle.js `_outOfReachLine`: the charmer is off a charmed unit's attack list and off its unit-aimed offensive casts, so a board
+  click on it was refused as "X is out of reach this turn." Now it returns the engine's own Charm line ("is charmed and cannot
+  attack …" / "cannot cast <spell> at …"), solo, host and guest alike. Area / tile / directional casts are untouched.
+- A guest's refused click is written on the guest only (the pick is never sent). online.js `_applyRemoteState` replaced the whole
+  log with each host snapshot, so every such line was wiped within a second or two. battle.js addLog `o.mine` tags these lines
+  (`lg`, `lgN` = host lines above it) and `_applyRemoteState` puts them back in place. Call sites: `_ewGuestBoardPick` (attack,
+  unit spell, tile spell, item) and `_aimRefused`. A shorter host log (new match) drops them.
+- Proof: two real seats, guest's charmed unit clicks its charmer with ATTACK then Shrink Ray armed; both lines stay in the guest's
+  log through four host updates, in order, and never appear in the host's log. /mnt/project-files/demo-set-20261110/rule-proof/.
