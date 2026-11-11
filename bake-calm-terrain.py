@@ -748,6 +748,11 @@ def bake_mars(seed=211):
     return bake_moon(seed, a=0x7a3f24, b=0x95522f, craters=12, grit=(0x8a4c30, 0x9a5838, 0x6c3a24), rocks=(0x6e4433, 0x80503a), sat=0.95)
 
 
+# ── THE MARS DUST (Mars's floor: his moon_2 under the room's tan): the paler, browner dust the rust rocks stand in ──────────────
+def bake_marsdust(seed=391):
+    return bake_moon(seed, a=0x84583c, b=0x9c6c4b, craters=16, grit=(0x946a4e, 0xa27656, 0x7a5640), rocks=(0x7c5a44, 0x8c664d), sat=0.85)
+
+
 # ── THE CLOUDS (cloud, cloud_2, cloud_thick): a cloud deck seen from above — cumulus heads built of puffs on puffs (big domes, smaller
 #    ones riding on them, small curls on top), lit from the north-west, a blue-grey shade down between the heads. A step under white
 #    so a unit standing on it still reads. ──────────────────────────────────────────────────────────────────────────────────────
@@ -768,7 +773,7 @@ def puffs(rng, h, count, r_lo, r_hi, lift=1.0, gate=None):
     return h
 
 
-def bake_cloud(seed=221, lit=0xb9bfc5, mid=0x9ea7b0, shade=0x6f7b88, flat=1.0):
+def bake_cloud(seed=221, lit=0xd3d9de, mid=0xb7c0c9, shade=0x8593a4, flat=1.0):   # (Heaven's floor read as dust at the first value: clouds sit a step under white, cool in the shade)
     rng = np.random.default_rng(seed)
     gate = np.clip(0.55 + fft_noise(N, 1, 4, seed + 1, 0.6) * 0.9, 0.15, 1)
     h = np.zeros((N, N))
@@ -984,26 +989,31 @@ def bake_gilt(seed=331):
 
 
 # ── THE FLAGSTONES (bricks_1): square grey slabs four to a square each way, chipped arrises, moss in the joints ──────────────────
-def bake_flagstone(seed=341):
+def bake_flagstone(seed=341, a=0x56534c, b=0x6f6b62, joint=0x302d27, moss=0.7):
     ID, ED, u, v, n = panel_grid(4, 4, seed)
     chip = fft_noise(N, 10, 50, seed + 1, 0.5) * 3.0 + fft_noise(N, 50, 200, seed + 2, 0.2) * 1.0
     E = ED + chip
     tn = per_id(ID, n, seed + 3); warm = per_id(ID, n, seed + 4)
     mid = fft_noise(N, 6, 30, seed + 5, 0.5); face = fft_noise(N, 16, 70, seed + 6, 0.4); fine = fft_noise(N, 90, 320, seed + 7, 0.1)
-    rgb = lerp(hexc(0x56534c), hexc(0x6f6b62), np.clip(0.5 + 0.35 * tn + 0.25 * mid + 0.15 * face + 0.1 * fine, 0, 1))
+    rgb = lerp(hexc(a), hexc(b), np.clip(0.5 + 0.35 * tn + 0.25 * mid + 0.15 * face + 0.1 * fine, 0, 1))
     rgb *= (1.0 + 0.05 * warm[..., None] * np.array([1.0, 0.2, -0.8]))
     rgb *= relief(face * 2.0 + fine * 0.5, 0.5)[..., None]
     rgb *= (0.78 + 0.22 * np.clip(E / 10.0, 0, 1) ** 0.7)[..., None]
     jt = np.clip((4.0 - E) / 2.5, 0, 1)
-    rgb = lerp(rgb, hexc(0x302d27), jt)
+    rgb = lerp(rgb, hexc(joint), jt)
     m = np.clip(jt * 0.9 + np.clip(-mid * 1.5 - 0.3, 0, 1) * 0.5, 0, 1) * np.clip(fft_noise(N, 3, 14, seed + 8, 0.6) * 2.4 + 0.3, 0, 1)
-    rgb = lerp(rgb, hexc(0x46542e), m * 0.7)
+    rgb = lerp(rgb, hexc(0x46542e), m * moss)
     return settle(_blur(rgb, 0.6), 0.85, 0.85)
+
+
+# ── THE SANDSTONE FLAGS (Babel's floor: his bricks_1 under the room's tan): the flagstones in a warm sandstone ─────────────────
+def bake_sandstone(seed=401):
+    return bake_flagstone(seed, a=0x8a7454, b=0xa48a66, joint=0x4a3c2c, moss=0.25)
 
 
 # ── THE CASTLE BRICK (bricks_2, castle_wall): small weathered bricks in courses, brown-grey, moss in the joints ──────────────────
 def bake_castle(seed=351):
-    return bake_blocks(seed, rows=11, wlo=0.11, whi=0.2, a=0x4d4639, b=0x665d4c, joint=0x2b261e, moss=1.0)
+    return bake_blocks(seed, rows=11, wlo=0.11, whi=0.2, a=0x5c5444, b=0x7a6f5b, joint=0x332d24, moss=1.0)   # his value (L ~0.36): a wall face is in shade more often than not
 
 
 # ── THE CHECKER (checkerboard): polished marble checks, six to a square each way (his count), cream and black, faint veins ───────
@@ -1038,7 +1048,7 @@ def bake_damask(seed=371, cols=3, rows=2):
     m = np.clip(a + b, 0, 1)
     m = _blur(np.repeat(m[..., None], 3, -1), 1.2)[..., 0]
     fine = fft_noise(N, 100, 400, seed + 3, 0.0); macro = fft_noise(N, 1, 5, seed + 4, 0.6)
-    rgb = lerp(hexc(0x43191b), hexc(0x6b302d), m * 0.95)
+    rgb = lerp(hexc(0x5a2325), hexc(0x86433d), m * 0.95)   # (a lodge wall stands in shade: a step over the first bake)
     rgb = lerp(rgb, hexc(0x6d4a2c), np.clip(m - 0.85, 0, 1) * 0.6)                 # the flower's raised heart, a little gold
     rgb *= (1.0 + 0.04 * macro + 0.02 * fine)[..., None]
     return settle(_blur(rgb, 0.5), 0.95, 0.95)
@@ -1074,7 +1084,7 @@ def main():
               ('calm_rockygrass_1', bake_rockygrass), ('calm_darkgrass_1', bake_darkgrass), ('calm_cavefloor_1', bake_cavefloor), ('calm_darkrock_1', bake_darkrock),
               ('calm_crystal_1', bake_crystal), ('calm_flesh_1', bake_flesh), ('calm_concrete_1', bake_concrete), ('calm_gilt_1', bake_gilt),
               ('calm_flagstone_1', bake_flagstone), ('calm_castle_1', bake_castle), ('calm_checker_1', bake_checker), ('calm_damask_1', bake_damask),
-              ('calm_carpet_1', bake_carpet)]
+              ('calm_carpet_1', bake_carpet), ('calm_marsdust_1', bake_marsdust), ('calm_sandstone_1', bake_sandstone)]
     os.makedirs(out, exist_ok=True)
     sheets = []
     for name, fn in makers:

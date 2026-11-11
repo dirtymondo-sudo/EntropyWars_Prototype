@@ -1902,8 +1902,16 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
   rocks_1 / rocks_dark_fantasy), crystal (crystal), flesh (flesh / flesh_2 / flesh_3 / plague_flesh), concrete (concrete_floor /
   urban_street), gilt (gold / gold_2 / gold_3); patterned, on the plain grid: flagstones (bricks_1, 4x4 slabs), castle brick
   (bricks_2 / castle_wall), marble checks (checkerboard, his 6x6 count), damask (damask, half-drop), red carpet (carpet_4).
+  Two place sheets: Mars dust (pale) and sandstone flags.
+- THE ROOM COLOUR: a calm sheet ignores shell.floorColor (batch 1), so where a room's colour MADE his sheet another ground, the
+  place table names that ground: Mars moon_2 (× tan) → calm_marsdust, the Singularity's moon_3 (× violet) → calm_cavefloor,
+  Babel's bricks_1 (× tan) → calm_sandstone. tools: the survey printed every arena's floorColor / tints next to its keys; the
+  rest only shade the same ground (grass greens, a cream checker) and keep the sheet's own colour.
+- VALUES moved on the real boards: castle brick up to his bricks_2 value (L 0.36, Walls of Camelot read near-black), damask up a
+  step (the lodge walls stand in shade), clouds a step under white (Heaven's floor read as dust at L 0.62).
 - THE TWO SANDS: _calmKeyOf turns desert → calm_sand_beach where _ewSandBeach() (Bermuda), so the beach keeps its pale sand.
-- THE CALM LIQUIDS: _CALM.liquids = [colour, opacity] for poison, poison_bog, purple_bog, swamp (the black ooze), oil, blood;
+- THE CALM LIQUIDS: _CALM.liquids = [colour, opacity, glow] for poison, poison_bog, purple_bog, swamp (the black ooze), oil, blood
+  (the first poison green, 0x34561a, read as grass on Stonehenge: poison is now an acid green with a faint glow of its own);
   _buildFluidTopMat sends them to _calmFluidMat on a calm board, so they move and glint like the calm water in their own colour
   (WebGPU: _ewNodeCalmWater reads the material colour). His Liquid_* sheets stay for the pixel look and the editor.
 - LEFT AS THEY ARE: the urban:* pack (his own painted, already photo-like and muted: Cyberpunk, Strip, Downtown, D.U.M.B., CERN,

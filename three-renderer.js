@@ -4141,6 +4141,7 @@ const ThreeRenderer = (function () {
         } else {
             mat = new THREE.MeshPhongMaterial({ color: liq ? liq[0] : deep ? _CALM.deep : _CALM.water, specular: 0xb4c4c8, shininess: 140,
                                                 transparent: true, opacity: liq ? liq[1] : deep ? Math.min(1, _CALM.waterOp + 0.08) : _CALM.waterOp, depthWrite: false });
+            if (liq && liq[2]) mat.emissive = new THREE.Color(liq[2]);   // THE CALM LIQUIDS: a liquid's own faint glow
         }
         var night = ((document.body && document.body.dataset && document.body.dataset.cycle) || 'day') === 'night';
         var sky = new THREE.Color(night ? 0x2a3a52 : 0x9db4c2);
@@ -35367,9 +35368,10 @@ const ThreeRenderer = (function () {
                   tints: { scorched: { floorT: [1.1, 0.9, 0.8], pathT: [0.84, 0.76, 0.72], cliffT: [0.92, 0.8, 0.74] } },   // a floor's own three tints (the grass set above is the default)
                   drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.0,
                   /* THE CALM LIQUIDS (the rollout, batch 2): the spell / site liquids drawn like the calm water — the same moving surface,
-                     glints and sky sheen — each in its own colour, [colour, opacity]: poison's green, the bogs, the black ooze, oil, blood */
-                  liquids: { poison: [0x34561a, 0.9], poison_bog: [0x3c4a20, 0.92], purple_bog: [0x3a2046, 0.92], swamp: [0x1d1524, 0.95],
-                             oil: [0x14120e, 0.96], blood: [0x480b0e, 0.95] } };
+                     glints and sky sheen — each in its own colour, [colour, opacity, glow]: poison's acid green (a faint glow of its own,
+                     so a pool never passes for grass), the bogs, the black ooze, oil, blood */
+                  liquids: { poison: [0x58a02c, 0.9, 0x1a3a0a], poison_bog: [0x6a7a26, 0.92, 0x141c08], purple_bog: [0x5e3078, 0.92, 0x1c0c2a],
+                             swamp: [0x1d1524, 0.95, 0x0c0612], oil: [0x14120e, 0.96, 0], blood: [0x6a1014, 0.95, 0x1a0204] } };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmTable() { return (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN && CALM_TERRAIN.sheets) ? CALM_TERRAIN : null; }
     /* the room being drawn: the walk's room, else the room round a field fight (the editor builds through _hq too) */

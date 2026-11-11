@@ -63941,6 +63941,8 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         calm_checker:    ['calm_checker_1.png', 'checkerboard', 'Marble checks'],
         calm_damask:     ['calm_damask_1.png', 'damask', 'Damask wallpaper'],
         calm_carpet:     ['calm_carpet_1.png', 'carpet_4', 'Red carpet'],
+        calm_marsdust:   ['calm_marsdust_1.png', 'moon_2', 'Mars dust (pale)'],   // Mars's floor: his moon_2 wore the room's tan there
+        calm_sandstone:  ['calm_sandstone_1.png', 'bricks_1', 'Sandstone flags'],   // Babel's floor: his bricks_1 wore the room's tan there
     },
     of: {
         grass: 'calm_grass', grass_2: 'calm_grass', grass_3: 'calm_grass', grass_4: 'calm_grass',
@@ -63970,11 +63972,16 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         bricks_1: 'calm_flagstone', bricks_2: 'calm_castle', castle_wall: 'calm_castle',
         checkerboard: 'calm_checker', damask: 'calm_damask', carpet_4: 'calm_carpet',
     },
-    place: { snow: { marble: 'calm_snow', marble_2: 'calm_snow', marble_light: 'calm_snow' } },
-    sites: { prebuilt_northpole: 'snow', prebuilt_antarctica: 'snow' },
+    /* a calm sheet wears its own colour (no room floorColor), so where a room's colour made his sheet into another ground, the place
+       names the calm sheet that ground is: Mars's tan moon dust, the Singularity's violet-black floor, Babel's sandstone */
+    place: { snow: { marble: 'calm_snow', marble_2: 'calm_snow', marble_light: 'calm_snow' },
+             mars: { moon: 'calm_marsdust', moon_2: 'calm_marsdust', moon_3: 'calm_marsdust' },
+             singularity: { moon: 'calm_cavefloor', moon_2: 'calm_cavefloor', moon_3: 'calm_cavefloor' },
+             babel: { bricks_1: 'calm_sandstone' } },
+    sites: { prebuilt_northpole: 'snow', prebuilt_antarctica: 'snow', prebuilt_mars: 'mars', prebuilt_singularity: 'singularity', prebuilt_babel: 'babel' },
     noTile: { calm_grass: 1, calm_dirt: 1, calm_rock: 1, calm_scorched: 1, calm_marble: 1, calm_snow: 1, calm_ice: 1, calm_hedge: 1, calm_obsidian: 1,
               calm_sand: 1, calm_sand_beach: 1, calm_moon: 1, calm_mars: 1, calm_cloud: 1, calm_storm: 1, calm_gravel: 1, calm_roots: 1, calm_rockygrass: 1,
-              calm_darkgrass: 1, calm_cavefloor: 1, calm_darkrock: 1, calm_crystal: 1, calm_flesh: 1, calm_concrete: 1, calm_gilt: 1 },
+              calm_darkgrass: 1, calm_cavefloor: 1, calm_darkrock: 1, calm_crystal: 1, calm_flesh: 1, calm_concrete: 1, calm_gilt: 1, calm_marsdust: 1 },
 };
 /* the terrain a texture key plays by: a calm sheet picked by name plays as the key it stands in for; every other key is itself */
 function hqRuleKeyOf(k) { const S = (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN) ? CALM_TERRAIN.sheets : null; return (k && S && S[k]) ? S[k][1] : k; }
