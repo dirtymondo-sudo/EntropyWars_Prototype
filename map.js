@@ -9506,15 +9506,14 @@
             'prebuilt_shasta_delta', 'prebuilt_stonehenge_delta', 'prebuilt_giza_delta',
             'prebuilt_heaven_delta', 'prebuilt_hell_delta', 'prebuilt_cyberpunk_delta', 'prebuilt_camelot_delta',
             'prebuilt_stadium_delta', 'prebuilt_moon_delta', 'prebuilt_mars_delta',
-            'prebuilt_stonehenge', 'prebuilt_moon', 'prebuilt_gobekli',
-            'prebuilt_dumb', 'prebuilt_cern',
+            'prebuilt_gobekli_delta', 'prebuilt_dumb_delta', 'prebuilt_cern_delta',   // the big site boards left the game 2026-11-11: their 12×12 maps
         ];
         let _trainMapIndex = 0;
         let _trainMapSetting = 'rotate';
         /* THE FIVE ARENAS (2026-11-01, mondo: "Can we make it just cycle through like the same 5 random maps so it doesnt have to
            load a new one in between each match?"): the Map dropdown's "Rotate 5 random arenas" rotates as Rotate does, through 5
            arenas drawn at random from the PvP pool at launch (a new 5 each launch). Every room, floor plan and shader of those 5
-           is warm after the first lap, so no later match builds anything new. Gauntlet keeps its own 5 full maps. */
+           is warm after the first lap, so no later match builds anything new. Gauntlet rotates the same maps since 2026-11-11. */
         let _trainMapFew = 0, _trainMapFewPick = null;
         function _trainMapReadSetting() {
             const v = document.getElementById('mmTrainMap')?.value || 'rotate';
@@ -9534,15 +9533,12 @@
         }
         let _trainModeSetting = 'arena';
 
-        /* Gauntlet fields 8-unit rosters — official compatibleMaps exclude
-           the cramped Δ boards, so its rotation only draws the full maps. */
-        const _TRAIN_MAP_POOL_FULL = _TRAIN_MAP_POOL.filter(id => !/_delta$/.test(id));
         /* The labs' map rotation (2026-10-07): train on the boards PvP actually
            deals — the 12×12 arenas of data.js hqArenaPvpPool (the online pool) —
            instead of the old 8×8 Δ list above (Hell's Δ isn't even an arena any
-           more). Gauntlet keeps its full maps; the old list is the fallback. */
+           more). The old list is the fallback. */
         function _trainMapPoolFor(modeId) {
-            if (modeId === 'gauntlet') return _TRAIN_MAP_POOL_FULL;
+            /* Gauntlet drew only the big site boards; they left the game 2026-11-11 (mondo), so it rotates the 12×12 maps like the rest */
             try {
                 const p = (typeof window.hqArenaPvpPool === 'function') ? window.hqArenaPvpPool(4) : null;   // THE ARENA SIZES: the labs field 4v4 — the 10s and 12s
                 if (p && p.length) return _trainMapFewOf(p);
@@ -9729,7 +9725,7 @@
         };
 
         const MS_GAME_MODES = [
-            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the Cube, wipe out the enemy, or find all 5 hidden Keys. Three Nexus zones (the center + both spawns, yours starts captured) are the economy: 4 ticks flip one — step in, channel, or hold it — a zone you hold heals your team and burns the enemy, you RESPAWN only on a zone you hold (lose them all and your fallen stay down), and every non-home zone is ×1.5 Cube damage. Zones can be built on, dug and flooded. After 20 rounds the higher Arena score wins; a bounty kill scores double a normal kill, and more the longer the streak it ends. A tied score goes to the side holding more Keys, then Sudden Death.', tag: null, locked: false },
+            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Win by Wipeout, destroying the Enemy Cube, or finding all 5 Hidden Keys. Composite score determines the winner after 20 rounds.', tag: null, locked: false },
             { id: 'tdm', icon: '💀', label: 'Team Deathmatch', desc: 'Most kills in 12 rounds wins. Wipeout also wins instantly. Sudden Death if tied.', tag: null, locked: false },
             { id: 'clash', icon: '🎴', label: 'Clash', desc: 'Classic JRPG battle — 4v4 on a fixed stage, no movement. Two parties face off across the field: attack, cast, use an item, or Guard, then the next unit steps up. Wipe out the enemy party to win.', tag: 'NEW', locked: false },
             { id: 'simul', icon: '♟️', label: 'Simul', desc: 'SIMULTANEOUS turns — both sides secretly order one unit (any unit, 2 AP), then the orders play out together: priority first, then speed. Displaced targets are re-acquired or the action whiffs. Most kills in 12 rounds wins.', tag: 'EXPERIMENTAL', locked: false },
@@ -9744,21 +9740,22 @@
         const MS_MAP_LIST = (() => {
             const list = [];
             const meta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
-            meta.filter(m => !m.isDelta).forEach(m => {
+            /* THE BIG SITE BOARDS ARE OUT (2026-11-11, mondo: "yes those should go too"): the old voxel site boards (16×16 to 24×24) are never
+               listed; a whole board cut from its own room (`arena`: the Fairy Forest 20×20) stays */
+            meta.filter(m => !m.isDelta && m.arena).forEach(m => {
                 list.push({ modeId: m.id, name: m.label, size: m.w + '×' + m.h, team: m.teamSize, floors: false, w: m.w, h: m.h, isPrebuilt: true, tier: m.tier, biomes: m.biomes });
             });
             list.push({ modeId: 'prebuilt_custommap', name: 'Custom Map', size: '20×20', team: 6, floors: false, w: 20, h: 20, isPrebuilt: true });
             /* Clash's fixed JRPG stage — only ever offered when the Clash mode
                is selected (it's the mode's sole compatible map). */
             list.push({ modeId: 'clash_stage', name: 'Temple', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true });
-            /* THE CLASH TEMPLE (2026-10-20): the stage is the Temple room's cut; the old voxel Temple stays beside it under Clash */
-            list.push({ modeId: 'clash_stage_voxel', name: 'Temple · voxel', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true });
+            /* THE CLASH TEMPLE (2026-10-20): the stage is the Temple room's cut (the old voxel Temple left the list 2026-11-11, mondo) */
             // The 8×8 Δ boards — one per launch map, played as-is in every mode
             // (Arena included: each carries its own centre nexus zone).
             meta.filter(m => m.isDelta).forEach(m => {
                 /* THE ARENAS (E8, 2026-09-30): a site's Δ became its arena (data.js HQ_ARENA_RULES) — `arena` labels it; a complex
                    part's own Δ (`area`) stays registered for the HQ encounter fallback but the console never lists it */
-                list.push({ modeId: m.id, name: m.label, size: (m.w || 8) + '×' + (m.h || 8) + (m.arena ? ' ARENA' : ' Δ'), team: m.teamSize, floors: false, w: m.w || 8, h: m.h || 8, isPrebuilt: true, isDelta: true, arena: !!m.arena, area: m.area || null, tier: m.tier, biomes: m.biomes,
+                list.push({ modeId: m.id, name: m.label, size: (m.w || 8) + '×' + (m.h || 8) + (m.arena ? '' : ' Δ'), team: m.teamSize, floors: false, w: m.w || 8, h: m.h || 8, isPrebuilt: true, isDelta: true, arena: !!m.arena, area: m.area || null, tier: m.tier, biomes: m.biomes,
                             sizeOf: m.sizeOf || null, arenaSize: m.arenaSize || null });   // THE ARENA SIZES: a 9 / 10 / 11 cut rides its site's card (the SIZE field picks it)
             });
             return list;

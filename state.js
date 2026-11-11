@@ -253,7 +253,7 @@
                 id: 'arena',
                 label: 'Arena',
                 icon: '🏰',
-                desc: 'Destroy the Cube, find all 5 hidden Keys, or wipe out the enemy. Three Nexus zones (center + both spawns; yours starts captured): 4 ticks flip one, a held zone heals you and burns the enemy, you respawn ONLY on a zone you hold, non-home zones are ×1.5 Cube damage. After 20 rounds the higher Arena score wins (a bounty kill scores double, more the longer the streak it ends); a tied score goes to the side holding more Keys, then Sudden Death.',
+                desc: 'Win by Wipeout, destroying the Enemy Cube, or finding all 5 Hidden Keys. Composite score determines the winner after 20 rounds.',
                 /* 2026-09-07 Arena rules pass: matches end ONLY on a real win
                    condition. The round cap is a "never literally forever"
                    backstop (AI training / balance runs want every objective to
@@ -406,15 +406,18 @@
            8-unit rosters, so it keeps the roomier full boards only. */
         (function _generateCompatibleMaps() {
             if (typeof EW_MAP_META === 'undefined') return;
-            const fulls = EW_MAP_META.filter(m => !m.isDelta).map(m => m.id);
+            /* THE BIG SITE BOARDS ARE OUT (2026-11-11, mondo, asked about the 35 old 16×16 to 24×24 voxel site boards: "yes those should go too"):
+               no mode offers them any more. A whole board that is its room's own cut (`arena`, the Fairy Forest 20×20) stays. The roster rows
+               and GAME_MODES entries stand: the site ids are what the HQ and the arenas read. */
+            const fulls = EW_MAP_META.filter(m => !m.isDelta && m.arena).map(m => m.id);
             const deltas = EW_MAP_META.filter(m => m.isDelta).map(m => m.id);
             const all = ['medium', 'large', 'xlarge'].concat(fulls, ['prebuilt_custommap'], deltas);
             Object.keys(MULTIPLAYER_MODES).forEach(k => { MULTIPLAYER_MODES[k].compatibleMaps = all.slice(); });
             MULTIPLAYER_MODES.tdm.compatibleMaps = ['normal'].concat(all);
-            MULTIPLAYER_MODES.gauntlet.compatibleMaps = ['medium', 'large', 'xlarge'].concat(fulls, ['prebuilt_custommap']);
+            MULTIPLAYER_MODES.gauntlet.compatibleMaps = all.slice();   // Gauntlet played only the big site boards: it deploys 4, so it now takes the 12×12 maps like the other modes
             /* Clash always plays on its fixed JRPG stage — no map picking. THE CLASH TEMPLE (2026-10-20): the stage is the Temple room's
                cut; the old voxel Temple stays pickable beside it in VS CPU (online deals only the stage — online.js). */
-            MULTIPLAYER_MODES.clash.compatibleMaps = ['clash_stage', 'clash_stage_voxel'];
+            MULTIPLAYER_MODES.clash.compatibleMaps = ['clash_stage'];   // the old voxel Temple left the game 2026-11-11 (mondo: "get rid of all the voxel maps")
             /* Mystery Dungeon never appears in the PvP map picker — its hub and
                generated floors are loaded directly by the MD runtime. */
             MULTIPLAYER_MODES.dungeon.compatibleMaps = [];
@@ -440,13 +443,6 @@
                 2: ['Vessel', 'Vessel', 'Vessel', 'Vessel'],
             },
         };
-        /* THE CLASH TEMPLE (2026-10-20): the old voxel Temple, kept under its own id (data.js hqClashStageRegister) */
-        GAME_MODES.clash_stage_voxel = Object.assign({}, GAME_MODES.clash_stage, {
-            id: 'clash_stage_voxel', label: 'Temple · voxel',
-            desc: 'The old 10×10 voxel temple plateau — two formation columns of 4 facing each other across the sanctum',
-            spawns: { 1: GAME_MODES.clash_stage.spawns[1].map(p => ({ x: p.x, y: p.y })), 2: GAME_MODES.clash_stage.spawns[2].map(p => ({ x: p.x, y: p.y })) },
-        });
-
         /* ── Mystery Dungeon board registrations ──────────────────────────────
            The Guild Hub is a real prebuilt map (built in data.js) that must NOT
            be in EW_MAP_META (no Δ variants, no picker card), so its GAME_MODES

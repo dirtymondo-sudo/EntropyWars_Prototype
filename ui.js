@@ -17262,7 +17262,9 @@
         const gameModeSelectSetup = document.getElementById('gameModeSelectSetup');
         if (gameModeSelectSetup) {
 
-            gameModeSelectSetup.innerHTML = Object.values(GAME_MODES).map(m => `<option value="${m.id}"${m.id === activeGameMode ? ' selected' : ''}>${m.label} (${m.desc})</option>`).join('');
+            /* THE BIG SITE BOARDS ARE OUT (2026-11-11, mondo: "yes those should go too"): the old voxel site boards are not offered here either */
+            const _bigOut = new Set((typeof EW_MAP_META !== 'undefined' ? EW_MAP_META : []).filter(r => r && !r.isDelta && !r.arena).map(r => r.id));
+            gameModeSelectSetup.innerHTML = Object.values(GAME_MODES).filter(m => !_bigOut.has(m.id) || m.id === activeGameMode).map(m => `<option value="${m.id}"${m.id === activeGameMode ? ' selected' : ''}>${m.label} (${m.desc})</option>`).join('');
             gameModeSelectSetup.onchange = () => {
                 applyGameMode(gameModeSelectSetup.value);
                 repairPartyBuilderState();

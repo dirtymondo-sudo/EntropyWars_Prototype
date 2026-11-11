@@ -1967,6 +1967,30 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
   (_meTerrainBg). It now shows the calm twin (the sheet the board draws) unless window.EW_NO_CALM_LOOK. The tile info card
   already went through _ewSandUrl (calm first). His pixel sheets stay in the editor.js picker (TERRAIN family).
 
+## NO "ARENA" IN MAP NAMES (2026-11-11, mondo: "take 'arena' out of the name of all the maps")
+A battle map wears its site's name: "Stonehenge", sized cuts "Stonehenge 10×10", test looks "Stonehenge (Calm)". Display only, ids unchanged
+(`<site>_delta`, `<site>_<S>x<S>_delta`). Where: data.js hqArenaEntry + hqArenaRegisterAll (the sized name) + HQ_LOOK_MAPS labels; map.js MS_MAP_LIST
+size tag is "12×12" (was "12×12 ARENA"); editor library says "BATTLE MAP: <SITE>"; hud.js UI Maker sample screens. HQ_ARENA_RULES.label is no longer
+read for names. Left as they are (not names): the Arena game MODE, the "ARENA MAPS" filter chip, the story desk's ARENA / FULL SITE format toggle.
+A site with a FULL SITE board (16×16 +) shares its name with its 12×12 map in the VS CPU list (told apart by the size).
+
+## THE VOXEL BOARDS ARE OUT (2026-11-11, mondo: "I think we are good to get rid of all the voxel maps")
+- Gone from the game (no roster row, no GAME_MODES entry, no PREBUILT_MAPS copy): the five "<Site> Δ · voxel" boards (Hell, Göbekli
+  Tepe, The Flying Dutchman, The Looking-Glass, The Bermuda Triangle: HQ_ARENA_RULES.voxelKeep and its registration removed), the
+  three "<Map> · voxel" boards hqArenaRegisterOwn kept (Holo Sim, Training Room, Fairy Forest 20×20) and Clash's "Temple · voxel"
+  (data.js hqClashStageRegister, map.js MS_MAP_LIST, state.js compatibleMaps + GAME_MODES.clash_stage_voxel).
+- NOT touched: the voxel editor, the authored board data in data.js (each arena still reads its old board's tints and layout), and
+  the 35 big site boards (16×16 to 24×24, the list with ARENA MAPS switched off; Gauntlet plays only those). His call, asked.
+
+## THE BIG SITE BOARDS ARE OUT (2026-11-11, mondo, asked about the 35 old 16×16 to 24×24 site boards: "yes those should go too")
+- No list offers them: map.js MS_MAP_LIST and state.js compatibleMaps take a whole board only when it is its room's own cut
+  (`arena`: the Fairy Forest 20×20); Custom Map (the voxel editor's board) stays. battle.js _rerollMapForNextMatch never rerolls
+  onto one; ui.js's setup select leaves them out; map.js _TRAIN_MAP_POOL's five big boards became their 12×12 maps.
+- GAUNTLET played only those boards. It deploys 4, so it now takes every map the other modes take (the 12×12s); the labs'
+  Gauntlet rotation draws the same pool as the rest. No rule changed (roster 8, deploy 4).
+- The roster rows, GAME_MODES entries and board data STAND: the site ids are what the HQ, the arenas (tints, layouts) and
+  hqSiteId read. Only the offering is gone.
+
 ## THE GUNSHIP — the Spaceship redone lengthwise (2026-11-11, mondo: "redesign the spaceship. It just looks nothing like a spaceship at all ... keeping the square grid in mind and designing the map for interesting and strategic PVP play" · "why not put the spawn zones at either end of the ship")
 - Why the 10-28 ship didn't read: the 12×12 board was a small window on the middle of a 120 m deck (all you saw was flat plate +
   crate blocks), and the room's `observatory` look (teal grade) turned the void green.

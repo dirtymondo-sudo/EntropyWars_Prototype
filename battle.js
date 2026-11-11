@@ -56602,6 +56602,7 @@
             const pool = [];
             for (const m of EW_MAP_META) {
                 if (!!m.isDelta !== wantDelta) continue;
+                if (!m.isDelta && !m.arena) continue;   // the old big site boards left the game 2026-11-11 (mondo): never rerolled onto
                 if (!GAME_MODES[m.id] || m.id === cur) continue;
                 /* THE ARENA SIZES (2026-10-17): a sized cut (9 / 10 / 11) rerolls to another cut of its size, and a 12 never to one */
                 if (curMeta && (m.sizeOf || curMeta.sizeOf) && ((m.w | 0) !== (curMeta.w | 0) || !m.sizeOf !== !curMeta.sizeOf)) continue;
