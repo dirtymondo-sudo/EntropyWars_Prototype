@@ -1079,7 +1079,10 @@
         const _origBackToMainMenu = (typeof backToMainMenu === 'function') ? backToMainMenu : null;
         if (_origBackToMainMenu) {
             backToMainMenu = function() {
-                if (_isOnline()) {
+                /* a page that RELOADED into a rejoin holds an online session with no match on its board (isOnlineMatch
+                   is false): its way back to the menu ends that session too (two-seat check 2026-11-10: the host kept
+                   NET.online and its dead room after "The host page lost its active match") */
+                if (_isOnline() || (window._NET && window._NET.online && window._NET._bootRejoin)) {
                     var N = window._NET;
                     /* leaving on purpose: the server closes a finished room at once instead of holding this seat
                        (server.js THE RESULT HOLD); the packet goes out ahead of the disconnect */
@@ -1105,6 +1108,7 @@
                         N._wasInMatch = false;
                         N._rematchState = null;
                         N.rejoinToken = null;
+                        N._bootRejoin = false;
                         N.socket = null;
                     }
                     try { if (typeof window._ewResetOnlineMatchFlags === 'function') window._ewResetOnlineMatchFlags(true); } catch (e) {}   // THE NEXT ROOM
@@ -3632,6 +3636,9 @@
                 NET.matchTeamSize = null;
                 NET.matchRankedMode = null;
                 NET.rejoinToken = null;
+                NET._bootRejoin = false;
+                NET._squadKept = false;
+                try { sessionStorage.removeItem('ew_rejoinMap'); sessionStorage.removeItem('ew_rejoinSquad'); } catch (e) {}
                 NET.friendlyConfig = null;
                 NET._roomDemo = undefined;   // THE DEMO: the last room's switch never follows the seat out
                 NET._squad = null;   // THE SQUAD DESK: the lobby's copy (window._ewSquad stays for the next queue)
@@ -4147,7 +4154,7 @@
                 NET.connected = false;
                 NET._wasInMatch = false;
                 if (window._ewReleaseRecoveryWork) window._ewReleaseRecoveryWork(false);
-                try { ['ew_rejoinToken', 'ew_rejoinRoom', 'ew_rejoinRole'].forEach(function(k) { sessionStorage.removeItem(k); }); } catch (e) {}
+                try { ['ew_rejoinToken', 'ew_rejoinRoom', 'ew_rejoinRole', 'ew_rejoinMap', 'ew_rejoinSquad'].forEach(function(k) { sessionStorage.removeItem(k); }); } catch (e) {}
                 var panel = document.createElement('div');
                 panel.id = 'reconnectOverlay';
                 /* a PS1 window with a red way out (end screens 2026-11-10: it was a bare strip with the browser's own grey button) */
@@ -4190,7 +4197,14 @@
                     var st = window._gameState;
                     if (NET.role === 'host' && !sent) {
                         if (st && st.winner) { window._broadcastState(); return; }
-                        if (!st || !Array.isArray(st.units) || !st.units.length || (st.phase !== 'battle' && st.phase !== 'setup')) {
+                        /* THE HOST'S RELOAD (two-seat check 2026-11-10): the match lives on the host's page, so a host that
+                           RELOADED has none to restore. Its fresh page sits in 'setup' with the title screen's default
+                           units, which passed the test below: it sent that as the "restored match", the guest laid it over
+                           its fight, and both seats sat on a dead board with no message. A page that booted into a rejoin
+                           and is not in a battle answers "unavailable", so both seats get the server's own notice (server.js
+                           failRecovery: "The host page lost its active match"). */
+                        var _bootLost = NET._bootRejoin && !(st && st.phase === 'battle');
+                        if (_bootLost || !st || !Array.isArray(st.units) || !st.units.length || (st.phase !== 'battle' && st.phase !== 'setup')) {
                             NET.socket.emit('recovery-unavailable', { id: id, matchId: NET.matchId });
                         } else if (!st._actionExecuting && !st._walkAnimActive && !st.aiThinking &&
                             (typeof window._ewRecoverySnapshotReady !== 'function' || window._ewRecoverySnapshotReady())) {
@@ -4529,17 +4543,53 @@
                 });
 
                 NET.socket.on('player-rejoined', _beginSnapshotRecovery);
-                NET.socket.on('recovery-snapshot', function(data) {
+                /* THE ROOM ON A RELOAD (two-seat check 2026-11-10): a page that RELOADED mid-match came back into the fight on
+                   the bare baked board (the old voxel columns, no site room): the snapshot's applyGameMode ran before this
+                   fresh page had surveyed the arena's room, and the renderer reads the room once, when the fight is drawn
+                   (three-renderer.js _arenaLatch). The room is surveyed FIRST (the same warm the lobby runs), then the
+                   snapshot is applied; a survey that never answers is waited for at most RECOVERY_ARENA_WAIT_MS, well
+                   inside the restore window. A page still in its fight (a socket drop) has its room and waits for nothing.
+                   Viewer-local, nothing on `state`. */
+                var RECOVERY_ARENA_WAIT_MS = 30000, _rcArena = { key: null, done: true };
+                function _recoveryArenaWait(data) {
+                    try {
+                        var st = window._gameState, ctx = data && data.state && data.state._onlineContext, id = ctx && ctx.mapModeId;
+                        if (!id || typeof window.hqArenaOf !== 'function') return false;
+                        if (st && st.phase === 'battle') return false;
+                        var a = window.hqArenaOf(id);
+                        if (!a || a.ready || a.failed) return false;
+                        var key = data.id + ':' + id;
+                        if (_rcArena.key === key) return !_rcArena.done;
+                        _rcArena = { key: key, done: false };
+                        var go = function() {
+                            if (_rcArena.key !== key || _rcArena.done) return;
+                            _rcArena.done = true;
+                            _onRecoverySnapshot(data);
+                        };
+                        var p = null;
+                        try { p = (typeof window._hqArenaWarm === 'function') ? window._hqArenaWarm(id, true) : null; } catch (e) { p = null; }
+                        if (p && typeof p.then === 'function') p.then(go, go);
+                        else setTimeout(function() {
+                            try { if (typeof window.hqArenaUpgrade === 'function') window.hqArenaUpgrade(id, { compile: true }); } catch (e) { console.warn('[ARENA] recovery upgrade failed', id, e); }
+                            go();
+                        }, 30);
+                        setTimeout(go, RECOVERY_ARENA_WAIT_MS);
+                        return true;
+                    } catch (e) { return false; }
+                }
+                function _onRecoverySnapshot(data) {
                     if (!NET.online || NET.role !== 'guest' || !data || data.id !== NET._recoveryId ||
                         data.matchId !== NET.matchId || NET._recoveryFailed) return;
                     // Retry packets are acknowledged again without replaying scene boot.
                     if (NET._appliedRecovery !== data.id) {
+                        if (_recoveryArenaWait(data)) return;   // THE ROOM ON A RELOAD: the arena's room first
                         if (!_applyRemoteState(data.state)) return;
                         NET._appliedRecovery = data.id;
                     }
                     NET.socket.emit('recovery-applied', { id: data.id, matchId: NET.matchId,
                         checksum: _ewStateChecksum(window._gameState) });
-                });
+                }
+                NET.socket.on('recovery-snapshot', _onRecoverySnapshot);
                 NET.socket.on('recovery-verify', function(data) {
                     if (!NET.online || NET.role !== 'host' || !data || data.id !== NET._recoveryId ||
                         data.matchId !== NET.matchId || NET._recoveryFailed) return;
@@ -4971,7 +5021,7 @@
                     if (data.type === 'eor-focus' && _ewMirrorView()
                         && Number.isFinite(data.x) && Number.isFinite(data.y)) {
                         var _efVis = !st || !st.fogOfWar
-                            || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(data.x, data.y));
+                            || (typeof _isTileVisibleToViewer === 'function' && _isTileVisibleToViewer(Math.round(data.x), Math.round(data.y)));   // a weather system's middle is a half square (4.5, 4.5): judged on its nearest square
                         if (_efVis && typeof window.eorFocusCamera === 'function') {
                             try {
                                 window.eorFocusCamera(data.x, data.y,
@@ -6548,8 +6598,13 @@
                         case 'storm-lightning-fx':
                         case 'key-fx':
                         case 'eor-shot-focus':
-                        case 'eor-focus':
                             if (!tv(data.x, data.y)) return null;
+                            break;
+                        case 'eor-focus':
+                            /* a weather system's middle is a half square (state.js: the mean of its tiles, 4.5,4.5 for a whole
+                               10×10 board), which is in no fog set: the guest never got the camera move for a weather callout
+                               (two-seat check 2026-11-10). Judged on its nearest square, as the guest's own gate does. */
+                            if (!tv(Math.round(data.x), Math.round(data.y))) return null;
                             break;
                         case 'det-cine':
                             if (data.ds && !tv(data.ds.x, data.ds.y)) return null;
@@ -7163,13 +7218,23 @@
                     var _holdOn = NET.online && NET.rejoinToken && NET.roomCode && _hs && _hs.phase === 'battle' && !_ewPostMatch() && !NET._recoveryFailed;
                     if (_holdOn && typeof window._ewSeatHoldStart === 'function') window._ewSeatHoldStart(NET.roomCode, NET.rejoinToken);
                     else if (!_holdOn && !NET._wasInMatch && !NET._recovering && window._ewSeatHold && window._ewSeatHold.running && window._ewSeatHoldStop) window._ewSeatHoldStop();
+                    /* THE ROOM ON A RELOAD: the fight's map is kept beside the rejoin keys, so a reloaded page surveys the
+                       arena's room while its socket is still connecting */
+                    if (_holdOn) { try { if (typeof activeGameMode !== 'undefined' && activeGameMode) sessionStorage.setItem('ew_rejoinMap', String(activeGameMode)); } catch (e) {} }
+                    /* THE SQUAD ON A RELOAD: the squad rides along too, so a reloaded page's REMATCH fields the same squad by
+                       itself (without it the page fell to the party builder while the other seat sat locked and waiting) */
+                    if (_holdOn && NET._squad && !NET._squadKept) { try { sessionStorage.setItem('ew_rejoinSquad', JSON.stringify(NET._squad)); NET._squadKept = true; } catch (e) {} }
                 } catch (e) {}
                 if (!NET.online) {
                     /* no session, no room chip (PvP playtest 2026-11-09 F8: the chip stayed up over later offline matches) */
                     var _stale = document.getElementById('netStatusIndicator'); if (_stale) _stale.remove();
                     return;
                 }
+                /* a session whose room is gone hides the chip too (two-seat check 2026-11-10: a reloaded host kept NET.online
+                   after its room closed) */
                 var ind = document.getElementById('netStatusIndicator');
+                if (!NET.online || !NET.roomCode) { if (ind && ind.style.display !== 'none') ind.style.display = 'none'; return; }
+                if (ind && ind.style.display === 'none') ind.style.display = '';
                 if (!ind) {
                     ind = document.createElement('div');
                     ind.id = 'netStatusIndicator';
@@ -7228,6 +7293,7 @@
                     NET.roomCode = savedRoom;
                     NET.role = savedRole;
                     NET._wasInMatch = true;
+                    NET._bootRejoin = true;   // THE HOST'S RELOAD: this page booted into a rejoin (it holds no match of its own)
                     NET.online = true;
                     /* THE SEAT HOLD: index.html's first script already asked the server to keep this seat while
                        the page booted; count the deadline it answered with */
@@ -7235,6 +7301,16 @@
                     if (_hold && _hold.ok && _hold.remainingSeconds > 0 && _hold.at)
                         _holdS = Math.max(5, Math.round(_hold.remainingSeconds - (Date.now() - _hold.at) / 1000));
                     _showReconnectOverlay('Reconnecting', _holdS);
+                    /* THE SQUAD ON A RELOAD: the squad this seat fielded, for the room's rematch */
+                    try {
+                        var savedSquad = JSON.parse(sessionStorage.getItem('ew_rejoinSquad') || 'null');
+                        if (savedSquad && Array.isArray(savedSquad.slots) && savedSquad.slots.length) { NET._squad = savedSquad; NET._squadKept = true; }
+                    } catch (e) {}
+                    /* THE ROOM ON A RELOAD: survey the fight's arena room now (see _recoveryArenaWait) */
+                    try {
+                        var savedMap = sessionStorage.getItem('ew_rejoinMap');
+                        if (savedMap && typeof window._hqArenaWarm === 'function') { var _rw = window._hqArenaWarm(savedMap, true); if (_rw && _rw.catch) _rw.catch(function() {}); }
+                    } catch (e) {}
                     _connectSocket(function() {
 
                     });

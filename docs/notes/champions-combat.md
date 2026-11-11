@@ -4949,6 +4949,35 @@ Report: /mnt/project-files/pvp-playtest-20261109/PVP_PLAYTEST_REPORT.md. Proof: 
 - Undefined-name sweep of online.js (eslint no-undef, globals = every top-level name of the 21 game scripts + index.html
   inline scripts + `window.X =` writes): `showVictoryScreen` was the only one; clean now. server.js clean (node globals).
 
+## THE RELOAD, TWO SEATS (2026-11-10, token 20261111-reloadroom-01-cors) — online.js only
+Two-seat check of PR #1072-#1075 plus traps, CLASH and the end-of-round relays (two Chromium pages, shared playtest
+harness, shots in `/mnt/project-files/pvp-verify-20261110/`). All of #1072-#1075 held. Five things fixed:
+- **THE ROOM ON A RELOAD:** a guest that reloaded came back on the bare baked board (voxel columns, no site room): the
+  recovery snapshot's `applyGameMode` ran before the fresh page had surveyed the arena room, and the renderer latches the
+  room once (`_arenaLatch`). `_recoveryArenaWait` (in the `recovery-snapshot` handler, now `_onRecoverySnapshot`) runs
+  `_hqArenaWarm` first and applies after it, capped at `RECOVERY_ARENA_WAIT_MS` (30 s, inside the 60 s restore window);
+  a page still in its fight waits for nothing. The fight's map id is kept in sessionStorage `ew_rejoinMap` (written by
+  the seat-hold interval) so the boot rejoin starts the survey while the socket connects.
+- **THE HOST'S RELOAD:** the match lives on the host's page. A reloaded host sat in 'setup' with the title screen's
+  default units, sent THAT as the recovery snapshot, the guest applied it, and both seats sat on a dead board. A page that
+  booted into a rejoin (`NET._bootRejoin`) and is not in a battle now answers `recovery-unavailable`, so both seats get
+  server.js failRecovery's notice ("The host page lost its active match") in ~20 s. Restoring the host's match from its
+  own saved snapshot is NOT built (offered to mondo). `backToMainMenu`'s online teardown also runs for a boot-rejoin page.
+- **THE SQUAD ON A RELOAD:** `NET._squad` died with the page, so a reloaded seat's REMATCH opened the party builder
+  while the other seat sat locked. Kept in sessionStorage `ew_rejoinSquad`, restored at the boot rejoin.
+- **THE CHIP LEAVES WITH THE ROOM (F8):** `#netStatusIndicator` is hidden when `!NET.online || !NET.roomCode`.
+- **`eor-focus` on a half square:** a weather callout's dive is the mean of its tiles (4.5,4.5); no fog set holds a half
+  square, so the guest never got that camera move. Host filter + guest gate round to the nearest square.
+- Checked and fine, both seats: guest To the Moon landing pick + own throw line into fog, host Infernal Hurl, Swing Door
+  prompt kept off both logs, Fire for Effect mark + detonation, Scrap Mine / Tesla Coil (`_deployedObjects`, on both
+  boards), hidden Snare (`state.traps` empty on the guest until sprung), CLASH (no MOVE, no throws by design, in sync),
+  result-screen drop + rematch, rematch keeps 5 rounds, closed tab -> VICTORY at 90 s from either seat.
+- Not bugs: CLASH's ROUNDS stepper stays at "∞"; a ground unit may stand under a flyer; the host's `_fullLogEntries` holds
+  every line (the fog filter runs at render: compare seats with `_logVisible`).
+- Harness: pick races in the party builder by clicking the ROSTER tab, the slot, then the card (a pick jumps to ABILITIES);
+  `location.reload()` through `ph eval` reloads a seat; `location.href='about:blank'` closes its tab.
+
+
 ## THE CAMERA SHOWS SOMETHING (2026-11-09, token 20261109-camnothing-01-cors) — battle.js, state.js, online.js
 mondo: "Still lots of camera issues, like the end of round camera focusing on nothing or action camera focusing on nothing
 ... might be from when i move the camera around and then the automatic camera takes over, or it just seems like a lot of
