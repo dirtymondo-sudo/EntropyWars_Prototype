@@ -1321,6 +1321,106 @@ def bake_void(seed=581):
     return np.clip(rgb, 0, 1)
 
 
+
+# ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+#  THE ROLLOUT, BATCH 4 (2026-11-11): the old voxel boards' last pixel sheets
+# ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+# ── THE RUBBLE (rubble_1-3): broken concrete in lumps, each its own grey, dark gaps between, a film of dust ────────────────────────
+def bake_rubble(seed=601):
+    wx = fft_noise(N, 3, 10, seed + 1, 0.8) * 22; wy = fft_noise(N, 3, 10, seed + 2, 0.8) * 22
+    F1, F2, ID = worley(N, 18, seed + 3, (wx, wy))
+    tn = per_id(ID, 324, seed + 4)
+    warm = per_id(ID, 324, seed + 5, 0, 1) > 0.82                                # a few brick-brown lumps among the grey
+    rgb = lerp(hexc(0x55544f), hexc(0x77756e), np.clip(0.5 + 0.35 * tn, 0, 1))
+    rgb = np.where(warm[..., None], lerp(hexc(0x6a5244), hexc(0x7e6250), np.clip(0.5 + 0.35 * tn, 0, 1)), rgb)
+    hole = per_id(ID, 324, seed + 8, 0, 1) > 0.9                               # a few lumps missing: dark voids
+    rgb = np.where(hole[..., None], hexc(0x2c2a26) * (1.0 + 0.2 * tn)[..., None], rgb)
+    rgb *= (1.0 - 0.4 * np.clip(F1 / 0.75, 0, 1))[..., None]                   # each lump rounds off toward its edge
+    gap = np.clip((0.12 - (F2 - F1)) / 0.12, 0, 1)
+    rgb = lerp(rgb, hexc(0x24231f), gap * 0.85)
+    grit = fft_noise(N, 60, 250, seed + 6, 0.2); dust = np.clip(fft_noise(N, 1, 5, seed + 7, 0.6) * 1.4 + 0.2, 0, 1)
+    rgb *= (1.0 + 0.08 * grit)[..., None]
+    rgb = lerp(rgb, hexc(0x8a8478), dust * 0.25)
+    return settle(_blur(rgb, 0.5), 0.8, 0.9)
+
+
+# ── THE ICE BLOCKS (igloo): the igloo's cut snow-ice blocks in courses, pale blue-white, soft joints ───────────────────────────────
+def bake_iceblocks(seed=611):
+    return bake_blocks(seed, rows=7, wlo=0.2, whi=0.36, a=0x8ea6b6, b=0xa9bdca, joint=0x6c8292, moss=0.0)
+
+
+# ── THE COPPER (copper): the riveted plate in copper, a little green patina in the seams and drifts ──────────────────────────────
+def bake_copper(seed=621):
+    ID, ED, u, v, n = panel_grid(4, 4, seed)                                    # sixteen plates a square, like his
+    tn = per_id(ID, n, seed + 1)
+    mid = fft_noise(N, 4, 24, seed + 2, 0.5); fine = fft_noise(N, 100, 400, seed + 3, 0.0)
+    rgb = lerp(hexc(0x7a4426), hexc(0x9c5e34), np.clip(0.5 + 0.3 * tn + 0.25 * mid, 0, 1))
+    rgb = lerp(rgb, hexc(0x2e1a12), np.clip(2.6 - ED, 0, 1) * 0.85)              # the seams
+    rgb = lerp(rgb, hexc(0xa06a44), np.clip(1 - np.abs(ED - 4.0) / 1.5, 0, 1) * 0.25)   # a lit lip inside each seam
+    cw = N / 4
+    du = np.minimum(u, 1 - u) * cw; dv = np.minimum(v, 1 - v) * cw
+    d = np.sqrt((du - 10) ** 2 + (dv - 10) ** 2)                                # a rivet in each corner
+    riv = np.clip(5.0 - d, 0, 1)
+    rgb = lerp(rgb, hexc(0x4a2c1c), riv * 0.75)
+    rgb = lerp(rgb, hexc(0xb07a50), np.clip(3.0 - np.sqrt((du - 9) ** 2 + (dv - 9) ** 2), 0, 1) * riv * 0.6)
+    pat = np.clip(fft_noise(N, 2, 9, seed + 4, 0.6) * 1.8 - 0.7, 0, 1) * np.clip((6.0 - ED) / 6.0, 0, 1)
+    rgb = lerp(rgb, hexc(0x4e7466), pat * 0.5)                                  # green patina creeping out of the seams
+    rgb *= (1.0 + 0.03 * fine)[..., None]
+    return settle(_blur(rgb, 0.5), 0.95, 0.95)
+
+
+# ── THE RUBBER (rubber): a black non-slip mat — short raised bars turned alternately, dull, a little dust ─────────────────────────
+def bake_rubber(seed=631):
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    k = 16; c = N / k
+    ci = np.floor(xx / c); cj = np.floor(yy / c)
+    u = xx / c - ci - 0.5; v = yy / c - cj - 0.5
+    flip = ((ci + cj) % 2) * 2 - 1
+    a = (u + flip * v) / np.sqrt(2); b = (u - flip * v) / np.sqrt(2)
+    d = np.maximum(np.abs(a) - 0.28, 0) ** 2 + np.maximum(np.abs(b) - 0.05, 0) ** 2
+    bar = np.clip((0.06 - np.sqrt(d)) / 0.03, 0, 1)
+    edge = np.clip(1 - np.abs(np.sqrt(d) - 0.035) / 0.02, 0, 1) * (b * flip < 0)
+    mid = fft_noise(N, 2, 10, seed + 1, 0.6); fine = fft_noise(N, 100, 400, seed + 2, 0.0)
+    rgb = lerp(hexc(0x262628), hexc(0x303033), np.clip(0.5 + 0.4 * mid, 0, 1))
+    rgb = lerp(rgb, hexc(0x3a3a3e), bar * 0.8)
+    rgb = lerp(rgb, hexc(0x4a4a4f), edge * bar * 0.4)
+    rgb *= (1.0 + 0.04 * fine)[..., None]
+    rgb = lerp(rgb, hexc(0x55524c), np.clip(fft_noise(N, 1, 4, seed + 3, 0.6) * 1.5 - 0.6, 0, 1) * 0.25)
+    return settle(_blur(rgb, 0.5), 0.6, 1.0)
+
+
+# ── THE HEALING SPRING (healing_spring): clear teal water with lily pads and a few small flowers, quieter than his ───────────────────
+def bake_spring(seed=641):
+    rng = np.random.default_rng(seed)
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    mid = fft_noise(N, 2, 8, seed + 1, 0.6)
+    ca = np.abs(fft_noise(N, 10, 26, seed + 2, 0.5)); ca = ca / (ca.std() + 1e-9)
+    rgb = lerp(hexc(0x4a8a86), hexc(0x66a69e), np.clip(0.5 + 0.45 * mid, 0, 1))
+    rgb = lerp(rgb, hexc(0x9ccabe), np.clip(0.35 - ca, 0, 0.35) / 0.35 * 0.45)   # the caustic lines
+    def wrapd(px, py):
+        dx = np.abs(xx - px); dx = np.minimum(dx, N - dx); dy = np.abs(yy - py); dy = np.minimum(dy, N - dy)
+        return dx, dy
+    for i in range(16):                                                         # the pads
+        px, py = rng.uniform(0, N, 2); r = rng.uniform(26, 50); ang = rng.uniform(0, 2 * np.pi)
+        dx, dy = wrapd(px, py); dd = np.sqrt(dx ** 2 + dy ** 2)
+        sx = np.where(np.abs(xx - px) <= N / 2, xx - px, xx - px - np.sign(xx - px) * N)
+        sy = np.where(np.abs(yy - py) <= N / 2, yy - py, yy - py - np.sign(yy - py) * N)
+        notch = np.abs(np.angle(np.exp(1j * (np.arctan2(sy, sx) - ang)))) < 0.32
+        pad = np.clip((r - dd) / 2.0, 0, 1) * (~notch)
+        tone = rng.uniform(-0.12, 0.12)
+        col = lerp(hexc(0x46703a), hexc(0x5e8648), np.clip(0.5 + tone + 0.25 * (dd / r), 0, 1))
+        rim = np.clip(1 - np.abs(dd - r + 2.5) / 2.5, 0, 1) * pad
+        rgb = lerp(rgb, hexc(0x2e4c2a), np.clip((r + 4 - dd) / 4, 0, 1) * (~notch) * 0.3)   # its shadow in the water
+        rgb = lerp(rgb, col, pad)
+        rgb = lerp(rgb, hexc(0x34552c), rim * 0.6)
+    for i in range(14):                                                         # a few small flowers
+        px, py = rng.uniform(0, N, 2); r = rng.uniform(7, 11)
+        dx, dy = wrapd(px, py); dd = np.sqrt(dx ** 2 + dy ** 2)
+        col = hexc([0xc69ca2, 0xd6cfb2, 0xb8a0c0][i % 3])
+        rgb = lerp(rgb, col, np.clip((r - dd) / 1.5, 0, 1) * 0.9)
+        rgb = lerp(rgb, hexc(0xc8a44a), np.clip((2.2 - dd) / 1.0, 0, 1) * 0.8)
+    return settle(_blur(rgb, 0.6), 0.85, 0.95)
+
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else '.'
     only = sys.argv[2].split(',') if len(sys.argv) > 2 else None
@@ -1343,7 +1443,10 @@ def main():
               ('calm_wallpaper_1', bake_wallpaper), ('calm_patchwork_1', bake_patchwork), ('calm_patchwork_bright_1', bake_patchwork_bright),
               ('calm_damask_gold_1', bake_damask_gold), ('calm_leather_1', bake_leather), ('calm_canopy_1', bake_canopy), ('calm_forestfloor_1', bake_forestfloor),
               ('calm_purplegrass_1', bake_purplegrass), ('calm_paving_1', bake_paving), ('calm_ruins_1', bake_ruins), ('calm_void_1', bake_void),
-              ('calm_obsidian_2', bake_obsidian_veins), ('calm_patchwork_retro_1', bake_patchwork_retro)]
+              ('calm_obsidian_2', bake_obsidian_veins), ('calm_patchwork_retro_1', bake_patchwork_retro),
+              # THE ROLLOUT batch 4 (2026-11-11): the old voxel boards' last pixel sheets
+              ('calm_rubble_1', bake_rubble), ('calm_iceblocks_1', bake_iceblocks), ('calm_copper_1', bake_copper), ('calm_rubber_1', bake_rubber),
+              ('calm_spring_1', bake_spring)]
     os.makedirs(out, exist_ok=True)
     sheets = []
     for name, fn in makers:
