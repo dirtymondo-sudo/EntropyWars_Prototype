@@ -12940,8 +12940,9 @@
         let _moveHoverWalk = null;   // the hovered walk's { path, land } while its ghost is drawn (the walk's own "-N")
         /* Bundle the predictions for the ghost hologram. Returns null when
            there is nothing to warn about (no badge → no visual noise). */
-        function _moveGhostBadges(unit, x, y, z, walk) {
+        function _moveGhostBadges(unit, x, y, z, walk, tags) {
             const badges = {};
+            if (tags && tags.length) badges.tags = tags;   // THE CLIMB PREVIEW: word chips ("CLIMB" + "ENDS TURN")
             try {
                 const st = predictStealthAtTile(unit, x, y, z);
                 if (st) badges.eye = st.seen ? 'seen' : 'hidden';
@@ -12957,7 +12958,7 @@
                 predictTerrainStatusesAt(unit, x, y, z).forEach(id => { if (!zs.includes(id)) zs.push(id); });
                 if (zs.length) badges.st = zs;
             } catch (e) {}
-            return (badges.eye || badges.dmg || badges.st) ? badges : null;
+            return (badges.eye || badges.dmg || badges.st || badges.tags) ? badges : null;
         }
 
         /* ── Stealth reveal sweep: when an enemy ends up adjacent to an Invisible
@@ -50527,6 +50528,60 @@
             return out;
         }
 
+        /* THE REAL ROUTE (2026-11-11, THE ONE MOVE PREVIEW): the waypoints of the move a move-then-act row will really
+           make to `approach` (its via step first) — the walk's own path (findMovePath, what doMove walks), each hop /
+           vault leg arched over what it clears (jumpArcApex, an `apex` waypoint: the hologram plays it as a jump), a
+           JUMP approach as one arc. The approach previews used to draw a straight line from the unit to the tile,
+           through walls the walk goes round. yAt(x, y, z) = the waypoint's height (the caller's flyer rule). */
+        function moveRouteWps(unit, approach, yAt) {
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            const air = canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
+            const Y = (wx, wy, wz) => yAt ? yAt(wx, wy, wz)
+                : (typeof ThreeRenderer.surfaceYAt === 'function' ? ThreeRenderer.surfaceYAt(wx, wy, wz) : ThreeRenderer.tileTopY(wx, wy));
+            const wps = [{ x: sx, y: sy, yOverride: ThreeRenderer.unitSurfaceY(unit) }];
+            const ts0 = CONFIG.tileSize || BASE_TILE;
+            const apexWp = (a, b, always) => {
+                if (air) return null;
+                const az0 = a.z ?? 0, bz0 = b.z ?? 0;
+                let vault = false;
+                if (typeof wallStepInfo === 'function') { try { vault = wallStepInfo(a.x, a.y, b.x, b.y, az0, bz0, 99).v === 1; } catch (e) {} }
+                if (!always && Math.abs(bz0 - az0) <= MAX_CLIMB_HEIGHT && !vault) return null;
+                let apexY = Math.max(Y(a.x, a.y, a.z), Y(b.x, b.y, b.z));
+                if (typeof window.jumpArcApex === 'function' && typeof ThreeRenderer.elevY === 'function') {
+                    const H = window.jumpArcApex(a.x, a.y, az0, b.x, b.y, bz0, 99);
+                    if (H !== null && H !== undefined) apexY = Math.max(apexY, ThreeRenderer.elevY(H));
+                }
+                return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, yOverride: apexY + ts0 * 0.4, apex: true };
+            };
+            let node = { x: sx, y: sy, z: sz ?? 0 };
+            try {
+                for (const t of (approach.via ? [approach.via, approach] : [approach])) {
+                    const tz = t.z ?? unit.z ?? 0;
+                    const dest = { x: t.x, y: t.y, z: tz };
+                    if (t === approach && (approach._jump || approach._jumpVerb)) {
+                        const ap = apexWp(node, dest, true);
+                        if (ap) wps.push(ap);
+                        wps.push({ x: t.x, y: t.y, yOverride: Y(t.x, t.y, tz) });
+                    } else {
+                        let path = [];
+                        if (!t._takeoff && !t._viaSpell) { try { path = findMovePath(unit, t.x, t.y, tz) || []; } catch (e) { path = []; } }
+                        if (!path.length || path[path.length - 1].x !== t.x || path[path.length - 1].y !== t.y) path = [dest];
+                        let prev = node;
+                        for (const p of path) {
+                            const ap = apexWp(prev, p, false);
+                            if (ap) wps.push(ap);
+                            wps.push({ x: p.x, y: p.y, yOverride: Y(p.x, p.y, p.z ?? tz) });
+                            prev = p;
+                        }
+                    }
+                    node = dest;
+                    unit.x = t.x; unit.y = t.y; unit.z = tz;
+                }
+            } finally { unit.x = sx; unit.y = sy; unit.z = sz; }
+            return wps;
+        }
+        window.moveRouteWps = moveRouteWps;
+
         function _drawSpellApproachPreview(unit, approach, tx, ty) {
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
@@ -50574,7 +50629,17 @@
 
                 // Arrow palette: blue = your own movement (walk AND jump legs).
                 const routeColor = 0x3399ff;
-                if (approach.via) {
+                /* THE REAL ROUTE: the arrow follows the path the walk takes (round walls, arched over a hop) */
+                let _rw = null;
+                try { _rw = moveRouteWps(unit, approach, _airApp ? (wx, wy) => _yAt(wx, wy) : null); } catch (e) { _rw = null; }
+                if (_rw && _rw.length >= 2) {
+                    ThreeRenderer.drawPathArrow3D(_rw, routeColor);
+                    ThreeRenderer.setOverlay('spellApproachMove', [
+                        ...(approach.via ? [{ x: approach.via.x, y: approach.via.y, color: routeColor, opacity: 0.3 }] : []),
+                        ..._iceSlideMarks(land),
+                        { x: castX, y: castY, color: routeColor, opacity: 0.45 },
+                    ], routeColor, 0.45);
+                } else if (approach.via) {
                     const viaY = ThreeRenderer.tileTopY(approach.via.x, approach.via.y);
                     ThreeRenderer.drawPathArrow3D([
                         { x: unit.x, y: unit.y, yOverride: actingY },
@@ -50596,9 +50661,11 @@
                 const _slideWps = land ? _drawIceSlideLeg(land, (wx, wy) => _yAt(wx, wy)) : [];
                 {
                     /* the hologram walks the route (and glides the ice) and casts on arrival, on a loop */
-                    const _mw = [{ x: unit.x, y: unit.y, yOverride: actingY }];
-                    if (approach.via) _mw.push({ x: approach.via.x, y: approach.via.y, yOverride: ThreeRenderer.tileTopY(approach.via.x, approach.via.y) });
-                    _mw.push({ x: approach.x, y: approach.y, yOverride: destY });
+                    const _mw = (_rw && _rw.length >= 2) ? _rw.slice() : [{ x: unit.x, y: unit.y, yOverride: actingY }];
+                    if (!(_rw && _rw.length >= 2)) {
+                        if (approach.via) _mw.push({ x: approach.via.x, y: approach.via.y, yOverride: ThreeRenderer.tileTopY(approach.via.x, approach.via.y) });
+                        _mw.push({ x: approach.x, y: approach.y, yOverride: destY });
+                    }
                     _mw.push(..._slideWps);
                     ThreeRenderer.showGhostUnit(unit, castX, castY, castYpx, { tag: 'caster', color: ghostTint, opacity: 0.85,
                         motion: { wps: _mw, kind: _airApp ? 'fly' : 'walk', castSpell: _spell || null, faceTo: { x: tx, y: ty } } });
@@ -50658,7 +50725,7 @@
 
         function _updateMoveHoverPreview(x, y) {
             const unit = getSelectedUnit();
-            if (!unit || (state.actionMode !== 'move' && state.actionMode !== 'jump')
+            if (!unit || (state.actionMode !== 'move' && state.actionMode !== 'jump' && state.actionMode !== 'climb')
                 || state._actionExecuting
                 || (typeof window._isWasdActive === 'function' && window._isWasdActive())) {
                 _clearMoveHoverPreview();
@@ -50676,6 +50743,18 @@
             state._moveHoverKey = k;
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+                const _m = state.actionMode;
+                /* the same order the click runs (clickTile): a walk, a jump, a climb, then the chase */
+                _drawMovePlan(unit, x, y, _hovZ, _m === 'move' ? { move: true, jump: true, climb: true, towards: true }
+                    : _m === 'jump' ? { jump: true } : { climb: true, climbAnyZ: true });
+            } catch (e) { /* preview is cosmetic — never let it break hover */ }
+        }
+
+        /* THE ONE MOVE PREVIEW (2026-11-11): the route arrow + the hologram performing it for a walk / a jump / a climb /
+           the chase to (x, y) on surface _hovZ. Drawn by the board hover above AND by the tile quick menu's Move here /
+           Jump here / Climb rows (window.previewMovePlan), so every way of asking shows the path the click will take. */
+        function _drawMovePlan(unit, x, y, _hovZ, want) {
+            {
                 if (!isInside(x, y)) return;
                 if (x === unit.x && y === unit.y) return;
                 const _occ = unitAt(x, y);
@@ -50783,7 +50862,7 @@
                 };
 
                 // 1) Reachable in one move → bending route arrow through the real path.
-                if (state.actionMode === 'move' && canUnitMove(unit)) {
+                if (want.move && canUnitMove(unit)) {
                     const matches = getMoveTiles(unit).filter(t => t.x === x && t.y === y);
                     const dest = matches.length ? _pickByZ(matches) : null;
                     if (dest) {
@@ -50842,7 +50921,7 @@
                 }
 
                 // 2) Standalone jump tile (shown in the move overlay too) → arcing leap arrow.
-                if (!_isAir && typeof getJumpTiles === 'function' && canUnitAct(unit)) {
+                if (want.jump && !_isAir && typeof getJumpTiles === 'function' && canUnitAct(unit)) {
                     const jm = getJumpTiles(unit).filter(t => t.x === x && t.y === y);
                     const jDest = jm.length ? _pickByZ(jm) : null;
                     if (jDest) {
@@ -50863,6 +50942,63 @@
                     }
                 }
 
+                /* 2b) 🧗 THE CLIMB PREVIEW (2026-11-11, mondo: "move/arrow previews need to show the climb animation too ...
+                   it wasnt showing the climb animation so I was confused when I clicked there and my unit walked there and
+                   started climbing and ended my turn"): a lit climb ledge (sandstone) used to fall through to the chase's
+                   plain walk arrow. Now the walk to the foot draws in blue, the face in sandstone, the hologram walks then
+                   CLIMBS (the board's own climb clip; 2 AP = up and over, 1 AP = it stops hanging on the wall), and the
+                   ghost wears "CLIMB / HANG" + "ENDS TURN". The pick is the click's own (_climbPick). */
+                if (want.climb && typeof getClimbTiles === 'function') {
+                    const _czK = (_hovZ !== undefined && _hovZ !== null) && !want.climbAnyZ;
+                    const c = getClimbTiles(unit).some(t => t.x === x && t.y === y && (!_czK || t.z === _hovZ))
+                        ? _climbPick(unit, x, y, _hovZ) : null;
+                    if (c) {
+                        const routeColor = 0x3399ff, climbColor = 0xd9a066;
+                        const wps = [{ x: unit.x, y: unit.y, yOverride: actingY }];
+                        let walk = null;
+                        if (c.viaMove) {
+                            const v = c.viaMove;
+                            const path = findMovePath(unit, v.x, v.y, v.z);
+                            const land = predictWalkLanding(unit, v.x, v.y, v.z, { path: path });
+                            _pushPathWps(wps, { x: unit.x, y: unit.y, z: unit.z ?? 0 }, walkRouteOf(path, land));
+                            if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, routeColor);
+                            walk = { path, land };
+                            if (land) {
+                                /* the walk to the foot slides off on ice (or a storm takes it): the climb never starts
+                                   (doClimb re-checks the foot) — show the walk it really is */
+                                wps.push(..._drawIceSlideLeg(land, _wpY));
+                                _moveHoverWalk = walk;
+                                try { _showDest(routeColor, null, v.z, { wps: wps, kind: 'walk' }, land); }
+                                finally { _moveHoverWalk = null; }
+                                return;
+                            }
+                        }
+                        const leg = climbPreviewLeg(c, _wpY);
+                        ThreeRenderer.drawPathArrow3D([wps[wps.length - 1]].concat(leg.wps), climbColor, { radius: (CONFIG.tileSize || BASE_TILE) * 0.04 });
+                        wps.push(...leg.wps);
+                        const marks = [];
+                        if (c.viaMove) marks.push({ x: c.viaMove.x, y: c.viaMove.y, z: c.viaMove.z, color: routeColor, opacity: 0.45 });
+                        marks.push({ x: c.x, y: c.y, z: c.z, color: climbColor, opacity: 0.6 });
+                        ThreeRenderer.setOverlay('moveHoverDest', marks, climbColor, 0.5);
+                        const tags = climbPreviewTags(c);
+                        const g = leg.ghost;
+                        /* the hazards of where the body ends up — read from that level, so a climb DOWN shows no fall */
+                        let badges = null;
+                        const _bz = unit.z;
+                        try { unit.z = g.z; badges = _moveGhostBadges(unit, g.x, g.y, g.z, walk, tags); }
+                        finally { unit.z = _bz; }
+                        if (c.viaMove && typeof predictFallDamage === 'function') {   // the walk to the foot still pays its own drop
+                            const _wf = predictFallDamage(unit, unit.z ?? 0, c.viaMove.z ?? 0, c.viaMove.x, c.viaMove.y) || 0;
+                            if (_wf > 0 && badges) badges.dmg = (badges.dmg || 0) + _wf;
+                        }
+                        ThreeRenderer.showGhostUnit(unit, g.x, g.y, _wpY(g.x, g.y, g.z), { tag: 'caster', color: ghostTint, opacity: 0.85,
+                            badges: badges, motion: { wps: wps, kind: 'walk', hang: leg.hang } });
+                        state._moveHoverActive = true;
+                        scheduleBoardRender();
+                        return;
+                    }
+                }
+
                 // (Two-action walk+walk previews were removed with the 2-AP
                 // double-move executor: Move shows the 1-AP ring only, and a
                 // second move is its own deliberate action.)
@@ -50871,7 +51007,7 @@
                 //    tile the unit WOULD stop at (closest reachable step toward the
                 //    hovered tile), with a dim marker on the unreachable goal so the
                 //    player sees where the click will actually take them.
-                if (state.actionMode === 'move' && canUnitMove(unit)
+                if (want.towards && canUnitMove(unit)
                     && typeof findMoveTowardsTile === 'function') {
                     const approach = findMoveTowardsTile(unit, x, y, _hovZ);
                     if (approach) {
@@ -50920,8 +51056,23 @@
                         return;
                     }
                 }
-            } catch (e) { /* preview is cosmetic — never let it break hover */ }
+            }
         }
+        /* The tile quick menu's rows ask for the same preview (hud.js): kind 'move' | 'jump' | 'climb' | 'takeoff'.
+           Cleared by hud.js _clearMoveArrowPreview (arrows, ghost, 'moveHoverDest'). */
+        window.previewMovePlan = function (unit, x, y, z, kind) {
+            try {
+                if (!unit || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return false;
+                _clearMoveHoverPreview();
+                ThreeRenderer.clearArrows3D();
+                ThreeRenderer.clearGhostUnit('caster');
+                ThreeRenderer.clearOverlay('moveHoverDest');
+                _drawMovePlan(unit, x, y, z, kind === 'jump' ? { jump: true } : kind === 'climb' ? { climb: true, climbAnyZ: true } : { move: true });
+                const drew = !!state._moveHoverActive;
+                state._moveHoverActive = false; state._moveHoverKey = null;   // the menu row owns it, not the board hover
+                return drew;
+            } catch (e) { return false; }
+        };
 
         // ── Hover attack-range preview (2026-07-19, user request) ──────────
         // Hovering any unit paints the tiles it can basic-attack from where it
@@ -68318,7 +68469,7 @@
 
             // Move/Jump mode: hovering a reachable tile previews the route
             // (path arrow + destination hologram) instead of a confirm target.
-            if (state.actionMode === 'move' || state.actionMode === 'jump') {
+            if (state.actionMode === 'move' || state.actionMode === 'jump' || state.actionMode === 'climb') {   // CLIMB: THE CLIMB PREVIEW
                 _updateMoveHoverPreview(x, y);
                 return false;
             }
@@ -71962,6 +72113,47 @@
             if (z !== undefined && z !== null) { const e = all.find(c => c.z === z); if (e) return e; }
             return all.slice().sort((a, b) => (a.viaMove ? 1 : 0) - (b.viaMove ? 1 : 0)
                 || Math.abs(a.z - (z ?? unit.z ?? 0)) - Math.abs(b.z - (z ?? unit.z ?? 0)))[0];
+        }
+
+        /* 🧗 THE CLIMB PREVIEW (2026-11-11): the waypoints of a climb pick `c`, from its foot (up) / its top (down), for the
+           route arrow and the hologram (three-renderer THE ACTION PREVIEW MOTION reads the `climb` / `face` flags).
+           The numbers are the board's own (three-renderer CLIMB_VIS: 0.30 tile against the face, the hang 42% up a
+           stretch). c.instant (2 AP, one stretch) goes all the way; else it stops where the body will hang.
+           Returns { wps, hang, ghost: { x, y, z } } — ghost = the column the unit is in when the climb is over. */
+        function climbPreviewLeg(c, wpY) {
+            const IN = 0.30, HF = 0.42;
+            const up = c.dir !== 'down';
+            const topX = up ? c.x : c.fromX, topY_ = up ? c.y : c.fromY, topZ = up ? c.z : c.fromZ;
+            const footX = up ? c.fromX : c.x, footY_ = up ? c.fromY : c.y, footZ = up ? c.fromZ : c.z;
+            const dx = Math.sign(topX - footX), dy = Math.sign(topY_ - footY_);
+            const ex = footX + dx * IN, ey = footY_ + dy * IN;                 // on the face, in the foot column
+            const yTop = wpY(topX, topY_, topZ), yFoot = wpY(footX, footY_, footZ);
+            const grip = _climbHangH(c), stretch = Math.min(grip, c.cap || c.rise);
+            const yHang = yFoot + (yTop - yFoot) * Math.max(0, grip - stretch * (1 - HF)) / Math.max(1, c.rise);
+            const face = { x: topX, y: topY_ };
+            const wps = [];
+            if (up) {
+                wps.push({ x: ex, y: ey, yOverride: yFoot });
+                if (c.instant) {
+                    wps.push({ x: ex, y: ey, yOverride: yTop, climb: 'up', face: face });
+                    wps.push({ x: topX, y: topY_, yOverride: yTop, climb: 'mantle' });
+                } else wps.push({ x: ex, y: ey, yOverride: yHang, climb: 'up', face: face });
+            } else {
+                wps.push({ x: ex, y: ey, yOverride: yTop });
+                if (c.instant) {
+                    wps.push({ x: ex, y: ey, yOverride: yFoot, climb: 'down', face: face });
+                    wps.push({ x: footX, y: footY_, yOverride: yFoot });
+                } else wps.push({ x: ex, y: ey, yOverride: yHang, climb: 'down', face: face });
+            }
+            const onTop = up && c.instant;
+            return { wps, hang: !c.instant, ghost: onTop ? { x: topX, y: topY_, z: topZ } : { x: footX, y: footY_, z: footZ } };
+        }
+        /* the words on a climb's preview ghost: what it is, and that it ends the turn (spendAllAP in _startClimb) */
+        function climbPreviewTags(c) {
+            const tags = [{ t: c.instant ? (c.dir === 'down' ? 'CLIMB DOWN' : 'CLIMB') : 'HANG', c: '#d9a066' }];
+            if ((c.turns || 1) > 1) tags.push({ t: c.turns + ' TURNS', c: '#d9a066' });
+            tags.push({ t: 'ENDS TURN', c: '#ff8a5c' });
+            return tags;
         }
 
         function _endClimb(unit) {

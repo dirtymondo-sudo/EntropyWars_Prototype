@@ -1979,6 +1979,31 @@ battle.js (after doJump) `getClimbTilesFrom` / `getClimbTiles` / `doClimb` / `_s
   one-shot under the jump arc; not moved = a 220 ms drop to the foot (+ the fall clip on a knock-off).
 - Not built: AI climbing / AI pathing over climbable faces; Nexus ignoring climbers.
 
+## THE CLIMB PREVIEW + THE ONE MOVE PREVIEW (2026-11-11, mondo: "move/arrow previews need to show the climb animation too ... my unit walked there and started climbing and ended my turn")
+- The bug: in MOVE a lit climb ledge (sandstone `move-climb`) was no walk tile and no jump tile, so the hover fell through to
+  the chase ("Move towards") and drew a plain walk arrow; the click (clickTile order: walk, jump, CLIMB, chase) climbed and
+  ended the turn. The CLIMB verb's own mode drew no hover at all.
+- battle.js `_drawMovePlan(unit, x, y, z, want)` = the old `_updateMoveHoverPreview` body, same order as the click, with a
+  climb branch (2b): the walk to the foot in blue (findMovePath), the face as its own sandstone arrow (0xd9a066),
+  `climbPreviewLeg(c, wpY)` = the waypoints (flags `climb: 'up' | 'down' | 'mantle'`, `face`), `climbPreviewTags(c)` = the
+  ghost's word chips: CLIMB / CLIMB DOWN (2 AP, `c.instant`) or HANG (1 AP left), "N TURNS" on a tall face, and ENDS TURN.
+  The pick is the click's own `_climbPick`. A walk to the foot that slides off on ice previews as the walk it is (doClimb
+  re-checks the foot and does not climb). The hang ghost stands in the FOOT column (where the unit really is) with the
+  body on the wall; the 2 AP ghost stands on the ledge. Modes: move (walk, jump, climb, chase), jump, climb.
+- three-renderer.js THE ACTION PREVIEW MOTION: leg types `climb` (the board's `climbWall` clip, down = backwards) and
+  `mantle` (`climbMantle`); `motion.hang` freezes the clip on the wall like the board's hang. `_makeGhostBadgeSprite`
+  takes `badges.tags: [{ t, c }]` (plain word chips beside the eye / −N / status chips).
+- `window.previewMovePlan(unit, x, y, z, 'move' | 'jump' | 'climb')`: the tile quick menu's Move here / Take Off + Move /
+  Jump here / Climb rows (hud.js `_pvKind`) now show the same route + hologram on hover (they showed nothing unless the
+  walk slid on ice). hud.js `_clearMoveArrowPreview` also clears `moveHoverDest`.
+- `moveRouteWps(unit, approach, yAt)` (THE REAL ROUTE): the move-then-act previews (battle.js `_drawSpellApproachPreview`,
+  hud.js `_showMoveArrowPreview`, `_showTileMoveTowardsPreview`) drew a straight line from the unit to the step tile;
+  they now follow findMovePath (the via step first, hop legs arched, a JUMP approach as one arc).
+- Not touched: dash / leap / blink spell landings (ui.js THE ACTION PREVIEW MOTION: straight by rule), exploration (no
+  tile route there). In MOVE a ledge with a plain move square behind it on the same ray still hands the hover AND the
+  click to that square (THE SEE-THROUGH CLIMB, three-renderer `_boardFloorPick`): use the CLIMB verb or the tile menu.
+- Viewer-local, nothing relayed (the guest computes its own preview; doClimb is emitted as before).
+
 ## THE REAL-LOOKING COPY (2026-10-20) — battle.js, three-renderer.js
 mondo: "scarecrow's stuffed double needs to be its actual 3d model, not its pixel sprite. this goes for all copy/clone
 moves. From the enemy perspective they need to look indistinguishable from the actual unit."
