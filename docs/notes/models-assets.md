@@ -1753,6 +1753,16 @@ animations that would be useful and give different units more personality with t
 - THE STRIDE: build-mal.py measures one stride cycle by forward kinematics (left foot minus right foot along +Z from the hips, upward
   zero crossings); a walk's board `ts` = cycle / 0.52, capped at 3.6 (Sneaky, Slow orc, Elderly are slow walks). Limping_Walk's leg
   tracks are too flat for the measure: 1.75 s read off the frame sheet.
+- THE REST POSE (same day, mondo: "Their knees look bent backwards in a lot of these"): MEASURED in the creator (hip-knee-ankle on the
+  MPFB body, signed): the old picks never pass straight, the new ones bent up to 38 deg the wrong way. CAUSE: the retarget plays a clip as
+  each bone's turn away from the LIBRARY FILE'S REST POSE (_libEnsureSrc reads the file's nodes), and the API rigged the new skeleton on the
+  sniper as he stands in his Idle_5 export (knees 51 deg, hips 8 cm low, its own bone axes), so every clip lost that much knee bend.
+  FIX in build-mal.py `--rest <calib batch.glb> <MAL1_Sniper.glb> Idle_5,Regular_Jump` (ALWAYS pass it): the same Meshy actions exist in
+  MAL1 and were pulled once on the new rig (spec set `calib` = 245 Idle_5, 1 Walking_Woman, 466 Regular_Jump, 9 credits); per bone
+  rest_new = rest_old x inverse(world_old(t)) x world_new(t), constant under 1 deg over Idle_5, averaged with Regular_Jump, written into
+  the nodes (the clips' tracks untouched). A first try (turn each bone to MAL1's rest DIRECTIONS) left 9 deg: the two rigs put the knee
+  joint in different places, so directions are not comparable. After: all 16 idles + 19 walks measured, none passes straight
+  (/mnt/project-files/meshy-anim-pull-20261111/proof/knees_before_after.jpg). ANY new rigging task needs its own calib pull.
 - MAL4 (lib 7, 53): Idle, Idle_02, Idle_03, Idle_3, Idle_4, Idle_6, Idle_7, Idle_8, Idle_9, Idle_12, Idle_14, Idle_15, Alert, Combat_Stance,
   Axe_Stance, Long_/Short_/Axe_Breathe_and_Look_Around, Confused_Scratch, Scheming_Hand_Rub, Hand_on_Hip_Gesture, Boxing_Warmup;
   Casual_Walk, Confident_Walk, Confident_Strut, Flirty_Strut, Injured_Walk, Monster_Walk, Mummy_Stagger, Proud_Strut, Quick_Walk,

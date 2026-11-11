@@ -4,6 +4,7 @@
 
   python3 -I build-mal.py <out.glb> <in1.glb> [in2.glb ...] [--report out.json] [--keep name1,name2]
                           [--inplace clip1,clip2] [--inplace-over <cm>] [--drop clip1,clip2]
+                          --rest <calib batch.glb> <MAL1_Sniper.glb> Idle_5,Regular_Jump      (ALWAYS: see match_rest)
 
 Inputs are the GLBs Meshy's animation API returns (POST /openapi/v1/animations with rig_task_id + action_ids: one file, one
 clip per action, already named by the library key). Every input must carry the same skeleton (node names are checked).
@@ -47,6 +48,96 @@ def qrot(q, v):
     tx, ty, tz = 2 * (y * vz - z * vy), 2 * (z * vx - x * vz), 2 * (x * vy - y * vx)
     return (vx + w * tx + (y * tz - z * ty), vy + w * ty + (z * tx - x * tz), vz + w * tz + (x * ty - y * tx))
 
+def qinv(q): return (-q[0], -q[1], -q[2], q[3])
+def qnorm(q):
+    l = math.sqrt(sum(x * x for x in q)) or 1.0
+    return tuple(x / l for x in q)
+def q_from_to(a, b):
+    """shortest-arc quaternion turning unit vector a onto unit vector b"""
+    d = sum(x * y for x, y in zip(a, b))
+    if d < -0.999999:
+        ax = (1, 0, 0) if abs(a[0]) < 0.9 else (0, 1, 0)
+        c = (a[1] * ax[2] - a[2] * ax[1], a[2] * ax[0] - a[0] * ax[2], a[0] * ax[1] - a[1] * ax[0])
+        return qnorm((c[0], c[1], c[2], 0.0))
+    c = (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+    return qnorm((c[0], c[1], c[2], 1.0 + d))
+def vnorm(v):
+    l = math.sqrt(sum(x * x for x in v)) or 1.0
+    return tuple(x / l for x in v)
+
+def node_world(nodes):
+    parent = {}
+    for i, n in enumerate(nodes):
+        for c in n.get('children', []): parent[c] = i
+    W = {}
+    def w(i):
+        if i in W: return W[i]
+        n = nodes[i]; t = n.get('translation', [0, 0, 0]); r = tuple(n.get('rotation', [0, 0, 0, 1])); s = n.get('scale', [1, 1, 1])
+        if i in parent:
+            pp, pq, ps = w(parent[i])
+            W[i] = (tuple(a + b for a, b in zip(pp, qrot(pq, [t[k] * ps[k] for k in range(3)]))), qmul(pq, r), [ps[k] * s[k] for k in range(3)])
+        else: W[i] = (tuple(t), r, list(s))
+        return W[i]
+    for i in range(len(nodes)): w(i)
+    return W, parent
+
+def clip_tracks(j, bin_, name):
+    an = [a for a in j['animations'] if (a.get('name') or '').split('|')[-2 if '|' in (a.get('name') or '') else -1] == name or a.get('name') == name][0]
+    R = {}; T = {}
+    for ch in an['channels']:
+        s = an['samplers'][ch['sampler']]; v, _ = acc_floats(j, bin_, s['output'])
+        if ch['target']['path'] == 'rotation': R[ch['target']['node']] = v
+        elif ch['target']['path'] == 'translation': T[ch['target']['node']] = v
+    return R, T
+
+def posed_world(nodes, R, T, k):
+    ns = [dict(n) for n in nodes]
+    for i, v in R.items(): ns[i]['rotation'] = list(v[min(k, len(v) - 1)])
+    for i, v in T.items(): ns[i]['translation'] = list(v[min(k, len(v) - 1)])
+    return node_world(ns)[0]
+
+def match_rest(nodes, new_glb, ref_glb, clips):
+    """THE REST POSE (2026-11-11, mondo: "Their knees look bent backwards in a lot of these"): the game's retarget plays a
+    library clip as each bone's turn AWAY FROM THE LIBRARY FILE'S REST POSE (three-renderer.js _libEnsureSrc reads the rest
+    off the file's nodes: target world = clip world x inverse(rest world) x target rest). Meshy's API rigged this pull's
+    skeleton on the sniper as he stood in his Idle_5 export (knees bent 51 deg, hips 8 cm low; MAL1: 22 deg) and with its
+    own bone axes, so every clip lost that much knee bend on every body and the knees went past straight.
+    The fix is exact, not a guess: the SAME Meshy actions exist in MAL1 (the old rig) and were pulled once on the new rig
+    (the spec's `calib` set). For the two files to play a shared clip the same, each bone's rest must be
+        rest_new = rest_old x inverse(world_old(t)) x world_new(t)
+    at every frame t. That is constant to under 1 deg over Idle_5 and within about 2 deg on Regular_Jump, so it is averaged
+    over both and written into the nodes, parents first; the hips rest position moves by the mean hips offset between
+    the two files. Only the nodes' rest changes: the clips' tracks are absolute and stay as Meshy made them."""
+    jn, bn = read_glb(new_glb); jo, bo = read_glb(ref_glb)
+    names = [n.get('name') for n in nodes]; nn = [n.get('name') for n in jn['nodes']]; no = [n.get('name') for n in jo['nodes']]
+    assert nn == names, 'the calibration file is not on this skeleton'
+    RO, _ = node_world(jo['nodes'])
+    acc = {}; hip = [0.0, 0.0, 0.0]; hipn = 0; worst = 0.0
+    for clip in clips:
+        Ro_, To_ = clip_tracks(jo, bo, clip); Rn_, Tn_ = clip_tracks(jn, bn, clip)
+        n = min(len(next(iter(Ro_.values()))), len(next(iter(Rn_.values()))))
+        for k in range(n):
+            Wo = posed_world(jo['nodes'], Ro_, To_, k); Wn = posed_world(jn['nodes'], Rn_, Tn_, k)
+            for i, b in enumerate(names):
+                if b not in no or i not in Rn_: continue
+                q = qnorm(qmul(qmul(RO[no.index(b)][1], qinv(Wo[no.index(b)][1])), Wn[i][1]))
+                a = acc.setdefault(i, {'ref': q, 'sum': [0.0, 0.0, 0.0, 0.0]})
+                d = sum(x * y for x, y in zip(a['ref'], q))
+                worst = max(worst, math.degrees(2 * math.acos(min(1.0, abs(d)))))
+                sg = -1.0 if d < 0 else 1.0
+                a['sum'] = [a['sum'][c] + sg * q[c] for c in range(4)]
+            ho = To_[no.index('Hips')][min(k, len(To_[no.index('Hips')]) - 1)]; hn = Tn_[names.index('Hips')][min(k, len(Tn_[names.index('Hips')]) - 1)]
+            hip = [hip[c] + hn[c] - ho[c] for c in range(3)]; hipn += 1
+    hi = names.index('Hips')
+    nodes[hi]['translation'] = [jo['nodes'][no.index('Hips')]['translation'][c] + hip[c] / hipn for c in range(3)]
+    _, parent = node_world(nodes)
+    order = sorted(acc, key=lambda i: len([1 for _ in iter(lambda p=[i]: p.__setitem__(0, parent.get(p[0])) or p[0], None)]))
+    for i in order:   # parents first: a bone's local = inverse(parent's new world) x its calibrated world
+        W, _ = node_world(nodes)
+        pq = W[parent[i]][1] if i in parent else (0, 0, 0, 1)
+        nodes[i]['rotation'] = list(qnorm(qmul(qinv(pq), qnorm(acc[i]['sum']))))
+    return worst
+
 def stride_cycle(nodes, names, tracks, times):
     """one stride cycle (s): forward kinematics of both feet from the hips, the left-minus-right foot lead along the facing
     (+Z), its upward zero crossings (with hysteresis) counted. None when the legs never trade the lead twice."""
@@ -81,7 +172,8 @@ def stride_cycle(nodes, names, tracks, times):
 def main():
     args = sys.argv[1:]
     rep_p = None; keep = None; inplace = set(); inplace_min = 0.0
-    drop = set()
+    drop = set(); rest = None
+    if '--rest' in args: i = args.index('--rest'); rest = args[i + 1:i + 4]; del args[i:i + 4]
     if '--drop' in args: i = args.index('--drop'); drop = set(args[i + 1].split(',')); del args[i:i + 2]
     if '--inplace' in args: i = args.index('--inplace'); inplace = set(args[i + 1].split(',')); del args[i:i + 2]
     if '--inplace-over' in args: i = args.index('--inplace-over'); inplace_min = float(args[i + 1]); del args[i:i + 2]
@@ -145,6 +237,9 @@ def main():
             cycle = stride_cycle(j['nodes'], nn, rot_tracks, rot_times)
             anims.append({'name': name, 'samplers': samplers, 'channels': chans})
             report.append({'clip': name, 'dur': round(dur, 3), 'drift': round(drift, 2), 'driftRemoved': round(removed, 2), 'cycle': round(cycle, 3) if cycle else None, 'src': p.split('/')[-1]})
+    if rest:
+        worst = match_rest(base_nodes, rest[0], rest[1], rest[2].split(','))
+        print('rest pose calibrated on %s against %s (%s): widest disagreement between frames %.1f deg' % (rest[0], rest[1], rest[2], worst))
     while len(out_bin) % 4: out_bin.append(0)
     g = {'asset': {'version': '2.0', 'generator': 'build-mal.py (Entropy Wars)'}, 'scene': 0, 'scenes': [base_scene], 'nodes': base_nodes,
          'animations': anims, 'accessors': accs, 'bufferViews': views, 'buffers': [{'byteLength': len(out_bin)}]}
