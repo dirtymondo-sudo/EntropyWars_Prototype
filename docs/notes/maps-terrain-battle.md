@@ -481,6 +481,18 @@ half turn so the wrap lands on a cell edge. The rest of the sky is unchanged. Ch
 shader (before/after) on WebGL and a WebGPU battle shot at the zodiac view. The zenith pinch (all azimuths meet at
 straight up) is untouched.
 
+## THE LIQUID STAYS ON ITS SQUARES (2026-11-11, mondo: "a regular line spell on flat terrain shouldnt make a whole 3x3 of
+liquid, just a 1x3 ... whatever the aoe of the spell is is what tiles the liquid should be")
+Replaces the spring halo of THE LIQUIDS LIKE MINECRAFT below. map.js `_recomputeLiquidFlow`: liquid lies on the squares a
+spell (or weather, a melt) put it on and never creeps over level ground. Kept: it runs down onto any strictly lower
+neighbour and on down every further drop; and it fills a HOLE (`_liquidInHole`: the level floor it lies on has higher
+ground or the board edge on every side, no lower square, at most LIQUID_HOLE_CAP 16 squares; walls and props are not a
+hole's side; a map's own settled pool never grows over its own floor). `liquidRunsOnto(sx,sy,nx,ny)` is the one rule the
+flow map and battle.js forecastSpellPlan share; doSpell's hit pass still pulls the first ring of runoff (now only a drop
+or a hole floor) into the hit. The flow record's `d` is always 1 (no thinning fan); `_LIQUID_SPREADS` only names the
+families that run. Ground fire has its own spread (flammable squares) and was not touched. Spell text fixed: Poison Swamp,
+Call of the Deep. Browser proof: /mnt/project-files/liquid-spread-20261111/.
+
 ## THE LIQUIDS LIKE MINECRAFT (2026-10-15, mondo: "How is there a cube of poison and its not spreading ... make sure spells
 are changing the terrain of the block on the ground, not placing a liquid block on top")
 Causes: (1) a liquid repainted the TOP VOXEL of a raised column (a crate, a cliff top) and the column renderer drew that voxel
@@ -1789,3 +1801,29 @@ The three maps of the last third that already had a laid board got cover only (s
   four `angel_statue` outside them at (0,3) (0,8) (11,3) (11,8) (ghost 2.8).
 - **Flying Dutchman** — THE CARGO: four crate stacks (`psx_wooden_crate_1..4` h 1.7, ghost 1.7) at (2,4) (2,7) (9,4) (9,7); a chest
   or a skull pile on each of the four hatch covers (decor, y 1.25).
+
+## THE CALM GROUND — a realistic, quieter Fairy Forest test arena (2026-11-11, data.js + three-renderer.js + bake-calm-terrain.py)
+mondo: "the terrain pixel sprites are a little busy and distract from the 3d models ... make an alternative Fairy Forest map to test
+it out ... grass like actual grass from a AAA RPG game and water and lava like actual water and lava ... more realistic, but also less
+busy". An ADDITIONAL map; his Fairy Forest board and his sheets are untouched. Plan + proof page: https://claude.ai/artifact/Ag2YjY586HDu2dZ4qzchtV
+- The Riot VFX style guide p.13-14 (value range by discipline: environment lowest, characters above, VFX across both, UI top), p.17
+  ("A visual focal point is created by contrast"), p.19 (the same stack for saturation), p.20 (VFX wider than the model).
+- MEASURED (WebGL2 shots, on-screen sRGB luma): his board is ALREADY under the units in value (grass 0.136, path 0.106, units ~0.41);
+  the busy part is saturation (grass 0.86) and pixel speckle. Calm: grass 0.162 / sat 0.46, path 0.117 / sat 0.42, fine detail
+  (luma spread after a 4 px blur) grass 0.035 -> 0.026, path 0.041 -> 0.019.
+- THE MAP: data.js HQ_LOOK_MAPS (`var`, read by hqSiteId before its line runs) = { prebuilt_fairy_forest_calm_delta: { of, look:
+  'calm', label } }; hqLookMapsRegister copies the source arena entry (PREBUILT_MAPS + MAP_LAYOUT_PRESETS + an EW_MAP_META row with
+  `look`) at load. hqSiteId maps it to its source site (same room, same survey, same arena pick); hqArenaPvpPool skips `m.look`
+  (VS CPU only, never Quick Play / online); hqArenaSizesOf returns [] for it. hqMapLook(id) -> 'calm'.
+- THE LOOK (three-renderer.js, by _hzTex): _calmOn() = hqMapLook(_arenaLatchId || EW_CALM_FORCE) === 'calm' (off:
+  window.EW_NO_CALM_LOOK). _CALM_SHEETS swaps grass_2 / dirt / dirt_2 / dirt_3 / rocks_5 / rock_wall_1 / lava for
+  Assets/world/terrain/calm/calm_*_1.png (1024 px, ONE SHEET PER SQUARE like his; the _1 is a version, a new bake = a new name).
+  _hqTerrainMat on a calm floor: white colour, near-zero specular, no emissive, its own three tints (_CALM.floorT / pathT / cliffT:
+  path a step under the grass and warm). _hqBuildTerrain: ragged path edge (_calmEdge) + a slow value drift in the AO channel
+  (_calmDrift, also on the outer ground). _calmFluidMat replaces _buildFluidTopMat for water / deep_water / lava on a calm board
+  (water: dark see-through Phong, 3-octave ripple normal, sky fresnel + faint sky noise; lava: calm_lava crust warped slowly, seams
+  glow with a pulse). The liquid caches key on '|calm'. Tunables live as window.EW_CALM.
+- THE SHEETS: `python3 -I bake-calm-terrain.py <out> [calm_grass,calm_dirt,...]` (numpy + PIL; periodic FFT noise + periodic Worley
+  so each tiles by construction; drawn blades / polygon stones; narrow value band). Upload with `node sync-zip.js --put`.
+- NOT CHECKED ON WEBGPU (the node look gets the same sheets + tints; the water there is its flat colour, the lava its sheet). The
+  Woods map look (dither 0.42, grain, green tint) still sits over the ground: the next lever if he wants more pop, untouched here.
