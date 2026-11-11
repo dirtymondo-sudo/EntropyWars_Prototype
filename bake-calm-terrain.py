@@ -655,13 +655,13 @@ def bake_obsidian_veins(seed=161):
     wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 50; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 50
     F1, F2, ID = worley(N, 7, seed + 3, (wx, wy))                              # the same stones as calm_obsidian_1
     gap = F2 - F1
-    live = np.clip(fft_noise(N, 1, 3, seed + 25, 0.6) * 2.4 + 0.15, 0, 1)       # the lava runs in some joints, a band across the sheet
+    live = np.clip(fft_noise(N, 1, 3, seed + 25, 0.6) * 2.0 + 0.6, 0, 1)        # the lava runs in most joints, fading out in a few places
     live *= np.clip(fft_noise(N, 6, 16, seed + 26, 0.5) * 2.0 + 0.7, 0, 1)    # and fades in and out along each joint
-    core = np.exp(-(gap / 0.013) ** 2) * live
-    halo = np.exp(-(gap / 0.05) ** 2) * live
-    rgb = lerp(rgb, hexc(0x4a1a10), halo * 0.7)
-    rgb = lerp(rgb, hexc(0xa8461a), core * 0.9)
-    rgb = lerp(rgb, hexc(0xd8803a), core ** 3 * 0.6)
+    core = np.exp(-(gap / 0.03) ** 2) * live
+    halo = np.exp(-(gap / 0.11) ** 2) * live
+    rgb = lerp(rgb, hexc(0x5a1e10), halo * 0.75)
+    rgb = lerp(rgb, hexc(0xb44c1c), core * 0.9)
+    rgb = lerp(rgb, hexc(0xe08a3c), core ** 3 * 0.7)
     return np.clip(rgb, 0, 1)
 
 # ── THE DARK STONE (bricks_3): a temple's dark dressed stone in courses, no moss ─────────────────────────────────────────────────
@@ -1204,7 +1204,7 @@ def bake_patchwork_bright(seed=501):
 #    five to a square, the symbols left out (they are the busy part) ─────────────────────────────────────────────────────────────
 def bake_patchwork_retro(seed=591):
     rgb = bake_patchwork(seed, cols=(0x2e4646, 0x4a4a2c, 0x8a6a2c, 0x7a3420, 0x4e3650, 0x2c3040, 0x5a4026, 0x4a5a3a), sat=0.85, n=5)
-    return settle(rgb, 1.0, 0.8)
+    return settle(rgb * 0.78, 0.9, 0.6)   # (11-11: his sheet sits under the H-Wing's yellow floor tint; patches kept close in value)
 
 # ── THE GOLD DAMASK (damask_2): the damask's flower in old gold on a brown ground ───────────────────────────────────────────────
 def bake_damask_gold(seed=511):
@@ -1264,13 +1264,13 @@ def hue_turn(rgb, deg):
 
 def bake_purplegrass(seed=551):
     base = bake_grass(seed)
-    rgb = hue_turn(base, 165) * 1.2
+    rgb = hue_turn(base, 165) * 1.2 * np.array([0.82, 0.68, 1.08])   # his sheet under the Looking Glass sea's violet tint (the only room it is worn in)
     tn = fft_noise(N, 7, 16, seed + 1, 0.4)
     q0, q1 = np.quantile(tn, [0.86, 0.96]); tuft = np.clip((tn - q0) / (q1 - q0), 0, 1)   # his green tufts: ~1 in 8, soft
     tuft *= np.clip(fft_noise(N, 1, 4, seed + 2, 0.6) * 1.5 + 0.7, 0, 1)
     blades = lum(base); blades = blades / (blades.mean() + 1e-9)
-    rgb = lerp(rgb, hexc(0x5e7a36) * blades[..., None], tuft * 0.75)
-    return settle(rgb, 1.05, 1.0)
+    rgb = lerp(rgb, hexc(0x4e6a30) * blades[..., None], tuft * 0.7)
+    return settle(rgb, 1.15, 1.0)
 
 
 # ── THE PAVING (road): an old road of big irregular flags — grey-beige stones, each its own tone, earth and a little grass in the
