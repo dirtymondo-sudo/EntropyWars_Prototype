@@ -7514,7 +7514,20 @@
 
                     var prevPhase = st.phase;
 
+                    /* THE GUEST'S OWN REFUSAL LINES (11-11, battle.js addLog o.mine): lines this guest wrote for its own
+                       refused click live only here; the snapshot below replaces the whole log. Keep them and put each
+                       back under the host lines it stood under (lgN). A shorter host log = a new match: they go. */
+                    var _lgKeep = Array.isArray(st.logEntries) ? st.logEntries.filter(function(e) { return e && typeof e === 'object' && e.lg; }).slice(-30) : [];
+
                     _deserializeInto(st, data);
+                    if (_lgKeep.length && Array.isArray(st.logEntries)) {
+                        st.logEntries = st.logEntries.filter(function(e) { return !(e && typeof e === 'object' && e.lg); });   // a snapshot that left the log alone
+                        var _lgHostN = st.logEntries.length;
+                        _lgKeep = _lgKeep.filter(function(e) { return (e.lgN | 0) <= _lgHostN; });
+                        for (var _lgI = 0; _lgI < _lgKeep.length; _lgI++) {
+                            st.logEntries.splice(Math.min((_lgKeep[_lgI].lgN | 0) + _lgI, st.logEntries.length), 0, _lgKeep[_lgI]);
+                        }
+                    }
                     // A host snapshot may replace the entire shotClock object.
                     // Reapply viewer-local suspension before UI/clock consumers.
                     if (typeof window._applyShotClockPause === 'function') window._applyShotClockPause();

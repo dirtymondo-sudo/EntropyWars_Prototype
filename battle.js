@@ -45456,7 +45456,13 @@
                seat always gets it, whatever its fog: a player's own throw / push / pull / teleport is never hidden from
                them. Every other seat judges it as before (_logVisible here, online.js _gvLogShows for the guest). */
             const ac = (o && o.actor) ? ((typeof o.actor === 'object') ? (o.actor.player | 0) : (o.actor | 0)) : 0;
-            const entry = (vis === 1 || vis === 2 || hp || zn || sn || ac > 0) ? { m: msg } : msg;
+            /* o.mine (11-11): a line an online GUEST writes on its own screen for its own refused click (the pick was
+               never sent, so the host never logs it). The host's next snapshot replaces the guest's whole log, which
+               wiped these lines within a second or two; tagged `lg`, online.js _applyRemoteState puts them back where
+               they stood (lgN = the host lines above it). Solo and host: a plain line, nothing changes. */
+            const mineG = !!(o && o.mine && window._NET && window._NET.online && window._NET.role === 'guest');
+            const entry = (vis === 1 || vis === 2 || hp || zn || sn || ac > 0 || mineG) ? { m: msg } : msg;
+            if (mineG) { entry.lg = 1; entry.lgN = state.logEntries.filter(e => !(e && typeof e === 'object' && e.lg)).length; }
             if (vis === 1 || vis === 2) entry.v = vis;
             if (ac > 0) entry.a = ac;
             if (hp) entry.h = hp;
@@ -49626,7 +49632,7 @@
                 const row = rows.find(t => t.x === x && t.y === y && (!clickedUnit || !t.unit || t.unit.id === clickedUnit.id))
                     || rows.find(t => t.x === x && t.y === y);
                 if (row) { selectTargetFromMenu(x, y, row.unit ? row.unit.z : undefined); return true; }
-                addLog(_outOfReachLine(actingUnit, clickedUnit), actingUnit.player);
+                addLog(_outOfReachLine(actingUnit, clickedUnit), actingUnit.player, null, { mine: true });
                 playErrorSfx();
                 markDirty('board', 'hud');
                 renderIfDirty();
@@ -49644,7 +49650,7 @@
                     /* the solo click's fog gate first: a fogged tile is out of sight unless the kind casts into fog */
                     const _gFog = state.fogOfWar && !_kindMeta(spell).fogExempt && !computeVisibleTiles(state.activePlayer).has(posKey(x, y));
                     if (!_gFog && (_mtcReachesPick(actingUnit, spell, x, y, z) || findSpellApproachTile(actingUnit, spell, x, y, z))) return false;
-                    addLog(_gFog ? outOfSightMessage(actingUnit, x, y) : `${_ctSp(spell.name)}: that tile is out of range or line of sight.`, actingUnit.player);
+                    addLog(_gFog ? outOfSightMessage(actingUnit, x, y) : `${_ctSp(spell.name)}: that tile is out of range or line of sight.`, actingUnit.player, null, { mine: true });
                     playErrorSfx();
                     markDirty('board', 'hud');
                     renderIfDirty();
@@ -49660,7 +49666,7 @@
                 }
                 /* a unit spell aimed off its list (an empty tile, an enemy out of reach): refused like the solo click —
                    the guest's pick used to land on the tile ("→ Checkerboard I4") and its CONFIRM did nothing */
-                addLog(_outOfReachLine(actingUnit, cu), actingUnit.player);
+                addLog(_outOfReachLine(actingUnit, cu), actingUnit.player, null, { mine: true });
                 playErrorSfx();
                 markDirty('board', 'hud');
                 renderIfDirty();
@@ -49668,7 +49674,7 @@
             }
             if (mode === 'item' && actionModeNeedsTargetConfirm()
                 && !_itemTargetTeamOk(actingUnit, state.selectedTool, x, y, z)) {
-                addLog(ITEM_RULES[state.selectedTool]?.baneType ? 'Choose an enemy target.' : 'Choose a living friendly unit.', actingUnit.player);
+                addLog(ITEM_RULES[state.selectedTool]?.baneType ? 'Choose an enemy target.' : 'Choose a living friendly unit.', actingUnit.player, null, { mine: true });
                 playErrorSfx();
                 markDirty('board', 'hud');
                 renderIfDirty();
@@ -49731,6 +49737,23 @@
         /* the line a target-list click off the list gets (it read "Target is no longer valid." for an enemy that never
            was in reach — PvP playtest 2026-10-23) */
         function _outOfReachLine(actingUnit, clickedUnit) {
+            /* 💋 THE CHARM LINE ON A BOARD CLICK (11-11, two-seat check of rule 7 B): the charmer is off a charmed unit's
+               attack list and off its unit-aimed offensive casts, so a click on it was refused here as "out of reach"
+               (wrong reason) and the engine's own Charm line (doAttack / doSpell) never ran. Same words as the engine. */
+            {
+                const _orCharmer = (typeof getCharmer === 'function') ? getCharmer(actingUnit) : null;
+                if (_orCharmer && clickedUnit && !clickedUnit.dead && clickedUnit.id === _orCharmer.id
+                    && (!visionGatesTargeting(actingUnit) || isInVision(actingUnit, clickedUnit.x, clickedUnit.y))) {
+                    if (state.actionMode === 'attack') return `💋 ${_ctName(actingUnit)} is charmed and cannot attack ${_ctName(_orCharmer)}!`;
+                    if (state.actionMode === 'spell') {
+                        const _orSp = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
+                            || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                        const _orM = _orSp ? _kindMeta(_orSp) : null;
+                        if (_orM && _orM.offensive && !_orM.tileTargeted && !_orM.directional)
+                            return `💋 ${_ctName(actingUnit)} is charmed and cannot cast ${_ctSp(_orSp.name)} at ${_ctName(_orCharmer)}!`;
+                    }
+                }
+            }
             if (clickedUnit && !clickedUnit.dead && clickedUnit.id !== actingUnit.id && isEnemyUnit(actingUnit, clickedUnit)
                 && (!visionGatesTargeting(actingUnit) || isInVision(actingUnit, clickedUnit.x, clickedUnit.y)))   // never name a fogged body
                 return `${_ctName(clickedUnit)} is out of reach this turn.`;
@@ -68573,7 +68596,7 @@
         }
         function _aimRefused(actingUnit, line) {
             if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
-            addLog(line, actingUnit.player);
+            addLog(line, actingUnit.player, null, { mine: true });
             playErrorSfx();
             markDirty('board', 'hud');
             renderIfDirty();
