@@ -1789,9 +1789,15 @@
                 displaces: true,
                 displaceTiles: 3,
                 duration: [3, 5],
-                desc: 'Hunts the nearest unit (2 tiles/rnd); wets and hurls whoever it catches north the round it forms, then east, south, west, turning each round. -10 DEF in the eye. Floods tiles with water.',
+                desc: 'Rains over the whole map, leaving everyone Wet. Its eye hunts the nearest unit (2 tiles/rnd) and hurls whoever it catches north the round it forms, then east, south, west, turning each round. -10 DEF in the eye. Floods tiles with water.',
                 dmgRange: [24, 43],
                 soaks: true,
+                /* 🌧️ THE HURRICANE'S RAIN (mondo 2026-11-11: "during a hurricane, there is rain on the screen, but I saw some
+                   grass tiles on fire ... Rain should always put out fire"): its rain falls on the whole map, as the
+                   Thunderstorm's does (weatherRainIsWide), so it is rain everywhere: ground fire out, no new ground fire,
+                   burning units doused, everyone Wet. Only the rain is map-wide: the eye, the fling, the -DEF and the
+                   flooded trail stay where the eye is (it is NOT `global`). */
+                rainWide: true,
                 seedTerrain: 'water',
                 statMod: {
                     def: -10
@@ -2500,14 +2506,21 @@
             return !!(w.tiles && w.tiles.some(t => t.x === x && t.y === y));
         }
         // Where its rain falls: the whole board for any global weather (a global homing storm's eye included).
+        /* does this weather's RAIN cover the whole board? every global weather, and a storm whose def says `rainWide`
+           (the Hurricane: a local eye under a map-wide rain) */
+        function weatherRainIsWide(w) {
+            const def = w && WEATHER_REGISTRY[w.type];
+            return !!(def && (def.global || w.global || def.rainWide));
+        }
         function weatherRainsOnTile(w, x, y) {
             if (!w) return false;
-            if (weatherDefIsGlobal(w)) return _weatherInBoard(x, y);
+            if (weatherRainIsWide(w)) return _weatherInBoard(x, y);
             return !!(w.tiles && w.tiles.some(t => t.x === x && t.y === y));
         }
         window.weatherDefIsGlobal = weatherDefIsGlobal;
         window.weatherOnTile = weatherOnTile;
         window.weatherRainsOnTile = weatherRainsOnTile;
+        window.weatherRainIsWide = weatherRainIsWide;
         window.allWeatherBoardTiles = allWeatherBoardTiles;
 
         /* ══ THE WEATHER'S TERRAIN (2026-10-15, mondo: "let's make the weather affect the terrain. I think it used to but then
@@ -2907,7 +2920,7 @@
                 // Homing storms resolve all of their effects at end of round (processHomingWeather) —
                 // except a map-wide one's rain, which soaks every grounded unit each turn.
                 if (def.homing) {
-                    if (!def.soaks || !weatherDefIsGlobal(weather)) continue;
+                    if (!def.soaks || !weatherRainIsWide(weather)) continue;
                     for (const unit of units) {
                         if (unit.dead || unit._dying || unit.hp <= 0) continue;
                         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
