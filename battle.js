@@ -44817,10 +44817,11 @@
                    them for a revive); allies can still be looted deliberately via scan. */
                 const _corpse = state.units.find(u => u.dead && u.player !== unit.player && u.x === x && u.y === y);
                 if (_corpse && typeof lootCorpseItems === 'function') {
-                    const _got = lootCorpseItems(unit, _corpse);
+                    const _took = {};
+                    const _got = lootCorpseItems(unit, _corpse, _took);
                     if (_got > 0) {
-                        addLog(`🦴 ${_ctName(unit)} loots ${_got} item${_got === 1 ? '' : 's'} from the remains of ${_ctName(_corpse)}.`, unit.player);
-                        showFloatingTextForUnit(unit, `📦 Looted ${_got}`, 'pickup', { durationMs: 1200 });
+                        addLog(`🦴 ${_ctName(unit)} loots ${_lootListText(_took)} from the remains of ${_ctName(_corpse)}.`, unit.player);
+                        showFloatingTextForUnit(unit, `Looted ${_lootListText(_took, 2)}`, 'pickup', { durationMs: 1800 });
                         playSfx('uiConfirm');
                     }
                 }
@@ -44896,7 +44897,22 @@
             return 0;
         }
 
-        function lootCorpseItems(looter, corpse) {
+        /* THE LOOT NAMES (mondo 2026-11-11: "it never tells me what the item is ... It just says Looted 1 item, the
+           combat log too"): every loot line names what was taken, with the item's own icon. lootCorpseItems fills
+           `taken` ({itemKey: count}) when the caller passes one; _lootListText turns it into "🧪 Healing Potion ×1,
+           🔹 Mana Potion ×2" (max = how many kinds to spell out before "+N more"; the log passes none = all). */
+        function _lootListText(taken, max) {
+            const keys = Object.keys(taken || {}).filter(k => (taken[k] | 0) > 0);
+            const one = k => {
+                const r = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES) ? ITEM_RULES[k] : null;
+                return `${r && r.icon ? r.icon + ' ' : ''}${(r && r.name) || k} ×${taken[k] | 0}`;
+            };
+            if (!max || keys.length <= max) return keys.map(one).join(', ');
+            return keys.slice(0, max).map(one).join(', ') + ` +${keys.length - max} more`;
+        }
+        if (typeof window !== 'undefined') window._lootListText = _lootListText;
+
+        function lootCorpseItems(looter, corpse, taken) {
             if (!looter || !corpse || !corpse.dead || corpse.id === looter.id) return 0;
             let looted = 0;
             const itemOrder = Object.keys(ITEM_RULES);
@@ -44908,6 +44924,7 @@
                     looter.items[itemKey] = (looter.items[itemKey] || 0) + 1;
                     corpse.items[itemKey] -= 1;
                     looted += 1;
+                    if (taken) taken[itemKey] = (taken[itemKey] || 0) + 1;
                 }
             }
             return looted;
@@ -75397,6 +75414,7 @@
 
             let totalHourglasses = 0;
             let lootedNow = 0;
+            const _lootLines = [];
             const _searched = _searchedSet(unit.player);
             for (const tile of toReveal) {
                 const key = scanKey(tile.x, tile.y);
@@ -75419,9 +75437,14 @@
                 const deadUnit = state.units.find(u => u.dead && u.x === tile.x && u.y === tile.y);
                 if (deadUnit) {
                     const preLoot = lootedNow;
-                    lootedNow += lootCorpseItems(unit, deadUnit);
+                    const _took = {};
+                    lootedNow += lootCorpseItems(unit, deadUnit, _took);
                     if (lootedNow > preLoot) {
-                        showFloatingTextForUnit(unit, `📦 Looted ${lootedNow - preLoot} item${(lootedNow - preLoot) > 1 ? 's' : ''}`, 'pickup', { durationMs: 1200 });
+                        showFloatingTextForUnit(unit, `Looted ${_lootListText(_took, 2)}`, 'pickup', { durationMs: 1800 });
+                        _lootLines.push(`${_ctName(unit)} loots ${_lootListText(_took)} from the remains of ${_ctName(deadUnit)}.`);
+                    } else if (Object.keys(deadUnit.items || {}).some(k => (deadUnit.items[k] | 0) > 0)) {
+                        /* a body with items the searcher can't carry: say so, not "Nothing found here." */
+                        _lootLines.push(`🎒 ${_ctName(unit)} finds items on the remains of ${_ctName(deadUnit)} but can't carry any more.`);
                     }
                 }
 
@@ -75468,13 +75491,11 @@
                 addLog(`Inspection uncovers ${totalHourglasses} Key${totalHourglasses !== 1 ? 's' : ''}! Key Charge Lv.${unit.hourglassBuff}.`, unit.player);
             }
 
-            if (totalHourglasses === 0) {
+            if (totalHourglasses === 0 && !_lootLines.length) {
                 addLog(`Nothing found here.`, unit.player);
             }
 
-            if (lootedNow > 0) {
-                addLog(`${_ctName(unit)} loots ${lootedNow} item${lootedNow === 1 ? '' : 's'} from a nearby corpse.`, unit.player);
-            }
+            _lootLines.forEach(line => addLog(line, unit.player));
 
             if (!(opts && opts.noCam)) focusBoardCameraOnTiles([{
                 x,
