@@ -4134,13 +4134,13 @@ const ThreeRenderer = (function () {
         '  float w = smoothstep( 0.2, 0.8, ff ); w = clamp( w - 0.4 * w * ( 1.0 - w ) * dot( a.rgb - b.rgb, vec3( 1.0 ) ), 0.0, 1.0 );\n' +
         '  return mix( a, b, w ); }\n';
     function _calmFluidMat(key) {
-        var lava = (key === 'lava'), deep = (key === 'deep_water'), mat;
+        var lava = (key === 'lava'), deep = (key === 'deep_water'), liq = (_CALM.liquids && _CALM.liquids[key]) || null, mat;
         if (lava) {
             var tex = _hzTex('lava');   // calm_lava (calm board): trilinear, its own cache entry
             mat = new THREE.MeshLambertMaterial({ map: tex || null, color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.85, emissiveMap: tex || null });
         } else {
-            mat = new THREE.MeshPhongMaterial({ color: deep ? _CALM.deep : _CALM.water, specular: 0xb4c4c8, shininess: 140,
-                                                transparent: true, opacity: deep ? Math.min(1, _CALM.waterOp + 0.08) : _CALM.waterOp, depthWrite: false });
+            mat = new THREE.MeshPhongMaterial({ color: liq ? liq[0] : deep ? _CALM.deep : _CALM.water, specular: 0xb4c4c8, shininess: 140,
+                                                transparent: true, opacity: liq ? liq[1] : deep ? Math.min(1, _CALM.waterOp + 0.08) : _CALM.waterOp, depthWrite: false });
         }
         var night = ((document.body && document.body.dataset && document.body.dataset.cycle) || 'day') === 'night';
         var sky = new THREE.Color(night ? 0x2a3a52 : 0x9db4c2);
@@ -4194,7 +4194,7 @@ const ThreeRenderer = (function () {
     }
 
     function _buildFluidTopMat(terrainKey) {
-        if ((terrainKey === 'water' || terrainKey === 'deep_water' || terrainKey === 'lava') && _calmOn()) return _calmFluidMat(terrainKey);   // THE CALM GROUND
+        if ((terrainKey === 'water' || terrainKey === 'deep_water' || terrainKey === 'lava' || (_CALM.liquids && _CALM.liquids[terrainKey])) && _calmOn()) return _calmFluidMat(terrainKey);   // THE CALM GROUND (+ THE CALM LIQUIDS)
         /* Tinted liquids (poison bogs / black ooze / oil) ride the WATER
            textures with a material tint — see _LIQUID_STYLES. */
         var style = _LIQUID_STYLES[terrainKey] || null;
@@ -35365,7 +35365,11 @@ const ThreeRenderer = (function () {
     var _CALM = { floor: 0xffffff, floorT: [0.95, 1.08, 0.85], pathT: [0.72, 0.6, 0.5], cliffT: [0.85, 0.85, 0.82],
                   trio: { floor: 'calm_grass', path: 'calm_dirt', cliff: 'calm_rock' },
                   tints: { scorched: { floorT: [1.1, 0.9, 0.8], pathT: [0.84, 0.76, 0.72], cliffT: [0.92, 0.8, 0.74] } },   // a floor's own three tints (the grass set above is the default)
-                  drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.0 };
+                  drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.0,
+                  /* THE CALM LIQUIDS (the rollout, batch 2): the spell / site liquids drawn like the calm water — the same moving surface,
+                     glints and sky sheen — each in its own colour, [colour, opacity]: poison's green, the bogs, the black ooze, oil, blood */
+                  liquids: { poison: [0x34561a, 0.9], poison_bog: [0x3c4a20, 0.92], purple_bog: [0x3a2046, 0.92], swamp: [0x1d1524, 0.95],
+                             oil: [0x14120e, 0.96], blood: [0x480b0e, 0.95] } };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmTable() { return (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN && CALM_TERRAIN.sheets) ? CALM_TERRAIN : null; }
     /* the room being drawn: the walk's room, else the room round a field fight (the editor builds through _hq too) */
@@ -35400,7 +35404,9 @@ const ThreeRenderer = (function () {
         if (C.sheets[key]) return key;   // a calm sheet picked by name
         if (!C.of[key] || !_calmOn()) return null;
         var pl = _calmPlace(), P = pl && C.place && C.place[pl];
-        return (P && P[key]) || C.of[key];
+        var c = (P && P[key]) || C.of[key];
+        if (c === 'calm_sand' && key === 'desert' && C.sheets.calm_sand_beach && _ewSandBeach()) c = 'calm_sand_beach';   // THE TWO SANDS: a beach's desert
+        return c;
     }
     function _calmSheet(key) { var c = _calmKeyOf(key), C = c ? _calmTable() : null; return C ? C.base + C.sheets[c][0] : null; }
     function _calmNoTile(key) { var c = _calmKeyOf(key), C = c ? _calmTable() : null; return !!(C && C.noTile && C.noTile[c]); }

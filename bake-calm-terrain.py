@@ -523,7 +523,7 @@ def bake_planks(seed=101, rows=16, a=0x553f2c, b=0x7a5c3f):
 
 
 # ── THE MOON: grey regolith — fine dust, pebbles, a few worn craters (ragged rims, shallow bowls), never bubbles ───────────────────
-def bake_moon(seed=111, a=0x5c5c5d, b=0x767677, craters=26):
+def bake_moon(seed=111, a=0x5c5c5d, b=0x767677, craters=26, grit=(0x6a6a6b, 0x7a7a7b, 0x545456), rocks=(0x616163, 0x6f6f70), sat=0.6):
     rng = np.random.default_rng(seed)
     macro = fft_noise(N, 1, 5, seed + 1, 0.6); mid = fft_noise(N, 8, 40, seed + 2, 0.5); fine = fft_noise(N, 120, 420, seed + 3, 0.0)
     rag = fft_noise(N, 12, 40, seed + 4, 0.5)
@@ -539,10 +539,10 @@ def bake_moon(seed=111, a=0x5c5c5d, b=0x767677, craters=26):
     rgb = lerp(hexc(a), hexc(b), np.clip(0.5 + 0.38 * macro + 0.15 * mid + 0.1 * fine, 0, 1))
     rgb *= relief(h * 7.0, 0.5)[..., None]
     img = to_img(rgb).convert('RGBA')
-    img = Image.alpha_composite(img, stones(rng, 3200, 0.8, 2.6, [hexc(0x6a6a6b), hexc(0x7a7a7b), hexc(0x545456)], 140).filter(ImageFilter.GaussianBlur(0.5)))
-    img = Image.alpha_composite(img, stones(rng, 120, 3.0, 7.0, [hexc(0x616163), hexc(0x6f6f70)], 200).filter(ImageFilter.GaussianBlur(0.6)))
+    img = Image.alpha_composite(img, stones(rng, 3200, 0.8, 2.6, [hexc(c) for c in grit], 140).filter(ImageFilter.GaussianBlur(0.5)))
+    img = Image.alpha_composite(img, stones(rng, 120, 3.0, 7.0, [hexc(c) for c in rocks], 200).filter(ImageFilter.GaussianBlur(0.6)))
     img = img.convert('RGB').filter(ImageFilter.GaussianBlur(0.5))
-    return settle(np.asarray(img).astype(np.float64) / 255.0, 0.6, 0.9)
+    return settle(np.asarray(img).astype(np.float64) / 255.0, sat, 0.9)
 
 
 # ── THE CASTLE STONE: dressed blocks in courses, chipped edges, each block its own tone and pitting, lime joints with moss ─────────
@@ -735,6 +735,330 @@ def bake_rivets(seed=201, a=0x5f6266, b=0x777a7e):
     img = to_img(rgb).filter(ImageFilter.GaussianBlur(0.6))
     return settle(np.asarray(img).astype(np.float64) / 255.0, 0.75, 0.85)
 
+# ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+#  THE ROLLOUT, BATCH 2 (2026-11-11): the other 27 arenas + the spell ground (plague flesh, crystal, castle walls). Ooze and poison
+#  are liquids: three-renderer.js _calmFluidMat draws them the way it draws the calm water, in their own colours.
+# ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+def _blur(rgb, r):
+    return np.asarray(to_img(rgb).filter(ImageFilter.GaussianBlur(r))).astype(np.float64) / 255.0
+
+
+# ── MARS (mars_2, mars): rust regolith — the moon's dust, pebbles and worn craters in iron oxide, fewer craters ─────────────────
+def bake_mars(seed=211):
+    return bake_moon(seed, a=0x7a3f24, b=0x95522f, craters=12, grit=(0x8a4c30, 0x9a5838, 0x6c3a24), rocks=(0x6e4433, 0x80503a), sat=0.95)
+
+
+# ── THE CLOUDS (cloud, cloud_2, cloud_thick): a cloud deck seen from above — cumulus heads built of puffs on puffs (big domes, smaller
+#    ones riding on them, small curls on top), lit from the north-west, a blue-grey shade down between the heads. A step under white
+#    so a unit standing on it still reads. ──────────────────────────────────────────────────────────────────────────────────────
+def puffs(rng, h, count, r_lo, r_hi, lift=1.0, gate=None):
+    """raise round puffs on the height field h (px): each a dome of radius r sitting at lift x the height under its centre (wraps)"""
+    for i in range(count):
+        x, y = rng.uniform(0, N, 2)
+        if gate is not None and rng.random() > gate[int(y) % N, int(x) % N]:
+            continue
+        r = rng.uniform(r_lo, r_hi); R = int(np.ceil(r))
+        cx, cy = int(x), int(y)
+        xs = np.arange(cx - R, cx + R + 1) % N; ys = np.arange(cy - R, cy + R + 1) % N
+        dx = np.arange(-R, R + 1) + (cx - x); dy = np.arange(-R, R + 1) + (cy - y)
+        d2 = (dy[:, None] ** 2 + dx[None, :] ** 2) / (r * r)
+        z = h[cy % N, cx % N] * lift + np.sqrt(np.clip(1 - d2, 0, 1)) * r * 0.8
+        sub = h[np.ix_(ys, xs)]
+        h[np.ix_(ys, xs)] = np.where(d2 < 1, np.maximum(sub, z), sub)
+    return h
+
+
+def bake_cloud(seed=221, lit=0xb9bfc5, mid=0x9ea7b0, shade=0x6f7b88, flat=1.0):
+    rng = np.random.default_rng(seed)
+    gate = np.clip(0.55 + fft_noise(N, 1, 4, seed + 1, 0.6) * 0.9, 0.15, 1)
+    h = np.zeros((N, N))
+    h = puffs(rng, h, 160, 55, 110, 0.0, gate)
+    h = puffs(rng, h, 1300, 24, 50, 0.85, gate)
+    h = puffs(rng, h, 1400, 9, 18, 0.95)
+    fx = np.fft.fftfreq(N); k = np.exp(-2 * (np.pi * 2.5) ** 2 * (fx[None, :] ** 2 + fx[:, None] ** 2))   # a periodic blur (the sheet still tiles)
+    h = np.real(np.fft.ifft2(np.fft.fft2(h) * k)) * flat
+    gx = (np.roll(h, -1, 1) - np.roll(h, 1, 1)) * 0.5; gy = (np.roll(h, -1, 0) - np.roll(h, 1, 0)) * 0.5
+    nz = 1.0 / np.sqrt(gx * gx + gy * gy + 1.0)
+    L = np.array([-0.55, -0.55, 0.63]); L = L / np.linalg.norm(L)
+    lam = np.clip((-gx * L[0] - gy * L[1] + L[2]) * nz, 0, 1)
+    hn = (h - h.min()) / (h.max() - h.min() + 1e-9)
+    ao = np.clip(hn * 1.6, 0, 1) ** 0.6
+    rgb = lerp(hexc(shade), hexc(mid), np.clip(ao, 0, 1))
+    rgb = lerp(rgb, hexc(lit), np.clip((lam - 0.55) * 2.2, 0, 1) * ao)
+    rgb *= (0.9 + 0.1 * lam)[..., None]
+    return settle(_blur(rgb, 1.0), 0.9, 0.9)
+
+
+# ── THE STORM (storm): Saturn's storm deck — the same puffs, low and dark, cold grey ─────────────────────────────────────────────
+def bake_storm(seed=231):
+    return bake_cloud(seed, lit=0x6a727b, mid=0x535a63, shade=0x363c45, flat=0.6)
+
+
+# ── THE GRAVEL (dirt_4): brown pebbles packed in earth — every size from grit to fist, a slow drift of darker damp ───────────────
+def bake_gravel(seed=241):
+    rng = np.random.default_rng(seed)
+    macro = fft_noise(N, 1, 5, seed + 1, 0.6); mott = fft_noise(N, 8, 30, seed + 2, 0.5)
+    rgb = lerp(hexc(0x3a2c1f), hexc(0x4a3828), np.clip(0.5 + 0.5 * mott + 0.2 * macro, 0, 1))
+    img = to_img(rgb).convert('RGBA')
+    cols = [hexc(0x7a5f45), hexc(0x6b523b), hexc(0x876c50), hexc(0x786a5c), hexc(0x614f3d), hexc(0x92785c)]
+    img = Image.alpha_composite(img, stones(rng, 7000, 1.5, 3.5, cols, 190).filter(ImageFilter.GaussianBlur(0.5)))
+    img = Image.alpha_composite(img, stones(rng, 2400, 4.0, 9.0, cols, 235).filter(ImageFilter.GaussianBlur(0.6)))
+    img = Image.alpha_composite(img, stones(rng, 700, 9.0, 16.0, cols, 240).filter(ImageFilter.GaussianBlur(0.7)))
+    img = Image.alpha_composite(img, stones(rng, 90, 16.0, 26.0, cols, 240).filter(ImageFilter.GaussianBlur(0.8)))
+    rgb = np.asarray(img.convert('RGB').filter(ImageFilter.GaussianBlur(0.45))).astype(np.float64) / 255.0
+    damp = np.clip(fft_noise(N, 3, 10, seed + 3, 0.7) * 1.6 - 0.4, 0, 1)
+    rgb = lerp(rgb, rgb * 0.84, damp * 0.45)
+    rgb *= (1.0 + 0.06 * macro)[..., None]
+    return settle(rgb, 0.85, 0.85)
+
+
+# ── THE ROOTS (wasteland): dead dark earth with old roots running through it, leaf litter in the hollows ─────────────────────────
+def roots_layer(rng, count, cols, alpha, w_hi=7.0, steps=60):
+    layer = Image.new('RGBA', (N, N), (0, 0, 0, 0)); d = ImageDraw.Draw(layer)
+    def grow(x, y, a, w, n, depth):
+        for i in range(n):
+            a += rng.normal(0, 0.18); L = rng.uniform(5, 10)
+            x2, y2 = x + np.cos(a) * L, y + np.sin(a) * L
+            c = cols[min(depth, len(cols) - 1)]
+            col = tuple(int(v * 255) for v in c) + (alpha,)
+            sh = (14, 10, 7, int(alpha * 0.55))
+            ww = max(1, int(round(w)))
+            def dr(xx, yy, dx=x2 - x, dy=y2 - y, col=col, sh=sh, ww=ww):
+                d.line([(xx + 1.5, yy + 2.0), (xx + dx + 1.5, yy + dy + 2.0)], fill=sh, width=ww + 1)
+                d.line([(xx, yy), (xx + dx, yy + dy)], fill=col, width=ww)
+            wrap_strokes(dr, x % N, y % N, 40)
+            x, y = x2, y2; w *= 0.985
+            if depth < 3 and rng.random() < 0.06:
+                grow(x, y, a + rng.choice([-1, 1]) * rng.uniform(0.5, 1.1), w * 0.6, int(n * 0.45), depth + 1)
+            if w < 1.0:
+                break
+    for i in range(count):
+        grow(rng.uniform(0, N), rng.uniform(0, N), rng.uniform(0, 2 * np.pi), rng.uniform(w_hi * 0.5, w_hi), steps, 0)
+    return layer
+
+
+def bake_roots(seed=251):
+    rng = np.random.default_rng(seed)
+    macro = fft_noise(N, 1, 5, seed + 1, 0.6); mott = fft_noise(N, 8, 30, seed + 2, 0.5); grit = fft_noise(N, 120, 400, seed + 3, 0.0)
+    rgb = lerp(hexc(0x2a211b), hexc(0x3a2e25), np.clip(0.5 + 0.5 * mott + 0.2 * macro, 0, 1))
+    rgb *= (1.0 + 0.06 * grit)[..., None]
+    litter = np.clip(fft_noise(N, 6, 24, seed + 4, 0.5) * 2.0 - 0.6, 0, 1)
+    rgb = lerp(rgb, hexc(0x4a2c20), litter * 0.4)
+    img = to_img(rgb).convert('RGBA')
+    img = Image.alpha_composite(img, stones(rng, 2600, 1.0, 2.6, [hexc(0x3a2f27), hexc(0x30261f), hexc(0x47372b)], 160).filter(ImageFilter.GaussianBlur(0.5)))
+    img = Image.alpha_composite(img, roots_layer(rng, 14, [hexc(0x5e4a38), hexc(0x56442f), hexc(0x4c3c2c), hexc(0x433527)], 240, 15.0, 80).filter(ImageFilter.GaussianBlur(1.0)))
+    img = Image.alpha_composite(img, stones(rng, 160, 4.0, 10.0, [hexc(0x55473b), hexc(0x4a3e33)], 225).filter(ImageFilter.GaussianBlur(0.6)))
+    rgb = np.asarray(img.convert('RGB').filter(ImageFilter.GaussianBlur(0.45))).astype(np.float64) / 255.0
+    return settle(rgb, 0.85, 0.95)
+
+
+# ── THE ROCKY GRASS (grass_rocky): the meadow with grey stones breaking through it, grass growing over their edges ──────────────
+def bake_rockygrass(seed=261):
+    rng = np.random.default_rng(seed)
+    img = to_img(bake_grass(seed)).convert('RGBA')
+    cols = [hexc(0x5f605a), hexc(0x6b6b64), hexc(0x56574f), hexc(0x737168)]
+    img = Image.alpha_composite(img, stones(rng, 16, 40, 75, cols, 245).filter(ImageFilter.GaussianBlur(1.2)))
+    img = Image.alpha_composite(img, stones(rng, 70, 16, 34, cols, 240).filter(ImageFilter.GaussianBlur(0.9)))
+    img = Image.alpha_composite(img, stones(rng, 260, 5, 12, cols, 230).filter(ImageFilter.GaussianBlur(0.6)))
+    img = Image.alpha_composite(img, blades(rng, 7000, 4, 11, [hexc(0x3a4d24), hexc(0x46592c), hexc(0x52622f), hexc(0x33421f)], 0.45, 1))
+    rgb = np.asarray(img.convert('RGB').filter(ImageFilter.GaussianBlur(0.4))).astype(np.float64) / 255.0
+    return settle(rgb, 0.95, 0.9)
+
+
+# ── THE DARK GRASS (grass_dark_fantasy): a haunted moor — dark moss-green turf going to mud in patches ───────────────────────────
+def bake_darkgrass(seed=271):
+    rgb = bake_grass(seed)
+    L = lum(rgb)[..., None]
+    rgb = L + (rgb - L) * 0.7
+    rgb = rgb * np.array([0.78, 0.8, 0.72])
+    mud = np.clip(fft_noise(N, 2, 8, seed + 1, 0.6) * 2.4 - 0.2, 0, 1) * np.clip(0.7 + fft_noise(N, 20, 70, seed + 2, 0.4), 0, 1)
+    mudc = lerp(hexc(0x3a3226), hexc(0x4a4031), np.clip(0.5 + fft_noise(N, 30, 120, seed + 3, 0.3), 0, 1))
+    rgb = lerp(rgb, mudc, np.clip(mud, 0, 1) * 0.85)
+    return settle(_blur(rgb, 0.4), 0.9, 0.9)
+
+
+# ── THE CAVE FLOOR (cave_floor): a dark cave bed, plum-brown plates of rock, grit, a rare blue crystal chip catching the light ────
+def bake_cavefloor(seed=281):
+    rng = np.random.default_rng(seed)
+    wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 40; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 40
+    F1, F2, ID = worley(N, 7, seed + 3, (wx, wy))
+    tone = np.random.default_rng(seed + 4).uniform(-1, 1, 49)[ID]
+    mid = fft_noise(N, 8, 30, seed + 5, 0.5); fine = fft_noise(N, 80, 300, seed + 6, 0.1)
+    rgb = lerp(hexc(0x271f24), hexc(0x3a2f33), np.clip(0.5 + 0.22 * tone + 0.25 * mid + 0.1 * fine, 0, 1))
+    rgb *= (0.88 + 0.12 * np.clip((F2 - F1) / 0.3, 0, 1) ** 0.6)[..., None]
+    crack = np.exp(-((F2 - F1) / 0.025) ** 2) * np.clip(0.5 + fft_noise(N, 3, 12, seed + 7, 0.5) * 1.8, 0, 1)
+    rgb *= (1.0 - 0.45 * crack)[..., None]
+    img = to_img(rgb).convert('RGBA')
+    img = Image.alpha_composite(img, stones(rng, 3200, 1.0, 2.8, [hexc(0x2e2529), hexc(0x3a3034), hexc(0x433a3c)], 170).filter(ImageFilter.GaussianBlur(0.5)))
+    img = Image.alpha_composite(img, stones(rng, 160, 3.0, 7.0, [hexc(0x3b3236), hexc(0x463c3f)], 215).filter(ImageFilter.GaussianBlur(0.6)))
+    img = Image.alpha_composite(img, stones(rng, 26, 1.4, 3.0, [hexc(0x5d7f9a), hexc(0x6f93ad)], 230).filter(ImageFilter.GaussianBlur(0.4)))
+    rgb = np.asarray(img.convert('RGB').filter(ImageFilter.GaussianBlur(0.45))).astype(np.float64) / 255.0
+    return settle(rgb, 0.85, 0.85)
+
+
+# ── THE DARK ROCK (cave_wall, rock_wall_2, rocks_1, rocks_dark_fantasy): the rock face in the dark — the same fractured plates, deeper ─
+def bake_darkrock(seed=291):
+    wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 46; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 46
+    _, _, ID = worley(N, 6, seed + 3, (wx, wy))                      # bake_rock's own plates
+    warm = np.random.default_rng(seed + 40).uniform(-1, 1, 36)[ID]
+    rgb = bake_rock(seed) * np.array([0.7, 0.69, 0.68])
+    rgb *= (1.0 + 0.12 * warm[..., None] * np.array([1.0, 0.45, -0.5]))
+    return settle(_blur(rgb, 0.4), 1.0, 1.0)
+
+
+# ── THE CRYSTAL (crystal): a bed of blue crystal — flat facets, each its own tilt to the light, bright only along a few edges ─────
+def bake_crystal(seed=301):
+    wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 26; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 26
+    g = 8
+    F1, F2, ID = worley(N, g, seed + 3, (wx, wy))
+    f1b, f2b, idb = worley(N, 19, seed + 4, (wx * 0.5, wy * 0.5))
+    r = np.random.default_rng(seed + 5)
+    nx = r.uniform(-1, 1, g * g)[ID]; ny = r.uniform(-1, 1, g * g)[ID]
+    r2 = np.random.default_rng(seed + 6)
+    nxb = r2.uniform(-1, 1, 19 * 19)[idb]; nyb = r2.uniform(-1, 1, 19 * 19)[idb]
+    shade = np.clip(0.5 + 0.3 * (-(nx + ny) * 0.7071) + 0.15 * (-(nxb + nyb) * 0.7071), 0, 1)   # each facet's tilt toward the light
+    mid = fft_noise(N, 4, 20, seed + 7, 0.6); fine = fft_noise(N, 80, 300, seed + 8, 0.1)
+    rgb = lerp(hexc(0x2b3e55), hexc(0x5a7896), np.clip(shade + 0.15 * mid, 0, 1))
+    deep = np.clip(-fft_noise(N, 2, 7, seed + 9, 0.6) * 1.4, 0, 1)
+    rgb = lerp(rgb, hexc(0x1f2c40), deep * 0.4)
+    edge = np.exp(-((F2 - F1) / 0.018) ** 2) * np.clip(0.3 + fft_noise(N, 3, 12, seed + 10, 0.5) * 1.6, 0, 1)
+    edgeb = np.exp(-((f2b - f1b) / 0.02) ** 2) * 0.4
+    rgb = lerp(rgb, hexc(0x8fb0c9), np.clip(edge * 0.55 + edgeb * 0.25, 0, 1))
+    rgb *= (1.0 + 0.03 * fine)[..., None]
+    return settle(_blur(rgb, 0.7), 0.85, 0.9)
+
+
+# ── THE FLESH (flesh, flesh_2 = plague_flesh, flesh_3): a wet growth of muscle — dark red lobes, purple veins between them, a few
+#    pale cysts, a dull wet sheen on the rises. Grim, not loud. ──────────────────────────────────────────────────────────────────
+def bake_flesh(seed=311):
+    rng = np.random.default_rng(seed)
+    wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 50; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 50
+    F1, F2, ID = worley(N, 9, seed + 3, (wx, wy))
+    f1b, f2b, _ = worley(N, 22, seed + 4, (wx * 0.6, wy * 0.6))
+    tone = np.random.default_rng(seed + 5).uniform(-1, 1, 81)[ID]
+    lobe = np.sqrt(np.clip(1 - (F1 / 0.9) ** 2, 0, 1))
+    h = lobe + np.sqrt(np.clip(1 - (f1b / 0.8) ** 2, 0, 1)) * 0.35 + fft_noise(N, 20, 90, seed + 6, 0.3) * 0.12
+    striate = aniso_noise(N, 20, 200, seed + 7, 0.2, 1.5, 0.3)
+    rgb = lerp(hexc(0x4a1a1a), hexc(0x6e2a26), np.clip(0.5 + 0.25 * tone + 0.35 * (h - 0.6) + 0.08 * striate, 0, 1))
+    vein = np.exp(-((F2 - F1) / 0.05) ** 2) + np.exp(-((f2b - f1b) / 0.04) ** 2) * 0.5
+    rgb = lerp(rgb, hexc(0x2e1220), np.clip(vein, 0, 1) * 0.7)
+    rgb *= relief(h * 18.0, 0.45)[..., None]
+    sheen = np.clip(relief(h * 18.0, 1.0) - 1.08, 0, 1) * 2.0
+    rgb = lerp(rgb, hexc(0x9a5a52), np.clip(sheen, 0, 1) * 0.35)
+    img = to_img(rgb).convert('RGBA')
+    img = Image.alpha_composite(img, stones(rng, 40, 4.0, 9.0, [hexc(0x8a6b4c), hexc(0x7d5d42), hexc(0x957454)], 215).filter(ImageFilter.GaussianBlur(1.2)))
+    rgb = np.asarray(img.convert('RGB').filter(ImageFilter.GaussianBlur(0.6))).astype(np.float64) / 255.0
+    return settle(rgb, 0.85, 0.9)
+
+
+# ── THE CONCRETE (concrete_floor, urban_street): poured concrete — fine pores, trowel clouds, stains, a few hairline cracks ──────
+def bake_concrete(seed=321):
+    wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 30; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 30
+    F1, F2, _ = worley(N, 4, seed + 3, (wx, wy))
+    macro = fft_noise(N, 1, 5, seed + 4, 0.6); trowel = fft_noise(N, 4, 20, seed + 5, 0.6); fine = fft_noise(N, 100, 400, seed + 6, 0.0)
+    rgb = lerp(hexc(0x55534f), hexc(0x67645f), np.clip(0.5 + 0.35 * trowel + 0.3 * macro, 0, 1))
+    stain = np.clip(fft_noise(N, 3, 16, seed + 7, 0.6) * 2.2 - 0.9, 0, 1)
+    rgb = lerp(rgb, rgb * np.array([0.82, 0.8, 0.78]), stain * 0.6)
+    pore = np.clip(fft_noise(N, 150, 450, seed + 8, 0.0) * 3.5 - 2.4, 0, 1)
+    rgb *= (1.0 - 0.25 * pore)[..., None]
+    rgb *= (1.0 + 0.04 * fine)[..., None]
+    crack = np.exp(-((F2 - F1) / 0.012) ** 2) * np.clip(fft_noise(N, 3, 10, seed + 9, 0.5) * 2.6 - 0.6, 0, 1)
+    rgb = lerp(rgb, hexc(0x34322f), crack * 0.55)
+    return settle(_blur(rgb, 0.5), 0.8, 0.85)
+
+
+# ── THE GILT (gold, gold_2, gold_3): Olympus's gold — hammered leaf on stone, a soft tarnish, never a mirror ─────────────────────
+def bake_gilt(seed=331):
+    wx = fft_noise(N, 2, 6, seed + 1, 0.8) * 20; wy = fft_noise(N, 2, 6, seed + 2, 0.8) * 20
+    F1, _, _ = worley(N, 26, seed + 3, (wx, wy))
+    dent = np.sqrt(np.clip(1 - (F1 / 0.9) ** 2, 0, 1))
+    macro = fft_noise(N, 1, 5, seed + 4, 0.6); mid = fft_noise(N, 6, 30, seed + 5, 0.5); fine = fft_noise(N, 100, 400, seed + 6, 0.0)
+    rgb = lerp(hexc(0x86621e), hexc(0xb38a35), np.clip(0.5 + 0.45 * macro + 0.25 * mid, 0, 1))
+    rgb *= relief(dent * 10.0, 0.25)[..., None]
+    sheen = np.clip(fft_noise(N, 2, 8, seed + 8, 0.7) * 1.8 - 0.3, 0, 1)
+    rgb = lerp(rgb, hexc(0xc7a24c), sheen * 0.35)
+    tarn = np.clip(fft_noise(N, 3, 14, seed + 7, 0.6) * 2.0 - 0.8, 0, 1)
+    rgb = lerp(rgb, hexc(0x6a5226), tarn * 0.3)
+    rgb *= (1.0 + 0.025 * fine)[..., None]
+    return settle(_blur(rgb, 0.6), 0.95, 0.9)
+
+
+# ── THE FLAGSTONES (bricks_1): square grey slabs four to a square each way, chipped arrises, moss in the joints ──────────────────
+def bake_flagstone(seed=341):
+    ID, ED, u, v, n = panel_grid(4, 4, seed)
+    chip = fft_noise(N, 10, 50, seed + 1, 0.5) * 3.0 + fft_noise(N, 50, 200, seed + 2, 0.2) * 1.0
+    E = ED + chip
+    tn = per_id(ID, n, seed + 3); warm = per_id(ID, n, seed + 4)
+    mid = fft_noise(N, 6, 30, seed + 5, 0.5); face = fft_noise(N, 16, 70, seed + 6, 0.4); fine = fft_noise(N, 90, 320, seed + 7, 0.1)
+    rgb = lerp(hexc(0x56534c), hexc(0x6f6b62), np.clip(0.5 + 0.35 * tn + 0.25 * mid + 0.15 * face + 0.1 * fine, 0, 1))
+    rgb *= (1.0 + 0.05 * warm[..., None] * np.array([1.0, 0.2, -0.8]))
+    rgb *= relief(face * 2.0 + fine * 0.5, 0.5)[..., None]
+    rgb *= (0.78 + 0.22 * np.clip(E / 10.0, 0, 1) ** 0.7)[..., None]
+    jt = np.clip((4.0 - E) / 2.5, 0, 1)
+    rgb = lerp(rgb, hexc(0x302d27), jt)
+    m = np.clip(jt * 0.9 + np.clip(-mid * 1.5 - 0.3, 0, 1) * 0.5, 0, 1) * np.clip(fft_noise(N, 3, 14, seed + 8, 0.6) * 2.4 + 0.3, 0, 1)
+    rgb = lerp(rgb, hexc(0x46542e), m * 0.7)
+    return settle(_blur(rgb, 0.6), 0.85, 0.85)
+
+
+# ── THE CASTLE BRICK (bricks_2, castle_wall): small weathered bricks in courses, brown-grey, moss in the joints ──────────────────
+def bake_castle(seed=351):
+    return bake_blocks(seed, rows=11, wlo=0.11, whi=0.2, a=0x4d4639, b=0x665d4c, joint=0x2b261e, moss=1.0)
+
+
+# ── THE CHECKER (checkerboard): polished marble checks, six to a square each way (his count), cream and black, faint veins ───────
+def bake_checker(seed=361):
+    ID, ED, u, v, n = panel_grid(6, 6, seed)
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    par = ((np.floor(xx / (N / 6)) + np.floor(yy / (N / 6))) % 2).astype(bool)
+    light = bake_marble(seed + 1, a=0x8e887d, b=0x9d978b, vein_col=0x6e695f)
+    dark = bake_marble(seed + 2, a=0x232120, b=0x2e2b29, vein_col=0x47423d)
+    rgb = np.where(par[..., None], dark, light)
+    tn = per_id(ID, n, seed + 3)
+    rgb *= (1.0 + 0.04 * tn)[..., None]
+    seam = np.clip(1.6 - ED, 0, 1)
+    rgb = lerp(rgb, hexc(0x1a1918), seam * 0.6)
+    return settle(_blur(rgb, 0.5), 0.9, 1.0)
+
+
+# ── THE DAMASK (damask): the lodge's wallpaper — a mirrored flower in a half-drop repeat, tone on tone in a deep red, a faint sheen ─
+def bake_damask(seed=371, cols=3, rows=2):
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    cw, rh = N / cols, N / rows
+    def motif(ox, oy):
+        U = ((xx - ox) / cw) % 1.0; V = ((yy - oy) / rh) % 1.0
+        x = np.abs(U - 0.5) * 2.0; y = V * 2.0 - 1.0                              # x 0..1 from the axis (the mirror), y -1..1
+        M = 256
+        tex = fft_noise(M, 3, 9, seed + 1, 0.6) + fft_noise(M, 9, 22, seed + 2, 0.4) * 0.45
+        tx = (x * 0.5 * (M - 1)).astype(int); ty = ((y * 0.5 + 0.5) * (M - 1)).astype(int)
+        f = tex[ty, tx]
+        env = np.clip(1.0 - (x * 1.15 + np.abs(y) * 1.0), 0, 1)                   # a diamond the flower lives in
+        return np.clip((f * 0.9 + env * 1.6 - 0.4) * 5.0, 0, 1) * np.clip(env * 6.0, 0, 1)
+    a = motif(0.0, 0.0); b = motif(cw * 0.5, rh * 0.5)
+    m = np.clip(a + b, 0, 1)
+    m = _blur(np.repeat(m[..., None], 3, -1), 1.2)[..., 0]
+    fine = fft_noise(N, 100, 400, seed + 3, 0.0); macro = fft_noise(N, 1, 5, seed + 4, 0.6)
+    rgb = lerp(hexc(0x43191b), hexc(0x6b302d), m * 0.95)
+    rgb = lerp(rgb, hexc(0x6d4a2c), np.clip(m - 0.85, 0, 1) * 0.6)                 # the flower's raised heart, a little gold
+    rgb *= (1.0 + 0.04 * macro + 0.02 * fine)[..., None]
+    return settle(_blur(rgb, 0.5), 0.95, 0.95)
+
+
+# ── THE CARPET (carpet_4): the Vatican nave's runner — deep red wool pile, a faint lattice woven into it ──────────────────────────
+def bake_carpet(seed=381):
+    yy, xx = np.mgrid[0:N, 0:N].astype(np.float64)
+    pile = fft_noise(N, 150, 480, seed + 1, 0.0); tuft = fft_noise(N, 40, 140, seed + 2, 0.3); macro = fft_noise(N, 1, 6, seed + 3, 0.6)
+    k = 4
+    d1 = np.abs(((xx + yy) / N * k) % 1.0 - 0.5); d2 = np.abs(((xx - yy) / N * k) % 1.0 - 0.5)
+    lat = np.exp(-((0.5 - np.maximum(d1, d2)) / 0.02) ** 2) * 0 + np.exp(-(d1 / 0.025) ** 2) + np.exp(-(d2 / 0.025) ** 2)
+    rgb = lerp(hexc(0x4a1517), hexc(0x5e1d1e), np.clip(0.5 + 0.3 * macro + 0.2 * tuft, 0, 1))
+    rgb = lerp(rgb, hexc(0x6b4a2a), np.clip(lat, 0, 1) * 0.35)
+    rgb *= (1.0 + 0.07 * pile)[..., None]
+    wear = np.clip(fft_noise(N, 2, 8, seed + 4, 0.6) * 2.0 - 0.8, 0, 1)
+    rgb = lerp(rgb, rgb * np.array([0.9, 0.85, 0.85]) + 0.02, wear * 0.4)
+    return settle(_blur(rgb, 0.45), 0.9, 0.95)
+
+
 def main():
     out = sys.argv[1] if len(sys.argv) > 1 else '.'
     only = sys.argv[2].split(',') if len(sys.argv) > 2 else None
@@ -744,8 +1068,13 @@ def main():
               ('calm_marble_1', bake_marble), ('calm_snow_1', bake_snow), ('calm_ice_1', bake_ice), ('calm_hedge_1', bake_hedge),
               ('calm_cobble_1', bake_cobble), ('calm_darkstone_1', bake_darkstone), ('calm_planks_1', bake_planks), ('calm_shipwood_1', bake_shipwood),
               ('calm_obsidian_1', bake_obsidian), ('calm_deckplate_1', bake_deckplate), ('calm_gunmetal_1', bake_gunmetal), ('calm_rivets_1', bake_rivets),
-              # drafted for batch 2 (not shipped yet)
-              ('calm_sand_1', bake_sand), ('calm_sand_beach_1', lambda: bake_sand(beach=True)), ('calm_moon_1', bake_moon), ('calm_blocks_1', bake_blocks)]
+              # THE ROLLOUT batch 2 (2026-11-11): the other 27 arenas + the spell ground
+              ('calm_sand_1', bake_sand), ('calm_sand_beach_1', lambda: bake_sand(beach=True)), ('calm_moon_1', bake_moon), ('calm_mars_1', bake_mars),
+              ('calm_cloud_1', bake_cloud), ('calm_storm_1', bake_storm), ('calm_gravel_1', bake_gravel), ('calm_roots_1', bake_roots),
+              ('calm_rockygrass_1', bake_rockygrass), ('calm_darkgrass_1', bake_darkgrass), ('calm_cavefloor_1', bake_cavefloor), ('calm_darkrock_1', bake_darkrock),
+              ('calm_crystal_1', bake_crystal), ('calm_flesh_1', bake_flesh), ('calm_concrete_1', bake_concrete), ('calm_gilt_1', bake_gilt),
+              ('calm_flagstone_1', bake_flagstone), ('calm_castle_1', bake_castle), ('calm_checker_1', bake_checker), ('calm_damask_1', bake_damask),
+              ('calm_carpet_1', bake_carpet)]
     os.makedirs(out, exist_ok=True)
     sheets = []
     for name, fn in makers:
