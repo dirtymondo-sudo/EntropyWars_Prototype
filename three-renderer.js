@@ -4091,16 +4091,25 @@ const ThreeRenderer = (function () {
        WATER: a dark, see-through body (the bed shows a little) whose surface normal moves — three octaves of value noise sliding
        at different speeds and directions, in squares (uFluidTile), so a pool and a brook ripple as one sheet — the room's own lights
        give the sun glints off it (Phong, tight highlight), and the sky's sheen rises toward grazing angles (Schlick fresnel). No
-       caustic web, no painted waves: one quiet colour that reads as depth, and a faint sky reflection (a slow cloud noise read along the reflected ray) so the surface moves even seen from above. LAVA: calm_lava (a cooling basalt crust, glowing seams)
-       one sheet per square, slowly warped so the crust creeps, the seams glowing from the sheet's own heat with a slow pulse; the
-       crust stays dark (environment value), only the heat is bright. On WebGPU the extras are skipped: the water is its flat colour,
-       the lava its sheet + the sheet as its glow. */
+       caustic web, no painted waves: one quiet colour that reads as depth, and a faint sky reflection (a slow cloud noise read along the reflected ray) so the surface moves even seen from above. LAVA: calm_lava_4 (calm_lava_2's melt, rafts gone) slid in two copies on the fluid clock, the melt glowing from its own colour (THE MOLTEN LAVA, in
+       _calmFluidMat). On WebGPU both are the same maths (_ewNodeCalmFluid, _ewNodeCalmWater). */
     var _CALM_NOISE_GLSL =
         'float cHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }\n' +
         'float cNoise(vec2 p) { vec2 i = floor(p), f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);\n' +
         '  return mix(mix(cHash(i), cHash(i + vec2(1.0, 0.0)), u.x), mix(cHash(i + vec2(0.0, 1.0)), cHash(i + vec2(1.0, 1.0)), u.x), u.y); }\n' +
         'float cRip(vec2 p, float t) { return cNoise(p * 6.0 + vec2(t * 0.55, t * 0.31)) * 0.55 + cNoise(p * 13.0 - vec2(t * 0.9, -t * 0.47)) * 0.3\n' +
         '  + cNoise(p * 29.0 + vec2(-t * 1.4, t * 1.1)) * 0.15; }\n';
+    /* THE LAVA WITHOUT A GRID (mondo 11-11: "are you able to make it look not like a repeated pattern"): each copy of the sheet is
+       read twice, at two of eight fixed offsets picked by a slow world noise (k), and blended where k crosses from one offset to the
+       next, the blend leaning to the brighter texel so it never smears (the "texture variation" trick). The sheet's own look and
+       scale stay the same; only which part of it lands where changes, so no two patches match. The mip level comes from the plain
+       lookup's derivatives (textureGrad), so the offsets' jumps leave no seam. Same maths on WebGPU (_ewNodeCalmFluid). */
+    var _CALM_NOTILE_GLSL =
+        'vec3 cNoTile(sampler2D s, vec2 uv, vec2 g, float k) {\n' +
+        '  vec2 gx = dFdx(g), gy = dFdy(g); float l = k * 8.0, fi = floor(l), ff = fract(l);\n' +
+        '  vec2 oa = sin(vec2(3.0, 7.0) * fi), ob = sin(vec2(3.0, 7.0) * (fi + 1.0));\n' +
+        '  vec3 a = textureGrad(s, uv + oa, gx, gy).rgb, b = textureGrad(s, uv + ob, gx, gy).rgb;\n' +
+        '  return mix(a, b, smoothstep(0.2, 0.8, ff - 0.1 * dot(a - b, vec3(1.0)))); }\n';
     function _calmFluidMat(key) {
         var lava = (key === 'lava'), deep = (key === 'deep_water'), mat;
         if (lava) {
@@ -4118,20 +4127,27 @@ const ThreeRenderer = (function () {
             sh.uniforms.uFluidFlow = _fluidFlowUniform;
             sh.uniforms.uCalmSky = { value: sky }; sh.uniforms.uCalmGlow = { value: _CALM.lavaGlow };
             sh.vertexShader = 'varying vec3 vCalmW;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvCalmW = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
-            var head = 'uniform float uFluidTime;\nuniform float uFluidTile;\nuniform vec2 uFluidFlow;\nuniform vec3 uCalmSky;\nuniform float uCalmGlow;\nvarying vec3 vCalmW;\n' + _CALM_NOISE_GLSL;
+            var head = 'uniform float uFluidTime;\nuniform float uFluidTile;\nuniform vec2 uFluidFlow;\nuniform vec3 uCalmSky;\nuniform float uCalmGlow;\nvarying vec3 vCalmW;\n' + _CALM_NOISE_GLSL + (lava ? _CALM_NOTILE_GLSL : '');
             var f = head + sh.fragmentShader;
             if (lava) {
+                /* THE MOLTEN LAVA (mondo: "doesnt really look lava-y ... all brown ... isnt even moving", then "the dark parts are kind
+                   of distracting, can it just be the lava part, no rocks", then of v3's flow lines "too cartoony ... not what the lava
+                   looked like before"): calm_lava_4 is calm_lava_2's own melt over the whole sheet, its rafts gone, and the motion is v2's
+                   again. Two copies slide on the fluid clock like the old lava (PR #782): copy B, turned and at another scale, runs the
+                   other way, nudges copy A's lookup a little and makes the melt's glow swell and fade as it passes. The melt (red-dominant
+                   texels) glows from its own colour. Same maths on WebGPU (_ewNodeCalmFluid). */
                 f = f.replace('#include <map_fragment>',
                     'vec2 cP = (vCalmW.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
                     'float cT = uFluidTime;\n' +
-                    'vec2 cWarp = vec2(cNoise(cP * 1.7 + vec2(cT * 0.05, 0.0)), cNoise(cP * 1.7 + vec2(7.1, -cT * 0.04))) - 0.5;\n' +
-                    '#ifdef USE_MAP\n vec3 cLa = texture2D(map, cP + cWarp * 0.07 + vec2(cT * 0.006, cT * 0.004)).rgb;\n#else\n vec3 cLa = vec3(0.1, 0.05, 0.03);\n#endif\n' +
-                    'float cHeat = smoothstep(0.2, 0.8, cLa.r) * (0.72 + 0.4 * cNoise(cP * 0.8 + vec2(cT * 0.13, -cT * 0.09)));\n' +
-                    'diffuseColor.rgb *= cLa * 0.9;\n' +
-                    /* the molten flow under the crust: broad slow patches where it runs thin, and a low warm floor, so a lava field still
-                       reads as lava from the wide camera (the seams are thin; far off their mips average them away) */
-                    'float cFlow = smoothstep(0.38, 0.9, cNoise(cP * 0.32 + vec2(cT * 0.018, -cT * 0.013)) * 0.7 + cNoise(cP * 0.9 - vec2(cT * 0.03, 0.0)) * 0.3);\n')
-                .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = cLa * cHeat * uCalmGlow + vec3(0.62, 0.15, 0.025) * (0.16 + 0.7 * cFlow) * uCalmGlow * (1.0 - 0.6 * smoothstep(0.25, 0.7, cHeat));\n');
+                    '#ifdef USE_MAP\n' +
+                    ' vec2 cUb = vec2(cP.y, -cP.x) * 0.37, cUa = cP * 0.5;\n' +
+                    ' vec3 cLb = cNoTile(map, cUb + vec2(-cT * 0.015, cT * 0.022), cUb, cNoise(cP * 0.12 + 17.3));\n' +
+                    ' vec3 cLa = cNoTile(map, cUa + vec2(cT * 0.020, cT * 0.013) + (cLb.rg - vec2(0.9, 0.34)) * 0.035, cUa, cNoise(cP * 0.14));\n' +
+                    '#else\n vec3 cLa = vec3(0.6, 0.2, 0.05), cLb = cLa;\n#endif\n' +
+                    'float cMelt = smoothstep(0.1, 0.32, cLa.r - cLa.b);\n' +
+                    'float cHb = dot(cLb, vec3(0.299, 0.587, 0.114));\n' +
+                    'diffuseColor.rgb = diffuse * cLa * mix(0.9, 0.35, cMelt);\n')
+                .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance = cLa * cMelt * uCalmGlow * (0.75 + 0.5 * cHb);\n');
             } else {
                 f = f.replace('#include <map_fragment>',
                     '#include <map_fragment>\n' +
@@ -4150,6 +4166,7 @@ const ThreeRenderer = (function () {
         };
         mat.customProgramCacheKey = function () { return 'ew_calm_fluid_' + (lava ? 'lava' : deep ? 'deep' : 'water'); };
         mat._ew_fluidTop = true; mat._ew_fluidType = key; mat._ew_calm = true;
+        _ewNodeTag(mat, { k: 'calmfluid', lava: lava, glow: _CALM.lavaGlow, sky: [sky.r, sky.g, sky.b] });   // WEBGPU: the same lava + water (_ewNodeCalmFluid)
         return mat;
     }
 
@@ -22668,13 +22685,17 @@ const ThreeRenderer = (function () {
         var dmg = (badges.dmg > 0) ? Math.round(badges.dmg) : 0;
         var stIds = (Array.isArray(badges.st) && typeof STATUS_DEFS !== 'undefined')
             ? badges.st.filter(function (id) { return !!STATUS_DEFS[id]; }) : [];
-        if (!showEye && !dmg && !stIds.length) return null;
+        /* THE CLIMB PREVIEW (2026-11-11): plain word chips ({ t, c }) — "CLIMB" / "HANG" + "ENDS TURN" on a climb's ghost */
+        var tagList = Array.isArray(badges.tags) ? badges.tags.filter(function (g) { return g && g.t; }) : [];
+        if (!showEye && !dmg && !stIds.length && !tagList.length) return null;
         var ch = 128;
         var CHIP_H = 58, CHIP_PAD = 12, CHIP_GAP = 8, CHIP_FONT = '700 38px "DotGothic16", monospace';
         var mc = document.createElement('canvas').getContext('2d');
         if (!mc) return null;
         mc.font = CHIP_FONT;
         var stLabels = stIds.map(function (id) { return String(STATUS_DEFS[id].short || id).toUpperCase(); });
+        var stCols = stIds.map(function (id) { return _tpStatusColor(id); });
+        for (var _tg = 0; _tg < tagList.length; _tg++) { stLabels.push(String(tagList[_tg].t).toUpperCase()); stCols.push(tagList[_tg].c || '#d9a066'); }
         var stWidths = stLabels.map(function (s) { return Math.ceil(mc.measureText(s).width) + CHIP_PAD * 2; });
         var chipsW = 0;
         for (var _sw = 0; _sw < stWidths.length; _sw++) chipsW += stWidths[_sw] + (_sw ? CHIP_GAP : 0);
@@ -22683,7 +22704,7 @@ const ThreeRenderer = (function () {
         mc.font = '700 56px "Segoe UI", Arial, sans-serif';
         var eyeW = showEye ? 74 : 0;
         var dmgW = dmgText ? Math.ceil(mc.measureText(dmgText).width) : 0;
-        var parts = (showEye ? 1 : 0) + (dmg ? 1 : 0) + (stIds.length ? 1 : 0);
+        var parts = (showEye ? 1 : 0) + (dmg ? 1 : 0) + (stLabels.length ? 1 : 0);
         var gap = 16;
         var pad = 22;
         var innerW = eyeW + dmgW + chipsW + gap * Math.max(0, parts - 1);
@@ -22711,7 +22732,7 @@ const ThreeRenderer = (function () {
         ctx.lineWidth = 3;
         ctx.strokeStyle = badges.eye === 'seen' ? 'rgba(255, 90, 70, 0.9)'
             : (badges.eye === 'hidden' ? 'rgba(127, 214, 160, 0.85)'
-            : (!dmg && stIds.length ? _tpStatusColor(stIds[0]) : 'rgba(255, 84, 68, 0.9)'));
+            : (!dmg && stLabels.length ? stCols[0] : 'rgba(255, 84, 68, 0.9)'));
         ctx.stroke();
 
         var cx = px + pad;
@@ -22728,15 +22749,15 @@ const ThreeRenderer = (function () {
             ctx.fillText(dmgText, cx, cy + 3);
             cx += dmgW + gap;
         }
-        if (stIds.length) {
+        if (stLabels.length) {
             ctx.font = CHIP_FONT;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             var cTop = cy - CHIP_H / 2;
-            for (var _sc = 0; _sc < stIds.length; _sc++) {
+            for (var _sc = 0; _sc < stLabels.length; _sc++) {
                 var _cw = stWidths[_sc];
                 ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(cx + 1, cTop + 1, _cw, CHIP_H);   // the chip's drop shadow
-                ctx.fillStyle = _tpStatusColor(stIds[_sc]); ctx.fillRect(cx, cTop, _cw, CHIP_H);
+                ctx.fillStyle = stCols[_sc]; ctx.fillRect(cx, cTop, _cw, CHIP_H);
                 ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 3; ctx.strokeRect(cx + 1.5, cTop + 1.5, _cw - 3, CHIP_H - 3);
                 ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillText(stLabels[_sc], cx + _cw / 2, cy + 2);
                 ctx.fillStyle = '#fff'; ctx.fillText(stLabels[_sc], cx + _cw / 2, cy);
@@ -22770,6 +22791,10 @@ const ThreeRenderer = (function () {
                (the same list the route arrow draws; an `apex` waypoint is a
                jump leg's arc top, so [a, apex, b] plays as one jump).
        kind  = 'walk' (default) | 'fly' | 'dash' | 'leap' | 'blink' | 'shove'.
+       A waypoint flagged climb ('up' | 'down' | 'mantle', battle.js THE CLIMB PREVIEW) is a leg on a wall's face:
+               the body goes straight up / down it with the board's own climb clip (down: played backwards, as the
+               board does), 'mantle' is the pull-up over the top; `face: { x, y }` on it = the tile the body faces.
+               motion.hang = the move ends hanging on the wall: the clip freezes there, as the board's hang does.
        castSpell / attack = after arriving, play that spell's / the basic
                attack's clip (the board's own cast / attack chains).
        afterTag = start once the ghost with that tag has arrived (a body a
@@ -22817,10 +22842,13 @@ const ThreeRenderer = (function () {
             var lt = kind === 'leap' ? 'jump' : (kind === 'blink' ? 'blink' : kind);
             /* a waypoint flagged slide (battle.js THE SLIDE FORECAST): the body glides that leg on the ice, no steps */
             if (wps[i].slide) lt = 'slide';
+            if (wps[i].climb) lt = (wps[i].climb === 'mantle') ? 'mantle' : 'climb';
             // a walk leg that climbs / drops a lot is the hop the board plays there
             var hop = (lt === 'walk' && Math.abs(nb.y - prev.y) > ts * 0.6);
             if (hop) lt = 'jump';
             var leg = { a: prev, b: nb, type: lt };
+            if (lt === 'climb' && wps[i].climb === 'down') leg.rev = true;
+            if (wps[i].face) leg.faceYaw = Math.atan2(wps[i].face.x * ts + ts / 2 - gp.x - nb.x, wps[i].face.y * ts + ts / 2 - gp.z - nb.z);
             if (lt === 'jump') {
                 var fl = Math.sqrt((nb.x - prev.x) * (nb.x - prev.x) + (nb.z - prev.z) * (nb.z - prev.z));
                 var ap = Math.max(prev.y, nb.y) + (hop ? ts * 0.35 : Math.max(ts * 0.9, fl * 0.32));
@@ -22842,8 +22870,10 @@ const ThreeRenderer = (function () {
                 : (L.type === 'slide') ? Math.max(0.09, d * 0.09)
                 : (L.type === 'blink') ? 0.0001
                 : (L.type === 'fly') ? Math.max(0.3, d * 0.32 + dv * 0.2)
+                : (L.type === 'climb') ? Math.max(0.6, Math.min(1.6, dv * 0.5))
+                : (L.type === 'mantle') ? 0.5
                 : Math.max(0.2, d * 0.3 + dv * 0.15);
-            L.yaw = (Math.abs(dx) + Math.abs(dz) > ts * 0.05) ? Math.atan2(dx, dz) : null;
+            L.yaw = (L.faceYaw !== undefined) ? L.faceYaw : (Math.abs(dx) + Math.abs(dz) > ts * 0.05) ? Math.atan2(dx, dz) : null;
             L.t0 = travel;
             travel += L.dur;
         }
@@ -22858,7 +22888,8 @@ const ThreeRenderer = (function () {
         var m = {
             legs: legs, kind: kind, mover: mover, baseY: moverBaseY, isModel: isModel,
             hold: 0.35 + delay, travel: travel, mixer: null, acts: {}, cur: null, curLeg: -1,
-            yaw: null, castLen: 0, noYaw: kind === 'shove'
+            yaw: null, castLen: 0, noYaw: kind === 'shove',
+            hang: !!motion.hang && legs[legs.length - 1].type === 'climb'
         };
         var face = motion.faceTo;
         m.endYaw = face ? Math.atan2(face.x * ts + ts / 2 - gp.x - legs[legs.length - 1].b.x, face.y * ts + ts / 2 - gp.z - legs[legs.length - 1].b.z) : null;
@@ -22880,7 +22911,9 @@ const ThreeRenderer = (function () {
                     jump: ['jump', 'walk', 'idle'],
                     shove: ['hitHeavy', 'hit', 'idle'],
                     slide: ['idle'],
-                    blink: ['idle']
+                    blink: ['idle'],
+                    climb: ['climbWall', 'walk', 'idle'],
+                    mantle: ['climbMantle', 'jump', 'idle']
                 };
                 if (motion.castSpell && typeof classifySpellAnimKind === 'function') {
                     want.cast = _castChainFor(classifySpellAnimKind(motion.castSpell));
@@ -22911,13 +22944,19 @@ const ThreeRenderer = (function () {
         return m;
     }
 
-    function _ghostMotionPlay(m, slot) {
+    function _ghostMotionPlay(m, slot, rev) {
         var next = m.acts[slot] || m.acts.idle || null;
         if (!next) return;
         var prev = m.cur;
         m.cur = next;
         next.enabled = true;
         next.reset();
+        /* a climb down is the climb clip played backwards (the board's own rule, _updateBattleClimbers) */
+        if (slot === 'climb' && m.acts.climb === next) {
+            var _cts = Math.abs(next.timeScale) || 1;
+            next.timeScale = rev ? -_cts : _cts;
+            if (rev) next.time = next.getClip().duration;
+        }
         next.play();
         if (prev && prev !== next) next.crossFadeFrom(prev, 0.12, false);
         else if (prev === next) { /* restarted in place (a new jump leg) */ }
@@ -22933,7 +22972,7 @@ const ThreeRenderer = (function () {
     /* One frame of a motion ghost at loop time t (s). Returns the seam fade. */
     function _ghostMotionStep(m, t, dt, T) {
         var legs = m.legs, last = legs[legs.length - 1];
-        var p, slot, legIdx = -1, yawWant = null, jumpLeg = null;
+        var p, slot, legIdx = -1, yawWant = null, jumpLeg = null, hangNow = false;
         if (t < m.hold) {
             p = legs[0].a; yawWant = m.startYaw;
             slot = (m.blinkCast && t >= m.blinkCastAt) ? 'cast' : 'idle';
@@ -22956,6 +22995,9 @@ const ThreeRenderer = (function () {
             }
             slot = L.type === 'blink' ? 'idle' : L.type;
             yawWant = L.yaw;
+        } else if (m.hang) {
+            /* the move ends hanging on the wall: the body stays on the face, the climb clip frozen where it stopped */
+            p = last.b; slot = 'climb'; legIdx = legs.length - 1; yawWant = last.yaw; hangNow = true;
         } else {
             p = last.b;
             slot = (m.castLen && t < m.arrive + m.castLen + 0.05) ? 'cast' : 'idle';
@@ -22964,12 +23006,12 @@ const ThreeRenderer = (function () {
         if (m.kind === 'blink' && t >= m.hold) { p = last.b; }
         // Clip switching: a new slot, or a new jump leg (each jump restarts its clip).
         if (m.mixer) {
-            var key = slot + (jumpLeg ? ':' + legIdx : '');
+            var key = slot + ((jumpLeg || slot === 'climb' || slot === 'mantle') ? ':' + legIdx : '');
             if (key !== m.curKey) {
                 m.curKey = key;
-                _ghostMotionPlay(m, slot);
+                _ghostMotionPlay(m, slot, legIdx >= 0 && !!legs[legIdx].rev);
             }
-            m.mixer.update(dt);
+            m.mixer.update(hangNow ? 0 : dt);
         }
         var mv = m.mover;
         if (mv) {
@@ -23141,7 +23183,7 @@ const ThreeRenderer = (function () {
         }
 
         // Warning badges (eye / -N damage / a zone's status chips) pinned above the hologram's head.
-        if (opts.badges && (opts.badges.eye || opts.badges.dmg > 0 || (opts.badges.st && opts.badges.st.length))) {
+        if (opts.badges && (opts.badges.eye || opts.badges.dmg > 0 || (opts.badges.st && opts.badges.st.length) || (opts.badges.tags && opts.badges.tags.length))) {
             try {
                 var _badge = _makeGhostBadgeSprite(opts.badges, ts);
                 if (_badge) {
@@ -35289,14 +35331,14 @@ const ThreeRenderer = (function () {
        shader extras do not (plain colour + sheet there). */
     var _CALM_BASE = 'https://cdn.entropywars.net/Assets/world/terrain/calm/';
     var _CALM_SHEETS = { grass_2: 'calm_grass_1.png', dirt_2: 'calm_dirt_1.png', dirt_3: 'calm_dirt_1.png', dirt: 'calm_dirt_1.png',
-                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', rocks_3: 'calm_rock_1.png', lava: 'calm_lava_1.png',
+                         rocks_5: 'calm_rock_1.png', rock_wall_1: 'calm_rock_1.png', rocks_3: 'calm_rock_1.png', lava: 'calm_lava_4.png',
                          scorched: 'calm_scorched_1.png' };
     /* the tunables (live in the console as EW_CALM; a change shows at the board's next build) */
     /* floorT / pathT / cliffT = the three sheet tints (the room's own sheet looks are its pixel sheets' and stay theirs): the path
        sits a step UNDER the grass and warm, so the board centre is the calmest ground on it */
     var _CALM = { floor: 0xffffff, floorT: [0.95, 1.08, 0.85], pathT: [0.72, 0.6, 0.5], cliffT: [0.85, 0.85, 0.82],
                   tints: { scorched: { floorT: [1.1, 0.9, 0.8], pathT: [0.84, 0.76, 0.72], cliffT: [0.92, 0.8, 0.74] } },   // a floor's own three tints (the grass set above is the default)
-                  drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.25 };
+                  drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.0 };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmOn() {
         try {
@@ -43790,7 +43832,7 @@ const ThreeRenderer = (function () {
        - render() before the async init() is a no-op (the node renderer throws there); setAnimationLoop already waits for it.
        The F3 lens reads this path too: per-draw counts through setRenderObjectFunction, GPU ms through three's timestamp
        queries — never on Firefox (its wgpu loses the device on timestampWrites), and only once F3 has been used on the device.
-       Off: ?ew_gpu=webgl (the default). ThreeRenderer.gpuStatus() / ?ewdiag=1 name the backend that really runs. */
+       Off: ?ew_gpu=webgl (Auto is the default since 2026-11-11: WebGPU where index.html's probe finds it working, else classic). ThreeRenderer.gpuStatus() / ?ewdiag=1 name the backend that really runs. */
     var _ewGpu = '';                 // '' = classic WebGLRenderer; 'webgpu' | 'webgl2' = the node renderer (the mode asked for)
     var _ewGpuInfo = { asked: 'webgl', why: '', ready: false, lost: '', drawErrs: 0, drawErr: '' };
     var _ewGpuDrawErrSeen = new WeakSet();
@@ -43811,6 +43853,7 @@ const ThreeRenderer = (function () {
     }
     function _ewGpuStatus() {
         var s = _ewGpuBackendName();
+        try { if (window.EW_GPU_WHY) s += ' [' + window.EW_GPU_WHY + ']'; } catch (e) {}   // WEBGPU BY DEFAULT: Auto / a pick, and why
         if (_ewGpuInfo.asked !== 'webgl' && !_ewGpu) s += ' — asked ' + _ewGpuInfo.asked + ' but ' + (_ewGpuInfo.why || 'the node lib did not load');
         if (_ewGpu && renderer && renderer.backend && renderer.backend.trackTimestamp) s += ' · GPU timestamps on';
         if (_ewGpu === 'webgpu' && _ewGpuInfo.limits) s += ' · ' + _ewGpuInfo.limits;
@@ -44624,7 +44667,20 @@ const ThreeRenderer = (function () {
         return true;
     }
     function _ewInstAttr(o, a) {
-        var im = o.instanceMatrix, ic = o.instanceColor, st = a.data.stride, A;
+        var im = o.instanceMatrix, ic = o.instanceColor, st, A;
+        /* THE BLACK BLOOD (2026-11-11, mondo on WebGPU: "black ink blot looking things" with the blood): three 0.186 keeps the
+           instance colours in a PLAIN instanced attribute (a copy of the first mesh's instanceColor), not in an interleaved
+           buffer, so the branch below never matched it and every mesh on a shared build drew with the FIRST mesh's colours:
+           the particle batches and the blood drops read another batch's tints, black where that batch had none. A mesh on
+           another mesh's build now gets its own colour attribute here too. */
+        if (!a.isInterleavedBufferAttribute) {
+            if (ic && ic.array && a.array !== ic.array) {
+                if (!o._ew_icp || o._ew_icp.array !== ic.array) { o._ew_icp = new THREE.InstancedBufferAttribute(ic.array, 3); o._ew_icp.setUsage(a.usage); o._ew_icp.version = ic.version; }
+                return o._ew_icp;
+            }
+            return a;
+        }
+        st = a.data.stride;
         if (st === 16 && a.data.array !== im.array) {
             if (!o._ew_ib || o._ew_ib.array !== im.array) {
                 o._ew_ib = new THREE.InstancedInterleavedBuffer(im.array, 16, 1); o._ew_ib.setUsage(a.data.usage); o._ew_ib.version = im.version; o._ew_ia = {};
@@ -44664,6 +44720,11 @@ const ThreeRenderer = (function () {
                 /* a node attribute (not the geometry's): the instancing's matrices (an instanced interleaved buffer, 16 floats)
                    or its colours (an interleaved buffer, 3 floats); three's own flag on these reads false, so they are told
                    apart by kind and by not being the geometry's */
+                if (a && !a.isInterleavedBufferAttribute && a.isInstancedBufferAttribute && a.itemSize === 3 && o.instanceColor && geoA.indexOf(a) < 0) {
+                    var mineC = _ewInstAttr(o, a);   // three 0.186: the instance colours, a plain instanced attribute (THE BLACK BLOOD)
+                    if (mineC !== a) { out[i] = mineC; sub = true; }
+                    continue;
+                }
                 if (!a || !a.isInterleavedBufferAttribute || !a.data || geoA.indexOf(a) >= 0 || geoA.indexOf(a.data) >= 0) continue;
                 if (!(a.data.isInstancedInterleavedBuffer && a.data.stride === 16) && a.data.stride !== 3) continue;
                 var mine = _ewInstAttr(o, a);
@@ -44689,6 +44750,11 @@ const ThreeRenderer = (function () {
         if (cb && ic && cb.array === ic.array && cb.version !== ic.version) {
             cb.clearUpdateRanges(); for (k = 0; k < ic.updateRanges.length; k++) cb.addUpdateRange(ic.updateRanges[k].start, ic.updateRanges[k].count);
             ic.clearUpdateRanges(); cb.version = ic.version;
+        }
+        var cp = o._ew_icp;
+        if (cp && ic && cp.array === ic.array && cp.version !== ic.version) {
+            cp.clearUpdateRanges(); for (k = 0; k < ic.updateRanges.length; k++) cp.addUpdateRange(ic.updateRanges[k].start, ic.updateRanges[k].count);
+            ic.clearUpdateRanges(); cp.version = ic.version;
         }
     }
     function _ewKeepStats() {
@@ -45005,6 +45071,76 @@ const ThreeRenderer = (function () {
         if (LV) nm.emissiveNode = T.materialEmissive.add(T.vec3(1.0, 0.45, 0.1).mul(T.smoothstep(0.45, 0.95, LV.w).mul(0.7)));
         if (W) nm.emissiveNode = T.materialEmissive.add(V(D.cec).mul(W.x.mul(D.ce))).add(V(D.gc).mul(W.y.mul(D.gs)));
     }
+    /* THE CALM GROUND's lava on WebGPU (_calmFluidMat, THE MOLTEN LAVA): the same two sliding copies of calm_lava_4, the same melt
+       mask and glow. The water: _ewNodeCalmWater. */
+    function _ewNodeCalmFluid(nm, m, D) {
+        var U = _ewNodeU, T = U.T;
+        if (!D.lava) return _ewNodeCalmWater(nm, m, D);
+        if (!m.map || !m.map.isTexture) return;
+        var map = m.map, glow = T.float(D.glow || 1.25), N = _ewNodeCalmNoise(T);
+        var cpos = function () { return T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)); };
+        var noTile = function (uv, g, k) {   // THE LAVA WITHOUT A GRID (_CALM_NOTILE_GLSL)
+            var gx = T.dFdx(g).toVar(), gy = T.dFdy(g).toVar(), l = k.mul(8).toVar(), fi = T.floor(l).toVar(), ff = T.fract(l);
+            var a = T.texture(map, uv.add(T.sin(T.vec2(3, 7).mul(fi)))).grad(gx, gy).rgb.toVar();
+            var b = T.texture(map, uv.add(T.sin(T.vec2(3, 7).mul(fi.add(1))))).grad(gx, gy).rgb.toVar();
+            return T.mix(a, b, T.smoothstep(0.2, 0.8, ff.sub(T.dot(a.sub(b), T.vec3(1)).mul(0.1))));
+        };
+        var lbOf = function (p) {
+            var ub = T.vec2(p.y, p.x.negate()).mul(0.37).toVar();
+            return noTile(ub.add(T.vec2(U.ftime.mul(-0.015), U.ftime.mul(0.022))), ub, N.vnoise(p.mul(0.12).add(17.3)));
+        };
+        var LA = T.Fn(function () {
+            var p = cpos().toVar(), lb = lbOf(p).toVar(), ua = p.mul(0.5).toVar();
+            var la = noTile(ua.add(T.vec2(U.ftime.mul(0.020), U.ftime.mul(0.013))).add(lb.rg.sub(T.vec2(0.9, 0.34)).mul(0.035)), ua, N.vnoise(p.mul(0.14))).toVar();
+            return T.vec4(la, T.smoothstep(0.1, 0.32, la.r.sub(la.b)));
+        })();
+        var HB = T.Fn(function () { return T.dot(lbOf(cpos().toVar()), T.vec3(0.299, 0.587, 0.114)); })();
+        var base = Object.getPrototypeOf(nm).setupDiffuseColor;
+        nm.setupDiffuseColor = function (builder) {
+            base.call(this, builder);
+            T.diffuseColor.rgb.assign(T.materialReference('color', 'color').mul(LA.rgb).mul(T.mix(T.float(0.9), T.float(0.35), LA.w)));
+        };
+        nm.emissiveNode = LA.rgb.mul(LA.w).mul(glow).mul(HB.mul(0.5).add(0.75));
+    }
+    /* THE CALM WATER on WebGPU (mondo 11-11: "and yes do water too"): the GLSL's maths (_calmFluidMat) in nodes: the 3-octave ripple
+       (value noise sliding on the fluid clock) as the surface normal, so the room's own lights glint off it; the slow colour drift; the
+       sky's sheen at grazing angles (Schlick) plus the faint sky noise read along the reflected ray; the sheen also firms the alpha. */
+    /* the calm shaders' value noise in nodes (= _CALM_NOISE_GLSL cHash / cNoise) */
+    function _ewNodeCalmNoise(T) {
+        var hash = function (p) { var q = T.fract(p.mul(T.vec2(123.34, 456.21))).toVar(); q.addAssign(T.dot(q, q.add(45.32))); return T.fract(q.x.mul(q.y)); };
+        var vnoise = function (p) {
+            var i = T.floor(p).toVar(), f = T.fract(p).toVar(), u = f.mul(f).mul(T.vec2(3).sub(f.mul(2))).toVar();
+            return T.mix(T.mix(hash(i), hash(i.add(T.vec2(1, 0))), u.x), T.mix(hash(i.add(T.vec2(0, 1))), hash(i.add(T.vec2(1, 1))), u.x), u.y);
+        };
+        return { hash: hash, vnoise: vnoise };
+    }
+    function _ewNodeCalmWater(nm, m, D) {
+        var U = _ewNodeU, T = U.T, vnoise = _ewNodeCalmNoise(T).vnoise;
+        var rip = function (p, t) {
+            return vnoise(p.mul(6).add(T.vec2(t.mul(0.55), t.mul(0.31)))).mul(0.55)
+                .add(vnoise(p.mul(13).sub(T.vec2(t.mul(0.9), t.mul(-0.47)))).mul(0.3))
+                .add(vnoise(p.mul(29).add(T.vec2(t.mul(-1.4), t.mul(1.1)))).mul(0.15));
+        };
+        var cpos = function () { return T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)); };
+        var NW = T.Fn(function () {   // the rippled normal, world space
+            var p = cpos().toVar(), t = U.ftime, e = 0.012, h0 = rip(p, t).toVar();
+            var dx = rip(p.add(T.vec2(e, 0)), t).sub(h0).div(e).mul(0.05), dz = rip(p.add(T.vec2(0, e)), t).sub(h0).div(e).mul(0.05);
+            return T.normalize(T.vec3(dx.negate(), 1, dz.negate()));
+        })();
+        var FR = T.Fn(function () {   // Schlick, against the rippled normal
+            var v = T.normalize(T.cameraPosition.sub(T.positionWorld));
+            return T.float(0.04).add(T.pow(T.float(1).sub(T.clamp(T.dot(NW, v), 0, 1)), 5).mul(0.96));
+        })();
+        var SK = T.Fn(function () {   // the sky's faint cloud noise along the reflected ray
+            var v = T.normalize(T.cameraPosition.sub(T.positionWorld)), r = T.reflect(v.negate(), NW).toVar();
+            return vnoise(r.xz.div(T.max(r.y, 0.2)).mul(1.3).add(T.vec2(U.ftime.mul(0.02), U.ftime.mul(0.012))));
+        })();
+        var sky = T.vec3(D.sky ? D.sky[0] : 0.62, D.sky ? D.sky[1] : 0.71, D.sky ? D.sky[2] : 0.76);
+        _ewNodeDiffuseMul(nm, function () { return vnoise(cpos().mul(0.9).add(T.vec2(U.ftime.mul(0.03), U.ftime.mul(0.02)))).mul(0.22).add(0.88); });
+        nm.normalNode = T.normalize(T.cameraViewMatrix.mul(T.vec4(NW, 0)).xyz);
+        nm.emissiveNode = T.materialEmissive.add(sky.mul(FR.mul(0.55).add(SK.add(0.4).mul(0.05))));
+        nm.opacityNode = T.mix(T.materialOpacity, T.float(1), FR.mul(0.6));
+    }
     /* a {value} object the classic hooks share → one node uniform that reads it every render */
     var _ewNodeRefs = new Map();
     function _ewNodeRef(o, init) {
@@ -45219,6 +45355,7 @@ const ThreeRenderer = (function () {
         }
         else if (D && D.k === 'terrain') _ewNodeTerrain(nm, m, D);
         else if (D && D.k === 'fluid') _ewNodeFluid(nm, m, D);
+        else if (D && D.k === 'calmfluid') _ewNodeCalmFluid(nm, m, D);   // THE CALM GROUND
         else if (D && (D.k === 'grass' || D.k === 'wind' || D.k === 'kelp')) _ewNodeSway(nm, D);
         else if (D && D.k === 'fxop') nm.opacityNode = _ewNodeU.T.materialOpacity.mul(_ewNodeU.T.attribute('aEwOp', 'float'));   // three-vfx.js's batched particles
         if (m.ewCol === 'on') { C.ewcol = (C.ewcol || 0) + 1; _ewNodeCol(nm); }   // THE CLOTH COLLISION (after the skinning)
@@ -46468,6 +46605,7 @@ const ThreeRenderer = (function () {
     function _ewMakeBoardRenderer(cnv) {
         var mode = (typeof window !== 'undefined' && window.EW_GPU_MODE) || 'webgl';
         _ewGpuInfo.asked = mode;
+        try { window.EW_GPU_MADE = true; } catch (e) {}   // WEBGPU BY DEFAULT: Auto's probe no longer changes the mode of this load
         var G = (typeof window !== 'undefined') ? window.THREE_GPU : null;
         if (mode === 'webgpu' || mode === 'webgl2') {
             if (G && typeof G.WebGPURenderer === 'function') {
@@ -47055,11 +47193,17 @@ const ThreeRenderer = (function () {
                 });
             } catch (e) {}
             console.log('[ThreeRenderer] board renderer: ' + _ewGpuBackendName() + (_ewGpuInfo.limits ? ' · ' + _ewGpuInfo.limits : ''));
+            /* WEBGPU BY DEFAULT (2026-11-11): three fell back to its own WebGL 2 backend (the device was refused after the probe).
+               This load keeps drawing with it; on Auto the next load takes the classic renderer. */
+            try { if (_ewGpu === 'webgpu' && !(r.backend && r.backend.isWebGPUBackend) && typeof window._ewGpuFailed === 'function') window._ewGpuFailed('three fell back to WebGL 2', false); } catch (x) {}
             _shadowsDirty = true;
             try { r.shadowMap.needsUpdate = true; } catch (e) {}
         }, function (e) {
             _ewGpuInfo.why = 'init() failed: ' + (e && e.message || e);
             console.error('THREE.WebGPURenderer: init failed — ' + (e && e.message || e) + ' (?ew_gpu=webgl draws with the classic renderer)');
+            /* WEBGPU BY DEFAULT (2026-11-11): on Auto a renderer that cannot start is remembered and the page comes back on the
+               classic renderer by itself, once (a canvas that asked for WebGPU cannot be handed to WebGL). */
+            try { if (typeof window._ewGpuFailed === 'function') window._ewGpuFailed('init failed', true); } catch (x) {}
         });
     }
     /* THE LOST DEVICE (WEBGPU_PLAN W4, 2026-10-04). A WebGPU device can be lost (a driver reset, the GPU process restarting,
@@ -47072,7 +47216,11 @@ const ThreeRenderer = (function () {
     function _ewGpuRebuild(old) {
         if (!old || old !== renderer || old._ew_dead || !canvas) return false;
         var n = _ewGpuInfo.rebuilds = (_ewGpuInfo.rebuilds || 0) + 1;
-        if (n > 3) { console.error('[ThreeRenderer] the GPU device was lost ' + n + ' times — not rebuilding again (reload, or ?ew_gpu=webgl for the classic renderer)'); return false; }
+        if (n > 3) {
+            console.error('[ThreeRenderer] the GPU device was lost ' + n + ' times — not rebuilding again (reload, or ?ew_gpu=webgl for the classic renderer)');
+            try { if (typeof window._ewGpuFailed === 'function') window._ewGpuFailed('device lost ' + n + ' times', false); } catch (x) {}   // Auto: the next load draws classic
+            return false;
+        }
         old._ew_dead = true;
         var cb = old._ew_loopCb || null;
         try { old.setAnimationLoop(null); } catch (e) {}
@@ -49359,7 +49507,7 @@ const ThreeRenderer = (function () {
         if (typeof state === 'undefined') return;
 
         if (state._moveHoverActive
-            && state.actionMode !== 'move' && state.actionMode !== 'jump'
+            && state.actionMode !== 'move' && state.actionMode !== 'jump' && state.actionMode !== 'climb'
             && typeof window._clearMoveHoverPreview === 'function') {
             window._clearMoveHoverPreview();
         }

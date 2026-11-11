@@ -7453,7 +7453,7 @@
                 const state_ = u.dead ? 'KO' : where === 'bench' ? 'BENCH' : where === 'escaped' ? 'ESCAPED' : (state._blitzActiveUnitId === u.id ? 'ACTING' : '');
                 return `<div class="bp-unit${u.dead ? ' ko' : ''}${where !== 'field' ? ' off' : ''}">`
                     + `<span class="bp-face"${sprite ? ` style="background-image:url('${sprite}')"` : ''}>${state_ ? `<em>${state_}</em>` : ''}</span>`
-                    + `<span class="bp-id"><b>${_pauseEsc(nm)}</b><small>LV ${lvl} · ${_pauseEsc(String(race).toUpperCase())}</small>`
+                    + `<span class="bp-id"><b>${_pauseEsc(nm)}</b><small>LV ${lvl} · ${_pauseEsc(String(race).toUpperCase())}${(typeof unitMasteryChipHtml === 'function') ? unitMasteryChipHtml(u.ulv) : ''}</small>`
                     + `<span class="bp-vit"><em>HP</em>${bar('hp', hp, mhp)}<tt>${hp} / ${mhp}</tt></span>`
                     + (mmp > 0 ? `<span class="bp-vit"><em>MP</em>${bar('mp', mp, mmp)}<tt>${mp} / ${mmp}</tt></span>` : '')
                     + (chips ? `<span class="bp-chips">${chips}</span>` : '')
@@ -7628,7 +7628,7 @@
                         <div class="pm-unit-sprite" style="background-image:url('${sprite}')"></div>
                         <span class="pm-unit-name">${escapeHtml(unitDisplayName(u))}</span>
                     </div></td>
-                    <td class="pm-cls-cell">${escapeHtml((typeof getRaceLabel === 'function' ? getRaceLabel(u.race, u.gender) : (u.race || '')))}${lvl > 1 ? ` Lv${lvl}` : ''}</td>
+                    <td class="pm-cls-cell">${escapeHtml((typeof getRaceLabel === 'function' ? getRaceLabel(u.race, u.gender) : (u.race || '')))}${lvl > 1 ? ` Lv${lvl}` : ''}${(typeof unitMasteryChipHtml === 'function') ? unitMasteryChipHtml(u.ulv) : ''}</td>
                     ${cell('_matchKills')}
                     ${cell('_matchDeaths')}
                     ${cell('_matchAssists')}
@@ -7999,6 +7999,14 @@
             const aaMode = (typeof ThreePost!=='undefined'&&ThreePost.getAA) ? ThreePost.getAA() : (fxaaOn ? 'fxaa' : 'off');   // THE POST PASS 7.5: off / FXAA / SMAA
             /* THE RENDER SCALE (2026-11-10): one stored ratio, two rows. Fast = ratio 1 and Native = the screen's own, as they
                always were; a share in between lights neither of them, and the Render Scale row below shows which share is on. */
+            /* WEBGPU BY DEFAULT (2026-11-11): the Renderer row. Auto = WebGPU where it works, else the classic renderer (index.html
+               decides at load); a pick is stored and applies on reload, so the row offers the reload when the two differ. */
+            const gpuNow = (typeof window!=='undefined'&&window.EW_GPU_PICK) || 'auto';
+            const gpuPick = (typeof window!=='undefined'&&window.EW_GPU_PICK_NEXT) || (gpuNow==='webgl2' ? '' : gpuNow);
+            const gpuPending = !!(typeof window!=='undefined'&&window.EW_GPU_PICK_NEXT&&window.EW_GPU_PICK_NEXT!==gpuNow);
+            let gpuRuns = ''; try { gpuRuns = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.gpuStatus) ? String(ThreeRenderer.gpuStatus()).split(' (')[0].split(' [')[0] : ''; } catch (e) {}
+            const gpuHint = (gpuRuns ? `drawing with ${gpuRuns} now` : 'the renderer starts with the first 3D view') +
+                (gpuPending ? '; your pick applies when the page reloads' : gpuNow==='auto' ? '; Auto uses WebGPU where your browser and graphics card support it and WebGL where they do not' : gpuNow==='webgl2' ? '; a link picked the test renderer (WebGL 2 backend): pick one here to leave it' : '; picked by you: Auto chooses for this machine');
             const _rsInfo = (typeof ThreePost!=='undefined'&&ThreePost.getRenderScale) ? ThreePost.getRenderScale() : null;
             const rsNative = _rsInfo ? _rsInfo.native : Math.min((typeof window!=='undefined'&&window.devicePixelRatio)||1,2);
             const rsRatio = (typeof window!=='undefined'&&window._ewPixelRatio>0) ? window._ewPixelRatio : (_rsInfo ? _rsInfo.ratio : rsNative);
@@ -8217,6 +8225,16 @@
                         <label class="pm-toggle"><input type="checkbox" ${looksOn ? 'checked' : ''} onchange="if(window._setSceneLooks)window._setSceneLooks(this.checked);${RJ}"><span class="pm-toggle-label">Map Looks</span><span class="pm-toggle-hint">${!looksOn ? 'off: every area keeps your settings: your fog colour, night mood and bloom, no map grade, and any tint, dither, pixelate, grain, vignette or CRT you have not set yourself stays off' : lookNow ? 'wearing ' + lookNow + ' under your settings — a slider you move wins over it' : 'a map or a room may fill in any setting you have left at its default; a slider you move wins'}</span></label>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Renderer</span>
+                        <div class="pm-seg-group">
+                            ${[['auto','Auto'],['webgpu','WebGPU'],['webgl','WebGL']].map(o=>`<button class="pm-seg-btn${gpuPick===o[0] ? ' active' : ''}" onclick="if(window._ewSetGpuPick)window._ewSetGpuPick('${o[0]}');${RJ}">${o[1]}</button>`).join('')}
+                            ${gpuPending ? `<button class="pm-seg-btn" style="border-color:#4c4;color:#8f8" onclick="if(window._ewGpuReload)window._ewGpuReload()">Reload now</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">${gpuHint}</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Pixel Ratio</span>
                         <div class="pm-seg-group">
                             <button class="pm-seg-btn${isFastPixel ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setPixelRatio)ThreePost.setPixelRatio(1);${RJ}">Fast</button>
@@ -8407,9 +8425,9 @@
         window._buildPolishSettingsHTML = function (RJ, inBattle) {
             if (typeof window.hqPolishAll !== 'function') return '';
             let rows = []; try { rows = window.hqPolishAll(); } catch (e) { rows = []; }
-            /* WEBGPU_PLAN W4: on the node renderer the quarks layer cannot draw (GLSL), and the AO row's second choice is GTAO */
+            /* WEBGPU_PLAN W4: on the node renderer the AO row's second choice is GTAO (the quarks row is back since 2026-11-11: three-vfx.js draws the layer there) */
             let nodeR = false; try { nodeR = !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isNodeRenderer && ThreeRenderer.isNodeRenderer()); } catch (e) {}
-            if (nodeR) rows = rows.filter(r => r.key !== 'quarksFx').map(r => r.key === 'ssaoMode' ? Object.assign({}, r, { levels: (r.levels || []).map(([v, lab]) => [v, lab === 'N8AO' ? 'GTAO' : lab]), hint: 'Classic = the game\'s own AO; GTAO = three\'s ground-truth AO, softer and wider, a little heavier' }) : r);
+            if (nodeR) rows = rows.map(r => r.key === 'ssaoMode' ? Object.assign({}, r, { levels: (r.levels || []).map(([v, lab]) => [v, lab === 'N8AO' ? 'GTAO' : lab]), hint: 'Classic = the game\'s own AO; GTAO = three\'s ground-truth AO, softer and wider, a little heavier' }) : r);
             if (!rows.length) return '';
             const esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
             const owned = rows.filter(r => r.owned).length;

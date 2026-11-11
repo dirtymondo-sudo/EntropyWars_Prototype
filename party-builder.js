@@ -980,6 +980,19 @@ function clashSpellOk(sp) {
 function sfx(key) { if (typeof window.playSfx === 'function') window.playSfx(key); }
 function getCodexLore(race, gender) { return (gender === 'female' && CODEX_LORE[race + ':female']) || CODEX_LORE[race] || window.RACE_PROFILES?.[race]?.lore || 'No intelligence available. File pending \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 review.'; }
 
+/* THE MASTERY LEVEL (mondo 2026-11-11, data.js UNIT_MASTERY_RULES): the cosmetic level plate on a unit's tile on the wall,
+   once the unit has been played (an unplayed unit's tile stays clean). `always` = draw level 1 too (the team's own slots). */
+function pbMasteryChip(race, always) {
+  try {
+    const PS = window.ProfileSystem;
+    if (!race || !PS || typeof PS.unitMastery !== 'function') return null;
+    const m = PS.unitMastery(race);
+    if (!m || (!always && !(m.xp > 0))) return null;
+    return h('span', { className: 'ml-chip pb-rtile-ml', style: { '--ml': m.color },
+      title: 'Mastery level ' + m.level + ' (' + m.band + '): ' + m.into.toLocaleString() + ' / ' + m.need.toLocaleString() + ' XP to the next. Shows how much you play this unit. No effect on the fight.' },
+      h('i', null, 'M'), String(m.level));
+  } catch (e) { return null; }
+}
 function Sprite({ race, gender, cls, size, glow, style: extraStyle }) {
   const url = getSpriteUrl(race, gender, cls);
   return h('div', { style: { width: size, height: size, backgroundImage: url ? `url('${url}')` : 'none', backgroundSize: 'contain', backgroundPosition: 'center bottom', backgroundRepeat: 'no-repeat', imageRendering: 'pixelated', filter: glow ? `drop-shadow(0 0 8px ${PB_ACCENT})` : undefined, ...extraStyle }});
@@ -3997,12 +4010,16 @@ function PartyBuilder(props) {
     if (typeFilter) list = list.filter(e => e.types.includes(typeFilter));
     if (rosterSearch) { const q = rosterSearch.toLowerCase(); list = list.filter(e => e.label.toLowerCase().includes(q) || e.race.toLowerCase().includes(q)); }
     const getStatVal = (entry, key) => { const s = computeStats(entry.race, entry.cls), mapped = STAT_MAP[key]; return s[mapped] ?? s[key] ?? s[key.toLowerCase()] ?? 0; };
+    const _mlMap = (window.ProfileSystem && typeof window.ProfileSystem.unitMasteryMap === 'function') ? window.ProfileSystem.unitMasteryMap() : {};
+    const masteryXp = (race) => { const m = _mlMap[race] || _mlMap[String(race || '').toLowerCase()]; return m ? (m.xp || 0) : 0; };
     list = [...list].sort((a, b) => {
       // Owned (unlocked) vessels always come first, then favorites, then the chosen stat.
       const ao = isLockedEntry(a.race) ? 0 : 1, bo = isLockedEntry(b.race) ? 0 : 1;
       if (ao !== bo) return bo - ao;
       const af = isFav(a.race, a.gender) ? 1 : 0, bf = isFav(b.race, b.gender) ? 1 : 0;
       if (af !== bf) return bf - af;
+      /* THE MASTERY LEVEL (mondo 2026-11-11: "let me sort by mastery in the party builder roster"): by the unit's cosmetic XP, the name breaking ties */
+      if (sortKey === 'mastery') { const ax = masteryXp(a.race), bx = masteryXp(b.race); if (ax !== bx) return sortDir === 'desc' ? bx - ax : ax - bx; return String(a.label).localeCompare(String(b.label)); }
       if (STAT_KEYS.includes(sortKey)) { return sortDir === 'desc' ? getStatVal(b, sortKey) - getStatVal(a, sortKey) : getStatVal(a, sortKey) - getStatVal(b, sortKey); } const av = a[sortKey]||a.label, bv = b[sortKey]||b.label; return sortDir === 'desc' ? String(bv).localeCompare(String(av)) : String(av).localeCompare(String(bv)); });
     return list;
   }, [rosterEntries, typeFilter, rosterSearch, sortKey, sortDir, _, favRaces]);
@@ -4545,15 +4562,20 @@ function PartyBuilder(props) {
      glass), search is a pill input. filteredRoster / rosterEntries /
      pickRace / isLockedEntry / toggleFav are unchanged. Hover → the stage
      (rosterHoverIn). */
-  const sortLabelTxt = sortKey === 'label' ? ('NAME ' + (sortDir === 'asc' ? 'A–Z' : 'Z–A')) : (statLabel(sortKey) + (sortDir === 'desc' ? ' ↓' : ' ↑'));
+  /* THE SORT (mondo 2026-11-11: "there should just be a button for ascending/descending, we dont need all those duplicate
+     buttons"): the SORT window lists each thing ONCE (name, Mastery, each stat); one button beside it flips the order.
+     Picking a new thing opens on its natural order (a name A-Z, a number highest first). */
+  const sortName = sortKey === 'label' ? 'NAME' : sortKey === 'mastery' ? 'MASTERY' : statLabel(sortKey);
+  const sortDirTxt = sortKey === 'label' ? (sortDir === 'asc' ? 'A–Z' : 'Z–A') : (sortDir === 'desc' ? 'HIGH' : 'LOW');
+  const sortLabelTxt = sortName;
+  const pickSort = (k) => { if (k !== sortKey) { setSortKey(k); setSortDir(k === 'label' ? 'asc' : 'desc'); } setPbMenu(null); sfx('uiCursorMove'); };
+  const sortRow = (k, glyph, name, note) => h('button', { key: k, className: 'pb-menu-row' + (sortKey === k ? ' on' : ''), onClick: () => pickSort(k) }, h('i', null, glyph), name, h('small', null, note));
   const rosterMenu = pbMenu === 'sort'
-    ? h(PbWindow, { title: 'SORT THE WALL', sub: sortLabelTxt, onClose: () => setPbMenu(null), zone: true, width: 300 },
+    ? h(PbWindow, { title: 'SORT THE WALL', sub: sortName + ' · ' + sortDirTxt, onClose: () => setPbMenu(null), zone: true, width: 300 },
         h('div', { className: 'pb-menu-list' },
-          h('button', { key: 'la', className: 'pb-menu-row' + (sortKey === 'label' && sortDir === 'asc' ? ' on' : ''), onClick: () => { setSortKey('label'); setSortDir('asc'); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, 'A'), 'NAME', h('small', null, 'A – Z')),
-          h('button', { key: 'ld', className: 'pb-menu-row' + (sortKey === 'label' && sortDir === 'desc' ? ' on' : ''), onClick: () => { setSortKey('label'); setSortDir('desc'); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, 'Z'), 'NAME', h('small', null, 'Z – A')),
-          ...STAT_KEYS.map(k => [['desc', '↓'], ['asc', '↑']].map(([d, arrow]) =>
-            h('button', { key: k + d, className: 'pb-menu-row' + (sortKey === k && sortDir === d ? ' on' : ''), onClick: () => { setSortKey(k); setSortDir(d); setPbMenu(null); sfx('uiCursorMove'); } },
-              h('i', null, arrow), statLabel(k), h('small', null, d === 'desc' ? 'HIGHEST FIRST' : 'LOWEST FIRST')))).flat()))
+          sortRow('label', 'A', 'NAME', ''),
+          sortRow('mastery', 'M', 'MASTERY', ''),
+          ...STAT_KEYS.map(k => sortRow(k, '#', statLabel(k), ''))))
     : null;
   const rosterPanel = h(React.Fragment, null,
     h('div', { className: 'pb-zone-head pb-wall-head' },
@@ -4561,8 +4583,6 @@ function PartyBuilder(props) {
       h('span', { className: 'pb-wall-count' }, filteredRoster.length, ' / ', rosterEntries.length),
       DOOR && h('span', { className:'door-hdr-sub pb-wall-sub' }, 'D.O.O.R. RECORDS · ENTITY REGISTRY'),
       h('div', { style: { flex: 1 } }),
-      h('input', { className: 'pb-pill-input', placeholder:'SEARCH…', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), 'aria-label': 'Search the wall' }),
-      h('button', { className: 'pb-pill-btn' + (pbMenu === 'sort' ? ' on' : ''), onClick: () => setPbMenu(pbMenu === 'sort' ? null : 'sort'), title: 'Sort the wall' }, '⇅ ', sortLabelTxt),
       null),
     h('div', { className: 'pb-wall-filters' },
       h('span', { className: 'pb-wall-flabel' }, 'TYPE'),
@@ -4572,7 +4592,15 @@ function PartyBuilder(props) {
         return h('button', { key: t, className: 'pb-type-disc' + (on ? ' on' : '') + (has ? '' : ' none'), style: { '--tc': c }, disabled: !has,
           onClick: () => setTypeFilter(on ? null : t), title: t.toUpperCase() + (has ? '' : ' — none on the wall') }, PB_TYPE_GLYPH[t] || t.slice(0, 2).toUpperCase());
       }),
-      (typeFilter || rosterSearch) ? h('button', { className: 'pb-pill-btn danger', onClick: () => { setTypeFilter(null); setRosterSearch(''); }, title: 'Clear every filter' }, '✕ CLEAR') : null),
+      (typeFilter || rosterSearch) ? h('button', { className: 'pb-pill-btn danger', onClick: () => { setTypeFilter(null); setRosterSearch(''); }, title: 'Clear every filter' }, '✕ CLEAR') : null,
+      /* THE HEADER FITS (2026-11-11): search + sort sit on the filter row, where there is room; in the title row they squeezed
+         the search box to "SEAR" at 1280 wide */
+      h('div', { className: 'pb-wall-fspace' }),
+      h('input', { className: 'pb-pill-input', placeholder:'SEARCH…', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), 'aria-label': 'Search the wall' }),
+      h('button', { className: 'pb-pill-btn' + (pbMenu === 'sort' ? ' on' : ''), onClick: () => setPbMenu(pbMenu === 'sort' ? null : 'sort'), title: 'Sort the wall by…' }, '⇅ ', sortLabelTxt),
+      h('button', { className: 'pb-pill-btn pb-sort-dir', onClick: () => { setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); sfx('uiCursorMove'); },
+        title: 'Flip the order (now ' + (sortDir === 'asc' ? 'ascending' : 'descending') + ')', 'aria-label': 'Sort order: ' + (sortDir === 'asc' ? 'ascending' : 'descending') },
+        ((sortKey === 'label') === (sortDir === 'asc')) ? '▼ ' : '▲ ', sortDirTxt)),
     h('div', { className: 'pb-roster', onMouseLeave: rosterHoverOut },
       filteredRoster.map((entry, ei) => {
         const isActive = entry.race===unitRace && entry.gender===(identity.gender||'male') && (entry.race!=='homosapien'||entry.cls===clsName);
@@ -4594,7 +4622,8 @@ function PartyBuilder(props) {
             locked ? h('div', { className: 'pb-rtile-lock' }, '🔒') : null,
             taken ? h('div', { className: 'pb-rtile-taken' }, 'ON TEAM') : null,
             !locked ? h('button', { className: 'pb-rtile-star' + (starred ? ' on' : ''), onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, title: starred ? 'Unfavourite' : 'Favourite' }, starred ? '★' : '☆') : null,
-            h('div', { className: 'pb-rtile-types' }, ...(entry.types || []).slice(0, 3).map((t, ti) => h('i', { key: ti, style: { background: getTypeColor(t) }, title: String(t).toUpperCase() })))),
+            h('div', { className: 'pb-rtile-types' }, ...(entry.types || []).slice(0, 3).map((t, ti) => h('i', { key: ti, style: { background: getTypeColor(t) }, title: String(t).toUpperCase() }))),
+            pbMasteryChip(entry.race)),
           h('div', { className: 'pb-rtile-name' }, entry.label),
           h('div', { className: 'pb-rtile-job' }, pbRoleLabel(entry.race)));
       })),

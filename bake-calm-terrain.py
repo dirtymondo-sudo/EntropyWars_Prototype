@@ -252,36 +252,30 @@ def bake_rock(seed=31):
     return np.asarray(img).astype(np.float64) / 255.0
 
 
-# ── THE LAVA: a cooling crust of dark basalt plates, glowing seams between them, a molten pool where the crust has broken. The
-#    game's shader scrolls two copies of this (THE CALM GROUND's lava); the glow is the sheet's own brightness. ─────────────────
+# ── THE LAVA (v3, 2026-11-11, mondo on v2: "the dark parts are kind of distracting, can it just be the lava part, no rocks"): melt
+#    only. Deep red where it cools, orange, and yellow where it runs hottest, in long flow lines (bands bent by a slow warp) with a
+#    finer streak inside each. No crust, no rafts, no blobs. The game's shader slides
+#    two copies of this sheet (THE CALM GROUND's lava); the melt glows from its own colour. ────────────────────────────────────────
 def bake_lava(seed=41):
-    wx = fft_noise(N, 2, 7, seed + 1, 0.8) * 60; wy = fft_noise(N, 2, 7, seed + 2, 0.8) * 60
-    F1, F2, ID = worley(N, 7, seed + 3, (wx, wy))
-    f1b, f2b, idb = worley(N, 18, seed + 4, (wx * 0.5, wy * 0.5))
+    # v4 (mondo 11-11: v3's flow lines were "too cartoony ... not what the lava looked like before when the dark rocky parts were
+    # still there"): calm_lava_2's own melt, the pools between its rafts, over the whole sheet; the rafts are gone. Same seeds and
+    # the same maths as v2's melt (streaked noise, the mottle, the thin cooling-skin veins), so it is that lava with the rocks lifted
+    # off. Where v2 had a channel's dark-red rim, a slow heat field now lets the melt cool to deep red in places (never to crust).
+    wx = fft_noise(N, 2, 7, seed + 1, 0.8) * 70; wy = fft_noise(N, 2, 7, seed + 2, 0.8) * 70
     fine = fft_noise(N, 60, 260, seed + 5, 0.2)
-    mid = fft_noise(N, 8, 30, seed + 6, 0.6)
-    pool = np.clip(fft_noise(N, 1, 4, seed + 7, 0.8) * 2.0 - 1.05, 0, 1) * np.clip(fft_noise(N, 6, 24, seed + 13, 0.6) * 2.5 + 0.2, 0, 1)
-    pool = np.clip(pool * 2.2, 0, 1)
-    tone = np.random.default_rng(seed + 8).uniform(-1, 1, 7 * 7)[ID]
-    crust = lerp(hexc(0x141110), hexc(0x2c2622), np.clip(0.5 + 0.3 * tone + 0.25 * mid + 0.15 * fine, 0, 1))
-    w = 0.025 + 0.1 * np.clip(fft_noise(N, 3, 10, seed + 9, 0.5) + 0.45, 0, 1) ** 2
-    gap = F2 - F1
-    core = np.exp(-(gap / (w * 0.55)) ** 2)
-    halo = np.exp(-(gap / (w * 2.2)) ** 2)
-    small = np.exp(-((f2b - f1b) / 0.03) ** 2) * np.clip(mid + 0.4, 0, 1) * 0.55
-    heat = np.clip(core * (0.55 + 0.45 * np.clip(fft_noise(N, 4, 16, seed + 14, 0.5) + 0.6, 0, 1)) + small * 0.7 + pool, 0, 1)
-    warm = np.clip(halo * 0.5 + small * 0.3 + pool * 0.6, 0, 1)
-    # blackbody ramp: deep red -> orange -> yellow
+    hot = np.clip(fft_noise(N, 1, 4, seed + 7, 0.8) * 1.4 + 0.72, 0.45, 1.0)
+    sx = np.asarray(Image.fromarray(((fft_noise(N, 10, 40, seed + 10, 0.5) * 0.5 + 0.5) * 255).astype(np.uint8)).resize((N, N // 4)).resize((N, N), Image.BICUBIC)).astype(np.float64) / 255.0 - 0.5
+    heat = np.clip(0.16 + 0.6 * hot ** 0.8 + 0.55 * sx + 0.15 * fine, 0, 1)
     def ramp(t):
-        c0, c1, c2, c3 = hexc(0x3a0802), hexc(0xb02a06), hexc(0xff7a12), hexc(0xffd25a)
+        c0, c1, c2, c3 = hexc(0x5a0c02), hexc(0xc22a05), hexc(0xff6a0e), hexc(0xffc04a)
         t = np.clip(t, 0, 1)[..., None]
-        return np.where(t < 0.4, c0 + (c1 - c0) * (t / 0.4), np.where(t < 0.75, c1 + (c2 - c1) * ((t - 0.4) / 0.35), c2 + (c3 - c2) * ((t - 0.75) / 0.25)))
-    glow = ramp(heat * (0.75 + 0.25 * np.clip(fine + 0.5, 0, 1)))
-    rgb = crust + hexc(0x5a1606) * warm[..., None] * 0.6
-    rgb = lerp(rgb, glow, np.clip(heat * 1.2, 0, 1))
-    img = to_img(rgb).filter(ImageFilter.GaussianBlur(0.6))
+        return np.where(t < 0.35, c0 + (c1 - c0) * (t / 0.35), np.where(t < 0.75, c1 + (c2 - c1) * ((t - 0.35) / 0.4), c2 + (c3 - c2) * ((t - 0.75) / 0.25)))
+    melt = ramp(heat)
+    g1, g2, _ = worley(N, 16, seed + 11, (wx * 0.4, wy * 0.4))
+    skin = np.exp(-((g2 - g1) / 0.022) ** 2) * np.clip(1.0 - heat * 0.9, 0, 1)
+    melt *= (1.0 - 0.45 * skin)[..., None]
+    img = to_img(melt).filter(ImageFilter.GaussianBlur(0.7))
     return np.asarray(img).astype(np.float64) / 255.0
-
 
 # ── THE SCORCHED GROUND (Hell, 2026-11-11): burnt ground — a dark ash bed, a crust of cracked plates (cellular, low relief), soot
 #    patches, small cinders and a little grey ash drift in the cracks. No glow and no embers: the lava is the only bright thing. ──

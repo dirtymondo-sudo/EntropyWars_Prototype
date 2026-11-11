@@ -1832,3 +1832,27 @@ busy". An ADDITIONAL map; his Fairy Forest board and his sheets are untouched. P
   `prebuilt_hell_calm_delta` (scorched floor + 44 lava tiles; rocks_3 / rocks_5 -> calm_rock). New sheet calm_scorched_1.png
   (bake_scorched: dark ash bed, cracked crust plates, soot, cinders; no embers, the lava is the only bright thing). _CALM.tints keys
   a floor's own three tints (scorched: neutral floor, grey path a step under); the grass set stays the default. Both VS CPU only.
+- 2026-11-11, part 3 THE MOLTEN LAVA (mondo on Hell (Calm), WebGPU: "the lava doesnt really look 'lava-y' and its all brown instead of
+  orange/red/fiery. And in the game the lava isnt even moving"). Cause: the calm lava's look lived only in its onBeforeCompile (WebGL),
+  so WebGPU drew the bare sheet, still, and v1's sheet was mostly dark crust. Now: calm_lava_2.png (bake_lava v2: orange-red melt with
+  crust rafts, red-hot rims, cooling-skin veins, a fifth of the cells open pools) slid in two copies on the fluid clock exactly like the
+  PR #782 lava (copy B turned, other scale, other way; it nudges copy A's lookup 0.035 and swells the glow); melt = red-dominant texels
+  (r - b), glowing from their own colour x _CALM.lavaGlow (1.0). WebGPU twin: _ewNodeCalmFluid (tag k 'calmfluid'). No procedural
+  blobs (his lava-lamp rule). The calm water on WebGPU is still its flat colour.
+- 2026-11-11, part 4 (mondo: "it's better but i feel like the dark parts are kind of distracting, can it just be the lava part, no
+  rocks" + "and yes do water too"): calm_lava_3.png = melt only (bake_lava v3: flow lines = 5 + 13 bands across the sheet bent by a
+  slow periodic warp, red -> orange -> yellow; no crust, no rafts, no blobs). Both copies now slide ALONG the lines (A 0.03/s,
+  B x0.37 at 0.045/s, not turned). WebGPU calm water: _ewNodeCalmWater (value-noise ripple normal -> normalNode via
+  cameraViewMatrix, colour drift, Schlick sky sheen + reflected sky noise, opacity firmed by the sheen), same maths as the GLSL.
+- 2026-11-11, part 5 (mondo: v3 "too cartoony looking, i swear thats not what the lava looked like before when the dark rocky parts
+  were still there. Why did you make a whole other thing"): he wanted v2 with the rocks lifted off, not a new design. calm_lava_4.png
+  (bake_lava v4) = v2's own melt (same seeds, streaked noise, mottle, cooling-skin veins, same ramp) over the whole sheet, rafts gone;
+  a slow heat field (seed + 7) lets it cool to deep red in places, never to crust. Motion back to v2's (copy B turned, other way,
+  nudge 0.035; rg centre 0.9/0.34 = v4's mean). calm_lava_3 (flow lines) is retired: he reads smooth bands as cartoony. Lesson: when
+  he asks to remove one part, remove only that part.
+- 2026-11-11, part 6 THE LAVA WITHOUT A GRID (mondo: "are you able to make it look not like a repeated pattern"): copy A repeats
+  every 2 squares, so the sheet's hot blobs sat in a grid. Now each copy is read twice at two of eight fixed offsets picked by a
+  slow world value noise (A cP*0.14, B cP*0.12+17.3), blended where the noise crosses from one offset to the next (leaning to the
+  brighter texel: Quilez's texture-variation trick), mip from the plain lookup's derivatives (textureGrad / TSL .grad) so no seams.
+  Same sheet, same scale (one sheet still covers the same squares); only which part lands where changes. GLSL _CALM_NOTILE_GLSL
+  (lava head only), TSL noTile in _ewNodeCalmFluid; the shared node value noise is _ewNodeCalmNoise. Checked WebGPU + WebGL.

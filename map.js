@@ -369,7 +369,17 @@
             let url = '', portrait = false;
             try { if (typeof getUnitPortraitUrl === 'function') { url = getUnitPortraitUrl({ race: s.race, gender: s.gender || 'male' }) || ''; portrait = !!url; } } catch (e) {}
             if (!url) { try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl(s.race || 'door agent', s.gender || 'male', UNIT_CLASS) || ''; } catch (e) {} }
-            return `<span class="sq-face ${portrait ? 'is-portrait' : 'is-sprite'}${extra ? ' ' + extra : ''}"><i${url ? ` style="background-image:url('${_sqEsc(url)}')"` : ''}></i></span>`;
+            return `<span class="sq-face ${portrait ? 'is-portrait' : 'is-sprite'}${extra ? ' ' + extra : ''}"><i${url ? ` style="background-image:url('${_sqEsc(url)}')"` : ''}></i>${_sqMastery(s)}</span>`;
+        }
+        /* THE MASTERY LEVEL (mondo 2026-11-11): the unit's cosmetic level on its face. A face that came from the other
+           player carries its own `lv` (the Room's seat); my own squads read my profile. `lv: 0` = no plate. */
+        function _sqMastery(s) {
+            try {
+                if (!s || !s.race || typeof unitMasteryChipHtml !== 'function') return '';
+                let lv = s.lv;
+                if (lv === undefined && window.ProfileSystem && typeof window.ProfileSystem.unitMasteryLevel === 'function') lv = window.ProfileSystem.unitMasteryLevel(s.race);
+                return unitMasteryChipHtml(lv, 'on-face');
+            } catch (e) { return ''; }
         }
         window._sqFaceHtml = s => _sqFace(s || {});   // the ready room (online.js) draws the same faces
         /* the squad strip (online hub / quick play / the ready room): faces + the team name (+ CHANGE) */

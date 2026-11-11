@@ -2634,3 +2634,29 @@ Not run with two seats.
 - hud.js ActionMenu root `attackAction` no longer carries `acc` (the "89–90%" lowest–highest odds of every foe in reach).
 - Kept: each target row after ATTACK is picked (`acc` in the target list, THE HIT CHANCE) and a foe's own quick menu Attack
   row (the click on that foe already picked the target). Same in Classic and the one battle panel (both draw these rows).
+
+## THE MASTERY LEVEL (2026-11-11, mondo: "a visible level for the units ... purely cosmetic ... tie the achievements into it")
+- Every unit (race) has a cosmetic Mastery level that only says how much its owner plays it. NO stat, rule or reward reads it.
+  Called Mastery and drawn as an "M 134" plate because the battle panel and story mode already show a fight level as "Lv".
+- Rules: data.js `UNIT_MASTERY_RULES` + `unitMasteryXp / unitMasteryFromXp / unitMasteryOf / unitMasteryBand / unitMasteryClean /
+  unitMasteryChipHtml`. XP = 100 a finished match + 50 a win + 10 a kill + 25 a deathless win + a bonus per tier reached on the
+  unit's own achievement lines (ACH_CHAMP_LINES: 100 / 250 / 750 / 2,000 / 5,000). A level costs 100 XP + 25 per level, 500 from
+  level 17 on, no cap. Bands (the trophy colours): Bronze 1, Silver 10, Gold 25, Diamond 50, Entropic 100.
+- Nothing is stored for the level: it is derived from `profile.progress.champs[race]` (games / wins / kills / deathless), which
+  already syncs to the account. `games` is new: `ACH_CHAMP_COUNTERS` (a per-unit counter with no trophy; mergeProgressBlobs keeps
+  it), counted in battle.js commitAchProgress for kind 'match' only. Old profiles: games is never read lower than wins.
+- Reads: profile.js `ProfileSystem.unitMastery(race)` / `unitMasteryLevel` / `unitMasteryMap` (cached on the profile's saved text).
+- In a fight a unit carries `ulv` (a number, battle.js `_mlStampUnit` in makeUnitsFromBuilds). Online: the guest's levels ride its
+  party meta (`ulv`, online.js _sendPartyConfig; the host cleans them in _applyRemotePartyConfig) and the host's snapshots carry
+  both squads. The Room's seats carry `lv` per face (online.js _lrMySeat, server.js lobbyCleanSeat). A CPU unit has none.
+- Shown: squad faces (map.js _sqFace: Team Room, squad desk, hub strip, the Room, Match Found), hud.js `_mlChipEl` beside the type
+  badges (unit info panel, own panel), the pause party list + post-match tables (ui.js / battle.js), the result screen's Unit
+  Mastery block (battle.js _achBuildEndOfMatchHtml, `window._lastMasteryRows`), the builder's wall tiles (played units only),
+  Profile > Achievements > Champions (plate, XP bar, sort by level). CSS: styles-base.css `.ml-chip`, styles-cinematic.css `.ml-row`.
+- His to overturn: the name + M plate, CPU matches counting like online, the numbers, story / dungeon giving kill XP only.
+- Proof (WebGL2, two seats): /mnt/project-files/unit-mastery-20261111/proof/. Plan: https://claude.ai/artifact/VsEJRAPQSuvSxMmQ3CTyfJ
+- THE SORT (same day, mondo: "let me sort by mastery in the party builder roster ... just a button for ascending/descending, we
+  dont need all those duplicate buttons"): party-builder.js SORT THE WALL lists each thing once (NAME, MASTERY, each stat) and one
+  `.pb-sort-dir` pill beside the sort pill flips the order. A new pick opens on its natural order (name A-Z, numbers high first).
+- THE HEADER FITS (same day): the wall's search box + the two sort pills moved from the title row to the TYPE filter row
+  (`.pb-wall-fspace` pushes them right); in the title row the search box was squeezed to "SEAR" at 1280 wide. Checked 1280 + 1024.
