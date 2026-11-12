@@ -33500,10 +33500,14 @@ const DOOR_HQ = {
            beside it is the orientation tape (4.3 plays it later). Challenge
            and the condemned Mystery-Dungeon crossing moved IN here from the
            egress door panel — the facility is their physical home now. */
-        training: {
+        /* ONE TRAINING ROOM (2026-11-12, mondo: "unifying the training room look in the battle map with the one in the story mode. They need
+           to be the same for the cutscene and battling in the training room to make sense"): this 20 m pit is NO LONGER the walk's Training
+           Room. `rooms.training` is now built after this table from `rooms.training_hall` (the test chamber the board is cut from), with this
+           room's console, doors, agents and things moved in. The old pit is kept here, unlinked, as `training_pit` (its number and
+           `why` moved with the room); the voxel board stays "Training Room · voxel" in VS CPU. */
+        training_pit: {
             label: 'TRAINING ROOM',
-            sub: 'PRACTICE · GAUNTLET · DUNGEON',
-            roomNo: '64', why: '8 × 8',
+            sub: 'THE OLD PIT',
             kind: 'box',
             fx: 'training',
             shell: {
@@ -33706,13 +33710,16 @@ const DOOR_HQ = {
                 { key: 'tulip_table',    x: -10.5, z: 28.5 }, { key: 'tulip_chair', x: -11.8, z: 28.5, face: 90 }, { key: 'tulip_chair', x: -9.2, z: 28.5, face: 270 },
                 { key: 'fire_extinguisher', wall: 's', x: 14.8, mount: 1.0 },
                 { key: 'security_camera', x: 31.2, z: 31.2, face: 315, mount: 5.6 },
-                /* MOCKUP · THE ORIENTATION CORNER: three school desks with their backs to the pad, the TV on its cart at the south wall */
-                { key: 'psx_tv_table_4', x: -5.25, z: 29.4, face: 0 },
-                { key: 'tube_tv',        x: -5.25, z: 29.4, y: 0.97, face: 0 },
-                { key: 'vhs_player',     x: -5.25, z: 29.4, y: 0.45, face: 0 },
+                /* THE ORIENTATION CORNER (2026-11-12, mondo: "a little area where the player takes a seat and the TV gets rolled in"): three
+                   school desks by the main hall door, their sitters' backs to the pad, the tape TV on its AV cart at the south wall (the cart
+                   is one Meshy model, mondo's pick on the card; the TV and the player are the pack pieces Room 64 had). Low things only: this
+                   is the battle camera's side. The cutscenes' shots are planned on these spots: keep the lane from the door to the cart clear. */
+                { key: 'decor_av_cart',  x: -5.25, z: 29.4, face: 0 },
+                { key: 'tube_tv',        x: -5.25, z: 29.4, y: 1.1, face: 0 },
+                { key: 'vhs_player',     x: -5.25, z: 29.4, y: 0.67, face: 0 },
+                { key: 'vhs_tape',       x: -5.1, z: 29.35, y: 0.135, face: 20 },
                 { key: 'school_desk',    x: -7.35, z: 26.0, face: 0 }, { key: 'school_desk', x: -5.25, z: 26.0, face: 0 }, { key: 'school_desk', x: -3.15, z: 26.0, face: 0 },
-                { key: 'vhs_tape',       x: -4.7, z: 29.3, y: 0.97, face: 20 },
-                /* MOCKUP · ROOM 64'S THINGS MOVED IN: the range console desk on the west wall, the 44-minute corner, the lockers, the cooler, the sign */
+                /* ROOM 64'S THINGS, MOVED IN: the range console's desk on the west wall, the forty-four-minute corner, the lockers, the cooler, the sign */
                 { key: 'tanker_desk',    wall: 'w', z: 0 },
                 { key: 'crt_terminal',   x: -31.1, z: -0.35, y: 0.76, face: 90 },
                 { key: 'rotary_phone',   x: -31.12, z: 0.42, y: 0.76, face: 70 },
@@ -33727,19 +33734,19 @@ const DOOR_HQ = {
                 { key: 'locker',         wall: 'e', z: 17.5 }, { key: 'locker', wall: 'e', z: 18.4 },
                 { key: 'hook_rail',      wall: 'e', z: 19.3 },
                 { key: 'folding_chair',  x: 30.2, z: 5.2, face: 280 }, { key: 'folding_chair', x: 30.2, z: 6.7, face: 260 },
-                { key: 'wet_floor_sign', x: -21.5, z: 22.5, face: 140 },
+                { key: 'wet_floor_sign', x: -21.5, z: 22.5, face: 140 },   // it is still not wet
             ],
+            /* the doors are part of the room's look, so the board's room wears them too (Room 64's three, moved to these walls) */
             doors: [
-                { id: 'egress', wall: 's', x: 0, leaf: 'leaf_exit', label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL', action: { room: 'central_egress', at: 'training' } },
-                { id: 'stairs', wall: 'w', z: -24.5, leaf: 'leaf_closet_alt', label: 'SERVICE STAIR', sub: 'DOWN TO B · SERVICES', action: { room: 'services', at: 'stairs' } },
-                { id: 'condemned', wall: 'e', z: 24.5, leaf: 'leaf_shabby_wood', label: 'CONDEMNED CROSSING', sub: 'MYSTERY DUNGEON', action: { fn: '_goToMysteryDungeon' } },
-            ],
-            counters: [
-                { id: 'range', x: -30.4, z: 0, face: 90, plateY: 1.9, radius: 2.4, verb: 'USE', label: 'RANGE CONSOLE', sub: 'PRACTICE BATTLE', action: { overlay: 'training' } },
-            ],
-            agents: [
-                { x: 6.0, z: 20.5, face: 330, line: 'Eyes on the grid, officer. It measured 7×7 on Tuesday. Nobody filed the change.' },
-                { x: -27.5, z: -4.4, face: 115, line: 'Forty-one minutes. I am taking my break at forty-four.' },
+                { id: 'egress',    wall: 's', x: 0,   leaf: 'leaf_exit', label: 'THE MAIN HALL', sub: 'BACK TO THE MAIN HALL',
+                  action: { room: 'central_egress', at: 'training' },
+                  desc: 'The way back up. The EXIT sign over this one is accurate, which is why it was chosen.' },
+                { id: 'stairs', wall: 'w', z: -24.5, leaf: 'leaf_closet_alt', label: 'SERVICE STAIR', sub: 'DOWN TO B · SERVICES',
+                  action: { room: 'services', at: 'stairs' },
+                  desc: 'The back stair down to the service floor. The kitchen, the laundry, and a corridor Facilities would rather you did not.' },
+                { id: 'condemned', wall: 'e', z: 24.5, leaf: 'leaf_shabby_wood', label: 'CONDEMNED CROSSING', sub: 'MYSTERY DUNGEON',
+                  action: { fn: '_goToMysteryDungeon' },
+                  desc: 'Condemned in 1987. The field office on the far side never acknowledged the memo, and somebody keeps oiling the hinges.' },
             ],
             spawn: { x: 0, z: 28.0, face: 0 },
         },
@@ -46590,6 +46597,39 @@ const DOOR_HQ = {
     },
 };
 
+/* ── ONE TRAINING ROOM (2026-11-12) ── the walk's Training Room (Room 64, the main hall's door at 180°, the quest's room, the lessons'
+   console) IS the test chamber the `prebuilt_training` board is cut from: the same shell, terrain, props and doors as
+   `rooms.training_hall` (one definition; change the look THERE), plus what only a walked room has: its number, the RANGE console,
+   the agents, the sparring vessels, the lines. It carries no `site`, so it stays a plain HQ room (no site console, no Code Red). */
+DOOR_HQ.rooms.training = Object.assign({}, DOOR_HQ.rooms.training_hall, {
+    label: 'TRAINING ROOM',
+    sub: 'PRACTICE · GAUNTLET · DUNGEON',
+    roomNo: '64', why: '8 × 8',
+    counters: [
+        /* the launch console on the west wall (the tanker desk is the physical counter; this is the interaction) */
+        { id: 'range', x: -30.4, z: 0, face: 90, plateY: 1.9, radius: 2.4, verb: 'USE',
+          label: 'RANGE CONSOLE', sub: 'PRACTICE BATTLE', action: { overlay: 'training' } },
+    ],
+    agents: [
+        { x: 6.0,   z: 20.5, face: 330, line: 'Eyes on the grid, officer. It measured 7×7 on Tuesday. Nobody filed the change.' },
+        { x: -27.5, z: -4.4, face: 115, line: 'Forty-one minutes. I am taking my break at forty-four.' },
+    ],
+    npcSpots: [
+        /* two vessels sparring on the pad, one on the south walkway */
+        { x: -1.75, z: 1.75, face: 90 },
+        { x: 1.75,  z: 1.75, face: 270 },
+        { x: 10.5,  z: 24.5, face: 20 },
+    ],
+    lines: [
+        'The floor is load-bearing. The geometry is not.',
+        'Straight lines. On purpose. You get used to it.',
+        'PRACTICE is free. ORIENTATION is mandatory. There is a difference, on a form, somewhere.',
+        'Do not turn around during the tape. That part is not a joke.',
+    ],
+    spawn: { x: 0, z: 28.0, face: 0 },
+});
+delete DOOR_HQ.rooms.training.site;
+
 /* ── pure helpers (also on window.*) ────────────────────────────────── */
 /* polar → metres (x east, z south; north = −z) */
 function hqPolar(deg, r) {
@@ -52826,6 +52866,7 @@ const HQ_CATALOGUE_ALL = {
     /* Halloween pack (1) */
     halloween_character_ghost: { file: 'world/packs/elbolilloduro_halloween/characters/Character_Ghost.glb', base: 'asset', h: 1.87, foot: 0.36, group: 'Halloween pack' },
     /* Meshy decor (23) */
+    decor_av_cart: { file: 'world/props/meshy_decor/av_cart.glb', base: 'asset', h: 1.1, foot: 0.45, group: 'Meshy decor' },   // the orientation TV's cart (Meshy, 2026-11-12, mondo's pick)
     decor_armour_plinth: { file: 'world/props/meshy_decor/armour_plinth.glb', base: 'asset', span: 0.6, foot: 0.3, group: 'Meshy decor' },
     decor_armour_stand_post: { file: 'world/props/meshy_decor/armour_stand_post.glb', base: 'asset', h: 1.7, foot: 0.55, group: 'Meshy decor' },
     decor_carousel_horse: { file: 'world/props/meshy_decor/carousel_horse.glb', base: 'asset', h: 1.6, foot: 0.92, group: 'Meshy decor' },
@@ -67053,8 +67094,8 @@ const DOOR_CAST = {
         name: 'AGENT KNOX', title: 'FIELD AGENT · YOUR FRIEND', dept: 'Operations', model: 'knox', gender: 'male',
         lines: [],
         spots: [
-            { room: 'training', x: 8.6, z: 2.4, face: 260, pose: 'hqSit', reach: 2.0, p: 0.6,
-              doing: 'Under the east booth, watching the grid. He started a few months before you. He is still watching the grid.' },
+            { room: 'training', x: 30.2, z: 6.7, face: 260, pose: 'hqSit', reach: 2.0, p: 0.6,
+              doing: 'Under the east deck, watching the grid. He started a few months before you. He is still watching the grid.' },
             { room: 'central_egress', deg: 152.5, r: 19.5, level: 0, face: 150, reach: 1.9, p: 0.4,
               doing: 'Waiting outside your office. He knocked. He always knocks first.' },
         ],
@@ -67063,7 +67104,7 @@ const DOOR_CAST = {
         name: 'AGENT RINGER', title: 'SENIOR FIELD AGENT · VETERAN', dept: 'Operations', model: 'ringer', gender: 'male',
         lines: [],
         spots: [
-            { room: 'training', x: 8.2, z: -4.6, face: 250, pose: 'hqArms', reach: 2.0,
+            { room: 'training', x: 23.4, z: -4.6, face: 250, pose: 'hqArms', reach: 2.0,
               doing: 'Belle’s father. He watches the grid the way other people watch a stove.' },
         ],
     },
