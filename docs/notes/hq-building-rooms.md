@@ -1189,3 +1189,21 @@ issue, like the cafeteria, my office".
   the corridors, the boiler) keep 1. A room that reads wrong: give it its own `shell.keyLamp`.
 - `window.EW_HQ_NO_LIT_KEY = true` = every room the whole Key Light again (live; the proof's "before").
 - Proof: /mnt/project-files/foyer-lobby-light/rooms/.
+
+## THE OPEN-AIR ROOM INDOORS (2026-11-12, mondo walking from the pool into Room 1618: "The garden is dark") — three-renderer.js `_hqStageAirCross`
+- Three OPEN rooms (a sky of their own) stand on the stage of an INDOOR zone (HQ_WORLD zone.sky null): `garden` (annex),
+  `pool` (executive), `site_prebuilt_derelict_deck` (derelict). The stage was written for zones all outdoors or all indoors.
+- The fault: a visit that began in a closed room (always, for the garden: it has no door of its own from outside) had no sky
+  record, so the crossing built no dome and no lamp masts: the lawn stood under a black void, and by the clock's night it had
+  no lamp but the moon's key. (`_hqClockArm` did snap the hemisphere + key to the hour, so by day the ground itself was lit; a
+  clock-LOCKED open room would have kept the light of the room you left.) A fast walker never saw it (a part not attached yet
+  is a plain load, `_hqStageLoad`, which builds the sky). The way back never undid it: the pool wore the garden's daylight
+  (0.78 + 0.6, blown white) or its night until the visit ended.
+- The fix: `_hqStageSkyUp` builds the sky once a visit, when an open neighbour is built beside you (`_hqStageBuildTick`) or at the
+  crossing; `_hqOpenRoomLamps` = the lamp masts (entry and neighbour step); `_hqStageAirCross` (in `_hqStageSwap`, before the
+  shadow arm) turns the key to the new room's rig, sets the hemisphere's ground half + the fill, and hands `_hqStageBlendStart` a
+  snapshot of what is lit now (`st.airA`), blended to the open room's hour (`_hqStageSkyVals`) or the closed room's entry light
+  (`_hqIndoorLightVals`). `H.sky.air` = the open room the sky belongs to: the dome is drawn in it and in the rooms joined to it
+  (`_hqStageAirShow`), wearing its hour (`_hqStageAirEnv`). A closed ⇄ closed door join blends as before whether a sky is up or not.
+- `_hqClockArm` during that blend sets only the sun's direction (the blend owns the strength). The rim light and the post's
+  night read 0 in an enclosed room even with a sky up.

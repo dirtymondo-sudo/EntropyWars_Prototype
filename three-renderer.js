@@ -72761,7 +72761,7 @@ const ThreeRenderer = (function () {
         return { f: _hqDryFog(H), upm: _hqUnits(), m: on ? _ewFogShape().m : 0 };
     }
     function _hqTickSky(now, Hx) {
-        var H = Hx || _hq, sk = H && H.sky, env = H && ((H.stage && _hqStageSkyEnv(H)) || (H.clock && H.clock.vals && !H.clock.vals.locked && H.clock.vals.env) || H.room.shell.sky);   // THE STAGE: a crossing's blend; THE WORLD CLOCK: the hour's
+        var H = Hx || _hq, sk = H && H.sky, env = H && ((H.stage && _hqStageSkyEnv(H)) || (H.clock && H.clock.vals && !H.clock.vals.locked && H.clock.vals.env) || H.room.shell.sky || (sk && sk.air && _hqStageAirEnv(H, now)));   // THE STAGE: a crossing's blend; THE WORLD CLOCK: the hour's; THE OPEN-AIR ROOM INDOORS: the room beside you
         if (!sk || !env || !_envUni) return;
         sk.dome.position.copy(H.camera.position);
         var u = _envUni, t = now / 1000;
@@ -86207,7 +86207,7 @@ const ThreeRenderer = (function () {
         if (H.ready || H.landed) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
         if (H.ready) { try { _mmTick(H, now); } catch (e) { if (!_mmWarned) { _mmWarned = true; console.warn('[ThreeRenderer] the memory budget failed', e); } } }   // THE MEMORY BUDGET (G1)
         if (H.keyLamp) _hqKeyLampTick(H, dt);   // THE KEY LIGHT (2026-10-24): rides with the camera in an enclosed room
-        _ewRimTick(H.sky ? Math.max(0, Math.min(1, +H.sky.night || 0)) : 0);   // THE UNIT RIM LIGHT + NIGHT FILL (2026-10-25): the walk's own night, as the fight reads its (they kept the last fight's)
+        _ewRimTick((H.sky && !_hqEnclosed(H.room)) ? Math.max(0, Math.min(1, +H.sky.night || 0)) : 0);   // THE UNIT RIM LIGHT + NIGHT FILL (2026-10-25): the walk's own night, as the fight reads its (they kept the last fight's)
         if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
         if (H.heroLit && H.heroLit.isLight) { if (H.scene._ew_afterWalk === _hqHeroAfterWalk) { H.scene._ew_afterWalk = null; try { _hqHeroGate(H, performance.now()); } catch (e) { _hqHeroRelease(H.heroLit); } } H.scene._ew_afterWalk = _hqHeroAfterWalk; }   // THE STILL TORCH: read at the end of this frame's first matrix walk (a frame that never walked reads here)
         _hqFarTick(H);   // THE FAR PLANE: past the sky ring, and past the eye however far the cinematic camera flew
@@ -89404,6 +89404,7 @@ const ThreeRenderer = (function () {
            lit and staffed through its open door (an outdoor part's crowd still comes out at the crossing) */
         function (room) {
             var rnd = _hqRoundRoom(room);   // THE ROUND JOIN: the hall beside the foyer is lit and peopled like a closed room
+            if (_hqStageOpenBox(room)) { _hqOpenRoomLamps(room, _hq.scene); return; }   // THE OPEN-AIR ROOM INDOORS: its lamp masts stand with it
             if (!_hqStageClosedBox(room) && !rnd) return;
             if (rnd) _hqRoundRoomLamps(room, _hq.scene); else _hqBoxRoomLamps(room, _hq.scene);
             if (HQ_STAGE_RULES.nbPeople === 'interior') {
@@ -89429,6 +89430,92 @@ const ThreeRenderer = (function () {
             gl.position.copy(_hqPolarW(ga, (S.ring3.inner + S.ring3.outer) / 2, S.wallH + S.ring3.h + 2.4));
             sc.add(gl);
         });
+    }
+    /* ══ THE OPEN-AIR ROOM INDOORS (2026-11-12, mondo walking from the pool into Room 1618: "The garden is dark") ══
+       The garden, the executive pool and the derelict's deck are OPEN rooms (a sky of their own) that stand on the stage of an
+       INDOOR zone (HQ_WORLD zone.sky null). The stage was written for zones that are all outdoors or all indoors: a visit that
+       began in a closed room had no sky record, so the crossing into the garden built no dome and no lamp masts: a lawn under a
+       black void, and by the clock's night no lamp but the moon's key (the clock did snap the hemisphere and the key to the
+       hour, _hqClockArm; a clock-LOCKED open room kept the light of the room you left). And the way back never undid it: the
+       pool wore the garden's daylight (blown white) or its night until the visit ended. Now:
+       · the sky (_hqBuildSky: the dome, the far roster) goes up the moment an open neighbour is built beside you, or at the
+         crossing if it is not up yet, once a visit; it is drawn in the open room and in the rooms joined to it (the garden
+         through the annex's glass doors), and wears that room's hour while you stand beside it (sky.air);
+       · the open room's lamp masts are built with it as a neighbour (_hqOpenRoomLamps, the night lamps of the clock);
+       · the crossing blends the fog, the hemisphere and the key from what is lit NOW to the room you enter: the open rig (the
+         clock's hour) going out, the closed room's own (as it is entered: _hqIndoorLightVals) coming in; the key turns to the
+         new room's rig, the hemisphere's ground half and the fill change at once. */
+    function _hqStageOpenBox(room) { return !!(room && room.kind === 'box' && room.shell && room.shell.open && room.shell.sky); }
+    function _hqOpenRoomLamps(room, sc) {
+        var U = _hqUnits(), S = room.shell, LRo = _hqOpenLR(room), nightO = (S.sky && S.sky.night) ? 1 : 0;
+        var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
+        (S.lights || []).forEach(function (Lt) {
+            var ml = new THREE.PointLight(mplC, nightO ? LRo.nightLamp : LRo.dayLamp, 20 * U, 2); ml.position.set(Lt.x * U, (S.h + 1.8) * U, Lt.z * U); sc.add(ml);
+            ml._ew_lampI = LRo.nightLamp; _hq.clockLamps.push(ml);   // THE WORLD CLOCK (Phase 3): a lamp mast is a night lamp
+        });
+    }
+    function _hqEnvNorm(e) {
+        e = e || {}; var f = e.fog || {};
+        return { tint: e.tint, tintAmt: (e.tint != null && e.tintAmt != null) ? e.tintAmt : 0, stars: (e.stars != null) ? e.stars : 1, nebula: (e.nebula != null) ? e.nebula : 1,
+                 day: e.day || 0, clouds: e.clouds || 0, fog: { amount: f.amount || 0, top: f.top || 0, band: (f.band != null) ? f.band : 0.5 } };
+    }
+    /* the sky of an open room on an indoor stage: built once a visit, on the visit's own record */
+    function _hqStageSkyUp(H, room, id) {
+        if (!H || H.sky || H !== _hq || !_hqStageOpenBox(room)) return false;
+        var p3 = _hq3DOn();
+        try { _hqBuildSky(room); } catch (e) { console.warn('[HQ stage] the sky of ' + id, e); } finally { _hq3DOff(p3); }
+        if (!H.sky) return false;
+        H.sky.air = { room: room, id: id, at: 0, env: null };
+        _hqStageAirShow(H);
+        console.log('[HQ stage] the sky of ' + id + ' is up (an open-air room on an indoor stage)');
+        return true;
+    }
+    /* drawn in an open room and in the rooms joined to one (never behind a room two doors away) */
+    function _hqStageAirShow(H) {
+        var sk = H && H.sky; if (!sk || !sk.air || !H.stage) return;
+        var R = (_hqData() || {}).rooms || {}, on = _hqStageOpenBox(H.room) || (H.stage.nbsAll || []).some(function (n) { return _hqStageOpenBox(R[n.id]); });
+        [sk.dome, sk.group, sk.landmarks].forEach(function (o) { if (o) o.visible = on; });
+    }
+    /* the sky's values while you stand in a closed room beside it: the open room's hour (read once a second) */
+    function _hqStageAirEnv(H, now) {
+        var sk = H.sky, A = sk && sk.air; if (!A) return null;
+        if (!A.env || now - A.at > 1000) {
+            A.at = now;
+            var V = null; try { V = _hqClockVals(A.room, A.id, _hqClockHourNow()); } catch (e) { V = null; }
+            if (V && !V.locked && V.env) { A.env = V.env; if (!(H.stage && H.stage.blend)) { sk.tint.copy(V.tint); sk.fogC.copy(V.fogC); sk.night = V.night; } }
+            else A.env = A.room.shell.sky;
+        }
+        return A.env;
+    }
+    /* what is lit now (the blend's `a`) */
+    function _hqStageLitNow(H, fromRoom) {
+        var fog = _hqDryFog(H), sk = H.sky, hl = H.hemiLight, kl = H.keyLight, S = (fromRoom && fromRoom.shell) || {};
+        var env = (H.stage && _hqStageSkyEnv(H)) || (H.clock && H.clock.vals && !H.clock.vals.locked && H.clock.vals.env) || S.sky || (sk && sk.air && (sk.air.env || sk.air.room.shell.sky));
+        return { fogC: (fog && fog.color) ? fog.color.clone() : new THREE.Color(0x0d0e12), fogD: (fog && fog.density != null) ? fog.density : 0.00017,
+                 hemiC: hl ? hl.color.clone() : new THREE.Color(0xd9d2c0), hemiI: hl ? hl.intensity : 0.5, keyC: kl ? kl.color.clone() : new THREE.Color(0xe8ecf5), keyI: kl ? kl.intensity : 0.22,
+                 tint: sk ? sk.tint.clone() : new THREE.Color(0x000000), night: sk ? (+sk.night || 0) : 0, env: _hqEnvNorm(env), look: S.look, label: fromRoom && fromRoom.label };
+    }
+    /* the crossing between an open room and a closed one (called by the swap BEFORE the shadow is armed: the key turns here) */
+    function _hqStageAirCross(H, fromRoom, fromId, toId) {
+        var st = H.stage, toRoom = H.room, toOpen = _hqStageOpenBox(toRoom), fromOpen = _hqStageOpenBox(fromRoom);
+        st.airA = null;
+        if (toOpen === fromOpen) { _hqStageAirShow(H); return; }
+        if (toOpen && !H.sky) _hqStageSkyUp(H, toRoom, toId);
+        if (!H.sky) return;
+        if (!H.sky.air) H.sky.air = { room: toOpen ? toRoom : fromRoom, id: toOpen ? toId : fromId, at: 0, env: null };
+        else if (toOpen) { H.sky.air.room = toRoom; H.sky.air.id = toId; H.sky.air.at = 0; H.sky.air.env = null; }
+        st.airA = _hqStageLitNow(H, fromRoom);
+        try { _hqLightArm(toRoom); } catch (e) {}   // the key's direction (the blend below owns its strength and colour)
+        var LR = _hqLightRules();
+        if (toOpen) {
+            if (H.hemiLight) H.hemiLight.groundColor.setHex(0x2a2620);
+            if (H.fillLight) { H.fillLight.color.set(LR.fillColor); H.fillLight.intensity = LR.fill; }
+        } else {
+            var iv = _hqIndoorLightVals(toRoom);
+            if (H.hemiLight) H.hemiLight.groundColor.copy(iv.hemiG);
+            if (H.fillLight) { H.fillLight.color.copy(iv.fillC); H.fillLight.intensity = iv.fillI; }
+        }
+        _hqStageAirShow(H);
     }
     function _hqStageClosedBox(room) { return !!(room && room.kind === 'box' && room.shell && !(room.shell.open && room.shell.sky) && !room.terrain && !room.cave); }
     function _hqStageRootPlace(H, E) {
@@ -89651,6 +89738,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < st.nbs.length; i++) {
             var nb = st.nbs[i], E = st.parts[nb.id];
             if (E && E.built) {
+                if (!H.sky && H === _hq && _hqStageOpenBox(_hqData().rooms[nb.id])) _hqStageSkyUp(H, _hqData().rooms[nb.id], nb.id);   // THE OPEN-AIR ROOM INDOORS
                 if (!E.attached && E.rel && _hqStageReady(H, E, now)) {
                     /* THE WARM-UP (Phase 11): the part's shaders are compiled and its sheets uploaded BEFORE it is drawn, a few ms a
                        frame, for the lights the frame after the attach will have — the first frame that shows it compiles nothing */
@@ -90595,6 +90683,7 @@ const ThreeRenderer = (function () {
         try { if (!peopled) _hqSpawnPopulation(H.room, Object.assign({}, H.opts, { _stageNoPlayer: true })); } catch (e) { console.warn('[HQ stage] population', e); } finally { _hq3DOff(p3); }
         try { if (!peopled) _hqClearArrival(); } catch (e) {}   // THE CLEAR ARRIVAL: the part's people spawned around the officer walking in
         if (st.round) { try { _hqLightArm(H.room); } catch (e) {} }   // THE ROUND JOIN: the hall's key rig is not a box's (the blend eases its strength)
+        try { _hqStageAirCross(H, fromRoom, fromId, to); } catch (e) { console.warn('[HQ stage] the open-air crossing', e); }   // THE OPEN-AIR ROOM INDOORS: before the shadow (the key turns)
         try { _hqShadowArm(H.room); } catch (e) {}
         try { _hqAoArm(H.room); } catch (e) {}
         try { _hqHeightFogArm(H.room); } catch (e) {}
@@ -90654,6 +90743,20 @@ const ThreeRenderer = (function () {
     }
     function _hqStageBlendStart(H, fromRoom, toRoom, fromId, toId) {
         var st = H.stage;
+        /* THE OPEN-AIR ROOM INDOORS: out under the sky / back under a ceiling — from what is lit now to the room you enter */
+        if (st.airA && H.sky) {
+            var aA = st.airA, bA; st.airA = null;
+            if (_hqStageOpenBox(toRoom)) { bA = Object.assign({}, _hqStageSkyVals(toRoom, toId)); bA.env = _hqEnvNorm(bA.env); }
+            else {
+                var ivA = _hqIndoorLightVals(toRoom), SfA = (toRoom.shell || {}).fog;
+                bA = { fogC: new THREE.Color((SfA && SfA.color != null) ? SfA.color : 0x0d0e12), fogD: (SfA && SfA.color != null) ? (SfA.density > 0 ? SfA.density : 0.012) / _hqUnits() : 0.00017,
+                       hemiC: ivA.hemiC, hemiI: ivA.hemiI, keyC: ivA.keyC, keyI: ivA.keyI, tint: aA.tint.clone(), night: aA.night, env: aA.env, look: toRoom.shell.look, label: toRoom.label };
+            }
+            st.blend = { a: aA, b: bA, t0: performance.now(), looked: false, cur: null, air: true };
+            _hqStageBlendTick(H, st.blend.t0);
+            return;
+        }
+        st.airA = null;
         /* THE ROUND JOIN: hall ⇄ foyer — the hemisphere, the key and the fill ease to the room you walked into, colours and all */
         if (st.round && !H.sky && (_hqStageClosedBox(fromRoom) || _hqRoundRoom(fromRoom)) && (_hqStageClosedBox(toRoom) || _hqRoundRoom(toRoom))) {
             var ra = (st.blend && st.blend.rnd) ? st.blend.cur : _hqIndoorLightVals(fromRoom);
@@ -90661,13 +90764,13 @@ const ThreeRenderer = (function () {
             return;
         }
         /* THE DOOR JOIN (Phase 2): room to room indoors — the hemisphere, the key and the fill ease to the new room's mood */
-        if (!H.sky && _hqStageClosedBox(fromRoom) && _hqStageClosedBox(toRoom)) {
+        if (_hqStageClosedBox(fromRoom) && _hqStageClosedBox(toRoom)) {   // (a sky up beside them changes nothing: THE OPEN-AIR ROOM INDOORS)
             var ba = st.blend && st.blend.box ? st.blend.cur : _hqBoxLightVals(fromRoom);
             st.blend = { box: true, a: ba, b: _hqBoxLightVals(toRoom), t0: performance.now(), looked: false, cur: ba, lookB: toRoom.shell.look, labelB: toRoom.label };
             return;
         }
         if (!H.sky || !toRoom.shell || !toRoom.shell.sky) { try { if (typeof ThreePost !== 'undefined' && ThreePost.setSceneLook) ThreePost.setSceneLook(_sceneLookOf(toRoom.shell.look, toRoom.label)); } catch (e) {} return; }
-        var a = st.blend ? st.blend.cur : _hqStageSkyVals(fromRoom, fromId);
+        var a = (st.blend && st.blend.cur && !st.blend.box) ? st.blend.cur : _hqStageSkyVals(fromRoom, fromId);
         st.blend = { a: a, b: _hqStageSkyVals(toRoom, toId), t0: performance.now(), looked: false, cur: null };
         _hqStageBlendTick(H, st.blend.t0);
     }
@@ -90780,7 +90883,11 @@ const ThreeRenderer = (function () {
         var old = H.clock;
         H.clock = { id: id, vals: V, at: performance.now(), lampAt: 0, night: -1,
                     sunCur: old && old.sunCur ? old.sunCur : V.sunDome.clone(), moonCur: old && old.moonCur ? old.moonCur : V.moonDome.clone(), duskCur: old ? (old.duskCur || 0) : V.dusk };
-        if (!old && !V.locked) { _hqClockApply(H, V, true); }
+        if (!old && !V.locked) {
+            if (H.stage && H.stage.blend && H.stage.blend.air) {   // THE OPEN-AIR ROOM INDOORS: the crossing's blend owns the light; the sun's direction only
+                if (V.keyDir) { H.keyDir = V.keyDir.clone(); if (H.keyLight) H.keyLight.position.copy(H.keyDir).multiplyScalar(1000); if (H.shadows) H.shadows.dirty = true; }
+            } else _hqClockApply(H, V, true);
+        }
         _hqClockLamps(H, true);
     }
     /* the hour's values onto the lights, the fog and the sky (never while a crossing's blend owns them) */
@@ -91057,12 +91164,8 @@ const ThreeRenderer = (function () {
             var LRo = _hqOpenLR(room);   // THE WHITE DAYLIGHT: a white-floored room's sky light × HQ_LIGHT_RULES.whiteDay
             _hq.hemiLight = new THREE.HemisphereLight(_hqSkyHemiC(skyC, nightO), 0x2a2620, nightO ? LRo.nightHemi : LRo.dayHemi); sc.add(_hq.hemiLight);   // (THE STAGE blends it at a crossing)
             var sun = new THREE.DirectionalLight(nightO ? 0xaabfe0 : 0xfff1d6, nightO ? LRo.nightSun : LRo.daySun); sun.position.set(0.45, 1, 0.3).multiplyScalar(1000); sc.add(sun); _hq.keyLight = sun;
-            var ofill = new THREE.DirectionalLight(_hqLightRules().fillColor, _hqLightRules().fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(ofill);   // the cool fill from behind: no black side on a face
-            var mplC = (S.mood && S.mood.light != null) ? S.mood.light : 0xfff0d0;
-            (S.lights || []).forEach(function (Lt) {
-                var ml = new THREE.PointLight(mplC, nightO ? LRo.nightLamp : LRo.dayLamp, 20 * U, 2); ml.position.set(Lt.x * U, (S.h + 1.8) * U, Lt.z * U); sc.add(ml);
-                ml._ew_lampI = LRo.nightLamp; _hq.clockLamps.push(ml);   // THE WORLD CLOCK (Phase 3): a lamp mast is a night lamp
-            });
+            var ofill = new THREE.DirectionalLight(_hqLightRules().fillColor, _hqLightRules().fill); ofill.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(ofill); _hq.fillLight = ofill;   // the cool fill from behind: no black side on a face
+            _hqOpenRoomLamps(room, sc);   // the lamp masts (a stage neighbour hangs them in its part)
             /* THE FOG (2026-09-17): sky.fog.density = per METRE (the woods 0.03 → the treeline at 12 m is a third gone,
                the outer ground's far edge at 54 m is under it); a row without one keeps the thin default */
             var fogD = (S.sky.fog && S.sky.fog.density > 0) ? S.sky.fog.density / U : 0.00005;
@@ -91218,7 +91321,7 @@ const ThreeRenderer = (function () {
     /* the walk's post options: the tilt-shift focus + THE ROOM SETTINGS (2026-10-20) — the room's night for Night Mood, its key light
        for the Light Rays */
     function _hqPostOpts(H) {
-        return { focus: _hqDofFocus(H), night: (H && H.sky) ? (+H.sky.night || 0) : 0, keyDir: (H && (H.keyDir || (H.keyLight && H.keyLight.position))) || null, keyLight: (H && H.keyLight) || null };
+        return { focus: _hqDofFocus(H), night: (H && H.sky && !_hqEnclosed(H.room)) ? (+H.sky.night || 0) : 0, keyDir: (H && (H.keyDir || (H.keyLight && H.keyLight.position))) || null, keyLight: (H && H.keyLight) || null };
     }
     function _hqRenderOnce(H) {
         _lightMatchWalk(H);
