@@ -101,7 +101,7 @@ listed in `EW_MH_LOOKS.skins`). Both keep the 67 face shapes working, because th
 PILOT DONE 2026-11-12 (mondo: "yeah lets do face pilot and cowboy"): `bake-face.py` makes both automatically from the OLD unit's head
 (face landmarks, no hand work): `cowboyFace` + skin `ew_face_cowboy`, worn by the remade cowboy look. Blink, talk, smile and frown
 checked in the game. How, the rules learned and the known faults: `character-creator.md` "THE UNIT FACES". Use the OLD unit GLB as the
-face source, never the T2 remake (its face is a blur). WAITING on his look before any other unit gets a face.
+face source, never the T2 remake (its face is a blur). mondo 11-12 05:10Z "okay thats better" after round 2, then "yes" to faces on the knight, the wizard and the demo starters batch: knight + wizard done the same night. Faces are now part of every remake.
 
 | Step | What | How | Risk |
 |---|---|---|---|
@@ -152,8 +152,8 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 | Unit | Remade | Look check | Battle check | Face fit (F1-F4) | His OK | Notes |
 |---|---|---|---|---|---|---|
 | cowboy (M) | PR #1153 | clean after round 4 | owed | PILOT DONE 11-12 (bake-face.py) | waiting | boots + spurs fixed #1154 |
-| knight (F) | PR #1153 | clean after round 4 | owed | not started | waiting | calf slivers fixed #1155; cape no sway |
-| wizard (M) | PR #1153 | clean after round 4 | owed | not started | waiting | robe points #1155, boots #1156; K3, K5 open |
+| knight (F) | PR #1153 | clean after round 4 | owed | DONE 11-12 | waiting | calf slivers fixed #1155; cape no sway |
+| wizard (M) | PR #1153 | clean after round 4 | owed | DONE 11-12 | waiting | robe points #1155, boots #1156; K3, K5 open |
 | everything else in group A | not started | | | | | |
 
 ## 9. Standing rules for any session doing this
