@@ -3782,3 +3782,10 @@ Abstract Noise, Abstract Texture, Noise Texture (18 families), Seamless Abstract
   point of the life for a still), `EW_NZ_GROUND(tiles, o)` (the examples' overlay sheet, console only).
 - Seen: direct calls + the stage beats on the node renderer's WebGL 2 backend. Not seen: real WebGPU, classic WebGL, online
   guest, frame cost on a weak PC.
+
+## THE SPIRIT LOOK + THE CORD (2026-11-12, astral build 1) — three-renderer.js
+`_astralLook(entry, on, now)` runs per frame on a unit with `status.projecting`: material colour 0xe6f4ff, emissiveMap nulled +
+emissive 0x9cc8ee at 0.62 (the per-frame grey / self-glow pass would repaint it otherwise), depthWrite off, opacity 0.78, a hover
+lift of 0.16 square with a slow bob; everything restored when the status ends. `_astralCordsUpdate` draws one TubeGeometry cord from
+the body to the spirit, own 0x4fd8ff / enemy 0xff7a5c (the RIOT colours), only while both pieces are drawn for the viewer (fog safe).
+Rules: champions-combat.md "THE ASTRAL BODY".

@@ -2735,3 +2735,29 @@ its `position: fixed` parts measure from, so the UI Maker screen-pinned button s
 inside the DOCK until the animation ended. Fix (styles-base.css): the dock no longer animates; `.sq-bar` flies in and
 `.sq-actions` only fades (sqFadeIn, no transform). RULE: never put a transform / filter animation on a box that holds a
 piece the UI Maker can pin to a screen side. Proof: /mnt/project-files/team-select-flash/.
+
+## THE PORTRAIT STUDIO: portraits cut from the unit's own model (2026-11-12, mondo: "how the game takes a screenshot of the player's created character model and uses that is the portrait, the angle and framing is all messed up" + "cut one from her model" for Agent Locke)
+- Before: a unit in a creator look (the player's officer) showed the generic Door Agent sprite's face in battle (turn icons,
+  YOUR TURN panel, plates, lists); Agent Locke (`appearance.cast`) the same. The only "photo" of the look was the mirror's
+  bust (`EWCharViewer.snapshot`, the ID card + the HQ party card), aimed at 86 % of the body's height: head against the top
+  edge, a hat cut off, mostly coat.
+- Now: three-renderer.js THE PORTRAIT STUDIO (`window.EWPortraits`). `url(unit[, 'bust'])` -> a data URL or null. A unit
+  qualifies when it wears a model of its own: a creator look on a look race (`normalizeCharacterAppearance` gives a look,
+  `getCharacterAppearanceModel` a def) or a story character's rig (`appearance.cast` -> `getCastModel`). The studio is a second
+  small WebGL renderer (128 px, the character viewer's lights + sRGB/ACES), one body at a time: clone the GLB, `_cvOwnBakes`,
+  the appearance rig, the idle; wait until dressed; 8 frames to settle; aim the camera off the Head bone (`_cvHeadPoint`) and
+  along where the FACE looks (the Head bone's turn since the bind pose, so a bowed idle head is met face on), PT_YAW to the
+  side; read the canvas (PNG, clear behind); a look also gets its 256 x 320 ID photo (`#bust`). The body is disposed after the
+  shot, the renderer 30 s after the last job. Cached per session by key (`cast:<id>` / `look:<race>|<gender>|<hash of the look>`).
+- A def's own aim: `portrait: { yaw, frame, expo }` (sprites.js DOOR_CAST_MODELS.locke: yaw -0.3, her hair covers the eye from
+  the other side). Meshy bakes shoot at exposure PT_BAKE_EXPO 0.62 (1.05 washed her face out).
+- Wiring: sprites.js `getUnitPortraitArtUrl` asks the studio first (so it counts as the unit's ART: the UI Maker's Portraits
+  choice face / sprite still wins); until the photo is in, the sprite's face stands in, then `EWFaces.bump` (hud.js) repaints.
+  map.js `_hqPausePortrait` + `_sqFace`, party-builder.js `PortraitSprite` pass the slot's `appearance`; profile.js
+  `doorCardPortrait` swaps a stored (badly framed) mirror photo for the studio's bust once it is in. `EWCharViewer.snapshot`
+  itself is aimed off the Head bone too (PT_BUST), so the mirror's new photos are right.
+- Viewer-local (nothing on a unit, nothing relayed; the guest photographs the host's look from the snapshot's `appearance`).
+  Off: `window.EW_NO_MODEL_PORTRAITS = true`. Proof: /mnt/project-files/portraits-20261112/.
+- STRAIGHT ON (same day, mondo: "why are the battle portraits at an angle when the id photo is straight on? ... The battle portraits
+  should be straight on, just like the sprite portraits"): PT_YAW 0, PT_POLAR 0, PT_PITCH 1 (the camera stands exactly where the
+  face looks); Locke's `portrait.yaw` is gone. RULE: a portrait is straight on, never a three-quarter view.

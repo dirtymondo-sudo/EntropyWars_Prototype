@@ -1715,7 +1715,7 @@ const ThreeRenderer = (function () {
        (`_texInflight`) holds the model queue's scene / warm jobs for up to TEX_HOLD_MS after the last
        request (`_mqPump`) — the rig lane never waits. */
     var _texInflight = 0, _texHoldUntil = 0, TEX_HOLD_MS = 2500;
-    var AL_SETTLE_MS = 300, AL_STALL_MS = 60000;
+    var AL_SETTLE_MS = 300, AL_STALL_MS = 60000, AL_STALL_MAX_MS = 300000;
     var _alSeq = 0, _alLive = {}, _alLiveN = 0, _alSessions = [], _alLastEventAt = 0;
     function _alNow() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
     /* file a record for a request that just started; `rec.settle(ok, quiet)` closes it */
@@ -1735,7 +1735,20 @@ const ThreeRenderer = (function () {
             _alLastEventAt = rec.doneAt;
             for (var i = 0; i < _alSessions.length; i++) if (_alSessions[i].has[rec.id]) _alSessions[i].done++;
         };
-        try { rec.stall = setTimeout(function () { if (!rec.done) { try { console.warn('[ThreeRenderer] ' + kind + ' did not land in ' + (AL_STALL_MS / 1000) + ' s — the gate stops waiting for it: ' + rec.url); } catch (e) {} rec.settle(false); } }, AL_STALL_MS); } catch (e) {}
+        /* THE CARD WAITS (2026-11-12, mondo: "what is the point of the loading screen before hand if it always loads slow, it needs
+           to wait until the game is loaded"): the stall clock ran from the moment a file was ASKED for, so a model waiting its turn
+           in the queue behind a hall's worth of others was written off as dead after 60 s, the card dropped without it, and it
+           landed in the open room. A file is dead only when NOTHING has started or landed anywhere for AL_STALL_MS (the pipe is
+           still, not busy), or after AL_STALL_MAX_MS whatever happens. */
+        var stallFn = function () {
+            rec.stall = null;
+            if (rec.done) return;
+            var nowS = _alNow(), quiet = nowS - (_alLastEventAt || rec.at);
+            if (quiet < AL_STALL_MS - 50 && nowS - rec.at < AL_STALL_MAX_MS) { try { rec.stall = setTimeout(stallFn, Math.max(250, AL_STALL_MS - quiet)); } catch (e) {} return; }
+            try { console.warn('[ThreeRenderer] ' + kind + ' did not land in ' + Math.round((nowS - rec.at) / 1000) + ' s — the gate stops waiting for it: ' + rec.url); } catch (e) {}
+            rec.settle(false);
+        };
+        try { rec.stall = setTimeout(stallFn, AL_STALL_MS); } catch (e) {}
         for (var s = 0; s < _alSessions.length; s++) if (_alSessions[s].open && _alOwns(_alSessions[s])) _alSessions[s].add(rec);
         return rec;
     }
@@ -7055,7 +7068,166 @@ const ThreeRenderer = (function () {
         return { group: group, ctl: ctl };
     }
 
+    /* ═══ THE GARDEN (2026-11-12, mondo: "new seed/plant models, since the current ones are just 2d sprites that dont
+       really fit the game anymore") ═══ A seed is a small mound with the seed on it; watered, it is a sprout in its
+       type's colour; grown, it is a plant (state.turrets, `plant`) wearing its own model with a real HP bar over it.
+       The plant models are Meshy pieces (concepts OK'd by mondo); until a file is in the cache the plant draws its
+       team ring and HP bar only. */
+    var _PLANT_MODEL_URLS = {
+        leech:  'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_thornvine.glb',
+        poison: 'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_gasplant.glb',
+        heal:   'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_healflower.glb'
+    };
+    var _PLANT_HEIGHT = { leech: 0.95, poison: 0.9, heal: 0.95 };   // of a tile
+    var _SEED_COLORS = { heal: 0xe8c860, poison: 0x8a4ab0, leech: 0x9a2a3a, plain: 0x8a5a2a, apple: 0xc8281e };
+    var _plantSeen = {};
+    function _gardenMat(hex, basic) {
+        var m = basic ? new THREE.MeshBasicMaterial({ color: hex }) : new THREE.MeshLambertMaterial({ color: hex });
+        return m;
+    }
+    function _buildSeed3D(s) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(s.x, s.y);
+        var col = _SEED_COLORS[s.type] || _SEED_COLORS.plain;
+        var g = new THREE.Group();
+        var mound = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.2, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2), _gardenMat(0x5a3d22));
+        mound.scale.y = 0.45; g.add(mound);
+        if (!s.watered) {
+            var seed = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.075, 7, 6), _gardenMat(col));
+            seed.scale.set(0.8, 1.25, 0.8); seed.rotation.z = 0.35;
+            seed.position.y = ts * 0.12; g.add(seed);
+        } else {
+            /* the sprout: a stem, two leaves, a bud in the type's colour */
+            var green = _gardenMat(0x4f9a3a);
+            var stem = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.016, ts * 0.024, ts * 0.3, 6), green);
+            stem.position.y = ts * 0.22; g.add(stem);
+            for (var li = -1; li <= 1; li += 2) {
+                var leaf = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.09, 6, 4), green);
+                leaf.scale.set(1.3, 0.16, 0.6);
+                leaf.position.set(li * ts * 0.09, ts * 0.26, 0); leaf.rotation.z = li * 0.55;
+                g.add(leaf);
+            }
+            var bud = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.06, 7, 6), _gardenMat(col));
+            bud.scale.y = 1.25; bud.position.y = ts * 0.4; g.add(bud);
+            var t0 = _animNow(), ph = (s.x * 31 + s.y * 17) * 0.37;
+            bud.onBeforeRender = function () { g.rotation.z = Math.sin((_animNow() - t0) / 520 + ph) * 0.06; };
+        }
+        g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+        g.position.set(s.x * ts + ts / 2, topY, s.y * ts + ts / 2);
+        g._ew_deployable = true;
+        /* the grown plant's file starts loading while the seed lies there, so it is in when the seed grows */
+        var purl = _PLANT_MODEL_URLS[s.type];
+        if (purl && !_miscModelCache[purl]) { try { _loadMiscModel(purl, true, function () {}, { front: true }); } catch (x) {} }
+        return g;
+    }
+    /* 🍎 THE APPLE TREE (2026-11-12): the apple is one Meshy piece (no pack has an apple). `_buildApple3D` lays one on a
+       tile (state.apples); `_buildAppleCanopy` hangs a few in the leaves of an apple tree (a state.plantedTrees row
+       with `apple`), which is otherwise the ordinary tree object. Nothing is drawn until the file is in the cache. */
+    var _APPLE_MODEL_URL = 'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_apple.glb';
+    var _APPLE_CANOPY = [[0.14, 0.5, 0.12], [-0.15, 0.66, 0.08], [0.03, 0.4, 0.2], [-0.07, 0.9, 0.06], [0.11, 0.82, 0.02]];   // of a tile
+    function _appleGroup(x, y, spots, size, bob) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(x, y);
+        var g = new THREE.Group();
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+        g._ew_deployable = true;
+        var fill = function () {
+            var e = _miscModelCache[_APPLE_MODEL_URL];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var sc = size * ts / ((bb.max.y - bb.min.y) || 1), anchor = null, t0 = _animNow();
+            for (var i = 0; i < spots.length; i++) {
+                var m = root.clone(true);
+                m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; if (!anchor) anchor = n; } });
+                m.scale.setScalar(sc);
+                m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+                var h = new THREE.Group(); h.add(m);
+                h.position.set(spots[i][0] * ts, spots[i][1] * ts, spots[i][2] * ts);
+                h.rotation.y = i * 1.7;
+                g.add(h);
+            }
+            if (anchor && bob) {
+                var ph = (x * 31 + y * 17) * 0.37;
+                anchor.onBeforeRender = function () { g.children[0].position.y = (spots[0][1] + 0.04 + Math.sin((_animNow() - t0) / 480 + ph) * 0.03) * ts; g.children[0].rotation.y = (_animNow() - t0) / 1400; };
+            }
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[_APPLE_MODEL_URL];
+        if (e0 && e0.root) fill();
+        else { try { _loadMiscModel(_APPLE_MODEL_URL, true, fill, { front: true }); } catch (x2) { console.warn("[ThreeRenderer] apple model load threw", x2); } }
+        return g;
+    }
+    function _buildApple3D(a) { return _appleGroup(a.x, a.y, [[0, 0.04, 0]], 0.3, true); }
+    function _buildAppleCanopy(t) { return _appleGroup(t.x, t.y, _APPLE_CANOPY, 0.16, false); }
+    /* the HP bar over a plant: black with a white outline (the UI rule), the fill in its side's colour; it faces the camera */
+    function _plantHpBar(turret, ts, y) {
+        var bar = new THREE.Group();
+        var w = ts * 0.62, h = ts * 0.075, frac = Math.max(0, Math.min(1, turret.hp / (turret.maxHp || 1)));
+        var mk = function (ww, hh, hex, z, ro) {
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(ww, hh), new THREE.MeshBasicMaterial({ color: hex, depthTest: false, transparent: true, fog: false }));
+            m.position.z = z; m.renderOrder = ro; return m;
+        };
+        bar.add(mk(w + ts * 0.03, h + ts * 0.03, 0xffffff, 0, 9001));
+        bar.add(mk(w, h, 0x000000, 0.01, 9002));
+        if (frac > 0) {
+            var fill = mk(w * frac, h * 0.72, turret.owner ? _viewerPlayerColor(turret.owner) : 0x66dd66, 0.02, 9003);
+            fill.position.x = -w * (1 - frac) / 2; bar.add(fill);
+        }
+        bar.position.y = y;
+        bar.children[0].onBeforeRender = function (r, sc, cam) { bar.quaternion.copy(cam.quaternion); };
+        return bar;
+    }
+    function _buildPlant3D(turret) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var col = turret.owner ? _viewerPlayerColor(turret.owner) : 0x888888;
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.34, 1.5, 4, 16), new THREE.MeshBasicMaterial({ color: col }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 1.5; g.add(ring);
+        var tall = (_PLANT_HEIGHT[turret.plant] || 0.9) * ts;
+        g.add(_plantHpBar(turret, ts, tall + ts * 0.16));
+        var seen = _plantSeen[turret.id], hurt = !!(seen && turret.hp < seen.hp), born = !seen;
+        _plantSeen[turret.id] = { hp: turret.hp };
+        var url = _PLANT_MODEL_URLS[turret.plant], seedPh = (turret.x * 31 + turret.y * 17) * 0.11;
+        var fill = function () {
+            var e = _miscModelCache[url];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var m = root.clone(true), anchor = null;
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; if (!anchor) anchor = n; } });
+            var sc = tall / ((bb.max.y - bb.min.y) || 1);
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+            var body = new THREE.Group(); body.add(m); g.add(body);
+            if (!anchor) return;
+            var t0 = _animNow();
+            anchor.onBeforeRender = function () {
+                var now = _animNow(), el = now - t0;
+                var grow = born ? Math.min(1, el / 500) : 1;                                   // it rises out of the ground once
+                var hit = hurt ? Math.sin(Math.min(1, el / 320) * Math.PI) : 0;                 // the flinch of a hit
+                var br = Math.sin(now / 420 + seedPh) * 0.035;
+                body.scale.set((1 - br * 0.5 + hit * 0.12) * grow, Math.max(0.05, (1 + br - hit * 0.2) * grow), (1 - br * 0.5 + hit * 0.12) * grow);
+                body.rotation.z = Math.sin(now / 900 + seedPh) * 0.04;
+            };
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[url];
+        if (e0 && e0.root) fill();
+        else if (url) { try { _loadMiscModel(url, true, fill, { front: true }); } catch (x) { console.warn("[ThreeRenderer] plant model load threw", x); } }
+        return g;
+    }
+
     function _buildTurret(turret) {
+        if (turret.plant) return _buildPlant3D(turret);   // THE GARDEN
         if (turret.summon) return _buildSummon3D(turret);
         if (turret.zombie) return _buildZombie3D(turret);
         if (turret.spellId === 'fiveGTower') return _buildFiveGTower(turret);
@@ -10555,9 +10727,11 @@ const ThreeRenderer = (function () {
         if (state.plantedSeeds) {
             for (var i = 0; i < state.plantedSeeds.length; i++) {
                 var s = state.plantedSeeds[i];
-                h = _hashInt(h, 1); h = _hashInt(h, s.x); h = _hashInt(h, s.y); h = _hashStr(h, s.type);
+                h = _hashInt(h, 1); h = _hashInt(h, s.x); h = _hashInt(h, s.y); h = _hashStr(h, s.type); h = _hashInt(h, s.watered ? 1 : 0);
             }
         }
+        if (state.apples) for (var api = 0; api < state.apples.length; api++) { h = _hashInt(h, 71); h = _hashInt(h, state.apples[api].x); h = _hashInt(h, state.apples[api].y); }
+        if (state.plantedTrees) for (var pti = 0; pti < state.plantedTrees.length; pti++) { if (state.plantedTrees[pti].apple) { h = _hashInt(h, 73); h = _hashInt(h, state.plantedTrees[pti].x); h = _hashInt(h, state.plantedTrees[pti].y); } }
         if (state.bombs) {
             for (var bi = 0; bi < state.bombs.length; bi++) {
                 var b = state.bombs[bi];
@@ -12021,8 +12195,7 @@ const ThreeRenderer = (function () {
         if (state.plantedSeeds) {
             for (var i = 0; i < state.plantedSeeds.length; i++) {
                 var s = state.plantedSeeds[i];
-                var sprKey = 'seed-' + s.type;
-                var m = _buildDeployableBillboard(sprKey, s.x, s.y, null);
+                var m = _buildSeed3D(s);   // THE GARDEN (2026-11-12): a 3D seed / sprout (was the 2D seed sprite)
                 if (m) {
                     var key = 'dep_' + (idx++);
                     m._ew_depX = s.x; m._ew_depY = s.y;
@@ -12030,6 +12203,17 @@ const ThreeRenderer = (function () {
                     deployableMeshes.set(key, m);
                 }
             }
+        }
+
+        /* 🍎 THE APPLE TREE: the apples on the ground, and the apples in each apple tree's leaves */
+        var _apl = (state.apples || []).map(function (a) { return [a, _buildApple3D]; })
+            .concat((state.plantedTrees || []).filter(function (t) { return t.apple; }).map(function (t) { return [t, _buildAppleCanopy]; }));
+        for (var ai = 0; ai < _apl.length; ai++) {
+            var am = _apl[ai][1](_apl[ai][0]);
+            if (!am) continue;
+            am._ew_depX = _apl[ai][0].x; am._ew_depY = _apl[ai][0].y;
+            objectGroup.add(am);
+            deployableMeshes.set('dep_' + (idx++), am);
         }
 
         if (state.bombs) {
@@ -14463,6 +14647,8 @@ const ThreeRenderer = (function () {
         var hgBuff = unit.hourglassBuff || 0;
         var totalMov = movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
         if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Key Charge: +' + hgBuff + ' ATK/DEF points">' + ((typeof keyIconHtml === 'function') ? keyIconHtml(9) : 'KEY') + '+' + hgBuff + '</span>');
+        /* 🐝 THE POLLEN (battle.js): the Bee Queen's carried pollen */
+        if ((unit.pollen | 0) > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Pollen: +' + (unit.pollen * 8) + ' ATK, spell power and SPD">POL ' + (unit.pollen | 0) + '</span>');
         if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
         else if (totalMov < 0) badges.push('<span class="tp-sbadge tp-stat-dn">MOV' + totalMov + '</span>');
         /* 🏜 the storm the unit stands in: its stat change, the moment it steps in (state.js getWeatherStatChips) */
@@ -26327,11 +26513,107 @@ const ThreeRenderer = (function () {
         _shadowsDirty = true;
     }
 
+    /* 👁 THE ASTRAL BODY (astral projection build 1, 2026-11-12; battle.js THE ASTRAL BODY). A unit wearing `projecting`
+       is the SPIRIT of a body that sleeps on another tile (unit._astralBodyId, a real second unit with its own entry).
+       The spirit is drawn as the unit's own model: white and see-through, hovering with a slow bob, joined to its body
+       by a cord in the viewer's team colours (own cyan-blue, enemy pink-orange). Look only: nothing here is a rule.
+       Host and guest both read the synced status and ids, so both seats draw it with nothing relayed (RULE #2). */
+    var REALM_SEEN_OPACITY = 0.42;
+    var ASTRAL_OPACITY = 0.78, ASTRAL_LIFT = 0.16, ASTRAL_OWN_COLOR = 0x4fd8ff, ASTRAL_ENEMY_COLOR = 0xff7a5c;
+    var _astralCords = new Map();   // spirit uid → { mesh, key }
+    var _astralWhite = null;
+    function _astralIsSpirit(unit) { return !!(unit && unit.status && unit.status.projecting > 0); }
+    function _astralEachMat(entry, fn) {
+        if (!entry || !entry.group) return;
+        entry.group.traverse(function (o) {
+            if (!o.isMesh || !(o._ew_billboard || o._ew_modelSkin) || !o.material) return;
+            if (Array.isArray(o.material)) o.material.forEach(fn); else fn(o.material);
+        });
+    }
+    function _astralLook(entry, on, now) {
+        if (!entry || !entry.group) return;
+        if (!on && !entry._ew_astralOn) return;
+        if (!_astralWhite) _astralWhite = new THREE.Color(0xe6f4ff);
+        var body = entry.model || entry.sprite || null;
+        if (on) {
+            entry._ew_astralOn = true;
+            _astralEachMat(entry, function (m) {
+                if (!m._ew_astralBase) {
+                    m._ew_astralBase = { c: m.color ? m.color.clone() : null, e: m.emissive ? m.emissive.clone() : null, ei: m.emissiveIntensity, em: m.emissiveMap || null, dw: m.depthWrite };
+                    /* the self-glow is the unit's own texture (emissiveMap): a dark coat would stay dark. A flat pale glow
+                       over the whole body is what turns it white; the texture still reads through it. */
+                    if (m.emissive && m.emissiveMap) { m.emissiveMap = null; m.needsUpdate = true; }
+                    m.depthWrite = false;
+                }
+                /* every frame: the day/night grey and the self-glow write these each frame too, and this runs after them */
+                if (m.color) m.color.copy(_astralWhite);
+                if (m.emissive) { m.emissive.set(0x9cc8ee); m.emissiveIntensity = 0.62; }
+            });
+            if (body) {
+                if (entry._ew_astralY0 === undefined) entry._ew_astralY0 = body.position.y;
+                var ts = CONFIG.tileSize || BASE_TILE;
+                body.position.y = entry._ew_astralY0 + ts * ASTRAL_LIFT + Math.sin((now || 0) / 620) * ts * 0.018;
+            }
+        } else {
+            entry._ew_astralOn = false;
+            _astralEachMat(entry, function (m) {
+                var b = m._ew_astralBase; if (!b) return;
+                if (m.color && b.c) m.color.copy(b.c);
+                if (m.emissive && b.e) { m.emissive.copy(b.e); m.emissiveIntensity = b.ei; }
+                if (b.em && !m.emissiveMap) { m.emissiveMap = b.em; m.needsUpdate = true; }
+                m.depthWrite = b.dw;
+                delete m._ew_astralBase;
+            });
+            if (body && entry._ew_astralY0 !== undefined) { body.position.y = entry._ew_astralY0; }
+            entry._ew_astralY0 = undefined;
+            _setEntrySpriteOpacity(entry, 1);
+        }
+    }
+    function _astralEntryHeight(entry) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        return ts * UNIT_SPRITE_SIZE_RATIO * ((entry.modelDef && entry.modelDef.heightRatio) || 1) * ((entry.group && entry.group.scale.y) || 1);
+    }
+    function _astralCordDrop(uid) {
+        var c = _astralCords.get(uid); if (!c) return;
+        _astralCords.delete(uid);
+        try { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); c.mesh.geometry.dispose(); c.mesh.material.dispose(); } catch (e) {}
+    }
+    function _astralCordsClear() { Array.from(_astralCords.keys()).forEach(_astralCordDrop); }
+    function _astralCordsUpdate(vp, now) {
+        if (!scene) return;
+        var live = {};
+        unitEntries.forEach(function (entry, uid) {
+            var unit = _unitById.get(uid) || null;
+            if (!unit || unit.dead || unit._dying || !_astralIsSpirit(unit) || !unit._astralBodyId) return;
+            var be = unitEntries.get(unit._astralBodyId);
+            if (!be || !be.group || !entry.group || !entry.group.visible || !be.group.visible) return;
+            var hs = _astralEntryHeight(entry), hb = _astralEntryHeight(be), ts = CONFIG.tileSize || BASE_TILE;
+            var a = be.group.position, b = entry.group.position;
+            var ax = a.x, ay = a.y + hb * 0.6, az = a.z, bx = b.x, by = b.y + ts * ASTRAL_LIFT + hs * 0.55, bz = b.z;
+            var own = unit.player === vp;
+            var key = [ax, ay, az, bx, by, bz].map(function (v) { return Math.round(v); }).join(',') + (own ? 'o' : 'e');
+            live[uid] = true;
+            var c = _astralCords.get(uid);
+            if (c && c.key === key) { c.mesh.material.opacity = 0.7 + 0.18 * Math.sin((now || 0) / 380); return; }
+            if (c) _astralCordDrop(uid);
+            var p0 = new THREE.Vector3(ax, ay, az), p2 = new THREE.Vector3(bx, by, bz);
+            var p1 = p0.clone().lerp(p2, 0.5); p1.y -= Math.min(hs, hb) * 0.25;   // the cord sags a little
+            var geo = new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(p0, p1, p2), 28, ts * 0.012, 6, false);
+            var mat = new THREE.MeshBasicMaterial({ color: own ? ASTRAL_OWN_COLOR : ASTRAL_ENEMY_COLOR, transparent: true, opacity: 0.85, depthTest: false, depthWrite: false, fog: false });
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.name = 'astralCord'; mesh.renderOrder = 998; mesh.frustumCulled = false;
+            scene.add(mesh);
+            _astralCords.set(uid, { mesh: mesh, key: key });
+        });
+        Array.from(_astralCords.keys()).forEach(function (uid) { if (!live[uid]) _astralCordDrop(uid); });
+    }
+
     function _updateEnemyConcealment() {
-        if (typeof state === 'undefined' || state.phase !== 'battle') { if (_realm) _realmExit(); return; }
+        if (typeof state === 'undefined' || state.phase !== 'battle') { if (_realm) _realmExit(); _astralCordsClear(); return; }
         var vp = _viewerPlayerNum();
         var fog = !!state.fogOfWar;
         var _rk = _realmTick();
+        var _astNow = (typeof performance !== 'undefined') ? performance.now() : 0;
         unitEntries.forEach(function(entry, uid) {
             var unit = _unitById.get(uid) || null;
             if (!unit || unit.dead) return;
@@ -26369,6 +26651,25 @@ const ThreeRenderer = (function () {
             /* 🌑 THE SHADOW REALM: not on this turn's plane = not drawn, own units included */
             if (_realmOutOfView(unit)) { entry.group.visible = false; entry._ew_realmHid = true; return; }
             if (entry._ew_realmHid) { entry._ew_realmHid = false; entry.group.visible = true; }
+            /* 👁 THE ASTRAL BODY: a spirit is white, see-through and hovering, for both sides */
+            var _ast = _astralIsSpirit(unit);
+            _astralLook(entry, _ast, _astNow);
+            /* 👁🌑 THE REALM WINDOW (astral build 3): on the turn of a unit that sees across (a spirit, the Ghost, the Shadow
+               Entity; battle.js isUnitSeenAcrossRealm) a unit on the OTHER plane is drawn as a dim shade, fog or not for
+               nobody: it still obeys the viewer's fog below. */
+            var _seenAcross = false;
+            try { _seenAcross = typeof window.isUnitSeenAcrossRealm === 'function' && !!window.isUnitSeenAcrossRealm(unit); } catch (e) {}
+            if (_seenAcross && !_ast) {
+                entry._ew_realmSeen = true;
+                _setEntrySpriteOpacity(entry, REALM_SEEN_OPACITY);
+                if (unit.player !== vp) {
+                    var _sb = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
+                    if (_sb && fog) _sb = _unitLosSeen(unit, vp);
+                    entry.group.visible = _sb && !_isConcealedFromViewer(unit, vp);
+                }
+                return;
+            }
+            if (entry._ew_realmSeen) { entry._ew_realmSeen = false; _setEntrySpriteOpacity(entry, 1); }
             if (_rk && unit.player !== vp) {
                 /* in the realm it is just the two of them: the other one is always seen, fog or not */
                 entry.group.visible = !_isConcealedFromViewer(unit, vp);
@@ -26380,13 +26681,15 @@ const ThreeRenderer = (function () {
                 /* THE DODGE READS (2026-11-03): an escape that ends Invisible (Nimble Dodge) runs solid and ghosts as it
                    lands — the tween that carries it (escHide) is still live until then */
                 var _ownEsc = _displaceTweens.get(unit.id);
-                _setEntrySpriteOpacity(entry, (_ownUnitInvisible(unit) && !(_ownEsc && _ownEsc.escHide)) ? INVIS_OWN_OPACITY : 1);
+                _setEntrySpriteOpacity(entry, (_ownUnitInvisible(unit) && !(_ownEsc && _ownEsc.escHide)) ? INVIS_OWN_OPACITY : (_ast ? ASTRAL_OPACITY : 1));
                 return;
             }
             var base = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
             if (base && fog) base = _unitLosSeen(unit, vp);
             entry.group.visible = base && !_isConcealedFromViewer(unit, vp);
+            if (_ast) _setEntrySpriteOpacity(entry, ASTRAL_OPACITY);
         });
+        _astralCordsUpdate(vp, _astNow);
         _plateObjs.forEach(function(po, uid) {
             var unit = _unitById.get(uid) || null;
             if (!unit || unit.dead) return;
@@ -64262,7 +64565,7 @@ const ThreeRenderer = (function () {
         },
         /* THE PHOTO (rev 8, 2026-09-13): a bust — shoulders up, straight on — of the hero on the stage as a JPEG
            data URL for the ID card (Occam's mirror). Renders the viewer's scene once at w × h through its own
-           camera (the head at 62 % of the frame, no drag yaw, no beat), reads the canvas back in the same task
+           camera (aimed off the Head bone, no drag yaw, no beat), reads the canvas back in the same task
            (no preserveDrawingBuffer needed), then restores the live size. null without a model. */
         snapshot: function (opts) {
             var v = _cv; opts = opts || {};
@@ -64274,9 +64577,21 @@ const ThreeRenderer = (function () {
                 v.model.rotation.y = opts.yaw || 0;
                 v.stage.position.x = 0; v.blob.position.x = 0; v.circle.position.x = 0;
                 var cam = new THREE.PerspectiveCamera(22, w / hgt, 0.05, 60);
-                var cy = v.h * (opts.bust === false ? 0.52 : 0.86), dist = v.dist0 / (opts.bust === false ? 1 : 2.9);
-                cam.position.set(0, cy + 0.02 * v.h, dist);
-                cam.lookAt(0, cy - 0.01 * v.h, 0);
+                var cy = v.h * (opts.bust === false ? 0.52 : 0.86), dist = v.dist0 / (opts.bust === false ? 1 : 2.9), cx = 0, cz = 0;
+                /* THE FRAMING (2026-11-12, mondo: "the angle and framing is all messed up"): the bust was aimed at 86 % of the
+                   body's height, so the head sat against the top edge, a hat was cut off and most of the photo was coat. It is
+                   aimed off the Head bone now, like the portrait studio's photo (PT_BUST): the head's middle a little above the
+                   frame's middle, room for a hat, the shoulders along the bottom. */
+                if (opts.bust !== false) {
+                    v.model.updateMatrixWorld(true);
+                    var shp = _cvHeadPoint(v);
+                    if (shp) {
+                        cx = shp.x; cz = shp.z; cy = shp.y - v.h * PT_BUST.drop;
+                        dist = v.h * PT_BUST.frame * 0.5 / Math.tan((22 * Math.PI / 180) / 2);
+                    }
+                }
+                cam.position.set(cx, cy + (shp ? 0 : 0.02 * v.h), cz + dist);
+                cam.lookAt(cx, cy - (shp ? 0 : 0.01 * v.h), cz);
                 var blobVis = v.blob.visible, circVis = v.circle.visible;
                 v.blob.visible = false; v.circle.visible = false;
                 r.setPixelRatio(1); r.setSize(w, hgt, false);
@@ -64606,6 +64921,258 @@ const ThreeRenderer = (function () {
 
     // menu screens (ui.js codex/shop, party-builder.js) reach it here:
     if (typeof window !== 'undefined') window.EWCharViewer = charViewer;
+
+    /* ══ THE PORTRAIT STUDIO (2026-11-12, mondo: "how the game takes a screenshot of the player's created character model
+       and uses that is the portrait, the angle and framing is all messed up" + "cut one from her model" for Agent Locke) ══
+       A unit that wears a MODEL of its own (a creator look, or a story character's rig: `appearance.cast`) gets its
+       portrait FROM that model: a small second renderer (PT_PX square, like the character viewer's, the same lights and
+       colour pipeline) builds the body once, lets the idle and the cloth settle a few frames, aims a camera at the Head
+       bone (straight on: the camera stands where the face looks, the face's middle in the frame's middle, PT_FRAME of the body's height tall) and
+       keeps the picture as a data URL. sprites.js getUnitPortraitArtUrl asks EWPortraits.url(unit): null until the picture
+       is in (the sprite's face stands in), then the HUD's faces repaint (hud.js EWFaces.bump). `kind` 'bust' = the ID
+       card's 256 x 320 photo, framed off the same Head bone. One body at a time; the body and, half a minute after the
+       last job, the renderer are let go. Viewer-local: nothing is stored on a unit, nothing is relayed.
+       Off: window.EW_NO_MODEL_PORTRAITS = true. */
+    var PT_PX = 128, PT_FOV = 20, PT_FRAME = 0.22, PT_YAW = 0, PT_POLAR = 0, PT_PITCH = 1,   /* STRAIGHT ON (mondo 11-12: "The battle portraits should be straight on, just like the sprite portraits"; the first cut stood 0.36 rad to the side): the camera stands exactly where the face looks */
+        PT_FWD = 0.028, PT_SETTLE = 8, PT_WAIT = 90000;
+    var PT_BAKE_EXPO = 0.62;   // a Meshy bake (its own glow under the studio's lights) washes out at the creator bodies' exposure: a paler face lost its eyes and mouth
+    var PT_BUST = { w: 256, h: 320, frame: 0.36, drop: 0.035, bg: 0x2a2620 };   // the ID card's photo: the head's middle sits 3.5 % of the height above the frame's middle
+    var _pt = null, _ptV = null, _ptQ = null, _ptUrls = {}, _ptFail = {}, _ptSpecs = (typeof WeakMap === 'function') ? new WeakMap() : null, _ptIdleT = 0;
+    function _ptOff() {
+        return typeof window === 'undefined' || !!window.EW_NO_MODEL_PORTRAITS || !!window.EW_DISABLE_3D_UNITS
+            || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function' || typeof document === 'undefined';
+    }
+    function _ptHash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0).toString(36); }
+    /* what to photograph for this unit: { key, def, look } (null = a unit with no model of its own: its art / sprite face stays) */
+    function _ptSpec(u) {
+        if (!u || !u.race) return null;
+        var a = u.appearance;
+        if (!a || typeof a !== 'object') return null;
+        var g = u.gender === 'female' ? 'female' : 'male';
+        var hit = _ptSpecs && _ptSpecs.get(a);
+        if (hit && hit.race === u.race && hit.g === g) return hit.spec;
+        var spec = null;
+        try {
+            if (typeof a.cast === 'string' && a.cast) {
+                var cd = (typeof getCastModel === 'function') ? getCastModel(a.cast) : null;
+                if (cd && cd.model) spec = { key: 'cast:' + a.cast, def: cd, look: null };
+            } else if (typeof ewCreatorLookRace === 'function' && ewCreatorLookRace(u.race) && typeof normalizeCharacterAppearance === 'function') {
+                var n = normalizeCharacterAppearance(a);
+                var def = (n && n.model !== 'original' && typeof getCharacterAppearanceModel === 'function') ? getCharacterAppearanceModel(u.race, g, a) : null;
+                if (def && def.model) spec = { key: 'look:' + u.race + '|' + g + '|' + _ptHash(JSON.stringify(n)), def: def, look: n };
+            }
+        } catch (e) { spec = null; }
+        if (_ptSpecs) _ptSpecs.set(a, { race: u.race, g: g, spec: spec });
+        return spec;
+    }
+    function _ptEnsure() {
+        if (_ptIdleT) { clearTimeout(_ptIdleT); _ptIdleT = 0; }
+        if (_pt) return _pt;
+        var r;
+        try { r = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return null; }
+        r.setClearColor(0x000000, 0);
+        if (_EW_CS) r.outputColorSpace = THREE.SRGBColorSpace; else r.outputEncoding = THREE.sRGBEncoding;
+        r.toneMapping = THREE.ACESFilmicToneMapping;
+        r.toneMappingExposure = 1.05;
+        r.setPixelRatio(1);
+        r.setSize(PT_PX, PT_PX, false);
+        var scene = new THREE.Scene();
+        scene.add(new THREE.HemisphereLight(0xcfd8ff, 0x191024, 0.9));   // the character viewer's three lights
+        var key = new THREE.DirectionalLight(0xfff1da, 1.2);
+        key.position.set(1.7, 2.7, 2.2);
+        scene.add(key);
+        var rim = new THREE.DirectionalLight(0x9a7bff, 0.6);
+        rim.position.set(-2.2, 1.6, -2.5);
+        scene.add(rim);
+        var P = _pt = { renderer: r, canvas: r.domElement, scene: scene, cam: new THREE.PerspectiveCamera(PT_FOV, 1, 0.05, 60), subs: {}, queue: [], busy: null, lost: false, w: PT_PX, h: PT_PX };
+        r.domElement.addEventListener('webglcontextlost', function (e) { try { e.preventDefault(); } catch (_e) {} P.lost = true; });
+        r.domElement.addEventListener('webglcontextrestored', function () { P.lost = false; });
+        return P;
+    }
+    /* nothing left to photograph: the renderer goes half a minute later (a second WebGL context is not kept for nothing) */
+    function _ptRest() {
+        var P = _pt;
+        if (!P || P.busy || P.queue.length || Object.keys(P.subs).length || _ptIdleT) return;
+        _ptIdleT = setTimeout(function () {
+            _ptIdleT = 0;
+            if (!_pt || _pt !== P || P.busy || P.queue.length || Object.keys(P.subs).length) return;
+            try { P.renderer.dispose(); if (P.renderer.forceContextLoss) P.renderer.forceContextLoss(); } catch (e) {}
+            _pt = null;
+        }, 30000);
+    }
+    function _ptDrop(S) {
+        var P = _pt;
+        S.dead = true;
+        if (S.timer) { clearTimeout(S.timer); S.timer = 0; }
+        if (S.mixer) { try { S.mixer.stopAllAction(); } catch (e) {} S.mixer = null; }
+        if (S.rig) { try { S.rig.dispose(); } catch (e) {} S.rig = null; }
+        if (S.model && S.model.parent) S.model.parent.remove(S.model);
+        S.model = null;   // (the clone shares the cached GLB's geometry and materials: only the studio's own copies are disposed)
+        for (var i = 0; i < S.ownedMats.length; i++) { try { S.ownedMats[i].dispose(); } catch (e) {} }
+        for (var j = 0; j < S.ownedTex.length; j++) { try { S.ownedTex[j].dispose(); } catch (e) {} }
+        S.ownedMats = []; S.ownedTex = [];
+        if (P) { if (P.subs[S.key] === S) delete P.subs[S.key]; if (P.busy === S) P.busy = null; }
+    }
+    function _ptBump() {
+        try {
+            if (window.EWFaces && typeof window.EWFaces.bump === 'function') window.EWFaces.bump();
+            else { window._ewFaceGen = (window._ewFaceGen | 0) + 1; window.dispatchEvent(new Event('ew-state-change')); }
+        } catch (e) {}
+    }
+    /* one picture of S through the studio's camera, aimed off the Head bone: the face (a square, straight on, clear
+       behind) or the bust (the ID card's upright photo, straight on, on its backdrop). The caller reads the canvas at once. */
+    function _ptRender(S, bust) {
+        var P = _pt, r = P.renderer, w = bust ? PT_BUST.w : PT_PX, hgt = bust ? PT_BUST.h : PT_PX;
+        for (var k in P.subs) { var o = P.subs[k]; if (o.model) o.model.visible = (o === S); }
+        if (P.w !== w || P.h !== hgt) { r.setSize(w, hgt, false); P.w = w; P.h = hgt; P.cam.aspect = w / hgt; P.cam.updateProjectionMatrix(); }
+        S.model.updateMatrixWorld(true);
+        var hp = _cvHeadPoint(S);
+        var hx = hp ? hp.x : 0, hy = hp ? hp.y : S.h * 0.93, hz = hp ? hp.z : 0;
+        /* where the FACE looks: the Head bone's turn since the bind pose (the body faces +Z there), so a bowed or turned idle
+           head is still met face on (the creator's close-up looks up under a bowed head for the same reason). The camera
+           takes PT_PITCH of the head's bow, and stands straight in front of it (PT_YAW 0: no side angle). */
+        var f = _ptV || (_ptV = new THREE.Vector3()), pd = S.def.portrait || {};   // a def's own aim: { yaw, frame, expo } (sprites.js DOOR_CAST_MODELS)
+        f.set(0, 0, 1);
+        if (S.headBone && S.head0) {
+            var q = S.headBone.getWorldQuaternion(_ptQ || (_ptQ = new THREE.Quaternion()));
+            f.applyQuaternion(q.multiply(S.head0));
+            if (!(f.z > 0.25)) f.set(0, 0, 1);   // a head turned right round: the body's front
+        }
+        var fwd = S.h * PT_FWD;   // the Head bone sits mid-skull: the face is this far in front of it
+        var tx = hx + f.x * fwd, ty = hy + f.y * fwd - (bust ? S.h * PT_BUST.drop : 0), tz = hz + f.z * fwd;
+        var dist = S.h * (bust ? PT_BUST.frame : (pd.frame || PT_FRAME)) * 0.5 / Math.tan((PT_FOV * Math.PI / 180) / 2);
+        var yaw = Math.atan2(f.x, f.z) * (bust ? 0.5 : 1) + (bust ? 0 : (pd.yaw != null ? pd.yaw : PT_YAW));
+        var pol = Math.asin(Math.max(-1, Math.min(1, f.y))) * (bust ? PT_PITCH * 0.6 : PT_PITCH) + (bust ? 0 : PT_POLAR);
+        P.cam.position.set(tx + Math.sin(yaw) * Math.cos(pol) * dist, ty + Math.sin(pol) * dist, tz + Math.cos(yaw) * Math.cos(pol) * dist);
+        P.cam.lookAt(tx, ty, tz);
+        if (bust) r.setClearColor(PT_BUST.bg, 1); else r.setClearColor(0x000000, 0);
+        r.toneMappingExposure = pd.expo || (S.bake ? PT_BAKE_EXPO : 1.05);
+        r.render(P.scene, P.cam);
+    }
+    function _ptShoot(S) {
+        var P = _pt;
+        if (!P || S.dead || !S.model) return;
+        if (P.lost) { _ptFail[S.key] = Date.now(); _ptDrop(S); return; }
+        var got = false;
+        try {
+            _ptRender(S, false);
+            var face = P.canvas.toDataURL('image/png');
+            if (face && face.length > 200) { _ptUrls[S.key] = face; got = true; }
+            if (S.bust) {
+                _ptRender(S, true);
+                var photo = P.canvas.toDataURL('image/jpeg', 0.86);
+                if (photo && photo.length > 200) _ptUrls[S.key + '#bust'] = photo;
+            }
+        } catch (e) { console.warn('[ThreeRenderer] portrait failed', S.key, e); }
+        if (!got) _ptFail[S.key] = Date.now();
+        _ptDrop(S);
+        if (got) _ptBump();
+    }
+    /* the body is up (dressed, its idle on): a few frames for the pose, the cloth and the hair to settle, then the picture */
+    function _ptSettle(S) {
+        if (S.ready || S.dead) return;
+        S.ready = true;
+        var n = 0, raf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : function (fn) { return setTimeout(fn, 16); };
+        (function step() {
+            if (S.dead || !_pt || !S.model) return;
+            try {
+                if (S.mixer) S.mixer.update(n ? 1 / 30 : 0.4);
+                S.model.updateMatrixWorld(true);
+                if (S.rig) S.rig.tick();
+                if (S.sway) _swayTick(S.sway, 1 / 30, S.def.sway || null);
+            } catch (e) {}
+            if (++n < PT_SETTLE) { raf(step); return; }
+            _ptShoot(S);
+            setTimeout(_ptPump, 200);   // (a breath between two bodies: a menu full of looks is not one long hitch)
+        })();
+    }
+    function _ptPump() {
+        var P = _pt;
+        if (!P) return;
+        if (P.busy) return;
+        var S = P.queue.shift();
+        if (!S) { _ptRest(); return; }
+        P.busy = S;
+        var def = S.def;
+        var fail = function () { if (S.dead) return; _ptFail[S.key] = Date.now(); _ptDrop(S); _ptPump(); };
+        S.timer = setTimeout(function () { S.timer = 0; if (S.dead || S.ready) return; fail(); }, PT_WAIT);   // a body that never loads or a look that never finishes dressing keeps the sprite's face (asked again a minute later), never a half-dressed photo
+        _loadUnitGLB(def.model, function (entry) {
+            if (S.dead || _pt !== P) return;
+            if (!entry || !entry.root) { fail(); return; }
+            try {
+                var m = _cloneUnitModel(entry.root);
+                var bb = entry.bbox, rawH = (bb.max.y - bb.min.y) || 1;
+                var h = Math.max(0.35, Math.min(2.8, def.heightRatio || 1)), s = h / rawH;
+                m.scale.setScalar(s);
+                m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+                var hasSkin = _cvOwnBakes(m, S.ownedMats, S.ownedTex);   // the viewer's look: the bake matte, its maps sRGB, on the studio's own copies
+                S.sway = (m.userData && m.userData.ewSway === true) ? m : null;
+                if (entry.procClips) { _procRigAttachEye(m, 'viewer'); hasSkin = true; }
+                if (def.creatorBase) S.rig = _createAppearanceRig(m, def.raceLook || S.look);
+                S.bake = !S.rig && !entry.procClips;
+                var inner = new THREE.Group();
+                inner.rotation.y = def.yawOffset || 0;
+                inner.add(m);
+                var wrap = new THREE.Group();
+                wrap.add(inner);
+                wrap.visible = false;
+                S.model = wrap; S.h = h; S.built = true;
+                P.scene.add(wrap);
+                wrap.updateMatrixWorld(true);
+                _cvHeadPoint(S);   // (finds S.headBone) the head's bind pose: the face looks down +Z here
+                S.head0 = S.headBone ? S.headBone.getWorldQuaternion(new THREE.Quaternion()).invert() : null;
+                var idleOn = !hasSkin, dressed = !S.rig || S.rig.dressed();
+                var go = function () { if (idleOn && dressed) _ptSettle(S); };
+                /* (not rig.whenDressed: that gives up after CC_DRESS_MAX_MS and shows the body as it stands, right for a unit on
+                   the board, wrong for a photo that is kept: a slow load shot the officer bald and hatless) */
+                if (!dressed) (function poll() { if (S.dead || S.ready) return; if (S.rig && S.rig.dressed()) { dressed = true; go(); } else setTimeout(poll, 200); })();
+                if (hasSkin) {
+                    var mixer = S.mixer = new THREE.AnimationMixer(m);
+                    var play = function (clip, ts) {
+                        if (S.dead || S.mixer !== mixer) return;
+                        if (clip) { var act = mixer.clipAction(clip); act.setLoop(THREE.LoopRepeat, Infinity); if (ts) act.timeScale = ts; act.play(); }
+                        idleOn = true; go();
+                    };
+                    if (entry.procClips) play(entry.procClips.idle, 1);
+                    else if (_animLibActive(def)) {
+                        _animLibBakeForModel(def, entry, function (baked) {
+                            if (baked && baked.idle) play(baked.idle, (def.libTimeScales && def.libTimeScales.idle) || 1);
+                            else if (def.clips && def.clips.idle) _loadUnitGLB(def.clips.idle, function (ce) { play(ce && ce.clips && ce.clips[0], def.idleTimeScale || 0); });
+                            else play(null);
+                        });
+                    } else if (def.clips && def.clips.idle) _loadUnitGLB(def.clips.idle, function (ce) { play(ce && ce.clips && ce.clips[0], def.idleTimeScale || 0); });
+                    else play(null);
+                }
+                go();
+            } catch (e) { console.warn('[ThreeRenderer] portrait body failed', S.key, e); fail(); }
+        });
+        var ce0 = _unitGlbCache[def.model];   // a body that fails to load never calls back: watch its cache entry
+        if (ce0 && ce0.failed) fail();
+        else if (ce0 && !ce0.root) (ce0.doneCbs = ce0.doneCbs || []).push(function (e2) { if (e2 && e2.failed) fail(); });
+    }
+    var portraits = {
+        /* the unit's portrait off its own model: a data URL, or null (no model of its own / not photographed yet: asked for now) */
+        url: function (u, kind) {
+            if (_ptOff()) return null;
+            var spec = _ptSpec(u);
+            if (!spec) return null;
+            var bust = kind === 'bust', got = _ptUrls[spec.key + (bust ? '#bust' : '')];
+            if (got) return got;
+            if (_ptFail[spec.key]) { if (Date.now() - _ptFail[spec.key] < 60000) return null; delete _ptFail[spec.key]; }
+            var P = _ptEnsure();
+            if (!P) return null;
+            var S = P.subs[spec.key];
+            if (S) { if (bust) S.bust = true; return null; }
+            P.subs[spec.key] = S = { key: spec.key, def: spec.def, look: spec.look, bust: bust || !!spec.look,   // (a look's ID photo is taken with its face: one body, both pictures)
+                model: null, rig: null, mixer: null, sway: null, ownedMats: [], ownedTex: [], h: 1, built: false, ready: false, dead: false, timer: 0 };
+            P.queue.push(S);
+            _ptPump();
+            return null;
+        },
+        has: function (u) { return !_ptOff() && !!_ptSpec(u); },
+        key: function (u) { var s = _ptOff() ? null : _ptSpec(u); return s ? s.key : null; },
+    };
+    if (typeof window !== 'undefined') window.EWPortraits = portraits;
 
     /* ══════════════════════════════════════════════════════════════════
      *  D.O.O.R. HEADQUARTERS — the walkable facility (DOOR_HQ_BUILD_PLAN.md)
@@ -76928,7 +77495,7 @@ const ThreeRenderer = (function () {
                 if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); if (cat.light && cat.light.night) { pgl._ew_glowC = pgl.material.color.clone(); _hq.clockLamps.push(pgl); } }   // THE WORLD CLOCK: a night lamp's head dims by day
                 /* Phase 8 (2026-09-14): a proc may carry a POINT LIGHT (catalogue `light`: colour / intensity / dist / y) — the torches, the bulbs, the orb; capped at HQ_PROP_LIGHT_MAX per room */
                 if (cat.light && _hq.propLights < HQ_PROP_LIGHT_MAX && (!litRows || litRows.has(p))) {   // THE CEILING LAMPS FIRST
-                    var ppl = new THREE.PointLight(cat.light.color != null ? cat.light.color : 0xffd9a0, cat.light.intensity != null ? cat.light.intensity : 0.6, (cat.light.dist || 6) * U, 2);
+                    var ppl = new THREE.PointLight(cat.light.color != null ? cat.light.color : 0xffd9a0, (cat.light.intensity != null ? cat.light.intensity : 0.6) * _hqLampK(room), (cat.light.dist || 6) * U, 2);   // THE ROOM'S OWN LAMPS (shell.lampK)
                     ppl.position.y = (cat.light.y || 0) * U; grp.add(ppl); _hq.propLights++;
                     if (cat.light.night) { ppl._ew_lampI = ppl.intensity; _hq.clockLamps.push(ppl); }   // THE WORLD CLOCK (Phase 3): on at dusk, off at dawn
                     /* THE LIGHT PASS 2.2 — THE HERO LIGHT (2026-09-21): the first warm prop light of the room casts a cube shadow map (six
@@ -84431,6 +84998,7 @@ const ThreeRenderer = (function () {
         var H = _hq, L = H && H.keyLight; if (!L) return;
         var LR = _hqLightRules(), S = room.shell || {};
         var kind = (room.kind === 'box') ? (S.open ? 'open' : 'box') : (room.kind === 'bay' ? 'bay' : 'hall');
+        if (kind === 'box' && _hqJoinedHall(room)) kind = 'hall';   // ONE DOORWAY, ONE LIGHT: the hall's key, its direction too
         var rig = Object.assign({}, (LR.key && LR.key[kind]) || {}, S.rig || {});
         if (isFinite(+rig.az) && isFinite(+rig.el)) {
             var az = _hqRad(+rig.az), el = _hqRad(+rig.el);
@@ -85435,9 +86003,9 @@ const ThreeRenderer = (function () {
         if (!_polishOff('wind', 'EW_HQ_NO_WIND')) _EW_WIND.value = now * 0.001 * (((_hqLightRules().wind || {}).speed) || 1);   // THE WIND (5.1): the foliage's shared clock (a frozen clock = still trees)
         _hqTickMotionBlur(H);   // THE THIRD PASS 6.4: the deck at speed, the long fall
         if (!H.ready) _hqGateTick(H, now);
-        if (H.ready) _hqInstTick(H, now);   // THE INSTANCE PASS (OPEN_WORLD_PLAN Phase 0): the repeated props draw as batches once the room has landed
-        if (H.ready) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
-        if (H.ready) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
+        if (H.ready || H.landed) _hqInstTick(H, now);   // THE INSTANCE PASS (OPEN_WORLD_PLAN Phase 0): the repeated props draw as batches once the room has landed
+        if (H.ready || H.landed) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
+        if (H.ready || H.landed) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
         if (H.ready) { try { _mmTick(H, now); } catch (e) { if (!_mmWarned) { _mmWarned = true; console.warn('[ThreeRenderer] the memory budget failed', e); } } }   // THE MEMORY BUDGET (G1)
         if (H.keyLamp) _hqKeyLampTick(H, dt);   // THE KEY LIGHT (2026-10-24): rides with the camera in an enclosed room
         _ewRimTick(H.sky ? Math.max(0, Math.min(1, +H.sky.night || 0)) : 0);   // THE UNIT RIM LIGHT + NIGHT FILL (2026-10-25): the walk's own night, as the fight reads its (they kept the last fight's)
@@ -85638,7 +86206,7 @@ const ThreeRenderer = (function () {
     }
     /* the walk's tick: build once the room is ready, re-run when later files add copies (bounded) */
     function _hqInstTick(H, now) {
-        if (!H.ready || _hqInstOff()) { if (H.inst && _hqInstOff()) _hqInstDrop(H); return; }
+        if (!(H.ready || H.landed) || _hqInstOff()) { if (H.inst && _hqInstOff()) _hqInstDrop(H); return; }
         _hqInstStamp++;
         var I = H.inst;
         if (!I) { if (!H._instTried) { H._instTried = true; try { _hqInstBuild(H); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } } return; }
@@ -85868,18 +86436,123 @@ const ThreeRenderer = (function () {
        finally failed, named in the console). No clock ends the wait short of HQ_GATE_CAP_MS, and that cap
        prints what never landed. The old rule (the walker's rig, else 9 s) showed a room whose props were
        still streaming in behind the fade. */
-    var HQ_GATE_CAP_MS = 75000;
+    /* THE CARD WAITS (2026-11-12, mondo: "what is the point of the loading screen before hand if it always loads slow, it needs to
+       wait until the game is loaded"). Measured in a browser on the foyer: the card dropped on a CLOCK (75 s after the entry,
+       whatever was still arriving) and on files written off after 60 s in the queue, and even on time it dropped the moment the
+       last file landed, so everything that happens AFTER a file lands happened in the open room: the hall beside the foyer
+       built, 568 materials compiled and 134 sheets went to the card, the instance pass and the static batch rebuilt the props,
+       the late looks drew piece by piece. Three rules now.
+       (1) NO CLOCK WHILE IT MOVES: the cap is HQ_GATE_CAP_MS with NO PROGRESS (a file landed, a part built a slice, the warm-up
+           moved on), never 75 s from the entry; HQ_GATE_HARD_MS is the one absolute limit.
+       (2) LANDED, THEN SETTLED: when every file is in (and the round hall stands beside the foyer) the room has LANDED — the
+           instance pass, the LOD levels and the static batch run under the card (H.landed) — and the card drops only when it
+           has SETTLED (_hqSettled): no file in flight anywhere (the population's rigs too), the passes done, EVERY material in
+           the scene compiled and every sheet on the card (the whole-scene warm-up, not only what the camera faces), no shader
+           still building, and HQ_SETTLE_FRAMES drawn frames in a row in which nothing new reached the card. A room that never rests
+           drops its card after HQ_SETTLE_CAP_MS (and HQ_SETTLE_CAP_FRAMES drawn frames) of settling, with a console line.
+       (3) The walk back from a fight (no card: opts.arrive) settles nothing, as before. Off: window.EW_HQ_NO_SETTLE. */
+    var HQ_GATE_CAP_MS = 75000, HQ_GATE_HARD_MS = 600000, HQ_SETTLE_FRAMES = 8, HQ_SETTLE_MS = 500, HQ_SETTLE_CAP_MS = 30000, HQ_SETTLE_CAP_FRAMES = 300, HQ_SETTLE_REWARM = 3;
+    function _hqSettleOff(H) { return (typeof window !== 'undefined' && !!window.EW_HQ_NO_SETTLE) || !!(H.opts && H.opts.arrive); }
+    /* what has reached the card and what is still held back: a frame in which this does not change brought nothing new */
+    function _hqSettleSig() {
+        var a = [];
+        try { var inf = renderer && renderer.info; if (inf && inf.memory) a.push(inf.memory.geometries, inf.memory.textures); if (inf && inf.programs) a.push(inf.programs.length); } catch (e) {}
+        try { a.push(_glL.held, _ewLate.held, _ewLate.builds, _lw.held); } catch (e) {}
+        return a.join(',');
+    }
+    /* a shader still building on the driver's threads (WebGL: a program not linked yet; the node renderer: a pipeline in flight) */
+    function _hqShadersBusy(W) {
+        try { if (_glL.q && _glL.q.length) return true; } catch (e) {}
+        try { if (_ewLate.flying > 0) return true; } catch (e) {}
+        if (W && W.flying > 0) return true;
+        try {
+            var P = renderer && !renderer.isWebGPURenderer && renderer.info && renderer.info.programs;
+            if (P) for (var i = 0; i < P.length; i++) { if (typeof P[i].isReady === 'function' && P[i].isReady() === false) return true; }
+        } catch (e) {}
+        return false;
+    }
+    function _hqBatchesLive(H) {
+        if (_hqBatchOff()) return true;
+        var recs = [H]; if (H.stage) for (var id in H.stage.parts) if (H.stage.parts[id].attached) recs.push(H.stage.parts[id].P);
+        for (var r = 0; r < recs.length; r++) {
+            var R = recs[r];
+            if (!R.batch) return false;
+            var BB = [R.batch, R.batchP];
+            for (var i = 0; i < BB.length; i++) { var B = BB[i]; if (B && B.phase !== 'off' && !B.lived) return false; }
+        }
+        return true;
+    }
+    /* every material in the scene against the lights it is drawn with, every sheet to the card: the part warm-up's own steps */
+    function _hqWarmWholeNew(H) {
+        var W = { objs: [], i: 0, texs: [], ti: 0, seen: {}, tseen: {}, mats: 0, texN: 0, ms: 0, frames: 0, full: true, done: false, lights: [], fake: null, flying: 0 };
+        if (!renderer || typeof renderer.compile !== 'function' || !H.scene || !H.camera) { W.done = true; return W; }
+        var now = [];
+        H.scene.traverseVisible(function (o) { if (o.isLight) now.push(o); });
+        W.lights = now;
+        var rigL = _ewRigLamps(); if (rigL) W.lights = rigL;
+        H.scene.traverse(function (o) { if (o.material) W.objs.push(o); });
+        W.fake = _hqWarmFake(H, W);
+        return W;
+    }
+    function _hqSettled(H, now) {
+        if (_hqSettleOff(H)) return true;
+        var S = H.settle || (H.settle = { t0: now, warm: null, warms: 0, frames: 0, at: now, sig: '', why: '', mats: 0, texN: 0, steps: [], last: '', ticks: 0 });
+        var why = '', walk = !!(H.opts && H.opts.walk);
+        S.ticks++;
+        if (_alPending() > 0) why = 'files';   // the population's rigs, a warm: nothing is still on the pipe when the card drops
+        else if (!_hqInstOff() && !H._instTried) why = 'props';
+        else if (!walk && !_hqBatchesLive(H)) why = 'props';   // a walk through a door keeps its blink: the batch follows in the room
+        else {
+            if (!S.warm) { S.warm = _hqWarmWholeNew(H); S.warms++; }
+            if (!_hqWarmRun(H, S.warm)) why = 'warm';
+            else if (_hqShadersBusy(S.warm)) why = 'shaders';
+        }
+        var sig = _hqSettleSig();
+        var w2 = why || (sig !== S.sig ? 'new' : 'quiet');
+        if (w2 !== S.last && S.steps.length < 40) { S.last = w2; S.steps.push(Math.round(now - S.t0) + ' ' + w2); }
+        S.why = why;
+        if (why || sig !== S.sig) {
+            /* something new reached the card after the warm-up had finished (a pass rebuilt a prop, a late piece): warm what it brought */
+            if (!why && S.warm && S.warm.done && S.frames > 0 && S.warms < HQ_SETTLE_REWARM) { S.mats += S.warm.mats; S.texN += S.warm.texN; S.warm = null; }
+            S.sig = sig; S.frames = 0; S.at = now;
+            if (!why) S.why = 'quiet';
+            return false;
+        }
+        S.frames++;
+        S.why = 'quiet';
+        return walk ? (S.frames >= 4 && now - S.at >= 120) : (S.frames >= HQ_SETTLE_FRAMES && now - S.at >= HQ_SETTLE_MS);   // a walk through a door: a short rest, the blink stays a blink
+    }
+    /* has anything moved since the last tick? (the cap counts from the last progress, not from the entry) */
+    function _hqGateProgress(H, now) {
+        var G = H.gate, st = H.stage, S = H.settle, a = [G ? G.done + '/' + G.total : '', H.playerAttached ? 1 : 0, _alPending()];
+        if (st) for (var id in st.parts) { var E = st.parts[id]; a.push(id, E.gate ? E.gate.done + '/' + E.gate.total : '', E.built ? 'b' : (E.slice ? E.slice.frames : 0), E.warm ? E.warm.i + '.' + E.warm.ti : '', E.attached ? 'a' : ''); }
+        if (S) a.push(S.warms, S.warm ? S.warm.i + '.' + S.warm.ti : '', (S.why === 'files' || S.why === 'warm') ? '' : 's');
+        var sig = a.join('|');
+        if (sig !== H._gateSig || H._gateAt == null) { H._gateSig = sig; H._gateAt = now; }
+        return now - H._gateAt;
+    }
     function _hqGateTick(H, now) {
         var G = H.gate, pd = H.player ? H.player.def : null;
         var playerOk = H.playerAttached || !pd || !pd.model || !!(_unitGlbCache[pd.model] && _unitGlbCache[pd.model].failed);   // (2026-09-22: the walker is a rig whatever the board's 3D-unit preference — the card waits for it)
         var gateOk = !G || G.idle() || G.closed;
-        var capped = now - H.t0 > HQ_GATE_CAP_MS;
-        if (!((playerOk && gateOk) || capped)) return;
-        if (!capped && H.stage && H.stage.round && !_hqStageRoundBeside(H)) return;   // THE ROUND JOIN: the card holds until the room beyond stands beside this one
+        var still = _hqGateProgress(H, now);
+        var capped = still > HQ_GATE_CAP_MS || now - H.t0 > HQ_GATE_HARD_MS;
+        var landed = playerOk && gateOk && !(H.stage && H.stage.round && !_hqStageRoundBeside(H));   // THE ROUND JOIN: the card holds until the room beyond stands beside this one
+        if (landed && !H.landed) { H.landed = true; H.landedAt = now; }   // the passes start under the card (_hqFrame)
+        if (!capped) {
+            if (!landed) return;
+            if (!_hqSettled(H, now)) {
+                var S0 = H.settle;
+                if (!(S0 && now - S0.t0 > HQ_SETTLE_CAP_MS && S0.ticks > HQ_SETTLE_CAP_FRAMES && S0.why !== 'files' && S0.why !== 'warm')) return;   // a counter that never rests is not a room that never loads
+                try { console.warn('[HQ] the room never came to rest (' + S0.why + ') — the card drops after ' + Math.round((now - S0.t0) / 1000) + ' s of settling'); } catch (e) {}
+            }
+        }
+        H.landed = true;
         H.ready = true;
         _hqRebuildAt = performance.now();   // the room's arrival (2026-09-25): a lock the browser drops as the room settles is never the walker's ESC
-        if (capped && G && !G.idle()) { try { console.warn('[HQ] the load card gave up after ' + Math.round(HQ_GATE_CAP_MS / 1000) + ' s — still in flight:', G.list().map(function (r) { return r.url; })); } catch (e) {} }
+        if (capped && G && !G.idle()) { try { console.warn('[HQ] the load card gave up after ' + Math.round(still / 1000) + ' s without progress (' + Math.round((now - H.t0) / 1000) + ' s in all) — still in flight:', G.list().map(function (r) { return r.url; })); } catch (e) {} }
         if (G) { var failed = G.failed(); if (failed.length) { try { console.warn('[HQ] ' + failed.length + ' file(s) of this room never landed (missing from the bucket? a frozen 404? — window._ewAssetFailures):', failed); } catch (e) {} } try { _hqBookWrite(H.opts && H.opts.room, G); } catch (e) {} G.close(); }
+        try { var S1 = H.settle; if (S1) console.log('[HQ] ' + (H.opts && H.opts.room) + ' landed in ' + Math.round((H.landedAt || now) - H.t0) + ' ms and settled in ' + Math.round(now - (H.landedAt || now)) + ' ms more (warmed ' + (S1.mats + (S1.warm ? S1.warm.mats : 0)) + ' material(s) + ' + (S1.texN + (S1.warm ? S1.warm.texN : 0)) + ' sheet(s) under the card; ' + S1.steps.join(', ') + ')'); } catch (e) {}
         if (H.opts.onReady) { try { H.opts.onReady(); } catch (e) {} }
     }
 
@@ -88449,6 +89122,7 @@ const ThreeRenderer = (function () {
      '_lockTryAt', '_ew_fpHid', '_gunTickWarned', 'enterDoorLatch', 'kickPrev', 'strikeAt', 'clock',
      'lod', '_lodAt', '_lodWarned'].forEach(function (k) { _HQ_ZONE_KEYS[k] = 1; });   // 'clock': THE WORLD CLOCK (Phase 3) is the visit's; 'lod': THE LOD LEVELS (Phase 10)
     _HQ_ZONE_KEYS._batchWarned = 1;
+    _HQ_ZONE_KEYS.landed = 1; _HQ_ZONE_KEYS.landedAt = 1; _HQ_ZONE_KEYS.settle = 1; _HQ_ZONE_KEYS._gateSig = 1; _HQ_ZONE_KEYS._gateAt = 1;   // THE CARD WAITS (2026-11-12): the landed / settled record is the visit's
     _HQ_ZONE_KEYS.cull = 1;   // THE PORTALS (G1): the cull record is the visit's (the swap resets it)   // THE STATIC BATCH (Phase 11): the warning is the visit's (the batch record itself is the part's: _hqPartFields)
     function _hqZoneKey(k) { return !!_HQ_ZONE_KEYS[k] || /^on[A-Z]/.test(k) || /^_bound|^_on/.test(k); }
     /* the room's stage record (in _hqEnter, after the camera, before the builders read hqStageNeighbours) */
@@ -88864,12 +89538,13 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), S = room.shell;
         var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
         var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;   // a site room's mood (blue under the collider)
+        var lmK = _hqLampK(room);   // THE ROOM'S OWN LAMPS
         lightsAt.forEach(function (Lt) {
-            var fl1 = new THREE.PointLight(plC, lightsAt.length > 1 ? 0.5 : 0.55, (lightsAt.length > 1 ? 12 : 9) * U, 2); fl1.position.set(Lt.x * U, (S.h - 0.35) * U, Lt.z * U); sc.add(fl1);
+            var fl1 = new THREE.PointLight(plC, (lightsAt.length > 1 ? 0.5 : 0.55) * lmK, (lightsAt.length > 1 ? 12 : 9) * U, 2); fl1.position.set(Lt.x * U, (S.h - 0.35) * U, Lt.z * U); sc.add(fl1);
         });
         (room.props || []).forEach(function (pp) {
             if (pp.key !== 'desk_lamp' && pp.key !== 'table_lamp') return;
-            var wl = new THREE.PointLight(0xffd9a0, 0.5, 5 * U, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); sc.add(wl);
+            var wl = new THREE.PointLight(0xffd9a0, 0.5 * lmK, 5 * U, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); sc.add(wl);
         });
     }
     /* ══ THE FILE TRACKER (OPEN_WORLD_PLAN.md fork 5 — back to the plan's default, 2026-09-26; the user: "if we need a file
@@ -88932,10 +89607,19 @@ const ThreeRenderer = (function () {
     /* may built part E stand beside the current part now? (fork 5) */
     function _hqStageReady(H, E, now) {
         if (!E.gate || E.gate.closed) return true;
-        if (now - E.t0 > HQ_GATE_CAP_MS) { if (E.capWarned) return true; E.capWarned = true; try { console.warn('[HQ stage] ' + E.id + ': the part gate gave up after ' + Math.round(HQ_GATE_CAP_MS / 1000) + ' s', E.gate.list().map(function (r) { return r.url; })); } catch (e) {} return true; }
-        if (HQ_STAGE_RULES.propsGate === 'whole') return E.gate.idle();
-        if (!E.trk || now - (E.trkAt || 0) >= (HQ_STAGE_RULES.trkMs || 250)) { E.trkAt = now; E.trk = _hqTrkScan(H, E); }
-        return E.gate.idleExcept(E.trk.farOnly);
+        var ok;
+        if (HQ_STAGE_RULES.propsGate === 'whole') ok = E.gate.idle();
+        else {
+            if (!E.trk || now - (E.trkAt || 0) >= (HQ_STAGE_RULES.trkMs || 250)) { E.trkAt = now; E.trk = _hqTrkScan(H, E); }
+            ok = E.gate.idleExcept(E.trk.farOnly);
+        }
+        if (ok) return true;
+        /* THE CARD WAITS (2026-11-12): the cap counts from the last file to land, not from the part's start, and is read only
+           for a part that is NOT ready (it used to warn "gave up" in the middle of a finished part's warm-up) */
+        var gsig = E.gate.done + '/' + E.gate.total;
+        if (gsig !== E._gateSig) { E._gateSig = gsig; E._gateAt = now; }
+        if (now - (E._gateAt || E.t0) > HQ_GATE_CAP_MS || now - E.t0 > HQ_GATE_HARD_MS) { if (E.capWarned) return true; E.capWarned = true; try { console.warn('[HQ stage] ' + E.id + ': the part gate gave up after ' + Math.round((now - E.t0) / 1000) + ' s', E.gate.list().map(function (r) { return r.url; })); } catch (e) {} return true; }
+        return false;
     }
 
     /* ══ THE FILE BOOK + THE WARM (OPEN_WORLD_PLAN.md §5.2 / §5.4, 2026-09-26) ══════════════════════════════════════════
@@ -89186,7 +89870,7 @@ const ThreeRenderer = (function () {
        from today's, the whole scene is compiled for it too. One object at a time under HQ_STAGE_RULES.compileMs a frame
        (default 8; one object at least), then the sheets (renderer.initTexture, same budget). The program three builds is the
        one the draw looks up by key, so the draw finds it cached. E.warm keeps the counts (ThreeRenderer.hq.stage()). */
-    var HQ_WARM_MS = 8;
+    var HQ_WARM_MS = 8, HQ_CARD_SLICE_MS = 24;
     var _hqWarmMatDef = null;
     function _hqLightSig(list) {
         var c = { a: 0, d: 0, p: 0, s: 0, h: 0, r: 0, sd: 0, sp: 0, ss: 0 };
@@ -89197,6 +89881,24 @@ const ThreeRenderer = (function () {
         return [c.d, c.p, c.s, c.h, c.r, c.sd, c.sp, c.ss].join(',');
     }
     function _hqUnderRoot(o, roots) { for (var q = o.parent; q; q = q.parent) if (roots.indexOf(q) >= 0) return true; return false; }
+    /* the warm-up's stand-in scene: one object at a time, drawn with the warm's lights */
+    function _hqWarmFake(H, W) {
+        var sc = H.scene;
+        W.fake = { isScene: true, fog: sc.fog || null, environment: sc.environment || null, background: null, overrideMaterial: null,
+                   _list: [], traverseVisible: function (cb) { for (var k = 0; k < W.lights.length; k++) cb(W.lights[k]); }, traverse: function (cb) { for (var k = 0; k < this._list.length; k++) cb(this._list[k]); } };
+        /* THE WARM-UP ON THE NODE RENDERER (2026-11-05, found by the per-frame audit): there renderer.compile is compileAsync, which
+           calls the scene's onBeforeRender and walks object.children / object.layers, none of which this stand-in scene had: every
+           warmed object threw (asynchronously, so the catch below never saw it), 600+ uncaught errors each time a room or part
+           built on ?ew_gpu=webgpu, and nothing was warmed. The stand-in now carries what compileAsync reads: no-op hooks, every
+           layer, and the object + the warm's lamps as its children (the lamps are how the node path collects its lights). */
+        if (renderer && renderer.isWebGPURenderer) {
+            var lay = new THREE.Layers(); lay.enableAll();
+            W.fake.visible = true; W.fake.layers = lay; W.fake.matrixWorldAutoUpdate = false;
+            W.fake.onBeforeRender = function () {}; W.fake.onAfterRender = function () {};
+            Object.defineProperty(W.fake, 'children', { get: function () { return this._list.concat(W.lights); } });
+        }
+        return W.fake;
+    }
     function _hqWarmNew(H, E) {
         var W = { objs: [], i: 0, texs: [], ti: 0, seen: {}, tseen: {}, mats: 0, texN: 0, ms: 0, frames: 0, full: false, done: false, lights: [], fake: null };
         if (!renderer || typeof renderer.compile !== 'function' || !H.scene || !H.camera) { W.done = true; return W; }
@@ -89215,20 +89917,7 @@ const ThreeRenderer = (function () {
         var add = function (o) { if (o.material) W.objs.push(o); };
         R.traverse(add);
         if (W.full) H.scene.traverse(add);   // every material in the scene is keyed on the light count: warm them all for the new one
-        var sc = H.scene;
-        W.fake = { isScene: true, fog: sc.fog || null, environment: sc.environment || null, background: null, overrideMaterial: null,
-                   _list: [], traverseVisible: function (cb) { for (var k = 0; k < W.lights.length; k++) cb(W.lights[k]); }, traverse: function (cb) { for (var k = 0; k < this._list.length; k++) cb(this._list[k]); } };
-        /* THE WARM-UP ON THE NODE RENDERER (2026-11-05, found by the per-frame audit): there renderer.compile is compileAsync, which
-           calls the scene's onBeforeRender and walks object.children / object.layers, none of which this stand-in scene had: every
-           warmed object threw (asynchronously, so the catch below never saw it), 600+ uncaught errors each time a room or part
-           built on ?ew_gpu=webgpu, and nothing was warmed. The stand-in now carries what compileAsync reads: no-op hooks, every
-           layer, and the object + the warm's lamps as its children (the lamps are how the node path collects its lights). */
-        if (renderer && renderer.isWebGPURenderer) {
-            var lay = new THREE.Layers(); lay.enableAll();
-            W.fake.visible = true; W.fake.layers = lay; W.fake.matrixWorldAutoUpdate = false;
-            W.fake.onBeforeRender = function () {}; W.fake.onAfterRender = function () {};
-            Object.defineProperty(W.fake, 'children', { get: function () { return this._list.concat(W.lights); } });
-        }
+        W.fake = _hqWarmFake(H, W);
         return W;
     }
     /* the sheets a material samples (the maps; a shader's texture uniforms) */
@@ -89239,7 +89928,7 @@ const ThreeRenderer = (function () {
     /* one frame of the warm-up; true = done */
     function _hqWarmRun(H, W) {
         if (W.done) return true;
-        var t0 = _alNow(), end = t0 + ((HQ_STAGE_RULES.compileMs > 0) ? HQ_STAGE_RULES.compileMs : HQ_WARM_MS), n = 0;
+        var t0 = _alNow(), end = t0 + (!H.ready ? HQ_CARD_SLICE_MS : (HQ_STAGE_RULES.compileMs > 0) ? HQ_STAGE_RULES.compileMs : HQ_WARM_MS), n = 0;   // THE CARD WAITS: under the card the warm-up takes HQ_CARD_SLICE_MS a frame
         W.frames++;
         try {
             while (W.i < W.objs.length) {
@@ -89252,7 +89941,7 @@ const ThreeRenderer = (function () {
                 /* WEBGPU_PLAN W3: on the node chain the frame draws into the scene pass's target, so compile for that one */
                 var _wt = (ThreePost && ThreePost.warmTarget) ? ThreePost.warmTarget() : null, _wp = _wt ? renderer.getRenderTarget() : null;
                 if (_wt) renderer.setRenderTarget(_wt);
-                try { var _wpr = renderer.compile(W.fake, H.camera); if (_wpr && typeof _wpr.catch === 'function') _wpr.catch(function () {}); } finally { if (_wt) renderer.setRenderTarget(_wp); }   // the node renderer's compile is a promise: a failure never goes uncaught
+                try { var _wpr = renderer.compile(W.fake, H.camera); if (_wpr && typeof _wpr.then === 'function') { W.flying = (W.flying || 0) + 1; var _wland = function () { W.flying--; }; _wpr.then(_wland, _wland); } } finally { if (_wt) renderer.setRenderTarget(_wp); }   // the node renderer's compile is a promise: a failure never goes uncaught
                 n++;
                 if (_alNow() >= end) break;
             }
@@ -89288,7 +89977,7 @@ const ThreeRenderer = (function () {
        taken: props, doors, people (only the shell group), instanced / skinned / morphing / patched-shader / point / line
        pieces, a piece with children, a see-through piece that is not a cut-out, the terrain tiles, the outer ground, the
        sea, the traffic. The hand-over and the leave hand every piece back first. Off: window.EW_HQ_NO_BATCH. */
-    var HQ_BATCH = { waitMs: 1500, checkMs: 500, sliceMs: 3, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000 };
+    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, sliceMs: 3, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000 };
     /* THE PERF PASS 2 (2026-10-01, mondo's Downtown readout: 1,232 scene draws, 315 shell pieces alone in their look and 370
        procedural props each its own draw): the merge squares are HQ_BATCH.cellM (was the terrain's 32 m tile — most looks
        had one piece per square; 96 m took Downtown's shell 1,526 → 444 to 1,841 → 289 draws), a second batch runs on each
@@ -89536,7 +90225,7 @@ const ThreeRenderer = (function () {
     function _hqBatchTick(H, now) {
         if (_hqBatchOff()) { _hqBatchDropAll(H); return; }
         var recs = [H]; if (H.stage) for (var id in H.stage.parts) if (H.stage.parts[id].attached) recs.push(H.stage.parts[id].P);
-        var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
+        var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : !H.ready ? HQ_CARD_SLICE_MS : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
         for (var r = 0; r < recs.length; r++) {
             var R = recs[r];
             if (!R.batch) R.batch = _hqBatchNew('shellGroup', now);
@@ -89547,8 +90236,8 @@ const ThreeRenderer = (function () {
             if (B.phase === 'off') continue;
             if (B.batches.length && now - B.checkAt >= HQ_BATCH.checkMs) { B.checkAt = now; try { _hqBatchCheck(R, B); } catch (e) { console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
             if (B.phase === 'live') { if (now - B.at < HQ_BATCH.rescanMs) continue; B.phase = 'scan'; B.it = _hqBatchScan(R, B); }   // THE PERF PASS 2: the late pieces
-            if (B.phase === 'wait') { if (now - B.at >= HQ_BATCH.waitMs) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
-            if (B.phase === 'watch') { if (now - B.at >= HQ_BATCH.waitMs) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
+            if (B.phase === 'wait') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
+            if (B.phase === 'watch') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
             if (_alNow() >= end) return;
             _hqSliceEnd = end;
             var res = null;
@@ -89556,8 +90245,8 @@ const ThreeRenderer = (function () {
             finally { _hqSliceEnd = 0; }
             if (res && res.done && B.phase !== 'off') {
                 B.it = null;
-                if (B.phase === 'scan') { if (B.cands.length) { B.phase = 'watch'; B.stats.scanned += B.cands.length; } else B.phase = 'live'; B.at = now; }
-                else if (B.phase === 'build') { B.phase = 'live'; B.at = now; if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ batch] ' + ((R.opts && R.opts.room) || (R.room && R.room.id) || '?') + ' ' + B.grp + ': ' + B.stats.pieces + ' pieces → ' + B.stats.batches + ' batches'); }
+                if (B.phase === 'scan') { if (B.cands.length) { B.phase = 'watch'; B.stats.scanned += B.cands.length; } else { B.phase = 'live'; B.lived = true; } B.at = now; }
+                else if (B.phase === 'build') { B.phase = 'live'; B.lived = true; B.at = now; if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ batch] ' + ((R.opts && R.opts.room) || (R.room && R.room.id) || '?') + ' ' + B.grp + ': ' + B.stats.pieces + ' pieces → ' + B.stats.batches + ' batches'); }
             }
             if (_alNow() >= end) return;
             }
@@ -89731,9 +90420,24 @@ const ThreeRenderer = (function () {
         };
     }
     /* THE ROUND JOIN: the light a closed room is entered with (_hqEnter's branch + _hqLightArm's rig) — the round hall's or a box's */
+    /* ONE DOORWAY, ONE LIGHT (2026-11-12, mondo: "the foyer is too bright and then stepping into the lobby is dark by comparison"):
+       the hemisphere, the key and the fill are the SCENE's, so while you stood in the foyer the hall beyond its open doorway wore the
+       foyer's dimmer box rig (hemisphere 0.44 against the hall's 0.78) and read dark, while the foyer's own lamps blew its white
+       plaster out. A box room joined to the round hall (HQ_STAGE_RULES.round) now wears the HALL's rig, so the hall reads the same
+       from either side of the door and nothing eases at the crossing; the room's own lamps answer for its level (shell.lampK,
+       shell.keyLamp). HQ_LIGHT_RULES.joinRig: false = each room its own rig again. */
+    function _hqJoinedHall(room) {
+        try {
+            if (!room || room.kind !== 'box' || _hqLightRules().joinRig === false || typeof hqStageRoundJoin !== 'function') return false;
+            var id = _hqRoomIdOf(room); return !!(id && hqStageRoundJoin(id));
+        } catch (e) { return false; }
+    }
+    /* THE ROOM'S OWN LAMPS (2026-11-12): `shell.lampK` (0..1, default 1) = the share of its lamps' strength a room keeps — the
+       shell's fluorescents, a desk lamp's pool, every prop light. A small white room wants less than the same lamps give a big dark one. */
+    function _hqLampK(room) { var S = (room && room.shell) || {}; var k = (S.lampK != null) ? +S.lampK : 1; return (isFinite(k) && k >= 0) ? k : 1; }
     function _hqIndoorLightVals(room) {
         var LR = _hqLightRules();
-        if (_hqRoundRoom(room)) {
+        if (_hqRoundRoom(room) || _hqJoinedHall(room)) {
             var hV = _HQ_HALL_LIGHT, kh = (LR.key && LR.key.hall) || {};
             return { hemiC: new THREE.Color(hV.hemiC), hemiG: new THREE.Color(hV.hemiG), hemiI: hV.hemiI, keyC: new THREE.Color(kh.color != null ? kh.color : hV.keyC), keyI: kh.intensity != null ? +kh.intensity : hV.keyI, fillC: new THREE.Color(hV.fillC), fillI: hV.fillI };
         }
@@ -90164,9 +90868,10 @@ const ThreeRenderer = (function () {
             /* THE FLOOR (2026-09-20): a room's mood may dim the fill, never below HQ_LIGHT_RULES.ambientFloor — the
                torches carry the vibe, the key + a cool fill keep every face readable */
             var LRb = _hqLightRules(), bxV = _hqBoxLightVals(room);
-            _hq.hemiLight = new THREE.HemisphereLight(0xd9d2c0, _hqBoxHemiG(room), bxV.hemiI); sc.add(_hq.hemiLight);   // THE BOUNCE: the floor's light on the ceiling   // (THE STAGE eases it at a door join's crossing)
-            var bxk = new THREE.DirectionalLight(0xe8ecf5, bxV.keyI); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk); _hq.keyLight = bxk;
-            var bxf = new THREE.DirectionalLight(LRb.fillColor, bxV.fillI); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(bxf); _hq.fillLight = bxf;
+            var jhV = _hqJoinedHall(room) ? _hqIndoorLightVals(room) : null;   // ONE DOORWAY, ONE LIGHT: the foyer wears the hall's rig
+            _hq.hemiLight = new THREE.HemisphereLight(jhV ? jhV.hemiC : 0xd9d2c0, jhV ? jhV.hemiG : _hqBoxHemiG(room), jhV ? jhV.hemiI : bxV.hemiI); sc.add(_hq.hemiLight);   // THE BOUNCE: the floor's light on the ceiling   // (THE STAGE eases it at a door join's crossing)
+            var bxk = new THREE.DirectionalLight(jhV ? jhV.keyC : 0xe8ecf5, jhV ? jhV.keyI : bxV.keyI); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk); _hq.keyLight = bxk;
+            var bxf = new THREE.DirectionalLight(jhV ? jhV.fillC : LRb.fillColor, jhV ? jhV.fillI : bxV.fillI); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(bxf); _hq.fillLight = bxf;
             _hqBoxRoomLamps(room, sc);
             _hq.cam.dist = Math.min(_hq.cam.dist, Math.max(2.2, S.d * 0.6));
         } else if (room.kind === 'bay') {
@@ -90799,7 +91504,11 @@ const ThreeRenderer = (function () {
            browser ate (_hqOnLockChange) and open the pause menu on top of the card */
         hold: function (on) { if (!_hq) return; _hq.paused = !!on; _hqRebuildAt = performance.now(); if (on) { _hq.keys = {}; _hq.pad = null; _hq.padKeys = {}; _hq.drag = null; } },
         /* THE GATE (2026-09-20): the room's own file count for the load card — { total, done, pending, idle, ms, player } */
-        gate: function () { var H = _hq; if (!H) return null; var p = H.gate ? H.gate.progress() : { total: 0, done: 0, pending: 0, idle: true, ms: 0 }; p.player = !!H.playerAttached; p.ready = !!H.ready; p.list = H.gate ? H.gate.list() : []; return p; },
+        gate: function () { var H = _hq; if (!H) return null; var p = H.gate ? H.gate.progress() : { total: 0, done: 0, pending: 0, idle: true, ms: 0 }; p.player = !!H.playerAttached; p.ready = !!H.ready; p.list = H.gate ? H.gate.list() : [];
+            /* THE CARD WAITS (2026-11-12): the card holds for the room beside this one (THE ROUND JOIN) and for the room to settle — its count says so */
+            p.landed = !!H.landed; p.settle = (H.landed && H.settle) ? H.settle.why : '';
+            if (!H.ready && H.stage && H.stage.round) { for (var id in H.stage.parts) { var E = H.stage.parts[id]; if (!E.gate) continue; var q = E.gate.progress(); p.total += q.total; p.done += E.attached ? q.total : q.done; p.cached += q.cached || 0; if (!E.attached) p.pending += q.pending; } }
+            return p; },
         /* THE ARRIVAL WARM (2026-09-19): start the arrival room's downloads while the title / the menu / the
            door beat play — every door leaf, every catalogue prop, the door gun and the shell's sheets go
            through the same caches the build reads (_miscModelCache / _hqTexCache), so the build finds
@@ -91001,7 +91710,9 @@ const ThreeRenderer = (function () {
         climbing: function () { var pl = _hq && _hq.player; return !!(pl && pl.climb); },
         portalDoors: function () { if (!_hq || !_hq.portal) return []; var o = []; for (var s in _hq.portal.placed) { var r = _hq.portal.placed[s]; o.push({ slot: s, x: r.px, y: r.py, z: r.pz, face: r.door.face, surf: r.portalSurf, leaf: r.leaf }); } return o; },
         finds: function () { return _hq ? _hq.finds.map(function (f) { return { id: f.id, kind: f.kind, x: f.x, y: f.y, z: f.z }; }) : []; },
-        pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z) }; },
+        pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z),
+                                  /* THE SAVE (2026-11-12): the part the walker stands in (a stage crossing rebases the metres), the heading as goTo's `face`, off the ground, the editor */
+                                  room: (_hq.opts && _hq.opts.room) || null, face: _hqNormDeg((Math.PI - (p.yaw || 0)) * 180 / Math.PI), air: !!p.air, edit: !!(_hq.opts && _hq.opts.edit), ready: !!_hq.ready }; },
         stateLabel: function (st) { return HQ_LAMP_LABEL[st] || st; },
         /* dev / playtest helpers (2026-09-06): put the walker (or the
            first-person eye) anywhere, aim it, and list who is in the room —

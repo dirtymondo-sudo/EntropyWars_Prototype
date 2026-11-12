@@ -6237,6 +6237,12 @@ const RACE_PORTRAITS = {
 
 function getUnitPortraitArtUrl(unit) {
   if (!unit || !unit.race) return null;
+  /* THE MODEL PORTRAITS (2026-11-12): a unit that wears a model of its own (a creator look, or a story character's rig,
+     `appearance.cast`: Agent Locke) shows that model's face, photographed off its Head bone (three-renderer.js THE PORTRAIT
+     STUDIO). null until the photo is in: the race's art / the sprite's face stands in, then the HUD repaints. */
+  if (unit.appearance && typeof window !== 'undefined' && window.EWPortraits) {
+    try { const own = window.EWPortraits.url(unit); if (own) return own; } catch (e) {}
+  }
   if (unit.race === 'chess piece') return chessPieceLook(unit._chessPiece);   // ♟ the glyph of the piece it is now
   const set = RACE_PORTRAITS[unit.race];
   if (!set) return null;

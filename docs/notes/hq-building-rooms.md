@@ -1164,3 +1164,15 @@ mondo: "want to get rid of the revolving door, just make it a normal swing door 
 - Probe: `ThreeRenderer.hq.dev.hqDoors()` = the door records of the room stood in + the rooms beside it.
 - Headless proof: playtest_city.js closed the browser seconds after entering (every CDN response fulfilled at once). Serving
   the routed responses ONE AT A TIME (a promise chain + 15 ms) fixed it; also `require('/opt/node-tools/node_modules/playwright')`.
+
+## ONE DOORWAY, ONE LIGHT — the foyer ⇄ the main hall read at one level (2026-11-12)
+mondo: "the foyer is too bright and then stepping into the lobby is dark by comparison".
+- Cause: the hemisphere / key / fill are the SCENE's. Standing in the foyer, the hall beyond the open doorway wore the foyer's
+  box rig (hemisphere 0.44 against the hall's own 0.78) and read dark; the foyer's white plaster sat 3 m from two saucer
+  pendants (0.8 each), the shell fluorescent, the desk + lava lamps and the camera's Key Light (the hall has none) and blew out.
+- three-renderer.js `_hqJoinedHall(room)`: a box room in `HQ_STAGE_RULES.round` wears the HALL's rig (`_hqIndoorLightVals`,
+  `_hqEnter`'s box branch, `_hqLightArm` kind 'hall') — the hall reads the same from both sides, nothing eases at the crossing.
+  `HQ_LIGHT_RULES.joinRig: false` = each room its own rig again.
+- `shell.lampK` (0..1, default 1, `_hqLampK`): a room's share of its own lamps (shell fluorescents, desk-lamp pools, every prop
+  light). The foyer: `lampK: 0.5, keyLamp: 0.3`. Any room may use it.
+- Proof (node renderer on WebGL 2, post on): /mnt/project-files/foyer-lobby-light/.

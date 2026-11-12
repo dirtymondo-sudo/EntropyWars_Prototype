@@ -1760,3 +1760,31 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
   `window.EW_NO_STAGE_STYLE = true`. Already styled (ThreePost.renderScene): DOOR HQ, the menu room, the team room. Left plain: the
   ID-card photo (`snapshot`), the editor's 96 px prop thumbnails (cached pictures), the UI Maker dock's tile / float-text previews.
   Seen: party builder, classic WebGL (headless). NOT seen: his Mac, the creator's face close-up, a spell preview on the stage.
+- THE CARD WAITS (11-12, mondo: "it always loads slow, what is the point of the loading screen before hand if it always loads slow,
+  it needs to wait until the game is loaded"): the HQ load card (THE LOAD GATE) dropped early three ways, measured in a browser on
+  the foyer. (1) A CLOCK: `HQ_GATE_CAP_MS` was 75 s from the entry, whatever was still arriving. (2) THE STALL ran from the moment
+  a file was ASKED for (`AL_STALL_MS` 60 s), so a model waiting its turn in the model queue was written off as dead and the gate
+  stopped waiting for it (18 hall models in the run). (3) Even on time, the card dropped the moment the last file landed, so all
+  the work AFTER a file lands happened in the open room: the hall beside the foyer built and warmed (568 materials, 134 sheets),
+  the instance pass and the static batch rebuilt the props (353 -> 1,439 meshes), the late looks drew piece by piece.
+  Now (three-renderer.js `_hqGateTick`): NO CLOCK WHILE IT MOVES (`_hqGateProgress`: the cap counts from the last progress — a
+  file landed, a part built a slice, a warm-up moved; `HQ_GATE_HARD_MS` 10 min is the one absolute limit; `_hqStageReady` the
+  same for a part, and it no longer warns "gave up" in the middle of a finished part's warm-up); the stall re-arms while
+  anything started or landed in the last 60 s (`AL_STALL_MAX_MS` 5 min); LANDED, THEN SETTLED: `H.landed` (every file in, the
+  round hall beside the foyer) lets `_hqInstTick` / `_hqLodTick` / `_hqBatchTick` run under the card (the batch's two waits are
+  `HQ_BATCH.cardWaitMs` 200 there; the warm-up and the batch take `HQ_CARD_SLICE_MS` 24 a frame while `!H.ready`), and
+  `_hqSettled` holds `H.ready` (the card's fade) until: `_alPending() === 0` (the population's rigs too), the instance pass
+  tried, the batches live once (`B.lived`; skipped on a door walk, `opts.walk` from map.js), THE WHOLE-SCENE WARM-UP done
+  (`_hqWarmWholeNew`: every material in the scene compiled against the frame's lights and every sheet uploaded, the part
+  warm-up's own steps through the shared `_hqWarmFake`), no shader building (`_hqShadersBusy`: a WebGL program not linked, a
+  node pipeline in flight, the warm's own compile promises), and `HQ_SETTLE_FRAMES` (8) drawn frames + `HQ_SETTLE_MS` in which
+  `_hqSettleSig` (geometries, sheets, programs on the card, the late look's held counts) did not change (a walk: 4 frames).
+  A room that never rests drops its card after `HQ_SETTLE_CAP_MS` 30 s and 300 frames, with a console line. Every room logs
+  `[HQ] <room> landed in N ms and settled in M ms more (...; the steps)`. The card's count (`hq.gate()`) now adds the room
+  beside it (THE ROUND JOIN) and reports `landed` / `settle`; map.js's note ends "· setting the room…" while it settles. The
+  way back from a fight (no card, `opts.arrive`) settles nothing. Off live: `window.EW_HQ_NO_SETTLE = true`.
+  Seen (cloud browser, classic WebGL on llvmpipe, about 1 frame a second, so the seconds are not his): before, the card
+  dropped 77 s after the entry, the hall stood 61 s later and the counters kept moving for about 10 s more; after, the card
+  dropped once the hall stood and the room had rested, and geometries / sheets / programs / meshes did not move again. A load
+  through a door (`_hqGoRoom`) lands and settles too. NOT seen: his Mac / real WebGPU (how many seconds the settle adds there),
+  a cold cache on a slow line, the editor's viewport, a terrain zone. Proof /mnt/project-files/loading-wait/.
