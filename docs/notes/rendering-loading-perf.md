@@ -1729,3 +1729,4 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
   Viewer-local (nothing relayed online). renderDirect panes are not styled.
 - Seen on screen: battle + DOOR HQ main hall on the node renderer's WebGL 2 backend, a battle on the classic WebGL chain,
   the two rows. NOT seen: real WebGPU, a spell cast, the legacy composer, online guest, frame cost on a real GPU.
+- 11-12 follow-up (mondo: "i like it with the lines on medium. Can we also go ahead and turn the pixelate off by default now"): Ink Lines default Medium (inkWidth 1.6); Pixelate default OFF (index.html SHIPPED-KEYS ew_retro pixelSize 1 + the code default). A browser that still holds the old shipped ew_retro follows the bake; one that moved the Pixelate slider itself keeps its value.
