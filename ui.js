@@ -17942,7 +17942,7 @@
             const _aimTip = (_tut.step && _tut.step.aim && state.actionMode) ? (_tut.step.aim[state.actionMode] || null) : null;
             try {
                 const _at = document.getElementById('tutCoachAim');
-                if (_at) { const on = !!_aimTip; if (on && _at.getAttribute('data-k') !== state.actionMode) { _at.innerHTML = _tutT(_aimTip); _at.setAttribute('data-k', state.actionMode); } _at.style.display = on ? '' : 'none'; if (!on) _at.removeAttribute('data-k'); }
+                if (_at) { const on = !!_aimTip; if (on && _at.getAttribute('data-k') !== state.actionMode) { const _tx = (typeof _aimTip === 'string') ? _aimTip : _aimTip.t, _tc = (typeof _aimTip === 'string') ? '' : (_aimTip.c || ''); _at.innerHTML = _tutT(_tx); _at.style.setProperty('--tip', _tc || '#ffcc33'); _at.setAttribute('data-k', state.actionMode); } _at.style.display = on ? '' : 'none'; if (!on) _at.removeAttribute('data-k'); }
             } catch (e) {}
             if (_ce) _ce.classList.toggle('aiming', !_aimTip && !!state.actionMode && !!(_tut.step && _tut.step.goal && _tut.step.goal.type !== 'ack'));
             if (state.phase !== 'battle') return;
