@@ -3813,6 +3813,12 @@ EW_MH_WEAR.push(['ewm_tricorn', 'Pirate tricorn', 'hats', 56], ['ewm_officercap'
   ['ewm_camera', 'Old camera with flash', 'equipment', 60], ['ewm_milkcookies', 'Milk and cookies', 'equipment', 60],
   ['ewm_cup', 'Drinking cup', 'equipment', 60], ['ewm_magicwand', 'Magic wand', 'equipment', 60],
   ['ewm_wizardstaff', 'Wizard staff', 'equipment', 60]);
+/* THE MESHY OUTFITS (2026-11-12, plan row 21d, bake-outfit.py; mondo: "i like route 2 better" + "Go"): a unit's own clothes, remade by
+   Meshy T2 as separate shells and dressed onto the MPFB body (so the head is the MPFB head: the 67 face shapes). One solid outfit
+   piece per unit (it hides the skin under it) + its hat. Worn by RACE_REMADE_LOOKS below; any creator look may pick them (Armour / Hats). */
+EW_MH_WEAR.push(['ewm_t2cowboy_hat', 'Cowboy hat (Meshy remake)', 'hats', 56], ['ewm_t2cowboy_outfit', 'Cowboy outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2knight_outfit', 'Knight armour + cape (Meshy remake)', 'equipment', 40],
+  ['ewm_t2wizard_hat', 'Wizard hat (Meshy remake)', 'hats', 56], ['ewm_t2wizard_outfit', 'Wizard robe + cloak (Meshy remake)', 'equipment', 40]);
 /* THE BLENDER BASICS (2026-11-02, mondo: "get rid of any classic clothes and shoes ... make sure we have a replacement"): the
    classic coded pieces no pack has, built in cloud Blender like the rest of row 12 (bake-clothes.py COATS / TIGHT / NECKWEAR):
    Long-sleeve top + Henley (Top colour / fabric / print), Sweatpants (Bottoms'), Belt (Belt's), Tie + Bow tie (their own colour,
@@ -4321,7 +4327,7 @@ const EW_WEAR_SHELF_MOVE = {
   ewm_talisman: 'jewellery', ewm_hagstone: 'jewellery', ewm_egyptcollar: 'jewellery', ewm_airtank: 'back', ewm_astropack: 'back',
   ewm_backpack: 'back', ewm_jetpack: 'back', ewm_quiver: 'back', ewm_katana: 'back', ewm_dowsingrod: 'back', ewm_dorsalfin: 'creature',
   ewm_mothwings: 'wings', ewm_gunbelt: 'belts', ewm_toolbelt: 'belts', ewm_thighholster: 'belts', ewm_flaregun: 'belts',
-  ewm_spyglass: 'belts', ewm_wardtotem: 'belts', ewm_censer: 'belts', ewm_breastplate: 'armour', ewm_shoulderpads: 'armour',
+  ewm_spyglass: 'belts', ewm_wardtotem: 'belts', ewm_censer: 'belts', ewm_breastplate: 'armour', ewm_shoulderpads: 'armour', ewm_t2cowboy_outfit: 'armour', ewm_t2knight_outfit: 'armour', ewm_t2wizard_outfit: 'armour',
   ewm_pauldrons: 'armour', ewm_gauntlets: 'armour', ewm_greaves: 'armour', ewm_armband: 'jewellery', ewm_elfears: 'creature',
   ewm_neckbolts: 'creature', ewm_hooves: 'creature', ewm_beastfeet: 'creature', ewm_beastfeet_fura: 'creature', ewm_beastfeet_furb: 'creature', ewm_trident: 'held', ewm_potionflask: 'held',
   ewm_scalpel: 'held', ewm_wrench: 'held', ewm_blowpipe: 'held', ewm_smartphone: 'held', ewm_handmirror: 'held', ewm_camera: 'held',
@@ -5600,6 +5606,23 @@ function getRaceCreatorLook(race, gender) {
   return c ? Object.assign({}, c, { wear: c.wear.slice() }) : null;
 }
 function hasRaceCreatorLook(race) { return !!RACE_CREATOR_LOOKS[race]; }
+/* THE REMADE LOOKS (2026-11-12, plan row 21d, mondo: "i like route 2 better" + "Go"): a unit's OWN Meshy clothes on the MPFB body
+   (THE MESHY OUTFITS above), with pack hair and the MPFB face, as a second saved look beside the race's Meshy model (still the
+   default) and beside its RACE_CREATOR_LOOKS look (the saved cowboy stays). The forge: USE THE REMADE <RACE> LOOK. The cowboy's
+   is his saved look's body + face with the remade clothes in place of the creator ones. */
+const RACE_REMADE_LOOKS = {
+  'cowboy': { male: Object.assign({}, RACE_CREATOR_LOOKS['cowboy'].male, { "outer": "none", "wear": ["ewb_beard_full", "ewm_t2cowboy_hat", "ewm_t2cowboy_outfit"], "wearTint": {}, "wearFabric": {} }) },
+  'knight': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"jaw":-0.2,"cheekbones":0.25,"lowerLip":0.2,"upperLip":0.15,"eyeSize":0.1,"noseWidth":-0.2,"faceAge":-0.2,"mhSkin":"young_caucasian_female","mhEyes":"brown","mhBrows":"eyebrow006","mhLashes":"eyelashes02","hair":"hair001","hairColor":"#5c0f1e","browColor":"#3a1418","browTint":"pick","idle":"Idle_11","wear":["ewm_t2knight_outfit"] } },
+  'wizard': { male: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":0.95,"headHeight":0.15,"chinLength":0.2,"noseLength":0.2,"faceFat":-0.2,"cheekbones":0.15,"mhSkin":"young_caucasian_male","mhEyes":"blue","mhBrows":"eyebrow001","hair":"hair004","hairColor":"#9a6a40","browColor":"#7a5230","browTint":"pick","idle":"Idle_11","wear":["ewm_t2wizard_hat","ewm_t2wizard_outfit"] } },
+};
+const _ewRemadeLookCache = {};
+function getRaceRemadeLook(race, gender) {
+  if (typeof window !== 'undefined' && window.EW_DISABLE_RACE_LOOKS) return null;
+  const set = RACE_REMADE_LOOKS[race], g = gender === 'female' ? 'female' : 'male';
+  if (!set || !set[g]) return null;
+  const k = race + '|' + g, c = _ewRemadeLookCache[k] || (_ewRemadeLookCache[k] = normalizeCharacterAppearance(set[g]));
+  return c ? Object.assign({}, c, { wear: c.wear.slice() }) : null;
+}
 function raceLooksAreDefault() { return EW_RACE_LOOKS_ARE_DEFAULT || (typeof window !== 'undefined' && window.EW_RACE_LOOKS_ARE_DEFAULT === true); }
 /* the races whose creator look is their DEFAULT (the human base + the DOOR Agent; + the saved race looks only while
    EW_RACE_LOOKS_ARE_DEFAULT is on). THE MESHY DEFAULT: every race may WEAR a creator look (ewCreatorLookRace); only these
@@ -5707,7 +5730,7 @@ if (typeof window !== 'undefined') {
   window.EW_WEAR_SHELVES = EW_WEAR_SHELVES; window.wearShelfOf = wearShelfOf; window.wearMadeFor = wearMadeFor; window.outerMadeFor = outerMadeFor; window.EW_OUTER_GROUPS = EW_OUTER_GROUPS;   // THE SHELVES
   window.EW_WEAR_SLOTS = EW_WEAR_SLOTS; window.EW_WEAR_GROUPS = EW_WEAR_GROUPS; window.wearGroupOf = wearGroupOf; window.wearSlotOf = wearSlotOf; window.wearSlotOfGroup = wearSlotOfGroup;   // THE BODY SLOTS
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES; window.ewCreatorLookRace = ewCreatorLookRace; window.raceLooksAreDefault = raceLooksAreDefault;   // THE MESHY DEFAULT
-  window.RACE_CREATOR_LOOKS = RACE_CREATOR_LOOKS; window.getRaceCreatorLook = getRaceCreatorLook; window.hasRaceCreatorLook = hasRaceCreatorLook;   // THE RACE LOOKS
+  window.RACE_CREATOR_LOOKS = RACE_CREATOR_LOOKS; window.getRaceCreatorLook = getRaceCreatorLook; window.RACE_REMADE_LOOKS = RACE_REMADE_LOOKS; window.getRaceRemadeLook = getRaceRemadeLook; window.hasRaceCreatorLook = hasRaceCreatorLook;   // THE RACE LOOKS
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
 }
 

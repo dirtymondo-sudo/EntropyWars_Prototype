@@ -5082,6 +5082,7 @@ function PartyBuilder(props) {
   const slotOwnLook = window.normalizeCharacterAppearance?.(meta.appearance) || null;
   const slotOriginal = !!(slotOwnLook && slotOwnLook.model === 'original');
   const raceSavedLook = raceLookRace ? (window.getRaceCreatorLook(unitRace, identity.gender || 'male') || null) : null;
+  const raceRemadeLook = raceLookRace && window.getRaceRemadeLook ? (window.getRaceRemadeLook(unitRace, identity.gender || 'male') || null) : null;   // THE REMADE LOOKS
   const appearance = slotOriginal ? null : (slotOwnLook || (lookIsDefault ? raceSavedLook : null));
   const unitRaceLabel = typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace;
   const wearsOriginal = slotOriginal || (!appearance && unitRace !== 'door agent');   // the slot stands in the race's own model
@@ -5142,6 +5143,7 @@ function PartyBuilder(props) {
               h('p', null, 'This slot wears the ' + unitRaceLabel + '\u2019s original ' + (refHasModel ? 'model' : 'sprite') + '. Make a custom look for it here; USE ORIGINAL MODEL in the creator puts the original back.'),
               h('div', { className: 'pb-creator-options' },
                 raceSavedLook ? h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, title: 'The saved creator look for the ' + unitRaceLabel + ' (' + (identity.gender || 'male') + ')', onClick: () => setSlotLook(raceSavedLook) }, 'USE THE SAVED ' + String(unitRaceLabel).toUpperCase() + ' LOOK') : null,
+                raceRemadeLook ? h('button', { className: 'ms-tty-btn' + (raceSavedLook ? '' : ' primary'), disabled: isWaitingOnline, title: 'The ' + unitRaceLabel + '\u2019s own clothes, remade as separate pieces on the new body: a face that talks and emotes', onClick: () => setSlotLook(raceRemadeLook) }, 'USE THE REMADE ' + String(unitRaceLabel).toUpperCase() + ' LOOK') : null,   // THE REMADE LOOKS (sprites.js RACE_REMADE_LOOKS)
                 h('button', { className: 'ms-tty-btn' + (raceSavedLook ? '' : ' primary'), disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign({ body: mpfbDefaultBody, model: 'creator' }, window.mpfbFacePatch ? window.mpfbFacePatch(null, mpfbDefaultBody) : {})) }, 'CREATE APPEARANCE'),
                 h('button', { className: 'ms-tty-btn', disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: mpfbDefaultBody, model: 'creator' })) }, '\u2684 RANDOM')),
               (unitRace !== 'door agent' && unitRace !== 'homosapien') ? h(AssignedLooks, { race: unitRace, raceLabel: unitRaceLabel, gender: identity.gender || 'male', appearance: null, disabled: isWaitingOnline, onNote: pbNote, onLoad: loadAssignedLook }) : null)
@@ -5162,6 +5164,7 @@ function PartyBuilder(props) {
                 raceSavedLook
                   ? h('button', { className: 'ms-tty-btn', title: 'Back to the saved ' + unitRaceLabel + ' look', onClick: () => setSlotLook(raceSavedLook) }, 'RESET TO SAVED LOOK')
                   : h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance(Object.assign({ body: mpfbDefaultBody }, window.mpfbFacePatch ? window.mpfbFacePatch(null, mpfbDefaultBody) : {}))) }, 'RESET'),   // + THE DEFAULT FACES
+                raceRemadeLook ? h('button', { className: 'ms-tty-btn', title: 'The ' + unitRaceLabel + '\u2019s own clothes, remade as separate pieces on the new body', onClick: () => setSlotLook(raceRemadeLook) }, 'REMADE LOOK') : null,   // THE REMADE LOOKS
                 h('button', { className: 'ms-tty-btn', onClick: () => {
                   if (isWaitingOnline) return;
                   st.teamLockedIn = false;

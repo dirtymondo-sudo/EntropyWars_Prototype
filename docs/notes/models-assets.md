@@ -1506,6 +1506,29 @@ mondo 11-02: "similar to the capes and the hair, can we add jiggle physics to th
   bone at rest, idle and walking). Probe = a scratch Playwright page through playtest_creator.js's routes, DOOR Agent slot >
   GEAR > CHARACTER CREATOR > MPFB FEMALE, EWCharViewer.dev.model() for the bones, EWCharViewer.snapshot({yaw}) per frame.
 
+## THE MESHY OUTFITS (2026-11-12, character-models-plan.md row 21d)
+
+mondo 11-12: "i like route 2 better" + "Go". A unit's own clothes, remade by Meshy as separate shells, worn on the MPFB body so the
+head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay the units' defaults.
+
+- **The remake** (15 credits, ~1 min, Meshy API through the proxy): `POST /openapi/v1/image-to-3d` with a front render of the old unit,
+  `model_type: smart-topology`, `ai_model: meshy-t2`, `texture_model: meshy-n1`, `pose_mode: a-pose`, `target_polycount: 15000`.
+  One GLB object made of loose shells. `meshy-t2.5` does NOT separate. No body under the clothes.
+- **`bake-outfit.py`** (repo root; `pip install bpy==5.2.3 scipy pillow`; reads the five `mpfb_<body>.glb` from R2 copies):
+  `python3 -I bake-outfit.py --name cowboy --label Cowboy --gender male --src cowboy_t2a.glb --bodies <dir>` writes
+  `charactercreation/wear/ewm_t2<name>_outfit.glb` (+ `_hat.glb`) through bake-clothes.py `write_glb` (compact layout, `solid`,
+  `del` = the hm08 skin indices under the cloth). Steps: scale by the eyeball shells; cut the skin-coloured faces off the face shell
+  (flood fill) so the collar stays; drop bare hands + the unit's hair (the look picks pack hair); size hats to the MPFB head; aim the
+  body's arms + legs down the sleeves, copy the posed body's weights, un-skin to rest; loose cloth off the legs (a skirt, a cape)
+  shares its leg weight between both legs + the hips (env LOOSE0 / LOOSE1 / LOOSEHIP); the other four bodies = the offsets of the 12
+  nearest skin vertices. Env knobs: SKIN_T, S, HS, SY, SZ, BRIM, BRIMHI, SCALP, RAY_OUT, RAY_LEG, RAY_IN, ALLHIDE.
+- **Gotchas**: Blender's UV v is 1 - glTF's (a scrambled texture = that); a robe needs RAY_LEG (45 cm) or the legs show through it;
+  tall boots under a robe poke through when the leg swings; `new_from_object` needs `preserve_all_data_layers=True`.
+- **In the game**: sprites.js EW_MH_WEAR rows `ewm_t2*` (outfits are category `equipment`, shown on the Armour tab; hats on Hats),
+  `RACE_REMADE_LOOKS` + `getRaceRemadeLook(race, gender)`, party-builder.js USE THE REMADE <RACE> LOOK (beside USE THE SAVED LOOK) and
+  REMADE LOOK inside the creator. The race's default idle can crouch a creator rig (knight, wizard): the looks carry `idle: Idle_11`.
+- Sources kept: /mnt/project-files/meshy-parts-20261112/ (the three T2 GLBs, the in-game sheet, scripts).
+
 ## THE MESHY PIECES (2026-11-03, character-models-plan.md row 16)
 mondo: "now how do we put these models both in the character creator and in the game for spells". This is the creator half.
 - `bake-meshy.py` (repo root, imports bake-clothes.py): `python3 -I bake-meshy.py --mpfb /tmp/mpfb2 [--only key1,key2] [--views dir]`
