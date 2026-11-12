@@ -4136,7 +4136,7 @@ const ThreeRenderer = (function () {
     function _calmFluidMat(key) {
         var lava = (key === 'lava'), deep = (key === 'deep_water'), liq = (_CALM.liquids && _CALM.liquids[key]) || null, mat;
         if (lava) {
-            var tex = _hzTex('lava');   // calm_lava (calm board): trilinear, its own cache entry
+            var tex = _hzTex('calm_lava');   // the calm sheet by name (lava itself wears his pixel sheet: CALM_TERRAIN.pixelLiquids)
             mat = new THREE.MeshLambertMaterial({ map: tex || null, color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.85, emissiveMap: tex || null });
         } else {
             mat = new THREE.MeshPhongMaterial({ color: liq ? liq[0] : deep ? _CALM.deep : _CALM.water, specular: 0xb4c4c8, shininess: 140,
@@ -4195,7 +4195,10 @@ const ThreeRenderer = (function () {
     }
 
     function _buildFluidTopMat(terrainKey) {
-        if ((terrainKey === 'water' || terrainKey === 'deep_water' || terrainKey === 'lava' || (_CALM.liquids && _CALM.liquids[terrainKey])) && _calmOn()) return _calmFluidMat(terrainKey);   // THE CALM GROUND (+ THE CALM LIQUIDS)
+        /* THE PIXEL LAVA + WATER (mondo 11-12): data.js CALM_TERRAIN.pixelLiquids keep his sheets + his liquid look; the calm ones
+           only with window.EW_CALM_LIQUIDS */
+        var _pxLiq = false; try { var _ct = _calmTable(); _pxLiq = !!(_ct && _ct.pixelLiquids && _ct.pixelLiquids[terrainKey] && !(typeof window !== 'undefined' && window.EW_CALM_LIQUIDS)); } catch (e) {}
+        if (!_pxLiq && (terrainKey === 'water' || terrainKey === 'deep_water' || terrainKey === 'lava' || (_CALM.liquids && _CALM.liquids[terrainKey])) && _calmOn()) return _calmFluidMat(terrainKey);   // THE CALM GROUND (+ THE CALM LIQUIDS)
         /* Tinted liquids (poison bogs / black ooze / oil) ride the WATER
            textures with a material tint — see _LIQUID_STYLES. */
         var style = _LIQUID_STYLES[terrainKey] || null;
