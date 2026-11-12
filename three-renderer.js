@@ -65216,6 +65216,9 @@ const ThreeRenderer = (function () {
         var spec = _ptSpec(u);
         if (!spec) return null;
         if (spec.def.portrait && spec.def.portrait.live) return spec;
+        if (spec.key.indexOf('cast:') === 0) {   // a remade cast member (THE CAST LOOKS) wears a creator def: her own cast row still says she is live
+            try { var cr = (typeof DOOR_CAST_MODELS !== 'undefined') ? DOOR_CAST_MODELS[spec.key.slice(5)] : null; if (cr && cr.portrait && cr.portrait.live) return spec; } catch (e) {}
+        }
         var own = spec.look ? _ptOwnKey() : null;
         return (own && spec.key.slice(-own.length) === own) ? spec : null;
     }
