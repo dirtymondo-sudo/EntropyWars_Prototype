@@ -4043,6 +4043,9 @@ function _hrlgStatusChips(unit) {
   const hgBuff = unit.hourglassBuff || 0;
   const totalMov = _hrlgMovDelta(unit);
   if (hgBuff > 0) chips.push({ key: 'hg', label: 'KEY+' + hgBuff, kind: 'up', title: 'Key Charge: +' + hgBuff + ' ATK/DEF points' });
+  /* 🐝 THE POLLEN (battle.js): what the Bee Queen carries, and the Honey it gives her */
+  const pol = unit.pollen | 0;
+  if (pol > 0) chips.push({ key: 'pollen', label: 'POLLEN ' + pol + '/' + (window.POLLEN_MAX || 3), kind: 'up', title: 'Pollen: +' + pol * 8 + ' ATK, spell power and SPD. Pollinate spends one.' });
   if (totalMov) chips.push({
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects', stat: 'mov',
@@ -7425,11 +7428,19 @@ function ActionMenu({ st, hidden }) {
   // Mystery Dungeon lockstep: NO Move blade — walking IS the free verb
   // (WASD / arrows step, clicking a tile travels), so the ladder reads
   // Attack › Abilities › Combo › Items › Guard like a proper crawler.
+  /* 👁 RETURN TO BODY (mondo 2026-11-12): a projecting spirit cannot basic attack, so its dead ATTACK row gives its
+     place to the way home (battle.js doAstralReturn: free, the turn goes on) */
+  const _spiritRow = !!(unit.status && unit.status.projecting > 0 && unit._astralBodyId);
+  const returnAction = _spiritRow ? {
+    id: 'astralReturn', label: 'Return to body', icon: '👁', cost: 0,
+    available: typeof window.canAstralReturn === 'function' && window.canAstralReturn(unit),
+    sub: 'Ends projection',
+  } : null;
   const _mdLock = typeof window._mdLockstepActive === 'function' && window._mdLockstepActive();
   if (_mdLock) guardAction.sub = _guardOk ? 'Hold & brace' : guardAction.sub;
   const actions = ((typeof _isClashMode === 'function' && _isClashMode()) || _mdLock)
-    ? [attackAction, abilAction, comboAction, itemsAction, guardAction]
-    : [moveAction, ...(climbAction ? [climbAction] : []), attackAction, abilAction, comboAction, itemsAction, guardAction];
+    ? [returnAction || attackAction, abilAction, comboAction, itemsAction, guardAction]
+    : [moveAction, ...(climbAction ? [climbAction] : []), returnAction || attackAction, abilAction, comboAction, itemsAction, guardAction];
 
   // ♟ TACTICS (battle.js setUnitTactic): set this unit or a teammate on a Tactic so the CPU's brain plays its turns.
   // Not on Mystery Dungeon floors (their own tactic chips) or in the tutorial (unitOnTactic is off there).
@@ -7640,6 +7651,7 @@ function ActionMenu({ st, hidden }) {
       case 'combo': if (typeof setActionMode === 'function') setActionMode('combo'); break;
       case 'items': if (typeof chooseActionMenu === 'function') chooseActionMenu('items'); break;
       case 'guard': if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); break;
+      case 'astralReturn': if (typeof doAstralReturn === 'function' && typeof getSelectedUnit === 'function') doAstralReturn(getSelectedUnit()); break;
       case 'switch': if (typeof chooseActionMenu === 'function') chooseActionMenu('switch'); break;
       case 'tactics': _hrlgTacticPickId = unit.id; if (typeof chooseActionMenu === 'function') chooseActionMenu('tactics'); break;
       case 'escape': if (typeof window.doEscape === 'function' && typeof getSelectedUnit === 'function') window.doEscape(getSelectedUnit()); break;
@@ -10915,11 +10927,12 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
   if (sd) {
     const enemy = actingUnit ? sd.owner !== actingUnit.player : false;
     /* THE GARDEN (2026-11-12): a seed needs water; the card says which state it is in and what it grows into */
-    const _sdBase = sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : sd.type === 'leech' ? 'Leech Seed' : 'Seed';
+    const _sdBase = sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : sd.type === 'leech' ? 'Leech Seed' : sd.type === 'apple' ? 'Apple Seed' : 'Seed';
     const name = sd.watered ? _sdBase.replace(/Seed$/, 'Sprout') : _sdBase;
     const _sdGrows = sd.type === 'heal' ? 'a Healing Flower that heals allies beside it each round'
       : sd.type === 'poison' ? 'a Gas Plant that poisons enemies beside it each round'
       : sd.type === 'leech' ? 'a Thorn Vine that lashes the nearest enemy within 2 tiles each round'
+      : sd.type === 'apple' ? 'an Apple Tree that drops a healing apple every 2 rounds'
       : 'a tree';
     const desc = (sd.watered
       ? 'Watered: it grows into ' + _sdGrows + ' at the end of this round.'
@@ -11734,7 +11747,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
     const seed = (state.plantedSeeds || []).find(s => s.x === tx && s.y === ty && s.owner !== actingUnit.player);
     if (seed) {
-      const seedName = seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+      const seedName = seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : seed.type === 'apple' ? 'Apple Seed' : 'Leech Seed';
       const canAtk = inRange && !losBlocked && _fogSees;
       actions.push(_objAtkRow('attack:seed', 'Attack ' + seedName, canAtk));
     }
