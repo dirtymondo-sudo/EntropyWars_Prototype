@@ -28596,7 +28596,7 @@ const ThreeRenderer = (function () {
         _keyFxModelUrl = '';
         try {
             var cat = (typeof DOOR_HQ !== 'undefined') && DOOR_HQ.catalogue && DOOR_HQ.catalogue.key;
-            if (cat && cat.file) _keyFxModelUrl = DOOR_HQ.assets.models + encodeURIComponent(cat.file);
+            if (cat && cat.file) _keyFxModelUrl = _hqModelUrl(cat);   // (2026-11-12: the catalogue's own folder — the key is a PSX Mega Pack model since 11-08, and the DOOR folder + an encoded slash was a 404)
         } catch (e) {}
         return _keyFxModelUrl;
     }
@@ -43955,6 +43955,39 @@ const ThreeRenderer = (function () {
             B.delete(attribute);
         };
     }
+    /* THE BORROWED COUNT (2026-11-12, mondo's Camelot fight on WebGPU: "Buffer 'bindingBuffer2312' has been destroyed", then
+       "a draw failed and was skipped (hq:gaps:floor / MeshBasicMaterial: GPUQueue.writeBuffer: Argument 1 is not an object)" on
+       every frame). three counts the users of a look's SHARED bind group (the camera's uniform buffer, one per node build, lent
+       to every render object of that build) up when a render object's bindings are made and down when it is disposed — but it
+       counts DOWN for a render object whose bindings were never made too. THE LATE LOOK makes exactly those: a new look that
+       sits a frame out has its render object and nothing else, and when its mesh goes before it ever drew (a spell's quad, the
+       rain that starts and stops, a culled prop) its dispose took one off a count it never added to. The count reached zero
+       with meshes still drawing, three destroyed their camera buffer, and every one of them (the pits' black floor first)
+       threw on each draw from then on; a recorded bundle holding the buffer failed the whole frame's submit. Here: a render
+       object whose bindings were never made gives back nothing (and no longer builds its shaders just to be thrown away).
+       And a uniform buffer that IS due to go is forgotten at once and destroyed at the next frame's first render, like the
+       vertex buffers above: a dispose in the middle of a frame can no longer pull a buffer from under a draw or a bundle the
+       frame has already encoded. Both backends for the count; the late destroy is WebGPU's. */
+    function _ewGpuSafeBindings(r) {
+        var BN = r._bindings, B = r.backend;
+        if (BN && !BN._ewSafe && typeof BN.deleteForRender === 'function' && typeof BN.get === 'function' && typeof BN.delete === 'function') {
+            BN._ewSafe = true;
+            var dfr = BN.deleteForRender;
+            BN.deleteForRender = function (ro) {
+                if (ro && this.get(ro).initialized !== true) { this.delete(ro); return; }
+                return dfr.apply(this, arguments);
+            };
+        }
+        if (B && B.isWebGPUBackend && !B._ewSafeUbo && typeof B.destroyUniformBuffer === 'function') {
+            B._ewSafeUbo = true;
+            B.destroyUniformBuffer = function (ub) {
+                _ewBunFreed(ub);   // THE RENDER BUNDLES: the groups whose recording holds this buffer re-record
+                var d = this.has(ub) ? this.get(ub) : null;
+                if (d && d.buffer) (r._ew_freeLater || (r._ew_freeLater = [])).push(d.buffer);
+                this.delete(ub);
+            };
+        }
+    }
     /* THE ONE WRITE (2026-10-28, mondo: "Still lots of frame rate drops and jankiness ... in battle and exploration"): three
        writes a uniform buffer's changed values as one queue.writeBuffer per run of changed values, so a material whose
        colour, opacity and time moved sends three writes. Counted in the sandbox's battle (VS CPU Arena, WebGPU): ~740 writes
@@ -47178,6 +47211,7 @@ const ThreeRenderer = (function () {
         var rawClear = r.clear;
         r.clear = function () { if (!this.initialized) return; return rawClear.apply(this, arguments); };
         _ewGpuSafeBuffers(r);
+        _ewGpuSafeBindings(r);
         _ewGpuDepthOnlyViews(r);   // THE TEAM OUTLINES: the scene pass's depth-stencil texture, sampled by its depth only
         /* THE SHARED SHADOW DEPTH (W5a, 2026-10-04, mondo: "the transition from exploration to battle is still really laggy"):
            three's node shadow pass gives every material that has a map its own depth colour node (the map's alpha, a
@@ -47263,6 +47297,7 @@ const ThreeRenderer = (function () {
         r.init().then(function () {
             _ewGpuInfo.ready = true;
             _ewGpuSafeBuffers(r);
+            _ewGpuSafeBindings(r);
             _ewGpuOneWrite(r);
             _ewGpuInterleaveFix(r);
             try { _ewKeepSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the kept shaders failed', e); }
