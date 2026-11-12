@@ -167,7 +167,8 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 | robinhood (M) | batch one 11-12 (second T2 run) | a few skin flecks on the hood front | owed | DONE 11-12 | waiting | hood = outfit, `hair: bald`; fingerless gloves kept |
 | quarterback (M) | batch one 11-12 | clean | owed | next | waiting | `--headgear` (helmet = hat piece), `hair: bald` |
 | djinn (M) | REFUSED by Meshy's safety check twice (bare chest) | | | | | not worked around; needs his word |
-| mummy (F), angel (F) | batch two, not started | | | | | |
+| mummy (F) | batch two 11-12 | clean | done (mummyFace) | next | waiting | `--longhair --bodysuit` (bandages the colour of her skin: no colour cut, head + hands cut by place), hair mh_long01. Left: loose bandage ends float by her hands, one thin strip from chin to chest, a tan fleck on her hair at the back |
+| angel (F) | batch two 11-12 | clean | done, soft (angelFace) | next | waiting | render on a DARK background (white wings on light grey came back dark blue); `--longhair --nowings --barearms --neckline`, env `SKIN_T=0.3 LOCKZ=0.25 LOCKT=0.3`; wings = the creator's Feathered. Left: ragged neckline, a small hole by one armpit, a skin patch on the back of the skirt, face plainer than the photo-real original |
 | everything else in group A | not started | | | | | |
 
 ## 9. Standing rules for any session doing this

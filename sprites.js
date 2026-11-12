@@ -3821,6 +3821,8 @@ EW_MH_WEAR.push(['ewm_t2cowboy_hat', 'Cowboy hat (Meshy remake)', 'hats', 56], [
   ['ewm_t2wizard_hat', 'Wizard hat (Meshy remake)', 'hats', 56], ['ewm_t2wizard_outfit', 'Wizard robe + cloak (Meshy remake)', 'equipment', 40],
   /* batch one of the demo starters (2026-11-12, meshy-remake-plan.md) */
   ['ewm_t2zombie_outfit', 'Zombie rags (Meshy remake)', 'equipment', 40],
+  ['ewm_t2mummy_outfit', 'Mummy wraps (Meshy remake)', 'equipment', 40],
+  ['ewm_t2angel_outfit', 'Angel dress (Meshy remake)', 'equipment', 40],
   ['ewm_t2catgirl_hat', 'Catgirl ears (Meshy remake)', 'hats', 56], ['ewm_t2catgirl_outfit', 'Catgirl outfit (Meshy remake)', 'equipment', 40],
   ['ewm_t2robinhood_outfit', 'Robinhood hood + tunic (Meshy remake)', 'equipment', 40],
   ['ewm_t2quarterback_hat', 'Quarterback helmet (Meshy remake)', 'hats', 56], ['ewm_t2quarterback_outfit', 'Quarterback kit (Meshy remake)', 'equipment', 40]);
@@ -4050,7 +4052,7 @@ EW_MH_LOOKS.skins.push(['ew_werewolf_fur', 'Werewolf fur (Meshy)'], ['ew_werewol
    mpfb/looks/skin_morgan.jpg like the pack skins; it pairs with the morganHead shaped head (EW_MPFB_FACE_SLIDERS "Face likeness"). */
 EW_MH_LOOKS.skins.push(['morgan', 'Morgan']);
 /* THE UNIT FACES (2026-11-12): the unit's own Meshy face on the hm08 sheet, pairs with the <race>Face shaped head (bake-face.py). */
-EW_MH_LOOKS.skins.push(['ew_face_cowboy', 'Cowboy face (Meshy)'], ['ew_face_knight', 'Knight face (Meshy)'], ['ew_face_wizard', 'Wizard face (Meshy)'], ['ew_face_zombie', 'Zombie face (Meshy)'], ['ew_face_robinhood', 'Robinhood face (Meshy)'], ['ew_face_catgirl', 'Catgirl face (Meshy)']);
+EW_MH_LOOKS.skins.push(['ew_face_cowboy', 'Cowboy face (Meshy)'], ['ew_face_knight', 'Knight face (Meshy)'], ['ew_face_wizard', 'Wizard face (Meshy)'], ['ew_face_zombie', 'Zombie face (Meshy)'], ['ew_face_robinhood', 'Robinhood face (Meshy)'], ['ew_face_catgirl', 'Catgirl face (Meshy)'], ['ew_face_mummy', 'Mummy face (Meshy)'], ['ew_face_angel', 'Angel face (Meshy)']);
 /* THE EYE PACK (2026-11-03, mondo uploaded the MakeHuman Eye Texture Pack to R2 looks/eyes/eyetextures/: "please add them to the
    character creator"): [id, label, colour PNG, normal-map PNG]. On an MPFB body these are NOT drawn into the skin sheet (an iris
    there is ~6 texels, a cat eye's slit is lost): three-renderer.js THE EYE PACK fits MakeHuman's high-poly eye mesh over the
@@ -4334,7 +4336,7 @@ const EW_WEAR_SHELF_MOVE = {
   ewm_talisman: 'jewellery', ewm_hagstone: 'jewellery', ewm_egyptcollar: 'jewellery', ewm_airtank: 'back', ewm_astropack: 'back',
   ewm_backpack: 'back', ewm_jetpack: 'back', ewm_quiver: 'back', ewm_katana: 'back', ewm_dowsingrod: 'back', ewm_dorsalfin: 'creature',
   ewm_mothwings: 'wings', ewm_gunbelt: 'belts', ewm_toolbelt: 'belts', ewm_thighholster: 'belts', ewm_flaregun: 'belts',
-  ewm_spyglass: 'belts', ewm_wardtotem: 'belts', ewm_censer: 'belts', ewm_breastplate: 'armour', ewm_shoulderpads: 'armour', ewm_t2cowboy_outfit: 'armour', ewm_t2knight_outfit: 'armour', ewm_t2wizard_outfit: 'armour', ewm_t2zombie_outfit: 'armour', ewm_t2catgirl_outfit: 'armour', ewm_t2robinhood_outfit: 'armour', ewm_t2quarterback_outfit: 'armour',
+  ewm_spyglass: 'belts', ewm_wardtotem: 'belts', ewm_censer: 'belts', ewm_breastplate: 'armour', ewm_shoulderpads: 'armour', ewm_t2cowboy_outfit: 'armour', ewm_t2knight_outfit: 'armour', ewm_t2wizard_outfit: 'armour', ewm_t2zombie_outfit: 'armour', ewm_t2catgirl_outfit: 'armour', ewm_t2robinhood_outfit: 'armour', ewm_t2quarterback_outfit: 'armour', ewm_t2mummy_outfit: 'armour', ewm_t2angel_outfit: 'armour',
   ewm_pauldrons: 'armour', ewm_gauntlets: 'armour', ewm_greaves: 'armour', ewm_armband: 'jewellery', ewm_elfears: 'creature',
   ewm_neckbolts: 'creature', ewm_hooves: 'creature', ewm_beastfeet: 'creature', ewm_beastfeet_fura: 'creature', ewm_beastfeet_furb: 'creature', ewm_trident: 'held', ewm_potionflask: 'held',
   ewm_scalpel: 'held', ewm_wrench: 'held', ewm_blowpipe: 'held', ewm_smartphone: 'held', ewm_handmirror: 'held', ewm_camera: 'held',
@@ -4903,12 +4905,12 @@ const EW_MPFB_FACE_SLIDERS = [
      section 6): a race's own Meshy head measured onto the MPFB head by face landmarks (bake-face.py): <race>Face = the head shape (a custom
      shape like morganHead), and the skin "ew_face_<race>" = the unit's face painted onto the stock skin sheet, the rest toned to match.
      The mesh is still the MPFB head, so the 67 face shapes (blink, talk) keep working. Pilot: the cowboy. */
-  { id: 'unitFace', label: 'Unit faces', inHeads: true, rows: [['cowboyFace', 'Cowboy'], ['knightFace', 'Knight'], ['wizardFace', 'Wizard'], ['zombieFace', 'Zombie'], ['robinhoodFace', 'Robinhood'], ['catgirlFace', 'Catgirl']] },
+  { id: 'unitFace', label: 'Unit faces', inHeads: true, rows: [['cowboyFace', 'Cowboy'], ['knightFace', 'Knight'], ['wizardFace', 'Wizard'], ['zombieFace', 'Zombie'], ['robinhoodFace', 'Robinhood'], ['catgirlFace', 'Catgirl'], ['mummyFace', 'Mummy'], ['angelFace', 'Angel']] },
 ];
 EW_APPEARANCE_LIMITS.wolfHead = [0, 1, 0];   // (one-sided: the target has no minus end)
 EW_APPEARANCE_LIMITS.morganHead = [0, 1, 0];   // (one-sided, THE CUSTOM SHAPES)
 EW_APPEARANCE_LIMITS.cowboyFace = [0, 1, 0];   // (one-sided, THE UNIT FACES)
-EW_APPEARANCE_LIMITS.knightFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.wizardFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.zombieFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.robinhoodFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.catgirlFace = [0, 1, 0];
+EW_APPEARANCE_LIMITS.knightFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.wizardFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.zombieFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.robinhoodFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.catgirlFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.mummyFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.angelFace = [0, 1, 0];
 /* THE LIKENESS SWITCH (2026-11-11, mondo: "hide behind a switch anyway, im really just testing something"): the face-likeness picks
    (the morganHead shaped head + the "morgan" skin) are NOT shown in the creator unless this browser turned them on: open the game
    once with ?likeness=1 in the address (remembered; ?likeness=0 turns it off again). The data stays valid either way, so a look
@@ -5651,6 +5653,8 @@ const RACE_REMADE_LOOKS = {
   'wizard': { male: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":0.95,"wizardFace":1,"mhSkin":"ew_face_wizard","mhEyes":"blue","mhBrows":"eyebrow001","hair":"hair004","hairColor":"#9a6a40","browColor":"#7a5230","browTint":"pick","idle":"Idle_11","wear":["ewm_t2wizard_hat","ewm_t2wizard_outfit"] } },
   /* batch one of the demo starters (2026-11-12): zombie, catgirl (his saved look's body + face + hair, the remade clothes), robinhood, quarterback */
   'zombie': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"zombieFace":1,"mhSkin":"ew_face_zombie","mhEyes":"brown","mhBrows":"own","mhLashes":"eyelashes02","hair":"hair001","hairColor":"#17181a","browColor":"#17181a","browTint":"pick","idle":"Idle_11","wear":["ewm_t2zombie_outfit"] } },
+  'mummy': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"mummyFace":1,"mhSkin":"ew_face_mummy","mhEyes":"brown","mhBrows":"own","mhLashes":"eyelashes02","hair":"mh_long01","hairColor":"#17181a","browColor":"#17181a","browTint":"pick","idle":"Idle_11","wear":["ewm_t2mummy_outfit"] } },
+  'angel': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"feathered","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"angelFace":1,"mhSkin":"ew_face_angel","mhEyes":"brown","mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#c08a8a","mhBrows":"eyebrow010","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"hair":"mh_long01","hairColor":"#b08a55","browColor":"#7a5a35","browTint":"pick","idle":"Idle_11","wear":["ewm_t2angel_outfit"] } },
   'catgirl': { female: Object.assign({}, RACE_CREATOR_LOOKS['catgirl'].female, { "outer2": "none", "feet": "none", "wear": ["ewm_t2catgirl_outfit", "ewm_crosspendant"], "wear2": "none", "wearTint": { "ewm_crosspendant": "#a0662e" }, "wearFabric": {} },   /* (the cross pendant + its tint = his saved look's own) */
     /* her own Meshy face (mondo 11-12: "i want it anyway and for you to clean it up"): the saved look's face sliders are zeroed, they were
        shaping a stock face (his cat ears, neck, eyes, lashes, lips and hair stay); her fringe hides the brows in the old model, so the look picks a pair */
