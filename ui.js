@@ -17404,7 +17404,14 @@
                        from: 'menu', saved: null, poll: null, autoTimer: null, tileTimer: null, metAt: 0, stepMark: 0,
                        stepActiveId: null, nudgeAt: 0, bootPoll: null, cpuTimer: null };
         window._tutActive = false;
-        const _TUT_VERB_OF_BLADE = { move: 'move', jump: 'move', attack: 'attack', abil: 'spell', combo: 'combo', items: 'item', guard: 'guard', switch: 'switch', end: 'end' };
+        /* EVERY ROW ANSWERS TO THE STEP (mondo 2026-11-12: "The game shouldnt let me click stuff the tutorial isnt telling me to. So if
+           its telling me to move then everything besides move needs to be greyed out"): climb is a move; tactics and the two escapes
+           are no step's verb, so they are lit only on a free-play step (allow: 'all') */
+        const _TUT_VERB_OF_BLADE = { move: 'move', jump: 'move', climb: 'move', attack: 'attack', abil: 'spell', combo: 'combo', items: 'item', guard: 'guard', switch: 'switch', end: 'end',
+                                     tactics: 'tactics', escape: 'escape', teamEscape: 'escape' };
+        /* the tool buttons beside the list (BUILD + the pushers) and the arming modes, by the verb a step allows */
+        const _TUT_VERB_OF_TOOL = { build: 'build', entropyStrike: 'entropy', nexus: 'channel', prism: 'channel', inspect: 'inspect', detonate: 'spell' };
+        const _TUT_VERB_OF_MODE = { move: 'move', jump: 'move', climb: 'move', attack: 'attack', combo: 'combo', build: 'build', inspect: 'inspect' };
         const _TUT_HUD_SEL = { move: '.hrlg-blade[data-bid="move"]', jump: '.hrlg-blade[data-bid="jump"]', attack: '.hrlg-blade[data-bid="attack"]',
                                abil: '.hrlg-blade[data-bid="abil"]', combo: '.hrlg-blade[data-bid="combo"]', items: '.hrlg-blade[data-bid="items"]',
                                guard: '.hrlg-blade[data-bid="guard"]', end: '.hrlg-blade[data-bid="end"]', ap: '.ew-ap-press',
@@ -17729,6 +17736,30 @@
                 if (focusHud && focusHud === b.id) out.tut = true;
                 return out;
             });
+        };
+        /* the same question without the nudge (the HUD asks it every draw): may the live step's player use `verb` */
+        window._tutVerbOk = function (verb) {
+            if (!_tut.active) return true;
+            if (_tut.finished || _tut.booting) return false;
+            const allow = _tutAllowList();
+            if (allow === null) return true;
+            return allow.includes(verb) || (verb === 'spell' && allow.some(a => a.startsWith('spell:')));
+        };
+        /* a tool button (hud.js: BUILD, a pusher): greyed with LATER unless the step allows its verb. Land / Take Off keep
+           their own state: those steps are scripted with an empty allow list and the pusher is the step itself */
+        window._tutToolOk = function (id) {
+            if (!_tut.active) return true;
+            if (id === 'fly' || id === 'land' || id === 'altitude') return !_tut.finished;
+            const verb = _TUT_VERB_OF_TOOL[id];
+            return verb ? window._tutVerbOk(verb) : (_tutAllowList() === null);
+        };
+        /* arming a mode from the keyboard (B, M, A ...) is the same gate as its row */
+        window._tutModeOk = function (mode) {
+            if (!_tut.active) return true;
+            const verb = _TUT_VERB_OF_MODE[mode];
+            if (!verb || window._tutVerbOk(verb)) return true;
+            _tutNudge();
+            return false;
         };
         function _tutNudge() {
             const now = Date.now();

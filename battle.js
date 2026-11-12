@@ -68277,6 +68277,8 @@
                 addLog('No moving in a Clash formation battle.');
                 return;
             }
+            /* THE TUTORIAL: a mode the live step is not teaching cannot be armed (the keyboard's shortcuts; the rows are greyed) */
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutModeOk === 'function' && !window._tutModeOk(mode)) return;
             const unit = getSelectedUnit();
             if (!unit) {
                 addLog('Select one of your units first.');
