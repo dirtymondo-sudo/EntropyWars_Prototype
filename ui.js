@@ -17979,7 +17979,7 @@
             _tutApplyGlow();
             try { if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache(); if (typeof markDirty === 'function') markDirty('actions'); if (typeof renderIfDirty === 'function') renderIfDirty(); } catch (e) {}
             const el = _tutMountCoach();
-            el.classList.add('done');
+            el.classList.add('done', 'center');
             el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · ' + L.title) + '</span></div>'
                 + '<div class="tut-coach-stamp">LOST</div>'
                 + '<div class="tut-coach-body">Player 2 wins: ' + escapeHtml(lost) + '. Nothing is filed. Run the tape again.</div>'
@@ -18064,6 +18064,10 @@
             const ack = st.goal && st.goal.type === 'ack';
             const isFinish = ack && st.goal.finish;
             el.classList.remove('met', 'nudge', 'done');
+            /* THE MIDDLE, THEN THE CORNER (mondo 2026-11-12: "put the tutorial text in the middle of the screen on top of everything, and it
+               can go the corner it's in now once the player has control and is pressing the actions"): a panel that is read and
+               continued sits centre screen over everything; a step the player acts (or watches) in sits in the corner */
+            el.classList.toggle('center', !!ack);
             el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · ' + L.title) + '</span>'
                 + '<button class="tut-coach-x" data-tut="leave" title="Leave the lesson">✕</button></div>'
                 + (st.title ? '<div class="tut-coach-title">' + escapeHtml(st.title) + '</div>' : '')
@@ -18076,7 +18080,7 @@
             const el = _tutMountCoach();
             const L = _tut.lesson;
             const next = _tutNextLesson();
-            el.classList.add('done');
+            el.classList.add('done', 'center');
             el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · FILED') + '</span></div>'
                 + '<div class="tut-coach-stamp">LESSON COMPLETE</div>'
                 + '<div class="tut-coach-body">' + escapeHtml(L.title) + ' is on your record. ' + (next ? 'Next on the shelf: <b>' + escapeHtml(next.title) + '</b>.' : 'That was the last tape on the shelf.') + '</div>'
@@ -18119,7 +18123,7 @@
             if (!F || typeof window._questFightGo !== 'function') return false;
             const L = _tut.lesson;
             const el = _tutMountCoach();
-            el.classList.remove('met', 'nudge'); el.classList.add('done');
+            el.classList.remove('met', 'nudge', 'center'); el.classList.add('done');   // the corner: the portal is the thing to watch
             el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · FILED') + '</span></div>'
                 + '<div class="tut-coach-stamp">LESSON COMPLETE</div>'
                 + '<div class="tut-coach-body">A portal is forming on the pad.</div>' + _tutQuestLine(qres);
