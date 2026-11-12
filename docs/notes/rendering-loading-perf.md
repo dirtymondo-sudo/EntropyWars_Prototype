@@ -1711,3 +1711,21 @@ forgets it; (2) WebGPU `destroyUniformBuffer` is forgotten at once and destroyed
 buffer alive`, no GPU error. NOT seen: the Camelot fight itself on real WebGPU / Firefox.
 Same PR: the key pickup's model URL (`_keyFxUrl`) used the DOOR folder + an encoded slash for the PSX pack key (404 since
 11-08) → `_hqModelUrl(cat)`; the mermaid's `Swim_Idle_Loop` pointed at lib 1 (UAL2, no swim clips) → lib 0.
+
+## THE ENTROPY STYLE (2026-11-12)
+mondo: "some sort of shader(s) we can put over the whole game to help give it a unique and consistent style ... blend all of
+these different assets and characters and maps into one consistent Entropy Wars visual style". Seven looks were shown on four
+scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 (ink + cel), "the lines look a little thick".
+- three-post.js "THE ENTROPY STYLE": one screen pass UNDER the cinematic (CRT) / retro passes. THE GRADE = one palette pull
+  (indigo shadows, warm lights, evened saturation, soft shoulder). THE INK = five soft light bands + a thin dark line where the
+  DEPTH breaks, near side only, about one screen pixel (`_styleInkPx`), and only where the colour breaks too (a shape lost in
+  the fog takes no line). Depth, not colour: speckled floors and grass sheets take no lines.
+- A bright saturated pixel (spell, team outline, zone wash) keeps its colour and takes no ink (`sKeep` / `keep`).
+- Three chains: node renderer `_ngStyle` (TSL; a part of the pipeline set, key letter S, so Off costs no pass), pmndrs
+  `_ppStylePass` (draws to its own target when its turn is the buffer that owns the scene depth: no feedback loop), the legacy
+  composer (a ShaderPass right after the AO, where the read buffer's depth is still the scene's). One GLSL (`_StyleShader`).
+- Settings > Video: Entropy Style (Off / Grade / Grade + Ink, default Grade + Ink) and Ink Lines (Thin / Medium / Bold).
+  `ThreePost.setStyle / setStyleParam / getStyle`, stored `ew_style`. Off live: `window.EW_NO_ENTROPY_STYLE = true`.
+  Viewer-local (nothing relayed online). renderDirect panes are not styled.
+- Seen on screen: battle + DOOR HQ main hall on the node renderer's WebGL 2 backend, a battle on the classic WebGL chain,
+  the two rows. NOT seen: real WebGPU, a spell cast, the legacy composer, online guest, frame cost on a real GPU.
