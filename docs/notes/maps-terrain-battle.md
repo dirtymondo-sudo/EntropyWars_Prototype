@@ -2066,3 +2066,14 @@ window.EW_NO_CALM_LOOK and his pixel sheets are untouched. The table + hqMapLook
 - **Training Room** (`training_hall`): the six bleacher rows on the west side, the walk behind them, their two end walls, the rail and
   the yellow line at their foot are removed; the west side is open floor. The 8 × 8 pick did not change (the bleachers were off the board).
 - Before / after: /mnt/project-files/training-room-20261112/. The Training Room REDESIGN (same thread) waits on mondo's OK of a mock-up.
+
+## THE TEST CHAMBER: the Training Room redesign (2026-11-12, mondo picked the "psychic test chamber" mock-up)
+- `DOOR_HQ.rooms.training_hall` only (data.js). Shell: floor `urban:TileGeneric3a`, walls `aluminium`, dado `gunmetal`, ceiling
+  `urban:FibreCeilingTile1a`, look preset `teal`, no pipes. The pad: `board` feature with `urban:TileGeneric1a` in two tints, cyan seam
+  lines (marks with `y: 0.07` so they ride the pad), A-H / 1-8 `text` marks, the amber apron line, the old sign as floor paint.
+- Four `gunmetal` pylons (3.5 m, at ±19.25: off the 8 x 8) with a `floating_orb` on each. West: 4 `iso_tank` + `eeg_rack`, `dream_screen`s,
+  `door_xray`s. North: 3 `dream_screen`, 2 `monitor_stack`, 2 `retro_console`, 3 `egg_chair`, racks. East: `server_rack`s under the deck,
+  consoles + chairs + monitors + `star_projector` on it. South: low things only. Gym props (pads, banners, lockers, dummies, shutter…) are out.
+- RULE KEPT: the pad's keys are `urban:` sheets, so the board's tile type is what it was (a named key such as `aluminium` changes it).
+  `node bake-arenas.js --own prebuilt_training --dry-run`: ok, all level 0, pick unchanged. Existing catalogue props only, no new models.
+- Mock-up / proof shots (WebGL2): /mnt/project-files/training-room-20261112/mockup_test_chamber_*.jpg.
