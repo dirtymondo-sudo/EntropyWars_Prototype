@@ -1867,3 +1867,33 @@ The creator stage is its own WebGLRenderer (also under WebGPU mode), so this is 
 frames, roll eyes frames, full beard following vs not, close puts the body back to 16 shapes and the beard's morphs off, no
 page errors. Shots: project files face-lab-20261111/. Not checked: Occam's mirror (same button + stage), the classic MPFB bodies.
 
+
+
+## THE UNIT FACES (2026-11-12, mondo: "get the faces a little more accurate ... custom face/body textures"; meshy-remake-plan.md section 6)
+
+**WHAT** - a remade look can wear the unit's OWN Meshy face on the MPFB head: `<race>Face` (a custom head shape, OUTFIT > Head >
+"Unit faces", 0..1) + the skin `ew_face_<race>` (SKIN list, "<Race> face (Meshy)"). The mesh is still the MPFB head, so the 67 face
+shapes work (checked in the Face Lab: blink, talk, smile, frown). Pilot = the cowboy: `cowboyFace` + `ew_face_cowboy`, worn by
+`RACE_REMADE_LOOKS.cowboy.male` (its eye sliders zeroed, the beard piece off because the beard is in the skin, hair `#4a3423`).
+His saved look (`RACE_CREATOR_LOOKS.cowboy`) is untouched and the Meshy model is still the default.
+
+**HOW** - `bake-face.py` (repo root; its header has the steps and the install line). Source = the OLD fused unit GLB, not the T2 remake:
+the old head is far sharper (the T2 face is a blur). Landmarks: MediaPipe face landmarker on a flat face-on drawing of each head
+(`pitch=15` tips the cowboy's bowed head up so the brim clears his eyes), 373 of 478 landmarks kept, median 6 mm after alignment.
+Then `node bake-custom-shape.js`, the skin into `charactercreation/mpfb/looks/`, both in ASSET_MANIFEST.json ([bytes, sha1[:12]]) and
+`--put` to R2 (`Assets/characters/creator/mpfb/...`).
+
+**RULES LEARNED** (each was a fault on screen first)
+- Each eye ring moves as ONE (mean move): the unit's squint must not squash the MPFB eye opening or the eyeball.
+- Inner lips share one height: else the mouth opens. Teeth + tongue move as ONE piece with the lips (base index 13380-13605 tongue,
+  14598-14741 eyeballs, 14992-15127 teeth): riding the nearest skin, a beard's bulk on the chin (22 mm) pulled the tongue's tip out.
+- Depth counts 0.3 in the falloff and the field is read at the face's own depth: parts behind the face otherwise lag and come through.
+- Paint: nothing above the brow line (the hat band landed on the forehead), nothing behind the face outline (ears got hair smear),
+  nothing in the eye openings. The stock sheet is toned by the unit's skin (60th percentile of the painted face) and the unpainted
+  skin beside the paint takes the paint's tone (a brim shadow baked in the unit's face left a pale forehead band).
+- Tried and dropped: fading the paint out below the brows (the brows went with it and a step showed).
+
+**KNOWN** - the forehead is the toned stock skin, a little lighter than the face; the brim's baked shadow reads as a heavy brow; the
+chin carries the beard's bulk (the shape follows the beard surface); with the mouth open the tongue sits high; the sideburn paint ends
+in a hard edge under the hair; sheet is 1024 px like the stock skins. Not checked: the other four male bodies, WebGPU, a battle.
+Proof: `/mnt/project-files/meshy-parts-20261112/cowboy_face_pilot.jpg`.

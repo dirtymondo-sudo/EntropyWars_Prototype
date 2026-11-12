@@ -98,7 +98,10 @@ Morgan test) ships a custom head SHAPE (`charactercreation/mpfb/custom_shapes/<k
 `node bake-custom-shape.js` into `mpfb_shapes.glb`) and a custom SKIN (`looks/skin_<key>.jpg` on the MPFB skin sheet,
 listed in `EW_MH_LOOKS.skins`). Both keep the 67 face shapes working, because the mesh is still the MPFB head.
 
-What is NOT proven: making them automatically from a Meshy unit. That is the pilot below.
+PILOT DONE 2026-11-12 (mondo: "yeah lets do face pilot and cowboy"): `bake-face.py` makes both automatically from the OLD unit's head
+(face landmarks, no hand work): `cowboyFace` + skin `ew_face_cowboy`, worn by the remade cowboy look. Blink, talk, smile and frown
+checked in the game. How, the rules learned and the known faults: `character-creator.md` "THE UNIT FACES". Use the OLD unit GLB as the
+face source, never the T2 remake (its face is a blur). WAITING on his look before any other unit gets a face.
 
 | Step | What | How | Risk |
 |---|---|---|---|
@@ -148,7 +151,7 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 
 | Unit | Remade | Look check | Battle check | Face fit (F1-F4) | His OK | Notes |
 |---|---|---|---|---|---|---|
-| cowboy (M) | PR #1153 | clean after round 4 | owed | not started (pilot) | waiting | boots + spurs fixed #1154 |
+| cowboy (M) | PR #1153 | clean after round 4 | owed | PILOT DONE 11-12 (bake-face.py) | waiting | boots + spurs fixed #1154 |
 | knight (F) | PR #1153 | clean after round 4 | owed | not started | waiting | calf slivers fixed #1155; cape no sway |
 | wizard (M) | PR #1153 | clean after round 4 | owed | not started | waiting | robe points #1155, boots #1156; K3, K5 open |
 | everything else in group A | not started | | | | | |
@@ -166,6 +169,6 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 ## 10. Waiting on mondo
 
 1. His look at the three in the game after PR #1156.
-2. Yes or no on the face pilot (section 6) on the cowboy.
-3. Which batch goes first (default: the demo starters).
+2. His look at the cowboy's fitted face (yes to the face pilot given 11-12; done).
+3. First batch = the demo starters (his word 11-12): from group A that is zombie (F), catgirl (F), robinhood (M), djinn (M), mummy (F), angel (F), quarterback (M); knight (F) is done. Not started.
 4. Whether K1 (softer look) bothers him at board distance.
