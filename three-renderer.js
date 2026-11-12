@@ -45202,7 +45202,7 @@ const ThreeRenderer = (function () {
                 grew = true;
             }
         }
-        if (grew) R.grows++;
+        if (grew) { R.grows++; _ewBun.epoch++; }   // THE STALE LIGHT LIST: a longer rig is a new light list this very frame — every recorded group re-records now, not a frame late
         var v = _ewRigV || (_ewRigV = new THREE.Vector3()), v2 = _ewRigV2 || (_ewRigV2 = new THREE.Vector3()), inv = null;
         if (!_ewRigIdentity(sc.matrixWorld)) inv = (_ewRigM || (_ewRigM = new THREE.Matrix4())).copy(sc.matrixWorld).invert();
         for (var ki = 0; ki < _EW_RIG_KINDS.length; ki++) {
@@ -45978,7 +45978,28 @@ const ThreeRenderer = (function () {
         if (typeof nr === 'function' && !N._ew_lateSheets) {
             N._ew_lateSheets = true;
             N.needsRefresh = function (ro) {
-                var v = nr.apply(this, arguments), m = ro && ro.material, D = m && m._ewNode;
+                /* THE STALE LIGHT LIST (2026-11-12, mondo: CONTINUE into the Main Hall, "after the load screen loads its just a
+                   black screen", his console: "a draw failed and was skipped (Render Pipeline / RenderPipeline: can't access
+                   property "map", lightData is undefined)"). three keeps, per render object, one record for each light of the
+                   frame that casts a shadow (or is a spot with a sheet), taken when the object was first drawn, and its check
+                   walks the frame's CURRENT list over that record without looking at its length. A recorded group replays its
+                   objects without asking three for them again, so the frame a shadow light joined the list after a group was
+                   recorded (the hall's lamps picked again as the foyer joined) the check read past the record and threw: the
+                   throw left the WHOLE frame undrawn, and because the frame's light list is noted at its first real draw, which
+                   never came, the bundle tick never saw the lamps move and never re-recorded: black for good. Here the record
+                   is taken again from the frame's lights, the object refreshes in full and its group re-records next frame. */
+                var v;
+                try { v = nr.apply(this, arguments); }
+                catch (e) {
+                    try {
+                        var mon = ro.getMonitor(), rd = mon.getRenderObjectData(ro);
+                        rd.lights = mon.getLightsData(ro.lightsNode.getBuiltinLights(), []);
+                        if (ro.bundle) ro.bundle._ew_bunFree = true;
+                        _ewBun.staleLights = (_ewBun.staleLights | 0) + 1;
+                    } catch (x) { throw e; }
+                    v = 2;
+                }
+                var m = ro && ro.material, D = m && m._ewNode;
                 if (!D || v === 2) { if (D && ro) ro._ew_nsSig = _ewNodeSheetSig(D); return v; }
                 var s = _ewNodeSheetSig(D);
                 if (ro._ew_nsSig === s) return v;
