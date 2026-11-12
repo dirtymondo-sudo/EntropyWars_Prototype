@@ -1738,3 +1738,13 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
   Settings > Video > Unit Lines: Same / Bold / Bolder. Off live: `window.EW_NO_UNIT_INK = true`. A line-weight-by-distance try was
   built and dropped (barely visible on a board). Seen: node WebGL 2 (battle, DOOR HQ), classic WebGL (battle), the row.
   NOT seen: real WebGPU, split-screen panes, a unit behind a wall (the mask has no occluders: the wall's edge there goes bold).
+- THE STYLE ON A STAGE (11-12, mondo: "make sure the 2 new shaders (ink and the color grade) are on in the party builder as well.
+  The 3d models dont have it"): the party builder / creator / intake / codex stage (three-renderer.js EWCharViewer) is a WebGL
+  renderer of its OWN on a see-through canvas, so the board's chain never reached it. `ThreePost.styleDraw(r, scene, cam)` draws its
+  frame through the same `_StyleShader`, same settings (the whole stage is a unit: its line takes the Unit Lines width): the scene
+  into a 4x MSAA target + depth texture flagged `isXRRenderTarget` (three reads that flag only to tone map + encode in the materials
+  as on the canvas), then one quad that styles the un-premultiplied colour and writes it back premultiplied (empty pixels stay empty).
+  `_cvFrame` calls it and falls back to the plain draw when it returns false (style Off, or a failure). Off live:
+  `window.EW_NO_STAGE_STYLE = true`. Already styled (ThreePost.renderScene): DOOR HQ, the menu room, the team room. Left plain: the
+  ID-card photo (`snapshot`), the editor's 96 px prop thumbnails (cached pictures), the UI Maker dock's tile / float-text previews.
+  Seen: party builder, classic WebGL (headless). NOT seen: his Mac, the creator's face close-up, a spell preview on the stage.
