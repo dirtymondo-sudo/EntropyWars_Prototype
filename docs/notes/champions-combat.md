@@ -5312,3 +5312,18 @@ Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx
   an AoE covering both pieces takes HP twice; no early return; the body stands idle (no slump pose); statuses worn at the cast stay
   on the spirit.
 - Proof (VS CPU + a 2-seat online room, guest cast): /mnt/project-files/astral-projection-20261112/build1_*.jpg.
+
+### build 2 (2026-11-12, same thread): the psychic bonus, the rude awakening, one blow per action
+- PSYCHIC x1.5: battle.js `_hitDamageMath` multiplies a psychic-element, non-DoT hit on a SPIRIT by STATUS_DEFS.projecting.psychicMult
+  inside the capped offensive product (so previews agree); callout "MIND EXPOSED". The body is not paid twice: dream spells already
+  read it as Stunned (Sleeping countsAs stun).
+- THE RUDE AWAKENING: applyStatusPayload, after a status lands on a spirit: any `blockAction` status (Stun, Sleeping, Frozen...) or
+  one on STATUS_DEFS.projecting.snapOn (Silence) calls `astralSnapHome`: end mode forced to 'return', so even Spirit Walk's spirit
+  goes back to the body's square; the status stays on the unit. Log "X is silenced: the spirit snaps back to its body!".
+- ONE ACTION, ONE BLOW: applyDamageToUnit, a sourced non-DoT hit on a piece stamps `_astralHitKey` (= `_protectAttackKey`, one action
+  of one unit) + `_astralHitPiece` on the spirit; the same action reaching the OTHER piece does nothing. Multi-hits keep landing on
+  the first piece. Closes build 1's "AoE takes HP twice" gap.
+- Status page text for Sleeping + Projecting added (data.js STATUS description table; missing in build 1).
+- Checked in a VS CPU match by eval: fire 117 on the spirit, same action on the body 0; psychic on the spirit 194 vs 117 plain,
+  psychic on the body 117; Silence sent the spirit home and removed the body. Still open: early return, body slump pose, CPU play,
+  builds 3-4.
