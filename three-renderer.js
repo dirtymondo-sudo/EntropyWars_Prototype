@@ -89401,9 +89401,10 @@ const ThreeRenderer = (function () {
     /* ══ THE OPEN-AIR ROOM INDOORS (2026-11-12, mondo walking from the pool into Room 1618: "The garden is dark") ══
        The garden, the executive pool and the derelict's deck are OPEN rooms (a sky of their own) that stand on the stage of an
        INDOOR zone (HQ_WORLD zone.sky null). The stage was written for zones that are all outdoors or all indoors: a visit that
-       began in a closed room had no sky record, so the crossing into the garden built no dome, no lamp masts and kept the room
-       you left's light (a box's 0.5 hemisphere + its key against the open rig's 0.78 + the sun) — a lawn under a black ceiling.
-       And one that began in the garden kept the daylight (or the clock's night) on in every closed room after it. Now:
+       began in a closed room had no sky record, so the crossing into the garden built no dome and no lamp masts: a lawn under a
+       black void, and by the clock's night no lamp but the moon's key (the clock did snap the hemisphere and the key to the
+       hour, _hqClockArm; a clock-LOCKED open room kept the light of the room you left). And the way back never undid it: the
+       pool wore the garden's daylight (blown white) or its night until the visit ended. Now:
        · the sky (_hqBuildSky: the dome, the far roster) goes up the moment an open neighbour is built beside you, or at the
          crossing if it is not up yet, once a visit; it is drawn in the open room and in the rooms joined to it (the garden
          through the annex's glass doors), and wears that room's hour while you stand beside it (sky.air);
