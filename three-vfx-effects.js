@@ -24738,6 +24738,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceDimensionalFold'] = Object.assign({}, SPELL_MAP['raceDimensionalFold'], { teleport: 'raceDimensionalFold_teleport' });
     SPELL_MAP['raceSkinSwap'] = Object.assign({}, SPELL_MAP['raceSkinSwap'], { teleport: 'raceSkinSwap_teleport' });
     SPELL_MAP['raceSpiritWalk'] = Object.assign({}, SPELL_MAP['raceSpiritWalk'], { teleport: 'raceSpiritWalk_teleport' });
+    SPELL_MAP['raceAstralProjection'] = SPELL_MAP['raceSpiritWalk'];   /* build 4: the namesake steps out the same way */
 
     /* ── CURSE QUARTET (sharedHexOfToil keeps the dark impact, greened) ── */
     EFFECTS['raceCurseOfMisfortune_impact'] = {   /* misfortune: the mirror cracks over you */

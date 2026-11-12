@@ -6254,9 +6254,18 @@ const SPELL_LIBRARY = [
           damageType: 'magic', dmg: 180, range: 4, purgeFirst: true,   // THE SPELL AUDIT Batch D: wards off BEFORE the hit
           desc: 'Unmake it. Every ward, every blessing, every stage they stacked — gone — and then HEAVY magic damage to what is left. Strips a Single Enemy\'s buffs, raised stat stages and shield before the hit. Cooldown: 2 rounds.' },
         { id: 'raceSpiritGuide', name: 'Spirit Guide', tier: 3, families: ['astralprojection'], cost: 75, apCost: 1,
-          spellType: 'anomaly', element: 'psychic', type: 'utility', kind: 'buff', range: 4,
-          statusEffects: [{ id: 'invisible', duration: 1 }, { id: 'levitating', duration: 2 }],
-          desc: 'Take my hand. They cannot see what is not here. An ally is Invisible for a round and Levitating for 2 rounds.' },
+          spellType: 'anomaly', element: 'psychic', type: 'utility', kind: 'buff', range: 4, cooldownRounds: 2,
+          /* ASTRAL PROJECTION build 4 (2026-11-12): the guide walks an ALLY out of its body (battle.js astralProjectAlly).
+             Was Invisible 1 + Levitating 2. */
+          astralAlly: { cord: 6, end: 'return' },
+          statusEffects: [],
+          desc: 'Take my hand. An ally within 4 steps out of its body: the body sleeps where it stands and the spirit appears beside it, Projecting until that ally\'s next turn ends, then it returns to its body. Physical hits pass through the spirit, it stays within 6 of the body, and both share one HP bar. Cooldown: 2 rounds.' },
+        { id: 'raceAstralProjection', name: 'Astral Projection', tier: 3, families: ['astralprojection'], cost: 75, apCost: 1,
+          spellType: 'anomaly', element: 'psychic', type: 'utility', kind: 'escape', range: 0, teleportDistance: 6,
+          /* ASTRAL PROJECTION build 4: the family's namesake. The long cord, and the spirit goes HOME at the end. */
+          astral: { cord: 6, end: 'return' }, cooldownRounds: 3,
+          statusEffects: [],
+          desc: 'Leave the body behind. It stays asleep where it stands while your spirit steps out up to 6 tiles and stays within 6 of it. Physical hits pass through the spirit and it drifts through walls, but it cannot basic attack and your sleeping body can still be hit: one HP bar for both. When your next turn ends, your spirit returns to your body. Psychic hits deal x1.5 to your spirit, and a Stun or Silence snaps it back. Cooldown: 3 rounds.' },
         { id: 'raceShakeItOff', name: 'Shake It Off', tier: 2, families: ['athleticism'], cost: 50, apCost: 1,
           cooldownRounds: 2, spellType: 'human', type: 'heal', kind: 'selfHeal', range: 0, selfHealPct: 0.25,
           cleanse: 2,
@@ -9643,6 +9652,13 @@ const RACE_ABILITIES = {
           desc: 'The band stops. She does not. Deals HEAVY magic damage to a Single Enemy within 3 tiles and heals the princess for part of it. Charmed targets take it worse. Cooldown: 2 rounds.' },
     ],
     'dreameater': [
+        /* ASTRAL PROJECTION build 4 (2026-11-12): the dream units' answer to a spirit. The Stun lands only on a
+           Projecting unit (ifTargetHas), and a Stun on a spirit snaps it home (battle.js THE RUDE AWAKENING). */
+        { id: 'raceCutTheCord', element: 'psychic', tier: 2, families: ['astral'], spellType: 'alien', name: 'Cut the Cord',
+          type: 'damage', cost: 50, apCost: 1, dmg: 80, range: 4,
+          kind: 'damage', damageType: 'magic',
+          statusEffects: [{ id: 'stun', duration: 1, ifTargetHas: 'projecting' }],
+          desc: 'Deals WEAK magic damage to a Single Enemy within 4. A Projecting spirit takes x1.5, is snapped back to its body and is Stunned for 1 round.' },
         { id: 'raceDreamSiphon', element: 'psychic', upgradesBlock: ['upBlast'], tier: 1, families: ['astral'], spellType: 'alien', name: 'Dream Siphon',
           type: 'damage', cost: 30, dmg: 100, range: 3,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,

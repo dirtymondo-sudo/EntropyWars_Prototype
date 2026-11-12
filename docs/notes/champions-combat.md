@@ -5361,3 +5361,19 @@ Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx
   did 0; Shadow Crush listed the realm Demon as a target and took 982 -> 798.
   /mnt/project-files/astral-projection-20261112/build3_spirit_targets_realm_unit.jpg. Not checked: a realm pair hitting the spirit
   through the menus (function only), the online guest view.
+
+### build 4a (2026-11-12, same thread): the new spells + Spirit Guide + CPU
+- data.js `raceAstralProjection` (T3, astralprojection family, 75 MP, kind escape, step out 6, `astral: { cord: 6, end: 'return' }`,
+  cooldown 3; VFX = Spirit Walk's, three-vfx-effects.js SPELL_MAP alias). `raceSpiritGuide` REWORKED: `astralAlly: { cord: 6, end:
+  'return' }` (was Invisible 1 + Levitating 2); battle.js buff branch -> `astralProjectAlly`: the ally's body sleeps on its square, the
+  spirit appears on the nearest open square beside it. `raceCutTheCord` (T2, Dream Predation `astral` family: dreameater, succubus;
+  50 MP, 80 dmg psychic, range 4, `statusEffects: [{ id: 'stun', duration: 1, ifTargetHas: 'projecting' }]`): the Stun lands only on a
+  spirit and THE RUDE AWAKENING snaps it home. Names were proposals in the accepted plan doc; his to rename.
+- ai.js: `_aiHasMagicToFight`; an astral escape scores only for a magic user with enemies within 4, no Key, body not about to die;
+  Spirit Guide the same for the ally. Physical hits on a spirit were already priced 0 (the Ghost check reads unitPassiveValue), and
+  the psychic x1.5 rides the forecast math.
+- Checked in VS CPU: Spirit Guide on King Arthur (spirit beside body, returned at his next turn's end, log line), Astral Projection
+  (cord 6, no move tile past it), Cut the Cord's hit + payload by eval (126 dmg, snapped home, Stunned). NOT checked: the CPU casting
+  any of it in a real match, the online guest view of build 3-4.
+- STILL OPEN (needs mondo): Silver Cord passive + the early return (a new menu command = UI design, his OK first), body slump pose,
+  the CPU guarding its own body.
