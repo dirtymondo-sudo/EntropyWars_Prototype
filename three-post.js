@@ -1105,7 +1105,7 @@ const ThreePost = (function () {
     var _retro = {
         enabled:        true,
         preset:         'dream',
-        pixelSize:      2.0,    // 1 = off (game is already pixel-art); >1 = chunkier blocks
+        pixelSize:      1.0,    // 1 = off (the default since 2026-11-12, mondo: "turn the pixelate off by default now"); >1 = chunkier blocks
         // WHAT the pixelation applies to. 'models' (default) = only the 3D GLB
         // models (units, Meshy props) get the chunky UV-snap; the terrain,
         // trees, turrets and stairs are already hand-pixelled sprite art, so
@@ -4434,11 +4434,11 @@ const ThreePost = (function () {
                     evened (a loud Meshy texture calmed, a grey pack prop lifted), a soft shoulder so nothing clips.
          THE INK    light in five soft bands (hue kept) + a thin dark line where the DEPTH breaks (a silhouette, a ledge, a
                     convex corner), drawn on the near side only so a body never grows. Depth, not colour: a speckled floor
-                    or a grass sheet gets no lines. About one screen pixel wide (the Ink Lines row).
+                    or a grass sheet gets no lines. Thin = about one screen pixel; Medium (1.6) is the default (the Ink Lines row).
        A bright saturated pixel (a spell, a team outline, a zone wash: own cyan-blue / enemy pink-orange) keeps its colour
        and takes no ink. No bloom, no fog, no texture touched; the HUD is DOM and never passes through here. Viewer-local.
        Settings > Video > Entropy Style: Off / Grade / Grade + Ink. Stored ew_style. Off live: window.EW_NO_ENTROPY_STYLE. */
-    var _style = { mode: 'ink', inkWidth: 1, ink: 0.8, bands: 0.7, amount: 1 };
+    var _style = { mode: 'ink', inkWidth: 1.6, ink: 0.8, bands: 0.7, amount: 1 };   // Medium lines: mondo 11-12 "i like it with the lines on medium"
     try {
         var _styleSaved = (typeof localStorage !== 'undefined') ? JSON.parse(localStorage.getItem('ew_style') || 'null') : null;
         if (_styleSaved && typeof _styleSaved === 'object') { for (var _sk in _style) { if (_styleSaved[_sk] !== undefined) _style[_sk] = _styleSaved[_sk]; } }
