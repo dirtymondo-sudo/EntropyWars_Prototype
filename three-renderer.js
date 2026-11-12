@@ -9133,6 +9133,7 @@ const ThreeRenderer = (function () {
                 var pal = null, kindKey = null, scaleMul = 1;
                 if (!disabled && unit && !unit.dead && !unit._dying) {
                     if (tmp) { pal = tmp.palette; kindKey = 'spell'; scaleMul = tmp.scale; }
+                    else if (unit._lastStandTriggered && _lsAuraWear(unit, entry, now)) { /* THE LAST STAND OUTLINE AURA wears it: no shroud */ }
                     else if (unit._lastStandTriggered) { pal = _AURA_KINDS.laststand; kindKey = 'laststand'; }
                     else if ((unit._killStreak || 0) >= 3) { pal = _AURA_KINDS.flow; kindKey = 'flow'; }
                 }
@@ -9170,6 +9171,8 @@ const ThreeRenderer = (function () {
                 if (cur) cur._want = !!kindKey;
             });
         }
+
+        _lsAuraTick(now, dt, disabled);   // THE LAST STAND OUTLINE AURA
 
         if (!_unitAuras.size) return;
 
@@ -9254,6 +9257,164 @@ const ThreeRenderer = (function () {
         if (_auraLastFull.size > 64) {
             _auraLastFull.forEach(function (ts2, k) { if (now - ts2 > 5000) _auraLastFull.delete(k); });
         }
+    }
+
+    /* ── THE LAST STAND OUTLINE AURA (2026-11-12, mondo: "can we redesign the last stand aura? ... more like an dbz or one
+       piece or demon slayer anime esque aura, around the perimeter of the unit? Maybe we can use the red and blue outlines
+       that are already drawn around enemy and friendly units, as a starting point"). A unit in Last Stand no longer stands in
+       the round flame shroud: its own team outline grows into an aura. Three more inverted hulls on the body's own meshes
+       (the team outline's trick, same per-unit stencil mask, so they paint ONLY outside the unit's silhouette and never
+       over the body, the hit or a number), each pushed further out along the normal, with tongues that lick upward
+       (a per-vertex wave that scrolls up + a lift along world up) and a ragged cut that scrolls up the outer two. Flat
+       colour bands, no additive light, no glow sprite, no point light (bloom is off): white-hot at the body, the team
+       outline's own colour next, the deep hue outside. Colour = the viewer's side (cyan-blue own, pink-red-orange enemy),
+       read every frame like the outline. Driven from unit state (_lastStandTriggered), so host, guest and replay see it
+       with no relay. A unit with no model hull (a sprite unit, a body still loading) keeps the old shroud.
+       Off (the old shroud everywhere): window.EW_NO_LS_OUTLINE_AURA = true. */
+    var _LS_AURA_VERT = [
+        '#include <common>',
+        '#include <skinning_pars_vertex>',
+        'uniform float uPush;', 'uniform float uRag;', 'uniform float uLift;', 'uniform float uTime;',
+        'uniform float uFreq;', 'uniform float uSeed;', 'uniform float uBaseY;', 'uniform float uInvH;',
+        'varying vec3 vW;',
+        'void main() {',
+        '  #include <beginnormal_vertex>',
+        '  #include <skinbase_vertex>',
+        '  #include <skinnormal_vertex>',
+        '  #include <begin_vertex>',
+        '  #include <skinning_vertex>',
+        '  vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);',
+        '  vec3 wp = (modelMatrix * vec4(transformed, 1.0)).xyz;',
+        '  float tq = floor(uTime * 12.0) / 12.0;',   // drawn "on twos": the tongues step 12 times a second, like a cel
+        '  float y = wp.y * uFreq, a = (wp.x + wp.z * 0.7) * uFreq;',
+        '  float n = sin(a * 26.0 + y * 5.0 - tq * 8.0 + uSeed) * 0.5',
+        '          + sin(a * 43.0 - y * 9.0 - tq * 12.0 + uSeed * 1.7) * 0.3',
+        '          + sin(y * 7.0 - tq * 6.0 + uSeed * 0.6) * 0.2;',
+        '  float tongue = clamp(n * 0.5 + 0.5, 0.0, 1.0); tongue = tongue * tongue * tongue;',
+        '  float hh = clamp((wp.y - uBaseY) * uInvH, 0.0, 1.0);',
+        '  vec3 nV = normalize(normalMatrix * objectNormal);',
+        '  vec3 upV = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);',
+        '  mvPosition.xyz += nV * uPush * (1.0 - uRag * 0.6 + uRag * 2.0 * tongue) + upV * uLift * tongue * (0.25 + 0.75 * hh);',
+        '  vW = wp;',
+        '  gl_Position = projectionMatrix * mvPosition;',
+        '}'
+    ].join('\n');
+    var _LS_AURA_FRAG = [
+        'uniform vec3 uColor;', 'uniform float uOpacity;', 'uniform float uCut;', 'uniform float uTime;',
+        'uniform float uFreq;', 'uniform float uSeed;', 'uniform sampler2D uNoise;',
+        'varying vec3 vW;',
+        'void main() {',
+        '  if (uCut > 0.0) {',
+        '    float tq = floor(uTime * 12.0) / 12.0;',
+        '    vec2 q = vec2((vW.x + vW.z * 0.7) * uFreq * 2.2 + uSeed * 0.13, vW.y * uFreq * 0.35 - tq * 0.7);',
+        '    if (texture2D(uNoise, q).r < uCut) discard;',
+        '  }',
+        '  gl_FragColor = vec4(uColor, uOpacity);',
+        '}'
+    ].join('\n');
+    /* outer → inner (drawn in that order, all after every body's stencil stamp (2) and before the team outline (3)) */
+    var LS_AURA_SHELLS = [
+        { push: 0.070, rag: 1.0, lift: 0.15, cut: 0.44, op: 0.85, ro: 2.4, col: 'outer' },
+        { push: 0.044, rag: 0.8, lift: 0.08, cut: 0.33, op: 0.92, ro: 2.5, col: 'mid' },
+        { push: 0.022, rag: 0.5, lift: 0.03, cut: 0.0,  op: 0.96, ro: 2.6, col: 'core' }
+    ];
+    var LS_AURA_PAL = {
+        own:   { outer: 0x2b55ff, mid: TEAM_OUTLINE_ALLY_COLOR,  core: 0xd6f6ff },
+        enemy: { outer: 0xff7a1e, mid: TEAM_OUTLINE_ENEMY_COLOR, core: 0xffe4d8 }
+    };
+    var _lsAuraTime = { value: 0 };
+    var _lsAuras = new Map();   /* unitId -> { root, host, shells, mats, fade, want, h, seed } */
+    function _lsAuraOff() { return typeof window !== 'undefined' && !!window.EW_NO_LS_OUTLINE_AURA; }
+    function _lsAuraTune() { return (typeof window !== 'undefined' && window.EW_LS_AURA_TUNE) || null; }
+    function _lsAuraUnder(o, root) { for (var i = 0; o && i < 24; i++, o = o.parent) if (o === root) return true; return false; }
+    function _lsAuraDrop(rec) {
+        for (var i = 0; i < rec.shells.length; i++) { var m = rec.shells[i]; if (m.parent) m.parent.remove(m); if (m.material) m.material.dispose(); }
+        rec.shells.length = 0; rec.mats.length = 0;
+    }
+    function _lsAuraBuild(unit, entry) {
+        var hulls = [];
+        entry.group.traverse(function (o) { if (o.isMesh && o._ew_teamOutline && !o._ew_lsAura && o.parent && o.parent.isMesh && o.material && o.material.uniforms && o.material.uniforms.uOutline) hulls.push(o); });
+        if (!hulls.length) return null;
+        var ts = CONFIG.tileSize || BASE_TILE, st = _unitStencilRef(unit.id), seed = _auraSeed(unit.id);
+        var topY = entry.group._ew_spriteTopY != null ? (entry.group._ew_spriteTopY - entry.group.position.y) : ts;
+        var rec = { root: entry.group, host: hulls[0], shells: [], mats: [], fade: 0, want: true, h: Math.max(ts * 0.9, topY), seed: seed, st: st, ts: ts };
+        hulls.forEach(function (hull) {
+            var n = hull.parent;
+            LS_AURA_SHELLS.forEach(function (L, li) {
+                var mat = new THREE.ShaderMaterial({
+                    uniforms: {
+                        uColor: { value: new THREE.Color(0xffffff) }, uOpacity: { value: 0 }, uCut: { value: L.cut },
+                        uPush: { value: 0 }, uRag: { value: L.rag }, uLift: { value: 0 }, uTime: _lsAuraTime,
+                        uFreq: { value: 1 / ts }, uSeed: { value: seed * 0.37 + li * 2.1 }, uBaseY: { value: 0 }, uInvH: { value: 1 / rec.h },
+                        uNoise: { value: _getAuraNoiseTex() }
+                    },
+                    vertexShader: _LS_AURA_VERT, fragmentShader: _LS_AURA_FRAG,
+                    transparent: false, blending: THREE.CustomBlending, blendEquation: THREE.AddEquation,
+                    blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
+                    depthTest: true, depthWrite: false, side: THREE.BackSide, fog: false
+                });
+                if (n.isSkinnedMesh) mat.skinning = true;
+                mat.stencilWrite = true; mat.stencilWriteMask = 0; mat.stencilRef = st; mat.stencilFunc = THREE.NotEqualStencilFunc;
+                mat._ew_ls = L;
+                var sh;
+                if (n.isSkinnedMesh) { sh = new THREE.SkinnedMesh(n.geometry, mat); sh.bind(n.skeleton, n.bindMatrix); }
+                else sh = new THREE.Mesh(n.geometry, mat);
+                sh.frustumCulled = false;
+                sh.onBeforeRender = _twinFollowParent;
+                sh.renderOrder = L.ro;
+                sh.raycast = function () {};
+                sh._ew_silhouette = true; sh._ew_teamOutline = true; sh._ew_lsAura = true; sh._ew_shadowFlagged = true;
+                sh.castShadow = false; sh.receiveShadow = false;
+                n.add(sh);
+                rec.shells.push(sh); rec.mats.push(mat);
+            });
+        });
+        return rec;
+    }
+    /* pass 1 of _updateUnitAuras asks: does this Last Stand unit wear the outline aura? (true = no shroud for it) */
+    function _lsAuraWear(unit, entry, now) {
+        if (_lsAuraOff() || !entry || !entry.group) return false;
+        var rec = _lsAuras.get(unit.id);
+        if (rec && (rec.root !== entry.group || !_lsAuraUnder(rec.host, entry.group) || rec.st !== _unitStencilRef(unit.id))) {
+            var keep = rec.fade; _lsAuraDrop(rec); _lsAuras.delete(unit.id); rec = null;
+            entry._ew_lsKeep = keep;   // the body was rebuilt under a lit aura: no fade-in again
+        }
+        if (!rec) {
+            if (entry._ew_lsTry && now < entry._ew_lsTry) return false;
+            rec = _lsAuraBuild(unit, entry);
+            if (!rec) { entry._ew_lsTry = now + 250; return false; }   // no hull yet (a sprite unit, a body still loading)
+            if (entry._ew_lsKeep) rec.fade = entry._ew_lsKeep;
+            _lsAuras.set(unit.id, rec);
+        }
+        rec.want = true; rec.own = unit.player === _viewerPlayerNum();
+        return true;
+    }
+    var _lsAuraWp = null;
+    function _lsAuraTick(now, dt, disabled) {
+        if (!_lsAuras.size) return;
+        _lsAuraTime.value = (now * 0.001) % 1000;
+        var tune = _lsAuraTune(), kW = tune && tune.width != null ? tune.width : 1, kL = tune && tune.lift != null ? tune.lift : 1;
+        var dead = null;
+        if (!_lsAuraWp) _lsAuraWp = new THREE.Vector3();
+        _lsAuras.forEach(function (rec, uid) {
+            var want = rec.want && !disabled && !_lsAuraOff() && unitEntries.has(uid) && _lsAuraUnder(rec.host, rec.root);
+            rec.want = false;   // re-armed next frame by pass 1
+            rec.fade = Math.max(0, Math.min(1, rec.fade + (want ? 1 : -1) * dt / (want ? 0.28 : 0.2)));
+            if (rec.fade <= 0 && !want) { _lsAuraDrop(rec); (dead = dead || []).push(uid); return; }
+            var ease = rec.fade * rec.fade * (3 - 2 * rec.fade), t = _lsAuraTime.value;
+            var breathe = 1 + 0.10 * Math.sin(t * 6.3 + rec.seed) + 0.05 * Math.sin(t * 13.1 + rec.seed * 2.3);
+            var pal = rec.own ? LS_AURA_PAL.own : LS_AURA_PAL.enemy;
+            rec.root.getWorldPosition(_lsAuraWp);
+            for (var i = 0; i < rec.mats.length; i++) {
+                var m = rec.mats[i], L = m._ew_ls, u = m.uniforms;
+                u.uPush.value = rec.ts * L.push * kW * (0.35 + 0.65 * ease) * breathe;
+                u.uLift.value = rec.ts * L.lift * kL * ease * breathe;
+                u.uOpacity.value = L.op * ease;
+                u.uBaseY.value = _lsAuraWp.y;
+                u.uColor.value.setHex(pal[L.col]);
+            }
+        });
+        if (dead) for (var di = 0; di < dead.length; di++) _lsAuras.delete(dead[di]);
     }
 
     /* ── THE CRYSTAL MODELS (2026-11-02, mondo: "those crystal cones that appear everywhere, i think they look really bad
@@ -46108,6 +46269,33 @@ const ThreeRenderer = (function () {
                the rim shrank inside the body and only leaked through as patches where the body is thin, never a clean edge */
             s.vertexNode = T.cameraProjectionMatrix.mul(V4(T.positionView.add(T.normalize(T.normalViewGeometry || T.normalView.negate()).mul(Ow)), 1));
             s.fragmentNode = V4(C, Op);
+            return s;
+        });
+        /* THE LAST STAND OUTLINE AURA (the GLSL at _LS_AURA_VERT / _LS_AURA_FRAG) */
+        reg(_LS_AURA_FRAG, 'last stand aura', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m), nz = _ewPT(u.uNoise);
+            var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Cut = _ewPU(u.uCut, 'float'), Tm = _ewPU(u.uTime, 'float'),
+                Fq = _ewPU(u.uFreq, 'float'), Sd = _ewPU(u.uSeed, 'float'), Pu = _ewPU(u.uPush, 'float'), Rg = _ewPU(u.uRag, 'float'),
+                Lf = _ewPU(u.uLift, 'float'), By = _ewPU(u.uBaseY, 'float'), Ih = _ewPU(u.uInvH, 'float');
+            var wp = T.cameraWorldMatrix.mul(V4(T.positionView, 1)).xyz;
+            var Tq = T.floor(Tm.mul(12)).div(12);
+            var y = wp.y.mul(Fq), a = wp.x.add(wp.z.mul(0.7)).mul(Fq);
+            var n = T.sin(a.mul(26).add(y.mul(5)).sub(Tq.mul(8)).add(Sd)).mul(0.5)
+                .add(T.sin(a.mul(43).sub(y.mul(9)).sub(Tq.mul(12)).add(Sd.mul(1.7))).mul(0.3))
+                .add(T.sin(y.mul(7).sub(Tq.mul(6)).add(Sd.mul(0.6))).mul(0.2));
+            var tg = T.clamp(n.mul(0.5).add(0.5), 0, 1), tongue = tg.mul(tg).mul(tg);
+            var hh = T.clamp(wp.y.sub(By).mul(Ih), 0, 1);
+            var nV = T.normalize(T.normalViewGeometry || T.normalView.negate());   // the hull is BackSide: see 'outline model'
+            var upV = T.normalize(T.cameraViewMatrix.mul(V4(0, 1, 0, 0)).xyz);
+            var pv = T.positionView.add(nV.mul(Pu.mul(one.sub(Rg.mul(0.6)).add(Rg.mul(2).mul(tongue)))))
+                .add(upV.mul(Lf.mul(tongue).mul(hh.mul(0.75).add(0.25))));
+            s.vertexNode = T.cameraProjectionMatrix.mul(V4(pv, 1));
+            s.fragmentNode = T.Fn(function () {
+                var w = T.positionWorld;
+                var q = V2(w.x.add(w.z.mul(0.7)).mul(Fq).mul(2.2).add(Sd.mul(0.13)), w.y.mul(Fq).mul(0.35).sub(Tq.mul(0.7)));
+                T.Discard(Cut.greaterThan(0).and(nz(q).r.lessThan(Cut)));
+                return V4(C, Op);
+            })();
             return s;
         });
         /* the power-aura shells */
