@@ -242,6 +242,12 @@ def fit(name, gender, src, bodies_dir):
         hid = sum(1 for i in idx if i not in ks) / max(1, len(idx))
         if hid > E('ALLHIDE', 0.35): ks -= set(int(i) for i in idx)
         else: ks |= set(int(i) for i in idx)
+    # A LEG SEGMENT (thigh, calf) that is mostly under cloth is hidden whole (2026-11-12, mondo: "Knight has slivers of skin
+    # outside of her boots where her calves are": her calf is fuller than the greave Meshy made, so strips of it stood outside)
+    for n in ('LeftUpLeg', 'RightUpLeg', 'LeftLeg', 'RightLeg'):
+        idx = np.nonzero(gw[n] > 0.5)[0]
+        hid = sum(1 for i in idx if i not in ks) / max(1, len(idx))
+        if hid > E('LEGHIDE', 0.7): ks -= set(int(i) for i in idx)
     hidden = [i for i in range(len(pm.vertices)) if i not in ks]
     # a hm08 index is hidden only when every file vertex that carries it is
     shown_base = set(int(base[i]) for i in ks)
@@ -251,7 +257,30 @@ def fit(name, gender, src, bodies_dir):
     out = {}
     LEG_PAIRS = [('LeftUpLeg', 'RightUpLeg'), ('LeftLeg', 'RightLeg'), ('LeftFoot', 'RightFoot'), ('LeftToeBase', 'RightToeBase')]
     LEGS = [n for p in LEG_PAIRS for n in p]
-    pbvh = BVHTree.FromPolygons([v.co.copy() for v in pm.vertices], [list(p.vertices) for p in pm.polygons])
+    # THE SLEEVE TEST (2026-11-12, mondo: "The wizard's robes have two pointy parts near his butt"): in the A pose the hands hang
+    # beside the hips, so the robe's skirt there took the hand's + forearm's weights and was pulled out into a point when the
+    # arm moved. Cloth keeps arm weights only when it is SLEEVE: joined by the mesh's own edges to the cloth round the upper
+    # arm (the skirt joins it only through the torso). The rest takes the weights of the nearest skin that is not arm.
+    ARMW = {sd: sum(gw[n] for n in gw if n in (pre + 'Arm', pre + 'ForeArm', pre + 'Hand') or re.search(suf, n)) for sd, pre, suf in (('L', 'Left', r'_l$'), ('R', 'Right', r'_r$'))}
+    armw = ARMW['L'] + ARMW['R']
+    ARMN = {sd: set(n for n in gw if n in (pre + 'Arm', pre + 'ForeArm', pre + 'Hand') or re.search(suf, n)) for sd, pre, suf in (('L', 'Left', r'_l$'), ('R', 'Right', r'_r$'))}
+    pbn = marm.pose.bones
+    LINE = {sd: [amw @ pbn[pre + 'Arm'].head, amw @ pbn[pre + 'ForeArm'].head, amw @ pbn[pre + 'Hand'].head, amw @ pbn[pre + 'Hand'].tail] for sd, pre in (('L', 'Left'), ('R', 'Right'))}
+    def on_line(sd, q):   # -> (distance to the arm's bone line, how far along it 0 shoulder .. 1 fingertips)
+        best = None; run = 0.0; tot = sum((b_ - a_).length for a_, b_ in zip(LINE[sd][:-1], LINE[sd][1:]))
+        for a_, b_ in zip(LINE[sd][:-1], LINE[sd][1:]):
+            ab = b_ - a_; t_ = max(0.0, min(1.0, (q - a_).dot(ab) / max(1e-9, ab.length_squared))); c_ = a_ + ab * t_
+            if best is None or (q - c_).length < best[0]: best = ((q - c_).length, (run + ab.length * t_) / tot)
+            run += ab.length
+        return best
+    from mathutils.kdtree import KDTree
+    noarm = [i for i in range(len(pm.vertices)) if armw[i] < 0.2]
+    kdb = KDTree(len(noarm))
+    for k_, i in enumerate(noarm): kdb.insert(pm.vertices[i].co, k_)
+    kdb.balance()
+    bwt = [{body.vertex_groups[g.group].name: g.weight for g in v.groups if g.weight > 1e-4} for v in body.data.vertices]
+    pbvh = BVHTree.FromPolygons([v.co.copy() for v in pm.vertices], [list(p.vertices) for p in pm.polygons if all(armw[i] < 0.5 for i in p.vertices)])
+    unsleeved = 0
     for o in cloth:
         bpy.ops.object.select_all(action='DESELECT'); o.select_set(True); bpy.context.view_layer.objects.active = o
         dt = o.modifiers.new('dt', 'DATA_TRANSFER'); dt.object = posed; dt.use_vert_data = True; dt.data_types_verts = {'VGROUP_WEIGHTS'}; dt.vert_mapping = 'POLYINTERP_NEAREST'
@@ -272,6 +301,21 @@ def fit(name, gender, src, bodies_dir):
         xs = np.array([v.co.x for v in o.data.vertices]); zs = np.array([v.co.z for v in o.data.vertices])
         one_side = (xs > 0).mean() > 0.97 or (xs < 0).mean() > 0.97
         footwear = one_side and zs.min() < 0.12 and zs.max() < 0.62
+        # the sleeves of this shell: from cloth that is surely sleeve (close round the upper arm, mostly arm weight) along the
+        # mesh's edges, never past the armpit (t < 0.1) nor further than 16 cm off the bone line
+        sleeve = {'L': set(), 'R': set()}
+        if not one_side:
+            adj = [[] for _ in o.data.vertices]
+            for e in o.data.edges: adj[e.vertices[0]].append(e.vertices[1]); adj[e.vertices[1]].append(e.vertices[0])
+            for sd in ('L', 'R'):
+                dl = [on_line(sd, v.co) for v in o.data.vertices]
+                gi = [g.index for g in o.vertex_groups if g.name in ARMN[sd]]
+                seeds = [v.index for v in o.data.vertices if dl[v.index][0] < 0.07 and 0.15 < dl[v.index][1] < 0.5 and sum(g.weight for g in v.groups if g.group in gi) > 0.6]
+                seen_ = set(seeds); st_ = list(seeds)
+                while st_:
+                    for k_ in adj[st_.pop()]:
+                        if k_ not in seen_ and dl[k_][0] < 0.16 and dl[k_][1] > 0.1: seen_.add(k_); st_.append(k_)
+                sleeve[sd] = seen_
         for v in o.data.vertices:
             M = Matrix(((0,) * 4,) * 4); tw = 0; w = {}
             for g in v.groups:
@@ -280,6 +324,18 @@ def fit(name, gender, src, bodies_dir):
             # LOOSE CLOTH (a robe's skirt, a cape, a coat's tail): hanging off the legs it must not follow one leg like a trouser
             # leg does (the hem tore into a tent between the knees): the further off the skin, the more of its leg weight goes to
             # the hips and the more the rest is shared between the two legs
+            for sd in ('L', 'R'):
+                aw = sum(x for n, x in w.items() if n in ARMN[sd])
+                if aw < 0.15 or one_side or v.index in sleeve[sd] or not E('SLEEVES', 1): continue   # (a glove, a gauntlet: on its arm)
+                rest_ = {}
+                for (co_, k_, dist_) in kdb.find_n(v.co, 4):
+                    for n, x in bwt[noarm[k_]].items():
+                        if n not in ARMN['L'] and n not in ARMN['R'] and n in SK: rest_[n] = rest_.get(n, 0) + x
+                tot_ = sum(rest_.values())
+                if tot_ <= 0: continue
+                w = {n: x for n, x in w.items() if n not in ARMN[sd]}
+                for n, x in rest_.items(): w[n] = w.get(n, 0) + x / tot_ * aw
+                unsleeved += 1
             lw = sum(w.get(n, 0) for n in LEGS)
             if footwear:
                 for t_, f_ in (('LeftToeBase', 'LeftFoot'), ('RightToeBase', 'RightFoot')):
@@ -304,6 +360,7 @@ def fit(name, gender, src, bodies_dir):
         g = out.setdefault('hat' if o in hats else 'outfit', {'P': [], 'N': [], 'F': [], 'FUV': [], 'W': []})
         base_i = sum(len(p) for p in g['P'])
         g['P'].append(P); g['N'].append(N); g['F'] += [tuple(i + base_i for i in f) for f in F]; g['FUV'] += FUV; g['W'] += W
+    print('[bake-outfit] %s: %d cloth vertices beside an arm (not round it) taken off the arm' % (name, unsleeved), flush=True)
     for g in out.values():
         g['P'] = np.vstack(g['P']); g['N'] = np.vstack(g['N']); g['F'] = np.array(g['F'])
     from PIL import Image

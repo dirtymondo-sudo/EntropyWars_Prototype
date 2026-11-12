@@ -1528,6 +1528,11 @@ head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay t
   the body (boot, greave, gauntlet, holster) is never loose cloth (its sole stood far off the skin, so the loose rule gave it to the
   hips + the other leg); footwear's toe weight goes to the foot (a stiff sole); a spur (Meshy fuses it to the boot as a horn) is laid
   flat on the heel (env SPURS=0 keeps it). The remade button no longer needs a RACE_CREATOR_LOOKS look (knight + wizard had none).
+- **Round 3 (11-12, mondo: wizard "two pointy parts near his butt", knight "slivers of skin outside of her boots")**: THE SLEEVE TEST
+  (cloth keeps arm weights only when the mesh's own edges join it to the cloth round the upper arm; the skirt beside the hanging hands
+  had the hand's weights; env SLEEVES=0 off) and a thigh / calf that is 70 % under cloth is hidden whole (LEGHIDE). TRIED AND DROPPED:
+  a ray test for "round the arm" (cuffs failed it and flared into plates) and aiming the forearm at the sleeve's middle (tore the
+  cowboy's shoulders). His "elbows bending backwards" on the wizard was not seen again after the sleeve test; unconfirmed.
 - **In the game**: sprites.js EW_MH_WEAR rows `ewm_t2*` (outfits are category `equipment`, shown on the Armour tab; hats on Hats),
   `RACE_REMADE_LOOKS` + `getRaceRemadeLook(race, gender)`, party-builder.js USE THE REMADE <RACE> LOOK (beside USE THE SAVED LOOK) and
   REMADE LOOK inside the creator. The race's default idle can crouch a creator rig (knight, wizard): the looks carry `idle: Idle_11`.
