@@ -573,6 +573,18 @@ def fit(name, gender, src, bodies_dir):
         ks |= set(v.index for v in pm.vertices if v.co.z > zc_ and abs(v.co.x - eyeM[0]) < 0.2)
         for _ in range(int(E('BSRING', 2))):
             ks |= set(i_ for e_ in pm.edges for i_, j_ in (tuple(e_.vertices), tuple(e_.vertices)[::-1]) if j_ in ks and i_ not in ks and pm.vertices[i_].co.z > zc_ - 0.08 and abs(pm.vertices[i_].co.x - eyeM[0]) < 0.2)
+    # THE SKIN IN AN OPEN COLLAR (OPENFRONT, off; mondo on Agent Locke: "fix the dark teeth in the v of the blouse collar"): her blouse
+    # stands open in a V and the skin inside it lay within the hide rays of the collar's edge, so triangles of it were not drawn and
+    # the blouse's dark inside showed through as teeth. Skin on the front of the chest that has NO cloth straight in front of it is in
+    # the open and is shown, + OPENFRONTRING rings round it under the collar's edge (they lie behind the cloth)
+    if E('OPENFRONT', 0):
+        zone_ = lambda v_: eyeM[2] - E('OPENFRONTZ', 0.32) < v_.co.z < eyeM[2] - 0.1 and abs(v_.co.x - eyeM[0]) < E('OPENFRONTX', 0.07) and v_.normal.y < -0.2
+        open_ = set(v_.index for v_ in pm.vertices if zone_(v_) and bvh.ray_cast(v_.co + v_.normal * 0.004, Vector((0, -1, 0)), 1.0)[0] is None and bvh.ray_cast(v_.co, Vector((0, 1, 0)), E('OPENFRONTBACK', 0.08))[0] is None)   # (+ no cloth close behind it: her bust stands through the blouse, that skin stays hidden)
+        add_ = set(open_)
+        for _ in range(int(E('OPENFRONTRING', 1))):
+            add_ |= set(i_ for e_ in pm.edges for i_, j_ in (tuple(e_.vertices), tuple(e_.vertices)[::-1]) if j_ in add_ and i_ not in add_ and zone_(pm.vertices[i_]))
+        print('[bake-outfit] %s: %d skin vertices in the open collar shown (%d were hidden)' % (name, len(add_), len(add_ - ks)), flush=True)
+        ks |= add_
     if NECKLINE or E('OPENSKIN', 0):   # (OPENSKIN: this rule alone, a blouse's open collar, Agent Locke)
         for _ in range(int(E('OPENRING', 3))):
             add_ = set()
@@ -700,6 +712,16 @@ def fit(name, gender, src, bodies_dir):
                     if h_ < E('STRAPOFF', 0.01) and d_ < E('STRAPIN', 0.1): v.co = v.co + n_ * (E('STRAPOFF', 0.01) - h_); ns_ += 1
                     if d_ < E('STRAPNEAR', 0.08): strapw[v.index] = noarm[kdb.find(v.co)[1]]   # (the nearest skin that is not arm: the back of the dress beside her arm took the arm's weight and stood out in spikes)
             if ns_: print('[bake-outfit] %s: %d cloth vertices lifted onto the skin' % (name, ns_), flush=True)
+        # + THE COLLAR ON THE SKIN (OPENFRONT): the ring of skin shown under the collar's edge stood THROUGH the blouse (the body's
+        # chest is fuller than the one Meshy dressed), a skin patch on the white. The cloth round the open collar lies at least
+        # OPENFRONTOFF 6 mm outside the skin
+        if E('OPENFRONT', 0) and not footwear:
+            nc_ = 0
+            for v in o.data.vertices:
+                if eyeM[2] - E('OPENFRONTLIFTZ', 0.27) < v.co.z < eyeM[2] - 0.1 and abs(v.co.x - eyeM[0]) < E('OPENFRONTX', 0.07) and v.co.y < eyeM[1] + 0.06:   # (the collar only: lower down the lifted blouse came through the jacket at her bust)
+                    c_, k_, d_ = kdb.find(v.co); n_ = pm.vertices[noarm[k_]].normal; h_ = (v.co - c_).dot(n_)
+                    if h_ < E('OPENFRONTOFF', 0.006) and d_ < 0.03: v.co = v.co + n_ * (E('OPENFRONTOFF', 0.006) - h_); nc_ += 1
+            if nc_: print('[bake-outfit] %s: %d collar vertices lifted onto the skin' % (name, nc_), flush=True)
         # THE BACK UNDER LONG HAIR (--bodysuit --longhair; mummy: tan flecks on her hair at the back): Meshy modelled the suit
         # round her own hair, its lumps stand through the creator hair that lies on her back. The suit's upper back lies
         # no more than BSBACK 6 mm off the body
