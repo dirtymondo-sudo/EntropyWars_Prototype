@@ -9275,9 +9275,8 @@ const ThreeRenderer = (function () {
     var _LS_AURA_VERT = [
         '#include <common>',
         '#include <skinning_pars_vertex>',
-        'uniform float uPush;', 'uniform float uRag;', 'uniform float uLift;', 'uniform float uTime;',
-        'uniform float uFreq;', 'uniform float uSeed;', 'uniform float uBaseY;', 'uniform float uInvH;',
-        'varying vec3 vW;',
+        'uniform float uPush;', 'uniform float uLift;', 'uniform float uFreq;', 'uniform vec3 uBase;', 'uniform float uInvH;',
+        'varying vec2 vC;',
         'void main() {',
         '  #include <beginnormal_vertex>',
         '  #include <skinbase_vertex>',
@@ -9286,43 +9285,47 @@ const ThreeRenderer = (function () {
         '  #include <skinning_vertex>',
         '  vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);',
         '  vec3 wp = (modelMatrix * vec4(transformed, 1.0)).xyz;',
-        '  float tq = floor(uTime * 12.0) / 12.0;',   // drawn "on twos": the tongues step 12 times a second, like a cel
-        '  float y = wp.y * uFreq, a = (wp.x + wp.z * 0.7) * uFreq;',
-        '  float n = sin(a * 26.0 + y * 5.0 - tq * 8.0 + uSeed) * 0.5',
-        '          + sin(a * 43.0 - y * 9.0 - tq * 12.0 + uSeed * 1.7) * 0.3',
-        '          + sin(y * 7.0 - tq * 6.0 + uSeed * 0.6) * 0.2;',
-        '  float tongue = clamp(n * 0.5 + 0.5, 0.0, 1.0); tongue = tongue * tongue * tongue;',
-        '  float hh = clamp((wp.y - uBaseY) * uInvH, 0.0, 1.0);',
+        '  float hh = clamp((wp.y - uBase.y) * uInvH, 0.0, 1.0);',
+        /* the flame pattern is read at the BODY point this hull vertex was pushed from (screen-right from the unit's feet,
+           height above them), so every shell cuts the same columns and the stack narrows to a point */
+        '  vC = vec2((mvPosition.x - (viewMatrix * vec4(uBase, 1.0)).x) * uFreq, (wp.y - uBase.y) * uFreq);',
         '  vec3 nV = normalize(normalMatrix * objectNormal);',
         '  vec3 upV = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);',
-        '  mvPosition.xyz += nV * uPush * (1.0 - uRag * 0.6 + uRag * 2.0 * tongue) + upV * uLift * tongue * (0.25 + 0.75 * hh);',
-        '  vW = wp;',
+        '  mvPosition.xyz += nV * uPush + upV * uLift * (0.25 + 0.75 * hh);',
         '  gl_Position = projectionMatrix * mvPosition;',
         '}'
     ].join('\n');
     var _LS_AURA_FRAG = [
-        'uniform vec3 uColor;', 'uniform float uOpacity;', 'uniform float uCut;', 'uniform float uTime;',
-        'uniform float uFreq;', 'uniform float uSeed;', 'uniform sampler2D uNoise;',
-        'varying vec3 vW;',
+        'uniform vec3 uColor;', 'uniform float uOpacity;', 'uniform float uFrac;', 'uniform float uTime;',
+        'uniform float uSeed;', 'uniform sampler2D uNoise;',
+        'varying vec2 vC;',
         'void main() {',
-        '  if (uCut > 0.0) {',
-        '    float tq = floor(uTime * 12.0) / 12.0;',
-        '    vec2 q = vec2((vW.x + vW.z * 0.7) * uFreq * 2.2 + uSeed * 0.13, vW.y * uFreq * 0.35 - tq * 0.7);',
-        '    if (texture2D(uNoise, q).r < uCut) discard;',
+        '  if (uFrac > 0.0) {',
+        '    float tq = floor(uTime * 12.0) / 12.0;',   // drawn "on twos": the tongues step 12 times a second, like a cel
+        '    float c = vC.x * 9.0 + vC.y * 5.0 - tq * 2.2 + uSeed;',
+        '    float tri = 1.0 - abs(fract(c) * 2.0 - 1.0);',                                        // one tongue per stripe: wide at the body...
+        '    float amp = 0.35 + 1.1 * texture2D(uNoise, vec2(floor(c) * 0.173, tq * 0.35)).r;',    // ...its own height, changing
+        '    if (tri * amp < uFrac) discard;',                                                     // ...and narrower on every shell out: a point
         '  }',
         '  gl_FragColor = vec4(uColor, uOpacity);',
         '}'
     ].join('\n');
-    /* outer → inner (drawn in that order, all after every body's stencil stamp (2) and before the team outline (3)) */
-    var LS_AURA_SHELLS = [
-        { push: 0.070, rag: 1.0, lift: 0.15, cut: 0.44, op: 0.85, ro: 2.4, col: 'outer' },
-        { push: 0.044, rag: 0.8, lift: 0.08, cut: 0.33, op: 0.92, ro: 2.5, col: 'mid' },
-        { push: 0.022, rag: 0.5, lift: 0.03, cut: 0.0,  op: 0.96, ro: 2.6, col: 'core' }
-    ];
+    /* the shells, outer → inner (drawn in that order, all after every body's stencil stamp (2) and before the team outline
+       (3)): shell 0 is the solid white-hot band at the body, 1..N the tongue stack (frac = how far out, 0..1) */
+    var LS_AURA_N = 6, LS_AURA_PUSH = 0.10, LS_AURA_LIFT = 0.30, LS_AURA_CORE = 0.02;
+    var LS_AURA_SHELLS = (function () {
+        var out = [];
+        for (var k = LS_AURA_N; k >= 1; k--) {
+            var f = k / LS_AURA_N;
+            out.push({ push: LS_AURA_CORE + (LS_AURA_PUSH - LS_AURA_CORE) * f, lift: LS_AURA_LIFT * f, frac: f * 0.92, op: 0.92, ro: 2.6 - k * 0.02, col: k <= 2 ? 'mid' : 'outer' });
+        }
+        out.push({ push: LS_AURA_CORE, lift: 0.012, frac: 0, op: 0.96, ro: 2.6, col: 'core' });
+        return out;
+    })();
     var LS_AURA_PAL = {
         own:   { outer: 0x2b55ff, mid: TEAM_OUTLINE_ALLY_COLOR,  core: 0xd6f6ff },
-        enemy: { outer: 0xff7a1e, mid: TEAM_OUTLINE_ENEMY_COLOR, core: 0xffe4d8 },
-        flow:  { outer: 0xf08c00, mid: 0xffd23a, core: 0xfffbe0 }   // FLOW STATE (killstreak 3+): its own gold on either side; the team outline on top still says whose
+        enemy: { outer: 0xb8104a, mid: TEAM_OUTLINE_ENEMY_COLOR, core: 0xffe4d8 },
+        flow:  { outer: 0xe07800, mid: 0xffc21a, core: 0xfff4c0 }   // FLOW STATE (killstreak 3+): its own gold on either side; the team outline on top still says whose
     };
     var _lsAuraTime = { value: 0 };
     var _lsAuras = new Map();   /* unitId -> { root, host, shells, mats, fade, want, h, seed } */
@@ -9345,9 +9348,9 @@ const ThreeRenderer = (function () {
             LS_AURA_SHELLS.forEach(function (L, li) {
                 var mat = new THREE.ShaderMaterial({
                     uniforms: {
-                        uColor: { value: new THREE.Color(0xffffff) }, uOpacity: { value: 0 }, uCut: { value: L.cut },
-                        uPush: { value: 0 }, uRag: { value: L.rag }, uLift: { value: 0 }, uTime: _lsAuraTime,
-                        uFreq: { value: 1 / ts }, uSeed: { value: seed * 0.37 + li * 2.1 }, uBaseY: { value: 0 }, uInvH: { value: 1 / rec.h },
+                        uColor: { value: new THREE.Color(0xffffff) }, uOpacity: { value: 0 }, uFrac: { value: L.frac },
+                        uPush: { value: 0 }, uLift: { value: 0 }, uTime: _lsAuraTime,
+                        uFreq: { value: 1 / ts }, uSeed: { value: seed * 0.37 }, uBase: { value: new THREE.Vector3() }, uInvH: { value: 1 / rec.h },
                         uNoise: { value: _getAuraNoiseTex() }
                     },
                     vertexShader: _LS_AURA_VERT, fragmentShader: _LS_AURA_FRAG,
@@ -9413,7 +9416,7 @@ const ThreeRenderer = (function () {
                 u.uPush.value = rec.ts * L.push * kW * (0.35 + 0.65 * ease) * breathe;
                 u.uLift.value = rec.ts * L.lift * kL * ease * breathe;
                 u.uOpacity.value = L.op * ease;
-                u.uBaseY.value = _lsAuraWp.y;
+                u.uBase.value.copy(_lsAuraWp);
                 u.uColor.value.setHex(pal[L.col]);
             }
         });
@@ -46277,26 +46280,22 @@ const ThreeRenderer = (function () {
         /* THE LAST STAND OUTLINE AURA (the GLSL at _LS_AURA_VERT / _LS_AURA_FRAG) */
         reg(_LS_AURA_FRAG, 'last stand aura', function (m) {
             var u = m.uniforms, s = _ewProgMat(m), nz = _ewPT(u.uNoise);
-            var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Cut = _ewPU(u.uCut, 'float'), Tm = _ewPU(u.uTime, 'float'),
-                Fq = _ewPU(u.uFreq, 'float'), Sd = _ewPU(u.uSeed, 'float'), Pu = _ewPU(u.uPush, 'float'), Rg = _ewPU(u.uRag, 'float'),
-                Lf = _ewPU(u.uLift, 'float'), By = _ewPU(u.uBaseY, 'float'), Ih = _ewPU(u.uInvH, 'float');
+            var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Fr = _ewPU(u.uFrac, 'float'), Tm = _ewPU(u.uTime, 'float'),
+                Fq = _ewPU(u.uFreq, 'float'), Sd = _ewPU(u.uSeed, 'float'), Pu = _ewPU(u.uPush, 'float'),
+                Lf = _ewPU(u.uLift, 'float'), Bs = _ewPU(u.uBase, 'vec3'), Ih = _ewPU(u.uInvH, 'float');
             var wp = T.cameraWorldMatrix.mul(V4(T.positionView, 1)).xyz;
-            var Tq = T.floor(Tm.mul(12)).div(12);
-            var y = wp.y.mul(Fq), a = wp.x.add(wp.z.mul(0.7)).mul(Fq);
-            var n = T.sin(a.mul(26).add(y.mul(5)).sub(Tq.mul(8)).add(Sd)).mul(0.5)
-                .add(T.sin(a.mul(43).sub(y.mul(9)).sub(Tq.mul(12)).add(Sd.mul(1.7))).mul(0.3))
-                .add(T.sin(y.mul(7).sub(Tq.mul(6)).add(Sd.mul(0.6))).mul(0.2));
-            var tg = T.clamp(n.mul(0.5).add(0.5), 0, 1), tongue = tg.mul(tg).mul(tg);
-            var hh = T.clamp(wp.y.sub(By).mul(Ih), 0, 1);
+            var hh = T.clamp(wp.y.sub(Bs.y).mul(Ih), 0, 1);
             var nV = T.normalize(T.normalViewGeometry || T.normalView.negate());   // the hull is BackSide: see 'outline model'
             var upV = T.normalize(T.cameraViewMatrix.mul(V4(0, 1, 0, 0)).xyz);
-            var pv = T.positionView.add(nV.mul(Pu.mul(one.sub(Rg.mul(0.6)).add(Rg.mul(2).mul(tongue)))))
-                .add(upV.mul(Lf.mul(tongue).mul(hh.mul(0.75).add(0.25))));
-            s.vertexNode = T.cameraProjectionMatrix.mul(V4(pv, 1));
+            s.vertexNode = T.cameraProjectionMatrix.mul(V4(T.positionView.add(nV.mul(Pu)).add(upV.mul(Lf.mul(hh.mul(0.75).add(0.25)))), 1));
             s.fragmentNode = T.Fn(function () {
-                var w = T.positionWorld;
-                var q = V2(w.x.add(w.z.mul(0.7)).mul(Fq).mul(2.2).add(Sd.mul(0.13)), w.y.mul(Fq).mul(0.35).sub(Tq.mul(0.7)));
-                T.Discard(Cut.greaterThan(0).and(nz(q).r.lessThan(Cut)));
+                /* the body point's own coordinates (positionView / positionWorld are the un-pushed vertex), as the GLSL's vC */
+                var cx = T.positionView.x.sub(T.cameraViewMatrix.mul(V4(Bs, 1)).x).mul(Fq), cy = T.positionWorld.y.sub(Bs.y).mul(Fq);
+                var Tq = T.floor(Tm.mul(12)).div(12);
+                var c = cx.mul(9).add(cy.mul(5)).sub(Tq.mul(2.2)).add(Sd).toVar();
+                var tri = one.sub(T.abs(T.fract(c).mul(2).sub(1)));
+                var amp = nz(V2(T.floor(c).mul(0.173), Tq.mul(0.35))).r.mul(1.1).add(0.35);
+                T.Discard(Fr.greaterThan(0).and(tri.mul(amp).lessThan(Fr)));
                 return V4(C, Op);
             })();
             return s;
