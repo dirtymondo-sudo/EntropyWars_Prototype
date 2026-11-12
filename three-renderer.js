@@ -8133,24 +8133,33 @@ const ThreeRenderer = (function () {
        lays the blades down — a unit's feet, so no body, shadow or ring is ever hidden by grass.
        MOCK-UP: off unless window.EW_GRASS_FIELD = true or ?grassfield=1. */
     var GGRASS = {
-        perTile: 23,        // blades per square = perTile² (a jittered grid, so the cover is even)
-        hMin: 0.060, hMax: 0.125,   // blade height × tile (3.5 m square → 0.21-0.44 m: ankle to shin of a unit)
-        width: 0.030,       // blade base width × tile
-        lean: 0.35,         // the still bow of a blade × its height
-        wind: 0.55,         // tip travel on a gust crest × blade height
-        sheen: 0.38,        // how much a gust crest brightens the tips
-        root: [0.100, 0.180, 0.042],   // linear: the calm grass sheet's own colour a step down (the blade foot is in shade)
-        tipCool: [0.160, 0.340, 0.100], tipWarm: [0.300, 0.400, 0.080],   // linear: the two tip tones the patches drift between
-        patchM: 2.3,        // patch size, squares
+        shape: 'crown',
+        perTile: 24,        // tufts per square = perTile² (a jittered grid, so the cover is even)
+        hMin: 0.110, hMax: 0.210,   // tuft height × tile
+        width: 0.070,       // tuft width × tile: WIDE, so neighbours overlap and the field reads as one soft coat
+        lean: 0.55,         // the still bow of a tuft × its height
+        wind: 0.45,         // tip travel on a gust crest × height
+        sheen: 0.30,        // how much a gust crest brightens the tips
+        root: [0.075, 0.140, 0.032],   // linear: deep under the coat (seen only at a tuft's foot and the field's edge)
+        mid: [0.110, 0.200, 0.046],    // linear: the ground's own colour as lit
+        tipCool: [0.150, 0.300, 0.090], tipWarm: [0.215, 0.335, 0.075],   // linear: the two top tones the patches drift between
+        patchM: 2.6,        // patch size, squares
         pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
         pressN: 4,          // press map texels per square
-        fringe: 6, fringeDensity: 0.7,   // the meadow past the board's edge: squares out, blades per square side × this
+        fringe: 5, fringeDensity: 0.7,   // the meadow past the board's edge: squares out, blades per square side × this
         order: 50, nrm: 'up', depthWrite: false, shadow: true   // MOCK-UP switches
     };
     try { window.EW_GGRASS = GGRASS; } catch (e) {}
     function _ggOn() {
         try { return window.EW_GRASS_FIELD === false ? false : !!(window.EW_GRASS_FIELD || /[?&]grassfield=1/.test(location.search)); } catch (e) { return false; }
     }
+    /* a tuft's outline (x in half-widths, y in heights) + its 5 triangles, wound to face the camera.
+       crown = one thick clump of three points (a tall middle, two splayed sides); tongue = one round pad */
+    var _GG_SHAPES = {
+        crown: { P: [[-1, 0], [1, 0], [-1.55, 0.66], [-0.5, 0.40], [0, 1], [0.5, 0.40], [1.55, 0.72]], T: [0, 1, 5, 0, 5, 3, 0, 3, 2, 3, 5, 4, 1, 6, 5] },
+        tongue: { P: [[-1, 0], [1, 0], [-1.05, 0.42], [1.05, 0.42], [-0.72, 0.80], [0.72, 0.80], [0, 1]], T: [0, 1, 3, 0, 3, 2, 2, 3, 5, 2, 5, 4, 4, 5, 6] }
+    };
+    var _ggRightU = { value: new THREE.Vector2(1, 0) };   // the camera's right, flat, in the field's own frame: every tuft turns its face to the eye
     try { window.EW_GGRASS_REBUILD = function () { rebuildTerrainDecorations(); return _gg ? _gg.blades : 0; }; } catch (e) {}   // MOCK-UP: retune live
     var _gg = null;   // the live field: { mesh, press, data, W, H, n, sig, tops }
     function _ggPressTex(W, H) {
@@ -8165,18 +8174,18 @@ const ThreeRenderer = (function () {
            after (a tile highlight, a ring, a zone, blood, a spell's ground mark) is ever hidden BY a blade — they lie on the grass
            the way they lie on the ground */
         var m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide, depthWrite: !!GGRASS.depthWrite });
-        var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) } };
+        var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: _ggRightU };
         m.onBeforeCompile = function (shader) {
-            shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB;
+            shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgR = U.uGgR;
             shader.vertexShader = shader.vertexShader
-                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;')
+                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nattribute float aGgS;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;\nuniform vec2 uGgR;')
                 .replace('#include <begin_vertex>', '#include <begin_vertex>\n' +
                     'float ggPr = texture2D( uGgPress, aGg.xy * uGgB.xy ).r;\n' +
                     'float ggG = sin( dot( aGg.xy, vec2( 0.0105, 0.0062 ) ) - uGgT * 1.25 + sin( dot( aGg.xy, vec2( -0.0040, 0.0070 ) ) + uGgT * 0.31 ) * 1.4 ) * 0.5 + 0.5;\n' +
                     'ggG *= ggG;\n' +
                     'float ggF = sin( uGgT * 4.3 + aGg.x * 0.31 + aGg.y * 0.47 ) * 0.10;\n' +
                     'float ggB = ( 0.15 + 0.85 * ggG + ggF ) * uGgB.z * aGg.z * aGg.w * ( 1.0 - ggPr );\n' +
-                    'transformed.x += 0.86 * ggB; transformed.z += 0.50 * ggB;\n' +
+                    'transformed.x += 0.86 * ggB + uGgR.x * aGgS; transformed.z += 0.50 * ggB + uGgR.y * aGgS;\n' +
                     'transformed.y -= aGg.z * ggPr * 0.86 + ggB * 0.30 * aGg.w;\n' +
                     'vColor.rgb *= 1.0 + uGgB.w * ggG * aGg.w * ( 1.0 - ggPr );');
             shader.fragmentShader = shader.fragmentShader
@@ -8193,7 +8202,7 @@ const ThreeRenderer = (function () {
         if (!W || !H) return;
         var C = GGRASS, N = C.perTile, cell = ts / N;
         var mon = (typeof _monumentMap === 'function') ? _monumentMap() : null;
-        var pos = [], col = [], gg = [], nor = [], idx = [], tops = {};
+        var pos = [], col = [], gg = [], gs = [], nor = [], roots = [], tops = {};
         var seed = 1234567;
         var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
         var sampler = (typeof _fieldGroundSampleAt === 'function') ? _fieldGroundSampleAt : null;
@@ -8256,24 +8265,25 @@ const ThreeRenderer = (function () {
                 var patch = _ewValHash(wx / (ts * C.patchM) + 3.1, wz / (ts * C.patchM) + 8.9);
                 var pt = Math.min(1, Math.max(0, (patch - 0.3) / 0.4)); pt = pt * pt * (3 - 2 * pt);
                 var h = ts * (C.hMin + (C.hMax - C.hMin) * (0.25 + 0.75 * clump) * (0.55 + 0.45 * r1)) * (1 - edge * 0.5);
-                var hw = ts * C.width * 0.5 * (0.75 + 0.5 * r2);
-                var yaw = r3 * Math.PI * 2, cy = Math.cos(yaw), sy = Math.sin(yaw);
-                var laz = r4 * Math.PI * 2, lm = h * C.lean * (0.4 + 0.6 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm;
-                var jit = 0.88 + 0.24 * r0;
+                var hw = ts * C.width * 0.5 * (0.8 + 0.4 * r2);
+                var laz = r4 * Math.PI * 2, lm = h * C.lean * (0.35 + 0.65 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm;
+                var jit = 0.97 + 0.06 * r0;
                 var tipR = (C.tipCool[0] + (C.tipWarm[0] - C.tipCool[0]) * pt) * jit, tipG = (C.tipCool[1] + (C.tipWarm[1] - C.tipCool[1]) * pt) * jit, tipB = (C.tipCool[2] + (C.tipWarm[2] - C.tipCool[2]) * pt) * jit;
-                var base = pos.length / 3;
-                /* 5 corners: foot L / R, waist L / R (0.5 up, 0.72 wide, a quarter of the bow), tip */
-                var P = [[-hw, 0, 0], [hw, 0, 0], [-hw * 0.72, 0.5, 0.28], [hw * 0.72, 0.5, 0.28], [0, 1, 1]];
-                for (var k = 0; k < 5; k++) {
-                    var f = P[k][1], bf = P[k][2];
-                    pos.push(wx + P[k][0] * cy + lx * bf, gy + h * f * (1 - 0.12 * bf), wz + P[k][0] * sy + lz * bf);
-                    var cf = f * f * (3 - 2 * f) * 0.85 + f * 0.15;
-                    col.push(C.root[0] + (tipR - C.root[0]) * cf, C.root[1] + (tipG - C.root[1]) * cf, C.root[2] + (tipB - C.root[2]) * cf);
+                /* 7 corners, a soft rounded tongue: foot L / R, belly L / R, shoulder L / R, tip. The side offset (aGgS) is laid along
+                   the camera's right in the shader, so the tongue always shows its full face */
+                var P = _GG_SHAPES[C.shape] ? _GG_SHAPES[C.shape].P : _GG_SHAPES.crown.P;
+                for (var k = 0; k < 7; k++) {
+                    var f = P[k][1], bf = f * f;
+                    pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
+                    var cr, cg, cb;
+                    if (f < 0.42) { var a0 = f / 0.42; cr = C.root[0] + (C.mid[0] - C.root[0]) * a0; cg = C.root[1] + (C.mid[1] - C.root[1]) * a0; cb = C.root[2] + (C.mid[2] - C.root[2]) * a0; }
+                    else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = C.mid[0] + (tipR - C.mid[0]) * a1; cg = C.mid[1] + (tipG - C.mid[1]) * a1; cb = C.mid[2] + (tipB - C.mid[2]) * a1; }
+                    col.push(cr, cg, cb);
                     gg.push(wx, wz, h * f, f);
+                    gs.push(P[k][0] * hw);
                     nor.push(0, 1, 0);
                 }
-                idx.push(base, base + 1, base + 3, base, base + 3, base + 2, base + 2, base + 3, base + 4);
-                idx.push(base, base + 3, base + 1, base, base + 2, base + 3, base + 2, base + 4, base + 3);   // and wound the other way: each blade is a FRONT face from both sides (no two-sided normal flip to undo, on either renderer)
+                roots.push(wx, wz);
             }
         }
         if (!pos.length) return;
@@ -8282,17 +8292,48 @@ const ThreeRenderer = (function () {
         geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
         geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
         geo.setAttribute('aGg', new THREE.Float32BufferAttribute(gg, 4));
-        geo.setIndex(idx);
+        geo.setAttribute('aGgS', new THREE.Float32BufferAttribute(gs, 1));
+        var nB = roots.length / 2, ia = new Uint32Array(nB * 15);
+        geo.setIndex(new THREE.BufferAttribute(ia, 1));
         var pr = _ggPressTex(W, H);
-        var G = { press: pr.tex, data: pr.data, W: W, H: H, n: C.pressN, inv: [1 / (W * ts), 1 / (H * ts)], sig: '', tops: tops, blades: pos.length / 15 };
+        var G = { press: pr.tex, data: pr.data, W: W, H: H, n: C.pressN, inv: [1 / (W * ts), 1 / (H * ts)], sig: '', tops: tops, blades: nB, roots: new Float32Array(roots), ia: ia, sortDir: null };
         var mesh = new THREE.Mesh(geo, _ggMat(G));
         mesh.frustumCulled = false; mesh.name = 'ew_grass_field'; mesh._ew_ggrass = true; mesh.renderOrder = C.order;
         G.mesh = mesh; _gg = G;
         group.add(mesh);
     }
+    /* THE FACE + THE ORDER: the tufts turn to the camera (its right, flat, in the field's frame), and — as they write no depth —
+       are drawn far to near, so a near tuft's light top always lies over the dark foot of the one behind it (that overlap IS the
+       fluff). The order is a counting sort over the view direction, redone only when the camera has turned ~10° */
+    var _ggV = null, _ggM = null;
+    function _ggFace(G) {
+        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+        if (!cam) return;
+        if (!_ggV) { _ggV = new THREE.Vector3(); _ggM = new THREE.Matrix4(); }
+        G.mesh.updateWorldMatrix(true, false);
+        _ggM.copy(G.mesh.matrixWorld).invert();
+        var e = cam.matrixWorld.elements;
+        _ggV.set(e[0], e[1], e[2]).transformDirection(_ggM);
+        var rl = Math.hypot(_ggV.x, _ggV.z) || 1;
+        _ggRightU.value.set(_ggV.x / rl, _ggV.z / rl);
+        _ggV.set(-e[8], -e[9], -e[10]).transformDirection(_ggM);   // the view direction
+        var fl = Math.hypot(_ggV.x, _ggV.z); if (fl < 1e-4) return;
+        var dx = _ggV.x / fl, dz = _ggV.z / fl;
+        if (G.sortDir && (G.sortDir[0] * dx + G.sortDir[1] * dz) > 0.985) return;
+        G.sortDir = [dx, dz];
+        var R = G.roots, nB = G.blades, B = 2048, cnt = new Uint32Array(B + 1), key = new Uint16Array(nB), lo = Infinity, hi = -Infinity, i, k;
+        for (i = 0; i < nB; i++) { k = R[i * 2] * dx + R[i * 2 + 1] * dz; if (k < lo) lo = k; if (k > hi) hi = k; }
+        var sc = (B - 1) / ((hi - lo) || 1);
+        for (i = 0; i < nB; i++) { k = (B - 1) - Math.floor((R[i * 2] * dx + R[i * 2 + 1] * dz - lo) * sc); key[i] = k; cnt[k + 1]++; }   // far first
+        for (i = 0; i < B; i++) cnt[i + 1] += cnt[i];
+        var ia = G.ia, T = (_GG_SHAPES[GGRASS.shape] || _GG_SHAPES.crown).T;
+        for (i = 0; i < nB; i++) { var o = cnt[key[i]]++ * 15, b = i * 7; for (k = 0; k < 15; k++) ia[o + k] = b + T[k]; }
+        G.mesh.geometry.index.needsUpdate = true;
+    }
     /* the press map, once a frame: every standing unit's feet (rebuilt only when a body moved) */
     function _ggTick() {
         var G = _gg; if (!G || !G.mesh || !G.mesh.parent) return;
+        _ggFace(G);
         var ts = CONFIG.tileSize || BASE_TILE, n = G.n, w = G.W * n, h = G.H * n, R = GGRASS.pressR * n, sig = '';
         var pts = [];
         unitEntries.forEach(function (e) {
@@ -45460,7 +45501,7 @@ const ThreeRenderer = (function () {
     }
     /* THE GRASS FIELD on the node renderer (the GLSL is _ggMat): the gust, the flutter, the press map, the crest sheen, the normal up */
     function _ewNodeGGrass(nm, D) {
-        var T = _ewNodeU.T, P = T.positionLocal, A = T.attribute('aGg', 'vec4'), t = _ewNodeRef(_grassWindTime), C = GGRASS;
+        var T = _ewNodeU.T, P = T.positionLocal, A = T.attribute('aGg', 'vec4'), S = T.attribute('aGgS', 'float'), t = _ewNodeRef(_grassWindTime), Rt = _ewNodeRef(_ggRightU), C = GGRASS;
         var gust = function () {
             var g = T.sin(A.x.mul(0.0105).add(A.y.mul(0.0062)).sub(t.mul(1.25)).add(T.sin(A.x.mul(-0.0040).add(A.y.mul(0.0070)).add(t.mul(0.31))).mul(1.4))).mul(0.5).add(0.5);
             return g.mul(g);
@@ -45470,7 +45511,7 @@ const ThreeRenderer = (function () {
             var pr = press().toVar(), g = gust().toVar();
             var f = T.sin(t.mul(4.3).add(A.x.mul(0.31)).add(A.y.mul(0.47))).mul(0.10);
             var b = g.mul(0.85).add(0.15).add(f).mul(C.wind).mul(A.z).mul(A.w).mul(pr.oneMinus()).toVar();
-            return P.add(T.vec3(b.mul(0.86), A.z.mul(pr).mul(0.86).add(b.mul(0.30).mul(A.w)).negate(), b.mul(0.50)));
+            return P.add(T.vec3(b.mul(0.86).add(Rt.x.mul(S)), A.z.mul(pr).mul(0.86).add(b.mul(0.30).mul(A.w)).negate(), b.mul(0.50).add(Rt.y.mul(S))));
         })();
         var sh = T.varying(gust().mul(A.w).mul(press().oneMinus()).mul(C.sheen).add(1));
         _ewNodeDiffuseMul(nm, function () { return sh; });
