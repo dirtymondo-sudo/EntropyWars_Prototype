@@ -1989,6 +1989,9 @@
             } catch (e) { console.warn('[HQ] site entry failed', e); }
             if (!_hqRoomExists(roomId)) roomId = 'central_egress';
             _hqCurRoom = roomId;
+            /* THE QUESTS (2026-11-12): the walk entered a room — a quest that starts in the building starts, a stage that
+               wants this room is done; the toast waits for the load card */
+            try { if (!opts.edit && typeof window._questEvent === 'function') window._questEvent({ type: 'room', room: roomId }, { delay: walking ? 900 : 2600 }); } catch (e) { console.warn('[QUEST] room event', e); }
             /* ROOM VARIANTS (HQ plan 5.1, 2026-09-11): a fresh arrival rolls the
                building's variants for this visit (Room 86 after hours = the
                MÖBIUS STRIP CLUB); a return from a screen or a match and a
@@ -2477,6 +2480,9 @@
            rebuilt at the last door); false = the classic page was shown. */
         window._hqReturnOrMenu = function (fallbackPage) {
             fallbackPage = fallbackPage || 'mainMenuPage';
+            /* THE QUESTS (2026-11-12): a tape that leads straight into a quest's fight (ui.js sets the marker) — the building is
+               not re-entered in between; ui.js starts the fight on the lesson's own board next, and comes back here if it cannot */
+            if (window._questFightPending) return true;
             const enabled = window._hqEnabled();
             const alive = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active());
             /* THE TUTORIAL: a lesson started from the shelf goes back to the shelf */
@@ -2535,6 +2541,7 @@
                 const eyeHere = !!(arrive && arrive.eye && (!arrive.eye.room || arrive.eye.room === _hqLastRoom));
                 if (arrive && !eyeHere) arriveDrop();
                 if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return', seamless: eyeHere ? arrive : null })) {
+                    if (encRes && encRes.quest && encRes.quest.changes && encRes.quest.changes.length) { try { _questShow(encRes.quest.changes, 5200); } catch (e) {} }   // THE QUESTS: after the fight's own toast
                     if (encRes) setTimeout(() => { try {
                         /* THE PARTY (2026-09-19): the second line reads what the fight did to the party — the down, the treatment */
                         const pr = encRes.party || null;
@@ -2593,6 +2600,7 @@
             { id: 'resume',    label: 'RESUME',    sub: 'BACK TO THE BUILDING' },
             { id: 'party',     label: 'PARTY',     sub: 'TWO SHIFTS · FIELD MEDICINE' },
             { id: 'items',     label: 'ITEMS',     sub: 'THE BAG · POTIONS · RESTOCK' },
+            { id: 'quests',    label: 'QUESTS',    sub: 'THE JOURNAL' },   // THE QUESTS (2026-11-12)
             { id: 'officer',   label: 'OFFICER',   sub: 'YOUR FILE' },
             { id: 'settings',  label: 'SETTINGS',  sub: 'AUDIO · DISPLAY · CONTROLS' },
             { id: 'directory', label: 'DIRECTORY', sub: 'THE MAP · EVERY ROOM YOU HAVE REACHED' },
@@ -3461,6 +3469,7 @@
                 if (P.cmd === 'party') body.innerHTML = safe(() => (P.member != null) ? _hqPauseMemberHtml(P.member) : _hqPausePartyHtml(), 'party');
                 else if (P.cmd === 'items') body.innerHTML = safe(_hqPauseBagHtml, 'items');
                 else if (P.cmd === 'officer') body.innerHTML = safe(_hqPauseOfficerHtml, 'officer');
+                else if (P.cmd === 'quests') body.innerHTML = safe(_hqPauseQuestsHtml, 'quests');
                 else if (P.cmd === 'settings') {
                     body.innerHTML = `<div class="hq-panel-hd"><b>SETTINGS</b><span>AUDIO · DISPLAY · CONTROLS · THE BUILDING</span></div><div class="mm-settings-body hq-pause-settings" id="hqPauseSettingsBody"></div>`;
                     window._hqPauseSettingsBody = _hqEl('hqPauseSettingsBody');
@@ -3768,7 +3777,12 @@
         function _hqConsoleTerminal(t) {
             const c = t && t.counter;
             const act = (c && c.action) || {};
-            if (act.overlay === 'training') return _hqRangeTerminal(c.id || 'range');
+            if (act.overlay === 'training') {
+                /* THE FIRST QUEST (mondo 2026-11-12): until it is complete the Range Console is the tapes' panel, never the terminal's game modes */
+                let _held = false; try { _held = typeof window.questHolds === 'function' && window.questHolds(_hqProfile(), 'range'); } catch (e) { _held = false; }
+                if (_held) return false;
+                return _hqRangeTerminal(c.id || 'range');
+            }
             if (act.overlay === 'dispatch' && t.viaTerminal) return _hqDeskTerminal(c.id || 'dispatch', c.label || 'DISPATCH');
             return false;
         }
@@ -4272,6 +4286,105 @@
             clearTimeout(_hqToast._t);
             _hqToast._t = setTimeout(() => { el.classList.remove('show'); setTimeout(() => { if (!el.classList.contains('show')) el.style.display = 'none'; }, 400); }, ms || 3200);
         }
+        /* ══ THE QUESTS (2026-11-12, mondo: "implement a quest system in the story mode") ══════════════════════════════════
+           data.js STORY_QUESTS / QUEST_FIGHTS + questEvent (the one writer) are the system; this is the building's side:
+           _questEvent files an event on the profile in ONE transaction and shows what it changed (the toast, the tracker);
+           THE TRACKER (#hqQuest) is the plate under the strip with the current objective; THE JOURNAL is the pause menu's
+           QUESTS page (_hqPauseQuestsHtml); _questFightGo starts a quest's own fight through the encounter's party-seated
+           launch (the Range Console's row, and ui.js when the tape that leads into it ends). Story only, viewer-local,
+           nothing on `state`, nothing relayed (RULE #2). Dev: window.Quests.state() / .reset(). */
+        const _questToastQ = [];
+        let _questToastT = null;
+        function _questToastPump() {
+            if (_questToastT || !_questToastQ.length) return;
+            if (state.gameState !== GS.HQ) { _questToastQ.length = 0; return; }
+            const t = _questToastQ.shift();
+            _hqToast(t.html, t.ms || 3800);
+            try { playSfx(t.done ? 'levelUp' : 'uiButtonConfirm'); } catch (e) {}
+            _questToastT = setTimeout(() => { _questToastT = null; _questToastPump(); }, (t.ms || 3800) + 300);
+        }
+        function _questChangeToast(c) {
+            const title = _hqEsc(String(c.title || '').toUpperCase());
+            if (c.kind === 'completed') {
+                const rw = c.reward && c.reward.unit ? ' · ' + _hqEsc(String(c.reward.unit).toUpperCase()) + (c.reward.joined ? ' JOINED THE PARTY' : ' IS ON CALL · ENLIST HER FROM THE PAUSE MENU') : '';
+                return { html: `<b>QUEST COMPLETE</b><span>${title}${rw}</span>`, ms: 5200, done: true };
+            }
+            return { html: `<b>${c.kind === 'started' ? 'NEW QUEST' : 'QUEST UPDATED'} · ${title}</b><span>${_hqEsc(String(c.objective || '').toUpperCase())}</span>`, ms: 4200 };
+        }
+        function _questShow(changes, delay) {
+            (changes || []).forEach(c => _questToastQ.push(_questChangeToast(c)));
+            _questTrackerRender();
+            if (_questToastQ.length) setTimeout(_questToastPump, Math.max(0, delay | 0));
+        }
+        window._questEvent = function (ev, o) {
+            o = o || {};
+            if (typeof window.questEvent !== 'function') return null;
+            if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return null;
+            const res = _hqPartyTx(p => window.questEvent(p, ev));
+            if (!res || !Array.isArray(res.changes)) return null;
+            if (!o.silent) _questShow(res.changes, o.delay);
+            else _questTrackerRender();
+            return res;
+        };
+        function _questTrackerRender() {
+            const page = _hqEl('hqPage'); if (!page) return;
+            let el = _hqEl('hqQuest');
+            let t = null;
+            try { t = (typeof window.questTracker === 'function') ? window.questTracker(_hqProfile()) : null; } catch (e) { t = null; }
+            if (!t) { if (el) el.style.display = 'none'; return; }
+            if (!el) {
+                el = document.createElement('div'); el.id = 'hqQuest'; el.className = 'hq-quest';
+                el.title = 'The journal (the pause menu: QUESTS)';
+                el.addEventListener('click', () => { try { window._hqOpenPause('quests'); } catch (e) {} });
+                page.appendChild(el);
+            }
+            el.innerHTML = `<div class="hq-quest-hd"><b>QUEST</b><i>${t.n} / ${t.total}</i><span>${_hqEsc(String(t.title).toUpperCase())}</span></div><div class="hq-quest-obj">${_hqEsc(t.objective)}</div>`;
+            el.style.display = '';
+        }
+        window._questTrackerRender = _questTrackerRender;
+        /* THE JOURNAL: the pause menu's QUESTS page */
+        function _hqPauseQuestsHtml() {
+            let J = null;
+            try { J = (typeof window.questJournal === 'function') ? window.questJournal(_hqProfile()) : null; } catch (e) { J = null; }
+            const nA = J ? J.active.length : 0, nC = J ? J.completed.length : 0;
+            let html = `<div class="hq-panel-hd"><b>QUESTS</b><span>${nA} ACTIVE · ${nC} COMPLETE</span></div>`;
+            if (!J || (!nA && !nC)) return html + '<p class="hq-panel-desc">No quests on file.</p>';
+            const card = (q) => {
+                const done = q.status === 'completed';
+                let h = `<div class="hq-qj${done ? ' done' : ''}"><div class="hq-qj-hd"><b>${_hqEsc(String(q.title).toUpperCase())}</b><i class="hq-lamp-chip st-${done ? 'stabilized' : 'unstable'}">${done ? 'COMPLETE' : 'ACTIVE'}</i></div>`;
+                h += `<p class="hq-qj-sum">${_hqEsc(q.summary || '')}</p><ul class="hq-qj-stages">`;
+                q.stages.forEach(s => { h += `<li class="${s.done ? 'done' : 'cur'}"><i>${s.done ? '✓' : '▶'}</i><span>${_hqEsc(s.objective)}</span></li>`; });
+                h += '</ul>';
+                if (q.reward && q.reward.unit) h += `<div class="hq-qj-rw"><b>REWARD</b><span>${_hqEsc(String(q.reward.unit).toUpperCase())} JOINS THE PARTY${done ? ' · PAID' : ''}</span></div>`;
+                return h + '</div>';
+            };
+            if (nA) { html += `<div class="hq-pp-sec"><b>ACTIVE</b><span>THE CURRENT OBJECTIVE IS MARKED ▶</span></div>` + J.active.map(card).join(''); }
+            if (nC) { html += `<div class="hq-pp-sec"><b>COMPLETE</b><span>ON THE RECORD</span></div>` + J.completed.map(card).join(''); }
+            return html;
+        }
+        /* a quest's own fight: the party-seated launch the marker uses, on the fight's board, the guest beside the party.
+           From the building (the Range Console's row) or straight after the tape that leads into it (ui.js, the building
+           not on screen: _hqLeave is a no-op then). false = it did not start. */
+        window._questFightGo = function (fightId) {
+            if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2: never from an online seat
+            let F = null;
+            try { F = (typeof window.questFightPending === 'function') ? window.questFightPending(_hqProfile()) : null; } catch (e) { F = null; }
+            if (!F || (fightId && F.id !== fightId)) return false;
+            try {
+                const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(_hqProfile()) : null;
+                if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b><span>NOBODY FIT TO FIGHT · A HEALING ZONE, THE COT OR THE PAUSE MENU</span>', 3600); try { playSfx('uiError'); } catch (e) {} return false; }
+            } catch (e) {}
+            const L = (typeof window.questFightLaunch === 'function') ? window.questFightLaunch(F.id, { partyLevel: _hqPartyLevelNow() }) : null;
+            if (!L) return false;
+            if (L.room && _hqRoomExists(L.room)) { _hqCurRoom = L.room; }   // the result comes home to the fight's room
+            return _hqEncounterStart(L, null, null);
+        };
+        window.Quests = {
+            state: () => { try { const p = _hqProfile(); return { record: p && p.door && p.door.quests, tracker: window.questTracker(p), fight: window.questFightPending(p) }; } catch (e) { return null; } },
+            reset: () => { _hqPartyTx(p => { if (p && p.door) delete p.door.quests; return true; }); _questTrackerRender(); return true; },
+            event: (ev) => window._questEvent(ev),
+            fight: (id) => window._questFightGo(id),
+        };
         /* ══ THE DOOR GUN — THE PORTABLE THRESHOLD (HQ plan 9.5, 2026-09-15 rev 13) ══
            Two doors the officer places (renderer `_hqPortalAim` / `_hqPortalBuild`);
            the PAIR is one profile record (data.js `hqPortalRecord`), filed here in
@@ -4904,6 +5017,18 @@
                 party.enemyTeam = L.enemyTeam || L.teamSize;   // THE GROUP (2026-09-21): the native + its companions — never the crossing's team size; the bench is the officer's alone
                 party.enemyLevels = Array.isArray(L.levels) ? L.levels.slice() : null;   // THE LEVELS: the adaptive levels, the lead's first
                 party.swarm = L.swarm || null;   // THE SWARM (CAPTURE_PLAN §5.2): all n on the board — the seats below size for it
+                /* THE QUESTS (2026-11-12): a quest fight's GUEST stands on the board beside the first shift (one seat more than
+                   the shift for this fight only; she carries no partyId, so nothing of hers is written back to the party) */
+                try {
+                    const g = (L.quest && typeof window.questGuestMember === 'function') ? window.questGuestMember(L.quest, L.partyLevel) : null;
+                    if (g && Array.isArray(party.members)) {
+                        const at = Math.max(0, Math.min(party.members.length, (party.deploy | 0) || party.members.length));
+                        party.members.splice(at, 0, g);
+                        if (Array.isArray(party.ids)) party.ids.splice(at, 0, null);
+                        party.questDeploy = at + 1;
+                        L.teamSize = Math.max(L.teamSize | 0, at + 1);
+                    }
+                } catch (e) { console.warn('[QUEST] the guest could not be seated', e); }
             }
             /* ESCAPE (EXPLORATION_BATTLES §6): the door this room was entered by — a retreat or a loss someone got out of
                comes back to the room there (the run marker's `entry`, home on the result) */
@@ -4917,7 +5042,7 @@
             window._hqEncounterRun = { site: L.site, room: L.room || _hqCurRoom, race: L.encounter.race, label: L.encounter.label, gesture: L.encounter.gesture, id: L.encounter.id || null,
                                        date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true, armed: true,   // `armed`: battle.js startMatch spends it on THIS launch; a later match finds it spent and drops a stale marker
                                        eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null, field: field || null, gm: L.gm,
-                                       swarm: L.swarm || null, entry: _entryDoor };   // THE SWARM: battle.js keeps every native on the board
+                                       swarm: L.swarm || null, entry: _entryDoor, quest: L.quest || null };   // THE SWARM: battle.js keeps every native on the board · THE QUESTS: the quest's own fight (battle.js seats it round the portal, the commit files it)
             window._hqEncounterRun.night = _hqClockNightIn(L.room || _hqCurRoom);   // THE WORLD CLOCK (Phase 3): the fight starts at the room's hour — round 1 is night when the sun is down (getCurrentCyclePhase)
             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's standing doors (and a pre-placed capture door) on the
                fight's board go onto their cells before the seats (battle.js encounterCarryDoors); the striking door's act is
@@ -6649,11 +6774,18 @@
             /* THE TUTORIAL (plan 4.3): the tape on the tube TV, then the lessons on the grid */
             const _tp = (typeof window.tutorialProgress === 'function') ? window.tutorialProgress(_hqProfile()) : null;
             const _tpLine = _tp ? (_tp.coreDone + '/' + _tp.coreTotal + ' CORE TAPES FILED' + (_tp.tape ? ' · TAPE WATCHED' : '')) : '';
+            /* THE QUESTS (2026-11-12): a quest whose current objective is a fight on this grid offers it here (the retry after a loss or a retreat) */
+            let _qf = null;
+            try { _qf = (typeof window.questFightPending === 'function') ? window.questFightPending(_hqProfile()) : null; } catch (e) { _qf = null; }
+            if (_qf && _qf.room === _hqCurRoom) {
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-quest-fight="' + _hqEsc(_qf.id) + '" title="The quest\'s fight, with your party">QUEST ▸ ' + _hqEsc(String(_qf.label || 'THE FIGHT').toUpperCase()) + '</button></div>';
+            }
+            let _qHeld = false; try { _qHeld = typeof window.questHolds === 'function' && window.questHolds(_hqProfile(), 'range'); } catch (e) { _qHeld = false; }
             html += '<div class="hq-panel-actions">'
                 + '<button class="hq-btn hq-btn-primary" data-tutorial="tape" title="The orientation tape on the tube TV, then TAPE 1 · FIRST STEPS on this grid">ORIENTATION ▸ THE TAPE + LESSON 1</button>'
                 + '<button class="hq-btn" data-fn="_goToTutorial" title="Every lesson on the shelf — core and optional">LESSONS ▸ THE SHELF' + (_tpLine ? ' · ' + _hqEsc(_tpLine) : '') + '</button>'
-                + '<button class="hq-btn" data-range="prebuilt_training" title="Arena · 4v4 on the 8×8 Training Room board · free CPU pool">SPARRING ▸ TRAINING ROOM · 4v4</button>'
-                + '<button class="hq-btn" data-range="prebuilt_holosim" title="Arena · 4v4 on the Holo Sim floor · free CPU pool · nothing is filed">PRACTICE ▸ HOLO SIM · 4v4</button>'
+                + (_qHeld ? '' : '<button class="hq-btn" data-range="prebuilt_training" title="Arena · 4v4 on the 8×8 Training Room board · free CPU pool">SPARRING ▸ TRAINING ROOM · 4v4</button>'
+                + '<button class="hq-btn" data-range="prebuilt_holosim" title="Arena · 4v4 on the Holo Sim floor · free CPU pool · nothing is filed">PRACTICE ▸ HOLO SIM · 4v4</button>')
                 + '<button class="hq-btn" data-close="1">NOTED</button></div>';
             html += '<p class="hq-panel-note">Simulated crossings are INTERNAL: no site file, no mastery, no Code Red. The walls are real; the stakes are not. The grid beside you is the one you will fight on.</p>';
             return html;
@@ -7636,6 +7768,8 @@
             const tr = e.target.closest('[data-transcript]');
             if (tr && !tr.disabled) { try { if (typeof window._ewImitationReport === 'function') window._ewImitationReport(); } catch (err) { console.warn('[HQ] transcript', err); } return; }
             /* THE TUTORIAL (Room 64): the tape + a lesson from the RANGE console; the match returns you to the console */
+            const qfBtn = e.target.closest('[data-quest-fight]');   // THE QUESTS: the Range Console's row
+            if (qfBtn && !qfBtn.disabled) { const _qid = qfBtn.getAttribute('data-quest-fight'); window._hqClosePanel({ keepPaused: true }); if (!window._questFightGo(_qid)) { try { playSfx('uiError'); } catch (err) {} } return; }
             const tutBtn = e.target.closest('[data-tutorial]');
             if (tutBtn && !tutBtn.disabled) {
                 const id = tutBtn.getAttribute('data-tutorial');
@@ -10209,7 +10343,7 @@
                 const mode = GAME_MODES[launchModeId];
                 const ROSTER = _reservesLaunch ? (_RR.roster || 8) : ((mpMode && mpMode.rosterSize) || 8);
                 const DEPLOY = _reservesLaunch
-                    ? Math.max(1, Math.min(_RR.deploy || 4, CONFIG.teamSize || 4))
+                    ? Math.max(1, Math.min(Math.max(_RR.deploy || 4, (_encParty_ && _encPeek.questDeploy) | 0), CONFIG.teamSize || 4))   // THE QUESTS: a quest's guest is one seat more
                     : ((mpMode && mpMode.deploySize) || 4);
                 CONFIG.teamSize = ROSTER;
                 CONFIG.gauntletDeploy = DEPLOY;

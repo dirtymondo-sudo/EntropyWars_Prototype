@@ -1553,6 +1553,14 @@ head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay t
   Gotchas: Meshy's T2 run varies: robinhood's first run fused a bow string into his hand + skirt shell (a second run was clean). The zombie's
   whole bloody skin comes as shells and is worn as clothes over the hidden body (her hands too); the look's skin is `sohh_female_zombie_skin`.
   A front render should be cropped to the figure before it is sent (the first four went out small in the frame and still worked).
+  A HAIR LOCK (11-12, mondo: "some sort of strip hanging off the back of the [zombie]'s head and back"): a shell under 600 faces in the
+  unit's hair colour that reaches the head is hair too and is not exported (env LOCKS / LOCKN / LOCKT; off under --headgear).
+  THE BARE NECKLINE (11-12, mondo on the catgirl: "the necklace looks messed up or painted on"): Meshy gives the bare skin in a low
+  neckline as part of the top's shell with the necklace smeared into its texture, and the choker as spiky shards. `--neckline` (catgirl
+  only) cuts the skin-coloured faces from the chin to the bust (flood from the throat) + what they enclose + the small shells round the
+  neck, so the body's own skin shows; her look wears his saved look's `ewm_crosspendant` (+ its tint, + its code cord). Also in A HAIR
+  LOCK: what is left of the face's own shell in hair colour is hair at any size, and HAIR FUSED TO THE CLOTHES (hair-coloured faces of
+  other shells above chin - 5 cm, env LOCKZ) is cut (catgirl 48 faces, knight 1). Left: the top's own neckline edge is jagged.
   Open: a few skin flecks on robinhood's hood front, a skin chip by the catgirl's left boot, light patches on her sleeves (the lacing in
   Meshy's texture), the knight's and zombie's walk hunches (the race's own walk clip), no sway, stock faces until the face step.
 

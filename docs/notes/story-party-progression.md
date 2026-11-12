@@ -742,3 +742,42 @@ This PR — THE CORE is now 8 tapes, the optional shelf renumbered 9-13:
 - battle.js `_achLivePoll` stays quiet in a lesson (an Inspect had popped "Cartographer +100" though nothing commits).
 - RULE (the plan's drift note): a PR that changes a function named in data.js TUTORIAL_MECHANICS re-reads that tape's
   steps in the same PR. No test, no tool.
+
+## THE QUESTS — the quest system + the first quest (2026-11-12, mondo)
+mondo: "Can we implement a quest system in the story mode? ... Our first quest i think should be walking to the training room to do
+the first couple tutorials, which turns into the Catgirl appearing from a portal that forms in the room as she is chased by two shadow
+beings, which you must defeat together." His spec docx (Entropy_Wars_Quest_System_Vertical_Slice_Spec) gave the system; its own first
+quest was ignored on his word. Reward (his pick on the card): THE CATGIRL JOINS YOU, and in story mode she is locked until then.
+R2 files: data.js, map.js, ui.js, battle.js, three-vfx-effects.js, styles-base.css.
+- **Data (data.js, after the tutorial block)**: `STORY_QUESTS` rows `{ id, v, title, summary, start, stages, reward }`; a stage is
+  `{ id, objective, done }` with `done` = `{ on: 'room', room }` | `{ on: 'lesson', lesson, filed? }` | `{ on: 'fight', fight }`.
+  `QUEST_FIGHTS` rows `{ quest, site, room, gm, label, guest, enemies, portal, seats }`. A new quest = a row (no code).
+- **Progress**: `profile.door.quests = { v, q: { <id>: { status, stage, done[], at, doneAt, reward } } }`. `questEvent(profile, ev)` is
+  the ONE writer (`ev.type` hq | room | lesson | fight + outcome). A stage moves only from its own stage; only a WIN of THAT fight
+  counts; the reward is stamped before it is paid. Reads: `questTracker`, `questJournal`, `questFightPending`, `questLockedUnits`.
+- **The lock**: `hqPartyUnlocked` drops a quest's `reward.unit` until that quest is complete (story party only; Online / Practice and
+  the account's ownership are untouched). `questGrantReward` enlists her (a full party leaves her ON CALL).
+- **The building (map.js "THE QUESTS")**: `_questEvent` (one profile transaction + the toasts), THE TRACKER `#hqQuest` (the plate
+  under the strip, click = the journal), THE JOURNAL = the pause menu's QUESTS command (`_hqPauseQuestsHtml`), the Range Console's
+  row (`data-quest-fight`, the retry), `_questFightGo` → `_hqEncounterStart` with `L.quest` (the guest spliced in after the first
+  shift, `party.questDeploy` = one seat more in `_msConfirm`; the run marker carries `quest`). `_hqEnter` fires the room event.
+  Dev: `Quests.state()`, `Quests.reset()`, `Quests.event(ev)`, `Quests.fight(id)`.
+- **The lesson turns into the fight (ui.js `_tutFinish` → `_tutQuestPortal`)**: the tape's event; when it makes a quest fight the
+  objective and the lesson came from the building, the Department's door stands up on the portal tile of the lesson's board
+  (`ThreeVFXEffects.questPortal` = `_sigDoorPortal3D`), a black card covers the cut, the lesson is torn down and the fight starts on
+  the same board (`window._questFightPending` keeps `_hqReturnOrMenu` from re-entering the building in between).
+- **The fight (battle.js `_questFightSeat` / `_questFightArrive`)**: the guest (the human seat's one body with no partyId) and the
+  enemies stand on the fight's `seats`, the door stands open on `portal`, they leap out of it, the camera opens on them. The commit
+  files the outcome (`questEvent`), `_hqEncounterResult.quest` carries the changes home for the toast.
+- **The first quest** `orientation` (title ORIENTATION until mondo names it): walk to Room 64 → Tape 1 (a tape already filed
+  counts) → Tape 2 (must be played: the portal opens at its end) → `orientation_portal`: the party + the Catgirl against two Shadow
+  Entities on `prebuilt_training`, TDM, story rules.
+- The lessons, their steps and TUTORIAL_MECHANICS are untouched. VS-CPU only (RULE #2 has nothing to relay).
+
+### THE FIRST QUEST HOLDS (2026-11-12, mondo: "I shouldnt have anyone at all in my roster except for me (door agent). The whole quest is about getting a first party member")
+- A quest row may carry `holds: { party, range }`; `questHolds(profile, key)` is true while that quest is not complete.
+- `party`: `hqPartyUnlocked` returns only what the doors sealed, so the first filing is the officer alone and the prune relieves
+  the starters from a party filed earlier. Online / Practice / ACCT_STARTER_UNITS untouched. After the quest the account's units
+  are on call in the pause menu as before; nobody but the reward joins by itself.
+- `range`: map.js `_hqConsoleTerminal` returns false for the Range Console (the tapes' panel shows, never the terminal with its
+  game modes and party builder) and `_hqTrainingHtml` leaves out SPARRING / PRACTICE.

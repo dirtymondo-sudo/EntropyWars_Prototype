@@ -2115,3 +2115,52 @@ A `rise` streams its inner ring fastest; a `wheel` stays rigid (a turn has no pa
 (`_hqBuildSky` / `_hqTickSky`: `f.vPar`, the 36 dust streaks) got the same. Nothing was removed, moved or resized; the dome was already the
 slowest layer; the sea sheet and the wakes stay at the hull's pace. Readout: `ThreeRenderer.motion().parallax` (every body's factor).
 Kill-switch `window.EW_NO_PARALLAX` (set before the map builds). Online: built from the map's own seeded rng on both seats, nothing relayed.
+## THE GRASS FIELD (2026-11-12)
+mondo linked github.com/fromtheghost/ghibli-grass: "try implementing some more stylistic grass. AAA game like genshin impact". The repo
+has no licence, so nothing of it is used. His words on the first try (thin spiky blades, random yaw, yellow tips): "im imagining it
+being more thick and fluffy. The way it is now just looks gross." He then picked "Yes, build the pointed clumps".
+- three-renderer.js THE GRASS FIELD (`GGRASS`, `_ggBuild`, `_ggMat`, `_ggFace`, `_ggTick`, node twin `_ewNodeGGrass`). One merged mesh,
+  one draw call, built with the board's decorations (`rebuildTerrainDecorations`). A tuft = a 7-corner three-point clump
+  (`_GG_SHAPES.crown`) that turns to the camera in the vertex shader (`aGgS` along `_ggRightU`), 24 x 24 a square, 0.11-0.21 of a
+  square tall. NO DEPTH WRITE, render order 50, sorted far to near (counting sort, redone when the camera turns ~10 degrees): near
+  tops cover far feet (the fluff), and tile highlights / rings / zones / blood draw on top of the grass with no extra code.
+- Where: every board square whose sheet is a grass key (`_GRASS_TERRAIN_SET`), plus the room's own grass up to 5 squares past the
+  board in a terrain room whose floor is grass (paths, rock, water, walls, steep faces skipped through the room's terrain info).
+  Not on: a square with a thing on it (a tree is fine), a monument square, a field square that stays rock, a square whose ground
+  steps more than 0.35 of a square (tufts climbed Stonehenge's stones before that rule).
+- Colour: `GGRASS.sheets` = each grass sheet's average in SCREEN values (the materials read sheets that way; linear values came out
+  2-3x too dark in sunlight). Foot = rootK, belly = the ground's own, top = coolK / warmK patches. Lambert, normal up, takes shadows.
+- Motion: a rolling gust + flutter, crest brightens the tops. THE PRESS MAP (4 texels a square) lays tufts down under units.
+- Setting: Settings > Video > Grass High / Low / Off (`ThreeRenderer.setGrassField`, `ew_grassField`; Low = 15 x 15 wider tufts, 2
+  squares of meadow). Off for everything: `window.EW_NO_GRASS_FIELD`. Live tunables `EW_GGRASS` (+ `EW_GGRASS.flush()`); the last
+  build's numbers `window._ewGrassField`.
+- Cost: Fairy Forest High 100,638 tufts (Low 24,916), Stonehenge 152,077. The meadow past the board is kept between builds; a
+  rebuild after a dig took 155 ms on the sandbox (790 before). Frame time on the software-drawn sandbox showed no difference Off
+  vs High (56-79 ms either way), which says little about a real weak GPU: the overdraw is the thing to watch there.
+- Seen: node renderer on WebGL2 (Fairy Forest, Stonehenge, The Looking-Glass), real WebGPU (SwiftShader) and the classic WebGL
+  renderer (Fairy Forest). Fog of war was on in every run. Not seen: exploration rooms (none built: the field is battle-only),
+  voxel boards, purple grass, a two-seat online match, a real weak PC.
+- Shots: /mnt/project-files/ghibli-grass-20261112/ (final_*.jpg; fluffy_* = the mock-up he approved; pair_* = the rejected first try).
+
+### THE CALMER WIND (2026-11-12, mondo on the first live build: "it's maybe a little too wavy")
+Only the sway changed. `GGRASS.wind` 0.45 -> 0.24 (tip travel), `sheen` 0.30 -> 0.18, and two new rows both shaders read: `gust` 0.80 (was a fixed 1.25,
+how fast gusts roll) and `flutter` 0.05 (was 0.10). GLSL takes them as `uGgW`, the node twin as constants at build. Live retune: `EW_GGRASS.wind = …;
+EW_GGRASS.flush()`. Proof frames: `window.EW_DISABLE_GRASS_WIND = true; window.EW_GRASS_WIND_T = <seconds>` sets the stopped wind clock by hand.
+Before/after: /mnt/project-files/ghibli-grass-20261112/sway_before_after.gif (Stonehenge, WebGL2 node renderer). Not seen: real WebGPU, classic WebGL.
+
+## THE MOVING SHEETS: astral ground + six liquid looks from the noise packs (2026-11-12)
+mondo: "I could see there being a psychic or astral terrain made from these. Definitely use them in the astral realm or dreamy
+maps. Maybe you can use some of these for liquids", then of the examples "Yeah looks good, go ahead". Source: Screaming Brain
+Studios' CC0 packs (see spells-vfx.md THE NOISE PACKS).
+- Eight texture keys in data.js CALM_TERRAIN.sheets, each playing by its twin's rules (hqRuleKeyOf), so no new terrain and no
+  new rule: `nz_astral_a` / `nz_astral_b` (purple_grass), `nz_dreamwater` (water), `nz_spring` (healing_spring), `nz_poison`
+  (poison), `nz_purplebog` (purple_bog), `nz_magma` (lava), `nz_oil` (oil). The stills are on R2
+  `Assets/world/terrain/calm/nz_*.png` (the packs' own files, unedited); the editor's texture picker lists them under MOVING.
+- three-renderer.js THE MOVING SHEETS (`_NZ_MOVE`, `_nzMoveTex`): `_hzTex` and `getTerrainTexture` hand out ONE small canvas
+  per key in place of the file. A dozen times a second the colour sheet is drawn into it at a drifting offset and a tinted
+  noise sheet (`Assets/fx/noise/sbs/`) is added over it sliding the other way. Every surface wearing the key moves on every
+  renderer, with no shader. Off switch: `window.EW_NO_MOVING_SHEETS` (they stand still).
+- THE SEA OF POSSIBILITY (`site_prebuilt_lookingglass_sea`) wears `nz_astral_a` as its terrain floor (was purple_grass).
+- His pixel lava + water are untouched and stay what lava + water wear; the liquid looks are only there when picked by name.
+- Seen: the Sea of Possibility floor moving, node renderer on WebGL 2. Not seen: a liquid look painted in the editor (as a
+  board square or a hazard), real WebGPU, classic WebGL.
