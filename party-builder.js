@@ -1854,7 +1854,15 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam-own': cam || 'face' }, label),
     ccChoice(key, [['own', 'Original colours']].concat(hairToo ? [['hair', 'Same as hair']] : [], [['pick', 'Pick a colour']])),
     appearance[key] === 'pick' ? ccColorRow(colorKey, label, swatches) : null);
-  const faceLooks = { eyes: ['mhEyes', 'eyeTint', 'mhLashes', 'lashTint'], brows: ['mhBrows', 'browTint'], mouth: ['lipTint'] };
+  /* THE MAKE-UP (2026-11-12, mondo: "make a way in the creator to add makeup too"): "<make-up>": None / Pick a colour, then the swatches + the custom picker */
+  const makeupTint = (key, label, colorKey, swatches) => h(React.Fragment, { key },
+    h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam-own': 'face' }, label),
+    ccChoice(key, [['own', 'None'], ['pick', 'Pick a colour']]),
+    appearance[key] === 'pick' ? ccColorRow(colorKey, label, swatches) : null);
+  const linerSwatches = ['#17110f', '#3a2418', '#4a3a36', '#1c2a4a', '#2f4a3a', '#5b3a8a', '#7a2e33', '#e8e2d8'];
+  const shadowSwatches = ['#6b4a55', '#8a6a5a', '#4a3a36', '#2a2428', '#7a5a8a', '#3a5a8a', '#3f7a6a', '#b8862f', '#c26a8a', '#a0413f', '#d8c8b8'];
+  const blushSwatches = ['#c9727c', '#d98a7a', '#c26a8a', '#b8605a', '#e0a08a', '#a0413f', '#b87a9a'];
+  const faceLooks = { eyes: ['mhEyes', 'eyeTint', 'mhLashes', 'lashTint', 'linerTint', 'shadowTint'], brows: ['mhBrows', 'browTint'], mouth: ['lipTint'], cheeks: ['blushTint'] };
   /* THE HIDDEN PICKS: the hider's bar (top of the creator): the marks on / off (off = the lists as players see them), the hidden list
      (each with SHOW, + SHOW ALL), and EXPORT HIDDEN LIST (the file bake-hidden.js bakes into sprites.js EW_CREATOR_HIDDEN).
      THE RENAMED PICKS (2026-11-03): + the RENAMED list (each with RENAME / ORIGINAL NAME, + ALL ORIGINAL NAMES), the export carries
@@ -1986,7 +1994,9 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                       [['human', 'Eye materials: human'], ['creature', 'Eye materials: non-human'], ['more', 'Eye materials: various']].map(([g, head]) =>
                         mhTiles('mhEyes', head, (window.EW_MH_EYE_PACK || []).filter(r => r[5] === g).map(r => [r[0], r[1]]), 'mhEyesMat_' + g)),
                       lookTint('eyeTint', 'Iris colour', 'eyeColor', eyeSwatches),
-                      mhTiles('mhLashes', 'Lashes'), lookTint('lashTint', 'Lash colour', 'lashColor', hairSwatches)) : null,
+                      mhTiles('mhLashes', 'Lashes'), lookTint('lashTint', 'Lash colour', 'lashColor', hairSwatches),
+                      makeupTint('linerTint', 'Eye liner', 'linerColor', linerSwatches), makeupTint('shadowTint', 'Eye shadow', 'shadowColor', shadowSwatches)) : null,
+                    g.id === 'cheeks' ? makeupTint('blushTint', 'Blush', 'blushColor', blushSwatches) : null,
                     g.id === 'brows' ? h(React.Fragment, null,
                       mhTiles('mhBrows', 'Brows'), lookTint('browTint', 'Brow colour', 'browColor', hairSwatches, true)) : null,
                     g.id === 'mouth' ? h(React.Fragment, null,
