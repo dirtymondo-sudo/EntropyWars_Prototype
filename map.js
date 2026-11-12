@@ -149,8 +149,11 @@
                 /* THE INTAKE (2026-09-21): a profile with no agent on file creates one FIRST — the creator over the
                    menu; ENLIST files the officer (a D.O.O.R. agent) and Play resumes into the building */
                 if (!opts.enlisted && _hqIntakeNeeded()) { _hqIntakeOpen(); return; }
+                /* THE SAVE (2026-11-12): CONTINUE lands where the officer last stood; a NEW GAME drops the slot's old record */
+                const _wasStarted = _storyOnFile() && !opts.enlisted;
+                if (!_wasStarted) { try { _hqSaveClear(); } catch (e) {} }
                 _storyMarkStarted();   // NEW GAME → CONTINUE from here on (_mmRefreshPlayLabel)
-                if (window._hqEnter({ from: 'play' })) return;
+                if (window._hqEnter({ from: 'play', resume: _wasStarted })) return;
             }
             _storyMarkStarted();
             playSfx('uiButtonConfirm');
@@ -1617,6 +1620,50 @@
             return _hqRoomExists(_HQ_FOYER);
         }
         function _hqArrivalRoom() { return _hqFoyerOn() ? _HQ_FOYER : 'central_egress'; }
+        /* ── THE SAVE (2026-11-12, mondo: "there needs to be a save feature so that i am not always loading in the foyer every
+           time") — the walk AUTOSAVES where the officer stands: the room, the feet, the heading. One small record per profile
+           slot in localStorage (`ew-hq-save-<slot>`; never the profile blob: it is written every few seconds), filed when a
+           room is ready, every _HQ_SAVE_MS while the feet have moved, and when the tab is hidden / closed. CONTINUE (Play on a
+           story already started) lands THERE instead of the foyer; a NEW GAME drops the record and arrives through the foyer
+           as before. The quests, the party, the bag are the profile's own and were saved already. Never in the car (it is
+           between floors), in the air, in the editor, or under a load card. Off: `?noresume` / window.EW_HQ_NO_RESUME (the
+           record is still filed). Console: _hqSaveState(). ── */
+        const _HQ_SAVE_KEY = 'ew-hq-save-', _HQ_SAVE_MS = 4000, _HQ_SAVE_SKIP = { car: 1 };
+        let _hqSaveArmed = false, _hqSaveLast = null;
+        function _hqSaveSlot() { try { const PS = window.ProfileSystem; const i = PS && typeof PS.getActiveProfileIndex === 'function' ? PS.getActiveProfileIndex() : null; return (i === null || i === undefined) ? null : i; } catch (e) { return null; } }
+        function _hqSaveRead() {
+            try {
+                const slot = _hqSaveSlot(); if (slot === null) return null;
+                const sv = JSON.parse(localStorage.getItem(_HQ_SAVE_KEY + slot) || 'null');
+                if (!sv || typeof sv.room !== 'string' || !_hqRoomExists(sv.room) || _HQ_SAVE_SKIP[sv.room]) return null;
+                if (!isFinite(+sv.x) || !isFinite(+sv.z)) return null;
+                return { room: sv.room, x: +sv.x, z: +sv.z, y: isFinite(+sv.y) ? +sv.y : 0, face: isFinite(+sv.face) ? +sv.face : 0, t: +sv.t || 0 };
+            } catch (e) { return null; }
+        }
+        function _hqSaveClear() { try { const slot = _hqSaveSlot(); if (slot !== null) localStorage.removeItem(_HQ_SAVE_KEY + slot); } catch (e) {} _hqSaveLast = null; }
+        function _hqSaveWrite(force) {
+            try {
+                if (!_hqSaveArmed || state.gameState !== GS.HQ) return false;
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || !ThreeRenderer.hq.active() || !ThreeRenderer.hq.pos) return false;
+                const ps = ThreeRenderer.hq.pos();
+                if (!ps || ps.air || ps.edit || !ps.room || ps.room !== _hqCurRoom || _HQ_SAVE_SKIP[ps.room] || !isFinite(ps.x) || !isFinite(ps.z)) return false;
+                const L = _hqSaveLast;
+                if (!force && L && L.room === ps.room && Math.abs(L.x - ps.x) < 0.25 && Math.abs(L.z - ps.z) < 0.25 && Math.abs(L.face - ps.face) < 8) return false;
+                const slot = _hqSaveSlot(); if (slot === null) return false;
+                const r3 = v => Math.round(v * 1000) / 1000;
+                const sv = { v: 1, room: ps.room, x: r3(ps.x), z: r3(ps.z), y: r3(isFinite(ps.y) ? ps.y : 0), face: Math.round(ps.face * 10) / 10, t: Date.now() };
+                localStorage.setItem(_HQ_SAVE_KEY + slot, JSON.stringify(sv));
+                _hqSaveLast = sv;
+                return true;
+            } catch (e) { return false; }
+        }
+        function _hqResumeOn() { try { return !window.EW_HQ_NO_RESUME && !/[?&]noresume\b/.test(location.search); } catch (e) { return true; } }
+        window._hqSaveState = function () { return { armed: _hqSaveArmed, saved: _hqSaveRead(), resume: _hqResumeOn() }; };
+        try {
+            setInterval(() => { _hqSaveWrite(false); }, _HQ_SAVE_MS);
+            document.addEventListener('visibilitychange', () => { if (document.hidden) _hqSaveWrite(true); });
+            window.addEventListener('pagehide', () => { _hqSaveWrite(true); });
+        } catch (e) {}
         /* THE MANDELA ROOM (Phase 8 stage 2): entries per room this session, and what stood last time */
         const _hqEachN = {}, _hqEachLast = {};
         /* a forced room variant for a dev run: '<id>' stands it, 'none' / '' stands the sheet, undefined = roll */
@@ -1781,8 +1828,11 @@
                 }
                 if (opts.avatarOnly) return true;
                 _hqWarmedArrival = true;
-                if (ThreeRenderer.hq.warmRoom) ThreeRenderer.hq.warmRoom(_hqArrivalRoom());
-                _hqSurveyWarmAround(_hqArrivalRoom());
+                /* THE SAVE (2026-11-12): a story on file continues in its saved room — that is the room to warm */
+                let warmId = _hqArrivalRoom();
+                try { const sv = (_storyOnFile() && _hqResumeOn()) ? _hqSaveRead() : null; if (sv) warmId = sv.room; } catch (e) {}
+                if (ThreeRenderer.hq.warmRoom) ThreeRenderer.hq.warmRoom(warmId);
+                _hqSurveyWarmAround(warmId);
             } catch (e) { console.warn('[HQ] arrival warm failed', e); }
             return true;
         };
@@ -1972,7 +2022,12 @@
             const seamless = (opts.seamless && opts.seamless.eye && typeof opts.seamless.fade === 'function') ? opts.seamless : null;
             /* which room: an explicit ask, else the room the player left from
                (a return), else the egress (Play always starts on the floor) */
-            let roomId = opts.room || (returning ? _hqLastRoom : (opts.from === 'play' ? _hqArrivalRoom() : 'central_egress'));
+            /* THE SAVE (2026-11-12): CONTINUE = the room on file, the feet and the heading on file (a free spot for goTo below);
+               still a fresh arrival for everything else (the visit, the variants' roll, the day's sheet) */
+            let _resume = null;
+            if (opts.from === 'play' && opts.resume && !opts.room && !opts.at && _hqResumeOn()) _resume = _hqSaveRead();
+            _hqSaveArmed = false;
+            let roomId = opts.room || (returning ? _hqLastRoom : (_resume ? _resume.room : (opts.from === 'play' ? _hqArrivalRoom() : 'central_egress')));
             /* THE ENTRY (2026-09-17 — the user: "if I walk into a door or entry labeled Cyberpunk City it needs to take me to the grid;
                same with the Strip"): a bypassed BOARD ROOM (data.js DOOR_HQ.siteRooms.entry — Cyberpunk City, the Strip, Downtown)
                lands in the part that stands for the site, whatever led here (a threshold, GO on the map, a return from a match,
@@ -1988,6 +2043,7 @@
                 }
             } catch (e) { console.warn('[HQ] site entry failed', e); }
             if (!_hqRoomExists(roomId)) roomId = 'central_egress';
+            if (_resume && roomId === _resume.room) opts.at = { x: _resume.x, z: _resume.z, y: _resume.y, face: _resume.face };   // THE SAVE: where the officer stood
             _hqCurRoom = roomId;
             /* THE QUESTS (2026-11-12): the walk entered a room — a quest that starts in the building starts, a stage that
                wants this room is done; the toast waits for the load card */
@@ -2133,6 +2189,7 @@
                     onReady: () => {
                         if (loadGeneration !== _hqLoadGeneration || loadReady) return;
                         loadReady = true;
+                        _hqSaveArmed = true; setTimeout(() => { _hqSaveWrite(true); }, 0);   // THE SAVE: the room stands — file it
                         if (seamless) { try { ThreeRenderer.hq.hush((window.HQ_CROWD_RULES && window.HQ_CROWD_RULES.hushMs) || 1800); } catch (e) {} try { seamless.fade(); } catch (e) {} return; }   // THE HUSH (2026-10-01): no people prompt as the held frame fades   // THE WAY BACK: the held frame fades over the ready room (no card, no arrival card)
                         const wait = Math.max(0, (walking ? 150 : 900) - (performance.now() - enteredAt));   // THE GATE: enteredAt is when the card went up — the renderer's ready is the real wait
                         _hqLoadFadeTimer = setTimeout(() => {

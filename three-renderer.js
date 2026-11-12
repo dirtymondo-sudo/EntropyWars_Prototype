@@ -90985,7 +90985,9 @@ const ThreeRenderer = (function () {
         climbing: function () { var pl = _hq && _hq.player; return !!(pl && pl.climb); },
         portalDoors: function () { if (!_hq || !_hq.portal) return []; var o = []; for (var s in _hq.portal.placed) { var r = _hq.portal.placed[s]; o.push({ slot: s, x: r.px, y: r.py, z: r.pz, face: r.door.face, surf: r.portalSurf, leaf: r.leaf }); } return o; },
         finds: function () { return _hq ? _hq.finds.map(function (f) { return { id: f.id, kind: f.kind, x: f.x, y: f.y, z: f.z }; }) : []; },
-        pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z) }; },
+        pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z),
+                                  /* THE SAVE (2026-11-12): the part the walker stands in (a stage crossing rebases the metres), the heading as goTo's `face`, off the ground, the editor */
+                                  room: (_hq.opts && _hq.opts.room) || null, face: _hqNormDeg((Math.PI - (p.yaw || 0)) * 180 / Math.PI), air: !!p.air, edit: !!(_hq.opts && _hq.opts.edit), ready: !!_hq.ready }; },
         stateLabel: function (st) { return HQ_LAMP_LABEL[st] || st; },
         /* dev / playtest helpers (2026-09-06): put the walker (or the
            first-person eye) anywhere, aim it, and list who is in the room —
