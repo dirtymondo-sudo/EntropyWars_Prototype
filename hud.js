@@ -10769,7 +10769,12 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
     const enemy = actingUnit ? tr.owner !== actingUnit.player : false;
     const hits = !!tr.hitsToKill;
     let desc;
-    if (tr.summon) {
+    if (tr.plant) {   // THE GARDEN (2026-11-12): a grown plant
+      desc = (tr.plant === 'heal' ? 'A Healing Flower. At the end of every round it heals its allies within 1 tile (double in rain).'
+        : tr.plant === 'poison' ? 'A Gas Plant. At the end of every round its gas hurts and Poisons enemies within 1 tile.'
+        : 'A Thorn Vine. At the end of every round it lashes the nearest enemy it can see within ' + _plural(tr.range || 2, 'tile') + ' and sends the HP to its weakest ally.')
+        + ' Attacks and fire cut it down; Drought makes it wilt for the round.';
+    } else if (tr.summon) {
       desc = (tr.summon === 'hound' ? 'A loyal hound. ' : tr.summon === 'creation' ? 'A stitched-together creation. ' : '')
         + 'At the end of every round it moves ' + _plural(tr.move || 3, 'tile') + ' toward the nearest enemy and strikes for '
         + (tr.dmg || 0) + ' damage when adjacent.'
@@ -10791,15 +10796,16 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
     }
     /* the tile info card's picture + numbers (the same fields the words above read) */
     const _isAura = !!(sp && sp.auraDebuff) || /5g/i.test(name);
-    const sprite = (tr.summon || tr.zombie) ? null
+    const sprite = (tr.summon || tr.zombie || tr.plant) ? null
       : _isAura ? (typeof FIVEG_TOWER_SPRITE_URL !== 'undefined' ? _tileObjSprite(FIVEG_TOWER_SPRITE_URL) : null)
       : (typeof TURRET_SPRITE_URL !== 'undefined' ? _tileObjSprite(TURRET_SPRITE_URL) : null);
-    const stats = tr.summon ? [{ k: 'MOVE', v: tr.move || 3 }, { k: 'DMG', v: tr.dmg || 0 }]
+    const stats = tr.plant ? [{ k: 'RANGE', v: tr.range || 1 }, { k: 'ACTS', v: 'ROUND END' }]
+      : tr.summon ? [{ k: 'MOVE', v: tr.move || 3 }, { k: 'DMG', v: tr.dmg || 0 }]
       : tr.zombie ? [{ k: 'RANGE', v: tr.range || 1 }, { k: 'DMG', v: tr.dmg || 0 }]
       : _isAura ? [{ k: 'RANGE', v: tr.range || 4 }, { k: 'M DEF', v: '−' + ((sp && sp.auraDefReduction) || 8), tone: 'dn' }]
       : [{ k: 'RANGE', v: tr.range || 3 }, { k: 'DMG', v: tr.dmg || 0 }, { k: 'FIRES', v: 'ROUND END' }];
     return {
-      kind: 'turret', name, icon: /5g/i.test(name) ? '📡' : (tr.summon && typeof _summonLook === 'function') ? _summonLook(tr.summon).icon : (tr.zombie || tr.summon) ? '🧟' : '🔧', enemy,
+      kind: 'turret', name, icon: tr.plant ? '🌿' : /5g/i.test(name) ? '📡' : (tr.summon && typeof _summonLook === 'function') ? _summonLook(tr.summon).icon : (tr.zombie || tr.summon) ? '🧟' : '🔧', enemy,
       hp: Math.max(0, Math.round(tr.hp)), maxHp: tr.maxHp || tr.hp,
       hpLabel: _mkHpLabel(tr.hp, tr.maxHp, hits), desc, sprite, stats, spellId: tr.spellId || null,
     };
@@ -10874,12 +10880,17 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
   const sd = (s.plantedSeeds || []).find(q => q.x === tx && q.y === ty);
   if (sd) {
     const enemy = actingUnit ? sd.owner !== actingUnit.player : false;
-    const name = sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
-    const desc = sd.type === 'heal'
-      ? 'A planted seed growing into a Healing Tree that restores nearby units each round. One hit destroys it before it matures.'
-      : sd.type === 'poison'
-        ? 'A planted seed growing into a Toxin Tree that poisons nearby units each round. One hit destroys it before it matures.'
-        : 'A parasitic seed — it latches onto units that come near and drains their HP each round. One hit destroys it.';
+    /* THE GARDEN (2026-11-12): a seed needs water; the card says which state it is in and what it grows into */
+    const _sdBase = sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : sd.type === 'leech' ? 'Leech Seed' : 'Seed';
+    const name = sd.watered ? _sdBase.replace(/Seed$/, 'Sprout') : _sdBase;
+    const _sdGrows = sd.type === 'heal' ? 'a Healing Flower that heals allies beside it each round'
+      : sd.type === 'poison' ? 'a Gas Plant that poisons enemies beside it each round'
+      : sd.type === 'leech' ? 'a Thorn Vine that lashes the nearest enemy within 2 tiles each round'
+      : 'a tree';
+    const desc = (sd.watered
+      ? 'Watered: it grows into ' + _sdGrows + ' at the end of this round.'
+      : 'Dry: it needs water to sprout (rain, a water spell, water beside it), then grows into ' + _sdGrows + '.')
+      + ' One hit destroys it before it grows.';
     const _sdu = sd.type === 'heal' ? (typeof HEALING_SEED_SPRITE_URL !== 'undefined' ? HEALING_SEED_SPRITE_URL : null)
       : sd.type === 'poison' ? (typeof POISON_SEED_SPRITE_URL !== 'undefined' ? POISON_SEED_SPRITE_URL : null)
       : (typeof LEECH_SEED_SPRITE_URL !== 'undefined' ? LEECH_SEED_SPRITE_URL : null);
@@ -18188,6 +18199,7 @@ function faceSweep() {
   });
 }
 window.EWFaces = {
+  bump: faceBump,   // a portrait made elsewhere got ready (three-renderer.js THE PORTRAIT STUDIO): the HUD's faces repaint
   url(u, art) {
     const key = faceKey(u), use = faceUse(key, art);
     if (use === 'art') return undefined;
