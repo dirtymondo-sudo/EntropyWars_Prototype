@@ -13962,6 +13962,27 @@
             try { resolveTileArrival(unit, { via: 'self' }); } catch (e) {}
             scheduleBoardRender();
         }
+        /* SPIRIT GUIDE (build 4): a spell row with `astralAlly: { cord, end }` walks an ALLY out of its body. The body sleeps
+           on its square and the spirit appears on the nearest open square beside it (two pieces never share one). */
+        function astralProjectAlly(caster, target, spell) {
+            if (!target || target.dead || target._dying || unitIsSpirit(target) || target._astralOfId || target._astralBodyId) return null;
+            let spot = null;
+            for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+                const x = target.x + dx, y = target.y + dy;
+                if (!isInside(x, y)) continue;
+                const z = nearestWalkableZ(x, y, target.z ?? 0);
+                if (canOccupy3D(x, y, z)) { spot = { x, y, z }; break; }
+            }
+            if (!spot) { addLog(`${_ctSp(spell.name)}: there is no room beside ${_ctName(target)} for its spirit.`); return null; }
+            const body = astralBegin(target, { name: spell.name, astral: spell.astralAlly || {} });
+            if (!body) return null;
+            const fx = target.x, fy = target.y;
+            target.x = spot.x; target.y = spot.y; target.z = spot.z;
+            try { animateDisplacement(target, fx, fy, target.x, target.y, 260, {}); } catch (e) {}
+            try { resolveTileArrival(target, { via: 'self' }); } catch (e) {}
+            scheduleBoardRender();
+            return body;
+        }
         /* THE RUDE AWAKENING: the projection breaks and the spirit goes HOME, whatever the spell's own ending was */
         function astralSnapHome(unit, why) {
             if (!unit || unit.dead || unit._dying || !unitIsSpirit(unit) || !unit._astralBodyId) return false;
@@ -14013,6 +14034,7 @@
         window.astralBegin = astralBegin;
         window.astralEnd = astralEnd;
         window.astralSnapHome = astralSnapHome;
+        window.astralProjectAlly = astralProjectAlly;
         window.astralOnDeath = astralOnDeath;
 
         /* ⛓ / 🪆 Links (plan §5.5): after a hit resolves, echo a share of it
@@ -80984,6 +81006,7 @@
                     }
                     /* THE SPELL AUDIT FIX (2026-10-26): a buff row's `selfHealPct` (Awakening 30%, Ayahuasca Retreat 50%) —
                        a percent of the target's max HP, like the selfHeal kind (preScaled); the buff kind never read it. */
+                    if (spell.astralAlly && !_bt.dead) astralProjectAlly(unit, _bt, spell);   // 👁 Spirit Guide: the ally steps out of its body
                     if (spell.selfHealPct > 0 && !_bt.dead) {
                         const _bhGot = applyHealingToUnit(_bt, Math.floor(_bt.maxHp * spell.selfHealPct), unit, { preScaled: true });
                         if (_bhGot > 0) {
