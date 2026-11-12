@@ -44139,7 +44139,13 @@ const ThreeRenderer = (function () {
         if (!sc || !sc.isScene || !cam) return;
         if (_ewRigOff()) { if (sc.userData.ewRigOn) { _ewRigRelease(sc); sc.userData.ewRigOn = false; } return; }
         var R = _ewRigG || (_ewRigG = _ewRigMake());
-        if (R.group.parent !== sc) { sc.add(R.group); R.moves++; }   // the one rig moves into the scene that draws (a scene clear dropped it, or another scene had it)
+        /* THE LOST RIG (2026-11-11, mondo in Occam's Barbershop: "pitch black"): the test was the rig's parent pointer alone.
+           A room's mirror or puddles draw the scene first each frame with its children LENT to a clipping group (_hqTickReflectors),
+           so the rig arriving from another scene was pushed onto that one-render list, dropped when the real list came back, and,
+           its parent still this scene, never put back: every light of the room off the list, no lamp drawing for it. The rig
+           now has to BE in the scene's list (the lent one while it is lent), and the reflector hands back what arrived. */
+        var host = sc._ew_lentKids || sc.children;
+        if (R.group.parent !== sc || host.indexOf(R.group) < 0) { if (R.group.parent === sc) R.group.parent = null; sc.add(R.group); R.moves++; }   // the one rig moves into the scene that draws (a scene clear dropped it, or another scene had it)
         sc.userData.ewRigOn = true;
         var k, i;
         for (i = 0; i < _EW_RIG_KINDS.length; i++) R.src[_EW_RIG_KINDS[i]].length = 0;
@@ -84275,14 +84281,19 @@ const ThreeRenderer = (function () {
             var CG = (renderer.isWebGPURenderer && typeof window !== 'undefined' && window.THREE_GPU && window.THREE_GPU.ClippingGroup) ? (r.cg || (r.cg = new window.THREE_GPU.ClippingGroup())) : null, kids = null;
             try {
                 var cp = r.cp.copy(r.plane); cp.constant -= 0.02 * _hqUnits();
-                if (CG) { CG.clippingPlanes = [cp]; kids = H.scene.children; CG.children = kids; CG.parent = H.scene; H.scene.children = [CG]; }
+                if (CG) { CG.clippingPlanes = [cp]; kids = H.scene.children; CG.children = kids; CG.parent = H.scene; H.scene.children = [CG]; H.scene._ew_lentKids = kids; }
                 else renderer.clippingPlanes = [cp];
                 if (renderer.shadowMap) renderer.shadowMap.needsUpdate = false;
                 renderer.setRenderTarget(r.rt); renderer.autoClear = true; renderer.clear();
                 renderer.render(H.scene, mc); r.drawn++;
             } catch (e) { r.mats.forEach(function (m) { m.uniforms.uGain.value = 0; }); }
             finally {
-                if (kids) { H.scene.children = kids; CG.children = []; CG.parent = null; }
+                if (kids) {
+                    /* THE LOST RIG: whatever joined the scene during the mirrored draw (the light rig moving in) joins the real list */
+                    var lent = H.scene.children;
+                    for (var li = 0; li < lent.length; li++) { if (lent[li] !== CG && kids.indexOf(lent[li]) < 0) kids.push(lent[li]); }
+                    H.scene.children = kids; H.scene._ew_lentKids = null; CG.children = []; CG.parent = null;
+                }
                 r.targets.forEach(function (t) { t.visible = (t._ew_reflHide !== false); });
                 if (!CG) renderer.clippingPlanes = prevClip;
                 renderer.setRenderTarget(prevT); renderer.autoClear = prevAuto;
