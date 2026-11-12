@@ -10890,6 +10890,12 @@
             if (!payload.quiet) addLog(`${sourceLabel}${_ctName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
             /* 🧗 stunned / frozen / put to sleep on the wall: the grip goes */
             if (target._climb && meta.blockAction && payload.id !== 'climbing') knockOffClimber(target, `— ${meta.colorText || meta.label.toLowerCase()}`);
+            /* 👁 THE RUDE AWAKENING (astral build 2): a status that stops a unit acting (Stun, Sleeping, Frozen...) or one on
+               STATUS_DEFS.projecting.snapOn (Silence) breaks the projection. The spirit snaps home to its body, Spirit Walk's too. */
+            if (payload.id !== 'projecting' && unitIsSpirit(target) && target._astralBodyId
+                && (meta.blockAction || ((STATUS_DEFS.projecting && STATUS_DEFS.projecting.snapOn) || []).includes(payload.id))) {
+                astralSnapHome(target, meta.colorText || meta.label.toLowerCase());
+            }
 
             if (!_skipVisuals()) {
                 const vfxStatusMap = { poison:1, burn:1, stun:1, slow:1, bleed:1, silence:1, discord:1 };
@@ -13890,7 +13896,7 @@
             astralSyncHp();
             const body = astralBodyOf(unit);
             const mode = unit._astralEndMode;
-            for (const k of ['_astralBodyId', '_astralCord', '_astralEndMode', '_astralRound', '_astralHp']) delete unit[k];
+            for (const k of ['_astralBodyId', '_astralCord', '_astralEndMode', '_astralRound', '_astralHp', '_astralHitKey', '_astralHitPiece']) delete unit[k];
             if (!body) return;
             /* what the body picked up while it slept goes home with the unit */
             if (!unit.status) unit.status = {};
@@ -13912,7 +13918,7 @@
                 if (body.facing != null) unit.facing = body.facing;
             }
             _astralDropBody(body);
-            unit._astralLandOwed = { x: _fromX, y: _fromY, bx: _bx, by: _by, mode: mode };
+            unit._astralLandOwed = { x: _fromX, y: _fromY, bx: _bx, by: _by, mode: mode, why: unit._astralSnapWhy || null };
         }
         /* clearStatus, once `projecting` is off: the unit is a body again, so the tile it stands on counts (a trap under
            it, a pick-up, Overwatch on the arrival: mondo's "every arrival sets off Overwatch") */
@@ -13922,10 +13928,20 @@
             delete unit._astralLandOwed;
             if (unit.dead || unit._dying || state.phase !== 'battle') return;
             if (owed.mode === 'follow') addLog(`👁 ${_ctName(unit)}'s body is pulled to its spirit.`);
+            else if (owed.why) { addLog(`👁 ${_ctName(unit)} is ${owed.why}: the spirit snaps back to its body!`); if (!_skipVisuals()) showFloatingTextForUnit(unit, '👁 SNAPPED BACK', 'debuff', { durationMs: 1200 }); }
             else addLog(`👁 ${_ctName(unit)}'s spirit returns to its body.`);
             try { if (owed.mode === 'follow') animateDisplacement(unit, owed.bx, owed.by, unit.x, unit.y, 260, {}); else animateDisplacement(unit, owed.x, owed.y, unit.x, unit.y, 260, {}); } catch (e) {}
             try { resolveTileArrival(unit, { via: 'self' }); } catch (e) {}
             scheduleBoardRender();
+        }
+        /* THE RUDE AWAKENING: the projection breaks and the spirit goes HOME, whatever the spell's own ending was */
+        function astralSnapHome(unit, why) {
+            if (!unit || unit.dead || unit._dying || !unitIsSpirit(unit) || !unit._astralBodyId) return false;
+            unit._astralEndMode = 'return';
+            unit._astralSnapWhy = why || 'shaken';
+            clearStatus(unit, 'projecting');
+            delete unit._astralSnapWhy;
+            return true;
         }
         /* the caster's turn is over: a projection cast in an EARLIER round ends here ("until the caster's next turn ends") */
         function astralSpendActivation(unit) {
@@ -13968,6 +13984,7 @@
         window.astralSyncHp = astralSyncHp;
         window.astralBegin = astralBegin;
         window.astralEnd = astralEnd;
+        window.astralSnapHome = astralSnapHome;
         window.astralOnDeath = astralOnDeath;
 
         /* ⛓ / 🪆 Links (plan §5.5): after a hit resolves, echo a share of it
@@ -40049,6 +40066,14 @@
             // 2 → "×2", 1.5 → "×1.5", 1.3 → "×1.3", 0.75 → "×0.75".
             const _fmtMult = (m) => `×${(+m.toFixed(2))}`;
 
+            /* 👁 THE MIND IS OUT (astral build 2, mondo 2026-11-12: psychic abilities "deal bonus damage to units that are
+               projecting"): a psychic-element hit on a SPIRIT rides STATUS_DEFS.projecting.psychicMult in the one capped
+               product. The sleeping body is paid by the "vs Stunned" bonuses instead (Sleeping counts as Stunned). */
+            if (_affEl === 'psychic' && damageType !== 'dot' && finalDamage > 0 && unitIsSpirit(target)) {
+                const _apm = Number(STATUS_DEFS.projecting && STATUS_DEFS.projecting.psychicMult) || 1;
+                if (_apm !== 1) { _offMult *= _apm; _multCallout(target, `👁 MIND EXPOSED ${_fmtMult(_apm)}`, 1100); }
+            }
+
             /* THE ELEMENT SHARE (mondo 2026-10-17, data.js elemSplitFactor): a hit whose element is a COMBAT element
                splits — (1 − share) rides the type matchup, share rides the element affinity. _eShare 0 = no element
                part, 1 = all element (a source-less tick / hazard, the pre-split behaviour), between = the split. */
@@ -40720,6 +40745,17 @@
             // immuneDamageType makes hits of that damageType not exist for
             // the unit — basic attacks, physical abilities, opportunity
             // attacks, fall damage. DoT ticks ('dot') and magic still land.
+            /* 👁 ONE ACTION, ONE BLOW (astral build 2): a body and its spirit share one HP bar, so one action of one unit
+               (an area spell over both squares) is paid once, by the piece it reached first. A multi-hit cast keeps
+               landing on that same piece. Ticks and source-less damage never share a key. */
+            if (damage > 0 && opts.sourceUnit && (opts.damageType || 'physical') !== 'dot' && (target._astralBodyId || target._astralOfId)) {
+                const _apOwner = target._astralOfId ? astralSpiritOf(target) : target;
+                if (_apOwner && _apOwner._astralBodyId) {
+                    const _apKey = _protectAttackKey(opts.sourceUnit);
+                    if (_apOwner._astralHitKey === _apKey && _apOwner._astralHitPiece !== target.id) return false;
+                    _apOwner._astralHitKey = _apKey; _apOwner._astralHitPiece = target.id;
+                }
+            }
             const _immDT = (typeof unitPassiveValue === 'function') ? unitPassiveValue(target, 'immuneDamageType') : undefined;
             if (_immDT && (opts.damageType || 'physical') === _immDT && damage > 0) {
                 if (_pressDamageCollector && opts.sourceUnit && !opts.noPress

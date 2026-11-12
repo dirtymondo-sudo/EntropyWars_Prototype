@@ -8106,7 +8106,7 @@ const RACE_ABILITIES = {
              and stays within 4 of it (astral.cord); when it ends the body is pulled to the spirit (astral.end 'follow') */
           astral: { cord: 4, end: 'follow' }, cooldownRounds: 2,
           statusEffects: [],
-          desc: 'Step out of your body. It stays asleep where it stands while your spirit walks up to 4 tiles and stays within 4 of it. Physical hits pass through the spirit and it drifts through walls, but it cannot basic attack and your sleeping body can still be hit: one HP bar for both. When your next turn ends, your body is pulled to your spirit. Cooldown: 2 rounds.' },
+          desc: 'Step out of your body. It stays asleep where it stands while your spirit walks up to 4 tiles and stays within 4 of it. Physical hits pass through the spirit and it drifts through walls, but it cannot basic attack and your sleeping body can still be hit: one HP bar for both. When your next turn ends, your body is pulled to your spirit. Psychic hits deal x1.5 to your spirit, and a Stun or Silence snaps it back to your body. Cooldown: 2 rounds.' },
         { id: 'raceHerbalRemedy', tier: 1, spellType: 'human', element: 'nature', name: 'Herbal Remedy',
           type: 'heal', cost: 25, range: 3, apCost: 1,
           kind: 'heal', healAmt: 160, cleanse: 2,
@@ -13051,6 +13051,8 @@ const STATUS_DEFS = {
         category: 'buff',
         stack: 'max',
         iconSrc: createStatusIconDataUri('👁', '#182838', '#f0f8ff', '#9fd8ff'),
+        psychicMult: 1.5,          // a psychic-element hit on the spirit (battle.js _hitDamageMath)
+        snapOn: ['silence'],       // + every blockAction status: the spirit snaps home (battle.js astralSnapHome)
         onRemove(unit) {
             if (typeof astralEnd === 'function') astralEnd(unit);
         }
@@ -13670,6 +13672,8 @@ const STATUS_LIBRARY_DESCS = {
     shield:    'A barrier of shield points absorbs damage before HP does (Prayer, Pleiadian Shield, Bulwark…). Shown as the blue bar segment.',
     silence:   'Cannot cast spells.',
     stun:      'Knocked senseless: cannot move OR act — the unit\'s next activation is skipped. Evasion drops to zero.',
+    sleep:     'Asleep: cannot move or act. Any damage wakes the sleeper. Counts as Stunned for spells that hit harder against a Stunned unit. A body left behind by a projecting unit sleeps until its spirit comes back.',
+    projecting: 'The spirit has stepped out of its body, which sleeps where it stood. One HP bar for both. Physical hits pass through the spirit and it drifts through walls, but it stays within its cord, cannot basic attack, use physical abilities or items, or carry a Key. Psychic hits deal x1.5 to the spirit. A Stun, Sleep, Silence or anything else that stops it acting snaps it back to its body.',
     root:      'Bound in place: cannot move (flyers are dragged to the ground), but can still attack and cast. Evasion drops to zero.',
     stagger:   'Immediately loses 1 AP (or starts the next round with 1 less AP).',
     marked:    'The next physical hit or basic attack an enemy lands on this unit consumes the mark for bonus damage. Magic hits leave the mark on.',
