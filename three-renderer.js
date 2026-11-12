@@ -63241,7 +63241,8 @@ const ThreeRenderer = (function () {
             v.jolt *= Math.pow(0.001, dt);
         }
         v.cam.lookAt(lx, v.camLy, v.camLz);
-        v.renderer.render(v.scene, v.cam);
+        /* THE STYLE ON A STAGE (2026-11-12): the Entropy Style (grade + ink) on the stage's own renderer, as the settings have it */
+        if (!(typeof ThreePost !== 'undefined' && ThreePost.styleDraw && ThreePost.styleDraw(v.renderer, v.scene, v.cam))) v.renderer.render(v.scene, v.cam);
     }
 
     /* THE IDLE POSE (2026-11-01): the creator's idle pick changed on the stage's body. The model stays; the new idle (the

@@ -1648,7 +1648,6 @@ Both fixes change what a pixel COMPUTES, not what it shows; nothing is relayed, 
   not even downloaded until the slider goes above 0. Off, live: `window.EW_AO_AT_ZERO = true` (the node chain's switch).
   Screens: /mnt/project-files/perf-pvp-demo-20261110/ao_off_at_zero_{old,new}.jpg.
 
-<<<<<<< HEAD
 ## THE BLACK BLOOD (2026-11-11, mondo on WebGPU: "black ink blot looking things that appear with the blood") — three-renderer.js
 - What they were: the blood's own floor marks (the stain each drop leaves, the kill spatter) and a few drops, drawn BLACK
   on the node renderer only (WebGPU, and `?ew_gpu=webgl2`). Classic WebGL draws them red. Nothing was removed.
@@ -1662,7 +1661,6 @@ Both fixes change what a pixel COMPUTES, not what it shows; nothing is relayed, 
 - Proof (node renderer on WebGL 2, Spell Lab, real fireBlood kill): /mnt/project-files/ink-blots-20261111/
   black_blots_before_after.jpg; tools/blots.js (GPU=webgl2), marks.js (floor marks only), live.js (a kept-open lab that
   runs cmd files). Not seen on real WebGPU (headless frames are black).
-=======
 ## WEBGPU BY DEFAULT (2026-11-11)
 mondo: "make the default game webgpu ... I dont wanna have to type ?ew_gpu=webgpu anymore or tell friends to type that".
 index.html THE WEBGPU SWITCH: `window.EW_GPU_PICK` = auto (default) | webgpu | webgl2 | webgl, from `?ew_gpu=` (remembered in
@@ -1679,7 +1677,6 @@ Proof (headless Chromium, WebGL only): six detection cases, a fight on the class
 refused after the probe (node renderer on WebGL 2 that load, classic the next), Render Scale 50 % / 100 % on both renderers,
 the row + Reload now with `?join=`. NOT seen: a real WebGPU frame (headless WebGPU is a software adapter, which Auto refuses).
 
->>>>>>> origin/main
 
 ## THE LOST RIG (2026-11-11, mondo in Occam's Barbershop on the default WebGPU renderer: "pitch black") — three-renderer.js
 Root cause: THE ONE RIG (`_ewRigTick`, node renderer only) takes every room light off three's light list (layer mask 0) and
@@ -1753,3 +1750,13 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
   silhouettes. Now a flag (`_styleMaskRetro`) the retro pass sets. Seen: Training Room on the pmndrs chain and the node renderer's
   WebGL 2 backend, Fairy Forest on node WebGL 2 (proof /mnt/project-files/grass-ink-20261112/). NOT seen: real WebGPU / his Mac,
   the legacy composer, split-screen panes, rigged units standing in the grass (headless drew sprites).
+- THE STYLE ON A STAGE (11-12, mondo: "make sure the 2 new shaders (ink and the color grade) are on in the party builder as well.
+  The 3d models dont have it"): the party builder / creator / intake / codex stage (three-renderer.js EWCharViewer) is a WebGL
+  renderer of its OWN on a see-through canvas, so the board's chain never reached it. `ThreePost.styleDraw(r, scene, cam)` draws its
+  frame through the same `_StyleShader`, same settings (the whole stage is a unit: its line takes the Unit Lines width): the scene
+  into a 4x MSAA target + depth texture flagged `isXRRenderTarget` (three reads that flag only to tone map + encode in the materials
+  as on the canvas), then one quad that styles the un-premultiplied colour and writes it back premultiplied (empty pixels stay empty).
+  `_cvFrame` calls it and falls back to the plain draw when it returns false (style Off, or a failure). Off live:
+  `window.EW_NO_STAGE_STYLE = true`. Already styled (ThreePost.renderScene): DOOR HQ, the menu room, the team room. Left plain: the
+  ID-card photo (`snapshot`), the editor's 96 px prop thumbnails (cached pictures), the UI Maker dock's tile / float-text previews.
+  Seen: party builder, classic WebGL (headless). NOT seen: his Mac, the creator's face close-up, a spell preview on the stage.

@@ -5220,6 +5220,9 @@ const EW_APPEARANCE_LAYERS = [
 const _EW_APPEARANCE_LEGACY_HAIR = { crop: 'hair003', crest: 'hair000', bald: 'bald' };
 function normalizeCharacterAppearance(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  /* THE CAST ON THE BOARD (2026-11-12): `{ cast: '<DOOR_CAST_MODELS id>' }` is not a creator look — it names a story character's
+     own model (getRace3DModel reads it); every creator reader takes it as "no look" */
+  if (typeof value.cast === 'string' && value.cast) return null;
   if (value.version != null && value.version !== 1 && value.version !== 2) return null;
   // the rev 6 `jacket` TOP (a long sleeve with a collar) is the OUTER layer over a tee since rev 7
   if (value.outfit === 'jacket') value = Object.assign({}, value, { outfit: 'tee', outer: value.outer == null ? 'jacket' : value.outer });
@@ -5781,8 +5784,20 @@ if (typeof window !== 'undefined') {
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
 }
 
+const _castUnitDefs = {};
 function getRace3DModel(race, gender, appearance) {
   if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return null;
+  /* THE CAST ON THE BOARD (mondo 2026-11-12: Agent Locke fights the first quest as HERSELF, "She already has her own model.
+     She walks around in the DOOR HQ"): a unit whose appearance is `{ cast: id }` wears that story character's own rig, with
+     what its race's model holds (the Door Agent's gun) and its basic attack */
+  if (appearance && typeof appearance.cast === 'string' && typeof DOOR_CAST_MODELS !== 'undefined' && DOOR_CAST_MODELS[appearance.cast] && !window.EW_DISABLE_CAST) {
+    const ck = race + '|' + appearance.cast;
+    if (!_castUnitDefs[ck]) {
+      const rs = RACE_MODELS_3D[race], own = rs && (rs[gender === 'female' ? 'female' : 'male'] || rs.male || rs.female);
+      _castUnitDefs[ck] = Object.assign({}, DOOR_CAST_MODELS[appearance.cast], (own && own.hold) ? { hold: own.hold } : {}, (own && own.basicAttackKind) ? { basicAttackKind: own.basicAttackKind } : {});
+    }
+    return _castUnitDefs[ck];
+  }
   const custom = getCharacterAppearanceModel(race, gender, appearance);
   if (custom) return custom;
   // Werewolf transformation: a human (Homosapien Freelancer male) by day,

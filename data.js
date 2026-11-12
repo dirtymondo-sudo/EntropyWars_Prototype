@@ -28107,7 +28107,9 @@ const QUEST_FIGHTS = {
         /* mondo 2026-11-12: "my team for the first fight should be me (door agent), agent locke (also door agent, level 25 or
            something, on auto), and catgirl" — Agent Locke gives the orientation. `allies` stand with the party from the start
            (no portal), at their own level, on a Tactic (the CPU's brain plays their turns); nothing of theirs is written back. */
-        allies: [{ race: 'door agent', name: 'Agent Locke', level: 25, tactic: 'fight' }],
+        /* AGENT LOCKE is the story's own character (DOOR_CAST.locke, DOOR_STORY.md: "The Player's direct superior. A no-nonsense
+           woman ... She gives the player their job orientation and initial training"): `cast` = her own model on the board */
+        allies: [{ race: 'door agent', gender: 'female', cast: 'locke', name: 'Agent Locke', level: 25, tactic: 'fight' }],
         enemies: [{ race: 'shadow entity', gender: 'male' }, { race: 'shadow entity', gender: 'male' }],
         portal: { x: 4, y: 2 },
         seats: { guest: { x: 4, y: 4 }, enemies: [{ x: 3, y: 1 }, { x: 5, y: 1 }] },
@@ -28270,7 +28272,7 @@ function questAllyMembers(F) {
         let spells = [];
         try { spells = raceDefaultKit(a.race, [], spec.meta.gender) || []; } catch (e) { spells = []; }
         const lvl = Math.max(1, Math.min(LEVEL_CAP, (a.level | 0) || HQ_LEVEL_RULES.start));
-        return { cls: spec.cls, name: a.name || '', meta: { race: a.race, gender: spec.meta.gender, storyLevel: lvl, questAlly: true, questTactic: a.tactic || null }, loadout: { spells: spells.slice(), items: {}, equipment: {} }, id: null, you: false };
+        return { cls: spec.cls, name: a.name || '', meta: Object.assign({ race: a.race, gender: spec.meta.gender, storyLevel: lvl, questAlly: true, questTactic: a.tactic || null }, a.cast ? { appearance: { cast: a.cast } } : {}), loadout: { spells: spells.slice(), items: {}, equipment: {} }, id: null, you: false };
     });
 }
 if (typeof window !== 'undefined') {

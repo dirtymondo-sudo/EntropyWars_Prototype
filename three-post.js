@@ -4671,6 +4671,68 @@ const ThreePost = (function () {
         return p;
     }
 
+    /* THE STYLE ON A STAGE (2026-11-12, mondo: "make sure the 2 new shaders (ink and the color grade) are on in the party
+       builder as well. The 3d models dont have it"). The party builder / creator / codex stage (three-renderer.js
+       EWCharViewer) is a WebGL renderer of its OWN, drawing straight to its own see-through canvas, so none of the board's
+       chain ever reached it. styleDraw(r, scene, cam) draws that renderer's frame through the same _StyleShader, following
+       the same settings (Entropy Style, Ink Lines, Unit Lines: the whole stage is a unit, so its line takes the unit width):
+       - the scene into a target of the canvas's size (4x MSAA + a depth texture). The target is flagged isXRRenderTarget:
+         the only thing three reads that flag for is "tone map + encode in the materials as if this were the canvas", so
+         the picture in it is, sample for sample, the one the canvas showed before;
+       - one quad to the canvas: the style on the un-premultiplied colour, drawn back premultiplied (the stage's canvas is
+         see-through: an empty pixel stays empty, the shadow blob stays a shadow, an additive glow keeps what it added).
+       Returns false (the caller draws its plain frame) when the style is Off or anything fails. */
+    var _stg = null;   // per renderer: { r, rt, mat, quad, scene, cam, bad }
+    function styleDraw(r, scene, cam) {
+        var mode = _styleMode();
+        if (!mode || !r || !scene || !cam || !THREE.WebGLRenderTarget || !THREE.DepthTexture) return false;
+        if (typeof window !== 'undefined' && window.EW_NO_STAGE_STYLE) return false;
+        if (_stg && _stg.r !== r) { try { _stg.rt.dispose(); _stg.rt.depthTexture.dispose(); _stg.mat.dispose(); } catch (e) {} _stg = null; }
+        if (_stg && _stg.bad) return false;
+        var prevRT = null, prevAuto = true;
+        try {
+            var size = r.getDrawingBufferSize(new THREE.Vector2()), w = Math.max(1, Math.round(size.x)), h = Math.max(1, Math.round(size.y));
+            if (!_stg) {
+                var rt = new THREE.WebGLRenderTarget(w, h, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, type: THREE.UnsignedByteType, depthBuffer: true, stencilBuffer: false, samples: 4 });
+                rt.isXRRenderTarget = true;                    // tone map + encode in the materials, as on the canvas
+                rt.texture.colorSpace = r.outputColorSpace || THREE.SRGBColorSpace;
+                rt.texture.internalFormat = 'RGBA8';           // the encoded bytes as they are (no sRGB decode on the read back)
+                rt.texture.generateMipmaps = false;
+                rt.depthTexture = new THREE.DepthTexture(w, h);
+                rt.depthTexture.type = THREE.UnsignedIntType;
+                var fs = _StyleShader.fragmentShader
+                    .replace("vec3 c = clamp(s4.rgb, 0.0, 1.0);", "float sA = clamp(s4.a, 0.0, 1.0); if (sA < 0.004) { gl_FragColor = s4; return; }\n  vec3 c = clamp(s4.rgb / sA, 0.0, 1.0); vec3 sAdd = max(s4.rgb - c * sA, 0.0);")
+                    .replace("gl_FragColor = vec4(g, s4.a);", "gl_FragColor = vec4(g * sA + sAdd, s4.a);");
+                var mat = new THREE.ShaderMaterial({ uniforms: THREE.UniformsUtils.clone(_StyleShader.uniforms),
+                    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+                    fragmentShader: fs, depthTest: false, depthWrite: false, toneMapped: false, transparent: false, blending: THREE.NoBlending });
+                var quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat); quad.frustumCulled = false;
+                var sc = new THREE.Scene(); sc.add(quad);
+                _stg = { r: r, rt: rt, mat: mat, quad: quad, scene: sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), w: w, h: h, bad: false };
+            } else if (_stg.w !== w || _stg.h !== h) { _stg.rt.setSize(w, h); _stg.w = w; _stg.h = h; }
+            var S = _stg, u = S.mat.uniforms;
+            prevRT = r.getRenderTarget(); prevAuto = r.autoClear;
+            r.setRenderTarget(S.rt); r.autoClear = true;
+            r.render(scene, cam);
+            r.setRenderTarget(prevRT);
+            var pr = 1; try { pr = r.getPixelRatio(); } catch (e) {}
+            var uk = (mode > 1) ? _styleUnitK() : 1;
+            u.tDiffuse.value = S.rt.texture; u.tDepth.value = S.rt.depthTexture; u.tMask.value = null; u.uUnitK.value = 1;
+            u.uMode.value = mode; u.uRes.value.set(w, h);
+            u.uInkW.value = Math.max(0.5, +_style.inkWidth || 1) * Math.max(1, pr * 0.75) * uk;
+            u.uInk.value = +_style.ink || 0; u.uBands.value = +_style.bands || 0; u.uAmount.value = (_style.amount === undefined) ? 1 : +_style.amount;
+            u.uNearFar.value.set(cam.near || 0.1, cam.far || 1000); u.uOrtho.value = cam.isOrthographicCamera ? 1 : 0; u.uP00.value = cam.projectionMatrix.elements[0] || 1;
+            r.render(S.scene, S.cam);
+            r.autoClear = prevAuto;
+            return true;
+        } catch (e) {
+            try { r.setRenderTarget(prevRT); r.autoClear = prevAuto; } catch (e2) {}
+            if (_stg) _stg.bad = true; else _stg = { r: r, bad: true, rt: { dispose: function () {}, depthTexture: { dispose: function () {} } }, mat: { dispose: function () {} } };
+            console.warn('[ThreePost] the stage style failed; the stage draws plain', e);
+            return false;
+        }
+    }
+
     /* THE RENDER SCALE (2026-11-10, the frame rate plan 2; mondo picked "Plan 2: Render Scale setting"). The 3D picture is
        drawn at a share of the screen's own resolution and the browser stretches it to the window; the HUD, the menus and
        every piece of text are DOM and stay at full sharpness. A Retina screen draws 4 pixels for every one of a plain
@@ -4932,6 +4994,7 @@ const ThreePost = (function () {
         render: render,
         renderScene: renderScene,
         renderDirect: renderDirect,
+        styleDraw: styleDraw,   // THE STYLE ON A STAGE: the Entropy Style on a renderer of its own (the party builder / creator stage)
         renderPanes: renderPanes,
         warmTarget: warmTarget,   // WEBGPU_PLAN W3: the target the room warm-up compiles into (the node chain's scene pass), else null
         isHdrBloom: isHdrBloom,

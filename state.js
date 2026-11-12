@@ -3545,7 +3545,8 @@
                 race,
                 types: [...(raceProfile.types || [])],
                 gender,
-                appearance: lookRace && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(identity.appearance) : null,
+                appearance: (identity.appearance && typeof identity.appearance.cast === 'string' && identity.appearance.cast) ? { cast: identity.appearance.cast }   // THE CAST ON THE BOARD (sprites.js getRace3DModel): a story character's own model
+                    : (lookRace && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(identity.appearance) : null),
                 zodiac: identity.zodiac || archetype.zodiac || 'aries',
                 sleepPreference: identity.sleepPreference || archetype.sleepPreference || 'none',
                 terrainPreference: getTerrainPreferenceForRace(race),
@@ -4448,7 +4449,8 @@
                     const rebuiltMeta = {
                         race: race,
                         gender: priorMeta.gender || archetype.gender || 'other',
-                        appearance: (typeof ewCreatorLookRace === 'function' ? ewCreatorLookRace(race) : race === 'door agent') && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(priorMeta.appearance) : null,   // HOMOSAPIEN OUT (2026-10-23): the DOOR Agent's creator look survives the repair too
+                        appearance: (priorMeta.appearance && typeof priorMeta.appearance.cast === 'string' && priorMeta.appearance.cast) ? { cast: priorMeta.appearance.cast }   // THE CAST ON THE BOARD: a story character's own model survives the repair
+                            : (typeof ewCreatorLookRace === 'function' ? ewCreatorLookRace(race) : race === 'door agent') && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(priorMeta.appearance) : null,   // HOMOSAPIEN OUT (2026-10-23): the DOOR Agent's creator look survives the repair too
                         zodiac: priorMeta.zodiac || archetype.zodiac || 'aries',
                         sleepPreference: priorMeta.sleepPreference || archetype.sleepPreference || 'none',
                         terrainPreference: getTerrainPreferenceForRace(race),
