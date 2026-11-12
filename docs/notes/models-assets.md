@@ -1603,6 +1603,24 @@ head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay t
   under it: with the arm's weight taken off, her shoulder rose through the strap when the arm came down), shown skin grows BARING 2
   rings round the arm openings, flaps past the arm opening after the un-pose are left out (AHPAD). Angel command now:
   `REPWARM=0.08 LOCKT=0.3 SKIN_T=0.3 ... --longhair --nowings --barearms --neckline --repaint` (no LOCKZ).
+  ROUND 3 (11-12, mondo "keep improving them"): the teeth on the back of the angel's dress behind her right arm were not in the cloth,
+  they were WEIGHTS: the back panel beside her arm took the weights of the arm skin nearest to it and stood out in spikes when the
+  body was un-posed. THE STRAPS ON THE SKIN now takes the weights of the nearest skin that is NOT arm (kdb / noarm), for all cloth
+  within STRAPNEAR 8 cm of the skin (was 3 cm: a seam of two kinds of weights ran through the arm opening); BARING 1 ring. ONE SIDE
+  LIKE THE OTHER (MIRD: a face out past the neck stays only when its mirror lies on cloth) is in but took 4 faces. Tried + dropped on
+  the mummy: a straight bisect of the collar (a spike stood up from her chest; her uneven collar is the suit's painted skin against
+  the body's, not shape) and `skinTint: pick` (paints her whole skin one flat colour, face included).
+  ROUND 4 (11-12, mondo after his playtest: "Robinhood has his shoulders and ear skin sticking out. Catgirl has a weird piece of
+  floating skin under her crotch"; he put a creator goddess dress on the angel himself). ROBINHOOD, now `ARMSKIN=0.35 ... --barearms`:
+  his bare arms were a shell of their own, exported as pink painted cloth with the body's shoulders standing through it. THE BARE
+  ARMS IN ANOTHER SHELL (skin-coloured faces out from the middle go in every shell whose skin faces lie ARMMEAN 20 cm out on
+  average, so not the quiver's leather; ARMSKIN = that colour match, his arms are paler than his face; islands under ARMISLE go),
+  and without `--neckline` the body's upper arm + shoulder skin is shown whole, hidden only within SHNEAR 1.2 cm of cloth (the arm
+  bands): the hidden skin under the cape's edge had bitten a jagged hole into the arm. The dress rules of round 2/3 (straps, arm
+  openings, BARING) now need `--barearms --neckline` together. THE EARS UNDER A HOOD: under a real hood the head from HOODEAR 7 cm
+  out to each side, behind the face, is hidden. CATGIRL, now `SKINISLE=200 ... --neckline`: A FLOATING PIECE OF SKIN (a patch of
+  shown skin under SKINISLE vertices cut off by hidden skin is hidden; the skin between her legs is on the hips, not a leg).
+  The seven other units rebaked: no file changed.
   Open: a few skin flecks on robinhood's hood front, a skin chip by the catgirl's left boot, light patches on her sleeves (the lacing in
   Meshy's texture), the knight's and zombie's walk hunches (the race's own walk clip), no sway, stock faces until the face step.
 
@@ -1926,3 +1944,11 @@ fake-light cards + the loose textures folder + the licence PDF are pack source i
 Ten Meshy props swapped to it the same day (MODEL_LIST §12b table; catalogue `base: 'psxmp'`, _MISC_GLB `psxmp/...` via the
 sprites.js EW_ASSET_MOVES alias `Assets/misc/psxmp/`; facings measured from vertices, never renders). MODEL_LIST §12b = the inventory, the licence rules (no AI use of any kind, no standalone
 redistribution, never in the repo) and the Meshy / code swap candidates by name. Credited in data.js EW_CREDITS.
+
+## THE PROCEDURAL RIGS IN THE TEAM ROOM (2026-11-12)
+- mondo on Select Your Team: "the occulus eyeball doesnt show up on this screen, only the wings". The team room (`_trBuildMember`)
+  never read `entry.procClips`: a boneless assembly (Occulus, Seraphim, UFO forms, chess pieces, unicorn) got no core eye
+  (`_procRigAttachEye`) and no mixer, so it stood as its bare file, still. Now like the dock and the viewer: the eye goes on after
+  the room's look, the assembly's own `idle` clip plays, its clips feed the room's poses, and `_procRigEyeTrack(eye, T.camera)`
+  (new optional camera argument) turns the eye to the room's camera. The board is untouched.
+- Proof: /mnt/project-files/oculus-team-room/oculus_eye_on_team_select.jpg (headless, WebGL2).
