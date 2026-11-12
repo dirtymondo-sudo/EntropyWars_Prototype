@@ -651,6 +651,13 @@ three-vfx-effects.js flame / energy / orb, three-lightning.js MeshLine). Sprite 
 proxy (`_ewPointProxy`; WebGPU points are 1 px). A NEW ShaderMaterial needs a twin or it draws as a flat stand-in on
 WebGPU. Console: `ThreeRenderer.nodePrograms()`. Details: WEBGPU_PLAN.md §10 "W2".
 
+### THE WARMED TWIN (2026-11-12, the foyer's one `Material "ShaderMaterial" is not compatible` line)
+The line came from the room warm-up, not from a missing object: `_hqWarmRun`'s renderer.compile is compileAsync on the node
+renderer, and compileAsync calls `renderObject` straight, past the draw hook that swaps a ShaderMaterial for its twin. The
+foyer's dust motes (`atmos:dust`, a Points ShaderMaterial) were warmed raw: three logged the line once and the twin the real
+draw uses was never warmed (the motes always drew, through the hook). The `r.renderObject` wrap in `_ewGpuCompat` now gives an
+unswapped classic shader material the same twin / point proxy. Any future "is not compatible" line: log the object in that wrap.
+
 ### W1 — the material layer (2026-10-03, zip renderer/ENTROPY_WARS_W1_MATERIALS.zip)
 The node renderer draws the GLSL hooks' effects: the legacy light levels, the height fog, the room-box AO, the terrain
 sheets, the fluid tops (waves, caustics, glints), the three sways, the creator's vertex-colour glow, the backdrop's horizon
@@ -1750,6 +1757,13 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
   silhouettes. Now a flag (`_styleMaskRetro`) the retro pass sets. Seen: Training Room on the pmndrs chain and the node renderer's
   WebGL 2 backend, Fairy Forest on node WebGL 2 (proof /mnt/project-files/grass-ink-20261112/). NOT seen: real WebGPU / his Mac,
   the legacy composer, split-screen panes, rigged units standing in the grass (headless drew sprites).
+- THE WHOLE STEP (11-12, mondo: "there are these black screen tears now" in the Main Hall; two shots, dashed black bars across the far
+  floor, on the same screen rows in both): the ink's depth reads sat a FRACTION of a texel out (Thin on a Retina screen = 1.5 texels =
+  the seam between two texels). Depth is read nearest, so on some rows the up read snapped a texel farther than the down read, a flat
+  floor no longer cancelled, and the row took the ink wherever the speckle passed the colour gate. Seen here on real WebGPU (SwiftShader,
+  2x) with Ink Lines Thin; Medium (2.4 texels) was clean here but leaves only 0.1 texel of slack, which his GPU may not give. Now every
+  depth read is on a texel centre, a whole number of texels out, and a width between two whole steps blends the two tests (GLSL `sEdge`,
+  TSL `edgeAt`; 9 depth reads, was 5). Colour reads unchanged. Proof /mnt/project-files/hall-ink-tears/. NOT seen: his Mac.
 - THE STYLE ON A STAGE (11-12, mondo: "make sure the 2 new shaders (ink and the color grade) are on in the party builder as well.
   The 3d models dont have it"): the party builder / creator / intake / codex stage (three-renderer.js EWCharViewer) is a WebGL
   renderer of its OWN on a see-through canvas, so the board's chain never reached it. `ThreePost.styleDraw(r, scene, cam)` draws its
@@ -1799,3 +1813,17 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
   stage zone gets (1) + (2). Count: the hall + foyer draw 19 point lights (was 13 / 12); other zones at most own + 4.
 - Seen: cloud browser (node renderer on WebGL 2), standing in the foyer's doorway and at the hall's centre. NOT seen: his Mac / real
   WebGPU, the frame cost of the six extra lamps there. Proof /mnt/project-files/main-hall-far-walls/.
+
+## THE STALE LIGHT LIST (2026-11-12, mondo: CONTINUE into the Main Hall, "after the load screen loads its just a black screen") — three-renderer.js
+- His console: `a draw failed and was skipped (Render Pipeline / RenderPipeline: can't access property "map", lightData is undefined)`,
+  stack NodeMaterialObserver.equals < needsRefresh < _renderBundle. Real WebGPU only (the render bundles are WebGPU-only).
+- **Cause**: three's observer keeps, per render object, one record per light that casts a shadow (or a spot with a sheet), taken at
+  the object's first draw; `equals` walks the frame's CURRENT list over it with no length check. A bundle REPLAY never asks
+  three for the render objects again, so a shadow light that joined the list after a non-static group was recorded read past the
+  record and threw. The throw skipped the WHOLE frame; `r._ew_lights` (what `_ewBunTick`'s lamp signature reads) is noted at the
+  frame's first real draw, which never came, so the tick never saw the lamps move and never re-recorded: black for good.
+  Not the save (PR #1219) itself; any arrival where the light list grows after the first recording could hit it.
+- **Fix**: (1) the `needsRefresh` wrapper (THE LATE SHEETS) catches the throw, takes the record again from the frame's lights,
+  returns FULL and flags the object's group (`_ew_bunFree`) to re-record next tick; count in `_ewBun.staleLights`.
+  (2) `_ewRigTick`: a rig that grew bumps `_ewBun.epoch`, so every group re-records in that same frame.
+- A throw anywhere in a frame's bundle replay blacks the frame: keep new replay-time hooks inside a try.

@@ -4572,6 +4572,14 @@ const ThreePost = (function () {
             'float sQ(float z) { return uOrtho > 0.5 ? z : 1.0 / max(z, 0.0001); }',
             '// THE GRASS TAKES NO INK: 1 where the mask drew a grass tuft (its view depth: log2(1 + z) / 20 in green + blue) no farther than the scene',
             'float sGm(vec2 q, float sz) { vec4 mk = texture2D(tMask, q); float gt = mk.g + mk.b / 255.0; return (mk.r < 0.5 && gt > 0.0) ? step((exp2(gt * 20.0) - 1.0) * 0.99, sz) : 0.0; }',
+            '// THE WHOLE STEP: one depth break test, s whole texels out from the texel centre tc (see _ngStyle)',
+            'float sEdge(vec2 tc, float s, float zc, float qc) {',
+            '  vec2 d = s / uRes;',
+            '  float lap = sQ(sVz(tc + vec2(d.x, 0.0))) + sQ(sVz(tc - vec2(d.x, 0.0))) + sQ(sVz(tc + vec2(0.0, d.y))) + sQ(sVz(tc - vec2(0.0, d.y))) - 4.0 * qc;',
+            '  float dz = uOrtho > 0.5 ? lap : -lap * zc * zc;   // > 0: the neighbours lie farther, this pixel is the near side',
+            '  float wpp = (uOrtho > 0.5 ? 1.0 : zc) * 2.0 / (uP00 * uRes.x) * s;   // one line width in world units at this depth',
+            '  return smoothstep(0.9, 2.6, dz / max(wpp, 0.0000001));',
+            '}',
             'void main() {',
             '  vec4 s4 = texture2D(tDiffuse, vUv);',
             '  if (uMode < 0.5) { gl_FragColor = s4; return; }',
@@ -4585,11 +4593,11 @@ const ThreePost = (function () {
             '    g = c * (mix(l, q, uBands * (1.0 - gm)) / l);',
             '    float iw = uInkW * (uUnitK > 1.001 ? mix(1.0, uUnitK, step(0.5, texture2D(tMask, vUv).r)) : 1.0);   // THE BOLD UNIT LINE',
             '    vec2 px = iw / uRes;',
-            '    float zc = max(sVz(vUv), 0.0001);',
-            '    float lap = sQ(sVz(vUv + vec2(px.x, 0.0))) + sQ(sVz(vUv - vec2(px.x, 0.0))) + sQ(sVz(vUv + vec2(0.0, px.y))) + sQ(sVz(vUv - vec2(0.0, px.y))) - 4.0 * sQ(zc);',
-            '    float dz = uOrtho > 0.5 ? lap : -lap * zc * zc;   // > 0: the neighbours lie farther, this pixel is the near side',
-            '    float wpp = (uOrtho > 0.5 ? 1.0 : zc) * 2.0 / (uP00 * uRes.x) * iw;   // one line width in world units at this depth',
-            '    edge = smoothstep(0.9, 2.6, dz / max(wpp, 0.0000001));',
+            '    vec2 tc = (floor(vUv * uRes) + 0.5) / uRes;   // THE WHOLE STEP: every depth read on a texel centre',
+            '    float zc = max(sVz(tc), 0.0001), qc = sQ(zc);',
+            '    float sa = max(1.0, floor(iw)), sf = clamp(iw - sa, 0.0, 1.0);',
+            '    float ea = sEdge(tc, sa, zc, qc);',
+            '    edge = sf > 0.001 ? mix(ea, sEdge(tc, sa + 1.0, zc, qc), sf) : ea;',
             '    // only where the eye sees the break too: a far shape lost in the fog, or two faces of one colour, take no line',
             '    float cd = max(max(length(texture2D(tDiffuse, vUv + vec2(px.x, 0.0)).rgb - c), length(texture2D(tDiffuse, vUv - vec2(px.x, 0.0)).rgb - c)), max(length(texture2D(tDiffuse, vUv + vec2(0.0, px.y)).rgb - c), length(texture2D(tDiffuse, vUv - vec2(0.0, px.y)).rgb - c)));',
             '    edge *= smoothstep(0.03, 0.10, cd) * (1.0 - gm);',
@@ -4601,6 +4609,13 @@ const ThreePost = (function () {
         ].join('\n')
     };
     /* the same pass on the node renderer (TSL Fn only: WebGPU and its WebGL 2 backend compile the one graph) */
+    /* THE WHOLE STEP (2026-11-12, mondo: "there are these black screen tears now" in the Main Hall): the ink line read the depth
+       a FRACTION of a texel out (Thin on a Retina screen = 1.5 texels, so each read fell on the seam between two texels). The depth
+       is read nearest, so on some rows the up read snapped one texel farther than the down read, the two no longer cancelled on a
+       flat floor, and the whole row took the ink wherever the floor's speckle let it: dashed black bars across the far floor, fixed
+       to the screen. Now every depth read sits on a texel centre, a whole number of texels out (half a texel of slack on any GPU),
+       and a width between two whole steps is the blend of the two tests, so Thin / Medium / Bold keep their own widths. All three
+       chains + the stage (the one GLSL: sEdge; here: edgeAt). */
     function _ngStyle(P, src, made) {
         var T = P.T, F = T.float, V2 = T.vec2, V3 = T.vec3, S = P.st, tex = T.convertToTexture(src);
         if (made && tex !== src) made.push(tex);
@@ -4632,14 +4647,22 @@ const ThreePost = (function () {
                 g.assign(c.mul(T.mix(l, q, S.bands.mul(gm.oneMinus())).div(l)));
                 var iw = S.inkW.mul(T.select(S.unitK.greaterThan(1.001), T.mix(F(1), S.unitK, T.step(0.5, P.maskTex.sample(u).r)), F(1))).toVar();   // THE BOLD UNIT LINE
                 var px = V2(iw).div(P.uDRes).toVar();
-                var zc = T.max(vz(u), 0.0001).toVar();
-                var lap = qf(vz(u.add(V2(px.x, 0)))).add(qf(vz(u.sub(V2(px.x, 0))))).add(qf(vz(u.add(V2(0, px.y))))).add(qf(vz(u.sub(V2(0, px.y))))).sub(qf(zc).mul(4)).toVar();
-                var dz = T.select(ortho, lap, lap.negate().mul(zc).mul(zc));
-                var wpp = T.select(ortho, F(1), zc).mul(2).div(S.p00.mul(P.uDRes.x)).mul(iw);
+                /* THE WHOLE STEP (see the note above _ngStyle): the depth is read on texel centres, a whole number of texels apart */
+                var tc = T.floor(u.mul(P.uDRes)).add(0.5).div(P.uDRes).toVar();
+                var zc = T.max(vz(tc), 0.0001).toVar(), qc = qf(zc).toVar();
+                var sa = T.max(F(1), T.floor(iw)).toVar(), sf = T.clamp(iw.sub(sa), 0, 1).toVar();
+                var edgeAt = function (s) {
+                    var d = V2(s).div(P.uDRes).toVar();
+                    var lap = qf(vz(tc.add(V2(d.x, 0)))).add(qf(vz(tc.sub(V2(d.x, 0))))).add(qf(vz(tc.add(V2(0, d.y))))).add(qf(vz(tc.sub(V2(0, d.y))))).sub(qc.mul(4));
+                    var dz = T.select(ortho, lap, lap.negate().mul(zc).mul(zc));
+                    var wpp = T.select(ortho, F(1), zc).mul(2).div(S.p00.mul(P.uDRes.x)).mul(s);
+                    return T.smoothstep(0.9, 2.6, dz.div(T.max(wpp, 0.0000001)));
+                };
+                var eDepth = T.mix(edgeAt(sa), edgeAt(sa.add(1)), sf).toVar();
                 // only where the eye sees the break too: a far shape lost in the fog, or two faces of one colour, take no line
                 var cdf = function (o) { return T.length(T.clamp(tex.sample(u.add(o)).rgb, 0, 1).sub(c)); };
                 var cd = T.max(T.max(cdf(V2(px.x, 0)), cdf(V2(px.x.negate(), 0))), T.max(cdf(V2(0, px.y)), cdf(V2(0, px.y.negate()))));
-                edge.assign(T.smoothstep(0.9, 2.6, dz.div(T.max(wpp, 0.0000001))).mul(T.smoothstep(0.03, 0.10, cd)).mul(gm.oneMinus()));
+                edge.assign(eDepth.mul(T.smoothstep(0.03, 0.10, cd)).mul(gm.oneMinus()));
             });
             g.assign(T.mix(c, T.mix(grade(g), g, k.mul(0.8)), S.amount));
             g.assign(T.mix(g, V3(0.07, 0.06, 0.13), edge.mul(S.ink).mul(F(1).sub(k))));
