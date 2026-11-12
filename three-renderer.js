@@ -76498,6 +76498,10 @@ const ThreeRenderer = (function () {
                     if (cat.open === 'swing') {
                         /* hinge pivot on the jamb edge; the leaf opens TOWARD the walker (+Z) — behind it is the wall */
                         motion = { mode: 'swing', pivot: new THREE.Group(), dir: hingeRight ? 1 : -1, angle: 1.45, ow: ow };
+                        /* THE DOUBLE DOOR (2026-11-12, mondo: "get rid of the revolving door, just make it a normal swing door or double
+                           door"): catalogue `double` = TWO of the single leaf, one hinged on each jamb, meeting in the middle. The second
+                           hangs on `pivot2` and swings the other way (_hqDoorMotionStep). */
+                        if (cat.double) { motion.dir = -1; motion.pivot2 = new THREE.Group(); motion.pivot2.position.x = (ow / 2 - 0.02) * U; leafGroup.add(motion.pivot2); }
                         motion.pivot.position.x = motion.dir * (ow / 2 - 0.02) * U;
                         leafGroup.add(motion.pivot);
                     } else if (cat.open === 'slide') {
@@ -76522,7 +76526,9 @@ const ThreeRenderer = (function () {
                     var targetH = (leafCat.frame ? oh + 0.03 : oh - 0.015) * U, targetW = (leafCat.frame ? ow + 0.05 : ow - 0.01) * U;
                     var yawDeg = cat.yaw || 0;
                     var slideMotion = (motion && motion.mode === 'slide') ? motion : null;
-                    var lg = _miscModelInstance(_hqModelUrl(cat), true, targetH, {
+                    var dbl = !!(motion && motion.pivot2);
+                    if (dbl) targetW = (ow / 2 - 0.012) * U;   // THE DOUBLE DOOR: each leaf fills half the opening
+                    var _mkLeaf = function () { return _miscModelInstance(_hqModelUrl(cat), true, targetH, {
                         fit: 'height', matPick: _hqPropMatPick,
                         onDone: function (g, s, bb) {
                             var m = g.children[0];
@@ -76542,10 +76548,18 @@ const ThreeRenderer = (function () {
                             }
                             if (_hq) _hq.dirty = true;
                         }
-                    });
+                    }); };
+                    var lg = _mkLeaf();
                     lg.rotation.y = (typeof window !== 'undefined' && window.EW_HQ_FLIP_LEAVES) ? Math.PI : 0;
                     leafModel = lg;   // THE ROUND JOIN: the revolving leaf turns as a whole (the intro's spin, _INTRO_DOOR_MOTION)
-                    if (motion && motion.mode === 'swing') { lg.position.x = -motion.pivot.position.x; motion.pivot.add(lg); }
+                    if (dbl) {
+                        /* the left leaf as authored (hinge left, the handle at the meeting stile); the right leaf is the same model
+                           turned half round, so its handle meets the first one (a turn, not a mirror: no flipped faces) */
+                        lg.position.x = (ow / 4 - 0.02) * U; motion.pivot.add(lg);
+                        var lg2 = _mkLeaf(), turn2 = new THREE.Group();
+                        turn2.rotation.y = Math.PI; turn2.add(lg2); turn2.position.x = -(ow / 4 - 0.02) * U; motion.pivot2.add(turn2);
+                    }
+                    else if (motion && motion.mode === 'swing') { lg.position.x = -motion.pivot.position.x; motion.pivot.add(lg); }
                     else if (motion && motion.mode === 'slide') motion.carrier.add(lg);
                     else leafGroup.add(lg);
                 }
@@ -84157,7 +84171,7 @@ const ThreeRenderer = (function () {
         var speed = (mo.mode === 'swing') ? 1.9 : (mo.mode === 'way') ? 1.5 : 2.4;
         d.openT = want ? Math.min(1, d.openT + dt * speed) : Math.max(0, d.openT - dt * speed);
         var k = d.openT < 0.5 ? 2 * d.openT * d.openT : 1 - Math.pow(-2 * d.openT + 2, 2) / 2;   // ease in-out
-        if (mo.mode === 'swing') mo.pivot.rotation.y = mo.dir * mo.angle * k;
+        if (mo.mode === 'swing') { mo.pivot.rotation.y = mo.dir * mo.angle * k; if (mo.pivot2) mo.pivot2.rotation.y = -mo.dir * mo.angle * k; }   // THE DOUBLE DOOR: the second leaf swings the other way
         else if (mo.mode === 'slide') mo.carrier.position.x = mo.dir * mo.travel * k;
         else if (mo.mode === 'elevator') for (var j = 0; j < mo.parts.length; j++) mo.parts[j].m.position.x = mo.parts[j].x0 + mo.parts[j].dir * mo.travel * k;
         else if (mo.mode === 'way' && mo.tick) { try { mo.tick(k); } catch (e) {} }
@@ -84194,9 +84208,11 @@ const ThreeRenderer = (function () {
         var Sp = d.spin;
         if (!d.join.keep) { if (d.leafG) d.leafG.visible = !on; return on; }
         if (d.leafG && Sp) d.leafG.position.z = on ? (-(d.pd || 0.55) / 2 + 0.05 - (d.join.gap || 0) / 2) * _hqUnits() : Sp.z0;   // the middle of the doorway, frame face to frame face
+        var W = d.wpt || { x: 0, z: 0 }, near = Math.hypot(px - W.x, pz - W.z) <= (HQ_WORLD_RULES.swingM || 1.6) + (d.ow || 2.2) / 2;
+        /* THE DOUBLE DOOR (2026-11-12): a round join's leaf that swings (no spin) opens for the walker like any joined door */
+        if (on && !Sp && d.motion) { _hqDoorMotionStep(d, (near && !HQ_DOOR_LOCKED[d.state]) ? 1 : 0, dt); return true; }
         if (!on || !Sp || !Sp.m) return on;
         if (Sp.base == null) Sp.base = Sp.m.rotation.y;
-        var W = d.wpt || { x: 0, z: 0 }, near = Math.hypot(px - W.x, pz - W.z) <= (HQ_WORLD_RULES.swingM || 1.6) + (d.ow || 2.2) / 2;
         var Q = Math.PI / 2, want = near ? HQ_ROUND_SPIN : 0;
         Sp.v += (want - Sp.v) * Math.min(1, dt * 4);
         if (!near && Sp.v < 0.35) {
@@ -91001,6 +91017,7 @@ const ThreeRenderer = (function () {
             heroShadow: function () { var L = _hq && _hq.heroLit; return Object.assign({ light: !!(L && L.isLight), hold: !!(L && L._ew_heroHold) }, _heroStat); },
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
             hqScene: function () { return _hq ? _hq.scene : null; },
+            hqDoors: function () { if (!_hq) return null; var out = _hq.doors.slice(), st = _hq.stage; if (st && st.parts) for (var id in st.parts) { var P = st.parts[id].P; if (P && P.doors) out = out.concat(P.doors); } return out; },   // the door records of the room stood in + the rooms beside it (probes)
             hqInst: function () { return _hqInstStats(_hq); },
             hqText: function () { return _hqTextStats(); },   // R6: the HQ plates on the GPU vs CSS2D
             reflectors: function () { return (_hq && _hq.reflectors || []).map(function (r) { return { kind: r.kind, drawn: r.drawn, gain: r.mats[0] ? r.mats[0].uniforms.uGain.value : null }; }); },   // W4: the mirrored draws
