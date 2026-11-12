@@ -773,3 +773,11 @@ R2 files: data.js, map.js, ui.js, battle.js, three-vfx-effects.js, styles-base.c
   counts) → Tape 2 (must be played: the portal opens at its end) → `orientation_portal`: the party + the Catgirl against two Shadow
   Entities on `prebuilt_training`, TDM, story rules.
 - The lessons, their steps and TUTORIAL_MECHANICS are untouched. VS-CPU only (RULE #2 has nothing to relay).
+
+### THE FIRST QUEST HOLDS (2026-11-12, mondo: "I shouldnt have anyone at all in my roster except for me (door agent). The whole quest is about getting a first party member")
+- A quest row may carry `holds: { party, range }`; `questHolds(profile, key)` is true while that quest is not complete.
+- `party`: `hqPartyUnlocked` returns only what the doors sealed, so the first filing is the officer alone and the prune relieves
+  the starters from a party filed earlier. Online / Practice / ACCT_STARTER_UNITS untouched. After the quest the account's units
+  are on call in the pause menu as before; nobody but the reward joins by itself.
+- `range`: map.js `_hqConsoleTerminal` returns false for the Range Console (the tapes' panel shows, never the terminal with its
+  game modes and party builder) and `_hqTrainingHtml` leaves out SPARRING / PRACTICE.

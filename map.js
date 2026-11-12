@@ -3777,7 +3777,12 @@
         function _hqConsoleTerminal(t) {
             const c = t && t.counter;
             const act = (c && c.action) || {};
-            if (act.overlay === 'training') return _hqRangeTerminal(c.id || 'range');
+            if (act.overlay === 'training') {
+                /* THE FIRST QUEST (mondo 2026-11-12): until it is complete the Range Console is the tapes' panel, never the terminal's game modes */
+                let _held = false; try { _held = typeof window.questHolds === 'function' && window.questHolds(_hqProfile(), 'range'); } catch (e) { _held = false; }
+                if (_held) return false;
+                return _hqRangeTerminal(c.id || 'range');
+            }
             if (act.overlay === 'dispatch' && t.viaTerminal) return _hqDeskTerminal(c.id || 'dispatch', c.label || 'DISPATCH');
             return false;
         }
@@ -6775,11 +6780,12 @@
             if (_qf && _qf.room === _hqCurRoom) {
                 html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-quest-fight="' + _hqEsc(_qf.id) + '" title="The quest\'s fight, with your party">QUEST ▸ ' + _hqEsc(String(_qf.label || 'THE FIGHT').toUpperCase()) + '</button></div>';
             }
+            let _qHeld = false; try { _qHeld = typeof window.questHolds === 'function' && window.questHolds(_hqProfile(), 'range'); } catch (e) { _qHeld = false; }
             html += '<div class="hq-panel-actions">'
                 + '<button class="hq-btn hq-btn-primary" data-tutorial="tape" title="The orientation tape on the tube TV, then TAPE 1 · FIRST STEPS on this grid">ORIENTATION ▸ THE TAPE + LESSON 1</button>'
                 + '<button class="hq-btn" data-fn="_goToTutorial" title="Every lesson on the shelf — core and optional">LESSONS ▸ THE SHELF' + (_tpLine ? ' · ' + _hqEsc(_tpLine) : '') + '</button>'
-                + '<button class="hq-btn" data-range="prebuilt_training" title="Arena · 4v4 on the 8×8 Training Room board · free CPU pool">SPARRING ▸ TRAINING ROOM · 4v4</button>'
-                + '<button class="hq-btn" data-range="prebuilt_holosim" title="Arena · 4v4 on the Holo Sim floor · free CPU pool · nothing is filed">PRACTICE ▸ HOLO SIM · 4v4</button>'
+                + (_qHeld ? '' : '<button class="hq-btn" data-range="prebuilt_training" title="Arena · 4v4 on the 8×8 Training Room board · free CPU pool">SPARRING ▸ TRAINING ROOM · 4v4</button>'
+                + '<button class="hq-btn" data-range="prebuilt_holosim" title="Arena · 4v4 on the Holo Sim floor · free CPU pool · nothing is filed">PRACTICE ▸ HOLO SIM · 4v4</button>')
                 + '<button class="hq-btn" data-close="1">NOTED</button></div>';
             html += '<p class="hq-panel-note">Simulated crossings are INTERNAL: no site file, no mastery, no Code Red. The walls are real; the stakes are not. The grid beside you is the one you will fight on.</p>';
             return html;
