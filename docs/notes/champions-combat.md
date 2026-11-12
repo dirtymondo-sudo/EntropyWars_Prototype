@@ -5206,3 +5206,16 @@ round tick. Now battle.js `igniteTile` calls `_fireCatchesUnitAt` on a newly lit
 flyers, lava-adapted, fire drinkers, units already Burning; the normal status immunity still answers ("resists Burn", e.g. Astronaut). Forest, oil
 blast and Hell door pass `noCatch` (they apply their own burn); `tickBurningTiles` spread and the Hell lane call the helper directly.
 Proof: /mnt/project-files/burning-tile-catch-20261112/ (WebGL2, Training Room, Dragon Fist on tall grass).
+
+## THE WALK-IN SELF CAST (2026-11-12, mondo: "Scatter shot wasnt moveing+casting for me")
+A self-cast that only hits the enemies in its own reach lit MOVE→CAST on the Abilities list (hasReachableTarget walks the caster and asks its
+pool), but picking it only offered CONFIRM on the caster, and the cast was refused ("no enemy in range and in sight to hit"). On an enemy's
+quick menu Scatter Shot read as a plain cast at any distance (the aim gate says yes to every self-cast) and was refused the same way.
+Covered rows (battle.js `_selfPoolSpell`): the random-target rows (Scatter Shot, Things That Go Bump, The Whole House Shakes, Stack Overflow,
+Every Eye at Once) and the enemy-only novas (`_selfNovaEnemyOnly`: Meow, Demonic Roar, Fear, Requiem, Quake, Hey Over Here… 31 rows).
+Now they follow the one MOVE→CAST rule: with nobody in reach from where the caster stands, the list names the enemies a step brings into
+reach (`_selfPoolWalkIn` → `_getSpellApproachTargets`), CONFIRM / a board click on that enemy walks to the farthest square that still has it
+in the pool (`findSpellApproachTile`) and casts on the caster. With somebody already in reach nothing changed (CONFIRM on the caster).
+`findSpellApproachTile` now returns null for every other self-cast (it used to hand back a random far tile). hud.js: `_aimSelf`, the target
+rows (a self-cast lists walk-in enemies only) and the enemy quick menu's Scatter Shot row (in reach = in the pool, else ↳ MOVE).
+No rule changed, no data.js row changed. Proof: /mnt/project-files/scatter-shot-move-cast/ (WebGL2, VS CPU, Mount Shasta).
