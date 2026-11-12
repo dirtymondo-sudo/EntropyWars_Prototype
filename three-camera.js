@@ -1556,7 +1556,17 @@ const ThreeCamera = (function () {
                 const sx = -(Math.cos(yawRad) * a + ux * b), sy = -(uy * b), sz = -(-Math.sin(yawRad) * a + uz * b);
                 targetPosX += sx; targetPosY += sy; targetPosZ += sz;
                 targetLookX += sx; targetLookY += sy; targetLookZ += sz;
-                if (targetPosY < floorY) { const lift = floorY - targetPosY; targetPosY += lift; targetLookY += lift; }
+                /* the eye may not sink under the lens floor. THE PANEL LIFT (2026-11-12, mondo orbiting low round the
+                   Seraphim: "he sits too low in the frame and he's covered by the battle panel"): a slide UP the screen
+                   lowers the eye, and a low orbit already has it on the floor, so lifting eye AND aim back cancelled the
+                   slide exactly when the view was lowest. On a level / downward look the aim keeps its slid place and
+                   the eye alone stops at the floor: the lens tips down a little and the focal still stands where the
+                   slide put it. Kill switch: EW_NO_PANEL_LIFT. */
+                if (targetPosY < floorY) {
+                    const lift = floorY - targetPosY;
+                    targetPosY += lift;
+                    if (!(_mslY > 0 && dirY <= 1e-4) || (typeof window !== 'undefined' && window.EW_NO_PANEL_LIFT)) targetLookY += lift;
+                }
             }
         }
         /* ══ THE FRAME GUARD (2026-10-05) ══
