@@ -382,10 +382,19 @@ def fit(name, gender, src, bodies_dir):
         else: ks |= set(int(i) for i in idx)
     # A LEG SEGMENT (thigh, calf) that is mostly under cloth is hidden whole (2026-11-12, mondo: "Knight has slivers of skin
     # outside of her boots where her calves are": her calf is fuller than the greave Meshy made, so strips of it stood outside)
+    # + A PAIR (2026-11-12, mondo on the catgirl: "she has her heel sticking out of the back of her boot": her right calf was 71 %
+    # under the stocking and hidden, her left 68 % and shown, so the back of the left ankle stood outside the boot): when one leg
+    # of a pair is hidden whole, the other is too from LEGPAIR on
+    lh_ = {}
     for n in ('LeftUpLeg', 'RightUpLeg', 'LeftLeg', 'RightLeg'):
-        idx = np.nonzero(gw[n] > 0.5)[0]
-        hid = sum(1 for i in idx if i not in ks) / max(1, len(idx))
-        if hid > E('LEGHIDE', 0.7): ks -= set(int(i) for i in idx)
+        idx = np.nonzero(gw[n] > 0.5)[0]; lh_[n] = (idx, sum(1 for i in idx if i not in ks) / max(1, len(idx)))
+    for a_, b_ in (('LeftUpLeg', 'RightUpLeg'), ('LeftLeg', 'RightLeg')):
+        top_ = max(lh_[a_][1], lh_[b_][1])
+        for n in (a_, b_):
+            idx, hid = lh_[n]
+            if hid > E('LEGHIDE', 0.7) or (top_ > E('LEGHIDE', 0.7) and hid > E('LEGPAIR', 0.5)):
+                ks -= set(int(i) for i in idx)
+                if hid <= E('LEGHIDE', 0.7): print('[bake-outfit] %s: %s %.0f %% under cloth, hidden with its pair' % (name, n, hid * 100), flush=True)
     # + THE SKIN AT THE OPENING'S EDGE (--neckline; most of what was left of the "jagged black spots"): a body triangle with one
     # hidden corner is not drawn, so the skin hidden under the jacket's edge bit saw teeth one triangle deep into the open chest
     # and the jacket's black inside showed through them. Round the chest (OPENX to each side of the middle, OPENZ under the eyes)

@@ -7643,7 +7643,17 @@ function ActionMenu({ st, hidden }) {
   // (this label used to live on the retired END TURN crown bar)
   const _endLabel = (typeof window._isSimulMode === 'function' && window._isSimulMode()
     && window.GAME?.state?._simulPhase === 'plan') ? 'COMMIT ORDER' : 'END TURN';
-  rootBlades.push({ id: 'end', label: _endLabel, icon: '■', available: true, danger: true, hint: _hintKey('endTurn', 'SPACE') });
+  /* THE TUTORIAL (mondo 2026-11-12): END TURN, BUILD and the tool buttons are greyed with LATER like every other row
+     unless the live step allows them (they had stayed lit, and a press did nothing) */
+  const _tutOn = typeof window !== 'undefined' && window._tutActive && typeof window._tutVerbOk === 'function';
+  const _tutEndOk = !_tutOn || window._tutVerbOk('end');
+  rootBlades.push(_tutEndOk
+    ? { id: 'end', label: _endLabel, icon: '■', available: true, danger: true, hint: _hintKey('endTurn', 'SPACE') }
+    : { id: 'end', label: _endLabel, icon: '■', available: false, sub: 'LATER', subBelow: true, tutOff: true });
+  if (_tutOn && typeof window._tutToolOk === 'function') {
+    if (!window._tutToolOk('build')) { buildBtn.available = false; buildBtn.active = false; buildBtn.sub = 'LATER'; }
+    pushers.forEach(p => { if (!window._tutToolOk(p.id)) { p.available = false; p.sub = 'LATER'; p.hoverIn = null; } });
+  }
   const rootPanel = { key: 'root', title: null, blades: rootBlades };
   const _mkPanel = (key, built, extra) => ({
     key, title: built.title || null,
