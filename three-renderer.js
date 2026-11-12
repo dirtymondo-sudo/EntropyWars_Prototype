@@ -7068,7 +7068,123 @@ const ThreeRenderer = (function () {
         return { group: group, ctl: ctl };
     }
 
+    /* ═══ THE GARDEN (2026-11-12, mondo: "new seed/plant models, since the current ones are just 2d sprites that dont
+       really fit the game anymore") ═══ A seed is a small mound with the seed on it; watered, it is a sprout in its
+       type's colour; grown, it is a plant (state.turrets, `plant`) wearing its own model with a real HP bar over it.
+       The plant models are Meshy pieces (concepts OK'd by mondo); until a file is in the cache the plant draws its
+       team ring and HP bar only. */
+    var _PLANT_MODEL_URLS = {
+        leech:  'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_thornvine.glb',
+        poison: 'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_gasplant.glb',
+        heal:   'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_healflower.glb'
+    };
+    var _PLANT_HEIGHT = { leech: 0.95, poison: 0.9, heal: 0.95 };   // of a tile
+    var _SEED_COLORS = { heal: 0xe8c860, poison: 0x8a4ab0, leech: 0x9a2a3a, plain: 0x8a5a2a };
+    var _plantSeen = {};
+    function _gardenMat(hex, basic) {
+        var m = basic ? new THREE.MeshBasicMaterial({ color: hex }) : new THREE.MeshLambertMaterial({ color: hex });
+        return m;
+    }
+    function _buildSeed3D(s) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(s.x, s.y);
+        var col = _SEED_COLORS[s.type] || _SEED_COLORS.plain;
+        var g = new THREE.Group();
+        var mound = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.2, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2), _gardenMat(0x5a3d22));
+        mound.scale.y = 0.45; g.add(mound);
+        if (!s.watered) {
+            var seed = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.075, 7, 6), _gardenMat(col));
+            seed.scale.set(0.8, 1.25, 0.8); seed.rotation.z = 0.35;
+            seed.position.y = ts * 0.12; g.add(seed);
+        } else {
+            /* the sprout: a stem, two leaves, a bud in the type's colour */
+            var green = _gardenMat(0x4f9a3a);
+            var stem = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.016, ts * 0.024, ts * 0.3, 6), green);
+            stem.position.y = ts * 0.22; g.add(stem);
+            for (var li = -1; li <= 1; li += 2) {
+                var leaf = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.09, 6, 4), green);
+                leaf.scale.set(1.3, 0.16, 0.6);
+                leaf.position.set(li * ts * 0.09, ts * 0.26, 0); leaf.rotation.z = li * 0.55;
+                g.add(leaf);
+            }
+            var bud = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.06, 7, 6), _gardenMat(col));
+            bud.scale.y = 1.25; bud.position.y = ts * 0.4; g.add(bud);
+            var t0 = _animNow(), ph = (s.x * 31 + s.y * 17) * 0.37;
+            bud.onBeforeRender = function () { g.rotation.z = Math.sin((_animNow() - t0) / 520 + ph) * 0.06; };
+        }
+        g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+        g.position.set(s.x * ts + ts / 2, topY, s.y * ts + ts / 2);
+        g._ew_deployable = true;
+        /* the grown plant's file starts loading while the seed lies there, so it is in when the seed grows */
+        var purl = _PLANT_MODEL_URLS[s.type];
+        if (purl && !_miscModelCache[purl]) { try { _loadMiscModel(purl, true, function () {}, { front: true }); } catch (x) {} }
+        return g;
+    }
+    /* the HP bar over a plant: black with a white outline (the UI rule), the fill in its side's colour; it faces the camera */
+    function _plantHpBar(turret, ts, y) {
+        var bar = new THREE.Group();
+        var w = ts * 0.62, h = ts * 0.075, frac = Math.max(0, Math.min(1, turret.hp / (turret.maxHp || 1)));
+        var mk = function (ww, hh, hex, z, ro) {
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(ww, hh), new THREE.MeshBasicMaterial({ color: hex, depthTest: false, transparent: true, fog: false }));
+            m.position.z = z; m.renderOrder = ro; return m;
+        };
+        bar.add(mk(w + ts * 0.03, h + ts * 0.03, 0xffffff, 0, 9001));
+        bar.add(mk(w, h, 0x000000, 0.01, 9002));
+        if (frac > 0) {
+            var fill = mk(w * frac, h * 0.72, turret.owner ? _viewerPlayerColor(turret.owner) : 0x66dd66, 0.02, 9003);
+            fill.position.x = -w * (1 - frac) / 2; bar.add(fill);
+        }
+        bar.position.y = y;
+        bar.children[0].onBeforeRender = function (r, sc, cam) { bar.quaternion.copy(cam.quaternion); };
+        return bar;
+    }
+    function _buildPlant3D(turret) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var col = turret.owner ? _viewerPlayerColor(turret.owner) : 0x888888;
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.34, 1.5, 4, 16), new THREE.MeshBasicMaterial({ color: col }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 1.5; g.add(ring);
+        var tall = (_PLANT_HEIGHT[turret.plant] || 0.9) * ts;
+        g.add(_plantHpBar(turret, ts, tall + ts * 0.16));
+        var seen = _plantSeen[turret.id], hurt = !!(seen && turret.hp < seen.hp), born = !seen;
+        _plantSeen[turret.id] = { hp: turret.hp };
+        var url = _PLANT_MODEL_URLS[turret.plant], seedPh = (turret.x * 31 + turret.y * 17) * 0.11;
+        var fill = function () {
+            var e = _miscModelCache[url];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var m = root.clone(true), anchor = null;
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; if (!anchor) anchor = n; } });
+            var sc = tall / ((bb.max.y - bb.min.y) || 1);
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+            var body = new THREE.Group(); body.add(m); g.add(body);
+            if (!anchor) return;
+            var t0 = _animNow();
+            anchor.onBeforeRender = function () {
+                var now = _animNow(), el = now - t0;
+                var grow = born ? Math.min(1, el / 500) : 1;                                   // it rises out of the ground once
+                var hit = hurt ? Math.sin(Math.min(1, el / 320) * Math.PI) : 0;                 // the flinch of a hit
+                var br = Math.sin(now / 420 + seedPh) * 0.035;
+                body.scale.set((1 - br * 0.5 + hit * 0.12) * grow, Math.max(0.05, (1 + br - hit * 0.2) * grow), (1 - br * 0.5 + hit * 0.12) * grow);
+                body.rotation.z = Math.sin(now / 900 + seedPh) * 0.04;
+            };
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[url];
+        if (e0 && e0.root) fill();
+        else if (url) { try { _loadMiscModel(url, true, fill, { front: true }); } catch (x) { console.warn("[ThreeRenderer] plant model load threw", x); } }
+        return g;
+    }
+
     function _buildTurret(turret) {
+        if (turret.plant) return _buildPlant3D(turret);   // THE GARDEN
         if (turret.summon) return _buildSummon3D(turret);
         if (turret.zombie) return _buildZombie3D(turret);
         if (turret.spellId === 'fiveGTower') return _buildFiveGTower(turret);
@@ -10568,7 +10684,7 @@ const ThreeRenderer = (function () {
         if (state.plantedSeeds) {
             for (var i = 0; i < state.plantedSeeds.length; i++) {
                 var s = state.plantedSeeds[i];
-                h = _hashInt(h, 1); h = _hashInt(h, s.x); h = _hashInt(h, s.y); h = _hashStr(h, s.type);
+                h = _hashInt(h, 1); h = _hashInt(h, s.x); h = _hashInt(h, s.y); h = _hashStr(h, s.type); h = _hashInt(h, s.watered ? 1 : 0);
             }
         }
         if (state.bombs) {
@@ -12034,8 +12150,7 @@ const ThreeRenderer = (function () {
         if (state.plantedSeeds) {
             for (var i = 0; i < state.plantedSeeds.length; i++) {
                 var s = state.plantedSeeds[i];
-                var sprKey = 'seed-' + s.type;
-                var m = _buildDeployableBillboard(sprKey, s.x, s.y, null);
+                var m = _buildSeed3D(s);   // THE GARDEN (2026-11-12): a 3D seed / sprout (was the 2D seed sprite)
                 if (m) {
                     var key = 'dep_' + (idx++);
                     m._ew_depX = s.x; m._ew_depY = s.y;
@@ -26340,11 +26455,106 @@ const ThreeRenderer = (function () {
         _shadowsDirty = true;
     }
 
+    /* 👁 THE ASTRAL BODY (astral projection build 1, 2026-11-12; battle.js THE ASTRAL BODY). A unit wearing `projecting`
+       is the SPIRIT of a body that sleeps on another tile (unit._astralBodyId, a real second unit with its own entry).
+       The spirit is drawn as the unit's own model: white and see-through, hovering with a slow bob, joined to its body
+       by a cord in the viewer's team colours (own cyan-blue, enemy pink-orange). Look only: nothing here is a rule.
+       Host and guest both read the synced status and ids, so both seats draw it with nothing relayed (RULE #2). */
+    var ASTRAL_OPACITY = 0.78, ASTRAL_LIFT = 0.16, ASTRAL_OWN_COLOR = 0x4fd8ff, ASTRAL_ENEMY_COLOR = 0xff7a5c;
+    var _astralCords = new Map();   // spirit uid → { mesh, key }
+    var _astralWhite = null;
+    function _astralIsSpirit(unit) { return !!(unit && unit.status && unit.status.projecting > 0); }
+    function _astralEachMat(entry, fn) {
+        if (!entry || !entry.group) return;
+        entry.group.traverse(function (o) {
+            if (!o.isMesh || !(o._ew_billboard || o._ew_modelSkin) || !o.material) return;
+            if (Array.isArray(o.material)) o.material.forEach(fn); else fn(o.material);
+        });
+    }
+    function _astralLook(entry, on, now) {
+        if (!entry || !entry.group) return;
+        if (!on && !entry._ew_astralOn) return;
+        if (!_astralWhite) _astralWhite = new THREE.Color(0xe6f4ff);
+        var body = entry.model || entry.sprite || null;
+        if (on) {
+            entry._ew_astralOn = true;
+            _astralEachMat(entry, function (m) {
+                if (!m._ew_astralBase) {
+                    m._ew_astralBase = { c: m.color ? m.color.clone() : null, e: m.emissive ? m.emissive.clone() : null, ei: m.emissiveIntensity, em: m.emissiveMap || null, dw: m.depthWrite };
+                    /* the self-glow is the unit's own texture (emissiveMap): a dark coat would stay dark. A flat pale glow
+                       over the whole body is what turns it white; the texture still reads through it. */
+                    if (m.emissive && m.emissiveMap) { m.emissiveMap = null; m.needsUpdate = true; }
+                    m.depthWrite = false;
+                }
+                /* every frame: the day/night grey and the self-glow write these each frame too, and this runs after them */
+                if (m.color) m.color.copy(_astralWhite);
+                if (m.emissive) { m.emissive.set(0x9cc8ee); m.emissiveIntensity = 0.62; }
+            });
+            if (body) {
+                if (entry._ew_astralY0 === undefined) entry._ew_astralY0 = body.position.y;
+                var ts = CONFIG.tileSize || BASE_TILE;
+                body.position.y = entry._ew_astralY0 + ts * ASTRAL_LIFT + Math.sin((now || 0) / 620) * ts * 0.018;
+            }
+        } else {
+            entry._ew_astralOn = false;
+            _astralEachMat(entry, function (m) {
+                var b = m._ew_astralBase; if (!b) return;
+                if (m.color && b.c) m.color.copy(b.c);
+                if (m.emissive && b.e) { m.emissive.copy(b.e); m.emissiveIntensity = b.ei; }
+                if (b.em && !m.emissiveMap) { m.emissiveMap = b.em; m.needsUpdate = true; }
+                m.depthWrite = b.dw;
+                delete m._ew_astralBase;
+            });
+            if (body && entry._ew_astralY0 !== undefined) { body.position.y = entry._ew_astralY0; }
+            entry._ew_astralY0 = undefined;
+            _setEntrySpriteOpacity(entry, 1);
+        }
+    }
+    function _astralEntryHeight(entry) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        return ts * UNIT_SPRITE_SIZE_RATIO * ((entry.modelDef && entry.modelDef.heightRatio) || 1) * ((entry.group && entry.group.scale.y) || 1);
+    }
+    function _astralCordDrop(uid) {
+        var c = _astralCords.get(uid); if (!c) return;
+        _astralCords.delete(uid);
+        try { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); c.mesh.geometry.dispose(); c.mesh.material.dispose(); } catch (e) {}
+    }
+    function _astralCordsClear() { Array.from(_astralCords.keys()).forEach(_astralCordDrop); }
+    function _astralCordsUpdate(vp, now) {
+        if (!scene) return;
+        var live = {};
+        unitEntries.forEach(function (entry, uid) {
+            var unit = _unitById.get(uid) || null;
+            if (!unit || unit.dead || unit._dying || !_astralIsSpirit(unit) || !unit._astralBodyId) return;
+            var be = unitEntries.get(unit._astralBodyId);
+            if (!be || !be.group || !entry.group || !entry.group.visible || !be.group.visible) return;
+            var hs = _astralEntryHeight(entry), hb = _astralEntryHeight(be), ts = CONFIG.tileSize || BASE_TILE;
+            var a = be.group.position, b = entry.group.position;
+            var ax = a.x, ay = a.y + hb * 0.6, az = a.z, bx = b.x, by = b.y + ts * ASTRAL_LIFT + hs * 0.55, bz = b.z;
+            var own = unit.player === vp;
+            var key = [ax, ay, az, bx, by, bz].map(function (v) { return Math.round(v); }).join(',') + (own ? 'o' : 'e');
+            live[uid] = true;
+            var c = _astralCords.get(uid);
+            if (c && c.key === key) { c.mesh.material.opacity = 0.7 + 0.18 * Math.sin((now || 0) / 380); return; }
+            if (c) _astralCordDrop(uid);
+            var p0 = new THREE.Vector3(ax, ay, az), p2 = new THREE.Vector3(bx, by, bz);
+            var p1 = p0.clone().lerp(p2, 0.5); p1.y -= Math.min(hs, hb) * 0.25;   // the cord sags a little
+            var geo = new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(p0, p1, p2), 28, ts * 0.012, 6, false);
+            var mat = new THREE.MeshBasicMaterial({ color: own ? ASTRAL_OWN_COLOR : ASTRAL_ENEMY_COLOR, transparent: true, opacity: 0.85, depthTest: false, depthWrite: false, fog: false });
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.name = 'astralCord'; mesh.renderOrder = 998; mesh.frustumCulled = false;
+            scene.add(mesh);
+            _astralCords.set(uid, { mesh: mesh, key: key });
+        });
+        Array.from(_astralCords.keys()).forEach(function (uid) { if (!live[uid]) _astralCordDrop(uid); });
+    }
+
     function _updateEnemyConcealment() {
-        if (typeof state === 'undefined' || state.phase !== 'battle') { if (_realm) _realmExit(); return; }
+        if (typeof state === 'undefined' || state.phase !== 'battle') { if (_realm) _realmExit(); _astralCordsClear(); return; }
         var vp = _viewerPlayerNum();
         var fog = !!state.fogOfWar;
         var _rk = _realmTick();
+        var _astNow = (typeof performance !== 'undefined') ? performance.now() : 0;
         unitEntries.forEach(function(entry, uid) {
             var unit = _unitById.get(uid) || null;
             if (!unit || unit.dead) return;
@@ -26382,6 +26592,9 @@ const ThreeRenderer = (function () {
             /* 🌑 THE SHADOW REALM: not on this turn's plane = not drawn, own units included */
             if (_realmOutOfView(unit)) { entry.group.visible = false; entry._ew_realmHid = true; return; }
             if (entry._ew_realmHid) { entry._ew_realmHid = false; entry.group.visible = true; }
+            /* 👁 THE ASTRAL BODY: a spirit is white, see-through and hovering, for both sides */
+            var _ast = _astralIsSpirit(unit);
+            _astralLook(entry, _ast, _astNow);
             if (_rk && unit.player !== vp) {
                 /* in the realm it is just the two of them: the other one is always seen, fog or not */
                 entry.group.visible = !_isConcealedFromViewer(unit, vp);
@@ -26393,13 +26606,15 @@ const ThreeRenderer = (function () {
                 /* THE DODGE READS (2026-11-03): an escape that ends Invisible (Nimble Dodge) runs solid and ghosts as it
                    lands — the tween that carries it (escHide) is still live until then */
                 var _ownEsc = _displaceTweens.get(unit.id);
-                _setEntrySpriteOpacity(entry, (_ownUnitInvisible(unit) && !(_ownEsc && _ownEsc.escHide)) ? INVIS_OWN_OPACITY : 1);
+                _setEntrySpriteOpacity(entry, (_ownUnitInvisible(unit) && !(_ownEsc && _ownEsc.escHide)) ? INVIS_OWN_OPACITY : (_ast ? ASTRAL_OPACITY : 1));
                 return;
             }
             var base = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
             if (base && fog) base = _unitLosSeen(unit, vp);
             entry.group.visible = base && !_isConcealedFromViewer(unit, vp);
+            if (_ast) _setEntrySpriteOpacity(entry, ASTRAL_OPACITY);
         });
+        _astralCordsUpdate(vp, _astNow);
         _plateObjs.forEach(function(po, uid) {
             var unit = _unitById.get(uid) || null;
             if (!unit || unit.dead) return;
@@ -64275,7 +64490,7 @@ const ThreeRenderer = (function () {
         },
         /* THE PHOTO (rev 8, 2026-09-13): a bust — shoulders up, straight on — of the hero on the stage as a JPEG
            data URL for the ID card (Occam's mirror). Renders the viewer's scene once at w × h through its own
-           camera (the head at 62 % of the frame, no drag yaw, no beat), reads the canvas back in the same task
+           camera (aimed off the Head bone, no drag yaw, no beat), reads the canvas back in the same task
            (no preserveDrawingBuffer needed), then restores the live size. null without a model. */
         snapshot: function (opts) {
             var v = _cv; opts = opts || {};
@@ -64287,9 +64502,21 @@ const ThreeRenderer = (function () {
                 v.model.rotation.y = opts.yaw || 0;
                 v.stage.position.x = 0; v.blob.position.x = 0; v.circle.position.x = 0;
                 var cam = new THREE.PerspectiveCamera(22, w / hgt, 0.05, 60);
-                var cy = v.h * (opts.bust === false ? 0.52 : 0.86), dist = v.dist0 / (opts.bust === false ? 1 : 2.9);
-                cam.position.set(0, cy + 0.02 * v.h, dist);
-                cam.lookAt(0, cy - 0.01 * v.h, 0);
+                var cy = v.h * (opts.bust === false ? 0.52 : 0.86), dist = v.dist0 / (opts.bust === false ? 1 : 2.9), cx = 0, cz = 0;
+                /* THE FRAMING (2026-11-12, mondo: "the angle and framing is all messed up"): the bust was aimed at 86 % of the
+                   body's height, so the head sat against the top edge, a hat was cut off and most of the photo was coat. It is
+                   aimed off the Head bone now, like the portrait studio's photo (PT_BUST): the head's middle a little above the
+                   frame's middle, room for a hat, the shoulders along the bottom. */
+                if (opts.bust !== false) {
+                    v.model.updateMatrixWorld(true);
+                    var shp = _cvHeadPoint(v);
+                    if (shp) {
+                        cx = shp.x; cz = shp.z; cy = shp.y - v.h * PT_BUST.drop;
+                        dist = v.h * PT_BUST.frame * 0.5 / Math.tan((22 * Math.PI / 180) / 2);
+                    }
+                }
+                cam.position.set(cx, cy + (shp ? 0 : 0.02 * v.h), cz + dist);
+                cam.lookAt(cx, cy - (shp ? 0 : 0.01 * v.h), cz);
                 var blobVis = v.blob.visible, circVis = v.circle.visible;
                 v.blob.visible = false; v.circle.visible = false;
                 r.setPixelRatio(1); r.setSize(w, hgt, false);
@@ -64619,6 +64846,257 @@ const ThreeRenderer = (function () {
 
     // menu screens (ui.js codex/shop, party-builder.js) reach it here:
     if (typeof window !== 'undefined') window.EWCharViewer = charViewer;
+
+    /* ══ THE PORTRAIT STUDIO (2026-11-12, mondo: "how the game takes a screenshot of the player's created character model
+       and uses that is the portrait, the angle and framing is all messed up" + "cut one from her model" for Agent Locke) ══
+       A unit that wears a MODEL of its own (a creator look, or a story character's rig: `appearance.cast`) gets its
+       portrait FROM that model: a small second renderer (PT_PX square, like the character viewer's, the same lights and
+       colour pipeline) builds the body once, lets the idle and the cloth settle a few frames, aims a camera at the Head
+       bone (a three-quarter face: PT_YAW, the face's middle in the frame's middle, PT_FRAME of the body's height tall) and
+       keeps the picture as a data URL. sprites.js getUnitPortraitArtUrl asks EWPortraits.url(unit): null until the picture
+       is in (the sprite's face stands in), then the HUD's faces repaint (hud.js EWFaces.bump). `kind` 'bust' = the ID
+       card's 256 x 320 photo, framed off the same Head bone. One body at a time; the body and, half a minute after the
+       last job, the renderer are let go. Viewer-local: nothing is stored on a unit, nothing is relayed.
+       Off: window.EW_NO_MODEL_PORTRAITS = true. */
+    var PT_PX = 128, PT_FOV = 20, PT_FRAME = 0.22, PT_YAW = 0.36, PT_POLAR = -0.04, PT_PITCH = 0.8, PT_FWD = 0.028, PT_SETTLE = 8, PT_WAIT = 90000;
+    var PT_BAKE_EXPO = 0.62;   // a Meshy bake (its own glow under the studio's lights) washes out at the creator bodies' exposure: a paler face lost its eyes and mouth
+    var PT_BUST = { w: 256, h: 320, frame: 0.36, drop: 0.035, bg: 0x2a2620 };   // the ID card's photo: the head's middle sits 3.5 % of the height above the frame's middle
+    var _pt = null, _ptV = null, _ptQ = null, _ptUrls = {}, _ptFail = {}, _ptSpecs = (typeof WeakMap === 'function') ? new WeakMap() : null, _ptIdleT = 0;
+    function _ptOff() {
+        return typeof window === 'undefined' || !!window.EW_NO_MODEL_PORTRAITS || !!window.EW_DISABLE_3D_UNITS
+            || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function' || typeof document === 'undefined';
+    }
+    function _ptHash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0).toString(36); }
+    /* what to photograph for this unit: { key, def, look } (null = a unit with no model of its own: its art / sprite face stays) */
+    function _ptSpec(u) {
+        if (!u || !u.race) return null;
+        var a = u.appearance;
+        if (!a || typeof a !== 'object') return null;
+        var g = u.gender === 'female' ? 'female' : 'male';
+        var hit = _ptSpecs && _ptSpecs.get(a);
+        if (hit && hit.race === u.race && hit.g === g) return hit.spec;
+        var spec = null;
+        try {
+            if (typeof a.cast === 'string' && a.cast) {
+                var cd = (typeof getCastModel === 'function') ? getCastModel(a.cast) : null;
+                if (cd && cd.model) spec = { key: 'cast:' + a.cast, def: cd, look: null };
+            } else if (typeof ewCreatorLookRace === 'function' && ewCreatorLookRace(u.race) && typeof normalizeCharacterAppearance === 'function') {
+                var n = normalizeCharacterAppearance(a);
+                var def = (n && n.model !== 'original' && typeof getCharacterAppearanceModel === 'function') ? getCharacterAppearanceModel(u.race, g, a) : null;
+                if (def && def.model) spec = { key: 'look:' + u.race + '|' + g + '|' + _ptHash(JSON.stringify(n)), def: def, look: n };
+            }
+        } catch (e) { spec = null; }
+        if (_ptSpecs) _ptSpecs.set(a, { race: u.race, g: g, spec: spec });
+        return spec;
+    }
+    function _ptEnsure() {
+        if (_ptIdleT) { clearTimeout(_ptIdleT); _ptIdleT = 0; }
+        if (_pt) return _pt;
+        var r;
+        try { r = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return null; }
+        r.setClearColor(0x000000, 0);
+        if (_EW_CS) r.outputColorSpace = THREE.SRGBColorSpace; else r.outputEncoding = THREE.sRGBEncoding;
+        r.toneMapping = THREE.ACESFilmicToneMapping;
+        r.toneMappingExposure = 1.05;
+        r.setPixelRatio(1);
+        r.setSize(PT_PX, PT_PX, false);
+        var scene = new THREE.Scene();
+        scene.add(new THREE.HemisphereLight(0xcfd8ff, 0x191024, 0.9));   // the character viewer's three lights
+        var key = new THREE.DirectionalLight(0xfff1da, 1.2);
+        key.position.set(1.7, 2.7, 2.2);
+        scene.add(key);
+        var rim = new THREE.DirectionalLight(0x9a7bff, 0.6);
+        rim.position.set(-2.2, 1.6, -2.5);
+        scene.add(rim);
+        var P = _pt = { renderer: r, canvas: r.domElement, scene: scene, cam: new THREE.PerspectiveCamera(PT_FOV, 1, 0.05, 60), subs: {}, queue: [], busy: null, lost: false, w: PT_PX, h: PT_PX };
+        r.domElement.addEventListener('webglcontextlost', function (e) { try { e.preventDefault(); } catch (_e) {} P.lost = true; });
+        r.domElement.addEventListener('webglcontextrestored', function () { P.lost = false; });
+        return P;
+    }
+    /* nothing left to photograph: the renderer goes half a minute later (a second WebGL context is not kept for nothing) */
+    function _ptRest() {
+        var P = _pt;
+        if (!P || P.busy || P.queue.length || Object.keys(P.subs).length || _ptIdleT) return;
+        _ptIdleT = setTimeout(function () {
+            _ptIdleT = 0;
+            if (!_pt || _pt !== P || P.busy || P.queue.length || Object.keys(P.subs).length) return;
+            try { P.renderer.dispose(); if (P.renderer.forceContextLoss) P.renderer.forceContextLoss(); } catch (e) {}
+            _pt = null;
+        }, 30000);
+    }
+    function _ptDrop(S) {
+        var P = _pt;
+        S.dead = true;
+        if (S.timer) { clearTimeout(S.timer); S.timer = 0; }
+        if (S.mixer) { try { S.mixer.stopAllAction(); } catch (e) {} S.mixer = null; }
+        if (S.rig) { try { S.rig.dispose(); } catch (e) {} S.rig = null; }
+        if (S.model && S.model.parent) S.model.parent.remove(S.model);
+        S.model = null;   // (the clone shares the cached GLB's geometry and materials: only the studio's own copies are disposed)
+        for (var i = 0; i < S.ownedMats.length; i++) { try { S.ownedMats[i].dispose(); } catch (e) {} }
+        for (var j = 0; j < S.ownedTex.length; j++) { try { S.ownedTex[j].dispose(); } catch (e) {} }
+        S.ownedMats = []; S.ownedTex = [];
+        if (P) { if (P.subs[S.key] === S) delete P.subs[S.key]; if (P.busy === S) P.busy = null; }
+    }
+    function _ptBump() {
+        try {
+            if (window.EWFaces && typeof window.EWFaces.bump === 'function') window.EWFaces.bump();
+            else { window._ewFaceGen = (window._ewFaceGen | 0) + 1; window.dispatchEvent(new Event('ew-state-change')); }
+        } catch (e) {}
+    }
+    /* one picture of S through the studio's camera, aimed off the Head bone: the face (a square, three-quarter view, clear
+       behind) or the bust (the ID card's upright photo, straight on, on its backdrop). The caller reads the canvas at once. */
+    function _ptRender(S, bust) {
+        var P = _pt, r = P.renderer, w = bust ? PT_BUST.w : PT_PX, hgt = bust ? PT_BUST.h : PT_PX;
+        for (var k in P.subs) { var o = P.subs[k]; if (o.model) o.model.visible = (o === S); }
+        if (P.w !== w || P.h !== hgt) { r.setSize(w, hgt, false); P.w = w; P.h = hgt; P.cam.aspect = w / hgt; P.cam.updateProjectionMatrix(); }
+        S.model.updateMatrixWorld(true);
+        var hp = _cvHeadPoint(S);
+        var hx = hp ? hp.x : 0, hy = hp ? hp.y : S.h * 0.93, hz = hp ? hp.z : 0;
+        /* where the FACE looks: the Head bone's turn since the bind pose (the body faces +Z there), so a bowed or turned idle
+           head is still met face on (the creator's close-up looks up under a bowed head for the same reason). The camera
+           takes PT_PITCH of the head's bow, then stands PT_YAW to the side for the three-quarter view. */
+        var f = _ptV || (_ptV = new THREE.Vector3()), pd = S.def.portrait || {};   // a def's own aim: { yaw, frame, expo } (sprites.js DOOR_CAST_MODELS)
+        f.set(0, 0, 1);
+        if (S.headBone && S.head0) {
+            var q = S.headBone.getWorldQuaternion(_ptQ || (_ptQ = new THREE.Quaternion()));
+            f.applyQuaternion(q.multiply(S.head0));
+            if (!(f.z > 0.25)) f.set(0, 0, 1);   // a head turned right round: the body's front
+        }
+        var fwd = S.h * PT_FWD;   // the Head bone sits mid-skull: the face is this far in front of it
+        var tx = hx + f.x * fwd, ty = hy + f.y * fwd - (bust ? S.h * PT_BUST.drop : 0), tz = hz + f.z * fwd;
+        var dist = S.h * (bust ? PT_BUST.frame : (pd.frame || PT_FRAME)) * 0.5 / Math.tan((PT_FOV * Math.PI / 180) / 2);
+        var yaw = Math.atan2(f.x, f.z) * (bust ? 0.5 : 1) + (bust ? 0 : (pd.yaw != null ? pd.yaw : PT_YAW));
+        var pol = Math.asin(Math.max(-1, Math.min(1, f.y))) * (bust ? PT_PITCH * 0.6 : PT_PITCH) + (bust ? 0 : PT_POLAR);
+        P.cam.position.set(tx + Math.sin(yaw) * Math.cos(pol) * dist, ty + Math.sin(pol) * dist, tz + Math.cos(yaw) * Math.cos(pol) * dist);
+        P.cam.lookAt(tx, ty, tz);
+        if (bust) r.setClearColor(PT_BUST.bg, 1); else r.setClearColor(0x000000, 0);
+        r.toneMappingExposure = pd.expo || (S.bake ? PT_BAKE_EXPO : 1.05);
+        r.render(P.scene, P.cam);
+    }
+    function _ptShoot(S) {
+        var P = _pt;
+        if (!P || S.dead || !S.model) return;
+        if (P.lost) { _ptFail[S.key] = Date.now(); _ptDrop(S); return; }
+        var got = false;
+        try {
+            _ptRender(S, false);
+            var face = P.canvas.toDataURL('image/png');
+            if (face && face.length > 200) { _ptUrls[S.key] = face; got = true; }
+            if (S.bust) {
+                _ptRender(S, true);
+                var photo = P.canvas.toDataURL('image/jpeg', 0.86);
+                if (photo && photo.length > 200) _ptUrls[S.key + '#bust'] = photo;
+            }
+        } catch (e) { console.warn('[ThreeRenderer] portrait failed', S.key, e); }
+        if (!got) _ptFail[S.key] = Date.now();
+        _ptDrop(S);
+        if (got) _ptBump();
+    }
+    /* the body is up (dressed, its idle on): a few frames for the pose, the cloth and the hair to settle, then the picture */
+    function _ptSettle(S) {
+        if (S.ready || S.dead) return;
+        S.ready = true;
+        var n = 0, raf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : function (fn) { return setTimeout(fn, 16); };
+        (function step() {
+            if (S.dead || !_pt || !S.model) return;
+            try {
+                if (S.mixer) S.mixer.update(n ? 1 / 30 : 0.4);
+                S.model.updateMatrixWorld(true);
+                if (S.rig) S.rig.tick();
+                if (S.sway) _swayTick(S.sway, 1 / 30, S.def.sway || null);
+            } catch (e) {}
+            if (++n < PT_SETTLE) { raf(step); return; }
+            _ptShoot(S);
+            setTimeout(_ptPump, 200);   // (a breath between two bodies: a menu full of looks is not one long hitch)
+        })();
+    }
+    function _ptPump() {
+        var P = _pt;
+        if (!P) return;
+        if (P.busy) return;
+        var S = P.queue.shift();
+        if (!S) { _ptRest(); return; }
+        P.busy = S;
+        var def = S.def;
+        var fail = function () { if (S.dead) return; _ptFail[S.key] = Date.now(); _ptDrop(S); _ptPump(); };
+        S.timer = setTimeout(function () { S.timer = 0; if (S.dead || S.ready) return; fail(); }, PT_WAIT);   // a body that never loads or a look that never finishes dressing keeps the sprite's face (asked again a minute later), never a half-dressed photo
+        _loadUnitGLB(def.model, function (entry) {
+            if (S.dead || _pt !== P) return;
+            if (!entry || !entry.root) { fail(); return; }
+            try {
+                var m = _cloneUnitModel(entry.root);
+                var bb = entry.bbox, rawH = (bb.max.y - bb.min.y) || 1;
+                var h = Math.max(0.35, Math.min(2.8, def.heightRatio || 1)), s = h / rawH;
+                m.scale.setScalar(s);
+                m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+                var hasSkin = _cvOwnBakes(m, S.ownedMats, S.ownedTex);   // the viewer's look: the bake matte, its maps sRGB, on the studio's own copies
+                S.sway = (m.userData && m.userData.ewSway === true) ? m : null;
+                if (entry.procClips) { _procRigAttachEye(m, 'viewer'); hasSkin = true; }
+                if (def.creatorBase) S.rig = _createAppearanceRig(m, def.raceLook || S.look);
+                S.bake = !S.rig && !entry.procClips;
+                var inner = new THREE.Group();
+                inner.rotation.y = def.yawOffset || 0;
+                inner.add(m);
+                var wrap = new THREE.Group();
+                wrap.add(inner);
+                wrap.visible = false;
+                S.model = wrap; S.h = h; S.built = true;
+                P.scene.add(wrap);
+                wrap.updateMatrixWorld(true);
+                _cvHeadPoint(S);   // (finds S.headBone) the head's bind pose: the face looks down +Z here
+                S.head0 = S.headBone ? S.headBone.getWorldQuaternion(new THREE.Quaternion()).invert() : null;
+                var idleOn = !hasSkin, dressed = !S.rig || S.rig.dressed();
+                var go = function () { if (idleOn && dressed) _ptSettle(S); };
+                /* (not rig.whenDressed: that gives up after CC_DRESS_MAX_MS and shows the body as it stands, right for a unit on
+                   the board, wrong for a photo that is kept: a slow load shot the officer bald and hatless) */
+                if (!dressed) (function poll() { if (S.dead || S.ready) return; if (S.rig && S.rig.dressed()) { dressed = true; go(); } else setTimeout(poll, 200); })();
+                if (hasSkin) {
+                    var mixer = S.mixer = new THREE.AnimationMixer(m);
+                    var play = function (clip, ts) {
+                        if (S.dead || S.mixer !== mixer) return;
+                        if (clip) { var act = mixer.clipAction(clip); act.setLoop(THREE.LoopRepeat, Infinity); if (ts) act.timeScale = ts; act.play(); }
+                        idleOn = true; go();
+                    };
+                    if (entry.procClips) play(entry.procClips.idle, 1);
+                    else if (_animLibActive(def)) {
+                        _animLibBakeForModel(def, entry, function (baked) {
+                            if (baked && baked.idle) play(baked.idle, (def.libTimeScales && def.libTimeScales.idle) || 1);
+                            else if (def.clips && def.clips.idle) _loadUnitGLB(def.clips.idle, function (ce) { play(ce && ce.clips && ce.clips[0], def.idleTimeScale || 0); });
+                            else play(null);
+                        });
+                    } else if (def.clips && def.clips.idle) _loadUnitGLB(def.clips.idle, function (ce) { play(ce && ce.clips && ce.clips[0], def.idleTimeScale || 0); });
+                    else play(null);
+                }
+                go();
+            } catch (e) { console.warn('[ThreeRenderer] portrait body failed', S.key, e); fail(); }
+        });
+        var ce0 = _unitGlbCache[def.model];   // a body that fails to load never calls back: watch its cache entry
+        if (ce0 && ce0.failed) fail();
+        else if (ce0 && !ce0.root) (ce0.doneCbs = ce0.doneCbs || []).push(function (e2) { if (e2 && e2.failed) fail(); });
+    }
+    var portraits = {
+        /* the unit's portrait off its own model: a data URL, or null (no model of its own / not photographed yet: asked for now) */
+        url: function (u, kind) {
+            if (_ptOff()) return null;
+            var spec = _ptSpec(u);
+            if (!spec) return null;
+            var bust = kind === 'bust', got = _ptUrls[spec.key + (bust ? '#bust' : '')];
+            if (got) return got;
+            if (_ptFail[spec.key]) { if (Date.now() - _ptFail[spec.key] < 60000) return null; delete _ptFail[spec.key]; }
+            var P = _ptEnsure();
+            if (!P) return null;
+            var S = P.subs[spec.key];
+            if (S) { if (bust) S.bust = true; return null; }
+            P.subs[spec.key] = S = { key: spec.key, def: spec.def, look: spec.look, bust: bust || !!spec.look,   // (a look's ID photo is taken with its face: one body, both pictures)
+                model: null, rig: null, mixer: null, sway: null, ownedMats: [], ownedTex: [], h: 1, built: false, ready: false, dead: false, timer: 0 };
+            P.queue.push(S);
+            _ptPump();
+            return null;
+        },
+        has: function (u) { return !_ptOff() && !!_ptSpec(u); },
+        key: function (u) { var s = _ptOff() ? null : _ptSpec(u); return s ? s.key : null; },
+    };
+    if (typeof window !== 'undefined') window.EWPortraits = portraits;
 
     /* ══════════════════════════════════════════════════════════════════
      *  D.O.O.R. HEADQUARTERS — the walkable facility (DOOR_HQ_BUILD_PLAN.md)
@@ -76927,7 +77405,7 @@ const ThreeRenderer = (function () {
                 if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); if (cat.light && cat.light.night) { pgl._ew_glowC = pgl.material.color.clone(); _hq.clockLamps.push(pgl); } }   // THE WORLD CLOCK: a night lamp's head dims by day
                 /* Phase 8 (2026-09-14): a proc may carry a POINT LIGHT (catalogue `light`: colour / intensity / dist / y) — the torches, the bulbs, the orb; capped at HQ_PROP_LIGHT_MAX per room */
                 if (cat.light && _hq.propLights < HQ_PROP_LIGHT_MAX && (!litRows || litRows.has(p))) {   // THE CEILING LAMPS FIRST
-                    var ppl = new THREE.PointLight(cat.light.color != null ? cat.light.color : 0xffd9a0, cat.light.intensity != null ? cat.light.intensity : 0.6, (cat.light.dist || 6) * U, 2);
+                    var ppl = new THREE.PointLight(cat.light.color != null ? cat.light.color : 0xffd9a0, (cat.light.intensity != null ? cat.light.intensity : 0.6) * _hqLampK(room), (cat.light.dist || 6) * U, 2);   // THE ROOM'S OWN LAMPS (shell.lampK)
                     ppl.position.y = (cat.light.y || 0) * U; grp.add(ppl); _hq.propLights++;
                     if (cat.light.night) { ppl._ew_lampI = ppl.intensity; _hq.clockLamps.push(ppl); }   // THE WORLD CLOCK (Phase 3): on at dusk, off at dawn
                     /* THE LIGHT PASS 2.2 — THE HERO LIGHT (2026-09-21): the first warm prop light of the room casts a cube shadow map (six
@@ -84428,6 +84906,7 @@ const ThreeRenderer = (function () {
         var H = _hq, L = H && H.keyLight; if (!L) return;
         var LR = _hqLightRules(), S = room.shell || {};
         var kind = (room.kind === 'box') ? (S.open ? 'open' : 'box') : (room.kind === 'bay' ? 'bay' : 'hall');
+        if (kind === 'box' && _hqJoinedHall(room)) kind = 'hall';   // ONE DOORWAY, ONE LIGHT: the hall's key, its direction too
         var rig = Object.assign({}, (LR.key && LR.key[kind]) || {}, S.rig || {});
         if (isFinite(+rig.az) && isFinite(+rig.el)) {
             var az = _hqRad(+rig.az), el = _hqRad(+rig.el);
@@ -88967,12 +89446,13 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), S = room.shell;
         var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
         var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;   // a site room's mood (blue under the collider)
+        var lmK = _hqLampK(room);   // THE ROOM'S OWN LAMPS
         lightsAt.forEach(function (Lt) {
-            var fl1 = new THREE.PointLight(plC, lightsAt.length > 1 ? 0.5 : 0.55, (lightsAt.length > 1 ? 12 : 9) * U, 2); fl1.position.set(Lt.x * U, (S.h - 0.35) * U, Lt.z * U); sc.add(fl1);
+            var fl1 = new THREE.PointLight(plC, (lightsAt.length > 1 ? 0.5 : 0.55) * lmK, (lightsAt.length > 1 ? 12 : 9) * U, 2); fl1.position.set(Lt.x * U, (S.h - 0.35) * U, Lt.z * U); sc.add(fl1);
         });
         (room.props || []).forEach(function (pp) {
             if (pp.key !== 'desk_lamp' && pp.key !== 'table_lamp') return;
-            var wl = new THREE.PointLight(0xffd9a0, 0.5, 5 * U, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); sc.add(wl);
+            var wl = new THREE.PointLight(0xffd9a0, 0.5 * lmK, 5 * U, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); sc.add(wl);
         });
     }
     /* ══ THE FILE TRACKER (OPEN_WORLD_PLAN.md fork 5 — back to the plan's default, 2026-09-26; the user: "if we need a file
@@ -89848,9 +90328,24 @@ const ThreeRenderer = (function () {
         };
     }
     /* THE ROUND JOIN: the light a closed room is entered with (_hqEnter's branch + _hqLightArm's rig) — the round hall's or a box's */
+    /* ONE DOORWAY, ONE LIGHT (2026-11-12, mondo: "the foyer is too bright and then stepping into the lobby is dark by comparison"):
+       the hemisphere, the key and the fill are the SCENE's, so while you stood in the foyer the hall beyond its open doorway wore the
+       foyer's dimmer box rig (hemisphere 0.44 against the hall's 0.78) and read dark, while the foyer's own lamps blew its white
+       plaster out. A box room joined to the round hall (HQ_STAGE_RULES.round) now wears the HALL's rig, so the hall reads the same
+       from either side of the door and nothing eases at the crossing; the room's own lamps answer for its level (shell.lampK,
+       shell.keyLamp). HQ_LIGHT_RULES.joinRig: false = each room its own rig again. */
+    function _hqJoinedHall(room) {
+        try {
+            if (!room || room.kind !== 'box' || _hqLightRules().joinRig === false || typeof hqStageRoundJoin !== 'function') return false;
+            var id = _hqRoomIdOf(room); return !!(id && hqStageRoundJoin(id));
+        } catch (e) { return false; }
+    }
+    /* THE ROOM'S OWN LAMPS (2026-11-12): `shell.lampK` (0..1, default 1) = the share of its lamps' strength a room keeps — the
+       shell's fluorescents, a desk lamp's pool, every prop light. A small white room wants less than the same lamps give a big dark one. */
+    function _hqLampK(room) { var S = (room && room.shell) || {}; var k = (S.lampK != null) ? +S.lampK : 1; return (isFinite(k) && k >= 0) ? k : 1; }
     function _hqIndoorLightVals(room) {
         var LR = _hqLightRules();
-        if (_hqRoundRoom(room)) {
+        if (_hqRoundRoom(room) || _hqJoinedHall(room)) {
             var hV = _HQ_HALL_LIGHT, kh = (LR.key && LR.key.hall) || {};
             return { hemiC: new THREE.Color(hV.hemiC), hemiG: new THREE.Color(hV.hemiG), hemiI: hV.hemiI, keyC: new THREE.Color(kh.color != null ? kh.color : hV.keyC), keyI: kh.intensity != null ? +kh.intensity : hV.keyI, fillC: new THREE.Color(hV.fillC), fillI: hV.fillI };
         }
@@ -90281,9 +90776,10 @@ const ThreeRenderer = (function () {
             /* THE FLOOR (2026-09-20): a room's mood may dim the fill, never below HQ_LIGHT_RULES.ambientFloor — the
                torches carry the vibe, the key + a cool fill keep every face readable */
             var LRb = _hqLightRules(), bxV = _hqBoxLightVals(room);
-            _hq.hemiLight = new THREE.HemisphereLight(0xd9d2c0, _hqBoxHemiG(room), bxV.hemiI); sc.add(_hq.hemiLight);   // THE BOUNCE: the floor's light on the ceiling   // (THE STAGE eases it at a door join's crossing)
-            var bxk = new THREE.DirectionalLight(0xe8ecf5, bxV.keyI); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk); _hq.keyLight = bxk;
-            var bxf = new THREE.DirectionalLight(LRb.fillColor, bxV.fillI); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(bxf); _hq.fillLight = bxf;
+            var jhV = _hqJoinedHall(room) ? _hqIndoorLightVals(room) : null;   // ONE DOORWAY, ONE LIGHT: the foyer wears the hall's rig
+            _hq.hemiLight = new THREE.HemisphereLight(jhV ? jhV.hemiC : 0xd9d2c0, jhV ? jhV.hemiG : _hqBoxHemiG(room), jhV ? jhV.hemiI : bxV.hemiI); sc.add(_hq.hemiLight);   // THE BOUNCE: the floor's light on the ceiling   // (THE STAGE eases it at a door join's crossing)
+            var bxk = new THREE.DirectionalLight(jhV ? jhV.keyC : 0xe8ecf5, jhV ? jhV.keyI : bxV.keyI); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk); _hq.keyLight = bxk;
+            var bxf = new THREE.DirectionalLight(jhV ? jhV.fillC : LRb.fillColor, jhV ? jhV.fillI : bxV.fillI); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(bxf); _hq.fillLight = bxf;
             _hqBoxRoomLamps(room, sc);
             _hq.cam.dist = Math.min(_hq.cam.dist, Math.max(2.2, S.d * 0.6));
         } else if (room.kind === 'bay') {
@@ -91122,7 +91618,9 @@ const ThreeRenderer = (function () {
         climbing: function () { var pl = _hq && _hq.player; return !!(pl && pl.climb); },
         portalDoors: function () { if (!_hq || !_hq.portal) return []; var o = []; for (var s in _hq.portal.placed) { var r = _hq.portal.placed[s]; o.push({ slot: s, x: r.px, y: r.py, z: r.pz, face: r.door.face, surf: r.portalSurf, leaf: r.leaf }); } return o; },
         finds: function () { return _hq ? _hq.finds.map(function (f) { return { id: f.id, kind: f.kind, x: f.x, y: f.y, z: f.z }; }) : []; },
-        pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z) }; },
+        pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z),
+                                  /* THE SAVE (2026-11-12): the part the walker stands in (a stage crossing rebases the metres), the heading as goTo's `face`, off the ground, the editor */
+                                  room: (_hq.opts && _hq.opts.room) || null, face: _hqNormDeg((Math.PI - (p.yaw || 0)) * 180 / Math.PI), air: !!p.air, edit: !!(_hq.opts && _hq.opts.edit), ready: !!_hq.ready }; },
         stateLabel: function (st) { return HQ_LAMP_LABEL[st] || st; },
         /* dev / playtest helpers (2026-09-06): put the walker (or the
            first-person eye) anywhere, aim it, and list who is in the room —
