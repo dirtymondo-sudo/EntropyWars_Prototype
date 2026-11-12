@@ -390,6 +390,38 @@ def fit(name, gender, src, bodies_dir):
                 bmesh.ops.subdivide_edges(bmv, edges=e_, cuts=1); bmesh.ops.triangulate(bmv, faces=bmv.faces[:])
             bmv.to_mesh(me_); dropped.append(('arm openings + nape', len(k_)))
         bmv.free()
+    # THE BARE ARMS IN ANOTHER SHELL (--barearms; mondo: "Robinhood has his shoulders ... skin sticking out"): his bare arms are a
+    # shell of their own with the arm bands (the face's shell never reaches them), exported as pink cloth with the body's shoulders
+    # standing through it. In every other shell too the skin-coloured faces out from the middle go; the bands and bracers stay
+    if BAREARMS:
+        for o in [o for o in list(keep) if o not in headp and o is not headsh]:
+            me_ = o.data
+            if len(me_.polygons) < 20: continue
+            cen_ = np.array([p.center for p in me_.polygons])
+            bad_ = (np.linalg.norm(face_cols(o, PX, IW, IH) - skin, axis=1) < E('ARMSKIN', SKIN_T)) & (np.abs(cen_[:, 0] - eye.x) > E('ARMX', 0.05)) & (cen_[:, 2] > eye.z - E('ARMZ', 0.85))
+            if not bad_.any() or np.abs(cen_[bad_, 0] - eye.x).mean() < E('ARMMEAN', 0.2): continue   # (an arm is far out from the middle: not the quiver's leather on his back)
+            if bad_.mean() > E('ARMSHARE', 0.4):   # (the arm's own shell: its skin in shadow under the tunic's shoulder goes too, any face out there in the skin's hue however dark)
+                fc_ = face_cols(o, PX, IW, IH); cs_ = (fc_ @ skin) / (np.linalg.norm(fc_, axis=1) * np.linalg.norm(skin) + 1e-9)
+                bad_ |= (cs_ > E('ARMHUE', 0.985)) & (np.abs(cen_[:, 0] - eye.x) > E('ARMX', 0.05)) & (cen_[:, 2] > eye.z - E('ARMZ', 0.85))
+            if bad_.mean() > 0.95: dropped.append(('bare arm', len(bad_))); keep.remove(o); bpy.data.objects.remove(o); continue
+            bml = bmesh.new(); bml.from_mesh(me_); bml.faces.ensure_lookup_table()
+            bmesh.ops.delete(bml, geom=[bml.faces[i] for i in np.nonzero(bad_)[0]], context='FACES')
+            bmesh.ops.delete(bml, geom=[v for v in bml.verts if not v.link_faces], context='VERTS'); bml.to_mesh(me_); bml.free()
+            dropped.append(('bare arm skin', int(bad_.sum())))
+            bmi = bmesh.new(); bmi.from_mesh(me_); bmi.faces.ensure_lookup_table(); isl_ = {}; lab_ = [-1] * len(bmi.faces)   # (+ the tatters the cut leaves: islands under ARMISLE 40 faces)
+            for f in bmi.faces:
+                if lab_[f.index] >= 0: continue
+                st_ = [f]; lab_[f.index] = f.index; isl_[f.index] = 0
+                while st_:
+                    h_ = st_.pop(); isl_[f.index] += 1
+                    for e in h_.edges:
+                        for g_ in e.link_faces:
+                            if lab_[g_.index] < 0: lab_[g_.index] = f.index; st_.append(g_)
+            go_ = [bmi.faces[i] for i in range(len(lab_)) if isl_[lab_[i]] < E('ARMISLE', 40)]
+            if go_ and len(go_) < len(lab_):
+                dropped.append(('arm tatters', len(go_))); bmesh.ops.delete(bmi, geom=go_, context='FACES')
+                bmesh.ops.delete(bmi, geom=[v for v in bmi.verts if not v.link_faces], context='VERTS'); bmi.to_mesh(me_)
+            bmi.free()
     # PAINTED OVER (--repaint; 2026-11-12, mondo: "the angel neckline definitely need[s] work"): Meshy painted her hair locks on
     # the chest of the dress and her hand on the back of the skirt. Cutting those faces out (LOCKZ 0.25) left bites in the
     # neckline, a hole in the bodice and a skin patch on the skirt. They stay and take the colour of the nearest plain cloth
@@ -505,6 +537,10 @@ def fit(name, gender, src, bodies_dir):
         h1 = bvh.ray_cast(v.co + v.normal * 0.001, v.normal, E('RAY_LEG', 0.45) if legw[v.index] > 0.5 else E('RAY_OUT', 0.07)); h2 = bvh.ray_cast(v.co, -v.normal, E('RAY_IN', 0.05))
         if h1[0] is None and h2[0] is None: ks.add(v.index)
     if len(hood_) > E('HOODMIN', 0.6) * max(1, len(upper_)): ks -= set(hood_) | set(i for i in upper_ if pm.vertices[i].normal.y > E('HOODFRONT', -0.3))   # + the rest of the crown that does not face forward (flecks between the hood's vertices)   # (a real hood covers most of the crown; a high collar does not)
+    # + THE EARS UNDER A HOOD (mondo: "Robinhood has his ... ear skin sticking out"): the ears are below the brow, so they stayed and
+    # their tips stood through the sides of the hood. Under a real hood the head from HOODEAR out to each side, behind the face, is hidden
+    if len(hood_) > E('HOODMIN', 0.6) * max(1, len(upper_)):
+        ks -= set(v.index for v in pm.vertices if hw[v.index] > 0.5 and abs(v.co.x - eyeM[0]) > E('HOODEAR', 0.07) and v.co.y > eyeM[1] + E('HOODEARY', 0.03))
     gw = {g.name: wts(body, g.name) for g in body.vertex_groups}
     for names in (('LeftFoot', 'LeftToeBase'), ('RightFoot', 'RightToeBase'), [n for n in gw if n == 'LeftHand' or re.search(r'_l$', n)], [n for n in gw if n == 'RightHand' or re.search(r'_r$', n)]):
         tot = sum(gw[n] for n in names); idx = np.nonzero(tot > 0.5)[0]
@@ -546,10 +582,34 @@ def fit(name, gender, src, bodies_dir):
                     v_ = pm.vertices[i_]
                     if j_ in ks and i_ not in ks and eyeM[2] - E('OPENZ', 0.42) < v_.co.z < eyeM[2] - 0.1 and abs(v_.co.x - eyeM[0]) < E('OPENX', 0.17) and (bvh.ray_cast(v_.co + v_.normal * 0.004, Vector((0, -1, 0)), 1.0)[0] is not None or abs(v_.co.x - eyeM[0]) < E('OPENX2', 0.125) and not (lambda h_: h_[0] is not None and h_[1].dot(v_.normal) > 0.2)(bvh.ray_cast(v_.co, -v_.normal, E('OPENBACK', 0.06)))): add_.add(i_)
             ks |= add_
-    if BAREARMS:   # (the same saw teeth round a sleeveless dress's arm openings and straps: the shown skin grows BARING ring there, from BAX out)
+    if BAREARMS and NECKLINE:   # (the same saw teeth round a sleeveless dress's arm openings and straps: the shown skin grows BARING ring there, from BAX out)
         for _ in range(int(E('BARING', 1))):
             ks |= set(i_ for e_ in pm.edges for i_, j_ in (tuple(e_.vertices), tuple(e_.vertices)[::-1]) if j_ in ks and i_ not in ks
                       and pm.vertices[i_].co.z > eyeM[2] - E('BAZ', 0.45) and abs(pm.vertices[i_].co.x - eyeM[0]) > E('BAX', 0.09))
+    if BAREARMS and not NECKLINE:   # (robinhood: the top of his bare shoulder lies under the tunic's shoulder and the cape, the hidden skin bit a jagged hole
+        ua_ = wts(body, 'LeftArm') + wts(body, 'RightArm') + wts(body, 'LeftShoulder') + wts(body, 'RightShoulder')   # into the shown arm and the cape's dark inside showed as brown tatters. The upper arm's skin is shown whole,
+        for v in pm.vertices:   # hidden only within SHNEAR 1.2 cm of cloth (an arm band, which sinks into the body's thicker arm))
+            if ua_[v.index] > E('SHARM', 0.3):
+                h_ = bvh.find_nearest(v.co)
+                if h_[0] is None or h_[3] > E('SHNEAR', 0.012): ks.add(v.index)
+                else: ks.discard(v.index)
+    # A FLOATING PIECE OF SKIN (SKINISLE, off; mondo: "Catgirl has a weird piece of floating skin under her crotch"): the skin between her legs
+    # is on the hips, not a leg, and no cloth lies under it, so it stayed shown with both thighs hidden round it. A patch of shown
+    # skin of fewer than SKINISLE vertices, cut off from the rest by hidden skin, is hidden too
+    if E('SKINISLE', 0):
+        adj_ = {}
+        for e_ in pm.edges:
+            a_, b_ = e_.vertices
+            if a_ in ks and b_ in ks: adj_.setdefault(a_, []).append(b_); adj_.setdefault(b_, []).append(a_)
+        seen_ = set(); ni_ = 0
+        for i_ in list(ks):
+            if i_ in seen_: continue
+            comp_ = [i_]; seen_.add(i_); st_ = [i_]
+            while st_:
+                for j_ in adj_.get(st_.pop(), ()):
+                    if j_ not in seen_: seen_.add(j_); comp_.append(j_); st_.append(j_)
+            if len(comp_) < E('SKINISLE', 0): ks -= set(comp_); ni_ += len(comp_)
+        if ni_: print('[bake-outfit] %s: %d vertices of floating skin hidden' % (name, ni_), flush=True)
     hidden = [i for i in range(len(pm.vertices)) if i not in ks]
     # a hm08 index is hidden only when every file vertex that carries it is
     shown_base = set(int(base[i]) for i in ks)
@@ -628,7 +688,7 @@ def fit(name, gender, src, bodies_dir):
         # THE STRAPS ON THE SKIN (--barearms; angel: the dress's straps lay in her shoulders, the skin cut them into teeth): from BAZ
         # under the eyes up, cloth lies at least STRAPOFF 10 mm outside the body (along the nearest skin's normal)
         strapw = {}
-        if BAREARMS and not footwear:
+        if BAREARMS and NECKLINE and not footwear:   # (with --neckline: the sleeveless dress. --barearms alone, robinhood, only bares the arms)
             if 'kda_' not in locals():
                 kda_ = KDTree(len(pm.vertices))
                 for v in pm.vertices: kda_.insert(v.co, v.index)
@@ -716,7 +776,7 @@ def fit(name, gender, src, bodies_dir):
                 if l_ > E('TORN', 0.06) and l_ > 3 * el0.get(k_, l_): torn_.add(p_.index); break
             if BODYSUIT and max(me.vertices[i_].co.z for i_ in p_.vertices) > eyeM[2] - 0.115 - E('BSNECK', 0.04) + E('BSSPIKE', 0.02): torn_.add(p_.index)   # (a bandage end un-skinned up past the collar: a spike to her chin)
         # (--barearms: what stands out past the arm opening after the cloth is un-posed is a stub of the arm the cuts missed, a flap in her armpit)
-        if BAREARMS: torn_ |= set(p_.index for p_ in me.polygons if p_.center.z > eyeM[2] - E('AHZ', 0.38) and abs(p_.center.x - eyeM[0]) > E('AHX', 0.145) + E('AHPAD', 0.022))
+        if BAREARMS and NECKLINE: torn_ |= set(p_.index for p_ in me.polygons if p_.center.z > eyeM[2] - E('AHZ', 0.38) and abs(p_.center.x - eyeM[0]) > E('AHX', 0.145) + E('AHPAD', 0.022))
         torn += len(torn_)
         F = [tuple(t.vertices) for t in me.loop_triangles if t.polygon_index not in torn_]
         FUV = [[(uv[l].uv[0], 1.0 - uv[l].uv[1]) for l in t.loops] for t in me.loop_triangles if t.polygon_index not in torn_]   # (glTF's v runs down)

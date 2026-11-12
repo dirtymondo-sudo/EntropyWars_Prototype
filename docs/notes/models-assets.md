@@ -1610,6 +1610,17 @@ head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay t
   LIKE THE OTHER (MIRD: a face out past the neck stays only when its mirror lies on cloth) is in but took 4 faces. Tried + dropped on
   the mummy: a straight bisect of the collar (a spike stood up from her chest; her uneven collar is the suit's painted skin against
   the body's, not shape) and `skinTint: pick` (paints her whole skin one flat colour, face included).
+  ROUND 4 (11-12, mondo after his playtest: "Robinhood has his shoulders and ear skin sticking out. Catgirl has a weird piece of
+  floating skin under her crotch"; he put a creator goddess dress on the angel himself). ROBINHOOD, now `ARMSKIN=0.35 ... --barearms`:
+  his bare arms were a shell of their own, exported as pink painted cloth with the body's shoulders standing through it. THE BARE
+  ARMS IN ANOTHER SHELL (skin-coloured faces out from the middle go in every shell whose skin faces lie ARMMEAN 20 cm out on
+  average, so not the quiver's leather; ARMSKIN = that colour match, his arms are paler than his face; islands under ARMISLE go),
+  and without `--neckline` the body's upper arm + shoulder skin is shown whole, hidden only within SHNEAR 1.2 cm of cloth (the arm
+  bands): the hidden skin under the cape's edge had bitten a jagged hole into the arm. The dress rules of round 2/3 (straps, arm
+  openings, BARING) now need `--barearms --neckline` together. THE EARS UNDER A HOOD: under a real hood the head from HOODEAR 7 cm
+  out to each side, behind the face, is hidden. CATGIRL, now `SKINISLE=200 ... --neckline`: A FLOATING PIECE OF SKIN (a patch of
+  shown skin under SKINISLE vertices cut off by hidden skin is hidden; the skin between her legs is on the hips, not a leg).
+  The seven other units rebaked: no file changed.
   Open: a few skin flecks on robinhood's hood front, a skin chip by the catgirl's left boot, light patches on her sleeves (the lacing in
   Meshy's texture), the knight's and zombie's walk hunches (the race's own walk clip), no sway, stock faces until the face step.
 
