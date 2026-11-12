@@ -17,6 +17,7 @@ THE FIT (on the unit's own body: male or female):
             face's median) + the face box are cut away; what is left above the eyes is the unit's hair (NOT exported: the
             look picks pack hair), below = the collar, which stays whole. Skin-coloured shells at the arm tips = bare hands
             (dropped: the MPFB hands show)
+  2b spurs  a horn at the back of a boot (Meshy's spur) is laid flat on the heel
   3 head    hats are sized to the MPFB head about the eyes, lifted so the brim clears the brow, pushed 8 mm off the scalp
   4 limbs   the body's arms + legs are aimed down the Meshy sleeves + trouser legs; the clothes take the posed body's
             weights (nearest face, interpolated; LOOSE CLOTH hanging off the legs - a skirt, a cape - shares its leg weight
@@ -185,6 +186,17 @@ def fit(name, gender, src, bodies_dir):
         if inhead or (isrem and cz > eye.z): headp.append(o)
         keep.append(o)
     for o in eyes: bpy.data.objects.remove(o)
+    # SPURS (2026-11-12, mondo: "the boots have these weird pointy things sticking out the back of them"): Meshy models a spur as
+    # a horn fused to the boot. On footwear (a one-sided shell that ends at the floor) nothing below 45 % of its height may
+    # stand further back than the heel does at the sole: the horn is laid flat on the heel
+    for o in keep:
+        c = co(o)
+        if not ((c[:, 0] > 0).mean() > 0.97 or (c[:, 0] < 0).mean() > 0.97) or c[:, 2].min() > 0.12 or c[:, 2].max() > 0.62 or not E('SPURS', 1): continue
+        z0, hgt = c[:, 2].min(), c[:, 2].max() - c[:, 2].min()
+        ylim = c[c[:, 2] < z0 + 0.12 * hgt, 1].max() + 0.004; n_ = 0
+        for v in o.data.vertices:
+            if v.co.z < z0 + 0.45 * hgt and v.co.y > ylim: v.co.y = ylim; n_ += 1
+        if n_: print('[bake-outfit] %s: spur laid flat on a boot heel (%d vertices)' % (name, n_), flush=True)
     for o in headp:   # sized to the MPFB head, eyes on eyes
         for v in o.data.vertices:
             d = v.co - eye
@@ -253,6 +265,13 @@ def fit(name, gender, src, bodies_dir):
                     hg.add([v.index], 1.0, 'REPLACE')
         names = {g.index: g.name for g in o.vertex_groups}
         W = []
+        # a shell on ONE side of the body (a boot, a greave, a gauntlet, a thigh holster) is on that limb: never loose cloth
+        # (2026-11-12, mondo: "the cowboys boots are all messed up when he walks and getting distorted": a boot's sole and
+        # heel stand far off the foot's skin, so LOOSE CLOTH gave them to the hips and the other leg). FOOTWEAR (such a shell
+        # that ends at the floor) is stiff: its toe weight goes to the foot, so the sole does not fold at the toes.
+        xs = np.array([v.co.x for v in o.data.vertices]); zs = np.array([v.co.z for v in o.data.vertices])
+        one_side = (xs > 0).mean() > 0.97 or (xs < 0).mean() > 0.97
+        footwear = one_side and zs.min() < 0.12 and zs.max() < 0.62
         for v in o.data.vertices:
             M = Matrix(((0,) * 4,) * 4); tw = 0; w = {}
             for g in v.groups:
@@ -262,7 +281,10 @@ def fit(name, gender, src, bodies_dir):
             # leg does (the hem tore into a tent between the knees): the further off the skin, the more of its leg weight goes to
             # the hips and the more the rest is shared between the two legs
             lw = sum(w.get(n, 0) for n in LEGS)
-            if lw > 0.05:
+            if footwear:
+                for t_, f_ in (('LeftToeBase', 'LeftFoot'), ('RightToeBase', 'RightFoot')):
+                    if t_ in w: w[f_] = w.get(f_, 0) + w.pop(t_)
+            if lw > 0.05 and not one_side:
                 loc, nor, idx, dist = pbvh.find_nearest(v.co)
                 f = 0.0 if loc is None else min(1.0, max(0.0, (dist - E('LOOSE0', 0.04)) / E('LOOSE1', 0.15)))
                 if f > 0:

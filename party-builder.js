@@ -5082,7 +5082,7 @@ function PartyBuilder(props) {
   const slotOwnLook = window.normalizeCharacterAppearance?.(meta.appearance) || null;
   const slotOriginal = !!(slotOwnLook && slotOwnLook.model === 'original');
   const raceSavedLook = raceLookRace ? (window.getRaceCreatorLook(unitRace, identity.gender || 'male') || null) : null;
-  const raceRemadeLook = raceLookRace && window.getRaceRemadeLook ? (window.getRaceRemadeLook(unitRace, identity.gender || 'male') || null) : null;   // THE REMADE LOOKS
+  const raceRemadeLook = window.getRaceRemadeLook ? (window.getRaceRemadeLook(unitRace, identity.gender || 'male') || null) : null;   // THE REMADE LOOKS
   const appearance = slotOriginal ? null : (slotOwnLook || (lookIsDefault ? raceSavedLook : null));
   const unitRaceLabel = typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace;
   const wearsOriginal = slotOriginal || (!appearance && unitRace !== 'door agent');   // the slot stands in the race's own model
