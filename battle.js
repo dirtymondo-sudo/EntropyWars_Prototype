@@ -32464,6 +32464,7 @@
         const CLEAR_LOW_PANEL_MAX_CY = 0.3; // and the frame rises at most this much (NDC) over it
         const CLEAR_FRAME_HOLD_MS = 450;    // a menu gone this briefly (unit hand-over) keeps the slide
         const PANEL_LIFT_MAX = 0.3;         // THE PANEL LIFT: the frame rises at most this much (NDC) over the bottom panel
+        const PANEL_LIFT_SHARE = 0.5;       // share of the way to the middle of the band over the panel (mondo 2026-11-12: "a little lower, like somewhere in between")
         const PANEL_LIFT_SPAN = 0.18;       // the panel's bays within this share of the width each side of the middle count
         const CLEAR_FRAME_REFIT_MS = 140;   // a changed cover must hold this long before a fit is solved again
         const _CLEAR_FULL = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false });
@@ -32563,7 +32564,7 @@
                                 const r = boxOf(el);
                                 if (r && r.top < cv.top + cv.height * 0.2) t0 = Math.max(t0, r.bottom);
                             });
-                            const lift = Math.min(PANEL_LIFT_MAX, (midY - (t0 + top) / 2) / (cv.height / 2));
+                            const lift = Math.min(PANEL_LIFT_MAX, PANEL_LIFT_SHARE * (midY - (t0 + top) / 2) / (cv.height / 2));
                             if (lift > 0.02) _cfArea = { cx: 0, cy: 0, hw: 1, hh: 1, menu: false, cmd: true, lift };
                         }
                     }
