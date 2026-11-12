@@ -73,6 +73,12 @@ Look for, in this order:
 | Skin slivers at the calves | leg hidden face by face | a leg segment 70% covered is hidden whole |
 | Boot through the robe front | skirt shared evenly between the legs | THE CLOTH OVER A LEG: only cloth between the legs is shared |
 | Unit crouches | race idle on the creator rig | look carries `idle: 'Idle_11'` |
+| Helmet left out (read as hair) | head pieces below the eyes were hair | `--headgear` keeps them as the hat, unlifted |
+| One glove floating beside the hand | hand fused into a big shell failed the sleeve test | THE HAND IN A BIG SHELL (wrist seeds) |
+| Fingerless gloves lost with the bare hand | hand shell dropped whole | THE GLOVE ON A BARE HAND |
+| Scalp through a hood | skin between the hood's vertices | THE SCALP UNDER A HOOD |
+| Thin sticks through the hands | faces stretched between bones | A TORN FACE |
+| Skin chips floating by a boot | tiny loose shells | A FLAKE |
 
 Tried and dropped: a ray test for sleeves (cuffs flared into plates), aiming the forearm (tore shoulders), cutting boot
 tops under a hem (bare shin showed).
@@ -98,7 +104,10 @@ Morgan test) ships a custom head SHAPE (`charactercreation/mpfb/custom_shapes/<k
 `node bake-custom-shape.js` into `mpfb_shapes.glb`) and a custom SKIN (`looks/skin_<key>.jpg` on the MPFB skin sheet,
 listed in `EW_MH_LOOKS.skins`). Both keep the 67 face shapes working, because the mesh is still the MPFB head.
 
-What is NOT proven: making them automatically from a Meshy unit. That is the pilot below.
+PILOT DONE 2026-11-12 (mondo: "yeah lets do face pilot and cowboy"): `bake-face.py` makes both automatically from the OLD unit's head
+(face landmarks, no hand work): `cowboyFace` + skin `ew_face_cowboy`, worn by the remade cowboy look. Blink, talk, smile and frown
+checked in the game. How, the rules learned and the known faults: `character-creator.md` "THE UNIT FACES". Use the OLD unit GLB as the
+face source, never the T2 remake (its face is a blur). mondo 11-12 05:10Z "okay thats better" after round 2, then "yes" to faces on the knight, the wizard and the demo starters batch: knight + wizard done the same night. Faces are now part of every remake.
 
 | Step | What | How | Risk |
 |---|---|---|---|
@@ -148,9 +157,15 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 
 | Unit | Remade | Look check | Battle check | Face fit (F1-F4) | His OK | Notes |
 |---|---|---|---|---|---|---|
-| cowboy (M) | PR #1153 | clean after round 4 | owed | not started (pilot) | waiting | boots + spurs fixed #1154 |
-| knight (F) | PR #1153 | clean after round 4 | owed | not started | waiting | calf slivers fixed #1155; cape no sway |
-| wizard (M) | PR #1153 | clean after round 4 | owed | not started | waiting | robe points #1155, boots #1156; K3, K5 open |
+| cowboy (M) | PR #1153 | clean after round 4 | owed | PILOT DONE 11-12 (bake-face.py) | waiting | boots + spurs fixed #1154 |
+| knight (F) | PR #1153 | clean after round 4 | owed | DONE 11-12 | waiting | calf slivers fixed #1155; cape no sway |
+| wizard (M) | PR #1153 | clean after round 4 | owed | DONE 11-12 | waiting | robe points #1155, boots #1156; K3, K5 open |
+| zombie (F) | batch one 11-12 | clean (race walk hunches) | owed | DONE 11-12 | waiting | her bloody skin is worn as shells; skin `sohh_female_zombie_skin` |
+| catgirl (F) | batch one 11-12 | skin chip by the left boot, lacing patches on the sleeves | owed | next | waiting | his saved look's body + face + hair; T2 ears = separate hat piece, not in the look |
+| robinhood (M) | batch one 11-12 (second T2 run) | a few skin flecks on the hood front | owed | DONE 11-12 | waiting | hood = outfit, `hair: bald`; fingerless gloves kept |
+| quarterback (M) | batch one 11-12 | clean | owed | next | waiting | `--headgear` (helmet = hat piece), `hair: bald` |
+| djinn (M) | REFUSED by Meshy's safety check twice (bare chest) | | | | | not worked around; needs his word |
+| mummy (F), angel (F) | batch two, not started | | | | | |
 | everything else in group A | not started | | | | | |
 
 ## 9. Standing rules for any session doing this
@@ -166,6 +181,6 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 ## 10. Waiting on mondo
 
 1. His look at the three in the game after PR #1156.
-2. Yes or no on the face pilot (section 6) on the cowboy.
-3. Which batch goes first (default: the demo starters).
+2. His look at the cowboy's fitted face (yes to the face pilot given 11-12; done).
+3. First batch = the demo starters (his word 11-12): from group A that is zombie (F), catgirl (F), robinhood (M), djinn (M), mummy (F), angel (F), quarterback (M); knight (F) is done. Not started.
 4. Whether K1 (softer look) bothers him at board distance.

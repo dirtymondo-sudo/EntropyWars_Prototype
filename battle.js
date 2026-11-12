@@ -3597,7 +3597,7 @@
             if (!stand || !stand.length) return;
             let ignited = 0, lit = 0;
             for (const t of stand) {
-                if (igniteTile(t.x, t.y, 2, caster)) lit++;
+                if (igniteTile(t.x, t.y, 2, caster, true)) lit++;
                 const u = unitAt(t.x, t.y);
                 if (u && !u.dead && !u._dying) {
                     applyStatusEffects(u, [{ id: 'burn', duration: 2 }], `${spell.name} wildfire: `, caster);
@@ -3686,7 +3686,7 @@
             // sees ground it's allowed to burn on, then light the whole area
             for (const t of slick) {
                 if (_OIL_TERRAIN.has(getTerrainAt(t.x, t.y))) setTerrainAt(t.x, t.y, 'scorched');
-                igniteTile(t.x, t.y, 2, caster);
+                igniteTile(t.x, t.y, 2, caster, true);
             }
             for (const { u } of victims) {
                 const _burnBefore = unitHasStatus(u, 'burn');
@@ -4250,7 +4250,7 @@
         function _droughtFeedsFire() {
             return (state.activeWeather || []).some(w => w && w.type === 'drought' && (w.remaining == null || w.remaining > 0));
         }
-        function igniteTile(x, y, rounds, byUnit) {
+        function igniteTile(x, y, rounds, byUnit, noCatch) {
             if (!isInside(x, y)) return false;
             if (_tileSmothersFire(x, y)) return false;
             /* 🌧️ the rain puts the ground fire out (mondo 2026-11-03): a tile the rain falls on does not catch — the fire
@@ -4275,6 +4275,25 @@
                 const _lighter = (byUnit && byUnit.id != null) ? (unitFromId(byUnit.id) || null) : null;
                 _reactFireBog(_lighter, _GROUND_FIRE_SPELL, x, y, _floodConnectedTiles(x, y, _isBogTile, 40), true);
             }
+            /* 🔥 THE FIRE CATCHES WHOEVER STANDS ON IT (mondo 2026-11-12: "this chess piece is clearly on a tile on fire but
+               it doesnt have the burning status effect"): a square lit under a unit sets it Burning at once, the way the
+               forest fire always did, on every way a square catches (a fire spell on grass, Wall of Fire, a gust or a
+               shove fanning the flames, the round's spread). Status only: the ignition deals no extra damage. */
+            if (!prev && !noCatch) _fireCatchesUnitAt(x, y, byUnit);
+            return true;
+        }
+        function _fireCatchesUnitAt(x, y, byUnit) {
+            if (state.phase !== 'battle') return false;
+            const u = unitAt(x, y);
+            if (!u || u.dead || u._dying) return false;
+            if (unitHasStatus(u, 'burn')) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(u)) return false;
+            if (typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'healedByElement') === 'fire') return false;
+            const _by = (byUnit && byUnit.id != null) ? (unitFromId(byUnit.id) || null) : null;
+            applyStatusEffects(u, [{ id: 'burn', duration: 2 }], 'Ground fire: ', _by);
+            if (!unitHasStatus(u, 'burn')) return false;   // immune / warded: nothing to call out
+            showFloatingTextForUnit(u, '🔥 BURNING!', 'damage', { durationMs: 1100 });
             return true;
         }
 
@@ -4393,6 +4412,7 @@
             }
             for (const s of spread) {
                 b[s.x + ',' + s.y] = Object.assign({ x: s.x, y: s.y, t: _dry ? 3 : 2, p: s.p }, s.u != null ? { u: s.u } : {});
+                _fireCatchesUnitAt(s.x, s.y, s.u != null ? { id: s.u } : null);   // the spread lights the square under a unit
             }
 
             if (scorchedUnits || burnedOut || spread.length) {
@@ -23187,6 +23207,7 @@
                         const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
                         const p = (idx !== null && idx !== undefined && typeof PS.loadProfile === 'function') ? PS.loadProfile(idx) : null;
                         let partyRes = null;
+                        let _questRes = null;   // THE QUESTS: what this fight did to a quest (data.js questEvent's return)
                         if (p) {
                             hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, retreat: !won && _encRetreatOn, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
                             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's doors go home with the hits the board left them (a
@@ -23251,6 +23272,15 @@
                                     } catch (e) { console.warn('[HQ] the captures failed', e); }
                                 }
                             } catch (e) { console.warn('[HQ] the party record failed', e); }
+                            /* THE QUESTS (2026-11-12): a quest's own fight reports its outcome — only a WIN of THAT fight moves its stage
+                               (data.js questEvent, the one writer; the reward is paid there, once). After the party's commit, so a
+                               unit the quest hands over joins the party the fight left. */
+                            try {
+                                if (erun.quest && erun.quest.id && typeof questEvent === 'function') {
+                                    _questRes = questEvent(p, { type: 'fight', fight: erun.quest.id, outcome: won ? 'win' : ((!won && _encRetreatOn) ? 'escaped' : 'loss') });
+                                    (_questRes.changes || []).forEach(c => { if (c.kind === 'completed') addLog(`📜 QUEST COMPLETE — ${c.title}.${c.reward && c.reward.unit ? ' ' + String(c.reward.unit).toUpperCase() + (c.reward.joined ? ' joins THE PARTY.' : ' is ON CALL for the party.') : ''}`); });
+                                }
+                            } catch (e) { console.warn('[QUEST] the fight could not be filed', e); _questRes = null; }
                             PS.saveProfile(idx, p);
                         }
                         /* ESCAPE (EXPLORATION_BATTLES §6): who got out (by name), THE RETREAT, and the door the room was entered by (the way back) */
@@ -23277,7 +23307,8 @@
                             }
                         } catch (e) { _endRows = null; }
                         window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null, party: partyRes,   // D1: the swing spot rides home; THE PARTY: what the fight did to it
-                                                      retreat: _retreat, escaped: _escNames, escLoss: !won && !_retreat && _escNames.length > 0, entry: erun.entry || null, end: _endRows };
+                                                      retreat: _retreat, escaped: _escNames, escLoss: !won && !_retreat && _escNames.length > 0, entry: erun.entry || null, end: _endRows,
+                                                      quest: erun.quest ? { fight: erun.quest.id, changes: (_questRes && _questRes.changes) || [] } : null };
                         addLog(won ? `🚪 The encounter is over — ${erun.label || erun.race} is off the room.`
                             : _retreat ? `🏃 THE RETREAT — the party slipped out. ${erun.label || erun.race} still has the room.`
                             : _escNames.length ? `🏃 THE PARTY IS DOWN — ${_escNames.join(', ')} got out and leads the party now.`
@@ -58854,7 +58885,9 @@
                 const foeSeat = (viewer === 1) ? 2 : 1;
                 const foe = _encLeadUnit(foeSeat, seats && seats[foeSeat]) || (state.units || []).find(u => u.player !== viewer && !u.dead) || null;
                 const eye = er.eyeSeeded || er.eye || null;
-                const fr = hqEncounterArrival(eye, { x: lead.x, y: lead.y }, foe ? { x: foe.x, y: foe.y } : null, { fallbackYaw: camera._restYaw, tilt: A.tilt, lead: A.lead });
+                /* THE QUESTS: a quest fight's arrival lands on its portal (most of the way from the lead to it), where the guest and the enemies come out */
+                const _qP = (er.quest && er.quest.portal) ? er.quest.portal : null;
+                const fr = hqEncounterArrival(eye, { x: lead.x, y: lead.y }, _qP ? { x: _qP.x, y: _qP.y } : (foe ? { x: foe.x, y: foe.y } : null), { fallbackYaw: camera._restYaw, tilt: A.tilt, lead: _qP ? 0.8 : A.lead });
                 if (!fr) return false;
                 const zoom = Math.max(0.15, Math.min(10.0, getTurnFramingZoom() * A.zoomMult));
                 camera._tpsHold = false;
@@ -58904,6 +58937,63 @@
            its seat in the engine; this is the 3D body's flight only. Story fights only (VS-CPU: nothing to relay).
            Kill-switch: window.EW_ENC_NO_DASH_IN. */
         const ENC_DASH_IN = { backTiles: 3, ms: 620, stepMs: 150 };
+        /* THE QUESTS (2026-11-12, mondo: "the Catgirl appearing from a portal that forms in the room as she is chased by two shadow
+           beings"): a quest's own fight (data.js QUEST_FIGHTS, the run marker's `quest`). _questFightSeat stands the guest and
+           the enemies on the fight's `seats` round the portal tile (a seat off the board, unstandable or taken keeps the
+           board's own spawn); _questFightArrive is the look only: the D.O.O.R. door stands open on the portal tile and each
+           of them leaps out of it onto its seat. Engine positions are final before the first frame. VS-CPU only (RULE #2). */
+        function _questGuestUnit() {
+            /* the guest is the one body of the human seat's line that is not a party member (no partyId) and wears the fight's guest race */
+            const er = _encRun(), F = er && er.quest, g = F && F.guest; if (!g) return null;
+            const metas = (state.partyMeta && state.partyMeta[1]) || [];
+            return (state.units || []).find(u => { if (!u || u.player !== 1 || u.dead) return false; const i = parseInt(String(u.id).split('-')[1], 10); const m = Number.isFinite(i) ? metas[i] : null; return !!(m && !m.partyId && m.race === g.race); }) || null;
+        }
+        function _questFightBodies() {
+            const er = _encRun(), F = er && er.quest; if (!F) return null;
+            return { F, guest: _questGuestUnit(), foes: (state.units || []).filter(u => u && u.player === 2 && !u.dead && !u._benched) };
+        }
+        function _questFightSeat() {
+            const B = _questFightBodies(); if (!B || !B.F.seats) return false;
+            const W = bw(), H = bh();
+            const put = (u, seat) => {
+                if (!u || !seat) return;
+                const x = seat.x | 0, y = seat.y | 0;
+                if (x < 0 || y < 0 || x >= W || y >= H) return;
+                if (typeof getWalkableSurfaces === 'function' && !getWalkableSurfaces(x, y).length) return;
+                if ((state.units || []).some(o => o && o !== u && !o.dead && o.x === x && o.y === y)) return;
+                const z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y) : 0;
+                if (z === null || z === undefined || !isFinite(z)) return;
+                try { if (typeof unitCanTraverse === 'function' && !unitCanTraverse(u, x, y, z)) return; } catch (e) { return; }
+                u.x = x; u.y = y; u.z = z;
+            };
+            put(B.guest, B.F.seats.guest);
+            B.foes.forEach((u, i) => put(u, (B.F.seats.enemies || [])[i]));
+            /* she runs FROM them, they come AFTER her: the guest faces away from the portal, the enemies face her */
+            const P = B.F.portal;
+            try {
+                if (P && B.guest && typeof setUnitFacing === 'function') { const dx = Math.sign(B.guest.x - P.x), dy = Math.sign(B.guest.y - P.y); if (dx || dy) setUnitFacing(B.guest, Math.abs(dy) >= Math.abs(dx) ? 0 : dx, Math.abs(dy) >= Math.abs(dx) ? dy : 0); }
+                if (B.guest && typeof setUnitFacing === 'function') B.foes.forEach(u => { const dx = B.guest.x - u.x, dy = B.guest.y - u.y; if (dx || dy) setUnitFacing(u, Math.abs(dy) >= Math.abs(dx) ? 0 : Math.sign(dx), Math.abs(dy) >= Math.abs(dx) ? Math.sign(dy) : 0); });
+            } catch (e) {}
+            return true;
+        }
+        function _questFightArrive() {
+            const B = _questFightBodies(); if (!B || !B.F.portal) return false;
+            const P = B.F.portal;
+            try { addLog(`🚪 A portal forms. ${B.guest ? unitDisplayName(B.guest) : 'Someone'} comes through it${B.foes.length ? ', and ' + B.foes.length + ' ' + (B.foes.length === 1 ? 'enemy comes' : 'enemies come') + ' after' : ''}.`); } catch (e) {}
+            if (state.cameraDisabled || _skipVisuals()) return false;
+            try {
+                const FX = window.ThreeVFXEffects;
+                if (FX && typeof FX.questPortal === 'function') FX.questPortal(P.x, P.y, { riseMs: 160, openMs: 160, holdMs: 3800, big: true, scale: 1.5 });   // open through the arrival's swoop (battle.js _encArrivalRules.swoopS)
+            } catch (e) { console.warn('[QUEST] the portal did not draw', e); }
+            try {
+                if (!(window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive())) return false;
+                const zP = (typeof nearestWalkableZ === 'function') ? (nearestWalkableZ(P.x, P.y) || 0) : 0;
+                const leap = (u, ms) => { if (u && !(u.x === P.x && u.y === P.y)) window.ThreeAnim.jumpArc(u, P.x, P.y, u.x, u.y, zP, u.z || 0, ms); };
+                leap(B.guest, 1500);   // the leaps end as the arrival's camera lands on the portal (_encArrivalFrame)
+                B.foes.forEach((u, i) => leap(u, 2000 + i * 320));
+            } catch (e) { console.warn('[QUEST] the arrival failed — they stand on their seats', e); }
+            return true;
+        }
         function _encPartyDashIn() {
             const er = _encRun();
             if (!er || window.EW_ENC_NO_DASH_IN || state.cameraDisabled || _skipVisuals()) return false;
@@ -59302,6 +59392,7 @@
 
             /* THE FIRST STRIKE (2026-09-22): in an encounter the officer's unit — the one that swung — opens round 1
                (set BEFORE the order is built below — state.js buildBlitzTurnOrder consumes it); a plain match never carries one */
+            try { if (_encRun() && _encRun().quest) _questFightSeat(); } catch (e) { console.warn('[QUEST] the seats failed', e); }   // THE QUESTS: before the order is built and the first frame is drawn
             window._ewEncounterFirstId = null;
             try {
                 const _erF = _encRun();
@@ -59325,6 +59416,7 @@
             syncMusicToState();
 
             if (_encRun()) _encPartyDashIn();   // THE DASH-IN: the party leaps in behind the lead as the crane lifts off
+            if (_encRun() && _encRun().quest) _questFightArrive();   // THE QUESTS: the guest and the enemies come out of the portal
 
             invalidateLayoutCache();
             render();
@@ -73652,7 +73744,7 @@
                         state._timedTerrain = state._timedTerrain.filter(e => e !== tt);
                         state._terrainVersion = (state._terrainVersion || 0) + 1;
                     }
-                    if (typeof igniteTile === 'function') igniteTile(t.x, t.y, sp.terrainRounds || 2, owner || { player: door.owner });
+                    if (typeof igniteTile === 'function') igniteTile(t.x, t.y, sp.terrainRounds || 2, owner || { player: door.owner }, true);
                 }
                 if (!_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { faceX: door.faceX, faceY: door.faceY, len: lane.length, delay: opts.delayMs || 0, owner: door.owner });
             }
@@ -73665,6 +73757,8 @@
                 _gunDoorStatus(u, 'burn', sp.burnRounds || 2, `${def.icon} ${def.name}: `);
                 hit.push(u);
             }
+            /* anyone else standing on the lit lane (the door's own side) catches like on any lit square */
+            if (!only && typeof _fireCatchesUnitAt === 'function') for (const t of lane) if (_tileIsBurning(t.x, t.y)) _fireCatchesUnitAt(t.x, t.y, null);
             if (!only) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} sets ${_gdPlural(lane.length, 'tile')} ablaze${hit.length ? ' and scorches ' + hit.map(u => _ctName(u)).join(', ') : ''}.`);
             return hit;
         }

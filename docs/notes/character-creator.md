@@ -1867,3 +1867,63 @@ The creator stage is its own WebGLRenderer (also under WebGPU mode), so this is 
 frames, roll eyes frames, full beard following vs not, close puts the body back to 16 shapes and the beard's morphs off, no
 page errors. Shots: project files face-lab-20261111/. Not checked: Occam's mirror (same button + stage), the classic MPFB bodies.
 
+
+
+## THE UNIT FACES (2026-11-12, mondo: "get the faces a little more accurate ... custom face/body textures"; meshy-remake-plan.md section 6)
+
+**WHAT** - a remade look can wear the unit's OWN Meshy face on the MPFB head: `<race>Face` (a custom head shape, OUTFIT > Head >
+"Unit faces", 0..1) + the skin `ew_face_<race>` (SKIN list, "<Race> face (Meshy)"). The mesh is still the MPFB head, so the 67 face
+shapes work (checked in the Face Lab: blink, talk, smile, frown). Pilot = the cowboy: `cowboyFace` + `ew_face_cowboy`, worn by
+`RACE_REMADE_LOOKS.cowboy.male` (its eye sliders zeroed, the beard piece off because the beard is in the skin, hair `#4a3423`).
+His saved look (`RACE_CREATOR_LOOKS.cowboy`) is untouched and the Meshy model is still the default.
+
+**HOW** - `bake-face.py` (repo root; its header has the steps and the install line). Source = the OLD fused unit GLB, not the T2 remake:
+the old head is far sharper (the T2 face is a blur). Landmarks: MediaPipe face landmarker on a flat face-on drawing of each head
+(`pitch=15` tips the cowboy's bowed head up so the brim clears his eyes), 373 of 478 landmarks kept, median 6 mm after alignment.
+Then `node bake-custom-shape.js`, the skin into `charactercreation/mpfb/looks/`, both in ASSET_MANIFEST.json ([bytes, sha1[:12]]) and
+`--put` to R2 (`Assets/characters/creator/mpfb/...`).
+
+**RULES LEARNED** (each was a fault on screen first)
+- Each eye ring moves as ONE (mean move): the unit's squint must not squash the MPFB eye opening or the eyeball.
+- Inner lips share one height: else the mouth opens. Teeth + tongue move as ONE piece with the lips (base index 13380-13605 tongue,
+  14598-14741 eyeballs, 14992-15127 teeth): riding the nearest skin, a beard's bulk on the chin (22 mm) pulled the tongue's tip out.
+- Depth counts 0.3 in the falloff and the field is read at the face's own depth: parts behind the face otherwise lag and come through.
+- Paint: nothing above the brow line (the hat band landed on the forehead), nothing behind the face outline (ears got hair smear),
+  nothing in the eye openings. The stock sheet is toned by the unit's skin (60th percentile of the painted face) and the unpainted
+  skin beside the paint takes the paint's tone (a brim shadow baked in the unit's face left a pale forehead band).
+- Tried and dropped: fading the paint out below the brows (the brows went with it and a step showed).
+
+**ROUND 2 (11-12, mondo: "the shadow/darkness above his eyes is too much. fix whatever else you think is off")** - three causes, all in bake-face.py now:
+- THE BRIM SHADOW: the hat's shadow baked in the unit's face. From the eyes up the paint's broad brightness (12 px blur) is lifted to
+  the lit skin of the cheeks and nose (up to x2.4); brows and creases keep their contrast. The edge tone then reads lit skin only (75th pct).
+- THE BROW'S DEPTH + THE FOREHEAD: this was most of the darkness and it was SHAPE, not paint. Under a brim the landmarks above the eyes
+  are poor in depth and the forehead's are dropped, so the brows were set back under an unmoved forehead and the game's light shaded
+  the hollow (it showed with no hat on too). From the eyes up every landmark takes the eyes' own depth move; dropped forehead
+  landmarks take the nearest brow-height move; points up the MPFB forehead carry it on in a long slope under the hat.
+- THE BEARD'S BULK: landmarks below the nose that are dark in the unit's drawing (103 of them) move the face 55% of the way: the chin
+  no longer grows by the beard's thickness (max offset 32 -> 27 mm).
+Told apart by: the flat `fit_check.jpg` (no light) showed an even face while the game showed the band; `edgek=0` changed nothing.
+Proof `/mnt/project-files/meshy-parts-20261112/cowboy_face_round2.jpg`.
+
+**THE KNIGHT + THE WIZARD (11-12, mondo "yes" to faces on the other two)** - `knightFace` + `ew_face_knight` (on mpfb_female), `wizardFace` +
+`ew_face_wizard`; both remade looks wear them (their hand-set face sliders removed; the knight's brows are in her skin, `mhBrows: own`).
+Commands (old unit GLBs = the race's own model on R2):
+- knight: `unit=knightf.glb body=mpfb_female stock=.../skin_young_caucasian_female.jpg key=knightFace skin=ew_face_knight cy=1.485 pitch=0 brow0=0.05 brow1=0.065 hairrgb=92,15,30 hairside=- hairdiff=22 eye0=0.004 eye1=0.011`
+- wizard: `unit=wizard.glb stock=.../skin_young_caucasian_male.jpg key=wizardFace skin=ew_face_wizard cy=1.38 pitch=0 hairrgb=165,115,65 hairtol=55`
+- cowboy: `unit=cowboy.glb stock=.../skin_middleage_caucasian_male.jpg key=cowboyFace skin=ew_face_cowboy` (defaults: cy 1.5, pitch 15)
+New rules: HAIR OVER THE FACE (`hairrgb=`: a landmark or texel on hair takes its mirror from the other side of the face; `hairside=-|+`
+also mirrors any texel on that side that disagrees with its mirror, for the hair's soft edge and its shadow); no hat = paint the
+forehead (`brow0/brow1` up at the hairline); a wider eye margin (`eye0/eye1`) drops heavy painted eye make-up; the tongue 8 mm in.
+The tongue showing in the Face Lab talk pose (jawOpen 0.5 + mouthFunnel 0.3) is the STOCK heads' own, same with the shapes at 0.
+Proof `/mnt/project-files/meshy-parts-20261112/three_faces.jpg`. Known on the knight: painted brows are rough, thin hair-edge lines
+at the right cheek, a pale strip at the hairline.
+
+**BATCH ONE OF THE DEMO STARTERS (11-12)** - `zombieFace` + `ew_face_zombie`, `robinhoodFace` + `ew_face_robinhood` (both looks `mhBrows: own`).
+- zombie: `unit=zombie.glb body=mpfb_female stock=.../skin_young_caucasian_female.jpg key=zombieFace skin=ew_face_zombie pitch=0 brow0=0.05 brow1=0.065 hairrgb=25,28,32 hairside=- hairtol=45 eye0=0.004 eye1=0.011 tonepct=85`
+  (the pack zombie skins are green: a plain skin toned to her white face matches her Meshy body shells).
+- robinhood: `unit=robinhood.glb stock=.../skin_young_caucasian_male.jpg key=robinhoodFace skin=ew_face_robinhood hairrgb=50,95,45 hairtol=60` (green hood smear left at the temples, under the hood).
+- NOT DONE: quarterback (the landmarker finds no face behind the helmet's bars: stock face stays); catgirl (her fringe and side locks leave
+  dark lines round the face, and her look wears mondo's saved face: waits on his word). Needs `apt-get install libgles2` beside libegl1 libgl1.
+
+**KNOWN** - with the mouth open the tongue sits high; the sideburn paint ends in a hard edge under the hair; sheet is 1024 px like the stock skins. Not checked: the other four male bodies, WebGPU, a battle.
+Proof: `/mnt/project-files/meshy-parts-20261112/cowboy_face_pilot.jpg`.

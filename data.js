@@ -18684,7 +18684,7 @@ const EW_MAP_META = [
       desc: '16×16 prebuilt, 6v6 — the dorsal deck of a dead starship, still under way: breaches open to the stars, bulkhead stubs, the reactor glow, coolant slicks — the engines still burning astern, the wreckage field streaming past as the hull swings in close to the sun',
       env: { world: { kind: 'void', root: false },
              tint: 0x06070f, tintAmt: 0.55, stars: 1.9, nebula: 0.3, fog: { color: 0x0a0c16, amount: 0.12, top: 0.02, band: 0.3 }, scenery: 'wreckage', density: 0.9,
-             motion: { kind: 'space', axis: 'x', speed: 6.0, ramp: 0.45, max: 7.0, sky: 0.9, orbit: { body: 'sun', period: 220, near: 1.0 } } } },
+             motion: { kind: 'space', axis: 'z', dir: -1, speed: 6.0, ramp: 0.45, max: 7.0, sky: 0.9, orbit: { body: 'sun', period: 220, near: 1.0 } } } },
     { id: 'prebuilt_lookingglass', label: 'The Looking-Glass', w: 16, h: 16, teamSize: 6, tier: 3, base: 'marble_light',
       biomes: ['astral', 'arthurian'], deltaPad: 'marble_light', near: 'lookingglass',
       desc: '16×16 prebuilt, 6v6 — a chessboard flying through a void of unfinished shapes: marble squares, the pieces standing on it as cover (they block the way and the line of sight), the pool of tears — and the Cheshire moon swinging in close, faster every round',
@@ -28058,6 +28058,197 @@ if (typeof window !== 'undefined') {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   THE QUESTS (2026-11-12, mondo: "implement a quest system in the story mode ... Our first quest i think should be
+   walking to the training room to do the first couple tutorials, which turns into the Catgirl appearing from a portal
+   that forms in the room as she is chased by two shadow beings, which you must defeat together").
+   DATA: STORY_QUESTS (the rows) + QUEST_FIGHTS (a quest's own fight). A quest = { id, v, title, summary, start, stages,
+   reward }. A stage = { id, objective, done } and `done` is ONE of:
+     { on: 'room',   room }                    the walk entered that room
+     { on: 'lesson', lesson, filed? }          that tape was finished (`filed`: a tape already on the record counts)
+     { on: 'fight',  fight }                   THAT fight (a QUEST_FIGHTS key) was WON; a loss or a retreat changes nothing
+   `start: 'hq'` = the quest begins by itself the first time the building is entered. `reward.unit` = a race that is
+   LOCKED in the story party until the quest is complete, then joins the party (hqPartyUnlocked reads questLockedUnits).
+   PROGRESS: profile.door.quests = { v, q: { <questId>: { status: 'active' | 'completed', stage, done: [stageId…], at,
+   doneAt, reward } } }. Story only: nothing here is read by a PvP match. The reads / writes are pure over the profile
+   handed in (the caller saves): questEvent(profile, ev) is the ONE writer; a stage advances only from its own stage,
+   so a repeated event, a reload or a second click never skips a stage or pays a reward twice.
+   A NEW QUEST = a row here (+ a QUEST_FIGHTS row when it has a fight). No code.
+   ═══════════════════════════════════════════════════════════════════════ */
+const STORY_QUESTS = [
+    {
+        id: 'orientation', v: 1,
+        title: 'ORIENTATION',   // mondo's to name
+        summary: 'Walk to the Training Room and finish the first two tapes.',
+        start: 'hq',
+        stages: [
+            { id: 'walk',   objective: 'Go to the Training Room (Room 64).', done: { on: 'room', room: 'training' } },
+            { id: 'tape1',  objective: 'Finish Tape 1 · FIRST STEPS at the Range Console.', done: { on: 'lesson', lesson: 'first_steps', filed: true } },
+            { id: 'tape2',  objective: 'Finish Tape 2 · THE PRESS.', done: { on: 'lesson', lesson: 'the_press' } },
+            { id: 'portal', objective: 'Defeat the two Shadow Entities with the Catgirl.', done: { on: 'fight', fight: 'orientation_portal' } },
+        ],
+        reward: { unit: 'catgirl', gender: 'female' },
+    },
+];
+/* a quest's own fight: the officer's party + `guest` against `enemies` on `site`'s board, story rules (wipeout, nobody
+   respawns, the levels about the party's). `portal` = the tile the portal forms on; the guest and the enemies come out
+   of it onto `seats` (a taken or unstandable seat keeps the board's own spawn). `room` = the room the result returns to. */
+const QUEST_FIGHTS = {
+    orientation_portal: {
+        quest: 'orientation', site: 'prebuilt_training', room: 'training', gm: 'tdm',
+        label: 'THE PORTAL',
+        guest: { race: 'catgirl', gender: 'female' },
+        enemies: [{ race: 'shadow entity', gender: 'male' }, { race: 'shadow entity', gender: 'male' }],
+        portal: { x: 4, y: 2 },
+        seats: { guest: { x: 4, y: 4 }, enemies: [{ x: 3, y: 1 }, { x: 5, y: 1 }] },
+    },
+};
+function questDef(id) { return STORY_QUESTS.find(q => q.id === id) || null; }
+function questFightDef(id) { return (id && QUEST_FIGHTS[id]) ? Object.assign({ id }, QUEST_FIGHTS[id]) : null; }
+function questRecord(profile, make) {
+    if (!profile) return null;
+    if (!profile.door || typeof profile.door !== 'object') { if (!make) return null; profile.door = {}; }
+    let r = profile.door.quests;
+    if (!r || typeof r !== 'object') { if (!make) return null; r = profile.door.quests = { v: 1, q: {} }; }
+    if (!r.q || typeof r.q !== 'object') r.q = {};
+    return r;
+}
+function questProgress(profile, id) { const r = questRecord(profile, false); return (r && r.q[id] && typeof r.q[id] === 'object') ? r.q[id] : null; }
+function questStageOf(def, pr) { return (def && pr && pr.status === 'active') ? (def.stages.find(s => s.id === pr.stage) || null) : null; }
+/* does `ev` (or the record, for a `filed` tape) finish this stage? */
+function questStageMet(profile, st, ev) {
+    const d = st && st.done; if (!d) return false;
+    if (d.on === 'room') return !!(ev && ev.type === 'room' && ev.room === d.room);
+    if (d.on === 'lesson') {
+        if (ev && ev.type === 'lesson' && ev.lesson === d.lesson) return true;
+        if (d.filed) { try { return !!tutorialProgress(profile).done[d.lesson]; } catch (e) { return false; } }
+        return false;
+    }
+    if (d.on === 'fight') return !!(ev && ev.type === 'fight' && ev.fight === d.fight && ev.outcome === 'win');
+    return false;
+}
+/* THE ONE WRITER. ev = { type: 'hq' } | { type: 'room', room } | { type: 'lesson', lesson } | { type: 'fight', fight,
+   outcome: 'win' | 'loss' | 'escaped' }. Returns { changes: [{ quest, kind: 'started' | 'updated' | 'completed', title,
+   objective, reward }], fight } — `fight` = the QUEST_FIGHTS id the event has just made the current objective. */
+function questEvent(profile, ev, now) {
+    const out = { changes: [], fight: null };
+    if (!profile || !ev || !ev.type) return out;
+    const r = questRecord(profile, true);
+    const iso = new Date(now || Date.now()).toISOString();
+    STORY_QUESTS.forEach(def => {
+        let pr = r.q[def.id];
+        if (!pr && def.start === 'hq' && (ev.type === 'hq' || ev.type === 'room')) {
+            pr = r.q[def.id] = { status: 'active', stage: def.stages[0].id, done: [], at: iso };
+            out.changes.push({ quest: def.id, kind: 'started', title: def.title, objective: def.stages[0].objective });
+        }
+        if (!pr || pr.status !== 'active') return;
+        if (!Array.isArray(pr.done)) pr.done = [];
+        let first = true, moved = false;
+        for (let guard = 0; guard < def.stages.length + 1; guard++) {
+            const i = def.stages.findIndex(s => s.id === pr.stage);
+            if (i < 0) { pr.stage = def.stages[0].id; continue; }   // a stage id the row no longer has: back to the first
+            const st = def.stages[i];
+            if (!questStageMet(profile, st, first ? ev : null)) break;   // the event finishes ONE stage; the ones after it only by the record
+            first = false; moved = true;
+            if (pr.done.indexOf(st.id) < 0) pr.done.push(st.id);
+            const nx = def.stages[i + 1];
+            if (!nx) {
+                pr.status = 'completed'; pr.stage = null; pr.doneAt = iso;
+                let reward = null;
+                if (!pr.reward) { pr.reward = iso; reward = questGrantReward(profile, def); }
+                out.changes.push({ quest: def.id, kind: 'completed', title: def.title, objective: '', reward });
+                return;
+            }
+            pr.stage = nx.id;
+        }
+        if (moved) {
+            const st = questStageOf(def, pr);
+            out.changes.push({ quest: def.id, kind: 'updated', title: def.title, objective: st ? st.objective : '' });
+            if (st && st.done && st.done.on === 'fight') out.fight = st.done.fight;
+        }
+    });
+    return out;
+}
+/* the reward, once (questEvent stamps pr.reward before it calls): `unit` joins the party at the party's level; a full
+   party leaves it ON CALL (unlocked, enlisted from the pause menu) */
+function questGrantReward(profile, def) {
+    const rw = def && def.reward; if (!rw || !rw.unit) return null;
+    let res = null;
+    try { res = hqPartyEnlist(profile, { race: rw.unit, gender: rw.gender }); } catch (e) { res = null; }
+    return { unit: rw.unit, joined: !!(res && res.ok), onCall: !(res && res.ok) };
+}
+/* the races a quest still holds back from the STORY party (its reward, until it is complete) */
+function questLockedUnits(profile) {
+    const out = [];
+    STORY_QUESTS.forEach(def => {
+        const u = def.reward && def.reward.unit; if (!u) return;
+        const pr = questProgress(profile, def.id);
+        if (!(pr && pr.status === 'completed') && out.indexOf(u) < 0) out.push(u);
+    });
+    return out;
+}
+/* the window under the strip: the first active quest's title + its current objective */
+function questTracker(profile) {
+    for (const def of STORY_QUESTS) {
+        const pr = questProgress(profile, def.id), st = questStageOf(def, pr);
+        if (st) return { quest: def.id, title: def.title, objective: st.objective, n: def.stages.findIndex(s => s.id === st.id) + 1, total: def.stages.length };
+    }
+    return null;
+}
+/* the journal: every quest on the record — its stages as far as they have been reached (a later one is not shown) */
+function questJournal(profile) {
+    const rows = [];
+    STORY_QUESTS.forEach(def => {
+        const pr = questProgress(profile, def.id); if (!pr) return;
+        const cur = def.stages.findIndex(s => s.id === pr.stage);
+        const last = pr.status === 'completed' ? def.stages.length - 1 : Math.max(0, cur);
+        rows.push({ quest: def.id, title: def.title, summary: def.summary, status: pr.status, at: pr.at || null, doneAt: pr.doneAt || null,
+                    reward: (pr.status === 'completed' || cur === def.stages.length - 1) ? (def.reward || null) : null,   // shown once the last stage is reached
+                    stages: def.stages.slice(0, last + 1).map((s, i) => ({ id: s.id, objective: s.objective, done: pr.status === 'completed' || i < cur })) });
+    });
+    return { active: rows.filter(x => x.status === 'active'), completed: rows.filter(x => x.status === 'completed') };
+}
+/* the fight that is the current objective of an active quest (the Range Console's row, the retry), or null */
+function questFightPending(profile) {
+    for (const def of STORY_QUESTS) {
+        const st = questStageOf(def, questProgress(profile, def.id));
+        if (st && st.done && st.done.on === 'fight') return questFightDef(st.done.fight);
+    }
+    return null;
+}
+/* the launch map.js hands the encounter's own start (the shape hqMarkerLaunch returns) */
+function questFightLaunch(fightId, opts) {
+    const F = questFightDef(fightId); if (!F) return null;
+    opts = opts || {};
+    const n = F.enemies.length;
+    const lv = hqEncounterLevels(opts.partyLevel, F.site, n, 'quest|' + F.id);
+    const lead = F.enemies[0];
+    return {
+        site: F.site, delta: true, gm: F.gm || 'tdm', teamSize: HQ_ENCOUNTER_RULES.teamSize, rounds: 0, roster: F.enemies.map(e => e.race), codeRed: false,
+        enemyTeam: n, levels: lv.levels, partyLevel: lv.partyLevel,
+        launchId: F.site, area: null, room: F.room || null,
+        doorId: 'range', counterId: 'range', marker: true, quest: F,
+        encounter: { race: lead.race, gender: lead.gender || 'male', id: 'quest:' + F.id, room: F.room || null, x: 0, z: 0, gesture: 'marker', label: F.label || F.id, name: '',   // '' = the lead wears its race, never the fight's label
+                     members: F.enemies.slice(1).map(e => ({ id: null, race: e.race, gender: e.gender || 'male', name: null })), swarm: 0 },
+    };
+}
+/* the guest as a launch member (hqPartyForLaunch's row shape; no partyId: nothing of hers is written back) */
+function questGuestMember(F, partyLevel) {
+    const g = F && F.guest; if (!g || !g.race) return null;
+    const spec = hqPartySpec(g.race, g.gender, null);
+    let spells = [];
+    try { spells = raceDefaultKit(g.race, [], spec.meta.gender) || []; } catch (e) { spells = []; }
+    const lvl = Math.max(1, Math.min(LEVEL_CAP, (partyLevel | 0) || HQ_LEVEL_RULES.start));
+    return { cls: spec.cls, name: '', meta: { race: g.race, gender: spec.meta.gender, storyLevel: lvl, questGuest: true }, loadout: { spells: spells.slice(), items: {}, equipment: {} }, id: null, you: false };
+}
+if (typeof window !== 'undefined') {
+    window.STORY_QUESTS = STORY_QUESTS; window.QUEST_FIGHTS = QUEST_FIGHTS;
+    window.questDef = questDef; window.questFightDef = questFightDef; window.questProgress = questProgress;
+    window.questEvent = questEvent; window.questLockedUnits = questLockedUnits; window.questTracker = questTracker;
+    window.questJournal = questJournal; window.questFightPending = questFightPending; window.questFightLaunch = questFightLaunch;
+    window.questGuestMember = questGuestMember;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    D.O.O.R. HEADQUARTERS — layout data (DOOR_HQ_BUILD_PLAN.md §3.2)
    The Central Egress as a polar layout table. three-renderer.js builds the
    procedural shell from `shell`, places the user's Meshy prop kit from
@@ -33247,10 +33438,10 @@ const DOOR_HQ = {
                 w: 63, d: 63, h: 7.0,
                 wallH: 7.0, dadoH: 1.75,
                 floor: 'urban:TileGeneric3a', wall: 'aluminium', dado: 'gunmetal', trim: 'teal', ceiling: 'urban:FibreCeilingTile1a',
-                wallColor: 0xdfe8ee, pipes: false,
+                wallColor: 0xdfe8ee, pipes: false, keyLamp: 0,   // THE ROOM'S OWN KEY LIGHT: a lit room takes none of the camera's Key Light (it blew the pad and a spell's water to white)
                 lights: [{ x: -10.5, z: -10.5 }, { x: 10.5, z: -10.5 }, { x: -10.5, z: 10.5 }, { x: 10.5, z: 10.5 },
                          { x: -24.5, z: -10.5 }, { x: -24.5, z: 10.5 }, { x: 28.0, z: -14.0 }, { x: 28.0, z: 14.0 }],
-                mood: { light: 0xe6f4ff, strip: 0x9fe8ff, ambient: 2.0 },
+                mood: { light: 0xe6f4ff, strip: 0x9fe8ff, ambient: 1.0 },
                 fog: { color: 0x16181d, density: 0.0 },
                 look: { name: 'TRAINING ROOM', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.34, grain: 0.024, tintAmount: 0.22, levels: 28 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.58 }, nightMood: 0.0, bloom: 0 },
             },
@@ -33284,7 +33475,7 @@ const DOOR_HQ = {
                 features: [
                     { k: 'wall', x0: -19.25, z0: -19.25, x1: -19.25, z1: -19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false }, { k: 'wall', x0: 19.25, z0: -19.25, x1: 19.25, z1: -19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false }, { k: 'wall', x0: -19.25, z0: 19.25, x1: -19.25, z1: 19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false }, { k: 'wall', x0: 19.25, z0: 19.25, x1: 19.25, z1: 19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false },
                     /* THE MATS: 8 × 8 foam squares, one battle square each, blue and black (the plateau under them is the mats' 4 cm) */
-                    { k: 'board', x: 0, z: 0, n: 8, cell: 3.5, keys: ['urban:TileGeneric1a', 'urban:TileGeneric1a'], colors: [0x8e9aa4, 0x4e6070], h: 0.06 },
+                    { k: 'board', x: 0, z: 0, n: 8, cell: 3.5, keys: ['urban:TileGeneric1a', 'urban:TileGeneric1a'], colors: [0x66707a, 0x36424e], h: 0.06 },
                     /* THE BLEACHERS ARE GONE (2026-11-12, mondo: "get rid of the seats on the camelot map and the training room"): the six seat rows
                        on the west side, the walk behind them, their two end walls and the rail are out; the west side is open floor. */
                     /* THE MEZZANINE (east): a steel grate 2 levels up along the east wall, its rail on the mats' side; the steel stair up the north wall */
@@ -60924,6 +61115,9 @@ function hqPartyUnlocked(profile) {
     let owned = (acct && Array.isArray(acct.unlockedUnits) && acct.unlockedUnits.length) ? acct.unlockedUnits : ((typeof ACCT_STARTER_UNITS !== 'undefined') ? ACCT_STARTER_UNITS : []);
     const caught = Object.keys(hqCapturedRecord(profile));   // THE ONE-WAY DOOR (CAPTURE_PLAN.md §2.6): a sealed race is the officer's — the prune never relieves it, before the server's union lands
     if (caught.length) owned = owned.concat(caught);
+    /* THE QUESTS (2026-11-12): a quest's reward unit is not the officer's until that quest is complete (story party only) */
+    let held = []; try { held = questLockedUnits(profile); } catch (e) { held = []; }
+    if (held.length && !dev) owned = owned.filter(r => held.indexOf(r) < 0 || caught.indexOf(r) >= 0);
     return all.filter(r => (dev || owned.indexOf(r) >= 0) && (typeof isRace3DReady !== 'function' || isRace3DReady(r)));
 }
 /* THE JOBS REMOVAL (2026-09-27): no jobs — every member's class is the one neutral UNIT_CLASS (the old name stays for callers) */

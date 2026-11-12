@@ -119,6 +119,7 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
 - `bake-custom-shape.js` (2026-11-11): custom head shapes into mpfb_shapes.glb. Notes: character-creator.md "THE CUSTOM SHAPES".
 - `bake-outfit.py` (2026-11-12): a Meshy T2 a-pose remake of a unit -> its clothes as creator pieces on the MPFB bodies (`ewm_t2<unit>_outfit/_hat.glb`;
   sprites.js RACE_REMADE_LOOKS). Notes: models-assets.md "THE MESHY OUTFITS".
+- `bake-face.py` (2026-11-12): an old Meshy unit's head -> MPFB head shape + face skin (`<race>Face`, `ew_face_<race>`). Notes: character-creator.md "THE UNIT FACES".
 - `bake-beards.py` (2026-11-02): `python3 -I bake-beards.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks [--only full]` joins a pack beard + moustache
   into one Facial hair pick (`ewb_beard_<key>.glb`). Notes: character-creator.md "THE JOINED BEARDS".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
