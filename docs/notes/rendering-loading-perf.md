@@ -651,6 +651,13 @@ three-vfx-effects.js flame / energy / orb, three-lightning.js MeshLine). Sprite 
 proxy (`_ewPointProxy`; WebGPU points are 1 px). A NEW ShaderMaterial needs a twin or it draws as a flat stand-in on
 WebGPU. Console: `ThreeRenderer.nodePrograms()`. Details: WEBGPU_PLAN.md §10 "W2".
 
+### THE WARMED TWIN (2026-11-12, the foyer's one `Material "ShaderMaterial" is not compatible` line)
+The line came from the room warm-up, not from a missing object: `_hqWarmRun`'s renderer.compile is compileAsync on the node
+renderer, and compileAsync calls `renderObject` straight, past the draw hook that swaps a ShaderMaterial for its twin. The
+foyer's dust motes (`atmos:dust`, a Points ShaderMaterial) were warmed raw: three logged the line once and the twin the real
+draw uses was never warmed (the motes always drew, through the hook). The `r.renderObject` wrap in `_ewGpuCompat` now gives an
+unswapped classic shader material the same twin / point proxy. Any future "is not compatible" line: log the object in that wrap.
+
 ### W1 — the material layer (2026-10-03, zip renderer/ENTROPY_WARS_W1_MATERIALS.zip)
 The node renderer draws the GLSL hooks' effects: the legacy light levels, the height fog, the room-box AO, the terrain
 sheets, the fluid tops (waves, caustics, glints), the three sways, the creator's vertex-colour glow, the backdrop's horizon

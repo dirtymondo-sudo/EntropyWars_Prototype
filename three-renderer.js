@@ -48342,6 +48342,18 @@ const ThreeRenderer = (function () {
            guest alike). window.EW_FADE_OWN_SHADOW = true → each clone builds its own again. */
         var rawRO = r.renderObject;
         if (typeof rawRO === 'function') r.renderObject = function (object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId) {
+            /* THE WARMED TWIN (2026-11-12, mondo OK'd chasing the foyer's one `Material "ShaderMaterial" is not compatible` line):
+               the room warm-up's renderer.compile is compileAsync here, and compileAsync calls renderObject straight, past the
+               draw hook below, so a warmed ShaderMaterial (the foyer's dust motes, atmos:dust) reached three's node builder
+               raw: one error line a room, and the twin the real draw uses was never warmed. A classic shader material that
+               gets here unswapped now takes the same twin / point proxy as the draw hook gives it. */
+            if (material && !material.isNodeMaterial && (material.isShaderMaterial || !_EW_GPU_NODE_TYPES[material.type])) {
+                material = _ewGpuStandIn(material, object);
+                if (material && material._ewSprite && object.isPoints) {
+                    var wpx = _ewPointProxy(object, geometry, material); if (!wpx) return;
+                    object = wpx; geometry = wpx.geometry; group = null;
+                }
+            }
             if (material && material._ew_occSrc && sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial && !window.EW_FADE_OWN_SHADOW) material = material._ew_occSrc;
             return rawRO.call(this, object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId);
         };
