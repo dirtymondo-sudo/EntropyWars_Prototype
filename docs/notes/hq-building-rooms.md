@@ -1149,6 +1149,22 @@ square grid gameplay." Group 7 of /mnt/project-files/grid-fit/GROUPS_AND_BRIEF.m
 - Result (feet rule, covers that block exactly the squares their size calls for): 95 → 164 of 186 (the rest: 17 stairwell treads, the
   4 inner slot machines of two 4-machine banks, the chapel altar on the middle line). Tools: /mnt/project-files/grid-fit/group7/.
 
+## THE DOUBLE DOOR (2026-11-12) — the foyer's revolving door is a pair of swing doors
+mondo: "want to get rid of the revolving door, just make it a normal swing door or double door or something."
+- data.js catalogue `leaf_lobby_glass_double` = the authored pack leaf `DOOR WITH LARGE WINDOW.glb` (the one the reception
+  wears) with `double: true`: TWO leaves, one hinged on each jamb, meeting in the middle. The hall's door `foyer` (195°) and the
+  foyer's door `egress` wear it. `leaf_revolving` stays in the catalogue (Bay 5 · DIPLOMATIC still wears it).
+- three-renderer.js `_hqBuildDoors`: a `double` swing leaf gets `motion.pivot2` (the right leaf, the same model turned half
+  round so the handles meet; a turn, not a mirror). `_hqDoorMotionStep` swings `pivot2` the other way.
+- THE ROUND JOIN (`_hqRoundDoorTick`): a kept leaf with no spin but a `motion` opens for the walker within swingM, like any
+  joined door (the revolving leaf only span). No load card, as before.
+- `glass` in the key matters: HQ_CULL_SEE keeps the room beyond drawn behind a see-through leaf. Without it the portal rule
+  hid the hall behind the shut door, and the kept leaf (it belongs to the hall's part) with it: an empty black doorway.
+- The lines that named the revolving door (the two door descs, the doorman's line, the draft lesson three) say double doors.
+- Probe: `ThreeRenderer.hq.dev.hqDoors()` = the door records of the room stood in + the rooms beside it.
+- Headless proof: playtest_city.js closed the browser seconds after entering (every CDN response fulfilled at once). Serving
+  the routed responses ONE AT A TIME (a promise chain + 15 ms) fixed it; also `require('/opt/node-tools/node_modules/playwright')`.
+
 ## ONE DOORWAY, ONE LIGHT — the foyer ⇄ the main hall read at one level (2026-11-12)
 mondo: "the foyer is too bright and then stepping into the lobby is dark by comparison".
 - Cause: the hemisphere / key / fill are the SCENE's. Standing in the foyer, the hall beyond the open doorway wore the foyer's

@@ -573,7 +573,7 @@ def fit(name, gender, src, bodies_dir):
         ks |= set(v.index for v in pm.vertices if v.co.z > zc_ and abs(v.co.x - eyeM[0]) < 0.2)
         for _ in range(int(E('BSRING', 2))):
             ks |= set(i_ for e_ in pm.edges for i_, j_ in (tuple(e_.vertices), tuple(e_.vertices)[::-1]) if j_ in ks and i_ not in ks and pm.vertices[i_].co.z > zc_ - 0.08 and abs(pm.vertices[i_].co.x - eyeM[0]) < 0.2)
-    if NECKLINE:
+    if NECKLINE or E('OPENSKIN', 0):   # (OPENSKIN: this rule alone, a blouse's open collar, Agent Locke)
         for _ in range(int(E('OPENRING', 3))):
             add_ = set()
             for e_ in pm.edges:
@@ -608,7 +608,7 @@ def fit(name, gender, src, bodies_dir):
             while st_:
                 for j_ in adj_.get(st_.pop(), ()):
                     if j_ not in seen_: seen_.add(j_); comp_.append(j_); st_.append(j_)
-            if len(comp_) < E('SKINISLE', 0): ks -= set(comp_); ni_ += len(comp_)
+            if len(comp_) < E('SKINISLE', 0) and not (max(pm.vertices[k_].co.z for k_ in comp_) > eyeM[2] - E('ISLENECK', 9) and E('ISLENECK', 0) and np.mean([abs(pm.vertices[k_].co.x - eyeM[0]) for k_ in comp_]) < E('ISLENECKX', 0.07)): ks -= set(comp_); ni_ += len(comp_)   # (never her neck: under a blouse collar the neck is cut off from the head's own skin and went black, Agent Locke)
         if ni_: print('[bake-outfit] %s: %d vertices of floating skin hidden' % (name, ni_), flush=True)
     hidden = [i for i in range(len(pm.vertices)) if i not in ks]
     # a hm08 index is hidden only when every file vertex that carries it is

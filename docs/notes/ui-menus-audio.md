@@ -2761,3 +2761,12 @@ piece the UI Maker can pin to a screen side. Proof: /mnt/project-files/team-sele
 - STRAIGHT ON (same day, mondo: "why are the battle portraits at an angle when the id photo is straight on? ... The battle portraits
   should be straight on, just like the sprite portraits"): PT_YAW 0, PT_POLAR 0, PT_PITCH 1 (the camera stands exactly where the
   face looks); Locke's `portrait.yaw` is gone. RULE: a portrait is straight on, never a three-quarter view.
+- **THE LIVE PORTRAITS (2026-11-12, mondo "Do B"):** the player's own created character and Agent Locke idle, breathe and blink in
+  their portrait icon (turn order `PartyPortrait`, the YOUR TURN panel `HorologeHub`). three-renderer.js: a live subject stays in
+  the studio after its still (`S.live`), `_ptLiveTick` redraws it at `PT_LIVE_FPS` 12 into every attached HUD canvas
+  (`EWPortraits.attach(canvas, unit)`), at most `PT_LIVE_MAX` 2 bodies, dropped `PT_LIVE_LINGER` 8 s after the last canvas leaves.
+  Who is live: a cast def with `portrait: { live: true }` (sprites.js `locke`) and the viewer's own profile look (`_ptOwnKey`).
+  hud.js `LiveFace` (a canvas in the icon's SVG, the still under it until the first frame) + `useLiveGen` (the icons are memoised:
+  the switch fires `ew-live-portraits`). Settings > Video > Live Portraits On/Off (`ew_livePortraits`, default On; Off = stills);
+  console kill `window.EW_NO_LIVE_PORTRAITS`. Creator bodies blink (faceIdle); Locke's Meshy model has no eyelids, she only
+  sways and breathes until she is remade on a creator body (the remade-looks thread). Viewer-local, nothing relayed.

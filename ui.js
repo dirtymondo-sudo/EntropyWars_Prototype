@@ -8015,6 +8015,7 @@
             const isNativePixel = !isFastPixel && Math.abs(rsRatio-rsNative)<0.011;
             const rsSteps = (_rsInfo&&_rsInfo.steps) || [0.5,0.67,0.75,0.85,1];
             const ggLevel = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.getGrassField) ? ThreeRenderer.getGrassField() : 'high';   // THE GRASS FIELD
+            const lpOn = !!(window.EWPortraits && window.EWPortraits.liveSetting && window.EWPortraits.liveSetting());   // THE LIVE PORTRAITS
             const rsShare = rsRatio/rsNative;
             let rsOn = -1; rsSteps.forEach((k,i)=>{ if(Math.abs(rsShare-k)<0.011) rsOn=i; });
             // THE ENTROPY STYLE (2026-11-12): the grade + ink pass's two rows
@@ -8284,6 +8285,15 @@
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
                         <span class="pm-toggle-hint">thick grass on grassy ground: Low draws under half as much, Off leaves the flat ground</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Live Portraits</span>
+                        <div class="pm-seg-group">
+                            ${[[true,'On'],[false,'Off']].map(m=>`<button class="pm-seg-btn${lpOn===m[0] ? ' active' : ''}" onclick="if(window.EWPortraits&&window.EWPortraits.setLive)window.EWPortraits.setLive(${m[0]});${RJ}">${m[1]}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">your own character and Agent Locke idle, breathe and blink in their portrait; Off shows a still picture</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">FPS Cap</span>
@@ -18105,11 +18115,31 @@
                 const act = b.getAttribute('data-tut');
                 if (act === 'continue') { try { playSfx('uiButtonConfirm'); } catch (x) {} _tutAdvance(); }
                 else if (act === 'leave') window._tutorialLeave();
-                else if (act === 'next') { const n = _tutNextLesson(); if (n) _tutTeardown(() => window._tutorialLaunch(n.id, { from: _tut.from })); }
+                else if (act === 'next') { const n = _tutNextLesson(); if (n) _tutChain(n.id); }
                 else if (act === 'list') window._tutorialLeave(true);
-                else if (act === 'restart') { const id = _tut.lesson && _tut.lesson.id; if (id) _tutTeardown(() => window._tutorialLaunch(id, { from: _tut.from })); }
+                else if (act === 'restart') { const id = _tut.lesson && _tut.lesson.id; if (id) _tutChain(id); }
             });
             return el;
+        }
+        /* ONE TAPE STRAIGHT INTO THE NEXT (2026-11-12, mondo: "the second tutorial shows an all black screen, HUD and everything
+           still there and responsive but nothing showing on the board"). NEXT TAPE / RESTART on a lesson started at the Range
+           Console tore the lesson down through backToMainMenu, whose way home (map.js _hqReturnOrMenu) RE-ENTERED THE
+           BUILDING, and the next lesson's match started in the same breath, under the building's load: the building then
+           owned the canvas and the lesson's board was never drawn (the HUD is DOM, so it stood over a black picture).
+           window._tutChainPending keeps the building from being re-entered in between (as window._questFightPending does
+           for the quest's fight); a lesson that cannot start falls back to the ordinary way home. */
+        function _tutChain(lessonId) {
+            const hq = _tut.from === 'hq';
+            if (hq) window._tutChainPending = lessonId;
+            _tutTeardown((from) => {
+                window._tutChainPending = null;
+                let ok = false;
+                try {
+                    if (hq) state.gameState = GS.MAIN_MENU;   // as the Range Console starts a tape (map.js data-tutorial)
+                    ok = !!window._tutorialLaunch(lessonId, { from: from });
+                } catch (e) { console.error('[Tutorial] the next tape did not start', e); ok = false; }
+                if (!ok && hq && typeof window._hqReturnOrMenu === 'function') window._hqReturnOrMenu();
+            });
         }
         function _tutNextLesson() {
             const L = _tut.lesson;

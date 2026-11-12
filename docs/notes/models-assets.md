@@ -1952,3 +1952,17 @@ redistribution, never in the repo) and the Meshy / code swap candidates by name.
   the room's look, the assembly's own `idle` clip plays, its clips feed the room's poses, and `_procRigEyeTrack(eye, T.camera)`
   (new optional camera argument) turns the eye to the room's camera. The board is untouched.
 - Proof: /mnt/project-files/oculus-team-room/oculus_eye_on_team_select.jpg (headless, WebGL2).
+
+  AGENT LOCKE (11-12, mondo: "Ship, and remake Locke to blink"): the first CAST member on a creator body. Old rig rendered front,
+  Meshy T2 a-pose (task 01a1d095), `ISLENECK=0.2 OPENSKIN=1 OPENX=0.045 OPENX2=0.045 OPENZ=0.3 SKINISLE=400 python3 -I bake-outfit.py
+  --name locke --label "Agent Locke" --gender female --src locke_t2.glb --bodies charactercreation/mpfb` (delete the bogus `_hat`).
+  New knobs: OPENSKIN (the open-collar skin rule without the rest of --neckline: --neckline cut her blouse collar away) and
+  ISLENECK (SKINISLE never hides an island near the neck: under a blouse collar the neck is cut off from the head's skin and went
+  black; off by default so the catgirl's file is byte-identical). Her body stood through the suit at the bust, shoulders, crotch
+  and calves until SKINISLE hid those islands. Hair shells are not exported: creator `mh_elvs_short_side_do` tinted #e6e6ea.
+  Face: bake-face.py from the OLD rig (`lockeFace`, `ew_face_locke`, stock=middleage_caucasian_female, hairrgb=225,225,228).
+  Wiring: sprites.js CAST_CREATOR_LOOKS + getCastLookModel; getCastModel (DOOR HQ, portrait studio) and getRace3DModel's cast
+  branch (the board, with the Door Agent's gun) return the creator def with its `raceLook`; three-renderer.js _ptSpec passes that
+  look. `window.EW_DISABLE_CAST_LOOKS = true` = her old rig. Seen: viewer four sides + walk + head, a portrait-studio bust. NOT
+  seen: her in DOOR HQ or in the first fight. Left: small dark teeth in the blouse collar's V, mouth reads a little pursed, the
+  fringe sweeps to the other side from her old model. Proof: /mnt/project-files/meshy-remake-batch1/locke_look_check.jpg.

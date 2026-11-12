@@ -1795,3 +1795,14 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
   dropped once the hall stood and the room had rested, and geometries / sheets / programs / meshes did not move again. A load
   through a door (`_hqGoRoom`) lands and settles too. NOT seen: his Mac / real WebGPU (how many seconds the settle adds there),
   a cold cache on a slow line, the editor's viewport, a terrain zone. Proof /mnt/project-files/loading-wait/.
+
+## THE WHOLE HALL LIT (2026-11-12, mondo in the Main Hall: "the walls further away are not lit until i walk closer") — three-renderer.js `_hqStagePick`
+- Cause: THE LAMPS budget (stage §5.2) lit the N point lights nearest the EYE over every room on the stage alike, N = max(lampsLive 12,
+  the current room's own). The hall has 13 lamps (centre, 4 desk, 4 floor ring, 4 gallery), the foyer 6: at the hall's entrance the
+  foyer's lamps behind you took six places, so the hall's far wall lamps were dark until you walked toward them (from the foyer's
+  doorway 5 of the hall's 13 were dark). Not the rig, not the hemisphere, not falloff.
+- Fix: (1) the room you stand in lights ALL its own lamps first; (2) the rooms beside it share the rest, nearest first, never fewer
+  than `HQ_STAGE_RULES.lampsNb` (4); (3) THE ROUND JOIN (hall + foyer) lights every lamp of both, up to `lampsRound` (32). Every
+  stage zone gets (1) + (2). Count: the hall + foyer draw 19 point lights (was 13 / 12); other zones at most own + 4.
+- Seen: cloud browser (node renderer on WebGL 2), standing in the foyer's doorway and at the hall's centre. NOT seen: his Mac / real
+  WebGPU, the frame cost of the six extra lamps there. Proof /mnt/project-files/main-hall-far-walls/.
