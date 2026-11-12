@@ -65021,7 +65021,7 @@ const ThreeRenderer = (function () {
     }
     /* one picture of S through the studio's camera, aimed off the Head bone: the face (a square, straight on, clear
        behind) or the bust (the ID card's upright photo, straight on, on its backdrop). The caller reads the canvas at once. */
-    function _ptRender(S, bust) {
+    function _ptRender(S, bust, easeDt) {
         var P = _pt, r = P.renderer, w = bust ? PT_BUST.w : PT_PX, hgt = bust ? PT_BUST.h : PT_PX;
         for (var k in P.subs) { var o = P.subs[k]; if (o.model) o.model.visible = (o === S); }
         if (P.w !== w || P.h !== hgt) { r.setSize(w, hgt, false); P.w = w; P.h = hgt; P.cam.aspect = w / hgt; P.cam.updateProjectionMatrix(); }
@@ -65043,7 +65043,15 @@ const ThreeRenderer = (function () {
         var dist = S.h * (bust ? PT_BUST.frame : (pd.frame || PT_FRAME)) * 0.5 / Math.tan((PT_FOV * Math.PI / 180) / 2);
         var yaw = Math.atan2(f.x, f.z) * (bust ? 0.5 : 1) + (bust ? 0 : (pd.yaw != null ? pd.yaw : PT_YAW));
         var pol = Math.asin(Math.max(-1, Math.min(1, f.y))) * (bust ? PT_PITCH * 0.6 : PT_PITCH) + (bust ? 0 : PT_POLAR);
-        P.cam.position.set(tx + Math.sin(yaw) * Math.cos(pol) * dist, ty + Math.sin(pol) * dist, tz + Math.cos(yaw) * Math.cos(pol) * dist);
+        var px = tx + Math.sin(yaw) * Math.cos(pol) * dist, py = ty + Math.sin(pol) * dist, pz = tz + Math.cos(yaw) * Math.cos(pol) * dist;
+        /* THE LIVE PORTRAITS: the camera does not follow the head frame by frame (that would cancel the very sway and breath
+           the portrait is there to show): it drifts after it (PT_LIVE_DRIFT s), so the head moves IN the frame and never leaves it */
+        if (!bust && S.live && easeDt > 0 && S.cam) {
+            var ke = 1 - Math.exp(-easeDt / PT_LIVE_DRIFT), c = S.cam;
+            c[0] += (px - c[0]) * ke; c[1] += (py - c[1]) * ke; c[2] += (pz - c[2]) * ke; c[3] += (tx - c[3]) * ke; c[4] += (ty - c[4]) * ke; c[5] += (tz - c[5]) * ke;
+            px = c[0]; py = c[1]; pz = c[2]; tx = c[3]; ty = c[4]; tz = c[5];
+        } else if (!bust && S.live) S.cam = [px, py, pz, tx, ty, tz];
+        P.cam.position.set(px, py, pz);
         P.cam.lookAt(tx, ty, tz);
         if (bust) r.setClearColor(PT_BUST.bg, 1); else r.setClearColor(0x000000, 0);
         r.toneMappingExposure = pd.expo || (S.bake ? PT_BAKE_EXPO : 1.05);
@@ -65065,7 +65073,8 @@ const ThreeRenderer = (function () {
             }
         } catch (e) { console.warn('[ThreeRenderer] portrait failed', S.key, e); }
         if (!got) _ptFail[S.key] = Date.now();
-        _ptDrop(S);
+        if (got && S.live && _ptLiveOn()) { S.shot = true; S.at = 0; if (P.busy === S) P.busy = null; _ptLiveStart(); }   // THE LIVE PORTRAITS: the body stays in the studio
+        else _ptDrop(S);
         if (got) _ptBump();
     }
     /* the body is up (dressed, its idle on): a few frames for the pose, the cloth and the hair to settle, then the picture */
@@ -65150,7 +65159,112 @@ const ThreeRenderer = (function () {
         if (ce0 && ce0.failed) fail();
         else if (ce0 && !ce0.root) (ce0.doneCbs = ce0.doneCbs || []).push(function (e2) { if (e2 && e2.failed) fail(); });
     }
+    /* ── THE LIVE PORTRAITS (2026-11-12, mondo: "for main characters (so far let's just try the player and agent
+       locke) can we have them idle and blinking and breathing in the portrait icon? Like the newspapers or picture frames
+       from harry potter") ── a main character's body STAYS in the studio after its still is taken: PT_LIVE_FPS times a
+       second its idle, cloth and face (the creator bodies' own blink / glance: faceIdle) tick and the 128 px picture is drawn
+       again, then copied into every HUD canvas that shows that character (hud.js LiveFace -> EWPortraits.attach). Main
+       characters: a cast def with `portrait.live` (Agent Locke) and the look on the viewer's own profile; PT_LIVE_MAX bodies
+       at most. Nothing ticks while no canvas shows it or the tab is hidden; the body is let go PT_LIVE_LINGER ms after its
+       last canvas left. Settings > Video > Live Portraits (On / Off); window.EW_NO_LIVE_PORTRAITS = true kills it live.
+       mondo OK'd the plan + the proof clip 11-12 ("Do B"). Viewer-local: nothing relayed. */
+    var PT_LIVE_FPS = 12, PT_LIVE_MAX = 2, PT_LIVE_LINGER = 8000, PT_LIVE_DRIFT = 1.6;
+    var _ptLiveRaf = 0, _ptLiveAt = 0, _ptOwn = { t: 0, key: null };
+    var _ptLiveSet = null;   // Settings > Video > Live Portraits (localStorage ew_livePortraits: 'off' = stills; default on)
+    function _ptLiveSetting() {
+        if (_ptLiveSet == null) { _ptLiveSet = true; try { if (typeof localStorage !== 'undefined' && localStorage.getItem('ew_livePortraits') === 'off') _ptLiveSet = false; } catch (e) {} }
+        return _ptLiveSet;
+    }
+    function _ptLiveOn() { return !_ptOff() && !window.EW_NO_LIVE_PORTRAITS && _ptLiveSetting(); }
+    function _ptOwnKey() {
+        var now = Date.now();
+        if (now - _ptOwn.t < 2000) return _ptOwn.key;
+        _ptOwn.t = now; _ptOwn.key = null;
+        try {
+            var p = window.ProfileSystem && window.ProfileSystem.getActiveProfile && window.ProfileSystem.getActiveProfile();
+            var lk = (p && typeof window.hqLook === 'function') ? window.hqLook(p) : null;
+            if (lk && lk.appearance) {
+                var n = normalizeCharacterAppearance(lk.appearance);
+                if (n) _ptOwn.key = '|' + (lk.gender === 'female' ? 'female' : 'male') + '|' + _ptHash(JSON.stringify(n));
+            }
+        } catch (e) {}
+        return _ptOwn.key;
+    }
+    function _ptLiveSpec(u) {
+        if (!_ptLiveOn() || !u || u.dead) return null;
+        var spec = _ptSpec(u);
+        if (!spec) return null;
+        if (spec.def.portrait && spec.def.portrait.live) return spec;
+        var own = spec.look ? _ptOwnKey() : null;
+        return (own && spec.key.slice(-own.length) === own) ? spec : null;
+    }
+    function _ptLiveStart() { if (!_ptLiveRaf && typeof requestAnimationFrame === 'function') _ptLiveRaf = requestAnimationFrame(_ptLiveTick); }
+    function _ptLiveTick() {
+        _ptLiveRaf = 0;
+        var P = _pt;
+        if (!P) return;
+        var now = performance.now(), due = now - _ptLiveAt >= 1000 / PT_LIVE_FPS - 2, any = false;
+        if (due) _ptLiveAt = now;
+        for (var k in P.subs) {
+            var S = P.subs[k];
+            if (!S.live) continue;
+            if (S.cvs) for (var i = S.cvs.length - 1; i >= 0; i--) if (!S.cvs[i].isConnected) S.cvs.splice(i, 1);
+            if (!S.cvs || !S.cvs.length) {
+                if (!S.idleAt) S.idleAt = now;
+                if (S.shot && now - S.idleAt > PT_LIVE_LINGER) { _ptDrop(S); continue; }
+                any = true; continue;
+            }
+            S.idleAt = 0; any = true;
+            if (!due || !S.shot || !S.model || P.lost || document.hidden) continue;
+            var dt = S.at ? Math.min(0.25, (now - S.at) / 1000) : 1 / PT_LIVE_FPS;
+            S.at = now;
+            try {
+                if (S.mixer) S.mixer.update(dt);
+                S.model.updateMatrixWorld(true);
+                if (S.rig) S.rig.tick();
+                if (S.sway) _swayTick(S.sway, dt, S.def.sway || null);
+                _ptRender(S, false, dt);
+                for (var j = 0; j < S.cvs.length; j++) {
+                    var cv = S.cvs[j], g = cv._ptG || (cv._ptG = cv.getContext('2d'));
+                    g.clearRect(0, 0, cv.width, cv.height);
+                    g.drawImage(P.canvas, 0, 0, cv.width, cv.height);
+                    cv._ptLive = true;
+                }
+            } catch (e) { if (!S.warned) { S.warned = true; console.warn('[ThreeRenderer] live portrait failed', S.key, e); } }
+        }
+        if (any) _ptLiveStart(); else _ptRest();
+    }
     var portraits = {
+        liveSetting: function () { return _ptLiveSetting(); },
+        setLive: function (on) {
+            _ptLiveSet = !!on;
+            try { localStorage.setItem('ew_livePortraits', on ? 'on' : 'off'); } catch (e) {}
+            if (!on && _pt) for (var k in _pt.subs) { var S = _pt.subs[k]; if (S.live && S.shot) _ptDrop(S); else S.live = false; }   // the bodies go; the HUD's icons fall back to the stills
+            _ptRest(); _ptBump();
+            try { window.dispatchEvent(new Event('ew-live-portraits')); } catch (e) {}
+        },
+        /* THE LIVE PORTRAITS: the key of this unit's live portrait (null = it shows its still) */
+        liveKey: function (u) { var sp = _ptLiveSpec(u); return sp ? sp.key : null; },
+        /* a HUD canvas joins this unit's live portrait (its still is painted at once); returns the detach, null when not live */
+        attach: function (cv, u) {
+            var spec = _ptLiveSpec(u);
+            if (!spec || !cv || !cv.getContext) return null;
+            var P = _ptEnsure();
+            if (!P) return null;
+            var S = P.subs[spec.key];
+            if (!S) {
+                var n = 0; for (var k in P.subs) if (P.subs[k].live) n++;
+                if (n >= PT_LIVE_MAX || _ptFail[spec.key]) return null;
+                P.subs[spec.key] = S = { key: spec.key, def: spec.def, look: spec.look, bust: !!spec.look && !_ptUrls[spec.key + '#bust'], model: null, rig: null, mixer: null, sway: null, ownedMats: [], ownedTex: [], h: 1, built: false, ready: false, dead: false, timer: 0 };
+                P.queue.push(S);
+            }
+            S.live = true; S.idleAt = 0;
+            (S.cvs || (S.cvs = [])).push(cv);
+            var still = _ptUrls[spec.key];
+            if (still) { var im = new Image(); im.onload = function () { if (!cv._ptLive) { try { cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); } catch (e) {} } }; im.src = still; }
+            _ptPump(); _ptLiveStart();
+            return function () { var i = S.cvs ? S.cvs.indexOf(cv) : -1; if (i >= 0) S.cvs.splice(i, 1); };
+        },
         /* the unit's portrait off its own model: a data URL, or null (no model of its own / not photographed yet: asked for now) */
         url: function (u, kind) {
             if (_ptOff()) return null;

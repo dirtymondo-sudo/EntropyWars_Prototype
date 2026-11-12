@@ -8015,6 +8015,7 @@
             const isNativePixel = !isFastPixel && Math.abs(rsRatio-rsNative)<0.011;
             const rsSteps = (_rsInfo&&_rsInfo.steps) || [0.5,0.67,0.75,0.85,1];
             const ggLevel = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.getGrassField) ? ThreeRenderer.getGrassField() : 'high';   // THE GRASS FIELD
+            const lpOn = !!(window.EWPortraits && window.EWPortraits.liveSetting && window.EWPortraits.liveSetting());   // THE LIVE PORTRAITS
             const rsShare = rsRatio/rsNative;
             let rsOn = -1; rsSteps.forEach((k,i)=>{ if(Math.abs(rsShare-k)<0.011) rsOn=i; });
             // THE ENTROPY STYLE (2026-11-12): the grade + ink pass's two rows
@@ -8284,6 +8285,15 @@
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
                         <span class="pm-toggle-hint">thick grass on grassy ground: Low draws under half as much, Off leaves the flat ground</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Live Portraits</span>
+                        <div class="pm-seg-group">
+                            ${[[true,'On'],[false,'Off']].map(m=>`<button class="pm-seg-btn${lpOn===m[0] ? ' active' : ''}" onclick="if(window.EWPortraits&&window.EWPortraits.setLive)window.EWPortraits.setLive(${m[0]});${RJ}">${m[1]}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">your own character and Agent Locke idle, breathe and blink in their portrait; Off shows a still picture</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">FPS Cap</span>
