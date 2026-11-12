@@ -8123,6 +8123,197 @@ const ThreeRenderer = (function () {
         }
         return _grassBladeMat;
     }
+    /* ══ THE GRASS FIELD (2026-11-12, mondo: "try implementing some more stylistic grass. AAA game like genshin impact", after
+       github.com/fromtheghost/ghibli-grass — that repo carries no licence, so nothing of it is used: the technique is rebuilt here) ══
+       A dense field of wide, soft blades on every grass square, ONE merged mesh (one draw call), lit like the ground under it
+       (Lambert, the normal straight up, the board's shadows fall across it). The Ghibli trick: a blade's ROOT wears the ground's own
+       colour and only its tip is lighter, so the field reads as one soft carpet, never as speckle; slow patches of warm / cool
+       green drift over metres; wind is a rolling gust (a travelling wave over the board, the tips brighten on its crest) plus a
+       small flutter, all in the vertex shader. THE PRESS MAP (a small texture, 4 texels a square): whatever stands on the ground
+       lays the blades down — a unit's feet, so no body, shadow or ring is ever hidden by grass.
+       MOCK-UP: off unless window.EW_GRASS_FIELD = true or ?grassfield=1. */
+    var GGRASS = {
+        perTile: 23,        // blades per square = perTile² (a jittered grid, so the cover is even)
+        hMin: 0.060, hMax: 0.125,   // blade height × tile (3.5 m square → 0.21-0.44 m: ankle to shin of a unit)
+        width: 0.030,       // blade base width × tile
+        lean: 0.35,         // the still bow of a blade × its height
+        wind: 0.55,         // tip travel on a gust crest × blade height
+        sheen: 0.38,        // how much a gust crest brightens the tips
+        root: [0.100, 0.180, 0.042],   // linear: the calm grass sheet's own colour a step down (the blade foot is in shade)
+        tipCool: [0.160, 0.340, 0.100], tipWarm: [0.300, 0.400, 0.080],   // linear: the two tip tones the patches drift between
+        patchM: 2.3,        // patch size, squares
+        pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
+        pressN: 4,          // press map texels per square
+        fringe: 6, fringeDensity: 0.7,   // the meadow past the board's edge: squares out, blades per square side × this
+        order: 50, nrm: 'up', depthWrite: false, shadow: true   // MOCK-UP switches
+    };
+    try { window.EW_GGRASS = GGRASS; } catch (e) {}
+    function _ggOn() {
+        try { return window.EW_GRASS_FIELD === false ? false : !!(window.EW_GRASS_FIELD || /[?&]grassfield=1/.test(location.search)); } catch (e) { return false; }
+    }
+    try { window.EW_GGRASS_REBUILD = function () { rebuildTerrainDecorations(); return _gg ? _gg.blades : 0; }; } catch (e) {}   // MOCK-UP: retune live
+    var _gg = null;   // the live field: { mesh, press, data, W, H, n, sig, tops }
+    function _ggPressTex(W, H) {
+        var n = GGRASS.pressN, data = new Uint8Array(W * n * H * n);
+        var tex = new THREE.DataTexture(data, W * n, H * n, THREE.RedFormat, THREE.UnsignedByteType);
+        tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+        tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping; tex.needsUpdate = true;
+        return { tex: tex, data: data };
+    }
+    function _ggMat(G) {
+        /* no depth write + drawn last of the solid things: a blade is still hidden by whatever stands in front of it, but nothing drawn
+           after (a tile highlight, a ring, a zone, blood, a spell's ground mark) is ever hidden BY a blade — they lie on the grass
+           the way they lie on the ground */
+        var m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide, depthWrite: !!GGRASS.depthWrite });
+        var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) } };
+        m.onBeforeCompile = function (shader) {
+            shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB;
+            shader.vertexShader = shader.vertexShader
+                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;')
+                .replace('#include <begin_vertex>', '#include <begin_vertex>\n' +
+                    'float ggPr = texture2D( uGgPress, aGg.xy * uGgB.xy ).r;\n' +
+                    'float ggG = sin( dot( aGg.xy, vec2( 0.0105, 0.0062 ) ) - uGgT * 1.25 + sin( dot( aGg.xy, vec2( -0.0040, 0.0070 ) ) + uGgT * 0.31 ) * 1.4 ) * 0.5 + 0.5;\n' +
+                    'ggG *= ggG;\n' +
+                    'float ggF = sin( uGgT * 4.3 + aGg.x * 0.31 + aGg.y * 0.47 ) * 0.10;\n' +
+                    'float ggB = ( 0.15 + 0.85 * ggG + ggF ) * uGgB.z * aGg.z * aGg.w * ( 1.0 - ggPr );\n' +
+                    'transformed.x += 0.86 * ggB; transformed.z += 0.50 * ggB;\n' +
+                    'transformed.y -= aGg.z * ggPr * 0.86 + ggB * 0.30 * aGg.w;\n' +
+                    'vColor.rgb *= 1.0 + uGgB.w * ggG * aGg.w * ( 1.0 - ggPr );');
+            shader.fragmentShader = shader.fragmentShader
+                .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );');
+        };
+        m.customProgramCacheKey = function () { return 'ew_ggrass'; };
+        _ewNodeTag(m, { k: 'ggrass', press: G.press, inv: G.inv });   // the WebGPU twin: _ewNodeGGrass
+        return m;
+    }
+    function _ggBuild(group) {
+        _gg = null;
+        if (!_ggOn() || typeof getTerrainAt !== 'function') return;
+        var ts = CONFIG.tileSize || BASE_TILE, W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
+        if (!W || !H) return;
+        var C = GGRASS, N = C.perTile, cell = ts / N;
+        var mon = (typeof _monumentMap === 'function') ? _monumentMap() : null;
+        var pos = [], col = [], gg = [], nor = [], idx = [], tops = {};
+        var seed = 1234567;
+        var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
+        var sampler = (typeof _fieldGroundSampleAt === 'function') ? _fieldGroundSampleAt : null;
+        var isGrass = function (x, y) { if (x < 0 || y < 0 || x >= W || y >= H) return !!frGrass; var t = getTerrainAt(x, y); return !!(t && _GRASS_TERRAIN_SET[t]); };
+        /* THE MEADOW ROUND THE BOARD: a board cut from a terrain room whose floor is grass keeps its grass past the board's edge */
+        var FG = null, finfo = null, FT = null, frGrass = null, M = 0;
+        try {
+            FG = (typeof _fieldGround === 'function' && _fieldGroundArmed) ? _fieldGround() : null;
+            if (FG && FG.R && FG.R.terrain && typeof hqTerrainInfo === 'function') finfo = hqTerrainInfo(FG.R.roomId);
+            if (finfo && _GRASS_TERRAIN_SET[finfo.floor] && typeof hqTerrainHeight === 'function') {
+                FT = FG.R.T; M = C.fringe | 0;
+                var RR = finfo.rules || {};
+                frGrass = function (rx, rz) {
+                    if (typeof _hqTOutside === 'function' && _hqTOutside(finfo, rx, rz)) return 0;
+                    if (finfo.void && hqTerrainVoidAt(finfo, rx, rz)) return 0;
+                    if (hqTerrainSolidAt(finfo, rx, rz, 0.2)) return 0;
+                    if (typeof hqTerrainFluidAt === 'function' && hqTerrainFluidAt(finfo, rx, rz)) return 0;
+                    var sl = hqTerrainSlope(finfo, rx, rz), rock = (sl - RR.cliffFrom) / ((RR.cliffTo - RR.cliffFrom) || 1); rock = rock < 0 ? 0 : rock > 1 ? 1 : rock;
+                    var pw = 0;
+                    if (finfo.paths) for (var pi = 0; pi < finfo.paths.length; pi++) { var pp = finfo.paths[pi], pd = _hqTPolyDist(rx, rz, pp.pts).d, phw = pp.w / 2; var pt2 = pd < phw ? 1 : 1 - (pd - phw) / 0.9; if (pt2 > pw) pw = pt2; }
+                    pw = pw < 0 ? 0 : pw;
+                    return (1 - rock * 2 > 0 ? 1 - rock * 2 : 0) * (1 - pw);
+                };
+            }
+        } catch (e) { frGrass = null; M = 0; }
+        if (!frGrass) M = 0;
+        var N0 = N;
+        for (var ty = -M; ty < H + M; ty++) for (var tx = -M; tx < W + M; tx++) {
+            var fr = (tx < 0 || ty < 0 || tx >= W || ty >= H);
+            var topY = 0;
+            N = fr ? Math.max(6, Math.round(N0 * C.fringeDensity)) : N0;
+            if (!fr) {
+            if (!isGrass(tx, ty)) continue;
+            if (typeof getObjectAt === 'function' && getObjectAt(tx, ty)) continue;
+            if (mon && mon.has(tx + ',' + ty)) continue;
+            topY = tileTopY(tx, ty);
+            tops[tx + ',' + ty] = topY + ts * C.hMax * 0.62;
+            }
+            /* the field thins toward a square that is not grass (a path, a rock): no hard line at the square's edge */
+            var eL = isGrass(tx - 1, ty) ? 0 : 1, eR = isGrass(tx + 1, ty) ? 0 : 1, eU = isGrass(tx, ty - 1) ? 0 : 1, eD = isGrass(tx, ty + 1) ? 0 : 1;
+            for (var j = 0; j < N; j++) for (var i = 0; i < N; i++) {
+                var u = (i + rnd()) / N, v = (j + rnd()) / N;
+                var edge = fr ? 0 : Math.max(eL * (1 - u * 5), eR * (1 - (1 - u) * 5), eU * (1 - v * 5), eD * (1 - (1 - v) * 5), 0);
+                var r0 = rnd(), r1 = rnd(), r2 = rnd(), r3 = rnd(), r4 = rnd(), r5 = rnd();
+                if (edge > 0 && r0 < edge * 0.9) continue;
+                var wx = (tx + u) * ts, wz = (ty + v) * ts;
+                var gy;
+                if (fr) {   // past the board: the room's own field says where grass grows (not on a path, a rock face, water, a wall) and how high the ground is
+                    var rx = wx * FT.C / ts + FT.x0, rz = wz * FT.C / ts + FT.z0, gw = 0;
+                    try { gw = frGrass(rx, rz); } catch (e) { gw = 0; }
+                    if (gw <= 0 || r0 > gw) continue;
+                    gy = FG.floorY + hqTerrainHeight(finfo, rx, rz) * FG.s;
+                    edge = 1 - gw;
+                } else {
+                    gy = sampler ? sampler(wx, wz, tx, ty) : null;
+                    if (gy === null || gy === undefined) gy = topY;
+                }
+                /* clumps: a slow noise over ~1 square swells / shortens the blades; patches: a slower one picks the tip tone */
+                var clump = _ewValHash(wx / (ts * 0.55) + 11.3, wz / (ts * 0.55) + 4.7);
+                var patch = _ewValHash(wx / (ts * C.patchM) + 3.1, wz / (ts * C.patchM) + 8.9);
+                var pt = Math.min(1, Math.max(0, (patch - 0.3) / 0.4)); pt = pt * pt * (3 - 2 * pt);
+                var h = ts * (C.hMin + (C.hMax - C.hMin) * (0.25 + 0.75 * clump) * (0.55 + 0.45 * r1)) * (1 - edge * 0.5);
+                var hw = ts * C.width * 0.5 * (0.75 + 0.5 * r2);
+                var yaw = r3 * Math.PI * 2, cy = Math.cos(yaw), sy = Math.sin(yaw);
+                var laz = r4 * Math.PI * 2, lm = h * C.lean * (0.4 + 0.6 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm;
+                var jit = 0.88 + 0.24 * r0;
+                var tipR = (C.tipCool[0] + (C.tipWarm[0] - C.tipCool[0]) * pt) * jit, tipG = (C.tipCool[1] + (C.tipWarm[1] - C.tipCool[1]) * pt) * jit, tipB = (C.tipCool[2] + (C.tipWarm[2] - C.tipCool[2]) * pt) * jit;
+                var base = pos.length / 3;
+                /* 5 corners: foot L / R, waist L / R (0.5 up, 0.72 wide, a quarter of the bow), tip */
+                var P = [[-hw, 0, 0], [hw, 0, 0], [-hw * 0.72, 0.5, 0.28], [hw * 0.72, 0.5, 0.28], [0, 1, 1]];
+                for (var k = 0; k < 5; k++) {
+                    var f = P[k][1], bf = P[k][2];
+                    pos.push(wx + P[k][0] * cy + lx * bf, gy + h * f * (1 - 0.12 * bf), wz + P[k][0] * sy + lz * bf);
+                    var cf = f * f * (3 - 2 * f) * 0.85 + f * 0.15;
+                    col.push(C.root[0] + (tipR - C.root[0]) * cf, C.root[1] + (tipG - C.root[1]) * cf, C.root[2] + (tipB - C.root[2]) * cf);
+                    gg.push(wx, wz, h * f, f);
+                    nor.push(0, 1, 0);
+                }
+                idx.push(base, base + 1, base + 3, base, base + 3, base + 2, base + 2, base + 3, base + 4);
+                idx.push(base, base + 3, base + 1, base, base + 2, base + 3, base + 2, base + 4, base + 3);   // and wound the other way: each blade is a FRONT face from both sides (no two-sided normal flip to undo, on either renderer)
+            }
+        }
+        if (!pos.length) return;
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+        geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+        geo.setAttribute('aGg', new THREE.Float32BufferAttribute(gg, 4));
+        geo.setIndex(idx);
+        var pr = _ggPressTex(W, H);
+        var G = { press: pr.tex, data: pr.data, W: W, H: H, n: C.pressN, inv: [1 / (W * ts), 1 / (H * ts)], sig: '', tops: tops, blades: pos.length / 15 };
+        var mesh = new THREE.Mesh(geo, _ggMat(G));
+        mesh.frustumCulled = false; mesh.name = 'ew_grass_field'; mesh._ew_ggrass = true; mesh.renderOrder = C.order;
+        G.mesh = mesh; _gg = G;
+        group.add(mesh);
+    }
+    /* the press map, once a frame: every standing unit's feet (rebuilt only when a body moved) */
+    function _ggTick() {
+        var G = _gg; if (!G || !G.mesh || !G.mesh.parent) return;
+        var ts = CONFIG.tileSize || BASE_TILE, n = G.n, w = G.W * n, h = G.H * n, R = GGRASS.pressR * n, sig = '';
+        var pts = [];
+        unitEntries.forEach(function (e) {
+            if (!e || !e.group || e.group.visible === false) return;
+            var px = e.group.position.x / ts * n, pz = e.group.position.z / ts * n;
+            pts.push(px, pz); sig += (px * 8 | 0) + ',' + (pz * 8 | 0) + ';';
+        });
+        if (sig === G.sig) return;
+        G.sig = sig;
+        var d = G.data; d.fill(0);
+        for (var p = 0; p < pts.length; p += 2) {
+            var cx = pts[p], cz = pts[p + 1];
+            for (var y = Math.max(0, Math.floor(cz - R - 1)); y <= Math.min(h - 1, Math.ceil(cz + R + 1)); y++)
+                for (var x = Math.max(0, Math.floor(cx - R - 1)); x <= Math.min(w - 1, Math.ceil(cx + R + 1)); x++) {
+                    var dd = Math.sqrt((x + 0.5 - cx) * (x + 0.5 - cx) + (y + 0.5 - cz) * (y + 0.5 - cz));
+                    var a = 1 - Math.min(1, Math.max(0, (dd - R * 0.45) / (R * 0.75)));
+                    var vv = Math.round(a * 255); if (vv > d[y * w + x]) d[y * w + x] = vv;
+                }
+        }
+        G.press.needsUpdate = true;
+    }
     function _buildGrassTuft3D(x, y) {
         if (!GRASS.enabled) return null;
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -9559,6 +9750,7 @@ const ThreeRenderer = (function () {
             _terrainDecoGroup.add(mgMesh);
         }
 
+        _ggBuild(_terrainDecoGroup);   // THE GRASS FIELD
         /* decorations are cosmetic: never raycast, never cast/receive shadows */
         _terrainDecoGroup.traverse(function (o) {
             if (!o.isMesh) return;
@@ -9566,6 +9758,7 @@ const ThreeRenderer = (function () {
             o.castShadow = false;
             o.receiveShadow = false;
             o._ew_shadowFlagged = true;   // preempt _flagMeshShadows re-enabling them
+            if (o._ew_ggrass) o.receiveShadow = GGRASS.shadow !== false;   // THE GRASS FIELD: the board's shadows fall across it
         });
 
         objectGroup.add(_terrainDecoGroup);
@@ -45265,6 +45458,25 @@ const ThreeRenderer = (function () {
         if (!n) { n = _ewNodeU.T.uniform(init != null ? init : o.value).setGroup(_ewNodeU.T.renderGroup).onRenderUpdate(function () { return o.value; }); _ewNodeRefs.set(o, n); }
         return n;
     }
+    /* THE GRASS FIELD on the node renderer (the GLSL is _ggMat): the gust, the flutter, the press map, the crest sheen, the normal up */
+    function _ewNodeGGrass(nm, D) {
+        var T = _ewNodeU.T, P = T.positionLocal, A = T.attribute('aGg', 'vec4'), t = _ewNodeRef(_grassWindTime), C = GGRASS;
+        var gust = function () {
+            var g = T.sin(A.x.mul(0.0105).add(A.y.mul(0.0062)).sub(t.mul(1.25)).add(T.sin(A.x.mul(-0.0040).add(A.y.mul(0.0070)).add(t.mul(0.31))).mul(1.4))).mul(0.5).add(0.5);
+            return g.mul(g);
+        };
+        var press = function () { return T.texture(D.press, A.xy.mul(T.vec2(D.inv[0], D.inv[1]))).level(0).r; };
+        nm.positionNode = T.Fn(function () {
+            var pr = press().toVar(), g = gust().toVar();
+            var f = T.sin(t.mul(4.3).add(A.x.mul(0.31)).add(A.y.mul(0.47))).mul(0.10);
+            var b = g.mul(0.85).add(0.15).add(f).mul(C.wind).mul(A.z).mul(A.w).mul(pr.oneMinus()).toVar();
+            return P.add(T.vec3(b.mul(0.86), A.z.mul(pr).mul(0.86).add(b.mul(0.30).mul(A.w)).negate(), b.mul(0.50)));
+        })();
+        var sh = T.varying(gust().mul(A.w).mul(press().oneMinus()).mul(C.sheen).add(1));
+        _ewNodeDiffuseMul(nm, function () { return sh; });
+        var up = T.normalize(T.cameraViewMatrix.mul(T.vec4(0, 1, 0, 0)).xyz);
+        if (C.nrm === 'upface') nm.normalNode = up.mul(T.faceDirection); else if (C.nrm !== 'geo') nm.normalNode = up;
+    }
     /* THE SWAYS: the grass blades, the trees' wind, the kelp — a vertex offset in the mesh's own units (after instancing,
        so a batched wood's offset is the crown's world amplitude ÷ the mesh's own scale, never the copy's) */
     function _ewNodeSway(nm, D) {
@@ -45474,6 +45686,7 @@ const ThreeRenderer = (function () {
         else if (D && D.k === 'fluid') _ewNodeFluid(nm, m, D);
         else if (D && D.k === 'calmfluid') _ewNodeCalmFluid(nm, m, D);   // THE CALM GROUND
         else if (D && (D.k === 'grass' || D.k === 'wind' || D.k === 'kelp')) _ewNodeSway(nm, D);
+        else if (D && D.k === 'ggrass') _ewNodeGGrass(nm, D);   // THE GRASS FIELD
         else if (D && D.k === 'fxop') nm.opacityNode = _ewNodeU.T.materialOpacity.mul(_ewNodeU.T.attribute('aEwOp', 'float'));   // three-vfx.js's batched particles
         if (m.ewCol === 'on') { C.ewcol = (C.ewcol || 0) + 1; _ewNodeCol(nm); }   // THE CLOTH COLLISION (after the skinning)
         for (var i = layers.length - 1; i >= 0; i--) _ewNodeOutLayer(nm, layers[i]);
@@ -50585,6 +50798,7 @@ const ThreeRenderer = (function () {
         _hlLookSync();   // THE TILE LOOK: the UI Maker's changes, once each
         /* grass wind (vertex shader sway) — freezing the clock stills the field */
         if (!window.EW_DISABLE_GRASS_WIND) _grassWindTime.value = _hlGlobalTime.value;
+        _ggTick();   // THE GRASS FIELD: the press map
         _updateLavaEmissive();
 
         var _fNow = performance.now();
