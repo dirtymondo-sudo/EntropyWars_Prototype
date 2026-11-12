@@ -781,3 +781,6 @@ R2 files: data.js, map.js, ui.js, battle.js, three-vfx-effects.js, styles-base.c
   are on call in the pause menu as before; nobody but the reward joins by itself.
 - `range`: map.js `_hqConsoleTerminal` returns false for the Range Console (the tapes' panel shows, never the terminal with its
   game modes and party builder) and `_hqTrainingHtml` leaves out SPARRING / PRACTICE.
+- THE FREE STARTERS STAY LOCKED (same day, mondo: "They should stay locked until later"): in `hqPartyUnlocked` a unit in
+  ACCT_STARTER_UNITS counts only once a finished quest rewarded it (`questRewardedUnits`) or a door sealed it. Bought units stay.
+  A later quest hands one over with `reward: { unit }`.

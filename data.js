@@ -28190,6 +28190,12 @@ function questLockedUnits(profile) {
     });
     return out;
 }
+/* the units finished quests have handed over (their rewards) */
+function questRewardedUnits(profile) {
+    const out = [];
+    STORY_QUESTS.forEach(def => { const u = def.reward && def.reward.unit; const pr = questProgress(profile, def.id); if (u && pr && pr.status === 'completed' && out.indexOf(u) < 0) out.push(u); });
+    return out;
+}
 /* true while an unfinished quest still HOLDS `key` back ('party' = the story party is the officer alone, 'range' = the
    Range Console deals the tapes only) */
 function questHolds(profile, key) {
@@ -28254,7 +28260,7 @@ if (typeof window !== 'undefined') {
     window.questDef = questDef; window.questFightDef = questFightDef; window.questProgress = questProgress;
     window.questEvent = questEvent; window.questLockedUnits = questLockedUnits; window.questTracker = questTracker;
     window.questJournal = questJournal; window.questFightPending = questFightPending; window.questFightLaunch = questFightLaunch;
-    window.questGuestMember = questGuestMember; window.questHolds = questHolds;
+    window.questGuestMember = questGuestMember; window.questHolds = questHolds; window.questRewardedUnits = questRewardedUnits;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -61130,6 +61136,14 @@ function hqPartyUnlocked(profile) {
     /* THE FIRST QUEST: until it is complete the story party is the officer alone (what the doors sealed stays) */
     let solo = false; try { solo = questHolds(profile, 'party'); } catch (e) { solo = false; }
     if (solo && !dev) owned = owned.filter(r => caught.indexOf(r) >= 0);
+    /* THE FREE STARTERS STAY LOCKED (mondo 2026-11-12, of Bigfoot, the Sedan and the rest after the first quest: "They should
+       stay locked until later"): in the story party a free starter is the officer's only once a finished quest rewarded it
+       (or a door sealed it). What the account bought stays; Online / Practice read ACCT_STARTER_UNITS as before. */
+    if (!dev) {
+        const free = (typeof ACCT_STARTER_UNITS !== 'undefined') ? ACCT_STARTER_UNITS : [];
+        let won = []; try { won = questRewardedUnits(profile); } catch (e) { won = []; }
+        owned = owned.filter(r => free.indexOf(r) < 0 || caught.indexOf(r) >= 0 || won.indexOf(r) >= 0);
+    }
     return all.filter(r => (dev || owned.indexOf(r) >= 0) && (typeof isRace3DReady !== 'function' || isRace3DReady(r)));
 }
 /* THE JOBS REMOVAL (2026-09-27): no jobs — every member's class is the one neutral UNIT_CLASS (the old name stays for callers) */
