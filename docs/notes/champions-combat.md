@@ -5312,6 +5312,17 @@ Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx
   an AoE covering both pieces takes HP twice; no early return; the body stands idle (no slump pose); statuses worn at the cast stay
   on the spirit.
 - Proof (VS CPU + a 2-seat online room, guest cast): /mnt/project-files/astral-projection-20261112/build1_*.jpg.
+## THE POLLEN — the Bee Queen gathers from the Healing Flower (2026-11-12, mondo: "Both", "maybe the pollen can boost her attack and speed too")
+- battle.js THE POLLEN block (after `_standPlant`): a `heal` plant row carries `pollen` (1 when it grows, regrown at each round end by
+  `_pollenRoundEnd`). `_gatherPollen(unit)` runs for `race === 'bee queen'` at the top of `checkSeedStepTrigger` (move end) and at round
+  end: every flower within 1 tile (any side's) gives its pollen, up to `POLLEN_MAX` 3. The count is the plain number `unit.pollen`.
+- HONEY: `getPollenPowerBonus` (+8 per pollen) is added inside `getPlantedTreeBonus`, so it reaches basic attacks and spell power at
+  every place the Green Thumb bonus is read; `getEffectiveSpd` adds `getPollenSpdBonus` (+8 per pollen).
+- POLLINATE (data.js `pollinate`, Royal Hive T1, 10 MP, 1 AP, range 3, flag `pollinate`): costs 1 pollen; a seed on the tile grows now
+  (`_growSeedIntoTree`, no water), or a hurt plant is mended 50% of max HP. Refused before MP with no pollen or nothing on the tile;
+  `hasSpellTargetInRange` reads NO TARGET with no pollen. ai.js casts it on its own side's nearest seed in reach.
+- Shown: hud.js `_hrlgStatusChips` "POLLEN n/3", three-renderer.js `_plateStatusBadgesHtml` "POL n".
+- My picks, his to change: 8/8 per pollen, max 3, any side's flower, mend 50%. Not built: Drones fetching pollen.
 
 ### build 2 (2026-11-12, same thread): the psychic bonus, the rude awakening, one blow per action
 - PSYCHIC x1.5: battle.js `_hitDamageMath` multiplies a psychic-element, non-DoT hit on a SPIRIT by STATUS_DEFS.projecting.psychicMult

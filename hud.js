@@ -4009,6 +4009,9 @@ function _hrlgStatusChips(unit) {
   const hgBuff = unit.hourglassBuff || 0;
   const totalMov = _hrlgMovDelta(unit);
   if (hgBuff > 0) chips.push({ key: 'hg', label: 'KEY+' + hgBuff, kind: 'up', title: 'Key Charge: +' + hgBuff + ' ATK/DEF points' });
+  /* 🐝 THE POLLEN (battle.js): what the Bee Queen carries, and the Honey it gives her */
+  const pol = unit.pollen | 0;
+  if (pol > 0) chips.push({ key: 'pollen', label: 'POLLEN ' + pol + '/' + (window.POLLEN_MAX || 3), kind: 'up', title: 'Pollen: +' + pol * 8 + ' ATK, spell power and SPD. Pollinate spends one.' });
   if (totalMov) chips.push({
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects', stat: 'mov',
