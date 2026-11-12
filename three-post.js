@@ -1323,9 +1323,10 @@ const ThreePost = (function () {
         P._ew_pixAddHook = true;
     }
 
-    function _scanPixelMaskTargets() {
-        if (!_scene) return;
-        _scene.traverse(function (n) {
+    function _scanPixelMaskTargets(sc) {
+        sc = sc || _scene;   // the walk's own scene (renderScene) when the bold unit line asks for its bodies
+        if (!sc) return;
+        sc.traverse(function (n) {
             if (!n.isMesh || n._ew_pixelTagged) return;
             // Silhouette/x-ray twins share the model's geometry but are a UI
             // read-through, not the model itself — never mask them.
@@ -1350,7 +1351,7 @@ const ThreePost = (function () {
         try {
             var now = performance.now();
             _pixHookAdd();
-            if (_pixScanN !== _pixAddN || now - _maskScanAt > PIX_SCAN_MS) { _maskScanAt = now; _pixScanN = _pixAddN; _scanPixelMaskTargets(); }
+            if (_pixScanN !== _pixAddN || now - _maskScanAt > PIX_SCAN_MS) { _maskScanAt = now; _pixScanN = _pixAddN; _scanPixelMaskTargets(sc); }
 
             if (!_maskVec) _maskVec = new THREE.Vector2();
             _renderer.getDrawingBufferSize(_maskVec);
@@ -3219,7 +3220,7 @@ const ThreePost = (function () {
         P.U = { cu: cu, ru: ru, ao: aoU, dofH: dofHU, dofV: dofVU, tone: toneU };
         P.cineOn = T.uniform(0); P.retroOn = T.uniform(0);
         // THE ENTROPY STYLE: its own uniforms (written each frame in _ngRender)
-        P.st = { mode: T.uniform(0), inkW: T.uniform(1), ink: T.uniform(0.8), bands: T.uniform(0.7), amount: T.uniform(1),
+        P.st = { mode: T.uniform(0), inkW: T.uniform(1), unitK: T.uniform(1), ink: T.uniform(0.8), bands: T.uniform(0.7), amount: T.uniform(1),
             p00: T.uniform(1).onRenderUpdate(function () { return P.cam ? (P.cam.projectionMatrix.elements[0] || 1) : 1; }) };
         P.bS = T.uniform(0); P.bR = T.uniform(0); P.bT = T.uniform(1);
         P.ph = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); P.ph.needsUpdate = true;
@@ -3653,9 +3654,9 @@ const ThreePost = (function () {
         if (_bloomPass && _bloomPass.enabled) { P.bS.value = Math.max(0, _bloomPass.strength); P.bR.value = Math.max(0, Math.min(1, _bloomPass.radius)); P.bT.value = _bloomPass.threshold; }
         P.cineOn.value = (_cinematicPass && _cinematicPass.enabled) ? 1 : 0;
         P.retroOn.value = (_retroPass && _retroPass.enabled) ? 1 : 0;
-        P.st.mode.value = _styleMode(); P.st.inkW.value = _styleInkPx(); P.st.ink.value = +_style.ink || 0; P.st.bands.value = +_style.bands || 0; P.st.amount.value = (_style.amount === undefined) ? 1 : +_style.amount;
+        P.st.mode.value = _styleMode(); P.st.inkW.value = _styleInkPx(); var _smt = _styleMaskTex(); P.st.unitK.value = _smt ? _styleUnitK() : 1; P.st.ink.value = +_style.ink || 0; P.st.bands.value = +_style.bands || 0; P.st.amount.value = (_style.amount === undefined) ? 1 : +_style.amount;
         if (e.raySrc) e.raySrc.autoUpdate = P.cineOn.value > 0.5 && P.U.cu.uRays.value > 0.001;   // THE RAY SOURCE: drawn only while the rays are on
-        var mt = P.U.ru.tMask.value; P.maskTex.value = mt || P.ph;
+        var mt = P.U.ru.tMask.value; P.maskTex.value = mt || _smt || P.ph;
         var ac = r.autoClear;
         try { e.pipe.render(); } finally { r.autoClear = ac; }
     }
@@ -4201,7 +4202,9 @@ const ThreePost = (function () {
             var _maskOk = _wantMask ? _renderPixelMask(cam, null, (_paneMode && _paneMode.composite) ? _paneMode.panes : null) : false;
             _retroPass.material.uniforms['tMask'].value = _maskOk ? _maskRT.texture : null;
             _retroPass.material.uniforms['uMaskMode'].value = _maskOk ? 1.0 : 0.0;
+            if (_maskOk) _styleMaskAt = _styleFrame;   // the style reads the same mask: one draw for both
         }
+        _styleMaskFor(cam, null, (_paneMode && _paneMode.composite) ? _paneMode.panes : null);   // THE BOLD UNIT LINE
 
         if (!_ready || !_composer || !cam) {
 
@@ -4292,6 +4295,7 @@ const ThreePost = (function () {
                 _retroPass.material.uniforms['tMask'].value = null;
                 _retroPass.material.uniforms['uMaskMode'].value = 0.0;
             }
+            _styleMaskFor(cam, scene, null);   // THE BOLD UNIT LINE: the walk's bodies
             if (_bloomPass && _bloomPass.enabled) {
                 /* THE POST PASS 7.2 (2026-09-21): in the building the bloom reads as LIGHT, not haze — the threshold rides the
                    look (`bloomThr`, default HQ_BLOOM_THRESHOLD: only the emissive surfaces — the neon, the torches, the ley
@@ -4438,7 +4442,7 @@ const ThreePost = (function () {
        A bright saturated pixel (a spell, a team outline, a zone wash: own cyan-blue / enemy pink-orange) keeps its colour
        and takes no ink. No bloom, no fog, no texture touched; the HUD is DOM and never passes through here. Viewer-local.
        Settings > Video > Entropy Style: Off / Grade / Grade + Ink. Stored ew_style. Off live: window.EW_NO_ENTROPY_STYLE. */
-    var _style = { mode: 'ink', inkWidth: 1.6, ink: 0.8, bands: 0.7, amount: 1 };   // Medium lines: mondo 11-12 "i like it with the lines on medium"
+    var _style = { mode: 'ink', inkWidth: 1.6, ink: 0.8, bands: 0.7, amount: 1, unitBold: 1.9 };   // Medium lines: mondo 11-12 "i like it with the lines on medium"
     try {
         var _styleSaved = (typeof localStorage !== 'undefined') ? JSON.parse(localStorage.getItem('ew_style') || 'null') : null;
         if (_styleSaved && typeof _styleSaved === 'object') { for (var _sk in _style) { if (_styleSaved[_sk] !== undefined) _style[_sk] = _styleSaved[_sk]; } }
@@ -4452,6 +4456,24 @@ const ThreePost = (function () {
         var r = 1; try { r = (_renderer && _renderer.getPixelRatio) ? _renderer.getPixelRatio() : 1; } catch (e) {}
         return Math.max(0.5, +_style.inkWidth || 1) * Math.max(1, r * 0.75);
     }
+    /* THE BOLD UNIT LINE (2026-11-12, mondo: "maybe just bolder lines on units, same thinness everywhere else"): the ink
+       line of a unit's body is drawn `unitBold` times the map's width; scenery, props and terrain keep the Ink Lines
+       width. A unit = the model mask the Pixelate "models" scope always drew (_renderPixelMask: the bodies flagged
+       _ew_modelSkin, the held GLBs flagged _ew_pixelate), half size, one extra draw of the bodies a frame, only while
+       Grade + Ink is on. Off: Settings > Video > Unit Lines Same, or window.EW_NO_UNIT_INK = true (live). */
+    var _styleFrame = 0, _styleMaskAt = -1;
+    function _styleUnitK() {
+        if (typeof window !== 'undefined' && window.EW_NO_UNIT_INK) return 1;
+        var k = (_style.unitBold === undefined) ? 1.9 : +_style.unitBold;
+        return (k > 1.001 && _styleMode() > 1) ? Math.min(4, k) : 1;
+    }
+    function _styleMaskFor(cam, sc, panes) {
+        _styleFrame++;
+        if (_styleUnitK() <= 1 || !cam) return;
+        if (_styleMaskAt === _styleFrame - 1 && _maskRT) { _styleMaskAt = _styleFrame; return; }   // the retro pass drew it this frame
+        if (_renderPixelMask(cam, sc || null, panes || null)) _styleMaskAt = _styleFrame;
+    }
+    function _styleMaskTex() { return (_styleMaskAt === _styleFrame && _maskRT && _styleUnitK() > 1) ? _maskRT.texture : null; }
     function _styleCam() { return (_ssaoPass && _ssaoPass.camera) || null; }
     /* the classic chains' uniforms, written at the pass's own draw */
     function _styleSync(u, w, h, cam, depthTex) {
@@ -4459,7 +4481,7 @@ const ThreePost = (function () {
         if (m > 1 && (!depthTex || !cam)) m = 1;   // no depth to read: the grade alone
         u.uMode.value = m; u.tDepth.value = depthTex || null;
         u.uRes.value.set(Math.max(1, w), Math.max(1, h));
-        u.uInkW.value = _styleInkPx(); u.uInk.value = +_style.ink || 0; u.uBands.value = +_style.bands || 0; u.uAmount.value = (_style.amount === undefined) ? 1 : +_style.amount;
+        u.uInkW.value = _styleInkPx(); var _smt = _styleMaskTex(); u.tMask.value = _smt; u.uUnitK.value = _smt ? _styleUnitK() : 1; u.uInk.value = +_style.ink || 0; u.uBands.value = +_style.bands || 0; u.uAmount.value = (_style.amount === undefined) ? 1 : +_style.amount;
         if (cam) { u.uNearFar.value.set(cam.near || 0.1, cam.far || 1000); u.uOrtho.value = cam.isOrthographicCamera ? 1 : 0; u.uP00.value = cam.projectionMatrix.elements[0] || 1; }
     }
     function _styleApply() {
@@ -4477,11 +4499,11 @@ const ThreePost = (function () {
         _style[key] = v;
         if (persist !== false) { try { localStorage.setItem('ew_style', JSON.stringify(_style)); } catch (e) {} }
     }
-    function getStyle() { return { mode: _style.mode, inkWidth: _style.inkWidth, ink: _style.ink, bands: _style.bands, amount: _style.amount, live: _styleMode() }; }
+    function getStyle() { return { mode: _style.mode, unitBold: (_style.unitBold === undefined) ? 1.9 : +_style.unitBold, inkWidth: _style.inkWidth, ink: _style.ink, bands: _style.bands, amount: _style.amount, live: _styleMode() }; }
     var _StyleShader = {
         uniforms: {
             'tDiffuse': { value: null }, 'tDepth': { value: null },
-            'uRes': { value: new THREE.Vector2(1, 1) }, 'uMode': { value: 0 }, 'uInkW': { value: 1 }, 'uInk': { value: 0.8 }, 'uBands': { value: 0.7 },
+            'uRes': { value: new THREE.Vector2(1, 1) }, 'uMode': { value: 0 }, 'uInkW': { value: 1 }, 'tMask': { value: null }, 'uUnitK': { value: 1 }, 'uInk': { value: 0.8 }, 'uBands': { value: 0.7 },
             'uAmount': { value: 1 }, 'uNearFar': { value: new THREE.Vector2(0.1, 1000) }, 'uOrtho': { value: 0 }, 'uP00': { value: 1 }
         },
         vertexShader: [
@@ -4497,6 +4519,8 @@ const ThreePost = (function () {
             'uniform vec2 uRes;',
             'uniform float uMode;',
             'uniform float uInkW;',
+            'uniform sampler2D tMask;',
+            'uniform float uUnitK;',
             'uniform float uInk;',
             'uniform float uBands;',
             'uniform float uAmount;',
@@ -4527,11 +4551,12 @@ const ThreePost = (function () {
             '    float l = max(sLum(c), 0.001), lb = l * 5.0;',
             '    float q = (floor(lb) + smoothstep(0.35, 0.65, fract(lb))) / 5.0;',
             '    g = c * (mix(l, q, uBands) / l);',
-            '    vec2 px = uInkW / uRes;',
+            '    float iw = uInkW * (uUnitK > 1.001 ? mix(1.0, uUnitK, step(0.5, texture2D(tMask, vUv).r)) : 1.0);   // THE BOLD UNIT LINE',
+            '    vec2 px = iw / uRes;',
             '    float zc = max(sVz(vUv), 0.0001);',
             '    float lap = sQ(sVz(vUv + vec2(px.x, 0.0))) + sQ(sVz(vUv - vec2(px.x, 0.0))) + sQ(sVz(vUv + vec2(0.0, px.y))) + sQ(sVz(vUv - vec2(0.0, px.y))) - 4.0 * sQ(zc);',
             '    float dz = uOrtho > 0.5 ? lap : -lap * zc * zc;   // > 0: the neighbours lie farther, this pixel is the near side',
-            '    float wpp = (uOrtho > 0.5 ? 1.0 : zc) * 2.0 / (uP00 * uRes.x) * uInkW;   // one line width in world units at this depth',
+            '    float wpp = (uOrtho > 0.5 ? 1.0 : zc) * 2.0 / (uP00 * uRes.x) * iw;   // one line width in world units at this depth',
             '    edge = smoothstep(0.9, 2.6, dz / max(wpp, 0.0000001));',
             '    // only where the eye sees the break too: a far shape lost in the fog, or two faces of one colour, take no line',
             '    float cd = max(max(length(texture2D(tDiffuse, vUv + vec2(px.x, 0.0)).rgb - c), length(texture2D(tDiffuse, vUv - vec2(px.x, 0.0)).rgb - c)), max(length(texture2D(tDiffuse, vUv + vec2(0.0, px.y)).rgb - c), length(texture2D(tDiffuse, vUv - vec2(0.0, px.y)).rgb - c)));',
@@ -4569,11 +4594,12 @@ const ThreePost = (function () {
                 var l = T.max(lum(c), 0.001), lb = l.mul(5);
                 var q = T.floor(lb).add(T.smoothstep(0.35, 0.65, T.fract(lb))).div(5);
                 g.assign(c.mul(T.mix(l, q, S.bands).div(l)));
-                var px = V2(S.inkW).div(P.uDRes).toVar();
+                var iw = S.inkW.mul(T.select(S.unitK.greaterThan(1.001), T.mix(F(1), S.unitK, T.step(0.5, P.maskTex.sample(u).r)), F(1))).toVar();   // THE BOLD UNIT LINE
+                var px = V2(iw).div(P.uDRes).toVar();
                 var zc = T.max(vz(u), 0.0001).toVar();
                 var lap = qf(vz(u.add(V2(px.x, 0)))).add(qf(vz(u.sub(V2(px.x, 0))))).add(qf(vz(u.add(V2(0, px.y))))).add(qf(vz(u.sub(V2(0, px.y))))).sub(qf(zc).mul(4)).toVar();
                 var dz = T.select(ortho, lap, lap.negate().mul(zc).mul(zc));
-                var wpp = T.select(ortho, F(1), zc).mul(2).div(S.p00.mul(P.uDRes.x)).mul(S.inkW);
+                var wpp = T.select(ortho, F(1), zc).mul(2).div(S.p00.mul(P.uDRes.x)).mul(iw);
                 // only where the eye sees the break too: a far shape lost in the fog, or two faces of one colour, take no line
                 var cdf = function (o) { return T.length(T.clamp(tex.sample(u.add(o)).rgb, 0, 1).sub(c)); };
                 var cd = T.max(T.max(cdf(V2(px.x, 0)), cdf(V2(px.x.negate(), 0))), T.max(cdf(V2(0, px.y)), cdf(V2(0, px.y.negate()))));
