@@ -2079,6 +2079,14 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
   0.5), HQ_SKATE_RULES maxV 14.5 / pushV 5.2 / cruiseV 12.5 / friction 0.997, HQ_AREA_ENCOUNTERS = his 26 AREA UNITS room tables.
   The affinity's hard-coded copies now read the table (battle.js calcElementAffinityMult = all-element hits, ui.js forecast, ai.js
   estDamage, POWER_TRAIT_RULES.affinityMult) and the ×1.5 / ×0.5 words print the table. Race Editor / Spell Library mods were empty.
+- MY THEME 3 = THE DEFAULT (2026-11-12, mondo: "bake this theme into the game. Make this the new default theme and the other one
+  as another option", Entropy_Wars_Setup_2026-11-12_0544.json, build 20261112-entropystyle-02-cors): `node bake-setup.js <file>` (no
+  --keys). UIM_SHIPPED = his whole store again: 3 themes (Red & Black copy, Entropy Wars Theme c_mvc8nxl9fo9g, My Theme 3
+  c_mw5p8wvy2q54), 183 ux settings, 28 layout pieces. SHIPPED-KEYS ew_hud_theme = c_mw5p8wvy2q54; the old default stays a row in the
+  Settings HUD Theme picker. A browser that took the old shipped theme and never changed it follows to My Theme 3; a browser that
+  picked its own theme keeps it (both checked). CAREFUL: bake-setup.js without --keys rewrites SHIPPED-KEYS to the 3 look keys only;
+  the 18 Settings values baked on 11-01 were put back by hand (unchanged). His file's newer Settings values (CRT, light rays, action
+  cam, retro, Entropy Style, grass ...) were NOT baked: he asked for the theme. Shots: /mnt/project-files/theme3-bake/.
 
 ## THE WAY BACK IN (2026-10-22, mondo: edge-tile hover from outside the highlights)
 mondo: "coming from outside the tile highlights to hover on a tile doesnt work ... for aoe spells its suposed to show the aoe
