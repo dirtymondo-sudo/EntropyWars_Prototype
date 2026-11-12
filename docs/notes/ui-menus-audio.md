@@ -2758,3 +2758,6 @@ piece the UI Maker can pin to a screen side. Proof: /mnt/project-files/team-sele
   itself is aimed off the Head bone too (PT_BUST), so the mirror's new photos are right.
 - Viewer-local (nothing on a unit, nothing relayed; the guest photographs the host's look from the snapshot's `appearance`).
   Off: `window.EW_NO_MODEL_PORTRAITS = true`. Proof: /mnt/project-files/portraits-20261112/.
+- STRAIGHT ON (same day, mondo: "why are the battle portraits at an angle when the id photo is straight on? ... The battle portraits
+  should be straight on, just like the sprite portraits"): PT_YAW 0, PT_POLAR 0, PT_PITCH 1 (the camera stands exactly where the
+  face looks); Locke's `portrait.yaw` is gone. RULE: a portrait is straight on, never a three-quarter view.
