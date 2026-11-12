@@ -2058,3 +2058,11 @@ mondo: "Can we get rid of the 'calm' maps? Arent all of the maps calm now? We do
 EMPTY: Fairy Forest (Calm), Stonehenge (Calm) and Hell (Calm) (the PR #1112 / #1116 test boards, second cards of their own arenas)
 are no longer registered. THE CALM LOOK (CALM_TERRAIN, the default on every map), the ROOM tab Calm/Pixel switch,
 window.EW_NO_CALM_LOOK and his pixel sheets are untouched. The table + hqMapLook + the register stay for a later test look.
+
+## THE SEATS ARE OUT: Camelot + the Training Room (2026-11-12, mondo: "get rid of the seats on the camelot map and the training room, they dont really make sense or look right for those settings")
+- **Camelot** (`site_prebuilt_camelot_ward`): the two three-row stands beside the tilt (the six `tier` + `seat` wall rows at z ±7.875 /
+  ±9.625 / ±11.375) are removed. Nothing else on the board moved (tilt, sanded ground, knoll, pavilions, armour stands, braziers).
+  Rebaked at 12 / 11 / 10 / 9: the same windows (10,11 · 10,12 · 11,12 · 12,12), the stand squares are level 0 now.
+- **Training Room** (`training_hall`): the six bleacher rows on the west side, the walk behind them, their two end walls, the rail and
+  the yellow line at their foot are removed; the west side is open floor. The 8 × 8 pick did not change (the bleachers were off the board).
+- Before / after: /mnt/project-files/training-room-20261112/. The Training Room REDESIGN (same thread) waits on mondo's OK of a mock-up.
