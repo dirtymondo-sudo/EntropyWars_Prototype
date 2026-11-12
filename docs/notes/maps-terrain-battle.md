@@ -2088,3 +2088,19 @@ window.EW_NO_CALM_LOOK and his pixel sheets are untouched. The table + hqMapLook
   without; moving the room's ceiling lamps changed nothing. New `shell.keyLamp` (0..1, three-renderer.js _hqKeyRoomK: the room's share
   of the Key Light, walk + fight); `training_hall` sets 0. The same water in the Holo Sim stayed dark in the same test. Other enclosed
   rooms with a pale thing under the camera can flare the same way: give that room a `keyLamp` share. Shot: water_key_light_before_after.jpg.
+
+## THE PARALLAX — far things pass slower (2026-11-12, mondo: "on the spaceship map and really any map with things moving in the background, you are using parallax like making things further away move slower; it kind of looks like everything is moving at the same speed")
+THE AUDIT: in a fight only two boards keep `env.motion` (data.js hqFieldLayout drops it for every box / cave / terrain field; the `voyage`
+rooms keep it): **Spaceship** (`prebuilt_derelict`, space) and **The Flying Dutchman** (`prebuilt_revenge`, sea). Every other board's
+background bobs / spins in place (the room's own floaters) and its dome clouds drift in the sky shader; nothing else travels. The wheel /
+rise / drift / void rows (Stonehenge, Area 51, Babel, Hell, Heaven, Looking-Glass) are dormant since the voxel boards went out; the code
+below covers them if they come back. What travelled, and at what pace BEFORE: the far roster 1.0× the speed (every body, whatever its
+distance), the motes 1.15×, the sea sheet + wakes 1.0×, the dome's nebula a slow flow.
+NOW (three-renderer.js MOTION block, `HZ_PARALLAX` + `_motionPar` / `_motionMotePar` / `_motionMoteDepth`): every streaming body carries
+`par` = (1 + k·d0) / (1 + k·d), floored at `far` 0.22, d = its lateral + vertical offset from the board's line over the ring radius — the
+factors are then divided by the roster's largest (`_motionParNorm`), so the nearest body runs the row's full `speed` even where a hull keeps the roster far out, and one at the ring about a quarter of it (`_motionPlace`: `dist * e.par`). The motes run
+`moteNear` 1.7× .. `moteFar` 0.8× across their band; a far mote is thinner (×0.55), dimmer (×0.5) and its streak is as short as it is slow.
+A `rise` streams its inner ring fastest; a `wheel` stays rigid (a turn has no parallax), only its sparks lead by radius. The walk's voyage
+(`_hqBuildSky` / `_hqTickSky`: `f.vPar`, the 36 dust streaks) got the same. Nothing was removed, moved or resized; the dome was already the
+slowest layer; the sea sheet and the wakes stay at the hull's pace. Readout: `ThreeRenderer.motion().parallax` (every body's factor).
+Kill-switch `window.EW_NO_PARALLAX` (set before the map builds). Online: built from the map's own seeded rng on both seats, nothing relayed.
