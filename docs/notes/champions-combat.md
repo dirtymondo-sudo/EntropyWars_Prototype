@@ -5377,3 +5377,11 @@ Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx
   any of it in a real match, the online guest view of build 3-4.
 - STILL OPEN (needs mondo): Silver Cord passive + the early return (a new menu command = UI design, his OK first), body slump pose,
   the CPU guarding its own body.
+
+### build 4b (2026-11-12, mondo picked "RETURN row in the command menu" on the decision card, then "ok" on the mock-up)
+- RETURN TO BODY: battle.js `canAstralReturn` / `doAstralReturn` (free, no AP, the turn goes on, own turn only, not while action-locked).
+  The spell's own ending applies (Spirit Walk: body pulled to the spirit; else the spirit goes home). hud.js: for a projecting unit the
+  row takes the ATTACK row's place (id `astralReturn`). online.js wraps it like doGuard + host case 'doAstralReturn' (RULE #2).
+- SILVER CORD: data.js `passiveSilverCord` (T1, astralprojection family): hooks `astralCordBonus: 2` (astralBegin) and
+  `astralReturnProtect` (doAstralReturn -> Protect 1 round).
+- Checked in VS CPU: Spy + Silver Cord, Spirit Walk cord 6, row pressed, body pulled, Protected, turn still on (AP 1). Not checked online.

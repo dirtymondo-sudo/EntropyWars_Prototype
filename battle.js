@@ -13959,7 +13959,7 @@
             for (const k of ['_stFresh', '_stHold', '_statusSrc', '_realmPartnerId', '_boundToId', '_voodooAllyId', '_fearSourceId', '_tetherCasterId',
                 '_spellsUsedThisTurn', '_possessAfter', '_possessAfterSrcId', '_mounted', '_astralBodyId']) delete body[k];
             unit._astralBodyId = body.id;
-            unit._astralCord = Math.max(1, cfg.cord || 6);
+            unit._astralCord = Math.max(1, cfg.cord || 6) + (Number(unitPassiveValue(unit, 'astralCordBonus')) || 0);   // + Silver Cord
             unit._astralEndMode = cfg.end === 'follow' ? 'follow' : 'return';
             unit._astralRound = state.round;
             unit._astralHp = body._astralHp = unit.hp;
@@ -14042,6 +14042,30 @@
             scheduleBoardRender();
             return body;
         }
+        /* 👁 RETURN TO BODY (mondo 2026-11-12, decision card: "RETURN row in the command menu"): the spirit's own early way
+           home. Free (no AP, the turn goes on), on its own turn only. The spell's own ending applies: Spirit Walk pulls the
+           body to the spirit, everything else sends the spirit home. A passive with `astralReturnProtect` (Silver Cord)
+           hands the unit Protect for a round on the way in. online.js wraps it like doGuard (RULE #2). */
+        function canAstralReturn(unit) {
+            return !!(unit && !unit.dead && !unit._dying && unitIsSpirit(unit) && unit._astralBodyId && astralBodyOf(unit)
+                && state.phase === 'battle' && state._blitzActiveUnitId === unit.id
+                && !(typeof unitActionBlockKey === 'function' && unitActionBlockKey(unit)));
+        }
+        function doAstralReturn(unit) {
+            if (!canAstralReturn(unit)) { if (typeof playErrorSfx === 'function') playErrorSfx(); return false; }
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('astralReturn', unit)) return false;
+            try { pushUndoSnapshot(true); } catch (e) {}
+            const _prot = unitPassiveValue(unit, 'astralReturnProtect');
+            unit._astralSnapWhy = null;
+            unit._astralEarly = true;
+            clearStatus(unit, 'projecting');
+            delete unit._astralEarly;
+            if (_prot && !unit.dead && !unit._dying) applyStatusPayload(unit, { id: 'protect', duration: 1 }, 'Silver Cord: ', unit);
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+            scheduleBoardRender();
+            try { if (typeof refreshActionMenu === 'function') refreshActionMenu(); } catch (e) {}
+            return true;
+        }
         /* THE RUDE AWAKENING: the projection breaks and the spirit goes HOME, whatever the spell's own ending was */
         function astralSnapHome(unit, why) {
             if (!unit || unit.dead || unit._dying || !unitIsSpirit(unit) || !unit._astralBodyId) return false;
@@ -14093,6 +14117,8 @@
         window.astralBegin = astralBegin;
         window.astralEnd = astralEnd;
         window.astralSnapHome = astralSnapHome;
+        window.doAstralReturn = doAstralReturn;
+        window.canAstralReturn = canAstralReturn;
         window.astralProjectAlly = astralProjectAlly;
         window.astralOnDeath = astralOnDeath;
 

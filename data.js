@@ -11434,6 +11434,10 @@ const FAMILY_PASSIVES = [
       hooks: { counterChance: 0.30, statAura: { within: 2, def: 5 } },
       desc: '30% chance to counterattack when an adjacent enemy\'s basic attack lands on you from the front or side (spells and hits from behind are never countered). Other allies within 2 tiles gain +5 DEF.' },
     /* the three Batch C skipped (plan §6.4) — Jellyfish's row is named Jelly Drift: "Deep Breath" is the Meditation T1 spell */
+    /* ASTRAL PROJECTION build 4b (2026-11-12): battle.js astralBegin reads astralCordBonus, doAstralReturn reads astralReturnProtect */
+    { id: 'passiveSilverCord', tier: 1, families: ['astralprojection'], name: 'Silver Cord', icon: '🪢',
+      hooks: { astralCordBonus: 2, astralReturnProtect: true },
+      desc: 'Its spirit may stray 2 tiles farther from its body. Returning to its body early gives it Protect for a round.' },
     { id: 'passiveResonantVoice', tier: 1, families: ['sonic'], name: 'Resonant Voice', icon: '🎙️',
       hooks: { familyRangeBonus: { sonic: 1 } },
       desc: 'Sonic spells cast at range reach 1 tile farther.' },
