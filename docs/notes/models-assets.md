@@ -1561,6 +1561,18 @@ head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay t
   neck, so the body's own skin shows; her look wears his saved look's `ewm_crosspendant` (+ its tint, + its code cord). Also in A HAIR
   LOCK: what is left of the face's own shell in hair colour is hair at any size, and HAIR FUSED TO THE CLOTHES (hair-coloured faces of
   other shells above chin - 5 cm, env LOCKZ) is cut (catgirl 48 faces, knight 1). Left: the top's own neckline edge is jagged.
+  ROUND 3 (11-12, mondo: "what are all those jagged black spots around her neck"), all under `--neckline`: (1) THE THROAT: everything
+  in front of the neck (NECKX each side, chin to NECKCUT under it) goes: the neck in the chin's shadow, the painted straps. (2) THE
+  LONG HAIR: her waist-long Meshy hair is one 2,580-face shell that is not a head piece (the "hair shells" the bake found were her
+  ears, so the hair colour test never matched): a shell reaching above the eyes with a fifth of it above the chin is hair; only its
+  part down her back stays (HAIRBACK/HAIRTOP: Meshy made no jacket under it, without it her back is bare patches), and on any other
+  shell everything above the chin goes. (3) THE CLEAN NECK OPENING: the jacket's inner edges are re-cut straight (bisect planes, SCX
+  each side, SCZ above the top's edge). (4) THE SKIN AT THE OPENING'S EDGE: most of the "black spots" were NOT cloth: a body triangle
+  with one hidden corner is not drawn, so skin hidden under the jacket's edge bit saw teeth into the open chest and the jacket's
+  black inside showed through. The shown skin now grows OPENRING (3) rings under the edge (skin with cloth straight in front, or
+  inside OPENX2 with no same-facing cloth under it). Lesson: before cutting cloth, render the outfit GLB alone; if the teeth are not
+  in it they are holes in the body. Left: 3-4 small notches on her right collar with the hair off, one skin triangle on her left
+  shoulder, the cross of the pendant sits under the top's edge (the cord shows).
   Open: a few skin flecks on robinhood's hood front, a skin chip by the catgirl's left boot, light patches on her sleeves (the lacing in
   Meshy's texture), the knight's and zombie's walk hunches (the race's own walk clip), no sway, stock faces until the face step.
 
