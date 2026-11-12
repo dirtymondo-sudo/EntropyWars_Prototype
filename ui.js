@@ -5157,7 +5157,7 @@
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('guard', { uid: unit.id });
             pushUndoSnapshot(true);
 
-            applyStatusEffects(unit, [{ id: 'guarding', duration: 1 }], 'Guard: ');
+            applyStatusEffects(unit, [{ id: 'guarding', duration: 1, quiet: true }], 'Guard: ');
             /* Guard's breather (data.js GUARD_RESTORE): a little HP + MP right
                now, and the guardRegen status adds to this round's recovery. */
             const _gr = (typeof GUARD_RESTORE !== 'undefined') ? GUARD_RESTORE : { hpPct: 0.05, mpPct: 0.05 };
@@ -5170,7 +5170,7 @@
                 markDirty('teams', 'selectedUnit', 'hud');
                 window.setTimeout(() => showFloatingTextForUnit(unit, `+${_grMp} MP`, 'buff', { durationMs: 900, jitterY: 32 }), 300);
             }
-            applyStatusEffects(unit, [{ id: 'guardRegen', duration: 1 }], 'Guard: ');
+            applyStatusEffects(unit, [{ id: 'guardRegen', duration: 1, quiet: true }], 'Guard: ');
 
             unit._guardCounterBonus = 0.15;
             /* Overwatch rides the Guard stance: one reaction shot at the first
@@ -5178,7 +5178,8 @@
                (checkOverwatchTriggers, battle.js). Disarmed by the same round
                reset that clears _guardCounterBonus. */
             unit._overwatchArmed = true;
-            addLog(`${_ctName(unit)} takes a defensive stance! (+DEF/M DEF, +15% Counter, a little HP/MP back and extra recovery this round — 👁 Overwatch: the first enemy to stop in attack range gets shot)`);
+            /* mondo 11-11: one short line, no paragraph (the rules are unchanged) */
+            addLog(`🛡 ${_ctName(unit)} Guards and restores a little HP.`);
             showFloatingTextForUnit(unit, '🛡 GUARD', 'buff', { durationMs: 1200 });
             playSfx('uiConfirm');
 
