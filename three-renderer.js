@@ -85196,7 +85196,40 @@ const ThreeRenderer = (function () {
        bright"): the Key Light is for DARK enclosed rooms. In a room that is already well lit it stood 7 m over the square the camera
        looks at and blew every pale thing under it to flat white (a pale floor, a spell's water sheet), whatever the room's own lamps
        did. `shell.keyLamp` (0..1, default 1) is that room's share of it, on the walk and in a fight; Settings > Key Light still scales it. */
-    function _hqKeyRoomK(room) { var S = (room && room.shell) || {}; var k = (S.keyLamp != null) ? +S.keyLamp : 1; return (isFinite(k) && k >= 0) ? k : 1; }
+    /* THE LIT ROOMS (2026-11-12, mondo after the foyer: "whatever was making the foyer too bright, pretty much all the other rooms
+       inside door hq have the same issue, like the cafeteria, my office"): what blew the foyer out was mostly this light — at full
+       strength a metre from the camera it washes every pale wall and floor of a room that its own lamps already light. A DOOR HQ
+       room with no `shell.keyLamp` of its own now takes a share by how bright it already is: its mood's light (_hqMoodAmb) × how
+       pale its walls and floor are (shell.wallColor + shell.floorColor, else `wall`) — at or under `from` the full Key Light (a dark corridor, the dungeon, IT's
+       grey walls), at or over `to` only `min` of it (the cafeteria, the offices, the wings), a straight ramp between. Site rooms,
+       caves and terrain rooms keep the full light. HQ_LIGHT_RULES.keyLampLit; window.EW_HQ_NO_LIT_KEY = true puts every room back to 1. */
+    var _hqKeyLitMemo = (typeof WeakMap !== 'undefined') ? new WeakMap() : null;
+    function _hqKeyLitK(room) {
+        var LR = _hqLightRules(), R = LR.keyLampLit, S = (room && room.shell) || {};
+        if (!R || R.on === false || !room || room.kind !== 'box' || room.terrain || room.cave) return 1;
+        var amb = _hqMoodAmb(S, LR), wc = (S.wallColor != null) ? +S.wallColor : null, fc = (S.floorColor != null) ? +S.floorColor : null;
+        var sig = amb + '|' + wc + '|' + fc, m = _hqKeyLitMemo && _hqKeyLitMemo.get(room);
+        if (m && m.sig === sig) return m.k;
+        var k = 1;
+        try {
+            var id = _hqRoomIdOf(room), site = (id && typeof hqRoomSite === 'function') ? hqRoomSite(id) : null;
+            if (id && !site && !/^site_/.test(id)) {
+                var dflt = (R.wall != null) ? +R.wall : 0.8;
+                var lumOf = function (c) { return (c != null && isFinite(c)) ? (((c >> 16) & 255) * 0.299 + ((c >> 8) & 255) * 0.587 + (c & 255) * 0.114) / 255 : dflt; };
+                var lum = (lumOf(wc) + lumOf(fc)) / 2;   // the walls and the floor: a dark carpet under pale walls is not a bright room
+                var from = (R.from != null) ? +R.from : 0.45, to = (R.to != null) ? +R.to : 0.75, mn = (R.min != null) ? +R.min : 0.3;
+                var t = (to > from) ? Math.max(0, Math.min(1, (Math.min(1, amb) * lum - from) / (to - from))) : 1;
+                k = 1 + (mn - 1) * t;
+            }
+        } catch (e) { k = 1; }
+        if (_hqKeyLitMemo) _hqKeyLitMemo.set(room, { sig: sig, k: k });
+        return k;
+    }
+    function _hqKeyRoomK(room) {
+        var S = (room && room.shell) || {};
+        if (S.keyLamp == null) return (typeof window !== 'undefined' && window.EW_HQ_NO_LIT_KEY) ? 1 : _hqKeyLitK(room);   // THE LIT ROOMS
+        var k = +S.keyLamp; return (isFinite(k) && k >= 0) ? k : 1;
+    }
     function _keyLampGain() { var v = _polishPref('keyLight'); if (typeof window !== 'undefined' && window.EW_NO_KEY_LIGHT) return 0; return (typeof v === 'number' && isFinite(v)) ? Math.max(0, v) * 2 : 1; }
     function _hqEnclosed(room) {
         if (!room) return false;
@@ -87181,7 +87214,7 @@ const ThreeRenderer = (function () {
         try {
             if (st.keyLamp && st.keyLamp.parent) st.keyLamp.parent.remove(st.keyLamp);
             st.keyLamp = null; st.keyFloorY = floorY; st.keyOpen = !_hqEnclosed(room); st.keyNight = (field && field.night) || 0; st.keyWhite = _hqWhiteIn(room);
-            st.keyRoomK = _hqKeyRoomK(room);   // THE ROOM'S OWN KEY LIGHT (2026-11-12)
+            st.keyRoomK = (room && room.shell && room.shell.keyLamp != null) ? _hqKeyRoomK(room) : 1;   /* THE LIT ROOMS are the walk's: a fight keeps the whole Key Light unless the room names its own */   // THE ROOM'S OWN KEY LIGHT (2026-11-12)
             if ((!st.keyOpen || open) && _horizonGroup) {   // THE NIGHT FILL: an outdoor fight carries it too, lit by the night only
                 var KL = _keyLampRules();
                 var kl = new THREE.PointLight(KL.color, 0, (KL.battleReach || 30) * s, (KL.decay != null) ? KL.decay : 1);

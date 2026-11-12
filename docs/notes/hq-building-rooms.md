@@ -1176,3 +1176,16 @@ mondo: "the foyer is too bright and then stepping into the lobby is dark by comp
 - `shell.lampK` (0..1, default 1, `_hqLampK`): a room's share of its own lamps (shell fluorescents, desk-lamp pools, every prop
   light). The foyer: `lampK: 0.5, keyLamp: 0.3`. Any room may use it.
 - Proof (node renderer on WebGL 2, post on): /mnt/project-files/foyer-lobby-light/.
+
+## THE LIT ROOMS — the Key Light by how bright a room already is (2026-11-12)
+mondo, after the foyer: "whatever was making the foyer too bright, pretty much all the other rooms inside door hq have the same
+issue, like the cafeteria, my office".
+- Cause: the camera's Key Light (HQ_LIGHT_RULES.keyLamp, a point light a metre from the eye, made for DARK rooms) at full strength
+  in rooms their own lamps already light. Turning it to 0.3 took the cafeteria's frame mean 134 → 117, the office 125 → 101.
+- three-renderer.js `_hqKeyLitK(room)` (read by `_hqKeyRoomK` when the room has no `shell.keyLamp`): share = ramp from 1 at
+  `from` to `min` at `to` over (mood light × the mean luminance of wallColor and floorColor; `wall` for one the room does not name). data.js
+  `HQ_LIGHT_RULES.keyLampLit = { on, from: 0.45, to: 0.75, min: 0.3, wall: 0.8 }`. DOOR HQ box rooms only (no site, terrain, cave);
+  the walk only (a fight keeps the whole light unless the room names `shell.keyLamp`). Dark rooms (IT, the server room, the dungeon,
+  the corridors, the boiler) keep 1. A room that reads wrong: give it its own `shell.keyLamp`.
+- `window.EW_HQ_NO_LIT_KEY = true` = every room the whole Key Light again (live; the proof's "before").
+- Proof: /mnt/project-files/foyer-lobby-light/rooms/.
