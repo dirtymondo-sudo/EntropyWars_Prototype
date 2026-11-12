@@ -5239,6 +5239,27 @@ const SPELL_LIBRARY = [
         desc: 'Places a bomb on a tile within 2 (up to 3 at a time; a 4th replaces the oldest). It goes off when an enemy steps on it, or all of yours at once when you DETONATE (1 AP); thrown straight onto an enemy, it goes off on contact. MEDIUM physical damage (it grows with your M ATK) to every enemy in the 3×3, and each is thrown back 1 tile.'
     },
 
+    /* 🐝 THE POLLEN (2026-11-12, mondo OK'd "Both"): the Bee Queen spends one pollen (gathered beside a Healing Flower,
+       battle.js THE POLLEN) on a seed, which grows at once with no water, or on a hurt plant, which is mended. */
+    {
+        id: 'pollinate',
+        spellType: 'anomaly',
+        element: 'nature',
+        name: 'Pollinate',
+        type: 'utility',
+        cost: 10,
+        equipCost: 15,
+        apCost: 1,
+        range: 3,
+        kind: 'aoe',
+        aoeMask: [[0, 0]],
+        noDamage: true,
+        pollinate: true,
+        tier: 1,
+        families: ['royalhive'],
+        desc: 'Costs 1 pollen. Pick a tile within 3: a seed on it grows into its plant right now, no water needed, or a damaged plant on it is mended for half its HP. The Bee Queen gathers pollen by ending a move beside a Healing Flower (up to 3); each pollen she carries is +8 ATK, +8 spell power and +8 SPD.'
+    },
+
     /* 💧 THE GARDEN (2026-11-12, mondo OK'd): none of the Agriculture units owns a water spell, and a seed now needs water.
        A no-damage water cast on one tile: battle.js `waterCan` (the seeds on it sprout, its fire goes out, whoever stands
        there is Wet). */

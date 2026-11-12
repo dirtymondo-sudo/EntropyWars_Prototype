@@ -558,7 +558,7 @@
         // because movement, turn order and cooldown divisions all feed on it).
         function getEffectiveSpd(unit) {
             if (!unit) return 1;
-            const base = Math.max(1, (unit.spd || 1) + getStatStageDelta(unit, 'spd'));
+            const base = Math.max(1, (unit.spd || 1) + getStatStageDelta(unit, 'spd')) + ((unit.pollen | 0) > 0 && typeof getPollenSpdBonus === 'function' ? getPollenSpdBonus(unit) : 0);   // 🐝 HONEY
             // 🩸 Bloodcraze (werewolf passive, plan §5.2): +N SPD stages while
             // any VISIBLE enemy is at or under the HP threshold. Ruler-clamped
             // like every stage, so an S-speedster gains nothing.
@@ -3313,9 +3313,10 @@
             return !!(unit && typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'plantedTrees'));
         }
         function getPlantedTreeBonus(unit) {
-            if (!_hasGreenThumb(unit)) return 0;
+            const _honey = typeof getPollenPowerBonus === 'function' ? getPollenPowerBonus(unit) : 0;   // 🐝 HONEY rides every place the garden bonus is read
+            if (!_hasGreenThumb(unit)) return _honey;
             const n = Math.min(PLANTED_TREE_STAT_CAP, getOwnPlantedTreeCount(unit) + (typeof getOwnPlantCount === 'function' ? getOwnPlantCount(unit) : 0));   // THE GARDEN: plants and trees
-            return n * PLANTED_TREE_STAT_PER;
+            return n * PLANTED_TREE_STAT_PER + _honey;
         }
 
         // Bonus spell power for a grove-scaling spell (Trunk Throw): grows with
@@ -11436,7 +11437,8 @@
                 }
             }
 
-            if (state.plantedSeeds?.length) {
+            /* THE GARDEN fix (2026-11-12): the grown plants and aura trees act with NO seed left on the board too */
+            if (state.plantedSeeds?.length || (state.plantedTrees || []).some(t => t.aura) || (state.turrets || []).some(t => t.plant && t.hp > 0)) {
                 for (let p = 1; p <= 2; p++) {
                     applySeedTileEffects_endOfRound(p, events);
                 }
@@ -12105,6 +12107,7 @@
                 spellId: PLANT_SPELL_ID[seed.type] || null, spellName: _plantName(seed.type),
                 spellType: seed.spellType || null,
                 plant: seed.type, hp: maxHp, maxHp, dmg: 0, range,
+                pollen: seed.type === 'heal' ? 1 : 0,   // 🐝 THE POLLEN: a Healing Flower opens with one
             };
             state.turrets.push(plant);
             if (getTerrainAt(gx, gy) !== 'grass' && getTerrainAt(gx, gy) !== 'water') setTerrainAt(gx, gy, 'grass');
@@ -12122,6 +12125,71 @@
             scheduleBoardRender();
             return plant;
         }
+        /* 🐝 THE POLLEN (2026-11-12, mondo: "Both" Pollinate + Honey, "maybe the pollen can boost her attack and speed too").
+           A Healing Flower holds ONE pollen and regrows it at each round end. A Bee Queen that ends a move beside a
+           flower (or stands beside one at round end) gathers it, any side's flower, up to POLLEN_MAX. HONEY: each pollen
+           she carries is +POLLEN_POWER_PER ATK and spell power and +POLLEN_SPD_PER SPD. POLLINATE (data.js, Royal Hive)
+           spends one. The count is a plain number on the unit (`unit.pollen`), so it rides the snapshot to the guest. */
+        const POLLEN_MAX = 3, POLLEN_POWER_PER = 8, POLLEN_SPD_PER = 8, POLLEN_MEND_PCT = 0.5;
+        function _gathersPollen(unit) { return !!unit && unit.race === 'bee queen'; }
+        function getPollen(unit) { return (unit && unit.pollen) | 0; }
+        function getPollenPowerBonus(unit) { return getPollen(unit) * POLLEN_POWER_PER; }
+        function getPollenSpdBonus(unit) { return getPollen(unit) * POLLEN_SPD_PER; }
+        function _gatherPollen(unit) {
+            if (!_gathersPollen(unit) || unit.dead || _unitIsDown(unit) || shadowRealmKey(unit)) return 0;
+            let got = 0;
+            for (const fl of _livePlants()) {
+                if (getPollen(unit) >= POLLEN_MAX) break;
+                if (fl.plant !== 'heal' || !(fl.pollen > 0)) continue;
+                if (Math.max(Math.abs(fl.x - unit.x), Math.abs(fl.y - unit.y)) > 1) continue;
+                fl.pollen = 0;
+                unit.pollen = getPollen(unit) + 1;
+                got++;
+            }
+            if (got) {
+                addLog(`🐝 ${_ctName(unit)} gathers pollen from the Healing Flower (${getPollen(unit)}/${POLLEN_MAX}): +${getPollenPowerBonus(unit)} ATK and spell power, +${getPollenSpdBonus(unit)} SPD while she carries it.`);
+                if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextForUnit(unit, `🐝 POLLEN ${getPollen(unit)}/${POLLEN_MAX}`, 'buff', { durationMs: 1100 });
+                if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+                markDirty('teams', 'selectedUnit', 'hud');
+                scheduleBoardRender();
+            }
+            return got;
+        }
+        /* Round end: every flower regrows its pollen, then each Bee Queen beside one takes it. */
+        function _pollenRoundEnd() {
+            let grew = false;
+            for (const fl of _livePlants()) if (fl.plant === 'heal' && !(fl.pollen > 0)) { fl.pollen = 1; grew = true; }
+            for (const u of (state.units || [])) if (_gathersPollen(u)) _gatherPollen(u);
+            if (grew) scheduleBoardRender();
+        }
+        /* POLLINATE's tile: an ungrown seed (it grows NOW, no water needed) or a hurt plant (mended). null = nothing to do. */
+        function _pollinateTargetAt(x, y) {
+            const seed = (state.plantedSeeds || []).find(sd => sd.x === x && sd.y === y && sd.type !== 'plain');
+            if (seed) return { seed };
+            const plant = plantAt(x, y);
+            if (plant && plant.hp < plant.maxHp) return { plant };
+            return null;
+        }
+        function _pollinate(unit, spell, x, y) {
+            const tg = _pollinateTargetAt(x, y);
+            if (!tg || getPollen(unit) <= 0) return false;
+            unit.pollen = getPollen(unit) - 1;
+            if (tg.seed) {
+                state.plantedSeeds = state.plantedSeeds.filter(sd => sd !== tg.seed);
+                addLog(`🐝 ${_ctName(unit)} pollinates the ${_seedLabel(tg.seed)} at ${coordLabel(x, y)} (${getPollen(unit)}/${POLLEN_MAX} pollen left).`);
+                _growSeedIntoTree(tg.seed, null);
+            } else {
+                const mend = Math.min(tg.plant.maxHp - tg.plant.hp, Math.round(tg.plant.maxHp * POLLEN_MEND_PCT));
+                tg.plant.hp += mend;
+                addLog(`🐝 ${_ctName(unit)} pollinates the ${_plantName(tg.plant.plant)} at ${coordLabel(x, y)}: +${mend} HP (${tg.plant.hp}/${tg.plant.maxHp}). ${getPollen(unit)}/${POLLEN_MAX} pollen left.`);
+                if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextAtTile(x, y, `+${mend}`, 'heal', { durationMs: 900 });
+            }
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            markDirty('teams', 'selectedUnit', 'hud');
+            scheduleBoardRender();
+            return true;
+        }
+        if (typeof window !== 'undefined') { window.getPollen = getPollen; window.POLLEN_MAX = POLLEN_MAX; window._pollinateTargetAt = _pollinateTargetAt; }
         /* The thorn vine's one target this round among `player`'s units: the nearest it has a clear line to. */
         function _plantLashTarget(plant, player) {
             let best = null, bestD = Infinity;
@@ -12251,6 +12319,7 @@
         // tile can't machine-gun the effect. The end-of-round tick still fires
         // on top for units that stay put ("camping the seed").
         function checkSeedStepTrigger(unit) {
+            if (unit && unit.race === 'bee queen') _gatherPollen(unit);   // 🐝 THE POLLEN: ending a move beside a flower
             if (!state.plantedSeeds || !state.plantedSeeds.length || !unit || unit.dead) return;
             if (shadowRealmKey(unit)) return;   // 🌑 nor its seeds
             if (unitIsSpirit(unit)) return;   // 👁 a spirit steps on nothing
@@ -12525,6 +12594,9 @@
                     state.plantedSeeds = state.plantedSeeds.filter(s => !sprouting.includes(s));
                     for (const seed of sprouting) _growSeedIntoTree(seed, events);
                 }
+            }
+            /* its own block (2026-11-12 fix): the plants burn and the pollen regrows with or without a seed on the board */
+            if (player === 1) {
                 /* 🔥 a plant on a burning tile loses a share of its HP each round end */
                 for (const plant of _livePlants()) {
                     if (!(typeof _tileIsBurning === 'function' && _tileIsBurning(plant.x, plant.y))) continue;
@@ -12537,6 +12609,7 @@
                         scheduleBoardRender();
                     }
                 }
+                _pollenRoundEnd();   // 🐝 THE POLLEN
             }
 
             /* Standing tick: ungrown seeds affect the unit camping their tile,
@@ -49308,6 +49381,7 @@
             // cast through. Plain barrages keep the blanket pass (their radius is
             // the caster's problem, and casting into empty air is a player choice).
             if (kind === 'barrage' && spell.hitsWetOnly) return _selfNovaSeenVictims(unit, spell).length > 0;
+            if (spell.pollinate && getPollen(unit) <= 0) return false;   // 🐝 THE POLLEN: no pollen carried = the row reads NO TARGET
             // THE SEEN NOVA (playtest 2026-11-07 F): a nova that only touches enemies (Hey, Over Here!, Meow, Demonic
             // Roar…) reads NO TARGET when no enemy the caster's side can see stands in its reach.
             if (_selfNovaEnemyOnly(spell)) return _selfNovaSeenVictims(unit, spell).length > 0;
@@ -81962,6 +82036,14 @@
                     playErrorSfx();
                     return 0;
                 }
+                /* 🐝 POLLINATE is refused before any MP is spent: no pollen carried, or nothing on the tile to pollinate */
+                if (spell.pollinate && (getPollen(unit) <= 0 || !_pollinateTargetAt(x, y))) {
+                    addLog(getPollen(unit) <= 0
+                        ? `${_ctSp(spell.name)}: no pollen. End a move beside a Healing Flower to gather some.`
+                        : `${_ctSp(spell.name)}: pick a tile with a seed or a damaged plant.`, _clickSeat());
+                    playErrorSfx();
+                    return 0;
+                }
                 // Phase 4 migration: aoe uses shared AoE helpers
                 playSfx(spellLaunchSfx(spell));
                 const _aoeArea = getSpellAoeArea(spell, x, y);
@@ -81997,8 +82079,9 @@
                             pushFromCenter: spell.pushDistance ? (spell.aoeOriginSelf ? { x: unit.x, y: unit.y } : { x, y }) : null
                         });
                     if (spell.zoneTickDamage > 0) _pushDamageZone(unit, spell, x, y, spellPower);
-                    else if (hitCount === 0 && !(spell.aoeAllyHeal > 0) && !spell.waterCan) addLog(`${_ctSp(spell.name)} hits no enemies in the area.`);
+                    else if (hitCount === 0 && !(spell.aoeAllyHeal > 0) && !spell.waterCan && !spell.pollinate) addLog(`${_ctSp(spell.name)} hits no enemies in the area.`);
                     if (spell.rimSeeds) _plantRimSeeds(unit, spell, x, y);   // THE SPELL AUDIT Batch D: Bumper Crop
+                    if (spell.pollinate) _pollinate(unit, spell, x, y);   // 🐝 THE POLLEN
                     /* 💧 THE GARDEN — Watering Can (`waterCan`): the tile is watered (the seeds on it sprout and its ground
                        fire goes out through the water reaction above) and whoever stands on it, friend or foe, is Wet */
                     if (spell.waterCan) {
