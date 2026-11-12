@@ -1181,10 +1181,11 @@ mondo: "the foyer is too bright and then stepping into the lobby is dark by comp
 - Three OPEN rooms (a sky of their own) stand on the stage of an INDOOR zone (HQ_WORLD zone.sky null): `garden` (annex),
   `pool` (executive), `site_prebuilt_derelict_deck` (derelict). The stage was written for zones all outdoors or all indoors.
 - The fault: a visit that began in a closed room (always, for the garden: it has no door of its own from outside) had no sky
-  record, so the crossing built no dome and no lamp masts and kept the light of the room you left (a box's hemisphere 0.5 + key
-  against the open rig's 0.78 + sun 0.6): a lawn under a black ceiling. A fast walker never saw it (a part not attached yet is a
-  plain load, `_hqStageLoad`, which builds the sky). The reverse too: a visit that began in the garden kept the daylight (or the
-  clock's night) on in every closed room after it.
+  record, so the crossing built no dome and no lamp masts: the lawn stood under a black void, and by the clock's night it had
+  no lamp but the moon's key. (`_hqClockArm` did snap the hemisphere + key to the hour, so by day the ground itself was lit; a
+  clock-LOCKED open room would have kept the light of the room you left.) A fast walker never saw it (a part not attached yet
+  is a plain load, `_hqStageLoad`, which builds the sky). The way back never undid it: the pool wore the garden's daylight
+  (0.78 + 0.6, blown white) or its night until the visit ended.
 - The fix: `_hqStageSkyUp` builds the sky once a visit, when an open neighbour is built beside you (`_hqStageBuildTick`) or at the
   crossing; `_hqOpenRoomLamps` = the lamp masts (entry and neighbour step); `_hqStageAirCross` (in `_hqStageSwap`, before the
   shadow arm) turns the key to the new room's rig, sets the hemisphere's ground half + the fill, and hands `_hqStageBlendStart` a
