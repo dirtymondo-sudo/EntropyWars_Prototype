@@ -4050,7 +4050,7 @@ EW_MH_LOOKS.skins.push(['ew_werewolf_fur', 'Werewolf fur (Meshy)'], ['ew_werewol
    mpfb/looks/skin_morgan.jpg like the pack skins; it pairs with the morganHead shaped head (EW_MPFB_FACE_SLIDERS "Face likeness"). */
 EW_MH_LOOKS.skins.push(['morgan', 'Morgan']);
 /* THE UNIT FACES (2026-11-12): the unit's own Meshy face on the hm08 sheet, pairs with the <race>Face shaped head (bake-face.py). */
-EW_MH_LOOKS.skins.push(['ew_face_cowboy', 'Cowboy face (Meshy)'], ['ew_face_knight', 'Knight face (Meshy)'], ['ew_face_wizard', 'Wizard face (Meshy)'], ['ew_face_zombie', 'Zombie face (Meshy)'], ['ew_face_robinhood', 'Robinhood face (Meshy)']);
+EW_MH_LOOKS.skins.push(['ew_face_cowboy', 'Cowboy face (Meshy)'], ['ew_face_knight', 'Knight face (Meshy)'], ['ew_face_wizard', 'Wizard face (Meshy)'], ['ew_face_zombie', 'Zombie face (Meshy)'], ['ew_face_robinhood', 'Robinhood face (Meshy)'], ['ew_face_catgirl', 'Catgirl face (Meshy)']);
 /* THE EYE PACK (2026-11-03, mondo uploaded the MakeHuman Eye Texture Pack to R2 looks/eyes/eyetextures/: "please add them to the
    character creator"): [id, label, colour PNG, normal-map PNG]. On an MPFB body these are NOT drawn into the skin sheet (an iris
    there is ~6 texels, a cat eye's slit is lost): three-renderer.js THE EYE PACK fits MakeHuman's high-poly eye mesh over the
@@ -4858,6 +4858,10 @@ const EW_MH_SKIN_SAMPLE = [200, 150, 360, 300];
    under every picked colour. No other piece of any MPFB body falls inside these outlines. */
 const EW_MH_SKIN_KEEP = [[40,373,34,376,27,379,23,382,21,385,18,388,16,391,15,394,13,397,13,400,12,403,12,406,12,409,11,412,11,415,10,418,10,421,10,424,10,427,10,430,10,433,10,436,10,439,10,442,11,445,12,448,14,451,17,454,20,457,25,460,34,463,52,463,61,460,63,457,65,454,67,451,69,448,70,445,71,442,71,439,72,436,72,433,74,430,76,427,77,424,78,421,79,418,80,415,81,412,81,409,81,406,80,403,80,400,80,397,79,394,79,391,76,388,73,385,71,382,68,379,65,376,45,373],[121,373,102,376,99,379,96,382,94,385,91,388,88,391,88,394,87,397,87,400,87,403,86,406,86,409,86,412,87,415,88,418,89,421,90,424,91,427,93,430,94,433,95,436,96,439,96,442,97,445,98,448,100,451,102,454,104,457,106,460,115,463,133,463,142,460,147,457,150,454,153,451,155,448,156,445,157,442,157,439,157,436,157,433,157,430,157,427,157,424,157,421,156,418,156,415,156,412,155,409,155,406,155,403,154,400,153,397,151,394,150,391,148,388,146,385,144,382,140,379,133,376,126,373],[844,882,838,885,799,888,797,891,795,894,792,897,790,900,788,903,786,906,785,909,783,912,781,915,779,918,778,921,777,924,777,927,776,930,775,933,774,936,774,939,774,942,774,945,773,948,773,951,773,954,773,957,773,960,773,963,774,966,775,969,775,972,776,975,777,978,777,981,779,984,780,987,781,990,782,993,783,996,785,999,786,1002,788,1005,791,1008,793,1011,929,1011,931,1008,933,1005,935,1002,937,999,939,996,940,993,941,990,942,987,943,984,945,981,945,978,946,975,946,972,947,969,947,966,948,963,948,960,948,957,948,954,948,951,948,948,948,945,948,942,948,939,948,936,947,933,946,930,945,927,944,924,943,921,942,918,940,915,939,912,937,909,935,906,934,903,932,900,929,897,927,894,924,891,922,888,884,885,877,882]];
 const EW_MH_LIPS = { poly: [931,503,928,504.5,924,507.5,921,510.5,917,513.5,916,516.5,915,519.5,914,522.5,914,525.5,915,528.5,915,531.5,914,534.5,915,537.5,916,540.5,917,543.5,919,546.5,922,549.5,925,552.5,929,554.5,931,555,933,554.5,936,552.5,941,549.5,942,546.5,945,543.5,946,540.5,947,537.5,948,534.5,948,531.5,948,528.5,948,525.5,948,522.5,948,519.5,946,516.5,944,513.5,941,510.5,939,507.5,934,504.5], box: [906, 495, 52, 68], feather: 1.6 };
+/* THE MAKE-UP (2026-11-12): where eye liner (red), eye shadow (green) and blush (blue) sit on the hm08 sheet: one small mask picture
+   (mpfb/looks/makeup_mask.png, measured on the MPFB head by bake-makeup.py) and its box on the 1024 sheet; `a` = how strongly each
+   picked colour covers the skin at the mask's full value */
+const EW_MH_MAKEUP = { file: 'makeup_mask.png', box: [841, 419, 92, 220], a: { liner: 0.9, shadow: 0.6, blush: 0.4 } };
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
   chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0], bust: [-1, 1, 0],   // bust: 2026-11-01 (mondo)
@@ -4899,12 +4903,12 @@ const EW_MPFB_FACE_SLIDERS = [
      section 6): a race's own Meshy head measured onto the MPFB head by face landmarks (bake-face.py): <race>Face = the head shape (a custom
      shape like morganHead), and the skin "ew_face_<race>" = the unit's face painted onto the stock skin sheet, the rest toned to match.
      The mesh is still the MPFB head, so the 67 face shapes (blink, talk) keep working. Pilot: the cowboy. */
-  { id: 'unitFace', label: 'Unit faces', inHeads: true, rows: [['cowboyFace', 'Cowboy'], ['knightFace', 'Knight'], ['wizardFace', 'Wizard'], ['zombieFace', 'Zombie'], ['robinhoodFace', 'Robinhood']] },
+  { id: 'unitFace', label: 'Unit faces', inHeads: true, rows: [['cowboyFace', 'Cowboy'], ['knightFace', 'Knight'], ['wizardFace', 'Wizard'], ['zombieFace', 'Zombie'], ['robinhoodFace', 'Robinhood'], ['catgirlFace', 'Catgirl']] },
 ];
 EW_APPEARANCE_LIMITS.wolfHead = [0, 1, 0];   // (one-sided: the target has no minus end)
 EW_APPEARANCE_LIMITS.morganHead = [0, 1, 0];   // (one-sided, THE CUSTOM SHAPES)
 EW_APPEARANCE_LIMITS.cowboyFace = [0, 1, 0];   // (one-sided, THE UNIT FACES)
-EW_APPEARANCE_LIMITS.knightFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.wizardFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.zombieFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.robinhoodFace = [0, 1, 0];
+EW_APPEARANCE_LIMITS.knightFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.wizardFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.zombieFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.robinhoodFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.catgirlFace = [0, 1, 0];
 /* THE LIKENESS SWITCH (2026-11-11, mondo: "hide behind a switch anyway, im really just testing something"): the face-likeness picks
    (the morganHead shaped head + the "morgan" skin) are NOT shown in the creator unless this browser turned them on: open the game
    once with ?likeness=1 in the address (remembered; ?likeness=0 turns it off again). The data stays valid either way, so a look
@@ -5122,6 +5126,10 @@ const EW_APPEARANCE_ENUMS = {
   eyeTint: ['own', 'pick'],    // 'pick' = the irises in appearance.eyeColor (the classic eye colour's key)
   browTint: ['own', 'hair', 'pick'],   // the brows in their own colour / the hair colour / browColor
   lashTint: ['own', 'pick'],   // 'pick' = lashColor
+  /* THE MAKE-UP (2026-11-12, mondo: "make a way in the creator to add makeup too"): eye liner / eye shadow / blush on an MPFB body,
+     each off ('own' = the skin as it is) or painted in its picked colour (linerColor / shadowColor / blushColor) through
+     EW_MH_MAKEUP's mask (three-renderer.js paintMakeup) */
+  linerTint: ['own', 'pick'], shadowTint: ['own', 'pick'], blushTint: ['own', 'pick'],
   hairMat: ['own'].concat(EW_MH_HAIR_MATS.map(r => r[0])),   // THE HAIR MATERIALS (2026-11-03): a MakeHuman recolour of the worn system style
   hairAccent: ['own', 'tint'],   // THE SECOND HAIR COLOUR (2026-11-01): an `accent` hair's piece in its own colours / hairColor2
   mhChest: ['nipples', 'smooth'],   // THE CHEST (2026-11-01; 'band' gone with the underwear 2026-11-02)   // 2026-11-01: the base body (classic Meshy bases or an MPFB body)
@@ -5180,7 +5188,9 @@ const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: 
   outer2Color: '#5a4636', outer2Color2: '#c9a227',   // THE SECOND OUTER LAYER
   capeColor: '#7a1f1f', capeColor2: '#c9a227',   // THE BLENDER CAPES
   beardColor: '#27201c',   // THE FACIAL HAIR (beardTint 'pick')
-  browColor: '#2a1d14', lashColor: '#141010',   // THE LOOK COLOURS (browTint / lashTint 'pick')
+  browColor: '#2a1d14', lashColor: '#141010',
+  linerColor: '#17110f', shadowColor: '#6b4a55', blushColor: '#c9727c',   // THE MAKE-UP (linerTint / shadowTint / blushTint 'pick')
+    // THE LOOK COLOURS (browTint / lashTint 'pick')
   // 2026-11-01 THE SECOND HAIR COLOUR: a pack style's band / tie / beads (worn when hairAccent = 'tint')
   hairColor2: '#c0392b' };
 const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'none', bottoms: 'none', outer: 'none', feet: 'bsneakers',   // (2026-11-02 THE RETIRED CLASSIC CLOTHES: a bare look is dressed by retireClassicClothes)
@@ -5407,7 +5417,7 @@ function randomCharacterAppearance(rng) {
   }
   out.body = 'classic';   // RANDOMIZE dresses the classic base (an MPFB body wears its own look)
   out.mhSkin = out.mhEyes = out.mhBrows = out.mhLashes = 'own';
-  out.lipTint = out.skinTint = out.eyeTint = out.browTint = out.lashTint = 'own';   // THE LIP COLOUR + THE LOOK COLOURS (an MPFB body's; the classic face paints its own)
+  out.lipTint = out.skinTint = out.eyeTint = out.browTint = out.lashTint = out.linerTint = out.shadowTint = out.blushTint = 'own';   // THE LIP COLOUR + THE LOOK COLOURS (an MPFB body's; the classic face paints its own)
   if (r() < 0.6) out.beard = 'none';
   if (r() < 0.7) out.neckwear = 'none';
   if (r() < 0.65) out.glasses = 'none';
@@ -5464,8 +5474,10 @@ function getMhLookLayers(a) {
   const hex = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v : null;   // THE LOOK COLOURS
   const tint = { skin: a.skinTint === 'pick' ? hex(a.skin) : null, eyes: a.eyeTint === 'pick' && !pack ? hex(a.eyeColor) : null,
     brows: a.browTint === 'hair' ? hex(a.hairColor) : a.browTint === 'pick' ? hex(a.browColor) : null, lashes: a.lashTint === 'pick' ? hex(a.lashColor) : null };
+  const mk = { liner: a.linerTint === 'pick' ? hex(a.linerColor) : null, shadow: a.shadowTint === 'pick' ? hex(a.shadowColor) : null, blush: a.blushTint === 'pick' ? hex(a.blushColor) : null };   // THE MAKE-UP
+  const madeUp = !!(mk.liner || mk.shadow || mk.blush);
   const tinted = Object.keys(tint).some(k => tint[k]);
-  if (!chest && !lips && !tinted && Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
+  if (!chest && !lips && !tinted && !madeUp && Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
   const id = k => (pick[k] && pick[k] !== 'own' ? pick[k] : kit[k]);
   const base = EW_CHARACTER_ASSET_BASE + '/mpfb/looks/';
   const out = [[base + 'skin_' + id('skin') + '.jpg', null]];
@@ -5474,6 +5486,7 @@ function getMhLookLayers(a) {
     if (row) { const l = [base + _EW_LOOK_ROWS[k][1] + row[0] + '.png', row.slice(2, 6)]; l.kind = k; out.push(l); }   // (kind: THE LOOK COLOURS)
   }
   if (EW_MH_LOOKS.fixed[body]) out.push([base + 'look_fixed_' + body + '.png', EW_MH_LOOKS.fixed[body], null]);   // [url, box, the rect left out (none since the underwear went)]
+  if (madeUp) { const l = [base + EW_MH_MAKEUP.file, EW_MH_MAKEUP.box]; l.kind = 'makeup'; out.push(l); out.makeup = Object.assign({ box: EW_MH_MAKEUP.box, a: EW_MH_MAKEUP.a }, mk); }   // THE MAKE-UP (three-renderer.js paintMakeup; the mask rides the layer list so it loads with them)
   if (chest === 'smooth') out.smooth = EW_MH_CHEST;
   if (lips) out.lips = Object.assign({ color: lips }, EW_MH_LIPS);   // THE LIP COLOUR (painted over the skin, three-renderer.js tintLips)
   if (tinted) { out.tint = tint; out.iris = EW_MH_IRIS; out.skinSample = EW_MH_SKIN_SAMPLE; out.skinKeep = EW_MH_SKIN_KEEP; }   // THE LOOK COLOURS (three-renderer.js tintSheet / tintLayer)
@@ -5624,16 +5637,24 @@ function hasRaceCreatorLook(race) { return !!RACE_CREATOR_LOOKS[race]; }
    (THE MESHY OUTFITS above), with pack hair and the MPFB face, as a second saved look beside the race's Meshy model (still the
    default) and beside its RACE_CREATOR_LOOKS look (the saved cowboy stays). The forge: USE THE REMADE <RACE> LOOK. The cowboy's
    is his saved look's body + face with the remade clothes in place of the creator ones. */
+function _ewFaceSlidersZeroed() {   // every FACE-tab slider at 0 (eyes .. head; not the ears + neck, not the shaped heads / ears)
+  const o = {};
+  for (const g of EW_MPFB_FACE_SLIDERS) if (!g.inHeads && !g.inEars && g.id !== 'ears') for (const r of g.rows) o[r[0]] = 0;
+  return o;
+}
 const RACE_REMADE_LOOKS = {
   'cowboy': { male: Object.assign({}, RACE_CREATOR_LOOKS['cowboy'].male, { "outer": "none", "wear": ["ewm_t2cowboy_hat", "ewm_t2cowboy_outfit"], "wearTint": {}, "wearFabric": {} },
     /* THE UNIT FACES pilot: his own Meshy face (shape + skin); the saved look's eye sliders are zeroed, they were shaping a stock face */
     { "cowboyFace": 1, "mhSkin": "ew_face_cowboy", "hairColor": "#4a3423",   /* (his beard is in the skin now: the beard piece is off, the hair takes the beard's brown) */
       "eyeSize": 0, "eyeHeight": 0, "eyeSpacing": 0, "eyeTilt": 0, "eyeOpen": 0, "eyeDepth": 0, "eyelid": 0, "eyeBags": 0, "epicanthus": 0 }) },
-  'knight': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"knightFace":1,"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhSkin":"ew_face_knight","mhEyes":"brown","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#b87882","hair":"mh_long01","hairColor":"#5c0f1e","browColor":"#3a1418","browTint":"pick","idle":"Idle_11","wear":["ewm_t2knight_outfit"] } },
+  'knight': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"knightFace":1,"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhSkin":"ew_face_knight","mhEyes":"mhm_spamrakuen_sr_anime_maid-san_red_eyes","eyeTint":"pick","eyeColor":"#3a2418","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#b87882","linerTint":"pick","linerColor":"#17110f","shadowTint":"pick","shadowColor":"#6b4a55","blushTint":"pick","blushColor":"#c9727c","hair":"mh_long01","hairColor":"#5c0f1e","browColor":"#3a1418","browTint":"pick","idle":"Idle_11","wear":["ewm_t2knight_outfit"] } },
   'wizard': { male: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":0.95,"wizardFace":1,"mhSkin":"ew_face_wizard","mhEyes":"blue","mhBrows":"eyebrow001","hair":"hair004","hairColor":"#9a6a40","browColor":"#7a5230","browTint":"pick","idle":"Idle_11","wear":["ewm_t2wizard_hat","ewm_t2wizard_outfit"] } },
   /* batch one of the demo starters (2026-11-12): zombie, catgirl (his saved look's body + face + hair, the remade clothes), robinhood, quarterback */
   'zombie': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"zombieFace":1,"mhSkin":"ew_face_zombie","mhEyes":"brown","mhBrows":"own","mhLashes":"eyelashes02","hair":"hair001","hairColor":"#17181a","browColor":"#17181a","browTint":"pick","idle":"Idle_11","wear":["ewm_t2zombie_outfit"] } },
-  'catgirl': { female: Object.assign({}, RACE_CREATOR_LOOKS['catgirl'].female, { "outer2": "none", "feet": "none", "wear": ["ewm_t2catgirl_outfit"], "wear2": "none", "wearTint": {}, "wearFabric": {} }) },
+  'catgirl': { female: Object.assign({}, RACE_CREATOR_LOOKS['catgirl'].female, { "outer2": "none", "feet": "none", "wear": ["ewm_t2catgirl_outfit", "ewm_crosspendant"], "wear2": "none", "wearTint": { "ewm_crosspendant": "#a0662e" }, "wearFabric": {} },   /* (the cross pendant + its tint = his saved look's own) */
+    /* her own Meshy face (mondo 11-12: "i want it anyway and for you to clean it up"): the saved look's face sliders are zeroed, they were
+       shaping a stock face (his cat ears, neck, eyes, lashes, lips and hair stay); her fringe hides the brows in the old model, so the look picks a pair */
+    _ewFaceSlidersZeroed(), { "catgirlFace": 1, "mhSkin": "ew_face_catgirl", "skinTint": "own", "mhBrows": "eyebrow006", "browTint": "pick", "browColor": "#17140f" }) },
   'robinhood': { male: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"robinhoodFace":1,"mhSkin":"ew_face_robinhood","mhEyes":"brown","mhBrows":"own","hair":"bald","hairColor":"#5a3a22","browColor":"#4a3020","browTint":"pick","idle":"Idle_11","wear":["ewm_t2robinhood_outfit"] } },
   'quarterback': { male: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"mhSkin":"young_caucasian_male","mhEyes":"brown","mhBrows":"eyebrow001","hair":"bald","hairColor":"#2a1d14","browColor":"#2a1d14","browTint":"pick","idle":"Idle_11","wear":["ewm_t2quarterback_hat","ewm_t2quarterback_outfit"] } },
 };
@@ -5747,7 +5768,7 @@ if (typeof window !== 'undefined') {
   window.EW_MH_EYE_PACK = EW_MH_EYE_PACK; window.getMhEyePack = getMhEyePack;   // THE EYE PACK
   window.EW_MH_HAIR_MATS = EW_MH_HAIR_MATS; window.getHairMaterial = getHairMaterial;   // THE HAIR MATERIALS
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhOwnLashLayer = getMhOwnLashLayer; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
-  window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS;   // THE CHEST + THE LIP COLOUR
+  window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS; window.EW_MH_MAKEUP = EW_MH_MAKEUP;   // THE CHEST + THE LIP COLOUR
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.wearKindOf = wearKindOf; window.wearFabricable = wearFabricable; window.EW_WEAR_BANDS = EW_WEAR_BANDS; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT; window.EW_BOOT_TOPS = EW_BOOT_TOPS; window.EW_PANT_HEMS = EW_PANT_HEMS; window.pantsBootsWorn = pantsBootsWorn;   // THE PANTS IN THE BOOTS   // THE PACK CLOTHES
   window.EW_WEAR_SHELVES = EW_WEAR_SHELVES; window.wearShelfOf = wearShelfOf; window.wearMadeFor = wearMadeFor; window.outerMadeFor = outerMadeFor; window.EW_OUTER_GROUPS = EW_OUTER_GROUPS;   // THE SHELVES
   window.EW_WEAR_SLOTS = EW_WEAR_SLOTS; window.EW_WEAR_GROUPS = EW_WEAR_GROUPS; window.wearGroupOf = wearGroupOf; window.wearSlotOf = wearSlotOf; window.wearSlotOfGroup = wearSlotOfGroup;   // THE BODY SLOTS

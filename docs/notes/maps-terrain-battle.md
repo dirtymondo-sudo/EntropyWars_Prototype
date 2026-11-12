@@ -2127,6 +2127,12 @@ being more thick and fluffy. The way it is now just looks gross." He then picked
   voxel boards, purple grass, a two-seat online match, a real weak PC.
 - Shots: /mnt/project-files/ghibli-grass-20261112/ (final_*.jpg; fluffy_* = the mock-up he approved; pair_* = the rejected first try).
 
+### THE CALMER WIND (2026-11-12, mondo on the first live build: "it's maybe a little too wavy")
+Only the sway changed. `GGRASS.wind` 0.45 -> 0.24 (tip travel), `sheen` 0.30 -> 0.18, and two new rows both shaders read: `gust` 0.80 (was a fixed 1.25,
+how fast gusts roll) and `flutter` 0.05 (was 0.10). GLSL takes them as `uGgW`, the node twin as constants at build. Live retune: `EW_GGRASS.wind = …;
+EW_GGRASS.flush()`. Proof frames: `window.EW_DISABLE_GRASS_WIND = true; window.EW_GRASS_WIND_T = <seconds>` sets the stopped wind clock by hand.
+Before/after: /mnt/project-files/ghibli-grass-20261112/sway_before_after.gif (Stonehenge, WebGL2 node renderer). Not seen: real WebGPU, classic WebGL.
+
 ## THE MOVING SHEETS: astral ground + six liquid looks from the noise packs (2026-11-12)
 mondo: "I could see there being a psychic or astral terrain made from these. Definitely use them in the astral realm or dreamy
 maps. Maybe you can use some of these for liquids", then of the examples "Yeah looks good, go ahead". Source: Screaming Brain
