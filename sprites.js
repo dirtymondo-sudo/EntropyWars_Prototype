@@ -2143,7 +2143,7 @@ const RACE_MODELS_3D = {
     female: _mkUAL('mermaid/female', 'hot_mermaid_girl', {
       heightRatio: 0.95,
       basicAttackKind: 'magic',
-      lib: { idle: { clip: 'Swim_Idle_Loop', lib: 1 } },
+      lib: { idle: { clip: 'Swim_Idle_Loop', lib: 0 } },   // (2026-11-12: the clip is in UAL1 = lib 0; lib 1 has no swim clips, so she stood on the default idle)
     }),
   },
   // Anubis (Black Mage, caster) — "Anubis_Egyptian_dog_" (trailing _ is real:
