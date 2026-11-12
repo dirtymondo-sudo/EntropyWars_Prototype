@@ -5260,3 +5260,32 @@ mondo: "everything is framed a little too high and the green super effective exc
 - Proof (Training Room, Annunaki's attack list, 1728x904): slide 0.30 -> 0.17, the far target's plate 130 -> 165 px down.
   /mnt/project-files/unit-frame-20261112/attack_list_before_top_after_bottom.jpg (the before half is the old slide on the
   new pose). Not replayed: Tape 2 itself, his Mac. A target outside the framed pair can still sit high if it is far up-screen.
+
+## THE GARDEN — seeds need water, plants replace the aura trees (2026-11-12, mondo; plan doc https://claude.ai/artifact/2hDVKXrT82a2FfypmiKwdV)
+mondo: "You have to water them for them to sprout, this can be rain water, water from a spell, etc. But instead of turning into
+trees, I want the leech seed to turn into a plant monster with thorny vines that acts like a turret ... The poison seed ... emits
+poison gas in an aoe ... the healing seed ... some sort of flowery healing thing." His answers (doc section 8): dry seed keeps its
+under-foot effect; Watering Can yes; real HP bar; cap 2 per type per planter (upgrades may raise it); plants do not block sight;
+Blood Rain does not water; thorn vine reach 2 (an upgrade may lengthen it); Bumper Crop option 1 (its seeds need water).
+- battle.js THE GARDEN block (beside `_seedBesideWater`): `seed.watered`; `_seedWaterSourceAt` (rain = Thunderstorm / Hurricane,
+  water / deep water / healing spring beside it, water on it, a Wet unit of the planter's side on it); `waterSeedsAt(x, y)` is
+  called from `triggerTerrainSpellReaction` for every tile a WATER-element spell strikes. Growth tick
+  (`applySeedTileEffects_endOfRound`): watered before this round end -> grows now; finds water now -> sprouts, grows next round
+  end; dry -> never. A plain (Bumper Crop) seed still dry after 2 round ends withers.
+- Grown plant = a `state.turrets` row with `plant: 'heal' | 'poison' | 'leech'` (`_standPlant`): real HP = 35 % of the planter's
+  max HP (min 60), no `hitsToKill`, `processTurretVolleys` skips it. It acts in `applySeedTileEffects_endOfRound` through the old
+  aura numbers (`applyAuraTreeEffectToUnit`): flower heals allies within 1 (7 %, double in rain), gas plant 5 % + Poison 2 to
+  enemies within 1, thorn vine 6.5 % from the ONE nearest enemy within `range` (2) it has a clear line to (`_plantLashTarget`,
+  `turretHasShotAt`), sent to the weakest ally. Drought = wilts, skips the round. Burning tile = -25 % max HP a round end.
+  Permafrost (`witherTrees`) kills it. Cap: `PLANT_CAP_PER_TYPE` 2 (+ passive hook `plantCapBonus`); reach hook `plantRangeBonus`
+  (no row carries either hook yet). Green Thumb counts plants + planted trees; Trunk Throw still counts trees only.
+- Plain seeds (Bumper Crop) still grow ordinary trees (`state.plantedTrees`, choppable, block sight). The old Healing / Toxin /
+  Leech aura TREES are no longer created (the code path stays for old state).
+- data.js: `wateringCan` (Agriculture T1, kind aoe, `aoeMask [[0,0]]`, noDamage, `waterCan`: the tile is watered, its fire goes
+  out, whoever stands there is Wet). Seed / Bumper Crop / Green Thumb / Permafrost texts rewritten.
+- three-renderer.js THE GARDEN: `_buildSeed3D` (mound + seed, or the sprout once watered; the 2D seed sprites are no longer
+  drawn), `_buildPlant3D` (Meshy models `Assets/world/props/meshy/ew_plant_thornvine|gasplant|healflower.glb`, team ring, HP bar
+  black with a white outline facing the camera). hud.js tile card: seed dry / watered text, plant text + HP.
+- NOT BUILT YET (his OK given, later PRs): Bee Queen pollen (Pollinate + Honey, pollen boosts her ATK + speed), Apple Seed ->
+  apple tree (a real tree: existing tree model + the pack's apples, drops a healing apple), upgrade rows for the cap / reach,
+  the CPU learning to water (ai.js still plants seeds as before and never casts Watering Can on purpose).

@@ -7055,7 +7055,123 @@ const ThreeRenderer = (function () {
         return { group: group, ctl: ctl };
     }
 
+    /* ═══ THE GARDEN (2026-11-12, mondo: "new seed/plant models, since the current ones are just 2d sprites that dont
+       really fit the game anymore") ═══ A seed is a small mound with the seed on it; watered, it is a sprout in its
+       type's colour; grown, it is a plant (state.turrets, `plant`) wearing its own model with a real HP bar over it.
+       The plant models are Meshy pieces (concepts OK'd by mondo); until a file is in the cache the plant draws its
+       team ring and HP bar only. */
+    var _PLANT_MODEL_URLS = {
+        leech:  'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_thornvine.glb',
+        poison: 'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_gasplant.glb',
+        heal:   'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_healflower.glb'
+    };
+    var _PLANT_HEIGHT = { leech: 0.95, poison: 0.9, heal: 0.95 };   // of a tile
+    var _SEED_COLORS = { heal: 0xe8c860, poison: 0x8a4ab0, leech: 0x9a2a3a, plain: 0x8a5a2a };
+    var _plantSeen = {};
+    function _gardenMat(hex, basic) {
+        var m = basic ? new THREE.MeshBasicMaterial({ color: hex }) : new THREE.MeshLambertMaterial({ color: hex });
+        return m;
+    }
+    function _buildSeed3D(s) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(s.x, s.y);
+        var col = _SEED_COLORS[s.type] || _SEED_COLORS.plain;
+        var g = new THREE.Group();
+        var mound = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.2, 8, 5, 0, Math.PI * 2, 0, Math.PI / 2), _gardenMat(0x5a3d22));
+        mound.scale.y = 0.45; g.add(mound);
+        if (!s.watered) {
+            var seed = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.075, 7, 6), _gardenMat(col));
+            seed.scale.set(0.8, 1.25, 0.8); seed.rotation.z = 0.35;
+            seed.position.y = ts * 0.12; g.add(seed);
+        } else {
+            /* the sprout: a stem, two leaves, a bud in the type's colour */
+            var green = _gardenMat(0x4f9a3a);
+            var stem = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.016, ts * 0.024, ts * 0.3, 6), green);
+            stem.position.y = ts * 0.22; g.add(stem);
+            for (var li = -1; li <= 1; li += 2) {
+                var leaf = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.09, 6, 4), green);
+                leaf.scale.set(1.3, 0.16, 0.6);
+                leaf.position.set(li * ts * 0.09, ts * 0.26, 0); leaf.rotation.z = li * 0.55;
+                g.add(leaf);
+            }
+            var bud = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.06, 7, 6), _gardenMat(col));
+            bud.scale.y = 1.25; bud.position.y = ts * 0.4; g.add(bud);
+            var t0 = _animNow(), ph = (s.x * 31 + s.y * 17) * 0.37;
+            bud.onBeforeRender = function () { g.rotation.z = Math.sin((_animNow() - t0) / 520 + ph) * 0.06; };
+        }
+        g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+        g.position.set(s.x * ts + ts / 2, topY, s.y * ts + ts / 2);
+        g._ew_deployable = true;
+        /* the grown plant's file starts loading while the seed lies there, so it is in when the seed grows */
+        var purl = _PLANT_MODEL_URLS[s.type];
+        if (purl && !_miscModelCache[purl]) { try { _loadMiscModel(purl, true, function () {}, { front: true }); } catch (x) {} }
+        return g;
+    }
+    /* the HP bar over a plant: black with a white outline (the UI rule), the fill in its side's colour; it faces the camera */
+    function _plantHpBar(turret, ts, y) {
+        var bar = new THREE.Group();
+        var w = ts * 0.62, h = ts * 0.075, frac = Math.max(0, Math.min(1, turret.hp / (turret.maxHp || 1)));
+        var mk = function (ww, hh, hex, z, ro) {
+            var m = new THREE.Mesh(new THREE.PlaneGeometry(ww, hh), new THREE.MeshBasicMaterial({ color: hex, depthTest: false, transparent: true, fog: false }));
+            m.position.z = z; m.renderOrder = ro; return m;
+        };
+        bar.add(mk(w + ts * 0.03, h + ts * 0.03, 0xffffff, 0, 9001));
+        bar.add(mk(w, h, 0x000000, 0.01, 9002));
+        if (frac > 0) {
+            var fill = mk(w * frac, h * 0.72, turret.owner ? _viewerPlayerColor(turret.owner) : 0x66dd66, 0.02, 9003);
+            fill.position.x = -w * (1 - frac) / 2; bar.add(fill);
+        }
+        bar.position.y = y;
+        bar.children[0].onBeforeRender = function (r, sc, cam) { bar.quaternion.copy(cam.quaternion); };
+        return bar;
+    }
+    function _buildPlant3D(turret) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var col = turret.owner ? _viewerPlayerColor(turret.owner) : 0x888888;
+        var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.34, 1.5, 4, 16), new THREE.MeshBasicMaterial({ color: col }));
+        ring.rotation.x = -Math.PI / 2; ring.position.y = 1.5; g.add(ring);
+        var tall = (_PLANT_HEIGHT[turret.plant] || 0.9) * ts;
+        g.add(_plantHpBar(turret, ts, tall + ts * 0.16));
+        var seen = _plantSeen[turret.id], hurt = !!(seen && turret.hp < seen.hp), born = !seen;
+        _plantSeen[turret.id] = { hp: turret.hp };
+        var url = _PLANT_MODEL_URLS[turret.plant], seedPh = (turret.x * 31 + turret.y * 17) * 0.11;
+        var fill = function () {
+            var e = _miscModelCache[url];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var m = root.clone(true), anchor = null;
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; if (!anchor) anchor = n; } });
+            var sc = tall / ((bb.max.y - bb.min.y) || 1);
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+            var body = new THREE.Group(); body.add(m); g.add(body);
+            if (!anchor) return;
+            var t0 = _animNow();
+            anchor.onBeforeRender = function () {
+                var now = _animNow(), el = now - t0;
+                var grow = born ? Math.min(1, el / 500) : 1;                                   // it rises out of the ground once
+                var hit = hurt ? Math.sin(Math.min(1, el / 320) * Math.PI) : 0;                 // the flinch of a hit
+                var br = Math.sin(now / 420 + seedPh) * 0.035;
+                body.scale.set((1 - br * 0.5 + hit * 0.12) * grow, Math.max(0.05, (1 + br - hit * 0.2) * grow), (1 - br * 0.5 + hit * 0.12) * grow);
+                body.rotation.z = Math.sin(now / 900 + seedPh) * 0.04;
+            };
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[url];
+        if (e0 && e0.root) fill();
+        else if (url) { try { _loadMiscModel(url, true, fill, { front: true }); } catch (x) { console.warn("[ThreeRenderer] plant model load threw", x); } }
+        return g;
+    }
+
     function _buildTurret(turret) {
+        if (turret.plant) return _buildPlant3D(turret);   // THE GARDEN
         if (turret.summon) return _buildSummon3D(turret);
         if (turret.zombie) return _buildZombie3D(turret);
         if (turret.spellId === 'fiveGTower') return _buildFiveGTower(turret);
@@ -8207,6 +8323,14 @@ const ThreeRenderer = (function () {
     }
     var _ggFringe = null;   // the meadow past the board, kept between builds: { key, pos, col, gg, gs, roots }
     var _gg = null;   // the live field: { mesh, press, data, W, H, n, sig, tops }
+    /* THE GRASS TAKES NO INK (2026-11-12, mondo: "adding the ink shader makes the grass look kinda weird to me, like it ends up being
+       a shadowy blob. Can we exclude grass from the shader"): the Entropy Style's five light bands cut every clump into a lit tip and a
+       near-black foot, and its ink line drew the squares' seams (the depth UNDER the grass: a tuft writes none) across the field. The
+       style's mask (three-post.js _renderPixelMask) now draws the field once more with value.x = 1: every tuft writes its own view
+       depth (log2(1 + z) / 20 in 16 bits, green + blue: no near / far to agree on) in place of its colour, and the style pass leaves a pixel un-banded and un-inked where the scene
+       lies at or behind that tuft (a wall or a body in front of the grass keeps its bands and its line). value.x = 1 while the mask draws. */
+    var _ggMaskU = { value: new THREE.Vector3(0, 0, 0), mesh: null };
+    try { window._ewGgMask = _ggMaskU; } catch (e) {}
     function _ggPressTex(W, H) {
         var n = GGRASS.pressN, data = new Uint8Array(W * n * H * n);
         var tex = new THREE.DataTexture(data, W * n, H * n, THREE.RedFormat, THREE.UnsignedByteType);
@@ -8221,9 +8345,11 @@ const ThreeRenderer = (function () {
         var m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide, depthWrite: false });
         var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: _ggRightU, uGgW: { value: new THREE.Vector2(GGRASS.gust, GGRASS.flutter) } };
         m.onBeforeCompile = function (shader) {
+            shader.uniforms.uGgM = _ggMaskU;
             shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgR = U.uGgR; shader.uniforms.uGgW = U.uGgW;
             shader.vertexShader = shader.vertexShader
-                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nattribute float aGgS;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;\nuniform vec2 uGgR;\nuniform vec2 uGgW;')
+                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nattribute float aGgS;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;\nuniform vec2 uGgR;\nuniform vec2 uGgW;\nvarying float vGgZ;')
+                .replace('#include <project_vertex>', '#include <project_vertex>\nvGgZ = -mvPosition.z;')
                 .replace('#include <begin_vertex>', '#include <begin_vertex>\n' +
                     'float ggPr = texture2D( uGgPress, aGg.xy * uGgB.xy ).r;\n' +
                     'float ggG = sin( dot( aGg.xy, vec2( 0.0105, 0.0062 ) ) - uGgT * uGgW.x + sin( dot( aGg.xy, vec2( -0.0040, 0.0070 ) ) + uGgT * 0.31 ) * 1.4 ) * 0.5 + 0.5;\n' +
@@ -8234,14 +8360,16 @@ const ThreeRenderer = (function () {
                     'transformed.y -= aGg.z * ggPr * 0.86 + ggB * 0.30 * aGg.w;\n' +
                     'vColor.rgb *= 1.0 + uGgB.w * ggG * aGg.w * ( 1.0 - ggPr );');
             shader.fragmentShader = shader.fragmentShader
-                .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );');
+                .replace('#include <common>', '#include <common>\nuniform vec3 uGgM;\nvarying float vGgZ;')
+                .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );')
+                .replace('#include <dithering_fragment>', '#include <dithering_fragment>\nif ( uGgM.x > 0.5 ) { float ggZ = clamp( log2( 1.0 + max( vGgZ, 0.0 ) ) / 20.0, 0.0, 1.0 ) * 255.0; gl_FragColor = vec4( 0.0, floor( ggZ ) / 255.0, fract( ggZ ), 1.0 ); }');   // THE GRASS TAKES NO INK: the style mask's draw
         };
-        m.customProgramCacheKey = function () { return 'ew_ggrass2'; };
+        m.customProgramCacheKey = function () { return 'ew_ggrass3'; };
         _ewNodeTag(m, { k: 'ggrass', press: G.press, inv: G.inv });   // the WebGPU twin: _ewNodeGGrass
         return m;
     }
     function _ggBuild(group) {
-        _gg = null;
+        _gg = null; _ggMaskU.mesh = null;
         if (!_ggOn() || typeof getTerrainAt !== 'function') return;
         var _t0 = performance.now();
         var ts = CONFIG.tileSize || BASE_TILE, W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
@@ -8377,7 +8505,7 @@ const ThreeRenderer = (function () {
         var G = { press: pr.tex, data: pr.data, W: W, H: H, n: C.pressN, inv: [1 / (W * ts), 1 / (H * ts)], sig: '', blades: nB, roots: roots, ia: ia, sortDir: null };
         var mesh = new THREE.Mesh(geo, _ggMat(G));
         mesh.frustumCulled = false; mesh.name = 'ew_grass_field'; mesh._ew_ggrass = true; mesh.renderOrder = C.order;
-        G.mesh = mesh; G.ms = performance.now() - _t0; _gg = G;
+        G.mesh = mesh; G.ms = performance.now() - _t0; _gg = G; _ggMaskU.mesh = mesh;
         try { window._ewGrassField = { tufts: nB, buildMs: Math.round(G.ms), level: _ggLevel }; } catch (e) {}   // read-only: what the last build made
         group.add(mesh);
     }
@@ -10543,7 +10671,7 @@ const ThreeRenderer = (function () {
         if (state.plantedSeeds) {
             for (var i = 0; i < state.plantedSeeds.length; i++) {
                 var s = state.plantedSeeds[i];
-                h = _hashInt(h, 1); h = _hashInt(h, s.x); h = _hashInt(h, s.y); h = _hashStr(h, s.type);
+                h = _hashInt(h, 1); h = _hashInt(h, s.x); h = _hashInt(h, s.y); h = _hashStr(h, s.type); h = _hashInt(h, s.watered ? 1 : 0);
             }
         }
         if (state.bombs) {
@@ -12009,8 +12137,7 @@ const ThreeRenderer = (function () {
         if (state.plantedSeeds) {
             for (var i = 0; i < state.plantedSeeds.length; i++) {
                 var s = state.plantedSeeds[i];
-                var sprKey = 'seed-' + s.type;
-                var m = _buildDeployableBillboard(sprKey, s.x, s.y, null);
+                var m = _buildSeed3D(s);   // THE GARDEN (2026-11-12): a 3D seed / sprout (was the 2D seed sprite)
                 if (m) {
                     var key = 'dep_' + (idx++);
                     m._ew_depX = s.x; m._ew_depY = s.y;
@@ -45972,6 +46099,12 @@ const ThreeRenderer = (function () {
         var sh = T.varying(gust().mul(A.w).mul(press().oneMinus()).mul(C.sheen).add(1));
         _ewNodeDiffuseMul(nm, function () { return sh; });
         nm.normalNode = T.normalize(T.cameraViewMatrix.mul(T.vec4(0, 1, 0, 0)).xyz);
+        /* THE GRASS TAKES NO INK: the style mask's draw writes the tuft's view depth (16 bits, green + blue) in place of its colour */
+        try {
+            var mU = _ewNodeRef(_ggMaskU), gz = T.varying(T.positionView.z.negate());
+            var zt = T.clamp(T.log2(T.max(gz, 0).add(1)).div(20), 0, 1).mul(255);
+            nm.outputNode = T.select(mU.x.greaterThan(0.5), T.vec4(0, T.floor(zt).div(255), T.fract(zt), 1), T.output);
+        } catch (e) { try { console.warn('[grass] mask node failed', e); } catch (e2) {} }
     }
     /* THE SWAYS: the grass blades, the trees' wind, the kelp — a vertex offset in the mesh's own units (after instancing,
        so a batched wood's offset is the crown's world amplitude ÷ the mesh's own scale, never the copy's) */
@@ -63223,7 +63356,8 @@ const ThreeRenderer = (function () {
             v.jolt *= Math.pow(0.001, dt);
         }
         v.cam.lookAt(lx, v.camLy, v.camLz);
-        v.renderer.render(v.scene, v.cam);
+        /* THE STYLE ON A STAGE (2026-11-12): the Entropy Style (grade + ink) on the stage's own renderer, as the settings have it */
+        if (!(typeof ThreePost !== 'undefined' && ThreePost.styleDraw && ThreePost.styleDraw(v.renderer, v.scene, v.cam))) v.renderer.render(v.scene, v.cam);
     }
 
     /* THE IDLE POSE (2026-11-01): the creator's idle pick changed on the stage's body. The model stays; the new idle (the
@@ -77158,7 +77292,7 @@ const ThreeRenderer = (function () {
                 if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); if (cat.light && cat.light.night) { pgl._ew_glowC = pgl.material.color.clone(); _hq.clockLamps.push(pgl); } }   // THE WORLD CLOCK: a night lamp's head dims by day
                 /* Phase 8 (2026-09-14): a proc may carry a POINT LIGHT (catalogue `light`: colour / intensity / dist / y) — the torches, the bulbs, the orb; capped at HQ_PROP_LIGHT_MAX per room */
                 if (cat.light && _hq.propLights < HQ_PROP_LIGHT_MAX && (!litRows || litRows.has(p))) {   // THE CEILING LAMPS FIRST
-                    var ppl = new THREE.PointLight(cat.light.color != null ? cat.light.color : 0xffd9a0, cat.light.intensity != null ? cat.light.intensity : 0.6, (cat.light.dist || 6) * U, 2);
+                    var ppl = new THREE.PointLight(cat.light.color != null ? cat.light.color : 0xffd9a0, (cat.light.intensity != null ? cat.light.intensity : 0.6) * _hqLampK(room), (cat.light.dist || 6) * U, 2);   // THE ROOM'S OWN LAMPS (shell.lampK)
                     ppl.position.y = (cat.light.y || 0) * U; grp.add(ppl); _hq.propLights++;
                     if (cat.light.night) { ppl._ew_lampI = ppl.intensity; _hq.clockLamps.push(ppl); }   // THE WORLD CLOCK (Phase 3): on at dusk, off at dawn
                     /* THE LIGHT PASS 2.2 — THE HERO LIGHT (2026-09-21): the first warm prop light of the room casts a cube shadow map (six
@@ -84659,6 +84793,7 @@ const ThreeRenderer = (function () {
         var H = _hq, L = H && H.keyLight; if (!L) return;
         var LR = _hqLightRules(), S = room.shell || {};
         var kind = (room.kind === 'box') ? (S.open ? 'open' : 'box') : (room.kind === 'bay' ? 'bay' : 'hall');
+        if (kind === 'box' && _hqJoinedHall(room)) kind = 'hall';   // ONE DOORWAY, ONE LIGHT: the hall's key, its direction too
         var rig = Object.assign({}, (LR.key && LR.key[kind]) || {}, S.rig || {});
         if (isFinite(+rig.az) && isFinite(+rig.el)) {
             var az = _hqRad(+rig.az), el = _hqRad(+rig.el);
@@ -89092,12 +89227,13 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), S = room.shell;
         var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
         var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;   // a site room's mood (blue under the collider)
+        var lmK = _hqLampK(room);   // THE ROOM'S OWN LAMPS
         lightsAt.forEach(function (Lt) {
-            var fl1 = new THREE.PointLight(plC, lightsAt.length > 1 ? 0.5 : 0.55, (lightsAt.length > 1 ? 12 : 9) * U, 2); fl1.position.set(Lt.x * U, (S.h - 0.35) * U, Lt.z * U); sc.add(fl1);
+            var fl1 = new THREE.PointLight(plC, (lightsAt.length > 1 ? 0.5 : 0.55) * lmK, (lightsAt.length > 1 ? 12 : 9) * U, 2); fl1.position.set(Lt.x * U, (S.h - 0.35) * U, Lt.z * U); sc.add(fl1);
         });
         (room.props || []).forEach(function (pp) {
             if (pp.key !== 'desk_lamp' && pp.key !== 'table_lamp') return;
-            var wl = new THREE.PointLight(0xffd9a0, 0.5, 5 * U, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); sc.add(wl);
+            var wl = new THREE.PointLight(0xffd9a0, 0.5 * lmK, 5 * U, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); sc.add(wl);
         });
     }
     /* ══ THE FILE TRACKER (OPEN_WORLD_PLAN.md fork 5 — back to the plan's default, 2026-09-26; the user: "if we need a file
@@ -89959,9 +90095,24 @@ const ThreeRenderer = (function () {
         };
     }
     /* THE ROUND JOIN: the light a closed room is entered with (_hqEnter's branch + _hqLightArm's rig) — the round hall's or a box's */
+    /* ONE DOORWAY, ONE LIGHT (2026-11-12, mondo: "the foyer is too bright and then stepping into the lobby is dark by comparison"):
+       the hemisphere, the key and the fill are the SCENE's, so while you stood in the foyer the hall beyond its open doorway wore the
+       foyer's dimmer box rig (hemisphere 0.44 against the hall's 0.78) and read dark, while the foyer's own lamps blew its white
+       plaster out. A box room joined to the round hall (HQ_STAGE_RULES.round) now wears the HALL's rig, so the hall reads the same
+       from either side of the door and nothing eases at the crossing; the room's own lamps answer for its level (shell.lampK,
+       shell.keyLamp). HQ_LIGHT_RULES.joinRig: false = each room its own rig again. */
+    function _hqJoinedHall(room) {
+        try {
+            if (!room || room.kind !== 'box' || _hqLightRules().joinRig === false || typeof hqStageRoundJoin !== 'function') return false;
+            var id = _hqRoomIdOf(room); return !!(id && hqStageRoundJoin(id));
+        } catch (e) { return false; }
+    }
+    /* THE ROOM'S OWN LAMPS (2026-11-12): `shell.lampK` (0..1, default 1) = the share of its lamps' strength a room keeps — the
+       shell's fluorescents, a desk lamp's pool, every prop light. A small white room wants less than the same lamps give a big dark one. */
+    function _hqLampK(room) { var S = (room && room.shell) || {}; var k = (S.lampK != null) ? +S.lampK : 1; return (isFinite(k) && k >= 0) ? k : 1; }
     function _hqIndoorLightVals(room) {
         var LR = _hqLightRules();
-        if (_hqRoundRoom(room)) {
+        if (_hqRoundRoom(room) || _hqJoinedHall(room)) {
             var hV = _HQ_HALL_LIGHT, kh = (LR.key && LR.key.hall) || {};
             return { hemiC: new THREE.Color(hV.hemiC), hemiG: new THREE.Color(hV.hemiG), hemiI: hV.hemiI, keyC: new THREE.Color(kh.color != null ? kh.color : hV.keyC), keyI: kh.intensity != null ? +kh.intensity : hV.keyI, fillC: new THREE.Color(hV.fillC), fillI: hV.fillI };
         }
@@ -90392,9 +90543,10 @@ const ThreeRenderer = (function () {
             /* THE FLOOR (2026-09-20): a room's mood may dim the fill, never below HQ_LIGHT_RULES.ambientFloor — the
                torches carry the vibe, the key + a cool fill keep every face readable */
             var LRb = _hqLightRules(), bxV = _hqBoxLightVals(room);
-            _hq.hemiLight = new THREE.HemisphereLight(0xd9d2c0, _hqBoxHemiG(room), bxV.hemiI); sc.add(_hq.hemiLight);   // THE BOUNCE: the floor's light on the ceiling   // (THE STAGE eases it at a door join's crossing)
-            var bxk = new THREE.DirectionalLight(0xe8ecf5, bxV.keyI); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk); _hq.keyLight = bxk;
-            var bxf = new THREE.DirectionalLight(LRb.fillColor, bxV.fillI); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(bxf); _hq.fillLight = bxf;
+            var jhV = _hqJoinedHall(room) ? _hqIndoorLightVals(room) : null;   // ONE DOORWAY, ONE LIGHT: the foyer wears the hall's rig
+            _hq.hemiLight = new THREE.HemisphereLight(jhV ? jhV.hemiC : 0xd9d2c0, jhV ? jhV.hemiG : _hqBoxHemiG(room), jhV ? jhV.hemiI : bxV.hemiI); sc.add(_hq.hemiLight);   // THE BOUNCE: the floor's light on the ceiling   // (THE STAGE eases it at a door join's crossing)
+            var bxk = new THREE.DirectionalLight(jhV ? jhV.keyC : 0xe8ecf5, jhV ? jhV.keyI : bxV.keyI); bxk.position.set(0.3, 1, 0.2).multiplyScalar(1000); sc.add(bxk); _hq.keyLight = bxk;
+            var bxf = new THREE.DirectionalLight(jhV ? jhV.fillC : LRb.fillColor, jhV ? jhV.fillI : bxV.fillI); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); sc.add(bxf); _hq.fillLight = bxf;
             _hqBoxRoomLamps(room, sc);
             _hq.cam.dist = Math.min(_hq.cam.dist, Math.max(2.2, S.d * 0.6));
         } else if (room.kind === 'bay') {
