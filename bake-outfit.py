@@ -47,6 +47,7 @@ PG, bm, bpy = BC.PG, BC.bm, BC.bpy
 import bmesh  # noqa: E402
 from mathutils import Vector, Matrix  # noqa: E402
 from mathutils.bvhtree import BVHTree  # noqa: E402
+from mathutils.kdtree import KDTree  # noqa: E402
 
 E = lambda k, d: float(os.environ.get(k, d))
 SKIN_T = E('SKIN_T', 0.20)
@@ -56,6 +57,7 @@ LONGHAIR = False
 BODYSUIT = False
 NOWINGS = False
 BAREARMS = False
+REPAINT = False
 
 
 def load(p):
@@ -348,6 +350,91 @@ def fit(name, gender, src, bodies_dir):
                 bmesh.ops.delete(bmv, geom=k_, context='FACES'); bmesh.ops.delete(bmv, geom=[v for v in bmv.verts if not v.link_faces], context='VERTS')
                 bmesh.ops.triangulate(bmv, faces=bmv.faces[:]); bmv.to_mesh(me_); dropped.append(('neck opening', len(k_)))
             bmv.free()
+    # THE ARM OPENINGS + THE NAPE (--barearms with --neckline; angel, a sleeveless dress): the skin cut of the arms left saw
+    # teeth and stubs of arm round each arm opening, and the back of the neck stood up in spikes. Both are re-cut straight:
+    # everything AHX out from the middle goes above AHZ under the eyes, and behind the square neck everything between the
+    # straps goes above NAPE under the chin
+    for o in ([o for o in keep if o not in headp] if (NECKLINE and BAREARMS) else []):
+        me_ = o.data; cen_ = np.array([p.center for p in me_.polygons])
+        if not len(cen_) or cen_[:, 2].max() < chin - 0.2: continue
+        ax = E('AHX', 0.145); za = eye.z - E('AHZ', 0.38); sx = E('SCX', 0.105); y1 = eye.y + E('SCY', 0.09); zb = chin - E('NAPE', 0.06)
+        def out_(c_): return c_.z > za and (abs(c_.x - eye.x) > ax or (abs(c_.x - eye.x) < sx and c_.y > y1 and c_.z > zb))
+        bmv = bmesh.new(); bmv.from_mesh(me_)
+        for co_, no_ in ((Vector((eye.x + ax, 0, 0)), Vector((1, 0, 0))), (Vector((eye.x - ax, 0, 0)), Vector((1, 0, 0))), (Vector((0, 0, za)), Vector((0, 0, 1))),
+                         (Vector((0, 0, zb)), Vector((0, 0, 1))), (Vector((eye.x + sx, 0, 0)), Vector((1, 0, 0))), (Vector((eye.x - sx, 0, 0)), Vector((1, 0, 0))), (Vector((0, y1, 0)), Vector((0, 1, 0)))):
+            g_ = [f for f in bmv.faces if f.calc_center_median().z > za - 0.06]
+            g_ = list(set(g_) | set(e for f in g_ for e in f.edges) | set(v for f in g_ for v in f.verts))
+            bmesh.ops.bisect_plane(bmv, geom=g_, plane_co=co_, plane_no=no_, dist=1e-5)
+        k_ = [f for f in bmv.faces if out_(f.calc_center_median())]
+        if k_ and len(k_) < len(bmv.faces):
+            bmesh.ops.delete(bmv, geom=k_, context='FACES'); bmesh.ops.delete(bmv, geom=[v for v in bmv.verts if not v.link_faces], context='VERTS')
+            bmesh.ops.triangulate(bmv, faces=bmv.faces[:])
+            # (+ the teeth the skin cut left on the other edges, behind her arm: a triangle with two free edges is a tooth, it goes; EARS 4 rounds)
+            for _ in range(int(E('EARS', 4))):
+                t_ = [f for f in bmv.faces if f.calc_center_median().z > za and sum(1 for e in f.edges if len(e.link_faces) == 1) >= 2]
+                if not t_: break
+                bmesh.ops.delete(bmv, geom=t_, context='FACES'); bmesh.ops.delete(bmv, geom=[v for v in bmv.verts if not v.link_faces], context='VERTS')
+            # (the straight cuts leave long flat faces, a strap of two triangles dips under the round of her chest: edges over STRAPSEG 2.5 cm are cut up, so THE STRAPS ON THE SKIN can lift it)
+            for _ in range(2):
+                e_ = [e for e in bmv.edges if e.calc_length() > E('STRAPSEG', 0.025) and min(e.verts[0].co.z, e.verts[1].co.z) > za]
+                if not e_: break
+                bmesh.ops.subdivide_edges(bmv, edges=e_, cuts=1); bmesh.ops.triangulate(bmv, faces=bmv.faces[:])
+            bmv.to_mesh(me_); dropped.append(('arm openings + nape', len(k_)))
+        bmv.free()
+    # PAINTED OVER (--repaint; 2026-11-12, mondo: "the angel neckline definitely need[s] work"): Meshy painted her hair locks on
+    # the chest of the dress and her hand on the back of the skirt. Cutting those faces out (LOCKZ 0.25) left bites in the
+    # neckline, a hole in the bodice and a skin patch on the skirt. They stay and take the colour of the nearest plain cloth
+    # (their UVs go to that face's middle: no texture is repainted)
+    if REPAINT:
+        hc_ = locals().get('hcol'); nr_ = 0
+        for o in [o for o in list(keep) if o not in headp]:
+            me_ = o.data
+            if len(me_.polygons) < 50:   # (a small shell all in her skin's colour is a bit of a hand left in the skirt: it goes)
+                m_ = np.median(face_cols(o, PX, IW, IH), axis=0)
+                if np.linalg.norm(m_ - skin) < E('REPSKIN', SKIN_T) or (E('REPWARM', 0) and m_[0] - m_[2] > E('REPWARM', 0)):
+                    dropped.append(('skin bit', len(me_.polygons))); keep.remove(o); bpy.data.objects.remove(o)
+                continue
+            # (+ an island of a few faces in a big shell: what the skin cuts left of a hand, lying on the skirt as a skin patch)
+            bmi = bmesh.new(); bmi.from_mesh(me_); bmi.faces.ensure_lookup_table(); isl_ = {}; lab_ = [-1] * len(bmi.faces)
+            for f in bmi.faces:
+                if lab_[f.index] >= 0: continue
+                st_ = [f]; lab_[f.index] = f.index; isl_[f.index] = 0
+                while st_:
+                    h_ = st_.pop(); isl_[f.index] += 1
+                    for e in h_.edges:
+                        for g_ in e.link_faces:
+                            if lab_[g_.index] < 0: lab_[g_.index] = f.index; st_.append(g_)
+            go_ = [bmi.faces[i] for i in range(len(lab_)) if isl_[lab_[i]] < E('REPISLE', 40)]
+            if go_ and len(go_) < len(lab_):
+                dropped.append(('island', len(go_))); bmesh.ops.delete(bmi, geom=go_, context='FACES')
+                bmesh.ops.delete(bmi, geom=[v for v in bmi.verts if not v.link_faces], context='VERTS'); bmi.to_mesh(me_)
+            bmi.free()
+            fc_ = face_cols(o, PX, IW, IH); bad_ = np.linalg.norm(fc_ - skin, axis=1) < E('REPSKIN', SKIN_T)
+            if hc_ is not None: bad_ |= np.linalg.norm(fc_ - hc_, axis=1) < E('REPHAIR', E('LOCKT', 0.15))
+            if E('REPWARM', 0):   # (REPWARM, off: on a white dress anything this much redder than blue is paint, a hand's shadow too; read at
+                uvl_ = me_.uv_layers[0].data   # the face's middle and towards each corner: the patch is smaller than the skirt's big faces)
+                for p_ in me_.polygons:
+                    us_ = np.array([uvl_[l].uv[:] for l in p_.loop_indices]); m_ = us_.mean(0)
+                    for q_ in [m_] + [m_ + 0.7 * (u_ - m_) for u_ in us_] + [m_ + 0.35 * (u_ - m_) for u_ in us_]:
+                        c_ = PX[int((q_[1] % 1) * (IH - 1)), int((q_[0] % 1) * (IW - 1)), :3]
+                        if c_[0] - c_[2] > E('REPWARM', 0): bad_[p_.index] = True; break
+            for _ in range(int(E('REPGROW', 1))):   # (+ the faces round them: the paint's soft edge)
+                vb_ = set(i for p_ in me_.polygons if bad_[p_.index] for i in p_.vertices)
+                bad_ = np.array([bad_[p_.index] or any(i in vb_ for i in p_.vertices) for p_ in me_.polygons])
+            if bad_.mean() > E('REPMAX', 0.4):   # (a whole shell in her skin's colour is bare skin Meshy modelled by itself, the angel's legs
+                if np.linalg.norm(np.median(fc_, axis=0) - skin) < E('REPSKIN', SKIN_T):   # under her skirt: they stood through its back. The body's own show)
+                    dropped.append(('bare skin', len(me_.polygons))); keep.remove(o); bpy.data.objects.remove(o)
+                continue
+            if not bad_.any(): continue
+            good_ = np.nonzero(~bad_)[0]; kd_ = KDTree(len(good_))
+            for k_, i in enumerate(good_): kd_.insert(me_.polygons[i].center, k_)
+            kd_.balance(); uv_ = me_.uv_layers[0].data
+            for i in np.nonzero(bad_)[0]:
+                g_ = me_.polygons[good_[kd_.find(me_.polygons[i].center)[1]]]
+                u_ = sum((uv_[l].uv.copy() for l in g_.loop_indices), Vector((0, 0))) / len(g_.loop_indices)
+                for l in me_.polygons[i].loop_indices: uv_[l].uv = u_
+            nr_ += int(bad_.sum())
+        if nr_: print('[bake-outfit] %s: %d faces painted with hair or skin took the plain cloth colour' % (name, nr_), flush=True)
     if BODYSUIT:   # nothing of the suit stands above its collar (a bandage end Meshy stood up to her chin)
         for o in list(keep):
             me_ = o.data; up_ = np.array([p.center.z for p in me_.polygons]) > chin - E('BSNECK', 0.04)
@@ -450,6 +537,10 @@ def fit(name, gender, src, bodies_dir):
                     v_ = pm.vertices[i_]
                     if j_ in ks and i_ not in ks and eyeM[2] - E('OPENZ', 0.42) < v_.co.z < eyeM[2] - 0.1 and abs(v_.co.x - eyeM[0]) < E('OPENX', 0.17) and (bvh.ray_cast(v_.co + v_.normal * 0.004, Vector((0, -1, 0)), 1.0)[0] is not None or abs(v_.co.x - eyeM[0]) < E('OPENX2', 0.125) and not (lambda h_: h_[0] is not None and h_[1].dot(v_.normal) > 0.2)(bvh.ray_cast(v_.co, -v_.normal, E('OPENBACK', 0.06)))): add_.add(i_)
             ks |= add_
+    if BAREARMS:   # (the same saw teeth round a sleeveless dress's arm openings and straps: the shown skin grows BARING rings there, from BAX out)
+        for _ in range(int(E('BARING', 2))):
+            ks |= set(i_ for e_ in pm.edges for i_, j_ in (tuple(e_.vertices), tuple(e_.vertices)[::-1]) if j_ in ks and i_ not in ks
+                      and pm.vertices[i_].co.z > eyeM[2] - E('BAZ', 0.45) and abs(pm.vertices[i_].co.x - eyeM[0]) > E('BAX', 0.09))
     hidden = [i for i in range(len(pm.vertices)) if i not in ks]
     # a hm08 index is hidden only when every file vertex that carries it is
     shown_base = set(int(base[i]) for i in ks)
@@ -475,7 +566,6 @@ def fit(name, gender, src, bodies_dir):
             if best is None or (q - c_).length < best[0]: best = ((q - c_).length, (run + ab.length * t_) / tot)
             run += ab.length
         return best
-    from mathutils.kdtree import KDTree
     noarm = [i for i in range(len(pm.vertices)) if armw[i] < 0.2]
     kdb = KDTree(len(noarm))
     for k_, i in enumerate(noarm): kdb.insert(pm.vertices[i].co, k_)
@@ -526,16 +616,54 @@ def fit(name, gender, src, bodies_dir):
                     for k_ in adj[st_.pop()]:
                         if k_ not in seen_ and dl[k_][0] < E('WRISTR', 0.06) and dl[k_][1] > 0.5: seen_.add(k_); st_.append(k_)
                 sleeve[sd] = seen_
+        # THE STRAPS ON THE SKIN (--barearms; angel: the dress's straps lay in her shoulders, the skin cut them into teeth): from BAZ
+        # under the eyes up, cloth lies at least STRAPOFF 10 mm outside the body (along the nearest skin's normal)
+        strapw = {}
+        if BAREARMS and not footwear:
+            if 'kda_' not in locals():
+                kda_ = KDTree(len(pm.vertices))
+                for v in pm.vertices: kda_.insert(v.co, v.index)
+                kda_.balance()
+            ns_ = 0
+            for v in o.data.vertices:
+                if v.co.z > eyeM[2] - E('BAZ', 0.45):   # (+ it moves with that skin: with the arm's weight taken off, her shoulder rose through the strap when the arm came down)
+                    c_, k_, d_ = kda_.find(v.co); n_ = pm.vertices[k_].normal; h_ = (v.co - c_).dot(n_)
+                    if h_ < E('STRAPOFF', 0.01) and d_ < E('STRAPIN', 0.1): v.co = v.co + n_ * (E('STRAPOFF', 0.01) - h_); ns_ += 1
+                    if d_ < E('STRAPNEAR', 0.03): strapw[v.index] = k_
+            if ns_: print('[bake-outfit] %s: %d cloth vertices lifted onto the skin' % (name, ns_), flush=True)
+        # THE BACK UNDER LONG HAIR (--bodysuit --longhair; mummy: tan flecks on her hair at the back): Meshy modelled the suit
+        # round her own hair, its lumps stand through the creator hair that lies on her back. The suit's upper back lies
+        # no more than BSBACK 6 mm off the body
+        if BODYSUIT and LONGHAIR and len(o.data.polygons) >= E('BSSTRIP', 500):
+            nb_ = 0
+            for v in o.data.vertices:
+                if v.co.y > eyeM[1] + 0.02 and eyeM[2] - E('BSBACKZ', 0.75) < v.co.z < eyeM[2] - E('BSBACKT', 0.18) and abs(v.co.x - eyeM[0]) < E('BSBACKX', 0.15):   # (between the shoulder blades: the shoulders' nearest body point is not the arm)
+                    c_, k_, d_ = kdb.find(v.co)
+                    if d_ > E('BSBACK', 0.006): v.co = c_ + (v.co - c_) * (E('BSBACK', 0.006) / d_); nb_ += 1
+            if nb_: print('[bake-outfit] %s: %d back vertices laid on the body under her hair' % (name, nb_), flush=True)
         el0 = {e.key: (o.data.vertices[e.vertices[0]].co - o.data.vertices[e.vertices[1]].co).length for e in o.data.edges}
+        # A HANGING END (--bodysuit; 2026-11-12, mondo: "the mummy bandages ... definitely need work"): a loose bandage end is its own
+        # small shell hanging from an arm or the waist. Weighted vertex by vertex it tore (its top on the arm, its tip on the hips:
+        # the torn faces went and the tip floated by itself beside her hand). It hangs stiff from the ONE bone its top is on
+        rig = None
+        if BODYSUIT and len(o.data.polygons) < E('BSSTRIP', 500) and not footwear:
+            top_ = [v for v in o.data.vertices if v.co.z > zs.max() - 0.1 * (zs.max() - zs.min())]; acc_ = {}
+            for v in top_:
+                for g in v.groups:
+                    if names[g.group] in SK: acc_[names[g.group]] = acc_.get(names[g.group], 0) + g.weight
+            if acc_: rig = {max(acc_, key=acc_.get): 1.0}
         for v in o.data.vertices:
             M = Matrix(((0,) * 4,) * 4); tw = 0; w = {}
             for g in v.groups:
                 n = names[g.group]
                 if n in SK and g.weight > 1e-4: w[n] = w.get(n, 0) + g.weight
+            if rig is not None: w = dict(rig)
+            if v.index in strapw: w = {n: x for n, x in bwt[strapw[v.index]].items() if n in SK} or w
+            fix_ = rig is not None or v.index in strapw
             # LOOSE CLOTH (a robe's skirt, a cape, a coat's tail): hanging off the legs it must not follow one leg like a trouser
             # leg does (the hem tore into a tent between the knees): the further off the skin, the more of its leg weight goes to
             # the hips and the more the rest is shared between the two legs
-            for sd in ('L', 'R'):
+            for sd in (() if fix_ else ('L', 'R')):
                 aw = sum(x for n, x in w.items() if n in ARMN[sd])
                 if aw < 0.15 or one_side or v.index in sleeve[sd] or not E('SLEEVES', 1): continue   # (a glove, a gauntlet: on its arm)
                 rest_ = {}
@@ -551,7 +679,7 @@ def fit(name, gender, src, bodies_dir):
             if footwear:
                 for t_, f_ in (('LeftToeBase', 'LeftFoot'), ('RightToeBase', 'RightFoot')):
                     if t_ in w: w[f_] = w.get(f_, 0) + w.pop(t_)
-            if lw > 0.05 and not one_side:
+            if lw > 0.05 and not one_side and not fix_:
                 loc, nor, idx, dist = pbvh.find_nearest(v.co)
                 f = 0.0 if loc is None else min(1.0, max(0.0, (dist - E('LOOSE0', 0.04)) / E('LOOSE1', 0.15)))
                 # THE CLOTH OVER A LEG (2026-11-12, mondo: "fix the wizards tall boots showing through his robe"): shared evenly, the
@@ -577,9 +705,26 @@ def fit(name, gender, src, bodies_dir):
             for k_ in p_.edge_keys:
                 l_ = (me.vertices[k_[0]].co - me.vertices[k_[1]].co).length
                 if l_ > E('TORN', 0.06) and l_ > 3 * el0.get(k_, l_): torn_.add(p_.index); break
+            if BODYSUIT and max(me.vertices[i_].co.z for i_ in p_.vertices) > eyeM[2] - 0.115 - E('BSNECK', 0.04) + E('BSSPIKE', 0.02): torn_.add(p_.index)   # (a bandage end un-skinned up past the collar: a spike to her chin)
+        # (--barearms: what stands out past the arm opening after the cloth is un-posed is a stub of the arm the cuts missed, a flap in her armpit)
+        if BAREARMS: torn_ |= set(p_.index for p_ in me.polygons if p_.center.z > eyeM[2] - E('AHZ', 0.38) and abs(p_.center.x - eyeM[0]) > E('AHX', 0.145) + E('AHPAD', 0.022))
         torn += len(torn_)
         F = [tuple(t.vertices) for t in me.loop_triangles if t.polygon_index not in torn_]
         FUV = [[(uv[l].uv[0], 1.0 - uv[l].uv[1]) for l in t.loops] for t in me.loop_triangles if t.polygon_index not in torn_]   # (glTF's v runs down)
+        # A CUT-OFF BIT (--bodysuit): what a torn face cut off its shell (under BSCHIP 40 triangles, not the shell's biggest part)
+        # floated by itself beside her hand. It goes with the torn face
+        if BODYSUIT and torn_ and F:
+            par_ = list(range(len(P)))
+            def fd_(i):
+                while par_[i] != i: par_[i] = par_[par_[i]]; i = par_[i]
+                return i
+            for f in F:
+                par_[fd_(f[0])] = fd_(f[1]); par_[fd_(f[2])] = fd_(f[1])
+            cnt_ = {}
+            for f in F: cnt_[fd_(f[0])] = cnt_.get(fd_(f[0]), 0) + 1
+            big_ = max(cnt_.values()); ok_ = [cnt_[fd_(f[0])] >= min(E('BSCHIP', 40), big_) for f in F]
+            if not all(ok_): print('[bake-outfit] %s: %d triangles cut off by a torn face left out' % (name, len(ok_) - sum(ok_)), flush=True)
+            F = [f for f, k in zip(F, ok_) if k]; FUV = [u for u, k in zip(FUV, ok_) if k]
         g = out.setdefault('hat' if o in hats else 'outfit', {'P': [], 'N': [], 'F': [], 'FUV': [], 'W': []})
         base_i = sum(len(p) for p in g['P'])
         g['P'].append(P); g['N'].append(N); g['F'] += [tuple(i + base_i for i in f) for f in F]; g['FUV'] += FUV; g['W'] += W
@@ -597,10 +742,10 @@ def main():
     ap.add_argument('--name', required=True); ap.add_argument('--label', required=True); ap.add_argument('--gender', default='male')
     ap.add_argument('--src', required=True); ap.add_argument('--bodies', required=True)
     ap.add_argument('--out', default=os.path.join(HERE, 'charactercreation', 'wear'))
-    ap.add_argument('--headgear', action='store_true'); ap.add_argument('--neckline', action='store_true'); ap.add_argument('--longhair', action='store_true'); ap.add_argument('--bodysuit', action='store_true'); ap.add_argument('--nowings', action='store_true'); ap.add_argument('--barearms', action='store_true')
+    ap.add_argument('--headgear', action='store_true'); ap.add_argument('--repaint', action='store_true'); ap.add_argument('--neckline', action='store_true'); ap.add_argument('--longhair', action='store_true'); ap.add_argument('--bodysuit', action='store_true'); ap.add_argument('--nowings', action='store_true'); ap.add_argument('--barearms', action='store_true')
     ap.add_argument('--metal', type=float, default=0.0); ap.add_argument('--rough', type=float, default=0.8); ap.add_argument('--px', type=int, default=2048)
     a = ap.parse_args()
-    global HEADGEAR, NECKLINE, LONGHAIR, BODYSUIT, NOWINGS, BAREARMS; HEADGEAR = a.headgear; NECKLINE = a.neckline; LONGHAIR = a.longhair; BODYSUIT = a.bodysuit; NOWINGS = a.nowings; BAREARMS = a.barearms
+    global HEADGEAR, NECKLINE, LONGHAIR, BODYSUIT, NOWINGS, BAREARMS, REPAINT; REPAINT = a.repaint; HEADGEAR = a.headgear; NECKLINE = a.neckline; LONGHAIR = a.longhair; BODYSUIT = a.bodysuit; NOWINGS = a.nowings; BAREARMS = a.barearms
     from PIL import Image
     from scipy.spatial import cKDTree
     pieces, hid_base, im = fit(a.name, a.gender, a.src, a.bodies)
