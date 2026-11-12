@@ -798,3 +798,4 @@ R2 files: data.js, map.js, ui.js, battle.js, three-vfx-effects.js, styles-base.c
 - THE QUICK LISTS (2026-11-12, mondo): a clicked enemy / ally / square list keeps only the rows the step allows
   (hud.js `_tutQuickRows` over the three `_compute*Actions`, ui.js `_tutQuickOk`; a row that walks first needs MOVE allowed too).
 - THE MOUSE COMES BACK (2026-11-12): ui.js `_tutFreeMouse` releases a pointer lock at a lesson's launch and (every poll) while it boots, is finished, or a panel waits for CONTINUE; the HQ walk's late lock had stayed on the shared canvas between Tape 1 and Tape 2 (not reproduced headlessly).
+- Tape 2 'press' step: aim tip on ATTACK (green, `aim: { attack: { t, c } }`: a tip may be a string or {t: html, c: colour}) says the green ! = super effective and basic attacks follow the type chart; the step's say now reads 'A green ! on a target row marks a weakness' (was 'means the refund is guaranteed', untrue on that step: the press is already spent).
