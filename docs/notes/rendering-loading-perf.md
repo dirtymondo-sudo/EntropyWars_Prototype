@@ -1806,3 +1806,17 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
   stage zone gets (1) + (2). Count: the hall + foyer draw 19 point lights (was 13 / 12); other zones at most own + 4.
 - Seen: cloud browser (node renderer on WebGL 2), standing in the foyer's doorway and at the hall's centre. NOT seen: his Mac / real
   WebGPU, the frame cost of the six extra lamps there. Proof /mnt/project-files/main-hall-far-walls/.
+
+## THE STALE LIGHT LIST (2026-11-12, mondo: CONTINUE into the Main Hall, "after the load screen loads its just a black screen") — three-renderer.js
+- His console: `a draw failed and was skipped (Render Pipeline / RenderPipeline: can't access property "map", lightData is undefined)`,
+  stack NodeMaterialObserver.equals < needsRefresh < _renderBundle. Real WebGPU only (the render bundles are WebGPU-only).
+- **Cause**: three's observer keeps, per render object, one record per light that casts a shadow (or a spot with a sheet), taken at
+  the object's first draw; `equals` walks the frame's CURRENT list over it with no length check. A bundle REPLAY never asks
+  three for the render objects again, so a shadow light that joined the list after a non-static group was recorded read past the
+  record and threw. The throw skipped the WHOLE frame; `r._ew_lights` (what `_ewBunTick`'s lamp signature reads) is noted at the
+  frame's first real draw, which never came, so the tick never saw the lamps move and never re-recorded: black for good.
+  Not the save (PR #1219) itself; any arrival where the light list grows after the first recording could hit it.
+- **Fix**: (1) the `needsRefresh` wrapper (THE LATE SHEETS) catches the throw, takes the record again from the frame's lights,
+  returns FULL and flags the object's group (`_ew_bunFree`) to re-record next tick; count in `_ewBun.staleLights`.
+  (2) `_ewRigTick`: a rig that grew bumps `_ewBun.epoch`, so every group re-records in that same frame.
+- A throw anywhere in a frame's bundle replay blacks the frame: keep new replay-time hooks inside a try.
