@@ -2697,3 +2697,5 @@ team's score number, like in the same spot"): the digits step out, the +N holds,
 
 - 11-12 later, mondo: "it's maybe a little too wavy": the bounce / double bounce / up-and-down are gone. Every size is ONE
   overshoot and a settle (t4 lands from big); the digits' bump on the roll is smaller. Sizes, flash and ring unchanged.
+- 11-12 12:45 AM: "too wavy" was the GRASS, not the +N ("i meant the grass, sorry ... bring back"): the bounce / double
+  bounce motion of PR #1174 is back as it was.
