@@ -56242,6 +56242,18 @@ const ThreeRenderer = (function () {
         /* THE SHAPED EARS (2026-11-03): the cat-ear targets (sprites.js EW_SHAPE_EARS). Their offsets are also kept apart (part.earD) so
            the hair's skull box + skull map are measured WITHOUT them: with them in, the ear tips widened the skull and the hair grew
            out over the ears and hid them */
+        /* THE RESTING MOUTH (2026-11-12, mondo: "the mouth being pursed is a thing for all mpfb bodies, see if you can fix that for all
+           of them"): MakeHuman's neutral mouth is narrow with full lips pushed forward and the corners turned down, so every MPFB
+           face pouted at rest. Every MPFB body's mouth sliders now start from a relaxed mouth (wider, flatter lips, level corners,
+           set back); a look's own slider values add to it, so every look keeps what it changed. Console: window.EW_MOUTH_REST = false
+           (MakeHuman's mouth back) or an object of slider offsets to try others; a rig built after the change shows it. */
+        var MOUTH_REST = { mouthWidth: 0.25, lowerLip: -0.35, upperLip: -0.2, mouthCorners: 0.12, mouthDepth: -0.4 };
+        function mouthRest(k) {
+            var w = (typeof window !== 'undefined') ? window.EW_MOUTH_REST : undefined;
+            if (w === false) return 0;
+            var t = (w && typeof w === 'object') ? w : MOUTH_REST;
+            return +t[k] || 0;
+        }
         var EAR_KEYS = (typeof EW_SHAPE_EARS !== 'undefined' ? EW_SHAPE_EARS : []).map(function (r) { return r[0]; });
         function shapeBody(part, P, a) {
             var N = part.count, i, k;
@@ -56251,7 +56263,7 @@ const ThreeRenderer = (function () {
                 var hs = part.height > 0.5 ? part.height / SHAPE_REF_H : 1;
                 SHAPE_KEYS.forEach(function (key) {
                     if ((key === 'bust' || BODY_FEMALE[key]) && !bustBody(part)) return;   // THE BUST: female bodies only (mondo 2026-11-01)
-                    var v = shapeVal(a, key); if (Math.abs(v) < 1e-4) return;
+                    var v = shapeVal(a, key) + mouthRest(key); if (Math.abs(v) < 1e-4) return;
                     var tk = BODY_GENDERED[key] ? key + (bustBody(part) ? '_f' : '_m') : key;   // THE BODY DETAILS: the macro of the body's gender
                     var arr = T[tk] && T[tk][v > 0 ? 0 : 1]; if (!arr) return;
                     var gk = SHAPE_GAIN[key], g = Math.abs(v) * (Array.isArray(gk) ? gk[v > 0 ? 0 : 1] : (gk || 1)) * hs;   // [the + end, the - end] where one side tears first

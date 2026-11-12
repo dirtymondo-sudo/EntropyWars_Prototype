@@ -1966,3 +1966,9 @@ redistribution, never in the repo) and the Meshy / code swap candidates by name.
   look. `window.EW_DISABLE_CAST_LOOKS = true` = her old rig. Seen: viewer four sides + walk + head, a portrait-studio bust. NOT
   seen: her in DOOR HQ or in the first fight. Left: small dark teeth in the blouse collar's V, mouth reads a little pursed, the
   fringe sweeps to the other side from her old model. Proof: /mnt/project-files/meshy-remake-batch1/locke_look_check.jpg.
+  LOCKE'S COLLAR (11-12, mondo: "fix the dark teeth in the v of the blouse collar"): her command is now `ISLENECK=0.2 OPENFRONT=1
+  SKINISLE=400` (OPENSKIN dropped). OPENFRONT (off by default): skin on the front of the chest with no cloth straight in front
+  of it and none within 8 cm behind it (not her bust standing through the blouse) is shown + one ring under the collar's edge,
+  and the collar's cloth (z above eye - 0.27, |x| < 0.07) is lifted 6 mm outside the skin so that ring does not stand through.
+  Tried and dropped: the ring without the lift (skin patch on the blouse), the lift down to the bust (blouse through the jacket).
+  File 921dfad8. Proof: /mnt/project-files/meshy-remake-batch1/locke_collar_before_after.jpg.

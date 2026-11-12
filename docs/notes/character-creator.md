@@ -1944,3 +1944,13 @@ Proof: `/mnt/project-files/meshy-parts-20261112/cowboy_face_pilot.jpg`.
 - **The mask is measured, not drawn:** `python3 bake-makeup.py model=<face_landmarker.task>` (repo tooling; loads bake-face.py's reader / rasteriser / landmark code) asks every face texel where it is against MediaPipe's eye rings + cheek points on mpfb_female. Rerun only to change the shapes; then update EW_MH_MAKEUP.box, the manifest row and `--put` the PNG.
 - **The knight** (RACE_REMADE_LOOKS) wears liner #17110f, shadow #6b4a55, blush #c9727c and the creator's anime eyes `mhm_spamrakuen_sr_anime_maid-san_red_eyes` tinted #3a2418 (mondo: "there are literally anime eyes available in the creator": Eye materials rows, ids `mhm_*anime*`). For the next stylised unit: use these, do not say the eyes cannot carry over.
 - Checked in the real creator (team builder > knight > GEAR > CHARACTER CREATOR > USE THE REMADE KNIGHT LOOK > FACE > EYES), WebGL2. Not checked: male bodies, online guest, WebGPU. Proof /mnt/project-files/meshy-parts-20261112/knight_makeup.jpg.
+
+## THE RESTING MOUTH (2026-11-12, mondo: "the mouth being pursed is a thing for all mpfb bodies, see if you can fix that for all of them")
+MakeHuman's neutral mouth is narrow, with full lips pushed forward and the corners turned down: every MPFB face pouted at rest.
+three-renderer.js `MOUTH_REST` (beside SHAPE_GAIN) = `{ mouthWidth: 0.25, lowerLip: -0.35, upperLip: -0.2, mouthCorners: 0.12,
+mouthDepth: -0.4 }` is ADDED to the look's own mouth sliders in shapeBody's MPFB branch (`mouthRest(key)`), so every MPFB body
+starts from a relaxed mouth and every look keeps what it changed. Nothing is stored in a look; classic bodies are untouched.
+Console: `window.EW_MOUTH_REST = false` = MakeHuman's mouth, or an object of offsets to try (a rig built after it shows it).
+First round (width 0.35, corners 0.3) read as a smile on the catgirl and the mummy; toned down. Not the cause: the idle face's
+breath (jawOpen 0.02-0.035). Still open: Agent Locke's fitted face (lockeFace) keeps a heavy lip line.
+Proof: /mnt/project-files/meshy-remake-batch1/resting_mouth_before_after.jpg (plain face, knight, cowboy, wizard, catgirl, mummy, robinhood, Locke).
