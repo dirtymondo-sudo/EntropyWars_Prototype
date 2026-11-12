@@ -1237,7 +1237,7 @@ function SbClock({ startTime, live }) {
      are held; the digits keep the old score, everything scored under the bars adds into ONE +N per side, and it fires
      SCORE_POP_RULES.afterBarsMs after the bars have left. Never held longer than maxWaitMs.
    · THE SIZE: SCORE_POP_RULES.tiers by the points (a kill-count mode's +1 weighs as a kill): tick, pop, bounce, slam.
-   · THE COUNT: the +N drops out under its side's digits, holds, flies up into them, and the digits roll up to the new score.
+   · THE COUNT: the +N stands ON its side's digits (same spot, the digits step out), holds, and the digits come back rolling up to the new score.
    Off switch: window.EW_NO_SCORE_POP = true. */
 const SCORE_POP_RULES = {
   /* [points from, name, glyph px, in ms, hold ms, roll ms] */
@@ -1249,7 +1249,7 @@ const SCORE_POP_RULES = {
   killWeight: 25,      // a mode whose score counts kills / captures: +1 is sized like an Arena kill
 };
 const _sbPop = { key: null, real: { 1: 0, 2: 0 }, shown: { 1: 0, 2: 0 }, pend: { 1: 0, 2: 0 }, since: { 1: 0, 2: 0 },
-  roll: { 1: null, 2: null }, busy: { 1: 0, 2: 0 }, blockedAt: 0, raf: 0, weight: 1 };
+  roll: { 1: null, 2: null }, busy: { 1: 0, 2: 0 }, cover: { 1: 0, 2: 0 }, blockedAt: 0, raf: 0, weight: 1 };
 function _sbPopBlocked() {
   if (document.querySelector('.acam-chrome.active:not(.light), .ews-letterbox, .vs-letterbox-in')) return true;
   const sb = document.querySelector('.ew-scoreboard .ew-score-plate');
@@ -1268,7 +1268,7 @@ function _sbPopFeed(st, mode) {
   const off = window.EW_NO_SCORE_POP || st.phase !== 'battle';
   if (key !== S.key || off) {
     S.key = key;
-    for (const p of [1, 2]) { S.real[p] = S.shown[p] = cur[p]; S.pend[p] = 0; S.since[p] = 0; S.roll[p] = null; }
+    for (const p of [1, 2]) { S.real[p] = S.shown[p] = cur[p]; S.pend[p] = 0; S.since[p] = 0; S.roll[p] = null; S.cover[p] = 0; }
     return [cur[1], cur[2]];
   }
   S.weight = mode.id === 'arena' || mode.scoreLabel === 'PTS' ? 1 : SCORE_POP_RULES.killWeight;
@@ -1324,27 +1324,34 @@ function _sbPopFire(p, silent) {
   const T = R.tiers.find(t => n * S.weight >= t[0]) || R.tiers[R.tiers.length - 1];
   const tier = T[1], px = T[2], inMs = T[3], holdMs = T[4], rollMs = T[5];
   const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  /* where: under the plate, centred on this side's digits (offsets, so the UI Maker's move / scale of the plate carries it) */
-  let x = num.offsetWidth / 2, y = num.offsetHeight / 2;
-  for (let el = num; el && el !== plate; el = el.offsetParent) { x += el.offsetLeft; y += el.offsetTop; }
+  /* where: ON this side's digits, the same spot (mondo 2026-11-12: "pop up over the team's score number, like in the same spot"):
+     the digits step out while the +N stands in their place, and come back rolling up to the new score. P1's +N grows from the
+     digits' right edge, P2's from their left, so a big one never covers the other side's score. Offsets, so the UI Maker's
+     move / scale of the plate carries it. */
+  let nx = 0, y = num.offsetHeight / 2;
+  for (let el = num; el && el !== plate; el = el.offsetParent) { nx += el.offsetLeft; y += el.offsetTop; }
   const el = document.createElement('div');
   el.className = 'ew-sb-pop p' + p + ' ' + tier;
-  el.style.left = x + 'px';
+  if (p === 1) el.style.right = (plate.clientWidth - nx - num.offsetWidth) + 'px'; else el.style.left = nx + 'px';
+  el.style.top = y + 'px';
+  el.style.transformOrigin = (p === 1 ? '100%' : '0%') + ' 50%';
   el.style.fontSize = px + 'px';
   el.style.fontFamily = getComputedStyle(num).fontFamily;
   el.textContent = '+' + n;
   host.appendChild(el);
-  const up = -(plate.offsetHeight - y + px * 0.7);   // the flight back up into the digits
-  const C = 'translateX(-50%) ';
+  S.cover[p] = (S.cover[p] || 0) + 1; num.style.opacity = '0';
+  const uncover = () => { S.cover[p] = Math.max(0, (S.cover[p] || 1) - 1); if (!S.cover[p]) { const nm = document.querySelector('.ew-scoreboard .ew-sb-num.p' + p); if (nm) nm.style.opacity = ''; } };
+  const x = nx + num.offsetWidth / 2;
+  const C = 'translateY(-50%) ';
   const IN = calm ? [{ opacity: 0, transform: C + 'scale(1)' }, { opacity: 1, transform: C + 'scale(1)' }]
-    : tier === 't1' ? [{ opacity: 0, transform: C + 'translateY(-6px) scale(.7)' }, { opacity: 1, transform: C + 'translateY(0) scale(1)' }]
-    : tier === 't2' ? [{ opacity: 0, transform: C + 'translateY(-8px) scale(.4)' }, { opacity: 1, transform: C + 'translateY(0) scale(1.28)', offset: .6 }, { opacity: 1, transform: C + 'scale(1)' }]
-    : tier === 't3' ? [{ opacity: 0, transform: C + 'translateY(-12px) scale(.3)' }, { opacity: 1, transform: C + 'translateY(5px) scale(1.42)', offset: .38 },
-        { opacity: 1, transform: C + 'translateY(-4px) scale(.92)', offset: .62 }, { opacity: 1, transform: C + 'translateY(2px) scale(1.08)', offset: .82 }, { opacity: 1, transform: C + 'scale(1)' }]
-    : [{ opacity: 0, transform: C + 'translateY(4px) scale(2.6)' }, { opacity: 1, transform: C + 'translateY(6px) scale(.82)', offset: .3 },
-        { opacity: 1, transform: C + 'translateY(-7px) scale(1.3)', offset: .5 }, { opacity: 1, transform: C + 'translateY(3px) scale(.94)', offset: .7 },
+    : tier === 't1' ? [{ opacity: 0, transform: C + 'scale(.6)' }, { opacity: 1, transform: C + 'scale(1)' }]
+    : tier === 't2' ? [{ opacity: 0, transform: C + 'scale(.4)' }, { opacity: 1, transform: C + 'scale(1.28)', offset: .6 }, { opacity: 1, transform: C + 'scale(1)' }]
+    : tier === 't3' ? [{ opacity: 0, transform: C + 'scale(.3)' }, { opacity: 1, transform: C + 'translateY(4px) scale(1.42)', offset: .38 },
+        { opacity: 1, transform: C + 'translateY(-3px) scale(.92)', offset: .62 }, { opacity: 1, transform: C + 'translateY(2px) scale(1.08)', offset: .82 }, { opacity: 1, transform: C + 'scale(1)' }]
+    : [{ opacity: 0, transform: C + 'scale(2.6)' }, { opacity: 1, transform: C + 'translateY(5px) scale(.82)', offset: .3 },
+        { opacity: 1, transform: C + 'translateY(-5px) scale(1.3)', offset: .5 }, { opacity: 1, transform: C + 'translateY(3px) scale(.94)', offset: .7 },
         { opacity: 1, transform: C + 'translateY(-2px) scale(1.06)', offset: .86 }, { opacity: 1, transform: C + 'scale(1)' }];
-  S.busy[p] = performance.now() + inMs + holdMs * 0.6;   // the next +N on this side waits its turn
+  S.busy[p] = performance.now() + inMs + holdMs + R.outMs + 60;   // the next +N on this side waits its turn
   const big = tier === 't3' || tier === 't4';
   if (big && !calm) {
     plate.classList.remove('ew-sb-flash', 'p1', 'p2', 't3', 't4'); void plate.offsetWidth;
@@ -1353,7 +1360,7 @@ function _sbPopFire(p, silent) {
     if (tier === 't4') {
       const ring = document.createElement('div');
       ring.className = 'ew-sb-pop-ring p' + p;
-      ring.style.left = x + 'px'; ring.style.top = 'calc(100% + ' + (px * 0.6) + 'px)';
+      ring.style.left = x + 'px'; ring.style.top = y + 'px';
       host.appendChild(ring);
       const ra = ring.animate([{ opacity: .9, transform: 'translate(-50%,-50%) scale(.3)' }, { opacity: 0, transform: 'translate(-50%,-50%) scale(2.4)' }], { duration: 620, easing: 'cubic-bezier(.2,.7,.3,1)' });
       ra.onfinish = ra.oncancel = () => ring.remove();
@@ -1361,12 +1368,12 @@ function _sbPopFire(p, silent) {
   }
   const a = el.animate(IN, { duration: inMs, easing: 'cubic-bezier(.3,.9,.4,1)', fill: 'forwards' });
   a.onfinish = () => setTimeout(() => {
-    if (!el.isConnected) { absorb(1); return; }
+    if (!el.isConnected) { uncover(); absorb(1); return; }
     const o = el.animate(calm ? [{ opacity: 1 }, { opacity: 0 }]
-      : [{ opacity: 1, transform: C + 'translateY(0) scale(1)' }, { opacity: .85, transform: C + 'translateY(' + up + 'px) scale(.45)' }],
+      : [{ opacity: 1, transform: C + 'scale(1)' }, { opacity: 0, transform: C + 'scale(.5)' }],
       { duration: R.outMs, easing: 'cubic-bezier(.5,0,.9,.4)', fill: 'forwards' });
     o.onfinish = o.oncancel = () => {
-      el.remove();
+      el.remove(); uncover();
       absorb(rollMs);
       const nm = document.querySelector('.ew-scoreboard .ew-sb-num.p' + p);
       if (nm && !calm && typeof nm.animate === 'function') {
@@ -1375,7 +1382,7 @@ function _sbPopFire(p, silent) {
       }
     };
   }, holdMs);
-  a.oncancel = () => { el.remove(); absorb(1); };
+  a.oncancel = () => { el.remove(); uncover(); absorb(1); };
 }
 if (typeof window !== 'undefined') window._ewScorePopState = () => JSON.parse(JSON.stringify({ real: _sbPop.real, shown: _sbPop.shown, pend: _sbPop.pend, blocked: _sbPopBlocked() }));
 
@@ -15250,9 +15257,9 @@ function _hudHideCss() {
     .ew-party-reserve-bar { width: 22px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
     .ew-party-reserve.seated { opacity: 0.72; }
     .ew-party-reserve-seat { position: absolute; top: -5px; right: -4px; font-size: 9px; line-height: 1; }
-    /* ══════════ THE SCORE POP (hud.js _sbPopFire, 2026-11-12): the +N under the score plate ══════════ */
+    /* ══════════ THE SCORE POP (hud.js _sbPopFire, 2026-11-12): the +N on the score digits ══════════ */
     .ew-sb-pops { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
-    .ew-sb-pop { position: absolute; top: calc(100% + 3px); left: 50%; transform: translateX(-50%); line-height: 1; white-space: nowrap;
+    .ew-sb-pop { position: absolute; transform: translateY(-50%); line-height: 1; white-space: nowrap;
       font-weight: 700; letter-spacing: 0.04em; color: #4fd8ff; will-change: transform, opacity;
       text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 0 12px rgba(79,216,255,0.55); }
     .ew-sb-pop.p2 { color: #ff4fa3; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 0 12px rgba(255,79,163,0.55); }
