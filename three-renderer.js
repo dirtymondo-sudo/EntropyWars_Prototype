@@ -49658,7 +49658,8 @@ const ThreeRenderer = (function () {
         allies: true, foes: true, active: true, activeCol: '#ffffff', pulse: true,
         cam: 'off', camCol: '#ffffff', camOp: 0.85, fog: false, fogCol: '#8c96aa', fogOp: 0.35,
         ground: 'none', spawn: false, nexus: false, cube: false, neutral: '#f2c64a',
-        auto: 'board', aim: false
+        auto: 'board', aim: false,
+        pvReach: true, pvArea: true, pvArrow: true, pvCursor: true, pvOp: 1
     };
     var _mm = { el: null, cv: null, ctx: null, cls: '', sig: '', next: 0, boxKey: '', cw: 0, ch: 0, fogRef: null, drawnAt: 0, imgs: new Map() };
     function _mmLook() {
@@ -49766,6 +49767,69 @@ const ThreeRenderer = (function () {
         }
         return out;
     }
+    /* THE PREVIEWS ON THE MINIMAP (2026-11-12, mondo: "I also want the minimap to kind of mirror the spell previews and
+       have arrows and tile highlights and damage aoes etc, like a simplified mini version of the board"). ONE SOURCE: it
+       reads what the board itself is showing this frame — every visible tile plate in highlightGroup (the selection's
+       reach from rebuildHighlights, every setOverlay layer: spell / attack reach, the AoE footprint, landings, the move
+       preview), the board's arrows (_arrowBuilds) and the hover cursor — so it cannot disagree with the board, it takes
+       the UI Maker's tile + arrow colours with it, and it is the viewer's own (the board never paints the other seat's
+       aim). Reach = a faint wash, a hit / landing plate (_OVERLAY_STYLE fill >= 0.5) = a solid square, and a unit standing
+       on a solid square gets a ring. Left out: the board's standing markings (zones, weather, telegraphs, the action
+       glow), the hovered enemy's range wash, the Inspect search map. UI Maker > Minimap > Previews: pv* switches. */
+    var _MM_PV_SKIP = { zone: 1, weather: 1, actionGlow: 1, arrow: 1, enemyRange: 1, searchMap: 1, telegraph: 1 };
+    function _mmPreview(L, W, H) {
+        var out = { tiles: [], hit: {}, arrows: [], cur: null, sig: '' };
+        if (!highlightGroup || highlightGroup.visible === false || !(+L.pvOp > 0)) return out;
+        if (typeof state === 'undefined' || !state || state.phase !== 'battle' || state.winner) return out;
+        var ts = CONFIG.tileSize || BASE_TILE, ch = highlightGroup.children, byKey = {}, sig = '';
+        if (L.pvReach || L.pvArea || L.pvCursor) {
+            for (var i = 0; i < ch.length; i++) {
+                var o = ch[i];
+                if (!o || !o.visible || o === hoverMesh || o === selTileMesh || o === underfootMesh) continue;
+                var ov = o._ew_overlay;
+                if (ov && _MM_PV_SKIP[ov]) continue;
+                var m = o.material;
+                if (!m || Array.isArray(m) || !o.position) continue;
+                var x = Math.floor(o.position.x / ts), y = Math.floor(o.position.z / ts);
+                if (!(x >= 0 && y >= 0 && x < W && y < H)) continue;
+                if (m === _cursorBracketMat) { if (L.pvCursor) out.cur = [x, y]; continue; }
+                var cv = m._ew_glowBase || (m.uniforms && m.uniforms.uColor && m.uniforms.uColor.value);
+                if (!cv || typeof cv.getHexString !== 'function') continue;
+                var st = ov ? (_OVERLAY_STYLE[ov] || { fill: 0.34 }) : { fill: 0.12 };
+                var hit = st.fill >= 0.5;
+                if (hit ? !L.pvArea : !L.pvReach) continue;
+                var a = hit ? 0.72 : (st.fill >= 0.28 ? 0.4 : 0.26), k = x + ',' + y, was = byKey[k];
+                if (was && was.a > a) continue;
+                byKey[k] = { x: x, y: y, col: '#' + cv.getHexString(), a: a, hit: hit };
+            }
+            for (var bk in byKey) {
+                var t = byKey[bk];
+                out.tiles.push(t);
+                if (t.hit) out.hit[bk] = t.col;
+                sig += bk + t.col + (t.hit ? 'h' : t.a > 0.3 ? 'm' : 'r') + ';';
+            }
+            /* washes under, solid squares over */
+            out.tiles.sort(function (p, q) { return p.a - q.a; });
+            if (L.pvCursor && !out.cur && hoverMesh && hoverMesh.visible && _lastHoverX >= 0 && _lastHoverY >= 0 && _lastHoverX < W && _lastHoverY < H
+                && _tkDecWas) out.cur = [_lastHoverX, _lastHoverY];
+            if (out.cur) sig += 'c' + out.cur[0] + ',' + out.cur[1];
+        }
+        if (L.pvArrow && _arrowBuilds.length && _arrowMeshes.length && _arrowMeshes[0].visible !== false) {
+            var AL = _arrowLook();
+            for (var ai = 0; ai < _arrowBuilds.length && ai < 24; ai++) {
+                var b = _arrowBuilds[ai], pts = [];
+                if (!b || !b.pts || b.pts.length < 2) continue;
+                for (var pi = 0; pi < b.pts.length; pi++) pts.push([b.pts[pi].x / ts, b.pts[pi].z / ts]);
+                var kind = (b.opts && b.opts.kind) || _ARROW_HEX_KIND[b.hex] || '';
+                var hx = (kind && AL.cols && AL.cols[kind] !== undefined) ? AL.cols[kind] : b.hex;
+                var col = '#' + ('000000' + ((+hx) >>> 0).toString(16)).slice(-6);
+                out.arrows.push({ pts: pts, col: col });
+                sig += 'a' + col + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1) + '>' + pts[pts.length - 1][0].toFixed(1) + ',' + pts[pts.length - 1][1].toFixed(1) + '/' + pts.length;
+            }
+        }
+        out.sig = sig;
+        return out;
+    }
     function _mmUpdate() {
         var W = (typeof bw === 'function') ? bw() : (state.boardTerrain[0] ? state.boardTerrain[0].length : 0);
         var H = (typeof bh === 'function') ? bh() : state.boardTerrain.length;
@@ -49828,6 +49892,8 @@ const ThreeRenderer = (function () {
         }
         if (L.cam !== 'off' && cam) sig += '|c' + (+cam.x).toFixed(2) + ',' + (+cam.y).toFixed(2) + ',' + yaw.toFixed(1) + ',' + (+cam.tilt || 0).toFixed(1) + ',' + (+cam.zoom || 0).toFixed(3);
         if (_fogVisibleSet !== _mm.fogRef) { _mm.fogRef = _fogVisibleSet; sig += '|f' + now; }
+        var pv = _mmPreview(L, W, H);
+        if (pv.sig) sig += '|p' + pv.sig;
         var pulse = L.active && L.pulse && hasActive;
         /* nothing moved: keep the picture (a pulsing ring, a terrain change — fissures, lava turned stone — or a nexus changing
            hands still redraw, the last two within a second) */
@@ -49918,6 +49984,16 @@ const ThreeRenderer = (function () {
             }
         }
 
+        /* ── THE PREVIEWS: the board's own reach washes and hit squares, under the grid ── */
+        if (pv.tiles.length) {
+            var pvK = Math.max(0, Math.min(1, +L.pvOp));
+            for (var pti = 0; pti < pv.tiles.length; pti++) {
+                var pt = pv.tiles[pti];
+                ctx.fillStyle = _mmRgba(pt.col, pt.a * pvK);
+                ctx.fillRect(pt.x, pt.y, 1, 1);
+            }
+        }
+
         /* ── the grid: the lines between squares, only where a square has a floor; the outer ones lean in so they stay on
            the box. A line of an odd device-pixel width sits on a pixel's middle so it draws crisp (unturned). ── */
         var gw = +L.gridW, every = Math.max(1, Math.round(+L.every || 1));
@@ -49996,7 +50072,48 @@ const ThreeRenderer = (function () {
                 if (icn.own !== (pass === 1)) continue;
                 drawIcon(icn);
                 if (icn.id === activeId) activeIc = icn;
+                /* THE PREVIEWS: a unit standing on a hit square is ringed (dark halo under, white over) */
+                if (pv.hit[Math.floor(icn.x) + ',' + Math.floor(icn.y)] !== undefined) {
+                    var hq = T(icn.x, icn.y);
+                    ctx.beginPath(); ctx.arc(hq[0], hq[1], r + 2.5, 0, Math.PI * 2);
+                    ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.stroke();
+                    ctx.lineWidth = 1.75; ctx.strokeStyle = _mmRgba('#ffffff', Math.max(0.35, Math.min(1, +L.pvOp))); ctx.stroke();
+                }
             }
+        }
+        /* THE PREVIEWS: the board's arrows (the walk path, a shove, a pull, a throw) flat from above, then the cursor */
+        if (pv.arrows.length) {
+            var aw = Math.max(1.5, cell * 0.2), ah = Math.max(5, cell * 0.55);
+            ctx.globalAlpha = Math.max(0, Math.min(1, +L.pvOp));
+            for (var avi = 0; avi < pv.arrows.length; avi++) {
+                var av = pv.arrows[avi], AP = [];
+                for (var apI = 0; apI < av.pts.length; apI++) AP.push(T(av.pts[apI][0], av.pts[apI][1]));
+                var an = AP.length, aB = AP[an - 1], aA = AP[an - 2], abk = an - 2;
+                while (abk > 0 && Math.hypot(aB[0] - aA[0], aB[1] - aA[1]) < 1) aA = AP[--abk];
+                var adx = aB[0] - aA[0], ady = aB[1] - aA[1], adl = Math.hypot(adx, ady);
+                if (adl < 0.5) continue;
+                var aux = adx / adl, auy = ady / adl, abase = [aB[0] - aux * ah, aB[1] - auy * ah];
+                for (var apass = 0; apass < 2; apass++) {
+                    ctx.strokeStyle = apass ? av.col : 'rgba(0,0,0,0.85)'; ctx.lineWidth = apass ? aw : aw + 2.5;
+                    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+                    ctx.beginPath(); ctx.moveTo(AP[0][0], AP[0][1]);
+                    for (var asI = 1; asI <= abk; asI++) ctx.lineTo(AP[asI][0], AP[asI][1]);
+                    ctx.lineTo(abase[0], abase[1]); ctx.stroke();
+                }
+                ctx.beginPath(); ctx.moveTo(aB[0], aB[1]);
+                ctx.lineTo(abase[0] - auy * ah * 0.6, abase[1] + aux * ah * 0.6);
+                ctx.lineTo(abase[0] + auy * ah * 0.6, abase[1] - aux * ah * 0.6);
+                ctx.closePath();
+                ctx.fillStyle = av.col; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+        }
+        if (pv.cur) {
+            var c0 = T(pv.cur[0], pv.cur[1]), c1 = T(pv.cur[0] + 1, pv.cur[1]), c2 = T(pv.cur[0] + 1, pv.cur[1] + 1), c3 = T(pv.cur[0], pv.cur[1] + 1);
+            ctx.beginPath(); ctx.moveTo(c0[0], c0[1]); ctx.lineTo(c1[0], c1[1]); ctx.lineTo(c2[0], c2[1]); ctx.lineTo(c3[0], c3[1]); ctx.closePath();
+            ctx.lineJoin = 'miter';
+            ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.stroke();
+            ctx.lineWidth = 1.75; ctx.strokeStyle = _mmRgba('#ffffff', Math.max(0.35, Math.min(1, +L.pvOp))); ctx.stroke();
         }
         if (activeIc && L.active) {
             var aq2 = T(activeIc.x, activeIc.y);
