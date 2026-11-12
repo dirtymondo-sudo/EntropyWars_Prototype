@@ -1695,3 +1695,19 @@ reflector hands whatever joined during the mirrored draw back to the real list. 
 `/mnt/project-files/dark-rooms-20261111/` barbershop + Haunted cellar before / after. Harness gotcha: Chromium here DOES
 reach the CDN through the agent proxy, so `--host-resolver-rules` stand-ins are bypassed; serve the repo's scripts with a
 `context.route` on `cdn.entropywars.net/<file>.js` only.
+
+## THE BORROWED COUNT (2026-11-12, mondo's Camelot fight on WebGPU, Firefox)
+Console: `Buffer 'bindingBuffer2312…' has been destroyed` in a bundle, then `a draw failed and was skipped (hq:gaps:floor /
+MeshBasicMaterial: GPUQueue.writeBuffer: Argument 1 is not an object)` every frame. Cause (three 0.186.1 + THE LATE LOOK):
+a look's SHARED bind group (the `render` group: the camera's uniform buffer, one per node build, lent to every render object
+of that build) is use-counted in `Bindings._createBindings` / `_destroyBindings`, but `deleteForRender` counts DOWN for a
+render object whose bindings were never made. The late look's hold (`_ewLateSetup`: `O.get(...)` then `return` when the
+frame has built enough) leaves exactly such render objects; one disposed before it ever drew (spell quad, the rain that
+starts and stops, a culled prop) took the count of a group other meshes still drew with to 0, and three destroyed the buffer.
+Fix: three-renderer.js `_ewGpuSafeBindings` — (1) `deleteForRender` of a render object with `initialized !== true` only
+forgets it; (2) WebGPU `destroyUniformBuffer` is forgotten at once and destroyed at the next frame's first render
+(`_ew_freeLater`, like the vertex buffers). Proof: a 2-mesh page on the real three 0.186.1, headless Chromium WebGPU
+(SwiftShader): as shipped `render used 1` → `undefined, buffer GONE` + the same writeBuffer throw; with the fix `used 1,
+buffer alive`, no GPU error. NOT seen: the Camelot fight itself on real WebGPU / Firefox.
+Same PR: the key pickup's model URL (`_keyFxUrl`) used the DOOR folder + an encoded slash for the PSX pack key (404 since
+11-08) → `_hqModelUrl(cat)`; the mermaid's `Swim_Idle_Loop` pointed at lib 1 (UAL2, no swim clips) → lib 0.
