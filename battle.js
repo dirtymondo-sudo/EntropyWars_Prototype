@@ -59776,6 +59776,7 @@
             if (Q.B.guest) hid[Q.B.guest.id] = true;
             Q.B.foes.forEach(u => { hid[u.id] = true; });
             window._ewSceneHid = hid;
+            const cast = {}; (state.units || []).forEach(u => { if (u && !u.dead && !u._benched) cast[u.id] = true; }); window._ewSceneCast = cast;
             try { addLog(`🚪 A portal forms. ${Q.B.guest ? unitDisplayName(Q.B.guest) : 'Someone'} comes through it${Q.B.foes.length ? ', and ' + Q.B.foes.length + ' ' + (Q.B.foes.length === 1 ? 'enemy comes' : 'enemies come') + ' after' : ''}.`); } catch (e) {}
             return true;
         }
@@ -59798,14 +59799,19 @@
             const face = (u, to) => { const c = cell(to); if (!u || !c) return; const dx = c.x - u.x, dy = c.y - u.y; if (dx || dy) { setUnitFacing(u, Math.abs(dy) >= Math.abs(dx) ? 0 : Math.sign(dx), Math.abs(dy) >= Math.abs(dx) ? Math.sign(dy) : 0); render(); } };
             const show = (u) => { if (u && window._ewSceneHid) delete window._ewSceneHid[u.id]; };
             const w0 = tile(0, 0), w1 = tile(1, 0);
-            let door = null, doorAt = 0;
+            let door = null, doorAt = 0, over = false;
             return {
                 /* a scene's lengths are BODIES (a standing body = 1, 1.75 m), so a shot frames the cast the same on any board's squares */
                 unit: (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? TR.bodyUnit() : ((w0 && w1) ? (Math.abs(w1.x - w0.x) || 128) / 2 : 64),
                 point,
                 act(a) {
                     const u = a.who ? R[a.who] : null;
-                    if (a.do === 'portal') { if (FX && FX.questPortal) { door = FX.questPortal(P.x, P.y, { riseMs: 900, openMs: 600, holdMs: 60000, big: true, scale: 1.5 }); doorAt = performance.now(); } }
+                    if (a.do === 'portal') {
+                        /* the effects' own scene comes up a moment after the board: the door is asked for until it stands */
+                        let tries = 0;
+                        const open = () => { if (over || door) return; try { door = (FX && FX.questPortal) ? FX.questPortal(P.x, P.y, { riseMs: 900, openMs: 600, holdMs: 60000, big: true, scale: a.scale || 1 }) : null; } catch (e) { door = null; } if (door) doorAt = performance.now(); else if (++tries < 40) setTimeout(open, 150); else console.warn('[SCENE] the portal did not draw'); };
+                        open();
+                    }
                     else if (a.do === 'out') { if (!u) return; show(u); if (!(u.x === P.x && u.y === P.y)) TA.jumpArc(u, P.x, P.y, u.x, u.y, zAt(P.x, P.y), u.z || 0, a.ms || 1000); }
                     else if (a.do === 'face') face(u, a.to);
                     else if (a.do === 'show') show(u);
@@ -59819,7 +59825,7 @@
                 },
                 slow(scale, ms) { if (TA && TA.slowMo) TA.slowMo(scale, ms); },
                 finish() {
-                    window._ewSceneHid = null;
+                    over = true; window._ewSceneHid = null; window._ewSceneCast = null;
                     try { if (TR && TR.clearTimeWarp) TR.clearTimeWarp(); } catch (e) {}
                     try { if (TR && TR.cancelJumpTween) [B.guest].concat(B.foes).forEach(u => { if (u) TR.cancelJumpTween(u.id); }); } catch (e) {}
                     /* the door shuts on the cut: its effect is run forward to its own closing (three-vfx-effects.js _sigRun `skip`) */
@@ -59839,11 +59845,11 @@
             const go = () => {
                 if (done) return;
                 const up = !!(window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive());
-                if (!up) { if (performance.now() - t0 < 15000) { setTimeout(go, 100); return; } console.warn('[SCENE] ' + row.id + ' not played: the 3D board never came up'); window._ewSceneHid = null; end(); return; }
+                if (!up) { if (performance.now() - t0 < 15000) { setTimeout(go, 100); return; } console.warn('[SCENE] ' + row.id + ' not played: the 3D board never came up'); window._ewSceneHid = null; window._ewSceneCast = null; end(); return; }
                 const host = _questSceneHost();
                 let ok = false;
                 try { ok = !!host && window.EWScene.play(row, host, end); } catch (e) { console.error('[SCENE] the cutscene did not start', e); ok = false; }
-                if (!ok) { console.warn('[SCENE] ' + row.id + ' did not start'); try { if (host) host.finish(true); } catch (e) {} window._ewSceneHid = null; end(); }
+                if (!ok) { console.warn('[SCENE] ' + row.id + ' did not start'); try { if (host) host.finish(true); } catch (e) {} window._ewSceneHid = null; window._ewSceneCast = null; end(); }
             };
             go();
             return true;
@@ -60299,7 +60305,7 @@
                     setTimeout(_mdStartFreeRoam, 450);
                 } else if (_qScene && _questScenePlay(() => encounterOpening(() => maybeAdvanceTurn()))) {
                     /* THE CUTSCENES: the scene plays, then the hard cut to the fight's frame and the first activation */
-                } else if (_encRun() && ((_qScene && (window._ewSceneHid = null)), _encArrivalRound(() => encounterOpening(() => maybeAdvanceTurn())))) {
+                } else if (_encRun() && ((_qScene && (window._ewSceneHid = null), (window._ewSceneCast = null)), _encArrivalRound(() => encounterOpening(() => maybeAdvanceTurn())))) {
                     /* THE ARRIVAL: no ROUND 1 card (a card is a cut) — the letterbox rides the crane and the HUD
                        fades in as it lands; the first activation waits for the landing (and THE OPENING — the door that struck
                        first lands its act on the native, DOOR_GUN_PLAN §5.3) */
