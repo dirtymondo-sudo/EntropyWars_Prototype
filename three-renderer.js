@@ -17219,10 +17219,10 @@ const ThreeRenderer = (function () {
     }
     /* while it is open the eye looks at the viewer (the board camera): from behind, the eyeball OBJ is a black back */
     var _procEyeV = null;
-    function _procRigEyeTrack(eyeG) {
+    function _procRigEyeTrack(eyeG, viewCam) {   // viewCam: the stage's own camera (the team room's); else the board's
         var holder = eyeG && eyeG.parent;
         if (!holder || holder.scale.x < 0.02 || !eyeG.userData || !eyeG.userData.eye) return;
-        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+        var cam = viewCam || ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null);
         if (!cam) return;
         var ball = eyeG.userData.eye.ball;
         if (!ball || !ball.parent) return;
@@ -91800,6 +91800,11 @@ const ThreeRenderer = (function () {
             mem.blob.rotation.x = -Math.PI / 2; mem.blob.position.y = 0.006 * U;
             mem.wrap.add(mem.blob);
             mem.model = m;
+            /* THE PROCEDURAL RIGS IN THE ROOM (2026-11-12, mondo on Select Your Team: "the occulus eyeball doesnt show up on this
+               screen, only the wings"): a boneless assembly (the Occulus, the Seraphim, the UFO forms, the chess pieces) got no
+               core eye and no mixer here, so it stood as its bare file. Like the dock and the viewer: the eye goes on after the
+               room's look (it keeps its own material), and the assembly's own clips drive the idle and the poses. */
+            if (entry.procClips) { try { mem.procEye = _procRigAttachEye(m); } catch (e) { mem.procEye = null; } hasSkin = true; }
             function show(dressed) {
                 if (_tr !== T || T.tok !== tok) return;
                 if (!dressed && mem.rig && !mem.rig.dressed()) { mem.rig.whenDressed(function () { show(true); }); return; }   // THE DRESSED REVEAL: the whole look at once
@@ -91824,7 +91829,8 @@ const ThreeRenderer = (function () {
                 mem.idle = act;
                 show();
             }
-            if (_animLibActive(def)) {
+            if (entry.procClips) { mem.clips = entry.procClips; playIdle(entry.procClips.idle, 1); }   // THE PROCEDURAL RIGS IN THE ROOM
+            else if (_animLibActive(def)) {
                 _animLibBakeForModel(def, entry, function (baked) {
                     if (_tr !== T || T.tok !== tok) return;
                     if (baked) mem.clips = baked;
@@ -91929,6 +91935,7 @@ const ThreeRenderer = (function () {
             if (m.mixer) m.mixer.update(dt);
             if (m.rig && m.model) { m.model.updateMatrixWorld(true); try { m.rig.tick(); } catch (e) {} }
             if (m.model) _swayAuto(m.model, dt);   // THE SWAY
+            if (m.procEye) { try { _procRigEyeTrack(m.procEye, T.camera); } catch (e) {} }   // the core eye looks at the room's camera
             if (m.model && m.rig && !(now < (m.lookAt || 0))) { m.lookAt = now + 500; _trLookMats(m, m.model); }   // THE LATE PIECES
         }
         _trTickPoses(T, now);
