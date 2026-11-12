@@ -23712,7 +23712,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { _snStage(phase, spellId, params); } catch (e) { console.warn('[VFX] sonic stamp failed', spellId, e); }
         /* THE FIRE PASS: every fire-element cast / hit wears the same fire (the cast ring, the fire mark) */
         try { _fpStage(phase, spellId, params); } catch (e) { console.warn('[VFX] fire mark failed', spellId, e); }
-        /* THE NOISE PACKS (mock-up, ?noisefx=1): the element's noise wash on each hit square */
+        /* THE NOISE PACKS: the element's noise wash on each square a damage spell hits */
         try { _nzStage(phase, spellId, params); } catch (e) { console.warn('[VFX] noise wash failed', spellId, e); }
         /* THE FX-4 PASS: Merkaba forms on the windup and goes off on the burst */
         try { _f4Stage(phase, spellId, params); } catch (e) { console.warn('[VFX] FX-4 stage failed', spellId, e); }
@@ -59626,15 +59626,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ═════════ END THE FIRE PASS ═════════ */
 
     /* ═════════════════════════════════════════════════════════════════════
-       THE NOISE PACKS — MOCK-UP (2026-11-12, mondo: "Uploaded 4 folders of noise and texture packs ... making tile effects
-       when spells hit ... show me examples first"). Screaming Brain Studios' CC0 packs (128 px, seamless). THE WASH: on the
-       hit, each square of the footprint wears one sheet of the pack's noise in the spell's element colour. It grows in from
-       its brightest lines, turns slowly and is eaten away from its dim parts (the cutoff climbs, so the pixels drop out in
-       the noise's own shapes). Flat on the ground under the element's own mark, inside the square, so body + number stay
-       clear. OFF unless ?noisefx=1 / window.EW_NOISE_FX. Looks only; every client draws it from the relayed stage beat.
+       THE NOISE PACKS (2026-11-12, mondo: "Uploaded 4 folders of noise and texture packs ... making tile effects
+       when spells hit", then of the examples "Yeah looks good, go ahead"). Screaming Brain Studios' CC0 packs (128 px,
+       seamless; R2 Assets/fx/noise/sbs/). THE WASH: on the hit of a damage spell, each square of the footprint wears a
+       splat cut from the pack's noise in the spell's element colour. It grows in from its brightest lines, turns slowly
+       and is eaten away from its rim and its dim parts (the cutoff climbs, so the pixels drop out in the noise's own
+       shapes). Flat on the ground under the element's own mark, inside the square, so body + number stay clear.
+       Off switch: window.EW_NO_NOISE_WASH. Looks only; every client draws it from the relayed stage beat.
        ═════════════════════════════════════════════════════════════════════ */
     var _NZ_BASE = 'https://cdn.entropywars.net/Assets/fx/noise/sbs/', _nzTexC = {};
-    function _nzOn() { try { return typeof window !== 'undefined' && (!!window.EW_NOISE_FX || /[?&]noisefx=1/.test(String(window.location && window.location.search))); } catch (e) { return false; } }
+    function _nzOn() { try { return !(typeof window !== 'undefined' && window.EW_NO_NOISE_WASH); } catch (e) { return true; } }
     function _nzTex(n) { return _nzTexC[n] || (_nzTexC[n] = _loadCachedTex(_NZ_BASE + n + '.png')); }
     /* element -> [sheet, colour, second sheet, its colour, turn (rad / s), dark (a dark stain in place of light)] */
     var _NZ = {
@@ -59680,7 +59681,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (R[4]) { a.rotation.y = rn(0, 6.28); b.rotation.y = rn(0, 6.28); }
             M.push({ a: a, b: b, d: d0 });
         }
-        var life = o.life || (1500 + 260 * (rank || 0)), total = life + 280, lastT = 0;
+        var life = o.life || (1500 + 260 * (rank || 0)), lastT = 0;
+        try { if (typeof window !== 'undefined' && window.EW_NZ_SLOW > 0) life *= window.EW_NZ_SLOW; } catch (e) {}   // console: stretch the wash's life (for a look at it)
+        var total = life + 280;
         if (o.freeze != null) total = 600000;   /* a still for the mock-up shots: hold one point of the life */
         return _sigRunOwned(F.g, total, function (t) {
             if (o.freeze != null) t = o.freeze * life;
@@ -59695,8 +59698,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _nzFoot = {};
     function _nzStage(phase, spellId, params) {
         if (!_nzOn() || _suppressed() || _catOff('spells') || !params) return;
-        var d = _spellDefFor(spellId) || {}, el = d.element || d.vfxElement || null;
-        if (!el || !_NZ[el] || d.type === 'heal' || d.type === 'buff') return;
+        var d = _spellDefFor(spellId) || {}, el = d.vfxElement || d.element || null;
+        if (!el || !_NZ[el] || d.type !== 'damage') return;
         var key = params.glowKey || ('c' + params.sx + ',' + params.sy);
         if (phase === 'windup') { _nzFoot[key] = Array.isArray(params.tiles) && params.tiles.length ? params.tiles : null; return; }
         if (phase !== 'burst' || params.tx == null) return;
@@ -59708,7 +59711,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _nzWash(tiles, el, _TIER_ORDER[info.weight] || 0);
     }
     try { if (typeof window !== 'undefined') window.EW_NZ_WASH = function (tiles, el, rank, o) { return _nzWash(tiles, el, rank, o); }; } catch (e) {}
-    /* THE MOVING GROUND (mock-up only: a sheet laid over the squares to show the look; the real thing would be the square's own
+    /* THE MOVING GROUND (console only, EW_NZ_GROUND: a sheet laid over the squares to show the look; the real thing would be the square's own
        top material). A colour sheet from the packs lies across `span` squares in world space (no per-square repeat), drifts
        slowly, and a second noise sheet slides the other way on top, added in a tint. Lit by the room (Lambert) with a little
        of its own glow, so shadows still fall on it. tiles [{x,y}], o: base · over · overCol · span · drift [u,v] · glow ·
@@ -59757,7 +59760,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return { stop: function () { live = false; try { scene.remove(F.g); } catch (e) {} } };
     }
     try { if (typeof window !== 'undefined') window.EW_NZ_GROUND = function (tiles, o) { return _nzGround(tiles, o); }; } catch (e) {}
-    /* ═════════ END THE NOISE PACKS (mock-up) ═════════ */
+    /* ═════════ END THE NOISE PACKS ═════════ */
 
 
 

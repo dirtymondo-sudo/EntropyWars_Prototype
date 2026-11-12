@@ -2126,3 +2126,20 @@ being more thick and fluffy. The way it is now just looks gross." He then picked
   renderer (Fairy Forest). Fog of war was on in every run. Not seen: exploration rooms (none built: the field is battle-only),
   voxel boards, purple grass, a two-seat online match, a real weak PC.
 - Shots: /mnt/project-files/ghibli-grass-20261112/ (final_*.jpg; fluffy_* = the mock-up he approved; pair_* = the rejected first try).
+
+## THE MOVING SHEETS: astral ground + six liquid looks from the noise packs (2026-11-12)
+mondo: "I could see there being a psychic or astral terrain made from these. Definitely use them in the astral realm or dreamy
+maps. Maybe you can use some of these for liquids", then of the examples "Yeah looks good, go ahead". Source: Screaming Brain
+Studios' CC0 packs (see spells-vfx.md THE NOISE PACKS).
+- Eight texture keys in data.js CALM_TERRAIN.sheets, each playing by its twin's rules (hqRuleKeyOf), so no new terrain and no
+  new rule: `nz_astral_a` / `nz_astral_b` (purple_grass), `nz_dreamwater` (water), `nz_spring` (healing_spring), `nz_poison`
+  (poison), `nz_purplebog` (purple_bog), `nz_magma` (lava), `nz_oil` (oil). The stills are on R2
+  `Assets/world/terrain/calm/nz_*.png` (the packs' own files, unedited); the editor's texture picker lists them under MOVING.
+- three-renderer.js THE MOVING SHEETS (`_NZ_MOVE`, `_nzMoveTex`): `_hzTex` and `getTerrainTexture` hand out ONE small canvas
+  per key in place of the file. A dozen times a second the colour sheet is drawn into it at a drifting offset and a tinted
+  noise sheet (`Assets/fx/noise/sbs/`) is added over it sliding the other way. Every surface wearing the key moves on every
+  renderer, with no shader. Off switch: `window.EW_NO_MOVING_SHEETS` (they stand still).
+- THE SEA OF POSSIBILITY (`site_prebuilt_lookingglass_sea`) wears `nz_astral_a` as its terrain floor (was purple_grass).
+- His pixel lava + water are untouched and stay what lava + water wear; the liquid looks are only there when picked by name.
+- Seen: the Sea of Possibility floor moving, node renderer on WebGL 2. Not seen: a liquid look painted in the editor (as a
+  board square or a hazard), real WebGPU, classic WebGL.
