@@ -117,6 +117,8 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
   Moved folders = sprites.js EW_ASSET_MOVES (+ r2-layout.json); upload NEW files to the new folders.
 - `bake-faces.js` (2026-11-03): .mhm face -> creator FACE preset. Notes: character-creator.md "THE FACE PRESETS".
 - `bake-custom-shape.js` (2026-11-11): custom head shapes into mpfb_shapes.glb. Notes: character-creator.md "THE CUSTOM SHAPES".
+- `bake-outfit.py` (2026-11-12): a Meshy T2 a-pose remake of a unit -> its clothes as creator pieces on the MPFB bodies (`ewm_t2<unit>_outfit/_hat.glb`;
+  sprites.js RACE_REMADE_LOOKS). Notes: models-assets.md "THE MESHY OUTFITS".
 - `bake-beards.py` (2026-11-02): `python3 -I bake-beards.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks [--only full]` joins a pack beard + moustache
   into one Facial hair pick (`ewb_beard_<key>.glb`). Notes: character-creator.md "THE JOINED BEARDS".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
