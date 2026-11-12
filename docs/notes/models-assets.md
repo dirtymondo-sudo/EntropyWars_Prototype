@@ -1524,6 +1524,10 @@ head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay t
   nearest skin vertices. Env knobs: SKIN_T, S, HS, SY, SZ, BRIM, BRIMHI, SCALP, RAY_OUT, RAY_LEG, RAY_IN, ALLHIDE.
 - **Gotchas**: Blender's UV v is 1 - glTF's (a scrambled texture = that); a robe needs RAY_LEG (45 cm) or the legs show through it;
   tall boots under a robe poke through when the leg swings; `new_from_object` needs `preserve_all_data_layers=True`.
+- **Boots (11-12, PR after #1153, mondo: boots distort on the walk + "pointy things sticking out the back")**: a shell on ONE side of
+  the body (boot, greave, gauntlet, holster) is never loose cloth (its sole stood far off the skin, so the loose rule gave it to the
+  hips + the other leg); footwear's toe weight goes to the foot (a stiff sole); a spur (Meshy fuses it to the boot as a horn) is laid
+  flat on the heel (env SPURS=0 keeps it). The remade button no longer needs a RACE_CREATOR_LOOKS look (knight + wizard had none).
 - **In the game**: sprites.js EW_MH_WEAR rows `ewm_t2*` (outfits are category `equipment`, shown on the Armour tab; hats on Hats),
   `RACE_REMADE_LOOKS` + `getRaceRemadeLook(race, gender)`, party-builder.js USE THE REMADE <RACE> LOOK (beside USE THE SAVED LOOK) and
   REMADE LOOK inside the creator. The race's default idle can crouch a creator rig (knight, wizard): the looks carry `idle: Idle_11`.
