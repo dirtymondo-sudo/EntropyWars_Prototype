@@ -11438,7 +11438,7 @@
             }
 
             /* THE GARDEN fix (2026-11-12): the grown plants and aura trees act with NO seed left on the board too */
-            if (state.plantedSeeds?.length || (state.plantedTrees || []).some(t => t.aura) || (state.turrets || []).some(t => t.plant && t.hp > 0)) {
+            if (state.plantedSeeds?.length || (state.plantedTrees || []).some(t => t.aura || t.apple) || (state.turrets || []).some(t => t.plant && t.hp > 0)) {
                 for (let p = 1; p <= 2; p++) {
                     applySeedTileEffects_endOfRound(p, events);
                 }
@@ -12033,10 +12033,10 @@
         const SEED_PLAIN_DRY_ROUNDS = 2;
         const PLANT_SPELL_ID = { heal: 'healingSeed', poison: 'poisonSeed', leech: 'leechSeed' };
         function _plantName(type) {
-            return type === 'poison' ? 'Gas Plant' : type === 'leech' ? 'Thorn Vine' : 'Healing Flower';
+            return type === 'poison' ? 'Gas Plant' : type === 'leech' ? 'Thorn Vine' : type === 'apple' ? 'Apple Tree' : 'Healing Flower';
         }
         function _seedLabel(seed) {
-            return seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : seed.type === 'leech' ? 'Leech Seed' : 'seed';
+            return seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : seed.type === 'leech' ? 'Leech Seed' : seed.type === 'apple' ? 'Apple Seed' : 'seed';
         }
         /* Is there water for a seed on (x, y) right now? Rain over it, water beside it or on it, or a Wet unit of the
            planter's side dripping on it. (Blood Rain is not rain for a seed: his answer, 11-12.) */
@@ -12190,6 +12190,60 @@
             return true;
         }
         if (typeof window !== 'undefined') { window.getPollen = getPollen; window.POLLEN_MAX = POLLEN_MAX; window._pollinateTargetAt = _pollinateTargetAt; }
+        /* 🍎 THE APPLE TREE (2026-11-12, mondo: "eventually both" flower + apple tree; the apple tree is a REAL tree).
+           An Apple Seed (data.js `appleSeed`, seedType 'apple') needs water like every seed and grows into an ordinary
+           tree object (blocks sight, can be chopped, counts for Green Thumb + Trunk Throw) whose state.plantedTrees row
+           carries `apple`. Every APPLE_EVERY_ROUNDS round ends it drops one apple on a free tile beside it (at most
+           APPLE_MAX_PER_TREE lying around a tree). ANY unit that ends a move on an apple while hurt eats it and heals
+           APPLE_HEAL_PCT of its max HP. Apples are plain rows in state.apples ({id,x,y}), so they ride the snapshot. */
+        const APPLE_EVERY_ROUNDS = 2, APPLE_MAX_PER_TREE = 2, APPLE_HEAL_PCT = 0.2;
+        function appleAt(x, y) { return (state.apples || []).find(a => a.x === x && a.y === y) || null; }
+        function _appleDropTile(tree) {
+            const spots = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]];
+            let lying = 0; const free = [];
+            for (const [dx, dy] of spots) {
+                const nx = tree.x + dx, ny = tree.y + dy;
+                if (!isInside(nx, ny)) continue;
+                if (appleAt(nx, ny)) { lying++; continue; }
+                if (getObjectAt(nx, ny) || !isTerrainPassable(nx, ny) || plantAt(nx, ny)) continue;
+                const t = getTerrainAt(nx, ny);
+                if (t === 'water' || t === 'lava' || (typeof _tileIsBurning === 'function' && _tileIsBurning(nx, ny))) continue;
+                free.push({ x: nx, y: ny });
+            }
+            if (lying >= APPLE_MAX_PER_TREE || !free.length) return null;
+            return free.find(f => !unitAt(f.x, f.y)) || free[0];
+        }
+        function _appleTreesRoundEnd() {
+            for (const tree of (state.plantedTrees || [])) {
+                if (!tree.apple) continue;
+                tree.appleAge = (tree.appleAge | 0) + 1;
+                if (tree.appleAge % APPLE_EVERY_ROUNDS) continue;
+                const at = _appleDropTile(tree);
+                if (!at) continue;
+                if (!state.apples) state.apples = [];
+                state.apples.push({ id: `apple_${state.round || 0}_${at.x}_${at.y}_${randInt(99999)}`, x: at.x, y: at.y });
+                addLog(`🍎 The Apple Tree at ${coordLabel(tree.x, tree.y)} drops an apple at ${coordLabel(at.x, at.y)}. Whoever walks onto it eats it.`);
+                if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextAtTile(at.x, at.y, '🍎', 'heal', { durationMs: 900 });
+                const under = unitAt(at.x, at.y);
+                if (under) _eatAppleAt(under);
+                scheduleBoardRender();
+            }
+        }
+        function _eatAppleAt(unit) {
+            if (!unit || unit.dead || _unitIsDown(unit) || !state.apples || !state.apples.length) return false;
+            if (shadowRealmKey(unit) || (typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) return false;
+            const ap = appleAt(unit.x, unit.y);
+            if (!ap || unit.hp >= unit.maxHp) return false;
+            const healed = applyHealingToUnit(unit, Math.max(1, Math.round(unit.maxHp * APPLE_HEAL_PCT)), null);
+            if (!(healed > 0)) return false;
+            state.apples = state.apples.filter(a => a !== ap);
+            addLog(`🍎 ${_ctName(unit)} eats the apple at ${coordLabel(ap.x, ap.y)}: +${healed} HP.`);
+            if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextForUnit(unit, `+${healed}`, 'heal', { durationMs: 900 });
+            markDirty('teams', 'selectedUnit', 'hud');
+            scheduleBoardRender();
+            return true;
+        }
+        if (typeof window !== 'undefined') { window.appleAt = appleAt; }
         /* The thorn vine's one target this round among `player`'s units: the nearest it has a clear line to. */
         function _plantLashTarget(plant, player) {
             let best = null, bestD = Infinity;
@@ -12319,6 +12373,7 @@
         // tile can't machine-gun the effect. The end-of-round tick still fires
         // on top for units that stay put ("camping the seed").
         function checkSeedStepTrigger(unit) {
+            _eatAppleAt(unit);   // 🍎 THE APPLE TREE: ending a move on an apple
             if (unit && unit.race === 'bee queen') _gatherPollen(unit);   // 🐝 THE POLLEN: ending a move beside a flower
             if (!state.plantedSeeds || !state.plantedSeeds.length || !unit || unit.dead) return;
             if (shadowRealmKey(unit)) return;   // 🌑 nor its seeds
@@ -12344,6 +12399,7 @@
 
         function _auraTreeName(type) {
             if (type === 'plain') return 'Tree';   // THE SPELL AUDIT Batch D: Bumper Crop's plain wood
+            if (type === 'apple') return 'Apple Tree';
             return type === 'poison' ? 'Toxin Tree' : type === 'leech' ? 'Leech Tree' : 'Healing Tree';
         }
 
@@ -12444,16 +12500,18 @@
                 gx = found.x; gy = found.y;
             }
 
-            if (seed.type !== 'plain') { _standPlant(seed, gx, gy); return; }   // THE GARDEN: a plant, not a tree
+            if (seed.type !== 'plain' && seed.type !== 'apple') { _standPlant(seed, gx, gy); return; }   // THE GARDEN: a plant, not a tree
             _ensureTreeState();
             if (getTerrainAt(gx, gy) !== 'grass') setTerrainAt(gx, gy, 'grass');
             setObjectAt(gx, gy, _auraTreeObjectFor(seed.type));
-            state.plantedTrees.push({ x: gx, y: gy, owner: seed.owner, casterUnitId: seed.casterUnitId, aura: seed.type === 'plain' ? null : seed.type });
+            state.plantedTrees.push(seed.type === 'apple'
+                ? { x: gx, y: gy, owner: seed.owner, casterUnitId: seed.casterUnitId, aura: null, apple: true, appleAge: 0 }   // 🍎 a real tree that drops apples
+                : { x: gx, y: gy, owner: seed.owner, casterUnitId: seed.casterUnitId, aura: seed.type === 'plain' ? null : seed.type });
             _invalidateBoardGrid();
             state._treeTick = (state._treeTick || 0) + 1;
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
             const caster = unitFromId(seed.casterUnitId);
-            addLog(`🌳 A ${_auraTreeName(seed.type)} grows at ${coordLabel(gx, gy)}${caster ? ` — ${_ctName(caster)}'s grove strengthens` : ''}!${seed.type === 'plain' ? '' : ' Its aura pulses every round until it is destroyed.'}`);
+            addLog(`🌳 ${seed.type === 'apple' ? 'An' : 'A'} ${_auraTreeName(seed.type)} grows at ${coordLabel(gx, gy)}${caster ? ` — ${_ctName(caster)}'s grove strengthens` : ''}!${seed.type === 'plain' ? '' : seed.type === 'apple' ? ` It drops a healing apple every ${APPLE_EVERY_ROUNDS} rounds until it is cut down.` : ' Its aura pulses every round until it is destroyed.'}`);
             if (state.phase === 'battle' && !_skipVisuals()) {
                 showFloatingTextAtTile(gx, gy, '🌳', 'heal', { durationMs: 1000 });
                 /* Reuse the Overgrowth signature grow-in (fired through the
@@ -12566,7 +12624,7 @@
                     if (droughtTiles.size > 0) {
                         state.plantedSeeds = state.plantedSeeds.filter(seed => {
                             if (droughtTiles.has(posKey(seed.x, seed.y))) {
-                                addLog(`☀ The Drought scorches a ${seed.type === 'heal' ? 'Healing ' : seed.type === 'poison' ? 'Poison ' : seed.type === 'leech' ? 'Leech ' : ''}Seed at ${coordLabel(seed.x, seed.y)}!`);
+                                addLog(`☀ The Drought scorches a ${seed.type === 'heal' ? 'Healing ' : seed.type === 'poison' ? 'Poison ' : seed.type === 'leech' ? 'Leech ' : seed.type === 'apple' ? 'Apple ' : ''}Seed at ${coordLabel(seed.x, seed.y)}!`);
                                 return false;
                             }
                             return true;
@@ -12610,6 +12668,7 @@
                     }
                 }
                 _pollenRoundEnd();   // 🐝 THE POLLEN
+                _appleTreesRoundEnd();   // 🍎 THE APPLE TREE
             }
 
             /* Standing tick: ungrown seeds affect the unit camping their tile,
@@ -68484,7 +68543,7 @@
                 return ob.spellName || 'Object';
             }
             const sd = (state.plantedSeeds || []).find(s => s.x === x && s.y === y);
-            if (sd) return sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+            if (sd) return sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : sd.type === 'apple' ? 'Apple Seed' : 'Leech Seed';
             if (typeof _tileHasTree === 'function' && _tileHasTree(x, y)) return 'Tree';
             if (doorAt(x, y)) return 'Door';
             if ((state.mirrors || []).some(m => m.x === x && m.y === y && m.hp > 0)) return 'Prism';
@@ -68597,7 +68656,7 @@
                         const d = Math.abs(s.x - unit.x) + Math.abs(s.y - unit.y);
                         if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, s.x, s.y, unitZ)) {
                             if (visionGatesTargeting(unit) && !isInVision(unit, s.x, s.y)) continue;
-                            const seedName = s.type === 'heal' ? 'Healing Seed' : s.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+                            const seedName = s.type === 'heal' ? 'Healing Seed' : s.type === 'poison' ? 'Poison Seed' : s.type === 'apple' ? 'Apple Seed' : 'Leech Seed';
                             targets.push({ x: s.x, y: s.y, dist: d, seed: s, seedName, kind: 'seed' });
                         }
                     }
@@ -75611,7 +75670,7 @@
                 const seedIdx = state.plantedSeeds.findIndex(s => s.x === x && s.y === y && s.owner !== unit.player);
                 if (seedIdx >= 0) {
                     const seed = state.plantedSeeds[seedIdx];
-                    const seedName = seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : seed.type === 'plain' ? 'Bumper Crop' : 'Leech';
+                    const seedName = seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : seed.type === 'plain' ? 'Bumper Crop' : seed.type === 'apple' ? 'Apple' : 'Leech';
                     pushUndoSnapshot(true);
                 setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                     if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
@@ -85654,15 +85713,16 @@
             }
 
             else if (spell.kind === 'seedHeal') {
+                const _sType = spell.seedType || 'heal';   // 🍎 THE APPLE TREE: Apple Seed rides this branch (`seedType: 'apple'`)
                 const terrain = getTerrainAt(x, y);
                 if (terrain === 'mountain' || terrain === 'lava') {
-                    addLog(`Healing Seed cannot be planted on ${terrain} tiles.`, _clickSeat());
+                    addLog(`${spell.name} cannot be planted on ${terrain} tiles.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (!state.plantedSeeds) state.plantedSeeds = [];
-                if (state.plantedSeeds.some(s => s.x === x && s.y === y && s.type === 'heal')) {
-                    addLog('There is already a healing seed on that tile.', _clickSeat());
+                if (state.plantedSeeds.some(s => s.x === x && s.y === y && s.type === _sType)) {
+                    addLog(`There is already ${_sType === 'apple' ? 'an apple' : 'a healing'} seed on that tile.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -85702,7 +85762,7 @@
                         x,
                         y,
                         z,
-                        type: 'heal',
+                        type: _sType,
                         owner: unit.player,
                         casterUnitId: unit.id,
                         growth: 0
@@ -85710,7 +85770,7 @@
                     state.plantedSeeds.push(_newSeed);
                     const _wetNow = _seedWaterSourceAt(x, y, unit.player);
                     if (_wetNow) _waterSeed(_newSeed, true);
-                    addLog(`${_ctName(unit)} plants a Healing Seed at ${coordLabel(x, y)}. ${_wetNow ? `It is watered: a ${_plantName('heal')} grows at the end of the round` : `It needs water to sprout (rain, a water spell, water beside it) before it grows into a ${_plantName('heal')}`} — unless it is destroyed first.`);
+                    addLog(`${_ctName(unit)} plants ${_sType === 'apple' ? 'an Apple Seed' : 'a Healing Seed'} at ${coordLabel(x, y)}. ${_wetNow ? `It is watered: ${_sType === 'apple' ? 'an' : 'a'} ${_plantName(_sType)} grows at the end of the round` : `It needs water to sprout (rain, a water spell, water beside it) before it grows into ${_sType === 'apple' ? 'an' : 'a'} ${_plantName(_sType)}`} — unless it is destroyed first.`);
                     // Planting under an ally's feet works right away — no waiting
                     // a round for the first tick (rain still doubles the heal).
                     const _occupant = unitAt(x, y);

@@ -7079,7 +7079,7 @@ const ThreeRenderer = (function () {
         heal:   'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_healflower.glb'
     };
     var _PLANT_HEIGHT = { leech: 0.95, poison: 0.9, heal: 0.95 };   // of a tile
-    var _SEED_COLORS = { heal: 0xe8c860, poison: 0x8a4ab0, leech: 0x9a2a3a, plain: 0x8a5a2a };
+    var _SEED_COLORS = { heal: 0xe8c860, poison: 0x8a4ab0, leech: 0x9a2a3a, plain: 0x8a5a2a, apple: 0xc8281e };
     var _plantSeen = {};
     function _gardenMat(hex, basic) {
         var m = basic ? new THREE.MeshBasicMaterial({ color: hex }) : new THREE.MeshLambertMaterial({ color: hex });
@@ -7119,6 +7119,49 @@ const ThreeRenderer = (function () {
         if (purl && !_miscModelCache[purl]) { try { _loadMiscModel(purl, true, function () {}, { front: true }); } catch (x) {} }
         return g;
     }
+    /* 🍎 THE APPLE TREE (2026-11-12): the apple is one Meshy piece (no pack has an apple). `_buildApple3D` lays one on a
+       tile (state.apples); `_buildAppleCanopy` hangs a few in the leaves of an apple tree (a state.plantedTrees row
+       with `apple`), which is otherwise the ordinary tree object. Nothing is drawn until the file is in the cache. */
+    var _APPLE_MODEL_URL = 'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_apple.glb';
+    var _APPLE_CANOPY = [[0.14, 0.5, 0.12], [-0.15, 0.66, 0.08], [0.03, 0.4, 0.2], [-0.07, 0.9, 0.06], [0.11, 0.82, 0.02]];   // of a tile
+    function _appleGroup(x, y, spots, size, bob) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(x, y);
+        var g = new THREE.Group();
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+        g._ew_deployable = true;
+        var fill = function () {
+            var e = _miscModelCache[_APPLE_MODEL_URL];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var sc = size * ts / ((bb.max.y - bb.min.y) || 1), anchor = null, t0 = _animNow();
+            for (var i = 0; i < spots.length; i++) {
+                var m = root.clone(true);
+                m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; if (!anchor) anchor = n; } });
+                m.scale.setScalar(sc);
+                m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+                var h = new THREE.Group(); h.add(m);
+                h.position.set(spots[i][0] * ts, spots[i][1] * ts, spots[i][2] * ts);
+                h.rotation.y = i * 1.7;
+                g.add(h);
+            }
+            if (anchor && bob) {
+                var ph = (x * 31 + y * 17) * 0.37;
+                anchor.onBeforeRender = function () { g.children[0].position.y = (spots[0][1] + 0.04 + Math.sin((_animNow() - t0) / 480 + ph) * 0.03) * ts; g.children[0].rotation.y = (_animNow() - t0) / 1400; };
+            }
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[_APPLE_MODEL_URL];
+        if (e0 && e0.root) fill();
+        else { try { _loadMiscModel(_APPLE_MODEL_URL, true, fill, { front: true }); } catch (x2) { console.warn("[ThreeRenderer] apple model load threw", x2); } }
+        return g;
+    }
+    function _buildApple3D(a) { return _appleGroup(a.x, a.y, [[0, 0.04, 0]], 0.3, true); }
+    function _buildAppleCanopy(t) { return _appleGroup(t.x, t.y, _APPLE_CANOPY, 0.16, false); }
     /* the HP bar over a plant: black with a white outline (the UI rule), the fill in its side's colour; it faces the camera */
     function _plantHpBar(turret, ts, y) {
         var bar = new THREE.Group();
@@ -10687,6 +10730,8 @@ const ThreeRenderer = (function () {
                 h = _hashInt(h, 1); h = _hashInt(h, s.x); h = _hashInt(h, s.y); h = _hashStr(h, s.type); h = _hashInt(h, s.watered ? 1 : 0);
             }
         }
+        if (state.apples) for (var api = 0; api < state.apples.length; api++) { h = _hashInt(h, 71); h = _hashInt(h, state.apples[api].x); h = _hashInt(h, state.apples[api].y); }
+        if (state.plantedTrees) for (var pti = 0; pti < state.plantedTrees.length; pti++) { if (state.plantedTrees[pti].apple) { h = _hashInt(h, 73); h = _hashInt(h, state.plantedTrees[pti].x); h = _hashInt(h, state.plantedTrees[pti].y); } }
         if (state.bombs) {
             for (var bi = 0; bi < state.bombs.length; bi++) {
                 var b = state.bombs[bi];
@@ -12158,6 +12203,17 @@ const ThreeRenderer = (function () {
                     deployableMeshes.set(key, m);
                 }
             }
+        }
+
+        /* 🍎 THE APPLE TREE: the apples on the ground, and the apples in each apple tree's leaves */
+        var _apl = (state.apples || []).map(function (a) { return [a, _buildApple3D]; })
+            .concat((state.plantedTrees || []).filter(function (t) { return t.apple; }).map(function (t) { return [t, _buildAppleCanopy]; }));
+        for (var ai = 0; ai < _apl.length; ai++) {
+            var am = _apl[ai][1](_apl[ai][0]);
+            if (!am) continue;
+            am._ew_depX = _apl[ai][0].x; am._ew_depY = _apl[ai][0].y;
+            objectGroup.add(am);
+            deployableMeshes.set('dep_' + (idx++), am);
         }
 
         if (state.bombs) {

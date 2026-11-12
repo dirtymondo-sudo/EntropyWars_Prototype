@@ -10884,11 +10884,12 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
   if (sd) {
     const enemy = actingUnit ? sd.owner !== actingUnit.player : false;
     /* THE GARDEN (2026-11-12): a seed needs water; the card says which state it is in and what it grows into */
-    const _sdBase = sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : sd.type === 'leech' ? 'Leech Seed' : 'Seed';
+    const _sdBase = sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : sd.type === 'leech' ? 'Leech Seed' : sd.type === 'apple' ? 'Apple Seed' : 'Seed';
     const name = sd.watered ? _sdBase.replace(/Seed$/, 'Sprout') : _sdBase;
     const _sdGrows = sd.type === 'heal' ? 'a Healing Flower that heals allies beside it each round'
       : sd.type === 'poison' ? 'a Gas Plant that poisons enemies beside it each round'
       : sd.type === 'leech' ? 'a Thorn Vine that lashes the nearest enemy within 2 tiles each round'
+      : sd.type === 'apple' ? 'an Apple Tree that drops a healing apple every 2 rounds'
       : 'a tree';
     const desc = (sd.watered
       ? 'Watered: it grows into ' + _sdGrows + ' at the end of this round.'
@@ -11703,7 +11704,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
     const seed = (state.plantedSeeds || []).find(s => s.x === tx && s.y === ty && s.owner !== actingUnit.player);
     if (seed) {
-      const seedName = seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+      const seedName = seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : seed.type === 'apple' ? 'Apple Seed' : 'Leech Seed';
       const canAtk = inRange && !losBlocked && _fogSees;
       actions.push(_objAtkRow('attack:seed', 'Attack ' + seedName, canAtk));
     }
