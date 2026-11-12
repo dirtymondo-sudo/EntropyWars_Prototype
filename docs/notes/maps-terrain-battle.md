@@ -1611,6 +1611,17 @@ He approved the second mock-up ("yeah that better, proceed"); he was angry a mat
   dock's props are on the outer wings and the boosters' after ends; dishes on the bridge and the engine block. Picks 12/11 @ 11,8, 10/9 @ 12,9.
 - Scratch tools + mock-ups: /mnt/project-files/spaceship-real-ship-20261111/ (tools/plan3.js draws the rows, mock.html the 3D mock-up).
 
+### THE HEADING (2026-11-12, mondo: "the spaceship is flying sideways now on the spaceship map")
+WHY: THE GUNSHIP / THE CRUISER turned the bow north (−z), but `prebuilt_derelict` env.motion still had `axis: 'x'` from the old east-west
+hull, so the wreckage and the dust streamed across her beam.
+- data.js: the site's motion is `axis: 'z', dir: -1`. `dir` now also applies to the linear streams (drift / sea / space / void): −1 = the
+  world streams toward +axis (default 1, every other map unchanged). The walk's sky reads the same row (hqAreaSky `voyage`).
+- three-renderer.js: `_motionPlace` + the motes in `_motionAnimate` and the walk's `_hqTickSky` floaters + motes take `dir`; new
+  `_motionStreakRot(cam)` turns a dust streak (a sprite stretched along the screen's horizontal) onto the z axis as the camera sees it,
+  on z voyages only. Not changed: the nebula flow (uSkyFlow is a slow turn of the dome, no axis).
+- Checked in a VS CPU match, WebGL2, his fog on: 81 of 82 moving bodies ran toward +z (the stern), none along x, streak angle = the
+  z axis on screen. Not looked at: the walk on the deck, online, WebGPU. Shots: /mnt/project-files/spaceship-heading-20261112/.
+
 ## THE FULL LEDGES — a room's own metres per level, ledges a whole square tall (2026-11-10, data.js)
 mondo after the Giza pilot shot: "looks good, go ahead and fix all of the maps that need it".
 - **The rule**: `terrain.levelM: 3.5` on a room → `hqFieldLevelRules(roomId)` gives THE TIER RULE a 3.5 m step for that room
@@ -2082,3 +2093,36 @@ window.EW_NO_CALM_LOOK and his pixel sheets are untouched. The table + hqMapLook
 - 11-12 second follow-up (mondo: "Yes it is still way too bright"): the cause was the room's light, kept from the gym (`mood.ambient: 2.0`
   over dark rubber mats) now falling on pale tile. `mood.ambient` 2.0 -> 1.0 and the pad tints -> 0x66707a / 0x36424e. Headless WebGL2
   shots read much dimmer than his Mac (Firefox, WebGPU): do not judge a pale floor's brightness from them. Shot: test_chamber_dimmed2_low.jpg.
+- 11-12 third follow-up (mondo: "water still showing up as way too bright in the training room"): THE CAUSE OF ALL THREE was the camera's
+  KEY LIGHT (HQ_LIGHT_RULES.keyLamp.battleIntensity 1.5 × Settings, a point light 7 m over the square the camera looks at in every
+  ENCLOSED room). Measured in one headless fight: a 3 × 3 of spell water reads flat white (217, 225, 225) with it, blue (134, 185, 203)
+  without; moving the room's ceiling lamps changed nothing. New `shell.keyLamp` (0..1, three-renderer.js _hqKeyRoomK: the room's share
+  of the Key Light, walk + fight); `training_hall` sets 0. The same water in the Holo Sim stayed dark in the same test. Other enclosed
+  rooms with a pale thing under the camera can flare the same way: give that room a `keyLamp` share. Shot: water_key_light_before_after.jpg.
+
+## THE GRASS FIELD (2026-11-12)
+mondo linked github.com/fromtheghost/ghibli-grass: "try implementing some more stylistic grass. AAA game like genshin impact". The repo
+has no licence, so nothing of it is used. His words on the first try (thin spiky blades, random yaw, yellow tips): "im imagining it
+being more thick and fluffy. The way it is now just looks gross." He then picked "Yes, build the pointed clumps".
+- three-renderer.js THE GRASS FIELD (`GGRASS`, `_ggBuild`, `_ggMat`, `_ggFace`, `_ggTick`, node twin `_ewNodeGGrass`). One merged mesh,
+  one draw call, built with the board's decorations (`rebuildTerrainDecorations`). A tuft = a 7-corner three-point clump
+  (`_GG_SHAPES.crown`) that turns to the camera in the vertex shader (`aGgS` along `_ggRightU`), 24 x 24 a square, 0.11-0.21 of a
+  square tall. NO DEPTH WRITE, render order 50, sorted far to near (counting sort, redone when the camera turns ~10 degrees): near
+  tops cover far feet (the fluff), and tile highlights / rings / zones / blood draw on top of the grass with no extra code.
+- Where: every board square whose sheet is a grass key (`_GRASS_TERRAIN_SET`), plus the room's own grass up to 5 squares past the
+  board in a terrain room whose floor is grass (paths, rock, water, walls, steep faces skipped through the room's terrain info).
+  Not on: a square with a thing on it (a tree is fine), a monument square, a field square that stays rock, a square whose ground
+  steps more than 0.35 of a square (tufts climbed Stonehenge's stones before that rule).
+- Colour: `GGRASS.sheets` = each grass sheet's average in SCREEN values (the materials read sheets that way; linear values came out
+  2-3x too dark in sunlight). Foot = rootK, belly = the ground's own, top = coolK / warmK patches. Lambert, normal up, takes shadows.
+- Motion: a rolling gust + flutter, crest brightens the tops. THE PRESS MAP (4 texels a square) lays tufts down under units.
+- Setting: Settings > Video > Grass High / Low / Off (`ThreeRenderer.setGrassField`, `ew_grassField`; Low = 15 x 15 wider tufts, 2
+  squares of meadow). Off for everything: `window.EW_NO_GRASS_FIELD`. Live tunables `EW_GGRASS` (+ `EW_GGRASS.flush()`); the last
+  build's numbers `window._ewGrassField`.
+- Cost: Fairy Forest High 100,638 tufts (Low 24,916), Stonehenge 152,077. The meadow past the board is kept between builds; a
+  rebuild after a dig took 155 ms on the sandbox (790 before). Frame time on the software-drawn sandbox showed no difference Off
+  vs High (56-79 ms either way), which says little about a real weak GPU: the overdraw is the thing to watch there.
+- Seen: node renderer on WebGL2 (Fairy Forest, Stonehenge, The Looking-Glass), real WebGPU (SwiftShader) and the classic WebGL
+  renderer (Fairy Forest). Fog of war was on in every run. Not seen: exploration rooms (none built: the field is battle-only),
+  voxel boards, purple grass, a two-seat online match, a real weak PC.
+- Shots: /mnt/project-files/ghibli-grass-20261112/ (final_*.jpg; fluffy_* = the mock-up he approved; pair_* = the rejected first try).

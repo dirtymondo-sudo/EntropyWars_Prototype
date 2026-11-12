@@ -29,6 +29,7 @@ THE FIT (on the unit's own body: male or female):
 Usage: pip install bpy==5.2.3 scipy pillow
        python3 -I bake-outfit.py --name cowboy --label Cowboy --gender male --src cowboy_t2a.glb --bodies <dir of mpfb_*.glb>
               [--out charactercreation/wear] [--metal 0.0] [--rough 0.8] [--px 2048]
+              [--headgear]   (a helmet / cowl that reaches below the eyes is kept as the hat: quarterback)
 Notes: docs/notes/models-assets.md "THE MESHY OUTFITS".
 """
 import argparse, importlib.util, io, math, os, re, sys
@@ -48,6 +49,7 @@ from mathutils.bvhtree import BVHTree  # noqa: E402
 
 E = lambda k, d: float(os.environ.get(k, d))
 SKIN_T = E('SKIN_T', 0.20)
+HEADGEAR = False
 
 
 def load(p):
@@ -178,7 +180,18 @@ def fit(name, gender, src, bodies_dir):
         c = co(o); cz = c[:, 2].mean(); cx = c[:, 0].mean(); n = len(o.data.polygons)
         col = np.median(face_cols(o, PX, IW, IH), axis=0)
         isrem = o in rem
-        if abs(cx) > 0.8 * xmax and np.linalg.norm(col - skin) < SKIN_T and n < 1600: dropped.append(('hand', n)); bpy.data.objects.remove(o); continue
+        if abs(cx) > 0.8 * xmax and np.linalg.norm(col - skin) < SKIN_T and n < 1600:
+            # THE GLOVE ON A BARE HAND (2026-11-12, robinhood: fingerless gloves; Meshy fuses the glove to the hand): only the
+            # skin-coloured faces go; what is left (the glove's cuff + back) stays when it is a real piece (env GLOVE, faces)
+            fc_ = face_cols(o, PX, IW, IH); sk_ = np.linalg.norm(fc_ - skin, axis=1) < SKIN_T
+            if (~sk_).sum() >= E('GLOVE', 150):
+                bmg = bmesh.new(); bmg.from_mesh(o.data); bmg.faces.ensure_lookup_table()
+                bmesh.ops.delete(bmg, geom=[bmg.faces[i] for i in np.nonzero(sk_)[0]], context='FACES')
+                bmesh.ops.delete(bmg, geom=[v for v in bmg.verts if not v.link_faces], context='VERTS'); bmg.to_mesh(o.data); bmg.free()
+                dropped.append(('hand skin, glove kept', int(sk_.sum()))); keep.append(o); continue
+            dropped.append(('hand', n)); bpy.data.objects.remove(o); continue
+        # A FLAKE (2026-11-12, catgirl: a skin-coloured chip floating beside a boot): a shell of a few faces, a few cm across
+        if n < E('FLAKE', 30) and (c.max(0) - c.min(0)).max() < 0.04 * S / 1.9 and not (cz > chin - 0.02): dropped.append(('flake', n)); bpy.data.objects.remove(o); continue
         hd = math.hypot(cx - eye.x, c[:, 1].mean() - eye.y - 0.08)
         inhead = cz > chin - 0.02 and hd < 0.16
         if isrem and c[:, 2].min() > chin - 0.25 and not (cz > eye.z and n >= 60): dropped.append(('face bit', n)); bpy.data.objects.remove(o); continue
@@ -203,8 +216,19 @@ def fit(name, gender, src, bodies_dir):
             if v.co.z < chin: f = max(0.0, 1 - (chin - v.co.z) / 0.25); k = 1 + (hs - 1) * f; v.co = Vector(eyeM) + Vector((d.x * k, d.y * k, d.z)) - (Vector(eyeM) - eye) * (1 - f)
             else: kk = E('WIGK', 1.04); v.co = Vector(eyeM) + Vector((d.x * hs * kk, d.y * (sy if d.y > 0 else hs) * kk, d.z * (sz if d.z > 0 else hs) * kk))
     wig = [o for o in headp if min(v.co.z for v in o.data.vertices) < eyeM[2] - 0.03 or o in rem]
+    # A HAIR LOCK (2026-11-12, mondo: "some sort of strip hanging off the back of the [zombie]'s head and back"): a small shell in
+    # the unit's hair colour that starts at the head and hangs below it (a lock down the back) is hair too: not exported
+    if wig and not HEADGEAR and E('LOCKS', 1):
+        hcol = np.median(np.vstack([face_cols(o, PX, IW, IH) for o in wig]), axis=0)
+        for o in [o for o in keep if o not in headp]:
+            c = co(o)
+            if len(o.data.polygons) < E('LOCKN', 600) and c[:, 2].max() > eyeM[2] - 0.16 and np.linalg.norm(np.median(face_cols(o, PX, IW, IH), axis=0) - hcol) < E('LOCKT', 0.15):
+                dropped.append(('hair lock', len(o.data.polygons))); keep.remove(o); bpy.data.objects.remove(o)
+    # HEADGEAR (2026-11-12, quarterback: his helmet reaches below the eyes, so it was read as hair and left out): --headgear
+    # keeps every head piece as the hat (a helmet, a cowl, a mask); the look then picks no hair under it
+    if HEADGEAR: wig = []
     hats = [o for o in headp if o not in wig]
-    for o in hats:   # a brim low over the eyes comes up so the face reads
+    for o in ([] if HEADGEAR else hats):   # a brim low over the eyes comes up so the face reads (never a helmet: it sits where Meshy put it)
         zb = min(v.co.z for v in o.data.vertices); up = min(max(zb, eyeM[2] + E('BRIM', 0.035)), eyeM[2] + E('BRIMHI', 0.07)) - zb
         for v in o.data.vertices: v.co.z += up
     hf = [p for p in body.data.polygons if all(hwB[i] for i in p.vertices)]
@@ -231,15 +255,29 @@ def fit(name, gender, src, bodies_dir):
         vs += [v.co.copy() for v in o.data.vertices]; fs += [[off + i for i in p.vertices] for p in o.data.polygons]; off += len(o.data.vertices)
     bvh = BVHTree.FromPolygons(vs, fs)
     hw = wts(body, 'Head'); nw = wts(body, 'neck'); ks = set()
+    vs_, fs_, off_ = [], [], 0
+    for o in cloth:
+        if o in hats: continue
+        vs_ += [v.co.copy() for v in o.data.vertices]; fs_ += [[off_ + i for i in p.vertices] for p in o.data.polygons]; off_ += len(o.data.vertices)
+    hoodbvh = BVHTree.FromPolygons(vs_, fs_) if fs_ else None; upper_, hood_ = [], []
     legw = sum(wts(body, n) for n in ('LeftUpLeg', 'RightUpLeg', 'LeftLeg', 'RightLeg'))
     for v in pm.vertices:
-        if hw[v.index] + nw[v.index] > 0.5: ks.add(v.index); continue
+        if hw[v.index] + nw[v.index] > 0.5:
+            # THE SCALP UNDER A HOOD (2026-11-12, robinhood: his bald crown came through the hood between its vertices): the head
+            # above the brow is hidden where the OUTFIT's own cloth (a hood, a cowl: never a hat, hats come off) lies over it
+            if hw[v.index] > 0.5 and v.co.z > eyeM[2] + E('HOODZ', 0.045):
+                upper_.append(v.index)
+                if hoodbvh is not None and (hoodbvh.ray_cast(v.co + v.normal * 0.001, v.normal, E('RAY_OUT', 0.07))[0] is not None or hoodbvh.ray_cast(v.co, -v.normal, E('RAY_IN', 0.05))[0] is not None) and hoodbvh.ray_cast(Vector((v.co.x, v.co.y, eyeM[2] + 0.02)), Vector((0, 0, 1)), 0.4)[0] is not None: hood_.append(v.index)
+            ks.add(v.index)
+            continue
         h1 = bvh.ray_cast(v.co + v.normal * 0.001, v.normal, E('RAY_LEG', 0.45) if legw[v.index] > 0.5 else E('RAY_OUT', 0.07)); h2 = bvh.ray_cast(v.co, -v.normal, E('RAY_IN', 0.05))
         if h1[0] is None and h2[0] is None: ks.add(v.index)
+    if len(hood_) > E('HOODMIN', 0.6) * max(1, len(upper_)): ks -= set(hood_) | set(i for i in upper_ if pm.vertices[i].normal.y > E('HOODFRONT', -0.3))   # + the rest of the crown that does not face forward (flecks between the hood's vertices)   # (a real hood covers most of the crown; a high collar does not)
     gw = {g.name: wts(body, g.name) for g in body.vertex_groups}
     for names in (('LeftFoot', 'LeftToeBase'), ('RightFoot', 'RightToeBase'), [n for n in gw if n == 'LeftHand' or re.search(r'_l$', n)], [n for n in gw if n == 'RightHand' or re.search(r'_r$', n)]):
         tot = sum(gw[n] for n in names); idx = np.nonzero(tot > 0.5)[0]
         hid = sum(1 for i in idx if i not in ks) / max(1, len(idx))
+        print('[bake-outfit] %s: %s %.0f %% under cloth' % (name, names[0], hid * 100), flush=True)
         if hid > E('ALLHIDE', 0.35): ks -= set(int(i) for i in idx)
         else: ks |= set(int(i) for i in idx)
     # A LEG SEGMENT (thigh, calf) that is mostly under cloth is hidden whole (2026-11-12, mondo: "Knight has slivers of skin
@@ -280,7 +318,7 @@ def fit(name, gender, src, bodies_dir):
     kdb.balance()
     bwt = [{body.vertex_groups[g.group].name: g.weight for g in v.groups if g.weight > 1e-4} for v in body.data.vertices]
     pbvh = BVHTree.FromPolygons([v.co.copy() for v in pm.vertices], [list(p.vertices) for p in pm.polygons if all(armw[i] < 0.5 for i in p.vertices)])
-    unsleeved = 0
+    unsleeved = 0; torn = 0
     for o in cloth:
         bpy.ops.object.select_all(action='DESELECT'); o.select_set(True); bpy.context.view_layer.objects.active = o
         dt = o.modifiers.new('dt', 'DATA_TRANSFER'); dt.object = posed; dt.use_vert_data = True; dt.data_types_verts = {'VGROUP_WEIGHTS'}; dt.vert_mapping = 'POLYINTERP_NEAREST'
@@ -315,7 +353,16 @@ def fit(name, gender, src, bodies_dir):
                 while st_:
                     for k_ in adj[st_.pop()]:
                         if k_ not in seen_ and dl[k_][0] < 0.16 and dl[k_][1] > 0.1: seen_.add(k_); st_.append(k_)
+                # THE HAND IN A BIG SHELL (2026-11-12, robinhood: Meshy fused his gloved hand to the tunic's skirt, the test above
+                # sent the glove to the hips and it hung in the air beside the hand): cloth tight round the wrist + hand (3.5 cm off
+                # the bone line, mostly arm weight) is on the arm too, with what joins it within 6 cm of the line
+                seeds = [v.index for v in o.data.vertices if dl[v.index][0] < E('WRIST', 0.035) and dl[v.index][1] > 0.55 and sum(g.weight for g in v.groups if g.group in gi) > 0.6]
+                st_ = [k_ for k_ in seeds if k_ not in seen_]; seen_ |= set(st_)
+                while st_:
+                    for k_ in adj[st_.pop()]:
+                        if k_ not in seen_ and dl[k_][0] < E('WRISTR', 0.06) and dl[k_][1] > 0.5: seen_.add(k_); st_.append(k_)
                 sleeve[sd] = seen_
+        el0 = {e.key: (o.data.vertices[e.vertices[0]].co - o.data.vertices[e.vertices[1]].co).length for e in o.data.edges}
         for v in o.data.vertices:
             M = Matrix(((0,) * 4,) * 4); tw = 0; w = {}
             for g in v.groups:
@@ -359,12 +406,21 @@ def fit(name, gender, src, bodies_dir):
             W.append(w or {'Hips': 1.0})
         me = o.data; me.calc_loop_triangles(); uv = me.uv_layers[0].data
         P = co(o); N = np.array([v.normal for v in me.vertices])
-        F = [tuple(t.vertices) for t in me.loop_triangles]
-        FUV = [[(uv[l].uv[0], 1.0 - uv[l].uv[1]) for l in t.loops] for t in me.loop_triangles]   # (glTF's v runs down)
+        # A TORN FACE (2026-11-12, quarterback: a thin stick through each hand): a face one of whose edges grew more than 3x
+        # and past 6 cm when the cloth was un-skinned (its ends went to different bones) is left out
+        torn_ = set()
+        for p_ in me.polygons:
+            for k_ in p_.edge_keys:
+                l_ = (me.vertices[k_[0]].co - me.vertices[k_[1]].co).length
+                if l_ > E('TORN', 0.06) and l_ > 3 * el0.get(k_, l_): torn_.add(p_.index); break
+        torn += len(torn_)
+        F = [tuple(t.vertices) for t in me.loop_triangles if t.polygon_index not in torn_]
+        FUV = [[(uv[l].uv[0], 1.0 - uv[l].uv[1]) for l in t.loops] for t in me.loop_triangles if t.polygon_index not in torn_]   # (glTF's v runs down)
         g = out.setdefault('hat' if o in hats else 'outfit', {'P': [], 'N': [], 'F': [], 'FUV': [], 'W': []})
         base_i = sum(len(p) for p in g['P'])
         g['P'].append(P); g['N'].append(N); g['F'] += [tuple(i + base_i for i in f) for f in F]; g['FUV'] += FUV; g['W'] += W
     print('[bake-outfit] %s: %d cloth vertices beside an arm (not round it) taken off the arm' % (name, unsleeved), flush=True)
+    if torn: print('[bake-outfit] %s: %d torn faces left out' % (name, torn), flush=True)
     for g in out.values():
         g['P'] = np.vstack(g['P']); g['N'] = np.vstack(g['N']); g['F'] = np.array(g['F'])
     from PIL import Image
@@ -377,8 +433,10 @@ def main():
     ap.add_argument('--name', required=True); ap.add_argument('--label', required=True); ap.add_argument('--gender', default='male')
     ap.add_argument('--src', required=True); ap.add_argument('--bodies', required=True)
     ap.add_argument('--out', default=os.path.join(HERE, 'charactercreation', 'wear'))
+    ap.add_argument('--headgear', action='store_true')
     ap.add_argument('--metal', type=float, default=0.0); ap.add_argument('--rough', type=float, default=0.8); ap.add_argument('--px', type=int, default=2048)
     a = ap.parse_args()
+    global HEADGEAR; HEADGEAR = a.headgear
     from PIL import Image
     from scipy.spatial import cKDTree
     pieces, hid_base, im = fit(a.name, a.gender, a.src, a.bodies)

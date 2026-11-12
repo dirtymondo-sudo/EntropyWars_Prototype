@@ -1905,5 +1905,27 @@ Then `node bake-custom-shape.js`, the skin into `charactercreation/mpfb/looks/`,
 Told apart by: the flat `fit_check.jpg` (no light) showed an even face while the game showed the band; `edgek=0` changed nothing.
 Proof `/mnt/project-files/meshy-parts-20261112/cowboy_face_round2.jpg`.
 
+**THE KNIGHT + THE WIZARD (11-12, mondo "yes" to faces on the other two)** - `knightFace` + `ew_face_knight` (on mpfb_female), `wizardFace` +
+`ew_face_wizard`; both remade looks wear them (their hand-set face sliders removed; the knight's brows are in her skin, `mhBrows: own`).
+Commands (old unit GLBs = the race's own model on R2):
+- knight: `unit=knightf.glb body=mpfb_female stock=.../skin_young_caucasian_female.jpg key=knightFace skin=ew_face_knight cy=1.485 pitch=0 brow0=0.05 brow1=0.065 hairrgb=92,15,30 hairside=- hairdiff=22 eye0=0.004 eye1=0.011`
+- wizard: `unit=wizard.glb stock=.../skin_young_caucasian_male.jpg key=wizardFace skin=ew_face_wizard cy=1.38 pitch=0 hairrgb=165,115,65 hairtol=55`
+- cowboy: `unit=cowboy.glb stock=.../skin_middleage_caucasian_male.jpg key=cowboyFace skin=ew_face_cowboy` (defaults: cy 1.5, pitch 15)
+New rules: HAIR OVER THE FACE (`hairrgb=`: a landmark or texel on hair takes its mirror from the other side of the face; `hairside=-|+`
+also mirrors any texel on that side that disagrees with its mirror, for the hair's soft edge and its shadow); no hat = paint the
+forehead (`brow0/brow1` up at the hairline); a wider eye margin (`eye0/eye1`) drops heavy painted eye make-up; the tongue 8 mm in.
+The tongue showing in the Face Lab talk pose (jawOpen 0.5 + mouthFunnel 0.3) is the STOCK heads' own, same with the shapes at 0.
+Proof `/mnt/project-files/meshy-parts-20261112/three_faces.jpg`. Known on the knight: painted brows are rough, thin hair-edge lines
+at the right cheek, a pale strip at the hairline.
+
+**BATCH ONE OF THE DEMO STARTERS (11-12)** - `zombieFace` + `ew_face_zombie`, `robinhoodFace` + `ew_face_robinhood` (both looks `mhBrows: own`).
+- zombie: `unit=zombie.glb body=mpfb_female stock=.../skin_young_caucasian_female.jpg key=zombieFace skin=ew_face_zombie pitch=0 brow0=0.05 brow1=0.065 hairrgb=25,28,32 hairside=- hairtol=45 eye0=0.004 eye1=0.011 tonepct=85`
+  (the pack zombie skins are green: a plain skin toned to her white face matches her Meshy body shells).
+- robinhood: `unit=robinhood.glb stock=.../skin_young_caucasian_male.jpg key=robinhoodFace skin=ew_face_robinhood hairrgb=50,95,45 hairtol=60` (green hood smear left at the temples, under the hood).
+- NOT DONE: quarterback (the landmarker finds no face behind the helmet's bars: stock face stays); catgirl (her fringe and side locks leave
+  dark lines round the face, and her look wears mondo's saved face: waits on his word). Needs `apt-get install libgles2` beside libegl1 libgl1.
+
 **KNOWN** - with the mouth open the tongue sits high; the sideburn paint ends in a hard edge under the hair; sheet is 1024 px like the stock skins. Not checked: the other four male bodies, WebGPU, a battle.
 Proof: `/mnt/project-files/meshy-parts-20261112/cowboy_face_pilot.jpg`.
+
+**Round 3, THE SOFT FACE (2026-11-12, mondo on the knight: "like an ogre or an ugly instagram model ... The original one had prettier lashes and eyes and not a wide face or jawline").** What was wrong: a painted stylised unit is pretty in its DRAWING, not its low-poly relief. Fitted in full the game's light showed a flat nose, pushed-out lips, a frown pressed onto the lids and a cheek as wide as the hair made it look; her painted brows, eye liner and hair edges landed on the MPFB lids and cheeks as smudges and scratch lines; her dark painted upper lip read as an open mouth; and the "beard" rule fired on her dark lips. New opt-in bake-face.py params (cowboy + wizard do not pass them, their bake is unchanged): `depth=` (scale every landmark's depth move), `wide=` (scale the OUTWARD part of sideways moves; 0 = may narrow, never widen), `low=` (scale downward moves below the nose), `browfit=` (0 = brows / forehead take the eyes' move, no frown on the lids), `lipsrigid=1` (the whole mouth moves as one), `lips=<k>` (paint only the mouth oval, k = 0 paints nothing: the skin is then the stock sheet toned to the unit's skin), `beard=1` (rule off). The knight: `stock=skin_young_caucasian_female2.jpg beard=1 depth=0.25 wide=0 low=0.5 browfit=0 lipsrigid=1 lips=0` after the same unit / hair params as before (brow0/brow1/eye0/eye1 no longer needed). Her look (RACE_REMADE_LOOKS): jaw -0.4, head -0.2, nose -0.3, noseWidth -0.4, eyeSize 0.15, browRidge -0.6, mouthCorners 0.25, brows eyebrow010, lashes mindfront_eyelashes_04, lipTint pick #b87882, hair mh_long01 (hair001 left the whole face bare and scratchy). Lessons for the next stylised / female unit: judge in the GAME viewer, not fit_check (a plain stock female already looked harsh in the head close-up, which looks up from below); try the look with `<race>Face: 0` first to see what the fit itself adds; a creator brow + lash pick beats smeared painted ones; a lip tint over the stock lips beats a two-tone painted mouth. Not carried over: her big painted anime eyes and liner (the MPFB eyes are real eyeballs; no make-up layer in the creator). Proof /mnt/project-files/meshy-parts-20261112/knight_face_soft.jpg.

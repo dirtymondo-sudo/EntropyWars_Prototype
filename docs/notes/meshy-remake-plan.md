@@ -73,6 +73,12 @@ Look for, in this order:
 | Skin slivers at the calves | leg hidden face by face | a leg segment 70% covered is hidden whole |
 | Boot through the robe front | skirt shared evenly between the legs | THE CLOTH OVER A LEG: only cloth between the legs is shared |
 | Unit crouches | race idle on the creator rig | look carries `idle: 'Idle_11'` |
+| Helmet left out (read as hair) | head pieces below the eyes were hair | `--headgear` keeps them as the hat, unlifted |
+| One glove floating beside the hand | hand fused into a big shell failed the sleeve test | THE HAND IN A BIG SHELL (wrist seeds) |
+| Fingerless gloves lost with the bare hand | hand shell dropped whole | THE GLOVE ON A BARE HAND |
+| Scalp through a hood | skin between the hood's vertices | THE SCALP UNDER A HOOD |
+| Thin sticks through the hands | faces stretched between bones | A TORN FACE |
+| Skin chips floating by a boot | tiny loose shells | A FLAKE |
 
 Tried and dropped: a ray test for sleeves (cuffs flared into plates), aiming the forearm (tore shoulders), cutting boot
 tops under a hem (bare shin showed).
@@ -101,7 +107,7 @@ listed in `EW_MH_LOOKS.skins`). Both keep the 67 face shapes working, because th
 PILOT DONE 2026-11-12 (mondo: "yeah lets do face pilot and cowboy"): `bake-face.py` makes both automatically from the OLD unit's head
 (face landmarks, no hand work): `cowboyFace` + skin `ew_face_cowboy`, worn by the remade cowboy look. Blink, talk, smile and frown
 checked in the game. How, the rules learned and the known faults: `character-creator.md` "THE UNIT FACES". Use the OLD unit GLB as the
-face source, never the T2 remake (its face is a blur). WAITING on his look before any other unit gets a face.
+face source, never the T2 remake (its face is a blur). mondo 11-12 05:10Z "okay thats better" after round 2, then "yes" to faces on the knight, the wizard and the demo starters batch: knight + wizard done the same night. Faces are now part of every remake.
 
 | Step | What | How | Risk |
 |---|---|---|---|
@@ -121,6 +127,8 @@ file, never a repaint of one of his textures; no real-person likeness; MPFB head
 ## 7. The roster
 
 Three groups, from `character-models-plan.md` section 4:
+
+**STYLISED / FEMALE FACES (11-12, the knight):** a painted anime-style face is NOT fitted in full: use the SOFT FACE params of bake-face.py (character-creator.md THE UNIT FACES round 3: depth, wide, low, browfit, lipsrigid, lips) and finish with creator picks (brows, lashes, lip tint, hair that frames the face). Judge in the game viewer beside the old model before showing him.
 
 **A. People in clothes (this process fits as is).** Done: cowboy (M), knight (F), wizard (M).
 Left: angel (F), annunaki (M), antihero (M), astronaut (M), atlantean (F), barbarella (F), bunny girl (F), catgirl (F),
@@ -152,8 +160,14 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 | Unit | Remade | Look check | Battle check | Face fit (F1-F4) | His OK | Notes |
 |---|---|---|---|---|---|---|
 | cowboy (M) | PR #1153 | clean after round 4 | owed | PILOT DONE 11-12 (bake-face.py) | waiting | boots + spurs fixed #1154 |
-| knight (F) | PR #1153 | clean after round 4 | owed | not started | waiting | calf slivers fixed #1155; cape no sway |
-| wizard (M) | PR #1153 | clean after round 4 | owed | not started | waiting | robe points #1155, boots #1156; K3, K5 open |
+| knight (F) | PR #1153 | clean after round 4 | owed | DONE 11-12, SOFT FACE round 3 (he called the first fit an ogre) | waiting | calf slivers fixed #1155; cape no sway |
+| wizard (M) | PR #1153 | clean after round 4 | owed | DONE 11-12 | waiting | robe points #1155, boots #1156; K3, K5 open |
+| zombie (F) | batch one 11-12 | clean (race walk hunches) | owed | DONE 11-12 | waiting | her bloody skin is worn as shells; skin `sohh_female_zombie_skin` |
+| catgirl (F) | batch one 11-12 | skin chip by the left boot, lacing patches on the sleeves | owed | next | waiting | his saved look's body + face + hair; T2 ears = separate hat piece, not in the look |
+| robinhood (M) | batch one 11-12 (second T2 run) | a few skin flecks on the hood front | owed | DONE 11-12 | waiting | hood = outfit, `hair: bald`; fingerless gloves kept |
+| quarterback (M) | batch one 11-12 | clean | owed | next | waiting | `--headgear` (helmet = hat piece), `hair: bald` |
+| djinn (M) | REFUSED by Meshy's safety check twice (bare chest) | | | | | not worked around; needs his word |
+| mummy (F), angel (F) | batch two, not started | | | | | |
 | everything else in group A | not started | | | | | |
 
 ## 9. Standing rules for any session doing this
