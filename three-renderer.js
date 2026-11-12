@@ -83792,6 +83792,11 @@ const ThreeRenderer = (function () {
         if (n > 0 && NF.amount > 0) c.lerp(new THREE.Color(NF.color != null ? NF.color : 0xa8bad8), Math.min(1, NF.amount) * n);
         return c;
     }
+    /* THE ROOM'S OWN KEY LIGHT (2026-11-12, mondo in the Training Room: "The white is too bright", "water still showing up as way too
+       bright"): the Key Light is for DARK enclosed rooms. In a room that is already well lit it stood 7 m over the square the camera
+       looks at and blew every pale thing under it to flat white (a pale floor, a spell's water sheet), whatever the room's own lamps
+       did. `shell.keyLamp` (0..1, default 1) is that room's share of it, on the walk and in a fight; Settings > Key Light still scales it. */
+    function _hqKeyRoomK(room) { var S = (room && room.shell) || {}; var k = (S.keyLamp != null) ? +S.keyLamp : 1; return (isFinite(k) && k >= 0) ? k : 1; }
     function _keyLampGain() { var v = _polishPref('keyLight'); if (typeof window !== 'undefined' && window.EW_NO_KEY_LIGHT) return 0; return (typeof v === 'number' && isFinite(v)) ? Math.max(0, v) * 2 : 1; }
     function _hqEnclosed(room) {
         if (!room) return false;
@@ -83815,6 +83820,7 @@ const ThreeRenderer = (function () {
         var NFl = _hqLightRules().nightFill || {};
         var nOut = (!_hqEnclosed(H.room) && H.sky && H.room && H.room.kind === 'box') ? Math.max(0, Math.min(1, +H.sky.night || 0)) * (NFl.keyLight || 0) : 0;   // THE NIGHT FILL: outdoors, a share of it by night
         var want = (_hqEnclosed(H.room) ? _hqWhiteIn(H.room) : nOut) * (K.intensity || 0) * _keyLampGain();   // THE WHITE ROOMS: × whiteDay on a white floor
+        if (_hqEnclosed(H.room)) want *= _hqKeyRoomK(H.room);   // THE ROOM'S OWN KEY LIGHT
         L.intensity += (want - L.intensity) * Math.min(1, (dt || 0) * 3);
         if (Math.abs(L.intensity - want) < 0.002) L.intensity = want;
         var C = cam.position;
@@ -85670,6 +85676,7 @@ const ThreeRenderer = (function () {
         try {
             if (st.keyLamp && st.keyLamp.parent) st.keyLamp.parent.remove(st.keyLamp);
             st.keyLamp = null; st.keyFloorY = floorY; st.keyOpen = !_hqEnclosed(room); st.keyNight = (field && field.night) || 0; st.keyWhite = _hqWhiteIn(room);
+            st.keyRoomK = _hqKeyRoomK(room);   // THE ROOM'S OWN KEY LIGHT (2026-11-12)
             if ((!st.keyOpen || open) && _horizonGroup) {   // THE NIGHT FILL: an outdoor fight carries it too, lit by the night only
                 var KL = _keyLampRules();
                 var kl = new THREE.PointLight(KL.color, 0, (KL.battleReach || 30) * s, (KL.decay != null) ? KL.decay : 1);
@@ -85934,6 +85941,7 @@ const ThreeRenderer = (function () {
         L.position.set(cam.position.x + _fklDir.x * t, fy + (K.battleUp || 7) * s, cam.position.z + _fklDir.z * t);
         var want = ((K.battleIntensity != null) ? K.battleIntensity : (K.intensity || 0)) * _keyLampGain();
         if (!st.keyOpen && st.keyWhite > 0) want *= st.keyWhite;   // THE WHITE ROOMS: a white-floored closed room's Key Light × whiteDay
+        if (!st.keyOpen && st.keyRoomK != null) want *= st.keyRoomK;   // THE ROOM'S OWN KEY LIGHT
         if (st.keyOpen) { var nk = _fieldCycle ? 1 - _fieldCycleRigAt(_fieldCycle).t : st.keyNight; want *= Math.max(0, Math.min(1, nk)) * ((_hqLightRules().nightFill || {}).keyLight || 0); }   // THE NIGHT FILL
         if (L.intensity !== want) L.intensity = want;
         L.distance = (K.battleReach || 30) * s;
