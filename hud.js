@@ -6589,6 +6589,8 @@ function _hrlgTargetBlades(unit, st, mode) {
   } else {
     spell = (unit.spells || []).find(s => s.name === st.selectedTool) || (unit._raceAbilities || []).find(s => s.name === st.selectedTool);
     targets = spell && typeof _getSpellValidTargets === 'function' ? _getSpellValidTargets(unit, spell) : [];
+    /* THE WALK-IN SELF CAST (battle.js _selfPoolWalkIn): a self-cast's list is only the enemies a step brings in */
+    if (spell && typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell)) targets = [];
     // Quick-menu parity: the enemy/ally quick menus offer MOVE→CAST rows for
     // units the spell reaches only after an approach step — this drum MUST
     // list the same units (amber MOVE→CAST chip) or the two menus drift out
@@ -7695,7 +7697,10 @@ function ActionMenu({ st, hidden }) {
       /* Far Sight / scrying aim at a TILE: the ally list it used to open read as "cast on Mothman" (Keys vs Keys) */
       'remoteView'];
     // THE SELF-CAST CONFIRM: a self-cast's only target is the caster — no list, just the green CONFIRM
-    const _aimSelf = !!(_aimSp && typeof isSpellSelfCast === 'function' && isSpellSelfCast(_aimSp));
+    /* THE WALK-IN SELF CAST (battle.js _selfPoolWalkIn): Scatter Shot / an enemy-only nova with nobody in reach lists
+       the enemies a step brings in, as MOVE→CAST rows */
+    const _aimSelf = !!(_aimSp && typeof isSpellSelfCast === 'function' && isSpellSelfCast(_aimSp))
+      && !(typeof _selfPoolWalkIn === 'function' && _selfPoolWalkIn(unit, _aimSp));
     // an AoE armed from a unit's quick menu places on the board only — no unit list over it (_hrlgArmAoePlacement)
     const _quickPlace = st._quickAoePlace === st.selectedTool;
     /* THE CHARGE ROWS (playtest 2026-11-07 B1: Runaway Train armed with no enemy row, "select a tile to dash to", and a
@@ -7862,7 +7867,7 @@ function ActionMenu({ st, hidden }) {
       if (_hrlgMtcLabelCache.k !== _mtcKey) {
         let v = '';
         try {
-          const _mtcA = (_cSp && !(typeof isSpellSelfCast === 'function' && isSpellSelfCast(_cSp)) && !_mtcReachesPick(unit, _cSp, _pt.x, _pt.y, _pt.z))
+          const _mtcA = (_cSp && !(typeof _selfCastNoWalk === 'function' ? _selfCastNoWalk(_cSp) : (typeof isSpellSelfCast === 'function' && isSpellSelfCast(_cSp))) && !_mtcReachesPick(unit, _cSp, _pt.x, _pt.y, _pt.z))
             ? findSpellApproachTile(unit, _cSp, _pt.x, _pt.y, _pt.z) : null;
           if (_mtcA) v = _mtVerb(_mtcA) + '→CAST · ';
         } catch (e) {}
@@ -8694,7 +8699,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       });
     };
 
-    if (isBarrage) {
+    /* THE WALK-IN SELF CAST (battle.js): a random-target row (Scatter Shot) reaches this enemy only when its pool holds
+       it from where the caster stands; otherwise the row is a MOVE→CAST (findSpellApproachTile below) or greys */
+    const _poolRnd = !!(sp.randomTargets && typeof _selfPoolSpell === 'function' && typeof _selfPoolHits === 'function'
+      && typeof isSpellSelfCast === 'function' && isSpellSelfCast(sp) && _selfPoolSpell(sp));
+    if (_poolRnd) {
+      inSpellRange = !!targetUnit && _selfPoolHits(actingUnit, sp, targetUnit);
+    } else if (isBarrage) {
       // Barrage novae (Meow, Quake, Requiem…) center on the CASTER and auto-hit
       // every enemy inside their radius — aoeRadius for self-origin bursts, else
       // the spell's range. The clicked enemy is reachable only if it actually

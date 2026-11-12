@@ -46221,7 +46221,7 @@
                         if (ptLabel && pt && (pt.x !== unit.x || pt.y !== unit.y)) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> lands on ' + ptLabel + ' — click to confirm.', 'or pick another tile · ESC cancel');
                         return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong>: select a lit tile to land on.', 'ESC cancel');
                     }
-                    if (isSpellSelfCast(spell)) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> is cast on ' + (ptLabel || esc(_ctName(unit))) + ' — press CONFIRM to cast.', 'ESC cancel');
+                    if (isSpellSelfCast(spell) && !(pt && (pt.x !== unit.x || pt.y !== unit.y) && _selfPoolSpell(spell))) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> is cast on ' + (ptLabel || esc(_ctName(unit))) + ' — press CONFIRM to cast.', 'ESC cancel');
                     // THE CONFIRM FIRST (hud.js _hrlgArmAoePlacement): a quick-menu AoE, aimed at the unit it was picked for
                     if (state._quickAoePlace === spell.name && state.actionMenuView === 'spells') {
                         const _qaU = state._quickAoeFrom != null ? (state.units || []).find(u => u.id === state._quickAoeFrom && !u.dead) : null;
@@ -49200,8 +49200,42 @@
             if (_kindMeta(spell).twoClick && _twoClickPick(spell)) return true;
             return false;
         }
+        /* THE WALK-IN SELF CAST (mondo 2026-11-12: "Scatter shot wasnt moveing+casting for me"): a self-cast that only
+           hits the enemies in its own reach (a random-target row: Scatter Shot; an enemy-only nova: Meow, Demonic
+           Roar…) lit MOVE→CAST on the Abilities list (hasReachableTarget walks the caster and asks its pool), but its
+           pick only offered CONFIRM on the caster, which the cast then refused ("no enemy in range and in sight"). The
+           approach finder asked the aim gate, which says yes to every self-cast. These rows now follow the game's one
+           MOVE→CAST rule: with nobody in reach from here, the list names the enemies a step brings into reach, and the
+           pick walks to the farthest square that still has that enemy in the pool, then casts on the caster. */
+        function _selfPoolSpell(spell) {
+            if (!spell) return false;
+            if (spell.randomTargets && spell.kind === 'damage' && typeof spellRandomTargetsOf === 'function' && spellRandomTargetsOf(spell)) return true;
+            return _selfNovaEnemyOnly(spell);
+        }
+        function _selfPoolVictims(unit, spell) {
+            return (spell.randomTargets && spell.kind === 'damage') ? _randomTargetPool(unit, spell) : _selfNovaSeenVictims(unit, spell);
+        }
+        function _selfPoolHits(unit, spell, body) {
+            return !!body && !!unit && body.id !== unit.id && _selfPoolVictims(unit, spell).some(v => v.id === body.id);
+        }
+        /* a self-cast that never walks first: every self-cast but the pool rows above */
+        function _selfCastNoWalk(spell) { return isSpellSelfCast(spell) && !_selfPoolSpell(spell); }
+        /* the enemies a step brings into such a row's reach, while nobody is in reach from where the caster stands
+           (null otherwise: the row then keeps its plain CONFIRM on the caster) */
+        function _selfPoolWalkIn(unit, spell) {
+            if (!unit || !spell || !isSpellSelfCast(spell) || !_selfPoolSpell(spell)) return null;
+            if (hasSpellTargetInRange(unit, spell)) return null;
+            const rows = _getSpellApproachTargets(unit, spell);
+            return rows.length ? rows : null;
+        }
+        window._selfPoolSpell = _selfPoolSpell;
+        window._selfPoolHits = _selfPoolHits;
+        window._selfCastNoWalk = _selfCastNoWalk;
+        window._selfPoolWalkIn = _selfPoolWalkIn;
         function findSpellApproachTile(unit, spell, tx, ty, tz) {
             if (_spellNeverApproaches(unit, spell)) return null;
+            const _poolRow = isSpellSelfCast(spell) && _selfPoolSpell(spell);   // THE WALK-IN SELF CAST
+            if (isSpellSelfCast(spell) && !_poolRow) return null;
             const steps = _spellMoveBudget(unit, spell);
             const sx = unit.x, sy = unit.y, sz = unit.z;
             /* THE ONE AIM RULE (2026-10-16): aimed at a BODY, "in reach from the probe tile" is the cast's own
@@ -49213,7 +49247,10 @@
             /* a body of a shared column must be hit ITSELF from the probe tile — the column rule would hand an
                out-of-reach pick to the body beneath it (playtest 2026-10-21) */
             const _aimShared = !!(_aimBody && typeof unitsAtColumn === 'function' && unitsAtColumn(tx, ty).length > 1);
-            const _hitsTarget0 = _aimShared
+            if (_poolRow && (!_aimBody || _selfPoolHits(unit, spell, _aimBody))) return null;   // no body to bring in, or already in reach from here
+            const _hitsTarget0 = _poolRow
+                ? () => _selfPoolHits(unit, spell, _aimBody)
+                : _aimShared
                 ? () => !spellAimProblemOn(unit, spell, _aimBody)
                 : _aimBody
                 ? () => !spellAimProblem(unit, spell, tx, ty, _aimZ)
@@ -49537,7 +49574,7 @@
             if (!clickedUnit || clickedUnit.dead || clickedUnit.player === actingUnit.player) return false;
             const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
                 || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
-            if (!spell || isSpellSelfCast(spell)) return false;
+            if (!spell || _selfCastNoWalk(spell)) return false;
             if (unitSpellsBlocked(actingUnit)) return false;
             if (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(actingUnit, spell)) return false;
             if ((actingUnit.mp || 0) < getSpellMpCostFor(actingUnit, spell)) return false;
@@ -49824,7 +49861,7 @@
                 if (!clickedUnit || clickedUnit.dead || clickedUnit.player === actingUnit.player) return false;
                 const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
                     || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
-                if (!spell || isSpellSelfCast(spell)) return false;
+                if (!spell || _selfCastNoWalk(spell)) return false;
                 if (unitSpellsBlocked(actingUnit)) return false;
                 if (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(actingUnit, spell)) return false;
                 if ((actingUnit.mp || 0) < getSpellMpCostFor(actingUnit, spell)) return false;
@@ -49940,7 +49977,7 @@
             } else if (state.actionMode === 'spell') {
                 const sp = (unit.spells || []).find(s => s.name === state.selectedTool)
                     || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
-                approach = !!sp && !isSpellSelfCast(sp) && !_mtcReachesPick(unit, sp, x, y, z) && !!findSpellApproachTile(unit, sp, x, y, z);
+                approach = !!sp && !_selfCastNoWalk(sp) && !_mtcReachesPick(unit, sp, x, y, z) && !!findSpellApproachTile(unit, sp, x, y, z);
             }
             if (!approach) return false;
             state._spellApproachKey = null;
@@ -49960,7 +49997,7 @@
             } else if (state.actionMode === 'spell') {
                 const sp = (unit.spells || []).find(s => s.name === state.selectedTool)
                     || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
-                if (!sp || isSpellSelfCast(sp) || _mtcReachesPick(unit, sp, x, y, z)) return null;
+                if (!sp || _selfCastNoWalk(sp) || _mtcReachesPick(unit, sp, x, y, z)) return null;
                 a = findSpellApproachTile(unit, sp, x, y, z);
             }
             if (!a) return null;
@@ -50863,7 +50900,7 @@
             if (!enemy || enemy.dead || enemy.player === unit.player) { _clearSpellApproachPreview(); return false; }
             const spell = (unit.spells || []).find(s => s.name === state.selectedTool)
                 || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
-            if (!spell || isSpellSelfCast(spell)) { _clearSpellApproachPreview(); return false; }
+            if (!spell || _selfCastNoWalk(spell)) { _clearSpellApproachPreview(); return false; }
             const k = x + ',' + y + '|' + state.selectedTool;
             if (state._spellApproachKey === k) return !!state._spellApproachTile;
             state._spellApproachKey = k;
@@ -67045,9 +67082,10 @@
                 }
                 if (_landingPick) {
                     /* the board is the drum (above) */
-                } else if (spell && !isSpellTileTargeted(spell) && !isSpellSelfCast(spell)) {
+                } else if (spell && !isSpellTileTargeted(spell) && (!isSpellSelfCast(spell) || _selfPoolWalkIn(unit, spell))) {
 
-                    let targets = _getSpellValidTargets(unit, spell);
+                    /* THE WALK-IN SELF CAST: nobody in reach from here, so the list is the enemies a step brings in */
+                    let targets = isSpellSelfCast(spell) ? [] : _getSpellValidTargets(unit, spell);
                     // Quick-menu parity: fold in MOVE→CAST targets (reachable
                     // after the engine's approach step) so the drum, the cycle
                     // list and the pre-armed pick all match what the quick
@@ -67385,7 +67423,8 @@
            castable-now, so nothing shows twice. */
         function _getSpellApproachTargets(unit, spell, haveSet) {
             if (!unit || !spell) return [];
-            if (isSpellSelfCast(spell)) return [];
+            const _poolRow = isSpellSelfCast(spell) && _selfPoolSpell(spell);   // THE WALK-IN SELF CAST
+            if (isSpellSelfCast(spell) && !_poolRow) return [];
             if (_spellNeverApproaches(unit, spell)) return [];   // NO WALK FIRST: self blinks, a two-click cast mid-pick
             if (spell.kind === 'skyThrow' && skyThrowLandingPhase(unit)) return [];   // THE LANDING PICK: the body is already held
             if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return [];
@@ -67408,6 +67447,7 @@
                 }
                 if (!u.dead && spellTargetsCorpses(spell)) continue;
                 if (haveSet && u.id != null && haveSet.has(u.id)) continue;
+                if (_poolRow && (u.dead || u._dying || u.id === unit.id || !isEnemyUnit(u, unit))) continue;   // THE WALK-IN SELF CAST: enemies only
                 // Chivalry pledges to ANOTHER ally (doSpell refuses the caster) — the drum's own rule, here too
                 // (playtest 2026-11-07 A3: the Knight listed himself as a 0T MOVE→CAST row).
                 if (spell.kind === 'guard' && (u.id === unit.id || u._dying)) continue;
@@ -68037,6 +68077,11 @@
             try { window.dispatchEvent(new Event('ew-state-change-now')); } catch (e) {}
         }
         function _mtcReachesPick(unit, spell, x, y, z) {
+            /* THE WALK-IN SELF CAST: the caster's own tile is the plain cast; an enemy is in reach when the pool holds it */
+            if (isSpellSelfCast(spell) && _selfPoolSpell(spell)) {
+                if (x === unit.x && y === unit.y) return true;
+                return _selfPoolHits(unit, spell, ((z !== undefined && z !== null) ? unitAt(x, y, z) : null) || unitAt(x, y));
+            }
             const body = (z !== undefined && z !== null) ? unitAt(x, y, z) : null;
             if (body && body.x === x && body.y === y && typeof unitsAtColumn === 'function' && unitsAtColumn(x, y).length > 1)
                 return !spellAimProblemOn(unit, spell, body);
@@ -68116,7 +68161,7 @@
                     const _mtcSp = (unit.spells || []).find(s => s.name === state.selectedTool)
                         || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
                     let _mtcApproach = null;
-                    if (_mtcSp && !isSpellSelfCast(_mtcSp)
+                    if (_mtcSp && !_selfCastNoWalk(_mtcSp)
                         && !unitSpellsBlocked(unit)
                         && (typeof unitMeetsSpellTierReq !== 'function' || unitMeetsSpellTierReq(unit, _mtcSp))
                         && (unit.mp || 0) >= getSpellMpCostFor(unit, _mtcSp)
@@ -69427,7 +69472,8 @@
                         validTargets = _getAttackValidTargets(actingUnit);
                     } else {
                         const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool) || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
-                        validTargets = spell ? _getSpellValidTargets(actingUnit, spell) : [];
+                        /* THE WALK-IN SELF CAST: the list is walk-in rows only, so a board click on one picks its row below */
+                        validTargets = (spell && !(isSpellSelfCast(spell) && _selfPoolSpell(spell))) ? _getSpellValidTargets(actingUnit, spell) : [];
                         _etcSpell = spell;
                     }
                     let isValidTarget = validTargets.some(t => t.x === x && t.y === y);
@@ -69494,6 +69540,8 @@
                     // THE SELF-CAST CONFIRM: an armed self-cast fires on the caster only — a click anywhere else
                     // says so and keeps it armed (the caster's tile or the green CONFIRM casts it).
                     if (isSpellSelfCast(spell) && spell.kind !== 'escape' && (x !== actingUnit.x || y !== actingUnit.y)) {   // THE ESCAPE PICK: an escape clicks its landing
+                        /* THE WALK-IN SELF CAST: a click on an enemy of the walk-in list picks that row (step, then cast) */
+                        if (_selfPoolWalkIn(actingUnit, spell) && _boardApproachPick(actingUnit, x, y, state._clickedZ, clickedUnit)) return;
                         addLog(`${_ctSp(spell.name)} is cast on ${_ctName(actingUnit)}: press CONFIRM.`, actingUnit.player);
                         playErrorSfx();
                         markDirty('board', 'hud');
