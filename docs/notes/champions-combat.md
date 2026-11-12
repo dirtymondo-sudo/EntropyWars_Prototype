@@ -5290,7 +5290,6 @@ Blood Rain does not water; thorn vine reach 2 (an upgrade may lengthen it); Bump
   apple tree (a real tree: existing tree model + the pack's apples, drops a healing apple), upgrade rows for the cap / reach,
   the CPU learning to water (ai.js still plants seeds as before and never casts Watering Can on purpose).
 
-<<<<<<< Updated upstream
 ## THE ASTRAL BODY + SLEEPING, build 1 (2026-11-12, mondo: "put the sleeping status effect on the physical body and the projecting status effect on the projection. Treat them like 2 separate units, but one shared HP bar" + "yes damage should wake a sleeper")
 Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx (4 builds). This is build 1.
 - data.js STATUS_DEFS `sleep` (SLP "Sleeping"): can't move or act, `wakeOnDamage` (battle.js applyDamageToUnit clears it after the
@@ -5313,7 +5312,6 @@ Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx
   an AoE covering both pieces takes HP twice; no early return; the body stands idle (no slump pose); statuses worn at the cast stay
   on the spirit.
 - Proof (VS CPU + a 2-seat online room, guest cast): /mnt/project-files/astral-projection-20261112/build1_*.jpg.
-=======
 ## THE POLLEN — the Bee Queen gathers from the Healing Flower (2026-11-12, mondo: "Both", "maybe the pollen can boost her attack and speed too")
 - battle.js THE POLLEN block (after `_standPlant`): a `heal` plant row carries `pollen` (1 when it grows, regrown at each round end by
   `_pollenRoundEnd`). `_gatherPollen(unit)` runs for `race === 'bee queen'` at the top of `checkSeedStepTrigger` (move end) and at round
@@ -5325,4 +5323,3 @@ Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx
   `hasSpellTargetInRange` reads NO TARGET with no pollen. ai.js casts it on its own side's nearest seed in reach.
 - Shown: hud.js `_hrlgStatusChips` "POLLEN n/3", three-renderer.js `_plateStatusBadgesHtml` "POL n".
 - My picks, his to change: 8/8 per pollen, max 3, any side's flower, mend 50%. Not built: Drones fetching pollen.
->>>>>>> Stashed changes
