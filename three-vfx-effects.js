@@ -23712,6 +23712,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { _snStage(phase, spellId, params); } catch (e) { console.warn('[VFX] sonic stamp failed', spellId, e); }
         /* THE FIRE PASS: every fire-element cast / hit wears the same fire (the cast ring, the fire mark) */
         try { _fpStage(phase, spellId, params); } catch (e) { console.warn('[VFX] fire mark failed', spellId, e); }
+        /* THE NOISE PACKS (mock-up, ?noisefx=1): the element's noise wash on each hit square */
+        try { _nzStage(phase, spellId, params); } catch (e) { console.warn('[VFX] noise wash failed', spellId, e); }
         /* THE FX-4 PASS: Merkaba forms on the windup and goes off on the burst */
         try { _f4Stage(phase, spellId, params); } catch (e) { console.warn('[VFX] FX-4 stage failed', spellId, e); }
         /* THE NEW PROPS (2026-10-28): mondo's shield / syringe / bible on the same beats */
@@ -59622,6 +59624,141 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceFlamethrower'] = { beam: 'fpFlamethrower_beam' };
     SPELL_MAP['raceInferno']      = { aoe: 'fpInferno_aoe' };
     /* ═════════ END THE FIRE PASS ═════════ */
+
+    /* ═════════════════════════════════════════════════════════════════════
+       THE NOISE PACKS — MOCK-UP (2026-11-12, mondo: "Uploaded 4 folders of noise and texture packs ... making tile effects
+       when spells hit ... show me examples first"). Screaming Brain Studios' CC0 packs (128 px, seamless). THE WASH: on the
+       hit, each square of the footprint wears one sheet of the pack's noise in the spell's element colour. It grows in from
+       its brightest lines, turns slowly and is eaten away from its dim parts (the cutoff climbs, so the pixels drop out in
+       the noise's own shapes). Flat on the ground under the element's own mark, inside the square, so body + number stay
+       clear. OFF unless ?noisefx=1 / window.EW_NOISE_FX. Looks only; every client draws it from the relayed stage beat.
+       ═════════════════════════════════════════════════════════════════════ */
+    var _NZ_BASE = 'https://cdn.entropywars.net/Assets/fx/noise/sbs/', _nzTexC = {};
+    function _nzOn() { try { return typeof window !== 'undefined' && (!!window.EW_NOISE_FX || /[?&]noisefx=1/.test(String(window.location && window.location.search))); } catch (e) { return false; } }
+    function _nzTex(n) { return _nzTexC[n] || (_nzTexC[n] = _loadCachedTex(_NZ_BASE + n + '.png')); }
+    /* element -> [sheet, colour, second sheet, its colour, turn (rad / s), dark (a dark stain in place of light)] */
+    var _NZ = {
+        psychic:   ['swirl_13',       0xb44cff, 'spokes_01',      0x7a1ec8, 1.1],
+        ice:       ['vein_01',        0xbff2ff, 'voronoi_02',     0x4aa8ff, 0.0],
+        lightning: ['vein_08',        0xfff3a0, 'superperlin_03', 0x5a8cff, 0.0],
+        poison:    ['milky_05',       0x7dff3a, 'marble_04',      0x7a2ab0, 0.25],
+        water:     ['superperlin_03', 0xaee4ff, 'melt_05',        0x2f7fe0, 0.2],
+        fire:      ['turbulence_08',  0xff8a1a, 'marble_03',      0xc8300a, 0.0],
+        wind:      ['streak_14',      0xeafff6, 'gabor_02',       0x9fd8c8, 0.5],
+        earth:     ['vein_05',        0xe0a860, 'grainy_05',      0x6a4420, 0.0],
+        nature:    ['vein_14',        0xa8f06a, 'supernoise_08',  0x2f8a2a, 0.15],
+        sonic:     ['absn_009',       0xffe6f8, 'absn_012',       0xb050e0, 0.0],
+        metal:     ['techno_10',      0xeef4fa, 'techno_05',      0x7890a8, 0.0],
+        blood:     ['marble_03',      0xff3a4a, 'milky_08',       0x8a0a14, 0.2],
+        shadow:    ['manifold_06',    0x9a5cff, 'turbulence_06',  0x1c0830, -0.4]
+    };
+    /* add: the bright sheet (added light, reads on a dark floor) · else the stain (the flat colour cut to the noise's shapes, reads on a pale floor) */
+    function _nzMat(tex, color, add) {
+        var m = new THREE.MeshBasicMaterial({ alphaMap: tex, color: new THREE.Color(color), transparent: true, opacity: add ? 1 : 0.8, alphaTest: 0.99,
+            vertexColors: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+        if (add) { m.map = tex; m.blending = THREE.AdditiveBlending; }
+        return m;
+    }
+    function _nzWash(tiles, el, rank, o) {
+        o = o || {};
+        var R = _NZ[el]; if (!R || !_canSpawn()) return null;
+        var live = [];
+        for (var i = 0; i < tiles.length && live.length < 25; i++) { var tt = tiles[i]; if (tt && tt.x != null && _pzSeen(tt.x, tt.y)) live.push(tt); }
+        if (!live.length) return null;
+        var F = _nrvFrame(live[0].x, live[0].y), ts = F.ts;
+        /* a disc that is solid in the middle and thins to its rim (the vertex alpha): the cutoff eats it from the rim in, so
+           each square wears a splat in the noise's own shapes that never leaves the square, even while it turns */
+        var dg = new THREE.CircleGeometry(ts * 0.6, 28); dg.rotateX(-Math.PI / 2);
+        var vn = dg.attributes.position.count, vc = new Float32Array(vn * 4);
+        for (var vi = 0; vi < vn; vi++) { vc[vi * 4] = vc[vi * 4 + 1] = vc[vi * 4 + 2] = 1; vc[vi * 4 + 3] = vi ? 0.1 : 1.7; }
+        dg.setAttribute('color', new THREE.BufferAttribute(vc, 4));
+        var ma = _nzMat(_nzTex(R[0]), R[1], true), mb = _nzMat(_nzTex(R[2]), R[3], false), M = [];
+        for (var k = 0; k < live.length; k++) {
+            var off = _nvOff(F, live[k].x, live[k].y), d0 = Math.min(260, k * 24);
+            var a = _pzMesh(dg, ma, F.g, off.x, off.y - 2.0, off.z); a.renderOrder = 149;
+            var b = _pzMesh(dg, mb, F.g, off.x, off.y - 2.1, off.z); b.renderOrder = 148;
+            if (R[4]) { a.rotation.y = rn(0, 6.28); b.rotation.y = rn(0, 6.28); }
+            M.push({ a: a, b: b, d: d0 });
+        }
+        var life = o.life || (1500 + 260 * (rank || 0)), total = life + 280, lastT = 0;
+        if (o.freeze != null) total = 600000;   /* a still for the mock-up shots: hold one point of the life */
+        return _sigRunOwned(F.g, total, function (t) {
+            if (o.freeze != null) t = o.freeze * life;
+            /* the cutoff: 1 = nothing shows, 0.12 = nearly the whole sheet */
+            var inK = _sigEaseOutCubic(_sigClamp01(t / 180)), outK = _sigClamp01((t - life * 0.42) / (life * 0.58));
+            var cutA = 1 - 0.86 * inK + 0.86 * outK * outK, cutB = 1 - 0.7 * inK + 0.7 * Math.min(1, outK * 1.5);
+            ma.alphaTest = Math.min(0.995, Math.max(0.12, cutA)); mb.alphaTest = Math.min(0.995, Math.max(0.28, cutB));
+            var dt = (t - lastT) / 1000; lastT = t;
+            if (R[4]) for (var q = 0; q < M.length; q++) { M[q].a.rotation.y += R[4] * dt; M[q].b.rotation.y -= R[4] * 0.7 * dt; }
+        });
+    }
+    var _nzFoot = {};
+    function _nzStage(phase, spellId, params) {
+        if (!_nzOn() || _suppressed() || _catOff('spells') || !params) return;
+        var d = _spellDefFor(spellId) || {}, el = d.element || d.vfxElement || null;
+        if (!el || !_NZ[el] || d.type === 'heal' || d.type === 'buff') return;
+        var key = params.glowKey || ('c' + params.sx + ',' + params.sy);
+        if (phase === 'windup') { _nzFoot[key] = Array.isArray(params.tiles) && params.tiles.length ? params.tiles : null; return; }
+        if (phase !== 'burst' || params.tx == null) return;
+        var foot = _nzFoot[key]; delete _nzFoot[key];
+        var tiles = foot ? foot.slice() : [];
+        if (!tiles.some(function (t) { return t.x === params.tx && t.y === params.ty; })) tiles.unshift({ x: params.tx, y: params.ty });
+        if (d.aoeOriginSelf && params.sx != null) tiles = tiles.filter(function (t) { return !(t.x === params.sx && t.y === params.sy); });
+        var info = stageInfo(spellId);
+        _nzWash(tiles, el, _TIER_ORDER[info.weight] || 0);
+    }
+    try { if (typeof window !== 'undefined') window.EW_NZ_WASH = function (tiles, el, rank, o) { return _nzWash(tiles, el, rank, o); }; } catch (e) {}
+    /* THE MOVING GROUND (mock-up only: a sheet laid over the squares to show the look; the real thing would be the square's own
+       top material). A colour sheet from the packs lies across `span` squares in world space (no per-square repeat), drifts
+       slowly, and a second noise sheet slides the other way on top, added in a tint. Lit by the room (Lambert) with a little
+       of its own glow, so shadows still fall on it. tiles [{x,y}], o: base · over · overCol · span · drift [u,v] · glow ·
+       overOp · drop (lower the sheet, a liquid's level) · inset · wob (the base breathes). Returns { stop }. */
+    function _nzSheet(name, srgb) {
+        var t = new THREE.TextureLoader().load(_NZ_BASE + name + '.png');
+        t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
+        try { if (srgb && THREE.SRGBColorSpace) t.colorSpace = THREE.SRGBColorSpace; } catch (e) {}
+        return t;
+    }
+    function _nzGround(tiles, o) {
+        o = o || {};
+        var scene = _getVFXScene(); if (!scene || !tiles || !tiles.length) return null;
+        var F = _nrvFrame(tiles[0].x, tiles[0].y), ts = F.ts, span = o.span || 3, h = ts * 0.5 * (o.inset != null ? o.inset : 0.985);
+        var pos = [], uv = [], idx = [], nor = [];
+        for (var i = 0; i < tiles.length; i++) {
+            var t = tiles[i], off = _nvOff(F, t.x, t.y), y = off.y - 2.4 - (o.drop || 0), b = i * 4;
+            var u0 = (t.x - 0.5) / span, u1 = (t.x + 0.5) / span, v0 = (t.y - 0.5) / span, v1 = (t.y + 0.5) / span;
+            pos.push(off.x - h, y, off.z - h, off.x + h, y, off.z - h, off.x + h, y, off.z + h, off.x - h, y, off.z + h);
+            uv.push(u0, v0, u1, v0, u1, v1, u0, v1); nor.push(0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0);
+            idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
+        }
+        var g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+        g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+        var bt = _nzSheet(o.base || 'abst_018', true), ot = o.over ? _nzSheet(o.over, false) : null;
+        var bm = new THREE.MeshLambertMaterial({ map: bt, color: new THREE.Color(o.tint != null ? o.tint : 0xffffff), emissive: new THREE.Color(0xffffff), emissiveMap: bt, emissiveIntensity: o.glow != null ? o.glow : 0.3,
+            transparent: o.op != null && o.op < 1, opacity: o.op != null ? o.op : 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+        var base = new THREE.Mesh(g, bm); base.receiveShadow = true; base.renderOrder = 2; F.g.add(base);
+        var om = null;
+        if (ot) {
+            if (o.overSpan) ot.repeat.set(span / o.overSpan, span / o.overSpan);
+            om = new THREE.MeshBasicMaterial({ map: ot, color: new THREE.Color(o.overCol != null ? o.overCol : 0xffffff), transparent: true, opacity: o.overOp != null ? o.overOp : 0.35,
+                blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+            var ov = new THREE.Mesh(g, om); ov.renderOrder = 3; F.g.add(ov);
+        }
+        _vfxAdd(scene, F.g);
+        var dr = o.drift || [0.012, 0.007], t0 = performance.now() - (o.t0 || 0) * 1000, live = true;
+        (function loop() {
+            if (!live) return;
+            var s = (performance.now() - t0) / 1000;
+            bt.offset.set(dr[0] * s + (o.wob ? o.wob * Math.sin(s * 0.5) : 0), dr[1] * s + (o.wob ? o.wob * Math.cos(s * 0.37) : 0));
+            if (ot) ot.offset.set(-dr[0] * 2.3 * s, dr[1] * 1.7 * s + 0.31);
+            requestAnimationFrame(loop);
+        })();
+        return { stop: function () { live = false; try { scene.remove(F.g); } catch (e) {} } };
+    }
+    try { if (typeof window !== 'undefined') window.EW_NZ_GROUND = function (tiles, o) { return _nzGround(tiles, o); }; } catch (e) {}
+    /* ═════════ END THE NOISE PACKS (mock-up) ═════════ */
+
 
 
     /* ═════════════════════════════════════════════════════════════════════
