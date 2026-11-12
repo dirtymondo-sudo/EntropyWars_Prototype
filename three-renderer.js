@@ -1715,7 +1715,7 @@ const ThreeRenderer = (function () {
        (`_texInflight`) holds the model queue's scene / warm jobs for up to TEX_HOLD_MS after the last
        request (`_mqPump`) — the rig lane never waits. */
     var _texInflight = 0, _texHoldUntil = 0, TEX_HOLD_MS = 2500;
-    var AL_SETTLE_MS = 300, AL_STALL_MS = 60000;
+    var AL_SETTLE_MS = 300, AL_STALL_MS = 60000, AL_STALL_MAX_MS = 300000;
     var _alSeq = 0, _alLive = {}, _alLiveN = 0, _alSessions = [], _alLastEventAt = 0;
     function _alNow() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
     /* file a record for a request that just started; `rec.settle(ok, quiet)` closes it */
@@ -1735,7 +1735,20 @@ const ThreeRenderer = (function () {
             _alLastEventAt = rec.doneAt;
             for (var i = 0; i < _alSessions.length; i++) if (_alSessions[i].has[rec.id]) _alSessions[i].done++;
         };
-        try { rec.stall = setTimeout(function () { if (!rec.done) { try { console.warn('[ThreeRenderer] ' + kind + ' did not land in ' + (AL_STALL_MS / 1000) + ' s — the gate stops waiting for it: ' + rec.url); } catch (e) {} rec.settle(false); } }, AL_STALL_MS); } catch (e) {}
+        /* THE CARD WAITS (2026-11-12, mondo: "what is the point of the loading screen before hand if it always loads slow, it needs
+           to wait until the game is loaded"): the stall clock ran from the moment a file was ASKED for, so a model waiting its turn
+           in the queue behind a hall's worth of others was written off as dead after 60 s, the card dropped without it, and it
+           landed in the open room. A file is dead only when NOTHING has started or landed anywhere for AL_STALL_MS (the pipe is
+           still, not busy), or after AL_STALL_MAX_MS whatever happens. */
+        var stallFn = function () {
+            rec.stall = null;
+            if (rec.done) return;
+            var nowS = _alNow(), quiet = nowS - (_alLastEventAt || rec.at);
+            if (quiet < AL_STALL_MS - 50 && nowS - rec.at < AL_STALL_MAX_MS) { try { rec.stall = setTimeout(stallFn, Math.max(250, AL_STALL_MS - quiet)); } catch (e) {} return; }
+            try { console.warn('[ThreeRenderer] ' + kind + ' did not land in ' + Math.round((nowS - rec.at) / 1000) + ' s — the gate stops waiting for it: ' + rec.url); } catch (e) {}
+            rec.settle(false);
+        };
+        try { rec.stall = setTimeout(stallFn, AL_STALL_MS); } catch (e) {}
         for (var s = 0; s < _alSessions.length; s++) if (_alSessions[s].open && _alOwns(_alSessions[s])) _alSessions[s].add(rec);
         return rec;
     }
@@ -85898,9 +85911,9 @@ const ThreeRenderer = (function () {
         if (!_polishOff('wind', 'EW_HQ_NO_WIND')) _EW_WIND.value = now * 0.001 * (((_hqLightRules().wind || {}).speed) || 1);   // THE WIND (5.1): the foliage's shared clock (a frozen clock = still trees)
         _hqTickMotionBlur(H);   // THE THIRD PASS 6.4: the deck at speed, the long fall
         if (!H.ready) _hqGateTick(H, now);
-        if (H.ready) _hqInstTick(H, now);   // THE INSTANCE PASS (OPEN_WORLD_PLAN Phase 0): the repeated props draw as batches once the room has landed
-        if (H.ready) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
-        if (H.ready) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
+        if (H.ready || H.landed) _hqInstTick(H, now);   // THE INSTANCE PASS (OPEN_WORLD_PLAN Phase 0): the repeated props draw as batches once the room has landed
+        if (H.ready || H.landed) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
+        if (H.ready || H.landed) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
         if (H.ready) { try { _mmTick(H, now); } catch (e) { if (!_mmWarned) { _mmWarned = true; console.warn('[ThreeRenderer] the memory budget failed', e); } } }   // THE MEMORY BUDGET (G1)
         if (H.keyLamp) _hqKeyLampTick(H, dt);   // THE KEY LIGHT (2026-10-24): rides with the camera in an enclosed room
         _ewRimTick(H.sky ? Math.max(0, Math.min(1, +H.sky.night || 0)) : 0);   // THE UNIT RIM LIGHT + NIGHT FILL (2026-10-25): the walk's own night, as the fight reads its (they kept the last fight's)
@@ -86101,7 +86114,7 @@ const ThreeRenderer = (function () {
     }
     /* the walk's tick: build once the room is ready, re-run when later files add copies (bounded) */
     function _hqInstTick(H, now) {
-        if (!H.ready || _hqInstOff()) { if (H.inst && _hqInstOff()) _hqInstDrop(H); return; }
+        if (!(H.ready || H.landed) || _hqInstOff()) { if (H.inst && _hqInstOff()) _hqInstDrop(H); return; }
         _hqInstStamp++;
         var I = H.inst;
         if (!I) { if (!H._instTried) { H._instTried = true; try { _hqInstBuild(H); } catch (e) { console.warn('[HQ] the instance pass failed — the props draw one by one', e); try { _hqInstDrop(H); } catch (e2) {} } } return; }
@@ -86331,18 +86344,123 @@ const ThreeRenderer = (function () {
        finally failed, named in the console). No clock ends the wait short of HQ_GATE_CAP_MS, and that cap
        prints what never landed. The old rule (the walker's rig, else 9 s) showed a room whose props were
        still streaming in behind the fade. */
-    var HQ_GATE_CAP_MS = 75000;
+    /* THE CARD WAITS (2026-11-12, mondo: "what is the point of the loading screen before hand if it always loads slow, it needs to
+       wait until the game is loaded"). Measured in a browser on the foyer: the card dropped on a CLOCK (75 s after the entry,
+       whatever was still arriving) and on files written off after 60 s in the queue, and even on time it dropped the moment the
+       last file landed, so everything that happens AFTER a file lands happened in the open room: the hall beside the foyer
+       built, 568 materials compiled and 134 sheets went to the card, the instance pass and the static batch rebuilt the props,
+       the late looks drew piece by piece. Three rules now.
+       (1) NO CLOCK WHILE IT MOVES: the cap is HQ_GATE_CAP_MS with NO PROGRESS (a file landed, a part built a slice, the warm-up
+           moved on), never 75 s from the entry; HQ_GATE_HARD_MS is the one absolute limit.
+       (2) LANDED, THEN SETTLED: when every file is in (and the round hall stands beside the foyer) the room has LANDED — the
+           instance pass, the LOD levels and the static batch run under the card (H.landed) — and the card drops only when it
+           has SETTLED (_hqSettled): no file in flight anywhere (the population's rigs too), the passes done, EVERY material in
+           the scene compiled and every sheet on the card (the whole-scene warm-up, not only what the camera faces), no shader
+           still building, and HQ_SETTLE_FRAMES drawn frames in a row in which nothing new reached the card. A room that never rests
+           drops its card after HQ_SETTLE_CAP_MS (and HQ_SETTLE_CAP_FRAMES drawn frames) of settling, with a console line.
+       (3) The walk back from a fight (no card: opts.arrive) settles nothing, as before. Off: window.EW_HQ_NO_SETTLE. */
+    var HQ_GATE_CAP_MS = 75000, HQ_GATE_HARD_MS = 600000, HQ_SETTLE_FRAMES = 8, HQ_SETTLE_MS = 500, HQ_SETTLE_CAP_MS = 30000, HQ_SETTLE_CAP_FRAMES = 300, HQ_SETTLE_REWARM = 3;
+    function _hqSettleOff(H) { return (typeof window !== 'undefined' && !!window.EW_HQ_NO_SETTLE) || !!(H.opts && H.opts.arrive); }
+    /* what has reached the card and what is still held back: a frame in which this does not change brought nothing new */
+    function _hqSettleSig() {
+        var a = [];
+        try { var inf = renderer && renderer.info; if (inf && inf.memory) a.push(inf.memory.geometries, inf.memory.textures); if (inf && inf.programs) a.push(inf.programs.length); } catch (e) {}
+        try { a.push(_glL.held, _ewLate.held, _ewLate.builds, _lw.held); } catch (e) {}
+        return a.join(',');
+    }
+    /* a shader still building on the driver's threads (WebGL: a program not linked yet; the node renderer: a pipeline in flight) */
+    function _hqShadersBusy(W) {
+        try { if (_glL.q && _glL.q.length) return true; } catch (e) {}
+        try { if (_ewLate.flying > 0) return true; } catch (e) {}
+        if (W && W.flying > 0) return true;
+        try {
+            var P = renderer && !renderer.isWebGPURenderer && renderer.info && renderer.info.programs;
+            if (P) for (var i = 0; i < P.length; i++) { if (typeof P[i].isReady === 'function' && P[i].isReady() === false) return true; }
+        } catch (e) {}
+        return false;
+    }
+    function _hqBatchesLive(H) {
+        if (_hqBatchOff()) return true;
+        var recs = [H]; if (H.stage) for (var id in H.stage.parts) if (H.stage.parts[id].attached) recs.push(H.stage.parts[id].P);
+        for (var r = 0; r < recs.length; r++) {
+            var R = recs[r];
+            if (!R.batch) return false;
+            var BB = [R.batch, R.batchP];
+            for (var i = 0; i < BB.length; i++) { var B = BB[i]; if (B && B.phase !== 'off' && !B.lived) return false; }
+        }
+        return true;
+    }
+    /* every material in the scene against the lights it is drawn with, every sheet to the card: the part warm-up's own steps */
+    function _hqWarmWholeNew(H) {
+        var W = { objs: [], i: 0, texs: [], ti: 0, seen: {}, tseen: {}, mats: 0, texN: 0, ms: 0, frames: 0, full: true, done: false, lights: [], fake: null, flying: 0 };
+        if (!renderer || typeof renderer.compile !== 'function' || !H.scene || !H.camera) { W.done = true; return W; }
+        var now = [];
+        H.scene.traverseVisible(function (o) { if (o.isLight) now.push(o); });
+        W.lights = now;
+        var rigL = _ewRigLamps(); if (rigL) W.lights = rigL;
+        H.scene.traverse(function (o) { if (o.material) W.objs.push(o); });
+        W.fake = _hqWarmFake(H, W);
+        return W;
+    }
+    function _hqSettled(H, now) {
+        if (_hqSettleOff(H)) return true;
+        var S = H.settle || (H.settle = { t0: now, warm: null, warms: 0, frames: 0, at: now, sig: '', why: '', mats: 0, texN: 0, steps: [], last: '', ticks: 0 });
+        var why = '', walk = !!(H.opts && H.opts.walk);
+        S.ticks++;
+        if (_alPending() > 0) why = 'files';   // the population's rigs, a warm: nothing is still on the pipe when the card drops
+        else if (!_hqInstOff() && !H._instTried) why = 'props';
+        else if (!walk && !_hqBatchesLive(H)) why = 'props';   // a walk through a door keeps its blink: the batch follows in the room
+        else {
+            if (!S.warm) { S.warm = _hqWarmWholeNew(H); S.warms++; }
+            if (!_hqWarmRun(H, S.warm)) why = 'warm';
+            else if (_hqShadersBusy(S.warm)) why = 'shaders';
+        }
+        var sig = _hqSettleSig();
+        var w2 = why || (sig !== S.sig ? 'new' : 'quiet');
+        if (w2 !== S.last && S.steps.length < 40) { S.last = w2; S.steps.push(Math.round(now - S.t0) + ' ' + w2); }
+        S.why = why;
+        if (why || sig !== S.sig) {
+            /* something new reached the card after the warm-up had finished (a pass rebuilt a prop, a late piece): warm what it brought */
+            if (!why && S.warm && S.warm.done && S.frames > 0 && S.warms < HQ_SETTLE_REWARM) { S.mats += S.warm.mats; S.texN += S.warm.texN; S.warm = null; }
+            S.sig = sig; S.frames = 0; S.at = now;
+            if (!why) S.why = 'quiet';
+            return false;
+        }
+        S.frames++;
+        S.why = 'quiet';
+        return walk ? (S.frames >= 4 && now - S.at >= 120) : (S.frames >= HQ_SETTLE_FRAMES && now - S.at >= HQ_SETTLE_MS);   // a walk through a door: a short rest, the blink stays a blink
+    }
+    /* has anything moved since the last tick? (the cap counts from the last progress, not from the entry) */
+    function _hqGateProgress(H, now) {
+        var G = H.gate, st = H.stage, S = H.settle, a = [G ? G.done + '/' + G.total : '', H.playerAttached ? 1 : 0, _alPending()];
+        if (st) for (var id in st.parts) { var E = st.parts[id]; a.push(id, E.gate ? E.gate.done + '/' + E.gate.total : '', E.built ? 'b' : (E.slice ? E.slice.frames : 0), E.warm ? E.warm.i + '.' + E.warm.ti : '', E.attached ? 'a' : ''); }
+        if (S) a.push(S.warms, S.warm ? S.warm.i + '.' + S.warm.ti : '', (S.why === 'files' || S.why === 'warm') ? '' : 's');
+        var sig = a.join('|');
+        if (sig !== H._gateSig || H._gateAt == null) { H._gateSig = sig; H._gateAt = now; }
+        return now - H._gateAt;
+    }
     function _hqGateTick(H, now) {
         var G = H.gate, pd = H.player ? H.player.def : null;
         var playerOk = H.playerAttached || !pd || !pd.model || !!(_unitGlbCache[pd.model] && _unitGlbCache[pd.model].failed);   // (2026-09-22: the walker is a rig whatever the board's 3D-unit preference — the card waits for it)
         var gateOk = !G || G.idle() || G.closed;
-        var capped = now - H.t0 > HQ_GATE_CAP_MS;
-        if (!((playerOk && gateOk) || capped)) return;
-        if (!capped && H.stage && H.stage.round && !_hqStageRoundBeside(H)) return;   // THE ROUND JOIN: the card holds until the room beyond stands beside this one
+        var still = _hqGateProgress(H, now);
+        var capped = still > HQ_GATE_CAP_MS || now - H.t0 > HQ_GATE_HARD_MS;
+        var landed = playerOk && gateOk && !(H.stage && H.stage.round && !_hqStageRoundBeside(H));   // THE ROUND JOIN: the card holds until the room beyond stands beside this one
+        if (landed && !H.landed) { H.landed = true; H.landedAt = now; }   // the passes start under the card (_hqFrame)
+        if (!capped) {
+            if (!landed) return;
+            if (!_hqSettled(H, now)) {
+                var S0 = H.settle;
+                if (!(S0 && now - S0.t0 > HQ_SETTLE_CAP_MS && S0.ticks > HQ_SETTLE_CAP_FRAMES && S0.why !== 'files' && S0.why !== 'warm')) return;   // a counter that never rests is not a room that never loads
+                try { console.warn('[HQ] the room never came to rest (' + S0.why + ') — the card drops after ' + Math.round((now - S0.t0) / 1000) + ' s of settling'); } catch (e) {}
+            }
+        }
+        H.landed = true;
         H.ready = true;
         _hqRebuildAt = performance.now();   // the room's arrival (2026-09-25): a lock the browser drops as the room settles is never the walker's ESC
-        if (capped && G && !G.idle()) { try { console.warn('[HQ] the load card gave up after ' + Math.round(HQ_GATE_CAP_MS / 1000) + ' s — still in flight:', G.list().map(function (r) { return r.url; })); } catch (e) {} }
+        if (capped && G && !G.idle()) { try { console.warn('[HQ] the load card gave up after ' + Math.round(still / 1000) + ' s without progress (' + Math.round((now - H.t0) / 1000) + ' s in all) — still in flight:', G.list().map(function (r) { return r.url; })); } catch (e) {} }
         if (G) { var failed = G.failed(); if (failed.length) { try { console.warn('[HQ] ' + failed.length + ' file(s) of this room never landed (missing from the bucket? a frozen 404? — window._ewAssetFailures):', failed); } catch (e) {} } try { _hqBookWrite(H.opts && H.opts.room, G); } catch (e) {} G.close(); }
+        try { var S1 = H.settle; if (S1) console.log('[HQ] ' + (H.opts && H.opts.room) + ' landed in ' + Math.round((H.landedAt || now) - H.t0) + ' ms and settled in ' + Math.round(now - (H.landedAt || now)) + ' ms more (warmed ' + (S1.mats + (S1.warm ? S1.warm.mats : 0)) + ' material(s) + ' + (S1.texN + (S1.warm ? S1.warm.texN : 0)) + ' sheet(s) under the card; ' + S1.steps.join(', ') + ')'); } catch (e) {}
         if (H.opts.onReady) { try { H.opts.onReady(); } catch (e) {} }
     }
 
@@ -88912,6 +89030,7 @@ const ThreeRenderer = (function () {
      '_lockTryAt', '_ew_fpHid', '_gunTickWarned', 'enterDoorLatch', 'kickPrev', 'strikeAt', 'clock',
      'lod', '_lodAt', '_lodWarned'].forEach(function (k) { _HQ_ZONE_KEYS[k] = 1; });   // 'clock': THE WORLD CLOCK (Phase 3) is the visit's; 'lod': THE LOD LEVELS (Phase 10)
     _HQ_ZONE_KEYS._batchWarned = 1;
+    _HQ_ZONE_KEYS.landed = 1; _HQ_ZONE_KEYS.landedAt = 1; _HQ_ZONE_KEYS.settle = 1; _HQ_ZONE_KEYS._gateSig = 1; _HQ_ZONE_KEYS._gateAt = 1;   // THE CARD WAITS (2026-11-12): the landed / settled record is the visit's
     _HQ_ZONE_KEYS.cull = 1;   // THE PORTALS (G1): the cull record is the visit's (the swap resets it)   // THE STATIC BATCH (Phase 11): the warning is the visit's (the batch record itself is the part's: _hqPartFields)
     function _hqZoneKey(k) { return !!_HQ_ZONE_KEYS[k] || /^on[A-Z]/.test(k) || /^_bound|^_on/.test(k); }
     /* the room's stage record (in _hqEnter, after the camera, before the builders read hqStageNeighbours) */
@@ -89396,10 +89515,19 @@ const ThreeRenderer = (function () {
     /* may built part E stand beside the current part now? (fork 5) */
     function _hqStageReady(H, E, now) {
         if (!E.gate || E.gate.closed) return true;
-        if (now - E.t0 > HQ_GATE_CAP_MS) { if (E.capWarned) return true; E.capWarned = true; try { console.warn('[HQ stage] ' + E.id + ': the part gate gave up after ' + Math.round(HQ_GATE_CAP_MS / 1000) + ' s', E.gate.list().map(function (r) { return r.url; })); } catch (e) {} return true; }
-        if (HQ_STAGE_RULES.propsGate === 'whole') return E.gate.idle();
-        if (!E.trk || now - (E.trkAt || 0) >= (HQ_STAGE_RULES.trkMs || 250)) { E.trkAt = now; E.trk = _hqTrkScan(H, E); }
-        return E.gate.idleExcept(E.trk.farOnly);
+        var ok;
+        if (HQ_STAGE_RULES.propsGate === 'whole') ok = E.gate.idle();
+        else {
+            if (!E.trk || now - (E.trkAt || 0) >= (HQ_STAGE_RULES.trkMs || 250)) { E.trkAt = now; E.trk = _hqTrkScan(H, E); }
+            ok = E.gate.idleExcept(E.trk.farOnly);
+        }
+        if (ok) return true;
+        /* THE CARD WAITS (2026-11-12): the cap counts from the last file to land, not from the part's start, and is read only
+           for a part that is NOT ready (it used to warn "gave up" in the middle of a finished part's warm-up) */
+        var gsig = E.gate.done + '/' + E.gate.total;
+        if (gsig !== E._gateSig) { E._gateSig = gsig; E._gateAt = now; }
+        if (now - (E._gateAt || E.t0) > HQ_GATE_CAP_MS || now - E.t0 > HQ_GATE_HARD_MS) { if (E.capWarned) return true; E.capWarned = true; try { console.warn('[HQ stage] ' + E.id + ': the part gate gave up after ' + Math.round((now - E.t0) / 1000) + ' s', E.gate.list().map(function (r) { return r.url; })); } catch (e) {} return true; }
+        return false;
     }
 
     /* ══ THE FILE BOOK + THE WARM (OPEN_WORLD_PLAN.md §5.2 / §5.4, 2026-09-26) ══════════════════════════════════════════
@@ -89650,7 +89778,7 @@ const ThreeRenderer = (function () {
        from today's, the whole scene is compiled for it too. One object at a time under HQ_STAGE_RULES.compileMs a frame
        (default 8; one object at least), then the sheets (renderer.initTexture, same budget). The program three builds is the
        one the draw looks up by key, so the draw finds it cached. E.warm keeps the counts (ThreeRenderer.hq.stage()). */
-    var HQ_WARM_MS = 8;
+    var HQ_WARM_MS = 8, HQ_CARD_SLICE_MS = 24;
     var _hqWarmMatDef = null;
     function _hqLightSig(list) {
         var c = { a: 0, d: 0, p: 0, s: 0, h: 0, r: 0, sd: 0, sp: 0, ss: 0 };
@@ -89661,6 +89789,24 @@ const ThreeRenderer = (function () {
         return [c.d, c.p, c.s, c.h, c.r, c.sd, c.sp, c.ss].join(',');
     }
     function _hqUnderRoot(o, roots) { for (var q = o.parent; q; q = q.parent) if (roots.indexOf(q) >= 0) return true; return false; }
+    /* the warm-up's stand-in scene: one object at a time, drawn with the warm's lights */
+    function _hqWarmFake(H, W) {
+        var sc = H.scene;
+        W.fake = { isScene: true, fog: sc.fog || null, environment: sc.environment || null, background: null, overrideMaterial: null,
+                   _list: [], traverseVisible: function (cb) { for (var k = 0; k < W.lights.length; k++) cb(W.lights[k]); }, traverse: function (cb) { for (var k = 0; k < this._list.length; k++) cb(this._list[k]); } };
+        /* THE WARM-UP ON THE NODE RENDERER (2026-11-05, found by the per-frame audit): there renderer.compile is compileAsync, which
+           calls the scene's onBeforeRender and walks object.children / object.layers, none of which this stand-in scene had: every
+           warmed object threw (asynchronously, so the catch below never saw it), 600+ uncaught errors each time a room or part
+           built on ?ew_gpu=webgpu, and nothing was warmed. The stand-in now carries what compileAsync reads: no-op hooks, every
+           layer, and the object + the warm's lamps as its children (the lamps are how the node path collects its lights). */
+        if (renderer && renderer.isWebGPURenderer) {
+            var lay = new THREE.Layers(); lay.enableAll();
+            W.fake.visible = true; W.fake.layers = lay; W.fake.matrixWorldAutoUpdate = false;
+            W.fake.onBeforeRender = function () {}; W.fake.onAfterRender = function () {};
+            Object.defineProperty(W.fake, 'children', { get: function () { return this._list.concat(W.lights); } });
+        }
+        return W.fake;
+    }
     function _hqWarmNew(H, E) {
         var W = { objs: [], i: 0, texs: [], ti: 0, seen: {}, tseen: {}, mats: 0, texN: 0, ms: 0, frames: 0, full: false, done: false, lights: [], fake: null };
         if (!renderer || typeof renderer.compile !== 'function' || !H.scene || !H.camera) { W.done = true; return W; }
@@ -89679,20 +89825,7 @@ const ThreeRenderer = (function () {
         var add = function (o) { if (o.material) W.objs.push(o); };
         R.traverse(add);
         if (W.full) H.scene.traverse(add);   // every material in the scene is keyed on the light count: warm them all for the new one
-        var sc = H.scene;
-        W.fake = { isScene: true, fog: sc.fog || null, environment: sc.environment || null, background: null, overrideMaterial: null,
-                   _list: [], traverseVisible: function (cb) { for (var k = 0; k < W.lights.length; k++) cb(W.lights[k]); }, traverse: function (cb) { for (var k = 0; k < this._list.length; k++) cb(this._list[k]); } };
-        /* THE WARM-UP ON THE NODE RENDERER (2026-11-05, found by the per-frame audit): there renderer.compile is compileAsync, which
-           calls the scene's onBeforeRender and walks object.children / object.layers, none of which this stand-in scene had: every
-           warmed object threw (asynchronously, so the catch below never saw it), 600+ uncaught errors each time a room or part
-           built on ?ew_gpu=webgpu, and nothing was warmed. The stand-in now carries what compileAsync reads: no-op hooks, every
-           layer, and the object + the warm's lamps as its children (the lamps are how the node path collects its lights). */
-        if (renderer && renderer.isWebGPURenderer) {
-            var lay = new THREE.Layers(); lay.enableAll();
-            W.fake.visible = true; W.fake.layers = lay; W.fake.matrixWorldAutoUpdate = false;
-            W.fake.onBeforeRender = function () {}; W.fake.onAfterRender = function () {};
-            Object.defineProperty(W.fake, 'children', { get: function () { return this._list.concat(W.lights); } });
-        }
+        W.fake = _hqWarmFake(H, W);
         return W;
     }
     /* the sheets a material samples (the maps; a shader's texture uniforms) */
@@ -89703,7 +89836,7 @@ const ThreeRenderer = (function () {
     /* one frame of the warm-up; true = done */
     function _hqWarmRun(H, W) {
         if (W.done) return true;
-        var t0 = _alNow(), end = t0 + ((HQ_STAGE_RULES.compileMs > 0) ? HQ_STAGE_RULES.compileMs : HQ_WARM_MS), n = 0;
+        var t0 = _alNow(), end = t0 + (!H.ready ? HQ_CARD_SLICE_MS : (HQ_STAGE_RULES.compileMs > 0) ? HQ_STAGE_RULES.compileMs : HQ_WARM_MS), n = 0;   // THE CARD WAITS: under the card the warm-up takes HQ_CARD_SLICE_MS a frame
         W.frames++;
         try {
             while (W.i < W.objs.length) {
@@ -89716,7 +89849,7 @@ const ThreeRenderer = (function () {
                 /* WEBGPU_PLAN W3: on the node chain the frame draws into the scene pass's target, so compile for that one */
                 var _wt = (ThreePost && ThreePost.warmTarget) ? ThreePost.warmTarget() : null, _wp = _wt ? renderer.getRenderTarget() : null;
                 if (_wt) renderer.setRenderTarget(_wt);
-                try { var _wpr = renderer.compile(W.fake, H.camera); if (_wpr && typeof _wpr.catch === 'function') _wpr.catch(function () {}); } finally { if (_wt) renderer.setRenderTarget(_wp); }   // the node renderer's compile is a promise: a failure never goes uncaught
+                try { var _wpr = renderer.compile(W.fake, H.camera); if (_wpr && typeof _wpr.then === 'function') { W.flying = (W.flying || 0) + 1; var _wland = function () { W.flying--; }; _wpr.then(_wland, _wland); } } finally { if (_wt) renderer.setRenderTarget(_wp); }   // the node renderer's compile is a promise: a failure never goes uncaught
                 n++;
                 if (_alNow() >= end) break;
             }
@@ -89752,7 +89885,7 @@ const ThreeRenderer = (function () {
        taken: props, doors, people (only the shell group), instanced / skinned / morphing / patched-shader / point / line
        pieces, a piece with children, a see-through piece that is not a cut-out, the terrain tiles, the outer ground, the
        sea, the traffic. The hand-over and the leave hand every piece back first. Off: window.EW_HQ_NO_BATCH. */
-    var HQ_BATCH = { waitMs: 1500, checkMs: 500, sliceMs: 3, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000 };
+    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, sliceMs: 3, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000 };
     /* THE PERF PASS 2 (2026-10-01, mondo's Downtown readout: 1,232 scene draws, 315 shell pieces alone in their look and 370
        procedural props each its own draw): the merge squares are HQ_BATCH.cellM (was the terrain's 32 m tile — most looks
        had one piece per square; 96 m took Downtown's shell 1,526 → 444 to 1,841 → 289 draws), a second batch runs on each
@@ -90000,7 +90133,7 @@ const ThreeRenderer = (function () {
     function _hqBatchTick(H, now) {
         if (_hqBatchOff()) { _hqBatchDropAll(H); return; }
         var recs = [H]; if (H.stage) for (var id in H.stage.parts) if (H.stage.parts[id].attached) recs.push(H.stage.parts[id].P);
-        var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
+        var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : !H.ready ? HQ_CARD_SLICE_MS : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
         for (var r = 0; r < recs.length; r++) {
             var R = recs[r];
             if (!R.batch) R.batch = _hqBatchNew('shellGroup', now);
@@ -90011,8 +90144,8 @@ const ThreeRenderer = (function () {
             if (B.phase === 'off') continue;
             if (B.batches.length && now - B.checkAt >= HQ_BATCH.checkMs) { B.checkAt = now; try { _hqBatchCheck(R, B); } catch (e) { console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
             if (B.phase === 'live') { if (now - B.at < HQ_BATCH.rescanMs) continue; B.phase = 'scan'; B.it = _hqBatchScan(R, B); }   // THE PERF PASS 2: the late pieces
-            if (B.phase === 'wait') { if (now - B.at >= HQ_BATCH.waitMs) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
-            if (B.phase === 'watch') { if (now - B.at >= HQ_BATCH.waitMs) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
+            if (B.phase === 'wait') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
+            if (B.phase === 'watch') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
             if (_alNow() >= end) return;
             _hqSliceEnd = end;
             var res = null;
@@ -90020,8 +90153,8 @@ const ThreeRenderer = (function () {
             finally { _hqSliceEnd = 0; }
             if (res && res.done && B.phase !== 'off') {
                 B.it = null;
-                if (B.phase === 'scan') { if (B.cands.length) { B.phase = 'watch'; B.stats.scanned += B.cands.length; } else B.phase = 'live'; B.at = now; }
-                else if (B.phase === 'build') { B.phase = 'live'; B.at = now; if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ batch] ' + ((R.opts && R.opts.room) || (R.room && R.room.id) || '?') + ' ' + B.grp + ': ' + B.stats.pieces + ' pieces → ' + B.stats.batches + ' batches'); }
+                if (B.phase === 'scan') { if (B.cands.length) { B.phase = 'watch'; B.stats.scanned += B.cands.length; } else { B.phase = 'live'; B.lived = true; } B.at = now; }
+                else if (B.phase === 'build') { B.phase = 'live'; B.lived = true; B.at = now; if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ batch] ' + ((R.opts && R.opts.room) || (R.room && R.room.id) || '?') + ' ' + B.grp + ': ' + B.stats.pieces + ' pieces → ' + B.stats.batches + ' batches'); }
             }
             if (_alNow() >= end) return;
             }
@@ -91279,7 +91412,11 @@ const ThreeRenderer = (function () {
            browser ate (_hqOnLockChange) and open the pause menu on top of the card */
         hold: function (on) { if (!_hq) return; _hq.paused = !!on; _hqRebuildAt = performance.now(); if (on) { _hq.keys = {}; _hq.pad = null; _hq.padKeys = {}; _hq.drag = null; } },
         /* THE GATE (2026-09-20): the room's own file count for the load card — { total, done, pending, idle, ms, player } */
-        gate: function () { var H = _hq; if (!H) return null; var p = H.gate ? H.gate.progress() : { total: 0, done: 0, pending: 0, idle: true, ms: 0 }; p.player = !!H.playerAttached; p.ready = !!H.ready; p.list = H.gate ? H.gate.list() : []; return p; },
+        gate: function () { var H = _hq; if (!H) return null; var p = H.gate ? H.gate.progress() : { total: 0, done: 0, pending: 0, idle: true, ms: 0 }; p.player = !!H.playerAttached; p.ready = !!H.ready; p.list = H.gate ? H.gate.list() : [];
+            /* THE CARD WAITS (2026-11-12): the card holds for the room beside this one (THE ROUND JOIN) and for the room to settle — its count says so */
+            p.landed = !!H.landed; p.settle = (H.landed && H.settle) ? H.settle.why : '';
+            if (!H.ready && H.stage && H.stage.round) { for (var id in H.stage.parts) { var E = H.stage.parts[id]; if (!E.gate) continue; var q = E.gate.progress(); p.total += q.total; p.done += E.attached ? q.total : q.done; p.cached += q.cached || 0; if (!E.attached) p.pending += q.pending; } }
+            return p; },
         /* THE ARRIVAL WARM (2026-09-19): start the arrival room's downloads while the title / the menu / the
            door beat play — every door leaf, every catalogue prop, the door gun and the shell's sheets go
            through the same caches the build reads (_miscModelCache / _hqTexCache), so the build finds
