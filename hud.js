@@ -1241,7 +1241,7 @@ function SbClock({ startTime, live }) {
    Off switch: window.EW_NO_SCORE_POP = true. */
 const SCORE_POP_RULES = {
   /* [points from, name, glyph px, in ms, hold ms, roll ms] */
-  tiers: [[50, 't4', 34, 520, 900, 620], [25, 't3', 26, 440, 760, 520], [10, 't2', 18, 320, 620, 380], [0, 't1', 13, 220, 520, 240]],
+  tiers: [[50, 't4', 38, 520, 900, 620], [25, 't3', 28, 440, 760, 520], [10, 't2', 20, 320, 620, 380], [0, 't1', 15, 220, 520, 240]],
   mergeMs: 240,        // gains this close together are one +N
   afterBarsMs: 560,    // the letterbox slides out in .45 s (styles-cinematic.css .acam-bar)
   maxWaitMs: 12000,
