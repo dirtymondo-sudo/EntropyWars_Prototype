@@ -2699,3 +2699,12 @@ team's score number, like in the same spot"): the digits step out, the +N holds,
   overshoot and a settle (t4 lands from big); the digits' bump on the roll is smaller. Sizes, flash and ring unchanged.
 - 11-12 12:45 AM: "too wavy" was the GRASS, not the +N ("i meant the grass, sorry ... bring back"): the bounce / double
   bounce motion of PR #1174 is back as it was.
+
+### THE MINIMAP STAYS UP IN THE COMMAND MENU (2026-11-12, mondo: "make the minimap not disappear while im navigating the combat menu")
+- Cause: the menu's own camera glides (range fit, target two-shot, glide back) set `body.ew-board-busy` + `ew-board-cam`
+  (three-renderer.js `_syncTakeoverHighlights`), and the minimap's Hide while = "the game has the board" took each glide
+  for the game's: it faded on every row.
+- Fix: `body.ew-deciding` (three-renderer.js `_playerDeciding`): the viewer's own unit's turn, nothing playing out, no
+  cinematic / close-up / centre banner / spell shot / end of round. styles-hud.css keeps `.ew-mmap` up while it is on
+  (the UI Maker's "Also while you pick a tile or a target" still hides it while aiming). The combat log is untouched.
+- Viewer-local (a body class), nothing relayed; the guest's own turn runs the same test.
