@@ -33710,8 +33710,7 @@ const DOOR_HQ = {
                 { key: 'psx_tv_table_4', x: -5.25, z: 29.4, face: 0 },
                 { key: 'tube_tv',        x: -5.25, z: 29.4, y: 0.97, face: 0 },
                 { key: 'vhs_player',     x: -5.25, z: 29.4, y: 0.45, face: 0 },
-                { key: 'school_desk',    x: -7.35, z: 26.0, face: 180 }, { key: 'school_desk', x: -5.25, z: 26.0, face: 180 }, { key: 'school_desk', x: -3.15, z: 26.0, face: 180 },
-                { key: 'molded_chair',   x: -7.35, z: 25.2, face: 180 }, { key: 'molded_chair', x: -5.25, z: 25.2, face: 180 }, { key: 'molded_chair', x: -3.15, z: 25.2, face: 180 },
+                { key: 'school_desk',    x: -7.35, z: 26.0, face: 0 }, { key: 'school_desk', x: -5.25, z: 26.0, face: 0 }, { key: 'school_desk', x: -3.15, z: 26.0, face: 0 },
                 { key: 'vhs_tape',       x: -4.7, z: 29.3, y: 0.97, face: 20 },
                 /* MOCKUP · ROOM 64'S THINGS MOVED IN: the range console desk on the west wall, the 44-minute corner, the lockers, the cooler, the sign */
                 { key: 'tanker_desk',    wall: 'w', z: 0 },
