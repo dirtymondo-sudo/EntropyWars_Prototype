@@ -2483,6 +2483,9 @@
             /* THE QUESTS (2026-11-12): a tape that leads straight into a quest's fight (ui.js sets the marker) — the building is
                not re-entered in between; ui.js starts the fight on the lesson's own board next, and comes back here if it cannot */
             if (window._questFightPending) return true;
+            /* THE TUTORIAL (2026-11-12): NEXT TAPE / RESTART on a lesson started at the Range Console — ui.js _tutChain starts the next
+               lesson next (a building re-entered here loaded under that lesson's match and its board was never drawn: all black) */
+            if (window._tutChainPending) return true;
             const enabled = window._hqEnabled();
             const alive = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active());
             /* THE TUTORIAL: a lesson started from the shelf goes back to the shelf */

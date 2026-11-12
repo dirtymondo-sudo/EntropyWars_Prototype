@@ -18105,11 +18105,31 @@
                 const act = b.getAttribute('data-tut');
                 if (act === 'continue') { try { playSfx('uiButtonConfirm'); } catch (x) {} _tutAdvance(); }
                 else if (act === 'leave') window._tutorialLeave();
-                else if (act === 'next') { const n = _tutNextLesson(); if (n) _tutTeardown(() => window._tutorialLaunch(n.id, { from: _tut.from })); }
+                else if (act === 'next') { const n = _tutNextLesson(); if (n) _tutChain(n.id); }
                 else if (act === 'list') window._tutorialLeave(true);
-                else if (act === 'restart') { const id = _tut.lesson && _tut.lesson.id; if (id) _tutTeardown(() => window._tutorialLaunch(id, { from: _tut.from })); }
+                else if (act === 'restart') { const id = _tut.lesson && _tut.lesson.id; if (id) _tutChain(id); }
             });
             return el;
+        }
+        /* ONE TAPE STRAIGHT INTO THE NEXT (2026-11-12, mondo: "the second tutorial shows an all black screen, HUD and everything
+           still there and responsive but nothing showing on the board"). NEXT TAPE / RESTART on a lesson started at the Range
+           Console tore the lesson down through backToMainMenu, whose way home (map.js _hqReturnOrMenu) RE-ENTERED THE
+           BUILDING, and the next lesson's match started in the same breath, under the building's load: the building then
+           owned the canvas and the lesson's board was never drawn (the HUD is DOM, so it stood over a black picture).
+           window._tutChainPending keeps the building from being re-entered in between (as window._questFightPending does
+           for the quest's fight); a lesson that cannot start falls back to the ordinary way home. */
+        function _tutChain(lessonId) {
+            const hq = _tut.from === 'hq';
+            if (hq) window._tutChainPending = lessonId;
+            _tutTeardown((from) => {
+                window._tutChainPending = null;
+                let ok = false;
+                try {
+                    if (hq) state.gameState = GS.MAIN_MENU;   // as the Range Console starts a tape (map.js data-tutorial)
+                    ok = !!window._tutorialLaunch(lessonId, { from: from });
+                } catch (e) { console.error('[Tutorial] the next tape did not start', e); ok = false; }
+                if (!ok && hq && typeof window._hqReturnOrMenu === 'function') window._hqReturnOrMenu();
+            });
         }
         function _tutNextLesson() {
             const L = _tut.lesson;

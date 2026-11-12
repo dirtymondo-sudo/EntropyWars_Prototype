@@ -820,3 +820,16 @@ questAllyMembers), state.js keeps it on the unit (it is NOT a creator look: norm
 and sprites.js getRace3DModel returns DOOR_CAST_MODELS[cast] plus the race row's `hold` (the gun) + `basicAttackKind`.
 state.js keeps it through the party repair too (rebuiltMeta). battle.js _questFightAuto sets it again as a backstop. Off switch: window.EW_DISABLE_CAST. Any quest ally can use `cast`.
 LESSON: a name mondo uses is an EXISTING character until DOOR_STORY.md / DOOR_MASTER.md / DOOR_CAST say otherwise. Search those first.
+
+### NEXT TAPE from the Range Console: the black board (2026-11-12, mondo)
+"the second tutorial shows an all black screen, HUD and everything still there and responsive but nothing showing on the board."
+Cause: NEXT TAPE / RESTART on a lesson started at the Range Console (`_tut.from === 'hq'`) tore the lesson down through
+backToMainMenu, whose way home (map.js `_hqReturnOrMenu`) re-entered the building (`_hqEnter`, from 'return'); the next lesson's
+match started in the same breath, under the building's load, and the building then owned the canvas: the board was never drawn.
+Seen on WebGPU (headless Chromium, SwiftShader): DOOR HQ > Room 64 > Tape 1 > NEXT TAPE = canvas 0,0,0 with the HUD up; the same
+two tapes from the main menu shelf draw fine. Not the Entropy Style (still black with the style Off) and not PR #1215 (his console's line
+numbers were the build before it). Fix: ui.js `_tutChain` sets `window._tutChainPending` round the teardown and `_hqReturnOrMenu`
+returns early on it (as `_questFightPending` does for the quest's fight); a lesson that cannot start falls back to `_hqReturnOrMenu`.
+Harness note: a real WebGPU canvas in headless Chromium here needs `--enable-unsafe-webgpu --use-webgpu-adapter=swiftshader
+--use-angle=swiftshader --use-vulkan=swiftshader --enable-features=Vulkan --disable-vulkan-surface` (without the Vulkan pair the
+swap chain's shared image cannot be made and the device is lost every second); one WebGPU browser at a time.
