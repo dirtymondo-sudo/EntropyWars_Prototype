@@ -1603,6 +1603,13 @@ head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay t
   under it: with the arm's weight taken off, her shoulder rose through the strap when the arm came down), shown skin grows BARING 2
   rings round the arm openings, flaps past the arm opening after the un-pose are left out (AHPAD). Angel command now:
   `REPWARM=0.08 LOCKT=0.3 SKIN_T=0.3 ... --longhair --nowings --barearms --neckline --repaint` (no LOCKZ).
+  ROUND 3 (11-12, mondo "keep improving them"): the teeth on the back of the angel's dress behind her right arm were not in the cloth,
+  they were WEIGHTS: the back panel beside her arm took the weights of the arm skin nearest to it and stood out in spikes when the
+  body was un-posed. THE STRAPS ON THE SKIN now takes the weights of the nearest skin that is NOT arm (kdb / noarm), for all cloth
+  within STRAPNEAR 8 cm of the skin (was 3 cm: a seam of two kinds of weights ran through the arm opening); BARING 1 ring. ONE SIDE
+  LIKE THE OTHER (MIRD: a face out past the neck stays only when its mirror lies on cloth) is in but took 4 faces. Tried + dropped on
+  the mummy: a straight bisect of the collar (a spike stood up from her chest; her uneven collar is the suit's painted skin against
+  the body's, not shape) and `skinTint: pick` (paints her whole skin one flat colour, face included).
   Open: a few skin flecks on robinhood's hood front, a skin chip by the catgirl's left boot, light patches on her sleeves (the lacing in
   Meshy's texture), the knight's and zombie's walk hunches (the race's own walk clip), no sway, stock faces until the face step.
 
