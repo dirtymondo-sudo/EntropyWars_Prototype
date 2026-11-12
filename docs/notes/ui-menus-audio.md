@@ -2727,3 +2727,11 @@ team's score number, like in the same spot"): the digits step out, the +N holds,
 - Left out (`_MM_PV_SKIP`): zones, weather, telegraphs, the action glow, the hovered enemy's range, the Inspect search map.
 - UI Maker > Layout > Minimap > Previews: gPvReach / gPvArea / gPvArrow / gPvCursor (on) + gPvOp (MMAP_DEF pv*).
 - Proof (WebGL2 headless): /mnt/project-files/minimap/previews-20261112/. Not seen: WebGPU, online guest, round / turned / near views.
+
+## TEAM SELECT: NO INWARD FLASH (2026-11-12)
+mondo: "the buttons on the left briefly show more inward before showing in the correct place". Cause: the entrance
+(`.sq-page.sq-enter .sq-dock`, sqCardIn) put a transform on the whole dock for ~0.66 s; a transformed box is the frame
+its `position: fixed` parts measure from, so the UI Maker screen-pinned button stack (sqact: pin l, pinM 32) stood 32 px
+inside the DOCK until the animation ended. Fix (styles-base.css): the dock no longer animates; `.sq-bar` flies in and
+`.sq-actions` only fades (sqFadeIn, no transform). RULE: never put a transform / filter animation on a box that holds a
+piece the UI Maker can pin to a screen side. Proof: /mnt/project-files/team-select-flash/.

@@ -32475,6 +32475,8 @@
         const PANEL_LIFT_MAX = 0.3;         // THE PANEL LIFT: the frame rises at most this much (NDC) over the bottom panel
         const PANEL_LIFT_SHARE = 0.5;       // share of the way to the middle of the band over the panel (mondo 2026-11-12: "a little lower, like somewhere in between")
         const PANEL_CENTRE_MIN_BAND = 0.3;  // THE PANEL CENTRE: the band over the bottom panel frames the full width while it is this share of the screen tall
+        const PANEL_SUB_SHARE = 0.6;        // THE LOWER SUB FRAME: share of the way to the middle of the band over the panel a sub menu's frame rises
+        const PANEL_SUB_SPAN = 0.12;        // and the bays within this share of the width each side of the middle are the band's floor
         const PANEL_LIFT_SPAN = 0.18;       // the panel's bays within this share of the width each side of the middle count
         const CLEAR_FRAME_REFIT_MS = 140;   // a changed cover must hold this long before a fit is solved again
         const _CLEAR_FULL = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false });
@@ -32628,11 +32630,31 @@
                     if (x0 - cv.left > cv.right - x1) x0 = Math.max(cv.left, x1 - minW);
                     else x1 = Math.min(cv.right, x0 + minW);
                 }
+                /* THE LOWER SUB FRAME (mondo 2026-11-12, the attack list open in the Training Room: "everything is framed a
+                   little too high and the green super effective exclamation point icon is being cropped/covered up by the
+                   scoreboard"): with a sub menu open over THE ONE BATTLE PANEL the frame rose all the way to the middle of
+                   the band between the score bars and the panel's TALLEST bay, so a target up the screen from the framed
+                   pair had its plate and matchup icon under the score bars. The frame now rises PANEL_SUB_SHARE of the
+                   way to the middle of the band over the bays under the middle of the screen (where the bodies stand),
+                   and its height is what really is free round that point: never past the score bars, never under those
+                   bays. Kill switch: EW_NO_PANEL_SUB_LOWER. */
+                let deckCy = null, deckHh = null;
+                if (deckBoxes.length && above && !_cfSolid && !window.EW_NO_PANEL_SUB_LOWER) {
+                    const bx0 = midX - cv.width * PANEL_SUB_SPAN, bx1 = midX + cv.width * PANEL_SUB_SPAN;
+                    let yB = cv.bottom;
+                    deckBoxes.forEach(r => { if ((r.top + r.bottom) / 2 >= midY && r.right > bx0 && r.left < bx1) yB = Math.min(yB, r.top); });
+                    if (yB < cv.bottom && yB > y0 + cv.height * 0.3) {
+                        const hH = cv.height / 2;
+                        const topN = (midY - y0) / hH, botN = (midY - yB) / hH;
+                        deckCy = Math.max(0, Math.min(CLEAR_LOW_PANEL_MAX_CY, PANEL_SUB_SHARE * (midY - (y0 + yB) / 2) / hH));
+                        deckHh = Math.max(0.3, Math.min(0.6, Math.min(topN - deckCy, deckCy - botN) / MENU_CAM_MARGIN_V));
+                    }
+                }
                 if (y1 - y0 < cv.height * 0.6) { const c = (y0 + y1) / 2; y0 = c - cv.height * 0.3; y1 = c + cv.height * 0.3; }
                 _cfArea = {
                     cx: ((x0 + x1) / 2 - midX) / (cv.width / 2) * (_cfSolid ? 1 : CLEAR_FRAME_SHIFT),
-                    cy: Math.max(-0.2, Math.min(above ? CLEAR_LOW_PANEL_MAX_CY : 0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
-                    hw: (x1 - x0) / cv.width, hh: (y1 - y0) / cv.height, menu: true,
+                    cy: deckCy != null ? deckCy : Math.max(-0.2, Math.min(above ? CLEAR_LOW_PANEL_MAX_CY : 0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
+                    hw: (x1 - x0) / cv.width, hh: deckHh != null ? deckHh : (y1 - y0) / cv.height, menu: true,
                     // THE NEAR FRAME: the free part's own edges and middle, in NDC
                     l: (x0 - midX) / (cv.width / 2), r: (x1 - midX) / (cv.width / 2),
                     mid: ((x0 + x1) / 2 - midX) / (cv.width / 2)
@@ -59040,11 +59062,32 @@
             const metas = (state.partyMeta && state.partyMeta[1]) || [];
             return (state.units || []).find(u => { if (!u || u.player !== 1 || u.dead) return false; const i = parseInt(String(u.id).split('-')[1], 10); const m = Number.isFinite(i) ? metas[i] : null; return !!(m && !m.partyId && m.race === g.race); }) || null;
         }
+        /* the fight's ALLIES (data.js QUEST_FIGHTS.allies — Agent Locke): the human seat's bodies that are no party member and
+           carry the ally mark; each goes on its Tactic so the CPU's brain plays its turns (mondo: "on auto") */
+        function _questFightAllies() {
+            const er = _encRun(), F = er && er.quest, list = (F && Array.isArray(F.allies)) ? F.allies : [];
+            if (!list.length) return [];
+            const metas = (state.partyMeta && state.partyMeta[1]) || [];
+            const out = [], used = new Set();
+            /* matched like the guest: no partyId (the launch keeps that; other marks on the meta do not survive it) + the ally's race */
+            (state.units || []).forEach(u => {
+                if (!u || u.player !== 1) return;
+                const i = parseInt(String(u.id).split('-')[1], 10); const m = Number.isFinite(i) ? metas[i] : null;
+                if (!m || m.partyId) return;
+                const k = list.findIndex((a, j) => !used.has(j) && a.race === m.race);
+                if (k >= 0) { used.add(k); out.push({ u, m: { questTactic: list[k].tactic || null } }); }
+            });
+            return out;
+        }
+        function _questFightAuto() {
+            try { _questFightAllies().forEach(({ u, m }) => { const t = m.questTactic; if (t && (typeof UNIT_TACTIC_IDS === 'undefined' || UNIT_TACTIC_IDS.indexOf(t) >= 0) && !u.tactic) u.tactic = t; }); } catch (e) { console.warn('[QUEST] the ally tactic failed', e); }
+        }
         function _questFightBodies() {
             const er = _encRun(), F = er && er.quest; if (!F) return null;
             return { F, guest: _questGuestUnit(), foes: (state.units || []).filter(u => u && u.player === 2 && !u.dead && !u._benched) };
         }
         function _questFightSeat() {
+            _questFightAuto();
             const B = _questFightBodies(); if (!B || !B.F.seats) return false;
             const W = bw(), H = bh();
             const put = (u, seat) => {
@@ -59069,6 +59112,7 @@
             return true;
         }
         function _questFightArrive() {
+            _questFightAuto();
             const B = _questFightBodies(); if (!B || !B.F.portal) return false;
             const P = B.F.portal;
             try { addLog(`🚪 A portal forms. ${B.guest ? unitDisplayName(B.guest) : 'Someone'} comes through it${B.foes.length ? ', and ' + B.foes.length + ' ' + (B.foes.length === 1 ? 'enemy comes' : 'enemies come') + ' after' : ''}.`); } catch (e) {}
@@ -74607,7 +74651,7 @@
                     return 0;
                 }
             }
-            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('attack', unit)) return 0;
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && (!window._tutActionAllowed('attack', unit) || (typeof window._tutTargetOk === 'function' && !window._tutTargetOk(x, y)))) return 0;
             _imitObserve(unit, { type: 'attack', x, y });
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') {
                 const _tutTgt = unitAt(x, y);
@@ -79412,7 +79456,7 @@
                 return 0;
             }
 
-            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('spell', unit, spell.id)) return 0;
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && (!window._tutActionAllowed('spell', unit, spell.id) || (typeof window._tutTargetOk === 'function' && !window._tutTargetOk(x, y)))) return 0;
             _imitObserve(unit, { type: 'spell', x, y, spellId: spell.id, spellName: spell.name });
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('spell', { uid: unit.id, x, y, spellId: spell.id });
 

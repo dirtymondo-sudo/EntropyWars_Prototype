@@ -27416,7 +27416,7 @@ const TUTORIAL_LESSONS = [
             { id: 'scope', title: 'RANGE',
               say: 'SCOPE is a marksman — a basic attack reaches <b>RNG</b> tiles. Don\'t walk up. Press ATTACK and shoot DUMMY B from here.',
               hint: 'ATTACK · DUMMY B',
-              focus: { hud: 'attack' }, allow: ['attack'],   // the shot only (SCOPE reaches DUMMY B from the start tile)
+              focus: { hud: 'attack' }, allow: ['attack'], only: 'p2-1',   // the shot only, at DUMMY B (SCOPE reaches it from the start tile)
               goal: { type: 'attack', unit: 'p1-1' } },
             { id: 'enemy', title: 'THEIR TURN',
               say: 'Both of yours have acted. The dummies take theirs — watch the <b>TURN CLOCK</b>. DUMMY A swings at BLADE; DUMMY B shambles closer.',
@@ -27463,12 +27463,12 @@ const TUTORIAL_LESSONS = [
             { id: 'cast', title: 'SISTER',
               say: '<b>SISTER</b> is DIVINE. DUMMY A is a zombie — UNHOLY. <b>SMITE</b> is a DIVINE spell, and DIVINE beats UNHOLY. Open <b>ABILITIES</b>, pick SMITE, pick the <b>DUMMY A</b> row, then <b>✓ CONFIRM</b>.',
               hint: 'ABILITIES · SMITE · DUMMY A · ✓ CONFIRM',
-              focus: { hud: 'abil' }, allow: ['spell:raceSmite', 'move'],
+              focus: { hud: 'abil' }, allow: ['spell:raceSmite', 'move'], only: 'p2-0',
               goal: { type: 'press', unit: 'p1-0', outcome: 'weak' } },
             { id: 'press', title: 'THE PRESS',
               say: '<b>WEAKNESS — +{{PRESS_AP}} AP.</b> That is THE PRESS: a vessel\'s first weakness of the turn hands the AP straight back (so does a critical hit, or a spell\'s ⚗ COMBO on a status). A green <b>!</b> on a target row marks a weakness. Spend it: each spell goes once a turn (SMITE now reads USED THIS TURN), so <b>ATTACK</b> DUMMY A.',
               hint: 'ATTACK · DUMMY A · ✓ CONFIRM',
-              focus: { hud: 'attack' }, allow: ['attack', 'move'],
+              focus: { hud: 'attack' }, allow: ['attack', 'move'], only: 'p2-0',
               /* shown once ATTACK is armed (mondo 2026-11-12: "here is where it should explain what the green super effective icon means") */
               aim: { attack: { t: 'The green <b>!</b> means the hit is <b>super effective</b>. A basic attack follows the type chart too: SISTER is DIVINE, DUMMY A is UNHOLY.', c: '#57d97e' } },
               goal: { type: 'attack', unit: 'p1-0' } },
@@ -27484,7 +27484,7 @@ const TUTORIAL_LESSONS = [
             { id: 'resist', title: 'THE OTHER WAY',
               say: 'Now the wheel bites back. DUMMY B is a grey — <b>ALIEN</b>, which beats DIVINE. SMITE it anyway and watch what a <b>RESIST</b> costs.',
               hint: 'ABILITIES · SMITE · DUMMY B',
-              focus: { hud: 'abil' }, allow: ['spell:raceSmite', 'move'],
+              focus: { hud: 'abil' }, allow: ['spell:raceSmite', 'move'], only: 'p2-1',   // DUMMY B and nobody else (a Smite on DUMMY A spent it and the step could never finish)
               goal: { type: 'press', unit: 'p1-0', outcome: 'resist' } },
             { id: 'resist-done', title: 'WASTED',
               say: 'RESISTED: ×{{RESIST_MULT}} damage, and the turn drains <b>{{PRESS_PENALTY}} extra AP</b>. A miss does the same. Every fumble also shrinks what a later press can refund. Read the type chips before you swing.',
@@ -28104,6 +28104,10 @@ const QUEST_FIGHTS = {
         quest: 'orientation', site: 'prebuilt_training', room: 'training', gm: 'tdm',
         label: 'THE PORTAL',
         guest: { race: 'catgirl', gender: 'female' },
+        /* mondo 2026-11-12: "my team for the first fight should be me (door agent), agent locke (also door agent, level 25 or
+           something, on auto), and catgirl" — Agent Locke gives the orientation. `allies` stand with the party from the start
+           (no portal), at their own level, on a Tactic (the CPU's brain plays their turns); nothing of theirs is written back. */
+        allies: [{ race: 'door agent', name: 'Agent Locke', level: 25, tactic: 'fight' }],
         enemies: [{ race: 'shadow entity', gender: 'male' }, { race: 'shadow entity', gender: 'male' }],
         portal: { x: 4, y: 2 },
         seats: { guest: { x: 4, y: 4 }, enemies: [{ x: 3, y: 1 }, { x: 5, y: 1 }] },
@@ -28258,12 +28262,23 @@ function questGuestMember(F, partyLevel) {
     const lvl = Math.max(1, Math.min(LEVEL_CAP, (partyLevel | 0) || HQ_LEVEL_RULES.start));
     return { cls: spec.cls, name: '', meta: { race: g.race, gender: spec.meta.gender, storyLevel: lvl, questGuest: true }, loadout: { spells: spells.slice(), items: {}, equipment: {} }, id: null, you: false };
 }
+/* the fight's allies as launch members (the guest's row shape; `questAlly` + the Tactic ride the meta) */
+function questAllyMembers(F) {
+    const list = (F && Array.isArray(F.allies)) ? F.allies : [];
+    return list.filter(a => a && a.race).map(a => {
+        const spec = hqPartySpec(a.race, a.gender || hqPartyGenders(a.race)[0], null);
+        let spells = [];
+        try { spells = raceDefaultKit(a.race, [], spec.meta.gender) || []; } catch (e) { spells = []; }
+        const lvl = Math.max(1, Math.min(LEVEL_CAP, (a.level | 0) || HQ_LEVEL_RULES.start));
+        return { cls: spec.cls, name: a.name || '', meta: { race: a.race, gender: spec.meta.gender, storyLevel: lvl, questAlly: true, questTactic: a.tactic || null }, loadout: { spells: spells.slice(), items: {}, equipment: {} }, id: null, you: false };
+    });
+}
 if (typeof window !== 'undefined') {
     window.STORY_QUESTS = STORY_QUESTS; window.QUEST_FIGHTS = QUEST_FIGHTS;
     window.questDef = questDef; window.questFightDef = questFightDef; window.questProgress = questProgress;
     window.questEvent = questEvent; window.questLockedUnits = questLockedUnits; window.questTracker = questTracker;
     window.questJournal = questJournal; window.questFightPending = questFightPending; window.questFightLaunch = questFightLaunch;
-    window.questGuestMember = questGuestMember; window.questHolds = questHolds; window.questRewardedUnits = questRewardedUnits;
+    window.questGuestMember = questGuestMember; window.questAllyMembers = questAllyMembers; window.questHolds = questHolds; window.questRewardedUnits = questRewardedUnits;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

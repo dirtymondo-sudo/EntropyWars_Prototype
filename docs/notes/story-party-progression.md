@@ -799,3 +799,15 @@ R2 files: data.js, map.js, ui.js, battle.js, three-vfx-effects.js, styles-base.c
   (hud.js `_tutQuickRows` over the three `_compute*Actions`, ui.js `_tutQuickOk`; a row that walks first needs MOVE allowed too).
 - THE MOUSE COMES BACK (2026-11-12): ui.js `_tutFreeMouse` releases a pointer lock at a lesson's launch and (every poll) while it boots, is finished, or a panel waits for CONTINUE; the HQ walk's late lock had stayed on the shared canvas between Tape 1 and Tape 2 (not reproduced headlessly).
 - Tape 2 'press' step: aim tip on ATTACK (green, `aim: { attack: { t, c } }`: a tip may be a string or {t: html, c: colour}) says the green ! = super effective and basic attacks follow the type chart; the step's say now reads 'A green ! on a target row marks a weakness' (was 'means the refund is guaranteed', untrue on that step: the press is already spent).
+
+### THE FIRST FIGHT'S TEAM + THE ONE TARGET (2026-11-12, mondo)
+- "my team for the first fight should be me (door agent), agent locke (also door agent, level 25 or something, on auto), and
+  catgirl": QUEST_FIGHTS rows take `allies: [{ race, name, level, tactic, gender? }]` (data.js `questAllyMembers`). map.js
+  `_hqEncounterStart` seats them after the first shift, the portal guest after them; battle.js `_questFightAllies` /
+  `_questFightAuto` put each on its Tactic (matched by no partyId + race, like the guest). Nothing of theirs is written back.
+- "it gives me bigfoot and honda civic out of no where": a party filed before the starters were locked was pruned only on a NEW
+  filing. map.js `_hqPartyLaunch` now runs `hqPartyPrune` before every story fight.
+- "nothing stopping me from smiting dummy A ... no way to progress": a lesson step may name its target, `only: '<unit key>'`
+  (an attack goal's `target` counts too). ui.js `_tutTargetOk` (engine gate in battle.js attack + spell, nudges) and
+  `_tutTargetIs` (hud.js: the target list and the clicked-unit quick list show only that target). Set on Tape 1 `scope`,
+  Tape 2 `cast` / `press` / `resist`.
