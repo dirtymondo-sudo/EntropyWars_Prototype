@@ -818,5 +818,5 @@ character (DOOR_STORY.md "Agent Locke", data.js DOOR_CAST.locke, sprites.js DOOR
 `{ race: 'door agent', gender: 'female', cast: 'locke', ... }`: `cast` rides as `meta.appearance = { cast }` (data.js
 questAllyMembers), state.js keeps it on the unit (it is NOT a creator look: normalizeCharacterAppearance returns null for it),
 and sprites.js getRace3DModel returns DOOR_CAST_MODELS[cast] plus the race row's `hold` (the gun) + `basicAttackKind`.
-battle.js _questFightAuto sets it again as a backstop. Off switch: window.EW_DISABLE_CAST. Any quest ally can use `cast`.
+state.js keeps it through the party repair too (rebuiltMeta). battle.js _questFightAuto sets it again as a backstop. Off switch: window.EW_DISABLE_CAST. Any quest ally can use `cast`.
 LESSON: a name mondo uses is an EXISTING character until DOOR_STORY.md / DOOR_MASTER.md / DOOR_CAST say otherwise. Search those first.
