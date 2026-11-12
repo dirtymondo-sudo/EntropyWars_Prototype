@@ -2694,3 +2694,6 @@ team's score number, like in the same spot"): the digits step out, the +N holds,
   mode's +1 weighs as a kill (`killWeight`). P1's +N grows left, P2's right, in the side's scoreboard colour.
 - A score that drops (a Key carrier falls) just drops, no pop. Off switch `window.EW_NO_SCORE_POP`; probe
   `window._ewScorePopState()`. Not seen yet: online guest, his Mac, the motion at full speed (stills only).
+
+- 11-12 later, mondo: "it's maybe a little too wavy": the bounce / double bounce / up-and-down are gone. Every size is ONE
+  overshoot and a settle (t4 lands from big); the digits' bump on the roll is smaller. Sizes, flash and ring unchanged.
