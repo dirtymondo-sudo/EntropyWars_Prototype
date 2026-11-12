@@ -52,6 +52,10 @@ E = lambda k, d: float(os.environ.get(k, d))
 SKIN_T = E('SKIN_T', 0.20)
 HEADGEAR = False
 NECKLINE = False
+LONGHAIR = False
+BODYSUIT = False
+NOWINGS = False
+BAREARMS = False
 
 
 def load(p):
@@ -148,7 +152,13 @@ def fit(name, gender, src, bodies_dir):
     for o in sh:
         for v in o.data.vertices: v.co *= S
     eye = Vector(eyeN * S); eyes = {best[1], best[2]}
-    allc = np.vstack([co(o) for o in sh]); xmax = np.abs(allc[:, 0]).max()
+    if NOWINGS:   # Meshy centres the whole model, wings and all, so the figure stands off the middle: back onto the body's eyes and the floor
+        dy_ = eyeM[1] - eye.y; body_ = [o for o in sh if co(o)[:, 1].mean() + dy_ <= eyeM[1] + E('WINGY', 0.22)]
+        dz_ = -min(co(o)[:, 2].min() for o in body_)
+        for o in sh:
+            for v in o.data.vertices: v.co.y += dy_; v.co.z += dz_
+        eye = eye + Vector((0, dy_, dz_))
+    allc = np.vstack([co(o) for o in sh if not (NOWINGS and co(o)[:, 1].mean() > eye.y + E('WINGY', 0.22))]); xmax = np.abs(allc[:, 0]).max()   # (never the wings: the hands are the widest point)
     tgt = {'L': Vector(allc[allc[:, 0] > 0.85 * xmax].mean(0)), 'R': Vector(allc[allc[:, 0] < -0.85 * xmax].mean(0))}
     ft = {'L': Vector(allc[(allc[:, 2] < 0.05 * S) & (allc[:, 0] > 0)].mean(0)), 'R': Vector(allc[(allc[:, 2] < 0.05 * S) & (allc[:, 0] < 0)].mean(0))}
     def near_eye(o, r): c = co(o); return int((np.linalg.norm(c - np.array(eye), axis=1) < r).sum())
@@ -158,6 +168,11 @@ def fit(name, gender, src, bodies_dir):
     zone = np.linalg.norm(cen - np.array(eye) - np.array([0, 0, -0.03]), axis=1) < 0.05
     skin = np.median(fc[zone], axis=0)
     like = np.linalg.norm(fc - skin, axis=1) < SKIN_T
+    # THE BODY SUIT (--bodysuit; 2026-11-12, mummy: bandages the colour of her skin, with skin showing between them: the colour
+    # flood from the face either took her chest wraps with it or took nothing): no colour test. The head goes by place (from
+    # BSNECK under the chin up) and so do the hands (past BSHAND of the arm span); everything else, painted skin included, is
+    # the outfit and hides the body under it
+    if BODYSUIT: like = (cen[:, 2] > eye.z - 0.115 - E('BSNECK', 0.04)) & (np.abs(cen[:, 0] - eye.x) < 0.2)
     bmx = bmesh.new(); bmx.from_mesh(me); bmx.faces.ensure_lookup_table()
     seen = set(int(i) for i in np.nonzero(zone & like)[0]); stack = list(seen)
     while stack:
@@ -167,6 +182,11 @@ def fit(name, gender, src, bodies_dir):
                 if g.index not in seen and like[g.index]: seen.add(g.index); stack.append(g.index)
     b2 = (cen[:, 2] > eye.z - 0.01) & (cen[:, 2] < eye.z + 0.03) & (np.abs(cen[:, 0] - eye.x) < 0.14) & (np.abs(cen[:, 1] - eye.y - 0.08) < 0.16); headwM = cen[b2, 0].max() - cen[b2, 0].min()
     facez = set(i for i in range(len(cen)) if abs(cen[i, 0] - eye.x) < 0.5 * headwM and eye.z - 0.14 < cen[i, 2] < eye.z + 0.035 and cen[i, 1] < eye.y + 0.05 and E('FACEZ', 1))
+    if BODYSUIT: seen |= set(int(i) for i in np.nonzero(np.abs(cen[:, 0]) > E('BSHAND', 0.82) * xmax)[0])
+    # THE BARE ARMS (--barearms; 2026-11-12, angel: a sleeveless dress; the arms are one shell with the dress but the flood from
+    # the face never reaches them, the dress lies between): the skin-coloured faces ARMX out from the middle, down to ARMZ under the
+    # eyes (not the feet), go too, so the body's own arms show
+    if BAREARMS: seen |= set(int(i) for i in np.nonzero(like & (np.abs(cen[:, 0] - eye.x) > E('ARMX', 0.05)) & (cen[:, 2] > eye.z - E('ARMZ', 0.85)))[0])
     bmesh.ops.delete(bmx, geom=[bmx.faces[i] for i in seen | facez], context='FACES')
     bmesh.ops.delete(bmx, geom=[v for v in bmx.verts if not v.link_faces], context='VERTS'); bmx.to_mesh(me); bmx.free()
     hr = (np.abs(cen[:, 0] - eye.x) < 0.14) & (np.abs(cen[:, 1] - eye.y - 0.08) < 0.17) & (cen[:, 2] > eye.z - 0.02)
@@ -192,6 +212,9 @@ def fit(name, gender, src, bodies_dir):
                 bmesh.ops.delete(bmg, geom=[v for v in bmg.verts if not v.link_faces], context='VERTS'); bmg.to_mesh(o.data); bmg.free()
                 dropped.append(('hand skin, glove kept', int(sk_.sum()))); keep.append(o); continue
             dropped.append(('hand', n)); bpy.data.objects.remove(o); continue
+        # THE WINGS (--nowings; 2026-11-12, angel: Meshy gives her wings as flat sheets on red arms): a shell that sits wholly
+        # behind her back (its middle WINGY behind the eyes) is left out; the look wears the creator's own Wings instead
+        if NOWINGS and not isrem and c[:, 1].mean() > eye.y + E('WINGY', 0.22): dropped.append(('wing', n)); bpy.data.objects.remove(o); continue
         # A FLAKE (2026-11-12, catgirl: a skin-coloured chip floating beside a boot): a shell of a few faces, a few cm across
         if n < E('FLAKE', 30) and (c.max(0) - c.min(0)).max() < 0.04 * S / 1.9 and not (cz > chin - 0.02): dropped.append(('flake', n)); bpy.data.objects.remove(o); continue
         hd = math.hypot(cx - eye.x, c[:, 1].mean() - eye.y - 0.08)
@@ -283,19 +306,20 @@ def fit(name, gender, src, bodies_dir):
     # hair is one big shell from the crown to the waist (not a head piece: its middle is far below the head) and the top of it is
     # fused to what is left of the face's shell; both stood round her neck as jagged black. A shell that reaches above the eyes
     # with a fifth of it above the chin is hair: not exported; on any other shell everything above the chin goes
-    if NECKLINE:
+    if NECKLINE or LONGHAIR:   # (--longhair, mummy: the whole shell goes, the look wears a creator hair)
         for o in [o for o in keep if o not in headp]:
             c = co(o); n = len(o.data.polygons)
             if c[:, 2].max() < chin: continue
             if o not in rem and c[:, 2].max() > eyeM[2] and (c[:, 2] > chin).mean() > E('LOCKSHARE', 0.2):
                 # the part of it down her back stays (HAIRBACK behind the eyes, HAIRTOP under the chin): Meshy modelled no
                 # jacket under it, so without it her back is bare patches; her own hair hangs over its top edge
-                me_ = o.data; cen_ = np.array([p.center for p in me_.polygons]); go_ = ~((cen_[:, 1] > eye.y + E('HAIRBACK', 0.13)) & (cen_[:, 2] < chin - E('HAIRTOP', 0.08)))
+                me_ = o.data; cen_ = np.array([p.center for p in me_.polygons]); go_ = ~((cen_[:, 1] > eye.y + E('HAIRBACK', 0.13)) & (cen_[:, 2] < chin - E('HAIRTOP', 0.08))) | (not NECKLINE)
                 if go_.all(): dropped.append(('long hair', n)); keep.remove(o); bpy.data.objects.remove(o); continue
                 bml = bmesh.new(); bml.from_mesh(me_); bml.faces.ensure_lookup_table()
                 bmesh.ops.delete(bml, geom=[bml.faces[i] for i in np.nonzero(go_)[0]], context='FACES')
                 bmesh.ops.delete(bml, geom=[v for v in bml.verts if not v.link_faces], context='VERTS'); bml.to_mesh(me_); bml.free()
                 dropped.append(('long hair in front', int(go_.sum()))); continue
+            if not NECKLINE: continue
             me_ = o.data; up_ = np.array([p.center.z for p in me_.polygons]) > chin - E('HAIRCUT', 0.02)
             if up_.sum() and not up_.all():
                 bml = bmesh.new(); bml.from_mesh(me_); bml.faces.ensure_lookup_table()
@@ -306,7 +330,7 @@ def fit(name, gender, src, bodies_dir):
         # hair and shadow on her skin (black, like the jacket, so no colour test tells them apart): the cuts above leave it as
         # saw teeth (whole triangles went). The opening is re-cut straight: in front of the nape everything SCX to each side of
         # the middle goes, down to SCZ above the top's own edge at the middle of the chest: a square neck with straight edges
-        for o in [o for o in keep if o not in headp]:
+        for o in ([o for o in keep if o not in headp] if NECKLINE else []):
             me_ = o.data; cen_ = np.array([p.center for p in me_.polygons])
             if not len(cen_) or cen_[:, 2].max() < chin - 0.2: continue
             y1 = eye.y + E('SCY', 0.09); sx = E('SCX', 0.105)
@@ -324,6 +348,18 @@ def fit(name, gender, src, bodies_dir):
                 bmesh.ops.delete(bmv, geom=k_, context='FACES'); bmesh.ops.delete(bmv, geom=[v for v in bmv.verts if not v.link_faces], context='VERTS')
                 bmesh.ops.triangulate(bmv, faces=bmv.faces[:]); bmv.to_mesh(me_); dropped.append(('neck opening', len(k_)))
             bmv.free()
+    if BODYSUIT:   # nothing of the suit stands above its collar (a bandage end Meshy stood up to her chin)
+        for o in list(keep):
+            me_ = o.data; up_ = np.array([p.center.z for p in me_.polygons]) > chin - E('BSNECK', 0.04)
+            if up_.all():
+                dropped.append(('above the collar', len(up_))); keep.remove(o)
+                if o in headp: headp.remove(o)
+                bpy.data.objects.remove(o); continue
+            if up_.any():
+                bml = bmesh.new(); bml.from_mesh(me_); bml.faces.ensure_lookup_table()
+                bmesh.ops.delete(bml, geom=[bml.faces[i] for i in np.nonzero(up_)[0]], context='FACES')
+                bmesh.ops.delete(bml, geom=[v for v in bml.verts if not v.link_faces], context='VERTS'); bml.to_mesh(me_); bml.free()
+                dropped.append(('above the collar', int(up_.sum())))
     # HEADGEAR (2026-11-12, quarterback: his helmet reaches below the eyes, so it was read as hair and left out): --headgear
     # keeps every head piece as the hat (a helmet, a cowl, a mask); the look then picks no hair under it
     if HEADGEAR: wig = []
@@ -400,6 +436,11 @@ def fit(name, gender, src, bodies_dir):
     # and the jacket's black inside showed through them. Round the chest (OPENX to each side of the middle, OPENZ under the eyes)
     # the shown skin grows OPENRING rings under the cloth's edge: only skin that has cloth straight in front of it (it stays
     # behind the jacket) or has no face of the cloth that looks the same way within OPENBACK under it (it is not standing through the jacket)
+    if BODYSUIT:   # the skin above the suit's collar is in the open (it was hidden for lying near the collar), and two rings under it
+        zc_ = eyeM[2] - 0.115 - E('BSNECK', 0.04) - E('BSSKIN', 0.01)
+        ks |= set(v.index for v in pm.vertices if v.co.z > zc_ and abs(v.co.x - eyeM[0]) < 0.2)
+        for _ in range(int(E('BSRING', 2))):
+            ks |= set(i_ for e_ in pm.edges for i_, j_ in (tuple(e_.vertices), tuple(e_.vertices)[::-1]) if j_ in ks and i_ not in ks and pm.vertices[i_].co.z > zc_ - 0.08 and abs(pm.vertices[i_].co.x - eyeM[0]) < 0.2)
     if NECKLINE:
         for _ in range(int(E('OPENRING', 3))):
             add_ = set()
@@ -556,10 +597,10 @@ def main():
     ap.add_argument('--name', required=True); ap.add_argument('--label', required=True); ap.add_argument('--gender', default='male')
     ap.add_argument('--src', required=True); ap.add_argument('--bodies', required=True)
     ap.add_argument('--out', default=os.path.join(HERE, 'charactercreation', 'wear'))
-    ap.add_argument('--headgear', action='store_true'); ap.add_argument('--neckline', action='store_true')
+    ap.add_argument('--headgear', action='store_true'); ap.add_argument('--neckline', action='store_true'); ap.add_argument('--longhair', action='store_true'); ap.add_argument('--bodysuit', action='store_true'); ap.add_argument('--nowings', action='store_true'); ap.add_argument('--barearms', action='store_true')
     ap.add_argument('--metal', type=float, default=0.0); ap.add_argument('--rough', type=float, default=0.8); ap.add_argument('--px', type=int, default=2048)
     a = ap.parse_args()
-    global HEADGEAR, NECKLINE; HEADGEAR = a.headgear; NECKLINE = a.neckline
+    global HEADGEAR, NECKLINE, LONGHAIR, BODYSUIT, NOWINGS, BAREARMS; HEADGEAR = a.headgear; NECKLINE = a.neckline; LONGHAIR = a.longhair; BODYSUIT = a.bodysuit; NOWINGS = a.nowings; BAREARMS = a.barearms
     from PIL import Image
     from scipy.spatial import cKDTree
     pieces, hid_base, im = fit(a.name, a.gender, a.src, a.bodies)

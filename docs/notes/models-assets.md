@@ -1577,6 +1577,17 @@ head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay t
   left boot. Not cloth: her right calf was 71 % under the stocking (hidden whole, LEGHIDE 0.7), her left 68 % (shown), so the back
   of the left ankle stood outside the boot. When one leg of a pair is hidden whole the other is too from LEGPAIR 0.5 on. All seven
   remade units rebaked: only the catgirl's file changed.
+  BATCH TWO (11-12, mummy F + angel F; mondo "whats the progress of the other units"), four new bake-outfit.py flags, all off by
+  default (the nine earlier units rebaked: no file changed): `--longhair` (a shell that reaches above the eyes with a fifth of it
+  above the chin is hair and goes whole; the look wears a creator hair), `--bodysuit` (mummy: bandages the colour of her skin, the
+  colour flood took her chest wraps or nothing. No colour cut: the head goes from BSNECK under the chin, the hands past BSHAND of
+  the arm span, everything else, painted skin included, is the suit; the body's skin above the collar + two rings is shown),
+  `--nowings` (angel: shells wholly behind her back are left out, the arm span and the centring ignore them: Meshy centres the model
+  wings and all, so her dress sat 20 cm in front of the body until it was moved back onto the body's eyes and the floor), `--barearms`
+  (a sleeveless dress: skin-coloured faces out from the middle go, not the feet). Angel input: render on a DARK background, on
+  light grey her white wings came back dark blue. Commands: mummy `--longhair --bodysuit`; angel `SKIN_T=0.3 LOCKZ=0.25 LOCKT=0.3
+  ... --longhair --nowings --barearms --neckline`. Looks: mummy = suit + mh_long01 black; angel = dress + creator Feathered wings +
+  mh_long01 blond. Left: see the status table in meshy-remake-plan.md.
   Open: a few skin flecks on robinhood's hood front, a skin chip by the catgirl's left boot, light patches on her sleeves (the lacing in
   Meshy's texture), the knight's and zombie's walk hunches (the race's own walk clip), no sway, stock faces until the face step.
 

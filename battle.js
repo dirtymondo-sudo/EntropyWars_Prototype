@@ -26190,7 +26190,19 @@
             const h = (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0;
             if (unit && !unit.dead && unit.z !== undefined && unit.z !== null) {
                 if (typeof canFly === 'function' && canFly(unit)
-                    && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return unit.z;
+                    && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) {
+                    /* THE FLYER'S PIVOT (mondo 2026-11-12, the Seraphim on Vatican City: "he sits too low in the frame ...
+                       and the camera orbits around him so it just looks and feel bad"): a flyer is DRAWN lower than its
+                       rule height (unitElevationZ's hover sink: up to 0.65 of a level), so a focal at the rule height
+                       stood over its head: the body rode under the middle of the screen and an orbit turned round empty
+                       air above it. The focal takes the drawn hover height. Kill switch: EW_NO_FLYER_PIVOT. */
+                    if (!window.EW_NO_FLYER_PIVOT) {
+                        const gZ = (typeof getFloorBelowZ === 'function') ? getFloorBelowZ(unit.x, unit.y, unit.z) : h;
+                        const clr = unit.z - gZ;
+                        if (clr > 0 && Number.isFinite(clr)) return gZ + Math.max(Math.min(clr, 1.35), clr - 0.65);   // = unitElevationZ
+                    }
+                    return unit.z;
+                }
                 if (state.boardColumns?.length && unit.z < h) return unit.z;
             }
             return h;
@@ -28117,6 +28129,7 @@
            tighter than ±3 squares (TILE_PICK_MIN_HALF). Of the near-closest views it keeps the one nearest the screen's
            middle. The slide it picked rides the fit (camera._clearFit.slide) so the board rig lands exactly there.
            Viewer-local camera only; kill switch EW_NO_CLEAR_DROP (back to THE CLICKABLE PICK's strip). */
+        const PANEL_CENTRE_CX = 0.05;        // THE PANEL CENTRE: the drop pick's frame slides at most this far sideways (NDC) over the bottom panel
         const CLEAR_DROP_PAD_PX = 10;        // a square's middle stays this far from a panel's edge
         const CLEAR_DROP_EDGE = 0.94;        // the lit squares' corners stay inside this share of the half-screen
         const CLEAR_DROP_NEAR = 1.04;        // views within this of the closest count as equally close (the most centred wins)
@@ -28169,6 +28182,7 @@
                 // no sub menu up: the board rig takes no slide (window._ewMenuSlide), so the frame is solved centred
                 const fa = _menuFreeArea(true, !!(opts && opts.solid));   // the same cover the slide's refit watches
                 const slides = fa.menu;
+                const deckUp = !window.EW_NO_PANEL_CENTRE && !!document.querySelector('.hrlg-rig.ewd > .ewd-bay:not(.ewd-ghost)');   // THE PANEL CENTRE
                 const E = CLEAR_DROP_EDGE;
                 const hw = cv.width / 2, hh = cv.height / 2;
                 const mh = ((opts && Number.isFinite(opts.minHalf)) ? opts.minHalf : TILE_PICK_MIN_HALF) * ts;
@@ -28251,7 +28265,14 @@
                     };
                     const dMax = bd / 0.25;
                     const cxs = [], cys = [];
-                    if (slides) { for (let v = -0.3; v <= 0.801; v += 0.05) cxs.push(+v.toFixed(2)); for (let v = -0.25; v <= 0.351; v += 0.05) cys.push(+v.toFixed(2)); }
+                    /* THE PANEL CENTRE (mondo 2026-11-12, Infernal Hurl's landing pick on Hollow Earth: "now that the battle panel
+                       sits kinda more towards the bottom of the screen, can we fix this framing that is showing the board on the
+                       right side of the screen"): the slide search was made for menus down the LEFT side (up to 0.8 of the way
+                       right), so with THE ONE BATTLE PANEL along the bottom it still parked the landing squares in the strip
+                       beside the panel. With that panel up the squares stay in the middle of the screen (a hair either way)
+                       and rise over the panel instead. Kill switch: EW_NO_PANEL_CENTRE. */
+                    if (slides && deckUp) { for (let v = -PANEL_CENTRE_CX; v <= PANEL_CENTRE_CX + 0.001; v += 0.05) cxs.push(+v.toFixed(2)); for (let v = -0.1; v <= 0.551; v += 0.05) cys.push(+v.toFixed(2)); }
+                    else if (slides) { for (let v = -0.3; v <= 0.801; v += 0.05) cxs.push(+v.toFixed(2)); for (let v = -0.25; v <= 0.351; v += 0.05) cys.push(+v.toFixed(2)); }
                     else { cxs.push(0); cys.push(0); }
                     let best = null;
                     const found = [];
@@ -32451,6 +32472,10 @@
         const CLEAR_LOW_PANEL_MIN_H = 0.45; // THE LOW PANEL: the band above a short panel must be this share of the screen tall
         const CLEAR_LOW_PANEL_MAX_CY = 0.3; // and the frame rises at most this much (NDC) over it
         const CLEAR_FRAME_HOLD_MS = 450;    // a menu gone this briefly (unit hand-over) keeps the slide
+        const PANEL_LIFT_MAX = 0.3;         // THE PANEL LIFT: the frame rises at most this much (NDC) over the bottom panel
+        const PANEL_LIFT_SHARE = 0.5;       // share of the way to the middle of the band over the panel (mondo 2026-11-12: "a little lower, like somewhere in between")
+        const PANEL_CENTRE_MIN_BAND = 0.3;  // THE PANEL CENTRE: the band over the bottom panel frames the full width while it is this share of the screen tall
+        const PANEL_LIFT_SPAN = 0.18;       // the panel's bays within this share of the width each side of the middle count
         const CLEAR_FRAME_REFIT_MS = 140;   // a changed cover must hold this long before a fit is solved again
         const _CLEAR_FULL = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false });
         const _CLEAR_ROOT = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false, cmd: true });   // the action menu alone
@@ -32531,7 +32556,30 @@
                     if (rigs[ri].classList.contains('hrlg-peek') || rigs[ri].classList.contains('ewd')) continue;
                     sub = [...rigs[ri].querySelectorAll('.hrlg-panels > .hrlg-panel:not(.root)')].some(el => boxOf(el));
                 }
-                if (!sub) return (_cfArea = _CLEAR_ROOT);
+                if (!sub) {
+                    _cfArea = _CLEAR_ROOT;
+                    /* THE PANEL LIFT (mondo 2026-11-12: "he sits too low in the frame and he's covered by the battle panel"):
+                       THE ONE BATTLE PANEL lies along the bottom of the screen, under the middle where the board rig puts
+                       its focal, so the unit whose turn it is stood half behind it. With the panel up and no sub menu
+                       open the frame keeps its plain width (THE SUB MENU RULE: no sideways slide) but RISES: `lift` (NDC)
+                       puts the focal in the middle of the band between the score bars and the panel's top under the
+                       middle of the screen. Read by _ewMenuSlide; an orbit still turns round the focal there.
+                       Kill switch: EW_NO_PANEL_LIFT. */
+                    if (deckBoxes.length && !window.EW_NO_PANEL_LIFT) {
+                        const bx0 = midX - cv.width * PANEL_LIFT_SPAN, bx1 = midX + cv.width * PANEL_LIFT_SPAN;
+                        let top = y1, t0 = y0;
+                        deckBoxes.forEach(r => { if ((r.top + r.bottom) / 2 >= midY && r.right > bx0 && r.left < bx1) top = Math.min(top, r.top); });
+                        if (top < y1) {
+                            document.querySelectorAll('.ew-scoreboard').forEach(el => {
+                                const r = boxOf(el);
+                                if (r && r.top < cv.top + cv.height * 0.2) t0 = Math.max(t0, r.bottom);
+                            });
+                            const lift = Math.min(PANEL_LIFT_MAX, PANEL_LIFT_SHARE * (midY - (t0 + top) / 2) / (cv.height / 2));
+                            if (lift > 0.02) _cfArea = { cx: 0, cy: 0, hw: 1, hh: 1, menu: false, cmd: true, lift };
+                        }
+                    }
+                    return _cfArea;
+                }
                 // the HUD strips: scoreboard / match line on top, the prompt + description bars below
                 document.querySelectorAll('.ew-scoreboard, .ew-matchmeta').forEach(el => {
                     const r = boxOf(el);
@@ -32560,7 +32608,10 @@
                         let best = { a: -1, x0, x1, t: y1 };
                         const tryBox = (a, b) => { const t = topOver(a, b), ar = (b - a) * (t - y0); if (b > a && ar > best.a + 1) best = { a: ar, x0: a, x1: b, t }; };
                         tryBox(x0, x1);
-                        low.forEach(r => { if (r.right > x0 && r.right < x1) tryBox(r.right, x1); if (r.left > x0 && r.left < x1) tryBox(x0, r.left); });
+                        /* THE PANEL CENTRE: the strip beside a bay only when the band over the whole panel is too short to
+                           frame in (a very long list); else the whole width over it, so nothing is shoved sideways */
+                        if (window.EW_NO_PANEL_CENTRE || best.t - y0 < cv.height * PANEL_CENTRE_MIN_BAND)
+                            low.forEach(r => { if (r.right > x0 && r.right < x1) tryBox(r.right, x1); if (r.left > x0 && r.left < x1) tryBox(x0, r.left); });
                         x0 = best.x0; x1 = best.x1; y1 = best.t;
                     }
                     above = true;
@@ -32603,6 +32654,7 @@
            held while the player pans or orbits by hand (the view never fights the drag). */
         const CLEAR_POI_MARGIN = 0.06;      // NDC (3% of the screen width) between the menu's edge and the bodies
         const _cfOut = { cx: 0, cy: 0 };
+        const _cfLiftOut = { cx: 0, cy: 0 };   // THE PANEL LIFT's slide (the action menu alone over the bottom panel)
         let _cfSlide = null;                // { key, cx } the latched near-frame slide
         function _clearSubjects() {
             const u = (typeof getSelectedUnit === 'function') ? getSelectedUnit() : null;
@@ -32793,6 +32845,7 @@
             if (fa.cmd && !state._actionExecuting) {
                 _cfHeld = null;
                 _clearFrameRefit(fa, now);
+                if (fa.lift) { _cfLiftOut.cy = fa.lift; return _cfLiftOut; }   // THE PANEL LIFT
                 return _CLEAR_FULL;
             }
             // no menu: the action a pick started plays on the board rig (the attack hold, a pan) → THE CENTRED CAST:
@@ -32810,6 +32863,8 @@
                 && (state._actionExecuting || now - _cfSeenAt < CLEAR_FRAME_HOLD_MS)) return _cfOut;
             _cfHeld = null;
             if (!state._actionExecuting) _castCentred = false;
+            // THE PANEL LIFT: the panel still on screen under an action on the board rig keeps the frame over it
+            if (fa.cmd && fa.lift && camera._cineShotId == null && !camera._cineTps) { _cfLiftOut.cy = fa.lift; return _cfLiftOut; }
             return _CLEAR_FULL;
         };
         /* camera._clearFit = { area, fit() } — the frame a fit last solved (the menu two-shot, the range fit). Any other

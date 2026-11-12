@@ -50438,9 +50438,11 @@ const ThreeRenderer = (function () {
                 || (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy());
         }
         var inBattle = typeof state !== 'undefined' && state && state.phase === 'battle';
+        var eorLive = typeof window.isEndOfRoundLive === 'function' && window.isEndOfRoundLive();
         _takeoverBodyClasses(inBattle && busy, inBattle && !state.winner && _takeoverCamBusy(),
-            typeof window.isEndOfRoundLive === 'function' && window.isEndOfRoundLive(),
-            inBattle && !state.winner && _playerAiming());
+            eorLive,
+            inBattle && !state.winner && _playerAiming(),
+            inBattle && !state.winner && !playing && !eorLive && _playerDeciding());
         if (busy) _hoverWaitMove = { x: _lastMouseClientX, y: _lastMouseClientY };
         var hoverOff = inBattle && (busy || !!_hoverWaitMove);
         var ch = highlightGroup.children;
@@ -50475,6 +50477,24 @@ const ThreeRenderer = (function () {
             return mv === 'spellTargets' || mv === 'attackTargets' || mv === 'finisherTargets' || mv === 'spellOrientation';
         } catch (e) { return false; }
     }
+    /* body.ew-deciding (2026-11-12, mondo: "make the minimap not disappear while im navigating the combat menu"): it is
+       the viewer's own unit's turn and nothing is playing out, so the only thing moving is the MENU's camera (the range
+       fit, the target two-shot, the glide back) as the player walks the command menu. That set ew-board-busy +
+       ew-board-cam for each glide and the minimap blinked away on every row. The minimap stays up while this is on
+       (styles-hud.css); a spell shot, a cinematic, a close-up, a centre banner and the end of round are still the game's. */
+    function _playerDeciding() {
+        try {
+            if (typeof state === 'undefined' || !state || state.phase !== 'battle') return false;
+            if (state._blitzActiveUnitId == null) return false;
+            if (state.autoPlayers && state.autoPlayers[state.activePlayer]) return false;
+            if (window._NET && window._NET.online && window._NET.myPlayer && state.activePlayer !== window._NET.myPlayer) return false;
+            if (typeof isCinematicPresent === 'function' && isCinematicPresent()) return false;
+            if (typeof _deathCamLive === 'function' && _deathCamLive()) return false;
+            if (typeof isCenterBannerBusy === 'function' && isCenterBannerBusy()) return false;
+            if (typeof camera !== 'undefined' && camera && (camera._cineShotId != null || (camera._cineTps && !camera._menuShot))) return false;
+            return true;
+        } catch (e) { return false; }
+    }
     function _takeoverCamBusy() {
         try {
             if (typeof window.isCameraAutoMoving === 'function' && window.isCameraAutoMoving()) return true;
@@ -50485,15 +50505,17 @@ const ThreeRenderer = (function () {
         } catch (e) {}
         return false;
     }
-    function _takeoverBodyClasses(busy, cam, eor, aim) {
-        busy = !!busy; cam = !!cam; eor = !!eor; aim = !!aim;
-        if (busy === _tkBusyWas && cam === _tkCamWas && eor === _tkEorWas && aim === _tkAimWas) return;
-        _tkBusyWas = busy; _tkCamWas = cam; _tkEorWas = eor; _tkAimWas = aim;
+    var _tkDecWas = false;
+    function _takeoverBodyClasses(busy, cam, eor, aim, dec) {
+        busy = !!busy; cam = !!cam; eor = !!eor; aim = !!aim; dec = !!dec;
+        if (busy === _tkBusyWas && cam === _tkCamWas && eor === _tkEorWas && aim === _tkAimWas && dec === _tkDecWas) return;
+        _tkBusyWas = busy; _tkCamWas = cam; _tkEorWas = eor; _tkAimWas = aim; _tkDecWas = dec;
         var b = document.body; if (!b) return;
         b.classList.toggle('ew-board-busy', busy);
         b.classList.toggle('ew-board-cam', cam);
         b.classList.toggle('ew-eor', eor);
         b.classList.toggle('ew-aiming', aim);
+        b.classList.toggle('ew-deciding', dec);
     }
     function _hoverPointerMoved(x, y) {
         if (!_hoverWaitMove) return;

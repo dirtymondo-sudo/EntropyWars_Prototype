@@ -5219,3 +5219,32 @@ in the pool (`findSpellApproachTile`) and casts on the caster. With somebody alr
 `findSpellApproachTile` now returns null for every other self-cast (it used to hand back a random far tile). hud.js: `_aimSelf`, the target
 rows (a self-cast lists walk-in enemies only) and the enemy quick menu's Scatter Shot row (in reach = in the pool, else ↳ MOVE).
 No rule changed, no data.js row changed. Proof: /mnt/project-files/scatter-shot-move-cast/ (WebGL2, VS CPU, Mount Shasta).
+
+## THE PANEL LIFT + THE FLYER'S PIVOT (2026-11-12, mondo, the Seraphim on Vatican City) — battle.js, three-camera.js
+mondo: "he sits too low in the frame and he's covered by the battle panel and the camera orbits around him so it just looks and feel bad".
+Two causes, both viewer-local camera only (no state, nothing to relay):
+- THE FLYER'S PIVOT: `_camFocalZAt` gave an airborne flyer its RULE height; the body is drawn up to 0.65 of a level lower
+  (unitElevationZ's hover sink), so the focal stood over its head and an orbit turned round empty air. It now returns the
+  drawn hover height. Kill switch `EW_NO_FLYER_PIVOT`.
+- THE PANEL LIFT: THE ONE BATTLE PANEL lies under the middle of the screen, and THE SUB MENU RULE gave the action menu
+  alone no slide at all. `_menuFreeArea` now hands the root area a `lift` (NDC, at most PANEL_LIFT_MAX 0.3): the middle of
+  the band between the score bars and the panel's top under the middle of the screen (PANEL_LIFT_SPAN). `_ewMenuSlide`
+  returns it as cy with cx 0 (still no sideways slide at root). three-camera.js: when the slide would sink the eye under
+  the lens floor (a low hand orbit), only the eye stops; the aim keeps its slid place, so the lift survives the low orbit.
+  Kill switch `EW_NO_PANEL_LIFT`. Classic layout (side menus) is unchanged.
+- Proof (Vatican City, Superhero flying, 1728x904, WebGL2): /mnt/project-files/unit-frame-20261112/. Body 55-58% down the
+  screen before, 39-42% after, default view and a tilt-87 orbit. Not checked: his Mac / WebGPU, the online guest, a look
+  past the horizon (tilt > 90 keeps the old floor rule), the root two-shot with the lift added.
+- Tune: PANEL_LIFT_SHARE (0.5 since his same-day follow-up "a little lower, like somewhere in between": half way from the
+  screen's middle to the band's middle; the first cut went all the way) and PANEL_LIFT_MAX.
+
+## THE PANEL CENTRE (2026-11-12, mondo, Infernal Hurl's landing pick on Hollow Earth) — battle.js
+mondo: "now that the battle panel sits kinda more towards the bottom of the screen, can we fix this framing that is showing the board on the right side of the screen".
+- THE CLEAR DROP (`_clearDropFrame`) searched its slide from -0.3 to 0.8 across, made for menus down the left side; with THE
+  ONE BATTLE PANEL up it parked the landing squares in the strip beside the panel. With the panel up the search is
+  ±PANEL_CENTRE_CX (0.05) across and -0.1..0.55 up: centred, raised over the panel, every square still clickable.
+- `_menuFreeArea` (sub menu up over the panel): the strip beside a bay is only taken when the band over the whole panel is
+  under PANEL_CENTRE_MIN_BAND (0.3) of the screen; else the full width over it (cx 0) for the range fit and the two-shot.
+- Kill switch `EW_NO_PANEL_CENTRE`. Classic layout unchanged. Viewer-local camera only.
+- Proof /mnt/project-files/unit-frame-20261112/infernal_hurl_before_top_after_bottom.jpg (1728x904: slide cx 0.1 -> 0; his
+  larger window gave far more). Seen at ±0.1; shipped ±0.05 without a second look. Not checked: his Mac, online guest, toss picks.
