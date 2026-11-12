@@ -5878,6 +5878,7 @@
         if (target && target.id != null && typeof window.prismReflectFor === 'function' && window.prismReflectFor(unit, spell, target)) return 0;
 
         if (kind === 'damage' && _riderRandomOf(spell)) return target ? _randomTargetsScore(g, unit, spell, _riderRandomOf(spell), v) : 0;
+        if (spell.waterCan) return target ? 70 : 0;   // 💧 THE GARDEN: a dry seed of ours in reach (_findSpellTargetRaw) is worth watering
 
         // ── single-target damage family ──
         if (kind === 'guard') return _chivalryScore(unit, spell, target, v);
@@ -9120,6 +9121,21 @@
         const kind = spell.kind;
 
         if (kind === 'trickRoom') return unit;
+
+        /* 💧 THE GARDEN (2026-11-12): the Watering Can goes on the nearest DRY seed of the caster's own side in reach
+           (a seed never sprouts dry); with none in reach it is not cast. */
+        if (spell.waterCan) {
+            const R = _effRange(unit, spell) || 3;
+            let best = null, bestD = 99;
+            for (const sd of (g.state.plantedSeeds || [])) {
+                if (sd.watered || sd.owner !== unit.player) continue;
+                const d = Math.abs(sd.x - unit.x) + Math.abs(sd.y - unit.y);
+                if (d > R || d >= bestD) continue;
+                if (typeof _aimOkAt === 'function' && !_aimOkAt(unit, spell, sd.x, sd.y)) continue;
+                best = { x: sd.x, y: sd.y }; bestD = d;
+            }
+            return best;
+        }
 
         // THE TARGETING RIDERS (Phase 3): a random-target row is cast on the caster once a victim is in reach
         if (kind === 'damage' && _riderRandomOf(spell)) return _riderEnemiesInReach(g, unit, spell, v).length ? unit : null;
