@@ -5248,3 +5248,15 @@ mondo: "now that the battle panel sits kinda more towards the bottom of the scre
 - Kill switch `EW_NO_PANEL_CENTRE`. Classic layout unchanged. Viewer-local camera only.
 - Proof /mnt/project-files/unit-frame-20261112/infernal_hurl_before_top_after_bottom.jpg (1728x904: slide cx 0.1 -> 0; his
   larger window gave far more). Seen at ±0.1; shipped ±0.05 without a second look. Not checked: his Mac, online guest, toss picks.
+
+## THE LOWER SUB FRAME (2026-11-12, mondo, Tape 2's attack list in the Training Room) — battle.js
+mondo: "everything is framed a little too high and the green super effective exclamation point icon is being cropped/covered up by the scoreboard".
+- With a sub menu open over THE ONE BATTLE PANEL `_menuFreeArea` raised the frame to the middle of the band between the score
+  bars and the panel's TALLEST bay (cy up to 0.3), so a target standing up the screen from the framed pair (his Dummy A,
+  hovered on the board while the list's cursor framed Sister + Dummy B) had its plate + matchup icon under the score bars.
+- Now cy = PANEL_SUB_SHARE (0.6) of the way to the middle of the band over the bays under the middle of the screen
+  (PANEL_SUB_SPAN 0.12 each side), and hh = what is really free round that point (score bars above, those bays below; at most
+  the old 0.6). Used by the two-shot, the range fit and the slide alike. Kill switch `EW_NO_PANEL_SUB_LOWER`.
+- Proof (Training Room, Annunaki's attack list, 1728x904): slide 0.30 -> 0.17, the far target's plate 130 -> 165 px down.
+  /mnt/project-files/unit-frame-20261112/attack_list_before_top_after_bottom.jpg (the before half is the old slide on the
+  new pose). Not replayed: Tape 2 itself, his Mac. A target outside the framed pair can still sit high if it is far up-screen.

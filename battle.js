@@ -32475,6 +32475,8 @@
         const PANEL_LIFT_MAX = 0.3;         // THE PANEL LIFT: the frame rises at most this much (NDC) over the bottom panel
         const PANEL_LIFT_SHARE = 0.5;       // share of the way to the middle of the band over the panel (mondo 2026-11-12: "a little lower, like somewhere in between")
         const PANEL_CENTRE_MIN_BAND = 0.3;  // THE PANEL CENTRE: the band over the bottom panel frames the full width while it is this share of the screen tall
+        const PANEL_SUB_SHARE = 0.6;        // THE LOWER SUB FRAME: share of the way to the middle of the band over the panel a sub menu's frame rises
+        const PANEL_SUB_SPAN = 0.12;        // and the bays within this share of the width each side of the middle are the band's floor
         const PANEL_LIFT_SPAN = 0.18;       // the panel's bays within this share of the width each side of the middle count
         const CLEAR_FRAME_REFIT_MS = 140;   // a changed cover must hold this long before a fit is solved again
         const _CLEAR_FULL = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false });
@@ -32628,11 +32630,31 @@
                     if (x0 - cv.left > cv.right - x1) x0 = Math.max(cv.left, x1 - minW);
                     else x1 = Math.min(cv.right, x0 + minW);
                 }
+                /* THE LOWER SUB FRAME (mondo 2026-11-12, the attack list open in the Training Room: "everything is framed a
+                   little too high and the green super effective exclamation point icon is being cropped/covered up by the
+                   scoreboard"): with a sub menu open over THE ONE BATTLE PANEL the frame rose all the way to the middle of
+                   the band between the score bars and the panel's TALLEST bay, so a target up the screen from the framed
+                   pair had its plate and matchup icon under the score bars. The frame now rises PANEL_SUB_SHARE of the
+                   way to the middle of the band over the bays under the middle of the screen (where the bodies stand),
+                   and its height is what really is free round that point: never past the score bars, never under those
+                   bays. Kill switch: EW_NO_PANEL_SUB_LOWER. */
+                let deckCy = null, deckHh = null;
+                if (deckBoxes.length && above && !_cfSolid && !window.EW_NO_PANEL_SUB_LOWER) {
+                    const bx0 = midX - cv.width * PANEL_SUB_SPAN, bx1 = midX + cv.width * PANEL_SUB_SPAN;
+                    let yB = cv.bottom;
+                    deckBoxes.forEach(r => { if ((r.top + r.bottom) / 2 >= midY && r.right > bx0 && r.left < bx1) yB = Math.min(yB, r.top); });
+                    if (yB < cv.bottom && yB > y0 + cv.height * 0.3) {
+                        const hH = cv.height / 2;
+                        const topN = (midY - y0) / hH, botN = (midY - yB) / hH;
+                        deckCy = Math.max(0, Math.min(CLEAR_LOW_PANEL_MAX_CY, PANEL_SUB_SHARE * (midY - (y0 + yB) / 2) / hH));
+                        deckHh = Math.max(0.3, Math.min(0.6, Math.min(topN - deckCy, deckCy - botN) / MENU_CAM_MARGIN_V));
+                    }
+                }
                 if (y1 - y0 < cv.height * 0.6) { const c = (y0 + y1) / 2; y0 = c - cv.height * 0.3; y1 = c + cv.height * 0.3; }
                 _cfArea = {
                     cx: ((x0 + x1) / 2 - midX) / (cv.width / 2) * (_cfSolid ? 1 : CLEAR_FRAME_SHIFT),
-                    cy: Math.max(-0.2, Math.min(above ? CLEAR_LOW_PANEL_MAX_CY : 0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
-                    hw: (x1 - x0) / cv.width, hh: (y1 - y0) / cv.height, menu: true,
+                    cy: deckCy != null ? deckCy : Math.max(-0.2, Math.min(above ? CLEAR_LOW_PANEL_MAX_CY : 0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
+                    hw: (x1 - x0) / cv.width, hh: deckHh != null ? deckHh : (y1 - y0) / cv.height, menu: true,
                     // THE NEAR FRAME: the free part's own edges and middle, in NDC
                     l: (x0 - midX) / (cv.width / 2), r: (x1 - midX) / (cv.width / 2),
                     mid: ((x0 + x1) / 2 - midX) / (cv.width / 2)
