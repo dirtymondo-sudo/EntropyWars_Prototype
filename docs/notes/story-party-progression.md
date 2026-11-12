@@ -797,3 +797,4 @@ R2 files: data.js, map.js, ui.js, battle.js, three-vfx-effects.js, styles-base.c
   it under the body and does not fade (ui.js _tutPoll, `#tutCoachAim`). Tape 1 MOVE: "Yellow tiles are ones you can attack from."
 - THE QUICK LISTS (2026-11-12, mondo): a clicked enemy / ally / square list keeps only the rows the step allows
   (hud.js `_tutQuickRows` over the three `_compute*Actions`, ui.js `_tutQuickOk`; a row that walks first needs MOVE allowed too).
+- THE MOUSE COMES BACK (2026-11-12): ui.js `_tutFreeMouse` releases a pointer lock at a lesson's launch and (every poll) while it boots, is finished, or a panel waits for CONTINUE; the HQ walk's late lock had stayed on the shared canvas between Tape 1 and Tape 2 (not reproduced headlessly).
