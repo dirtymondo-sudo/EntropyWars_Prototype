@@ -106,6 +106,7 @@ REPO = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'charactercreati
 unit, body, stock, key = A['unit'], A.get('body', 'mpfb_male'), A['stock'], A['key']
 cy0 = float(A.get('cy', 1.5)); pitch0 = float(A.get('pitch', 15)); out = A.get('out', '.')
 LEYE = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246]; REYE = [263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466]
+LIPS = [78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308, 191, 80, 81, 82, 13, 312, 311, 310, 415]
 BROW = [70, 63, 105, 66, 107, 336, 296, 334, 293, 300]
 def sstep(x, a, b): t = np.clip((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t)
 def lm3(rgb, P):
@@ -140,18 +141,57 @@ urgb, uP, _ = front(upos, U['uv'], U['idx'], uimg, 0.0, mcy, 0.16); uL, Pu = lm3
 good = ~np.isnan(Pu).any(1) & ~np.isnan(Pm).any(1); good[468:] = False; good &= np.linalg.norm(Pu - Pm, axis=1) < float(A.get('maxd', 0.03))
 Image.fromarray(urgb).save(out + '/unit_front.png'); Image.fromarray(mrgb).save(out + '/mpfb_front.png')
 # ---- the shape: a smooth field through the landmark moves ----
+# HAIR OVER THE FACE (2026-11-12, the knight's lock over one eye): a landmark that landed on hair (hairrgb=) is dropped and takes the
+# move of the kept landmark nearest its mirror place, x flipped
+if A.get('hairrgb'):
+    res_h = urgb.shape[0]; hc = np.array([float(x) for x in A['hairrgb'].split(',')]); ht = float(A.get('hairtol', 70))
+    lrgb = np.array([urgb[int(np.clip(round(y), 0, res_h - 1)), int(np.clip(round(x), 0, res_h - 1))] for x, y in uL]).astype(float)
+    onh = (np.linalg.norm(lrgb - hc, axis=1) < ht) & good; keep_ = np.nonzero(good & ~onh)[0]
+    if onh.any() and len(keep_):
+        d = Pu - Pm; mt = cKDTree(Pm[keep_] * [-1, 1, 1])
+        for i in np.nonzero(onh)[0]:
+            j_ = keep_[mt.query(Pm[i])[1]]; Pu[i] = Pm[i] + d[j_] * [-1, 1, 1]
+        print('hair: %d landmarks mirrored' % int(onh.sum()), flush=True)
 d = Pu - Pm
+# THE BEARD'S BULK (2026-11-12): below the nose a bearded unit's surface is hair, not jaw: those landmarks (dark in the unit's own
+# drawing) move the face only part of the way, or the chin grows by the beard's thickness
+res_u = urgb.shape[0]; lcol = np.array([urgb[int(np.clip(round(y), 0, res_u - 1)), int(np.clip(round(x), 0, res_u - 1))] for x, y in uL]).astype(float) @ [0.3, 0.59, 0.11]
+skinl = np.nanpercentile(lcol[:468][good[:468]], 75); ynose = Pm[2][1] if not np.isnan(Pm[2]).any() else np.nanmean(Pm[LEYE + REYE][:, 1]) - 0.045
+beard = (lcol < skinl * float(A.get('beardlum', 0.62))) & (Pm[:, 1] < ynose) & good
+d[beard] *= float(A.get('beard', 0.55)); print('beard landmarks: %d held back' % int(beard.sum()), flush=True)
+# THE BROW'S DEPTH (2026-11-12, mondo: "the shadow/darkness above his eyes is too much"): under a brim the landmarks above the eyes are
+# poor in depth; fitted as read they set the brows back under the forehead and the game's light shaded the hollow. From the eyes up
+# the face keeps MPFB's own relief: every landmark there takes the eyes' own depth move (height and width still fitted)
+ge = [i for i in LEYE + REYE if good[i]]
+if ge:
+    dze = d[ge][:, 2].mean(); ye = np.nanmean(Pm[LEYE + REYE][:, 1]); up_ = good & (Pm[:, 1] > ye + 0.004); d[up_, 2] = dze
+# THE FOREHEAD (2026-11-12): a hat hides the unit's forehead, so its landmarks are dropped and the field fell from the brows' move
+# to nothing just above them: a ledge over the eyes that the game's light turned into a dark band. Each dropped landmark above the
+# brows takes the move of the nearest kept landmark at brow height, so the forehead comes along with the brows
+ybr = np.nanmean(Pm[BROW][:, 1]); okP = ~np.isnan(Pm).any(1); okP[468:] = False
+src = np.nonzero(good & (np.abs(Pm[:, 1] - ybr) < 0.012))[0]
+if len(src):
+    for i in np.nonzero(okP & ~good & (Pm[:, 1] > ybr))[0]:
+        d[i] = d[src[np.argmin(np.abs(Pm[src][:, 0] - Pm[i][0]))]]; good[i] = True
 for ring in (LEYE, REYE):   # (an eye keeps its own opening: the whole ring moves as one)
     g = [i for i in ring if good[i]]
     if g: d[ring] = d[g].mean(0); good[ring] = True
-LIPS = [78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308, 191, 80, 81, 82, 13, 312, 311, 310, 415]
 g = [i for i in LIPS if good[i]]   # (the lips stay shut: the inner ring moves up / down as one)
 if g: d[LIPS, 1] = d[g, 1].mean(); good[LIPS] = True
-gi = np.nonzero(good)[0]
-rbf = RBFInterpolator(Pm[gi] * 100, d[gi] * 100, kernel='thin_plate_spline', smoothing=float(A.get('smooth', 2.0)))
+gi = np.nonzero(good)[0]; Pk, dk = Pm[gi], d[gi]
+# ... and on up under the hat: points up the MPFB forehead above each brow-height landmark carry its move, easing off, so the brow's
+# move ends in a long slope over the scalp and not in a dent just above the brows
+if len(src):
+    resm = mrgb.shape[0]; sc_m = resm / 0.32; ex_p, ex_d = [], []
+    for i in src:
+        for k, up in enumerate((0.02, 0.035, 0.05, 0.065, 0.08)):
+            px_, py_ = int(round(mL[i][0])), int(round(mL[i][1] - up * sc_m))
+            if 0 <= px_ < resm and 0 <= py_ < resm and not np.isnan(mP[py_, px_]).any(): ex_p.append(mP[py_, px_]); ex_d.append(d[i] * (1 - 0.12 * k))
+    if ex_p: Pk = np.vstack([Pk, ex_p]); dk = np.vstack([dk, ex_d])
+rbf = RBFInterpolator(Pk * 100, dk * 100, kernel='thin_plate_spline', smoothing=float(A.get('smooth', 2.0)))
 # (depth counts for less: the teeth, tongue and eyeballs sit behind the face and must move with it, or they come out through it)
-ZS = np.array([1, 1, float(A.get('zs', 0.3))]); tree = cKDTree(Pm[gi] * ZS); dist, near = tree.query(mpos * ZS); wv = 1 - sstep(dist, float(A.get('f0', 0.02)), float(A.get('f1', 0.07)))
-head = wv > 0; qp = mpos.copy(); qp[:, 2] = np.maximum(qp[:, 2], Pm[gi][near][:, 2] - 0.01)   # (read the field at the face's own depth, not behind it)
+ZS = np.array([1, 1, float(A.get('zs', 0.3))]); tree = cKDTree(Pk * ZS); dist, near = tree.query(mpos * ZS); wv = 1 - sstep(dist, float(A.get('f0', 0.02)), float(A.get('f1', 0.07)))
+head = wv > 0; qp = mpos.copy(); qp[:, 2] = np.maximum(qp[:, 2], Pk[near][:, 2] - 0.01)   # (read the field at the face's own depth, not behind it)
 off = np.zeros_like(mpos); off[head] = rbf(qp[head] * 100) / 100 * wv[head, None] * float(A.get('amount', 1.0))
 hp = np.nonzero((BI >= 13380) & head)[0]; sk = np.nonzero((BI < 13380) & head)[0]   # (teeth, tongue, eyeballs ride with the skin next to them)
 if len(hp):
@@ -159,6 +199,8 @@ if len(hp):
     lipc = np.nanmean(Pm[LIPS], 0); inm = np.linalg.norm(mpos[hp] - lipc, axis=1) < 0.05   # (teeth + tongue move as ONE piece with the lips: a beard's bulk on the chin pulled the tongue's tip out)
     lsk = sk[np.linalg.norm(mpos[sk] - lipc, axis=1) < 0.015]
     if len(lsk): off[hp[inm]] = off[lsk].mean(0) - np.array([0, 0, float(A.get('teeth', 0.003))])
+    tg = (BI >= 13380) & (BI <= 13605) & head   # (the tongue a little further in and down again: with the jaw open its tip stood out over the lower lip)
+    off[tg] += np.array([0, -float(A.get('tonguedown', 0.002)), -float(A.get('tongue', 0.008))])
 n_ = np.linalg.norm(off, axis=1); cap = float(A.get('cap', 0.03)); off[n_ > cap] *= (cap / n_[n_ > cap])[:, None]
 # one offset per base index (split vertices share it)
 acc = {}; 
@@ -172,7 +214,7 @@ print('shape: %d base indices, max %.1f mm, mean %.1f mm' % (len(idx), n_.max() 
 base = np.asarray(Image.open(stock).convert('RGB')).astype(float); Hh, Ww = base.shape[:2]
 bvh = BVHTree.FromPolygons([Vector(p) for p in upos], [list(map(int, t)) for t in U['idx']])
 uvp = M['uv'] * [Ww, Hh]; skin = BI < 13380
-W = np.zeros((Hh, Ww)); C = np.zeros((Hh, Ww, 3)); cover = np.zeros((Hh, Ww), bool)
+W = np.zeros((Hh, Ww)); C = np.zeros((Hh, Ww, 3)); cover = np.zeros((Hh, Ww), bool); Ymap = np.zeros((Hh, Ww))
 eyeP = [np.array([Pm[i][:2] for i in ring]) for ring in (LEYE, REYE)]; ybrow = np.nanmean(Pm[BROW][:, 1])
 OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127, 162, 21, 54, 103, 67, 109]
 ovalP = np.array([Pm[i][:2] for i in OVAL if not np.isnan(Pm[i]).any()]); yeye = np.nanmean(Pm[LEYE + REYE][:, 1]); zoval = np.nanpercentile(Pm[OVAL][:, 2], 20)
@@ -186,6 +228,16 @@ def pdist(q, poly):
     for i in range(n):
         a_, b_ = poly[i], poly[(i + 1) % n]; ab = b_ - a_; t_ = np.clip(((q - a_) @ ab) / (ab @ ab + 1e-12), 0, 1); dm = np.minimum(dm, np.linalg.norm(q - (a_ + t_[:, None] * ab), axis=1))
     return dm
+HAIR = np.array([float(x) for x in A['hairrgb'].split(',')]) if A.get('hairrgb') else None; HAIRTOL = float(A.get('hairtol', 70))
+def usample(Q):
+    col = np.zeros((len(Q), 3)); dq = np.full(len(Q), 1.0)
+    for k in range(len(Q)):
+        loc, nor, fi, ds = bvh.find_nearest(Vector(Q[k]))
+        if loc is None: continue
+        tr = U['idx'][fi]; p0, p1, p2 = upos[tr]; v0, v1, v2 = p1 - p0, p2 - p0, np.array(loc) - p0
+        d00, d01, d11, d20, d21 = v0 @ v0, v0 @ v1, v1 @ v1, v2 @ v0, v2 @ v1; den = d00 * d11 - d01 * d01 + 1e-18; bv = (d11 * d20 - d01 * d21) / den; bw = (d00 * d21 - d01 * d20) / den
+        col[k] = sample(uimg, ((1 - bv - bw) * U['uv'][tr[0]] + bv * U['uv'][tr[1]] + bw * U['uv'][tr[2]])[None])[0]; dq[k] = ds
+    return col, dq
 for t in M['idx']:
     if not skin[t].all() or wv[t].max() <= 0: continue
     x, y = uvp[t, 0], uvp[t, 1]; x0, x1 = int(np.floor(x.min())), int(np.ceil(x.max())); y0, y1 = int(np.floor(y.min())), int(np.ceil(y.max()))
@@ -197,13 +249,17 @@ for t in M['idx']:
     if not m.any(): continue
     yy, xx = np.nonzero(m); Aa, Bb, Cc = a_[m][:, None], b_[m][:, None], c_[m][:, None]
     q = Aa * fpos[t[0]] + Bb * fpos[t[1]] + Cc * fpos[t[2]]; q0 = Aa * mpos[t[0]] + Bb * mpos[t[1]] + Cc * mpos[t[2]]; wq = (Aa * wv[t[0]] + Bb * wv[t[1]] + Cc * wv[t[2]])[:, 0]
-    col = np.zeros((len(q), 3)); dq = np.full(len(q), 1.0)
-    for k in range(len(q)):
-        loc, nor, fi, ds = bvh.find_nearest(Vector(q[k]))
-        if loc is None: continue
-        tr = U['idx'][fi]; p0, p1, p2 = upos[tr]; v0, v1, v2 = p1 - p0, p2 - p0, np.array(loc) - p0
-        d00, d01, d11, d20, d21 = v0 @ v0, v0 @ v1, v1 @ v1, v2 @ v0, v2 @ v1; den = d00 * d11 - d01 * d01 + 1e-18; bv = (d11 * d20 - d01 * d21) / den; bw = (d00 * d21 - d01 * d20) / den
-        col[k] = sample(uimg, ((1 - bv - bw) * U['uv'][tr[0]] + bv * U['uv'][tr[1]] + bw * U['uv'][tr[2]])[None])[0]; dq[k] = ds
+    col, dq = usample(q)
+    if HAIR is not None:   # (a lock of hair over the face: that side reads the other side of the face, mirrored; hair on both = no paint)
+        hz = np.linalg.norm(col - HAIR, axis=1) < HAIRTOL
+        if hz.any():
+            c2, d2 = usample(q[hz] * [-1, 1, 1]); h2 = np.linalg.norm(c2 - HAIR, axis=1) < HAIRTOL
+            col[hz] = c2; dq[hz] = np.where(h2, 1.0, d2)
+        if A.get('hairside'):   # (hairside=-|+ : on that side of the face ANY texel that disagrees with its mirror takes the mirror: the hair's soft edge and its shadow on the skin are not the hair's colour)
+            sd_ = np.nonzero(q[:, 0] * (1 if A['hairside'] == '+' else -1) > 0.002)[0]
+            if len(sd_):
+                c2, d2 = usample(q[sd_] * [-1, 1, 1]); df = (np.linalg.norm(col[sd_] - c2, axis=1) > float(A.get('hairdiff', 40))) & (np.linalg.norm(c2 - HAIR, axis=1) >= HAIRTOL)
+                col[sd_[df]] = c2[df]; dq[sd_[df]] = d2[df]
     w = sstep(wq, float(A.get('w0', 0.6)), float(A.get('w1', 0.97))) * (1 - sstep(dq, 0.006, 0.018)) * (1 - sstep(q0[:, 1], ybrow + float(A.get('brow0', -0.004)), ybrow + float(A.get('brow1', 0.002))))
     insO = inpoly(q0[:, :2], ovalP); dO = pdist(q0[:, :2], ovalP); w *= np.where(insO, 1.0, 1 - sstep(dO, 0.0, float(A.get('oval', 0.012))))   # (the face only: no ears, no under-jaw smear)
     w *= sstep(q0[:, 2], zoval - 0.012, zoval)   # (nothing behind the face's own edge: the ears, the nape)
@@ -212,8 +268,19 @@ for t in M['idx']:
     for poly in eyeP:   # (the eye opening stays MPFB's: its own lids and eyeball)
         ins = inpoly(q0[:, :2], poly); de = pdist(q0[:, :2], poly); front_ = q0[:, 2] > Pm[LEYE][:, 2].mean() - 0.03
         w *= np.where(front_, np.where(ins, 0.0, sstep(de, float(A.get('eye0', 0.0015)), float(A.get('eye1', 0.006)))), 1.0)
-    W[y0 + yy, x0 + xx] = w; C[y0 + yy, x0 + xx] = col; cover[y0 + yy, x0 + xx] = True
+    W[y0 + yy, x0 + xx] = w; C[y0 + yy, x0 + xx] = col; cover[y0 + yy, x0 + xx] = True; Ymap[y0 + yy, x0 + xx] = q0[:, 1]
 # tone: the stock sheet's skin moved toward the unit's cheeks / nose colour so the neck and body match the face
+# THE BRIM SHADOW (2026-11-12, mondo: "the shadow/darkness above his eyes is too much"): a hat's shadow is baked into the unit's face.
+# From the eyes up, the paint's own broad brightness (a wide blur, so brows and creases keep their contrast) is lifted to the lit skin
+# of the cheeks and nose. The edge tone and the body tone below then read the lit face, so the forehead matches too.
+W = np.nan_to_num(W); Lp = C @ [0.3, 0.59, 0.11]; sgs = float(A.get('shade', 12)) * Ww / 1024
+Lb = gaussian_filter(Lp * W, sgs) / np.maximum(gaussian_filter(W, sgs), 1e-6)
+low = (W > 0.95) & (Ymap < yeye - 0.012) & (Ymap > np.nanmean(Pm[LIPS][:, 1]) + 0.012)   # (cheeks + nose: between the eyes and the mouth)
+if low.any() and float(A.get('deshade', 1.0)) > 0:
+    ref = np.percentile(Lp[low], 65); gn = np.clip(ref / np.maximum(Lb, 1.0), 1.0, float(A.get('shademax', 2.4))) ** float(A.get('deshade', 1.0))
+    hw = sstep(Ymap, yeye - float(A.get('shade0', 0.018)), yeye + 0.004) * (W > 0)
+    C = np.clip(C * (1 + (gn - 1) * hw)[..., None], 0, 255)
+    print('brim shadow: lit skin %.0f, lift up to x%.2f above the eyes' % (ref, float((gn * hw).max())), flush=True)
 strong = (W > 0.95)
 lum = lambda im: im @ [0.3, 0.59, 0.11]
 skinpx = strong & (lum(C) > np.percentile(lum(C)[strong], float(A.get('tonepct', 60))))   # (the lighter half: skin, not beard / brow)
@@ -225,7 +292,7 @@ for t in M['idx']:
 toned = base.copy(); toned[body_] = np.clip(base[body_] * g, 0, 255)
 # the edge: unpainted skin next to the paint takes the paint's own skin tone there (a brim's shadow baked in the unit's face left
 # a pale band of stock forehead above it), fading out over a few centimetres
-W = np.nan_to_num(W); Ws = W * (lum(C) > np.percentile(lum(C)[strong], 40)); sg = float(A.get('edge', 30)) * Ww / 1024
+W = np.nan_to_num(W); Ws = W * (lum(C) > np.percentile(lum(C)[strong], float(A.get('edgepct', 75)))); sg = float(A.get('edge', 30)) * Ww / 1024
 num = gaussian_filter(C * Ws[..., None], (sg, sg, 0)); den = gaussian_filter(Ws, sg); numT = gaussian_filter(toned * Ws[..., None], (sg, sg, 0))
 lg = np.clip(num / np.maximum(numT, 1e-6), 0.5, 1.6); al = np.clip(den * float(A.get('edgek', 6.0)), 0, 1)[..., None] * cover[..., None]
 toned = np.clip(toned * (1 + (lg - 1) * al), 0, 255)
