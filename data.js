@@ -27400,6 +27400,7 @@ const TUTORIAL_LESSONS = [
               say: 'Press <b>MOVE</b>, then click a lit tile. A move costs <b>1 AP</b> and hands the menu back. Walk BLADE up until DUMMY A is within reach.',
               hint: 'MOVE · then a tile next to DUMMY A',
               focus: { hud: 'move' }, allow: ['move'],
+              aim: { move: '<b>Yellow tiles</b> are ones you can attack from.' },   // shown once MOVE is armed (mondo 2026-11-12)
               goal: { type: 'move', unit: 'p1-0', inRangeOf: 'p2-0' } },
             { id: 'ap-left', title: 'ONE AP LEFT',
               say: 'One AP cube is spent. BLADE still has AP, so BLADE still has the turn. An <b>ATTACK costs 1 AP and ends the turn</b> — the red <b>ENDS TURN</b> tag on a row says so before you press it.',

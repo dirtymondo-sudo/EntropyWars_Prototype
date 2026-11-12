@@ -10347,10 +10347,17 @@ function _hrlgSelfCastRow(blade, actingUnit, spell, key) {
 // costs, one-click move+strike combos, unavailability reasons. The view tab
 // carries the target's sprite / name / HP so you always know who you're
 // lining up against.
+/* THE TUTORIAL's quick menus (mondo 2026-11-12: "I can still click on an enemy and it brings up their quick action list where i
+   can select a spell, when tutorial wants me to attack, so clicking a spell does nothing ... those should be hidden/disabled,
+   only attack available"): a clicked unit's / square's list keeps only the rows the live step allows (ui.js _tutQuickOk) */
+function _tutQuickRows(actions) {
+  if (typeof window === 'undefined' || !window._tutActive || typeof window._tutQuickOk !== 'function' || !Array.isArray(actions)) return actions;
+  return actions.filter(a => a && window._tutQuickOk(a));
+}
 function _hrlgEnemyBlades(actingUnit, st) {
   const targetUnit = (st.units || []).find(u => u.id === st._enemyActionTargetId && !u.dead);
   if (!targetUnit) return { title: null, blades: [] };
-  const actions = _computeEnemyActions(actingUnit, targetUnit);
+  const actions = _tutQuickRows(_computeEnemyActions(actingUnit, targetUnit));   // THE TUTORIAL: only the rows the live step teaches
   const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
   const targetName = typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : (targetUnit.name || targetUnit.cls);
 
@@ -10636,7 +10643,7 @@ function _computeAllyActions(actingUnit, targetUnit) {
 function _hrlgAllyBlades(actingUnit, st) {
   const targetUnit = (st.units || []).find(u => u.id === st._enemyActionTargetId && !u.dead);
   if (!targetUnit) return { title: null, blades: [] };
-  const actions = _computeAllyActions(actingUnit, targetUnit);
+  const actions = _tutQuickRows(_computeAllyActions(actingUnit, targetUnit));   // THE TUTORIAL: only the rows the live step teaches
   const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
   const targetName = typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : (targetUnit.name || targetUnit.cls);
 
@@ -11005,7 +11012,7 @@ function _hrlgTileView(actingUnit, tx, ty, tz, opts) {
 
 /* the square's actions as blades: buttons carry tbtn + the tabs they ride (ttabs); rows are the rest */
 function _hrlgTileActionBlades(actingUnit, tx, ty, tz, view) {
-  const actions = _computeTileActions(actingUnit, tx, ty, tz);
+  const actions = _tutQuickRows(_computeTileActions(actingUnit, tx, ty, tz));   // THE TUTORIAL: only the rows the live step teaches
   const objInfo = view ? view.objInfo : _tileQuickObjectInfo(actingUnit, tx, ty);
   const objCard = view ? view.cards.object : (objInfo ? _objCardSpell(objInfo, tx, ty) : null);
   const tabCard = view ? (view.cards[view.active] || null) : null;

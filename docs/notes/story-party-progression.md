@@ -793,3 +793,7 @@ R2 files: data.js, map.js, ui.js, battle.js, three-vfx-effects.js, styles-base.c
 - Tape 1: `scope` allows only attack, `guard` only guard. Other tapes still allow MOVE beside the taught action where the unit
   may need to step into range (not walked through; tighten per tape with a playthrough).
 - THE MIDDLE, THEN THE CORNER (2026-11-12, mondo): a read-and-continue panel (ack step, LESSON COMPLETE, LOST) gets `.center` (centre screen, z 99990, dimmed board, bigger text); action / watch steps and the quest portal card keep the corner. ui.js _tutRender, styles-base.css '#tutCoach.tut-coach.center'.
+- THE AIM TIP (2026-11-12, mondo): a lesson step may carry `aim: { <actionMode>: html }`; while that mode is armed the coach shows
+  it under the body and does not fade (ui.js _tutPoll, `#tutCoachAim`). Tape 1 MOVE: "Yellow tiles are ones you can attack from."
+- THE QUICK LISTS (2026-11-12, mondo): a clicked enemy / ally / square list keeps only the rows the step allows
+  (hud.js `_tutQuickRows` over the three `_compute*Actions`, ui.js `_tutQuickOk`; a row that walks first needs MOVE allowed too).
