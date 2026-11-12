@@ -11438,7 +11438,7 @@
             }
 
             /* THE GARDEN fix (2026-11-12): the grown plants and aura trees act with NO seed left on the board too */
-            if (state.plantedSeeds?.length || (state.plantedTrees || []).some(t => t.aura) || (state.turrets || []).some(t => t.plant && t.hp > 0)) {
+            if (state.plantedSeeds?.length || (state.plantedTrees || []).some(t => t.aura || t.apple) || (state.turrets || []).some(t => t.plant && t.hp > 0)) {
                 for (let p = 1; p <= 2; p++) {
                     applySeedTileEffects_endOfRound(p, events);
                 }
@@ -12033,10 +12033,10 @@
         const SEED_PLAIN_DRY_ROUNDS = 2;
         const PLANT_SPELL_ID = { heal: 'healingSeed', poison: 'poisonSeed', leech: 'leechSeed' };
         function _plantName(type) {
-            return type === 'poison' ? 'Gas Plant' : type === 'leech' ? 'Thorn Vine' : 'Healing Flower';
+            return type === 'poison' ? 'Gas Plant' : type === 'leech' ? 'Thorn Vine' : type === 'apple' ? 'Apple Tree' : 'Healing Flower';
         }
         function _seedLabel(seed) {
-            return seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : seed.type === 'leech' ? 'Leech Seed' : 'seed';
+            return seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : seed.type === 'leech' ? 'Leech Seed' : seed.type === 'apple' ? 'Apple Seed' : 'seed';
         }
         /* Is there water for a seed on (x, y) right now? Rain over it, water beside it or on it, or a Wet unit of the
            planter's side dripping on it. (Blood Rain is not rain for a seed: his answer, 11-12.) */
@@ -12190,6 +12190,60 @@
             return true;
         }
         if (typeof window !== 'undefined') { window.getPollen = getPollen; window.POLLEN_MAX = POLLEN_MAX; window._pollinateTargetAt = _pollinateTargetAt; }
+        /* 🍎 THE APPLE TREE (2026-11-12, mondo: "eventually both" flower + apple tree; the apple tree is a REAL tree).
+           An Apple Seed (data.js `appleSeed`, seedType 'apple') needs water like every seed and grows into an ordinary
+           tree object (blocks sight, can be chopped, counts for Green Thumb + Trunk Throw) whose state.plantedTrees row
+           carries `apple`. Every APPLE_EVERY_ROUNDS round ends it drops one apple on a free tile beside it (at most
+           APPLE_MAX_PER_TREE lying around a tree). ANY unit that ends a move on an apple while hurt eats it and heals
+           APPLE_HEAL_PCT of its max HP. Apples are plain rows in state.apples ({id,x,y}), so they ride the snapshot. */
+        const APPLE_EVERY_ROUNDS = 2, APPLE_MAX_PER_TREE = 2, APPLE_HEAL_PCT = 0.2;
+        function appleAt(x, y) { return (state.apples || []).find(a => a.x === x && a.y === y) || null; }
+        function _appleDropTile(tree) {
+            const spots = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]];
+            let lying = 0; const free = [];
+            for (const [dx, dy] of spots) {
+                const nx = tree.x + dx, ny = tree.y + dy;
+                if (!isInside(nx, ny)) continue;
+                if (appleAt(nx, ny)) { lying++; continue; }
+                if (getObjectAt(nx, ny) || !isTerrainPassable(nx, ny) || plantAt(nx, ny)) continue;
+                const t = getTerrainAt(nx, ny);
+                if (t === 'water' || t === 'lava' || (typeof _tileIsBurning === 'function' && _tileIsBurning(nx, ny))) continue;
+                free.push({ x: nx, y: ny });
+            }
+            if (lying >= APPLE_MAX_PER_TREE || !free.length) return null;
+            return free.find(f => !unitAt(f.x, f.y)) || free[0];
+        }
+        function _appleTreesRoundEnd() {
+            for (const tree of (state.plantedTrees || [])) {
+                if (!tree.apple) continue;
+                tree.appleAge = (tree.appleAge | 0) + 1;
+                if (tree.appleAge % APPLE_EVERY_ROUNDS) continue;
+                const at = _appleDropTile(tree);
+                if (!at) continue;
+                if (!state.apples) state.apples = [];
+                state.apples.push({ id: `apple_${state.round || 0}_${at.x}_${at.y}_${randInt(99999)}`, x: at.x, y: at.y });
+                addLog(`🍎 The Apple Tree at ${coordLabel(tree.x, tree.y)} drops an apple at ${coordLabel(at.x, at.y)}. Whoever walks onto it eats it.`);
+                if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextAtTile(at.x, at.y, '🍎', 'heal', { durationMs: 900 });
+                const under = unitAt(at.x, at.y);
+                if (under) _eatAppleAt(under);
+                scheduleBoardRender();
+            }
+        }
+        function _eatAppleAt(unit) {
+            if (!unit || unit.dead || _unitIsDown(unit) || !state.apples || !state.apples.length) return false;
+            if (shadowRealmKey(unit) || (typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) return false;
+            const ap = appleAt(unit.x, unit.y);
+            if (!ap || unit.hp >= unit.maxHp) return false;
+            const healed = applyHealingToUnit(unit, Math.max(1, Math.round(unit.maxHp * APPLE_HEAL_PCT)), null);
+            if (!(healed > 0)) return false;
+            state.apples = state.apples.filter(a => a !== ap);
+            addLog(`🍎 ${_ctName(unit)} eats the apple at ${coordLabel(ap.x, ap.y)}: +${healed} HP.`);
+            if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextForUnit(unit, `+${healed}`, 'heal', { durationMs: 900 });
+            markDirty('teams', 'selectedUnit', 'hud');
+            scheduleBoardRender();
+            return true;
+        }
+        if (typeof window !== 'undefined') { window.appleAt = appleAt; }
         /* The thorn vine's one target this round among `player`'s units: the nearest it has a clear line to. */
         function _plantLashTarget(plant, player) {
             let best = null, bestD = Infinity;
@@ -12319,6 +12373,7 @@
         // tile can't machine-gun the effect. The end-of-round tick still fires
         // on top for units that stay put ("camping the seed").
         function checkSeedStepTrigger(unit) {
+            _eatAppleAt(unit);   // 🍎 THE APPLE TREE: ending a move on an apple
             if (unit && unit.race === 'bee queen') _gatherPollen(unit);   // 🐝 THE POLLEN: ending a move beside a flower
             if (!state.plantedSeeds || !state.plantedSeeds.length || !unit || unit.dead) return;
             if (shadowRealmKey(unit)) return;   // 🌑 nor its seeds
@@ -12344,6 +12399,7 @@
 
         function _auraTreeName(type) {
             if (type === 'plain') return 'Tree';   // THE SPELL AUDIT Batch D: Bumper Crop's plain wood
+            if (type === 'apple') return 'Apple Tree';
             return type === 'poison' ? 'Toxin Tree' : type === 'leech' ? 'Leech Tree' : 'Healing Tree';
         }
 
@@ -12444,16 +12500,18 @@
                 gx = found.x; gy = found.y;
             }
 
-            if (seed.type !== 'plain') { _standPlant(seed, gx, gy); return; }   // THE GARDEN: a plant, not a tree
+            if (seed.type !== 'plain' && seed.type !== 'apple') { _standPlant(seed, gx, gy); return; }   // THE GARDEN: a plant, not a tree
             _ensureTreeState();
             if (getTerrainAt(gx, gy) !== 'grass') setTerrainAt(gx, gy, 'grass');
             setObjectAt(gx, gy, _auraTreeObjectFor(seed.type));
-            state.plantedTrees.push({ x: gx, y: gy, owner: seed.owner, casterUnitId: seed.casterUnitId, aura: seed.type === 'plain' ? null : seed.type });
+            state.plantedTrees.push(seed.type === 'apple'
+                ? { x: gx, y: gy, owner: seed.owner, casterUnitId: seed.casterUnitId, aura: null, apple: true, appleAge: 0 }   // 🍎 a real tree that drops apples
+                : { x: gx, y: gy, owner: seed.owner, casterUnitId: seed.casterUnitId, aura: seed.type === 'plain' ? null : seed.type });
             _invalidateBoardGrid();
             state._treeTick = (state._treeTick || 0) + 1;
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
             const caster = unitFromId(seed.casterUnitId);
-            addLog(`🌳 A ${_auraTreeName(seed.type)} grows at ${coordLabel(gx, gy)}${caster ? ` — ${_ctName(caster)}'s grove strengthens` : ''}!${seed.type === 'plain' ? '' : ' Its aura pulses every round until it is destroyed.'}`);
+            addLog(`🌳 ${seed.type === 'apple' ? 'An' : 'A'} ${_auraTreeName(seed.type)} grows at ${coordLabel(gx, gy)}${caster ? ` — ${_ctName(caster)}'s grove strengthens` : ''}!${seed.type === 'plain' ? '' : seed.type === 'apple' ? ` It drops a healing apple every ${APPLE_EVERY_ROUNDS} rounds until it is cut down.` : ' Its aura pulses every round until it is destroyed.'}`);
             if (state.phase === 'battle' && !_skipVisuals()) {
                 showFloatingTextAtTile(gx, gy, '🌳', 'heal', { durationMs: 1000 });
                 /* Reuse the Overgrowth signature grow-in (fired through the
@@ -12566,7 +12624,7 @@
                     if (droughtTiles.size > 0) {
                         state.plantedSeeds = state.plantedSeeds.filter(seed => {
                             if (droughtTiles.has(posKey(seed.x, seed.y))) {
-                                addLog(`☀ The Drought scorches a ${seed.type === 'heal' ? 'Healing ' : seed.type === 'poison' ? 'Poison ' : seed.type === 'leech' ? 'Leech ' : ''}Seed at ${coordLabel(seed.x, seed.y)}!`);
+                                addLog(`☀ The Drought scorches a ${seed.type === 'heal' ? 'Healing ' : seed.type === 'poison' ? 'Poison ' : seed.type === 'leech' ? 'Leech ' : seed.type === 'apple' ? 'Apple ' : ''}Seed at ${coordLabel(seed.x, seed.y)}!`);
                                 return false;
                             }
                             return true;
@@ -12610,6 +12668,7 @@
                     }
                 }
                 _pollenRoundEnd();   // 🐝 THE POLLEN
+                _appleTreesRoundEnd();   // 🍎 THE APPLE TREE
             }
 
             /* Standing tick: ungrown seeds affect the unit camping their tile,
@@ -13697,7 +13756,29 @@
         /* Drawn right now? A realm unit shows only on its pair's turns; on those turns everyone else is gone. */
         function isUnitOutOfRealmView(unit) {
             if (!unit) return false;
-            return shadowRealmKey(unit) !== realmViewKey();
+            if (shadowRealmKey(unit) === realmViewKey()) return false;
+            return !isUnitSeenAcrossRealm(unit);
+        }
+        /* 👁🌑 THE REALM WINDOW (astral build 3, mondo 2026-11-12: "units that are projecting can also see/interact with the
+           shadow realm"). A SPIRIT stands in both planes: it can hit, heal and status a realm pair and they can do the same
+           to it (unitCrossesRealm, read by isUnitRealmShieldedFrom). Its sleeping body does not. SEEING is wider
+           (unitSeesRealm): a spirit, and the races on data.js REALM_SIGHT_RACES (the Ghost, the Shadow Entity) who look
+           but cannot touch. On a seer's turn the realm pair is drawn on the normal board as dim shades, and on the pair's
+           own turns a spirit is drawn in their dark plane. Both screens read the same synced active unit (RULE #2). */
+        function unitCrossesRealm(u) { return unitIsSpirit(u); }
+        function unitSeesRealm(u) {
+            if (!u || u.dead || u._dying) return false;
+            if (unitIsSpirit(u)) return true;
+            return typeof REALM_SIGHT_RACES !== 'undefined' && REALM_SIGHT_RACES.includes(u.race);
+        }
+        /* drawn although it is NOT on the plane whose turn it is */
+        function isUnitSeenAcrossRealm(unit) {
+            if (!unit || state.phase !== 'battle' || state._blitzActiveUnitId == null) return false;
+            const vk = realmViewKey(), uk = shadowRealmKey(unit);
+            if (uk === vk) return false;
+            if (!vk && uk) return unitSeesRealm(unitFromId(state._blitzActiveUnitId));   // a seer's turn on the board
+            if (vk && !uk) return unitCrossesRealm(unit);                                // the pair's turn: the spirit is there too
+            return false;
         }
         function isUnitRealmShieldedFrom(unit, actor) {
             /* 🚪 EXITED (DOOR_RACE_DESIGN r3): off the board — nobody reaches it. */
@@ -13707,7 +13788,11 @@
             if (!unit) return false;
             if (!actor) return !!shadowRealmKey(unit);
             if (actor.id === unit.id) return false;
-            return shadowRealmKey(unit) !== shadowRealmKey(actor);
+            const _ku = shadowRealmKey(unit), _ka = shadowRealmKey(actor);
+            if (_ku === _ka) return false;
+            /* 👁 a spirit stands in both planes: it reaches a realm pair and the pair reaches it */
+            if ((_ku && !_ka && unitCrossesRealm(actor)) || (_ka && !_ku && unitCrossesRealm(unit))) return false;
+            return true;
         }
         /* The realm closes for BOTH when either end leaves it (its time runs out, a cleanse, a death): nobody is left
            alone in there. Called by clearStatus and defeatUnit. */
@@ -13794,6 +13879,8 @@
         window.shadowRealmKey = shadowRealmKey;
         window.realmViewKey = realmViewKey;
         window.isUnitOutOfRealmView = isUnitOutOfRealmView;
+        window.isUnitSeenAcrossRealm = isUnitSeenAcrossRealm;
+        window.unitSeesRealm = unitSeesRealm;
         /* 🌑 THE REALM LINE ON EVERY LIST (11-07, mondo: "units sent to the Shadow Realm can still be bitten and buffed"):
            the units of `list` the actor can reach — a null actor (a summon, a turret, a beacon, a tree) is the board,
            so nobody inside a realm. Every team aura, area list and board hunter filters through this, both ways. */
@@ -13872,7 +13959,7 @@
             for (const k of ['_stFresh', '_stHold', '_statusSrc', '_realmPartnerId', '_boundToId', '_voodooAllyId', '_fearSourceId', '_tetherCasterId',
                 '_spellsUsedThisTurn', '_possessAfter', '_possessAfterSrcId', '_mounted', '_astralBodyId']) delete body[k];
             unit._astralBodyId = body.id;
-            unit._astralCord = Math.max(1, cfg.cord || 6);
+            unit._astralCord = Math.max(1, cfg.cord || 6) + (Number(unitPassiveValue(unit, 'astralCordBonus')) || 0);   // + Silver Cord
             unit._astralEndMode = cfg.end === 'follow' ? 'follow' : 'return';
             unit._astralRound = state.round;
             unit._astralHp = body._astralHp = unit.hp;
@@ -13934,6 +14021,51 @@
             try { resolveTileArrival(unit, { via: 'self' }); } catch (e) {}
             scheduleBoardRender();
         }
+        /* SPIRIT GUIDE (build 4): a spell row with `astralAlly: { cord, end }` walks an ALLY out of its body. The body sleeps
+           on its square and the spirit appears on the nearest open square beside it (two pieces never share one). */
+        function astralProjectAlly(caster, target, spell) {
+            if (!target || target.dead || target._dying || unitIsSpirit(target) || target._astralOfId || target._astralBodyId) return null;
+            let spot = null;
+            for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+                const x = target.x + dx, y = target.y + dy;
+                if (!isInside(x, y)) continue;
+                const z = nearestWalkableZ(x, y, target.z ?? 0);
+                if (canOccupy3D(x, y, z)) { spot = { x, y, z }; break; }
+            }
+            if (!spot) { addLog(`${_ctSp(spell.name)}: there is no room beside ${_ctName(target)} for its spirit.`); return null; }
+            const body = astralBegin(target, { name: spell.name, astral: spell.astralAlly || {} });
+            if (!body) return null;
+            const fx = target.x, fy = target.y;
+            target.x = spot.x; target.y = spot.y; target.z = spot.z;
+            try { animateDisplacement(target, fx, fy, target.x, target.y, 260, {}); } catch (e) {}
+            try { resolveTileArrival(target, { via: 'self' }); } catch (e) {}
+            scheduleBoardRender();
+            return body;
+        }
+        /* 👁 RETURN TO BODY (mondo 2026-11-12, decision card: "RETURN row in the command menu"): the spirit's own early way
+           home. Free (no AP, the turn goes on), on its own turn only. The spell's own ending applies: Spirit Walk pulls the
+           body to the spirit, everything else sends the spirit home. A passive with `astralReturnProtect` (Silver Cord)
+           hands the unit Protect for a round on the way in. online.js wraps it like doGuard (RULE #2). */
+        function canAstralReturn(unit) {
+            return !!(unit && !unit.dead && !unit._dying && unitIsSpirit(unit) && unit._astralBodyId && astralBodyOf(unit)
+                && state.phase === 'battle' && state._blitzActiveUnitId === unit.id
+                && !(typeof unitActionBlockKey === 'function' && unitActionBlockKey(unit)));
+        }
+        function doAstralReturn(unit) {
+            if (!canAstralReturn(unit)) { if (typeof playErrorSfx === 'function') playErrorSfx(); return false; }
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('astralReturn', unit)) return false;
+            try { pushUndoSnapshot(true); } catch (e) {}
+            const _prot = unitPassiveValue(unit, 'astralReturnProtect');
+            unit._astralSnapWhy = null;
+            unit._astralEarly = true;
+            clearStatus(unit, 'projecting');
+            delete unit._astralEarly;
+            if (_prot && !unit.dead && !unit._dying) applyStatusPayload(unit, { id: 'protect', duration: 1 }, 'Silver Cord: ', unit);
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+            scheduleBoardRender();
+            try { if (typeof refreshActionMenu === 'function') refreshActionMenu(); } catch (e) {}
+            return true;
+        }
         /* THE RUDE AWAKENING: the projection breaks and the spirit goes HOME, whatever the spell's own ending was */
         function astralSnapHome(unit, why) {
             if (!unit || unit.dead || unit._dying || !unitIsSpirit(unit) || !unit._astralBodyId) return false;
@@ -13985,6 +14117,9 @@
         window.astralBegin = astralBegin;
         window.astralEnd = astralEnd;
         window.astralSnapHome = astralSnapHome;
+        window.doAstralReturn = doAstralReturn;
+        window.canAstralReturn = canAstralReturn;
+        window.astralProjectAlly = astralProjectAlly;
         window.astralOnDeath = astralOnDeath;
 
         /* ⛓ / 🪆 Links (plan §5.5): after a hit resolves, echo a share of it
@@ -68434,7 +68569,7 @@
                 return ob.spellName || 'Object';
             }
             const sd = (state.plantedSeeds || []).find(s => s.x === x && s.y === y);
-            if (sd) return sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+            if (sd) return sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : sd.type === 'apple' ? 'Apple Seed' : 'Leech Seed';
             if (typeof _tileHasTree === 'function' && _tileHasTree(x, y)) return 'Tree';
             if (doorAt(x, y)) return 'Door';
             if ((state.mirrors || []).some(m => m.x === x && m.y === y && m.hp > 0)) return 'Prism';
@@ -68547,7 +68682,7 @@
                         const d = Math.abs(s.x - unit.x) + Math.abs(s.y - unit.y);
                         if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, s.x, s.y, unitZ)) {
                             if (visionGatesTargeting(unit) && !isInVision(unit, s.x, s.y)) continue;
-                            const seedName = s.type === 'heal' ? 'Healing Seed' : s.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+                            const seedName = s.type === 'heal' ? 'Healing Seed' : s.type === 'poison' ? 'Poison Seed' : s.type === 'apple' ? 'Apple Seed' : 'Leech Seed';
                             targets.push({ x: s.x, y: s.y, dist: d, seed: s, seedName, kind: 'seed' });
                         }
                     }
@@ -75561,7 +75696,7 @@
                 const seedIdx = state.plantedSeeds.findIndex(s => s.x === x && s.y === y && s.owner !== unit.player);
                 if (seedIdx >= 0) {
                     const seed = state.plantedSeeds[seedIdx];
-                    const seedName = seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : seed.type === 'plain' ? 'Bumper Crop' : 'Leech';
+                    const seedName = seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : seed.type === 'plain' ? 'Bumper Crop' : seed.type === 'apple' ? 'Apple' : 'Leech';
                     pushUndoSnapshot(true);
                 setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                     if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
@@ -80956,6 +81091,7 @@
                     }
                     /* THE SPELL AUDIT FIX (2026-10-26): a buff row's `selfHealPct` (Awakening 30%, Ayahuasca Retreat 50%) —
                        a percent of the target's max HP, like the selfHeal kind (preScaled); the buff kind never read it. */
+                    if (spell.astralAlly && !_bt.dead) astralProjectAlly(unit, _bt, spell);   // 👁 Spirit Guide: the ally steps out of its body
                     if (spell.selfHealPct > 0 && !_bt.dead) {
                         const _bhGot = applyHealingToUnit(_bt, Math.floor(_bt.maxHp * spell.selfHealPct), unit, { preScaled: true });
                         if (_bhGot > 0) {
@@ -85603,15 +85739,16 @@
             }
 
             else if (spell.kind === 'seedHeal') {
+                const _sType = spell.seedType || 'heal';   // 🍎 THE APPLE TREE: Apple Seed rides this branch (`seedType: 'apple'`)
                 const terrain = getTerrainAt(x, y);
                 if (terrain === 'mountain' || terrain === 'lava') {
-                    addLog(`Healing Seed cannot be planted on ${terrain} tiles.`, _clickSeat());
+                    addLog(`${spell.name} cannot be planted on ${terrain} tiles.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (!state.plantedSeeds) state.plantedSeeds = [];
-                if (state.plantedSeeds.some(s => s.x === x && s.y === y && s.type === 'heal')) {
-                    addLog('There is already a healing seed on that tile.', _clickSeat());
+                if (state.plantedSeeds.some(s => s.x === x && s.y === y && s.type === _sType)) {
+                    addLog(`There is already ${_sType === 'apple' ? 'an apple' : 'a healing'} seed on that tile.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -85651,7 +85788,7 @@
                         x,
                         y,
                         z,
-                        type: 'heal',
+                        type: _sType,
                         owner: unit.player,
                         casterUnitId: unit.id,
                         growth: 0
@@ -85659,7 +85796,7 @@
                     state.plantedSeeds.push(_newSeed);
                     const _wetNow = _seedWaterSourceAt(x, y, unit.player);
                     if (_wetNow) _waterSeed(_newSeed, true);
-                    addLog(`${_ctName(unit)} plants a Healing Seed at ${coordLabel(x, y)}. ${_wetNow ? `It is watered: a ${_plantName('heal')} grows at the end of the round` : `It needs water to sprout (rain, a water spell, water beside it) before it grows into a ${_plantName('heal')}`} — unless it is destroyed first.`);
+                    addLog(`${_ctName(unit)} plants ${_sType === 'apple' ? 'an Apple Seed' : 'a Healing Seed'} at ${coordLabel(x, y)}. ${_wetNow ? `It is watered: ${_sType === 'apple' ? 'an' : 'a'} ${_plantName(_sType)} grows at the end of the round` : `It needs water to sprout (rain, a water spell, water beside it) before it grows into ${_sType === 'apple' ? 'an' : 'a'} ${_plantName(_sType)}`} — unless it is destroyed first.`);
                     // Planting under an ally's feet works right away — no waiting
                     // a round for the first tick (rain still doubles the heal).
                     const _occupant = unitAt(x, y);

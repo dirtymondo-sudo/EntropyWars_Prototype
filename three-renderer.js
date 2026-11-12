@@ -7079,7 +7079,7 @@ const ThreeRenderer = (function () {
         heal:   'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_healflower.glb'
     };
     var _PLANT_HEIGHT = { leech: 0.95, poison: 0.9, heal: 0.95 };   // of a tile
-    var _SEED_COLORS = { heal: 0xe8c860, poison: 0x8a4ab0, leech: 0x9a2a3a, plain: 0x8a5a2a };
+    var _SEED_COLORS = { heal: 0xe8c860, poison: 0x8a4ab0, leech: 0x9a2a3a, plain: 0x8a5a2a, apple: 0xc8281e };
     var _plantSeen = {};
     function _gardenMat(hex, basic) {
         var m = basic ? new THREE.MeshBasicMaterial({ color: hex }) : new THREE.MeshLambertMaterial({ color: hex });
@@ -7119,6 +7119,49 @@ const ThreeRenderer = (function () {
         if (purl && !_miscModelCache[purl]) { try { _loadMiscModel(purl, true, function () {}, { front: true }); } catch (x) {} }
         return g;
     }
+    /* 🍎 THE APPLE TREE (2026-11-12): the apple is one Meshy piece (no pack has an apple). `_buildApple3D` lays one on a
+       tile (state.apples); `_buildAppleCanopy` hangs a few in the leaves of an apple tree (a state.plantedTrees row
+       with `apple`), which is otherwise the ordinary tree object. Nothing is drawn until the file is in the cache. */
+    var _APPLE_MODEL_URL = 'https://cdn.entropywars.net/Assets/world/props/meshy/ew_plant_apple.glb';
+    var _APPLE_CANOPY = [[0.14, 0.5, 0.12], [-0.15, 0.66, 0.08], [0.03, 0.4, 0.2], [-0.07, 0.9, 0.06], [0.11, 0.82, 0.02]];   // of a tile
+    function _appleGroup(x, y, spots, size, bob) {
+        var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(x, y);
+        var g = new THREE.Group();
+        g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+        g._ew_deployable = true;
+        var fill = function () {
+            var e = _miscModelCache[_APPLE_MODEL_URL];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var sc = size * ts / ((bb.max.y - bb.min.y) || 1), anchor = null, t0 = _animNow();
+            for (var i = 0; i < spots.length; i++) {
+                var m = root.clone(true);
+                m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; if (!anchor) anchor = n; } });
+                m.scale.setScalar(sc);
+                m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+                var h = new THREE.Group(); h.add(m);
+                h.position.set(spots[i][0] * ts, spots[i][1] * ts, spots[i][2] * ts);
+                h.rotation.y = i * 1.7;
+                g.add(h);
+            }
+            if (anchor && bob) {
+                var ph = (x * 31 + y * 17) * 0.37;
+                anchor.onBeforeRender = function () { g.children[0].position.y = (spots[0][1] + 0.04 + Math.sin((_animNow() - t0) / 480 + ph) * 0.03) * ts; g.children[0].rotation.y = (_animNow() - t0) / 1400; };
+            }
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[_APPLE_MODEL_URL];
+        if (e0 && e0.root) fill();
+        else { try { _loadMiscModel(_APPLE_MODEL_URL, true, fill, { front: true }); } catch (x2) { console.warn("[ThreeRenderer] apple model load threw", x2); } }
+        return g;
+    }
+    function _buildApple3D(a) { return _appleGroup(a.x, a.y, [[0, 0.04, 0]], 0.3, true); }
+    function _buildAppleCanopy(t) { return _appleGroup(t.x, t.y, _APPLE_CANOPY, 0.16, false); }
     /* the HP bar over a plant: black with a white outline (the UI rule), the fill in its side's colour; it faces the camera */
     function _plantHpBar(turret, ts, y) {
         var bar = new THREE.Group();
@@ -10687,6 +10730,8 @@ const ThreeRenderer = (function () {
                 h = _hashInt(h, 1); h = _hashInt(h, s.x); h = _hashInt(h, s.y); h = _hashStr(h, s.type); h = _hashInt(h, s.watered ? 1 : 0);
             }
         }
+        if (state.apples) for (var api = 0; api < state.apples.length; api++) { h = _hashInt(h, 71); h = _hashInt(h, state.apples[api].x); h = _hashInt(h, state.apples[api].y); }
+        if (state.plantedTrees) for (var pti = 0; pti < state.plantedTrees.length; pti++) { if (state.plantedTrees[pti].apple) { h = _hashInt(h, 73); h = _hashInt(h, state.plantedTrees[pti].x); h = _hashInt(h, state.plantedTrees[pti].y); } }
         if (state.bombs) {
             for (var bi = 0; bi < state.bombs.length; bi++) {
                 var b = state.bombs[bi];
@@ -12158,6 +12203,17 @@ const ThreeRenderer = (function () {
                     deployableMeshes.set(key, m);
                 }
             }
+        }
+
+        /* 🍎 THE APPLE TREE: the apples on the ground, and the apples in each apple tree's leaves */
+        var _apl = (state.apples || []).map(function (a) { return [a, _buildApple3D]; })
+            .concat((state.plantedTrees || []).filter(function (t) { return t.apple; }).map(function (t) { return [t, _buildAppleCanopy]; }));
+        for (var ai = 0; ai < _apl.length; ai++) {
+            var am = _apl[ai][1](_apl[ai][0]);
+            if (!am) continue;
+            am._ew_depX = _apl[ai][0].x; am._ew_depY = _apl[ai][0].y;
+            objectGroup.add(am);
+            deployableMeshes.set('dep_' + (idx++), am);
         }
 
         if (state.bombs) {
@@ -26462,6 +26518,7 @@ const ThreeRenderer = (function () {
        The spirit is drawn as the unit's own model: white and see-through, hovering with a slow bob, joined to its body
        by a cord in the viewer's team colours (own cyan-blue, enemy pink-orange). Look only: nothing here is a rule.
        Host and guest both read the synced status and ids, so both seats draw it with nothing relayed (RULE #2). */
+    var REALM_SEEN_OPACITY = 0.42;
     var ASTRAL_OPACITY = 0.78, ASTRAL_LIFT = 0.16, ASTRAL_OWN_COLOR = 0x4fd8ff, ASTRAL_ENEMY_COLOR = 0xff7a5c;
     var _astralCords = new Map();   // spirit uid → { mesh, key }
     var _astralWhite = null;
@@ -26597,6 +26654,22 @@ const ThreeRenderer = (function () {
             /* 👁 THE ASTRAL BODY: a spirit is white, see-through and hovering, for both sides */
             var _ast = _astralIsSpirit(unit);
             _astralLook(entry, _ast, _astNow);
+            /* 👁🌑 THE REALM WINDOW (astral build 3): on the turn of a unit that sees across (a spirit, the Ghost, the Shadow
+               Entity; battle.js isUnitSeenAcrossRealm) a unit on the OTHER plane is drawn as a dim shade, fog or not for
+               nobody: it still obeys the viewer's fog below. */
+            var _seenAcross = false;
+            try { _seenAcross = typeof window.isUnitSeenAcrossRealm === 'function' && !!window.isUnitSeenAcrossRealm(unit); } catch (e) {}
+            if (_seenAcross && !_ast) {
+                entry._ew_realmSeen = true;
+                _setEntrySpriteOpacity(entry, REALM_SEEN_OPACITY);
+                if (unit.player !== vp) {
+                    var _sb = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
+                    if (_sb && fog) _sb = _unitLosSeen(unit, vp);
+                    entry.group.visible = _sb && !_isConcealedFromViewer(unit, vp);
+                }
+                return;
+            }
+            if (entry._ew_realmSeen) { entry._ew_realmSeen = false; _setEntrySpriteOpacity(entry, 1); }
             if (_rk && unit.player !== vp) {
                 /* in the realm it is just the two of them: the other one is always seen, fog or not */
                 entry.group.visible = !_isConcealedFromViewer(unit, vp);
@@ -64948,7 +65021,7 @@ const ThreeRenderer = (function () {
     }
     /* one picture of S through the studio's camera, aimed off the Head bone: the face (a square, straight on, clear
        behind) or the bust (the ID card's upright photo, straight on, on its backdrop). The caller reads the canvas at once. */
-    function _ptRender(S, bust) {
+    function _ptRender(S, bust, easeDt) {
         var P = _pt, r = P.renderer, w = bust ? PT_BUST.w : PT_PX, hgt = bust ? PT_BUST.h : PT_PX;
         for (var k in P.subs) { var o = P.subs[k]; if (o.model) o.model.visible = (o === S); }
         if (P.w !== w || P.h !== hgt) { r.setSize(w, hgt, false); P.w = w; P.h = hgt; P.cam.aspect = w / hgt; P.cam.updateProjectionMatrix(); }
@@ -64970,7 +65043,15 @@ const ThreeRenderer = (function () {
         var dist = S.h * (bust ? PT_BUST.frame : (pd.frame || PT_FRAME)) * 0.5 / Math.tan((PT_FOV * Math.PI / 180) / 2);
         var yaw = Math.atan2(f.x, f.z) * (bust ? 0.5 : 1) + (bust ? 0 : (pd.yaw != null ? pd.yaw : PT_YAW));
         var pol = Math.asin(Math.max(-1, Math.min(1, f.y))) * (bust ? PT_PITCH * 0.6 : PT_PITCH) + (bust ? 0 : PT_POLAR);
-        P.cam.position.set(tx + Math.sin(yaw) * Math.cos(pol) * dist, ty + Math.sin(pol) * dist, tz + Math.cos(yaw) * Math.cos(pol) * dist);
+        var px = tx + Math.sin(yaw) * Math.cos(pol) * dist, py = ty + Math.sin(pol) * dist, pz = tz + Math.cos(yaw) * Math.cos(pol) * dist;
+        /* THE LIVE PORTRAITS: the camera does not follow the head frame by frame (that would cancel the very sway and breath
+           the portrait is there to show): it drifts after it (PT_LIVE_DRIFT s), so the head moves IN the frame and never leaves it */
+        if (!bust && S.live && easeDt > 0 && S.cam) {
+            var ke = 1 - Math.exp(-easeDt / PT_LIVE_DRIFT), c = S.cam;
+            c[0] += (px - c[0]) * ke; c[1] += (py - c[1]) * ke; c[2] += (pz - c[2]) * ke; c[3] += (tx - c[3]) * ke; c[4] += (ty - c[4]) * ke; c[5] += (tz - c[5]) * ke;
+            px = c[0]; py = c[1]; pz = c[2]; tx = c[3]; ty = c[4]; tz = c[5];
+        } else if (!bust && S.live) S.cam = [px, py, pz, tx, ty, tz];
+        P.cam.position.set(px, py, pz);
         P.cam.lookAt(tx, ty, tz);
         if (bust) r.setClearColor(PT_BUST.bg, 1); else r.setClearColor(0x000000, 0);
         r.toneMappingExposure = pd.expo || (S.bake ? PT_BAKE_EXPO : 1.05);
@@ -64992,7 +65073,8 @@ const ThreeRenderer = (function () {
             }
         } catch (e) { console.warn('[ThreeRenderer] portrait failed', S.key, e); }
         if (!got) _ptFail[S.key] = Date.now();
-        _ptDrop(S);
+        if (got && S.live && _ptLiveOn()) { S.shot = true; S.at = 0; if (P.busy === S) P.busy = null; _ptLiveStart(); }   // THE LIVE PORTRAITS: the body stays in the studio
+        else _ptDrop(S);
         if (got) _ptBump();
     }
     /* the body is up (dressed, its idle on): a few frames for the pose, the cloth and the hair to settle, then the picture */
@@ -65077,7 +65159,112 @@ const ThreeRenderer = (function () {
         if (ce0 && ce0.failed) fail();
         else if (ce0 && !ce0.root) (ce0.doneCbs = ce0.doneCbs || []).push(function (e2) { if (e2 && e2.failed) fail(); });
     }
+    /* ── THE LIVE PORTRAITS (2026-11-12, mondo: "for main characters (so far let's just try the player and agent
+       locke) can we have them idle and blinking and breathing in the portrait icon? Like the newspapers or picture frames
+       from harry potter") ── a main character's body STAYS in the studio after its still is taken: PT_LIVE_FPS times a
+       second its idle, cloth and face (the creator bodies' own blink / glance: faceIdle) tick and the 128 px picture is drawn
+       again, then copied into every HUD canvas that shows that character (hud.js LiveFace -> EWPortraits.attach). Main
+       characters: a cast def with `portrait.live` (Agent Locke) and the look on the viewer's own profile; PT_LIVE_MAX bodies
+       at most. Nothing ticks while no canvas shows it or the tab is hidden; the body is let go PT_LIVE_LINGER ms after its
+       last canvas left. Settings > Video > Live Portraits (On / Off); window.EW_NO_LIVE_PORTRAITS = true kills it live.
+       mondo OK'd the plan + the proof clip 11-12 ("Do B"). Viewer-local: nothing relayed. */
+    var PT_LIVE_FPS = 12, PT_LIVE_MAX = 2, PT_LIVE_LINGER = 8000, PT_LIVE_DRIFT = 1.6;
+    var _ptLiveRaf = 0, _ptLiveAt = 0, _ptOwn = { t: 0, key: null };
+    var _ptLiveSet = null;   // Settings > Video > Live Portraits (localStorage ew_livePortraits: 'off' = stills; default on)
+    function _ptLiveSetting() {
+        if (_ptLiveSet == null) { _ptLiveSet = true; try { if (typeof localStorage !== 'undefined' && localStorage.getItem('ew_livePortraits') === 'off') _ptLiveSet = false; } catch (e) {} }
+        return _ptLiveSet;
+    }
+    function _ptLiveOn() { return !_ptOff() && !window.EW_NO_LIVE_PORTRAITS && _ptLiveSetting(); }
+    function _ptOwnKey() {
+        var now = Date.now();
+        if (now - _ptOwn.t < 2000) return _ptOwn.key;
+        _ptOwn.t = now; _ptOwn.key = null;
+        try {
+            var p = window.ProfileSystem && window.ProfileSystem.getActiveProfile && window.ProfileSystem.getActiveProfile();
+            var lk = (p && typeof window.hqLook === 'function') ? window.hqLook(p) : null;
+            if (lk && lk.appearance) {
+                var n = normalizeCharacterAppearance(lk.appearance);
+                if (n) _ptOwn.key = '|' + (lk.gender === 'female' ? 'female' : 'male') + '|' + _ptHash(JSON.stringify(n));
+            }
+        } catch (e) {}
+        return _ptOwn.key;
+    }
+    function _ptLiveSpec(u) {
+        if (!_ptLiveOn() || !u || u.dead) return null;
+        var spec = _ptSpec(u);
+        if (!spec) return null;
+        if (spec.def.portrait && spec.def.portrait.live) return spec;
+        var own = spec.look ? _ptOwnKey() : null;
+        return (own && spec.key.slice(-own.length) === own) ? spec : null;
+    }
+    function _ptLiveStart() { if (!_ptLiveRaf && typeof requestAnimationFrame === 'function') _ptLiveRaf = requestAnimationFrame(_ptLiveTick); }
+    function _ptLiveTick() {
+        _ptLiveRaf = 0;
+        var P = _pt;
+        if (!P) return;
+        var now = performance.now(), due = now - _ptLiveAt >= 1000 / PT_LIVE_FPS - 2, any = false;
+        if (due) _ptLiveAt = now;
+        for (var k in P.subs) {
+            var S = P.subs[k];
+            if (!S.live) continue;
+            if (S.cvs) for (var i = S.cvs.length - 1; i >= 0; i--) if (!S.cvs[i].isConnected) S.cvs.splice(i, 1);
+            if (!S.cvs || !S.cvs.length) {
+                if (!S.idleAt) S.idleAt = now;
+                if (S.shot && now - S.idleAt > PT_LIVE_LINGER) { _ptDrop(S); continue; }
+                any = true; continue;
+            }
+            S.idleAt = 0; any = true;
+            if (!due || !S.shot || !S.model || P.lost || document.hidden) continue;
+            var dt = S.at ? Math.min(0.25, (now - S.at) / 1000) : 1 / PT_LIVE_FPS;
+            S.at = now;
+            try {
+                if (S.mixer) S.mixer.update(dt);
+                S.model.updateMatrixWorld(true);
+                if (S.rig) S.rig.tick();
+                if (S.sway) _swayTick(S.sway, dt, S.def.sway || null);
+                _ptRender(S, false, dt);
+                for (var j = 0; j < S.cvs.length; j++) {
+                    var cv = S.cvs[j], g = cv._ptG || (cv._ptG = cv.getContext('2d'));
+                    g.clearRect(0, 0, cv.width, cv.height);
+                    g.drawImage(P.canvas, 0, 0, cv.width, cv.height);
+                    cv._ptLive = true;
+                }
+            } catch (e) { if (!S.warned) { S.warned = true; console.warn('[ThreeRenderer] live portrait failed', S.key, e); } }
+        }
+        if (any) _ptLiveStart(); else _ptRest();
+    }
     var portraits = {
+        liveSetting: function () { return _ptLiveSetting(); },
+        setLive: function (on) {
+            _ptLiveSet = !!on;
+            try { localStorage.setItem('ew_livePortraits', on ? 'on' : 'off'); } catch (e) {}
+            if (!on && _pt) for (var k in _pt.subs) { var S = _pt.subs[k]; if (S.live && S.shot) _ptDrop(S); else S.live = false; }   // the bodies go; the HUD's icons fall back to the stills
+            _ptRest(); _ptBump();
+            try { window.dispatchEvent(new Event('ew-live-portraits')); } catch (e) {}
+        },
+        /* THE LIVE PORTRAITS: the key of this unit's live portrait (null = it shows its still) */
+        liveKey: function (u) { var sp = _ptLiveSpec(u); return sp ? sp.key : null; },
+        /* a HUD canvas joins this unit's live portrait (its still is painted at once); returns the detach, null when not live */
+        attach: function (cv, u) {
+            var spec = _ptLiveSpec(u);
+            if (!spec || !cv || !cv.getContext) return null;
+            var P = _ptEnsure();
+            if (!P) return null;
+            var S = P.subs[spec.key];
+            if (!S) {
+                var n = 0; for (var k in P.subs) if (P.subs[k].live) n++;
+                if (n >= PT_LIVE_MAX || _ptFail[spec.key]) return null;
+                P.subs[spec.key] = S = { key: spec.key, def: spec.def, look: spec.look, bust: !!spec.look && !_ptUrls[spec.key + '#bust'], model: null, rig: null, mixer: null, sway: null, ownedMats: [], ownedTex: [], h: 1, built: false, ready: false, dead: false, timer: 0 };
+                P.queue.push(S);
+            }
+            S.live = true; S.idleAt = 0;
+            (S.cvs || (S.cvs = [])).push(cv);
+            var still = _ptUrls[spec.key];
+            if (still) { var im = new Image(); im.onload = function () { if (!cv._ptLive) { try { cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); } catch (e) {} } }; im.src = still; }
+            _ptPump(); _ptLiveStart();
+            return function () { var i = S.cvs ? S.cvs.indexOf(cv) : -1; if (i >= 0) S.cvs.splice(i, 1); };
+        },
         /* the unit's portrait off its own model: a data URL, or null (no model of its own / not photographed yet: asked for now) */
         url: function (u, kind) {
             if (_ptOff()) return null;
@@ -76992,6 +77179,10 @@ const ThreeRenderer = (function () {
                     if (cat.open === 'swing') {
                         /* hinge pivot on the jamb edge; the leaf opens TOWARD the walker (+Z) — behind it is the wall */
                         motion = { mode: 'swing', pivot: new THREE.Group(), dir: hingeRight ? 1 : -1, angle: 1.45, ow: ow };
+                        /* THE DOUBLE DOOR (2026-11-12, mondo: "get rid of the revolving door, just make it a normal swing door or double
+                           door"): catalogue `double` = TWO of the single leaf, one hinged on each jamb, meeting in the middle. The second
+                           hangs on `pivot2` and swings the other way (_hqDoorMotionStep). */
+                        if (cat.double) { motion.dir = -1; motion.pivot2 = new THREE.Group(); motion.pivot2.position.x = (ow / 2 - 0.02) * U; leafGroup.add(motion.pivot2); }
                         motion.pivot.position.x = motion.dir * (ow / 2 - 0.02) * U;
                         leafGroup.add(motion.pivot);
                     } else if (cat.open === 'slide') {
@@ -77016,7 +77207,9 @@ const ThreeRenderer = (function () {
                     var targetH = (leafCat.frame ? oh + 0.03 : oh - 0.015) * U, targetW = (leafCat.frame ? ow + 0.05 : ow - 0.01) * U;
                     var yawDeg = cat.yaw || 0;
                     var slideMotion = (motion && motion.mode === 'slide') ? motion : null;
-                    var lg = _miscModelInstance(_hqModelUrl(cat), true, targetH, {
+                    var dbl = !!(motion && motion.pivot2);
+                    if (dbl) targetW = (ow / 2 - 0.012) * U;   // THE DOUBLE DOOR: each leaf fills half the opening
+                    var _mkLeaf = function () { return _miscModelInstance(_hqModelUrl(cat), true, targetH, {
                         fit: 'height', matPick: _hqPropMatPick,
                         onDone: function (g, s, bb) {
                             var m = g.children[0];
@@ -77036,10 +77229,18 @@ const ThreeRenderer = (function () {
                             }
                             if (_hq) _hq.dirty = true;
                         }
-                    });
+                    }); };
+                    var lg = _mkLeaf();
                     lg.rotation.y = (typeof window !== 'undefined' && window.EW_HQ_FLIP_LEAVES) ? Math.PI : 0;
                     leafModel = lg;   // THE ROUND JOIN: the revolving leaf turns as a whole (the intro's spin, _INTRO_DOOR_MOTION)
-                    if (motion && motion.mode === 'swing') { lg.position.x = -motion.pivot.position.x; motion.pivot.add(lg); }
+                    if (dbl) {
+                        /* the left leaf as authored (hinge left, the handle at the meeting stile); the right leaf is the same model
+                           turned half round, so its handle meets the first one (a turn, not a mirror: no flipped faces) */
+                        lg.position.x = (ow / 4 - 0.02) * U; motion.pivot.add(lg);
+                        var lg2 = _mkLeaf(), turn2 = new THREE.Group();
+                        turn2.rotation.y = Math.PI; turn2.add(lg2); turn2.position.x = -(ow / 4 - 0.02) * U; motion.pivot2.add(turn2);
+                    }
+                    else if (motion && motion.mode === 'swing') { lg.position.x = -motion.pivot.position.x; motion.pivot.add(lg); }
                     else if (motion && motion.mode === 'slide') motion.carrier.add(lg);
                     else leafGroup.add(lg);
                 }
@@ -84651,7 +84852,7 @@ const ThreeRenderer = (function () {
         var speed = (mo.mode === 'swing') ? 1.9 : (mo.mode === 'way') ? 1.5 : 2.4;
         d.openT = want ? Math.min(1, d.openT + dt * speed) : Math.max(0, d.openT - dt * speed);
         var k = d.openT < 0.5 ? 2 * d.openT * d.openT : 1 - Math.pow(-2 * d.openT + 2, 2) / 2;   // ease in-out
-        if (mo.mode === 'swing') mo.pivot.rotation.y = mo.dir * mo.angle * k;
+        if (mo.mode === 'swing') { mo.pivot.rotation.y = mo.dir * mo.angle * k; if (mo.pivot2) mo.pivot2.rotation.y = -mo.dir * mo.angle * k; }   // THE DOUBLE DOOR: the second leaf swings the other way
         else if (mo.mode === 'slide') mo.carrier.position.x = mo.dir * mo.travel * k;
         else if (mo.mode === 'elevator') for (var j = 0; j < mo.parts.length; j++) mo.parts[j].m.position.x = mo.parts[j].x0 + mo.parts[j].dir * mo.travel * k;
         else if (mo.mode === 'way' && mo.tick) { try { mo.tick(k); } catch (e) {} }
@@ -84688,9 +84889,11 @@ const ThreeRenderer = (function () {
         var Sp = d.spin;
         if (!d.join.keep) { if (d.leafG) d.leafG.visible = !on; return on; }
         if (d.leafG && Sp) d.leafG.position.z = on ? (-(d.pd || 0.55) / 2 + 0.05 - (d.join.gap || 0) / 2) * _hqUnits() : Sp.z0;   // the middle of the doorway, frame face to frame face
+        var W = d.wpt || { x: 0, z: 0 }, near = Math.hypot(px - W.x, pz - W.z) <= (HQ_WORLD_RULES.swingM || 1.6) + (d.ow || 2.2) / 2;
+        /* THE DOUBLE DOOR (2026-11-12): a round join's leaf that swings (no spin) opens for the walker like any joined door */
+        if (on && !Sp && d.motion) { _hqDoorMotionStep(d, (near && !HQ_DOOR_LOCKED[d.state]) ? 1 : 0, dt); return true; }
         if (!on || !Sp || !Sp.m) return on;
         if (Sp.base == null) Sp.base = Sp.m.rotation.y;
-        var W = d.wpt || { x: 0, z: 0 }, near = Math.hypot(px - W.x, pz - W.z) <= (HQ_WORLD_RULES.swingM || 1.6) + (d.ow || 2.2) / 2;
         var Q = Math.PI / 2, want = near ? HQ_ROUND_SPIN : 0;
         Sp.v += (want - Sp.v) * Math.min(1, dt * 4);
         if (!near && Sp.v < 0.35) {
@@ -89741,7 +89944,14 @@ const ThreeRenderer = (function () {
             _hqPlateDist(d.plateEl, Math.hypot(v.x - cam.x, v.z - cam.z) / U, d);
         }
     }
-    /* THE LAMPS (§5.2): every point light on the stage, the nearest N lit — N = max(lampsLive, the current part's own) */
+    /* THE LAMPS (§5.2): every point light on the stage, the nearest N lit — N = max(lampsLive, the current part's own).
+       THE WHOLE HALL LIT (2026-11-12, mondo in the Main Hall: "the walls further away are not lit until i walk closer to them, thats
+       what is making the main hall feel dark"): the pick was the nearest N to the EYE over every room on the stage alike. The hall has
+       13 lamps and the foyer 6, N was 13 (12 seen from the foyer), so at the hall's entrance the foyer's lamps behind you took six
+       places and the hall's far wall lamps went dark until you walked toward them. Now (1) the room you stand in lights ALL its own
+       lamps first, whatever the distance; (2) the rooms beside it share what is left, the nearest first, and never fewer than
+       HQ_STAGE_RULES.lampsNb; (3) THE ROUND JOIN (the hall + the foyer, two rooms) lights every lamp of both, up to
+       HQ_STAGE_RULES.lampsRound, so the hall reads whole from the foyer's doorway too. */
     function _hqStageLamps(H) {
         var pk = _hqStagePick(H, null), all = pk.all, N = pk.N;
         for (var i = 0; i < all.length; i++) all[i].o.visible = i < N;
@@ -89763,11 +89973,13 @@ const ThreeRenderer = (function () {
                 if (!o._ew_stageOn) return;
                 cnt++; if (ri === 0) own++;
                 if (!shown) return;
-                o.getWorldPosition(v); all.push({ o: o, d: v.distanceToSquared(cam) });
+                o.getWorldPosition(v); all.push({ o: o, d: v.distanceToSquared(cam), own: ri === 0 ? 0 : 1 });
             });
         });
-        var T = Math.min(cnt, Math.max(HQ_STAGE_RULES.lampsLive || 12, own)), N = Math.min(all.length, T);
-        all.sort(function (a, b) { return a.d - b.d; });
+        var SR = HQ_STAGE_RULES, base = SR.lampsLive || 12, nbMin = (SR.lampsNb != null) ? Math.max(0, SR.lampsNb | 0) : 4;
+        if (st.round) base = Math.max(base, SR.lampsRound || 32);   // THE WHOLE HALL LIT: the hall + the foyer, every lamp
+        var T = Math.min(cnt, Math.max(base, own + nbMin)), N = Math.min(all.length, T);
+        all.sort(function (a, b) { return (a.own - b.own) || (a.d - b.d); });   // the room you stand in first, then the nearest
         return { all: all, N: N, pad: T - N };
     }
     /* ══ THE WARM-UP (OPEN_WORLD_PLAN.md §5.9 / Phase 11, 2026-09-27) ══════════════════════════════════════════════════════
@@ -91639,6 +91851,7 @@ const ThreeRenderer = (function () {
             heroShadow: function () { var L = _hq && _hq.heroLit; return Object.assign({ light: !!(L && L.isLight), hold: !!(L && L._ew_heroHold) }, _heroStat); },
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
             hqScene: function () { return _hq ? _hq.scene : null; },
+            hqDoors: function () { if (!_hq) return null; var out = _hq.doors.slice(), st = _hq.stage; if (st && st.parts) for (var id in st.parts) { var P = st.parts[id].P; if (P && P.doors) out = out.concat(P.doors); } return out; },   // the door records of the room stood in + the rooms beside it (probes)
             hqInst: function () { return _hqInstStats(_hq); },
             hqText: function () { return _hqTextStats(); },   // R6: the HQ plates on the GPU vs CSS2D
             reflectors: function () { return (_hq && _hq.reflectors || []).map(function (r) { return { kind: r.kind, drawn: r.drawn, gain: r.mats[0] ? r.mats[0].uniforms.uGain.value : null }; }); },   // W4: the mirrored draws

@@ -5338,3 +5338,50 @@ Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx
 - Checked in a VS CPU match by eval: fire 117 on the spirit, same action on the body 0; psychic on the spirit 194 vs 117 plain,
   psychic on the body 117; Silence sent the spirit home and removed the body. Still open: early return, body slump pose, CPU play,
   builds 3-4.
+
+## THE APPLE TREE — Apple Seed, a real tree that drops healing apples (2026-11-12, mondo: "eventually both"; Apple Seed OK'd)
+- data.js `appleSeed` (Agriculture T2, 25 MP, range 3): rides `kind: 'seedHeal'` with `seedType: 'apple'` (battle.js cast branch `_sType`),
+  so every menu / CPU / targeting table that knows the Healing Seed knows it. The dry seed has no under-foot effect.
+- Watered, `_growSeedIntoTree` takes the TREE path (not `_standPlant`): an ordinary `tree` object + a state.plantedTrees row
+  `{ apple: true, appleAge }`. It blocks sight, is chopped like any tree, counts for Green Thumb + Trunk Throw.
+- battle.js THE APPLE TREE block: `_appleTreesRoundEnd` (in the player-1 round-end block) drops one apple every `APPLE_EVERY_ROUNDS` 2
+  on a free tile beside the tree, at most `APPLE_MAX_PER_TREE` 2 lying around it. state.apples = `{id,x,y}` rows (ride the snapshot).
+  `_eatAppleAt` (top of `checkSeedStepTrigger`): ANY hurt unit ending a move on one heals `APPLE_HEAL_PCT` 20% max HP. Full HP = it stays.
+  Apples stay when the tree is cut. Pollinate grows an Apple Seed at once too.
+- three-renderer.js THE APPLE TREE: `_buildApple3D` (ground) + `_buildAppleCanopy` (5 in the leaves), one Meshy apple
+  `Assets/world/props/meshy/ew_plant_apple.glb` (no pack has an apple). The tree itself is the board's stock tree model.
+- My picks, his to change: every 2 rounds, 2 lying, 20%, either side may eat. Not built: fire burning apples, a tile card for an apple.
+### build 3 (2026-11-12, same thread): THE REALM WINDOW
+- battle.js `unitCrossesRealm` (a spirit) + `unitSeesRealm` (a spirit, or a race on data.js REALM_SIGHT_RACES: ghost, shadow entity).
+  `isUnitRealmShieldedFrom`: a spirit and a Shadow Realm pair reach each other both ways; the sleeping body stays walled off, and
+  zones / weather (null actor) still never reach in. `isUnitSeenAcrossRealm` feeds `isUnitOutOfRealmView`: on a seer's turn the pair
+  is drawn on the normal board; on the pair's turns a spirit is drawn in their plane. Ghost + Shadow Entity look, cannot touch.
+- three-renderer.js: a unit seen across is a dim shade (REALM_SEEN_OPACITY 0.42), still under the viewer's fog.
+- Checked in VS CPU (Mount Shasta): Shadow Entity's turn showed the pair; shield true before Spirit Walk, false after; the body's hit
+  did 0; Shadow Crush listed the realm Demon as a target and took 982 -> 798.
+  /mnt/project-files/astral-projection-20261112/build3_spirit_targets_realm_unit.jpg. Not checked: a realm pair hitting the spirit
+  through the menus (function only), the online guest view.
+
+### build 4a (2026-11-12, same thread): the new spells + Spirit Guide + CPU
+- data.js `raceAstralProjection` (T3, astralprojection family, 75 MP, kind escape, step out 6, `astral: { cord: 6, end: 'return' }`,
+  cooldown 3; VFX = Spirit Walk's, three-vfx-effects.js SPELL_MAP alias). `raceSpiritGuide` REWORKED: `astralAlly: { cord: 6, end:
+  'return' }` (was Invisible 1 + Levitating 2); battle.js buff branch -> `astralProjectAlly`: the ally's body sleeps on its square, the
+  spirit appears on the nearest open square beside it. `raceCutTheCord` (T2, Dream Predation `astral` family: dreameater, succubus;
+  50 MP, 80 dmg psychic, range 4, `statusEffects: [{ id: 'stun', duration: 1, ifTargetHas: 'projecting' }]`): the Stun lands only on a
+  spirit and THE RUDE AWAKENING snaps it home. Names were proposals in the accepted plan doc; his to rename.
+- ai.js: `_aiHasMagicToFight`; an astral escape scores only for a magic user with enemies within 4, no Key, body not about to die;
+  Spirit Guide the same for the ally. Physical hits on a spirit were already priced 0 (the Ghost check reads unitPassiveValue), and
+  the psychic x1.5 rides the forecast math.
+- Checked in VS CPU: Spirit Guide on King Arthur (spirit beside body, returned at his next turn's end, log line), Astral Projection
+  (cord 6, no move tile past it), Cut the Cord's hit + payload by eval (126 dmg, snapped home, Stunned). NOT checked: the CPU casting
+  any of it in a real match, the online guest view of build 3-4.
+- STILL OPEN (needs mondo): Silver Cord passive + the early return (a new menu command = UI design, his OK first), body slump pose,
+  the CPU guarding its own body.
+
+### build 4b (2026-11-12, mondo picked "RETURN row in the command menu" on the decision card, then "ok" on the mock-up)
+- RETURN TO BODY: battle.js `canAstralReturn` / `doAstralReturn` (free, no AP, the turn goes on, own turn only, not while action-locked).
+  The spell's own ending applies (Spirit Walk: body pulled to the spirit; else the spirit goes home). hud.js: for a projecting unit the
+  row takes the ATTACK row's place (id `astralReturn`). online.js wraps it like doGuard + host case 'doAstralReturn' (RULE #2).
+- SILVER CORD: data.js `passiveSilverCord` (T1, astralprojection family): hooks `astralCordBonus: 2` (astralBegin) and
+  `astralReturnProtect` (doAstralReturn -> Protect 1 round).
+- Checked in VS CPU: Spy + Silver Cord, Spirit Walk cord 6, row pressed, body pulled, Protected, turn still on (AP 1). Not checked online.

@@ -6069,7 +6069,7 @@ const DOOR_CAST_MODELS = {
   // the recruit — the default HQ avatar since 2026-09-06 (map.js _hqAvatar)
   player:   _mkCast('Player',       { heightRatio: 1.0 }),
   // your superior; by-the-book, the book keeps changing
-  locke:    _mkCast('Agent_Locke',  { heightRatio: 0.96, female: true }),
+  locke:    _mkCast('Agent_Locke',  { heightRatio: 0.96, female: true, portrait: { live: true } }),   // portrait.live: a main character, her portrait moves (three-renderer.js THE LIVE PORTRAITS)
   // colleague / love interest; Ringer's daughter
   belle:    _mkCast('Agent_Belle',  { heightRatio: 0.94, female: true }),
   // cocky; Meshy named this export without _biped

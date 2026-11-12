@@ -1934,7 +1934,36 @@ function _ppArc(r, len, start, cls, extra) {
    reticle. Both meters fill from 6 o'clock clockwise; shield leads the HP fill in pale blue; the confirm-step
    forecast (getPendingDamagePreview) blinks the slice about to be lost or healed; a hit blinks the face white
    (RenderBus 'unit:damaged'); the acting unit wears a slow-turning halo. `foe` paints the HP ring enemy red. */
+/* THE LIVE PORTRAITS (2026-11-12): a main character's portrait as a small canvas the portrait studio redraws (the idle, the
+   blink, the breath: three-renderer.js EWPortraits.attach), inside the icon's own SVG so its clip, vignette and hit flash
+   still sit over it. `liveKey` = EWPortraits.liveKey(unit); the still shows through until the first live frame. */
+function LiveFace({ unit, liveKey, x, y, size }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const cv = ref.current;
+    if (!cv || !window.EWPortraits || typeof window.EWPortraits.attach !== 'function') return;
+    const off = window.EWPortraits.attach(cv, unit);
+    return () => { if (off) off(); };
+  }, [liveKey]);
+  return h('foreignObject', { x, y, width: size, height: size, className: 'ew-live-face', style: { pointerEvents: 'none' } },
+    h('canvas', { ref, width: 128, height: 128, style: { width: '100%', height: '100%', display: 'block' } }));
+}
+/* the Settings switch flipped: every icon that can go live redraws itself (they are memoised, a plain HUD redraw skips them) */
+function useLiveGen() {
+  const [g, setG] = useState(0);
+  useEffect(() => {
+    const on = () => setG(x => x + 1);
+    window.addEventListener('ew-live-portraits', on);
+    return () => window.removeEventListener('ew-live-portraits', on);
+  }, []);
+  return g;
+}
+function _liveKeyOf(unit) {
+  try { return (unit && !unit.dead && window.EWPortraits && typeof window.EWPortraits.liveKey === 'function') ? window.EWPortraits.liveKey(unit) : null; } catch (e) { return null; }
+}
+
 function PartyPortrait({ unit, size, active, finished, next, possessed, forecast, foe, ringColor }) {
+  useLiveGen();
   const hitRef = useRef(null);
   useEffect(() => {
     if (!window.RenderBus || !unit) return;
@@ -1983,6 +2012,7 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
     if (_mfc.gain > 0) mpGainPct = _ppClamp((_mfc.gain / maxMp) * 100, 0, 100 - mpPct);
   }
   const clipId = 'ppclip-' + String(unit.id).replace(/[^a-z0-9_-]/gi, '_');
+  const _ppLive = isFace ? _liveKeyOf(unit) : null;   // THE LIVE PORTRAITS
   const R_HP = 43, R_MP = 36.5, R_FACE = 30.5, R_HALO = 48;
 
   return h('div', {
@@ -2016,7 +2046,8 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
       h('circle', { cx: 50, cy: 50, r: R_FACE + 1.2, className: 'ew-pp-bezel' }),
       h('g', { clipPath: 'url(#' + clipId + ')' },
         h('circle', { cx: 50, cy: 50, r: R_FACE, className: 'ew-pp-disc' }),
-        src && h('image', {
+        _ppLive ? h(LiveFace, { unit, liveKey: _ppLive, x: 50 - R_FACE, y: 50 - R_FACE, size: R_FACE * 2 })
+        : src && h('image', {
           href: src, x: 50 - R_FACE, y: 50 - R_FACE, width: R_FACE * 2, height: R_FACE * 2,
           preserveAspectRatio: isFace ? 'xMidYMid slice' : 'xMidYMax meet',
           className: 'ew-pp-img',
@@ -3092,7 +3123,8 @@ function VitalWave({ pct, hp, maxHp, mp, unitKey }) {
 // The watch itself. `api` is a plain object the parent owns; the hub fills
 // it with imperative hand controls (aim / rest / strike / wind) so blade
 // hover/click handlers can drive the hands without re-rendering the SVG.
-function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortraitClick, unitKey, burning, poisoned, hpPct, mpPct, low }) {
+function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortraitClick, unitKey, burning, poisoned, hpPct, mpPct, low, liveUnit }) {
+  useLiveGen();
   const minRef = useRef(null), hourRef = useRef(null), secRef = useRef(null);
   const ticksRef = useRef(null), chimeARef = useRef(null), chimeBRef = useRef(null);
   const hitRef = useRef(null);
@@ -3274,7 +3306,9 @@ function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortra
         // invisible hit target so the disc stays clickable even with no art
         // (the flash circles below are pointer-events:none)
         onPortraitClick && h('circle', { cx: 100, cy: 100, r: 56.5, fill: '#000', opacity: 0 }),
-        portraitUrl && h('image', {
+        (portraitUrl && liveUnit && portraitIsFace !== false && _liveKeyOf(liveUnit))
+          ? h(LiveFace, { unit: liveUnit, liveKey: _liveKeyOf(liveUnit), x: 44, y: 44, size: 112 })
+        : portraitUrl && h('image', {
           href: portraitUrl, x: 44, y: 44, width: 112, height: 112,
           // dedicated face art fills the disc edge to edge; a map-sprite
           // fallback fits whole so heads/feet don't get cropped away
@@ -5221,7 +5255,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
             portraitUrl: portraitUrl, portraitIsFace: portraitIsFace,
             portraitTitle: 'Center the camera on ' + unitName,
             onPortraitClick: onPortraitClick,
-            unitKey: unitKey, burning: burning, poisoned: poisoned,
+            unitKey: unitKey, burning: burning, poisoned: poisoned, liveUnit: apUnit,
             hpPct: maxHp > 0 ? (hp / maxHp) * 100 : null, mpPct: maxMp > 0 ? (mp / maxMp) * 100 : null,
             low: maxHp > 0 && hp / maxHp <= 0.3,
           })),
@@ -5401,7 +5435,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
           portraitUrl: portraitUrl, portraitIsFace: portraitIsFace,
           portraitTitle: 'Center the camera on ' + unitName,
           onPortraitClick: onPortraitClick,
-          unitKey: unitKey, burning: burning, poisoned: poisoned,
+          unitKey: unitKey, burning: burning, poisoned: poisoned, liveUnit: apUnit,
           hpPct: maxHp > 0 ? (hp / maxHp) * 100 : null, mpPct: maxMp > 0 ? (mp / maxMp) * 100 : null,
           low: maxHp > 0 && hp / maxHp <= 0.3,
         }),
@@ -7394,11 +7428,19 @@ function ActionMenu({ st, hidden }) {
   // Mystery Dungeon lockstep: NO Move blade — walking IS the free verb
   // (WASD / arrows step, clicking a tile travels), so the ladder reads
   // Attack › Abilities › Combo › Items › Guard like a proper crawler.
+  /* 👁 RETURN TO BODY (mondo 2026-11-12): a projecting spirit cannot basic attack, so its dead ATTACK row gives its
+     place to the way home (battle.js doAstralReturn: free, the turn goes on) */
+  const _spiritRow = !!(unit.status && unit.status.projecting > 0 && unit._astralBodyId);
+  const returnAction = _spiritRow ? {
+    id: 'astralReturn', label: 'Return to body', icon: '👁', cost: 0,
+    available: typeof window.canAstralReturn === 'function' && window.canAstralReturn(unit),
+    sub: 'Ends projection',
+  } : null;
   const _mdLock = typeof window._mdLockstepActive === 'function' && window._mdLockstepActive();
   if (_mdLock) guardAction.sub = _guardOk ? 'Hold & brace' : guardAction.sub;
   const actions = ((typeof _isClashMode === 'function' && _isClashMode()) || _mdLock)
-    ? [attackAction, abilAction, comboAction, itemsAction, guardAction]
-    : [moveAction, ...(climbAction ? [climbAction] : []), attackAction, abilAction, comboAction, itemsAction, guardAction];
+    ? [returnAction || attackAction, abilAction, comboAction, itemsAction, guardAction]
+    : [moveAction, ...(climbAction ? [climbAction] : []), returnAction || attackAction, abilAction, comboAction, itemsAction, guardAction];
 
   // ♟ TACTICS (battle.js setUnitTactic): set this unit or a teammate on a Tactic so the CPU's brain plays its turns.
   // Not on Mystery Dungeon floors (their own tactic chips) or in the tutorial (unitOnTactic is off there).
@@ -7609,6 +7651,7 @@ function ActionMenu({ st, hidden }) {
       case 'combo': if (typeof setActionMode === 'function') setActionMode('combo'); break;
       case 'items': if (typeof chooseActionMenu === 'function') chooseActionMenu('items'); break;
       case 'guard': if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); break;
+      case 'astralReturn': if (typeof doAstralReturn === 'function' && typeof getSelectedUnit === 'function') doAstralReturn(getSelectedUnit()); break;
       case 'switch': if (typeof chooseActionMenu === 'function') chooseActionMenu('switch'); break;
       case 'tactics': _hrlgTacticPickId = unit.id; if (typeof chooseActionMenu === 'function') chooseActionMenu('tactics'); break;
       case 'escape': if (typeof window.doEscape === 'function' && typeof getSelectedUnit === 'function') window.doEscape(getSelectedUnit()); break;
@@ -10884,11 +10927,12 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
   if (sd) {
     const enemy = actingUnit ? sd.owner !== actingUnit.player : false;
     /* THE GARDEN (2026-11-12): a seed needs water; the card says which state it is in and what it grows into */
-    const _sdBase = sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : sd.type === 'leech' ? 'Leech Seed' : 'Seed';
+    const _sdBase = sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : sd.type === 'leech' ? 'Leech Seed' : sd.type === 'apple' ? 'Apple Seed' : 'Seed';
     const name = sd.watered ? _sdBase.replace(/Seed$/, 'Sprout') : _sdBase;
     const _sdGrows = sd.type === 'heal' ? 'a Healing Flower that heals allies beside it each round'
       : sd.type === 'poison' ? 'a Gas Plant that poisons enemies beside it each round'
       : sd.type === 'leech' ? 'a Thorn Vine that lashes the nearest enemy within 2 tiles each round'
+      : sd.type === 'apple' ? 'an Apple Tree that drops a healing apple every 2 rounds'
       : 'a tree';
     const desc = (sd.watered
       ? 'Watered: it grows into ' + _sdGrows + ' at the end of this round.'
@@ -11703,7 +11747,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
     const seed = (state.plantedSeeds || []).find(s => s.x === tx && s.y === ty && s.owner !== actingUnit.player);
     if (seed) {
-      const seedName = seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+      const seedName = seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : seed.type === 'apple' ? 'Apple Seed' : 'Leech Seed';
       const canAtk = inRange && !losBlocked && _fogSees;
       actions.push(_objAtkRow('attack:seed', 'Attack ' + seedName, canAtk));
     }
