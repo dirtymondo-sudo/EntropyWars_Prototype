@@ -9133,8 +9133,9 @@ const ThreeRenderer = (function () {
                 var pal = null, kindKey = null, scaleMul = 1;
                 if (!disabled && unit && !unit.dead && !unit._dying) {
                     if (tmp) { pal = tmp.palette; kindKey = 'spell'; scaleMul = tmp.scale; }
-                    else if (unit._lastStandTriggered && _lsAuraWear(unit, entry, now)) { /* THE LAST STAND OUTLINE AURA wears it: no shroud */ }
+                    else if (unit._lastStandTriggered && _lsAuraWear(unit, entry, now, 'laststand')) { /* THE LAST STAND OUTLINE AURA wears it: no shroud */ }
                     else if (unit._lastStandTriggered) { pal = _AURA_KINDS.laststand; kindKey = 'laststand'; }
+                    else if ((unit._killStreak || 0) >= 3 && _lsAuraWear(unit, entry, now, 'flow')) { /* the same aura, in Flow State gold */ }
                     else if ((unit._killStreak || 0) >= 3) { pal = _AURA_KINDS.flow; kindKey = 'flow'; }
                 }
 
@@ -9320,7 +9321,8 @@ const ThreeRenderer = (function () {
     ];
     var LS_AURA_PAL = {
         own:   { outer: 0x2b55ff, mid: TEAM_OUTLINE_ALLY_COLOR,  core: 0xd6f6ff },
-        enemy: { outer: 0xff7a1e, mid: TEAM_OUTLINE_ENEMY_COLOR, core: 0xffe4d8 }
+        enemy: { outer: 0xff7a1e, mid: TEAM_OUTLINE_ENEMY_COLOR, core: 0xffe4d8 },
+        flow:  { outer: 0xf08c00, mid: 0xffd23a, core: 0xfffbe0 }   // FLOW STATE (killstreak 3+): its own gold on either side; the team outline on top still says whose
     };
     var _lsAuraTime = { value: 0 };
     var _lsAuras = new Map();   /* unitId -> { root, host, shells, mats, fade, want, h, seed } */
@@ -9372,7 +9374,7 @@ const ThreeRenderer = (function () {
         return rec;
     }
     /* pass 1 of _updateUnitAuras asks: does this Last Stand unit wear the outline aura? (true = no shroud for it) */
-    function _lsAuraWear(unit, entry, now) {
+    function _lsAuraWear(unit, entry, now, kind) {
         if (_lsAuraOff() || !entry || !entry.group) return false;
         var rec = _lsAuras.get(unit.id);
         if (rec && (rec.root !== entry.group || !_lsAuraUnder(rec.host, entry.group) || rec.st !== _unitStencilRef(unit.id))) {
@@ -9386,14 +9388,15 @@ const ThreeRenderer = (function () {
             if (entry._ew_lsKeep) rec.fade = entry._ew_lsKeep;
             _lsAuras.set(unit.id, rec);
         }
-        rec.want = true; rec.own = unit.player === _viewerPlayerNum();
+        rec.want = true; rec.own = unit.player === _viewerPlayerNum(); rec.kind = kind;
         return true;
     }
     var _lsAuraWp = null;
     function _lsAuraTick(now, dt, disabled) {
         if (!_lsAuras.size) return;
-        _lsAuraTime.value = (now * 0.001) % 1000;
-        var tune = _lsAuraTune(), kW = tune && tune.width != null ? tune.width : 1, kL = tune && tune.lift != null ? tune.lift : 1;
+        var tune = _lsAuraTune();
+        _lsAuraTime.value = (tune && tune.time != null) ? tune.time : (now * 0.001) % 1000;
+        var kW = tune && tune.width != null ? tune.width : 1, kL = tune && tune.lift != null ? tune.lift : 1;
         var dead = null;
         if (!_lsAuraWp) _lsAuraWp = new THREE.Vector3();
         _lsAuras.forEach(function (rec, uid) {
@@ -9403,7 +9406,7 @@ const ThreeRenderer = (function () {
             if (rec.fade <= 0 && !want) { _lsAuraDrop(rec); (dead = dead || []).push(uid); return; }
             var ease = rec.fade * rec.fade * (3 - 2 * rec.fade), t = _lsAuraTime.value;
             var breathe = 1 + 0.10 * Math.sin(t * 6.3 + rec.seed) + 0.05 * Math.sin(t * 13.1 + rec.seed * 2.3);
-            var pal = rec.own ? LS_AURA_PAL.own : LS_AURA_PAL.enemy;
+            var pal = rec.kind === 'flow' ? LS_AURA_PAL.flow : (rec.own ? LS_AURA_PAL.own : LS_AURA_PAL.enemy);
             rec.root.getWorldPosition(_lsAuraWp);
             for (var i = 0; i < rec.mats.length; i++) {
                 var m = rec.mats[i], L = m._ew_ls, u = m.uniforms;
