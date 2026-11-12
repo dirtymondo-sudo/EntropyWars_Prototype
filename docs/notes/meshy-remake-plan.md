@@ -163,7 +163,7 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 | knight (F) | PR #1153 | clean after round 4 | owed | DONE 11-12, SOFT FACE round 3 (he called the first fit an ogre) | waiting | calf slivers fixed #1155; cape no sway |
 | wizard (M) | PR #1153 | clean after round 4 | owed | DONE 11-12 | waiting | robe points #1155, boots #1156; K3, K5 open |
 | zombie (F) | batch one 11-12 | clean (race walk hunches) | owed | DONE 11-12 | waiting | her bloody skin is worn as shells; skin `sohh_female_zombie_skin` |
-| catgirl (F) | batch one 11-12 | skin chip by the left boot, lacing patches on the sleeves | owed | next | waiting | his saved look's body + face + hair; T2 ears = separate hat piece, not in the look |
+| catgirl (F) | batch one 11-12 | skin chip by the left boot, lacing patches on the sleeves | owed | DONE 11-12 | waiting | his saved look's body + face + hair; T2 ears = separate hat piece, not in the look |
 | robinhood (M) | batch one 11-12 (second T2 run) | a few skin flecks on the hood front | owed | DONE 11-12 | waiting | hood = outfit, `hair: bald`; fingerless gloves kept |
 | quarterback (M) | batch one 11-12 | clean | owed | next | waiting | `--headgear` (helmet = hat piece), `hair: bald` |
 | djinn (M) | REFUSED by Meshy's safety check twice (bare chest) | | | | | not worked around; needs his word |
