@@ -89814,7 +89814,14 @@ const ThreeRenderer = (function () {
             _hqPlateDist(d.plateEl, Math.hypot(v.x - cam.x, v.z - cam.z) / U, d);
         }
     }
-    /* THE LAMPS (§5.2): every point light on the stage, the nearest N lit — N = max(lampsLive, the current part's own) */
+    /* THE LAMPS (§5.2): every point light on the stage, the nearest N lit — N = max(lampsLive, the current part's own).
+       THE WHOLE HALL LIT (2026-11-12, mondo in the Main Hall: "the walls further away are not lit until i walk closer to them, thats
+       what is making the main hall feel dark"): the pick was the nearest N to the EYE over every room on the stage alike. The hall has
+       13 lamps and the foyer 6, N was 13 (12 seen from the foyer), so at the hall's entrance the foyer's lamps behind you took six
+       places and the hall's far wall lamps went dark until you walked toward them. Now (1) the room you stand in lights ALL its own
+       lamps first, whatever the distance; (2) the rooms beside it share what is left, the nearest first, and never fewer than
+       HQ_STAGE_RULES.lampsNb; (3) THE ROUND JOIN (the hall + the foyer, two rooms) lights every lamp of both, up to
+       HQ_STAGE_RULES.lampsRound, so the hall reads whole from the foyer's doorway too. */
     function _hqStageLamps(H) {
         var pk = _hqStagePick(H, null), all = pk.all, N = pk.N;
         for (var i = 0; i < all.length; i++) all[i].o.visible = i < N;
@@ -89836,11 +89843,13 @@ const ThreeRenderer = (function () {
                 if (!o._ew_stageOn) return;
                 cnt++; if (ri === 0) own++;
                 if (!shown) return;
-                o.getWorldPosition(v); all.push({ o: o, d: v.distanceToSquared(cam) });
+                o.getWorldPosition(v); all.push({ o: o, d: v.distanceToSquared(cam), own: ri === 0 ? 0 : 1 });
             });
         });
-        var T = Math.min(cnt, Math.max(HQ_STAGE_RULES.lampsLive || 12, own)), N = Math.min(all.length, T);
-        all.sort(function (a, b) { return a.d - b.d; });
+        var SR = HQ_STAGE_RULES, base = SR.lampsLive || 12, nbMin = (SR.lampsNb != null) ? Math.max(0, SR.lampsNb | 0) : 4;
+        if (st.round) base = Math.max(base, SR.lampsRound || 32);   // THE WHOLE HALL LIT: the hall + the foyer, every lamp
+        var T = Math.min(cnt, Math.max(base, own + nbMin)), N = Math.min(all.length, T);
+        all.sort(function (a, b) { return (a.own - b.own) || (a.d - b.d); });   // the room you stand in first, then the nearest
         return { all: all, N: N, pad: T - N };
     }
     /* ══ THE WARM-UP (OPEN_WORLD_PLAN.md §5.9 / Phase 11, 2026-09-27) ══════════════════════════════════════════════════════

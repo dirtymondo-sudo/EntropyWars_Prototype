@@ -48146,6 +48146,10 @@ const HQ_ENGINE_RULES = {
 };
 const HQ_STAGE_RULES = {
     partsBuilt: 3, lampsLive: 12, lampR: 60,   // §5.1–5.2 (Phase 1)
+    /* THE WHOLE HALL LIT (2026-11-12): the room you stand in always lights all its own lamps; the rooms beside it share the rest of
+       `lampsLive`, the nearest first, never fewer than `lampsNb`; THE ROUND JOIN (the Main Hall + the foyer) lights every lamp of
+       both rooms, up to `lampsRound` (three-renderer.js _hqStagePick) */
+    lampsNb: 4, lampsRound: 32,
     /* THE STAGE (§5.1–5.3, Phase 1, 2026-09-26): the zones whose parts stand on ONE stage — the joined neighbours are
        built into the same scene, drawn and walked, and the feet crossing a join SWAP the current part (no card, no
        rebuild). A zone not listed keeps today's rooms and doors exactly; a later phase adds its zone here when its
