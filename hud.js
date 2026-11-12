@@ -1241,7 +1241,7 @@ function SbClock({ startTime, live }) {
    Off switch: window.EW_NO_SCORE_POP = true. */
 const SCORE_POP_RULES = {
   /* [points from, name, glyph px, in ms, hold ms, roll ms] */
-  tiers: [[50, 't4', 38, 380, 900, 620], [25, 't3', 28, 340, 760, 520], [10, 't2', 20, 320, 620, 380], [0, 't1', 15, 220, 520, 240]],
+  tiers: [[50, 't4', 38, 520, 900, 620], [25, 't3', 28, 440, 760, 520], [10, 't2', 20, 320, 620, 380], [0, 't1', 15, 220, 520, 240]],
   mergeMs: 240,        // gains this close together are one +N
   afterBarsMs: 560,    // the letterbox slides out in .45 s (styles-cinematic.css .acam-bar)
   maxWaitMs: 12000,
@@ -1345,11 +1345,12 @@ function _sbPopFire(p, silent) {
   const C = 'translateY(-50%) ';
   const IN = calm ? [{ opacity: 0, transform: C + 'scale(1)' }, { opacity: 1, transform: C + 'scale(1)' }]
     : tier === 't1' ? [{ opacity: 0, transform: C + 'scale(.6)' }, { opacity: 1, transform: C + 'scale(1)' }]
-    /* ONE POP, THEN STILL (mondo 2026-11-12: "it's maybe a little too wavy"): no up-and-down, no second bounce — the +N
-       punches in past its size once and settles; the size of that one overshoot (and the glyph) is what grows with the points. */
-    : tier === 't2' ? [{ opacity: 0, transform: C + 'scale(.5)' }, { opacity: 1, transform: C + 'scale(1.14)', offset: .55 }, { opacity: 1, transform: C + 'scale(1)' }]
-    : tier === 't3' ? [{ opacity: 0, transform: C + 'scale(.4)' }, { opacity: 1, transform: C + 'scale(1.24)', offset: .5 }, { opacity: 1, transform: C + 'scale(1)' }]
-    : [{ opacity: 0, transform: C + 'scale(2.2)' }, { opacity: 1, transform: C + 'scale(.92)', offset: .45 }, { opacity: 1, transform: C + 'scale(1)' }];
+    : tier === 't2' ? [{ opacity: 0, transform: C + 'scale(.4)' }, { opacity: 1, transform: C + 'scale(1.28)', offset: .6 }, { opacity: 1, transform: C + 'scale(1)' }]
+    : tier === 't3' ? [{ opacity: 0, transform: C + 'scale(.3)' }, { opacity: 1, transform: C + 'translateY(4px) scale(1.42)', offset: .38 },
+        { opacity: 1, transform: C + 'translateY(-3px) scale(.92)', offset: .62 }, { opacity: 1, transform: C + 'translateY(2px) scale(1.08)', offset: .82 }, { opacity: 1, transform: C + 'scale(1)' }]
+    : [{ opacity: 0, transform: C + 'scale(2.6)' }, { opacity: 1, transform: C + 'translateY(5px) scale(.82)', offset: .3 },
+        { opacity: 1, transform: C + 'translateY(-5px) scale(1.3)', offset: .5 }, { opacity: 1, transform: C + 'translateY(3px) scale(.94)', offset: .7 },
+        { opacity: 1, transform: C + 'translateY(-2px) scale(1.06)', offset: .86 }, { opacity: 1, transform: C + 'scale(1)' }];
   S.busy[p] = performance.now() + inMs + holdMs + R.outMs + 60;   // the next +N on this side waits its turn
   const big = tier === 't3' || tier === 't4';
   if (big && !calm) {
@@ -1376,7 +1377,7 @@ function _sbPopFire(p, silent) {
       absorb(rollMs);
       const nm = document.querySelector('.ew-scoreboard .ew-sb-num.p' + p);
       if (nm && !calm && typeof nm.animate === 'function') {
-        const k = tier === 't4' ? 1.35 : tier === 't3' ? 1.25 : tier === 't2' ? 1.15 : 1.08;
+        const k = tier === 't4' ? 1.7 : tier === 't3' ? 1.45 : tier === 't2' ? 1.25 : 1.12;
         nm.animate([{ transform: 'scale(1)' }, { transform: 'scale(' + k + ')', offset: .3 }, { transform: 'scale(1)' }], { duration: Math.max(260, rollMs), easing: 'ease-out' });
       }
     };
