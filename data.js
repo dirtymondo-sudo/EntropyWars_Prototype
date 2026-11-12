@@ -28087,6 +28087,10 @@ const STORY_QUESTS = [
             { id: 'portal', objective: 'Defeat the two Shadow Entities with the Catgirl.', done: { on: 'fight', fight: 'orientation_portal' } },
         ],
         reward: { unit: 'catgirl', gender: 'female' },
+        /* THE FIRST QUEST (mondo 2026-11-12: "I shouldnt have anyone at all in my roster except for me (door agent). The whole
+           quest is about getting a first party member" + "none of that should be available" of the Range Console's game modes):
+           until this quest is complete the story party is the officer alone and the Range Console deals the tapes only */
+        holds: { party: true, range: true },
     },
 ];
 /* a quest's own fight: the officer's party + `guest` against `enemies` on `site`'s board, story rules (wipeout, nobody
@@ -28186,6 +28190,11 @@ function questLockedUnits(profile) {
     });
     return out;
 }
+/* true while an unfinished quest still HOLDS `key` back ('party' = the story party is the officer alone, 'range' = the
+   Range Console deals the tapes only) */
+function questHolds(profile, key) {
+    return STORY_QUESTS.some(def => { const pr = questProgress(profile, def.id); return !!(def.holds && def.holds[key]) && !(pr && pr.status === 'completed'); });
+}
 /* the window under the strip: the first active quest's title + its current objective */
 function questTracker(profile) {
     for (const def of STORY_QUESTS) {
@@ -28245,7 +28254,7 @@ if (typeof window !== 'undefined') {
     window.questDef = questDef; window.questFightDef = questFightDef; window.questProgress = questProgress;
     window.questEvent = questEvent; window.questLockedUnits = questLockedUnits; window.questTracker = questTracker;
     window.questJournal = questJournal; window.questFightPending = questFightPending; window.questFightLaunch = questFightLaunch;
-    window.questGuestMember = questGuestMember;
+    window.questGuestMember = questGuestMember; window.questHolds = questHolds;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -61118,6 +61127,9 @@ function hqPartyUnlocked(profile) {
     /* THE QUESTS (2026-11-12): a quest's reward unit is not the officer's until that quest is complete (story party only) */
     let held = []; try { held = questLockedUnits(profile); } catch (e) { held = []; }
     if (held.length && !dev) owned = owned.filter(r => held.indexOf(r) < 0 || caught.indexOf(r) >= 0);
+    /* THE FIRST QUEST: until it is complete the story party is the officer alone (what the doors sealed stays) */
+    let solo = false; try { solo = questHolds(profile, 'party'); } catch (e) { solo = false; }
+    if (solo && !dev) owned = owned.filter(r => caught.indexOf(r) >= 0);
     return all.filter(r => (dev || owned.indexOf(r) >= 0) && (typeof isRace3DReady !== 'function' || isRace3DReady(r)));
 }
 /* THE JOBS REMOVAL (2026-09-27): no jobs — every member's class is the one neutral UNIT_CLASS (the old name stays for callers) */
