@@ -1750,6 +1750,13 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
   silhouettes. Now a flag (`_styleMaskRetro`) the retro pass sets. Seen: Training Room on the pmndrs chain and the node renderer's
   WebGL 2 backend, Fairy Forest on node WebGL 2 (proof /mnt/project-files/grass-ink-20261112/). NOT seen: real WebGPU / his Mac,
   the legacy composer, split-screen panes, rigged units standing in the grass (headless drew sprites).
+- THE WHOLE STEP (11-12, mondo: "there are these black screen tears now" in the Main Hall; two shots, dashed black bars across the far
+  floor, on the same screen rows in both): the ink's depth reads sat a FRACTION of a texel out (Thin on a Retina screen = 1.5 texels =
+  the seam between two texels). Depth is read nearest, so on some rows the up read snapped a texel farther than the down read, a flat
+  floor no longer cancelled, and the row took the ink wherever the speckle passed the colour gate. Seen here on real WebGPU (SwiftShader,
+  2x) with Ink Lines Thin; Medium (2.4 texels) was clean here but leaves only 0.1 texel of slack, which his GPU may not give. Now every
+  depth read is on a texel centre, a whole number of texels out, and a width between two whole steps blends the two tests (GLSL `sEdge`,
+  TSL `edgeAt`; 9 depth reads, was 5). Colour reads unchanged. Proof /mnt/project-files/hall-ink-tears/. NOT seen: his Mac.
 - THE STYLE ON A STAGE (11-12, mondo: "make sure the 2 new shaders (ink and the color grade) are on in the party builder as well.
   The 3d models dont have it"): the party builder / creator / intake / codex stage (three-renderer.js EWCharViewer) is a WebGL
   renderer of its OWN on a see-through canvas, so the board's chain never reached it. `ThreePost.styleDraw(r, scene, cam)` draws its
