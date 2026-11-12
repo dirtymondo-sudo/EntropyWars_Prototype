@@ -1738,3 +1738,18 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
   Settings > Video > Unit Lines: Same / Bold / Bolder. Off live: `window.EW_NO_UNIT_INK = true`. A line-weight-by-distance try was
   built and dropped (barely visible on a board). Seen: node WebGL 2 (battle, DOOR HQ), classic WebGL (battle), the row.
   NOT seen: real WebGPU, split-screen panes, a unit behind a wall (the mask has no occluders: the wall's edge there goes bold).
+- THE GRASS TAKES NO INK (11-12, mondo: "adding the ink shader makes the grass look kinda weird to me, like it ends up being a shadowy
+  blob. Can we exclude grass from the shader or tweak whatever is causing that"): two causes. The five light bands cut every clump
+  of THE GRASS FIELD into a lit tip and a near-black foot, and the ink line drew the squares' seams across the field (a tuft writes
+  no depth, so the pass saw the ground under it). Now the style's mask (`_renderPixelMask`) draws the grass mesh once more, alone,
+  with `_ggMaskU.value.x = 1` (three-renderer.js `_ggMat` / node twin `_ewNodeGGrass`): each tuft writes its view depth as
+  log2(1 + z) / 20 in green + blue (16 bits; red stays the units). The style pass (`sGm` / `gmf`, 5 taps: the mask is half size)
+  calls a pixel grass when the scene lies at or behind its tuft, and there it applies the grade only: no bands, no line. A tree, a
+  wall or a body in front of the grass is nearer than the tuft and keeps both. Costs one more draw of the field at half size while
+  Grade + Ink is on. Old look back, live: `window.EW_INK_ON_GRASS = true`. Do NOT encode the depth with the camera's near / far:
+  the mask's and the scene's did not agree.
+  THE MASK WAS FROZEN (same PR): `_styleMaskFor` took "the retro pass drew it this frame" from `_styleMaskAt === _styleFrame - 1`,
+  which its own draw of the last frame also set, so the mask was drawn once and held: the bold unit line sat on the first frame's
+  silhouettes. Now a flag (`_styleMaskRetro`) the retro pass sets. Seen: Training Room on the pmndrs chain and the node renderer's
+  WebGL 2 backend, Fairy Forest on node WebGL 2 (proof /mnt/project-files/grass-ink-20261112/). NOT seen: real WebGPU / his Mac,
+  the legacy composer, split-screen panes, rigged units standing in the grass (headless drew sprites).
