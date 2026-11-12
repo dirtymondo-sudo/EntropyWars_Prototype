@@ -17771,6 +17771,32 @@
             const verb = _TUT_VERB_OF_TOOL[id];
             return verb ? window._tutVerbOk(verb) : (_tutAllowList() === null);
         };
+        /* a quick menu's row (hud.js _computeEnemyActions / Ally / Tile: ids attack, attack:<obj>, combo, spell:<name>, item:<key>,
+           move, moveTowards, jump, climb, takeoff-move, inspect ...): kept only when the step allows its verb; a row that walks
+           first (moveTile) needs MOVE allowed as well */
+        window._tutQuickOk = function (a) {
+            if (!_tut.active) return true;
+            if (_tut.finished || _tut.booting) return false;
+            const allow = _tutAllowList();
+            if (allow === null) return true;
+            const id = String((a && a.id) || '');
+            let verb = null;
+            if (id === 'attack' || id.indexOf('attack:') === 0) verb = 'attack';
+            else if (id === 'combo') verb = 'combo';
+            else if (id.indexOf('spell:') === 0) verb = 'spell';
+            else if (id.indexOf('item:') === 0) verb = 'item';
+            else if (id === 'move' || id === 'moveTowards' || id === 'jump' || id === 'climb' || id === 'takeoff-move') verb = 'move';
+            else if (id === 'inspect') verb = 'inspect';
+            else if (id === 'channel' || id === 'nexus') verb = 'channel';
+            if (!verb) return false;
+            if (a.moveTile && verb !== 'move' && !allow.includes('move')) return false;
+            if (verb === 'spell') {
+                const sid = a.spell && a.spell.id;
+                if (allow.includes('spell')) return true;
+                return !!sid && allow.includes('spell:' + sid);
+            }
+            return allow.includes(verb);
+        };
         /* arming a mode from the keyboard (B, M, A ...) is the same gate as its row */
         window._tutModeOk = function (mode) {
             if (!_tut.active) return true;
@@ -17895,7 +17921,15 @@
             _tutApplyGlow();
             /* the coach fades while a target or tile is being picked (styles-base.css .tut-coach.aiming) */
             const _ce = document.getElementById('tutCoach');
-            if (_ce) _ce.classList.toggle('aiming', !!state.actionMode && !!(_tut.step && _tut.step.goal && _tut.step.goal.type !== 'ack'));
+            /* THE AIM TIP (mondo 2026-11-12: "After I press move for the first time, can it tell the player that yellow tiles are ones
+               they can attack from"): a step's `aim: { <mode>: text }` shows under the body while that mode is armed, and the coach
+               stays solid for it */
+            const _aimTip = (_tut.step && _tut.step.aim && state.actionMode) ? (_tut.step.aim[state.actionMode] || null) : null;
+            try {
+                const _at = document.getElementById('tutCoachAim');
+                if (_at) { const on = !!_aimTip; if (on && _at.getAttribute('data-k') !== state.actionMode) { _at.innerHTML = _tutT(_aimTip); _at.setAttribute('data-k', state.actionMode); } _at.style.display = on ? '' : 'none'; if (!on) _at.removeAttribute('data-k'); }
+            } catch (e) {}
+            if (_ce) _ce.classList.toggle('aiming', !_aimTip && !!state.actionMode && !!(_tut.step && _tut.step.goal && _tut.step.goal.type !== 'ack'));
             if (state.phase !== 'battle') return;
             /* the real-CPU tapes end the way a match does (checkWin stands aside while a lesson runs) */
             if (_tut.lesson && _tut.lesson.cpuAi && !_tut.outcome && !state._actionExecuting) {
@@ -18073,6 +18107,7 @@
                 + (st.title ? '<div class="tut-coach-title">' + escapeHtml(st.title) + '</div>' : '')
                 + '<div class="tut-coach-body">' + _tutT(st.say) + '</div>'
                 + (st.hint && !ack ? '<div class="tut-coach-hint">▶ ' + escapeHtml(_tutT(st.hint)) + '</div>' : '')
+                + (st.aim ? '<div class="tut-coach-aim" id="tutCoachAim" style="display:none"></div>' : '')
                 + (ack ? '<div class="tut-coach-actions"><button class="tut-btn tut-btn-primary" data-tut="continue">' + (isFinish ? 'LESSON COMPLETE ▸' : 'CONTINUE ▸') + '</button></div>' : '')
                 + '<div class="tut-coach-progress" title="step ' + n + ' of ' + total + '"><i style="width:' + Math.round(100 * n / total) + '%"></i></div>';
         }
