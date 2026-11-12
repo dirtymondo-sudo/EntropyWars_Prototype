@@ -7687,3 +7687,33 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 .pb-wall-fspace { flex: 1 1 0; min-width: 0; }
 .pb-wall-filters > .pb-pill-input { flex: 0 0 120px; }
 .pb-wall-filters > .pb-pill-btn { flex: 0 0 auto; white-space: nowrap; }
+
+/* ══ THE QUESTS (2026-11-12): THE TRACKER — the plate under the strip with the current objective (map.js _questTrackerRender);
+   THE JOURNAL — the pause menu's QUESTS page (.hq-qj*). The building's own plate variables, so a theme carries it. ══ */
+#hqPage .hq-quest { position: absolute; top: 58px; right: 16px; z-index: 19; width: min(380px, 42vw); padding: 8px 12px 9px; cursor: pointer;
+  border-radius: var(--hq-r); background: var(--hq-plate-scan), var(--hq-plate-bg); border: 1px solid var(--hq-plate-edge); box-shadow: var(--hq-frame); color: var(--hq-ink);
+  font-family: 'IBM Plex Mono', monospace; }
+#hqPage .hq-quest-hd { display: grid; grid-template-columns: 1fr auto; align-items: baseline; column-gap: 8px; row-gap: 3px; padding-bottom: 5px; margin-bottom: 5px; border-bottom: 1px solid var(--hq-row-edge); }
+#hqPage .hq-quest-hd b { font-size: 8px; letter-spacing: 0.26em; color: var(--hq-sel); }
+#hqPage .hq-quest-hd i { font-style: normal; font-size: 8px; letter-spacing: 0.18em; color: var(--hq-ink-mute); white-space: nowrap; }
+#hqPage .hq-quest-hd span { grid-column: 1 / -1; min-width: 0; font-family: 'Cormorant SC', serif; font-size: 13px; letter-spacing: 0.08em; line-height: 1.2; overflow-wrap: break-word; text-shadow: var(--hq-tshadow); }
+#hqPage .hq-quest-obj { font-size: 11px; line-height: 1.45; color: var(--hq-ink); overflow-wrap: break-word; }
+#hqPage .hq-quest-obj::before { content: '▶ '; color: var(--hq-sel); }
+/* the pause menu's command column scrolls on a short screen (an eleventh command since THE QUESTS) */
+#hqPage .hq-pause-nav { overflow-y: auto; min-height: 0; scrollbar-width: thin; scrollbar-color: rgba(184,160,96,0.4) transparent; }
+#hqPage .hq-pause-nav .hq-pause-cmd { flex-shrink: 0; }
+.hq-qj { padding: 12px 14px; margin: 0 0 10px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); }
+.hq-qj.done { opacity: 0.82; }
+.hq-qj-hd { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.hq-qj-hd b { font-family: 'Cormorant SC', serif; font-size: 20px; letter-spacing: 0.14em; overflow-wrap: anywhere; }
+.hq-qj-hd .hq-lamp-chip { margin-top: 0; white-space: nowrap; }
+.hq-qj-sum { font-size: 12px; line-height: 1.5; color: #cfc9b8; margin: 6px 0 8px; }
+.hq-qj-stages { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.hq-qj-stages li { display: grid; grid-template-columns: 16px 1fr; gap: 6px; font-size: 12px; line-height: 1.45; }
+.hq-qj-stages li i { font-style: normal; color: #39ff6a; }
+.hq-qj-stages li.done span { color: #8f8878; }
+.hq-qj-stages li.cur i { color: #ffb020; }
+.hq-qj-stages li.cur span { color: #ece7d8; }
+.hq-qj-rw { display: flex; align-items: baseline; gap: 10px; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(184,160,96,0.28); }
+.hq-qj-rw b { font-size: 8px; letter-spacing: 0.24em; color: #b8a060; }
+.hq-qj-rw span { font-size: 11px; letter-spacing: 0.06em; color: #ece7d8; }
