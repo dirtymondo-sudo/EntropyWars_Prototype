@@ -369,6 +369,15 @@ def fit(name, gender, src, bodies_dir):
         if k_ and len(k_) < len(bmv.faces):
             bmesh.ops.delete(bmv, geom=k_, context='FACES'); bmesh.ops.delete(bmv, geom=[v for v in bmv.verts if not v.link_faces], context='VERTS')
             bmesh.ops.triangulate(bmv, faces=bmv.faces[:])
+            # (+ ONE SIDE LIKE THE OTHER, mondo "keep improving them": the skin cut bit deeper into one arm opening than the other, spikes of
+            # several faces stood behind her right arm. Out past the neck a face stays only when every corner of it, mirrored across the
+            # middle, lies within MIRD 1.2 cm of the cloth on the other side: both openings take the smaller, smoother shape)
+            if E('MIRD', 0.012):
+                bmv.faces.ensure_lookup_table(); bv_ = BVHTree.FromBMesh(bmv)
+                t_ = [f for f in bmv.faces if f.calc_center_median().z > za and abs(f.calc_center_median().x - eye.x) > sx
+                      and any((lambda h_: h_[0] is None or h_[3] > E('MIRD', 0.012))(bv_.find_nearest(Vector((2 * eye.x - v.co.x, v.co.y, v.co.z)))) for v in f.verts)]
+                if t_ and len(t_) < 0.5 * len(bmv.faces):
+                    bmesh.ops.delete(bmv, geom=t_, context='FACES'); bmesh.ops.delete(bmv, geom=[v for v in bmv.verts if not v.link_faces], context='VERTS'); dropped.append(('not on both sides', len(t_)))
             # (+ the teeth the skin cut left on the other edges, behind her arm: a triangle with two free edges is a tooth, it goes; EARS 4 rounds)
             for _ in range(int(E('EARS', 4))):
                 t_ = [f for f in bmv.faces if f.calc_center_median().z > za and sum(1 for e in f.edges if len(e.link_faces) == 1) >= 2]
@@ -537,8 +546,8 @@ def fit(name, gender, src, bodies_dir):
                     v_ = pm.vertices[i_]
                     if j_ in ks and i_ not in ks and eyeM[2] - E('OPENZ', 0.42) < v_.co.z < eyeM[2] - 0.1 and abs(v_.co.x - eyeM[0]) < E('OPENX', 0.17) and (bvh.ray_cast(v_.co + v_.normal * 0.004, Vector((0, -1, 0)), 1.0)[0] is not None or abs(v_.co.x - eyeM[0]) < E('OPENX2', 0.125) and not (lambda h_: h_[0] is not None and h_[1].dot(v_.normal) > 0.2)(bvh.ray_cast(v_.co, -v_.normal, E('OPENBACK', 0.06)))): add_.add(i_)
             ks |= add_
-    if BAREARMS:   # (the same saw teeth round a sleeveless dress's arm openings and straps: the shown skin grows BARING rings there, from BAX out)
-        for _ in range(int(E('BARING', 2))):
+    if BAREARMS:   # (the same saw teeth round a sleeveless dress's arm openings and straps: the shown skin grows BARING ring there, from BAX out)
+        for _ in range(int(E('BARING', 1))):
             ks |= set(i_ for e_ in pm.edges for i_, j_ in (tuple(e_.vertices), tuple(e_.vertices)[::-1]) if j_ in ks and i_ not in ks
                       and pm.vertices[i_].co.z > eyeM[2] - E('BAZ', 0.45) and abs(pm.vertices[i_].co.x - eyeM[0]) > E('BAX', 0.09))
     hidden = [i for i in range(len(pm.vertices)) if i not in ks]
@@ -629,7 +638,7 @@ def fit(name, gender, src, bodies_dir):
                 if v.co.z > eyeM[2] - E('BAZ', 0.45):   # (+ it moves with that skin: with the arm's weight taken off, her shoulder rose through the strap when the arm came down)
                     c_, k_, d_ = kda_.find(v.co); n_ = pm.vertices[k_].normal; h_ = (v.co - c_).dot(n_)
                     if h_ < E('STRAPOFF', 0.01) and d_ < E('STRAPIN', 0.1): v.co = v.co + n_ * (E('STRAPOFF', 0.01) - h_); ns_ += 1
-                    if d_ < E('STRAPNEAR', 0.03): strapw[v.index] = k_
+                    if d_ < E('STRAPNEAR', 0.08): strapw[v.index] = noarm[kdb.find(v.co)[1]]   # (the nearest skin that is not arm: the back of the dress beside her arm took the arm's weight and stood out in spikes)
             if ns_: print('[bake-outfit] %s: %d cloth vertices lifted onto the skin' % (name, ns_), flush=True)
         # THE BACK UNDER LONG HAIR (--bodysuit --longhair; mummy: tan flecks on her hair at the back): Meshy modelled the suit
         # round her own hair, its lumps stand through the creator hair that lies on her back. The suit's upper back lies
