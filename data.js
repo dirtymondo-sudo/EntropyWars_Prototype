@@ -28292,7 +28292,7 @@ const STORY_CUTSCENES = {
             { shot: { look: { mid: ['unit:locke', 'unit:player'] }, from: 'portal', az: -16, h: 0.8, el: 0, dist: 3.4, fov: 32, to: { dist: 3.0 } },
               say: { who: 'AGENT LOCKE', text: 'Unauthorized doorway. Recruit, on me. Orientation is over.' } },
             /* C6 · the pounce: from behind Kit, low, quarter speed; the cut to the fight comes in mid air */
-            { dur: 2.1, hold: true, shot: { look: { mid: ['seat:foe1', 'seat:foe2'] }, from: 'unit:guest', over: 1.3, az: 4, h: 0.7, el: -3, fov: 38, to: { fov: 33 } },
+            { dur: 2.1, hold: true, shot: { look: { mid: ['seat:foe1', 'seat:foe2'] }, from: 'unit:guest', over: 1.9, az: 5, h: 0.62, el: 1.5, fov: 40, to: { fov: 35 } },
               slow: { at: 0.35, scale: 0.25, ms: 2400 },
               act: [{ at: 0.2, do: 'pounce', who: 'foe1', to: 'unit:guest', ms: 760 }, { at: 0.3, do: 'pounce', who: 'foe2', to: 'unit:guest', ms: 760 }] },
         ],
