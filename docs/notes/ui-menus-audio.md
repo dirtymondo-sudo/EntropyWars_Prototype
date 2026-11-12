@@ -2716,3 +2716,14 @@ team's score number, like in the same spot"): the digits step out, the +N holds,
   cinematic / close-up / centre banner / spell shot / end of round. styles-hud.css keeps `.ew-mmap` up while it is on
   (the UI Maker's "Also while you pick a tile or a target" still hides it while aiming). The combat log is untouched.
 - Viewer-local (a body class), nothing relayed; the guest's own turn runs the same test.
+
+### THE PREVIEWS ON THE MINIMAP (2026-11-12, mondo: "I also want the minimap to kind of mirror the spell previews and have arrows and tile highlights and damage aoes etc, like a simplified mini version of the board"; mock-up OK'd "looks good, go ahead")
+- ONE SOURCE: three-renderer.js `_mmPreview` reads what the board shows this frame: every visible plate in `highlightGroup`
+  (the selection's reach from rebuildHighlights + every `setOverlay` layer), the board's arrows (`_arrowBuilds`, in the UI
+  Maker's arrow colours) and the hover cursor. So it cannot disagree with the board, it carries the tile colours
+  (spellAimSide: harm red, support green) and it is the viewer's own (the board never paints the other seat's aim; nothing relayed).
+- Reach (`_OVERLAY_STYLE` fill < 0.5, and the selection's reach) = a faint wash; hit / landing plates (fill >= 0.5) = solid
+  squares; a unit standing on a solid square gets a white ring; arrows flat from above; the cursor = a white square.
+- Left out (`_MM_PV_SKIP`): zones, weather, telegraphs, the action glow, the hovered enemy's range, the Inspect search map.
+- UI Maker > Layout > Minimap > Previews: gPvReach / gPvArea / gPvArrow / gPvCursor (on) + gPvOp (MMAP_DEF pv*).
+- Proof (WebGL2 headless): /mnt/project-files/minimap/previews-20261112/. Not seen: WebGPU, online guest, round / turned / near views.
