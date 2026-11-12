@@ -5237,3 +5237,14 @@ Two causes, both viewer-local camera only (no state, nothing to relay):
   past the horizon (tilt > 90 keeps the old floor rule), the root two-shot with the lift added.
 - Tune: PANEL_LIFT_SHARE (0.5 since his same-day follow-up "a little lower, like somewhere in between": half way from the
   screen's middle to the band's middle; the first cut went all the way) and PANEL_LIFT_MAX.
+
+## THE PANEL CENTRE (2026-11-12, mondo, Infernal Hurl's landing pick on Hollow Earth) — battle.js
+mondo: "now that the battle panel sits kinda more towards the bottom of the screen, can we fix this framing that is showing the board on the right side of the screen".
+- THE CLEAR DROP (`_clearDropFrame`) searched its slide from -0.3 to 0.8 across, made for menus down the left side; with THE
+  ONE BATTLE PANEL up it parked the landing squares in the strip beside the panel. With the panel up the search is
+  ±PANEL_CENTRE_CX (0.05) across and -0.1..0.55 up: centred, raised over the panel, every square still clickable.
+- `_menuFreeArea` (sub menu up over the panel): the strip beside a bay is only taken when the band over the whole panel is
+  under PANEL_CENTRE_MIN_BAND (0.3) of the screen; else the full width over it (cx 0) for the range fit and the two-shot.
+- Kill switch `EW_NO_PANEL_CENTRE`. Classic layout unchanged. Viewer-local camera only.
+- Proof /mnt/project-files/unit-frame-20261112/infernal_hurl_before_top_after_bottom.jpg (1728x904: slide cx 0.1 -> 0; his
+  larger window gave far more). Seen at ±0.1; shipped ±0.05 without a second look. Not checked: his Mac, online guest, toss picks.
