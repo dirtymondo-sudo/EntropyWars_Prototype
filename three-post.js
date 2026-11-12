@@ -3219,7 +3219,7 @@ const ThreePost = (function () {
         P.U = { cu: cu, ru: ru, ao: aoU, dofH: dofHU, dofV: dofVU, tone: toneU };
         P.cineOn = T.uniform(0); P.retroOn = T.uniform(0);
         // THE ENTROPY STYLE: its own uniforms (written each frame in _ngRender)
-        P.st = { mode: T.uniform(0), inkW: T.uniform(1), dist: T.uniform(1), ink: T.uniform(0.8), bands: T.uniform(0.7), amount: T.uniform(1),
+        P.st = { mode: T.uniform(0), inkW: T.uniform(1), ink: T.uniform(0.8), bands: T.uniform(0.7), amount: T.uniform(1),
             p00: T.uniform(1).onRenderUpdate(function () { return P.cam ? (P.cam.projectionMatrix.elements[0] || 1) : 1; }) };
         P.bS = T.uniform(0); P.bR = T.uniform(0); P.bT = T.uniform(1);
         P.ph = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); P.ph.needsUpdate = true;
@@ -3653,7 +3653,7 @@ const ThreePost = (function () {
         if (_bloomPass && _bloomPass.enabled) { P.bS.value = Math.max(0, _bloomPass.strength); P.bR.value = Math.max(0, Math.min(1, _bloomPass.radius)); P.bT.value = _bloomPass.threshold; }
         P.cineOn.value = (_cinematicPass && _cinematicPass.enabled) ? 1 : 0;
         P.retroOn.value = (_retroPass && _retroPass.enabled) ? 1 : 0;
-        P.st.mode.value = _styleMode(); P.st.inkW.value = _styleInkPx(); P.st.dist.value = _styleDist(); P.st.ink.value = +_style.ink || 0; P.st.bands.value = +_style.bands || 0; P.st.amount.value = (_style.amount === undefined) ? 1 : +_style.amount;
+        P.st.mode.value = _styleMode(); P.st.inkW.value = _styleInkPx(); P.st.ink.value = +_style.ink || 0; P.st.bands.value = +_style.bands || 0; P.st.amount.value = (_style.amount === undefined) ? 1 : +_style.amount;
         if (e.raySrc) e.raySrc.autoUpdate = P.cineOn.value > 0.5 && P.U.cu.uRays.value > 0.001;   // THE RAY SOURCE: drawn only while the rays are on
         var mt = P.U.ru.tMask.value; P.maskTex.value = mt || P.ph;
         var ac = r.autoClear;
@@ -4438,7 +4438,7 @@ const ThreePost = (function () {
        A bright saturated pixel (a spell, a team outline, a zone wash: own cyan-blue / enemy pink-orange) keeps its colour
        and takes no ink. No bloom, no fog, no texture touched; the HUD is DOM and never passes through here. Viewer-local.
        Settings > Video > Entropy Style: Off / Grade / Grade + Ink. Stored ew_style. Off live: window.EW_NO_ENTROPY_STYLE. */
-    var _style = { mode: 'ink', inkWidth: 1.6, ink: 0.8, bands: 0.7, amount: 1, dist: 1 };   // Medium lines: mondo 11-12 "i like it with the lines on medium"
+    var _style = { mode: 'ink', inkWidth: 1.6, ink: 0.8, bands: 0.7, amount: 1 };   // Medium lines: mondo 11-12 "i like it with the lines on medium"
     try {
         var _styleSaved = (typeof localStorage !== 'undefined') ? JSON.parse(localStorage.getItem('ew_style') || 'null') : null;
         if (_styleSaved && typeof _styleSaved === 'object') { for (var _sk in _style) { if (_styleSaved[_sk] !== undefined) _style[_sk] = _styleSaved[_sk]; } }
@@ -4452,7 +4452,6 @@ const ThreePost = (function () {
         var r = 1; try { r = (_renderer && _renderer.getPixelRatio) ? _renderer.getPixelRatio() : 1; } catch (e) {}
         return Math.max(0.5, +_style.inkWidth || 1) * Math.max(1, r * 0.75);
     }
-    function _styleDist() { return (_style.dist === undefined) ? 1 : Math.max(0, Math.min(1, +_style.dist || 0)); }
     function _styleCam() { return (_ssaoPass && _ssaoPass.camera) || null; }
     /* the classic chains' uniforms, written at the pass's own draw */
     function _styleSync(u, w, h, cam, depthTex) {
@@ -4460,7 +4459,7 @@ const ThreePost = (function () {
         if (m > 1 && (!depthTex || !cam)) m = 1;   // no depth to read: the grade alone
         u.uMode.value = m; u.tDepth.value = depthTex || null;
         u.uRes.value.set(Math.max(1, w), Math.max(1, h));
-        u.uInkW.value = _styleInkPx(); u.uInkDist.value = _styleDist(); u.uInk.value = +_style.ink || 0; u.uBands.value = +_style.bands || 0; u.uAmount.value = (_style.amount === undefined) ? 1 : +_style.amount;
+        u.uInkW.value = _styleInkPx(); u.uInk.value = +_style.ink || 0; u.uBands.value = +_style.bands || 0; u.uAmount.value = (_style.amount === undefined) ? 1 : +_style.amount;
         if (cam) { u.uNearFar.value.set(cam.near || 0.1, cam.far || 1000); u.uOrtho.value = cam.isOrthographicCamera ? 1 : 0; u.uP00.value = cam.projectionMatrix.elements[0] || 1; }
     }
     function _styleApply() {
@@ -4478,11 +4477,11 @@ const ThreePost = (function () {
         _style[key] = v;
         if (persist !== false) { try { localStorage.setItem('ew_style', JSON.stringify(_style)); } catch (e) {} }
     }
-    function getStyle() { return { mode: _style.mode, dist: _styleDist(), inkWidth: _style.inkWidth, ink: _style.ink, bands: _style.bands, amount: _style.amount, live: _styleMode() }; }
+    function getStyle() { return { mode: _style.mode, inkWidth: _style.inkWidth, ink: _style.ink, bands: _style.bands, amount: _style.amount, live: _styleMode() }; }
     var _StyleShader = {
         uniforms: {
             'tDiffuse': { value: null }, 'tDepth': { value: null },
-            'uRes': { value: new THREE.Vector2(1, 1) }, 'uMode': { value: 0 }, 'uInkW': { value: 1 }, 'uInkDist': { value: 1 }, 'uInk': { value: 0.8 }, 'uBands': { value: 0.7 },
+            'uRes': { value: new THREE.Vector2(1, 1) }, 'uMode': { value: 0 }, 'uInkW': { value: 1 }, 'uInk': { value: 0.8 }, 'uBands': { value: 0.7 },
             'uAmount': { value: 1 }, 'uNearFar': { value: new THREE.Vector2(0.1, 1000) }, 'uOrtho': { value: 0 }, 'uP00': { value: 1 }
         },
         vertexShader: [
@@ -4498,7 +4497,6 @@ const ThreePost = (function () {
             'uniform vec2 uRes;',
             'uniform float uMode;',
             'uniform float uInkW;',
-            'uniform float uInkDist;',
             'uniform float uInk;',
             'uniform float uBands;',
             'uniform float uAmount;',
@@ -4529,19 +4527,15 @@ const ThreePost = (function () {
             '    float l = max(sLum(c), 0.001), lb = l * 5.0;',
             '    float q = (floor(lb) + smoothstep(0.35, 0.65, fract(lb))) / 5.0;',
             '    g = c * (mix(l, q, uBands) / l);',
+            '    vec2 px = uInkW / uRes;',
             '    float zc = max(sVz(vUv), 0.0001);',
-            '    // THE LINE WEIGHT: a body nearer than what the camera looks at takes a bolder line, far scenery a finer and fainter one',
-            '    float wk = 1.0;',
-            '    if (uOrtho < 0.5 && uInkDist > 0.001) { float zr = min(sVz(vec2(0.5, 0.5)), sVz(vec2(0.5, 0.4))); wk = mix(1.0, clamp(1.25 * zr / zc, 0.4, 1.7), uInkDist); }',
-            '    float iw = max(uInkW * wk, 1.0), fade = clamp(uInkW * wk, 0.0, 1.0);   // under one pixel the line thins by fading, never by breaking up',
-            '    vec2 px = iw / uRes;',
             '    float lap = sQ(sVz(vUv + vec2(px.x, 0.0))) + sQ(sVz(vUv - vec2(px.x, 0.0))) + sQ(sVz(vUv + vec2(0.0, px.y))) + sQ(sVz(vUv - vec2(0.0, px.y))) - 4.0 * sQ(zc);',
             '    float dz = uOrtho > 0.5 ? lap : -lap * zc * zc;   // > 0: the neighbours lie farther, this pixel is the near side',
-            '    float wpp = (uOrtho > 0.5 ? 1.0 : zc) * 2.0 / (uP00 * uRes.x) * iw;   // one line width in world units at this depth',
+            '    float wpp = (uOrtho > 0.5 ? 1.0 : zc) * 2.0 / (uP00 * uRes.x) * uInkW;   // one line width in world units at this depth',
             '    edge = smoothstep(0.9, 2.6, dz / max(wpp, 0.0000001));',
             '    // only where the eye sees the break too: a far shape lost in the fog, or two faces of one colour, take no line',
             '    float cd = max(max(length(texture2D(tDiffuse, vUv + vec2(px.x, 0.0)).rgb - c), length(texture2D(tDiffuse, vUv - vec2(px.x, 0.0)).rgb - c)), max(length(texture2D(tDiffuse, vUv + vec2(0.0, px.y)).rgb - c), length(texture2D(tDiffuse, vUv - vec2(0.0, px.y)).rgb - c)));',
-            '    edge *= smoothstep(0.03, 0.10, cd) * fade;',
+            '    edge *= smoothstep(0.03, 0.10, cd);',
             '  }',
             '  g = mix(c, mix(sGrade(g), g, k * 0.8), uAmount);',
             '  g = mix(g, vec3(0.07, 0.06, 0.13), edge * uInk * (1.0 - k));',
@@ -4575,19 +4569,15 @@ const ThreePost = (function () {
                 var l = T.max(lum(c), 0.001), lb = l.mul(5);
                 var q = T.floor(lb).add(T.smoothstep(0.35, 0.65, T.fract(lb))).div(5);
                 g.assign(c.mul(T.mix(l, q, S.bands).div(l)));
+                var px = V2(S.inkW).div(P.uDRes).toVar();
                 var zc = T.max(vz(u), 0.0001).toVar();
-                // THE LINE WEIGHT: a body nearer than what the camera looks at takes a bolder line, far scenery a finer and fainter one
-                var zr = T.min(vz(V2(0.5, 0.5)), vz(V2(0.5, 0.4)));
-                var wk = T.select(ortho, F(1), T.mix(F(1), T.clamp(zr.mul(1.25).div(zc), 0.4, 1.7), S.dist)).toVar();
-                var iw = T.max(S.inkW.mul(wk), 1).toVar(), fade = T.clamp(S.inkW.mul(wk), 0, 1);   // under one pixel the line thins by fading, never by breaking up
-                var px = V2(iw).div(P.uDRes).toVar();
                 var lap = qf(vz(u.add(V2(px.x, 0)))).add(qf(vz(u.sub(V2(px.x, 0))))).add(qf(vz(u.add(V2(0, px.y))))).add(qf(vz(u.sub(V2(0, px.y))))).sub(qf(zc).mul(4)).toVar();
                 var dz = T.select(ortho, lap, lap.negate().mul(zc).mul(zc));
-                var wpp = T.select(ortho, F(1), zc).mul(2).div(S.p00.mul(P.uDRes.x)).mul(iw);
+                var wpp = T.select(ortho, F(1), zc).mul(2).div(S.p00.mul(P.uDRes.x)).mul(S.inkW);
                 // only where the eye sees the break too: a far shape lost in the fog, or two faces of one colour, take no line
                 var cdf = function (o) { return T.length(T.clamp(tex.sample(u.add(o)).rgb, 0, 1).sub(c)); };
                 var cd = T.max(T.max(cdf(V2(px.x, 0)), cdf(V2(px.x.negate(), 0))), T.max(cdf(V2(0, px.y)), cdf(V2(0, px.y.negate()))));
-                edge.assign(T.smoothstep(0.9, 2.6, dz.div(T.max(wpp, 0.0000001))).mul(T.smoothstep(0.03, 0.10, cd)).mul(fade));
+                edge.assign(T.smoothstep(0.9, 2.6, dz.div(T.max(wpp, 0.0000001))).mul(T.smoothstep(0.03, 0.10, cd)));
             });
             g.assign(T.mix(c, T.mix(grade(g), g, k.mul(0.8)), S.amount));
             g.assign(T.mix(g, V3(0.07, 0.06, 0.13), edge.mul(S.ink).mul(F(1).sub(k))));
