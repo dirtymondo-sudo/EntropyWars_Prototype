@@ -1933,3 +1933,11 @@ fake-light cards + the loose textures folder + the licence PDF are pack source i
 Ten Meshy props swapped to it the same day (MODEL_LIST §12b table; catalogue `base: 'psxmp'`, _MISC_GLB `psxmp/...` via the
 sprites.js EW_ASSET_MOVES alias `Assets/misc/psxmp/`; facings measured from vertices, never renders). MODEL_LIST §12b = the inventory, the licence rules (no AI use of any kind, no standalone
 redistribution, never in the repo) and the Meshy / code swap candidates by name. Credited in data.js EW_CREDITS.
+
+## THE PROCEDURAL RIGS IN THE TEAM ROOM (2026-11-12)
+- mondo on Select Your Team: "the occulus eyeball doesnt show up on this screen, only the wings". The team room (`_trBuildMember`)
+  never read `entry.procClips`: a boneless assembly (Occulus, Seraphim, UFO forms, chess pieces, unicorn) got no core eye
+  (`_procRigAttachEye`) and no mixer, so it stood as its bare file, still. Now like the dock and the viewer: the eye goes on after
+  the room's look, the assembly's own `idle` clip plays, its clips feed the room's poses, and `_procRigEyeTrack(eye, T.camera)`
+  (new optional camera argument) turns the eye to the room's camera. The board is untouched.
+- Proof: /mnt/project-files/oculus-team-room/oculus_eye_on_team_select.jpg (headless, WebGL2).
