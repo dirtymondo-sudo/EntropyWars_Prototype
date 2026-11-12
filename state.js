@@ -3545,7 +3545,8 @@
                 race,
                 types: [...(raceProfile.types || [])],
                 gender,
-                appearance: lookRace && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(identity.appearance) : null,
+                appearance: (identity.appearance && typeof identity.appearance.cast === 'string' && identity.appearance.cast) ? { cast: identity.appearance.cast }   // THE CAST ON THE BOARD (sprites.js getRace3DModel): a story character's own model
+                    : (lookRace && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(identity.appearance) : null),
                 zodiac: identity.zodiac || archetype.zodiac || 'aries',
                 sleepPreference: identity.sleepPreference || archetype.sleepPreference || 'none',
                 terrainPreference: getTerrainPreferenceForRace(race),

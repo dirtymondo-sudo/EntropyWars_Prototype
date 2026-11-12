@@ -59053,12 +59053,12 @@
                 const i = parseInt(String(u.id).split('-')[1], 10); const m = Number.isFinite(i) ? metas[i] : null;
                 if (!m || m.partyId) return;
                 const k = list.findIndex((a, j) => !used.has(j) && a.race === m.race);
-                if (k >= 0) { used.add(k); out.push({ u, m: { questTactic: list[k].tactic || null } }); }
+                if (k >= 0) { used.add(k); out.push({ u, m: { questTactic: list[k].tactic || null, cast: list[k].cast || null, gender: list[k].gender || null } }); }
             });
             return out;
         }
         function _questFightAuto() {
-            try { _questFightAllies().forEach(({ u, m }) => { const t = m.questTactic; if (t && (typeof UNIT_TACTIC_IDS === 'undefined' || UNIT_TACTIC_IDS.indexOf(t) >= 0) && !u.tactic) u.tactic = t; }); } catch (e) { console.warn('[QUEST] the ally tactic failed', e); }
+            try { _questFightAllies().forEach(({ u, m }) => { const t = m.questTactic; if (t && (typeof UNIT_TACTIC_IDS === 'undefined' || UNIT_TACTIC_IDS.indexOf(t) >= 0) && !u.tactic) u.tactic = t; if (m.cast && !(u.appearance && u.appearance.cast === m.cast)) { u.appearance = { cast: m.cast }; if (m.gender) u.gender = m.gender; } }); } catch (e) { console.warn('[QUEST] the ally tactic failed', e); }
         }
         function _questFightBodies() {
             const er = _encRun(), F = er && er.quest; if (!F) return null;
