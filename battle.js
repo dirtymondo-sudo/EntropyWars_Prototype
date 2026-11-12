@@ -59040,11 +59040,32 @@
             const metas = (state.partyMeta && state.partyMeta[1]) || [];
             return (state.units || []).find(u => { if (!u || u.player !== 1 || u.dead) return false; const i = parseInt(String(u.id).split('-')[1], 10); const m = Number.isFinite(i) ? metas[i] : null; return !!(m && !m.partyId && m.race === g.race); }) || null;
         }
+        /* the fight's ALLIES (data.js QUEST_FIGHTS.allies — Agent Locke): the human seat's bodies that are no party member and
+           carry the ally mark; each goes on its Tactic so the CPU's brain plays its turns (mondo: "on auto") */
+        function _questFightAllies() {
+            const er = _encRun(), F = er && er.quest, list = (F && Array.isArray(F.allies)) ? F.allies : [];
+            if (!list.length) return [];
+            const metas = (state.partyMeta && state.partyMeta[1]) || [];
+            const out = [], used = new Set();
+            /* matched like the guest: no partyId (the launch keeps that; other marks on the meta do not survive it) + the ally's race */
+            (state.units || []).forEach(u => {
+                if (!u || u.player !== 1) return;
+                const i = parseInt(String(u.id).split('-')[1], 10); const m = Number.isFinite(i) ? metas[i] : null;
+                if (!m || m.partyId) return;
+                const k = list.findIndex((a, j) => !used.has(j) && a.race === m.race);
+                if (k >= 0) { used.add(k); out.push({ u, m: { questTactic: list[k].tactic || null } }); }
+            });
+            return out;
+        }
+        function _questFightAuto() {
+            try { _questFightAllies().forEach(({ u, m }) => { const t = m.questTactic; if (t && (typeof UNIT_TACTIC_IDS === 'undefined' || UNIT_TACTIC_IDS.indexOf(t) >= 0) && !u.tactic) u.tactic = t; }); } catch (e) { console.warn('[QUEST] the ally tactic failed', e); }
+        }
         function _questFightBodies() {
             const er = _encRun(), F = er && er.quest; if (!F) return null;
             return { F, guest: _questGuestUnit(), foes: (state.units || []).filter(u => u && u.player === 2 && !u.dead && !u._benched) };
         }
         function _questFightSeat() {
+            _questFightAuto();
             const B = _questFightBodies(); if (!B || !B.F.seats) return false;
             const W = bw(), H = bh();
             const put = (u, seat) => {
@@ -59069,6 +59090,7 @@
             return true;
         }
         function _questFightArrive() {
+            _questFightAuto();
             const B = _questFightBodies(); if (!B || !B.F.portal) return false;
             const P = B.F.portal;
             try { addLog(`🚪 A portal forms. ${B.guest ? unitDisplayName(B.guest) : 'Someone'} comes through it${B.foes.length ? ', and ' + B.foes.length + ' ' + (B.foes.length === 1 ? 'enemy comes' : 'enemies come') + ' after' : ''}.`); } catch (e) {}
@@ -74607,7 +74629,7 @@
                     return 0;
                 }
             }
-            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('attack', unit)) return 0;
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && (!window._tutActionAllowed('attack', unit) || (typeof window._tutTargetOk === 'function' && !window._tutTargetOk(x, y)))) return 0;
             _imitObserve(unit, { type: 'attack', x, y });
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') {
                 const _tutTgt = unitAt(x, y);
@@ -79412,7 +79434,7 @@
                 return 0;
             }
 
-            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('spell', unit, spell.id)) return 0;
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && (!window._tutActionAllowed('spell', unit, spell.id) || (typeof window._tutTargetOk === 'function' && !window._tutTargetOk(x, y)))) return 0;
             _imitObserve(unit, { type: 'spell', x, y, spellId: spell.id, spellName: spell.name });
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('spell', { uid: unit.id, x, y, spellId: spell.id });
 

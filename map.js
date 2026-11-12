@@ -5001,6 +5001,10 @@
                 const p = _hqProfile();
                 if (p && typeof window.hqPartyForLaunch === 'function') {
                     if (typeof window.hqPartyRecord === 'function' && !window.hqPartyRecord(p)) _hqPartySeed();
+                    /* THE PRUNE BEFORE EVERY FIGHT (mondo 2026-11-12: "it gives me bigfoot and honda civic out of no where"): a party
+                       filed before a unit was locked still carried it, and only a NEW filing pruned. Whoever the officer may not
+                       field is relieved here (never the officer; data.js hqPartyPrune) */
+                    else if (typeof window.hqPartyPrune === 'function') _hqPartyTx(q => { const r = window.hqPartyPrune(q); return !!(r && r.dropped && r.dropped.length); });
                     if (typeof window.hqPartyStock === 'function') _hqPartyTx(q => window.hqPartyStock(q));   // THE POCKETS (2026-09-20): topped up from the bag before every fight
                     out = window.hqPartyForLaunch(_hqProfile());
                 }
@@ -5021,12 +5025,15 @@
                    the shift for this fight only; she carries no partyId, so nothing of hers is written back to the party) */
                 try {
                     const g = (L.quest && typeof window.questGuestMember === 'function') ? window.questGuestMember(L.quest, L.partyLevel) : null;
-                    if (g && Array.isArray(party.members)) {
+                    /* the fight's ALLIES (Agent Locke) stand right after the first shift, the guest after them */
+                    const al = (L.quest && typeof window.questAllyMembers === 'function') ? window.questAllyMembers(L.quest) : [];
+                    const extra = al.concat(g ? [g] : []);
+                    if (extra.length && Array.isArray(party.members)) {
                         const at = Math.max(0, Math.min(party.members.length, (party.deploy | 0) || party.members.length));
-                        party.members.splice(at, 0, g);
-                        if (Array.isArray(party.ids)) party.ids.splice(at, 0, null);
-                        party.questDeploy = at + 1;
-                        L.teamSize = Math.max(L.teamSize | 0, at + 1);
+                        party.members.splice(at, 0, ...extra);
+                        if (Array.isArray(party.ids)) party.ids.splice(at, 0, ...extra.map(() => null));
+                        party.questDeploy = at + extra.length;
+                        L.teamSize = Math.max(L.teamSize | 0, at + extra.length);
                     }
                 } catch (e) { console.warn('[QUEST] the guest could not be seated', e); }
             }

@@ -6603,6 +6603,8 @@ function _hrlgTargetBlades(unit, st, mode) {
     titleText = st.selectedTool || 'Spell'; titleIcon = '✦';
   }
   const isOffensive = mode === 'attack' || (spell && !['heal', 'shield', 'buff', 'scan'].includes(spell.kind));
+  /* THE TUTORIAL's one target: a step that names its target lists only that row (ui.js _tutTargetIs) */
+  if (typeof window !== 'undefined' && window._tutActive && typeof window._tutTargetIs === 'function') targets = targets.filter(t => window._tutTargetIs(t.x, t.y));
 
   const blades = targets.map((t, i) => {
     let label = '', hpVal = 0, hpMax = 0, tUnit = t.unit || null;
@@ -10350,14 +10352,16 @@ function _hrlgSelfCastRow(blade, actingUnit, spell, key) {
 /* THE TUTORIAL's quick menus (mondo 2026-11-12: "I can still click on an enemy and it brings up their quick action list where i
    can select a spell, when tutorial wants me to attack, so clicking a spell does nothing ... those should be hidden/disabled,
    only attack available"): a clicked unit's / square's list keeps only the rows the live step allows (ui.js _tutQuickOk) */
-function _tutQuickRows(actions) {
+function _tutQuickRows(actions, onUnit) {
   if (typeof window === 'undefined' || !window._tutActive || typeof window._tutQuickOk !== 'function' || !Array.isArray(actions)) return actions;
-  return actions.filter(a => a && window._tutQuickOk(a));
+  /* a clicked unit that is not the step's one target keeps no attack / cast row (walking toward it stays) */
+  const wrong = !!(onUnit && typeof window._tutTargetIs === 'function' && !window._tutTargetIs(onUnit.x, onUnit.y));
+  return actions.filter(a => a && window._tutQuickOk(a) && !(wrong && !/^(move|moveTowards|jump|climb|takeoff-move)$/.test(String(a.id || ''))));
 }
 function _hrlgEnemyBlades(actingUnit, st) {
   const targetUnit = (st.units || []).find(u => u.id === st._enemyActionTargetId && !u.dead);
   if (!targetUnit) return { title: null, blades: [] };
-  const actions = _tutQuickRows(_computeEnemyActions(actingUnit, targetUnit));   // THE TUTORIAL: only the rows the live step teaches
+  const actions = _tutQuickRows(_computeEnemyActions(actingUnit, targetUnit), targetUnit);   // THE TUTORIAL: only the rows the live step teaches
   const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
   const targetName = typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : (targetUnit.name || targetUnit.cls);
 

@@ -17804,6 +17804,18 @@
             }
             return allow.includes(verb);
         };
+        /* THE ONE TARGET (mondo 2026-11-12: "when the tutorial asks me to smite dummy B, there's nothing stopping me from smiting
+           dummy A, but then i cant smite dummy B after that and there is no way to progress"): a step that names its target
+           (`only: '<unit key>'`, or an attack goal's own `target`) takes the attack / the cast on that unit's square and no other.
+           _tutTargetIs is the silent read (the HUD's target lists); _tutTargetOk nudges (the engine's gate). */
+        function _tutOnlyUnit() {
+            const st = _tut.step; if (!_tut.active || !st) return null;
+            const key = st.only || (st.goal && st.goal.type === 'attack' && st.goal.target) || null;
+            const t = key ? _tutUnit(key) : null;
+            return (t && !t.dead) ? t : null;
+        }
+        window._tutTargetIs = function (x, y) { const t = _tutOnlyUnit(); return !t || (t.x === x && t.y === y); };
+        window._tutTargetOk = function (x, y) { const ok = window._tutTargetIs(x, y); if (!ok) _tutNudge(); return ok; };
         /* arming a mode from the keyboard (B, M, A ...) is the same gate as its row */
         window._tutModeOk = function (mode) {
             if (!_tut.active) return true;
