@@ -64854,13 +64854,14 @@ const ThreeRenderer = (function () {
        A unit that wears a MODEL of its own (a creator look, or a story character's rig: `appearance.cast`) gets its
        portrait FROM that model: a small second renderer (PT_PX square, like the character viewer's, the same lights and
        colour pipeline) builds the body once, lets the idle and the cloth settle a few frames, aims a camera at the Head
-       bone (a three-quarter face: PT_YAW, the face's middle in the frame's middle, PT_FRAME of the body's height tall) and
+       bone (straight on: the camera stands where the face looks, the face's middle in the frame's middle, PT_FRAME of the body's height tall) and
        keeps the picture as a data URL. sprites.js getUnitPortraitArtUrl asks EWPortraits.url(unit): null until the picture
        is in (the sprite's face stands in), then the HUD's faces repaint (hud.js EWFaces.bump). `kind` 'bust' = the ID
        card's 256 x 320 photo, framed off the same Head bone. One body at a time; the body and, half a minute after the
        last job, the renderer are let go. Viewer-local: nothing is stored on a unit, nothing is relayed.
        Off: window.EW_NO_MODEL_PORTRAITS = true. */
-    var PT_PX = 128, PT_FOV = 20, PT_FRAME = 0.22, PT_YAW = 0.36, PT_POLAR = -0.04, PT_PITCH = 0.8, PT_FWD = 0.028, PT_SETTLE = 8, PT_WAIT = 90000;
+    var PT_PX = 128, PT_FOV = 20, PT_FRAME = 0.22, PT_YAW = 0, PT_POLAR = 0, PT_PITCH = 1,   /* STRAIGHT ON (mondo 11-12: "The battle portraits should be straight on, just like the sprite portraits"; the first cut stood 0.36 rad to the side): the camera stands exactly where the face looks */
+        PT_FWD = 0.028, PT_SETTLE = 8, PT_WAIT = 90000;
     var PT_BAKE_EXPO = 0.62;   // a Meshy bake (its own glow under the studio's lights) washes out at the creator bodies' exposure: a paler face lost its eyes and mouth
     var PT_BUST = { w: 256, h: 320, frame: 0.36, drop: 0.035, bg: 0x2a2620 };   // the ID card's photo: the head's middle sits 3.5 % of the height above the frame's middle
     var _pt = null, _ptV = null, _ptQ = null, _ptUrls = {}, _ptFail = {}, _ptSpecs = (typeof WeakMap === 'function') ? new WeakMap() : null, _ptIdleT = 0;
@@ -64945,7 +64946,7 @@ const ThreeRenderer = (function () {
             else { window._ewFaceGen = (window._ewFaceGen | 0) + 1; window.dispatchEvent(new Event('ew-state-change')); }
         } catch (e) {}
     }
-    /* one picture of S through the studio's camera, aimed off the Head bone: the face (a square, three-quarter view, clear
+    /* one picture of S through the studio's camera, aimed off the Head bone: the face (a square, straight on, clear
        behind) or the bust (the ID card's upright photo, straight on, on its backdrop). The caller reads the canvas at once. */
     function _ptRender(S, bust) {
         var P = _pt, r = P.renderer, w = bust ? PT_BUST.w : PT_PX, hgt = bust ? PT_BUST.h : PT_PX;
@@ -64956,7 +64957,7 @@ const ThreeRenderer = (function () {
         var hx = hp ? hp.x : 0, hy = hp ? hp.y : S.h * 0.93, hz = hp ? hp.z : 0;
         /* where the FACE looks: the Head bone's turn since the bind pose (the body faces +Z there), so a bowed or turned idle
            head is still met face on (the creator's close-up looks up under a bowed head for the same reason). The camera
-           takes PT_PITCH of the head's bow, then stands PT_YAW to the side for the three-quarter view. */
+           takes PT_PITCH of the head's bow, and stands straight in front of it (PT_YAW 0: no side angle). */
         var f = _ptV || (_ptV = new THREE.Vector3()), pd = S.def.portrait || {};   // a def's own aim: { yaw, frame, expo } (sprites.js DOOR_CAST_MODELS)
         f.set(0, 0, 1);
         if (S.headBone && S.head0) {
