@@ -2674,3 +2674,9 @@ Not run with two seats.
   `deckLook` writes `--ewdu-*` on <html>; `_ewdCss` reads every panel colour as `var(--ewdu-x, <shipped value>)`. The
   theme's fonts still apply; the theme's button / panel skins stay off the panel (its own frames).
 
+
+## THE GUARD LINE (2026-11-11, mondo: "we dont need a whole novel")
+Guard's combat text is ONE line: `🛡 <unit> Guards and restores a little HP.` (ui.js doGuard). The old paragraph
+(+DEF/M DEF, +15% Counter, Overwatch…) and the two status lines ("Guard: X is guarding." / "is recovering.") are gone
+from the text box and the combat log; the rules did not change. battle.js applyStatusPayload reads `payload.quiet`
+(the caller writes its own line for that status).
