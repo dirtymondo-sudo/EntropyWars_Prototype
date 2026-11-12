@@ -3822,6 +3822,7 @@ EW_MH_WEAR.push(['ewm_t2cowboy_hat', 'Cowboy hat (Meshy remake)', 'hats', 56], [
   /* batch one of the demo starters (2026-11-12, meshy-remake-plan.md) */
   ['ewm_t2zombie_outfit', 'Zombie rags (Meshy remake)', 'equipment', 40],
   ['ewm_t2mummy_outfit', 'Mummy wraps (Meshy remake)', 'equipment', 40],
+  ['ewm_t2locke_outfit', 'Agent Locke suit (Meshy remake)', 'equipment', 40],
   ['ewm_t2angel_outfit', 'Angel dress (Meshy remake)', 'equipment', 40],
   ['ewm_t2catgirl_hat', 'Catgirl ears (Meshy remake)', 'hats', 56], ['ewm_t2catgirl_outfit', 'Catgirl outfit (Meshy remake)', 'equipment', 40],
   ['ewm_t2robinhood_outfit', 'Robinhood hood + tunic (Meshy remake)', 'equipment', 40],
@@ -4052,7 +4053,7 @@ EW_MH_LOOKS.skins.push(['ew_werewolf_fur', 'Werewolf fur (Meshy)'], ['ew_werewol
    mpfb/looks/skin_morgan.jpg like the pack skins; it pairs with the morganHead shaped head (EW_MPFB_FACE_SLIDERS "Face likeness"). */
 EW_MH_LOOKS.skins.push(['morgan', 'Morgan']);
 /* THE UNIT FACES (2026-11-12): the unit's own Meshy face on the hm08 sheet, pairs with the <race>Face shaped head (bake-face.py). */
-EW_MH_LOOKS.skins.push(['ew_face_cowboy', 'Cowboy face (Meshy)'], ['ew_face_knight', 'Knight face (Meshy)'], ['ew_face_wizard', 'Wizard face (Meshy)'], ['ew_face_zombie', 'Zombie face (Meshy)'], ['ew_face_robinhood', 'Robinhood face (Meshy)'], ['ew_face_catgirl', 'Catgirl face (Meshy)'], ['ew_face_mummy', 'Mummy face (Meshy)'], ['ew_face_angel', 'Angel face (Meshy)']);
+EW_MH_LOOKS.skins.push(['ew_face_cowboy', 'Cowboy face (Meshy)'], ['ew_face_knight', 'Knight face (Meshy)'], ['ew_face_wizard', 'Wizard face (Meshy)'], ['ew_face_zombie', 'Zombie face (Meshy)'], ['ew_face_robinhood', 'Robinhood face (Meshy)'], ['ew_face_catgirl', 'Catgirl face (Meshy)'], ['ew_face_mummy', 'Mummy face (Meshy)'], ['ew_face_locke', 'Agent Locke face (Meshy)'], ['ew_face_angel', 'Angel face (Meshy)']);
 /* THE EYE PACK (2026-11-03, mondo uploaded the MakeHuman Eye Texture Pack to R2 looks/eyes/eyetextures/: "please add them to the
    character creator"): [id, label, colour PNG, normal-map PNG]. On an MPFB body these are NOT drawn into the skin sheet (an iris
    there is ~6 texels, a cat eye's slit is lost): three-renderer.js THE EYE PACK fits MakeHuman's high-poly eye mesh over the
@@ -4336,7 +4337,7 @@ const EW_WEAR_SHELF_MOVE = {
   ewm_talisman: 'jewellery', ewm_hagstone: 'jewellery', ewm_egyptcollar: 'jewellery', ewm_airtank: 'back', ewm_astropack: 'back',
   ewm_backpack: 'back', ewm_jetpack: 'back', ewm_quiver: 'back', ewm_katana: 'back', ewm_dowsingrod: 'back', ewm_dorsalfin: 'creature',
   ewm_mothwings: 'wings', ewm_gunbelt: 'belts', ewm_toolbelt: 'belts', ewm_thighholster: 'belts', ewm_flaregun: 'belts',
-  ewm_spyglass: 'belts', ewm_wardtotem: 'belts', ewm_censer: 'belts', ewm_breastplate: 'armour', ewm_shoulderpads: 'armour', ewm_t2cowboy_outfit: 'armour', ewm_t2knight_outfit: 'armour', ewm_t2wizard_outfit: 'armour', ewm_t2zombie_outfit: 'armour', ewm_t2catgirl_outfit: 'armour', ewm_t2robinhood_outfit: 'armour', ewm_t2quarterback_outfit: 'armour', ewm_t2mummy_outfit: 'armour', ewm_t2angel_outfit: 'armour',
+  ewm_spyglass: 'belts', ewm_wardtotem: 'belts', ewm_censer: 'belts', ewm_breastplate: 'armour', ewm_shoulderpads: 'armour', ewm_t2cowboy_outfit: 'armour', ewm_t2knight_outfit: 'armour', ewm_t2locke_outfit: 'armour', ewm_t2wizard_outfit: 'armour', ewm_t2zombie_outfit: 'armour', ewm_t2catgirl_outfit: 'armour', ewm_t2robinhood_outfit: 'armour', ewm_t2quarterback_outfit: 'armour', ewm_t2mummy_outfit: 'armour', ewm_t2angel_outfit: 'armour',
   ewm_pauldrons: 'armour', ewm_gauntlets: 'armour', ewm_greaves: 'armour', ewm_armband: 'jewellery', ewm_elfears: 'creature',
   ewm_neckbolts: 'creature', ewm_hooves: 'creature', ewm_beastfeet: 'creature', ewm_beastfeet_fura: 'creature', ewm_beastfeet_furb: 'creature', ewm_trident: 'held', ewm_potionflask: 'held',
   ewm_scalpel: 'held', ewm_wrench: 'held', ewm_blowpipe: 'held', ewm_smartphone: 'held', ewm_handmirror: 'held', ewm_camera: 'held',
@@ -4905,12 +4906,12 @@ const EW_MPFB_FACE_SLIDERS = [
      section 6): a race's own Meshy head measured onto the MPFB head by face landmarks (bake-face.py): <race>Face = the head shape (a custom
      shape like morganHead), and the skin "ew_face_<race>" = the unit's face painted onto the stock skin sheet, the rest toned to match.
      The mesh is still the MPFB head, so the 67 face shapes (blink, talk) keep working. Pilot: the cowboy. */
-  { id: 'unitFace', label: 'Unit faces', inHeads: true, rows: [['cowboyFace', 'Cowboy'], ['knightFace', 'Knight'], ['wizardFace', 'Wizard'], ['zombieFace', 'Zombie'], ['robinhoodFace', 'Robinhood'], ['catgirlFace', 'Catgirl'], ['mummyFace', 'Mummy'], ['angelFace', 'Angel']] },
+  { id: 'unitFace', label: 'Unit faces', inHeads: true, rows: [['cowboyFace', 'Cowboy'], ['knightFace', 'Knight'], ['wizardFace', 'Wizard'], ['zombieFace', 'Zombie'], ['robinhoodFace', 'Robinhood'], ['catgirlFace', 'Catgirl'], ['mummyFace', 'Mummy'], ['angelFace', 'Angel'], ['lockeFace', 'Agent Locke']] },
 ];
 EW_APPEARANCE_LIMITS.wolfHead = [0, 1, 0];   // (one-sided: the target has no minus end)
 EW_APPEARANCE_LIMITS.morganHead = [0, 1, 0];   // (one-sided, THE CUSTOM SHAPES)
 EW_APPEARANCE_LIMITS.cowboyFace = [0, 1, 0];   // (one-sided, THE UNIT FACES)
-EW_APPEARANCE_LIMITS.knightFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.wizardFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.zombieFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.robinhoodFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.catgirlFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.mummyFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.angelFace = [0, 1, 0];
+EW_APPEARANCE_LIMITS.knightFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.wizardFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.zombieFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.robinhoodFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.catgirlFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.mummyFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.angelFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.lockeFace = [0, 1, 0];
 /* THE LIKENESS SWITCH (2026-11-11, mondo: "hide behind a switch anyway, im really just testing something"): the face-likeness picks
    (the morganHead shaped head + the "morgan" skin) are NOT shown in the creator unless this browser turned them on: open the game
    once with ?likeness=1 in the address (remembered; ?likeness=0 turns it off again). The data stays valid either way, so a look
@@ -5784,6 +5785,23 @@ if (typeof window !== 'undefined') {
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
 }
 
+/* THE CAST LOOKS (2026-11-12, mondo: "Ship, and remake Locke to blink"): a story character remade on a creator body (her Meshy
+   T2 suit as a creator piece, her face from her old model: bake-outfit.py + bake-face.py, the route the remade units took). A
+   cast id listed here wears this look wherever its model is asked for (getCastModel: DOOR HQ, the portrait studio; getRace3DModel:
+   the board), so the rig has eyelids, a jaw and the creator's face moves. Console: window.EW_DISABLE_CAST_LOOKS = true = her old rig. */
+const CAST_CREATOR_LOOKS = {
+  locke: { gender: 'female', look: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":1.02,"jaw":-0.4,"head":-0.2,"nose":0,"noseWidth":0,"eyeSize":-0.2,"browRidge":-0.3,"mouthCorners":0,"mhSkin":"ew_face_locke","mhEyes":"mhm_spamrakuen_sr_anime_maid-san_red_eyes","eyeTint":"pick","eyeColor":"#5a6a72","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#9a6468","linerTint":"pick","linerColor":"#3a302e","shadowTint":"pick","shadowColor":"#5a4a50","blushTint":"pick","blushColor":"#c08080","hair":"mh_elvs_short_side_do","hairColor":"#e6e6ea","browColor":"#8a8a8e","browTint":"pick","idle":"Idle_11","wear":["ewm_t2locke_outfit"],"lockeFace":1,"mouthWidth":-0.2,"mouthHeight":-0.25} },
+};
+const _castLookDefs = {};
+function getCastLookModel(id, race, gender) {
+  const row = CAST_CREATOR_LOOKS[id];
+  if (!row || (typeof window !== 'undefined' && window.EW_DISABLE_CAST_LOOKS)) return null;
+  const r = race || 'homosapien', g = gender || row.gender, k = id + '|' + r + '|' + g;
+  if (!(k in _castLookDefs)) { let d = null; try { d = getCharacterAppearanceModel(r, g, row.look); } catch (e) { d = null; } _castLookDefs[k] = d || null; }
+  return _castLookDefs[k];
+}
+if (typeof window !== 'undefined') { window.CAST_CREATOR_LOOKS = CAST_CREATOR_LOOKS; window.getCastLookModel = getCastLookModel; }
+
 const _castUnitDefs = {};
 function getRace3DModel(race, gender, appearance) {
   if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return null;
@@ -5791,6 +5809,8 @@ function getRace3DModel(race, gender, appearance) {
      She walks around in the DOOR HQ"): a unit whose appearance is `{ cast: id }` wears that story character's own rig, with
      what its race's model holds (the Door Agent's gun) and its basic attack */
   if (appearance && typeof appearance.cast === 'string' && typeof DOOR_CAST_MODELS !== 'undefined' && DOOR_CAST_MODELS[appearance.cast] && !window.EW_DISABLE_CAST) {
+    const cl = getCastLookModel(appearance.cast, race, gender);   // THE CAST LOOKS: remade on a creator body (with the race's hold + basic attack)
+    if (cl) return cl;
     const ck = race + '|' + appearance.cast;
     if (!_castUnitDefs[ck]) {
       const rs = RACE_MODELS_3D[race], own = rs && (rs[gender === 'female' ? 'female' : 'male'] || rs.male || rs.female);
@@ -6092,7 +6112,7 @@ const DOOR_CAST_MODELS = {
 };
 function getCastModel(id) {
   if (typeof window !== 'undefined' && (window.EW_DISABLE_3D_UNITS || window.EW_DISABLE_CAST)) return null;
-  return DOOR_CAST_MODELS[id] || null;
+  return getCastLookModel(id) || DOOR_CAST_MODELS[id] || null;   // THE CAST LOOKS: a remade cast member wears her creator look
 }
 if (typeof window !== 'undefined') {
   window.DOOR_CAST_MODELS = DOOR_CAST_MODELS;

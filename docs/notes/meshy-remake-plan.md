@@ -169,6 +169,7 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 | djinn (M) | REFUSED by Meshy's safety check twice (bare chest) | | | | | not worked around; needs his word |
 | mummy (F) | batch two 11-12 | clean | done (mummyFace) | next | waiting | `--longhair --bodysuit` (bandages the colour of her skin: no colour cut, head + hands cut by place), hair mh_long01. Round 2 (11-12): loose ends hang whole, chin strip + hair flecks gone. Left: the suit's collar edge is angular, not seen in a battle |
 | angel (F) (mondo 11-12 playtest: he put a creator goddess dress on her himself, the T2 dress is not his pick) | batch two 11-12 | clean | done, soft (angelFace) | next | waiting | render on a DARK background (white wings on light grey came back dark blue); `--longhair --nowings --barearms --neckline`, `--repaint`, env `REPWARM=0.08 SKIN_T=0.3 LOCKT=0.3`; wings = the creator's Feathered (his OK 11-12). Round 2 (11-12): clean square neckline, whole straps, bodice hole + skirt patch gone. Round 3: the teeth behind her right arm gone (weights, not cloth). Left: small notches on the straps' outer edges, face plainer than the photo-real original |
+| AGENT LOCKE (cast, F) (mondo 11-12 "remake Locke to blink") | 11-12 | clean (ISLENECK + OPENSKIN + SKINISLE=400) | done, soft (lockeFace) | creator hair mh_elvs_short_side_do | live | sprites.js CAST_CREATOR_LOOKS: board, DOOR HQ, portrait studio; not yet seen in HQ / a fight |
 | everything else in group A | not started | | | | | |
 
 ## 9. Standing rules for any session doing this
