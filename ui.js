@@ -8017,6 +8017,9 @@
             const ggLevel = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.getGrassField) ? ThreeRenderer.getGrassField() : 'high';   // THE GRASS FIELD
             const rsShare = rsRatio/rsNative;
             let rsOn = -1; rsSteps.forEach((k,i)=>{ if(Math.abs(rsShare-k)<0.011) rsOn=i; });
+            // THE ENTROPY STYLE (2026-11-12): the grade + ink pass's two rows
+            const esState = (typeof ThreePost !== 'undefined' && ThreePost.getStyle) ? ThreePost.getStyle() : { mode: 'off', inkWidth: 1 };
+            const esMode = esState.mode, esInk = +esState.inkWidth || 1;
             const rsSize = (_rsInfo&&_rsInfo.w>0&&_rsInfo.h>0) ? `drawing ${_rsInfo.w} × ${_rsInfo.h}; ` : '';
             /* MAP LOOKS OFF (2026-10-24): every grade setting the player never touched reads OFF on screen (three-post.js _LOOK_CLEAN),
                so the sheet shows what is worn — a box reads the way the picture looks */
@@ -8251,6 +8254,21 @@
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
                         <span class="pm-toggle-hint">${rsSize}the 3D picture's share of your screen's own resolution: lower runs faster and softer, menus and text stay sharp</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Entropy Style</span>
+                        <div class="pm-seg-group">
+                            ${[['off','Off'],['grade','Grade'],['ink','Grade + Ink']].map(m=>`<button class="pm-seg-btn${esMode===m[0] ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setStyle)ThreePost.setStyle('${m[0]}');${RJ}">${m[1]}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px${esMode==='ink' ? '' : ';opacity:0.45'}">
+                        <span class="pm-setting-label">Ink Lines</span>
+                        <div class="pm-seg-group">
+                            ${[[1,'Thin'],[1.6,'Medium'],[2.4,'Bold']].map(m=>`<button class="pm-seg-btn${Math.abs(esInk-m[0])<0.05 ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setStyleParam)ThreePost.setStyleParam('inkWidth',${m[0]});${RJ}">${m[1]}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">one palette and a thin ink line over the whole 3D picture, under the CRT; menus and text are never touched</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Grass</span>
