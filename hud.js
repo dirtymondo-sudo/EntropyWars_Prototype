@@ -18187,6 +18187,7 @@ function faceSweep() {
   });
 }
 window.EWFaces = {
+  bump: faceBump,   // a portrait made elsewhere got ready (three-renderer.js THE PORTRAIT STUDIO): the HUD's faces repaint
   url(u, art) {
     const key = faceKey(u), use = faceUse(key, art);
     if (use === 'art') return undefined;
