@@ -1320,7 +1320,8 @@
                     if (g && g.total > 0) {
                         pct = Math.round(100 * g.done / g.total);
                         /* THE ASSET STORE (2026-09-20): how many of the room's files came off the disk, not the network */
-                        txt = 'loading ' + label + ' · ' + g.done + ' / ' + g.total + ' files' + (g.cached ? ' · ' + g.cached + ' from the store' : '') + (g.pending === 0 && !g.player ? ' · dressing the officer…' : '');
+                        txt = 'loading ' + label + ' · ' + g.done + ' / ' + g.total + ' files' + (g.cached ? ' · ' + g.cached + ' from the store' : '') + (g.pending === 0 && !g.player ? ' · dressing the officer…' : '')
+                            + (g.landed && !g.ready ? ' · setting the room…' : '');   // THE CARD WAITS (2026-11-12): every file is in; the shaders, the sheets and the props' passes finish under the card
                     } else if (g) {
                         txt = baseNote;
                     }
@@ -2147,6 +2148,7 @@
                     /* THE DOOR GUN (HQ plan 9.5): the pair on file (cleared on a fresh arrival — the rope is for one visit),
                        the filer a click calls (LEFT = A, RIGHT = B → the slot), the beats (drawn / holstered / refused),
                        and the TOUCH crossing a flat threshold reports (rev 2: a floor / ceiling hatch is fallen through) */
+                    walk: !!walking,   // THE CARD WAITS (2026-11-12): a walk through a door keeps its blink (the renderer's settle skips the batch wait)
                     arrive: seamless ? seamless.eye : null,   // THE WAY BACK: the camera starts at the debrief's eye
                     onFirstFrame: seamless ? () => { try { seamless.fade(); } catch (e) {} } : null,   // NO HELD FRAME (2026-10-25, mondo: "no freeze"): the debrief's picture fades on the room's first drawn frame, never at its READY
                     from: opts.from || null,   // THE BODIES CARRY OVER (2026-10-25): back from a fight, the walker takes its own body back
