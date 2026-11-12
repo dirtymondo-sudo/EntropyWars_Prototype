@@ -5235,4 +5235,5 @@ Two causes, both viewer-local camera only (no state, nothing to relay):
 - Proof (Vatican City, Superhero flying, 1728x904, WebGL2): /mnt/project-files/unit-frame-20261112/. Body 55-58% down the
   screen before, 39-42% after, default view and a tilt-87 orbit. Not checked: his Mac / WebGPU, the online guest, a look
   past the horizon (tilt > 90 keeps the old floor rule), the root two-shot with the lift added.
-- Tune: PANEL_LIFT_MAX if he wants the unit lower / higher.
+- Tune: PANEL_LIFT_SHARE (0.5 since his same-day follow-up "a little lower, like somewhere in between": half way from the
+  screen's middle to the band's middle; the first cut went all the way) and PANEL_LIFT_MAX.
