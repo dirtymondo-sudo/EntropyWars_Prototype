@@ -8323,6 +8323,14 @@ const ThreeRenderer = (function () {
     }
     var _ggFringe = null;   // the meadow past the board, kept between builds: { key, pos, col, gg, gs, roots }
     var _gg = null;   // the live field: { mesh, press, data, W, H, n, sig, tops }
+    /* THE GRASS TAKES NO INK (2026-11-12, mondo: "adding the ink shader makes the grass look kinda weird to me, like it ends up being
+       a shadowy blob. Can we exclude grass from the shader"): the Entropy Style's five light bands cut every clump into a lit tip and a
+       near-black foot, and its ink line drew the squares' seams (the depth UNDER the grass: a tuft writes none) across the field. The
+       style's mask (three-post.js _renderPixelMask) now draws the field once more with value.x = 1: every tuft writes its own view
+       depth (log2(1 + z) / 20 in 16 bits, green + blue: no near / far to agree on) in place of its colour, and the style pass leaves a pixel un-banded and un-inked where the scene
+       lies at or behind that tuft (a wall or a body in front of the grass keeps its bands and its line). value.x = 1 while the mask draws. */
+    var _ggMaskU = { value: new THREE.Vector3(0, 0, 0), mesh: null };
+    try { window._ewGgMask = _ggMaskU; } catch (e) {}
     function _ggPressTex(W, H) {
         var n = GGRASS.pressN, data = new Uint8Array(W * n * H * n);
         var tex = new THREE.DataTexture(data, W * n, H * n, THREE.RedFormat, THREE.UnsignedByteType);
@@ -8337,9 +8345,11 @@ const ThreeRenderer = (function () {
         var m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide, depthWrite: false });
         var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: _ggRightU, uGgW: { value: new THREE.Vector2(GGRASS.gust, GGRASS.flutter) } };
         m.onBeforeCompile = function (shader) {
+            shader.uniforms.uGgM = _ggMaskU;
             shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgR = U.uGgR; shader.uniforms.uGgW = U.uGgW;
             shader.vertexShader = shader.vertexShader
-                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nattribute float aGgS;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;\nuniform vec2 uGgR;\nuniform vec2 uGgW;')
+                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nattribute float aGgS;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;\nuniform vec2 uGgR;\nuniform vec2 uGgW;\nvarying float vGgZ;')
+                .replace('#include <project_vertex>', '#include <project_vertex>\nvGgZ = -mvPosition.z;')
                 .replace('#include <begin_vertex>', '#include <begin_vertex>\n' +
                     'float ggPr = texture2D( uGgPress, aGg.xy * uGgB.xy ).r;\n' +
                     'float ggG = sin( dot( aGg.xy, vec2( 0.0105, 0.0062 ) ) - uGgT * uGgW.x + sin( dot( aGg.xy, vec2( -0.0040, 0.0070 ) ) + uGgT * 0.31 ) * 1.4 ) * 0.5 + 0.5;\n' +
@@ -8350,14 +8360,16 @@ const ThreeRenderer = (function () {
                     'transformed.y -= aGg.z * ggPr * 0.86 + ggB * 0.30 * aGg.w;\n' +
                     'vColor.rgb *= 1.0 + uGgB.w * ggG * aGg.w * ( 1.0 - ggPr );');
             shader.fragmentShader = shader.fragmentShader
-                .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );');
+                .replace('#include <common>', '#include <common>\nuniform vec3 uGgM;\nvarying float vGgZ;')
+                .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );')
+                .replace('#include <dithering_fragment>', '#include <dithering_fragment>\nif ( uGgM.x > 0.5 ) { float ggZ = clamp( log2( 1.0 + max( vGgZ, 0.0 ) ) / 20.0, 0.0, 1.0 ) * 255.0; gl_FragColor = vec4( 0.0, floor( ggZ ) / 255.0, fract( ggZ ), 1.0 ); }');   // THE GRASS TAKES NO INK: the style mask's draw
         };
-        m.customProgramCacheKey = function () { return 'ew_ggrass2'; };
+        m.customProgramCacheKey = function () { return 'ew_ggrass3'; };
         _ewNodeTag(m, { k: 'ggrass', press: G.press, inv: G.inv });   // the WebGPU twin: _ewNodeGGrass
         return m;
     }
     function _ggBuild(group) {
-        _gg = null;
+        _gg = null; _ggMaskU.mesh = null;
         if (!_ggOn() || typeof getTerrainAt !== 'function') return;
         var _t0 = performance.now();
         var ts = CONFIG.tileSize || BASE_TILE, W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
@@ -8493,7 +8505,7 @@ const ThreeRenderer = (function () {
         var G = { press: pr.tex, data: pr.data, W: W, H: H, n: C.pressN, inv: [1 / (W * ts), 1 / (H * ts)], sig: '', blades: nB, roots: roots, ia: ia, sortDir: null };
         var mesh = new THREE.Mesh(geo, _ggMat(G));
         mesh.frustumCulled = false; mesh.name = 'ew_grass_field'; mesh._ew_ggrass = true; mesh.renderOrder = C.order;
-        G.mesh = mesh; G.ms = performance.now() - _t0; _gg = G;
+        G.mesh = mesh; G.ms = performance.now() - _t0; _gg = G; _ggMaskU.mesh = mesh;
         try { window._ewGrassField = { tufts: nB, buildMs: Math.round(G.ms), level: _ggLevel }; } catch (e) {}   // read-only: what the last build made
         group.add(mesh);
     }
@@ -46087,6 +46099,12 @@ const ThreeRenderer = (function () {
         var sh = T.varying(gust().mul(A.w).mul(press().oneMinus()).mul(C.sheen).add(1));
         _ewNodeDiffuseMul(nm, function () { return sh; });
         nm.normalNode = T.normalize(T.cameraViewMatrix.mul(T.vec4(0, 1, 0, 0)).xyz);
+        /* THE GRASS TAKES NO INK: the style mask's draw writes the tuft's view depth (16 bits, green + blue) in place of its colour */
+        try {
+            var mU = _ewNodeRef(_ggMaskU), gz = T.varying(T.positionView.z.negate());
+            var zt = T.clamp(T.log2(T.max(gz, 0).add(1)).div(20), 0, 1).mul(255);
+            nm.outputNode = T.select(mU.x.greaterThan(0.5), T.vec4(0, T.floor(zt).div(255), T.fract(zt), 1), T.output);
+        } catch (e) { try { console.warn('[grass] mask node failed', e); } catch (e2) {} }
     }
     /* THE SWAYS: the grass blades, the trees' wind, the kelp — a vertex offset in the mesh's own units (after instancing,
        so a batched wood's offset is the crown's world amplitude ÷ the mesh's own scale, never the copy's) */
