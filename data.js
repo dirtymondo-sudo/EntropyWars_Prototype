@@ -27415,7 +27415,7 @@ const TUTORIAL_LESSONS = [
             { id: 'scope', title: 'RANGE',
               say: 'SCOPE is a marksman — a basic attack reaches <b>RNG</b> tiles. Don\'t walk up. Press ATTACK and shoot DUMMY B from here.',
               hint: 'ATTACK · DUMMY B',
-              focus: { hud: 'attack' }, allow: ['attack', 'move'],
+              focus: { hud: 'attack' }, allow: ['attack'],   // the shot only (SCOPE reaches DUMMY B from the start tile)
               goal: { type: 'attack', unit: 'p1-1' } },
             { id: 'enemy', title: 'THEIR TURN',
               say: 'Both of yours have acted. The dummies take theirs — watch the <b>TURN CLOCK</b>. DUMMY A swings at BLADE; DUMMY B shambles closer.',
@@ -27427,7 +27427,7 @@ const TUTORIAL_LESSONS = [
             { id: 'guard', title: 'GUARD',
               say: 'BLADE took a hit. <b>GUARD</b> raises DEF and M DEF, wins back a little HP and MP, and arms <b>OVERWATCH</b> — the first enemy to stop within reach eats a free shot. Guard ends the turn.',
               hint: 'GUARD',
-              focus: { hud: 'guard' }, allow: ['guard', 'move'],
+              focus: { hud: 'guard' }, allow: ['guard'],
               goal: { type: 'guard', unit: 'p1-0' } },
             { id: 'two-moves', title: 'TWO MOVES',
               say: 'SCOPE: press <b>MOVE</b> twice. The second move of a turn costs <b>all remaining AP</b> — moving twice is a whole turn. (<b>END TURN</b> passes whatever is left; SPACE pressed twice does the same.)',

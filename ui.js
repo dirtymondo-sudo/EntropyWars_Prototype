@@ -8017,6 +8017,9 @@
             const ggLevel = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.getGrassField) ? ThreeRenderer.getGrassField() : 'high';   // THE GRASS FIELD
             const rsShare = rsRatio/rsNative;
             let rsOn = -1; rsSteps.forEach((k,i)=>{ if(Math.abs(rsShare-k)<0.011) rsOn=i; });
+            // THE ENTROPY STYLE (2026-11-12): the grade + ink pass's two rows
+            const esState = (typeof ThreePost !== 'undefined' && ThreePost.getStyle) ? ThreePost.getStyle() : { mode: 'off', inkWidth: 1 };
+            const esMode = esState.mode, esInk = +esState.inkWidth || 1;
             const rsSize = (_rsInfo&&_rsInfo.w>0&&_rsInfo.h>0) ? `drawing ${_rsInfo.w} × ${_rsInfo.h}; ` : '';
             /* MAP LOOKS OFF (2026-10-24): every grade setting the player never touched reads OFF on screen (three-post.js _LOOK_CLEAN),
                so the sheet shows what is worn — a box reads the way the picture looks */
@@ -8251,6 +8254,21 @@
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
                         <span class="pm-toggle-hint">${rsSize}the 3D picture's share of your screen's own resolution: lower runs faster and softer, menus and text stay sharp</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Entropy Style</span>
+                        <div class="pm-seg-group">
+                            ${[['off','Off'],['grade','Grade'],['ink','Grade + Ink']].map(m=>`<button class="pm-seg-btn${esMode===m[0] ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setStyle)ThreePost.setStyle('${m[0]}');${RJ}">${m[1]}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px${esMode==='ink' ? '' : ';opacity:0.45'}">
+                        <span class="pm-setting-label">Ink Lines</span>
+                        <div class="pm-seg-group">
+                            ${[[1,'Thin'],[1.6,'Medium'],[2.4,'Bold']].map(m=>`<button class="pm-seg-btn${Math.abs(esInk-m[0])<0.05 ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setStyleParam)ThreePost.setStyleParam('inkWidth',${m[0]});${RJ}">${m[1]}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">one palette and a thin ink line over the whole 3D picture, under the CRT; menus and text are never touched</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Grass</span>
@@ -17404,7 +17422,14 @@
                        from: 'menu', saved: null, poll: null, autoTimer: null, tileTimer: null, metAt: 0, stepMark: 0,
                        stepActiveId: null, nudgeAt: 0, bootPoll: null, cpuTimer: null };
         window._tutActive = false;
-        const _TUT_VERB_OF_BLADE = { move: 'move', jump: 'move', attack: 'attack', abil: 'spell', combo: 'combo', items: 'item', guard: 'guard', switch: 'switch', end: 'end' };
+        /* EVERY ROW ANSWERS TO THE STEP (mondo 2026-11-12: "The game shouldnt let me click stuff the tutorial isnt telling me to. So if
+           its telling me to move then everything besides move needs to be greyed out"): climb is a move; tactics and the two escapes
+           are no step's verb, so they are lit only on a free-play step (allow: 'all') */
+        const _TUT_VERB_OF_BLADE = { move: 'move', jump: 'move', climb: 'move', attack: 'attack', abil: 'spell', combo: 'combo', items: 'item', guard: 'guard', switch: 'switch', end: 'end',
+                                     tactics: 'tactics', escape: 'escape', teamEscape: 'escape' };
+        /* the tool buttons beside the list (BUILD + the pushers) and the arming modes, by the verb a step allows */
+        const _TUT_VERB_OF_TOOL = { build: 'build', entropyStrike: 'entropy', nexus: 'channel', prism: 'channel', inspect: 'inspect', detonate: 'spell' };
+        const _TUT_VERB_OF_MODE = { move: 'move', jump: 'move', climb: 'move', attack: 'attack', combo: 'combo', build: 'build', inspect: 'inspect' };
         const _TUT_HUD_SEL = { move: '.hrlg-blade[data-bid="move"]', jump: '.hrlg-blade[data-bid="jump"]', attack: '.hrlg-blade[data-bid="attack"]',
                                abil: '.hrlg-blade[data-bid="abil"]', combo: '.hrlg-blade[data-bid="combo"]', items: '.hrlg-blade[data-bid="items"]',
                                guard: '.hrlg-blade[data-bid="guard"]', end: '.hrlg-blade[data-bid="end"]', ap: '.ew-ap-press',
@@ -17730,6 +17755,30 @@
                 return out;
             });
         };
+        /* the same question without the nudge (the HUD asks it every draw): may the live step's player use `verb` */
+        window._tutVerbOk = function (verb) {
+            if (!_tut.active) return true;
+            if (_tut.finished || _tut.booting) return false;
+            const allow = _tutAllowList();
+            if (allow === null) return true;
+            return allow.includes(verb) || (verb === 'spell' && allow.some(a => a.startsWith('spell:')));
+        };
+        /* a tool button (hud.js: BUILD, a pusher): greyed with LATER unless the step allows its verb. Land / Take Off keep
+           their own state: those steps are scripted with an empty allow list and the pusher is the step itself */
+        window._tutToolOk = function (id) {
+            if (!_tut.active) return true;
+            if (id === 'fly' || id === 'land' || id === 'altitude') return !_tut.finished;
+            const verb = _TUT_VERB_OF_TOOL[id];
+            return verb ? window._tutVerbOk(verb) : (_tutAllowList() === null);
+        };
+        /* arming a mode from the keyboard (B, M, A ...) is the same gate as its row */
+        window._tutModeOk = function (mode) {
+            if (!_tut.active) return true;
+            const verb = _TUT_VERB_OF_MODE[mode];
+            if (!verb || window._tutVerbOk(verb)) return true;
+            _tutNudge();
+            return false;
+        };
         function _tutNudge() {
             const now = Date.now();
             if (now - _tut.nudgeAt < 900) return;
@@ -17930,7 +17979,7 @@
             _tutApplyGlow();
             try { if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache(); if (typeof markDirty === 'function') markDirty('actions'); if (typeof renderIfDirty === 'function') renderIfDirty(); } catch (e) {}
             const el = _tutMountCoach();
-            el.classList.add('done');
+            el.classList.add('done', 'center');
             el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · ' + L.title) + '</span></div>'
                 + '<div class="tut-coach-stamp">LOST</div>'
                 + '<div class="tut-coach-body">Player 2 wins: ' + escapeHtml(lost) + '. Nothing is filed. Run the tape again.</div>'
@@ -18015,6 +18064,10 @@
             const ack = st.goal && st.goal.type === 'ack';
             const isFinish = ack && st.goal.finish;
             el.classList.remove('met', 'nudge', 'done');
+            /* THE MIDDLE, THEN THE CORNER (mondo 2026-11-12: "put the tutorial text in the middle of the screen on top of everything, and it
+               can go the corner it's in now once the player has control and is pressing the actions"): a panel that is read and
+               continued sits centre screen over everything; a step the player acts (or watches) in sits in the corner */
+            el.classList.toggle('center', !!ack);
             el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · ' + L.title) + '</span>'
                 + '<button class="tut-coach-x" data-tut="leave" title="Leave the lesson">✕</button></div>'
                 + (st.title ? '<div class="tut-coach-title">' + escapeHtml(st.title) + '</div>' : '')
@@ -18027,7 +18080,7 @@
             const el = _tutMountCoach();
             const L = _tut.lesson;
             const next = _tutNextLesson();
-            el.classList.add('done');
+            el.classList.add('done', 'center');
             el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · FILED') + '</span></div>'
                 + '<div class="tut-coach-stamp">LESSON COMPLETE</div>'
                 + '<div class="tut-coach-body">' + escapeHtml(L.title) + ' is on your record. ' + (next ? 'Next on the shelf: <b>' + escapeHtml(next.title) + '</b>.' : 'That was the last tape on the shelf.') + '</div>'
@@ -18070,7 +18123,7 @@
             if (!F || typeof window._questFightGo !== 'function') return false;
             const L = _tut.lesson;
             const el = _tutMountCoach();
-            el.classList.remove('met', 'nudge'); el.classList.add('done');
+            el.classList.remove('met', 'nudge', 'center'); el.classList.add('done');   // the corner: the portal is the thing to watch
             el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · FILED') + '</span></div>'
                 + '<div class="tut-coach-stamp">LESSON COMPLETE</div>'
                 + '<div class="tut-coach-body">A portal is forming on the pad.</div>' + _tutQuestLine(qres);

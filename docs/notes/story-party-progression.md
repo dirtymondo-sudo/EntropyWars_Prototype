@@ -784,3 +784,12 @@ R2 files: data.js, map.js, ui.js, battle.js, three-vfx-effects.js, styles-base.c
 - THE FREE STARTERS STAY LOCKED (same day, mondo: "They should stay locked until later"): in `hqPartyUnlocked` a unit in
   ACCT_STARTER_UNITS counts only once a finished quest rewarded it (`questRewardedUnits`) or a door sealed it. Bought units stay.
   A later quest hands one over with `reward: { unit }`.
+
+### THE TUTORIAL GATE, EVERY BUTTON (2026-11-12, mondo: "if its telling me to move then everything besides move needs to be greyed out")
+- The step's `allow` list already blocked the actions and greyed the mapped rows (ui.js `_tutFilterBlades`); END TURN, BUILD,
+  the pushers and the unmapped rows (climb, tactics, escape) had stayed lit and a press did nothing.
+- Now: hud.js greys END TURN, BUILD and every pusher with LATER through `window._tutVerbOk` / `_tutToolOk`; climb counts as move;
+  battle.js `setActionMode` asks `_tutModeOk` (keyboard shortcuts). Land / Take Off pushers keep their own state (scripted steps).
+- Tape 1: `scope` allows only attack, `guard` only guard. Other tapes still allow MOVE beside the taught action where the unit
+  may need to step into range (not walked through; tighten per tape with a playthrough).
+- THE MIDDLE, THEN THE CORNER (2026-11-12, mondo): a read-and-continue panel (ack step, LESSON COMPLETE, LOST) gets `.center` (centre screen, z 99990, dimmed board, bigger text); action / watch steps and the quest portal card keep the corner. ui.js _tutRender, styles-base.css '#tutCoach.tut-coach.center'.

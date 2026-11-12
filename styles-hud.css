@@ -3833,6 +3833,14 @@
             opacity: 0; visibility: hidden;
             transition: opacity 0.18s ease, visibility 0s linear 0.18s;
         }
+        /* IT STAYS UP WHILE YOU WALK THE COMMAND MENU (2026-11-12, mondo): body.ew-deciding = your unit's turn, nothing
+           playing out; the menu's own camera glides (range fit, target two-shot) no longer blink it away. The UI Maker's
+           "Also while you pick a tile or a target" still hides it while aiming. */
+        body.ew-deciding:not(.ew-spell-shot):not(.ew-eor):not(.ew-aiming) .ew-mmap,
+        body.ew-deciding:not(.ew-spell-shot):not(.ew-eor) .ew-mmap:not(.aim-hide) {
+            opacity: 1; visibility: visible;
+            transition: opacity 0.2s ease, visibility 0s;
+        }
         /* a replay hides it like the old one (online.js body.ew-replay); the UI Maker's Layout view always shows it */
         body.ew-replay .ew-mmap { visibility: hidden !important; }
         html.uim-arranging .ew-mmap { opacity: 1 !important; visibility: visible !important; transition: none !important; }

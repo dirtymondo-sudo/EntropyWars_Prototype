@@ -1105,7 +1105,7 @@ const ThreePost = (function () {
     var _retro = {
         enabled:        true,
         preset:         'dream',
-        pixelSize:      2.0,    // 1 = off (game is already pixel-art); >1 = chunkier blocks
+        pixelSize:      1.0,    // 1 = off (the default since 2026-11-12, mondo: "turn the pixelate off by default now"); >1 = chunkier blocks
         // WHAT the pixelation applies to. 'models' (default) = only the 3D GLB
         // models (units, Meshy props) get the chunky UV-snap; the terrain,
         // trees, turrets and stairs are already hand-pixelled sprite art, so
@@ -3117,6 +3117,8 @@ const ThreePost = (function () {
             }
             P.dofH = dof(1, 0); P.dofV = dof(0, 1);
             composer.addPass(P.dofH); composer.addPass(P.dofV);
+            // THE ENTROPY STYLE: the grade + the ink, under pass B
+            P.style = _ppStylePass(PP, composer, rp); composer.addPass(P.style); _stylePass = P.style; _styleApply();
             // pass B: the cinematic + the retro
             var cu = THREE.UniformsUtils.clone(_CinematicShader.uniforms), ru = THREE.UniformsUtils.clone(_RetroShader.uniforms);
             ru.uResolution = cu.uResolution; ru.uTime = cu.uTime;   // one uniform each: both passes always wrote the same values
@@ -3156,7 +3158,7 @@ const ThreePost = (function () {
         } catch (e) {
             console.warn('[ThreePost] pmndrs postprocessing failed — falling back to the three.js chain', e);
             try { if (_pp && _pp.composer) _pp.composer.dispose(); } catch (e2) {}
-            _pp = null; _composer = null; _bloomPass = null; _cinematicPass = null; _retroPass = null; _fxaaPass = null; _smaaPass = null;
+            _pp = null; _composer = null; _bloomPass = null; _cinematicPass = null; _retroPass = null; _fxaaPass = null; _smaaPass = null; _stylePass = null;
             _dofPassH = null; _dofPassV = null; _toneMapPass = null; _ssaoPass = null; _ssaoAvail = false;
             renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;
             return false;
@@ -3216,6 +3218,9 @@ const ThreePost = (function () {
         cu.uResolution.value.set(w, h);
         P.U = { cu: cu, ru: ru, ao: aoU, dofH: dofHU, dofV: dofVU, tone: toneU };
         P.cineOn = T.uniform(0); P.retroOn = T.uniform(0);
+        // THE ENTROPY STYLE: its own uniforms (written each frame in _ngRender)
+        P.st = { mode: T.uniform(0), inkW: T.uniform(1), ink: T.uniform(0.8), bands: T.uniform(0.7), amount: T.uniform(1),
+            p00: T.uniform(1).onRenderUpdate(function () { return P.cam ? (P.cam.projectionMatrix.elements[0] || 1) : 1; }) };
         P.bS = T.uniform(0); P.bR = T.uniform(0); P.bT = T.uniform(1);
         P.ph = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); P.ph.needsUpdate = true;
         P.maskTex = T.texture(P.ph);
@@ -3257,7 +3262,7 @@ const ThreePost = (function () {
             P.direct = null; _paneDrop();
         }
         if (_composer === P) _composer = null;
-        _bloomPass = null; _cinematicPass = null; _retroPass = null; _fxaaPass = null; _smaaPass = null;
+        _bloomPass = null; _cinematicPass = null; _retroPass = null; _fxaaPass = null; _smaaPass = null; _stylePass = null;
         _dofPassH = null; _dofPassV = null; _toneMapPass = null; _ssaoPass = null; _ssaoAvail = false; _hdr = false;
         if (_renderer) _renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;
     }
@@ -3547,8 +3552,9 @@ const ThreePost = (function () {
         if (ao !== 'off' && !(_ssaoPass.aoMat.uniforms.uStrength.value > 0) && !(typeof window !== 'undefined' && window.EW_AO_AT_ZERO)) ao = 'off';
         var bloom = !!(_bloomPass && _bloomPass.enabled && P.mods.bloom), dof = !!(_dofPassH && _dofPassH.enabled);
         var frame = !!((_cinematicPass && _cinematicPass.enabled) || (_retroPass && _retroPass.enabled) || _aeEnabled());
-        return { aa: aa, ao: ao, bloom: bloom, dof: dof, frame: frame, cam: ao === 'gtao' ? cam : null,
-            key: aa + '|' + ao + (ao === 'gtao' ? ':' + cam.uuid : '') + '|' + (bloom ? 'B' : '-') + (dof ? 'D' : '-') + (frame ? 'F' : '-') };
+        var style = _styleMode() > 0;   // THE ENTROPY STYLE: a part of the set, so Off costs no pass
+        return { aa: aa, ao: ao, bloom: bloom, dof: dof, style: style, frame: frame, cam: ao === 'gtao' ? cam : null,
+            key: aa + '|' + ao + (ao === 'gtao' ? ':' + cam.uuid : '') + '|' + (bloom ? 'B' : '-') + (dof ? 'D' : '-') + (style ? 'S' : '-') + (frame ? 'F' : '-') };
     }
     function _ngBuild(o) {
         var P = _ng, T = P.T, made = [], passes = 1;
@@ -3593,6 +3599,7 @@ const ThreePost = (function () {
             var dv = _ngDof(P, dh.node, P.U.dofV); made.push(dv.tex);
             ldr = dv.node; passes += 2;
         }
+        if (o.style) { ldr = _ngStyle(P, ldr, made); passes++; }   // THE ENTROPY STYLE: under the cinematic / retro frame
         var frameIn = null;
         if (o.frame) {
             frameIn = T.convertToTexture(ldr); if (frameIn !== ldr) { made.push(frameIn); passes++; }
@@ -3631,7 +3638,7 @@ const ThreePost = (function () {
             P.warm[o.key] = 1;
             var tk = o.key.slice(0, -1) + 'F', te = P.pipes[tk];
             if (!te) {
-                var to = { aa: o.aa, ao: o.ao, bloom: o.bloom, dof: o.dof, frame: true, cam: o.cam, key: tk };
+                var to = { aa: o.aa, ao: o.ao, bloom: o.bloom, dof: o.dof, style: o.style, frame: true, cam: o.cam, key: tk };
                 te = P.pipes[tk] = _ngBuild(to); console.log('[ThreePost] node post chain: warmed [' + tk + ']');
             }
             P.cineOn.value = 0; P.retroOn.value = 0;
@@ -3646,6 +3653,7 @@ const ThreePost = (function () {
         if (_bloomPass && _bloomPass.enabled) { P.bS.value = Math.max(0, _bloomPass.strength); P.bR.value = Math.max(0, Math.min(1, _bloomPass.radius)); P.bT.value = _bloomPass.threshold; }
         P.cineOn.value = (_cinematicPass && _cinematicPass.enabled) ? 1 : 0;
         P.retroOn.value = (_retroPass && _retroPass.enabled) ? 1 : 0;
+        P.st.mode.value = _styleMode(); P.st.inkW.value = _styleInkPx(); P.st.ink.value = +_style.ink || 0; P.st.bands.value = +_style.bands || 0; P.st.amount.value = (_style.amount === undefined) ? 1 : +_style.amount;
         if (e.raySrc) e.raySrc.autoUpdate = P.cineOn.value > 0.5 && P.U.cu.uRays.value > 0.001;   // THE RAY SOURCE: drawn only while the rays are on
         var mt = P.U.ru.tMask.value; P.maskTex.value = mt || P.ph;
         var ac = r.autoClear;
@@ -3830,6 +3838,19 @@ const ThreePost = (function () {
             if (_ssaoAvail && THREE.Pass && THREE.Pass.FullScreenQuad) { _ssaoPass = new _SsaoPass(); _ssaoPass.enabled = _ssaoWanted(); _composer.addPass(_ssaoPass); }
             else _ssaoAvail = false;
         } catch (e) { _ssaoAvail = false; _ssaoPass = null; console.warn('[ThreePost] SSAO unavailable', e); }
+        // THE ENTROPY STYLE: right after the scene (and the AO), while the read buffer's depth is still the scene's
+        try {
+            _stylePass = new THREE.ShaderPass(_StyleShader);
+            (function (sp) {
+                var r0 = sp.render;
+                sp.render = function (r, wb, rb, dt, mask) {
+                    _styleSync(sp.uniforms, rb.width, rb.height, _styleCam() || (_composer.passes[0] && _composer.passes[0].camera), _ssaoAvail ? (rb.depthTexture || null) : null);
+                    r0.call(sp, r, wb, rb, dt, mask);
+                };
+            })(_stylePass);
+            _styleApply();
+            _composer.addPass(_stylePass);
+        } catch (e) { _stylePass = null; console.warn('[ThreePost] the Entropy Style pass failed', e); }
 
         // Bloom — blooms the raw scene before AA/cinematic. Driven each frame by
         // _applyCurrent (env grade floored to the user strength) and gated by the
@@ -4406,6 +4427,188 @@ const ThreePost = (function () {
         }
     }
 
+    /* THE ENTROPY STYLE (2026-11-12, mondo: "some sort of shader(s) we can put over the whole game to help give it a unique
+       and consistent style ... blend all of these different assets and characters and maps into one"; he picked looks 1 + 2
+       of the sheet, "the lines look a little thick"). One screen pass under the CRT / retro passes, two halves:
+         THE GRADE  every asset pulled to one palette: shadows lean to deep indigo, lights to warm parchment, the saturation
+                    evened (a loud Meshy texture calmed, a grey pack prop lifted), a soft shoulder so nothing clips.
+         THE INK    light in five soft bands (hue kept) + a thin dark line where the DEPTH breaks (a silhouette, a ledge, a
+                    convex corner), drawn on the near side only so a body never grows. Depth, not colour: a speckled floor
+                    or a grass sheet gets no lines. Thin = about one screen pixel; Medium (1.6) is the default (the Ink Lines row).
+       A bright saturated pixel (a spell, a team outline, a zone wash: own cyan-blue / enemy pink-orange) keeps its colour
+       and takes no ink. No bloom, no fog, no texture touched; the HUD is DOM and never passes through here. Viewer-local.
+       Settings > Video > Entropy Style: Off / Grade / Grade + Ink. Stored ew_style. Off live: window.EW_NO_ENTROPY_STYLE. */
+    var _style = { mode: 'ink', inkWidth: 1.6, ink: 0.8, bands: 0.7, amount: 1 };   // Medium lines: mondo 11-12 "i like it with the lines on medium"
+    try {
+        var _styleSaved = (typeof localStorage !== 'undefined') ? JSON.parse(localStorage.getItem('ew_style') || 'null') : null;
+        if (_styleSaved && typeof _styleSaved === 'object') { for (var _sk in _style) { if (_styleSaved[_sk] !== undefined) _style[_sk] = _styleSaved[_sk]; } }
+    } catch (e) {}
+    var _stylePass = null;
+    function _styleMode() {
+        if (typeof window !== 'undefined' && window.EW_NO_ENTROPY_STYLE) return 0;
+        return _style.mode === 'ink' ? 2 : (_style.mode === 'grade' ? 1 : 0);
+    }
+    function _styleInkPx() {
+        var r = 1; try { r = (_renderer && _renderer.getPixelRatio) ? _renderer.getPixelRatio() : 1; } catch (e) {}
+        return Math.max(0.5, +_style.inkWidth || 1) * Math.max(1, r * 0.75);
+    }
+    function _styleCam() { return (_ssaoPass && _ssaoPass.camera) || null; }
+    /* the classic chains' uniforms, written at the pass's own draw */
+    function _styleSync(u, w, h, cam, depthTex) {
+        var m = _styleMode();
+        if (m > 1 && (!depthTex || !cam)) m = 1;   // no depth to read: the grade alone
+        u.uMode.value = m; u.tDepth.value = depthTex || null;
+        u.uRes.value.set(Math.max(1, w), Math.max(1, h));
+        u.uInkW.value = _styleInkPx(); u.uInk.value = +_style.ink || 0; u.uBands.value = +_style.bands || 0; u.uAmount.value = (_style.amount === undefined) ? 1 : +_style.amount;
+        if (cam) { u.uNearFar.value.set(cam.near || 0.1, cam.far || 1000); u.uOrtho.value = cam.isOrthographicCamera ? 1 : 0; u.uP00.value = cam.projectionMatrix.elements[0] || 1; }
+    }
+    function _styleApply() {
+        var on = _styleMode() > 0;
+        if (_stylePass) _stylePass.enabled = on;
+    }
+    function setStyle(mode, persist) {
+        _style.mode = (mode === 'ink' || mode === 'grade') ? mode : 'off';
+        _styleApply();
+        if (persist !== false) { try { localStorage.setItem('ew_style', JSON.stringify(_style)); } catch (e) {} }
+    }
+    function setStyleParam(key, value, persist) {
+        if (!(key in _style) || key === 'mode') return;
+        var v = parseFloat(value); if (isNaN(v)) return;
+        _style[key] = v;
+        if (persist !== false) { try { localStorage.setItem('ew_style', JSON.stringify(_style)); } catch (e) {} }
+    }
+    function getStyle() { return { mode: _style.mode, inkWidth: _style.inkWidth, ink: _style.ink, bands: _style.bands, amount: _style.amount, live: _styleMode() }; }
+    var _StyleShader = {
+        uniforms: {
+            'tDiffuse': { value: null }, 'tDepth': { value: null },
+            'uRes': { value: new THREE.Vector2(1, 1) }, 'uMode': { value: 0 }, 'uInkW': { value: 1 }, 'uInk': { value: 0.8 }, 'uBands': { value: 0.7 },
+            'uAmount': { value: 1 }, 'uNearFar': { value: new THREE.Vector2(0.1, 1000) }, 'uOrtho': { value: 0 }, 'uP00': { value: 1 }
+        },
+        vertexShader: [
+            'varying vec2 vUv;',
+            'void main() {',
+            '  vUv = uv;',
+            '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);',
+            '}'
+        ].join('\n'),
+        fragmentShader: [
+            'uniform sampler2D tDiffuse;',
+            'uniform sampler2D tDepth;',
+            'uniform vec2 uRes;',
+            'uniform float uMode;',
+            'uniform float uInkW;',
+            'uniform float uInk;',
+            'uniform float uBands;',
+            'uniform float uAmount;',
+            'uniform vec2 uNearFar;',
+            'uniform float uOrtho;',
+            'uniform float uP00;',
+            'varying vec2 vUv;',
+            'float sLum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }',
+            '// a spell, a team outline, a zone wash: strong + bright colour keeps itself',
+            'float sKeep(vec3 c) { float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)); float s = (mx - mn) / max(mx, 0.001); return smoothstep(0.55, 0.85, s) * smoothstep(0.6, 0.9, mx); }',
+            'vec3 sGrade(vec3 c) {',
+            '  float l = sLum(c);',
+            '  vec3 sh = vec3(0.10, 0.13, 0.26), hi = vec3(1.0, 0.93, 0.80);',
+            '  float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)); float s = (mx - mn) / max(mx, 0.001);',
+            '  vec3 g = mix(vec3(l), c, mix(1.22, 0.86, smoothstep(0.25, 0.75, s)));',
+            '  g = mix(g, g * hi * 1.03, smoothstep(0.35, 0.95, l) * 0.55);',
+            '  g = mix(g, mix(sh, g, 0.72) + sh * 0.10, (1.0 - smoothstep(0.0, 0.45, l)) * 0.75);',
+            '  g = g / (1.0 + 0.12 * g * g);',
+            '  return pow(max(g, vec3(0.0)), vec3(0.96));',
+            '}',
+            'float sVz(vec2 q) { float d = texture2D(tDepth, q).r; float n = uNearFar.x, f = uNearFar.y; return uOrtho > 0.5 ? n + d * (f - n) : n * f / max(f - d * (f - n), 0.000001); }',
+            'float sQ(float z) { return uOrtho > 0.5 ? z : 1.0 / max(z, 0.0001); }',
+            'void main() {',
+            '  vec4 s4 = texture2D(tDiffuse, vUv);',
+            '  if (uMode < 0.5) { gl_FragColor = s4; return; }',
+            '  vec3 c = clamp(s4.rgb, 0.0, 1.0); float k = sKeep(c); vec3 g = c; float edge = 0.0;',
+            '  if (uMode > 1.5) {',
+            '    float l = max(sLum(c), 0.001), lb = l * 5.0;',
+            '    float q = (floor(lb) + smoothstep(0.35, 0.65, fract(lb))) / 5.0;',
+            '    g = c * (mix(l, q, uBands) / l);',
+            '    vec2 px = uInkW / uRes;',
+            '    float zc = max(sVz(vUv), 0.0001);',
+            '    float lap = sQ(sVz(vUv + vec2(px.x, 0.0))) + sQ(sVz(vUv - vec2(px.x, 0.0))) + sQ(sVz(vUv + vec2(0.0, px.y))) + sQ(sVz(vUv - vec2(0.0, px.y))) - 4.0 * sQ(zc);',
+            '    float dz = uOrtho > 0.5 ? lap : -lap * zc * zc;   // > 0: the neighbours lie farther, this pixel is the near side',
+            '    float wpp = (uOrtho > 0.5 ? 1.0 : zc) * 2.0 / (uP00 * uRes.x) * uInkW;   // one line width in world units at this depth',
+            '    edge = smoothstep(0.9, 2.6, dz / max(wpp, 0.0000001));',
+            '    // only where the eye sees the break too: a far shape lost in the fog, or two faces of one colour, take no line',
+            '    float cd = max(max(length(texture2D(tDiffuse, vUv + vec2(px.x, 0.0)).rgb - c), length(texture2D(tDiffuse, vUv - vec2(px.x, 0.0)).rgb - c)), max(length(texture2D(tDiffuse, vUv + vec2(0.0, px.y)).rgb - c), length(texture2D(tDiffuse, vUv - vec2(0.0, px.y)).rgb - c)));',
+            '    edge *= smoothstep(0.03, 0.10, cd);',
+            '  }',
+            '  g = mix(c, mix(sGrade(g), g, k * 0.8), uAmount);',
+            '  g = mix(g, vec3(0.07, 0.06, 0.13), edge * uInk * (1.0 - k));',
+            '  gl_FragColor = vec4(g, s4.a);',
+            '}'
+        ].join('\n')
+    };
+    /* the same pass on the node renderer (TSL Fn only: WebGPU and its WebGL 2 backend compile the one graph) */
+    function _ngStyle(P, src, made) {
+        var T = P.T, F = T.float, V2 = T.vec2, V3 = T.vec3, S = P.st, tex = T.convertToTexture(src);
+        if (made && tex !== src) made.push(tex);
+        var LUM = V3(0.2126, 0.7152, 0.0722);
+        var lum = function (c) { return T.dot(c, LUM); };
+        var satOf = function (c) { var mx = T.max(c.r, T.max(c.g, c.b)), mn = T.min(c.r, T.min(c.g, c.b)); return { mx: mx, s: mx.sub(mn).div(T.max(mx, 0.001)) }; };
+        var keep = function (c) { var o = satOf(c); return T.smoothstep(0.55, 0.85, o.s).mul(T.smoothstep(0.6, 0.9, o.mx)); };
+        var grade = function (c) {
+            var l = lum(c), sh = V3(0.10, 0.13, 0.26), hi = V3(1.0, 0.93, 0.80), o = satOf(c);
+            var g = T.mix(V3(l), c, T.mix(F(1.22), F(0.86), T.smoothstep(0.25, 0.75, o.s)));
+            g = T.mix(g, g.mul(hi).mul(1.03), T.smoothstep(0.35, 0.95, l).mul(0.55));
+            g = T.mix(g, T.mix(sh, g, 0.72).add(sh.mul(0.10)), F(1).sub(T.smoothstep(0.0, 0.45, l)).mul(0.75));
+            g = g.div(F(1).add(g.mul(g).mul(0.12)));
+            return T.pow(T.max(g, V3(0)), V3(0.96));
+        };
+        var ortho = P.uOrtho.greaterThan(0.5);
+        var vz = function (q) { var d = P.depthTex.sample(q).r; return T.select(ortho, P.uNear.add(d.mul(P.uFar.sub(P.uNear))), T.perspectiveDepthToViewZ(d, P.uNear, P.uFar).negate()); };
+        var qf = function (z) { return T.select(ortho, z, F(1).div(T.max(z, 0.0001))); };
+        return T.Fn(function () {
+            var u = T.uv(), s4 = tex.sample(u).toVar();
+            var c = T.clamp(s4.rgb, 0, 1).toVar(), k = keep(c).toVar(), g = c.toVar(), edge = F(0).toVar();
+            T.If(S.mode.greaterThan(1.5), function () {
+                var l = T.max(lum(c), 0.001), lb = l.mul(5);
+                var q = T.floor(lb).add(T.smoothstep(0.35, 0.65, T.fract(lb))).div(5);
+                g.assign(c.mul(T.mix(l, q, S.bands).div(l)));
+                var px = V2(S.inkW).div(P.uDRes).toVar();
+                var zc = T.max(vz(u), 0.0001).toVar();
+                var lap = qf(vz(u.add(V2(px.x, 0)))).add(qf(vz(u.sub(V2(px.x, 0))))).add(qf(vz(u.add(V2(0, px.y))))).add(qf(vz(u.sub(V2(0, px.y))))).sub(qf(zc).mul(4)).toVar();
+                var dz = T.select(ortho, lap, lap.negate().mul(zc).mul(zc));
+                var wpp = T.select(ortho, F(1), zc).mul(2).div(S.p00.mul(P.uDRes.x)).mul(S.inkW);
+                // only where the eye sees the break too: a far shape lost in the fog, or two faces of one colour, take no line
+                var cdf = function (o) { return T.length(T.clamp(tex.sample(u.add(o)).rgb, 0, 1).sub(c)); };
+                var cd = T.max(T.max(cdf(V2(px.x, 0)), cdf(V2(px.x.negate(), 0))), T.max(cdf(V2(0, px.y)), cdf(V2(0, px.y.negate()))));
+                edge.assign(T.smoothstep(0.9, 2.6, dz.div(T.max(wpp, 0.0000001))).mul(T.smoothstep(0.03, 0.10, cd)));
+            });
+            g.assign(T.mix(c, T.mix(grade(g), g, k.mul(0.8)), S.amount));
+            g.assign(T.mix(g, V3(0.07, 0.06, 0.13), edge.mul(S.ink).mul(F(1).sub(k))));
+            return T.vec4(g, s4.a);
+        })();
+    }
+    /* the pmndrs chain's pass. The scene's depth texture belongs to the composer's input buffer; when this pass's turn is
+       to draw INTO that buffer, sampling its depth would be a feedback loop, so it draws to a target of its own and a copy
+       lands the picture. */
+    function _ppStylePass(PP, composer, rp) {
+        var m = new THREE.ShaderMaterial({ uniforms: THREE.UniformsUtils.clone(_StyleShader.uniforms), vertexShader: _PP_VS, fragmentShader: _StyleShader.fragmentShader, depthTest: false, depthWrite: false });
+        var p = new PP.ShaderPass(m, 'tDiffuse'); p.material = m;
+        var cm = new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: null } }, vertexShader: _PP_VS, fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main() { gl_FragColor = texture2D(tDiffuse, vUv); }', depthTest: false, depthWrite: false });
+        var cp = new PP.ShaderPass(cm, 'tDiffuse'); cp.material = cm;
+        var rt = null, r0 = p.render;
+        p.render = function (r, inp, out, d, st) {
+            var own = composer.inputBuffer, dt = (own && own.depthTexture) || null, cam = _styleCam() || rp.camera;
+            _styleSync(m.uniforms, inp.width, inp.height, cam, dt);
+            if (dt && out === own && m.uniforms.uMode.value > 1.5) {
+                if (!rt) {
+                    rt = new THREE.WebGLRenderTarget(inp.width, inp.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, type: inp.texture.type, depthBuffer: false, stencilBuffer: false });
+                    rt.texture.colorSpace = inp.texture.colorSpace;
+                } else if (rt.width !== inp.width || rt.height !== inp.height) rt.setSize(inp.width, inp.height);
+                r0.call(this, r, inp, rt, d, st);
+                cp.render(r, rt, out, d, st);
+            } else r0.call(this, r, inp, out, d, st);
+        };
+        p.ewDispose = function () { try { if (rt) rt.dispose(); m.dispose(); cm.dispose(); } catch (e) {} };
+        return p;
+    }
+
     /* THE RENDER SCALE (2026-11-10, the frame rate plan 2; mondo picked "Plan 2: Render Scale setting"). The 3D picture is
        drawn at a share of the screen's own resolution and the browser stretches it to the window; the HUD, the menus and
        every piece of text are DOM and stay at full sharpness. A Retina screen draws 4 pixels for every one of a plain
@@ -4500,7 +4703,7 @@ const ThreePost = (function () {
         _maskScanAt = 0;
 
         _composer = null;
-        _bloomPass = null; _cinematicPass = null; _retroPass = null; _smaaPass = null;
+        _bloomPass = null; _cinematicPass = null; _retroPass = null; _smaaPass = null; _stylePass = null;
         _toneMapPass = null; if (_directRT) { _directRT.dispose(); _directRT = null; } _paneDrop(); _hdr = false;
         _fxaaPass = null;
         _dofPassH = null;
@@ -4686,6 +4889,9 @@ const ThreePost = (function () {
         setAA: setAA, getAA: getAA,
         setPixelRatio: setPixelRatio,
         setRenderScale: setRenderScale,
+        setStyle: setStyle,
+        setStyleParam: setStyleParam,
+        getStyle: getStyle,
         getRenderScale: getRenderScale,
         syncLighting: syncLighting,
         setShadowFrame: setShadowFrame,
