@@ -2079,3 +2079,6 @@ window.EW_NO_CALM_LOOK and his pixel sheets are untouched. The table + hqMapLook
 - Mock-up / proof shots (WebGL2): /mnt/project-files/training-room-20261112/mockup_test_chamber_*.jpg.
 - 11-12 follow-up (mondo: "The white is too bright, needs to be turned down"): the pad's two tints went from 0xffffff / 0x7f9ab0 to
   0x8e9aa4 / 0x4e6070 (the room's lights were blowing the pale tile out to flat white on his Mac). Shot: test_chamber_dimmed_low.jpg.
+- 11-12 second follow-up (mondo: "Yes it is still way too bright"): the cause was the room's light, kept from the gym (`mood.ambient: 2.0`
+  over dark rubber mats) now falling on pale tile. `mood.ambient` 2.0 -> 1.0 and the pad tints -> 0x66707a / 0x36424e. Headless WebGL2
+  shots read much dimmer than his Mac (Firefox, WebGPU): do not judge a pale floor's brightness from them. Shot: test_chamber_dimmed2_low.jpg.
