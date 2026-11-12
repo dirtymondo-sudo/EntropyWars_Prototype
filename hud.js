@@ -10347,10 +10347,17 @@ function _hrlgSelfCastRow(blade, actingUnit, spell, key) {
 // costs, one-click move+strike combos, unavailability reasons. The view tab
 // carries the target's sprite / name / HP so you always know who you're
 // lining up against.
+/* THE TUTORIAL's quick menus (mondo 2026-11-12: "I can still click on an enemy and it brings up their quick action list where i
+   can select a spell, when tutorial wants me to attack, so clicking a spell does nothing ... those should be hidden/disabled,
+   only attack available"): a clicked unit's / square's list keeps only the rows the live step allows (ui.js _tutQuickOk) */
+function _tutQuickRows(actions) {
+  if (typeof window === 'undefined' || !window._tutActive || typeof window._tutQuickOk !== 'function' || !Array.isArray(actions)) return actions;
+  return actions.filter(a => a && window._tutQuickOk(a));
+}
 function _hrlgEnemyBlades(actingUnit, st) {
   const targetUnit = (st.units || []).find(u => u.id === st._enemyActionTargetId && !u.dead);
   if (!targetUnit) return { title: null, blades: [] };
-  const actions = _computeEnemyActions(actingUnit, targetUnit);
+  const actions = _tutQuickRows(_computeEnemyActions(actingUnit, targetUnit));   // THE TUTORIAL: only the rows the live step teaches
   const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
   const targetName = typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : (targetUnit.name || targetUnit.cls);
 
@@ -10636,7 +10643,7 @@ function _computeAllyActions(actingUnit, targetUnit) {
 function _hrlgAllyBlades(actingUnit, st) {
   const targetUnit = (st.units || []).find(u => u.id === st._enemyActionTargetId && !u.dead);
   if (!targetUnit) return { title: null, blades: [] };
-  const actions = _computeAllyActions(actingUnit, targetUnit);
+  const actions = _tutQuickRows(_computeAllyActions(actingUnit, targetUnit));   // THE TUTORIAL: only the rows the live step teaches
   const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
   const targetName = typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : (targetUnit.name || targetUnit.cls);
 
@@ -11005,7 +11012,7 @@ function _hrlgTileView(actingUnit, tx, ty, tz, opts) {
 
 /* the square's actions as blades: buttons carry tbtn + the tabs they ride (ttabs); rows are the rest */
 function _hrlgTileActionBlades(actingUnit, tx, ty, tz, view) {
-  const actions = _computeTileActions(actingUnit, tx, ty, tz);
+  const actions = _tutQuickRows(_computeTileActions(actingUnit, tx, ty, tz));   // THE TUTORIAL: only the rows the live step teaches
   const objInfo = view ? view.objInfo : _tileQuickObjectInfo(actingUnit, tx, ty);
   const objCard = view ? view.cards.object : (objInfo ? _objCardSpell(objInfo, tx, ty) : null);
   const tabCard = view ? (view.cards[view.active] || null) : null;
@@ -16379,6 +16386,417 @@ const UIM_SHIPPED = {
     "selGrow": 1.08
    },
    "hint": "Black 8-bit windows: stepped corners, a thick white frame, big pixels, an arrow cursor."
+  },
+  {
+   "id": "c_mw5p8wvy2q54",
+   "label": "My Theme 3",
+   "v": 1,
+   "colors": {
+    "plateTop": "#000000",
+    "plateMid": "#000000",
+    "plateBot": "#000000",
+    "edge": "#ffffff",
+    "seam": "#000000",
+    "rim": "#000000",
+    "lip": "rgba(0,0,0,0)",
+    "headTop": "#000000",
+    "headBot": "#000000",
+    "headInk": "#ffffff",
+    "rowTop": "rgba(0,0,0,0)",
+    "rowBot": "rgba(0,0,0,0)",
+    "rowSelTop": "rgba(255,255,255,0.18)",
+    "rowSelBot": "rgba(255,255,255,0.18)",
+    "rowEdge": "rgba(255,255,255,0)",
+    "ink": "#ffffff",
+    "inkMute": "#bcbcbc",
+    "inkDim": "#7c7c7c",
+    "hair": "rgba(255,255,255,0.3)",
+    "deadBg": "#070708",
+    "deadEdge": "#202024",
+    "deadInk": "#5e5e68",
+    "sel": "#ffffff",
+    "accent": "#3cbcfc",
+    "good": "#58f898",
+    "bad": "#f83800"
+   },
+   "scan": false,
+   "skins": {
+    "panel": {
+     "on": true,
+     "slice": "",
+     "shape": "square",
+     "size": 0,
+     "fill": {
+      "kind": "solid",
+      "angle": 180,
+      "alpha": 1,
+      "c1": "#000000",
+      "c2": "#000000",
+      "c3": "#000000"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 0.5,
+      "c": "#ffffff"
+     },
+     "inner": {
+      "w": 0,
+      "c": "#000",
+      "gap": 0
+     },
+     "bevel": {
+      "w": 0,
+      "light": 0,
+      "dark": 0
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#ffffff",
+      "a": 0
+     },
+     "shadow": {
+      "y": 0,
+      "blur": 0,
+      "a": 0
+     },
+     "opacity": 0.79,
+     "pixel": 2
+    },
+    "head": {
+     "on": true,
+     "slice": "",
+     "shape": "square",
+     "size": 0,
+     "fill": {
+      "kind": "solid",
+      "angle": 180,
+      "alpha": 1,
+      "c1": "#000000",
+      "c2": "",
+      "c3": "#161618"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 1,
+      "c": "#faf9ff"
+     },
+     "inner": {
+      "w": 0,
+      "c": "#3a3a42",
+      "gap": 1
+     },
+     "bevel": {
+      "w": 2,
+      "light": 0.12,
+      "dark": 0.3
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#f0d060",
+      "a": 0.5
+     },
+     "shadow": {
+      "y": 1,
+      "blur": 2,
+      "a": 0.45
+     },
+     "opacity": 1,
+     "pixel": 1,
+     "dither": 1
+    },
+    "button": {
+     "on": true,
+     "slice": "",
+     "shape": "square",
+     "size": 16,
+     "fill": {
+      "kind": "solid",
+      "angle": 180,
+      "alpha": 0,
+      "c1": "#000000",
+      "c2": "",
+      "c3": "rgba(0,0,0,0)"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 0,
+      "c": "#ffffff"
+     },
+     "inner": {
+      "w": 0,
+      "c": "rgba(0,0,0,0)",
+      "gap": 0
+     },
+     "bevel": {
+      "w": 0,
+      "light": 0,
+      "dark": 0
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#ffffff",
+      "a": 0
+     },
+     "shadow": {
+      "y": 3,
+      "blur": 4,
+      "a": 0.23
+     },
+     "opacity": 1,
+     "pixel": 1,
+     "edge": {
+      "ends": 0,
+      "w": 7.5,
+      "gap": 0,
+      "a": 1,
+      "on": true
+     },
+     "dither": 0
+    },
+    "buttonSel": {
+     "on": true,
+     "slice": "",
+     "shape": "square",
+     "size": 16,
+     "fill": {
+      "kind": "solid",
+      "angle": 95,
+      "alpha": 0,
+      "c1": "#000000",
+      "c2": "",
+      "c3": "#63bdff"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 0,
+      "c": "#ffffff"
+     },
+     "inner": {
+      "w": 0,
+      "c": "#000",
+      "gap": 0
+     },
+     "bevel": {
+      "w": 0,
+      "light": 0,
+      "dark": 0
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#ffffff",
+      "a": 1
+     },
+     "shadow": {
+      "y": 0,
+      "blur": 0,
+      "a": 0
+     },
+     "opacity": 1,
+     "pixel": 1
+    },
+    "chip": {
+     "on": true,
+     "slice": "",
+     "shape": "pill",
+     "size": 14,
+     "fill": {
+      "kind": "solid",
+      "angle": 180,
+      "alpha": 1,
+      "c1": "#000000",
+      "c2": "",
+      "c3": "rgba(0,0,0,0)"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 2,
+      "c": "#feffff"
+     },
+     "inner": {
+      "w": 0,
+      "c": "#000",
+      "gap": 0
+     },
+     "bevel": {
+      "w": 0,
+      "light": 0,
+      "dark": 0
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#ffffff",
+      "a": 0
+     },
+     "shadow": {
+      "y": 0,
+      "blur": 0,
+      "a": 0
+     },
+     "opacity": 1,
+     "pixel": 2
+    },
+    "chipOn": {
+     "on": true,
+     "slice": "",
+     "shape": "pill",
+     "size": 14,
+     "fill": {
+      "kind": "solid",
+      "angle": 180,
+      "alpha": 1,
+      "c1": "#000000",
+      "c2": "",
+      "c3": "rgba(255,255,255,0.18)"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 2,
+      "c": "#ffffff"
+     },
+     "inner": {
+      "w": 0,
+      "c": "#000",
+      "gap": 0
+     },
+     "bevel": {
+      "w": 0,
+      "light": 0,
+      "dark": 0
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#ffffff",
+      "a": 0
+     },
+     "shadow": {
+      "y": 0,
+      "blur": 0,
+      "a": 0
+     },
+     "opacity": 1,
+     "pixel": 2
+    },
+    "hero": {
+     "on": false,
+     "slice": "",
+     "shape": "round",
+     "size": 10,
+     "fill": {
+      "kind": "gradient",
+      "angle": 180,
+      "alpha": 1,
+      "c1": "#1c1c1f",
+      "c2": "#0f0f11",
+      "c3": "#050506"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 1,
+      "c": "#8c8c96"
+     },
+     "inner": {
+      "w": 1,
+      "c": "#3a3a42",
+      "gap": 1
+     },
+     "bevel": {
+      "w": 2,
+      "light": 0.12,
+      "dark": 0.3
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#f0d060",
+      "a": 0.5
+     },
+     "shadow": {
+      "y": 3,
+      "blur": 8,
+      "a": 0.45
+     },
+     "opacity": 1
+    }
+   },
+   "text": {
+    "font": "'Press Start 2P', monospace",
+    "titleFont": "'Indira K', Georgia, serif",
+    "caps": true,
+    "track": 0.03,
+    "effect": "none",
+    "selInk": "#ffd200",
+    "bigFirst": 1.5,
+    "bigRows": false,
+    "italic": false,
+    "effectColor": "",
+    "shadow2": "",
+    "s2x": 5,
+    "s2y": 4,
+    "outlineW": 1,
+    "titleInk": "#fbfcff",
+    "rowInk": "",
+    "firstInk": "",
+    "titlePlate": "",
+    "titleWeight": "600",
+    "titleSize": 1.2,
+    "rowSize": 0.95,
+    "glowR": 5
+   },
+   "drop": 0,
+   "motion": {
+    "open": "stretch",
+    "ms": 340,
+    "cursor": "▶",
+    "bob": true,
+    "rowTilt": 0.5,
+    "rowAlt": false,
+    "rowUpright": false,
+    "rowSlant": 0,
+    "selTilt": 0.5,
+    "selGrow": 1.08
+   },
+   "hint": "Black 8-bit windows: stepped corners, a thick white frame, big pixels, an arrow cursor."
   }
  ],
  "slices": [],
@@ -16386,7 +16804,8 @@ const UIM_SHIPPED = {
  "layout": {
   "meta": {
    "x": -32,
-   "y": 8
+   "y": 8,
+   "s": 1.1
   },
   "rig": {
    "x": -8,
@@ -16405,14 +16824,14 @@ const UIM_SHIPPED = {
    "o": 1
   },
   "cmds": {
-   "x": -24,
+   "x": -3,
    "y": -64,
    "s": 1.15,
    "o": 1,
    "t:label:track": 0.09,
    "w": 564,
-   "t:label:font": "'Ghiya Strokes Italic', Georgia, serif",
-   "t:label:fsz": 15,
+   "t:label:font": "'Press Start 2P', monospace",
+   "t:label:fsz": 12,
    "t:label:tfx": "hard2"
   },
   "turns": {
@@ -16465,19 +16884,22 @@ const UIM_SHIPPED = {
    "s": 1.1
   },
   "sqact": {
+   "y": -420,
    "s": 1.3,
    "z": "400",
    "zrel": true,
-   "shad": 60,
    "font": "'Indira K', Georgia, serif",
+   "edge": "#000000",
    "skin": "panel",
+   "bg": "#000000",
+   "edgeW": 0,
+   "shad": 22,
    "flow": "col",
    "gap": 10,
    "jal": "stretch",
    "pin": "l",
    "pinM": 32,
    "pinA": "start",
-   "y": 168,
    "pad": 14
   },
   "pkmvda49xuh6": {
@@ -16491,15 +16913,15 @@ const UIM_SHIPPED = {
    "x": -15,
    "y": -12,
    "s": 0.9,
-   "h": 398,
-   "w": 618,
+   "h": 392,
+   "w": 554,
    "track": 0.2,
    "t:badge:fsz": 10,
-   "t:label:fsz": 17,
+   "t:label:fsz": 13,
    "t:label:track": 0.11,
    "t:chip:fsz": 14,
    "t:ends:fsz": 8,
-   "t:label:font": "'Ghiya Strokes Italic', Georgia, serif",
+   "t:label:font": "'Press Start 2P', monospace",
    "t:glyph:fsz": 16,
    "t:cursor:fsz": 33,
    "t:cursor:tfx": "hard2",
@@ -16518,15 +16940,18 @@ const UIM_SHIPPED = {
    "y": -232
   },
   "fcard": {
-   "s": 0.95
+   "s": 0.95,
+   "hide": false
   },
   "sqbar": {
    "x": -32,
    "y": -56,
-   "w": 494,
-   "h": 178,
-   "s": 1.65
+   "w": 692,
+   "h": 152,
+   "s": 1.65,
+   "t:name:font": "'Indira K', Georgia, serif"
   },
+  "pkmvhyudb2kn": {},
   "mok": {
    "skin": "button",
    "skinT": "c_mvc8nxl9fo9g",
@@ -16542,6 +16967,7 @@ const UIM_SHIPPED = {
    "x": -16,
    "y": 556
   },
+  "pkmvp2yhan8s": {},
   "sqhead": {
    "w": 1270,
    "h": 112
@@ -16605,7 +17031,7 @@ const UIM_SHIPPED = {
     "y": 0
    }
   },
-  "w": 228,
+  "w": 236,
   "gap": 1,
   "pSize": 1.45,
   "haloW": 2.3,
@@ -16689,8 +17115,6 @@ const UIM_SHIPPED = {
   "rGap": false,
   "pBarH": 8,
   "pMpH": 6,
-  "pAllyCol": "#e8ffec",
-  "pFoeCol": "#f2fff2",
   "pAllyOp": 1,
   "pFoeOp": 1,
   "pLvl": false,
@@ -16779,8 +17203,8 @@ const UIM_SHIPPED = {
     "look": "clear"
    },
    "types": {
-    "x": -13,
-    "y": 20,
+    "x": -11,
+    "y": 68,
     "w": 169,
     "h": 124,
     "rad": -1,
@@ -16792,14 +17216,14 @@ const UIM_SHIPPED = {
    "hp": {
     "x": 322,
     "y": 119,
-    "w": 494,
-    "h": 49
+    "w": 462,
+    "h": 48
    },
    "mp": {
     "x": 322,
     "y": 130,
-    "w": 494,
-    "h": 75
+    "w": 462,
+    "h": 72
    },
    "stats": {
     "x": 178,
@@ -16932,22 +17356,14 @@ const UIM_SHIPPED = {
   "qGradeSize": 25,
   "qStatRowGap": 6,
   "qElemIcon": 37,
-  "wThick": 0.45,
   "wGlowW": 1.5,
-  "wCore": 1,
   "wHeadLen": 0.7,
-  "wDotSize": 0.6,
+  "wDotSize": 0.7,
   "wDotSpd": 0.75,
   "wHeadW": 1.45,
   "wGlow": 0,
   "wPulse": 2.5,
-  "wPulseSpd": 0.05,
-  "wDotShape": "streak",
-  "tEdge": 3,
-  "tHalo": 3.3,
-  "tPulse": 1.6,
-  "tSpeed": 2.55,
-  "tSize": 1.08,
+  "wPulseSpd": 0.45,
   "qListMin": 1000,
   "qBarGap": 40,
   "qBarH": 11,
@@ -16984,49 +17400,16 @@ const UIM_SHIPPED = {
   "znPulseSpd": 1.4,
   "zsPatAmt": 0,
   "znPatAmt": 0,
-  "fNumFont": "'Contra Italic', 'Arial Black', sans-serif",
-  "fLineCol": "#000000",
-  "fSpread": 0.1,
   "pNums": false,
-  "fSwell": 1.25,
-  "fGradX": -7,
-  "fGs2At": 100,
-  "fGs3Sh": -68,
-  "fGradWords": true,
-  "fSheen": 0,
-  "fWordFont": "'Aida Serif Oblique', Georgia, serif",
-  "fWordWeight": "700",
-  "fTrack": 0.5,
-  "fNumSize": 0.7,
-  "fLine": 0.6,
-  "fShadow": 2.35,
-  "fTilt": 3,
-  "fGap": -2,
-  "fWordSize": 0.9,
-  "fNumWeight": "700",
-  "fLay": "scatter",
-  "fBunch": 0.6,
-  "fGradOff": -42,
-  "fGradLen": 31,
-  "fkDamageSize": 1.15,
-  "fRise": 0.5,
-  "fGradStops": "2",
-  "fGs1Sh": 87,
-  "fGs2Sh": -1,
   "fkOverkillFont": "'Nosifer', cursive",
   "fkOverkillWeight": "900",
   "fkOverkillSize": 1.2,
   "fkComboFont": "'Indira K', Georgia, serif",
   "fkComboSize": 1.1,
   "fkStreakFont": "'Indira K', Georgia, serif",
-  "tHot": 0.35,
-  "tOpacity": 0.4,
-  "tFill": 1.05,
-  "tBright": 2.4,
-  "tLine": 0.75,
   "pW": 162,
   "bRows": "icon:side,name:top,type:top,riders:top,ups:top,power:bot,mp:bot,ap:bot,reason:bot,elem:top,press:top,shape:bot,note:bot,status:top,ends:bot",
-  "pFont": "'Ghiya Strokes Italic', Georgia, serif",
+  "pFont": "'Indira K', Georgia, serif",
   "pActiveCol": "#f0d060",
   "pTypeSize": 12,
   "mAt": 7,
@@ -17034,14 +17417,43 @@ const UIM_SHIPPED = {
   "mLvl": false,
   "mName": false,
   "kElemSize": 26,
-  "kStatWords": "full",
   "kMultLook": "box",
-  "kMultWords": "full",
   "kStatLook": "box",
   "kStatSize": 8,
   "kRideSize": 10,
   "kUpsSize": 8,
-  "eMenu": 1.4
+  "eMenu": 1.4,
+  "fNumFont": "'Press Start 2P', monospace",
+  "fWordFont": "'Indira K', Georgia, serif",
+  "fGlow": 0.2,
+  "fElem": false,
+  "fCrit": "text",
+  "fkDamageSize": 0.95,
+  "fNumSize": 0.95,
+  "fWordSize": 0.95,
+  "fMinNum": 0.5,
+  "fMaxNum": 9.5,
+  "fMinWord": 0.1,
+  "fSwell": 1.5,
+  "dLook": "black",
+  "pFoeCol": "#e88fb8",
+  "pAllyCol": "#8fd0e8",
+  "eBig": 28,
+  "wThick": 0.85,
+  "wBright": 1.4,
+  "wCore": 1,
+  "wDotShape": "streak",
+  "tLine": 0.7,
+  "tHalo": 0.35,
+  "tHot": 0.6,
+  "tFill": 0.75,
+  "tPulse": 0,
+  "tSize": 1.09,
+  "tOpacity": 0.4,
+  "tBright": 2.4,
+  "kMultWords": "vs",
+  "qStatLook": "number",
+  "dFocus": "empty"
  },
  "words": {
   "mcards": {
@@ -17085,7 +17497,13 @@ const UIM_SHIPPED = {
    "◎ ENEMY": ""
   },
   "sqbar": {
-   "4 VESSELS": ""
+   "4 VESSELS": "",
+   "NEW": "",
+   "8 VESSELS": ""
+  },
+  "deck": {
+   "I ·": "",
+   "I": ""
   }
  },
  "picks": [
@@ -17111,6 +17529,14 @@ const UIM_SHIPPED = {
    "label": "Deploy",
    "sel": "#sqActions .sq-cta",
    "selAll": "#sqActions .sq-cta",
+   "all": false
+  },
+  {
+   "id": "pkmwbvt4dbnu",
+   "surf": "match",
+   "label": "p",
+   "sel": ".ms-tty-body.ms-tty-full .ms-tty-col.ms-tty-modes .ms-tty-list .ms-tty-row:nth-child(1) p",
+   "selAll": ".ms-tty-body.ms-tty-full .ms-tty-col.ms-tty-modes .ms-tty-list .ms-tty-row p",
    "all": false
   }
  ],
@@ -19255,6 +19681,8 @@ const UX_DEF = {
   gCam: 'off', gCamCol: '#ffffff', gCamOp: 0.85, gFog: false, gFogCol: '#8c96aa', gFogOp: 0.35,
   gGround: 'none', gSpawn: false, gNexus: false, gCube: false, gNeutral: '#f2c64a',
   gAuto: 'board', gAim: false,
+  /* gPv* = THE PREVIEWS ON THE MINIMAP (2026-11-12): the board's reach washes, hit squares, arrows and cursor, mirrored */
+  gPvReach: true, gPvArea: true, gPvArrow: true, gPvCursor: true, gPvOp: 1,
   /* f* = THE FLOATING TEXT (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage and
      stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look
      like with a model with a nameplate for scale"): the pops over the units. floatSignal turns the keys that differ from
@@ -20125,7 +20553,8 @@ const MAP_KEYS = { size: 'gSize', view: 'gView', span: 'gSpan', turn: 'gTurn', s
   gridOp: 'gGridOp', gridW: 'gGridW', every: 'gEvery', frame: 'gFrame', frameOp: 'gFrameOp', frameW: 'gFrameW', icon: 'gIcon',
   iconSize: 'gIconSize', ally: 'gAlly', foe: 'gFoe', line: 'gLine', lineW: 'gLineW', allies: 'gAllies', foes: 'gFoes', active: 'gActive',
   activeCol: 'gActiveCol', pulse: 'gPulse', cam: 'gCam', camCol: 'gCamCol', camOp: 'gCamOp', fog: 'gFog', fogCol: 'gFogCol', fogOp: 'gFogOp',
-  ground: 'gGround', spawn: 'gSpawn', nexus: 'gNexus', cube: 'gCube', neutral: 'gNeutral', auto: 'gAuto', aim: 'gAim' };
+  ground: 'gGround', spawn: 'gSpawn', nexus: 'gNexus', cube: 'gCube', neutral: 'gNeutral', auto: 'gAuto', aim: 'gAim',
+  pvReach: 'gPvReach', pvArea: 'gPvArea', pvArrow: 'gPvArrow', pvCursor: 'gPvCursor', pvOp: 'gPvOp' };
 function mapSignal() {
   const X = uxOf(), L = {};
   Object.keys(MAP_KEYS).forEach(k => { L[k] = X[MAP_KEYS[k]]; });
@@ -20881,6 +21310,12 @@ function mmapForm() {
     + (X.gFog ? fColor('Fog colour', 'gFogCol', X.gFogCol) + op('Fog opacity', 'gFogOp') : '')
     + xCheck('Spawn zones', 'gSpawn', X.gSpawn) + xCheck('Nexus zones', 'gNexus', X.gNexus, true) + xCheck('Cubes', 'gCube', X.gCube, true)
     + (X.gNexus || X.gCube ? fColor('Neutral colour', 'gNeutral', X.gNeutral) : '')));
+  h += sec('gprev', 'Previews', xp(xCheck('Reach: the squares a move, an attack or a spell can reach', 'gPvReach', X.gPvReach)
+    + xCheck('Area: the squares that will be hit, with a ring on the units in them', 'gPvArea', X.gPvArea)
+    + xCheck('Arrows: the walk path, shoves and pulls', 'gPvArrow', X.gPvArrow)
+    + xCheck('Cursor: the square you are on', 'gPvCursor', X.gPvCursor)
+    + op('Preview opacity', 'gPvOp'))
+    + '<div class="uim-note">On your own turn the minimap mirrors what the board shows while you aim, in your tile and arrow colours.</div>');
   h += sec('glook', 'Look', xp(fSeg('Shape', 'gShape', [['square', 'Square'], ['round', 'Round']], X.gShape)
     + fRange('Size (px)', 'gSize', 80, 480, 2, +X.gSize, 'Its longest side. The whole board keeps the board\'s shape')
     + fColor('Background', 'gBg', X.gBg) + op('Background opacity', 'gBgOp')

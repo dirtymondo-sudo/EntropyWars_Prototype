@@ -27400,6 +27400,7 @@ const TUTORIAL_LESSONS = [
               say: 'Press <b>MOVE</b>, then click a lit tile. A move costs <b>1 AP</b> and hands the menu back. Walk BLADE up until DUMMY A is within reach.',
               hint: 'MOVE · then a tile next to DUMMY A',
               focus: { hud: 'move' }, allow: ['move'],
+              aim: { move: '<b>Yellow tiles</b> are ones you can attack from.' },   // shown once MOVE is armed (mondo 2026-11-12)
               goal: { type: 'move', unit: 'p1-0', inRangeOf: 'p2-0' } },
             { id: 'ap-left', title: 'ONE AP LEFT',
               say: 'One AP cube is spent. BLADE still has AP, so BLADE still has the turn. An <b>ATTACK costs 1 AP and ends the turn</b> — the red <b>ENDS TURN</b> tag on a row says so before you press it.',
@@ -27465,9 +27466,11 @@ const TUTORIAL_LESSONS = [
               focus: { hud: 'abil' }, allow: ['spell:raceSmite', 'move'],
               goal: { type: 'press', unit: 'p1-0', outcome: 'weak' } },
             { id: 'press', title: 'THE PRESS',
-              say: '<b>WEAKNESS — +{{PRESS_AP}} AP.</b> That is THE PRESS: a vessel\'s first weakness of the turn hands the AP straight back (so does a critical hit, or a spell\'s ⚗ COMBO on a status). A green <b>!</b> on a target row means the refund is guaranteed. Spend it: each spell goes once a turn (SMITE now reads USED THIS TURN), so <b>ATTACK</b> DUMMY A.',
+              say: '<b>WEAKNESS — +{{PRESS_AP}} AP.</b> That is THE PRESS: a vessel\'s first weakness of the turn hands the AP straight back (so does a critical hit, or a spell\'s ⚗ COMBO on a status). A green <b>!</b> on a target row marks a weakness. Spend it: each spell goes once a turn (SMITE now reads USED THIS TURN), so <b>ATTACK</b> DUMMY A.',
               hint: 'ATTACK · DUMMY A · ✓ CONFIRM',
               focus: { hud: 'attack' }, allow: ['attack', 'move'],
+              /* shown once ATTACK is armed (mondo 2026-11-12: "here is where it should explain what the green super effective icon means") */
+              aim: { attack: { t: 'The green <b>!</b> means the hit is <b>super effective</b>. A basic attack follows the type chart too: SISTER is DIVINE, DUMMY A is UNHOLY.', c: '#57d97e' } },
               goal: { type: 'attack', unit: 'p1-0' } },
             { id: 'blade', title: 'BLADE',
               say: 'A second weakness in the same turn can\'t press again — it <b>vents into the ENTROPY GAUGE</b> instead (top of the screen). BLADE: walk up or END TURN; the dummies are holding still.',

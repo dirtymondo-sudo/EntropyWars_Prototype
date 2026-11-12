@@ -2164,3 +2164,16 @@ Studios' CC0 packs (see spells-vfx.md THE NOISE PACKS).
 - His pixel lava + water are untouched and stay what lava + water wear; the liquid looks are only there when picked by name.
 - Seen: the Sea of Possibility floor moving, node renderer on WebGL 2. Not seen: a liquid look painted in the editor (as a
   board square or a hazard), real WebGPU, classic WebGL.
+
+## THE DULL LIQUIDS (2026-11-12, mondo, a Hollow Earth screenshot: "fix how bright and reflective these liquids are (i think this one is goo). Water and lava are fine")
+- Cause: THE CALM LIQUIDS (poison, poison_bog, purple_bog, swamp = the black goo, oil, blood) shared the calm water's material:
+  Phong specular 0xb4c4c8, shininess 140, the rippled normal at 0.05. Every light on the board (the sun + eight point lights on
+  Hollow Earth) threw a pin-sharp white glint off every ripple, so a pool was white speckle over its colour. Entropy Style on or
+  off made no difference to it.
+- Fix: three-renderer.js `_CALM.liquids` rows are now [colour, opacity, glow, highlight colour, shininess, ripple depth, sky sheen];
+  each liquid's highlight is a dim shade of itself, wide (shininess 30-40), the ripple shallow (0.012-0.016), the sky sheen 0.25-0.3.
+  `_calmFluidMat` passes ripple + sheen as uniforms `uCalmRip` / `uCalmSheen` (classic) and in the node tag (`_ewNodeCalmWater` D.rip /
+  D.sheen). Water (only under EW_CALM_LIQUIDS) keeps 0.05 / 1. Live tuning: `EW_CALM.liquids.<key>`, shows at the next board build.
+- Not touched: his pixel water + lava, healing_spring (a calm sheet, no shader), the six MOVING liquid looks (canvas sheets on plain
+  ground material, no highlight of their own).
+- Proof (node renderer, WebGL2): /mnt/project-files/dull-liquids-20261112/. Not seen: real WebGPU / his Mac, classic WebGL.

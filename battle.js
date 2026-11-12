@@ -28129,6 +28129,7 @@
            tighter than ±3 squares (TILE_PICK_MIN_HALF). Of the near-closest views it keeps the one nearest the screen's
            middle. The slide it picked rides the fit (camera._clearFit.slide) so the board rig lands exactly there.
            Viewer-local camera only; kill switch EW_NO_CLEAR_DROP (back to THE CLICKABLE PICK's strip). */
+        const PANEL_CENTRE_CX = 0.05;        // THE PANEL CENTRE: the drop pick's frame slides at most this far sideways (NDC) over the bottom panel
         const CLEAR_DROP_PAD_PX = 10;        // a square's middle stays this far from a panel's edge
         const CLEAR_DROP_EDGE = 0.94;        // the lit squares' corners stay inside this share of the half-screen
         const CLEAR_DROP_NEAR = 1.04;        // views within this of the closest count as equally close (the most centred wins)
@@ -28181,6 +28182,7 @@
                 // no sub menu up: the board rig takes no slide (window._ewMenuSlide), so the frame is solved centred
                 const fa = _menuFreeArea(true, !!(opts && opts.solid));   // the same cover the slide's refit watches
                 const slides = fa.menu;
+                const deckUp = !window.EW_NO_PANEL_CENTRE && !!document.querySelector('.hrlg-rig.ewd > .ewd-bay:not(.ewd-ghost)');   // THE PANEL CENTRE
                 const E = CLEAR_DROP_EDGE;
                 const hw = cv.width / 2, hh = cv.height / 2;
                 const mh = ((opts && Number.isFinite(opts.minHalf)) ? opts.minHalf : TILE_PICK_MIN_HALF) * ts;
@@ -28263,7 +28265,14 @@
                     };
                     const dMax = bd / 0.25;
                     const cxs = [], cys = [];
-                    if (slides) { for (let v = -0.3; v <= 0.801; v += 0.05) cxs.push(+v.toFixed(2)); for (let v = -0.25; v <= 0.351; v += 0.05) cys.push(+v.toFixed(2)); }
+                    /* THE PANEL CENTRE (mondo 2026-11-12, Infernal Hurl's landing pick on Hollow Earth: "now that the battle panel
+                       sits kinda more towards the bottom of the screen, can we fix this framing that is showing the board on the
+                       right side of the screen"): the slide search was made for menus down the LEFT side (up to 0.8 of the way
+                       right), so with THE ONE BATTLE PANEL along the bottom it still parked the landing squares in the strip
+                       beside the panel. With that panel up the squares stay in the middle of the screen (a hair either way)
+                       and rise over the panel instead. Kill switch: EW_NO_PANEL_CENTRE. */
+                    if (slides && deckUp) { for (let v = -PANEL_CENTRE_CX; v <= PANEL_CENTRE_CX + 0.001; v += 0.05) cxs.push(+v.toFixed(2)); for (let v = -0.1; v <= 0.551; v += 0.05) cys.push(+v.toFixed(2)); }
+                    else if (slides) { for (let v = -0.3; v <= 0.801; v += 0.05) cxs.push(+v.toFixed(2)); for (let v = -0.25; v <= 0.351; v += 0.05) cys.push(+v.toFixed(2)); }
                     else { cxs.push(0); cys.push(0); }
                     let best = null;
                     const found = [];
@@ -32465,6 +32474,7 @@
         const CLEAR_FRAME_HOLD_MS = 450;    // a menu gone this briefly (unit hand-over) keeps the slide
         const PANEL_LIFT_MAX = 0.3;         // THE PANEL LIFT: the frame rises at most this much (NDC) over the bottom panel
         const PANEL_LIFT_SHARE = 0.5;       // share of the way to the middle of the band over the panel (mondo 2026-11-12: "a little lower, like somewhere in between")
+        const PANEL_CENTRE_MIN_BAND = 0.3;  // THE PANEL CENTRE: the band over the bottom panel frames the full width while it is this share of the screen tall
         const PANEL_LIFT_SPAN = 0.18;       // the panel's bays within this share of the width each side of the middle count
         const CLEAR_FRAME_REFIT_MS = 140;   // a changed cover must hold this long before a fit is solved again
         const _CLEAR_FULL = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false });
@@ -32598,7 +32608,10 @@
                         let best = { a: -1, x0, x1, t: y1 };
                         const tryBox = (a, b) => { const t = topOver(a, b), ar = (b - a) * (t - y0); if (b > a && ar > best.a + 1) best = { a: ar, x0: a, x1: b, t }; };
                         tryBox(x0, x1);
-                        low.forEach(r => { if (r.right > x0 && r.right < x1) tryBox(r.right, x1); if (r.left > x0 && r.left < x1) tryBox(x0, r.left); });
+                        /* THE PANEL CENTRE: the strip beside a bay only when the band over the whole panel is too short to
+                           frame in (a very long list); else the whole width over it, so nothing is shoved sideways */
+                        if (window.EW_NO_PANEL_CENTRE || best.t - y0 < cv.height * PANEL_CENTRE_MIN_BAND)
+                            low.forEach(r => { if (r.right > x0 && r.right < x1) tryBox(r.right, x1); if (r.left > x0 && r.left < x1) tryBox(x0, r.left); });
                         x0 = best.x0; x1 = best.x1; y1 = best.t;
                     }
                     above = true;

@@ -8019,7 +8019,7 @@
             let rsOn = -1; rsSteps.forEach((k,i)=>{ if(Math.abs(rsShare-k)<0.011) rsOn=i; });
             // THE ENTROPY STYLE (2026-11-12): the grade + ink pass's two rows
             const esState = (typeof ThreePost !== 'undefined' && ThreePost.getStyle) ? ThreePost.getStyle() : { mode: 'off', inkWidth: 1 };
-            const esMode = esState.mode, esInk = +esState.inkWidth || 1;
+            const esMode = esState.mode, esInk = +esState.inkWidth || 1, esUnit = (esState.unitBold === undefined) ? 1.9 : +esState.unitBold;
             const rsSize = (_rsInfo&&_rsInfo.w>0&&_rsInfo.h>0) ? `drawing ${_rsInfo.w} × ${_rsInfo.h}; ` : '';
             /* MAP LOOKS OFF (2026-10-24): every grade setting the player never touched reads OFF on screen (three-post.js _LOOK_CLEAN),
                so the sheet shows what is worn — a box reads the way the picture looks */
@@ -8265,6 +8265,12 @@
                         <span class="pm-setting-label">Ink Lines</span>
                         <div class="pm-seg-group">
                             ${[[1,'Thin'],[1.6,'Medium'],[2.4,'Bold']].map(m=>`<button class="pm-seg-btn${Math.abs(esInk-m[0])<0.05 ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setStyleParam)ThreePost.setStyleParam('inkWidth',${m[0]});${RJ}">${m[1]}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px${esMode==='ink' ? '' : ';opacity:0.45'}">
+                        <span class="pm-setting-label">Unit Lines</span>
+                        <div class="pm-seg-group">
+                            ${[[1,'Same'],[1.9,'Bold'],[2.6,'Bolder']].map(m=>`<button class="pm-seg-btn${Math.abs(esUnit-m[0])<0.05 ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setStyleParam)ThreePost.setStyleParam('unitBold',${m[0]});${RJ}">${m[1]}</button>`).join('')}
                         </div>
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
@@ -17475,6 +17481,7 @@
             if (!L) { console.warn('[Tutorial] no lesson', lessonId); return false; }
             if (_tut.booting || _tut.arenaWait) return false;
             if (state.phase === 'battle' && !_tut.active) { console.warn('[Tutorial] a match is live'); return false; }
+            _tutFreeMouse();
             /* THE OWN ARENAS (2026-10-20): a lesson board cut from a room (the Holo Sim) waits for that room's survey like
                _msConfirm's gate does, so the lesson opens IN the room and never on the bare board */
             const _ta = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(L.map) : null;
@@ -17771,6 +17778,32 @@
             const verb = _TUT_VERB_OF_TOOL[id];
             return verb ? window._tutVerbOk(verb) : (_tutAllowList() === null);
         };
+        /* a quick menu's row (hud.js _computeEnemyActions / Ally / Tile: ids attack, attack:<obj>, combo, spell:<name>, item:<key>,
+           move, moveTowards, jump, climb, takeoff-move, inspect ...): kept only when the step allows its verb; a row that walks
+           first (moveTile) needs MOVE allowed as well */
+        window._tutQuickOk = function (a) {
+            if (!_tut.active) return true;
+            if (_tut.finished || _tut.booting) return false;
+            const allow = _tutAllowList();
+            if (allow === null) return true;
+            const id = String((a && a.id) || '');
+            let verb = null;
+            if (id === 'attack' || id.indexOf('attack:') === 0) verb = 'attack';
+            else if (id === 'combo') verb = 'combo';
+            else if (id.indexOf('spell:') === 0) verb = 'spell';
+            else if (id.indexOf('item:') === 0) verb = 'item';
+            else if (id === 'move' || id === 'moveTowards' || id === 'jump' || id === 'climb' || id === 'takeoff-move') verb = 'move';
+            else if (id === 'inspect') verb = 'inspect';
+            else if (id === 'channel' || id === 'nexus') verb = 'channel';
+            if (!verb) return false;
+            if (a.moveTile && verb !== 'move' && !allow.includes('move')) return false;
+            if (verb === 'spell') {
+                const sid = a.spell && a.spell.id;
+                if (allow.includes('spell')) return true;
+                return !!sid && allow.includes('spell:' + sid);
+            }
+            return allow.includes(verb);
+        };
         /* arming a mode from the keyboard (B, M, A ...) is the same gate as its row */
         window._tutModeOk = function (mode) {
             if (!_tut.active) return true;
@@ -17890,12 +17923,28 @@
                 default: return false;
             }
         }
+        /* THE MOUSE COMES BACK (mondo 2026-11-12: "the mouse disappeared in between the first and 2nd lessons, i couldnt press continue
+           on the tutorial panel. Had to press escape"): the walking view's mouse capture, asked for on the click that started the
+           next tape, could land after the building was left and stay on the shared canvas. A lesson never needs the capture while
+           it boots or while a panel waits for a button, so it is given back there. */
+        function _tutFreeMouse() {
+            try { if (typeof document !== 'undefined' && document.pointerLockElement && document.exitPointerLock) document.exitPointerLock(); } catch (e) {}
+        }
         function _tutPoll() {
+            if (_tut.active && (_tut.finished || _tut.booting || (_tut.step && _tut.step.goal && _tut.step.goal.type === 'ack'))) _tutFreeMouse();
             if (!_tut.active || _tut.finished || _tut.booting) return;
             _tutApplyGlow();
             /* the coach fades while a target or tile is being picked (styles-base.css .tut-coach.aiming) */
             const _ce = document.getElementById('tutCoach');
-            if (_ce) _ce.classList.toggle('aiming', !!state.actionMode && !!(_tut.step && _tut.step.goal && _tut.step.goal.type !== 'ack'));
+            /* THE AIM TIP (mondo 2026-11-12: "After I press move for the first time, can it tell the player that yellow tiles are ones
+               they can attack from"): a step's `aim: { <mode>: text }` shows under the body while that mode is armed, and the coach
+               stays solid for it */
+            const _aimTip = (_tut.step && _tut.step.aim && state.actionMode) ? (_tut.step.aim[state.actionMode] || null) : null;
+            try {
+                const _at = document.getElementById('tutCoachAim');
+                if (_at) { const on = !!_aimTip; if (on && _at.getAttribute('data-k') !== state.actionMode) { const _tx = (typeof _aimTip === 'string') ? _aimTip : _aimTip.t, _tc = (typeof _aimTip === 'string') ? '' : (_aimTip.c || ''); _at.innerHTML = _tutT(_tx); _at.style.setProperty('--tip', _tc || '#ffcc33'); _at.setAttribute('data-k', state.actionMode); } _at.style.display = on ? '' : 'none'; if (!on) _at.removeAttribute('data-k'); }
+            } catch (e) {}
+            if (_ce) _ce.classList.toggle('aiming', !_aimTip && !!state.actionMode && !!(_tut.step && _tut.step.goal && _tut.step.goal.type !== 'ack'));
             if (state.phase !== 'battle') return;
             /* the real-CPU tapes end the way a match does (checkWin stands aside while a lesson runs) */
             if (_tut.lesson && _tut.lesson.cpuAi && !_tut.outcome && !state._actionExecuting) {
@@ -18073,6 +18122,7 @@
                 + (st.title ? '<div class="tut-coach-title">' + escapeHtml(st.title) + '</div>' : '')
                 + '<div class="tut-coach-body">' + _tutT(st.say) + '</div>'
                 + (st.hint && !ack ? '<div class="tut-coach-hint">▶ ' + escapeHtml(_tutT(st.hint)) + '</div>' : '')
+                + (st.aim ? '<div class="tut-coach-aim" id="tutCoachAim" style="display:none"></div>' : '')
                 + (ack ? '<div class="tut-coach-actions"><button class="tut-btn tut-btn-primary" data-tut="continue">' + (isFinish ? 'LESSON COMPLETE ▸' : 'CONTINUE ▸') + '</button></div>' : '')
                 + '<div class="tut-coach-progress" title="step ' + n + ' of ' + total + '"><i style="width:' + Math.round(100 * n / total) + '%"></i></div>';
         }

@@ -4140,19 +4140,23 @@ const ThreeRenderer = (function () {
             var tex = _hzTex('calm_lava');   // the calm sheet by name (lava itself wears his pixel sheet: CALM_TERRAIN.pixelLiquids)
             mat = new THREE.MeshLambertMaterial({ map: tex || null, color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.85, emissiveMap: tex || null });
         } else {
-            mat = new THREE.MeshPhongMaterial({ color: liq ? liq[0] : deep ? _CALM.deep : _CALM.water, specular: 0xb4c4c8, shininess: 140,
+            /* THE DULL LIQUIDS (mondo 11-12: "fix how bright and reflective these liquids are"): a spell / site liquid is thick, so its
+               highlight is dim, wide and in its own colour, its ripple is shallow and it carries little of the sky; water keeps the glint */
+            mat = new THREE.MeshPhongMaterial({ color: liq ? liq[0] : deep ? _CALM.deep : _CALM.water, specular: liq ? (liq[3] != null ? liq[3] : 0x1c2022) : 0xb4c4c8, shininess: liq ? (liq[4] || 30) : 140,
                                                 transparent: true, opacity: liq ? liq[1] : deep ? Math.min(1, _CALM.waterOp + 0.08) : _CALM.waterOp, depthWrite: false });
             if (liq && liq[2]) mat.emissive = new THREE.Color(liq[2]);   // THE CALM LIQUIDS: a liquid's own faint glow
         }
         var night = ((document.body && document.body.dataset && document.body.dataset.cycle) || 'day') === 'night';
         var sky = new THREE.Color(night ? 0x2a3a52 : 0x9db4c2);
+        var rip = liq ? (liq[5] != null ? liq[5] : 0.016) : 0.05, sheen = liq ? (liq[6] != null ? liq[6] : 0.3) : 1;   // THE DULL LIQUIDS
         mat.onBeforeCompile = function (sh) {
             sh.uniforms.uFluidTime = _fluidTimeUniform; sh.uniforms.uFluidTile = _fluidTileUniform;
             if (!_fluidFlowUniform.value) _fluidFlowUniform.value = new THREE.Vector2(0, 0);
             sh.uniforms.uFluidFlow = _fluidFlowUniform;
             sh.uniforms.uCalmSky = { value: sky }; sh.uniforms.uCalmGlow = { value: _CALM.lavaGlow };
+            sh.uniforms.uCalmRip = { value: rip }; sh.uniforms.uCalmSheen = { value: sheen };
             sh.vertexShader = 'varying vec3 vCalmW;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvCalmW = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
-            var head = 'uniform float uFluidTime;\nuniform float uFluidTile;\nuniform vec2 uFluidFlow;\nuniform vec3 uCalmSky;\nuniform float uCalmGlow;\nvarying vec3 vCalmW;\n' + _CALM_NOISE_GLSL + (lava ? _CALM_NOTILE_GLSL : '');
+            var head = 'uniform float uFluidTime;\nuniform float uFluidTile;\nuniform vec2 uFluidFlow;\nuniform vec3 uCalmSky;\nuniform float uCalmGlow;\nuniform float uCalmRip;\nuniform float uCalmSheen;\nvarying vec3 vCalmW;\n' + _CALM_NOISE_GLSL + (lava ? _CALM_NOTILE_GLSL : '');
             var f = head + sh.fragmentShader;
             if (lava) {
                 /* THE MOLTEN LAVA (mondo: "doesnt really look lava-y ... all brown ... isnt even moving", then "the dark parts are kind
@@ -4179,19 +4183,19 @@ const ThreeRenderer = (function () {
                     'vec2 cP = (vCalmW.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
                     'float cT = uFluidTime;\n' +
                     'float cE = 0.012, cH0 = cRip(cP, cT);\n' +
-                    'vec3 cNw = normalize(vec3(-(cRip(cP + vec2(cE, 0.0), cT) - cH0) / cE * 0.05, 1.0, -(cRip(cP + vec2(0.0, cE), cT) - cH0) / cE * 0.05));\n' +
+                    'vec3 cNw = normalize(vec3(-(cRip(cP + vec2(cE, 0.0), cT) - cH0) / cE * uCalmRip, 1.0, -(cRip(cP + vec2(0.0, cE), cT) - cH0) / cE * uCalmRip));\n' +
                     'diffuseColor.rgb *= 0.88 + 0.22 * cNoise(cP * 0.9 + vec2(cT * 0.03, cT * 0.02));\n')
                 .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nnormal = normalize( ( viewMatrix * vec4( cNw, 0.0 ) ).xyz );\n')
                 .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' +
                     '{ vec3 cV = normalize(cameraPosition - vCalmW); float cFr = 0.04 + 0.96 * pow(1.0 - clamp(dot(cNw, cV), 0.0, 1.0), 5.0);\n' +
                     '  vec3 cR = reflect(-cV, cNw); float cSk = cNoise(cR.xz / max(cR.y, 0.2) * 1.3 + vec2(cT * 0.02, cT * 0.012));\n' +
-                    '  totalEmissiveRadiance += uCalmSky * (cFr * 0.55 + 0.05 * (0.4 + cSk)); diffuseColor.a = mix(diffuseColor.a, 1.0, cFr * 0.6); }\n');
+                    '  totalEmissiveRadiance += uCalmSky * uCalmSheen * (cFr * 0.55 + 0.05 * (0.4 + cSk)); diffuseColor.a = mix(diffuseColor.a, 1.0, cFr * 0.6); }\n');
             }
             sh.fragmentShader = f;
         };
         mat.customProgramCacheKey = function () { return 'ew_calm_fluid_' + (lava ? 'lava' : deep ? 'deep' : 'water'); };
         mat._ew_fluidTop = true; mat._ew_fluidType = key; mat._ew_calm = true;
-        _ewNodeTag(mat, { k: 'calmfluid', lava: lava, glow: _CALM.lavaGlow, sky: [sky.r, sky.g, sky.b] });   // WEBGPU: the same lava + water (_ewNodeCalmFluid)
+        _ewNodeTag(mat, { k: 'calmfluid', lava: lava, glow: _CALM.lavaGlow, sky: [sky.r, sky.g, sky.b], rip: rip, sheen: sheen });   // WEBGPU: the same lava + water (_ewNodeCalmFluid)
         return mat;
     }
 
@@ -35932,9 +35936,12 @@ const ThreeRenderer = (function () {
                   drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.0,
                   /* THE CALM LIQUIDS (the rollout, batch 2): the spell / site liquids drawn like the calm water — the same moving surface,
                      glints and sky sheen — each in its own colour, [colour, opacity, glow]: poison's acid green (a faint glow of its own,
-                     so a pool never passes for grass), the bogs, the black ooze, oil, blood */
-                  liquids: { poison: [0x58a02c, 0.9, 0x1a3a0a], poison_bog: [0x6a7a26, 0.92, 0x141c08], purple_bog: [0x5e3078, 0.92, 0x1c0c2a],
-                             swamp: [0x1d1524, 0.95, 0x0c0612], oil: [0x14120e, 0.96, 0], blood: [0x6a1014, 0.95, 0x1a0204] } };
+                     so a pool never passes for grass), the bogs, the black ooze, oil, blood.
+                     THE DULL LIQUIDS (11-12) add [.., highlight colour, highlight width (shininess), ripple depth, sky sheen]: each
+                     liquid's highlight is a dim shade of itself (water's is 0xb4c4c8 / 140 / 0.05 / 1) */
+                  liquids: { poison: [0x58a02c, 0.9, 0x1a3a0a, 0x1c2a12, 30, 0.016, 0.3], poison_bog: [0x6a7a26, 0.92, 0x141c08, 0x20240f, 30, 0.016, 0.3],
+                             purple_bog: [0x5e3078, 0.92, 0x1c0c2a, 0x22142c, 30, 0.016, 0.3], swamp: [0x1d1524, 0.95, 0x0c0612, 0x1e1826, 34, 0.014, 0.25],
+                             oil: [0x14120e, 0.96, 0, 0x22252c, 40, 0.012, 0.3], blood: [0x6a1014, 0.95, 0x1a0204, 0x2a1012, 30, 0.014, 0.25] } };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmTable() { return (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN && CALM_TERRAIN.sheets) ? CALM_TERRAIN : null; }
     /* the room being drawn: the walk's room, else the room round a field fight (the editor builds through _hq too) */
@@ -45923,8 +45930,8 @@ const ThreeRenderer = (function () {
         };
         var cpos = function () { return T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)); };
         var NW = T.Fn(function () {   // the rippled normal, world space
-            var p = cpos().toVar(), t = U.ftime, e = 0.012, h0 = rip(p, t).toVar();
-            var dx = rip(p.add(T.vec2(e, 0)), t).sub(h0).div(e).mul(0.05), dz = rip(p.add(T.vec2(0, e)), t).sub(h0).div(e).mul(0.05);
+            var p = cpos().toVar(), t = U.ftime, e = 0.012, h0 = rip(p, t).toVar(), rs = (D.rip != null ? D.rip : 0.05);   // THE DULL LIQUIDS: a thick liquid's shallow ripple
+            var dx = rip(p.add(T.vec2(e, 0)), t).sub(h0).div(e).mul(rs), dz = rip(p.add(T.vec2(0, e)), t).sub(h0).div(e).mul(rs);
             return T.normalize(T.vec3(dx.negate(), 1, dz.negate()));
         })();
         var FR = T.Fn(function () {   // Schlick, against the rippled normal
@@ -45938,7 +45945,7 @@ const ThreeRenderer = (function () {
         var sky = T.vec3(D.sky ? D.sky[0] : 0.62, D.sky ? D.sky[1] : 0.71, D.sky ? D.sky[2] : 0.76);
         _ewNodeDiffuseMul(nm, function () { return vnoise(cpos().mul(0.9).add(T.vec2(U.ftime.mul(0.03), U.ftime.mul(0.02)))).mul(0.22).add(0.88); });
         nm.normalNode = T.normalize(T.cameraViewMatrix.mul(T.vec4(NW, 0)).xyz);
-        nm.emissiveNode = T.materialEmissive.add(sky.mul(FR.mul(0.55).add(SK.add(0.4).mul(0.05))));
+        nm.emissiveNode = T.materialEmissive.add(sky.mul(D.sheen != null ? D.sheen : 1).mul(FR.mul(0.55).add(SK.add(0.4).mul(0.05))));
         nm.opacityNode = T.mix(T.materialOpacity, T.float(1), FR.mul(0.6));
     }
     /* a {value} object the classic hooks share → one node uniform that reads it every render */
@@ -49651,7 +49658,8 @@ const ThreeRenderer = (function () {
         allies: true, foes: true, active: true, activeCol: '#ffffff', pulse: true,
         cam: 'off', camCol: '#ffffff', camOp: 0.85, fog: false, fogCol: '#8c96aa', fogOp: 0.35,
         ground: 'none', spawn: false, nexus: false, cube: false, neutral: '#f2c64a',
-        auto: 'board', aim: false
+        auto: 'board', aim: false,
+        pvReach: true, pvArea: true, pvArrow: true, pvCursor: true, pvOp: 1
     };
     var _mm = { el: null, cv: null, ctx: null, cls: '', sig: '', next: 0, boxKey: '', cw: 0, ch: 0, fogRef: null, drawnAt: 0, imgs: new Map() };
     function _mmLook() {
@@ -49759,6 +49767,69 @@ const ThreeRenderer = (function () {
         }
         return out;
     }
+    /* THE PREVIEWS ON THE MINIMAP (2026-11-12, mondo: "I also want the minimap to kind of mirror the spell previews and
+       have arrows and tile highlights and damage aoes etc, like a simplified mini version of the board"). ONE SOURCE: it
+       reads what the board itself is showing this frame — every visible tile plate in highlightGroup (the selection's
+       reach from rebuildHighlights, every setOverlay layer: spell / attack reach, the AoE footprint, landings, the move
+       preview), the board's arrows (_arrowBuilds) and the hover cursor — so it cannot disagree with the board, it takes
+       the UI Maker's tile + arrow colours with it, and it is the viewer's own (the board never paints the other seat's
+       aim). Reach = a faint wash, a hit / landing plate (_OVERLAY_STYLE fill >= 0.5) = a solid square, and a unit standing
+       on a solid square gets a ring. Left out: the board's standing markings (zones, weather, telegraphs, the action
+       glow), the hovered enemy's range wash, the Inspect search map. UI Maker > Minimap > Previews: pv* switches. */
+    var _MM_PV_SKIP = { zone: 1, weather: 1, actionGlow: 1, arrow: 1, enemyRange: 1, searchMap: 1, telegraph: 1 };
+    function _mmPreview(L, W, H) {
+        var out = { tiles: [], hit: {}, arrows: [], cur: null, sig: '' };
+        if (!highlightGroup || highlightGroup.visible === false || !(+L.pvOp > 0)) return out;
+        if (typeof state === 'undefined' || !state || state.phase !== 'battle' || state.winner) return out;
+        var ts = CONFIG.tileSize || BASE_TILE, ch = highlightGroup.children, byKey = {}, sig = '';
+        if (L.pvReach || L.pvArea || L.pvCursor) {
+            for (var i = 0; i < ch.length; i++) {
+                var o = ch[i];
+                if (!o || !o.visible || o === hoverMesh || o === selTileMesh || o === underfootMesh) continue;
+                var ov = o._ew_overlay;
+                if (ov && _MM_PV_SKIP[ov]) continue;
+                var m = o.material;
+                if (!m || Array.isArray(m) || !o.position) continue;
+                var x = Math.floor(o.position.x / ts), y = Math.floor(o.position.z / ts);
+                if (!(x >= 0 && y >= 0 && x < W && y < H)) continue;
+                if (m === _cursorBracketMat) { if (L.pvCursor) out.cur = [x, y]; continue; }
+                var cv = m._ew_glowBase || (m.uniforms && m.uniforms.uColor && m.uniforms.uColor.value);
+                if (!cv || typeof cv.getHexString !== 'function') continue;
+                var st = ov ? (_OVERLAY_STYLE[ov] || { fill: 0.34 }) : { fill: 0.12 };
+                var hit = st.fill >= 0.5;
+                if (hit ? !L.pvArea : !L.pvReach) continue;
+                var a = hit ? 0.72 : (st.fill >= 0.28 ? 0.4 : 0.26), k = x + ',' + y, was = byKey[k];
+                if (was && was.a > a) continue;
+                byKey[k] = { x: x, y: y, col: '#' + cv.getHexString(), a: a, hit: hit };
+            }
+            for (var bk in byKey) {
+                var t = byKey[bk];
+                out.tiles.push(t);
+                if (t.hit) out.hit[bk] = t.col;
+                sig += bk + t.col + (t.hit ? 'h' : t.a > 0.3 ? 'm' : 'r') + ';';
+            }
+            /* washes under, solid squares over */
+            out.tiles.sort(function (p, q) { return p.a - q.a; });
+            if (L.pvCursor && !out.cur && hoverMesh && hoverMesh.visible && _lastHoverX >= 0 && _lastHoverY >= 0 && _lastHoverX < W && _lastHoverY < H
+                && _tkDecWas) out.cur = [_lastHoverX, _lastHoverY];
+            if (out.cur) sig += 'c' + out.cur[0] + ',' + out.cur[1];
+        }
+        if (L.pvArrow && _arrowBuilds.length && _arrowMeshes.length && _arrowMeshes[0].visible !== false) {
+            var AL = _arrowLook();
+            for (var ai = 0; ai < _arrowBuilds.length && ai < 24; ai++) {
+                var b = _arrowBuilds[ai], pts = [];
+                if (!b || !b.pts || b.pts.length < 2) continue;
+                for (var pi = 0; pi < b.pts.length; pi++) pts.push([b.pts[pi].x / ts, b.pts[pi].z / ts]);
+                var kind = (b.opts && b.opts.kind) || _ARROW_HEX_KIND[b.hex] || '';
+                var hx = (kind && AL.cols && AL.cols[kind] !== undefined) ? AL.cols[kind] : b.hex;
+                var col = '#' + ('000000' + ((+hx) >>> 0).toString(16)).slice(-6);
+                out.arrows.push({ pts: pts, col: col });
+                sig += 'a' + col + pts[0][0].toFixed(1) + ',' + pts[0][1].toFixed(1) + '>' + pts[pts.length - 1][0].toFixed(1) + ',' + pts[pts.length - 1][1].toFixed(1) + '/' + pts.length;
+            }
+        }
+        out.sig = sig;
+        return out;
+    }
     function _mmUpdate() {
         var W = (typeof bw === 'function') ? bw() : (state.boardTerrain[0] ? state.boardTerrain[0].length : 0);
         var H = (typeof bh === 'function') ? bh() : state.boardTerrain.length;
@@ -49821,6 +49892,8 @@ const ThreeRenderer = (function () {
         }
         if (L.cam !== 'off' && cam) sig += '|c' + (+cam.x).toFixed(2) + ',' + (+cam.y).toFixed(2) + ',' + yaw.toFixed(1) + ',' + (+cam.tilt || 0).toFixed(1) + ',' + (+cam.zoom || 0).toFixed(3);
         if (_fogVisibleSet !== _mm.fogRef) { _mm.fogRef = _fogVisibleSet; sig += '|f' + now; }
+        var pv = _mmPreview(L, W, H);
+        if (pv.sig) sig += '|p' + pv.sig;
         var pulse = L.active && L.pulse && hasActive;
         /* nothing moved: keep the picture (a pulsing ring, a terrain change — fissures, lava turned stone — or a nexus changing
            hands still redraw, the last two within a second) */
@@ -49911,6 +49984,16 @@ const ThreeRenderer = (function () {
             }
         }
 
+        /* ── THE PREVIEWS: the board's own reach washes and hit squares, under the grid ── */
+        if (pv.tiles.length) {
+            var pvK = Math.max(0, Math.min(1, +L.pvOp));
+            for (var pti = 0; pti < pv.tiles.length; pti++) {
+                var pt = pv.tiles[pti];
+                ctx.fillStyle = _mmRgba(pt.col, pt.a * pvK);
+                ctx.fillRect(pt.x, pt.y, 1, 1);
+            }
+        }
+
         /* ── the grid: the lines between squares, only where a square has a floor; the outer ones lean in so they stay on
            the box. A line of an odd device-pixel width sits on a pixel's middle so it draws crisp (unturned). ── */
         var gw = +L.gridW, every = Math.max(1, Math.round(+L.every || 1));
@@ -49989,7 +50072,48 @@ const ThreeRenderer = (function () {
                 if (icn.own !== (pass === 1)) continue;
                 drawIcon(icn);
                 if (icn.id === activeId) activeIc = icn;
+                /* THE PREVIEWS: a unit standing on a hit square is ringed (dark halo under, white over) */
+                if (pv.hit[Math.floor(icn.x) + ',' + Math.floor(icn.y)] !== undefined) {
+                    var hq = T(icn.x, icn.y);
+                    ctx.beginPath(); ctx.arc(hq[0], hq[1], r + 2.5, 0, Math.PI * 2);
+                    ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.stroke();
+                    ctx.lineWidth = 1.75; ctx.strokeStyle = _mmRgba('#ffffff', Math.max(0.35, Math.min(1, +L.pvOp))); ctx.stroke();
+                }
             }
+        }
+        /* THE PREVIEWS: the board's arrows (the walk path, a shove, a pull, a throw) flat from above, then the cursor */
+        if (pv.arrows.length) {
+            var aw = Math.max(1.5, cell * 0.2), ah = Math.max(5, cell * 0.55);
+            ctx.globalAlpha = Math.max(0, Math.min(1, +L.pvOp));
+            for (var avi = 0; avi < pv.arrows.length; avi++) {
+                var av = pv.arrows[avi], AP = [];
+                for (var apI = 0; apI < av.pts.length; apI++) AP.push(T(av.pts[apI][0], av.pts[apI][1]));
+                var an = AP.length, aB = AP[an - 1], aA = AP[an - 2], abk = an - 2;
+                while (abk > 0 && Math.hypot(aB[0] - aA[0], aB[1] - aA[1]) < 1) aA = AP[--abk];
+                var adx = aB[0] - aA[0], ady = aB[1] - aA[1], adl = Math.hypot(adx, ady);
+                if (adl < 0.5) continue;
+                var aux = adx / adl, auy = ady / adl, abase = [aB[0] - aux * ah, aB[1] - auy * ah];
+                for (var apass = 0; apass < 2; apass++) {
+                    ctx.strokeStyle = apass ? av.col : 'rgba(0,0,0,0.85)'; ctx.lineWidth = apass ? aw : aw + 2.5;
+                    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+                    ctx.beginPath(); ctx.moveTo(AP[0][0], AP[0][1]);
+                    for (var asI = 1; asI <= abk; asI++) ctx.lineTo(AP[asI][0], AP[asI][1]);
+                    ctx.lineTo(abase[0], abase[1]); ctx.stroke();
+                }
+                ctx.beginPath(); ctx.moveTo(aB[0], aB[1]);
+                ctx.lineTo(abase[0] - auy * ah * 0.6, abase[1] + aux * ah * 0.6);
+                ctx.lineTo(abase[0] + auy * ah * 0.6, abase[1] - aux * ah * 0.6);
+                ctx.closePath();
+                ctx.fillStyle = av.col; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+        }
+        if (pv.cur) {
+            var c0 = T(pv.cur[0], pv.cur[1]), c1 = T(pv.cur[0] + 1, pv.cur[1]), c2 = T(pv.cur[0] + 1, pv.cur[1] + 1), c3 = T(pv.cur[0], pv.cur[1] + 1);
+            ctx.beginPath(); ctx.moveTo(c0[0], c0[1]); ctx.lineTo(c1[0], c1[1]); ctx.lineTo(c2[0], c2[1]); ctx.lineTo(c3[0], c3[1]); ctx.closePath();
+            ctx.lineJoin = 'miter';
+            ctx.lineWidth = 3.5; ctx.strokeStyle = 'rgba(0,0,0,0.7)'; ctx.stroke();
+            ctx.lineWidth = 1.75; ctx.strokeStyle = _mmRgba('#ffffff', Math.max(0.35, Math.min(1, +L.pvOp))); ctx.stroke();
         }
         if (activeIc && L.active) {
             var aq2 = T(activeIc.x, activeIc.y);
