@@ -63285,6 +63285,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* the DOOR agent's leaf (rev 2): warm the catalogue GLB the door
            recipes wear — the renderer calls it when a board door is built */
         warmDoor: _doorFxWarm,
+        /* THE QUESTS (2026-11-12): a quest's portal is the Department's own door (the agent's recipe: rises, opens with the
+           light, holds, shuts, fades). o = _sigDoorPortal3D's options. The look only. */
+        questPortal: function (tx, ty, o) { try { return _sigDoorPortal3D(tx, ty, o || {}); } catch (e) { return null; } },
 
         /* Action tile glow for non-spell hits (attacks, items, detonations).
            Relayed host→guest by online.js's sibling wrapper (_VFXX_ANCHORS). */
