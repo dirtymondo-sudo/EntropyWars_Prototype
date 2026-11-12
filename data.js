@@ -63995,7 +63995,7 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         dirt: 'calm_dirt', dirt_2: 'calm_dirt', dirt_3: 'calm_dirt',
         rocks_5: 'calm_rock', cliff: 'calm_rock', stone: 'calm_rock', rock_wall_1: 'calm_rock', rocks_3: 'calm_rock', rock: 'calm_rock',
         mountain: 'calm_rock', mountain_2: 'calm_rock', mountain_top: 'calm_rock',   // the ground the earth spells raise (terrainType 'mountain')
-        scorched: 'calm_scorched', lava: 'calm_lava',
+        scorched: 'calm_scorched',   // lava: his pixel lava.png again (pixelLiquids below); calm_lava stays a sheet the editor can pick
         marble: 'calm_marble', marble_2: 'calm_marble', marble_light: 'calm_marble',
         ice: 'calm_ice', ice_1: 'calm_ice', snow_wall: 'calm_ice',
         leaves: 'calm_hedge', leaves_2: 'calm_hedge', leaves_3: 'calm_hedge', leaves_4: 'calm_hedge', leaves_5: 'calm_hedge',
@@ -64043,6 +64043,11 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
              babel: { bricks_1: 'calm_sandstone' },
              agartha: { marble: 'calm_marblemint', marble_2: 'calm_marblemint', marble_light: 'calm_marblemint' } },
     sites: { prebuilt_northpole: 'snow', prebuilt_antarctica: 'snow', prebuilt_mars: 'mars', prebuilt_singularity: 'singularity', prebuilt_babel: 'babel', prebuilt_agartha: 'agartha' },
+    /* THE PIXEL LAVA + WATER (mondo 11-12: "keep all the new calm textures, but go back to the old lava and water, these new ones
+       just arent looking good"): these liquids draw his own sheets and his own moving-liquid look everywhere (boards, rooms, spell
+       ground, the 2D view, the editors), calm look or not. The calm versions are kept: window.EW_CALM_LIQUIDS = true before a
+       board builds brings them back, and calm_lava stays in the editor's CALM picker. */
+    pixelLiquids: { lava: 1, water: 1, deep_water: 1 },
     noTile: { calm_grass: 1, calm_dirt: 1, calm_rock: 1, calm_scorched: 1, calm_marble: 1, calm_snow: 1, calm_ice: 1, calm_hedge: 1, calm_obsidian: 1, calm_obsidian_plain: 1, calm_rubble: 1, calm_spring: 1,
               calm_sand: 1, calm_sand_beach: 1, calm_moon: 1, calm_mars: 1, calm_cloud: 1, calm_storm: 1, calm_gravel: 1, calm_roots: 1, calm_rockygrass: 1,
               calm_darkgrass: 1, calm_cavefloor: 1, calm_darkrock: 1, calm_crystal: 1, calm_flesh: 1, calm_concrete: 1, calm_gilt: 1, calm_marsdust: 1, calm_moonviolet: 1, calm_marblemint: 1,

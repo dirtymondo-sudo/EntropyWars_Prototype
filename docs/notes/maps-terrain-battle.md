@@ -1895,6 +1895,15 @@ terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-
 - Batches left: 2 = the other 27 arenas + ooze / poison / plague flesh / crystal / castle-wall spell ground; 3 = DOOR HQ indoor
   sheets + the other liquids; 4 = the voxel boards + the 2D view.
 
+### THE PIXEL LAVA + WATER (2026-11-12, mondo: "keep all the new calm textures, but go back to the old lava and water")
+- data.js CALM_TERRAIN.pixelLiquids = { lava, water, deep_water }: these draw his sheets + his moving-liquid look (_buildFluidTopMat's
+  own path, WebGL + WebGPU _ewNodeFluid) on every board, room and spell ground, calm look or not. `lava` left CALM_TERRAIN.of, so
+  _hzTex / box sides / tile panel / editor swatch / voxel 2D grid read lava.png again. Nothing deleted: calm_lava stays in `sheets`
+  (the editor's CALM picker), _calmFluidMat stays and reads _hzTex('calm_lava'); window.EW_CALM_LIQUIDS = true (before a board
+  builds) brings the calm lava + water back. Untouched: the other calm liquids (_CALM.liquids: poison, bogs, ooze, oil, blood),
+  calm_spring (healing_spring), calm_obsidian_2 (the veins are baked in that sheet, not the lava sheet). Proof
+  /mnt/project-files/pixel-lava-water-20261112/.
+
 ### BATCH 2 (2026-11-11): the other 27 arenas + the spell ground
 - 21 sheets (bake-calm-terrain.py, rerun = byte-identical): sand (desert) + beach sand, moon (moon / moon_2 / moon_3), mars
   (mars / mars_2), cloud (cloud / cloud_2 / cloud_thick, puffs on puffs), storm (storm), gravel (dirt_4), roots (wasteland),
