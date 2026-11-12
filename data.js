@@ -33628,7 +33628,8 @@ const DOOR_HQ = {
                 w: 63, d: 63, h: 7.0,
                 wallH: 7.0, dadoH: 1.75,
                 floor: 'urban:TileGeneric3a', wall: 'aluminium', dado: 'gunmetal', trim: 'teal', ceiling: 'urban:FibreCeilingTile1a',
-                wallColor: 0xdfe8ee, pipes: false, keyLamp: 0,   // THE ROOM'S OWN KEY LIGHT: a lit room takes none of the camera's Key Light (it blew the pad and a spell's water to white)
+                wallColor: 0xdfe8ee, pipes: false, keyLamp: 0, grassField: false,   // grassField: the pad is tile (THE GRASS FIELD grew a lawn on it in battle)
+                  // THE ROOM'S OWN KEY LIGHT: a lit room takes none of the camera's Key Light (it blew the pad and a spell's water to white)
                 lights: [{ x: -10.5, z: -10.5 }, { x: 10.5, z: -10.5 }, { x: -10.5, z: 10.5 }, { x: 10.5, z: 10.5 },
                          { x: -24.5, z: -10.5 }, { x: -24.5, z: 10.5 }, { x: 28.0, z: -14.0 }, { x: 28.0, z: 14.0 }],
                 mood: { light: 0xe6f4ff, strip: 0x9fe8ff, ambient: 1.0 },

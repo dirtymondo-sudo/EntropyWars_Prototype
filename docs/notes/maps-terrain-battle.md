@@ -2198,3 +2198,6 @@ Studios' CC0 packs (see spells-vfx.md THE NOISE PACKS).
   planned on these spots: keep the lane from the door to the cart clear and nothing taller than a seated head between the desks and the pad.
 - Rules untouched: the pad's `board` keys, the 8 x 8 pick (`node bake-arenas.js --own prebuilt_training --dry-run`: ok, all level 0).
 - Proof (headless WebGL2, reads darker than his Mac): /mnt/project-files/training-room-unify-20261112/.
+- THE LAWN ON THE PAD (found proving this): THE GRASS FIELD grew tufts over the test chamber's pad in battle (the board's squares keep the
+  grass tile TYPE as a rule), so the board looked like a lawn and the walked room did not. New `shell.grassField: false` (three-renderer.js
+  `_ggBuild`: the battle's room says no grass field on its board); `training_hall` sets it. No tile type changed.
