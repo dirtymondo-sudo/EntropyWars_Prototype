@@ -343,6 +343,10 @@ def fit(name, gender, src, bodies_dir):
             if lw > 0.05 and not one_side:
                 loc, nor, idx, dist = pbvh.find_nearest(v.co)
                 f = 0.0 if loc is None else min(1.0, max(0.0, (dist - E('LOOSE0', 0.04)) / E('LOOSE1', 0.15)))
+                # THE CLOTH OVER A LEG (2026-11-12, mondo: "fix the wizards tall boots showing through his robe"): shared evenly, the
+                # skirt stayed behind when a leg stepped forward and the boot came out through its front. Only the cloth BETWEEN the
+                # legs is shared now; the cloth in front of, behind and outside a leg keeps most of that leg's weight and goes with it
+                sx_ = min(1.0, max(0.0, (abs(v.co.x) - E('LOOSEX0', 0.03)) / E('LOOSEX1', 0.06))); f *= 1 - E('LOOSESIDE', 0.7) * sx_ * sx_ * (3 - 2 * sx_)
                 if f > 0:
                     for a_, b_ in LEG_PAIRS:
                         x, y = w.get(a_, 0), w.get(b_, 0); m_ = (x + y) / 2
