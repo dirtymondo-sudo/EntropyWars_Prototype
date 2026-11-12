@@ -5236,6 +5236,27 @@ const SPELL_LIBRARY = [
         desc: 'Places a bomb on a tile within 2 (up to 3 at a time; a 4th replaces the oldest). It goes off when an enemy steps on it, or all of yours at once when you DETONATE (1 AP); thrown straight onto an enemy, it goes off on contact. MEDIUM physical damage (it grows with your M ATK) to every enemy in the 3×3, and each is thrown back 1 tile.'
     },
 
+    /* 🍎 THE APPLE TREE (2026-11-12, mondo OK'd): a seed that grows into a real tree (battle.js THE APPLE TREE). It rides
+       the Healing Seed's kind (every menu / CPU / targeting table already knows it) with `seedType: 'apple'`. */
+    {
+        id: 'appleSeed',
+        spellType: 'human',
+        element: 'nature',
+        name: 'Apple Seed',
+        type: 'utility',
+        cost: 25,
+        equipCost: 20,
+        apCost: 1,
+        range: 3,
+        kind: 'seedHeal',
+        seedType: 'apple',
+        tier: 2,
+        families: ['agriculture'],
+        school: 'Harvester',
+        jobPreference: ['Harvester'],
+        desc: 'Plant an apple seed on a tile within 3. It must be watered to sprout (rain, a water spell, water beside it), then grows into an Apple Tree at the end of the round: a real tree that blocks sight and can be chopped down. Every 2 rounds the tree drops an apple beside it (up to 2 lying around it). Any hurt unit that ends its move on an apple eats it and heals 20% of its max HP.'
+    },
+
     /* 🐝 THE POLLEN (2026-11-12, mondo OK'd "Both"): the Bee Queen spends one pollen (gathered beside a Healing Flower,
        battle.js THE POLLEN) on a seed, which grows at once with no water, or on a hurt plant, which is mended. */
     {

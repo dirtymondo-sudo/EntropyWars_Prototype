@@ -5338,3 +5338,16 @@ Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx
 - Checked in a VS CPU match by eval: fire 117 on the spirit, same action on the body 0; psychic on the spirit 194 vs 117 plain,
   psychic on the body 117; Silence sent the spirit home and removed the body. Still open: early return, body slump pose, CPU play,
   builds 3-4.
+
+## THE APPLE TREE — Apple Seed, a real tree that drops healing apples (2026-11-12, mondo: "eventually both"; Apple Seed OK'd)
+- data.js `appleSeed` (Agriculture T2, 25 MP, range 3): rides `kind: 'seedHeal'` with `seedType: 'apple'` (battle.js cast branch `_sType`),
+  so every menu / CPU / targeting table that knows the Healing Seed knows it. The dry seed has no under-foot effect.
+- Watered, `_growSeedIntoTree` takes the TREE path (not `_standPlant`): an ordinary `tree` object + a state.plantedTrees row
+  `{ apple: true, appleAge }`. It blocks sight, is chopped like any tree, counts for Green Thumb + Trunk Throw.
+- battle.js THE APPLE TREE block: `_appleTreesRoundEnd` (in the player-1 round-end block) drops one apple every `APPLE_EVERY_ROUNDS` 2
+  on a free tile beside the tree, at most `APPLE_MAX_PER_TREE` 2 lying around it. state.apples = `{id,x,y}` rows (ride the snapshot).
+  `_eatAppleAt` (top of `checkSeedStepTrigger`): ANY hurt unit ending a move on one heals `APPLE_HEAL_PCT` 20% max HP. Full HP = it stays.
+  Apples stay when the tree is cut. Pollinate grows an Apple Seed at once too.
+- three-renderer.js THE APPLE TREE: `_buildApple3D` (ground) + `_buildAppleCanopy` (5 in the leaves), one Meshy apple
+  `Assets/world/props/meshy/ew_plant_apple.glb` (no pack has an apple). The tree itself is the board's stock tree model.
+- My picks, his to change: every 2 rounds, 2 lying, 20%, either side may eat. Not built: fire burning apples, a tile card for an apple.
