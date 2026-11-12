@@ -1573,6 +1573,10 @@ head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay t
   inside OPENX2 with no same-facing cloth under it). Lesson: before cutting cloth, render the outfit GLB alone; if the teeth are not
   in it they are holes in the body. Left: 3-4 small notches on her right collar with the hair off, one skin triangle on her left
   shoulder, the cross of the pendant sits under the top's edge (the cord shows).
+  A PAIR OF LEGS (11-12, mondo on the catgirl: "she has her heel sticking out of the back of her boot"): it was the skin chip by her
+  left boot. Not cloth: her right calf was 71 % under the stocking (hidden whole, LEGHIDE 0.7), her left 68 % (shown), so the back
+  of the left ankle stood outside the boot. When one leg of a pair is hidden whole the other is too from LEGPAIR 0.5 on. All seven
+  remade units rebaked: only the catgirl's file changed.
   Open: a few skin flecks on robinhood's hood front, a skin chip by the catgirl's left boot, light patches on her sleeves (the lacing in
   Meshy's texture), the knight's and zombie's walk hunches (the race's own walk clip), no sway, stock faces until the face step.
 
