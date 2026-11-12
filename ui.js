@@ -8019,7 +8019,7 @@
             let rsOn = -1; rsSteps.forEach((k,i)=>{ if(Math.abs(rsShare-k)<0.011) rsOn=i; });
             // THE ENTROPY STYLE (2026-11-12): the grade + ink pass's two rows
             const esState = (typeof ThreePost !== 'undefined' && ThreePost.getStyle) ? ThreePost.getStyle() : { mode: 'off', inkWidth: 1 };
-            const esMode = esState.mode, esInk = +esState.inkWidth || 1;
+            const esMode = esState.mode, esInk = +esState.inkWidth || 1, esUnit = (esState.unitBold === undefined) ? 1.9 : +esState.unitBold;
             const rsSize = (_rsInfo&&_rsInfo.w>0&&_rsInfo.h>0) ? `drawing ${_rsInfo.w} × ${_rsInfo.h}; ` : '';
             /* MAP LOOKS OFF (2026-10-24): every grade setting the player never touched reads OFF on screen (three-post.js _LOOK_CLEAN),
                so the sheet shows what is worn — a box reads the way the picture looks */
@@ -8265,6 +8265,12 @@
                         <span class="pm-setting-label">Ink Lines</span>
                         <div class="pm-seg-group">
                             ${[[1,'Thin'],[1.6,'Medium'],[2.4,'Bold']].map(m=>`<button class="pm-seg-btn${Math.abs(esInk-m[0])<0.05 ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setStyleParam)ThreePost.setStyleParam('inkWidth',${m[0]});${RJ}">${m[1]}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px${esMode==='ink' ? '' : ';opacity:0.45'}">
+                        <span class="pm-setting-label">Unit Lines</span>
+                        <div class="pm-seg-group">
+                            ${[[1,'Same'],[1.9,'Bold'],[2.6,'Bolder']].map(m=>`<button class="pm-seg-btn${Math.abs(esUnit-m[0])<0.05 ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setStyleParam)ThreePost.setStyleParam('unitBold',${m[0]});${RJ}">${m[1]}</button>`).join('')}
                         </div>
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
