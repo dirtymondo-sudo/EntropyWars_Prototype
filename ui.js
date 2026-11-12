@@ -17481,6 +17481,7 @@
             if (!L) { console.warn('[Tutorial] no lesson', lessonId); return false; }
             if (_tut.booting || _tut.arenaWait) return false;
             if (state.phase === 'battle' && !_tut.active) { console.warn('[Tutorial] a match is live'); return false; }
+            _tutFreeMouse();
             /* THE OWN ARENAS (2026-10-20): a lesson board cut from a room (the Holo Sim) waits for that room's survey like
                _msConfirm's gate does, so the lesson opens IN the room and never on the bare board */
             const _ta = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(L.map) : null;
@@ -17922,7 +17923,15 @@
                 default: return false;
             }
         }
+        /* THE MOUSE COMES BACK (mondo 2026-11-12: "the mouse disappeared in between the first and 2nd lessons, i couldnt press continue
+           on the tutorial panel. Had to press escape"): the walking view's mouse capture, asked for on the click that started the
+           next tape, could land after the building was left and stay on the shared canvas. A lesson never needs the capture while
+           it boots or while a panel waits for a button, so it is given back there. */
+        function _tutFreeMouse() {
+            try { if (typeof document !== 'undefined' && document.pointerLockElement && document.exitPointerLock) document.exitPointerLock(); } catch (e) {}
+        }
         function _tutPoll() {
+            if (_tut.active && (_tut.finished || _tut.booting || (_tut.step && _tut.step.goal && _tut.step.goal.type === 'ack'))) _tutFreeMouse();
             if (!_tut.active || _tut.finished || _tut.booting) return;
             _tutApplyGlow();
             /* the coach fades while a target or tile is being picked (styles-base.css .tut-coach.aiming) */
