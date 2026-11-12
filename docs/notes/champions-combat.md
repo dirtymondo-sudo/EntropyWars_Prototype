@@ -5198,3 +5198,11 @@ always cover the 4 tiles it is on ... and not get torn and jagged on the ridges.
 - Not changed, his call: a body that bounces straight back still ends the round standing in the eye.
 - Proof (WebGL2 headless, Hell Arena (Calm)): /mnt/project-files/tornado-fling-20261111/ (before.log, after.log, before_after.jpg;
   repro.js cases shotb0 = bounce back, shotp2 = stopped short). The motion itself was not viewed (headless too slow for frames).
+
+## THE FIRE CATCHES WHOEVER STANDS ON IT (2026-11-12, mondo: "this chess piece is clearly on a tile on fire but it doesnt have the burning status effect")
+Before: only the forest fire (`_reactFireForest`) set a unit Burning when the square under it was lit; a fire spell on grass (Dragon Fist), Wall of
+Fire, fanned flames (gust / shove), the round's spread and a Hell door's own-side bodies left the unit on a burning square with no Burn until the
+round tick. Now battle.js `igniteTile` calls `_fireCatchesUnitAt` on a newly lit square: Burn 2 (status only, no ignition damage), skipped for
+flyers, lava-adapted, fire drinkers, units already Burning; the normal status immunity still answers ("resists Burn", e.g. Astronaut). Forest, oil
+blast and Hell door pass `noCatch` (they apply their own burn); `tickBurningTiles` spread and the Hell lane call the helper directly.
+Proof: /mnt/project-files/burning-tile-catch-20261112/ (WebGL2, Training Room, Dragon Fist on tall grass).
