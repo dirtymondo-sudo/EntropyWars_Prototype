@@ -1909,6 +1909,8 @@ Proof `/mnt/project-files/meshy-parts-20261112/cowboy_face_round2.jpg`.
 `ew_face_wizard`; both remade looks wear them (their hand-set face sliders removed; the knight's brows are in her skin, `mhBrows: own`).
 Commands (old unit GLBs = the race's own model on R2):
 - knight: `unit=knightf.glb body=mpfb_female stock=.../skin_young_caucasian_female.jpg key=knightFace skin=ew_face_knight cy=1.485 pitch=0 brow0=0.05 brow1=0.065 hairrgb=92,15,30 hairside=- hairdiff=22 eye0=0.004 eye1=0.011`
+- mummy (11-12 batch two): `unit=mummy.glb body=mpfb_female stock=.../skin_young_caucasian_female.jpg key=mummyFace skin=ew_face_mummy pitch=0 hairrgb=20,20,22 hairtol=110 hairgrow=9 eyekeep=0.007 darkk=0.9 darkx=0.028` (the first bake left black hair streaks on her temples).
+- angel (11-12 batch two, THE SOFT FACE: a photo-real young face fitted in full came out older and harsh): `unit=angel.glb body=mpfb_female stock=.../skin_young_caucasian_female2.jpg key=angelFace skin=ew_face_angel pitch=0 hairrgb=150,115,75 hairtol=45 beard=1 depth=0.25 wide=0 low=0.5 browfit=0 lipsrigid=1 lips=0` + the knight's look sliders.
 - wizard: `unit=wizard.glb stock=.../skin_young_caucasian_male.jpg key=wizardFace skin=ew_face_wizard cy=1.38 pitch=0 hairrgb=165,115,65 hairtol=55`
 - cowboy: `unit=cowboy.glb stock=.../skin_middleage_caucasian_male.jpg key=cowboyFace skin=ew_face_cowboy` (defaults: cy 1.5, pitch 15)
 New rules: HAIR OVER THE FACE (`hairrgb=`: a landmark or texel on hair takes its mirror from the other side of the face; `hairside=-|+`
