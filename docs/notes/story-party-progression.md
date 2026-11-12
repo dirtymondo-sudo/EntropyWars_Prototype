@@ -792,3 +792,4 @@ R2 files: data.js, map.js, ui.js, battle.js, three-vfx-effects.js, styles-base.c
   battle.js `setActionMode` asks `_tutModeOk` (keyboard shortcuts). Land / Take Off pushers keep their own state (scripted steps).
 - Tape 1: `scope` allows only attack, `guard` only guard. Other tapes still allow MOVE beside the taught action where the unit
   may need to step into range (not walked through; tighten per tape with a playthrough).
+- THE MIDDLE, THEN THE CORNER (2026-11-12, mondo): a read-and-continue panel (ack step, LESSON COMPLETE, LOST) gets `.center` (centre screen, z 99990, dimmed board, bigger text); action / watch steps and the quest portal card keep the corner. ui.js _tutRender, styles-base.css '#tutCoach.tut-coach.center'.
