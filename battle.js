@@ -13624,7 +13624,29 @@
         /* Drawn right now? A realm unit shows only on its pair's turns; on those turns everyone else is gone. */
         function isUnitOutOfRealmView(unit) {
             if (!unit) return false;
-            return shadowRealmKey(unit) !== realmViewKey();
+            if (shadowRealmKey(unit) === realmViewKey()) return false;
+            return !isUnitSeenAcrossRealm(unit);
+        }
+        /* 👁🌑 THE REALM WINDOW (astral build 3, mondo 2026-11-12: "units that are projecting can also see/interact with the
+           shadow realm"). A SPIRIT stands in both planes: it can hit, heal and status a realm pair and they can do the same
+           to it (unitCrossesRealm, read by isUnitRealmShieldedFrom). Its sleeping body does not. SEEING is wider
+           (unitSeesRealm): a spirit, and the races on data.js REALM_SIGHT_RACES (the Ghost, the Shadow Entity) who look
+           but cannot touch. On a seer's turn the realm pair is drawn on the normal board as dim shades, and on the pair's
+           own turns a spirit is drawn in their dark plane. Both screens read the same synced active unit (RULE #2). */
+        function unitCrossesRealm(u) { return unitIsSpirit(u); }
+        function unitSeesRealm(u) {
+            if (!u || u.dead || u._dying) return false;
+            if (unitIsSpirit(u)) return true;
+            return typeof REALM_SIGHT_RACES !== 'undefined' && REALM_SIGHT_RACES.includes(u.race);
+        }
+        /* drawn although it is NOT on the plane whose turn it is */
+        function isUnitSeenAcrossRealm(unit) {
+            if (!unit || state.phase !== 'battle' || state._blitzActiveUnitId == null) return false;
+            const vk = realmViewKey(), uk = shadowRealmKey(unit);
+            if (uk === vk) return false;
+            if (!vk && uk) return unitSeesRealm(unitFromId(state._blitzActiveUnitId));   // a seer's turn on the board
+            if (vk && !uk) return unitCrossesRealm(unit);                                // the pair's turn: the spirit is there too
+            return false;
         }
         function isUnitRealmShieldedFrom(unit, actor) {
             /* 🚪 EXITED (DOOR_RACE_DESIGN r3): off the board — nobody reaches it. */
@@ -13634,7 +13656,11 @@
             if (!unit) return false;
             if (!actor) return !!shadowRealmKey(unit);
             if (actor.id === unit.id) return false;
-            return shadowRealmKey(unit) !== shadowRealmKey(actor);
+            const _ku = shadowRealmKey(unit), _ka = shadowRealmKey(actor);
+            if (_ku === _ka) return false;
+            /* 👁 a spirit stands in both planes: it reaches a realm pair and the pair reaches it */
+            if ((_ku && !_ka && unitCrossesRealm(actor)) || (_ka && !_ku && unitCrossesRealm(unit))) return false;
+            return true;
         }
         /* The realm closes for BOTH when either end leaves it (its time runs out, a cleanse, a death): nobody is left
            alone in there. Called by clearStatus and defeatUnit. */
@@ -13721,6 +13747,8 @@
         window.shadowRealmKey = shadowRealmKey;
         window.realmViewKey = realmViewKey;
         window.isUnitOutOfRealmView = isUnitOutOfRealmView;
+        window.isUnitSeenAcrossRealm = isUnitSeenAcrossRealm;
+        window.unitSeesRealm = unitSeesRealm;
         /* 🌑 THE REALM LINE ON EVERY LIST (11-07, mondo: "units sent to the Shadow Realm can still be bitten and buffed"):
            the units of `list` the actor can reach — a null actor (a summon, a turret, a beacon, a tree) is the board,
            so nobody inside a realm. Every team aura, area list and board hunter filters through this, both ways. */
