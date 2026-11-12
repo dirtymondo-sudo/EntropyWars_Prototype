@@ -1588,6 +1588,21 @@ head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay t
   light grey her white wings came back dark blue. Commands: mummy `--longhair --bodysuit`; angel `SKIN_T=0.3 LOCKZ=0.25 LOCKT=0.3
   ... --longhair --nowings --barearms --neckline`. Looks: mummy = suit + mh_long01 black; angel = dress + creator Feathered wings +
   mh_long01 blond. Left: see the status table in meshy-remake-plan.md.
+  BATCH TWO, ROUND 2 (11-12, mondo: "the mummy bandages and the angel neckline definitely need work"; the nine other units rebaked: no
+  file changed). MUMMY (`--bodysuit`): A HANGING END (a shell under BSSTRIP 500 faces hangs stiff from the ONE bone its top is on:
+  weighted vertex by vertex its top went with the arm and its tip with the hips, the torn middle was left out and the tip floated by
+  her hand), A CUT-OFF BIT (what a torn face cuts off its shell, under BSCHIP 40 triangles, goes with it), BSSPIKE (a face un-posed
+  up past the collar is torn: the strip to her chin), THE BACK UNDER LONG HAIR (with `--longhair`: between the shoulder blades the
+  suit lies no more than BSBACK 6 mm off the body; Meshy modelled it round her own hair and the lumps stood through the creator hair
+  as tan flecks). ANGEL: new flag `--repaint` = PAINTED OVER (faces painted in her hair's or skin's colour take the colour of the
+  nearest plain cloth: their UVs go to that face's middle, no texture is repainted. Cutting them out with LOCKZ 0.25 was the ragged
+  neckline and the hole in the bodice; REPWARM adds "redder than blue"; a whole shell in skin colour = her bare legs under the skirt,
+  the "skin patch on the back of the skirt", is left out). With `--barearms --neckline`: THE ARM OPENINGS + THE NAPE (straight cuts
+  AHX out from the middle above AHZ, and behind the square neck above NAPE; tooth triangles with two free edges go, EARS; long faces
+  cut up, STRAPSEG), THE STRAPS ON THE SKIN (cloth from BAZ up lies STRAPOFF 10 mm outside the body and takes the weights of the skin
+  under it: with the arm's weight taken off, her shoulder rose through the strap when the arm came down), shown skin grows BARING 2
+  rings round the arm openings, flaps past the arm opening after the un-pose are left out (AHPAD). Angel command now:
+  `REPWARM=0.08 LOCKT=0.3 SKIN_T=0.3 ... --longhair --nowings --barearms --neckline --repaint` (no LOCKZ).
   Open: a few skin flecks on robinhood's hood front, a skin chip by the catgirl's left boot, light patches on her sleeves (the lacing in
   Meshy's texture), the knight's and zombie's walk hunches (the race's own walk clip), no sway, stock faces until the face step.
 
