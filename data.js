@@ -18684,7 +18684,7 @@ const EW_MAP_META = [
       desc: '16×16 prebuilt, 6v6 — the dorsal deck of a dead starship, still under way: breaches open to the stars, bulkhead stubs, the reactor glow, coolant slicks — the engines still burning astern, the wreckage field streaming past as the hull swings in close to the sun',
       env: { world: { kind: 'void', root: false },
              tint: 0x06070f, tintAmt: 0.55, stars: 1.9, nebula: 0.3, fog: { color: 0x0a0c16, amount: 0.12, top: 0.02, band: 0.3 }, scenery: 'wreckage', density: 0.9,
-             motion: { kind: 'space', axis: 'x', speed: 6.0, ramp: 0.45, max: 7.0, sky: 0.9, orbit: { body: 'sun', period: 220, near: 1.0 } } } },
+             motion: { kind: 'space', axis: 'z', dir: -1, speed: 6.0, ramp: 0.45, max: 7.0, sky: 0.9, orbit: { body: 'sun', period: 220, near: 1.0 } } } },
     { id: 'prebuilt_lookingglass', label: 'The Looking-Glass', w: 16, h: 16, teamSize: 6, tier: 3, base: 'marble_light',
       biomes: ['astral', 'arthurian'], deltaPad: 'marble_light', near: 'lookingglass',
       desc: '16×16 prebuilt, 6v6 — a chessboard flying through a void of unfinished shapes: marble squares, the pieces standing on it as cover (they block the way and the line of sight), the pool of tears — and the Cheshire moon swinging in close, faster every round',
