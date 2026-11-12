@@ -30,6 +30,7 @@ Usage: pip install bpy==5.2.3 scipy pillow
        python3 -I bake-outfit.py --name cowboy --label Cowboy --gender male --src cowboy_t2a.glb --bodies <dir of mpfb_*.glb>
               [--out charactercreation/wear] [--metal 0.0] [--rough 0.8] [--px 2048]
               [--headgear]   (a helmet / cowl that reaches below the eyes is kept as the hat: quarterback)
+              [--neckline]   (the bare skin + painted necklace in a low neckline go, the body's skin shows: catgirl)
 Notes: docs/notes/models-assets.md "THE MESHY OUTFITS".
 """
 import argparse, importlib.util, io, math, os, re, sys
@@ -50,6 +51,7 @@ from mathutils.bvhtree import BVHTree  # noqa: E402
 E = lambda k, d: float(os.environ.get(k, d))
 SKIN_T = E('SKIN_T', 0.20)
 HEADGEAR = False
+NECKLINE = False
 
 
 def load(p):
@@ -199,6 +201,36 @@ def fit(name, gender, src, bodies_dir):
         if inhead or (isrem and cz > eye.z): headp.append(o)
         keep.append(o)
     for o in eyes: bpy.data.objects.remove(o)
+    # THE BARE NECKLINE (--neckline; 2026-11-12, catgirl, mondo: "the necklace looks messed up or painted on"): Meshy gives the bare
+    # skin in a low neckline as part of the top's shell, with the necklace smeared into its texture and the choker as a few spiky
+    # shards. With --neckline the skin-coloured faces from the chin down to the top of the bust go (a flood fill from the throat),
+    # with whatever they enclose (the painted pendant) and the small shells round the neck (the choker): the body's own skin shows
+    # there and the look wears a real pendant piece
+    if NECKLINE:
+        z1, z0 = chin + 0.02, chin - E('NECKZ', 0.20)
+        for o in list(keep):
+            c = co(o); n = len(o.data.polygons)
+            if n < E('CHOKER', 200) and c[:, 2].min() > chin - 0.14 and c[:, 2].max() < chin + 0.04 and np.abs(c[:, 0]).max() < 0.08 and o not in headp:
+                dropped.append(('choker', n)); keep.remove(o); bpy.data.objects.remove(o); continue
+            if o in headp: continue
+            me_ = o.data; cen_ = np.array([p.center for p in me_.polygons]); fc_ = face_cols(o, PX, IW, IH)
+            zone_ = (cen_[:, 2] < z1) & (cen_[:, 2] > z0) & (np.abs(cen_[:, 0]) < 0.13) & (cen_[:, 1] < eye.y + 0.08)
+            sk_ = (np.linalg.norm(fc_ - skin, axis=1) < SKIN_T) & zone_
+            if sk_.sum() < 20: continue
+            bmn = bmesh.new(); bmn.from_mesh(me_); bmn.faces.ensure_lookup_table()
+            def nb(i): return [g.index for e in bmn.faces[i].edges for g in e.link_faces if g.index != i]
+            reg = set(int(i) for i in np.nonzero(sk_)[0]); todo = set(int(i) for i in np.nonzero(zone_ & ~sk_)[0]); isl = set()
+            while todo:   # islands of other colours inside the skin: small, in the zone, touching nothing but the skin
+                st = [todo.pop()]; comp = set(st); ok = True
+                while st:
+                    for k_ in nb(st.pop()):
+                        if k_ in reg or k_ in comp: continue
+                        if not zone_[k_]: ok = False; continue
+                        comp.add(k_); todo.discard(k_); st.append(k_)
+                if ok and len(comp) < E('NECKISL', 400): isl |= comp
+            bmesh.ops.delete(bmn, geom=[bmn.faces[i] for i in reg | isl], context='FACES')
+            bmesh.ops.delete(bmn, geom=[v for v in bmn.verts if not v.link_faces], context='VERTS'); bmn.to_mesh(me_); bmn.free()
+            dropped.append(('neckline skin', len(reg))); dropped.append(('painted in it', len(isl)))
     # SPURS (2026-11-12, mondo: "the boots have these weird pointy things sticking out the back of them"): Meshy models a spur as
     # a horn fused to the boot. On footwear (a one-sided shell that ends at the floor) nothing below 45 % of its height may
     # stand further back than the heel does at the sole: the horn is laid flat on the heel
@@ -217,13 +249,25 @@ def fit(name, gender, src, bodies_dir):
             else: kk = E('WIGK', 1.04); v.co = Vector(eyeM) + Vector((d.x * hs * kk, d.y * (sy if d.y > 0 else hs) * kk, d.z * (sz if d.z > 0 else hs) * kk))
     wig = [o for o in headp if min(v.co.z for v in o.data.vertices) < eyeM[2] - 0.03 or o in rem]
     # A HAIR LOCK (2026-11-12, mondo: "some sort of strip hanging off the back of the [zombie]'s head and back"): a small shell in
-    # the unit's hair colour that starts at the head and hangs below it (a lock down the back) is hair too: not exported
+    # the unit's hair colour that starts at the head and hangs below it (a lock down the back) is hair too: not exported; what is left
+    # of the face's own shell (long hair fused to the head, the catgirl) at any size
     if wig and not HEADGEAR and E('LOCKS', 1):
         hcol = np.median(np.vstack([face_cols(o, PX, IW, IH) for o in wig]), axis=0)
         for o in [o for o in keep if o not in headp]:
             c = co(o)
-            if len(o.data.polygons) < E('LOCKN', 600) and c[:, 2].max() > eyeM[2] - 0.16 and np.linalg.norm(np.median(face_cols(o, PX, IW, IH), axis=0) - hcol) < E('LOCKT', 0.15):
+            if (len(o.data.polygons) < E('LOCKN', 600) or o in rem) and c[:, 2].max() > eyeM[2] - 0.16 and np.linalg.norm(np.median(face_cols(o, PX, IW, IH), axis=0) - hcol) < E('LOCKT', 0.15):
                 dropped.append(('hair lock', len(o.data.polygons))); keep.remove(o); bpy.data.objects.remove(o)
+        # + HAIR FUSED TO THE CLOTHES (the catgirl: the locks over her shoulders are one shell with the jacket and stood up beside her
+        # jaw as black shards): in the other shells the hair-coloured faces above the chin (LOCKZ under it) go
+        for o in [o for o in keep if o not in headp]:
+            me_ = o.data; cen_ = np.array([p.center for p in me_.polygons])
+            if not len(cen_) or cen_[:, 2].max() < chin - E('LOCKZ', 0.05): continue
+            up_ = (cen_[:, 2] > chin - E('LOCKZ', 0.05)) & (np.linalg.norm(face_cols(o, PX, IW, IH) - hcol, axis=1) < E('LOCKT', 0.15))
+            if up_.sum() and up_.sum() < len(cen_):
+                bml = bmesh.new(); bml.from_mesh(me_); bml.faces.ensure_lookup_table()
+                bmesh.ops.delete(bml, geom=[bml.faces[i] for i in np.nonzero(up_)[0]], context='FACES')
+                bmesh.ops.delete(bml, geom=[v for v in bml.verts if not v.link_faces], context='VERTS'); bml.to_mesh(me_); bml.free()
+                dropped.append(('hair on the clothes', int(up_.sum())))
     # HEADGEAR (2026-11-12, quarterback: his helmet reaches below the eyes, so it was read as hair and left out): --headgear
     # keeps every head piece as the hat (a helmet, a cowl, a mask); the look then picks no hair under it
     if HEADGEAR: wig = []
@@ -433,10 +477,10 @@ def main():
     ap.add_argument('--name', required=True); ap.add_argument('--label', required=True); ap.add_argument('--gender', default='male')
     ap.add_argument('--src', required=True); ap.add_argument('--bodies', required=True)
     ap.add_argument('--out', default=os.path.join(HERE, 'charactercreation', 'wear'))
-    ap.add_argument('--headgear', action='store_true')
+    ap.add_argument('--headgear', action='store_true'); ap.add_argument('--neckline', action='store_true')
     ap.add_argument('--metal', type=float, default=0.0); ap.add_argument('--rough', type=float, default=0.8); ap.add_argument('--px', type=int, default=2048)
     a = ap.parse_args()
-    global HEADGEAR; HEADGEAR = a.headgear
+    global HEADGEAR, NECKLINE; HEADGEAR = a.headgear; NECKLINE = a.neckline
     from PIL import Image
     from scipy.spatial import cKDTree
     pieces, hid_base, im = fit(a.name, a.gender, a.src, a.bodies)
