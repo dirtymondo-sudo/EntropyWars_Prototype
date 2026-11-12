@@ -10856,7 +10856,8 @@
             if (typeof meta.onApply === 'function') {
                 try { meta.onApply(target, sourceUnit, { refreshed: _hadBefore, payload, sourceLabel }); } catch (e) { console.warn('[status] onApply', payload.id, e); }
             }
-            addLog(`${sourceLabel}${_ctName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
+            /* payload.quiet (mondo 11-11, Guard): the caller writes its own one line for this status */
+            if (!payload.quiet) addLog(`${sourceLabel}${_ctName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
             /* 🧗 stunned / frozen / put to sleep on the wall: the grip goes */
             if (target._climb && meta.blockAction && payload.id !== 'climbing') knockOffClimber(target, `— ${meta.colorText || meta.label.toLowerCase()}`);
 
