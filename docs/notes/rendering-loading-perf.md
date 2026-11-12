@@ -1730,3 +1730,11 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
 - Seen on screen: battle + DOOR HQ main hall on the node renderer's WebGL 2 backend, a battle on the classic WebGL chain,
   the two rows. NOT seen: real WebGPU, a spell cast, the legacy composer, online guest, frame cost on a real GPU.
 - 11-12 follow-up (mondo: "i like it with the lines on medium. Can we also go ahead and turn the pixelate off by default now"): Ink Lines default Medium (inkWidth 1.6); Pixelate default OFF (index.html SHIPPED-KEYS ew_retro pixelSize 1 + the code default). A browser that still holds the old shipped ew_retro follows the bake; one that moved the Pixelate slider itself keeps its value.
+- THE BOLD UNIT LINE (11-12, mondo: "maybe just bolder lines on units, same thinness everywhere else"; he picked "Ship it on Bold"): a unit's
+  body takes an ink line `unitBold` (1.9) times the map's width; scenery, props and terrain keep the Ink Lines width. A unit = the model
+  mask the Pixelate "models" scope always drew (`_renderPixelMask`; bodies flagged `_ew_modelSkin`, held GLBs `_ew_pixelate`), half
+  size, one extra draw of the bodies a frame while Grade + Ink is on. `_styleMaskFor` asks for it in both render paths (the board
+  and the walk: `_scanPixelMaskTargets(sc)` now tags the walk's own scene); the retro pass's mask is reused when it drew one.
+  Settings > Video > Unit Lines: Same / Bold / Bolder. Off live: `window.EW_NO_UNIT_INK = true`. A line-weight-by-distance try was
+  built and dropped (barely visible on a board). Seen: node WebGL 2 (battle, DOOR HQ), classic WebGL (battle), the row.
+  NOT seen: real WebGPU, split-screen panes, a unit behind a wall (the mask has no occluders: the wall's edge there goes bold).
