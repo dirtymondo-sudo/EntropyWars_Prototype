@@ -33250,7 +33250,7 @@ const DOOR_HQ = {
                 wallColor: 0xdfe8ee, pipes: false,
                 lights: [{ x: -10.5, z: -10.5 }, { x: 10.5, z: -10.5 }, { x: -10.5, z: 10.5 }, { x: 10.5, z: 10.5 },
                          { x: -24.5, z: -10.5 }, { x: -24.5, z: 10.5 }, { x: 28.0, z: -14.0 }, { x: 28.0, z: 14.0 }],
-                mood: { light: 0xe6f4ff, strip: 0x9fe8ff, ambient: 2.0 },
+                mood: { light: 0xe6f4ff, strip: 0x9fe8ff, ambient: 1.0 },
                 fog: { color: 0x16181d, density: 0.0 },
                 look: { name: 'TRAINING ROOM', retro: { enabled: true, preset: 'teal', pixelSize: 1, ditherStrength: 0.34, grain: 0.024, tintAmount: 0.22, levels: 28 }, cin: { vignette: true, vigAmount: 0.3, vigSize: 0.58 }, nightMood: 0.0, bloom: 0 },
             },
@@ -33284,7 +33284,7 @@ const DOOR_HQ = {
                 features: [
                     { k: 'wall', x0: -19.25, z0: -19.25, x1: -19.25, z1: -19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false }, { k: 'wall', x0: 19.25, z0: -19.25, x1: 19.25, z1: -19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false }, { k: 'wall', x0: -19.25, z0: 19.25, x1: -19.25, z1: 19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false }, { k: 'wall', x0: 19.25, z0: 19.25, x1: 19.25, z1: 19.25, t: 1.75, h: 3.5, key: 'gunmetal', rail: false },
                     /* THE MATS: 8 × 8 foam squares, one battle square each, blue and black (the plateau under them is the mats' 4 cm) */
-                    { k: 'board', x: 0, z: 0, n: 8, cell: 3.5, keys: ['urban:TileGeneric1a', 'urban:TileGeneric1a'], colors: [0xffffff, 0x7f9ab0], h: 0.06 },
+                    { k: 'board', x: 0, z: 0, n: 8, cell: 3.5, keys: ['urban:TileGeneric1a', 'urban:TileGeneric1a'], colors: [0x66707a, 0x36424e], h: 0.06 },
                     /* THE BLEACHERS ARE GONE (2026-11-12, mondo: "get rid of the seats on the camelot map and the training room"): the six seat rows
                        on the west side, the walk behind them, their two end walls and the rail are out; the west side is open floor. */
                     /* THE MEZZANINE (east): a steel grate 2 levels up along the east wall, its rail on the mats' side; the steel stair up the north wall */
