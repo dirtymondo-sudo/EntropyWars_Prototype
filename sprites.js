@@ -4050,7 +4050,7 @@ EW_MH_LOOKS.skins.push(['ew_werewolf_fur', 'Werewolf fur (Meshy)'], ['ew_werewol
    mpfb/looks/skin_morgan.jpg like the pack skins; it pairs with the morganHead shaped head (EW_MPFB_FACE_SLIDERS "Face likeness"). */
 EW_MH_LOOKS.skins.push(['morgan', 'Morgan']);
 /* THE UNIT FACES (2026-11-12): the unit's own Meshy face on the hm08 sheet, pairs with the <race>Face shaped head (bake-face.py). */
-EW_MH_LOOKS.skins.push(['ew_face_cowboy', 'Cowboy face (Meshy)']);
+EW_MH_LOOKS.skins.push(['ew_face_cowboy', 'Cowboy face (Meshy)'], ['ew_face_knight', 'Knight face (Meshy)'], ['ew_face_wizard', 'Wizard face (Meshy)']);
 /* THE EYE PACK (2026-11-03, mondo uploaded the MakeHuman Eye Texture Pack to R2 looks/eyes/eyetextures/: "please add them to the
    character creator"): [id, label, colour PNG, normal-map PNG]. On an MPFB body these are NOT drawn into the skin sheet (an iris
    there is ~6 texels, a cat eye's slit is lost): three-renderer.js THE EYE PACK fits MakeHuman's high-poly eye mesh over the
@@ -4899,11 +4899,12 @@ const EW_MPFB_FACE_SLIDERS = [
      section 6): a race's own Meshy head measured onto the MPFB head by face landmarks (bake-face.py): <race>Face = the head shape (a custom
      shape like morganHead), and the skin "ew_face_<race>" = the unit's face painted onto the stock skin sheet, the rest toned to match.
      The mesh is still the MPFB head, so the 67 face shapes (blink, talk) keep working. Pilot: the cowboy. */
-  { id: 'unitFace', label: 'Unit faces', inHeads: true, rows: [['cowboyFace', 'Cowboy']] },
+  { id: 'unitFace', label: 'Unit faces', inHeads: true, rows: [['cowboyFace', 'Cowboy'], ['knightFace', 'Knight'], ['wizardFace', 'Wizard']] },
 ];
 EW_APPEARANCE_LIMITS.wolfHead = [0, 1, 0];   // (one-sided: the target has no minus end)
 EW_APPEARANCE_LIMITS.morganHead = [0, 1, 0];   // (one-sided, THE CUSTOM SHAPES)
 EW_APPEARANCE_LIMITS.cowboyFace = [0, 1, 0];   // (one-sided, THE UNIT FACES)
+EW_APPEARANCE_LIMITS.knightFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.wizardFace = [0, 1, 0];
 /* THE LIKENESS SWITCH (2026-11-11, mondo: "hide behind a switch anyway, im really just testing something"): the face-likeness picks
    (the morganHead shaped head + the "morgan" skin) are NOT shown in the creator unless this browser turned them on: open the game
    once with ?likeness=1 in the address (remembered; ?likeness=0 turns it off again). The data stays valid either way, so a look
@@ -5628,8 +5629,8 @@ const RACE_REMADE_LOOKS = {
     /* THE UNIT FACES pilot: his own Meshy face (shape + skin); the saved look's eye sliders are zeroed, they were shaping a stock face */
     { "cowboyFace": 1, "mhSkin": "ew_face_cowboy", "hairColor": "#4a3423",   /* (his beard is in the skin now: the beard piece is off, the hair takes the beard's brown) */
       "eyeSize": 0, "eyeHeight": 0, "eyeSpacing": 0, "eyeTilt": 0, "eyeOpen": 0, "eyeDepth": 0, "eyelid": 0, "eyeBags": 0, "epicanthus": 0 }) },
-  'knight': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"jaw":-0.2,"cheekbones":0.25,"lowerLip":0.2,"upperLip":0.15,"eyeSize":0.1,"noseWidth":-0.2,"faceAge":-0.2,"mhSkin":"young_caucasian_female","mhEyes":"brown","mhBrows":"eyebrow006","mhLashes":"eyelashes02","hair":"hair001","hairColor":"#5c0f1e","browColor":"#3a1418","browTint":"pick","idle":"Idle_11","wear":["ewm_t2knight_outfit"] } },
-  'wizard': { male: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":0.95,"headHeight":0.15,"chinLength":0.2,"noseLength":0.2,"faceFat":-0.2,"cheekbones":0.15,"mhSkin":"young_caucasian_male","mhEyes":"blue","mhBrows":"eyebrow001","hair":"hair004","hairColor":"#9a6a40","browColor":"#7a5230","browTint":"pick","idle":"Idle_11","wear":["ewm_t2wizard_hat","ewm_t2wizard_outfit"] } },
+  'knight': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"knightFace":1,"mhSkin":"ew_face_knight","mhEyes":"brown","mhBrows":"own","mhLashes":"eyelashes02","hair":"hair001","hairColor":"#5c0f1e","browColor":"#3a1418","browTint":"pick","idle":"Idle_11","wear":["ewm_t2knight_outfit"] } },
+  'wizard': { male: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":0.95,"wizardFace":1,"mhSkin":"ew_face_wizard","mhEyes":"blue","mhBrows":"eyebrow001","hair":"hair004","hairColor":"#9a6a40","browColor":"#7a5230","browTint":"pick","idle":"Idle_11","wear":["ewm_t2wizard_hat","ewm_t2wizard_outfit"] } },
   /* batch one of the demo starters (2026-11-12): zombie, catgirl (his saved look's body + face + hair, the remade clothes), robinhood, quarterback */
   'zombie': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"mhSkin":"sohh_female_zombie_skin","mhEyes":"brown","mhBrows":"eyebrow006","mhLashes":"eyelashes02","hair":"hair001","hairColor":"#17181a","browColor":"#17181a","browTint":"pick","idle":"Idle_11","wear":["ewm_t2zombie_outfit"] } },
   'catgirl': { female: Object.assign({}, RACE_CREATOR_LOOKS['catgirl'].female, { "outer2": "none", "feet": "none", "wear": ["ewm_t2catgirl_outfit"], "wear2": "none", "wearTint": {}, "wearFabric": {} }) },

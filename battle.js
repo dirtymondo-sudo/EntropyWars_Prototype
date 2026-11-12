@@ -3597,7 +3597,7 @@
             if (!stand || !stand.length) return;
             let ignited = 0, lit = 0;
             for (const t of stand) {
-                if (igniteTile(t.x, t.y, 2, caster)) lit++;
+                if (igniteTile(t.x, t.y, 2, caster, true)) lit++;
                 const u = unitAt(t.x, t.y);
                 if (u && !u.dead && !u._dying) {
                     applyStatusEffects(u, [{ id: 'burn', duration: 2 }], `${spell.name} wildfire: `, caster);
@@ -3686,7 +3686,7 @@
             // sees ground it's allowed to burn on, then light the whole area
             for (const t of slick) {
                 if (_OIL_TERRAIN.has(getTerrainAt(t.x, t.y))) setTerrainAt(t.x, t.y, 'scorched');
-                igniteTile(t.x, t.y, 2, caster);
+                igniteTile(t.x, t.y, 2, caster, true);
             }
             for (const { u } of victims) {
                 const _burnBefore = unitHasStatus(u, 'burn');
@@ -4250,7 +4250,7 @@
         function _droughtFeedsFire() {
             return (state.activeWeather || []).some(w => w && w.type === 'drought' && (w.remaining == null || w.remaining > 0));
         }
-        function igniteTile(x, y, rounds, byUnit) {
+        function igniteTile(x, y, rounds, byUnit, noCatch) {
             if (!isInside(x, y)) return false;
             if (_tileSmothersFire(x, y)) return false;
             /* 🌧️ the rain puts the ground fire out (mondo 2026-11-03): a tile the rain falls on does not catch — the fire
@@ -4275,6 +4275,25 @@
                 const _lighter = (byUnit && byUnit.id != null) ? (unitFromId(byUnit.id) || null) : null;
                 _reactFireBog(_lighter, _GROUND_FIRE_SPELL, x, y, _floodConnectedTiles(x, y, _isBogTile, 40), true);
             }
+            /* 🔥 THE FIRE CATCHES WHOEVER STANDS ON IT (mondo 2026-11-12: "this chess piece is clearly on a tile on fire but
+               it doesnt have the burning status effect"): a square lit under a unit sets it Burning at once, the way the
+               forest fire always did, on every way a square catches (a fire spell on grass, Wall of Fire, a gust or a
+               shove fanning the flames, the round's spread). Status only: the ignition deals no extra damage. */
+            if (!prev && !noCatch) _fireCatchesUnitAt(x, y, byUnit);
+            return true;
+        }
+        function _fireCatchesUnitAt(x, y, byUnit) {
+            if (state.phase !== 'battle') return false;
+            const u = unitAt(x, y);
+            if (!u || u.dead || u._dying) return false;
+            if (unitHasStatus(u, 'burn')) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(u)) return false;
+            if (typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'healedByElement') === 'fire') return false;
+            const _by = (byUnit && byUnit.id != null) ? (unitFromId(byUnit.id) || null) : null;
+            applyStatusEffects(u, [{ id: 'burn', duration: 2 }], 'Ground fire: ', _by);
+            if (!unitHasStatus(u, 'burn')) return false;   // immune / warded: nothing to call out
+            showFloatingTextForUnit(u, '🔥 BURNING!', 'damage', { durationMs: 1100 });
             return true;
         }
 
@@ -4393,6 +4412,7 @@
             }
             for (const s of spread) {
                 b[s.x + ',' + s.y] = Object.assign({ x: s.x, y: s.y, t: _dry ? 3 : 2, p: s.p }, s.u != null ? { u: s.u } : {});
+                _fireCatchesUnitAt(s.x, s.y, s.u != null ? { id: s.u } : null);   // the spread lights the square under a unit
             }
 
             if (scorchedUnits || burnedOut || spread.length) {
@@ -73652,7 +73672,7 @@
                         state._timedTerrain = state._timedTerrain.filter(e => e !== tt);
                         state._terrainVersion = (state._terrainVersion || 0) + 1;
                     }
-                    if (typeof igniteTile === 'function') igniteTile(t.x, t.y, sp.terrainRounds || 2, owner || { player: door.owner });
+                    if (typeof igniteTile === 'function') igniteTile(t.x, t.y, sp.terrainRounds || 2, owner || { player: door.owner }, true);
                 }
                 if (!_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { faceX: door.faceX, faceY: door.faceY, len: lane.length, delay: opts.delayMs || 0, owner: door.owner });
             }
@@ -73665,6 +73685,8 @@
                 _gunDoorStatus(u, 'burn', sp.burnRounds || 2, `${def.icon} ${def.name}: `);
                 hit.push(u);
             }
+            /* anyone else standing on the lit lane (the door's own side) catches like on any lit square */
+            if (!only && typeof _fireCatchesUnitAt === 'function') for (const t of lane) if (_tileIsBurning(t.x, t.y)) _fireCatchesUnitAt(t.x, t.y, null);
             if (!only) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} sets ${_gdPlural(lane.length, 'tile')} ablaze${hit.length ? ' and scorches ' + hit.map(u => _ctName(u)).join(', ') : ''}.`);
             return hit;
         }
