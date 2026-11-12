@@ -2109,7 +2109,7 @@ below covers them if they come back. What travelled, and at what pace BEFORE: th
 distance), the motes 1.15×, the sea sheet + wakes 1.0×, the dome's nebula a slow flow.
 NOW (three-renderer.js MOTION block, `HZ_PARALLAX` + `_motionPar` / `_motionMotePar` / `_motionMoteDepth`): every streaming body carries
 `par` = (1 + k·d0) / (1 + k·d), floored at `far` 0.22, d = its lateral + vertical offset from the board's line over the ring radius — the
-factors are then divided by the roster's largest (`_motionParNorm`), so the nearest body runs the row's full `speed` even where a hull keeps the roster far out, and one at the ring about a quarter of it (`_motionPlace`: `dist * e.par`). The motes run
+factors are then spread over the whole range per roster (`_motionParNorm`): its nearest body runs the row's full `speed` (even where a hull keeps the roster far out) and its farthest 0.22× of it (`_motionPlace`: `dist * e.par`). The motes run
 `moteNear` 1.7× .. `moteFar` 0.8× across their band; a far mote is thinner (×0.55), dimmer (×0.5) and its streak is as short as it is slow.
 A `rise` streams its inner ring fastest; a `wheel` stays rigid (a turn has no parallax), only its sparks lead by radius. The walk's voyage
 (`_hqBuildSky` / `_hqTickSky`: `f.vPar`, the 36 dust streaks) got the same. Nothing was removed, moved or resized; the dome was already the

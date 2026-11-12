@@ -42776,10 +42776,12 @@ const ThreeRenderer = (function () {
     var _motionParN = -1;
     function _motionParNorm() {
         var n = _motionStreams.length; if (n === _motionParN) return; _motionParN = n;
-        var mx = 0, i, e;
-        for (i = 0; i < n; i++) { e = _motionStreams[i]; if (e.mode === 'wheel') continue; if (e.par0 == null) e.par0 = e.par || 1; if (e.par0 > mx) mx = e.par0; }
-        if (!(mx > 0)) return;
-        for (i = 0; i < n; i++) { e = _motionStreams[i]; if (e.mode === 'wheel') continue; e.par = Math.max(HZ_PARALLAX.far, Math.min(1, e.par0 / mx)); }
+        if (typeof window !== 'undefined' && window.EW_NO_PARALLAX) return;
+        var mx = 0, mn = 9, i, e, F = HZ_PARALLAX.far;
+        for (i = 0; i < n; i++) { e = _motionStreams[i]; if (e.mode === 'wheel') continue; if (e.par0 == null) e.par0 = e.par || 1; if (e.par0 > mx) mx = e.par0; if (e.par0 < mn) mn = e.par0; }
+        if (!(mx > mn + 1e-4)) return;
+        /* spread over the whole range: the roster's nearest body 1.0, its farthest `far` */
+        for (i = 0; i < n; i++) { e = _motionStreams[i]; if (e.mode === 'wheel') continue; e.par = F + (1 - F) * (e.par0 - mn) / (mx - mn); }
     }
     /* a mote's pace from u = 0 (the nearest of its band) .. 1 (the farthest) */
     function _motionMotePar(u) {
@@ -71404,8 +71406,8 @@ const ThreeRenderer = (function () {
                 f.vPar = _motionPar(f.vLat, f.baseY, discR);   // THE PARALLAX (2026-11-12): a far body passes slower than a near one
                 if (axZ) { p.x = f.vLat; p.z = f.vAlong; } else { p.x = f.vAlong; p.z = f.vLat; }
             });
-            var vMax = 0; H.sky.floaters.forEach(function (f) { if (f.vPar > vMax) vMax = f.vPar; });   // the nearest body runs the full speed
-            if (vMax > 0) H.sky.floaters.forEach(function (f) { if (f.vPar) f.vPar = Math.max(HZ_PARALLAX.far, Math.min(1, f.vPar / vMax)); });
+            var vMax = 0, vMin = 9; H.sky.floaters.forEach(function (f) { if (f.vPar > vMax) vMax = f.vPar; if (f.vPar < vMin) vMin = f.vPar; });   // the nearest body runs the full speed, the farthest `far`
+            if (vMax > vMin + 1e-4 && !(typeof window !== 'undefined' && window.EW_NO_PARALLAX)) H.sky.floaters.forEach(function (f) { if (f.vPar) f.vPar = HZ_PARALLAX.far + (1 - HZ_PARALLAX.far) * (f.vPar - vMin) / (vMax - vMin); });
             /* the dust: additive streaks beside the hull and over it, racing past */
             for (var mi = 0; mi < 36; mi++) {
                 var sp = _hzGlowSprite(1, 0xbfd8ff, 0.16 + vr() * 0.28, 0, 0, 0), sd2 = vr() < 0.5 ? -1 : 1;
