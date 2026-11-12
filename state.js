@@ -72,6 +72,8 @@
             // 2026-07-23 yeti rework: frozen (hard CC with thaw-outs), blind
             // (attack accuracy loss from blizzards).
             'frozen','blind',
+            // 2026-11-12 astral projection build 1: sleep (hard CC, damage wakes it), projecting (the spirit of a sleeping body)
+            'sleep','projecting',
             // 2026-10-06: Guard's one-round recovery buff.
             'guardRegen',
             // 2026-10-09: Broken (every passive switched off while it lasts).
@@ -2829,6 +2831,7 @@
                     for (const unit of state.units) {
                         if (unit.dead || !tileSet.has(posKey(unit.x, unit.y))) continue;
                         if (typeof shadowRealmKey === 'function' && shadowRealmKey(unit)) continue;   // 🌑 nor a quake's first blow
+                        if (typeof unitIsSpirit === 'function' && unitIsSpirit(unit)) continue;   // 👁 nor a spirit: nothing of the ground or the sky touches it
 
                         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
                         const eff = def.onSpawnEffect(unit);
@@ -2910,7 +2913,8 @@
             /* 🌑 THE REALM LINE (11-07, Blood Rain "restores" the pair in the Shadow Realm): the sky is the board's,
                so nobody in a realm (battle.js shadowRealmKey) gets its rain, its heal or its burn */
             const units = (player ? aliveUnitsFor(player) : state.units.filter(u => !u.dead))
-                .filter(u => !(typeof shadowRealmKey === 'function' && shadowRealmKey(u)));
+                .filter(u => !(typeof shadowRealmKey === 'function' && shadowRealmKey(u)))
+                .filter(u => !(typeof unitIsSpirit === 'function' && unitIsSpirit(u)));   // 👁 no weather on a spirit
             for (const weather of state.activeWeather) {
                 const def = WEATHER_REGISTRY[weather.type];
                 // Homing storms resolve all of their effects at end of round (processHomingWeather) —
@@ -3001,6 +3005,7 @@
         function stormStrikeUnit(v, weather, def, at) {
             if (!v || v.dead || v._dying || v.hp <= 0 || !weather || !def) return false;
             if (typeof shadowRealmKey === 'function' && shadowRealmKey(v)) return false;   // 🌑 the storm is the board's
+            if (typeof unitIsSpirit === 'function' && unitIsSpirit(v)) return false;   // 👁 no storm strikes a spirit
             const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
             // 🌧️ Rain-bearing vortices (hurricane, thunderstorm)
             // drench whoever they sweep over — BEFORE the strike,
@@ -3119,6 +3124,7 @@
                 const candidates = state.units.filter(u => {
                     if (!u || u.dead || u._dying) return false;
                     if (typeof shadowRealmKey === 'function' && shadowRealmKey(u)) return false;   // 🌑 no eye hunts into the Shadow Realm
+                    if (typeof unitIsSpirit === 'function' && unitIsSpirit(u)) return false;   // 👁 nor a spirit
                     if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
                     if (caster && u.player === caster.player) return false;
                     return true;
@@ -3335,6 +3341,7 @@
             };
             if (!unit || unit.dead || !state.activeWeather) return mods;
             if (typeof shadowRealmKey === 'function' && shadowRealmKey(unit)) return mods;   // 🌑 no sky in the Shadow Realm
+            if (typeof unitIsSpirit === 'function' && unitIsSpirit(unit)) return mods;   // 👁 no weather on a spirit
             for (const w of state.activeWeather) {
                 if (!weatherOnTile(w, unit.x, unit.y)) continue;
                 const def = WEATHER_REGISTRY[w.type];

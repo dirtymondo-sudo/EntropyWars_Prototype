@@ -5289,3 +5289,26 @@ Blood Rain does not water; thorn vine reach 2 (an upgrade may lengthen it); Bump
 - NOT BUILT YET (his OK given, later PRs): Bee Queen pollen (Pollinate + Honey, pollen boosts her ATK + speed), Apple Seed ->
   apple tree (a real tree: existing tree model + the pack's apples, drops a healing apple), upgrade rows for the cap / reach,
   the CPU learning to water (ai.js still plants seeds as before and never casts Watering Can on purpose).
+
+## THE ASTRAL BODY + SLEEPING, build 1 (2026-11-12, mondo: "put the sleeping status effect on the physical body and the projecting status effect on the projection. Treat them like 2 separate units, but one shared HP bar" + "yes damage should wake a sleeper")
+Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx (4 builds). This is build 1.
+- data.js STATUS_DEFS `sleep` (SLP "Sleeping"): can't move or act, `wakeOnDamage` (battle.js applyDamageToUnit clears it after the
+  hit line, never on an astral body), `countsAs: ['stun']` so every "vs Stunned" bonus reads a sleeper too. Lullaby + Counting Sheep
+  now apply Sleeping (1 round); Sleep Paralysis stays Stun. `projecting` (PRJ): onRemove -> `astralEnd`.
+- A spell row with `astral: { cord, end }` (only Spirit Walk so far: cord 4, end 'follow', cooldown 2) calls battle.js `astralBegin`
+  in the escape branch. THE SPIRIT IS THE UNIT ITSELF (keeps id, turn, spells; status `projecting`, `_astralBodyId`, `_astralCord`).
+  THE BODY is a plain copy pushed into state.units: id `<player>-ab<n>`, `_astralOfId`, `sleep: 99`, never activates. Ids only, no
+  object refs (RULE #2), so the guest gets both from the state sync with no relay.
+- ONE HP BAR: `astralSyncHp` after every damage / heal moves the other piece by the same delta. Either piece at 0 = the unit dies
+  on the BODY's square, one kill (map.js defeatUnit -> `astralOnDeath`).
+- The spirit: data.js `unitPassiveValue` hands it the Ghost row (PASSIVE_DEFS.incorporeal: physical immune + phasing); it can't basic
+  attack, cast a physical spell or another astral spell (`spellBlockReason` 'Projecting'), use items, Inspect, build, or carry a Key
+  (Keys / flags stay with the body). Moves only inside the cord (`astralCordFilter` in getMoveTiles). Ground hazards, traps, seeds,
+  weather, quakes skip it (battle.js + state.js gates on `unitIsSpirit`); arriving still sets off Overwatch.
+- END: the activation after the cast one (`astralSpendActivation`) or the status running out. end 'follow' = the body is pulled to
+  the spirit's square (Spirit Walk). `astralLanded` then runs the normal tile arrival.
+- NOT IN BUILD 1 (builds 2-4): psychic x1.5 vs projecting, Stun / Silence snapping the spirit home, dream bonuses on the empty body,
+  the Shadow Realm window, the Astral Projection spell, Spirit Guide rework, Cut the Cord, Silver Cord, CPU play of it. Known gaps:
+  an AoE covering both pieces takes HP twice; no early return; the body stands idle (no slump pose); statuses worn at the cast stay
+  on the spirit.
+- Proof (VS CPU + a 2-seat online room, guest cast): /mnt/project-files/astral-projection-20261112/build1_*.jpg.
