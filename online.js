@@ -970,6 +970,20 @@
             window.doGuard = doGuard;
         }
 
+        /* 👁 RETURN TO BODY (battle.js doAstralReturn): engine state (a status off, a unit removed, a position), so the
+           guest asks the host like Guard. */
+        const _origDoAstralReturn = (typeof doAstralReturn === 'function') ? doAstralReturn : null;
+        if (_origDoAstralReturn) {
+            doAstralReturn = function(unit) {
+                if (!_isOnline() || state._remoteAction) return _origDoAstralReturn(unit);
+                if (_isHost()) return _hostRunAndSync(_origDoAstralReturn, [unit]);
+                if (!_guestOwnsAction(unit)) return;
+                playSfx('uiConfirm');
+                _emit('game-action', { type: 'engine', fn: 'doAstralReturn', unitId: unit.id });
+            };
+            window.doAstralReturn = doAstralReturn;
+        }
+
         /* THE LANDING PICK (battle.js cancelSkyThrowGrab): backing out of a sky throw's landing pick drops the held
            body and refunds the grab's MP — engine state, so the guest drops its own copy at once (the back-out must
            answer now) and the host does the same and syncs it. */
@@ -2327,6 +2341,9 @@
                                 break;
                             case 'doGuard':
                                 if (typeof doGuard === 'function') doGuard(engUnit);
+                                break;
+                            case 'doAstralReturn':
+                                if (typeof doAstralReturn === 'function') doAstralReturn(engUnit);
                                 break;
                             case 'cancelSkyThrowGrab':
                                 if (typeof cancelSkyThrowGrab === 'function') cancelSkyThrowGrab(engUnit);
