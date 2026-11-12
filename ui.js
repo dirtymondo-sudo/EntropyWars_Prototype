@@ -8014,6 +8014,7 @@
             const isFastPixel = rsRatio===1;
             const isNativePixel = !isFastPixel && Math.abs(rsRatio-rsNative)<0.011;
             const rsSteps = (_rsInfo&&_rsInfo.steps) || [0.5,0.67,0.75,0.85,1];
+            const ggLevel = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.getGrassField) ? ThreeRenderer.getGrassField() : 'high';   // THE GRASS FIELD
             const rsShare = rsRatio/rsNative;
             let rsOn = -1; rsSteps.forEach((k,i)=>{ if(Math.abs(rsShare-k)<0.011) rsOn=i; });
             const rsSize = (_rsInfo&&_rsInfo.w>0&&_rsInfo.h>0) ? `drawing ${_rsInfo.w} × ${_rsInfo.h}; ` : '';
@@ -8250,6 +8251,15 @@
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
                         <span class="pm-toggle-hint">${rsSize}the 3D picture's share of your screen's own resolution: lower runs faster and softer, menus and text stay sharp</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Grass</span>
+                        <div class="pm-seg-group">
+                            ${['high','low','off'].map(k=>`<button class="pm-seg-btn${ggLevel===k ? ' active' : ''}" onclick="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setGrassField)ThreeRenderer.setGrassField('${k}');${RJ}">${k.charAt(0).toUpperCase()+k.slice(1)}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">thick grass on grassy ground: Low draws under half as much, Off leaves the flat ground</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">FPS Cap</span>
