@@ -93210,6 +93210,8 @@ const ThreeRenderer = (function () {
             }
             return top;
         },
+        /* a standing body's height in world units (heightRatio 1 = 1.75 m): THE CUTSCENES measure their shots in bodies */
+        bodyUnit: function () { return (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO; },
         getUnitWorldPos: function (uid, out) {
             var e = _getUnitEntry(uid);
             if (!e || !e.group || e.group.visible === false) return false;

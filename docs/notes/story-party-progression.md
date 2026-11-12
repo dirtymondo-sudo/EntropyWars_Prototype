@@ -843,7 +843,7 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
 - **The rows**: data.js `STORY_CUTSCENES` (`storyCutscene(id)`). A row = BEATS; a beat = ONE SHOT that opens with a cut:
   `dur` (a spoken beat holds its reading time when left out), `shot { look, from, az, el, h, dist, over, fov, track, to }`,
   `say { who, text }`, `act [{ at, do, who, ... }]`, `slow { at, scale, ms }`, `hold` (a click cannot hurry it). Shots are written
-  against SUBJECTS (`unit:<role>`, `seat:<role>`, `portal`, `tile:x,y`, `{ mid: [..] }`), lengths in board squares; `from` = a
+  against SUBJECTS (`unit:<role>`, `seat:<role>`, `portal`, `tile:x,y`, `{ mid: [..] }`), lengths in BODIES (1 = a standing body, 1.75 m: `ThreeRenderer.bodyUnit()`); `from` = a
   second subject the angle counts from (`over` = that far behind it: the over-the-shoulder), so a row fits any party and layout.
 - **The director**: three-camera.js `EWScene.play(row, host, onEnd)` on THE SCRIPTED EYE (`EWCine.enter({ script: true })` +
   `EWCine.pose()`: no panel, no mouse capture, no keys of its own). Overlay `#ewScene` (styles-cinematic.css): letterbox 12vh,

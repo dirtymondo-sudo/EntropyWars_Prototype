@@ -59754,9 +59754,11 @@
            the same board either way. Viewer-local, story only (VS-CPU): nothing on `state`, nothing relayed. ══ */
         function _questSceneRow() {
             const er = _encRun(), F = er && er.quest;
-            if (!F || !F.scene || window.EW_NO_CUTSCENES || state.cameraDisabled || _skipVisuals() || state.devAutoSim) return null;
-            if (!window.EWScene || !window.EWCine || typeof window.storyCutscene !== 'function') return null;
-            if (!(window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive())) return null;
+            if (!F || !F.scene || window.EW_NO_CUTSCENES) return null;
+            /* why a scene that should play does not is said once, in the console (a silent fallback reads as a missing scene) */
+            const why = state.cameraDisabled ? 'the camera is disabled' : _skipVisuals() ? 'visuals are skipped' : state.devAutoSim ? 'auto-sim' :
+                (!window.EWScene || !window.EWCine) ? 'no director (three-camera.js)' : (typeof window.storyCutscene !== 'function' || !window.storyCutscene(F.scene)) ? 'no row ' + F.scene : '';
+            if (why) { if (er._sceneWhy !== why) { er._sceneWhy = why; console.warn('[SCENE] ' + F.scene + ' not played: ' + why); } return null; }
             return window.storyCutscene(F.scene);
         }
         function _questSceneRoles() {
@@ -59780,7 +59782,7 @@
         function _questSceneHost() {
             const Q = _questSceneRoles(); if (!Q) return null;
             const { B, R } = Q, P = B.F.portal || { x: 0, y: 0 };
-            const FX = window.ThreeVFXEffects, TR = window.ThreeRenderer, TA = window.ThreeAnim;
+            const FX = window.ThreeVFXEffects, TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : window.ThreeRenderer, TA = window.ThreeAnim;
             const tile = (x, y) => { const w = FX && FX.tileWorld ? FX.tileWorld(x, y) : null; return w ? { x: w.x, y: w.y, z: w.z } : null; };
             const out3 = [0, 0, 0];
             const point = (ref) => {
@@ -59798,7 +59800,8 @@
             const w0 = tile(0, 0), w1 = tile(1, 0);
             let door = null, doorAt = 0;
             return {
-                unit: (w0 && w1) ? Math.abs(w1.x - w0.x) || 1 : ((typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128),
+                /* a scene's lengths are BODIES (a standing body = 1, 1.75 m), so a shot frames the cast the same on any board's squares */
+                unit: (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? TR.bodyUnit() : ((w0 && w1) ? (Math.abs(w1.x - w0.x) || 128) / 2 : 64),
                 point,
                 act(a) {
                     const u = a.who ? R[a.who] : null;
@@ -59828,12 +59831,21 @@
         }
         function _questScenePlay(cb) {
             const row = _questSceneRow(); if (!row) return false;
-            const host = _questSceneHost(); if (!host) return false;
             let done = false;
             const end = () => { if (done) return; done = true; try { if (document && document.body) document.body.classList.remove('enc-arrival'); } catch (e) {} if (cb) cb(); };
-            let ok = false;
-            try { ok = window.EWScene.play(row, host, end); } catch (e) { console.error('[SCENE] the cutscene did not start', e); ok = false; }
-            if (!ok) { try { host.finish(true); } catch (e) {} return false; }
+            /* the scene needs the 3D board (a match starts a few frames before its board is up): it waits for it, nobody
+               on screen who is not in the room yet and no turn begun; a board that never comes up starts the fight plain */
+            const t0 = performance.now();
+            const go = () => {
+                if (done) return;
+                const up = !!(window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive());
+                if (!up) { if (performance.now() - t0 < 15000) { setTimeout(go, 100); return; } console.warn('[SCENE] ' + row.id + ' not played: the 3D board never came up'); window._ewSceneHid = null; end(); return; }
+                const host = _questSceneHost();
+                let ok = false;
+                try { ok = !!host && window.EWScene.play(row, host, end); } catch (e) { console.error('[SCENE] the cutscene did not start', e); ok = false; }
+                if (!ok) { console.warn('[SCENE] ' + row.id + ' did not start'); try { if (host) host.finish(true); } catch (e) {} window._ewSceneHid = null; end(); }
+            };
+            go();
             return true;
         }
         function _encPartyDashIn() {

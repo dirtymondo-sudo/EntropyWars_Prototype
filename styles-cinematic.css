@@ -5004,3 +5004,4 @@ body.ew-shots-place { cursor: copy; }
 .ew-scene-fade.on { opacity: 1; }
 @media (max-width: 720px) { .ew-scene-line { font-size: 14px; } }
 @media (prefers-reduced-motion: reduce) { .ew-scene-bar, .ew-scene-sub, .ew-scene-fade { transition: none; } }
+.ew-scene-hid { opacity: 0 !important; pointer-events: none !important; }

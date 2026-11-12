@@ -2511,6 +2511,7 @@ var EWCine = (function () {
         get script() { return !!(C.on && C.script); },
         get unit() { return C.unit; },
         /* THE SCRIPTED EYE: where the eye stands this frame, in WORLD units ({ x, y, z, yaw, pitch, fov }) */
+        canvas: function () { return canvasEl(); },
         pose: function (p) { if (C.on && C.script && p) C.pose = { x: +p.x || 0, y: +p.y || 0, z: +p.z || 0, yaw: +p.yaw || 0, pitch: +p.pitch || 0, fov: +p.fov || 45 }; },
         eye: function () { return { x: C.x, y: C.y, z: C.z, yaw: C.yaw, pitch: C.pitch, fov: C.fov, inited: !!C.inited }; },
         available: available,
@@ -2534,7 +2535,7 @@ if (typeof window !== 'undefined') window.EWCine = EWCine;
    THE SHOT is written against SUBJECTS, never against world numbers, so the same row fits any party and any room:
      look = a ref the host resolves ('unit:<role>', 'tile:x,y', { mid: [ref, ref] }); h = how high on the subject the eye aims;
      az = where the eye stands round it in degrees (0 = south of it looking north, 90 = east of it, 180 = north, 270 = west);
-     el = degrees above level; dist = how far back; fov = the lens. h and dist are in the host's units (a board square).
+     el = degrees above level; dist = how far back; fov = the lens. h, dist and over are in the host's unit (a battle host: BODIES, 1 = a standing body).
      from = a second subject: az then counts from the line subject -> that subject, so "from the party's side" or "over her
      shoulder" (`over` = how far behind that subject the eye stands) holds wherever the board put them.
    THE GRAMMAR (the spell camera's, approved 2026-11-10): a beat OPENS WITH A CUT; a move changes one thing (`to` names
@@ -2575,6 +2576,20 @@ var EWScene = (function () {
         var dx = T.x - ex, dy = T.y - ey, dz = T.z - ez;
         return { x: ex, y: ey, z: ez, yaw: Math.atan2(-dx, -dz), pitch: Math.atan2(dy, Math.hypot(dx, dz)), fov: sh.fov || 40 };
     }
+    /* THE CLEAR SCREEN: every page layer beside the canvas is held out of the picture while a scene plays (class
+       .ew-scene-hid); the game goes on building HUD under it, so the sweep runs again a few times a second */
+    function sweep() {
+        var c = window.EWCine && window.EWCine.canvas ? window.EWCine.canvas() : null; if (!c) return;
+        for (var e = c; e && e.parentElement && e !== document.body; e = e.parentElement) {
+            var sibs = e.parentElement.children;
+            for (var i = 0; i < sibs.length; i++) {
+                var s = sibs[i];
+                if (s === e || s.id === 'ewScene' || s.tagName === 'SCRIPT' || s.tagName === 'STYLE' || s.tagName === 'LINK' || s.classList.contains('ew-scene-hid')) continue;
+                s.classList.add('ew-scene-hid');
+            }
+        }
+    }
+    function unsweep() { var l = document.querySelectorAll('.ew-scene-hid'); for (var i = 0; i < l.length; i++) l[i].classList.remove('ew-scene-hid'); }
     function mount() {
         var el = document.getElementById('ewScene');
         if (!el) { el = document.createElement('div'); el.id = 'ewScene'; document.body.appendChild(el); }
@@ -2624,6 +2639,7 @@ var EWScene = (function () {
             }
             window.EWCine.pose(pose);
         }
+        if (S.now - (S.sweptAt || 0) > 250) { S.sweptAt = S.now; sweep(); }
         /* the skip */
         if (S.skipAt) { var f = Math.min(1, (S.now - S.skipAt) / SKIP_HOLD_MS); var fill = document.getElementById('ewSceneSkipFill'); if (fill) fill.style.width = (f * 100) + '%'; if (f >= 1) { end(true); return; } }
         if (T >= S.dur) { if (S.i + 1 < S.row.beats.length) beatStart(S.i + 1); else end(false); }
@@ -2648,6 +2664,7 @@ var EWScene = (function () {
         var el = document.getElementById('ewScene');
         if (el) { el.classList.remove('on'); setTimeout(function () { if (!S && el.parentNode) el.parentNode.removeChild(el); }, 520); }
         document.body.classList.remove('ew-scene');
+        unsweep();
         try { if (s.onEnd) s.onEnd(!!skipped); } catch (e) { console.error('[SCENE] onEnd failed', e); }
     }
     function play(row, ctx, onEnd) {
