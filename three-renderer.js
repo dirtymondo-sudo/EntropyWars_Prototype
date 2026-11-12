@@ -8131,7 +8131,11 @@ const ThreeRenderer = (function () {
        green drift over metres; wind is a rolling gust (a travelling wave over the board, the tips brighten on its crest) plus a
        small flutter, all in the vertex shader. THE PRESS MAP (a small texture, 4 texels a square): whatever stands on the ground
        lays the blades down — a unit's feet, so no body, shadow or ring is ever hidden by grass.
-       MOCK-UP: off unless window.EW_GRASS_FIELD = true or ?grassfield=1. */
+       THE THICK LOOK (mondo, the same night, on the first thin-bladed try: "im imagining it being more thick and fluffy. The way it is
+       now just looks gross"; he then picked "Yes, build the pointed clumps"): a tuft is a fat three-point CLUMP that turns its face
+       to the camera, 24 x 24 a square, drawn far to near with no depth write, so near tops lie over far feet like a coat.
+       Settings > Video > Grass: High / Low / Off (ThreeRenderer.setGrassField, stored ew_grassField). Off for everything:
+       window.EW_NO_GRASS_FIELD = true (the board's next build). Tunables live as EW_GGRASS. */
     var GGRASS = {
         shape: 'crown',
         perTile: 24,        // tufts per square = perTile² (a jittered grid, so the cover is even)
@@ -8140,19 +8144,21 @@ const ThreeRenderer = (function () {
         lean: 0.55,         // the still bow of a tuft × its height
         wind: 0.45,         // tip travel on a gust crest × height
         sheen: 0.30,        // how much a gust crest brightens the tips
-        root: [0.075, 0.140, 0.032],   // linear: deep under the coat (seen only at a tuft's foot and the field's edge)
-        mid: [0.110, 0.200, 0.046],    // linear: the ground's own colour as lit
-        tipCool: [0.150, 0.300, 0.090], tipWarm: [0.215, 0.335, 0.075],   // linear: the two top tones the patches drift between
+        /* THE COLOURS: a tuft wears the sheet under it. sheets = each grass sheet's own average colour, calm and pixel, in the
+           sheet's own (screen) values — the game's materials read a sheet that way, so a tuft's vertex colour is given the same way
+           and takes the same light as the ground beside it; lit = a trim on that. A tuft's foot is rootK of it, its belly the
+           ground's own, its top coolK / warmK (the two tones the slow patches drift between) */
+        sheets: { calm_grass: [0.252, 0.313, 0.163], calm_rockygrass: [0.270, 0.315, 0.200], calm_purplegrass: [0.324, 0.195, 0.513], calm_darkgrass: [0.213, 0.240, 0.162],
+                  grass: [0.302, 0.307, 0.197], grass_2: [0.261, 0.519, 0.163], grass_3: [0.352, 0.673, 0.061], grass_4: [0.303, 0.276, 0.163], grass_rocky: [0.434, 0.533, 0.234], purple_grass: [0.462, 0.286, 0.557] },
+        lit: 1.0, rootK: 0.50, coolK: [1.08, 1.34, 1.28], warmK: [1.42, 1.44, 1.04],
         patchM: 2.6,        // patch size, squares
         pressR: 0.42,       // a unit lays the grass down this far round its feet (× tile)
         pressN: 4,          // press map texels per square
-        fringe: 5, fringeDensity: 0.7,   // the meadow past the board's edge: squares out, blades per square side × this
-        order: 50, nrm: 'up', depthWrite: false, shadow: true   // MOCK-UP switches
+        fringe: 5, fringeDensity: 0.7,   // the meadow past the board's edge: squares out, tufts per square side × this
+        low: { perTile: 15, width: 0.105, fringe: 2 },   // the Low setting: under half the tufts, each wider, a narrow meadow
+        order: 50, shadow: true
     };
-    try { window.EW_GGRASS = GGRASS; } catch (e) {}
-    function _ggOn() {
-        try { return window.EW_GRASS_FIELD === false ? false : !!(window.EW_GRASS_FIELD || /[?&]grassfield=1/.test(location.search)); } catch (e) { return false; }
-    }
+    try { window.EW_GGRASS = GGRASS; GGRASS.flush = function () { _ggPalCache = {}; _ggFringe = null; _lastTerrainDecoSerial = ''; }; } catch (e) {}   // flush = retune live: the next frame rebuilds
     /* a tuft's outline (x in half-widths, y in heights) + its 5 triangles, wound to face the camera.
        crown = one thick clump of three points (a tall middle, two splayed sides); tongue = one round pad */
     var _GG_SHAPES = {
@@ -8160,7 +8166,37 @@ const ThreeRenderer = (function () {
         tongue: { P: [[-1, 0], [1, 0], [-1.05, 0.42], [1.05, 0.42], [-0.72, 0.80], [0.72, 0.80], [0, 1]], T: [0, 1, 3, 0, 3, 2, 2, 3, 5, 2, 5, 4, 4, 5, 6] }
     };
     var _ggRightU = { value: new THREE.Vector2(1, 0) };   // the camera's right, flat, in the field's own frame: every tuft turns its face to the eye
-    try { window.EW_GGRASS_REBUILD = function () { rebuildTerrainDecorations(); return _gg ? _gg.blades : 0; }; } catch (e) {}   // MOCK-UP: retune live
+    /* the setting: 'high' (default) | 'low' | 'off' */
+    var _ggLevel = 'high';
+    try { var _ggSaved = localStorage.getItem('ew_grassField'); if (_ggSaved === 'off' || _ggSaved === 'low' || _ggSaved === 'high') _ggLevel = _ggSaved; } catch (e) {}
+    function getGrassField() { return _ggLevel; }
+    function setGrassField(v) {
+        v = (v === 'off' || v === 'low') ? v : 'high';
+        if (v === _ggLevel) return;
+        _ggLevel = v;
+        try { localStorage.setItem('ew_grassField', v); } catch (e) {}
+        try { if (objectGroup) { rebuildTerrainDecorations(); _shadowsDirty = true; } } catch (e) {}
+    }
+    function _ggOn() {
+        try { return _ggLevel !== 'off' && !window.EW_NO_GRASS_FIELD; } catch (e) { return false; }
+    }
+    /* the four colours a tuft on this sheet wears, or null (a key with no measured sheet grows none) */
+    var _ggPalCache = {};
+    function _ggPalette(key) {
+        var ck = (typeof _calmKeyOf === 'function' && _calmKeyOf(key)) || key, hit = _ggPalCache[ck];
+        if (hit !== undefined) return hit;
+        var C = GGRASS, a = C.sheets[ck], pal = null;
+        if (a) {
+            var t = (ck === 'calm_grass' && _CALM && _CALM.floorT) ? _CALM.floorT : [1, 1, 1];
+            var mid = [Math.min(0.9, a[0] * t[0] * C.lit), Math.min(0.9, a[1] * t[1] * C.lit), Math.min(0.9, a[2] * t[2] * C.lit)];
+            pal = { mid: mid, root: [mid[0] * C.rootK, mid[1] * C.rootK, mid[2] * C.rootK],
+                    cool: [Math.min(1, mid[0] * C.coolK[0]), Math.min(1, mid[1] * C.coolK[1]), Math.min(1, mid[2] * C.coolK[2])],
+                    warm: [Math.min(1, mid[0] * C.warmK[0]), Math.min(1, mid[1] * C.warmK[1]), Math.min(1, mid[2] * C.warmK[2])] };
+        }
+        _ggPalCache[ck] = pal;
+        return pal;
+    }
+    var _ggFringe = null;   // the meadow past the board, kept between builds: { key, pos, col, gg, gs, roots }
     var _gg = null;   // the live field: { mesh, press, data, W, H, n, sig, tops }
     function _ggPressTex(W, H) {
         var n = GGRASS.pressN, data = new Uint8Array(W * n * H * n);
@@ -8173,7 +8209,7 @@ const ThreeRenderer = (function () {
         /* no depth write + drawn last of the solid things: a blade is still hidden by whatever stands in front of it, but nothing drawn
            after (a tile highlight, a ring, a zone, blood, a spell's ground mark) is ever hidden BY a blade — they lie on the grass
            the way they lie on the ground */
-        var m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide, depthWrite: !!GGRASS.depthWrite });
+        var m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide, depthWrite: false });
         var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: _ggRightU };
         m.onBeforeCompile = function (shader) {
             shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgR = U.uGgR;
@@ -8198,48 +8234,70 @@ const ThreeRenderer = (function () {
     function _ggBuild(group) {
         _gg = null;
         if (!_ggOn() || typeof getTerrainAt !== 'function') return;
+        var _t0 = performance.now();
         var ts = CONFIG.tileSize || BASE_TILE, W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
         if (!W || !H) return;
-        var C = GGRASS, N = C.perTile, cell = ts / N;
+        var C = GGRASS, LOW = (_ggLevel === 'low') ? C.low : null, N = LOW ? LOW.perTile : C.perTile, WID = LOW ? LOW.width : C.width;
         var mon = (typeof _monumentMap === 'function') ? _monumentMap() : null;
-        var pos = [], col = [], gg = [], gs = [], nor = [], roots = [], tops = {};
+        var pos = [], col = [], gg = [], gs = [], roots = [], GY = new Float64Array(25);
         var seed = 1234567;
         var rnd = function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return ((seed >> 8) & 0xFFFF) / 0xFFFF; };
         var sampler = (typeof _fieldGroundSampleAt === 'function') ? _fieldGroundSampleAt : null;
         var isGrass = function (x, y) { if (x < 0 || y < 0 || x >= W || y >= H) return !!frGrass; var t = getTerrainAt(x, y); return !!(t && _GRASS_TERRAIN_SET[t]); };
         /* THE MEADOW ROUND THE BOARD: a board cut from a terrain room whose floor is grass keeps its grass past the board's edge */
-        var FG = null, finfo = null, FT = null, frGrass = null, M = 0;
+        var FG = null, finfo = null, FT = null, frGrass = null, M = 0, fpal = null, pal = null;
         try {
             FG = (typeof _fieldGround === 'function' && _fieldGroundArmed) ? _fieldGround() : null;
             if (FG && FG.R && FG.R.terrain && typeof hqTerrainInfo === 'function') finfo = hqTerrainInfo(FG.R.roomId);
             if (finfo && _GRASS_TERRAIN_SET[finfo.floor] && typeof hqTerrainHeight === 'function') {
-                FT = FG.R.T; M = C.fringe | 0;
+                FT = FG.R.T; M = (LOW ? LOW.fringe : C.fringe) | 0; fpal = _ggPalette(finfo.floor);
                 var RR = finfo.rules || {};
-                frGrass = function (rx, rz) {
+                frGrass = function (rx, rz, onB) {
                     if (typeof _hqTOutside === 'function' && _hqTOutside(finfo, rx, rz)) return 0;
                     if (finfo.void && hqTerrainVoidAt(finfo, rx, rz)) return 0;
-                    if (hqTerrainSolidAt(finfo, rx, rz, 0.2)) return 0;
+                    if (hqTerrainSolidAt(finfo, rx, rz, 0.35)) return 0;
                     if (typeof hqTerrainFluidAt === 'function' && hqTerrainFluidAt(finfo, rx, rz)) return 0;
-                    var sl = hqTerrainSlope(finfo, rx, rz), rock = (sl - RR.cliffFrom) / ((RR.cliffTo - RR.cliffFrom) || 1); rock = rock < 0 ? 0 : rock > 1 ? 1 : rock;
+                    var sl = Math.max(hqTerrainSlope(finfo, rx, rz), hqTerrainSlope(finfo, rx + 0.45, rz), hqTerrainSlope(finfo, rx - 0.45, rz), hqTerrainSlope(finfo, rx, rz + 0.45), hqTerrainSlope(finfo, rx, rz - 0.45)), rock = (sl - RR.cliffFrom) / ((RR.cliffTo - RR.cliffFrom) || 1); rock = rock < 0 ? 0 : rock > 1 ? 1 : rock;
                     var pw = 0;
                     if (finfo.paths) for (var pi = 0; pi < finfo.paths.length; pi++) { var pp = finfo.paths[pi], pd = _hqTPolyDist(rx, rz, pp.pts).d, phw = pp.w / 2; var pt2 = pd < phw ? 1 : 1 - (pd - phw) / 0.9; if (pt2 > pw) pw = pt2; }
                     pw = pw < 0 ? 0 : pw;
-                    return (1 - rock * 2 > 0 ? 1 - rock * 2 : 0) * (1 - pw);
+                    return (1 - rock * 5 > 0 ? 1 - rock * 5 : 0) * (onB ? 1 : (1 - pw));   // no tuft on a stone, a steep face or (past the board) a path; on the board the square's own sheet says path
                 };
             }
         } catch (e) { frGrass = null; M = 0; }
-        if (!frGrass) M = 0;
+        if (!frGrass || !fpal) { M = 0; frGrass = null; }
         var N0 = N;
+        /* two passes: the meadow past the board (kept from build to build — it never changes while the room stands, and it is most
+           of the tufts), then the board's own squares (rebuilt whenever the ground changes: a dig, a build, a flood) */
+        var fkey = M ? ((typeof _hqBattleRoomKey === 'function' ? _hqBattleRoomKey() : '') + '|' + _ggLevel + '|' + ts + '|' + W + 'x' + H + '|' + C.shape + '|' + (typeof _calmOn === 'function' && _calmOn() ? 'c' : 'p')) : '';
+        var keep = (M && _ggFringe && _ggFringe.key === fkey) ? _ggFringe : null;
+        for (var pass = 0; pass < 2; pass++) {
+        if (pass === 0 && (!M || keep)) continue;
+        if (pass === 1 && M && !keep) {
+            keep = _ggFringe = { key: fkey, pos: new Float32Array(pos), col: new Float32Array(col), gg: new Float32Array(gg), gs: new Float32Array(gs), roots: new Float32Array(roots) };
+            pos = []; col = []; gg = []; gs = []; roots = [];
+        }
         for (var ty = -M; ty < H + M; ty++) for (var tx = -M; tx < W + M; tx++) {
             var fr = (tx < 0 || ty < 0 || tx >= W || ty >= H);
+            if (fr !== (pass === 0)) continue;
             var topY = 0;
+            seed = (((tx + 64) * 73856093) ^ ((ty + 64) * 19349663)) & 0x7FFFFFFF | 1;   // a square's tufts are its own: a dig beside it never reshuffles them
             N = fr ? Math.max(6, Math.round(N0 * C.fringeDensity)) : N0;
+            pal = fpal;
             if (!fr) {
             if (!isGrass(tx, ty)) continue;
-            if (typeof getObjectAt === 'function' && getObjectAt(tx, ty)) continue;
+            pal = _ggPalette(getTerrainAt(tx, ty)); if (!pal) continue;
+            /* a square with a thing on it stays bare, except under a tree: the grass runs up to the trunk */
+            var ob = (typeof getObjectAt === 'function') ? getObjectAt(tx, ty) : null;
+            if (ob && !(typeof ob === 'string' && (/^tree/.test(ob) || (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[ob])))) continue;
             if (mon && mon.has(tx + ',' + ty)) continue;
+            /* a field square that stays rock (a standing stone, a wall, a trunk's yard) has no ground of its own to grow on */
+            try { if (FG && FG.yAt) { var fy0 = FG.yAt(tx, ty); if (fy0 === null || fy0 === undefined) continue; } } catch (e) {}
             topY = tileTopY(tx, ty);
-            tops[tx + ',' + ty] = topY + ts * C.hMax * 0.62;
+            for (var q = 0; q < 25; q++) { var sy0 = sampler ? sampler((tx + (q % 5) / 4) * ts, (ty + ((q / 5) | 0) / 4) * ts, tx, ty) : null; GY[q] = (sy0 === null || sy0 === undefined) ? topY : sy0; }
+            /* a square whose ground steps (a standing stone's top beside the lawn, a ledge, a stair) grows none: tufts would climb its face */
+            var gLo = Infinity, gHi = -Infinity; for (q = 0; q < 25; q++) { if (GY[q] < gLo) gLo = GY[q]; if (GY[q] > gHi) gHi = GY[q]; }
+            if (gHi - gLo > ts * 0.35) continue;
             }
             /* the field thins toward a square that is not grass (a path, a rock): no hard line at the square's edge */
             var eL = isGrass(tx - 1, ty) ? 0 : 1, eR = isGrass(tx + 1, ty) ? 0 : 1, eU = isGrass(tx, ty - 1) ? 0 : 1, eD = isGrass(tx, ty + 1) ? 0 : 1;
@@ -8257,18 +8315,24 @@ const ThreeRenderer = (function () {
                     gy = FG.floorY + hqTerrainHeight(finfo, rx, rz) * FG.s;
                     edge = 1 - gw;
                 } else {
-                    gy = sampler ? sampler(wx, wz, tx, ty) : null;
-                    if (gy === null || gy === undefined) gy = topY;
+                    if (frGrass) {   // on the board too: never up a standing stone, a wall or a sheer face inside a grass square
+                        var bw2 = 0;
+                        try { bw2 = frGrass(wx * FT.C / ts + FT.x0, wz * FT.C / ts + FT.z0, true); } catch (e) { bw2 = 1; }
+                        if (bw2 <= 0 || r0 > bw2 + 0.02) continue;
+                    }
+                    /* the square's ground, read on a 5 x 5 grid once and blended (a read per tuft was most of a rebuild) */
+                    var gu = u * 4, gv = v * 4, gi = Math.min(3, gu | 0), gj = Math.min(3, gv | 0), fu = gu - gi, fv = gv - gj;
+                    gy = (GY[gj * 5 + gi] * (1 - fu) + GY[gj * 5 + gi + 1] * fu) * (1 - fv) + (GY[gj * 5 + 5 + gi] * (1 - fu) + GY[gj * 5 + 6 + gi] * fu) * fv;
                 }
                 /* clumps: a slow noise over ~1 square swells / shortens the blades; patches: a slower one picks the tip tone */
                 var clump = _ewValHash(wx / (ts * 0.55) + 11.3, wz / (ts * 0.55) + 4.7);
                 var patch = _ewValHash(wx / (ts * C.patchM) + 3.1, wz / (ts * C.patchM) + 8.9);
                 var pt = Math.min(1, Math.max(0, (patch - 0.3) / 0.4)); pt = pt * pt * (3 - 2 * pt);
                 var h = ts * (C.hMin + (C.hMax - C.hMin) * (0.25 + 0.75 * clump) * (0.55 + 0.45 * r1)) * (1 - edge * 0.5);
-                var hw = ts * C.width * 0.5 * (0.8 + 0.4 * r2);
+                var hw = ts * WID * 0.5 * (0.8 + 0.4 * r2);
                 var laz = r4 * Math.PI * 2, lm = h * C.lean * (0.35 + 0.65 * r5), lx = Math.cos(laz) * lm, lz = Math.sin(laz) * lm;
                 var jit = 0.97 + 0.06 * r0;
-                var tipR = (C.tipCool[0] + (C.tipWarm[0] - C.tipCool[0]) * pt) * jit, tipG = (C.tipCool[1] + (C.tipWarm[1] - C.tipCool[1]) * pt) * jit, tipB = (C.tipCool[2] + (C.tipWarm[2] - C.tipCool[2]) * pt) * jit;
+                var tipR = (pal.cool[0] + (pal.warm[0] - pal.cool[0]) * pt) * jit, tipG = (pal.cool[1] + (pal.warm[1] - pal.cool[1]) * pt) * jit, tipB = (pal.cool[2] + (pal.warm[2] - pal.cool[2]) * pt) * jit, RT = pal.root, MD = pal.mid;
                 /* 7 corners, a soft rounded tongue: foot L / R, belly L / R, shoulder L / R, tip. The side offset (aGgS) is laid along
                    the camera's right in the shader, so the tongue always shows its full face */
                 var P = _GG_SHAPES[C.shape] ? _GG_SHAPES[C.shape].P : _GG_SHAPES.crown.P;
@@ -8276,30 +8340,36 @@ const ThreeRenderer = (function () {
                     var f = P[k][1], bf = f * f;
                     pos.push(wx + lx * bf, gy + h * f * (1 - 0.10 * bf), wz + lz * bf);
                     var cr, cg, cb;
-                    if (f < 0.42) { var a0 = f / 0.42; cr = C.root[0] + (C.mid[0] - C.root[0]) * a0; cg = C.root[1] + (C.mid[1] - C.root[1]) * a0; cb = C.root[2] + (C.mid[2] - C.root[2]) * a0; }
-                    else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = C.mid[0] + (tipR - C.mid[0]) * a1; cg = C.mid[1] + (tipG - C.mid[1]) * a1; cb = C.mid[2] + (tipB - C.mid[2]) * a1; }
+                    if (f < 0.42) { var a0 = f / 0.42; cr = RT[0] + (MD[0] - RT[0]) * a0; cg = RT[1] + (MD[1] - RT[1]) * a0; cb = RT[2] + (MD[2] - RT[2]) * a0; }
+                    else { var a1 = (f - 0.42) / 0.58; a1 = a1 * a1 * (3 - 2 * a1); cr = MD[0] + (tipR - MD[0]) * a1; cg = MD[1] + (tipG - MD[1]) * a1; cb = MD[2] + (tipB - MD[2]) * a1; }
                     col.push(cr, cg, cb);
                     gg.push(wx, wz, h * f, f);
                     gs.push(P[k][0] * hw);
-                    nor.push(0, 1, 0);
                 }
                 roots.push(wx, wz);
             }
         }
+        }
+        if (!M) _ggFringe = null;
+        var join = function (a, b) { if (!a) return new Float32Array(b); var o = new Float32Array(a.length + b.length); o.set(a, 0); o.set(b, a.length); return o; };
+        var K = (M && keep) ? keep : null;
+        pos = join(K && K.pos, pos); col = join(K && K.col, col); gg = join(K && K.gg, gg); gs = join(K && K.gs, gs); roots = join(K && K.roots, roots);
         if (!pos.length) return;
         var geo = new THREE.BufferGeometry();
-        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-        geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
-        geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
-        geo.setAttribute('aGg', new THREE.Float32BufferAttribute(gg, 4));
-        geo.setAttribute('aGgS', new THREE.Float32BufferAttribute(gs, 1));
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        var nor = new Float32Array(pos.length); for (var ni = 1; ni < nor.length; ni += 3) nor[ni] = 1;
+        geo.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+        geo.setAttribute('aGg', new THREE.BufferAttribute(gg, 4));
+        geo.setAttribute('aGgS', new THREE.BufferAttribute(gs, 1));
         var nB = roots.length / 2, ia = new Uint32Array(nB * 15);
         geo.setIndex(new THREE.BufferAttribute(ia, 1));
         var pr = _ggPressTex(W, H);
-        var G = { press: pr.tex, data: pr.data, W: W, H: H, n: C.pressN, inv: [1 / (W * ts), 1 / (H * ts)], sig: '', tops: tops, blades: nB, roots: new Float32Array(roots), ia: ia, sortDir: null };
+        var G = { press: pr.tex, data: pr.data, W: W, H: H, n: C.pressN, inv: [1 / (W * ts), 1 / (H * ts)], sig: '', blades: nB, roots: roots, ia: ia, sortDir: null };
         var mesh = new THREE.Mesh(geo, _ggMat(G));
         mesh.frustumCulled = false; mesh.name = 'ew_grass_field'; mesh._ew_ggrass = true; mesh.renderOrder = C.order;
-        G.mesh = mesh; _gg = G;
+        G.mesh = mesh; G.ms = performance.now() - _t0; _gg = G;
+        try { window._ewGrassField = { tufts: nB, buildMs: Math.round(G.ms), level: _ggLevel }; } catch (e) {}   // read-only: what the last build made
         group.add(mesh);
     }
     /* THE FACE + THE ORDER: the tufts turn to the camera (its right, flat, in the field's frame), and — as they write no depth —
@@ -45515,8 +45585,7 @@ const ThreeRenderer = (function () {
         })();
         var sh = T.varying(gust().mul(A.w).mul(press().oneMinus()).mul(C.sheen).add(1));
         _ewNodeDiffuseMul(nm, function () { return sh; });
-        var up = T.normalize(T.cameraViewMatrix.mul(T.vec4(0, 1, 0, 0)).xyz);
-        if (C.nrm === 'upface') nm.normalNode = up.mul(T.faceDirection); else if (C.nrm !== 'geo') nm.normalNode = up;
+        nm.normalNode = T.normalize(T.cameraViewMatrix.mul(T.vec4(0, 1, 0, 0)).xyz);
     }
     /* THE SWAYS: the grass blades, the trees' wind, the kelp — a vertex offset in the mesh's own units (after instancing,
        so a batched wood's offset is the crown's world amplitude ÷ the mesh's own scale, never the copy's) */
@@ -91314,6 +91383,7 @@ const ThreeRenderer = (function () {
 
     return {
         init, activate, deactivate, isActive, dispose, hookCamera, resetForNewMatch,
+        setGrassField, getGrassField,   // THE GRASS FIELD
         rebuildTerrain, rebuildObjects, rebuildTurrets, rebuildNexusWalls, rebuildSanctuaryWalls, rebuildUnits, rebuildHighlights,
         rebuildFog, invalidateUnits,
 
