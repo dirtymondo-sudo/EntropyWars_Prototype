@@ -2082,3 +2082,9 @@ window.EW_NO_CALM_LOOK and his pixel sheets are untouched. The table + hqMapLook
 - 11-12 second follow-up (mondo: "Yes it is still way too bright"): the cause was the room's light, kept from the gym (`mood.ambient: 2.0`
   over dark rubber mats) now falling on pale tile. `mood.ambient` 2.0 -> 1.0 and the pad tints -> 0x66707a / 0x36424e. Headless WebGL2
   shots read much dimmer than his Mac (Firefox, WebGPU): do not judge a pale floor's brightness from them. Shot: test_chamber_dimmed2_low.jpg.
+- 11-12 third follow-up (mondo: "water still showing up as way too bright in the training room"): THE CAUSE OF ALL THREE was the camera's
+  KEY LIGHT (HQ_LIGHT_RULES.keyLamp.battleIntensity 1.5 × Settings, a point light 7 m over the square the camera looks at in every
+  ENCLOSED room). Measured in one headless fight: a 3 × 3 of spell water reads flat white (217, 225, 225) with it, blue (134, 185, 203)
+  without; moving the room's ceiling lamps changed nothing. New `shell.keyLamp` (0..1, three-renderer.js _hqKeyRoomK: the room's share
+  of the Key Light, walk + fight); `training_hall` sets 0. The same water in the Holo Sim stayed dark in the same test. Other enclosed
+  rooms with a pale thing under the camera can flare the same way: give that room a `keyLamp` share. Shot: water_key_light_before_after.jpg.
