@@ -8142,8 +8142,12 @@ const ThreeRenderer = (function () {
         hMin: 0.110, hMax: 0.210,   // tuft height × tile
         width: 0.070,       // tuft width × tile: WIDE, so neighbours overlap and the field reads as one soft coat
         lean: 0.55,         // the still bow of a tuft × its height
-        wind: 0.45,         // tip travel on a gust crest × height
-        sheen: 0.30,        // how much a gust crest brightens the tips
+        /* THE CALMER WIND (mondo 11-12, on the first live build: "it's maybe a little too wavy"): about half the bend, gusts that roll
+           by a third slower, half the flutter, a fainter crest. The first build's values: wind 0.45, sheen 0.30, gust 1.25, flutter 0.10 */
+        wind: 0.24,         // tip travel on a gust crest × height
+        sheen: 0.18,        // how much a gust crest brightens the tips
+        gust: 0.80,         // how fast the gusts roll across the board
+        flutter: 0.05,      // the small quick shiver on top of the gust
         /* THE COLOURS: a tuft wears the sheet under it. sheets = each grass sheet's own average colour, calm and pixel, in the
            sheet's own (screen) values — the game's materials read a sheet that way, so a tuft's vertex colour is given the same way
            and takes the same light as the ground beside it; lit = a trim on that. A tuft's foot is rootK of it, its belly the
@@ -8210,16 +8214,16 @@ const ThreeRenderer = (function () {
            after (a tile highlight, a ring, a zone, blood, a spell's ground mark) is ever hidden BY a blade — they lie on the grass
            the way they lie on the ground */
         var m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.FrontSide, depthWrite: false });
-        var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: _ggRightU };
+        var U = { uGgT: _grassWindTime, uGgPress: { value: G.press }, uGgB: { value: new THREE.Vector4(G.inv[0], G.inv[1], GGRASS.wind, GGRASS.sheen) }, uGgR: _ggRightU, uGgW: { value: new THREE.Vector2(GGRASS.gust, GGRASS.flutter) } };
         m.onBeforeCompile = function (shader) {
-            shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgR = U.uGgR;
+            shader.uniforms.uGgT = U.uGgT; shader.uniforms.uGgPress = U.uGgPress; shader.uniforms.uGgB = U.uGgB; shader.uniforms.uGgR = U.uGgR; shader.uniforms.uGgW = U.uGgW;
             shader.vertexShader = shader.vertexShader
-                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nattribute float aGgS;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;\nuniform vec2 uGgR;')
+                .replace('#include <common>', '#include <common>\nattribute vec4 aGg;\nattribute float aGgS;\nuniform float uGgT;\nuniform sampler2D uGgPress;\nuniform vec4 uGgB;\nuniform vec2 uGgR;\nuniform vec2 uGgW;')
                 .replace('#include <begin_vertex>', '#include <begin_vertex>\n' +
                     'float ggPr = texture2D( uGgPress, aGg.xy * uGgB.xy ).r;\n' +
-                    'float ggG = sin( dot( aGg.xy, vec2( 0.0105, 0.0062 ) ) - uGgT * 1.25 + sin( dot( aGg.xy, vec2( -0.0040, 0.0070 ) ) + uGgT * 0.31 ) * 1.4 ) * 0.5 + 0.5;\n' +
+                    'float ggG = sin( dot( aGg.xy, vec2( 0.0105, 0.0062 ) ) - uGgT * uGgW.x + sin( dot( aGg.xy, vec2( -0.0040, 0.0070 ) ) + uGgT * 0.31 ) * 1.4 ) * 0.5 + 0.5;\n' +
                     'ggG *= ggG;\n' +
-                    'float ggF = sin( uGgT * 4.3 + aGg.x * 0.31 + aGg.y * 0.47 ) * 0.10;\n' +
+                    'float ggF = sin( uGgT * 4.3 + aGg.x * 0.31 + aGg.y * 0.47 ) * uGgW.y;\n' +
                     'float ggB = ( 0.15 + 0.85 * ggG + ggF ) * uGgB.z * aGg.z * aGg.w * ( 1.0 - ggPr );\n' +
                     'transformed.x += 0.86 * ggB + uGgR.x * aGgS; transformed.z += 0.50 * ggB + uGgR.y * aGgS;\n' +
                     'transformed.y -= aGg.z * ggPr * 0.86 + ggB * 0.30 * aGg.w;\n' +
@@ -8227,7 +8231,7 @@ const ThreeRenderer = (function () {
             shader.fragmentShader = shader.fragmentShader
                 .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\nnormal = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );');
         };
-        m.customProgramCacheKey = function () { return 'ew_ggrass'; };
+        m.customProgramCacheKey = function () { return 'ew_ggrass2'; };
         _ewNodeTag(m, { k: 'ggrass', press: G.press, inv: G.inv });   // the WebGPU twin: _ewNodeGGrass
         return m;
     }
@@ -45832,13 +45836,13 @@ const ThreeRenderer = (function () {
     function _ewNodeGGrass(nm, D) {
         var T = _ewNodeU.T, P = T.positionLocal, A = T.attribute('aGg', 'vec4'), S = T.attribute('aGgS', 'float'), t = _ewNodeRef(_grassWindTime), Rt = _ewNodeRef(_ggRightU), C = GGRASS;
         var gust = function () {
-            var g = T.sin(A.x.mul(0.0105).add(A.y.mul(0.0062)).sub(t.mul(1.25)).add(T.sin(A.x.mul(-0.0040).add(A.y.mul(0.0070)).add(t.mul(0.31))).mul(1.4))).mul(0.5).add(0.5);
+            var g = T.sin(A.x.mul(0.0105).add(A.y.mul(0.0062)).sub(t.mul(C.gust)).add(T.sin(A.x.mul(-0.0040).add(A.y.mul(0.0070)).add(t.mul(0.31))).mul(1.4))).mul(0.5).add(0.5);
             return g.mul(g);
         };
         var press = function () { return T.texture(D.press, A.xy.mul(T.vec2(D.inv[0], D.inv[1]))).level(0).r; };
         nm.positionNode = T.Fn(function () {
             var pr = press().toVar(), g = gust().toVar();
-            var f = T.sin(t.mul(4.3).add(A.x.mul(0.31)).add(A.y.mul(0.47))).mul(0.10);
+            var f = T.sin(t.mul(4.3).add(A.x.mul(0.31)).add(A.y.mul(0.47))).mul(C.flutter);
             var b = g.mul(0.85).add(0.15).add(f).mul(C.wind).mul(A.z).mul(A.w).mul(pr.oneMinus()).toVar();
             return P.add(T.vec3(b.mul(0.86).add(Rt.x.mul(S)), A.z.mul(pr).mul(0.86).add(b.mul(0.30).mul(A.w)).negate(), b.mul(0.50).add(Rt.y.mul(S))));
         })();
@@ -51221,6 +51225,7 @@ const ThreeRenderer = (function () {
         _hlLookSync();   // THE TILE LOOK: the UI Maker's changes, once each
         /* grass wind (vertex shader sway) — freezing the clock stills the field */
         if (!window.EW_DISABLE_GRASS_WIND) _grassWindTime.value = _hlGlobalTime.value;
+        else if (typeof window.EW_GRASS_WIND_T === 'number') _grassWindTime.value = window.EW_GRASS_WIND_T;   // stopped clock set by hand (motion proof frames)
         _ggTick();   // THE GRASS FIELD: the press map
         _updateLavaEmissive();
 
