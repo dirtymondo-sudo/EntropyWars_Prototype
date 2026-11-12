@@ -3677,6 +3677,12 @@ function unitHasPassive(unit, id) {
 /* First defined value of `key` across the unit's passives (undefined if none).
    e.g. unitPassiveValue(u, 'basicAttackLifesteal') → 0.25 for vampires. */
 function unitPassiveValue(unit, key) {
+    /* 👁 PROJECTING: a spirit has the Ghost's two Incorporeal hooks (physical hits pass through, it drifts through walls
+       and bodies), read from that passive's own row so the two can never drift apart */
+    if (unit && unit.status && unit.status.projecting > 0 && (key === 'immuneDamageType' || key === 'phasing')
+        && typeof PASSIVE_DEFS !== 'undefined' && PASSIVE_DEFS.incorporeal && PASSIVE_DEFS.incorporeal[key] !== undefined) {
+        return PASSIVE_DEFS.incorporeal[key];
+    }
     const list = getUnitPassives(unit);
     for (const p of list) if (p[key] !== undefined) return p[key];
     return undefined;
@@ -5558,8 +5564,8 @@ const SPELL_LIBRARY = [
            feeds Cross Slash now costs a real 75 MP. */
         tier: 2,
         school: 'Harbinger',
-        statusEffects: [{ id: 'stun', duration: 1 }],
-        desc: 'Hush. Deals MEDIUM magic damage to a Single Enemy and it sleeps through its next activation (Stun).'
+        statusEffects: [{ id: 'sleep', duration: 1 }],
+        desc: 'Hush. Deals MEDIUM magic damage to a Single Enemy and it falls asleep for a round: Sleeping. Any damage wakes it.'
     },
 
     {
@@ -8051,8 +8057,11 @@ const RACE_ABILITIES = {
         { id: 'raceSpiritWalk', tier: 2, families: ['astralprojection'], spellType: 'anomaly', element: 'psychic', name: 'Spirit Walk',
           type: 'utility', cost: 20, apCost: 1, range: 0,
           kind: 'escape', teleportDistance: 4,
-          statusEffects: [{ id: 'invisible', duration: 1 }],
-          desc: 'Enter the spirit world briefly. Teleport up to 4 tiles and become invisible for 1 turn.' },
+          /* ASTRAL PROJECTION build 1 (2026-11-12): the body stays asleep on the cast tile, the spirit steps out up to 4
+             and stays within 4 of it (astral.cord); when it ends the body is pulled to the spirit (astral.end 'follow') */
+          astral: { cord: 4, end: 'follow' }, cooldownRounds: 2,
+          statusEffects: [],
+          desc: 'Step out of your body. It stays asleep where it stands while your spirit walks up to 4 tiles and stays within 4 of it. Physical hits pass through the spirit and it drifts through walls, but it cannot basic attack and your sleeping body can still be hit: one HP bar for both. When your next turn ends, your body is pulled to your spirit. Cooldown: 2 rounds.' },
         { id: 'raceHerbalRemedy', tier: 1, spellType: 'human', element: 'nature', name: 'Herbal Remedy',
           type: 'heal', cost: 25, range: 3, apCost: 1,
           kind: 'heal', healAmt: 160, cleanse: 2,
@@ -9591,8 +9600,8 @@ const RACE_ABILITIES = {
         /* THE SIGNATURE FAMILY (2026-10-23): Nightmares, this race's own. */
         { id: 'sigCountingSheep', name: 'Counting Sheep', tier: 2, families: ['nightmares'], cost: 50, apCost: 1, cooldownRounds: 3,
           spellType: 'alien', element: 'psychic', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1, noDamage: true,
-          statusEffects: [{ id: 'stun', duration: 1 }],
-          desc: 'One... two... Every enemy in a 3×3 within 4 tiles falls asleep: Stunned for a round. No damage. Cooldown: 3 rounds.' },
+          statusEffects: [{ id: 'sleep', duration: 1 }],
+          desc: 'One... two... Every enemy in a 3×3 within 4 tiles falls asleep for a round: Sleeping. Any damage wakes them. No damage. Cooldown: 3 rounds.' },
         { id: 'sigDevourTheDream', name: 'Devour the Dream', tier: 4, families: ['nightmares'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'alien', element: 'psychic', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 165, range: 3,
           drainPct: 0.5, bonusVsStatus: { status: 'stun', mult: 1.5 },
@@ -12960,6 +12969,46 @@ const STATUS_DEFS = {
         spriteName: 'stun',
         spriteSrc: 'https://cdn.entropywars.net/Assets/ui/status/stun.png',
         iconSrc: createStatusIconDataUri('⚡', '#3e2218', '#ffe6da', '#ff9c71')
+    },
+    /* 💤 SLEEPING (astral projection build 1, 2026-11-12, mondo: "Is there even a sleeping status effect in the game yet?
+       Make sure there is one ... yes damage should wake a sleeper"). Hard CC like Stun (no move, no act, the activation
+       is skipped), but any damage that lands wakes the sleeper (battle.js applyDamageToUnit). It counts as Stun for every
+       "more to Stunned targets" spell (countsAs: the dream spells eat a sleeper). A projecting unit's BODY wears it for
+       as long as its spirit is out and damage does not wake it (battle.js THE ASTRAL BODY). */
+    sleep: {
+        icon: '💤',
+        glyph: '💤',
+        short: 'SLP',
+        label: 'Sleeping',
+        colorText: 'asleep',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        blockMove: true,
+        blockAction: true,
+        wakeOnDamage: true,
+        countsAs: ['stun'],
+        iconSrc: createStatusIconDataUri('💤', '#1a2040', '#e6ecff', '#8fa0e8')
+    },
+    /* 👁 PROJECTING (astral projection build 1, 2026-11-12): the SPIRIT of a unit whose body sleeps on the tile it cast
+       from (unit._astralBodyId = the body's unit id). The spirit is the unit itself: it moves and casts; physical hits
+       pass through it and it drifts through walls and bodies (data.js unitPassiveValue gives it the Ghost's Incorporeal
+       hooks), nothing on the ground touches it, it cannot basic attack or cast physical spells, and it stays within its
+       cord of the body. One HP bar with the body. It ends when the caster's next turn ends (battle.js
+       astralSpendActivation; the count here is the backstop). onRemove → battle.js astralEnd. */
+    projecting: {
+        icon: '👁',
+        glyph: '👁',
+        short: 'PRJ',
+        label: 'Projecting',
+        colorText: 'projecting',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'max',
+        iconSrc: createStatusIconDataUri('👁', '#182838', '#f0f8ff', '#9fd8ff'),
+        onRemove(unit) {
+            if (typeof astralEnd === 'function') astralEnd(unit);
+        }
     },
     root: {
         icon: '⛓️',

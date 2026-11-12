@@ -3946,6 +3946,7 @@ const _HRLG_SB_COLORS = {
   extendedClips:'#c8a040',carForm:'#5090d0',mechaForm:'#8080d0',wolfForm:'#8a6ad4',
   siegeMode:'#a05a30',castFromDoors:'#e8c07a',
   // markers & pickups
+  sleep:'#8fa0e8',projecting:'#9fd8ff',
   shadowRealm:'#4b2a6b',exited:'#3d8bfd',captured:'#e0a030',sealed:'#b03060',
   hourglass:'#e0c060',scanner:'#40c0c0',heal:'#27ae60',mana:'#3a7bd5',damage:'#e74c3c'
 };

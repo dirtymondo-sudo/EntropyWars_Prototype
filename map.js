@@ -16564,6 +16564,13 @@
 
         function defeatUnit(unit, killer) {
             if (!unit || unit.dead || unit._dying) return;
+            /* 👁 THE ASTRAL BODY (battle.js): a body and its spirit are one unit with one HP bar. Whichever piece took the
+               blow, the UNIT dies, on the body's tile, and the sleeping copy leaves the board without a death of its own. */
+            if ((unit._astralOfId || unit._astralBodyId) && typeof astralOnDeath === 'function') {
+                const _au = astralOnDeath(unit);
+                if (!_au) return;
+                if (_au !== unit) return defeatUnit(_au, killer);
+            }
 
             unit.hp = 0;
             unit._dying = true;

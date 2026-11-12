@@ -5154,6 +5154,13 @@
             if (!unit || unit.dead || unit._dying) return 0;
             if (unit._sealed || (unit.status && unit.status.captured > 0)) return 0;   // 🚪 in the void: nothing on the tile reaches it
             if (shadowRealmKey(unit)) return 0;   // 🌑 in the Shadow Realm: nothing on the board's tile reaches it either
+            if (unitIsSpirit(unit)) {   // 👁 a spirit touches nothing on the ground: no trap, pick-up, bomb or door
+                /* but every arrival still sets off Overwatch (a physical shot passes through it, a magic one lands) */
+                if (state.phase === 'battle' && opts.via !== 'move' && opts.via !== 'climb' && typeof checkOverwatchTriggers === 'function') {
+                    try { checkOverwatchTriggers(unit); } catch (e) { console.warn('[overwatch] spirit arrival', e); }
+                }
+                return 0;
+            }
             if (state.phase !== 'battle') return 0;
             const via = opts.via || 'displaced';
             const depth = _chainDepth;
@@ -9802,6 +9809,7 @@
                 }
             }
             delete unit.status[key];
+            if (key === 'projecting') astralLanded(unit);   // 👁 the spirit is a body again: its tile counts
             if (unit._mounted === key) delete unit._mounted;   // THE HORSES: Saddle Up's ride ends with its buff
             if (_realmPid) _realmClosePartner(unit, _realmPid);
             if (_bindPid) _bindClosePartner(unit, _bindPid);
@@ -10438,7 +10446,7 @@
             burn: 'burn|burning|burned|burnt', poison: 'poison|poisoned', bleed: 'bleeding|bleed', goo: 'gooed', haunted: 'haunted',
             corroded: 'corroded', feared: 'feared', possessed: 'possessed', infected: 'infected', stoneform: 'stoneform', voodoo: 'voodoo',
             tethered: 'roped', sparkling: 'sparkling', levitating: 'levitating', blessed: 'blessed', quickened: 'quickened',
-            silence: 'silence|silenced', stun: 'stun|stunned', root: 'rooted', stagger: 'stagger|staggered', marked: 'marked',
+            silence: 'silence|silenced', stun: 'stun|stunned', sleep: 'asleep|sleeping', projecting: 'projecting', root: 'rooted', stagger: 'stagger|staggered', marked: 'marked',
             jammed: 'jammed', drowning: 'drowning', wet: 'wet|soaked', protect: 'protect|protected', discord: 'discord', slow: 'slow|slowed',
             overclock: 'overclock|overclocked', regen: 'regen', indomitable: 'indomitable', guarding: 'guarding', statUp: 'empowered',
             statDown: 'weakened', shield: 'shield|shielded', invisible: 'invisible', charm: 'charm|charmed', taunt: 'provoked|taunted',
@@ -11476,6 +11484,7 @@
                 for (const unit of state.units) {
                     if (unit.dead) continue;
                     if (shadowRealmKey(unit)) continue;   // 🌑 off the board in the Shadow Realm: no zone heals or burns it
+                    if (unitIsSpirit(unit)) continue;   // 👁 nor a spirit: it holds no zone and no zone touches it
                     /* NEXUS REWORK (2026-09-12): a NEXUS zone (the centre, and
                        in Arena the spawn zones too) heals the team that OWNS
                        it and burns the other one — a neutral zone does
@@ -12110,6 +12119,7 @@
         function checkSeedStepTrigger(unit) {
             if (!state.plantedSeeds || !state.plantedSeeds.length || !unit || unit.dead) return;
             if (shadowRealmKey(unit)) return;   // 🌑 nor its seeds
+            if (unitIsSpirit(unit)) return;   // 👁 a spirit steps on nothing
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             const seedsHere = state.plantedSeeds.filter(s => s.x === unit.x && s.y === unit.y);
             for (const seed of seedsHere) {
@@ -12383,6 +12393,7 @@
             for (const unit of aliveUnitsFor(player)) {
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
                 if (shadowRealmKey(unit)) continue;   // 🌑 no seed or tree aura reaches into the Shadow Realm
+                if (unitIsSpirit(unit)) continue;   // 👁 nor a spirit
                 if (_seedsLeft) {
                     const seedsHere = _seedsLeft.filter(s => s.x === unit.x && s.y === unit.y);
                     for (const seed of seedsHere) {
@@ -13543,6 +13554,178 @@
         window.isUnitRealmShieldedFrom = isUnitRealmShieldedFrom;
         window.realmReachableFrom = realmReachableFrom;
         window.closeShadowRealmFor = closeShadowRealmFor;
+
+        /* 👁 THE ASTRAL BODY (astral projection build 1, 2026-11-12, mondo: "astral projecting should work by leaving your
+           body where it is (whatever tile you cast the spell from) but then being able to float and move with your astral
+           body ... immune to physical attacks like the ghost passive but your real body can still take damage like normal
+           ... put the sleeping status effect on the physical body and the projecting status effect on the projection?
+           Treat them like 2 separate units, but one shared HP bar").
+           TWO PIECES. The SPIRIT is the unit itself (its id, its turn, its spells): it wears `projecting` and
+           _astralBodyId. The BODY is a second unit pushed into state.units on the cast tile: a plain copy of the unit
+           (same look), id '<player>-ab<n>', _astralOfId = the spirit's id, wearing `sleep` (never its turn: a status that
+           blocks move AND action skips the activation). Both are plain unit data, so state-sync carries them (RULE #2)
+           and only ids are stored, never objects.
+           ONE HP BAR. astralSyncHp folds every HP change of either piece into both (each piece remembers the shared
+           value it last saw, _astralHp; the two deltas since then are summed), so it holds for hits, heals and the
+           statuses that write hp themselves. A piece that dies takes the unit with it, on the BODY's tile (map.js
+           defeatUnit → astralOnDeath).
+           THE END. `projecting` comes off when the caster's NEXT turn ends (astralSpendActivation; its count is the
+           backstop), a cleanse or a death: astralEnd folds the body back into the unit. spell.astral.end 'follow' (Spirit
+           Walk) pulls the body to the spirit; anything else sends the spirit home to the body's tile. */
+        function unitIsSpirit(u) { return !!(u && u.status && u.status.projecting > 0); }
+        function unitIsAstralBody(u) { return !!(u && u._astralOfId); }
+        function astralBodyOf(u) {
+            if (!u || !u._astralBodyId) return null;
+            const b = unitFromId(u._astralBodyId);
+            return (b && b._astralOfId === u.id) ? b : null;
+        }
+        function astralSpiritOf(b) {
+            if (!b || !b._astralOfId) return null;
+            const sp = unitFromId(b._astralOfId);
+            return (sp && sp._astralBodyId === b.id) ? sp : null;
+        }
+        function astralSyncHp() {
+            if (!state._astralSeq || !state.units) return;
+            for (const u of state.units) {
+                if (!u || !u._astralBodyId || u.dead || u._dying) continue;
+                const b = astralBodyOf(u);
+                if (!b || b.dead || b._dying) continue;
+                const seen = Number.isFinite(u._astralHp) ? u._astralHp : u.hp;
+                const shared = Math.max(0, Math.min(u.maxHp, seen + ((u.hp || 0) - seen) + ((b.hp || 0) - seen)));
+                b.maxHp = u.maxHp;
+                u.hp = b.hp = u._astralHp = b._astralHp = shared;
+            }
+        }
+        /* carried Keys and flags ride the BODY while the spirit is out (no hands), and come home with it */
+        function _astralMoveCarried(fromId, toId) {
+            try {
+                for (const h of (state.hourglasses || [])) if (h && h.carriedBy === fromId) h.carriedBy = toId;
+                if (state.flags) for (const p of [1, 2]) { const f = state.flags[p]; if (f && f.carriedBy === fromId) f.carriedBy = toId; }
+            } catch (e) {}
+        }
+        function _astralDropBody(body) {
+            if (!body) return;
+            body.dead = true;
+            state.units = state.units.filter(x => x !== body && x.id !== body.id);
+            if (typeof window !== 'undefined' && window._ewHlCache) window._ewHlCache = { key: '', map: new Map(), zMap: new Map() };
+        }
+        function astralBegin(unit, spell) {
+            if (!unit || unit.dead || unit._dying || unitIsSpirit(unit) || unit._astralOfId || unit._astralBodyId) return null;
+            const cfg = (spell && spell.astral) || {};
+            let body = null;
+            try { body = JSON.parse(JSON.stringify(unit)); } catch (e) { return null; }
+            const n = (state._astralSeq = (state._astralSeq || 0) + 1);
+            body.id = unit.player + '-ab' + n;
+            body._astralOfId = unit.id;
+            body.status = {};
+            body.statStageMods = [];
+            body.ap = 0; body.movesThisTurn = 0;
+            for (const k of ['_stFresh', '_stHold', '_statusSrc', '_realmPartnerId', '_boundToId', '_voodooAllyId', '_fearSourceId', '_tetherCasterId',
+                '_spellsUsedThisTurn', '_possessAfter', '_possessAfterSrcId', '_mounted', '_astralBodyId']) delete body[k];
+            unit._astralBodyId = body.id;
+            unit._astralCord = Math.max(1, cfg.cord || 6);
+            unit._astralEndMode = cfg.end === 'follow' ? 'follow' : 'return';
+            unit._astralRound = state.round;
+            unit._astralHp = body._astralHp = unit.hp;
+            state.units.push(body);
+            applyStatusPayload(body, { id: 'sleep', duration: 99 }, '', unit);
+            if (!(body.status.sleep > 0)) body.status.sleep = 99;   // the body sleeps whatever would shrug a Sleep off
+            _astralMoveCarried(unit.id, body.id);
+            applyStatusPayload(unit, { id: 'projecting', duration: 2 }, `${spell ? spell.name : 'Projection'}: `, unit);
+            if (!(unit.status && unit.status.projecting > 0)) {   // refused (an immunity): nothing was left behind
+                _astralMoveCarried(body.id, unit.id);
+                _astralDropBody(body);
+                for (const k of ['_astralBodyId', '_astralCord', '_astralEndMode', '_astralRound', '_astralHp']) delete unit[k];
+                return null;
+            }
+            if (typeof window !== 'undefined' && window._ewHlCache) window._ewHlCache = { key: '', map: new Map(), zMap: new Map() };
+            return body;
+        }
+        /* STATUS_DEFS.projecting.onRemove (data.js): the two pieces are one again. Runs while the key is still set. */
+        function astralEnd(unit) {
+            if (!unit || !unit._astralBodyId) return;
+            astralSyncHp();
+            const body = astralBodyOf(unit);
+            const mode = unit._astralEndMode;
+            for (const k of ['_astralBodyId', '_astralCord', '_astralEndMode', '_astralRound', '_astralHp']) delete unit[k];
+            if (!body) return;
+            /* what the body picked up while it slept goes home with the unit */
+            if (!unit.status) unit.status = {};
+            for (const k of Object.keys(body.status || {})) {
+                if (k === 'sleep') continue;
+                const v = Number(body.status[k] || 0);
+                if (v > 0) unit.status[k] = Math.max(Number(unit.status[k] || 0), v);
+            }
+            for (const m of ['_statusSrc', '_stHold', '_stFresh']) {
+                if (body[m] && typeof body[m] === 'object') { unit[m] = Object.assign({}, body[m], unit[m] || {}); delete unit[m].sleep; }
+            }
+            for (const k of ['_boundToId', '_voodooAllyId', '_fearSourceId', '_tetherCasterId']) if (body[k] != null && unit[k] == null) unit[k] = body[k];
+            if (Array.isArray(body.statStageMods) && body.statStageMods.length) unit.statStageMods = (unit.statStageMods || []).concat(body.statStageMods);
+            if (body._lastDamageSourceId && !unit._lastDamageSourceId) unit._lastDamageSourceId = body._lastDamageSourceId;
+            _astralMoveCarried(body.id, unit.id);
+            const _fromX = unit.x, _fromY = unit.y, _bx = body.x, _by = body.y;
+            if (mode !== 'follow' && !unit.dead && !unit._dying) {
+                unit.x = body.x; unit.y = body.y; unit.z = body.z;
+                if (body.facing != null) unit.facing = body.facing;
+            }
+            _astralDropBody(body);
+            unit._astralLandOwed = { x: _fromX, y: _fromY, bx: _bx, by: _by, mode: mode };
+        }
+        /* clearStatus, once `projecting` is off: the unit is a body again, so the tile it stands on counts (a trap under
+           it, a pick-up, Overwatch on the arrival: mondo's "every arrival sets off Overwatch") */
+        function astralLanded(unit) {
+            const owed = unit && unit._astralLandOwed;
+            if (!owed) return;
+            delete unit._astralLandOwed;
+            if (unit.dead || unit._dying || state.phase !== 'battle') return;
+            if (owed.mode === 'follow') addLog(`👁 ${_ctName(unit)}'s body is pulled to its spirit.`);
+            else addLog(`👁 ${_ctName(unit)}'s spirit returns to its body.`);
+            try { if (owed.mode === 'follow') animateDisplacement(unit, owed.bx, owed.by, unit.x, unit.y, 260, {}); else animateDisplacement(unit, owed.x, owed.y, unit.x, unit.y, 260, {}); } catch (e) {}
+            try { resolveTileArrival(unit, { via: 'self' }); } catch (e) {}
+            scheduleBoardRender();
+        }
+        /* the caster's turn is over: a projection cast in an EARLIER round ends here ("until the caster's next turn ends") */
+        function astralSpendActivation(unit) {
+            if (!unit || unit.dead || unit._dying || !unitIsSpirit(unit) || !unit._astralBodyId) return;
+            if (unit._astralRound == null || unit._astralRound >= state.round) return;
+            clearStatus(unit, 'projecting');
+        }
+        /* map.js defeatUnit, first thing: a piece that dies is the unit dying, on the body's tile. Returns the unit the
+           death goes on with (the spirit when the body took the blow), or null when there is nothing more to do. */
+        function astralOnDeath(unit) {
+            if (!unit) return unit;
+            if (unit._astralOfId) {
+                const sp = astralSpiritOf(unit);
+                if (!sp || sp.dead || sp._dying) { _astralDropBody(unit); return null; }
+                return astralOnDeath(sp);
+            }
+            if (!unit._astralBodyId) return unit;
+            const body = astralBodyOf(unit);
+            for (const k of ['_astralBodyId', '_astralCord', '_astralEndMode', '_astralRound', '_astralHp', '_astralLandOwed']) delete unit[k];
+            if (unit.status) delete unit.status.projecting;
+            if (body) {
+                unit.x = body.x; unit.y = body.y; unit.z = body.z;
+                if (body._lastDamageSourceId) unit._lastDamageSourceId = body._lastDamageSourceId;
+                _astralMoveCarried(body.id, unit.id);
+                _astralDropBody(body);
+            }
+            return unit;
+        }
+        /* the cord: a spirit's move tiles stay within its cord of the body (Manhattan, like a teleport's reach) */
+        function astralCordFilter(unit, tiles) {
+            const b = astralBodyOf(unit);
+            if (!b || !Array.isArray(tiles)) return tiles;
+            const cord = Math.max(1, unit._astralCord || 6);
+            return tiles.filter(t => t && (Math.abs(t.x - b.x) + Math.abs(t.y - b.y)) <= cord);
+        }
+        window.unitIsSpirit = unitIsSpirit;
+        window.unitIsAstralBody = unitIsAstralBody;
+        window.astralBodyOf = astralBodyOf;
+        window.astralSpiritOf = astralSpiritOf;
+        window.astralSyncHp = astralSyncHp;
+        window.astralBegin = astralBegin;
+        window.astralEnd = astralEnd;
+        window.astralOnDeath = astralOnDeath;
 
         /* ⛓ / 🪆 Links (plan §5.5): after a hit resolves, echo a share of it
            down every link the victim is part of. Soul-Bound pairs echo
@@ -15522,6 +15705,7 @@
             const actual = Math.min(rawAmount, Math.max(0, target.maxHp - target.hp));
             if (actual <= 0) return 0;
             target.hp = Math.min(target.maxHp, target.hp + actual);
+            astralSyncHp();   // 👁 one HP bar for a body and its spirit
             if (sourceUnit) sourceUnit._trackHealDone = (sourceUnit._trackHealDone || 0) + actual;
             if (_balanceSimMode && sourceUnit) _balEffect(sourceUnit, 'heal', actual, 0);
             target._trackHealReceived = (target._trackHealReceived || 0) + actual;
@@ -40371,6 +40555,7 @@
             let _balHitRec = null;   // Balance Lab: this hit's element / effects / statuses, for the kill credit below
             if (finalDamage > 0) {
                 target.hp -= finalDamage;
+                astralSyncHp();   // 👁 one HP bar for a body and its spirit
                 target._tookDamageThisRound = true;
                 target._trackDmgReceived = (target._trackDmgReceived || 0) + finalDamage;
 
@@ -40386,6 +40571,12 @@
                     _hitRiderFlush(_riders);
                 }
 
+                /* 💤 damage wakes a sleeper (mondo 2026-11-12); a projecting unit's body sleeps until its spirit is home */
+                if (target.status && target.status.sleep > 0 && !target._astralOfId && target.hp > 0 && STATUS_DEFS.sleep && STATUS_DEFS.sleep.wakeOnDamage) {
+                    clearStatus(target, 'sleep');
+                    if (target._stHold) delete target._stHold.sleep;
+                    addLog(`💤 ${_ctName(target)} wakes up!`);
+                }
                 /* Taking a hit blows your cover: blood spatter and the stagger of
                    impact give a hidden unit away. Any damage dealt by an enemy
                    strips Invisible — AoE sweeps, traps and turrets are the
@@ -44439,6 +44630,7 @@
         function canUseItemNow(unit, itemKey) {
             if (!unit || unit.dead) return false;
             if (unitActionBlockKey(unit)) return false;   // "cannot act" (Stoneform, stun, frozen…) — no items either
+            if (unitIsSpirit(unit)) return false;   // 👁 no hands
             if ((unit.items?.[itemKey] || 0) <= 0) return false;
             if (_ewItemLike(itemKey, 'healPotion')) {
                 return state.units.some(t => !t.dead && t.player === unit.player && t.hp < t.maxHp);
@@ -44762,6 +44954,7 @@
 
         function getPathPickupEvent(unit, x, y) {
             if (shadowRealmKey(unit)) return null;   // 🌑 a walk in the Shadow Realm crosses nothing of the board's
+            if (unitIsSpirit(unit)) return null;   // 👁 a spirit's walk crosses nothing either (no hands)
 
             const _airborne = typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
             if (!_airborne) {
@@ -46932,7 +47125,7 @@
         }
         window.spellMovesCaster = spellMovesCaster;
         /* the player-facing word for what pins the unit ('Rooted', 'Charmed', 'Roped', 'Frozen' …), null = free */
-        const _MOVE_BLOCK_WORDS = { root: 'Rooted', charm: 'Charmed', tethered: 'Roped', stun: 'Stunned', frozen: 'Frozen', stoneform: 'Stoneform', climbing: 'Climbing' };
+        const _MOVE_BLOCK_WORDS = { root: 'Rooted', charm: 'Charmed', tethered: 'Roped', stun: 'Stunned', sleep: 'Asleep', frozen: 'Frozen', stoneform: 'Stoneform', climbing: 'Climbing' };
         function moveBlockWord(unit) {
             if (!unit || !unit.status) return null;
             const k = getActiveStatusKeys(unit).find(s => STATUS_DEFS[s]?.blockMove);
@@ -47209,6 +47402,8 @@
             spellBlockReason(unit, spell) {
                 if (!unit || !spell) return null;
                 if (unitSpellsBlocked(unit)) return 'Silenced';
+                /* 👁 a spirit casts magic only (no body, no physical spells) and cannot project again while it is out */
+                if (unitIsSpirit(unit) && (spell.astral || spell.damageType === 'physical')) return 'Projecting';
                 // THE MOVE BLOCK ON SPELLS: a dash / teleport / escape / grapple reel / charge is movement
                 if (spellMovesCaster(spell)) { const _mbw = moveBlockWord(unit); if (_mbw) return _mbw; }
                 if (!unitMeetsSpellTierReq(unit, spell)) {
@@ -49701,6 +49896,7 @@
         // restoring its position in a finally block.
         function attackHasReachableTarget(unit, opts) {
             if (!unit) return false;
+            if (unitIsSpirit(unit)) return false;   // 👁 a spirit cannot basic attack
             if (_getAttackValidTargets(unit, opts).length > 0) return true; // in range now
             /* one walk step away: exactly the attack list's MOVE→ATK rows (fog-gated from where the unit stands), so a
                lit ATTACK never opens on an empty list (PvP playtest 2026-10-23) */
@@ -61124,6 +61320,7 @@
                     _possessSettleSeats(null);   // THE HOME SIDE: its activation is over, the body goes home until the next one
                     if (_ctlUnit && !_ctlUnit.dead) _staggerSpendActivation(_ctlUnit);
                     if (_ctlUnit) _ctlUnit._turnRound = state.round;   // ONE ROUND = ONE TURN: its turn this round is spent (END TURN can leave AP)
+                    if (_ctlUnit) astralSpendActivation(_ctlUnit);   // 👁 a projection lasts until the caster's next turn ends
                 }
                 clearSpellPick();
 
@@ -67965,6 +68162,7 @@
 
         function _getAttackValidTargets(unit, opts) {
             if (!unit) return [];
+            if (unitIsSpirit(unit)) return [];   // 👁 a spirit cannot basic attack
             /* combatOnly: skip pure scenery (trees / smashable terrain). Used by
                the Attack-button lighting so the button greys out when the only
                thing in reach is choppable — chopping stays available through the
@@ -70236,6 +70434,7 @@
         function checkWarpRuneTrigger(unit) {
             if (!state.warpRunes || !unit || unit.dead) return false;
             if (shadowRealmKey(unit)) return false;   // 🌑 nor its runes
+            if (unitIsSpirit(unit)) return false;   // 👁 a spirit sets off nothing on the ground
 
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const runeIdx = state.warpRunes.findIndex(r => r.x === unit.x && r.y === unit.y);
@@ -70280,6 +70479,7 @@
         function checkTrapTrigger(unit, opts) {
             if (!state.traps || !state.traps.length || !unit || unit.dead) return false;
             if (shadowRealmKey(unit)) return false;   // 🌑 the board's traps never reach into the Shadow Realm
+            if (unitIsSpirit(unit)) return false;   // 👁 a spirit sets off nothing on the ground
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const idx = state.traps.findIndex(t => t.x === unit.x && t.y === unit.y && t.owner !== unit.player);
             if (idx < 0) return false;
@@ -74651,6 +74851,11 @@
                     return 0;
                 }
             }
+            if (unitIsSpirit(unit)) {   // 👁 no body, no fists
+                addLog(`${_ctName(unit)} is projecting: a spirit cannot basic attack.`, _clickSeat());
+                playErrorSfx();
+                return 0;
+            }
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && (!window._tutActionAllowed('attack', unit) || (typeof window._tutTargetOk === 'function' && !window._tutTargetOk(x, y)))) return 0;
             _imitObserve(unit, { type: 'attack', x, y });
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') {
@@ -75847,6 +76052,7 @@
         window._inspectFootprintAt = _inspectFootprintAt;
 
         function doInspect(unit, x, y) {
+            if (unitIsSpirit(unit)) { addLog(`${_ctName(unit)} is projecting: a spirit has no hands to search with.`, _clickSeat()); playErrorSfx(); return 0; }   // 👁 no hands
             /* SIMUL: inspect executes instantly — not plannable yet. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
@@ -76512,6 +76718,7 @@
         // The Build verb itself: one dig or one placement at (x,y). Returns a
         // completion delay (ms) on success, 0 on rejection (nothing spent).
         function doBuildAction(unit, x, y, tool) {
+            if (unitIsSpirit(unit)) { addLog(`${_ctName(unit)} is projecting: a spirit has no hands to build with.`, _clickSeat()); playErrorSfx(); return 0; }   // 👁 no hands
             /* SIMUL plan phase: queue the build instead of executing (the
                engine re-validates terrain at resolution). */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
@@ -78127,6 +78334,7 @@
         }
 
         function doItem(unit, x, y, z) {
+            if (unitIsSpirit(unit)) { addLog(`${_ctName(unit)} is projecting: a spirit has no hands to use items with.`, _clickSeat()); playErrorSfx(); return; }   // 👁 no hands
             /* SIMUL plan phase: queue the item use instead of executing. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
@@ -82838,6 +83046,9 @@
                 const _escLandZ = (_escSurfs.length > 1 && _escSurfs.indexOf(_escPick.z) >= 0) ? _escPick.z : null;
                 if (candidates.length) {
                     const _escFromX = unit.x, _escFromY = unit.y;
+                    /* 👁 THE ASTRAL BODY: an astral escape (Spirit Walk) leaves the body asleep on this tile and the
+                       unit that steps out is its spirit */
+                    if (spell.astral) astralBegin(unit, spell);
                     unit.x = candidates[0].x;
                     unit.y = candidates[0].y;
                     if (_escLandZ !== null) unit.z = _escLandZ;
@@ -87989,13 +88200,15 @@
 
             /* Mystery Dungeon: monsters never END a move on the stairs tile —
                a parked enemy made the exit unwalkable for the leader. */
+            const _cordTiles = unitIsSpirit(unit) ? astralCordFilter(unit, tiles) : tiles;   // 👁 the cord
             if (typeof _mdEnemyStairsBlocked === 'function') {
-                return tiles.filter(t => !_mdEnemyStairsBlocked(unit, t.x, t.y));
+                return _cordTiles.filter(t => !_mdEnemyStairsBlocked(unit, t.x, t.y));
             }
-            return tiles;
+            return _cordTiles;
         }
 
         function getAttackTiles(unit) {
+            if (unitIsSpirit(unit)) return [];   // 👁 no body, no fists: a spirit cannot basic attack
             const tiles = [];
             const tileSet = new Set();
             const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);

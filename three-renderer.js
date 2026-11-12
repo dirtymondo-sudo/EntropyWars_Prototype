@@ -26315,11 +26315,106 @@ const ThreeRenderer = (function () {
         _shadowsDirty = true;
     }
 
+    /* 👁 THE ASTRAL BODY (astral projection build 1, 2026-11-12; battle.js THE ASTRAL BODY). A unit wearing `projecting`
+       is the SPIRIT of a body that sleeps on another tile (unit._astralBodyId, a real second unit with its own entry).
+       The spirit is drawn as the unit's own model: white and see-through, hovering with a slow bob, joined to its body
+       by a cord in the viewer's team colours (own cyan-blue, enemy pink-orange). Look only: nothing here is a rule.
+       Host and guest both read the synced status and ids, so both seats draw it with nothing relayed (RULE #2). */
+    var ASTRAL_OPACITY = 0.78, ASTRAL_LIFT = 0.16, ASTRAL_OWN_COLOR = 0x4fd8ff, ASTRAL_ENEMY_COLOR = 0xff7a5c;
+    var _astralCords = new Map();   // spirit uid → { mesh, key }
+    var _astralWhite = null;
+    function _astralIsSpirit(unit) { return !!(unit && unit.status && unit.status.projecting > 0); }
+    function _astralEachMat(entry, fn) {
+        if (!entry || !entry.group) return;
+        entry.group.traverse(function (o) {
+            if (!o.isMesh || !(o._ew_billboard || o._ew_modelSkin) || !o.material) return;
+            if (Array.isArray(o.material)) o.material.forEach(fn); else fn(o.material);
+        });
+    }
+    function _astralLook(entry, on, now) {
+        if (!entry || !entry.group) return;
+        if (!on && !entry._ew_astralOn) return;
+        if (!_astralWhite) _astralWhite = new THREE.Color(0xe6f4ff);
+        var body = entry.model || entry.sprite || null;
+        if (on) {
+            entry._ew_astralOn = true;
+            _astralEachMat(entry, function (m) {
+                if (!m._ew_astralBase) {
+                    m._ew_astralBase = { c: m.color ? m.color.clone() : null, e: m.emissive ? m.emissive.clone() : null, ei: m.emissiveIntensity, em: m.emissiveMap || null, dw: m.depthWrite };
+                    /* the self-glow is the unit's own texture (emissiveMap): a dark coat would stay dark. A flat pale glow
+                       over the whole body is what turns it white; the texture still reads through it. */
+                    if (m.emissive && m.emissiveMap) { m.emissiveMap = null; m.needsUpdate = true; }
+                    m.depthWrite = false;
+                }
+                /* every frame: the day/night grey and the self-glow write these each frame too, and this runs after them */
+                if (m.color) m.color.copy(_astralWhite);
+                if (m.emissive) { m.emissive.set(0x9cc8ee); m.emissiveIntensity = 0.62; }
+            });
+            if (body) {
+                if (entry._ew_astralY0 === undefined) entry._ew_astralY0 = body.position.y;
+                var ts = CONFIG.tileSize || BASE_TILE;
+                body.position.y = entry._ew_astralY0 + ts * ASTRAL_LIFT + Math.sin((now || 0) / 620) * ts * 0.018;
+            }
+        } else {
+            entry._ew_astralOn = false;
+            _astralEachMat(entry, function (m) {
+                var b = m._ew_astralBase; if (!b) return;
+                if (m.color && b.c) m.color.copy(b.c);
+                if (m.emissive && b.e) { m.emissive.copy(b.e); m.emissiveIntensity = b.ei; }
+                if (b.em && !m.emissiveMap) { m.emissiveMap = b.em; m.needsUpdate = true; }
+                m.depthWrite = b.dw;
+                delete m._ew_astralBase;
+            });
+            if (body && entry._ew_astralY0 !== undefined) { body.position.y = entry._ew_astralY0; }
+            entry._ew_astralY0 = undefined;
+            _setEntrySpriteOpacity(entry, 1);
+        }
+    }
+    function _astralEntryHeight(entry) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        return ts * UNIT_SPRITE_SIZE_RATIO * ((entry.modelDef && entry.modelDef.heightRatio) || 1) * ((entry.group && entry.group.scale.y) || 1);
+    }
+    function _astralCordDrop(uid) {
+        var c = _astralCords.get(uid); if (!c) return;
+        _astralCords.delete(uid);
+        try { if (c.mesh.parent) c.mesh.parent.remove(c.mesh); c.mesh.geometry.dispose(); c.mesh.material.dispose(); } catch (e) {}
+    }
+    function _astralCordsClear() { Array.from(_astralCords.keys()).forEach(_astralCordDrop); }
+    function _astralCordsUpdate(vp, now) {
+        if (!scene) return;
+        var live = {};
+        unitEntries.forEach(function (entry, uid) {
+            var unit = _unitById.get(uid) || null;
+            if (!unit || unit.dead || unit._dying || !_astralIsSpirit(unit) || !unit._astralBodyId) return;
+            var be = unitEntries.get(unit._astralBodyId);
+            if (!be || !be.group || !entry.group || !entry.group.visible || !be.group.visible) return;
+            var hs = _astralEntryHeight(entry), hb = _astralEntryHeight(be), ts = CONFIG.tileSize || BASE_TILE;
+            var a = be.group.position, b = entry.group.position;
+            var ax = a.x, ay = a.y + hb * 0.6, az = a.z, bx = b.x, by = b.y + ts * ASTRAL_LIFT + hs * 0.55, bz = b.z;
+            var own = unit.player === vp;
+            var key = [ax, ay, az, bx, by, bz].map(function (v) { return Math.round(v); }).join(',') + (own ? 'o' : 'e');
+            live[uid] = true;
+            var c = _astralCords.get(uid);
+            if (c && c.key === key) { c.mesh.material.opacity = 0.7 + 0.18 * Math.sin((now || 0) / 380); return; }
+            if (c) _astralCordDrop(uid);
+            var p0 = new THREE.Vector3(ax, ay, az), p2 = new THREE.Vector3(bx, by, bz);
+            var p1 = p0.clone().lerp(p2, 0.5); p1.y -= Math.min(hs, hb) * 0.25;   // the cord sags a little
+            var geo = new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(p0, p1, p2), 28, ts * 0.012, 6, false);
+            var mat = new THREE.MeshBasicMaterial({ color: own ? ASTRAL_OWN_COLOR : ASTRAL_ENEMY_COLOR, transparent: true, opacity: 0.85, depthTest: false, depthWrite: false, fog: false });
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.name = 'astralCord'; mesh.renderOrder = 998; mesh.frustumCulled = false;
+            scene.add(mesh);
+            _astralCords.set(uid, { mesh: mesh, key: key });
+        });
+        Array.from(_astralCords.keys()).forEach(function (uid) { if (!live[uid]) _astralCordDrop(uid); });
+    }
+
     function _updateEnemyConcealment() {
-        if (typeof state === 'undefined' || state.phase !== 'battle') { if (_realm) _realmExit(); return; }
+        if (typeof state === 'undefined' || state.phase !== 'battle') { if (_realm) _realmExit(); _astralCordsClear(); return; }
         var vp = _viewerPlayerNum();
         var fog = !!state.fogOfWar;
         var _rk = _realmTick();
+        var _astNow = (typeof performance !== 'undefined') ? performance.now() : 0;
         unitEntries.forEach(function(entry, uid) {
             var unit = _unitById.get(uid) || null;
             if (!unit || unit.dead) return;
@@ -26357,6 +26452,9 @@ const ThreeRenderer = (function () {
             /* 🌑 THE SHADOW REALM: not on this turn's plane = not drawn, own units included */
             if (_realmOutOfView(unit)) { entry.group.visible = false; entry._ew_realmHid = true; return; }
             if (entry._ew_realmHid) { entry._ew_realmHid = false; entry.group.visible = true; }
+            /* 👁 THE ASTRAL BODY: a spirit is white, see-through and hovering, for both sides */
+            var _ast = _astralIsSpirit(unit);
+            _astralLook(entry, _ast, _astNow);
             if (_rk && unit.player !== vp) {
                 /* in the realm it is just the two of them: the other one is always seen, fog or not */
                 entry.group.visible = !_isConcealedFromViewer(unit, vp);
@@ -26368,13 +26466,15 @@ const ThreeRenderer = (function () {
                 /* THE DODGE READS (2026-11-03): an escape that ends Invisible (Nimble Dodge) runs solid and ghosts as it
                    lands — the tween that carries it (escHide) is still live until then */
                 var _ownEsc = _displaceTweens.get(unit.id);
-                _setEntrySpriteOpacity(entry, (_ownUnitInvisible(unit) && !(_ownEsc && _ownEsc.escHide)) ? INVIS_OWN_OPACITY : 1);
+                _setEntrySpriteOpacity(entry, (_ownUnitInvisible(unit) && !(_ownEsc && _ownEsc.escHide)) ? INVIS_OWN_OPACITY : (_ast ? ASTRAL_OPACITY : 1));
                 return;
             }
             var base = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
             if (base && fog) base = _unitLosSeen(unit, vp);
             entry.group.visible = base && !_isConcealedFromViewer(unit, vp);
+            if (_ast) _setEntrySpriteOpacity(entry, ASTRAL_OPACITY);
         });
+        _astralCordsUpdate(vp, _astNow);
         _plateObjs.forEach(function(po, uid) {
             var unit = _unitById.get(uid) || null;
             if (!unit || unit.dead) return;
