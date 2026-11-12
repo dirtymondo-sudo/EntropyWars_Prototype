@@ -45595,7 +45595,7 @@ const DOOR_HQ = {
                landing (the gate, the carousel) and off the far shore (the fortune teller). Gaps 1.5–2.2 m, rises ≤ 0.8 m, stones
                2.6–3.4 m across (the walker's jump: 1.46 m apex, 3.7 m running reach). */
             terrain: {
-                floor: 'purple_grass', cliff: 'crystal', path: 'marble_light',
+                floor: 'nz_astral_a', cliff: 'crystal', path: 'marble_light',
                 noise: { amp: 0, scale: 9 },
                 void: { rock: 'rocks_5', glow: 0x8a4cff, glowY: -26, fall: -8 },
                 features: [
@@ -64208,6 +64208,17 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         calm_checker:    ['calm_checker_1.png', 'checkerboard', 'Marble checks'],
         calm_damask:     ['calm_damask_1.png', 'damask', 'Damask wallpaper'],
         calm_carpet:     ['calm_carpet_1.png', 'carpet_4', 'Red carpet'],
+        /* THE MOVING SHEETS (2026-11-12, mondo's noise + texture packs: Screaming Brain Studios, CC0): the astral ground and six
+           liquid looks, each a texture key that plays by its twin's rules. three-renderer.js _NZ_MOVE makes them drift (the file
+           here is the still the editor, the 2D board and the pickers show). His pixel lava + water stay what lava + water wear. */
+        nz_astral_a:   ['nz_astral_a.png', 'purple_grass', 'Astral ground (violet, mint veins) · moving'],
+        nz_astral_b:   ['nz_astral_b.png', 'purple_grass', 'Astral ground (deep blue, pink comets) · moving'],
+        nz_dreamwater: ['nz_dreamwater.png', 'water', 'Dream water · moving'],
+        nz_spring:     ['nz_spring.png', 'healing_spring', 'Spring (pale mint) · moving'],
+        nz_poison:     ['nz_poison.png', 'poison', 'Poison (toxic yellow-green) · moving'],
+        nz_purplebog:  ['nz_purplebog.png', 'purple_bog', 'Purple bog · moving'],
+        nz_magma:      ['nz_magma.png', 'lava', 'Magma (red on black) · moving'],
+        nz_oil:        ['nz_oil.png', 'oil', 'Oil (blue-black) · moving'],
         calm_marsdust:   ['calm_marsdust_1.png', 'moon_2', 'Mars floor dust'],   // Mars's floor: his moon_2 wore the room's tan there
         calm_moonviolet: ['calm_moonviolet_1.png', 'moon_3', 'Violet moon dust'],   // the Singularity's floor: his moon_3 wore the room's violet there
         calm_marblemint: ['calm_marblemint_1.png', 'marble_light', 'Mint marble'],   // Agartha's floor: his marble_light wore the crystal city's mint there

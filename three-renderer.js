@@ -3887,6 +3887,7 @@ const ThreeRenderer = (function () {
     }
 
     function getTerrainTexture(k) {
+        if (typeof _NZ_MOVE !== 'undefined' && _NZ_MOVE[k]) { var mv = _nzMoveTex(k); if (mv) return mv; }   // THE MOVING SHEETS
         var url = (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[k]) ? _ewSandUrl(k, TERRAIN_SPRITES[k][0]) : null;   // THE TWO SANDS
         return url ? getTexture(url) : null;
     }
@@ -35988,7 +35989,80 @@ const ThreeRenderer = (function () {
         return t * t * (3 - 2 * t);
     }
     var _hzTexCache = {};
+    /* ═══ THE MOVING SHEETS (2026-11-12, mondo: "Uploaded 4 folders of noise and texture packs ... I could see there being a
+       psychic or astral terrain made from these. Definitely use them in the astral realm or dreamy maps. Maybe you can use some
+       of these for liquids", then of the examples "Yeah looks good, go ahead"). Screaming Brain Studios' CC0 packs. A moving sheet
+       is a texture key of its own (data.js CALM_TERRAIN.sheets `nz_*`: the editor's picker lists it, it plays by its twin's
+       rules): its colour sheet drifts slowly and a noise sheet slides over it the other way, added in a tint. The two are drawn
+       into one small canvas a dozen times a second and that canvas IS the sheet, so every surface that wears the key moves
+       (a room's floor, a board's squares, a path, a cliff) on every renderer, with no shader of its own.
+       [over sheet (Assets/fx/noise/sbs/), its tint, its strength, drift px / s x, y, base tint or null]
+       Off switch: window.EW_NO_MOVING_SHEETS (the sheets stand still). ═══ */
+    var _NZ_MOVE = {
+        nz_astral_a:   ['marble_03',      '#66ffee', 0.30, 3.0, 1.8, null],
+        nz_astral_b:   ['superperlin_03', '#66ddff', 0.35, 3.0, 1.8, null],
+        nz_dreamwater: ['superperlin_03', '#bfe8ff', 0.45, 4.0, 2.2, null],
+        nz_spring:     ['superperlin_03', '#ffffff', 0.30, 2.5, 1.5, '#9ab8b0'],
+        nz_poison:     ['milky_05',       '#66ff22', 0.18, 2.0, 1.2, '#9aa890'],
+        nz_purplebog:  ['manifold_06',    '#ff66ff', 0.25, 1.6, 1.0, null],
+        nz_magma:      ['turbulence_08',  '#ff9922', 0.50, 2.2, 1.4, null],
+        nz_oil:        ['marble_03',      '#8866ff', 0.30, 1.4, 0.9, null]
+    };
+    var _nzMoveLive = {}, _nzMoveLoop = false;
+    function _nzMoveImg(url, done) {
+        var im = new Image(); im.crossOrigin = 'anonymous';
+        im.onload = function () { done(im); };
+        im.onerror = function () { console.warn('[moving sheet] failed to load', url); };
+        im.src = url + (url.indexOf('?') < 0 ? '?' : '&') + 'ewcors=1';
+    }
+    function _nzMoveDraw(E, sec) {
+        var g = E.g, N = E.n, R = E.row;
+        if (!E.base) return;
+        var ox = ((Math.round(R[3] * sec) % N) + N) % N, oy = ((Math.round(R[4] * sec) % N) + N) % N;
+        g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+        for (var i = -1; i <= 0; i++) for (var j = -1; j <= 0; j++) g.drawImage(E.base, ox + i * N, oy + j * N, N, N);
+        if (R[5]) { g.globalCompositeOperation = 'multiply'; g.fillStyle = R[5]; g.fillRect(0, 0, N, N); }
+        if (E.over) {
+            var px = ((Math.round(-R[3] * 2.3 * sec + 40) % N) + N) % N, py = ((Math.round(R[4] * 1.7 * sec) % N) + N) % N;
+            g.globalCompositeOperation = 'lighter'; g.globalAlpha = R[2];
+            for (var a = -1; a <= 0; a++) for (var b = -1; b <= 0; b++) g.drawImage(E.over, px + a * N, py + b * N, N, N);
+        }
+        g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+        E.tex.needsUpdate = true;
+    }
+    function _nzMoveTick() {
+        var last = 0;
+        (function loop(now) {
+            requestAnimationFrame(loop);
+            if (now - last < 80 || (typeof document !== 'undefined' && document.hidden)) return;
+            last = now;
+            var still = (typeof window !== 'undefined' && window.EW_NO_MOVING_SHEETS);
+            for (var k in _nzMoveLive) { var E = _nzMoveLive[k]; if (still && E.drawn) continue; if (E.base) { _nzMoveDraw(E, still ? 0 : now / 1000); E.drawn = true; } }
+        })(0);
+    }
+    function _nzMoveTex(key) {
+        var E = _nzMoveLive[key]; if (E) return E.tex;
+        var R = _NZ_MOVE[key], C = _calmTable(); if (!R || !C || !C.sheets[key] || typeof document === 'undefined') return null;
+        var N = 128, c = document.createElement('canvas'); c.width = c.height = N;
+        var g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.fillStyle = '#3a2a6a'; g.fillRect(0, 0, N, N);
+        var tex = new THREE.CanvasTexture(c);
+        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+        tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true;
+        try { tex.anisotropy = Math.min(8, (renderer && renderer.capabilities && renderer.capabilities.getMaxAnisotropy) ? (renderer.capabilities.getMaxAnisotropy() || 1) : 1); } catch (e) {}
+        E = _nzMoveLive[key] = { tex: tex, g: g, n: N, row: R, base: null, over: null, drawn: false };
+        _nzMoveImg(C.base + C.sheets[key][0], function (im) { E.base = im; E.drawn = false; });
+        _nzMoveImg('https://cdn.entropywars.net/Assets/fx/noise/sbs/' + R[0] + '.png', function (im) {
+            /* the noise, tinted once */
+            var oc = document.createElement('canvas'); oc.width = oc.height = N; var og = oc.getContext('2d');
+            og.drawImage(im, 0, 0, N, N); og.globalCompositeOperation = 'multiply'; og.fillStyle = R[1]; og.fillRect(0, 0, N, N);
+            E.over = oc; E.drawn = false;
+        });
+        if (!_nzMoveLoop) { _nzMoveLoop = true; _nzMoveTick(); }
+        return tex;
+    }
+
     function _hzTex(terrainKey) {
+        if (_NZ_MOVE[terrainKey]) { var _mvT = _nzMoveTex(terrainKey); if (_mvT) return _mvT; }   // THE MOVING SHEETS
         var calmUrl = _calmSheet(terrainKey);   // THE CALM GROUND: the realistic sheet in place of the pixel sheet (its own cache entry)
         var ck = (calmUrl ? 'calm|' : '') + terrainKey + _ewSandPart(terrainKey);   // THE TWO SANDS: the beach's desert caches apart
         if (_hzTexCache[ck] !== undefined) { var hit = _hzTexCache[ck]; if (hit) _alJoin(hit._ew_alRec); return hit; }   // THE ASSET LEDGER: a sheet still streaming is waited for again
