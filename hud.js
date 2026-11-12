@@ -19255,6 +19255,8 @@ const UX_DEF = {
   gCam: 'off', gCamCol: '#ffffff', gCamOp: 0.85, gFog: false, gFogCol: '#8c96aa', gFogOp: 0.35,
   gGround: 'none', gSpawn: false, gNexus: false, gCube: false, gNeutral: '#f2c64a',
   gAuto: 'board', gAim: false,
+  /* gPv* = THE PREVIEWS ON THE MINIMAP (2026-11-12): the board's reach washes, hit squares, arrows and cursor, mirrored */
+  gPvReach: true, gPvArea: true, gPvArrow: true, gPvCursor: true, gPvOp: 1,
   /* f* = THE FLOATING TEXT (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage and
      stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look
      like with a model with a nameplate for scale"): the pops over the units. floatSignal turns the keys that differ from
@@ -20125,7 +20127,8 @@ const MAP_KEYS = { size: 'gSize', view: 'gView', span: 'gSpan', turn: 'gTurn', s
   gridOp: 'gGridOp', gridW: 'gGridW', every: 'gEvery', frame: 'gFrame', frameOp: 'gFrameOp', frameW: 'gFrameW', icon: 'gIcon',
   iconSize: 'gIconSize', ally: 'gAlly', foe: 'gFoe', line: 'gLine', lineW: 'gLineW', allies: 'gAllies', foes: 'gFoes', active: 'gActive',
   activeCol: 'gActiveCol', pulse: 'gPulse', cam: 'gCam', camCol: 'gCamCol', camOp: 'gCamOp', fog: 'gFog', fogCol: 'gFogCol', fogOp: 'gFogOp',
-  ground: 'gGround', spawn: 'gSpawn', nexus: 'gNexus', cube: 'gCube', neutral: 'gNeutral', auto: 'gAuto', aim: 'gAim' };
+  ground: 'gGround', spawn: 'gSpawn', nexus: 'gNexus', cube: 'gCube', neutral: 'gNeutral', auto: 'gAuto', aim: 'gAim',
+  pvReach: 'gPvReach', pvArea: 'gPvArea', pvArrow: 'gPvArrow', pvCursor: 'gPvCursor', pvOp: 'gPvOp' };
 function mapSignal() {
   const X = uxOf(), L = {};
   Object.keys(MAP_KEYS).forEach(k => { L[k] = X[MAP_KEYS[k]]; });
@@ -20881,6 +20884,12 @@ function mmapForm() {
     + (X.gFog ? fColor('Fog colour', 'gFogCol', X.gFogCol) + op('Fog opacity', 'gFogOp') : '')
     + xCheck('Spawn zones', 'gSpawn', X.gSpawn) + xCheck('Nexus zones', 'gNexus', X.gNexus, true) + xCheck('Cubes', 'gCube', X.gCube, true)
     + (X.gNexus || X.gCube ? fColor('Neutral colour', 'gNeutral', X.gNeutral) : '')));
+  h += sec('gprev', 'Previews', xp(xCheck('Reach: the squares a move, an attack or a spell can reach', 'gPvReach', X.gPvReach)
+    + xCheck('Area: the squares that will be hit, with a ring on the units in them', 'gPvArea', X.gPvArea)
+    + xCheck('Arrows: the walk path, shoves and pulls', 'gPvArrow', X.gPvArrow)
+    + xCheck('Cursor: the square you are on', 'gPvCursor', X.gPvCursor)
+    + op('Preview opacity', 'gPvOp'))
+    + '<div class="uim-note">On your own turn the minimap mirrors what the board shows while you aim, in your tile and arrow colours.</div>');
   h += sec('glook', 'Look', xp(fSeg('Shape', 'gShape', [['square', 'Square'], ['round', 'Round']], X.gShape)
     + fRange('Size (px)', 'gSize', 80, 480, 2, +X.gSize, 'Its longest side. The whole board keeps the board\'s shape')
     + fColor('Background', 'gBg', X.gBg) + op('Background opacity', 'gBgOp')
