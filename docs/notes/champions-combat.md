@@ -5351,3 +5351,13 @@ Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx
 - three-renderer.js THE APPLE TREE: `_buildApple3D` (ground) + `_buildAppleCanopy` (5 in the leaves), one Meshy apple
   `Assets/world/props/meshy/ew_plant_apple.glb` (no pack has an apple). The tree itself is the board's stock tree model.
 - My picks, his to change: every 2 rounds, 2 lying, 20%, either side may eat. Not built: fire burning apples, a tile card for an apple.
+### build 3 (2026-11-12, same thread): THE REALM WINDOW
+- battle.js `unitCrossesRealm` (a spirit) + `unitSeesRealm` (a spirit, or a race on data.js REALM_SIGHT_RACES: ghost, shadow entity).
+  `isUnitRealmShieldedFrom`: a spirit and a Shadow Realm pair reach each other both ways; the sleeping body stays walled off, and
+  zones / weather (null actor) still never reach in. `isUnitSeenAcrossRealm` feeds `isUnitOutOfRealmView`: on a seer's turn the pair
+  is drawn on the normal board; on the pair's turns a spirit is drawn in their plane. Ghost + Shadow Entity look, cannot touch.
+- three-renderer.js: a unit seen across is a dim shade (REALM_SEEN_OPACITY 0.42), still under the viewer's fog.
+- Checked in VS CPU (Mount Shasta): Shadow Entity's turn showed the pair; shield true before Spirit Walk, false after; the body's hit
+  did 0; Shadow Crush listed the realm Demon as a target and took 982 -> 798.
+  /mnt/project-files/astral-projection-20261112/build3_spirit_targets_realm_unit.jpg. Not checked: a realm pair hitting the spirit
+  through the menus (function only), the online guest view.

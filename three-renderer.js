@@ -26518,6 +26518,7 @@ const ThreeRenderer = (function () {
        The spirit is drawn as the unit's own model: white and see-through, hovering with a slow bob, joined to its body
        by a cord in the viewer's team colours (own cyan-blue, enemy pink-orange). Look only: nothing here is a rule.
        Host and guest both read the synced status and ids, so both seats draw it with nothing relayed (RULE #2). */
+    var REALM_SEEN_OPACITY = 0.42;
     var ASTRAL_OPACITY = 0.78, ASTRAL_LIFT = 0.16, ASTRAL_OWN_COLOR = 0x4fd8ff, ASTRAL_ENEMY_COLOR = 0xff7a5c;
     var _astralCords = new Map();   // spirit uid → { mesh, key }
     var _astralWhite = null;
@@ -26653,6 +26654,22 @@ const ThreeRenderer = (function () {
             /* 👁 THE ASTRAL BODY: a spirit is white, see-through and hovering, for both sides */
             var _ast = _astralIsSpirit(unit);
             _astralLook(entry, _ast, _astNow);
+            /* 👁🌑 THE REALM WINDOW (astral build 3): on the turn of a unit that sees across (a spirit, the Ghost, the Shadow
+               Entity; battle.js isUnitSeenAcrossRealm) a unit on the OTHER plane is drawn as a dim shade, fog or not for
+               nobody: it still obeys the viewer's fog below. */
+            var _seenAcross = false;
+            try { _seenAcross = typeof window.isUnitSeenAcrossRealm === 'function' && !!window.isUnitSeenAcrossRealm(unit); } catch (e) {}
+            if (_seenAcross && !_ast) {
+                entry._ew_realmSeen = true;
+                _setEntrySpriteOpacity(entry, REALM_SEEN_OPACITY);
+                if (unit.player !== vp) {
+                    var _sb = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
+                    if (_sb && fog) _sb = _unitLosSeen(unit, vp);
+                    entry.group.visible = _sb && !_isConcealedFromViewer(unit, vp);
+                }
+                return;
+            }
+            if (entry._ew_realmSeen) { entry._ew_realmSeen = false; _setEntrySpriteOpacity(entry, 1); }
             if (_rk && unit.player !== vp) {
                 /* in the realm it is just the two of them: the other one is always seen, fog or not */
                 entry.group.visible = !_isConcealedFromViewer(unit, vp);

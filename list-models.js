@@ -77,7 +77,7 @@ const HOW = {
     MOCAP:     { label: 'Motion capture (real actors), cut into loops by Claude', human: 'yes (motion)' },
 };
 const SOURCES = [
-    { re: /ew_plant_(thornvine|gasplant|healflower|apple)\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple tree's apple; concepts approved by mondo 2026-11-12)' },
+    { re: /ew_plant_(thornvine|gasplant|healflower|apple)\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12)' },
     // the shared animation libraries
     { re: /Assets\/Models\/UAL\d/, how: 'PACK', src: 'Universal Animation Library · Quaternius · CC0' },
     { re: /characters\/animations\/MAL[45]_Sniper/, how: 'MESHY_C', src: "Meshy's animation library pulled through the Meshy API on the male sniper's rig (2026-11-11), packed by Claude (build-mal.py)" },

@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 659 |
+| Meshy AI | no | 660 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -2719,9 +2719,10 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 
 | name | file (R2 bucket path) | made by | source | script |
 | --- | --- | --- | --- | --- |
-| ew_plant_gasplant | `Assets/world/props/meshy/ew_plant_gasplant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into; concepts approved by mondo 2026-11-12) | three-renderer.js |
-| ew_plant_healflower | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into; concepts approved by mondo 2026-11-12) | three-renderer.js |
-| ew_plant_thornvine | `Assets/world/props/meshy/ew_plant_thornvine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into; concepts approved by mondo 2026-11-12) | three-renderer.js |
+| ew_plant_apple | `Assets/world/props/meshy/ew_plant_apple.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) | three-renderer.js |
+| ew_plant_gasplant | `Assets/world/props/meshy/ew_plant_gasplant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) | three-renderer.js |
+| ew_plant_healflower | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) | three-renderer.js |
+| ew_plant_thornvine | `Assets/world/props/meshy/ew_plant_thornvine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) | three-renderer.js |
 | eyeball | `Assets/world/props/meshy/eyeball/eyeball.obj` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
 | Pyramid | `Assets/world/props/meshy/Pyramid/Pyramid.glb` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
 | Street Lamp | `Assets/world/props/meshy/streetlamp/Street Lamp.obj` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
