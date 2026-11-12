@@ -1680,3 +1680,18 @@ refused after the probe (node renderer on WebGL 2 that load, classic the next), 
 the row + Reload now with `?join=`. NOT seen: a real WebGPU frame (headless WebGPU is a software adapter, which Auto refuses).
 
 >>>>>>> origin/main
+
+## THE LOST RIG (2026-11-11, mondo in Occam's Barbershop on the default WebGPU renderer: "pitch black") — three-renderer.js
+Root cause: THE ONE RIG (`_ewRigTick`, node renderer only) takes every room light off three's light list (layer mask 0) and
+draws them through one session-wide lamp group that moves into whichever scene renders. It decided "am I in this scene" from
+`group.parent` alone. A room with a reflector (the barbershop mirror, any `puddle` decal: sewers, tunnels, the Haunted cellar,
+every room with a drain / manhole / culvert / sea vent) draws the scene FIRST each frame with `scene.children` lent to a
+ClippingGroup (`_hqTickReflectors`, W4). The rig arriving from the last scene was pushed onto that one-render list, dropped
+when the real list came back, and never re-added (parent still the scene): the room's lights masked, no lamp drawing them.
+Everything lit went black; only unlit plates, glows and the spot rim showed. Classic WebGL has no rig, so it was fine; it
+surfaced for everyone when WebGPU became the default (PR #1124).
+Fix: the rig must be IN the scene's list (`scene._ew_lentKids` while lent, else `children`), not only parented; the
+reflector hands whatever joined during the mirrored draw back to the real list. Proof (headless, node renderer on WebGL 2):
+`/mnt/project-files/dark-rooms-20261111/` barbershop + Haunted cellar before / after. Harness gotcha: Chromium here DOES
+reach the CDN through the agent proxy, so `--host-resolver-rules` stand-ins are bypassed; serve the repo's scripts with a
+`context.route` on `cdn.entropywars.net/<file>.js` only.
