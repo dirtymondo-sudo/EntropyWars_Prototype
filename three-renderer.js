@@ -42928,7 +42928,7 @@ const ThreeRenderer = (function () {
             if (e.face) e.obj.rotation.y = Math.atan2(cx - xw, cz - zw) + e.yawOff;
             return;
         }
-        var p = e.along - dist * (e.par || 1), L2 = e.L * 2;
+        var p = e.along - _motion.dir * dist * (e.par || 1), L2 = e.L * 2;   // dir −1 (2026-11-12): the world streams toward +axis — a ship whose bow points north (−z); THE PARALLAX: × the body's own pace
         p = ((p + e.L) % L2 + L2) % L2 - e.L;
         if (_motion.axis === 'z') { e.obj.position.x = cx + e.lat; e.obj.position.z = cz + p; }
         else { e.obj.position.x = cx + p; e.obj.position.z = cz + e.lat; }
@@ -42987,6 +42987,14 @@ const ThreeRenderer = (function () {
         }
         _motionMotes = motes;
     }
+    /* THE HEADING (2026-11-12, mondo: "the spaceship is flying sideways"): a streak is a sprite stretched along the screen's
+       horizontal, which is the travel line only while the travel runs along x. On a z voyage (the Spaceship, bow north) the streak
+       turns to lie along the z axis as the camera sees it. */
+    function _motionStreakRot(cam) {
+        if (!cam || !cam.matrixWorldInverse) return 0;
+        var e = cam.matrixWorldInverse.elements, vx = e[8], vy = e[9];   // the world z axis in view space
+        return (vx * vx + vy * vy > 1e-8) ? Math.atan2(vy, vx) : 0;
+    }
     /* per frame, from _animateFloaters: place the streams, slide the sheets,
        scroll the wakes, streak the motes */
     function _motionAnimate(t) {
@@ -43025,9 +43033,9 @@ const ThreeRenderer = (function () {
                     e.sp.scale.set(ts * e.thick, stretch * e.len * (e.par || 1.15) / 1.15, 1);   // a streak is as long as it is fast
                     continue;
                 }
-                p = e.along - d * (e.par || 1.15);   // THE PARALLAX: the near dust races, the far dust trails
+                p = e.along - _motion.dir * d * (e.par || 1.15);   // THE PARALLAX: the near dust races, the far dust trails
                 p = ((p + M.L) % L2 + L2) % L2 - M.L;
-                if (_motion.axis === 'z') { e.sp.position.x = cx + e.lat; e.sp.position.z = cz + p; }
+                if (_motion.axis === 'z') { e.sp.position.x = cx + e.lat; e.sp.position.z = cz + p; e.sp.material.rotation = _motionStreakRot((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null); }
                 else { e.sp.position.x = cx + p; e.sp.position.z = cz + e.lat; }
                 e.sp.scale.set(stretch * e.len * (e.par || 1.15) / 1.15, ts * e.thick, 1);   // a streak is as long as it is fast
             }
@@ -71388,7 +71396,7 @@ const ThreeRenderer = (function () {
         if (VY) {
             var vr = _mulberry32((seed ^ 0x5e1f) >>> 0), U = _hqUnits(), axZ = (VY.axis === 'z');
             var half = ((axZ ? (S.w || 60) : (S.d || 60)) / 2 + 26) * U, L = discR * 1.3;
-            H.sky.voyage = { speed: ((VY.speed != null) ? +VY.speed : 6) * ts, axis: axZ ? 'z' : 'x', sky: (VY.sky != null) ? +VY.sky : 1, dist: 0, last: 0, motes: [], L: 90 * U };
+            H.sky.voyage = { speed: ((VY.speed != null) ? +VY.speed : 6) * ts, axis: axZ ? 'z' : 'x', dir: (VY.dir != null && VY.dir < 0) ? -1 : 1, sky: (VY.sky != null) ? +VY.sky : 1, dist: 0, last: 0, motes: [], L: 90 * U };
             H.sky.floaters.forEach(function (f) {
                 var p = f.obj.position, side = ((axZ ? p.x : p.z) < 0) ? -1 : 1, near = Math.abs(f.baseY) < 0.3 * discR;
                 var latMin = near ? Math.max(0.32 * discR, half) : 0.06 * discR;
@@ -71459,14 +71467,14 @@ const ThreeRenderer = (function () {
             var f = sk.floaters[i];
             f.obj.position.y = f.baseY + Math.sin(t * f.spd + f.phase) * f.amp;
             f.obj.rotation.y += f.spin;
-            if (VY && f.vL) { var vp = f.vAlong - VY.dist * (f.vPar || 1), vL2 = f.vL * 2; vp = ((vp + f.vL) % vL2 + vL2) % vL2 - f.vL; if (VY.axis === 'z') f.obj.position.z = vp; else f.obj.position.x = vp; }
+            if (VY && f.vL) { var vp = f.vAlong - (VY.dir || 1) * VY.dist * (f.vPar || 1), vL2 = f.vL * 2; vp = ((vp + f.vL) % vL2 + vL2) % vL2 - f.vL; if (VY.axis === 'z') f.obj.position.z = vp; else f.obj.position.x = vp; }
         }
         if (VY && VY.motes.length) {
             var mL2 = VY.L * 2, mU = _hqUnits();
             for (var mi = 0; mi < VY.motes.length; mi++) {
-                var me = VY.motes[mi], mp = me.along - VY.dist * (me.par || 1.15);
+                var me = VY.motes[mi], mp = me.along - (VY.dir || 1) * VY.dist * (me.par || 1.15);
                 mp = ((mp + VY.L) % mL2 + mL2) % mL2 - VY.L;
-                if (VY.axis === 'z') { me.sp.position.x = me.lat; me.sp.position.z = mp; } else { me.sp.position.x = mp; me.sp.position.z = me.lat; }
+                if (VY.axis === 'z') { me.sp.position.x = me.lat; me.sp.position.z = mp; me.sp.material.rotation = _motionStreakRot((Hx || _hq || {}).camera); } else { me.sp.position.x = mp; me.sp.position.z = me.lat; }
                 me.sp.scale.set(5.5 * mU * me.sp._ew_vLen * (me.par || 1.15) / 1.15, 0.22 * mU * me.sp._ew_vThick / 0.08, 1);
             }
         }

@@ -1611,6 +1611,17 @@ He approved the second mock-up ("yeah that better, proceed"); he was angry a mat
   dock's props are on the outer wings and the boosters' after ends; dishes on the bridge and the engine block. Picks 12/11 @ 11,8, 10/9 @ 12,9.
 - Scratch tools + mock-ups: /mnt/project-files/spaceship-real-ship-20261111/ (tools/plan3.js draws the rows, mock.html the 3D mock-up).
 
+### THE HEADING (2026-11-12, mondo: "the spaceship is flying sideways now on the spaceship map")
+WHY: THE GUNSHIP / THE CRUISER turned the bow north (−z), but `prebuilt_derelict` env.motion still had `axis: 'x'` from the old east-west
+hull, so the wreckage and the dust streamed across her beam.
+- data.js: the site's motion is `axis: 'z', dir: -1`. `dir` now also applies to the linear streams (drift / sea / space / void): −1 = the
+  world streams toward +axis (default 1, every other map unchanged). The walk's sky reads the same row (hqAreaSky `voyage`).
+- three-renderer.js: `_motionPlace` + the motes in `_motionAnimate` and the walk's `_hqTickSky` floaters + motes take `dir`; new
+  `_motionStreakRot(cam)` turns a dust streak (a sprite stretched along the screen's horizontal) onto the z axis as the camera sees it,
+  on z voyages only. Not changed: the nebula flow (uSkyFlow is a slow turn of the dome, no axis).
+- Checked in a VS CPU match, WebGL2, his fog on: 81 of 82 moving bodies ran toward +z (the stern), none along x, streak angle = the
+  z axis on screen. Not looked at: the walk on the deck, online, WebGPU. Shots: /mnt/project-files/spaceship-heading-20261112/.
+
 ## THE FULL LEDGES — a room's own metres per level, ledges a whole square tall (2026-11-10, data.js)
 mondo after the Giza pilot shot: "looks good, go ahead and fix all of the maps that need it".
 - **The rule**: `terrain.levelM: 3.5` on a room → `hqFieldLevelRules(roomId)` gives THE TIER RULE a 3.5 m step for that room
