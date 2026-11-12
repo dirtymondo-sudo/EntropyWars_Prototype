@@ -132,8 +132,10 @@ function features(Lt, roomId) {
    buildings may stand inside the window as solid ground (drawn as what they are, as an encounter draws them), a walkable
    cell neither spawn reaches counts with them, at most HQ_ARENA_RULES.wallMax cells in all, no walkable cell over topMax
    levels; the house tiles stay clear, flat and joined */
+let HOUSE_TILE = 0;   // THE HOUSE'S LEVEL (2026-11-11, data.js HQ_ARENA_RULES.houseTile): the site being cut stands its house this many levels over its lowest ground
 function judge(R, strict) {
     let cover = 0, top = 0, bottom = 0, out = 0, inN = 0;
+    const ht = HOUSE_TILE;
     const cap = strict ? OBST : WALLS, hi = strict ? 2 : TOP;
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
         const c = R.cells[y][x];
@@ -143,9 +145,9 @@ function judge(R, strict) {
         else { inN++; if ((c.tile | 0) > hi) return null; }
         if ((!open || (c.tile | 0) > 0) && !houseSet.has(x + ',' + y)) { cover++; if (y < S / 2) top++; else bottom++; }
     }
-    for (const [x, y] of HOUSE) { const c = R.cells[y][x]; if ((c.tile | 0) !== 0 || c.seat === false || c.fluid || c.prop || c.wall || c.bridge) return null; }
-    for (const [x, y] of APRON) { const c = R.cells[y][x]; if (c.in && !c.rock && !c.hazard && (c.tile | 0) > 1) return null; }
-    for (const [x, y] of EGRESS) { const c = R.cells[y][x]; if ((c.tile | 0) > 1 || c.fluid) return null; }
+    for (const [x, y] of HOUSE) { const c = R.cells[y][x]; if ((c.tile | 0) !== ht || c.seat === false || c.fluid || c.prop || c.wall || c.bridge) return null; }
+    for (const [x, y] of APRON) { const c = R.cells[y][x]; if (c.in && !c.rock && !c.hazard && (c.tile | 0) > ht + 1) return null; }
+    for (const [x, y] of EGRESS) { const c = R.cells[y][x]; if ((c.tile | 0) > ht + 1 || c.fluid) return null; }
     const a = sb.hqFieldReach(R, HX.n, 0), b = sb.hqFieldReach(R, HX.n, S - 1);
     if (strict) { if (a.size < inN || b.size < inN) return null; }
     else {
@@ -292,6 +294,7 @@ for (const site of (APPLY ? [] : sites)) {
     /* a room built as the site's battle map (`arenaRoom: true` — Hell's walkways) is scanned first, then the entry part, then the rest by size */
     const built = rooms.filter(r => (ROOMS[r] || {}).arenaRoom);
     let order = built.concat(ent && rooms.includes(ent) && !built.includes(ent) ? [ent] : []).concat(rooms.filter(r => r !== ent && !built.includes(r)).sort((a, b) => size(b) - size(a)));
+    HOUSE_TILE = sb.hqArenaHouseTile(site);
     const place0 = WITHIN[site] || null;
     let place = (place0 && Array.isArray(place0.sizes) && !place0.sizes.includes(S)) ? null : place0;
     if (place && place.rs && place.rs[S] != null) place = Object.assign({}, place, { r: place.rs[S] });   // a size's own radius (2026-11-10, Technoticlan: the 12 is the whole ball court)   // THE PLACE'S SIZES (2026-11-10, Stonehenge): a place that names `sizes` holds only those; the other sizes search the site as ever

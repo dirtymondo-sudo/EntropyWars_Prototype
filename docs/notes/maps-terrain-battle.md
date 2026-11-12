@@ -1589,6 +1589,28 @@ half a tile up." Reproduced (Bohemian Grove Arena, WebGL2 headless): a Build blo
   room (grow-room.js grew the plan only, "every height stayed") + THE TIER RULE at the square's scale so the levels stay the same.
   Asked mondo (thread "Fix Build raising tiles only half a step").
 
+## THE CRUISER — the Spaceship as a round hull on three levels (2026-11-11, replaces THE GUNSHIP's deck)
+mondo on PR #1144: "it still just looks like a floating rectangle" · "A ship is generally more clyndrical. I expect there to be ramps and
+stairs ... not confined to making it a rectangle" · "make sure i am able to walk on those boosters, thats what i mean by verticality ...
+i want to walk on the side/edge of the ship where it is lower" · "and the wings" · the docking arm "sticking off the side is kind of useless".
+He approved the second mock-up ("yeah that better, proceed"); he was angry a match was launched before approval: MOCK-UP, then WAIT.
+- data.js HQ_AREA_SPECS.prebuilt_derelict (same lattice, board cols 11..22 rows 8..19, bow north): hqDeckPlan 'o' = THE LOWER LEVEL 3.2 m,
+  '1' = THE FLIGHT DECK 6.7 m, '2' = 10.2 m, `proud: 0.45` (a one-square void now reads as void; 0.7 read it as deck). Board per row:
+  `o o . o 1 1 1 1 o . o o` ×3 (pod · gap · walkway · flight deck) · `. A B C 1 1 1 1 C B A .` (the stair row) · `o o o o 1 1 1 1 o o o o`
+  (wing) · `2 1 o o 1 N N 1 o o 1 2` ×2 (turret, step, wing, walkway, nexus) · mirrored.
+- HQ_ARENA_RULES.houseTile = { prebuilt_derelict: 1 } (new): the house tiles stand one level over the board's lowest ground.
+  bake-arenas.js judge (HOUSE = ht, apron / egress ≤ ht + 1) and data.js hqArenaUpgrade (zone tiles === hqArenaHouseTile(site)) read it.
+  Every other site is 0, as before.
+- The stairs: `ramp` x −15.4 → −7 (8.4 m), rows 3 and 8, both sides: from 1.4 m inside the foot square to the flight deck's edge, so the
+  square middles step 1.31 / 1.46 / 0.73 m (the walker's climbM 1.46) and the deck square stays flat.
+- three-renderer.js `_hqShipParts(hl, uvS)` (new, called by _hqBuildStarship when the hull row has any of them; room metres, bow north):
+  `tube` (the lofted round fuselage, `crown` steps its flat cut up over the keel, hoops, flank lines, stern face + bells + plumes),
+  `nacelles` (pods; `bell: false` = a gun pod), `wings` (a swept slab + fin), `cannons`, `canopies`, `masts`. The old keel / bells / pods /
+  canopy / guns rows still work for a hull that has them; this room no longer uses them.
+- Moved with it: the bay door is a FREE door on the nose deck (siteRooms.backDoors, x 8.75 z −36.75), the room spawn beside it; the
+  dock's props are on the outer wings and the boosters' after ends; dishes on the bridge and the engine block. Picks 12/11 @ 11,8, 10/9 @ 12,9.
+- Scratch tools + mock-ups: /mnt/project-files/spaceship-real-ship-20261111/ (tools/plan3.js draws the rows, mock.html the 3D mock-up).
+
 ## THE FULL LEDGES — a room's own metres per level, ledges a whole square tall (2026-11-10, data.js)
 mondo after the Giza pilot shot: "looks good, go ahead and fix all of the maps that need it".
 - **The rule**: `terrain.levelM: 3.5` on a room → `hqFieldLevelRules(roomId)` gives THE TIER RULE a 3.5 m step for that room
