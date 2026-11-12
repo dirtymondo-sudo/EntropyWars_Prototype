@@ -13959,7 +13959,7 @@
             for (const k of ['_stFresh', '_stHold', '_statusSrc', '_realmPartnerId', '_boundToId', '_voodooAllyId', '_fearSourceId', '_tetherCasterId',
                 '_spellsUsedThisTurn', '_possessAfter', '_possessAfterSrcId', '_mounted', '_astralBodyId']) delete body[k];
             unit._astralBodyId = body.id;
-            unit._astralCord = Math.max(1, cfg.cord || 6);
+            unit._astralCord = Math.max(1, cfg.cord || 6) + (Number(unitPassiveValue(unit, 'astralCordBonus')) || 0);   // + Silver Cord
             unit._astralEndMode = cfg.end === 'follow' ? 'follow' : 'return';
             unit._astralRound = state.round;
             unit._astralHp = body._astralHp = unit.hp;
@@ -14021,6 +14021,51 @@
             try { resolveTileArrival(unit, { via: 'self' }); } catch (e) {}
             scheduleBoardRender();
         }
+        /* SPIRIT GUIDE (build 4): a spell row with `astralAlly: { cord, end }` walks an ALLY out of its body. The body sleeps
+           on its square and the spirit appears on the nearest open square beside it (two pieces never share one). */
+        function astralProjectAlly(caster, target, spell) {
+            if (!target || target.dead || target._dying || unitIsSpirit(target) || target._astralOfId || target._astralBodyId) return null;
+            let spot = null;
+            for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+                const x = target.x + dx, y = target.y + dy;
+                if (!isInside(x, y)) continue;
+                const z = nearestWalkableZ(x, y, target.z ?? 0);
+                if (canOccupy3D(x, y, z)) { spot = { x, y, z }; break; }
+            }
+            if (!spot) { addLog(`${_ctSp(spell.name)}: there is no room beside ${_ctName(target)} for its spirit.`); return null; }
+            const body = astralBegin(target, { name: spell.name, astral: spell.astralAlly || {} });
+            if (!body) return null;
+            const fx = target.x, fy = target.y;
+            target.x = spot.x; target.y = spot.y; target.z = spot.z;
+            try { animateDisplacement(target, fx, fy, target.x, target.y, 260, {}); } catch (e) {}
+            try { resolveTileArrival(target, { via: 'self' }); } catch (e) {}
+            scheduleBoardRender();
+            return body;
+        }
+        /* 👁 RETURN TO BODY (mondo 2026-11-12, decision card: "RETURN row in the command menu"): the spirit's own early way
+           home. Free (no AP, the turn goes on), on its own turn only. The spell's own ending applies: Spirit Walk pulls the
+           body to the spirit, everything else sends the spirit home. A passive with `astralReturnProtect` (Silver Cord)
+           hands the unit Protect for a round on the way in. online.js wraps it like doGuard (RULE #2). */
+        function canAstralReturn(unit) {
+            return !!(unit && !unit.dead && !unit._dying && unitIsSpirit(unit) && unit._astralBodyId && astralBodyOf(unit)
+                && state.phase === 'battle' && state._blitzActiveUnitId === unit.id
+                && !(typeof unitActionBlockKey === 'function' && unitActionBlockKey(unit)));
+        }
+        function doAstralReturn(unit) {
+            if (!canAstralReturn(unit)) { if (typeof playErrorSfx === 'function') playErrorSfx(); return false; }
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('astralReturn', unit)) return false;
+            try { pushUndoSnapshot(true); } catch (e) {}
+            const _prot = unitPassiveValue(unit, 'astralReturnProtect');
+            unit._astralSnapWhy = null;
+            unit._astralEarly = true;
+            clearStatus(unit, 'projecting');
+            delete unit._astralEarly;
+            if (_prot && !unit.dead && !unit._dying) applyStatusPayload(unit, { id: 'protect', duration: 1 }, 'Silver Cord: ', unit);
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+            scheduleBoardRender();
+            try { if (typeof refreshActionMenu === 'function') refreshActionMenu(); } catch (e) {}
+            return true;
+        }
         /* THE RUDE AWAKENING: the projection breaks and the spirit goes HOME, whatever the spell's own ending was */
         function astralSnapHome(unit, why) {
             if (!unit || unit.dead || unit._dying || !unitIsSpirit(unit) || !unit._astralBodyId) return false;
@@ -14072,6 +14117,9 @@
         window.astralBegin = astralBegin;
         window.astralEnd = astralEnd;
         window.astralSnapHome = astralSnapHome;
+        window.doAstralReturn = doAstralReturn;
+        window.canAstralReturn = canAstralReturn;
+        window.astralProjectAlly = astralProjectAlly;
         window.astralOnDeath = astralOnDeath;
 
         /* ⛓ / 🪆 Links (plan §5.5): after a hit resolves, echo a share of it
@@ -81043,6 +81091,7 @@
                     }
                     /* THE SPELL AUDIT FIX (2026-10-26): a buff row's `selfHealPct` (Awakening 30%, Ayahuasca Retreat 50%) —
                        a percent of the target's max HP, like the selfHeal kind (preScaled); the buff kind never read it. */
+                    if (spell.astralAlly && !_bt.dead) astralProjectAlly(unit, _bt, spell);   // 👁 Spirit Guide: the ally steps out of its body
                     if (spell.selfHealPct > 0 && !_bt.dead) {
                         const _bhGot = applyHealingToUnit(_bt, Math.floor(_bt.maxHp * spell.selfHealPct), unit, { preScaled: true });
                         if (_bhGot > 0) {

@@ -1908,6 +1908,21 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ebd_buildings_bld_08 | `Assets/world/packs/elbolilloduro/ebd_buildings_bld_08.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
 | ebd_buildings_bld_09 | `Assets/world/packs/elbolilloduro/ebd_buildings_bld_09.glb` | Asset pack | Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) |
 
+### Door leaves (mondo's upload, author not recorded) — Asset pack (author not recorded yet) (10)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| leaf_beige_wood | `Assets/world/hq/models/BEIGE WOODEN DOOR.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_birch_glass | `Assets/world/hq/models/BIRCH DOOR WITH GLASS IN THE MIDDLE.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_coffee | `Assets/world/hq/models/Coffee door.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_entrance | `Assets/world/hq/models/ENTRANCE DOOR.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_lobby_glass_double | `Assets/world/hq/models/DOOR WITH LARGE WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_orange_glass | `Assets/world/hq/models/ORANGE DOOR WITH GLASS IN THE MIDDLE.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_white_wood | `Assets/world/hq/models/WHITE WOODEN DOOR.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_window_large | `Assets/world/hq/models/DOOR WITH LARGE WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_window_medium | `Assets/world/hq/models/DOOR WITH MEDIUM WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+| leaf_wooden | `Assets/world/hq/models/Wooden Door.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
+
 ### Farm / zoo animals (mondo's upload) — Asset pack (author not recorded yet) (9)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -1921,20 +1936,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ladybug | `Assets/world/animals/ladybug.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
 | lion | `Assets/world/animals/PSX_lion.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
 | wolf | `Assets/world/animals/Wolf1.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-
-### Door leaves (mondo's upload, author not recorded) — Asset pack (author not recorded yet) (9)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| leaf_beige_wood | `Assets/world/hq/models/BEIGE WOODEN DOOR.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_birch_glass | `Assets/world/hq/models/BIRCH DOOR WITH GLASS IN THE MIDDLE.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_coffee | `Assets/world/hq/models/Coffee door.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_entrance | `Assets/world/hq/models/ENTRANCE DOOR.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_orange_glass | `Assets/world/hq/models/ORANGE DOOR WITH GLASS IN THE MIDDLE.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_white_wood | `Assets/world/hq/models/WHITE WOODEN DOOR.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_window_large | `Assets/world/hq/models/DOOR WITH LARGE WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_window_medium | `Assets/world/hq/models/DOOR WITH MEDIUM WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-| leaf_wooden | `Assets/world/hq/models/Wooden Door.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
 
 ### House · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (7)
 

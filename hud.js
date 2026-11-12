@@ -7394,11 +7394,19 @@ function ActionMenu({ st, hidden }) {
   // Mystery Dungeon lockstep: NO Move blade — walking IS the free verb
   // (WASD / arrows step, clicking a tile travels), so the ladder reads
   // Attack › Abilities › Combo › Items › Guard like a proper crawler.
+  /* 👁 RETURN TO BODY (mondo 2026-11-12): a projecting spirit cannot basic attack, so its dead ATTACK row gives its
+     place to the way home (battle.js doAstralReturn: free, the turn goes on) */
+  const _spiritRow = !!(unit.status && unit.status.projecting > 0 && unit._astralBodyId);
+  const returnAction = _spiritRow ? {
+    id: 'astralReturn', label: 'Return to body', icon: '👁', cost: 0,
+    available: typeof window.canAstralReturn === 'function' && window.canAstralReturn(unit),
+    sub: 'Ends projection',
+  } : null;
   const _mdLock = typeof window._mdLockstepActive === 'function' && window._mdLockstepActive();
   if (_mdLock) guardAction.sub = _guardOk ? 'Hold & brace' : guardAction.sub;
   const actions = ((typeof _isClashMode === 'function' && _isClashMode()) || _mdLock)
-    ? [attackAction, abilAction, comboAction, itemsAction, guardAction]
-    : [moveAction, ...(climbAction ? [climbAction] : []), attackAction, abilAction, comboAction, itemsAction, guardAction];
+    ? [returnAction || attackAction, abilAction, comboAction, itemsAction, guardAction]
+    : [moveAction, ...(climbAction ? [climbAction] : []), returnAction || attackAction, abilAction, comboAction, itemsAction, guardAction];
 
   // ♟ TACTICS (battle.js setUnitTactic): set this unit or a teammate on a Tactic so the CPU's brain plays its turns.
   // Not on Mystery Dungeon floors (their own tactic chips) or in the tutorial (unitOnTactic is off there).
@@ -7609,6 +7617,7 @@ function ActionMenu({ st, hidden }) {
       case 'combo': if (typeof setActionMode === 'function') setActionMode('combo'); break;
       case 'items': if (typeof chooseActionMenu === 'function') chooseActionMenu('items'); break;
       case 'guard': if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); break;
+      case 'astralReturn': if (typeof doAstralReturn === 'function' && typeof getSelectedUnit === 'function') doAstralReturn(getSelectedUnit()); break;
       case 'switch': if (typeof chooseActionMenu === 'function') chooseActionMenu('switch'); break;
       case 'tactics': _hrlgTacticPickId = unit.id; if (typeof chooseActionMenu === 'function') chooseActionMenu('tactics'); break;
       case 'escape': if (typeof window.doEscape === 'function' && typeof getSelectedUnit === 'function') window.doEscape(getSelectedUnit()); break;
