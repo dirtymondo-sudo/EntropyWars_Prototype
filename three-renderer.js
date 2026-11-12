@@ -9133,7 +9133,9 @@ const ThreeRenderer = (function () {
                 var pal = null, kindKey = null, scaleMul = 1;
                 if (!disabled && unit && !unit.dead && !unit._dying) {
                     if (tmp) { pal = tmp.palette; kindKey = 'spell'; scaleMul = tmp.scale; }
+                    else if (unit._lastStandTriggered && _lsAuraWear(unit, entry, now, 'laststand')) { /* THE LAST STAND OUTLINE AURA wears it: no shroud */ }
                     else if (unit._lastStandTriggered) { pal = _AURA_KINDS.laststand; kindKey = 'laststand'; }
+                    else if ((unit._killStreak || 0) >= 3 && _lsAuraWear(unit, entry, now, 'flow')) { /* the same aura, in Flow State gold */ }
                     else if ((unit._killStreak || 0) >= 3) { pal = _AURA_KINDS.flow; kindKey = 'flow'; }
                 }
 
@@ -9170,6 +9172,8 @@ const ThreeRenderer = (function () {
                 if (cur) cur._want = !!kindKey;
             });
         }
+
+        _lsAuraTick(now, dt, disabled);   // THE LAST STAND OUTLINE AURA
 
         if (!_unitAuras.size) return;
 
@@ -9254,6 +9258,253 @@ const ThreeRenderer = (function () {
         if (_auraLastFull.size > 64) {
             _auraLastFull.forEach(function (ts2, k) { if (now - ts2 > 5000) _auraLastFull.delete(k); });
         }
+    }
+
+    /* ── THE LAST STAND OUTLINE AURA (2026-11-12, mondo: "can we redesign the last stand aura? ... more like an dbz or one
+       piece or demon slayer anime esque aura, around the perimeter of the unit? Maybe we can use the red and blue outlines
+       that are already drawn around enemy and friendly units, as a starting point"). A unit in Last Stand no longer stands in
+       the round flame shroud: its own team outline grows into an aura. Seven more inverted hulls on the body's own meshes
+       (the team outline's trick, same per-unit stencil mask, so they paint ONLY outside the unit's silhouette and never
+       over the body, the hit or a number): a solid white-hot band at the body, then a stack of six, each pushed further
+       out along the normal and lifted further up, each cut by the same upright tongue stripes (a triangle wave across
+       the screen, counted from the unit's feet, narrower on every shell out), so the stack reads as pointed flame tongues that rise off the silhouette and
+       peak over the head (he chose "spikier flames" over the first round lobes). Flat colour bands, no additive light,
+       no glow sprite, no point light (bloom is off); the tongues step 12 times a second like a cel. Colour = the
+       viewer's side (cyan-blue own, pink-red enemy), read every frame like the outline. FLOW STATE (killstreak 3+,
+       mondo: "yes i want to fix flow state too") wears the same aura in gold on either side. Driven from unit state
+       (_lastStandTriggered / _killStreak), so host, guest and replay see it with no relay. Sprite units get the same
+       aura on a plane (_LS_SPR_FRAG). A spell's power-up burst still uses the shroud, and so does a body still loading.
+       Tuning (console): window.EW_LS_AURA_TUNE = { width, lift, time }.
+       Off (the old shroud everywhere): window.EW_NO_LS_OUTLINE_AURA = true. */
+    var _LS_AURA_VERT = [
+        '#include <common>',
+        '#include <skinning_pars_vertex>',
+        'uniform float uPush;', 'uniform float uLift;', 'uniform float uFreq;', 'uniform vec3 uBase;', 'uniform float uInvH;',
+        'varying vec2 vC;',
+        'void main() {',
+        '  #include <beginnormal_vertex>',
+        '  #include <skinbase_vertex>',
+        '  #include <skinnormal_vertex>',
+        '  #include <begin_vertex>',
+        '  #include <skinning_vertex>',
+        '  vec4 mvPosition = modelViewMatrix * vec4(transformed, 1.0);',
+        /* height over the feet, measured in VIEW space along world up (modelMatrix * transformed is not the world point of a
+           skinned Meshy body on the classic renderer: its stripes came out a hundred times too fine) */
+        '  vec3 upV = normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);',
+        '  vec3 rel = mvPosition.xyz - (viewMatrix * vec4(uBase, 1.0)).xyz;',
+        '  float up = dot(rel, upV);',
+        '  float hh = clamp(up * uInvH, 0.0, 1.0);',
+        /* the flame pattern = upright columns, counted screen-right from the unit's feet at the PUSHED point, so every shell
+           cuts the same columns and the stack narrows to a point over the body (read at the body point instead, the stacks
+           ran along the normals and the sides came out as round lobes: the classic renderer's first look, 2026-11-12) */
+        '  vec3 nV = normalize(normalMatrix * objectNormal);',
+        '  mvPosition.xyz += nV * uPush + upV * uLift * (0.25 + 0.75 * hh);',
+        '  vC = vec2((mvPosition.x - (viewMatrix * vec4(uBase, 1.0)).x) * uFreq, up * uFreq);',
+        '  gl_Position = projectionMatrix * mvPosition;',
+        '}'
+    ].join('\n');
+    var _LS_AURA_FRAG = [
+        'uniform vec3 uColor;', 'uniform float uOpacity;', 'uniform float uFrac;', 'uniform float uTime;',
+        'uniform float uSeed;', 'uniform sampler2D uNoise;',
+        'varying vec2 vC;',
+        'void main() {',
+        '  if (uFrac > 0.0) {',
+        '    float tq = floor(uTime * 12.0) / 12.0;',   // drawn "on twos": the tongues step 12 times a second, like a cel
+        '    float c = vC.x * 9.0 - tq * 2.2 + uSeed;',   // upright columns (a height term slanted them into streaks)
+        '    float tri = 1.0 - abs(fract(c) * 2.0 - 1.0);',                                        // one tongue per stripe: wide at the body...
+        '    float amp = 0.35 + 1.1 * texture2D(uNoise, vec2(floor(c) * 0.173, tq * 0.35)).r;',    // ...its own height, changing
+        '    if (tri * amp < uFrac) discard;',                                                     // ...and narrower on every shell out: a point
+        '  }',
+        '  gl_FragColor = vec4(uColor, uOpacity);',
+        '}'
+    ].join('\n');
+    /* the shells, outer → inner (drawn in that order, all after every body's stencil stamp (2) and before the team outline
+       (3)): shell 0 is the solid white-hot band at the body, 1..N the tongue stack (frac = how far out, 0..1) */
+    var LS_AURA_N = 6, LS_AURA_PUSH = 0.10, LS_AURA_LIFT = 0.30, LS_AURA_CORE = 0.02;
+    var LS_AURA_SHELLS = (function () {
+        var out = [];
+        for (var k = LS_AURA_N; k >= 1; k--) {
+            var f = k / LS_AURA_N;
+            out.push({ push: LS_AURA_CORE + (LS_AURA_PUSH - LS_AURA_CORE) * f, lift: LS_AURA_LIFT * f, frac: f * 0.92, op: 0.92, ro: 2.6 - k * 0.02, col: k <= 2 ? 'mid' : 'outer' });
+        }
+        out.push({ push: LS_AURA_CORE, lift: 0.012, frac: 0, op: 0.96, ro: 2.6, col: 'core' });
+        return out;
+    })();
+    var LS_AURA_PAL = {
+        own:   { outer: 0x2b55ff, mid: TEAM_OUTLINE_ALLY_COLOR,  core: 0xd6f6ff },
+        enemy: { outer: 0xb8104a, mid: TEAM_OUTLINE_ENEMY_COLOR, core: 0xffe4d8 },
+        flow:  { outer: 0xe07800, mid: 0xffc21a, core: 0xfff4c0 }   // FLOW STATE (killstreak 3+): its own gold on either side; the team outline on top still says whose
+    };
+    /* SPRITE UNITS (no model hull: 9 races, a model that failed to load): the same aura on one plane behind the billboard,
+       a little larger than it. Each pixel asks, shell by shell (the same 6 + core, same sizes), "is the art within this
+       shell's reach of the point this shell was lifted from?" and the first shell that says yes cuts it with the same
+       tongue stripes. uv 0..1 = the sprite's own art; the plane's uv runs past it on every side. */
+    var _LS_SPR_VERT = ['varying vec2 vUv;', 'void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }'].join('\n');
+    var _LS_SPR_FRAG = [
+        'uniform sampler2D uMap;', 'uniform sampler2D uNoise;', 'uniform vec2 uPerTile;', 'uniform float uAmt;', 'uniform float uLiftAmt;',
+        'uniform vec3 uCore;', 'uniform vec3 uMid;', 'uniform vec3 uOuter;', 'uniform float uOpacity;', 'uniform float uTime;', 'uniform float uSeed;',
+        'varying vec2 vUv;',
+        'float ewA(vec2 q) { return (q.x < 0.0 || q.x > 1.0 || q.y < 0.0 || q.y > 1.0) ? 0.0 : texture2D(uMap, q).a; }',
+        'float ewNear(vec2 q, vec2 r) {',
+        '  return max(max(ewA(q), max(ewA(q + vec2(r.x, 0.0)), ewA(q - vec2(r.x, 0.0)))), max(ewA(q + vec2(0.0, r.y)), ewA(q - vec2(0.0, r.y))));',
+        '}',
+        'void main() {',
+        '  if (ewA(vUv) > 0.12) discard;',
+        '  float hh = clamp(vUv.y, 0.0, 1.0);',
+        '  if (ewNear(vUv, uPerTile * ' + LS_AURA_CORE.toFixed(4) + ' * uAmt) > 0.5) { gl_FragColor = vec4(uCore, uOpacity); return; }',
+        '  float tq = floor(uTime * 12.0) / 12.0;',
+        '  for (int k = 1; k <= ' + LS_AURA_N + '; k++) {',
+        '    float f = float(k) / ' + LS_AURA_N.toFixed(1) + ';',
+        '    vec2 q = vUv - vec2(0.0, uPerTile.y * ' + LS_AURA_LIFT.toFixed(4) + ' * f * uLiftAmt * (0.25 + 0.75 * hh));',
+        '    vec2 r = uPerTile * (' + LS_AURA_CORE.toFixed(4) + ' + ' + (LS_AURA_PUSH - LS_AURA_CORE).toFixed(4) + ' * f) * uAmt;',
+        '    if (ewNear(q, r) > 0.5) {',
+        '      float c = (q.x - 0.5) / uPerTile.x * 9.0 - tq * 2.2 + uSeed;',
+        '      float tri = 1.0 - abs(fract(c) * 2.0 - 1.0);',
+        '      float amp = 0.35 + 1.1 * texture2D(uNoise, vec2(floor(c) * 0.173, tq * 0.35)).r;',
+        '      if (tri * amp < f * 0.92) discard;',
+        '      gl_FragColor = vec4(k <= 2 ? uMid : uOuter, uOpacity * 0.96);',
+        '      return;',
+        '    }',
+        '  }',
+        '  discard;',
+        '}'
+    ].join('\n');
+    function _lsAuraBuildSprite(unit, entry) {
+        var halo = null, ol = entry.outlines || [];
+        for (var i = 0; i < ol.length; i++) if (ol[i] && ol[i].parent && ol[i].material && ol[i].material.uniforms && ol[i].material.uniforms.uMap && ol[i].material.uniforms.uMap.value) { halo = ol[i]; break; }
+        if (!halo || !_lsAuraUnder(halo, entry.group)) return null;
+        var spr = halo.parent, geo = spr.geometry;
+        if (!geo) return null;
+        if (!geo.boundingBox) geo.computeBoundingBox();
+        var bb = geo.boundingBox, w = bb.max.x - bb.min.x, h = bb.max.y - bb.min.y;
+        if (!(w > 0) || !(h > 0)) return null;
+        var ts = CONFIG.tileSize || BASE_TILE, seed = _auraSeed(unit.id);
+        var _ws = spr.getWorldScale(new THREE.Vector3());          // the art's size on the board, whatever scales sit above it
+        var sx = Math.abs(_ws.x) || 1, sy = Math.abs(_ws.y) || 1;
+        var ptx = ts / (w * sx), pty = ts / (h * sy);            // uv per tile, each way
+        var mx = 0.16 * ptx, mb = 0.14 * pty, mt = 0.78 * pty;   // room past the art: sides, feet, the tongues over the head
+        var g = new THREE.PlaneGeometry(w * (1 + 2 * mx), h * (1 + mb + mt));
+        g.translate((bb.min.x + bb.max.x) / 2, bb.min.y + h * (1 + mt - mb) / 2, (bb.min.z + bb.max.z) / 2);
+        var uv = g.attributes.uv;
+        for (var vi = 0; vi < uv.count; vi++) uv.setXY(vi, -mx + uv.getX(vi) * (1 + 2 * mx), -mb + uv.getY(vi) * (1 + mb + mt));
+        uv.needsUpdate = true;
+        var mat = new THREE.ShaderMaterial({
+            uniforms: {
+                uMap: { value: halo.material.uniforms.uMap.value }, uNoise: { value: _getAuraNoiseTex() },
+                uPerTile: { value: new THREE.Vector2(ptx, pty) }, uAmt: { value: 0 }, uLiftAmt: { value: 0 },
+                uCore: { value: new THREE.Color(0xffffff) }, uMid: { value: new THREE.Color(0xffffff) }, uOuter: { value: new THREE.Color(0xffffff) },
+                uOpacity: { value: 0 }, uTime: _lsAuraTime, uSeed: { value: seed * 0.37 }
+            },
+            vertexShader: _LS_SPR_VERT, fragmentShader: _LS_SPR_FRAG,
+            transparent: true, depthTest: true, depthWrite: false, side: THREE.DoubleSide, fog: false
+        });
+        mat._ew_lsSprite = true;
+        var m = new THREE.Mesh(g, mat);
+        m.frustumCulled = false; m.renderOrder = 2.6; m.raycast = function () {};
+        m._ew_silhouette = true; m._ew_teamOutline = true; m._ew_lsAura = true; m._ew_shadowFlagged = true;
+        m.castShadow = false; m.receiveShadow = false;
+        spr.add(m);
+        return { root: entry.group, host: halo, shells: [m], mats: [mat], fade: 0, want: true, h: ts, seed: seed, st: _unitStencilRef(unit.id), ts: ts, sprite: true };
+    }
+    var _lsAuraTime = { value: 0 };
+    var _lsAuras = new Map();   /* unitId -> { root, host, shells, mats, fade, want, h, seed } */
+    function _lsAuraOff() { return typeof window !== 'undefined' && !!window.EW_NO_LS_OUTLINE_AURA; }
+    function _lsAuraTune() { return (typeof window !== 'undefined' && window.EW_LS_AURA_TUNE) || null; }
+    function _lsAuraUnder(o, root) { for (var i = 0; o && i < 24; i++, o = o.parent) if (o === root) return true; return false; }
+    function _lsAuraDrop(rec) {
+        for (var i = 0; i < rec.shells.length; i++) { var m = rec.shells[i]; if (m.parent) m.parent.remove(m); if (m.material) m.material.dispose(); if (rec.sprite && m.geometry) m.geometry.dispose(); }
+        rec.shells.length = 0; rec.mats.length = 0;
+    }
+    function _lsAuraBuild(unit, entry) {
+        var hulls = [];
+        entry.group.traverse(function (o) { if (o.isMesh && o._ew_teamOutline && !o._ew_lsAura && o.parent && o.parent.isMesh && o.material && o.material.uniforms && o.material.uniforms.uOutline) hulls.push(o); });
+        if (!hulls.length) return _lsAuraBuildSprite(unit, entry);
+        var ts = CONFIG.tileSize || BASE_TILE, st = _unitStencilRef(unit.id), seed = _auraSeed(unit.id);
+        var topY = entry.group._ew_spriteTopY != null ? (entry.group._ew_spriteTopY - entry.group.position.y) : ts;
+        var rec = { root: entry.group, host: hulls[0], shells: [], mats: [], fade: 0, want: true, h: Math.max(ts * 0.9, topY), seed: seed, st: st, ts: ts };
+        hulls.forEach(function (hull) {
+            var n = hull.parent;
+            LS_AURA_SHELLS.forEach(function (L, li) {
+                var mat = new THREE.ShaderMaterial({
+                    uniforms: {
+                        uColor: { value: new THREE.Color(0xffffff) }, uOpacity: { value: 0 }, uFrac: { value: L.frac },
+                        uPush: { value: 0 }, uLift: { value: 0 }, uTime: _lsAuraTime,
+                        uFreq: { value: 1 / ts }, uSeed: { value: seed * 0.37 }, uBase: { value: new THREE.Vector3() }, uInvH: { value: 1 / rec.h },
+                        uNoise: { value: _getAuraNoiseTex() }
+                    },
+                    vertexShader: _LS_AURA_VERT, fragmentShader: _LS_AURA_FRAG,
+                    transparent: false, blending: THREE.CustomBlending, blendEquation: THREE.AddEquation,
+                    blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
+                    depthTest: true, depthWrite: false, side: THREE.BackSide, fog: false
+                });
+                if (n.isSkinnedMesh) mat.skinning = true;
+                mat.stencilWrite = true; mat.stencilWriteMask = 0; mat.stencilRef = st; mat.stencilFunc = THREE.NotEqualStencilFunc;
+                mat._ew_ls = L;
+                var sh;
+                if (n.isSkinnedMesh) { sh = new THREE.SkinnedMesh(n.geometry, mat); sh.bind(n.skeleton, n.bindMatrix); }
+                else sh = new THREE.Mesh(n.geometry, mat);
+                sh.frustumCulled = false;
+                sh.onBeforeRender = _twinFollowParent;
+                sh.renderOrder = L.ro;
+                sh.raycast = function () {};
+                sh._ew_silhouette = true; sh._ew_teamOutline = true; sh._ew_lsAura = true; sh._ew_shadowFlagged = true;
+                sh.castShadow = false; sh.receiveShadow = false;
+                n.add(sh);
+                rec.shells.push(sh); rec.mats.push(mat);
+            });
+        });
+        return rec;
+    }
+    /* pass 1 of _updateUnitAuras asks: does this Last Stand unit wear the outline aura? (true = no shroud for it) */
+    function _lsAuraWear(unit, entry, now, kind) {
+        if (_lsAuraOff() || !entry || !entry.group) return false;
+        var rec = _lsAuras.get(unit.id);
+        if (rec && (rec.root !== entry.group || !_lsAuraUnder(rec.host, entry.group) || rec.st !== _unitStencilRef(unit.id))) {
+            var keep = rec.fade; _lsAuraDrop(rec); _lsAuras.delete(unit.id); rec = null;
+            entry._ew_lsKeep = keep;   // the body was rebuilt under a lit aura: no fade-in again
+        }
+        if (!rec) {
+            if (entry._ew_lsTry && now < entry._ew_lsTry) return false;
+            rec = _lsAuraBuild(unit, entry);
+            if (!rec) { entry._ew_lsTry = now + 250; return false; }   // nothing to hang it on yet (a body still loading)
+            if (entry._ew_lsKeep) rec.fade = entry._ew_lsKeep;
+            _lsAuras.set(unit.id, rec);
+        }
+        rec.want = true; rec.own = unit.player === _viewerPlayerNum(); rec.kind = kind;
+        return true;
+    }
+    var _lsAuraWp = null;
+    function _lsAuraTick(now, dt, disabled) {
+        if (!_lsAuras.size) return;
+        var tune = _lsAuraTune();
+        _lsAuraTime.value = (tune && tune.time != null) ? tune.time : (now * 0.001) % 1000;
+        var kW = tune && tune.width != null ? tune.width : 1, kL = tune && tune.lift != null ? tune.lift : 1;
+        var dead = null;
+        if (!_lsAuraWp) _lsAuraWp = new THREE.Vector3();
+        _lsAuras.forEach(function (rec, uid) {
+            var want = rec.want && !disabled && !_lsAuraOff() && unitEntries.has(uid) && _lsAuraUnder(rec.host, rec.root);
+            rec.want = false;   // re-armed next frame by pass 1
+            rec.fade = Math.max(0, Math.min(1, rec.fade + (want ? 1 : -1) * dt / (want ? 0.28 : 0.2)));
+            if (rec.fade <= 0 && !want) { _lsAuraDrop(rec); (dead = dead || []).push(uid); return; }
+            var ease = rec.fade * rec.fade * (3 - 2 * rec.fade), t = _lsAuraTime.value;
+            var breathe = 1 + 0.10 * Math.sin(t * 6.3 + rec.seed) + 0.05 * Math.sin(t * 13.1 + rec.seed * 2.3);
+            var pal = rec.kind === 'flow' ? LS_AURA_PAL.flow : (rec.own ? LS_AURA_PAL.own : LS_AURA_PAL.enemy);
+            rec.root.getWorldPosition(_lsAuraWp);
+            for (var i = 0; i < rec.mats.length; i++) {
+                var m = rec.mats[i], L = m._ew_ls, u = m.uniforms;
+                if (m._ew_lsSprite) {
+                    u.uAmt.value = kW * (0.35 + 0.65 * ease) * breathe; u.uLiftAmt.value = kL * ease * breathe; u.uOpacity.value = ease;
+                    u.uCore.value.setHex(pal.core); u.uMid.value.setHex(pal.mid); u.uOuter.value.setHex(pal.outer);
+                    continue;
+                }
+                u.uPush.value = rec.ts * L.push * kW * (0.35 + 0.65 * ease) * breathe;
+                u.uLift.value = rec.ts * L.lift * kL * ease * breathe;
+                u.uOpacity.value = L.op * ease;
+                u.uBase.value.copy(_lsAuraWp);
+                u.uColor.value.setHex(pal[L.col]);
+            }
+        });
+        if (dead) for (var di = 0; di < dead.length; di++) _lsAuras.delete(dead[di]);
     }
 
     /* ── THE CRYSTAL MODELS (2026-11-02, mondo: "those crystal cones that appear everywhere, i think they look really bad
@@ -46141,6 +46392,60 @@ const ThreeRenderer = (function () {
                the rim shrank inside the body and only leaked through as patches where the body is thin, never a clean edge */
             s.vertexNode = T.cameraProjectionMatrix.mul(V4(T.positionView.add(T.normalize(T.normalViewGeometry || T.normalView.negate()).mul(Ow)), 1));
             s.fragmentNode = V4(C, Op);
+            return s;
+        });
+        /* THE LAST STAND OUTLINE AURA (the GLSL at _LS_AURA_VERT / _LS_AURA_FRAG) */
+        reg(_LS_AURA_FRAG, 'last stand aura', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m), nz = _ewPT(u.uNoise);
+            var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Fr = _ewPU(u.uFrac, 'float'), Tm = _ewPU(u.uTime, 'float'),
+                Fq = _ewPU(u.uFreq, 'float'), Sd = _ewPU(u.uSeed, 'float'), Pu = _ewPU(u.uPush, 'float'),
+                Lf = _ewPU(u.uLift, 'float'), Bs = _ewPU(u.uBase, 'vec3'), Ih = _ewPU(u.uInvH, 'float');
+            var wp = T.cameraWorldMatrix.mul(V4(T.positionView, 1)).xyz;
+            var hh = T.clamp(wp.y.sub(Bs.y).mul(Ih), 0, 1);
+            var nV = T.normalize(T.normalViewGeometry || T.normalView.negate());   // the hull is BackSide: see 'outline model'
+            var upV = T.normalize(T.cameraViewMatrix.mul(V4(0, 1, 0, 0)).xyz);
+            s.vertexNode = T.cameraProjectionMatrix.mul(V4(T.positionView.add(nV.mul(Pu)).add(upV.mul(Lf.mul(hh.mul(0.75).add(0.25)))), 1));
+            s.fragmentNode = T.Fn(function () {
+                /* the GLSL's vC.x (proven the same picture on the node renderer's WebGL 2 and WebGPU backends, 2026-11-12) */
+                var cx = T.positionView.x.sub(T.cameraViewMatrix.mul(V4(Bs, 1)).x).mul(Fq);
+                var Tq = T.floor(Tm.mul(12)).div(12);
+                var c = cx.mul(9).sub(Tq.mul(2.2)).add(Sd).toVar();
+                var tri = one.sub(T.abs(T.fract(c).mul(2).sub(1)));
+                var amp = nz(V2(T.floor(c).mul(0.173), Tq.mul(0.35))).r.mul(1.1).add(0.35);
+                T.Discard(Fr.greaterThan(0).and(tri.mul(amp).lessThan(Fr)));
+                return V4(C, Op);
+            })();
+            return s;
+        });
+        reg(_LS_SPR_FRAG, 'last stand aura sprite', function (m) {
+            var u = m.uniforms, s = _ewProgMat(m), tx = _ewPT(u.uMap), nz = _ewPT(u.uNoise);
+            var PT = _ewPU(u.uPerTile, 'vec2'), Am = _ewPU(u.uAmt, 'float'), La = _ewPU(u.uLiftAmt, 'float'), Co = _ewPU(u.uCore, 'color'),
+                Mi = _ewPU(u.uMid, 'color'), Ou = _ewPU(u.uOuter, 'color'), Op = _ewPU(u.uOpacity, 'float'), Tm = _ewPU(u.uTime, 'float'), Sd = _ewPU(u.uSeed, 'float');
+            var A = function (q) { return tx(T.clamp(q, 0, 1)).a.mul(T.step(0, q.x)).mul(T.step(q.x, 1)).mul(T.step(0, q.y)).mul(T.step(q.y, 1)); };
+            var near = function (q, r) {
+                return T.max(T.max(A(q), T.max(A(q.add(V2(r.x, 0))), A(q.sub(V2(r.x, 0))))), T.max(A(q.add(V2(0, r.y))), A(q.sub(V2(0, r.y)))));
+            };
+            s.fragmentNode = T.Fn(function () {
+                var uv = T.uv().toVar(), hh = T.clamp(uv.y, 0, 1).toVar(), Tq = T.floor(Tm.mul(12)).div(12).toVar();
+                T.Discard(A(uv).greaterThan(0.12));
+                var out = V4(0).toVar(), done = F(0).toVar();
+                T.If(near(uv, PT.mul(LS_AURA_CORE).mul(Am)).greaterThan(0.5), function () { out.assign(V4(Co, Op)); done.assign(1); });
+                for (var k = 1; k <= LS_AURA_N; k++) (function (k) {
+                    var f = k / LS_AURA_N;
+                    T.If(done.lessThan(0.5), function () {
+                        var q = uv.sub(V2(0, PT.y.mul(LS_AURA_LIFT * f).mul(La).mul(hh.mul(0.75).add(0.25)))).toVar();
+                        T.If(near(q, PT.mul(LS_AURA_CORE + (LS_AURA_PUSH - LS_AURA_CORE) * f).mul(Am)).greaterThan(0.5), function () {
+                            var c = q.x.sub(0.5).div(PT.x).mul(9).sub(Tq.mul(2.2)).add(Sd).toVar();
+                            var tri = one.sub(T.abs(T.fract(c).mul(2).sub(1)));
+                            var amp = nz(V2(T.floor(c).mul(0.173), Tq.mul(0.35))).r.mul(1.1).add(0.35);
+                            T.Discard(tri.mul(amp).lessThan(f * 0.92));
+                            out.assign(V4(k <= 2 ? Mi : Ou, Op.mul(0.96))); done.assign(1);
+                        });
+                    });
+                })(k);
+                T.Discard(done.lessThan(0.5));
+                return out;
+            })();
             return s;
         });
         /* the power-aura shells */

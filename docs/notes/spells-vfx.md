@@ -3738,3 +3738,27 @@ EW_QUARKS = false on the node modes and the Settings row shows there again. Off 
 Proof (node renderer on its WebGL 2 backend vs classic, same fight): /mnt/project-files/webgpu-default-20261111/spell_layer_*.jpg.
 Not seen on a true WebGPU device (headless). Online: the layer rides `fire()` as before, the guest draws it from the relayed event.
 
+
+## THE LAST STAND OUTLINE AURA — Last Stand + Flow State as an anime aura on the silhouette (2026-11-12)
+mondo: "can we redesign the last stand aura? ... more like an dbz or one piece or demon slayer anime esque aura, around
+the perimeter of the unit? Maybe we can use the red and blue outlines that are already drawn around enemy and friendly
+units, as a starting point"; then "yes i want to fix flow state too"; chose "Spikier flames first" over the first round
+lobes; OK'd mock-up 4 ("okay yeah that's better"). three-renderer.js only, block "THE LAST STAND OUTLINE AURA".
+- A unit with `_lastStandTriggered` or `_killStreak >= 3` no longer gets the round shroud (shells, ground ring, glow,
+  streaks, crackles, point light). Model units: 6 inverted hulls + a solid core band on the body's own meshes, the team
+  outline's per-unit stencil mask (only outside the silhouette), each shell further out and further up, each cut by the
+  same upright triangle-wave columns (narrower per shell) = pointed tongues peaking over the head. Stepped 12x a second.
+  Flat bands, normal blending. Sprite units (9 races with no model, a failed model): one plane behind the billboard,
+  `_LS_SPR_FRAG` does the same shells by sampling the art's alpha.
+- Colours `LS_AURA_PAL`: Last Stand = viewer's side (own cyan/blue, enemy pink-red), Flow State = gold on both sides.
+  Last Stand wins over Flow State; a spell's power-up burst (`EWPowerAura.burst`) still draws the shroud and hides the
+  outline aura while it lasts.
+- State-driven like before (`_updateUnitAuras` → `_lsAuraWear` / `_lsAuraTick`): no relay, host/guest/replay alike;
+  the shells carry `_ew_teamOutline`, so cloak, the cine gate and sprite-sheet play hide them with the outline.
+- Node twins: 'last stand aura', 'last stand aura sprite'. Seen on classic WebGL, the node renderer's WebGL 2 backend
+  and real (SwiftShader) WebGPU: /mnt/project-files/last-stand-aura-20261112/05-07. Lesson: the stripe coordinate must be
+  taken at the PUSHED vertex; at the body point the classic renderer drew round lobes.
+- Off (old shroud everywhere): `window.EW_NO_LS_OUTLINE_AURA = true`. Tune: `window.EW_LS_AURA_TUNE = { width, lift, time }`
+  (`time` freezes the tongues: compare variants at the same instant, never free-running stills).
+- Not seen: a real 2-player online match, a boss-size unit, his Mac. Top-down play camera shows the tongues short
+  (they point at the lens).
