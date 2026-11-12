@@ -216,6 +216,14 @@ def fit(name, gender, src, bodies_dir):
             if v.co.z < chin: f = max(0.0, 1 - (chin - v.co.z) / 0.25); k = 1 + (hs - 1) * f; v.co = Vector(eyeM) + Vector((d.x * k, d.y * k, d.z)) - (Vector(eyeM) - eye) * (1 - f)
             else: kk = E('WIGK', 1.04); v.co = Vector(eyeM) + Vector((d.x * hs * kk, d.y * (sy if d.y > 0 else hs) * kk, d.z * (sz if d.z > 0 else hs) * kk))
     wig = [o for o in headp if min(v.co.z for v in o.data.vertices) < eyeM[2] - 0.03 or o in rem]
+    # A HAIR LOCK (2026-11-12, mondo: "some sort of strip hanging off the back of the [zombie]'s head and back"): a small shell in
+    # the unit's hair colour that starts at the head and hangs below it (a lock down the back) is hair too: not exported
+    if wig and not HEADGEAR and E('LOCKS', 1):
+        hcol = np.median(np.vstack([face_cols(o, PX, IW, IH) for o in wig]), axis=0)
+        for o in [o for o in keep if o not in headp]:
+            c = co(o)
+            if len(o.data.polygons) < E('LOCKN', 600) and c[:, 2].max() > eyeM[2] - 0.16 and np.linalg.norm(np.median(face_cols(o, PX, IW, IH), axis=0) - hcol) < E('LOCKT', 0.15):
+                dropped.append(('hair lock', len(o.data.polygons))); keep.remove(o); bpy.data.objects.remove(o)
     # HEADGEAR (2026-11-12, quarterback: his helmet reaches below the eyes, so it was read as hair and left out): --headgear
     # keeps every head piece as the hat (a helmet, a cowl, a mask); the look then picks no hair under it
     if HEADGEAR: wig = []

@@ -1553,6 +1553,8 @@ head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay t
   Gotchas: Meshy's T2 run varies: robinhood's first run fused a bow string into his hand + skirt shell (a second run was clean). The zombie's
   whole bloody skin comes as shells and is worn as clothes over the hidden body (her hands too); the look's skin is `sohh_female_zombie_skin`.
   A front render should be cropped to the figure before it is sent (the first four went out small in the frame and still worked).
+  A HAIR LOCK (11-12, mondo: "some sort of strip hanging off the back of the [zombie]'s head and back"): a shell under 600 faces in the
+  unit's hair colour that reaches the head is hair too and is not exported (env LOCKS / LOCKN / LOCKT; off under --headgear).
   Open: a few skin flecks on robinhood's hood front, a skin chip by the catgirl's left boot, light patches on her sleeves (the lacing in
   Meshy's texture), the knight's and zombie's walk hunches (the race's own walk clip), no sway, stock faces until the face step.
 
