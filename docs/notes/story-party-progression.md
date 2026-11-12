@@ -811,3 +811,12 @@ R2 files: data.js, map.js, ui.js, battle.js, three-vfx-effects.js, styles-base.c
   (an attack goal's `target` counts too). ui.js `_tutTargetOk` (engine gate in battle.js attack + spell, nudges) and
   `_tutTargetIs` (hud.js: the target list and the clicked-unit quick list show only that target). Set on Tape 1 `scope`,
   Tape 2 `cast` / `press` / `resist`.
+
+### AGENT LOCKE IS HERSELF (2026-11-12, mondo: "i thought agent locke was a woman? ... She already has her own model. She walks around in the DOOR HQ")
+The first fight's ally (PR #1207) was a generic Door Agent with the race's default look: WRONG. Agent Locke is the story's own
+character (DOOR_STORY.md "Agent Locke", data.js DOOR_CAST.locke, sprites.js DOOR_CAST_MODELS.locke). Now the ally row is
+`{ race: 'door agent', gender: 'female', cast: 'locke', ... }`: `cast` rides as `meta.appearance = { cast }` (data.js
+questAllyMembers), state.js keeps it on the unit (it is NOT a creator look: normalizeCharacterAppearance returns null for it),
+and sprites.js getRace3DModel returns DOOR_CAST_MODELS[cast] plus the race row's `hold` (the gun) + `basicAttackKind`.
+state.js keeps it through the party repair too (rebuiltMeta). battle.js _questFightAuto sets it again as a backstop. Off switch: window.EW_DISABLE_CAST. Any quest ally can use `cast`.
+LESSON: a name mondo uses is an EXISTING character until DOOR_STORY.md / DOOR_MASTER.md / DOOR_CAST say otherwise. Search those first.
