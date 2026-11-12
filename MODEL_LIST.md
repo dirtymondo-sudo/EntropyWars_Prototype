@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 660 |
+| Meshy AI | no | 661 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -497,7 +497,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | ewf_fur · Fur (whole body) | `Assets/characters/creator/wear/ewf_fur.glb` | MakeHuman parts, baked by Claude in Blender | MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py) |
 | ewf_fur_werewolf · Fur (whole body), werewolf colours | `Assets/characters/creator/wear/ewf_fur_werewolf.glb` | MakeHuman parts, baked by Claude in Blender | MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py) |
 
-### 5e. Meshy pieces in the creator (88 files, `Assets/characters/creator/wear/ewm_*`, PR #829)
+### 5e. Meshy pieces in the creator (89 files, `Assets/characters/creator/wear/ewm_*`, PR #829)
 
 Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) and fitted on the MPFB bodies in Blender
 (bake-meshy.py): hats, creature heads, armour, equipment, tails. Column = the creator's own id · label (tab).
@@ -575,6 +575,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ewm_t2cowboy_hat · Cowboy hat (Meshy remake) (hats) | `Assets/characters/creator/wear/ewm_t2cowboy_hat.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2cowboy_outfit · Cowboy outfit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2cowboy_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2knight_outfit · Knight armour + cape (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2knight_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_t2locke_outfit · Agent Locke suit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2locke_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2mummy_outfit · Mummy wraps (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2mummy_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2quarterback_hat · Quarterback helmet (Meshy remake) (hats) | `Assets/characters/creator/wear/ewm_t2quarterback_hat.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2quarterback_outfit · Quarterback kit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2quarterback_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |

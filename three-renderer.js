@@ -64955,7 +64955,7 @@ const ThreeRenderer = (function () {
         try {
             if (typeof a.cast === 'string' && a.cast) {
                 var cd = (typeof getCastModel === 'function') ? getCastModel(a.cast) : null;
-                if (cd && cd.model) spec = { key: 'cast:' + a.cast, def: cd, look: null };
+                if (cd && cd.model) spec = { key: 'cast:' + a.cast, def: cd, look: cd.raceLook || null };   // (THE CAST LOOKS: a remade cast member is a creator rig, so she blinks)
             } else if (typeof ewCreatorLookRace === 'function' && ewCreatorLookRace(u.race) && typeof normalizeCharacterAppearance === 'function') {
                 var n = normalizeCharacterAppearance(a);
                 var def = (n && n.model !== 'original' && typeof getCharacterAppearanceModel === 'function') ? getCharacterAppearanceModel(u.race, g, a) : null;
