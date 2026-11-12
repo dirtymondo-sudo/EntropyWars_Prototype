@@ -44142,7 +44142,13 @@ const ThreeRenderer = (function () {
         if (!sc || !sc.isScene || !cam) return;
         if (_ewRigOff()) { if (sc.userData.ewRigOn) { _ewRigRelease(sc); sc.userData.ewRigOn = false; } return; }
         var R = _ewRigG || (_ewRigG = _ewRigMake());
-        if (R.group.parent !== sc) { sc.add(R.group); R.moves++; }   // the one rig moves into the scene that draws (a scene clear dropped it, or another scene had it)
+        /* THE LOST RIG (2026-11-11, mondo in Occam's Barbershop: "pitch black"): the test was the rig's parent pointer alone.
+           A room's mirror or puddles draw the scene first each frame with its children LENT to a clipping group (_hqTickReflectors),
+           so the rig arriving from another scene was pushed onto that one-render list, dropped when the real list came back, and,
+           its parent still this scene, never put back: every light of the room off the list, no lamp drawing for it. The rig
+           now has to BE in the scene's list (the lent one while it is lent), and the reflector hands back what arrived. */
+        var host = sc._ew_lentKids || sc.children;
+        if (R.group.parent !== sc || host.indexOf(R.group) < 0) { if (R.group.parent === sc) R.group.parent = null; sc.add(R.group); R.moves++; }   // the one rig moves into the scene that draws (a scene clear dropped it, or another scene had it)
         sc.userData.ewRigOn = true;
         var k, i;
         for (i = 0; i < _EW_RIG_KINDS.length; i++) R.src[_EW_RIG_KINDS[i]].length = 0;
@@ -67350,6 +67356,127 @@ const ThreeRenderer = (function () {
         });
         G.add(hull);
     }
+    /* THE SHIP'S PARTS (2026-11-11, mondo: "it still just looks like a floating rectangle ... A ship is generally more clyndrical ...
+       shape it like an actual spaceship, you are not confined to making it a rectangle"): the round pieces of a starship hull, in ROOM
+       METRES (x east, y up, z south — the bow NORTH), each list one material's geometries (_hqBuildStarship scales them onto the field
+       and merges them): `tube` THE FUSELAGE — a round hull lofted from the nose (zNose, radius rNose) through the shoulder (zShoulder,
+       radius r) to the stern face (zStern, rStern, easing in from zTail), its top cut flat `under` m below the deck (the deck plates
+       lie on the cut: `chord` = how far under the cut the axis hangs, in radii; `crown` steps the cut up over the keel), a dark hoop every `rib` m, a lit line down each flank,
+       the stern face and its `bells` [{ x, y (over the axis), r, len }] with their plumes · `nacelles` [{ x, y, z0, z1, r, pylon, len }]
+       a pod each (round nose forward, two bands, a pylon inboard; a bell and a plume aft unless `bell: false` — a gun pod) · `wings` [{ side, x0, x1 (root and
+       tip, m off the keel), y0, y1 (their tops), zf0, za0 (the root's fore and aft ends), zf1, za1 (the tip's), t0, t1 (thick),
+       fin: { h, rake, top } }] a swept panel thinning to the tip, a raked fin on it · `cannons` [{ x, y, z0, z1, r } fore-and-aft |
+       { ax: 'x', x0, x1, y, z, r } athwart] a barrel, a breech at its root, a muzzle ring · `canopies` [{ x, y, z, w, l, h }] glass
+       domes · `masts` [{ x, y, z, h }]. uvS = the sheet's repeat per metre. */
+    function _hqShipParts(hl, uvS) {
+        var out = { skin: [], trim: [], bell: [], glass: [], strip: [], glow: [], plume: [] }, deck = (hl.deck != null) ? +hl.deck : 3.2;
+        uvS = uvS || 0.15;
+        var place = function (g, x, y, z, rx, ry, rz) { g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), new THREE.Vector3(1, 1, 1))); return g; };
+        var geo = function (pos, idx, uv, flat) {
+            var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+            if (uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+            g.setIndex(idx); if (flat) g = g.toNonIndexed(); g.computeVertexNormals(); return g;
+        };
+        /* a plume: two crossed sheets astern of a bell at (x, y, z), `len` m long, the bright end at the bell */
+        var plume = function (x, y, z, r, len) {
+            out.plume.push(place(new THREE.PlaneGeometry(len, r * 2.2), x, y, z + len / 2, 0, Math.PI / 2, 0));
+            var h = new THREE.PlaneGeometry(len, r * 2.2); h.rotateX(Math.PI / 2); out.plume.push(place(h, x, y, z + len / 2, 0, Math.PI / 2, 0));
+        };
+        /* a slab between four corners [x, yTop, z, thick] (the top face 0 → 3, the same four `thick` lower under it) */
+        var slab = function (pts) {
+            var p = [], ix = [0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6], i;
+            for (i = 0; i < 4; i++) p.push(pts[i][0], pts[i][1], pts[i][2]);
+            for (i = 0; i < 4; i++) p.push(pts[i][0] + (pts[i][4] || 0), pts[i][1] - pts[i][3], pts[i][2]);
+            for (i = 0; i < 4; i++) { var j = (i + 1) % 4; ix.push(i, i + 4, j, j, i + 4, j + 4); }
+            return geo(p, ix, null, true);
+        };
+        var T = hl.tube;
+        if (T) {
+            var ch = (T.chord != null) ? +T.chord : 0.626, top = deck - ((T.under != null) ? +T.under : 0.35), N = 36, st = [], pos = [], uv = [], idx = [], z, k, i;
+            var R = function (zz) {
+                if (zz >= T.zShoulder) { var t = Math.max(0, (zz - T.zTail) / Math.max(1, T.zStern - T.zTail)); return T.r - (T.r - T.rStern) * t * t; }
+                var u = Math.min(1, (T.zShoulder - zz) / (T.zShoulder - T.zNose)); return T.rNose + (T.r - T.rNose) * Math.pow(Math.cos(u * Math.PI / 2), 0.55);
+            };
+            /* THE CROWN (`crown: { half, top, z0, z1 }`): between z0 and z1 the cut steps up `half` m either side of the keel — the flight
+               deck rides a level over the side walkways, both on the round of the hull */
+            var CR = T.crown || null, N2 = N * 2;
+            var cut = function (x, zz) { return (CR && zz >= CR.z0 - 0.01 && zz <= CR.z1 + 0.01 && Math.abs(x) <= CR.half) ? CR.top : top; };
+            var ring = function (zz, pad, cb) { var r = R(zz) + pad, yc = top - ch * R(zz); for (var q = 0; q <= N2; q++) { var a = (q / N2) * Math.PI * 2, x = r * Math.sin(a); cb(x, Math.min(cut(x, zz) + pad * 0.2, yc + r * Math.cos(a)), q, r); } };
+            for (z = T.zNose; z < T.zStern - 0.01; z += 1.75) st.push(z); st.push(T.zStern);
+            st.forEach(function (zz, kk) {
+                ring(zz, 0, function (x, y, q, r) { pos.push(x, y, zz); uv.push(q / N2 * 2 * Math.PI * r * uvS, zz * uvS); });
+                if (kk) for (i = 0; i < N2; i++) { var a = (kk - 1) * (N2 + 1) + i, b = a + 1, c = a + N2 + 1, d = c + 1; idx.push(a, c, b, b, c, d); }
+            });
+            out.skin.push(geo(pos, idx, uv));
+            /* the nose cap */
+            var np = [0, top - ch * R(T.zNose), T.zNose], ni = []; ring(T.zNose, 0, function (x, y) { np.push(x, y, T.zNose); }); for (i = 1; i <= N2; i++) ni.push(0, i + 1, i); out.trim.push(geo(np, ni));
+            /* the hoops */
+            for (z = T.zShoulder + 3.5; z < T.zStern - 1; z += (+T.rib || 7)) {
+                var hp = [], hi = [];
+                ring(z, 0.12, function (x, y) { hp.push(x, y, z - 0.35, x, y, z + 0.35); });
+                for (i = 0; i < N2; i++) { k = i * 2; hi.push(k, k + 1, k + 2, k + 1, k + 3, k + 2); }
+                out.trim.push(geo(hp, hi));
+            }
+            /* the lit lines down each flank */
+            [-1, 1].forEach(function (s) { [0.42, 0.62].forEach(function (f) { var a = Math.PI * f, r = T.r + 0.1, yc = top - ch * T.r; out.strip.push(place(new THREE.BoxGeometry(0.1, 0.16, T.zTail - T.zShoulder - 2), s * r * Math.sin(a), yc + r * Math.cos(a), (T.zTail + T.zShoulder) / 2)); }); });
+            /* the stern face, its bells, their plumes */
+            var rs = R(T.zStern), ycs = top - ch * rs, sp = [0, ycs, T.zStern], si = []; ring(T.zStern, 0, function (x, y) { sp.push(x, y, T.zStern); }); for (i = 1; i <= N2; i++) si.push(0, i, i + 1); out.trim.push(geo(sp, si));
+            (T.bells || []).forEach(function (b) {
+                var y = ycs + (+b.y || 0), br = +b.r || 2.5;
+                out.bell.push(place(new THREE.CylinderGeometry(br * 0.7, br, 3.2, 20, 1, true), b.x, y, T.zStern + 1.6, Math.PI / 2, 0, 0));
+                out.trim.push(place(new THREE.CylinderGeometry(br * 0.74, br * 0.74, 0.5, 20), b.x, y, T.zStern + 0.2, Math.PI / 2, 0, 0));
+                out.glow.push(place(new THREE.CircleGeometry(br * 0.66, 20), b.x, y, T.zStern + 0.55, 0, 0, 0));
+                out.glow.push(place(new THREE.CircleGeometry(br * 0.4, 16), b.x, y, T.zStern + 0.6, 0, 0, 0));
+                plume(b.x, y, T.zStern + 2.6, br * 0.9, +b.len || 18);
+            });
+        }
+        (hl.nacelles || []).forEach(function (n) {
+            var L = n.z1 - n.z0, zm = (n.z0 + n.z1) / 2, r = +n.r || 3, s = n.x < 0 ? -1 : 1, py = (+n.pylon || 2);
+            out.skin.push(place(new THREE.CylinderGeometry(r, r, L, 20, 1, true), n.x, n.y, zm, Math.PI / 2, 0, 0));
+            out.skin.push(place(new THREE.SphereGeometry(r, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), n.x, n.y, n.z0, -Math.PI / 2, 0, 0));   // the round nose
+            if (n.bell === false) { out.trim.push(place(new THREE.CircleGeometry(r, 20), n.x, n.y, n.z1, 0, 0, 0)); out.trim.push(place(new THREE.BoxGeometry(py + 1.2, 1.1, L * 0.5), n.x - s * (r + py / 2 - 0.3), n.y + 0.4, zm)); return; }   // a gun pod: no engine
+            [0.25, 0.62].forEach(function (f) { out.trim.push(place(new THREE.CylinderGeometry(r + 0.14, r + 0.14, 0.7, 20, 1, true), n.x, n.y, n.z0 + L * f, Math.PI / 2, 0, 0)); });
+            out.bell.push(place(new THREE.CylinderGeometry(r * 0.72, r * 1.05, 2.6, 20, 1, true), n.x, n.y, n.z1 + 1.3, Math.PI / 2, 0, 0));
+            out.trim.push(place(new THREE.CircleGeometry(r, 20), n.x, n.y, n.z1, 0, 0, 0));
+            out.glow.push(place(new THREE.CircleGeometry(r * 0.68, 20), n.x, n.y, n.z1 + 0.5, 0, 0, 0));
+            plume(n.x, n.y, n.z1 + 2.4, r * 0.9, +n.len || 14);
+            out.trim.push(place(new THREE.BoxGeometry(py + 1.2, 1.1, L * 0.5), n.x - s * (r + py / 2 - 0.3), n.y + 0.4, zm));   // the pylon inboard
+            out.strip.push(place(new THREE.BoxGeometry(0.1, 0.14, L * 0.8), n.x, n.y + r + 0.05, zm));
+        });
+        (hl.wings || []).forEach(function (w) {
+            var s = w.side < 0 ? -1 : 1;
+            out.skin.push(slab([[s * w.x0, w.y0, w.zf0, w.t0], [s * w.x0, w.y0, w.za0, w.t0], [s * w.x1, w.y1, w.za1, w.t1], [s * w.x1, w.y1, w.zf1, w.t1]]));
+            out.strip.push(place(new THREE.BoxGeometry(0.12, 0.12, w.za1 - w.zf1), s * (w.x1 + 0.05), w.y1 - w.t1 / 2, (w.za1 + w.zf1) / 2));
+            if (w.fin) {
+                var f = w.fin, x = s * (w.x1 - 0.5), yb = w.y1 - 0.2, yt = w.y1 + f.h, zt = w.za1 + f.rake;
+                out.skin.push(slab([[x, yb, w.zf1 + 0.5, 0, 0.5], [x, yb, w.za1, 0, 0.5], [x, yt, zt, 0, 0.5], [x, yt, zt - f.top, 0, 0.5]]));
+                out.strip.push(place(new THREE.BoxGeometry(0.6, 0.14, f.top), x + 0.25, yt + 0.05, zt - f.top / 2));
+            }
+        });
+        (hl.cannons || []).forEach(function (c) {
+            var r = +c.r || 0.4;
+            if (c.ax === 'x') {
+                var Lx = Math.abs(c.x1 - c.x0), d = c.x1 < c.x0 ? 1 : -1;
+                out.bell.push(place(new THREE.CylinderGeometry(r, r * 1.2, Lx, 12), (c.x0 + c.x1) / 2, c.y, c.z, 0, 0, d * Math.PI / 2));
+                out.trim.push(place(new THREE.CylinderGeometry(r * 1.6, r * 1.6, 0.8, 12), c.x1, c.y, c.z, 0, 0, Math.PI / 2));
+                out.trim.push(place(new THREE.BoxGeometry(1.6, r * 2 + 0.9, r * 2 + 0.9), c.x0, c.y, c.z));
+                return;
+            }
+            var L = Math.abs(c.z1 - c.z0);
+            out.bell.push(place(new THREE.CylinderGeometry(r, r * 1.2, L, 12), c.x, c.y, (c.z0 + c.z1) / 2, c.z1 < c.z0 ? -Math.PI / 2 : Math.PI / 2, 0, 0));
+            out.trim.push(place(new THREE.CylinderGeometry(r * 1.6, r * 1.6, 0.8, 12), c.x, c.y, c.z1, Math.PI / 2, 0, 0));
+            out.trim.push(place(new THREE.BoxGeometry(r * 2 + 0.9, r * 2 + 0.9, 2.2), c.x, c.y, c.z0));
+        });
+        (hl.canopies || []).forEach(function (cn) {
+            var g = new THREE.SphereGeometry(1, 24, 10, 0, Math.PI * 2, 0, Math.PI / 2); g.scale(cn.w / 2, cn.h, cn.l / 2); out.glass.push(place(g, cn.x, cn.y, cn.z));
+            var rim = new THREE.TorusGeometry(1, 0.05, 6, 40); rim.rotateX(Math.PI / 2); rim.scale(cn.w / 2, 1, cn.l / 2); out.strip.push(place(rim, cn.x, cn.y + 0.05, cn.z));
+        });
+        (hl.masts || []).forEach(function (m) {
+            out.trim.push(place(new THREE.CylinderGeometry(0.12, 0.3, m.h, 8), m.x, m.y + m.h / 2, m.z));
+            out.trim.push(place(new THREE.BoxGeometry(2.4, 0.12, 0.12), m.x, m.y + m.h * 0.7, m.z));
+        });
+        return out;
+    }
     /* THE STARSHIP (2026-10-28, mondo: "it just looks like a big slab slapped on top of a spaceship ... why not give the spaceship
        wings"): a FLOATING void room whose `terrain.float.hull.kind` is 'starship' (THE SPACESHIP's deck, data.js
        HQ_AREA_SPECS.prebuilt_derelict — the deck IS the ship, drawn on its squares over the void) hangs the ship under its OWN OUTLINE:
@@ -67539,6 +67666,14 @@ const ThreeRenderer = (function () {
                 trim.push(place(new THREE.CylinderGeometry(r * 1.5 * U, r * 1.5 * U, 0.6 * U, 10), b1[0] * U, Y(yG), b1[1] * U, rx, 0, rz));
             });
         });
+        /* ── THE SHIP'S PARTS (2026-11-11): the round fuselage, the nacelles, the wings and their fins, the cannons, the canopies, the
+           masts (_hqShipParts, room metres → the field's px) ── */
+        if (hl.tube || hl.nacelles || hl.wings || hl.cannons || hl.canopies || hl.masts) {
+            var SP = _hqShipParts(hl, U / TM), SM = new THREE.Matrix4().makeScale(U, U, U).setPosition(0, 0.3, 0);
+            [['skin', skin], ['trim', trim], ['bell', bells], ['glass', glass], ['strip', strips], ['glow', discs], ['plume', plumes]].forEach(function (pr) {
+                SP[pr[0]].forEach(function (g) { g.applyMatrix4(SM); pr[1].push(g); });
+            });
+        }
         if (skin.length) add(_hqHullMerge(skin), skinMat);
         if (trim.length) add(_hqHullMerge(trim), trimMat);
         if (bells.length) add(_hqHullMerge(bells), bellMat);
@@ -84149,14 +84284,19 @@ const ThreeRenderer = (function () {
             var CG = (renderer.isWebGPURenderer && typeof window !== 'undefined' && window.THREE_GPU && window.THREE_GPU.ClippingGroup) ? (r.cg || (r.cg = new window.THREE_GPU.ClippingGroup())) : null, kids = null;
             try {
                 var cp = r.cp.copy(r.plane); cp.constant -= 0.02 * _hqUnits();
-                if (CG) { CG.clippingPlanes = [cp]; kids = H.scene.children; CG.children = kids; CG.parent = H.scene; H.scene.children = [CG]; }
+                if (CG) { CG.clippingPlanes = [cp]; kids = H.scene.children; CG.children = kids; CG.parent = H.scene; H.scene.children = [CG]; H.scene._ew_lentKids = kids; }
                 else renderer.clippingPlanes = [cp];
                 if (renderer.shadowMap) renderer.shadowMap.needsUpdate = false;
                 renderer.setRenderTarget(r.rt); renderer.autoClear = true; renderer.clear();
                 renderer.render(H.scene, mc); r.drawn++;
             } catch (e) { r.mats.forEach(function (m) { m.uniforms.uGain.value = 0; }); }
             finally {
-                if (kids) { H.scene.children = kids; CG.children = []; CG.parent = null; }
+                if (kids) {
+                    /* THE LOST RIG: whatever joined the scene during the mirrored draw (the light rig moving in) joins the real list */
+                    var lent = H.scene.children;
+                    for (var li = 0; li < lent.length; li++) { if (lent[li] !== CG && kids.indexOf(lent[li]) < 0) kids.push(lent[li]); }
+                    H.scene.children = kids; H.scene._ew_lentKids = null; CG.children = []; CG.parent = null;
+                }
                 r.targets.forEach(function (t) { t.visible = (t._ew_reflHide !== false); });
                 if (!CG) renderer.clippingPlanes = prevClip;
                 renderer.setRenderTarget(prevT); renderer.autoClear = prevAuto;
