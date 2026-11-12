@@ -18219,7 +18219,10 @@
             el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · FILED') + '</span></div>'
                 + '<div class="tut-coach-stamp">LESSON COMPLETE</div>'
                 + '<div class="tut-coach-body">A portal is forming on the pad.</div>' + _tutQuestLine(qres);
-            const here = !!(F.portal && L.map === F.site);
+            /* THE CUTSCENES: a fight that opens on a scene forms its portal THERE; the tape just cuts to black and into it */
+            const scened = !!(F.scene && !window.EW_NO_CUTSCENES && window.EWScene && typeof window.storyCutscene === 'function' && window.storyCutscene(F.scene));
+            if (scened) { const b = el.querySelector('.tut-coach-body'); if (b) b.textContent = ''; }
+            const here = !scened && !!(F.portal && L.map === F.site);
             if (here) {
                 setTimeout(() => {
                     if (!_tut.active) return;
@@ -18238,7 +18241,7 @@
                 try {
                     cover = document.createElement('div'); cover.id = 'questCover';
                     cover.style.cssText = 'position:fixed;inset:0;z-index:99990;background:#050508;display:flex;align-items:center;justify-content:center;opacity:1;transition:opacity 0.4s ease;pointer-events:none;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:0.3em;color:#b8a060;';
-                    cover.textContent = 'A PORTAL FORMS';
+                    cover.textContent = scened ? '' : 'A PORTAL FORMS';
                     document.body.appendChild(cover);
                     setTimeout(() => lift(false), 20000);
                 } catch (e) { cover = null; }
@@ -18247,7 +18250,7 @@
                     let ok = false;
                     try { ok = !!window._questFightGo(fightId); } catch (e) { console.error('[QUEST] the fight did not start', e); ok = false; }
                     if (!ok) { lift(true); if (typeof window._hqReturnOrMenu === 'function') window._hqReturnOrMenu(); return; }
-                    coverPoll = setInterval(() => { if (state.phase === 'battle' && state.round >= 1 && state._blitzActiveUnitId) lift(false); }, 120);
+                    coverPoll = setInterval(() => { if ((state.phase === 'battle' && state.round >= 1 && state._blitzActiveUnitId) || (window.EWScene && window.EWScene.on)) lift(false); }, 120);
                 });
             }, here ? 3600 : 1200);
             return true;

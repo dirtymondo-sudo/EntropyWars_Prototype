@@ -9937,7 +9937,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         function loop() {
             if (entry.done) return false;
-            var el = performance.now() - t0;
+            var el = performance.now() - t0 + (entry.skip || 0);   // entry.skip (ms) = a caller ran the effect forward (THE CUTSCENES shut the portal on the cut)
             if (el >= totalMs) { finish(); return false; }
             try { tick(el); } catch (e) {
                 /* don't die silently — a sig effect vanishing one frame in is
@@ -63429,6 +63429,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE QUESTS (2026-11-12): a quest's portal is the Department's own door (the agent's recipe: rises, opens with the
            light, holds, shuts, fades). o = _sigDoorPortal3D's options. The look only. */
         questPortal: function (tx, ty, o) { try { return _sigDoorPortal3D(tx, ty, o || {}); } catch (e) { return null; } },
+        /* THE CUTSCENES (2026-11-12): where a square stands in the board's world ({ x, y, z, ts }) for the director's camera */
+        tileWorld: function (tx, ty) { try { return _worldPos(tx, ty); } catch (e) { return null; } },
 
         /* Action tile glow for non-spell hits (attacks, items, detonations).
            Relayed host→guest by online.js's sibling wrapper (_VFXX_ANCHORS). */

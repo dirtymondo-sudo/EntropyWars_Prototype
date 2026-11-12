@@ -26652,6 +26652,9 @@ const ThreeRenderer = (function () {
                (the door's plate names it); it comes back the frame the door breaks */
             if (unit.status && unit.status.captured > 0) { entry.group.visible = false; entry._ew_heldHid = true; return; }
             if (entry._ew_heldHid) { entry._ew_heldHid = false; entry.group.visible = true; }
+            /* 🎬 THE CUTSCENES (2026-11-12, map.js THE CUTSCENES): a body the scene has not brought on yet (window._ewSceneHid: unit id -> true) is not drawn */
+            if (window._ewSceneHid && window._ewSceneHid[unit.id]) { entry.group.visible = false; entry._ew_sceneHid = true; return; }
+            if (entry._ew_sceneHid) { entry._ew_sceneHid = false; entry.group.visible = true; }
             /* 🌑 THE SHADOW REALM: not on this turn's plane = not drawn, own units included */
             if (_realmOutOfView(unit)) { entry.group.visible = false; entry._ew_realmHid = true; return; }
             if (entry._ew_realmHid) { entry._ew_realmHid = false; entry.group.visible = true; }
@@ -30515,7 +30518,10 @@ const ThreeRenderer = (function () {
         for (var r = 0; r < toRemove.length; r++) _displaceTweens.delete(toRemove[r]);
         if (toRemove.length) _shadowsDirty = true;   // THE STATIC SHADOW: a landing refreshes the field's depth pass
     }
-
+    /* THE CUTSCENES (three-camera.js EWScene): a scene that ends mid-leap (the ambush's pounce, a skip) drops the leap and
+       the slow motion, so the cut lands on every body standing on its own square at real speed */
+    function cancelJumpTween(uid) { _jumpTweens.delete(uid); _knockRecs.delete(uid); }
+    function clearTimeWarp() { _warpScale = 1; _warpEndsAt = 0; }
     function startJumpTween(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var dist = Math.abs(toX - fromX) + Math.abs(toY - fromY);
@@ -93045,7 +93051,7 @@ const ThreeRenderer = (function () {
 
         startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startClipTravelTween, castTravels, startThrowArcTween, startDeathTween,
         startCarryHoldTween, endCarryHold, hasCarryHold,
-        setTimeWarp,
+        setTimeWarp, cancelJumpTween, clearTimeWarp,
         hitBlink,
         hitSide,
         /* THE STRIKE FRAME (2026-09-09): played-ms into the clip the unit's

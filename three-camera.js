@@ -2197,7 +2197,7 @@ var EWCine = (function () {
             var sibs = e.parentElement.children;
             for (var i = 0; i < sibs.length; i++) {
                 var s = sibs[i];
-                if (s === e || s === C.panel || s.id === 'ewCineToast' || s.id === 'ewCineRec' || s.id === 'ewCineHint' || s.tagName === 'SCRIPT' || s.tagName === 'STYLE' || s.tagName === 'LINK') continue;
+                if (s === e || s === C.panel || s.id === 'ewScene' || s.id === 'ewCineToast' || s.id === 'ewCineRec' || s.id === 'ewCineHint' || s.tagName === 'SCRIPT' || s.tagName === 'STYLE' || s.tagName === 'LINK') continue;
                 C.hidden.push([s, s.style.opacity, s.style.pointerEvents]);
                 s.style.opacity = '0'; s.style.pointerEvents = 'none';
             }
@@ -2215,9 +2215,13 @@ var EWCine = (function () {
         if (C.on) return true;
         if (!opts.force && !available()) return false;
         C.on = true; C.inited = false; C.vel = { x: 0, y: 0, z: 0 }; C.keys = {}; C.play = null;
-        panelBuild(); hudHide();
+        /* THE SCRIPTED EYE (2026-11-12, the story's cutscenes: EWScene below): `script` = a director drives the eye
+           with pose(); no panel, no captured mouse, no keys of its own (the director owns skip), nothing kept or recorded */
+        C.script = !!opts.script; C.pose = null;
+        if (!C.script) panelBuild();
+        hudHide();
         document.body.classList.add('ew-cine');
-        lockSet(true);
+        if (!C.script) lockSet(true);
         panelSync();
         return true;
     }
@@ -2225,7 +2229,8 @@ var EWCine = (function () {
         if (!C.on) return;
         if (C.rec) recStop();
         C.on = false; C.play = null; C.keys = {};
-        lockSet(false);
+        if (!C.script) lockSet(false);
+        C.script = false; C.pose = null;
         hudShow();
         document.body.classList.remove('ew-cine');
         var cam = C.cam;
@@ -2263,7 +2268,8 @@ var EWCine = (function () {
             C.cam = cam; C.inited = true;
             if (C.panel && C.panel._sync) C.panel._sync();
         }
-        if (C.play) playTick(now);
+        if (C.script) { var P = C.pose; if (P) { C.x = P.x; C.y = P.y; C.z = P.z; C.yaw = C.tYaw = P.yaw; C.pitch = C.tPitch = P.pitch; C.fov = C.tFov = P.fov; } }
+        else if (C.play) playTick(now);
         else flyTick(dt);
         cam.position.set(C.x, C.y, C.z);
         cam.rotation.order = 'YXZ'; cam.rotation.set(C.pitch, C.yaw, 0);
@@ -2437,6 +2443,7 @@ var EWCine = (function () {
     function inPanel(t) { return !!(t && t.closest && t.closest('#ewCinePanel')); }
     function typing(t) { return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)); }
     function onKeyDown(e) {
+        if (C.on && C.script) return;   // THE SCRIPTED EYE: the director's own keys
         if (e.key === 'F8' && !e.ctrlKey && !e.metaKey && !e.altKey) {
             if (C.on) exit(); else if (!enter()) return;
             e.preventDefault(); e.stopImmediatePropagation(); return;
@@ -2462,13 +2469,13 @@ var EWCine = (function () {
         if (k === 'enter') { play(null, {}); return; }
     }
     function onKeyUp(e) {
-        if (!C.on) return;
+        if (!C.on || C.script) return;
         var k = (e.key || '').toLowerCase();
         C.keys[k] = false; if (k === 'shift') C.keys.shift = false;
         if (!typing(e.target)) e.stopImmediatePropagation();
     }
     function onMouse(e) {
-        if (!C.on || inPanel(e.target)) return;
+        if (!C.on || C.script || inPanel(e.target)) return;
         if (e.type === 'mousemove' || e.type === 'pointermove') {
             if (e.type === 'mousemove' && locked() && !C.play) {
                 var s = 0.0022 * (C.fov / 50);
@@ -2484,7 +2491,7 @@ var EWCine = (function () {
         if (e.cancelable) e.preventDefault();
     }
     function onLockChange() {
-        if (!C.on) return;
+        if (!C.on || C.script) return;
         var was = C.look;
         C.look = locked();
         if (was && !C.look) { C.freedAt = performance.now(); C.keys = {}; }
@@ -2501,6 +2508,11 @@ var EWCine = (function () {
         get on() { return C.on; },
         get playing() { return !!C.play; },
         get recording() { return !!C.rec; },
+        get script() { return !!(C.on && C.script); },
+        get unit() { return C.unit; },
+        /* THE SCRIPTED EYE: where the eye stands this frame, in WORLD units ({ x, y, z, yaw, pitch, fov }) */
+        pose: function (p) { if (C.on && C.script && p) C.pose = { x: +p.x || 0, y: +p.y || 0, z: +p.z || 0, yaw: +p.yaw || 0, pitch: +p.pitch || 0, fov: +p.fov || 45 }; },
+        eye: function () { return { x: C.x, y: C.y, z: C.z, yaw: C.yaw, pitch: C.pitch, fov: C.fov, inited: !!C.inited }; },
         available: available,
         enter: enter, exit: exit,
         frame: frame, after: after,
@@ -2512,6 +2524,155 @@ var EWCine = (function () {
     };
 })();
 if (typeof window !== 'undefined') window.EWCine = EWCine;
+
+/* ══ THE CUTSCENES (2026-11-12, mondo: "cinematic, think like a director in terms of shots, framing, composition, using the
+   camera as a character, slow zoom ins, pans, dolleys ... should include subtitles, no voice audio yet").
+   EWScene plays one data row (data.js STORY_CUTSCENES) on whatever the shared canvas is drawing, with THE SCRIPTED EYE
+   (EWCine script mode). A row is a list of BEATS; a beat is ONE SHOT:
+     { dur, shot: { look, h, az, el, dist, fov, track, to: { ...the same, where the move ends } }, say: { who, text },
+       act: [{ at, do, ... }], slow: { scale, at, ms } }
+   THE SHOT is written against SUBJECTS, never against world numbers, so the same row fits any party and any room:
+     look = a ref the host resolves ('unit:<role>', 'tile:x,y', { mid: [ref, ref] }); h = how high on the subject the eye aims;
+     az = where the eye stands round it in degrees (0 = south of it looking north, 90 = east of it, 180 = north, 270 = west);
+     el = degrees above level; dist = how far back; fov = the lens. h and dist are in the host's units (a board square).
+     from = a second subject: az then counts from the line subject -> that subject, so "from the party's side" or "over her
+     shoulder" (`over` = how far behind that subject the eye stands) holds wherever the board put them.
+   THE GRAMMAR (the spell camera's, approved 2026-11-10): a beat OPENS WITH A CUT; a move changes one thing (`to` names
+   only what moves) and eases over the whole beat; nothing cuts away under a second.
+   THE HOST (ctx) is the scene's hands: point(ref) -> { x, y, z } in world units, unit = world units per square,
+   act(a) performs one action, slow(scale, ms), finish(skipped) leaves every body where the scene ends (a skipped scene
+   lands exactly where a watched one does).
+   THE WORDS: bottom centre, the speaker over the line, black with a white outline, two lines at most; a line holds for its
+   reading time and a click / SPACE / ENTER moves on sooner. HOLD ESC skips the scene. Viewer-local: nothing on `state`,
+   nothing relayed (story mode is VS-CPU; RULE #2 has nothing to mirror). Kill switch: window.EW_NO_CUTSCENES. ══ */
+var EWScene = (function () {
+    'use strict';
+    if (typeof window === 'undefined') return null;
+    var S = null;   // the scene that is playing
+    var READ_S = 0.06, READ_MIN = 1.6, READ_PAD = 0.9, HURRY_MIN = 0.35, SKIP_HOLD_MS = 900;
+    function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+    function readS(text) { return Math.max(READ_MIN, String(text || '').length * READ_S + READ_PAD); }
+    function beatDur(b) { if (b.dur > 0) return +b.dur; return b.say ? readS(b.say.text) : 2.5; }
+    function ease(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function resolve(ctx, ref) {
+        if (ref && typeof ref === 'object' && Array.isArray(ref.mid)) {
+            var n = 0, o = { x: 0, y: 0, z: 0 };
+            ref.mid.forEach(function (r) { var p = resolve(ctx, r); if (p) { o.x += p.x; o.y += p.y; o.z += p.z; n++; } });
+            return n ? { x: o.x / n, y: o.y / n, z: o.z / n } : null;
+        }
+        try { return ctx.point(ref) || null; } catch (e) { return null; }
+    }
+    /* one end of a shot -> the eye's pose in world units */
+    function poseOf(ctx, sh, P) {
+        var u = ctx.unit || 1;
+        var T = { x: P.x, y: P.y + (sh.h || 0) * u, z: P.z };
+        var az = (sh.az || 0) * Math.PI / 180, el = (sh.el || 0) * Math.PI / 180, d = (sh.dist || 3) * u;
+        /* `from` = another subject: az counts from the line subject -> that subject (0 = the eye on its side, looking back
+           past it at the subject); `over` puts the eye that far BEHIND it (the over-the-shoulder), else `dist` stands */
+        if (sh._F) { var fx = sh._F.x - P.x, fz = sh._F.z - P.z; if (fx || fz) { az += Math.atan2(fx, fz); if (sh.over != null) d = Math.hypot(fx, fz) + sh.over * u; } }
+        var ex = T.x + d * Math.sin(az) * Math.cos(el), ey = T.y + d * Math.sin(el), ez = T.z + d * Math.cos(az) * Math.cos(el);
+        var dx = T.x - ex, dy = T.y - ey, dz = T.z - ez;
+        return { x: ex, y: ey, z: ez, yaw: Math.atan2(-dx, -dz), pitch: Math.atan2(dy, Math.hypot(dx, dz)), fov: sh.fov || 40 };
+    }
+    function mount() {
+        var el = document.getElementById('ewScene');
+        if (!el) { el = document.createElement('div'); el.id = 'ewScene'; document.body.appendChild(el); }
+        el.innerHTML = '<div class="ew-scene-bar top"></div><div class="ew-scene-bar bot"></div>'
+            + '<div class="ew-scene-sub" id="ewSceneSub"><span class="ew-scene-who" id="ewSceneWho"></span><span class="ew-scene-line" id="ewSceneLine"></span></div>'
+            + '<div class="ew-scene-skip" id="ewSceneSkip"><i id="ewSceneSkipFill"></i><span>HOLD ESC TO SKIP</span></div>'
+            + '<div class="ew-scene-fade" id="ewSceneFade"></div>';
+        void el.offsetWidth; el.classList.add('on');
+        return el;
+    }
+    function sayShow(say) {
+        var box = document.getElementById('ewSceneSub'); if (!box) return;
+        if (!say || !say.text) { box.classList.remove('on'); return; }
+        document.getElementById('ewSceneWho').textContent = say.who || '';
+        document.getElementById('ewSceneLine').textContent = say.text;
+        box.classList.add('on');
+    }
+    function beatStart(i) {
+        var b = S.row.beats[i]; S.i = i; S.t0 = S.now; S.dur = beatDur(b); S.fired = {}; S.slowed = false;
+        var sh = b.shot || S.lastShot || { look: null };
+        S.lastShot = sh;
+        S.sh = sh; S.to = sh.to ? Object.assign({}, sh, sh.to, { to: null }) : null;
+        sh._F = sh.from != null ? resolve(S.ctx, sh.from) : null; if (S.to) S.to._F = sh._F;
+        S.P0 = sh.look != null ? resolve(S.ctx, sh.look) : null;
+        S.P1 = (S.to && S.to.look != null) ? resolve(S.ctx, S.to.look) : S.P0;
+        sayShow(b.say);
+        try { if (S.ctx.beat) S.ctx.beat(b, i); } catch (e) {}
+    }
+    function tick() {
+        if (!S) return;
+        S.raf = window.requestAnimationFrame(tick);
+        S.now = performance.now();
+        var b = S.row.beats[S.i], T = (S.now - S.t0) / 1000;
+        /* the actions and the slow motion of this beat, each once */
+        (b.act || []).forEach(function (a, k) { if (!S.fired[k] && T >= (a.at || 0)) { S.fired[k] = true; try { S.ctx.act(a); } catch (e) { console.warn('[SCENE] action failed', a && a.do, e); } } });
+        if (b.slow && !S.slowed && T >= (b.slow.at || 0)) { S.slowed = true; try { if (S.ctx.slow) S.ctx.slow(b.slow.scale || 0.25, b.slow.ms || 1200); } catch (e) {} }
+        /* the eye */
+        var sh = S.sh, k = ease(T / Math.max(0.01, S.dur));
+        var P = S.P0;
+        if (sh && sh.track && sh.look != null) { var p2 = resolve(S.ctx, sh.look); if (p2) P = S.P0 = p2; }
+        if (P && window.EWCine && window.EWCine.script) {
+            var a0 = poseOf(S.ctx, sh, P), pose = a0;
+            if (S.to) {
+                var mixed = { _F: sh._F, over: (sh.over != null) ? lerp(sh.over, (S.to.over != null) ? S.to.over : sh.over, k) : null, h: lerp(sh.h || 0, S.to.h || 0, k), az: lerp(sh.az || 0, S.to.az || 0, k), el: lerp(sh.el || 0, S.to.el || 0, k), dist: lerp(sh.dist || 3, S.to.dist || 3, k), fov: lerp(sh.fov || 40, S.to.fov || 40, k) };
+                var Pm = S.P1 ? { x: lerp(P.x, S.P1.x, k), y: lerp(P.y, S.P1.y, k), z: lerp(P.z, S.P1.z, k) } : P;
+                pose = poseOf(S.ctx, mixed, Pm);
+            }
+            window.EWCine.pose(pose);
+        }
+        /* the skip */
+        if (S.skipAt) { var f = Math.min(1, (S.now - S.skipAt) / SKIP_HOLD_MS); var fill = document.getElementById('ewSceneSkipFill'); if (fill) fill.style.width = (f * 100) + '%'; if (f >= 1) { end(true); return; } }
+        if (T >= S.dur) { if (S.i + 1 < S.row.beats.length) beatStart(S.i + 1); else end(false); }
+    }
+    function hurry() { if (!S) return; if ((S.now - S.t0) / 1000 < HURRY_MIN) return; var b = S.row.beats[S.i]; if (b.hold) return; S.dur = Math.min(S.dur, (S.now - S.t0) / 1000); }
+    function onKey(e) {
+        if (!S) return;
+        var k = (e.key || '').toLowerCase();
+        if (e.ctrlKey || e.metaKey || /^f\d+$/.test(k)) return;
+        e.stopImmediatePropagation(); e.preventDefault();
+        if (e.type === 'keydown') {
+            if (k === 'escape') { if (!S.skipAt) { S.skipAt = performance.now(); var sk = document.getElementById('ewSceneSkip'); if (sk) sk.classList.add('on'); } return; }
+            if (!e.repeat && (k === ' ' || k === 'enter')) hurry();
+        } else if (k === 'escape') { S.skipAt = 0; var s2 = document.getElementById('ewSceneSkip'); if (s2) s2.classList.remove('on'); var fl = document.getElementById('ewSceneSkipFill'); if (fl) fl.style.width = '0'; }
+    }
+    function onClick(e) { if (!S) return; e.stopImmediatePropagation(); if (e.cancelable) e.preventDefault(); if (e.type === 'mousedown' && e.button === 0) hurry(); }
+    function end(skipped) {
+        var s = S; if (!s) return; S = null;
+        if (s.raf) window.cancelAnimationFrame(s.raf);
+        try { if (s.ctx.finish) s.ctx.finish(!!skipped); } catch (e) { console.warn('[SCENE] finish failed', e); }
+        try { if (window.EWCine && window.EWCine.script) window.EWCine.exit(); } catch (e) {}
+        var el = document.getElementById('ewScene');
+        if (el) { el.classList.remove('on'); setTimeout(function () { if (!S && el.parentNode) el.parentNode.removeChild(el); }, 520); }
+        document.body.classList.remove('ew-scene');
+        try { if (s.onEnd) s.onEnd(!!skipped); } catch (e) { console.error('[SCENE] onEnd failed', e); }
+    }
+    function play(row, ctx, onEnd) {
+        if (S) return false;
+        if (window.EW_NO_CUTSCENES || !row || !Array.isArray(row.beats) || !row.beats.length || !ctx || !window.EWCine) return false;
+        if (!window.EWCine.enter({ force: true, script: true })) return false;
+        mount();
+        document.body.classList.add('ew-scene');
+        S = { row: row, ctx: ctx, onEnd: onEnd || null, i: 0, now: performance.now(), t0: 0, dur: 1, fired: {}, skipAt: 0, raf: 0, lastShot: null };
+        beatStart(0);
+        S.raf = window.requestAnimationFrame(tick);
+        return true;
+    }
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('keyup', onKey, true);
+    ['mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu', 'pointerdown', 'pointerup'].forEach(function (t) { window.addEventListener(t, onClick, true); });
+    return {
+        play: play,
+        stop: function () { end(true); },
+        next: function () { if (!S) return; S.now = performance.now(); if (S.i + 1 < S.row.beats.length) beatStart(S.i + 1); else end(false); },   // dev: step a beat
+        get on() { return !!S; },
+        state: function () { return S ? { id: S.row.id || '', beat: S.i, of: S.row.beats.length, t: (performance.now() - S.t0) / 1000, dur: S.dur } : null; }
+    };
+})();
+if (typeof window !== 'undefined') window.EWScene = EWScene;
 
 /* ══ THE SHOT RECORDER (2026-10-18, mondo: "a tool that snapshots/records the current camera orientation for clicking on a
    unit and facing towards them. basically i want to frame the shot myself for different scenarios like being in the air
