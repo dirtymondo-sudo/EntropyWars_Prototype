@@ -64613,7 +64613,7 @@ const ThreeRenderer = (function () {
        Off: window.EW_NO_MODEL_PORTRAITS = true. */
     var PT_PX = 128, PT_FOV = 20, PT_FRAME = 0.22, PT_YAW = 0.36, PT_POLAR = -0.04, PT_PITCH = 0.8, PT_FWD = 0.028, PT_SETTLE = 8, PT_WAIT = 90000;
     var PT_BAKE_EXPO = 0.62;   // a Meshy bake (its own glow under the studio's lights) washes out at the creator bodies' exposure: a paler face lost its eyes and mouth
-    var PT_BUST = { w: 256, h: 320, frame: 0.44, drop: 0.05, bg: 0x2a2620 };   // the ID card's photo: the head's middle sits 5 % of the height above the frame's middle
+    var PT_BUST = { w: 256, h: 320, frame: 0.36, drop: 0.035, bg: 0x2a2620 };   // the ID card's photo: the head's middle sits 3.5 % of the height above the frame's middle
     var _pt = null, _ptV = null, _ptQ = null, _ptUrls = {}, _ptFail = {}, _ptSpecs = (typeof WeakMap === 'function') ? new WeakMap() : null, _ptIdleT = 0;
     function _ptOff() {
         return typeof window === 'undefined' || !!window.EW_NO_MODEL_PORTRAITS || !!window.EW_DISABLE_3D_UNITS
@@ -64772,7 +64772,7 @@ const ThreeRenderer = (function () {
         P.busy = S;
         var def = S.def;
         var fail = function () { if (S.dead) return; _ptFail[S.key] = Date.now(); _ptDrop(S); _ptPump(); };
-        S.timer = setTimeout(function () { S.timer = 0; if (S.dead || S.ready) return; if (S.built) _ptSettle(S); else fail(); }, PT_WAIT);   // a look that never finishes dressing is photographed as it stands; a body that never loads keeps the sprite's face (asked again a minute later)
+        S.timer = setTimeout(function () { S.timer = 0; if (S.dead || S.ready) return; fail(); }, PT_WAIT);   // a body that never loads or a look that never finishes dressing keeps the sprite's face (asked again a minute later), never a half-dressed photo
         _loadUnitGLB(def.model, function (entry) {
             if (S.dead || _pt !== P) return;
             if (!entry || !entry.root) { fail(); return; }
@@ -64800,7 +64800,9 @@ const ThreeRenderer = (function () {
                 S.head0 = S.headBone ? S.headBone.getWorldQuaternion(new THREE.Quaternion()).invert() : null;
                 var idleOn = !hasSkin, dressed = !S.rig || S.rig.dressed();
                 var go = function () { if (idleOn && dressed) _ptSettle(S); };
-                if (!dressed) S.rig.whenDressed(function () { dressed = true; go(); });
+                /* (not rig.whenDressed: that gives up after CC_DRESS_MAX_MS and shows the body as it stands, right for a unit on
+                   the board, wrong for a photo that is kept: a slow load shot the officer bald and hatless) */
+                if (!dressed) (function poll() { if (S.dead || S.ready) return; if (S.rig && S.rig.dressed()) { dressed = true; go(); } else setTimeout(poll, 200); })();
                 if (hasSkin) {
                     var mixer = S.mixer = new THREE.AnimationMixer(m);
                     var play = function (clip, ts) {
