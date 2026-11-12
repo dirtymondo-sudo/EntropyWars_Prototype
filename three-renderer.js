@@ -4140,19 +4140,23 @@ const ThreeRenderer = (function () {
             var tex = _hzTex('calm_lava');   // the calm sheet by name (lava itself wears his pixel sheet: CALM_TERRAIN.pixelLiquids)
             mat = new THREE.MeshLambertMaterial({ map: tex || null, color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.85, emissiveMap: tex || null });
         } else {
-            mat = new THREE.MeshPhongMaterial({ color: liq ? liq[0] : deep ? _CALM.deep : _CALM.water, specular: 0xb4c4c8, shininess: 140,
+            /* THE DULL LIQUIDS (mondo 11-12: "fix how bright and reflective these liquids are"): a spell / site liquid is thick, so its
+               highlight is dim, wide and in its own colour, its ripple is shallow and it carries little of the sky; water keeps the glint */
+            mat = new THREE.MeshPhongMaterial({ color: liq ? liq[0] : deep ? _CALM.deep : _CALM.water, specular: liq ? (liq[3] != null ? liq[3] : 0x1c2022) : 0xb4c4c8, shininess: liq ? (liq[4] || 30) : 140,
                                                 transparent: true, opacity: liq ? liq[1] : deep ? Math.min(1, _CALM.waterOp + 0.08) : _CALM.waterOp, depthWrite: false });
             if (liq && liq[2]) mat.emissive = new THREE.Color(liq[2]);   // THE CALM LIQUIDS: a liquid's own faint glow
         }
         var night = ((document.body && document.body.dataset && document.body.dataset.cycle) || 'day') === 'night';
         var sky = new THREE.Color(night ? 0x2a3a52 : 0x9db4c2);
+        var rip = liq ? (liq[5] != null ? liq[5] : 0.016) : 0.05, sheen = liq ? (liq[6] != null ? liq[6] : 0.3) : 1;   // THE DULL LIQUIDS
         mat.onBeforeCompile = function (sh) {
             sh.uniforms.uFluidTime = _fluidTimeUniform; sh.uniforms.uFluidTile = _fluidTileUniform;
             if (!_fluidFlowUniform.value) _fluidFlowUniform.value = new THREE.Vector2(0, 0);
             sh.uniforms.uFluidFlow = _fluidFlowUniform;
             sh.uniforms.uCalmSky = { value: sky }; sh.uniforms.uCalmGlow = { value: _CALM.lavaGlow };
+            sh.uniforms.uCalmRip = { value: rip }; sh.uniforms.uCalmSheen = { value: sheen };
             sh.vertexShader = 'varying vec3 vCalmW;\n' + sh.vertexShader.replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvCalmW = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;');
-            var head = 'uniform float uFluidTime;\nuniform float uFluidTile;\nuniform vec2 uFluidFlow;\nuniform vec3 uCalmSky;\nuniform float uCalmGlow;\nvarying vec3 vCalmW;\n' + _CALM_NOISE_GLSL + (lava ? _CALM_NOTILE_GLSL : '');
+            var head = 'uniform float uFluidTime;\nuniform float uFluidTile;\nuniform vec2 uFluidFlow;\nuniform vec3 uCalmSky;\nuniform float uCalmGlow;\nuniform float uCalmRip;\nuniform float uCalmSheen;\nvarying vec3 vCalmW;\n' + _CALM_NOISE_GLSL + (lava ? _CALM_NOTILE_GLSL : '');
             var f = head + sh.fragmentShader;
             if (lava) {
                 /* THE MOLTEN LAVA (mondo: "doesnt really look lava-y ... all brown ... isnt even moving", then "the dark parts are kind
@@ -4179,19 +4183,19 @@ const ThreeRenderer = (function () {
                     'vec2 cP = (vCalmW.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
                     'float cT = uFluidTime;\n' +
                     'float cE = 0.012, cH0 = cRip(cP, cT);\n' +
-                    'vec3 cNw = normalize(vec3(-(cRip(cP + vec2(cE, 0.0), cT) - cH0) / cE * 0.05, 1.0, -(cRip(cP + vec2(0.0, cE), cT) - cH0) / cE * 0.05));\n' +
+                    'vec3 cNw = normalize(vec3(-(cRip(cP + vec2(cE, 0.0), cT) - cH0) / cE * uCalmRip, 1.0, -(cRip(cP + vec2(0.0, cE), cT) - cH0) / cE * uCalmRip));\n' +
                     'diffuseColor.rgb *= 0.88 + 0.22 * cNoise(cP * 0.9 + vec2(cT * 0.03, cT * 0.02));\n')
                 .replace('#include <normal_fragment_maps>', '#include <normal_fragment_maps>\nnormal = normalize( ( viewMatrix * vec4( cNw, 0.0 ) ).xyz );\n')
                 .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n' +
                     '{ vec3 cV = normalize(cameraPosition - vCalmW); float cFr = 0.04 + 0.96 * pow(1.0 - clamp(dot(cNw, cV), 0.0, 1.0), 5.0);\n' +
                     '  vec3 cR = reflect(-cV, cNw); float cSk = cNoise(cR.xz / max(cR.y, 0.2) * 1.3 + vec2(cT * 0.02, cT * 0.012));\n' +
-                    '  totalEmissiveRadiance += uCalmSky * (cFr * 0.55 + 0.05 * (0.4 + cSk)); diffuseColor.a = mix(diffuseColor.a, 1.0, cFr * 0.6); }\n');
+                    '  totalEmissiveRadiance += uCalmSky * uCalmSheen * (cFr * 0.55 + 0.05 * (0.4 + cSk)); diffuseColor.a = mix(diffuseColor.a, 1.0, cFr * 0.6); }\n');
             }
             sh.fragmentShader = f;
         };
         mat.customProgramCacheKey = function () { return 'ew_calm_fluid_' + (lava ? 'lava' : deep ? 'deep' : 'water'); };
         mat._ew_fluidTop = true; mat._ew_fluidType = key; mat._ew_calm = true;
-        _ewNodeTag(mat, { k: 'calmfluid', lava: lava, glow: _CALM.lavaGlow, sky: [sky.r, sky.g, sky.b] });   // WEBGPU: the same lava + water (_ewNodeCalmFluid)
+        _ewNodeTag(mat, { k: 'calmfluid', lava: lava, glow: _CALM.lavaGlow, sky: [sky.r, sky.g, sky.b], rip: rip, sheen: sheen });   // WEBGPU: the same lava + water (_ewNodeCalmFluid)
         return mat;
     }
 
@@ -35932,9 +35936,12 @@ const ThreeRenderer = (function () {
                   drift: 0.075, driftM: 7, edge: 0.55, edgeM: 2.2, water: 0x173a40, deep: 0x0d2a33, waterOp: 0.86, lavaGlow: 1.0,
                   /* THE CALM LIQUIDS (the rollout, batch 2): the spell / site liquids drawn like the calm water — the same moving surface,
                      glints and sky sheen — each in its own colour, [colour, opacity, glow]: poison's acid green (a faint glow of its own,
-                     so a pool never passes for grass), the bogs, the black ooze, oil, blood */
-                  liquids: { poison: [0x58a02c, 0.9, 0x1a3a0a], poison_bog: [0x6a7a26, 0.92, 0x141c08], purple_bog: [0x5e3078, 0.92, 0x1c0c2a],
-                             swamp: [0x1d1524, 0.95, 0x0c0612], oil: [0x14120e, 0.96, 0], blood: [0x6a1014, 0.95, 0x1a0204] } };
+                     so a pool never passes for grass), the bogs, the black ooze, oil, blood.
+                     THE DULL LIQUIDS (11-12) add [.., highlight colour, highlight width (shininess), ripple depth, sky sheen]: each
+                     liquid's highlight is a dim shade of itself (water's is 0xb4c4c8 / 140 / 0.05 / 1) */
+                  liquids: { poison: [0x58a02c, 0.9, 0x1a3a0a, 0x1c2a12, 30, 0.016, 0.3], poison_bog: [0x6a7a26, 0.92, 0x141c08, 0x20240f, 30, 0.016, 0.3],
+                             purple_bog: [0x5e3078, 0.92, 0x1c0c2a, 0x22142c, 30, 0.016, 0.3], swamp: [0x1d1524, 0.95, 0x0c0612, 0x1e1826, 34, 0.014, 0.25],
+                             oil: [0x14120e, 0.96, 0, 0x22252c, 40, 0.012, 0.3], blood: [0x6a1014, 0.95, 0x1a0204, 0x2a1012, 30, 0.014, 0.25] } };
     try { window.EW_CALM = _CALM; } catch (e) {}
     function _calmTable() { return (typeof CALM_TERRAIN !== 'undefined' && CALM_TERRAIN && CALM_TERRAIN.sheets) ? CALM_TERRAIN : null; }
     /* the room being drawn: the walk's room, else the room round a field fight (the editor builds through _hq too) */
@@ -45923,8 +45930,8 @@ const ThreeRenderer = (function () {
         };
         var cpos = function () { return T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)); };
         var NW = T.Fn(function () {   // the rippled normal, world space
-            var p = cpos().toVar(), t = U.ftime, e = 0.012, h0 = rip(p, t).toVar();
-            var dx = rip(p.add(T.vec2(e, 0)), t).sub(h0).div(e).mul(0.05), dz = rip(p.add(T.vec2(0, e)), t).sub(h0).div(e).mul(0.05);
+            var p = cpos().toVar(), t = U.ftime, e = 0.012, h0 = rip(p, t).toVar(), rs = (D.rip != null ? D.rip : 0.05);   // THE DULL LIQUIDS: a thick liquid's shallow ripple
+            var dx = rip(p.add(T.vec2(e, 0)), t).sub(h0).div(e).mul(rs), dz = rip(p.add(T.vec2(0, e)), t).sub(h0).div(e).mul(rs);
             return T.normalize(T.vec3(dx.negate(), 1, dz.negate()));
         })();
         var FR = T.Fn(function () {   // Schlick, against the rippled normal
@@ -45938,7 +45945,7 @@ const ThreeRenderer = (function () {
         var sky = T.vec3(D.sky ? D.sky[0] : 0.62, D.sky ? D.sky[1] : 0.71, D.sky ? D.sky[2] : 0.76);
         _ewNodeDiffuseMul(nm, function () { return vnoise(cpos().mul(0.9).add(T.vec2(U.ftime.mul(0.03), U.ftime.mul(0.02)))).mul(0.22).add(0.88); });
         nm.normalNode = T.normalize(T.cameraViewMatrix.mul(T.vec4(NW, 0)).xyz);
-        nm.emissiveNode = T.materialEmissive.add(sky.mul(FR.mul(0.55).add(SK.add(0.4).mul(0.05))));
+        nm.emissiveNode = T.materialEmissive.add(sky.mul(D.sheen != null ? D.sheen : 1).mul(FR.mul(0.55).add(SK.add(0.4).mul(0.05))));
         nm.opacityNode = T.mix(T.materialOpacity, T.float(1), FR.mul(0.6));
     }
     /* a {value} object the classic hooks share → one node uniform that reads it every render */
