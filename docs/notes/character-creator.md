@@ -1893,7 +1893,17 @@ Then `node bake-custom-shape.js`, the skin into `charactercreation/mpfb/looks/`,
   skin beside the paint takes the paint's tone (a brim shadow baked in the unit's face left a pale forehead band).
 - Tried and dropped: fading the paint out below the brows (the brows went with it and a step showed).
 
-**KNOWN** - the forehead is the toned stock skin, a little lighter than the face; the brim's baked shadow reads as a heavy brow; the
-chin carries the beard's bulk (the shape follows the beard surface); with the mouth open the tongue sits high; the sideburn paint ends
-in a hard edge under the hair; sheet is 1024 px like the stock skins. Not checked: the other four male bodies, WebGPU, a battle.
+**ROUND 2 (11-12, mondo: "the shadow/darkness above his eyes is too much. fix whatever else you think is off")** - three causes, all in bake-face.py now:
+- THE BRIM SHADOW: the hat's shadow baked in the unit's face. From the eyes up the paint's broad brightness (12 px blur) is lifted to
+  the lit skin of the cheeks and nose (up to x2.4); brows and creases keep their contrast. The edge tone then reads lit skin only (75th pct).
+- THE BROW'S DEPTH + THE FOREHEAD: this was most of the darkness and it was SHAPE, not paint. Under a brim the landmarks above the eyes
+  are poor in depth and the forehead's are dropped, so the brows were set back under an unmoved forehead and the game's light shaded
+  the hollow (it showed with no hat on too). From the eyes up every landmark takes the eyes' own depth move; dropped forehead
+  landmarks take the nearest brow-height move; points up the MPFB forehead carry it on in a long slope under the hat.
+- THE BEARD'S BULK: landmarks below the nose that are dark in the unit's drawing (103 of them) move the face 55% of the way: the chin
+  no longer grows by the beard's thickness (max offset 32 -> 27 mm).
+Told apart by: the flat `fit_check.jpg` (no light) showed an even face while the game showed the band; `edgek=0` changed nothing.
+Proof `/mnt/project-files/meshy-parts-20261112/cowboy_face_round2.jpg`.
+
+**KNOWN** - with the mouth open the tongue sits high; the sideburn paint ends in a hard edge under the hair; sheet is 1024 px like the stock skins. Not checked: the other four male bodies, WebGPU, a battle.
 Proof: `/mnt/project-files/meshy-parts-20261112/cowboy_face_pilot.jpg`.
