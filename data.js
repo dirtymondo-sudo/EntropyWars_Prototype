@@ -29891,6 +29891,11 @@ const DOOR_HQ = {
         leaf_window_large:   { file: 'DOOR WITH LARGE WINDOW.glb',                                leaf: true, aspect: 0.500, open: 'swing', hinge: 'left' },
         leaf_window_medium:  { file: 'DOOR WITH MEDIUM WINDOW.glb',                               leaf: true, aspect: 0.500, open: 'swing', hinge: 'left' },
         leaf_entrance:       { file: 'ENTRANCE DOOR.glb',                                         leaf: true, aspect: 0.500, open: 'swing', hinge: 'left' },
+        /* THE DOUBLE DOOR (2026-11-12, mondo: "get rid of the revolving door, just make it a normal swing door or double door"):
+           `double` = TWO of the single leaf, one hinged on each jamb, meeting in the middle, both swinging open for the walker
+           (three-renderer.js _hqBuildDoors `pivot2`). The same authored DOOR WITH LARGE WINDOW the reception wears, as a pair.
+           `glass` in the key: you see through its windows, so the room beyond is never culled behind it (HQ_CULL_SEE). */
+        leaf_lobby_glass_double: { file: 'DOOR WITH LARGE WINDOW.glb',                                leaf: true, aspect: 1.000, wide: true, open: 'swing', double: true },
     },
 
     /* The seven containment bays (DOOR_MASTER A10; the seventh, URBAN, plan 7.5). Every launch map belongs
@@ -30973,7 +30978,7 @@ const DOOR_HQ = {
                    (§5.6), the same door from the foyer's side; a fresh arrival from
                    Play stands in the foyer and walks IN through it (map.js
                    _hqArrivalRoom — `?nofoyer` / ew_hq_foyer='off' lands in the hall). */
-                { id: 'foyer',          deg: 195, level: 0, leaf: 'leaf_revolving',   wide: true,  label: 'THE FOYER',       sub: 'THE FRONT DOOR · EXIT',   action: { room: 'foyer', at: 'egress' }, desc: 'The vestibule. The revolving door, the seal in the terrazzo, the inspection desk that verifies your corners. The street is on the other side of it; the street is the main menu.' },
+                { id: 'foyer',          deg: 195, level: 0, leaf: 'leaf_lobby_glass_double', wide: true,  label: 'THE FOYER',       sub: 'THE FRONT DOOR · EXIT',   action: { room: 'foyer', at: 'egress' }, desc: 'The vestibule. The double doors, the seal in the terrazzo, the inspection desk that verifies your corners. The street is on the other side of it; the street is the main menu.' },
                 /* ROOM 1111 · MEDICAL (plan 7.4, 2026-09-13 rev 3): the door is now the
                    way INTO the ward — the services desk (Challenge mode), the chart
                    (your record), the cell door into Room 5150. The number moved onto
@@ -31284,11 +31289,11 @@ const DOOR_HQ = {
                 look: HQ_ROOM_LOOKS.retro,
             },
             doors: [
-                /* the revolving door: the same leaf the hall wears at 195°, from this side */
-                { id: 'egress', wall: 'n', x: 0, leaf: 'leaf_revolving', wide: true,
+                /* the double doors (2026-11-12; the revolving door until then): the same leaves the hall wears at 195°, from this side */
+                { id: 'egress', wall: 'n', x: 0, leaf: 'leaf_lobby_glass_double', wide: true,
                   label: 'THE MAIN HALL', sub: 'INTO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'foyer' },
-                  desc: 'The revolving door. It turns one way. Which way has not been decided, but it is the same way for everyone, and the hall is on the other side of it.' },
+                  desc: 'The double doors. They swing one way. Which way has not been decided, but it is the same way for everyone, and the hall is on the other side of them.' },
                 /* the front door (ZONES_PLAN Z0, 2026-09-29): SEALED. It opened onto THE LAND (G2) until the land was cut; it stays shut
                    until the story opens it (where the building stands is not told). The main menu is the pause menu's MAIN MENU ·
                    LEAVE THE BUILDING. */
@@ -31345,7 +31350,7 @@ const DOOR_HQ = {
                 { x: 4.05, z: 0, face: 90, pose: 'hqSit', gender: 'male', label: 'THE INSPECTOR', reach: 1.9,
                   line: '“Four corners. Ninety degrees. Proceed. — No, I don’t need to look. Everyone who has ever stood there has had four.”' },
                 { x: -1.7, z: 2.3, face: 0, pose: 'hqArms', gender: 'female', label: 'THE DOORMAN', reach: 1.7,
-                  line: '“The door turns one way. If you come out where you went in, you went round twice. It happens more than you would think.”' },
+                  line: '“The doors swing one way. If you come out where you went in, you turned round. It happens more than you would think.”' },
             ],
             npcSpots: [
                 { x: -4.375, z: -0.375, face: 90 },   // on the bench, waiting to be inspected
@@ -48186,7 +48191,7 @@ const HQ_STAGE_RULES = {
        turns while you walk through it (the box's own leaf stands down while the hall is beside it). The box room is not a part
        of any HQ_WORLD zone; every id, counter, ledger key and save is untouched. Off: window.EW_HQ_NO_STAGE (every door loads). */
     round: [
-        { a: 'central_egress', door: 'foyer', b: 'foyer', bDoor: 'egress' },   // THE FOURIER FOYER ⇄ the main hall, the revolving door at 195°
+        { a: 'central_egress', door: 'foyer', b: 'foyer', bDoor: 'egress' },   // THE FOURIER FOYER ⇄ the main hall, the double doors at 195° (the revolving door until 2026-11-12)
     ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
@@ -58407,7 +58412,7 @@ Object.defineProperty(DOOR_HQ, 'finds', { configurable: true, enumerable: true, 
 const HQ_GUN_LESSONS = {
     floor:   { n: 1, room: 'training', title: 'LESSON ONE · THE FLOOR', lines: ['F DRAWS THE GUN. LEFT CLICK SHOOTS.', 'R FLIPS A / B · RIGHT CLICK AIMS', 'WALK INTO ONE. YOU ARE AT THE OTHER.'], back: 'the same floor', draft: true },
     ledge:   { n: 2, room: 'site_prebuilt_haunted_hall', title: 'LESSON TWO · THE LEDGE', lines: ['A ON THE LANDING OVER YOUR HEAD', 'B AT YOUR FEET', 'THE STAIRS ARE THE LONG WAY. THEY STILL WORK.'], back: 'the flight', draft: true },
-    rooms:   { n: 3, room: 'foyer', title: 'LESSON THREE · TWO ROOMS', lines: ['A HERE. WALK THROUGH THE REVOLVING DOOR.', 'B IN THE HALL. STEP IN.', 'THE PAIR HOLDS ACROSS A WALL. IT HOLDS ACROSS THE BUILDING.'], back: 'the revolving door', draft: true },
+    rooms:   { n: 3, room: 'foyer', title: 'LESSON THREE · TWO ROOMS', lines: ['A HERE. WALK THROUGH THE DOUBLE DOORS.', 'B IN THE HALL. STEP IN.', 'THE PAIR HOLDS ACROSS A WALL. IT HOLDS ACROSS THE BUILDING.'], back: 'the double doors', draft: true },
     ceiling: { n: 4, room: 'upsidedown', title: 'LESSON FOUR · THE CEILING', lines: ['THE FLOOR IS THE CEILING. AIM UP.', 'A ON THE CEILING. B ON THE FLOOR.', 'JUMP THROUGH B AND COME OUT THE RIGHT WAY UP.'], back: 'the door to the floor', draft: true },
     fall:    { n: 5, room: 'stairwell', title: 'LESSON FIVE · THE FALL', lines: ['A ON THE FLOOR UNDER YOU', 'B ON THE CEILING OF THE TOP LANDING', 'FALL. KEEP FALLING. HOLD F WHEN YOU HAVE HAD ENOUGH.'], back: 'the treads', draft: true },
     lip:     { n: 6, room: 'site_prebuilt_singularity', title: 'LESSON SIX · THE LIP', lines: ['THE TAPE IS ON THE RIM. TWO LEVELS. YOU CANNOT CLIMB IT.', 'AIM AT THE LIP OF THE WALL. THE DOOR LANDS ON TOP.', 'B AT YOUR FEET. THE DIRECTORY IS THE WAY DOWN.'], back: 'ESC · DIRECTORY', draft: true },
