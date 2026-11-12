@@ -207,12 +207,23 @@ def fit(name, gender, src, bodies_dir):
     # with whatever they enclose (the painted pendant) and the small shells round the neck (the choker): the body's own skin shows
     # there and the look wears a real pendant piece
     if NECKLINE:
-        z1, z0 = chin + 0.02, chin - E('NECKZ', 0.20)
+        z1, z0 = chin + 0.02, chin - E('NECKZ', 0.26)
         for o in list(keep):
             c = co(o); n = len(o.data.polygons)
             if n < E('CHOKER', 200) and c[:, 2].min() > chin - 0.14 and c[:, 2].max() < chin + 0.04 and np.abs(c[:, 0]).max() < 0.08 and o not in headp:
                 dropped.append(('choker', n)); keep.remove(o); bpy.data.objects.remove(o); continue
             if o in headp: continue
+            # the throat itself (round 2, mondo: "what are all those jagged black spots around her neck"): the neck in the chin's
+            # shadow is painted dark, the harness straps and the cross are painted or are thin shells: not skin-coloured, so they
+            # stayed as black shards. Everything in front of the neck, NECKX to each side, from the chin NECKCUT down, goes
+            me_ = o.data; cen_ = np.array([p.center for p in me_.polygons])
+            col_ = (cen_[:, 2] < chin + 0.03) & (cen_[:, 2] > chin - E('NECKCUT', 0.12)) & (np.abs(cen_[:, 0] - eye.x) < E('NECKX', 0.075)) & (cen_[:, 1] < eye.y + 0.09)
+            if col_.all(): dropped.append(('at the throat', n)); keep.remove(o); bpy.data.objects.remove(o); continue
+            if col_.any():
+                bmc = bmesh.new(); bmc.from_mesh(me_); bmc.faces.ensure_lookup_table()
+                bmesh.ops.delete(bmc, geom=[bmc.faces[i] for i in np.nonzero(col_)[0]], context='FACES')
+                bmesh.ops.delete(bmc, geom=[v for v in bmc.verts if not v.link_faces], context='VERTS'); bmc.to_mesh(me_); bmc.free()
+                dropped.append(('throat faces', int(col_.sum())))
             me_ = o.data; cen_ = np.array([p.center for p in me_.polygons]); fc_ = face_cols(o, PX, IW, IH)
             zone_ = (cen_[:, 2] < z1) & (cen_[:, 2] > z0) & (np.abs(cen_[:, 0]) < 0.13) & (cen_[:, 1] < eye.y + 0.08)
             sk_ = (np.linalg.norm(fc_ - skin, axis=1) < SKIN_T) & zone_
@@ -268,6 +279,51 @@ def fit(name, gender, src, bodies_dir):
                 bmesh.ops.delete(bml, geom=[bml.faces[i] for i in np.nonzero(up_)[0]], context='FACES')
                 bmesh.ops.delete(bml, geom=[v for v in bml.verts if not v.link_faces], context='VERTS'); bml.to_mesh(me_); bml.free()
                 dropped.append(('hair on the clothes', int(up_.sum())))
+    # THE LONG HAIR (--neckline, round 3, mondo: "what are all those jagged black spots around her neck"): the catgirl's waist-long
+    # hair is one big shell from the crown to the waist (not a head piece: its middle is far below the head) and the top of it is
+    # fused to what is left of the face's shell; both stood round her neck as jagged black. A shell that reaches above the eyes
+    # with a fifth of it above the chin is hair: not exported; on any other shell everything above the chin goes
+    if NECKLINE:
+        for o in [o for o in keep if o not in headp]:
+            c = co(o); n = len(o.data.polygons)
+            if c[:, 2].max() < chin: continue
+            if o not in rem and c[:, 2].max() > eyeM[2] and (c[:, 2] > chin).mean() > E('LOCKSHARE', 0.2):
+                # the part of it down her back stays (HAIRBACK behind the eyes, HAIRTOP under the chin): Meshy modelled no
+                # jacket under it, so without it her back is bare patches; her own hair hangs over its top edge
+                me_ = o.data; cen_ = np.array([p.center for p in me_.polygons]); go_ = ~((cen_[:, 1] > eye.y + E('HAIRBACK', 0.13)) & (cen_[:, 2] < chin - E('HAIRTOP', 0.08)))
+                if go_.all(): dropped.append(('long hair', n)); keep.remove(o); bpy.data.objects.remove(o); continue
+                bml = bmesh.new(); bml.from_mesh(me_); bml.faces.ensure_lookup_table()
+                bmesh.ops.delete(bml, geom=[bml.faces[i] for i in np.nonzero(go_)[0]], context='FACES')
+                bmesh.ops.delete(bml, geom=[v for v in bml.verts if not v.link_faces], context='VERTS'); bml.to_mesh(me_); bml.free()
+                dropped.append(('long hair in front', int(go_.sum()))); continue
+            me_ = o.data; up_ = np.array([p.center.z for p in me_.polygons]) > chin - E('HAIRCUT', 0.02)
+            if up_.sum() and not up_.all():
+                bml = bmesh.new(); bml.from_mesh(me_); bml.faces.ensure_lookup_table()
+                bmesh.ops.delete(bml, geom=[bml.faces[i] for i in np.nonzero(up_)[0]], context='FACES')
+                bmesh.ops.delete(bml, geom=[v for v in bml.verts if not v.link_faces], context='VERTS'); bml.to_mesh(me_); bml.free()
+                dropped.append(('above the chin', int(up_.sum())))
+        # + THE CLEAN NECK OPENING: what is left beside the neck is the inner edge of the jacket's shoulders, where Meshy painted
+        # hair and shadow on her skin (black, like the jacket, so no colour test tells them apart): the cuts above leave it as
+        # saw teeth (whole triangles went). The opening is re-cut straight: in front of the nape everything SCX to each side of
+        # the middle goes, down to SCZ above the top's own edge at the middle of the chest: a square neck with straight edges
+        for o in [o for o in keep if o not in headp]:
+            me_ = o.data; cen_ = np.array([p.center for p in me_.polygons])
+            if not len(cen_) or cen_[:, 2].max() < chin - 0.2: continue
+            y1 = eye.y + E('SCY', 0.09); sx = E('SCX', 0.105)
+            mid_ = (np.abs(cen_[:, 0] - eye.x) < 0.03) & (cen_[:, 1] < eye.y + 0.05) & (cen_[:, 2] < chin - 0.03) & (cen_[:, 2] > chin - 0.45)
+            if not mid_.any(): continue
+            pc = Vector((eye.x, 0, float(cen_[mid_, 2].max()) + E('SCZ', 0.02))); pn = Vector((0, 0, 1))
+            def ins(c_): return c_.y < y1 and abs(c_.x - eye.x) < sx and (c_ - pc).dot(pn) > 0
+            bmv = bmesh.new(); bmv.from_mesh(me_)
+            for co_, no_ in ((pc, pn), (Vector((eye.x + sx, 0, 0)), Vector((1, 0, 0))), (Vector((eye.x - sx, 0, 0)), Vector((1, 0, 0))), (Vector((0, y1, 0)), Vector((0, 1, 0)))):
+                g_ = [f for f in bmv.faces if f.calc_center_median().z > chin - 0.5 and f.calc_center_median().y < y1 + 0.05 and abs(f.calc_center_median().x - eye.x) < sx + 0.05]
+                g_ = list(set(g_) | set(e for f in g_ for e in f.edges) | set(v for f in g_ for v in f.verts))
+                bmesh.ops.bisect_plane(bmv, geom=g_, plane_co=co_, plane_no=no_, dist=1e-5)
+            k_ = [f for f in bmv.faces if ins(f.calc_center_median())]
+            if k_:
+                bmesh.ops.delete(bmv, geom=k_, context='FACES'); bmesh.ops.delete(bmv, geom=[v for v in bmv.verts if not v.link_faces], context='VERTS')
+                bmesh.ops.triangulate(bmv, faces=bmv.faces[:]); bmv.to_mesh(me_); dropped.append(('neck opening', len(k_)))
+            bmv.free()
     # HEADGEAR (2026-11-12, quarterback: his helmet reaches below the eyes, so it was read as hair and left out): --headgear
     # keeps every head piece as the hat (a helmet, a cowl, a mask); the look then picks no hair under it
     if HEADGEAR: wig = []
@@ -330,6 +386,20 @@ def fit(name, gender, src, bodies_dir):
         idx = np.nonzero(gw[n] > 0.5)[0]
         hid = sum(1 for i in idx if i not in ks) / max(1, len(idx))
         if hid > E('LEGHIDE', 0.7): ks -= set(int(i) for i in idx)
+    # + THE SKIN AT THE OPENING'S EDGE (--neckline; most of what was left of the "jagged black spots"): a body triangle with one
+    # hidden corner is not drawn, so the skin hidden under the jacket's edge bit saw teeth one triangle deep into the open chest
+    # and the jacket's black inside showed through them. Round the chest (OPENX to each side of the middle, OPENZ under the eyes)
+    # the shown skin grows OPENRING rings under the cloth's edge: only skin that has cloth straight in front of it (it stays
+    # behind the jacket) or has no face of the cloth that looks the same way within OPENBACK under it (it is not standing through the jacket)
+    if NECKLINE:
+        for _ in range(int(E('OPENRING', 3))):
+            add_ = set()
+            for e_ in pm.edges:
+                a_, b_ = e_.vertices
+                for i_, j_ in ((a_, b_), (b_, a_)):
+                    v_ = pm.vertices[i_]
+                    if j_ in ks and i_ not in ks and eyeM[2] - E('OPENZ', 0.42) < v_.co.z < eyeM[2] - 0.1 and abs(v_.co.x - eyeM[0]) < E('OPENX', 0.17) and (bvh.ray_cast(v_.co + v_.normal * 0.004, Vector((0, -1, 0)), 1.0)[0] is not None or abs(v_.co.x - eyeM[0]) < E('OPENX2', 0.125) and not (lambda h_: h_[0] is not None and h_[1].dot(v_.normal) > 0.2)(bvh.ray_cast(v_.co, -v_.normal, E('OPENBACK', 0.06)))): add_.add(i_)
+            ks |= add_
     hidden = [i for i in range(len(pm.vertices)) if i not in ks]
     # a hm08 index is hidden only when every file vertex that carries it is
     shown_base = set(int(base[i]) for i in ks)

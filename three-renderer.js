@@ -43140,8 +43140,38 @@ const ThreeRenderer = (function () {
     var _motionScroll = [];        // { tex, per, sign }           textures that scroll with the travel (wakes)
     var _motionMotes = null;       // { sprites: [{ sp, along, lat, y, len }], L }
     var _MOTION_SUN_TINT = null;
+    /* THE PARALLAX (2026-11-12, mondo: "making things further away move slower; it kind of looks like everything is moving at the
+       same speed"): every travelling body carries its own pace, from how far off the board's line it hangs (d = its lateral +
+       vertical offset over the ring radius, 0..1): par = (1 + k·d0) / (1 + k·d), floored at `far` — the nearest body runs the
+       map's full speed (env.motion.speed is still the pace of what passes closest), one at the ring a quarter of it. The motes
+       (the closest layer) run `moteNear`..`moteFar` × the speed across their own band, and the far ones are thinner, shorter
+       and dimmer. A wheel stays rigid (a turn has no parallax; its sparks alone lead). The dome's nebula / clouds were already
+       the slowest layer. Kill-switch: window.EW_NO_PARALLAX (everything back to one speed). */
+    var HZ_PARALLAX = { k: 4, d0: 0.06, far: 0.22, moteNear: 1.7, moteFar: 0.8, moteDim: 0.5, moteThin: 0.55 };
+    function _motionPar(lat, dy, discR) {
+        if (typeof window !== 'undefined' && window.EW_NO_PARALLAX) return 1;
+        var P = HZ_PARALLAX, d = discR > 0 ? Math.min(1.4, Math.sqrt(lat * lat + dy * dy) / discR) : 0;
+        return Math.max(P.far, Math.min(1, (1 + P.k * P.d0) / (1 + P.k * d)));
+    }
+    /* the roster's nearest body sets the pace: every par is its raw depth factor over the roster's largest, so whatever passes
+       closest runs the map's full speed even when a hull keeps the whole roster far out (run again when a late body joins) */
+    var _motionParN = -1;
+    function _motionParNorm() {
+        var n = _motionStreams.length; if (n === _motionParN) return; _motionParN = n;
+        if (typeof window !== 'undefined' && window.EW_NO_PARALLAX) return;
+        var mx = 0, mn = 9, i, e, F = HZ_PARALLAX.far;
+        for (i = 0; i < n; i++) { e = _motionStreams[i]; if (e.mode === 'wheel') continue; if (e.par0 == null) e.par0 = e.par || 1; if (e.par0 > mx) mx = e.par0; if (e.par0 < mn) mn = e.par0; }
+        if (!(mx > mn + 1e-4)) return;
+        /* spread over the whole range: the roster's nearest body 1.0, its farthest `far` */
+        for (i = 0; i < n; i++) { e = _motionStreams[i]; if (e.mode === 'wheel') continue; e.par = F + (1 - F) * (e.par0 - mn) / (mx - mn); }
+    }
+    /* a mote's pace from u = 0 (the nearest of its band) .. 1 (the farthest) */
+    function _motionMotePar(u) {
+        if (typeof window !== 'undefined' && window.EW_NO_PARALLAX) return 1.15;
+        var P = HZ_PARALLAX; return P.moteNear + (P.moteFar - P.moteNear) * Math.max(0, Math.min(1, u));
+    }
     function _motionReset() {
-        _motionStreams.length = 0; _motionSheets.length = 0; _motionScroll.length = 0; _motionMotes = null;
+        _motionStreams.length = 0; _motionSheets.length = 0; _motionScroll.length = 0; _motionMotes = null; _motionParN = -1;
     }
     function _motionSpeedMult(m) {
         var round = (typeof state !== 'undefined' && state && state.round > 0) ? state.round : 1;
@@ -43226,7 +43256,8 @@ const ThreeRenderer = (function () {
             var spin2 = tumble ? (rng() < 0.5 ? 1 : -1) * (0.0012 + rng() * 0.0028) : 0;
             _horizonFloaters.push({ obj: mesh, baseY: yy, amp: ts * (0.5 + rng() * 1.6), spd: 0.08 + rng() * 0.22, phase: rng() * Math.PI * 2, spin: spin2 });
             var Lv = discR * 0.78;
-            var e2 = { obj: mesh, mode: st.kind, ang: ang, rr: rr, y: yy, baseY: yy, along: yy, L: Lv, face: !tumble, yawOff: yawOff };
+            var e2 = { obj: mesh, mode: st.kind, ang: ang, rr: rr, y: yy, baseY: yy, along: yy, L: Lv, face: !tumble, yawOff: yawOff,
+                       par: (st.kind === 'rise') ? _motionPar(rr - discR * 0.62, 0, discR) : 1 };   // THE PARALLAX: a rise streams the inner ring fastest (a wheel is rigid)
             _motionStreams.push(e2);
             _motionPlace(e2, st.cx, st.cz, 0);
             return;
@@ -43251,7 +43282,7 @@ const ThreeRenderer = (function () {
         var spin = tumble ? (rng() < 0.5 ? 1 : -1) * (0.0012 + rng() * 0.0028) : (rng() < 0.4 ? (rng() < 0.5 ? 1 : -1) * (0.0003 + rng() * 0.0008) : 0);
         var amp = (tag === 'sea') ? ts * (0.08 + rng() * 0.16) : ts * (0.5 + rng() * 1.6);
         _horizonFloaters.push({ obj: mesh, baseY: y, amp: amp, spd: 0.08 + rng() * 0.22, phase: rng() * Math.PI * 2, spin: spin });
-        _motionStreams.push({ obj: mesh, along: along, lat: lat, L: L });
+        _motionStreams.push({ obj: mesh, along: along, lat: lat, L: L, par: _motionPar(lat, (tag === 'sea') ? 0 : (y - boardY), discR) });   // THE PARALLAX: its own pace from its depth
         var e = _motionStreams[_motionStreams.length - 1];
         _motionPlace(e, st.cx, st.cz, 0);
     }
@@ -43273,7 +43304,7 @@ const ThreeRenderer = (function () {
             /* the vertical band: y wraps over ±L about the board's level; the floater
                bob (written just before, from baseY) is carried over */
             var bob = e.obj.position.y - e.baseY, L2v = e.L * 2;
-            var py = e.along - _motion.dir * dist;
+            var py = e.along - _motion.dir * dist * (e.par || 1);
             py = ((py + e.L) % L2v + L2v) % L2v - e.L;
             e.obj.position.y = py + bob;
             var xw = cx + Math.cos(e.ang) * e.rr, zw = cz + Math.sin(e.ang) * e.rr;
@@ -43281,7 +43312,7 @@ const ThreeRenderer = (function () {
             if (e.face) e.obj.rotation.y = Math.atan2(cx - xw, cz - zw) + e.yawOff;
             return;
         }
-        var p = e.along - _motion.dir * dist, L2 = e.L * 2;   // dir −1 (2026-11-12): the world streams toward +axis — a ship whose bow points north (−z)
+        var p = e.along - _motion.dir * dist * (e.par || 1), L2 = e.L * 2;   // dir −1 (2026-11-12): the world streams toward +axis — a ship whose bow points north (−z); THE PARALLAX: × the body's own pace
         p = ((p + e.L) % L2 + L2) % L2 - e.L;
         if (_motion.axis === 'z') { e.obj.position.x = cx + e.lat; e.obj.position.z = cz + p; }
         else { e.obj.position.x = cx + p; e.obj.position.z = cz + e.lat; }
@@ -43289,6 +43320,13 @@ const ThreeRenderer = (function () {
     /* the motes: spray at the waterline of a sea map, dust in space, sparks
        of the void — additive streaks close round the board, stretched by
        the speed, wrapping on a short band */
+    /* THE PARALLAX: a far mote is thinner, shorter and dimmer than a near one (e.u 0 near .. 1 far) */
+    function _motionMoteDepth(e) {
+        if (typeof window !== 'undefined' && window.EW_NO_PARALLAX) return;
+        var P = HZ_PARALLAX, u = e.u || 0;
+        e.thick *= 1 - (1 - P.moteThin) * u;
+        if (e.sp && e.sp.material) e.sp.material.opacity *= 1 - (1 - P.moteDim) * u;
+    }
     function _motionBuildMotes(rng, st) {
         var ts = st.ts, kind = st.kind;
         var low = (typeof window !== 'undefined' && window.EW_PERF_LOW);
@@ -43303,28 +43341,30 @@ const ThreeRenderer = (function () {
             var op = kind === 'sea' ? 0.35 + rng() * 0.35 : 0.18 + rng() * 0.3;
             var sp = _hzGlowSprite(ts * 0.18, col, op, 0, 0, 0);
             var side = rng() < 0.5 ? -1 : 1;
-            var lat, y;
+            var lat, y, u;
             if (kind === 'wheel' || kind === 'rise') {
                 /* rev 2: sparks round the board on a ring (wheel: they orbit; rise: they streak up / down) */
-                var ma = rng() * Math.PI * 2, mr = ts * (Math.max(bw, bh) * 0.5 + 1.2 + rng() * 7.0);
+                var ma = rng() * Math.PI * 2, mu = rng(), mr = ts * (Math.max(bw, bh) * 0.5 + 1.2 + mu * 7.0);
                 var ym = boardY + ts * (kind === 'wheel' ? (-1.5 + rng() * 5.0) : 0);
-                var em = { sp: sp, ang: ma, r: mr, along: (rng() * 2 - 1) * L, y: ym, len: 0.5 + rng() * 0.8, thick: 0.05 + rng() * 0.08 };
+                var em = { sp: sp, ang: ma, r: mr, along: (rng() * 2 - 1) * L, y: ym, len: 0.5 + rng() * 0.8, thick: 0.05 + rng() * 0.08, u: mu, par: _motionMotePar(mu) };
+                _motionMoteDepth(em);
                 sp.position.set(st.cx + Math.cos(ma) * mr, ym, st.cz + Math.sin(ma) * mr);
                 motes.sprites.push(em); _horizonGroup.add(sp); continue;
             }
             if (kind === 'sea') {
                 var depth = (_hzMotion && _hzMotion.seaDepth != null) ? _hzMotion.seaDepth : 2.4;
-                lat = side * ts * ((st.axis === 'x' ? bh : bw) * 0.5 + 1.9 + rng() * 2.2);
+                u = rng(); lat = side * ts * ((st.axis === 'x' ? bh : bw) * 0.5 + 1.9 + u * 2.2);
                 y = boardY - depth * ts + ts * (0.05 + rng() * 0.35);
             } else if (st.keepLat > 0) {
                 /* THE VOYAGE (2026-10-05): a room is drawn round the board — the dust races past beside its hull, never through its deck */
-                lat = side * (st.keepLat * 0.8 + rng() * ts * 14);
+                u = rng(); lat = side * (st.keepLat * 0.8 + u * ts * 14);
                 y = boardY + ts * (-9 + rng() * 14);
             } else {
-                lat = side * ts * ((st.axis === 'x' ? bh : bw) * 0.5 + 0.8 + rng() * 7.0);
+                u = rng(); lat = side * ts * ((st.axis === 'x' ? bh : bw) * 0.5 + 0.8 + u * 7.0);
                 y = boardY + ts * (-2.5 + rng() * 6.0);
             }
-            var e = { sp: sp, along: (rng() * 2 - 1) * L, lat: lat, y: y, len: 0.5 + rng() * 0.8, thick: 0.05 + rng() * 0.08 };
+            var e = { sp: sp, along: (rng() * 2 - 1) * L, lat: lat, y: y, len: 0.5 + rng() * 0.8, thick: 0.05 + rng() * 0.08, u: u, par: _motionMotePar(u) };
+            _motionMoteDepth(e);
             sp.position.y = y;
             motes.sprites.push(e);
             _horizonGroup.add(sp);
@@ -43347,6 +43387,7 @@ const ThreeRenderer = (function () {
         var _bw = (typeof bw === 'function') ? bw() : 16, _bh = (typeof bh === 'function') ? bh() : 8;
         var cx = _bw * ts * 0.5, cz = _bh * ts * 0.5;
         var d = _motion.dist;
+        _motionParNorm();   // THE PARALLAX: the nearest body runs the full speed
         for (var i = 0; i < _motionStreams.length; i++) _motionPlace(_motionStreams[i], cx, cz, d);
         for (var k = 0; k < _motionSheets.length; k++) {
             var sh = _motionSheets[k], off = d % sh.per;
@@ -43363,30 +43404,31 @@ const ThreeRenderer = (function () {
                 var e = M.sprites[q], p;
                 if (M.kind === 'wheel') {
                     /* sparks orbiting the board with the heavens (a round glow, brighter with the pace) */
-                    var wa = e.ang + _motion.ang * 1.35;
+                    var wa = e.ang + _motion.ang * (0.2 + (e.par || 1.15));   // THE PARALLAX: the inner sparks lead (1.9× .. 1.0× the wheel)
                     e.sp.position.x = cx + Math.cos(wa) * e.r; e.sp.position.z = cz + Math.sin(wa) * e.r;
                     e.sp.scale.set(ts * (0.14 + 0.22 * _motion.frac) * e.len, ts * (0.14 + 0.22 * _motion.frac) * e.len, 1);
                     continue;
                 }
                 if (M.kind === 'rise') {
                     /* vertical streaks past the board, up on a sink, down on a climb */
-                    p = e.along - _motion.dir * d * 1.15;
+                    p = e.along - _motion.dir * d * (e.par || 1.15);
                     p = ((p + M.L) % L2 + L2) % L2 - M.L;
                     e.sp.position.y = e.y + p;
-                    e.sp.scale.set(ts * e.thick, stretch * e.len, 1);
+                    e.sp.scale.set(ts * e.thick, stretch * e.len * (e.par || 1.15) / 1.15, 1);   // a streak is as long as it is fast
                     continue;
                 }
-                p = e.along - _motion.dir * d * 1.15;
+                p = e.along - _motion.dir * d * (e.par || 1.15);   // THE PARALLAX: the near dust races, the far dust trails
                 p = ((p + M.L) % L2 + L2) % L2 - M.L;
                 if (_motion.axis === 'z') { e.sp.position.x = cx + e.lat; e.sp.position.z = cz + p; e.sp.material.rotation = _motionStreakRot((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null); }
                 else { e.sp.position.x = cx + p; e.sp.position.z = cz + e.lat; }
-                e.sp.scale.set(stretch * e.len, ts * e.thick, 1);
+                e.sp.scale.set(stretch * e.len * (e.par || 1.15) / 1.15, ts * e.thick, 1);   // a streak is as long as it is fast
             }
         }
     }
     /* exported for tooling / the HUD (window.ThreeRenderer.motion) */
     function _motionInfo() {
-        return _hzMotion ? { kind: _hzMotion.kind || 'drift', axis: _motion.axis, dir: _motion.dir, tilesPerSec: _motion.speed / (CONFIG.tileSize || BASE_TILE), mult: _motionSpeedMult(_hzMotion), dist: _motion.dist, angleDeg: _motion.ang * 180 / Math.PI, skyYaw: _motion.skyYaw, skyLift: _motion.skyLift, storm: _motion.storm, sunNear: _motion.sunNear, moonNear: _motion.moonNear, streams: _motionStreams.length, motes: _motionMotes ? _motionMotes.sprites.length : 0 } : null;
+        return _hzMotion ? { kind: _hzMotion.kind || 'drift', axis: _motion.axis, dir: _motion.dir, tilesPerSec: _motion.speed / (CONFIG.tileSize || BASE_TILE), mult: _motionSpeedMult(_hzMotion), dist: _motion.dist, angleDeg: _motion.ang * 180 / Math.PI, skyYaw: _motion.skyYaw, skyLift: _motion.skyLift, storm: _motion.storm, sunNear: _motion.sunNear, moonNear: _motion.moonNear, streams: _motionStreams.length, motes: _motionMotes ? _motionMotes.sprites.length : 0,
+                              parallax: _motionStreams.map(function (e) { return +((e.par || 1).toFixed(2)); }).sort() } : null;   // THE PARALLAX: every body's own pace (× the speed)
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -71791,14 +71833,19 @@ const ThreeRenderer = (function () {
                 var p = f.obj.position, side = ((axZ ? p.x : p.z) < 0) ? -1 : 1, near = Math.abs(f.baseY) < 0.3 * discR;
                 var latMin = near ? Math.max(0.32 * discR, half) : 0.06 * discR;
                 f.vL = L; f.vAlong = (vr() * 2 - 1) * L; f.vLat = side * (latMin + vr() * Math.max(0, discR - latMin));
+                f.vPar = _motionPar(f.vLat, f.baseY, discR);   // THE PARALLAX (2026-11-12): a far body passes slower than a near one
                 if (axZ) { p.x = f.vLat; p.z = f.vAlong; } else { p.x = f.vAlong; p.z = f.vLat; }
             });
+            var vMax = 0, vMin = 9; H.sky.floaters.forEach(function (f) { if (f.vPar > vMax) vMax = f.vPar; if (f.vPar < vMin) vMin = f.vPar; });   // the nearest body runs the full speed, the farthest `far`
+            if (vMax > vMin + 1e-4 && !(typeof window !== 'undefined' && window.EW_NO_PARALLAX)) H.sky.floaters.forEach(function (f) { if (f.vPar) f.vPar = HZ_PARALLAX.far + (1 - HZ_PARALLAX.far) * (f.vPar - vMin) / (vMax - vMin); });
             /* the dust: additive streaks beside the hull and over it, racing past */
             for (var mi = 0; mi < 36; mi++) {
                 var sp = _hzGlowSprite(1, 0xbfd8ff, 0.16 + vr() * 0.28, 0, 0, 0), sd2 = vr() < 0.5 ? -1 : 1;
-                var mlat = sd2 * (half * 0.75 + vr() * 40 * U), my = (-18 + vr() * 34) * U;
+                var mvu = vr(), mlat = sd2 * (half * 0.75 + mvu * 40 * U), my = (-18 + vr() * 34) * U;
                 sp._ew_vLen = 0.6 + vr() * 0.8; sp._ew_vThick = 0.05 + vr() * 0.07;
-                H.sky.voyage.motes.push({ sp: sp, along: (vr() * 2 - 1) * H.sky.voyage.L, lat: mlat, y: my });
+                var mve = { sp: sp, along: (vr() * 2 - 1) * H.sky.voyage.L, lat: mlat, y: my, u: mvu, par: _motionMotePar(mvu), thick: sp._ew_vThick };
+                _motionMoteDepth(mve); sp._ew_vThick = mve.thick;   // THE PARALLAX: far dust thinner + dimmer
+                H.sky.voyage.motes.push(mve);
                 sp.position.y = my; group.add(sp);
             }
         }
@@ -71852,15 +71899,15 @@ const ThreeRenderer = (function () {
             var f = sk.floaters[i];
             f.obj.position.y = f.baseY + Math.sin(t * f.spd + f.phase) * f.amp;
             f.obj.rotation.y += f.spin;
-            if (VY && f.vL) { var vp = f.vAlong - (VY.dir || 1) * VY.dist, vL2 = f.vL * 2; vp = ((vp + f.vL) % vL2 + vL2) % vL2 - f.vL; if (VY.axis === 'z') f.obj.position.z = vp; else f.obj.position.x = vp; }
+            if (VY && f.vL) { var vp = f.vAlong - (VY.dir || 1) * VY.dist * (f.vPar || 1), vL2 = f.vL * 2; vp = ((vp + f.vL) % vL2 + vL2) % vL2 - f.vL; if (VY.axis === 'z') f.obj.position.z = vp; else f.obj.position.x = vp; }
         }
         if (VY && VY.motes.length) {
             var mL2 = VY.L * 2, mU = _hqUnits();
             for (var mi = 0; mi < VY.motes.length; mi++) {
-                var me = VY.motes[mi], mp = me.along - (VY.dir || 1) * VY.dist * 1.15;
+                var me = VY.motes[mi], mp = me.along - (VY.dir || 1) * VY.dist * (me.par || 1.15);
                 mp = ((mp + VY.L) % mL2 + mL2) % mL2 - VY.L;
                 if (VY.axis === 'z') { me.sp.position.x = me.lat; me.sp.position.z = mp; me.sp.material.rotation = _motionStreakRot((Hx || _hq || {}).camera); } else { me.sp.position.x = mp; me.sp.position.z = me.lat; }
-                me.sp.scale.set(5.5 * mU * me.sp._ew_vLen, 0.22 * mU * me.sp._ew_vThick / 0.08, 1);
+                me.sp.scale.set(5.5 * mU * me.sp._ew_vLen * (me.par || 1.15) / 1.15, 0.22 * mU * me.sp._ew_vThick / 0.08, 1);
             }
         }
     }
