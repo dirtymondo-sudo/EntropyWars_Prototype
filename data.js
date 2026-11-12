@@ -31162,6 +31162,10 @@ const DOOR_HQ = {
                 pipes: false, strips: false,
                 light: { x: 0, z: 0 },
                 mood: { light: 0xf6efdf, ambient: 0.62 },              // the brass-and-glass warmth of a lobby that is cleaned nightly
+                /* ONE DOORWAY, ONE LIGHT (2026-11-12, mondo: "the foyer is too bright and then stepping into the lobby is dark by comparison"):
+                   the foyer wears the hall's rig (HQ_LIGHT_RULES.joinRig), so its own lamps and the Key Light give half / a third here:
+                   white plaster 3 m from every lamp needs far less than the hall's stone 20 m off */
+                lampK: 0.5, keyLamp: 0.3,
                 plate: { x: 2.2, z: -2.95, y: 3.4 },
                 look: HQ_ROOM_LOOKS.retro,
             },
@@ -64883,6 +64887,10 @@ const HQ_LIGHT_RULES = {
        floor's light thrown back up — shell.floorColor (else `color`) mixed `amount` of the way over the old near-black 0x1c1a1e — so a
        ceiling, a gallery's underside and the top of a tall wall read; a dark floor throws back little (three-renderer.js _hqBoxHemiG) */
     bounce: { amount: 0.6, color: 0x8a847a },
+    /* ONE DOORWAY, ONE LIGHT (2026-11-12): a box room joined to the round hall (HQ_STAGE_RULES.round: the foyer) wears the HALL's
+       hemisphere / key / fill, so the hall beyond the doorway reads the same from both sides; false = each room its own rig.
+       A room's own lamps: shell.lampK (0..1), its share of the Key Light: shell.keyLamp (three-renderer.js _hqJoinedHall / _hqLampK) */
+    joinRig: true,
     /* THE PREMIUM POLISH — THE LIGHT PASS (PREMIUM_POLISH_PLAN §2, 2026-09-21). Every number here is the
        building's; a room overrides through its shell (`shell.rig`, `shell.heightFog`, `shell.atmos`,
        `shell.arrival`). The renderer's HQ_LIGHT_DEFAULT carries the same keys (premium-polish.test.js diffs them). */
