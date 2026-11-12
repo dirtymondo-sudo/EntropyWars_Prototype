@@ -5338,3 +5338,14 @@ Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx
 - Checked in a VS CPU match by eval: fire 117 on the spirit, same action on the body 0; psychic on the spirit 194 vs 117 plain,
   psychic on the body 117; Silence sent the spirit home and removed the body. Still open: early return, body slump pose, CPU play,
   builds 3-4.
+
+### build 3 (2026-11-12, same thread): THE REALM WINDOW
+- battle.js `unitCrossesRealm` (a spirit) + `unitSeesRealm` (a spirit, or a race on data.js REALM_SIGHT_RACES: ghost, shadow entity).
+  `isUnitRealmShieldedFrom`: a spirit and a Shadow Realm pair reach each other both ways; the sleeping body stays walled off, and
+  zones / weather (null actor) still never reach in. `isUnitSeenAcrossRealm` feeds `isUnitOutOfRealmView`: on a seer's turn the pair
+  is drawn on the normal board; on the pair's turns a spirit is drawn in their plane. Ghost + Shadow Entity look, cannot touch.
+- three-renderer.js: a unit seen across is a dim shade (REALM_SEEN_OPACITY 0.42), still under the viewer's fog.
+- Checked in VS CPU (Mount Shasta): Shadow Entity's turn showed the pair; shield true before Spirit Walk, false after; the body's hit
+  did 0; Shadow Crush listed the realm Demon as a target and took 982 -> 798.
+  /mnt/project-files/astral-projection-20261112/build3_spirit_targets_realm_unit.jpg. Not checked: a realm pair hitting the spirit
+  through the menus (function only), the online guest view.
