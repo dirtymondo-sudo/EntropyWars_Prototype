@@ -1918,6 +1918,13 @@ The tongue showing in the Face Lab talk pose (jawOpen 0.5 + mouthFunnel 0.3) is 
 Proof `/mnt/project-files/meshy-parts-20261112/three_faces.jpg`. Known on the knight: painted brows are rough, thin hair-edge lines
 at the right cheek, a pale strip at the hairline.
 
+**BATCH ONE OF THE DEMO STARTERS (11-12)** - `zombieFace` + `ew_face_zombie`, `robinhoodFace` + `ew_face_robinhood` (both looks `mhBrows: own`).
+- zombie: `unit=zombie.glb body=mpfb_female stock=.../skin_young_caucasian_female.jpg key=zombieFace skin=ew_face_zombie pitch=0 brow0=0.05 brow1=0.065 hairrgb=25,28,32 hairside=- hairtol=45 eye0=0.004 eye1=0.011 tonepct=85`
+  (the pack zombie skins are green: a plain skin toned to her white face matches her Meshy body shells).
+- robinhood: `unit=robinhood.glb stock=.../skin_young_caucasian_male.jpg key=robinhoodFace skin=ew_face_robinhood hairrgb=50,95,45 hairtol=60` (green hood smear left at the temples, under the hood).
+- NOT DONE: quarterback (the landmarker finds no face behind the helmet's bars: stock face stays); catgirl (her fringe and side locks leave
+  dark lines round the face, and her look wears mondo's saved face: waits on his word). Needs `apt-get install libgles2` beside libegl1 libgl1.
+
 **KNOWN** - with the mouth open the tongue sits high; the sideburn paint ends in a hard edge under the hair; sheet is 1024 px like the stock skins. Not checked: the other four male bodies, WebGPU, a battle.
 Proof: `/mnt/project-files/meshy-parts-20261112/cowboy_face_pilot.jpg`.
 

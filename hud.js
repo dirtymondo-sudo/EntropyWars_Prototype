@@ -1226,6 +1226,165 @@ function SbClock({ startTime, live }) {
   return String(Math.floor(elapsed / 60)).padStart(2, '0') + ':' + String(elapsed % 60).padStart(2, '0');
 }
 
+/* ══════════ THE SCORE POP (mondo 2026-11-12: "whenever a kill happens or arena points are scored, i want the arena
+   scoreboard to do a +N animation, like ... a 3 pointer ... the broadcast will do a +3 over the score ... the black bars
+   come down for spells and cover up the scoreboard so it will have to be after that ... same thing for cube damage and
+   finding keys ... the more points the bigger animation") ══════════
+   No new rule and no new number: the pop is the DIFFERENCE between two draws of the score the plate already shows
+   (_getModeInfo: kills, Cube damage, Keys, Nexus rounds, bounties, off window.ARENA_PTS), so every mode and every way of
+   scoring gets it, and the guest's HUD makes its own from the synced state (nothing relayed, viewer-local).
+   · THE PLATE WAITS: points scored while the spell shot's letterbox (or a finisher / VS card's) is over the scoreboard
+     are held; the digits keep the old score, everything scored under the bars adds into ONE +N per side, and it fires
+     SCORE_POP_RULES.afterBarsMs after the bars have left. Never held longer than maxWaitMs.
+   · THE SIZE: SCORE_POP_RULES.tiers by the points (a kill-count mode's +1 weighs as a kill): tick, pop, bounce, slam.
+   · THE COUNT: the +N stands ON its side's digits (same spot, the digits step out), holds, and the digits come back rolling up to the new score.
+   Off switch: window.EW_NO_SCORE_POP = true. */
+const SCORE_POP_RULES = {
+  /* [points from, name, glyph px, in ms, hold ms, roll ms] */
+  tiers: [[50, 't4', 38, 380, 900, 620], [25, 't3', 28, 340, 760, 520], [10, 't2', 20, 320, 620, 380], [0, 't1', 15, 220, 520, 240]],
+  mergeMs: 240,        // gains this close together are one +N
+  afterBarsMs: 560,    // the letterbox slides out in .45 s (styles-cinematic.css .acam-bar)
+  maxWaitMs: 12000,
+  outMs: 260,
+  killWeight: 25,      // a mode whose score counts kills / captures: +1 is sized like an Arena kill
+};
+const _sbPop = { key: null, real: { 1: 0, 2: 0 }, shown: { 1: 0, 2: 0 }, pend: { 1: 0, 2: 0 }, since: { 1: 0, 2: 0 },
+  roll: { 1: null, 2: null }, busy: { 1: 0, 2: 0 }, cover: { 1: 0, 2: 0 }, blockedAt: 0, raf: 0, weight: 1 };
+function _sbPopBlocked() {
+  if (document.querySelector('.acam-chrome.active:not(.light), .ews-letterbox, .vs-letterbox-in')) return true;
+  const sb = document.querySelector('.ew-scoreboard .ew-score-plate');
+  if (!sb || !sb.getClientRects().length) return true;
+  for (let el = sb; el && el !== document.body; el = el.parentElement) {
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || +cs.opacity < 0.5) return true;
+  }
+  return false;
+}
+/* the plate's draw: takes the true scores, returns the ones to show (the old score while its +N waits) */
+function _sbPopFeed(st, mode) {
+  const S = _sbPop, cur = { 1: +mode.p1Score, 2: +mode.p2Score };
+  if (!isFinite(cur[1]) || !isFinite(cur[2])) return [mode.p1Score, mode.p2Score];
+  const key = (st.startTime || 0) + ':' + mode.id;
+  const off = window.EW_NO_SCORE_POP || st.phase !== 'battle';
+  if (key !== S.key || off) {
+    S.key = key;
+    for (const p of [1, 2]) { S.real[p] = S.shown[p] = cur[p]; S.pend[p] = 0; S.since[p] = 0; S.roll[p] = null; S.cover[p] = 0; }
+    return [cur[1], cur[2]];
+  }
+  S.weight = mode.id === 'arena' || mode.scoreLabel === 'PTS' ? 1 : SCORE_POP_RULES.killWeight;
+  const now = performance.now();
+  for (const p of [1, 2]) {
+    const d = cur[p] - S.real[p];
+    if (!d) continue;
+    S.real[p] = cur[p];
+    if (d > 0) { S.pend[p] += d; if (!S.since[p]) S.since[p] = now; }
+    else {   // a loss (a Key carrier fell): no pop, the score just drops
+      const take = Math.min(S.pend[p], -d);
+      S.pend[p] -= take;
+      const rest = -d - take;
+      if (S.roll[p]) S.roll[p].to = Math.max(0, S.roll[p].to - rest); else S.shown[p] = Math.max(0, S.shown[p] - rest);
+    }
+  }
+  if ((S.pend[1] || S.pend[2]) && !S.raf) S.raf = requestAnimationFrame(_sbPopTick);
+  return [Math.round(S.shown[1]), Math.round(S.shown[2])];
+}
+function _sbPopTick() {
+  const S = _sbPop, R = SCORE_POP_RULES, now = performance.now();
+  S.raf = 0;
+  const blocked = _sbPopBlocked();
+  if (blocked) S.blockedAt = now;
+  for (const p of [1, 2]) {
+    if (S.pend[p] > 0 && now >= S.busy[p]) {
+      const late = now - S.since[p] > R.maxWaitMs;
+      if (late || (!blocked && now - S.blockedAt >= R.afterBarsMs && now - S.since[p] >= R.mergeMs)) _sbPopFire(p, late && blocked);
+    }
+    const r = S.roll[p];
+    if (r) {
+      const k = Math.min(1, (now - r.t0) / r.dur), e = 1 - Math.pow(1 - k, 3);
+      S.shown[p] = r.from + (r.to - r.from) * e;
+      const num = document.querySelector('.ew-scoreboard .ew-sb-num.p' + p);
+      if (num) num.textContent = Math.round(S.shown[p]);
+      if (k >= 1) { S.shown[p] = r.to; S.roll[p] = null; }
+    }
+  }
+  if (S.pend[1] || S.pend[2] || S.roll[1] || S.roll[2]) S.raf = requestAnimationFrame(_sbPopTick);
+}
+function _sbPopFire(p, silent) {
+  const S = _sbPop, R = SCORE_POP_RULES, n = S.pend[p];
+  S.pend[p] = 0; S.since[p] = 0;
+  const absorb = (dur) => {
+    const r = S.roll[p], now = performance.now();
+    S.roll[p] = { from: S.shown[p], to: (r ? r.to : S.shown[p]) + n, t0: now, dur: dur };
+    if (!S.raf) S.raf = requestAnimationFrame(_sbPopTick);
+  };
+  const plate = document.querySelector('.ew-scoreboard .ew-score-plate');
+  const host = plate && plate.querySelector('.ew-sb-pops');
+  const num = plate && plate.querySelector('.ew-sb-num.p' + p);
+  if (silent || !host || !num || typeof host.animate !== 'function') { absorb(1); return; }
+  const T = R.tiers.find(t => n * S.weight >= t[0]) || R.tiers[R.tiers.length - 1];
+  const tier = T[1], px = T[2], inMs = T[3], holdMs = T[4], rollMs = T[5];
+  const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* where: ON this side's digits, the same spot (mondo 2026-11-12: "pop up over the team's score number, like in the same spot"):
+     the digits step out while the +N stands in their place, and come back rolling up to the new score. P1's +N grows from the
+     digits' right edge, P2's from their left, so a big one never covers the other side's score. Offsets, so the UI Maker's
+     move / scale of the plate carries it. */
+  let nx = 0, y = num.offsetHeight / 2;
+  for (let el = num; el && el !== plate; el = el.offsetParent) { nx += el.offsetLeft; y += el.offsetTop; }
+  const el = document.createElement('div');
+  el.className = 'ew-sb-pop p' + p + ' ' + tier;
+  if (p === 1) el.style.right = (plate.clientWidth - nx - num.offsetWidth) + 'px'; else el.style.left = nx + 'px';
+  el.style.top = y + 'px';
+  el.style.transformOrigin = (p === 1 ? '100%' : '0%') + ' 50%';
+  el.style.fontSize = px + 'px';
+  el.style.fontFamily = getComputedStyle(num).fontFamily;
+  el.textContent = '+' + n;
+  host.appendChild(el);
+  S.cover[p] = (S.cover[p] || 0) + 1; num.style.opacity = '0';
+  const uncover = () => { S.cover[p] = Math.max(0, (S.cover[p] || 1) - 1); if (!S.cover[p]) { const nm = document.querySelector('.ew-scoreboard .ew-sb-num.p' + p); if (nm) nm.style.opacity = ''; } };
+  const x = nx + num.offsetWidth / 2;
+  const C = 'translateY(-50%) ';
+  const IN = calm ? [{ opacity: 0, transform: C + 'scale(1)' }, { opacity: 1, transform: C + 'scale(1)' }]
+    : tier === 't1' ? [{ opacity: 0, transform: C + 'scale(.6)' }, { opacity: 1, transform: C + 'scale(1)' }]
+    /* ONE POP, THEN STILL (mondo 2026-11-12: "it's maybe a little too wavy"): no up-and-down, no second bounce — the +N
+       punches in past its size once and settles; the size of that one overshoot (and the glyph) is what grows with the points. */
+    : tier === 't2' ? [{ opacity: 0, transform: C + 'scale(.5)' }, { opacity: 1, transform: C + 'scale(1.14)', offset: .55 }, { opacity: 1, transform: C + 'scale(1)' }]
+    : tier === 't3' ? [{ opacity: 0, transform: C + 'scale(.4)' }, { opacity: 1, transform: C + 'scale(1.24)', offset: .5 }, { opacity: 1, transform: C + 'scale(1)' }]
+    : [{ opacity: 0, transform: C + 'scale(2.2)' }, { opacity: 1, transform: C + 'scale(.92)', offset: .45 }, { opacity: 1, transform: C + 'scale(1)' }];
+  S.busy[p] = performance.now() + inMs + holdMs + R.outMs + 60;   // the next +N on this side waits its turn
+  const big = tier === 't3' || tier === 't4';
+  if (big && !calm) {
+    plate.classList.remove('ew-sb-flash', 'p1', 'p2', 't3', 't4'); void plate.offsetWidth;
+    plate.classList.add('ew-sb-flash', 'p' + p, tier);
+    setTimeout(() => plate.classList.remove('ew-sb-flash', 'p' + p, tier), 900);
+    if (tier === 't4') {
+      const ring = document.createElement('div');
+      ring.className = 'ew-sb-pop-ring p' + p;
+      ring.style.left = x + 'px'; ring.style.top = y + 'px';
+      host.appendChild(ring);
+      const ra = ring.animate([{ opacity: .9, transform: 'translate(-50%,-50%) scale(.3)' }, { opacity: 0, transform: 'translate(-50%,-50%) scale(2.4)' }], { duration: 620, easing: 'cubic-bezier(.2,.7,.3,1)' });
+      ra.onfinish = ra.oncancel = () => ring.remove();
+    }
+  }
+  const a = el.animate(IN, { duration: inMs, easing: 'cubic-bezier(.3,.9,.4,1)', fill: 'forwards' });
+  a.onfinish = () => setTimeout(() => {
+    if (!el.isConnected) { uncover(); absorb(1); return; }
+    const o = el.animate(calm ? [{ opacity: 1 }, { opacity: 0 }]
+      : [{ opacity: 1, transform: C + 'scale(1)' }, { opacity: 0, transform: C + 'scale(.5)' }],
+      { duration: R.outMs, easing: 'cubic-bezier(.5,0,.9,.4)', fill: 'forwards' });
+    o.onfinish = o.oncancel = () => {
+      el.remove(); uncover();
+      absorb(rollMs);
+      const nm = document.querySelector('.ew-scoreboard .ew-sb-num.p' + p);
+      if (nm && !calm && typeof nm.animate === 'function') {
+        const k = tier === 't4' ? 1.35 : tier === 't3' ? 1.25 : tier === 't2' ? 1.15 : 1.08;
+        nm.animate([{ transform: 'scale(1)' }, { transform: 'scale(' + k + ')', offset: .3 }, { transform: 'scale(1)' }], { duration: Math.max(260, rollMs), easing: 'ease-out' });
+      }
+    };
+  }, holdMs);
+  a.oncancel = () => { el.remove(); uncover(); absorb(1); };
+}
+if (typeof window !== 'undefined') window._ewScorePopState = () => JSON.parse(JSON.stringify({ real: _sbPop.real, shown: _sbPop.shown, pend: _sbPop.pend, blocked: _sbPopBlocked() }));
+
 function Scoreboard({ st }) {
   if (!st) return null;
 
@@ -1319,7 +1478,7 @@ function Scoreboard({ st }) {
   }
 
   const mode = _getModeInfo(st);
-
+  const sbShown = _sbPopFeed(st, mode);   // THE SCORE POP: the old score while its +N waits for the letterbox
 
   const roundLimit = st.matchClock && st.matchClock.roundLimit ? st.matchClock.roundLimit : 0;
   /* the round counter steps past the limit to end the match: never show R21/20 once time is up */
@@ -1434,22 +1593,23 @@ function Scoreboard({ st }) {
           h('span', { className: 'ew-sb-num p1', style: {
             fontFamily: mono, fontSize: 22, fontWeight: 500, lineHeight: 1, letterSpacing: '0.08em',
             color: EW_T.ink, textShadow: '0 0 14px ' + EW.space + '66',
-            minWidth: 18, textAlign: 'right',
-          }}, mode.p1Score),
+            minWidth: 18, textAlign: 'right', display: 'inline-block', transformOrigin: '100% 60%',
+          }}, sbShown[0]),
           h('span', { className: 'ew-sb-dash', style: {
             fontFamily: mono, fontSize: 13, color: EW_T.inkDim, lineHeight: 1,
           }}, '–'),
           h('span', { className: 'ew-sb-num p2', style: {
             fontFamily: mono, fontSize: 22, fontWeight: 500, lineHeight: 1, letterSpacing: '0.08em',
             color: EW_T.ink, textShadow: '0 0 14px ' + EW.chaos + '66',
-            minWidth: 18, textAlign: 'left',
-          }}, mode.p2Score),
+            minWidth: 18, textAlign: 'left', display: 'inline-block', transformOrigin: '0% 60%',
+          }}, sbShown[1]),
         ),
 
         sbMid.length > 0 && sbLine('', sbMid),
         sbUnder.length > 0 && sbLine('ew-sb-under', sbUnder),
 
         sbLook.pips !== 'top' && pipsEl,
+        h('div', { key: 'pops', className: 'ew-sb-pops' }),   // THE SCORE POP's layer (filled by _sbPopFire, never by React)
       ),
 
       h(ScoreSide, { st, mode, player: 2, side: 'right', color: EW.chaos }),
@@ -15096,6 +15256,20 @@ function _hudHideCss() {
     .ew-party-reserve-bar { width: 22px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
     .ew-party-reserve.seated { opacity: 0.72; }
     .ew-party-reserve-seat { position: absolute; top: -5px; right: -4px; font-size: 9px; line-height: 1; }
+    /* ══════════ THE SCORE POP (hud.js _sbPopFire, 2026-11-12): the +N on the score digits ══════════ */
+    .ew-sb-pops { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+    .ew-sb-pop { position: absolute; transform: translateY(-50%); line-height: 1; white-space: nowrap;
+      font-weight: 700; letter-spacing: 0.04em; color: #4fd8ff; will-change: transform, opacity;
+      text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 0 12px rgba(79,216,255,0.55); }
+    .ew-sb-pop.p2 { color: #ff4fa3; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 0 12px rgba(255,79,163,0.55); }
+    .ew-sb-pop.t3, .ew-sb-pop.t4 { text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 0 18px currentColor; }
+    .ew-sb-pop-ring { position: absolute; width: 46px; height: 46px; border-radius: 50%; border: 2px solid #4fd8ff; box-shadow: 0 0 10px #4fd8ff; }
+    .ew-sb-pop-ring.p2 { border-color: #ff4fa3; box-shadow: 0 0 10px #ff4fa3; }
+    .ew-score-plate.ew-sb-flash.p1 { animation: ewSbFlash1 .8s ease-out; }
+    .ew-score-plate.ew-sb-flash.p2 { animation: ewSbFlash2 .8s ease-out; }
+    .ew-score-plate.ew-sb-flash.t4 { animation-duration: .9s; }
+    @keyframes ewSbFlash1 { 0% { box-shadow: 0 0 0 2px #4fd8ff, 0 0 22px 4px rgba(79,216,255,0.7); } 100% { box-shadow: 0 0 0 0 rgba(79,216,255,0), 0 0 0 0 rgba(79,216,255,0); } }
+    @keyframes ewSbFlash2 { 0% { box-shadow: 0 0 0 2px #ff4fa3, 0 0 22px 4px rgba(255,79,163,0.7); } 100% { box-shadow: 0 0 0 0 rgba(255,79,163,0), 0 0 0 0 rgba(255,79,163,0); } }
     /* ══════════ THE SCORE SIDES (hud.js ScoreSide, 2026-10-13) ══════════
        name row · tower bar · entropy gauge, one width per team; both meters fill from the centre plate outward */
     .ew-score-side { display: flex; flex-direction: column; gap: 5px; flex: none; }

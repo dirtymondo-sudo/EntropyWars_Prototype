@@ -1538,6 +1538,25 @@ head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay t
   `RACE_REMADE_LOOKS` + `getRaceRemadeLook(race, gender)`, party-builder.js USE THE REMADE <RACE> LOOK (beside USE THE SAVED LOOK) and
   REMADE LOOK inside the creator. The race's default idle can crouch a creator rig (knight, wizard): the looks carry `idle: Idle_11`.
 - Sources kept: /mnt/project-files/meshy-parts-20261112/ (the three T2 GLBs, the in-game sheet, scripts).
+- **Batch one of the demo starters (11-12, mondo: "demo starters is good")**: zombie (F), catgirl (F), robinhood (M), quarterback (M):
+  `ewm_t2zombie_outfit`, `ewm_t2catgirl_outfit` (+ `_hat` = her black ears, on the Hats tab, not in the look: his saved catgirl look has
+  its own ears), `ewm_t2robinhood_outfit`, `ewm_t2quarterback_outfit` + `_hat` (the helmet). Sources + look check sheets:
+  /mnt/project-files/meshy-remake-batch1/. The djinn was REFUSED twice by Meshy's safety check (`provider_content_refused`, a bare chest); not worked around.
+  New rules in bake-outfit.py (all seven units rebaked with them, cowboy / knight / wizard rechecked from four sides + walking):
+  THE GLOVE ON A BARE HAND (a skin-coloured hand shell loses only its skin faces when 150+ glove faces are left: fingerless gloves; env GLOVE),
+  A FLAKE (a shell under 30 faces and 4 cm, off the head, is dropped; env FLAKE), `--headgear` (a helmet / cowl that reaches below the eyes is
+  the hat, not hair, and is not lifted like a brim; the look picks `hair: 'bald'`), THE HAND IN A BIG SHELL (cloth tight round the wrist + hand
+  stays on the arm even when the shell is not joined to upper-arm cloth; env WRIST / WRISTR), THE SCALP UNDER A HOOD (the crown is hidden under
+  the outfit's own hood when 60 % of it is covered; a high collar is not a hood; env HOODZ / HOODMIN), A TORN FACE (a face whose edge grew 3x
+  and past 6 cm in the un-skin is left out; env TORN). Tried and dropped: a "skin chip" rule (small skin-coloured shells): it took pieces of
+  the knight's armour and the zombie's rags.
+  Gotchas: Meshy's T2 run varies: robinhood's first run fused a bow string into his hand + skirt shell (a second run was clean). The zombie's
+  whole bloody skin comes as shells and is worn as clothes over the hidden body (her hands too); the look's skin is `sohh_female_zombie_skin`.
+  A front render should be cropped to the figure before it is sent (the first four went out small in the frame and still worked).
+  A HAIR LOCK (11-12, mondo: "some sort of strip hanging off the back of the [zombie]'s head and back"): a shell under 600 faces in the
+  unit's hair colour that reaches the head is hair too and is not exported (env LOCKS / LOCKN / LOCKT; off under --headgear).
+  Open: a few skin flecks on robinhood's hood front, a skin chip by the catgirl's left boot, light patches on her sleeves (the lacing in
+  Meshy's texture), the knight's and zombie's walk hunches (the race's own walk clip), no sway, stock faces until the face step.
 
 ## THE MESHY PIECES (2026-11-03, character-models-plan.md row 16)
 mondo: "now how do we put these models both in the character creator and in the game for spells". This is the creator half.

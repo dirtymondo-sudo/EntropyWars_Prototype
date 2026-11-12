@@ -8014,6 +8014,7 @@
             const isFastPixel = rsRatio===1;
             const isNativePixel = !isFastPixel && Math.abs(rsRatio-rsNative)<0.011;
             const rsSteps = (_rsInfo&&_rsInfo.steps) || [0.5,0.67,0.75,0.85,1];
+            const ggLevel = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.getGrassField) ? ThreeRenderer.getGrassField() : 'high';   // THE GRASS FIELD
             const rsShare = rsRatio/rsNative;
             let rsOn = -1; rsSteps.forEach((k,i)=>{ if(Math.abs(rsShare-k)<0.011) rsOn=i; });
             const rsSize = (_rsInfo&&_rsInfo.w>0&&_rsInfo.h>0) ? `drawing ${_rsInfo.w} × ${_rsInfo.h}; ` : '';
@@ -8250,6 +8251,15 @@
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
                         <span class="pm-toggle-hint">${rsSize}the 3D picture's share of your screen's own resolution: lower runs faster and softer, menus and text stay sharp</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Grass</span>
+                        <div class="pm-seg-group">
+                            ${['high','low','off'].map(k=>`<button class="pm-seg-btn${ggLevel===k ? ' active' : ''}" onclick="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setGrassField)ThreeRenderer.setGrassField('${k}');${RJ}">${k.charAt(0).toUpperCase()+k.slice(1)}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">thick grass on grassy ground: Low draws under half as much, Off leaves the flat ground</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">FPS Cap</span>
@@ -18013,7 +18023,7 @@
                 + (ack ? '<div class="tut-coach-actions"><button class="tut-btn tut-btn-primary" data-tut="continue">' + (isFinish ? 'LESSON COMPLETE ▸' : 'CONTINUE ▸') + '</button></div>' : '')
                 + '<div class="tut-coach-progress" title="step ' + n + ' of ' + total + '"><i style="width:' + Math.round(100 * n / total) + '%"></i></div>';
         }
-        function _tutRenderDone() {
+        function _tutRenderDone(qres) {
             const el = _tutMountCoach();
             const L = _tut.lesson;
             const next = _tutNextLesson();
@@ -18021,6 +18031,7 @@
             el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · FILED') + '</span></div>'
                 + '<div class="tut-coach-stamp">LESSON COMPLETE</div>'
                 + '<div class="tut-coach-body">' + escapeHtml(L.title) + ' is on your record. ' + (next ? 'Next on the shelf: <b>' + escapeHtml(next.title) + '</b>.' : 'That was the last tape on the shelf.') + '</div>'
+                + _tutQuestLine(qres)   // THE QUESTS: what the tape did to a quest
                 + '<div class="tut-coach-actions">'
                 + (next ? '<button class="tut-btn tut-btn-primary" data-tut="next">NEXT TAPE ▸</button>' : '')
                 + '<button class="tut-btn" data-tut="list">' + (_tut.from === 'hq' ? 'BACK TO ROOM 64' : 'THE SHELF') + '</button></div>';
@@ -18038,7 +18049,63 @@
             try { playSfx('levelUp'); } catch (e) {}
             try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { volume: 0.7 }); } catch (e) {}
             try { if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache(); if (typeof markDirty === 'function') markDirty('actions'); if (typeof renderIfDirty === 'function') renderIfDirty(); } catch (e) {}
-            _tutRenderDone();
+            /* THE QUESTS (2026-11-12): the tape is an event a quest may be waiting on (data.js questEvent). When it makes a
+               quest's own fight the next objective and the lesson was started from the building, the lesson turns into it:
+               the portal forms on this board, then the fight starts on it (_tutQuestPortal) */
+            let _qres = null;
+            try { if (typeof window._questEvent === 'function') _qres = window._questEvent({ type: 'lesson', lesson: L.id }, { silent: true }); } catch (e) { _qres = null; }
+            try { if (_qres && _qres.fight && typeof window._hqIsHome === 'function' && window._hqIsHome() && _tutQuestPortal(_qres.fight, _qres)) return; } catch (e) { console.warn('[QUEST] the portal could not open', e); }
+            _tutRenderDone(_qres);
+        }
+        function _tutQuestLine(qres) {
+            const c = qres && Array.isArray(qres.changes) ? qres.changes.find(x => x.kind === 'updated' || x.kind === 'started') : null;
+            return c ? '<div class="tut-coach-hint">▶ QUEST · ' + escapeHtml(String(c.title || '')) + ': ' + escapeHtml(String(c.objective || '')) + '</div>' : '';
+        }
+        /* the lesson turns into the quest's fight: the Department's door stands up on the fight's portal tile of THIS board,
+           the camera goes to it, and after the beat the lesson is torn down and the fight starts on the same board (map.js
+           _questFightGo; window._questFightPending keeps the building from being re-entered in between). A fight that
+           cannot start falls back to the ordinary way home. */
+        function _tutQuestPortal(fightId, qres) {
+            const F = (typeof window.questFightDef === 'function') ? window.questFightDef(fightId) : null;
+            if (!F || typeof window._questFightGo !== 'function') return false;
+            const L = _tut.lesson;
+            const el = _tutMountCoach();
+            el.classList.remove('met', 'nudge'); el.classList.add('done');
+            el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · FILED') + '</span></div>'
+                + '<div class="tut-coach-stamp">LESSON COMPLETE</div>'
+                + '<div class="tut-coach-body">A portal is forming on the pad.</div>' + _tutQuestLine(qres);
+            const here = !!(F.portal && L.map === F.site);
+            if (here) {
+                setTimeout(() => {
+                    if (!_tut.active) return;
+                    try { _tutCamera(F.portal.x, F.portal.y); } catch (e) {}
+                    try { if (window.ThreeVFXEffects && typeof window.ThreeVFXEffects.questPortal === 'function') window.ThreeVFXEffects.questPortal(F.portal.x, F.portal.y, { riseMs: 900, openMs: 600, holdMs: 2600, big: true, scale: 1.5 }); } catch (e) {}
+                    try { if (typeof showCombatBanner === 'function') showCombatBanner('🚪 A PORTAL FORMS', 'SOMETHING IS COMING THROUGH', 'pickup-enemy'); } catch (e) {}
+                }, 900);
+            }
+            setTimeout(() => {
+                if (!_tut.active) return;
+                window._questFightPending = fightId;
+                /* the cut from the lesson's board to the fight's: a plain black card covers the moment neither exists, and
+                   lifts on the fight's first round (or at once when the fight cannot start; 20 s is the safety net) */
+                let cover = null, coverPoll = null;
+                const lift = (now) => { if (coverPoll) { clearInterval(coverPoll); coverPoll = null; } const c = cover; cover = null; if (!c) return; if (now) { c.remove(); return; } c.style.opacity = '0'; setTimeout(() => { try { c.remove(); } catch (e) {} }, 420); };
+                try {
+                    cover = document.createElement('div'); cover.id = 'questCover';
+                    cover.style.cssText = 'position:fixed;inset:0;z-index:99990;background:#050508;display:flex;align-items:center;justify-content:center;opacity:1;transition:opacity 0.4s ease;pointer-events:none;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:0.3em;color:#b8a060;';
+                    cover.textContent = 'A PORTAL FORMS';
+                    document.body.appendChild(cover);
+                    setTimeout(() => lift(false), 20000);
+                } catch (e) { cover = null; }
+                _tutTeardown(() => {
+                    window._questFightPending = null;
+                    let ok = false;
+                    try { ok = !!window._questFightGo(fightId); } catch (e) { console.error('[QUEST] the fight did not start', e); ok = false; }
+                    if (!ok) { lift(true); if (typeof window._hqReturnOrMenu === 'function') window._hqReturnOrMenu(); return; }
+                    coverPoll = setInterval(() => { if (state.phase === 'battle' && state.round >= 1 && state._blitzActiveUnitId) lift(false); }, 120);
+                });
+            }, here ? 3600 : 1200);
+            return true;
         }
         function _tutStopMatchSide() {
             if (_tut.poll) { clearInterval(_tut.poll); _tut.poll = null; }

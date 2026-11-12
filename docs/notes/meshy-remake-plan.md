@@ -73,6 +73,12 @@ Look for, in this order:
 | Skin slivers at the calves | leg hidden face by face | a leg segment 70% covered is hidden whole |
 | Boot through the robe front | skirt shared evenly between the legs | THE CLOTH OVER A LEG: only cloth between the legs is shared |
 | Unit crouches | race idle on the creator rig | look carries `idle: 'Idle_11'` |
+| Helmet left out (read as hair) | head pieces below the eyes were hair | `--headgear` keeps them as the hat, unlifted |
+| One glove floating beside the hand | hand fused into a big shell failed the sleeve test | THE HAND IN A BIG SHELL (wrist seeds) |
+| Fingerless gloves lost with the bare hand | hand shell dropped whole | THE GLOVE ON A BARE HAND |
+| Scalp through a hood | skin between the hood's vertices | THE SCALP UNDER A HOOD |
+| Thin sticks through the hands | faces stretched between bones | A TORN FACE |
+| Skin chips floating by a boot | tiny loose shells | A FLAKE |
 
 Tried and dropped: a ray test for sleeves (cuffs flared into plates), aiming the forearm (tore shoulders), cutting boot
 tops under a hem (bare shin showed).
@@ -156,6 +162,12 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 | cowboy (M) | PR #1153 | clean after round 4 | owed | PILOT DONE 11-12 (bake-face.py) | waiting | boots + spurs fixed #1154 |
 | knight (F) | PR #1153 | clean after round 4 | owed | DONE 11-12, SOFT FACE round 3 (he called the first fit an ogre) | waiting | calf slivers fixed #1155; cape no sway |
 | wizard (M) | PR #1153 | clean after round 4 | owed | DONE 11-12 | waiting | robe points #1155, boots #1156; K3, K5 open |
+| zombie (F) | batch one 11-12 | clean (race walk hunches) | owed | DONE 11-12 | waiting | her bloody skin is worn as shells; skin `sohh_female_zombie_skin` |
+| catgirl (F) | batch one 11-12 | skin chip by the left boot, lacing patches on the sleeves | owed | next | waiting | his saved look's body + face + hair; T2 ears = separate hat piece, not in the look |
+| robinhood (M) | batch one 11-12 (second T2 run) | a few skin flecks on the hood front | owed | DONE 11-12 | waiting | hood = outfit, `hair: bald`; fingerless gloves kept |
+| quarterback (M) | batch one 11-12 | clean | owed | next | waiting | `--headgear` (helmet = hat piece), `hair: bald` |
+| djinn (M) | REFUSED by Meshy's safety check twice (bare chest) | | | | | not worked around; needs his word |
+| mummy (F), angel (F) | batch two, not started | | | | | |
 | everything else in group A | not started | | | | | |
 
 ## 9. Standing rules for any session doing this

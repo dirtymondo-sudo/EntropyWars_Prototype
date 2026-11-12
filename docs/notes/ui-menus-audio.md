@@ -2680,3 +2680,20 @@ Guard's combat text is ONE line: `🛡 <unit> Guards and restores a little HP.` 
 (+DEF/M DEF, +15% Counter, Overwatch…) and the two status lines ("Guard: X is guarding." / "is recovering.") are gone
 from the text box and the combat log; the rules did not change. battle.js applyStatusPayload reads `payload.quiet`
 (the caller writes its own line for that status).
+
+
+## THE SCORE POP (2026-11-12, mondo: "whenever a kill happens or arena points are scored, i want the arena scoreboard to do a +N animation ... like a 3 pointer"; mock-up approved "looks good")
+hud.js, the block before `function Scoreboard`. A **+N** stands ON the scoring side's score digits (his word: "over the
+team's score number, like in the same spot"): the digits step out, the +N holds, the digits come back rolling up.
+- No new rule: `_sbPopFeed` diffs the score the plate already draws (`_getModeInfo`), so kills, Cube damage, Keys, Nexus
+  rounds and bounties all pop, in every mode, and the guest makes its own from the synced state (nothing relayed).
+- THE PLATE WAITS: `_sbPopBlocked` holds while a letterbox is over the scoreboard (`.acam-chrome.active:not(.light)`,
+  `.ews-letterbox`, `.vs-letterbox-in`, or the plate hidden); everything scored under the bars is ONE +N per side, fired
+  `afterBarsMs` after they leave (never held past `maxWaitMs`).
+- THE SIZE: `SCORE_POP_RULES.tiers` (<10 tick, 10-24 pop, 25-49 bounce + plate flash, 50+ slam + ring). A kill-count
+  mode's +1 weighs as a kill (`killWeight`). P1's +N grows left, P2's right, in the side's scoreboard colour.
+- A score that drops (a Key carrier falls) just drops, no pop. Off switch `window.EW_NO_SCORE_POP`; probe
+  `window._ewScorePopState()`. Not seen yet: online guest, his Mac, the motion at full speed (stills only).
+
+- 11-12 later, mondo: "it's maybe a little too wavy": the bounce / double bounce / up-and-down are gone. Every size is ONE
+  overshoot and a settle (t4 lands from big); the digits' bump on the roll is smaller. Sizes, flash and ring unchanged.
