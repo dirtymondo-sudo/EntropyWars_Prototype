@@ -2132,3 +2132,20 @@ Only the sway changed. `GGRASS.wind` 0.45 -> 0.24 (tip travel), `sheen` 0.30 -> 
 how fast gusts roll) and `flutter` 0.05 (was 0.10). GLSL takes them as `uGgW`, the node twin as constants at build. Live retune: `EW_GGRASS.wind = …;
 EW_GGRASS.flush()`. Proof frames: `window.EW_DISABLE_GRASS_WIND = true; window.EW_GRASS_WIND_T = <seconds>` sets the stopped wind clock by hand.
 Before/after: /mnt/project-files/ghibli-grass-20261112/sway_before_after.gif (Stonehenge, WebGL2 node renderer). Not seen: real WebGPU, classic WebGL.
+
+## THE MOVING SHEETS: astral ground + six liquid looks from the noise packs (2026-11-12)
+mondo: "I could see there being a psychic or astral terrain made from these. Definitely use them in the astral realm or dreamy
+maps. Maybe you can use some of these for liquids", then of the examples "Yeah looks good, go ahead". Source: Screaming Brain
+Studios' CC0 packs (see spells-vfx.md THE NOISE PACKS).
+- Eight texture keys in data.js CALM_TERRAIN.sheets, each playing by its twin's rules (hqRuleKeyOf), so no new terrain and no
+  new rule: `nz_astral_a` / `nz_astral_b` (purple_grass), `nz_dreamwater` (water), `nz_spring` (healing_spring), `nz_poison`
+  (poison), `nz_purplebog` (purple_bog), `nz_magma` (lava), `nz_oil` (oil). The stills are on R2
+  `Assets/world/terrain/calm/nz_*.png` (the packs' own files, unedited); the editor's texture picker lists them under MOVING.
+- three-renderer.js THE MOVING SHEETS (`_NZ_MOVE`, `_nzMoveTex`): `_hzTex` and `getTerrainTexture` hand out ONE small canvas
+  per key in place of the file. A dozen times a second the colour sheet is drawn into it at a drifting offset and a tinted
+  noise sheet (`Assets/fx/noise/sbs/`) is added over it sliding the other way. Every surface wearing the key moves on every
+  renderer, with no shader. Off switch: `window.EW_NO_MOVING_SHEETS` (they stand still).
+- THE SEA OF POSSIBILITY (`site_prebuilt_lookingglass_sea`) wears `nz_astral_a` as its terrain floor (was purple_grass).
+- His pixel lava + water are untouched and stay what lava + water wear; the liquid looks are only there when picked by name.
+- Seen: the Sea of Possibility floor moving, node renderer on WebGL 2. Not seen: a liquid look painted in the editor (as a
+  board square or a hazard), real WebGPU, classic WebGL.

@@ -3762,3 +3762,23 @@ lobes; OK'd mock-up 4 ("okay yeah that's better"). three-renderer.js only, block
   (`time` freezes the tongues: compare variants at the same instant, never free-running stills).
 - Not seen: a real 2-player online match, a boss-size unit, his Mac. Top-down play camera shows the tongues short
   (they point at the lens).
+
+## THE NOISE PACKS: the wash on every hit square (2026-11-12)
+mondo: "Uploaded 4 folders of noise and texture packs ... making tile effects when spells hit ... show me examples first",
+then of the examples "Yeah looks good, go ahead". The packs are Screaming Brain Studios' (CC0, 512 seamless 128 px sheets:
+Abstract Noise, Abstract Texture, Noise Texture (18 families), Seamless Abstract). His upload is in R2 `dirtymondo`
+`inbox/SBS .../`; the sheets the game uses are on `ewmusicsfx` `Assets/fx/noise/sbs/<family>_<nn>.png` (`absn_NNN`,
+`abst_NNN`, `seam_NN` for the three other packs).
+- three-vfx-effects.js THE NOISE PACKS (after THE FIRE PASS): `_nzStage` rides `_fireStage` (the relayed beats, so the guest
+  draws it). On the burst of a `type: 'damage'` spell whose `vfxElement || element` is in `_NZ`, `_nzWash` lays one splat on
+  each square of the windup's footprint (a self-centred blast skips the caster's square; at most 25 squares).
+- The splat: a disc (radius 0.6 square) with vertex alpha 1.7 in the middle and 0.1 at the rim, two sheets from `_NZ`
+  (the bright one added, the second a flat-colour stain so it reads on a pale floor), `alphaMap` = the noise and
+  `alphaTest` climbing: it grows in from its brightest lines and is eaten from the rim and the dim parts. Plain
+  MeshBasicMaterial (vertex alpha + alphaMap + alphaTest draw the same on the node renderer; no TSL twin).
+- `_NZ`: element -> [sheet, colour, second sheet, its colour, turn rad / s] for psychic, ice, lightning, poison, water, fire,
+  wind, earth, nature, sonic, metal, blood, shadow.
+- Off switch: `window.EW_NO_NOISE_WASH`. Console: `EW_NZ_WASH(tiles, element, rank, { life, freeze })` (freeze 0..1 holds one
+  point of the life for a still), `EW_NZ_GROUND(tiles, o)` (the examples' overlay sheet, console only).
+- Seen: direct calls + the stage beats on the node renderer's WebGL 2 backend. Not seen: real WebGPU, classic WebGL, online
+  guest, frame cost on a weak PC.
