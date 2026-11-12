@@ -2177,3 +2177,27 @@ Studios' CC0 packs (see spells-vfx.md THE NOISE PACKS).
 - Not touched: his pixel water + lava, healing_spring (a calm sheet, no shader), the six MOVING liquid looks (canvas sheets on plain
   ground material, no highlight of their own).
 - Proof (node renderer, WebGL2): /mnt/project-files/dull-liquids-20261112/. Not seen: real WebGPU / his Mac, classic WebGL.
+
+## ONE TRAINING ROOM (2026-11-12, mondo: "unifying the training room look in the battle map with the one in the story mode. They need to be the same for the cutscene and battling in the training room to make sense"; his pick on the card: the test chamber, plus a Meshy cart with wheels)
+- Before: the walk's Training Room was `DOOR_HQ.rooms.training` (Room 64, 20 m, the old maroon pit, `fx: 'training'`); the lessons and the
+  quest fight played on the 8 x 8 cut of `rooms.training_hall` (the 63 m test chamber). Two rooms.
+- Now (data.js only): `rooms.training` is built right after the DOOR_HQ table as `Object.assign({}, rooms.training_hall, {...})` minus `site`:
+  the SAME shell, terrain, props and doors, plus what only a walked room has (roomNo 64, the RANGE console counter, the two agents, the
+  sparring spots, the lines, spawn 0,28). CHANGE THE LOOK IN `training_hall`; `training` follows at load. A room edited in the editor's
+  world doc is replaced whole, so an editor edit of one does not reach the other.
+- The id `training` is kept on purpose: the main hall door, the service stair, the quest (`done.room`, QUEST_FIGHTS.room), the facility
+  row, the lesson plaque and the cast spots (Knox, Ringer: moved under the east deck) all read it.
+- Moved into the hall from Room 64: the tanker desk + CRT + phone + papers (west wall, z 0), the lesson plaque, the three doors (main hall
+  south x 0, service stair west z -24.5, condemned crossing east z 24.5), the coffee corner, lockers + hook rail, cooler, folding chairs,
+  wet floor sign. The old pit stays in the file, unlinked, as `rooms.training_pit` (the renderer's `_hqBuildTrainingPit` still builds it);
+  the voxel board is still "Training Room · voxel" in VS CPU.
+- THE ORIENTATION CORNER (his words: "a little area where the player takes a seat and the TV gets rolled in"): three `school_desk` (face 0:
+  the prop carries its seat, the sitter faces south, back to the pad) at x -7.35 / -5.25 / -3.15, z 26; `decor_av_cart` (NEW Meshy model,
+  `Assets/world/props/meshy_decor/av_cart.glb`, 0.5 MB, catalogue h 1.1) at x -5.25, z 29.4 with `tube_tv` on top (y 1.1), `vhs_player`
+  on the middle shelf (y 0.67), a tape on the bottom shelf. The cutscene thread's shots (TV roll-in, the portal behind the seats) are
+  planned on these spots: keep the lane from the door to the cart clear and nothing taller than a seated head between the desks and the pad.
+- Rules untouched: the pad's `board` keys, the 8 x 8 pick (`node bake-arenas.js --own prebuilt_training --dry-run`: ok, all level 0).
+- Proof (headless WebGL2, reads darker than his Mac): /mnt/project-files/training-room-unify-20261112/.
+- THE LAWN ON THE PAD (found proving this): THE GRASS FIELD grew tufts over the test chamber's pad in battle (the board's squares keep the
+  grass tile TYPE as a rule), so the board looked like a lawn and the walked room did not. New `shell.grassField: false` (three-renderer.js
+  `_ggBuild`: the battle's room says no grass field on its board); `training_hall` sets it. No tile type changed.

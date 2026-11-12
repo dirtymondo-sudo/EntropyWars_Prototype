@@ -8427,6 +8427,10 @@ const ThreeRenderer = (function () {
     function _ggBuild(group) {
         _gg = null; _ggMaskU.mesh = null;
         if (!_ggOn() || typeof getTerrainAt !== 'function') return;
+        /* A ROOM THAT PAINTS ITS OWN SQUARES (2026-11-12, the Training Room: its pad is tile, but the board's squares keep the grass tile
+           TYPE as a rule, so the field grew a lawn over the test chamber in battle and the walked room had none): `shell.grassField: false`
+           on the battle's room = no grass field on its board. */
+        try { var _ggR = (typeof _hqBattleRoom === 'function') ? _hqBattleRoom() : null; if (_ggR && _ggR.room && _ggR.room.shell && _ggR.room.shell.grassField === false) return; } catch (e) {}
         var _t0 = performance.now();
         var ts = CONFIG.tileSize || BASE_TILE, W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
         if (!W || !H) return;

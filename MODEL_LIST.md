@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 661 |
+| Meshy AI | no | 662 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -1748,12 +1748,13 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | item_wizard_staff | `Assets/world/props/misc/wizard_staff.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 | item_wrench | `Assets/world/props/misc/wrench.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) |
 
-### Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) — Meshy AI (23)
+### Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) — Meshy AI (24)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | decor_armour_plinth | `Assets/world/props/meshy_decor/armour_plinth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | decor_armour_stand_post | `Assets/world/props/meshy_decor/armour_stand_post.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+| decor_av_cart | `Assets/world/props/meshy_decor/av_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | decor_carousel_horse | `Assets/world/props/meshy_decor/carousel_horse.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | decor_effigy_bier | `Assets/world/props/meshy_decor/effigy_bier.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | decor_effigy_figure | `Assets/world/props/meshy_decor/effigy_figure.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
@@ -3362,7 +3363,7 @@ stand-ins (`keypad` carries the sticky-note code, `monitor_stack` its live feeds
 `lost_shelf`, `shag_rug`, `planter`, `false_window` are built to their rooms; a single pack model would drop those parts). Any of
 these can still go: mondo names it and how it should look.
 
-## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (1649 of 3416, bucket `ewmusicsfx`, listed 2026-11-11)
+## 13. EVERY MODEL FILE ON R2 — the ones not named in the tables above (1649 of 3435, bucket `ewmusicsfx`, listed 2026-11-12)
 
 THE R2 AUDIT (2026-11-04, mondo: "You are supposed to document every single model"). Every model file in the bucket that the
 game tables above do not name, grouped by folder and why it is there. `node list-models.js --r2` re-lists the bucket into
