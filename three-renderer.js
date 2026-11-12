@@ -64377,7 +64377,7 @@ const ThreeRenderer = (function () {
         },
         /* THE PHOTO (rev 8, 2026-09-13): a bust — shoulders up, straight on — of the hero on the stage as a JPEG
            data URL for the ID card (Occam's mirror). Renders the viewer's scene once at w × h through its own
-           camera (the head at 62 % of the frame, no drag yaw, no beat), reads the canvas back in the same task
+           camera (aimed off the Head bone, no drag yaw, no beat), reads the canvas back in the same task
            (no preserveDrawingBuffer needed), then restores the live size. null without a model. */
         snapshot: function (opts) {
             var v = _cv; opts = opts || {};
@@ -64389,9 +64389,21 @@ const ThreeRenderer = (function () {
                 v.model.rotation.y = opts.yaw || 0;
                 v.stage.position.x = 0; v.blob.position.x = 0; v.circle.position.x = 0;
                 var cam = new THREE.PerspectiveCamera(22, w / hgt, 0.05, 60);
-                var cy = v.h * (opts.bust === false ? 0.52 : 0.86), dist = v.dist0 / (opts.bust === false ? 1 : 2.9);
-                cam.position.set(0, cy + 0.02 * v.h, dist);
-                cam.lookAt(0, cy - 0.01 * v.h, 0);
+                var cy = v.h * (opts.bust === false ? 0.52 : 0.86), dist = v.dist0 / (opts.bust === false ? 1 : 2.9), cx = 0, cz = 0;
+                /* THE FRAMING (2026-11-12, mondo: "the angle and framing is all messed up"): the bust was aimed at 86 % of the
+                   body's height, so the head sat against the top edge, a hat was cut off and most of the photo was coat. It is
+                   aimed off the Head bone now, like the portrait studio's photo (PT_BUST): the head's middle a little above the
+                   frame's middle, room for a hat, the shoulders along the bottom. */
+                if (opts.bust !== false) {
+                    v.model.updateMatrixWorld(true);
+                    var shp = _cvHeadPoint(v);
+                    if (shp) {
+                        cx = shp.x; cz = shp.z; cy = shp.y - v.h * PT_BUST.drop;
+                        dist = v.h * PT_BUST.frame * 0.5 / Math.tan((22 * Math.PI / 180) / 2);
+                    }
+                }
+                cam.position.set(cx, cy + (shp ? 0 : 0.02 * v.h), cz + dist);
+                cam.lookAt(cx, cy - (shp ? 0 : 0.01 * v.h), cz);
                 var blobVis = v.blob.visible, circVis = v.circle.visible;
                 v.blob.visible = false; v.circle.visible = false;
                 r.setPixelRatio(1); r.setSize(w, hgt, false);
@@ -64721,6 +64733,257 @@ const ThreeRenderer = (function () {
 
     // menu screens (ui.js codex/shop, party-builder.js) reach it here:
     if (typeof window !== 'undefined') window.EWCharViewer = charViewer;
+
+    /* ══ THE PORTRAIT STUDIO (2026-11-12, mondo: "how the game takes a screenshot of the player's created character model
+       and uses that is the portrait, the angle and framing is all messed up" + "cut one from her model" for Agent Locke) ══
+       A unit that wears a MODEL of its own (a creator look, or a story character's rig: `appearance.cast`) gets its
+       portrait FROM that model: a small second renderer (PT_PX square, like the character viewer's, the same lights and
+       colour pipeline) builds the body once, lets the idle and the cloth settle a few frames, aims a camera at the Head
+       bone (a three-quarter face: PT_YAW, the face's middle in the frame's middle, PT_FRAME of the body's height tall) and
+       keeps the picture as a data URL. sprites.js getUnitPortraitArtUrl asks EWPortraits.url(unit): null until the picture
+       is in (the sprite's face stands in), then the HUD's faces repaint (hud.js EWFaces.bump). `kind` 'bust' = the ID
+       card's 256 x 320 photo, framed off the same Head bone. One body at a time; the body and, half a minute after the
+       last job, the renderer are let go. Viewer-local: nothing is stored on a unit, nothing is relayed.
+       Off: window.EW_NO_MODEL_PORTRAITS = true. */
+    var PT_PX = 128, PT_FOV = 20, PT_FRAME = 0.22, PT_YAW = 0.36, PT_POLAR = -0.04, PT_PITCH = 0.8, PT_FWD = 0.028, PT_SETTLE = 8, PT_WAIT = 90000;
+    var PT_BAKE_EXPO = 0.62;   // a Meshy bake (its own glow under the studio's lights) washes out at the creator bodies' exposure: a paler face lost its eyes and mouth
+    var PT_BUST = { w: 256, h: 320, frame: 0.36, drop: 0.035, bg: 0x2a2620 };   // the ID card's photo: the head's middle sits 3.5 % of the height above the frame's middle
+    var _pt = null, _ptV = null, _ptQ = null, _ptUrls = {}, _ptFail = {}, _ptSpecs = (typeof WeakMap === 'function') ? new WeakMap() : null, _ptIdleT = 0;
+    function _ptOff() {
+        return typeof window === 'undefined' || !!window.EW_NO_MODEL_PORTRAITS || !!window.EW_DISABLE_3D_UNITS
+            || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function' || typeof document === 'undefined';
+    }
+    function _ptHash(s) { var h = 2166136261; for (var i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0).toString(36); }
+    /* what to photograph for this unit: { key, def, look } (null = a unit with no model of its own: its art / sprite face stays) */
+    function _ptSpec(u) {
+        if (!u || !u.race) return null;
+        var a = u.appearance;
+        if (!a || typeof a !== 'object') return null;
+        var g = u.gender === 'female' ? 'female' : 'male';
+        var hit = _ptSpecs && _ptSpecs.get(a);
+        if (hit && hit.race === u.race && hit.g === g) return hit.spec;
+        var spec = null;
+        try {
+            if (typeof a.cast === 'string' && a.cast) {
+                var cd = (typeof getCastModel === 'function') ? getCastModel(a.cast) : null;
+                if (cd && cd.model) spec = { key: 'cast:' + a.cast, def: cd, look: null };
+            } else if (typeof ewCreatorLookRace === 'function' && ewCreatorLookRace(u.race) && typeof normalizeCharacterAppearance === 'function') {
+                var n = normalizeCharacterAppearance(a);
+                var def = (n && n.model !== 'original' && typeof getCharacterAppearanceModel === 'function') ? getCharacterAppearanceModel(u.race, g, a) : null;
+                if (def && def.model) spec = { key: 'look:' + u.race + '|' + g + '|' + _ptHash(JSON.stringify(n)), def: def, look: n };
+            }
+        } catch (e) { spec = null; }
+        if (_ptSpecs) _ptSpecs.set(a, { race: u.race, g: g, spec: spec });
+        return spec;
+    }
+    function _ptEnsure() {
+        if (_ptIdleT) { clearTimeout(_ptIdleT); _ptIdleT = 0; }
+        if (_pt) return _pt;
+        var r;
+        try { r = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return null; }
+        r.setClearColor(0x000000, 0);
+        if (_EW_CS) r.outputColorSpace = THREE.SRGBColorSpace; else r.outputEncoding = THREE.sRGBEncoding;
+        r.toneMapping = THREE.ACESFilmicToneMapping;
+        r.toneMappingExposure = 1.05;
+        r.setPixelRatio(1);
+        r.setSize(PT_PX, PT_PX, false);
+        var scene = new THREE.Scene();
+        scene.add(new THREE.HemisphereLight(0xcfd8ff, 0x191024, 0.9));   // the character viewer's three lights
+        var key = new THREE.DirectionalLight(0xfff1da, 1.2);
+        key.position.set(1.7, 2.7, 2.2);
+        scene.add(key);
+        var rim = new THREE.DirectionalLight(0x9a7bff, 0.6);
+        rim.position.set(-2.2, 1.6, -2.5);
+        scene.add(rim);
+        var P = _pt = { renderer: r, canvas: r.domElement, scene: scene, cam: new THREE.PerspectiveCamera(PT_FOV, 1, 0.05, 60), subs: {}, queue: [], busy: null, lost: false, w: PT_PX, h: PT_PX };
+        r.domElement.addEventListener('webglcontextlost', function (e) { try { e.preventDefault(); } catch (_e) {} P.lost = true; });
+        r.domElement.addEventListener('webglcontextrestored', function () { P.lost = false; });
+        return P;
+    }
+    /* nothing left to photograph: the renderer goes half a minute later (a second WebGL context is not kept for nothing) */
+    function _ptRest() {
+        var P = _pt;
+        if (!P || P.busy || P.queue.length || Object.keys(P.subs).length || _ptIdleT) return;
+        _ptIdleT = setTimeout(function () {
+            _ptIdleT = 0;
+            if (!_pt || _pt !== P || P.busy || P.queue.length || Object.keys(P.subs).length) return;
+            try { P.renderer.dispose(); if (P.renderer.forceContextLoss) P.renderer.forceContextLoss(); } catch (e) {}
+            _pt = null;
+        }, 30000);
+    }
+    function _ptDrop(S) {
+        var P = _pt;
+        S.dead = true;
+        if (S.timer) { clearTimeout(S.timer); S.timer = 0; }
+        if (S.mixer) { try { S.mixer.stopAllAction(); } catch (e) {} S.mixer = null; }
+        if (S.rig) { try { S.rig.dispose(); } catch (e) {} S.rig = null; }
+        if (S.model && S.model.parent) S.model.parent.remove(S.model);
+        S.model = null;   // (the clone shares the cached GLB's geometry and materials: only the studio's own copies are disposed)
+        for (var i = 0; i < S.ownedMats.length; i++) { try { S.ownedMats[i].dispose(); } catch (e) {} }
+        for (var j = 0; j < S.ownedTex.length; j++) { try { S.ownedTex[j].dispose(); } catch (e) {} }
+        S.ownedMats = []; S.ownedTex = [];
+        if (P) { if (P.subs[S.key] === S) delete P.subs[S.key]; if (P.busy === S) P.busy = null; }
+    }
+    function _ptBump() {
+        try {
+            if (window.EWFaces && typeof window.EWFaces.bump === 'function') window.EWFaces.bump();
+            else { window._ewFaceGen = (window._ewFaceGen | 0) + 1; window.dispatchEvent(new Event('ew-state-change')); }
+        } catch (e) {}
+    }
+    /* one picture of S through the studio's camera, aimed off the Head bone: the face (a square, three-quarter view, clear
+       behind) or the bust (the ID card's upright photo, straight on, on its backdrop). The caller reads the canvas at once. */
+    function _ptRender(S, bust) {
+        var P = _pt, r = P.renderer, w = bust ? PT_BUST.w : PT_PX, hgt = bust ? PT_BUST.h : PT_PX;
+        for (var k in P.subs) { var o = P.subs[k]; if (o.model) o.model.visible = (o === S); }
+        if (P.w !== w || P.h !== hgt) { r.setSize(w, hgt, false); P.w = w; P.h = hgt; P.cam.aspect = w / hgt; P.cam.updateProjectionMatrix(); }
+        S.model.updateMatrixWorld(true);
+        var hp = _cvHeadPoint(S);
+        var hx = hp ? hp.x : 0, hy = hp ? hp.y : S.h * 0.93, hz = hp ? hp.z : 0;
+        /* where the FACE looks: the Head bone's turn since the bind pose (the body faces +Z there), so a bowed or turned idle
+           head is still met face on (the creator's close-up looks up under a bowed head for the same reason). The camera
+           takes PT_PITCH of the head's bow, then stands PT_YAW to the side for the three-quarter view. */
+        var f = _ptV || (_ptV = new THREE.Vector3()), pd = S.def.portrait || {};   // a def's own aim: { yaw, frame, expo } (sprites.js DOOR_CAST_MODELS)
+        f.set(0, 0, 1);
+        if (S.headBone && S.head0) {
+            var q = S.headBone.getWorldQuaternion(_ptQ || (_ptQ = new THREE.Quaternion()));
+            f.applyQuaternion(q.multiply(S.head0));
+            if (!(f.z > 0.25)) f.set(0, 0, 1);   // a head turned right round: the body's front
+        }
+        var fwd = S.h * PT_FWD;   // the Head bone sits mid-skull: the face is this far in front of it
+        var tx = hx + f.x * fwd, ty = hy + f.y * fwd - (bust ? S.h * PT_BUST.drop : 0), tz = hz + f.z * fwd;
+        var dist = S.h * (bust ? PT_BUST.frame : (pd.frame || PT_FRAME)) * 0.5 / Math.tan((PT_FOV * Math.PI / 180) / 2);
+        var yaw = Math.atan2(f.x, f.z) * (bust ? 0.5 : 1) + (bust ? 0 : (pd.yaw != null ? pd.yaw : PT_YAW));
+        var pol = Math.asin(Math.max(-1, Math.min(1, f.y))) * (bust ? PT_PITCH * 0.6 : PT_PITCH) + (bust ? 0 : PT_POLAR);
+        P.cam.position.set(tx + Math.sin(yaw) * Math.cos(pol) * dist, ty + Math.sin(pol) * dist, tz + Math.cos(yaw) * Math.cos(pol) * dist);
+        P.cam.lookAt(tx, ty, tz);
+        if (bust) r.setClearColor(PT_BUST.bg, 1); else r.setClearColor(0x000000, 0);
+        r.toneMappingExposure = pd.expo || (S.bake ? PT_BAKE_EXPO : 1.05);
+        r.render(P.scene, P.cam);
+    }
+    function _ptShoot(S) {
+        var P = _pt;
+        if (!P || S.dead || !S.model) return;
+        if (P.lost) { _ptFail[S.key] = Date.now(); _ptDrop(S); return; }
+        var got = false;
+        try {
+            _ptRender(S, false);
+            var face = P.canvas.toDataURL('image/png');
+            if (face && face.length > 200) { _ptUrls[S.key] = face; got = true; }
+            if (S.bust) {
+                _ptRender(S, true);
+                var photo = P.canvas.toDataURL('image/jpeg', 0.86);
+                if (photo && photo.length > 200) _ptUrls[S.key + '#bust'] = photo;
+            }
+        } catch (e) { console.warn('[ThreeRenderer] portrait failed', S.key, e); }
+        if (!got) _ptFail[S.key] = Date.now();
+        _ptDrop(S);
+        if (got) _ptBump();
+    }
+    /* the body is up (dressed, its idle on): a few frames for the pose, the cloth and the hair to settle, then the picture */
+    function _ptSettle(S) {
+        if (S.ready || S.dead) return;
+        S.ready = true;
+        var n = 0, raf = (typeof requestAnimationFrame === 'function') ? requestAnimationFrame : function (fn) { return setTimeout(fn, 16); };
+        (function step() {
+            if (S.dead || !_pt || !S.model) return;
+            try {
+                if (S.mixer) S.mixer.update(n ? 1 / 30 : 0.4);
+                S.model.updateMatrixWorld(true);
+                if (S.rig) S.rig.tick();
+                if (S.sway) _swayTick(S.sway, 1 / 30, S.def.sway || null);
+            } catch (e) {}
+            if (++n < PT_SETTLE) { raf(step); return; }
+            _ptShoot(S);
+            setTimeout(_ptPump, 200);   // (a breath between two bodies: a menu full of looks is not one long hitch)
+        })();
+    }
+    function _ptPump() {
+        var P = _pt;
+        if (!P) return;
+        if (P.busy) return;
+        var S = P.queue.shift();
+        if (!S) { _ptRest(); return; }
+        P.busy = S;
+        var def = S.def;
+        var fail = function () { if (S.dead) return; _ptFail[S.key] = Date.now(); _ptDrop(S); _ptPump(); };
+        S.timer = setTimeout(function () { S.timer = 0; if (S.dead || S.ready) return; fail(); }, PT_WAIT);   // a body that never loads or a look that never finishes dressing keeps the sprite's face (asked again a minute later), never a half-dressed photo
+        _loadUnitGLB(def.model, function (entry) {
+            if (S.dead || _pt !== P) return;
+            if (!entry || !entry.root) { fail(); return; }
+            try {
+                var m = _cloneUnitModel(entry.root);
+                var bb = entry.bbox, rawH = (bb.max.y - bb.min.y) || 1;
+                var h = Math.max(0.35, Math.min(2.8, def.heightRatio || 1)), s = h / rawH;
+                m.scale.setScalar(s);
+                m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+                var hasSkin = _cvOwnBakes(m, S.ownedMats, S.ownedTex);   // the viewer's look: the bake matte, its maps sRGB, on the studio's own copies
+                S.sway = (m.userData && m.userData.ewSway === true) ? m : null;
+                if (entry.procClips) { _procRigAttachEye(m, 'viewer'); hasSkin = true; }
+                if (def.creatorBase) S.rig = _createAppearanceRig(m, def.raceLook || S.look);
+                S.bake = !S.rig && !entry.procClips;
+                var inner = new THREE.Group();
+                inner.rotation.y = def.yawOffset || 0;
+                inner.add(m);
+                var wrap = new THREE.Group();
+                wrap.add(inner);
+                wrap.visible = false;
+                S.model = wrap; S.h = h; S.built = true;
+                P.scene.add(wrap);
+                wrap.updateMatrixWorld(true);
+                _cvHeadPoint(S);   // (finds S.headBone) the head's bind pose: the face looks down +Z here
+                S.head0 = S.headBone ? S.headBone.getWorldQuaternion(new THREE.Quaternion()).invert() : null;
+                var idleOn = !hasSkin, dressed = !S.rig || S.rig.dressed();
+                var go = function () { if (idleOn && dressed) _ptSettle(S); };
+                /* (not rig.whenDressed: that gives up after CC_DRESS_MAX_MS and shows the body as it stands, right for a unit on
+                   the board, wrong for a photo that is kept: a slow load shot the officer bald and hatless) */
+                if (!dressed) (function poll() { if (S.dead || S.ready) return; if (S.rig && S.rig.dressed()) { dressed = true; go(); } else setTimeout(poll, 200); })();
+                if (hasSkin) {
+                    var mixer = S.mixer = new THREE.AnimationMixer(m);
+                    var play = function (clip, ts) {
+                        if (S.dead || S.mixer !== mixer) return;
+                        if (clip) { var act = mixer.clipAction(clip); act.setLoop(THREE.LoopRepeat, Infinity); if (ts) act.timeScale = ts; act.play(); }
+                        idleOn = true; go();
+                    };
+                    if (entry.procClips) play(entry.procClips.idle, 1);
+                    else if (_animLibActive(def)) {
+                        _animLibBakeForModel(def, entry, function (baked) {
+                            if (baked && baked.idle) play(baked.idle, (def.libTimeScales && def.libTimeScales.idle) || 1);
+                            else if (def.clips && def.clips.idle) _loadUnitGLB(def.clips.idle, function (ce) { play(ce && ce.clips && ce.clips[0], def.idleTimeScale || 0); });
+                            else play(null);
+                        });
+                    } else if (def.clips && def.clips.idle) _loadUnitGLB(def.clips.idle, function (ce) { play(ce && ce.clips && ce.clips[0], def.idleTimeScale || 0); });
+                    else play(null);
+                }
+                go();
+            } catch (e) { console.warn('[ThreeRenderer] portrait body failed', S.key, e); fail(); }
+        });
+        var ce0 = _unitGlbCache[def.model];   // a body that fails to load never calls back: watch its cache entry
+        if (ce0 && ce0.failed) fail();
+        else if (ce0 && !ce0.root) (ce0.doneCbs = ce0.doneCbs || []).push(function (e2) { if (e2 && e2.failed) fail(); });
+    }
+    var portraits = {
+        /* the unit's portrait off its own model: a data URL, or null (no model of its own / not photographed yet: asked for now) */
+        url: function (u, kind) {
+            if (_ptOff()) return null;
+            var spec = _ptSpec(u);
+            if (!spec) return null;
+            var bust = kind === 'bust', got = _ptUrls[spec.key + (bust ? '#bust' : '')];
+            if (got) return got;
+            if (_ptFail[spec.key]) { if (Date.now() - _ptFail[spec.key] < 60000) return null; delete _ptFail[spec.key]; }
+            var P = _ptEnsure();
+            if (!P) return null;
+            var S = P.subs[spec.key];
+            if (S) { if (bust) S.bust = true; return null; }
+            P.subs[spec.key] = S = { key: spec.key, def: spec.def, look: spec.look, bust: bust || !!spec.look,   // (a look's ID photo is taken with its face: one body, both pictures)
+                model: null, rig: null, mixer: null, sway: null, ownedMats: [], ownedTex: [], h: 1, built: false, ready: false, dead: false, timer: 0 };
+            P.queue.push(S);
+            _ptPump();
+            return null;
+        },
+        has: function (u) { return !_ptOff() && !!_ptSpec(u); },
+        key: function (u) { var s = _ptOff() ? null : _ptSpec(u); return s ? s.key : null; },
+    };
+    if (typeof window !== 'undefined') window.EWPortraits = portraits;
 
     /* ══════════════════════════════════════════════════════════════════
      *  D.O.O.R. HEADQUARTERS — the walkable facility (DOOR_HQ_BUILD_PLAN.md)

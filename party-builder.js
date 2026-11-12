@@ -1000,9 +1000,9 @@ function Sprite({ race, gender, cls, size, glow, style: extraStyle }) {
 /* Party-rail slot art: the 128×128 character portrait when the vessel has
    one (sprites.js RACE_PORTRAITS), full-bleed like a champ-select card;
    falls back to the ordinary full-body Sprite otherwise. */
-function PortraitSprite({ race, gender, cls, glow, style: extraStyle }) {
+function PortraitSprite({ race, gender, cls, glow, appearance, style: extraStyle }) {
   const pUrl = (typeof window.getUnitPortraitUrl === 'function')
-    ? window.getUnitPortraitUrl({ race, gender }) : null;
+    ? window.getUnitPortraitUrl({ race, gender, appearance: appearance || null }) : null;   // appearance: a slot in a look of its own shows that model's face (three-renderer.js THE PORTRAIT STUDIO)
   if (!pUrl) return h(Sprite, { race, gender, cls, size: '90%', glow, style: { width: '90%', height: '90%', ...extraStyle } });
   return h('div', { style: {
     width: '100%', height: '100%',
@@ -5027,7 +5027,7 @@ function PartyBuilder(props) {
         return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-party-slot' + (isActive ? ' on' : '') + (confirmed ? ' filed' : '') + (dupe || gone ? ' dup' : ''), style:{ '--slot-fc': fCol }, title: nm + ' · ' + rl + ' · ' + pbRoleLabel(id.race) + (dupe ? ' — on this team twice: swap one out (one of each unit)' : '') },
           h('div', { className:'pb-party-ring' },
             gone ? h('span', { className:'pb-party-dup' }, 'REMOVED') : dupe ? h('span', { className:'pb-party-dup' }, 'TWICE') : null,
-            h('div', { className:'pb-party-portrait' }, h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive })),
+            h('div', { className:'pb-party-portrait' }, h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive, appearance:id.appearance })),
             h('span', { className:'pb-party-no' }, numerals[i]),
             confirmed && (DOOR
               ? h('span', { className:'door-stamp door-stamp-sm admit pb-party-filed', title:'Locked in' }, 'FILED')
@@ -5257,7 +5257,7 @@ function PartyBuilder(props) {
                 h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.1em', flexShrink:0 }}, slots.length, ' VESSELS')),
               h('div', { style:{ display:'flex', gap:5, flexWrap:'wrap' }},
                 slots.slice(0, 8).map((s, si) => h('div', { key:si, className:'pb-team-mini', title:(_grl(s.race, s.gender)||s.race)+' · '+pbRoleLabel(s.race) },
-                  h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls })))),
+                  h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls, appearance:s.appearance })))),
               pbGoneRaces(slots.map(s => s.race)).length ? h('div', { className:'pb-dup-note' }, 'REMOVED: ', pbGoneRaces(slots.map(s => s.race)).map(pbRaceName).join(', '), ' · out of the game, swap it out in the forge') : null,   // HOMOSAPIEN OUT
               h('div', { style:{ display:'flex', alignItems:'center', gap:6, marginTop:2 }},
                 h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.08em', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }},
@@ -5314,7 +5314,7 @@ function PartyBuilder(props) {
           const on = chosen.includes(i);
           const rl = typeof _grl === 'function' ? (_grl(s.race, s.gender) || s.race) : s.race;
           return h('div', { key:i, className:'pbx-pick-row', onClick:()=>toggleTeamPick(i), style:{ borderRadius:'var(--pb-r-sm)', cursor:'pointer', opacity: on ? 1 : 0.55, border: on ? '1px solid rgba(242,196,104,0.7)' : undefined } },
-            h('div', { className:'pb-team-mini', style:{ width:36, height:36 } }, h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls })),
+            h('div', { className:'pb-team-mini', style:{ width:36, height:36 } }, h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls, appearance:s.appearance })),
             h('div', { style:{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:2 }},
               h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, letterSpacing:'0.1em', color:EW.ink }}, s.unitName || rl),
               h('div', { style:{ fontSize:9, color:EW.inkMute }}, rl, ' · ', pbRoleLabel(s.race))),

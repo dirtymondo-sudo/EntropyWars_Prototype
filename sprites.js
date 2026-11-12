@@ -6049,7 +6049,9 @@ const DOOR_CAST_MODELS = {
   // the recruit — the default HQ avatar since 2026-09-06 (map.js _hqAvatar)
   player:   _mkCast('Player',       { heightRatio: 1.0 }),
   // your superior; by-the-book, the book keeps changing
-  locke:    _mkCast('Agent_Locke',  { heightRatio: 0.96, female: true }),
+  // `portrait` (2026-11-12): her portrait is cut from this model (three-renderer.js THE PORTRAIT STUDIO); the camera stands on
+  // her right, the side her hair is swept away from (from the left a lock covers the eye)
+  locke:    _mkCast('Agent_Locke',  { heightRatio: 0.96, female: true, portrait: { yaw: -0.3 } }),
   // colleague / love interest; Ringer's daughter
   belle:    _mkCast('Agent_Belle',  { heightRatio: 0.94, female: true }),
   // cocky; Meshy named this export without _biped
@@ -6237,6 +6239,12 @@ const RACE_PORTRAITS = {
 
 function getUnitPortraitArtUrl(unit) {
   if (!unit || !unit.race) return null;
+  /* THE MODEL PORTRAITS (2026-11-12): a unit that wears a model of its own (a creator look, or a story character's rig,
+     `appearance.cast`: Agent Locke) shows that model's face, photographed off its Head bone (three-renderer.js THE PORTRAIT
+     STUDIO). null until the photo is in: the race's art / the sprite's face stands in, then the HUD repaints. */
+  if (unit.appearance && typeof window !== 'undefined' && window.EWPortraits) {
+    try { const own = window.EWPortraits.url(unit); if (own) return own; } catch (e) {}
+  }
   if (unit.race === 'chess piece') return chessPieceLook(unit._chessPiece);   // ♟ the glyph of the piece it is now
   const set = RACE_PORTRAITS[unit.race];
   if (!set) return null;

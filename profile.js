@@ -2010,7 +2010,14 @@ function doorCardPortrait(profile) {
     /* YOUR OWN LOOK (rev 8, 2026-09-13): the bust the mirror photographed (data.js hqLook → door.hq.look.portrait)
        is the photo whenever a look is on file — the card shows YOU; the chair's other picks only change the walker */
     const look = (typeof window.hqLook === 'function') ? window.hqLook(profile) : null;
-    if (look && look.portrait && (!pref || pref.mode === 'look' || pref.mode === 'player' || pref.mode === 'vessel')) return { race: 'your own look', url: look.portrait, look: true };
+    if (look && look.portrait && (!pref || pref.mode === 'look' || pref.mode === 'player' || pref.mode === 'vessel')) {
+      /* THE FRAMING (2026-11-12): a photo the mirror took before the fix has the head against its top edge; the same bust,
+         aimed off the Head bone, is taken again from the look itself (three-renderer.js THE PORTRAIT STUDIO, 'bust') and
+         stands in once it is in. The stored photo shows until then. */
+      let photo = look.portrait;
+      try { const fresh = window.EWPortraits && window.EWPortraits.url({ race: 'door agent', gender: look.gender, appearance: look.appearance }, 'bust'); if (fresh) photo = fresh; } catch (e) {}
+      return { race: 'your own look', url: photo, look: true };
+    }
     if (pref && (pref.mode === 'race' || pref.mode === 'agent')) {
       const r = pref.mode === 'agent' ? 'men in black' : pref.race;
       const set = RACE_PORTRAITS[r];
