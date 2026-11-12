@@ -5230,6 +5230,30 @@ const SPELL_LIBRARY = [
         desc: 'Places a bomb on a tile within 2 (up to 3 at a time; a 4th replaces the oldest). It goes off when an enemy steps on it, or all of yours at once when you DETONATE (1 AP); thrown straight onto an enemy, it goes off on contact. MEDIUM physical damage (it grows with your M ATK) to every enemy in the 3×3, and each is thrown back 1 tile.'
     },
 
+    /* 💧 THE GARDEN (2026-11-12, mondo OK'd): none of the Agriculture units owns a water spell, and a seed now needs water.
+       A no-damage water cast on one tile: battle.js `waterCan` (the seeds on it sprout, its fire goes out, whoever stands
+       there is Wet). */
+    {
+        id: 'wateringCan',
+        spellType: 'human',
+        element: 'water',
+        name: 'Watering Can',
+        type: 'utility',
+        cost: 10,
+        equipCost: 15,
+        apCost: 1,
+        range: 3,
+        kind: 'aoe',
+        aoeMask: [[0, 0]],
+        noDamage: true,
+        waterCan: true,
+        tier: 1,
+        families: ['agriculture'],
+        school: 'Harvester',
+        jobPreference: ['Harvester'],
+        desc: 'Water one tile within 3. Seeds on it sprout and grow at the end of the round, ground fire on it goes out, and anyone standing on it is Wet for 2 rounds. No damage.'
+    },
+
     {
         id: 'healingSeed',
         spellType: 'divine',
@@ -5245,7 +5269,7 @@ const SPELL_LIBRARY = [
         families: ['agriculture'],
         school: 'Harvester',
         jobPreference: ['Harvester'],
-        desc: 'Plant a seed on a tile within 3; grass grows under it. An ally on the seed heals 8% of max HP each round (double in rain). After 2 rounds (1 beside water or in rain) it grows into a Healing Tree: allies within 1 tile heal 7% of max HP every round (double in rain) until it is cut down.'
+        desc: 'Plant a seed on a tile within 3; grass grows under it. An ally on the seed heals 8% of max HP each round (double in rain). The seed must be watered to sprout: rain, a water spell, or water beside it. Once watered it grows at the end of the round into a Healing Flower: allies within 1 tile heal 7% of max HP every round (double in rain) until it is cut down. Up to 2 flowers at a time.'
     },
 
     {
@@ -5263,7 +5287,7 @@ const SPELL_LIBRARY = [
         families: ['agriculture'],
         school: 'Harvester',
         jobPreference: ['Harvester'],
-        desc: 'Plant a seed on a tile within 3. An enemy on the seed loses 6% of max HP and is Poisoned for 2 rounds, each round. After 2 rounds (1 beside water or in rain) it grows into a Toxin Tree: enemies within 1 tile lose 5% of max HP and are Poisoned for 2 rounds, every round, until it is cut down.'
+        desc: 'Plant a seed on a tile within 3. An enemy on the seed loses 6% of max HP and is Poisoned for 2 rounds, each round. The seed must be watered to sprout: rain, a water spell, or water beside it. Once watered it grows at the end of the round into a Gas Plant: its gas takes 5% of max HP from enemies within 1 tile and Poisons them for 2 rounds, every round, until it is cut down. Up to 2 at a time.'
     },
 
     {
@@ -5334,7 +5358,7 @@ const SPELL_LIBRARY = [
         tier: 3,
         families: ['agriculture'],
         school: 'Harvester',
-        desc: 'Plant a seed on a tile within 3. An enemy on the seed loses 8% of max HP each round, sent to your weakest ally; an ally on it heals 4%. After 2 rounds (1 beside water or in rain) it grows into a Leech Tree: enemies within 1 tile lose 6.5% of max HP every round, sent to your weakest ally, until it is cut down.'
+        desc: 'Plant a seed on a tile within 3. An enemy on the seed loses 8% of max HP each round, sent to your weakest ally; an ally on it heals 4%. The seed must be watered to sprout: rain, a water spell, or water beside it. Once watered it grows at the end of the round into a Thorn Vine: every round it lashes the nearest enemy it can see within 2 tiles for 6.5% of max HP, sent to your weakest ally, until it is cut down. Up to 2 at a time.'
     },
     {
         id: 'trunkThrow', upgradesBlock: ['upBlast'],
@@ -6564,7 +6588,7 @@ const SPELL_LIBRARY = [
         { id: 'raceBumperCrop', name: 'Bumper Crop', tier: 4, families: ['agriculture'], cost: 100, apCost: 2,
           cooldownRounds: 2, spellType: 'divine', element: 'nature', type: 'damage', kind: 'aoe', range: 4,
           aoeRadius: 2, dmg: 135, damageType: 'magic', statusEffects: [{ id: 'root', duration: 1 }], rimSeeds: true,
-          desc: 'Sow the whole field at once. Everything standing in it is rooted where it stands, and by next round there is a wood around them. Deals MEDIUM magic damage to every enemy in a 5x5 area and Roots them for 1 round. A seed lands on every empty tile of the area\'s edge and grows into a tree at the end of the round; the trees block sight and count as yours. Cooldown: 2 rounds.' },
+          desc: 'Sow the whole field at once. Everything standing in it is rooted where it stands, and with water there is a wood around them. Deals MEDIUM magic damage to every enemy in a 5x5 area and Roots them for 1 round. A seed lands on every empty tile of the area\'s edge. Each seed must be watered (rain, a water spell, water beside it) and then grows into a tree at the end of the round; a seed still dry after 2 rounds withers. The trees block sight and count as yours. Cooldown: 2 rounds.' },
         { id: 'gunTwinDoors', name: 'Twin Doors', tier: 4, families: ['doors'], cost: 100, apCost: 1, cooldownRounds: 3,
           spellType: 'anomaly', element: 'psychic', type: 'utility', kind: 'deployPair', range: 4, maxActivePerCaster: 1,
           pairPicks: true, doorGun: true,
@@ -10347,7 +10371,7 @@ const RACE_ABILITIES = {
           kind: 'terrainCreate', terrainType: 'ice', squareFlood: true, aoeRadius: 1,
           damageType: 'magic', witherTrees: true,
           statusEffects: [{ id: 'frozen', duration: 2 }],
-          desc: 'Deep-freezes a 3×3 area into ice terrain. Enemies caught take MEDIUM magic damage and are FROZEN solid. Seeds and deployables in the area are destroyed; living trees die on the spot. Flyers up in the sky are above it.' },
+          desc: 'Deep-freezes a 3×3 area into ice terrain. Enemies caught take MEDIUM magic damage and are FROZEN solid. Seeds and deployables in the area are destroyed; living trees and plants die on the spot. Flyers up in the sky are above it.' },
         /* 2026-08-16 balance (stats18): yeti sat at 28.9% WR and this capstone
            had ZERO casts in 362 matches — kind 'leapStrike' requires standing
            STRICTLY ABOVE the target (AI + engine both gate on it), which never
@@ -11231,7 +11255,7 @@ const TRAINING_PASSIVES = [
       desc: 'Debuff statuses this unit applies last +1 turn. Teleport costs 1 less MP.' },
     { id: 'passiveGreenThumb', tier: 1, families: ['agriculture'], name: 'Green Thumb', icon: '🌱',
       hooks: { lifeSapMult: 1.2, plantedTrees: true },
-      desc: 'Trees grown from this unit\'s seeds buff its ATK & spell power (+7 each, up to 6 living trees) and fuel Trunk Throw (+30 damage each). Every drain heals 20% more. Enemies can chop or burn the forest to shut it down.' },
+      desc: 'Plants and trees grown from this unit\'s seeds buff its ATK & spell power (+7 each, up to 6 living). Its trees also fuel Trunk Throw (+30 damage each). Every drain heals 20% more. Enemies can cut down or burn the garden to shut it down.' },
     { id: 'passiveTinker', tier: 1, families: ['engineering'], name: 'Tinker', icon: '🔧',
       hooks: { turretRangeBonus: 1, repairMult: 1.2 },
       desc: 'Turrets have +1 range and Repair heals 20% more.' },
@@ -31138,6 +31162,10 @@ const DOOR_HQ = {
                 pipes: false, strips: false,
                 light: { x: 0, z: 0 },
                 mood: { light: 0xf6efdf, ambient: 0.62 },              // the brass-and-glass warmth of a lobby that is cleaned nightly
+                /* ONE DOORWAY, ONE LIGHT (2026-11-12, mondo: "the foyer is too bright and then stepping into the lobby is dark by comparison"):
+                   the foyer wears the hall's rig (HQ_LIGHT_RULES.joinRig), so its own lamps and the Key Light give half / a third here:
+                   white plaster 3 m from every lamp needs far less than the hall's stone 20 m off */
+                lampK: 0.5, keyLamp: 0.3,
                 plate: { x: 2.2, z: -2.95, y: 3.4 },
                 look: HQ_ROOM_LOOKS.retro,
             },
@@ -64859,6 +64887,10 @@ const HQ_LIGHT_RULES = {
        floor's light thrown back up — shell.floorColor (else `color`) mixed `amount` of the way over the old near-black 0x1c1a1e — so a
        ceiling, a gallery's underside and the top of a tall wall read; a dark floor throws back little (three-renderer.js _hqBoxHemiG) */
     bounce: { amount: 0.6, color: 0x8a847a },
+    /* ONE DOORWAY, ONE LIGHT (2026-11-12): a box room joined to the round hall (HQ_STAGE_RULES.round: the foyer) wears the HALL's
+       hemisphere / key / fill, so the hall beyond the doorway reads the same from both sides; false = each room its own rig.
+       A room's own lamps: shell.lampK (0..1), its share of the Key Light: shell.keyLamp (three-renderer.js _hqJoinedHall / _hqLampK) */
+    joinRig: true,
     /* THE PREMIUM POLISH — THE LIGHT PASS (PREMIUM_POLISH_PLAN §2, 2026-09-21). Every number here is the
        building's; a room overrides through its shell (`shell.rig`, `shell.heightFog`, `shell.atmos`,
        `shell.arrival`). The renderer's HQ_LIGHT_DEFAULT carries the same keys (premium-polish.test.js diffs them). */

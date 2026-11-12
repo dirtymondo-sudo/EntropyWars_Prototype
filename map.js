@@ -370,7 +370,7 @@
         /* a slot's face: the 128×128 portrait when the vessel has one (cover), else the map sprite (contain) */
         function _sqFace(s, extra) {
             let url = '', portrait = false;
-            try { if (typeof getUnitPortraitUrl === 'function') { url = getUnitPortraitUrl({ race: s.race, gender: s.gender || 'male' }) || ''; portrait = !!url; } } catch (e) {}
+            try { if (typeof getUnitPortraitUrl === 'function') { url = getUnitPortraitUrl({ race: s.race, gender: s.gender || 'male', appearance: s.appearance || null }) || ''; portrait = !!url; } } catch (e) {}   // (appearance: a slot in a look of its own shows that model's face, three-renderer.js THE PORTRAIT STUDIO)
             if (!url) { try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl(s.race || 'door agent', s.gender || 'male', UNIT_CLASS) || ''; } catch (e) {} }
             return `<span class="sq-face ${portrait ? 'is-portrait' : 'is-sprite'}${extra ? ' ' + extra : ''}"><i${url ? ` style="background-image:url('${_sqEsc(url)}')"` : ''}></i>${_sqMastery(s)}</span>`;
         }
@@ -2791,9 +2791,13 @@
         }
         function _hqPausePortrait(m, u) {
             let url = null;
+            /* THE MODEL PORTRAITS (2026-11-12): a member in a model of its own (the officer's look, a story character) shows that
+               model's face (three-renderer.js THE PORTRAIT STUDIO); until it is photographed, the officer's stored photo below */
+            try { if (!u && m && m.meta && m.meta.appearance && window.EWPortraits) { const own = window.EWPortraits.url({ race: m.meta.race || 'door agent', gender: m.meta.gender, appearance: m.meta.appearance }); if (own) return { url: own, kind: 'portrait' }; } } catch (e) {}
+            try { if (u && u.appearance && window.EWPortraits) { const ownU = window.EWPortraits.url(u); if (ownU) return { url: ownU, kind: 'portrait' }; } } catch (e) {}
             /* THE INTAKE (2026-09-21): the officer's card wears THE PHOTO the creator took (the ID card's) */
             try { if (m && m.you && typeof window.hqLook === 'function') { const lk = window.hqLook(_hqProfile()); if (lk && lk.portrait && m.meta && m.meta.appearance) return { url: lk.portrait, kind: 'portrait' }; } } catch (e) {}
-            try { if (typeof getUnitPortraitUrl === 'function') url = getUnitPortraitUrl(u || { race: m.meta && m.meta.race, gender: m.meta && m.meta.gender }); } catch (e) {}
+            try { if (typeof getUnitPortraitUrl === 'function') url = getUnitPortraitUrl(u || { race: m.meta && m.meta.race, gender: m.meta && m.meta.gender, appearance: (m.meta && m.meta.appearance) || null }); } catch (e) {}
             if (url) return { url, kind: 'portrait' };
             try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl((m.meta && m.meta.race) || 'door agent', (m.meta && m.meta.gender) || 'male', UNIT_CLASS); } catch (e) {}
             return url ? { url, kind: 'sprite' } : null;
