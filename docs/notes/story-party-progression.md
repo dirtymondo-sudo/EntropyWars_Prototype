@@ -833,3 +833,22 @@ returns early on it (as `_questFightPending` does for the quest's fight); a less
 Harness note: a real WebGPU canvas in headless Chromium here needs `--enable-unsafe-webgpu --use-webgpu-adapter=swiftshader
 --use-angle=swiftshader --use-vulkan=swiftshader --enable-features=Vulkan --disable-vulkan-surface` (without the Vulkan pair the
 swap chain's shared image cannot be made and the device is lost every second); one WebGPU browser at a time.
+
+## THE SAVE — the walk autosaves where you stand; CONTINUE lands there (2026-11-12, mondo)
+mondo: "there needs to be a save feature so that i am not always loading in the foyer every time".
+- **What was already saved**: the profile (`ew-profile-<slot>` in localStorage) holds the quests (`door.quests`), the party, the
+  bag, the levels, the rooms seen, the last DOOR used (`door.hq.lastDoor / lastRoom`, never read on arrival). Only the PLACE was lost:
+  Play always entered `_hqArrivalRoom()` (the foyer).
+- **The record**: `ew-hq-save-<slot>` = `{ v, room, x, z, y, face, t }` (room metres, goTo's free-spot form). Its own small key, not
+  the profile blob, because it is written every few seconds. map.js "THE SAVE": `_hqSaveWrite` files it when a room is READY
+  (onReady arms `_hqSaveArmed`), every 4 s while the feet moved (0.25 m / 8°), and on `visibilitychange` hidden / `pagehide`.
+  Never in the car, in the air, in the editor, under a load card, or off the walk (a fight, a screen).
+- **The room it names** is the renderer's own (`ThreeRenderer.hq.pos()` now also returns `room, face, air, edit, ready`): a stage
+  crossing rebases the metres, so the record is only filed when the renderer's part and map.js `_hqCurRoom` agree.
+- **CONTINUE**: `_goToPlayHub` passes `resume: true` when the story was already started; `_hqEnter` then takes the record's room and
+  hands the spot to `ThreeRenderer.hq.goTo` as `opts.at`. It is still a FRESH arrival for everything else (`returning` is computed
+  before the spot is set): the visit count, the punch clock, the variants' roll, the day's sheet. The menu's arrival warm warms the
+  saved room instead of the foyer. NEW GAME (story not started, or straight out of the intake) drops the slot's record: the foyer.
+- **A fight**: nothing is filed during one; a reload mid-fight continues in the room at the last filed spot.
+- Off: `?noresume` / `window.EW_HQ_NO_RESUME` (the record is still filed). Console: `_hqSaveState()`.
+- No new UI. Not built: a manual Save / Load page in the pause menu (needs his OK on a mock-up first).

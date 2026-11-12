@@ -4240,6 +4240,10 @@
        unused: 95 fielded spells had 0 casts in 840 lab matches. When the best option is a turn-ending act from where we
        stand and a positive setup cast still leaves the AP and MP for it, the setup goes first (the next loop takes the
        hit). Casts that move the caster are left out: the hit was picked from this tile. Same idea as Search first. */
+    /* 👁 a spirit cannot basic attack or cast physical spells: does this unit have a magic damaging spell to fight with? */
+    function _aiHasMagicToFight(u) {
+        return (u && u.spells || []).some(sp => sp && !sp.astral && sp.damageType === 'magic' && ((sp.dmg || 0) > 0 || (sp.hitDamages && sp.hitDamages.length)));
+    }
     const _SETUP_MOVES_CASTER = new Set(['teleport', 'escape', 'swap', 'dash', 'utility', 'transform', 'doorExit']);
     function _setupFirst(g, unit, candidates) {
         const ap = unit.ap || 0, one = g.AP_COST_ACTION || 1;
@@ -5878,6 +5882,8 @@
         if (target && target.id != null && typeof window.prismReflectFor === 'function' && window.prismReflectFor(unit, spell, target)) return 0;
 
         if (kind === 'damage' && _riderRandomOf(spell)) return target ? _randomTargetsScore(g, unit, spell, _riderRandomOf(spell), v) : 0;
+        if (spell.pollinate) return target ? 75 : 0;   // 🐝 THE POLLEN
+        if (spell.waterCan) return target ? 70 : 0;   // 💧 THE GARDEN: a dry seed of ours in reach (_findSpellTargetRaw) is worth watering
 
         // ── single-target damage family ──
         if (kind === 'guard') return _chivalryScore(unit, spell, target, v);
@@ -6372,6 +6378,18 @@
             return (spell.shield || 48) * inArea * 0.8 * threatened;
         }
 
+        /* 👁 SPIRIT GUIDE (astral build 4): walking an ally out of its body only pays for a caster under physical threat.
+           Never a Key carrier (the Key stays with the sleeping body), never a unit with no magic to fight with as a
+           spirit, never one already split, never when the hits coming would kill the body where it sleeps. */
+        if (kind === 'buff' && target && spell.astralAlly) {
+            if ((target.status && target.status.projecting > 0) || target._astralOfId || target._astralBodyId) return 0;
+            if ((target.hourglasses || 0) > 0) return 0;
+            if (!_aiHasMagicToFight(target)) return 0;
+            const _agT = v.threatFn(target.x, target.y, target.z);
+            if (_agT.totalDmg >= target.hp) return 0;
+            const _agNear = v.visibleEnemies.some(e => _dist(g, target.x, target.y, target.z, e) <= 4);
+            return _agNear ? Math.min(160, 30 + _agT.totalDmg * 0.3) : 0;
+        }
         if (kind === 'buff' && target) {
             if (g.unitHasStatus(target, 'protect')) return 0;
             let s = buffStageValue(g, unit, target, spell, v);
@@ -6538,6 +6556,15 @@
             return hasReason ? s : 0;
         }
 
+        /* 👁 ASTRAL SPELLS (Spirit Walk, Astral Projection) are not a flight: the body stays where it stands. Worth it for a
+           magic user with enemies close, never with a Key in hand, never when the body would die asleep. */
+        if (kind === 'escape' && spell.astral) {
+            if ((unit.status && unit.status.projecting > 0) || unit._astralBodyId || (unit.hourglasses || 0) > 0) return 0;
+            if (!_aiHasMagicToFight(unit)) return 0;
+            const _asT = v.threatFn(unit.x, unit.y, unit.z);
+            if (_asT.totalDmg >= unit.hp) return 0;
+            return v.closestEnemyDist <= 4 ? 70 : 0;
+        }
         if (kind === 'escape') {
             let s = 30;
             const hpPct = unit.hp / unit.maxHp;
@@ -9120,6 +9147,35 @@
         const kind = spell.kind;
 
         if (kind === 'trickRoom') return unit;
+
+        /* 💧 THE GARDEN (2026-11-12): the Watering Can goes on the nearest DRY seed of the caster's own side in reach
+           (a seed never sprouts dry); with none in reach it is not cast. */
+        /* 🐝 THE POLLEN: Pollinate goes on the nearest seed of the caster's own side in reach (it grows at once), while she carries pollen */
+        if (spell.pollinate) {
+            if (!((unit.pollen | 0) > 0)) return null;
+            const R = _effRange(unit, spell) || 3;
+            let best = null, bestD = 99;
+            for (const sd of (g.state.plantedSeeds || [])) {
+                if (sd.type === 'plain' || sd.owner !== unit.player) continue;
+                const d = Math.abs(sd.x - unit.x) + Math.abs(sd.y - unit.y);
+                if (d > R || d >= bestD) continue;
+                if (typeof _aimOkAt === 'function' && !_aimOkAt(unit, spell, sd.x, sd.y)) continue;
+                best = { x: sd.x, y: sd.y }; bestD = d;
+            }
+            return best;
+        }
+        if (spell.waterCan) {
+            const R = _effRange(unit, spell) || 3;
+            let best = null, bestD = 99;
+            for (const sd of (g.state.plantedSeeds || [])) {
+                if (sd.watered || sd.owner !== unit.player) continue;
+                const d = Math.abs(sd.x - unit.x) + Math.abs(sd.y - unit.y);
+                if (d > R || d >= bestD) continue;
+                if (typeof _aimOkAt === 'function' && !_aimOkAt(unit, spell, sd.x, sd.y)) continue;
+                best = { x: sd.x, y: sd.y }; bestD = d;
+            }
+            return best;
+        }
 
         // THE TARGETING RIDERS (Phase 3): a random-target row is cast on the caster once a victim is in reach
         if (kind === 'damage' && _riderRandomOf(spell)) return _riderEnemiesInReach(g, unit, spell, v).length ? unit : null;

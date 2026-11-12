@@ -3677,6 +3677,12 @@ function unitHasPassive(unit, id) {
 /* First defined value of `key` across the unit's passives (undefined if none).
    e.g. unitPassiveValue(u, 'basicAttackLifesteal') → 0.25 for vampires. */
 function unitPassiveValue(unit, key) {
+    /* 👁 PROJECTING: a spirit has the Ghost's two Incorporeal hooks (physical hits pass through, it drifts through walls
+       and bodies), read from that passive's own row so the two can never drift apart */
+    if (unit && unit.status && unit.status.projecting > 0 && (key === 'immuneDamageType' || key === 'phasing')
+        && typeof PASSIVE_DEFS !== 'undefined' && PASSIVE_DEFS.incorporeal && PASSIVE_DEFS.incorporeal[key] !== undefined) {
+        return PASSIVE_DEFS.incorporeal[key];
+    }
     const list = getUnitPassives(unit);
     for (const p of list) if (p[key] !== undefined) return p[key];
     return undefined;
@@ -3706,6 +3712,9 @@ function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(uni
    race"): a race key that became another race's gender. A saved team / a capture / an owned unit filed under the old key reads
    as that race and gender (state.js normalizeRaceKey + resolveIdentityForBuild, data.js isUnitOwned) — never deleted. */
 const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
+/* 👁🌑 THE REALM WINDOW: races that SEE a Shadow Realm pair on their own turns (they cannot touch it). A projecting
+   spirit both sees and touches (battle.js unitSeesRealm / unitCrossesRealm). */
+const REALM_SIGHT_RACES = ['ghost', 'shadow entity'];
 const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
@@ -5230,6 +5239,72 @@ const SPELL_LIBRARY = [
         desc: 'Places a bomb on a tile within 2 (up to 3 at a time; a 4th replaces the oldest). It goes off when an enemy steps on it, or all of yours at once when you DETONATE (1 AP); thrown straight onto an enemy, it goes off on contact. MEDIUM physical damage (it grows with your M ATK) to every enemy in the 3×3, and each is thrown back 1 tile.'
     },
 
+    /* 🍎 THE APPLE TREE (2026-11-12, mondo OK'd): a seed that grows into a real tree (battle.js THE APPLE TREE). It rides
+       the Healing Seed's kind (every menu / CPU / targeting table already knows it) with `seedType: 'apple'`. */
+    {
+        id: 'appleSeed',
+        spellType: 'human',
+        element: 'nature',
+        name: 'Apple Seed',
+        type: 'utility',
+        cost: 25,
+        equipCost: 20,
+        apCost: 1,
+        range: 3,
+        kind: 'seedHeal',
+        seedType: 'apple',
+        tier: 2,
+        families: ['agriculture'],
+        school: 'Harvester',
+        jobPreference: ['Harvester'],
+        desc: 'Plant an apple seed on a tile within 3. It must be watered to sprout (rain, a water spell, water beside it), then grows into an Apple Tree at the end of the round: a real tree that blocks sight and can be chopped down. Every 2 rounds the tree drops an apple beside it (up to 2 lying around it). Any hurt unit that ends its move on an apple eats it and heals 20% of its max HP.'
+    },
+
+    /* 🐝 THE POLLEN (2026-11-12, mondo OK'd "Both"): the Bee Queen spends one pollen (gathered beside a Healing Flower,
+       battle.js THE POLLEN) on a seed, which grows at once with no water, or on a hurt plant, which is mended. */
+    {
+        id: 'pollinate',
+        spellType: 'anomaly',
+        element: 'nature',
+        name: 'Pollinate',
+        type: 'utility',
+        cost: 10,
+        equipCost: 15,
+        apCost: 1,
+        range: 3,
+        kind: 'aoe',
+        aoeMask: [[0, 0]],
+        noDamage: true,
+        pollinate: true,
+        tier: 1,
+        families: ['royalhive'],
+        desc: 'Costs 1 pollen. Pick a tile within 3: a seed on it grows into its plant right now, no water needed, or a damaged plant on it is mended for half its HP. The Bee Queen gathers pollen by ending a move beside a Healing Flower (up to 3); each pollen she carries is +8 ATK, +8 spell power and +8 SPD.'
+    },
+
+    /* 💧 THE GARDEN (2026-11-12, mondo OK'd): none of the Agriculture units owns a water spell, and a seed now needs water.
+       A no-damage water cast on one tile: battle.js `waterCan` (the seeds on it sprout, its fire goes out, whoever stands
+       there is Wet). */
+    {
+        id: 'wateringCan',
+        spellType: 'human',
+        element: 'water',
+        name: 'Watering Can',
+        type: 'utility',
+        cost: 10,
+        equipCost: 15,
+        apCost: 1,
+        range: 3,
+        kind: 'aoe',
+        aoeMask: [[0, 0]],
+        noDamage: true,
+        waterCan: true,
+        tier: 1,
+        families: ['agriculture'],
+        school: 'Harvester',
+        jobPreference: ['Harvester'],
+        desc: 'Water one tile within 3. Seeds on it sprout and grow at the end of the round, ground fire on it goes out, and anyone standing on it is Wet for 2 rounds. No damage.'
+    },
+
     {
         id: 'healingSeed',
         spellType: 'divine',
@@ -5245,7 +5320,7 @@ const SPELL_LIBRARY = [
         families: ['agriculture'],
         school: 'Harvester',
         jobPreference: ['Harvester'],
-        desc: 'Plant a seed on a tile within 3; grass grows under it. An ally on the seed heals 8% of max HP each round (double in rain). After 2 rounds (1 beside water or in rain) it grows into a Healing Tree: allies within 1 tile heal 7% of max HP every round (double in rain) until it is cut down.'
+        desc: 'Plant a seed on a tile within 3; grass grows under it. An ally on the seed heals 8% of max HP each round (double in rain). The seed must be watered to sprout: rain, a water spell, or water beside it. Once watered it grows at the end of the round into a Healing Flower: allies within 1 tile heal 7% of max HP every round (double in rain) until it is cut down. Up to 2 flowers at a time.'
     },
 
     {
@@ -5263,7 +5338,7 @@ const SPELL_LIBRARY = [
         families: ['agriculture'],
         school: 'Harvester',
         jobPreference: ['Harvester'],
-        desc: 'Plant a seed on a tile within 3. An enemy on the seed loses 6% of max HP and is Poisoned for 2 rounds, each round. After 2 rounds (1 beside water or in rain) it grows into a Toxin Tree: enemies within 1 tile lose 5% of max HP and are Poisoned for 2 rounds, every round, until it is cut down.'
+        desc: 'Plant a seed on a tile within 3. An enemy on the seed loses 6% of max HP and is Poisoned for 2 rounds, each round. The seed must be watered to sprout: rain, a water spell, or water beside it. Once watered it grows at the end of the round into a Gas Plant: its gas takes 5% of max HP from enemies within 1 tile and Poisons them for 2 rounds, every round, until it is cut down. Up to 2 at a time.'
     },
 
     {
@@ -5334,7 +5409,7 @@ const SPELL_LIBRARY = [
         tier: 3,
         families: ['agriculture'],
         school: 'Harvester',
-        desc: 'Plant a seed on a tile within 3. An enemy on the seed loses 8% of max HP each round, sent to your weakest ally; an ally on it heals 4%. After 2 rounds (1 beside water or in rain) it grows into a Leech Tree: enemies within 1 tile lose 6.5% of max HP every round, sent to your weakest ally, until it is cut down.'
+        desc: 'Plant a seed on a tile within 3. An enemy on the seed loses 8% of max HP each round, sent to your weakest ally; an ally on it heals 4%. The seed must be watered to sprout: rain, a water spell, or water beside it. Once watered it grows at the end of the round into a Thorn Vine: every round it lashes the nearest enemy it can see within 2 tiles for 6.5% of max HP, sent to your weakest ally, until it is cut down. Up to 2 at a time.'
     },
     {
         id: 'trunkThrow', upgradesBlock: ['upBlast'],
@@ -5558,8 +5633,8 @@ const SPELL_LIBRARY = [
            feeds Cross Slash now costs a real 75 MP. */
         tier: 2,
         school: 'Harbinger',
-        statusEffects: [{ id: 'stun', duration: 1 }],
-        desc: 'Hush. Deals MEDIUM magic damage to a Single Enemy and it sleeps through its next activation (Stun).'
+        statusEffects: [{ id: 'sleep', duration: 1 }],
+        desc: 'Hush. Deals MEDIUM magic damage to a Single Enemy and it falls asleep for a round: Sleeping. Any damage wakes it.'
     },
 
     {
@@ -6179,9 +6254,18 @@ const SPELL_LIBRARY = [
           damageType: 'magic', dmg: 180, range: 4, purgeFirst: true,   // THE SPELL AUDIT Batch D: wards off BEFORE the hit
           desc: 'Unmake it. Every ward, every blessing, every stage they stacked — gone — and then HEAVY magic damage to what is left. Strips a Single Enemy\'s buffs, raised stat stages and shield before the hit. Cooldown: 2 rounds.' },
         { id: 'raceSpiritGuide', name: 'Spirit Guide', tier: 3, families: ['astralprojection'], cost: 75, apCost: 1,
-          spellType: 'anomaly', element: 'psychic', type: 'utility', kind: 'buff', range: 4,
-          statusEffects: [{ id: 'invisible', duration: 1 }, { id: 'levitating', duration: 2 }],
-          desc: 'Take my hand. They cannot see what is not here. An ally is Invisible for a round and Levitating for 2 rounds.' },
+          spellType: 'anomaly', element: 'psychic', type: 'utility', kind: 'buff', range: 4, cooldownRounds: 2,
+          /* ASTRAL PROJECTION build 4 (2026-11-12): the guide walks an ALLY out of its body (battle.js astralProjectAlly).
+             Was Invisible 1 + Levitating 2. */
+          astralAlly: { cord: 6, end: 'return' },
+          statusEffects: [],
+          desc: 'Take my hand. An ally within 4 steps out of its body: the body sleeps where it stands and the spirit appears beside it, Projecting until that ally\'s next turn ends, then it returns to its body. Physical hits pass through the spirit, it stays within 6 of the body, and both share one HP bar. Cooldown: 2 rounds.' },
+        { id: 'raceAstralProjection', name: 'Astral Projection', tier: 3, families: ['astralprojection'], cost: 75, apCost: 1,
+          spellType: 'anomaly', element: 'psychic', type: 'utility', kind: 'escape', range: 0, teleportDistance: 6,
+          /* ASTRAL PROJECTION build 4: the family's namesake. The long cord, and the spirit goes HOME at the end. */
+          astral: { cord: 6, end: 'return' }, cooldownRounds: 3,
+          statusEffects: [],
+          desc: 'Leave the body behind. It stays asleep where it stands while your spirit steps out up to 6 tiles and stays within 6 of it. Physical hits pass through the spirit and it drifts through walls, but it cannot basic attack and your sleeping body can still be hit: one HP bar for both. When your next turn ends, your spirit returns to your body. Psychic hits deal x1.5 to your spirit, and a Stun or Silence snaps it back. Cooldown: 3 rounds.' },
         { id: 'raceShakeItOff', name: 'Shake It Off', tier: 2, families: ['athleticism'], cost: 50, apCost: 1,
           cooldownRounds: 2, spellType: 'human', type: 'heal', kind: 'selfHeal', range: 0, selfHealPct: 0.25,
           cleanse: 2,
@@ -6564,7 +6648,7 @@ const SPELL_LIBRARY = [
         { id: 'raceBumperCrop', name: 'Bumper Crop', tier: 4, families: ['agriculture'], cost: 100, apCost: 2,
           cooldownRounds: 2, spellType: 'divine', element: 'nature', type: 'damage', kind: 'aoe', range: 4,
           aoeRadius: 2, dmg: 135, damageType: 'magic', statusEffects: [{ id: 'root', duration: 1 }], rimSeeds: true,
-          desc: 'Sow the whole field at once. Everything standing in it is rooted where it stands, and by next round there is a wood around them. Deals MEDIUM magic damage to every enemy in a 5x5 area and Roots them for 1 round. A seed lands on every empty tile of the area\'s edge and grows into a tree at the end of the round; the trees block sight and count as yours. Cooldown: 2 rounds.' },
+          desc: 'Sow the whole field at once. Everything standing in it is rooted where it stands, and with water there is a wood around them. Deals MEDIUM magic damage to every enemy in a 5x5 area and Roots them for 1 round. A seed lands on every empty tile of the area\'s edge. Each seed must be watered (rain, a water spell, water beside it) and then grows into a tree at the end of the round; a seed still dry after 2 rounds withers. The trees block sight and count as yours. Cooldown: 2 rounds.' },
         { id: 'gunTwinDoors', name: 'Twin Doors', tier: 4, families: ['doors'], cost: 100, apCost: 1, cooldownRounds: 3,
           spellType: 'anomaly', element: 'psychic', type: 'utility', kind: 'deployPair', range: 4, maxActivePerCaster: 1,
           pairPicks: true, doorGun: true,
@@ -8051,8 +8135,11 @@ const RACE_ABILITIES = {
         { id: 'raceSpiritWalk', tier: 2, families: ['astralprojection'], spellType: 'anomaly', element: 'psychic', name: 'Spirit Walk',
           type: 'utility', cost: 20, apCost: 1, range: 0,
           kind: 'escape', teleportDistance: 4,
-          statusEffects: [{ id: 'invisible', duration: 1 }],
-          desc: 'Enter the spirit world briefly. Teleport up to 4 tiles and become invisible for 1 turn.' },
+          /* ASTRAL PROJECTION build 1 (2026-11-12): the body stays asleep on the cast tile, the spirit steps out up to 4
+             and stays within 4 of it (astral.cord); when it ends the body is pulled to the spirit (astral.end 'follow') */
+          astral: { cord: 4, end: 'follow' }, cooldownRounds: 2,
+          statusEffects: [],
+          desc: 'Step out of your body. It stays asleep where it stands while your spirit walks up to 4 tiles and stays within 4 of it. Physical hits pass through the spirit and it drifts through walls, but it cannot basic attack and your sleeping body can still be hit: one HP bar for both. When your next turn ends, your body is pulled to your spirit. Psychic hits deal x1.5 to your spirit, and a Stun or Silence snaps it back to your body. Cooldown: 2 rounds.' },
         { id: 'raceHerbalRemedy', tier: 1, spellType: 'human', element: 'nature', name: 'Herbal Remedy',
           type: 'heal', cost: 25, range: 3, apCost: 1,
           kind: 'heal', healAmt: 160, cleanse: 2,
@@ -9565,6 +9652,13 @@ const RACE_ABILITIES = {
           desc: 'The band stops. She does not. Deals HEAVY magic damage to a Single Enemy within 3 tiles and heals the princess for part of it. Charmed targets take it worse. Cooldown: 2 rounds.' },
     ],
     'dreameater': [
+        /* ASTRAL PROJECTION build 4 (2026-11-12): the dream units' answer to a spirit. The Stun lands only on a
+           Projecting unit (ifTargetHas), and a Stun on a spirit snaps it home (battle.js THE RUDE AWAKENING). */
+        { id: 'raceCutTheCord', element: 'psychic', tier: 2, families: ['astral'], spellType: 'alien', name: 'Cut the Cord',
+          type: 'damage', cost: 50, apCost: 1, dmg: 80, range: 4,
+          kind: 'damage', damageType: 'magic',
+          statusEffects: [{ id: 'stun', duration: 1, ifTargetHas: 'projecting' }],
+          desc: 'Deals WEAK magic damage to a Single Enemy within 4. A Projecting spirit takes x1.5, is snapped back to its body and is Stunned for 1 round.' },
         { id: 'raceDreamSiphon', element: 'psychic', upgradesBlock: ['upBlast'], tier: 1, families: ['astral'], spellType: 'alien', name: 'Dream Siphon',
           type: 'damage', cost: 30, dmg: 100, range: 3,
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
@@ -9591,8 +9685,8 @@ const RACE_ABILITIES = {
         /* THE SIGNATURE FAMILY (2026-10-23): Nightmares, this race's own. */
         { id: 'sigCountingSheep', name: 'Counting Sheep', tier: 2, families: ['nightmares'], cost: 50, apCost: 1, cooldownRounds: 3,
           spellType: 'alien', element: 'psychic', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1, noDamage: true,
-          statusEffects: [{ id: 'stun', duration: 1 }],
-          desc: 'One... two... Every enemy in a 3×3 within 4 tiles falls asleep: Stunned for a round. No damage. Cooldown: 3 rounds.' },
+          statusEffects: [{ id: 'sleep', duration: 1 }],
+          desc: 'One... two... Every enemy in a 3×3 within 4 tiles falls asleep for a round: Sleeping. Any damage wakes them. No damage. Cooldown: 3 rounds.' },
         { id: 'sigDevourTheDream', name: 'Devour the Dream', tier: 4, families: ['nightmares'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'alien', element: 'psychic', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 165, range: 3,
           drainPct: 0.5, bonusVsStatus: { status: 'stun', mult: 1.5 },
@@ -10347,7 +10441,7 @@ const RACE_ABILITIES = {
           kind: 'terrainCreate', terrainType: 'ice', squareFlood: true, aoeRadius: 1,
           damageType: 'magic', witherTrees: true,
           statusEffects: [{ id: 'frozen', duration: 2 }],
-          desc: 'Deep-freezes a 3×3 area into ice terrain. Enemies caught take MEDIUM magic damage and are FROZEN solid. Seeds and deployables in the area are destroyed; living trees die on the spot. Flyers up in the sky are above it.' },
+          desc: 'Deep-freezes a 3×3 area into ice terrain. Enemies caught take MEDIUM magic damage and are FROZEN solid. Seeds and deployables in the area are destroyed; living trees and plants die on the spot. Flyers up in the sky are above it.' },
         /* 2026-08-16 balance (stats18): yeti sat at 28.9% WR and this capstone
            had ZERO casts in 362 matches — kind 'leapStrike' requires standing
            STRICTLY ABOVE the target (AI + engine both gate on it), which never
@@ -11231,7 +11325,7 @@ const TRAINING_PASSIVES = [
       desc: 'Debuff statuses this unit applies last +1 turn. Teleport costs 1 less MP.' },
     { id: 'passiveGreenThumb', tier: 1, families: ['agriculture'], name: 'Green Thumb', icon: '🌱',
       hooks: { lifeSapMult: 1.2, plantedTrees: true },
-      desc: 'Trees grown from this unit\'s seeds buff its ATK & spell power (+7 each, up to 6 living trees) and fuel Trunk Throw (+30 damage each). Every drain heals 20% more. Enemies can chop or burn the forest to shut it down.' },
+      desc: 'Plants and trees grown from this unit\'s seeds buff its ATK & spell power (+7 each, up to 6 living). Its trees also fuel Trunk Throw (+30 damage each). Every drain heals 20% more. Enemies can cut down or burn the garden to shut it down.' },
     { id: 'passiveTinker', tier: 1, families: ['engineering'], name: 'Tinker', icon: '🔧',
       hooks: { turretRangeBonus: 1, repairMult: 1.2 },
       desc: 'Turrets have +1 range and Repair heals 20% more.' },
@@ -12961,6 +13055,48 @@ const STATUS_DEFS = {
         spriteSrc: 'https://cdn.entropywars.net/Assets/ui/status/stun.png',
         iconSrc: createStatusIconDataUri('⚡', '#3e2218', '#ffe6da', '#ff9c71')
     },
+    /* 💤 SLEEPING (astral projection build 1, 2026-11-12, mondo: "Is there even a sleeping status effect in the game yet?
+       Make sure there is one ... yes damage should wake a sleeper"). Hard CC like Stun (no move, no act, the activation
+       is skipped), but any damage that lands wakes the sleeper (battle.js applyDamageToUnit). It counts as Stun for every
+       "more to Stunned targets" spell (countsAs: the dream spells eat a sleeper). A projecting unit's BODY wears it for
+       as long as its spirit is out and damage does not wake it (battle.js THE ASTRAL BODY). */
+    sleep: {
+        icon: '💤',
+        glyph: '💤',
+        short: 'SLP',
+        label: 'Sleeping',
+        colorText: 'asleep',
+        kind: 'debuff',
+        category: 'status',
+        stack: 'max',
+        blockMove: true,
+        blockAction: true,
+        wakeOnDamage: true,
+        countsAs: ['stun'],
+        iconSrc: createStatusIconDataUri('💤', '#1a2040', '#e6ecff', '#8fa0e8')
+    },
+    /* 👁 PROJECTING (astral projection build 1, 2026-11-12): the SPIRIT of a unit whose body sleeps on the tile it cast
+       from (unit._astralBodyId = the body's unit id). The spirit is the unit itself: it moves and casts; physical hits
+       pass through it and it drifts through walls and bodies (data.js unitPassiveValue gives it the Ghost's Incorporeal
+       hooks), nothing on the ground touches it, it cannot basic attack or cast physical spells, and it stays within its
+       cord of the body. One HP bar with the body. It ends when the caster's next turn ends (battle.js
+       astralSpendActivation; the count here is the backstop). onRemove → battle.js astralEnd. */
+    projecting: {
+        icon: '👁',
+        glyph: '👁',
+        short: 'PRJ',
+        label: 'Projecting',
+        colorText: 'projecting',
+        kind: 'buff',
+        category: 'buff',
+        stack: 'max',
+        iconSrc: createStatusIconDataUri('👁', '#182838', '#f0f8ff', '#9fd8ff'),
+        psychicMult: 1.5,          // a psychic-element hit on the spirit (battle.js _hitDamageMath)
+        snapOn: ['silence'],       // + every blockAction status: the spirit snaps home (battle.js astralSnapHome)
+        onRemove(unit) {
+            if (typeof astralEnd === 'function') astralEnd(unit);
+        }
+    },
     root: {
         icon: '⛓️',
         glyph: '⛓️',
@@ -13576,6 +13712,8 @@ const STATUS_LIBRARY_DESCS = {
     shield:    'A barrier of shield points absorbs damage before HP does (Prayer, Pleiadian Shield, Bulwark…). Shown as the blue bar segment.',
     silence:   'Cannot cast spells.',
     stun:      'Knocked senseless: cannot move OR act — the unit\'s next activation is skipped. Evasion drops to zero.',
+    sleep:     'Asleep: cannot move or act. Any damage wakes the sleeper. Counts as Stunned for spells that hit harder against a Stunned unit. A body left behind by a projecting unit sleeps until its spirit comes back.',
+    projecting: 'The spirit has stepped out of its body, which sleeps where it stood. One HP bar for both. Physical hits pass through the spirit and it drifts through walls, but it stays within its cord, cannot basic attack, use physical abilities or items, or carry a Key. Psychic hits deal x1.5 to the spirit. A Stun, Sleep, Silence or anything else that stops it acting snaps it back to its body. A spirit sees units inside the Shadow Realm and can hit them, and they can hit it.',
     root:      'Bound in place: cannot move (flyers are dragged to the ground), but can still attack and cast. Evasion drops to zero.',
     stagger:   'Immediately loses 1 AP (or starts the next round with 1 less AP).',
     marked:    'The next physical hit or basic attack an enemy lands on this unit consumes the mark for bonus damage. Magic hits leave the mark on.',
@@ -29753,6 +29891,11 @@ const DOOR_HQ = {
         leaf_window_large:   { file: 'DOOR WITH LARGE WINDOW.glb',                                leaf: true, aspect: 0.500, open: 'swing', hinge: 'left' },
         leaf_window_medium:  { file: 'DOOR WITH MEDIUM WINDOW.glb',                               leaf: true, aspect: 0.500, open: 'swing', hinge: 'left' },
         leaf_entrance:       { file: 'ENTRANCE DOOR.glb',                                         leaf: true, aspect: 0.500, open: 'swing', hinge: 'left' },
+        /* THE DOUBLE DOOR (2026-11-12, mondo: "get rid of the revolving door, just make it a normal swing door or double door"):
+           `double` = TWO of the single leaf, one hinged on each jamb, meeting in the middle, both swinging open for the walker
+           (three-renderer.js _hqBuildDoors `pivot2`). The same authored DOOR WITH LARGE WINDOW the reception wears, as a pair.
+           `glass` in the key: you see through its windows, so the room beyond is never culled behind it (HQ_CULL_SEE). */
+        leaf_lobby_glass_double: { file: 'DOOR WITH LARGE WINDOW.glb',                                leaf: true, aspect: 1.000, wide: true, open: 'swing', double: true },
     },
 
     /* The seven containment bays (DOOR_MASTER A10; the seventh, URBAN, plan 7.5). Every launch map belongs
@@ -30835,7 +30978,7 @@ const DOOR_HQ = {
                    (§5.6), the same door from the foyer's side; a fresh arrival from
                    Play stands in the foyer and walks IN through it (map.js
                    _hqArrivalRoom — `?nofoyer` / ew_hq_foyer='off' lands in the hall). */
-                { id: 'foyer',          deg: 195, level: 0, leaf: 'leaf_revolving',   wide: true,  label: 'THE FOYER',       sub: 'THE FRONT DOOR · EXIT',   action: { room: 'foyer', at: 'egress' }, desc: 'The vestibule. The revolving door, the seal in the terrazzo, the inspection desk that verifies your corners. The street is on the other side of it; the street is the main menu.' },
+                { id: 'foyer',          deg: 195, level: 0, leaf: 'leaf_lobby_glass_double', wide: true,  label: 'THE FOYER',       sub: 'THE FRONT DOOR · EXIT',   action: { room: 'foyer', at: 'egress' }, desc: 'The vestibule. The double doors, the seal in the terrazzo, the inspection desk that verifies your corners. The street is on the other side of it; the street is the main menu.' },
                 /* ROOM 1111 · MEDICAL (plan 7.4, 2026-09-13 rev 3): the door is now the
                    way INTO the ward — the services desk (Challenge mode), the chart
                    (your record), the cell door into Room 5150. The number moved onto
@@ -31138,15 +31281,19 @@ const DOOR_HQ = {
                 pipes: false, strips: false,
                 light: { x: 0, z: 0 },
                 mood: { light: 0xf6efdf, ambient: 0.62 },              // the brass-and-glass warmth of a lobby that is cleaned nightly
+                /* ONE DOORWAY, ONE LIGHT (2026-11-12, mondo: "the foyer is too bright and then stepping into the lobby is dark by comparison"):
+                   the foyer wears the hall's rig (HQ_LIGHT_RULES.joinRig), so its own lamps and the Key Light give half / a third here:
+                   white plaster 3 m from every lamp needs far less than the hall's stone 20 m off */
+                lampK: 0.5, keyLamp: 0.3,
                 plate: { x: 2.2, z: -2.95, y: 3.4 },
                 look: HQ_ROOM_LOOKS.retro,
             },
             doors: [
-                /* the revolving door: the same leaf the hall wears at 195°, from this side */
-                { id: 'egress', wall: 'n', x: 0, leaf: 'leaf_revolving', wide: true,
+                /* the double doors (2026-11-12; the revolving door until then): the same leaves the hall wears at 195°, from this side */
+                { id: 'egress', wall: 'n', x: 0, leaf: 'leaf_lobby_glass_double', wide: true,
                   label: 'THE MAIN HALL', sub: 'INTO THE MAIN HALL',
                   action: { room: 'central_egress', at: 'foyer' },
-                  desc: 'The revolving door. It turns one way. Which way has not been decided, but it is the same way for everyone, and the hall is on the other side of it.' },
+                  desc: 'The double doors. They swing one way. Which way has not been decided, but it is the same way for everyone, and the hall is on the other side of them.' },
                 /* the front door (ZONES_PLAN Z0, 2026-09-29): SEALED. It opened onto THE LAND (G2) until the land was cut; it stays shut
                    until the story opens it (where the building stands is not told). The main menu is the pause menu's MAIN MENU ·
                    LEAVE THE BUILDING. */
@@ -31203,7 +31350,7 @@ const DOOR_HQ = {
                 { x: 4.05, z: 0, face: 90, pose: 'hqSit', gender: 'male', label: 'THE INSPECTOR', reach: 1.9,
                   line: '“Four corners. Ninety degrees. Proceed. — No, I don’t need to look. Everyone who has ever stood there has had four.”' },
                 { x: -1.7, z: 2.3, face: 0, pose: 'hqArms', gender: 'female', label: 'THE DOORMAN', reach: 1.7,
-                  line: '“The door turns one way. If you come out where you went in, you went round twice. It happens more than you would think.”' },
+                  line: '“The doors swing one way. If you come out where you went in, you turned round. It happens more than you would think.”' },
             ],
             npcSpots: [
                 { x: -4.375, z: -0.375, face: 90 },   // on the bench, waiting to be inspected
@@ -48044,7 +48191,7 @@ const HQ_STAGE_RULES = {
        turns while you walk through it (the box's own leaf stands down while the hall is beside it). The box room is not a part
        of any HQ_WORLD zone; every id, counter, ledger key and save is untouched. Off: window.EW_HQ_NO_STAGE (every door loads). */
     round: [
-        { a: 'central_egress', door: 'foyer', b: 'foyer', bDoor: 'egress' },   // THE FOURIER FOYER ⇄ the main hall, the revolving door at 195°
+        { a: 'central_egress', door: 'foyer', b: 'foyer', bDoor: 'egress' },   // THE FOURIER FOYER ⇄ the main hall, the double doors at 195° (the revolving door until 2026-11-12)
     ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
@@ -58265,7 +58412,7 @@ Object.defineProperty(DOOR_HQ, 'finds', { configurable: true, enumerable: true, 
 const HQ_GUN_LESSONS = {
     floor:   { n: 1, room: 'training', title: 'LESSON ONE · THE FLOOR', lines: ['F DRAWS THE GUN. LEFT CLICK SHOOTS.', 'R FLIPS A / B · RIGHT CLICK AIMS', 'WALK INTO ONE. YOU ARE AT THE OTHER.'], back: 'the same floor', draft: true },
     ledge:   { n: 2, room: 'site_prebuilt_haunted_hall', title: 'LESSON TWO · THE LEDGE', lines: ['A ON THE LANDING OVER YOUR HEAD', 'B AT YOUR FEET', 'THE STAIRS ARE THE LONG WAY. THEY STILL WORK.'], back: 'the flight', draft: true },
-    rooms:   { n: 3, room: 'foyer', title: 'LESSON THREE · TWO ROOMS', lines: ['A HERE. WALK THROUGH THE REVOLVING DOOR.', 'B IN THE HALL. STEP IN.', 'THE PAIR HOLDS ACROSS A WALL. IT HOLDS ACROSS THE BUILDING.'], back: 'the revolving door', draft: true },
+    rooms:   { n: 3, room: 'foyer', title: 'LESSON THREE · TWO ROOMS', lines: ['A HERE. WALK THROUGH THE DOUBLE DOORS.', 'B IN THE HALL. STEP IN.', 'THE PAIR HOLDS ACROSS A WALL. IT HOLDS ACROSS THE BUILDING.'], back: 'the double doors', draft: true },
     ceiling: { n: 4, room: 'upsidedown', title: 'LESSON FOUR · THE CEILING', lines: ['THE FLOOR IS THE CEILING. AIM UP.', 'A ON THE CEILING. B ON THE FLOOR.', 'JUMP THROUGH B AND COME OUT THE RIGHT WAY UP.'], back: 'the door to the floor', draft: true },
     fall:    { n: 5, room: 'stairwell', title: 'LESSON FIVE · THE FALL', lines: ['A ON THE FLOOR UNDER YOU', 'B ON THE CEILING OF THE TOP LANDING', 'FALL. KEEP FALLING. HOLD F WHEN YOU HAVE HAD ENOUGH.'], back: 'the treads', draft: true },
     lip:     { n: 6, room: 'site_prebuilt_singularity', title: 'LESSON SIX · THE LIP', lines: ['THE TAPE IS ON THE RIM. TWO LEVELS. YOU CANNOT CLIMB IT.', 'AIM AT THE LIP OF THE WALL. THE DOOR LANDS ON TOP.', 'B AT YOUR FEET. THE DIRECTORY IS THE WAY DOWN.'], back: 'ESC · DIRECTORY', draft: true },
@@ -64859,6 +65006,10 @@ const HQ_LIGHT_RULES = {
        floor's light thrown back up — shell.floorColor (else `color`) mixed `amount` of the way over the old near-black 0x1c1a1e — so a
        ceiling, a gallery's underside and the top of a tall wall read; a dark floor throws back little (three-renderer.js _hqBoxHemiG) */
     bounce: { amount: 0.6, color: 0x8a847a },
+    /* ONE DOORWAY, ONE LIGHT (2026-11-12): a box room joined to the round hall (HQ_STAGE_RULES.round: the foyer) wears the HALL's
+       hemisphere / key / fill, so the hall beyond the doorway reads the same from both sides; false = each room its own rig.
+       A room's own lamps: shell.lampK (0..1), its share of the Key Light: shell.keyLamp (three-renderer.js _hqJoinedHall / _hqLampK) */
+    joinRig: true,
     /* THE PREMIUM POLISH — THE LIGHT PASS (PREMIUM_POLISH_PLAN §2, 2026-09-21). Every number here is the
        building's; a room overrides through its shell (`shell.rig`, `shell.heightFog`, `shell.atmos`,
        `shell.arrival`). The renderer's HQ_LIGHT_DEFAULT carries the same keys (premium-polish.test.js diffs them). */

@@ -15,7 +15,7 @@ Generated from data.js on 2026-10-01, after THE SPELL AUDIT Batch D (SPELL_FAMIL
 | 🌀 Arcane Magic (arcane) | Arcane Sigil I, ◈ Mana Font I, Spellsteal II, Wish Granted II, Polymorph III, Annihilation IV | atlantean, djinn, wizard |
 | 🏹 Archery (archery) | Fire Arrow I, Bomb Arrow II, Piercing Arrow III, Splitting Arrow III, Arrow Volley IV | robinhood |
 | 💻🧠 Artificial Intelligence (artificialintelligence) | Predictive Model I, Overcalculate II, Recursive Loop III, Singularity IV | ai, droid, glitch |
-| 😴 Astral Projection (astralprojection) | Astral Barrier I, Spirit Walk II, Spirit Guide III | fortune teller, shaman, telepath, watcher |
+| 😴 Astral Projection (astralprojection) | Astral Barrier I, Spirit Walk II, Astral Projection III, Spirit Guide III | fortune teller, shaman, telepath, watcher |
 | 🏃 Athleticism (athleticism) | ◈ Pathfinder I, Sprint I, Nimble Dodge II, Shake It Off II, Vault III, Rampage IV | bigfoot, bunny girl, catgirl, firefighter, homosapien, juggernaut, ki fighter, luchador, quarterback, rabbit, sidekick, superhero, swordfighter, symbiote |
 | 🦏 Beast Abilties (beastabilities) | Bite I, ◈ Keen Nose I, Pounce I, Maul II, Feral Dive III | deep sea fish, dinosaur, dragon, king kong, loch ness monster, minotaur, sharkman, vampire, werewolf |
 | 📖 Bible Study (biblestudy) | Absolution I, Blessing I, Sermon II, Exorcism III, Prayer III, Hallelujah IV | nun, priest, seraphim |
@@ -40,7 +40,7 @@ Generated from data.js on 2026-10-01, after THE SPELL AUDIT Batch D (SPELL_FAMIL
 | 🐫 Desert Acclimation (desertacclimation) | Dust Devil I, Summon Sandstorm II, Quicksand III, Simoom IV | anubis, martian |
 | 👊 Dirty Fighting (dirtyfighting) | Body Check I, Curb Stomp I, Dark Justice I, ◈ Cheap Shot II, Iron Grip II, Brutal Slam III, Skull Crack III, No Mercy IV | antihero, clown, gangster, giant, goblin, juggernaut, luchador, minotaur, overlord |
 | 🐉 Dragon Abilities (dragonabilities) | Dragon Breath I, Dragonfear II, Ember Heart II, Dragon Toss III, Dragonfire IV | dragon |
-| 🛌 Dream Predation (astral) | Dream Siphon I, Sleep Paralysis II, Nightmare Pulse III, Eternal Slumber IV | dreameater, succubus |
+| 🛌 Dream Predation (astral) | Dream Siphon I, Cut the Cord II, Sleep Paralysis II, Nightmare Pulse III, Eternal Slumber IV | dreameater, succubus |
 | ✇ Driving Skills (drivingskills) | Ram Charge I, Exhaust Cloud II, Transform II, Nitro Boost III, Vehicular Manslaughter IV | honda civic |
 | 🪨 Earth Abilities (earth) | Boulder Hurl I, ◈ Mountainborn I, Stonefall I, Tremor Stomp I, Earthen Grasp II, Fissure II, Rampart II, Ground Slam III, Stone Drop III, Quake IV | crystal guardian, cyclops, dinosaur, gargoyle, giant, golem, kaiju, nephilim, tree person |
 | 🛠️ Engineering (engineering) | Repair I, ◈ Tinker I, Deploy Turret II, 5G Tower III, Overtinker IV | ai, droid, gnome, santa clause |

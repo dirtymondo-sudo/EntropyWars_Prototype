@@ -5260,3 +5260,120 @@ mondo: "everything is framed a little too high and the green super effective exc
 - Proof (Training Room, Annunaki's attack list, 1728x904): slide 0.30 -> 0.17, the far target's plate 130 -> 165 px down.
   /mnt/project-files/unit-frame-20261112/attack_list_before_top_after_bottom.jpg (the before half is the old slide on the
   new pose). Not replayed: Tape 2 itself, his Mac. A target outside the framed pair can still sit high if it is far up-screen.
+
+## THE GARDEN — seeds need water, plants replace the aura trees (2026-11-12, mondo; plan doc https://claude.ai/artifact/2hDVKXrT82a2FfypmiKwdV)
+mondo: "You have to water them for them to sprout, this can be rain water, water from a spell, etc. But instead of turning into
+trees, I want the leech seed to turn into a plant monster with thorny vines that acts like a turret ... The poison seed ... emits
+poison gas in an aoe ... the healing seed ... some sort of flowery healing thing." His answers (doc section 8): dry seed keeps its
+under-foot effect; Watering Can yes; real HP bar; cap 2 per type per planter (upgrades may raise it); plants do not block sight;
+Blood Rain does not water; thorn vine reach 2 (an upgrade may lengthen it); Bumper Crop option 1 (its seeds need water).
+- battle.js THE GARDEN block (beside `_seedBesideWater`): `seed.watered`; `_seedWaterSourceAt` (rain = Thunderstorm / Hurricane,
+  water / deep water / healing spring beside it, water on it, a Wet unit of the planter's side on it); `waterSeedsAt(x, y)` is
+  called from `triggerTerrainSpellReaction` for every tile a WATER-element spell strikes. Growth tick
+  (`applySeedTileEffects_endOfRound`): watered before this round end -> grows now; finds water now -> sprouts, grows next round
+  end; dry -> never. A plain (Bumper Crop) seed still dry after 2 round ends withers.
+- Grown plant = a `state.turrets` row with `plant: 'heal' | 'poison' | 'leech'` (`_standPlant`): real HP = 35 % of the planter's
+  max HP (min 60), no `hitsToKill`, `processTurretVolleys` skips it. It acts in `applySeedTileEffects_endOfRound` through the old
+  aura numbers (`applyAuraTreeEffectToUnit`): flower heals allies within 1 (7 %, double in rain), gas plant 5 % + Poison 2 to
+  enemies within 1, thorn vine 6.5 % from the ONE nearest enemy within `range` (2) it has a clear line to (`_plantLashTarget`,
+  `turretHasShotAt`), sent to the weakest ally. Drought = wilts, skips the round. Burning tile = -25 % max HP a round end.
+  Permafrost (`witherTrees`) kills it. Cap: `PLANT_CAP_PER_TYPE` 2 (+ passive hook `plantCapBonus`); reach hook `plantRangeBonus`
+  (no row carries either hook yet). Green Thumb counts plants + planted trees; Trunk Throw still counts trees only.
+- Plain seeds (Bumper Crop) still grow ordinary trees (`state.plantedTrees`, choppable, block sight). The old Healing / Toxin /
+  Leech aura TREES are no longer created (the code path stays for old state).
+- data.js: `wateringCan` (Agriculture T1, kind aoe, `aoeMask [[0,0]]`, noDamage, `waterCan`: the tile is watered, its fire goes
+  out, whoever stands there is Wet). Seed / Bumper Crop / Green Thumb / Permafrost texts rewritten.
+- three-renderer.js THE GARDEN: `_buildSeed3D` (mound + seed, or the sprout once watered; the 2D seed sprites are no longer
+  drawn), `_buildPlant3D` (Meshy models `Assets/world/props/meshy/ew_plant_thornvine|gasplant|healflower.glb`, team ring, HP bar
+  black with a white outline facing the camera). hud.js tile card: seed dry / watered text, plant text + HP.
+- NOT BUILT YET (his OK given, later PRs): Bee Queen pollen (Pollinate + Honey, pollen boosts her ATK + speed), Apple Seed ->
+  apple tree (a real tree: existing tree model + the pack's apples, drops a healing apple), upgrade rows for the cap / reach,
+  the CPU learning to water (ai.js still plants seeds as before and never casts Watering Can on purpose).
+
+## THE ASTRAL BODY + SLEEPING, build 1 (2026-11-12, mondo: "put the sleeping status effect on the physical body and the projecting status effect on the projection. Treat them like 2 separate units, but one shared HP bar" + "yes damage should wake a sleeper")
+Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx (4 builds). This is build 1.
+- data.js STATUS_DEFS `sleep` (SLP "Sleeping"): can't move or act, `wakeOnDamage` (battle.js applyDamageToUnit clears it after the
+  hit line, never on an astral body), `countsAs: ['stun']` so every "vs Stunned" bonus reads a sleeper too. Lullaby + Counting Sheep
+  now apply Sleeping (1 round); Sleep Paralysis stays Stun. `projecting` (PRJ): onRemove -> `astralEnd`.
+- A spell row with `astral: { cord, end }` (only Spirit Walk so far: cord 4, end 'follow', cooldown 2) calls battle.js `astralBegin`
+  in the escape branch. THE SPIRIT IS THE UNIT ITSELF (keeps id, turn, spells; status `projecting`, `_astralBodyId`, `_astralCord`).
+  THE BODY is a plain copy pushed into state.units: id `<player>-ab<n>`, `_astralOfId`, `sleep: 99`, never activates. Ids only, no
+  object refs (RULE #2), so the guest gets both from the state sync with no relay.
+- ONE HP BAR: `astralSyncHp` after every damage / heal moves the other piece by the same delta. Either piece at 0 = the unit dies
+  on the BODY's square, one kill (map.js defeatUnit -> `astralOnDeath`).
+- The spirit: data.js `unitPassiveValue` hands it the Ghost row (PASSIVE_DEFS.incorporeal: physical immune + phasing); it can't basic
+  attack, cast a physical spell or another astral spell (`spellBlockReason` 'Projecting'), use items, Inspect, build, or carry a Key
+  (Keys / flags stay with the body). Moves only inside the cord (`astralCordFilter` in getMoveTiles). Ground hazards, traps, seeds,
+  weather, quakes skip it (battle.js + state.js gates on `unitIsSpirit`); arriving still sets off Overwatch.
+- END: the activation after the cast one (`astralSpendActivation`) or the status running out. end 'follow' = the body is pulled to
+  the spirit's square (Spirit Walk). `astralLanded` then runs the normal tile arrival.
+- NOT IN BUILD 1 (builds 2-4): psychic x1.5 vs projecting, Stun / Silence snapping the spirit home, dream bonuses on the empty body,
+  the Shadow Realm window, the Astral Projection spell, Spirit Guide rework, Cut the Cord, Silver Cord, CPU play of it. Known gaps:
+  an AoE covering both pieces takes HP twice; no early return; the body stands idle (no slump pose); statuses worn at the cast stay
+  on the spirit.
+- Proof (VS CPU + a 2-seat online room, guest cast): /mnt/project-files/astral-projection-20261112/build1_*.jpg.
+## THE POLLEN — the Bee Queen gathers from the Healing Flower (2026-11-12, mondo: "Both", "maybe the pollen can boost her attack and speed too")
+- battle.js THE POLLEN block (after `_standPlant`): a `heal` plant row carries `pollen` (1 when it grows, regrown at each round end by
+  `_pollenRoundEnd`). `_gatherPollen(unit)` runs for `race === 'bee queen'` at the top of `checkSeedStepTrigger` (move end) and at round
+  end: every flower within 1 tile (any side's) gives its pollen, up to `POLLEN_MAX` 3. The count is the plain number `unit.pollen`.
+- HONEY: `getPollenPowerBonus` (+8 per pollen) is added inside `getPlantedTreeBonus`, so it reaches basic attacks and spell power at
+  every place the Green Thumb bonus is read; `getEffectiveSpd` adds `getPollenSpdBonus` (+8 per pollen).
+- POLLINATE (data.js `pollinate`, Royal Hive T1, 10 MP, 1 AP, range 3, flag `pollinate`): costs 1 pollen; a seed on the tile grows now
+  (`_growSeedIntoTree`, no water), or a hurt plant is mended 50% of max HP. Refused before MP with no pollen or nothing on the tile;
+  `hasSpellTargetInRange` reads NO TARGET with no pollen. ai.js casts it on its own side's nearest seed in reach.
+- Shown: hud.js `_hrlgStatusChips` "POLLEN n/3", three-renderer.js `_plateStatusBadgesHtml` "POL n".
+- My picks, his to change: 8/8 per pollen, max 3, any side's flower, mend 50%. Not built: Drones fetching pollen.
+
+### build 2 (2026-11-12, same thread): the psychic bonus, the rude awakening, one blow per action
+- PSYCHIC x1.5: battle.js `_hitDamageMath` multiplies a psychic-element, non-DoT hit on a SPIRIT by STATUS_DEFS.projecting.psychicMult
+  inside the capped offensive product (so previews agree); callout "MIND EXPOSED". The body is not paid twice: dream spells already
+  read it as Stunned (Sleeping countsAs stun).
+- THE RUDE AWAKENING: applyStatusPayload, after a status lands on a spirit: any `blockAction` status (Stun, Sleeping, Frozen...) or
+  one on STATUS_DEFS.projecting.snapOn (Silence) calls `astralSnapHome`: end mode forced to 'return', so even Spirit Walk's spirit
+  goes back to the body's square; the status stays on the unit. Log "X is silenced: the spirit snaps back to its body!".
+- ONE ACTION, ONE BLOW: applyDamageToUnit, a sourced non-DoT hit on a piece stamps `_astralHitKey` (= `_protectAttackKey`, one action
+  of one unit) + `_astralHitPiece` on the spirit; the same action reaching the OTHER piece does nothing. Multi-hits keep landing on
+  the first piece. Closes build 1's "AoE takes HP twice" gap.
+- Status page text for Sleeping + Projecting added (data.js STATUS description table; missing in build 1).
+- Checked in a VS CPU match by eval: fire 117 on the spirit, same action on the body 0; psychic on the spirit 194 vs 117 plain,
+  psychic on the body 117; Silence sent the spirit home and removed the body. Still open: early return, body slump pose, CPU play,
+  builds 3-4.
+
+## THE APPLE TREE — Apple Seed, a real tree that drops healing apples (2026-11-12, mondo: "eventually both"; Apple Seed OK'd)
+- data.js `appleSeed` (Agriculture T2, 25 MP, range 3): rides `kind: 'seedHeal'` with `seedType: 'apple'` (battle.js cast branch `_sType`),
+  so every menu / CPU / targeting table that knows the Healing Seed knows it. The dry seed has no under-foot effect.
+- Watered, `_growSeedIntoTree` takes the TREE path (not `_standPlant`): an ordinary `tree` object + a state.plantedTrees row
+  `{ apple: true, appleAge }`. It blocks sight, is chopped like any tree, counts for Green Thumb + Trunk Throw.
+- battle.js THE APPLE TREE block: `_appleTreesRoundEnd` (in the player-1 round-end block) drops one apple every `APPLE_EVERY_ROUNDS` 2
+  on a free tile beside the tree, at most `APPLE_MAX_PER_TREE` 2 lying around it. state.apples = `{id,x,y}` rows (ride the snapshot).
+  `_eatAppleAt` (top of `checkSeedStepTrigger`): ANY hurt unit ending a move on one heals `APPLE_HEAL_PCT` 20% max HP. Full HP = it stays.
+  Apples stay when the tree is cut. Pollinate grows an Apple Seed at once too.
+- three-renderer.js THE APPLE TREE: `_buildApple3D` (ground) + `_buildAppleCanopy` (5 in the leaves), one Meshy apple
+  `Assets/world/props/meshy/ew_plant_apple.glb` (no pack has an apple). The tree itself is the board's stock tree model.
+- My picks, his to change: every 2 rounds, 2 lying, 20%, either side may eat. Not built: fire burning apples, a tile card for an apple.
+### build 3 (2026-11-12, same thread): THE REALM WINDOW
+- battle.js `unitCrossesRealm` (a spirit) + `unitSeesRealm` (a spirit, or a race on data.js REALM_SIGHT_RACES: ghost, shadow entity).
+  `isUnitRealmShieldedFrom`: a spirit and a Shadow Realm pair reach each other both ways; the sleeping body stays walled off, and
+  zones / weather (null actor) still never reach in. `isUnitSeenAcrossRealm` feeds `isUnitOutOfRealmView`: on a seer's turn the pair
+  is drawn on the normal board; on the pair's turns a spirit is drawn in their plane. Ghost + Shadow Entity look, cannot touch.
+- three-renderer.js: a unit seen across is a dim shade (REALM_SEEN_OPACITY 0.42), still under the viewer's fog.
+- Checked in VS CPU (Mount Shasta): Shadow Entity's turn showed the pair; shield true before Spirit Walk, false after; the body's hit
+  did 0; Shadow Crush listed the realm Demon as a target and took 982 -> 798.
+  /mnt/project-files/astral-projection-20261112/build3_spirit_targets_realm_unit.jpg. Not checked: a realm pair hitting the spirit
+  through the menus (function only), the online guest view.
+
+### build 4a (2026-11-12, same thread): the new spells + Spirit Guide + CPU
+- data.js `raceAstralProjection` (T3, astralprojection family, 75 MP, kind escape, step out 6, `astral: { cord: 6, end: 'return' }`,
+  cooldown 3; VFX = Spirit Walk's, three-vfx-effects.js SPELL_MAP alias). `raceSpiritGuide` REWORKED: `astralAlly: { cord: 6, end:
+  'return' }` (was Invisible 1 + Levitating 2); battle.js buff branch -> `astralProjectAlly`: the ally's body sleeps on its square, the
+  spirit appears on the nearest open square beside it. `raceCutTheCord` (T2, Dream Predation `astral` family: dreameater, succubus;
+  50 MP, 80 dmg psychic, range 4, `statusEffects: [{ id: 'stun', duration: 1, ifTargetHas: 'projecting' }]`): the Stun lands only on a
+  spirit and THE RUDE AWAKENING snaps it home. Names were proposals in the accepted plan doc; his to rename.
+- ai.js: `_aiHasMagicToFight`; an astral escape scores only for a magic user with enemies within 4, no Key, body not about to die;
+  Spirit Guide the same for the ally. Physical hits on a spirit were already priced 0 (the Ghost check reads unitPassiveValue), and
+  the psychic x1.5 rides the forecast math.
+- Checked in VS CPU: Spirit Guide on King Arthur (spirit beside body, returned at his next turn's end, log line), Astral Projection
+  (cord 6, no move tile past it), Cut the Cord's hit + payload by eval (126 dmg, snapped home, Stunned). NOT checked: the CPU casting
+  any of it in a real match, the online guest view of build 3-4.
+- STILL OPEN (needs mondo): Silver Cord passive + the early return (a new menu command = UI design, his OK first), body slump pose,
+  the CPU guarding its own body.
