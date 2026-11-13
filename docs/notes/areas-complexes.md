@@ -2744,3 +2744,7 @@ cell plans 21:23 (/mnt/project-files/dc-entertainment/interiors_plan.jpg). All i
   boxing gym).** bake-disaster-city.js MOVES a `tree` row within 2.5 m of a walk-in (`hollow`) building's walls to the nearest free yard square 2.5 m clear
   (11 trees; PR #1343 dropped them, the follow-up moves them: never delete content mondo did not name; `keep: true` = never moved), and the `stadium_downtown` road link stands on the road's dead end in P03-00 (-99.75, -229.25), no longer in the
   3.5 m alley beside the gym on its east door's step. Not seen on screen.
+- **22:30 mondo "keep the new lobby"**: the Superhero Tower's walk-in lobby opens on the PLAZA again, and the story door THE TOWER (into
+  site_prebuilt_downtown_lobby, which still leads on to the showroom and the stair down) stands at the lobby's lift bank, square (4, 0), sub
+  'THE LIFTS · INTO THE TOWER'. Mechanism: a district file may export `joins = { <JOIN key>: { x, z, face, sub } }`; bake-disaster-city.js applies
+  it before writing the doors. The lift core runs up to the ceiling so the door's housing does not show over it. Shot inside_5_tower_lobby_doors.jpg.
