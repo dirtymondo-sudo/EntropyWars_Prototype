@@ -2668,3 +2668,10 @@ cell plans 21:23 (/mnt/project-files/dc-entertainment/interiors_plan.jpg). All i
 - NOT SEEN IN THE GAME (offline render of the baked rows only: interiors_built.jpg). Unknown until walked: how bright the insides are, prop
   facings, whether the wall-mounted props (`locker`, `kitchen_range`) sit right. Next (his "and yes" 21:23): insides for the wedding chapel,
   the Concert hall and the Film studio (solid today).
+- THE THREE MORE INSIDES (same night, his "and yes" 21:23): the Concert hall and the Film studio were roof-route plateaus (solid); `B(id,
+  { walk: true })` on a plateau now swaps in a hollow `texbuilding` of two storeys (the same 7 m walked roof slab, as the Industrial district
+  does), its doorway the plan's first door. Concert hall inside: lobby, raked seat blocks, a two-square-deep stage, backstage. Film studio
+  inside: backdrops, a half-built set, a camera + lamp (kit `k`), the director's desk, wardrobe, make-up, the front office. The Concert
+  hall's glass lobby drum became an open colonnade (the doorway is behind it). The wedding chapel is a walk-in shell of the file's own now
+  (`EXTRA['E-chapel']` + its own texbuilding row, 3 x 2 squares, `leaf_motel` door): pews (kit `p`), the wedding altar (kit `w`, `lectern`).
+  13 inside rows in all. NOT SEEN IN THE GAME; the roof route over the two halls wants a walk (the texbuilding's 0.45 m parapet ghost).

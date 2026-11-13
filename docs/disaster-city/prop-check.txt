@@ -1,5 +1,5 @@
 THE PROP CHECK, written by node bake-disaster-city.js. A district file's own prop that stands in something is listed here for its thread; a shared prop with no clear spot is left out.
-{"checked":2000,"clear":1495,"moved":355,"left_out":14,"district_reported":89,"by":{"car_cop in lamp":2,"car_cop in prop":4,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":15,"item_police_barricade in step":5,"planter in arch":10,"dumpster in step":7,"dumpster in arch":2,"planter in stairs":1,"planter in prop":3,"planter in doorway":1,"vending_machine in arch":34,"vending_machine in doorway":2,"public_phone in arch":12,"ind_vent in arch":12,"utility_box in arch":9,"ind_panel in arch":9,"utility_box in step":4,"traffic_cone in arch":20,"traffic_cone in step":28,"traffic_cone in building":12,"psx_wooden_crate_1 in prop":1,"psx_wooden_crate_1 in step":2,"psx_wooden_crate_1 in arch":1,"ticket_booth in step":1,"popcorn_cart in step":1,"psx_potted_cactus_mp_1 in arch":7,"psx_planter_pot_mp_1_full in arch":86,"psx_potted_cactus_mp_1 in doorway":2,"psx_planter_pot_mp_1_full in doorway":4,"psx_planter_pot_mp_1_full in prop":1,"roads_g_sign_008 in arch":1,"metro_bin in pole":1,"roads_g_sign_005 in arch":1,"metro_bin in arch":2,"psx_metal_barrel_mp_0 in arch":6,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in arch":15,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_wooden_crate_3 in building":10,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_3 in arch":1,"psx_metal_barrel_mp_2 in prop":1,"garbage_bags in stairs":2,"garbage_bag in step":1,"garbage_bag in arch":1,"garbage_bags in step":1,"garbage_bags in prop":3,"garbage_bags in arch":1,"garbage_bag in prop":2,"metal_trash_can in arch":1,"metal_trash_can in building":3,"garbage_bags in building":5,"garbage_bag in building":1,"power_pole in prop":1},"snugged":162}
+{"checked":2016,"clear":1494,"moved":356,"left_out":14,"district_reported":105,"by":{"car_cop in lamp":2,"car_cop in prop":4,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":15,"item_police_barricade in step":5,"planter in arch":10,"dumpster in step":7,"dumpster in arch":2,"planter in stairs":1,"planter in prop":3,"planter in doorway":1,"vending_machine in arch":34,"vending_machine in doorway":2,"public_phone in arch":12,"ind_vent in arch":12,"utility_box in arch":9,"ind_panel in arch":9,"utility_box in step":4,"traffic_cone in arch":20,"traffic_cone in step":28,"traffic_cone in building":12,"psx_wooden_crate_1 in prop":1,"psx_wooden_crate_1 in step":2,"psx_wooden_crate_1 in arch":1,"ticket_booth in step":1,"popcorn_cart in step":1,"psx_potted_cactus_mp_1 in arch":7,"psx_planter_pot_mp_1_full in arch":86,"psx_potted_cactus_mp_1 in doorway":2,"psx_planter_pot_mp_1_full in doorway":4,"psx_planter_pot_mp_1_full in prop":1,"fire_hydrant in stairs":1,"roads_g_sign_008 in arch":1,"metro_bin in pole":1,"roads_g_sign_005 in arch":1,"metro_bin in arch":2,"psx_metal_barrel_mp_0 in arch":6,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in arch":15,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_wooden_crate_3 in building":10,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_3 in arch":1,"psx_metal_barrel_mp_2 in prop":1,"garbage_bags in stairs":2,"garbage_bag in step":1,"garbage_bag in arch":1,"garbage_bags in step":1,"garbage_bags in prop":3,"garbage_bags in arch":1,"garbage_bag in prop":2,"metal_trash_can in arch":1,"metal_trash_can in building":3,"garbage_bags in building":5,"garbage_bag in building":1,"power_pole in prop":1},"snugged":163}
 slot_machine  85.05  -53.2  building
 slot_machine  85.05  -54.25  building
 slot_machine  85.05  -55.3  building
@@ -15,6 +15,10 @@ slot_machine  93.45  -53.2  building
 slot_machine  93.45  -58.8  building
 slot_machine  93.45  -57.75  building
 slot_machine  93.45  -56.7  building
+decor_piano  180.05  -50.75  building
+psx_sofa_1  176.75  -50.25  building
+ticket_booth  201.25  -75.25  building
+popcorn_cart  176.75  -75.25  building
 instrument_guitar  221.65  -82.75  building
 instrument_guitar  222.95  -82.75  building
 decor_piano  236.25  -82.45  building
@@ -30,6 +34,17 @@ psx_sofa_1  121.25  -12.25  building
 psx_sofa_1  159.25  -8.25  building
 ticket_booth  159.25  -33.25  building
 popcorn_cart  138.25  -33.25  building
+library_shelf_full  219.65  -7.75  building
+library_shelf_full  217.85  -7.75  building
+psx_sofa_1  236.25  -25.75  building
+locker  219.95  -24.85  building
+locker  219.15  -24.85  building
+locker  218.35  -24.85  building
+locker  217.55  -24.85  building
+exec_desk  243.25  -32.95  building
+exec_chair  243.25  -34.05  building
+library_shelf_full  217.85  -34.25  building
+library_shelf_full  219.65  -34.25  building
 exec_desk  189  32.95  building
 exec_chair  189  34.05  building
 library_shelf_full  181.15  34.25  building
@@ -82,6 +97,7 @@ dorm_bed  193.4  75.25  building
 dorm_bed  195.1  75.25  building
 ticket_booth  239.75  57.75  building
 popcorn_cart  246.75  57.75  building
+lectern  218.75  46.95  building
 car_taxi  90.85  -145.95  arch
 car_taxi  90.85  -156.75  arch
 car_taxi  90.85  -162.15  arch
