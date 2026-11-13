@@ -72393,7 +72393,10 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), plan = info.genPlan; if (!plan || !plan.streets || typeof _miscModelInstance !== 'function' || typeof _R2_MISC === 'undefined') return;
         var every = (typeof window !== 'undefined' && window.EW_PERF_LOW) ? 26 : 14, cap = 44, made = 0, walk = (plan.walkW || 0), lampH = 3.6 * U;
         var col = 0xffd8a0;
-        var lampMat = function (node, srcMat) { var nm = (srcMat && srcMat.name) || ''; if (nm === 'Glass') return new THREE.MeshBasicMaterial({ color: col, fog: false }); return new THREE.MeshLambertMaterial({ color: 0x23262e }); };
+        /* THE LAMPS SHARE THEIR TWO MATERIALS (2026-11-13, Disaster City's 288 lamps): one glass + one post material for every lamp, marked
+           _ew_shared, so THE INSTANCE PASS draws a cell's lamps as one InstancedMesh (a material per lamp made every lamp its own draw) */
+        var _lampMats = _hqBuildStreetLamps._mats || (_hqBuildStreetLamps._mats = (function () { var a = new THREE.MeshBasicMaterial({ color: col, fog: false }), b = new THREE.MeshLambertMaterial({ color: 0x23262e }); a._ew_shared = true; b._ew_shared = true; return { glass: a, post: b }; })());
+        var lampMat = function (node, srcMat) { var nm = (srcMat && srcMat.name) || ''; if (nm === 'Glass') return _lampMats.glass; return _lampMats.post; };
         /* THE STREET FURNITURE (2026-11-02, mondo: lamps "in the middle of a street or in a place where it doesnt make sense"): a city's lamps are
            the compile's own spots (data.js HQ_CITY_FURNITURE: the kerb line, on the squares' lines, never at a junction / a plaza / a door / a
            parked car) — `n` points out of the road, the head hangs over it. A survey from before the table keeps the old walk below. */
