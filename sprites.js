@@ -4915,7 +4915,7 @@ const EW_MPFB_FACE_SLIDERS = [
   { id: 'mouth', label: 'Mouth', rows: [['mouthWidth', 'Width'], ['mouthHeight', 'Height'], ['upperLip', 'Upper lip'], ['lowerLip', 'Lower lip'], ['mouthCorners', 'Corners'], ['cupidsBow', "Cupid's bow"], ['mouthDepth', 'Depth']] },
   { id: 'jaw', label: 'Jaw + chin', rows: [['jaw', 'Jaw width'], ['jawAngle', 'Jaw angle'], ['chinLength', 'Chin length'], ['chinJut', 'Chin forward'], ['underbite', 'Underbite'], ['chinCleft', 'Chin cleft']] },
   { id: 'cheeks', label: 'Cheeks', rows: [['cheeks', 'Fullness'], ['cheekbones', 'Cheekbones'], ['cheekHeight', 'Height'], ['faceFat', 'Face fat']] },
-  { id: 'head', label: 'Head', rows: [['head', 'Width'], ['headHeight', 'Height'], ['headDepth', 'Depth'], ['foreheadHeight', 'Forehead height'], ['foreheadSlope', 'Forehead slope'], ['faceAge', 'Age']] },
+  { id: 'head', label: 'Head', rows: [['headSize', 'Size'], ['head', 'Width'], ['headHeight', 'Height'], ['headDepth', 'Depth'], ['foreheadHeight', 'Forehead height'], ['foreheadSlope', 'Forehead slope'], ['faceAge', 'Age']] },
   { id: 'ears', label: 'Ears + neck', rows: [['earSize', 'Ear size'], ['earOut', 'Ears out'], ['earPoint', 'Pointed ears'], ['earLobe', 'Lobes'], ['neckThick', 'Neck']] },
   /* THE ANIMAL HEADS (2026-11-03, plan rows 18 + 28, the werewolf pilot): MakeHuman community animal-pack targets in the same
      mpfb_shapes.glb (bake-mpfb.py ANIMAL_SHAPES; CC-BY, in the credits), 0..100: the head + face reshape into the animal's */
@@ -5438,6 +5438,7 @@ function randomCharacterAppearance(rng) {
   const out = { version: 2 };
   for (const key of Object.keys(EW_APPEARANCE_LIMITS)) { const [lo, hi] = EW_APPEARANCE_LIMITS[key]; out[key] = Math.round((lo + (hi - lo) * (0.2 + 0.6 * r())) * 100) / 100; }
   for (const key of EW_MPFB_FACE_KEYS) out[key] = Math.round((r() * 2 - 1) * 35) / 100;   // THE FACE SLIDERS: a random face stays a face
+  out.headSize = 0;   // THE HEAD SIZE (2026-11-13): a random face keeps the body's own head size
   for (const key of EW_SHAPE_PICK_KEYS) out[key] = 0;   // (no random wolf head / cat ears: those are OUTFIT picks)
   for (const row of EW_MPFB_BODY_SLIDERS) out[row[0]] = Math.round((r() * 2 - 1) * 30) / 100;   // THE BODY DETAILS
   out.beltHeight = 0;   // THE BELT HEIGHT: a random look keeps the belt where it was baked

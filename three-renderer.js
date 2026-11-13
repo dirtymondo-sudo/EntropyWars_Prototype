@@ -61102,6 +61102,11 @@ const ThreeRenderer = (function () {
                 if (rc) { for (i = 0; i < N; i++) if (TS[i]) rc[weld[i]] = 1; }
                 for (i = 0; i < N; i++) if (rc ? rc[weld[i]] : TS[i]) { cov[i] = 1; }
             });
+            /* THE FOOT IN THE HEEL (2026-11-13, mondo on the popstar: "her feet are poking out of her heels"): a pack high heel is made
+               round a foot on tiptoe, the body's foot stands flat, so the forefoot lay outside the shoe, past every cover line, and
+               stayed drawn. The skin a SHOE's own delete list names is hidden whole, whatever the lines say (every pack shoe, every body) */
+            var shoeM = wearMask(part, function (w) { return w.cat === 'shoes'; });
+            if (shoeM) for (i = 0; i < N; i++) if (shoeM[i]) cov[i] = 1;
             return { cov: cov, push: push };
         }
         function wearCovers(w) { return !!(w.outer || (w.cat && w.cat !== 'underwear' && WEAR_LAYER.cats[w.cat])); }
@@ -63333,6 +63338,14 @@ const ThreeRenderer = (function () {
                 /* THE HAIR SWAY: the hair's spring chains swing after the clip (dt from the rig's own clock) */
                 var now = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000, sdt = state.swayT ? now - state.swayT : 0;
                 state.swayT = now;
+                /* THE HEAD SIZE (2026-11-13, mondo on Santa: "anyway we can make his head bigger or add a head size slider"): FACE > Head >
+                   Size (appearance.headSize, -1..1 = 50 %..150 %) scales the head BONE after the clip, so the skin, the hair, the beard, the
+                   eyes, the teeth and every hat grow with it and the neck blends by its own weights */
+                var hsV = state.last ? Math.max(-1, Math.min(1, +state.last.headSize || 0)) : 0;
+                if (hsV || state.headSized) {
+                    for (var hz = 0; hz < parts.length; hz++) { var hsk = parts[hz].body && parts[hz].body.skeleton, hbn = hsk && parts[hz].headBone >= 0 ? hsk.bones[parts[hz].headBone] : null; if (hbn) hbn.scale.setScalar(1 + hsV * 0.5); }
+                    state.headSized = !!hsV;
+                }
                 try { _ccArmClear(root, state, Math.min(0.1, sdt), state.shapeKey); } catch (e) { if (!state.clrWarned) { state.clrWarned = true; console.warn('[ThreeRenderer] arm clearance failed', e); } }   // THE ARM CLEARANCE (before the cloth reads the pose)
                 if (parts.some(function (p) { return p.hangCaps; })) {   // THE COAT HANG: the long coat's skirt off the legs (before anything reads the pose)
                     root.updateWorldMatrix(true, true);

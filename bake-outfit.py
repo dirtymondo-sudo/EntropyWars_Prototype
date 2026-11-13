@@ -34,7 +34,10 @@ Usage: pip install bpy==5.2.3 scipy pillow
        env (all off by default, batch 3 of 11-13): EYEAT=x,y,z (no eyeball shells behind goggles: the eyes' middle by hand, the sidekick),
               SLEEVESEED / SLEEVER (how far off the arm a sleeve may start / run: Santa's fur sleeves 0.15 / 0.24, a cape fused to a
               tight sleeve 0.07), RAY_IN=0.12 RAY_OUT=0.12 TORN=9 (a suit jacket narrower than the body's shoulders: politician,
-              priest, professor, sheriff), LOCKS=0 (a dark coat or gown read as a hair lock: the witch)
+              priest, professor, sheriff), LOCKS=0 (a dark coat or gown read as a hair lock: the witch),
+              ARMALLX=0.3 (with --barearms: a bracelet painted on the bare arm goes with the arm, the spy),
+              TOPCUT=0.3 (a torn top edge cut level, metres under the eyes: the spy), NECKIN=1 (the neck hidden under a shirt collar: the politician),
+              DROP="x,y,z,r;..." (a stray shell left out by hand, its middle r from a point measured from the eyes; SHELLS=1 lists them)
 Notes: docs/notes/models-assets.md "THE MESHY OUTFITS".
 """
 import argparse, importlib.util, io, math, os, re, sys
@@ -195,6 +198,9 @@ def fit(name, gender, src, bodies_dir):
     # the face never reaches them, the dress lies between): the skin-coloured faces ARMX out from the middle, down to ARMZ under the
     # eyes (not the feet), go too, so the body's own arms show
     if BAREARMS: seen |= set(int(i) for i in np.nonzero(like & (np.abs(cen[:, 0] - eye.x) > E('ARMX', 0.05)) & (cen[:, 2] > eye.z - E('ARMZ', 0.85)))[0])
+    # (env ARMALLX; 2026-11-13, spy, mondo: "hand looks disconnected from rest of body": a bracelet painted on the bare arm stayed as
+    # a pale ring round the wrist) every face of the shell further than ARMALLX from the middle goes, whatever its colour
+    if BAREARMS and E('ARMALLX', 0): seen |= set(int(i) for i in np.nonzero((np.abs(cen[:, 0] - eye.x) > E('ARMALLX', 0)) & (cen[:, 2] > eye.z - E('ARMZ', 0.85)))[0])
     bmesh.ops.delete(bmx, geom=[bmx.faces[i] for i in seen | facez], context='FACES')
     bmesh.ops.delete(bmx, geom=[v for v in bmx.verts if not v.link_faces], context='VERTS'); bmx.to_mesh(me); bmx.free()
     hr = (np.abs(cen[:, 0] - eye.x) < 0.14) & (np.abs(cen[:, 1] - eye.y - 0.08) < 0.17) & (cen[:, 2] > eye.z - 0.02)
@@ -232,6 +238,24 @@ def fit(name, gender, src, bodies_dir):
         if inhead or (isrem and cz > eye.z): headp.append(o)
         keep.append(o)
     for o in eyes: bpy.data.objects.remove(o)
+    # (env DROP = "x,y,z,r;..." from the eyes, in metres; 2026-11-13, spy: Meshy left a grey lump on her shoulder and, with ARMALLX, a
+    # bracelet shell hanging in the air by the bare wrist) a shell whose middle lies within r of the point is left out. SHELLS=1 lists them
+    for o in list(keep):
+        c_ = co(o).mean(0) - np.array(eye)
+        if E('SHELLS', 0): print('[bake-outfit] %s: shell %5d faces at %+.3f %+.3f %+.3f from the eyes%s' % (name, len(o.data.polygons), c_[0], c_[1], c_[2], ' (head)' if o in headp else ''), flush=True)
+        for sp_ in [x for x in os.environ.get('DROP', '').split(';') if x]:
+            q_ = [float(x) for x in sp_.split(',')]
+            if np.linalg.norm(c_ - np.array(q_[:3])) < q_[3] and o in keep:
+                dropped.append(('by hand', len(o.data.polygons))); keep.remove(o); headp[:] = [h for h in headp if h is not o]; bpy.data.objects.remove(o)
+    # (env TOPCUT = metres under the eyes; 2026-11-13, spy, mondo: "dress straps are messed up": her halter straps are painted on the
+    # skin, so they went with it and the dress's top edge was left torn) every big shell (TOPCUTN faces) that is not on the head is
+    # cut level there: a straight strapless top; the look wears a creator halter under it for the straps
+    if E('TOPCUT', 0):
+        for o in keep:
+            if o in headp or len(o.data.polygons) < E('TOPCUTN', 1000): continue
+            bmt = bmesh.new(); bmt.from_mesh(o.data)
+            bmesh.ops.bisect_plane(bmt, geom=bmt.verts[:] + bmt.edges[:] + bmt.faces[:], plane_co=(0, 0, eye.z - E('TOPCUT', 0)), plane_no=(0, 0, 1), clear_outer=True)
+            bmesh.ops.triangulate(bmt, faces=bmt.faces[:]); bmt.to_mesh(o.data); bmt.free()
     # THE BARE NECKLINE (--neckline; 2026-11-12, catgirl, mondo: "the necklace looks messed up or painted on"): Meshy gives the bare
     # skin in a low neckline as part of the top's shell, with the necklace smeared into its texture and the choker as a few spiky
     # shards. With --neckline the skin-coloured faces from the chin down to the top of the bust go (a flood fill from the throat),
@@ -538,6 +562,10 @@ def fit(name, gender, src, bodies_dir):
             if hw[v.index] > 0.5 and v.co.z > eyeM[2] + E('HOODZ', 0.045):
                 upper_.append(v.index)
                 if hoodbvh is not None and (hoodbvh.ray_cast(v.co + v.normal * 0.001, v.normal, E('RAY_OUT', 0.07))[0] is not None or hoodbvh.ray_cast(v.co, -v.normal, E('RAY_IN', 0.05))[0] is not None) and hoodbvh.ray_cast(Vector((v.co.x, v.co.y, eyeM[2] + 0.02)), Vector((0, 0, 1)), 0.4)[0] is not None: hood_.append(v.index)
+            # (env NECKIN; 2026-11-13, politician, mondo: "neck or shirt seam looks jagged": the body's neck is wider than Meshy's, so it
+            # came out through the shirt collar in saw teeth) the neck's own skin, from NECKINZ under the eyes down, is hidden like the
+            # body's where the collar lies within NECKOUT outside it or NECKINR inside it
+            if E('NECKIN', 0) and nw[v.index] > hw[v.index] and v.co.z < eyeM[2] - E('NECKINZ', 0.13) and (bvh.ray_cast(v.co + v.normal * 0.001, v.normal, E('NECKOUT', 0.04))[0] is not None or bvh.ray_cast(v.co, -v.normal, E('NECKINR', 0.03))[0] is not None): continue
             ks.add(v.index)
             continue
         h1 = bvh.ray_cast(v.co + v.normal * 0.001, v.normal, E('RAY_LEG', 0.45) if legw[v.index] > 0.5 else E('RAY_OUT', 0.07)); h2 = bvh.ray_cast(v.co, -v.normal, E('RAY_IN', 0.05))
