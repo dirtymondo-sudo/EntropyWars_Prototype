@@ -894,6 +894,13 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   questLockedUnits / questRewardedUnits read the `pr.reward` stamp), `holds.until`, and a cast spot's `after: { quest, stage }`
   (Kit's chair at the counter is empty until `desk` is done). Scenes D / E / F will hang on these stages. The world flag is
   the existing `hqStoryFlags` / `hqStoryFlagSet` (profile.door.hq.flags): `office_door` goes there with scene F.
+- **SCENE D, THE AFTERMATH (2026-11-13)**: data.js `STORY_CUTSCENES.orientation_aftermath` (8 beats: his 6 shots, the two long
+  speeches over two cards each; his lines word for word) + QUEST_FIGHTS `after` / `afterSeats`. battle.js `_questAfterPlay`:
+  finalizeMatch reads the run's quest BEFORE commitAchProgress files it away, and a WIN plays the scene on the same board
+  in place of the 50 ms wait before the result overlay. Roles by the ids taken at the fight's start (`er._roleIds`); the
+  three are stood on `afterSeats` (someone down is on their feet for it; the record is already written). Extra action
+  `walk` (who, path). A shot's `h` is the LOOK height in bodies and `el` the eye's elevation in degrees: an
+  over-the-shoulder wants h ~0.85 and el 6-7, not a high h. Headless stills only; Locke's walk-out unseen in motion.
 - **Not built yet** (the doc's build order): the new stage endings + the in-world quest marker (mock-up first) + `office_door`,
   D / E / F with the choice box, B the TV cart, A the intro. HQ scenes need an HQ host (cast walk / face / sit hooks).
 

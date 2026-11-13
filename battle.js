@@ -57197,6 +57197,8 @@
             }
 
             const _viewer = getViewerPlayer();
+            let _aftF = null;   // THE CUTSCENES: the quest fight's `after` scene (read before the encounter run is filed away)
+            try { const _er = _encRun(); if (_er && _er.quest && _er.quest.after && state.winner === _viewer && !state.devAutoSim) _aftF = { F: _er.quest, ids: _er._roleIds || null }; } catch (e) { _aftF = null; }
             if (state.winner === _viewer) {
                 /* Ace says "win by elimination" — gate it on the actual win
                    condition instead of firing on every win. */
@@ -57254,14 +57256,18 @@
                 return;
             }
             _finalizing = false;
-            setTimeout(() => {
+            const _showRes = () => {
                 if (state.isCampaign) {
                     const campResult = finalizeCampaignBattle();
                     showCampaignResultOverlay(campResult);
                 } else {
                     showResultOverlay();
                 }
-            }, 50);
+            };
+            /* THE CUTSCENES: a quest fight that was WON plays its `after` scene on the board before the result comes up */
+            let _aftOn = false;
+            try { _aftOn = !!(_aftF && _questAfterPlay(_aftF.F, _aftF.ids, _showRes)); } catch (e) { console.error('[SCENE] the aftermath did not start', e); _aftOn = false; }
+            if (!_aftOn) setTimeout(_showRes, 50);
         }
 
         function prepareBattleStateFromCurrentBuilds() {
@@ -60177,6 +60183,70 @@
             go();
             return true;
         }
+        /* THE AFTERMATH (scene D, 2026-11-13): the fight is won and filed; the scene stands the three of them on the fight's
+           `afterSeats` (someone who went down is back on their feet for it: nothing here is written anywhere) and plays on
+           the same board. Roles by the ids taken at the fight's start. `walk` (who, path [[x,y]...]) = the board's own walk. */
+        function _questAfterPlay(F, ids, cb) {
+            if (!F || !F.after || !ids || window.EW_NO_CUTSCENES || state.cameraDisabled || _skipVisuals()) return false;
+            if (!window.EWScene || !window.EWCine || typeof window.storyCutscene !== 'function') return false;
+            const row = window.storyCutscene(F.after); if (!row) { console.warn('[SCENE] no row ' + F.after); return false; }
+            const FX = window.ThreeVFXEffects, TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : window.ThreeRenderer, TA = window.ThreeAnim;
+            if (!(TA && TA.isActive && TA.isActive())) return false;
+            const R = {}; Object.keys(ids).forEach(k => { const u = unitFromId(ids[k]); if (u && u.player === 1) R[k] = u; });
+            if (!R.player || !R.guest) return false;
+            const zAt = (x, y) => (typeof nearestWalkableZ === 'function') ? (nearestWalkableZ(x, y) || 0) : 0;
+            const seats = F.afterSeats || {};
+            const cast = {};
+            Object.keys(R).forEach(k => {
+                const u = R[k], st = seats[k]; cast[u.id] = true;
+                if (u.dead) { u.dead = false; u.hp = Math.max(1, u.hp || 0); }
+                if (st && typeof getWalkableSurfaces === 'function' && getWalkableSurfaces(st.x, st.y).length) {
+                    (state.units || []).forEach(o => { if (o && o !== u && !o.dead && o.x === st.x && o.y === st.y && !Object.keys(R).some(q => R[q] === o)) { o.x = -99; o.y = -99; } });
+                    u.x = st.x; u.y = st.y; u.z = zAt(st.x, st.y);
+                }
+                try { if (TR && TR.cancelJumpTween) TR.cancelJumpTween(u.id); } catch (e) {}
+            });
+            window._ewSceneHid = null; window._ewSceneCast = cast;
+            _questDoorDrop();
+            try { if (TR && TR.clearTimeWarp) TR.clearTimeWarp(); } catch (e) {}
+            const tile = (x, y) => { const w = FX && FX.tileWorld ? FX.tileWorld(x, y) : null; return w ? { x: w.x, y: w.y, z: w.z } : null; };
+            const out3 = [0, 0, 0];
+            const point = (ref) => {
+                const m = /^(unit|seat|tile):(.+)$/.exec(String(ref)); if (!m) return null;
+                if (m[1] === 'tile') { const c = m[2].split(','); return tile(+c[0], +c[1]); }
+                const u = R[m[2]]; if (!u) return null;
+                if (m[1] === 'unit' && TR && TR.getUnitWorldPos && TR.getUnitWorldPos(u.id, out3)) return { x: out3[0], y: out3[1], z: out3[2] };
+                return tile(u.x, u.y);
+            };
+            const cell = (ref) => { const m = /^(?:unit|seat):(.+)$/.exec(String(ref)); const u = m && R[m[1]]; if (u) return { x: u.x, y: u.y }; const t = /^tile:(-?\d+),(-?\d+)$/.exec(String(ref)); return t ? { x: +t[1], y: +t[2] } : null; };
+            const face = (u, to) => { const c = cell(to); if (!u || !c) return; const dx = c.x - u.x, dy = c.y - u.y; if (dx || dy) { setUnitFacing(u, Math.abs(dy) >= Math.abs(dx) ? 0 : Math.sign(dx), Math.abs(dy) >= Math.abs(dx) ? Math.sign(dy) : 0); render(); } };
+            try { render(); } catch (e) {}
+            const w0 = tile(0, 0), w1 = tile(1, 0);
+            let done = false;
+            const end = () => { if (done) return; done = true; window._ewSceneCast = null; if (cb) cb(); };
+            const host = {
+                unit: (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? TR.bodyUnit() : ((w0 && w1) ? (Math.abs(w1.x - w0.x) || 128) / 2 : 64),
+                point,
+                act(a) {
+                    const u = a.who ? R[a.who] : null;
+                    if (a.do === 'face') face(u, a.to);
+                    else if (a.do === 'walk') {
+                        if (!u || !Array.isArray(a.path) || !a.path.length) return;
+                        const W = bw(), H = bh();
+                        const path = a.path.map(c => ({ x: c[0], y: c[1], z: zAt(c[0], c[1]) })).filter(c => c.x >= 0 && c.y >= 0 && c.x < W && c.y < H && (typeof getWalkableSurfaces !== 'function' || getWalkableSurfaces(c.x, c.y).length));
+                        if (!path.length) return;
+                        try { TA.walkPath(u, path); } catch (e) {}
+                        const last = path[path.length - 1]; u.x = last.x; u.y = last.y; u.z = last.z;
+                    }
+                },
+                slow(scale, ms) { if (TA && TA.slowMo) TA.slowMo(scale, ms); },
+                finish() { window._ewSceneCast = null; try { if (TR && TR.clearTimeWarp) TR.clearTimeWarp(); } catch (e) {} }
+            };
+            let ok = false;
+            try { ok = !!window.EWScene.play(row, host, end); } catch (e) { console.error('[SCENE] the aftermath did not start', e); ok = false; }
+            if (!ok) window._ewSceneCast = null;
+            return ok;
+        }
         function _encPartyDashIn() {
             const er = _encRun();
             if (!er || window.EW_ENC_NO_DASH_IN || state.cameraDisabled || _skipVisuals()) return false;
@@ -60599,6 +60669,8 @@
             syncMusicToState();
 
             /* THE CUTSCENES: a quest fight with a scene opens on it (the portal and who comes through are the scene's) */
+            /* who is who in this quest fight, by id (the `after` scene reads it once the fight is over) */
+            try { const _er0 = _encRun(), _Q0 = (_er0 && _er0.quest) ? _questSceneRoles() : null; if (_Q0) { _er0._roleIds = {}; Object.keys(_Q0.R).forEach(k => { if (_Q0.R[k]) _er0._roleIds[k] = _Q0.R[k].id; }); } } catch (e) {}
             const _qScene = !!(_encRun() && _questSceneRow() && _questSceneHide());
             if (_encRun() && !_qScene) _encPartyDashIn();   // THE DASH-IN: the party leaps in behind the lead as the crane lifts off
             if (_encRun() && _encRun().quest && !_qScene) _questFightArrive();   // THE QUESTS: the guest and the enemies come out of the portal

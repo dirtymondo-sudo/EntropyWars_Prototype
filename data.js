@@ -28276,6 +28276,9 @@ const QUEST_FIGHTS = {
         /* mondo 2026-11-13: "they spawn right in front of you when the battle starts": one open square from the recruit and Locke (2,7 / 3,7) */
         seats: { guest: { x: 4, y: 4 }, enemies: [{ x: 2, y: 5 }, { x: 3, y: 5 }] },
         scene: 'orientation_ambush',   // THE CUTSCENES: played on the fight's own board before its first turn (STORY_CUTSCENES)
+        /* D · the scene a WIN plays on the same board before the result, and where the three of them stand for it */
+        after: 'orientation_aftermath',
+        afterSeats: { player: { x: 3, y: 5 }, guest: { x: 3, y: 4 }, locke: { x: 4, y: 4 } },
     },
 };
 /* ══ THE CUTSCENES (2026-11-12, mondo: "cinematic, think like a director in terms of shots, framing, composition, using the
@@ -28323,6 +28326,37 @@ const STORY_CUTSCENES = {
               say: { who: 'AGENT LOCKE', text: "Alright rook, you're officially hired. Your first shift starts now." } },
         ],
     },
+};
+/* D · AFTERMATH (the plan doc's shot list + mondo's lines, word for word): the room after the fight, Kit's thanks, Locke on
+   the doorways, the deportation order, Kit begs, Locke walks out. Played by battle.js _questAfterPlay on the won board.
+   Extra action here: walk (who, path [[x, y], ...]). */
+STORY_CUTSCENES.orientation_aftermath = {
+    id: 'orientation_aftermath', title: 'AFTERMATH',
+    beats: [
+        /* D1 · the room after the fight: wide, still, a breath */
+        { dur: 2.8, shot: { look: { mid: ['unit:guest', 'unit:locke'] }, az: 62, h: 1.0, el: 8, dist: 7.2, fov: 40 },
+          act: [{ at: 0, do: 'face', who: 'player', to: 'unit:guest' }, { at: 0, do: 'face', who: 'guest', to: 'unit:player' }, { at: 0, do: 'face', who: 'locke', to: 'unit:player' }] },
+        /* D2 · Kit thanks you: over the recruit's shoulder at her */
+        { shot: { look: 'unit:guest', from: 'unit:player', over: 1.5, az: 12, h: 0.85, el: 6, fov: 34, to: { over: 1.3 } },
+          say: { who: 'KIT', text: 'You saved me. Thank you. Both of you.' } },
+        /* D3 · Locke on the doorways, then the commendation: medium, a slow push in over two cards */
+        { shot: { look: 'unit:locke', az: -12, h: 0.86, el: -1, dist: 2.3, fov: 30, to: { dist: 2.0 } },
+          say: { who: 'AGENT LOCKE', text: "That is the third unauthorized doorway this week. They are becoming more of a pattern I'm afraid." } },
+        { shot: { look: 'unit:locke', az: -12, h: 0.86, el: -1, dist: 2.0, fov: 30, to: { dist: 1.7 } },
+          say: { who: 'AGENT LOCKE', text: 'You stood your ground, recruit. Most people would have ran away.' } },
+        /* D4 · the order: Locke and Kit in one frame, the recruit's back in the foreground */
+        { shot: { look: { mid: ['unit:locke', 'unit:guest'] }, from: 'unit:player', over: 2.0, az: -8, h: 0.8, el: 7, fov: 42 },
+          say: { who: 'AGENT LOCKE', text: 'Escort the anomaly to the front desk. Rhonda will process her for deportation.' } },
+        /* D5 · Kit begs: close, the longest hold of the scene, a slow push in over two cards */
+        { shot: { look: 'unit:guest', from: 'unit:player', az: -12, h: 0.86, el: -1, dist: 1.6, fov: 26, to: { dist: 1.35 } },
+          say: { who: 'KIT', text: "No! Please. You can't send me back." } },
+        { shot: { look: 'unit:guest', from: 'unit:player', az: -12, h: 0.86, el: -1, dist: 1.35, fov: 26, to: { dist: 1.05 } },
+          say: { who: 'KIT', text: 'There is nothing to go back to. Those things took all of it.' } },
+        /* D6 · wide: Locke's last word, and she walks out of frame; the two stay */
+        { dur: 4.6, shot: { look: { mid: ['unit:guest', 'unit:player'] }, az: -66, h: 0.95, el: 6, dist: 8.5, fov: 40 },
+          say: { who: 'AGENT LOCKE', text: 'The book is the book. Front desk.' },
+          act: [{ at: 1.6, do: 'walk', who: 'locke', path: [[4, 5], [4, 6], [4, 7]] }] },
+    ],
 };
 function storyCutscene(id) { return (id && STORY_CUTSCENES[id]) ? STORY_CUTSCENES[id] : null; }
 function questDef(id) { return STORY_QUESTS.find(q => q.id === id) || null; }
