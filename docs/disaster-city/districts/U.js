@@ -257,11 +257,16 @@ module.exports.build = function (api) {
         'P01-05-B1': 'lecture', 'P02-05-B1': 'lab', 'P02-05-B2': 'annex', 'P03-05-B1': 'psych', 'P03-05-B2': 'foodstand', 'P00-06-B1': 'cafe', 'P00-06-B2': 'PIZZA', 'P01-06-B1': 'library', 'P02-06-B1': 'court',
         'P03-06-B1': 'secret', 'P03-06-B2': 'gatehouse', 'P00-07-B1': 'gate', 'P01-07-B1': 'clinic', 'P01-07-B2': 'store', 'P02-07-B1': 'museum', 'P02-07-B2': 'pavilion' };
     const ROT = { S: 0, W: 90, N: 180, E: 270 };
+    const SHALLOW = { 'P03-05-B1': 3.5 };
     const count = { arch: 0, parts: 0 };
     bInfo.filter(b => b.d === 'U').forEach(b => {
         const kind = KIND[b.id], row = features.find(f => f.id === 'dc:' + b.id); if (!kind || !row) { console.warn('university: no builder / row for', b.id, b.name); return; }
         const tierRow = row.k === 'plateau', rot = tierRow ? ROT[b.side] : row.rot, ew = rot === 90 || rot === 270;
-        const w = tierRow ? (ew ? row.d : row.w) : row.w, d = tierRow ? (ew ? row.w : row.d) : row.d;
+        const w = tierRow ? (ew ? row.d : row.w) : row.w;
+        /* THE LEVELS: a walk-in building whose back stood ON a plot line with a higher plot behind it showed that plot's bank inside (the
+           psychology lab, two levels under the research lab): it is one square shallower, its back a square off the line */
+        if (SHALLOW[b.id] && !tierRow) { const cut = SHALLOW[b.id], q = rot * Math.PI / 180; row.d = r3(row.d - cut); row.x = r3(row.x - Math.sin(q) * cut / 2); row.z = r3(row.z + Math.cos(q) * cut / 2); }
+        const d = tierRow ? (ew ? row.w : row.d) : row.d;
         ctx = { id: 'dc:' + b.id, x: row.x, z: row.z, rot }; P = []; sub = 0;
         if (kind === 'PACK') { delete row.style; row.key = 'pack_bld_09'; row.storeys = 3; return; }   // the shop block at its own size: 16.9 m wide on a 17.5 m front
         if (kind === 'PIZZA') {   // the chain's pizza place stands on this lot (a catalogue prop at its real size, its entrance to the south walk), the plan's row goes
