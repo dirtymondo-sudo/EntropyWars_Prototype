@@ -2321,6 +2321,18 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
 - **On THE LEVELS** (Southside stands on levels 10 to 14, 17.5 to 24.5 m): the tool lifts every arch row onto its building's base, so R.js keeps
   writing `y: 0`. Rows the tool does NOT lift ask R.js `plotY(px, py)`: the pack block's `texbuilding` and the canal's water. The canal is the levels'
   sunk ditch on P00-03 (levels.js `pieces`): the `stream` runs north-south on its bed (water 0.5 m deep), the boathouse stands on the east bank.
+- **THE POLISH PASS** (mondo 11-13 20:15 "one or two more layers deep with the detail", 20:18 "roofs and ac units"): all in R.js's helpers, so every
+  Southside building gets it. `a.wins`: a stone sill + lintel on every glazed opening (`trim: false` off, `trim: 0x..` its tint), a wall AC unit under
+  every third upper window on back and left walls. `a.floors`: a string course under each upper floor (`band: false`). `a.panel`: a door sheet gets a
+  step and a hood (`plain: true`). `a.roof`: ridge cap + two cowled vents on a gable, a vent on a hip, ridge ventilators on a barrel (`bare: true`).
+  `dress()` in `a.done` reads the first part (the main block): dark base course, two downpipes with hoppers, and on a flat roof nobody walks two AC
+  units with fans, two capped vents and a hatch (seated on a cornice slab when one lies on the block). Walked roofs get no roof units (nothing a unit
+  would walk through).
+  THE SHEETS (20:19 "different textures or decals for different parts of the building"): each building's trim is ONE sheet picked by its id (painted
+  plaster 2a, marble tile, stone, wood, stucco 2a); `dress()` reads the main block's sheet and picks the base course (stone / brick / subway tile /
+  striped concrete), a frieze under the eaves (stucco 2a on brick, generic tile on plaster), corner piers in the base's sheet on two buildings in three,
+  and the decals: a pack warning sign (`urban:Sign*`) by a works building's doors, a vent grille (`urban:MetalSubwayGrill1a`) + a meter box elsewhere.
+  Only sheets already on the bucket; nothing repainted.
 - **Seen in the cloud browser** (WebGL2 headless): every plot from above, shots in `/mnt/project-files/disaster-city-southside/`. Not seen on his Mac yet.
   Interiors are the next pass (the seven walk-in shells are empty rooms with a floor and plaster walls).
 
