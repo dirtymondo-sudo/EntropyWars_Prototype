@@ -2378,6 +2378,16 @@ NOT SEEN IN THE GAME BY THE THREAD (no browser run, RULE #1c): checked headless 
 - **NOT BUILT from the mock-up:** the park knoll + the Dish (district S made those plots the stadium), the Hero plaza stage (district H has
   its colonnade there), the Service garage roof ramp, the Industrial loading-dock platforms, the Marina lookout beach steps (the beach
   thread's ground). Mock-up + tools: `/mnt/project-files/disaster-city-vertical/` (shows the first grid, before the stadium).
+## DISASTER CITY, THE PHANTOM WALLS — the kerb stones on a sloping street (2026-11-13, mondo 20:04, SEEN IN THE BROWSER)
+mondo: "On the street with all the cars parked in bayside, there are these giant walls ... standing on the other side of them, they disappear."
+- NOT a retaining wall, not a border leftover: three-renderer.js road markings (`_ew_hqRoadMark`, THE KERB STONES). A kerb run was ONE quad pair for
+  the whole stretch of street with `yTop` = the highest end and `yRoad` = the lowest end. Flat city: a 6 cm lip. On THE LEVELS a run climbs up to
+  21 m, so its face stood as a one-sided wall (front faces only) along the kerb of every sloping street; worst on the police street (east avenue,
+  level 0 to 10). The edge lines had the same fault (one flat quad a run: under / over the road).
+- THE FIX: `runCuts(a, b, hs)` cuts a run where the ground under it changes slope (sampled every 0.875 m); the kerb and `flat()` (edge lines)
+  build a piece per cut with a height at each corner. A flat street stays one quad. Beside a bank (outer ground > 0.4 m off the road) the stone
+  keeps to the road's height. One mesh for the whole room, so every district is covered. Probe: the tallest triangle of the mesh (was 21 m).
+
 ## DISASTER CITY, THE FINANCIAL DISTRICT'S ARCHITECTURE (2026-11-13) — docs/disaster-city/districts/F.js, data.js
 mondo 11-13: "architect the buildings in their respective districts plots ... every building should be unique and purposeful and
 recognizable"; his OK on the plan + mock-up 17:10 (project files `disaster-city-financial/`, `mock-src/` = the mock scene).
