@@ -54,6 +54,7 @@ from mathutils.bvhtree import BVHTree  # noqa: E402
 from mathutils.kdtree import KDTree  # noqa: E402
 
 E = lambda k, d: float(os.environ.get(k, d))
+DROPAT = [[float(v) for v in q.split(',')] for q in os.environ.get('DROPAT', '').split(';') if q.strip()]
 SKIN_T = E('SKIN_T', 0.20)
 HEADGEAR = False
 NECKLINE = False
@@ -239,6 +240,11 @@ def fit(name, gender, src, bodies_dir):
         c = co(o); cz = c[:, 2].mean(); cx = c[:, 0].mean(); n = len(o.data.polygons)
         col = np.median(face_cols(o, PX, IW, IH), axis=0)
         isrem = o in rem
+        # NO WEAPONS IN AN OUTFIT (2026-11-13, mondo: "dont give her a sword ... characters will hold those weapons, dont make them
+        # part of the outfit"): env DROPAT='x,y,z,r;...' leaves out every loose shell whose middle is within r of a point (the
+        # remake's own space, as env SHELLS=1 prints them). Off by default
+        if os.environ.get('SHELLS'): print('SHELL', n, c.mean(0).round(2), (c.max(0) - c.min(0)).round(2), col.round(2))
+        if any(np.linalg.norm(c.mean(0) - np.array(q[:3])) < q[3] for q in DROPAT): dropped.append(('named (DROPAT)', n)); bpy.data.objects.remove(o); continue
         if abs(cx) > 0.8 * xmax and np.linalg.norm(col - skin) < SKIN_T and n < 1600:
             # THE GLOVE ON A BARE HAND (2026-11-12, robinhood: fingerless gloves; Meshy fuses the glove to the hand): only the
             # skin-coloured faces go; what is left (the glove's cuff + back) stays when it is a real piece (env GLOVE, faces)
