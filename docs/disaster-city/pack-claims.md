@@ -46,7 +46,7 @@ Sizes + the stacking `y`: areas-complexes.md "THE INDUSTRIAL DISTRICT".
 
 ## The Meshy pieces of the second interior pass (mondo 11-13 22:33: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them")
 Every piece made here is a catalogue prop free for EVERY district once it is live (catalogue key = the name below). Before you make one on Meshy, look here: if
-another district already lists it, use theirs, don't make a second. Add your own rows when you start, so the others see them.
+another district already lists it, use theirs, don't make a second. Add your own rows when you start, so the others see them. The live working list is project files `meshy/interior-claims.md` (University claimed 18 there: Entertainment reuses its `pastry_case` + `rope_stanchion`).
 Files: R2 `Assets/world/props/meshy/<key>.glb` (meshopt + WebP, like the decor). Concepts + sources: project files `<district>/pass2/`.
 
 | Key | What | District making it | Status |
@@ -60,7 +60,6 @@ Files: R2 `Assets/world/props/meshy/<key>.glb` (meshopt + WebP, like the decor).
 | `blackjack_table` | half-moon card table | Entertainment | making |
 | `money_wheel` | casino money wheel on a stand | Entertainment | making |
 | `crystal_chandelier` | crystal chandelier (ceiling) | Entertainment | making |
-| `velvet_rope` | two brass stanchions + red rope | Entertainment | making |
 | `mixing_console` | studio mixing desk | Entertainment | making |
 | `drum_kit` | full drum kit | Entertainment | making |
 | `guitar_amp` | guitar amp stack | Entertainment | making |
@@ -70,7 +69,6 @@ Files: R2 `Assets/world/props/meshy/<key>.glb` (meshopt + WebP, like the decor).
 | `studio_light` | fresnel light on a wheeled stand | Entertainment | making |
 | `directors_chair` | director's chair, plain canvas | Entertainment | making |
 | `film_projector` | cinema film projector on its pedestal | Entertainment | making |
-| `bakery_case` | curved glass bakery counter, full | Entertainment | making |
 | `bread_rack` | wooden bread rack, full | Entertainment | making |
 | `deck_oven` | steel bakery deck oven | Entertainment | making |
 | `wedding_cake` | four-tier wedding cake | Entertainment | making |
