@@ -1,0 +1,77 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;background:#000;overflow:hidden}</style>
+<script type="importmap">{"imports":{"three":"./lib/three.module.js"}}</script></head><body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from './lib/GLTFLoader.js';
+import { PLOTS } from './civic-parts.js';
+const Q = new URLSearchParams(location.search), num = (k, d) => (Q.get(k) || d).split(',').map(Number);
+const W = innerWidth, H = innerHeight;
+const R = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true }); R.setSize(W, H); document.body.appendChild(R.domElement);
+R.shadowMap.enabled = true; R.shadowMap.type = THREE.PCFSoftShadowMap;
+const S = new THREE.Scene(); S.background = new THREE.Color(0x6fa8e8);
+S.add(new THREE.HemisphereLight(0xdfeeff, 0xb0a898, 2.6));
+const sun = new THREE.DirectionalLight(0xfff2d8, 3.2); sun.position.set(-20, 200, 230); sun.target.position.set(84, 0, 84); S.add(sun, sun.target);
+sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096); const sc = sun.shadow.camera; sc.left = -150; sc.right = 150; sc.top = 150; sc.bottom = -150; sc.near = 10; sc.far = 500; sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.05;
+const cam = new THREE.PerspectiveCamera(+(Q.get('fov') || 42), W / H, 0.5, 900);
+const cp = num('cam', '230,150,250'), lk = num('look', '84,0,84'); cam.position.set(...cp); cam.lookAt(...lk);
+
+const TL = new THREE.TextureLoader(), texC = {}, matC = {}; let pending = 0;
+function tex(key) { if (texC[key]) return texC[key]; pending++; const t = TL.load('tex/' + key + '.png', () => pending--, undefined, () => { pending--; console.log('TEX FAIL ' + key); }); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; t.colorSpace = THREE.SRGBColorSpace; return texC[key] = t; }
+function mat(key, tint, o) { o = o || {}; const id = key + '|' + tint + '|' + (o.alpha || 0) + '|' + (o.ds || 0); if (matC[id]) return matC[id];
+    const m = new THREE.MeshLambertMaterial({ color: tint == null ? 0xffffff : tint }); if (key) m.map = tex(key);
+    if (o.alpha === 1) { m.alphaTest = 0.4; m.side = THREE.DoubleSide; } else if (o.alpha) { m.transparent = true; m.opacity = o.alpha; m.side = THREE.DoubleSide; m.depthWrite = false; }
+    if (o.ds) m.side = THREE.DoubleSide; return matC[id] = m; }
+const HID = new THREE.MeshBasicMaterial({ visible: false });
+/* planar UVs by face normal, `tile` metres per sheet; geometry must be non-indexed, its base at y = 0 */
+function autoUV(g, tile) { const p = g.attributes.position, n = p.count, uv = new Float32Array(n * 2), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), nn = new THREE.Vector3();
+    for (let i = 0; i < n; i += 3) { a.fromBufferAttribute(p, i); b.fromBufferAttribute(p, i + 1); c.fromBufferAttribute(p, i + 2); nn.copy(b).sub(a).cross(c.clone().sub(a)); const ax = Math.abs(nn.x), ay = Math.abs(nn.y), az = Math.abs(nn.z);
+        [a, b, c].forEach((v, k) => { let u, w; if (ay > ax && ay > az) { u = v.x; w = v.z; if (ay < (ax + az) * 3) { w = v.y * 1.2; u = ax > az ? v.z : v.x; } } else if (ax > az) { u = v.z; w = v.y; } else { u = v.x; w = v.y; } uv[(i + k) * 2] = u / tile; uv[(i + k) * 2 + 1] = w / tile; }); }
+    g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.computeVertexNormals(); return g; }
+function tri(v) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(v.flat(2)), 3)); return g; }
+function roofGeo(shape, w, d, h, o) {   // ridge along x (gable / hip), high side -z (shed)
+    const x = w / 2, z = d / 2, A = [-x, 0, -z], B = [x, 0, -z], C = [x, 0, z], D = [-x, 0, z]; let T = [];
+    if (shape === 'shed') { const A2 = [-x, h, -z], B2 = [x, h, -z]; T = [[A2, D, C], [A2, C, B2], [A, A2, B2], [A, B2, B], [A, D, A2], [B, B2, C], [A, B, C], [A, C, D]]; }
+    else { const ins = shape === 'gable' ? 0 : shape === 'pyr' ? x : Math.min(x, z) * (o.ins == null ? 1 : o.ins), R1 = [-x + ins, h, 0], R2 = [x - ins, h, 0];
+        T = [[A, R1, R2], [A, R2, B], [D, C, R2], [D, R2, R1], [A, D, R1], [B, R2, C], [A, B, C], [A, C, D]]; }
+    return tri(T); }
+const G = new THREE.Group(); S.add(G);
+function add(geo, m, x, y, z, o) { const me = new THREE.Mesh(geo, m); me.position.set(x, y, z); me.castShadow = !(o && o.alpha && o.alpha !== 1); me.receiveShadow = true; G.add(me); return me; }
+const TILE = k => /Decal/.test(k || '') ? 3.5 : /^u_(Glass|Door)/.test(k || '') ? 3.5 : 1.75;
+function part(p, ox, oz) { const o = p.o || {}, m = mat(p.key, p.tint, o), t = o.tile || TILE(p.key);
+    if (p.t === 'box') { const w = p.x1 - p.x0, d = p.z1 - p.z0, h = p.y1 - p.y0, cx = ox + (p.x0 + p.x1) / 2, cz = oz + (p.z0 + p.z1) / 2;
+        const g = new THREE.BoxGeometry(w, h, d).toNonIndexed(); g.translate(0, h / 2, 0); autoUV(g, t); const tm = (h >= 2.5 && !o.alpha && !o.flat) ? mat(o.top || 'u_PlasterWallPainted1a', o.topTint || 0x8f9296) : m; g.clearGroups(); for (let f = 0; f < 6; f++) g.addGroup(f * 6, 6, f); add(g, [m, m, tm, m, m, m], cx, p.y0, cz, o);
+        if (o.win) { const y0 = o.winY0 || 0, hh = h - y0 - (o.winTop || 0), g2 = new THREE.BoxGeometry(w + 0.08, hh, d + 0.08).toNonIndexed(); g2.translate(0, hh / 2, 0); autoUV(g2, 3.5); const wm = mat(o.win, o.winTint, { alpha: 1 }); const me = add(g2, [wm, wm, HID, HID, wm, wm], cx, p.y0 + y0, cz); me.castShadow = false;
+            g2.clearGroups(); for (let f = 0; f < 6; f++) g2.addGroup(f * 6, 6, f); } }
+    else if (p.t === 'cyl' || p.t === 'cone') { const h = p.y1 - p.y0, seg = o.seg || 20, r1 = p.t === 'cone' ? (o.inv ? p.r : 0.001) : (o.r2 == null ? p.r : o.r2), r0 = p.t === 'cone' && o.inv ? 0.001 : p.r;
+        const g = new THREE.CylinderGeometry(r1, r0, h, seg, 1, false, o.rot || 0); const uv = g.attributes.uv, circ = 2 * Math.PI * p.r; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.max(1, Math.round(circ / t)), uv.getY(i) * h / t);
+        let y = p.y0 + h / 2; if (o.axis === 'x') g.rotateZ(Math.PI / 2); else if (o.axis === 'z') g.rotateX(Math.PI / 2);
+        if (seg <= 12) { const gg = g.toNonIndexed(); gg.computeVertexNormals(); add(gg, m, ox + p.x, y, oz + p.z, o); } else add(g, m, ox + p.x, y, oz + p.z, o); }
+    else if (p.t === 'dome') { const g = new THREE.SphereGeometry(p.r, o.seg || 24, 10, 0, Math.PI * 2, 0, Math.PI / 2); g.scale(1, p.h / p.r, 1); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 12, uv.getY(i) * 3); add(g, m, ox + p.x, p.y0, oz + p.z, o); }
+    else if (p.t === 'roof') { let w = p.x1 - p.x0, d = p.z1 - p.z0; const ov = o.over || 0; w += 2 * ov; d += 2 * ov; let rot = 0, gw = w, gd = d;
+        if (p.shape === 'shed') { rot = { N: 0, S: Math.PI, E: -Math.PI / 2, W: Math.PI / 2 }[o.high || 'N']; if (o.high === 'E' || o.high === 'W') { gw = d; gd = w; } }
+        else if (o.axis === 'z') { rot = Math.PI / 2; gw = d; gd = w; }
+        const g = roofGeo(p.shape, gw, gd, p.h, o); g.rotateY(rot); autoUV(g, t); add(g, mat(p.key, p.tint, Object.assign({ ds: 1 }, o)), ox + (p.x0 + p.x1) / 2, p.y0, oz + (p.z0 + p.z1) / 2, o); }
+    else if (p.t === 'vault') { const w = p.x1 - p.x0, d = p.z1 - p.z0, ax = o.axis || 'x', len = ax === 'x' ? w : d, half = (ax === 'x' ? d : w) / 2;
+        const g = new THREE.CylinderGeometry(1, 1, len, 20, 1, false, 0, Math.PI); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.max(1, Math.round((half + p.h) * 1.6 / t)), uv.getY(i) * len / t);
+        g.rotateZ(Math.PI / 2); g.scale(1, p.h, half); if (ax === 'z') g.rotateY(Math.PI / 2); add(g, mat(p.key, p.tint, Object.assign({ ds: 1 }, o)), ox + (p.x0 + p.x1) / 2, p.y0, oz + (p.z0 + p.z1) / 2, o); }
+    else if (p.t === 'door') { const y = p.y || 0, dx = { E: 1, W: -1 }[p.face] || 0, dz = { S: 1, N: -1 }[p.face] || 0, g = new THREE.Group(); g.position.set(ox + p.x + dx * 0.06, y, oz + p.z + dz * 0.06); g.rotation.y = Math.atan2(dx, dz); G.add(g);
+        const fm = mat('gunmetal', 0x2a2d33), gm = mat('u_GlassWindowSquare1a', 0x9fd8ff), mk = (w, h, d, x, yy, z, mm) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mm); b.position.set(x, yy, z); b.castShadow = true; return b; };
+        g.add(mk(2.5, 0.22, 0.3, 0, 2.61, 0, fm), mk(0.2, 2.6, 0.3, -1.15, 1.3, 0, fm), mk(0.2, 2.6, 0.3, 1.15, 1.3, 0, fm));
+        [-1, 1].forEach(s => { const pv = new THREE.Group(); pv.position.set(s * 1.05, 0, 0.05); pv.rotation.y = s * (s < 0 ? 0.25 : 1.1); const lf = mk(1.02, 2.45, 0.07, -s * 0.52, 1.25, 0, gm); const fr = mk(1.06, 0.12, 0.09, -s * 0.52, 2.44, 0, fm), fr2 = mk(1.06, 0.2, 0.09, -s * 0.52, 0.1, 0, fm); pv.add(lf, fr, fr2); g.add(pv); });
+        const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.24, 1.32, 4, 10), new THREE.MeshLambertMaterial({ color: 0xff7a1a })); body.position.set(0.2, 0.9, 1.5); body.castShadow = true; g.add(body); }
+    else if (p.t === 'glb') { pending++; new GLTFLoader().load('glb/' + p.name + '.glb', gl => { const m = gl.scene, bb = new THREE.Box3().setFromObject(m), sz = bb.getSize(new THREE.Vector3()), s = p.span / Math.max(sz.x, sz.z); m.scale.setScalar(s); const b2 = new THREE.Box3().setFromObject(m), c = b2.getCenter(new THREE.Vector3()); const g = new THREE.Group(); m.position.set(-c.x, -b2.min.y, -c.z); g.add(m); g.position.set(ox + p.x, p.y || 0, oz + p.z); g.rotation.y = (p.yaw || 0) * Math.PI / 180; m.traverse(q => { if (q.isMesh) { q.castShadow = true; if (q.material) { q.material.metalness = 0; q.material.roughness = 1; } } }); G.add(g); pending--; }, undefined, e => { console.log('GLB FAIL ' + p.name + ' ' + e); pending--; }); } }
+function label(txt, x, y, z) { const c = document.createElement('canvas'); c.width = 512; c.height = 96; const g = c.getContext('2d'); g.font = 'bold 44px monospace'; const w = g.measureText(txt).width + 28; g.fillStyle = '#000'; g.fillRect(256 - w / 2, 14, w, 68); g.strokeStyle = '#fff'; g.lineWidth = 4; g.strokeRect(256 - w / 2, 14, w, 68); g.fillStyle = '#fff'; g.textAlign = 'center'; g.fillText(txt, 256, 64);
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), depthTest: false })); s.position.set(x, y, z); const k = +(Q.get('ls') || 1); s.scale.set(26 * k, 4.9 * k, 1); s.renderOrder = 9; S.add(s); }
+const only = Q.get('only');
+const layout = await (await fetch('city-layout.json')).json();
+const GK = { P: ['u_TileGeneric1a', 0xd8d8d8], R: ['urban_street', 0x9a9a9a], '.': ['u_TileGeneric1a', 0xc9c2b2], '#': ['u_TileGeneric1a', 0xa9a59a], I: ['u_TileGeneric1a', 0xa9a59a] };
+PLOTS.forEach(P => { const ox = (P.px - 4) * 42, oz = P.py * 42; const lp = layout.plots.find(q => q.x === P.px && q.y === P.py);
+    const byK = {}; lp.cells.forEach((row, cy) => row.split('').forEach((ch, cx) => { const k = (P.ground && P.ground[ch]) || ch; (byK[k] = byK[k] || []).push([cx, cy]); }));
+    Object.keys(byK).forEach(k => { const gk = GK[k] || [k === 'g' ? 'grass_2' : 'u_TileGeneric3a', 0xffffff]; byK[k].forEach(c => { const g = new THREE.PlaneGeometry(3.5, 3.5); g.rotateX(-Math.PI / 2); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 2, uv.getY(i) * 2); const me = new THREE.Mesh(g, mat(gk[0], gk[1])); me.position.set(ox + c[0] * 3.5 + 1.75, 0, oz + c[1] * 3.5 + 1.75); me.receiveShadow = true; G.add(me); }); });
+    if (only && !only.split(',').includes(P.id)) return;
+    P.parts.forEach(p => part(p, ox, oz));
+    if (Q.get('labels')) (P.labels || []).forEach(l => label(l.t, ox + l.x, l.y, oz + l.z)); });
+const base = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), new THREE.MeshLambertMaterial({ color: 0x55585c })); base.rotation.x = -Math.PI / 2; base.position.set(84, -0.05, 84); S.add(base);
+const tick = () => { if (pending > 0) return setTimeout(tick, 200); setTimeout(() => { R.render(S, cam); let tris = 0; G.traverse(q => { if (q.isMesh) tris += (q.geometry.index ? q.geometry.index.count : q.geometry.attributes.position.count) / 3; }); window.TRIS = Math.round(tris); window.READY = true; }, 600); }; tick();
+window.SHOT = (c, l, fov) => { cam.position.set(...c); if (fov) { cam.fov = fov; cam.updateProjectionMatrix(); } cam.lookAt(...l); R.render(S, cam); };
+</script></body></html>
