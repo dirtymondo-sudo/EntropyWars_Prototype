@@ -29601,6 +29601,24 @@ const DOOR_HQ = {
         trailer_home_5:    { file: 'ebd_trailerscene_trailer_4.glb', base: 'misc', span: 15.1, foot: 2.8, rect: { hw: 7.55, hd: 2.75 }, block: true },
         trailer_home_6:    { file: 'ebd_trailerscene_trailer_5.glb', base: 'misc', span: 15.25, foot: 3.0, rect: { hw: 7.6, hd: 3.05 }, block: true },
         abandoned_house:   { file: 'ebd_abandonedhouse_house.glb', base: 'misc', span: 36.3, foot: 10, rect: { hw: 11.55, hd: 18.15 }, block: true, hover: -1 },
+        /* THE CITY'S WHOLE BUILDINGS (2026-11-13, mondo: "Isnt there a pizza resturaunt and or gast station asset pack we downlaoded? Those
+           definitely need to be buildings somewhere"): each Elbolilloduro scene's building from the outside (shell, doors, windows, signs; no
+           furniture), cut by bake-pack-pieces.py `city_*`, REAL SIZE (`span` = the long side, never fitted to a footprint), the entrance side
+           +Z (the row's `face`), solid (`rect` = half the front, half the depth). A prop row: { key, x, z, face }. The gas station is three
+           pieces: the store (its washroom block beside it), the canopy with its four pumps (walked under: no collision) and the price
+           sign. One district per building: docs/disaster-city/pack-claims.md. */
+        city_pizzeria:      { file: 'ebd_pizzeriascene_city_pizzeria.glb',    base: 'misc', span: 20.53, foot: 5,   rect: { hw: 5.05,  hd: 10.25 }, block: true },   // front 10.2 m, 20.5 deep, 11.5 high (three storeys, PIZZA + restaurant shop fronts)
+        city_diner:         { file: 'ebd_dinerscene_city_diner.glb',          base: 'misc', span: 24.3,  foot: 10,  rect: { hw: 11.7,  hd: 12.15 }, block: true },   // 23.4 x 24.3, 6.3 high with the DINER sign
+        city_burgerpiz:     { file: 'ebd_burgerpiz_city_burgerpiz.glb',       base: 'misc', span: 32.54, foot: 10,  rect: { hw: 16.25, hd: 11.15 }, block: true },   // front 32.5 m, 22.3 deep, 6.7 high
+        city_6twelve:       { file: 'ebd_6twelve_city_6twelve.glb',           base: 'misc', span: 22.77, foot: 10,  rect: { hw: 11.4,  hd: 10.55 }, block: true },   // 22.8 x 21.1, 6.2 high (the convenience store)
+        city_laundry:       { file: 'ebd_laundryscene_city_laundry.glb',      base: 'misc', span: 16.69, foot: 6,   rect: { hw: 8.35,  hd: 6.15 },  block: true },   // front 16.7 m, 12.3 deep, 7.2 high with the roof sign
+        city_vhs_shop:      { file: 'ebd_vhsshop_city_vhs_shop.glb',          base: 'misc', span: 14.86, foot: 6,   rect: { hw: 7.4,   hd: 6.8 },   block: true },   // 14.9 x 13.6, 4.1 high
+        city_house:         { file: 'ebd_house_city_house.glb',               base: 'misc', span: 20.17, foot: 7,   rect: { hw: 7.2,   hd: 10.1 },  block: true },   // front 14.4 m (the garage), 20.2 deep, 9.1 high, a back porch
+        city_quequis_house: { file: 'ebd_quequis_city_quequis_house.glb',     base: 'misc', span: 31.69, foot: 6,   rect: { hw: 15.85, hd: 6.05 },  block: true },   // front 31.7 m, 12.1 deep, 5.6 high (a shop with a house behind one wall)
+        city_gas_store:     { file: 'ebd_gasscene_city_gas_store.glb',        base: 'misc', span: 27.88, foot: 8,   rect: { hw: 13.95, hd: 8.3 },   block: true },   // 27.9 x 16.6, 5.3 high (store 14.3 wide + the washroom block)
+        city_gas_canopy:    { file: 'ebd_gasscene_city_gas_canopy.glb',       base: 'misc', span: 21.67, foot: 0 },                                                   // 21.7 x 16.7, 7.6 high: two pillars, four pumps, the lit ceiling
+        city_gas_sign:      { file: 'ebd_gasscene_city_gas_sign.glb',         base: 'misc', h: 10.51,    foot: 0.8, block: true },                                    // the price pylon, 3 m wide
+        city_taco_stand:    { file: 'ebd_tacos_city_taco_stand.glb',          base: 'misc', span: 5.84,  foot: 1.5, rect: { hw: 2.9,   hd: 1.55 },  block: true },   // 5.8 x 3.1, 2.7 high, the serving side +Z
         /* THE BABEL HOUSES (2026-11-05, mondo OK'd the Meshy mud-brick concepts B1-B4; the town rim they replace is deleted): one
            Meshy model per house, real size (`span` = the long side), the door side +Z (the row's `face`), along the Babel room's roads */
         babel_house_small: { file: 'meshy_babel_house_small.glb', base: 'misc', span: 7.0, foot: 2.4, rect: { hw: 3.5, hd: 2.5 }, block: true },
@@ -39745,45 +39763,45 @@ const DOOR_HQ = {
                     {k:'plateau',id:'dc:P02-00-B1',x:-147,z:-231,w:28,d:28,h:7,edge:0.3,bld:{style:'residential',seed:4}},
                     {k:'texbuilding',id:'dc:P03-00-B1',x:-110.25,z:-243.25,w:17.5,d:17.5,rot:0,storeys:3,style:'residential',seed:5,hollow:true,door:7},
                     {k:'texbuilding',id:'dc:P03-00-B2',x:-91,z:-243.25,w:14,d:17.5,rot:0,storeys:4,seed:6,key:'building_9'},
-                    {k:'texbuilding',id:'dc:P00-01-B1',x:-239.75,z:-196,w:10.5,d:28,rot:270,storeys:4,style:'stucco',seed:7,hollow:true,door:5},
-                    {k:'texbuilding',id:'dc:P00-01-B2',x:-217,z:-196,w:14,d:28,rot:90,storeys:3,seed:8,key:'building_4'},
+                    {k:'texbuilding',id:'dc:P00-01-B1',x:-239.75,z:-196,w:28,d:10.5,rot:270,storeys:4,style:'stucco',seed:7,hollow:true,door:5},
+                    {k:'texbuilding',id:'dc:P00-01-B2',x:-217,z:-196,w:28,d:14,rot:90,storeys:3,seed:8,key:'building_4'},
                     {k:'plateau',id:'dc:P01-01-B1',x:-189,z:-189,w:28,d:28,h:7,edge:0.3,bld:{style:'residential',seed:9}},
-                    {k:'texbuilding',id:'dc:P02-01-B1',x:-133,z:-182,w:14,d:28,rot:90,storeys:3,style:'residential',seed:10,hollow:true,door:3},
+                    {k:'texbuilding',id:'dc:P02-01-B1',x:-133,z:-182,w:28,d:14,rot:90,storeys:3,style:'residential',seed:10,hollow:true,door:3},
                     {k:'plateau',id:'dc:P02-01-B2',x:-159.25,z:-201.25,w:17.5,d:17.5,h:7,edge:0.3,bld:{style:'residential',seed:11}},
-                    {k:'texbuilding',id:'dc:P03-01-B1',x:-120.75,z:-194.25,w:10.5,d:31.5,rot:270,storeys:2,style:'residential',seed:12,hollow:true,door:7},
-                    {k:'texbuilding',id:'dc:P00-02-B1',x:-245,z:-154,w:14,d:28,rot:270,storeys:2,style:'residential',seed:13,hollow:true,door:5},
-                    {k:'texbuilding',id:'dc:P00-02-B2',x:-217,z:-148.75,w:14,d:24.5,rot:90,storeys:3,seed:14,key:'building_2'},
-                    {k:'texbuilding',id:'dc:P01-02-B1',x:-176.75,z:-145.25,w:17.5,d:10.5,rot:90,storeys:2,style:'residential',seed:15,hollow:true,door:1},
+                    {k:'texbuilding',id:'dc:P03-01-B1',x:-120.75,z:-194.25,w:31.5,d:10.5,rot:270,storeys:2,style:'residential',seed:12,hollow:true,door:7},
+                    {k:'texbuilding',id:'dc:P00-02-B1',x:-245,z:-154,w:28,d:14,rot:270,storeys:2,style:'residential',seed:13,hollow:true,door:5},
+                    {k:'texbuilding',id:'dc:P00-02-B2',x:-217,z:-148.75,w:24.5,d:14,rot:90,storeys:3,seed:14,key:'building_2'},
+                    {k:'texbuilding',id:'dc:P01-02-B1',x:-176.75,z:-145.25,w:10.5,d:17.5,rot:90,storeys:2,style:'residential',seed:15,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P01-02-B2',x:-203,z:-147,w:14,d:14,rot:270,storeys:4,seed:16,key:'building_7'},
                     {k:'texbuilding',id:'dc:P01-02-B3',x:-176.75,z:-161,w:17.5,d:14,rot:0,storeys:3,seed:17,key:'building_1'},
                     {k:'texbuilding',id:'dc:P02-02-B1',x:-147,z:-147,w:28,d:28,rot:180,storeys:2,seed:18,key:'pack_bld_00'},
-                    {k:'texbuilding',id:'dc:P03-02-B1',x:-89.25,z:-152.25,w:10.5,d:31.5,rot:90,storeys:2,style:'residential',seed:19,hollow:true,door:11},
-                    {k:'texbuilding',id:'dc:P03-02-B2',x:-120.75,z:-159.25,w:10.5,d:17.5,rot:270,storeys:3,seed:20,key:'shop'},
+                    {k:'texbuilding',id:'dc:P03-02-B1',x:-89.25,z:-152.25,w:31.5,d:10.5,rot:90,storeys:2,style:'residential',seed:19,hollow:true,door:11},
+                    {k:'texbuilding',id:'dc:P03-02-B2',x:-120.75,z:-159.25,w:17.5,d:10.5,rot:270,storeys:3,seed:20,key:'shop'},
                     {k:'texbuilding',id:'dc:P01-03-B1',x:-176.75,z:-117.25,w:17.5,d:17.5,rot:0,storeys:3,style:'residential',seed:21,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P01-03-B2',x:-176.75,z:-92.75,w:17.5,d:17.5,rot:180,storeys:4,seed:22,key:'building_2'},
                     {k:'texbuilding',id:'dc:P02-03-B1',x:-134.75,z:-113.75,w:17.5,d:10.5,rot:0,storeys:2,seed:23,key:'pack_bld_09'},
                     {k:'texbuilding',id:'dc:P02-03-B2',x:-154,z:-91,w:14,d:14,rot:180,storeys:3,seed:24,key:'building_10'},
                     {k:'texbuilding',id:'dc:P02-03-B3',x:-134.75,z:-91,w:17.5,d:14,rot:180,storeys:3,seed:25,key:'building_3'},
                     {k:'texbuilding',id:'dc:P04-00-B1',x:-63,z:-231,w:28,d:28,rot:180,storeys:3,style:'office',seed:26,hollow:true,door:9},
-                    {k:'texbuilding',id:'dc:P05-00-B1',x:-12.25,z:-234.5,w:10.5,d:14,rot:90,storeys:3,style:'stucco',seed:27,hollow:true,door:5},
+                    {k:'texbuilding',id:'dc:P05-00-B1',x:-12.25,z:-234.5,w:14,d:10.5,rot:90,storeys:3,style:'stucco',seed:27,hollow:true,door:5},
                     {k:'texbuilding',id:'dc:P05-00-B2',x:-33.25,z:-217,w:17.5,d:14,rot:180,storeys:5,seed:28,key:'building_10'},
                     {k:'texbuilding',id:'dc:P05-00-B3',x:-29.75,z:-243.25,w:10.5,d:17.5,rot:0,storeys:4,seed:29,key:'building_1'},
                     {k:'texbuilding',id:'dc:P06-00-B1',x:21,z:-232.75,w:28,d:24.5,rot:180,storeys:5,style:'office',seed:30,hollow:true,door:9},
                     {k:'texbuilding',id:'dc:P07-00-B1',x:64.75,z:-239.75,w:24.5,d:10.5,rot:0,storeys:3,style:'office',seed:31,hollow:true,door:5},
-                    {k:'texbuilding',id:'dc:P07-00-B2',x:75.25,z:-220.5,w:17.5,d:21,rot:90,storeys:4,seed:32,key:'building_9'},
-                    {k:'texbuilding',id:'dc:P04-01-B1',x:-75.25,z:-204.75,w:17.5,d:10.5,rot:270,storeys:3,style:'office',seed:33,hollow:true,door:1},
+                    {k:'texbuilding',id:'dc:P07-00-B2',x:75.25,z:-220.5,w:21,d:17.5,rot:90,storeys:4,seed:32,key:'building_9'},
+                    {k:'texbuilding',id:'dc:P04-01-B1',x:-75.25,z:-204.75,w:10.5,d:17.5,rot:270,storeys:3,style:'office',seed:33,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P04-01-B2',x:-50.75,z:-204.75,w:17.5,d:10.5,rot:0,storeys:4,seed:34,key:'building_3'},
-                    {k:'texbuilding',id:'dc:P05-01-B1',x:-33.25,z:-204.75,w:17.5,d:10.5,rot:270,storeys:5,style:'stucco',seed:35,hollow:true,door:1},
+                    {k:'texbuilding',id:'dc:P05-01-B1',x:-33.25,z:-204.75,w:10.5,d:17.5,rot:270,storeys:5,style:'stucco',seed:35,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P05-01-B2',x:-8.75,z:-204.75,w:17.5,d:10.5,rot:0,storeys:3,seed:36,key:'building_3'},
-                    {k:'texbuilding',id:'dc:P07-01-B1',x:50.75,z:-204.75,w:17.5,d:10.5,rot:270,storeys:4,style:'stucco',seed:37,hollow:true,door:1},
+                    {k:'texbuilding',id:'dc:P07-01-B1',x:50.75,z:-204.75,w:10.5,d:17.5,rot:270,storeys:4,style:'stucco',seed:37,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P07-01-B2',x:75.25,z:-204.75,w:17.5,d:10.5,rot:0,storeys:5,seed:38,key:'building_3'},
-                    {k:'texbuilding',id:'dc:P04-02-B1',x:-77,z:-148.75,w:14,d:24.5,rot:270,storeys:5,style:'office',seed:39,hollow:true,door:7},
+                    {k:'texbuilding',id:'dc:P04-02-B1',x:-77,z:-148.75,w:24.5,d:14,rot:270,storeys:5,style:'office',seed:39,hollow:true,door:7},
                     {k:'texbuilding',id:'dc:P04-02-B2',x:-49,z:-159.25,w:14,d:17.5,rot:0,storeys:4,seed:40,key:'building_4'},
                     {k:'plateau',id:'dc:P05-02-B1',x:-24.5,z:-133,w:14,d:14,h:7,edge:0.3,bld:{style:'office',seed:41}},
                     {k:'plateau',id:'dc:P05-02-B2',x:-12.25,z:-150.5,w:10.5,d:14,h:7,edge:0.3,bld:{style:'stucco',seed:42}},
                     {k:'texbuilding',id:'dc:P05-02-B3',x:-33.25,z:-161,w:17.5,d:14,rot:0,storeys:3,seed:43,key:'building_1'},
                     {k:'plateau',id:'dc:P06-02-B1',x:21,z:-147,w:28,d:28,h:7,edge:0.3,bld:{style:'stucco',seed:44}},
-                    {k:'texbuilding',id:'dc:P07-02-B1',x:71.75,z:-154,w:10.5,d:28,rot:90,storeys:5,style:'office',seed:45,hollow:true,door:11},
+                    {k:'texbuilding',id:'dc:P07-02-B1',x:71.75,z:-154,w:28,d:10.5,rot:90,storeys:5,style:'office',seed:45,hollow:true,door:11},
                     {k:'texbuilding',id:'dc:P07-02-B2',x:50.75,z:-134.75,w:17.5,d:17.5,rot:180,storeys:4,seed:46,key:'building_2'},
                     {k:'plateau',id:'dc:P05-03-B1',x:-21,z:-105,w:28,d:28,h:7,edge:0.3,bld:{style:'office',seed:47}},
                     {k:'texbuilding',id:'dc:P06-03-B1',x:24.5,z:-91,w:14,d:14,rot:180,storeys:4,style:'stucco',seed:48,hollow:true,door:7},
@@ -39795,22 +39813,22 @@ const DOOR_HQ = {
                     {k:'plateau',id:'dc:P09-00-B2',x:145.25,z:-218.75,w:10.5,d:17.5,h:7,edge:0.3,bld:{style:'tower',seed:54}},
                     {k:'plateau',id:'dc:P09-00-B3',x:133,z:-243.25,w:14,d:17.5,h:7,edge:0.3,bld:{style:'tower',seed:55}},
                     {k:'texbuilding',id:'dc:P10-00-B1',x:189,z:-231,w:28,d:28,rot:180,storeys:6,style:'office',seed:56,hollow:true,door:9},
-                    {k:'texbuilding',id:'dc:P11-00-B1',x:245,z:-224,w:14,d:28,rot:90,storeys:6,style:'tower',seed:57,hollow:true,door:3},
+                    {k:'texbuilding',id:'dc:P11-00-B1',x:245,z:-224,w:28,d:14,rot:90,storeys:6,style:'tower',seed:57,hollow:true,door:3},
                     {k:'texbuilding',id:'dc:P11-00-B2',x:225.75,z:-243.25,w:17.5,d:17.5,rot:0,storeys:5,seed:58,key:'building_8'},
                     {k:'plateau',id:'dc:P08-01-B1',x:117.25,z:-201.25,w:17.5,d:17.5,h:7,edge:0.3,bld:{style:'office',seed:59}},
                     {k:'plateau',id:'dc:P09-01-B1',x:147,z:-189,w:28,d:28,h:7,edge:0.3,bld:{style:'tower',seed:60}},
                     {k:'texbuilding',id:'dc:P10-01-B1',x:183.75,z:-175,w:31.5,d:14,rot:180,storeys:9,style:'tower',seed:61,hollow:true,door:7},
                     {k:'texbuilding',id:'dc:P10-01-B2',x:176.75,z:-201.25,w:17.5,d:17.5,rot:0,storeys:5,seed:62,key:'building_6'},
                     {k:'texbuilding',id:'dc:P11-01-B1',x:231,z:-190.75,w:28,d:24.5,rot:180,storeys:8,style:'office',seed:63,hollow:true,door:9},
-                    {k:'texbuilding',id:'dc:P08-02-B1',x:89.25,z:-152.25,w:10.5,d:31.5,rot:270,storeys:5,style:'tower',seed:64,hollow:true,door:7},
-                    {k:'texbuilding',id:'dc:P08-02-B2',x:120.75,z:-152.25,w:10.5,d:31.5,rot:90,storeys:5,seed:65,key:'building_5'},
-                    {k:'texbuilding',id:'dc:P09-02-B1',x:133,z:-150.5,w:14,d:14,rot:270,storeys:5,seed:66,key:'pack_bld_03'},
+                    {k:'texbuilding',id:'dc:P08-02-B1',x:89.25,z:-152.25,w:31.5,d:10.5,rot:270,storeys:5,style:'tower',seed:64,hollow:true,door:7},
+                    {k:'texbuilding',id:'dc:P08-02-B2',x:120.75,z:-152.25,w:31.5,d:10.5,rot:90,storeys:5,seed:65,key:'building_5'},
+                    {k:'texbuilding',id:'dc:P09-02-B1',x:133,z:-150.5,w:14,d:14,rot:270,storeys:5,seed:66,key:'pack_bld_08'},
                     {k:'texbuilding',id:'dc:P09-02-B2',x:161,z:-134.75,w:14,d:17.5,rot:180,storeys:5,seed:67,key:'building_7'},
                     {k:'texbuilding',id:'dc:P09-02-B3',x:134.75,z:-133,w:17.5,d:14,rot:180,storeys:5,seed:68,key:'building_10'},
                     {k:'texbuilding',id:'dc:P10-02-B1',x:189,z:-148.75,w:28,d:24.5,rot:180,storeys:6,style:'office',seed:69,hollow:true,door:9},
-                    {k:'texbuilding',id:'dc:P11-02-B1',x:245,z:-148.75,w:14,d:24.5,rot:90,storeys:6,style:'tower',seed:70,hollow:true,door:7},
+                    {k:'texbuilding',id:'dc:P11-02-B1',x:245,z:-148.75,w:24.5,d:14,rot:90,storeys:6,style:'tower',seed:70,hollow:true,door:7},
                     {k:'texbuilding',id:'dc:P11-02-B2',x:222.25,z:-159.25,w:24.5,d:17.5,rot:0,storeys:5,seed:71,key:'building_8'},
-                    {k:'texbuilding',id:'dc:P08-03-B1',x:89.25,z:-117.25,w:10.5,d:17.5,rot:270,storeys:10,style:'tower',seed:72,hollow:true,door:1},
+                    {k:'texbuilding',id:'dc:P08-03-B1',x:89.25,z:-117.25,w:17.5,d:10.5,rot:270,storeys:10,style:'tower',seed:72,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P08-03-B2',x:120.75,z:-117.25,w:10.5,d:17.5,rot:0,storeys:5,seed:73,key:'building_3'},
                     {k:'texbuilding',id:'dc:P09-03-B1',x:159.25,z:-117.25,w:17.5,d:17.5,rot:0,storeys:6,style:'tower',seed:74,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P09-03-B2',x:134.75,z:-117.25,w:17.5,d:17.5,rot:0,storeys:5,seed:75,key:'building_6'},
@@ -39823,45 +39841,45 @@ const DOOR_HQ = {
                     {k:'texbuilding',id:'dc:P01-04-B2',x:-201.25,z:-77,w:17.5,d:14,rot:0,storeys:4,seed:82,key:'shop'},
                     {k:'texbuilding',id:'dc:P01-04-B3',x:-201.25,z:-54.25,w:17.5,d:10.5,rot:180,storeys:2,seed:83,key:'building_3'},
                     {k:'plateau',id:'dc:P02-04-B1',x:-147,z:-64.75,w:28,d:24.5,h:7,edge:0.3,bld:{style:'stucco',seed:84}},
-                    {k:'texbuilding',id:'dc:P03-04-B1',x:-89.25,z:-68.25,w:10.5,d:31.5,rot:90,storeys:3,style:'office',seed:85,hollow:true,door:11},
+                    {k:'texbuilding',id:'dc:P03-04-B1',x:-89.25,z:-68.25,w:31.5,d:10.5,rot:90,storeys:3,style:'office',seed:85,hollow:true,door:11},
                     {k:'plateau',id:'dc:P03-04-B2',x:-120.75,z:-75.25,w:10.5,d:17.5,h:7,edge:0.3,bld:{style:'stucco',seed:86}},
                     {k:'plateau',id:'dc:P01-05-B1',x:-189,z:-22.75,w:28,d:24.5,h:7,edge:0.3,bld:{style:'office',seed:87}},
-                    {k:'texbuilding',id:'dc:P02-05-B1',x:-133,z:-14,w:14,d:28,rot:90,storeys:4,style:'office',seed:88,hollow:true,door:3},
+                    {k:'texbuilding',id:'dc:P02-05-B1',x:-133,z:-14,w:28,d:14,rot:90,storeys:4,style:'office',seed:88,hollow:true,door:3},
                     {k:'plateau',id:'dc:P02-05-B2',x:-159.25,z:-33.25,w:17.5,d:17.5,h:7,edge:0.3,bld:{style:'residential',seed:89}},
-                    {k:'texbuilding',id:'dc:P03-05-B1',x:-120.75,z:-26.25,w:10.5,d:31.5,rot:270,storeys:3,style:'residential',seed:90,hollow:true,door:7},
+                    {k:'texbuilding',id:'dc:P03-05-B1',x:-120.75,z:-26.25,w:31.5,d:10.5,rot:270,storeys:3,style:'residential',seed:90,hollow:true,door:7},
                     {k:'texbuilding',id:'dc:P03-05-B2',x:-89.25,z:-33.25,w:10.5,d:17.5,rot:0,storeys:3,seed:91,key:'building_3'},
-                    {k:'texbuilding',id:'dc:P00-06-B1',x:-245,z:19.25,w:14,d:24.5,rot:270,storeys:4,style:'office',seed:92,hollow:true,door:7},
-                    {k:'texbuilding',id:'dc:P00-06-B2',x:-222.25,z:19.25,w:10.5,d:24.5,rot:90,storeys:3,seed:93,key:'building_8'},
+                    {k:'texbuilding',id:'dc:P00-06-B1',x:-245,z:19.25,w:24.5,d:14,rot:270,storeys:4,style:'office',seed:92,hollow:true,door:7},
+                    {k:'texbuilding',id:'dc:P00-06-B2',x:-222.25,z:19.25,w:24.5,d:10.5,rot:90,storeys:3,seed:93,key:'building_8'},
                     {k:'texbuilding',id:'dc:P01-06-B1',x:-189,z:21,w:28,d:28,rot:180,storeys:4,style:'residential',seed:94,hollow:true,door:9},
                     {k:'texbuilding',id:'dc:P02-06-B1',x:-147,z:21,w:28,d:28,rot:180,storeys:2,style:'stucco',seed:95,hollow:true,door:9},
-                    {k:'texbuilding',id:'dc:P03-06-B1',x:-89.25,z:15.75,w:10.5,d:31.5,rot:90,storeys:2,style:'stucco',seed:96,hollow:true,door:11},
-                    {k:'texbuilding',id:'dc:P03-06-B2',x:-120.75,z:8.75,w:10.5,d:17.5,rot:270,storeys:3,seed:97,key:'building_5'},
-                    {k:'texbuilding',id:'dc:P00-07-B1',x:-239.75,z:56,w:10.5,d:28,rot:270,storeys:3,style:'stucco',seed:98,hollow:true,door:5},
-                    {k:'texbuilding',id:'dc:P01-07-B1',x:-201.25,z:47.25,w:17.5,d:10.5,rot:270,storeys:4,style:'residential',seed:99,hollow:true,door:1},
+                    {k:'texbuilding',id:'dc:P03-06-B1',x:-89.25,z:15.75,w:31.5,d:10.5,rot:90,storeys:2,style:'stucco',seed:96,hollow:true,door:11},
+                    {k:'texbuilding',id:'dc:P03-06-B2',x:-120.75,z:8.75,w:17.5,d:10.5,rot:270,storeys:3,seed:97,key:'building_5'},
+                    {k:'texbuilding',id:'dc:P00-07-B1',x:-239.75,z:56,w:28,d:10.5,rot:270,storeys:3,style:'stucco',seed:98,hollow:true,door:5},
+                    {k:'texbuilding',id:'dc:P01-07-B1',x:-201.25,z:47.25,w:10.5,d:17.5,rot:270,storeys:4,style:'residential',seed:99,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P01-07-B2',x:-176.75,z:47.25,w:17.5,d:10.5,rot:0,storeys:3,seed:100,key:'shop'},
                     {k:'texbuilding',id:'dc:P02-07-B1',x:-152.25,z:78.75,w:31.5,d:10.5,rot:180,storeys:3,style:'office',seed:101,hollow:true,door:7},
-                    {k:'texbuilding',id:'dc:P02-07-B2',x:-159.25,z:47.25,w:17.5,d:10.5,rot:270,storeys:3,seed:102,key:'building_5'},
+                    {k:'texbuilding',id:'dc:P02-07-B2',x:-159.25,z:47.25,w:10.5,d:17.5,rot:270,storeys:3,seed:102,key:'building_5'},
                     {k:'texbuilding',id:'dc:P04-04-B1',x:-63,z:-63,w:28,d:28,rot:180,storeys:7,style:'office',seed:103,hollow:true,door:9},
                     {k:'texbuilding',id:'dc:P05-04-B1',x:-8.75,z:-77,w:17.5,d:14,rot:0,storeys:6,style:'tower',seed:104,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P05-04-B2',x:-12.25,z:-50.75,w:10.5,d:17.5,rot:180,storeys:5,seed:105,key:'shop'},
                     {k:'texbuilding',id:'dc:P05-04-B3',x:-26.25,z:-50.75,w:10.5,d:17.5,rot:180,storeys:5,seed:106,key:'building_3'},
                     {k:'texbuilding',id:'dc:P06-04-B1',x:21,z:-63,w:28,d:28,rot:180,storeys:12,style:'tower',seed:107,hollow:true,door:9},
                     {k:'texbuilding',id:'dc:P07-04-B1',x:61.25,z:-77,w:24.5,d:14,rot:0,storeys:5,style:'office',seed:108,hollow:true,door:7},
-                    {k:'texbuilding',id:'dc:P07-04-B2',x:75.25,z:-54.25,w:17.5,d:24.5,rot:90,storeys:5,seed:109,key:'building_8'},
-                    {k:'texbuilding',id:'dc:P04-05-B1',x:-75.25,z:-33.25,w:17.5,d:17.5,rot:0,storeys:5,seed:110,key:'pack_bld_06'},
+                    {k:'texbuilding',id:'dc:P07-04-B2',x:75.25,z:-54.25,w:24.5,d:17.5,rot:90,storeys:5,seed:109,key:'building_8'},
+                    {k:'texbuilding',id:'dc:P04-05-B1',x:-75.25,z:-33.25,w:17.5,d:17.5,rot:0,storeys:5,seed:110,key:'pack_bld_09'},
                     {k:'texbuilding',id:'dc:P04-05-B2',x:-75.25,z:-8.75,w:17.5,d:17.5,rot:180,storeys:5,seed:111,key:'building_4'},
                     {k:'plateau',id:'dc:P06-05-B1',x:21,z:-21,w:28,d:28,h:7,edge:0.3,bld:{style:'tower',seed:112}},
                     {k:'texbuilding',id:'dc:P07-05-B1',x:63,z:-22.75,w:28,d:24.5,rot:180,storeys:4,style:'office',seed:113,hollow:true,door:9},
-                    {k:'texbuilding',id:'dc:P04-06-B1',x:-77,z:22.75,w:14,d:24.5,rot:270,storeys:6,style:'office',seed:114,hollow:true,door:9},
+                    {k:'texbuilding',id:'dc:P04-06-B1',x:-77,z:22.75,w:24.5,d:14,rot:270,storeys:6,style:'office',seed:114,hollow:true,door:9},
                     {k:'texbuilding',id:'dc:P04-06-B2',x:-50.75,z:33.25,w:17.5,d:17.5,rot:180,storeys:5,seed:115,key:'building_9'},
                     {k:'plateau',id:'dc:P06-06-B1',x:21,z:19.25,w:28,d:24.5,h:7,edge:0.3,bld:{style:'office',seed:116}},
-                    {k:'texbuilding',id:'dc:P07-06-B1',x:75.25,z:17.5,w:17.5,d:21,rot:90,storeys:6,style:'office',seed:117,hollow:true,door:7},
+                    {k:'texbuilding',id:'dc:P07-06-B1',x:75.25,z:17.5,w:21,d:17.5,rot:90,storeys:6,style:'office',seed:117,hollow:true,door:7},
                     {k:'plateau',id:'dc:P07-06-B2',x:54.25,z:8.75,w:10.5,d:17.5,h:7,edge:0.3,bld:{style:'tower',seed:118}},
-                    {k:'texbuilding',id:'dc:P05-07-B1',x:-33.25,z:47.25,w:17.5,d:10.5,rot:270,storeys:4,style:'tower',seed:119,hollow:true,door:1},
+                    {k:'texbuilding',id:'dc:P05-07-B1',x:-33.25,z:47.25,w:10.5,d:17.5,rot:270,storeys:4,style:'tower',seed:119,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P05-07-B2',x:-8.75,z:47.25,w:17.5,d:10.5,rot:0,storeys:4,seed:120,key:'building_3'},
                     {k:'texbuilding',id:'dc:P07-07-B1',x:57.75,z:78.75,w:31.5,d:10.5,rot:180,storeys:5,style:'tower',seed:121,hollow:true,door:7},
-                    {k:'texbuilding',id:'dc:P07-07-B2',x:50.75,z:47.25,w:17.5,d:10.5,rot:270,storeys:5,seed:122,key:'shop'},
-                    {k:'texbuilding',id:'dc:P08-04-B1',x:89.25,z:-68.25,w:10.5,d:31.5,rot:270,storeys:4,style:'office',seed:123,hollow:true,door:7},
+                    {k:'texbuilding',id:'dc:P07-07-B2',x:50.75,z:47.25,w:10.5,d:17.5,rot:270,storeys:5,seed:122,key:'shop'},
+                    {k:'texbuilding',id:'dc:P08-04-B1',x:89.25,z:-68.25,w:31.5,d:10.5,rot:270,storeys:4,style:'office',seed:123,hollow:true,door:7},
                     {k:'texbuilding',id:'dc:P08-04-B2',x:120.75,z:-75.25,w:10.5,d:17.5,rot:0,storeys:4,seed:124,key:'shop'},
                     {k:'plateau',id:'dc:P09-04-B1',x:161,z:-75.25,w:14,d:17.5,h:7,edge:0.3,bld:{style:'stucco',seed:125}},
                     {k:'texbuilding',id:'dc:P09-04-B2',x:155.75,z:-50.75,w:10.5,d:17.5,rot:180,storeys:3,seed:126,key:'shop'},
@@ -39869,47 +39887,47 @@ const DOOR_HQ = {
                     {k:'plateau',id:'dc:P10-04-B1',x:189,z:-63,w:28,d:28,h:7,edge:0.3,bld:{style:'stucco',seed:128}},
                     {k:'texbuilding',id:'dc:P11-04-B1',x:232.75,z:-77,w:24.5,d:14,rot:0,storeys:4,style:'office',seed:129,hollow:true,door:5},
                     {k:'plateau',id:'dc:P11-04-B2',x:243.25,z:-54.25,w:17.5,d:24.5,h:7,edge:0.3,bld:{style:'office',seed:130}},
-                    {k:'texbuilding',id:'dc:P08-05-B1',x:120.75,z:-26.25,w:10.5,d:31.5,rot:90,storeys:3,seed:131,key:'pack_bld_08'},
-                    {k:'texbuilding',id:'dc:P08-05-B2',x:89.25,z:-33.25,w:10.5,d:17.5,rot:270,storeys:5,seed:132,key:'building_5'},
+                    {k:'texbuilding',id:'dc:P08-05-B1',x:120.75,z:-34.458,w:15.084,d:10.5,rot:90,storeys:3,seed:131,key:'pack_bld_08'},
+                    {k:'texbuilding',id:'dc:P08-05-B2',x:89.25,z:-33.25,w:17.5,d:10.5,rot:270,storeys:5,seed:132,key:'building_5'},
                     {k:'texbuilding',id:'dc:P09-05-B1',x:147,z:-21,w:28,d:28,rot:180,storeys:3,style:'office',seed:133,hollow:true,door:9},
                     {k:'plateau',id:'dc:P10-05-B1',x:201.25,z:-35,w:17.5,d:14,h:7,edge:0.3,bld:{style:'stucco',seed:134}},
                     {k:'texbuilding',id:'dc:P10-05-B2',x:176.75,z:-12.25,w:17.5,d:10.5,rot:180,storeys:3,seed:135,key:'building_6'},
                     {k:'plateau',id:'dc:P11-05-B1',x:231,z:-21,w:28,d:28,h:7,edge:0.3,bld:{style:'stucco',seed:136}},
-                    {k:'texbuilding',id:'dc:P08-06-B1',x:89.25,z:15.75,w:10.5,d:31.5,rot:270,storeys:5,style:'residential',seed:137,hollow:true,door:7},
+                    {k:'texbuilding',id:'dc:P08-06-B1',x:89.25,z:15.75,w:31.5,d:10.5,rot:270,storeys:5,style:'residential',seed:137,hollow:true,door:7},
                     {k:'texbuilding',id:'dc:P08-06-B2',x:120.75,z:8.75,w:10.5,d:17.5,rot:0,storeys:3,seed:138,key:'shop'},
-                    {k:'texbuilding',id:'dc:P09-06-B1',x:159.25,z:26.25,w:17.5,d:10.5,rot:90,storeys:4,style:'residential',seed:139,hollow:true,door:1},
+                    {k:'texbuilding',id:'dc:P09-06-B1',x:159.25,z:26.25,w:10.5,d:17.5,rot:90,storeys:4,style:'residential',seed:139,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P09-06-B2',x:138.25,z:8.75,w:10.5,d:17.5,rot:0,storeys:5,seed:140,key:'shop'},
                     {k:'texbuilding',id:'dc:P09-06-B3',x:161,z:8.75,w:14,d:17.5,rot:0,storeys:5,seed:141,key:'building_10'},
                     {k:'texbuilding',id:'dc:P10-06-B1',x:189,z:21,w:28,d:28,rot:180,storeys:3,style:'office',seed:142,hollow:true,door:9},
                     {k:'texbuilding',id:'dc:P11-06-B1',x:232.75,z:12.25,w:24.5,d:10.5,rot:0,storeys:3,style:'office',seed:143,hollow:true,door:5},
-                    {k:'texbuilding',id:'dc:P11-06-B2',x:243.25,z:28,w:17.5,d:14,rot:90,storeys:3,seed:144,key:'building_9'},
-                    {k:'texbuilding',id:'dc:P09-07-B1',x:134.75,z:47.25,w:17.5,d:10.5,rot:270,storeys:3,style:'residential',seed:145,hollow:true,door:1},
+                    {k:'texbuilding',id:'dc:P11-06-B2',x:243.25,z:28,w:14,d:17.5,rot:90,storeys:3,seed:144,key:'building_9'},
+                    {k:'texbuilding',id:'dc:P09-07-B1',x:134.75,z:47.25,w:10.5,d:17.5,rot:270,storeys:3,style:'residential',seed:145,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P09-07-B2',x:159.25,z:47.25,w:17.5,d:10.5,rot:0,storeys:5,seed:146,key:'building_3'},
                     {k:'texbuilding',id:'dc:P10-07-B1',x:183.75,z:78.75,w:31.5,d:10.5,rot:180,storeys:4,style:'stucco',seed:147,hollow:true,door:7},
-                    {k:'texbuilding',id:'dc:P10-07-B2',x:176.75,z:47.25,w:17.5,d:10.5,rot:270,storeys:4,seed:148,key:'building_5'},
+                    {k:'texbuilding',id:'dc:P10-07-B2',x:176.75,z:47.25,w:10.5,d:17.5,rot:270,storeys:4,seed:148,key:'building_5'},
                     {k:'texbuilding',id:'dc:P11-07-B1',x:243.25,z:50.75,w:17.5,d:17.5,rot:0,storeys:3,style:'residential',seed:149,hollow:true,door:1},
                     {k:'plateau',id:'dc:P00-08-B1',x:-231,z:105,w:28,d:28,h:7,edge:0.3,bld:{style:'factory',seed:150}},
                     {k:'plateau',id:'dc:P01-08-B1',x:-201.25,z:91,w:17.5,d:14,h:7,edge:0.3,bld:{style:'factory',seed:151}},
                     {k:'plateau',id:'dc:P01-08-B2',x:-176.75,z:119,w:17.5,d:14,h:7,edge:0.3,bld:{style:'factory',seed:152}},
                     {k:'texbuilding',id:'dc:P01-08-B3',x:-203,z:117.25,w:14,d:17.5,rot:180,storeys:3,seed:153,key:'building_1'},
                     {k:'texbuilding',id:'dc:P02-08-B1',x:-147,z:105,w:28,d:28,rot:180,storeys:4,style:'factory',seed:154,hollow:true,door:9},
-                    {k:'texbuilding',id:'dc:P03-08-B1',x:-89.25,z:99.75,w:10.5,d:31.5,rot:90,storeys:3,style:'factory',seed:155,hollow:true,door:11},
-                    {k:'texbuilding',id:'dc:P03-08-B2',x:-120.75,z:92.75,w:10.5,d:17.5,rot:270,storeys:3,seed:156,key:'building_3'},
+                    {k:'texbuilding',id:'dc:P03-08-B1',x:-89.25,z:99.75,w:31.5,d:10.5,rot:90,storeys:3,style:'factory',seed:155,hollow:true,door:11},
+                    {k:'texbuilding',id:'dc:P03-08-B2',x:-120.75,z:92.75,w:17.5,d:10.5,rot:270,storeys:3,seed:156,key:'building_3'},
                     {k:'plateau',id:'dc:P00-09-B1',x:-222.25,z:145.25,w:10.5,d:24.5,h:7,edge:0.3,bld:{style:'factory',seed:157}},
-                    {k:'texbuilding',id:'dc:P00-09-B2',x:-245,z:154,w:14,d:28,rot:270,storeys:3,seed:158,key:'building_8'},
+                    {k:'texbuilding',id:'dc:P00-09-B2',x:-245,z:154,w:28,d:14,rot:270,storeys:3,seed:158,key:'building_8'},
                     {k:'plateau',id:'dc:P01-09-B1',x:-189,z:147,w:28,d:28,h:7,edge:0.3,bld:{style:'factory',seed:159}},
-                    {k:'texbuilding',id:'dc:P02-09-B1',x:-138.25,z:148.75,w:10.5,d:24.5,rot:90,storeys:3,style:'factory',seed:160,hollow:true,door:5},
+                    {k:'texbuilding',id:'dc:P02-09-B1',x:-138.25,z:148.75,w:24.5,d:10.5,rot:90,storeys:3,style:'factory',seed:160,hollow:true,door:5},
                     {k:'texbuilding',id:'dc:P02-09-B2',x:-159.25,z:159.25,w:17.5,d:17.5,rot:180,storeys:2,seed:161,key:'building_9'},
-                    {k:'texbuilding',id:'dc:P03-09-B1',x:-120.75,z:141.75,w:10.5,d:31.5,rot:270,storeys:2,style:'factory',seed:162,hollow:true,door:7},
+                    {k:'texbuilding',id:'dc:P03-09-B1',x:-120.75,z:141.75,w:31.5,d:10.5,rot:270,storeys:2,style:'factory',seed:162,hollow:true,door:7},
                     {k:'texbuilding',id:'dc:P03-09-B2',x:-89.25,z:134.75,w:10.5,d:17.5,rot:0,storeys:2,seed:163,key:'building_3'},
-                    {k:'texbuilding',id:'dc:P00-10-B1',x:-239.75,z:182,w:10.5,d:28,rot:270,storeys:2,style:'factory',seed:164,hollow:true,door:5},
+                    {k:'texbuilding',id:'dc:P00-10-B1',x:-239.75,z:182,w:28,d:10.5,rot:270,storeys:2,style:'factory',seed:164,hollow:true,door:5},
                     {k:'texbuilding',id:'dc:P00-10-B2',x:-218.75,z:201.25,w:17.5,d:17.5,rot:180,storeys:2,seed:165,key:'building_9'},
-                    {k:'texbuilding',id:'dc:P01-10-B1',x:-180.25,z:196,w:10.5,d:14,rot:90,storeys:3,style:'factory',seed:166,hollow:true,door:1},
+                    {k:'texbuilding',id:'dc:P01-10-B1',x:-180.25,z:196,w:14,d:10.5,rot:90,storeys:3,style:'factory',seed:166,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P01-10-B2',x:-176.75,z:175,w:17.5,d:14,rot:0,storeys:2,seed:167,key:'building_7'},
                     {k:'texbuilding',id:'dc:P01-10-B3',x:-201.25,z:180.25,w:17.5,d:10.5,rot:0,storeys:2,seed:168,key:'building_1'},
                     {k:'texbuilding',id:'dc:P02-10-B1',x:-147,z:187.25,w:28,d:24.5,rot:180,storeys:2,style:'factory',seed:169,hollow:true,door:9},
-                    {k:'texbuilding',id:'dc:P03-10-B1',x:-89.25,z:183.75,w:10.5,d:31.5,rot:90,storeys:2,style:'factory',seed:170,hollow:true,door:11},
-                    {k:'texbuilding',id:'dc:P03-10-B2',x:-120.75,z:176.75,w:10.5,d:17.5,rot:270,storeys:2,seed:171,key:'building_5'},
+                    {k:'texbuilding',id:'dc:P03-10-B1',x:-89.25,z:183.75,w:31.5,d:10.5,rot:90,storeys:2,style:'factory',seed:170,hollow:true,door:11},
+                    {k:'texbuilding',id:'dc:P03-10-B2',x:-120.75,z:176.75,w:17.5,d:10.5,rot:270,storeys:2,seed:171,key:'building_5'},
                     {k:'texbuilding',id:'dc:P01-11-B1',x:-180.25,z:243.25,w:24.5,d:17.5,rot:180,storeys:2,style:'factory',seed:172,hollow:true,door:13},
                     {k:'texbuilding',id:'dc:P01-11-B2',x:-201.25,z:218.75,w:17.5,d:17.5,rot:0,storeys:3,seed:173,key:'building_6'},
                     {k:'texbuilding',id:'dc:P02-11-B1',x:-145.25,z:243.25,w:10.5,d:17.5,rot:180,storeys:2,style:'factory',seed:174,hollow:true,door:5},
@@ -39926,34 +39944,34 @@ const DOOR_HQ = {
                     {k:'plateau',id:'dc:P06-09-B1',x:29.75,z:145.25,w:10.5,d:24.5,h:7,edge:0.3,bld:{style:'stucco',seed:185}},
                     {k:'texbuilding',id:'dc:P06-09-B2',x:8.75,z:134.75,w:17.5,d:17.5,rot:0,storeys:3,seed:186,key:'building_6'},
                     {k:'plateau',id:'dc:P07-09-B1',x:63,z:147,w:28,d:28,h:7,edge:0.3,bld:{style:'stucco',seed:187}},
-                    {k:'texbuilding',id:'dc:P05-10-B1',x:-29.75,z:185.5,w:10.5,d:14,rot:270,storeys:2,style:'stucco',seed:188,hollow:true,door:3},
+                    {k:'texbuilding',id:'dc:P05-10-B1',x:-29.75,z:185.5,w:14,d:10.5,rot:270,storeys:2,style:'stucco',seed:188,hollow:true,door:3},
                     {k:'texbuilding',id:'dc:P05-10-B2',x:-8.75,z:203,w:17.5,d:14,rot:180,storeys:2,seed:189,key:'building_7'},
                     {k:'texbuilding',id:'dc:P05-10-B3',x:-7,z:176.75,w:14,d:17.5,rot:0,storeys:3,seed:190,key:'building_3'},
                     {k:'texbuilding',id:'dc:P06-10-B1',x:21,z:189,w:28,d:28,rot:180,storeys:2,style:'stucco',seed:191,hollow:true,door:9},
-                    {k:'texbuilding',id:'dc:P07-10-B1',x:71.75,z:189,w:10.5,d:28,rot:90,storeys:4,style:'factory',seed:192,hollow:true,door:7},
+                    {k:'texbuilding',id:'dc:P07-10-B1',x:71.75,z:189,w:28,d:10.5,rot:90,storeys:4,style:'factory',seed:192,hollow:true,door:7},
                     {k:'texbuilding',id:'dc:P07-10-B2',x:50.75,z:201.25,w:17.5,d:17.5,rot:180,storeys:4,seed:193,key:'building_2'},
                     {k:'texbuilding',id:'dc:P05-11-B1',x:-26.25,z:246.75,w:31.5,d:10.5,rot:180,storeys:3,style:'stucco',seed:194,hollow:true,door:7},
-                    {k:'texbuilding',id:'dc:P05-11-B2',x:-33.25,z:215.25,w:17.5,d:10.5,rot:270,storeys:4,seed:195,key:'building_5'},
+                    {k:'texbuilding',id:'dc:P05-11-B2',x:-33.25,z:215.25,w:10.5,d:17.5,rot:270,storeys:4,seed:195,key:'building_5'},
                     {k:'texbuilding',id:'dc:P06-11-B1',x:15.75,z:246.75,w:31.5,d:10.5,rot:180,storeys:4,style:'stucco',seed:196,hollow:true,door:7},
-                    {k:'texbuilding',id:'dc:P06-11-B2',x:8.75,z:215.25,w:17.5,d:10.5,rot:270,storeys:2,seed:197,key:'building_3'},
+                    {k:'texbuilding',id:'dc:P06-11-B2',x:8.75,z:215.25,w:10.5,d:17.5,rot:270,storeys:2,seed:197,key:'building_3'},
                     {k:'texbuilding',id:'dc:P07-11-B1',x:57.75,z:246.75,w:31.5,d:10.5,rot:180,storeys:2,style:'stucco',seed:198,hollow:true,door:7},
-                    {k:'texbuilding',id:'dc:P07-11-B2',x:50.75,z:215.25,w:17.5,d:10.5,rot:270,storeys:2,seed:199,key:'building_5'},
-                    {k:'texbuilding',id:'dc:P08-08-B1',x:89.25,z:99.75,w:10.5,d:31.5,rot:270,storeys:9,style:'office',seed:200,hollow:true,door:7},
+                    {k:'texbuilding',id:'dc:P07-11-B2',x:50.75,z:215.25,w:10.5,d:17.5,rot:270,storeys:2,seed:199,key:'building_5'},
+                    {k:'texbuilding',id:'dc:P08-08-B1',x:89.25,z:99.75,w:31.5,d:10.5,rot:270,storeys:9,style:'office',seed:200,hollow:true,door:7},
                     {k:'texbuilding',id:'dc:P08-08-B2',x:120.75,z:92.75,w:10.5,d:17.5,rot:0,storeys:3,seed:201,key:'building_3'},
                     {k:'texbuilding',id:'dc:P09-08-B1',x:134.75,z:91,w:17.5,d:14,rot:0,storeys:5,seed:202,key:'pack_bld_09'},
                     {k:'plateau',id:'dc:P09-08-B2',x:138.25,z:117.25,w:10.5,d:17.5,h:7,edge:0.3,bld:{style:'office',seed:203}},
                     {k:'texbuilding',id:'dc:P09-08-B3',x:159.25,z:113.75,w:17.5,d:10.5,rot:180,storeys:3,seed:204,key:'building_1'},
                     {k:'texbuilding',id:'dc:P10-08-B1',x:189,z:103.25,w:28,d:24.5,rot:180,storeys:3,style:'stucco',seed:205,hollow:true,door:9},
-                    {k:'texbuilding',id:'dc:P08-09-B1',x:89.25,z:134.75,w:10.5,d:17.5,rot:270,storeys:4,style:'stucco',seed:206,hollow:true,door:1},
+                    {k:'texbuilding',id:'dc:P08-09-B1',x:89.25,z:134.75,w:17.5,d:10.5,rot:270,storeys:4,style:'stucco',seed:206,hollow:true,door:1},
                     {k:'texbuilding',id:'dc:P08-09-B2',x:120.75,z:134.75,w:10.5,d:17.5,rot:0,storeys:4,seed:207,key:'shop'},
                     {k:'plateau',id:'dc:P09-09-B1',x:147,z:145.25,w:28,d:24.5,h:7,edge:0.3,bld:{style:'stucco',seed:208}},
                     {k:'plateau',id:'dc:P10-09-B1',x:187.25,z:138.25,w:24.5,d:10.5,h:7,edge:0.3,bld:{style:'office',seed:209}},
                     {k:'texbuilding',id:'dc:P10-09-B2',x:176.75,z:159.25,w:17.5,d:17.5,rot:180,storeys:5,seed:210,key:'building_2'},
-                    {k:'texbuilding',id:'dc:P11-09-B1',x:246.75,z:141.75,w:10.5,d:31.5,rot:90,storeys:6,style:'stucco',seed:211,hollow:true,door:11},
+                    {k:'texbuilding',id:'dc:P11-09-B1',x:246.75,z:141.75,w:31.5,d:10.5,rot:90,storeys:6,style:'stucco',seed:211,hollow:true,door:11},
                     {k:'plateau',id:'dc:P11-09-B2',x:215.25,z:134.75,w:10.5,d:17.5,h:7,edge:0.3,bld:{style:'stucco',seed:212}},
                     {k:'texbuilding',id:'dc:P10-10-B1',x:189,z:189,w:28,d:28,rot:180,storeys:2,style:'stucco',seed:213,hollow:true,door:9},
-                    {k:'texbuilding',id:'dc:P11-10-B1',x:246.75,z:183.75,w:10.5,d:31.5,rot:90,storeys:6,seed:214,key:'pack_bld_07'},
-                    {k:'texbuilding',id:'dc:P11-10-B2',x:215.25,z:176.75,w:10.5,d:17.5,rot:270,storeys:4,seed:215,key:'building_5'},
+                    {k:'texbuilding',id:'dc:P11-10-B1',x:246.75,z:175.542,w:15.084,d:10.5,rot:90,storeys:6,seed:214,key:'pack_bld_08'},
+                    {k:'texbuilding',id:'dc:P11-10-B2',x:215.25,z:176.75,w:17.5,d:10.5,rot:270,storeys:4,seed:215,key:'building_5'},
                     {k:'texbuilding',id:'dc:in0',x:-246.75,z:-250.25,w:10.5,d:3.5,rot:0,storeys:1,seed:216,key:'building_8'},
                     {k:'texbuilding',id:'dc:in1',x:-234.5,z:-250.25,w:14,d:3.5,rot:0,storeys:2,seed:217,style:'residential'},
                     {k:'texbuilding',id:'dc:in2',x:-220.5,z:-250.25,w:14,d:3.5,rot:0,storeys:1,seed:218,style:'stucco'},
@@ -39972,29 +39990,29 @@ const DOOR_HQ = {
                     {k:'texbuilding',id:'dc:in15',x:162.75,z:-250.25,w:10.5,d:3.5,rot:0,storeys:2,seed:231,key:'building_5'},
                     {k:'texbuilding',id:'dc:in16',x:171.5,z:-250.25,w:7,d:3.5,rot:0,storeys:2,seed:232,key:'building_5'},
                     {k:'texbuilding',id:'dc:in17',x:243.25,z:-250.25,w:17.5,d:3.5,rot:0,storeys:2,seed:233,style:'tower'},
-                    {k:'texbuilding',id:'dc:in18',x:-250.25,z:-231,w:3.5,d:7,rot:270,storeys:1,seed:234,style:'residential'},
-                    {k:'texbuilding',id:'dc:in19',x:-250.25,z:-222.25,w:3.5,d:10.5,rot:270,storeys:1,seed:235,style:'residential'},
-                    {k:'texbuilding',id:'dc:in20',x:-250.25,z:-213.5,w:3.5,d:7,rot:270,storeys:1,seed:236,style:'stucco'},
-                    {k:'texbuilding',id:'dc:in21',x:-250.25,z:-206.5,w:3.5,d:7,rot:270,storeys:1,seed:237,key:'building_9'},
-                    {k:'texbuilding',id:'dc:in22',x:-250.25,z:-196,w:3.5,d:14,rot:270,storeys:1,seed:238,style:'residential'},
-                    {k:'texbuilding',id:'dc:in23',x:-250.25,z:-133,w:3.5,d:14,rot:270,storeys:2,seed:239,style:'stucco'},
-                    {k:'texbuilding',id:'dc:in24',x:-250.25,z:-119,w:3.5,d:14,rot:270,storeys:2,seed:240,style:'residential'},
-                    {k:'texbuilding',id:'dc:in25',x:-250.25,z:-101.5,w:3.5,d:7,rot:270,storeys:1,seed:241,style:'residential'},
-                    {k:'texbuilding',id:'dc:in26',x:-250.25,z:-77,w:3.5,d:14,rot:270,storeys:1,seed:242,style:'stucco'},
-                    {k:'texbuilding',id:'dc:in27',x:-250.25,z:-64.75,w:3.5,d:10.5,rot:270,storeys:1,seed:243,key:'building_4'},
-                    {k:'texbuilding',id:'dc:in28',x:-250.25,z:-36.75,w:3.5,d:10.5,rot:270,storeys:1,seed:244,style:'office'},
-                    {k:'texbuilding',id:'dc:in29',x:-250.25,z:-28,w:3.5,d:7,rot:270,storeys:2,seed:245,key:'building_4'},
-                    {k:'texbuilding',id:'dc:in30',x:-250.25,z:-5.25,w:3.5,d:10.5,rot:270,storeys:1,seed:246,key:'building_4'},
-                    {k:'texbuilding',id:'dc:in31',x:-250.25,z:36.75,w:3.5,d:10.5,rot:270,storeys:1,seed:247,style:'residential'},
-                    {k:'texbuilding',id:'dc:in32',x:-250.25,z:49,w:3.5,d:14,rot:270,storeys:1,seed:248,style:'residential'},
-                    {k:'texbuilding',id:'dc:in33',x:-250.25,z:89.25,w:3.5,d:10.5,rot:270,storeys:1,seed:249,style:'factory'},
-                    {k:'texbuilding',id:'dc:in34',x:-250.25,z:189,w:3.5,d:14,rot:270,storeys:2,seed:250,style:'factory'},
-                    {k:'texbuilding',id:'dc:in35',x:-250.25,z:203,w:3.5,d:14,rot:270,storeys:1,seed:251,style:'factory'},
-                    {k:'texbuilding',id:'dc:in36',x:-250.25,z:217,w:3.5,d:14,rot:270,storeys:1,seed:252,style:'factory'},
+                    {k:'texbuilding',id:'dc:in18',x:-250.25,z:-231,w:7,d:3.5,rot:270,storeys:1,seed:234,style:'residential'},
+                    {k:'texbuilding',id:'dc:in19',x:-250.25,z:-222.25,w:10.5,d:3.5,rot:270,storeys:1,seed:235,style:'residential'},
+                    {k:'texbuilding',id:'dc:in20',x:-250.25,z:-213.5,w:7,d:3.5,rot:270,storeys:1,seed:236,style:'stucco'},
+                    {k:'texbuilding',id:'dc:in21',x:-250.25,z:-206.5,w:7,d:3.5,rot:270,storeys:1,seed:237,key:'building_9'},
+                    {k:'texbuilding',id:'dc:in22',x:-250.25,z:-196,w:14,d:3.5,rot:270,storeys:1,seed:238,style:'residential'},
+                    {k:'texbuilding',id:'dc:in23',x:-250.25,z:-133,w:14,d:3.5,rot:270,storeys:2,seed:239,style:'stucco'},
+                    {k:'texbuilding',id:'dc:in24',x:-250.25,z:-119,w:14,d:3.5,rot:270,storeys:2,seed:240,style:'residential'},
+                    {k:'texbuilding',id:'dc:in25',x:-250.25,z:-101.5,w:7,d:3.5,rot:270,storeys:1,seed:241,style:'residential'},
+                    {k:'texbuilding',id:'dc:in26',x:-250.25,z:-77,w:14,d:3.5,rot:270,storeys:1,seed:242,style:'stucco'},
+                    {k:'texbuilding',id:'dc:in27',x:-250.25,z:-64.75,w:10.5,d:3.5,rot:270,storeys:1,seed:243,key:'building_4'},
+                    {k:'texbuilding',id:'dc:in28',x:-250.25,z:-36.75,w:10.5,d:3.5,rot:270,storeys:1,seed:244,style:'office'},
+                    {k:'texbuilding',id:'dc:in29',x:-250.25,z:-28,w:7,d:3.5,rot:270,storeys:2,seed:245,key:'building_4'},
+                    {k:'texbuilding',id:'dc:in30',x:-250.25,z:-5.25,w:10.5,d:3.5,rot:270,storeys:1,seed:246,key:'building_4'},
+                    {k:'texbuilding',id:'dc:in31',x:-250.25,z:36.75,w:10.5,d:3.5,rot:270,storeys:1,seed:247,style:'residential'},
+                    {k:'texbuilding',id:'dc:in32',x:-250.25,z:49,w:14,d:3.5,rot:270,storeys:1,seed:248,style:'residential'},
+                    {k:'texbuilding',id:'dc:in33',x:-250.25,z:89.25,w:10.5,d:3.5,rot:270,storeys:1,seed:249,style:'factory'},
+                    {k:'texbuilding',id:'dc:in34',x:-250.25,z:189,w:14,d:3.5,rot:270,storeys:2,seed:250,style:'factory'},
+                    {k:'texbuilding',id:'dc:in35',x:-250.25,z:203,w:14,d:3.5,rot:270,storeys:1,seed:251,style:'factory'},
+                    {k:'texbuilding',id:'dc:in36',x:-250.25,z:217,w:14,d:3.5,rot:270,storeys:1,seed:252,style:'factory'},
                     {k:'texbuilding',id:'dc:in37',x:145.25,z:-208.25,w:10.5,d:3.5,rot:0,storeys:1,seed:253,key:'building_5'},
-                    {k:'texbuilding',id:'dc:in38',x:-210,z:-176.75,w:7,d:10.5,rot:90,storeys:2,seed:254,key:'building_2'},
-                    {k:'texbuilding',id:'dc:in39',x:-208.25,z:-157.5,w:3.5,d:7,rot:270,storeys:1,seed:255,key:'building_2'},
-                    {k:'texbuilding',id:'dc:in40',x:-210,z:5.25,w:7,d:10.5,rot:270,storeys:1,seed:256,key:'building_6'},
+                    {k:'texbuilding',id:'dc:in38',x:-210,z:-176.75,w:10.5,d:7,rot:90,storeys:2,seed:254,key:'building_2'},
+                    {k:'texbuilding',id:'dc:in39',x:-208.25,z:-157.5,w:7,d:3.5,rot:270,storeys:1,seed:255,key:'building_2'},
+                    {k:'texbuilding',id:'dc:in40',x:-210,z:5.25,w:10.5,d:7,rot:270,storeys:1,seed:256,key:'building_6'},
                     {k:'texbuilding',id:'dc:in41',x:173.25,z:-166.25,w:10.5,d:3.5,rot:0,storeys:1,seed:257,style:'tower'},
                     {k:'texbuilding',id:'dc:in42',x:187.25,z:-166.25,w:17.5,d:3.5,rot:0,storeys:2,seed:258,style:'office'},
                     {k:'texbuilding',id:'dc:in43',x:204.75,z:-168,w:10.5,d:7,rot:180,storeys:1,seed:259,style:'tower'},
@@ -40002,13 +40020,13 @@ const DOOR_HQ = {
                     {k:'texbuilding',id:'dc:in45',x:-168,z:192.5,w:7,d:7,rot:90,storeys:3,seed:261,key:'building_3'},
                     {k:'texbuilding',id:'dc:in46',x:-36.75,z:-126,w:10.5,d:7,rot:0,storeys:2,seed:262,key:'building_1'},
                     {k:'texbuilding',id:'dc:in47',x:-14,z:-126,w:7,d:7,rot:180,storeys:3,seed:263,style:'stucco'},
-                    {k:'texbuilding',id:'dc:in48',x:-127.75,z:-38.5,w:3.5,d:7,rot:90,storeys:1,seed:264,key:'building_4'},
-                    {k:'texbuilding',id:'dc:in49',x:-127.75,z:-31.5,w:3.5,d:7,rot:90,storeys:1,seed:265,key:'building_9'},
-                    {k:'texbuilding',id:'dc:in50',x:-124.25,z:-5.25,w:3.5,d:10.5,rot:270,storeys:1,seed:266,key:'building_6'},
-                    {k:'texbuilding',id:'dc:in51',x:-127.75,z:131.25,w:3.5,d:10.5,rot:90,storeys:1,seed:267,key:'building_10'},
-                    {k:'texbuilding',id:'dc:in52',x:-127.75,z:141.75,w:3.5,d:10.5,rot:90,storeys:1,seed:268,key:'building_10'},
-                    {k:'texbuilding',id:'dc:in53',x:-127.75,z:152.25,w:3.5,d:10.5,rot:90,storeys:2,seed:269,style:'factory'},
-                    {k:'texbuilding',id:'dc:in54',x:-126,z:162.75,w:7,d:10.5,rot:90,storeys:2,seed:270,key:'building_10'},
+                    {k:'texbuilding',id:'dc:in48',x:-127.75,z:-38.5,w:7,d:3.5,rot:90,storeys:1,seed:264,key:'building_4'},
+                    {k:'texbuilding',id:'dc:in49',x:-127.75,z:-31.5,w:7,d:3.5,rot:90,storeys:1,seed:265,key:'building_9'},
+                    {k:'texbuilding',id:'dc:in50',x:-124.25,z:-5.25,w:10.5,d:3.5,rot:270,storeys:1,seed:266,key:'building_6'},
+                    {k:'texbuilding',id:'dc:in51',x:-127.75,z:131.25,w:10.5,d:3.5,rot:90,storeys:1,seed:267,key:'building_10'},
+                    {k:'texbuilding',id:'dc:in52',x:-127.75,z:141.75,w:10.5,d:3.5,rot:90,storeys:1,seed:268,key:'building_10'},
+                    {k:'texbuilding',id:'dc:in53',x:-127.75,z:152.25,w:10.5,d:3.5,rot:90,storeys:2,seed:269,style:'factory'},
+                    {k:'texbuilding',id:'dc:in54',x:-126,z:162.75,w:10.5,d:7,rot:90,storeys:2,seed:270,key:'building_10'},
                     {k:'texbuilding',id:'dc:in55',x:-138.25,z:-82.25,w:10.5,d:3.5,rot:0,storeys:1,seed:271,key:'building_4'},
                     {k:'texbuilding',id:'dc:in56',x:-129.5,z:-82.25,w:7,d:3.5,rot:0,storeys:2,seed:272,style:'residential'},
                     {k:'texbuilding',id:'dc:in57',x:-68.25,z:-84,w:17.5,d:7,rot:180,storeys:3,seed:273,style:'stucco'},
@@ -40018,10 +40036,10 @@ const DOOR_HQ = {
                     {k:'texbuilding',id:'dc:in61',x:175,z:-84,w:14,d:7,rot:180,storeys:3,seed:277,style:'office'},
                     {k:'texbuilding',id:'dc:in62',x:224,z:-85.75,w:7,d:3.5,rot:180,storeys:2,seed:278,key:'building_1'},
                     {k:'texbuilding',id:'dc:in63',x:232.75,z:-85.75,w:10.5,d:3.5,rot:180,storeys:1,seed:279,key:'building_1'},
-                    {k:'texbuilding',id:'dc:in64',x:-82.25,z:5.25,w:3.5,d:10.5,rot:270,storeys:2,seed:280,key:'building_5'},
-                    {k:'texbuilding',id:'dc:in65',x:-82.25,z:89.25,w:3.5,d:10.5,rot:270,storeys:1,seed:281,style:'factory'},
-                    {k:'texbuilding',id:'dc:in66',x:-82.25,z:108.5,w:3.5,d:14,rot:270,storeys:2,seed:282,style:'office'},
-                    {k:'texbuilding',id:'dc:in67',x:-82.25,z:171.5,w:3.5,d:7,rot:270,storeys:1,seed:283,key:'building_3'},
+                    {k:'texbuilding',id:'dc:in64',x:-82.25,z:5.25,w:10.5,d:3.5,rot:270,storeys:2,seed:280,key:'building_5'},
+                    {k:'texbuilding',id:'dc:in65',x:-82.25,z:89.25,w:10.5,d:3.5,rot:270,storeys:1,seed:281,style:'factory'},
+                    {k:'texbuilding',id:'dc:in66',x:-82.25,z:108.5,w:14,d:3.5,rot:270,storeys:2,seed:282,style:'office'},
+                    {k:'texbuilding',id:'dc:in67',x:-82.25,z:171.5,w:7,d:3.5,rot:270,storeys:1,seed:283,key:'building_3'},
                     {k:'texbuilding',id:'dc:in68',x:-203,z:-42,w:14,d:7,rot:0,storeys:1,seed:284,style:'stucco'},
                     {k:'texbuilding',id:'dc:in69',x:-173.25,z:-42,w:10.5,d:7,rot:0,storeys:2,seed:285,style:'office'},
                     {k:'texbuilding',id:'dc:in70',x:-26.25,z:-40.25,w:10.5,d:3.5,rot:0,storeys:1,seed:286,key:'building_1'},
@@ -40029,15 +40047,15 @@ const DOOR_HQ = {
                     {k:'texbuilding',id:'dc:in72',x:-42,z:157.5,w:7,d:7,rot:90,storeys:1,seed:288,key:'building_6'},
                     {k:'texbuilding',id:'dc:in73',x:-42,z:164.5,w:7,d:7,rot:90,storeys:2,seed:289,key:'building_3'},
                     {k:'texbuilding',id:'dc:in74',x:236.25,z:0,w:17.5,d:7,rot:0,storeys:1,seed:290,style:'office'},
-                    {k:'texbuilding',id:'dc:in75',x:0,z:-243.25,w:7,d:10.5,rot:90,storeys:3,seed:291,key:'building_1'},
-                    {k:'texbuilding',id:'dc:in76',x:0,z:-217,w:7,d:14,rot:90,storeys:2,seed:292,style:'stucco'},
+                    {k:'texbuilding',id:'dc:in75',x:0,z:-243.25,w:10.5,d:7,rot:90,storeys:3,seed:291,key:'building_1'},
+                    {k:'texbuilding',id:'dc:in76',x:0,z:-217,w:14,d:7,rot:90,storeys:2,seed:292,style:'stucco'},
                     {k:'texbuilding',id:'dc:in77',x:0,z:-129.5,w:7,d:7,rot:270,storeys:3,seed:293,key:'building_6'},
-                    {k:'texbuilding',id:'dc:in78',x:0,z:17.5,w:7,d:14,rot:270,storeys:1,seed:294,style:'office'},
-                    {k:'texbuilding',id:'dc:in79',x:0,z:36.75,w:7,d:10.5,rot:270,storeys:3,seed:295,style:'office'},
-                    {k:'texbuilding',id:'dc:in80',x:42,z:-22.75,w:7,d:10.5,rot:90,storeys:3,seed:296,style:'office'},
-                    {k:'texbuilding',id:'dc:in81',x:42,z:-12.25,w:7,d:10.5,rot:270,storeys:2,seed:297,key:'building_5'},
+                    {k:'texbuilding',id:'dc:in78',x:0,z:17.5,w:14,d:7,rot:270,storeys:1,seed:294,style:'office'},
+                    {k:'texbuilding',id:'dc:in79',x:0,z:36.75,w:10.5,d:7,rot:270,storeys:3,seed:295,style:'office'},
+                    {k:'texbuilding',id:'dc:in80',x:42,z:-22.75,w:10.5,d:7,rot:90,storeys:3,seed:296,style:'office'},
+                    {k:'texbuilding',id:'dc:in81',x:42,z:-12.25,w:10.5,d:7,rot:270,storeys:2,seed:297,key:'building_5'},
                     {k:'texbuilding',id:'dc:in82',x:42,z:-3.5,w:7,d:7,rot:90,storeys:2,seed:298,key:'building_5'},
-                    {k:'texbuilding',id:'dc:in83',x:42,z:134.75,w:7,d:17.5,rot:270,storeys:1,seed:299,style:'stucco'},
+                    {k:'texbuilding',id:'dc:in83',x:42,z:134.75,w:17.5,d:7,rot:270,storeys:1,seed:299,style:'stucco'},
                     {k:'texbuilding',id:'dc:in84',x:-227.5,z:84,w:7,d:7,rot:0,storeys:3,seed:300,key:'building_4'},
                     {k:'texbuilding',id:'dc:in85',x:-159.25,z:85.75,w:17.5,d:3.5,rot:0,storeys:2,seed:301,style:'factory'},
                     {k:'texbuilding',id:'dc:in86',x:-143.5,z:85.75,w:14,d:3.5,rot:0,storeys:1,seed:302,style:'factory'},
@@ -40046,18 +40064,18 @@ const DOOR_HQ = {
                     {k:'texbuilding',id:'dc:in89',x:-45.5,z:84,w:7,d:7,rot:180,storeys:2,seed:305,style:'office'},
                     {k:'texbuilding',id:'dc:in90',x:3.5,z:84,w:7,d:7,rot:0,storeys:1,seed:306,key:'building_1'},
                     {k:'texbuilding',id:'dc:in91',x:29.75,z:84,w:10.5,d:7,rot:180,storeys:2,seed:307,key:'building_5'},
-                    {k:'texbuilding',id:'dc:in92',x:85.75,z:-222.25,w:3.5,d:17.5,rot:270,storeys:1,seed:308,style:'tower'},
-                    {k:'texbuilding',id:'dc:in93',x:82.25,z:-70,w:3.5,d:7,rot:90,storeys:1,seed:309,style:'tower'},
-                    {k:'texbuilding',id:'dc:in94',x:85.75,z:-47.25,w:3.5,d:10.5,rot:270,storeys:1,seed:310,key:'building_7'},
-                    {k:'texbuilding',id:'dc:in95',x:82.25,z:108.5,w:3.5,d:14,rot:90,storeys:1,seed:311,style:'factory'},
-                    {k:'texbuilding',id:'dc:in96',x:84,z:120.75,w:7,d:10.5,rot:270,storeys:2,seed:312,style:'office'},
-                    {k:'texbuilding',id:'dc:in97',x:84,z:173.25,w:7,d:10.5,rot:270,storeys:1,seed:313,key:'building_6'},
+                    {k:'texbuilding',id:'dc:in92',x:85.75,z:-222.25,w:17.5,d:3.5,rot:270,storeys:1,seed:308,style:'tower'},
+                    {k:'texbuilding',id:'dc:in93',x:82.25,z:-70,w:7,d:3.5,rot:90,storeys:1,seed:309,style:'tower'},
+                    {k:'texbuilding',id:'dc:in94',x:85.75,z:-47.25,w:10.5,d:3.5,rot:270,storeys:1,seed:310,key:'building_7'},
+                    {k:'texbuilding',id:'dc:in95',x:82.25,z:108.5,w:14,d:3.5,rot:90,storeys:1,seed:311,style:'factory'},
+                    {k:'texbuilding',id:'dc:in96',x:84,z:120.75,w:10.5,d:7,rot:270,storeys:2,seed:312,style:'office'},
+                    {k:'texbuilding',id:'dc:in97',x:84,z:173.25,w:10.5,d:7,rot:270,storeys:1,seed:313,key:'building_6'},
                     {k:'texbuilding',id:'dc:in98',x:84,z:192.5,w:7,d:7,rot:90,storeys:1,seed:314,key:'building_6'},
-                    {k:'texbuilding',id:'dc:in99',x:84,z:203,w:7,d:14,rot:270,storeys:3,seed:315,style:'office'},
+                    {k:'texbuilding',id:'dc:in99',x:84,z:203,w:14,d:7,rot:270,storeys:3,seed:315,style:'office'},
                     {k:'texbuilding',id:'dc:in100',x:185.5,z:126,w:14,d:7,rot:180,storeys:2,seed:316,style:'office'},
                     {k:'texbuilding',id:'dc:in101',x:204.75,z:126,w:10.5,d:7,rot:0,storeys:2,seed:317,style:'stucco'},
-                    {k:'texbuilding',id:'dc:in102',x:127.75,z:-36.75,w:3.5,d:10.5,rot:270,storeys:1,seed:318,key:'building_3'},
-                    {k:'texbuilding',id:'dc:in103',x:127.75,z:-28,w:3.5,d:7,rot:270,storeys:1,seed:319,key:'building_3'},
+                    {k:'texbuilding',id:'dc:in102',x:127.75,z:-36.75,w:10.5,d:3.5,rot:270,storeys:1,seed:318,key:'building_3'},
+                    {k:'texbuilding',id:'dc:in103',x:127.75,z:-28,w:7,d:3.5,rot:270,storeys:1,seed:319,key:'building_3'},
                     {k:'texbuilding',id:'dc:in104',x:141.75,z:168,w:10.5,d:7,rot:180,storeys:2,seed:320,key:'building_5'},
                     {k:'texbuilding',id:'dc:in105',x:150.5,z:168,w:7,d:7,rot:0,storeys:2,seed:321,key:'building_7'},
                     {k:'texbuilding',id:'dc:in106',x:204.75,z:210,w:10.5,d:7,rot:0,storeys:2,seed:322,style:'stucco'},
@@ -40078,22 +40096,22 @@ const DOOR_HQ = {
                     {k:'texbuilding',id:'dc:in121',x:161,z:250.25,w:7,d:3.5,rot:180,storeys:2,seed:337,style:'office'},
                     {k:'texbuilding',id:'dc:in122',x:225.75,z:250.25,w:17.5,d:3.5,rot:180,storeys:2,seed:338,style:'stucco'},
                     {k:'texbuilding',id:'dc:in123',x:243.25,z:250.25,w:17.5,d:3.5,rot:180,storeys:2,seed:339,style:'office'},
-                    {k:'texbuilding',id:'dc:in124',x:250.25,z:-203,w:3.5,d:14,rot:90,storeys:2,seed:340,style:'office'},
-                    {k:'texbuilding',id:'dc:in125',x:250.25,z:-178.5,w:3.5,d:7,rot:90,storeys:1,seed:341,key:'building_1'},
-                    {k:'texbuilding',id:'dc:in126',x:250.25,z:-171.5,w:3.5,d:7,rot:90,storeys:1,seed:342,style:'tower'},
-                    {k:'texbuilding',id:'dc:in127',x:250.25,z:-106.75,w:3.5,d:17.5,rot:90,storeys:1,seed:343,style:'tower'},
-                    {k:'texbuilding',id:'dc:in128',x:250.25,z:-35,w:3.5,d:14,rot:90,storeys:2,seed:344,style:'stucco'},
-                    {k:'texbuilding',id:'dc:in129',x:250.25,z:-8.75,w:3.5,d:17.5,rot:90,storeys:1,seed:345,style:'office'},
-                    {k:'texbuilding',id:'dc:in130',x:250.25,z:38.5,w:3.5,d:7,rot:90,storeys:2,seed:346,key:'building_10'},
-                    {k:'texbuilding',id:'dc:in131',x:250.25,z:66.5,w:3.5,d:14,rot:90,storeys:1,seed:347,style:'stucco'},
-                    {k:'texbuilding',id:'dc:in132',x:250.25,z:78.75,w:3.5,d:10.5,rot:90,storeys:1,seed:348,style:'stucco'},
-                    {k:'texbuilding',id:'dc:in133',x:250.25,z:91,w:3.5,d:14,rot:90,storeys:1,seed:349,style:'office'},
-                    {k:'texbuilding',id:'dc:in134',x:250.25,z:101.5,w:3.5,d:7,rot:90,storeys:1,seed:350,style:'stucco'},
-                    {k:'texbuilding',id:'dc:in135',x:250.25,z:110.25,w:3.5,d:10.5,rot:90,storeys:1,seed:351,key:'building_5'},
-                    {k:'texbuilding',id:'dc:in136',x:250.25,z:120.75,w:3.5,d:10.5,rot:90,storeys:2,seed:352,style:'stucco'},
-                    {k:'texbuilding',id:'dc:in137',x:250.25,z:204.75,w:3.5,d:10.5,rot:90,storeys:2,seed:353,style:'office'},
-                    {k:'texbuilding',id:'dc:in138',x:250.25,z:234.5,w:3.5,d:14,rot:90,storeys:1,seed:354,style:'stucco'},
-                    {k:'texbuilding',id:'dc:in139',x:250.25,z:245,w:3.5,d:7,rot:90,storeys:1,seed:355,key:'building_7'},
+                    {k:'texbuilding',id:'dc:in124',x:250.25,z:-203,w:14,d:3.5,rot:90,storeys:2,seed:340,style:'office'},
+                    {k:'texbuilding',id:'dc:in125',x:250.25,z:-178.5,w:7,d:3.5,rot:90,storeys:1,seed:341,key:'building_1'},
+                    {k:'texbuilding',id:'dc:in126',x:250.25,z:-171.5,w:7,d:3.5,rot:90,storeys:1,seed:342,style:'tower'},
+                    {k:'texbuilding',id:'dc:in127',x:250.25,z:-106.75,w:17.5,d:3.5,rot:90,storeys:1,seed:343,style:'tower'},
+                    {k:'texbuilding',id:'dc:in128',x:250.25,z:-35,w:14,d:3.5,rot:90,storeys:2,seed:344,style:'stucco'},
+                    {k:'texbuilding',id:'dc:in129',x:250.25,z:-8.75,w:17.5,d:3.5,rot:90,storeys:1,seed:345,style:'office'},
+                    {k:'texbuilding',id:'dc:in130',x:250.25,z:38.5,w:7,d:3.5,rot:90,storeys:2,seed:346,key:'building_10'},
+                    {k:'texbuilding',id:'dc:in131',x:250.25,z:66.5,w:14,d:3.5,rot:90,storeys:1,seed:347,style:'stucco'},
+                    {k:'texbuilding',id:'dc:in132',x:250.25,z:78.75,w:10.5,d:3.5,rot:90,storeys:1,seed:348,style:'stucco'},
+                    {k:'texbuilding',id:'dc:in133',x:250.25,z:91,w:14,d:3.5,rot:90,storeys:1,seed:349,style:'office'},
+                    {k:'texbuilding',id:'dc:in134',x:250.25,z:101.5,w:7,d:3.5,rot:90,storeys:1,seed:350,style:'stucco'},
+                    {k:'texbuilding',id:'dc:in135',x:250.25,z:110.25,w:10.5,d:3.5,rot:90,storeys:1,seed:351,key:'building_5'},
+                    {k:'texbuilding',id:'dc:in136',x:250.25,z:120.75,w:10.5,d:3.5,rot:90,storeys:2,seed:352,style:'stucco'},
+                    {k:'texbuilding',id:'dc:in137',x:250.25,z:204.75,w:10.5,d:3.5,rot:90,storeys:2,seed:353,style:'office'},
+                    {k:'texbuilding',id:'dc:in138',x:250.25,z:234.5,w:14,d:3.5,rot:90,storeys:1,seed:354,style:'stucco'},
+                    {k:'texbuilding',id:'dc:in139',x:250.25,z:245,w:7,d:3.5,rot:90,storeys:1,seed:355,key:'building_7'},
                     {k:'bridge',id:'dc:RF0',x0:-169.5,z0:-239.75,x1:-159.5,z1:-239.75,w:3.5,y:7},
                     {k:'bridge',id:'dc:RF55',x0:-155.75,z0:-218.5,x1:-155.75,z1:-208.5,w:3.5,y:7},
                     {k:'bridge',id:'dc:RF56',x0:-176.5,z0:-197.75,x1:-166.5,z1:-197.75,w:3.5,y:7},
@@ -40864,6 +40882,8 @@ const DOOR_HQ = {
                     {k:'tree',x:-239.75,z:-106.75,kind:'tree',h:3.6},
                     {k:'tree',x:-243.25,z:-92.75,kind:'tree_3',h:3.8},
                     {k:'tree',x:-218.75,z:-92.75,kind:'tree_2',h:3.6},
+                    {k:'texbuilding',id:'dc:P08-05-B1-s2',storeys:3,seed:9000,x:120.75,z:-18.708,w:16.416,d:10.5,rot:90,key:'pack_bld_09'},
+                    {k:'texbuilding',id:'dc:P11-10-B1-s2',storeys:6,seed:9001,x:246.75,z:191.292,w:16.416,d:10.5,rot:90,key:'pack_bld_09'},
                 ],
                 /* the cars: the ring (west avenue, the north street, the east avenue, the cross street), never the response streets round the mall */
                 traffic: [{pts:[[-105,-189],[105,-189],[105,63],[-105,63]],loop:true,n:2,speed:4,lane:3.5,kinds:['suv','taxi','cadillac','schoolbus','truck']},{pts:[[-105,63],[105,63],[105,-189],[-105,-189]],loop:true,n:2,speed:4,lane:3.5,kinds:['taxi','suv','copcar','cadillac']},{pts:[[-231,63],[-105,63]],loop:false,n:1,speed:3.4,lane:3.5,kinds:['truck','suv']}],
@@ -55295,9 +55315,9 @@ function hqTexBuildingGround(f, hAt) {
 function hqRoomExpand(room, prefabs) {
     const T = (room && room.terrain) || {}, F = Array.isArray(T.features) ? T.features : [];
     const PF = prefabs || HQ_PREFABS;
-    const busy = F.some(f => f && (f.k === 'opening' || f.k === 'prefab' || f.k === 'kit' || f.k === 'texbuilding'));
-    if (!busy) return { features: F, props: [], marks: [], texb: [] };
-    const props = [], marks = [], texb = [];
+    const busy = F.some(f => f && (f.k === 'opening' || f.k === 'prefab' || f.k === 'kit' || f.k === 'texbuilding' || f.k === 'arch'));
+    if (!busy) return { features: F, props: [], marks: [], texb: [], arch: [] };
+    const props = [], marks = [], texb = [], arch = [];
     const walk = (rows, depth, P, from, path) => {
         const out = [];
         (rows || []).forEach(f0 => {
@@ -55331,7 +55351,11 @@ function hqRoomExpand(room, prefabs) {
     /* the texbuildings: drawn by the renderer from info.texb, walked as their rows */
     const tb = [];
     rows.forEach(f => { if (f.k === 'texbuilding') { texb.push(f); hqTexBuildingRows(f).forEach(r => tb.push(r)); } });
-    rows = rows.filter(f => f.k !== 'texbuilding').concat(tb);
+    /* THE ARCHITECTURE (2026-11-13): an `arch` row is DRAWN ONLY (three-renderer.js _hqBuildArchRows: a list of parts — box, cylinder,
+       dome, roof, panel, polygon — each in its own sheet and tint). The walker never reads it: a building's walls, roof and inside are
+       the `texbuilding` row beside it (`skin: false` = that row draws no outside of its own), a `wall`, a `plateau`. */
+    rows.forEach(f => { if (f.k === 'arch') arch.push(f); });
+    rows = rows.filter(f => f.k !== 'texbuilding' && f.k !== 'arch').concat(tb);
     /* the openings last: every wall they name is cut into its pieces where it stands in the list */
     const ops = {};
     rows.forEach(f => { if (f.k === 'opening' && f.wall) (ops[f.wall] || (ops[f.wall] = [])).push(f); });
@@ -55341,7 +55365,7 @@ function hqRoomExpand(room, prefabs) {
         if (f.k === 'wall' && f.id != null && ops[f.id]) { hqOpeningPieces(f, ops[f.id]).forEach(p => cut.push(p)); return; }
         cut.push(f);
     });
-    return { features: cut, props, marks, texb };
+    return { features: cut, props, marks, texb, arch };
 }
 /* one row's expansion alone (the editor's pick proxies for a prefab / kit placement): its rows in room metres */
 function hqRowExpand(row, prefabs) { return hqRoomExpand({ terrain: { features: [row] } }, prefabs).features; }
@@ -59258,14 +59282,24 @@ function hqTerrainWorkerServe(scope) {
         const m = ev && ev.data;
         if (!m || !m.roomId) return;
         const t0 = Date.now();
-        let out = null, err = null;
+        let out = null, err = null, finds = null;
         try {
             if (m.prefabs && typeof m.prefabs === 'object') Object.keys(m.prefabs).forEach(k => { HQ_PREFABS[k] = m.prefabs[k]; });   // THE SHAPES (E1): the prefabs the room places
             const room = m.room || DOOR_HQ.rooms[m.roomId];
             if (!room || !room.terrain) throw new Error('no terrain room ' + m.roomId);
-            out = hqTerrainPlain(hqTerrainCompile(room, m.roomId));
+            const compiled = hqTerrainCompile(room, m.roomId);
+            /* THE FINDS OFF THE PAGE (2026-11-13, the story-mode freeze): the room's finds need the walker's reach over the
+               whole field (seconds on a big room, the 504 m Disaster City above all), so they are placed HERE, on the record
+               just compiled, and cross with it; the page adopts them (hqFindsAdopt) and its finds warm never walks the field. */
+            try {
+                DOOR_HQ.rooms[m.roomId] = room;
+                Object.defineProperty(room, '_terrainInfo', { value: compiled, enumerable: false, configurable: true, writable: true });
+                finds = hqBuildFinds(m.roomId);
+            } catch (e) { finds = null; }
+            out = hqTerrainPlain(compiled);
         } catch (e) { err = String((e && e.message) || e); }
         const msg = { id: m.id, roomId: m.roomId, info: out, err, ms: Date.now() - t0 };
+        if (finds && !err) msg.finds = finds;
         try { scope.postMessage(msg, out ? _hqTerrainBuffers(out) : []); }
         catch (e) { try { scope.postMessage(msg); } catch (e2) { scope.postMessage({ id: m.id, roomId: m.roomId, info: null, err: String((e2 && e2.message) || e2), ms: Date.now() - t0 }); } }
     };
@@ -59881,7 +59915,7 @@ function hqTerrainCompile(room, roomId) {
         for (const u of [-1, 0, 1]) for (const v of [-1, 0, 1]) { if (!u && !v) continue; const lx = u * (f.w / 2 + 0.8), lz = v * (f.d / 2 + 0.8), hh = hFinal(f.x + lx * c - lz * s, f.z + lx * s + lz * c); if (isFinite(hh) && hh < g) g = hh; }
         if (!isFinite(g) || g > f.h - 1) g = Math.min(f.h - 1, isFinite(g) ? g : 0);
         const B = (typeof f.bld === 'object') ? f.bld : {};
-        bldTexb.push({ k: 'texbuilding', id: f.id || ('bld:' + i), x: f.x, z: f.z, w: f.w, d: f.d, rot: f.rot || 0, base: _hqR4(g), h: _hqR4(f.h - g), storeys: Math.max(1, Math.min(12, Math.round((f.h - g) / HQ_SHAPE_RULES.texStorey))), flat: true, style: B.style || null, ruin: (B.ruin != null) ? B.ruin : 0, seed: (B.seed != null) ? B.seed : undefined });
+        bldTexb.push({ k: 'texbuilding', id: f.id || ('bld:' + i), x: f.x, z: f.z, w: f.w, d: f.d, rot: f.rot || 0, base: _hqR4(g), h: _hqR4(f.h - g), storeys: Math.max(1, Math.min(12, Math.round((f.h - g) / HQ_SHAPE_RULES.texStorey))), flat: true, style: B.style || null, ruin: (B.ruin != null) ? B.ruin : 0, seed: (B.seed != null) ? B.seed : undefined, skin: (B.skin === false) ? false : undefined });   // THE ARCHITECTURE: `bld.skin: false` = the tier draws no faces of its own (an `arch` row is its look)
     });
     /* ── sample the grid ── */
     const H = new Float32Array(nx * nz);
@@ -60360,6 +60394,7 @@ function hqTerrainCompile(room, roomId) {
        joins the room's marks, and every textured building is handed to the renderer with the ground it stands on */
     X.props.forEach(p => { if (p && p.key) info.scatter.push(Object.assign({}, p)); });
     info.marksX = boards.length ? (X.marks || []).concat(hqTerrainBoardMarks(boards)) : X.marks;   // THE BOARD: its squares join the paint
+    info.arch = (X.arch || []).map(f => Object.assign({}, f, { base: (typeof f.y === 'number') ? f.y : (h => isFinite(h) ? _hqR4(h) : 0)(hAt(+f.x || 0, +f.z || 0)) }));   // THE ARCHITECTURE: each row with the ground under its origin
     info.texb = X.texb.map(f => Object.assign({}, f, { base: (typeof f.y === 'number') ? f.y : texbGround.has(f) ? texbGround.get(f) : hqTexBuildingGround(f, hAt) })).concat(bldTexb);
     return info;
 }
@@ -61308,19 +61343,64 @@ function hqShellDoorClearsFillet(S, wall, at, half, margin) {
     const len = (wall === 'n' || wall === 's') ? S.w : S.d;
     return Math.abs(at || 0) + (half || 0) + (margin || 0) <= len / 2 - r;
 }
+/* THE FIND GRID (2026-11-13, the story-mode freeze): hqFindSpot walks a room's floor in half-metre steps, and every step
+   used to read EVERY prop, wall, tree and scatter rock of the room. On the 504 m Disaster City (a million steps, thousands
+   of blockers) that was minutes of frozen page the moment the background finds warm reached it. A room with more than a
+   few dozen blockers files them once in 4 m cells (each in every cell its own reach + the widest margin touches) and a
+   step reads only its cell. The tests themselves are the same ones, so every find lands where it did. Kept on the room's
+   find info; rebuilt when the props array or the compiled field is another one. */
+const _HQ_FIND_NONE = [], _HQ_FIND_GRID_PAD = 1.0, _HQ_FIND_GRID_MIN = 48;
+function hqFindGrid(ri) {
+    const room = ri.room, props = room.props || [], ti = ri.terrain || null;
+    const c = ri._grid;
+    if (c !== undefined && c !== null && c.props === props && c.n === props.length && c.ti === ti) return c.grid;
+    let grid = null;
+    const count = props.length + (ti ? ((ti.trees || []).length + (ti.scatter || []).length + (ti.walls || []).length) : 0);
+    if (count > _HQ_FIND_GRID_MIN) {
+        const S = ri.S, C = 4, hw = S.w / 2, hd = S.d / 2, nx = Math.max(1, Math.ceil(S.w / C)), nz = Math.max(1, Math.ceil(S.d / C)), cells = new Array(nx * nz), PAD = _HQ_FIND_GRID_PAD + 0.05;
+        const ci = (v, h, n) => { const i = Math.floor((v + h) / C); return i < 0 ? 0 : (i >= n ? n - 1 : i); };
+        const file = (kind, o, x0, x1, z0, z1) => {
+            const a = ci(x0, hw, nx), b = ci(x1, hw, nx), e = ci(z0, hd, nz), f = ci(z1, hd, nz);
+            for (let i = a; i <= b; i++) for (let j = e; j <= f; j++) { const k = j * nx + i; (cells[k] || (cells[k] = { p: [], w: [], t: [], q: [] }))[kind].push(o); }
+        };
+        const cat = DOOR_HQ.catalogue || {};
+        for (const p of props) {
+            if (!p) continue;
+            const pc = cat[p.key] || {};
+            if (p.ceil || pc.ceil || (p.y || 0) > 0.5) continue;   // hqFindPropBlocks: never in the way
+            const px = p.wall === 'w' ? -hw : p.wall === 'e' ? hw : (p.x || 0), pz = p.wall === 'n' ? -hd : p.wall === 's' ? hd : (p.z || 0);
+            const rect = (p.rect === false) ? null : (p.rect || pc.rect);
+            let rx, rz;
+            if (rect && !p.wall) { rx = rect.hw; rz = rect.hd; }
+            else { const foot = (p.foot != null) ? p.foot : (pc.foot || 0); if (!(foot > 0) && !pc.block) continue; rx = rz = Math.max(foot, 0.3); }
+            file('p', p, px - rx - PAD, px + rx + PAD, pz - rz - PAD, pz + rz + PAD);
+        }
+        if (ti) {
+            for (const t of ti.trees || []) file('t', t, t.x - t.r - PAD, t.x + t.r + PAD, t.z - t.r - PAD, t.z + t.r + PAD);
+            for (const q of ti.scatter || []) file('q', q, q.x - q.r - PAD, q.x + q.r + PAD, q.z - q.r - PAD, q.z + q.r + PAD);
+            for (const w of ti.walls || []) { const m = w.t / 2 + 0.65; file('w', w, Math.min(w.x0, w.x1) - m, Math.max(w.x0, w.x1) + m, Math.min(w.z0, w.z1) - m, Math.max(w.z0, w.z1) + m); }
+        }
+        grid = { cells, at: (x, z) => ci(z, hd, nz) * nx + ci(x, hw, nx) };
+    }
+    Object.defineProperty(ri, '_grid', { value: { grid, props, n: props.length, ti }, enumerable: false, configurable: true, writable: true });
+    return grid;
+}
 function hqFindFree(ri, x, z, opts) {
     opts = opts || {};
     const R = opts.rules || HQ_FIND_RULES, S = ri.S, room = ri.room;
     if (Math.abs(x) > S.w / 2 - R.minWall || Math.abs(z) > S.d / 2 - R.minWall) return false;
     if (S.round > 0 && hqShellInFillet(S, x, z, R.minWall)) return false;   // THE RETRO-FUTURIST KIT: a filleted corner is wall
+    const G = (R.awayProp <= _HQ_FIND_GRID_PAD) ? hqFindGrid(ri) : null;
     if (ri.terrain) {
         const ti = ri.terrain;
         /* the cheap refusals first (2026-09-18): the reach set, the trees, the scatter, the walls — the sampled feet / fluid /
            slope reads are the dear ones, and every test is ANDed, so the order changes nothing but the time */
         if (ri.reach && !opts.hard && !ri.reach.has(hqTerrainNodeKey(ti, x, z))) return false;
-        for (const t of ti.trees) if (Math.hypot(x - t.x, z - t.z) < t.r + R.awayProp) return false;
-        for (const q of ti.scatter) if (Math.hypot(x - q.x, z - q.z) < q.r + R.awayProp) return false;
-        for (const w of ti.walls) if (_hqTSegDist(x, z, w.x0, w.z0, w.x1, w.z1).d < w.t / 2 + 0.6) return false;
+        /* THE FIND GRID (2026-11-13): a crowded room reads only the blockers filed near this point (same tests, same answer) */
+        const gc = G ? G.cells[G.at(x, z)] : null;
+        for (const t of (G ? (gc ? gc.t : _HQ_FIND_NONE) : ti.trees)) if (Math.hypot(x - t.x, z - t.z) < t.r + R.awayProp) return false;
+        for (const q of (G ? (gc ? gc.q : _HQ_FIND_NONE) : ti.scatter)) if (Math.hypot(x - q.x, z - q.z) < q.r + R.awayProp) return false;
+        for (const w of (G ? (gc ? gc.w : _HQ_FIND_NONE) : ti.walls)) if (_hqTSegDist(x, z, w.x0, w.z0, w.x1, w.z1).d < w.t / 2 + 0.6) return false;
         if (hqTerrainFeet(ti, x, z, null) === null || hqTerrainFluidAt(ti, x, z) || hqTerrainSlope(ti, x, z) > 0.45) return false;
     }
     if (ri.cave) {
@@ -61329,7 +61409,8 @@ function hqFindFree(ri, x, z, opts) {
         if (ri.reach && !ri.reach.has(c.x + ',' + c.y)) return false;
     }
     if (ri.board && !opts.onBoard) { const lim = ri.board.half + ri.board.gap + 0.9; if (Math.abs(x) < lim && Math.abs(z) < lim) return false; }
-    for (const p of room.props || []) if (hqFindPropBlocks(room, p, x, z, R.awayProp)) return false;
+    if (G) { const gp = G.cells[G.at(x, z)]; if (gp) for (const p of gp.p) if (hqFindPropBlocks(room, p, x, z, R.awayProp)) return false; }
+    else for (const p of room.props || []) if (hqFindPropBlocks(room, p, x, z, R.awayProp)) return false;
     for (const q of (room.npcSpots || []).concat(room.agents || [], room.onlineSpots || [])) if (q && q.x != null && Math.hypot(x - q.x, z - q.z) < R.awayNpc) return false;
     for (const c of room.counters || []) if (Math.hypot(x - c.x, z - c.z) < (c.radius || 2) + R.awayCounter) return false;
     for (const L of ri.landings) if (Math.hypot(x - L.x, z - L.z) < R.awayDoor) return false;
@@ -61345,20 +61426,44 @@ function hqFindFree(ri, x, z, opts) {
 /* a small room (the cold room is 4 × 4) has no point that keeps every
    distance — the rules RELAX in three steps before the room goes without */
 const HQ_FIND_RELAX = [null, { minWall: 0.8, awayDoor: 1.7, awaySpawn: 1.3, awayProp: 0.7, awayNpc: 0.9, apart: 1.8 }, { minWall: 0.7, awayDoor: 1.3, awaySpawn: 1.0, awayProp: 0.55, awayNpc: 0.8, apart: 1.4, awayCounter: 0.2 }];
+/* THE FAR POINTS FIRST (2026-11-13, the story-mode freeze): the spot is the free point with the highest score = its
+   distance from the way in + a hash under 1. So the room's half-metre points are read FARTHEST FIRST (filed once per room
+   in quarter-metre rings, kept on the find info) and the walk stops a metre and a quarter inside the first free one:
+   nothing nearer can win. Same points, same tests, same winner (an exact tie goes to the earlier point of the old
+   west-to-east walk); a big field is no longer tested point by point to the door. */
+function hqFindOrder(ri, from) {
+    const c = ri._order; if (c && c.fx === from.x && c.fz === from.z) return c;
+    const S = ri.S, step = 0.5, xs = [], zs = [];
+    for (let x = -S.w / 2 + 0.5; x <= S.w / 2 - 0.5 + 1e-6; x += step) xs.push(Math.round(x * 100) / 100);
+    for (let z = -S.d / 2 + 0.5; z <= S.d / 2 - 0.5 + 1e-6; z += step) zs.push(Math.round(z * 100) / 100);
+    const nx = xs.length, nz = zs.length, n = nx * nz, ring = new Int32Array(n);
+    let top = 0;
+    for (let i = 0, k = 0; i < nx; i++) for (let j = 0; j < nz; j++, k++) { const r = Math.floor(Math.hypot(xs[i] - from.x, zs[j] - from.z) * 4); ring[k] = r; if (r > top) top = r; }
+    const start = new Int32Array(top + 2);
+    for (let k = 0; k < n; k++) start[top - ring[k] + 1]++;
+    for (let r = 0; r <= top; r++) start[r + 1] += start[r];
+    const ord = new Uint32Array(n);
+    for (let k = 0; k < n; k++) ord[start[top - ring[k]]++] = k;
+    const o = { fx: from.x, fz: from.z, xs, zs, nz, n, ord };
+    Object.defineProperty(ri, '_order', { value: o, enumerable: false, configurable: true, writable: true });
+    return o;
+}
 function hqFindSpot(roomId, salt, avoid) {
     const ri = hqFindRoomInfo(roomId); if (!ri) return null;
-    const S = ri.S, from = ri.landings[0] || ri.room.spawn || { x: 0, z: 0 };
-    const step = 0.5;
+    const from = ri.landings[0] || ri.room.spawn || { x: 0, z: 0 };
+    const O = hqFindOrder(ri, from), xs = O.xs, zs = O.zs, nz = O.nz, ord = O.ord, n = O.n;
     for (let pass = 0; pass < HQ_FIND_RELAX.length; pass++) {
         const rules = HQ_FIND_RELAX[pass] ? Object.assign({}, HQ_FIND_RULES, HQ_FIND_RELAX[pass]) : HQ_FIND_RULES;
-        let best = null, bestS = -1;
-        for (let x = -S.w / 2 + 0.5; x <= S.w / 2 - 0.5 + 1e-6; x += step) {
-            for (let z = -S.d / 2 + 0.5; z <= S.d / 2 - 0.5 + 1e-6; z += step) {
-                const px = Math.round(x * 100) / 100, pz = Math.round(z * 100) / 100;
-                if (!hqFindFree(ri, px, pz, { avoid, rules })) continue;
-                const sc = Math.hypot(px - from.x, pz - from.z) + (hqHash(roomId + '|' + salt + '|' + px + ',' + pz) % 1000) / 1000;
-                if (sc > bestS) { bestS = sc; best = { x: px, z: pz, relax: pass }; if (ri.terrain) best.y = Math.round(hqTerrainHeight(ri.terrain, px, pz) * 100) / 100; }
-            }
+        let best = null, bestS = -1, bestI = -1;
+        const fopts = { avoid, rules };
+        for (let k = 0; k < n; k++) {
+            const idx = ord[k], px = xs[(idx / nz) | 0], pz = zs[idx % nz];
+            const far = Math.hypot(px - from.x, pz - from.z);
+            if (far + 1.25 <= bestS) break;       // every point after this one is under a quarter metre farther at most, and the hash adds under 1
+            if (far + 0.999 <= bestS) continue;   // this one cannot beat the best either
+            if (!hqFindFree(ri, px, pz, fopts)) continue;
+            const sc = far + (hqHash(roomId + '|' + salt + '|' + px + ',' + pz) % 1000) / 1000;
+            if (sc > bestS || (sc === bestS && idx < bestI)) { bestS = sc; bestI = idx; best = { x: px, z: pz, relax: pass }; if (ri.terrain) best.y = Math.round(hqTerrainHeight(ri.terrain, px, pz) * 100) / 100; }
         }
         if (best) return best;
     }
@@ -61411,7 +61516,18 @@ function hqFindsWarm(budgetMs) {
     }
     return 0;
 }
+/* THE FINDS OFF THE PAGE (2026-11-13): the survey worker's finds for a room it just compiled. Taken only when the page has
+   none of its own yet and no hqFindsDrop() ran since the job was posted (`gen` = hqFindsGen() at the post). */
+let _hqFindsGenN = 0;
+function hqFindsGen() { return _hqFindsGenN; }
+function hqFindsAdopt(roomId, rows, gen) {
+    if (!roomId || !Array.isArray(rows) || !DOOR_HQ.rooms[roomId] || _HQ_FINDS_CACHE[roomId]) return false;
+    if (gen != null && gen !== _hqFindsGenN) return false;
+    _HQ_FINDS_CACHE[roomId] = rows;
+    return true;
+}
 function hqFindsDrop() {
+    _hqFindsGenN++;
     Object.keys(_HQ_FINDS_CACHE).forEach(k => { delete _HQ_FINDS_CACHE[k]; });
     Object.keys(DOOR_HQ.rooms || {}).forEach(k => { const r = DOOR_HQ.rooms[k]; if (r && r._findInfo) delete r._findInfo; });
     Object.defineProperty(DOOR_HQ, 'finds', { configurable: true, enumerable: true, get: _hqFindsAll, set: _hqFindsPin });
@@ -70725,7 +70841,7 @@ if (typeof window !== 'undefined') {
     window.HQ_GUN_LESSONS = HQ_GUN_LESSONS; window.hqGunLessons = hqGunLessons; window.hqFindHardReach = hqFindHardReach; window.HQ_HARD_REACH = HQ_HARD_REACH;
     window.DOOR_TAPES = DOOR_TAPES; window.HQ_FIND_RULES = HQ_FIND_RULES; window.hqFindsInRoom = hqFindsInRoom; window.hqCollectFind = hqCollectFind; window.hqFindsBuildAll = hqFindsBuildAll;
     window.hqFindsSyncPay = hqFindsSyncPay; window.hqFindsTakenUnion = hqFindsTakenUnion; window.hqFindsSyncedTaken = hqFindsSyncedTaken;
-    window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqFindsForRoom = hqFindsForRoom; window.hqFindsWarm = hqFindsWarm; window.hqFindsDrop = hqFindsDrop; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
+    window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqFindsForRoom = hqFindsForRoom; window.hqFindsWarm = hqFindsWarm; window.hqFindsDrop = hqFindsDrop; window.hqFindsAdopt = hqFindsAdopt; window.hqFindsGen = hqFindsGen; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
     window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;
     /* THE TERRAIN ROOM (2026-09-17) */
     window.hqShellInFillet = hqShellInFillet; window.hqShellDoorClearsFillet = hqShellDoorClearsFillet; window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainTraps = hqTerrainTraps; window.hqTerrainCompile = hqTerrainCompile; window.hqTerrainSolidAt = hqTerrainSolidAt; window.hqTerrainSolidTop = hqTerrainSolidTop;
