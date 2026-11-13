@@ -713,11 +713,13 @@ lines.push("                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:C
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
 const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)
 lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0, streets: " + J(streets) + ",");
-lines.push("                    lamps: " + J(lamps) + ",");
+const lampLine = lines.length; lines.push("");   // written after the district files' build (a district may take a lamp off a square it built on: ctx.lamps)
 lines.push("                       open: [] },");
 lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + NXP + ", nz: 144, d: '" + b64 + "' },");
 lines.push("                features: [");
+dcCtx.lamps = lamps;
 dcRun('build');
+lines[lampLine] = "                    lamps: " + J(lamps) + ",";
 features.push(...lateRows);
 /* ── THE LEVELS, THE GROUND: every square's four corner heights (NW NE SW SE, centimetres) → `terrain.slope.cells`.
    - a BUILDING's squares are flat at its base: the plot's level, or the kerb walk's height at its door when its door opens on a sloping

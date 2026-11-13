@@ -6,7 +6,8 @@
    row of parts over the same footprint (docs/notes/areas-complexes.md "THE ARCHITECTURE ROW"). All numbers are metres from the building's
    footprint centre, x east, z south; `hw` / `hd` are the footprint's half sides. Notes: areas-complexes.md "THE ENTERTAINMENT DISTRICT". */
 module.exports = { build: function (api) {
-    const { C, gx, r3, features, lateRows, props, bInfo } = api;
+    const { C, gx, r3, features, lateRows, props, bInfo, plotOf } = api;
+    const EXTRA = {};   // a building of this file's own that the plan does not hold (the wedding chapel): id -> its footprint, like a bInfo row
     const D2R = Math.PI / 180, U = n => 'urban:' + n;
     /* the sheets (sprites.js URBAN_TEXTURES + the terrain keys): light ones take a tint cleanly */
     const GOLD = 'gold', BR1 = 'bricks_1', BR2 = 'bricks_2', BR3 = 'bricks_3', WOOD = 'wood_planks', PL = U('PlasterWallPainted1a'), ST = U('PlasterWallStucco1a'), MB = U('TileMarble1d'), MB3 = U('TileMarble3c'),
@@ -22,11 +23,15 @@ module.exports = { build: function (api) {
     /* B(id, o, fn): one building. o.walk = a walk-in shell (hollow, the city door in the plan's doorway), o.st = its storeys (the collision's
        and the roof slab's height), o.open = no collision row at all (an open pavilion). fn(b) writes the parts. */
     function B(id, o, fn) {
-        const info = bInfo.find(q => q.id === id); if (!info) { console.error('entertainment: no building', id); return; }
-        const row = features.find(f => f.id === 'dc:' + id); if (!row) { console.error('entertainment: no row', id); return; }
+        const info = EXTRA[id] || bInfo.find(q => q.id === id); if (!info) { console.error('entertainment: no building', id); return; }
+        let row = features.find(f => f.id === 'dc:' + id); if (!row) { console.error('entertainment: no row', id); return; }
         const hw = info.cw * C / 2, hd = info.ch * C / 2, cx = r3(gx(info.cx0) + hw), cz = r3(gx(info.cy0) + hd);
         dropLate(id);
         let rot = 0, lx = 0, hollow = false;
+        if (row.k === 'plateau' && o.walk) {   /* a walk-in roof tier: a hollow texbuilding in the plateau's place, two storeys = the same 7 m walked roof slab (as the Industrial district does); its doorway = the plan's first door */
+            const pb = plotOf[info.plot].buildings.find(v => v.id === id), dr = pb.doors[0], sd = info.side, kk = sd === 'S' ? (dr.x - pb.x) : sd === 'N' ? (pb.x + pb.w - 1 - dr.x) : sd === 'E' ? (pb.y + pb.h - 1 - dr.y) : (dr.y - pb.y);
+            const nr = { k: 'texbuilding', id: row.id, seed: (row.bld && row.bld.seed) || 0, door: Math.round(kk * C / 1.75) + 1 }; features[features.indexOf(row)] = nr; row = nr; o = Object.assign({}, o, { st: 2 });
+        }
         if (row.k === 'plateau') { row.bld = Object.assign({}, row.bld || {}, { skin: false }); }
         else if (o.open) { features.splice(features.indexOf(row), 1); }
         else {
@@ -129,7 +134,7 @@ module.exports = { build: function (api) {
             vtxt: (side, u, y1, step, w, word, fg, pr, glow) => { [...word].forEach((ch, i) => b.txt(side, u - w / 2, u + w / 2, y1 - (i + 1) * step + step * 0.08, step * 0.84, ch, fg, pr, glow)); return b; },
         };
         { const dr = b.door; b.du = (b.fs === 'n' || b.fs === 's') ? dr[0] : dr[1]; }
-        fn(b); if (DETAIL[id]) DETAIL[id](b); if (ROOFS[id]) ROOFS[id](b); if (LETTERS[id]) LETTERS[id](b);
+        fn(b); if (DETAIL[id]) DETAIL[id](b); if (ROOFS[id]) ROOFS[id](b); if (LETTERS[id]) LETTERS[id](b); if (INSIDE[id] && hollow) inside(b, INSIDE[id], { loc, cx, cz, fw, fd, row, lx });
         { const ar = { k: 'arch', id: 'dc:' + id + ':arch', x: cx, z: cz, rot: 0, parts }; if (row.k === 'plateau') ar.y = 0;   /* over a roof-walk plateau the row would stand on its 7 m roof */ rows.push(ar); }
         return b;
     }
@@ -220,9 +225,9 @@ module.exports = { build: function (api) {
             b.plinth(0.6, BR3, '#8a7a68'); b.frames(F, -h + 1.5, h - 1.5, 0.8, 1.8, 5, '#5a6a3e'); b.awning(F, -h + 1, h - 1, 2.75, 1.3, '#7a8a5a', '#f0e8d0');
             b.blade(F, h - 0.5, 2.9, 0.8, 0.6, '#f0e8d0', 0.4); b.cyl(h * 0.5, 0, 0.3, 3.8, 2.6, CO, '#8a8f98', { seg: 8 }); b.cyl(h * 0.5, 0, 0.45, 6.4, 0.2, null, '#55585e', { seg: 8 }); b.pipe(OPP[F], -h + 0.4, 3.8); b.grille(OPP[F], 1, 2.4); },
         'P11-05-B1': b => {                                                                                    // FILM STUDIO
-            b.plinth(0.8, CS, '#b8ac90', 0.12); b.piers('n', spread(-b.hw + 0.6, b.hw - 0.6, 6), 0.8, 5.9, 0.7, ST, '#fff6e0'); b.frames('n', -b.hw + 1, b.hw - 1, 4.2, 2, 8, '#b03020');
-            b.sbox('n', 0, 0.8, 3.4, 2.6, 0.08, U('GlassWindowTall1a'), '#607088'); b.frames('n', -1.7, 1.7, 0.8, 2.6, 2, '#b03020', 0.08); b.bulbs('n', -4.6, 4.6, 3.45, 9, '#fff2c0', 1.85);
-            for (const u of [-7.5, 7.5].filter(u => Math.abs(u) < b.hw - 2)) b.board('n', u - 1.4, u + 1.4, 1.0, 2.2, '#fff6d0', '#b03020', 0.45);
+            b.plinth(0.8, CS, '#b8ac90', 0.12); b.piers('n', spread(-b.hw + 0.6, b.hw - 0.6, 6).filter(u => Math.abs(u - b.du) > 1.4), 0.8, 5.9, 0.7, ST, '#fff6e0'); b.frames('n', -b.hw + 1, b.hw - 1, 4.2, 2, 8, '#b03020');
+            if (Math.abs(b.du) > 2.9) { b.sbox('n', 0, 0.8, 3.4, 2.6, 0.08, U('GlassWindowTall1a'), '#607088'); b.frames('n', -1.7, 1.7, 0.8, 2.6, 2, '#b03020', 0.08); } b.bulbs('n', -4.6, 4.6, 3.45, 9, '#fff2c0', 1.85);
+            for (const u of [-7.5, 7.5].filter(u => Math.abs(u) < b.hw - 2 && Math.abs(u - b.du) > 2.6)) b.board('n', u - 1.4, u + 1.4, 1.0, 2.2, '#fff6d0', '#b03020', 0.45);
             const sd = b.hd * 2 - 10.5; for (const s of ['e', 'w']) for (const u of spread(b.hd - sd + 0.6, b.hd - 0.6, 5)) b.sbox(s, u, 0.8, 0.6, 8.7, 0.25, CO, '#c4b99c', { off: -0.5 });   /* the stage's buttress ribs */
             b.frames('e', 2, 9, 0, 6.5, 2, '#24476e'); b.sbox('e', 5.5, 6.6, 7.6, 0.25, 0.9, CO3, '#24476e'); b.sbox('e', 0.6, 4.4, 0.4, 0.5, 0.3, null, '#ff3030', { glow: 1 });   /* the stage door's hood + the red light */
             b.sbox('e', -4, 5, 4.2, 2.6, 0.1, null, '#fff6e0'); b.sbox('e', -4, 5.9, 3.4, 0.9, 0.04, null, '#b03020', { off: 0.1 });   /* the stage number panel */
@@ -394,6 +399,120 @@ module.exports = { build: function (api) {
     };
     /* a free-standing word panel (x, z in the building's metres, ry its facing) */
     function P0(b, x, y, z, ry, w, h, words) { b.parts.push({ s: 'quad', p: [r3(x), y, r3(z)], ry, size: [w, h], key: 'txt:' + words + '|' + INK + '||' + (Math.round(w / h * 100) / 100), uv: 'fit', tint: 0xffffff, kind: 'over' }); }
+    /* ═══ THE INSIDES (mondo 11-13 21:04 "let's go ahead and do the interiors", his OK on the cell plans 21:23). A walk-in shell is furnished IN
+       PLACE, in the city room, on the 3.5 m battle squares (his 21:14 + 21:17 rule): a letter of a plan is one whole square. '.' = a walkway, a
+       full square wide, nothing on it. Any other letter = a blocker that fills its square (a ghost block over it) and is drawn by KIT[letter]
+       in the square's own frame: +z looks at the nearest walkway. Plans are written back row first, the front (door) row last, left = the left
+       as you face the building from outside. Catalogue props where the model list has one (slot machines, sofas, beds, ranges, the piano, the
+       ticket booth, the popcorn cart ...), three.js parts for the rest (there is no arcade cabinet, seat row or stage model). ═══ */
+    const INSIDE = {
+        'P08-04-B1': { g: ['SSS.cc.BB', '.........', 'SS..T.T.G'], keyIn: MB, floorIn: U('TileMarble3c'), rug: '#7a2030', table: '#1a6a3a', lamp: '#ffd9a0', words: { c: 'CASHIER', B: 'BAR' } },
+        'P11-04-B1': { g: ['R.M.P.V', '......V', 'L..XXX.', 'L......'], keyIn: WOOD, floorIn: WOOD, rug: '#3a3d46', R: 'amps', lamp: '#fff0d0' },
+        'P08-05-B1': { g: ['KKKKKKKKK', 'T.T.BB.LL', '.........'], keyIn: PL, floorIn: CHK, rug: null, table: '#f0e6d0', lamp: '#ffe6b0', words: { B: 'RAMEN' } },
+        'P09-05-B1': { g: ['L.RR..mm', '.GGGGGG.', '........', 'HHH..HHH', 'HHH..HHH', 'HHH..HHH', '........', 'I.....Q.'], keyIn: BR1, floorIn: WOOD, rug: '#7a2838', rake: 3, seatFace: 'back', seat: '#b03040', lamp: '#ffe0a0' },
+        'P09-06-B1': { g: ['m.R', 'GGG', '.T.', 'B.T', '..T'], keyIn: PL, floorIn: WOOD, rug: '#6a1830', table: '#f0d8a0', lamp: '#ffb0c8' },
+        'P10-06-B1': { g: ['YY.ZZ.DD', '........', 'GGG..DD.', 'GGG.....', '.....FFF', 'WW......', 'WW...FFF', 'RR......'], keyIn: BR3, floorIn: CS, rug: null, R: 'lumber', stage: 'set', lamp: '#f0f4ff' },
+        'P11-06-B1': { g: ['UAAAA.C', '.......', 'J..AA.D'], keyIn: SUB, floorIn: U('RubberNonSlip1a'), rug: '#241a40', lamp: '#30e0ff', words: { C: 'PRIZES' } },
+        'P09-07-B1': { g: ['OOO', '..K', 'WW.', 'CC.', '..D'], keyIn: SUB, floorIn: CHK, rug: null, lamp: '#fff0d0', words: { C: 'FRESH BREAD' } },
+        'P10-07-B1': { g: ['EEE.UU.NN', '.........', 'EE..T..RR'], keyIn: PL, floorIn: WOOD, rug: '#4a4058', table: '#8a5a34', lamp: '#fff0d0' },
+        'P11-07-B1': { g: ['.....', 'HH.HH', 'HH.HH', 'HH.HH', '.I.Q.'], keyIn: PL, floorIn: U('RubberNonSlip1a'), rug: '#7a2030', rake: 1, seatFace: 'back', seat: '#a02838', screen: true, lamp: '#ffe0a0' },
+    };
+    Object.assign(INSIDE, {
+        'P10-04-B1': { g: ['m.RR..PL', '.GGGGGG.', '.GGGGGG.', '........', 'HHH..HHH', 'HHH..HHH', 'HHH..HHH', 'I......Q'], keyIn: MB3, floorIn: WOOD, rug: '#7a2030', rake: 4, seatFace: 'back', seat: '#8a1c2c', lamp: '#fff2c0' },
+        'P11-05-B1': { g: ['FFF..YYD', '........', 'GGG.k.X.', 'GGG.....', '........', 'R.L..m.N', '........', 'Z......D'], keyIn: CO, floorIn: CS, rug: null, stage: 'set', lamp: '#f0f4ff' },
+        'E-chapel': { g: ['pwp', 'p.p'], keyIn: ST, floorIn: WOOD, rug: '#b03060', lamp: '#ffd0e0' },
+    });
+    const BLOCK_H = { k: 1.9, p: 1.0, w: 2.6, S: 1.8, T: 1.0, B: 2.2, c: 2.4, G: 1.0, K: 2.2, H: 1.2, L: 1.0, U: 1.0, X: 1.2, M: 1.2, P: 1.3, V: 2.4, A: 1.9, R: 1.8, m: 2.0, O: 2.2, W: 1.0, F: 4.2, Y: 2.2, Z: 1.0, D: 2.4, J: 0.9, C: 1.1, I: 2.6, Q: 1.7, E: 1.2, N: 1.9 };
+    /* KIT[letter](k): k.part(s, lx, y, lz, key, tint, o) = a part in the square's frame; k.prop(key, lx, lz, turn) = a catalogue prop; k.i / k.n = this square's place in its run */
+    const KIT = {
+        S: k => { k.part('box', 0, 0, -0.3, PL, k.S.rug || '#7a2030', { size: [3.4, 0.1, 2.4] }); for (const x of [-1.05, 0, 1.05]) k.prop('slot_machine', x, -0.7, 0); },
+        T: k => { k.part('cyl', 0, 0, 0, null, '#2a2a2e', { r: 0.14, h: 0.72, seg: 8 }); k.part('cyl', 0, 0.72, 0, PL, k.S.table || '#8a5a34', { r: 1.05, h: 0.07, seg: 16 }); k.part('cyl', 0, 0.7, 0, WOOD, '#5b3a22', { r: 1.1, h: 0.04, seg: 16 });
+            for (let i = 0; i < 4; i++) { const a = (i + 0.5) * Math.PI / 2, x = Math.cos(a) * 1.38, z = Math.sin(a) * 1.38; k.part('cyl', x, 0, z, null, '#2a2a2e', { r: 0.05, h: 0.45, seg: 6 }); k.part('cyl', x, 0.45, z, PL, '#8a2030', { r: 0.22, h: 0.08, seg: 10 }); } },
+        B: k => { k.part('box', 0, 0, 0.75, WOOD, '#4a2c18', { size: [3.5, 1.05, 0.7] }); k.part('box', 0, 1.05, 0.8, MB3, '#e9e4da', { size: [3.5, 0.06, 0.95] }); k.part('box', 0, 0, -1.5, WOOD, '#3a2212', { size: [3.5, 2.2, 0.4] });
+            for (const y of [1.0, 1.55]) { k.part('box', 0, y, -1.24, WOOD, '#5b3a22', { size: [3.4, 0.05, 0.3] }); for (let i = 0; i < 7; i++) k.part('box', -1.5 + i * 0.5, y + 0.05, -1.22, null, ['#40c060', '#e0a020', '#c03030', '#3080d0'][(i + (y > 1.2 ? 1 : 0)) % 4], { size: [0.12, 0.32, 0.12], glow: 0.6 }); }
+            for (const x of [-1.1, 0, 1.1]) { k.part('cyl', x, 0, 1.45, null, '#2a2a2e', { r: 0.05, h: 0.7, seg: 6 }); k.part('cyl', x, 0.7, 1.45, PL, '#8a2030', { r: 0.2, h: 0.07, seg: 10 }); }
+            if (k.i === 0 && k.S.words && k.S.words.B) k.sign(k.S.words.B, 0, 2.3, -1.28, 2.4, 0.5); },
+        c: k => { k.part('box', 0, 0, 0.9, MB, '#4a3560', { size: [3.5, 1.1, 0.6] }); k.part('box', 0, 1.1, 0.9, GOLD, null, { size: [3.5, 0.06, 0.7] }); k.part('quad', 0, 1.16, 1.0, TR, '#c9a24a', { size: [3.5, 1.2], ds: true }); k.part('box', 0, 2.36, 0.9, GOLD, null, { size: [3.5, 0.2, 0.5] });
+            k.part('box', 0, 0, -1.4, CO3, '#3c4046', { size: [3.3, 1.6, 0.6] }); if (k.i === 0 && k.S.words && k.S.words.c) k.sign(k.S.words.c, 1.75, 2.62, 1.16, 3.0, 0.5); },
+        G: k => { const set = k.S.stage === 'set'; k.part('box', 0, 0, 0, WOOD, set ? '#b08a58' : '#6a4a30', { size: [3.5, 0.9, 3.5] });
+            if (k.edge.front) { k.part('box', 0, 0.9, 1.68, null, '#1a1a1e', { size: [3.5, 0.12, 0.14] }); if (!set) for (const x of [-1.1, 0, 1.1]) k.part('box', x, 0.9, 1.5, null, '#fff2c0', { size: [0.3, 0.14, 0.2], glow: 1 }); }
+            if (k.edge.back) { if (set) { k.part('quad', 0, 0.9, -1.5, PL, ['#8ab8e0', '#e0a070', '#6a9a6a'][k.i % 3], { size: [3.5, 3.4], ds: true }); k.part('box', 0, 0.9, -1.62, WOOD, '#8a6a40', { size: [3.5, 3.4, 0.08] }); }
+                else k.part('quad', 0, 0.9, -1.55, PL, '#8a1428', { size: [3.5, Math.max(2, k.H - 1.2)], ds: true, uv: [0.6, 3] }); }
+            if (!set && k.i === Math.floor(k.n / 2) && k.edge.front) { k.part('cyl', 0, 0.9, 0.6, null, '#2a2a2e', { r: 0.03, h: 1.4, seg: 6 }); k.part('cyl', 0, 0.9, 0.6, null, '#2a2a2e', { r: 0.2, h: 0.03, seg: 10 }); k.part('box', 0, 2.3, 0.6, null, '#55585e', { size: [0.08, 0.16, 0.08] }); } },
+        K: k => { k.part('box', 0, 0, 0.6, CO, '#c4c7cb', { size: [3.5, 0.9, 0.8] }); k.part('box', 0, 0.9, 0.6, null, '#d8dade', { size: [3.5, 0.04, 0.9] }); k.part('box', 0, 2.1, -1.0, CO, '#9a9ea4', { size: [3.3, 0.5, 1.2] });
+            if (k.i % 2 === 0) k.prop('kitchen_range', 0, -1.3, 0); else { k.part('box', -0.8, 0, -1.3, CO, '#b9bcc0', { size: [1.4, 1.9, 0.7] }); k.part('box', 0.9, 0, -1.3, CO, '#c4c7cb', { size: [1.5, 0.9, 0.7] }); } },
+        H: k => { const y0 = k.S.rake != null ? Math.max(0, k.r - k.S.rake) * 0.3 : 0; if (y0 > 0) k.part('box', 0, 0, 0, WOOD, '#3a2a24', { size: [3.5, y0, 3.5] });
+            for (const z of [-0.85, 0.85]) for (const x of [-1.3, -0.43, 0.43, 1.3]) { k.part('box', x, y0 + 0.2, z, PL, k.S.seat || '#b03040', { size: [0.78, 0.26, 0.6] }); k.part('box', x, y0 + 0.2, z - 0.36, PL, k.S.seat || '#b03040', { size: [0.78, 0.85, 0.14] }); k.part('box', x, y0, z, null, '#1e1e22', { size: [0.5, 0.2, 0.4] }); } },
+        L: k => { k.part('box', 0, 0, 0, PL, k.S.rug || '#4a4058', { size: [3.3, 0.03, 3.3] }); k.prop('psx_sofa_1', 0, -0.5, 0); k.part('box', 0.2, 0, 1.0, WOOD, '#5b3a22', { size: [1.2, 0.4, 0.6] }); },
+        U: k => { k.part('box', 0, 0, 0, PL, k.S.rug || '#4a4058', { size: [3.3, 0.03, 3.3] }); if (k.i === 0) k.prop('curved_couch', k.n > 1 ? 1.75 : 0, -0.3, 0); k.part('box', 0, 0, 1.1, WOOD, '#3a2a24', { size: [1.6, 0.45, 0.5] }); k.part('box', 0, 0.45, 1.1, null, '#1a1a1e', { size: [0.7, 0.5, 0.4] }); k.part('quad', 0, 0.5, 0.89, null, '#a0d8ff', { size: [0.56, 0.4], ry: 180, glow: 0.9 }); },
+        X: k => { k.part('box', 0, 0, 0, WOOD, '#3a2a24', { size: [3.5, 0.78, 1.1] }); k.part('box', 0, 0.78, 0.1, null, '#1c1f26', { size: [3.4, 0.12, 0.9] }); for (let i = 0; i < 10; i++) k.part('box', -1.5 + i * 0.33, 0.9, 0.2, null, i % 3 ? '#e0e0e0' : '#ff5040', { size: [0.06, 0.04, 0.4], glow: 0.5 });
+            k.part('box', 0, 0.9, -0.42, null, '#1a1a1e', { size: [1.3, 0.8, 0.08] }); k.part('quad', 0, 0.96, -0.37, null, '#60e0a0', { size: [1.16, 0.66], glow: 0.9 }); k.part('cyl', 0, 0, 1.15, null, '#2a2a2e', { r: 0.28, h: 0.5, seg: 10 }); },
+        M: k => { k.part('box', 0, 0, 0, PL, '#7a2030', { size: [3.0, 0.18, 3.0] }); k.part('cyl', 0, 0.18, 0.3, PL, '#c02030', { r: 0.42, h: 0.5, seg: 14 }); k.part('cyl', -0.75, 0.18, -0.2, PL, '#c02030', { r: 0.3, h: 0.62, seg: 12 }); k.part('cyl', 0.75, 0.18, -0.2, PL, '#c02030', { r: 0.26, h: 0.7, seg: 12 });
+            for (const x of [-1.0, 1.0]) { k.part('cyl', x, 0.18, 0.5, null, '#8a8a8a', { r: 0.02, h: 1.1, seg: 6 }); k.part('cyl', x, 1.28, 0.5, GOLD, null, { r: 0.3, h: 0.02, seg: 12 }); } k.part('cyl', 0, 0.18, -0.9, null, '#2a2a2e', { r: 0.2, h: 0.5, seg: 10 }); },
+        P: k => { k.prop('decor_piano', 0, -0.2, 0); k.part('box', 0, 0, 0.9, WOOD, '#2a1a12', { size: [0.9, 0.48, 0.4] }); },
+        V: k => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) k.part('box', sx * 1.55, 0, sz * 1.55, null, '#2a2a2e', { size: [0.12, 2.4, 0.12] }); k.part('box', 0, 2.4, 0, WOOD, '#5e3c20', { size: [3.3, 0.1, 3.3] });
+            for (const a of [0, 90, 180, 270]) k.part('quad', Math.sin(a * D2R) * 1.55, 0.9, Math.cos(a * D2R) * 1.55, U('GlassWindowTall1a'), '#8090a8', { size: [3.0, 1.5], ry: a, uv: 'fit', ds: true, win: 'keep' });
+            for (const a of [0, 90, 180, 270]) k.part('quad', Math.sin(a * D2R) * 1.55, 0, Math.cos(a * D2R) * 1.55, WOOD, '#5e3c20', { size: [3.1, 0.9], ry: a, ds: true });
+            k.part('cyl', 0, 0, 0, null, '#2a2a2e', { r: 0.03, h: 1.5, seg: 6 }); k.part('box', 0, 1.5, 0, null, '#8a8a8a', { size: [0.1, 0.2, 0.1] }); },
+        A: k => { for (const sz of [1, -1]) for (const x of [-1.1, 0, 1.1]) { const c2 = ['#ff30c0', '#30e0ff', '#ffe030', '#60ff80'][(k.i * 3 + Math.round(x + 1.1) + (sz > 0 ? 0 : 2)) % 4], z = sz * 0.45;
+                k.part('box', x, 0, z, PL, '#1c1a2a', { size: [0.9, 1.85, 0.8] }); k.part('box', x, 0.85, z + sz * 0.5, null, '#2a2838', { size: [0.9, 0.1, 0.3] }); k.part('quad', x, 1.0, z + sz * 0.41, null, c2, { size: [0.7, 0.5], ry: sz > 0 ? 0 : 180, glow: 1 }); k.part('quad', x, 1.56, z + sz * 0.41, null, '#ffffff', { size: [0.8, 0.24], ry: sz > 0 ? 0 : 180, glow: 0.8 }); } },
+        R: k => { if (k.S.R === 'amps') { for (const x of [-1.1, 0, 1.1]) { k.part('box', x, 0, -1.2, PL, '#1a1a1e', { size: [0.95, x ? 0.85 : 1.5, 0.5] }); k.part('quad', x, 0.1, -0.94, GRL, '#9aa0a8', { size: [0.8, 0.6], uv: 0.4 }); } k.prop('instrument_guitar', -0.6, -0.5, 0); k.prop('instrument_guitar', 0.7, -0.5, 0); return; }
+            if (k.S.R === 'lumber') { for (const x of [-1.6, 0, 1.6]) k.part('box', x, 0, -0.9, TR, '#3c4046', { size: [0.1, 2.2, 1.4] }); for (const y of [0.3, 1.0, 1.7]) for (let i = 0; i < 4; i++) k.part('box', 0, y + i * 0.09, -0.9 - 0.3 + i * 0.2, WOOD, i % 2 ? '#c8a060' : '#b08a58', { size: [3.4, 0.08, 0.5] }); return; }
+            for (const x of [-1.5, 1.5]) k.part('cyl', x, 0, 0, null, '#8a8a8a', { r: 0.04, h: 1.7, seg: 6 }); k.part('box', 0, 1.68, 0, null, '#8a8a8a', { size: [3.1, 0.05, 0.05] });
+            for (let i = 0; i < 9; i++) k.part('box', -1.3 + i * 0.32, 0.55, 0, PL, ['#d0306a', '#f0b020', '#2a9a8a', '#7a4fb0', '#f4ead6', '#3070d0'][(i + k.i * 2) % 6], { size: [0.22, 1.1, 0.5] }); },
+        m: k => { k.part('box', 0, 0, -1.25, WOOD, '#5b3a22', { size: [3.4, 0.78, 0.6] }); for (const x of [-1.1, 0, 1.1]) { k.part('quad', x, 0.95, -1.5, null, '#cfe8ff', { size: [0.85, 1.05], glow: 0.5 }); for (const sx of [-0.5, 0.5]) for (const y of [1.1, 1.5, 1.9]) k.part('box', x + sx, y, -1.5, null, '#fff2c0', { size: [0.08, 0.08, 0.08], glow: 1 });
+                k.part('cyl', x, 0, -0.55, null, '#2a2a2e', { r: 0.2, h: 0.45, seg: 10 }); } },
+        O: k => { k.part('box', -0.85, 0, -1.25, CO, '#55585e', { size: [1.6, 2.0, 0.9] }); for (const y of [0.35, 0.95, 1.55]) k.part('quad', -0.85, y, -0.79, null, '#ff9030', { size: [1.3, 0.4], glow: 0.8 }); k.prop('kitchen_range', 0.9, -1.3, 0); k.part('box', 0, 2.15, -1.1, CO, '#9a9ea4', { size: [3.4, 0.45, 1.2] });
+            k.part('box', 0, 0, 0.7, WOOD, '#b08a58', { size: [2.6, 0.85, 0.8] }); for (const x of [-0.8, 0, 0.8]) k.part('cyl', x, 0.85, 0.7, PL, '#d8a860', { r: 0.26, h: 0.14, seg: 10 }); },
+        W: k => { k.prop('steel_table', -0.9, 0, 0); k.prop('steel_table', 0.9, 0, 0); k.part('box', 0, 0.78, 0, WOOD, '#c8a060', { size: [2.8, 0.06, 0.3], ry: 12 }); k.part('box', -1.0, 0.78, 0.15, null, '#c03030', { size: [0.3, 0.2, 0.2] }); },
+        F: k => { k.part('quad', 0, 0, 0, PL, ['#8ab8e0', '#e09060', '#5a9a6a'][(k.r + k.i) % 3], { size: [3.5, 4.2], ds: true }); for (const x of [-1.4, 0, 1.4]) { k.part('box', x, 0, -0.06, WOOD, '#8a6a40', { size: [0.08, 4.2, 0.08] }); k.part('box', x, 0, -0.7, WOOD, '#8a6a40', { size: [0.08, 0.08, 1.4] }); } },
+        Y: k => { k.part('box', -0.8, 0, -0.6, WOOD, '#b08a58', { size: [1.3, 1.1, 1.3] }); k.part('box', 0.75, 0, -0.5, WOOD, '#9a7248', { size: [1.2, 1.0, 1.2], ry: 8 }); k.part('box', -0.1, 0, 0.9, WOOD, '#c8a060', { size: [1.1, 0.9, 1.0], ry: -6 }); k.part('box', -0.7, 1.1, -0.6, WOOD, '#9a7248', { size: [1.0, 0.9, 1.0], ry: 15 }); },
+        Z: k => { if (k.i === 0) { k.prop('exec_desk', k.n > 1 ? 1.75 : 0, 0.3, 0); k.prop('exec_chair', k.n > 1 ? 1.75 : 0, -0.8, 0); } else k.part('box', 0.8, 0, -1.3, CO3, '#5a5e66', { size: [1.0, 1.4, 0.6] }); },
+        D: k => { k.prop('library_shelf_full', -0.9, -1.0, 0); k.prop('library_shelf_full', 0.9, -1.0, 0); },
+        J: k => { k.part('box', 0, 0.5, 0, PL, '#f0f0f4', { size: [2.6, 0.32, 1.4] }); for (const sx of [-1, 1]) for (const sz of [-1, 1]) k.part('box', sx * 1.1, 0, sz * 0.5, null, '#2a2838', { size: [0.14, 0.5, 0.14] }); k.part('quad', 0, 0.83, 0, null, '#30e0ff', { size: [2.4, 1.2], flat: true, glow: 0.7 }); },
+        C: k => { k.part('box', 0, 0, 0.6, WOOD, '#5b3a22', { size: [3.5, 1.0, 0.7] }); k.part('quad', 0, 0.15, 0.96, GS, '#fff0c0', { size: [3.3, 0.7], glow: 0.5, uv: 'fit', win: 'keep' }); k.part('box', 0, 1.0, 0.6, MB3, '#e9e4da', { size: [3.5, 0.05, 0.8] });
+            k.part('box', 0, 0, -1.45, WOOD, '#3a2212', { size: [3.5, 2.2, 0.45] }); for (const y of [0.7, 1.25, 1.8]) for (let i = 0; i < 6; i++) k.part('box', -1.4 + i * 0.56, y, -1.15, PL, ['#ff30c0', '#ffe030', '#30e0ff', '#d8a860'][(i + Math.round(y * 2)) % 4], { size: [0.36, 0.3, 0.3] });
+            if (k.i === 0) k.part('box', -1.1, 1.05, 0.6, null, '#2a2a2e', { size: [0.4, 0.3, 0.4] }); if (k.i === 0 && k.S.words && k.S.words.C) k.sign(k.S.words.C, k.n > 1 ? 1.75 : 0, 2.3, -1.2, 3.0, 0.5); },
+        /* a film camera on its tripod beside a lamp on a stand */
+        k: k => { for (let i = 0; i < 3; i++) { const a = i * 2.094; k.part('cyl', -0.6 + Math.cos(a) * 0.3, 0, Math.sin(a) * 0.3, null, '#2a2a2e', { r: 0.03, h: 1.3, seg: 6 }); } k.part('box', -0.6, 1.3, 0, null, '#1a1a1e', { size: [0.4, 0.4, 0.8] }); k.part('cyl', -0.6, 1.72, -0.2, null, '#3c4046', { r: 0.2, h: 0.1, seg: 10 }); k.part('box', -0.6, 1.4, 0.5, null, '#55585e', { size: [0.24, 0.24, 0.3] });
+            k.part('cyl', 0.9, 0, -0.3, null, '#2a2a2e', { r: 0.04, h: 1.9, seg: 6 }); k.part('cyl', 0.9, 0, -0.3, null, '#2a2a2e', { r: 0.35, h: 0.04, seg: 10 }); k.part('box', 0.9, 1.6, -0.3, null, '#1a1a1e', { size: [0.6, 0.5, 0.4] }); k.part('quad', 0.9, 1.65, -0.09, null, '#fff6d0', { size: [0.5, 0.4], glow: 1 }); },
+        /* chapel pews: three benches that look at the altar */
+        p: k => { for (const z of [-1.1, 0, 1.1]) { k.part('box', 0, 0.3, z, WOOD, '#8a5a34', { size: [2.9, 0.12, 0.5] }); k.part('box', 0, 0.3, z + 0.28, WOOD, '#8a5a34', { size: [2.9, 0.7, 0.08] }); for (const x of [-1.4, 1.4]) k.part('box', x, 0, z + 0.05, WOOD, '#5b3a22', { size: [0.08, 0.75, 0.6] }); } },
+        /* the wedding altar: a flower arch, the lectern, two candle stands on a round rug */
+        w: k => { k.part('cyl', 0, 0.02, 0, PL, '#f4c0d0', { r: 1.6, h: 0.03, seg: 20 }); for (const x of [-1.1, 1.1]) k.part('cyl', x, 0, -0.9, PL, '#f8f0f0', { r: 0.1, h: 2.1, seg: 8 }); k.part('box', 0, 2.1, -0.9, PL, '#f8f0f0', { size: [2.5, 0.16, 0.25] });
+            for (let i = 0; i < 9; i++) k.part('cyl', -1.2 + i * 0.3, 2.2 + Math.sin(i / 8 * Math.PI) * 0.35, -0.9, PL, ['#f080a0', '#ffffff', '#f8b0c8'][i % 3], { r: 0.2, h: 0.24, seg: 8 });
+            k.prop('lectern', 0, -0.3, 0); for (const x of [-1.35, 1.35]) { k.part('cyl', x, 0, 0.2, GOLD, null, { r: 0.05, h: 1.1, seg: 6 }); k.part('box', x, 1.1, 0.2, null, '#fff2c0', { size: [0.1, 0.2, 0.1], glow: 1 }); } },
+        I: k => k.prop('ticket_booth', 0, 0, 0),
+        Q: k => k.prop('popcorn_cart', 0, 0, 0),
+        E: k => { k.prop('dorm_bed', -0.85, 0, 0); k.prop('dorm_bed', 0.85, 0, 0); },
+        N: k => { for (const x of [-1.2, -0.4, 0.4, 1.2]) k.prop('locker', x, -1.4, 0); k.part('box', 0, 0, 0.3, WOOD, '#8a5a34', { size: [2.8, 0.45, 0.4] }); },
+    };
+    function inside(b, S, env) {
+        const g = S.g, nR = g.length, nC = g[0].length, { loc, cx, cz, fw, fd, row, lx } = env, H = Math.max(2.6, (row.storeys || 2) * 3.5 - 0.35);
+        if (Math.abs(nC * C - fw * 2) > 0.1 || Math.abs(nR * C - fd * 2) > 0.1) { console.error('entertainment: the inside plan of', b.id, 'is', nC + 'x' + nR, 'squares, the shell', (fw * 2 / C) + 'x' + (fd * 2 / C)); return; }
+        row.keyIn = S.keyIn; row.floorIn = S.floorIn; const parts = [], at = (c, r) => (r < 0 || r >= nR || c < 0 || c >= nC) ? '#' : g[r][c];
+        const dc = Math.floor((lx + fw) / C); if (at(dc, nR - 1) !== '.') console.error('entertainment: the doorway square of', b.id, 'is not a walkway');
+        for (let r = 0; r < nR; r++) for (let c = 0; c < nC; c++) { const ch = g[r][c], u = -fw + (c + 0.5) * C, v = -fd + (r + 0.5) * C, o = loc(u, v);
+            if (ch === '.') { if (S.rug) parts.push({ s: 'quad', p: [o[0], 0.02, o[1]], size: [C, C], flat: true, key: PL, tint: T(S.rug, PL) });
+                if ((r + c) % 2 === 0) { parts.push({ s: 'box', p: [o[0], r3(H - 0.14), o[1]], size: [1.3, 0.1, 0.5], tint: hex(S.lamp || '#fff0d0'), glow: 1, roof: true }); } continue; }
+            if (!KIT[ch]) { console.error('entertainment: no kit for', ch); continue; }
+            /* the square looks at its nearest walkway: the front first, then the back, the left, the right (seat rows look where the plan says) */
+            let d = [[0, 1], [0, -1], [-1, 0], [1, 0]].find(q => at(c + q[0], r + q[1]) === '.') || [0, 1]; if (ch === 'H' && S.seatFace === 'back') d = [0, -1];
+            if (ch === 'G' || ch === 'F') d = [0, 1]; if (ch === 'p') d = [0, -1];
+            const w = loc(d[0], d[1]), f = ((Math.round(-Math.atan2(w[0], w[1]) / D2R) % 360) + 360) % 360, a = -f * D2R, ca = Math.cos(a), sa = Math.sin(a);
+            let i = 0, n = 1; while (at(c - i - 1, r) === ch) i++; while (at(c - i + n, r) === ch) n++;
+            const k = { S, r, c, i, n, H, edge: { front: at(c, r + 1) !== ch, back: at(c, r - 1) !== ch },
+                part: (s, px, y, pz, key, tint, o2) => { const q = Object.assign({ s, p: [r3(o[0] + px * ca + pz * sa), r3(y), r3(o[1] - px * sa + pz * ca)] }, o2 || {}); q.ry = (((q.ry || 0) + f) % 360 + 360) % 360; if (key) q.key = key; if (tint != null) q.tint = T(tint, key); parts.push(q); return q; },
+                prop: (key, px, pz, turn) => props.push({ key, x: r3(cx + o[0] + px * ca + pz * sa), z: r3(cz + o[1] - px * sa + pz * ca), face: (f + (turn || 0)) % 360 }),
+                sign: (words, px, y, pz, sw, sh) => { const q = k.part('quad', px, y, pz, 'txt:' + words + '|#fff2c0||' + (Math.round(sw / sh * 100) / 100), null, { size: [sw, sh], uv: 'fit', kind: 'over', glow: 0.9 }); q.tint = 0xffffff; } };
+            KIT[ch](k);
+            features.push({ k: 'wall', x0: r3(cx + o[0]), z0: r3(cz + o[1]), x1: r3(cx + o[0]), z1: r3(cz + o[1]), h: BLOCK_H[ch] || 1.2, t: C, key: 'urban:ConcreteStriped2a', ghost: true, rail: false });
+        }
+        /* the lit EXIT over the doorway, inside; the cinema's screen on the back wall */
+        { const o = loc(lx, fd - 0.3), w = loc(0, -1), f = ((Math.round(-Math.atan2(w[0], w[1]) / D2R) % 360) + 360) % 360; parts.push({ s: 'quad', p: [o[0], 2.3, o[1]], ry: f, size: [0.9, 0.3], key: 'txt:EXIT|#ffffff|#1a8a3a|3', uv: 'fit', tint: 0xffffff, glow: 0.9 }); }
+        if (S.screen) { const o = loc(0, -fd + 0.3), w = loc(0, 1), f = ((Math.round(-Math.atan2(w[0], w[1]) / D2R) % 360) + 360) % 360; parts.push({ s: 'quad', p: [o[0], 1.6, o[1]], ry: f, size: [r3(fw * 2 - 3), r3(Math.min(6, H - 2.4))], tint: 0xe8f4ff, glow: 0.9 }); parts.push({ s: 'quad', p: [loc(0, -fd + 0.28)[0], 1.4, loc(0, -fd + 0.28)[1]], ry: f, size: [r3(fw * 2 - 2.6), r3(Math.min(6, H - 2.4) + 0.4)], tint: 0x101014 }); }
+        rows.push({ k: 'arch', id: 'dc:' + b.id + ':in', x: cx, z: cz, rot: 0, parts });
+    }
     /* ═══ P08-04 CASINO: the Strip's casino. Dark marble, brass bands, a domed corner tower, a red drive-up canopy ═══ */
     B('P08-04-B1', { walk: true, st: 2 }, b => {
         b.walls(9.6, MB, '#4a3560'); b.trim(9.6, 0.6, GOLD, null); b.top(9.9, RF, '#6a6670', 0.2);
@@ -427,12 +546,12 @@ module.exports = { build: function (api) {
         b.face('s', -b.hw + 1, b.hw - 1, 2.9, 0.7, null, '#f4ead6', { glow: 0.4 });
     });
     /* ═══ P10-04 CONCERT HALL: the district's landmark. A pale stone podium (its roof walked), a drum, a green dome, a glass lobby, the marquee ═══ */
-    B('P10-04-B1', {}, b => {
+    B('P10-04-B1', { walk: true }, b => {
         b.walls(7, MB3, '#e9e4da'); b.trim(7, 0.5, CS, '#cfc8b8', 0.2, { top: false });
         b.cyl(0, 1.5, 8.6, 7, 6, ST, '#efe8d8', { seg: 28, cap: false }); b.cyl(0, 1.5, 8.85, 12.6, 0.7, GOLD, null, { seg: 28 }); b.dome(0, 1.5, 8.6, 13.3, 4.4, CO, '#3f9c86', { seg: 28, rings: 7, roof: true });
         b.cyl(0, 1.5, 0.6, 17.6, 3.5, GOLD, null, { r2: 0, seg: 8 });
         b.box(0, b.hd - 2.2, 9, 3.2, 7, 9, BR3, '#5a5560');                                                    // the fly tower over the stage (south)
-        b.cyl(0, -b.hd, 5.2, 0, 4.3, GT, '#cfe8ff', { arc: 180, a0: 180, glow: 0.55, seg: 24 }); b.cyl(0, -b.hd, 5.7, 4.3, 0.9, PL, '#b01828', { arc: 180, a0: 180, glow: 0.35, seg: 24 });   // the glass lobby drum + its red fascia
+        for (let i = 0; i <= 8; i++) { const a = (180 + i * 22.5) * D2R, x = Math.cos(a) * 5.2, z = -b.hd + Math.sin(a) * 5.2; if (Math.abs(x - b.door[0]) > 1.3) { b.cyl(x, z, 0.32, 0, 4.3, MB3, '#f4efe4', { seg: 10 }); b.cyl(x, z, 0.45, 0, 0.4, MB3, '#bdb6a8', { seg: 10 }); } }   /* the lobby's open colonnade (it was a glass drum: the doorway is behind it now) */ b.cyl(0, -b.hd, 5.7, 4.3, 0.9, PL, '#b01828', { arc: 180, a0: 180, glow: 0.35, seg: 24 });   // the glass lobby drum + its red fascia
         b.box(0, -b.hd - 1.4, 25, 2.6, 4.3, 0.9, PL, '#b01828', { glow: 0.35, under: true });                  // the marquee's wings
         for (const s of [-1, 1]) { b.cyl(s * 12, -b.hd - 2.3, 0.3, 0, 4.3, MB, '#555', { seg: 8 }); b.face('n', s * 9.6 - 2.6, s * 9.6 + 2.6, 4.36, 0.78, null, '#fff6d0', { glow: 0.9, proud: 2.75 }); }
         b.box(0, -b.hd - 0.6, 2.8, 1.6, 5.2, 9, PL, '#b01828', { glow: 0.45 });                                // the blade sign
@@ -500,7 +619,7 @@ module.exports = { build: function (api) {
         b.face('n', -b.hw + 1.5, b.hw - 1.5, 0.8, 1.8, GR, '#ffe6b0', GLOW);
     });
     /* ═══ P11-05 FILM STUDIO: a cream sound stage under a great vault, the front office (its roof walked), the blue stage door, the water tower ═══ */
-    B('P11-05-B1', {}, b => {
+    B('P11-05-B1', { walk: true }, b => {
         b.walls(7, ST, '#f2e6c8'); b.trim(7, 0.45, PL, '#b03020', 0.12, { top: false });
         b.face('n', -b.hw + 1, b.hw - 1, 4.2, 2, GS, '#ffe6b0', GLOW);
         const sd = b.hd * 2 - 10.5;                                                                            // the stage: the back 17.5 m (the north 10.5 m stay the walked roof)
@@ -612,13 +731,18 @@ module.exports = { build: function (api) {
     /* the VHS shop (the pack's whole building, real size 14.9 x 13.6 m, its entrance at +Z): on the yard south-west of the Costume shops, its
        entrance to the walk on its east (a prop's face turns it clockwise like a building's rot: 270 = the front to the east) */
     { const p = plot(9, 4), x = p.x(3), z = p.z(9.2); clearProps(x - 7, z - 7.6, x + 7, z + 7.6); props.push({ key: 'city_vhs_shop', x, z, face: 270 }); }
-    /* THE STRIP'S WEDDING CHAPEL (the Strip's own landmark, carried over): white, a pink roof, a little steeple, on the yard west of the Cinema */
-    { const p = plot(11, 7), x = p.x(3), z = p.z(2); clearProps(x - 5.4, z - 3.6, x + 5.4, z + 3.6);   // squares 1..4 x 1..2, filled
-      free('chapel', x, z, P => {
-        P('box', 0, 0, 0, ST, '#fbf6ee', { size: [10.4, 4.4, 6.9], top: false }); P('roof', 0, 4.4, 0, CO, '#e88aa8', { form: 'gable', size: [10.4, 2.6, 6.9], over: 0.4, keyEnd: ST, tintEnd: T('#fbf6ee', ST), roof: true });
-        P('box', 3.6, 0, 2.3, ST, '#fbf6ee', { size: [2.4, 8.2, 2.4] }); P('roof', 3.6, 8.2, 2.3, CO, '#e88aa8', { form: 'pyramid', size: [2.4, 3.4, 2.4], over: 0.25, roof: true }); P('cyl', 3.6, 11.5, 2.3, GOLD, null, { r: 0.18, r2: 0, h: 1.4, seg: 6 });
-        P('quad', -1.2, 0.5, 3.51, GS, '#ffd0e0', { size: [5.6, 2.2], glow: 0.55 }); P('quad', -1.2, 3.1, 3.52, null, '#ff80b0', { size: [5.6, 0.7], glow: 1 }); parts_txt(P, -1.2, 3.14, 3.55, 0, 5.2, 0.62, 'WEDDING CHAPEL', '#7a1038'); P('quad', 3.6, 0, 3.56, U('DoorWoodenHalf1a'), '#ffffff', { size: [1.75, 2.45], uv: 'fit', kind: 'wall' });
-      }); ghost(x, z, 10.4, 6.9, 4.4); }
+    /* THE STRIP'S WEDDING CHAPEL (the Strip's own landmark, carried over): white, a pink roof, a little steeple over its door, on the yard west of
+       the Cinema. A walk-in shell of this file's own (the plan holds no chapel): squares 1..3 x 1..2 of plot P11-07, its front to the south walk. */
+    { const p = plot(11, 7), x = p.x(2.5), z = p.z(2); clearProps(x - 5.4, z - 3.6, x + 5.4, z + 3.6);
+      EXTRA['E-chapel'] = { id: 'E-chapel', name: 'Wedding chapel', plot: 'P11-07', cx0: 11 * 12 + 1, cy0: 7 * 12 + 1, cw: 3, ch: 2, side: 'S' };
+      features.push({ k: 'texbuilding', id: 'dc:E-chapel', seed: 77, x, z, w: 10.5, d: 7, rot: 0, storeys: 1 });
+      B('E-chapel', { walk: true, st: 1, leaf: 'leaf_motel' }, b => {
+        b.walls(3.6, ST, '#fbf6ee'); b.plinth(0.5, MB3, '#e0c8d0'); b.roof('gable', 0, 0, b.hw * 2, b.hd * 2, 3.6, 2.6, CO, '#e88aa8', { ridge: 'x', over: 0.4, keyEnd: ST, tintEnd: T('#fbf6ee', ST) });
+        b.box(b.door[0], b.hd - 1.2, 2.4, 2.4, 4.6, 3.4, ST, '#fbf6ee'); b.roof('pyramid', b.door[0], b.hd - 1.2, 2.4, 2.4, 8.0, 3.2, CO, '#e88aa8', { over: 0.25 }); b.cyl(b.door[0], b.hd - 1.2, 0.18, 11.1, 1.4, GOLD, null, { r2: 0, seg: 6 });
+        for (const sg of [-1, 1]) { const u = b.door[0] + sg * 3.1; b.face('s', u - 1.3, u + 1.3, 0.7, 1.9, GS, '#ffd0e0', { glow: 0.55 }); b.frames('s', u - 1.3, u + 1.3, 0.7, 1.9, 2, '#e88aa8'); }
+        b.face('s', b.door[0] - 2.6, b.door[0] + 2.6, 2.75, 0.62, null, '#ff80b0', { glow: 1 }); b.txt('s', b.door[0] - 2.5, b.door[0] + 2.5, 2.78, 0.56, 'WEDDING CHAPEL', '#7a1038', 0.11);
+        b.lamp('s', b.door[0] - 1.3, 2.0, '#ffd0e0'); b.lamp('s', b.door[0] + 1.3, 2.0, '#ffd0e0'); b.pipe('n', b.hw - 0.4, 3.6, '#e0c8d0'); b.wac('n', -2, 2.2); b.gutter('n', 3.6, 0.4, '#e0c8d0'); b.gutter('s', 3.6, 0.4, '#e0c8d0');
+      }); }
     /* THE STRIP'S FOUNTAIN (carried over): a round basin, two tiers, lit water, two palms, on the yard south-west of the Recording studio */
     { const p = plot(11, 4), x = p.x(3), z = p.z(9); clearProps(x - 6.9, z - 6.9, x + 6.9, z + 6.9);   // the basin fills squares 2..3 x 8..9
       free('fountain', x, z, P => {
