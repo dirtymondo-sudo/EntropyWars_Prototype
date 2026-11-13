@@ -4421,6 +4421,18 @@
                 h += `<p class="hq-qj-sum">${_hqEsc(q.summary || '')}</p><ul class="hq-qj-stages">`;
                 q.stages.forEach(s => { h += `<li class="${s.done ? 'done' : 'cur'}"><i>${s.done ? '✓' : '▶'}</i><span>${_hqEsc(s.objective)}</span></li>`; });
                 h += '</ul>';
+                /* THE REPLAY (2026-11-13, mondo: "Is there a way for me to replay just the cutscene easily without making a new
+                   profile and doing the tutorial all over again?"): a fight stage that is done and opens on a cutscene plays
+                   again from here (the scene, then the fight; nothing is filed twice: a finished stage never moves) */
+                try {
+                    const def = (typeof window.questDef === 'function') ? window.questDef(q.quest || q.id) : null;
+                    ((def && def.stages) || []).forEach(st => {
+                        const F = (st.done && st.done.on === 'fight' && typeof window.questFightDef === 'function') ? window.questFightDef(st.done.fight) : null;
+                        const row = (F && F.scene && typeof window.storyCutscene === 'function') ? window.storyCutscene(F.scene) : null;
+                        const sd = (q.stages || []).find(x => x.id === st.id);
+                        if (row && sd && sd.done) h += `<div class="hq-panel-actions"><button class="hq-btn" data-quest-replay="${_hqEsc(F.id)}" title="Play this cutscene and its fight again">REPLAY ▸ ${_hqEsc(String(row.title || 'THE CUTSCENE').toUpperCase())}</button></div>`;
+                    });
+                } catch (e) {}
                 if (q.reward && q.reward.unit) h += `<div class="hq-qj-rw"><b>REWARD</b><span>${_hqEsc(String(q.reward.unit).toUpperCase())} JOINS THE PARTY${done ? ' · PAID' : ''}</span></div>`;
                 return h + '</div>';
             };
@@ -4431,10 +4443,22 @@
         /* a quest's own fight: the party-seated launch the marker uses, on the fight's board, the guest beside the party.
            From the building (the Range Console's row) or straight after the tape that leads into it (ui.js, the building
            not on screen: _hqLeave is a no-op then). false = it did not start. */
-        window._questFightGo = function (fightId) {
+        if (!window._questReplayWired) {
+            window._questReplayWired = true;
+            document.addEventListener('click', (e) => {
+                const b = e.target && e.target.closest ? e.target.closest('[data-quest-replay]') : null; if (!b) return;
+                e.preventDefault(); e.stopPropagation();
+                const id = b.getAttribute('data-quest-replay');
+                try { if (typeof window._hqClosePause === 'function') window._hqClosePause(); } catch (err) {}
+                if (!window._questFightGo(id, { replay: true })) { try { playSfx('uiError'); } catch (err) {} }
+            }, true);
+        }
+        window._questFightGo = function (fightId, opts) {
             if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2: never from an online seat
             let F = null;
             try { F = (typeof window.questFightPending === 'function') ? window.questFightPending(_hqProfile()) : null; } catch (e) { F = null; }
+            /* THE REPLAY: a fight already won plays again (the journal's REPLAY button, console Quests.replay()) */
+            if (opts && opts.replay && fightId && !(F && F.id === fightId)) { try { F = (typeof window.questFightDef === 'function') ? window.questFightDef(fightId) : null; } catch (e) { F = null; } }
             if (!F || (fightId && F.id !== fightId)) return false;
             try {
                 const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(_hqProfile()) : null;
@@ -4442,6 +4466,7 @@
             } catch (e) {}
             const L = (typeof window.questFightLaunch === 'function') ? window.questFightLaunch(F.id, { partyLevel: _hqPartyLevelNow() }) : null;
             if (!L) return false;
+            if (opts && opts.replay) L.replay = true;
             if (L.room && _hqRoomExists(L.room)) { _hqCurRoom = L.room; }   // the result comes home to the fight's room
             return _hqEncounterStart(L, null, null);
         };
@@ -4450,6 +4475,7 @@
             reset: () => { _hqPartyTx(p => { if (p && p.door) delete p.door.quests; return true; }); _questTrackerRender(); return true; },
             event: (ev) => window._questEvent(ev),
             fight: (id) => window._questFightGo(id),
+            replay: (id) => window._questFightGo(id || 'orientation_portal', { replay: true }),
         };
         /* ══ THE DOOR GUN — THE PORTABLE THRESHOLD (HQ plan 9.5, 2026-09-15 rev 13) ══
            Two doors the officer places (renderer `_hqPortalAim` / `_hqPortalBuild`);
@@ -5093,6 +5119,16 @@
                     const g = (L.quest && typeof window.questGuestMember === 'function') ? window.questGuestMember(L.quest, L.partyLevel) : null;
                     /* the fight's ALLIES (Agent Locke) stand right after the first shift, the guest after them */
                     const al = (L.quest && typeof window.questAllyMembers === 'function') ? window.questAllyMembers(L.quest) : [];
+                    /* THE REPLAY: the scene is hers to enter, so the Catgirl the quest already gave the party sits this one out */
+                    if (L.replay && g && Array.isArray(party.members)) {
+                        for (let i = party.members.length - 1; i >= 0; i--) {
+                            const m = party.members[i];
+                            if (!m || m.you || !m.meta || m.meta.race !== g.meta.race) continue;
+                            party.members.splice(i, 1);
+                            if (Array.isArray(party.ids)) party.ids.splice(i, 1);
+                            if ((party.deploy | 0) > i) party.deploy = (party.deploy | 0) - 1;
+                        }
+                    }
                     const extra = al.concat(g ? [g] : []);
                     if (extra.length && Array.isArray(party.members)) {
                         const at = Math.max(0, Math.min(party.members.length, (party.deploy | 0) || party.members.length));
