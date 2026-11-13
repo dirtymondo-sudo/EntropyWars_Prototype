@@ -2106,13 +2106,13 @@ thing; ONE row kind does it (Sports + Culture thread owns it). Seen in the game 
 mondo 11-13: nine district threads "architect the buildings in their respective districts plots ... every building should be unique and
 purposeful and recognizable". Hero Plaza (plots x4..7, y4..7 of the 144; room metres -84..84) is laid out like a theme-park hub: the
 Superhero Tower is the weenie seen from everywhere, every walk ends at a clear silhouette. Plan doc: https://claude.ai/artifact/36EML6wNh4PjGRH6u2hzhy.
-- **The file**: `docs/disaster-city/hero-plaza/hero-plaza-arch.js` = every building as a parts list (`B`, by the plan's building id), the open
+- **The file**: `docs/disaster-city/districts/H.js` = every building as a parts list (`B`, by the plan's building id), the open
   ground's drawn pieces (`OPEN`: the plaza's colonnade + bandstand + flags, the memorial's curved wall + obelisk + flame, the two avenue
   gateways) and one swap (`SWAP`: the Local shop's lot wears the chain pizzeria `city_pizzeria` at real size, mondo 17:07 "a chain").
-- **The tool**: bake-disaster-city.js THE DISTRICT ARCHITECTURE loads every `docs/disaster-city/<district>/*-arch.js` after all other passes
+- **The tool**: bake-disaster-city.js THE DISTRICT FILES calls its `build(ctx)` after all other passes
   (no random number drawn: no other district's rows move) and writes one `k: 'arch'` row per building. The plan's own row keeps collision,
   inside, door and walked roof with `skin: false`; a file's `row` says what else changes (storeys, leaf, solid, hollow + doorSide, pack +
-  packSide, replace = smaller footprints, remove = walked through). Any district may use the same hook with its own `*-arch.js`.
+  packSide, replace = smaller footprints, remove = walked through).
 - **The 23**: News office (art-deco ziggurat, copper-green cornices, mast) · Hero workshop (brick, sawtooth roof, roller shutter) · pizzeria ·
   Workshop store (ochre brick, green gable) · Superhero Tower (columned marble podium, glass shaft + white fins, round drum, overhanging
   observation ring, gilt dome + pyramid + spire, about 88 m) · Press court (glass pavilion under a floating slab) · Apartments A · Coffee
@@ -2128,3 +2128,25 @@ Superhero Tower is the weenie seen from everywhere, every walk ends at a clear s
   sheets are dark window grids, lit with the part's `glow`. `gold` = the terrain key (gilt.png); never the gold*.png files, not even in a
   mock-up. The arch row has no lettering: sign boards are plain panels until a lettering part exists. No tilted parts: a stair flight is
   stepped boxes, an arch is a barrel roof on a beam.
+
+## DISASTER CITY, THE ENTERTAINMENT DISTRICT — the buildings, exteriors (2026-11-13, plots P08-04 .. P11-07)
+mondo 11-13 16:41 (architect every building, unique + recognizable) and 17:08 on the plan: "looks good, and remember this is basically
+replacing the strip that is currently in the game". File: `docs/disaster-city/districts/E.js` (the `build` stage of THE DISTRICT FILES);
+rerun `node bake-disaster-city.js` after any edit.
+- How a building is written: `B(id, { walk, st, open, leaf }, b => …)`. It keeps the tool's collision row (`texbuilding` / roof-route
+  `plateau`) with `skin: false` and pushes ONE `k: 'arch'` row `dc:<id>:arch` (31 rows, about 5,100 triangles for the district). `walk`
+  = hollow shell + the city swing door in the plan's doorway; `open` = no collision row (the Night market canopies). The helper `b` has
+  box / cyl / dome / roof / walls (door hole cut) / top / trim / face / canopy. Sheet tints are lifted ×1.7 (the urban sheets are mid grey).
+- The 27: Casino (marble, gold trims with terrain key `gold`, domed corner tower, canopy), pawn kiosk, Costume shops (jettied upper floor,
+  roof route kept), mask shop, tailor (saw-tooth), Concert hall (podium + drum + dome + fly tower + glass lobby), Recording studio, lofts,
+  Restaurant court (trattoria, ramen, rooftop grill), burger drive-in (giant burger), Comedy theater, Backstage dock, crew canteen, Film
+  studio (barrel vault + water tower), Night market, noodle bar, Cabaret (turret), magic shop, prop store, Stage workshop, Arcade,
+  apartments, bakery, kebab, Crew house, box office (octagon lantern), Cinema (stepped deco front, fin).
+- Carried over from the Strip: a wedding chapel (P11-07), the fountain plaza with palms and benches (P11-04), the Casino. Plus the taxi
+  canopy + dispatch booth (P08-07) and the pack `city_vhs_shop` (P09-04, face 270).
+- Walk-in shells now (door hung, empty inside): Casino, Recording studio, Restaurant court, Comedy theater, Cabaret, Stage workshop,
+  Arcade, bakery, Crew house, Cinema. Interiors are the next pass (Casino -> `site_prebuilt_strip_casino`, chapel -> `site_prebuilt_strip_chapel`).
+- Open: marquee and sign panels are blank glow panels (the arch row has no text part); the texbuilding roof slab sits at storeys × 3.5 m,
+  so a shell's drawn walls must reach that height. NOT SEEN IN THE GAME: the cloud browser timed out on the full city; checked by drawing
+  the baked rows with the game's own `_hqArchGeometry` offline (/mnt/project-files/dc-entertainment/). Tints and the VHS shop's facing
+  want a look on mondo's Mac.

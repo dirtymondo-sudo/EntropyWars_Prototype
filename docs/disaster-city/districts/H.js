@@ -1,5 +1,5 @@
 /* HERO PLAZA — the district's buildings as parts lists (2026-11-13, mondo: "architect the buildings ... every building should be unique and
-   purposeful and recognizable"; his OK on the plan 11-13 17:12). Read by bake-disaster-city.js THE DISTRICT ARCHITECTURE: each entry below
+   purposeful and recognizable"; his OK on the plan 11-13 17:12). Read by bake-disaster-city.js THE DISTRICT FILES (build(ctx), after every row exists): each entry below
    draws one building with a `k: 'arch'` row (docs/notes/areas-complexes.md THE ARCHITECTURE ROW) and tells the tool what to do with the
    plan's own row (its collision, inside, door and walked roof stay with that row, its outside switched off).
    Frame: the building's middle, x east, z south, y up, metres. Sheets are mondo's own (the urban pack + the terrain sheets), tinted per part.
@@ -235,4 +235,56 @@ const OPEN = [
 /* 3 · THE PIZZERIA — the chain's pack building (mondo 11-13 17:07: a chain, one a district) at real size on the Local shop's lot, door north */
 const SWAP = { 'P05-04-B2': { key: 'city_pizzeria', side: 'N', hw: 5.05, hd: 10.25, push: 0.75 } };
 
-module.exports = { district: 'H', B, OPEN, SWAP };
+
+
+/* ── build(ctx): the tool's hook, after every row exists. The plan's own row keeps the collision, the inside, the door and the walked roof with
+   its outside switched off (`skin: false`); `row` says what else changes: storeys, leaf, solid (no inside), hollow + doorSide (an inside on that
+   side), pack + packSide (a pack shop block; its row `w` IS its scale, kept within 0.9 to 1.15 of the block's own width), replace (smaller
+   footprints), remove (walked through). Draws no random number. ── */
+const PACK_W = { pack_bld_08: 15.52, pack_bld_09: 16.89 };
+function build(ctx) {
+    const { PLAN, features, props, bInfo, r3, C } = ctx, M = { district: 'H', B, OPEN, SWAP }; let nArch = 0;
+    const R3 = v => typeof v === 'number' ? Math.round(v * 1000) / 1000 : Array.isArray(v) ? v.map(R3) : (v && typeof v === 'object') ? Object.fromEntries(Object.entries(v).map(e => [e[0], R3(e[1])])) : v;
+    const ROT = { S: 0, W: 90, N: 180, E: 270 }, SIDE_OF = { 0: 'S', 90: 'W', 180: 'N', 270: 'E' };
+    const planB = id => { for (const p of PLAN.plots) { const b = p.buildings.find(q => q.id === id); if (b) return b; } return null; };
+    const doorOf = row => { if (!row || row.k !== 'texbuilding' || !row.hollow) return null;   // data.js hqTexbDoor, in the row's own frame
+        const L = Math.max(2, row.w) - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols; let col = Math.floor((cols - 1) / 2);
+        if (row.door >= 1) col = Math.min(cols - 1, Math.round(row.door) - 1);
+        return { side: SIDE_OF[row.rot || 0], lx: -L / 2 + (col + 0.5) * cw, cw, h: 2.2 }; };
+        Object.keys(M.B || {}).forEach(bid => {
+            const def = M.B[bid], S = def.row || {}, i = features.findIndex(r => r.id === 'dc:' + bid), info = bInfo.find(b => b.id === bid), b = planB(bid);
+            if (i < 0 || !info || !b) { console.warn('arch: no row for', bid); return; }
+            let row = features[i]; const c = { x: info.x, z: info.z, w: info.w, d: info.d2 };
+            const turn = side => { const ew = side === 'E' || side === 'W'; row.rot = ROT[side]; row.w = r3((ew ? b.h : b.w) * C); row.d = r3((ew ? b.w : b.h) * C);
+                const dr = b.doors.find(q => q.side === side); delete row.door;
+                if (dr) { const k = side === 'S' ? (dr.x - b.x) : side === 'N' ? (b.x + b.w - 1 - dr.x) : side === 'E' ? (b.y + b.h - 1 - dr.y) : (dr.y - b.y); row.door = Math.round(k * C / 1.75) + 1; } };
+            if (S.pack) {   // a pack shop block at its own size (packFit): the whole model is the building
+                                turn(S.packSide || 'S'); delete row.door; delete row.hollow; delete row.style; row.key = S.pack; const sc = row.w / PACK_W[S.pack]; if (!(sc >= 0.9 && sc <= 1.15)) console.warn('H: pack block off scale', bid, sc); return;
+            }
+            if (S.remove) features.splice(i, 1);
+            else if (S.replace) features.splice(i, 1, ...S.replace.map((q, n) => ({ k: 'texbuilding', id: 'dc:' + bid + '-a' + n, x: r3(c.x + q.dx), z: r3(c.z + q.dz), w: q.w, d: q.d, rot: 0, storeys: 1, seed: row.seed, skin: false })));
+            else if (row.k === 'plateau') row.bld = Object.assign({}, row.bld, { skin: false });
+            else {
+                delete row.key; row.skin = false; if (!row.style) row.style = 'office';
+                if (S.hollow) { row.hollow = true; turn(S.doorSide || info.side); }
+                if (S.solid) { delete row.hollow; delete row.door; }
+                if (S.storeys) row.storeys = S.storeys; else if (S.solid) row.storeys = 2;
+                if (S.leaf) row.leaf = S.leaf;
+            }
+            if (def.parts) { features.push({ k: 'arch', id: 'arch:' + bid, x: c.x, z: c.z, rot: 0, parts: R3(def.parts((S.remove || S.replace) ? null : doorOf(row), c)) }); nArch++; }
+            if (def.props) def.props(c).forEach(q => props.push(R3(q)));
+        });
+        (M.OPEN || []).forEach(o => {
+            features.push({ k: 'arch', id: 'arch:' + M.district + ':' + o.id, x: o.x, z: o.z, rot: 0, parts: R3(o.parts()) }); nArch++;
+            (o.walls || []).forEach((q, n) => features.push({ k: 'texbuilding', id: 'dc:' + M.district + ':' + o.id + '-w' + n, x: r3(o.x + q[0]), z: r3(o.z + q[1]), w: q[2], d: q[3], rot: 0, storeys: 3, seed: 1, skin: false }));
+        });
+        Object.keys(M.SWAP || {}).forEach(bid => {   // a plan building replaced by a whole catalogue building (a prop: real size, entrance at +Z, solid)
+            const q = M.SWAP[bid], i = features.findIndex(r => r.id === 'dc:' + bid), info = bInfo.find(b => b.id === bid); if (i < 0 || !info) { console.warn('arch: no row to swap', bid); return; }
+            features.splice(i, 1);
+            const n = { S: [0, 1], N: [0, -1], W: [-1, 0], E: [1, 0] }[q.side], ew = n[0] !== 0, half = (ew ? info.w : info.d2) / 2 + (q.push || 0) - q.hd;
+            const x = r3(info.x + n[0] * half), z = r3(info.z + n[1] * half), hx = ew ? q.hd : q.hw, hz = ew ? q.hw : q.hd;
+            for (let k = props.length - 1; k >= 0; k--) if (Math.abs(props[k].x - x) < hx + 0.6 && Math.abs(props[k].z - z) < hz + 0.6) props.splice(k, 1);   // nothing stands inside it
+            props.push({ key: q.key, x, z, face: ROT[q.side] });
+        });
+}
+module.exports = { build };
