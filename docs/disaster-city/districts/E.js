@@ -122,9 +122,14 @@ module.exports = { build: function (api) {
             hatch: (x, z, y) => { b.box(x, z, 1.0, 1.0, y, 0.35, CO3, '#5a5e66'); b.box(x + 0.7, z, 0.06, 0.6, y, 1.0, TR, '#888888'); return b; },
             /* a gutter under an eave */
             gutter: (side, y, over, tint) => { const L = ((side === 'n' || side === 's') ? hw : hd) * 2 + (over || 0) * 2; b.sbox(side, 0, y - 0.16, L, 0.16, 0.2, null, tint || '#4a4e55', { off: (over || 0) - 0.02 }); return b; },
+            /* ── THE LETTERING (the shared 'txt:WORDS|fg|bg|aspect' sign sheet, PR #1327): words over the lit panels; no bg = the letters alone ── */
+            txt: (side, u0, u1, y, h, words, fg, pr, glow, bg) => { const L = Math.abs(u1 - u0), o3 = { proud: pr || 0.12, uv: 'fit' }; if (!bg) o3.kind = 'over'; if (glow) o3.glow = glow;
+                return b.face(side, u0, u1, y, h, 'txt:' + words + '|' + fg + '|' + (bg || '') + '|' + (Math.round(L / h * 100) / 100), '#ffffff', o3); },
+            /* a word read down a blade sign, a letter a panel */
+            vtxt: (side, u, y1, step, w, word, fg, pr, glow) => { [...word].forEach((ch, i) => b.txt(side, u - w / 2, u + w / 2, y1 - (i + 1) * step + step * 0.08, step * 0.84, ch, fg, pr, glow)); return b; },
         };
         { const dr = b.door; b.du = (b.fs === 'n' || b.fs === 's') ? dr[0] : dr[1]; }
-        fn(b); if (DETAIL[id]) DETAIL[id](b); if (ROOFS[id]) ROOFS[id](b);
+        fn(b); if (DETAIL[id]) DETAIL[id](b); if (ROOFS[id]) ROOFS[id](b); if (LETTERS[id]) LETTERS[id](b);
         { const ar = { k: 'arch', id: 'dc:' + id + ':arch', x: cx, z: cz, rot: 0, parts }; if (row.k === 'plateau') ar.y = 0;   /* over a roof-walk plateau the row would stand on its 7 m roof */ rows.push(ar); }
         return b;
     }
@@ -356,6 +361,39 @@ module.exports = { build: function (api) {
             b.sdoor('n', -4, 0, '#d8ccb0'); b.sdoor('n', 4, 0, '#d8ccb0'); b.haz('n', 5.2, 1.5); b.wac('e', -5, 5.5); b.wac('e', 5, 5.5); b.wac('n', 0, 3.2);
             for (const s of ['n', 'e']) b.sbox(s, 0, 0.9, half(b, s) * 2 - 1, 2.6, 0.03, DADO, '#c8b898', { off: 0.03, uv: [3.5, 3.4] }); b.sbox('w', 0, 0.9, b.hd * 2 - 1.5, 0.5, 0.03, CHK, '#1a8a9a', { off: 0.16, uv: 0.8 }); b.sbox('s', 0, 0.9, b.hw * 2 - 1.5, 0.5, 0.03, CHK, '#1a8a9a', { off: 0.16, uv: 0.8 }); },
     };
+    /* ═══ THE LETTERING, per building: plain trade words on the sign panels (no invented names) ═══ */
+    const INK = '#1a1a1e', WHT = '#ffffff';
+    const LETTERS = {
+        'P08-04-B1': b => { const F = b.fs, d = b.du; b.txt(F, d - 3.2, d + 3.2, 3.94, 0.62, 'CASINO', '#fff2c0', 4.62, 0.9); for (const s of FLK[F]) b.txt(s, -2.4, 2.4, 5.6, 1.8, 'CASINO', '#5a1a30', 0.2); },
+        'P08-04-B2': b => { b.txt('s', -b.hw + 1.2, b.hw - 1.2, 2.75, 0.8, 'PAWN', INK, 0.11); },
+        'P09-04-B1': b => { b.txt('s', -5, 5, 7.1, 0.7, 'COSTUMES', '#f4ead6', 0.52); b.txt('w', -3.5, 3.5, 7.1, 0.7, 'COSTUMES', '#f4ead6', 0.52); },
+        'P09-04-B2': b => { b.txt('n', -b.hw + 1.2, b.hw - 1.2, 3.35, 0.6, 'MASKS + WIGS', INK, 0.11); },
+        'P09-04-B3': b => { const F = b.fs, h = half(b, F); b.txt(F, -h + 1.4, h - 1.4, 2.95, 0.6, 'TAILOR', '#1e5a5a', 0.2); },
+        'P10-04-B1': b => { b.txt('n', -12, -7.2, 4.42, 0.66, 'TONIGHT', '#b01828', 2.78); b.txt('n', 7.2, 12, 4.42, 0.66, 'LIVE MUSIC', '#b01828', 2.78); b.vtxt('n', 0, 13.3, 1.02, 1.5, 'CONCERT', '#b01828', 1.48); },
+        'P11-04-B1': b => { const d = b.du; b.txt('s', d + 2.3, b.hw - 1.8, 3.68, 0.74, 'RECORDING STUDIO', INK, 0.11); b.txt(b.fs, d + 1.18, d + 1.82, 2.28, 0.24, 'ON AIR', WHT, 0.12, 1); },
+        'P08-05-B1': b => { const L = b.hd * 2, z0 = -b.hd, s1 = L * 0.31, s2 = L * 0.30, s3 = L - s1 - s2, zm = z0 + s1 + s2 / 2, zs = z0 + s1 + s2 + s3 / 2;
+            b.txt('w', z0 + s1 / 2 - 2.6, z0 + s1 / 2 + 2.6, 3.7, 0.6, 'TRATTORIA', '#fff0d0', 0.2); b.txt('w', zm - 2, zm + 2, 2.56, 0.68, 'RAMEN', '#b02020', 0.11); b.txt('w', zs - 3.2, zs + 3.2, 6.3, 0.6, 'ROOFTOP GRILL', '#ffb060', 0.24, 0.8); },
+        'P08-05-B2': b => { const s = FLK[b.fs][0]; b.txt(s, -2.2, 2.2, 1.5, 1.0, 'BURGERS', '#d02828', 0.2); },
+        'P09-05-B1': b => { const d = b.du; b.txt('n', d - 7, d + 7, 4.0, 0.72, 'COMEDY TONIGHT', '#5a2030', 3.43); [...'COMEDY'].forEach((ch, i) => b.box(b.hw + 0.5, -b.hd - 1.93, 0.7, 0.02, 15.2 - (i + 1) * 1.7, 1.4, 'txt:' + ch + '|#fff6d0||0.5', '#ffffff', { uv: 'fit', kind: 'over', glow: 0.9 })); },
+        'P10-05-B1': b => { b.txt('s', -5.6, 5.6, 4.96, 0.68, 'LOADING DOCK', INK, 0.11); },
+        'P10-05-B2': b => { const F = b.fs; b.txt(F, -2.6, 2.6, 3.2, 0.5, 'CANTEEN', '#4a5a34', 0.08); },
+        'P11-05-B1': b => { b.txt('n', -4.6, 4.6, 3.32, 0.46, 'FILM STUDIO', '#fff6d0', 1.82, 0.9); b.txt('e', -5.6, -2.4, 5.95, 0.8, 'STAGE 1', WHT, 0.16); b.txt('e', 2.8, 8.2, 7.5, 1.2, 'STAGE DOOR', '#24476e', 0.11); },
+        'P08-06-B1': b => { b.txt('e', -6.5, 6.5, 5.28, 0.74, 'NIGHT MARKET', INK, 0.57); P0(b, -b.hw + 1.2, 4.5, -b.hd + 0.78, 180, 2.4, 0.8, 'MARKET'); P0(b, -b.hw + 1.2, 4.5, b.hd - 0.78, 0, 2.4, 0.8, 'MARKET'); },
+        'P08-06-B2': b => { b.txt('s', -3.2, 3.2, 2.78, 0.74, 'NOODLES', '#b02020', 0.11); },
+        'P09-06-B1': b => { b.txt('n', -b.hw + 4, b.hw - 1.5, 2.96, 0.68, 'CABARET', INK, 0.11); },
+        'P09-06-B2': b => { b.txt('s', -b.hw + 1.3, b.hw - 1.3, 3.16, 0.68, 'MAGIC + JOKES', INK, 0.11); },
+        'P09-06-B3': b => { b.txt('s', -b.hw + 1.4, b.hw - 1.4, 3.55, 0.6, 'PROP STORE', '#b8742a', 0.11); },
+        'P10-06-B1': b => { b.txt('n', -7.6, 3.6, 5.68, 0.84, 'SCENERY WORKSHOP', '#5e463a', 0.11); },
+        'P11-06-B1': b => { const d = b.du; b.txt('n', -5.6, 5.6, 3.55, 1.3, 'ARCADE', '#0c0a16', 0.2); b.txt('s', d + 4.8, b.hw - 1.3, 3.25, 0.9, 'ARCADE', '#30e0ff', 0.1, 1); },
+        'P09-07-B1': b => { b.txt('s', -3, 3, 3.5, 0.6, 'BAKERY', '#fff0d0', 0.08); },
+        'P09-07-B2': b => { b.txt('s', -4.7, 4.7, 2.66, 0.68, 'KEBAB  OPEN 24H', INK, 0.11); },
+        'P10-07-B1': b => { const d = b.du; b.txt('n', d - 1.6, d + 1.6, 3.05, 0.42, 'STAGE CREW', '#f0e6cc', 0.08); },
+        'P10-07-B2': b => { b.txt('e', -Math.min(2.4, b.hd - 0.6), Math.min(2.4, b.hd - 0.6), 3.32, 0.36, 'BOX OFFICE', '#5a1020', 0.12); b.txt('s', -Math.min(2.4, b.hw - 0.6), Math.min(2.4, b.hw - 0.6), 3.32, 0.36, 'BOX OFFICE', '#5a1020', 0.12); },
+        'P11-07-B1': b => { b.txt('w', -b.hd + 1, -1.6, 3.42, 1.06, 'NOW SHOWING', '#c02030', 2.63); b.txt('w', 1.6, b.hd - 1, 3.42, 1.06, 'DOUBLE FEATURE', '#c02030', 2.63); b.txt('s', -b.hw + 1.5, b.hw - 1.5, 3.42, 1.06, 'NOW SHOWING', '#c02030', 2.63);
+            b.vtxt('w', 0, 16.4, 1.75, 0.62, 'CINEMA', '#fff6d0', 1.53, 0.9); },
+    };
+    /* a free-standing word panel (x, z in the building's metres, ry its facing) */
+    function P0(b, x, y, z, ry, w, h, words) { b.parts.push({ s: 'quad', p: [r3(x), y, r3(z)], ry, size: [w, h], key: 'txt:' + words + '|' + INK + '||' + (Math.round(w / h * 100) / 100), uv: 'fit', tint: 0xffffff, kind: 'over' }); }
     /* ═══ P08-04 CASINO: the Strip's casino. Dark marble, brass bands, a domed corner tower, a red drive-up canopy ═══ */
     B('P08-04-B1', { walk: true, st: 2 }, b => {
         b.walls(9.6, MB, '#4a3560'); b.trim(9.6, 0.6, GOLD, null); b.top(9.9, RF, '#6a6670', 0.2);
@@ -569,6 +607,7 @@ module.exports = { build: function (api) {
     const plot = (px, py) => ({ x: lx => r3(gx(px * 12) + lx * C), z: ly => r3(gx(py * 12) + ly * C) });
     const clearProps = (x0, z0, x1, z1) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.x > x0 && q.x < x1 && q.z > z0 && q.z < z1) props.splice(i, 1); } for (let i = features.length - 1; i >= 0; i--) { const q = features[i]; if (q.k === 'tree' && q.x > x0 && q.x < x1 && q.z > z0 && q.z < z1) features.splice(i, 1); } };
     const ghost = (x, z, w, d, h) => features.push(w >= d ? { k: 'wall', x0: r3(x - w / 2 + d / 2), z0: r3(z), x1: r3(x + w / 2 - d / 2), z1: r3(z), h, t: r3(d), key: 'urban:ConcreteStriped2a', ghost: true, rail: false } : { k: 'wall', x0: r3(x), z0: r3(z - d / 2 + w / 2), x1: r3(x), z1: r3(z + d / 2 - w / 2), h, t: r3(w), key: 'urban:ConcreteStriped2a', ghost: true, rail: false });
+    const parts_txt = (P, x, y, z, ry, w, h, words, fg) => { const q = P('quad', x, y, z, 'txt:' + words + '|' + fg + '||' + (Math.round(w / h * 100) / 100), null, { size: [w, h], ry, uv: 'fit', kind: 'over' }); q.tint = 0xffffff; return q; };
     const free = (id, x, z, fn) => { const parts = []; const P = (s, px, y, pz, key, tint, o2) => { const q = Object.assign({ s, p: [r3(px), r3(y), r3(pz)] }, o2 || {}); if (key) q.key = key; if (tint != null) q.tint = T(tint, key); parts.push(q); return q; }; fn(P); rows.push({ k: 'arch', id: 'dc:E-' + id + ':arch', x: r3(x), z: r3(z), rot: 0, parts }); };
     /* the VHS shop (the pack's whole building, real size 14.9 x 13.6 m, its entrance at +Z): on the yard south-west of the Costume shops, its
        entrance to the walk on its east (a prop's face turns it clockwise like a building's rot: 270 = the front to the east) */
@@ -578,7 +617,7 @@ module.exports = { build: function (api) {
       free('chapel', x, z, P => {
         P('box', 0, 0, 0, ST, '#fbf6ee', { size: [10.4, 4.4, 6.9], top: false }); P('roof', 0, 4.4, 0, CO, '#e88aa8', { form: 'gable', size: [10.4, 2.6, 6.9], over: 0.4, keyEnd: ST, tintEnd: T('#fbf6ee', ST), roof: true });
         P('box', 3.6, 0, 2.3, ST, '#fbf6ee', { size: [2.4, 8.2, 2.4] }); P('roof', 3.6, 8.2, 2.3, CO, '#e88aa8', { form: 'pyramid', size: [2.4, 3.4, 2.4], over: 0.25, roof: true }); P('cyl', 3.6, 11.5, 2.3, GOLD, null, { r: 0.18, r2: 0, h: 1.4, seg: 6 });
-        P('quad', -1.2, 0.5, 3.51, GS, '#ffd0e0', { size: [5.6, 2.2], glow: 0.55 }); P('quad', -1.2, 3.1, 3.52, null, '#ff80b0', { size: [5.6, 0.7], glow: 1 }); P('quad', 3.6, 0, 3.56, U('DoorWoodenHalf1a'), '#ffffff', { size: [1.75, 2.45], uv: 'fit', kind: 'wall' });
+        P('quad', -1.2, 0.5, 3.51, GS, '#ffd0e0', { size: [5.6, 2.2], glow: 0.55 }); P('quad', -1.2, 3.1, 3.52, null, '#ff80b0', { size: [5.6, 0.7], glow: 1 }); parts_txt(P, -1.2, 3.14, 3.55, 0, 5.2, 0.62, 'WEDDING CHAPEL', '#7a1038'); P('quad', 3.6, 0, 3.56, U('DoorWoodenHalf1a'), '#ffffff', { size: [1.75, 2.45], uv: 'fit', kind: 'wall' });
       }); ghost(x, z, 10.4, 6.9, 4.4); }
     /* THE STRIP'S FOUNTAIN (carried over): a round basin, two tiers, lit water, two palms, on the yard south-west of the Recording studio */
     { const p = plot(11, 4), x = p.x(3), z = p.z(9); clearProps(x - 6.9, z - 6.9, x + 6.9, z + 6.9);   // the basin fills squares 2..3 x 8..9
@@ -593,6 +632,7 @@ module.exports = { build: function (api) {
       const P = (s, x, y, z, key, tint, o2) => { const q = Object.assign({ s, p: [r3(x), y, r3(z)] }, o2); if (key) q.key = key; q.tint = T(tint, key); parts.push(q); };
       P('box', 0, 3.4, 0, CO, '#f0c020', { size: [9.6, 0.35, 6.4], under: true }); P('box', 0, 3.0, 0, null, '#111111', { size: [9.7, 0.4, 6.5], top: false });
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) P('cyl', sx * 4.4, 0, sz * 2.8, TR, '#333333', { r: 0.12, h: 3.4, seg: 6 });
+      for (const sg of [1, -1]) parts.push({ s: 'quad', p: [0, 3.02, sg * 3.27], ry: sg > 0 ? 0 : 180, size: [3.2, 0.36], key: 'txt:TAXI|#f0c020||8.89', uv: 'fit', tint: 0xffffff, kind: 'over', glow: 0.8 });
       rows.push({ k: 'arch', id: 'dc:E-taxi-canopy:arch', x: cx, z: cz, rot: 0, parts });
       const q2 = [], Q = (s, y, key, tint, o2) => { const q = Object.assign({ s, p: [0, y, 0] }, o2); if (key) q.key = key; q.tint = T(tint, key); q2.push(q); };
       Q('cyl', 0, PL, '#f0c020', { r: 2.2, h: 3.2, seg: 12 }); Q('cyl', 1.1, GS, '#cfe8ff', { r: 2.25, h: 1.3, seg: 12, glow: 0.5, cap: false }); Q('cyl', 3.2, CO, '#222222', { r: 2.8, r2: 0, h: 1.6, seg: 12, roof: true });
