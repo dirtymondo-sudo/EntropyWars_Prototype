@@ -14,7 +14,7 @@ Preview: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg.
 | BurgerPiz restaurant | Bayside | P09-09 Food hall | 16:46 | `city_burgerpiz` |
 | Tacos stand | Bayside | P08-09 Street market | 16:46 | `city_taco_stand` |
 | Diner | Financial | P09-03 Worker cafe | 16:44 | `city_diner` |
-| 6twelve convenience store | Financial | P08-02 Taxi court | 16:46 | `city_6twelve` |
+| 6twelve convenience store | FREE (Financial released it 17:14: 22.8 x 21.1 m fits no Financial lot; Southside asked first, so it has first call) | | | `city_6twelve` |
 | VHS shop | Entertainment | P11-07 beside the Cinema | 16:47 | `city_vhs_shop` |
 | Laundry | Southside | P02-00 Laundry terraces | 16:49 | `city_laundry` |
 | House, Quequis house | Southside | P01-03 | 16:49 | `city_house`, `city_quequis_house` |
@@ -29,3 +29,11 @@ Southside 6twelve, tacos, BurgerPiz, VHS shop.
 The ten Buildings-pack shop blocks (`pack_bld_00` .. `pack_bld_09`) are shared by everyone: see areas-complexes.md "THE SHOP BLOCKS AT TRUE SIZE".
 
 Not claimed, free to ask for: the Pizzeria scene's 21 small backdrop buildings (`building_01` .. `building_21`, 12 to 20 m, photo fronts) and the Tacos scene's 27 (`buildings_01` .. `buildings_27`, 5 to 17 m). Not cut; ask the shared-pieces thread.
+
+## The gold (mondo 11-13 17:12: "we absolutely never use that gold texture anywhere in the game, there is a better gold texture")
+The better gold = R2 `Assets/Sprites/terrain/gilt.png` (Metal007, his pick 11-03, PR #867). In the game the terrain key `gold` (also `gold_2`, `gold_3`) already IS that sheet, so an arch part writes `key: 'gold'`. Never load the files `terrain/gold.png`, `gold_2.png`, `gold_3.png` by name, in the game or in a mock-up (a mock-up that reads the bucket file shows him the banned sheet). The shared pieces (city doors, shop blocks, `city_*` buildings) use no gold sheet.
+
+## The district files (the ONE hook, 11-13 17:22)
+bake-disaster-city.js loads `docs/disaster-city/districts/<LETTER>.js` (R C F U H E I S B), one file per district; never put district code in the shared tool.
+Exports, all optional: `tailor(PLAN, plotOf)` before the plan is read; `apply(ctx)` after the buildings and their door steps exist, before the street furniture; `build(ctx)` after every row exists.
+`ctx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF }`.

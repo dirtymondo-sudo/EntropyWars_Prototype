@@ -25,6 +25,15 @@ const r3 = v => Math.round(v * 1000) / 1000;
 const gx = c => r3(-HALF + c * C);                                 // a cell LINE (0..144) in room metres
 const gc = c => r3(-HALF + (c + 0.5) * C);                         // a cell CENTRE
 const plotOf = {}; PLAN.plots.forEach(p => { plotOf[p.id] = p; });
+/* THE DISTRICT FILES (2026-11-13, the one hook for the nine district threads): docs/disaster-city/districts/<LETTER>.js (R C F U H E I S B),
+   one per district, so no district's code lands in this tool. A file may export any of: tailor(PLAN, plotOf) = here, before the plan is read;
+   apply(ctx) = after the buildings + their door steps exist, before the street furniture (take() cells there to keep them clear);
+   build(ctx) = after every row exists. ctx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell,
+   roofB, ROOF_H, C, N, HALF }. A district edits its own rows by id ('dc:' + building id) and pushes its own rows (arch rows to lateRows). */
+const DISTRICTS = (() => { const dir = path.join(REPO, 'docs/disaster-city/districts'); return !fs.existsSync(dir) ? [] : fs.readdirSync(dir).filter(f => /^[A-Z]\.js$/.test(f)).sort().map(f => require(path.join(dir, f))); })();
+let dcCtx = null;
+const dcRun = stage => DISTRICTS.forEach(m => { if (typeof m[stage] === 'function') m[stage](dcCtx); });
+DISTRICTS.forEach(m => { if (typeof m.tailor === 'function') m.tailor(PLAN, plotOf); });
 /* THE CROSSINGS (tailoring): the plan leaves a one-cell nub where a walk crosses a road (PPPPPPPRPPPP, RRRRRRRRPRRR). A row / column that is
    mostly pavement becomes a whole paved crossing; a lone pavement cell in a carriageway becomes road. */
 PLAN.plots.forEach(p => {
@@ -217,6 +226,8 @@ const occ = new Set();
 const free = (cx, cy, ok) => { if (cx < 0 || cy < 0 || cx >= 144 || cy >= 144) return false; const ch = cellAt(cx, cy); return (ok || '.#').indexOf(ch) >= 0 && !occ.has(cx + ',' + cy); };
 const take = (cx, cy) => occ.add(cx + ',' + cy);
 bInfo.forEach(b => (plotOf[b.plot].buildings.find(q => q.id === b.id).doors || []).forEach(dr => take(plotOf[b.plot].x * N + dr.ox, plotOf[b.plot].y * N + dr.oy)));   // a door's step stays clear
+dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF };
+dcRun('apply');
 
 /* ── THE DISTRICTS' OWN BUILDINGS (2026-11-13, mondo: "Every building should be unique and purposeful and recognizable"): a district thread keeps
    its architecture in docs/disaster-city/districts/<letter>.js; its `apply(ctx)` turns the rows above into its own (an `arch` row per building for
@@ -533,7 +544,7 @@ const lines = [];
 lines.push("        /* DC144-BEGIN — DISASTER CITY, THE 144 PLOTS (2026-11-13): written by `node bake-disaster-city.js` from docs/disaster-city/city-layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
 lines.push("        site_prebuilt_downtown_streets: {");
 lines.push("            label: 'DISASTER CITY',");
-lines.push("            sub: 'SOUTHSIDE · CIVIC CENTER · FINANCIAL · UNIVERSITY · HERO PLAZA · ENTERTAINMENT · INDUSTRIAL · SPORTS + CULTURE · BAYSIDE',");
+lines.push("            sub: 'NINE DISTRICTS · 144 PLOTS',");
 lines.push("            kind: 'box', site: 'prebuilt_downtown', part: 'streets',");
 lines.push("            shell: hqCityShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + sp[0] + ", z: " + sp[1] + ", y: 4.6 } }),");
 lines.push("            parti: 'Nine districts of sixteen plots, every plot a twelve by twelve board: a city walked as a maze of yards, alleys, doors and roofs between a few plain roads.',");
@@ -547,6 +558,7 @@ lines.push("                    lamps: " + J(lamps) + ",");
 lines.push("                       open: [] },");
 lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: 144, nz: 144, d: '" + b64 + "' },");
 lines.push("                features: [");
+dcRun('build');
 features.push(...lateRows);
 features.forEach(f => lines.push("                    " + J(f) + ","));
 lines.push("                ],");
