@@ -28240,10 +28240,12 @@ const STORY_QUESTS = [
     {
         id: 'orientation', v: 1,
         title: 'ORIENTATION',   // mondo's to name
+        officerUp: true,   // mondo 2026-11-13: the recruit is always on their feet for this quest's scenes and walks (revived after the fight)
         summary: 'Walk to the Training Room and finish the first two tapes.',
         start: 'hq',
         stages: [
-            { id: 'walk',   objective: 'Go to the Training Room (Room 64).', done: { on: 'room', room: 'training' }, mark: { room: 'training' } },
+            { id: 'walk',   objective: 'Go to the Training Room (Room 64).', done: { on: 'room', room: 'training' }, mark: { room: 'training' },
+              scene: 'orientation_tv', then: { lesson: 'first_steps' } },   // B plays as the officer walks in; its end starts Tape 1
             { id: 'tape1',  objective: 'Finish Tape 1 · FIRST STEPS at the Range Console.', done: { on: 'lesson', lesson: 'first_steps', filed: true } },
             { id: 'tape2',  objective: 'Finish Tape 2 · THE PRESS.', done: { on: 'lesson', lesson: 'the_press' } },
             { id: 'portal', objective: 'Defeat the two Shadow Entities with the Catgirl.', done: { on: 'fight', fight: 'orientation_portal' } },
@@ -28365,21 +28367,70 @@ STORY_CUTSCENES.orientation_aftermath = {
    `sceneAt`, Kit at her `during` spot beside him. Played by map.js _questTalkScene when the officer speaks to Rhonda. */
 STORY_CUTSCENES.orientation_desk = {
     id: 'orientation_desk', title: 'RHONDA LETS HER STAY',
+    cast: ['rhonda', 'kit'],   // nobody else in the hall is drawn while it plays
+    /* `eye: { who, dy }` on a shot = the camera's height is that body's HEAD + dy (three-renderer.js hq.sceneHead), so a close-up
+       frames the face whatever the body's height is and the mouth stays over the subtitle bar (mondo 2026-11-13) */
     beats: [
         /* E1 · the two arrive at the counter: wide across the desk, Rhonda's back in the foreground */
         { dur: 2.8, shot: { cam: [-0.6, 1.4, 0.8, 176, -2, 40], to: { cam: [-0.45, 1.4, 1.0, 176, -2, 40] } } },
         /* E2 · Rhonda looks at the paperwork: over the recruit's shoulder, long lens */
         { shot: { cam: [1.7, 1.68, 7.7, 16, -5, 28] }, say: { who: 'RHONDA', text: 'Name. Species. Reality of origin.' } },
-        { shot: { cam: [0.0, 1.4, 4.9, 180, 0, 22] }, say: { who: 'KIT', text: "Kit. Catgirl. It's... gone." } },
+        { shot: { cam: [0.0, 1.4, 4.9, 180, 0, 28], eye: { who: 'kit', dy: -0.04 } }, say: { who: 'KIT', text: "Kit. Catgirl. It's... gone." } },
         /* E3 · the paperwork goes on the misfiled stack: close on the desk */
         { shot: { cam: [0.5, 1.55, 3.3, 27, -27, 30] }, say: { who: 'RHONDA', text: 'Clumsy me. I seem to have misfiled the paperwork.' } },
         /* E4 · "emotional support anomaly": medium on Rhonda, a slow push in over two cards */
         { shot: { cam: [0.0, 1.35, 4.6, 0, -4, 22], to: { cam: [0.0, 1.35, 4.4, 0, -4, 22] } }, say: { who: 'RHONDA', text: 'Here we go. Deportation hearing. Earliest opening is in four hundred years.' } },
         { shot: { cam: [0.0, 1.35, 4.4, 0, -4, 22], to: { cam: [0.0, 1.35, 4.2, 0, -4, 22] } }, say: { who: 'RHONDA', text: 'Until then, she is your emotional support anomaly. Sign here.' } },
         /* E5 · Kit's relief: close */
-        { dur: 2.4, shot: { cam: [0.0, 1.4, 4.9, 180, 0, 22], to: { cam: [0.0, 1.4, 5.1, 180, 0, 22] } } },
-        /* E6 · Rhonda slides the office keys across: close on the counter */
-        { shot: { cam: [1.1, 1.75, 4.9, 180, -30, 35] }, say: { who: 'RHONDA', text: 'These are the keys to your office. First door past the mop bucket.' } },
+        { dur: 2.4, shot: { cam: [0.0, 1.4, 4.9, 180, 0, 28], eye: { who: 'kit', dy: -0.04 }, to: { cam: [0.0, 1.4, 5.1, 180, 0, 28] } } },
+        /* E6 · the office keys: on the recruit's FACE (mondo 2026-11-13: "the camera is focused on my crotch, it needs to show my
+           face"), the key rising and turning beside it (the battle's own key celebration, three-renderer.js keyPickupFx) */
+        { shot: { cam: [1.1, 1.6, 4.75, 180, 0, 30], eye: { who: 'player', dy: -0.03 } }, say: { who: 'RHONDA', text: 'These are the keys to your office. First door past the mop bucket.' },
+          act: [{ at: 0.5, do: 'key', x: 1.62, y: 1.0, z: 6.2, size: 0.38 }] },
+    ],
+};
+/* B · THE TV CART (the approved storyboard's frames + mondo's lines, word for word; his change: B4 Locke on the far side
+   of the cart, his head covered her). An HQ scene in room `training`, the orientation corner by the main hall door (the
+   desks z 26, the cart home at -5.25, 29.4): the recruit walks in, is told to sit, Locke rolls the TV in from the west
+   wall, gives the orientation, the set snaps on. Played by map.js _questRoomScene as the officer walks in (the `walk`
+   stage); its end files the room and starts Tape 1 (the stage's `then`). Extra actions: walk (who, x, z, ms, face) ·
+   props (keys, near, at [dx, dz] from their own spots, ms; light) · place ... sit. */
+STORY_CUTSCENES.orientation_tv = {
+    id: 'orientation_tv', title: 'THE TV CART', cast: ['locke'],
+    end: [{ do: 'props', keys: ['decor_av_cart', 'tube_tv', 'vhs_player', 'vhs_tape'], near: [-5.25, 29.4], at: [0, 0], ms: 0 },
+          { do: 'place', who: 'locke', x: -6.35, z: 29.3, face: 0 }, { do: 'place', who: 'player', x: -5.25, z: 27.2, face: 180, sit: false }],
+    beats: [
+        /* B1 · the room: wide from the pad, a slow pull back; the recruit just inside the door, Locke and the cart at the wall */
+        { dur: 3.2, shot: { cam: [0, 1.7, 9, 180, -2, 45], to: { cam: [0, 1.7, 7.6, 180, -2, 45] } },
+          act: [{ at: 0, do: 'place', who: 'player', x: 0, z: 27, face: 0 }, { at: 0, do: 'place', who: 'locke', x: -10.85, z: 29.3, face: 90 },
+                { at: 0, do: 'props', keys: ['decor_av_cart', 'tube_tv', 'vhs_player', 'vhs_tape'], near: [-5.25, 29.4], at: [-4.5, 0], ms: 0 }] },
+        /* B2 · take a seat: medium, side on */
+        { shot: { cam: [-2.3, 1.2, 26.7, 90, 0, 35] }, say: { who: 'AGENT LOCKE', text: "You're late. Take a seat." },
+          act: [{ at: 0, do: 'place', who: 'player', x: -5.25, z: 26.4, face: 180 }, { at: 1.1, do: 'place', who: 'player', sit: true }] },
+        /* B3 · the TV cart rolls in: low, at wheel height; the cart comes in from the right of frame, Locke's legs behind it */
+        { dur: 4.6, hold: true, shot: { cam: [-5.0, 0.3, 27.4, 180, 8, 42] },
+          act: [{ at: 0.3, do: 'props', keys: ['decor_av_cart', 'tube_tv', 'vhs_player', 'vhs_tape'], near: [-5.25, 29.4], at: [0, 0], ms: 3600 },
+                { at: 0.3, do: 'walk', who: 'locke', x: -6.35, z: 29.3, ms: 3600, face: 0 }] },
+        /* B4 · Locke and the TV: over the recruit's shoulder, Locke on the far side of the cart */
+        { shot: { cam: [-6.0, 1.55, 25.1, 198, -3, 32] }, say: { who: 'AGENT LOCKE', text: 'Welcome to the Department of Orthogonal Realities, or D.O.O.R.' } },
+        /* medium on Locke beside the set, a slow push in */
+        { shot: { cam: [-5.3, 1.5, 27.5, 151, -1, 28], to: { cam: [-5.4, 1.5, 27.7, 151, -1, 28] } },
+          say: { who: 'AGENT LOCKE', text: 'Here at D.O.O.R. we are responsible for investigating and maintaining doorways between realities.' } },
+        /* the recruit at the desk, taking it */
+        { shot: { cam: [-5.8, 1.2, 28.4, -15, 0, 30] }, say: { who: 'AGENT LOCKE', text: 'Due to recent events, the agency lowered its recruitment standards,' } },
+        { shot: { cam: [-5.4, 1.5, 27.7, 151, -1, 28], to: { cam: [-5.5, 1.5, 27.9, 151, -1, 28] } },
+          say: { who: 'AGENT LOCKE', text: 'which is why our hiring department reached out to you.' } },
+        { shot: { cam: [-5.5, 1.5, 27.9, 151, -1, 28] }, say: { who: 'AGENT LOCKE', text: "I'm Agent Locke, your direct superior." } },
+        /* back over the shoulder for the rule */
+        { shot: { cam: [-6.0, 1.55, 25.1, 198, -3, 32], to: { cam: [-5.95, 1.55, 25.4, 198, -3, 32] } },
+          say: { who: 'AGENT LOCKE', text: 'Under my watch you will do things by the book, down to the letter.' } },
+        { shot: { cam: [-5.55, 1.52, 28.0, 151, -1, 24] }, say: { who: 'AGENT LOCKE', text: 'Even when the book changes unexpectedly.' } },
+        { shot: { cam: [-5.55, 1.52, 28.0, 151, -1, 24], to: { cam: [-5.65, 1.52, 28.2, 151, -1, 24] } },
+          say: { who: 'AGENT LOCKE', text: "You can trust me, I'm an open door." } },
+        /* B5 · the TV snaps on: a slow push in until the screen fills the frame, then black */
+        { dur: 4.2, hold: true, fade: 3.5, shot: { cam: [-5.25, 1.14, 27.6, 180, 0, 26], to: { cam: [-5.25, 1.12, 28.6, 180, 0, 26] } },
+          say: { who: 'AGENT LOCKE', text: 'Now pay attention. Watch closely.' },
+          act: [{ at: 1.2, do: 'props', keys: ['tube_tv'], near: [-5.25, 29.4], light: { color: 0xbcd6ff, intensity: 1.6, dist: 5, y: 0.25, z: -0.5 } }] },
     ],
 };
 /* F · THE OFFICE (the approved storyboard's frames + mondo's lines, word for word; his change: the recruit is ALONE until
@@ -28513,6 +28564,10 @@ function questRewardedUnits(profile) {
 }
 /* true while an unfinished quest still HOLDS `key` back ('party' = the story party is the officer alone, 'range' = the
    Range Console deals the tapes only) */
+/* a quest row marked `officerUp` that is not finished yet: the officer stands (hqPartyRecord) */
+function questOfficerUp(profile) {
+    return STORY_QUESTS.some(def => { if (!def.officerUp) return false; const pr = questProgress(profile, def.id); return !(pr && pr.status === 'completed'); });
+}
 function questHolds(profile, key) {
     return STORY_QUESTS.some(def => { const pr = questProgress(profile, def.id); return !!(def.holds && def.holds[key]) && !(pr && (pr.status === 'completed' || (def.holds.until && Array.isArray(pr.done) && pr.done.indexOf(def.holds.until) >= 0))); });
 }
@@ -31691,6 +31746,7 @@ const DOOR_HQ = {
             label: 'YOUR OFFICE',
             sub: 'STORY · CASE FILE',
             roomNo: '101', why: 'the room holds your worst fear; yours is a closet',
+            noWalkers: true,   // mondo 2026-11-13: nobody has a route through your office (a man in black walked into the office scene)
             kind: 'box',
             shell: {
                 w: 5.6, d: 4.6, h: 3.4,      // interior size (m): x extent, z extent, ceiling (door panels need ≥ 3.4)
@@ -62513,6 +62569,7 @@ function hqRoomCrowdCap(roomId, planned) {
     const R = HQ_CROWD_RULES, room = (DOOR_HQ.rooms || {})[roomId];
     planned = Math.max(0, planned | 0);
     if (!room || !planned) return 0;
+    if (room.noWalkers) return 0;   // a room nobody walks through (your office, mondo 2026-11-13): story cast never counts, so its posts stay
     const hub = (typeof hqHubOf === 'function') ? hqHubOf(roomId) : null;
     const hi = (hub && (hub.id === 'city' || hub.id === 'underworld')) ? R.cityMax : R.max;
     let n = Math.floor(planned * R.share);
@@ -62636,7 +62693,7 @@ function hqRoomPopulation(roomId, profile, opts) {
     n = Math.max(lo, Math.min(hi, n));
     if (room.quiet) n = Math.min(n, R.quietN);
     if (opts.perfLow) n = Math.round(n * R.perfLowMul);
-    if (!pool.length) n = 0;
+    if (!pool.length || room.noWalkers) n = 0;   // noWalkers: no extra walker, no traveller through the door (your office)
     /* the draw: seeded by the day + the room; the natives weighted first (a wild room is mostly its own people), never twice the same race in a row of three */
     const seed = hqHash((opts.date || hqToday()) + '|' + roomId + '|population');
     let s = seed || 1;
@@ -64813,6 +64870,9 @@ function hqPartyRecord(profile) {
     r.v = 1; if (!(r.seq >= 1)) r.seq = 1;
     r.members = r.members.filter(m => m && typeof m === 'object' && m.cls).slice(0, HQ_PARTY_RULES.roster).map(m => hqPartyNormMember(m, r));
     if (r.members.length && !r.members.some(m => m.you)) r.members[0].you = true;
+    /* THE RECRUIT WALKS OUT (mondo 2026-11-13): while a quest marked `officerUp` is unfinished the officer is never DOWN outside a
+       fight (1 HP) and walks in slot 1, so the story's scenes have the officer in them (a save where the fight already dropped them heals here) */
+    try { if (questOfficerUp(profile)) { const y = r.members.find(m => m && m.you); if (y && y.hp === 0) { y.hp = 1; if (r.members[0] !== y) r.members = [y].concat(r.members.filter(m => m !== y)); } } } catch (e) {}
     hqPartyDownBack(r);   // THE FAINTED LEAD (2026-10-06): a DOWN member never walks while anyone is fit
     /* THE NAMES (mondo, 2026-09-30): the random names are gone — once per record, every member but the officer drops the
        name it was filed with (a rolled name or its race in capitals) and reads as its race until the player renames it */
@@ -65476,7 +65536,11 @@ function hqPartyAfterMatch(profile, ev) {
         const hpMax = Math.max(1, u.maxHp | 0), mpMax = Math.max(0, u.maxMp | 0);
         m.hpMax = hpMax; m.mpMax = mpMax;
         if (u.escaped) escapedIds.push(m.id);
-        if (!u.escaped && (u.dead || (u.hp | 0) <= 0)) { m.hp = 0; m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); down++; }
+        /* THE RECRUIT WALKS OUT (mondo 2026-11-13: "If I die in the tutorial and kit survives, it should automatically revive me
+           after the cutscene so I can still walk to rhondas desk"): a WON quest fight (`ev.reviveYou`) stands the officer back up
+           on 1 HP, so slot 1 never passes to somebody else and the scenes after it have the officer in them */
+        if (ev.reviveYou && ev.won && m.you && !u.escaped && (u.dead || (u.hp | 0) <= 0)) { m.hp = 1; m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); }
+        else if (!u.escaped && (u.dead || (u.hp | 0) <= 0)) { m.hp = 0; m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); down++; }
         else { m.hp = Math.max(1, Math.min(hpMax, u.hp | 0)); m.mp = Math.max(0, Math.min(mpMax, u.mp | 0)); }
         /* THE LEVEL'S REST (2026-09-23): a member whose ledger crossed a level at the debrief comes home FULL (hp / mp null = the
            level's own max — the new max is bigger than the fight's build knew); a body dead at the end stays down */
@@ -70568,6 +70632,9 @@ const DOOR_CAST = {
         spots: [
             { room: 'central_egress', deg: 20, r: 12.7, level: 0, face: 20, pose: 'hqTalk', reach: 2.2,
               doing: 'Briefing the half-ring. Strictly by the book. The book has changed twice since Tuesday.' },
+            /* scene B and the tapes (the first quest's `walk`, `tape1`, `tape2` stages): she gives the orientation by the TV cart in the Training Room */
+            { room: 'training', x: -6.35, z: 29.3, level: 0, face: 0, pose: 'hqTalk', reach: 2.2, during: { quest: 'orientation', stages: ['walk', 'tape1', 'tape2'] },
+              doing: 'By the TV cart. The tape is cued.' },
             /* scene F (the first quest's `office` stage): she comes to the recruit's door; the scene shows her at F4 and takes her out at its end */
             { room: 'office', x: -1.75, z: -0.5, level: 0, face: 90, pose: 'hqTalk', reach: 2.2, during: { quest: 'orientation', stage: 'office' },
               doing: 'In your doorway.' },
@@ -70772,6 +70839,8 @@ function hqCastInRoom(roomId, profile, opts) {
         if (!open.length) continue;
         /* a post taken WHILE a quest stage is current wins over the everyday posts (Locke at the recruit's door) */
         { const dur = open.filter(s => s.during); if (dur.length && dur.length < open.length) { open.length = 0; dur.forEach(s => open.push(s)); } }
+        /* a scene being REPLAYED wins over the live stage's post (Locke is at the TV cart for B's replay even while the office stage has her at the door) */
+        { const rp = open.filter(s => s.during && _hqCastSpotReplay(s.during)); if (rp.length && rp.length < open.length) { open.length = 0; rp.forEach(s => open.push(s)); } }
         const total = open.reduce((a, s) => a + (s.p == null ? 1 : s.p), 0);
         let roll = ((hqHash(id + '|' + salt) % 100000) / 100000) * Math.max(1, total), pick = null;
         for (const s of open) { roll -= (s.p == null ? 1 : s.p); if (roll <= 0) { pick = s; break; } }

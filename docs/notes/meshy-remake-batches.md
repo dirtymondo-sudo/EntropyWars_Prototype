@@ -127,3 +127,5 @@ is shot while still loading, so put a throwaway unit first. Not seen: any of the
   the sleeves and boots; the old cape had hidden it. `DROPCOL` now cuts before the limbs are measured. Her bake: `HANDCUT=1 HANDLEN=0.07
   CUFF=1 CUFFIN=0.012 DROPCOL=0.667,0,0.188,0.35 SNUG=0.004 SLEEVES=0 LEGHIDE=0.2 LEGPAIR=0.1 RAY_IN=0.12`. `SNUG` (new) lays the suit's
   shoulders 4 mm off the skin so the creator cape (cut to the bare body) covers them. Sleeves end mid-forearm (Meshy's arms are shorter).
+- SUPERHERO F, THE CUFF (mondo 11-13 18:35: "jaggedy around the arms"): it was her forearm's skin, hidden in a saw-tooth line below the
+  sleeve end by the cover lines. Bake `CUFFHIDE=1` hides the arm's skin by place, level with the sleeve's end.

@@ -5953,11 +5953,20 @@ if (typeof window !== 'undefined') {
    the board), so the rig has eyelids, a jaw and the creator's face moves. Console: window.EW_DISABLE_CAST_LOOKS = true = her old rig. */
 const CAST_CREATOR_LOOKS = {
   locke: { gender: 'female', look: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":1.02,"jaw":-0.4,"head":-0.2,"nose":0,"noseWidth":0,"eyeSize":-0.2,"browRidge":-0.3,"mouthCorners":0,"mhSkin":"ew_face_locke","mhEyes":"mhm_spamrakuen_sr_anime_maid-san_red_eyes","eyeTint":"pick","eyeColor":"#5a6a72","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#9a6468","linerTint":"pick","linerColor":"#3a302e","shadowTint":"pick","shadowColor":"#5a4a50","blushTint":"pick","blushColor":"#c08080","hair":"mh_elvs_short_side_do","hairColor":"#e6e6ea","browColor":"#8a8a8e","browTint":"pick","idle":"Idle_11","wear":["ewm_t2locke_outfit"],"lockeFace":1,"mouthWidth":-0.2,"mouthHeight":-0.25} },
+  kit: { gender: 'female', race: 'catgirl' },   // Kit IS the Catgirl: her race's own look (see getCastLookModel)
 };
 const _castLookDefs = {};
 function getCastLookModel(id, race, gender) {
   const row = CAST_CREATOR_LOOKS[id];
   if (!row || (typeof window !== 'undefined' && window.EW_DISABLE_CAST_LOOKS)) return null;
+  /* KIT IS THE CATGIRL (mondo 2026-11-13: "we need to be using the catgirl model (saved race look or the remade race look,
+     whichever is there) for Kit. The Kit model is an old placeholder"): a row with `race` wears that race's own model, the
+     same one the unit wears on the board (getRace3DModel: the remade look, else the saved look, else its rig) */
+  if (row.race) {
+    const kr = id + '|race';
+    if (!_castLookDefs[kr]) { let d = null; try { d = getRace3DModel(row.race, row.gender) || null; } catch (e) { d = null; } if (d) _castLookDefs[kr] = d; }   // a miss is never kept (the board's sprite preference can say no once)
+    return _castLookDefs[kr] || null;
+  }
   const r = race || 'homosapien', g = gender || row.gender, k = id + '|' + r + '|' + g;
   if (!(k in _castLookDefs)) { let d = null; try { d = getCharacterAppearanceModel(r, g, row.look); } catch (e) { d = null; } _castLookDefs[k] = d || null; }
   return _castLookDefs[k];
