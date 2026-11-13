@@ -627,7 +627,7 @@ function build(ctx) {
         R.lx = X => X - W / 2; R.lz = Y => Y - D / 2;
         R.cx = (c, n) => gx + (c + (n || 1) / 2) * SQ; R.cy = (r, n) => gy + (r + (n || 1) / 2) * SQ;
         R.face = dir => { const o = fr.at(0, 0), p = fr.at(dir === 'e' ? 1 : dir === 'w' ? -1 : 0, dir === 's' ? 1 : dir === 'n' ? -1 : 0), dx = p[0] - o[0], dz = p[1] - o[1]; return dx > 0.5 ? 90 : dx < -0.5 ? 270 : dz > 0.5 ? 180 : 0; };
-        R.put = (key, X, Y, dir, o) => propAt(fr, key, X - W / 2, Y - D / 2, R.face(dir || 's'), o);
+        R.put = (key, X, Y, dir, o) => propAt(fr, key, X - W / 2, Y - D / 2, R.face(dir || 's'), Object.assign({ floor: true }, o));   // `floor`: on the room's floor, never on a ghost wall's top (three-renderer.js THE FLOOR UNDER IT)
         R.cell = (key, c, r, dir, o) => R.put(key, R.cx(c), R.cy(r), dir, o);
         R.block = (c, r, nc, nr, w, d, h) => ghost(fr, R.lx(R.cx(c, nc)), R.lz(R.cy(r, nr)), w, d, h);
         R.box = (X, y, Y, w, h, d, key, tint, o) => a.box(X - W / 2, y, Y - D / 2, w, h, d, key, tint, o);
@@ -642,9 +642,9 @@ function build(ctx) {
     /* THE CHURCH, 5 x 5 squares from (1, 1): the aisle up the middle column, a cross walk before the altar, two side aisles */
     inside('P00-00-B1', 1, 1, R => {
         const mid = R.cx(2);
-        R.box(R.cx(0, 5), 0, R.cy(0), 17.5, 0.03, 3.5, K.stone, 0xd8d0bc);                                   // the chancel: a stone floor, the same height
-        R.box(mid, 0, R.cy(1, 4) + 0.5, 1.5, 0.025, 14.5, K.plaster, 0x9c2c2c);                              // the carpet up the aisle
-        R.box(mid, 0, R.cy(1, 4) + 0.5, 1.7, 0.02, 14.7, K.plaster, 0xd8b868);
+        R.box(R.cx(0, 5), 0, R.cy(0), 17.5, 0.05, 3.5, K.stone, 0xd8d0bc);                                   // the chancel: a stone floor, the same height
+        R.box(mid, 0, R.cy(1, 4) + 0.5, 1.5, 0.07, 14.5, K.plaster, 0x9c2c2c);                              // the carpet up the aisle
+        R.box(mid, 0, R.cy(1, 4) + 0.5, 1.7, 0.06, 14.7, K.plaster, 0xd8b868);
         [1, 3].forEach(c => { for (let r = 2; r <= 4; r++) [-0.9, 0.9].forEach((dy, i) => R.put(i ? 'church_pew' : 'catholic_pew', R.cx(c), R.cy(r) + dy, 'n')); R.block(c, 2, 1, 3, 3.2, 10, 1.1); });   // the pews face the altar: two a square
         R.cell('stone_altar', 2, 0, 's'); R.put('candle', mid - 0.7, R.cy(0), 's', { y: 1.0 }); R.put('candle', mid + 0.7, R.cy(0), 's', { y: 1.0 });
         R.cell('church_podium', 0, 0, 's'); R.cell('decor_piano', 4, 0, 'w'); R.block(4, 0, 1, 1, 2.2, 1.8, 1.3);
@@ -729,7 +729,7 @@ function build(ctx) {
     /* THE DOJO, 9 x 3 squares: the mat on 5 x 2 squares (walked), the shrine at the west end, the drum and the posts at the east end */
     inside('P03-01-B1', 0, 0, R => {
         const mx = R.cx(2, 5), my = R.cy(0, 2);
-        R.box(mx, 0, my, 17.5, 0.04, 7, K.stucco, 0xcdbf82); R.box(R.cx(2) - 1.75, 0, my, 0.05, 0.045, 7, null, 0x3c4a2c, { n: 11, step: [1.75, 0, 0] }); R.box(mx, 0, my - 3.5, 17.5, 0.045, 0.05, null, 0x3c4a2c, { n: 3, step: [0, 0, 3.5] });   // the mat, its seams on the squares
+        R.box(mx, 0, my, 17.5, 0.06, 7, K.stucco, 0xcdbf82); R.box(R.cx(2) - 1.75, 0, my, 0.05, 0.07, 7, null, 0x3c4a2c, { n: 11, step: [1.75, 0, 0] }); R.box(mx, 0, my - 3.5, 17.5, 0.07, 0.05, null, 0x3c4a2c, { n: 3, step: [0, 0, 3.5] });   // the mat, its seams on the squares
         R.cell('stone_altar', 0, 1, 'e'); R.put('candle', R.cx(0) - 0.2, R.cy(1) - 0.5, 'e', { y: 1.0 }); R.put('candle', R.cx(0) - 0.2, R.cy(1) + 0.5, 'e', { y: 1.0 });
         R.put('holy_tapestry', 0.12, R.cy(1), 'e', { y: 3.0, h: 2.4 }); R.put('potted_plant', 0.45, 10.0, 'e'); R.put('potted_plant', 0.45, 0.5, 'e');
         [9, 10.2, 11.4, 12.6].forEach(X => R.put('psx_sword_mp_1', X, 0.14, 's', { y: 1.6 })); R.box(10.8, 1.5, 0.12, 4.6, 0.08, 0.1, K.wood, 0x5c3c24);   // the sword rack
@@ -738,7 +738,7 @@ function build(ctx) {
         [[7, 0], [8, 1]].forEach(v => { const X = R.cx(v[0]), Y = R.cy(v[1]), WD = 0x8c6844;                                 // the striking posts
             R.box(X, 0, Y, 0.9, 0.12, 0.9, K.wood, 0x5c3c24); R.cyl(X, 0.12, Y, 0.13, 1.6, K.wood, WD); R.box(X - 0.3, 1.25, Y + 0.25, 0.07, 0.07, 0.6, K.wood, WD); R.box(X + 0.3, 1.25, Y + 0.25, 0.07, 0.07, 0.6, K.wood, WD); R.box(X, 0.95, Y + 0.3, 0.07, 0.07, 0.7, K.wood, WD); R.box(X + 0.15, 0.4, Y + 0.3, 0.08, 0.08, 0.7, K.wood, WD);
             R.block(v[0], v[1], 1, 1, 1.0, 1.0, 1.8); });
-        R.cell('psx_shelf_mp_4_1', 3, 2, 'n'); R.block(3, 2, 1, 1, 2.6, 0.8, 1.2); R.cell('metro_bench', 5, 2, 'n');
+        R.cell('psx_shelf_mp_4_1', 3, 2, 'n'); R.block(3, 2, 1, 1, 2.6, 0.8, 1.2); { const X = R.cx(5), Y = R.cy(2); R.box(X, 0.4, Y, 2.8, 0.07, 0.45, K.wood, 0x8c6844); [-1.2, 1.2].forEach(s => R.box(X + s, 0, Y, 0.08, 0.4, 0.4, K.wood, 0x5c3c24)); R.block(5, 2, 1, 1, 2.9, 0.6, 0.6); }   // a plain wooden bench
         R.cell('coffee_table', 8, 2, 's'); R.put('teapot', R.cx(8), R.cy(2), 's', { y: 0.47, h: 0.25 }); R.block(8, 2, 1, 1, 1.2, 1.2, 0.6);
         [10.5, 15.75, 21].forEach(X => R.put('meshy_hanging_lantern', X, 3.5, 's', { y: 2.5 }));
     });
@@ -748,7 +748,7 @@ function build(ctx) {
         const DK = 0x30343c, YL = 0xd8a020;
         { const X = R.cx(1), Y = R.cy(0, 2);                                                                                // the two-post lift, a car up on it
             [-1.45, 1.45].forEach(s => { R.box(X + s, 0, Y, 0.3, 3.2, 0.4, K.metal, YL); R.box(X + s, 0, Y, 0.7, 0.05, 0.9, K.metal, DK); R.box(X + s * 0.62, 1.45, Y - 0.8, 1.0, 0.1, 0.12, K.metal, DK); R.box(X + s * 0.62, 1.45, Y + 0.8, 1.0, 0.1, 0.12, K.metal, DK); });
-            R.box(X, 3.2, Y, 3.2, 0.14, 0.3, K.metal, YL); R.put('car_pack_2', X, Y, 's', { y: 1.58 }); R.block(1, 0, 1, 2, 3.2, 5.2, 3.3); }
+            R.box(X, 3.2, Y, 3.2, 0.14, 0.3, K.metal, YL); R.put('car_pack_2', X, Y, 's', { y: 1.58, floor: false }); R.block(1, 0, 1, 2, 3.2, 5.2, 1.55); }   // a car stands on what is under it: the block's top is the height the lift holds it at
         R.put('car_pack_3', R.cx(3), R.cy(0, 2), 's'); R.put('crashed_car', R.cx(5), R.cy(0, 2), 's');
         for (let i = 0; i < 4; i++) { const X = 3.3 + i * 4.7; R.box(X, 0, 0.5, 4.4, 0.85, 0.8, K.metal, 0x687078); R.box(X, 0.85, 0.5, 4.5, 0.05, 0.9, K.wood, 0x8c6844); }   // the workbenches in the back strip
         R.put('psx_car_battery_1', 2.2, 0.5, 's', { y: 0.92 }); R.put('psx_hand_saw_1', 6.6, 0.5, 's', { y: 0.92 }); R.put('psx_screwdriver_mp_1', 8.2, 0.5, 's', { y: 0.92 }); R.put('psx_car_battery_1', 12.4, 0.5, 's', { y: 0.92 }); R.put('psx_jerrycan_1', 16.8, 0.5, 's', { y: 0.92 });
