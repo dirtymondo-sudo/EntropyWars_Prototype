@@ -19,7 +19,7 @@ Preview: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg.
 | Laundry | Southside | P00-03 Canal walk, the north-east yard (16.7 m wide: too wide for the Laundry terraces lot) | 16:49 | `city_laundry` |
 | House, Quequis house | Southside | two houses on P01-03 Homes row, the Quequis house on P02-03 Pawnshop court (31.7 m wide: it takes the place of two lots) | 16:49 | `city_house`, `city_quequis_house` |
 | Bus stop | Southside | P00-02 Bus stop court | 16:49 | already in the game: `bus_shelter` |
-| Playground: not cut yet (ask the shared-pieces thread) | | | | |
+| Playground: CUT 11-13 by the prop-pass thread: `play_slide`, `play_swing`, `play_sandbox` (shared, any district may place them; one set stands on Southside's Townhouse court) | | | | |
 | Industrial pack (domi236: container, tank, vent, panel, skip, factory fronts) | cut by Industrial, shared by all | | 16:53 | by Industrial |
 | Metro station pieces (already in the game, `base: 'metro'`) | Hero Plaza | P06-06 Transit court | 16:46 | in game |
 
