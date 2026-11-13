@@ -211,7 +211,7 @@ function build(ctx) {
         a.roof('shed', -7.65, 6.5, 0, 20, 1.8, 3.2, K.rib, SL, { ry: 90, keyEnd: K.stone, tintEnd: ST, over: 0.3 });   // the aisles' roofs
         a.roof('shed', 7.65, 6.5, 0, 20, 1.8, 3.2, K.rib, SL, { ry: 270, keyEnd: K.stone, tintEnd: ST, over: 0.3 });
         a.box(0, 6.5, 0, 12.1, 4.2, 20, K.stone, ST, { top: false });                                                  // the clerestory
-        a.roof('gable', 0, 10.7, 0, 20, 6.6, 12.1, K.rib, SL, { ry: 90, keyEnd: K.stone, tintEnd: ST, over: 0.5 });   // the nave's roof
+        a.roof('gable', 0, 10.7, 0, 20, 6.6, 12.1, K.rib, SL, { ry: 90, keyEnd: K.stone, tintEnd: ST, over: 0.5, bare: true });   // the nave's roof
         a.wins('lr', 0, 0, 12.1, 20, 7.6, { n: 5, ww: 1.1, wh: 2.2, key: K.winT, tint: 0xc9a8ff, glow: 0.35 });
         a.wins('lr', 0, 0, 18.5, 20, 1.3, { n: 5, ww: 1.1, wh: 3.4, key: K.winT, tint: 0xc9a8ff, glow: 0.25, off: 0.12 });
         a.box(-9.75, 0, -8, 0.9, 6.2, 0.8, K.stone, 0xcfc4aa, { n: 5, step: [0, 0, 4] });                              // the buttresses
