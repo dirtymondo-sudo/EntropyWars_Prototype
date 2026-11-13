@@ -2183,6 +2183,16 @@ mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is 
 - GOLD = key `'gold'` (the gilt sheet) on the Wrestling hall and the Clubhouse band. Thin posts stand on the lines between squares; anything thick on a square's middle has a block under it.
 - NOT DONE: no gas station (it needs about 28 × 45 m, the road plots have 10.5 m: the South gatehouse stands there); the Playground pack is not used (the park is the stadium now); no signs / lettering; the stands are solid (nobody climbs them); the Giant Ape's home was Park west (asked mondo, default: the field).
 
+- THE EXTERIOR POLISH (2026-11-13, mondo 20:15 "one or two more layers deep" + 20:18 "roofs and ac units" + 20:19 "different textures or decals for
+  different parts of the building"): S.js `apply` has a detail layer per building, `X[id]()`, joined to the building's parts by `B`. Helpers: `trim`,
+  `cornice`, `coping`, `shutters`, `surround`, `pipe` + `gutter`, `lamp`, `sign` / `signAt`, `ac` / `acRow` / `wallAC`, `vent`, `duct`, `tank`, `hatch`,
+  `mat` (a roof sheet), `flag`, `steps`. Each building now has a base course, a body, a trim and a roof sheet of different existing textures
+  (marble, rubber, subway grill, generic tile; nothing repainted), roof plant on every flat roof, and lettered signs.
+- THE LETTERING (three-renderer.js `_hqArchSignTex`, shared by every district): an arch part `key: 'txt:WORDS|fg|bg|aspect'` draws the words on a canvas
+  sheet (uv 'fit', no city tint). Empty bg = letters only (use `kind: 'over'`). No apostrophes in the words (the bake writes single-quoted strings).
+  Seen in the cloud browser: marquee, scoreboard, gym, box office, depot, gallery, art supplies signs. Low contrast, to raise later: the museum frieze
+  and SOUTH GATE (dark letters on stone).
+
 ## DISASTER CITY, CIVIC CENTER — the 28 buildings of district C (2026-11-13, mondo's OK 17:11)
 
 District C = plots x 4..7, y 0..3 of `site_prebuilt_downtown_streets`. Everything lives in ONE file:

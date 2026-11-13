@@ -71915,16 +71915,35 @@ const ThreeRenderer = (function () {
         });
         return G;
     }
+    /* THE LETTERING (2026-11-13, mondo's polish pass: "go one or two more layers deep with the detail"; every district's signs were blank
+       panels): an arch part whose `key` is 'txt:WORDS|fg|bg|aspect' is a sign. The words are drawn once on a canvas of that aspect (width /
+       height of the quad that wears it, uv 'fit'), bold capitals fitted to the panel, in `fg` (a CSS colour) on `bg` (empty = no board: the
+       letters alone, on a `kind: 'over'` part). The part's `tint` stays white unless the letters are to be dimmed; `glow` lights the sign. */
+    var _hqArchSignCache = {};
+    function _hqArchSignTex(key) {
+        if (_hqArchSignCache[key]) return _hqArchSignCache[key];
+        var q = String(key).slice(4).split('|'), words = q[0] || '', fg = q[1] || '#ffffff', bg = q[2] || '', asp = Math.max(0.2, Math.min(24, parseFloat(q[3]) || 4));
+        var H = 128, W = Math.max(32, Math.min(2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;
+        var g = c.getContext('2d'); g.clearRect(0, 0, W, H);
+        if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
+        var px = 96; g.font = '900 ' + px + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif';
+        var tw = g.measureText(words).width || 1, sc = Math.min(1, (W * 0.9) / tw); px = Math.max(8, Math.floor(px * sc));
+        g.font = '900 ' + px + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = fg;
+        g.fillText(words, W / 2, H / 2 + px * 0.04);
+        var t = new THREE.CanvasTexture(c); t.anisotropy = 4;
+        return (_hqArchSignCache[key] = t);
+    }
     function _hqBuildArchRows(info, G, U) {
         var neon = !!(info.gen && info.gen.neon), mats = {}, made = 0;
         var matOf = function (b) {
             var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0, b.gain || 1].join('|'); if (mats[id]) return mats[id];
-            var tex = b.key ? _hzTex(b.key) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
+            var sign = !!b.key && String(b.key).indexOf('txt:') === 0;   // THE LETTERING: a sign's words, drawn once on a canvas
+            var tex = b.key ? (sign ? _hqArchSignTex(b.key) : _hzTex(b.key)) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
             if (b.kind === 'over') { o.transparent = true; o.alphaTest = 0.35; o.polygonOffset = true; o.polygonOffsetFactor = -1; o.polygonOffsetUnits = -1; }
             var m = new THREE.MeshPhongMaterial(o);
             if (b.ds) m.side = THREE.DoubleSide;
             m.color = new THREE.Color(b.tint);
-            if (tex) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
+            if (tex && !sign) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
             if (b.gain && b.gain !== 1) m.color.multiplyScalar(b.gain);
             if (b.glow > 0) { m.emissive = m.color.clone(); if (tex) m.emissiveMap = tex; m.emissiveIntensity = b.glow; }
             else m.emissive = new THREE.Color(neon ? 0x08060e : 0x0a0a0a);
