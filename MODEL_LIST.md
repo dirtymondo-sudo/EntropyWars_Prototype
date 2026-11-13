@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 925 |
+| Asset pack | yes | 933 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -2057,6 +2057,18 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | mop | `Assets/world/packs/elbolilloduro/ebd_house_mop.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
 | shower_stall | `Assets/world/packs/elbolilloduro/ebd_house_shower_stall.glb` | Asset pack | House · Elbolilloduro · CC0 (piece cut out in Blender) |
 
+### Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (7)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| garbage_bag | `Assets/world/packs/elbolilloduro/ebd_trailerpark_garbage_bag.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| metal_trash_can | `Assets/world/packs/elbolilloduro/ebd_trailerpark_metal_trash_can.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| retro_radio | `Assets/world/packs/elbolilloduro/ebd_trailerpark_retro_radio.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| table_lamp | `Assets/world/packs/elbolilloduro/ebd_trailerpark_table_lamp.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| trash_bin | `Assets/world/packs/elbolilloduro/ebd_trailerpark_trash_bin.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| tube_tv | `Assets/world/packs/elbolilloduro/ebd_trailerpark_tube_tv.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+| wall_clock | `Assets/world/packs/elbolilloduro/ebd_trailerpark_wall_clock.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) — Asset pack (6)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2087,16 +2099,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | kitchen_range | `Assets/world/packs/elbolilloduro/ebd_diner_kitchen_range.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
 | range_hood | `Assets/world/packs/elbolilloduro/ebd_diner_range_hood.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
 | sink_row | `Assets/world/packs/elbolilloduro/ebd_diner_sink_row.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out in Blender) |
-
-### Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (5)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| retro_radio | `Assets/world/packs/elbolilloduro/ebd_trailerpark_retro_radio.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
-| table_lamp | `Assets/world/packs/elbolilloduro/ebd_trailerpark_table_lamp.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
-| trash_bin | `Assets/world/packs/elbolilloduro/ebd_trailerpark_trash_bin.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
-| tube_tv | `Assets/world/packs/elbolilloduro/ebd_trailerpark_tube_tv.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
-| wall_clock | `Assets/world/packs/elbolilloduro/ebd_trailerpark_wall_clock.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### D.O.O.R. kit upload (mondo, author not recorded) — Asset pack (author not recorded yet) (4)
 
@@ -2150,6 +2152,14 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | camping_tent | `Assets/world/packs/elbolilloduro/ebd_survival_camping_tent.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 | ship_lantern | `Assets/world/packs/elbolilloduro/ebd_survival_lantern.glb` | Asset pack | Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 
+### Tacos · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| ebd_tacos_roller_shutter | `Assets/world/packs/elbolilloduro/ebd_tacos_roller_shutter.glb` | Asset pack | Tacos · Elbolilloduro · CC0 (piece cut out in Blender) |
+| power_pole | `Assets/world/packs/elbolilloduro/ebd_tacos_power_pole.glb` | Asset pack | Tacos · Elbolilloduro · CC0 (piece cut out in Blender) |
+| public_phone | `Assets/world/packs/elbolilloduro/ebd_tacos_public_phone.glb` | Asset pack | Tacos · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### Laundry · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2165,6 +2175,14 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | horse | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
 | horse_black | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
 | horse_brown | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
+
+### PS1 Playground · Cursedlake · from mondo's asset-packs folder (each piece cut out in Blender by bake-pack-pieces.py play_*; DOOR_HQ.catalogue play_*, Disaster City) — Asset pack (3)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| play_sandbox | `Assets/world/packs/cursedlake_playground/cl_playground_sandbox.glb` | Asset pack | PS1 Playground · Cursedlake · from mondo's asset-packs folder (each piece cut out in Blender by bake-pack-pieces.py play_*; DOOR_HQ.catalogue play_*, Disaster City) |
+| play_slide | `Assets/world/packs/cursedlake_playground/cl_playground_slide.glb` | Asset pack | PS1 Playground · Cursedlake · from mondo's asset-packs folder (each piece cut out in Blender by bake-pack-pieces.py play_*; DOOR_HQ.catalogue play_*, Disaster City) |
+| play_swing | `Assets/world/packs/cursedlake_playground/cl_playground_swing.glb` | Asset pack | PS1 Playground · Cursedlake · from mondo's asset-packs folder (each piece cut out in Blender by bake-pack-pieces.py play_*; DOOR_HQ.catalogue play_*, Disaster City) |
 
 ### Meshy AI (single wing, mirrored in code) — Meshy AI (3)
 
@@ -2237,6 +2255,13 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | fallen_log | `Assets/world/packs/elbolilloduro/ebd_vegetation_fallen_log.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
 | stump | `Assets/world/packs/elbolilloduro/ebd_vegetation_stump.glb` | Asset pack | Vegetation · Elbolilloduro · CC0 (piece cut out in Blender) |
 
+### 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| fire_extinguisher | `Assets/world/packs/elbolilloduro/ebd_6twelve_fire_extinguisher.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
+| garbage_bags | `Assets/world/packs/elbolilloduro/ebd_6twelve_garbage_bags.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### Molten Maps SciFi Asset Pack · Moltenbolt · CC0 — Asset pack (2)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2276,23 +2301,11 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | --- | --- | --- | --- |
 | ebd_dinerscene_steel_table | `Assets/world/packs/elbolilloduro/ebd_dinerscene_steel_table.glb` | Asset pack | DINER · Elbolilloduro · CC0 (piece cut out of the DINER scene in Blender) |
 
-### Tacos · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| ebd_tacos_roller_shutter | `Assets/world/packs/elbolilloduro/ebd_tacos_roller_shutter.glb` | Asset pack | Tacos · Elbolilloduro · CC0 (piece cut out in Blender) |
-
 ### Elephant (mondo's upload, FBX) — Asset pack (author not recorded yet) (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | elephant | `Assets/world/animals/elephant/elephant-3d.fbx` | Asset pack (author not recorded yet) | Elephant (mondo's upload, FBX) |
-
-### 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| fire_extinguisher | `Assets/world/packs/elbolilloduro/ebd_6twelve_fire_extinguisher.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Halloween pack · Elbolilloduro · CC0 — Asset pack (1)
 

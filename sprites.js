@@ -5818,7 +5818,7 @@ Object.assign(RACE_REMADE_LOOKS['demon princess'] || (RACE_REMADE_LOOKS['demon p
 Object.assign(RACE_REMADE_LOOKS['fairy'] || (RACE_REMADE_LOOKS['fairy'] = {}), { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"idle":"Idle_11","mhSkin":"ew_face_fairy","mhEyes":"brown","hair":"mh_long01","hairColor":"#4a3020","browColor":"#3a2418","browTint":"pick","wear":["ewm_t2fairy_outfit","mhw_elvs_static_wings5_fairy_moth1"],"fairyFace":1,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04"} });
 Object.assign(RACE_REMADE_LOOKS['fallen angel'] || (RACE_REMADE_LOOKS['fallen angel'] = {}), { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"feathered","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"idle":"Idle_11","mhSkin":"ew_face_fallenangel","mhEyes":"brown","hair":"mh_long01","hairColor":"#111114","browColor":"#111114","browTint":"pick","wingsColor":"#1c1c22","wear":["ewm_t2fallenangel_outfit"],"fallenangelFace":1,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04"} });
 Object.assign(RACE_REMADE_LOOKS['firefighter'] || (RACE_REMADE_LOOKS['firefighter'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"ew_face_firefighter","mhEyes":"brown","hair":"mh_short01","hairColor":"#2a1d14","browColor":"#2a1d14","browTint":"pick","wear":["ewm_firehelmet","ewm_t2firefighter_outfit","ewm_airtank"],"firefighterFace":1,"mhBrows":"own"} });
-Object.assign(RACE_REMADE_LOOKS['fortune teller'] || (RACE_REMADE_LOOKS['fortune teller'] = {}), { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"idle":"Idle_11","mhSkin":"ew_face_fortunetellerf","mhEyes":"brown","hair":"mh_long01","hairColor":"#141416","browColor":"#141416","browTint":"pick","wear":["ewm_t2fortunetellerf_hat","ewm_t2fortunetellerf_outfit"],"fortunetellerfFace":1,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04"} });
+Object.assign(RACE_REMADE_LOOKS['fortune teller'] || (RACE_REMADE_LOOKS['fortune teller'] = {}), { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"idle":"Idle_11","mhSkin":"ew_face_fortunetellerf","mhEyes":"brown","hair":"mh_long01","hairColor":"#141416","browColor":"#141416","browTint":"pick","wear":["ewm_t2fortunetellerf_outfit"],"fortunetellerfFace":1,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04"} });
 Object.assign(RACE_REMADE_LOOKS['gangster'] || (RACE_REMADE_LOOKS['gangster'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"ew_face_gangster","mhEyes":"brown","hair":"bald","hairColor":"#111111","browColor":"#111111","browTint":"pick","wear":["ewm_t2gangster_outfit","ewb_dorag","ewm_crosspendant"],"gangsterFace":1,"mhBrows":"own","wearTint":{"ewm_crosspendant":"#d4af37","ewb_dorag":"#a01818"}} });
 Object.assign(RACE_REMADE_LOOKS['general'] || (RACE_REMADE_LOOKS['general'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"ew_face_general","mhEyes":"blue","hair":"mh_short04","hairColor":"#d8d8d4","browColor":"#c8c8c4","browTint":"pick","wear":["ewm_officercap","ewm_t2general_outfit"],"generalFace":1,"mhBrows":"own"} });
 Object.assign(RACE_REMADE_LOOKS['astronaut'] || (RACE_REMADE_LOOKS['astronaut'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"young_caucasian_male","mhEyes":"brown","browTint":"pick","hair":"bald","hairColor":"#2a1d14","browColor":"#2a1d14","wear":["ewm_t2astronaut_hat","ewm_t2astronaut_outfit","ewm_astropack"]} });
@@ -5854,6 +5854,23 @@ function getRaceRemadeAlts(race, gender) {
   const k = race + '|' + g, c = _ewRemadeAltCache[k] || (_ewRemadeAltCache[k] = set[g].map(a => ({ label: a.label, look: normalizeCharacterAppearance(a.look) })).filter(a => a.look));
   return c.map(a => ({ label: a.label, look: Object.assign({}, a.look, { wear: a.look.wear.slice() }) }));
 }
+/* THE REMADE LOOKS SWITCH (2026-11-13, mondo: "a dev option in the settings to use all of these new race looks, saves to where i dont
+   have to retoggle it on reloading the page, but off by default for now"): Settings > Developer > Remade Race Looks. ON = a unit
+   with no look of its own wears its race's remade look (RACE_REMADE_LOOKS) wherever a unit is drawn (getCharacterAppearanceModel is
+   the one resolver: creator, board, HQ, team room, party builder, portraits); a race with no remade look keeps its Meshy model. A
+   slot's own saved look and USE ORIGINAL MODEL still win. Viewer-local (localStorage ew_remade_looks), looks only, never relayed. */
+const EW_REMADE_LOOKS_KEY = 'ew_remade_looks';
+let _ewRemadeLooksOn = null;
+function remadeLooksOn() {
+  if (_ewRemadeLooksOn === null) { try { _ewRemadeLooksOn = localStorage.getItem(EW_REMADE_LOOKS_KEY) === '1'; } catch (e) { _ewRemadeLooksOn = false; } }
+  return _ewRemadeLooksOn;
+}
+function setRemadeLooksOn(on) {
+  _ewRemadeLooksOn = !!on;
+  try { if (on) localStorage.setItem(EW_REMADE_LOOKS_KEY, '1'); else localStorage.removeItem(EW_REMADE_LOOKS_KEY); } catch (e) {}
+  try { window.dispatchEvent(new CustomEvent('ew-remade-looks', { detail: { on: !!on } })); } catch (e) {}
+  return !!on;
+}
 function raceLooksAreDefault() { return EW_RACE_LOOKS_ARE_DEFAULT || (typeof window !== 'undefined' && window.EW_RACE_LOOKS_ARE_DEFAULT === true); }
 /* the races whose creator look is their DEFAULT (the human base + the DOOR Agent; + the saved race looks only while
    EW_RACE_LOOKS_ARE_DEFAULT is on). THE MESHY DEFAULT: every race may WEAR a creator look (ewCreatorLookRace); only these
@@ -5864,7 +5881,8 @@ function getCharacterAppearanceModel(race, gender, appearance) {
   const own0 = ewCreatorLookRace(race) && normalizeCharacterAppearance(appearance);
   if (own0 && own0.model === 'original') return null;   // THE RACE LOOKS: this slot wears the race's own model
   /* THE MESHY DEFAULT: no look on the slot = the race's own (Meshy) model, unless the race's look is its default */
-  const a = own0 || ((EW_CREATOR_LOOK_RACES.includes(race) || raceLooksAreDefault()) && getRaceCreatorLook(race, gender));
+  const a = own0 || (remadeLooksOn() && getRaceRemadeLook(race, gender))   /* THE REMADE LOOKS SWITCH */
+    || ((EW_CREATOR_LOOK_RACES.includes(race) || raceLooksAreDefault()) && getRaceCreatorLook(race, gender));
   if (!a) return null;
   const mp = a.body && EW_MPFB_BASES[a.body];
   const def = mp ? Object.assign({}, mp, { heightRatio: mp.heightRatio * a.height })
@@ -5960,7 +5978,7 @@ if (typeof window !== 'undefined') {
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.wearKindOf = wearKindOf; window.wearFabricable = wearFabricable; window.EW_WEAR_BANDS = EW_WEAR_BANDS; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT; window.EW_BOOT_TOPS = EW_BOOT_TOPS; window.EW_PANT_HEMS = EW_PANT_HEMS; window.pantsBootsWorn = pantsBootsWorn;   // THE PANTS IN THE BOOTS   // THE PACK CLOTHES
   window.EW_WEAR_SHELVES = EW_WEAR_SHELVES; window.wearShelfOf = wearShelfOf; window.wearMadeFor = wearMadeFor; window.outerMadeFor = outerMadeFor; window.EW_OUTER_GROUPS = EW_OUTER_GROUPS;   // THE SHELVES
   window.EW_WEAR_SLOTS = EW_WEAR_SLOTS; window.EW_WEAR_GROUPS = EW_WEAR_GROUPS; window.wearGroupOf = wearGroupOf; window.wearSlotOf = wearSlotOf; window.wearSlotOfGroup = wearSlotOfGroup;   // THE BODY SLOTS
-  window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES; window.ewCreatorLookRace = ewCreatorLookRace; window.raceLooksAreDefault = raceLooksAreDefault;   // THE MESHY DEFAULT
+  window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES; window.ewCreatorLookRace = ewCreatorLookRace; window.raceLooksAreDefault = raceLooksAreDefault; window.remadeLooksOn = remadeLooksOn; window.setRemadeLooksOn = setRemadeLooksOn;   // THE MESHY DEFAULT
   window.RACE_CREATOR_LOOKS = RACE_CREATOR_LOOKS; window.getRaceCreatorLook = getRaceCreatorLook; window.RACE_REMADE_LOOKS = RACE_REMADE_LOOKS; window.getRaceRemadeLook = getRaceRemadeLook; window.RACE_REMADE_ALTS = RACE_REMADE_ALTS; window.getRaceRemadeAlts = getRaceRemadeAlts; window.hasRaceCreatorLook = hasRaceCreatorLook;   // THE RACE LOOKS
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
 }
