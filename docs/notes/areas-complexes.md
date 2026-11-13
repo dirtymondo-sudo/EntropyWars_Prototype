@@ -2298,6 +2298,9 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
 - **Follow-up (same day)**: the Corner shops' pack block row carries `y: 0` too (it stood on the 7 m roof). THE BIG WINDOWS (mondo 18:49): R.js windows are
   'fit' quads, so the shared repeat rule skips them; the helper now draws 1.7 x 1.8 m windows and `a.floors` draws the GROUND row as half as many wide
   shop panes (`urban:GlassWindowSquare1a`), never the upper floors' window (`ground: 'same'` opts out).
+- **On THE LEVELS** (Southside stands on levels 10 to 14, 17.5 to 24.5 m): the tool lifts every arch row onto its building's base, so R.js keeps
+  writing `y: 0`. Rows the tool does NOT lift ask R.js `plotY(px, py)`: the pack block's `texbuilding` and the canal's water. The canal is the levels'
+  sunk ditch on P00-03 (levels.js `pieces`): the `stream` runs north-south on its bed (water 0.5 m deep), the boathouse stands on the east bank.
 - **Seen in the cloud browser** (WebGL2 headless): every plot from above, shots in `/mnt/project-files/disaster-city-southside/`. Not seen on his Mac yet.
   Interiors are the next pass (the seven walk-in shells are empty rooms with a floor and plaster walls).
 

@@ -114,6 +114,9 @@ function build(ctx) {
     const claim = (rect) => claims.push(rect);
     /* a plot's own frame: front south, x east, z south, origin the plot's middle (for the things that stand in a yard) */
     const plotFrame = (px, py) => frame(-ctx.HALF + (px + 0.5) * PL, -ctx.HALF + (py + 0.5) * PL, 0, PL, PL);
+    /* THE LEVELS (docs/disaster-city/levels.js): a plot's ground height in metres. The tool lifts every arch row onto its building's base by
+       itself; a row it does not lift (the pack block's texbuilding, the canal's water) asks here. */
+    const plotY = (px, py) => (ctx.LEVELS ? ctx.LEVELS.grid[py][px] * ctx.LEVELS.M : 0);
     const sq = n => (n - 6) * 3.5;   // a plot-local square LINE (0..12) in the plot frame
 
     /* ════════ P00-00 THE CHURCH (landmark): stone nave, slate gable, aisles + buttresses, apse under a half dome, bell tower ════════ */
@@ -274,7 +277,7 @@ function build(ctx) {
         const W = fr.W, D = fr.D, PB = { key: 'pack_bld_09', w: 16.89, d: 13.86 };
         /* the pack block: the front's left corner (as the row's frame runs), a texbuilding row at 1.0 of its true width */
         const blk = fr.sub(-W / 2 + PB.w / 2, D / 2 - PB.d / 2, PB.w, PB.d);
-        const prow = { k: 'texbuilding', id: 'dc:P01-01-B1-shop', x: blk.x, z: blk.z, y: 0, w: PB.w, d: PB.d, rot: fr.rot, storeys: 3, seed: 9100, key: PB.key }; out.push(prow);
+        const prow = { k: 'texbuilding', id: 'dc:P01-01-B1-shop', x: blk.x, z: blk.z, y: plotY(1, 1), w: PB.w, d: PB.d, rot: fr.rot, storeys: 3, seed: 9100, key: PB.key }; out.push(prow);
         const a = arch(fr, 'P01-01-B1'), CR = 0xf0e2c0, SG = 0x9cc4b8;
         const rx = -W / 2 + PB.w, rw = W - PB.w;                      // the wing beside the block
         a.box(rx + rw / 2, 0, 0, rw + 0.05, ROOF_H, D + 0.1, K.stucco, CR, { top: false, faces: 'fbr' });
@@ -469,14 +472,17 @@ function build(ctx) {
         const pf = plotFrame(0, 3);
         const lx = sq(7) + 8.35 + 0.1, lz = sq(5) - 6.15 - 0.15;                                                        // its front on the east-west walk
         propAt(pf, 'city_laundry', lx, lz, 180); claim(pf.rect(lx, lz, 16.7, 12.3, 0.4));
-        out.push({ k: 'stream', pts: [pf.at(sq(0.4), sq(9.6)), pf.at(sq(11.6), sq(9.6))], w: 4.6, y: -0.25, depth: 0.5, bank: 0.9 });   // the canal (waded)
-        claim(pf.rect(0, sq(9.6), 40, 6.4, 0));
-        const fr = pf.sub(sq(2.6), sq(7.6), 8, 5), a = arch(fr, 'P00-03-boathouse'), BL = 0x9cc0d4, RD = 0xc06454;
+        /* the canal lies in the levels' sunk ditch (levels.js pieces, P00-03: squares 1..5 x 1..11, two levels deep, its bed along square line 3):
+           the water half a metre deep on the bed, north to south */
+        const bed = plotY(0, 3) - 2 * (ctx.LEVELS ? ctx.LEVELS.M : 0);
+        out.push({ k: 'stream', pts: [pf.at(sq(3), sq(3.1)), pf.at(sq(3), sq(8.9))], w: 2.6, y: r3(bed + 0.5), depth: 0.5, bank: 0.4 });   // the canal (waded)
+        claim(pf.rect(sq(3), sq(6), 6, 24, 0));
+        const fr = pf.sub(sq(7.3), sq(8.4), 8, 5), a = arch(fr, 'P00-03-boathouse'), BL = 0x9cc0d4, RD = 0xc06454;                     // on the east bank
         a.box(0, 0, 0, 8, 3.2, 5, K.board, BL, { top: false }); a.roof('gable', 0, 3.2, 0, 8, 2.4, 5, K.rib, RD, { keyEnd: K.board, tintEnd: BL, over: 0.5 });
         a.panel('f', 0, 0, 8, 5, 0, 0, 3.6, 2.6, K.wood, 0x8c6444, { off: 0.08 }); a.wins('lr', 0, 0, 8, 5, 1.3, { n: 1 }); a.wins('b', 0, 0, 8, 5, 1.3, { n: 2 });
         a.box(0, 0, 3.6, 7, 0.3, 2.2, K.wood, 0xb89468);                                                                // the slip
         a.done(); ghost(fr, 0, 0, 8, 5, 3.2); claim(fr.rect(0, 1, 9, 8, 0));
-        propAt(pf, 'rowboat', sq(5.2), sq(9.6), 90);
+        propAt(pf, 'rowboat', sq(3), sq(6), 0, { y: 0.3 });
     })();
 
     /* ════════ P03-03 THE STREET COURT: a car wash beside the road (the skate ramps stay) ════════ */
