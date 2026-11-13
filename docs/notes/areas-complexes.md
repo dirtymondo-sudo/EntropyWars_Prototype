@@ -2029,7 +2029,7 @@ The plan's data lives in `docs/disaster-city/` (city-layout.json = the source, p
   `node bake-disaster-city.js`; never hand-edit it, edit the tool or the layout and rerun). 504 x 504 m, `terrain.res` 0.875. Today's
   Disaster City rooms (`site_prebuilt_downtown_streets` and its parts) are untouched and nothing leads to the new room yet.
 - **The tailoring** (what the plan became): a plan cell = ONE battle square, 3.5 m (HQ_ARENA_RULES.squareDefault), so a plot is 42 m =
-  exactly a 12 x 12 board. A closed plot edge = a thin wall ON the plot line (a sheet per district), the plan's boundary band is yard.
+  exactly a 12 x 12 board. NO WALLS ON THE PLOT LINES (mondo 11-13 13:14: "i dont like how it looks like the plots are separated by literal walls, and they are all the same wall"): bake-disaster-city.js THE PLOT EDGES: a building one square from its plot's edge grows into the plan's blocked band (buildings meet back to back), the band on a side the plan connects opens (yard / pavement, its whole width), the band left on an unconnected side and round the city's edge is built on (THE INFILL: 341 back-lot buildings, a square or two deep, mixed lengths / heights / fronts) or planted on a park plot. The plan's ports are no longer the only way across a connected edge.
   Named buildings = `texbuilding` rows with `hollow: true` (walk-in, the doorway on the plan's first door); the plan's filler buildings
   (Residence / annex, Local shop, Street kiosk / annex, Workshop / store) wear the painted building sprites; ten shop plots wear the
   Buildings pack's shop blocks; the Church wears `church_1`. The 42 roof-route buildings are `plateau` rows with `bld` (solid, the roof

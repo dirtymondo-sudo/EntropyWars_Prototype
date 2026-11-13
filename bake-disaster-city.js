@@ -9,7 +9,7 @@
    THE TAILORING (what the plan became in Entropy Wars):
    - a plan cell (3 to 4 m in the plan) is ONE battle square, 3.5 m (HQ_ARENA_RULES.squareDefault): a plot is 42 m, exactly a
      12 x 12 battle board; the city 504 m a side.
-   - a closed plot edge is a thin wall ON the plot line (brick, concrete, corrugated or railings by district); the plan's
+   - NO WALLS on the plot lines (mondo 11-13; see THE PLOT EDGES). Was: a closed plot edge is a thin wall ON the plot line (brick, concrete, corrugated or railings by district); the plan's
      one-cell boundary band on either side of it is yard, so every square of a plot is a square of its board.
    - a building is the urban pack's textured building with an inside (texbuilding hollow), its doorway on the plan's first door.
    - a roof-route building is a solid building tier whose flat roof is walked; the plan's inside stairs are fire escapes in the
@@ -41,6 +41,38 @@ const cellAt = (cx, cy) => { if (cx < 0 || cy < 0 || cx >= 144 || cy >= 144) ret
 let seed = 144; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
 const pick = a => a[Math.floor(rnd() * a.length)];
 
+/* ── THE PLOT EDGES (mondo 11-13: "i dont like how it looks like the plots are separated by literal walls, and they are all the same wall"):
+   no wall stands on a plot line. The plan rings every plot with a blocked band ('#') and a few gaps; here
+   1. a building one square from its plot's edge GROWS into the band (two plots' buildings meet back to back: a street front, not a yard wall);
+   2. the band on a side the plan CONNECTS (a ground edge to that neighbour) opens: yard or pavement, walked across its whole width;
+   3. what is left on a side the plan does not connect is BUILT ON (infill buildings, below) or, on a park plot, planted. ── */
+const conn = new Set(); PLAN.groundEdges.forEach(e => { conn.add(e.a + '|' + e.b); conn.add(e.b + '|' + e.a); });
+const SIDE = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] };
+const sideOpen = (p, s) => conn.has(p.id + '|' + pid(p.x + SIDE[s][0], p.y + SIDE[s][1]));
+PLAN.plots.forEach(p => {
+    const g = p.cells.map(r => r.split(''));
+    const all = (x0, y0, x1, y1) => { for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (g[y][x] !== '#') return false; return true; };
+    p.buildings.forEach(b => {
+        const has = sd => (b.doors || []).some(d => d.side === sd);
+        if (b.x === 1 && !has('W') && all(0, b.y, 0, b.y + b.h - 1)) { b.x = 0; b.w++; }
+        if (b.x + b.w === N - 1 && !has('E') && all(N - 1, b.y, N - 1, b.y + b.h - 1)) b.w++;
+        if (b.y === 1 && !has('N') && all(b.x, 0, b.x + b.w - 1, 0)) { b.y = 0; b.h++; }
+        if (b.y + b.h === N - 1 && !has('S') && all(b.x, N - 1, b.x + b.w - 1, N - 1)) b.h++;
+        for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) if (g[y][x] === '#') g[y][x] = 'I';
+    });
+    const o = g.map(r => r.slice());
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+        if (g[y][x] !== '#' || (x > 0 && x < N - 1 && y > 0 && y < N - 1)) continue;
+        const sides = []; if (y === 0) sides.push('N'); if (y === N - 1) sides.push('S'); if (x === 0) sides.push('W'); if (x === N - 1) sides.push('E');
+        if (!sides.every(sd => sideOpen(p, sd))) continue;
+        const ix = x === 0 ? 1 : x === N - 1 ? N - 2 : x, iy = y === 0 ? 1 : y === N - 1 ? N - 2 : y, inn = g[iy][ix];
+        o[y][x] = (inn === 'P' || inn === 'R' || inn === 'D') ? 'P' : '.';
+    }
+    p.cells = o.map(r => r.join(''));
+});
+const setCell = (cx, cy, ch) => { const p = plotOf[pid(Math.floor(cx / N), Math.floor(cy / N))], r = p.cells[cy % N].split(''); r[cx % N] = ch; p.cells[cy % N] = r.join(''); };
+const inCity = (cx, cy) => cx >= 0 && cy >= 0 && cx < 144 && cy < 144;
+
 /* ── THE DISTRICTS: the look per district (the urban pack's sheets; MODEL_LIST) ── */
 const D = {
     R: { label: 'SOUTHSIDE',      yard: 2, wall: 'urban:PlasterWallStucco1a',       wallH: 2.1, styles: ['residential', 'stucco', 'residential'], storeys: [2, 3, 3, 4], trees: ['tree_3', 'tree', 'tree_2'], treeP: 0.5 },
@@ -66,7 +98,7 @@ const roofB = new Set(); PLAN.roofEdges.forEach(e => { roofB.add(e.a); roofB.add
 const ROOF_H = 7.0;   // two storeys of 3.5 m: every roof on a route stands level with the next (a bridge is level)
 
 const features = [], props = [], bInfo = [];
-const count = { texb: 0, roofb: 0, walls: 0, bridges: 0, escapes: 0, trees: 0 };
+const count = { texb: 0, roofb: 0, infill: 0, bridges: 0, escapes: 0, trees: 0 };
 
 /* ── THE BUILDINGS ── */
 PLAN.plots.forEach(p => {
@@ -97,36 +129,40 @@ PLAN.plots.forEach(p => {
     });
 });
 
-/* ── THE WALLS: every closed stretch of a plot line (shared lines once) ── */
-const wallRun = (horizontal, line, a, b, key, h) => {
-    /* a run of squares a..b (cell indices along the line) on cell LINE `line` */
-    const row = horizontal ? { k: 'wall', x0: gx(a), z0: gx(line), x1: gx(b + 1), z1: gx(line), h, t: 0.3, key, tint: '#ffffff' } : { k: 'wall', x0: gx(line), z0: gx(a), x1: gx(line), z1: gx(b + 1), h, t: 0.3, key, tint: '#ffffff' };
-    features.push(row); count.walls++;
-};
-const closedAt = (cx, cy, dx, dy) => {
-    /* the line between cell (cx, cy) and its neighbour (cx + dx, cy + dy), both across a plot line: closed if either is '#' */
-    const a = cellAt(cx, cy), b = cellAt(cx + dx, cy + dy);
-    return a === '#' || b === '#';
-};
-for (let L = 0; L <= N; L++) {
-    /* horizontal plot lines z = L * 12 cells; vertical x = L * 12 */
-    for (const horizontal of [true, false]) {
-        const line = L * N;
-        let run = null;
-        for (let c = 0; c <= 144; c++) {
-            let closed = false, key = null, h = 0;
-            if (c < 144) {
-                const cx = horizontal ? c : line - 1, cy = horizontal ? line - 1 : c;
-                closed = (L === 0 || L === N) ? true : closedAt(cx, cy, horizontal ? 0 : 1, horizontal ? 1 : 0);
-                if (closed) {
-                    const px = Math.min(N - 1, Math.floor((horizontal ? c : Math.min(143, line)) / N)), py = Math.min(N - 1, Math.floor((horizontal ? Math.min(143, line) : c) / N));
-                    const dd = D[plotOf[pid(px, py)].d]; key = dd.wall; h = (L === 0 || L === N) ? 3.2 : dd.wallH;
-                }
-            }
-            if (run && (!closed || key !== run.key || c % N === 0)) { wallRun(horizontal, line, run.a, c - 1, run.key, run.h); run = null; }
-            if (closed && !run) run = { a: c, key, h };
+/* ── THE INFILL: the band left on a side the plan does not connect (and round the city's edge) is built on — back-lot buildings a square
+   or two deep, each its own length, height and front; a park plot's band is planted instead (the trees go in with the dressing) ── */
+const GREEN = /park|green|canal|memorial|campus|garden/i, hedgeCells = [];
+const INFILL = { R: ['building_2', 'building_4', 'building_8', 'building_9'], C: ['building_1', 'building_6'], F: ['building_1', 'building_5'], U: ['building_4', 'building_6', 'building_9'], H: ['building_1', 'building_5'],
+    E: ['shop', 'building_7', 'building_10', 'building_3'], I: ['building_3', 'building_10'], S: ['building_3', 'building_6'], B: ['shop', 'building_7', 'building_5'] };
+const usedBand = new Set();
+for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) {
+    const line = L * N; let run = null;
+    const flush = () => {
+        if (!run) return; const r = run; run = null;
+        const cells = []; for (let c = r.a; c <= r.b; c++) { if (r.pat & 1) cells.push(horizontal ? [c, line - 1] : [line - 1, c]); if (r.pat & 2) cells.push(horizontal ? [c, line] : [line, c]); }
+        cells.forEach(q => usedBand.add(q[0] + ',' + q[1]));
+        const home = cells[0], p = plotOf[pid(Math.floor(home[0] / N), Math.floor(home[1] / N))], dd = D[p.d];
+        if (GREEN.test(p.name)) { cells.forEach(q => hedgeCells.push(q)); return; }
+        const lo = (r.pat & 1) ? line - 1 : line, hi = (r.pat & 2) ? line + 1 : line, deep = hi - lo, len = r.b - r.a + 1;
+        const x0 = horizontal ? r.a : lo, x1 = horizontal ? r.b + 1 : hi, z0 = horizontal ? lo : r.a, z1 = horizontal ? hi : r.b + 1;
+        const front = r.pat === 1 ? 'a' : r.pat === 2 ? 'b' : (rnd() < 0.5 ? 'a' : 'b');
+        const rot = horizontal ? (front === 'a' ? 180 : 0) : (front === 'a' ? 90 : 270);
+        const row = { k: 'texbuilding', id: 'dc:in' + count.infill, x: r3((gx(x0) + gx(x1)) / 2), z: r3((gx(z0) + gx(z1)) / 2), w: r3((x1 - x0) * C), d: r3((z1 - z0) * C), rot, storeys: deep === 1 ? pick([1, 1, 2]) : pick([1, 2, 2, 3]), seed: features.length };
+        if (len <= 3 && rnd() < 0.55) row.key = pick(INFILL[p.d]); else row.style = pick(dd.styles);
+        features.push(row); count.infill++;
+        cells.forEach(q => setCell(q[0], q[1], 'I'));
+    };
+    for (let c = 0; c <= 144; c++) {
+        let pat = 0;
+        if (c < 144) {
+            const A = horizontal ? [c, line - 1] : [line - 1, c], B = horizontal ? [c, line] : [line, c];
+            if (inCity(A[0], A[1]) && cellAt(A[0], A[1]) === '#' && !usedBand.has(A[0] + ',' + A[1])) pat |= 1;
+            if (inCity(B[0], B[1]) && cellAt(B[0], B[1]) === '#' && !usedBand.has(B[0] + ',' + B[1])) pat |= 2;
         }
+        if (run && (pat !== run.pat || c - run.a >= run.max)) flush();
+        if (pat && !run) run = { a: c, b: c, pat, max: 2 + Math.floor(rnd() * 4) }; else if (run) run.b = c;
     }
+    flush();
 }
 
 /* ── THE ROOF ROUTES: a bridge per crossing, a fire escape at each end of every district's route ── */
@@ -194,6 +230,8 @@ const put = (p, key, lx, ly, face, o) => {
 };
 const at = (name, fn) => (byName[name] || []).forEach(fn);
 const tree = (p, lx, ly, kind, h) => { const cx = p.x * N + Math.floor(lx), cy = p.y * N + Math.floor(ly); if (!free(cx, cy, '.#')) return; take(cx, cy); features.push({ k: 'tree', x: r3(-HALF + (p.x * N + lx) * C), z: r3(-HALF + (p.y * N + ly) * C), kind, h }); count.trees++; };
+/* a park plot's unconnected band: a tree a square */
+hedgeCells.forEach((q, i) => { const p = plotOf[pid(Math.floor(q[0] / N), Math.floor(q[1] / N))]; tree(p, q[0] % N + 0.5, q[1] % N + 0.5, ['tree_3', 'tree', 'tree_2', 'tree_4'][(q[0] + q[1] + i) % 4], 3.4 + ((q[0] * 7 + q[1] * 3) % 5) * 0.2); });
 /* BAYSIDE, the opening: the response outside the mall (cop cars nose to tail down the response streets, barricades at the cordon, the ambulances at the medical staging) */
 at('Police staging', p => { [[1.5, 4.9, 70], [3.5, 7.1, 250], [5.6, 4.9, 110], [7.6, 7.1, 290], [9.6, 4.9, 80], [10.6, 7.2, 265]].forEach(q => put(p, 'car_cop', q[0], q[1], q[2], { road: true }));
     [[2.5, 9.5], [5.5, 9.5], [8.5, 9.5]].forEach(q => put(p, 'item_police_barricade', q[0], q[1], 0)); put(p, 'car_cop', 9.5, 10.5, 90); put(p, 'car_cop', 2.5, 10.5, 270); });
@@ -242,7 +280,7 @@ const DRESS = { R: ['city_bin', 'park_bench', 'planter'], C: ['park_bench', 'pla
 PLAN.plots.forEach(p => {
     const dd = D[p.d], ring = [];
     for (let i = 1; i < N - 1; i++) { ring.push([i, 0, 180]); ring.push([i, N - 1, 0]); ring.push([0, i, 90]); ring.push([N - 1, i, 270]); }
-    const cand = ring.filter(q => p.cells[q[1]][q[0]] === '#' && free(p.x * N + q[0], p.y * N + q[1], '#'));
+    const cand = ring.filter(q => '#.'.indexOf(p.cells[q[1]][q[0]]) >= 0 && free(p.x * N + q[0], p.y * N + q[1], '#.'));
     for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = cand[i]; cand[i] = cand[j]; cand[j] = t; }
     let nT = dd.trees.length ? Math.round(dd.treeP * 5 + rnd()) : 0, nP = 2;
     cand.forEach(q => {
