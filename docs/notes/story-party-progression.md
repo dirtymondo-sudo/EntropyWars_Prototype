@@ -878,6 +878,15 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   lands them there, facing the party. THE WARM-UP: a scene opens on black and starts its clock once 12 frames run under
   45 ms (0.4 to 3 s). THE REPLAY: pause menu > QUESTS, a finished fight stage with a scene shows REPLAY (map.js
   `data-quest-replay`, `_questFightGo(id, { replay: true })`, console `Quests.replay()`); the party's own Catgirl sits it out.
+- **Rev 3 (2026-11-13, mondo: "tension building shot, after kit falls out of the door. The camera needs to slowly zoom in on
+  the door, ominous smoke and energy emanating from it, then all of a sudden the shadow entities jump out, like a jump scare ...
+  The shadow entities are floating at different heights ... The portal+door should be floating higher")**: 7 beats. C5 THE
+  TENSION = a 5 s push-in on the door (dist 8.5 to 3.2 bodies), action `menace` (`off: true` ends it) = the air door's
+  `menace(on)`: the doorway light dies to a black-violet void, black smoke rolls out and down, sparks crawl the frame, the
+  rings bruise to violet and spin up over 3 s; the two `out` leaps fire in the beat's last 0.35 s (the jump scare), C6 lands
+  them in slow motion. Locke's closing line is his new one ("Alright rook, you're officially hired. Your first shift starts
+  now."). The height bug: a cut leap left the body in the air; three-renderer.js `cancelJumpTween` now LANDS the leap.
+  The sill = battle.js `QUEST_DOOR_SILL` (1.0 body off the floor).
 - **Not built yet** (the doc's build order): the new stage endings + the in-world quest marker (mock-up first) + `office_door`,
   D / E / F with the choice box, B the TV cart, A the intro. HQ scenes need an HQ host (cast walk / face / sit hooks).
 
