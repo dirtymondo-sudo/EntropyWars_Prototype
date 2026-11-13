@@ -39980,7 +39980,7 @@ const DOOR_HQ = {
                     {k:'texbuilding',id:'dc:P10-03-B1',x:189,z:-96.25,w:14,d:10.5,rot:180,storeys:1,seed:76,hollow:true,door:5,skin:false,leaf:'leaf_lobby_glass_double',keyIn:'urban:PlasterWallStucco1a',floorIn:'urban:TileMarble3a'},
                     {k:'texbuilding',id:'dc:P10-03-B2',x:175,z:-117.25,w:14,d:17.5,rot:0,storeys:2,seed:77,skin:false},
                     {k:'texbuilding',id:'dc:P10-03-B3',x:197.75,z:-117.25,w:10.5,d:17.5,rot:0,storeys:2,seed:78,skin:false},
-                    {k:'texbuilding',id:'dc:P11-03-B1',x:231,z:-102,w:22.9,d:7.4,rot:180,storeys:1,seed:79,hollow:true,skin:false,leaf:'leaf_lobby_glass_double',floorIn:'urban:TileGeneric1a'},
+                    {k:'texbuilding',id:'dc:P11-03-B1',x:231,z:-102,w:22.9,d:7.4,rot:180,storeys:1,seed:79,hollow:true,skin:false,leaf:'leaf_lobby_glass_double',keyIn:'urban:GlassWindowFactory1a',floorIn:'urban:TileGeneric1a'},
                     {k:'plateau',id:'dc:P01-04-B1',x:-183.75,z:-50.75,w:10.5,d:17.5,h:7,edge:0.3,bld:{seed:81,skin:false}},
                     {k:'texbuilding',id:'dc:P01-04-B2',x:-201.25,z:-77,w:17.5,d:14,rot:0,storeys:3,seed:82,key:'pack_bld_09'},
                     {k:'texbuilding',id:'dc:P01-04-B3',x:-201.25,z:-54.25,w:17.5,d:10.5,rot:180,storeys:2,seed:83,skin:false},

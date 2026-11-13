@@ -176,7 +176,7 @@ module.exports = function (K, A) {
         /* 16. THE PALM HOUSE (6 x 2 squares under the glass vault): the back row is planted (a bed on each two squares either side of a
                pool on the middle two, each filling its squares), the front row is the walk, pots and ferns off the squares' middles */
         'P11-03-B1': (T, g, I) => {
-            look(T, null, U('TileGeneric1a')); const c = g.c, zb = c(0, 0)[1], zf = c(0, 1)[1];
+            look(T, U('GlassWindowFactory1a'), U('TileGeneric1a')); const c = g.c, zb = c(0, 0)[1], zf = c(0, 1)[1];
             for (const s of [-1, 1]) { const x = s * 7; I.bed(x, zb, 6.7, 3.2, true); I.put('palm_tree', x - 1.9, zb - 0.3, 'f', { h: 3.2, y: 0.5 }); I.put('palm_tree', x + 1.7, zb + 0.4, 'f', { h: 2.5, y: 0.5 }); for (const k of [-0.4, 2.7, -2.8]) I.put('fern', x + k, zb + 0.9 - Math.abs(k) * 0.2, 'f', { y: 0.5 }); }
             I.Q.push(box(0, 0, zb, 6.7, 0.5, 3.2, STONE, CR), box(0, 0.5, zb, 6.1, 0.04, 2.6, null, 0x3aa0c8, { glow: 0.2 }), cyl(0, 0.5, zb, 0.5, 0.5, STONE, CR, { seg: 8 }), cyl(0, 1.0, zb, 0.9, 0.12, STONE, CR, { seg: 12 }), cyl(0, 1.12, zb, 0.12, 0.5, STONE, CR, { seg: 6 })); I.solid(-3.35, zb, 3.35, zb, 3.2, 0.9);
             I.put('potted_plant', g.lw + 0.5, g.fw - 0.5, 'f'); I.put('potted_plant', g.rw - 0.5, g.fw - 0.5, 'f'); I.put('fern', c(1, 1)[0] + 1.3, g.fw - 0.4, 'f'); I.put('fern', c(4, 1)[0] - 1.3, g.fw - 0.4, 'f');
