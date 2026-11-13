@@ -28290,7 +28290,7 @@ const STORY_CUTSCENES = {
         id: 'orientation_ambush', title: 'THE AMBUSH',
         beats: [
             /* C1 · behind the recruit's head: a portal forms in the air over the pad */
-            { dur: 3.4, shot: { look: 'portal', from: 'unit:player', over: 1.3, az: 2.2, h: 1.0, el: 1.2, fov: 36, to: { over: 1.0 } },
+            { dur: 3.4, shot: { look: 'portal', from: 'unit:player', over: 1.3, az: 2.2, h: 1.0, el: 0.5, fov: 36, to: { over: 1.0 } },
               act: [{ at: 0, do: 'face', who: 'player', to: 'portal' }, { at: 0, do: 'face', who: 'locke', to: 'portal' }, { at: 0.4, do: 'portal' }] },
             /* C2 · Locke, alarmed: medium close, a slow push in */
             { shot: { look: 'unit:locke', from: 'portal', az: 22, h: 0.86, el: -1, dist: 1.4, fov: 27, to: { dist: 1.15 } },

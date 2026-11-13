@@ -4466,6 +4466,7 @@
             } catch (e) {}
             const L = (typeof window.questFightLaunch === 'function') ? window.questFightLaunch(F.id, { partyLevel: _hqPartyLevelNow() }) : null;
             if (!L) return false;
+            if (opts && opts.replay) L.replay = true;
             if (L.room && _hqRoomExists(L.room)) { _hqCurRoom = L.room; }   // the result comes home to the fight's room
             return _hqEncounterStart(L, null, null);
         };
@@ -5118,6 +5119,16 @@
                     const g = (L.quest && typeof window.questGuestMember === 'function') ? window.questGuestMember(L.quest, L.partyLevel) : null;
                     /* the fight's ALLIES (Agent Locke) stand right after the first shift, the guest after them */
                     const al = (L.quest && typeof window.questAllyMembers === 'function') ? window.questAllyMembers(L.quest) : [];
+                    /* THE REPLAY: the scene is hers to enter, so the Catgirl the quest already gave the party sits this one out */
+                    if (L.replay && g && Array.isArray(party.members)) {
+                        for (let i = party.members.length - 1; i >= 0; i--) {
+                            const m = party.members[i];
+                            if (!m || m.you || !m.meta || m.meta.race !== g.meta.race) continue;
+                            party.members.splice(i, 1);
+                            if (Array.isArray(party.ids)) party.ids.splice(i, 1);
+                            if ((party.deploy | 0) > i) party.deploy = (party.deploy | 0) - 1;
+                        }
+                    }
                     const extra = al.concat(g ? [g] : []);
                     if (extra.length && Array.isArray(party.members)) {
                         const at = Math.max(0, Math.min(party.members.length, (party.deploy | 0) || party.members.length));
