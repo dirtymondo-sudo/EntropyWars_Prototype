@@ -59760,6 +59760,7 @@
            watch stands it up again at its stage if the match's start swept it away, closes it when no enemy is left
            standing and drops it when the fight is gone. */
         let _questDoor = null;
+        const QUEST_DOOR_SILL = 1.0;   // the door's sill, in bodies off the floor (mondo 2026-11-13: "the portal+door should be floating higher": it was 0.55)
         function _questDoorDrop() { const D = _questDoor; _questDoor = null; if (!D) return; if (D.timer) clearInterval(D.timer); try { if (D.fx) D.fx.kill(); } catch (e) {} }
         function _questDoorUp(P, open) {
             const FX = window.ThreeVFXEffects; if (!FX || typeof FX.questAirDoor !== 'function' || !P) return null;
@@ -59773,8 +59774,8 @@
                 /* a door sized to the bodies (2.6 m), its sill a body's waist off the floor */
                 const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128;
                 const body = (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? TR.bodyUnit() : ts;
-                D.fx = FX.questAirDoor(D.P.x, D.P.y, { scale: (1.5 * body) / (1.18 * ts), lift: (0.55 * body) / (0.95 * ts), instant: D.stage >= 2 || D.tries > 0 });
-                if (D.fx) { D.tries++; if (D.stage >= 1) D.fx.emerge(); if (D.stage >= 2) D.fx.open(); }
+                D.fx = FX.questAirDoor(D.P.x, D.P.y, { scale: (1.5 * body) / (1.18 * ts), lift: (QUEST_DOOR_SILL * body) / (0.95 * ts), instant: D.stage >= 2 || D.tries > 0 });
+                if (D.fx) { D.tries++; if (D.stage >= 1) D.fx.emerge(); if (D.stage >= 2) D.fx.open(); if (D.menace && D.fx.menace) D.fx.menace(true); }
             }
             return D.fx;
         }
@@ -59837,7 +59838,7 @@
             const w0 = tile(0, 0), w1 = tile(1, 0);
             let over = false;
             /* the door's sill, in board heights (a height = a square): a leap out of the door starts up there */
-            const sill = (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? (0.55 * TR.bodyUnit()) / ((typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128) : 0.3;
+            const sill = (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? (QUEST_DOOR_SILL * TR.bodyUnit()) / ((typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128) : 0.3;
             return {
                 /* a scene's lengths are BODIES (a standing body = 1, 1.75 m), so a shot frames the cast the same on any board's squares */
                 unit: (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? TR.bodyUnit() : ((w0 && w1) ? (Math.abs(w1.x - w0.x) || 128) / 2 : 64),
@@ -59846,6 +59847,7 @@
                     const u = a.who ? R[a.who] : null;
                     if (a.do === 'portal') _questDoorUp(P, false);
                     else if (a.do === 'door') { const d = _questDoorUp(P, false); if (d) d.emerge(); if (_questDoor) _questDoor.stage = Math.max(_questDoor.stage, 1); }
+                    else if (a.do === 'menace') { const d = _questDoorUp(P, false); if (d && d.menace) d.menace(a.off ? false : true); if (_questDoor) _questDoor.menace = !a.off; }
                     else if (a.do === 'open') { const d = _questDoorUp(P, false); if (d) d.open(); if (_questDoor) _questDoor.stage = 2; }
                     /* out of the door: `knock` = she lands hard, goes over and gets up (the board's own knockdown + get-up) */
                     else if (a.do === 'out') { if (!u) return; show(u); if (!(u.x === P.x && u.y === P.y)) TA.jumpArc(u, P.x, P.y, u.x, u.y, zAt(P.x, P.y) + sill, u.z || 0, a.ms || 1000, a.knock ? { knock: 'fling' } : undefined); }
@@ -59865,7 +59867,7 @@
                     try { if (TR && TR.clearTimeWarp) TR.clearTimeWarp(); } catch (e) {}
                     try { if (TR && TR.cancelJumpTween) [B.guest].concat(B.foes).forEach(u => { if (u) TR.cancelJumpTween(u.id); }); } catch (e) {}
                     /* the door stays: open, floating over the portal tile for the whole fight (a skipped scene stands it up at once) */
-                    try { _questDoorUp(P, true); } catch (e) {}
+                    try { const d = _questDoorUp(P, true); if (_questDoor) _questDoor.menace = false; if (d && d.menace) d.menace(false); } catch (e) {}
                     /* the fight opens the way _questFightSeat stood them: she with her back to the portal, they facing her */
                     try { _questFightSeat(); render(); } catch (e) {}
                 }

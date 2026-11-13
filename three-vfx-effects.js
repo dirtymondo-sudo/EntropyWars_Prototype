@@ -26457,6 +26457,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var r2 = new THREE.Mesh(new THREE.PlaneGeometry(R * 1.45, R * 1.45), m2); r2.position.z = 0.4; r2.renderOrder = 147; portal.add(r2);
         var gl = new THREE.Mesh(new THREE.PlaneGeometry(R * 2.6, R * 2.6), m3); gl.position.z = -0.4; gl.renderOrder = 145; portal.add(gl);
         var T = { emergeAt: o.instant ? -5000 : null, openAt: o.instant ? -5000 : null, closeAt: null, el: 0 };
+        /* THE MENACE (2026-11-13, mondo: "ominous smoke and energy emanating from it"): black smoke rolls out of the open
+           doorway and down, sparks of the portal's own light crawl round the frame, the rings turn faster and throb; it
+           builds over 3 s from menace(true) and stops with menace(false) or the close */
+        var M = { at: null, lastS: 0, lastE: 0 };
+        var FB = { c: tilePx(tx, ty), bz: tileZ(tx, ty), ts: rig.ts }, liftPx = rig.group.position.y - _worldPos(tx, ty).y;
         var FORM = o.instant ? 1 : 900, RISE = 700, OPEN = 450, SHUT = 300, BACK = 400, GONE = 500;
         rig.setRise(0.02); rig.setOpen(0); rig.setLight(0); rig.setFade(0);
         var entry = _sigRun(rig.group, 6 * 3600 * 1000, function (el) {
@@ -26465,8 +26470,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var pk = _sigEaseOutBack(_sigClamp01(el / FORM));
             if (c > SHUT + BACK) pk *= 1 - _sigEaseInCubic(_sigClamp01((c - SHUT - BACK) / GONE));
             portal.scale.setScalar(Math.max(0.001, pk));
-            r1.rotation.z = el * 0.0011; r2.rotation.z = -el * 0.0017;
-            var breathe = 0.86 + 0.14 * Math.sin(el * 0.004);
+            var mk = (M.at != null && T.closeAt == null) ? _sigClamp01((el - M.at) / 3000) : 0;
+            M.spin = (M.spin || 0) + (el - (M.prev != null ? M.prev : el)) * (1 + 3.5 * mk); M.prev = el;
+            r1.rotation.z = M.spin * 0.0011; r2.rotation.z = -M.spin * 0.0017;
+            var breathe = (0.86 + 0.14 * Math.sin(el * 0.004)) * (1 - 0.35 * mk * (0.5 + 0.5 * Math.sin(el * 0.021)));
+            if (mk > 0 && _canSpawn()) {
+                if (el - M.lastS > 70 - 30 * mk) {
+                    M.lastS = el;
+                    _goSpray(FB, 2, { sprite: 'smoke', lz: 6, ly: liftPx + oh * 0.45, r: rig.ow * 0.4, rz: oh * 0.4, v: 10, vy: 26 + 40 * mk, vz0: -34, vz1: -6, g: 0, drag: 0.5, s0: oh * 0.3, s1: oh * (0.8 + 0.5 * mk), op: 0.55 + 0.35 * mk, tint: 0x0b0a10, ml0: 1500, ml1: 2400 });
+                    _goSpray(FB, 1, { sprite: 'smoke-soft', lz: 4, ly: liftPx + oh * 0.2, r: rig.ow * 0.45, rz: oh * 0.15, v: 14, vy: 30 + 30 * mk, vz0: -30, vz1: -10, g: 0, drag: 0.4, s0: oh * 0.35, s1: oh * 1.1, op: 0.5 + 0.3 * mk, tint: 0x1a1024, ml0: 1800, ml1: 2800 });
+                }
+                if (el - M.lastE > 150 - 90 * mk) {
+                    M.lastE = el;
+                    _goSpray(FB, 1 + (mk > 0.6 ? 1 : 0), { sprite: 'lightning', lz: 3, ly: liftPx + oh * 0.5, r: rig.ow * 0.75, rz: oh * 0.55, v: 30, vz0: -20, vz1: 20, g: 0, drag: 2, s0: oh * 0.18, s0b: oh * 0.42, s1: oh * 0.1, op: 0.95, tint: (Math.random() < 0.5) ? _DOOR_FX.teal : 0xb48cff, ml0: 90, ml1: 190 });
+                }
+            }
             m1.opacity = 0.85 * Math.min(1, pk) * breathe; m2.opacity = 0.6 * Math.min(1, pk); m3.opacity = 0.5 * Math.min(1, pk) * breathe;
             var rk = (T.emergeAt != null) ? _sigClamp01((el - T.emergeAt) / RISE) : 0;
             var ok = (T.openAt != null) ? _sigClamp01((el - T.openAt) / OPEN) : 0;
@@ -26488,6 +26506,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             emerge: function () { if (T.emergeAt == null) T.emergeAt = T.el; },
             open: function () { if (T.emergeAt == null) T.emergeAt = T.el - RISE; if (T.openAt == null) T.openAt = Math.max(T.el, T.emergeAt + RISE * 0.6); },
             close: function () { if (T.closeAt == null) T.closeAt = T.el; },
+            menace: function (on) { M.at = on ? (M.at != null ? M.at : T.el) : null; },
             kill: function () { try { if (entry.finish) entry.finish(); } catch (e) {} },
             alive: function () { return !entry.done && !!rig.group.parent; },
             closing: function () { return T.closeAt != null; }
