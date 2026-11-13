@@ -520,6 +520,64 @@ const TRAFFIC = [
 /* ── the room ── */
 const J = v => JSON.stringify(v).replace(/"([a-zA-Z_][a-zA-Z0-9_]*)":/g, '$1:').replace(/"/g, "'");
 const spawnP = plotOf[PLAN.progression.start], sp = pc(spawnP);
+/* ── THE DISTRICT ARCHITECTURE (2026-11-13, mondo: "architect the buildings in their respective districts plots ... every building should be
+   unique and purposeful and recognizable"): a district's buildings are drawn by `k: 'arch'` rows (three-renderer.js _hqArchGeometry) written in
+   its own file, docs/disaster-city/<district>/*-arch.js = { B: { '<plan building id>': { row, parts(door), props(c) } }, OPEN: [{ id, x, z,
+   parts(), walls }], SWAP: { '<id>': { key, side, hw, hd, push } } }. The plan's own row keeps the collision, the inside, the door and the walked
+   roof with its outside switched off (`skin: false`); `row` says what else changes: storeys, leaf, solid (no inside), hollow + doorSide (an inside
+   on that side), pack + packSide (a pack shop block at true size), replace (smaller footprints), remove (walked through). Runs after every other
+   pass and draws no random number, so no other district's rows move. ── */
+{
+    const R3 = v => typeof v === 'number' ? Math.round(v * 1000) / 1000 : Array.isArray(v) ? v.map(R3) : (v && typeof v === 'object') ? Object.fromEntries(Object.entries(v).map(e => [e[0], R3(e[1])])) : v;
+    const ROT = { S: 0, W: 90, N: 180, E: 270 }, SIDE_OF = { 0: 'S', 90: 'W', 180: 'N', 270: 'E' };
+    const planB = id => { for (const p of PLAN.plots) { const b = p.buildings.find(q => q.id === id); if (b) return b; } return null; };
+    const doorOf = row => { if (!row || row.k !== 'texbuilding' || !row.hollow) return null;   // data.js hqTexbDoor, in the row's own frame
+        const L = Math.max(2, row.w) - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols; let col = Math.floor((cols - 1) / 2);
+        if (row.door >= 1) col = Math.min(cols - 1, Math.round(row.door) - 1);
+        return { side: SIDE_OF[row.rot || 0], lx: -L / 2 + (col + 0.5) * cw, cw, h: 2.2 }; };
+    const dir = path.join(REPO, 'docs/disaster-city'); let nArch = 0;
+    fs.readdirSync(dir, { withFileTypes: true }).filter(e => e.isDirectory()).forEach(e => fs.readdirSync(path.join(dir, e.name)).filter(f => /-arch\.js$/.test(f)).sort().forEach(f => {
+        const M = require(path.join(dir, e.name, f));
+        Object.keys(M.B || {}).forEach(bid => {
+            const def = M.B[bid], S = def.row || {}, i = features.findIndex(r => r.id === 'dc:' + bid), info = bInfo.find(b => b.id === bid), b = planB(bid);
+            if (i < 0 || !info || !b) { console.warn('arch: no row for', bid); return; }
+            let row = features[i]; const c = { x: info.x, z: info.z, w: info.w, d: info.d2 };
+            const turn = side => { const ew = side === 'E' || side === 'W'; row.rot = ROT[side]; row.w = r3((ew ? b.h : b.w) * C); row.d = r3((ew ? b.w : b.h) * C);
+                const dr = b.doors.find(q => q.side === side); delete row.door;
+                if (dr) { const k = side === 'S' ? (dr.x - b.x) : side === 'N' ? (b.x + b.w - 1 - dr.x) : side === 'E' ? (b.y + b.h - 1 - dr.y) : (dr.y - b.y); row.door = Math.round(k * C / 1.75) + 1; } };
+            if (S.pack) {   // a pack shop block at its own size (packFit): the whole model is the building
+                const ew = S.packSide === 'E' || S.packSide === 'W', fit = packFit((ew ? b.h : b.w) * C, (ew ? b.w : b.h) * C, S.pack);
+                turn(S.packSide || 'S'); delete row.door; delete row.hollow; delete row.style; row.key = fit && fit.keys.length === 1 ? fit.keys[0] : S.pack; return;
+            }
+            if (S.remove) features.splice(i, 1);
+            else if (S.replace) features.splice(i, 1, ...S.replace.map((q, n) => ({ k: 'texbuilding', id: 'dc:' + bid + '-a' + n, x: r3(c.x + q.dx), z: r3(c.z + q.dz), w: q.w, d: q.d, rot: 0, storeys: 1, seed: row.seed, skin: false })));
+            else if (row.k === 'plateau') row.bld = Object.assign({}, row.bld, { skin: false });
+            else {
+                delete row.key; row.skin = false; if (!row.style) row.style = 'office';
+                if (S.hollow) { row.hollow = true; turn(S.doorSide || info.side); }
+                if (S.solid) { delete row.hollow; delete row.door; }
+                if (S.storeys) row.storeys = S.storeys; else if (S.solid) row.storeys = 2;
+                if (S.leaf) row.leaf = S.leaf;
+            }
+            if (def.parts) { features.push({ k: 'arch', id: 'arch:' + bid, x: c.x, z: c.z, rot: 0, parts: R3(def.parts((S.remove || S.replace) ? null : doorOf(row), c)) }); nArch++; }
+            if (def.props) def.props(c).forEach(q => props.push(R3(q)));
+        });
+        (M.OPEN || []).forEach(o => {
+            features.push({ k: 'arch', id: 'arch:' + M.district + ':' + o.id, x: o.x, z: o.z, rot: 0, parts: R3(o.parts()) }); nArch++;
+            (o.walls || []).forEach((q, n) => features.push({ k: 'texbuilding', id: 'dc:' + M.district + ':' + o.id + '-w' + n, x: r3(o.x + q[0]), z: r3(o.z + q[1]), w: q[2], d: q[3], rot: 0, storeys: 3, seed: 1, skin: false }));
+        });
+        Object.keys(M.SWAP || {}).forEach(bid => {   // a plan building replaced by a whole catalogue building (a prop: real size, entrance at +Z, solid)
+            const q = M.SWAP[bid], i = features.findIndex(r => r.id === 'dc:' + bid), info = bInfo.find(b => b.id === bid); if (i < 0 || !info) { console.warn('arch: no row to swap', bid); return; }
+            features.splice(i, 1);
+            const n = { S: [0, 1], N: [0, -1], W: [-1, 0], E: [1, 0] }[q.side], ew = n[0] !== 0, half = (ew ? info.w : info.d2) / 2 + (q.push || 0) - q.hd;
+            const x = r3(info.x + n[0] * half), z = r3(info.z + n[1] * half), hx = ew ? q.hd : q.hw, hz = ew ? q.hw : q.hd;
+            for (let k = props.length - 1; k >= 0; k--) if (Math.abs(props[k].x - x) < hx + 0.6 && Math.abs(props[k].z - z) < hz + 0.6) props.splice(k, 1);   // nothing stands inside it
+            props.push({ key: q.key, x, z, face: ROT[q.side] });
+        });
+    }));
+    count.arch = nArch;
+}
+
 const lines = [];
 lines.push("        /* DC144-BEGIN — DISASTER CITY, THE 144 PLOTS (2026-11-13): written by `node bake-disaster-city.js` from docs/disaster-city/city-layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
 lines.push("        site_prebuilt_downtown_streets: {");

@@ -2101,3 +2101,30 @@ thing; ONE row kind does it (Sports + Culture thread owns it). Seen in the game 
   `python3 bake-pack-pieces.py -- --packs <dir> --out <out> --only city_pizzeria,...`. Files: R2 `Assets/world/packs/elbolilloduro/ebd_<scene>_city_*.glb`.
   They are PROPS, not HQ_PACK_BUILDINGS, on purpose: a prop is never fitted to a footprint, so its scale cannot go wrong. Not seen in the game
   (Blender renders only: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg). The laundry's roof sign renders blank orange in Blender.
+
+## HERO PLAZA, THE BUILDINGS — the district architected (2026-11-13, mondo's OK 17:12 "looks good")
+mondo 11-13: nine district threads "architect the buildings in their respective districts plots ... every building should be unique and
+purposeful and recognizable". Hero Plaza (plots x4..7, y4..7 of the 144; room metres -84..84) is laid out like a theme-park hub: the
+Superhero Tower is the weenie seen from everywhere, every walk ends at a clear silhouette. Plan doc: https://claude.ai/artifact/36EML6wNh4PjGRH6u2hzhy.
+- **The file**: `docs/disaster-city/hero-plaza/hero-plaza-arch.js` = every building as a parts list (`B`, by the plan's building id), the open
+  ground's drawn pieces (`OPEN`: the plaza's colonnade + bandstand + flags, the memorial's curved wall + obelisk + flame, the two avenue
+  gateways) and one swap (`SWAP`: the Local shop's lot wears the chain pizzeria `city_pizzeria` at real size, mondo 17:07 "a chain").
+- **The tool**: bake-disaster-city.js THE DISTRICT ARCHITECTURE loads every `docs/disaster-city/<district>/*-arch.js` after all other passes
+  (no random number drawn: no other district's rows move) and writes one `k: 'arch'` row per building. The plan's own row keeps collision,
+  inside, door and walked roof with `skin: false`; a file's `row` says what else changes (storeys, leaf, solid, hollow + doorSide, pack +
+  packSide, replace = smaller footprints, remove = walked through). Any district may use the same hook with its own `*-arch.js`.
+- **The 23**: News office (art-deco ziggurat, copper-green cornices, mast) · Hero workshop (brick, sawtooth roof, roller shutter) · pizzeria ·
+  Workshop store (ochre brick, green gable) · Superhero Tower (columned marble podium, glass shaft + white fins, round drum, overhanging
+  observation ring, gilt dome + pyramid + spire, about 88 m) · Press court (glass pavilion under a floating slab) · Apartments A · Coffee
+  arcade (glass barrel vault, striped arcade, a giant cup) · the pack shop block at true size (pack_bld_09) · the plaza · Training hall (brick
+  armory, four turrets, glass monitor; roof route) · Tower service (plant: cooling towers, striped stack, tank, pipes, dock) · Apartment
+  stair (tenement, iron stair face, water tower) · Townhouse row (three gables) · the memorial · Transit court (tile station, canopy, clock
+  tower; roof route) · Office court (teal slab on stilts, fins, round stair tower) · the Annex (stone pavilion; roof route) · Market steps
+  (cobble terrace, three tent stalls, walked through) · Kiosks · Delivery yard (depot, shed roof, dock) · Dispatch office · the Gateways.
+- **Inside** (hollow texbuilding + the city swing door): News office, Hero workshop, Tower, Press court, Coffee arcade, Tower service,
+  Apartment stair, Office court, Delivery yard. The three roof-route buildings (Training hall, Transit court, Annex) stay solid plateaus:
+  their roofs are the route. Furnishing = a later pass (the Metro pack's pieces belong in the Transit court).
+- **Rules learned**: a tint MULTIPLIES a sheet (and the city's building tint multiplies again), so pale tints on pale sheets; his glass
+  sheets are dark window grids, lit with the part's `glow`. `gold` = the terrain key (gilt.png); never the gold*.png files, not even in a
+  mock-up. The arch row has no lettering: sign boards are plain panels until a lettering part exists. No tilted parts: a stair flight is
+  stepped boxes, an arch is a barrel roof on a beam.
