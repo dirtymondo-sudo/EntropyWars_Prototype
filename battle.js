@@ -26326,7 +26326,7 @@
             const el = document.createElement('div');
             el.className = 'acam-chrome';
             el.innerHTML = `
-        <div class="acam-bar acam-bar-top"></div>
+        <div class="acam-bar acam-bar-top"><div class="acam-bar-name"></div></div>
         <div class="acam-bar acam-bar-bot"></div>
         <div class="acam-vignette"></div>
         <div class="acam-speedlines"></div>
@@ -26334,6 +26334,7 @@
         <div class="acam-title">
           <div class="acam-spell-name"></div>
           <div class="acam-dmg-row"><span class="acam-dmg-label">TOTAL DMG</span><span class="acam-dmg-num">0</span></div>
+          <div class="acam-ap-tally"></div>
         </div>`;
             (document.getElementById('game-viewport') || document.body).appendChild(el);
             _acChromeEl = el;
@@ -26369,6 +26370,24 @@
                 void nameEl.offsetWidth;
                 nameEl.classList.add('in');
             }
+            /* THE NAME RIDES THE BAR (mondo 2026-11-13: "move the Spell text to be inside the horizontal bars that come
+               down, which should allow the damage number to sit a little higher"): the heavy chrome writes the name in
+               its top letterbox bar (styles-cinematic.css .acam-bar-name hides the corner copy); it is shrunk to fit,
+               never cut. The light chrome has no bars and keeps the corner name. */
+            const barName = el.querySelector('.acam-bar-name');
+            if (barName) {
+                barName.textContent = opts.name || '';
+                barName.style.fontSize = '';
+                barName.classList.remove('in');
+                void barName.offsetWidth;
+                barName.classList.add('in');
+                if (opts.name && opts.heavy) requestAnimationFrame(() => {
+                    const room = (barName.parentElement ? barName.parentElement.clientWidth : 0) * 0.9;
+                    const w = barName.scrollWidth;
+                    if (room > 0 && w > room) barName.style.fontSize = (parseFloat(getComputedStyle(barName).fontSize) * room / w).toFixed(1) + 'px';
+                });
+            }
+            _acApTallyClear();
             const dmgRow = el.querySelector('.acam-dmg-row');
             const dmgNum = el.querySelector('.acam-dmg-num');
             if (dmgRow) dmgRow.classList.remove('show');
@@ -26456,6 +26475,77 @@
                 }, AC_TALLY_LINGER_MS);
             }
         }
+
+        /* THE AP TALLY (mondo 2026-11-13: "underneath the damage number, I want to show the floating text for things that
+           reward or take away AP ... stack on top of each other one by one with a sfx. Basically a tally of how much AP
+           you will or wont get back"): the lines that judge the press (battle.js THE PRESS SUM) stack under the corner
+           total one by one, each with its AP worth, then the sum lands on a last line. A draw only: the rules stay in
+           applyPressTurn. spec = { side: 'own' | 'enemy', rows: [{ label, mult, ap, ent, note }], total: { ap, ent, text } }.
+           Existing sounds only. */
+        const AC_AP_ROW_GAP_MS = 190, AC_AP_SUM_GAP_MS = 300, AC_AP_HOLD_MS = 1900;
+        let _acApTimers = [];
+        function _acApTallyClear() {
+            for (const t of _acApTimers) clearTimeout(t);
+            _acApTimers = [];
+            const box = _acChromeEl && _acChromeEl.querySelector('.acam-ap-tally');
+            if (box) { box.innerHTML = ''; box.className = 'acam-ap-tally'; }
+        }
+        function _acApVal(ap, ent, note) {
+            const bits = [];
+            if (ap > 0) bits.push(`<span class="acam-ap-v gain">+${ap} AP</span>`);
+            else if (ap < 0) bits.push(`<span class="acam-ap-v loss">\u2212${-ap} AP</span>`);
+            if (ent > 0) bits.push(`<span class="acam-ap-v vent">\u269B +${ent}</span>`);
+            if (!bits.length && note) bits.push(`<span class="acam-ap-v none">${note}</span>`);
+            return bits.join('');
+        }
+        function _acApTallyShow(spec) {
+            if (!spec || _skipVisuals()) return false;
+            const el = _ensureActionCamChrome();
+            const box = el.querySelector('.acam-ap-tally');
+            if (!box) return false;
+            _acApTallyClear();
+            const rows = (spec.rows || []).filter(Boolean);
+            const tot = spec.total || null;
+            if (!rows.length && !tot) return false;
+            box.classList.add('on', spec.side === 'enemy' ? 'enemy' : 'own');
+            /* the corner keeps its shot's chrome up while the tally reads (same hold the damage total buys) */
+            const st = _acChromeState;
+            const span = rows.length * AC_AP_ROW_GAP_MS + AC_AP_SUM_GAP_MS + AC_AP_HOLD_MS;
+            if (st) {
+                const now = performance.now();
+                st.until = Math.max(st.until, now + span + 400);
+                st.holdUntil = Math.max(st.holdUntil || 0, now + span);
+                if (st.hideTimer) clearTimeout(st.hideTimer);
+                st.hideTimer = setTimeout(() => hideActionCamChrome(), span);
+            } else {
+                /* no shot chrome (Action Cam off, a counter): the tally shows alone in the same corner and clears itself */
+                el.classList.add('ap-solo');
+                _acApTimers.push(setTimeout(() => { el.classList.remove('ap-solo'); _acApTallyClear(); }, span));
+            }
+            const sfx = (k, o) => { try { if (typeof playSfx === 'function') playSfx(k, Object.assign({ cooldownMs: 0 }, o || {})); } catch (_e) {} };
+            rows.forEach((r, i) => {
+                _acApTimers.push(setTimeout(() => {
+                    const d = document.createElement('div');
+                    const kind = r.ap > 0 ? 'gain' : r.ap < 0 ? 'loss' : r.ent > 0 ? 'vent' : 'none';
+                    d.className = 'acam-ap-row ' + kind;
+                    d.innerHTML = `<span class="acam-ap-l">${r.label || ''}${r.mult ? ` <i>${r.mult}</i>` : ''}</span>${_acApVal(r.ap || 0, r.ent || 0, r.note)}`;
+                    box.appendChild(d);
+                    sfx(kind === 'loss' ? 'uiBack' : 'uiCursorMove', { volume: 0.55 });
+                }, i * AC_AP_ROW_GAP_MS));
+            });
+            if (tot) _acApTimers.push(setTimeout(() => {
+                const d = document.createElement('div');
+                const ap = tot.ap || 0, ent = tot.ent || 0;
+                const kind = ap > 0 ? 'gain' : ap < 0 ? 'loss' : ent > 0 ? 'vent' : 'none';
+                d.className = 'acam-ap-sum ' + kind;
+                const pips = ap ? `<span class="acam-ap-pips">${'<b></b>'.repeat(Math.min(4, Math.abs(ap)))}</span>` : '';
+                d.innerHTML = `<span class="acam-ap-sl">${tot.text || (ap > 0 ? 'AP BACK' : ap < 0 ? 'AP LOST' : ent > 0 ? 'TO ENTROPY' : 'NO AP BACK')}</span>${pips}${_acApVal(ap, ent, '')}`;
+                box.appendChild(d);
+                if (kind === 'gain') sfx('buff'); else if (kind === 'loss') sfx('uiError'); else if (kind === 'vent') sfx('manaRegen'); else sfx('uiBack', { volume: 0.5 });
+            }, rows.length * AC_AP_ROW_GAP_MS + AC_AP_SUM_GAP_MS - AC_AP_ROW_GAP_MS));
+            return true;
+        }
+        window._acApTallyShow = _acApTallyShow;
 
         /* THE NUMBERS WIN (FX-WASH 2026-10-26, the spell VFX audit: hits read under the banner / TOTAL DMG panel / the
            letterbox): while the chrome is up, a floating number that lands under the corner title or a letterbox bar
