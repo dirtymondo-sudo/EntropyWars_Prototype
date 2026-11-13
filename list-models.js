@@ -144,6 +144,7 @@ const SOURCES = [
     { re: /Assets\/misc\/Castles_and_Forts\.glb/, how: 'PACK', src: 'Castle and Fort Builder Pack · McSteeg (itch.io) · free for games, credit given' },
     { re: /UFO_Low_Poly\.fbx/, how: 'PACK', src: '3D Game Ready UFO Spaceship · FlexUnit · CC0' },
     { re: /_sway\.glb$/, how: 'MESHY_C', src: 'Meshy rig + spring-bone cape chain baked by Claude (bake-sway.py)' },
+    { re: /Assets\/world\/props\/meshy\/(boxing_ring|punching_bag|speed_bag|weight_bench|dumbbell_rack|boxing_gloves|car_lift|tire_stack|tool_chest|engine_hoist|wing_chun_dummy|dojo_weapon_rack|taiko_drum|votive_stand|candelabra|jewelry_case|steam_table|stock_pots)\.(opt\.)?glb$/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Disaster City interiors, Southside pass 2 (mondo 11-13 22:33: "make meshy versions of them"); claims list project files meshy/interior-claims.md' },
     { re: /Assets\/props\/(police_barricade|flat_earth|heart_scales|maat_feather)\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a)' },
     { re: /Assets\/props\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827)' },
     { re: /Assets\/decor\//, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03)' },

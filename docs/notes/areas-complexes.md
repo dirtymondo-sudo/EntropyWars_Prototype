@@ -2377,6 +2377,28 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
   Everything else is a catalogue prop (`R.put`), reported in prop-check.txt as "in building" (a district's own prop is never moved).
   The front doors are the city's swing leaves (already there); the two inner openings (bakery, garage office) are open, one square wide.
   Deviation from the first sketch: no raised chancel (heights are whole blocks), pews in two blocks with side aisles.
+- **THE SECOND INTERIOR PASS** (2026-11-13; mondo 22:33 "after a district's first interior pass, do another interior pass ... make a list of
+  models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere"):
+  - THE MODELS: 18 Meshy pieces (Claude's concept, Meshy nano-banana-pro -> image-to-3D meshy-t2.5 smart topology, optimised to `.opt.glb`),
+    R2 `Assets/world/props/meshy/<key>.glb`, rows in data.js HQ_CATALOGUE_ALL group 'Meshy city interiors', ASSET_MANIFEST.json, MODEL_LIST.md
+    (list-models.js SOURCES row): boxing_ring, punching_bag, speed_bag, weight_bench, dumbbell_rack, boxing_gloves, car_lift, tire_stack,
+    tool_chest, engine_hoist, wing_chun_dummy, dojo_weapon_rack, taiko_drum, votive_stand, candelabra, jewelry_case, steam_table, stock_pots.
+    Sources (prompts, concepts, raw GLBs, scripts): /mnt/project-files/disaster-city-southside/meshy2/. The four second-pass threads share ONE
+    claims list, /mnt/project-files/meshy/interior-claims.md (Hero Plaza reuses the gym + workshop six). Southside also places University's
+    `pastry_case` and Entertainment's `bread_rack` + `paper_lantern` by key (they show once those threads' rows are on main).
+  - THE STAND-INS OUT: the code ring, bags, rack, bench press, lift posts, tyre stacks, striking posts and serving line are those models now; every
+    blocker keeps its whole-square ghost (`R.block`). The car on the lift stands on the model's arms (y 1.0, the block 0.98).
+  - THE LOOK: `R.liner(wall, dado, ceil)` paints each room (a wall coat 2 cm in front of the hollow texbuilding's inside walls, the doorway cut
+    where hqTexbDoor cuts it, a dado + rail, a ceiling glowing a little: the bare inside was the grey keyIn sheet under a black ceiling);
+    `R.lamp` lit ceiling fittings (strip lights on chains in the garage, a light rig over the ring); `R.wq` wall panels (lit side windows in the
+    church, the gym mirror, trade-word signs with the shared `txt:` key: BOXING, WE BUY GOLD, PAWN, HOT MEALS). Per room: church limewash + oak
+    dado + timber ceiling on beams, candelabras, votive stands, stained glass between the hangings; bakery butter-yellow over subway tile, flour
+    sacks, pots, menu board; gym bare brick over an oxblood band, tin ceiling on steel beams, speed bags, gloves, rubber under the weights;
+    pawnshop bottle green, jewellery case on square (1, 2); kitchen mustard over tile, steam tables, stock pots on the range; dojo paper-white in
+    a dark timber frame, taiko on (6, 2), weapon racks; garage pale over a blue band, yellow bay lines, tool chests, engine crane on (7, 1).
+  - FIXED ON THE WAY: a catalogue `wall` piece hangs at `mount` + `y`, so the tapestries, the cross, the bakery shelf and the dojo banner hung
+    above their ceilings (give the height as `mount`); the gym mirror stood inside the wall facing out (a quad's ry 90 faces −x, 270 faces +x);
+    `R.put` keeps every prop 0.32 m off the outer walls (in front of the coat).
 
 ## DISASTER CITY, THE BIG WINDOWS (2026-11-13, the shared-pieces thread)
 mondo (screenshot of two city blocks): "The buildings that use these repeated window textures from the urban pack, the windows are too small, need
