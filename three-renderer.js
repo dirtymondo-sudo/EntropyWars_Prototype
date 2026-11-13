@@ -29716,12 +29716,15 @@ const ThreeRenderer = (function () {
         return sp;
     }
     function keyPickupFx(tx, ty, opts) {
-        if (!scene) return;
         opts = opts || {};
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var wx = tx * ts + ts / 2;
-        var wz = ty * ts + ts / 2;
-        var baseY = _tileSurfaceY(tx, ty);
+        /* opts.at = { scene, x, y, z, ts } (2026-11-13, scene E: Rhonda hands over the office keys): the same celebration at a
+           world point of another scene (the HQ room), sized by `ts`, on the real clock, without the board's sparks and ring */
+        var at = opts.at || null;
+        if (!(at ? at.scene : scene)) return;
+        var ts = at ? at.ts : (CONFIG.tileSize || BASE_TILE);
+        var wx = at ? at.x : tx * ts + ts / 2;
+        var wz = at ? at.z : ty * ts + ts / 2;
+        var baseY = at ? at.y : _tileSurfaceY(tx, ty);
         var g = new THREE.Group();
         g.position.set(wx, baseY + ts * 0.30, wz);
         var holder = new THREE.Group();
@@ -29756,25 +29759,26 @@ const ThreeRenderer = (function () {
         var halo = _keyFxHalo(ts);
         g.add(halo);
         g.scale.setScalar(0.01);
-        scene.add(g);
+        (at ? at.scene : scene).add(g);
         _keyFxList.push({
             g: g, holder: holder, light: light, halo: halo,
-            t0: _animNow(), ts: ts, baseY: baseY, tx: tx, ty: ty,
-            burst: false, nextSpark: 500,
+            t0: at ? performance.now() : _animNow(), ts: ts, baseY: baseY, tx: tx, ty: ty,
+            burst: false, nextSpark: 500, real: !!at,
         });
+        if (at) return;
         _keyFxGroundRing(tx, ty);
         _keyFxSparkBurst(tx, ty, 12, baseY + ts * 0.25, false);
     }
     var _KEYFX_RISE = 450, _KEYFX_HOLD = 1650, _KEYFX_OUT = 420;
     function _updateKeyFx() {
         if (!_keyFxList.length) return;
-        var now = _animNow();
+        var now = _animNow(), nowReal = performance.now();
         for (var i = _keyFxList.length - 1; i >= 0; i--) {
             var f = _keyFxList[i];
-            var t = now - f.t0;
+            var t = (f.real ? nowReal : now) - f.t0;
             var total = _KEYFX_RISE + _KEYFX_HOLD + _KEYFX_OUT;
             if (t >= total || !f.g.parent) {
-                scene.remove(f.g);
+                if (f.g.parent) f.g.parent.remove(f.g);
                 if (f.halo) f.halo.material.dispose();
                 _keyFxList.splice(i, 1);
                 continue;
@@ -29797,7 +29801,7 @@ const ThreeRenderer = (function () {
                 f.holder.rotation.y = Math.PI * 3.2 + h * 0.0038;
                 f.light.intensity = 1.6 + Math.sin(h * 0.008) * 0.35;
                 f.halo.material.opacity = 0.5 + Math.sin(h * 0.008) * 0.08;
-                if (t >= f.nextSpark) {           // slow sparkle drip while hovering
+                if (!f.real && t >= f.nextSpark) {           // slow sparkle drip while hovering
                     f.nextSpark = t + 240;
                     _keyFxSparkBurst(f.tx, f.ty, 2, f.g.position.y, false);
                 }
@@ -29805,7 +29809,7 @@ const ThreeRenderer = (function () {
                 var o = (t - _KEYFX_RISE - _KEYFX_HOLD) / _KEYFX_OUT;
                 if (!f.burst) {
                     f.burst = true;
-                    _keyFxSparkBurst(f.tx, f.ty, 18, f.g.position.y, true);
+                    if (!f.real) _keyFxSparkBurst(f.tx, f.ty, 18, f.g.position.y, true);
                 }
                 f.g.scale.setScalar(Math.max(0.01, 1 - o * o));
                 f.g.position.y = topY + o * ts * 0.35;
@@ -81925,6 +81929,20 @@ const ThreeRenderer = (function () {
     }
     /* THE CUTSCENES: the bodies and props a scene set moving (hq.sceneWalk / hq.sceneProps), stepped once a frame */
     var _hqSceneMoves = [];
+    /* a scene's CAST: everybody in the room but the officer and the kept DOOR_CAST ids is taken out, every frame the
+       scene holds (a walker that comes in by a door mid-scene, a traveller, the janitor: mondo 2026-11-13, a man in black
+       walked in front of Agent Locke). ids null = put back exactly the ones taken out. */
+    function _hqSceneCastApply() {
+        var H = _hq; if (!H) return 0;
+        var ids = H._sceneCastIds || null, n = 0;
+        (H.chars || []).forEach(function (ch) {
+            if (!ch || ch === H.player || ch.kind === 'player' || !ch.entry || !ch.entry.group) return;
+            if (ids) { if ((ch.cast && ids.indexOf(ch.cast) >= 0) || !ch.entry.group.visible) return; ch._sceneOut = true; _hqRoundsSetVisible(ch, false); n++; }
+            else if (ch._sceneOut) { ch._sceneOut = false; _hqRoundsSetVisible(ch, true); n++; }
+        });
+        if (n) H.dirty = true;
+        return n;
+    }
     function _hqTickSceneMoves() {
         if (!_hqSceneMoves.length) return;
         var H = _hq, now = performance.now(), U = _hqUnits(), keep = [];
@@ -82044,6 +82062,7 @@ const ThreeRenderer = (function () {
             var arriving = _hqTravellers.filter(function (t) { return t.to === roomId && now - t.t < R.travelTtlMs; });
             _hqTravellers = _hqTravellers.filter(function (t) { return t.to !== roomId && now - t.t < R.travelTtlMs; });
             arriving.forEach(function (t, i) {
+                if (room && room.noWalkers) return;   // nobody walks through this room (your office)
                 if (!walksRace(t.race)) return;
                 if (typeof hqRoomTakesRace === 'function' && !hqRoomTakesRace(roomId, t.race)) return;   // THE AREA UNITS: a room with a table lets in only its own people
                 if (crowd && !crowd.take(t.race)) return;   // THE CROWD CAP
@@ -86439,7 +86458,9 @@ const ThreeRenderer = (function () {
         if (_hq !== H) return;
         try { _hqTickGunDoors(wdt, now); } catch (e) { if (!H._gunTickWarned) { H._gunTickWarned = true; console.warn('[HQ] gun doors tick', e); } }   /* THE DOOR WHEEL IN THE ROOM (Phase 3): the standing doors act */
         _hqTickSceneMoves();
-        _hqTickRounds(wdt);   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
+        _hqTickRounds(wdt);
+        if (_keyFxList.length) { try { _updateKeyFx(); } catch (e) {} }   // scene E's key (keyPickupFx opts.at) lives in the room
+        if (H._sceneCastIds) _hqSceneCastApply();   // after the rounds: a walker the rounds just brought back in is out again the same frame   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         if (_lens && _lens.cur) { var _lensA = performance.now(); _hqTickChars(wdt); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share
         else _hqTickChars(wdt);
         if (window.EWCine) { try { window.EWCine.frame(_hqCine() ? H.camera : null, { kind: 'hq', unit: _hqUnits(), key: String(H.opts.room || ''), site: (H.room && H.room.site) ? ((typeof window.hqSiteId === 'function') ? window.hqSiteId(H.room.site) : H.room.site) : String(H.opts.room || '') }); } catch (e) {} }
@@ -92299,14 +92320,32 @@ const ThreeRenderer = (function () {
            out for the scene. null puts back exactly the ones it took out. */
         sceneCast: function (ids) {
             if (!_hq) return 0;
-            var n = 0;
-            _hq.chars.forEach(function (ch) {
-                if (!ch || ch === _hq.player || ch.kind === 'player' || !ch.entry || !ch.entry.group) return;
-                if (ids) { if ((ch.cast && ids.indexOf(ch.cast) >= 0) || ch.away || !ch.entry.group.visible) return; ch._sceneOut = true; _hqRoundsSetVisible(ch, false); n++; }
-                else if (ch._sceneOut) { ch._sceneOut = false; _hqRoundsSetVisible(ch, true); n++; }
-            });
+            _hq._sceneCastIds = ids || null;   // held for the scene's length: _hqTickSceneCast takes out whoever walks in later
+            return _hqSceneCastApply();
+        },
+        /* where a body's HEAD is (the room's metres: { x, y, z }; y = up from the floor the room stands on) so a scene's
+           close-up frames the FACE whatever the body's height is (mondo 2026-11-13: Kit's mouth under the bar, the keys shot on
+           the recruit's hips). The rig's Head bone (the top of the neck), else 0.84 of the body's height. */
+        sceneHead: function (who) {
+            if (!_hq || !who) return null;
+            var ch = null;
+            if (who === 'player') ch = _hq.player; else for (var i = 0; i < _hq.chars.length; i++) { if (_hq.chars[i] && _hq.chars[i].cast === who) { ch = _hq.chars[i]; break; } }
+            if (!ch || !ch.entry || !ch.entry.group) return null;
+            var U = _hqUnits(), g = ch.entry.group, bone = null, v = new THREE.Vector3(), gp = new THREE.Vector3();
+            g.updateMatrixWorld(true);
+            g.traverse(function (o) { if (bone || !o.isBone) return; var n = String(o.name || '').toLowerCase().replace(/^mixamorig[:_]?/, ''); if (n === 'head') bone = o; });
+            g.getWorldPosition(gp);
+            if (bone) { bone.getWorldPosition(v); return { x: v.x / U, y: (v.y - gp.y) / U + (ch.y || 0), z: v.z / U, bone: true }; }
+            return { x: gp.x / U, y: (ch.heightM || 1.75) * 0.84 + (ch.y || 0), z: gp.z / U, bone: false };
+        },
+        /* the KEY (the battle's own key celebration, keyPickupFx) rising and turning at a point of the room: o = { x, y, z (m), size (m) }; warm = load its model only */
+        sceneKey: function (o) {
+            if (!_hq || !_hq.scene) return false;
+            if (!o || o.warm) { keyFxWarm(); return true; }
+            var U = _hqUnits();
+            keyPickupFx(0, 0, { at: { scene: _hq.scene, x: (+o.x || 0) * U, y: (+o.y || 0) * U, z: (+o.z || 0) * U, ts: (+o.size || 0.5) * U } });
             _hq.dirty = true;
-            return n;
+            return true;
         },
         /* a body WALKS to { x, z } over `ms` (the walk clip, turned along its way; `face` = the heading it ends on) */
         sceneWalk: function (who, o) {

@@ -4478,13 +4478,14 @@
             const row = window.storyCutscene(t.scene); if (!row) { console.warn('[SCENE] no row ' + t.scene); return false; }
             const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
             try { if (t.sceneAt && TR && TR.hq && TR.hq.dev && TR.hq.dev.teleport) TR.hq.dev.teleport(t.sceneAt); } catch (e) { console.warn('[SCENE] the officer could not be placed', e); }
-            const end = () => { _questTalkBusy = false; try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(false); } catch (e) {} try { if (row.cast && TR && TR.hq && TR.hq.sceneCast) TR.hq.sceneCast(null); } catch (e) {} if (rp) { try { if (rp.onEnd) rp.onEnd(); } catch (e) {} return; } file(); };
+            const end = () => { _questTalkBusy = false; if (eyeT) { clearInterval(eyeT); eyeT = 0; } try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(false); } catch (e) {} try { if (row.cast && TR && TR.hq && TR.hq.sceneCast) TR.hq.sceneCast(null); } catch (e) {} if (rp) { try { if (rp.onEnd) rp.onEnd(); } catch (e) {} return; } file(); };
             /* the scene's hands in the room: place / show / hide a body (three-renderer.js hq.scenePlace), the choice's world flags */
             const hand = (a) => { try {
                 if (!a || !TR || !TR.hq) return;
                 if (a.who && (a.do === 'place' || a.do === 'show' || a.do === 'hide') && TR.hq.scenePlace) TR.hq.scenePlace(a.who, { x: a.x, z: a.z, face: a.face, sit: (a.sit != null) ? a.sit : null, show: a.do === 'show' ? true : (a.do === 'hide' ? false : null) });
                 else if (a.who && a.do === 'walk' && TR.hq.sceneWalk) TR.hq.sceneWalk(a.who, { x: a.x, z: a.z, ms: a.ms, face: a.face });
                 else if (a.do === 'props' && TR.hq.sceneProps) TR.hq.sceneProps({ keys: a.keys, near: a.near, r: a.r, at: a.at, ms: a.ms, light: a.light });
+                else if (a.do === 'key' && TR.hq.sceneKey) TR.hq.sceneKey({ x: a.x, y: a.y, z: a.z, size: a.size });
             } catch (e) { console.warn('[SCENE] ' + (a && a.do), e); } };
             const host = { unit: 1, point: () => null, act: hand,
                            choose: (c, o) => { if (o && o.clear) _questSceneFlag(o.clear, false); if (o && o.set) _questSceneFlag(o.set, true); },
@@ -4495,6 +4496,25 @@
                 const pp = TR.hq.pos();
                 if (g && pp && t.sceneAt && window.DOOR_HQ && window.DOOR_HQ.units) { g.position.x = pp.x * window.DOOR_HQ.units; g.position.z = pp.z * window.DOOR_HQ.units; g.updateMatrixWorld(true); }
             } catch (e) { console.warn('[SCENE] the officer body could not be placed', e); }
+            /* the officer stands still on the mark (no walk left over from the way in) */
+            try { if (t.sceneAt && TR.hq.scenePlace) TR.hq.scenePlace('player', { x: t.sceneAt.x, z: t.sceneAt.z, face: t.sceneAt.face || 0 }); } catch (e) {}
+            /* a shot's `eye: { who, dy }`: the camera's height = that body's head + dy (the row's own height is kept as the base, so a replay reads the same) */
+            const eyeFit = () => {
+                (row.beats || []).forEach(b => {
+                    const sh = b && b.shot; if (!sh || !sh.eye || !Array.isArray(sh.cam) || !TR.hq.sceneHead) return;
+                    if (sh._y0 == null) { sh._y0 = sh.cam[1]; sh._y1 = (sh.to && Array.isArray(sh.to.cam)) ? sh.to.cam[1] : null; }
+                    const h = TR.hq.sceneHead(sh.eye.who); if (!h) return;
+                    const y = +(h.y + (sh.eye.dy || 0)).toFixed(3);
+                    sh.cam[1] = y; if (sh._y1 != null) sh.to.cam[1] = +(y + (sh._y1 - sh._y0)).toFixed(3);
+                });
+            };
+            /* read again while the scene plays: a body whose rig lands a moment late is framed by its real head from its next shot on */
+            let eyeT = 0;
+            try {
+                eyeFit();
+                if ((row.beats || []).some(b => b && b.shot && b.shot.eye)) eyeT = setInterval(() => { try { eyeFit(); } catch (e) {} }, 400);
+                if ((row.beats || []).some(b => (b.act || []).some(a => a && a.do === 'key')) && TR.hq.sceneKey) TR.hq.sceneKey({ warm: true });
+            } catch (e) { console.warn('[SCENE] eye', e); }
             let ok = false;
             try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(true); } catch (e) {}
             try { ok = !!window.EWScene.play(row, host, end); } catch (e) { console.error('[SCENE] the scene did not start', e); ok = false; }
