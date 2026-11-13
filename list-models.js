@@ -109,6 +109,8 @@ const SOURCES = [
     // THE PACK ROADS (2026-11-09): every piece of Elbolilloduro's Roads pack, one GLB each (bake-roads.py; data.js HQ_CATALOGUE_ROADS)
     { re: /Assets\/world\/packs\/elbolilloduro\/roads\//, how: 'PACK', src: 'Roads · Elbolilloduro · CC0 (every piece of the pack cut into its own GLB in Blender by bake-roads.py; data.js HQ_CATALOGUE_ROADS, editor group Roads)' },
     // THE MESHY SWAP (2026-11-03): one piece cut out of an Elbolilloduro pack scene by Claude in Blender (bake-pack-pieces.py), Assets/misc/ebd_<pack>_<item>.glb
+    // THE INDUSTRIAL PACK (2026-11-13, Disaster City's Industrial district): domi236's PS1/PSX Industrial Pack #1, cut by bake-pack-pieces.py ind_*
+    { re: /Assets\/world\/packs\/domi236_industrial\//, how: 'PACK', src: 'PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City)' },
     { re: /Assets\/misc\/ebd_\w+_city_/, how: 'PACK', src: 'Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene\'s whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md)' },
     { re: /Assets\/misc\/ebd_buildings_/, how: 'PACK', src: 'Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS)' },
     { re: /Assets\/misc\/ebd_pizzeria_/, how: 'PACK', src: 'Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender)' },

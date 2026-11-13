@@ -15,7 +15,7 @@ Preview: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg.
 | Tacos stand | Bayside | P08-09 Street market | 16:46 | `city_taco_stand` |
 | Diner | Financial | P09-03 Worker cafe | 16:44 | `city_diner` |
 | 6twelve convenience store | FREE (Financial released it 17:14: 22.8 x 21.1 m fits no Financial lot; Southside asked first, so it has first call) | | | `city_6twelve` |
-| VHS shop | Entertainment | P11-07 beside the Cinema | 16:47 | `city_vhs_shop` |
+| VHS shop | Entertainment | P09-04, the Costume shops yard (too wide beside the Cinema) | 16:47 | `city_vhs_shop` |
 | Laundry | Southside | P02-00 Laundry terraces | 16:49 | `city_laundry` |
 | House, Quequis house | Southside | P01-03 | 16:49 | `city_house`, `city_quequis_house` |
 | Bus stop | Southside | P00-02 Bus stop court | 16:49 | already in the game: `bus_shelter` |
@@ -37,3 +37,7 @@ The better gold = R2 `Assets/Sprites/terrain/gilt.png` (Metal007, his pick 11-03
 bake-disaster-city.js loads `docs/disaster-city/districts/<LETTER>.js` (R C F U H E I S B), one file per district; never put district code in the shared tool.
 Exports, all optional: `tailor(PLAN, plotOf)` before the plan is read; `apply(ctx)` after the buildings and their door steps exist, before the street furniture; `build(ctx)` after every row exists.
 `ctx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF }`.
+
+## The industrial pack (Industrial thread, 11-13) — free for every district
+domi236 PS1/PSX Industrial Pack #1 (CC0). Catalogue keys: `ind_container`, `ind_skip`, `ind_skip_full`, `ind_silo`, `ind_vent`, `ind_panel`, `ind_factory_red`, `ind_factory_tan`, `ind_factory_blue`.
+Sizes + the stacking `y`: areas-complexes.md "THE INDUSTRIAL DISTRICT".
