@@ -44,15 +44,37 @@ function build(ctx) {
         const rot = ROT[info.side] || 0, ew = rot === 90 || rot === 270;
         return frame(row.x, row.z, rot, ew ? row.d : row.w, ew ? row.w : row.d);
     };
+    const GLASS = [K.winR, K.winT, K.winS, K.winF], DOORS = [K.doorW, K.doorS, K.doorP], TRIM = 0xe6dfd0;   // THE POLISH PASS: what counts as a window / a door, the stone trim's tint
     const num = v => typeof v === 'number' ? Math.round(v * 100) / 100 : v;
     const tidy = o => { const q = {}; Object.keys(o).forEach(k => { const v = o[k]; if (v === undefined || v === null) return; q[k] = Array.isArray(v) ? v.map(e => Array.isArray(e) ? e.map(num) : num(e)) : num(v); }); return q; };
 
     /* ── THE ARCHITECT: a parts list in a frame ── */
     const arch = (fr, id) => {
-        const P = [], a = { fr, P };
+        const P = [], a = { fr, P }, bands = new Set();
+        /* THE POLISH PASS, THE SHEETS (mondo 11-13 20:19: "different textures or decals for different parts of the building"): every building draws
+           its trim (sills, lintels, string courses, door hoods) in ONE sheet of its own, picked by its id; `dress()` then picks the base course, the
+           frieze, the corner piers and the wall decals to go with the main block's sheet */
+        let hsh = 0; for (let i = 0; i < id.length; i++) hsh = (hsh * 31 + id.charCodeAt(i)) >>> 0;
+        const TR = [{ key: 'urban:PlasterWallPainted2a', tint: 0xf0e8d8 }, { key: 'urban:TileMarble1a', tint: 0xe8e4dc }, { key: K.stone, tint: 0xe4dccc }, { key: K.wood, tint: 0xb89878 }, { key: 'urban:PlasterWallStucco2a', tint: 0xf4ecdc }][hsh % 5];
         const add = (o) => { P.push(tidy(o)); return a; };
         a.box = (x, y, z, w, h, d, key, tint, o) => add(Object.assign({ s: 'box', p: [x, y, z], size: [w, h, d], key, tint }, o));
-        a.roof = (form, x, y, z, w, h, d, key, tint, o) => add(Object.assign({ s: 'roof', form, p: [x, y, z], size: [w, h, d], key, tint, roof: true }, o));
+        /* THE POLISH PASS, THE ROOFS (mondo 11-13 20:18: "roofs and ac units"): a pitched roof of a real size gets a ridge cap and two cowled vents
+           on its slope; a barrel roof a row of ridge ventilators (`bare: true` = none) */
+        a.roof = (form, x, y, z, w, h, d, key, tint, o) => {
+            add(Object.assign({ s: 'roof', form, p: [x, y, z], size: [w, h, d], key, tint, roof: true }, o, { bare: undefined }));
+            if ((o && o.bare) || w < 6 || d < 4.5 || h < 1) return a;
+            const ry = (o && o.ry) || 0, q = -ry * Math.PI / 180, c = Math.cos(q), sn = Math.sin(q), at = (dx, dz) => [x + dx * c + dz * sn, z - dx * sn + dz * c], DK = 0x4c4f54;
+            if (form === 'gable') {
+                add({ s: 'box', p: [x, y + h - 0.06, z], size: [w + 0.1, 0.16, 0.34], ry, key: K.metal, tint: DK });
+                [[-w * 0.24, d * 0.22], [w * 0.2, -d * 0.24]].forEach(v => { const t = at(v[0], v[1]), yy = y + h * (1 - Math.abs(v[1]) / (d / 2)); add({ s: 'cyl', p: [t[0], yy - 0.15, t[1]], r: 0.16, h: 0.75, tint: DK, seg: 8 }); add({ s: 'cyl', p: [t[0], yy + 0.6, t[1]], r: 0.3, h: 0.14, tint: DK, seg: 8 }); });
+            } else if (form === 'hip' || form === 'pyramid') {
+                const t = at(w * 0.12, d * 0.2), yy = y + h * 0.6; add({ s: 'cyl', p: [t[0], yy - 0.3, t[1]], r: 0.16, h: 0.9, tint: DK, seg: 8 }); add({ s: 'cyl', p: [t[0], yy + 0.6, t[1]], r: 0.3, h: 0.14, tint: DK, seg: 8 });
+            } else if (form === 'barrel') {
+                const nn = Math.max(2, Math.floor(w / 5)), st = w / nn, t0 = at(-w / 2 + st / 2, 0), t1 = at(-w / 2 + st * 1.5, 0);
+                add({ s: 'box', p: [t0[0], y + h - 0.08, t0[1]], size: [0.9, 0.5, 0.9], ry, key: K.metal, tint: 0xb8bcc0, n: nn, step: [t1[0] - t0[0], 0, t1[1] - t0[1]] });
+            }
+            return a;
+        };
         a.cyl = (x, y, z, r, h, key, tint, o) => add(Object.assign({ s: 'cyl', p: [x, y, z], r, h, key, tint }, o));
         a.dome = (x, y, z, r, h, key, tint, o) => add(Object.assign({ s: 'dome', p: [x, y, z], r, h, key, tint, roof: true }, o));
         a.quad = (x, y, z, w, h, ry, key, tint, o) => add(Object.assign({ s: 'quad', p: [x, y, z], size: [w, h], ry, key, tint }, o));
@@ -65,6 +87,18 @@ function build(ctx) {
             fs.split('').forEach(f => {
                 const L = (f === 'f' || f === 'b') ? w : d, n = o.n || Math.max(1, Math.floor(L / (o.pitch || 2.9))), pitch = (L - 2 * (o.margin || 0)) / n, s = spot(f, cx, cz, w, d, -(L - 2 * (o.margin || 0)) / 2 + pitch / 2, o.off || 0.06);
                 add({ s: 'quad', p: [s.p[0], y, s.p[1]], size: [o.ww || 1.7, o.wh || 1.8], ry: s.ry, key: o.key === undefined ? K.winR : o.key, tint: o.tint, glow: o.glow, uv: o.uv || 'fit', kind: o.kind, n, step: [s.st[0] * pitch, 0, s.st[1] * pitch] });
+                /* THE POLISH PASS (mondo 11-13 20:15: "one or two more layers deep with the detail"): a glazed opening gets a stone sill and a lintel
+                   proud of the wall; an upper window on a back or side wall now and then carries a wall unit */
+                const key = o.key === undefined ? K.winR : o.key, ww = o.ww || 1.7, wh = o.wh || 1.8, st = [s.st[0] * pitch, 0, s.st[1] * pitch], along0 = -(L - 2 * (o.margin || 0)) / 2 + pitch / 2;
+                if (GLASS.indexOf(key) >= 0 && o.trim !== false) {
+                    const s1 = spot(f, cx, cz, w, d, along0, 0.12), s2 = spot(f, cx, cz, w, d, along0, 0.07), tr = typeof o.trim === 'number' ? o.trim : TR.tint;
+                    add({ s: 'box', p: [s1.p[0], y - 0.1, s1.p[1]], size: [ww + 0.3, 0.1, 0.24], ry: s.ry, key: TR.key, tint: tr, n, step: st });
+                    add({ s: 'box', p: [s2.p[0], y + wh, s2.p[1]], size: [ww + 0.24, 0.17, 0.14], ry: s.ry, key: TR.key, tint: tr, n, step: st });
+                    if (key === K.winR && y > 3 && (f === 'b' || f === 'l') && n >= 3) {
+                        const s3 = spot(f, cx, cz, w, d, along0 + pitch, 0.24);
+                        add({ s: 'box', p: [s3.p[0], y - 0.02, s3.p[1]], size: [0.78, 0.44, 0.46], ry: s.ry, key: K.metal, tint: 0xc4c8cc, n: Math.ceil((n - 1) / 3), step: [st[0] * 3, 0, st[2] * 3] });
+                    }
+                }
             });
             return a;
         };
@@ -75,12 +109,21 @@ function build(ctx) {
             o = o || {};
             for (let k = 0; k < n; k++) {
                 if (k === 0 && o.ground !== 'same') { a.wins(fs, cx, cz, w, d, 0.45, Object.assign({}, o, { key: o.gkey || K.winS, ww: o.gww || 2.4, wh: 2.1, n: o.n ? Math.max(1, Math.round(o.n / 2)) : undefined, pitch: (o.pitch || 2.9) * 2 })); continue; }
-                a.wins(fs, cx, cz, w, d, (o.y0 == null ? 1.0 : o.y0) + k * (o.per || 3.2), o);
+                const yk = (o.y0 == null ? 1.0 : o.y0) + k * (o.per || 3.2), bk = [cx, cz, w, d, yk].join();
+                if (o.band !== false && !bands.has(bk)) { bands.add(bk); a.box(cx, yk - 0.5, cz, w + 0.22, 0.18, d + 0.22, TR.key, typeof o.trim === 'number' ? o.trim : TR.tint, { top: false }); }   // a string course under each upper floor's sills
+                a.wins(fs, cx, cz, w, d, yk, o);
             }
             return a;
         };
         /* one panel on a face: a sign (plain colour, lit), a door sheet, a shutter */
-        a.panel = (f, cx, cz, w, d, along, y, pw, ph, key, tint, o) => { const s = spot(f, cx, cz, w, d, along, (o && o.off) || 0.07); return add(Object.assign({ s: 'quad', p: [s.p[0], y, s.p[1]], size: [pw, ph], ry: s.ry, key, tint, uv: key ? 'fit' : undefined }, o, { off: undefined })); };
+        a.panel = (f, cx, cz, w, d, along, y, pw, ph, key, tint, o) => {
+            if (DOORS.indexOf(key) >= 0 && y < 0.3 && !(o && o.plain)) {   // THE POLISH PASS: a door stands on a stone step under a hood
+                const s1 = spot(f, cx, cz, w, d, along, 0.42), s2 = spot(f, cx, cz, w, d, along, 0.34);
+                add({ s: 'box', p: [s1.p[0], 0, s1.p[1]], size: [pw + 0.6, 0.16, 0.8], ry: s1.ry, key: K.conc, tint: 0xcfcac0 });
+                add({ s: 'box', p: [s2.p[0], y + ph + 0.14, s2.p[1]], size: [pw + 0.5, 0.12, 0.64], ry: s2.ry, key: TR.key, tint: TR.tint, under: true });
+            }
+            const s = spot(f, cx, cz, w, d, along, (o && o.off) || 0.07); return add(Object.assign({ s: 'quad', p: [s.p[0], y, s.p[1]], size: [pw, ph], ry: s.ry, key, tint, uv: key ? 'fit' : undefined }, o, { off: undefined }));
+        };
         /* a canvas awning off a face: the high edge on the wall */
         a.awning = (f, cx, cz, w, d, along, y, len, deep, tint, o) => { const s = spot(f, cx, cz, w, d, along, deep / 2); return add(Object.assign({ s: 'roof', form: 'shed', p: [s.p[0], y, s.p[1]], size: [len, 0.75, deep], ry: s.ry, key: K.plaster, tint, ds: true, under: true }, o)); };
         /* a parapet round a flat roof */
@@ -90,7 +133,47 @@ function build(ctx) {
             a.box(0, 0, 0, w + 0.1, h, d + 0.1, key, tint, { faces: 'blr', top: false });
             return add({ s: 'quad', p: [0, 0, d / 2 + 0.05], size: [w + 0.1, h], key, tint, hole: door ? [door.lx, door.cw, 2.2] : undefined });
         };
-        a.done = () => { out.push({ k: 'arch', id: 'dc:' + id + '-arch', x: fr.x, z: fr.z, y: 0, rot: fr.rot, parts: P }); made.arch++; return a; };
+        /* THE POLISH PASS, the dressing every building gets from its main block (the first part, a box on the ground): a base course in dark
+           stone, two downpipes with their hoppers, and on a flat tiled roof a pair of vents and a roof unit */
+        const dress = () => {
+            const m = P[0]; if (!m || m.s !== 'box' || (m.p && m.p[1]) || !(m.size[1] >= 3) || m.ry) return;
+            const x = m.p[0], z = m.p[2], w = m.size[0], d = m.size[2], fc = m.faces || 'fblr'; let h = m.size[1];
+            const body = m.key, kind = (body === K.brick || body === K.brick2) ? 'brick' : body === K.stone ? 'stone' : (body === K.rib || body === K.board || body === K.metal || body === K.wood) ? 'shed' : 'plaster';
+            const BASE = { brick: [{ key: K.stone, tint: 0xb4ac9c }, { key: 'urban:ConcreteStriped1c', tint: 0xc0bcb4 }], stone: [{ key: K.stone, tint: 0x8c867c }],
+                shed: [{ key: 'urban:ConcreteStriped1c', tint: 0xb0aca4 }, { key: K.brick2, tint: 0xb89888 }], plaster: [{ key: K.brick2, tint: 0xc8a090 }, { key: 'urban:TileSubway3a', tint: 0xd8d4cc }, { key: K.stone, tint: 0xc4bcac }] }[kind];
+            const bs = BASE[hsh % BASE.length];
+            add({ s: 'box', p: [x, 0, z], size: [w + 0.03, 0.4, d + 0.03], key: bs.key, tint: bs.tint, faces: fc, top: false });                    // the base course, in its own sheet
+            if (h >= 4.2 && kind !== 'shed') add({ s: 'box', p: [x, h - 0.62, z], size: [w + 0.14, 0.42, d + 0.14], key: kind === 'brick' ? 'urban:PlasterWallStucco2a' : 'urban:TileGeneric1a', tint: kind === 'brick' ? 0xe8dcc4 : TR.tint, faces: fc, top: false });   // the frieze under the eaves
+            if (kind !== 'shed' && kind !== 'stone' && (hsh >> 3) % 3 !== 0 && fc === 'fblr') {                                                          // corner piers, the base's sheet run up the corners
+                add({ s: 'box', p: [x - w / 2 + 0.2, 0.4, z + d / 2 - 0.2], size: [0.52, h - 0.4, 0.52], key: bs.key, tint: bs.tint, top: false, n: 2, step: [w - 0.4, 0, 0] });
+                add({ s: 'box', p: [x - w / 2 + 0.2, 0.4, z - d / 2 + 0.2], size: [0.52, h - 0.4, 0.52], key: bs.key, tint: bs.tint, top: false, n: 2, step: [w - 0.4, 0, 0] });
+            }
+            /* the wall decals: a works building wears a warning sign by its doors; every other one a vent grille low on a side wall and a meter box */
+            if (kind === 'shed') { if (fc.indexOf('f') >= 0) add({ s: 'quad', p: [x + w / 2 - 0.9, 1.5, z + d / 2 + 0.09], size: [0.6, 0.6], ry: 0, key: 'urban:' + ['SignCaution1a', 'SignDanger1b', 'SignHazard1a', 'SignProhibited1a', 'SignProtective1b'][hsh % 5], uv: 'fit' }); }
+            else if (fc.indexOf('l') >= 0) {
+                add({ s: 'quad', p: [x - w / 2 - 0.09, 0.55, z - d * 0.2], size: [0.8, 0.55], ry: 90, key: 'urban:MetalSubwayGrill1a', uv: 'fit' });
+                add({ s: 'box', p: [x - w / 2 - 0.12, 1.0, z + d * 0.22], size: [0.2, 0.7, 0.5], key: K.metal, tint: 0x9aa0a6 });
+            }
+            [[-1, 1, 'f', 'l'], [1, -1, 'b', 'r']].forEach(c => {
+                if (fc.indexOf(c[2]) < 0 && fc.indexOf(c[3]) < 0) return;
+                const px = x + c[0] * (w / 2 + 0.11), pz = z + c[1] * (d / 2 - 0.5);
+                add({ s: 'cyl', p: [px, 0, pz], r: 0.07, h: h - 0.3, tint: 0x3a3e42, seg: 6, cap: false });
+                add({ s: 'box', p: [px, h - 0.3, pz], size: [0.26, 0.26, 0.26], tint: 0x3a3e42 });
+            });
+            /* a flat roof nobody walks (the block draws its own top, nothing roofs it): two AC units with their fans, a pair of vents, a hatch */
+            const roofed = P.some(q => (q.s === 'roof' || q.s === 'dome') && q.p[1] >= h - 0.6 && Math.abs(q.p[0] - x) < w / 2 && Math.abs(q.p[2] - z) < d / 2);
+            if (m.top !== false && !roofed && w > 6 && d > 6) {
+                const cap = P.find(q => q !== m && q.s === 'box' && Math.abs(q.p[1] - h) < 0.1 && q.size[0] >= w * 0.9 && q.size[2] >= d * 0.9 && q.top !== false);   // a cornice slab lying on the block
+                const AC = 0xc8ccd0, DK = 0x4a4e52, ux = x + w * 0.2, uz = z + d * 0.16, big = w * d > 250; h += cap ? cap.size[1] : 0;
+                add({ s: 'box', p: [ux, h + 0.12, uz], size: [1.7, 0.85, 1.15], key: K.metal, tint: AC, n: big ? 2 : 1, step: [0, 0, -2.0] });
+                add({ s: 'box', p: [ux, h, uz], size: [1.9, 0.12, 1.3], tint: DK, n: big ? 2 : 1, step: [0, 0, -2.0] });
+                add({ s: 'cyl', p: [ux, h + 0.97, uz], r: 0.42, h: 0.1, tint: DK, seg: 10, n: big ? 2 : 1, step: [0, 0, -2.0] });
+                add({ s: 'box', p: [x - w * 0.24, h, z - d * 0.2], size: [0.7, 0.9, 0.7], key: K.metal, tint: 0xb4b8bc, n: 2, step: [1.7, 0, 0] });
+                add({ s: 'box', p: [x - w * 0.24, h + 0.9, z - d * 0.2], size: [0.95, 0.1, 0.95], tint: DK, n: 2, step: [1.7, 0, 0] });
+                add({ s: 'box', p: [x - w * 0.2, h, z + d * 0.26], size: [1.1, 0.35, 1.1], key: K.metal, tint: 0x8c9094 });
+            }
+        };
+        a.done = () => { dress(); out.push({ k: 'arch', id: 'dc:' + id + '-arch', x: fr.x, z: fr.z, y: 0, rot: fr.rot, parts: P }); made.arch++; return a; };
         return a;
     };
     /* the doorway of a hollow texbuilding row, as data.js hqTexbDoor reads it */
@@ -128,7 +211,7 @@ function build(ctx) {
         a.roof('shed', -7.65, 6.5, 0, 20, 1.8, 3.2, K.rib, SL, { ry: 90, keyEnd: K.stone, tintEnd: ST, over: 0.3 });   // the aisles' roofs
         a.roof('shed', 7.65, 6.5, 0, 20, 1.8, 3.2, K.rib, SL, { ry: 270, keyEnd: K.stone, tintEnd: ST, over: 0.3 });
         a.box(0, 6.5, 0, 12.1, 4.2, 20, K.stone, ST, { top: false });                                                  // the clerestory
-        a.roof('gable', 0, 10.7, 0, 20, 6.6, 12.1, K.rib, SL, { ry: 90, keyEnd: K.stone, tintEnd: ST, over: 0.5 });   // the nave's roof
+        a.roof('gable', 0, 10.7, 0, 20, 6.6, 12.1, K.rib, SL, { ry: 90, keyEnd: K.stone, tintEnd: ST, over: 0.5, bare: true });   // the nave's roof
         a.wins('lr', 0, 0, 12.1, 20, 7.6, { n: 5, ww: 1.1, wh: 2.2, key: K.winT, tint: 0xc9a8ff, glow: 0.35 });
         a.wins('lr', 0, 0, 18.5, 20, 1.3, { n: 5, ww: 1.1, wh: 3.4, key: K.winT, tint: 0xc9a8ff, glow: 0.25, off: 0.12 });
         a.box(-9.75, 0, -8, 0.9, 6.2, 0.8, K.stone, 0xcfc4aa, { n: 5, step: [0, 0, 4] });                              // the buttresses
