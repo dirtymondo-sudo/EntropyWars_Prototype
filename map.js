@@ -2997,7 +2997,7 @@
             let canon = '';
             try { canon = (typeof window.hqCanonToday === 'function') ? String(window.hqCanonToday() || '') : ''; } catch (e) {}
             const where = room ? (((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + (room.label || '')) : '';
-            return `<div class="hq-pause-title"><img src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><div><b>PAUSED</b><span>D.O.O.R. HEADQUARTERS${where ? ' · ' + _hqEsc(where) : ''}</span></div></div>`
+            return `<div class="hq-pause-title"><img src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png" alt="" draggable="false"><div><b>PAUSED</b><span>D.O.O.R. HEADQUARTERS${where ? ' · ' + _hqEsc(where) : ''}</span></div></div>`
                 + `<div class="hq-pause-vitals">`
                 + `<span><b>${_hqEsc((profile && profile.username) || 'UNFILED')}</b><i>L${cl.level} · ${_hqEsc(cl.title)}</i></span>`
                 + `<span><b>💰 ${gold.toLocaleString()}</b><i>HAZARD PAY</i></span>`

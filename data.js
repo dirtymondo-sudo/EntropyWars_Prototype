@@ -26940,6 +26940,19 @@ const DOOR_TEXT = {
         onLight: 'https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo.png',
         onMid:   'https://cdn.entropywars.net/Assets/ui/brand/DOOR_ColoredAndBlackLines_Logo.png',
         mono:    'https://cdn.entropywars.net/Assets/ui/brand/DOOR_BlackAndWhite_Logo.png',
+        /* THE OFFICIAL LOGO PIECES (mondo 2026-11-12, his DOOR folder -> Assets/ui/brand/door_logo/, kept as he exported it:
+           color/ + blackandwhite/, png/ + svg/, arc / cube / door / door-text / subtitle). `mark` = the arc + cube + door with NO
+           text (his own paths, his own layout, nothing redrawn): every small spot that already has the game's text beside it,
+           the door plates, the desk, the foyer's floor seal. `pieces` = the separate parts the intro animates one by one. */
+        mark:     'https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png',
+        markMono: 'https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_mono.png',
+        pieces: {
+            arc:      'https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/arc.png',
+            cube:     'https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/cube.png',
+            door:     'https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/door.png',
+            word:     'https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/door-text.png',
+            subtitle: 'https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/subtitle.png',
+        },
     },
 
     DEPARTMENTS: {
