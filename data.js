@@ -28402,7 +28402,7 @@ STORY_CUTSCENES.orientation_intro = {
         /* A1 · the sun, then a slow tilt down to the road */
         { dur: 5.2, shot: { cam: [-6, 1.6, 64, 0, 58, 40], to: { cam: [-6, 1.6, 64, 0, 3, 40] } },
           act: [{ at: 0, do: 'door', x: 0, z: -44, face: 0 }, { at: 0, do: 'hide', who: 'player' },
-                { at: 0, do: 'place', who: 'sedaniel', x: -6, z: 58, face: 0 }, { at: 0.1, do: 'walk', who: 'sedaniel', x: -6, z: 30, ms: 5000, face: 0 }] },
+                { at: 0, do: 'place', who: 'sedaniel', x: -6, z: 58, face: 0, scale: 1.45 }, { at: 0.1, do: 'walk', who: 'sedaniel', x: -6, z: 30, ms: 5000, face: 0 }] },
         /* A2 · bird's eye: one sedan on one road in an empty desert, the camera travelling with it */
         { dur: 4.2, shot: { cam: [-6, 78, 30.4, 0, -89, 20], to: { cam: [-6, 78, 12.4, 0, -89, 20] } },
           act: [{ at: 0, do: 'place', who: 'sedaniel', x: -6, z: 30, face: 0 }, { at: 0.05, do: 'walk', who: 'sedaniel', x: -6, z: 12, ms: 4200, face: 0 }] },
@@ -28416,14 +28416,14 @@ STORY_CUTSCENES.orientation_intro = {
         { dur: 4.8, shot: { cam: [1.6, 1.5, -32.5, 20, -1, 45] },
           act: [{ at: 0, do: 'place', who: 'sedaniel', x: -6, z: -22, face: 0 }, { at: 0.05, do: 'walk', who: 'sedaniel', x: -6, z: -41, ms: 3600, face: 0 }] },
         /* A6 · over the car roof: the recruit is out, holding out a tip */
-        { dur: 3.6, shot: { cam: [-8.6, 1.62, -39.4, -79, -7, 32] },
+        { dur: 3.6, shot: { cam: [-8.9, 2.15, -39.3, -79, -13, 32] },
           act: [{ at: 0, do: 'place', who: 'sedaniel', x: -6, z: -41, face: 0 }, { at: 0, do: 'place', who: 'player', x: -3.4, z: -41, face: 270 }, { at: 0, do: 'show', who: 'player' }] },
         /* A7 · he drives off; the recruit is left small in the frame */
         { dur: 4.6, shot: { cam: [-0.6, 1.3, -33.5, 28, 0, 45], to: { cam: [-0.6, 1.3, -33.5, 16, 0, 45] } },
           act: [{ at: 0.2, do: 'walk', who: 'sedaniel', x: -6, z: -140, ms: 6500, face: 0 }, { at: 0.9, do: 'place', who: 'player', x: -3.4, z: -41, face: 0 }] },
         /* A8 · the one close-up: the scoff */
-        { dur: 2.8, shot: { cam: [-3.1, 1.5, -43.3, 172, 0, 26], eye: { who: 'player', dy: -0.04 } },
-          act: [{ at: 0, do: 'hide', who: 'sedaniel' }] },
+        { dur: 3.4, shot: { cam: [-3.1, 1.5, -43.3, 172, 0, 26], eye: { who: 'player', dy: -0.04 } },
+          act: [{ at: 0, do: 'hide', who: 'sedaniel' }, { at: 0.3, do: 'place', who: 'player', clip: 'hqNo', ms: 2600 }] },   // (mondo 11-13: "i shake my head no after he drives off")
         /* A9 · from behind: the door opens, light fills it, the recruit steps through; the picture goes with them */
         { dur: 5.0, hold: true, fade: 4.1, shot: { cam: [0.55, 1.55, -39.4, 5, -2, 36], to: { cam: [0.4, 1.5, -40.6, 4, -2, 36] } },
           act: [{ at: 0, do: 'place', who: 'player', x: 0, z: -41.6, face: 0 }, { at: 0.7, do: 'door', open: 1, ms: 1300 },
