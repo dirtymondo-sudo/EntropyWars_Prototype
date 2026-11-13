@@ -73,7 +73,7 @@ B['P05-04-B3'] = { row: { solid: true }, parts() { const a = sheet(), OC = 0xe6c
 
 /* 5 · SUPERHERO TOWER — the district's weenie: a columned marble podium, a glass shaft with white fins, a round drum on the plaza corner,
        an overhanging observation ring, a gilt dome, pyramid and spire */
-B['P06-04-B1'] = { row: { storeys: 2, hollow: true, doorSide: 'E' }, parts(door) {   // the walk-in lobby opens EAST: the plaza (north) doorway is the story door THE TOWER (bake-disaster-city.js JOIN.tower), its housing stands in that doorway
+B['P06-04-B1'] = { row: { storeys: 2 }, parts(door) {   // the walk-in lobby opens on the plaza (mondo 22:30 "keep the new lobby"); the story door THE TOWER stands at its lift bank (`joins` below)
     const a = sheet(), GL = 0xcfe6ff, WH = 0xf6f8fb, MB = 0xf6f1e4;
     a.shell(28, 7, 28, MARBLE, MB, door); a.box(0, 7, 0, 31, 0.8, 31, MARBLE, 0xffffff, { under: true });
     a.cols(-14, 15.3, 14, 15.3, 9, 0.5, 7, MARBLE, 0xffffff); a.cols(-14, -15.3, 14, -15.3, 9, 0.5, 7, MARBLE, 0xffffff); a.cols(15.3, -10.5, 15.3, 10.5, 7, 0.5, 7, MARBLE, 0xffffff); a.cols(-15.3, -10.5, -15.3, 10.5, 7, 0.5, 7, MARBLE, 0xffffff);
@@ -573,9 +573,9 @@ function insideKit(row) {
             a.box(x, 0, z, ex ? L : 0.1, 2.9, ex ? 0.1 : L, G_SQ, 0xd8ecf8, { ds: true, uv: [1.75, 2.9], win: 'keep' }); a.box(x, 2.9, z, ex ? L : 0.2, 0.14, ex ? 0.2 : L, ALU, 0xd6dade); a.box(x, 0, z, ex ? L : 0.2, 0.12, ex ? 0.2 : L, ALU, 0xd6dade);
             K.ghost(x, z, ex ? L : 0.4, ex ? 0.4 : L, 3); },
         /* a lift core n squares long on the back wall, a door a square */
-        lifts(i, j, n, tint) { const [x, z] = K.at(i, j, n), L = n * SQ - 0.2;
+        lifts(i, j, n, tint, skip) { const [x, z] = K.at(i, j, n), L = n * SQ - 0.2;   // skip = a square of the core left without a lift door (a story door stands there)
             a.box(x, 0, z, L, 3.3, 3.2, MARBLE, tint); a.box(x, 3.3, z, L + 0.2, 0.2, 3.4, ALU, 0xd6dade);
-            for (let k = 0; k < n; k++) { const dx = x - L / 2 + (k + 0.5) * (L / n); a.box(dx, 0, z + 1.62, 1.7, 2.4, 0.06, ALU, 0xc8ccd0); a.box(dx, 0, z + 1.66, 0.04, 2.4, 0.02, null, DARK); a.box(dx, 2.4, z + 1.62, 2.0, 0.16, 0.1, METAL, DARK); a.box(dx, 2.7, z + 1.62, 0.5, 0.22, 0.05, null, 0xffb040, { glow: 0.9 }); }
+            for (let k = 0; k < n; k++) { if (k === skip) continue; const dx = x - L / 2 + (k + 0.5) * (L / n); a.box(dx, 0, z + 1.62, 1.7, 2.4, 0.06, ALU, 0xc8ccd0); a.box(dx, 0, z + 1.66, 0.04, 2.4, 0.02, null, DARK); a.box(dx, 2.4, z + 1.62, 2.0, 0.16, 0.1, METAL, DARK); a.box(dx, 2.7, z + 1.62, 0.5, 0.22, 0.05, null, 0xffb040, { glow: 0.9 }); }
             K.ghost(x, z, L, 3.2, 3.3); },
         column(i, j, h, tint) { const [x, z] = K.at(i, j); a.cyl(x, 0, z, 0.55, h, MARBLE, tint, { seg: 12 }); a.box(x, 0, z, 1.5, 0.35, 1.5, MARBLE, tint); a.box(x, h - 0.4, z, 1.5, 0.4, 1.5, MARBLE, tint, { under: true }); K.ghost(x, z, 1.5, 1.5, h); },
         /* a trophy case: a dark base, gilt cups under a glass top on four posts */
@@ -622,7 +622,8 @@ IN['P05-04-B1'] = K => { const a = K.a;
     K.decor('psx_metal_barrel_mp_1', 1, 3, 1, 1); K.decor('traffic_cone', 3, 3, -1, 1); K.decor('traffic_cone', 2, 1, 1, 1); K.decor('trash_bin', 1, 1, -1, -1); };
 /* 3 · SUPERHERO TOWER: the lobby (8 x 8) */
 IN['P06-04-B1'] = K => { const a = K.a; K.floor(CHECK, 0xffffff, 3.5);
-    K.lifts(2, 0, 4, 0xf4efe4);
+    K.lifts(2, 0, 4, 0xf4efe4, 2);   // its third square = the story door THE TOWER (joins.tower)
+    { const [x, z] = K.at(2, 0, 4); a.box(x, 3.5, z - 0.2, 13.8, 3.3, 2.8, MARBLE, 0xf4efe4); }   // the core runs up to the ceiling (the story door's housing stood out over it)
     for (const j of [2, 5]) { K.column(2, j, 6.9, 0xf4efe4); K.column(5, j, 6.9, 0xf4efe4); K.trophies(0, j, 'z'); K.trophies(7, j, 'z'); }
     K.trophies(0, 0, 'x'); K.trophies(7, 0, 'x');
     { const [x, z] = K.at(3, 3, 2, 2); a.cyl(x, 0, z, 3.1, 1.1, MARBLE, 0xf4efe4, { seg: 24, ri: 2.3 }); a.cyl(x, 1.1, z, 3.2, 0.08, WOOD, 0x4a3426, { seg: 24, ri: 2.2 }); a.cyl(x, 0, z, 3.15, 0.14, GOLD, 0xffffff, { seg: 24, ri: 3.0 });   // the round desk
@@ -773,4 +774,7 @@ function build(ctx) {
             props.push({ key: q.key, x, z, face: ROT[q.side] });
         });
 }
-module.exports = { build };
+/* THE TOWER (the story door into site_prebuilt_downtown_lobby and the rooms past it) moves off the plaza doorway onto the lift bank of the walk-in
+   lobby: square (4, 0) of a room at rot 180 → room metres x 21 − 1.75, z −63 + 10.6 (the lift core's face), facing the lobby (mondo 22:30). */
+const joins = { tower: { x: 19.25, z: -52.45, face: 0, sub: 'THE LIFTS · INTO THE TOWER' } };
+module.exports = { build, joins };

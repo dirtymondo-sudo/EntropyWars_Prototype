@@ -25,11 +25,12 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 755 |
+| Meshy AI | no | 782 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
 | Motion capture (real actors), cut into loops by Claude | yes (motion) | 2 |
+| **UNSORTED** (no SOURCES row yet) | ? | 1 |
 
 Counts are distinct files (a pack kit cut into pieces counts each piece used; the MakeHuman count is the creator's
 picks, each a GLB per body; the code count is procedural catalogue rows).
@@ -1792,6 +1793,38 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | xmas_turkey | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_food` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_wreath | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_wreath` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_wreath_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_wreath_01` | Asset pack | Christmas pack · Elbolilloduro |
+
+### Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) — Meshy AI (27)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| air_hockey_table | `Assets/world/props/meshy/air_hockey_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| arcade_cabinet | `Assets/world/props/meshy/arcade_cabinet.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| blackjack_table | `Assets/world/props/meshy/blackjack_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| bread_rack | `Assets/world/props/meshy/bread_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| claw_machine | `Assets/world/props/meshy/claw_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| costume_rack | `Assets/world/props/meshy/costume_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| crystal_chandelier | `Assets/world/props/meshy/crystal_chandelier.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| deck_oven | `Assets/world/props/meshy/deck_oven.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| directors_chair | `Assets/world/props/meshy/directors_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| drum_kit | `Assets/world/props/meshy/drum_kit.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| film_camera | `Assets/world/props/meshy/film_camera.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| film_projector | `Assets/world/props/meshy/film_projector.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| followspot | `Assets/world/props/meshy/followspot.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| guitar_amp | `Assets/world/props/meshy/guitar_amp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| jukebox | `Assets/world/props/meshy/jukebox.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| makeup_vanity | `Assets/world/props/meshy/makeup_vanity.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| mirror_ball | `Assets/world/props/meshy/mirror_ball.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| mixing_console | `Assets/world/props/meshy/mixing_console.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| money_wheel | `Assets/world/props/meshy/money_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| music_stand | `Assets/world/props/meshy/music_stand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| pa_speaker | `Assets/world/props/meshy/pa_speaker.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| paper_lantern | `Assets/world/props/meshy/paper_lantern.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| pinball_machine | `Assets/world/props/meshy/pinball_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| roulette_table | `Assets/world/props/meshy/roulette_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| studio_light | `Assets/world/props/meshy/studio_light.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| wedding_arch | `Assets/world/props/meshy/wedding_arch.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
+| wedding_cake | `Assets/world/props/meshy/wedding_cake.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) |
 
 ### Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03; held props + worn gear, PR #827) — Meshy AI (25)
 
@@ -3609,4 +3642,10 @@ before asking for a new one (THE PACK-FIRST RULE).
 | `Assets/world/vehicles/Car 08` | another format of a model listed above (source file, the game loads the listed one) | Asset pack · Low-poly cars · GGBot | 1: Car8.blend | 0.7 |
 | `Assets/world/vehicles/Shadow (3D)` | on R2, the game does not load it | Asset pack · Low-poly cars · GGBot | 2: Car_Shadow.blend, Car_Shadow.obj | 0.7 |
 | `Assets/world/vehicles/Wheel` | on R2, the game does not load it | Asset pack · Low-poly cars · GGBot | 2: Wheel.blend, Wheel.obj | 0.7 |
+
+## UNSORTED — found in the game, no SOURCES row yet
+
+| name | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| pastry_case | `Assets/world/props/meshy/pastry_case.glb` | **UNSORTED** | add a SOURCES row in list-models.js |
 
