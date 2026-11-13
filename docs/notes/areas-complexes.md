@@ -2068,6 +2068,7 @@ Built for the nine district threads (each owns its 16 plots); NOT SEEN ON SCREEN
   0.9 to 1.15 of the block's own `w`. Today: Repair shops 00 (0.99), Pawnshop 09 (1.04), Tailor 08 (0.90), Coffee arcade 09 (1.04), West shops
   09 (1.04), Restaurant court + East shops = 08 + 09 side by side (0.97). Corner shops, Bookshops, Costume shops are roof-route tiers (no pack).
 - Pack building claims between districts: `docs/disaster-city/pack-claims.md`.
+<<<<<<< HEAD
 
 ## DISASTER CITY, THE ARCHITECTURE ROW — `k: 'arch'`, a building's look as a list of parts (2026-11-13, shared by the nine district threads)
 mondo: "use different materials/textures and tint them to match your vision for the building ... use more complex geometry for some
@@ -2093,3 +2094,12 @@ thing; ONE row kind does it (Sports + Culture thread owns it). Seen in the game 
   should block. Catalogue models are ordinary room props, not parts.
 - A doorway on a walk-in building: hqTexbDoor(row) gives its `lx`, `cw` (1.74 m) and 2.2 m height; cut the same hole in the arch front
   with `{ s: 'quad', p: [0, 0, d / 2], size: [w, h], hole: [lx, cw, 2.2] }`.
+=======
+- **THE CITY'S WHOLE BUILDINGS** (PR after #1264): twelve catalogue props `city_*` (data.js, after the town houses): pizzeria, diner, BurgerPiz,
+  6twelve, laundry, VHS shop, house, Quequis house, gas store + gas canopy (walked under) + gas price sign, taco stand. Cut from the
+  Elbolilloduro scenes by `bake-pack-pieces.py` (jobs `city_*`; a region may now be a `box`), outside only, real size, entrance +Z, solid `rect`.
+  Run: `pip install bpy`, `apt-get install unrar`, unpack `/mnt/project-files/asset-packs/elbolilloduro/<slug>/*.rar` to `<dir>/<slug>/`, then
+  `python3 bake-pack-pieces.py -- --packs <dir> --out <out> --only city_pizzeria,...`. Files: R2 `Assets/world/packs/elbolilloduro/ebd_<scene>_city_*.glb`.
+  They are PROPS, not HQ_PACK_BUILDINGS, on purpose: a prop is never fitted to a footprint, so its scale cannot go wrong. Not seen in the game
+  (Blender renders only: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg). The laundry's roof sign renders blank orange in Blender.
+>>>>>>> origin/main

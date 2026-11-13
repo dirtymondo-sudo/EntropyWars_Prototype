@@ -111,5 +111,8 @@ is shot while still loading, so put a throwaway unit first. Not seen: any of the
 - Politician ("neck or shirt seam looks jagged"): NOT FIXED. The collar piece is smooth at rest; the body's wider neck crosses the cloth cup
   Meshy closes the collar with. Tried and thrown away: smoothing the collar's edge (no change), hiding the neck under it (the hidden
   skin's edge scallops), laying the cup on the neck (z-fight at the throat). Next: a creator shirt + tie under a T2 jacket, or a new T2 run.
+- NO WEAPONS IN AN OUTFIT (mondo 11-13 16:57, on batch 2: "dont give her a sword ... characters will hold those weapons, dont make them part
+  of the outfit"): swordfighter's creator `ewm_katana` out of her look; bake `DROP` leaves out the holstered pistols (time cop, sidekick) and
+  the sheriff's holster + revolver. The spy's thigh pouch and the sheriff's lasso stay (not weapons to hold).
 - THE MESHY HANDS (coordinator, from batch 1: "fingers look messed up"): bake `HANDCUT=1` cuts a bare hand fused to its sleeve so the
   body's hand shows: politician, priest, shaman, superhero F. Gloved units keep their gloves.
