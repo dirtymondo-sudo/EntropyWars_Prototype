@@ -14720,6 +14720,7 @@ const ThreeRenderer = (function () {
     function _computeUnitStructuralSerial() {
         if (!state.units) return 0;
         var h = 19;
+        if (typeof remadeLooksOn === 'function' && remadeLooksOn()) h = _hashInt(h, 23);   // THE REMADE LOOKS SWITCH: flipping it rebuilds the units
         for (var i = 0; i < state.units.length; i++) {
             var u = state.units[i]; if (u.dead) continue;
             h = _hashVal(h, u.id);
@@ -59248,6 +59249,7 @@ const ThreeRenderer = (function () {
                 if (any) {
                     spaceSmooth(HP, 2, HAIR_HAT.smooth * Hm).run(D);
                     for (k = 0; k < M; k++) {
+                        if (HP[k * 3 + 1] < hatLow) continue;   // (hair below the hat's rim keeps its place: the smoothed pull dragged it under the scalp, a bald band under a crown)
                         var x = HP[k * 3] + D[k * 3], y = HP[k * 3 + 1] + D[k * 3 + 1], z = HP[k * 3 + 2] + D[k * 3 + 2], o3 = pick[k] * 3;
                         t4[0] = t4[1] = t4[2] = 0; need(x, y, z, t4);
                         p[o3] = x + t4[0]; p[o3 + 1] = y + t4[1]; p[o3 + 2] = z + t4[2];
@@ -65239,7 +65241,7 @@ const ThreeRenderer = (function () {
         PT_FWD = 0.028, PT_SETTLE = 8, PT_WAIT = 90000;
     var PT_BAKE_EXPO = 0.62;   // a Meshy bake (its own glow under the studio's lights) washes out at the creator bodies' exposure: a paler face lost its eyes and mouth
     var PT_BUST = { w: 256, h: 320, frame: 0.36, drop: 0.035, bg: 0x2a2620 };   // the ID card's photo: the head's middle sits 3.5 % of the height above the frame's middle
-    var _pt = null, _ptV = null, _ptQ = null, _ptUrls = {}, _ptFail = {}, _ptSpecs = (typeof WeakMap === 'function') ? new WeakMap() : null, _ptIdleT = 0;
+    var _pt = null, _ptV = null, _ptQ = null, _ptUrls = {}, _ptFail = {}, _ptRemade = {}, _ptSpecs = (typeof WeakMap === 'function') ? new WeakMap() : null, _ptIdleT = 0;
     function _ptOff() {
         return typeof window === 'undefined' || !!window.EW_NO_MODEL_PORTRAITS || !!window.EW_DISABLE_3D_UNITS
             || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function' || typeof document === 'undefined';
@@ -65249,8 +65251,14 @@ const ThreeRenderer = (function () {
     function _ptSpec(u) {
         if (!u || !u.race) return null;
         var a = u.appearance;
-        if (!a || typeof a !== 'object') return null;
         var g = u.gender === 'female' ? 'female' : 'male';
+        if (!a || typeof a !== 'object') {
+            /* THE REMADE LOOKS SWITCH: a unit with no look of its own wears its race's remade look, so its portrait is a photo of that */
+            if (typeof remadeLooksOn !== 'function' || !remadeLooksOn() || typeof getCharacterAppearanceModel !== 'function') return null;
+            var rk = 'remade:' + u.race + '|' + g;
+            if (!(rk in _ptRemade)) { var rd = null; try { rd = getCharacterAppearanceModel(u.race, g, null); } catch (e) { rd = null; } _ptRemade[rk] = (rd && rd.model && rd.raceLook) ? { key: rk, def: rd, look: rd.raceLook } : null; }
+            return _ptRemade[rk];
+        }
         var hit = _ptSpecs && _ptSpecs.get(a);
         if (hit && hit.race === u.race && hit.g === g) return hit.spec;
         var spec = null;
@@ -71113,8 +71121,8 @@ const ThreeRenderer = (function () {
         else if (floatG && floatG.hull) { try { _hqBuildHull(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the hull failed', e); } }   // THE HULL (2026-10-05): a starship under the plate
         else if (floatG && floatG.roof) { try { _hqBuildRooftop(room, info, G, TM, rng, floatG.roof); } catch (e) { console.warn('[HQ] the roof failed', e); } }   // THE ROOF OVER THE CITY (2026-10-05): the Vatican and the city under the terrace
         else if (floatG) { try { _hqBuildUnderside(room, info, G, TM, rng, floatG); } catch (e) { console.warn('[HQ] the underside failed', e); } }
-        else if (S.open && room.terrain.outer !== false && _hqSliceEnd > 0) { try { _hqSliceAsk = true; yield* _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { _hqSliceAsk = false; console.warn('[HQ] the outer ground failed', e); } }   // THE SMOOTH ATTACH: sliced on the stage
-        else if (S.open && room.terrain.outer !== false) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { console.warn('[HQ] the outer ground failed', e); } }
+        else if (S.open && room.terrain.outer !== false && !_hqEdgeLandOn(room) && _hqSliceEnd > 0) { try { _hqSliceAsk = true; yield* _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { _hqSliceAsk = false; console.warn('[HQ] the outer ground failed', e); } }   // THE SMOOTH ATTACH: sliced on the stage
+        else if (S.open && room.terrain.outer !== false && !_hqEdgeLandOn(room)) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { console.warn('[HQ] the outer ground failed', e); } }
         else if (S.open) { try { _hqBuildRoomSides(room, info, G, TM); } catch (e) { console.warn('[HQ] the room\'s sides failed', e); } }   // JUST THE ROOM (2026-10-28)
         if (_hqSliceDue()) yield;
         /* ── THE WATER: the battle's animated sheet per key; a pool a disc, a stream a mitred ribbon ── */
@@ -71149,7 +71157,7 @@ const ThreeRenderer = (function () {
         /* THE DEEP (2026-09-18): the sea's ONE surface — over the field AND the outer ground, the battle's animated sheet for the key,
            DoubleSide so a diver (and the drowned abyss) sees it from below; the sky's fog takes it at the horizon */
         if (info.sea) {
-            var seaExt = (S.open && room.terrain.outer !== false) ? ((room.terrain.outer && room.terrain.outer.m) || HQ_OUTER_M) : 0;
+            var seaExt = (S.open && room.terrain.outer !== false && !_hqEdgeLandOn(room)) ? ((room.terrain.outer && room.terrain.outer.m) || HQ_OUTER_M) : 0;
             var seaW = (info.halfW - 0.5 + seaExt) * 2 * U, seaD = (info.halfD - 0.5 + seaExt) * 2 * U;
             var isPlane = (typeof THREE.PlaneGeometry === 'function');
             var seaGeo = isPlane ? new THREE.PlaneGeometry(seaW, seaD, 1, 1) : new THREE.BoxGeometry(seaW, 0.01, seaD);   // (the terrain test's stub scene has no plane)
@@ -71350,6 +71358,8 @@ const ThreeRenderer = (function () {
         if (_hqSliceDue()) yield;
         if (info.gen && info.gen.kind === 'city' && S.open) { try { _hqBuildCityBackdrop(room, info, G, TM, rng, TK); } catch (e) { console.warn('[HQ] the city backdrop failed', e); } }   // THE BACKDROP (2026-09-21): the skyline past the room's edge
         if (_hqSliceDue()) yield;
+        if (S.open && room.terrain.edges) { try { _hqBuildEdgeLand(room, info, G, TM, plantTree, fluidMatFor); } catch (e) { console.warn('[HQ] the edge land failed', e); } }   // THE NATURAL EDGES (2026-11-13): mountains / forest / desert / the bay past the room's sides
+        if (_hqSliceDue()) yield;
         if (info.genPlan && info.genPlan.streets) { try { _hqBuildStreetLamps(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the street lamps failed', e); } }
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city') { try { _hqBuildRoadMarkings(room, info, G, TM); } catch (e) { console.warn('[HQ] the road markings failed', e); } }   // THE STREETS IN THE PACK (2026-09-17): the asphalt is the field's floor sheet; the paint, the kerbs, the manholes and the signs stand on it
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city' && info.gen.sidewalk > 0 && typeof window !== 'undefined' && window.EW_HQ_ROAD_TILES) { try { _hqBuildRoadTiles(room, info, G, TM); } catch (e) { console.warn('[HQ] the road tiles failed', e); } }   // the GLB tiles are opt-in since the pack landed (they distorted on every bend)
@@ -71447,7 +71457,7 @@ const ThreeRenderer = (function () {
        textured shop now (the plain concrete box is gone). Blocking is the
        plan's own mass rule (hqTerrainSolidAt) — a building adds no blocker.
        ═══════════════════════════════════════════════════════════════════════ */
-    var HQ_TEXB = { cell: 1.75, storey: 3.5, parapet: 0.45, outset: 0.012, tint: 0xa8a49c, tintNeon: 0x62627a };
+    var HQ_TEXB = { cell: 1.75, storey: 3.5, parapet: 0.45, outset: 0.012, tint: 0xa8a49c, tintNeon: 0x62627a, bigWin: 1, archBase: 'urban:ConcreteStriped2a' };   // bigWin 0 = the old 1.75 m window squares (THE BIG WINDOWS)
     var _HQ_TEX_STYLES = {
         office:      { spandrel: 'ConcreteStriped', glass: 'GlassWindowSquare', ground: 'store', door: 'DoorStorefrontHalf', roof: 'ConcreteUnderTiles1', maxS: 6 },
         tower:       { spandrel: null, glass: 'GlassWindowTall', ground: 'store', door: 'DoorStorefrontHalf', roof: 'ConcreteUnderTiles1', tall: true, minS: 3 },
@@ -71594,11 +71604,20 @@ const ThreeRenderer = (function () {
             var cols = Math.max(1, Math.round(F.L / C)), cw = F.L / cols;
             if (F.front) doorCol = Math.max(0, Math.min(cols - 1, Math.floor(cols * (0.25 + rng() * 0.5))));
             if (F.front && hol) doorCol = -1;   // THE INSIDE: no door sheet, the doorway itself
-            if (!lot.roofOnly && !lot.noSkin) for (var r = 0; r < rows; r++) for (var ci = 0; ci < cols; ci++) {   // THE PRISM ROOFS: a prism building draws only the roof and the parapet here
+            /* THE BIG WINDOWS (2026-11-13, mondo: "the windows are too small, need to be scaled up, and remember the bottom row of these
+               buildings should be different/not windows"): a window is one per STOREY (3.5 m), never one per 1.75 m square, and the ground
+               storey carries none. Glass styles (office / tower / a glass sheet) draw their upper storeys as storey-high panes (bigGlass);
+               window decals (residential / stucco / a pack sheet's) are laid one per storey over the wall (bigOver). HQ_TEXB.bigWin 0 = the old squares. */
+            var BW = (HQ_TEXB.bigWin !== 0) && !lot.roofOnly && !lot.noSkin;
+            var bigGlass = BW && ((Q && Q.sheet && Q.sheet.glass) ? Q.sheet : (!Q && !P.one && (P.style === 'office' || P.style === 'tower')) ? P.win : null);
+            var bigOver = BW ? ((overOwn !== undefined) ? overOwn : (!Q && (P.style === 'residential' || P.style === 'stucco')) ? P.over : null) : null;
+            if (!lot.roofOnly && !lot.noSkin) for (var r = 0; r < rows; r++) for (var ci = 0; ci < cols; ci++) {
+                if (bigGlass && r >= 2) continue;   // THE PRISM ROOFS: a prism building draws only the roof and the parapet here
                 var ground = r === 0, upperOfStorey = (r % 2) === 1, top = r === rows - 1;
                 var cell = null, over = null, door = null;
                 if (P.style === 'office' || P.style === 'tower') {
                     if (ground) { cell = (F.front || F.L > 6) ? P.ground : P.wall; if (F.front && ci === doorCol) door = P.door; }
+                    else if (BW && r === 1) cell = P.wall;   // the fascia over the shopfront
                     else if (P.style === 'tower') cell = P.win;
                     else cell = upperOfStorey ? P.win : P.wall;
                 } else if (P.style === 'factory') {
@@ -71606,13 +71625,14 @@ const ThreeRenderer = (function () {
                     if (!ground && upperOfStorey && (ci % 2 === 0 || F.L < 5)) cell = P.win;
                     if (ground && F.front && ci === doorCol) door = P.door;
                 } else {   // residential / stucco
-                    cell = ground ? (P.base || P.wall) : ((top && P.top) ? P.top : P.wall);
+                    cell = ground ? (P.base || (BW && P.top) || P.wall) : ((top && P.top) ? P.top : P.wall);   // the ground row in its own sheet (the band / the stucco's trim)
                     if (upperOfStorey || (ground && !(F.front && ci === doorCol))) { if (!(ground && P.style === 'stucco')) over = P.over; }
                     if (ground && F.front && ci === doorCol) door = P.door;
                 }
                 if (Q) { cell = r === 0 ? Q.g0 : (r === 1 && Q.g1 ? Q.g1 : Q.sheet); over = null; door = (ground && F.front && ci === doorCol) ? door : null; }
                 if (ownG !== undefined && r === 0 && ownG) cell = { key: ownG, glass: /GlassWindow/.test(ownG) };
                 if (overOwn !== undefined) over = (r >= 3 && r % 2 === 1) ? overOwn : null;
+                if (BW) over = null;   // THE BIG WINDOWS: laid per storey below
                 if (door && doorKey !== undefined) door = doorKey ? { key: doorKey, half: true, pair: doorPair } : null;
                 if (!cell || !cell.key) continue;
                 var x0 = F.o[0] + F.a[0] * cw * ci, z0 = F.o[1] + F.a[1] * cw * ci, x1 = x0 + F.a[0] * cw, z1 = z0 + F.a[1] * cw, y0 = r * CY, y1 = y0 + CY, v0 = 0;
@@ -71633,6 +71653,22 @@ const ThreeRenderer = (function () {
                     var dw = door.wide ? cw : cw / 2, dx0 = x0 + F.a[0] * (cw - dw) / 2, dz0 = z0 + F.a[1] * (cw - dw) / 2, dx1 = dx0 + F.a[0] * dw, dz1 = dz0 + F.a[1] * dw;
                     var ox2 = F.n[0] * out * 1.5, oz2 = F.n[1] * out * 1.5;
                     batch.add(door.key, null, 'over', [W(dx0 + ox2, y0, dz0 + oz2), W(dx1 + ox2, y0, dz1 + oz2), W(dx1 + ox2, y1, dz1 + oz2), W(dx0 + ox2, y1, dz0 + oz2)], [[0, 0], [door.wide ? 2 : 1, 0], [door.wide ? 2 : 1, 1], [0, 1]]);
+                }
+            }
+            if ((bigGlass && bigGlass.key) || (bigOver && bigOver.key)) {   // THE BIG WINDOWS: storeys 1.. , one pane / one window per storey-wide bay
+                var SH = 2 * CY, office = bigGlass && bigGlass === P.win && P.style === 'office';
+                var bays = Math.max(1, Math.round(F.L / (office ? HQ_TEXB.cell * 1.5 : HQ_TEXB.storey))), bwd = F.L / bays, sp = office ? SH * 0.25 : 0;
+                for (var sN = 1; sN < st; sN++) for (var bi0 = 0; bi0 < bays; bi0++) {
+                    var bx0 = F.o[0] + F.a[0] * bwd * bi0, bz0 = F.o[1] + F.a[1] * bwd * bi0, bx1 = bx0 + F.a[0] * bwd, bz1 = bz0 + F.a[1] * bwd, by0 = sN * SH, by1 = by0 + SH;
+                    if (bigGlass && bigGlass.key) {
+                        if (sp > 0) batch.add(P.wall.key, null, 'wall', [W(bx0, by0, bz0), W(bx1, by0, bz1), W(bx1, by0 + sp, bz1), W(bx0, by0 + sp, bz0)], [[0, 0], [bwd / C, 0], [bwd / C, sp / CY], [0, sp / CY]]);   // the spandrel under the pane
+                        var gu = bigGlass.tall ? 2 : 1;
+                        batch.add(bigGlass.key, bigGlass.glow || null, 'glass', [W(bx0, by0 + sp, bz0), W(bx1, by0 + sp, bz1), W(bx1, by1, bz1), W(bx0, by1, bz0)], [[0, 0], [gu, 0], [gu, 1], [0, 1]]);
+                    }
+                    if (bigOver && bigOver.key) {
+                        var box = F.n[0] * out, boz = F.n[1] * out;
+                        batch.add(bigOver.key, bigOver.glow || null, 'over', [W(bx0 + box, by0, bz0 + boz), W(bx1 + box, by0, bz1 + boz), W(bx1 + box, by1, bz1 + boz), W(bx0 + box, by1, bz0 + boz)], [[0, 0], [1, 0], [1, 1], [0, 1]]);
+                    }
                 }
             }
             if (lot.flat || lot.noSkin) return;   // THE BUILDING TIERS: a walked roof has no parapet (THE ARCHITECTURE: `skin: false` draws no outside at all) (its rails, bridges and stairs meet the edge)
@@ -71738,6 +71774,15 @@ const ThreeRenderer = (function () {
         parts.forEach(function (P) {
             var pp = P.p || [0, 0, 0], pc = Math.cos(-(P.ry || 0) * D2R), ps = Math.sin(-(P.ry || 0) * D2R);
             var fit = P.uv === 'fit', mu = fit ? 1 : (Array.isArray(P.uv) ? +P.uv[0] : +P.uv) || C, mv = fit ? 1 : (Array.isArray(P.uv) ? +P.uv[1] : +P.uv) || C;
+            /* THE BIG WINDOWS (2026-11-13, mondo: windows too small; the bottom row is not windows): a repeated window sheet (urban GlassWindow* /
+               DecalWindows*) on a wall repeats once per STOREY, in whole rows (a 9 m wall = three rows of 3 m), never every 1.75 m: a `uv` number
+               under a storey (or none) is lifted; an [u, v] pair and 'fit' are the district's own and stay. A wall of them standing on the ground
+               and taller than a storey draws its ground storey in `keyBase` (none = HQ_TEXB.archBase for glass, nothing for a decal) in the part's
+               tint. `win: 'keep'` on a part turns both off. */
+            var wallH = (P.s === 'box' || P.s === 'quad') ? +(P.size || [])[1] || 0 : (P.s === 'cyl' || P.s === 'poly') ? +P.h || 0 : 0;
+            var winSheet = HQ_TEXB.bigWin !== 0 && P.win !== 'keep' && !fit && !Array.isArray(P.uv) && !(P.s === 'quad' && P.flat) && wallH > 0 && /^urban:(GlassWindow|DecalWindows)/.test(P.key || '');
+            if (winSheet && mv < HQ_TEXB.storey) { mv = (wallH >= HQ_TEXB.storey) ? wallH / Math.round(wallH / HQ_TEXB.storey) : Math.max(mv, wallH); mu = mv; }
+            var gSplit = (winSheet && pp[1] < 0.6 && wallH > HQ_TEXB.storey + 1) ? Math.min(mv, wallH - 1) : 0;
             var kindOf = function (key) { return P.kind || (/GlassWindow/.test(key || '') ? 'glass' : /^urban:(Decal|Door|Sign)/.test(key || '') ? 'over' : 'wall'); };
             var grp = function (key, tintOwn) {   // tintOwn: the tint of a second sheet of the part (tintTop / tintEnd), none = the part's
                 key = key || null;
@@ -71756,6 +71801,13 @@ const ThreeRenderer = (function () {
                 var i0 = put(g, a, [0, 0]), i1 = put(g, b, [u, 0]), i2 = put(g, c, [u, v]), i3 = put(g, d, [0, v]);
                 g.idx.push(i0, i1, i2, i0, i2, i3);
             };
+            var wq = function (key, a, b, c, d, w, h) {   // a WALL's face: its ground storey in the base sheet (THE BIG WINDOWS)
+                if (!(gSplit > 0) || h <= gSplit + 0.01) return quad(key, a, b, c, d, w, h);
+                var f = gSplit / h, mix = function (p, q) { return [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f, p[2] + (q[2] - p[2]) * f]; }, d1 = mix(a, d), c1 = mix(b, c);
+                var bk = P.keyBase || (/DecalWindows/.test(key || '') ? null : HQ_TEXB.archBase);
+                if (bk) { var kd = P.kind; P.kind = 'wall'; var g0 = grp(bk); P.kind = kd; var j0 = put(g0, a, [0, 0]), j1 = put(g0, b, [w / C, 0]), j2 = put(g0, c1, [w / C, gSplit / C]), j3 = put(g0, d1, [0, gSplit / C]); g0.idx.push(j0, j1, j2, j0, j2, j3); }
+                quad(key, d1, c1, c, d, w, h - gSplit);
+            };
             var tri = function (key, a, b, c, w, h, tn) {
                 var g = grp(key, tn), u = fit ? 1 : w / mu, v = fit ? 1 : h / mv;
                 var i0 = put(g, a, [0, 0]), i1 = put(g, b, [u, 0]), i2 = put(g, c, [u / 2, v]);
@@ -71766,10 +71818,10 @@ const ThreeRenderer = (function () {
                 var w = S[0] / 2, h = S[1], d = S[2] / 2;
                 if (P.sides !== false) {
                     var fc = P.faces || 'fblr';
-                    if (fc.indexOf('f') >= 0) quad(key, [-w, 0, d], [w, 0, d], [w, h, d], [-w, h, d], 2 * w, h);
-                    if (fc.indexOf('b') >= 0) quad(key, [w, 0, -d], [-w, 0, -d], [-w, h, -d], [w, h, -d], 2 * w, h);
-                    if (fc.indexOf('r') >= 0) quad(key, [w, 0, d], [w, 0, -d], [w, h, -d], [w, h, d], 2 * d, h);
-                    if (fc.indexOf('l') >= 0) quad(key, [-w, 0, -d], [-w, 0, d], [-w, h, d], [-w, h, -d], 2 * d, h);
+                    if (fc.indexOf('f') >= 0) wq(key, [-w, 0, d], [w, 0, d], [w, h, d], [-w, h, d], 2 * w, h);
+                    if (fc.indexOf('b') >= 0) wq(key, [w, 0, -d], [-w, 0, -d], [-w, h, -d], [w, h, -d], 2 * w, h);
+                    if (fc.indexOf('r') >= 0) wq(key, [w, 0, d], [w, 0, -d], [w, h, -d], [w, h, d], 2 * d, h);
+                    if (fc.indexOf('l') >= 0) wq(key, [-w, 0, -d], [-w, 0, d], [-w, h, d], [-w, h, -d], 2 * d, h);
                 }
                 if (P.top !== false) quad(P.keyTop || key, [-w, h, d], [w, h, d], [w, h, -d], [-w, h, -d], 2 * w, 2 * d, tT);
                 if (P.under) quad(P.keyUnder || P.keyTop || key, [-w, 0, -d], [w, 0, -d], [w, 0, d], [-w, 0, d], 2 * w, 2 * d);
@@ -71848,13 +71900,13 @@ const ThreeRenderer = (function () {
                     var hx0 = Math.max(-qw, P.hole[0] - P.hole[1] / 2), hx1 = Math.min(qw, P.hole[0] + P.hole[1] / 2), hy = Math.min(qh, P.hole[2]);
                     var gq = grp(key), pv = function (x, y) { return put(gq, [x, y, 0], [(x + qw) / mu, y / mv]); }, rect = function (x0, y0, x1, y1) { if (x1 - x0 < 0.01 || y1 - y0 < 0.01) return; var i0 = pv(x0, y0), i1 = pv(x1, y0), i2 = pv(x1, y1), i3 = pv(x0, y1); gq.idx.push(i0, i1, i2, i0, i2, i3); };
                     rect(-qw, 0, hx0, qh); rect(hx1, 0, qw, qh); rect(hx0, hy, hx1, qh);
-                } else quad(key, [-qw, 0, 0], [qw, 0, 0], [qw, qh, 0], [-qw, qh, 0], 2 * qw, qh);
+                } else wq(key, [-qw, 0, 0], [qw, 0, 0], [qw, qh, 0], [-qw, qh, 0], 2 * qw, qh);
             } else if (P.s === 'poly') {
                 var pts = (P.pts || []).slice(), area = 0, phh = +P.h || 1;
                 if (pts.length < 3) return;
                 for (var pi = 0; pi < pts.length; pi++) { var pa = pts[pi], pb = pts[(pi + 1) % pts.length]; area += pa[0] * pb[1] - pb[0] * pa[1]; }
                 if (area > 0) pts.reverse();
-                for (var pj = 0; pj < pts.length; pj++) { var qa = pts[pj], qb = pts[(pj + 1) % pts.length]; quad(key, [qa[0], 0, qa[1]], [qb[0], 0, qb[1]], [qb[0], phh, qb[1]], [qa[0], phh, qa[1]], Math.hypot(qb[0] - qa[0], qb[1] - qa[1]), phh); }
+                for (var pj = 0; pj < pts.length; pj++) { var qa = pts[pj], qb = pts[(pj + 1) % pts.length]; wq(key, [qa[0], 0, qa[1]], [qb[0], 0, qb[1]], [qb[0], phh, qb[1]], [qa[0], phh, qa[1]], Math.hypot(qb[0] - qa[0], qb[1] - qa[1]), phh); }
                 if (P.top !== false) {
                     var gp = grp(P.keyTop || key, tT), ti = pts.map(function (q) { return put(gp, [q[0], phh, q[1]], [q[0] / mu, q[1] / mv]); });
                     for (var pk = 1; pk < ti.length - 1; pk++) gp.idx.push(ti[0], ti[pk], ti[pk + 1]);
@@ -72214,6 +72266,211 @@ const ThreeRenderer = (function () {
             if (tx) { var sign = new THREE.Mesh(new THREE.PlaneGeometry(5.5 * U, 0.7 * U), new THREE.MeshBasicMaterial({ map: tx, transparent: true })); sign.position.set(0, 4.05 * U, 0.02 * U); g.add(sign); }
         });
     }
+    /* ═══════════════════════════════════════════════════════════════════════
+       THE NATURAL EDGES (2026-11-13 — mondo on Disaster City: "get rid of the edge/moat of buildings ... where the elevation is
+       the highest there should be steep mountains, one side can be forest or tall trees, or one side could be just plain flat
+       desert ... having these fake buildings as barriers doesnt feel right"). `terrain.edges = { reach, n, s, w, e }`: the LAND
+       past each side of an open room, in place of the skyline ring (`terrain.backdrop: false`) and the field's outer ground
+       (not built for such a room). A side = { kind, inset, cap: { kind, at, len } }:
+         · kind 'mountain' = a rock face at the edge, peaks behind it (snow on the tops); 'forest' = a hillside that carries the
+           edge's height on, planted with tall trees; 'desert' = dead flat sand past a roadside ditch; 'coast' = the ground falls
+           under the room's sea (`terrain.sea`), whose surface runs on over it;
+         · cap = toward that end of the side (`at`: n / s / w / e) the land turns into another kind over `len` metres, whole for the last `off` (the
+           mountains turn the corner and run a way down the forest side; the desert and the mountains fall into the bay);
+         · inset = the land starts that many metres INSIDE the shell on that side (a dead strip of the field, closed by a ghost
+           wall, is covered: the land lies over it).
+       One height function for all four sides and the corners, so the pieces share their edges exactly. CHEAP: ~35 000
+       triangles for the whole ring (a row every square along the edge, rows spreading out with the distance), cut into
+       pieces along each side that THE CHUNKS skip off camera; the part past 70 m is fog-free with its haze in its vertices
+       (the city's fog takes everything at ~120 m, a mountain must stand over it); the trees go through the shared tree kit, so
+       the instance pass batches them per cell and its far rule fades them. `EW_HQ_NO_EDGE_LAND` kills it.
+       ═══════════════════════════════════════════════════════════════════════ */
+    var HQ_EDGE_ROWS = [0, 1.2, 2.5, 4, 6, 8.5, 11.5, 15, 19, 24, 30, 37, 45, 55, 70, 86, 104, 125, 150, 178, 210, 246, 286, 330, 380, 440];
+    var HQ_EDGE_NEAR_M = 70;
+    function _hqEdgeNoise(x, z) {
+        var h = function (a, b) { var s = Math.sin(a * 127.1 + b * 311.7) * 43758.5453; return s - Math.floor(s); };
+        var xi = Math.floor(x), zi = Math.floor(z), fx = x - xi, fz = z - zi, u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
+        return (h(xi, zi) * (1 - u) + h(xi + 1, zi) * u) * (1 - v) + (h(xi, zi + 1) * (1 - u) + h(xi + 1, zi + 1) * u) * v;
+    }
+    function _hqEdgeFbm(x, z) { return _hqEdgeNoise(x, z) * 0.5 + _hqEdgeNoise(x * 2.1, z * 2.1) * 0.27 + _hqEdgeNoise(x * 4.3, z * 4.3) * 0.15 + _hqEdgeNoise(x * 8.7, z * 8.7) * 0.08; }
+    /* the land's own arithmetic (no scene): the frame, the kinds' weights and the height at a point past the edge */
+    function _hqEdgeLandFn(room, info) {
+        var E = room.terrain.edges, hx = info.halfW - 0.5, hz = info.halfD - 0.5;
+        var sd = function (k) { return E[k] || { kind: 'forest' }; };
+        var R = { x0: -hx + (+sd('w').inset || 0), x1: hx - (+sd('e').inset || 0), z0: -hz + (+sd('n').inset || 0), z1: hz - (+sd('s').inset || 0) };
+        var sm = function (t) { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
+        var seaY = (info.sea && isFinite(+info.sea.y)) ? +info.sea.y : -0.6;
+        var KINDS = ['mountain', 'forest', 'desert', 'coast'];
+        /* a side's kinds at a point along it (x for n / s, z for w / e) */
+        var sideW = function (k, along) {
+            var S0 = sd(k), W = { mountain: 0, forest: 0, desert: 0, coast: 0 }, c = S0.cap, t = 0;
+            if (c && c.kind && c.len > 0) {
+                var horiz = (k === 'n' || k === 's'), a0 = horiz ? R.x0 : R.z0, a1 = horiz ? R.x1 : R.z1;
+                var fromEnd = (c.at === 'n' || c.at === 'w') ? along - a0 : a1 - along;
+                t = sm(1 - (fromEnd - (+c.off || 0)) / c.len);   // `off` = the last metres of the side are the cap's kind whole
+            }
+            W[S0.kind] = (W[S0.kind] || 0) + (1 - t); if (t > 0) W[c.kind] = (W[c.kind] || 0) + t;
+            return W;
+        };
+        var gCache = new Map();
+        var groundAt = function (cx, cz) {
+            var gk = Math.round(cx * 50) * 100003 + Math.round(cz * 50), hit = gCache.get(gk); if (hit !== undefined) return hit;
+            var h = groundAt0(cx, cz); gCache.set(gk, h); return h;
+        };
+        var groundAt0 = function (cx, cz) {
+            var h = hqTerrainHeight(info, cx, cz);
+            if (typeof _hqTBaseAt === 'function') { var b = _hqTBaseAt(info, cx, cz); if (h > b) h = b; }   // never a roof or a wall top at the edge: the ground (a sunk bay stays sunk)
+            return h;
+        };
+        var at = function (x, z) {
+            var cx = Math.max(R.x0, Math.min(R.x1, x)), cz = Math.max(R.z0, Math.min(R.z1, z));
+            var ex = Math.abs(x - cx), ez = Math.abs(z - cz), d = Math.hypot(ex, ez), eH = groundAt(cx, cz);
+            var liftUp = 0.45 * sm(d / 1.2), liftDn = 0.25 * (1 - sm(d / 0.6));
+            var kx = x < cx ? 'w' : 'e', kz = z < cz ? 'n' : 's', W;
+            if (ez <= 1e-6) W = sideW(kx, cz); else if (ex <= 1e-6) W = sideW(kz, cx);
+            else { var s = sm(ex / (ex + ez)), A = sideW(kz, cx), B = sideW(kx, cz); W = {}; KINDS.forEach(function (q) { W[q] = A[q] * (1 - s) + B[q] * s; }); }
+            /* a step between two plots' levels at the edge is taken up in the land's first metres: past them the land stands on the HIGHER ground either side */
+            var eHi = eH;
+            if (d > 0.01) { var st = 3.6; if (ez <= 1e-6 || ex > ez) eHi = Math.max(eH, groundAt(cx, Math.max(R.z0, Math.min(R.z1, cz - st))), groundAt(cx, Math.max(R.z0, Math.min(R.z1, cz + st)))); else eHi = Math.max(eH, groundAt(Math.max(R.x0, Math.min(R.x1, cx - st)), cz), groundAt(Math.max(R.x0, Math.min(R.x1, cx + st)), cz)); }
+            var e2 = eH + (eHi - eH) * sm(d / 1.2);
+            var y = 0, lift = liftUp - liftDn;   // tucked under the field at the line, over it a step out
+            if (W.mountain > 0) {
+                var rg = 1 - Math.abs(2 * _hqEdgeFbm(x / 190 + 3.1, z / 190 + 1.7) - 1), rg2 = 1 - Math.abs(2 * _hqEdgeFbm(x / 70 + 9, z / 70 + 4) - 1);
+                y += W.mountain * (e2 + 30 * sm(d / 14) + (45 + 175 * rg * rg * rg + 25 * rg2) * sm((d - 10) / 150) * (1 - 0.8 * sm((d - 330) / 420)) + lift);
+            }
+            if (W.forest > 0) { var kf = sm(d / 16); y += W.forest * Math.max(e2 + lift + 6 * _hqEdgeFbm(x / 55, z / 55) * kf - e2 * 0.12 * sm((d - 90) / 200), 0.7 * kf); }
+            if (W.desert > 0) { var kd = sm(d / 10), ditch = sm((d - 2.5) / 1.5) * (1 - sm((d - 6) / 1.5)); y += W.desert * ((e2 + lift) * (1 - kd) + 0.9 * kd - 1.1 * ditch); }
+            if (W.coast > 0) { var kc = sm((d - 1) / 9); y += W.coast * ((e2 - liftDn) * (1 - kc) + Math.min(e2, seaY - 2.6) * kc); }   // (no lift: a sea bed never rises past the field)
+            return { y: y, W: W, d: d, eH: eH };
+        };
+        return { R: R, at: at, seaY: seaY, reach: +E.reach || 440 };
+    }
+    /* a room whose land past the edge is THE NATURAL EDGES' (no outer ground of the field's sheet, no sea sheet past the field: the land brings its own) */
+    function _hqEdgeLandOn(room) { return !!(room && room.terrain && room.terrain.edges && room.shell && room.shell.open && !(typeof window !== 'undefined' && window.EW_HQ_NO_EDGE_LAND)); }
+    function _hqBuildEdgeLand(room, info, G, TM, plantTree, fluidMatFor) {
+        if (!_hqEdgeLandOn(room)) return;
+        var E = room.terrain.edges;
+        var U = _hqUnits(), F = _hqEdgeLandFn(room, info), R = F.R, ROWS = HQ_EDGE_ROWS.filter(function (r) { return r <= F.reach; });
+        var H = _hq, chunked = !!(H && G === H.shellGroup && typeof _hqChunkBig === 'function' && _hqChunkBig(H));
+        var fogC = new THREE.Color((room.shell.sky && room.shell.sky.fog && room.shell.sky.fog.color != null) ? room.shell.sky.fog.color : 0xc8d8ea);
+        try { var sf = H && H.scene && H.scene.fog; if (sf && sf.color && sf.color.isColor) fogC.copy(sf.color); } catch (e) {}   // the fog as the room draws it (the near land fades to THIS colour; the far land's haze must be the same one)
+        /* the sheets: the game's own ground sheets (the rock, the mossy grass, the sand); the snow is plain white */
+        var mats = {};
+        var matFor = function (key, far) {
+            var mk = key + (far ? '|far' : '');
+            if (mats[mk]) return mats[mk];
+            var tex = key === 'snow' ? null : _hzTex(key === 'rock' ? 'mountain' : key === 'grass' ? 'grass' : key === 'cliff' ? 'cliff' : 'desert');
+            var m = new THREE.MeshLambertMaterial({ map: tex || null, vertexColors: true, fog: !far });
+            m._ew_hqEdgeLand = true; mats[mk] = m; return m;
+        };
+        var colOf = function (P) {   // the vertex tint by kind (the sheet's own colour is 1)
+            var W = P.W, c = [0, 0, 0], add = function (w, r, g, b) { c[0] += w * r; c[1] += w * g; c[2] += w * b; };
+            add(W.mountain, 0.92, 0.9, 0.88); add(W.forest, 0.62, 0.74, 0.56); add(W.desert, 1, 0.96, 0.86); add(W.coast, 0.8, 0.74, 0.66);
+            return c;
+        };
+        var keyOf = function (P, x, z) {
+            var W = P.W, k = 'grass', b = W.forest;
+            if (W.mountain > b) { k = 'rock'; b = W.mountain; } if (W.desert > b) { k = 'desert'; b = W.desert; } if (W.coast > b) { k = (P.y > F.seaY + 0.3 || (P.eH > F.seaY + 0.5 && P.d < 16)) ? 'cliff' : 'desert'; }   // a high edge falls to the sea as a rock cliff; the bed is sand
+            if (k === 'rock' && P.y - P.eH > 150 + 30 * _hqEdgeNoise(x / 30, z / 30)) k = 'snow';
+            return k;
+        };
+        var pieces = [];
+        /* a patch: xs × zs (metres), its quads sorted by sheet and near / far */
+        var patch = function (xs, zs, name) {
+            var nx = xs.length, nz = zs.length, P = new Array(nx * nz), i, j;
+            for (j = 0; j < nz; j++) for (i = 0; i < nx; i++) P[j * nx + i] = F.at(xs[i], zs[j]);
+            var B = {};
+            for (j = 0; j + 1 < nz; j++) for (i = 0; i + 1 < nx; i++) {
+                var mx = (xs[i] + xs[i + 1]) / 2, mz = (zs[j] + zs[j + 1]) / 2, PM = F.at(mx, mz), far = PM.d >= HQ_EDGE_NEAR_M, key = keyOf(PM, mx, mz), bk = key + (far ? '|far' : '');
+                var b = B[bk] || (B[bk] = { key: key, far: far, map: {}, pos: [], col: [], uv: [], nrm: [], idx: [] });
+                var vi = [j * nx + i, j * nx + i + 1, (j + 1) * nx + i, (j + 1) * nx + i + 1].map(function (v) {
+                    if (b.map[v] != null) return b.map[v];
+                    var vx = xs[v % nx], vz = zs[(v / nx) | 0], p = P[v], c = colOf(p), e = 1.5;
+                    if (key === 'snow') c = [0.97, 0.98, 1];
+                    if (far) { var hz0 = 0.5 + 0.3 * Math.min(1, (p.d - HQ_EDGE_NEAR_M) / 300), hzA = hz0 * (1 - 0.55 * Math.min(1, Math.max(0, (p.y - p.eH - 40) / 140))); c = [c[0] * (1 - hzA) + fogC.r * hzA, c[1] * (1 - hzA) + fogC.g * hzA, c[2] * (1 - hzA) + fogC.b * hzA]; }
+                    var nxv = 2 * (p.y - F.at(vx + e, vz).y), nzv = 2 * (p.y - F.at(vx, vz + e).y), nl = Math.hypot(nxv, 2 * e, nzv);   // (one step each way: a third fewer samples)
+                    var n = b.pos.length / 3; b.map[v] = n;
+                    b.pos.push(vx * U, p.y * U, vz * U); b.col.push(c[0], c[1], c[2]); b.nrm.push(nxv / nl, 2 * e / nl, nzv / nl);
+                    var ts = far ? TM * 6 : TM; b.uv.push(vx * U / ts, vz * U / ts);
+                    return n;
+                });
+                var flip = ((xs[i + 1] - xs[i]) * (zs[j + 1] - zs[j])) < 0;   // (never: both lists ascend) kept for a patch built the other way
+                if (flip) b.idx.push(vi[0], vi[1], vi[2], vi[1], vi[3], vi[2]); else b.idx.push(vi[0], vi[2], vi[1], vi[1], vi[2], vi[3]);
+            }
+            var g = new THREE.Group(); g.name = 'hq_edge_land'; g._ew_hqEdgeLand = name;
+            Object.keys(B).forEach(function (bk) {
+                var b = B[bk], geo = new THREE.BufferGeometry();
+                geo.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(b.nrm, 3));
+                geo.setAttribute('color', new THREE.Float32BufferAttribute(b.col, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2));
+                geo.setIndex(b.pos.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(b.idx, 1) : new THREE.Uint16BufferAttribute(b.idx, 1)); geo.computeBoundingSphere();
+                var m = new THREE.Mesh(geo, matFor(b.key, b.far)); m.position.y = 0.2; m.receiveShadow = !b.far; m.castShadow = false; m.renderOrder = 0; m._ew_hqPart = 'floor'; m._ew_hqOuter = true; m._ew_hqEdgeLand = name;
+                g.add(m);
+            });
+            if (g.children.length) pieces.push(g);
+        };
+        var lineOf = function (a0, a1, step) {   // the edge's own squares: a0, every `step` on the lattice from 0, a1
+            var out = [a0], q = Math.ceil((a0 + 0.2) / step) * step; for (; q < a1 - 0.2; q += step) out.push(q); out.push(a1); return out;
+        };
+        var outN = ROWS.slice().reverse().map(function (r) { return -r; });   // ascending: far … 0
+        var xsIn = lineOf(R.x0, R.x1, 3.5), zsIn = lineOf(R.z0, R.z1, 3.5);
+        var cut = function (list, n) { var out = [], per = Math.ceil((list.length - 1) / n); for (var a = 0; a < list.length - 1; a += per) out.push(list.slice(a, Math.min(list.length, a + per + 1))); return out; };
+        var xW = outN.map(function (r) { return R.x0 + r; }), xE = ROWS.map(function (r) { return R.x1 + r; }), zN = outN.map(function (r) { return R.z0 + r; }), zS = ROWS.map(function (r) { return R.z1 + r; });
+        cut(xsIn, 4).forEach(function (xs, n) { patch(xs, zN, 'n' + n); patch(xs, zS, 's' + n); });
+        cut(zsIn, 4).forEach(function (zs, n) { patch(xW, zs, 'w' + n); patch(xE, zs, 'e' + n); });
+        patch(xW, zN, 'nw'); patch(xE, zN, 'ne'); patch(xW, zS, 'sw'); patch(xE, zS, 'se');
+        /* the sea runs on over the coast: the room's own sheet and height past the field (east, and the two ends the land falls into it) */
+        var seaKey = (info.sea && info.sea.key) || 'water', seaG = null;
+        var anyCoast = ['n', 's', 'w', 'e'].some(function (k) { var s0 = E[k]; return s0 && (s0.kind === 'coast' || (s0.cap && s0.cap.kind === 'coast')); });
+        if (anyCoast && typeof fluidMatFor === 'function') {
+            try {
+                var sMat = fluidMatFor(seaKey); sMat.side = THREE.DoubleSide;
+                var hxF = info.halfW - 0.5, hzF = info.halfD - 0.5, rr = F.reach, rects = [];
+                var coastOn = function (k) { var s0 = E[k]; return !!(s0 && s0.kind === 'coast'); }, capLen = function (k, end) { var s0 = E[k]; return (s0 && s0.cap && s0.cap.kind === 'coast' && s0.cap.at === end) ? (+s0.cap.len || 0) + (+s0.cap.off || 0) + 30 : 0; };
+                if (coastOn('e')) { rects.push([hxF, -hzF - rr, hxF + rr, hzF + rr]); var ln = capLen('n', 'e'), ls = capLen('s', 'e'); if (ln) rects.push([hxF - ln - (+((E.e || {}).inset) || 0), -hzF - rr, hxF, -hzF]); if (ls) rects.push([hxF - ls - (+((E.e || {}).inset) || 0), hzF, hxF, hzF + rr]); }
+                if (coastOn('w')) rects.push([-hxF - rr, -hzF - rr, -hxF, hzF + rr]);
+                if (coastOn('n')) rects.push([-hxF, -hzF - rr, hxF, -hzF]);
+                if (coastOn('s')) rects.push([-hxF, hzF, hxF, hzF + rr]);
+                seaG = new THREE.Group(); seaG.name = 'hq_edge_sea';
+                rects.forEach(function (q) {
+                    var w = (q[2] - q[0]) * U, d = (q[3] - q[1]) * U; if (!(w > 0 && d > 0)) return;
+                    var sg = new THREE.PlaneGeometry(w, d, 1, 1); _hzTileUV(sg, w, d, TM);
+                    var sm2 = new THREE.Mesh(sg, sMat); sm2.rotation.x = -Math.PI / 2; sm2.position.set((q[0] + q[2]) / 2 * U, F.seaY * U + 0.4, (q[1] + q[3]) / 2 * U); sm2.renderOrder = 2; sm2._ew_hqSea = true; sm2._ew_hqWater = true;
+                    seaG.add(sm2);
+                });
+                if (_hq && !_hq.moatTick) _hq.moatTick = { key: seaKey, keys: [seaKey], tile: TM };
+                else if (_hq && _hq.moatTick && _hq.moatTick.keys && _hq.moatTick.keys.indexOf(seaKey) < 0) _hq.moatTick.keys.push(seaKey);
+            } catch (e) { console.warn('[HQ] the edge sea failed', e); seaG = null; }
+        }
+        /* into the scene: a piece is a chunk of its own in a big room (skipped off camera), else the shell's */
+        if (chunked) {
+            var C = H.chunks;
+            if (!C) { C = H.chunks = { root: new THREE.Group(), cells: {} }; C.root.name = 'hq_chunks'; H.partRoot.add(C.root); }
+            pieces.forEach(function (g) { var ck = 'edge:' + g._ew_hqEdgeLand; g._ew_chunk = ck; C.cells[ck] = g; C.root.add(g); _hqChunkReg(H, g, 1e12); });
+        } else pieces.forEach(function (g) { G.add(g); });
+        if (seaG && seaG.children.length) G.add(seaG);
+        /* THE TREES: the forest's tall trees to 60 m (the fog has them by then), thinning; a skirt of pines on the mountains' feet */
+        var planted = 0;
+        if (typeof plantTree === 'function') {
+            var r = _mulberry32(0x0ed6e5), kindsF = ['pine', 'pine', 'tree_4', 'pine', 'tree', 'tree_4'], kindsM = ['pine', 'pine', 'pine_2'];
+            var hOf = function (m) { return m * U / TM / 1.07; };   // _nrTree: target = TM × h × (0.85 … 1.3)
+            var low = !!(typeof window !== 'undefined' && window.EW_PERF_LOW);
+            var X0 = R.x0 - 62, X1 = R.x1 + 62, Z0 = R.z0 - 62, Z1 = R.z1 + 62, stp = 4.2;
+            for (var tz = Z0; tz < Z1; tz += stp) for (var tx = X0; tx < X1; tx += stp) {
+                var a = r(), b2 = r(), c2 = r(), d2 = r();
+                if (tx > R.x0 - 2 && tx < R.x1 + 2 && tz > R.z0 - 2 && tz < R.z1 + 2) continue;
+                var px = tx + (a - 0.5) * 3.2, pz = tz + (b2 - 0.5) * 3.2, P = F.at(px, pz);
+                if (P.d < 1.8 || P.d > 60) continue;
+                var thin = P.d < 22 ? 1 : P.d < 40 ? 0.5 : 0.28; if (low) thin *= 0.6;
+                if (P.W.forest > 0.5) { if (c2 > thin * P.W.forest) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
+                else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
+            }
+        }
+        if (_hq) {
+            _hq.edgeLand = { fn: F, pieces: pieces.length, trees: planted };
+            if (G === _hq.shellGroup) _hq.outer = { hx: info.halfW - 0.5, hz: info.halfD - 0.5, ext: F.reach, yAt: function (x, z) { return F.at(x, z).y; } };   // the ground past the field is this land (the walk's and the battle's ground lookups)
+        }
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] the edge land', pieces.length, 'pieces,', planted, 'trees');
+    }
     /* THE BACKDROP (2026-09-21 — the user: "the corners of the map don't seem to have buildings blocking the view out").
        An open city room's field ends at its shell and the outer ground runs 54 m into the fog — from any street that met
        the edge (the docks' promenade, the ring road's corners) the eye went straight out over flat concrete. A SKYLINE
@@ -72227,7 +72484,12 @@ const ThreeRenderer = (function () {
         if (typeof window !== 'undefined' && window.EW_HQ_NO_CITY_BACKDROP) return;
         if (room.terrain && room.terrain.backdrop === false) return;
         var U = _hqUnits(), S = room.shell || {}, hw = S.w / 2, hd = S.d / 2, gen = info.gen || {}, neon = !!gen.neon;
-        var yAt = function (x, z) { return (_hq && _hq.outer && _hq.outer.yAt) ? _hq.outer.yAt(x, z) : hqTerrainHeight(info, Math.max(-hw + 0.5, Math.min(hw - 0.5, x)), Math.max(-hd + 0.5, Math.min(hd - 0.5, z))); };
+        /* THE BAY (2026-11-13, Disaster City's beach): `terrain.backdropInset: { w }` = the west skyline stands that far INSIDE the shell (the
+           room grew east for the bay and the centred field grew the same on the west: the skyline stays on the city's own edge);
+           `terrain.backdropOpen: [[x0, z0, x1, z1], ...]` = no skyline building stands in these boxes (the open water runs to the horizon) */
+        var BI = (room.terrain && room.terrain.backdropInset) || {}, inW = Math.max(0, +BI.w || 0), opens = (room.terrain && Array.isArray(room.terrain.backdropOpen)) ? room.terrain.backdropOpen : [];
+        var openAt = function (x, z) { return opens.some(function (o) { return x >= o[0] && x <= o[2] && z >= o[1] && z <= o[3]; }); };
+        var yAt = function (x, z) { if (inW && Math.abs(x) < hw - 0.5 && Math.abs(z) < hd - 0.5) return hqTerrainHeight(info, x, z); return (_hq && _hq.outer && _hq.outer.yAt) ? _hq.outer.yAt(x, z) : hqTerrainHeight(info, Math.max(-hw + 0.5, Math.min(hw - 0.5, x)), Math.max(-hd + 0.5, Math.min(hd - 0.5, z))); };
         /* the gaps: every door's wall point (a road out, a lobby door — the entrance building inside stands in front of it) */
         var gaps = [];
         (room.doors || []).forEach(function (d) {
@@ -72240,9 +72502,9 @@ const ThreeRenderer = (function () {
         try {
             /* the four sides: walk each at a pitch, the building's back to the room (its front faces the street inside) */
             var sides = [
-                { x0: -hw, z0: -hd, tx: 1, tz: 0, nx: 0, nz: -1, L: S.w, yaw: Math.PI },   // north edge: the buildings stand at z < -hd, facing +z (into the room)
-                { x0: -hw, z0: hd, tx: 1, tz: 0, nx: 0, nz: 1, L: S.w, yaw: 0 },
-                { x0: -hw, z0: -hd, tx: 0, tz: 1, nx: -1, nz: 0, L: S.d, yaw: Math.PI / 2 },
+                { x0: -hw + inW, z0: -hd, tx: 1, tz: 0, nx: 0, nz: -1, L: S.w - inW, yaw: Math.PI },   // north edge: the buildings stand at z < -hd, facing +z (into the room)
+                { x0: -hw + inW, z0: hd, tx: 1, tz: 0, nx: 0, nz: 1, L: S.w - inW, yaw: 0 },
+                { x0: -hw + inW, z0: -hd, tx: 0, tz: 1, nx: -1, nz: 0, L: S.d, yaw: Math.PI / 2 },
                 { x0: hw, z0: -hd, tx: 0, tz: 1, nx: 1, nz: 0, L: S.d, yaw: -Math.PI / 2 },
             ];
             sides.forEach(function (sd) {
@@ -72251,7 +72513,7 @@ const ThreeRenderer = (function () {
                     var w = 7 + r() * 5, d = 6 + r() * 4, out = 4.2 + d / 2 + r() * 1.5;
                     if (u + w > sd.L - 1.0) w = Math.max(4, sd.L - 1.0 - u);
                     var cx = sd.x0 + sd.tx * (u + w / 2) + sd.nx * out, cz = sd.z0 + sd.tz * (u + w / 2) + sd.nz * out;
-                    var gapped = gaps.some(function (gp) { return Math.hypot(cx - gp.x, cz - gp.z) < gp.r + w / 2; });
+                    var gapped = gaps.some(function (gp) { return Math.hypot(cx - gp.x, cz - gp.z) < gp.r + w / 2; }) || openAt(cx, cz);
                     if (!gapped) {
                         var st = 3 + Math.floor(r() * 4), y = yAt(cx, cz) - 0.5, key = 'building_' + (1 + Math.floor(r() * 8));
                         try {
@@ -72264,7 +72526,8 @@ const ThreeRenderer = (function () {
             });
             /* the four corners: one tall block on the diagonal past each */
             [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) {
-                var cx = c[0] * (hw + 6.5), cz = c[1] * (hd + 6.5);
+                var cx = c[0] * (hw + 6.5) + (c[0] < 0 ? inW : 0), cz = c[1] * (hd + 6.5);
+                if (openAt(cx, cz)) return;
                 if (gaps.some(function (gp) { return Math.hypot(cx - gp.x, cz - gp.z) < gp.r + 5; })) return;
                 var st = 4 + Math.floor(r() * 3), y = yAt(cx, cz) - 0.5, key = 'building_' + (1 + Math.floor(r() * 8));
                 try { var b = _nrSpriteBuilding(TK, key, cx * U, cz * U, { w: 9 / info.tile, d: 9 / info.tile, stack: st, yAbs: y * U + 0.3, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: true, beacon: neon ? 0xff3ad8 : 0xff3030, ry: 0 }); if (b) { b._ew_hqBackdrop = true; n++; } } catch (e) {}
@@ -84924,14 +85187,17 @@ const ThreeRenderer = (function () {
             } else if (c.look === 'fireescape') {
                 /* THE FIRE ESCAPE (AREA CONTENT D2, 2026-09-19): a steel ladder up the face, a grated LANDING CAGE at its head (a platform
                    0.9 m deep with a rail round it, brackets under) — chained through landing plateaus it is the tenement's fire escape */
-                [-w / 2, w / 2].forEach(function (lx) { var r = mk(new THREE.BoxGeometry(0.05 * U, (top + 0.1) * U, 0.05 * U), steel); r.position.set(lx * U, (top + 0.1) / 2 * U, 0.06 * U); });
+                var grab = c.landing ? 0.95 : 0.1;   // THE STEEL LANDING (2026-11-13): a ladder up onto a landing ends in two grab rails over the deck
+                [-w / 2, w / 2].forEach(function (lx) { var r = mk(new THREE.BoxGeometry(0.05 * U, (top + grab) * U, 0.05 * U), steel); r.position.set(lx * U, (top + grab) / 2 * U, 0.06 * U); });
                 for (var fy = 0.3; fy < L + 0.05; fy += 0.3) { var frung = mk(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, w * U, 8), steel); frung.rotation.z = Math.PI / 2; frung.position.set(0, fy * U, 0.06 * U); }
                 var cageW = Math.max(1.4, w + 0.8), cageD = 0.9;
+                if (!c.landing) {   // (a head on a steel landing stands on the landing: no cage of its own)
                 var plat = mk(new THREE.BoxGeometry(cageW * U, 0.05 * U, cageD * U), iron); plat.position.set(0, (top + 0.02) * U, -(cageD / 2 - 0.06) * U);
                 for (var gx = -cageW / 2 + 0.12; gx < cageW / 2; gx += 0.12) { var slat = mk(new THREE.BoxGeometry(0.02 * U, 0.03 * U, (cageD - 0.1) * U), steel); slat.position.set(gx * U, (top + 0.06) * U, -(cageD / 2 - 0.06) * U); }
                 [[-cageW / 2, -cageD + 0.06], [cageW / 2, -cageD + 0.06], [-cageW / 2, 0.06], [cageW / 2, 0.06]].forEach(function (pp) { var post = mk(new THREE.BoxGeometry(0.04 * U, 1.0 * U, 0.04 * U), iron); post.position.set(pp[0] * U, (top + 0.52) * U, pp[1] * U); });
                 var railB = mk(new THREE.BoxGeometry(cageW * U, 0.04 * U, 0.04 * U), iron); railB.position.set(0, (top + 1.02) * U, -(cageD - 0.06) * U);
                 [-cageW / 2, cageW / 2].forEach(function (lx) { var railS = mk(new THREE.BoxGeometry(0.04 * U, 0.04 * U, cageD * U), iron); railS.position.set(lx * U, (top + 1.02) * U, -(cageD / 2 - 0.06) * U); });
+                }
                 for (var by2 = 1.2; by2 < L; by2 += 2.4) { var brk = mk(new THREE.BoxGeometry(0.05 * U, 0.05 * U, 0.22 * U), iron); brk.position.set(0, by2 * U, 0.17 * U); }
             } else if (c.look === 'rope') {
                 var rope = mk(new THREE.CylinderGeometry(0.028 * U, 0.028 * U, (top + 0.05) * U, 8), hemp); rope.position.set(0, (top + 0.05) / 2 * U, 0.05 * U);
@@ -84956,6 +85222,56 @@ const ThreeRenderer = (function () {
             G.add(g);
             c.group = g;
             H.climbs.push(c);
+        });
+        /* THE STEEL LANDING (2026-11-13, mondo: "Can i not just climb up the ladder and stand on the platform part?"): a fire escape's halfway
+           landing (data.js hqTerrainLandings: a slab the walker stands on, a wall along each rail) drawn as a steel platform: an iron deck
+           with a grating, posts and two rails along each open side (a gap where a ladder comes up), two struts back to the wall. Two meshes. */
+        var lands = (H.terrain && H.terrain.landings) || [];
+        lands.forEach(function (l) {
+            var ironG = [], steelG = [];
+            var box = function (arr, bw, bh, bd, x, y, z) { var bg = new THREE.BoxGeometry(bw * U, bh * U, bd * U); bg.translate(x * U, y * U, z * U); arr.push(bg); };
+            var strut = function (arr, t, ax, ay, az, bx, by, bz) {
+                var len = Math.hypot(bx - ax, by - ay, bz - az); if (!(len > 0.05)) return;
+                var sg = new THREE.BoxGeometry(t * U, t * U, len * U);
+                sg.applyMatrix4(new THREE.Matrix4().lookAt(new THREE.Vector3(ax, ay, az), new THREE.Vector3(bx, by, bz), new THREE.Vector3(0, 1, 0)));
+                sg.translate((ax + bx) / 2 * U, (ay + by) / 2 * U, (az + bz) / 2 * U); arr.push(sg);
+            };
+            box(ironG, l.w, 0.07, l.d, 0, -0.035, 0);
+            if (l.w >= l.d) { for (var sx = -l.w / 2 + 0.1; sx < l.w / 2 - 0.05; sx += 0.16) box(steelG, 0.025, 0.02, l.d - 0.12, sx, 0.01, 0); }
+            else { for (var sz = -l.d / 2 + 0.1; sz < l.d / 2 - 0.05; sz += 0.16) box(steelG, l.w - 0.12, 0.02, 0.025, 0, 0.01, sz); }
+            var mine = list.filter(function (c) { return c.landing === l.id; });
+            (l.rails || []).forEach(function (r) {
+                var alongX = Math.abs(r[2] - r[0]) > Math.abs(r[3] - r[1]), a0 = alongX ? r[0] : r[1], a1 = alongX ? r[2] : r[3], fix = alongX ? r[1] : r[0];
+                var runs = [[Math.min(a0, a1), Math.max(a0, a1)]];
+                mine.forEach(function (c) {   // a ladder's head on this side: the rail opens for it
+                    if (Math.abs((alongX ? c.z : c.x) - fix) > 0.25) return;
+                    var m = alongX ? c.x : c.z, ga = m - c.w / 2 - 0.08, gb = m + c.w / 2 + 0.08, next = [];
+                    runs.forEach(function (q) { if (gb <= q[0] || ga >= q[1]) { next.push(q); return; } if (ga - q[0] > 0.15) next.push([q[0], ga]); if (q[1] - gb > 0.15) next.push([gb, q[1]]); });
+                    runs = next;
+                });
+                runs.forEach(function (q) {
+                    var len = q[1] - q[0], mid = (q[0] + q[1]) / 2, n = Math.max(1, Math.ceil(len / 1.25));
+                    for (var k = 0; k <= n; k++) { var pa = q[0] + len * k / n; box(ironG, 0.045, 1.02, 0.045, (alongX ? pa : fix) - l.x, 0.51, (alongX ? fix : pa) - l.z); }
+                    [1.0, 0.52].forEach(function (ry) { if (alongX) box(ironG, len, 0.04, 0.04, mid - l.x, ry, fix - l.z); else box(ironG, 0.04, 0.04, len, fix - l.x, ry, mid - l.z); });
+                });
+            });
+            if (l.back != null) {   // the struts: from under the deck's outer edge down to the wall
+                var br = l.back * Math.PI / 180, bx = Math.sin(br), bz = -Math.cos(br), ns = (l.back === 0 || l.back === 180), half = ns ? l.d / 2 : l.w / 2, side = (ns ? l.w : l.d) / 2 - 0.12;
+                [-side, side].forEach(function (sd) {
+                    var ox = ns ? sd : -bx * (half - 0.1), oz = ns ? -bz * (half - 0.1) : sd, wx = ns ? sd : bx * half, wz = ns ? bz * half : sd;
+                    strut(ironG, 0.05, ox, -0.07, oz, wx, -0.95, wz);
+                });
+            }
+            var lg = new THREE.Group(); lg.position.set(l.x * U, l.y * U, l.z * U);
+            [[ironG, iron], [steelG, steel]].forEach(function (pair) {
+                if (!pair[0].length) return;
+                var pos = [], nor = [];
+                pair[0].forEach(function (bg) { var ng = bg.toNonIndexed(), pa = ng.attributes.position.array, na = ng.attributes.normal.array; for (var q = 0; q < pa.length; q++) { pos.push(pa[q]); nor.push(na[q]); } ng.dispose(); bg.dispose(); });
+                var mg = new THREE.BufferGeometry();
+                mg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); mg.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+                var mm = new THREE.Mesh(mg, pair[1]); mm.castShadow = true; mm.receiveShadow = true; mm._ew_pixelate = true; lg.add(mm);
+            });
+            G.add(lg);
         });
     }
     /* the climb within reach of the walker: { c, end: 'foot' | 'head' } or null */

@@ -31,9 +31,20 @@ const plotOf = {}; PLAN.plots.forEach(p => { plotOf[p.id] = p; });
    build(ctx) = after every row exists. ctx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell,
    roofB, ROOF_H, C, N, HALF }. A district edits its own rows by id ('dc:' + building id) and pushes its own rows (arch rows to lateRows). */
 const DISTRICTS = (() => { const dir = path.join(REPO, 'docs/disaster-city/districts'); return !fs.existsSync(dir) ? [] : fs.readdirSync(dir).filter(f => /^[A-Z]\.js$/.test(f)).sort().map(f => require(path.join(dir, f))); })();
+const PROPS = require(path.join(REPO, 'docs/disaster-city/props.js'));   // THE PROP PASS: the kerb's road signs, the set dressing, the prop check
+const dcOwn = new Set();                                                 // the props a district file stood (checked and reported, never moved)
 let dcCtx = null;
-const dcRun = stage => DISTRICTS.forEach(m => { if (typeof m[stage] === 'function') m[stage](dcCtx); });
+const dcRun = stage => { const before = new Set(dcCtx.props); DISTRICTS.forEach(m => { if (typeof m[stage] === 'function') m[stage](dcCtx); }); dcCtx.props.forEach(q => { if (!before.has(q)) dcOwn.add(q); }); };
 DISTRICTS.forEach(m => { if (typeof m.tailor === 'function') m.tailor(PLAN, plotOf); });
+/* THE ROOM PAST THE PLOTS (2026-11-13, Bayside's beach: mondo "bayside needs to have the actual bayside in it too (the beach), with sand and a
+   pier"): a district file may export `room = { east: <cells>, sea: { y, key, field } }`. `east` grows the room that many cells past the
+   east edge of the plot grid; the engine's field is centred, so the shell grows the same on the west (closed behind a ghost wall on the
+   city's old edge) and NO written coordinate moves. Cells with cx >= 144 are nobody's plot: a district paints them with
+   ctx.paintCell(cx, cy, sheet) (the palette holds 8 sheets: 6 are the city's) and builds on them with its own rows. `backdropOpen` = boxes [x0, z0, x1, z1]
+   (metres) where no skyline building stands (three-renderer.js _hqBuildCityBackdrop); the west skyline keeps the city's own edge (backdropInset). `sea` = the room's
+   one water surface (data.js terrain.sea); the city's ground stays at 0, so only ground a district sinks under it is water. */
+const ROOM = { east: Math.max(0, ...DISTRICTS.map(m => (m.room && +m.room.east) || 0)), sea: DISTRICTS.map(m => m.room && m.room.sea).filter(Boolean)[0] || null, backdropOpen: [].concat(...DISTRICTS.map(m => (m.room && m.room.backdropOpen) || [])) };
+const paintExt = new Map();
 /* THE CROSSINGS (tailoring): the plan leaves a one-cell nub where a walk crosses a road (PPPPPPPRPPPP, RRRRRRRRPRRR). A row / column that is
    mostly pavement becomes a whole paved crossing; a lone pavement cell in a carriageway becomes road. */
 PLAN.plots.forEach(p => {
@@ -176,6 +187,7 @@ const GREEN = /park|green|canal|memorial|campus|garden/i, hedgeCells = [];
 const INFILL = { R: ['building_2', 'building_4', 'building_8', 'building_9'], C: ['building_1', 'building_6'], F: ['building_1', 'building_5'], U: ['building_4', 'building_6', 'building_9'], H: ['building_1', 'building_5'],
     E: ['shop', 'building_7', 'building_10', 'building_3'], I: ['building_3', 'building_10'], S: ['building_3', 'building_6'], B: ['shop', 'building_7', 'building_5'] };
 const usedBand = new Set();
+let edgeCut = 0;
 for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) {
     const line = L * N; let run = null;
     const flush = () => {
@@ -190,6 +202,12 @@ for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) {
         const rot = horizontal ? (front === 'a' ? 180 : 0) : (front === 'a' ? 90 : 270);
         const row = { k: 'texbuilding', id: 'dc:in' + count.infill, x: r3((gx(x0) + gx(x1)) / 2), z: r3((gx(z0) + gx(z1)) / 2), w: r3((horizontal ? x1 - x0 : z1 - z0) * C), d: r3((horizontal ? z1 - z0 : x1 - x0) * C), rot, storeys: deep === 1 ? pick([1, 1, 2]) : pick([1, 2, 2, 3]), seed: features.length };
         if (len <= 3 && rnd() < 0.55) row.key = pick(INFILL[p.d]); else row.style = pick(dd.styles);
+        /* THE NATURAL EDGES (2026-11-13, mondo: "having these fake buildings as barriers doesnt feel right"): no filler building on the
+           city's OUTER line (the land past it is the view: mountains, forest, desert, the bay). The draw is still made and the id still
+           counted, so no other building's seed, id or look moves; the band stays '#', so THE BOUNDARIES give it the side's own edge stop.
+           Bayside's east line is the beach's (the Bayside thread's). */
+        if (r.outer && !(p.d === 'B' && !horizontal && L === N)) { count.infill++; edgeCut++; count.edgeCut = edgeCut; return; }
+        row.seed += edgeCut;
         features.push(row); count.infill++;
         cells.forEach(q => setCell(q[0], q[1], 'I'));
     };
@@ -226,7 +244,26 @@ const occ = new Set();
 const free = (cx, cy, ok) => { if (cx < 0 || cy < 0 || cx >= 144 || cy >= 144) return false; const ch = cellAt(cx, cy); return (ok || '.#').indexOf(ch) >= 0 && !occ.has(cx + ',' + cy); };
 const take = (cx, cy) => occ.add(cx + ',' + cy);
 bInfo.forEach(b => (plotOf[b.plot].buildings.find(q => q.id === b.id).doors || []).forEach(dr => take(plotOf[b.plot].x * N + dr.ox, plotOf[b.plot].y * N + dr.oy)));   // a door's step stays clear
-dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF };
+const paintCell = (cx, cy, key) => { let i = PAL.indexOf(key); if (i < 0) { if (PAL.length >= 8) throw new Error('the ground palette is full (8 sheets): ' + key); PAL.push(key); i = PAL.length - 1; } paintExt.set(cx + ',' + cy, i + 1); };
+/* ── THE LEVELS (THE VERTICAL CITY, 2026-11-13 — mondo: "Streets that slope, ramps, stairs ... different districts should have different
+   elevations, bayside being the lowest (sea level), and there can be different elevations within the districts from plot to plot and even
+   within plots"; his OK on the elevation plan 18:30). docs/disaster-city/levels.js holds a level per plot (one level = 1.75 m). The room's
+   ground is `terrain.slope.cells` (data.js hqTerrainSlopeFn): every square with its own four corner heights, written at the end of this
+   tool (THE LEVELS, THE GROUND). Here, before anything is dressed: THE CROSSINGS' STAIRS. Where the plan lets a walk cross two plots on
+   different levels, a flight of the stairs pack climbs it (one level a square: the stair pitch), on the lower plot's squares first, then cut
+   into the upper plot's; where one level is crossed on a walk two squares wide, one square is the stair and the other a smooth ramp three
+   squares long (a bank to skate). Their squares are taken, so nothing is dressed onto a flight. ── */
+const LEVELS = require(path.join(REPO, 'docs/disaster-city/levels.js')), LVM = LEVELS.M;
+const lvOf = p => LEVELS.grid[p.y][p.x];
+const plotAtCell = (cx, cy) => plotOf[pid(Math.floor(cx / N), Math.floor(cy / N))];
+const roadFollow = (cx, cy) => {   // a carriageway square, or the pavement square beside one (the kerb walk): they ride the street's slope
+    if (!inCity(cx, cy)) return false; const ch = cellAt(cx, cy); if (ch === 'R') return true; if (ch !== 'P') return false;
+    const px = Math.floor(cx / N), py = Math.floor(cy / N);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = cx + dx, y = cy + dy; if (inCity(x, y) && Math.floor(x / N) === px && Math.floor(y / N) === py && cellAt(x, y) === 'R') return true; }
+    return false;
+};
+const npcSpots = [];   // THE PEOPLE a district stands in the city (ctx.npcSpots: { x, z, face, race, say }), written to the room's npcSpots
+dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, npcSpots, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf, ROOM, paintCell };
 dcRun('apply');
 
 /* ── THE DOORS (mondo 11-13 14:10, the decision card: "Replace today's streets with it"): this room IS `site_prebuilt_downtown_streets` now, so every
@@ -247,6 +284,48 @@ JOIN.metro = spot('Transit square', 5, 2, 180); JOIN.harbour = spot('Boardwalk e
 JOIN.downtown_strip = spot('P00-07', 1, 6, 270, 'RP.'); JOIN.stadium_downtown = spot('P03-00', 5, 1, 0, 'RP.');
 JOIN.garage_taxi = spot('Taxi rank', 3, 3, 270, '.P'); JOIN.streets_strip = spot('Church', 8, 8, 270); JOIN.streets_drain = spot('Canal walk', 6, 8, 270); JOIN.docks_sewer = spot('Dock edge', 6, 6, 90);
 
+/* THE LEVELS, THE CROSSINGS' STAIRS (after the doors above have their squares, before anything is dressed) */
+const lvCut = new Map(), lvStairs = [], lvCount = { flights: 0, ramps: 0, cut: 0, steep: 0, closed: 0 };
+PLAN.plots.forEach(p => {
+    [['E', 1, 0], ['S', 0, 1]].forEach(([s, dx, dy]) => {
+        const q = plotOf[pid(p.x + dx, p.y + dy)]; if (!q || p.ports[s] !== 'walk') return;
+        const d = Math.abs(lvOf(p) - lvOf(q)); if (!d) return;
+        const hiP = lvOf(p) > lvOf(q) ? p : q, loP = hiP === p ? q : p, lineC = (dx ? p.x + 1 : p.y + 1) * N;   // the plot line, in squares
+        const toLo = loP === q ? 1 : -1;                                                                            // the lower plot is on the line's + side or its − side
+        /* a square of the crossing: `k` along the line (a global square index), `i` squares back from the line on a side */
+        const sq = (k, side, i) => { const a = side > 0 ? lineC + i : lineC - 1 - i; return dx ? [a, k] : [k, a]; };
+        const walkSq = (c) => inCity(c[0], c[1]) && 'P.G'.indexOf(cellAt(c[0], c[1])) >= 0 && !roadFollow(c[0], c[1]);
+        const ks = []; for (let k = 0; k < N; k++) { const g = (dx ? p.y : p.x) * N + k; if (walkSq(sq(g, 1, 0)) && walkSq(sq(g, -1, 0))) ks.push(g); }
+        if (!ks.length) { console.warn("THE LEVELS: a walk the plan joins has no open square on the line", p.id, s, q.id); lvCount.closed++; return; }
+        const runs = []; ks.forEach(k => { const r = runs[runs.length - 1]; if (r && r[r.length - 1] === k - 1) r.push(k); else runs.push([k]); });
+        runs.forEach(run => {
+            const avail = (side, cols, max) => { let n = 0; while (n < max && cols.every(k => { const c = sq(k, side, n); return walkSq(c) && !occ.has(c[0] + ',' + c[1]); })) n++; return n; };
+            /* one level on a walk two squares wide: a stair on one square, a ramp three squares long on the other */
+            let cols = run, rampK = null;
+            if (d === 1 && run.length >= 2) { const rk = ((p.x + p.y) % 2) ? run[run.length - 1] : run[0]; if (avail(toLo, [rk], 4) >= 4) { rampK = rk; cols = run.filter(k => k !== rk); } }
+            const nLo = Math.min(d, avail(toLo, cols, d + 1)), nHi = Math.min(d - nLo, avail(-toLo, cols, d + 1)), m = nLo + nHi;
+            if (!m) { console.warn('THE LEVELS: no room for a stair', p.id, s, q.id); lvCount.closed++; return; }
+            const per = d * LVM / m;   // metres a square
+            if (per / C > 1.001) { console.warn('THE LEVELS: a stair steeper than the walk climbs', p.id, s, q.id, 'squares', m, 'levels', d); lvCount.steep++; }
+            const along = (cols[0] + cols[cols.length - 1] + 1) / 2, lineM = gx(lineC), fa = r3(lineM + toLo * nLo * C), ta = r3(lineM - toLo * nHi * C), am = gx(along);
+            const row = { k: 'ramp', id: 'dc:stair:' + p.id + s + (runs.length > 1 ? ':' + run[0] : ''), absY: true, x0: dx ? fa : am, z0: dx ? am : fa, x1: dx ? ta : am, z1: dx ? am : ta, w: r3(cols.length * C), h0: r3(lvOf(loP) * LVM), h1: r3(lvOf(hiP) * LVM), stairs: true, model: LEVELS.stairs[loP.d] || 'concrete', edge: 0.01 };
+            features.push(row); lvStairs.push(row); lvCount.flights++;
+            cols.forEach(k => {
+                for (let i = 0; i < nHi; i++) { const c = sq(k, -toLo, i); lvCut.set(c[0] + ',' + c[1], { x: !!dx, line: lineC, dir: -toLo, m: nHi, h0: lvOf(hiP) * LVM - nHi * per, h1: lvOf(hiP) * LVM }); lvCount.cut++; }
+                for (let i = 0; i <= nLo; i++) { const c = sq(k, toLo, i); take(c[0], c[1]); }
+                for (let i = 0; i <= nHi; i++) { const c = sq(k, -toLo, i); take(c[0], c[1]); }
+            });
+            if (rampK != null) {
+                const rm = gc(rampK), f3 = r3(lineM + toLo * 3 * C);
+                features.push({ k: 'ramp', id: 'dc:ramp:' + p.id + s, absY: true, x0: dx ? f3 : rm, z0: dx ? rm : f3, x1: dx ? lineM : rm, z1: dx ? rm : lineM, w: C, h0: r3(lvOf(loP) * LVM), h1: r3(lvOf(hiP) * LVM), edge: 0.2 });
+                for (let i = 0; i <= 3; i++) { const c = sq(rampK, toLo, i); take(c[0], c[1]); }
+                { const c = sq(rampK, -toLo, 0); take(c[0], c[1]); }
+                lvCount.ramps++;
+            }
+        });
+    });
+});
+
 /* ── THE BOUNDARIES: what stands where the plan closes a plot line. Per border (two plots' shared side) a first and a second recipe from the
    district's list (LOW where the plan connects the plots: you see over it; TALL where it does not), alternating run by run.
    A fence / hedge / wall stands ON the plot line (between squares); a row of planters / barricades / dumpsters / trees stands CENTRED on the
@@ -258,11 +337,20 @@ const HIGH = { R: ['rail:wood_fence', 'wall:2.1', 'hedge:1.9', 'rail:spear', 'tr
     U: ['hedge:1.9', 'rail:spear', 'wall:1.9', 'trees'], H: ['rail:spear', 'wall:2.1', 'hedge:1.8'], E: ['rail:wood_fence', 'wall:2.6', 'rail:wire_fence', 'dumpsters'],
     I: ['rail:wire_fence', 'wall:2.2', 'rail:panel_fence', 'rail:cable_fence', 'dumpsters'], S: ['rail:wire_fence', 'wall:1.9', 'rail:spear', 'hedge:1.8'], B: ['rail:wire_fence', 'wall:2.1', 'barricades', 'rail:spear'] };
 const BENCH = { R: 'park_bench', U: 'park_bench', S: 'park_bench', C: 'city_bench', H: 'city_bench', F: 'city_bench', B: 'city_bench' }, BIN = { C: 'city_bin', H: 'city_bin', B: 'city_bin', E: 'city_bin', S: 'city_bin', R: 'city_bin' };
+/* THE NATURAL EDGES (2026-11-13): what the land past each side is (three-renderer.js _hqBuildEdgeLand reads `terrain.edges`), and what
+   stands on the city's outer line in front of it. North = the high side: steep mountains (they turn the north-west corner and run a way
+   down the west side, and end in a headland over the bay in the north-east); west = tall forest on the hillside; south = flat desert;
+   east = the bay (sea cliffs north of Bayside's beach). */
+const EDGES = { reach: 440, n: { kind: 'mountain' }, w: { kind: 'forest', cap: { kind: 'mountain', at: 'n', len: 170 } }, s: { kind: 'desert' }, e: { kind: 'coast' } };
+const EDGE_STOP = { n: ['trees', 'wall:1.2'], w: ['trees', 'trees'], s: ['rail:guard', 'rail:cable_fence'], e: ['rail:parapet', 'rail:pipe'] };
 const edgeN = {};
 for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) for (let k = 0; k < N; k++) {
     const line = L * N, PA = plotOf[horizontal ? pid(k, L - 1) : pid(L - 1, k)], PB = plotOf[horizontal ? pid(k, L) : pid(L, k)];
     const joined = !!(PA && PB && conn.has(PA.id + '|' + PB.id)), home = (PA && PB) ? (rnd() < 0.5 ? PA : PB) : (PA || PB), dd = D[home.d];
-    const list = (joined ? LOW : HIGH)[home.d], first = pick(list); let second = pick(list); if (second === first) second = list[(list.indexOf(first) + 1) % list.length];
+    const list = (joined ? LOW : HIGH)[home.d]; let first = pick(list), second = pick(list); if (second === first) second = list[(list.indexOf(first) + 1) % list.length];
+    /* THE NATURAL EDGES: the city's outer line wears its side's own edge stop (EDGE_STOP), never a district's yard wall: you see the land
+       past it. Bayside's own outer lines stay the district's (the beach is the Bayside thread's). */
+    if (!(PA && PB) && home.d !== 'B') { const es = EDGE_STOP[horizontal ? (L === 0 ? 'n' : 's') : (L === 0 ? 'w' : 'e')]; first = es[0]; second = es[1]; }
     const A = c => horizontal ? [c, line - 1] : [line - 1, c], B = c => horizontal ? [c, line] : [line, c];
     const band = q => inCity(q[0], q[1]) && cellAt(q[0], q[1]) === '#';
     const runs = []; let run = null;
@@ -285,7 +373,7 @@ for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) for (let k 
             if (ba) setCell(qa[0], qa[1], '.'); if (bb) setCell(qb[0], qb[1], '.');
             const i = c - r.a, cxm = gc(q[0]), czm = gc(q[1]);
             /* toward the line from the square's middle, and the way a thing against the line faces (into its own plot) */
-            const tl = sideA ? 1 : -1, inFace = horizontal ? (sideA ? 0 : 180) : (sideA ? 270 : 90), off = 0.36 * C * tl;
+            const tl = sideA ? 1 : -1, inFace = horizontal ? (sideA ? 0 : 180) : (sideA ? 270 : 90), off = (kind === 'hedge' ? 0.2 : 0.29) * C * tl;   // THE PROP PASS: a bench's back a hand's width clear of the fence (0.36 touched it; a hedge is 0.9 m thick)
             if (onLine) {
                 if (i % 4 === 1 && BENCH[home.d] && kind !== 'hedge' ? true : (i % 4 === 1 && BENCH[home.d] && rnd() < 0.5)) { take(q[0], q[1]); props.push({ key: BENCH[home.d], x: r3(cxm + (horizontal ? 0 : off)), z: r3(czm + (horizontal ? off : 0)), face: inFace }); }
                 else if (i % 4 === 3 && dd.trees.length && rnd() < dd.treeP * 1.6) { take(q[0], q[1]); features.push({ k: 'tree', x: cxm, z: czm, kind: pick(dd.trees), h: r3(3.4 + rnd() * 0.8) }); count.trees++; }
@@ -330,10 +418,12 @@ escapeAt.forEach(id => {
     const hit = tries.find(t => free(t[1], t[2], '.#') && !nearBridge(gc(t[1]), gc(t[2]))) || tries.find(t => free(t[1], t[2], '.#P') && !nearBridge(gc(t[1]), gc(t[2]))) || tries.find(t => free(t[1], t[2], '.#P'));
     if (!hit) { console.warn('no fire escape spot for', id); return; }
     const side = hit[0], xc = gc(hit[1]), zc = gc(hit[2]); take(hit[1], hit[2]);
-    if (side === 'E') features.push({ k: 'plateau', x: r3(E + 0.9), z: zc, w: 1.6, d: 2.2, h: h2, edge: 0.15 }, { k: 'climb', x: r3(E + 1.7), z: r3(zc + 0.6), face: 270, look: 'fireescape' }, { k: 'climb', x: r3(E), z: r3(zc - 0.6), face: 270, look: 'fireescape' });
-    if (side === 'W') features.push({ k: 'plateau', x: r3(W - 0.9), z: zc, w: 1.6, d: 2.2, h: h2, edge: 0.15 }, { k: 'climb', x: r3(W - 1.7), z: r3(zc - 0.6), face: 90, look: 'fireescape' }, { k: 'climb', x: r3(W), z: r3(zc + 0.6), face: 90, look: 'fireescape' });
-    if (side === 'S') features.push({ k: 'plateau', x: xc, z: r3(Sz + 0.9), w: 2.2, d: 1.6, h: h2, edge: 0.15 }, { k: 'climb', x: r3(xc - 0.6), z: r3(Sz + 1.7), face: 0, look: 'fireescape' }, { k: 'climb', x: r3(xc + 0.6), z: r3(Sz), face: 0, look: 'fireescape' });
-    if (side === 'N') features.push({ k: 'plateau', x: xc, z: r3(Nz - 0.9), w: 2.2, d: 1.6, h: h2, edge: 0.15 }, { k: 'climb', x: r3(xc + 0.6), z: r3(Nz - 1.7), face: 180, look: 'fireescape' }, { k: 'climb', x: r3(xc - 0.6), z: r3(Nz), face: 180, look: 'fireescape' });
+    /* THE STEEL LANDING (2026-11-13, mondo: no raised terrain lump beside a ladder): the halfway landing is a `landing` row, a steel
+       platform the walker stands on (data.js hqTerrainLandings), the ladders as before: the yard to the landing, the landing to the roof */
+    if (side === 'E') features.push({ k: 'landing', x: r3(E + 0.85), z: zc, w: 1.7, d: 2.6, h: h2, back: 270 }, { k: 'climb', x: r3(E + 1.7), z: r3(zc + 0.6), face: 270, look: 'fireescape' }, { k: 'climb', x: r3(E), z: r3(zc - 0.6), face: 270, look: 'fireescape' });
+    if (side === 'W') features.push({ k: 'landing', x: r3(W - 0.85), z: zc, w: 1.7, d: 2.6, h: h2, back: 90 }, { k: 'climb', x: r3(W - 1.7), z: r3(zc - 0.6), face: 90, look: 'fireescape' }, { k: 'climb', x: r3(W), z: r3(zc + 0.6), face: 90, look: 'fireescape' });
+    if (side === 'S') features.push({ k: 'landing', x: xc, z: r3(Sz + 0.85), w: 2.6, d: 1.7, h: h2, back: 0 }, { k: 'climb', x: r3(xc - 0.6), z: r3(Sz + 1.7), face: 0, look: 'fireescape' }, { k: 'climb', x: r3(xc + 0.6), z: r3(Sz), face: 0, look: 'fireescape' });
+    if (side === 'N') features.push({ k: 'landing', x: xc, z: r3(Nz - 0.85), w: 2.6, d: 1.7, h: h2, back: 180 }, { k: 'climb', x: r3(xc + 0.6), z: r3(Nz - 1.7), face: 180, look: 'fireescape' }, { k: 'climb', x: r3(xc - 0.6), z: r3(Nz), face: 180, look: 'fireescape' });
     count.escapes++;
 });
 
@@ -520,9 +610,12 @@ for (let cy = 0; cy < 144; cy++) for (let cx = 0; cx < 144; cx++) {
     const sd = kerbSides.find(q => isKerb(cx, cy, q)); if (!sd) continue;
     if (cellAt(cx + 1, cy) === 'P' && cellAt(cx - 1, cy) === 'P' && cellAt(cx, cy + 1) === 'P' && cellAt(cx, cy - 1) === 'P') continue;
     const plus = sd[0] > 0 || sd[1] > 0, a = (sd[0] ? cy : cx) % N;
-    const key = a === 2 ? (plus ? 'fire_hydrant' : 'signpost') : a === 8 ? 'city_bin' : null; if (!key) continue;
+    /* THE PROP PASS (mondo 11-13): the kerb's sign is a real road sign turned to its lane's traffic (was a wooden country signpost); the kerb's bin is the green subway bin */
+    const key = a === 2 ? (plus ? 'fire_hydrant' : 'signpost') : a === 8 ? 'metro_bin' : null; if (!key) continue;
     kerbN++; if (key === 'fire_hydrant') count.hydrants++;
-    take(cx, cy); props.push({ key, x: r3(gc(cx) + sd[0] * 0.4 * C), z: r3(gc(cy) + sd[1] * 0.4 * C), face: sd[0] > 0 ? 90 : sd[0] < 0 ? 270 : sd[1] > 0 ? 180 : 0 });
+    take(cx, cy);
+    if (key === 'signpost') { const sg = PROPS.kerbSign(sd, cx, cy, ['P03-00', 'P00-07'].includes(plotAtCell(cx, cy).id)); props.push({ key: sg.key, x: r3(gc(cx) + sd[0] * 0.4 * C), z: r3(gc(cy) + sd[1] * 0.4 * C), face: sg.face, h: sg.h }); count.signs = (count.signs || 0) + 1; }
+    else props.push({ key, x: r3(gc(cx) + sd[0] * (key === 'metro_bin' ? 0.36 : 0.4) * C), z: r3(gc(cy) + sd[1] * (key === 'metro_bin' ? 0.36 : 0.4) * C), face: sd[0] > 0 ? 90 : sd[0] < 0 ? 270 : sd[1] > 0 ? 180 : 0 });
 }
 /* a plot with no street (a plaza, a park, a court): a lamp where four open squares meet, at the plot's quarter points, head to the middle */
 PLAN.plots.forEach(p => {
@@ -536,11 +629,15 @@ PLAN.plots.forEach(p => {
 count.lamps = lamps.length;
 
 /* ── THE GROUND: a sheet per square (0 the asphalt, 1 pavement, 2 grass, 3 yard concrete) ── */
-const paint = new Uint8Array(144 * 144);
-for (let cy = 0; cy < 144; cy++) for (let cx = 0; cx < 144; cx++) {
+const NXP = 144 + ROOM.east, paint = new Uint8Array(NXP * 144);
+for (let cy = 0; cy < 144; cy++) for (let cx = 0; cx < NXP; cx++) {
+    const own = paintExt.get(cx + ',' + cy);
+    if (own != null) { paint[cy * NXP + cx] = own; continue; }
+    if (cx >= 144) continue;   // past the plots: the room's own floor unless a district painted it
     const ch = cellAt(cx, cy), dd = D[plotOf[pid(Math.floor(cx / N), Math.floor(cy / N))].d];
-    paint[cy * 144 + cx] = ch === 'R' ? 0 : (ch === 'P' || ch === 'D') ? 1 : ch === 'I' ? 3 : dd.yard;
+    paint[cy * NXP + cx] = ch === 'R' ? 0 : (ch === 'P' || ch === 'D') ? 1 : ch === 'I' ? 3 : dd.yard;
 }
+if (ROOM.east) lateRows.push({ k: 'wall', x0: r3(-HALF - 0.4), z0: -HALF, x1: r3(-HALF - 0.4), z1: HALF, h: 8, t: 0.4, key: 'urban:ConcreteStriped2a', ghost: true, rail: false });   // the west strip the centred shell adds: closed on the city's old edge
 const b64 = Buffer.from(paint).toString('base64');
 
 /* ── THE STREETS: the plan's road connections, joined into straight runs through the plot centres ── */
@@ -599,20 +696,158 @@ lines.push("        site_prebuilt_downtown_streets: {");
 lines.push("            label: 'DISASTER CITY',");
 lines.push("            sub: 'NINE DISTRICTS · 144 PLOTS',");
 lines.push("            kind: 'box', site: 'prebuilt_downtown', part: 'streets',");
-lines.push("            shell: hqCityShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + sp[0] + ", z: " + sp[1] + ", y: 4.6 } }),");
+lines.push("            shell: hqCityShell({ w: " + (2 * HALF + 2 * ROOM.east * C) + ", d: " + (2 * HALF) + ", plate: { x: " + sp[0] + ", z: " + sp[1] + ", y: 4.6 } }),");
 lines.push("            parti: 'Nine districts of sixteen plots, every plot a twelve by twelve board: a city walked as a maze of yards, alleys, doors and roofs between a few plain roads.',");
 lines.push("            typology: 'grid',");
 lines.push("            dc144: { cell: " + C + ", plot: " + PL + ", plots: " + N + " },");
 lines.push("            terrain: {");
 lines.push("                res: 0.875,");
+if (ROOM.sea) lines.push("                sea: " + J(ROOM.sea) + ",");
+if (ROOM.east) lines.push("                backdropInset: { w: " + r3(ROOM.east * C) + " }," + (ROOM.backdropOpen.length ? " backdropOpen: " + J(ROOM.backdropOpen) + "," : ""));
+lines.push("                /* THE NATURAL EDGES: no ring of backdrop buildings; the land past each side in place of the concrete outer ground (three-renderer.js _hqBuildEdgeLand) */");
+/* the grown room (Bayside's beach, ROOM.east): the west strip the centred shell adds is under the forest (the land starts behind the ghost wall on
+   the city's old edge); the bay lies past the city's east edge, so the mountains and the desert fall into it over the strip's width */
+if (ROOM.east) { const sw = ROOM.east * C; EDGES.w.inset = r3(sw - 0.1); EDGES.n.cap = { kind: 'coast', at: 'e', off: r3(sw), len: 60 }; EDGES.s.cap = { kind: 'coast', at: 'e', off: 25, len: 40 }; }
+lines.push("                backdrop: false, edges: " + J(EDGES) + ",");
 lines.push("                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
+lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
+const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)
 lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0, streets: " + J(streets) + ",");
 lines.push("                    lamps: " + J(lamps) + ",");
 lines.push("                       open: [] },");
-lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: 144, nz: 144, d: '" + b64 + "' },");
+lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + NXP + ", nz: 144, d: '" + b64 + "' },");
 lines.push("                features: [");
 dcRun('build');
 features.push(...lateRows);
+/* ── THE LEVELS, THE GROUND: every square's four corner heights (NW NE SW SE, centimetres) → `terrain.slope.cells`.
+   - a BUILDING's squares are flat at its base: the plot's level, or the kerb walk's height at its door when its door opens on a sloping
+     street (the doorway meets the pavement; along the rest of that front the wall's foot is buried or stands on a plinth, as on any hill);
+   - a STREET square (the carriageway + the kerb walk) follows the street: flat for two squares either side of the plot's middle (the
+     junction, the bus stop), then a straight grade to the half-way height at the plot line: one level a plot = 6.25 %, two = 12.5 %;
+   - an open square takes, corner by corner: its building's base where it touches a building, the street's height where it touches the kerb
+     walk (an apron, never a step at a kerb), else the plot's level plus the plot's own piece (levels.js `pieces`: a bowl, a mound);
+   - two plots on different levels never share a corner's height: the plot line is a retaining wall, except where a flight crosses it.
+   Then the rows that name a height are put on it: the roof bridges (a bridge between two roofs at different heights lies at the higher
+   roof, a flight on the lower roof climbs to it), the architecture rows (each at its building's base), a prop hung at a height. ── */
+const LV = (() => {
+    const W = 144, K = (cx, cy) => cy * W + cx, base = new Float32Array(W * W).fill(NaN), rf = new Uint8Array(W * W);
+    for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) rf[K(cx, cy)] = roadFollow(cx, cy) ? 1 : 0;
+    const grade = t => Math.min(1, Math.max(0, (t - 2) / 4)) * 0.5;
+    const roadM = (p, lx, ly) => {   // the street's height at a plot-local point (squares from the plot's NW corner)
+        const ox = lx - 6, oy = ly - 6; let s, t, q;
+        if (Math.abs(oy) >= Math.abs(ox)) { s = oy > 0 ? 'S' : 'N'; t = Math.abs(oy); q = plotOf[pid(p.x, p.y + (oy > 0 ? 1 : -1))]; }
+        else { s = ox > 0 ? 'E' : 'W'; t = Math.abs(ox); q = plotOf[pid(p.x + (ox > 0 ? 1 : -1), p.y)]; }
+        return (lvOf(p) + ((p.ports[s] === 'road' && q) ? (lvOf(q) - lvOf(p)) * grade(t) : 0)) * LVM;
+    };
+    /* the buildings' squares and bases */
+    const planB = {}; PLAN.plots.forEach(p => p.buildings.forEach(b => { planB[b.id] = { p, b }; }));
+    const baseOf = {};
+    const bldBase = (id, x, z, ex, ez) => {
+        const m = /^dc:(P\d\d-\d\d-B\d+)/.exec(id || ''), pb = m && planB[m[1]];
+        if (!pb) {   // a building the plan does not have (an infill, a stand): the lowest plot level under it — its walls reach the ground on every side, the uphill side stands buried
+            let lo = Infinity; for (const u of [-1, 1]) for (const v of [-1, 1]) { const p = plotAtCell(Math.max(0, Math.min(143, Math.floor((x + u * ex + HALF) / C))), Math.max(0, Math.min(143, Math.floor((z + v * ez + HALF) / C)))); lo = Math.min(lo, lvOf(p)); }
+            return lo * LVM; }
+        if (baseOf[m[1]] != null) return baseOf[m[1]];
+        const dr = pb.b.doors && pb.b.doors[0], p = pb.p; let h = lvOf(p) * LVM;
+        if (dr && rf[K(p.x * N + dr.ox, p.y * N + dr.oy)]) h = roadM(p, dr.ox + 0.5, dr.oy + 0.5);
+        return (baseOf[m[1]] = Math.round(h * 100) / 100);
+    };
+    let mixed = 0; const flag = new Uint8Array(W * W);   // 1 = a walk-in building's floor (its height stands to the square's line: hqTerrainSlopeFn ON A LINE)
+    features.forEach(f => {
+        if (!(f.k === 'texbuilding' || (f.k === 'plateau' && f.bld)) || !(f.w > 0) || !(f.d > 0)) return;
+        const turned = Math.round((f.rot || 0) / 90) % 2 !== 0, ex = (turned ? f.d : f.w) / 2 - 0.06, ez = (turned ? f.w : f.d) / 2 - 0.06, h = bldBase(f.id, f.x, f.z, ex, ez);
+        for (let cy = Math.max(0, Math.floor((f.z - ez + HALF) / C)); cy <= Math.min(W - 1, Math.floor((f.z + ez + HALF) / C)); cy++)
+            for (let cx = Math.max(0, Math.floor((f.x - ex + HALF) / C)); cx <= Math.min(W - 1, Math.floor((f.x + ex + HALF) / C)); cx++) { const k = K(cx, cy); if (!isNaN(base[k]) && Math.abs(base[k] - h) > 0.02) mixed++; if (isNaN(base[k]) || h < base[k]) base[k] = h; if (f.hollow) flag[k] = 1; }
+    });
+    /* the plots' pieces */
+    const pieces = {}; (LEVELS.pieces || []).forEach(q => { (pieces[q.plot] = pieces[q.plot] || []).push(q); });
+    const pieceM = (p, lx, ly) => { let v = 0; (pieces[p.id] || []).forEach(q => { const t = Math.min(lx - q.x0, q.x1 - lx, ly - q.y0, q.y1 - ly); if (t > 0) v += (q.k === 'bowl' ? -1 : 1) * Math.min(q.by, t * (q.rate || 1)); }); return v * LVM; };
+    (LEVELS.pieces || []).forEach(q => { const p = plotOf[q.plot]; for (let y = q.y0; y < q.y1; y++) for (let x = q.x0; x < q.x1; x++) { const cx = p.x * N + x, cy = p.y * N + y; if (!isNaN(base[K(cx, cy)]) || rf[K(cx, cy)]) console.warn('THE LEVELS: piece on a building / a street square', q.plot, x, y); } });
+    /* THE DOOR STOOPS: a walk-in building grown to its plot's line opens onto the NEXT plot; where that ground stands at another height
+       than the building's floor, a flight one square wide joins them outside the doorway (cut into the ground when the door is lower) */
+    const natural = (cx, cy) => { const k = K(cx, cy), p = plotAtCell(cx, cy); return !isNaN(base[k]) ? base[k] : rf[k] ? roadM(p, cx - p.x * N + 0.5, cy - p.y * N + 0.5) : lvOf(p) * LVM; };
+    const stoops = [];
+    features.forEach(f => {
+        if (f.k !== 'texbuilding' || !f.hollow) return;
+        const L = Math.max(2, f.w) - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols, col = (isFinite(+f.door) && +f.door >= 1) ? Math.min(cols - 1, Math.round(+f.door) - 1) : Math.floor((cols - 1) / 2), lx = -L / 2 + (col + 0.5) * cw;   // data.js hqTexbDoor
+        const q = (f.rot || 0) * Math.PI / 180, c = Math.round(Math.cos(q)), sn = Math.round(Math.sin(q)), wx = f.x + lx * c + (f.d / 2) * sn, wz = f.z - lx * sn + (f.d / 2) * c;   // the doorway's middle on the wall line; (sn, c) points out
+        const hb = bldBase(f.id, f.x, f.z, 1, 1), cellOf = t => [Math.floor((wx + sn * t + HALF) / C), Math.floor((wz + c * t + HALF) / C)];
+        const c0 = cellOf(0.5); if (!inCity(c0[0], c0[1]) || !isNaN(base[K(c0[0], c0[1])])) return;
+        const g0 = natural(c0[0], c0[1]); if (Math.abs(g0 - hb) <= 0.3) return;
+        const m = Math.max(1, Math.ceil(Math.abs(g0 - hb) / LVM - 0.01)), cells = [];
+        for (let i = 0; i < m; i++) { const cc = cellOf(0.5 + i * C); if (!inCity(cc[0], cc[1]) || !isNaN(base[K(cc[0], cc[1])]) || cellAt(cc[0], cc[1]) === 'R') break; cells.push(cc); }
+        if (!cells.length) { console.warn('THE LEVELS: no room for a door stoop', f.id); return; }
+        const g1 = natural(cells[cells.length - 1][0], cells[cells.length - 1][1]), n = cells.length, axisX = sn !== 0, line = ((axisX ? wx : wz) + HALF) / C, dir = axisX ? sn : c;
+        if (Math.abs(g1 - hb) / (n * C) > 1.001) console.warn('THE LEVELS: a door stoop steeper than the walk climbs', f.id);
+        cells.forEach(cc => lvCut.set(cc[0] + ',' + cc[1], { x: axisX, line, dir, m: n, h0: hb, h1: g1 }));
+        const ex = wx + sn * n * C, ez = wz + c * n * C, up = g1 > hb;
+        stoops.push({ k: 'ramp', id: 'dc:stoop:' + String(f.id).replace(/^dc:/, ''), absY: true, x0: r3(up ? wx : ex), z0: r3(up ? wz : ez), x1: r3(up ? ex : wx), z1: r3(up ? ez : wz), w: 3.4, h0: r3(Math.min(hb, g1)), h1: r3(Math.max(hb, g1)), stairs: true, model: LEVELS.stairs[plotAtCell(c0[0], c0[1]).d] || 'concrete', edge: 0.01 });
+    });
+    const cm = new Int16Array(W * W * 4);
+    for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) {
+        const k = K(cx, cy), p = plotAtCell(cx, cy), px = p.x * N, py = p.y * N, cut = lvCut.get(cx + ',' + cy);
+        [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([ax, ay], ci) => {
+            const vx = cx + ax, vy = cy + ay, lx = vx - px, ly = vy - py; let h;
+            if (!isNaN(base[k])) h = base[k];
+            else if (cut) h = cut.h0 + (cut.h1 - cut.h0) * Math.min(1, Math.max(0, ((cut.x ? vx : vy) - cut.line) * cut.dir / cut.m));
+            else if (rf[k]) h = roadM(p, lx, ly);
+            else {
+                let bs = 0, bn = 0, road = false;
+                for (let dy = -1; dy <= 0; dy++) for (let dx = -1; dx <= 0; dx++) { const x = vx + dx, y = vy + dy; if (x < px || y < py || x >= px + N || y >= py + N) continue; const kk = K(x, y); if (!isNaN(base[kk])) { bs += base[kk]; bn++; } else if (rf[kk]) road = true; }
+                h = bn ? bs / bn : road ? roadM(p, lx, ly) : lvOf(p) * LVM + pieceM(p, lx, ly);
+            }
+            cm[k * 4 + ci] = Math.round(h * 100);
+        });
+    }
+    const at = (x, z) => {   // the ground at a room point (data.js hqTerrainSlopeFn's own arithmetic)
+        let fx = (x + HALF) / C, fz = (z + HALF) / C, i = Math.floor(fx), j = Math.floor(fz);
+        if (i < 0) { i = 0; fx = 0; } else if (i >= W) { i = W - 1; fx = W; } if (j < 0) { j = 0; fz = 0; } else if (j >= W) { j = W - 1; fz = W; }
+        const u = fx - i, v = fz - j, o = (j * W + i) * 4;
+        return ((cm[o] * (1 - u) + cm[o + 1] * u) * (1 - v) + (cm[o + 2] * (1 - u) + cm[o + 3] * u) * v) / 100;
+    };
+    return { cm, at, baseOf, bldBase, mixed, stoops, f64: Buffer.from(flag).toString('base64'), b64: Buffer.from(cm.buffer, cm.byteOffset, cm.byteLength).toString('base64') };
+})();
+features.push(...LV.stoops); lvCount.stoops = LV.stoops.length;
+if (LV.mixed) console.warn('THE LEVELS: squares under two buildings of different bases:', LV.mixed);
+/* the roof bridges: each at its roofs' real height; two roofs at different heights → the slab at the higher, a flight on the lower roof up to it */
+{
+    const rowOf = {}; features.forEach(f => { if (f.id) rowOf[f.id] = f; });
+    const roofY = id => { const r = rowOf['dc:' + id]; return !r ? null : r.k === 'plateau' ? LV.at(r.x, r.z) + r.h : LV.at(r.x, r.z) + (r.storeys || 2) * 3.5 + 0.02; };   // a tier's top; a walked texbuilding's roof slab (data.js hqTexBuildingRows)
+    let stepped = 0;
+    PLAN.roofEdges.forEach(e => {
+        const br = rowOf['dc:' + e.id], A = bInfo.find(b => b.id === e.a), B = bInfo.find(b => b.id === e.b); if (!br || !A || !B) return;
+        const horiz = Math.abs(br.z1 - br.z0) < 0.01, first = horiz ? (A.x < B.x ? A : B) : (A.z < B.z ? A : B), second = first === A ? B : A;   // end 0 stands on `first`, end 1 on `second`
+        const y0 = roofY(first.id), y1 = roofY(second.id); if (y0 == null || y1 == null) return;
+        br.y = r3(Math.max(y0, y1)); br.absY = true;
+        const dh = Math.abs(y0 - y1); if (dh <= 0.5) return;
+        const low = y0 < y1 ? first : second, end = y0 < y1 ? [br.x0, br.z0] : [br.x1, br.z1], dir = y0 < y1 ? -1 : 1;   // the flight runs from the slab's end back into the lower roof
+        if (rowOf['dc:' + low.id].k !== 'plateau') console.warn('THE LEVELS: the lower roof of', e.id, 'is a walk-in building (its roof is a slab, a flight cannot stand on it): put the two plots on one level in levels.js');
+        const depth = (horiz ? low.w : low.d2) - 1.5 - 1.0, run = Math.min(dh / 0.5, depth);
+        if (run < dh - 0.01) console.warn('THE LEVELS: roof flight too steep', e.id, 'rise', dh.toFixed(2), 'run', run.toFixed(2));
+        const fx = horiz ? end[0] + dir * run : end[0], fz = horiz ? end[1] : end[1] + dir * run;
+        features.push({ k: 'ramp', id: 'dc:roofstair:' + e.id, absY: true, x0: r3(fx), z0: r3(fz), x1: r3(end[0]), z1: r3(end[1]), w: 3.2, h0: r3(Math.min(y0, y1)), h1: r3(Math.max(y0, y1)), stairs: true, model: 'steel', edge: 0.01 });
+        stepped++;
+    });
+    lvCount.roofFlights = stepped;
+    /* the architecture rows: each on its building's base (a row with no building of the plan: the ground under its origin, a hair inside its plot) */
+    features.forEach(f => {
+        if (f.k !== 'arch') return;
+        const m = /(P\d\d-\d\d-B\d+)/.exec(f.id || ''), g = (m && LV.baseOf[m[1]] != null) ? LV.baseOf[m[1]] : LV.at(f.x + 0.01, f.z + 0.01);
+        f.y = r3((typeof f.y === 'number' ? f.y : 0) + g);
+    });
+    /* a prop hung at a height (a stacked container): the height is from the room's floor (three-renderer.js THE TIER HEIGHT), so the ground under it is added */
+    props.forEach(q => { if (typeof q.y === 'number' && (q.y >= 1 || q.y <= -0.5)) q.y = r3(q.y + LV.at(q.x, q.z)); });
+}
+count.levels = lvCount;
+/* ── THE PROP PASS (docs/disaster-city/props.js; mondo 11-13: "cars on top of stuff, benches on top of fences, street signs half way inside
+   buildings ... way more attention to detail and care"): the set dressing, then THE PROP CHECK over every prop of the room, last of all ── */
+{
+    Object.assign(dcCtx, { own: dcOwn, at: LV.at, lamps, busStops, signals: SIGNALS, REPO });
+    count.dressing = PROPS.dress(dcCtx);
+    const pc = PROPS.check(dcCtx); count.propCheck = pc.tally;
+    fs.writeFileSync(path.join(REPO, 'docs/disaster-city/prop-check.txt'), 'THE PROP CHECK, written by node bake-disaster-city.js. A district file\'s own prop that stands in something is listed here for its thread; a shared prop with no clear spot is left out.\n' + JSON.stringify(pc.tally) + '\n' + pc.report.map(r => r.join('  ')).join('\n') + '\n');
+}
+lines[lvLine] = "                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gx(0) + ", nx: 144, nz: 144, f: '" + LV.f64 + "', d: '" + LV.b64 + "' } },";
 features.forEach(f => lines.push("                    " + J(f) + ","));
 lines.push("                ],");
 lines.push("                /* the cars: the ring (west avenue, the north street, the east avenue, the cross street), never the response streets round the mall */");
@@ -639,7 +874,7 @@ lines.push("            counters: [],");
 lines.push("            props: [");
 props.forEach(f => lines.push("                " + J(f) + ","));
 lines.push("            ],");
-lines.push("            agents: [], npcSpots: [],");
+lines.push("            agents: [], npcSpots: [" + npcSpots.map(J).join(", ") + "],");
 lines.push("            spawn: { x: " + r3(JOIN.bay.x - 3.5) + ", z: " + JOIN.bay.z + ", face: 270 },");
 lines.push("        },");
 lines.push("        /* DC144-END */");

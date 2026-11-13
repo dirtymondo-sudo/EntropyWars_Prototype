@@ -40,6 +40,7 @@ Usage: pip install bpy==5.2.3 scipy pillow
               DROPCOL="r,g,b,tol" (a piece fused into the body shell goes by its colour: superhero F's cape),
               CUFF=1 (with HANDCUT: the sleeve end sawn straight across the arm, superhero F),
               SNUG=0.004 (a suit's shoulders laid close on the skin so a creator cape covers them, superhero F),
+              CUFFHIDE=1 (the forearm's skin hidden level with the sleeve's end, superhero F),
               HANDCUT=1 (a bare hand fused to its sleeve goes, the body's own hand shows: politician, priest, shaman, telepath, vampire),
               DROP="x,y,z,r;..." (a stray shell left out by hand, its middle r from a point measured from the eyes; SHELLS=1 lists them)
        batch 1 review of 11-13: NOARMS=1 (torn sleeves / gloves go, the bare arms show), SNUG=1 (baggy trousers drawn in at the waist + hips), HATMIRROR=1|-1 (one half of the hat copied across), NOHANDS=1 (the body's own hands show, Meshy's go), WINGKEEP=1 (a collar fused to the wings), NOHELD=1 (nothing in the
@@ -64,6 +65,7 @@ from mathutils.kdtree import KDTree  # noqa: E402
 
 E = lambda k, d: float(os.environ.get(k, d))
 DROPAT = [[float(v) for v in q.split(',')] for q in os.environ.get('DROPAT', '').split(';') if q.strip()]
+CUTCOL = [[float(v) for v in q.split(',')] for q in os.environ.get('CUTCOL', '').split(';') if q.strip()]   # 'x,y,z,r,R,G,B,tol;...' (off)
 SKIN_T = E('SKIN_T', 0.20)
 HEADGEAR = False
 NECKLINE = False
@@ -277,6 +279,27 @@ def fit(name, gender, src, bodies_dir):
         # remake's own space, as env SHELLS=1 prints them). Off by default
         if os.environ.get('SHELLS'): print('SHELL', n, c.mean(0).round(2), (c.max(0) - c.min(0)).round(2), col.round(2))
         if any(np.linalg.norm(c.mean(0) - np.array(q[:3])) < q[3] for q in DROPAT): dropped.append(('named (DROPAT)', n)); bpy.data.objects.remove(o); continue
+        # A COLOUR CUT OUT OF A NAMED SHELL (CUTCOL='x,y,z,r,R,G,B,tol[,ymax];...', off; 2026-11-13, King Arthur: his ragged cape was one shell with his shoulder
+        # armour and chest strap; mondo: "yes i want the chest strap back"): in the shell whose middle is within r of x,y,z the faces
+        # within tol of R,G,B go, then what is left in islands under CUTISLE 30 faces
+        cc_ = [q for q in CUTCOL if np.linalg.norm(c.mean(0) - np.array(q[:3])) < q[3]]
+        if cc_:
+            fcs_ = face_cols(o, PX, IW, IH); bmc = bmesh.new(); bmc.from_mesh(o.data); bmc.faces.ensure_lookup_table()
+            go_ = [bmc.faces[i_] for i_ in range(len(fcs_)) if any(np.linalg.norm(fcs_[i_] - np.array(q[4:7])) < q[7] or (len(q) > 8 and bmc.faces[i_].calc_center_median().y > q[8]) for q in cc_)]   # (+ a 9th number: every face behind that y goes too, a strap's back half under a creator cape)
+            bmesh.ops.delete(bmc, geom=go_, context='FACES'); bmc.faces.ensure_lookup_table(); seen_ = set(); sm_ = []
+            for f0 in bmc.faces:
+                if f0.index in seen_: continue
+                comp_ = [f0]; seen_.add(f0.index); k_ = 0
+                while k_ < len(comp_):
+                    for e_ in comp_[k_].edges:
+                        for f1 in e_.link_faces:
+                            if f1.index not in seen_: seen_.add(f1.index); comp_.append(f1)
+                    k_ += 1
+                if len(comp_) < E('CUTISLE', 30): sm_ += comp_
+            bmesh.ops.delete(bmc, geom=sm_, context='FACES'); bmesh.ops.delete(bmc, geom=[v for v in bmc.verts if not v.link_faces], context='VERTS')
+            dropped.append(('colour cut (CUTCOL)', len(go_) + len(sm_))); bmc.to_mesh(o.data); bmc.free()
+            if len(o.data.polygons) == 0: bpy.data.objects.remove(o); continue
+            c = co(o); cz = c[:, 2].mean(); cx = c[:, 0].mean(); n = len(o.data.polygons); col = np.median(face_cols(o, PX, IW, IH), axis=0)
         if abs(cx) > 0.8 * xmax and np.linalg.norm(col - skin) < SKIN_T and n < 1600:
             # THE GLOVE ON A BARE HAND (2026-11-12, robinhood: fingerless gloves; Meshy fuses the glove to the hand): only the
             # skin-coloured faces go; what is left (the glove's cuff + back) stays when it is a real piece (env GLOVE, faces)
@@ -783,6 +806,24 @@ def fit(name, gender, src, bodies_dir):
                     if j_ not in seen_: seen_.add(j_); comp_.append(j_); st_.append(j_)
             if len(comp_) < E('SKINISLE', 0) and not (max(pm.vertices[k_].co.z for k_ in comp_) > eyeM[2] - E('ISLENECK', 9) and E('ISLENECK', 0) and np.mean([abs(pm.vertices[k_].co.x - eyeM[0]) for k_ in comp_]) < E('ISLENECKX', 0.07)): ks -= set(comp_); ni_ += len(comp_)   # (never her neck: under a blouse collar the neck is cut off from the head's own skin and went black, Agent Locke)
         if ni_: print('[bake-outfit] %s: %d vertices of floating skin hidden' % (name, ni_), flush=True)
+    # THE SKIN AT THE CUFF (env CUFFHIDE=1; 2026-11-13, superhero F, mondo: "jaggedy around the arms"): the lines above hide the
+    # forearm's skin where a line meets the sleeve, which leaves a saw-toothed edge on the bare forearm below a short sleeve. The
+    # arm's skin is hidden by place: every vertex up the arm from the sleeve's end (CUFFPAD back from it), none below it
+    if E('CUFFHIDE', 0):
+        amw_ = marm.matrix_world; pb_ = marm.pose.bones
+        for pre_ in ('Left', 'Right'):
+            a_ = amw_ @ pb_[pre_ + 'Arm'].head; b_ = amw_ @ pb_[pre_ + 'Hand'].head; ab_ = (b_ - a_); L_ = ab_.length; ab_ = ab_ / L_
+            tc_ = [((v.co - a_).dot(ab_), ((v.co - a_) - ab_ * (v.co - a_).dot(ab_)).length) for o in cloth for v in o.data.vertices]
+            tc_ = [t for t, d in tc_ if d < E('CUFFR', 0.09) and 0.2 * L_ < t < 1.2 * L_]
+            if len(tc_) < 20: continue
+            end_ = float(np.percentile(tc_, 98)) - E('CUFFPAD', 0.012)
+            wa_ = sum(gw[n] for n in (pre_ + 'Arm', pre_ + 'ForeArm') if n in gw)
+            for i in np.nonzero(wa_ > 0.5)[0]:
+                t_ = (pm.vertices[int(i)].co - a_).dot(ab_)
+                if t_ < 0.25 * L_: continue
+                if t_ > end_: ks.add(int(i))
+                else: ks.discard(int(i))
+            print('[bake-outfit] %s: %s sleeve ends %.0f %% down the arm, the skin under it hidden to there' % (name, pre_, 100 * end_ / L_), flush=True)
     hidden = [i for i in range(len(pm.vertices)) if i not in ks]
     # a hm08 index is hidden only when every file vertex that carries it is
     shown_base = set(int(base[i]) for i in ks)
