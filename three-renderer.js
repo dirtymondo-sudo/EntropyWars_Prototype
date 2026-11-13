@@ -62443,7 +62443,7 @@ const ThreeRenderer = (function () {
            vertex's weights), blending into the pendant's own bone near the bail so the two never part when the body moves. It is
            one of the pendant's accents (comes off with it, hidden with it). Rebuilt with THE LAYERS (every wear change and every
            slider move: the cord follows the neck it lies on). Colour per pendant (WEAR_CORD.colors), else WEAR_CORD.color. */
-        var WEAR_CORD = { r: 0.0017, skin: 0.0022, cloth: 0.002, levels: [10, 20, 40, 64], iters: [140, 110, 70, 40], warm: 30, step: 0.004, settle: 20, pull: 0.45, finish: 6, fall: 0.0004, ring: 0.35, sides: 7, steps: 150, bone: 0.07,
+        var WEAR_CORD = { r: 0.0017, skin: 0.0022, cloth: 0.002, levels: [10, 20, 40, 64], iters: [140, 110, 70, 40], warm: 30, step: 0.004, settle: 20, pull: 0.45, finish: 6, fall: 0.0004, ring: 0.35, sides: 7, steps: 150, bone: 0.07, chain: 2.2,
                           colors: { ewm_crosspendant: 0x16130f, ewm_talisman: 0x4a2e1a, ewm_hagstone: 0x8a7656 }, color: 0x2a2018 };
         function wearCordOf(w) {
             return !!(w && w.mesh && w.solid && typeof wearGroupOf === 'function' && wearGroupOf(w.id) === 'pendants');
@@ -62690,7 +62690,10 @@ const ThreeRenderer = (function () {
                 return ks.map(function (bk) { return [+bk, m[bk] / (sum || 1)]; });
             });
             // the tube: a Catmull-Rom curve through the rope, a ring of WEAR_CORD.sides round it (parallel-transported frames)
-            var NSm = WEAR_CORD.steps, Rt = WEAR_CORD.r * Hm, SIDES = WEAR_CORD.sides, Cv = [], Cw = [];
+            /* THE CHAIN (2026-11-13, the gangster, mondo: "needs some bling"): a pendant that wears a colour (appearance.wearTint[id]: a gold
+               cross) hangs from a chain in that colour, not from the dark cord: WEAR_CORD.chain x as thick, metal */
+            var cTint = null; try { var cT = state.last && state.last.wearTint && state.last.wearTint[w.id]; if (typeof cT === 'string' && /^#[0-9a-f]{6}$/i.test(cT)) cTint = cT; } catch (eT) {}
+            var NSm = WEAR_CORD.steps, Rt = WEAR_CORD.r * Hm * (cTint ? WEAR_CORD.chain : 1), SIDES = WEAR_CORD.sides, Cv = [], Cw = [];
             for (i = 0; i <= NSm; i++) {
                 var u = i / NSm * M, s0 = Math.min(M - 1, Math.floor(u)), tt = u - s0;
                 var p0 = X[Math.max(0, s0 - 1)], p1 = X[s0], p2 = X[s0 + 1], p3 = X[Math.min(M, s0 + 2)], t2 = tt * tt, t3 = t2 * tt;
@@ -62735,6 +62738,8 @@ const ThreeRenderer = (function () {
                 (w.accents = w.accents || []).push(mh);
             }
             mh.geometry.dispose(); mh.geometry = g;
+            mh.userData._ewBase.set(cTint || (WEAR_CORD.colors[w.id] != null ? WEAR_CORD.colors[w.id] : WEAR_CORD.color));
+            if (mh.material) { mh.material.metalness = cTint ? 0.85 : 0; mh.material.roughness = cTint ? 0.35 : 0.82; }
             wearVC(mh, mh.userData._ewBase);
             w.cordPts = X;   // (probes)
         }

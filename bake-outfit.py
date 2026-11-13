@@ -235,6 +235,7 @@ def fit(name, gender, src, bodies_dir):
         c = co(o); cz = c[:, 2].mean(); cx = c[:, 0].mean(); n = len(o.data.polygons)
         col = np.median(face_cols(o, PX, IW, IH), axis=0)
         isrem = o in rem
+        if os.environ.get('SHELLS'): print('[shell] n=%d dz=%.2f..%.2f (mid %.2f) x=%.2f y=%.2f rem=%d col=%s dskin=%.2f' % (n, c[:, 2].min() - eye.z, c[:, 2].max() - eye.z, cz - eye.z, cx, c[:, 1].mean() - eye.y, isrem, np.round(col, 2), np.linalg.norm(col - skin)), flush=True)   # (SHELLS=1: every shell as the sorter sees it)
         if abs(cx) > 0.8 * xmax and np.linalg.norm(col - skin) < SKIN_T and n < 1600:
             # THE GLOVE ON A BARE HAND (2026-11-12, robinhood: fingerless gloves; Meshy fuses the glove to the hand): only the
             # skin-coloured faces go; what is left (the glove's cuff + back) stays when it is a real piece (env GLOVE, faces)
@@ -247,11 +248,27 @@ def fit(name, gender, src, bodies_dir):
             dropped.append(('hand', n)); bpy.data.objects.remove(o); continue
         # THE WINGS (--nowings; 2026-11-12, angel: Meshy gives her wings as flat sheets on red arms): a shell that sits wholly
         # behind her back (its middle WINGY behind the eyes) is left out; the look wears the creator's own Wings instead
-        if NOWINGS and not isrem and c[:, 1].mean() > eye.y + E('WINGY', 0.22): dropped.append(('wing', n)); bpy.data.objects.remove(o); continue
+        if NOWINGS and not isrem and c[:, 1].mean() > eye.y + E('WINGY', 0.22):
+            # THE COLLAR ON THE WINGS (WINGKEEP=1, off; 2026-11-13, annunaki, mondo: "needs the gold bling plate/necklace thing"): Meshy made
+            # his gold collar plate one shell with the wings, so --nowings took it too. The faces of a wing shell round the neck (WINGKX
+            # to the side, WINGKY behind the eyes, WINGKZ under them) stay as a piece of the outfit; small islands of them go
+            if E('WINGKEEP', 0) and n > 1000:
+                cen_ = np.array([p_.center for p_ in o.data.polygons])
+                k_ = (np.abs(cen_[:, 0] - eye.x) < E('WINGKX', 0.3)) & (cen_[:, 1] < eye.y + E('WINGKY', 0.24)) & (cen_[:, 2] > eye.z - E('WINGKZ', 0.5))
+                if k_.sum() > 150:
+                    bmw = bmesh.new(); bmw.from_mesh(o.data); bmw.faces.ensure_lookup_table()
+                    bmesh.ops.delete(bmw, geom=[bmw.faces[i] for i in np.nonzero(~k_)[0]], context='FACES')
+                    bmesh.ops.delete(bmw, geom=[v for v in bmw.verts if not v.link_faces], context='VERTS'); bmw.to_mesh(o.data); bmw.free()
+                    parts_ = split_loose([o]); big_ = max(parts_, key=lambda q: len(q.data.polygons))
+                    for q in parts_:
+                        if q is not big_ and len(q.data.polygons) < E('WINGKISLE', 60): bpy.data.objects.remove(q)
+                        else: keep.append(q)
+                    dropped.append(('wing, its collar kept', int(k_.sum()))); continue
+            dropped.append(('wing', n)); bpy.data.objects.remove(o); continue
         # A FLAKE (2026-11-12, catgirl: a skin-coloured chip floating beside a boot): a shell of a few faces, a few cm across
         if n < E('FLAKE', 30) and (c.max(0) - c.min(0)).max() < 0.04 * S / 1.9 and not (cz > chin - 0.02): dropped.append(('flake', n)); bpy.data.objects.remove(o); continue
         hd = math.hypot(cx - eye.x, c[:, 1].mean() - eye.y - 0.08)
-        inhead = cz > chin - 0.02 and hd < 0.16
+        inhead = (cz > chin - 0.02 and hd < 0.16) or (c[:, 2].min() > eye.z + E('EARZ', 0.08) and hd < E('EARR', 0.3))   # (+ a shell wholly above the brow, out to the side: the bunny girl's second ear went as 'long hair', 11-13)
         if isrem and c[:, 2].min() > chin - 0.25 and not (cz > eye.z and n >= 60): dropped.append(('face bit', n)); bpy.data.objects.remove(o); continue
         if inhead and n < 25: dropped.append(('bit', n)); bpy.data.objects.remove(o); continue
         if inhead or (isrem and cz > eye.z): headp.append(o)
@@ -322,7 +339,7 @@ def fit(name, gender, src, bodies_dir):
         hcol = np.median(np.vstack([face_cols(o, PX, IW, IH) for o in wig]), axis=0)
         for o in [o for o in keep if o not in headp]:
             c = co(o)
-            if (len(o.data.polygons) < E('LOCKN', 600) or o in rem) and c[:, 2].max() > eyeM[2] - 0.16 and np.linalg.norm(np.median(face_cols(o, PX, IW, IH), axis=0) - hcol) < E('LOCKT', 0.15):
+            if (len(o.data.polygons) < E('LOCKN', 600) or (o in rem and E('LOCKREM', 1))) and c[:, 2].max() > eyeM[2] - 0.16 and np.linalg.norm(np.median(face_cols(o, PX, IW, IH), axis=0) - hcol) < E('LOCKT', 0.15):
                 dropped.append(('hair lock', len(o.data.polygons))); keep.remove(o); bpy.data.objects.remove(o)
         # + HAIR FUSED TO THE CLOTHES (the catgirl: the locks over her shoulders are one shell with the jacket and stood up beside her
         # jaw as black shards): in the other shells the hair-coloured faces above the chin (LOCKZ under it) go
@@ -577,6 +594,7 @@ def fit(name, gender, src, bodies_dir):
         tot = sum(gw[n] for n in names); idx = np.nonzero(tot > 0.5)[0]
         hid = sum(1 for i in idx if i not in ks) / max(1, len(idx))
         print('[bake-outfit] %s: %s %.0f %% under cloth' % (name, names[0], hid * 100), flush=True)
+        if E('NOHANDS', 0) and 'Foot' not in names[0]: ks |= set(int(i) for i in idx); continue   # (NOHANDS: Meshy's own hands go below, the body's show)
         if hid > E('ALLHIDE', 0.35): ks -= set(int(i) for i in idx)
         else: ks |= set(int(i) for i in idx)
     # A LEG SEGMENT (thigh, calf) that is mostly under cloth is hidden whole (2026-11-12, mondo: "Knight has slivers of skin
@@ -697,6 +715,19 @@ def fit(name, gender, src, bodies_dir):
                     for g in o.vertex_groups: g.remove([v.index])
                     hg.add([v.index], 1.0, 'REPLACE')
         names = {g.index: g.name for g in o.vertex_groups}
+        # THE HAND BITS (NOHANDS=1, off; 2026-11-13, conspiracy theorist, mondo: "fingers look messed up"): Meshy left finger tips, nails
+        # and palm scraps as part of a sleeve's shell; they hung beside the body's own fingers. Faces whose every vertex rides the
+        # hand + its fingers (NOHANDW of its weight) go. Not for a unit in gloves (they ARE its hands)
+        if E('NOHANDS', 0):
+            hn_ = set(i for i, n in names.items() if n in ('LeftHand', 'RightHand') or re.search(r'_[lr]$', n))
+            hw_ = [sum(g.weight for g in v.groups if g.group in hn_) for v in o.data.vertices]
+            go_ = [p_.index for p_ in o.data.polygons if all(hw_[i] > E('NOHANDW', 0.85) for i in p_.vertices)]
+            if go_:
+                bmh = bmesh.new(); bmh.from_mesh(o.data); bmh.faces.ensure_lookup_table()
+                bmesh.ops.delete(bmh, geom=[bmh.faces[i] for i in go_], context='FACES')
+                bmesh.ops.delete(bmh, geom=[v for v in bmh.verts if not v.link_faces], context='VERTS'); bmh.to_mesh(o.data); bmh.free()
+                print('[bake-outfit] %s: %d hand faces left out (the body\'s own hands show)' % (name, len(go_)), flush=True)
+            if not len(o.data.polygons): continue
         W = []
         # a shell on ONE side of the body (a boot, a greave, a gauntlet, a thigh holster) is on that limb: never loose cloth
         # (2026-11-12, mondo: "the cowboys boots are all messed up when he walks and getting distorted": a boot's sole and
