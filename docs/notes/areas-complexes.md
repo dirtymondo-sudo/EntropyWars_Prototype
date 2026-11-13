@@ -2644,3 +2644,24 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - HERO PLAZA, the signs (2026-11-13 21:10): `kit().sign(side, half, u, y, w, h, words, fg, bg)` = a quad facing out of that wall with key
   `txt:WORDS|fg|bg|aspect` (THE SIGN LETTERING). Boards: HERO WORKSHOP, PRESS COURT, TRAINING HALL, TRANSIT COURT, DELIVERIES, DISPATCH, COFFEE,
   NEWS, SNACKS (the buildings' own plan names, nothing invented). `LIFT` leaves `txt:` keys alone. Seen in game reading the right way on S and N walls.
+
+## DISASTER CITY, THE ENTERTAINMENT DISTRICT — the insides (2026-11-13 night)
+mondo 21:04 "after the district threads do their exterior polish, let's go ahead and do the interiors"; his grid rule 21:14 + 21:17 (a
+blocker snaps to the battle squares and fills whole ones, a walkway is a whole square wide, decoration sits off centre); his "okay" on the
+cell plans 21:23 (/mnt/project-files/dc-entertainment/interiors_plan.jpg). All in `docs/disaster-city/districts/E.js`.
+- The ten walk-in shells are furnished IN PLACE in the city room (no door to another room): `INSIDE[id] = { g: [rows of letters], keyIn,
+  floorIn, rug, ... }`. A letter is one 3.5 m square: `.` = walkway, any other letter = a blocker drawn by `KIT[letter]` in the square's own
+  frame (+z looks at the nearest walkway) under a ghost block the size of the square (`BLOCK_H`). Rows are written back first, the door row
+  last, left = left as you face the building. The tool refuses a plan that is not the shell's size or whose doorway square is not a walkway.
+- Kits: S slot bank (3 `slot_machine`), T round table + stools, B bar + back shelf, c cashier cage, G stage (or the workshop's half-built
+  set), K kitchen line (`kitchen_range`), H seat block (raked by `rake`), L `psx_sofa_1`, U `curved_couch` + TV, X mixing desk, M drum kit,
+  P `decor_piano`, V vocal booth, A six arcade cabinets (shapes: the model list has no cabinet), R costume rail / amps / lumber, m mirrors,
+  O ovens, W `steel_table` benches, F backdrop flat, Y crates, Z `exec_desk`, D `library_shelf_full`, J air hockey, C shop counter,
+  I `ticket_booth`, Q `popcorn_cart`, E `dorm_bed` bunks, N `locker` row. Plus ceiling light panels over the walkways, a lit EXIT over every
+  doorway inside, the Cinema's screen, the inside wall and floor sheets (`keyIn` / `floorIn`).
+- The rooms: Casino, Recording studio, Restaurant court, Comedy theater, Cabaret, Stage workshop, Arcade, Bakery, Crew house, Cinema.
+  10 `dc:<id>:in` arch rows, about 1,900 parts, about 19,500 triangles; 82 catalogue props (docs/disaster-city/prop-check.txt lists them as
+  "in building": that is where they belong, the check keeps a district's own props).
+- NOT SEEN IN THE GAME (offline render of the baked rows only: interiors_built.jpg). Unknown until walked: how bright the insides are, prop
+  facings, whether the wall-mounted props (`locker`, `kitchen_range`) sit right. Next (his "and yes" 21:23): insides for the wedding chapel,
+  the Concert hall and the Film studio (solid today).
