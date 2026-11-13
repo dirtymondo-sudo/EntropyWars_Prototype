@@ -77781,7 +77781,10 @@ const ThreeRenderer = (function () {
                 cands.push({ p: p, i: i, s: (c.ceil || p.ceil) ? 1 : 0 });
             });
             if (cands.length <= left) return;
-            cands.sort(function (a, b) { return (b.s - a.s) || (a.i - b.i); });
+            /* THE SUNKEN AGORA (2026-11-13): a room drawn ROUND A BATTLE BOARD lights the lamps nearest the board first (the abyss's ten
+               went to the drowned road and the trench, 60 m off; the board's own pylons hung dark). The walk keeps the row order. */
+            var la = _hq.lightAt || null, ld = function (p) { return (la && typeof p.x === 'number' && typeof p.z === 'number') ? Math.hypot(p.x - la.x, p.z - la.z) : 1e9; };
+            cands.sort(function (a, b) { return (b.s - a.s) || (la ? (ld(a.p) - ld(b.p)) : 0) || (a.i - b.i); });
             litRows = new Set(cands.slice(0, Math.max(0, left)).map(function (c) { return c.p; }));
         })();
         for (var ri = 0; ri < rows.length; ri++) { placeOne(rows[ri]); if ((ri & 3) === 3 && _hqSliceDue()) yield; }
@@ -89184,6 +89187,7 @@ const ThreeRenderer = (function () {
                   keys: {}, drag: null, lastDragAt: 0, fp: false, paused: true, ready: false, t0: 0, lastMs: 0, lastDebug: 0,
                   cam: { yaw: 0, pitch: 0, dist: 0, init: false }, targetKey: '', w: 0, h: 0, dirty: false };
         H.floorHole = { x0: R.T.x0, x1: R.T.x0 + R.T.W * C, z0: R.T.z0, z1: R.T.z0 + R.T.H * C };
+        H.lightAt = { x: R.T.x0 + R.T.W * C / 2, z: R.T.z0 + R.T.H * C / 2 };   // THE SUNKEN AGORA: the board's centre in room metres (the prop lights nearest it win the budget)
         if (trueGroundEarly) H.propLights = 0;   // rev 3: the whole HQ light budget — the walk had every torch
         var trueGround = !!_fieldGround();   // THE TRUE GROUND: no columns fill the window — the room's floor is drawn whole and every prop stands
         if (trueGround) H.floorHole = null;
