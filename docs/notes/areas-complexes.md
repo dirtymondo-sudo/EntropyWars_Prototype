@@ -2488,3 +2488,24 @@ there is this green trash bin in the subway area that needs to go in the city. S
   (-cos, -sin) of face. Benches, vending machines, the shelter (before its turn), utility_box: +z. Road signs, bus_stop_sign, ind_vent, ind_panel: +x.
 - NOT DONE / OPEN: the `planter` proc is a plain wooden bed with soil (no plants) and stands 333 times; the second wave (public phone, electric poles,
   garbage bags, tires, playground) needs cutting from the packs. Tools + before / after maps: /mnt/project-files/city-props/.
+## THE STEEL LANDING — a fire escape's platform, no terrain lump (2026-11-13)
+mondo: "wherever there are ladders, there is a raised piece of terrain to go with it that looks wrong, and its easy to fall off of and i can
+climb it just by jumping up next to it ... Can i not just climb up the ladder and stand on the platform part?" He picked "Steel platform you
+stand on". The lump was the fire escape's halfway LANDING, a 1.6 x 2.2 m terrain `plateau` (the height field can only draw it as a slanted
+block). 25 of them, city rooms only: `site_prebuilt_downtown_streets` 18 (bake-disaster-city.js, the `escapeAt` loop),
+`site_prebuilt_cyberpunk_streets` 5 (STACK W + E1 had a second, wider plateau for the stair's head: one landing each now, 4 rows),
+`site_prebuilt_downtown_oldstreets` 2. Every other ladder in the game climbs straight onto a real tier.
+- **The row**: `{ k: 'landing', x, z, w, d, h | y, back, gaps? }` (data.js `hqTerrainLandings`, compiled in `hqTerrainCompile` before the first
+  `hqTerrainClimbs`): `h` over the LOWEST ground under it (or absolute `y`), `back` = the heading of the building's side (no rail),
+  `gaps: [[heading, a, b]]` = a stair's mouth in a rail. It becomes a hidden `bridge` slab (`hide`, `landing`, 0.1 thick: the ground under it
+  stays flat and walked) + one hung `ghost` wall per open side (`y0` = the slab, 1.05 high: the walker cannot step off). A landing with no
+  mass behind it (its building became a walk-in: P01-08-B1) gets an unseen wall on the back too (`guard`).
+- **The ladders**: `hqTerrainClimbs` gives a foot / a head on a landing the slab's height (`c.footOn` / `c.landing`); `hqTerrainClimbEdges`
+  takes for such an end the nearest grid node that STANDS on the slab (the nearest node may lie under a rail: two city landings fell out of
+  the reach until this).
+- **The look** (three-renderer.js `_hqBuildClimbs`, after the ladders): an iron deck + a grating, posts and two rails along each `rails` run
+  (open where a ladder's head stands on that side), two struts to the wall; two merged meshes a landing. A fireescape ladder whose head is on a
+  landing draws no cage of its own and ends in two grab rails.
+- Checked offline (node, the compiled rooms, against main): same ladders, same reach flags on every ladder end, the same tapes with the same
+  `hard` flags in the three rooms; standing on each slab, the ground under it, every rail blocks. NOT SEEN ON SCREEN (RULE #1c).
+- After merging main in Disaster City: `node bake-disaster-city.js` (the tool writes the `landing` rows).

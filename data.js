@@ -41127,58 +41127,58 @@ const DOOR_HQ = {
                     {k:'rail',x0:252,z0:3.5,x1:252,z1:21,model:'parapet'},
                     {k:'rail',x0:252,z0:35,x1:252,z1:38.5,model:'pipe'},
                     {k:'rail',x0:252,z0:59.5,x1:252,z1:80.5,model:'parapet'},
-                    {k:'plateau',x:-208.25,z:83.1,w:2.2,d:1.6,h:3.5,edge:0.15},
+                    {k:'landing',x:-208.25,z:83.15,w:2.6,d:1.7,h:3.5,back:180},
                     {k:'climb',x:-207.65,z:82.3,face:180,look:'fireescape'},
                     {k:'climb',x:-208.85,z:84,face:180,look:'fireescape'},
-                    {k:'plateau',x:-167.1,z:113.75,w:1.6,d:2.2,h:3.5,edge:0.15},
+                    {k:'landing',x:-167.15,z:113.75,w:1.7,d:2.6,h:3.5,back:270},
                     {k:'climb',x:-166.3,z:114.35,face:270,look:'fireescape'},
                     {k:'climb',x:-168,z:113.15,face:270,look:'fireescape'},
-                    {k:'plateau',x:-183.75,z:-245.9,w:2.2,d:1.6,h:3.5,edge:0.15},
+                    {k:'landing',x:-183.75,z:-245.85,w:2.6,d:1.7,h:3.5,back:180},
                     {k:'climb',x:-183.15,z:-246.7,face:180,look:'fireescape'},
                     {k:'climb',x:-184.35,z:-245,face:180,look:'fireescape'},
-                    {k:'plateau',x:-167.1,z:-225.75,w:1.6,d:2.2,h:3.5,edge:0.15},
+                    {k:'landing',x:-167.15,z:-225.75,w:1.7,d:2.6,h:3.5,back:270},
                     {k:'climb',x:-166.3,z:-225.15,face:270,look:'fireescape'},
                     {k:'climb',x:-168,z:-226.35,face:270,look:'fireescape'},
-                    {k:'plateau',x:-177.6,z:-57.75,w:1.6,d:2.2,h:3.5,edge:0.15},
+                    {k:'landing',x:-177.65,z:-57.75,w:1.7,d:2.6,h:3.5,back:270},
                     {k:'climb',x:-176.8,z:-57.15,face:270,look:'fireescape'},
                     {k:'climb',x:-178.5,z:-58.35,face:270,look:'fireescape'},
-                    {k:'plateau',x:-120.75,z:-84.9,w:2.2,d:1.6,h:3.5,edge:0.15},
+                    {k:'landing',x:-120.75,z:-84.85,w:2.6,d:1.7,h:3.5,back:180},
                     {k:'climb',x:-120.15,z:-85.7,face:180,look:'fireescape'},
                     {k:'climb',x:-121.35,z:-84,face:180,look:'fireescape'},
-                    {k:'plateau',x:-16.6,z:-138.25,w:1.6,d:2.2,h:3.5,edge:0.15},
+                    {k:'landing',x:-16.65,z:-138.25,w:1.7,d:2.6,h:3.5,back:270},
                     {k:'climb',x:-15.8,z:-137.65,face:270,look:'fireescape'},
                     {k:'climb',x:-17.5,z:-138.85,face:270,look:'fireescape'},
-                    {k:'plateau',x:-15.75,z:-158.4,w:2.2,d:1.6,h:3.5,edge:0.15},
+                    {k:'landing',x:-15.75,z:-158.35,w:2.6,d:1.7,h:3.5,back:180},
                     {k:'climb',x:-15.15,z:-159.2,face:180,look:'fireescape'},
                     {k:'climb',x:-16.35,z:-157.5,face:180,look:'fireescape'},
-                    {k:'plateau',x:-12.25,z:111.1,w:2.2,d:1.6,h:3.5,edge:0.15},
+                    {k:'landing',x:-12.25,z:111.15,w:2.6,d:1.7,h:3.5,back:180},
                     {k:'climb',x:-11.65,z:110.3,face:180,look:'fireescape'},
                     {k:'climb',x:-12.85,z:112,face:180,look:'fireescape'},
-                    {k:'plateau',x:77.9,z:99.75,w:1.6,d:2.2,h:3.5,edge:0.15},
+                    {k:'landing',x:77.85,z:99.75,w:1.7,d:2.6,h:3.5,back:270},
                     {k:'climb',x:78.7,z:100.35,face:270,look:'fireescape'},
                     {k:'climb',x:77,z:99.15,face:270,look:'fireescape'},
-                    {k:'plateau',x:6.1,z:-33.25,w:1.6,d:2.2,h:3.5,edge:0.15},
+                    {k:'landing',x:6.15,z:-33.25,w:1.7,d:2.6,h:3.5,back:90},
                     {k:'climb',x:5.3,z:-33.85,face:90,look:'fireescape'},
                     {k:'climb',x:7,z:-32.65,face:90,look:'fireescape'},
-                    {k:'plateau',x:48.1,z:1.75,w:1.6,d:2.2,h:3.5,edge:0.15},
+                    {k:'landing',x:48.15,z:1.75,w:1.7,d:2.6,h:3.5,back:90},
                     {k:'climb',x:47.3,z:1.15,face:90,look:'fireescape'},
                     {k:'climb',x:49,z:2.35,face:90,look:'fireescape'},
-                    {k:'plateau',x:131.25,z:-233.6,w:2.2,d:1.6,h:3.5,edge:0.15},
+                    {k:'landing',x:131.25,z:-233.65,w:2.6,d:1.7,h:3.5,back:0},
                     {k:'climb',x:130.65,z:-232.8,face:0,look:'fireescape'},
                     {k:'climb',x:131.85,z:-234.5,face:0,look:'fireescape'},
-                    {k:'plateau',x:151.4,z:-225.75,w:1.6,d:2.2,h:3.5,edge:0.15},
+                    {k:'landing',x:151.35,z:-225.75,w:1.7,d:2.6,h:3.5,back:270},
                     {k:'climb',x:152.2,z:-225.15,face:270,look:'fireescape'},
                     {k:'climb',x:150.5,z:-226.35,face:270,look:'fireescape'},
-                    {k:'plateau',x:168.9,z:-82.25,w:1.6,d:2.2,h:3.5,edge:0.15},
+                    {k:'landing',x:168.85,z:-82.25,w:1.7,d:2.6,h:3.5,back:270},
                     {k:'climb',x:169.7,z:-81.65,face:270,look:'fireescape'},
                     {k:'climb',x:168,z:-82.85,face:270,look:'fireescape'},
-                    {k:'plateau',x:233.6,z:-61.25,w:1.6,d:2.2,h:3.5,edge:0.15},
+                    {k:'landing',x:233.65,z:-61.25,w:1.7,d:2.6,h:3.5,back:90},
                     {k:'climb',x:232.8,z:-61.85,face:90,look:'fireescape'},
                     {k:'climb',x:234.5,z:-60.65,face:90,look:'fireescape'},
-                    {k:'plateau',x:132.1,z:110.25,w:1.6,d:2.2,h:3.5,edge:0.15},
+                    {k:'landing',x:132.15,z:110.25,w:1.7,d:2.6,h:3.5,back:90},
                     {k:'climb',x:131.3,z:109.65,face:90,look:'fireescape'},
                     {k:'climb',x:133,z:110.85,face:90,look:'fireescape'},
-                    {k:'plateau',x:209.1,z:127.75,w:1.6,d:2.2,h:3.5,edge:0.15},
+                    {k:'landing',x:209.15,z:127.75,w:1.7,d:2.6,h:3.5,back:90},
                     {k:'climb',x:208.3,z:127.15,face:90,look:'fireescape'},
                     {k:'climb',x:210,z:128.35,face:90,look:'fireescape'},
                     {k:'tree',x:-36.75,z:-8.75,kind:'tree_3',h:3.8},
@@ -43756,14 +43756,14 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[6, -14], [12.25, -14]], w: 3.5 },                                                               // the deck's side street off the avenue
                     /* THE EAST YARDS (D2): a 6.8 m roof behind the pumping alley's bend, up a fire escape — a landing at 3.4, two ladders */
                     { k: 'plateau', x: 63, z: -35, w: 14, d: 10, h: 6.8, edge: 0.35, bld: { style: 'factory' } },                                              // THE EAST YARDS' roof
-                    { k: 'plateau', x: 70.9, z: -34, w: 1.6, d: 2.2, h: 3.4, edge: 0.15 },                                          // the fire escape's landing
+                    { k: 'landing', x: 70.85, z: -34, w: 1.7, d: 2.6, h: 3.4, back: 270 },                                         // the fire escape's landing (THE STEEL LANDING, 2026-11-13: a steel platform, never a terrain lump)
                     { k: 'climb', x: 71.7, z: -33.4, face: 270, look: 'fireescape' },                                                // the alley → the landing
                     { k: 'climb', x: 70.0, z: -34.6, face: 270, look: 'fireescape' },                                                // the landing → the roof
                     { k: 'rail', x0: 57.8, z0: -38.4, x1: 68.2, z1: -38.4 },                                                          // the roof's rail (the grind — 1.6 m inside the edge: a rail's forced band never lies past a tier's edge on the mass)
                     /* THE OLD TOWN (D2): THE COURT off the high street, THE WAREHOUSE ROOF up its fire escape */
                     { k: 'path', pts: [[-20, -58], [-20, -46]], w: 4 },                                                              // THE COURT (a dead-end court south off the high street)
                     { k: 'plateau', x: -28, z: -47, w: 12, d: 10, h: 6.0, edge: 0.35, bld: { style: 'factory' } },                                             // THE WAREHOUSE ROOF (west of the court)
-                    { k: 'plateau', x: -21.2, z: -47, w: 1.6, d: 2.2, h: 3.0, edge: 0.15 },                                         // its landing
+                    { k: 'landing', x: -21.2, z: -47, w: 1.6, d: 2.6, h: 3.0, back: 270 },                                         // its landing (a steel platform)
                     { k: 'climb', x: -20.4, z: -46.4, face: 270, look: 'fireescape' },                                               // the court → the landing
                     { k: 'climb', x: -22.0, z: -47.6, face: 270, look: 'fireescape' },                                               // the landing → the roof
                     { k: 'rail', x0: -32.2, z0: -50.4, x1: -23.8, z1: -50.4 },                                                        // the roof's rail (1.6 m inside the edge)
@@ -44299,16 +44299,14 @@ const DOOR_HQ = {
                     { k: 'rail', pts: [[25.4, -44.0], [30.6, -44.0]], y: 10.5, model: 'pipe', block: false },
                     { k: 'rail', pts: [[63.4, -44.0], [68.6, -44.0]], y: 10.5, model: 'pipe', block: false },
                     /* THE FIRE ESCAPES: a landing at 5.25, two ladders each — in the alleys */
-                    { k: 'plateau', x: -57.1, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                          // STACK W's landing (its east flank, the west alley)
-                    { k: 'plateau', x: -54.7, z: -48, w: 3.4, d: 4, h: 5.25, edge: 0.15 },                                            // …widened into the alley for the stair
+                    { k: 'landing', x: -55.5, z: -47.95, w: 5.0, d: 4.1, h: 5.25, back: 270, gaps: [[0, -54.6, -53.0]] },               // STACK W's landing (its east flank, the west alley), wide enough for the stair's head (THE STEEL LANDING, 2026-11-13: a steel platform over the alley, never a terrain lump)
                     { k: 'ramp', x0: -53.7, z0: -35.5, x1: -53.7, z1: -46.7, w: 1.4, h0: 0, h1: 5.25, stairs: true, model: 'fire_escape', edge: 0.1 },   // the fire escape's stair up the alley
                     { k: 'climb', x: -58.0, z: -47.6, face: 270, look: 'fireescape' },
-                    { k: 'plateau', x: -46.9, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                          // STACK A1's landing (its west flank, the west alley)
+                    { k: 'landing', x: -46.85, z: -47, w: 1.7, d: 2.6, h: 5.25, back: 90 },                                           // STACK A1's landing (its west flank, the west alley)
                     { k: 'climb', x: -47.7, z: -46.4, face: 90, look: 'fireescape' }, { k: 'climb', x: -46.0, z: -47.6, face: 90, look: 'fireescape' },
-                    { k: 'plateau', x: 40.9, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                           // STACK B2's landing (its east flank, the east alley)
+                    { k: 'landing', x: 40.85, z: -47, w: 1.7, d: 2.6, h: 5.25, back: 270 },                                           // STACK B2's landing (its east flank, the east alley)
                     { k: 'climb', x: 41.7, z: -46.4, face: 270, look: 'fireescape' }, { k: 'climb', x: 40.0, z: -47.6, face: 270, look: 'fireescape' },
-                    { k: 'plateau', x: 47.1, z: -47, w: 1.6, d: 2.2, h: 5.25, edge: 0.15 },                                           // STACK E1's landing (its west flank, the east alley)
-                    { k: 'plateau', x: 46.4, z: -48, w: 3.2, d: 4, h: 5.25, edge: 0.15 },                                             // …widened into the alley for the stair
+                    { k: 'landing', x: 46.4, z: -47.95, w: 3.2, d: 4.1, h: 5.25, back: 90, gaps: [[0, 44.8, 46.3]] },                    // STACK E1's landing (its west flank, the east alley), wide enough for the stair's head
                     { k: 'ramp', x0: 45.5, z0: -35.5, x1: 45.5, z1: -46.7, w: 1.4, h0: 0, h1: 5.25, stairs: true, model: 'fire_escape', edge: 0.1 },     // the fire escape's stair up the alley
                     { k: 'climb', x: 48.0, z: -47.6, face: 90, look: 'fireescape' },
                     { k: 'rail', x0: -78.4, z0: -50.4, x1: -59.6, z1: -50.4 }, { k: 'rail', x0: -44.4, z0: -50.4, x1: -33.6, z1: -50.4 }, { k: 'rail', x0: -26.4, z0: -50.4, x1: -13.6, z1: -50.4 }, { k: 'rail', x0: 13.6, z0: -50.4, x1: 24.4, z1: -50.4 }, { k: 'rail', x0: 31.6, z0: -50.4, x1: 38.4, z1: -50.4 }, { k: 'rail', x0: 49.6, z0: -50.4, x1: 62.4, z1: -50.4 }, { k: 'rail', x0: 69.6, z0: -50.4, x1: 82.4, z1: -50.4 },   // the roofs' back parapets (the grind — 1.6 m inside the edge, one per roof: a rail across a yard gap opens the yard)
@@ -60801,7 +60799,7 @@ function hqTerrainCompile(room, roomId) {
     const X = hqRoomExpand(room);   // THE SHAPES (E1): openings, prefabs, kits and textured buildings as the compiler's own rows
     const F0 = _hqTBoardFloors(X.features);   // THE BOARD: each board row + the flat floor it lies on
     const F = slopeB ? _hqTSlopeFeatures(F0, slopeB) : F0;
-    const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [], climbRows = [], bridges = [], boards = [];
+    const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [], climbRows = [], landingRows = [], bridges = [], boards = [];
     const fluidGrids = new Map(), gridOf = (f) => { if (!fluidGrids.has(f)) fluidGrids.set(f, hqFluidGrid(room, roomId, f)); return fluidGrids.get(f); };   // THE SQUARE WATER
     const fluidY = (f) => (+f.y || 0) - (gridOf(f) ? HQ_FLUID_GRID_RULES.inset : 0);   // THE SUNK SURFACE: the square water's surface, sunk under its drawn height
     F.forEach(f => {
@@ -60818,6 +60816,7 @@ function hqTerrainCompile(room, roomId) {
             case 'tree': trees.push(Object.assign({ x: f.x, z: f.z, kind: f.kind || 'tree', h: f.h || null, r: f.r || R.treeR, face: isFinite(f.face) ? +f.face : null }, Array.isArray(f.chessPos) ? { chessPos: f.chessPos.slice() } : null)); break;   // THE CHESS POSITIONS: the positions a piece stands in   // face (E6): the editor's R turns a tree
             case 'grove': case 'scatter': scatterRows.push(f); break;
             case 'climb': climbRows.push(f); break;
+            case 'landing': landingRows.push(f); break;   // THE STEEL LANDING (2026-11-13): a fire escape's platform, a slab over the ground (below)
             case 'board': boards.push(hqTerrainBoard(f)); break;   // THE BOARD: the squares (drawn as marks, read by THE FIELD's raster)
             default: break;
         }
@@ -61128,6 +61127,13 @@ function hqTerrainCompile(room, roomId) {
     }
     /* THE GENERATED FLOOR PLAN (2026-09-17): the mask, the rise on the solid, the thicket — before the walls / trees / scatter read the field */
     info.shops = Array.isArray(T.shops) ? T.shops.map(r => Object.assign({}, r)) : [];   // THE SHOPFRONTS (THE MALL, THE THIRD PASS, 2026-09-17): drawn by three-renderer.js _hqBuildShopfronts
+    /* THE STEEL LANDING (2026-11-13, mondo: "Can i not just climb up the ladder and stand on the platform part? I dont want these weird
+       shape raised terrain thingys"): a fire escape's halfway landing was a 1.6 x 2.2 m terrain `plateau`, which the height field can
+       only draw as a slanted lump (jumped onto, slid off). A `landing` row is a steel platform instead: a hidden bridge slab the walker
+       stands on (the ground under it stays flat and walked), a hung `ghost` wall along each open side (the rails stop the walker), and
+       a ladder whose head or foot stands on it takes the slab's height (hqTerrainClimbs). three-renderer.js _hqBuildClimbs draws it. */
+    info.landings = hqTerrainLandings(info, landingRows);
+    info.landings.forEach(l => { bridges.push(l.slab); l.rails.concat(l.guard).forEach((r, n) => walls.push({ k: 'wall', x0: r[0], z0: r[1], x1: r[2], z1: r[3], y0: l.y, y: l.y + 1.05, h: 1.05, t: 0.08, ghost: true, rail: false, id: l.id + ':rail' + n })); });
     info.climbs = hqTerrainClimbs(info, climbRows);   // THE CLIMB (2026-09-19): the edges exist BEFORE the plan's guarantee runs (a ladder out of a pit is the return; no rescue ramp is cut for it)
     info.bridges = hqTerrainBridges(info, bridges);   // THE BRIDGE LAYER: the plan's guarantee walks the bridges too
     /* THE STITCHED MOUTH (OPEN WORLD Phase 4): a floor plan's rim is solid past the shell (the thicket's bank, 1.4–1.8 m in the
@@ -61524,6 +61530,40 @@ function hqTerrainCompile(room, roomId) {
    (`climbMount` m along the face). The compiled row carries the FOOT spot (`fx, fz` — reach behind the line) and the
    HEAD spot (`hx, hz` — on the tier past the line), both landings on the field. */
 const HQ_CLIMB_LOOKS = ['ladder', 'rope', 'vine', 'chain', 'pipe', 'wall', 'fireescape'];   // AREA CONTENT D2 (2026-09-19): `fireescape` = a steel ladder with a grated landing cage at its head — chained through landing plateaus it is a tenement's fire escape
+/* THE STEEL LANDING (2026-11-13): a row { k: 'landing', x, z, w, d, h | y, back } = a steel platform w (along x) by d (along z), its top
+   `h` over the lowest ground under it (or at the absolute `y`), `back` = the heading of the side that stands against the building (no
+   rail there), `gaps` = a stair's mouth in a rail. Each: { id, x, z, w, d, y, back, rails: [[x0, z0, x1, z1]…], slab: the hidden bridge row }. */
+function hqTerrainLandings(info, rows) {
+    const out = [];
+    (rows || []).forEach((f, i) => {
+        if (!f || typeof f.x !== 'number' || typeof f.z !== 'number' || !(f.w >= 0.8) || !(f.d >= 0.8)) return;
+        const hw = f.w / 2, hd = f.d / 2, id = f.id || ('landing:' + i);
+        let y = f.y;
+        if (typeof y !== 'number') { let g = Infinity; [[0, 0], [-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(p => { g = Math.min(g, hqTerrainHeight(info, f.x + p[0] * hw, f.z + p[1] * hd)); }); y = Math.round((g + (f.h > 0 ? f.h : 3.5)) * 100) / 100; }
+        const back = (typeof f.back === 'number') ? ((f.back % 360) + 360) % 360 : null;
+        const rails = [[0, f.x - hw, f.z - hd, f.x + hw, f.z - hd], [90, f.x + hw, f.z - hd, f.x + hw, f.z + hd], [180, f.x - hw, f.z + hd, f.x + hw, f.z + hd], [270, f.x - hw, f.z - hd, f.x - hw, f.z + hd]].filter(s => s[0] !== back);
+        /* `gaps: [[heading, a, b]…]` = no rail on that side from a to b (x on the north / south side, z on the east / west): a stair's mouth */
+        const cut = [];
+        rails.forEach(s => {
+            const ns = (s[0] === 0 || s[0] === 180), lo = ns ? s[1] : s[2], hi = ns ? s[3] : s[4];
+            let runs = [[lo, hi]];
+            (Array.isArray(f.gaps) ? f.gaps : []).forEach(g => { if (g[0] !== s[0]) return; const a = Math.min(g[1], g[2]), b = Math.max(g[1], g[2]); runs = runs.flatMap(r => (b <= r[0] || a >= r[1]) ? [r] : [[r[0], a], [b, r[1]]].filter(q => q[1] - q[0] > 0.2)); });
+            runs.forEach(r => cut.push(ns ? [r[0], s[2], r[1], s[4]] : [s[1], r[0], s[3], r[1]]));
+        });
+        /* a landing with no mass behind it (its building became a walk-in): the back is closed to the walker too (a wall nobody sees) */
+        const guard = [];
+        if (back != null) { const br = back * Math.PI / 180, bx = Math.sin(br), bz = -Math.cos(br), ns = (back === 0 || back === 180); if (!(hqTerrainHeight(info, f.x + bx * ((ns ? hd : hw) + 0.5), f.z + bz * ((ns ? hd : hw) + 0.5)) > y + 0.5)) guard.push(ns ? [f.x - hw, f.z + bz * hd, f.x + hw, f.z + bz * hd] : [f.x + bx * hw, f.z - hd, f.x + bx * hw, f.z + hd]); }
+        const slab = (f.w >= f.d) ? { k: 'bridge', x0: f.x - hw, z0: f.z, x1: f.x + hw, z1: f.z, w: f.d } : { k: 'bridge', x0: f.x, z0: f.z - hd, x1: f.x, z1: f.z + hd, w: f.w };
+        Object.assign(slab, { y, thick: 0.1, rails: false, hide: true, landing: true, id });
+        out.push({ id, x: f.x, z: f.z, w: f.w, d: f.d, y, back, rails: cut, guard, slab });
+    });
+    return out;
+}
+function _hqTLandingAt(info, x, z) {
+    const L = info.landings; if (!L || !L.length) return null;
+    for (const l of L) if (Math.abs(x - l.x) <= l.w / 2 + 0.02 && Math.abs(z - l.z) <= l.d / 2 + 0.02) return l;
+    return null;
+}
 function hqTerrainClimbs(info, rows) {
     const R = info.rules || HQ_TERRAIN_RULES, out = [];
     (rows || []).forEach((f, i) => {
@@ -61537,11 +61577,14 @@ function hqTerrainClimbs(info, rows) {
         let hx = f.x + ux * m, hz = f.z + uz * m, gHead = hqTerrainHeight(info, hx, hz);
         for (let d = m + 0.1; d <= m + 0.9 + 1e-6; d += 0.1) { const px = f.x + ux * d, pz = f.z + uz * d, g = hqTerrainHeight(info, px, pz); if (g > gHead + 0.02) { gHead = g; hx = px; hz = pz; } else break; }
         hx = Math.round(hx * 100) / 100; hz = Math.round(hz * 100) / 100;
-        const gFoot = hqTerrainHeight(info, fx, fz);
+        /* THE STEEL LANDING (2026-11-13): a foot or a head on a fire escape's landing stands at the slab's top (a free query reads the ground under it) */
+        const lFoot = _hqTLandingAt(info, fx, fz), lHead = _hqTLandingAt(info, hx, hz);
+        const gFoot = lFoot ? lFoot.y : hqTerrainHeight(info, fx, fz);
+        if (lHead && lHead.y > gHead) gHead = lHead.y;
         const y0 = (typeof f.y0 === 'number') ? f.y0 : gFoot;
         let y1 = (typeof f.y1 === 'number') ? f.y1 : gHead;
         if (y1 - y0 < 0.9) { if (typeof console !== 'undefined') console.warn('[terrain] climb', i, 'in', info.roomId, 'rises', (y1 - y0).toFixed(2), 'm — dropped (a climb rises ≥ 0.9 m)'); return; }
-        out.push({ i, x: f.x, z: f.z, y0, y1, face, look, w: f.w || ((look === 'ladder' || look === 'fireescape') ? 0.6 : look === 'wall' ? 1.2 : 0.35), ux, uz, fx, fz, hx, hz, len: y1 - y0, id: f.id || (look + ':' + i) });
+        out.push({ i, x: f.x, z: f.z, y0, y1, face, look, w: f.w || ((look === 'ladder' || look === 'fireescape') ? 0.6 : look === 'wall' ? 1.2 : 0.35), ux, uz, fx, fz, hx, hz, len: y1 - y0, id: f.id || (look + ':' + i), landing: (lHead && Math.abs(lHead.y - y1) < 0.05) ? lHead.id : null, footOn: (lFoot && Math.abs(lFoot.y - y0) < 0.05) ? lFoot.id : null });
     });
     return out;
 }
@@ -61577,7 +61620,7 @@ function hqTerrainBridges(info, rows) {
         const L = Math.hypot(f.x1 - f.x0, f.z1 - f.z0); if (L < 0.5) return;
         const b = { i, layer: out.length + 1, x0: f.x0, z0: f.z0, x1: f.x1, z1: f.z1, w: f.w || 3, y: f.y, thick: (typeof f.thick === 'number') ? f.thick : R.bridgeThick, rails: f.rails !== false, key: f.key || null, len: L, id: f.id || ('bridge:' + i) };
         /* THE STANDS (2026-09-26): a TIER bridge is a row of seating carried over a tunnel — no girder, no kerb, no piers (plain), seats drawn on it */
-        if (f.plain) b.plain = true; if (f.tier) b.tier = true; if (f.hide) b.hide = true;   // `hide` (THE REAL COLLISION): a roof the renderer draws itself (a texbuilding's) — walked, never drawn if (typeof f.drawW === 'number') b.drawW = f.drawW; if (f.glaze) b.glaze = f.glaze; if (f.seat) b.seat = f.seat; if (f.front) b.front = f.front.slice(); if (f.gaps) b.gaps = f.gaps.map(g => g.slice());
+        if (f.plain) b.plain = true; if (f.tier) b.tier = true; if (f.hide) b.hide = true; if (f.landing) b.landing = true;   // `hide` (THE REAL COLLISION): a roof the renderer draws itself (a texbuilding's) — walked, never drawn if (typeof f.drawW === 'number') b.drawW = f.drawW; if (f.glaze) b.glaze = f.glaze; if (f.seat) b.seat = f.seat; if (f.front) b.front = f.front.slice(); if (f.gaps) b.gaps = f.gaps.map(g => g.slice());
         /* the ground under the span (the piers' feet, the headroom check): sampled every metre */
         let gmax = -Infinity, low = 0;
         for (let k = 0; k <= Math.ceil(L); k++) { const t = Math.min(1, k / Math.max(1, L)); const g = hqTerrainHeight(info, f.x0 + (f.x1 - f.x0) * t, f.z0 + (f.z1 - f.z0) * t); if (g > gmax) gmax = g; if (b.y - b.thick - g < R.headroom && b.y - g > R.climb + 0.05) low++; }
@@ -61668,7 +61711,14 @@ function hqTerrainClimbEdges(info) {
     const nx = info.nx, res = info.res, E = new Map();
     const node = (x, z) => { const i = Math.max(0, Math.min(nx - 1, Math.round((x - info.x0) / res))), j = Math.max(0, Math.min(info.nz - 1, Math.round((z - info.z0) / res))); return j * nx + i; };
     const add = (a, b, y) => { if (!E.has(a)) E.set(a, []); E.get(a).push({ k: b, y }); };
-    (info.climbs || []).forEach(c => { const a = node(c.fx, c.fz), b = node(c.hx, c.hz); if (a === b) return; add(a, b, c.y1); add(b, a, c.y0); });
+    /* THE STEEL LANDING (2026-11-13): an end on a landing takes the nearest grid node that STANDS on the slab (the nearest node may lie under a rail) */
+    const fit = (x, z, y) => {
+        const i0 = Math.max(0, Math.min(nx - 1, Math.round((x - info.x0) / res))), j0 = Math.max(0, Math.min(info.nz - 1, Math.round((z - info.z0) / res)));
+        let best = j0 * nx + i0, bd = Infinity;
+        for (let dj = -2; dj <= 2; dj++) for (let di = -2; di <= 2; di++) { const i = i0 + di, j = j0 + dj; if (i < 0 || j < 0 || i >= nx || j >= info.nz) continue; const yy = _hqTClimbLand(info, i, j, y); if (yy == null || Math.abs(yy - y) > 0.05) continue; const d = Math.hypot(info.x0 + i * res - x, info.z0 + j * res - z); if (d < bd) { bd = d; best = j * nx + i; } }
+        return best;
+    };
+    (info.climbs || []).forEach(c => { const a = c.footOn ? fit(c.fx, c.fz, c.y0) : node(c.fx, c.fz), b = c.landing ? fit(c.hx, c.hz, c.y1) : node(c.hx, c.hz); if (a === b) return; add(a, b, c.y1); add(b, a, c.y0); });
     Object.defineProperty(info, '_climbEdges', { value: E, enumerable: false, configurable: true, writable: true });
     return E;
 }
