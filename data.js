@@ -60712,7 +60712,10 @@ function hqTerrainCompile(room, roomId) {
        joins the room's marks, and every textured building is handed to the renderer with the ground it stands on */
     X.props.forEach(p => { if (p && p.key) info.scatter.push(Object.assign({}, p)); });
     info.marksX = boards.length ? (X.marks || []).concat(hqTerrainBoardMarks(boards)) : X.marks;   // THE BOARD: its squares join the paint
-    info.arch = (X.arch || []).map(f => Object.assign({}, f, { base: (typeof f.y === 'number') ? f.y : (h => isFinite(h) ? _hqR4(h) : 0)(hAt(+f.x || 0, +f.z || 0)) }));   // THE ARCHITECTURE: each row with the ground under its origin
+    /* THE ARCHITECTURE: each row with the ground under its origin. A ROOF IS NOT GROUND (2026-11-13): an origin over a building plateau
+       (a roof-walk building, `bld`) takes the ground that building stands on, never its 7 m roof (fronts stood one storey up) */
+    const archGround = (px, pz) => { for (const b of bldTexb) { const a = -(b.rot || 0) * Math.PI / 180, dx = px - b.x, dz = pz - b.z, lx = dx * Math.cos(a) - dz * Math.sin(a), lz = dx * Math.sin(a) + dz * Math.cos(a); if (Math.abs(lx) <= b.w / 2 + 0.01 && Math.abs(lz) <= b.d / 2 + 0.01) return b.base; } const h = hAt(px, pz); return isFinite(h) ? _hqR4(h) : 0; };
+    info.arch = (X.arch || []).map(f => Object.assign({}, f, { base: (typeof f.y === 'number') ? f.y : archGround(+f.x || 0, +f.z || 0) }));
     info.texb = X.texb.map(f => Object.assign({}, f, { base: (typeof f.y === 'number') ? f.y : texbGround.has(f) ? texbGround.get(f) : hqTexBuildingGround(f, hAt) })).concat(bldTexb);
     return info;
 }
