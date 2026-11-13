@@ -1,21 +1,20 @@
 THE PROP CHECK, written by node bake-disaster-city.js. A district file's own prop that stands in something is listed here for its thread; a shared prop with no clear spot is left out.
-{"checked":1917,"clear":1494,"moved":357,"left_out":13,"district_reported":6,"by":{"car_cop in lamp":2,"car_cop in prop":4,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":15,"item_police_barricade in step":5,"planter in arch":10,"dumpster in step":7,"dumpster in arch":2,"planter in stairs":1,"planter in prop":3,"planter in doorway":1,"vending_machine in arch":34,"vending_machine in doorway":2,"public_phone in arch":12,"ind_vent in arch":12,"utility_box in arch":9,"ind_panel in arch":9,"utility_box in step":4,"traffic_cone in arch":20,"traffic_cone in step":28,"traffic_cone in building":12,"psx_wooden_crate_1 in prop":1,"psx_wooden_crate_1 in step":2,"psx_wooden_crate_1 in arch":1,"ticket_booth in step":1,"popcorn_cart in step":1,"psx_potted_cactus_mp_1 in arch":7,"psx_planter_pot_mp_1_full in arch":86,"psx_potted_cactus_mp_1 in doorway":2,"psx_planter_pot_mp_1_full in doorway":4,"psx_planter_pot_mp_1_full in prop":1,"roads_g_sign_008 in arch":1,"metro_bin in pole":1,"psx_metal_barrel_mp_0 in arch":7,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in arch":15,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_wooden_crate_3 in building":10,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_3 in arch":1,"psx_metal_barrel_mp_2 in prop":1,"metro_bin in arch":1,"garbage_bags in stairs":2,"garbage_bag in step":1,"garbage_bag in arch":1,"garbage_bags in step":1,"garbage_bags in prop":3,"garbage_bags in arch":1,"garbage_bag in prop":2,"metal_trash_can in arch":1,"metal_trash_can in building":3,"garbage_bags in building":5,"garbage_bag in building":1,"power_pole in arch":2,"power_pole in prop":1},"snugged":162}
+{"checked":1875,"clear":1473,"moved":337,"left_out":11,"district_reported":7,"by":{"car_cop in lamp":2,"car_cop in prop":4,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":16,"dumpster in arch":1,"item_police_barricade in step":3,"dumpster in stairs":1,"dumpster in step":2,"planter in arch":6,"planter in doorway":1,"planter in prop":2,"vending_machine in arch":34,"vending_machine in doorway":2,"public_phone in arch":11,"ind_vent in arch":18,"utility_box in arch":10,"ind_panel in arch":10,"utility_box in step":2,"park_bench in step":4,"park_bench in arch":2,"traffic_cone in step":28,"traffic_cone in arch":10,"psx_wooden_crate_1 in arch":1,"traffic_cone in building":8,"ticket_booth in step":1,"psx_potted_cactus_mp_1 in arch":7,"psx_planter_pot_mp_1_full in arch":86,"psx_potted_cactus_mp_1 in doorway":2,"psx_planter_pot_mp_1_full in doorway":4,"psx_planter_pot_mp_1_full in prop":1,"roads_g_sign_008 in arch":1,"metro_bin in pole":1,"psx_metal_barrel_mp_0 in arch":6,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in arch":17,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_wooden_crate_3 in building":5,"psx_wooden_crate_3 in step":2,"psx_metal_barrel_mp_3 in prop":1,"psx_metal_barrel_mp_2 in prop":2,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_3 in arch":1,"meshy_sandbags in prop":1,"metro_bin in arch":1,"garbage_bag in step":1,"garbage_bags in stairs":2,"metal_trash_can in step":1,"garbage_bag in arch":1,"garbage_bags in building":5,"garbage_bags in step":2,"garbage_bags in arch":1,"garbage_bags in prop":1,"garbage_bag in building":3,"metal_trash_can in building":2,"power_pole in prop":1},"snugged":157}
 car_taxi  90.85  -145.95  arch
 car_taxi  90.85  -156.75  arch
 car_taxi  90.85  -162.15  arch
 car_suv  234.8  -151.2  building
+fighter_jet  -89.4  183.75  building
 bus_shelter  -249.8  -158.5  arch
 car_pack_2  -155.4  -158  building
 vending_machine  -237.51  26.25  arch  left out
 vending_machine  -57.75  115.99  arch  left out
 ind_panel  176.75  -87.9  arch  left out
-utility_box  244.58  -85.75  step  left out
-utility_box  -131.25  80.08  step  left out
-utility_box  -61.25  80.08  step  left out
+utility_box  250.25  -87.92  arch  left out
+utility_box  -71.75  80.08  step  left out
 psx_planter_pot_mp_1_full  -68.25  115.99  arch  left out
 psx_planter_pot_mp_1_full  -61.25  115.99  arch  left out
 psx_metal_barrel_mp_3  -204.3  -139.45  building  left out
 psx_metal_barrel_mp_1  -205.15  -139.45  building  left out
 psx_metal_barrel_mp_0  -204.8  -138.75  building  left out
-psx_wooden_crate_3  245.75  -1.75  building  left out
-garbage_bags  201.1  80.6  building  left out
+psx_wooden_crate_3  -212.75  -117.25  building  left out

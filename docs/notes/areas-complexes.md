@@ -2644,3 +2644,6 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - HERO PLAZA, the signs (2026-11-13 21:10): `kit().sign(side, half, u, y, w, h, words, fg, bg)` = a quad facing out of that wall with key
   `txt:WORDS|fg|bg|aspect` (THE SIGN LETTERING). Boards: HERO WORKSHOP, PRESS COURT, TRAINING HALL, TRANSIT COURT, DELIVERIES, DISPATCH, COFFEE,
   NEWS, SNACKS (the buildings' own plan names, nothing invented). `LIFT` leaves `txt:` keys alone. Seen in game reading the right way on S and N walls.
+- **THE DEEPER HANGAR (2026-11-13, mondo 21:21 "make hangar deeper so it fits")**: `I.js` `tailor` gives P03-10-B1 the walk square in front of it (plan column 8): 28 x 14 m, four squares deep, 7 m walls
+  under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. Seen in the
+  cloud browser from inside. INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.

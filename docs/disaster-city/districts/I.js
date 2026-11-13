@@ -5,6 +5,13 @@
    plateau (the two walk-in tiers, Freight gate + Loading office, become hollow texbuildings: two storeys = the same 7 m walked roof slab).
    Run by bake-disaster-city.js (THE DISTRICT FILES: `build(ctx)`, after every row exists). Everything here touches Industrial rows only. Notes: areas-complexes.md "DISASTER CITY, THE INDUSTRIAL DISTRICT". */
 'use strict';
+/* THE DEEPER HANGAR (mondo 11-13 21:21 "make hangar deeper so it fits"): the plan's hangar is two squares deep; the F22 is 10.6 m across, so the
+   hangar takes the walk square in front of it too (column 8 of P03-10): four squares deep with the tool's own growth, its door one square west. */
+exports.tailor = function (PLAN, plotOf) {
+    const p = plotOf['P03-10'], b = p && p.buildings.find(v => v.id === 'P03-10-B1'); if (!b || b.x !== 9) return;
+    b.x = 8; b.w = 3; b.doors.forEach(d => { d.x = 8; d.ox = 7; });
+    p.cells = p.cells.map((row, y) => { if (y < 1 || y > 8) return row; const a = row.split(''); a[8] = y === 5 ? 'D' : 'I'; if (y === 5) a[9] = 'I'; return a.join(''); });
+};
 exports.build = function (ctx) {
     const { plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, cellAt, C, N } = ctx;
     const pid = (x, y) => 'P' + String(x).padStart(2, '0') + '-' + String(y).padStart(2, '0');
@@ -128,9 +135,9 @@ exports.build = function (ctx) {
             ...body(c, 7, U('MetalCorrugatedPainted5a'), 0xffffff), box(0, 7, 0, c.fw + 0.7, 0.4, c.fd + 0.7, U('ConcreteStriped2a'), 0xdddddd, { top: false, roof: true }),
             box(0, 7.4, 0, c.fw - 1, 2, 8, U('GlassWindowFactory3a'), T.glass, { roof: true, top: false }), roof('gable', 0, 9.4, 0, c.fw, 1.3, 9, TIN, T.steel, { keyEnd: TIN }),
             ...[-11.6, -7.1, -2.6, 4.3, 8.9].flatMap(x => bay(x, c.fd / 2 + 0.1, 3.9, 4)), box(0, 4.7, c.fd / 2 + 0.35, c.fw - 1, 0.3, 0.6, PLAIN, T.yellow)] },
-        'P03-10-B1': { inside: true, st: 1, leaf: 'leaf_exit', parts: c => [   // HANGAR: a long arched hangar, its open end to the apron
-            ...body(c, 3.5, TIN, T.silver, { top: TIN }), roof('barrel', 0, 3.6, 0, c.fw + 0.2, 4.2, c.fd + 0.2, TIN, 0xe6e8ea, { keyEnd: TIN, tintEnd: T.silver, seg: 14 }),
-            box(c.fw / 2 + 0.1, 0, 0, 0.1, 5.4, 7.4, PLAIN, T.black), box(c.fw / 2 + 0.16, 5.6, 0, 0.1, 0.9, 6, PLAIN, T.red)] },
+        'P03-10-B1': { inside: true, st: 2, leaf: 'leaf_exit', parts: c => [   // HANGAR: a long arched hangar, its open end to the apron (7 m walls: the F22 inside stands 5 m)
+            ...body(c, 7, TIN, T.silver, { top: TIN }), roof('barrel', 0, 7.1, 0, c.fw + 0.2, 4.2, c.fd + 0.2, TIN, 0xe6e8ea, { keyEnd: TIN, tintEnd: T.silver, seg: 14 }),
+            box(c.fw / 2 + 0.1, 0, 0, 0.1, 6, 11, PLAIN, T.black), box(c.fw / 2 + 0.16, 6.2, 0, 0.1, 0.7, 6, PLAIN, T.red)] },
         'P03-10-B2': { st: 1, parts: c => [   // CONTROL TOWER: a low base, a slim shaft, the overhanging glass cab, a red cone
             box(0, 0, 0, c.fw + 0.1, 3.5, c.fd + 0.1, U('ConcreteStriped1a'), 0xcfc8b8, { top: false }), box(0, 3.5, 0, c.fw + 0.7, 0.35, c.fd + 0.7, U('ConcreteStriped2a'), T.dark),
             cyl(c.fw / 2 - 4.5, 3.85, 0, 1.9, 12, U('ConcreteStriped2a'), 0xe2e2e2), cyl(c.fw / 2 - 4.5, 15.85, 0, 2.7, 0.5, U('ConcreteStriped2a'), T.dark),
@@ -277,10 +284,10 @@ exports.build = function (ctx) {
             box(-c.fw / 2 + 0.5, 7.4, -4.06, 0.14, 2, 0.1, PLAIN, T.dark, { roof: true, n: 12, step: [(c.fw - 1) / 11, 0, 0] }), box(c.fw / 2 + 0.1, 4, 0, 0.1, 1.5, c.fd - 3, U('GlassWindowFactory1a'), T.glass), box(-c.fw / 2 - 0.1, 4, 0, 0.1, 1.5, c.fd - 3, U('GlassWindowFactory1a'), T.glass),
             ...pipes(c, 7, 0.35), box(-13.9, 0, c.fd / 2 + 0.45, 0.25, 1, 0.25, PLAIN, T.yellow, { n: 4, step: [4.5, 0, 0] }), streaks(-c.fw / 2 + 2, 2, -c.fd / 2 - 0.09, 5, 5, (c.fw - 4) / 4), ladder(-c.fw / 2 - 0.16, -3, 7)],
         'P03-10-B1': c => [box(0, 0, c.fd / 2 + 0.2, c.fw + 0.4, 0.6, 0.4, CONC, 0xb8b0a0), box(0, 0, -c.fd / 2 - 0.2, c.fw + 0.4, 0.6, 0.4, CONC, 0xb8b0a0), ...doorTrim(c, T.steel),
-            roof('barrel', -c.fw / 2 + 0.3, 3.6, 0, 0.35, 4.32, c.fd + 0.5, PLAIN, T.slate, { n: 8, step: [(c.fw - 0.6) / 7, 0, 0], seg: 14 }), box(c.fw / 2 + 0.14, 0, -3.9, 0.2, 5.6, 0.4, PLAIN, T.yellow, { n: 2, step: [0, 0, 7.8] }),
-            box(c.fw / 2 + 0.14, 5.4, 0, 0.2, 0.4, 8.2, PLAIN, T.yellow), box(-c.fw / 2 + 3, 1.3, c.fd / 2 + 0.1, c.fw - 8, 1.3, 0.1, U('GlassWindowFactory1a'), T.glass), box(0, 1.3, -c.fd / 2 - 0.1, c.fw - 6, 1.3, 0.1, U('GlassWindowFactory1a'), T.glass),
-            cyl(-c.fw / 2 + 1, 7.8, 0, 0.06, 3.5, PLAIN, T.dark, { seg: 6, roof: true }), cyl(-c.fw / 2 + 1.5, 10.9, 0, 0.3, 0.3, PLAIN, T.orange, { r2: 0.12, seg: 8, roof: true, cap: false, ds: true }),
-            box(c.fw / 2 + 0.2, 7.2, 0, 0.3, 0.3, 0.3, null, 0xff3020, { glow: 1, roof: true })],
+            roof('barrel', -c.fw / 2 + 0.3, 7.1, 0, 0.35, 4.32, c.fd + 0.5, PLAIN, T.slate, { n: 8, step: [(c.fw - 0.6) / 7, 0, 0], seg: 14 }), box(c.fw / 2 + 0.14, 0, -5.7, 0.2, 6.2, 0.4, PLAIN, T.yellow, { n: 2, step: [0, 0, 11.4] }),
+            box(c.fw / 2 + 0.14, 6, 0, 0.2, 0.4, 11.8, PLAIN, T.yellow), box(-c.fw / 2 + 3, 1.3, c.fd / 2 + 0.1, c.fw - 8, 1.3, 0.1, U('GlassWindowFactory1a'), T.glass), box(0, 1.3, -c.fd / 2 - 0.1, c.fw - 6, 1.3, 0.1, U('GlassWindowFactory1a'), T.glass),
+            cyl(-c.fw / 2 + 1, 11.3, 0, 0.06, 3.5, PLAIN, T.dark, { seg: 6, roof: true }), cyl(-c.fw / 2 + 1.5, 14.4, 0, 0.3, 0.3, PLAIN, T.orange, { r2: 0.12, seg: 8, roof: true, cap: false, ds: true }),
+            box(c.fw / 2 + 0.2, 10.7, 0, 0.3, 0.3, 0.3, null, 0xff3020, { glow: 1, roof: true }), box(0, 4.6, c.fd / 2 + 0.1, c.fw - 4, 1.3, 0.1, U('GlassWindowFactory1a'), T.glass), txt(c.door.lx, 3.2, c.fd / 2 + 0.1, 4, 0.7, 'HANGAR', '#22262a')],
         'P03-10-B2': c => { const sx = c.fw / 2 - 4.5;
             return [...ring(c, 0, 0.5, 0.1, PLAIN, T.dark), ...doorDecal(-c.fw / 2 + 2.5, c.fd / 2 + 0.06), box(-c.fw / 2 + 6, 1.2, c.fd / 2 + 0.1, 4, 1.5, 0.1, U('GlassWindowSquare1a'), 0xffffff), ...frame(-c.fw / 2 + 6, 1.2, c.fd / 2 + 0.1, 4, 1.5, 3, T.dark),
                 cyl(sx, 6.5, 0, 1.96, 0.3, PLAIN, T.dark, { cap: false, n: 3, step: [0, 3.2, 0] }), box(sx, 5, 1.92, 0.5, 1, 0.08, U('GlassWindowSquare1a'), 0xffffff, { win: 'keep', n: 3, step: [0, 3.2, 0] }),
@@ -367,7 +374,7 @@ exports.build = function (ctx) {
         'P01-10-B3': c => [...wac(c.fw / 2 - 1.2, 2.6, c.fd / 2 + 0.36, false)],
         'P02-10-B1': c => [...ac(-c.fw / 2 + 2, 7.4, c.fd / 2 - 1.3), ...ac(-c.fw / 2 + 4.4, 7.4, c.fd / 2 - 1.3), ...ac(c.fw / 2 - 2, 7.4, -c.fd / 2 + 1.3), duct(0, 7.4, -c.fd / 2 + 1.3, c.fw / 2, 0.6), walk(0, 7.41, c.fd / 2 - 1.3, c.fw / 2, 0.9),
             ...hatch(c.fw / 2 - 2, 7.4, c.fd / 2 - 1.3), box(0, 7.4, c.fd / 2 + 0.2, c.fw + 0.8, 0.4, 0.2, PLAIN, T.dark, { roof: true, n: 2, step: [0, 0, -c.fd - 0.4] }), ...wac(c.fw / 2 + 0.3, 2.2, 3, true)],
-        'P03-10-B1': c => [...wac(-c.fw / 2 + 2, 2.9, c.fd / 2 + 0.3, false), box(-c.fw / 4, 7.75, 0, 1.2, 0.5, 1.2, GRILL, 0xffffff, { roof: true, n: 3, step: [c.fw / 4, 0, 0] })],
+        'P03-10-B1': c => [...wac(-c.fw / 2 + 2, 2.9, c.fd / 2 + 0.3, false), box(-c.fw / 4, 11.25, 0, 1.2, 0.5, 1.2, GRILL, 0xffffff, { roof: true, n: 3, step: [c.fw / 4, 0, 0] })],
         'P03-10-B2': c => [...ac(-c.fw / 2 + 2, 3.85, 0), ...ac(-c.fw / 2 + 4.3, 3.85, 0), ...hatch(-c.fw / 2 + 2, 3.85, c.fd / 2 - 1.5), ...parapet(c, 3.85, 0.3, CONC, T.dark), ...wac(-c.fw / 2 - 0.3, 2.2, 0, true)],
         'P01-11-B1': c => [...wac(c.fw / 2 + 0.3, 2.2, 1, true), box(0, 1, -c.fd / 2 - 0.12, c.fw - 3, 2.6, 0.1, U('DecalWindowsFactory1a'), 0xffffff, { faces: 'b', top: false, win: 'keep', uv: [3.5, 2.6] }), manhole(-c.fw / 2 - 2.6, c.fd / 2 + 1.2, 2, 2)],
         'P02-11-B1': c => [...ac(-c.fw / 2 + 1.4, 3.95, -c.fd / 2 + 1.2), ...hatch(c.fw / 2 - 1.3, 3.95, c.fd / 2 - 1.3), walk(0, 3.96, c.fd / 2 - 1.3, c.fw - 4, 0.9), manhole(c.fw / 2 + 2.2, -2, 2, 0), manhole(-2, c.fd / 2 + 2.2, 2, 4)],
@@ -449,6 +456,11 @@ exports.build = function (ctx) {
     count2.skip = one('P01-08', 8, 4, 'ind_skip_full', 90) + one('P02-11', 9, 8, 'ind_skip', 0) + one('P01-10', 9, 4, 'ind_skip_full', 90);
     count2.panel = one('P02-09', 9, 1, 'ind_panel', 180) + one('P02-09', 9, 2, 'ind_panel', 180);
     count2.boxes = boxes;
+    /* the F22 in the hangar: 15.5 x 10.6 m = five squares by three, its nose along the hangar, the row of squares behind the front wall left as the walkway */
+    (function () { const b = bInfo.find(v => v.id === 'P03-10-B1'); if (!b) return; const ew = b.side === 'E' || b.side === 'W', fd = ew ? b.w : b.d2, q = ROT[b.side] * Math.PI / 180, lz = fd / 2 - 8.6;
+        if (fd < 13.9) { console.log('industrial: the hangar is', fd, 'm deep, the jet stays out'); return; }
+        const fw = ew ? b.d2 : b.w, lx = Math.round(fw / C) % 2 ? 0 : -C / 2;   // an even count of squares along the hangar: half a square off, so it fills whole squares
+        props.push({ key: 'fighter_jet', x: r3(b.x + lx * Math.cos(q) - lz * Math.sin(q)), z: r3(b.z + lx * Math.sin(q) + lz * Math.cos(q)), face: ew ? 0 : 90 }); count2.jet = 1; })();
     lateRows.push(...out);
     console.log('industrial', JSON.stringify(count2));
 };
