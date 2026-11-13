@@ -2594,6 +2594,10 @@ side (`SCI`). Roof plant: two condensers on pads + a vent stack; on a flat roof 
 with a ghost wall each and never within 5 m of a bridge / stair / ladder point or on a tier.
 - An `hq:` sheet on an arch part drew BLACK in the game (trims, the porch): trims are `calm_marble` now. No `hq:` keys in U.js.
 - Seen in the game: plinth, sills, heads, corner stones, door step + mat, porch trim (library, dorm). NOT seen: roof plant, wall units, plates, signs.
+
+**Civic Center, the lettering (2026-11-13):** C.js `NAMES` gives 24 buildings their name; the walk-in name board and the shop sign board
+wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no name keeps the gilt plate / blank board. Seen in game.
+
 - THE LETTERING (same evening, the shared `txt:` sign sheet of PR #1327): `LETTERS[id]` in E.js puts plain trade words on the sign panels
   (CASINO, CINEMA down the fin, NOW SHOWING, COMEDY TONIGHT, CONCERT down the blade, NIGHT MARKET, ARCADE, BOX OFFICE, RAMEN, BAKERY, TAXI,
   WEDDING CHAPEL ...; no invented names). Helpers `b.txt(side, u0, u1, y, h, words, fg, proud, glow, bg)` and `b.vtxt` (a word read down a
