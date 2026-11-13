@@ -2372,3 +2372,7 @@ recognizable"; his OK on the plan + mock-up 17:10 (project files `disaster-city-
   garden (walled, arched gate, glass palm house walk-in). Fillers: `terrace` (bankers' brick houses), `shop`, `workshop`, `backlot` (infill).
 - GOLD = terrain key `gold` (gilt.png) only; never a tinted copper / metal, never the gold.png files (mondo 11-13 17:12).
 - No text signs yet (an arch part cannot write text). 6TWELVE was handed back (too big for any Financial slot).
+
+**Civic Center, the big windows (2026-11-13 evening):** C.js no longer writes a `uv` on `urban:DecalWindows*` / `urban:GlassWindow*`
+parts or on the `win` overlay, so the shared BIG WINDOWS rule sizes them (one row a storey, no window row on the ground storey).
+Every Civic arch row carries `y: 0` (the tool adds the building's base level). Seen in game (library, courthouse).
