@@ -84717,7 +84717,8 @@ const ThreeRenderer = (function () {
        its mixer while its own bounds are out of view or hidden — the skipped time is paid on the next frame it shows (capped),
        so a loop picks up where it would have been. Off: window.EW_HQ_NO_CHAR_CULL = true. */
     var HQ_CHAR_CULL_PAD = 1.6, _hqCharFr = null, _hqCharFrM = null, _hqCharSp = null, _hqCharBox = null;
-    function _hqCharCullOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_CHAR_CULL; }
+    var _hqSceneNoCull = false;   // THE CUTSCENES: a scene's cuts land the eye anywhere, so nobody is culled by a bind-pose sphere while one plays (hq.sceneCull)
+    function _hqCharCullOff() { return _hqSceneNoCull || (typeof window !== 'undefined' && !!window.EW_HQ_NO_CHAR_CULL); }
     function _hqCharCullSetup(e) {
         var box = _hqCharBox || (_hqCharBox = new THREE.Box3()), c = new THREE.Vector3(), gp = new THREE.Vector3();
         e.group.updateMatrixWorld(true);
@@ -92255,6 +92256,13 @@ const ThreeRenderer = (function () {
         /* THE QUEST MARKER (2026-11-13, mondo's OK on the mock-up): where a quest's target is on screen. t = { cast } (a
            DOOR_CAST id standing in the room) | { door } (the id of a door of the room stood in). Returns { x, y (0..1 of
            the canvas, y down), front (in front of the eye), dist (metres from the walker), label } or null. */
+        /* THE CUTSCENES: on = every body in the room is drawn whatever the eye does (no sphere cull, no skipped mixer); off puts the walk's cull back */
+        sceneCull: function (on) {
+            _hqSceneNoCull = !!on;
+            if (!_hq) return false;
+            _hq.chars.forEach(function (ch) { var e = ch && ch.entry; if (!e || !e.group) return; e.group.traverse(function (n) { if (n.isSkinnedMesh && !n._ew_silhouette) n.frustumCulled = on ? false : !!(ch.kind !== 'player' && n.geometry && n.geometry._ew_skinPad); }); });
+            return true;
+        },
         questMark: function (t) {
             if (!_hq || !_hq.player || !_hq.camera || !t) return null;
             var U = _hqUnits(), obj = null, up = 0, label = '';

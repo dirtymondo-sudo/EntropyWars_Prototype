@@ -4424,19 +4424,20 @@
             const row = window.storyCutscene(t.scene); if (!row) { console.warn('[SCENE] no row ' + t.scene); return false; }
             const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
             try { if (t.sceneAt && TR && TR.hq && TR.hq.dev && TR.hq.dev.teleport) TR.hq.dev.teleport(t.sceneAt); } catch (e) { console.warn('[SCENE] the officer could not be placed', e); }
-            const end = () => { _questTalkBusy = false; try { window._questEvent({ type: 'talk', who }, { delay: 600 }); } catch (e) { console.warn('[QUEST] talk', e); } };
+            const end = () => { _questTalkBusy = false; try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(false); } catch (e) {} try { window._questEvent({ type: 'talk', who }, { delay: 600 }); } catch (e) { console.warn('[QUEST] talk', e); } };
             const host = { unit: 1, point: () => null, act: () => {}, finish: () => {} };
-            /* the walk draws the officer on his mark first (the walker stands still under the scene's camera): three frames, then the scene */
-            _questTalkBusy = true;
-            let n = 0;
-            const go = () => {
-                if (++n < 4) { requestAnimationFrame(go); return; }
-                let ok = false;
-                try { ok = !!window.EWScene.play(row, host, end); } catch (e) { console.error('[SCENE] the scene did not start', e); ok = false; }
-                if (!ok) end();
-            };
-            requestAnimationFrame(go);
-            return true;
+            /* the walker stands still under the scene's camera, so its body is put on the mark here (the walk's own tick would only move it after the scene) */
+            try {
+                const sc = TR && TR.hq && TR.hq.dev && TR.hq.dev.hqScene ? TR.hq.dev.hqScene() : null, g = sc ? sc.getObjectByName('hq_hq-player') : null, U = (window.EWCine && window.EWCine.unit) || 0;
+                const pp = TR.hq.pos();
+                if (g && pp && t.sceneAt && window.DOOR_HQ && window.DOOR_HQ.units) { g.position.x = pp.x * window.DOOR_HQ.units; g.position.z = pp.z * window.DOOR_HQ.units; g.updateMatrixWorld(true); }
+            } catch (e) { console.warn('[SCENE] the officer body could not be placed', e); }
+            let ok = false;
+            try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(true); } catch (e) {}
+            try { ok = !!window.EWScene.play(row, host, end); } catch (e) { console.error('[SCENE] the scene did not start', e); ok = false; }
+            if (!ok) { try { TR.hq.sceneCull(false); } catch (e) {} }
+            _questTalkBusy = ok;
+            return ok;
         }
         let _questMarkRaf = 0, _questMarkAt = 0, _questMarkT = null;
         function _questMarkTarget() {
