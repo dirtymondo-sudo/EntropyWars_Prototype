@@ -153,13 +153,36 @@ def fit(name, gender, src, bodies_dir):
             a, b = cand[i][2], cand[j][2]
             if abs(a[2] - b[2]) < 0.01 and 0.02 < abs(a[0] - b[0]) < 0.08 and abs(a[0] + b[0]) < 0.03:
                 if best is None or min(a[2], b[2]) > best[0]: best = (min(a[2], b[2]), cand[i][1], cand[j][1], (a + b) / 2)
+    _eyes_extra = set()
+    if os.environ.get('EYE'):
+        # THE EYES GIVEN (2026-11-13, batch 1 of 3: EYE=x,y,z = the middle between the eyes in the T2 file's own coordinates, found by a
+        # face landmarker on a front drawing of the T2 model; EYEW = half the eye spacing): Meshy's eyeball shells are not always there,
+        # and jewels or buttons can pass for them (the atlantean's whole body was scaled to her earrings). Tiny shells at the eyes go
+        ex_, ey_, ez_ = [float(v) for v in os.environ['EYE'].split(',')]; ez_ += 0.5; ew_ = E('EYEW', 0.032)
+        for z_, o_, c_ in cand:
+            if min(np.linalg.norm(c_ - np.array([ex_ + sg * ew_, ey_, ez_])) for sg in (-1, 1)) < 0.03: _eyes_extra.add(o_)
+        for o_ in sh:   # (the figure onto the middle line: a trident or a cape on one side moves Meshy's centre off the body)
+            for v_ in o_.data.vertices: v_.co.x -= ex_
+        ex_ = 0.0
+        best = (ez_, None, None, np.array([ex_, ey_, ez_]))
+        print('[bake-outfit] %s: eyes given at %.3f %.3f %.3f, %d eye shells' % (name, ex_, ey_, ez_, len(_eyes_extra)), flush=True)
     if not best and os.environ.get('EYEAT'):   # (EYEAT=x,y,z, off: a unit whose eyes are behind goggles has no eyeball shells; the eyes' middle is given by hand, in the remake's own metres from its feet)
         best = (0, None, None, np.array([float(x) for x in os.environ['EYEAT'].split(',')]) + np.array([0, 0, min(co(o)[:, 2].min() for o in sh)]))
-    assert best, 'no eyes found'
+    if not best:
+        # NO EYEBALL SHELLS (2026-11-13, antihero / astronaut: a cowl or a visor, or a T2 run that fused the eyes into the head): the
+        # eyes are placed from the crown of the head instead: the MPFB body's own eye height / crown height, on the middle line, at the
+        # front of the head. EYEHAT = how far (Meshy units, before the scale) the crown found is above the real skull (a hat, horns)
+        allv = np.vstack([co(o) for o in sh]); mid = allv[np.abs(allv[:, 0]) < 0.03]
+        crown = mid[:, 2].max() - E('EYEHAT', 0.0); ez = crown * (eyeM[2] / bc[hwB][:, 2].max()) * E('EYEK', 1.0)
+        fr = allv[(np.abs(allv[:, 0]) < 0.05) & (np.abs(allv[:, 2] - ez) < 0.015)]
+        ey = fr[:, 1].min() + E('EYEIN', 0.012)
+        class _NoEye: pass
+        best = (ez, None, None, np.array([0.0, ey, ez]))
+        print('[bake-outfit] %s: no eyeball shells, eyes placed from the crown at z %.3f y %.3f' % (name, ez, ey), flush=True)
     eyeN = best[3]; S = E('S', eyeM[2] / eyeN[2])
     for o in sh:
         for v in o.data.vertices: v.co *= S
-    eye = Vector(eyeN * S); eyes = {best[1], best[2]} - {None}
+    eye = Vector(eyeN * S); eyes = ({best[1], best[2]} - {None}) | _eyes_extra
     if NOWINGS:   # Meshy centres the whole model, wings and all, so the figure stands off the middle: back onto the body's eyes and the floor
         dy_ = eyeM[1] - eye.y; body_ = [o for o in sh if co(o)[:, 1].mean() + dy_ <= eyeM[1] + E('WINGY', 0.22)]
         dz_ = -min(co(o)[:, 2].min() for o in body_)
@@ -205,6 +228,8 @@ def fit(name, gender, src, bodies_dir):
     hb = bc[hwB]; sz = E('SZ', min(1.5, max(hs, (hb[:, 2].max() - eyeM[2]) / (crownM - eye.z)))); sy = E('SY', min(1.5, max(hs, (hb[:, 1].max() - eyeM[1]) / (backM - eye.y))))
     keep, headp, dropped = [], [], []
     for o in list(sh) + [r for r in rem if r not in sh]:
+        try: o.name
+        except ReferenceError: continue   # (the face's shell, emptied by the cut and removed above)
         if o.name not in bpy.data.objects or o in eyes: continue
         if len(o.data.polygons) == 0: bpy.data.objects.remove(o); continue
         c = co(o); cz = c[:, 2].mean(); cx = c[:, 0].mean(); n = len(o.data.polygons)
