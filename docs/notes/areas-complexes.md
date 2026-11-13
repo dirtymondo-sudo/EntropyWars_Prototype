@@ -2101,3 +2101,24 @@ thing; ONE row kind does it (Sports + Culture thread owns it). Seen in the game 
   `python3 bake-pack-pieces.py -- --packs <dir> --out <out> --only city_pizzeria,...`. Files: R2 `Assets/world/packs/elbolilloduro/ebd_<scene>_city_*.glb`.
   They are PROPS, not HQ_PACK_BUILDINGS, on purpose: a prop is never fitted to a footprint, so its scale cannot go wrong. Not seen in the game
   (Blender renders only: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg). The laundry's roof sign renders blank orange in Blender.
+
+## DISASTER CITY, THE FINANCIAL DISTRICT'S ARCHITECTURE (2026-11-13) — docs/disaster-city/districts/F.js, data.js
+mondo 11-13: "architect the buildings in their respective districts plots ... every building should be unique and purposeful and
+recognizable"; his OK on the plan + mock-up 17:10 (project files `disaster-city-financial/`, `mock-src/` = the mock scene).
+- THE DISTRICT FILES: `bake-disaster-city.js` loads `docs/disaster-city/districts/<LETTER>.js` (the shared hook, PR #1274; this district = `F.js`). `tailor(PLAN, plotOf)` runs before the plan
+  is read (change a plot's cells / building slots); `build(api)` runs once every row exists, `api = { features, props, lateRows, bInfo,
+  PLAN, plotOf, C, N, HALF, r3, gx, gc }`. A district file touches its own plots only. Rerun `node bake-disaster-city.js` after an edit.
+- THE METHOD: a building keeps its collision row and loses its own skin (`texbuilding skin:false`, a roof-route `plateau` gets
+  `bld.skin:false`), then gets ONE `arch` row at the same x / z / rot. `frame(id, o)` in the file does that and can resize / move the
+  row (`w`, `d`, `dz`) so the walk-in inside matches the drawn body; `frontWithDoor` cuts the city door's doorway out of the front.
+  A mass outside the row's box needs its own collision (`texbuilding skin:false` in lateRows, `y` for one on a walked roof, ghost `wall`s).
+- THE 16: hotel (deco tower on the roof-route podium, verdigris roof, porte-cochère) · bank archive (concrete vault, drum corner) ·
+  GOBLIN BANK (marble temple, arch, six-column portico, verdigris dome; walk-in) · executive court (glass slab on stilts, helipad) ·
+  members club (oxblood brick, bow bay) · caterer yard (brick north wing on the roof route + dock wing + sawtooth kitchen round a yard) ·
+  bank offices (teal curtain wall, stone core; walk-in lobby) · vault annex (stepped bunker, steel door; walk-in) · taxi court (canopy,
+  checker fascia, dispatch office walk-in; a small store across the road) · tailor shops (pack_bld_08 kept) · intelligence office (black
+  glass tiers growing upward, radome; walk-in) · service garage (bow roof) · finance arcade (loggia; shop walk-in) · WORKER CAFE = the
+  pack's `city_diner` at real size (the plot P09-03 re-cut round it in `tailor`) · penthouse stair (point tower; walk-in) · private
+  garden (walled, arched gate, glass palm house walk-in). Fillers: `terrace` (bankers' brick houses), `shop`, `workshop`, `backlot` (infill).
+- GOLD = terrain key `gold` (gilt.png) only; never a tinted copper / metal, never the gold.png files (mondo 11-13 17:12).
+- No text signs yet (an arch part cannot write text). 6TWELVE was handed back (too big for any Financial slot).
