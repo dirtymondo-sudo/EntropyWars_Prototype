@@ -2046,3 +2046,25 @@ THE STREET FURNITURE (11-13, mondo: "so many street lamps ... fire hydrants? Ven
 - **Gotchas**: a ladder's foot within 0.3 m of a SECOND roof climbs the wrong one (the tool keeps a landing's square clear of other
   buildings); the batch only goes live once every asset has landed (headless: 5 minutes; before that the same view reads 3 000 draws).
 - Proof: /mnt/project-files/disaster-city-144/ (plan_map.jpg + six in-game shots).
+
+## DISASTER CITY, THE SHARED PIECES — the city door, the shop blocks at true size, the front rule (2026-11-13)
+mondo: "any new buildings you make that will have an interior need workable swinging doors, just like Door HQ" + "for the shop center
+buildings from the asset pack ... make sure their scale is correct, right now they are way too small and i am taller than the door".
+Built for the nine district threads (each owns its 16 plots); NOT SEEN ON SCREEN (RULE #1c: no browser run), checked by reading + node --check.
+- **THE CITY DOORS** (three-renderer.js `_hqBuildTexDoors` / `_hqTickCityDoors`, `HQ_CITY_DOOR`): every `texbuilding` row with `hollow: true`
+  hangs a swinging leaf in its doorway by itself. No new row kind. Row fields: `leaf: '<DOOR_HQ.catalogue swing leaf key>'` (default
+  `leaf_lobby_glass_double`, the HQ's double door; e.g. `leaf_shabby_wood`, `leaf_security`, `leaf_office`, `leaf_exit`, `leaf_suburban`),
+  `leafDouble: true` = two of a single leaf, `leaf: 'none'` = the bare doorway. The doorway is still `door: <face square from the left, 1-based>`
+  (one 1.75 m square wide, 2.2 m high). The leaves open within 2.6 m of the doorway and swing AWAY from the walker. Drawn only (the walker's gap
+  is hqTexBuildingRows'). Pack and prism buildings are solid: no doorway, no leaf. Kill switch `window.EW_NO_CITY_DOORS = true`.
+  Records: `_hq.cityDoors` (room metres). Not done: a door sound, NPCs opening it, a locked state, online (walking is local, nothing to relay).
+- **THE FRONT RULE** (bake-disaster-city.js): a texbuilding's `w` runs ALONG ITS FRONT, `d` back from it (the row's own turned frame). The tool
+  wrote the plan's x / z sizes unturned, so every east / west facing building that was not square (named ones and the infill) stood a quarter
+  turn off its footprint. Fixed; `plateau` rows and the tool's `bInfo` (`w` / `d2`) stay world x / z.
+- **THE SHOP BLOCKS AT TRUE SIZE**: a pack block (data.js HQ_PACK_BUILDINGS) is one model fitted to the row's `w`, so `w` IS its scale: a 33 m
+  block on a 10.5 m front stood at 0.3 to 0.6 size (a 1.1 m door). bake-disaster-city.js `packFit(frontMetres, depthMetres, want)` picks the
+  block, or two / three side by side, that fills the front at 0.9 to 1.15 of true size with the depth stretched 0.7 to 1.5; the front is the
+  first door side that takes one; a front nothing fits (under 14 m) wears the painted `shop`. RULE for a hand-written pack row: `w` within
+  0.9 to 1.15 of the block's own `w`. Today: Repair shops 00 (0.99), Pawnshop 09 (1.04), Tailor 08 (0.90), Coffee arcade 09 (1.04), West shops
+  09 (1.04), Restaurant court + East shops = 08 + 09 side by side (0.97). Corner shops, Bookshops, Costume shops are roof-route tiers (no pack).
+- Pack building claims between districts: `docs/disaster-city/pack-claims.md`.
