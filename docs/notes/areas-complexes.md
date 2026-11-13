@@ -2127,3 +2127,113 @@ his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:1
   The pack models (West / East shops, the taco stand) draw near-black in the headless probe only.
 - **Next: THE BEACH** (same thread): the room grows east of Bayside: sea wall, boardwalk, sand, the bay (terrain.sea), pier + pavilion,
   breakwater + lighthouse, lifeguard station, the BurgerPiz grill on a deck.
+## DISASTER CITY, SPORTS + CULTURE (2026-11-13, district S: plots P04..P07 × rows 08..11) — `docs/disaster-city/districts/S.js`
+mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is this not where the football field is supposed to go?", pick "Stadium on 4 plots, 3/4 size field").
+- One file, loaded by the bake's district hook. `tailor` rewrites the plan's squares; `apply` turns each plan row into collision only (`skin: false`) and pushes one `arch:S:<id>` row per building, plus `dc:S-*` rows (blocks nothing is drawn for: stands, kiosks, mast feet, the drum on the Wrestling hall roof, the clinic's glass corner).
+- THE STADIUM = Park west + Park east + Practice court + Locker rooms (plots renamed `Stadium`, `wasName` keeps the plan's). Squares: `G` grass (nothing is ever placed there), `I` stand, `P` concourse. Field 77 × 35 m = 22 × 10 squares (x -80.5..-3.5, z 150.5..185.5), a sideline row each side, a stand 70 × 14 m each side (solid), goal posts on the end lines at the corner of four squares, masts + scoreboard posts on square middles (blocked). The grass is the ground's own sheet; stripes, end zones and lines are `kind: 'over'` flat quads at 2 to 4 cm.
+- Walk-ins (hollow, swinging door from the shared row): Museum (3 storeys), Training gym (2), Equipment depot (1), South gatehouse (1). A walk-in's ceiling is a slab at storeys × 3.5 m in its arch row (the inside walls stop there). The door hole's x = -w/2 + (door - 0.5) × 1.75.
+- Roof route kept (Gallery, Wrestling hall, Clubhouse, Arena loading dock, Sports clinic: `bld.skin: false`). The Wrestling hall has flag towers on its two FRONT corners only (the roof bridges land on the back ones).
+- The Museum faces SOUTH, not the plan's north (its portico on a three-square forecourt that runs into the stadium concourse); the Band shell is solid (its stage shows through the open front). The two street kiosks are 2 × 2 squares. THE PIZZERIA = the shared chain prop `city_pizzeria` at (-31.5, 246.75) face 90 on six squares by three (the plan's Vendor stalls building is gone); four stalls on squares beside it.
+- GOLD = key `'gold'` (the gilt sheet) on the Wrestling hall and the Clubhouse band. Thin posts stand on the lines between squares; anything thick on a square's middle has a block under it.
+- NOT DONE: no gas station (it needs about 28 × 45 m, the road plots have 10.5 m: the South gatehouse stands there); the Playground pack is not used (the park is the stadium now); no signs / lettering; the stands are solid (nobody climbs them); the Giant Ape's home was Park west (asked mondo, default: the field).
+
+## DISASTER CITY, CIVIC CENTER — the 28 buildings of district C (2026-11-13, mondo's OK 17:11)
+
+District C = plots x 4..7, y 0..3 of `site_prebuilt_downtown_streets`. Everything lives in ONE file:
+`docs/disaster-city/districts/C.js` (the shared district hook of bake-disaster-city.js loads it; `apply(ctx)`).
+- Authoring: `plot(px, py, fn)` then one `B(i, spec, fn)` per building, parts in LOCAL PLOT METRES with the helpers
+  box / cyl / cone / dome / roof / vault / door / ring / flag / face. `toArch()` turns each building into ONE
+  `k:'arch'` row (id `arch:<building id>`): 28 rows, 586 parts. Gold parts use key `gold` (never the riveted sheets).
+- Collision: the tool's own texbuilding / plateau rows stay, with `skin:false` (ghost walls). `spec.solids` resizes them
+  or adds extra ones (`-c<i>`); `spec.ghost` adds ghost wall rows (colonnades, towers); `spec.cells` takes plan cells.
+- NINE WALK-INS (hollow + the city swing door, one doorway each): Fire Station E, Civil Records W, City Hall S,
+  Council annex S, Courthouse S, Police E, Time Bureau W, Military offices N, Permit offices N. The interiors
+  themselves are NOT built yet (empty shells).
+- ROOF-ROUTE tiers keep the flat walked roof at 7 m and stay solid: Holding annex, Bail bonds, Public library,
+  Records garden, Army surplus. The landmark shapes (reading room, glasshouse, guard tower) stand on that roof.
+- Flattened from the mock-up: the raised stairs / podiums of City Hall, Courthouse and Library (ground level, so the
+  doors work). City Hall has the south door only.
+- The two open plots: Civic plaza (bandstand + plaza clock), Transit square (metro entrance, ticket rotunda, bus bays).
+- Texture findings (tints only darken; the city tint 0xa8a49c multiplies again): `marble_light` is the clean stone;
+  `marble`, `marble_2`, `rocks_1` are cobbles; roofs / domes / trim = `aluminium` tinted; PlasterWallPainted1a /
+  Stucco1a for tinted bodies (the 2x ones carry a base band); bricks_1 tinted = red brick.
+- Mock-up source (standalone three page): `docs/disaster-city/civic/`. Plan: https://claude.ai/artifact/TA61UXvfBcUexNL9yhJ19n
+
+## DISASTER CITY, THE ENTERTAINMENT DISTRICT — the buildings, exteriors (2026-11-13, plots P08-04 .. P11-07)
+mondo 11-13 16:41 (architect every building, unique + recognizable) and 17:08 on the plan: "looks good, and remember this is basically
+replacing the strip that is currently in the game". File: `docs/disaster-city/districts/E.js` (the `build` stage of THE DISTRICT FILES);
+rerun `node bake-disaster-city.js` after any edit.
+- How a building is written: `B(id, { walk, st, open, leaf }, b => …)`. It keeps the tool's collision row (`texbuilding` / roof-route
+  `plateau`) with `skin: false` and pushes ONE `k: 'arch'` row `dc:<id>:arch` (31 rows, about 5,100 triangles for the district). `walk`
+  = hollow shell + the city swing door in the plan's doorway; `open` = no collision row (the Night market canopies). The helper `b` has
+  box / cyl / dome / roof / walls (door hole cut) / top / trim / face / canopy. Sheet tints are lifted ×1.7 (the urban sheets are mid grey).
+- The 27: Casino (marble, gold trims with terrain key `gold`, domed corner tower, canopy), pawn kiosk, Costume shops (jettied upper floor,
+  roof route kept), mask shop, tailor (saw-tooth), Concert hall (podium + drum + dome + fly tower + glass lobby), Recording studio, lofts,
+  Restaurant court (trattoria, ramen, rooftop grill), burger drive-in (giant burger), Comedy theater, Backstage dock, crew canteen, Film
+  studio (barrel vault + water tower), Night market, noodle bar, Cabaret (turret), magic shop, prop store, Stage workshop, Arcade,
+  apartments, bakery, kebab, Crew house, box office (octagon lantern), Cinema (stepped deco front, fin).
+- Carried over from the Strip: a wedding chapel (P11-07), the fountain plaza with palms and benches (P11-04), the Casino. Plus the taxi
+  canopy + dispatch booth (P08-07) and the pack `city_vhs_shop` (P09-04, face 270).
+- Walk-in shells now (door hung, empty inside): Casino, Recording studio, Restaurant court, Comedy theater, Cabaret, Stage workshop,
+  Arcade, bakery, Crew house, Cinema. Interiors are the next pass (Casino -> `site_prebuilt_strip_casino`, chapel -> `site_prebuilt_strip_chapel`).
+- Open: marquee and sign panels are blank glow panels (the arch row has no text part); the texbuilding roof slab sits at storeys × 3.5 m,
+  so a shell's drawn walls must reach that height. NOT SEEN IN THE GAME: the cloud browser timed out on the full city; checked by drawing
+  the baked rows with the game's own `_hqArchGeometry` offline (/mnt/project-files/dc-entertainment/). Tints and the VHS shop's facing
+  want a look on mondo's Mac.
+
+## DISASTER CITY, THE TRAFFIC — traffic lights, car routes, Bus Line 1 (2026-11-13, mondo's OK on the plan 17:33)
+mondo 11-13 17:20: "get some traffic lights and intersections planned out for actual traffic and car routes. Bus sections placed in each
+district with a bus route". Plan + mock-up: `/mnt/project-files/city-traffic-plan/` (traffic_plan_map.jpg, traffic_models_found.jpg).
+- THE ROADS (city-layout.json, plot coords): west avenue x = 3, east avenue x = 8 (and x = 11 south of the cross street), north street
+  y = 1, cross street y = 7, south street y = 11. Those street names are labels in notes only, not canon. The plan has NO road out of the
+  city: the west avenue stops at the Boxing gym (P03-00) and the cross street at the Campus gate (P00-07). Police streets (parked police
+  only, no moving car): x = 8 south of the cross street, the south street east of x = 8, x = 11.
+- THE MODELS (no Meshy; all Elbolilloduro CC0, cut by `bake-pack-pieces.py` jobs `street_signal`, `transit_bus`, `bus_stop_sign`, R2
+  `Assets/world/packs/elbolilloduro/`): `ebd_pizzeria_street_signal.glb` (the yellow three-faced head on a mast arm, 7.38 m, 970 tris),
+  `ebd_busstop_transit_bus.glb` (the blue city bus with its four tyres and door leaves joined on, 11.2 m, nose at -X, 6,482 tris),
+  `ebd_busstop_bus_stop_sign.glb`. Catalogue rows `street_signal`, `transit_bus`, `bus_stop_sign`; the traffic's vehicle kind `citybus`.
+  The battle maps' coded `traffic_light` prop is another thing and is untouched.
+- THE ROOM ROWS (terrain, written by bake-disaster-city.js "THE TRAFFIC" + "THE BUS LINE"; data.js passes them through beside `traffic`):
+  `signals: [{ x, z, arms: 'NESW', off, flash }]`, `busStops: [{ x, z, name, end, signs: [{ x, z, ns }] }]`, a route's `bus: true`.
+- THE SIGNALS (three-renderer.js `_HQ_SIGNAL`, `_hqBuildSignals`, `_hqTickSignals`): lights at (3,1) T, (3,7) and (8,7) crossroads, one mast
+  for every arm traffic comes in on (11), its pole on the kerb corner to the driver's right, the arm over his lane; the police staging T
+  (8,11) blinks red (3 masts). The file's lenses are painted all lit, so each lens wears a flat disc the code paints bright or dark; the
+  lens spots are MEASURED in Blender (metres off the GLB's box middle). Clock: 14 s green, 3 s yellow, 1.5 s all red, then the other street.
+- THE CARS (`_hqTickTraffic`): a car stops with its nose at the stop line (11.5 m before the junction's middle, where the road paint already
+  draws the line) on a red, or a yellow it can still stop for; it queues behind a car of ANOTHER route in its lane (before: only its own
+  route's); two cars turning into one lane, the first in the list goes; a knot of cars with no red behind it lets one drive through after
+  5 s. THE TURN-ROUND (`_hqRouteCorner` `u`): a route that doubles back swings a half circle from its lane into the lane coming back.
+  A vehicle further than 210 m from the camera is not drawn (it still drives).
+- THE ROUTES (16 vehicles, 5 before): the ring both ways 3 + 3; the west avenue run (the avenue's north end to the cross street's west
+  end, turning round at both dead ends) 4; the freight run (campus gate, west avenue, south street, round short of the police line) 2
+  trucks; the strip taxis (cross street east end) 2; Bus Line 1, one `citybus` each way (the police line, south street, up the west
+  avenue, round the ring, back down), waiting 8 s at each stop.
+- THE STOPS: nine, one per district: Southside P03-02, Civic Center P04-01, Financial P08-02, Entertainment P08-05, Hero Plaza P06-07,
+  University P03-05, Industrial P03-09, Sports + Culture P04-11, and BAYSIDE GATE, the line's end on the south street at the district
+  line where the police cars start. A stop uses the plot's shelter; five plots had none on their road and got one (three free kerb
+  squares in a row, without moving a lamp, hydrant or bin). Each stop: a sign pole by the shelter and one on the kerb across the road.
+- THE CULL: each junction and each stop is one group in the plot chunks' list (`_hqSignalChunk` → `_hqChunkReg`, not drawn past 230 m /
+  150 m or off camera) and flagged `_ew_hqSignal` so the static batch leaves it alone. Off: `window.EW_HQ_NO_SIGNALS`.
+- Probe: `ThreeRenderer.hq.dev.traffic()` = every light's colours and every vehicle's place, speed, wait.
+- NOT SEEN IN THE GAME: the headless browser run was refused (RULE #1c). Checked offline instead: the game's own route, signal and
+  traffic functions run in Node for a simulated hour on the baked rows: no car ran a red, the longest wait was 20 s (one red), every
+  vehicle kept lapping (a bus lap is about 9 minutes), the paths have no jump through the turn-rounds. Unseen and wanting mondo's eye:
+  each mast's facing and where its lens discs sit, the bus's nose direction, the sign poles' facing, and the frame rate.
+- Open: the plan's roads have pavement bands across them at some plot edges (P03-02, P08-05, the junction plots); cars drive over them.
+  Left turns cross oncoming cars without waiting. Stop names are in the data but shown nowhere yet.
+
+## DISASTER CITY, THE INDUSTRIAL DISTRICT — the 28 buildings of district I (2026-11-13, mondo's OK 17:05)
+Plots x 0-3, y 8-11 (room x -252..-84, z 84..252). All of it lives in `docs/disaster-city/districts/I.js` (`build(ctx)`); rerun `node bake-disaster-city.js`.
+- **How a building is made:** its `dc:<id>` row becomes a `texbuilding` with `skin: false` (the walls you bump into, the roof slab, the doorway, the city swing door)
+  and an `ind:<id>` `k:'arch'` row draws the look. `DESIGN[<id>]` = `{ inside, st, leaf, extra, parts(c, C0) }`; `c` = the baked footprint (w along the front, d2 deep),
+  so a design follows the plot if the plan moves. Helpers: `body` (solid box or hollow shell with a door hole), `truss`, `bay` / `bayX` (roller doors), `vents`, `house`.
+- **Walk-ins (11):** Freight gate, Power station, Machine shop, Loading office, Aerospace lab, Port office, Maintenance depot, Hangar, Water works, Rail service,
+  and the Pump court sewer entry (`leaf: 'none'`). The rest are solid.
+- **Roof route:** Warehouse, the corner shop and Container court stay `plateau` rows (flat 7 m). Freight gate + Loading office became hollow 2-storey texbuildings
+  (roof slab at 7 m); NOT walk-tested from the bridges.
+- **Landmarks:** Power station (barrel roof + two striped stacks), Aerospace lab (dome + vault + control tower), Port office (green pyramid lantern), Container court
+  (a stack of tinted containers on the roof), the Dock Edge gantry crane (`ind:crane`, truss parts; the game's `crane` is a horizon model, not a room prop).
+- **THE INDUSTRIAL PACK:** domi236 PS1/PSX Industrial Pack #1 (CC0), cut by `bake-pack-pieces.py` (`ind_*` jobs, scale 0.4694 = a real 20 ft container) to R2
+  `Assets/world/packs/domi236_industrial/`. Catalogue keys, free for every district: `ind_container` (2.4 x 6.1 x 2.15, a row may carry `y` 2.15 a level to stack),
+  `ind_skip`, `ind_skip_full`, `ind_silo` (9.1 m), `ind_vent`, `ind_panel`, `ind_factory_red` / `_tan` / `_blue` (whole factory fronts; cut, not placed yet).
+- Checked in the cloud browser with a free camera over each plot (WebGL2). Not placed: the space shuttle (a horizon model only).

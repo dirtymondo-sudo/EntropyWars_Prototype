@@ -382,9 +382,9 @@ at('Street market', p => { put(p, 'hot_dog_stand', 1.5, 2.5, 90, { quiet: true }
     else { put(p, 'car_cop', 1.5 + (i % 3), 4.9, 100 - i * 6, { road: true, quiet: true }); put(p, 'car_cop', 9.5 - (i % 2), 7.1, 280 + i * 5, { road: true, quiet: true }); } });
 /* the hubs */
 at('Hero plaza', p => { put(p, 'fountain', 5.5, 2.5, 0, { span: [[1, 0], [0, 1], [1, 1], [-1, 0], [0, -1]] }); put(p, 'city_bench', 2.5, 1.5, 180); put(p, 'city_bench', 8.5, 1.5, 180); put(p, 'planter', 1.5, 3.5); put(p, 'planter', 10.5, 3.5); put(p, 'hot_dog_stand', 2.5, 8.5, 90); put(p, 'city_bench', 8.5, 9.5, 0); tree(p, 1.5, 9.5, 'tree_3', 3.8); tree(p, 10.5, 9.5, 'tree_3', 3.8); });
-at('Civic plaza', p => { put(p, 'fountain', 2.5, 1.9, 0, { span: [[1, 0], [-1, 0]] }); put(p, 'angel_statue', 8.5, 1.9, 180); put(p, 'city_bench', 2.5, 10.2, 0); put(p, 'city_bench', 9.5, 10.2, 0); put(p, 'planter', 1.5, 9.5); put(p, 'planter', 10.5, 9.5); });
+at('Civic plaza', p => { put(p, 'fountain', 2.5, 1.9, 0, { span: [[1, 0], [-1, 0]] }); put(p, 'angel_statue', 8.5, 1.9, 180); put(p, 'city_bench', 4.6, 10.4, 0); put(p, 'city_bench', 9.5, 10.2, 0); put(p, 'planter', 1.5, 9.5); put(p, 'planter', 10.5, 9.5); });
 at('Memorial walk', p => { put(p, 'angel_statue', 9.0, 5.9, 270, { span: [[0, 1]] }); put(p, 'planter', 8.5, 4.5); put(p, 'planter', 8.5, 7.5); put(p, 'city_bench', 2.5, 2.5, 90); put(p, 'city_bench', 2.5, 8.5, 90); tree(p, 1.5, 1.5, 'tree_3', 3.6); tree(p, 10.5, 1.5, 'tree_3', 3.6); tree(p, 1.5, 10.5, 'tree_3', 3.6); tree(p, 10.5, 10.5, 'tree_3', 3.6); });
-at('Transit square', p => { put(p, 'bus_shelter', 2.5, 8.2, 0); put(p, 'bus_shelter', 8.5, 8.2, 0); put(p, 'school_bus', 5.5, 9.8, 90, { span: [[1, 0], [-1, 0]] }); put(p, 'city_bench', 2.5, 2.5, 90); put(p, 'signpost', 4.5, 4.5); });
+at('Transit square', p => { put(p, 'bus_shelter', 2.5, 8.2, 0); put(p, 'bus_shelter', 8.5, 8.2, 0); put(p, 'school_bus', 5.5, 9.8, 90, { span: [[1, 0], [-1, 0]] }); });   // the metro entrance + the bus terminal's roof: districts/C.js
 at('Transit court', p => { put(p, 'bus_shelter', 1.5, 1.5, 90, { quiet: true }); });
 at('Bus stop court', p => { put(p, 'bus_shelter', 1.5, 9.5, 90, { quiet: true }); put(p, 'city_bench', 10.5, 1.5, 270, { quiet: true }); });
 at('Taxi rank', p => { put(p, 'car_taxi', 1.6, 1.5, 0); put(p, 'car_taxi', 10.4, 1.5, 0); put(p, 'car_taxi', 1.6, 10.2, 180); put(p, 'car_taxi', 10.4, 10.2, 180); });
@@ -399,9 +399,9 @@ at('Vendor stalls', p => { put(p, 'hot_dog_stand', 1.5, 1.5, 180, { quiet: true 
 at('Park gate', p => { tree(p, 1.5, 10.2, 'tree_3', 3.8); tree(p, 4.5, 10.2, 'tree', 3.6); tree(p, 7.5, 10.2, 'tree_3', 3.8); tree(p, 10.5, 10.2, 'tree_2', 3.6); put(p, 'park_bench', 2.5, 1.6, 180); put(p, 'park_bench', 9.5, 1.6, 180); });
 at('Canal walk', p => { tree(p, 1.5, 2.5, 'tree_3', 3.6); tree(p, 3.5, 5.5, 'tree', 3.6); tree(p, 2.5, 9.5, 'tree_3', 3.8); tree(p, 9.5, 9.5, 'tree_2', 3.6); put(p, 'park_bench', 8.5, 2.5, 270); put(p, 'park_bench', 6.5, 8.5, 0); });
 /* the civic and the working plots */
-at('Fire Station', p => { put(p, 'fire_truck', 1.5, 10.4, 90, { quiet: true, walk: true }); });
-at('Police desk', p => { put(p, 'car_cop', 1.5, 10.4, 90, { quiet: true, walk: true }); put(p, 'car_cop', 10.5, 10.4, 90, { quiet: true, walk: true }); });
-at('Military offices', p => { put(p, 'military_tank', 1.6, 10.3, 90, { quiet: true, walk: true }); });
+at('Fire Station', p => { put(p, 'fire_truck', 4.71, 10.75, 180, { quiet: true, walk: true }); });   // nosing out of the middle engine bay (districts/C.js)
+at('Police desk', p => { put(p, 'car_cop', 4.6, 2.75, 20, { quiet: true, walk: true }); put(p, 'car_cop', 4.65, 6.95, 165, { quiet: true, walk: true }); });   // either side of the precinct's entrance
+at('Military offices', p => { put(p, 'military_tank', 2.7, 9.7, 0, { quiet: true, walk: true }); });
 at('Dock edge', p => { put(p, 'babel_crane', 2.5, 2.5, 90, { span: [[0, 1], [1, 0], [1, 1]] }); put(p, 'babel_crane', 2.5, 8.5, 90, { span: [[0, 1], [1, 0], [1, 1]] }); put(p, 'iso_tank', 8.5, 9.5, 0); put(p, 'iso_tank', 9.5, 8.5, 90); put(p, 'traffic_barrel', 8.5, 2.5); put(p, 'traffic_barrel', 9.3, 3.2); put(p, 'cardboard_boxes', 5.5, 9.5, 20); });
 at('Hangar apron', p => { put(p, 'iso_tank', 1.5, 1.5, 0, { quiet: true }); put(p, 'traffic_barrel', 1.5, 10.5, 0, { quiet: true }); put(p, 'traffic_cone', 10.5, 10.5, 0, { quiet: true }); });
 at('Observatory', p => { put(p, 'telescope', 10.5, 10.5, 200, { quiet: true, walk: true }); });
@@ -463,6 +463,47 @@ PLAN.plots.forEach(p => {
         if (done) break;
     }
 });
+/* THE BUS LINE (THE CITY TRAFFIC, mondo 11-13: "Bus sections placed in each district with a bus route"): Bus Line 1 has one named stop in
+   every district, on a plot its route drives through. A stop uses the shelter the rule above already stood on that plot's kerb; a plot
+   with none gets one where three kerb squares in a row are free, nearest the plot's middle, without moving a lamp, a hydrant or a bin. Each stop: the point on the road's middle where the bus
+   waits, a stop sign pole on the kerb two squares along from the shelter and one on the kerb across the road (poles at the square's road
+   edge, never on a square's middle). The ninth stop is the line's end at the police line (THE TRAFFIC below turns the bus round there). */
+const BUS_LINE = ['P03-02', 'P04-01', 'P08-02', 'P08-05', 'P06-07', 'P03-05', 'P03-09', 'P04-11'];
+const BUS_END = { x: 7.4, y: 11, back: 12 };   // the turn-round on the south street, in plot squares; the bus waits `back` m after it
+const busStops = []; count.busNew = 0;
+const cellOf = v => Math.floor((v + HALF) / C);
+const shFace = sd => sd[0] > 0 ? 90 : sd[0] < 0 ? 270 : sd[1] > 0 ? 180 : 0;
+BUS_LINE.forEach(id => {
+    const p = plotOf[id]; let sh = null;
+    props.forEach(q => { if (sh || q.key !== 'bus_shelter') return; const cx = cellOf(q.x), cy = cellOf(q.z); if (Math.floor(cx / N) !== p.x || Math.floor(cy / N) !== p.y) return;
+        const sd = kerbSides.find(k => isKerb(cx, cy, k)); if (sd) sh = { cx, cy, sd }; });
+    if (!sh) {
+        let best = null;
+        for (const sd of kerbSides) for (let t = 0; t < N; t++) for (let a = 1; a <= 8; a++) {
+            const run = [a, a + 1, a + 2].map(k => sd[0] ? [p.x * N + t, p.y * N + k] : [p.x * N + k, p.y * N + t]);
+            if (!run.every(c => isKerb(c[0], c[1], sd) && !occ.has(c[0] + ',' + c[1]))) continue;
+            /* nothing the kerb rule stands moves for it: the shelter fills its middle square only, so that square is never a hydrant's, a
+               signpost's or a bin's (2 and 8) nor one beside a lamp's line (the + kerb's 2 and 8, the other's 5 and 11) */
+            const mid = a + 1, plus = sd[0] > 0 || sd[1] > 0, clash = mid === 2 || mid === 8 || (plus ? [1, 7] : [4, 5, 10, 11]).includes(mid);
+            const score = Math.abs(a - 4) + (clash ? 100 : 0); if (!best || score < best.score) best = { run, sd, score };
+        }
+        if (!best) { console.warn('no free kerb for a bus stop on', id, p.name); return; }
+        if (best.score >= 100) console.warn('a bus stop moves kerb furniture on', id, p.name);
+        { const c = best.run[1]; take(c[0], c[1]); busAt.add(c[0] + ',' + c[1]); }
+        props.push({ key: 'bus_shelter', x: r3(gc(best.run[1][0])), z: r3(gc(best.run[1][1])), face: shFace(best.sd) });
+        count.bus++; count.busNew++;
+        sh = { cx: best.run[1][0], cy: best.run[1][1], sd: best.sd };
+    }
+    const sd = sh.sd, al = sd[0] ? [0, 1] : [1, 0], signs = [];
+    const pole = (cx, cy, k) => ({ x: r3(gc(cx) + k[0] * 0.36 * C), z: r3(gc(cy) + k[1] * 0.36 * C), ns: !!sd[0] });
+    for (const k of [2, -2]) { const cx = sh.cx + al[0] * k, cy = sh.cy + al[1] * k; if (isKerb(cx, cy, sd) && !busAt.has(cx + ',' + cy)) { signs.push(pole(cx, cy, sd)); break; } }
+    { const cx = sh.cx + sd[0] * 5, cy = sh.cy + sd[1] * 5, op = [-sd[0], -sd[1]]; if (isKerb(cx, cy, op) && !busAt.has(cx + ',' + cy)) signs.push(pole(cx, cy, op)); }
+    busStops.push({ x: r3(sd[0] ? gc(sh.cx) + sd[0] * 2.5 * C : gc(sh.cx)), z: r3(sd[0] ? gc(sh.cy) : gc(sh.cy) + sd[1] * 2.5 * C), name: D[p.d].label, signs });
+});
+{ const ex = r3(-HALF + (BUS_END.x + 0.5) * PL - BUS_END.back), ez = r3(-HALF + (BUS_END.y + 0.5) * PL), cx = cellOf(ex), cy = cellOf(ez) - 3, signs = [];
+  if (isKerb(cx, cy, [0, 1])) signs.push({ x: r3(gc(cx)), z: r3(gc(cy) + 0.36 * C), ns: false }); else console.warn('no kerb for the end stop sign');
+  busStops.push({ x: ex, z: ez, name: 'BAYSIDE GATE', end: true, signs }); }
+count.busStops = busStops.length;
 for (let cy = 0; cy < 144; cy++) for (let cx = 0; cx < 144; cx++) {
     if (cellAt(cx, cy) !== 'P') continue;
     kerbSides.forEach(sd => {
@@ -520,14 +561,35 @@ Object.keys(roadAdj).sort().forEach(a => {
     });
 });
 
-/* ── THE TRAFFIC: two cars each way round the ring the plan's roads make north of Bayside ── */
+/* ── THE TRAFFIC (THE CITY TRAFFIC, mondo 11-13: "traffic lights and intersections planned out for actual traffic and car routes"; his OK on
+   the plan 17:33). Sixteen vehicles; every route keeps to the right (lane 3.5 m off the road's middle) and none enters the police streets
+   round the mall (x = 8 south of the cross street, the south street east of x = 8, x = 11):
+   - THE RING both ways (west avenue, north street, east avenue, cross street), three cars each
+   - THE WEST AVENUE RUN: the avenue's north end (it stops at the boxing gym) to the cross street's west end (the campus gate) and back,
+     turning round at both ends (the plan has no road out of the city), four cars
+   - THE FREIGHT RUN: the campus gate, down the west avenue through Industrial, along the south street to the police line and back, two trucks
+   - THE STRIP TAXIS: the cross street's east end, turning round short of the east avenue and at the far corner, two taxis
+   - BUS LINE 1, one bus each way: the police line (Bayside Gate), the south street, up the west avenue, round the ring, back down
+   THE SIGNALS: lights at the three big junctions (a mast for every arm), and the T at the police staging blinking red.
+   three-renderer.js _hqBuildSignals / _hqBuildBusStops / _hqBuildTraffic read the three rows. ── */
 const ctr = (x, y) => pc({ x, y });
 const ring = [ctr(3, 1), ctr(8, 1), ctr(8, 7), ctr(3, 7)];
+const busEnd = ctr(BUS_END.x, BUS_END.y);
 const TRAFFIC = [
-    { pts: ring, loop: true, n: 2, speed: 4.0, lane: 3.5, kinds: ['suv', 'taxi', 'cadillac', 'schoolbus', 'truck'] },
-    { pts: ring.slice().reverse(), loop: true, n: 2, speed: 4.0, lane: 3.5, kinds: ['taxi', 'suv', 'copcar', 'cadillac'] },
-    { pts: [ctr(0, 7), ctr(3, 7)], loop: false, n: 1, speed: 3.4, lane: 3.5, kinds: ['truck', 'suv'] },
+    { pts: ring, loop: true, n: 3, speed: 4.2, lane: 3.5, kinds: ['suv', 'taxi', 'cadillac'] },
+    { pts: ring.slice().reverse(), loop: true, n: 3, speed: 4.2, lane: 3.5, kinds: ['taxi', 'copcar', 'suv'] },
+    { pts: [ctr(3, 0.2), ctr(3, 7), ctr(0, 7), ctr(3, 7)], loop: true, n: 4, speed: 4.0, lane: 3.5, kinds: ['cadillac', 'suv', 'taxi', 'suv'] },
+    { pts: [ctr(0, 7), ctr(3, 7), ctr(3, 11), ctr(6.6, 11), ctr(3, 11), ctr(3, 7)], loop: true, n: 2, speed: 3.6, lane: 3.5, kinds: ['truck', 'truck'] },
+    { pts: [ctr(8.62, 7), ctr(11, 7)], loop: true, n: 2, speed: 3.8, lane: 3.5, kinds: ['taxi', 'taxi'] },
+    { pts: [busEnd, ctr(3, 11), ctr(3, 7), ctr(3, 1), ctr(8, 1), ctr(8, 7), ctr(3, 7), ctr(3, 11)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
+    { pts: [busEnd, ctr(3, 11), ctr(3, 7), ctr(8, 7), ctr(8, 1), ctr(3, 1), ctr(3, 7), ctr(3, 11)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
 ];
+const sigAt = (x, y, arms, o) => { const c = ctr(x, y); return Object.assign({ x: c[0], z: c[1], arms }, o || {}); };
+const SIGNALS = [sigAt(3, 1, 'NES', { off: 0 }), sigAt(3, 7, 'NESW', { off: 11 }), sigAt(8, 7, 'NESW', { off: 24 }), sigAt(8, 11, 'NEW', { flash: true })];
+/* every mast stands on a walk square at its junction's corner */
+SIGNALS.forEach(g => g.arms.split('').forEach(a => { const k = { S: [1, 1], W: [-1, 1], N: [-1, -1], E: [1, -1] }[a], ch = cellAt(cellOf(g.x + k[0] * 7.9), cellOf(g.z + k[1] * 7.9));
+    if (ch !== 'P') console.warn('signal mast off the walk', g.x, g.z, a, ch); }));
+count.vehicles = TRAFFIC.reduce((n, t) => n + t.n, 0); count.signals = SIGNALS.reduce((n, g) => n + g.arms.length, 0);
 /* ── the room ── */
 const J = v => JSON.stringify(v).replace(/"([a-zA-Z_][a-zA-Z0-9_]*)":/g, '$1:').replace(/"/g, "'");
 const spawnP = plotOf[PLAN.progression.start], sp = pc(spawnP);
@@ -555,6 +617,9 @@ features.forEach(f => lines.push("                    " + J(f) + ","));
 lines.push("                ],");
 lines.push("                /* the cars: the ring (west avenue, the north street, the east avenue, the cross street), never the response streets round the mall */");
 lines.push("                traffic: " + J(TRAFFIC) + ",");
+lines.push("                /* THE CITY TRAFFIC: the junctions with traffic lights, and Bus Line 1's stops (the point the bus waits at, its sign poles) */");
+lines.push("                signals: " + J(SIGNALS) + ",");
+lines.push("                busStops: " + J(busStops) + ",");
 lines.push("            },");
 const dj = o => "wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face;
 lines.push("            doors: [");
