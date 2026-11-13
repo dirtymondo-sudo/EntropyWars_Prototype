@@ -2510,3 +2510,11 @@ block). 25 of them, city rooms only: `site_prebuilt_downtown_streets` 18 (bake-d
 - Checked offline (node, the compiled rooms, against main): same ladders, same reach flags on every ladder end, the same tapes with the same
   `hard` flags in the three rooms; standing on each slab, the ground under it, every rail blocks. NOT SEEN ON SCREEN (RULE #1c).
 - After merging main in Disaster City: `node bake-disaster-city.js` (the tool writes the `landing` rows).
+
+### THE PROP PASS, SECOND WAVE (2026-11-13, PR after #1315)
+Eight pieces cut from the packs by bake-pack-pieces.py and wired as catalogue rows (data.js, above ind_factory_red): `public_phone`, `power_pole` (Tacos),
+`garbage_bags` (6twelve), `garbage_bag`, `metal_trash_can` (Trailer Park), `play_slide`, `play_swing`, `play_sandbox` (Cursedlake PS1 Playground, R2
+`Assets/world/packs/cursedlake_playground/`). props.js dress() places them: a pay phone against a wall on every third plot of R C H E S U B, garbage beside
+every shared dumpster (a metal can at every third), a power pole a square on from every third kerb lamp of Southside + Industrial, one playground on
+Southside's Townhouse court (Park west + Dorm court had no free 2 x 2). The phone's hood is the file's -z (catalogue turn 180); the pole's crossarm is its x.
+Not found in the packs: loose tyres (the sewers pack has one, not cut).
