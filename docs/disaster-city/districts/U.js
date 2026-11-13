@@ -1,6 +1,6 @@
 /* DISASTER CITY · THE UNIVERSITY DISTRICT — every building architected (2026-11-13, mondo: "architect the buildings in their respective
-   districts plots ... every building should be unique and purposeful and recognizable"). Repo-only tooling: bake-disaster-city.js calls
-   this once its own rows are written; it re-dresses the district's 22 buildings (plots x 0-3, y 4-7 of docs/disaster-city/city-layout.json).
+   districts plots ... every building should be unique and purposeful and recognizable"). Repo-only tooling: bake-disaster-city.js runs
+   this file's build(ctx) once its own rows are written (THE DISTRICT FILES hook); it re-dresses the district's 22 buildings (plots x 0-3, y 4-7 of docs/disaster-city/city-layout.json).
 
    A building = (1) what the walker reads — the tool's own row with its skin off (`texbuilding` + `skin: false`, a roof-route `plateau` +
    `bld.skin: false`), or a few of them where the plan's one box is really wings round a court — and (2) ONE `k: 'arch'` row: its look as
@@ -11,26 +11,27 @@
    Three landmarks stand over the rest: the observatory's green dome, the library's clock tower, the boiler stack. */
 'use strict';
 const T = 1.75, C = 3.5;
-/* ── the looks: [sheet, tint] ── */
-const BRICK = ['bricks_3', 0xe08a6c], BRICKD = ['bricks_3', 0xb86a58], BUFF = ['bricks_3', 0xf0d8a8], STONE = ['bricks_1', 0xd8ccb4], LIME = ['urban:PlasterWallStucco1a', 0xf2e8d2], WHITE = ['urban:PlasterWallPainted1a', 0xe4e6e8],
-    SLATE = ['concrete_floor', 0x7c8cb4], SLATEG = ['concrete_floor', 0x8aa090], VERD = ['aluminium', 0x62b49a], LEAD = ['aluminium', 0x6e767e], ALU = ['aluminium', 0xb8c0c8], CONC = ['urban:ConcreteStriped2a', 0xffffff], CONCD = ['urban:ConcreteStriped1a', 0xd8d0c4],
-    GUN = ['gunmetal', 0x8890a0], BLACK = ['gunmetal', 0x50545c], CORR = ['urban:MetalCorrugatedPainted1a', 0xffffff], CORRG = ['urban:MetalCorrugatedPainted4c', 0xffffff], CORRR = ['urban:MetalCorrugatedPainted2a', 0xffffff],
-    TILEW = ['tilefloor', 0xd8d8d2], TILEC = ['tilefloor', 0xf0e2c0], TILEB = ['tilefloor', 0x9cc4e4], TILEN = ['tilefloor', 0x3c5c8c], TEAL = ['tilefloor', 0x2f5a5c], MINT = ['tilefloor', 0x58b89a],
+/* ── the looks: [sheet, tint, the sheet's size in metres (none = one square)] — only sheets that stay themselves: an `urban:` sheet, an `hq:` painted
+   sheet, a calm sheet by its own name (a battle sheet's key is swapped for a dark calm sheet in the game: slate on it went black) ── */
+const BRICK = ['urban:TileSubway3a', 0xffffff, C], BRICKD = ['urban:TileSubway4a', 0xe0d0c8, C], BUFF = ['urban:TileSubway1a', 0xffffff, C], STONE = ['calm_marble', 0xfff2d8], LIME = ['urban:PlasterWallStucco1a', 0xf2e8d2], WHITE = ['urban:PlasterWallPainted1a', 0xffffff],
+    SLATE = ['calm_tiles_small', 0x8498d0], SLATEG = ['calm_tiles_small', 0x90b8a0], VERD = ['calm_snow', 0x58c8a8], LEAD = ['calm_deckplate', 0xffffff], ALU = ['calm_tiles', 0xdfe6ee], CONC = ['urban:ConcreteStriped2a', 0xffffff], CONCD = ['urban:ConcreteStriped1a', 0xd8d0c4],
+    GUN = ['calm_gunmetal', 0xffffff], BLACK = ['calm_gunmetal', 0xa0a8b8], CORR = ['urban:MetalCorrugatedPainted1a', 0xffffff], CORRG = ['urban:MetalCorrugatedPainted4c', 0xffffff], CORRR = ['urban:MetalCorrugatedPainted2a', 0xffffff],
+    TILEW = ['calm_tiles', 0xffffff], TILEC = ['calm_tiles', 0xffeec8], TILEB = ['calm_tiles', 0xa8d0f0], TILEN = ['calm_tiles', 0x4a6cb0], TEAL = ['hq:teal', 0xffffff], MINT = ['calm_tiles', 0x68d0b0],
     GL = ['urban:GlassWindowSquare1a', 0xcfe4ee], GLT = ['urban:GlassWindowTall1a', 0xd4ecf0], GLB = ['urban:GlassWindowTall3a', 0xffffff], GLD = ['urban:GlassWindowFactory1a', 0x9098b0], GLR = ['urban:GlassWindowResidential1a', 0xdfe8f0], GLK = ['urban:GlassWindowSquare3a', 0xd8f4f0],
-    WOOD = ['wood_planks', 0xc09a70], WOODG = ['wood_planks', 0x6f9a7c], MARB = ['marble_light', 0xd6d0c2], AWN = ['urban:TileSubway1a', 0xffffff], CREAM = ['urban:PlasterWallPainted1a', 0xf6e6b8], SAGE = ['urban:PlasterWallPainted1a', 0xa8c4a0], BLUE = ['urban:PlasterWallPainted1a', 0x98b0cc],
+    WOOD = ['calm_planks', 0xffffff], WOODG = ['calm_planks', 0xa8e0b8], MARB = ['hq:stone', 0xffffff], AWN = ['urban:TileSubway1a', 0xffffff], CREAM = ['urban:PlasterWallPainted1a', 0xf6e6b8], SAGE = ['urban:PlasterWallPainted1a', 0xa8c4a0], BLUE = ['urban:PlasterWallPainted1a', 0x98b0cc],
     RES = ['urban:DecalWindowsResidential1a', 0xffffff], FAC = ['urban:DecalWindowsFactory1a', 0xffffff], DOORW = ['urban:DoorWoodenHalf1a', 0xffffff], DOORS = ['urban:DoorStorefrontHalf1a', 0xffffff], DOORP = ['urban:DoorPaintedHalf2a', 0xffffff], TRUSS = ['urban:MetalTruss1a', 0xffffff];
 const r3 = v => Math.round(v * 1000) / 1000;
 
-module.exports = function (api) {
-    const { PLAN, features, props, bInfo, ROOF_H } = api;
+module.exports.build = function (api) {
+    const { PLAN, features, props, bInfo } = api;
     let P = null, ctx = null;   // the parts of the building being drawn; its frame
-    const look = (L, o) => { const q = Object.assign({}, o || {}); if (L[0]) q.key = L[0]; if (L[1] != null && L[1] !== 0xffffff) q.tint = L[1]; return q; };
+    const look = (L, o) => { const q = Object.assign({}, o || {}); if (L[0]) q.key = L[0]; if (L[1] != null && L[1] !== 0xffffff) q.tint = L[1]; if (L[2] && q.uv == null) q.uv = L[2]; return q; };
     const part = (s, p, L, o) => { const q = Object.assign({ s, p: p.map(r3) }, look(L, o)); P.push(q); return q; };
     /* ── the shapes (the mock-up's helpers, written as parts) ── */
     const box = (x, y, z, w, h, d, L, o) => part('box', [x, y, z], L, Object.assign({ size: [r3(w), r3(h), r3(d)] }, o || {}));
     const cyl = (x, y, z, r, h, L, seg, r2, o) => part('cyl', [x, y, z], L, Object.assign({ r: r3(r), h: r3(h), seg: seg || 16 }, r2 != null ? { r2: r3(r2) } : {}, o || {}));
     const cone = (x, y, z, r, h, L, seg) => cyl(x, y, z, r, h, L, seg, 0, { roof: true });
-    const dome = (x, y, z, r, L, sq, seg) => part('dome', [x, y, z], L, { r: r3(r), h: r3(r * (sq || 1)), seg: seg || 20, rings: 6, roof: true });
+    const dome = (x, y, z, r, L, sq, seg) => part('dome', [x, y, z], L, { r: r3(r), h: r3(r * (sq || 1)), seg: seg || 20, rings: 6, roof: true, glow: 0.3 });   // a little of its own colour on the shaded side (an unlit dome read black)
     const roofP = (form, x, y, z, w, h, d, L, o) => part('roof', [x, y, z], L, Object.assign({ form, size: [r3(w), r3(h), r3(d)], roof: true }, o || {}));
     const ends = LE => LE ? { keyEnd: LE[0], tintEnd: LE[1] } : {};
     /* gable: the ridge along 'x' or 'z' (w = along x, d = along z in the building's frame) */
@@ -63,7 +64,7 @@ module.exports = function (api) {
     /* a small thing that blocks (a column, a tank): one ghost wall */
     const block = (lx, lz, w, d, h) => { const a = toWorld(lx - w / 2, lz), b = toWorld(lx + w / 2, lz); features.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], h: h || 3, t: r3(d), ghost: true, rail: false }); };
     /* a block on a walked roof (the dome's drum, the vault): a higher tier inside the tier, its own faces off */
-    const tier = (lx, lz, w, d, h) => { const [x, z] = toWorld(lx, lz), tw = turned(); features.push({ k: 'plateau', id: ctx.id + '-u' + (++sub), x, z, w: r3(tw ? d : w), d: r3(tw ? w : d), h: r3(h), edge: 0.15, bld: { skin: false, seed: 7000 + sub } }); };
+    const tier = (lx, lz, w, d, h) => { const [x, z] = toWorld(lx, lz), tw = turned(); features.push({ k: 'plateau', id: ctx.id + '-u' + (++sub), x, z, w: r3((tw ? d : w) - 0.3), d: r3((tw ? w : d) - 0.3), h: r3(h), edge: 0.15, bld: { skin: false, seed: 7000 + sub } }); };   // 0.15 m inside its drawn walls: the plateau's own cliff never shows through them
     /* the walk-in building's doorway, as data.js hqTexbDoor finds it: its square of the front (1 = the left as you face it) nearest x */
     const doorAt = (w, x) => { const L = w - 0.12, cols = Math.max(1, Math.round(L / T)), cw = L / cols, col = Math.max(0, Math.min(cols - 1, Math.round((x + L / 2) / cw - 0.5))); return { door: col + 1, lx: r3(-L / 2 + (col + 0.5) * cw), cw: r3(cw) }; };
     /* the front wall of a walk-in building: a panel with the doorway cut out (the leaf is the engine's) */
@@ -107,9 +108,9 @@ module.exports = function (api) {
         const rw = 14; box(0, 0, rz, rw, H - 1.5, rd, STONE, { top: false, faces: 'blr' }); gable(0, H - 1.5, rz, rw, rd + 0.6, 5.4, 'z', SLATE, STONE, 0.3); solid(0, rz, rw, rd, H - 1.5);
         [-1, 1].forEach(s => win(s < 0 ? 'l' : 'r', rz, 2.2, Math.floor((rd - 3.5) / T) * T, 5.2, rw / 2, GLT));
         const tx = w / 2 - 3.2, tz = nz + nd / 2 - 2.2, ts = 6.4; box(tx, 0, tz, ts, 22, ts, STONE, { top: false }); box(tx, 22, tz, ts + 0.6, 0.5, ts + 0.6, MARB, { under: true }); pyramid(tx, 22.5, tz, ts + 0.5, 6.5, SLATE);
-        [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => { const [p, ry] = FACE[f](cx, off + 0.06); P.push(Object.assign({ s: 'cyl', p: [p[0], 18.6, p[2]], r: 2.1, h: 0.12, seg: 20, ry: ry }, look(['marble_light', 0xfff8e0]))); });
+        [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => { const [p, ry] = FACE[f](cx, off + 0.06); P.push(Object.assign({ s: 'cyl', p: [p[0], 18.6, p[2]], r: 2.1, h: 0.12, seg: 20, ry: ry }, look(['hq:stone', 0xfff8e0]))); });
         /* the clock faces: a pale disc on its edge is not a part shape, so each face is a square stone-framed panel + two hands */
-        [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => { panel(f, cx, 16.5, 4.2, 4.2, off + 0.02, ['marble_light', 0xfff8e0]); panel(f, cx, 18.6, 0.22, 1.7, off + 0.06, [null, 0x202020]); panel(f, cx + 0.55, 18.5, 1.3, 0.22, off + 0.06, [null, 0x202020]); win(f, cx, 11.5, T, 3.5, off, GLT); });
+        [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => { panel(f, cx, 16.5, 4.2, 4.2, off + 0.02, ['hq:stone', 0xfff8e0]); panel(f, cx, 18.6, 0.22, 1.7, off + 0.06, [null, 0x202020]); panel(f, cx + 0.55, 18.5, 1.3, 0.22, off + 0.06, [null, 0x202020]); win(f, cx, 11.5, T, 3.5, off, GLT); });
         P.splice(P.findIndex(q => q.s === 'cyl' && q.h === 0.12), 2);   // (the lying discs are dropped: the panels are the faces)
     };
     B.cafe = (w, d, row) => {   // a brick house under a hipped slate roof, a glass conservatory, a striped awning, a round corner bay under a cone. WALK-IN
@@ -144,7 +145,7 @@ module.exports = function (api) {
         box(0, 0, 0, w, 3.5, d, WOODG, { top: false }); box(0, 3.5, 0, w, 3.5, d, CREAM, { top: false }); win('f', -0.9, 0.6, Math.floor((w - 4) / T) * T, 2.4, d / 2, GLB); win('r', 0, 0.6, d - C, 2.4, w / 2, GLB); door('f', w / 2 - 1.6, d / 2, DOORS);
         rows('f', 0, w - T, d / 2, 1, RES, 4.3); rows('r', 0, d - T, w / 2, 1, RES, 4.3); rows('l', 0, d - T, w / 2, 1, RES, 4.3); rows('b', 0, w - T, d / 2, 1, RES, 4.3);
         shed(0, 2.9, d / 2 + 0.9, w, 1.8, 0.9, AWN, 0); shed(w / 2 + 0.9, 2.9, 0, d, 1.8, 0.9, AWN, 270); cornice(w, d, 6.55, WOODG, 0.45, 0.45);
-        box(-w / 2 - 0.6, 4.2, d / 2 - 1.5, 1.0, 1.3, 0.15, ['wood_planks', 0x34503c]);
+        box(-w / 2 - 0.6, 4.2, d / 2 - 1.5, 1.0, 1.3, 0.15, ['calm_planks', 0x80c090]);
     };
     B.workshop = (w, d, row) => {   // the bike workshop: a brick foot, green corrugated walls, a sawtooth roof of north lights
         Object.assign(row, { storeys: 2 }); box(0, 0, 0, w, 1.2, d, BRICKD, { top: false }); box(0, 1.2, 0, w, 3.6, d, CORRG, { top: false });
@@ -160,7 +161,7 @@ module.exports = function (api) {
         const pd = 3.2; box(0, 0, d / 2 + pd / 2, 10, 0.15, pd + 0.3, STONE); [-3.9, -1.3, 1.3, 3.9].forEach(x => { cyl(x, 0.15, d / 2 + pd - 0.5, 0.42, 6.0, MARB, 12); block(x, d / 2 + pd - 0.5, 0.8, 0.8, 6); });
         box(0, 6.15, d / 2 + pd / 2, 10.4, 0.85, pd + 0.2, MARB, { under: true }); gable(0, 7, d / 2 + pd / 2, 10.4, pd + 0.2, 1.8, 'z', VERD, MARB, 0.1); door('f', 0, d / 2, DOORW, 2.6);
         const r = Math.min(7.4, d / 2 - 4.6); cyl(0, 7, 0, r, 3.6, LIME, 28); cyl(0, 10.6, 0, r + 0.3, 0.4, MARB, 28); dome(0, 11, 0, r, VERD, 1, 28);
-        P.push(Object.assign({ s: 'dome', p: [0, 11, 0], r: r3(r + 0.08), h: r3(r + 0.08), arc: 18, a0: 51, seg: 6, rings: 6, ds: true, roof: true }, look(['gunmetal', 0x303440])));   // the slit
+        P.push(Object.assign({ s: 'dome', p: [0, 11, 0], r: r3(r + 0.08), h: r3(r + 0.08), arc: 18, a0: 51, seg: 6, rings: 6, ds: true, roof: true }, look(['calm_gunmetal', 0x707890])));   // the slit
         tier(0, 0, r * 1.7, r * 1.7, 10.6);
         const tx = -w / 2 + 3.2, tz = -d / 2 + 3.2; cyl(tx, 7, tz, 2.2, 2.4, LIME, 14); dome(tx, 9.4, tz, 2.2, VERD, 1, 14); tier(tx, tz, 3.4, 3.4, 9.4);
         box(w / 2 + 1.2, 3, 0, 2.4, 0.25, 5, MARB, { under: true }); door('r', 0, w / 2, DOORW);
@@ -172,7 +173,7 @@ module.exports = function (api) {
         win('f', 0, 4.7, w - 7, T, d / 2, GLD); win('f', -w / 2 + 4.4, 1.4, 5.25, T, d / 2, GLD); win('f', D.lx + 5.6, 1.4, Math.floor((w / 2 - 4 - D.lx - 3) / T) * T, T, d / 2, GLD);
         const n = Math.max(4, Math.round(w / 5)), bw = w / n; for (let i = 0; i < n; i++) shed(-w / 2 + bw * (i + 0.5), 7, 0, d, bw, 2.1, ALU, 270, GL);
         cyl(w / 2 - 1.2, 0, d / 2 + 0.6, 2.6, 11, GLT, 18); cyl(w / 2 - 1.2, 11, d / 2 + 0.6, 2.9, 0.3, ALU, 18); block(w / 2 - 1.2, d / 2 + 1.6, 5, 3.2, 11);
-        const OR = ['aluminium', 0xf08a3c]; box(D.lx, 3.0, d / 2 + 1.6, 7, 0.28, 3.2, OR, { under: true }); box(D.lx - 3.3, 0, d / 2 + 0.3, 0.4, 3.0, 0.6, OR);
+        const OR = ['calm_snow', 0xf08a3c]; box(D.lx, 3.0, d / 2 + 1.6, 7, 0.28, 3.2, OR, { under: true }); box(D.lx - 3.3, 0, d / 2 + 0.3, 0.4, 3.0, 0.6, OR);
         [-2, 0, 2].forEach(x => cyl(-w / 2 + 3 + x, 7, -d / 2 + 1.4, 0.38, 6.2, ALU, 10)); box(-w / 2 + 3, 7, -d / 2 + 1.4, 6, 1.2, 1.8, GUN);
     };
     B.annex = (w, d) => {   // roof route: brutalist — the upper floor hangs over a glass ground floor, fins all round, a roof greenhouse + a tank
@@ -201,7 +202,7 @@ module.exports = function (api) {
         box(t / 2, 0, -d / 2 + 4, w - t, 5.2, 8, BRICKD, { top: false }); rows('f', t / 2, w - t - C, -d / 2 + 8, 1, FAC, 1.6); box(t / 2, 5.2, -d / 2 + 4, w - t + 0.5, 0.35, 8.5, CONC, { under: true }); solid(t / 2, -d / 2 + 4, w - t, 8, 7); door('f', 2, -d / 2 + 8, DOORP, 2.2);
         const sx = w / 2 - 3.2, sz = -d / 2 + 3.6; cyl(sx, 5.2, sz, 1.4, 21, BRICK, 16, 1.0); cyl(sx, 23, sz, 1.08, 0.9, MARB, 16, null, { cap: false }); cyl(sx, 24.8, sz, 1.04, 0.9, MARB, 16, null, { cap: false });
         [0, 5.8, 11.6].forEach((x, i) => { const cx = -w / 2 + t + 5 + x, cz = d / 2 - 4; cyl(cx, 0.6, cz, 2.4, 6.4 - i * 0.8, ALU, 18, null, { cap: false }); dome(cx, 7 - i * 0.8, cz, 2.4, ALU, 0.35, 18); box(cx, 0, cz, 5.2, 0.6, 5.2, CONCD); block(cx, cz, 4.8, 4.8, 6); });
-        box(4, 3.2, d / 2 - 7.4, w - t - 3, 0.5, 0.5, ['aluminium', 0xf0c040], { under: true }); box(4, 3.9, d / 2 - 7.4, w - t - 3, 0.3, 0.3, ['aluminium', 0xd04838]); P.push(Object.assign({ s: 'box', p: [-6, 0, r3(d / 2 - 7.4)], size: [0.3, 3.2, 0.3], n: 4, step: [6, 0, 0] }, look(GUN)));
+        box(4, 3.2, d / 2 - 7.4, w - t - 3, 0.5, 0.5, ['calm_snow', 0xf0c040], { under: true }); box(4, 3.9, d / 2 - 7.4, w - t - 3, 0.3, 0.3, ['calm_snow', 0xd04838]); P.push(Object.assign({ s: 'box', p: [-6, 0, r3(d / 2 - 7.4)], size: [0.3, 3.2, 0.3], n: 4, step: [6, 0, 0] }, look(GUN)));
     };
     B.secret = (w, d, row) => {   // the research annex: a windowless black slab under a gunmetal barrel roof, slit windows, dishes and a mast. WALK-IN
         const D = doorAt(w, 0); Object.assign(row, { hollow: true, door: D.door, leaf: 'leaf_security', storeys: 1 });
@@ -215,9 +216,9 @@ module.exports = function (api) {
         front(w, 7, d, WHITE, D); shell(w, 7, d, WHITE); win('f', D.lx - 1.2 - (w / 2 + D.lx - 2) / 2, 0.6, Math.floor((w / 2 + D.lx - 2) / T) * T, 5.4, d / 2, GLT); win('f', D.lx + 4.7, 0.6, 7, 5.4, d / 2, GLT); win('f', D.lx, 2.5, T, 3.5, d / 2, GLT);
         win('b', 0, 2.6, w - C, T, d / 2, GL); vault(0, 7, 0, w, d + 1.6, 2.6, 'x', ALU, GLT);
         P.push(Object.assign({ s: 'box', p: [r3(-w / 2 + 1), 0, r3(d / 2 + 0.25)], size: [0.3, 7, 0.5], n: Math.floor((w - 12) / C) + 1, step: [C, 0, 0] }, look(ALU)));
-        const gx = w / 2 - 4.5; cyl(gx, 0, 0.6, 4.2, 1.2, CONCD, 16); P.push(Object.assign({ s: 'dome', p: [r3(gx), 4.2, 0.6], r: 5.6, h: 5.6, seg: 10, rings: 4, roof: true }, look(['aluminium', 0xd4e2f4])));
-        cyl(gx, 1.2, 0.6, 5.6, 3.0, ['aluminium', 0xd4e2f4], 10, 5.6, { cap: false }); block(gx, d / 2 + 2.2, 9, 4, 6);
-        box(D.lx, 3.1, d / 2 + 1.5, 7, 0.25, 3, ['aluminium', 0x3c7cd8], { under: true });
+        const gx = w / 2 - 4.5; cyl(gx, 0, 0.6, 4.2, 1.2, CONCD, 16); P.push(Object.assign({ s: 'dome', p: [r3(gx), 4.2, 0.6], r: 5.6, h: 5.6, seg: 10, rings: 4, roof: true }, look(['calm_snow', 0xd4e2f4])));
+        cyl(gx, 1.2, 0.6, 5.6, 3.0, ['calm_snow', 0xd4e2f4], 10, 5.6, { cap: false }); block(gx, d / 2 + 2.2, 9, 4, 6);
+        box(D.lx, 3.1, d / 2 + 1.5, 7, 0.25, 3, ['calm_snow', 0x3c7cd8], { under: true });
     };
     B.clinic = (w, d, row) => {   // the clinic: white tile, a glass-block round corner, a canopy on thin posts, the cross on a pylon. WALK-IN
         const D = doorAt(w, 1.5); Object.assign(row, { hollow: true, door: D.door, leaf: 'leaf_lobby_glass_double', storeys: 1 });
@@ -234,22 +235,22 @@ module.exports = function (api) {
     };
     B.foodstand = (w, d, row) => {   // the food stand: a tiled counter under a big red canopy, a yellow sign board
         Object.assign(row, { storeys: 1, d: r3(d - 4) }); [row.x, row.z] = toWorld(0, -2);
-        box(0, 0, -2, w - 1, 3.4, d - 4, TILEW, { top: false }); box(0, 0, -2, w - 0.9, 1.1, d - 3.9, ['tilefloor', 0xd84a3a]); box(0, 1.1, d / 2 - 3.95, w - 3, 1.7, 0.1, ['gunmetal', 0x30343c]); box(0, 1.0, d / 2 - 3.7, w - 2.4, 0.15, 0.8, ALU);
-        shed(0, 3.2, d / 2 - 2, w + 0.6, 4.4, 1.0, CORRR, 180, null, { under: true }); [-1, 1].forEach(s => cyl(s * (w / 2 - 0.3), 0, d / 2 - 0.1, 0.1, 4.1, ALU, 8)); box(0, 3.4, -2, w - 0.6, 0.3, d - 3.6, CORRR); box(0, 3.9, -3, w - 2, 1.5, 0.25, ['tilefloor', 0xf4c83c]);
+        box(0, 0, -2, w - 1, 3.4, d - 4, TILEW, { top: false }); box(0, 0, -2, w - 0.9, 1.1, d - 3.9, ['calm_tiles', 0xd84a3a]); box(0, 1.1, d / 2 - 3.95, w - 3, 1.7, 0.1, ['calm_gunmetal', 0x8088a0]); box(0, 1.0, d / 2 - 3.7, w - 2.4, 0.15, 0.8, ALU);
+        shed(0, 3.2, d / 2 - 2, w + 0.6, 4.4, 1.0, CORRR, 180, null, { under: true }); [-1, 1].forEach(s => cyl(s * (w / 2 - 0.3), 0, d / 2 - 0.1, 0.1, 4.1, ALU, 8)); box(0, 3.4, -2, w - 0.6, 0.3, d - 3.6, CORRR); box(0, 3.9, -3, w - 2, 1.5, 0.25, ['calm_tiles', 0xf4c83c]);
     };
     B.gatehouse = (w, d, row) => {   // the guard post: a glass booth under a wide flat roof, a barrier arm
         Object.assign(row, { storeys: 1, w: r3(w - 6), d: r3(d - 3) }); box(0, 0, 0, w - 6, 1.1, d - 3, CONCD, { top: false }); box(0, 1.1, 0, w - 6, 2.0, d - 3, GLR, { top: false }); box(0, 3.1, 0, w - 1, 0.35, d + 1.5, CONC, { under: true }); box(0, 3.45, 0, w - 5, 0.5, d - 2, GUN); door('f', 0, d / 2 - 1.5, DOORP, 1.3);
-        cyl(w / 2 - 2, 0, d / 2 + 0.6, 0.16, 1.2, ALU, 8); box(w / 2 - 2 + 2.8, 1.1, d / 2 + 0.6, 5.6, 0.16, 0.16, ['tilefloor', 0xe84030]);
+        cyl(w / 2 - 2, 0, d / 2 + 0.6, 0.16, 1.2, ALU, 8); box(w / 2 - 2 + 2.8, 1.1, d / 2 + 0.6, 5.6, 0.16, 0.16, ['calm_tiles', 0xe84030]);
     };
     B.store = (w, d, row) => {   // the corner store: a glass front, a red fascia with a lit sign band, a flat roof
-        Object.assign(row, { storeys: 1 }); box(0, 0, 0, w, 3.6, d, TILEW, { top: false }); win('f', 0, 0.5, Math.floor((w - T) / T) * T, 2.4, d / 2, GLB); box(0, 3.2, d / 2 + 0.35, w + 0.4, 1.3, 0.7, ['tilefloor', 0xe8443c], { under: true }); panel('f', 0, 3.5, w - 4, 0.6, d / 2 + 0.7, [null, 0xfff4d0], { glow: 0.8 });
+        Object.assign(row, { storeys: 1 }); box(0, 0, 0, w, 3.6, d, TILEW, { top: false }); win('f', 0, 0.5, Math.floor((w - T) / T) * T, 2.4, d / 2, GLB); box(0, 3.2, d / 2 + 0.35, w + 0.4, 1.3, 0.7, ['calm_tiles', 0xe8443c], { under: true }); panel('f', 0, 3.5, w - 4, 0.6, d / 2 + 0.7, [null, 0xfff4d0], { glow: 0.8 });
         box(0, 3.6, 0, w + 0.3, 0.3, d + 0.3, CONC, { under: true }); door('f', 0, d / 2, DOORS, 2.6); box(-w / 2 + 2, 3.9, -1, 2, 1.1, 2, ALU);
     };
     B.pavilion = (w, d, row) => {   // the museum's ticket + gift pavilion: a glass box under a tilted floating roof on four posts
         Object.assign(row, { storeys: 1, w: r3(w - 4), d: r3(d - 2.6) }); box(0, 0.5, 0, w - 4, 2.5, d - 2.6, GLR, { top: false }); box(0, 0, 0, w - 3.9, 0.5, d - 2.5, CONCD); box(0, 3.0, 0, w - 4, 0.15, d - 2.6, CONCD);
-        shed(0, 3.4, 0, w + 1, d + 1, 1.5, ['aluminium', 0x3c7cd8], 180, null, { under: true }); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => cyl(a * (w / 2 - 0.4), 0, b * (d / 2 - 0.4), 0.13, b > 0 ? 4.7 : 3.6, ALU, 8)); door('f', 0, d / 2 - 1.3, DOORS, 2.6);
+        shed(0, 3.4, 0, w + 1, d + 1, 1.5, ['calm_snow', 0x3c7cd8], 180, null, { under: true }); [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => cyl(a * (w / 2 - 0.4), 0, b * (d / 2 - 0.4), 0.13, b > 0 ? 4.7 : 3.6, ALU, 8)); door('f', 0, d / 2 - 1.3, DOORS, 2.6);
     };
-    B.bandstand = () => { cyl(0, 0, 0, 4.2, 0.2, STONE, 8); P.push(Object.assign({ s: 'cyl', p: [0, 0.2, 0], r: 0.14, h: 3.7, seg: 8, cap: false, ring: { n: 8, r: 3.7, a0: 22.5 } }, look(['aluminium', 0x2c4a3c]))); cyl(0, 3.9, 0, 4.5, 0.25, ['aluminium', 0x2c4a3c], 8); cone(0, 4.15, 0, 4.6, 2.2, VERD, 8); cyl(0, 6.35, 0, 0.1, 1.2, ALU, 6); };
+    B.bandstand = () => { cyl(0, 0, 0, 4.2, 0.2, STONE, 8); P.push(Object.assign({ s: 'cyl', p: [0, 0.2, 0], r: 0.14, h: 3.7, seg: 8, cap: false, ring: { n: 8, r: 3.7, a0: 22.5 } }, look(['calm_snow', 0x2c4a3c]))); cyl(0, 3.9, 0, 4.5, 0.25, ['calm_snow', 0x2c4a3c], 8); cone(0, 4.15, 0, 4.6, 2.2, VERD, 8); cyl(0, 6.35, 0, 0.1, 1.2, ALU, 6); };
 
     /* ═══ THE DISTRICT: plan building → its builder ═══ */
     const KIND = { 'P00-04-B1': 'dorm', 'P01-04-B1': 'bookshop', 'P01-04-B2': 'PACK', 'P01-04-B3': 'workshop', 'P02-04-B1': 'observatory', 'P03-04-B1': 'faculty', 'P03-04-B2': 'newsstand',
@@ -267,11 +268,11 @@ module.exports = function (api) {
             features.splice(features.indexOf(row), 1); props.push({ key: 'city_pizzeria', x: row.x, z: r3(row.z + (ew ? row.w : row.d) / 2 - 10.25 - 0.4), face: 180 }); return; }
         if (tierRow) { row.bld = Object.assign({}, row.bld, { skin: false }); delete row.bld.style; }
         else { row.skin = false; delete row.style; delete row.key; delete row.hollow; delete row.door; }
-        B[kind](w, d, row);
+        B[kind](tierRow ? w + 0.3 : w, tierRow ? d + 0.3 : d, row);   // a roof-route building is a plateau: its drawn walls stand 0.15 m outside the plateau's own cliff
         if (row.dead) features.splice(features.indexOf(row), 1);
         features.push({ k: 'arch', id: 'dcu:' + b.id, x: ctx.x, z: ctx.z, rot, parts: P }); count.arch++; count.parts += P.length;
     });
     /* the campus green's bandstand, on the grass south-west of the cross walks */
     { const p = PLAN.plots.find(q => q.name === 'Campus green'); if (p) { const x = r3(api.gx(p.x * 12 + 2.5)), z = r3(api.gx(p.y * 12 + 8.5)); ctx = { id: 'dc:green', x, z, rot: 0 }; P = []; B.bandstand(); features.push({ k: 'arch', id: 'dcu:bandstand', x, z, rot: 0, parts: P }); count.arch++; count.parts += P.length; } }
-    return count;
+    console.log('university:', JSON.stringify(count));
 };
