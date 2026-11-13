@@ -2267,7 +2267,7 @@ Plots x 0-3, y 8-11 (room x -252..-84, z 84..252). All of it lives in `docs/disa
   so a design follows the plot if the plan moves. Helpers: `body` (solid box or hollow shell with a door hole), `truss`, `bay` / `bayX` (roller doors), `vents`, `house`.
 - **Walk-ins (11):** Freight gate, Power station, Machine shop, Loading office, Aerospace lab, Port office, Maintenance depot, Hangar, Water works, Rail service,
   and the Pump court sewer entry (`leaf: 'none'`). The rest are solid.
-- **Roof route:** Warehouse, the corner shop and Container court stay `plateau` rows (flat 7 m). Freight gate + Loading office became hollow 2-storey texbuildings
+- **Roof route:** Warehouse, the corner shop and Container court stay `plateau` rows (flat 7 m); every arch row carries `y: 0` so it stands on the ground, not on the plateau top (fixed PR after #1279). Freight gate + Loading office became hollow 2-storey texbuildings
   (roof slab at 7 m); NOT walk-tested from the bridges.
 - **Landmarks:** Power station (barrel roof + two striped stacks), Aerospace lab (dome + vault + control tower), Port office (green pyramid lantern), Container court
   (a stack of tinted containers on the roof), the Dock Edge gantry crane (`ind:crane`, truss parts; the game's `crane` is a horizon model, not a room prop).
@@ -2298,3 +2298,7 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
 - **Seen in the cloud browser** (WebGL2 headless): every plot from above, shots in `/mnt/project-files/disaster-city-southside/`. Not seen on his Mac yet.
   Interiors are the next pass (the seven walk-in shells are empty rooms with a floor and plaster walls).
 
+- **A ROOF IS NOT GROUND (2026-11-13, the shared-pieces thread, the root fix for the note above).** data.js hqTerrainCompile `archGround`: an arch
+  row with no `y` whose origin lies over a building plateau (`bld`) takes the ground that building stands on, never its roof. Four rows on main
+  still stood 7 m up (P09-08-B2, P09-09-B1, P10-09-B1, P11-09-B2); the headless compile now gives all 191 city arch rows base 0. `y: 0` in a
+  district file is harmless and no longer needed.
