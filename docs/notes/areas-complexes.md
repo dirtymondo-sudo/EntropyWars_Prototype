@@ -2582,7 +2582,7 @@ mondo 20:15 "one more polish pass on the exteriors ... go one or two more layers
 canopies + glowing lamps, window sills / lintels / mullions, downpipes + gutters, ribs on every barrel roof, ladders, blank sign boards, hazard plates, bollards, rust streaks, door decals
 on the solid buildings, the signal box's outside stair + a semaphore, the crane's rails / cab glass / beacon) and `ROOFS[id]` (roof AC units `ac`, wall units `wac`, parapets, hatches,
 ducts, rubber walkways, manhole decals in the yards, a second sheet on back walls and bases: subway / generic tile, brick, factory window decals). Houses: `houseMore` (corner boards,
-door hoods, shutters, sills, gutters, chimney caps). On the five walked roofs only edges and corners are dressed. Signs stay blank (no lettering part). Seen in the cloud browser (29
+door hoods, shutters, sills, gutters, chimney caps). On the five walked roofs only edges and corners are dressed. Signs carry real words since the shared `txt:` sheet landed (PR #1327): `sign(..., words, fg)` and `txt(...)` lay letters over a board; the words are the plan names (WAREHOUSE, POWER STATION, CANTEEN, HARDWARE ...) and bay numbers. Seen in the cloud browser (29
 close-ups, about two thirds framed the building; the rest were checked from neighbours' shots). `arch y` is lifted by THE LEVELS, so headless cameras add the plot's level.
 
 ### THE UNIVERSITY POLISH PASS (2026-11-13, mondo 20:15 "one more polish pass on the exteriors ... one or two more layers deep", 20:18 "roofs and ac units", 20:19 "different textures or decals for different parts of the building")
@@ -2597,3 +2597,10 @@ with a ghost wall each and never within 5 m of a bridge / stair / ladder point o
 
 **Civic Center, the lettering (2026-11-13):** C.js `NAMES` gives 24 buildings their name; the walk-in name board and the shop sign board
 wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no name keeps the gilt plate / blank board. Seen in game.
+
+- THE LETTERING (same evening, the shared `txt:` sign sheet of PR #1327): `LETTERS[id]` in E.js puts plain trade words on the sign panels
+  (CASINO, CINEMA down the fin, NOW SHOWING, COMEDY TONIGHT, CONCERT down the blade, NIGHT MARKET, ARCADE, BOX OFFICE, RAMEN, BAKERY, TAXI,
+  WEDDING CHAPEL ...; no invented names). Helpers `b.txt(side, u0, u1, y, h, words, fg, proud, glow, bg)` and `b.vtxt` (a word read down a
+  blade, a letter a panel). Dark letters sit over the lit panels (`kind: 'over'`, no board); light letters glow.
+- **The University's sign lettering** (11-13, on the shared `txt:` sheet of PR #1327): `LABEL[kind]` in districts/U.js puts the building's plain name
+  (LIBRARY, LECTURE HALL, CAFE, BOOKS, CLINIC, ...: what it is, no invented names) on a board over its first door. Not seen on screen.
