@@ -603,8 +603,8 @@ function insideKit(row) {
            over its first-pass layout. Nothing here blocks a square (decor hugs the walls, off the squares' middles) unless it says `ghost`. */
         /* a prop with the room's own floor under it (`floor: true`: never the roof slab over it) and an optional height (a desk top, a wall) */
         put(key, lx, lz, face, y, o) { const p = world(lx, lz); props.push(Object.assign({ key, x: p[0], z: p[1], face: ((((face || 0) + rot) % 360) + 360) % 360, floor: true }, y != null ? { y } : {}, o || {})); },
-        /* a prop on a wall: side 'b' (the back), 'l', 'r', 'f' (the front, the door's), u = along it from its middle (+x on b / f, +z on l / r) */
-        wall(key, side, u, y, o) { const e = 0.45, P = { b: [u, -D / 2 + e, 0], f: [u, D / 2 - e, 180], l: [-W / 2 + e, u, 270], r: [W / 2 - e, u, 90] }[side]; K.put(key, P[0], P[1], P[2], y, o); },
+        /* a prop on a wall at height y (mount 0: the catalogue mount would lift it again): side 'b' (the back), 'l', 'r', 'f' (the front, the door's), u = along it from its middle (+x on b / f, +z on l / r) */
+        wall(key, side, u, y, o) { const e = 0.45, P = { b: [u, -D / 2 + e, 0], f: [u, D / 2 - e, 180], l: [-W / 2 + e, u, 270], r: [W / 2 - e, u, 90] }[side]; K.put(key, P[0], P[1], P[2], y, Object.assign({ mount: 0 }, o)); },
         /* the room's own paint over the bare inside sheet (B.js R.liner): a wall coat, a dado under it, a skirting, a lit ceiling */
         liner(wall, dado, ceil, o) { o = o || {}; const H = K.H, lx = K.dlx, dh = o.dado || 1.0;
             const coat = (m, hh, e, y) => { if (!m) return; const q = (p, ry, w, hole) => a.P.push(Object.assign({ s: 'quad', p, ry, size: [w, hh] }, hole ? { hole } : {}, m));
