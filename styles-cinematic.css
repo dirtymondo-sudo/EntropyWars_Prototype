@@ -3460,11 +3460,43 @@
     background: #000;
     transition: transform .45s cubic-bezier(.22, 1, .36, 1);
 }
-.acam-bar-top { top: 0;    transform: translateY(-101%); }
+.acam-bar-top { top: 0;    transform: translateY(-101%); z-index: 1; }   /* over the vignette: its name stays white */
 .acam-bar-bot { bottom: 0; transform: translateY(101%); }
 .acam-chrome.active .acam-bar-top,
 .acam-chrome.active .acam-bar-bot { transform: translateY(0); }
 .acam-chrome.light .acam-bar { display: none; }
+
+/* THE NAME RIDES THE BAR (mondo 2026-11-13): the heavy chrome writes the spell name inside its top letterbox bar, so
+   the corner total sits where the name was. battle.js shrinks a long name to fit; never cut. */
+.acam-bar-name {
+    position: absolute;
+    left: 3.5%;
+    top: 50%;
+    transform: translateY(-50%);
+    font-family: 'Cormorant SC', serif;
+    font-size: clamp(18px, 5.4vh, 46px);
+    font-weight: 900;
+    line-height: 1;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    white-space: nowrap;
+    border-left: 3px solid rgba(255, 200, 60, .85);
+    padding-left: 14px;
+    text-shadow: 0 0 18px rgba(255, 200, 60, .65), 0 0 44px rgba(255, 160, 40, .3);
+    opacity: 0;
+}
+.acam-bar-name:empty { display: none; }
+.acam-bar-name.in { animation: acamBarNameIn .5s cubic-bezier(.22, 1, .36, 1) .12s forwards; }
+@keyframes acamBarNameIn {
+    0% { opacity: 0; transform: translate(-40px, -50%); letter-spacing: .4em; filter: blur(5px); }
+    100% { opacity: 1; transform: translate(0, -50%); letter-spacing: .14em; filter: blur(0); }
+}
+.acam-chrome.heal-tally .acam-bar-name {
+    border-left-color: rgba(110, 240, 170, .85);
+    text-shadow: 0 0 18px rgba(110, 240, 170, .65), 0 0 44px rgba(60, 200, 120, .3);
+}
+.acam-chrome:not(.light) .acam-spell-name { display: none; }
 
 /* ── Edge darkening: the frame dims around the actors ── */
 .acam-vignette {
@@ -3624,6 +3656,99 @@
     0% { transform: scale(1); filter: brightness(1); }
     35% { transform: scale(1.18); filter: brightness(2.1); }
     100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* THE AP TALLY (mondo 2026-11-13, battle.js _acApTallyShow): the lines that hand AP back or take it stack under the
+   corner total one by one, then the sum lands. Own side cyan-blue, enemy pink-orange (the team ring rule); entropy violet. */
+.acam-ap-tally {
+    display: none;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    margin-top: 6px;
+    --ap-c: #6fe3ff;
+    --ap-glow: rgba(60, 190, 255, .75);
+}
+.acam-ap-tally.enemy { --ap-c: #ff9a6a; --ap-glow: rgba(255, 90, 110, .75); }
+.acam-ap-tally.on { display: flex; }
+.acam-ap-row, .acam-ap-sum {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    white-space: nowrap;
+    padding: 2px 34px 3px 14px;
+    background: linear-gradient(90deg, rgba(0, 0, 0, .72) 0%, rgba(0, 0, 0, .5) 62%, rgba(0, 0, 0, 0) 100%);
+    border-left: 3px solid rgba(255, 255, 255, .55);
+    animation: acamApRowIn .26s cubic-bezier(.16, 1, .3, 1) both;
+}
+@keyframes acamApRowIn {
+    0% { opacity: 0; transform: translateX(-26px) skewX(-14deg); filter: brightness(3); }
+    55% { opacity: 1; transform: translateX(4px) skewX(0); filter: brightness(1.8); }
+    100% { opacity: 1; transform: translateX(0); filter: brightness(1); }
+}
+.acam-ap-l {
+    font-size: clamp(13px, 1.7vw, 22px);
+    font-weight: 700;
+    letter-spacing: .16em;
+    color: #fff;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, .8);
+    /* the label, its multiplier at the far end: every line's AP worth starts on one column */
+    display: inline-flex;
+    justify-content: space-between;
+    gap: 1em;
+    min-width: 15.5em;
+}
+.acam-ap-l i { font-style: normal; font-weight: 700; letter-spacing: .04em; color: rgba(255, 226, 190, .85); margin-left: .35em; }
+.acam-ap-v {
+    font-size: clamp(14px, 1.9vw, 25px);
+    font-weight: 900;
+    letter-spacing: .06em;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 2px 0 rgba(0, 0, 0, .85);
+}
+.acam-ap-v.gain { color: var(--ap-c); text-shadow: 0 0 12px var(--ap-glow), 0 2px 0 rgba(0, 0, 0, .85); }
+.acam-ap-v.loss { color: #ff4a4a; text-shadow: 0 0 12px rgba(255, 0, 0, .7), 0 2px 0 rgba(0, 0, 0, .85); }
+.acam-ap-v.vent { color: #c9a5ff; text-shadow: 0 0 12px rgba(163, 108, 255, .85), 0 2px 0 rgba(0, 0, 0, .85); }
+.acam-ap-v.none { color: rgba(255, 255, 255, .6); font-weight: 700; }
+/* a line that landed with the hit keeps its place; its AP worth is stamped on when the press resolves */
+.acam-ap-row.paid { animation: acamApPaid .3s ease-out both; }
+.acam-ap-row.paid .acam-ap-v { display: inline-block; animation: acamApValIn .34s cubic-bezier(.2, 1.7, .4, 1) both; transform-origin: 0 60%; }
+@keyframes acamApPaid { 0% { filter: brightness(2.4); } 100% { filter: brightness(1); } }
+@keyframes acamApValIn { 0% { opacity: 0; transform: scale(2.1); } 100% { opacity: 1; transform: scale(1); } }
+.acam-ap-row.gain { border-left-color: var(--ap-c); }
+.acam-ap-row.loss { border-left-color: #ff4a4a; }
+.acam-ap-row.loss .acam-ap-l { color: #ffc9c9; }
+.acam-ap-row.vent { border-left-color: #a36cff; }
+/* the sum: one bigger line under a hairline, slammed in */
+.acam-ap-sum {
+    margin-top: 5px;
+    padding-top: 5px;
+    padding-bottom: 6px;
+    gap: 12px;
+    align-items: center;
+    border-left-width: 3px;
+    border-top: 1px solid rgba(255, 255, 255, .35);
+    animation: acamApSumIn .42s cubic-bezier(.2, 1.7, .4, 1) both;
+    transform-origin: 0 50%;
+}
+@keyframes acamApSumIn {
+    0% { opacity: 0; transform: scale(1.7); filter: brightness(3.2); }
+    45% { opacity: 1; transform: scale(.96); filter: brightness(2); }
+    100% { opacity: 1; transform: scale(1); filter: brightness(1); }
+}
+.acam-ap-sl { font-size: clamp(13px, 1.7vw, 22px); font-weight: 700; letter-spacing: .26em; color: rgba(255, 226, 190, .9); text-shadow: 0 2px 0 rgba(0, 0, 0, .8); }
+.acam-ap-sum .acam-ap-v { font-size: clamp(22px, 3.3vw, 44px); line-height: 1; }
+.acam-ap-sum.gain { border-left-color: var(--ap-c); }
+.acam-ap-sum.loss { border-left-color: #ff4a4a; }
+.acam-ap-sum.vent { border-left-color: #a36cff; }
+.acam-ap-pips { display: inline-flex; gap: .55em; margin: 0 .25em; font-size: clamp(13px, 1.5vw, 20px); }
+.acam-ap-pips b { width: .8em; height: .8em; transform: rotate(45deg); background: var(--ap-c); box-shadow: 0 0 10px var(--ap-glow); }
+.acam-ap-sum.loss .acam-ap-pips b { background: transparent; border: 2px solid #ff4a4a; box-shadow: none; }
+/* no shot chrome (Action Cam off): the tally alone in the corner */
+.acam-chrome.ap-solo.ap-solo .acam-title { opacity: 1; }
+.acam-chrome.ap-solo:not(.dmg-linger):not(.active) .acam-dmg-row { display: none; }   /* never the last shot's total */
+@media (prefers-reduced-motion: reduce) {
+    .acam-ap-row, .acam-ap-sum, .acam-bar-name.in, .acam-ap-row.paid, .acam-ap-row.paid .acam-ap-v { animation: none; opacity: 1; }
 }
 
 /* ── Heal-flavored shots (heals / potions / revives): the corner readout
