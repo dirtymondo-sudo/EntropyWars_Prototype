@@ -30667,7 +30667,9 @@ const ThreeRenderer = (function () {
     }
     /* THE CUTSCENES (three-camera.js EWScene): a scene that ends mid-leap (the ambush's pounce, a skip) drops the leap and
        the slow motion, so the cut lands on every body standing on its own square at real speed */
-    function cancelJumpTween(uid) { _jumpTweens.delete(uid); _knockRecs.delete(uid); }
+    /* (2026-11-13, mondo: "the shadow entities are floating at different heights") a dropped leap is LANDED, not deleted:
+       deleting it left the body hanging wherever in the arc the cut caught it, stretched, until it next moved */
+    function cancelJumpTween(uid) { var tw = _jumpTweens.get(uid); if (tw) { tw.delayMs = 0; tw.startTime = _animNow() - (tw.durationMs || 480) - 1; } _knockRecs.delete(uid); }
     function clearTimeWarp() { _warpScale = 1; _warpEndsAt = 0; }
     function startJumpTween(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts) {
         var ts = CONFIG.tileSize || BASE_TILE;
