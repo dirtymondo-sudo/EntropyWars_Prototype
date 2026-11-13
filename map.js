@@ -4425,7 +4425,7 @@
                    profile and doing the tutorial all over again?"): a fight stage that is done and opens on a cutscene plays
                    again from here (the scene, then the fight; nothing is filed twice: a finished stage never moves) */
                 try {
-                    const def = (typeof window.questDef === 'function') ? window.questDef(q.id) : null;
+                    const def = (typeof window.questDef === 'function') ? window.questDef(q.quest || q.id) : null;
                     ((def && def.stages) || []).forEach(st => {
                         const F = (st.done && st.done.on === 'fight' && typeof window.questFightDef === 'function') ? window.questFightDef(st.done.fight) : null;
                         const row = (F && F.scene && typeof window.storyCutscene === 'function') ? window.storyCutscene(F.scene) : null;
