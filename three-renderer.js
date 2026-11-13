@@ -72346,6 +72346,7 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), F = _hqEdgeLandFn(room, info), R = F.R, ROWS = HQ_EDGE_ROWS.filter(function (r) { return r <= F.reach; });
         var H = _hq, chunked = !!(H && G === H.shellGroup && typeof _hqChunkBig === 'function' && _hqChunkBig(H));
         var fogC = new THREE.Color((room.shell.sky && room.shell.sky.fog && room.shell.sky.fog.color != null) ? room.shell.sky.fog.color : 0xc8d8ea);
+        try { var sf = H && H.scene && H.scene.fog; if (sf && sf.color && sf.color.isColor) fogC.copy(sf.color); } catch (e) {}   // the fog as the room draws it (the near land fades to THIS colour; the far land's haze must be the same one)
         /* the sheets: the game's own ground sheets (the rock, the mossy grass, the sand); the snow is plain white */
         var mats = {};
         var matFor = function (key, far) {
