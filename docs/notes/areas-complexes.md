@@ -2298,3 +2298,7 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
 - **Seen in the cloud browser** (WebGL2 headless): every plot from above, shots in `/mnt/project-files/disaster-city-southside/`. Not seen on his Mac yet.
   Interiors are the next pass (the seven walk-in shells are empty rooms with a floor and plaster walls).
 
+- **A ROOF IS NOT GROUND (2026-11-13, the shared-pieces thread, the root fix for the note above).** data.js hqTerrainCompile `archGround`: an arch
+  row with no `y` whose origin lies over a building plateau (`bld`) takes the ground that building stands on, never its roof. Four rows on main
+  still stood 7 m up (P09-08-B2, P09-09-B1, P10-09-B1, P11-09-B2); the headless compile now gives all 191 city arch rows base 0. `y: 0` in a
+  district file is harmless and no longer needed.
