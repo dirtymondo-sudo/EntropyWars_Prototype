@@ -2181,6 +2181,27 @@ his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:1
   use the urban pack's; the arch row's `ring` turns parts the mirrored way (fine for a column, wrong for a rail: `ringRails` writes
   each with its own `ry`); a probe camera's `y` is ABSOLUTE, so on the raised north row add the plot's level or it is underground.
 - **THE INTERIORS (2026-11-13, mondo 21:04; his OK on plan 2, 21:24)**: `interiors()` in docs/disaster-city/districts/B.js. Seven rooms: the hotel lobby, the cinema (foyer + one hall behind a partition), the loading dock, the surf shop, boat repair, the harbour master (these three were solid: now `hollow` with a `door` square in DESIGN, their arch box `faces: 'blr'` + a `doorFront`), the market's tills. HIS GRID RULE (21:14 + 21:17): the squares are the 3.5 m battle squares; a blocker is built over WHOLE squares, centred, and every one of its squares is shut with a ghost wall (`R.shut`); decor hugs walls / corners off the squares' middles; a walk is whole empty squares. A room's frame = its building's (x along the front, +z out of the door; square (c, r), r from the back wall); `R.prop(key, lx, lz, hd)` turns a prop by the building's `rot` (hd 180 = looks at the door). The inside's walls / floor are the texbuilding row's `keyIn` / `floorIn`; its ceiling is `storeys x 3.5 - 0.32` (the hotel's row is 2 storeys now: the lobby; the tower above is the arch row). A prop set on a counter takes `y >= 1` (the bake adds the ground under it only from 1 m). The market's stalls moved onto squares 0, 2, 4 of its back row. Stays a front: ice cream, food hall, security, booth (the roof walk), apartments, juice bar, florist.
+- **THE INTERIORS, SECOND PASS (2026-11-13, mondo 22:33: "do another interior pass ... make a list of models needed/wanted but not in the
+  bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere")**: `SECOND[<room id>]` in B.js runs after each
+  first-pass room. NEW MODELS (data.js catalogue "THE BAYSIDE INTERIOR PIECES", any district may use them): 15 Meshy (concept by text-to-image,
+  then image-to-3d meshy-t2.5; script + originals in project files `meshy/bayside/`; meshopt + WebP 1024 by optimize-assets.js; R2
+  `Assets/world/props/meshy/<key>.glb`): surfboard_long / _short / _fish, surfboard_rack, wetsuit_rail, sunglasses_spinner, luggage_cart,
+  cinema_seat_row (simplified to 3,940 triangles: 48 in the hall), forklift (8,022), wrapped_pallet, outboard_motor, lobster_traps,
+  fishing_net_wall, ship_wheel, ships_bell. Human-made first: the elegantcrow Beach Props Pack (project files asset-packs/other/, OBJ -> GLB
+  by a small converter, R2 `Assets/world/packs/elegantcrow_beach/`): beach_life_ring, beach_swim_ring, beach_air_mattress_blue / _pink,
+  beach_cooler, beach_ball. The city's shared list of interior Meshy claims: project files `meshy/interior-claims.md`.
+  What each room got: HOTEL marble pilasters, crown moulding, a gilt line, 11 brass sconces, two chandeliers over the walk (the Entertainment
+  district's `crystal_chandelier` once it is on main, else a brass candle ring in parts), a backlit bar, green desk lamps, a rug under the
+  sofas, the bellhop cart. CINEMA the seat-row models where the plain benches stood (same shut squares), sconces + a soft wash down both
+  hall walls, a gold runner up the centre aisle, exit signs, NOW SHOWING with marquee bulbs over the hall door, a POPCORN SODA CANDY board.
+  DOCK the forklift (square 7,2) and two wrapped pallets (5,0 + 6,0) on shut squares, a roller shutter + LOADING BAY, hazard paint along the
+  racking, two high-bay lamps, a fire extinguisher. SURF the board rack (square 0,0, shut), six boards up the walls (in place of the plain
+  slabs), the wetsuit rail, the spinner, two life rings, a swim ring stack, air beds, a cool box, a bin of beach balls, coloured bulbs, the
+  SURF SHOP board. BOAT the outboard (in place of the engine boxes; the hoist stays), lobster pots, the net, life rings, paint tins, a work
+  lamp, an oil stain. HARBOUR the ship's wheel, the bell, a life ring, a framed chart, a chart lamp.
+  Reused when on main (`CAT.has`, rerun the bake): Entertainment's crystal_chandelier + film_projector, Hero Plaza's pallet_jack. Not used:
+  University's rope_stanchion (a rope across a walk breaks the grid rule). Props cannot tilt (no pitch on a prop row), so no board hangs
+  flat from the ceiling.
 - **NOT PROVEN in the headless browser:** no `city_*` pack building (the grill, the taco stand; also the diner, pizzerias, laundry in
   other districts) attached in the thread's probe runs: only the shadow blob draws. The files are on the CDN and fetched. Check on a real
   machine before blaming the placement.

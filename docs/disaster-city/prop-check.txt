@@ -1,5 +1,5 @@
 THE PROP CHECK, written by node bake-disaster-city.js. A district file's own prop that stands in something is listed here for its thread; a shared prop with no clear spot is left out.
-{"checked":2636,"clear":1489,"moved":356,"left_out":14,"district_reported":730,"by":{"car_cop in lamp":2,"car_cop in prop":4,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":15,"item_police_barricade in step":5,"planter in arch":10,"dumpster in step":7,"dumpster in arch":2,"planter in stairs":1,"planter in prop":3,"planter in doorway":1,"vending_machine in arch":34,"vending_machine in doorway":2,"public_phone in arch":12,"ind_vent in arch":12,"utility_box in arch":9,"ind_panel in arch":9,"utility_box in step":4,"traffic_cone in arch":20,"traffic_cone in step":28,"traffic_cone in building":12,"psx_wooden_crate_1 in prop":1,"psx_wooden_crate_1 in step":2,"psx_wooden_crate_1 in arch":1,"ticket_booth in step":1,"popcorn_cart in step":1,"psx_planter_pot_mp_1_full in arch":79,"psx_potted_cactus_mp_1 in arch":15,"psx_planter_pot_mp_1_full in doorway":6,"psx_planter_pot_mp_1_full in prop":1,"fire_hydrant in stairs":1,"roads_g_sign_008 in arch":1,"metro_bin in pole":1,"roads_g_sign_005 in arch":1,"metro_bin in arch":2,"psx_metal_barrel_mp_0 in arch":6,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in arch":15,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_wooden_crate_3 in building":10,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_3 in arch":1,"psx_metal_barrel_mp_2 in prop":1,"metal_trash_can in building":2,"garbage_bags in stairs":2,"garbage_bag in step":1,"garbage_bag in arch":1,"garbage_bags in step":1,"garbage_bags in prop":3,"garbage_bags in arch":1,"garbage_bag in prop":2,"garbage_bags in building":3,"metal_trash_can in stairs":1,"garbage_bag in building":3,"power_pole in prop":1},"snugged":163}
+{"checked":2712,"clear":1486,"moved":361,"left_out":14,"district_reported":804,"by":{"car_cop in lamp":2,"car_cop in prop":4,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":15,"item_police_barricade in step":5,"planter in arch":10,"dumpster in step":7,"dumpster in arch":2,"planter in stairs":1,"planter in prop":3,"planter in doorway":1,"vending_machine in arch":34,"vending_machine in doorway":2,"public_phone in arch":12,"ind_vent in arch":12,"utility_box in arch":9,"ind_panel in arch":9,"utility_box in step":4,"traffic_cone in arch":20,"traffic_cone in step":28,"traffic_cone in building":12,"psx_wooden_crate_1 in prop":1,"psx_wooden_crate_1 in step":2,"psx_wooden_crate_1 in arch":1,"ticket_booth in step":1,"popcorn_cart in step":1,"psx_planter_pot_mp_1_full in arch":86,"psx_planter_pot_mp_1_full in doorway":5,"psx_potted_cactus_mp_1 in arch":7,"psx_potted_cactus_mp_1 in doorway":1,"psx_planter_pot_mp_1_full in prop":1,"fire_hydrant in stairs":1,"roads_g_sign_008 in arch":1,"metro_bin in pole":1,"roads_g_sign_005 in arch":1,"metro_bin in arch":2,"psx_metal_barrel_mp_0 in arch":6,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in arch":15,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_wooden_crate_3 in building":10,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_3 in arch":1,"psx_metal_barrel_mp_2 in prop":1,"meshy_sandbags in tree":1,"meshy_sandbags in prop":1,"metal_trash_can in step":6,"garbage_bag in stairs":2,"garbage_bags in step":1,"garbage_bags in arch":1,"garbage_bag in step":1,"garbage_bag in prop":3,"garbage_bag in arch":1,"garbage_bags in prop":2,"garbage_bag in building":3,"garbage_bags in building":3,"metal_trash_can in building":1,"power_pole in prop":1},"snugged":163}
 psx_sofa_1  85.75  113.75  building
 psx_sofa_3  85.75  110.25  building
 psx_sofa_4  92.75  113.75  building
@@ -7,6 +7,55 @@ office_plant  84.75  105.85  building
 office_plant  93.9  109.05  building
 office_plant  93.9  91.55  building
 office_plant  84.65  94.5  building
+luggage_cart  93.7  95.65  building
+cinema_seat_row  195.05  92.65  building
+cinema_seat_row  195.05  95.05  building
+cinema_seat_row  195.05  97.45  building
+cinema_seat_row  195.05  99.85  building
+cinema_seat_row  193.45  92.65  building
+cinema_seat_row  193.45  95.05  building
+cinema_seat_row  193.45  97.45  building
+cinema_seat_row  193.45  99.85  building
+cinema_seat_row  195.05  106.65  building
+cinema_seat_row  195.05  109.05  building
+cinema_seat_row  195.05  111.45  building
+cinema_seat_row  195.05  113.85  building
+cinema_seat_row  193.45  106.65  building
+cinema_seat_row  193.45  109.05  building
+cinema_seat_row  193.45  111.45  building
+cinema_seat_row  193.45  113.85  building
+cinema_seat_row  191.55  92.65  building
+cinema_seat_row  191.55  95.05  building
+cinema_seat_row  191.55  97.45  building
+cinema_seat_row  191.55  99.85  building
+cinema_seat_row  189.95  92.65  building
+cinema_seat_row  189.95  95.05  building
+cinema_seat_row  189.95  97.45  building
+cinema_seat_row  189.95  99.85  building
+cinema_seat_row  191.55  106.65  building
+cinema_seat_row  191.55  109.05  building
+cinema_seat_row  191.55  111.45  building
+cinema_seat_row  191.55  113.85  building
+cinema_seat_row  189.95  106.65  building
+cinema_seat_row  189.95  109.05  building
+cinema_seat_row  189.95  111.45  building
+cinema_seat_row  189.95  113.85  building
+cinema_seat_row  188.05  92.65  building
+cinema_seat_row  188.05  95.05  building
+cinema_seat_row  188.05  97.45  building
+cinema_seat_row  188.05  99.85  building
+cinema_seat_row  186.45  92.65  building
+cinema_seat_row  186.45  95.05  building
+cinema_seat_row  186.45  97.45  building
+cinema_seat_row  186.45  99.85  building
+cinema_seat_row  188.05  106.65  building
+cinema_seat_row  188.05  109.05  building
+cinema_seat_row  188.05  111.45  building
+cinema_seat_row  188.05  113.85  building
+cinema_seat_row  186.45  106.65  building
+cinema_seat_row  186.45  109.05  building
+cinema_seat_row  186.45  111.45  building
+cinema_seat_row  186.45  113.85  building
 popcorn_cart  180.25  96.25  building
 ticket_booth  180.25  110.25  building
 psx_sofa_5  176.75  113.75  building
@@ -20,13 +69,38 @@ office_locker  251.35  153.05  building
 psx_metal_barrel_mp_0  251.2  140.55  building
 psx_metal_barrel_mp_2  251.15  141.4  building
 psx_wooden_crate_1  242.05  149.95  building
+forklift  243.25  152.25  building
+wrapped_pallet  250.25  145.25  building
+wrapped_pallet  250.25  148.75  building
+fire_extinguisher  241.95  143.05  building
 office_plant  125.4  98.75  building
+surfboard_rack  117.25  85.75  building
+surfboard_long  115.98  86.35  building
+surfboard_short  115.98  88.65  building
+surfboard_fish  115.98  90.95  building
+surfboard_short  115.98  93.25  building
+surfboard_long  125.52  89.65  building
+surfboard_fish  125.52  92.25  building
+wetsuit_rail  120.75  84.75  building
+sunglasses_spinner  119.55  100.75  building
+beach_swim_ring  125.08  97.25  building
+beach_swim_ring  125.08  97.25  building
+beach_swim_ring  125.08  97.25  building
+beach_air_mattress_blue  125.15  93.85  building
+beach_air_mattress_pink  125.15  93.85  building
+beach_cooler  121.95  84.7  building
+beach_ball  119.43  84.75  building
+beach_ball  119.69  84.93  building
+beach_ball  119.5  85.01  building
+outboard_motor  152.25  117.25  building
 ship_anchor  166.25  110.25  building
 office_locker  158.35  118.35  building
 office_locker  157.5  118.35  building
 office_locker  156.65  118.35  building
 psx_metal_barrel_mp_1  154.5  109.05  building
 psx_metal_barrel_mp_3  164.05  109.05  building
+lobster_traps  161.8  109.25  building
+fishing_net_wall  167.6  113.75  building
 filing_cabinet  226.65  247.85  building
 filing_cabinet  225.8  247.85  building
 brass_telescope  226.65  245.45  building
@@ -743,4 +817,4 @@ psx_metal_barrel_mp_3  -204.3  -139.45  building  left out
 psx_metal_barrel_mp_1  -205.15  -139.45  building  left out
 psx_metal_barrel_mp_0  -204.8  -138.75  building  left out
 psx_wooden_crate_3  245.75  -1.75  building  left out
-garbage_bag  201.1  80.6  building  left out
+garbage_bags  201.1  80.6  building  left out
