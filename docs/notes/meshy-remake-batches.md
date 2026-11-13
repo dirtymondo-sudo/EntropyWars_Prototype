@@ -13,6 +13,8 @@ A unit with two genders is one entry: the same thread does both.
 RULE FOR ALL THREE (his words): creator clothes FIRST (the creator's quarterback helmet beat the Meshy one). Look through
 `EW_MH_WEAR` / MODEL_LIST.md for pieces that fit the unit before any Meshy call; Meshy only for the pieces the creator lacks.
 
+STATUS 11-13: batch 1 first pass shipped (19 looks; antihero, atlantean, fortune teller M held back; ghost M is a pack model, left). `mpfb_shapes.glb`: after merging main ALWAYS rerun `node bake-custom-shape.js` (it rebuilds from every custom_shapes/*.json), never pick one side's file. New bake tools for all threads: `EYE=` (bake-outfit.py) + `cy=top0.155` (bake-face.py), notes in models-assets.md "BATCH 1 OF 3".
+
 ## BATCH 1 of 3 (thread "Remake unit models, batch 1 of 3", branch claude/project-thread-4vyqdm)
 1. annunaki (M)
 2. antihero (M)
