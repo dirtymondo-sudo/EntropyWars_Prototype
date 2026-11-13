@@ -1,13 +1,15 @@
 # Disaster City: who uses which pack building
 
 One district per building, first come first served (kept by the shared-pieces thread). Ask there before using one.
+
+**mondo 11-13 17:07: "its oaky to reuse gas stations and pizza, it can be like a chain/franchise in universe".** So the pizzeria and the gas station (`city_pizzeria`, `city_gas_store`, `city_gas_canopy`, `city_gas_sign`) are free for every district, no asking. Keep it a chain: the same building and signs, at most one of each per district, on a street. Everything else below stays one district each.
 Sources: `/mnt/project-files/asset-packs/elbolilloduro/` (Elbolilloduro, CC0). "Cut" = the catalogue key (data.js DOOR_HQ catalogue, THE CITY'S WHOLE BUILDINGS): a prop row `{ key, x, z, face }`, real size, entrance at +Z, solid.
 Preview: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg.
 
 | Pack building | District | Plot | Asked (UTC 11-13) | Cut |
 |---|---|---|---|---|
-| Pizzeria (pizzeria-psx) | Sports + Culture | P05-11 | 16:45 | `city_pizzeria` |
-| Gas station (gas-station) | Sports + Culture | P07-11 | 16:45 | `city_gas_store` + `city_gas_canopy` + `city_gas_sign` |
+| Pizzeria (pizzeria-psx) | SHARED: an in-universe chain, any district (first: Sports + Culture P05-11) | any | 17:07 | `city_pizzeria` |
+| Gas station (gas-station) | SHARED: an in-universe chain, any district (first: Sports + Culture P07-11) | any | 17:07 | `city_gas_store` + `city_gas_canopy` + `city_gas_sign` |
 | Playground (other/cursedlake_ps1-playground) | Sports + Culture | | 16:45 | no |
 | BurgerPiz restaurant | Bayside | P09-09 Food hall | 16:46 | `city_burgerpiz` |
 | Tacos stand | Bayside | P08-09 Street market | 16:46 | `city_taco_stand` |
