@@ -279,3 +279,10 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 - Hippie M: T2 trousers dropped (`DROPAT=0,0,0.5,0.05 RAY_IN=0.12 RAY_OUT=0.12`), wears creator `mhw_elvs_gored_elephant_pants` tinted `#6a94c8`.
 - Men in black: remade look drops the coded blazer + shirt + trousers for pack `mhw_toigo_male_suit_tie_and_jacket` with black `ewb_tie` over its tie (a tint on the suit also colours its shirt, so the suit stays charcoal; a sliver of the suit's own tie shows beside the black one).
 - STILL OPEN: overlord fingertips, mushroom girl neckline, pirate F between the legs, necromancer slit, white cop + female cop.
+
+### Batch 2 review fixes, round 3 (2026-11-13)
+- Men in black: "the tie should not be outside his suit". New piece `mhw_toigo_male_suit_black.glb` = the pack suit `mhw_toigo_male_suit_tie_and_jacket` with its texture's cloth darkened and its tie made black (a NEW file, the pack file is untouched); the look wears it without `ewb_tie`.
+- Homosapien: head looked cut off in the walk (neck skin hidden under the coat collar). Rebake adds `--neckline` (`SKIN_T=0.12 RAY_IN=0.12 RAY_OUT=0.12 TORN=9 --neckline`).
+- King Arthur: hair `mh_long01` (hair004 parts off the forehead and read as a receding hairline). `--neckline --barearms` was tried and dropped (it ate the shoulder armour and most of the cape). STILL OPEN: cape edge at the neck line, jagged bracers seen from behind.
+- Police officer: THE REMADE ALTS. sprites.js `RACE_REMADE_ALTS` + `getRaceRemadeAlts`, party-builder.js one button per alt. White officer = same outfit, stock `young_caucasian_male`. Female officer = the male T2 baked on the female body (`LOCKS=0 RAY_IN=0.12 RAY_OUT=0.12 TORN=9`, `ewm_t2policeofficerf_outfit`), make-up face. The buttons were not seen on screen.
+- STILL OPEN: halfdemon M coat hip in the walk, overlord fingertips, mushroom girl neckline, pirate F between the legs, necromancer slit.
