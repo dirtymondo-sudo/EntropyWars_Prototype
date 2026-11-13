@@ -14720,6 +14720,7 @@ const ThreeRenderer = (function () {
     function _computeUnitStructuralSerial() {
         if (!state.units) return 0;
         var h = 19;
+        if (typeof remadeLooksOn === 'function' && remadeLooksOn()) h = _hashInt(h, 23);   // THE REMADE LOOKS SWITCH: flipping it rebuilds the units
         for (var i = 0; i < state.units.length; i++) {
             var u = state.units[i]; if (u.dead) continue;
             h = _hashVal(h, u.id);
@@ -65240,7 +65241,7 @@ const ThreeRenderer = (function () {
         PT_FWD = 0.028, PT_SETTLE = 8, PT_WAIT = 90000;
     var PT_BAKE_EXPO = 0.62;   // a Meshy bake (its own glow under the studio's lights) washes out at the creator bodies' exposure: a paler face lost its eyes and mouth
     var PT_BUST = { w: 256, h: 320, frame: 0.36, drop: 0.035, bg: 0x2a2620 };   // the ID card's photo: the head's middle sits 3.5 % of the height above the frame's middle
-    var _pt = null, _ptV = null, _ptQ = null, _ptUrls = {}, _ptFail = {}, _ptSpecs = (typeof WeakMap === 'function') ? new WeakMap() : null, _ptIdleT = 0;
+    var _pt = null, _ptV = null, _ptQ = null, _ptUrls = {}, _ptFail = {}, _ptRemade = {}, _ptSpecs = (typeof WeakMap === 'function') ? new WeakMap() : null, _ptIdleT = 0;
     function _ptOff() {
         return typeof window === 'undefined' || !!window.EW_NO_MODEL_PORTRAITS || !!window.EW_DISABLE_3D_UNITS
             || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function' || typeof document === 'undefined';
@@ -65250,8 +65251,14 @@ const ThreeRenderer = (function () {
     function _ptSpec(u) {
         if (!u || !u.race) return null;
         var a = u.appearance;
-        if (!a || typeof a !== 'object') return null;
         var g = u.gender === 'female' ? 'female' : 'male';
+        if (!a || typeof a !== 'object') {
+            /* THE REMADE LOOKS SWITCH: a unit with no look of its own wears its race's remade look, so its portrait is a photo of that */
+            if (typeof remadeLooksOn !== 'function' || !remadeLooksOn() || typeof getCharacterAppearanceModel !== 'function') return null;
+            var rk = 'remade:' + u.race + '|' + g;
+            if (!(rk in _ptRemade)) { var rd = null; try { rd = getCharacterAppearanceModel(u.race, g, null); } catch (e) { rd = null; } _ptRemade[rk] = (rd && rd.model && rd.raceLook) ? { key: rk, def: rd, look: rd.raceLook } : null; }
+            return _ptRemade[rk];
+        }
         var hit = _ptSpecs && _ptSpecs.get(a);
         if (hit && hit.race === u.race && hit.g === g) return hit.spec;
         var spec = null;
