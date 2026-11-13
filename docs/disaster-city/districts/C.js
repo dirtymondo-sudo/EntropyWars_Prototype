@@ -157,7 +157,7 @@ plot(6, 2, () => { const SG = 0xfff6e4, GL = 'u_GlassWindowSquare1b';
         [[7, 7, 35, 7.35], [7, 34.65, 35, 35], [7, 7, 7.35, 35], [34.65, 7, 35, 35]].forEach(b => box(b[0], b[1], b[2], b[3], 7, 7.9, STONE));
         box(13, 13, 29, 29, 7.05, 10, GL, 0xe0fff4, { top: 0 }); vault(12.6, 15.5, 29.4, 26.5, 10, 5.5, GL, 0xe0fff4, { axis: 'x' }); vault(15.5, 12.6, 26.5, 29.4, 10, 5.5, GL, 0xe0fff4, { axis: 'z' });
         cyl(21, 21, 4.3, 14.6, 16.3, STONE, null, { seg: 20 }); dome(21, 21, 4.2, 16.3, 3.5, GL, 0xe0fff4); cone(21, 21, 0.2, 19.8, 1.6, 'gold', null, { seg: 6 });
-        [[10, 10], [32, 10], [10, 32], [32, 32]].forEach(c => { cyl(c[0], c[1], 1.1, 7.05, 7.9, STONE); cyl(c[0], c[1], 0.18, 7.9, 9.6, 'u_ConcreteStriped1a', 0xa07050, { seg: 6 }); dome(c[0], c[1], 1.5, 9.4, 2.2, 'grass_2', 0xc0ffb0); });
+        [[10, 10], [32, 10], [10, 32], [32, 32]].forEach(c => { cyl(c[0], c[1], 1.1, 7.05, 7.9, STONE); cyl(c[0], c[1], 0.18, 7.9, 9.6, 'u_ConcreteStriped1a', 0xa07050, { seg: 6 }); dome(c[0], c[1], 1.5, 9.4, 2.2, null, 0x4f8a45); });
         door(21, 7, 'N'); door(35, 21, 'E'); }); });
 
 plot(7, 2, () => { const BZ = 0xf0c890;
