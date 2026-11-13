@@ -109,7 +109,7 @@ module.exports = {
             fakeDoor(P, -W / 2 + 1.6, 0, D / 2 + 0.11, 0, DS, WHITE, 2.0, 2.6);
             P.push(box(0, 3.25, D / 2 + 0.2, W - 0.4, 0.8, 0.3, null, o.trim));
             P.push(roof('shed', 0, 3.3, D / 2 + 1.1, W - 0.4, 0.8, 1.8, null, o.trim, { under: true, roof: false }));
-            wins(P, 'f', 0, 4.3, 0, W, 2.6, D + 0.1, WIN, 1.4);
+            P.push(quad(0, 4.3, D / 2 + 0.11, W - 1.4, 2.2, 0, GS1, 0xd0dce4, { uv: [1.75, 2.2] }));
             P.push(box(0, H - 0.4, 0, W + 0.6, 0.38, D + 0.6, STONE, 0xd0c8b8, { top: false, under: true }));
             emit(T, P);
         };
@@ -128,7 +128,8 @@ module.exports = {
             const T = { id: row.id.replace(/^dc:/, ''), row, rot: row.rot || 0, W: row.w, D: row.d, x: row.x, z: row.z }; delete row.key; delete row.style; row.skin = false;
             const H = Math.max(1, Math.min(12, row.storeys || 2)) * 3.5, mats = [[BR1, 0xc8a890], [BR3, 0xb8a090], [CONC2, 0xd0c8b8], [U('PlasterWallPainted1a'), 0xe0d8c8], [BR2, 0xc0b8a8]], m = mats[i % mats.length], P = [];
             P.push(box(0, 0, 0, T.W + 0.1, H, T.D + 0.1, m[0], m[1], { keyTop: U('ConcreteUnderTiles1') }), box(0, 0, 0, T.W + 0.2, 0.9, T.D + 0.2, STONE, 0xa8a298, { top: false }));
-            for (let s = 0; s < H / 3.5 - 0.5; s++) wins(P, 'fb', 0, s * 3.5 + (s ? 0 : 0.4), 0, T.W, 3.1, T.D + 0.1, i % 2 ? WINF : WIN, 1.0);
+            if (i % 3 === 1 && H > 6) { P.push(box(0, 3.5, 0, T.W + 0.16, H - 3.9, T.D + 0.16, i % 2 ? GS1 : GS2, 0xc0ccd8, { uv: [1.75, 3.5], top: false, faces: 'fb' })); wins(P, 'fb', 0, 0.4, 0, T.W, 3.1, T.D + 0.1, WIN, 1.0); }
+            else for (let s = 0; s < H / 3.5 - 0.5; s++) wins(P, 'fb', 0, s * 3.5 + (s ? 0 : 0.4), 0, T.W, 3.1, T.D + 0.1, i % 2 ? WINF : WIN, 1.0);
             P.push(box(0, H - 0.3, 0, T.W + 0.5, 0.45, T.D + 0.5, STONE, 0xcfc8b8, { top: false, under: true }));
             emit(T, P);
         };
@@ -147,7 +148,8 @@ module.exports = {
             for (let k = 0; k < 7; k++) wins(P, 'fblr', tx, Y + k * 3.5, tz, TW, 3.5, TW, WIN, 2.4);
             for (const c of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) P.push(box(tx + c[0] * (TW / 2 - 0.5), Y, tz + c[1] * (TW / 2 - 0.5), 1.8, 26, 1.8, STONE, CREAM));
             P.push(box(tx - 3, Y, tz + TW / 2 + 0.1, 0.8, 27.5, 0.6, STONE, 0xd9c8a4, { n: 2, step: [6, 0, 0] }));
-            P.push(box(tx, Y + 24.5, tz, 14, 3.5, 14, STONE, CREAM, { uv: 3.5 })); wins(P, 'fblr', tx, Y + 24.5, tz, 14, 3.5, 14, WIN, 2);
+            P.push(box(tx, Y + 24.5, tz, 14, 3.5, 14, GT4, 0xc8d8e8, { uv: [1.75, 3.5] }));   // the sky bar: dark glass (mondo 11-13 19:02 likes the dark windows)
+            for (const c of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) P.push(box(tx + c[0] * 6.8, Y + 24.5, tz + c[1] * 6.8, 0.9, 3.5, 0.9, STONE, CREAM, { top: false }));
             P.push(box(tx, Y + 28, tz, 10.5, 3.2, 10.5, STONE, 0xe6d4b0, { uv: 3.5 }), box(tx, Y + 31.2, tz, 11.4, 0.4, 11.4, ALU, VERDI, { under: true }));
             P.push(roof('hip', tx, Y + 31.6, tz, 10.6, 4.2, 10.6, ALU, VERDI), cyl(tx, Y + 35.4, tz, 0.12, 6, null, 0xd0d0d0, { seg: 6 }), box(tx + 0.9, Y + 40.2, tz, 1.8, 1.1, 0.06, null, 0xb02030));
             /* the marquee: a deco canopy hung off the wall over the pavement (the footpath under it stays clear) */
@@ -165,7 +167,7 @@ module.exports = {
             const T = frame('P09-00-B1', { st: 3 }); if (!T) return; const P = [], W = T.W, D = T.D, G = 0xc4c8cc;
             P.push(box(0, 0, 0, W + 0.1, 11.5, D + 0.1, CONC, G, { top: false }), box(0, 0, 0, W + 0.4, 1.0, D + 0.4, GUN, 0x808088, { top: false }));
             P.push(box(-3, 2.2, D / 2 + 0.08, 0.45, 8, 0.1, null, 0x1c2228, { n: 5, step: [2.1, 0, 0], top: false }));
-            P.push(cyl(-W / 2 + 0.6, 0, D / 2 - 0.6, 3.2, 13.5, CONC2, 0xb4b8bc, { seg: 20 }), box(0, 11.5, 0, W + 2.2, 1.3, D + 2.2, CONC, 0xa4a8ac, { under: true }));
+            P.push(cyl(-W / 2 + 0.6, 0, D / 2 - 0.6, 3.2, 13.5, GT4, 0xb8c4d0, { seg: 20, uv: [1.75, 3.375], keyTop: CONC2 }), cyl(-W / 2 + 0.6, 0, D / 2 - 0.6, 3.3, 1.0, CONC2, 0xb4b8bc, { seg: 20 }), cyl(-W / 2 + 0.6, 13.5, D / 2 - 0.6, 3.4, 0.4, CONC2, 0xb4b8bc, { seg: 20 }), box(0, 11.5, 0, W + 2.2, 1.3, D + 2.2, CONC, 0xa4a8ac, { under: true }));
             fakeDoor(P, 3.5, 0, D / 2 + 0.12, 0, DP, 0xb0b8c0, 2.0, 2.6);
             emit(T, P);
         })();
@@ -345,6 +347,7 @@ module.exports = {
             P.push(box(0, 0, 0, W + 0.1, 1.4, D + 0.1, BR1, 0xc8a890, { top: false }), box(0, 1.4, 0, W + 0.06, 4.2, D + 0.06, CORR, TG, { top: false }));
             P.push(roof('barrel', 0, 5.6, 0, W + 0.6, 3.4, D + 0.6, CORR2, 0xc87a5c, { keyEnd: CORR, tintEnd: TG, seg: 12 }));
             for (let i = 0; i < 3; i++) { const x = -W / 2 + 3.6 + i * 6.2; P.push(quad(x, 0, F + 0.1, 5.0, 4.4, 0, null, 0x15181c), quad(x, 2.6, F + 0.14, 5.0, 1.8, 0, CORR2, 0xa8aeb4)); }
+            P.push(quad(0, 4.5, F + 0.1, W - 1.2, 1.0, 0, GF, 0xd0dce0, { uv: [1.75, 1.0] }));
             fakeDoor(P, W / 2 - 1.8, 0, F + 0.12, 0, DP, 0xd8d0c0, 1.7, 2.5);
             emit(T, P);
             prop(T, 'car_suv', -W / 2 + 9.8, F + 3.2, 20);
@@ -414,9 +417,9 @@ module.exports = {
             P.push(box(0, 3.9, F, 2 * gp - 1.2, 0.14, 0.14, null, 0x1c1e22), fan(0, 4.0, F, 1.9, 0, null, 0x1c1e22, { kind: 'wall' }));
             /* the palm house */
             P.push(box(0, 0, 0, T.W + 0.6, 0.7, 8, STONE, 0xf8f8f4, { faces: 'blr' }), box(0, 0.7, 0, T.W + 0.1, 3.2, T.D + 0.1, GF, GLS, { uv: [1.75, 3.2], top: false, faces: 'blr', glow: 0.5, kind: 'wall' })); frontWithDoor(P, T, 0, 3.9, GF, GLS, { uv: [1.75, 3.9], glow: 0.5, kind: 'wall' });
-            P.push(roof('barrel', 0, 3.9, 0, T.W + 0.1, 3.7, T.D + 0.1, null, 0x9fd4cc, { keyEnd: GF, tintEnd: GLS, seg: 12 }));
+            P.push(roof('barrel', 0, 3.9, 0, T.W + 0.1, 3.7, T.D + 0.1, GF, GLS, { keyEnd: GF, tintEnd: GLS, seg: 12 }));
             P.push(box(0, 0, -2.4, 9, 0.7, 7.6, STONE, 0xf8f8f4), box(0, 0.7, -2.4, 8.4, 5.2, 7, GF, GLS, { uv: [1.75, 2.6], glow: 0.5, kind: 'wall' }));
-            P.push(cyl(0, 5.9, 0, 4.3, 1.2, GF, GLS, { seg: 24, glow: 0.5, kind: 'wall', cap: false }), cyl(0, 7.1, 0, 4.5, 0.25, ALU, WHITE, { seg: 24 }), dome(0, 7.35, 0, 4.2, 4.2, null, 0x9fd4cc, { seg: 24, rings: 8 }), cyl(0, 11.5, 0, 0.5, 0.9, ALU, WHITE, { seg: 8 }), dome(0, 12.4, 0, 0.4, 0.5, 'gold', WHITE));
+            P.push(cyl(0, 5.9, 0, 4.3, 1.2, GF, GLS, { seg: 24, glow: 0.5, kind: 'wall', cap: false }), cyl(0, 7.1, 0, 4.5, 0.25, ALU, WHITE, { seg: 24 }), dome(0, 7.35, 0, 4.2, 4.2, GF, GLS, { seg: 24, rings: 8 }), cyl(0, 11.5, 0, 0.5, 0.9, ALU, WHITE, { seg: 8 }), dome(0, 12.4, 0, 0.4, 0.5, 'gold', WHITE));
             /* the parterre: clipped hedges, a gazebo */
             for (const p of [[-7, 9], [7, 9], [-7, 14], [7, 14]]) P.push(box(p[0], 0, p[1] + cz - 3, 6, 0.9, 0.8, 'leaves_3', 0xc8e8b8), box(p[0], 0, p[1] + cz - 1.4, 0.8, 0.9, 3, 'leaves_3', 0xc8e8b8));
             P.push(cyl(10.2, 0, cz + 3.5, 0.09, 2.6, null, WHITE, { seg: 6, ring: { n: 6, r: 1.6 } }), cyl(10.2, 2.6, cz + 3.5, 2.1, 1.3, ALU, VERDI, { seg: 6, r2: 0.05 }));

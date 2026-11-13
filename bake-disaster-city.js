@@ -253,7 +253,8 @@ const roadFollow = (cx, cy) => {   // a carriageway square, or the pavement squa
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = cx + dx, y = cy + dy; if (inCity(x, y) && Math.floor(x / N) === px && Math.floor(y / N) === py && cellAt(x, y) === 'R') return true; }
     return false;
 };
-dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf, ROOM, paintCell };
+const npcSpots = [];   // THE PEOPLE a district stands in the city (ctx.npcSpots: { x, z, face, race, say }), written to the room's npcSpots
+dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, npcSpots, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf, ROOM, paintCell };
 dcRun('apply');
 
 /* ── THE DOORS (mondo 11-13 14:10, the decision card: "Replace today's streets with it"): this room IS `site_prebuilt_downtown_streets` now, so every
@@ -837,7 +838,7 @@ lines.push("            counters: [],");
 lines.push("            props: [");
 props.forEach(f => lines.push("                " + J(f) + ","));
 lines.push("            ],");
-lines.push("            agents: [], npcSpots: [],");
+lines.push("            agents: [], npcSpots: [" + npcSpots.map(J).join(", ") + "],");
 lines.push("            spawn: { x: " + r3(JOIN.bay.x - 3.5) + ", z: " + JOIN.bay.z + ", face: 270 },");
 lines.push("        },");
 lines.push("        /* DC144-END */");
