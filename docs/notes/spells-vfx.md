@@ -3789,3 +3789,27 @@ emissive 0x9cc8ee at 0.62 (the per-frame grey / self-glow pass would repaint it 
 lift of 0.16 square with a slow bob; everything restored when the status ends. `_astralCordsUpdate` draws one TubeGeometry cord from
 the body to the spirit, own 0x4fd8ff / enemy 0xff7a5c (the RIOT colours), only while both pieces are drawn for the viewer (fog safe).
 Rules: champions-combat.md "THE ASTRAL BODY".
+
+
+## THE AP TALLY (2026-11-13, mondo: "underneath the damage number ... a tally of how much AP you will or wont get back")
+- THE NAME RIDES THE BAR: the heavy action-cam chrome writes the spell name inside its top letterbox bar (`.acam-bar-name`,
+  shrunk to fit, never cut); the corner TOTAL DMG sits where the name was. The light chrome (no bars) keeps the corner name.
+  The name leaves with the bars; the total + the tally linger.
+- THE TALLY (battle.js `_apTallyBegin` / `_apTallyNote` / `_apTallyBuild`, the draw `_acApTallyPre` + `_acApTallyShow`;
+  styles-cinematic.css `.acam-ap-*`): two beats. 1) with the hit, each word the press judges lands under the total with its
+  multiplier (SUPER EFFECTIVE, <EL> WEAK, STATUS COMBO, RESISTED, <EL> RESISTED, IMMUNE) in place of popping over the target;
+  2) when the press resolves (`_showPressFeedback`) each line gets its AP worth stamped on (+2 AP, -1 AP, entropy points),
+  then the sum line lands (AP BACK / AP LOST / TO ENTROPY / NO AP BACK / NO PRESS). CRITICAL HIT, COUNTERED, DODGED and
+  EARLIER FUMBLE are lines too. The "+2 AP!", ENTROPY!, WASTED!, NO PRESS pops over the caster only fire when no tally shows.
+- Numbers are what happened, never a forecast: AP from the press result, entropy from the gauge's own before/after (a full
+  gauge reads GAUGE FULL). Own cast cyan-blue, enemy pink-orange, loss red, entropy violet. Existing sounds only
+  (uiCursorMove per line, uiBack on a loss line, buff / uiError / manaRegen on the sum).
+- A hit only files its words in the tally while its press is being judged (the caster's own spell hits with the collector
+  armed; a basic attack's type matchup). Slams (`noPress`), DoTs, summons, traps, late barrage hits keep their pops.
+- No shot chrome (Action Cam off, a counter): the tally shows alone in the same corner (`.ap-solo`) and clears itself.
+- Online: host relays `ap-tally-pre` (beat 1) and the lines inside `press-feedback` (`tally`); the guest colours them by its
+  own seat and asks its own fog. Fog: an enemy's tally shows only if `_shouldCameraFollowUnit`.
+- Off switch: `window.EW_NO_AP_TALLY = true` (the old pops come back).
+- THE RULE THAT CAME WITH IT (his pick on the card, "extras pay Entropy"): champions-combat.md "EVERY EXTRA SOURCE".
+- Seen on screen (real casts, Grave Chill): super effective, super effective + combo, combo on a resisted type, resisted
+  only. Built but NOT seen on screen: basic attack crit, counter, the guest's view, Action Cam off, multi-target spells.

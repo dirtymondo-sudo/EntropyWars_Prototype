@@ -3710,6 +3710,11 @@
 .acam-ap-v.loss { color: #ff4a4a; text-shadow: 0 0 12px rgba(255, 0, 0, .7), 0 2px 0 rgba(0, 0, 0, .85); }
 .acam-ap-v.vent { color: #c9a5ff; text-shadow: 0 0 12px rgba(163, 108, 255, .85), 0 2px 0 rgba(0, 0, 0, .85); }
 .acam-ap-v.none { color: rgba(255, 255, 255, .6); font-weight: 700; }
+/* a line that landed with the hit keeps its place; its AP worth is stamped on when the press resolves */
+.acam-ap-row.paid { animation: acamApPaid .3s ease-out both; }
+.acam-ap-row.paid .acam-ap-v { display: inline-block; animation: acamApValIn .34s cubic-bezier(.2, 1.7, .4, 1) both; transform-origin: 0 60%; }
+@keyframes acamApPaid { 0% { filter: brightness(2.4); } 100% { filter: brightness(1); } }
+@keyframes acamApValIn { 0% { opacity: 0; transform: scale(2.1); } 100% { opacity: 1; transform: scale(1); } }
 .acam-ap-row.gain { border-left-color: var(--ap-c); }
 .acam-ap-row.loss { border-left-color: #ff4a4a; }
 .acam-ap-row.loss .acam-ap-l { color: #ffc9c9; }
@@ -3740,9 +3745,10 @@
 .acam-ap-pips b { width: .8em; height: .8em; transform: rotate(45deg); background: var(--ap-c); box-shadow: 0 0 10px var(--ap-glow); }
 .acam-ap-sum.loss .acam-ap-pips b { background: transparent; border: 2px solid #ff4a4a; box-shadow: none; }
 /* no shot chrome (Action Cam off): the tally alone in the corner */
-.acam-chrome.ap-solo .acam-title { opacity: 1; }
+.acam-chrome.ap-solo.ap-solo .acam-title { opacity: 1; }
+.acam-chrome.ap-solo:not(.dmg-linger):not(.active) .acam-dmg-row { display: none; }   /* never the last shot's total */
 @media (prefers-reduced-motion: reduce) {
-    .acam-ap-row, .acam-ap-sum, .acam-bar-name.in { animation: none; opacity: 1; }
+    .acam-ap-row, .acam-ap-sum, .acam-bar-name.in, .acam-ap-row.paid, .acam-ap-row.paid .acam-ap-v { animation: none; opacity: 1; }
 }
 
 /* ── Heal-flavored shots (heals / potions / revives): the corner readout

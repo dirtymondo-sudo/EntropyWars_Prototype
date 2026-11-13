@@ -26482,13 +26482,15 @@
            total one by one, each with its AP worth, then the sum lands on a last line. A draw only: the rules stay in
            applyPressTurn. spec = { side: 'own' | 'enemy', rows: [{ label, mult, ap, ent, note }], total: { ap, ent, text } }.
            Existing sounds only. */
-        const AC_AP_ROW_GAP_MS = 190, AC_AP_SUM_GAP_MS = 300, AC_AP_HOLD_MS = 1900;
+        const AC_AP_ROW_GAP_MS = 190, AC_AP_SUM_GAP_MS = 300, AC_AP_HOLD_MS = 1900, AC_AP_PRE_HOLD_MS = 2600;
         let _acApTimers = [];
         function _acApTallyClear() {
             for (const t of _acApTimers) clearTimeout(t);
             _acApTimers = [];
             const box = _acChromeEl && _acChromeEl.querySelector('.acam-ap-tally');
-            if (box) { box.innerHTML = ''; box.className = 'acam-ap-tally'; }
+            if (box) { box.innerHTML = ''; box.className = 'acam-ap-tally'; delete box.dataset.owner; }
+            if (_acApSoloTimer) { clearTimeout(_acApSoloTimer); _acApSoloTimer = null; }
+            if (_acChromeEl) _acChromeEl.classList.remove('ap-solo');
         }
         function _acApVal(ap, ent, note) {
             const bits = [];
@@ -26498,19 +26500,18 @@
             if (!bits.length && note) bits.push(`<span class="acam-ap-v none">${note}</span>`);
             return bits.join('');
         }
-        function _acApTallyShow(spec) {
-            if (!spec || _skipVisuals()) return false;
-            const el = _ensureActionCamChrome();
-            const box = el.querySelector('.acam-ap-tally');
-            if (!box) return false;
-            _acApTallyClear();
-            const rows = (spec.rows || []).filter(Boolean);
-            const tot = spec.total || null;
-            if (!rows.length && !tot) return false;
-            box.classList.add('on', spec.side === 'enemy' ? 'enemy' : 'own');
-            /* the corner keeps its shot's chrome up while the tally reads (same hold the damage total buys) */
+        const _acApSfx = (k, o) => { try { if (typeof playSfx === 'function') playSfx(k, Object.assign({ cooldownMs: 0 }, o || {})); } catch (_e) {} };
+        function _acApRowHtml(r) {
+            return `<span class="acam-ap-l">${r.label || ''}${r.mult ? ` <i>${r.mult}</i>` : ''}</span>`;
+        }
+        function _acApSide(d) {
+            if (d.side) return d.side;
+            return d.player === getViewerPlayer() ? 'own' : 'enemy';
+        }
+        /* the corner keeps its shot's chrome up while the tally reads (same hold the damage total buys); with no shot
+           chrome (Action Cam off, a counter) the tally shows alone in the same corner and clears itself */
+        function _acApHold(el, span) {
             const st = _acChromeState;
-            const span = rows.length * AC_AP_ROW_GAP_MS + AC_AP_SUM_GAP_MS + AC_AP_HOLD_MS;
             if (st) {
                 const now = performance.now();
                 st.until = Math.max(st.until, now + span + 400);
@@ -26518,19 +26519,67 @@
                 if (st.hideTimer) clearTimeout(st.hideTimer);
                 st.hideTimer = setTimeout(() => hideActionCamChrome(), span);
             } else {
-                /* no shot chrome (Action Cam off, a counter): the tally shows alone in the same corner and clears itself */
                 el.classList.add('ap-solo');
-                _acApTimers.push(setTimeout(() => { el.classList.remove('ap-solo'); _acApTallyClear(); }, span));
+                if (_acApSoloTimer) clearTimeout(_acApSoloTimer);
+                _acApSoloTimer = setTimeout(() => { _acApSoloTimer = null; _acApTallyClear(); }, span);
             }
-            const sfx = (k, o) => { try { if (typeof playSfx === 'function') playSfx(k, Object.assign({ cooldownMs: 0 }, o || {})); } catch (_e) {} };
+        }
+        let _acApSoloTimer = null, _acApPreAt = 0, _acApPreN = 0;
+        /* a word lands with the hit: d = { player, unitId, k, label, mult }. online.js relays it to the guest. */
+        function _acApTallyPre(d) {
+            if (!d || _skipVisuals() || state.phase !== 'battle') return false;
+            const side = _acApSide(d);
+            /* fog: an enemy's line shows only when this seat may see that enemy (it names the matchup) */
+            if (side === 'enemy' && typeof _shouldCameraFollowUnit === 'function') {
+                const u = typeof unitFromId === 'function' ? unitFromId(d.unitId) : null;
+                if (!u || !_shouldCameraFollowUnit(u)) return false;
+            }
+            const el = _ensureActionCamChrome();
+            const box = el.querySelector('.acam-ap-tally');
+            if (!box) return false;
+            if (box.dataset.owner !== String(d.unitId) || box.classList.contains('done')) { _acApTallyClear(); box.dataset.owner = String(d.unitId); }
+            if (box.querySelector(`[data-k="${d.k}"]`)) return true;
+            box.classList.add('on', side);
+            const now = performance.now();
+            _acApPreN = (now - _acApPreAt < 120) ? _acApPreN + 1 : 0;   // several words off one hit still stack one by one
+            _acApPreAt = now;
+            const wait = _acApPreN * AC_AP_ROW_GAP_MS;
+            const row = document.createElement('div');
+            row.className = 'acam-ap-row pre';
+            row.dataset.k = d.k;
+            row.innerHTML = _acApRowHtml(d);
+            if (wait) row.style.animationDelay = wait + 'ms';
+            box.appendChild(row);
+            _acApTimers.push(setTimeout(() => _acApSfx('uiCursorMove', { volume: 0.55 }), wait));
+            _acApHold(el, wait + AC_AP_PRE_HOLD_MS);
+            return true;
+        }
+        window._acApTallyPre = _acApTallyPre;
+        function _acApTallyShow(spec) {
+            if (!spec || _skipVisuals()) return false;
+            const el = _ensureActionCamChrome();
+            const box = el.querySelector('.acam-ap-tally');
+            if (!box) return false;
+            const rows = (spec.rows || []).filter(Boolean);
+            const tot = spec.total || null;
+            if (!rows.length && !tot) return false;
+            /* the words that landed with the hit stay: their AP worth is stamped on them, one by one */
+            const keep = spec.unitId != null && box.dataset.owner === String(spec.unitId) && !box.classList.contains('done') && box.children.length;
+            if (!keep) { _acApTallyClear(); if (spec.unitId != null) box.dataset.owner = String(spec.unitId); }
+            box.classList.add('on', 'done', _acApSide(spec));
+            const span = rows.length * AC_AP_ROW_GAP_MS + AC_AP_SUM_GAP_MS + AC_AP_HOLD_MS;
+            _acApHold(el, span);
             rows.forEach((r, i) => {
                 _acApTimers.push(setTimeout(() => {
-                    const d = document.createElement('div');
                     const kind = r.ap > 0 ? 'gain' : r.ap < 0 ? 'loss' : r.ent > 0 ? 'vent' : 'none';
-                    d.className = 'acam-ap-row ' + kind;
-                    d.innerHTML = `<span class="acam-ap-l">${r.label || ''}${r.mult ? ` <i>${r.mult}</i>` : ''}</span>${_acApVal(r.ap || 0, r.ent || 0, r.note)}`;
-                    box.appendChild(d);
-                    sfx(kind === 'loss' ? 'uiBack' : 'uiCursorMove', { volume: 0.55 });
+                    let d = r.k ? box.querySelector(`.acam-ap-row[data-k="${r.k}"]`) : null;
+                    const had = !!d;
+                    if (!d) { d = document.createElement('div'); if (r.k) d.dataset.k = r.k; }
+                    box.appendChild(d);   // the lines read in the tally's order: what pays first, what takes after
+                    d.style.animationDelay = '';
+                    d.className = 'acam-ap-row ' + kind + (had ? ' paid' : '');
+                    d.innerHTML = _acApRowHtml(r) + _acApVal(r.ap || 0, r.ent || 0, r.note);
+                    _acApSfx(kind === 'loss' ? 'uiBack' : 'uiCursorMove', { volume: 0.55 });
                 }, i * AC_AP_ROW_GAP_MS));
             });
             if (tot) _acApTimers.push(setTimeout(() => {
@@ -26541,7 +26590,7 @@
                 const pips = ap ? `<span class="acam-ap-pips">${'<b></b>'.repeat(Math.min(4, Math.abs(ap)))}</span>` : '';
                 d.innerHTML = `<span class="acam-ap-sl">${tot.text || (ap > 0 ? 'AP BACK' : ap < 0 ? 'AP LOST' : ent > 0 ? 'TO ENTROPY' : 'NO AP BACK')}</span>${pips}${_acApVal(ap, ent, '')}`;
                 box.appendChild(d);
-                if (kind === 'gain') sfx('buff'); else if (kind === 'loss') sfx('uiError'); else if (kind === 'vent') sfx('manaRegen'); else sfx('uiBack', { volume: 0.5 });
+                if (kind === 'gain') _acApSfx('buff'); else if (kind === 'loss') _acApSfx('uiError'); else if (kind === 'vent') _acApSfx('manaRegen'); else _acApSfx('uiBack', { volume: 0.5 });
             }, rows.length * AC_AP_ROW_GAP_MS + AC_AP_SUM_GAP_MS - AC_AP_ROW_GAP_MS));
             return true;
         }
@@ -40364,8 +40413,9 @@
                     const _effMult = _stabMult ? _typeMult / _stabMult : _typeMult;
                     _hrTypeEff = _effMult; // THE HIT READ's weak / resisted verdict
                     // one word for a type-weak hit everywhere: the pop says what the preview, the green ! and the log say (mondo 2026-10-21)
-                    if (_effMult > 1.001) _multCallout(target, `${_fmtMult(_effMult)} SUPER EFFECTIVE!`);
-                    else if (_effMult < 0.999) _multCallout(target, `${_fmtMult(_effMult)} RESIST`);
+                    /* THE AP TALLY: a hit the press is judging files these words in the corner stack, not over the target */
+                    if (_effMult > 1.001) { if (!live || !_apTallyNote(sourceUnit, target, opts, 'type', _fmtMult(_effMult))) _multCallout(target, `${_fmtMult(_effMult)} SUPER EFFECTIVE!`); }
+                    else if (_effMult < 0.999) { if (!live || !_apTallyNote(sourceUnit, target, opts, 'typeRes', _fmtMult(_effMult))) _multCallout(target, `${_fmtMult(_effMult)} RESIST`); }
                 }
                 // 🩸 Bloodcraze (werewolf passive, plan §5.2): ×dmgMult vs a
                 // target at or under the HP threshold (measured pre-hit).
@@ -40452,7 +40502,8 @@
                     .filter(id => bonusStatusMatches(target, id))
                     .map(id => (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[id]?.label) || id)
                     .join(' + ') || String(_bvs.status);
-                if (live && damageType !== 'dot' && !_skipVisuals()) {
+                if (live && damageType !== 'dot' && !_skipVisuals()
+                    && !_apTallyNote(sourceUnit, target, opts, 'combo', `×${(+_bvsMult.toFixed(2))}`)) {   // THE AP TALLY
                     showFloatingTextForUnit(target, `⚗ ×${(+_bvsMult.toFixed(2))} COMBO!`, 'mult', { durationMs: 1100 });
                 }
                 if (live) addLog(`⚗ Combo! ${_ctName(target)} is ${_bvsName} — the hit lands ×${(+_bvsMult.toFixed(2))} harder.`);
@@ -40574,13 +40625,13 @@
                 const _affIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_affEl]) || '';
                 const _part = _splitHit ? ` (${Math.round(_eShare * 100)}% of the hit)` : '';
                 if (!live) { /* forecast: no callouts */ } else if (_affinity === 'weak') {
-                    _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} ${_affEl.toUpperCase()} WEAK!`, 1100);
+                    if (!_apTallyNote(sourceUnit, target, opts, 'elemWeak', _fmtMult(_affRes.mult), _affEl)) _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} ${_affEl.toUpperCase()} WEAK!`, 1100);
                     addLog(`${_affIcon} ${_ctName(target)} is weak to ${_affEl} — the ${_affEl} damage${_part} lands ×${(+_affRes.mult.toFixed(2))}!`);
                 } else if (_affinity === 'resist') {
-                    _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} RESIST`, 1000);
+                    if (!_apTallyNote(sourceUnit, target, opts, 'elemRes', _fmtMult(_affRes.mult), _affEl)) _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} RESIST`, 1000);
                     addLog(`${_affIcon} ${_ctName(target)} resists ${_affEl} — the ${_affEl} damage${_part} lands ×${(+_affRes.mult.toFixed(2))}.`);
                 } else if (_affinity === 'immune') {
-                    _multCallout(target, `${_affIcon} IMMUNE`, 1000);
+                    if (!_apTallyNote(sourceUnit, target, opts, 'elemImmune', '', _affEl)) _multCallout(target, `${_affIcon} IMMUNE`, 1000);
                     addLog(`${_affIcon} ${_ctName(target)} is immune to ${_affEl} — the ${_affEl} damage${_part} does nothing.`);
                 }
             }
@@ -48357,6 +48408,18 @@
             return PRESS_OUTCOME.NORMAL;
         }
 
+        /* how many sources the hit that pays the press carries (the best non-blocked hit; resolvePressOutcome's pick) */
+        function _pressBestSources(ctx) {
+            const hits = Array.isArray(ctx) ? ctx : [ctx];
+            let bestR = -Infinity, n = 0;
+            for (const h of hits) {
+                if (!h || h.evaded) continue;
+                const i = _pressHitInfo(h);
+                if (!i.block && i.nSrc && i.r > bestR) { bestR = i.r; n = i.nSrc; }
+            }
+            return n;
+        }
+
         // Mutate unit.ap per the outcome AFTER the normal cost has been spent.
         // Refunds respect PRESS_MAX_BONUS_AP (via unit._pressGainedThisTurn) and
         // never push ap above getUnitMaxAP. Does NOT advance the turn — the
@@ -48365,6 +48428,7 @@
         function applyPressTurn(unit, outcome, opts = {}) {
             const result = { outcome, apDelta: 0, pressed: false, penalty: false };
             if (!unit) return result;
+            if (opts.hits) result.hits = opts.hits;   // THE AP TALLY reads the judged hits off the result
 
             /* Mystery Dungeon floors: NO press-turn system. One beat is one
                action for everyone — refunds are meaningless, penalties would
@@ -48387,8 +48451,13 @@
                 return result;
             }
 
+            /* EVERY EXTRA SOURCE PAYS ENTROPY (mondo 2026-11-13, his pick on the AP tally card: "Build it, extras pay
+               Entropy"): a hit presses once, and each source past the first on that hit (super effective type, element
+               weakness, status combo, crit) vents a press's worth of AP (PRESS_REFUND_AP) into the gauge. Was: only a
+               crit on top of another source did (WEAK_CRIT). opts.hits = the judged hits (the tally reads them too). */
+            const _extraSrc = (opts.hits ? Math.max(0, _pressBestSources(opts.hits) - 1) : (outcome === PRESS_OUTCOME.WEAK_CRIT ? 1 : 0));
             let want = 0;
-            if (outcome === PRESS_OUTCOME.WEAK_CRIT) want = PRESS_REFUND_AP + PRESS_CRIT_REFUND_AP;
+            if (outcome === PRESS_OUTCOME.WEAK_CRIT) want = PRESS_REFUND_AP;   // its second source is one of the extras
             else if (outcome === PRESS_OUTCOME.WEAK) want = PRESS_REFUND_AP;
             else if (outcome === PRESS_OUTCOME.CRIT) want = PRESS_CRIT_REFUND_AP;
             else if (outcome === PRESS_OUTCOME.HALF) want = 1;
@@ -48444,10 +48513,13 @@
                Banked refunds trickle a little charge too. Refunds forfeited to
                an earlier miss/resist (the penalty lockout above) do NOT vent —
                a sloppy turn shouldn't farm entropy off its own mistakes. */
-            const overflow = want - _refundIfPerfect;
+            const overflow = (want - _refundIfPerfect) + _extraSrc * PRESS_REFUND_AP;
             if (overflow > 0) {
+                const _g0 = getEntropyGauge(unit.player);
                 addEntropy(unit.player, overflow * ENTROPY_PTS.pressOverflowAP, 'pressOverflow', unit);
                 result.entropyOverflow = overflow;
+                result.extraSources = _extraSrc;
+                result.entropyGained = Math.max(0, getEntropyGauge(unit.player) - _g0);   // what the gauge took (it pins when full)
             }
             if (refund > 0) {
                 addEntropy(unit.player, refund * ENTROPY_PTS.pressRefund, 'pressRefund', null);
@@ -48470,10 +48542,128 @@
             return null;
         }
         window._pressDialogueLine = _pressDialogueLine;
+        /* THE AP TALLY's facts (mondo 2026-11-13). While a hit is being judged for the press, the words that say why AP
+           comes back or goes (SUPER EFFECTIVE, RESIST, an element WEAK / RESIST / IMMUNE, COMBO) are NOTED here with
+           their multiplier in place of popping over the target; _showPressFeedback turns the judged hits + the press
+           result into the corner tally (the draw: _acApTallyShow). kinds = what this action's press judges. */
+        let _apTallyOwner = null;   // { id, kinds, notes, until }
+        function _apTallyBegin(unit, kinds) {
+            _apTallyOwner = unit ? { id: unit.id, kinds: kinds || { type: 1, elem: 1, combo: 1 }, notes: {}, until: Date.now() + 9000 } : null;
+        }
+        /* true = the tally shows this word, do not pop it over the target */
+        function _apTallyNote(sourceUnit, target, opts, kind, mult, el) {
+            const o = _apTallyOwner;
+            if (!o || !sourceUnit || !target || sourceUnit.id !== o.id || Date.now() > o.until) return false;
+            if (window.EW_NO_AP_TALLY || (opts && opts.noPress) || target.player === sourceUnit.player) return false;
+            const group = kind === 'type' || kind === 'typeRes' ? 'type' : kind === 'combo' ? 'combo' : 'elem';
+            if (!o.kinds[group]) return false;
+            if (!o.notes[kind]) {
+                o.notes[kind] = { mult: mult || '', el: el || '' };
+                /* the word lands in the corner with the hit; its AP worth is stamped on when the press resolves */
+                const E = String(el || 'ELEMENT').toUpperCase();
+                const label = kind === 'type' ? 'SUPER EFFECTIVE' : kind === 'typeRes' ? 'RESISTED' : kind === 'combo' ? 'STATUS COMBO'
+                    : kind === 'elemWeak' ? E + ' WEAK' : kind === 'elemRes' ? E + ' RESISTED' : 'IMMUNE';
+                try { _acApTallyPre({ player: sourceUnit.player, unitId: sourceUnit.id, k: kind, label, mult: mult || '' }); } catch (_e) {}
+            }
+            return true;
+        }
+        const _AP_TALLY_ENT_PER_SRC = () => PRESS_REFUND_AP * ENTROPY_PTS.pressOverflowAP;
+        function _apTallyBuild(unit, res) {
+            if (!unit || !res || window.EW_NO_AP_TALLY) return null;
+            const notes = (_apTallyOwner && _apTallyOwner.id === unit.id && _apTallyOwner.notes) || {};
+            const hits = (res.hits ? (Array.isArray(res.hits) ? res.hits : [res.hits]) : []).filter(Boolean);
+            const nm = (k) => (notes[k] && notes[k].mult) || '';
+            const elName = (h, k) => String((h && h.el) || (notes[k] && notes[k].el) || 'ELEMENT').toUpperCase();
+            let best = null, bestI = null, bestR = -Infinity, anyMiss = false, blockHit = null, typeRes = false, elemResHit = null, elemWeakHit = null;
+            for (const h of hits) {
+                if (h.evaded) { anyMiss = true; continue; }
+                const i = _pressHitInfo(h);
+                if (i.block && !blockHit) blockHit = h;
+                if (i.typeRes) typeRes = true;
+                if (h.elemAff === 'resist' && !elemResHit) elemResHit = h;
+                if (h.elemAff === 'weak' && !elemWeakHit) elemWeakHit = h;
+                if (!i.block && i.nSrc && i.r > bestR) { bestR = i.r; best = h; bestI = i; }
+            }
+            const src = [];   // the sources on the hit that pays, in the order they are read
+            if (best) {
+                if (bestI.typeTier > 0) src.push({ k: 'type', label: 'SUPER EFFECTIVE', mult: nm('type') });
+                if (best.elemAff === 'weak') src.push({ k: 'elemWeak', label: elName(best, 'elemWeak') + ' WEAK', mult: nm('elemWeak'), elem: 1 });
+                if (best.combo) src.push({ k: 'combo', label: 'STATUS COMBO', mult: nm('combo') });
+                if (best.isCrit) src.push({ k: 'crit', label: 'CRITICAL HIT', mult: '' });
+            }
+            const ap = res.apDelta || 0;
+            let entLeft = res.entropyGained || 0;
+            const entTake = (n) => { const g = Math.min(n, entLeft); entLeft -= g; return g; };
+            const rows = [];
+            if (res.outcome === PRESS_OUTCOME.MISS) {
+                if (!src.length && !(ap < 0)) return null;   // a plain whiff that cost nothing: DODGE! over the target says it
+                for (const r of src) rows.push(Object.assign(r, { note: 'LOST' }));
+                rows.push({ label: res.countered ? 'COUNTERED' : (anyMiss ? 'DODGED' : 'NO EFFECT'), ap: ap < 0 ? ap : 0 });
+            } else if (blockHit) {
+                for (const r of src) rows.push(Object.assign(r, { note: 'BLOCKED' }));
+                rows.push({ k: 'elemImmune', label: blockHit.elemAff === 'absorb' ? 'ABSORBED' : 'IMMUNE', mult: nm('elemImmune'), note: 'NO REFUND' });
+                if (typeRes) rows.push({ k: 'typeRes', label: 'RESISTED', mult: nm('typeRes'), ap: ap < 0 ? ap : 0 });
+            } else if (src.length) {
+                const resN = (typeRes ? 1 : 0) + (elemResHit ? 1 : 0);
+                const expected = Math.max(0, PRESS_REFUND_AP - resN);
+                const perSrc = _AP_TALLY_ENT_PER_SRC();
+                const vented = !res.pressed && !res.pressDenied && (res.entropyOverflow || 0) > (res.extraSources || 0) * PRESS_REFUND_AP;
+                src.forEach((r, k) => {
+                    if (k === 0) {
+                        if (vented) { r.ent = entTake(Math.max(0, expected) * ENTROPY_PTS.pressOverflowAP); if (!r.ent) r.note = 'GAUGE FULL'; }
+                        else if (res.pressDenied && !res.pressed) r.note = 'NO PRESS';
+                        else r.ap = PRESS_REFUND_AP;
+                    } else { r.ent = entTake(perSrc); if (!r.ent) r.note = (res.pressDenied && !res.entropyOverflow) ? 'NO PRESS' : 'GAUGE FULL'; }
+                    rows.push(r);
+                });
+                const shown0 = rows[0] && rows[0].ap ? rows[0].ap : 0;
+                let run = shown0;
+                if (shown0) {
+                    if (typeRes) { rows.push({ k: 'typeRes', label: 'RESISTED', mult: nm('typeRes'), ap: -1 }); run -= 1; }
+                    if (elemResHit) { rows.push({ k: 'elemRes', label: elName(elemResHit, 'elemRes') + ' RESISTED', mult: nm('elemRes'), ap: -1 }); run -= 1; }
+                    /* an earlier miss / resist this turn cut the press short (applyPressTurn's cap) */
+                    if (ap < Math.max(0, run)) rows.push({ label: 'EARLIER FUMBLE', ap: ap - Math.max(0, run) });
+                } else {
+                    if (typeRes) rows.push({ k: 'typeRes', label: 'RESISTED', mult: nm('typeRes'), note: '\u2014' });
+                    if (elemResHit) rows.push({ k: 'elemRes', label: elName(elemResHit, 'elemRes') + ' RESISTED', mult: nm('elemRes'), note: '\u2014' });
+                }
+            } else if (typeRes || elemResHit) {
+                if (typeRes) rows.push({ k: 'typeRes', label: 'RESISTED', mult: nm('typeRes'), ap: ap < 0 ? ap : 0 });
+                if (elemResHit) rows.push({ k: 'elemRes', label: elName(elemResHit, 'elemRes') + ' RESISTED', mult: nm('elemRes') });
+            }
+            /* THE ELEMENT PAYS ENTROPY (_consumePressCollector): its gauge points ride the element line */
+            if (res.elemEntropy > 0) {
+                const er = rows.find(r => r.elem);
+                if (er) er.ent = (er.ent || 0) + res.elemEntropy;
+                else if (elemWeakHit) rows.push({ k: 'elemWeak', label: elName(elemWeakHit, 'elemWeak') + ' WEAK', mult: nm('elemWeak'), ent: res.elemEntropy });
+            }
+            if (!rows.length) return null;
+            const ent = rows.reduce((a, r) => a + (r.ent || 0), 0);
+            const total = { ap, ent };
+            if (!ap && !ent && res.pressDenied) total.text = 'NO PRESS';
+            return { player: unit.player, unitId: unit.id, rows, total };
+        }
+        window._apTallyBuild = _apTallyBuild;
         function _showPressFeedback(unit, res) {
             if (!unit || !res) return;
-            if (_skipVisuals()) return;
+            if (_skipVisuals()) { _apTallyOwner = null; return; }
             const _line = _pressDialogueLine(res);
+            /* THE AP TALLY: the corner stack says it all — the "+2 AP!" / ENTROPY! / WASTED! / NO PRESS pops over the
+               caster stay only where no tally shows (window.EW_NO_AP_TALLY, a bane throw with nothing to list) */
+            let _tallySpec = null;
+            try { _tallySpec = _apTallyBuild(unit, res); } catch (_e) { _tallySpec = null; }
+            _apTallyOwner = null;
+            if (_tallySpec) {
+                res._tally = _tallySpec;   // online.js relays it to the guest with the press line
+                const _mine = unit.player === getViewerPlayer();
+                /* fog: an enemy's tally shows only when this seat may see that enemy (it names the matchup) */
+                if (_mine || typeof _shouldCameraFollowUnit !== 'function' || _shouldCameraFollowUnit(unit)) {
+                    if (_acApTallyShow(Object.assign({ side: _mine ? 'own' : 'enemy' }, _tallySpec))) {
+                        if (_line) showBattleDialogue([_line], 1100);
+                        return;
+                    }
+                }
+            }
             if (res.pressed) {
                 const _apGain = Math.max(1, res.apDelta || 0);
                 showFloatingTextForUnit(unit, `+${_apGain} AP!`, 'revive', { durationMs: 1000, jitterY: -26 });
@@ -48507,6 +48697,7 @@
 
         function _armPressCollector(casterUnit) {
             _pressDamageCollector = { casterId: casterUnit.id, hits: [], elemWeakIds: [] };
+            _apTallyBegin(casterUnit);
         }
 
         function _collectPressHit(sourceUnit, target, opts) {
@@ -48539,7 +48730,7 @@
             // THE STATUS COMBO PRESS: the hit lands its bonusVsStatus multiplier (the same matcher the damage uses)
             const _bvs = opts && opts.bonusVsStatus;
             const combo = !!(_bvs && _bvs.status && bonusStatusMatches(target, _bvs.status));
-            return { effSummary: getTypeEffectSummary(atkTypes, target.types || []), elemAff, combo };
+            return { effSummary: getTypeEffectSummary(atkTypes, target.types || []), elemAff, combo, el: elemAff ? _el : null };
         }
 
         function _consumePressCollector(casterUnit, cost) {
@@ -48549,13 +48740,17 @@
                every enemy whose weakness the cast's element part landed on charges the team's gauge — whether the
                hit pressed or not (a super effective type already presses; a resisted type never does). Recorded by
                applyDamageToUnit when the hit actually lands (a Protected / immune body records nothing). */
+            let _elemEnt = 0;
             if (c && c.casterId === casterUnit.id && c.elemWeakIds && c.elemWeakIds.length) {
+                const _g0 = getEntropyGauge(casterUnit.player);
                 addEntropy(casterUnit.player, c.elemWeakIds.length * ENTROPY_PTS.elemWeak, 'elemWeak', casterUnit);
+                _elemEnt = Math.max(0, getEntropyGauge(casterUnit.player) - _g0);
             }
             if (!c || c.casterId !== casterUnit.id || c.hits.length === 0) {
                 return { outcome: PRESS_OUTCOME.NORMAL, apDelta: 0, pressed: false, penalty: false };
             }
-            const _pr = applyPressTurn(casterUnit, resolvePressOutcome(c.hits), { cost });
+            const _pr = applyPressTurn(casterUnit, resolvePressOutcome(c.hits), { cost, hits: c.hits });
+            if (_pr && _elemEnt) _pr.elemEntropy = _elemEnt;
             if (_balanceSimMode && _pr) {
                 if (_pr.pressed) _balEffect(casterUnit, 'press', Math.max(0, _pr.apDelta || 0), 0);
                 else if (_pr.penalty) _balEffect(casterUnit, 'pressMiss', Math.abs(_pr.apDelta || 0), 0);
@@ -76036,11 +76231,13 @@
             // into a Protected (invulnerable) target wastes the turn like a
             // whiff — extra AP drain instead of any chance at a refund.
             const _targetProtected = getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable);
-            const _pressOutcome = _targetProtected ? PRESS_OUTCOME.MISS : resolvePressOutcome({
+            const _pressHit = _targetProtected ? { evaded: true } : {
                 evaded,
                 isCrit,
                 effSummary: getTypeEffectSummary(unit.types || [], target.types || [])
-            });
+            };
+            const _pressOutcome = _targetProtected ? PRESS_OUTCOME.MISS : resolvePressOutcome(_pressHit);
+            _apTallyBegin(unit, { type: 1 });   // THE AP TALLY: a basic attack's press reads the type matchup + the crit
 
             // getEffectiveAttackBonus is intentionally NOT added here: this damage
             // flows into applyDamageToUnit, which adds it for every enemy hit.
@@ -76306,7 +76503,7 @@
 
                 unit._trackBasicAttacks = (unit._trackBasicAttacks || 0) + 1;
                 spendAllAP(unit);   // attacking ends the turn — only a press hands AP back
-                const _pressRes = applyPressTurn(unit, _pressOutcome, { cost: AP_COST_ACTION });
+                const _pressRes = applyPressTurn(unit, _pressOutcome, { cost: AP_COST_ACTION, hits: [_pressHit] });
                 _showPressFeedback(unit, _pressRes);
                 state._actionExecuting = false;
                 state._tileActionTarget = null;
@@ -76346,6 +76543,7 @@
                     // same extra AP drain as a whiff, on top of the swing's own
                     // press result (a weak-hit refund gets eaten by the riposte).
                     const _counterPressRes = applyPressTurn(unit, PRESS_OUTCOME.MISS, { cost: AP_COST_ACTION });
+                    _counterPressRes.countered = true;   // THE AP TALLY's line
                     const _counterTarget = target;
                     const _counterAttacker = unit;
                     window.setTimeout(() => {
@@ -78714,16 +78912,15 @@
                 const _comboAtkTypes = combo.spellType
                     ? [combo.spellType]
                     : [...(initiator.types || []), ...(partner.types || [])];
-                const _comboPressRes = applyPressTurn(
-                    initiator,
-                    resolvePressOutcome({
-                        evaded: false,
-                        isCrit: false,
-                        effSummary: getTypeEffectSummary(_comboAtkTypes, target.types || []),
-                        elemAff: (() => { const _cEl = getSpellElement(combo); return (_cEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _cEl) : null; })()
-                    }),
-                    { cost: COMBO_AP_COST_INITIATOR }
-                );
+                const _comboEl = getSpellElement(combo);
+                const _comboHit = {
+                    evaded: false,
+                    isCrit: false,
+                    effSummary: getTypeEffectSummary(_comboAtkTypes, target.types || []),
+                    elemAff: (_comboEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _comboEl) : null,
+                    el: _comboEl || null
+                };
+                const _comboPressRes = applyPressTurn(initiator, resolvePressOutcome(_comboHit), { cost: COMBO_AP_COST_INITIATOR, hits: [_comboHit] });
                 _showPressFeedback(initiator, _comboPressRes);
             }
 
@@ -79475,7 +79672,8 @@
                     spendAP(unit, AP_COST_ACTION);
                     // Press Turn: a super-effective bane grants a free action,
                     // just like hitting a weakness with an attack or spell.
-                    const _banePressRes = applyPressTurn(unit, isBaneEffective ? PRESS_OUTCOME.WEAK : PRESS_OUTCOME.NORMAL, { cost: AP_COST_ACTION });
+                    const _banePressRes = applyPressTurn(unit, isBaneEffective ? PRESS_OUTCOME.WEAK : PRESS_OUTCOME.NORMAL,
+                        { cost: AP_COST_ACTION, hits: isBaneEffective ? [{ effSummary: { hasStrong: true, hasWeak: false } }] : null });
                     _showPressFeedback(unit, _banePressRes);
                     if (!unit._itemLog) unit._itemLog = {};
                     unit._itemLog[baneKey] = (unit._itemLog[baneKey] || 0) + 1;
