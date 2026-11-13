@@ -4413,6 +4413,32 @@
            stage's target (data.js stage `mark`), with a plate (name + metres). The target in view = the diamond floats
            over it; out of view = it slides to the screen's edge with an arrow that points the way. A target in another
            room = the door of this room that leads there (hqRouteNext). Walk only, viewer-local. `window.EW_NO_QUEST_MARK`. */
+        /* THE HQ SCENES (2026-11-13): a stage with `scene` that ends on `talk` plays it in the room when the officer speaks to
+           that cast member: the officer is stood on the stage's `sceneAt`, the scene's shots are placed cameras (`cam`),
+           and its end files the talk (the stage's own end, so a skipped scene lands where a watched one does). */
+        let _questTalkBusy = false;
+        function _questTalkScene(who) {
+            if (_questTalkBusy || window.EW_NO_CUTSCENES || !window.EWScene || !window.EWCine || typeof window.storyCutscene !== 'function') return false;
+            let t = null; try { t = (typeof window.questTracker === 'function') ? window.questTracker(_hqProfile()) : null; } catch (e) { t = null; }
+            if (!t || !t.scene || !t.done || t.done.on !== 'talk' || t.done.who !== who) return false;
+            const row = window.storyCutscene(t.scene); if (!row) { console.warn('[SCENE] no row ' + t.scene); return false; }
+            const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            try { if (t.sceneAt && TR && TR.hq && TR.hq.dev && TR.hq.dev.teleport) TR.hq.dev.teleport(t.sceneAt); } catch (e) { console.warn('[SCENE] the officer could not be placed', e); }
+            const end = () => { _questTalkBusy = false; try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(false); } catch (e) {} try { window._questEvent({ type: 'talk', who }, { delay: 600 }); } catch (e) { console.warn('[QUEST] talk', e); } };
+            const host = { unit: 1, point: () => null, act: () => {}, finish: () => {} };
+            /* the walker stands still under the scene's camera, so its body is put on the mark here (the walk's own tick would only move it after the scene) */
+            try {
+                const sc = TR && TR.hq && TR.hq.dev && TR.hq.dev.hqScene ? TR.hq.dev.hqScene() : null, g = sc ? sc.getObjectByName('hq_hq-player') : null, U = (window.EWCine && window.EWCine.unit) || 0;
+                const pp = TR.hq.pos();
+                if (g && pp && t.sceneAt && window.DOOR_HQ && window.DOOR_HQ.units) { g.position.x = pp.x * window.DOOR_HQ.units; g.position.z = pp.z * window.DOOR_HQ.units; g.updateMatrixWorld(true); }
+            } catch (e) { console.warn('[SCENE] the officer body could not be placed', e); }
+            let ok = false;
+            try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(true); } catch (e) {}
+            try { ok = !!window.EWScene.play(row, host, end); } catch (e) { console.error('[SCENE] the scene did not start', e); ok = false; }
+            if (!ok) { try { TR.hq.sceneCull(false); } catch (e) {} }
+            _questTalkBusy = ok;
+            return ok;
+        }
         let _questMarkRaf = 0, _questMarkAt = 0, _questMarkT = null;
         function _questMarkTarget() {
             let t = null; try { t = (typeof window.questTracker === 'function') ? window.questTracker(_hqProfile()) : null; } catch (e) { t = null; }
@@ -4521,6 +4547,7 @@
             state: () => { try { const p = _hqProfile(); return { record: p && p.door && p.door.quests, tracker: window.questTracker(p), fight: window.questFightPending(p) }; } catch (e) { return null; } },
             reset: () => { _hqPartyTx(p => { if (p && p.door) delete p.door.quests; return true; }); _questTrackerRender(); return true; },
             event: (ev) => window._questEvent(ev),
+            talk: (who) => _questTalkScene(who),   // dev: play the talk scene of the current stage
             fight: (id) => window._questFightGo(id),
             replay: (id) => window._questFightGo(id || 'orientation_portal', { replay: true }),
         };
@@ -7745,6 +7772,8 @@
         /* E: direct doors go through, a console lights its screen (THE
            TERMINAL), everything else opens its panel */
         function _hqInteractTarget(t) {
+            /* THE CUTSCENES: speaking to the cast member a quest stage ends on plays that stage's scene, no panel */
+            if (t && t.kind === 'cast' && t.cast && _questTalkScene(t.cast)) return;
             /* THE FINDS (9.1): E on a glowing object takes it — no panel, the walk never pauses */
             if (t && t.kind === 'find') { window._hqTakeFind(t); return; }
             /* THE PROP PASS 5.2 (PREMIUM_POLISH_PLAN, 2026-09-21): E on a seat sits (E again stands) — no panel */

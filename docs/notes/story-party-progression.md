@@ -908,6 +908,14 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   over it with a black plate (NAME + metres); out of view = it slides to the screen edge with an arrow. The tracker's
   bullet is the same diamond. Hidden under a panel and in a scene. `window.EW_NO_QUEST_MARK`. Never write
   `window.fn = function () { return fn(); }` for a data.js global: the global IS window.fn (it recursed).
+- **SCENE E, RHONDA LETS HER STAY (2026-11-13), the first HQ scene**: data.js `STORY_CUTSCENES.orientation_desk`; the `desk`
+  stage carries `scene` + `sceneAt`. map.js `_questTalkScene` (from `_hqInteractTarget`): E on the cast member the stage
+  ends on stands the officer on `sceneAt` (teleport + the body's group set by hand: the walker's tick is still under
+  EWCine), plays the scene and files the talk at its END (a skip lands the same). Shots are PLACED CAMERAS, `cam: [x, y,
+  z, yawDeg, pitchDeg, fov]` in the room's metres, `to.cam` to move (three-camera.js; `EWCine.unit`): the storyboard's
+  own frames. Kit stands at the counter WHILE the stage is current (cast spot `during`), sits on her chair after it
+  (`after`). `hq.sceneCull(on)` = nobody culled by a bind-pose sphere while a scene plays. Dev: `Quests.talk('rhonda')`.
+  Headless: after a container restart the cast models took ~2 min to land; empty first shots were that, not the scene.
 - **Not built yet** (the doc's build order): the new stage endings + the in-world quest marker (mock-up first) + `office_door`,
   D / E / F with the choice box, B the TV cart, A the intro. HQ scenes need an HQ host (cast walk / face / sit hooks).
 

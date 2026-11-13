@@ -2512,6 +2512,7 @@ var EWCine = (function () {
         get unit() { return C.unit; },
         /* THE SCRIPTED EYE: where the eye stands this frame, in WORLD units ({ x, y, z, yaw, pitch, fov }) */
         canvas: function () { return canvasEl(); },
+        get unit() { return C.unit; },   // world units in a metre (a scene's `cam` shot is written in metres)
         pose: function (p) { if (C.on && C.script && p) C.pose = { x: +p.x || 0, y: +p.y || 0, z: +p.z || 0, yaw: +p.yaw || 0, pitch: +p.pitch || 0, fov: +p.fov || 45 }; },
         eye: function () { return { x: C.x, y: C.y, z: C.z, yaw: C.yaw, pitch: C.pitch, fov: C.fov, inited: !!C.inited }; },
         available: available,
@@ -2640,7 +2641,13 @@ var EWScene = (function () {
         var sh = S.sh, k = ease(T / Math.max(0.01, S.dur));
         var P = S.P0;
         if (sh && sh.track && sh.look != null) { var p2 = resolve(S.ctx, sh.look); if (p2) P = S.P0 = p2; }
-        if (P && window.EWCine && window.EWCine.script) {
+        /* a shot may be a PLACED camera, `cam: [x, y, z, yawDeg, pitchDeg, fov]` in the room's metres (the HQ scenes: the
+           storyboard's own frames), moving to `to.cam` over the beat */
+        if (sh && sh.cam && window.EWCine && window.EWCine.script) {
+            var c0 = sh.cam, c1 = (sh.to && sh.to.cam) || c0, cu = window.EWCine.unit || 1, D2 = Math.PI / 180;
+            var cl = function (i) { return lerp(c0[i], (c1[i] != null) ? c1[i] : c0[i], k); };
+            window.EWCine.pose({ x: cl(0) * cu, y: cl(1) * cu, z: cl(2) * cu, yaw: cl(3) * D2, pitch: cl(4) * D2, fov: cl(5) || 40 });
+        } else if (P && window.EWCine && window.EWCine.script) {
             var a0 = poseOf(S.ctx, sh, P), pose = a0;
             if (S.to) {
                 var mixed = { _F: sh._F, over: (sh.over != null) ? lerp(sh.over, (S.to.over != null) ? S.to.over : sh.over, k) : null, h: lerp(sh.h || 0, S.to.h || 0, k), az: lerp(sh.az || 0, S.to.az || 0, k), el: lerp(sh.el || 0, S.to.el || 0, k), dist: lerp(sh.dist || 3, S.to.dist || 3, k), fov: lerp(sh.fov || 40, S.to.fov || 40, k) };
