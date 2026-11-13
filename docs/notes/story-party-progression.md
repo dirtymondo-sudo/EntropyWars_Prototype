@@ -961,6 +961,14 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   officer while it waits. "He is also too small" = a unit's battle size; `place` takes `scale` (Sedaniel 1.45 = 1.4 m tall,
   4.2 m long; held for the room's life). "shake my head no after he drives off" = `place` takes `clip` + `ms` (the officer
   plays a rig clip once: `hqNo`, UAL2 Idle_No_Loop) in the close-up A8. `hq.sceneReady(who)` also wants the model's meshes.
+- **SCENE A, THE RIDE DOWN + THE FOYER (2026-11-13)**: his OK on storyboard_A_elevator.jpg + "just get rid of the front
+  door and make the lift the front door": the foyer's `street` door (south wall) is now `proc: 'elevator'`, label THE FRONT
+  LIFT, still sealed (id kept: the evacuate button lands at `foyer@street`). After the desert, map.js `_introStart` chains
+  `sceneIn('car', 'orientation_ride')` (the building's own car; act `shaft` = hq.sceneShaft(k), the shaft window's speed,
+  minus = the landings rise past = going down) and `sceneIn('foyer', 'orientation_arrive')` (act `door` with `id` =
+  hq.sceneDoor({ id, open }): a ROOM door held open, locked or not, its cross braces hidden while held; the recruit steps
+  out to (0, 0.9) and keeps the walk). No foyer (`_hqArrivalRoom()` not the foyer) = the ride, then the hall. A replay
+  plays all three and goes back to the room it was asked from.
 - **SCENE B, THE TV CART (2026-11-13)**: data.js `STORY_CUTSCENES.orientation_tv` (12 beats, his lines word for word,
   the two long ones over two cards); it hangs on the `walk` stage (`scene`), so it plays the moment the recruit first
   stands in Room 64, and the stage's `then: { lesson: 'first_steps' }` starts Tape 1 when the scene ends (map.js

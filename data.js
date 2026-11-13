@@ -28431,6 +28431,39 @@ STORY_CUTSCENES.orientation_intro = {
     ],
     end: [{ do: 'door', remove: true }, { do: 'show', who: 'player' }],
 };
+/* A (2) · THE RIDE DOWN + THE ARRIVAL (mondo's OK 2026-11-13 on storyboard_A_elevator.jpg; "make the lift the front door"):
+   played by map.js _introStart after the desert. The ride is the building's own car (room `car`): the shaft window streams
+   the landings UP past the glass (act `shaft`: k = speed, minus = going down). The arrival is the foyer: the front lift's
+   leaves part (act `door` with `id`), the recruit steps out, and the walk is theirs. */
+STORY_CUTSCENES.orientation_ride = {
+    id: 'orientation_ride', title: 'THE RIDE DOWN',
+    end: [{ do: 'shaft', k: 1 }],
+    beats: [
+        /* 10 · behind the recruit: the shaft goes by */
+        { dur: 5.6, shot: { cam: [0.5, 1.62, 1.1, 14, -3, 55], to: { cam: [0.4, 1.62, 0.85, 12, -3, 55] } },
+          act: [{ at: 0, do: 'shaft', k: -2.2 }, { at: 0, do: 'place', who: 'player', x: -0.15, z: 0.2, face: 0 }] },
+        /* 11 · the window: the floors slide past */
+        { dur: 5.6, shot: { cam: [0.1, 1.45, 0.75, 0, 0, 45], to: { cam: [0.1, 1.45, 0.45, 0, 0, 45] } },
+          act: [{ at: 0, do: 'place', who: 'player', x: -0.95, z: 0.5, face: 0 }] },
+        /* 12 · the recruit's face in the window's light; the picture goes */
+        { dur: 5.4, hold: true, fade: 4.4, shot: { cam: [1.15, 1.5, -0.45, 72, 0, 50], eye: { who: 'player', dy: -0.04 } },
+          act: [{ at: 0, do: 'place', who: 'player', x: 0, z: -0.1, face: 0 }] },
+    ],
+};
+STORY_CUTSCENES.orientation_arrive = {
+    id: 'orientation_arrive', title: 'THE FOYER',
+    end: [{ do: 'door', id: 'street', open: false }, { do: 'show', who: 'player' }],
+    beats: [
+        /* 13 · wide on the foyer: the front lift opens, the recruit steps out */
+        { dur: 4.6, shot: { cam: [-3, 2.2, -1.8, 212, -10, 50] },
+          act: [{ at: 0, do: 'hide', who: 'player' }, { at: 0.6, do: 'door', id: 'street', open: true },
+                { at: 1.4, do: 'place', who: 'player', x: 0, z: 2.75, face: 0 }, { at: 1.4, do: 'show', who: 'player' },
+                { at: 1.5, do: 'walk', who: 'player', x: 0, z: 1.5, ms: 1900, face: 0 }] },
+        /* 14 · from the lift, over the shoulder: the foyer is the recruit's */
+        { dur: 3.2, hold: true, shot: { cam: [0.45, 1.65, 2.7, 8, -3, 55], to: { cam: [0.45, 1.65, 2.5, 8, -3, 55] } },
+          act: [{ at: 0, do: 'place', who: 'player', x: 0, z: 1.5, face: 0 }, { at: 0.1, do: 'walk', who: 'player', x: 0, z: 0.9, ms: 1200, face: 0 }] },
+    ],
+};
 /* B · THE TV CART (the approved storyboard's frames + mondo's lines, word for word; his change: B4 Locke on the far side
    of the cart, his head covered her). An HQ scene in room `training`, the orientation corner by the main hall door (the
    desks z 26, the cart home at -5.25, 29.4): the recruit walks in, is told to sit, Locke rolls the TV in from the west
@@ -31623,10 +31656,13 @@ const DOOR_HQ = {
                 /* the front door (ZONES_PLAN Z0, 2026-09-29): SEALED. It opened onto THE LAND (G2) until the land was cut; it stays shut
                    until the story opens it (where the building stands is not told). The main menu is the pause menu's MAIN MENU ·
                    LEAVE THE BUILDING. */
-                { id: 'street', wall: 's', x: 0, leaf: 'leaf_entrance', sealed: true,
-                  label: 'THE FRONT DOOR', sub: 'SEALED',
+                /* THE FRONT LIFT (2026-11-13, mondo: "just get rid of the front door and make the lift the front door"): the way in
+                   is the lift the recruit rides down in at the end of the opening (scene A, STORY_CUTSCENES.orientation_arrive). It
+                   stays shut like the old front door; the scene opens it (three-renderer.js hq.sceneDoor { id }). */
+                { id: 'street', wall: 's', x: 0, leaf: null, proc: 'elevator', sealed: true,
+                  label: 'THE FRONT LIFT', sub: 'SEALED',
                   action: {},
-                  desc: 'The front door. It is locked from the outside, which is the wrong side to lock a front door from. Nobody at the desk has the key, and nobody at the desk has asked where it is.' },
+                  desc: 'The lift you came down in. It has one button, and the button is on the other end.' },
             ],
             counters: [
                 /* CORNER INSPECTION → the by-id panel (map.js): your corners, counted and verified */
