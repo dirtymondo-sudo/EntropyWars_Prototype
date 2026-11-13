@@ -2532,3 +2532,11 @@ mondo 20:15 "one more polish pass on the exteriors ... go one or two more layers
   dark GlassWindowTall1a (Concert hall drum + flanks, Film studio lobby; mondo 19:02 likes the dark glass).
 - Size: 31 arch rows, about 2,500 parts, about 29,000 triangles (was 5,100). Still NOT SEEN IN THE GAME; drawn offline with the game's arch
   geometry (/mnt/project-files/dc-entertainment/polish_details.jpg). Signs and marquees are still blank lit panels.
+
+### THE INDUSTRIAL DISTRICT, THE POLISH PASS (2026-11-13, mondo 20:15 "one or two more layers deep with the detail", 20:18 "roofs and ac units", 20:19 "different textures or decals for different parts of the building")
+`districts/I.js` now adds two more lists to each building's arch row (303 parts -> about 1200, still one row a building): `MORE[id]` (plinths, corner posts, cornices, door surrounds +
+canopies + glowing lamps, window sills / lintels / mullions, downpipes + gutters, ribs on every barrel roof, ladders, blank sign boards, hazard plates, bollards, rust streaks, door decals
+on the solid buildings, the signal box's outside stair + a semaphore, the crane's rails / cab glass / beacon) and `ROOFS[id]` (roof AC units `ac`, wall units `wac`, parapets, hatches,
+ducts, rubber walkways, manhole decals in the yards, a second sheet on back walls and bases: subway / generic tile, brick, factory window decals). Houses: `houseMore` (corner boards,
+door hoods, shutters, sills, gutters, chimney caps). On the five walked roofs only edges and corners are dressed. Signs stay blank (no lettering part). Seen in the cloud browser (29
+close-ups, about two thirds framed the building; the rest were checked from neighbours' shots). `arch y` is lifted by THE LEVELS, so headless cameras add the plot's level.
