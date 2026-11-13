@@ -2594,3 +2594,5 @@ side (`SCI`). Roof plant: two condensers on pads + a vent stack; on a flat roof 
 with a ghost wall each and never within 5 m of a bridge / stair / ladder point or on a tier.
 - An `hq:` sheet on an arch part drew BLACK in the game (trims, the porch): trims are `calm_marble` now. No `hq:` keys in U.js.
 - Seen in the game: plinth, sills, heads, corner stones, door step + mat, porch trim (library, dorm). NOT seen: roof plant, wall units, plates, signs.
+- **The University's sign lettering** (11-13, on the shared `txt:` sheet of PR #1327): `LABEL[kind]` in districts/U.js puts the building's plain name
+  (LIBRARY, LECTURE HALL, CAFE, BOOKS, CLINIC, ...: what it is, no invented names) on a board over its first door. Not seen on screen.
