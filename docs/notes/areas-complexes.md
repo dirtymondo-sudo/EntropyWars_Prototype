@@ -2068,3 +2068,10 @@ Built for the nine district threads (each owns its 16 plots); NOT SEEN ON SCREEN
   0.9 to 1.15 of the block's own `w`. Today: Repair shops 00 (0.99), Pawnshop 09 (1.04), Tailor 08 (0.90), Coffee arcade 09 (1.04), West shops
   09 (1.04), Restaurant court + East shops = 08 + 09 side by side (0.97). Corner shops, Bookshops, Costume shops are roof-route tiers (no pack).
 - Pack building claims between districts: `docs/disaster-city/pack-claims.md`.
+- **THE CITY'S WHOLE BUILDINGS** (PR after #1264): twelve catalogue props `city_*` (data.js, after the town houses): pizzeria, diner, BurgerPiz,
+  6twelve, laundry, VHS shop, house, Quequis house, gas store + gas canopy (walked under) + gas price sign, taco stand. Cut from the
+  Elbolilloduro scenes by `bake-pack-pieces.py` (jobs `city_*`; a region may now be a `box`), outside only, real size, entrance +Z, solid `rect`.
+  Run: `pip install bpy`, `apt-get install unrar`, unpack `/mnt/project-files/asset-packs/elbolilloduro/<slug>/*.rar` to `<dir>/<slug>/`, then
+  `python3 bake-pack-pieces.py -- --packs <dir> --out <out> --only city_pizzeria,...`. Files: R2 `Assets/world/packs/elbolilloduro/ebd_<scene>_city_*.glb`.
+  They are PROPS, not HQ_PACK_BUILDINGS, on purpose: a prop is never fitted to a footprint, so its scale cannot go wrong. Not seen in the game
+  (Blender renders only: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg). The laundry's roof sign renders blank orange in Blender.
