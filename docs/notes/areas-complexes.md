@@ -2180,6 +2180,7 @@ his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:1
   roofSkin / coping / plinth / board / sign / ringRails`. LESSONS: the metro pack's sheets (`urban:Metro*`) drew BLACK on an arch row,
   use the urban pack's; the arch row's `ring` turns parts the mirrored way (fine for a column, wrong for a rail: `ringRails` writes
   each with its own `ry`); a probe camera's `y` is ABSOLUTE, so on the raised north row add the plot's level or it is underground.
+- **THE INTERIORS (2026-11-13, mondo 21:04; his OK on plan 2, 21:24)**: `interiors()` in docs/disaster-city/districts/B.js. Seven rooms: the hotel lobby, the cinema (foyer + one hall behind a partition), the loading dock, the surf shop, boat repair, the harbour master (these three were solid: now `hollow` with a `door` square in DESIGN, their arch box `faces: 'blr'` + a `doorFront`), the market's tills. HIS GRID RULE (21:14 + 21:17): the squares are the 3.5 m battle squares; a blocker is built over WHOLE squares, centred, and every one of its squares is shut with a ghost wall (`R.shut`); decor hugs walls / corners off the squares' middles; a walk is whole empty squares. A room's frame = its building's (x along the front, +z out of the door; square (c, r), r from the back wall); `R.prop(key, lx, lz, hd)` turns a prop by the building's `rot` (hd 180 = looks at the door). The inside's walls / floor are the texbuilding row's `keyIn` / `floorIn`; its ceiling is `storeys x 3.5 - 0.32` (the hotel's row is 2 storeys now: the lobby; the tower above is the arch row). A prop set on a counter takes `y >= 1` (the bake adds the ground under it only from 1 m). The market's stalls moved onto squares 0, 2, 4 of its back row. Stays a front: ice cream, food hall, security, booth (the roof walk), apartments, juice bar, florist.
 - **NOT PROVEN in the headless browser:** no `city_*` pack building (the grill, the taco stand; also the diner, pizzerias, laundry in
   other districts) attached in the thread's probe runs: only the shadow blob draws. The files are on the CDN and fetched. Check on a real
   machine before blaming the placement.
@@ -2361,6 +2362,21 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
   row with no `y` whose origin lies over a building plateau (`bld`) takes the ground that building stands on, never its roof. Four rows on main
   still stood 7 m up (P09-08-B2, P09-09-B1, P10-09-B1, P11-09-B2); the headless compile now gives all 191 city arch rows base 0. `y: 0` in a
   district file is harmless and no longer needed.
+
+- **THE INSIDES** (2026-11-13; mondo 21:04 "let's go ahead and do the interiors", his OK 21:23 on the plan
+  `/mnt/project-files/disaster-city-southside/interiors_1.jpg` + `interiors_2.jpg`): the seven walk-in buildings are furnished, all in R.js
+  (`inside(id, gx, gy, fn)` at the end of `build`). THE SQUARES (his 21:14 + 21:17): a room is read on the city's 3.5 m battle squares
+  (`bake-disaster-city.js C`, not the 1.75 m tile). A piece a unit cannot walk through fills WHOLE squares, centred (`R.cell`; `R.block` = its
+  ghost wall); every other square is a clear walkway one square wide or more, the door opens onto one; decor is on a wall, in a corner or
+  overhead. A room's plan is X from the left wall (facing the front from outside), Y from the BACK wall; `(gx, gy)` = where the first whole square
+  starts (the church and the garage stand 1 m off the lines: the church has 1 m strips, the garage's back strip holds the workbenches).
+  Squares: church 5x5, bakery 3x5, boxing gym 5x5, pawnshop 5x3, community kitchen 8x3, dojo 9x3, garage 8x6.
+  Pieces with no model are parts of the room's own arch row `dc:<id>-in` (not dressed by `dress()`): the ring (2x2 squares), the heavy bags on wall
+  brackets, the dumbbell rack + bench press, the two-post lift (a `car_pack_2` at y 1.58 on it), the tyre stacks, the dojo mat (5x2 squares, its seams
+  on the squares), the striking posts, the counters, the pawnshop's bars, the kitchen's serving line, the bakery wall, the garage office's walls.
+  Everything else is a catalogue prop (`R.put`), reported in prop-check.txt as "in building" (a district's own prop is never moved).
+  The front doors are the city's swing leaves (already there); the two inner openings (bakery, garage office) are open, one square wide.
+  Deviation from the first sketch: no raised chancel (heights are whole blocks), pews in two blocks with side aisles.
 
 ## DISASTER CITY, THE BIG WINDOWS (2026-11-13, the shared-pieces thread)
 mondo (screenshot of two city blocks): "The buildings that use these repeated window textures from the urban pack, the windows are too small, need
@@ -2680,3 +2696,51 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - **The prop check** lists every inside prop as "building" under district_reported: expected (a district's own props are reported, never moved).
 - Headless proof: camera INSIDE a room = teleport to a spot in the room's frame turned by `rot`, `y` = the plot's level x 1.75, `fp: true`.
   Shots /mnt/project-files/disaster-city-hero-plaza/inside_*.jpg.
+### THE UNIVERSITY INSIDES (2026-11-13, mondo 21:04 "let's go ahead and do the interiors", his OK on the grid plan 21:23)
+His grid rule (21:14 + 21:17, all interiors): the city fights on 3.5 m squares; a BARRIER fills whole squares (centred, a 2-wide piece = 2 squares),
+a WALKWAY is a whole square wide with nothing halfway across two, dressing sits OFF the square centres.
+`districts/U.js` `ROOMS[kind].g` = the approved plan a walk-in building (rows listed BACK first, columns from the LEFT as you face the front from
+outside; '' = a walkway square, a word = what fills the square, `FILL[word]`). `inside(kind, row)` writes it: catalogue props (their `y` = on a
+table top), arch parts (counters, booths, plinths, the globe), ONE ghost block per filled square, partitions on the squares' edges (`glass` dark
+glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the row's `floorIn` / `keyIn`, `txt:` boards (MENU, TICKETS, KEYS, SCAN).
+- Library 8x4 (shelf wall, reading tables, the GALLERY: a plain `bridge` at 3.5 m over the back row + a `ramp` stair in its own square), student
+  cafe 7x4 (kitchen + counter block, tables, booths), research lab 8x4 (racks, benches, a dark-glass clean room 3x2), psychology lab 7x2
+  (observation room, reception, therapy office), research annex 9x3 (racks, consoles, specimen tanks, a scanner gate over the door square),
+  clinic 3x5 (waiting, reception, two beds, store), science museum 9x3 (cases, telescopes, globe, planets hung over the middle walkway), gate
+  lodge 2x2. The five roof-route buildings stay shut.
+- Plan sheet: /mnt/project-files/university-district/16_interior_plans_on_battle_grid.jpg.
+- **THE DEEPER HANGAR (2026-11-13, mondo 21:21 "make hangar deeper so it fits")**: `I.js` `fit` grows P03-10-B1 one square forward onto the walk in front of it (in `build`, NOT `tailor`: changing the plan re-rolls the whole city's random dressing): 31.5 x 14 m, four squares deep, 7 m walls
+  under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. The street lamp on that square is taken off (`ctx.lamps`, the tool now writes its lamps line after the district build). Seen in the
+  cloud browser from inside (as a 28 m long test build). INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.
+
+## DISASTER CITY, THE ENTERTAINMENT DISTRICT — the insides (2026-11-13 night)
+mondo 21:04 "after the district threads do their exterior polish, let's go ahead and do the interiors"; his grid rule 21:14 + 21:17 (a
+blocker snaps to the battle squares and fills whole ones, a walkway is a whole square wide, decoration sits off centre); his "okay" on the
+cell plans 21:23 (/mnt/project-files/dc-entertainment/interiors_plan.jpg). All in `docs/disaster-city/districts/E.js`.
+- The ten walk-in shells are furnished IN PLACE in the city room (no door to another room): `INSIDE[id] = { g: [rows of letters], keyIn,
+  floorIn, rug, ... }`. A letter is one 3.5 m square: `.` = walkway, any other letter = a blocker drawn by `KIT[letter]` in the square's own
+  frame (+z looks at the nearest walkway) under a ghost block the size of the square (`BLOCK_H`). Rows are written back first, the door row
+  last, left = left as you face the building. The tool refuses a plan that is not the shell's size or whose doorway square is not a walkway.
+- Kits: S slot bank (3 `slot_machine`), T round table + stools, B bar + back shelf, c cashier cage, G stage (or the workshop's half-built
+  set), K kitchen line (`kitchen_range`), H seat block (raked by `rake`), L `psx_sofa_1`, U `curved_couch` + TV, X mixing desk, M drum kit,
+  P `decor_piano`, V vocal booth, A six arcade cabinets (shapes: the model list has no cabinet), R costume rail / amps / lumber, m mirrors,
+  O ovens, W `steel_table` benches, F backdrop flat, Y crates, Z `exec_desk`, D `library_shelf_full`, J air hockey, C shop counter,
+  I `ticket_booth`, Q `popcorn_cart`, E `dorm_bed` bunks, N `locker` row. Plus ceiling light panels over the walkways, a lit EXIT over every
+  doorway inside, the Cinema's screen, the inside wall and floor sheets (`keyIn` / `floorIn`).
+- The rooms: Casino, Recording studio, Restaurant court, Comedy theater, Cabaret, Stage workshop, Arcade, Bakery, Crew house, Cinema.
+  10 `dc:<id>:in` arch rows, about 1,900 parts, about 19,500 triangles; 82 catalogue props (docs/disaster-city/prop-check.txt lists them as
+  "in building": that is where they belong, the check keeps a district's own props).
+- NOT SEEN IN THE GAME (offline render of the baked rows only: interiors_built.jpg). Unknown until walked: how bright the insides are, prop
+  facings, whether the wall-mounted props (`locker`, `kitchen_range`) sit right. Next (his "and yes" 21:23): insides for the wedding chapel,
+  the Concert hall and the Film studio (solid today).
+- THE THREE MORE INSIDES (same night, his "and yes" 21:23): the Concert hall and the Film studio were roof-route plateaus (solid); `B(id,
+  { walk: true })` on a plateau now swaps in a hollow `texbuilding` of two storeys (the same 7 m walked roof slab, as the Industrial district
+  does), its doorway the plan's first door. Concert hall inside: lobby, raked seat blocks, a two-square-deep stage, backstage. Film studio
+  inside: backdrops, a half-built set, a camera + lamp (kit `k`), the director's desk, wardrobe, make-up, the front office. The Concert
+  hall's glass lobby drum became an open colonnade (the doorway is behind it). The wedding chapel is a walk-in shell of the file's own now
+  (`EXTRA['E-chapel']` + its own texbuilding row, 3 x 2 squares, `leaf_motel` door): pews (kit `p`), the wedding altar (kit `w`, `lectern`).
+  13 inside rows in all. NOT SEEN IN THE GAME; the roof route over the two halls wants a walk (the texbuilding's 0.45 m parapet ghost).
+- **A TREE NEVER LEANS INTO A ROOM + THE STADIUM ROAD (2026-11-13, the shared-pieces thread; Southside saw a road sign and street trees inside the
+  boxing gym).** bake-disaster-city.js drops a `tree` row within 2.5 m of a walk-in (`hollow`) building's walls (11 trees; a district's own tree
+  with `keep: true` stays), and the `stadium_downtown` road link stands on the road's dead end in P03-00 (-99.75, -229.25), no longer in the
+  3.5 m alley beside the gym on its east door's step. Not seen on screen.

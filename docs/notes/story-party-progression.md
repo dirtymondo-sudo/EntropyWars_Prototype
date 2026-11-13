@@ -956,6 +956,11 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   officer's clip. Off switch: `window.EW_NO_INTRO = true` (harnesses that enter story fresh need it). My picks: daylight;
   a passenger-side travelling shot instead of the windscreen (Sedaniel's glass is solid). NOT BUILT: the elevator descent
   + the lift doors on the foyer (needs his OK on frames first).
+- **THE DROP-OFF, HIS NOTES (2026-11-13)**: "I am already standing by the door before sedaniel drops me off" = the walker's
+  tick re-showed the body every frame; `_scenePlayerOut` is now read inside `_hqTickChars`, and `_introStart` hides the
+  officer while it waits. "He is also too small" = a unit's battle size; `place` takes `scale` (Sedaniel 1.45 = 1.4 m tall,
+  4.2 m long; held for the room's life). "shake my head no after he drives off" = `place` takes `clip` + `ms` (the officer
+  plays a rig clip once: `hqNo`, UAL2 Idle_No_Loop) in the close-up A8. `hq.sceneReady(who)` also wants the model's meshes.
 - **SCENE B, THE TV CART (2026-11-13)**: data.js `STORY_CUTSCENES.orientation_tv` (12 beats, his lines word for word,
   the two long ones over two cards); it hangs on the `walk` stage (`scene`), so it plays the moment the recruit first
   stands in Room 64, and the stage's `then: { lesson: 'first_steps' }` starts Tape 1 when the scene ends (map.js
