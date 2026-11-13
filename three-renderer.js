@@ -81923,6 +81923,25 @@ const ThreeRenderer = (function () {
         ch.visY += (ch.y - ch.visY) * Math.min(1, dt * 14); if (Math.abs(ch.y - ch.visY) < 0.004) ch.visY = ch.y;
         e.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
     }
+    /* THE CUTSCENES: the bodies and props a scene set moving (hq.sceneWalk / hq.sceneProps), stepped once a frame */
+    var _hqSceneMoves = [];
+    function _hqTickSceneMoves() {
+        if (!_hqSceneMoves.length) return;
+        var H = _hq, now = performance.now(), U = _hqUnits(), keep = [];
+        for (var i = 0; i < _hqSceneMoves.length; i++) {
+            var m = _hqSceneMoves[i]; if (m.H !== H) continue;
+            var k = Math.min(1, (now - m.t0) / m.ms), x = m.x0 + (m.x1 - m.x0) * k, z = m.z0 + (m.z1 - m.z0) * k;
+            if (m.ch) {
+                var ch = m.ch, dx = m.x1 - m.x0, dz = m.z1 - m.z0;
+                ch.x = x; ch.z = z; ch.moving = k < 1; ch._sceneWalk = k < 1;
+                if (k < 1 && (dx || dz)) ch.yaw = ch.targetYaw = Math.atan2(dx, dz);
+                else if (k >= 1 && m.face != null) ch.yaw = ch.targetYaw = _hqHeadingYaw(m.face);
+                if (ch.entry && ch.entry.group) { ch.entry.group.position.x = x * U; ch.entry.group.position.z = z * U; }
+            } else if (m.g) { m.g.position.x = x; m.g.position.z = z; m.g.updateMatrixWorld(true); }
+            if (k < 1) keep.push(m);
+        }
+        _hqSceneMoves = keep; if (H) H.dirty = true;
+    }
     function _hqTickRounds(dt) {
         var H = _hq; if (!H || !H.rounds || !H.rounds.length || _hqRoundsOff()) return;
         if (!H.nav || !H.nav.done) { _hqNavBuild(HQ_NAV_BUDGET_MS); if (!H.nav.done) return; }
@@ -84776,6 +84795,7 @@ const ThreeRenderer = (function () {
             if (ch.pose && ch.kind !== 'player' && e.actions && e.actions[ch.pose]) want = ch.pose;
             /* THE ROUNDS (2026-09-19): a walker on its loop plays the walk clip at a stroll's pace */
             if (ch.rounds && ch.kind !== 'player') { want = ch.moving ? 'walk' : 'idle'; if (e.actions && e.actions.walk) { var wts = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = wts * 0.62; } }
+            if (ch._sceneWalk && ch.kind !== 'player' && e.actions && e.actions.walk) { want = 'walk'; var swt = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = swt * 0.62; }   // THE CUTSCENES: a cast member a scene walks (hq.sceneWalk)
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
                 if (ch.sit) want = (e.actions && e.actions.hqSit) ? 'hqSit' : 'idle';   // THE PROP PASS 5.2: seated (the library's Sitting_Idle, the skiff's clip)
@@ -86418,6 +86438,7 @@ const ThreeRenderer = (function () {
         if (!editing) _hqTickPortalCross(dt);   /* THE DOOR GUN rev 2: a flat threshold is crossed by touch, the same frame the feet land in it */
         if (_hq !== H) return;
         try { _hqTickGunDoors(wdt, now); } catch (e) { if (!H._gunTickWarned) { H._gunTickWarned = true; console.warn('[HQ] gun doors tick', e); } }   /* THE DOOR WHEEL IN THE ROOM (Phase 3): the standing doors act */
+        _hqTickSceneMoves();
         _hqTickRounds(wdt);   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         if (_lens && _lens.cur) { var _lensA = performance.now(); _hqTickChars(wdt); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share
         else _hqTickChars(wdt);
@@ -92257,6 +92278,71 @@ const ThreeRenderer = (function () {
            DOOR_CAST id standing in the room) | { door } (the id of a door of the room stood in). Returns { x, y (0..1 of
            the canvas, y down), front (in front of the eye), dist (metres from the walker), label } or null. */
         /* THE CUTSCENES: on = every body in the room is drawn whatever the eye does (no sphere cull, no skipped mixer); off puts the walk's cull back */
+        /* THE CUTSCENES: a scene's hands on a body of the room. who = 'player' | a DOOR_CAST id; o = { x, z (the room's
+           metres), face (deg), show (true / false) }: the body is set there at once (the walk's own tick is held under
+           the scripted eye, so the group is moved here), turned, and shown or taken out of the room. */
+        scenePlace: function (who, o) {
+            if (!_hq || !who) return false;
+            var ch = null;
+            if (who === 'player') ch = _hq.player; else for (var i = 0; i < _hq.chars.length; i++) { if (_hq.chars[i] && _hq.chars[i].cast === who) { ch = _hq.chars[i]; break; } }
+            if (!ch || !ch.entry || !ch.entry.group) return false;
+            o = o || {};
+            var U = _hqUnits(), g = ch.entry.group;
+            if (o.x != null && o.z != null) { ch.x = +o.x; ch.z = +o.z; g.position.x = ch.x * U; g.position.z = ch.z * U; if (ch === _hq.player) { ch.moving = false; ch.svx = 0; ch.svz = 0; } }
+            if (o.face != null) { ch.yaw = ch.targetYaw = _hqHeadingYaw(o.face); if (ch.entry.model) ch.entry.model.rotation.y = ch.yaw; if (ch === _hq.player && _hq.cam) { _hq.cam.yaw = _hqRad(o.face); _hq.cam.init = false; } }
+            if (o.show != null) { if (ch === _hq.player) g.visible = !!o.show; else _hqRoundsSetVisible(ch, !!o.show); }
+            if (o.sit != null && ch === _hq.player) ch.sit = o.sit ? { seat: null, t0: performance.now(), scene: true } : null;   // seated for a scene (no seat record: the walk's own tick is held)
+            g.updateMatrixWorld(true); _hq.dirty = true;
+            return true;
+        },
+        /* a scene's CAST: `ids` = the DOOR_CAST ids the scene keeps; everybody else in the room (the officer aside) is taken
+           out for the scene. null puts back exactly the ones it took out. */
+        sceneCast: function (ids) {
+            if (!_hq) return 0;
+            var n = 0;
+            _hq.chars.forEach(function (ch) {
+                if (!ch || ch === _hq.player || ch.kind === 'player' || !ch.entry || !ch.entry.group) return;
+                if (ids) { if ((ch.cast && ids.indexOf(ch.cast) >= 0) || ch.away || !ch.entry.group.visible) return; ch._sceneOut = true; _hqRoundsSetVisible(ch, false); n++; }
+                else if (ch._sceneOut) { ch._sceneOut = false; _hqRoundsSetVisible(ch, true); n++; }
+            });
+            _hq.dirty = true;
+            return n;
+        },
+        /* a body WALKS to { x, z } over `ms` (the walk clip, turned along its way; `face` = the heading it ends on) */
+        sceneWalk: function (who, o) {
+            if (!_hq || !who || !o) return false;
+            var ch = null;
+            if (who === 'player') ch = _hq.player; else for (var i = 0; i < _hq.chars.length; i++) { if (_hq.chars[i] && _hq.chars[i].cast === who) { ch = _hq.chars[i]; break; } }
+            if (!ch || !ch.entry || !ch.entry.group) return false;
+            _hqSceneMoves = _hqSceneMoves.filter(function (m) { return m.ch !== ch; });
+            _hqSceneMoves.push({ H: _hq, ch: ch, x0: ch.x, z0: ch.z, x1: +o.x, z1: +o.z, t0: performance.now(), ms: Math.max(1, o.ms || 1000), face: (o.face != null) ? o.face : null });
+            return true;
+        },
+        /* the room's props named `keys` standing within `r` m of `near` [x, z] slide together to the offset `at` [dx, dz]
+           from their own spots over `ms` (0 = at once; [0, 0] = home): the TV cart rolled in. `light` = { color, intensity,
+           dist, y, z } hangs a point light on the first of them (the TV snaps on); `light: false` takes it off. */
+        sceneProps: function (o) {
+            if (!_hq || !o || !Array.isArray(o.keys)) return 0;
+            var U = _hqUnits(), nx = (o.near ? o.near[0] : 0) * U, nz = (o.near ? o.near[1] : 0) * U, r = (o.r || 1.2) * U, n = 0, first = null;
+            (_hq.props || []).forEach(function (pr) {
+                if (!pr || !pr.grp || o.keys.indexOf(pr.key) < 0) return;
+                var g = pr.grp, hm = g.userData._ewSceneHome || (g.userData._ewSceneHome = { x: g.position.x, z: g.position.z });
+                if (o.near && Math.hypot(hm.x - nx, hm.z - nz) > r) return;
+                n++; if (!first) first = g;
+                if (o.at) {
+                    _hqSceneMoves = _hqSceneMoves.filter(function (m) { return m.g !== g; });
+                    var tx = hm.x + o.at[0] * U, tz = hm.z + o.at[1] * U;
+                    if (!(o.ms > 0)) { g.position.x = tx; g.position.z = tz; g.updateMatrixWorld(true); }
+                    else _hqSceneMoves.push({ H: _hq, g: g, x0: g.position.x, z0: g.position.z, x1: tx, z1: tz, t0: performance.now(), ms: o.ms });
+                }
+            });
+            if (first && o.light != null) {
+                var old = first.userData._ewSceneLight; if (old) { first.remove(old); first.userData._ewSceneLight = null; }
+                if (o.light) { var L = new THREE.PointLight(o.light.color != null ? o.light.color : 0xbfd8ff, o.light.intensity != null ? o.light.intensity : 1.2, (o.light.dist || 6) * U, 2); L.position.set(0, (o.light.y || 0) * U, (o.light.z || 0) * U); first.add(L); first.userData._ewSceneLight = L; }
+            }
+            _hq.dirty = true;
+            return n;
+        },
         sceneCull: function (on) {
             _hqSceneNoCull = !!on;
             if (!_hq) return false;

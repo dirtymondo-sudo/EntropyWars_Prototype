@@ -2595,7 +2595,7 @@ var EWScene = (function () {
         var el = document.getElementById('ewScene');
         if (!el) { el = document.createElement('div'); el.id = 'ewScene'; document.body.appendChild(el); }
         el.innerHTML = '<div class="ew-scene-bar top"></div><div class="ew-scene-bar bot"></div>'
-            + '<div class="ew-scene-sub" id="ewSceneSub"><span class="ew-scene-who" id="ewSceneWho"></span><span class="ew-scene-line" id="ewSceneLine"></span></div>'
+            + '<div class="ew-scene-sub" id="ewSceneSub"><span class="ew-scene-who" id="ewSceneWho"></span><span class="ew-scene-line" id="ewSceneLine"></span><div class="ew-scene-choice" id="ewSceneChoice"></div></div>'
             + '<div class="ew-scene-skip" id="ewSceneSkip"><i id="ewSceneSkipFill"></i><span>HOLD ESC TO SKIP</span></div>'
             + '<div class="ew-scene-fade" id="ewSceneFade"></div>';
         void el.offsetWidth; el.classList.add('on');
@@ -2608,8 +2608,27 @@ var EWScene = (function () {
         document.getElementById('ewSceneLine').textContent = say.text;
         box.classList.add('on');
     }
+    /* THE CHOICE BOX (2026-11-13, scene F: "she asks if you want your door open or closed. Player can choose open or closed in
+       a pop up dialogue box"): a beat with `choice: { options: [{ label, ... }] }` shows its options under the line and HOLDS
+       on its shot until one is picked (click, or LEFT / RIGHT then ENTER, or 1 / 2); the host's choose(choice, option) files
+       the pick. A skip never passes a choice that was not answered: it lands on that beat. */
+    function choiceShow(c, sel) {
+        var box = document.getElementById('ewSceneChoice'), sub = document.getElementById('ewSceneSub'); if (!box) return;
+        if (!c) { box.innerHTML = ''; if (sub) sub.classList.remove('pick'); return; }
+        box.innerHTML = c.options.map(function (o, i) { return '<button type="button" data-i="' + i + '" class="' + (i === sel ? 'sel' : '') + '">' + esc(o.label) + '</button>'; }).join('');
+        if (sub) sub.classList.add('pick');
+    }
+    function pick(i) {
+        if (!S || !S.choice) return;
+        var b = S.row.beats[S.i], o = b.choice && b.choice.options[i]; if (!o) return;
+        try { if (S.ctx.choose) S.ctx.choose(b.choice, o, i); } catch (e) { console.warn('[SCENE] the choice was not filed', e); }
+        S.picked[S.i] = true; S.choice = null; choiceShow(null);
+        S.now = performance.now(); S.dur = Math.max(0.05, (S.now - S.t0) / 1000);
+    }
     function beatStart(i) {
-        var b = S.row.beats[i]; S.i = i; S.t0 = S.now; S.dur = beatDur(b); S.fired = {}; S.slowed = false;
+        var b = S.row.beats[i]; S.i = i; S.t0 = S.now; S.dur = beatDur(b); S.fired = {}; S.slowed = false; S.fadeDone = false;
+        S.choice = null; choiceShow(null);
+        if (b.choice && Array.isArray(b.choice.options) && b.choice.options.length && !S.picked[i]) { S.choice = { sel: 0, at: S.now }; }
         var sh = b.shot || S.lastShot || { look: null };
         S.lastShot = sh;
         S.sh = sh; S.to = sh.to ? Object.assign({}, sh, sh.to, { to: null }) : null;
@@ -2617,6 +2636,7 @@ var EWScene = (function () {
         S.P0 = sh.look != null ? resolve(S.ctx, sh.look) : null;
         S.P1 = (S.to && S.to.look != null) ? resolve(S.ctx, S.to.look) : S.P0;
         sayShow(b.say);
+        if (S.choice) choiceShow(b.choice, 0);
         try { if (S.ctx.beat) S.ctx.beat(b, i); } catch (e) {}
     }
     function tick() {
@@ -2636,6 +2656,8 @@ var EWScene = (function () {
         var b = S.row.beats[S.i], T = (S.now - S.t0) / 1000;
         /* the actions and the slow motion of this beat, each once */
         if (!S.warm) (b.act || []).forEach(function (a, k) { if (!S.fired[k] && T >= (a.at || 0)) { S.fired[k] = true; try { S.ctx.act(a); } catch (e) { console.warn('[SCENE] action failed', a && a.do, e); } } });
+        /* `fade` = the second of the beat the picture goes to black (false = it comes back) */
+        if (!S.warm && b.fade != null && !S.fadeDone && (b.fade === false || T >= b.fade)) { S.fadeDone = true; var fde = document.getElementById('ewSceneFade'); if (fde) fde.classList.toggle('on', b.fade !== false); }
         if (b.slow && !S.slowed && T >= (b.slow.at || 0)) { S.slowed = true; try { if (S.ctx.slow) S.ctx.slow(b.slow.scale || 0.25, b.slow.ms || 1200); } catch (e) {} }
         /* the eye */
         var sh = S.sh, k = ease(T / Math.max(0.01, S.dur));
@@ -2658,21 +2680,44 @@ var EWScene = (function () {
         }
         if (S.now - (S.sweptAt || 0) > 250) { S.sweptAt = S.now; sweep(); }
         /* the skip */
-        if (S.skipAt) { var f = Math.min(1, (S.now - S.skipAt) / SKIP_HOLD_MS); var fill = document.getElementById('ewSceneSkipFill'); if (fill) fill.style.width = (f * 100) + '%'; if (f >= 1) { end(true); return; } }
-        if (!S.warm && T >= S.dur) { if (S.i + 1 < S.row.beats.length) beatStart(S.i + 1); else end(false); }
+        if (S.skipAt) { var f = Math.min(1, (S.now - S.skipAt) / SKIP_HOLD_MS); var fill = document.getElementById('ewSceneSkipFill'); if (fill) fill.style.width = (f * 100) + '%';
+            if (f >= 1) {
+                /* a choice not yet answered is never skipped: the skip lands on its beat (every action on the way is done at once) */
+                var ci = -1; for (var j = S.i; j < S.row.beats.length; j++) { if (S.row.beats[j].choice && !S.picked[j]) { ci = j; break; } }
+                if (ci < 0) { end(true); return; }
+                S.skipAt = 0; if (fill) fill.style.width = '0'; var skE = document.getElementById('ewSceneSkip'); if (skE) skE.classList.remove('on');
+                if (ci > S.i) {
+                    for (var q = S.i; q < ci; q++) (S.row.beats[q].act || []).forEach(function (a, k2) { if (q === S.i && S.fired[k2]) return; try { S.ctx.act(a); } catch (e) {} });
+                    if (S.warm) { S.warm = 0; var fd2 = document.getElementById('ewSceneFade'); if (fd2) fd2.classList.remove('on'); }
+                    beatStart(ci); return;
+                }
+            } }
+        if (!S.warm && T >= S.dur && !S.choice) { if (S.i + 1 < S.row.beats.length) beatStart(S.i + 1); else end(false); }
     }
-    function hurry() { if (!S || S.warm) return; if ((S.now - S.t0) / 1000 < HURRY_MIN) return; var b = S.row.beats[S.i]; if (b.hold) return; S.dur = Math.min(S.dur, (S.now - S.t0) / 1000); }
+    function hurry() { if (!S || S.warm || S.choice) return; if ((S.now - S.t0) / 1000 < HURRY_MIN) return; var b = S.row.beats[S.i]; if (b.hold) return; S.dur = Math.min(S.dur, (S.now - S.t0) / 1000); }
     function onKey(e) {
         if (!S) return;
         var k = (e.key || '').toLowerCase();
         if (e.ctrlKey || e.metaKey || /^f\d+$/.test(k)) return;
         e.stopImmediatePropagation(); e.preventDefault();
         if (e.type === 'keydown') {
+            if (S.choice && !S.warm) {
+                var n = S.row.beats[S.i].choice.options.length;
+                if (k === 'arrowleft' || k === 'arrowup' || k === 'a' || k === 'w') { S.choice.sel = (S.choice.sel + n - 1) % n; choiceShow(S.row.beats[S.i].choice, S.choice.sel); }
+                else if (k === 'arrowright' || k === 'arrowdown' || k === 'd' || k === 's' || k === 'tab') { S.choice.sel = (S.choice.sel + 1) % n; choiceShow(S.row.beats[S.i].choice, S.choice.sel); }
+                else if (!e.repeat && (k === ' ' || k === 'enter') && performance.now() - S.choice.at > 400) pick(S.choice.sel);
+                else if (/^[1-9]$/.test(k) && +k <= n) pick(+k - 1);
+                return;
+            }
             if (k === 'escape') { if (!S.skipAt) { S.skipAt = performance.now(); var sk = document.getElementById('ewSceneSkip'); if (sk) sk.classList.add('on'); } return; }
             if (!e.repeat && (k === ' ' || k === 'enter')) hurry();
         } else if (k === 'escape') { S.skipAt = 0; var s2 = document.getElementById('ewSceneSkip'); if (s2) s2.classList.remove('on'); var fl = document.getElementById('ewSceneSkipFill'); if (fl) fl.style.width = '0'; }
     }
-    function onClick(e) { if (!S) return; e.stopImmediatePropagation(); if (e.cancelable) e.preventDefault(); if (e.type === 'mousedown' && e.button === 0) hurry(); }
+    function onClick(e) {
+        if (!S) return; e.stopImmediatePropagation(); if (e.cancelable) e.preventDefault();
+        if (S.choice) { var cb = (e.type === 'click' && e.target && e.target.closest) ? e.target.closest('#ewSceneChoice button') : null; if (cb && !S.warm) pick(+cb.getAttribute('data-i')); return; }
+        if (e.type === 'mousedown' && e.button === 0) hurry();
+    }
     function end(skipped) {
         var s = S; if (!s) return; S = null;
         if (s.raf) window.cancelAnimationFrame(s.raf);
@@ -2690,7 +2735,7 @@ var EWScene = (function () {
         if (!window.EWCine.enter({ force: true, script: true })) return false;
         mount();
         document.body.classList.add('ew-scene');
-        S = { row: row, ctx: ctx, onEnd: onEnd || null, i: 0, now: performance.now(), t0: 0, dur: 1, fired: {}, skipAt: 0, raf: 0, lastShot: null };
+        S = { row: row, ctx: ctx, onEnd: onEnd || null, i: 0, now: performance.now(), t0: 0, dur: 1, fired: {}, skipAt: 0, raf: 0, lastShot: null, picked: {}, choice: null };
         if (row.warm !== false) { S.warm = performance.now(); S.warmOk = 0; var fd = document.getElementById('ewSceneFade'); if (fd) { fd.style.transition = 'none'; fd.classList.add('on'); void fd.offsetWidth; fd.style.transition = ''; } }
         beatStart(0);
         S.raf = window.requestAnimationFrame(tick);
@@ -2704,7 +2749,8 @@ var EWScene = (function () {
         stop: function () { end(true); },
         next: function () { if (!S) return; S.now = performance.now(); if (S.i + 1 < S.row.beats.length) beatStart(S.i + 1); else end(false); },   // dev: step a beat
         get on() { return !!S; },
-        state: function () { return S ? { id: S.row.id || '', beat: S.i, of: S.row.beats.length, t: (performance.now() - S.t0) / 1000, dur: S.dur } : null; }
+        pick: function (i) { pick(i | 0); },   // dev: answer the choice on screen
+        state: function () { return S ? { id: S.row.id || '', beat: S.i, of: S.row.beats.length, t: (performance.now() - S.t0) / 1000, dur: S.dur, choice: !!S.choice } : null; }
     };
 })();
 if (typeof window !== 'undefined') window.EWScene = EWScene;

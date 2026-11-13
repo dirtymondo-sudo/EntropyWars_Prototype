@@ -87,3 +87,12 @@ STATUS 11-13: batch 1 first pass shipped (19 looks; antihero, atlantean, fortune
   edit these. Merge main before every PR, keep BOTH sides, re-bump the token.
 - `bake-outfit.py`: a new rule must be OFF by default (a flag or env) so the other threads' units do not change under them.
 - Piece names: `ewm_t2<unit>_outfit.glb` / `_hat.glb` as before; the unit name keeps the files apart.
+
+## BATCH 3 STATUS (2026-11-13, thread "Remake unit models, batch 3 of 3")
+All 23 models (20 units) have a remade look in `RACE_REMADE_LOOKS` (sprites.js block "REMAKE BATCH 3 OF 3"); per-unit rows + bake
+settings: meshy-remake-plan.md section 8. 27 Meshy T2 runs (405 credits). Faces: 21 fitted with bake-face.py from the old heads
+(men in full, women SOFT). Creator pieces used in place of Meshy: popstar's whole outfit, telepath F's gown, sheriff's hat, the
+witch's hat, valkraye's wings, succubus horns + tail, swordfighter's katana, sidekick's mask, glasses, Santa's beard.
+Weakest, for the next pass: superhero F's cape, scarecrow's head (needs a sack), succubus bits by the hands, professor's painted glasses.
+Probe lesson: the look probe at half size (450 x 550 viewport) is about 3x faster and survives two browsers; the first unit of a run
+is shot while still loading, so put a throwaway unit first. Not seen: any of them in a battle, on WebGPU, or on the other four bodies.
