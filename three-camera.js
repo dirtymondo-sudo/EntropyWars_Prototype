@@ -2622,9 +2622,19 @@ var EWScene = (function () {
         if (!S) return;
         S.raf = window.requestAnimationFrame(tick);
         S.now = performance.now();
+        /* THE WARM-UP (2026-11-13, mondo: "it was a little laggy, especially the first part"): a scene opens on black with
+           its first frame already being drawn under it, and only starts its clock once the frames run smooth (12 in a row
+           under 45 ms, 0.4 s at least, 3 s at most): the board's first hitches (shaders, models, the HUD) pass unseen */
+        if (S.warm) {
+            var wdt = S.now - (S.warmLast || S.now); S.warmLast = S.now;
+            S.warmOk = (wdt > 0 && wdt < 45) ? S.warmOk + 1 : 0;
+            var wel = S.now - S.warm;
+            if ((S.warmOk >= 12 && wel > 400) || wel > 3000) { S.warm = 0; var fd = document.getElementById('ewSceneFade'); if (fd) fd.classList.remove('on'); }
+            S.t0 = S.now;
+        }
         var b = S.row.beats[S.i], T = (S.now - S.t0) / 1000;
         /* the actions and the slow motion of this beat, each once */
-        (b.act || []).forEach(function (a, k) { if (!S.fired[k] && T >= (a.at || 0)) { S.fired[k] = true; try { S.ctx.act(a); } catch (e) { console.warn('[SCENE] action failed', a && a.do, e); } } });
+        if (!S.warm) (b.act || []).forEach(function (a, k) { if (!S.fired[k] && T >= (a.at || 0)) { S.fired[k] = true; try { S.ctx.act(a); } catch (e) { console.warn('[SCENE] action failed', a && a.do, e); } } });
         if (b.slow && !S.slowed && T >= (b.slow.at || 0)) { S.slowed = true; try { if (S.ctx.slow) S.ctx.slow(b.slow.scale || 0.25, b.slow.ms || 1200); } catch (e) {} }
         /* the eye */
         var sh = S.sh, k = ease(T / Math.max(0.01, S.dur));
@@ -2642,9 +2652,9 @@ var EWScene = (function () {
         if (S.now - (S.sweptAt || 0) > 250) { S.sweptAt = S.now; sweep(); }
         /* the skip */
         if (S.skipAt) { var f = Math.min(1, (S.now - S.skipAt) / SKIP_HOLD_MS); var fill = document.getElementById('ewSceneSkipFill'); if (fill) fill.style.width = (f * 100) + '%'; if (f >= 1) { end(true); return; } }
-        if (T >= S.dur) { if (S.i + 1 < S.row.beats.length) beatStart(S.i + 1); else end(false); }
+        if (!S.warm && T >= S.dur) { if (S.i + 1 < S.row.beats.length) beatStart(S.i + 1); else end(false); }
     }
-    function hurry() { if (!S) return; if ((S.now - S.t0) / 1000 < HURRY_MIN) return; var b = S.row.beats[S.i]; if (b.hold) return; S.dur = Math.min(S.dur, (S.now - S.t0) / 1000); }
+    function hurry() { if (!S || S.warm) return; if ((S.now - S.t0) / 1000 < HURRY_MIN) return; var b = S.row.beats[S.i]; if (b.hold) return; S.dur = Math.min(S.dur, (S.now - S.t0) / 1000); }
     function onKey(e) {
         if (!S) return;
         var k = (e.key || '').toLowerCase();
@@ -2674,6 +2684,7 @@ var EWScene = (function () {
         mount();
         document.body.classList.add('ew-scene');
         S = { row: row, ctx: ctx, onEnd: onEnd || null, i: 0, now: performance.now(), t0: 0, dur: 1, fired: {}, skipAt: 0, raf: 0, lastShot: null };
+        if (row.warm !== false) { S.warm = performance.now(); S.warmOk = 0; var fd = document.getElementById('ewSceneFade'); if (fd) { fd.style.transition = 'none'; fd.classList.add('on'); void fd.offsetWidth; fd.style.transition = ''; } }
         beatStart(0);
         S.raf = window.requestAnimationFrame(tick);
         return true;

@@ -26439,6 +26439,60 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             setRise: function (k) { k = _sigClamp01(k); inner.scale.y = Math.max(0.02, k); },
         };
     }
+    /* THE AIR DOOR (2026-11-13, mondo: "I want the portal to form in the air, which a door emerges from, which swings open ...
+       the floating portal door can just be a prop that floats in the room during battle ... when you defeat the shadow
+       entities the portal closes"). A portal (two counter-turning rings and a glow, upright, facing +z) forms in the air
+       over the tile; the caller then calls emerge() (the D.O.O.R. door comes out of it), open() (the leaf swings, the
+       light pours) and, when it is over, close() (the leaf shuts, the door goes back in, the portal shrinks away). It
+       stands until closed or killed: a prop, nothing of the rules. o: { lift (tiles up), scale, yaw, instant (already open) }.
+       Returns { entry, emerge, open, close, kill, alive } or null. */
+    function _sigAirDoor3D(tx, ty, o) {
+        o = o || {};
+        if (_catOff('spells')) return null;
+        var rig = _sigDoorRig3D(tx, ty, { yaw: o.yaw, scale: o.scale, lift: o.lift != null ? o.lift : 0.5, noWedge: true });
+        var oh = rig.oh, R = oh * 0.82;
+        var portal = new THREE.Group(); portal.position.set(0, oh * 0.5, -0.03 * rig.ts); rig.group.add(portal);
+        var m1 = _sigMat(_DOOR_FX.teal, { map: _sigRingTex() }), m2 = _sigMat(_DOOR_FX.light, { map: _sigRingTex() }), m3 = _sigMat(_DOOR_FX.teal, { map: _sigGlowTex() });
+        var r1 = new THREE.Mesh(new THREE.PlaneGeometry(R * 2, R * 2), m1); r1.renderOrder = 146; portal.add(r1);
+        var r2 = new THREE.Mesh(new THREE.PlaneGeometry(R * 1.45, R * 1.45), m2); r2.position.z = 0.4; r2.renderOrder = 147; portal.add(r2);
+        var gl = new THREE.Mesh(new THREE.PlaneGeometry(R * 2.6, R * 2.6), m3); gl.position.z = -0.4; gl.renderOrder = 145; portal.add(gl);
+        var T = { emergeAt: o.instant ? -5000 : null, openAt: o.instant ? -5000 : null, closeAt: null, el: 0 };
+        var FORM = o.instant ? 1 : 900, RISE = 700, OPEN = 450, SHUT = 300, BACK = 400, GONE = 500;
+        rig.setRise(0.02); rig.setOpen(0); rig.setLight(0); rig.setFade(0);
+        var entry = _sigRun(rig.group, 6 * 3600 * 1000, function (el) {
+            T.el = el;
+            var c = (T.closeAt != null) ? el - T.closeAt : -1;
+            var pk = _sigEaseOutBack(_sigClamp01(el / FORM));
+            if (c > SHUT + BACK) pk *= 1 - _sigEaseInCubic(_sigClamp01((c - SHUT - BACK) / GONE));
+            portal.scale.setScalar(Math.max(0.001, pk));
+            r1.rotation.z = el * 0.0011; r2.rotation.z = -el * 0.0017;
+            var breathe = 0.86 + 0.14 * Math.sin(el * 0.004);
+            m1.opacity = 0.85 * Math.min(1, pk) * breathe; m2.opacity = 0.6 * Math.min(1, pk); m3.opacity = 0.5 * Math.min(1, pk) * breathe;
+            var rk = (T.emergeAt != null) ? _sigClamp01((el - T.emergeAt) / RISE) : 0;
+            var ok = (T.openAt != null) ? _sigClamp01((el - T.openAt) / OPEN) : 0;
+            var fade = Math.min(1, rk * 2), light = 0.25 * rk + 0.75 * _sigEaseOutCubic(ok);
+            if (ok >= 1) light = 1 - 0.1 * Math.sin(el * 0.02);
+            if (c >= 0) {
+                var sh = _sigEaseInCubic(_sigClamp01(c / SHUT));
+                ok = ok * (1 - sh); light = light * (1 - sh);
+                fade = fade * (1 - _sigClamp01((c - SHUT) / BACK));
+            }
+            rig.setRise(rk > 0 ? Math.max(0.02, _sigEaseOutBack(rk)) : 0.02);
+            rig.inner.position.z = -0.25 * rig.ts * (1 - _sigEaseOutCubic(rk));   // it comes forward out of the portal
+            rig.setOpen(_sigEaseOutCubic(ok)); rig.setLight(light); rig.setFade(fade);
+            if (c > SHUT + BACK + GONE && entry && entry.finish) entry.finish();
+        });
+        if (!entry) { _sigDisposeGroup(rig.group); return null; }
+        return {
+            entry: entry,
+            emerge: function () { if (T.emergeAt == null) T.emergeAt = T.el; },
+            open: function () { if (T.emergeAt == null) T.emergeAt = T.el - RISE; if (T.openAt == null) T.openAt = Math.max(T.el, T.emergeAt + RISE * 0.6); },
+            close: function () { if (T.closeAt == null) T.closeAt = T.el; },
+            kill: function () { try { if (entry.finish) entry.finish(); } catch (e) {} },
+            alive: function () { return !entry.done && !!rig.group.parent; },
+            closing: function () { return T.closeAt != null; }
+        };
+    }
     /* A door materialises: rises, opens with the light, holds, slams shut,
        (stamps), fades. o: { yaw, lay, down, out, stamp, riseMs, openMs,
        holdMs, shutMs, scale } — `out` = the way back out (the light pours
@@ -63430,6 +63484,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            light, holds, shuts, fades). o = _sigDoorPortal3D's options. The look only. */
         questPortal: function (tx, ty, o) { try { return _sigDoorPortal3D(tx, ty, o || {}); } catch (e) { return null; } },
         /* THE CUTSCENES (2026-11-12): where a square stands in the board's world ({ x, y, z, ts }) for the director's camera */
+        questAirDoor: function (tx, ty, o) { try { return _sigAirDoor3D(tx, ty, o || {}); } catch (e) { console.warn('[SCENE] the air door did not build', e); return null; } },
         tileWorld: function (tx, ty) { try { return _worldPos(tx, ty); } catch (e) { return null; } },
 
         /* Action tile glow for non-spell hits (attacks, items, detonations).

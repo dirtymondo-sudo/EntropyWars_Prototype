@@ -28267,7 +28267,8 @@ const QUEST_FIGHTS = {
         allies: [{ race: 'door agent', gender: 'female', cast: 'locke', name: 'Agent Locke', level: 25, tactic: 'fight' }],
         enemies: [{ race: 'shadow entity', gender: 'male' }, { race: 'shadow entity', gender: 'male' }],
         portal: { x: 4, y: 2 },
-        seats: { guest: { x: 4, y: 4 }, enemies: [{ x: 3, y: 1 }, { x: 5, y: 1 }] },
+        /* mondo 2026-11-13: "they spawn right in front of you when the battle starts": one open square from the recruit and Locke (2,7 / 3,7) */
+        seats: { guest: { x: 4, y: 4 }, enemies: [{ x: 2, y: 5 }, { x: 3, y: 5 }] },
         scene: 'orientation_ambush',   // THE CUTSCENES: played on the fight's own board before its first turn (STORY_CUTSCENES)
     },
 };
@@ -28281,33 +28282,34 @@ const QUEST_FIGHTS = {
    Refs: 'unit:<role>', 'seat:<role>' (where the role ends up), 'portal', 'tile:x,y', { mid: [ref, ref] }.
    Lengths are BODIES (1 = a standing body, 1.75 m; a 3.5 m square = 2); az 0 = the eye south of the subject (or on the `from` subject's side), 90 = east.
    THE WORDS ARE MONDO'S (the plan doc, "Okay i fixed the dialogue"): never reword a line here; the player never speaks.
-   Actions (battle.js _questSceneHost): portal · out (a hidden role leaps out of the portal onto its seat) · face (who, to) ·
-   pounce (who, to: leaps at a subject; the scene's cut drops the leap). */
+   Actions (battle.js _questSceneHost): portal (forms in the air) · door (comes out of it) · open (the leaf swings) · out (a
+   hidden role leaps out of the door onto its seat; `knock` = lands hard and gets up) · face (who, to) · pounce (who, to). */
 const STORY_CUTSCENES = {
     /* C · THE AMBUSH: Tape 2 has just ended. The portal, Kit, the two Shadow Entities, the pounce in slow motion, cut to the fight. */
     orientation_ambush: {
         id: 'orientation_ambush', title: 'THE AMBUSH',
         beats: [
-            /* C1 · behind the recruit's head: something forms on the pad */
-            { dur: 3.6, shot: { look: 'portal', from: 'unit:player', over: 1.3, az: 2.2, h: 0.72, el: 1.6, fov: 36, to: { over: 1.0 } },
-              act: [{ at: 0, do: 'face', who: 'player', to: 'portal' }, { at: 0, do: 'face', who: 'locke', to: 'portal' }, { at: 0.5, do: 'portal' }] },
+            /* C1 · behind the recruit's head: a portal forms in the air over the pad */
+            { dur: 3.4, shot: { look: 'portal', from: 'unit:player', over: 1.3, az: 2.2, h: 1.0, el: 1.2, fov: 36, to: { over: 1.0 } },
+              act: [{ at: 0, do: 'face', who: 'player', to: 'portal' }, { at: 0, do: 'face', who: 'locke', to: 'portal' }, { at: 0.4, do: 'portal' }] },
             /* C2 · Locke, alarmed: medium close, a slow push in */
             { shot: { look: 'unit:locke', from: 'portal', az: 22, h: 0.86, el: -1, dist: 1.4, fov: 27, to: { dist: 1.15 } },
               say: { who: 'AGENT LOCKE', text: 'That is not part of the training.' } },
-            /* C3 · Kit bursts out: low on the floor, she comes at the lens */
-            { dur: 4.4, shot: { look: { mid: ['seat:guest', 'portal'] }, from: 'unit:player', az: -28, h: 0.45, el: 2, dist: 4.2, fov: 40, to: { dist: 3.6 } },
-              act: [{ at: 0.25, do: 'out', who: 'guest', ms: 1000 }, { at: 1.7, do: 'face', who: 'guest', to: 'portal' }],
+            /* C3 · the door comes out of the portal and swings open: low, looking up at it */
+            { dur: 2.6, shot: { look: 'portal', from: 'unit:player', az: -24, h: 1.25, el: -7, dist: 3.6, fov: 38, to: { dist: 3.1 } },
+              act: [{ at: 0.2, do: 'door' }, { at: 1.3, do: 'open' }] },
+            /* C4 · Kit jumps out, lands hard, gets up: low on the floor, she comes at the lens */
+            { dur: 5.2, shot: { look: { mid: ['seat:guest', 'portal'] }, from: 'unit:player', az: -28, h: 0.5, el: 2, dist: 4.4, fov: 40, to: { dist: 3.7 } },
+              act: [{ at: 0.2, do: 'out', who: 'guest', ms: 900, knock: true }, { at: 3.6, do: 'face', who: 'guest', to: 'portal' }],
               say: { who: 'KIT', text: "Shut it! Shut the door! They're right behind me!" } },
-            /* C4 · the doorway, past Kit: two shapes come through after her */
-            { dur: 2.8, shot: { look: 'portal', from: 'seat:guest', az: 9, h: 0.6, el: 2, dist: 4.7, fov: 34, to: { fov: 30 } },
-              act: [{ at: 0.3, do: 'out', who: 'foe1', ms: 800 }, { at: 0.8, do: 'out', who: 'foe2', ms: 800 }, { at: 1.7, do: 'face', who: 'foe1', to: 'unit:guest' }, { at: 1.7, do: 'face', who: 'foe2', to: 'unit:guest' }] },
             /* C5 · Locke and the recruit, shoulder to shoulder */
             { shot: { look: { mid: ['unit:locke', 'unit:player'] }, from: 'portal', az: -16, h: 0.8, el: 0, dist: 3.4, fov: 32, to: { dist: 3.0 } },
               say: { who: 'AGENT LOCKE', text: 'Unauthorized doorway. Recruit, on me. Orientation is over.' } },
-            /* C6 · the pounce: from behind Kit, low, quarter speed; the cut to the fight comes in mid air */
-            { dur: 2.1, hold: true, shot: { look: { mid: ['seat:foe1', 'seat:foe2'] }, from: 'unit:guest', over: 1.9, az: 5, h: 0.62, el: 1.5, fov: 40, to: { fov: 35 } },
-              slow: { at: 0.35, scale: 0.25, ms: 2400 },
-              act: [{ at: 0.2, do: 'pounce', who: 'foe1', to: 'unit:guest', ms: 760 }, { at: 0.3, do: 'pounce', who: 'foe2', to: 'unit:guest', ms: 760 }] },
+            /* C6 · the pounce: over the recruit's shoulder, the two Shadow Entities come out of the door at the lens at quarter
+               speed; the cut to the fight comes in mid air and they stand right in front of the party */
+            { dur: 2.3, hold: true, shot: { look: 'portal', from: { mid: ['unit:locke', 'unit:player'] }, over: 1.5, az: 0, h: 1.0, el: 0.5, fov: 40, to: { fov: 34 } },
+              slow: { at: 0.3, scale: 0.25, ms: 2600 },
+              act: [{ at: 0.15, do: 'out', who: 'foe1', ms: 700 }, { at: 0.3, do: 'out', who: 'foe2', ms: 700 }] },
         ],
     },
 };
