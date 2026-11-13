@@ -29601,6 +29601,24 @@ const DOOR_HQ = {
         trailer_home_5:    { file: 'ebd_trailerscene_trailer_4.glb', base: 'misc', span: 15.1, foot: 2.8, rect: { hw: 7.55, hd: 2.75 }, block: true },
         trailer_home_6:    { file: 'ebd_trailerscene_trailer_5.glb', base: 'misc', span: 15.25, foot: 3.0, rect: { hw: 7.6, hd: 3.05 }, block: true },
         abandoned_house:   { file: 'ebd_abandonedhouse_house.glb', base: 'misc', span: 36.3, foot: 10, rect: { hw: 11.55, hd: 18.15 }, block: true, hover: -1 },
+        /* THE CITY'S WHOLE BUILDINGS (2026-11-13, mondo: "Isnt there a pizza resturaunt and or gast station asset pack we downlaoded? Those
+           definitely need to be buildings somewhere"): each Elbolilloduro scene's building from the outside (shell, doors, windows, signs; no
+           furniture), cut by bake-pack-pieces.py `city_*`, REAL SIZE (`span` = the long side, never fitted to a footprint), the entrance side
+           +Z (the row's `face`), solid (`rect` = half the front, half the depth). A prop row: { key, x, z, face }. The gas station is three
+           pieces: the store (its washroom block beside it), the canopy with its four pumps (walked under: no collision) and the price
+           sign. One district per building: docs/disaster-city/pack-claims.md. */
+        city_pizzeria:      { file: 'ebd_pizzeriascene_city_pizzeria.glb',    base: 'misc', span: 20.53, foot: 5,   rect: { hw: 5.05,  hd: 10.25 }, block: true },   // front 10.2 m, 20.5 deep, 11.5 high (three storeys, PIZZA + restaurant shop fronts)
+        city_diner:         { file: 'ebd_dinerscene_city_diner.glb',          base: 'misc', span: 24.3,  foot: 10,  rect: { hw: 11.7,  hd: 12.15 }, block: true },   // 23.4 x 24.3, 6.3 high with the DINER sign
+        city_burgerpiz:     { file: 'ebd_burgerpiz_city_burgerpiz.glb',       base: 'misc', span: 32.54, foot: 10,  rect: { hw: 16.25, hd: 11.15 }, block: true },   // front 32.5 m, 22.3 deep, 6.7 high
+        city_6twelve:       { file: 'ebd_6twelve_city_6twelve.glb',           base: 'misc', span: 22.77, foot: 10,  rect: { hw: 11.4,  hd: 10.55 }, block: true },   // 22.8 x 21.1, 6.2 high (the convenience store)
+        city_laundry:       { file: 'ebd_laundryscene_city_laundry.glb',      base: 'misc', span: 16.69, foot: 6,   rect: { hw: 8.35,  hd: 6.15 },  block: true },   // front 16.7 m, 12.3 deep, 7.2 high with the roof sign
+        city_vhs_shop:      { file: 'ebd_vhsshop_city_vhs_shop.glb',          base: 'misc', span: 14.86, foot: 6,   rect: { hw: 7.4,   hd: 6.8 },   block: true },   // 14.9 x 13.6, 4.1 high
+        city_house:         { file: 'ebd_house_city_house.glb',               base: 'misc', span: 20.17, foot: 7,   rect: { hw: 7.2,   hd: 10.1 },  block: true },   // front 14.4 m (the garage), 20.2 deep, 9.1 high, a back porch
+        city_quequis_house: { file: 'ebd_quequis_city_quequis_house.glb',     base: 'misc', span: 31.69, foot: 6,   rect: { hw: 15.85, hd: 6.05 },  block: true },   // front 31.7 m, 12.1 deep, 5.6 high (a shop with a house behind one wall)
+        city_gas_store:     { file: 'ebd_gasscene_city_gas_store.glb',        base: 'misc', span: 27.88, foot: 8,   rect: { hw: 13.95, hd: 8.3 },   block: true },   // 27.9 x 16.6, 5.3 high (store 14.3 wide + the washroom block)
+        city_gas_canopy:    { file: 'ebd_gasscene_city_gas_canopy.glb',       base: 'misc', span: 21.67, foot: 0 },                                                   // 21.7 x 16.7, 7.6 high: two pillars, four pumps, the lit ceiling
+        city_gas_sign:      { file: 'ebd_gasscene_city_gas_sign.glb',         base: 'misc', h: 10.51,    foot: 0.8, block: true },                                    // the price pylon, 3 m wide
+        city_taco_stand:    { file: 'ebd_tacos_city_taco_stand.glb',          base: 'misc', span: 5.84,  foot: 1.5, rect: { hw: 2.9,   hd: 1.55 },  block: true },   // 5.8 x 3.1, 2.7 high, the serving side +Z
         /* THE BABEL HOUSES (2026-11-05, mondo OK'd the Meshy mud-brick concepts B1-B4; the town rim they replace is deleted): one
            Meshy model per house, real size (`span` = the long side), the door side +Z (the row's `face`), along the Babel room's roads */
         babel_house_small: { file: 'meshy_babel_house_small.glb', base: 'misc', span: 7.0, foot: 2.4, rect: { hw: 3.5, hd: 2.5 }, block: true },
