@@ -19,13 +19,13 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 901 |
+| Asset pack | yes | 913 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 733 |
+| Meshy AI | no | 734 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -497,7 +497,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | ewf_fur · Fur (whole body) | `Assets/characters/creator/wear/ewf_fur.glb` | MakeHuman parts, baked by Claude in Blender | MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py) |
 | ewf_fur_werewolf · Fur (whole body), werewolf colours | `Assets/characters/creator/wear/ewf_fur_werewolf.glb` | MakeHuman parts, baked by Claude in Blender | MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py) |
 
-### 5e. Meshy pieces in the creator (160 files, `Assets/characters/creator/wear/ewm_*`, PR #829)
+### 5e. Meshy pieces in the creator (161 files, `Assets/characters/creator/wear/ewm_*`, PR #829)
 
 Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) and fitted on the MPFB bodies in Blender
 (bake-meshy.py): hats, creature heads, armour, equipment, tails. Column = the creator's own id · label (tab).
@@ -595,6 +595,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ewm_t2ghostf_outfit · Ghost outfit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2ghostf_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2giant_outfit · Giant outfit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2giant_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2glitch_outfit · Glitch body (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2glitch_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_t2halfdemonf_outfit · Halfdemon (F) dress (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2halfdemonf_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2hippie_outfit · Hippie outfit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2hippie_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2hippief_outfit · Hippie (F) outfit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2hippief_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2homosapien_hat · Homosapien headwear (Meshy remake) (hats) | `Assets/characters/creator/wear/ewm_t2homosapien_hat.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
@@ -1966,6 +1967,24 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | instrument_violin_lying | `Assets/world/packs/instruments/orchestral/Violin.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
 | instrument_whistle | `Assets/world/packs/instruments/orchestral/Whistle.glb` | Asset pack (author not recorded yet) | Instruments + orchestral (mondo's upload) |
 
+### Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) — Asset pack (13)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| city_6twelve | `Assets/world/packs/elbolilloduro/ebd_6twelve_city_6twelve.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+| city_bin | `Assets/world/packs/elbolilloduro/ebd_6twelve_city_bin.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+| city_burgerpiz | `Assets/world/packs/elbolilloduro/ebd_burgerpiz_city_burgerpiz.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+| city_diner | `Assets/world/packs/elbolilloduro/ebd_dinerscene_city_diner.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+| city_gas_canopy | `Assets/world/packs/elbolilloduro/ebd_gasscene_city_gas_canopy.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+| city_gas_sign | `Assets/world/packs/elbolilloduro/ebd_gasscene_city_gas_sign.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+| city_gas_store | `Assets/world/packs/elbolilloduro/ebd_gasscene_city_gas_store.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+| city_house | `Assets/world/packs/elbolilloduro/ebd_house_city_house.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+| city_laundry | `Assets/world/packs/elbolilloduro/ebd_laundryscene_city_laundry.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+| city_pizzeria | `Assets/world/packs/elbolilloduro/ebd_pizzeriascene_city_pizzeria.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+| city_quequis_house | `Assets/world/packs/elbolilloduro/ebd_quequis_city_quequis_house.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+| city_taco_stand | `Assets/world/packs/elbolilloduro/ebd_tacos_city_taco_stand.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+| city_vhs_shop | `Assets/world/packs/elbolilloduro/ebd_vhsshop_city_vhs_shop.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
+
 ### Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) — Asset pack (10)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2138,13 +2157,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | chess_board | `Assets/world/packs/chess/Low Poly Chess Set.fbx#Low_Poly_Chessboard` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 | chess_set_game | `Assets/world/packs/chess/Low Poly Chess Set.fbx#Low_Poly_Chessboard,Low_Poly_White_King,Low_Poly_White_Queen,Low_Poly_White_Bishop,Low_Poly_White_Bishop001,Low_Poly_White_Knight,Low_Poly_White_Knight001,Low_Poly_White_Rook,Low_Poly_White_Rook001,Low_Poly_Black_King,Low_Poly_Black_Queen,Low_Poly_Black_Bishop,Low_Poly_Black_Bishop001,Low_Poly_Black_Knight,Low_Poly_Black_Knight001,Low_Poly_Black_Rook,Low_Poly_Black_Rook001,Low_Poly_White_Pawn,Low_Poly_White_Pawn001,Low_Poly_White_Pawn002,Low_Poly_White_Pawn003,Low_Poly_White_Pawn004,Low_Poly_White_Pawn005,Low_Poly_White_Pawn006,Low_Poly_White_Pawn007,Low_Poly_Black_Pawn,Low_Poly_Black_Pawn001,Low_Poly_Black_Pawn002,Low_Poly_Black_Pawn003,Low_Poly_Black_Pawn004,Low_Poly_Black_Pawn005,Low_Poly_Black_Pawn006,Low_Poly_Black_Pawn007` | Asset pack (author not recorded yet) | Low Poly Chess Set (mondo's upload, FBX) |
 
-### 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| city_bin | `Assets/world/packs/elbolilloduro/ebd_6twelve_city_bin.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
-| fire_extinguisher | `Assets/world/packs/elbolilloduro/ebd_6twelve_fire_extinguisher.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
-
 ### Paquete de modelos psx 3 · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2256,6 +2268,12 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | elephant | `Assets/world/animals/elephant/elephant-3d.fbx` | Asset pack (author not recorded yet) | Elephant (mondo's upload, FBX) |
+
+### 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| fire_extinguisher | `Assets/world/packs/elbolilloduro/ebd_6twelve_fire_extinguisher.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Halloween pack · Elbolilloduro · CC0 — Asset pack (1)
 
@@ -2553,7 +2571,7 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | church_wall | `Assets/world/props/meshy/Meshy_AI_catholic_church_wall_0917035726_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | cinder_block | `Assets/world/packs/pizzadoggy_psx_mega_pack/small_props/concrete_block_1.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | city_bench | `Assets/world/props/meshy/Meshy_AI_a_city_bench_0922010124_texture.glb` | Meshy AI | Meshy AI (mondo) |
-| city_bin | `Assets/world/packs/elbolilloduro/ebd_6twelve_city_bin.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
+| city_bin | `Assets/world/packs/elbolilloduro/ebd_6twelve_city_bin.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
 | city_trash_bin | `Assets/world/props/meshy/Meshy_AI_a_city_trash_bin_0917065157_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | clock | `Assets/world/props/meshy/Meshy_AI_analog_clock_realist_0727195259_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | confessional | `Assets/world/props/meshy/Meshy_AI_confessional_booth_0917035307_texture.glb` | Meshy AI | Meshy AI (mondo) |

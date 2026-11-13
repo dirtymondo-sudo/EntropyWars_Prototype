@@ -25,6 +25,15 @@ const r3 = v => Math.round(v * 1000) / 1000;
 const gx = c => r3(-HALF + c * C);                                 // a cell LINE (0..144) in room metres
 const gc = c => r3(-HALF + (c + 0.5) * C);                         // a cell CENTRE
 const plotOf = {}; PLAN.plots.forEach(p => { plotOf[p.id] = p; });
+/* THE DISTRICT FILES (2026-11-13, the one hook for the nine district threads): docs/disaster-city/districts/<LETTER>.js (R C F U H E I S B),
+   one per district, so no district's code lands in this tool. A file may export any of: tailor(PLAN, plotOf) = here, before the plan is read;
+   apply(ctx) = after the buildings + their door steps exist, before the street furniture (take() cells there to keep them clear);
+   build(ctx) = after every row exists. ctx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell,
+   roofB, ROOF_H, C, N, HALF }. A district edits its own rows by id ('dc:' + building id) and pushes its own rows (arch rows to lateRows). */
+const DISTRICTS = (() => { const dir = path.join(REPO, 'docs/disaster-city/districts'); return !fs.existsSync(dir) ? [] : fs.readdirSync(dir).filter(f => /^[A-Z]\.js$/.test(f)).sort().map(f => require(path.join(dir, f))); })();
+let dcCtx = null;
+const dcRun = stage => DISTRICTS.forEach(m => { if (typeof m[stage] === 'function') m[stage](dcCtx); });
+DISTRICTS.forEach(m => { if (typeof m.tailor === 'function') m.tailor(PLAN, plotOf); });
 /* THE CROSSINGS (tailoring): the plan leaves a one-cell nub where a walk crosses a road (PPPPPPPRPPPP, RRRRRRRRPRRR). A row / column that is
    mostly pavement becomes a whole paved crossing; a lone pavement cell in a carriageway becomes road. */
 PLAN.plots.forEach(p => {
@@ -217,6 +226,8 @@ const occ = new Set();
 const free = (cx, cy, ok) => { if (cx < 0 || cy < 0 || cx >= 144 || cy >= 144) return false; const ch = cellAt(cx, cy); return (ok || '.#').indexOf(ch) >= 0 && !occ.has(cx + ',' + cy); };
 const take = (cx, cy) => occ.add(cx + ',' + cy);
 bInfo.forEach(b => (plotOf[b.plot].buildings.find(q => q.id === b.id).doors || []).forEach(dr => take(plotOf[b.plot].x * N + dr.ox, plotOf[b.plot].y * N + dr.oy)));   // a door's step stays clear
+dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF };
+dcRun('apply');
 
 /* ── THE DOORS (mondo 11-13 14:10, the decision card: "Replace today's streets with it"): this room IS `site_prebuilt_downtown_streets` now, so every
    door that led to the old streets leads here. Each stands FREE (wall: 'free') where the plan has its place: the tower's on the Superhero Tower's
@@ -371,9 +382,9 @@ at('Street market', p => { put(p, 'hot_dog_stand', 1.5, 2.5, 90, { quiet: true }
     else { put(p, 'car_cop', 1.5 + (i % 3), 4.9, 100 - i * 6, { road: true, quiet: true }); put(p, 'car_cop', 9.5 - (i % 2), 7.1, 280 + i * 5, { road: true, quiet: true }); } });
 /* the hubs */
 at('Hero plaza', p => { put(p, 'fountain', 5.5, 2.5, 0, { span: [[1, 0], [0, 1], [1, 1], [-1, 0], [0, -1]] }); put(p, 'city_bench', 2.5, 1.5, 180); put(p, 'city_bench', 8.5, 1.5, 180); put(p, 'planter', 1.5, 3.5); put(p, 'planter', 10.5, 3.5); put(p, 'hot_dog_stand', 2.5, 8.5, 90); put(p, 'city_bench', 8.5, 9.5, 0); tree(p, 1.5, 9.5, 'tree_3', 3.8); tree(p, 10.5, 9.5, 'tree_3', 3.8); });
-at('Civic plaza', p => { put(p, 'fountain', 2.5, 1.9, 0, { span: [[1, 0], [-1, 0]] }); put(p, 'angel_statue', 8.5, 1.9, 180); put(p, 'city_bench', 2.5, 10.2, 0); put(p, 'city_bench', 9.5, 10.2, 0); put(p, 'planter', 1.5, 9.5); put(p, 'planter', 10.5, 9.5); });
+at('Civic plaza', p => { put(p, 'fountain', 2.5, 1.9, 0, { span: [[1, 0], [-1, 0]] }); put(p, 'angel_statue', 8.5, 1.9, 180); put(p, 'city_bench', 4.6, 10.4, 0); put(p, 'city_bench', 9.5, 10.2, 0); put(p, 'planter', 1.5, 9.5); put(p, 'planter', 10.5, 9.5); });
 at('Memorial walk', p => { put(p, 'angel_statue', 9.0, 5.9, 270, { span: [[0, 1]] }); put(p, 'planter', 8.5, 4.5); put(p, 'planter', 8.5, 7.5); put(p, 'city_bench', 2.5, 2.5, 90); put(p, 'city_bench', 2.5, 8.5, 90); tree(p, 1.5, 1.5, 'tree_3', 3.6); tree(p, 10.5, 1.5, 'tree_3', 3.6); tree(p, 1.5, 10.5, 'tree_3', 3.6); tree(p, 10.5, 10.5, 'tree_3', 3.6); });
-at('Transit square', p => { put(p, 'bus_shelter', 2.5, 8.2, 0); put(p, 'bus_shelter', 8.5, 8.2, 0); put(p, 'school_bus', 5.5, 9.8, 90, { span: [[1, 0], [-1, 0]] }); put(p, 'city_bench', 2.5, 2.5, 90); put(p, 'signpost', 4.5, 4.5); });
+at('Transit square', p => { put(p, 'bus_shelter', 2.5, 8.2, 0); put(p, 'bus_shelter', 8.5, 8.2, 0); put(p, 'school_bus', 5.5, 9.8, 90, { span: [[1, 0], [-1, 0]] }); });   // the metro entrance + the bus terminal's roof: districts/C.js
 at('Transit court', p => { put(p, 'bus_shelter', 1.5, 1.5, 90, { quiet: true }); });
 at('Bus stop court', p => { put(p, 'bus_shelter', 1.5, 9.5, 90, { quiet: true }); put(p, 'city_bench', 10.5, 1.5, 270, { quiet: true }); });
 at('Taxi rank', p => { put(p, 'car_taxi', 1.6, 1.5, 0); put(p, 'car_taxi', 10.4, 1.5, 0); put(p, 'car_taxi', 1.6, 10.2, 180); put(p, 'car_taxi', 10.4, 10.2, 180); });
@@ -388,9 +399,9 @@ at('Vendor stalls', p => { put(p, 'hot_dog_stand', 1.5, 1.5, 180, { quiet: true 
 at('Park gate', p => { tree(p, 1.5, 10.2, 'tree_3', 3.8); tree(p, 4.5, 10.2, 'tree', 3.6); tree(p, 7.5, 10.2, 'tree_3', 3.8); tree(p, 10.5, 10.2, 'tree_2', 3.6); put(p, 'park_bench', 2.5, 1.6, 180); put(p, 'park_bench', 9.5, 1.6, 180); });
 at('Canal walk', p => { tree(p, 1.5, 2.5, 'tree_3', 3.6); tree(p, 3.5, 5.5, 'tree', 3.6); tree(p, 2.5, 9.5, 'tree_3', 3.8); tree(p, 9.5, 9.5, 'tree_2', 3.6); put(p, 'park_bench', 8.5, 2.5, 270); put(p, 'park_bench', 6.5, 8.5, 0); });
 /* the civic and the working plots */
-at('Fire Station', p => { put(p, 'fire_truck', 1.5, 10.4, 90, { quiet: true, walk: true }); });
-at('Police desk', p => { put(p, 'car_cop', 1.5, 10.4, 90, { quiet: true, walk: true }); put(p, 'car_cop', 10.5, 10.4, 90, { quiet: true, walk: true }); });
-at('Military offices', p => { put(p, 'military_tank', 1.6, 10.3, 90, { quiet: true, walk: true }); });
+at('Fire Station', p => { put(p, 'fire_truck', 4.71, 10.75, 180, { quiet: true, walk: true }); });   // nosing out of the middle engine bay (districts/C.js)
+at('Police desk', p => { put(p, 'car_cop', 4.6, 2.75, 20, { quiet: true, walk: true }); put(p, 'car_cop', 4.65, 6.95, 165, { quiet: true, walk: true }); });   // either side of the precinct's entrance
+at('Military offices', p => { put(p, 'military_tank', 2.7, 9.7, 0, { quiet: true, walk: true }); });
 at('Dock edge', p => { put(p, 'babel_crane', 2.5, 2.5, 90, { span: [[0, 1], [1, 0], [1, 1]] }); put(p, 'babel_crane', 2.5, 8.5, 90, { span: [[0, 1], [1, 0], [1, 1]] }); put(p, 'iso_tank', 8.5, 9.5, 0); put(p, 'iso_tank', 9.5, 8.5, 90); put(p, 'traffic_barrel', 8.5, 2.5); put(p, 'traffic_barrel', 9.3, 3.2); put(p, 'cardboard_boxes', 5.5, 9.5, 20); });
 at('Hangar apron', p => { put(p, 'iso_tank', 1.5, 1.5, 0, { quiet: true }); put(p, 'traffic_barrel', 1.5, 10.5, 0, { quiet: true }); put(p, 'traffic_cone', 10.5, 10.5, 0, { quiet: true }); });
 at('Observatory', p => { put(p, 'telescope', 10.5, 10.5, 200, { quiet: true, walk: true }); });
@@ -524,7 +535,7 @@ const lines = [];
 lines.push("        /* DC144-BEGIN — DISASTER CITY, THE 144 PLOTS (2026-11-13): written by `node bake-disaster-city.js` from docs/disaster-city/city-layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
 lines.push("        site_prebuilt_downtown_streets: {");
 lines.push("            label: 'DISASTER CITY',");
-lines.push("            sub: 'SOUTHSIDE · CIVIC CENTER · FINANCIAL · UNIVERSITY · HERO PLAZA · ENTERTAINMENT · INDUSTRIAL · SPORTS + CULTURE · BAYSIDE',");
+lines.push("            sub: 'NINE DISTRICTS · 144 PLOTS',");
 lines.push("            kind: 'box', site: 'prebuilt_downtown', part: 'streets',");
 lines.push("            shell: hqCityShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + sp[0] + ", z: " + sp[1] + ", y: 4.6 } }),");
 lines.push("            parti: 'Nine districts of sixteen plots, every plot a twelve by twelve board: a city walked as a maze of yards, alleys, doors and roofs between a few plain roads.',");
@@ -538,6 +549,7 @@ lines.push("                    lamps: " + J(lamps) + ",");
 lines.push("                       open: [] },");
 lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: 144, nz: 144, d: '" + b64 + "' },");
 lines.push("                features: [");
+dcRun('build');
 features.push(...lateRows);
 features.forEach(f => lines.push("                    " + J(f) + ","));
 lines.push("                ],");
