@@ -51336,6 +51336,13 @@ const HQ_ENGINE_RULES = {
        them) and the instance follows its placement every frame it moves. Measured on Downtown (every file landed):
        32 m / 4 → 2,299 to 2,041 calls; 64 m / 2 → 1,931 (+17 % triangles drawn); 128 m / 2 → 1,832 (+35 %). */
     instanceMin: 2, instanceCell: 64,
+    /* THE CHUNKS (2026-11-13, mondo in the 144-plot Disaster City at 12 fps: "we have the plots already, why not just make those
+       the chunks or like a group of them"): in a room at least `chunkMinSpanM` across, the pack fences (one mesh per fence kind
+       and chunk, `chunkM` = one plot) and the instance pass's cells are their own groups; a group whose sphere (+ `chunkPadM`,
+       so a shadow thrown into view stays) is off the camera, or further than `fenceFarM` / `instFarM`, is not drawn, in any
+       pass. A placed prop whose whole sphere is under `instSmallM` (a cone, a pot, a bin, a hydrant) sits in a cell of its
+       own kind that stops at `instSmallFarM`. three-renderer.js _hqChunkTick. Off: window.EW_HQ_NO_CHUNK_CULL. */
+    chunkM: 42, chunkMinSpanM: 200, chunkPadM: 15, fenceFarM: 120, instFarM: 260, instSmallM: 1.7, instSmallFarM: 100,
     /* THE LOD LEVELS (§5.9, Phase 10, 2026-09-27): a prop whose `<name>.lod1.glb` / `.lod2.glb` the manifest lists draws level 1
        once its bounding sphere covers less than `lodScreen[0]` of the viewport's height, level 2 under `lodScreen[1]`
        (`lodHys` of a band either side of a line so nothing flickers); a prop under `cullM` stops drawing under `lodCull`
