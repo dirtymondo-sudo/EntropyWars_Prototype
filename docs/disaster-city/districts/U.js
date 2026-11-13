@@ -128,7 +128,7 @@ module.exports.build = function (api) {
         [-1, 1].forEach(s => { box(s * (aw / 2 - 1.2), 0, 0, 2.4, 9.5, d, STONE, { top: false }); solid(s * (aw / 2 - 1.2), 0, 2.4, d, 9.5);
             cyl(s * (aw / 2 + 1.6), 0, d / 2 - 1.0, 2.5, 13, BRICK, 8); cyl(s * (aw / 2 + 1.6), 13, d / 2 - 1.0, 2.8, 0.5, MARB, 8); cone(s * (aw / 2 + 1.6), 13.5, d / 2 - 1.0, 3.0, 5.2, SLATE, 8); block(s * (aw / 2 + 1.6), d / 2 + 0.2, 4.6, 2.6, 13);
             win('f', s * (aw / 2 + 1.6), 9.5, 0.9, 2.4, d / 2 + 1.5, GLT); const cx = s * (aw / 2 + 2 + ww / 2);
-            if (s > 0) { const r2 = solid(cx, 0, ww, wd, 7, { hollow: true, leaf: 'leaf_shabby_wood' }), D = doorAt(r2.w, 1.5); r2.door = D.door; P.push(Object.assign({ s: 'quad', p: [r3(cx), 0, r3(wd / 2)], size: [r3(ww), 7], hole: [D.lx, D.cw, 2.2] }, look(BRICK))); box(cx, 0, 0, ww, 7, wd, BRICK, { faces: 'blr', top: false }); }
+            if (s > 0) { const r2 = solid(cx, 0, ww, wd, 7, { hollow: true, leaf: 'leaf_shabby_wood' }), D = doorAt(r2.w, 1.5); r2.door = D.door; lodgeRow = r2; P.push(Object.assign({ s: 'quad', p: [r3(cx), 0, r3(wd / 2)], size: [r3(ww), 7], hole: [D.lx, D.cw, 2.2] }, look(BRICK))); box(cx, 0, 0, ww, 7, wd, BRICK, { faces: 'blr', top: false }); }
             else { box(cx, 0, 0, ww, 7, wd, BRICK, { top: false }); solid(cx, 0, ww, wd, 7); }
             gable(cx, 7, 0, ww, wd, 3.2, 'x', SLATE, BRICK, 0.35); rows('f', s * (aw / 2 + 4.6 + (ww - 2.6) / 2) - (s > 0 ? 0 : 0), ww - 4.4, wd / 2, 1, RES, 4.5); rows('b', cx, ww - T, wd / 2, 2, RES); });
         box(0, 5.2, 0, aw - 4.8, 4.3, d, STONE, { top: false, under: true, faces: 'fb' }); box(0, 4.8, 0, aw - 4.4, 0.5, d + 0.3, MARB, { under: true }); box(0, 9.5, 0, aw + 0.4, 0.5, d + 0.4, MARB, { under: true });
@@ -342,6 +342,89 @@ module.exports.build = function (api) {
             part('box', [D.x + nx * 0.45, 0.12, D.z + nz * 0.45], ['urban:RubberNonSlip1a', 0xffffff], Object.assign({ size: [r3(D.w), 0.025, 0.6], sides: false }, o));
             if (SCI[kind] && i === 0) part('quad', [D.x + tx * (D.w / 2 + 1.0) + nx * 0.06, 1.5, D.z + tz * (D.w / 2 + 1.0) + nz * 0.06], [kind === 'secret' ? 'urban:SignProhibited1a' : 'urban:SignHazard1a', 0xffffff], Object.assign({ size: [0.55, 0.55], uv: 'fit' }, o)); });
     };
+    /* ── THE INSIDES (mondo 11-13 21:04 "let's go ahead and do the interiors", his OK on the grid plan 21:23; his grid rule 21:14 + 21:17: a
+       barrier fills whole 3.5 m battle squares, a walkway is a whole square wide, dressing sits OFF the square centres). One room a walk-in
+       building; ROOMS[kind].g = the approved plan, rows listed BACK first, columns from the LEFT as you face the front from outside; '' =
+       a walkway square, a word = what fills that square (FILL). Catalogue props + arch parts; every filled square gets one ghost block. ── */
+    let lodgeRow = null;
+    const ROOMS = {
+        library: { floorIn: 'calm_planks', keyIn: 'urban:PlasterWallPainted1a', g: [['shelfw', 'shelfw', 'shelfw', 'shelfw', 'shelfw', 'shelfw', 'shelfw', 'shelfw'], ['', 'rtable', '', 'shelf', '', 'rtable', '', 'stair'], ['', 'rtable', '', 'shelf', '', 'rtable', '', ''], ['arm', '', '', 'ldesk', '', '', '', 'files']], gallery: true },
+        cafe: { floorIn: 'urban:TileGeneric5a', keyIn: 'urban:PlasterWallStucco1a', g: [['range', 'sinks', 'fridge', 'cake', '', 'ctable', ''], ['counter', 'till', 'counter', 'counter', '', '', ''], ['', '', '', '', '', 'ctable', ''], ['booth', 'booth', '', '', '', 'booth', 'booth']] },
+        lab: { floorIn: 'calm_tiles', keyIn: 'urban:PlasterWallPainted1a', g: [['racks', 'racks', 'racks', 'mstack', '', 'tank', 'stable', 'tank'], ['', '', '', '', '', '', '', ''], ['', 'bench', 'bench', '', 'bench', 'bench', '', ''], ['lockers', '', '', '', '', '', 'desk', 'crates']], glass: [[5, 2, 5, 4], [5, 2, 6, 2], [7, 2, 8, 2]] },
+        psych: { floorIn: 'calm_carpet', keyIn: 'urban:PlasterWallPainted1a', g: [['mstack', '', '', 'recep', '', 'couch', 'couch'], ['egg', '', 'wait', '', '', '', 'arm1']], glass: [[2, 1, 2, 2]], part: [[5, 1, 5, 2]] },
+        secret: { floorIn: 'calm_concrete', keyIn: 'urban:ConcreteStriped1a', g: [['racks', 'racks', 'racks', '', 'console', '', 'tank', 'tank', 'tank'], ['', '', '', '', '', '', '', '', ''], ['crates', 'crates', '', 'desk', '', '', 'stable', '', 'lockers']], gate: [4, 1] },
+        clinic: { floorIn: 'calm_tiles_small', keyIn: 'urban:TileGeneric1a', g: [['lockers', '', 'cabinets'], ['bed', '', 'bed'], ['', '', ''], ['recep', 'recep', ''], ['wait', '', 'vend']], part: [[0, 2, 2, 2], [0, 4, 1, 4], [2, 4, 3, 4]] },
+        museum: { floorIn: 'urban:TileMarble1a', keyIn: 'urban:PlasterWallPainted1a', g: [['btele', 'case', 'case', '', 'case', 'case', '', 'fish', 'tele'], ['', '', '', '', '', '', '', '', ''], ['globe', '', 'ticket', '', '', 'mbench', '', '', 'trophy']], planets: true },
+        lodge: { floorIn: 'calm_planks', keyIn: 'urban:PlasterWallStucco1a', g: [['pdesk', ''], ['arm1', '']] },
+    };
+    const inside = (kind, row) => {
+        const R = ROOMS[kind], q0 = ctx.rot * Math.PI / 180, c0 = Math.cos(q0), s0 = Math.sin(q0), dx = row.x - ctx.x, dz = row.z - ctx.z, ox = dx * c0 + dz * s0, oz = -dx * s0 + dz * c0;
+        const W = row.w, D = row.d, nc = R.g[0].length, nr = R.g.length, cw = W / nc, cd = D / nr, H = Math.max(3.4, (row.storeys || 1) * C - 0.3);
+        Object.assign(row, { floorIn: R.floorIn, keyIn: R.keyIn });
+        const prop = (key, lx, lz, f, y) => { const [x, z] = toWorld(lx, lz), q = { key, x, z, face: ((ctx.rot + (f || 0)) % 360 + 360) % 360 }; if (y) q.y = r3(y); props.push(q); };
+        const fill = (lx, lz, h) => block(lx, lz, Math.min(3.3, cw - 0.2), Math.min(3.3, cd - 0.2), h);
+        const seg = (x0, z0, x1, z1, h) => { const a = toWorld(x0, z0), b = toWorld(x1, z1); features.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], h, t: 0.2, ghost: true, rail: false }); };
+        const WOODD = ['calm_planks', 0xb89878], STEEL = ['calm_tiles', 0xc8d0d8], DARK = ['calm_gunmetal', 0xb0b8c8], CUSH = ['calm_snow', 0x4a8a9c];
+        const board = (lx, y, lz, len, hh, ry, txt, fg, bg) => P.push(Object.assign({ s: 'quad', p: [r3(lx), y, r3(lz)], size: [len, hh], uv: 'fit', kind: 'wall', key: 'txt:' + txt + '|' + fg + '|' + bg + '|' + Math.round(len / hh * 10) / 10 }, ry ? { ry } : {}));
+        const FILL = {
+            /* (x, z) = the square's middle; back = the square's back edge is the room's wall */
+            shelfw: (x, z) => { [-0.85, 0.85].forEach(a => prop('library_shelf_full', x + a, z - 0.35, 0)); box(x, 0, z - 1.2, 3.4, 3.2, 0.5, WOODD); fill(x, z, 2.6); },
+            shelf: (x, z) => { [-0.85, 0.85].forEach(a => { prop('library_shelf_full', x - 0.5, z + a, 270); prop('library_shelf_full', x + 0.5, z + a, 90); }); fill(x, z, 2.6); },
+            rtable: (x, z) => { prop('conference_table', x, z, 90); [-0.9, 0.9].forEach(a => { prop('cafeteria_chair', x - 1.25, z + a, 90); prop('cafeteria_chair', x + 1.25, z + a, 270); }); prop('desk_lamp', x + 0.3, z - 0.7, 0, 0.76); fill(x, z, 1.0); },
+            arm: (x, z) => { prop('psx_armchair_1', x - 0.8, z - 0.5, 20); prop('psx_armchair_1', x + 0.8, z - 0.5, 340); prop('psx_coffee_table_1', x, z + 0.7, 0); fill(x, z, 1.0); },
+            arm1: (x, z) => { prop('psx_armchair_1', x, z, 0); prop('globe_lamp', x - 1.1, z - 1.1, 0); fill(x, z, 1.0); },
+            ldesk: (x, z) => { prop('round_desk', x, z, 0); prop('office_chair', x, z - 0.9, 0); prop('desk_lamp', x + 0.6, z + 0.2, 0, 0.76); fill(x, z, 1.0); },
+            pdesk: (x, z) => { prop('tanker_desk', x, z, 0); prop('office_chair', x, z - 0.9, 0); prop('desk_lamp', x - 0.5, z + 0.1, 0, 0.76); board(x, 1.6, z - cd / 2 + 0.3, 1.6, 0.5, 0, 'KEYS', '#f4ecd8', '#5a3a1e'); fill(x, z, 1.0); },
+            files: (x, z) => { [-1, 0, 1].forEach(a => prop('filing_cabinet', x + a, z - 0.6, 0)); fill(x, z, 1.4); },
+            stair: () => {},
+            range: (x, z) => { prop('kitchen_range', x - 0.8, z - 0.9, 0); prop('kitchen_range', x + 0.8, z - 0.9, 0); fill(x, z, 1.2); },
+            sinks: (x, z) => { prop('sink_row', x, z - 0.9, 0); fill(x, z, 1.2); },
+            fridge: (x, z) => { prop('round_fridge', x - 0.8, z - 0.9, 0); prop('mini_fridge', x + 0.7, z - 0.9, 0); fill(x, z, 1.8); },
+            cake: (x, z) => { box(x, 0, z - 0.9, 3.2, 0.95, 0.9, WOODD); prop('coffee_maker', x - 0.7, z - 0.9, 0, 0.95); prop('coffee_maker', x + 0.3, z - 0.9, 0, 0.95); fill(x, z, 1.2); },
+            counter: (x, z) => { box(x, 0, z, 3.5, 1.05, 1.0, WOODD); box(x, 1.05, z, 3.5, 0.06, 1.15, STEEL, { under: true }); prop('coffee_mug', x + 0.8, z + 0.2, 0, 1.11); fill(x, z, 1.2); },
+            till: (x, z) => { box(x, 0, z, 3.5, 1.05, 1.0, WOODD); box(x, 1.05, z, 3.5, 0.06, 1.15, STEEL, { under: true }); prop('cash_register', x - 0.5, z, 0, 1.11); board(x, 2.4, z - 0.4, 2.6, 0.6, 0, 'MENU', '#f4ecd8', '#2a2a2a'); fill(x, z, 1.2); },
+            ctable: (x, z) => { prop('tulip_table', x, z, 0); [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([a, b], i) => prop('tulip_chair', x + a * 0.95, z + b * 0.95, [180, 0, 270, 90][i])); fill(x, z, 0.9); },
+            booth: (x, z) => { box(x, 0, z + 0.4, 1.1, 0.74, 2.0, WOODD); [-1, 1].forEach(a => { box(x + a * 1.15, 0, z + 0.4, 0.75, 0.45, 2.0, CUSH); box(x + a * 1.5, 0, z + 0.4, 0.14, 1.2, 2.0, CUSH); }); prop('coffee_mug', x + 0.2, z + 0.1, 0, 0.74); fill(x, z, 1.2); },
+            racks: (x, z) => { [-1.1, 0, 1.1].forEach(a => prop('server_rack', x + a, z - 0.9, 0)); fill(x, z, 2.1); },
+            mstack: (x, z) => { prop('monitor_stack', x - 0.6, z - 0.9, 0); prop('retro_console', x + 0.7, z - 0.4, 0); fill(x, z, 2.0); },
+            tank: (x, z) => { prop('iso_tank', x, z, 0); box(x, 0, z, 2.6, 0.12, 2.6, DARK); fill(x, z, 1.4); },
+            stable: (x, z) => { prop('steel_table', x - 0.8, z, 0); prop('steel_table', x + 0.8, z, 0); fill(x, z, 0.9); },
+            bench: (x, z) => { box(x, 0, z, 3.4, 0.9, 1.4, STEEL); box(x, 0.9, z, 3.5, 0.06, 1.5, DARK, { under: true }); prop('psx_pc_monitor_mp_1', x - 0.8, z, 0, 0.96); prop('item_potion_flask', x + 0.7, z + 0.3, 0, 0.96); fill(x, z, 1.0); },
+            lockers: (x, z) => { [-1.2, -0.4, 0.4, 1.2].forEach(a => prop('locker', x + a, z - 0.9, 0)); fill(x, z, 1.9); },
+            cabinets: (x, z) => { [-0.9, 0.9].forEach(a => prop('round_cabinet', x + a, z - 0.8, 0)); prop('metal_shelving', x, z + 0.5, 0); fill(x, z, 1.8); },
+            desk: (x, z) => { prop('tanker_desk', x, z, 0); prop('computer_chair_grey', x, z - 0.9, 0); prop('psx_pc_monitor_mp_1', x + 0.3, z, 0, 0.76); fill(x, z, 1.0); },
+            crates: (x, z) => { prop('cardboard_boxes', x - 0.7, z - 0.5, 15); prop('cardboard_boxes', x + 0.7, z + 0.5, 290); prop('cardboard_box', x + 0.8, z - 0.8, 40); fill(x, z, 1.0); },
+            console: (x, z) => { [-0.9, 0.9].forEach(a => prop('retro_console', x + a, z - 0.6, 0)); prop('monitor_stack', x, z - 1.3, 0); fill(x, z, 1.6); },
+            recep: (x, z) => { box(x, 0, z, 3.5, 1.05, 0.9, STEEL); box(x, 1.05, z, 3.5, 0.06, 1.05, DARK, { under: true }); prop('office_chair', x, z - 1.0, 0); prop('psx_pc_monitor_mp_1', x - 0.6, z, 0, 1.11); fill(x, z, 1.2); },
+            wait: (x, z) => { [-1.1, -0.35, 0.4, 1.15].forEach(a => prop('molded_chair', x + a, z + 0.9, 180)); prop('potted_plant', x - 1.2, z - 1.0, 0); fill(x, z, 0.9); },
+            egg: (x, z) => { prop('egg_chair', x, z, 45); prop('rug_round', x + 0.3, z + 0.3, 0); fill(x, z, 1.3); },
+            couch: (x, z) => { prop('curved_couch', x, z - 0.5, 0); fill(x, z, 1.0); },
+            bed: (x, z) => { prop('hospital_bed', x, z, 90); prop('round_cabinet', x - 1.1, z - 1.1, 0); fill(x, z, 1.0); },
+            vend: (x, z) => { prop('vending_machine', x - 0.6, z - 0.9, 0); prop('potted_plant', x + 1.0, z + 0.9, 0); fill(x, z, 1.9); },
+            btele: (x, z) => { cyl(x, 0, z, 1.4, 0.35, ['calm_marble', 0xffffff], 12); prop('brass_telescope', x, z, 30, 0.35); fill(x, z, 1.6); },
+            tele: (x, z) => { cyl(x, 0, z, 1.4, 0.35, ['calm_marble', 0xffffff], 12); prop('telescope', x, z, 330, 0.35); fill(x, z, 1.6); },
+            case: (x, z) => { [-0.85, 0.85].forEach(a => prop('psx_display_cabinet_mp_1', x + a, z - 0.5, 0)); fill(x, z, 2.1); },
+            fish: (x, z) => { box(x, 0, z, 2.8, 0.7, 1.4, ['calm_marble', 0xffffff]); prop('psx_fish_skeleton_mp_1', x, z, 0, 0.7); fill(x, z, 1.4); },
+            trophy: (x, z) => { prop('trophy_case', x, z - 0.3, 0); fill(x, z, 2.1); },
+            ticket: (x, z) => { box(x, 0, z, 3.2, 1.05, 0.9, WOODD); prop('cash_register', x - 0.5, z, 0, 1.05); board(x, 1.9, z - 0.2, 2.4, 0.5, 0, 'TICKETS', '#ffffff', '#3a5cc0'); fill(x, z, 1.2); },
+            mbench: (x, z) => { prop('metro_bench', x, z, 0); fill(x, z, 0.9); },
+            globe: (x, z) => { cyl(x, 0, z, 0.5, 0.9, DARK, 10); cyl(x, 0.9, z, 0.2, 1.2, ['calm_tiles', 0x6aa8e0], 14, 1.2); P.push(Object.assign({ s: 'dome', p: [r3(x), 2.1, r3(z)], r: 1.2, h: 1.2, seg: 14, rings: 5 }, look(['calm_tiles', 0x6aa8e0]))); fill(x, z, 2.4); },
+        };
+        R.g.forEach((line, ri) => line.forEach((t, ci) => { if (!t) return; const x = ox - W / 2 + (ci + 0.5) * cw, z = oz - D / 2 + (ri + 0.5) * cd; if (FILL[t]) FILL[t](x, z); else console.warn('university: no fill', t); }));
+        /* partitions on the squares' edges ([c0, r0, c1, r1] in squares, r counted from the FRONT): dark glass or plaster, a ghost wall each */
+        const edge = (e, L, glass) => { const x0 = ox - W / 2 + e[0] * cw, x1 = ox - W / 2 + e[2] * cw, z0 = oz + D / 2 - e[1] * cd, z1 = oz + D / 2 - e[3] * cd, hh = Math.min(H, 3.2);
+            if (Math.abs(x0 - x1) < 0.01) box(x0, 0, (z0 + z1) / 2, 0.12, hh, Math.abs(z1 - z0), L, glass ? { kind: 'glass', win: 'keep' } : {}); else box((x0 + x1) / 2, 0, z0, Math.abs(x1 - x0), hh, 0.12, L, glass ? { kind: 'glass', win: 'keep' } : {});
+            seg(x0, z0, x1, z1, hh); };
+        (R.glass || []).forEach(e => edge(e, ['urban:GlassWindowSquare1a', 0xcfe4ee], true)); (R.part || []).forEach(e => edge(e, ['urban:PlasterWallPainted1a', 0xffffff], false));
+        if (R.gate) { const x = ox - W / 2 + (R.gate[0] + 0.5) * cw, z = oz + D / 2 - (R.gate[1] + 0.5) * cd; [-1, 1].forEach(a => box(x + a * 1.55, 0, z, 0.3, 2.4, 1.0, DARK)); box(x, 2.4, z, 3.4, 0.3, 1.0, DARK, { under: true }); board(x, 2.45, z + 0.51, 2.6, 0.22, 0, 'SCAN', '#f0d040', '#202428'); }
+        if (R.planets) [[0.18, 0.5, 0xe8a040], [0.3, 0.32, 0x6aa8e0], [0.42, 0.42, 0xd86040], [0.56, 0.75, 0xd8b890], [0.7, 0.6, 0xe0d0a0], [0.82, 0.36, 0x8ac8d8]].forEach(([a, r, col], i) => { const x = ox - W / 2 + a * W, z = oz + (i % 2 ? 0.5 : -0.5), y = 4.2 + (i % 3) * 0.3;
+            cyl(x, y - r, z, 0.03, r, [null, col], 10, r, { glow: 0.5 }); P.push({ s: 'dome', p: [r3(x), r3(y), r3(z)], r, h: r, seg: 10, rings: 4, tint: col, glow: 0.5 }); cyl(x, y + r, z, 0.015, Math.max(0.3, H - y - r), DARK, 4, null, { cap: false }); });
+        if (R.gallery) {   // the library's gallery: a walk one square wide over the back row of shelves, the stair in its own square
+            const zb = oz - D / 2 + cd / 2, a = toWorld(ox - W / 2, zb), b = toWorld(ox + W / 2, zb); features.push({ k: 'bridge', id: ctx.id + '-gal', x0: a[0], z0: a[1], x1: b[0], z1: b[1], w: r3(cd), y: 3.5, plain: true, key: 'calm_planks' });
+            const sx = ox + W / 2 - cw / 2, s0 = toWorld(sx, oz - D / 2 + 2 * cd), s1 = toWorld(sx, oz - D / 2 + cd); features.push({ k: 'ramp', id: ctx.id + '-galstair', x0: s0[0], z0: s0[1], x1: s1[0], z1: s1[1], w: r3(cw - 0.3), h0: 0, h1: 3.5, stairs: true });
+            box(ox, 3.5, zb + cd / 2 - 0.05, W - cw, 1.0, 0.08, ['calm_gunmetal', 0xb0b8c8]); for (let ci = 0; ci < nc; ci++) { const x = ox - W / 2 + (ci + 0.5) * cw; [-0.85, 0.85].forEach(q => prop('library_shelf_full', x + q, zb - cd / 2 + 0.55, 0, 3.5)); }
+        }
+    };
     const ROT = { S: 0, W: 90, N: 180, E: 270 };
     const SHALLOW = { 'P03-05-B1': 3.5 };
     const count = { arch: 0, parts: 0 };
@@ -353,7 +436,7 @@ module.exports.build = function (api) {
            psychology lab, two levels under the research lab): it is one square shallower, its back a square off the line */
         if (SHALLOW[b.id] && !tierRow) { const cut = SHALLOW[b.id], q = rot * Math.PI / 180; row.d = r3(row.d - cut); row.x = r3(row.x - Math.sin(q) * cut / 2); row.z = r3(row.z + Math.cos(q) * cut / 2); }
         const d = tierRow ? (ew ? row.w : row.d) : row.d;
-        ctx = { id: 'dc:' + b.id, x: row.x, z: row.z, rot }; P = []; sub = 0; tiers = [];
+        ctx = { id: 'dc:' + b.id, x: row.x, z: row.z, rot }; P = []; sub = 0; tiers = []; lodgeRow = null;
         if (kind === 'PACK') { delete row.style; row.key = 'pack_bld_09'; row.storeys = 3; return; }   // the shop block at its own size: 16.9 m wide on a 17.5 m front
         if (kind === 'PIZZA') {   // the chain's pizza place stands on this lot (a catalogue prop at its real size, its entrance to the south walk), the plan's row goes
             features.splice(features.indexOf(row), 1); props.push({ key: 'city_pizzeria', x: row.x, z: r3(row.z + (ew ? row.w : row.d) / 2 - 10.25 - 0.4), face: 180 }); return; }
@@ -361,6 +444,7 @@ module.exports.build = function (api) {
         else { row.skin = false; delete row.style; delete row.key; delete row.hollow; delete row.door; }
         B[kind](tierRow ? w + 0.3 : w, tierRow ? d + 0.3 : d, row);   // a roof-route building is a plateau: its drawn walls stand 0.15 m outside the plateau's own cliff
         polish(kind, tierRow ? [w, d] : null);
+        { const ir = kind === 'gate' ? lodgeRow : row; if (ir && ir.hollow && ROOMS[kind === 'gate' ? 'lodge' : kind]) inside(kind === 'gate' ? 'lodge' : kind, ir); }
         if (row.dead) features.splice(features.indexOf(row), 1);
         features.push(Object.assign({ k: 'arch', id: 'dcu:' + b.id, x: ctx.x, z: ctx.z }, tierRow ? { y: 0 } : {}, { rot, parts: P })); count.arch++; count.parts += P.length;   // y: 0 over a roof-walk plateau (harmless since main gives an arch row its ground)
     });
