@@ -72270,7 +72270,12 @@ const ThreeRenderer = (function () {
         if (typeof window !== 'undefined' && window.EW_HQ_NO_CITY_BACKDROP) return;
         if (room.terrain && room.terrain.backdrop === false) return;
         var U = _hqUnits(), S = room.shell || {}, hw = S.w / 2, hd = S.d / 2, gen = info.gen || {}, neon = !!gen.neon;
-        var yAt = function (x, z) { return (_hq && _hq.outer && _hq.outer.yAt) ? _hq.outer.yAt(x, z) : hqTerrainHeight(info, Math.max(-hw + 0.5, Math.min(hw - 0.5, x)), Math.max(-hd + 0.5, Math.min(hd - 0.5, z))); };
+        /* THE BAY (2026-11-13, Disaster City's beach): `terrain.backdropInset: { w }` = the west skyline stands that far INSIDE the shell (the
+           room grew east for the bay and the centred field grew the same on the west: the skyline stays on the city's own edge);
+           `terrain.backdropOpen: [[x0, z0, x1, z1], ...]` = no skyline building stands in these boxes (the open water runs to the horizon) */
+        var BI = (room.terrain && room.terrain.backdropInset) || {}, inW = Math.max(0, +BI.w || 0), opens = (room.terrain && Array.isArray(room.terrain.backdropOpen)) ? room.terrain.backdropOpen : [];
+        var openAt = function (x, z) { return opens.some(function (o) { return x >= o[0] && x <= o[2] && z >= o[1] && z <= o[3]; }); };
+        var yAt = function (x, z) { if (inW && Math.abs(x) < hw - 0.5 && Math.abs(z) < hd - 0.5) return hqTerrainHeight(info, x, z); return (_hq && _hq.outer && _hq.outer.yAt) ? _hq.outer.yAt(x, z) : hqTerrainHeight(info, Math.max(-hw + 0.5, Math.min(hw - 0.5, x)), Math.max(-hd + 0.5, Math.min(hd - 0.5, z))); };
         /* the gaps: every door's wall point (a road out, a lobby door — the entrance building inside stands in front of it) */
         var gaps = [];
         (room.doors || []).forEach(function (d) {
@@ -72283,9 +72288,9 @@ const ThreeRenderer = (function () {
         try {
             /* the four sides: walk each at a pitch, the building's back to the room (its front faces the street inside) */
             var sides = [
-                { x0: -hw, z0: -hd, tx: 1, tz: 0, nx: 0, nz: -1, L: S.w, yaw: Math.PI },   // north edge: the buildings stand at z < -hd, facing +z (into the room)
-                { x0: -hw, z0: hd, tx: 1, tz: 0, nx: 0, nz: 1, L: S.w, yaw: 0 },
-                { x0: -hw, z0: -hd, tx: 0, tz: 1, nx: -1, nz: 0, L: S.d, yaw: Math.PI / 2 },
+                { x0: -hw + inW, z0: -hd, tx: 1, tz: 0, nx: 0, nz: -1, L: S.w - inW, yaw: Math.PI },   // north edge: the buildings stand at z < -hd, facing +z (into the room)
+                { x0: -hw + inW, z0: hd, tx: 1, tz: 0, nx: 0, nz: 1, L: S.w - inW, yaw: 0 },
+                { x0: -hw + inW, z0: -hd, tx: 0, tz: 1, nx: -1, nz: 0, L: S.d, yaw: Math.PI / 2 },
                 { x0: hw, z0: -hd, tx: 0, tz: 1, nx: 1, nz: 0, L: S.d, yaw: -Math.PI / 2 },
             ];
             sides.forEach(function (sd) {
@@ -72294,7 +72299,7 @@ const ThreeRenderer = (function () {
                     var w = 7 + r() * 5, d = 6 + r() * 4, out = 4.2 + d / 2 + r() * 1.5;
                     if (u + w > sd.L - 1.0) w = Math.max(4, sd.L - 1.0 - u);
                     var cx = sd.x0 + sd.tx * (u + w / 2) + sd.nx * out, cz = sd.z0 + sd.tz * (u + w / 2) + sd.nz * out;
-                    var gapped = gaps.some(function (gp) { return Math.hypot(cx - gp.x, cz - gp.z) < gp.r + w / 2; });
+                    var gapped = gaps.some(function (gp) { return Math.hypot(cx - gp.x, cz - gp.z) < gp.r + w / 2; }) || openAt(cx, cz);
                     if (!gapped) {
                         var st = 3 + Math.floor(r() * 4), y = yAt(cx, cz) - 0.5, key = 'building_' + (1 + Math.floor(r() * 8));
                         try {
@@ -72307,7 +72312,8 @@ const ThreeRenderer = (function () {
             });
             /* the four corners: one tall block on the diagonal past each */
             [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (c) {
-                var cx = c[0] * (hw + 6.5), cz = c[1] * (hd + 6.5);
+                var cx = c[0] * (hw + 6.5) + (c[0] < 0 ? inW : 0), cz = c[1] * (hd + 6.5);
+                if (openAt(cx, cz)) return;
                 if (gaps.some(function (gp) { return Math.hypot(cx - gp.x, cz - gp.z) < gp.r + 5; })) return;
                 var st = 4 + Math.floor(r() * 3), y = yAt(cx, cz) - 0.5, key = 'building_' + (1 + Math.floor(r() * 8));
                 try { var b = _nrSpriteBuilding(TK, key, cx * U, cz * U, { w: 9 / info.tile, d: 9 / info.tile, stack: st, yAbs: y * U + 0.3, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: true, beacon: neon ? 0xff3ad8 : 0xff3030, ry: 0 }); if (b) { b._ew_hqBackdrop = true; n++; } } catch (e) {}

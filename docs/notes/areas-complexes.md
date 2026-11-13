@@ -2153,6 +2153,26 @@ his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:1
   The pack models (West / East shops, the taco stand) draw near-black in the headless probe only.
 - **Next: THE BEACH** (same thread): the room grows east of Bayside: sea wall, boardwalk, sand, the bay (terrain.sea), pier + pavilion,
   breakwater + lighthouse, lifeguard station, the BurgerPiz grill on a deck.
+- **THE BEACH (second delivery, 2026-11-13).** Outside the plot grid, along Bayside's east side: `B.js beach()`. From the city's edge
+  (x 252) east: the boardwalk (2 squares of planks, palms, benches, a spear rail on the sea wall), the sand shelf (y -1.05, about 19 m,
+  umbrellas, loungers, two lifeguard chairs, the volleyball net, the lifeguard hut), the bay (`terrain.sea` y -1.45, `field: true`; the
+  floor falls to -3.6), the PIER on the mall's axis (z 189: `deck` rows + the arch row `bay-pier`, the octagon pavilion at its head, the
+  bait hut), the BREAKWATER north (a concrete mole to a round head, the Marina's lighthouse stands on it), the GRILL DECK south
+  (`city_burgerpiz`, real size). Four ways out of the city (`WAYS`: plot squares turned to 'P', the edge rail / wall cut in `build`),
+  a sand ramp at each.
+- **What the beach added to the shared tool (every district may use it).** A district file may export
+  `room = { east, sea, backdropOpen }`: `east` = squares the room grows on EACH side (the field is centred, so no coordinate moves; the
+  west strip is closed by a ghost wall and the skyline stands inside it: `terrain.backdropInset.w`), `sea` = the room's `terrain.sea`,
+  `backdropOpen` = boxes [x0, z0, x1, z1] the skyline ring leaves empty (three-renderer.js `_hqBuildCityBackdrop`). `ctx.paintCell(cx, cy,
+  sheet)` paints a square outside the 144 x 144 grid. THE GROUND PALETTE IS FULL (8 sheets: the city's 6 + `wood_planks` + `desert`).
+  The room is now 644 m wide (shell w), 504 deep.
+- **The beach against THE LEVELS.** Outside the grid the slope carries the edge plot's level outward, so every beach row is `absY: true`
+  and the strip is first cut flat to 0 (a `sink` plateau); the Marina plot (level 1) comes down a 7 m ramp across the boardwalk. North
+  of Bayside the city's edge stands up to 21 m over the water as a cliff.
+- **NOT PROVEN in the headless browser:** no `city_*` pack building (the grill, the taco stand; also the diner, pizzerias, laundry in
+  other districts) attached in the thread's probe runs: only the shadow blob draws. The files are on the CDN and fetched. Check on a real
+  machine before blaming the placement.
+
 ## DISASTER CITY, SPORTS + CULTURE (2026-11-13, district S: plots P04..P07 × rows 08..11) — `docs/disaster-city/districts/S.js`
 mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is this not where the football field is supposed to go?", pick "Stadium on 4 plots, 3/4 size field").
 - One file, loaded by the bake's district hook. `tailor` rewrites the plan's squares; `apply` turns each plan row into collision only (`skin: false`) and pushes one `arch:S:<id>` row per building, plus `dc:S-*` rows (blocks nothing is drawn for: stands, kiosks, mast feet, the drum on the Wrestling hall roof, the clinic's glass corner).
@@ -2295,6 +2315,12 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
   (16.7 m wide: the Laundry terraces lot is too small, that building keeps a designed wash-house front). `city_6twelve` not used: no lot fits 22.8 x 21.1 m.
 - **The back lots**: the district's infill rows (`dc:inN` inside Southside) restyled in three plain kinds (they may repeat). **The clearing**: trees, rails,
   fence walls and furniture standing inside a new footprint are removed by R.js itself (its own plots only).
+- **Follow-up (same day)**: the Corner shops' pack block row carries `y: 0` too (it stood on the 7 m roof). THE BIG WINDOWS (mondo 18:49): R.js windows are
+  'fit' quads, so the shared repeat rule skips them; the helper now draws 1.7 x 1.8 m windows and `a.floors` draws the GROUND row as half as many wide
+  shop panes (`urban:GlassWindowSquare1a`), never the upper floors' window (`ground: 'same'` opts out).
+- **On THE LEVELS** (Southside stands on levels 10 to 14, 17.5 to 24.5 m): the tool lifts every arch row onto its building's base, so R.js keeps
+  writing `y: 0`. Rows the tool does NOT lift ask R.js `plotY(px, py)`: the pack block's `texbuilding` and the canal's water. The canal is the levels'
+  sunk ditch on P00-03 (levels.js `pieces`): the `stream` runs north-south on its bed (water 0.5 m deep), the boathouse stands on the east bank.
 - **Seen in the cloud browser** (WebGL2 headless): every plot from above, shots in `/mnt/project-files/disaster-city-southside/`. Not seen on his Mac yet.
   Interiors are the next pass (the seven walk-in shells are empty rooms with a floor and plaster walls).
 
@@ -2383,6 +2409,7 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
   GlassWindow* sheets draw near black in an arch row and he wants that look, so never lift them (no glow / gain). Added in F.js: the hotel's
   sky bar tier, the archive's stair drum, the palm house's vault + dome (back to glass), a clerestory on the garage, the shops' upper floor,
   every third back lot a glass office block over a stone ground storey. The HOTEL gets a walk-in inside when the interiors start (his word).
+- THE GIANT APE (mondo 11-13 19:25: "put king kong in the district with the most high rises or tall buildings"): Financial (5 to 11 storeys). S.js `build` pushes him to `ctx.npcSpots` (new in the bake hook: a district's people, written to the room's `npcSpots`) at (173.25, -92.75), the open ground at the foot of the Penthouse stair tower (P10-03), with his own line from the old streets.
 
 ## DISASTER CITY, THE UNIVERSITY DISTRICT (2026-11-13, the University thread; mondo's OK 19:24)
 mondo 16:41: "architect the buildings in their respective districts plots ... every building should be unique and purposeful and recognizable".

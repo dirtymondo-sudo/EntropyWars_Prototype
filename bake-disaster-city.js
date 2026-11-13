@@ -34,6 +34,15 @@ const DISTRICTS = (() => { const dir = path.join(REPO, 'docs/disaster-city/distr
 let dcCtx = null;
 const dcRun = stage => DISTRICTS.forEach(m => { if (typeof m[stage] === 'function') m[stage](dcCtx); });
 DISTRICTS.forEach(m => { if (typeof m.tailor === 'function') m.tailor(PLAN, plotOf); });
+/* THE ROOM PAST THE PLOTS (2026-11-13, Bayside's beach: mondo "bayside needs to have the actual bayside in it too (the beach), with sand and a
+   pier"): a district file may export `room = { east: <cells>, sea: { y, key, field } }`. `east` grows the room that many cells past the
+   east edge of the plot grid; the engine's field is centred, so the shell grows the same on the west (closed behind a ghost wall on the
+   city's old edge) and NO written coordinate moves. Cells with cx >= 144 are nobody's plot: a district paints them with
+   ctx.paintCell(cx, cy, sheet) (the palette holds 8 sheets: 6 are the city's) and builds on them with its own rows. `backdropOpen` = boxes [x0, z0, x1, z1]
+   (metres) where no skyline building stands (three-renderer.js _hqBuildCityBackdrop); the west skyline keeps the city's own edge (backdropInset). `sea` = the room's
+   one water surface (data.js terrain.sea); the city's ground stays at 0, so only ground a district sinks under it is water. */
+const ROOM = { east: Math.max(0, ...DISTRICTS.map(m => (m.room && +m.room.east) || 0)), sea: DISTRICTS.map(m => m.room && m.room.sea).filter(Boolean)[0] || null, backdropOpen: [].concat(...DISTRICTS.map(m => (m.room && m.room.backdropOpen) || [])) };
+const paintExt = new Map();
 /* THE CROSSINGS (tailoring): the plan leaves a one-cell nub where a walk crosses a road (PPPPPPPRPPPP, RRRRRRRRPRRR). A row / column that is
    mostly pavement becomes a whole paved crossing; a lone pavement cell in a carriageway becomes road. */
 PLAN.plots.forEach(p => {
@@ -226,6 +235,7 @@ const occ = new Set();
 const free = (cx, cy, ok) => { if (cx < 0 || cy < 0 || cx >= 144 || cy >= 144) return false; const ch = cellAt(cx, cy); return (ok || '.#').indexOf(ch) >= 0 && !occ.has(cx + ',' + cy); };
 const take = (cx, cy) => occ.add(cx + ',' + cy);
 bInfo.forEach(b => (plotOf[b.plot].buildings.find(q => q.id === b.id).doors || []).forEach(dr => take(plotOf[b.plot].x * N + dr.ox, plotOf[b.plot].y * N + dr.oy)));   // a door's step stays clear
+const paintCell = (cx, cy, key) => { let i = PAL.indexOf(key); if (i < 0) { if (PAL.length >= 8) throw new Error('the ground palette is full (8 sheets): ' + key); PAL.push(key); i = PAL.length - 1; } paintExt.set(cx + ',' + cy, i + 1); };
 /* ── THE LEVELS (THE VERTICAL CITY, 2026-11-13 — mondo: "Streets that slope, ramps, stairs ... different districts should have different
    elevations, bayside being the lowest (sea level), and there can be different elevations within the districts from plot to plot and even
    within plots"; his OK on the elevation plan 18:30). docs/disaster-city/levels.js holds a level per plot (one level = 1.75 m). The room's
@@ -243,7 +253,8 @@ const roadFollow = (cx, cy) => {   // a carriageway square, or the pavement squa
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = cx + dx, y = cy + dy; if (inCity(x, y) && Math.floor(x / N) === px && Math.floor(y / N) === py && cellAt(x, y) === 'R') return true; }
     return false;
 };
-dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf };
+const npcSpots = [];   // THE PEOPLE a district stands in the city (ctx.npcSpots: { x, z, face, race, say }), written to the room's npcSpots
+dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, npcSpots, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf, ROOM, paintCell };
 dcRun('apply');
 
 /* ── THE DOORS (mondo 11-13 14:10, the decision card: "Replace today's streets with it"): this room IS `site_prebuilt_downtown_streets` now, so every
@@ -595,11 +606,15 @@ PLAN.plots.forEach(p => {
 count.lamps = lamps.length;
 
 /* ── THE GROUND: a sheet per square (0 the asphalt, 1 pavement, 2 grass, 3 yard concrete) ── */
-const paint = new Uint8Array(144 * 144);
-for (let cy = 0; cy < 144; cy++) for (let cx = 0; cx < 144; cx++) {
+const NXP = 144 + ROOM.east, paint = new Uint8Array(NXP * 144);
+for (let cy = 0; cy < 144; cy++) for (let cx = 0; cx < NXP; cx++) {
+    const own = paintExt.get(cx + ',' + cy);
+    if (own != null) { paint[cy * NXP + cx] = own; continue; }
+    if (cx >= 144) continue;   // past the plots: the room's own floor unless a district painted it
     const ch = cellAt(cx, cy), dd = D[plotOf[pid(Math.floor(cx / N), Math.floor(cy / N))].d];
-    paint[cy * 144 + cx] = ch === 'R' ? 0 : (ch === 'P' || ch === 'D') ? 1 : ch === 'I' ? 3 : dd.yard;
+    paint[cy * NXP + cx] = ch === 'R' ? 0 : (ch === 'P' || ch === 'D') ? 1 : ch === 'I' ? 3 : dd.yard;
 }
+if (ROOM.east) lateRows.push({ k: 'wall', x0: r3(-HALF - 0.4), z0: -HALF, x1: r3(-HALF - 0.4), z1: HALF, h: 8, t: 0.4, key: 'urban:ConcreteStriped2a', ghost: true, rail: false });   // the west strip the centred shell adds: closed on the city's old edge
 const b64 = Buffer.from(paint).toString('base64');
 
 /* ── THE STREETS: the plan's road connections, joined into straight runs through the plot centres ── */
@@ -658,19 +673,21 @@ lines.push("        site_prebuilt_downtown_streets: {");
 lines.push("            label: 'DISASTER CITY',");
 lines.push("            sub: 'NINE DISTRICTS · 144 PLOTS',");
 lines.push("            kind: 'box', site: 'prebuilt_downtown', part: 'streets',");
-lines.push("            shell: hqCityShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + sp[0] + ", z: " + sp[1] + ", y: 4.6 } }),");
+lines.push("            shell: hqCityShell({ w: " + (2 * HALF + 2 * ROOM.east * C) + ", d: " + (2 * HALF) + ", plate: { x: " + sp[0] + ", z: " + sp[1] + ", y: 4.6 } }),");
 lines.push("            parti: 'Nine districts of sixteen plots, every plot a twelve by twelve board: a city walked as a maze of yards, alleys, doors and roofs between a few plain roads.',");
 lines.push("            typology: 'grid',");
 lines.push("            dc144: { cell: " + C + ", plot: " + PL + ", plots: " + N + " },");
 lines.push("            terrain: {");
 lines.push("                res: 0.875,");
+if (ROOM.sea) lines.push("                sea: " + J(ROOM.sea) + ",");
+if (ROOM.east) lines.push("                backdropInset: { w: " + r3(ROOM.east * C) + " }," + (ROOM.backdropOpen.length ? " backdropOpen: " + J(ROOM.backdropOpen) + "," : ""));
 lines.push("                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
 const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)
 lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0, streets: " + J(streets) + ",");
 lines.push("                    lamps: " + J(lamps) + ",");
 lines.push("                       open: [] },");
-lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: 144, nz: 144, d: '" + b64 + "' },");
+lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + NXP + ", nz: 144, d: '" + b64 + "' },");
 lines.push("                features: [");
 dcRun('build');
 features.push(...lateRows);
@@ -821,7 +838,7 @@ lines.push("            counters: [],");
 lines.push("            props: [");
 props.forEach(f => lines.push("                " + J(f) + ","));
 lines.push("            ],");
-lines.push("            agents: [], npcSpots: [],");
+lines.push("            agents: [], npcSpots: [" + npcSpots.map(J).join(", ") + "],");
 lines.push("            spawn: { x: " + r3(JOIN.bay.x - 3.5) + ", z: " + JOIN.bay.z + ", face: 270 },");
 lines.push("        },");
 lines.push("        /* DC144-END */");

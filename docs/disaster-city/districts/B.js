@@ -342,10 +342,70 @@ B.harbour = (W, D) => {
     return p;
 };
 
+
+/* ══ THE BEACH (2026-11-13, mondo 17:05: "bayside needs to have the actual bayside in it too (the beach), with sand and a pier and stuff,
+   thats like the whole point"; 17:11 "yes add sea wall and water") ══
+   Past the plot grid's east edge, along Bayside's four plot rows (cells cx 144.., cy 96..143; bake-disaster-city.js `room.east`):
+     cx 144-145  THE BOARDWALK: a plank promenade on top of the sea wall (the city's level, 0)
+     cx 146-151  THE SAND: a shelf 1.05 m under the boardwalk (the sea wall is that drop), four ramps down to it
+     cx 152..    THE BAY: the shelf slopes under the water (terrain.sea at -1.45) to 3.6 m down
+     THE PIER on the mall's axis (the mall dome, the East shops), a square head with a pavilion; a bait hut half way
+     THE BREAKWATER: a concrete mole off the boardwalk's north end, the lighthouse on its head
+     THE GRILL DECK: the BurgerPiz (the pack's own building, real size) on a plank deck at the south end
+   North of Bayside the strip is open water under a quay wall (the city's east edge). */
+const EAST = 20, SEA_Y = -1.45, SHELF = -1.05, DEEP = -3.6;
+/* no skyline in the water: the whole east side, the north side past the quay, the south side past the grill deck */
+const room = { east: EAST, sea: { y: SEA_Y, key: 'water', field: true }, backdropOpen: [[252 + EAST * 3.5 - 1, -400, 400, 400], [254, -400, 400, -250], [252 + 14 * 3.5 - 4, 250, 400, 400]] };
+
+/* the pier head's pavilion: an octagon of columns under a pink cone, a glazed lantern on top */
+B.pavilion = () => {
+    const p = [];
+    p.push(cyl(0, 0.05, 0, 6.6, 0.12, { key: K.planks, seg: 8 }));
+    p.push(cyl(0, 0, 0, 0.24, 4.0, A(trim(), { seg: 8, cap: false, ring: { n: 8, r: 6.0, a0: 22.5 } })));
+    p.push(cyl(0, 4.0, 0, 6.5, 0.5, A(trim(), { ri: 5.6, seg: 8 })), cyl(0, 4.0, 0, 5.62, 0.06, A(trim(T.CREAM), { seg: 8, ds: true })));
+    p.push(cyl(0, 4.5, 0, 7.2, 2.6, A(wallM(T.PINK, K.corr), { r2: 2.2, seg: 8, cap: false, ds: true, roof: true })));
+    p.push(cyl(0, 7.1, 0, 2.0, 1.5, A(glass(T.GLASS, K.gSq, 0.6), { seg: 8, cap: false, roof: true })), cyl(0, 8.6, 0, 2.6, 1.5, A(wallM(T.PINK, K.corr), { r2: 0.05, seg: 8, roof: true })), cyl(0, 10.1, 0, 0.08, 1.8, A(trim(), { seg: 6, roof: true })));
+    p.push(cyl(0, 0, 0, 1.3, 1.0, A(wallM(T.CREAM), { seg: 8 })));                                                                       // the kiosk counter in the middle
+    return p;
+};
+/* the pier: lamp posts down both sides, piles under it (x along the pier, from its root) */
+B.pier = (len, w) => {
+    const p = [], n = Math.floor(len / 10.5);
+    [-1, 1].forEach(s => {
+        p.push(A(cyl(5.25, 0, s * (w / 2 - 0.25), 0.07, 3.4, A(trim(T.NAVY), { seg: 6, cap: false })), { n, step: [10.5, 0, 0] }), A(dome(5.25, 3.4, s * (w / 2 - 0.25), 0.22, 0.26, A(trim(T.CREAM), { glow: 0.9, seg: 8 })), { n, step: [10.5, 0, 0] }));
+        p.push(A(cyl(3.5, -4.2, s * (w / 2 - 0.5), 0.22, 4.1, { key: K.planks, tint: 0x8a6a48, seg: 6, cap: false }), { n: Math.floor(len / 3.5), step: [3.5, 0, 0] }));
+    });
+    return p;
+};
+/* the bait + tackle hut on its own bit of deck */
+B.bait = () => {
+    const p = [];
+    p.push(box(0, 0.05, 0, 4.2, 2.6, 4.2, A(wallM(T.LEMON, K.corr), { top: false })), roof('gable', 0, 2.65, 0, 4.2, 1.2, 4.2, A(wallM(T.RED, K.corr), { over: 0.4, keyEnd: K.planks, tintEnd: T.CREAM, roof: true })));
+    p.push(pane('f', 4.2, 4.2, 0.4, 1.0, 2.2, 1.1, glass(T.GLASS, K.gSq, 0.5), 0.02), ...awning(0.4, 2.1, 2.1 + 0.6, 3.0, 1.2, T.RED), box(-1.5, 0.05, 2.14, 0.9, 2.1, 0.06, trim(T.NAVY)));
+    return p;
+};
+/* the lifeguard station: a hut on stilts over the sand, a red hip roof, a ramp, a flag (its floor at the boardwalk's level) */
+B.lifeguard = () => {
+    const p = [], y0 = 1.3;
+    [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]].forEach(c => p.push(cyl(c[0], 0, c[1], 0.12, y0, { key: K.planks, seg: 6, cap: false })));
+    p.push(box(0, y0, 0, 5.0, 0.16, 5.0, { key: K.planks, under: true }), box(0, y0 + 0.16, -0.5, 3.6, 2.3, 3.0, A(wallM(T.WHITE, K.planks), { top: false })));
+    p.push(roof('hip', 0, y0 + 2.46, -0.5, 3.6, 1.3, 3.0, A(wallM(T.RED, K.corr), { over: 0.7, roof: true })));
+    p.push(pane('f', 3.6, 3.0, 0, y0 + 0.9, 2.6, 1.1, glass(T.GLASS, K.gSq, 0.5), 0.02)); p[p.length - 1].p[2] -= 0.5;
+    p.push(A(box(0, y0 + 0.16, 2.4, 5.0, 0.06, 0.06, trim(T.RED)), { n: 2, step: [0, 0.5, 0] }), box(-2.45, y0 + 0.16, 2.4, 0.08, 1.0, 0.08, trim(T.RED)), box(2.45, y0 + 0.16, 2.4, 0.08, 1.0, 0.08, trim(T.RED)));
+    p.push(cyl(1.9, y0 + 2.4, -1.9, 0.05, 3.4, A(trim(), { seg: 6 })), box(2.45, y0 + 5.0, -1.9, 1.1, 0.7, 0.04, A(trim(T.RED), { ds: true })));
+    p.push(box(-3.4, 0.55, 1.4, 2.4, 0.1, 1.2, { key: K.planks, under: true }), box(-3.9, 0, 1.4, 0.1, 0.55, 1.2, { key: K.planks }));           // the step up
+    return p;
+};
+/* the volleyball net: two posts, the net between them (x along it) */
+B.net = () => [posts(-4.5, 0, 2, [9, 0, 0], 2.5, 0.07, trim(T.NAVY)), { s: 'quad', p: [0, 1.45, 0], size: [9, 1.0], key: 'urban:MetalTruss1a', kind: 'over', ds: true, uv: [0.5, 0.5], tint: T.WHITE }, box(0, 2.43, 0, 9, 0.05, 0.05, trim())];
+
 /* ── the plan: the cinema and the mall face WEST ── */
 const WEST = { 'P10-08-B1': { x: 2, y: 5, ox: 1, oy: 5, side: 'W' }, 'P10-10-B1': { x: 2, y: 5, ox: 1, oy: 5, side: 'W' } };
+/* the ways out onto the boardwalk: pavement through the yard and the edge band of the four east plots (plot cells x, rows y0..y1) */
+const WAYS = { 'P11-08': [9, 11, 5, 6], 'P11-09': [9, 11, 9, 10], 'P11-10': [9, 11, 9, 10], 'P11-11': [9, 11, 3, 6] };
 function tailor(PLAN) {
     PLAN.plots.forEach(p => p.buildings.forEach(b => { const w = WEST[b.id]; if (w && !(b.doors[0] && b.doors[0].side === 'W')) b.doors.unshift(Object.assign({}, w)); }));
+    PLAN.plots.forEach(p => { const w = WAYS[p.id]; if (!w) return; p.cells = p.cells.map((r, y) => (y < w[2] || y > w[3]) ? r : r.split('').map((ch, x) => (x >= w[0] && x <= w[1]) ? 'P' : ch).join('')); });
 }
 
 /* ── the build ── */
@@ -391,9 +451,72 @@ function apply(ctx) {
     /* 22 the harbour master: the Boardwalk exit's south-west yard, its front to the road */
     { const x = gx(11 * N + 4), z = gx(11 * N + 10), W = 7, D = 7; takeRect(11, 11, 3, 9, 4, 10);
       lateRows.push({ k: 'texbuilding', id: 'dc:bay-harbourmaster', x: r3(x), z: r3(z), w: W, d: D, rot: 180, storeys: 2, seed: 7711, skin: false }); push('bay-harbourmaster', x, z, 180, B.harbour(W, D)); }
+    beach(ctx, push, ghost);
     console.warn('[bayside]', JSON.stringify(out));
+}
+function beach(ctx, push, ghost) {
+    const { lateRows, props, take, gc, gx, r3, N, paintCell } = ctx;
+    const X0 = gx(144), XB = gx(146), XE = gx(144 + EAST), Z0 = gx(8 * N), Z1 = gx(12 * N);     // the city's east edge, the sea wall, the room's east edge; Bayside's north and south
+    const rect = (x0, z0, x1, z1, h, o) => lateRows.push(Object.assign({ k: 'plateau', x: r3((x0 + x1) / 2), z: r3((z0 + z1) / 2), w: r3(x1 - x0), d: r3(z1 - z0), h, absY: true }, o));   // absY: the beach is at sea level whatever the city's levels beside it
+    const ZN = Z0 + 7, ZS = gx(136), XG = gx(158), XD = gx(151.5);                              // the mole's south side; the grill deck's north side and east side; where the shelf starts down
+    /* the water: north of Bayside (under the quay wall), the shelf, the deep, east of the mole's arm, east of the grill deck */
+    /* THE LEVELS: the ground east of the city would carry the edge plot's level out to sea (the Marina plot stands a level up), so the whole
+       beach strip is first cut flat to level 0; the Marina's way out comes down a ramp across the boardwalk's width */
+    rect(X0 + 0.4, Z0, XE + 2, Z1 + 2, 0, { sink: true, edge: 0.3 });
+    { const lv = (ctx.lvOf && ctx.plotOf['P11-08']) ? ctx.lvOf(ctx.plotOf['P11-08']) * ctx.LEVELS.M : 0;
+      if (lv > 0) lateRows.push({ k: 'ramp', x0: r3(X0 + 0.2), z0: gx(8 * N + 6), x1: r3(XB - 0.4), z1: gx(8 * N + 6), w: 7, h0: lv, h1: 0, edge: 0.2, absY: true }); }
+    rect(X0 + 0.6, -ctx.HALF, XE + 2, Z0, DEEP, { sink: true, edge: 0.4 });
+    rect(XB, ZN, XE + 2, ZS, SHELF, { sink: true, edge: 0.3 });
+    rect(XD, ZN, XE + 2, ZS, DEEP, { sink: true, edge: 12 });
+    rect(gx(161), Z0 - 0.4, XE + 2, ZN + 0.4, DEEP, { sink: true, edge: 0.4 });
+    rect(XG, ZS - 0.4, XE + 2, Z1 + 2, DEEP, { sink: true, edge: 0.4 });
+    /* the mole's arm out to the light (the boardwalk's level), its round head */
+    rect(gx(159), ZN - 0.5, gx(161), gx(104), 0, { edge: 0.4 });
+    lateRows.push({ k: 'plateau', x: gx(160), z: gx(105), r: 6.2, h: 0, edge: 0.4, absY: true });
+    /* the ramps down to the sand, off the boardwalk at each way out of the city */
+    const RAMPS = [gx(8 * N + 6), gx(9 * N + 10), gx(10 * N + 10), gx(11 * N + 2.5)];
+    RAMPS.forEach(z => lateRows.push({ k: 'ramp', x0: XB - 0.2, z0: r3(z), x1: r3(XB + 7), z1: r3(z), w: 3.5, h0: 0, h1: SHELF, edge: 0.2, absY: true }));
+    /* the pier (the mall's axis: rows 5-6 of the row-10 plots), its head, the bait hut's bit of deck */
+    const ZP = gx(10 * N + 6), XH0 = gx(157), XH1 = gx(163);
+    lateRows.push({ k: 'deck', x0: XB - 0.3, z0: ZP, x1: XH0, z1: ZP, w: 7, y: 0, absY: true }, { k: 'deck', x0: XH0, z0: ZP, x1: XH1, z1: ZP, w: 21, y: 0, rails: false, absY: true }, { k: 'deck', x0: gx(152), z0: r3(ZP - 7), x1: gx(154), z1: r3(ZP - 7), w: 7, y: 0, rails: false, absY: true });
+    push('bay-pier', XB, ZP, 0, B.pier(XH0 - XB, 7));
+    push('bay-pavilion', (XH0 + XH1) / 2, ZP, 0, B.pavilion()); ghost((XH0 + XH1) / 2, ZP, 2.6, 1.0);
+    push('bay-bait', gx(153), ZP - 7.6, 0, B.bait()); ghost(gx(153), ZP - 7.6, 4.2, 2.6);
+    /* the ground sheets: planks (the boardwalk, the grill deck), sand (the shelf and the bay's floor), concrete (the mole) */
+    for (let cy = 8 * N; cy < 12 * N; cy++) for (let cx = 144; cx < 144 + EAST; cx++) {
+        const mole = (cy < 8 * N + 2 && cx >= 146 && cx < 161) || (cx >= 159 && cx < 161 && cy < 8 * N + 8) || (Math.hypot(cx + 0.5 - 160, cy + 0.5 - (8 * N + 9)) < 2.2);
+        const deck = cx < 146 || (cy >= 136 && cx < 158);
+        paintCell(cx, cy, mole && cx >= 146 ? 'urban:ConcreteStriped2a' : deck ? 'wood_planks' : 'desert');
+    }
+    /* the promenade's rail along the sea wall, open at the ramps, the pier and the mole */
+    const gaps = RAMPS.map(z => [z - 2, z + 2]).concat([[ZP - 3.7, ZP + 3.7], [Z0, ZN + 0.2], [ZS, Z1]]);
+    { let z = Z0; const cuts = gaps.slice().sort((a, b) => a[0] - b[0]); cuts.push([Z1, Z1]);
+      cuts.forEach(g => { if (g[0] - z > 1) lateRows.push({ k: 'rail', x0: r3(XB - 0.25), z0: r3(z), x1: r3(XB - 0.25), z1: r3(g[0]), model: 'spear' }); z = Math.max(z, g[1]); }); }
+    /* the life on it */
+    for (let cy = 8 * N + 1; cy < 12 * N; cy += 3) props.push({ key: 'palm_tree', x: r3(X0 + 0.9), z: gx(cy) });
+    for (let cy = 8 * N + 4; cy < 12 * N - 9; cy += 6) props.push({ key: 'city_bench', x: r3(XB - 1.0), z: gc(cy), face: 90 });
+    const sand = (cx, cy) => [gc(cx), gc(cy)];
+    [[147, 100], [149, 104], [147, 110], [149, 116], [147, 123], [149, 129], [147, 133]].forEach((c, i) => { const q = sand(c[0], c[1]);
+        props.push({ key: 'pool_umbrella', x: q[0], z: q[1] }, { key: 'pool_lounger', x: gc(c[0] + 1), z: q[1], face: 90 }, { key: 'pool_lounger', x: gc(c[0] + 1), z: gc(c[1] + 1), face: 90 }); });
+    props.push({ key: 'lifeguard_chair', x: gc(150), z: gc(8 * N + 13), face: 90 }, { key: 'lifeguard_chair', x: gc(150), z: gc(10 * N + 13), face: 90 });
+    props.push({ key: 'rowboat', x: gc(150), z: gc(8 * N + 4), face: 70 }, { key: 'rowboat', x: gc(150), z: gc(11 * N + 1), face: 110 });
+    for (let i = 0; i < 5; i++) props.push({ key: 'sea_buoy', x: gx(156), z: gx(8 * N + 5 + i * 7.5) });
+    push('bay-net', gc(148), gx(9 * N + 6), 90, B.net());
+    push('bay-lifeguard', gc(148), gx(10 * N + 2), 270, B.lifeguard()); ghost(gc(148), gx(10 * N + 2), 3.4, 3.0);
+    /* the light on the mole's head (the Marina lookout's own lighthouse moves out here: its yard square is taken, so the city's is skipped) */
+    take(11 * N + 9, 8 * N + 5); take(11 * N + 10, 8 * N + 5); take(11 * N + 9, 8 * N + 6); take(11 * N + 10, 8 * N + 6);
+    props.push({ key: 'lighthouse', x: gx(160), z: gx(105), face: 90 });
+    /* the grill: the BurgerPiz at its own size on the deck, its long windowed front to the beach */
+    props.push({ key: 'city_burgerpiz', x: gx(152), z: gx(140.5), face: 180 });
 }
 /* numbers to the millimetre (the data.js block stays short) */
 function round(q, r3) { const o = {}; Object.keys(q).forEach(k => { const v = q[k]; o[k] = typeof v === 'number' && !/^(tint|tintTop|tintEnd)$/.test(k) ? r3(v) : Array.isArray(v) ? v.map(a => typeof a === 'number' ? r3(a) : Array.isArray(a) ? a.map(r3) : a) : (v && typeof v === 'object') ? round(v, r3) : v; }); return o; }
 
-module.exports = { tailor, apply, B, K, T };
+/* after every row exists: the city's own edge fences across the ways out to the boardwalk come down */
+function build(ctx) {
+    const { features, gx, N } = ctx, X0 = gx(144);
+    const open = Object.keys(WAYS).map(id => { const py = +id.slice(4), w = WAYS[id]; return [gx(py * N + w[2]), gx(py * N + w[3] + 1)]; });
+    for (let i = features.length - 1; i >= 0; i--) { const f = features[i];
+        if ((f.k === 'rail' || f.k === 'wall') && !f.ghost && Math.abs(f.x0 - X0) < 0.5 && Math.abs(f.x1 - X0) < 0.5 && open.some(o => Math.min(f.z0, f.z1) >= o[0] - 0.1 && Math.max(f.z0, f.z1) <= o[1] + 0.1)) features.splice(i, 1); }
+}
+module.exports = { room, tailor, apply, build, B, K, T };
