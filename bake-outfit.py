@@ -42,7 +42,7 @@ Usage: pip install bpy==5.2.3 scipy pillow
               SNUG=0.004 (a suit's shoulders laid close on the skin so a creator cape covers them, superhero F),
               HANDCUT=1 (a bare hand fused to its sleeve goes, the body's own hand shows: politician, priest, shaman, telepath, vampire),
               DROP="x,y,z,r;..." (a stray shell left out by hand, its middle r from a point measured from the eyes; SHELLS=1 lists them)
-       batch 1 review of 11-13: SNUG=1 (baggy trousers drawn in at the waist + hips), HATMIRROR=1|-1 (one half of the hat copied across), NOHANDS=1 (the body's own hands show, Meshy's go), WINGKEEP=1 (a collar fused to the wings), NOHELD=1 (nothing in the
+       batch 1 review of 11-13: NOARMS=1 (torn sleeves / gloves go, the bare arms show), SNUG=1 (baggy trousers drawn in at the waist + hips), HATMIRROR=1|-1 (one half of the hat copied across), NOHANDS=1 (the body's own hands show, Meshy's go), WINGKEEP=1 (a collar fused to the wings), NOHELD=1 (nothing in the
               hands), LOCKREM=0, SHELLS=1 (print the shells)
 Notes: docs/notes/models-assets.md "THE MESHY OUTFITS".
 """
@@ -702,9 +702,13 @@ def fit(name, gender, src, bodies_dir):
         tot = sum(gw[n] for n in names); idx = np.nonzero(tot > 0.5)[0]
         hid = sum(1 for i in idx if i not in ks) / max(1, len(idx))
         print('[bake-outfit] %s: %s %.0f %% under cloth' % (name, names[0], hid * 100), flush=True)
-        if E('NOHANDS', 0) and 'Foot' not in names[0]: ks |= set(int(i) for i in idx); continue   # (NOHANDS: Meshy's own hands go below, the body's show)
+        if (E('NOHANDS', 0) or E('NOARMS', 0)) and 'Foot' not in names[0]: ks |= set(int(i) for i in idx); continue   # (NOHANDS: Meshy's own hands go below, the body's show)
         if hid > E('ALLHIDE', 0.35): ks -= set(int(i) for i in idx)
         else: ks |= set(int(i) for i in idx)
+    # THE BARE ARMS (NOARMS=1, off; 2026-11-13, demon princess, mondo: "her arms are not in the sleeves"): Meshy's long gloves came out
+    # as torn strips that hang beside the body's arms. Every piece of cloth on an arm goes (below) and the arms' own skin shows; the
+    # look wears a creator glove in their place
+    if E('NOARMS', 0): ks |= set(int(i) for i in np.nonzero(sum(gw[n] for n in gw if n in ('LeftArm', 'RightArm', 'LeftForeArm', 'RightForeArm')) > 0.5)[0])
     # A LEG SEGMENT (thigh, calf) that is mostly under cloth is hidden whole (2026-11-12, mondo: "Knight has slivers of skin
     # outside of her boots where her calves are": her calf is fuller than the greave Meshy made, so strips of it stood outside)
     # + A PAIR (2026-11-12, mondo on the catgirl: "she has her heel sticking out of the back of her boot": her right calf was 71 %
@@ -849,10 +853,10 @@ def fit(name, gender, src, bodies_dir):
         # THE HAND BITS (NOHANDS=1, off; 2026-11-13, conspiracy theorist, mondo: "fingers look messed up"): Meshy left finger tips, nails
         # and palm scraps as part of a sleeve's shell; they hung beside the body's own fingers. Faces whose every vertex rides the
         # hand + its fingers (NOHANDW of its weight) go. Not for a unit in gloves (they ARE its hands)
-        if E('NOHANDS', 0):
-            hn_ = set(i for i, n in names.items() if n in ('LeftHand', 'RightHand') or re.search(r'_[lr]$', n))
+        if E('NOHANDS', 0) or E('NOARMS', 0):
+            hn_ = set(i for i, n in names.items() if n in ('LeftHand', 'RightHand') or re.search(r'_[lr]$', n) or (E('NOARMS', 0) and n in ('LeftArm', 'RightArm', 'LeftForeArm', 'RightForeArm')))
             hw_ = [sum(g.weight for g in v.groups if g.group in hn_) for v in o.data.vertices]
-            go_ = [p_.index for p_ in o.data.polygons if all(hw_[i] > E('NOHANDW', 0.85) for i in p_.vertices)]
+            go_ = [p_.index for p_ in o.data.polygons if all(hw_[i] > (E('NOARMW', 0.6) if E('NOARMS', 0) else E('NOHANDW', 0.85)) for i in p_.vertices)]
             if go_:
                 bmh = bmesh.new(); bmh.from_mesh(o.data); bmh.faces.ensure_lookup_table()
                 bmesh.ops.delete(bmh, geom=[bmh.faces[i] for i in go_], context='FACES')
