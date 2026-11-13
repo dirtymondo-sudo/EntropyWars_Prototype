@@ -2598,7 +2598,7 @@ mondo 20:15 "one more polish pass on the exteriors ... go one or two more layers
 canopies + glowing lamps, window sills / lintels / mullions, downpipes + gutters, ribs on every barrel roof, ladders, blank sign boards, hazard plates, bollards, rust streaks, door decals
 on the solid buildings, the signal box's outside stair + a semaphore, the crane's rails / cab glass / beacon) and `ROOFS[id]` (roof AC units `ac`, wall units `wac`, parapets, hatches,
 ducts, rubber walkways, manhole decals in the yards, a second sheet on back walls and bases: subway / generic tile, brick, factory window decals). Houses: `houseMore` (corner boards,
-door hoods, shutters, sills, gutters, chimney caps). On the five walked roofs only edges and corners are dressed. Signs stay blank (no lettering part). Seen in the cloud browser (29
+door hoods, shutters, sills, gutters, chimney caps). On the five walked roofs only edges and corners are dressed. Signs carry real words since the shared `txt:` sheet landed (PR #1327): `sign(..., words, fg)` and `txt(...)` lay letters over a board; the words are the plan names (WAREHOUSE, POWER STATION, CANTEEN, HARDWARE ...) and bay numbers. Seen in the cloud browser (29
 close-ups, about two thirds framed the building; the rest were checked from neighbours' shots). `arch y` is lifted by THE LEVELS, so headless cameras add the plot's level.
 
 ### THE UNIVERSITY POLISH PASS (2026-11-13, mondo 20:15 "one more polish pass on the exteriors ... one or two more layers deep", 20:18 "roofs and ac units", 20:19 "different textures or decals for different parts of the building")
@@ -2610,9 +2610,16 @@ side (`SCI`). Roof plant: two condensers on pads + a vent stack; on a flat roof 
 with a ghost wall each and never within 5 m of a bridge / stair / ladder point or on a tier.
 - An `hq:` sheet on an arch part drew BLACK in the game (trims, the porch): trims are `calm_marble` now. No `hq:` keys in U.js.
 - Seen in the game: plinth, sills, heads, corner stones, door step + mat, porch trim (library, dorm). NOT seen: roof plant, wall units, plates, signs.
+
+**Civic Center, the lettering (2026-11-13):** C.js `NAMES` gives 24 buildings their name; the walk-in name board and the shop sign board
+wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no name keeps the gilt plate / blank board. Seen in game.
+
 - THE LETTERING (same evening, the shared `txt:` sign sheet of PR #1327): `LETTERS[id]` in E.js puts plain trade words on the sign panels
   (CASINO, CINEMA down the fin, NOW SHOWING, COMEDY TONIGHT, CONCERT down the blade, NIGHT MARKET, ARCADE, BOX OFFICE, RAMEN, BAKERY, TAXI,
   WEDDING CHAPEL ...; no invented names). Helpers `b.txt(side, u0, u1, y, h, words, fg, proud, glow, bg)` and `b.vtxt` (a word read down a
   blade, a letter a panel). Dark letters sit over the lit panels (`kind: 'over'`, no board); light letters glow.
 - **The University's sign lettering** (11-13, on the shared `txt:` sheet of PR #1327): `LABEL[kind]` in districts/U.js puts the building's plain name
   (LIBRARY, LECTURE HALL, CAFE, BOOKS, CLINIC, ...: what it is, no invented names) on a board over its first door. Not seen on screen.
+- HERO PLAZA, the signs (2026-11-13 21:10): `kit().sign(side, half, u, y, w, h, words, fg, bg)` = a quad facing out of that wall with key
+  `txt:WORDS|fg|bg|aspect` (THE SIGN LETTERING). Boards: HERO WORKSHOP, PRESS COURT, TRAINING HALL, TRANSIT COURT, DELIVERIES, DISPATCH, COFFEE,
+  NEWS, SNACKS (the buildings' own plan names, nothing invented). `LIFT` leaves `txt:` keys alone. Seen in game reading the right way on S and N walls.

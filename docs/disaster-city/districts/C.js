@@ -254,6 +254,8 @@ function toArch(p, D) {   // D = the walk-in doorway of this building, or null: 
         const q = Object.assign({ s: 'roof', form: p.shape === 'pyr' ? 'pyramid' : p.shape, p: [r3(cx), r3(p.y0), r3(cz)], ry: ry || undefined, size: [r3(sw ? d : w), p.h, r3(sw ? w : d)], roof: true, ds: p.shape === 'barrel' || undefined }, base);
         if (o.over) q.over = o.over; if (p.shape === 'barrel') q.seg = 12; if (o.ds) q.ds = true;
         out.push(clean(q));
+    } else if (p.t === 'sign') {   // THE LETTERING: a canvas sign sheet, fitted
+        out.push({ s: 'quad', p: [r3(p.x), r3(p.y), r3(p.z)], ry: RY[p.face] || undefined, size: [r3(p.w), r3(p.h)], key: 'txt:' + p.text + '|' + p.fg + '|' + p.bg + '|' + r3(p.w / p.h), uv: 'fit', kind: 'wall' });
     } else if (p.t === 'door') {   // a drawn double door, shut (a building with no inside)
         const v = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] }[p.face], ry = RY[p.face], al = p.face === 'S' || p.face === 'N' ? [1, 0] : [0, 1];
         [-0.5, 0.5].forEach(s => out.push({ s: 'quad', p: [r3(p.x + al[0] * s + v[0] * 0.07), 0, r3(p.z + al[1] * s + v[1] * 0.07)], ry, size: [1.0, 2.3], key: 'urban:DoorStorefrontHalf1a', uv: 'fit', kind: 'wall' }));
@@ -267,8 +269,14 @@ function toArch(p, D) {   // D = the walk-in doorway of this building, or null: 
    the ground storey, a cornice + dentil band where none was drawn, two downpipes + a meter box, and on a free flat roof a parapet, an AC
    unit and vent stacks (never on a walked roof-route roof). Per walk-in door: stone pilasters, a canopy, two lamps. Per drawn shop door:
    an awning with a valance, a sign board (no lettering: his "no AI logos"), a blade sign. ══ */
+/* THE LETTERING (the shared 'txt:WORDS|fg|bg|aspect' sign sheet, PR #1327): the name of each building, from the plan mondo approved */
+const NAMES = { '4,0,0': 'FIRE STATION', '5,0,0': 'CIVIL RECORDS', '5,0,1': 'NOTARY + COPIES', '5,0,2': 'SIGN WORKSHOP', '6,0,0': 'CITY HALL', '7,0,0': 'COUNCIL ANNEX',
+    '4,1,0': 'DISPATCH', '4,1,1': 'COFFEE + DONUTS', '5,1,0': 'CITY MOTOR POOL', '5,1,1': 'NEWS + FLOWERS', '7,1,0': 'COURTHOUSE', '7,1,1': 'COURT CAFE', '4,2,0': 'POLICE',
+    '5,2,0': 'HOLDING ANNEX', '5,2,1': 'BAIL BONDS', '5,2,2': 'IMPOUND GARAGE', '6,2,0': 'RECORDS GARDEN', '7,2,0': 'TIME BUREAU', '7,2,1': 'WATCHMAKER', '5,3,0': 'PUBLIC LIBRARY',
+    '6,3,0': 'MILITARY OFFICES', '6,3,1': 'ARMY SURPLUS', '6,3,2': 'ARMORY', '7,3,0': 'PERMIT OFFICES' };
+const HEX = n => '#' + ('000000' + n.toString(16)).slice(-6);
 const WALLK = /bricks|Plaster|Stucco|marble_light|Concrete|Corrugated/, AWN = [0xb03a2a, 0x2a6a4a, 0x2a4a8a, 0xc89a2a, 0x7a2a5a, 0x1f6f78];
-function detail(Bd, D, walked, seed) {
+function detail(Bd, D, walked, seed, name) {
     const src = Bd.parts, out = [], ghosts = [], add = p => out.push(p), TRIM = 0xe6e0d2, PIPE = 0x3a4046;
     const bx = (x0, z0, x1, z1, y0, y1, key, tint, o) => add({ t: 'box', x0: Math.min(x0, x1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), z1: Math.max(z0, z1), y0, y1, key, tint, o: Object.assign({}, o) });
     const cy = (x, z, r, y0, y1, key, tint, o) => add({ t: 'cyl', x, z, r, y0, y1, key, tint, o: Object.assign({ seg: 6 }, o) });
@@ -353,7 +361,7 @@ function detail(Bd, D, walked, seed) {
         [-1, 1].forEach(sg => { seg(sg * (hw + 0.12), sg * (hw + 0.52), 0, 0.22, 0, 2.75, STONE, TRIM); seg(sg * (hw + 0.06), sg * (hw + 0.58), 0, 0.28, 0, 0.3, STONE, TRIM); seg(sg * (hw + 0.06), sg * (hw + 0.58), 0, 0.28, 2.55, 2.75, STONE, TRIM);
             seg(sg * (hw + 0.2), sg * (hw + 0.44), 0.22, 0.95, 2.75, 2.87, null, 0x30343a);                                                   // the bracket
             const L = P(sg * (hw + 0.95), 0.12); bx(L[0] - 0.1, L[1] - 0.1, L[0] + 0.1, L[1] + 0.1, 2.05, 2.4, null, 0xfff0c0, { glow: 0.9 }); bx(L[0] - 0.13, L[1] - 0.13, L[0] + 0.13, L[1] + 0.13, 2.4, 2.46, null, 0x25282c); });
-        seg(-hw - 0.75, hw + 0.75, 0, 1.1, 2.87, 3.05, null, 0x30343a); seg(-hw - 0.6, hw + 0.6, 0.02, 0.1, 3.05, 3.6, null, 0x23262b); seg(-hw - 0.45, hw + 0.45, 0.1, 0.13, 3.15, 3.5, 'gold', null);   // the canopy, the name board, its gilt plate
+        seg(-hw - 0.75, hw + 0.75, 0, 1.1, 2.87, 3.05, null, 0x30343a); seg(-hw - 0.6, hw + 0.6, 0.02, 0.1, 3.05, 3.6, null, 0x23262b); if (name) { const A = P(0, 0.11); add({ t: 'sign', x: A[0], z: A[1], y: 3.11, face: D.side, w: 2 * hw + 1.1, h: 0.44, text: name, fg: '#e8c860', bg: '#23262b' }); } else seg(-hw - 0.45, hw + 0.45, 0.1, 0.13, 3.15, 3.5, 'gold', null);   // the canopy, the name board, its gilt plate
     }
     /* a drawn shop door: an awning + valance, a sign board, a blade sign */
     src.filter(q => q.t === 'door').forEach((d, i) => {
@@ -363,7 +371,7 @@ function detail(Bd, D, walked, seed) {
         const A = P(-1.9, 0.05), Bq = P(1.9, 1.35);
         add({ t: 'roof', shape: 'shed', x0: Math.min(A[0], Bq[0]), z0: Math.min(A[1], Bq[1]), x1: Math.max(A[0], Bq[0]), z1: Math.max(A[1], Bq[1]), y0: 2.55, h: 0.65, key: null, tint: col, o: { high: { S: 'N', N: 'S', E: 'W', W: 'E' }[d.face], ds: true } });
         seg(-1.9, 1.9, 1.3, 1.35, 2.3, 2.56, null, 0xf2ead8); for (let a = -1.9; a < 1.8; a += 0.76) seg(a, a + 0.38, 1.352, 1.36, 2.3, 2.56, null, col);
-        seg(-2.0, 2.0, 0.03, 0.14, 3.3, 4.0, null, 0x23262b); seg(-1.8, 1.8, 0.14, 0.17, 3.45, 3.85, null, col, { glow: 0.2 });
+        seg(-2.0, 2.0, 0.03, 0.14, 3.3, 4.0, null, 0x23262b); if (name) { const A2 = P(0, 0.15); add({ t: 'sign', x: A2[0], z: A2[1], y: 3.38, face: d.face, w: 3.8, h: 0.54, text: name, fg: '#ffffff', bg: HEX(col) }); } else seg(-1.8, 1.8, 0.14, 0.17, 3.45, 3.85, null, col, { glow: 0.2 });
         seg(2.3, 2.38, 0.05, 0.85, 2.9, 3.6, null, col); seg(2.28, 2.4, 0.05, 0.9, 3.6, 3.66, null, 0x25282c);
     });
     out.ghosts = ghosts; return out;
@@ -397,7 +405,7 @@ function apply(ctx) {
                 });
             }
             const parts = []; Bd.parts.forEach(p => toArch(p, D).forEach(q => parts.push(q)));
-            const det = detail(Bd, D, !!(pb && roofB.has(pb.id)), 17 + P.px * 31 + P.py * 7 + k * 13); det.forEach(p => toArch(p, null).forEach(q => parts.push(q)));
+            const det = detail(Bd, D, !!(pb && roofB.has(pb.id)), 17 + P.px * 31 + P.py * 7 + k * 13, NAMES[P.px + ',' + P.py + ',' + Bd.i]); det.forEach(p => toArch(p, null).forEach(q => parts.push(q)));
             det.ghosts.forEach(g => { features.push({ k: 'wall', x0: r3(X0 + g[0]), z0: r3(Z0 + g[1]), x1: r3(X0 + g[2]), z1: r3(Z0 + g[3]), t: g[5], y: g[4], ghost: true, rail: false }); n.ghosts++; });
             features.push({ k: 'arch', id: 'arch:' + id.slice(3), x: X0, z: Z0, y: 0, parts }); n.arch++; n.parts += parts.length;
             (Bd.ghost || []).forEach(g => { features.push({ k: 'wall', x0: r3(X0 + g[0]), z0: r3(Z0 + g[1]), x1: r3(X0 + g[2]), z1: r3(Z0 + g[3]), t: 0.3, y: g[4], ghost: true, rail: false }); n.ghosts++; });
