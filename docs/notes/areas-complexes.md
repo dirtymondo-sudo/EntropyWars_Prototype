@@ -2458,6 +2458,18 @@ collision row with the skin off and gets ONE `k: 'arch'` row `dcu:<building id>`
 - NOT DONE: no road runs out into the desert (the streets end at the south line); no rocks / cactus on the desert (he asked for plain flat); the sky's far
   roster (`sky.scenery: 'city'`) is unchanged; the forest past 60 m is bare ground (in the fog from the streets).
 
+### HERO PLAZA, THE POLISH PASS (2026-11-13 20:15, mondo: "one more polish pass on the exteriors ... one or two more layers deep", + "roofs and ac units", + "different textures or decals for different parts of the building")
+- districts/H.js `DET[<building id>](a, door)` and `DET_OPEN[<piece>]`: a second parts list per building, added after its own by `dress()` in
+  `build()`. `kit(a)` lays every piece against a wall by its side (`on(side, half, u, y, w, h, t, ...)`, u = world x on S/N, world z on E/W):
+  plinth (open at the doorway), course, frames (sill + head), pil, pipe, lamp, vent, ac, awning, balcony, and for roofs rTop (a roof surface
+  in its own sheet), parapet, rAC (air handler on a pad with grilles), rVent, rDuct, rHut (stair hut with a door), rSky, rail.
+- One sheet once on one face = `panel()` (`uv: 'fit'`, `faces` = the outward face, `top: false`): door leaves (urban:DoorWoodenHalf1a,
+  DoorPaintedHalf1a / 2a, DoorStorefrontHalf1a), window decals (DecalWindowsResidential1a / 2a, DecalWindowsFactory1a: each sheet is 2x2
+  windows, so a panel about 3.2 x 5.5 m reads as two storeys), grilles (MetalSubwayGrill1a), hazard plates (SignHazard1a), shutters
+  (GlassWindowResidentialShutter1). Decal / Door / Sign keys draw see-through by themselves.
+- Sheets by part: feet in ConcreteUnderTiles1 (reads as granite), terraces in TileGeneric1a / 3a pavers, membrane roofs in RubberNonSlip1a,
+  the tower's step and the bandstand floor in TileMarble1a checker, the arcade floor TileMarble3c, the station canopy floor TileMarble2a.
+- About 2,400 parts for the district (was about 480). Seen in the game on every building. No lettering (the arch row has none).
 ## DISASTER CITY, THE PROP PASS — every prop checked against the real city, the street dressed (2026-11-13, mondo 19:30 + his OK 20:03 "Build all of it")
 mondo: "cars on top of stuff, benches on top of fences, street signs half way inside buildings. Just needs way more attention to detail and care ...
 there is this green trash bin in the subway area that needs to go in the city. See what other assets/props are available."
