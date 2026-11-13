@@ -28249,7 +28249,8 @@ const STORY_QUESTS = [
             { id: 'portal', objective: 'Defeat the two Shadow Entities with the Catgirl.', done: { on: 'fight', fight: 'orientation_portal' } },
             { id: 'desk',   objective: 'Escort the Catgirl to the front desk.', done: { on: 'talk', who: 'rhonda' }, mark: { cast: 'rhonda', room: 'central_egress' },
               scene: 'orientation_desk', sceneAt: { x: 1.1, z: 6.5, face: 0 } },   // E plays when the officer speaks to her; the stage ends with it
-            { id: 'office', objective: 'Walk to your office.', done: { on: 'room', room: 'office' }, mark: { room: 'office' } },
+            { id: 'office', objective: 'Walk to your office.', done: { on: 'room', room: 'office' }, mark: { room: 'office' },
+              scene: 'orientation_office' },   // F plays as the officer walks in; the stage (and the quest) ends with it
         ],
         reward: { unit: 'catgirl', gender: 'female', at: 'desk' },   // she joins at Rhonda's desk, not at the fight's win
         /* THE FIRST QUEST (mondo 2026-11-12: "I shouldnt have anyone at all in my roster except for me (door agent). The whole
@@ -28379,6 +28380,43 @@ STORY_CUTSCENES.orientation_desk = {
         { dur: 2.4, shot: { cam: [0.0, 1.4, 4.9, 180, 0, 22], to: { cam: [0.0, 1.4, 5.1, 180, 0, 22] } } },
         /* E6 · Rhonda slides the office keys across: close on the counter */
         { shot: { cam: [1.1, 1.75, 4.9, 180, -30, 35] }, say: { who: 'RHONDA', text: 'These are the keys to your office. First door past the mop bucket.' } },
+    ],
+};
+/* F · THE OFFICE (the approved storyboard's frames + mondo's lines, word for word; his change: the recruit is ALONE until
+   F4, Locke arrives in the doorway). An HQ scene in room `office` (5.6 x 4.6 m, the door on the west wall at z -0.5),
+   played by map.js _questRoomScene as the officer walks in. Actions (map.js, three-renderer.js hq.scenePlace):
+   place (who, x, z, face) · show / hide (who). `choice` = THE CHOICE BOX: the beat holds on its shot until an option is
+   picked; an option's `set` / `clear` are world flags (hqStoryFlags: office_door_open | office_door_closed).
+   `fade` = the second of the beat the picture goes to black. `end` = where everybody is left (a skip lands the same). */
+STORY_CUTSCENES.orientation_office = {
+    id: 'orientation_office', title: 'THE OFFICE',
+    end: [{ do: 'hide', who: 'locke' }, { do: 'place', who: 'player', x: 0.3, z: -0.3, face: 270 }],
+    beats: [
+        /* F1 · the door opens: still, long lens, from inside the room; the recruit in the doorway, alone */
+        { dur: 2.8, shot: { cam: [2.4, 1.2, -0.3, 86, 2, 30] },
+          act: [{ at: 0, do: 'hide', who: 'locke' }, { at: 0, do: 'place', who: 'player', x: -1.1, z: -0.5, face: 90 }] },
+        /* F2 · the pan: a slow sideways travel low across the room, the clutter in the foreground */
+        { dur: 6.5, shot: { cam: [-2.0, 0.75, 1.75, -28, 4, 45], to: { cam: [1.0, 0.6, 1.3, 28, 6, 45] } },
+          act: [{ at: 0, do: 'place', who: 'player', x: -1.2, z: -0.5, face: 90 }] },
+        /* F3 · small and cramped: the high corner, wide lens, the recruit alone in the middle of it; Locke is heard from the door */
+        { shot: { cam: [2.45, 2.8, 1.9, 50, -36, 68] }, act: [{ at: 0, do: 'place', who: 'player', x: 0.0, z: 0.1, face: 0 }],
+          say: { who: 'AGENT LOCKE', text: 'Your office. Hope you like it.' } },
+        { shot: { cam: [2.45, 2.8, 1.9, 50, -36, 68] }, act: [{ at: 0.5, do: 'place', who: 'player', x: 0.0, z: 0.1, face: 270 }],
+          say: { who: 'AGENT LOCKE', text: 'Due to recent budget cuts, this is the best we could do on short notice.' } },
+        /* F4 · Locke in the doorway: over the recruit's shoulder */
+        { shot: { cam: [1.0, 1.62, 0.05, 80, -3, 34] },
+          act: [{ at: 0, do: 'show', who: 'locke' }, { at: 0, do: 'place', who: 'player', x: 0.3, z: -0.3, face: 270 }],
+          say: { who: 'AGENT LOCKE', text: 'Being a door agent is not for the faint of heart.' } },
+        /* F5 · the parents hint: close on her, a slow push in over two cards */
+        { shot: { cam: [-0.75, 1.6, -0.42, 88, -2, 24], to: { cam: [-0.88, 1.6, -0.42, 88, -2, 24] } },
+          say: { who: 'AGENT LOCKE', text: 'Your parents knew that better than anyone.' } },
+        { shot: { cam: [-0.88, 1.6, -0.42, 88, -2, 24], to: { cam: [-1.0, 1.6, -0.42, 88, -2, 24] } },
+          say: { who: 'AGENT LOCKE', text: '...Get some rest. Your first real day on the job begins tomorrow.' } },
+        /* F6-F7 · the question from the doorway: medium, the shot holds on the choice */
+        { shot: { cam: [0.5, 1.45, 0.7, 64, -2, 40] }, say: { who: 'AGENT LOCKE', text: 'Door opened or closed?' },
+          choice: { options: [{ label: 'OPEN', set: 'office_door_open', clear: 'office_door_closed' }, { label: 'CLOSED', set: 'office_door_closed', clear: 'office_door_open' }] } },
+        /* F8 · she leaves: fade to black */
+        { dur: 2.4, hold: true, fade: 0.4, shot: { cam: [0.5, 1.45, 0.7, 64, -2, 40] }, act: [{ at: 1.5, do: 'hide', who: 'locke' }] },
     ],
 };
 function storyCutscene(id) { return (id && STORY_CUTSCENES[id]) ? STORY_CUTSCENES[id] : null; }
@@ -67263,6 +67301,9 @@ const DOOR_CAST = {
         spots: [
             { room: 'central_egress', deg: 20, r: 12.7, level: 0, face: 20, pose: 'hqTalk', reach: 2.2,
               doing: 'Briefing the half-ring. Strictly by the book. The book has changed twice since Tuesday.' },
+            /* scene F (the first quest's `office` stage): she comes to the recruit's door; the scene shows her at F4 and takes her out at its end */
+            { room: 'office', x: -1.75, z: -0.5, level: 0, face: 90, pose: 'hqTalk', reach: 2.2, during: { quest: 'orientation', stage: 'office' },
+              doing: 'In your doorway.' },
         ],
     },
     belle: {
@@ -67461,6 +67502,8 @@ function hqCastInRoom(roomId, profile, opts) {
             && (s.minClearance == null || cl >= s.minClearance)
             && (s.maxClearance == null || cl <= s.maxClearance));
         if (!open.length) continue;
+        /* a post taken WHILE a quest stage is current wins over the everyday posts (Locke at the recruit's door) */
+        { const dur = open.filter(s => s.during); if (dur.length && dur.length < open.length) { open.length = 0; dur.forEach(s => open.push(s)); } }
         const total = open.reduce((a, s) => a + (s.p == null ? 1 : s.p), 0);
         let roll = ((hqHash(id + '|' + salt) % 100000) / 100000) * Math.max(1, total), pick = null;
         for (const s of open) { roll -= (s.p == null ? 1 : s.p); if (roll <= 0) { pick = s; break; } }
