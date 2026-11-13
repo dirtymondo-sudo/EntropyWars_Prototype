@@ -2078,7 +2078,7 @@ thing; ONE row kind does it (Sports + Culture thread owns it). Seen in the game 
   walker never reads it. One mesh per material per row (never a city-wide mesh, so the plot chunks cull a building whole): one row per building.
 - **A part**: `s` (shape), `p: [x, y, z]` (its foot centre in the row's frame), `ry` (degrees), `key` (a sheet: `urban:<Name>`, a terrain
   key, `hq:<name>`; none = a plain colour), `tint` (0xRRGGBB over the sheet), `tintTop` / `tintEnd` (for keyTop / keyEnd; none = untinted),
-  `glow` (0..1, a sign / lit glass), `kind` ('wall' | 'glass' | 'over' = cut-out decal), `ds` (two-sided), `roof: true` (hidden with HIDE
+  `glow` (0..1, a sign / lit glass), `gain` (a number over 1: the sheet's tint times it, past white, for a painted pastel wall; Bayside), `kind` ('wall' | 'glass' | 'over' = cut-out decal), `ds` (two-sided), `roof: true` (hidden with HIDE
   ROOFS), `uv` (metres a repeat spans, a number or [u, v]; 'fit' = once across the face), `n` + `step: [dx, dy, dz]` (repeat),
   `ring: { n, r, a0, arc }` (repeat round a circle, each turned outward).
 - **The shapes**: `box` size [w, h, d] (keyTop, top: false, sides: false, faces: 'fblr', under: true) · `cyl` r, h (r2 = a taper, 0 = a
@@ -2102,6 +2102,31 @@ thing; ONE row kind does it (Sports + Culture thread owns it). Seen in the game 
   They are PROPS, not HQ_PACK_BUILDINGS, on purpose: a prop is never fitted to a footprint, so its scale cannot go wrong. Not seen in the game
   (Blender renders only: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg). The laundry's roof sign renders blank orange in Blender.
 
+## DISASTER CITY, BAYSIDE — the district's architecture (2026-11-13, thread "Design Bayside district buildings")
+mondo's district ask (16:41) + "bayside needs to have the actual bayside in it too (the beach), with sand and a pier and stuff" (17:05) +
+his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:11). Plan doc: https://claude.ai/artifact/S8nPJ2AF6soGsNFSgf9VkL.
+- **Where the code is**: `docs/disaster-city/districts/B.js` (the district hook of `node bake-disaster-city.js`, PR #1274). `tailor` turns the
+  cinema and the mall WEST (a W door unshifted onto P10-08-B1 / P10-10-B1, so the mall's link door stands in the portal). `apply` switches
+  every Bayside building's own outside off (`skin: false` / `bld.skin: false`) and pushes one `k: 'arch'` row per building (`dc:<id>:arch`);
+  each building is a function `B.<name>(W, D, lx)` of its row's front, depth and doorway. Edit B.js, rerun the bake, never the data.js block.
+- **The look**: a pastel waterfront. Painted walls = a stucco / plaster sheet under a pastel tint with `gain` 2.3 (the city's building tint
+  under a mid-grey sheet turned every pastel to mud: seen in the game); trim = plain colour; glass = the urban glass sheets, tinted, `glow`.
+- **The buildings** (plan numbers): 1 hotel (9 storeys, eyebrows, round glass corner tower + mint dome, fin, canopy; walk-in) · 2 surf + bait
+  shack · 3 West shops (pack block, untouched) · 4 ice cream parlour (roof route) · 5 boat workshop (barrel roof) · 6 cinema (stepped front,
+  half-ring marquee + glass drum, 26 m blade; walk-in, faces W) · 7 lookout pavilion (P11-08 east strip) · 8 market hall (three gables on
+  posts; walk-in) · 9 taco stand (`city_taco_stand` prop) · 10 florist (round glasshouse) · 11 food hall (roof route) · 12 security office
+  (roof route) · 13 staff apartments · 14 loading dock (sawtooth; walk-in) · 15 parking booth (roof route) · 16 mall arch (Arrival court,
+  two ghost pylons) · 17 bandstand (Cordon plaza) · 18 mall (four hip-roofed wings, glass cross vault + dome, coral portal W; walk-in) ·
+  19 East shops (pack blocks, untouched) · 20 juice bar (the orange) · 21 carports (P09-11; the parked cars keep their squares) ·
+  22 harbour master (P11-11, a new solid `texbuilding` row `dc:bay-harbourmaster`).
+- **Seen in the game** (headless, playtest_city.js copy, `teleport` with `y` = a raised first-person camera): all 22 draw, colours right.
+  Shots: /mnt/project-files/disaster-city-bayside/game_*.jpg. NOT walked: the swing doors and the insides (the interiors are a later pass;
+  the food hall and the security office are roof-route tiers, solid until then).
+- **Known**: no lettering part exists in the arch row, so the signs (hotel fin, cinema blade, name bands) are blank colour. The roof
+  routes' fire-escape landings (grey tiers) stand in front of the ice cream parlour and the security office: the city tool's, not Bayside's.
+  The pack models (West / East shops, the taco stand) draw near-black in the headless probe only.
+- **Next: THE BEACH** (same thread): the room grows east of Bayside: sea wall, boardwalk, sand, the bay (terrain.sea), pier + pavilion,
+  breakwater + lighthouse, lifeguard station, the BurgerPiz grill on a deck.
 ## DISASTER CITY, SPORTS + CULTURE (2026-11-13, district S: plots P04..P07 × rows 08..11) — `docs/disaster-city/districts/S.js`
 mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is this not where the football field is supposed to go?", pick "Stadium on 4 plots, 3/4 size field").
 - One file, loaded by the bake's district hook. `tailor` rewrites the plan's squares; `apply` turns each plan row into collision only (`skin: false`) and pushes one `arch:S:<id>` row per building, plus `dc:S-*` rows (blocks nothing is drawn for: stands, kiosks, mast feet, the drum on the Wrestling hall roof, the clinic's glass corner).

@@ -71734,8 +71734,9 @@ const ThreeRenderer = (function () {
             var grp = function (key, tintOwn) {   // tintOwn: the tint of a second sheet of the part (tintTop / tintEnd), none = the part's
                 key = key || null;
                 var kind = kindOf(key), tint = (tintOwn != null) ? (tintOwn >>> 0) : (P.tint != null) ? (P.tint >>> 0) : 0xffffff, glow = +P.glow || 0, ds = !!P.ds, roof = !!P.roof;
-                var id = [key || '', tint, glow, kind, ds ? 1 : 0, roof ? 1 : 0].join('|');
-                return G[id] || (G[id] = { key: key, tint: tint, glow: glow, kind: kind, ds: ds, roof: roof, pos: [], uv: [], idx: [], n: 0 });
+                var gain = (+P.gain > 0) ? +P.gain : 1;   // THE PAINTED WALL (2026-11-13, Bayside): `gain` lifts a sheet's tint past white (a grey stucco sheet under the city's tint reads as mud in a pastel; the light still shades it)
+                var id = [key || '', tint, glow, kind, ds ? 1 : 0, roof ? 1 : 0, gain].join('|');
+                return G[id] || (G[id] = { key: key, tint: tint, glow: glow, kind: kind, ds: ds, roof: roof, gain: gain, pos: [], uv: [], idx: [], n: 0 });
             };
             var put = function (g, v, uv) {   // a vertex in the part's frame → the room's metres
                 var lx = pp[0] + v[0] * pc + v[2] * ps, ly = pp[1] + v[1], lz = pp[2] - v[0] * ps + v[2] * pc;
@@ -71857,13 +71858,14 @@ const ThreeRenderer = (function () {
     function _hqBuildArchRows(info, G, U) {
         var neon = !!(info.gen && info.gen.neon), mats = {}, made = 0;
         var matOf = function (b) {
-            var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0].join('|'); if (mats[id]) return mats[id];
+            var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0, b.gain || 1].join('|'); if (mats[id]) return mats[id];
             var tex = b.key ? _hzTex(b.key) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
             if (b.kind === 'over') { o.transparent = true; o.alphaTest = 0.35; o.polygonOffset = true; o.polygonOffsetFactor = -1; o.polygonOffsetUnits = -1; }
             var m = new THREE.MeshPhongMaterial(o);
             if (b.ds) m.side = THREE.DoubleSide;
             m.color = new THREE.Color(b.tint);
             if (tex) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
+            if (b.gain && b.gain !== 1) m.color.multiplyScalar(b.gain);
             if (b.glow > 0) { m.emissive = m.color.clone(); if (tex) m.emissiveMap = tex; m.emissiveIntensity = b.glow; }
             else m.emissive = new THREE.Color(neon ? 0x08060e : 0x0a0a0a);
             m._ew_hzNear = true;
