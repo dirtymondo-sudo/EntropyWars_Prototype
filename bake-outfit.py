@@ -66,6 +66,7 @@ from mathutils.kdtree import KDTree  # noqa: E402
 E = lambda k, d: float(os.environ.get(k, d))
 DROPAT = [[float(v) for v in q.split(',')] for q in os.environ.get('DROPAT', '').split(';') if q.strip()]
 CUTCOL = [[float(v) for v in q.split(',')] for q in os.environ.get('CUTCOL', '').split(';') if q.strip()]   # 'x,y,z,r,R,G,B,tol;...' (off)
+PAINTCOL = [[float(v) for v in q.split(',')] for q in os.environ.get('PAINTCOL', '').split(';') if q.strip()]   # 'x,y,z,r,R,G,B,tol,zmin,R2,G2,B2;...' (off)
 SKIN_T = E('SKIN_T', 0.20)
 HEADGEAR = False
 NECKLINE = False
@@ -279,13 +280,26 @@ def fit(name, gender, src, bodies_dir):
         # remake's own space, as env SHELLS=1 prints them). Off by default
         if os.environ.get('SHELLS'): print('SHELL', n, c.mean(0).round(2), (c.max(0) - c.min(0)).round(2), col.round(2))
         if any(np.linalg.norm(c.mean(0) - np.array(q[:3])) < q[3] for q in DROPAT): dropped.append(('named (DROPAT)', n)); bpy.data.objects.remove(o); continue
+        # A COLOUR PAINTED OVER IN A NAMED SHELL (PAINTCOL='x,y,z,r,R,G,B,tol,zmin,R2,G2,B2;...', off; 2026-11-13, mushroom girl, mondo: "not sure if thats a
+        # necklace or her neck line is messed up": Meshy painted her brown curls onto the lace of her dress top; cut out they left bites and holes): in
+        # the shell whose middle is within r of x,y,z the faces within tol of R,G,B above zmin take the UVs of the shell's face nearest in colour to
+        # R2,G2,B2 (no texture is repainted)
+        pc_ = [q for q in PAINTCOL if np.linalg.norm(c.mean(0) - np.array(q[:3])) < q[3]]
+        for q in pc_:
+            fcs_ = face_cols(o, PX, IW, IH); uv_ = o.data.uv_layers[0].data; g_ = o.data.polygons[int(np.argmin(np.linalg.norm(fcs_ - np.array(q[9:12]), axis=1)))]
+            u_ = sum((uv_[l].uv.copy() for l in g_.loop_indices), Vector((0, 0))) / len(g_.loop_indices); np_ = 0
+            for p_ in o.data.polygons:
+                if np.linalg.norm(fcs_[p_.index] - np.array(q[4:7])) < q[7] and p_.center.z > q[8]:
+                    np_ += 1
+                    for l in p_.loop_indices: uv_[l].uv = u_
+            print('[bake-outfit] %s: %d faces painted over (PAINTCOL)' % (name, np_), flush=True)
         # A COLOUR CUT OUT OF A NAMED SHELL (CUTCOL='x,y,z,r,R,G,B,tol[,ymax];...', off; 2026-11-13, King Arthur: his ragged cape was one shell with his shoulder
         # armour and chest strap; mondo: "yes i want the chest strap back"): in the shell whose middle is within r of x,y,z the faces
         # within tol of R,G,B go, then what is left in islands under CUTISLE 30 faces
         cc_ = [q for q in CUTCOL if np.linalg.norm(c.mean(0) - np.array(q[:3])) < q[3]]
         if cc_:
             fcs_ = face_cols(o, PX, IW, IH); bmc = bmesh.new(); bmc.from_mesh(o.data); bmc.faces.ensure_lookup_table()
-            go_ = [bmc.faces[i_] for i_ in range(len(fcs_)) if any(np.linalg.norm(fcs_[i_] - np.array(q[4:7])) < q[7] or (len(q) > 8 and bmc.faces[i_].calc_center_median().y > q[8]) for q in cc_)]   # (+ a 9th number: every face behind that y goes too, a strap's back half under a creator cape)
+            go_ = [bmc.faces[i_] for i_ in range(len(fcs_)) if any(np.linalg.norm(fcs_[i_] - np.array(q[4:7])) < q[7] and (len(q) < 10 or bmc.faces[i_].calc_center_median().z > q[9]) or (len(q) > 8 and bmc.faces[i_].calc_center_median().y > q[8]) for q in cc_)]   # (+ a 9th number: every face behind that y goes too, a strap's back half under a creator cape; + a 10th: the colour is cut only above that z, the mushroom girl's painted hair on her dress top)
             bmesh.ops.delete(bmc, geom=go_, context='FACES'); bmc.faces.ensure_lookup_table(); seen_ = set(); sm_ = []
             for f0 in bmc.faces:
                 if f0.index in seen_: continue

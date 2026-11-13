@@ -3783,7 +3783,7 @@ EW_MH_WEAR.push(['ewm_tricorn', 'Pirate tricorn', 'hats', 56], ['ewm_officercap'
   ['ewm_firehelmet', 'Firefighter helmet', 'hats', 56], ['ewm_footballhelmet', 'Football helmet', 'hats', 56],
   ['ewm_astrohelmet', 'Astronaut helmet', 'hats', 56], ['ewm_royalcrown', 'Royal crown', 'hats', 56], ['ewm_kingcrown', 'King\'s crown (large, on the brow)', 'hats', 56],
   ['ewm_icecrown', 'Ice crown', 'hats', 56], ['ewm_anunnakihat', 'Anunnaki headdress', 'hats', 56],
-  ['ewm_overlordhelm', 'Overlord helmet', 'hats', 56], ['ewm_mushroomcap', 'Mushroom cap', 'hats', 56], ['ewm_beret', 'Beret', 'hats', 56],
+  ['ewm_overlordhelm', 'Overlord helmet', 'hats', 56], ['ewm_mushroomcap', 'Mushroom cap', 'hats', 56], ['ewm_mushroomcap_big', 'Mushroom cap (large)', 'hats', 56], ['ewm_beret', 'Beret', 'hats', 56],
   ['ewm_strawhat', 'Floppy straw hat', 'hats', 56], ['ewm_brokenhalo', 'Broken halo', 'equipment', 60],
   ['ewm_greyalien', 'Grey alien head', 'heads', 58], ['ewm_jackalhead', 'Jackal head', 'heads', 58],
   ['ewm_goathead', 'Goat head', 'heads', 58], ['ewm_eaglehead', 'Eagle head', 'heads', 58], ['ewm_sharkhead', 'Shark head', 'heads', 58],
