@@ -5093,6 +5093,7 @@ function PartyBuilder(props) {
   const slotOriginal = !!(slotOwnLook && slotOwnLook.model === 'original');
   const raceSavedLook = raceLookRace ? (window.getRaceCreatorLook(unitRace, identity.gender || 'male') || null) : null;
   const raceRemadeLook = window.getRaceRemadeLook ? (window.getRaceRemadeLook(unitRace, identity.gender || 'male') || null) : null;   // THE REMADE LOOKS
+  const raceRemadeAlts = window.getRaceRemadeAlts ? (window.getRaceRemadeAlts(unitRace, identity.gender || 'male') || []) : [];   // THE REMADE ALTS (the white officer, the female officer)
   const appearance = slotOriginal ? null : (slotOwnLook || (lookIsDefault ? raceSavedLook : null));
   const unitRaceLabel = typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace;
   const wearsOriginal = slotOriginal || (!appearance && unitRace !== 'door agent');   // the slot stands in the race's own model
@@ -5154,6 +5155,7 @@ function PartyBuilder(props) {
               h('div', { className: 'pb-creator-options' },
                 raceSavedLook ? h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, title: 'The saved creator look for the ' + unitRaceLabel + ' (' + (identity.gender || 'male') + ')', onClick: () => setSlotLook(raceSavedLook) }, 'USE THE SAVED ' + String(unitRaceLabel).toUpperCase() + ' LOOK') : null,
                 raceRemadeLook ? h('button', { className: 'ms-tty-btn' + (raceSavedLook ? '' : ' primary'), disabled: isWaitingOnline, title: 'The ' + unitRaceLabel + '\u2019s own clothes, remade as separate pieces on the new body: a face that talks and emotes', onClick: () => setSlotLook(raceRemadeLook) }, 'USE THE REMADE ' + String(unitRaceLabel).toUpperCase() + ' LOOK') : null,   // THE REMADE LOOKS (sprites.js RACE_REMADE_LOOKS)
+                raceRemadeAlts.map((alt) => h('button', { key: 'alt-' + alt.label, className: 'ms-tty-btn', disabled: isWaitingOnline, title: 'Another remade ' + unitRaceLabel + ' look: the ' + alt.label, onClick: () => setSlotLook(alt.look) }, 'USE THE REMADE ' + String(alt.label).toUpperCase() + ' LOOK')),   // THE REMADE ALTS (sprites.js RACE_REMADE_ALTS)
                 h('button', { className: 'ms-tty-btn' + (raceSavedLook ? '' : ' primary'), disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign({ body: mpfbDefaultBody, model: 'creator' }, window.mpfbFacePatch ? window.mpfbFacePatch(null, mpfbDefaultBody) : {})) }, 'CREATE APPEARANCE'),
                 h('button', { className: 'ms-tty-btn', disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: mpfbDefaultBody, model: 'creator' })) }, '\u2684 RANDOM')),
               (unitRace !== 'door agent' && unitRace !== 'homosapien') ? h(AssignedLooks, { race: unitRace, raceLabel: unitRaceLabel, gender: identity.gender || 'male', appearance: null, disabled: isWaitingOnline, onNote: pbNote, onLoad: loadAssignedLook }) : null)
