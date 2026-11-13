@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 737 |
+| Meshy AI | no | 755 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -1949,6 +1949,29 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | trap_trip_wire | `Assets/world/packs/traps/Trip_Wire.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
 | trap_trip_wire_broken | `Assets/world/packs/traps/Trip_Wire_Broken.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
 | wall_chains | `Assets/world/packs/traps/Chain_Draped.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
+
+### Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) — Meshy AI (18)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| anatomy_skeleton | `Assets/world/props/meshy/anatomy_skeleton.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| banker_lamp | `Assets/world/props/meshy/banker_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| brass_orrery | `Assets/world/props/meshy/brass_orrery.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| dinosaur_skeleton | `Assets/world/props/meshy/dinosaur_skeleton.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| espresso_machine | `Assets/world/props/meshy/espresso_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| fume_hood | `Assets/world/props/meshy/fume_hood.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| iv_stand | `Assets/world/props/meshy/iv_stand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| lab_glassware | `Assets/world/props/meshy/lab_glassware.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| library_chandelier | `Assets/world/props/meshy/library_chandelier.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| library_ladder | `Assets/world/props/meshy/library_ladder.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| meteorite_plinth | `Assets/world/props/meshy/meteorite_plinth.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| microscope | `Assets/world/props/meshy/microscope.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| pastry_case | `Assets/world/props/meshy/pastry_case.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| privacy_screen | `Assets/world/props/meshy/privacy_screen.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| rope_stanchion | `Assets/world/props/meshy/rope_stanchion.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| specimen_shelf | `Assets/world/props/meshy/specimen_shelf.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| therapy_chaise | `Assets/world/props/meshy/therapy_chaise.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+| wheelchair | `Assets/world/props/meshy/wheelchair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
 
 ### Instruments + orchestral (mondo's upload) — Asset pack (author not recorded yet) (15)
 

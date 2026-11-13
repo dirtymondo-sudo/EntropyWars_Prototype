@@ -2709,6 +2709,28 @@ glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the 
   clinic 3x5 (waiting, reception, two beds, store), science museum 9x3 (cases, telescopes, globe, planets hung over the middle walkway), gate
   lodge 2x2. The five roof-route buildings stay shut.
 - Plan sheet: /mnt/project-files/university-district/16_interior_plans_on_battle_grid.jpg.
+- **THE SECOND PASS, THE ATMOSPHERE (2026-11-13 night, mondo 22:33: "do another interior pass ... make a list of models needed/wanted but
+  not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere")**. U.js `ATMOS[kind]` at the end of
+  `inside()`: `liner(wall, dado, dadoH, ceil, trim)` paints each room over the bare inside sheet (a wall coat 0.34 m in, a dado, a skirting,
+  a chair rail, a crown, a LIT ceiling box: the hollow building's own ceiling draws black; the front coat has the doorway cut, `dX` = the
+  doorway's middle from `row.door`), lights are DRAWN glow (`panelL` flush panels, `strip` fluorescents, `pendant` cord + shade + lit bulb,
+  `window_` a lit glass panel in a dark frame), the city room's ten real prop lights stay with the streets. Dressing goes OFF the square
+  centres (books, glassware, lamps on the tables; plants, clocks, boards, exit signs on the walls; flat runners over walks).
+  Library: forest green over walnut, beams, four brass chandeliers, tall lit windows, a red runner, a banker's lamp at every table end, two
+  rolling ladders. Cafe: cream over a bottle-green tiled dado, three ceiling fans, amber pendants over booths, espresso machine + pastry case
+  on the counter. Lab: white over blue-grey steel, fluorescents over every walk, microscopes + glassware on the benches, a FUME HOOD square.
+  Psychology: sage over oak, warm pendants, a rug, the therapist's CHAISE square. Annex: dark concrete, cold strips, lit tank floors, a red
+  light over the scanner, yellow walk edges, a SPECIMEN SHELF square. Clinic: mint over white tile, panels down the aisle, IV stands +
+  privacy screens by the beds, a wheelchair, the anatomy skeleton. Museum: navy over marble, a lit skylight over the walk, a spot over every
+  exhibit, the DINOSAUR on two squares (rope round it), the ORRERY and the METEORITE squares. Lodge: oak to the waist, a bulb, the radio.
+  New blocker squares (dead-end squares off the walks, every walk kept): lab back row col 4, annex back row col 5, museum back row cols 3 + 6,
+  front row cols 6-7; psychology back row col 6 holds the chaise in place of the second curved couch.
+  18 Meshy models (catalogue `group: 'Meshy props · city interiors'`, R2 Assets/world/props/meshy/<key>.glb, optimized; MODEL_LIST SOURCES
+  row; concepts + originals in project files university-interiors-2/meshy; shared list for other districts: project files
+  meshy/interior-claims.md): anatomy_skeleton, banker_lamp, brass_orrery, dinosaur_skeleton, espresso_machine, fume_hood, iv_stand,
+  lab_glassware, library_chandelier, library_ladder, meteorite_plinth, microscope, pastry_case, privacy_screen, rope_stanchion,
+  specimen_shelf, therapy_chaise, wheelchair. Pack check first: the Molten orrery is sci-fi, no pack has a microscope / fume hood / IV
+  stand / skeleton / wheelchair / chaise / stanchion.
 - **THE DEEPER HANGAR (2026-11-13, mondo 21:21 "make hangar deeper so it fits")**: `I.js` `fit` grows P03-10-B1 one square forward onto the walk in front of it (in `build`, NOT `tailor`: changing the plan re-rolls the whole city's random dressing): 31.5 x 14 m, four squares deep, 7 m walls
   under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. The street lamp on that square is taken off (`ctx.lamps`, the tool now writes its lamps line after the district build). Seen in the
   cloud browser from inside (as a 28 m long test build). INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.
