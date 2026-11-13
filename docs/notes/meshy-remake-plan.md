@@ -257,3 +257,16 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 2. His look at the cowboy's fitted face (yes to the face pilot given 11-12; done).
 3. First batch = the demo starters (his word 11-12): from group A that is zombie (F), catgirl (F), robinhood (M), djinn (M), mummy (F), angel (F), quarterback (M); knight (F) is done. Not started.
 4. Whether K1 (softer look) bothers him at board distance.
+
+### Batch 2 review fixes, round 1 (2026-11-13, mondo's pinned comments on the batch 2 overview)
+
+- NO WEAPONS IN AN OUTFIT (his rule: "characters will hold those weapons, dont make them part of the outfit"): `bake-outfit.py` env `DROPAT='x,y,z,r;...'`
+  (off by default; `SHELLS=1` prints every loose shell's middle, size and colour). pirate M `DROPAT="0.05,0.18,1.38,0.05;0.38,0.18,1.81,0.05;0.28,0.2,1.65,0.05;0.18,0.04,1.91,0.05" EYEH=0.873`
+  (sword, hilt, guard, the T2 hat's feather), pirate F `DROPAT=0.23,-0.01,0.8,0.05 --neckline`.
+- halfdemon F: her OWN dress from a T2 run (`ewm_t2halfdemonf_outfit`, defaults), pack skin `toigo_light_skin_with_natural_makeup` + liner + shadow, bust / waist / hips; no unit face (it read plain).
+- marksman F: creator pieces only (`mhw_elvs_lara_tank1` + `mhw_cortu_cargo_pants` + `mhw_mindfront_shoes_biker_boots_female`), same made-up face; the T2 outfit stays in the creator, unworn.
+- ki fighter hair `mh_elvs_short_daisy_hair`; king arthur `--neckline` + creator `ewm_royalcrown`; homosapien second T2 run (`SKIN_T=0.12 RAY_IN=0.12 RAY_OUT=0.12`);
+  necromancer `--neckline`; mime `RAY_IN=0.12 RAY_OUT=0.12`; orb of light = the gold-tinted body, `mhChest: smooth`, no outfit (the T2 suit tore).
+- STILL OPEN: halfdemon M + men in black tie (the creator `ewb_tie` lets the shirt through, also on his saved classic-body looks: bake-clothes.py `tie` ease, needs the MPFB add-on here),
+  mushroom girl neckline (`--neckline --repaint` did not cure it), pirate F bits between the legs, overlord gauntlet fingertips, hippie M trousers, a white cop + a female cop (his ask).
+  Second T2 runs of king arthur, necromancer and hippie M were worse than the first and are not used.
