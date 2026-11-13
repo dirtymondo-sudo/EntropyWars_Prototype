@@ -941,7 +941,28 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   New HQ scene actions: `place` (who, x, z, face), `show`, `hide` = three-renderer.js `hq.scenePlace(who, o)`.
   The pick is saved as `office_door_open` | `office_door_closed` (hqStoryFlags); nothing reads it yet (the door leaf
   does not stand open). Dev: `Quests.roomScene()`.
-- **Not built yet**: B the TV cart, A the intro (Sedaniel = DOOR_CAST.sedaniel, the roster Honda Civic; the foyer's entrance lift).
+- **SCENE B, THE TV CART (2026-11-13)**: data.js `STORY_CUTSCENES.orientation_tv` (12 beats, his lines word for word,
+  the two long ones over two cards); it hangs on the `walk` stage (`scene`), so it plays the moment the recruit first
+  stands in Room 64, and the stage's `then: { lesson: 'first_steps' }` starts Tape 1 when the scene ends (map.js
+  `_questRoomScene` -> `_tutorialStartFromHq`; a replay never starts the tape). The recruit is sat at the desk in front
+  of the cart (`place` with `sit`), Locke wheels the AV cart in from the west (`props`: three-renderer.js
+  `hq.sceneProps({ keys, near, r, at, ms, light })` slides the room's own `decor_av_cart` + TV + VHS models from an
+  offset back home; `walk` = `hq.sceneWalk`) and stands on its FAR side (his storyboard note), the TV snaps on (a point
+  light on the tube) and the picture goes to black. Locke keeps a post by the cart through `walk`, `tape1`, `tape2`
+  (`during.stages`, `hqCastSpotStageIs`). Row `cast` = the only cast people drawn while the scene plays (`hq.sceneCast`).
+- **HIS NOTES ON E + F (2026-11-13)**: (1) NOBODY WALKS INTO A SCENE: `hq.sceneCast(ids)` is now held for the scene's length
+  (`_hq._sceneCastIds`, `_hqSceneCastApply` every frame after the rounds), so a walker or traveller that comes in by a door
+  mid-scene is out the same frame; scene E got `cast: ['rhonda', 'kit']`. The office is `noWalkers: true` (data.js room row:
+  hqRoomCrowdCap 0, hqRoomPopulation n 0, no traveller arrives); the janitor's own post there stays (story cast), the scene
+  hides him. (2) FACES: shot `eye: { who, dy }` = the camera's height is that body's head + dy (`hq.sceneHead`, the Head bone,
+  re-read every 400 ms while the scene plays); Kit's two close-ups and the keys shot use it. (3) THE KEYS: E6 is on the
+  recruit's face and plays the battle's key celebration in the room (act `key` -> `hq.sceneKey` -> keyPickupFx `opts.at`).
+  (4) KIT IS THE CATGIRL: sprites.js CAST_CREATOR_LOOKS.kit = `{ race: 'catgirl' }` (getCastLookModel returns the race's own
+  model: the remade look, else the saved look, else its rig); DOOR_CAST_MODELS.kit (the old placeholder) is only the fallback.
+  (5) THE RECRUIT WALKS OUT: a WON quest fight stands the officer back up on 1 HP (battle.js `reviveYou` ->
+  hqPartyAfterMatch), and while a quest marked `officerUp` (ORIENTATION) is unfinished hqPartyRecord keeps the officer up
+  and in slot 1, so a save where the fight already dropped him heals on the next read (no second Catgirl in scene E).
+- **Not built yet**: A the intro (Sedaniel = DOOR_CAST.sedaniel, the roster Honda Civic; the foyer's entrance lift).
 
 ## THE SAVE — the walk autosaves where you stand; CONTINUE lands there (2026-11-12, mondo)
 mondo: "there needs to be a save feature so that i am not always loading in the foyer every time".
