@@ -2318,6 +2318,40 @@ sheet on every 1.75 m square (a window about 1 m wide, two rows per storey, one 
   `win: 'keep'` on a part turns both off. Cylinders get the bigger repeat but no base split.
 - NOT SEEN ON SCREEN (RULE #1c): checked by reading and `node --check` only.
 
+## DISASTER CITY, THE LEVELS — the city's ground at fifteen heights (2026-11-13, mondo's OK 18:30 "Build it as drawn")
+mondo 18:07: "more verticality ... Streets that slope, ramps, stairs ... different districts should have different elevations, bayside being
+the lowest (sea level) ... different elevations within the districts from plot to plot and even within plots."
+NOT SEEN IN THE GAME BY THE THREAD (no browser run, RULE #1c): checked headless only (compile, walk reach, every flight climbed).
+- **THE NUMBERS = `docs/disaster-city/levels.js`.** `grid[y][x]` = the level of plot P<x>-<y>; one level = 1.75 m; 0 = Bayside (sea),
+  14 = the Church (24.5 m). Change a number, rerun `node bake-disaster-city.js`; never edit the room. THE STADIUM's four plots
+  (P04-09, P05-09, P04-10, P05-10) keep ONE level. `pieces` = ground shaped inside a plot (`bowl` / `mound`): the Canal walk ditch (P00-03),
+  the Campus green amphitheatre (P00-05), the Event square court (P07-10). `stairs` = the pack flight per district.
+- **THE FORMAT (data.js `hqTerrainSlopeFn`): `terrain.slope = { cells: { res, x0, z0, nx, nz, d, f } }`.** `d` = base64 i16 cm, four corner
+  heights a square (NW NE SW SE), bilinear inside; two squares that disagree on a shared corner = a step (a retaining wall). `f` = a byte a
+  square, 1 = a walk-in building's floor. ON A LINE between squares the HIGHER side wins, unless a side is flagged (its floor then stands to
+  the line). `hqTerrainCompile` puts the lattice ON the squares' lines for such a room (581 nodes, x0 -253.75), so a step is one lattice cell
+  wide with its top edge on the line: fences / walls / hedges on a plot line stand on the top. Every slope-riding row (plateau, ramp, deck,
+  bridge, wall y, texbuilding base, arch base, lamps, signals, traffic, rails' g0 / g1) rides it with no edit in a district file.
+  `absY: true` on a row = its heights are already absolute (`_hqTSlopeFeatures` leaves it). `hqTerrainAdopt` now carries `info.slope`.
+  Compile: bounding boxes on the ordered rows (`orderedBB`), the city compiles in about 5 s headless (was 17 s before the levels).
+- **THE TOOL'S RULES (bake-disaster-city.js THE LEVELS; `ctx.LEVELS` + `ctx.lvOf(plot)` for the district hooks).** A building's squares are
+  flat at its base: its plot's level, or the kerb walk's height at its door when the door opens on a sloping street; an infill building over
+  a plot line takes the LOWEST level under it. Street squares (road + kerb walk) follow the road: flat within 2 squares of a plot's middle,
+  straight to the mid height at the plot line (1 level a plot = 6.25%, 2 = 12.5%: Port hill, Hotel Hill, Cinema hill, the police street).
+  Open squares: plot level + piece, joined to the building / the kerb at their corners. Arch rows get `y` = their building's base; props
+  with `y >= 1` get the ground added.
+- **THE CROSSINGS.** Every E / S walk port between two levels: a pack flight (`dc:stair:<plot><side>`, `stairs: true`, the low side first,
+  cut into the upper plot where short of room) and, on a one-level crossing with two free columns, one column as a plain 3-square ramp
+  (`dc:ramp:…`, the skate line). Today 100+ flights, about 40 ramps, 0 crossings closed. Roof bridges stand at the higher roof with a steel
+  flight on the lower one (`dc:roofstair:<RF>`). DOOR STOOPS (`dc:stoop:<building>`): a walk-in building whose doorway faces ground at
+  another height gets a one-square flight outside it.
+- **KNOWN, NOT FIXED.** (1) Two walk-in buildings back to back on a plot line at two levels (P03-05-B1 against P02-05) share the line's
+  nodes: the lower one shows a bank 0.9 m deep along its back wall. (2) Two doors face an infill building's wall across the plot line
+  (P08-02-B1, P02-05-B1): the city tool's own flaw, older than the levels. (3) Some stoops end 3.5 m from the next building's back wall
+  (the alley is that narrow); the walker leaves them sideways.
+- **NOT BUILT from the mock-up:** the park knoll + the Dish (district S made those plots the stadium), the Hero plaza stage (district H has
+  its colonnade there), the Service garage roof ramp, the Industrial loading-dock platforms, the Marina lookout beach steps (the beach
+  thread's ground). Mock-up + tools: `/mnt/project-files/disaster-city-vertical/` (shows the first grid, before the stadium).
 ## DISASTER CITY, THE FINANCIAL DISTRICT'S ARCHITECTURE (2026-11-13) — docs/disaster-city/districts/F.js, data.js
 mondo 11-13: "architect the buildings in their respective districts plots ... every building should be unique and purposeful and
 recognizable"; his OK on the plan + mock-up 17:10 (project files `disaster-city-financial/`, `mock-src/` = the mock scene).
