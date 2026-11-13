@@ -168,6 +168,10 @@ def fit(name, gender, src, bodies_dir):
         print('[bake-outfit] %s: eyes given at %.3f %.3f %.3f, %d eye shells' % (name, ex_, ey_, ez_, len(_eyes_extra)), flush=True)
     if not best and os.environ.get('EYEAT'):   # (EYEAT=x,y,z, off: a unit whose eyes are behind goggles has no eyeball shells; the eyes' middle is given by hand, in the remake's own metres from its feet)
         best = (0, None, None, np.array([float(x) for x in os.environ['EYEAT'].split(',')]) + np.array([0, 0, min(co(o)[:, 2].min() for o in sh)]))
+    if not best and os.environ.get('EYEH'):   # NO EYE SHELLS (Meshy fused them into the face: a hat's shadow, a squint): env EYEH = the eyes' height as a part of the figure's (off by default)
+        allv = np.vstack([co(o) for o in sh]); ez = allv[:, 2].min() + E('EYEH', 0.93) * (allv[:, 2].max() - allv[:, 2].min())
+        fr = allv[(np.abs(allv[:, 0]) < 0.04) & (np.abs(allv[:, 2] - ez) < 0.015)]
+        best = (ez, None, None, np.array([0.0, float(fr[:, 1].min()) + 0.012, ez]))
     if not best:
         # NO EYEBALL SHELLS (2026-11-13, antihero / astronaut: a cowl or a visor, or a T2 run that fused the eyes into the head): the
         # eyes are placed from the crown of the head instead: the MPFB body's own eye height / crown height, on the middle line, at the
