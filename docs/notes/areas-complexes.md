@@ -2019,3 +2019,29 @@ horizon, Saturn hexagon, Mars Cydonia, Moon mare. Only existing pieces moved/res
   explore (were only via scattered rocks).
 - Checked with the grid-fit tools (/mnt/project-files/grid-fit/tools/verify.js): traps 0, pads joined,
   invisible-wall counts ≤ main in every room. Plans + shots: /mnt/project-files/grid-fit/group2/.
+
+## DISASTER CITY, THE 144 PLOTS — the new city room from mondo's plan (2026-11-13, BUILT ON THE BRANCH, WAITS HIS OK)
+mondo uploaded `disaster-city-complete.zip` (a plan made in another chat): 12 x 12 plots, each 12 x 12 cells, nine districts of 16
+plots (Southside, Civic Center, Financial / University, Hero Plaza, Entertainment / Industrial, Sports + Culture, Bayside), 216
+buildings, 210 ground connections, 33 roof crossings, a 39-entry cast, the Bayside opening (the mall, the cordon, the police response).
+The plan's data lives in `docs/disaster-city/` (city-layout.json = the source, plan-design.md, plan-direction.md).
+- **The room**: `site_prebuilt_downtown_city` (data.js, between the `DC144-BEGIN` / `DC144-END` markers, WRITTEN BY
+  `node bake-disaster-city.js`; never hand-edit it, edit the tool or the layout and rerun). 504 x 504 m, `terrain.res` 0.875. Today's
+  Disaster City rooms (`site_prebuilt_downtown_streets` and its parts) are untouched and nothing leads to the new room yet.
+- **The tailoring** (what the plan became): a plan cell = ONE battle square, 3.5 m (HQ_ARENA_RULES.squareDefault), so a plot is 42 m =
+  exactly a 12 x 12 board. A closed plot edge = a thin wall ON the plot line (a sheet per district), the plan's boundary band is yard.
+  Named buildings = `texbuilding` rows with `hollow: true` (walk-in, the doorway on the plan's first door); the plan's filler buildings
+  (Residence / annex, Local shop, Street kiosk / annex, Workshop / store) wear the painted building sprites; ten shop plots wear the
+  Buildings pack's shop blocks; the Church wears `church_1`. The 42 roof-route buildings are `plateau` rows with `bld` (solid, the roof
+  walked, all 7 m so every `bridge` row is level); the plan's inside stairs are fire escapes (a 3.5 m landing + two `climb` rows) at
+  both ends of each route (18). Roads = `gen.kind: 'city'` streets (paint, manholes, lamps, traffic) with `gen.allOpen: true`; the
+  ground sheets are `terrain.paint` per square. Storeys per district (the plan gives two floors to nearly everything).
+- **Engine change**: data.js `_hqTGenerate` reads `gen.allOpen: true` (every node forced open, the per-node scan of the authored rows
+  skipped: 1 500 rows x 260 000 nodes took two minutes, now the room compiles in about 6 s headless).
+- **Measured** (headless, WebGL 2, after the static batch went live): about 210 to 440 draws from a high view; today's Downtown 984.
+- **Not built yet**: doors (the mall concourse to `site_prebuilt_downtown_mall`, the tower to the lobby, a way in from DOOR HQ),
+  the three Bayside gates (service pass, mall cleared: open gaps today), people / the encounter table, a second doorway on a building,
+  upper floors, the future version, a helicopter (no model in the game).
+- **Gotchas**: a ladder's foot within 0.3 m of a SECOND roof climbs the wrong one (the tool keeps a landing's square clear of other
+  buildings); the batch only goes live once every asset has landed (headless: 5 minutes; before that the same view reads 3 000 draws).
+- Proof: /mnt/project-files/disaster-city-144/ (plan_map.jpg + six in-game shots).
