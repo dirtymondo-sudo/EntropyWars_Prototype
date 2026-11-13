@@ -2388,17 +2388,18 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
     `pastry_case` and Entertainment's `bread_rack` + `paper_lantern` by key (they show once those threads' rows are on main).
   - THE STAND-INS OUT: the code ring, bags, rack, bench press, lift posts, tyre stacks, striking posts and serving line are those models now; every
     blocker keeps its whole-square ghost (`R.block`). The car on the lift stands on the model's arms (y 1.0, the block 0.98).
-  - THE LOOK: `R.liner(wall, dado, ceil)` paints each room (a wall coat 2 cm in front of the hollow texbuilding's inside walls, the doorway cut
+  - THE LOOK: `R.liner(wall, dado, ceil)` paints each room (a wall coat 3 cm in front of the hollow texbuilding's inside walls, which stand 0.30 m in from the row's edge; the doorway cut
     where hqTexbDoor cuts it, a dado + rail, a ceiling glowing a little: the bare inside was the grey keyIn sheet under a black ceiling);
     `R.lamp` lit ceiling fittings (strip lights on chains in the garage, a light rig over the ring); `R.wq` wall panels (lit side windows in the
     church, the gym mirror, trade-word signs with the shared `txt:` key: BOXING, WE BUY GOLD, PAWN, HOT MEALS). Per room: church limewash + oak
-    dado + timber ceiling on beams, candelabras, votive stands, stained glass between the hangings; bakery butter-yellow over subway tile, flour
+    dado + timber ceiling on beams, candelabras, votive stands, stained glass between the hangings; bakery butter-yellow over white tile, flour
     sacks, pots, menu board; gym bare brick over an oxblood band, tin ceiling on steel beams, speed bags, gloves, rubber under the weights;
-    pawnshop bottle green, jewellery case on square (1, 2); kitchen mustard over tile, steam tables, stock pots on the range; dojo paper-white in
+    pawnshop bottle green, jewellery case on square (1, 2); kitchen mustard over pale blue tile, steam tables, stock pots on the range; dojo paper-white in
     a dark timber frame, taiko on (6, 2), weapon racks; garage pale over a blue band, yellow bay lines, tool chests, engine crane on (7, 1).
   - FIXED ON THE WAY: a catalogue `wall` piece hangs at `mount` + `y`, so the tapestries, the cross, the bakery shelf and the dojo banner hung
     above their ceilings (give the height as `mount`); the gym mirror stood inside the wall facing out (a quad's ry 90 faces −x, 270 faces +x);
-    `R.put` keeps every prop 0.32 m off the outer walls (in front of the coat).
+    `R.put` keeps every prop 0.4 m off the outer walls (in front of the coat); a room's ceiling is the texbuilding's `h` − 0.32 (R.H read
+    the storeys: the ceiling lamps, hung at R.H − 0.2, sat above the real ceilings).
 
 ## DISASTER CITY, THE BIG WINDOWS (2026-11-13, the shared-pieces thread)
 mondo (screenshot of two city blocks): "The buildings that use these repeated window textures from the urban pack, the windows are too small, need
