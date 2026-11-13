@@ -1845,3 +1845,20 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
 - **Measured** (sandbox, SwiftShader WebGPU, Atlantis 4v4): draws 3657 -> 316, outside-bundle 3499 -> 166; 198 skinned rays
   1163 ms -> 22 ms; hover pick 8.2 -> 1.2 ms per mouse move. Proof: /mnt/project-files/perf-atlantis-20261113/.
 - Not done: the mask pass still walks the room classic (166 draws); 20 point lights untouched; real Mac FPS not measured here.
+
+## THE FINDS FREEZE (2026-11-13, mondo: "story mode isnt loading anymore ... the loading screen just stayed forever and the browser slowed down")
+- **Cause.** Not the loading itself. The background finds warm (map.js `_hqScheduleFindsWarm` -> data.js `hqFindsWarm`) builds
+  every tape room's finds once the survey worker lands its floor plan. `hqFindSpot` walked the room in half-metre steps and each
+  step read every prop / wall / tree of the room, with the walker's reach flood on top, all on the page. On the new 504 m
+  Disaster City (PR #1258: a million steps, ~1600 props, ~1100 features) that was one task of 4.5 MINUTES in the cloud browser
+  (measured: one 269 800 ms frame gap in the foyer; the build before #1258 had gaps of 5-9 s from the older big rooms).
+  It hit a brand-new profile in the foyer too, because the survey warms every room in the background.
+- **Fix (data.js + map.js).** (1) THE FINDS OFF THE PAGE: `hqTerrainWorkerServe` places the room's finds on the record it just
+  compiled and posts them with it; the page takes them with `hqFindsAdopt(roomId, rows, gen)` (`hqFindsGen()` guards a
+  `hqFindsDrop()` in between). The finds warm then finds the room already built. (2) THE FIND GRID (`hqFindGrid`): rooms with
+  more than 48 blockers file them in 4 m cells, a step reads its own cell. (3) THE FAR POINTS FIRST (`hqFindOrder`): points
+  are read farthest-first in quarter-metre rings and the walk stops 1.25 m inside the first free one.
+- **Same results.** `hqBuildFinds` output for the 90 other find rooms is byte-identical before / after; the worker path gives
+  the same rows as the direct path. City finds in Node: over 10 min -> 6.9 s (what is left is the reach flood, now in the worker).
+- **Rule for big rooms.** Anything that walks a whole terrain room per point (finds, reach, nav) must run in the survey worker
+  or be budgeted across frames. No worker (EW_HQ_NO_SURVEY, file://) = the finds still build on the page after the room's own entry.
