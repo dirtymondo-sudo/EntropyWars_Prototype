@@ -5,13 +5,6 @@
    plateau (the two walk-in tiers, Freight gate + Loading office, become hollow texbuildings: two storeys = the same 7 m walked roof slab).
    Run by bake-disaster-city.js (THE DISTRICT FILES: `build(ctx)`, after every row exists). Everything here touches Industrial rows only. Notes: areas-complexes.md "DISASTER CITY, THE INDUSTRIAL DISTRICT". */
 'use strict';
-/* THE DEEPER HANGAR (mondo 11-13 21:21 "make hangar deeper so it fits"): the plan's hangar is two squares deep; the F22 is 10.6 m across, so the
-   hangar takes the walk square in front of it too (column 8 of P03-10): four squares deep with the tool's own growth, its door one square west. */
-exports.tailor = function (PLAN, plotOf) {
-    const p = plotOf['P03-10'], b = p && p.buildings.find(v => v.id === 'P03-10-B1'); if (!b || b.x !== 9) return;
-    b.x = 8; b.w = 3; b.doors.forEach(d => { d.x = 8; d.ox = 7; });
-    p.cells = p.cells.map((row, y) => { if (y < 1 || y > 8) return row; const a = row.split(''); a[8] = y === 5 ? 'D' : 'I'; if (y === 5) a[9] = 'I'; return a.join(''); });
-};
 exports.build = function (ctx) {
     const { plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, cellAt, C, N } = ctx;
     const pid = (x, y) => 'P' + String(x).padStart(2, '0') + '-' + String(y).padStart(2, '0');
@@ -135,7 +128,7 @@ exports.build = function (ctx) {
             ...body(c, 7, U('MetalCorrugatedPainted5a'), 0xffffff), box(0, 7, 0, c.fw + 0.7, 0.4, c.fd + 0.7, U('ConcreteStriped2a'), 0xdddddd, { top: false, roof: true }),
             box(0, 7.4, 0, c.fw - 1, 2, 8, U('GlassWindowFactory3a'), T.glass, { roof: true, top: false }), roof('gable', 0, 9.4, 0, c.fw, 1.3, 9, TIN, T.steel, { keyEnd: TIN }),
             ...[-11.6, -7.1, -2.6, 4.3, 8.9].flatMap(x => bay(x, c.fd / 2 + 0.1, 3.9, 4)), box(0, 4.7, c.fd / 2 + 0.35, c.fw - 1, 0.3, 0.6, PLAIN, T.yellow)] },
-        'P03-10-B1': { inside: true, st: 2, leaf: 'leaf_exit', parts: c => [   // HANGAR: a long arched hangar, its open end to the apron (7 m walls: the F22 inside stands 5 m)
+        'P03-10-B1': { inside: true, st: 2, leaf: 'leaf_exit', fit: c => [0, C / 2, c.fw, c.fd + C], parts: c => [   // HANGAR: a long arched hangar, its open end to the apron (7 m walls: the F22 inside stands 5 m)
             ...body(c, 7, TIN, T.silver, { top: TIN }), roof('barrel', 0, 7.1, 0, c.fw + 0.2, 4.2, c.fd + 0.2, TIN, 0xe6e8ea, { keyEnd: TIN, tintEnd: T.silver, seg: 14 }),
             box(c.fw / 2 + 0.1, 0, 0, 0.1, 6, 11, PLAIN, T.black), box(c.fw / 2 + 0.16, 6.2, 0, 0.1, 0.7, 6, PLAIN, T.red)] },
         'P03-10-B2': { st: 1, parts: c => [   // CONTROL TOWER: a low base, a slim shaft, the overhanging glass cab, a red cone
@@ -457,10 +450,13 @@ exports.build = function (ctx) {
     count2.panel = one('P02-09', 9, 1, 'ind_panel', 180) + one('P02-09', 9, 2, 'ind_panel', 180);
     count2.boxes = boxes;
     /* the F22 in the hangar: 15.5 x 10.6 m = five squares by three, its nose along the hangar, the row of squares behind the front wall left as the walkway */
-    (function () { const b = bInfo.find(v => v.id === 'P03-10-B1'); if (!b) return; const ew = b.side === 'E' || b.side === 'W', fd = ew ? b.w : b.d2, q = ROT[b.side] * Math.PI / 180, lz = fd / 2 - 8.6;
+    (function () { const b = bInfo.find(v => v.id === 'P03-10-B1'); if (!b) return; const ew = b.side === 'E' || b.side === 'W', fd = (ew ? b.w : b.d2) + C, q = ROT[b.side] * Math.PI / 180, lz = fd / 2 - 8.6;
         if (fd < 13.9) { console.log('industrial: the hangar is', fd, 'm deep, the jet stays out'); return; }
         const fw = ew ? b.d2 : b.w, lx = Math.round(fw / C) % 2 ? 0 : -C / 2;   // an even count of squares along the hangar: half a square off, so it fills whole squares
-        props.push({ key: 'fighter_jet', x: r3(b.x + lx * Math.cos(q) - lz * Math.sin(q)), z: r3(b.z + lx * Math.sin(q) + lz * Math.cos(q)), face: ew ? 0 : 90 }); count2.jet = 1; })();
+        /* the walk square the deeper hangar took: the street lamp that stood on it goes */
+        if (ctx.lamps) { const hw = (ew ? fd : fw) / 2 + 0.3, hd = (ew ? fw : fd) / 2 + 0.3, cx = b.x - (C / 2) * Math.sin(q), cz = b.z + (C / 2) * Math.cos(q);
+            for (let i = ctx.lamps.length - 1; i >= 0; i--) { const l = ctx.lamps[i]; if (Math.abs(l.x - cx) < hw && Math.abs(l.z - cz) < hd) { ctx.lamps.splice(i, 1); count2.lampOut = (count2.lampOut || 0) + 1; } } }
+        props.push({ key: 'fighter_jet', x: r3(b.x + lx * Math.cos(q) - (lz + C / 2) * Math.sin(q)), z: r3(b.z + lx * Math.sin(q) + (lz + C / 2) * Math.cos(q)), face: ew ? 0 : 90 }); count2.jet = 1; })();
     lateRows.push(...out);
     console.log('industrial', JSON.stringify(count2));
 };
