@@ -2192,6 +2192,7 @@
                         if (loadGeneration !== _hqLoadGeneration || loadReady) return;
                         loadReady = true;
                         _hqSaveArmed = true; setTimeout(() => { _hqSaveWrite(true); }, 0);   // THE SAVE: the room stands — file it
+                        if (typeof opts.onReady === 'function') { try { opts.onReady(); } catch (e) { console.warn('[HQ] onReady', e); } }
                         if (seamless) { try { ThreeRenderer.hq.hush((window.HQ_CROWD_RULES && window.HQ_CROWD_RULES.hushMs) || 1800); } catch (e) {} try { seamless.fade(); } catch (e) {} return; }   // THE HUSH (2026-10-01): no people prompt as the held frame fades   // THE WAY BACK: the held frame fades over the ready room (no card, no arrival card)
                         const wait = Math.max(0, (walking ? 150 : 900) - (performance.now() - enteredAt));   // THE GATE: enteredAt is when the card went up — the renderer's ready is the real wait
                         _hqLoadFadeTimer = setTimeout(() => {
@@ -2604,7 +2605,7 @@
                 if (arrive && !eyeHere) arriveDrop();
                 if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return', seamless: eyeHere ? arrive : null })) {
                     if (encRes && encRes.quest && encRes.quest.changes && encRes.quest.changes.length) { try { _questShow(encRes.quest.changes, 5200); } catch (e) {} }   // THE QUESTS: after the fight's own toast
-                    if (encRes) setTimeout(() => { try {
+                    if (encRes && !encRes.sceneOnly) setTimeout(() => { try {   // a scene replay is not a fight: no toast
                         /* THE PARTY (2026-09-19): the second line reads what the fight did to the party — the down, the treatment */
                         const pr = encRes.party || null;
                         const partyLine = (pr ? (pr.restored ? ' · THE PARTY WAS TREATED' : pr.down ? ` · ${pr.down} DOWN — HEAL THEM OR REST IN MEDICAL` : ' · THE PARTY STANDS') : '')
@@ -4417,14 +4418,17 @@
            that cast member: the officer is stood on the stage's `sceneAt`, the scene's shots are placed cameras (`cam`),
            and its end files the talk (the stage's own end, so a skipped scene lands where a watched one does). */
         let _questTalkBusy = false;
-        function _questTalkScene(who) {
+        function _questTalkScene(who, rp) {
             if (_questTalkBusy || window.EW_NO_CUTSCENES || !window.EWScene || !window.EWCine || typeof window.storyCutscene !== 'function') return false;
-            let t = null; try { t = (typeof window.questTracker === 'function') ? window.questTracker(_hqProfile()) : null; } catch (e) { t = null; }
+            let t = null;
+            /* THE SCENE REPLAY: `rp` = { quest, stage } of a finished stage, read off the quest's row; nothing is filed at its end */
+            if (rp) { try { const def = window.questDef(rp.quest), st = def && def.stages.find(x => x.id === rp.stage); t = st ? { scene: st.scene || null, sceneAt: st.sceneAt || null, done: st.done || null } : null; } catch (e) { t = null; } }
+            else { try { t = (typeof window.questTracker === 'function') ? window.questTracker(_hqProfile()) : null; } catch (e) { t = null; } }
             if (!t || !t.scene || !t.done || t.done.on !== 'talk' || t.done.who !== who) return false;
             const row = window.storyCutscene(t.scene); if (!row) { console.warn('[SCENE] no row ' + t.scene); return false; }
             const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
             try { if (t.sceneAt && TR && TR.hq && TR.hq.dev && TR.hq.dev.teleport) TR.hq.dev.teleport(t.sceneAt); } catch (e) { console.warn('[SCENE] the officer could not be placed', e); }
-            const end = () => { _questTalkBusy = false; try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(false); } catch (e) {} try { window._questEvent({ type: 'talk', who }, { delay: 600 }); } catch (e) { console.warn('[QUEST] talk', e); } };
+            const end = () => { _questTalkBusy = false; try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(false); } catch (e) {} if (rp) { try { if (rp.onEnd) rp.onEnd(); } catch (e) {} return; } try { window._questEvent({ type: 'talk', who }, { delay: 600 }); } catch (e) { console.warn('[QUEST] talk', e); } };
             const host = { unit: 1, point: () => null, act: () => {}, finish: () => {} };
             /* the walker stands still under the scene's camera, so its body is put on the mark here (the walk's own tick would only move it after the scene) */
             try {
@@ -4438,6 +4442,39 @@
             if (!ok) { try { TR.hq.sceneCull(false); } catch (e) {} }
             _questTalkBusy = ok;
             return ok;
+        }
+        /* THE SCENE REPLAY of a stage's own scene (E at Rhonda's desk): the room is entered again with that stage counted as
+           the current one for the cast's posts (data.js _hqCastSpotReplay: Kit stands at the counter), the scene plays once
+           the cast it needs is in the room, and the room is entered once more at its end so everybody is back at today's
+           post. Nothing is filed: a finished stage never moves. */
+        let _questReplayBusy = false;
+        function _questStageReplay(questId, stageId) {
+            if (_questReplayBusy || _questTalkBusy || _hqSuspended || window.EW_NO_CUTSCENES) return false;
+            let st = null; try { const def = window.questDef(questId); st = def && def.stages.find(x => x.id === stageId); } catch (e) { st = null; }
+            if (!st || !st.scene || !st.done || st.done.on !== 'talk') return false;
+            const room = (st.mark && st.mark.room) || _hqCurRoom;
+            if (!_hqRoomExists(room)) return false;
+            const who = st.done.who, at = st.sceneAt ? { x: st.sceneAt.x, z: st.sceneAt.z, face: st.sceneAt.face || 0 } : null;
+            _questReplayBusy = true;
+            window._ewSceneReplayStage = { quest: questId, stage: stageId };
+            const done = () => {
+                window._ewSceneReplayStage = null; _questReplayBusy = false;
+                setTimeout(() => { try { if (state.gameState === GS.HQ && !_hqSuspended && _hqCurRoom === room) window._hqEnter({ room, at, quiet: true, from: 'walk' }); } catch (e) {} }, 350);
+            };
+            const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            const here = (id) => { try { const sc = TR.hq.dev.hqScene(); return !!(sc && sc.getObjectByName('hq_hq-cast-' + id)); } catch (e) { return false; } };
+            const need = [who].concat(Object.keys(window.DOOR_CAST || {}).filter(id => id !== who && (window.DOOR_CAST[id].spots || []).some(s => s && s.during && s.during.quest === questId && s.during.stage === stageId)));
+            const t0 = performance.now();
+            const go = () => {
+                if (state.gameState !== GS.HQ || _hqSuspended || _hqCurRoom !== room) { window._ewSceneReplayStage = null; _questReplayBusy = false; return; }
+                if (!need.every(here) && performance.now() - t0 < 20000) { setTimeout(go, 250); return; }
+                if (!_questTalkScene(who, { quest: questId, stage: stageId, onEnd: done })) done();
+            };
+            _hqLastRoom = room; _hqLastDoor = null;
+            try { window._hqClosePanel(); } catch (e) {}
+            _hqSetPrompt(null);
+            if (!window._hqEnter({ room, at, quiet: true, from: 'walk', onReady: () => setTimeout(go, 400) })) { window._ewSceneReplayStage = null; _questReplayBusy = false; return false; }
+            return true;
         }
         let _questMarkRaf = 0, _questMarkAt = 0, _questMarkT = null;
         function _questMarkTarget() {
@@ -4497,14 +4534,23 @@
                 /* THE REPLAY (2026-11-13, mondo: "Is there a way for me to replay just the cutscene easily without making a new
                    profile and doing the tutorial all over again?"): a fight stage that is done and opens on a cutscene plays
                    again from here (the scene, then the fight; nothing is filed twice: a finished stage never moves) */
+                /* EVERY SCENE (2026-11-13, mondo: "can i not replay it? we literally added a replay system so i can check these
+                   things"): each cutscene of a finished stage has its own button, in the order they play. The fight's opening
+                   scene plays with its fight; its `after` scene and a stage's own scene (a talk, a room) play alone. */
                 try {
                     const def = (typeof window.questDef === 'function') ? window.questDef(q.quest || q.id) : null;
+                    const sc = (id) => (id && typeof window.storyCutscene === 'function') ? window.storyCutscene(id) : null;
+                    const btn = (attrs, row, tip) => `<button class="hq-btn" ${attrs} title="${_hqEsc(tip)}">REPLAY ▸ ${_hqEsc(String(row.title || 'THE CUTSCENE').toUpperCase())}</button>`;
+                    let bs = '';
                     ((def && def.stages) || []).forEach(st => {
-                        const F = (st.done && st.done.on === 'fight' && typeof window.questFightDef === 'function') ? window.questFightDef(st.done.fight) : null;
-                        const row = (F && F.scene && typeof window.storyCutscene === 'function') ? window.storyCutscene(F.scene) : null;
                         const sd = (q.stages || []).find(x => x.id === st.id);
-                        if (row && sd && sd.done) h += `<div class="hq-panel-actions"><button class="hq-btn" data-quest-replay="${_hqEsc(F.id)}" title="Play this cutscene and its fight again">REPLAY ▸ ${_hqEsc(String(row.title || 'THE CUTSCENE').toUpperCase())}</button></div>`;
+                        if (!sd || !sd.done) return;
+                        const F = (st.done && st.done.on === 'fight' && typeof window.questFightDef === 'function') ? window.questFightDef(st.done.fight) : null;
+                        if (F && sc(F.scene)) bs += btn(`data-quest-replay="${_hqEsc(F.id)}"`, sc(F.scene), 'Play this cutscene and its fight again');
+                        if (F && sc(F.after)) bs += btn(`data-quest-replay="${_hqEsc(F.id)}" data-quest-only="after"`, sc(F.after), 'Play this cutscene again, without the fight');
+                        if (sc(st.scene)) bs += btn(`data-quest-stage="${_hqEsc(def.id + '/' + st.id)}"`, sc(st.scene), 'Play this cutscene again');
                     });
+                    if (bs) h += `<div class="hq-panel-actions hq-qj-replays">${bs}</div>`;
                 } catch (e) {}
                 if (q.reward && q.reward.unit) h += `<div class="hq-qj-rw"><b>REWARD</b><span>${_hqEsc(String(q.reward.unit).toUpperCase())} JOINS THE PARTY${done ? ' · PAID' : ''}</span></div>`;
                 return h + '</div>';
@@ -4519,11 +4565,14 @@
         if (!window._questReplayWired) {
             window._questReplayWired = true;
             document.addEventListener('click', (e) => {
-                const b = e.target && e.target.closest ? e.target.closest('[data-quest-replay]') : null; if (!b) return;
+                const b = e.target && e.target.closest ? e.target.closest('[data-quest-replay],[data-quest-stage]') : null; if (!b) return;
                 e.preventDefault(); e.stopPropagation();
-                const id = b.getAttribute('data-quest-replay');
+                const id = b.getAttribute('data-quest-replay'), stg = b.getAttribute('data-quest-stage'), only = b.getAttribute('data-quest-only') || null;
                 try { if (typeof window._hqClosePause === 'function') window._hqClosePause(); } catch (err) {}
-                if (!window._questFightGo(id, { replay: true })) { try { playSfx('uiError'); } catch (err) {} }
+                let ok = false;
+                if (stg) { const c = stg.split('/'); ok = _questStageReplay(c[0], c[1]); }
+                else ok = window._questFightGo(id, { replay: true, only });
+                if (!ok) { try { playSfx('uiError'); } catch (err) {} }
             }, true);
         }
         window._questFightGo = function (fightId, opts) {
@@ -4540,6 +4589,7 @@
             const L = (typeof window.questFightLaunch === 'function') ? window.questFightLaunch(F.id, { partyLevel: _hqPartyLevelNow() }) : null;
             if (!L) return false;
             if (opts && opts.replay) L.replay = true;
+            if (opts && opts.replay && opts.only) L.sceneOnly = opts.only;   // THE SCENE REPLAY: only that scene of the fight (battle.js: 'after' = the aftermath on the board, no fight, no result)
             if (L.room && _hqRoomExists(L.room)) { _hqCurRoom = L.room; }   // the result comes home to the fight's room
             return _hqEncounterStart(L, null, null);
         };
@@ -4549,7 +4599,8 @@
             event: (ev) => window._questEvent(ev),
             talk: (who) => _questTalkScene(who),   // dev: play the talk scene of the current stage
             fight: (id) => window._questFightGo(id),
-            replay: (id) => window._questFightGo(id || 'orientation_portal', { replay: true }),
+            replay: (id, only) => window._questFightGo(id || 'orientation_portal', { replay: true, only: only || null }),   // only 'after' = the aftermath alone
+            replayStage: (quest, stage) => _questStageReplay(quest || 'orientation', stage || 'desk'),   // a stage's own scene (E at Rhonda's desk)
         };
         /* ══ THE DOOR GUN — THE PORTABLE THRESHOLD (HQ plan 9.5, 2026-09-15 rev 13) ══
            Two doors the officer places (renderer `_hqPortalAim` / `_hqPortalBuild`);
@@ -5225,7 +5276,7 @@
             window._hqEncounterRun = { site: L.site, room: L.room || _hqCurRoom, race: L.encounter.race, label: L.encounter.label, gesture: L.encounter.gesture, id: L.encounter.id || null,
                                        date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true, armed: true,   // `armed`: battle.js startMatch spends it on THIS launch; a later match finds it spent and drops a stale marker
                                        eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null, field: field || null, gm: L.gm,
-                                       swarm: L.swarm || null, entry: _entryDoor, quest: L.quest || null };   // THE SWARM: battle.js keeps every native on the board · THE QUESTS: the quest's own fight (battle.js seats it round the portal, the commit files it)
+                                       swarm: L.swarm || null, entry: _entryDoor, quest: L.quest || null, sceneOnly: L.sceneOnly || null };   // THE SWARM: battle.js keeps every native on the board · THE QUESTS: the quest's own fight (battle.js seats it round the portal, the commit files it)
             window._hqEncounterRun.night = _hqClockNightIn(L.room || _hqCurRoom);   // THE WORLD CLOCK (Phase 3): the fight starts at the room's hour — round 1 is night when the sun is down (getCurrentCyclePhase)
             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's standing doors (and a pre-placed capture door) on the
                fight's board go onto their cells before the seats (battle.js encounterCarryDoors); the striking door's act is
