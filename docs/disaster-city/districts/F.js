@@ -21,7 +21,7 @@ const dome = (x, y, z, r, h, key, tint, o) => Object.assign({ s: 'dome', p: [r3(
 const roof = (form, x, y, z, w, h, d, key, tint, o) => Object.assign({ s: 'roof', form, p: [r3(x), r3(y), r3(z)], size: [r3(w), r3(h), r3(d)], key, tint, roof: true }, o || {});
 const quad = (x, y, z, w, h, ry, key, tint, o) => Object.assign({ s: 'quad', p: [r3(x), r3(y), r3(z)], size: [r3(w), r3(h)], ry: ry || 0, key, tint }, o || {});
 /* a face of a box of size w × d centred on (x, z): 'f' front (+z), 'b' back, 'r' right (+x), 'l' left → a panel just proud of it */
-const onFace = (f, x, z, w, d, out) => f === 'f' ? [x, z + d / 2 + out, 0] : f === 'b' ? [x, z - d / 2 - out, 180] : f === 'r' ? [x + w / 2 + out, z, 90] : [x - w / 2 - out, z, 270];
+const onFace = (f, x, z, w, d, out) => f === 'f' ? [x, z + d / 2 + out, 0] : f === 'b' ? [x, z - d / 2 - out, 180] : f === 'r' ? [x + w / 2 + out, z, 270] : [x - w / 2 - out, z, 90];
 /* windows: the pack's see-through decal (two windows a 3.5 m tile, one storey tall) on the named faces of a box */
 function wins(P, faces, x, y, z, w, h, d, key, margin) {
     for (const f of faces) { const q = onFace(f, x, z, w, d, 0.05), len = (f === 'f' || f === 'b' ? w : d) - (margin == null ? 1.4 : margin); if (len > 1) P.push(quad(q[0], y, q[1], len, h, q[2], key || WIN, WHITE, { uv: [3.5, 3.5] })); }
@@ -178,7 +178,7 @@ module.exports = {
             const P = [], W = T.W, D = T.D, JADE = 0xe6eedc, TRIM = 0xd2dcc8, F = D / 2, lx = T.lx;
             P.push(box(0, 0, 0, W + 0.1, 15, D + 0.1, STONE, JADE, { top: false, uv: 3.5, faces: 'blr' })); frontWithDoor(P, T, 0, 15, STONE, JADE, { uv: 3.5 });
             P.push(box(W / 2 + 0.25, 0, -9.9, 0.5, 15, 1.1, STONE, TRIM, { n: 7, step: [0, 0, 3.3], top: false }), box(-W / 2 - 0.25, 0, -9.9, 0.5, 15, 1.1, STONE, TRIM, { n: 7, step: [0, 0, 3.3], top: false }));
-            P.push(quad(W / 2 + 0.12, 3.5, -8.25, 1.5, 7, 90, GR, 0xbfd0c0, { uv: [1.5, 3.5], n: 6, step: [0, 0, 3.3] }), quad(-W / 2 - 0.12, 3.5, -8.25, 1.5, 7, 270, GR, 0xbfd0c0, { uv: [1.5, 3.5], n: 6, step: [0, 0, 3.3] }));
+            P.push(quad(W / 2 + 0.12, 3.5, -8.25, 1.5, 7, 270, GR, 0xbfd0c0, { uv: [1.5, 3.5], n: 6, step: [0, 0, 3.3] }), quad(-W / 2 - 0.12, 3.5, -8.25, 1.5, 7, 90, GR, 0xbfd0c0, { uv: [1.5, 3.5], n: 6, step: [0, 0, 3.3] }));
             P.push(box(0, 15, 0, W + 1.4, 0.9, D + 1.4, STONE, TRIM, { under: true }), box(0, 15.9, 0, 21, 3.2, 19, STONE, JADE, { uv: 3.5 }));
             P.push(cyl(0, 19.1, 0, 8.2, 3.6, STONE, 0xdce4d0, { seg: 32, cap: false }), quad(0, 19.7, 0, 1.4, 2.2, 0, GR, 0xbfd0c0, { uv: [1.4, 2.2], ring: { n: 16, r: 8.26 } }));
             P.push(cyl(0, 22.7, 0, 8.6, 0.5, ALU, VERDI, { seg: 32 }), dome(0, 23.2, 0, 8.1, 8.1, ALU, VERDI, { seg: 32, rings: 8 }));
@@ -194,8 +194,8 @@ module.exports = {
             P.push(box(lx - 3.05, 0, F + 0.25, 0.5, 5.4, 0.5, 'gold', WHITE), box(lx + 3.05, 0, F + 0.25, 0.5, 5.4, 0.5, 'gold', WHITE), box(lx, 8.5, F + 0.25, 0.9, 0.9, 0.5, 'gold', WHITE));
             /* the two lion blocks */
             for (const x of [-12, 12]) P.push(box(lx + x, 0, F + 3.2, 2.2, 1.6, 3.4, CONC2, 0xd0ccc0));
+            for (const x of [-12, 12]) P.push(cyl(lx + x, 1.6, F + 3.2, 0.5, 0.9, STONE, TRIM, { seg: 10, r2: 0.8 }), dome(lx + x, 2.5, F + 3.2, 0.8, 0.5, 'gold', WHITE, { roof: false }));
             emit(T, P);
-            prop(T, 'lion', lx - 12, F + 3.2, 0, { y: 1.6 }); prop(T, 'lion', lx + 12, F + 3.2, 0, { y: 1.6 });
         })();
 
         /* ═══ 4. THE EXECUTIVE COURT — a blue glass slab on stilts over a glass lobby, a boardroom box hung out over the court, a helipad;
@@ -248,13 +248,13 @@ module.exports = {
             const wl = 17.5, wz = F + wl / 2, ww = 9;                                                                     // the wings, in the north wing's frame
             P.push(box(-Wf / 2 + ww / 2, 0, wz, ww, 1.4, wl, BR1, TAN, { top: false }), box(-Wf / 2 + ww / 2, 1.4, wz, ww, 4.9, wl, CORR, TIN, { keyTop: U('ConcreteUnderTiles1') }));
             P.push(box(-Wf / 2 + ww + 1.4, 0, wz, 2.8, 1.2, wl - 2, CONC, 0xb8b8b8));                                       // the dock
-            P.push(quad(-Wf / 2 + ww + 0.06, 1.2, wz - 5.6, 3.8, 3.4, 90, CORR2, 0x9aa0a8, { n: 3, step: [0, 0, 5.6] }));
+            P.push(quad(-Wf / 2 + ww + 0.06, 1.2, wz - 5.6, 3.8, 3.4, 270, CORR2, 0x9aa0a8, { n: 3, step: [0, 0, 5.6] }));
             P.push(box(-Wf / 2 + ww + 2.2, 4.9, wz, 4.4, 0.3, wl - 1, CORR2, 0x8a98a0, { under: true }), cyl(-Wf / 2 + ww + 4.1, 1.2, wz - 7.5, 0.1, 3.7, null, 0x606870, { seg: 6, n: 4, step: [0, 0, 5] }));
             P.push(box(Wf / 2 - ww / 2, 0, wz, ww, 6, wl, BR1, 0xcca88c, { top: false }));
             P.push(roof('shed', Wf / 2 - ww / 2, 6, wz - wl / 2 + wl / 8, ww, 2.4, wl / 4, CORR2, 0x8c97a0, { n: 4, step: [0, 0, wl / 4], keyEnd: GF, tintEnd: 0xd8e8e8, ry: 180 }));
-            P.push(quad(Wf / 2 - ww - 0.06, 2.2, wz, wl - 2, 1.75, 270, WINF, WHITE, { uv: [3.5, 3.5] }));
+            P.push(quad(Wf / 2 - ww - 0.06, 2.2, wz, wl - 2, 1.75, 90, WINF, WHITE, { uv: [3.5, 3.5] }));
             P.push(cyl(Wf / 2 - 1.3, 6, wz - 5.5, 0.5, 5.5, ALU, 0xd0d4d8, { seg: 12, n: 3, step: [0, 0, 4.75] }));
-            fakeDoor(P, Wf / 2 + 0.06, 0, wz - 3, 90, DP, 0xd0d0c8, 2.0, 2.6);
+            fakeDoor(P, Wf / 2 + 0.06, 0, wz - 3, 270, DP, 0xd0d0c8, 2.0, 2.6);
             emit(T, P);
             /* the wings' collision (ground buildings with no skin) */
             const wW = local(T, -Wf / 2 + ww / 2, wz), wE = local(T, Wf / 2 - ww / 2, wz);
@@ -377,7 +377,7 @@ module.exports = {
         /* ═══ 14. THE WORKER CAFE — the DINER pack building at its real size in the middle of its plot; the terrace beside it ═══ */
         (() => {
             const row = rowOf('P09-03-B1'); if (!row) return;
-            props.push({ key: 'city_diner', x: row.x, z: r3(row.z - 0.1), face: 0 });
+            props.unshift({ key: 'city_diner', x: row.x, z: r3(row.z - 0.1), face: 0 });   // first in the list: a whole building should not land after a thousand small props
             drop(row);
         })();
         terrace('P09-03-B2', 2, [0xb8b0a0, 0xc8806c]);
@@ -392,7 +392,7 @@ module.exports = {
             P.push(cyl(-W / 2 + 0.6, 0, F - 0.6, 1.9, H, GT, 0xe4f6fc, { uv: [1.75, 3.5], cap: false }), cyl(W / 2 - 0.6, 0, F - 0.6, 1.9, H, GT, 0xe4f6fc, { uv: [1.75, 3.5], cap: false }));
             P.push(box(W / 2 - 1.4, 0, -F - 1.0, 3.2, H + 5, 3.2, GF, 0xc8e4ec, { uv: 1.75 }));
             P.push(box(0, H, 0, W + 2.4, 0.4, D + 2.4, CONC, 0xf0f0ec, { under: true }), box(-0.6, H + 0.4, -0.3, W - 5, 4.4, D - 3.6, GT4, 0xc8e4f0, { uv: [2.2, 4.4], top: false }));
-            P.push(roof('shed', -0.6 - (W - 2) / 4, H + 4.8, -0.3, D - 0.6, 1.2, (W - 2) / 2, ALU, WHITE, { ry: 90, under: true }), roof('shed', -0.6 + (W - 2) / 4, H + 4.8, -0.3, D - 0.6, 1.2, (W - 2) / 2, ALU, WHITE, { ry: 270, under: true }));
+            P.push(roof('shed', -0.6 - (W - 2) / 4, H + 4.8, -0.3, D - 0.6, 1.2, (W - 2) / 2, ALU, WHITE, { ry: 270, under: true }), roof('shed', -0.6 + (W - 2) / 4, H + 4.8, -0.3, D - 0.6, 1.2, (W - 2) / 2, ALU, WHITE, { ry: 90, under: true }));
             P.push(box(T.lx, 2.9, F + 1.2, 5, 0.3, 2.4, ALU, 0xf4f4f4, { under: true }));
             emit(T, P);
         })();
@@ -413,10 +413,10 @@ module.exports = {
             P.push(box(-gp, 0, F, 1.2, 4.2, 1.2, STONE, 0xd8d0c0), box(gp, 0, F, 1.2, 4.2, 1.2, STONE, 0xd8d0c0), dome(-gp, 4.2, F, 0.5, 0.5, STONE, 0xd8d0c0, { roof: false }), dome(gp, 4.2, F, 0.5, 0.5, STONE, 0xd8d0c0, { roof: false }));
             P.push(box(0, 3.9, F, 2 * gp - 1.2, 0.14, 0.14, null, 0x1c1e22), fan(0, 4.0, F, 1.9, 0, null, 0x1c1e22, { kind: 'wall' }));
             /* the palm house */
-            P.push(box(0, 0, 0, T.W + 0.6, 0.7, 8, STONE, 0xf8f8f4, { faces: 'blr' }), box(0, 0.7, 0, T.W + 0.1, 3.2, T.D + 0.1, GF, GLS, { uv: [1.75, 3.2], top: false, faces: 'blr', glow: 0.25 })); frontWithDoor(P, T, 0, 3.9, GF, GLS, { uv: [1.75, 3.9], glow: 0.25 });
-            P.push(roof('barrel', 0, 3.9, 0, T.W + 0.1, 3.7, T.D + 0.1, GF, GLS, { keyEnd: GF, tintEnd: GLS, glow: 0.25, seg: 12 }));
-            P.push(box(0, 0, -2.4, 9, 0.7, 7.6, STONE, 0xf8f8f4), box(0, 0.7, -2.4, 8.4, 5.2, 7, GF, GLS, { uv: [1.75, 2.6], glow: 0.25 }));
-            P.push(cyl(0, 5.9, 0, 4.3, 1.2, GF, GLS, { seg: 24, glow: 0.25, cap: false }), cyl(0, 7.1, 0, 4.5, 0.25, ALU, WHITE, { seg: 24 }), dome(0, 7.35, 0, 4.2, 4.2, GF, GLS, { seg: 24, rings: 8, glow: 0.25 }), cyl(0, 11.5, 0, 0.5, 0.9, ALU, WHITE, { seg: 8 }), dome(0, 12.4, 0, 0.4, 0.5, 'gold', WHITE));
+            P.push(box(0, 0, 0, T.W + 0.6, 0.7, 8, STONE, 0xf8f8f4, { faces: 'blr' }), box(0, 0.7, 0, T.W + 0.1, 3.2, T.D + 0.1, GF, GLS, { uv: [1.75, 3.2], top: false, faces: 'blr', glow: 0.5, kind: 'wall' })); frontWithDoor(P, T, 0, 3.9, GF, GLS, { uv: [1.75, 3.9], glow: 0.5, kind: 'wall' });
+            P.push(roof('barrel', 0, 3.9, 0, T.W + 0.1, 3.7, T.D + 0.1, null, 0x9fd4cc, { keyEnd: GF, tintEnd: GLS, seg: 12 }));
+            P.push(box(0, 0, -2.4, 9, 0.7, 7.6, STONE, 0xf8f8f4), box(0, 0.7, -2.4, 8.4, 5.2, 7, GF, GLS, { uv: [1.75, 2.6], glow: 0.5, kind: 'wall' }));
+            P.push(cyl(0, 5.9, 0, 4.3, 1.2, GF, GLS, { seg: 24, glow: 0.5, kind: 'wall', cap: false }), cyl(0, 7.1, 0, 4.5, 0.25, ALU, WHITE, { seg: 24 }), dome(0, 7.35, 0, 4.2, 4.2, null, 0x9fd4cc, { seg: 24, rings: 8 }), cyl(0, 11.5, 0, 0.5, 0.9, ALU, WHITE, { seg: 8 }), dome(0, 12.4, 0, 0.4, 0.5, 'gold', WHITE));
             /* the parterre: clipped hedges, a gazebo */
             for (const p of [[-7, 9], [7, 9], [-7, 14], [7, 14]]) P.push(box(p[0], 0, p[1] + cz - 3, 6, 0.9, 0.8, 'leaves_3', 0xc8e8b8), box(p[0], 0, p[1] + cz - 1.4, 0.8, 0.9, 3, 'leaves_3', 0xc8e8b8));
             P.push(cyl(10.2, 0, cz + 3.5, 0.09, 2.6, null, WHITE, { seg: 6, ring: { n: 6, r: 1.6 } }), cyl(10.2, 2.6, cz + 3.5, 2.1, 1.3, ALU, VERDI, { seg: 6, r2: 0.05 }));
