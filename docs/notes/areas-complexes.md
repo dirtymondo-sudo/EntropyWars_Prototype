@@ -2458,6 +2458,21 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
   podium, club, caterer north wing, P09-00 shop + workshop) get nothing on the deck; nothing new sticks out past 0.8 m at ground level.
   Cost: the district's arch rows went 671 -> ~2300 parts and ~8 -> ~17 materials a building (each sheet + tint is one mesh per building),
   data.js + ~135 KB. Only a walk-in's roof deck carries `roof: true` (a roof flag is its own mesh). No tools beyond the bake.
+- **THE INSIDES (mondo 11-13 21:04 "after the district threads do their exterior polish, let's go ahead and do the interiors"; his OK on the plan
+  21:19; the hotel is his exception, 19:02).** `districts/F-inside.js` (required by F.js; `furnish(T)` runs in `emit` for every hollow building)
+  fills the ten walk-in halls: hotel lobby, Goblin Bank hall, bank offices lobby, vault annex, taxi dispatch, drivers' store, intelligence
+  office, finance arcade, penthouse stair lobby, palm house. THE SQUARES (mondo 21:14 + 21:17, 3.5 m): `grid(T)` finds the CITY's whole squares
+  inside a building in its own frame (`g.c(i, j)`, i along the front, j from the back wall); a thing that blocks (counter, sofa, vault, cage,
+  gold pile, planting bed, gate) stands on a whole square's middle or fills whole squares, so every walkway is whole squares; decor (plants,
+  lamps, chairs, rugs) stands off the middles; what hangs flat on a wall (lift doors, mail boxes, screens, the vault door, the arcade's booths)
+  takes no square. Furniture = catalogue props (`I.put`, turned in the building's frame: 'f' looks at the front door); counters, cages, beds,
+  gold, lift doors and lamps are parts of ONE arch row a building (`dc:<id>:in`) with a ghost `wall` row each for the walker. `keyIn` /
+  `floorIn` on the building's row pick the hall's wall + floor sheets. THE HOTEL: `frame(id, { inside: true })` swaps its roof-route plateau
+  for a hollow two-storey texbuilding (the same 7 m walked roof; I.js did it first); the tower's collision on the terrace is four HUNG ghost
+  walls (`lift`: they start over the roof, the lobby under them is walked). The tool warns "the lower roof of RF67 is a walk-in building":
+  the roof flight there now stands on the hotel's roof slab. props.js `INDOOR` (a WeakSet a district adds its indoor rows to): the prop check
+  does not report them for standing inside their own building, only against the inside's own pieces and other props. NO REAL LIGHTS inside
+  (the city has no light rows; lamps are glowing parts): the halls are as bright as the engine's walk-in buildings are.
 - THE GIANT APE (mondo 11-13 19:25: "put king kong in the district with the most high rises or tall buildings"): Financial (5 to 11 storeys). S.js `build` pushes him to `ctx.npcSpots` (new in the bake hook: a district's people, written to the room's `npcSpots`) at (173.25, -92.75), the open ground at the foot of the Penthouse stair tower (P10-03), with his own line from the old streets.
 
 ## DISASTER CITY, THE UNIVERSITY DISTRICT (2026-11-13, the University thread; mondo's OK 19:24)
