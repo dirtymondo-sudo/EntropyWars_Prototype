@@ -186,7 +186,7 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 | fallen angel (F) | 11-13 | pale patch in the skirt's slit | owed | fallenangelFace, soft | waiting | creator Feathered wings tinted black; `--nowings` |
 | firefighter (M) | 11-13 | clean | owed | firefighterFace | waiting | creator Firefighter helmet + air tank; T2 coat + trousers |
 | fortune teller (F) | 11-13 | clean | owed | fortunetellerfFace, soft | waiting | `--longhair` |
-| gangster (M) | 11-13 | clean (his tattoos are gone: bare body skin) | owed | gangsterFace | waiting | T2 trousers + sneakers only (`SKIN_T=0.45 ARMX=0 --barearms`), creator do-rag tinted red |
+| gangster (M) | 11-13 | clean (his tattoos are gone: bare body skin) | owed | gangsterFace | waiting | T2 trousers + sneakers only (`SKIN_T=0.45 ARMX=0 --barearms`), no do-rag (the creator one sat above his head) |
 | general (M) | 11-13 | gap at the side under the right arm | owed | generalFace | waiting | creator Officer cap; `RAY_OUT=0.15` |
 | ghost (F) | 11-13 | clean | owed | ghostFace, soft (pale blue tone) | waiting | `--longhair`; she is not see-through like the original |
 | giant (M) | 11-13 | clean | owed | giantFace | waiting | all T2; normal height (the race is 1.7x) |
