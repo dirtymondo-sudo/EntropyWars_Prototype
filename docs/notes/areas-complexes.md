@@ -2431,6 +2431,22 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
   GlassWindow* sheets draw near black in an arch row and he wants that look, so never lift them (no glow / gain). Added in F.js: the hotel's
   sky bar tier, the archive's stair drum, the palm house's vault + dome (back to glass), a clerestory on the garage, the shops' upper floor,
   every third back lot a glass office block over a stone ground storey. The HOTEL gets a walk-in inside when the interiors start (his word).
+- **THE SECOND LAYERS (mondo 11-13 20:15 "one more polish pass on the exteriors ... go one or two more layers deep with the detail"; 20:18
+  "roofs and ac units"; 20:19 "and textures, different textures or decals for different parts of the building")**: `districts/F-detail.js`
+  (required by F.js; the tool only reads `<LETTER>.js` as a district) runs on every Financial building's parts in `emit`, by building id or
+  by kind (terrace / shop / workshop / backlot). It adds: belt courses, dentils, sills, keystones, door hoods, downpipes, lamps, railings;
+  ROOFS (a deck sheet, parapets, AC units with grille faces, chillers, vents, ducts, stair heads, water tanks, skylights; AC boxes + grilles
+  on back and side walls); OTHER SHEETS on other parts, all from the urban pack as it is: `MetalSubwayGrill1a` (louvres), `MetalTruss1a`
+  (sign frames, a cut-out), `RubberNonSlip1a` / `ConcreteUnderTiles2` (roof decks), `FibreCeilingTile1a` (soffits under the taxi canopy and
+  the executive slab), `TileSubway1a` (the taxi rank's tiled wall, the kitchen dado), `TileSubway3a` (shop risers), `TileGeneric5a` /
+  `TileMarble2a` / `TileMarble3a` (checker floors and bands), the `Sign*` plates (caution / hazard / no entry / helmet, `uv: 'fit'`).
+  SIGNS: an arch part cannot write text, so `letters()` builds block letters from boxes (a 5 x 7 face, greedy rectangles): HOTEL (gold, on
+  the marquee + down a red blade), ARCHIVE, BANK (gold, twice), CATERING, VAULT (gold), TAXI (lit, on a truss), STORE, GARAGE, ARCADE
+  (gold), NEWS, and BOOKS / TAILOR / FLORIST on the shops' awning valances (`shop(id, { sign })`). Plain trade words only; nothing on the
+  intelligence office or the members club. Rules kept: gold = the `gold` sheet with `gain` 1.5; glass never lifted; walked roofs (hotel
+  podium, club, caterer north wing, P09-00 shop + workshop) get nothing on the deck; nothing new sticks out past 0.8 m at ground level.
+  Cost: the district's arch rows went 671 -> ~2300 parts and ~8 -> ~17 materials a building (each sheet + tint is one mesh per building),
+  data.js + ~135 KB. Only a walk-in's roof deck carries `roof: true` (a roof flag is its own mesh). No tools beyond the bake.
 - THE GIANT APE (mondo 11-13 19:25: "put king kong in the district with the most high rises or tall buildings"): Financial (5 to 11 storeys). S.js `build` pushes him to `ctx.npcSpots` (new in the bake hook: a district's people, written to the room's `npcSpots`) at (173.25, -92.75), the open ground at the foot of the Penthouse stair tower (P10-03), with his own line from the old streets.
 
 ## DISASTER CITY, THE UNIVERSITY DISTRICT (2026-11-13, the University thread; mondo's OK 19:24)
