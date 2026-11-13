@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 737 |
+| Meshy AI | no | 745 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -2045,6 +2045,19 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ind_skip | `Assets/world/packs/domi236_industrial/ind_skip.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
 | ind_skip_full | `Assets/world/packs/domi236_industrial/ind_skip_full.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
 | ind_vent | `Assets/world/packs/domi236_industrial/ind_vent.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
+
+### Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md) — Meshy AI (8)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| hand_truck | `Assets/world/props/meshy/hand_truck.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md) |
+| mailbox_bank | `Assets/world/props/meshy/mailbox_bank.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md) |
+| newspaper_bundles | `Assets/world/props/meshy/newspaper_bundles.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md) |
+| pallet_jack | `Assets/world/props/meshy/pallet_jack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md) |
+| photocopier | `Assets/world/props/meshy/photocopier.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md) |
+| studio_camera | `Assets/world/props/meshy/studio_camera.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md) |
+| treadmill | `Assets/world/props/meshy/treadmill.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md) |
+| welding_cart | `Assets/world/props/meshy/welding_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md) |
 
 ### House · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (7)
 
