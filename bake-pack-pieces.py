@@ -36,6 +36,10 @@ F = {
     'tacos':         'tacos/Tacos/Models/Tacos.fbx',
     'metro':         'metro/Metro_PSX/Models/Metro.fbx',
     'dinerscene':    'diner/DINER/Models/DINER.fbx',
+    'pizzeriascene': 'pizzeria-psx/Pizzeria/Models/Pizzeria_Scene.fbx',
+    'gasscene':      'gas-station/Gas_station/Models/Gas_station.fbx',
+    'laundryscene':  'laundry/Laundry/Models/Laundry.fbx',
+    'quequis':       'quequis-house/Quequis_House/Models/Quequis_House.fbx',
 }
 # (catalogue key, pack, scene nodes, rotz degrees)
 JOBS = [
@@ -80,6 +84,25 @@ AUDIT = [
 ]
 ROT = json.loads(arg('--rot') or '{}')   # {key: degrees} overrides while fitting the fronts
 JOBS += [(k, p, n, ROT.get(k, r)) for (k, p, n, r) in AUDIT]
+# THE CITY'S WHOLE BUILDINGS (2026-11-13, mondo: "Isnt there a pizza resturaunt and or gast station asset pack we downlaoded? Those
+# definitely need to be buildings somewhere"): each pack scene's building from the OUTSIDE (its shell, doors, windows, signs; never the
+# furniture or the stock), at true size, its entrance side at +Z — data.js HQ_PACK_BUILDINGS `city_*`. A region may be a `box`
+# [x0, x1, y0, y1] in the scene's metres in place of `near` (the gas station: the store, the canopy, the pumps, the price sign).
+# Who places which: docs/disaster-city/pack-claims.md.
+JOBS += [
+    ('city_pizzeria', 'pizzeriascene', [{'near': 'building_01.001', 'pad': 1.0, 'keep': r'^(building_01\.00[12]$|Door(\.001)?$|Glass$|Decorative_Sign)'}], -90),
+    ('city_gas_store', 'gasscene', [{'box': [-4, 27, 12, 31], 'keep': r'^(6twelve|Bathrooms|Door(_\d+)?$|Frame|Glass|Window_frame|ICE|Toilets_Sing|spotlight)'}], 0),
+    ('city_gas_canopy', 'gasscene', [{'box': [-7, 19, -14, 6], 'keep': r'^(Pillar|Fuel_pump|The_ceiling|Lamp|Sidewalk)'}], 0),
+    ('city_gas_sign', 'gasscene', [{'box': [-12, -7, -19, -14], 'keep': r'^6twelve_Sign'}], 0),
+    ('city_diner', 'dinerscene', [{'near': 'DINER', 'pad': 1.5, 'keep': r'^(DINER$|Entry|Sing_DINER|Sign|Door(_\d+)?$|Door_frame|Glass|Window_frame)'}], 0, {'cut': 2.3}),
+    ('city_burgerpiz', 'burgerpiz', [{'near': 'BurgerPiz', 'pad': 2.5, 'keep': r'^(BurgerPiz|RooftilesMetal|L$|Windows|Door_F|Door$|Door_01$|Wall_W)'}], -90),
+    ('city_6twelve', '6twelve', [{'near': '6twelve', 'pad': 1.0, 'keep': r'^(6twelve|Glasses|Door(_0[12])?$|Door_frame|Sign)'}], 0, {'cut': 0.6}),
+    ('city_taco_stand', 'tacos', [{'near': 'Taco_stand', 'pad': 1.5, 'keep': r'^(Taco_stand|Taco|Tacos)'}], 180),
+    ('city_laundry', 'laundryscene', [{'near': 'Laundry_building', 'pad': 1.0, 'keep': r'^(Laundry_building|Sign_Laundry|Door$|DoorsWood|Glass|Window_frame|frame_door)'}], -90),
+    ('city_vhs_shop', 'vhsshop', [{'near': 'Shop_VHS', 'pad': 0.5, 'keep': r'^(Shop_VHS$|Shop_VHS\._Windows|Door$|Frame_Door)'}], 180, {'cut': 3.6}),
+    ('city_house', 'house', ['House'], 0),
+    ('city_quequis_house', 'quequis', [{'near': 'Quequis_House', 'pad': 1.0, 'keep': r'^(Quequis_House|Frame$|Cube$|RooftilesMetal|Door_Q|Door_0[12]$|Frame_Door)'}], 180),
+]
 jobs = []
 for J in JOBS:
     k, p, nodes, rz = J[:4]
@@ -117,10 +140,13 @@ for f,js in byfile.items():
         for n in j['nodes']:
             if isinstance(n,dict):   # a REGION (THE TOWN RIM's TRAILERS): every matching object whose middle is inside the near node's footprint
                 import re
-                ref=bpy.data.objects.get(n['near'])
-                if not ref: print('MISSING NODE',n['near'],'in',f); continue
-                rp=[ref.matrix_world@v.co for v in ref.data.vertices]; pad=n.get('pad',1.0); rx=re.compile(n['keep'])
-                x0=min(p.x for p in rp)-pad; x1=max(p.x for p in rp)+pad; y0=min(p.y for p in rp)-pad; y1=max(p.y for p in rp)+pad
+                rx=re.compile(n['keep'])
+                if n.get('box'): x0,x1,y0,y1=n['box']   # THE CITY'S WHOLE BUILDINGS: a plain box in the scene's metres
+                else:
+                    ref=bpy.data.objects.get(n['near'])
+                    if not ref: print('MISSING NODE',n['near'],'in',f); continue
+                    rp=[ref.matrix_world@v.co for v in ref.data.vertices]; pad=n.get('pad',1.0)
+                    x0=min(p.x for p in rp)-pad; x1=max(p.x for p in rp)+pad; y0=min(p.y for p in rp)-pad; y1=max(p.y for p in rp)+pad
                 for o in bpy.data.objects:
                     if o.type!='MESH' or not rx.search(o.name): continue
                     c=sum((o.matrix_world@v.co for v in o.data.vertices),Vector())/max(1,len(o.data.vertices))
@@ -187,7 +213,7 @@ for f,js in byfile.items():
         os.makedirs(os.path.dirname(j['out']),exist_ok=True)
         bpy.ops.export_scene.gltf(filepath=j['out'],export_format='GLB',use_selection=False,export_apply=True,export_yup=True,export_image_format='AUTO',export_materials='EXPORT',export_animations=False,export_skins=False)
         d=mx-mn
-        print('OUT',j['out'],'dims_m',round(d.x,2),round(d.y,2),round(d.z,2),'tris',tris)
+        print('OUT',j['out'],'dims_m',round(d.x,2),round(d.y,2),round(d.z,2),'tris',tris,'rotz',rz)
 
 for t in (TMP, TMP + '1'):
     if os.path.exists(t): os.remove(t)

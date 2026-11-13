@@ -25,6 +25,15 @@ const r3 = v => Math.round(v * 1000) / 1000;
 const gx = c => r3(-HALF + c * C);                                 // a cell LINE (0..144) in room metres
 const gc = c => r3(-HALF + (c + 0.5) * C);                         // a cell CENTRE
 const plotOf = {}; PLAN.plots.forEach(p => { plotOf[p.id] = p; });
+/* THE DISTRICT FILES (2026-11-13, the one hook for the nine district threads): docs/disaster-city/districts/<LETTER>.js (R C F U H E I S B),
+   one per district, so no district's code lands in this tool. A file may export any of: tailor(PLAN, plotOf) = here, before the plan is read;
+   apply(ctx) = after the buildings + their door steps exist, before the street furniture (take() cells there to keep them clear);
+   build(ctx) = after every row exists. ctx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell,
+   roofB, ROOF_H, C, N, HALF }. A district edits its own rows by id ('dc:' + building id) and pushes its own rows (arch rows to lateRows). */
+const DISTRICTS = (() => { const dir = path.join(REPO, 'docs/disaster-city/districts'); return !fs.existsSync(dir) ? [] : fs.readdirSync(dir).filter(f => /^[A-Z]\.js$/.test(f)).sort().map(f => require(path.join(dir, f))); })();
+let dcCtx = null;
+const dcRun = stage => DISTRICTS.forEach(m => { if (typeof m[stage] === 'function') m[stage](dcCtx); });
+DISTRICTS.forEach(m => { if (typeof m.tailor === 'function') m.tailor(PLAN, plotOf); });
 /* THE CROSSINGS (tailoring): the plan leaves a one-cell nub where a walk crosses a road (PPPPPPPRPPPP, RRRRRRRRPRRR). A row / column that is
    mostly pavement becomes a whole paved crossing; a lone pavement cell in a carriageway becomes road. */
 PLAN.plots.forEach(p => {
@@ -84,36 +93,75 @@ const TALL = { 'Superhero Tower': 12, 'Goblin Bank': 6, 'Luxury hotel': 10, 'Cit
 /* the plan's filler buildings wear the game's painted building sprites (solid, a painted front); its shop rows the Buildings pack's shop blocks (MODEL_LIST: Elbolilloduro, CC0) */
 const FILLER = { 'Residence / annex': ['building_2', 'building_4', 'building_6', 'building_8', 'building_9'], 'Local shop': ['shop', 'building_7', 'building_10'], 'Street kiosk / annex': ['shop', 'building_5', 'building_3'], 'Workshop / store': ['building_3', 'building_10', 'building_1'] };
 const PACKED = { 'Corner shops': 'pack_bld_08', 'West shops': 'pack_bld_09', 'East shops': 'pack_bld_07', 'Tailor shops': 'pack_bld_03', 'Bookshops': 'pack_bld_04', 'Costume shops': 'pack_bld_05', 'Coffee arcade': 'pack_bld_06', 'Repair shops': 'pack_bld_00', 'Pawnshop court': 'pack_bld_09', 'Restaurant court': 'pack_bld_08' };
+/* the pack blocks' own size in metres, [along the front, deep] (data.js HQ_PACK_BUILDINGS) */
+const PACK_W = { pack_bld_00: [28.18, 19.43], pack_bld_01: [34.05, 19.51], pack_bld_02: [40.8, 22.88], pack_bld_03: [23.19, 17.15], pack_bld_04: [25.49, 18.15], pack_bld_05: [29.79, 19.1],
+    pack_bld_06: [33.45, 18.67], pack_bld_07: [24.88, 16.24], pack_bld_08: [15.52, 13.95], pack_bld_09: [16.89, 13.86] };
+/* THE PACK FIT: the block (or two / three side by side) that fills a front `fw` metres long and `fd` deep at 0.9 to 1.15 of its true size, its depth
+   stretched no more than 0.7 to 1.5 → { keys, s } or null. `want` (the plot's old pick) wins a tie. District threads: call this, never write a pack row's `w` by hand. */
+function packFit(fw, fd, want) {
+    const K = Object.keys(PACK_W); let best = null;
+    const tryRow = keys => {
+        const sum = keys.reduce((a, k) => a + PACK_W[k][0], 0), s = fw / sum; if (s < 0.9 || s > 1.15) return;
+        let zs = 0; for (const k of keys) { const z = fd / (PACK_W[k][1] * s); if (z < 0.7 || z > 1.5) return; zs += Math.abs(Math.log(z)); }
+        const cost = Math.abs(s - 1) * 4 + zs / keys.length + (keys.length - 1) * 0.15 - (keys.includes(want) ? 0.05 : 0);
+        if (!best || cost < best.cost) best = { keys, s, cost };
+    };
+    K.forEach(a => { tryRow([a]); K.forEach(b => { if (b !== a) { tryRow([a, b]); K.forEach(c => { if (c !== a && c !== b) tryRow([a, b, c]); }); } }); });
+    return best;
+}
 const PAL = ['urban:TileGeneric1a', 'grass_2', 'urban:ConcreteStriped2a', 'urban:TileGeneric2a', 'urban:TileGeneric3a', 'urban:ConcreteUnderTiles1'];   // 1 pavement · 2 grass · 3 yard concrete · 4 marble (financial) · 5 plaza paving (civic, hero plaza) · 6 bare concrete (industrial); 0 = the room's asphalt
 
 /* ── the roof-route buildings (solid tiers whose roofs are walked) ── */
 const roofB = new Set(); PLAN.roofEdges.forEach(e => { roofB.add(e.a); roofB.add(e.b); });
 const ROOF_H = 7.0;   // two storeys of 3.5 m: every roof on a route stands level with the next (a bridge is level)
 
-const features = [], props = [], bInfo = [];
+const features = [], props = [], bInfo = [], lateRows = [];
 const count = { texb: 0, roofb: 0, infill: 0, bridges: 0, escapes: 0, trees: 0 };
 
 /* ── THE BUILDINGS ── */
 PLAN.plots.forEach(p => {
     const dd = D[p.d], ox = p.x * N, oy = p.y * N;
     p.buildings.forEach((b, bi) => {
-        const x0 = ox + b.x, y0 = oy + b.y, w = b.w * C, d = b.h * C, x = r3((gx(x0) + gx(x0 + b.w)) / 2), z = r3((gx(y0) + gx(y0 + b.h)) / 2);
+        const x0 = ox + b.x, y0 = oy + b.y, x = r3((gx(x0) + gx(x0 + b.w)) / 2), z = r3((gx(y0) + gx(y0 + b.h)) / 2);
         const door = b.doors[0], side = door ? door.side : 'S';
         const rot = { S: 0, W: 90, N: 180, E: 270 }[side];
+        /* THE FRONT IS THE ROW'S `w` (2026-11-13): a texbuilding's `w` runs ALONG ITS FRONT and `d` back from it, in the building's own turned
+           frame (data.js hqTexBuildingRows), so a building that faces east or west has the plan's two sides the other way round. (They were
+           written unturned: every east / west facing building that is not square stood a quarter turn off its footprint.) */
+        const ew = side === 'E' || side === 'W', w = (ew ? b.h : b.w) * C, d = (ew ? b.w : b.h) * C;
         /* the doorway's square of the front, 1 = its left as you face the front from outside */
         let col = 0;
         if (door) { const k = side === 'S' ? (door.x - b.x) : side === 'N' ? (b.x + b.w - 1 - door.x) : side === 'E' ? (b.y + b.h - 1 - door.y) : (door.y - b.y); col = Math.round(k * C / 1.75) + 1; }   // the front's face squares are 1.75 m: the doorway is the left half of the plan's door square
         const style = pick(dd.styles);
         let st = TALL[b.name] || pick(dd.storeys);
-        const info = { id: b.id, name: b.name, plot: p.id, d: p.d, x, z, w, d2: d, side, cx0: x0, cy0: y0, cw: b.w, ch: b.h, st };
+        const info = { id: b.id, name: b.name, plot: p.id, d: p.d, x, z, w: b.w * C, d2: b.h * C, side, cx0: x0, cy0: y0, cw: b.w, ch: b.h, st };
         if (roofB.has(b.id)) {
             /* a roof-route building: a solid building tier, its flat roof the walk (the plan's inside stair is a fire escape outside) */
-            features.push({ k: 'plateau', id: 'dc:' + b.id, x, z, w: r3(w), d: r3(d), h: ROOF_H, edge: 0.3, bld: { style, seed: features.length } });
+            features.push({ k: 'plateau', id: 'dc:' + b.id, x, z, w: r3(b.w * C), d: r3(b.h * C), h: ROOF_H, edge: 0.3, bld: { style, seed: features.length } });
             info.roof = ROOF_H; count.roofb++;
         } else {
             const row = { k: 'texbuilding', id: 'dc:' + b.id, x, z, w: r3(w), d: r3(d), rot, storeys: st, style, seed: features.length };
             if (b.name === 'Church') { row.key = 'church_1'; delete row.style; }
-            else if (PACKED[b.name] && bi === 0) { row.key = PACKED[b.name]; delete row.style; }
+            else if (PACKED[b.name] && bi === 0) {
+                /* THE SHOP BLOCKS AT THEIR OWN SIZE (2026-11-13, mondo: "make sure their scale is correct, right now they are way too small and i
+                   am taller than the door"): a pack block is a whole model the engine fits to the row's `w` (one scale, the height and the
+                   doors with it), so a 33 m block on a 10 m front stood at a third of its size. packFit picks the block, or the row of blocks
+                   side by side, whose own width fills the front at 0.9 to 1.15 of true size; the front is the first door side that takes one. */
+                let fit = null, fs = side;
+                for (const dr of b.doors.length ? b.doors : [{ side }]) { const e2 = dr.side === 'E' || dr.side === 'W'; fit = packFit((e2 ? b.h : b.w) * C, (e2 ? b.w : b.h) * C, PACKED[b.name]); if (fit) { fs = dr.side; break; } }
+                if (!fit) { row.key = 'shop'; row.storeys = Math.min(st, 3); delete row.style; }   // a front no block fits at true size: the painted shop
+                else {
+                    const e2 = fs === 'E' || fs === 'W', fw = (e2 ? b.h : b.w) * C, fd = (e2 ? b.w : b.h) * C, q = { S: 0, W: 90, N: 180, E: 270 }[fs] * Math.PI / 180;
+                    let u = -fw / 2;
+                    fit.keys.forEach((k, i) => {
+                        const bw = PACK_W[k][0] * fit.s, cu = u + bw / 2; u += bw;
+                        const r2 = i === 0 ? row : { k: 'texbuilding', id: 'dc:' + b.id + '-s' + (i + 1), storeys: st, seed: 9000 + lateRows.length };
+                        r2.x = r3(x + cu * Math.cos(q)); r2.z = r3(z + cu * Math.sin(q)); r2.w = r3(bw); r2.d = r3(fd); r2.rot = { S: 0, W: 90, N: 180, E: 270 }[fs]; r2.key = k; delete r2.style;
+                        if (i > 0) { lateRows.push(r2); count.texb++; }   // written after every other row, so no other building's seed moves
+                    });
+                    count.packs = (count.packs || 0) + fit.keys.length;
+                }
+            }
             else if (FILLER[b.name]) { row.key = pick(FILLER[b.name]); row.storeys = Math.min(st, 5); delete row.style; }
             else { row.hollow = true; if (col) row.door = col; }
             features.push(row); count.texb++;
@@ -140,7 +188,7 @@ for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) {
         const x0 = horizontal ? r.a : lo, x1 = horizontal ? r.b + 1 : hi, z0 = horizontal ? lo : r.a, z1 = horizontal ? hi : r.b + 1;
         const front = r.pat === 1 ? 'a' : r.pat === 2 ? 'b' : (rnd() < 0.5 ? 'a' : 'b');
         const rot = horizontal ? (front === 'a' ? 180 : 0) : (front === 'a' ? 90 : 270);
-        const row = { k: 'texbuilding', id: 'dc:in' + count.infill, x: r3((gx(x0) + gx(x1)) / 2), z: r3((gx(z0) + gx(z1)) / 2), w: r3((x1 - x0) * C), d: r3((z1 - z0) * C), rot, storeys: deep === 1 ? pick([1, 1, 2]) : pick([1, 2, 2, 3]), seed: features.length };
+        const row = { k: 'texbuilding', id: 'dc:in' + count.infill, x: r3((gx(x0) + gx(x1)) / 2), z: r3((gx(z0) + gx(z1)) / 2), w: r3((horizontal ? x1 - x0 : z1 - z0) * C), d: r3((horizontal ? z1 - z0 : x1 - x0) * C), rot, storeys: deep === 1 ? pick([1, 1, 2]) : pick([1, 2, 2, 3]), seed: features.length };
         if (len <= 3 && rnd() < 0.55) row.key = pick(INFILL[p.d]); else row.style = pick(dd.styles);
         features.push(row); count.infill++;
         cells.forEach(q => setCell(q[0], q[1], 'I'));
@@ -178,6 +226,8 @@ const occ = new Set();
 const free = (cx, cy, ok) => { if (cx < 0 || cy < 0 || cx >= 144 || cy >= 144) return false; const ch = cellAt(cx, cy); return (ok || '.#').indexOf(ch) >= 0 && !occ.has(cx + ',' + cy); };
 const take = (cx, cy) => occ.add(cx + ',' + cy);
 bInfo.forEach(b => (plotOf[b.plot].buildings.find(q => q.id === b.id).doors || []).forEach(dr => take(plotOf[b.plot].x * N + dr.ox, plotOf[b.plot].y * N + dr.oy)));   // a door's step stays clear
+dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF };
+dcRun('apply');
 
 /* ── THE DOORS (mondo 11-13 14:10, the decision card: "Replace today's streets with it"): this room IS `site_prebuilt_downtown_streets` now, so every
    door that led to the old streets leads here. Each stands FREE (wall: 'free') where the plan has its place: the tower's on the Superhero Tower's
@@ -485,7 +535,7 @@ const lines = [];
 lines.push("        /* DC144-BEGIN — DISASTER CITY, THE 144 PLOTS (2026-11-13): written by `node bake-disaster-city.js` from docs/disaster-city/city-layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
 lines.push("        site_prebuilt_downtown_streets: {");
 lines.push("            label: 'DISASTER CITY',");
-lines.push("            sub: 'SOUTHSIDE · CIVIC CENTER · FINANCIAL · UNIVERSITY · HERO PLAZA · ENTERTAINMENT · INDUSTRIAL · SPORTS + CULTURE · BAYSIDE',");
+lines.push("            sub: 'NINE DISTRICTS · 144 PLOTS',");
 lines.push("            kind: 'box', site: 'prebuilt_downtown', part: 'streets',");
 lines.push("            shell: hqCityShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + sp[0] + ", z: " + sp[1] + ", y: 4.6 } }),");
 lines.push("            parti: 'Nine districts of sixteen plots, every plot a twelve by twelve board: a city walked as a maze of yards, alleys, doors and roofs between a few plain roads.',");
@@ -499,6 +549,8 @@ lines.push("                    lamps: " + J(lamps) + ",");
 lines.push("                       open: [] },");
 lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: 144, nz: 144, d: '" + b64 + "' },");
 lines.push("                features: [");
+dcRun('build');
+features.push(...lateRows);
 features.forEach(f => lines.push("                    " + J(f) + ","));
 lines.push("                ],");
 lines.push("                /* the cars: the ring (west avenue, the north street, the east avenue, the cross street), never the response streets round the mall */");
