@@ -116,3 +116,9 @@ is shot while still loading, so put a throwaway unit first. Not seen: any of the
   the sheriff's holster + revolver. The spy's thigh pouch and the sheriff's lasso stay (not weapons to hold).
 - THE MESHY HANDS (coordinator, from batch 1: "fingers look messed up"): bake `HANDCUT=1` cuts a bare hand fused to its sleeve so the
   body's hand shows: politician, priest, shaman, superhero F. Gloved units keep their gloves.
+- REVIEW ROUND 2 (mondo 11-13 17:08, pins on the round 1 sheet). Superhero F "super jagged sleeves and cape": her Meshy cape is one shell
+  with the suit, so bake `DROPCOL="0.667,0,0.188,0.35"` cuts it out by colour (shaded folds too) and the look wears the creator's
+  `bcape_hero`; `CUFF=1 CUFFIN=0.03` saws the sleeve ends straight across the arm. Shaman "juts out at a right angle": cape cloth within
+  16 cm of the arm line followed the arm (`SLEEVER=0.07` stops it) and 22 loose leaf patches on the cape drew as black squares (bake
+  `DROP`, the shoulder leaves stay). Nun "hair still messed up": no hair, the creator's `mhw_punkduck_swim_cap` in white is her coif under
+  the veil. Popstar "more dolled up": `mh_elvs_island_princess_hair` (ten tried on screen).

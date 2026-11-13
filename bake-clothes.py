@@ -2859,7 +2859,7 @@ TIGHT = {
     'sweatpants': {'label': 'Sweatpants', 'maxd': 0.05, 'kind': 'legs', 'cat': 'bottoms', 'z': 47, 'layer': 'bottom', 'ease': 0.011,
                    'rows_up': 13, 'rows_dn': 38, 'hem_below_knee': 0.37, 'foot_z': 0.12, 'xsec': True,
                    'doms': ('pelvis', 'spine_01', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r')},
-    'tie': {'label': 'Tie', 'kind': 'tie', 'cat': 'equipment', 'z': 57, 'ease': 0.019, 'knot_dz': -0.045, 'tip_dz': 0.035,
+    'tie': {'label': 'Tie', 'kind': 'tie', 'cat': 'equipment', 'z': 57, 'ease': 0.032, 'knot_dz': -0.045, 'tip_dz': 0.035,
             'main': {'color': [0.42, 0.05, 0.07], 'rough': 0.55, 'metal': 0.0}, 'doms': ()},
     'bowtie': {'label': 'Bow tie', 'kind': 'bowtie', 'cat': 'equipment', 'z': 57, 'ease': 0.017, 'at_dz': -0.05,
                'main': {'color': [0.05, 0.05, 0.06], 'rough': 0.5, 'metal': 0.0}, 'doms': ()},
