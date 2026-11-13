@@ -465,9 +465,9 @@ function beach(ctx, push, ghost) {
     rect(X0 + 0.4, Z0, XE + 2, Z1 + 2, 0, { sink: true, edge: 0.3 });
     { const lv = (ctx.lvOf && ctx.plotOf['P11-08']) ? ctx.lvOf(ctx.plotOf['P11-08']) * ctx.LEVELS.M : 0;
       if (lv > 0) lateRows.push({ k: 'ramp', x0: r3(X0 + 0.2), z0: gx(8 * N + 6), x1: r3(XB - 0.4), z1: gx(8 * N + 6), w: 7, h0: lv, h1: 0, edge: 0.2, absY: true }); }
-    rect(X0 + 0.6, -ctx.HALF, XE + 2, Z0, DEEP, { sink: true, edge: 0.4 });
+    rect(X0 + 0.6, -ctx.HALF - 2, XE + 2, Z0, DEEP, { sink: true, edge: 0.4 });   // (THE NATURAL EDGES, 2026-11-13: to past the field's north edge, so no rim of the city's level stands across the north end of the bay)
     rect(XB, ZN, XE + 2, ZS, SHELF, { sink: true, edge: 0.3 });
-    rect(XD, ZN, XE + 2, ZS, DEEP, { sink: true, edge: 12 });
+    rect(XD, ZN, XE + 16, ZS, DEEP, { sink: true, edge: 12 });   // (THE NATURAL EDGES: the 12 m bank on its east side lies past the field, so no sand bar rises along the room's east edge)
     rect(gx(161), Z0 - 0.4, XE + 2, ZN + 0.4, DEEP, { sink: true, edge: 0.4 });
     rect(XG, ZS - 0.4, XE + 2, Z1 + 2, DEEP, { sink: true, edge: 0.4 });
     /* the mole's arm out to the light (the boardwalk's level), its round head */

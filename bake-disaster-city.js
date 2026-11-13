@@ -185,6 +185,7 @@ const GREEN = /park|green|canal|memorial|campus|garden/i, hedgeCells = [];
 const INFILL = { R: ['building_2', 'building_4', 'building_8', 'building_9'], C: ['building_1', 'building_6'], F: ['building_1', 'building_5'], U: ['building_4', 'building_6', 'building_9'], H: ['building_1', 'building_5'],
     E: ['shop', 'building_7', 'building_10', 'building_3'], I: ['building_3', 'building_10'], S: ['building_3', 'building_6'], B: ['shop', 'building_7', 'building_5'] };
 const usedBand = new Set();
+let edgeCut = 0;
 for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) {
     const line = L * N; let run = null;
     const flush = () => {
@@ -199,6 +200,12 @@ for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) {
         const rot = horizontal ? (front === 'a' ? 180 : 0) : (front === 'a' ? 90 : 270);
         const row = { k: 'texbuilding', id: 'dc:in' + count.infill, x: r3((gx(x0) + gx(x1)) / 2), z: r3((gx(z0) + gx(z1)) / 2), w: r3((horizontal ? x1 - x0 : z1 - z0) * C), d: r3((horizontal ? z1 - z0 : x1 - x0) * C), rot, storeys: deep === 1 ? pick([1, 1, 2]) : pick([1, 2, 2, 3]), seed: features.length };
         if (len <= 3 && rnd() < 0.55) row.key = pick(INFILL[p.d]); else row.style = pick(dd.styles);
+        /* THE NATURAL EDGES (2026-11-13, mondo: "having these fake buildings as barriers doesnt feel right"): no filler building on the
+           city's OUTER line (the land past it is the view: mountains, forest, desert, the bay). The draw is still made and the id still
+           counted, so no other building's seed, id or look moves; the band stays '#', so THE BOUNDARIES give it the side's own edge stop.
+           Bayside's east line is the beach's (the Bayside thread's). */
+        if (r.outer && !(p.d === 'B' && !horizontal && L === N)) { count.infill++; edgeCut++; count.edgeCut = edgeCut; return; }
+        row.seed += edgeCut;
         features.push(row); count.infill++;
         cells.forEach(q => setCell(q[0], q[1], 'I'));
     };
@@ -328,11 +335,20 @@ const HIGH = { R: ['rail:wood_fence', 'wall:2.1', 'hedge:1.9', 'rail:spear', 'tr
     U: ['hedge:1.9', 'rail:spear', 'wall:1.9', 'trees'], H: ['rail:spear', 'wall:2.1', 'hedge:1.8'], E: ['rail:wood_fence', 'wall:2.6', 'rail:wire_fence', 'dumpsters'],
     I: ['rail:wire_fence', 'wall:2.2', 'rail:panel_fence', 'rail:cable_fence', 'dumpsters'], S: ['rail:wire_fence', 'wall:1.9', 'rail:spear', 'hedge:1.8'], B: ['rail:wire_fence', 'wall:2.1', 'barricades', 'rail:spear'] };
 const BENCH = { R: 'park_bench', U: 'park_bench', S: 'park_bench', C: 'city_bench', H: 'city_bench', F: 'city_bench', B: 'city_bench' }, BIN = { C: 'city_bin', H: 'city_bin', B: 'city_bin', E: 'city_bin', S: 'city_bin', R: 'city_bin' };
+/* THE NATURAL EDGES (2026-11-13): what the land past each side is (three-renderer.js _hqBuildEdgeLand reads `terrain.edges`), and what
+   stands on the city's outer line in front of it. North = the high side: steep mountains (they turn the north-west corner and run a way
+   down the west side, and end in a headland over the bay in the north-east); west = tall forest on the hillside; south = flat desert;
+   east = the bay (sea cliffs north of Bayside's beach). */
+const EDGES = { reach: 440, n: { kind: 'mountain' }, w: { kind: 'forest', cap: { kind: 'mountain', at: 'n', len: 170 } }, s: { kind: 'desert' }, e: { kind: 'coast' } };
+const EDGE_STOP = { n: ['trees', 'wall:1.2'], w: ['trees', 'trees'], s: ['rail:guard', 'rail:cable_fence'], e: ['rail:parapet', 'rail:pipe'] };
 const edgeN = {};
 for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) for (let k = 0; k < N; k++) {
     const line = L * N, PA = plotOf[horizontal ? pid(k, L - 1) : pid(L - 1, k)], PB = plotOf[horizontal ? pid(k, L) : pid(L, k)];
     const joined = !!(PA && PB && conn.has(PA.id + '|' + PB.id)), home = (PA && PB) ? (rnd() < 0.5 ? PA : PB) : (PA || PB), dd = D[home.d];
-    const list = (joined ? LOW : HIGH)[home.d], first = pick(list); let second = pick(list); if (second === first) second = list[(list.indexOf(first) + 1) % list.length];
+    const list = (joined ? LOW : HIGH)[home.d]; let first = pick(list), second = pick(list); if (second === first) second = list[(list.indexOf(first) + 1) % list.length];
+    /* THE NATURAL EDGES: the city's outer line wears its side's own edge stop (EDGE_STOP), never a district's yard wall: you see the land
+       past it. Bayside's own outer lines stay the district's (the beach is the Bayside thread's). */
+    if (!(PA && PB) && home.d !== 'B') { const es = EDGE_STOP[horizontal ? (L === 0 ? 'n' : 's') : (L === 0 ? 'w' : 'e')]; first = es[0]; second = es[1]; }
     const A = c => horizontal ? [c, line - 1] : [line - 1, c], B = c => horizontal ? [c, line] : [line, c];
     const band = q => inCity(q[0], q[1]) && cellAt(q[0], q[1]) === '#';
     const runs = []; let run = null;
@@ -681,6 +697,11 @@ lines.push("            terrain: {");
 lines.push("                res: 0.875,");
 if (ROOM.sea) lines.push("                sea: " + J(ROOM.sea) + ",");
 if (ROOM.east) lines.push("                backdropInset: { w: " + r3(ROOM.east * C) + " }," + (ROOM.backdropOpen.length ? " backdropOpen: " + J(ROOM.backdropOpen) + "," : ""));
+lines.push("                /* THE NATURAL EDGES: no ring of backdrop buildings; the land past each side in place of the concrete outer ground (three-renderer.js _hqBuildEdgeLand) */");
+/* the grown room (Bayside's beach, ROOM.east): the west strip the centred shell adds is under the forest (the land starts behind the ghost wall on
+   the city's old edge); the bay lies past the city's east edge, so the mountains and the desert fall into it over the strip's width */
+if (ROOM.east) { const sw = ROOM.east * C; EDGES.w.inset = r3(sw - 0.1); EDGES.n.cap = { kind: 'coast', at: 'e', off: r3(sw), len: 60 }; EDGES.s.cap = { kind: 'coast', at: 'e', off: 25, len: 40 }; }
+lines.push("                backdrop: false, edges: " + J(EDGES) + ",");
 lines.push("                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
 const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)

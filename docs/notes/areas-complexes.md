@@ -2430,3 +2430,29 @@ collision row with the skin off and gets ONE `k: 'arch'` row `dcu:<building id>`
   (5) THE BIG WINDOWS: cut-out window sheets are drawn 5.25 m a sheet (a window about 1.8 m), none on the ground storey of a taller building.
 - Seen in the game (headless, 14 views) before the globe / window pass; that last pass is checked by `node --check` + the bake only.
 - Next pass: interiors of the roof-route buildings; the U plots' infill buildings are untouched.
+
+## DISASTER CITY, THE NATURAL EDGES — mountains, forest, desert, the bay in place of the ring of buildings (2026-11-13, mondo's OK 19:28 "Build it as drawn")
+- mondo 19:20: "get rid of the edge/moat of buildings around disaster city ... where the elevation is the highest there should be steep mountains, one
+  side can be forest or tall trees, or one side could be just plain flat desert ... I want the buildings to be interactable ... having these fake
+  buildings as barriers doesnt feel right". Later the plot system is used for other zones (The Woods) and plots get joined; this pass only replaces the ring.
+- GONE: the skyline ring (`terrain.backdrop: false`; three-renderer.js _hqBuildCityBackdrop is untouched for the other city rooms) and the concrete outer
+  ground (a room with `terrain.edges` builds none; `_hq.outer` is the land's own height); the 63 filler buildings on the city's OUTER plot line (bake-disaster-city.js THE INFILL: the draw is still made and the id
+  still counted, the row is not written; Bayside's east line is kept, it is the beach's). Southside's and Financial's styled back lots on the outer line went with them.
+- THE LAND: `terrain.edges = { reach, n, s, w, e }`, read by three-renderer.js `_hqBuildEdgeLand` / `_hqEdgeLandFn` (THE NATURAL EDGES). A side =
+  `{ kind: 'mountain' | 'forest' | 'desert' | 'coast', inset, cap: { kind, at, off, len } }`. The city: north = mountain (cap coast at the east end, over the
+  bay's strip), west = forest (cap mountain for the north 170 m; `inset` 69.9: the land starts behind the ghost wall on the city's old edge and lies OVER the
+  dead west strip Bayside's wider room added), south = desert (cap coast at the east end), east = coast (the bed under `terrain.sea`; the sea's sheet runs on
+  over it at the room's own height and key). One height function for the four sides and corners; ~36 000 triangles, 60 meshes in 20 pieces, each a chunk
+  (`H.chunks.cells['edge:<side><n>']`, far 1e12: culled off camera, never by distance). Past 70 m the land is fog-free with its haze in its vertex colours
+  (the city's fog eats everything at ~120 m; the peaks must stand over it). Sheets: `mountain` (rock), `grass` (forest floor), `desert` (sand, the beach's
+  own), `cliff` (a high edge falling to the sea); snow = plain white. ~900 trees (pine, tree_4, tree, pine_2; 13 to 22 m) through the room's tree kit to
+  60 m out, a skirt of pines on the mountains' feet. Kill switch `EW_HQ_NO_EDGE_LAND`. The build is ~0.7 s once, inside the room's load.
+- THE EDGE STOPS (bake EDGE_STOP): the city's outer line wears its side's own boundary, never a district's yard wall: north trees + a low wall, west trees,
+  south guard rail + cable fence (then a dry ditch in the land), east parapet + pipe rail (you see the sea over it). Bayside's outer lines stay Bayside's.
+- B.js (two numbers, told to the Bayside thread): the north water's sink runs 2 m past the field's north edge (a rim at the city's level stood across the north
+  end of the bay) and the deep sink's 12 m bank lies past the room's east edge (a sand bar rose along it).
+- NOT SEEN IN THE GAME: the headless browser run was refused (RULE #1c). Checked: `node --check`, the bake, and pictures of the land code alone (the real
+  function run in Node on the real room, drawn in a bare three.js page): /mnt/project-files/disaster-city-edges/built_land_check.jpg. Unchecked on screen:
+  the land's sheets and tints under the game's light, the seam at the field's edge, the fog-free far part against the sky, the game's own tree models.
+- NOT DONE: no road runs out into the desert (the streets end at the south line); no rocks / cactus on the desert (he asked for plain flat); the sky's far
+  roster (`sky.scenery: 'city'`) is unchanged; the forest past 60 m is bare ground (in the fog from the streets).
