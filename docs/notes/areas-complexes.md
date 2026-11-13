@@ -2302,3 +2302,18 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
   row with no `y` whose origin lies over a building plateau (`bld`) takes the ground that building stands on, never its roof. Four rows on main
   still stood 7 m up (P09-08-B2, P09-09-B1, P10-09-B1, P11-09-B2); the headless compile now gives all 191 city arch rows base 0. `y: 0` in a
   district file is harmless and no longer needed.
+
+## DISASTER CITY, THE BIG WINDOWS (2026-11-13, the shared-pieces thread)
+mondo (screenshot of two city blocks): "The buildings that use these repeated window textures from the urban pack, the windows are too small, need
+to be scaled up, and remember the bottom row of these buildings should be different/not windows". Both ways a city building is drawn put a window
+sheet on every 1.75 m square (a window about 1 m wide, two rows per storey, one at the pavement). Fixed in the shared code, three-renderer.js:
+- **The textured building** (`_hqTexBuilding`, every `texbuilding` and infill block not yet architected): one window per STOREY-wide bay (3.5 m).
+  Residential / stucco / pack-sheet decals are laid one per storey over the wall (`bigOver`), none on the ground storey, whose bottom row wears the
+  band / stucco trim sheet. Office: a 2.6 m pane over a spandrel per storey; tower: storey-high panes; both keep the shopfront glass at the ground with
+  a concrete fascia over it. Factory unchanged. `HQ_TEXB.bigWin = 0` = the old squares.
+- **The arch row** (`_hqArchGeometry`): a part whose `key` is `urban:GlassWindow*` / `urban:DecalWindows*` with no `uv` or a `uv` number under 3.5
+  repeats in whole storey rows (a 9 m wall = three rows of 3 m; a strip shorter than a storey = one row). An `[u, v]` pair and `'fit'` are the
+  district's own and stay. A box side / quad / poly wall of such a sheet that stands on the ground (part foot under 0.6 m) and is taller than
+  4.5 m draws its ground storey in `keyBase` (none = `HQ_TEXB.archBase`, plain concrete, in the part's tint; a decal draws nothing there).
+  `win: 'keep'` on a part turns both off. Cylinders get the bigger repeat but no base split.
+- NOT SEEN ON SCREEN (RULE #1c): checked by reading and `node --check` only.
