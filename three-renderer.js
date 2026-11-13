@@ -85179,14 +85179,17 @@ const ThreeRenderer = (function () {
             } else if (c.look === 'fireescape') {
                 /* THE FIRE ESCAPE (AREA CONTENT D2, 2026-09-19): a steel ladder up the face, a grated LANDING CAGE at its head (a platform
                    0.9 m deep with a rail round it, brackets under) — chained through landing plateaus it is the tenement's fire escape */
-                [-w / 2, w / 2].forEach(function (lx) { var r = mk(new THREE.BoxGeometry(0.05 * U, (top + 0.1) * U, 0.05 * U), steel); r.position.set(lx * U, (top + 0.1) / 2 * U, 0.06 * U); });
+                var grab = c.landing ? 0.95 : 0.1;   // THE STEEL LANDING (2026-11-13): a ladder up onto a landing ends in two grab rails over the deck
+                [-w / 2, w / 2].forEach(function (lx) { var r = mk(new THREE.BoxGeometry(0.05 * U, (top + grab) * U, 0.05 * U), steel); r.position.set(lx * U, (top + grab) / 2 * U, 0.06 * U); });
                 for (var fy = 0.3; fy < L + 0.05; fy += 0.3) { var frung = mk(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, w * U, 8), steel); frung.rotation.z = Math.PI / 2; frung.position.set(0, fy * U, 0.06 * U); }
                 var cageW = Math.max(1.4, w + 0.8), cageD = 0.9;
+                if (!c.landing) {   // (a head on a steel landing stands on the landing: no cage of its own)
                 var plat = mk(new THREE.BoxGeometry(cageW * U, 0.05 * U, cageD * U), iron); plat.position.set(0, (top + 0.02) * U, -(cageD / 2 - 0.06) * U);
                 for (var gx = -cageW / 2 + 0.12; gx < cageW / 2; gx += 0.12) { var slat = mk(new THREE.BoxGeometry(0.02 * U, 0.03 * U, (cageD - 0.1) * U), steel); slat.position.set(gx * U, (top + 0.06) * U, -(cageD / 2 - 0.06) * U); }
                 [[-cageW / 2, -cageD + 0.06], [cageW / 2, -cageD + 0.06], [-cageW / 2, 0.06], [cageW / 2, 0.06]].forEach(function (pp) { var post = mk(new THREE.BoxGeometry(0.04 * U, 1.0 * U, 0.04 * U), iron); post.position.set(pp[0] * U, (top + 0.52) * U, pp[1] * U); });
                 var railB = mk(new THREE.BoxGeometry(cageW * U, 0.04 * U, 0.04 * U), iron); railB.position.set(0, (top + 1.02) * U, -(cageD - 0.06) * U);
                 [-cageW / 2, cageW / 2].forEach(function (lx) { var railS = mk(new THREE.BoxGeometry(0.04 * U, 0.04 * U, cageD * U), iron); railS.position.set(lx * U, (top + 1.02) * U, -(cageD / 2 - 0.06) * U); });
+                }
                 for (var by2 = 1.2; by2 < L; by2 += 2.4) { var brk = mk(new THREE.BoxGeometry(0.05 * U, 0.05 * U, 0.22 * U), iron); brk.position.set(0, by2 * U, 0.17 * U); }
             } else if (c.look === 'rope') {
                 var rope = mk(new THREE.CylinderGeometry(0.028 * U, 0.028 * U, (top + 0.05) * U, 8), hemp); rope.position.set(0, (top + 0.05) / 2 * U, 0.05 * U);
@@ -85211,6 +85214,56 @@ const ThreeRenderer = (function () {
             G.add(g);
             c.group = g;
             H.climbs.push(c);
+        });
+        /* THE STEEL LANDING (2026-11-13, mondo: "Can i not just climb up the ladder and stand on the platform part?"): a fire escape's halfway
+           landing (data.js hqTerrainLandings: a slab the walker stands on, a wall along each rail) drawn as a steel platform: an iron deck
+           with a grating, posts and two rails along each open side (a gap where a ladder comes up), two struts back to the wall. Two meshes. */
+        var lands = (H.terrain && H.terrain.landings) || [];
+        lands.forEach(function (l) {
+            var ironG = [], steelG = [];
+            var box = function (arr, bw, bh, bd, x, y, z) { var bg = new THREE.BoxGeometry(bw * U, bh * U, bd * U); bg.translate(x * U, y * U, z * U); arr.push(bg); };
+            var strut = function (arr, t, ax, ay, az, bx, by, bz) {
+                var len = Math.hypot(bx - ax, by - ay, bz - az); if (!(len > 0.05)) return;
+                var sg = new THREE.BoxGeometry(t * U, t * U, len * U);
+                sg.applyMatrix4(new THREE.Matrix4().lookAt(new THREE.Vector3(ax, ay, az), new THREE.Vector3(bx, by, bz), new THREE.Vector3(0, 1, 0)));
+                sg.translate((ax + bx) / 2 * U, (ay + by) / 2 * U, (az + bz) / 2 * U); arr.push(sg);
+            };
+            box(ironG, l.w, 0.07, l.d, 0, -0.035, 0);
+            if (l.w >= l.d) { for (var sx = -l.w / 2 + 0.1; sx < l.w / 2 - 0.05; sx += 0.16) box(steelG, 0.025, 0.02, l.d - 0.12, sx, 0.01, 0); }
+            else { for (var sz = -l.d / 2 + 0.1; sz < l.d / 2 - 0.05; sz += 0.16) box(steelG, l.w - 0.12, 0.02, 0.025, 0, 0.01, sz); }
+            var mine = list.filter(function (c) { return c.landing === l.id; });
+            (l.rails || []).forEach(function (r) {
+                var alongX = Math.abs(r[2] - r[0]) > Math.abs(r[3] - r[1]), a0 = alongX ? r[0] : r[1], a1 = alongX ? r[2] : r[3], fix = alongX ? r[1] : r[0];
+                var runs = [[Math.min(a0, a1), Math.max(a0, a1)]];
+                mine.forEach(function (c) {   // a ladder's head on this side: the rail opens for it
+                    if (Math.abs((alongX ? c.z : c.x) - fix) > 0.25) return;
+                    var m = alongX ? c.x : c.z, ga = m - c.w / 2 - 0.08, gb = m + c.w / 2 + 0.08, next = [];
+                    runs.forEach(function (q) { if (gb <= q[0] || ga >= q[1]) { next.push(q); return; } if (ga - q[0] > 0.15) next.push([q[0], ga]); if (q[1] - gb > 0.15) next.push([gb, q[1]]); });
+                    runs = next;
+                });
+                runs.forEach(function (q) {
+                    var len = q[1] - q[0], mid = (q[0] + q[1]) / 2, n = Math.max(1, Math.ceil(len / 1.25));
+                    for (var k = 0; k <= n; k++) { var pa = q[0] + len * k / n; box(ironG, 0.045, 1.02, 0.045, (alongX ? pa : fix) - l.x, 0.51, (alongX ? fix : pa) - l.z); }
+                    [1.0, 0.52].forEach(function (ry) { if (alongX) box(ironG, len, 0.04, 0.04, mid - l.x, ry, fix - l.z); else box(ironG, 0.04, 0.04, len, fix - l.x, ry, mid - l.z); });
+                });
+            });
+            if (l.back != null) {   // the struts: from under the deck's outer edge down to the wall
+                var br = l.back * Math.PI / 180, bx = Math.sin(br), bz = -Math.cos(br), ns = (l.back === 0 || l.back === 180), half = ns ? l.d / 2 : l.w / 2, side = (ns ? l.w : l.d) / 2 - 0.12;
+                [-side, side].forEach(function (sd) {
+                    var ox = ns ? sd : -bx * (half - 0.1), oz = ns ? -bz * (half - 0.1) : sd, wx = ns ? sd : bx * half, wz = ns ? bz * half : sd;
+                    strut(ironG, 0.05, ox, -0.07, oz, wx, -0.95, wz);
+                });
+            }
+            var lg = new THREE.Group(); lg.position.set(l.x * U, l.y * U, l.z * U);
+            [[ironG, iron], [steelG, steel]].forEach(function (pair) {
+                if (!pair[0].length) return;
+                var pos = [], nor = [];
+                pair[0].forEach(function (bg) { var ng = bg.toNonIndexed(), pa = ng.attributes.position.array, na = ng.attributes.normal.array; for (var q = 0; q < pa.length; q++) { pos.push(pa[q]); nor.push(na[q]); } ng.dispose(); bg.dispose(); });
+                var mg = new THREE.BufferGeometry();
+                mg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); mg.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+                var mm = new THREE.Mesh(mg, pair[1]); mm.castShadow = true; mm.receiveShadow = true; mm._ew_pixelate = true; lg.add(mm);
+            });
+            G.add(lg);
         });
     }
     /* the climb within reach of the walker: { c, end: 'foot' | 'head' } or null */
