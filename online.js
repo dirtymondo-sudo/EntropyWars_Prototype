@@ -488,12 +488,27 @@
             _showPressFeedback = function(unit, res) {
                 _origShowPressFeedback(unit, res);
                 if (!unit || !res || !_isOnline() || !_isHost() || state.phase !== 'battle') return;
-                if (typeof _pressDialogueLine !== 'function' || !_pressDialogueLine(res)) return;
+                /* THE AP TALLY (mondo 2026-11-13): the corner stack is a host-side draw; its lines ride this relay */
+                if (typeof _pressDialogueLine !== 'function' || (!_pressDialogueLine(res) && !res._tally)) return;
                 _emit('relay', {
                     type: 'press-feedback', unitId: unit.id, x: unit.x, y: unit.y,
                     pressed: res.pressed ? 1 : 0, apDelta: res.apDelta || 0, entropyOverflow: res.entropyOverflow || 0,
-                    penalty: res.penalty ? 1 : 0, pressDenied: res.pressDenied ? 1 : 0
+                    penalty: res.penalty ? 1 : 0, pressDenied: res.pressDenied ? 1 : 0,
+                    tally: res._tally || null
                 });
+            };
+        }
+
+        /* THE AP TALLY's first beat (mondo 2026-11-13): the word that lands in the corner with the hit is a host-side
+           draw — relayed, and the guest's own copy asks its own fog. */
+        if (typeof _acApTallyPre === 'function') {
+            const _origAcApTallyPre = _acApTallyPre;
+            _acApTallyPre = function(d) {
+                const r = _origAcApTallyPre(d);
+                if (d && _isOnline() && _isHost() && state.phase === 'battle') {
+                    _emit('relay', { type: 'ap-tally-pre', player: d.player, unitId: d.unitId, k: d.k, label: d.label, mult: d.mult });
+                }
+                return r;
             };
         }
 
@@ -5630,6 +5645,14 @@
                             || (typeof window._isTileVisibleToViewer === 'function' && window._isTileVisibleToViewer(data.x, data.y));
                         var _pfLine = window._pressDialogueLine(data);
                         if (_pfSeen && _pfLine && typeof showBattleDialogue === 'function') showBattleDialogue([_pfLine], 1100);
+                        // THE AP TALLY: the same lines in this seat's corner, in this seat's colours
+                        if (_pfSeen && data.tally && typeof window._acApTallyShow === 'function') {
+                            window._acApTallyShow({ side: data.tally.player === _myPlayer() ? 'own' : 'enemy', unitId: data.tally.unitId, rows: data.tally.rows, total: data.tally.total });
+                        }
+                    }
+
+                    if (data.type === 'ap-tally-pre' && _ewMirrorView() && typeof window._acApTallyPre === 'function') {
+                        window._acApTallyPre({ player: data.player, unitId: data.unitId, k: data.k, label: data.label, mult: data.mult });
                     }
 
                     if (data.type === 'turn-banner' && _ewMirrorView()) {

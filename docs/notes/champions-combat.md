@@ -5385,3 +5385,11 @@ Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx
 - SILVER CORD: data.js `passiveSilverCord` (T1, astralprojection family): hooks `astralCordBonus: 2` (astralBegin) and
   `astralReturnProtect` (doAstralReturn -> Protect 1 round).
 - Checked in VS CPU: Spy + Silver Cord, Spirit Walk cord 6, row pressed, body pulled, Protected, turn still on (AP 1). Not checked online.
+
+
+## EVERY EXTRA SOURCE PAYS ENTROPY (2026-11-13, mondo's pick on the AP tally card)
+A hit still presses once (+2 AP, once per unit turn). Each source past the first on the hit that pays (super effective
+type, element weakness, status combo, crit) now vents a press's worth (PRESS_REFUND_AP x ENTROPY_PTS.pressOverflowAP = 16)
+into the team's gauge. Before, only a crit on top of another source did (WEAK_CRIT). battle.js applyPressTurn
+(`opts.hits`, `_pressBestSources`); the result carries `hits`, `extraSources`, `entropyGained` for THE AP TALLY
+(spells-vfx.md). The AP side is unchanged. Tutorial recap line (the_press) updated.

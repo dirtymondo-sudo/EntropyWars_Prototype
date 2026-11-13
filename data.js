@@ -27655,7 +27655,7 @@ const TUTORIAL_LESSONS = [
               cpu: { 'p2-0': 'pass', 'p2-1': 'pass' },
               goal: { type: 'entropy', player: 1 } },
             { id: 'done', title: 'THE PRESS',
-              say: 'Weakness, ⚗ combo or crit: <b>+{{PRESS_AP}} AP</b>, once a turn per vessel; each resistance on that hit takes 1 off, an absorb takes it all. Resist or miss with nothing else: <b>−{{PRESS_PENALTY}} AP</b>. Overflow feeds the gauge; the gauge is the team attack.<br><br>Next: <b>THE THREE WAYS OUT</b> — how a crossing actually closes.',
+              say: 'Weakness, ⚗ combo or crit: <b>+{{PRESS_AP}} AP</b>, once a turn per vessel; each resistance on that hit takes 1 off, an absorb takes it all. Resist or miss with nothing else: <b>−{{PRESS_PENALTY}} AP</b>. Every extra source on the same hit, and any press you can\'t hold, feeds the gauge; the gauge is the team attack.<br><br>Next: <b>THE THREE WAYS OUT</b> — how a crossing actually closes.',
               goal: { type: 'ack', finish: true } },
         ],
     },
