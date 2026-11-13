@@ -14720,6 +14720,7 @@ const ThreeRenderer = (function () {
     function _computeUnitStructuralSerial() {
         if (!state.units) return 0;
         var h = 19;
+        if (typeof remadeLooksOn === 'function' && remadeLooksOn()) h = _hashInt(h, 23);   // THE REMADE LOOKS SWITCH: flipping it rebuilds the units
         for (var i = 0; i < state.units.length; i++) {
             var u = state.units[i]; if (u.dead) continue;
             h = _hashVal(h, u.id);
@@ -65240,7 +65241,7 @@ const ThreeRenderer = (function () {
         PT_FWD = 0.028, PT_SETTLE = 8, PT_WAIT = 90000;
     var PT_BAKE_EXPO = 0.62;   // a Meshy bake (its own glow under the studio's lights) washes out at the creator bodies' exposure: a paler face lost its eyes and mouth
     var PT_BUST = { w: 256, h: 320, frame: 0.36, drop: 0.035, bg: 0x2a2620 };   // the ID card's photo: the head's middle sits 3.5 % of the height above the frame's middle
-    var _pt = null, _ptV = null, _ptQ = null, _ptUrls = {}, _ptFail = {}, _ptSpecs = (typeof WeakMap === 'function') ? new WeakMap() : null, _ptIdleT = 0;
+    var _pt = null, _ptV = null, _ptQ = null, _ptUrls = {}, _ptFail = {}, _ptRemade = {}, _ptSpecs = (typeof WeakMap === 'function') ? new WeakMap() : null, _ptIdleT = 0;
     function _ptOff() {
         return typeof window === 'undefined' || !!window.EW_NO_MODEL_PORTRAITS || !!window.EW_DISABLE_3D_UNITS
             || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function' || typeof document === 'undefined';
@@ -65250,8 +65251,14 @@ const ThreeRenderer = (function () {
     function _ptSpec(u) {
         if (!u || !u.race) return null;
         var a = u.appearance;
-        if (!a || typeof a !== 'object') return null;
         var g = u.gender === 'female' ? 'female' : 'male';
+        if (!a || typeof a !== 'object') {
+            /* THE REMADE LOOKS SWITCH: a unit with no look of its own wears its race's remade look, so its portrait is a photo of that */
+            if (typeof remadeLooksOn !== 'function' || !remadeLooksOn() || typeof getCharacterAppearanceModel !== 'function') return null;
+            var rk = 'remade:' + u.race + '|' + g;
+            if (!(rk in _ptRemade)) { var rd = null; try { rd = getCharacterAppearanceModel(u.race, g, null); } catch (e) { rd = null; } _ptRemade[rk] = (rd && rd.model && rd.raceLook) ? { key: rk, def: rd, look: rd.raceLook } : null; }
+            return _ptRemade[rk];
+        }
         var hit = _ptSpecs && _ptSpecs.get(a);
         if (hit && hit.race === u.race && hit.g === g) return hit.spec;
         var spec = null;
@@ -71908,16 +71915,35 @@ const ThreeRenderer = (function () {
         });
         return G;
     }
+    /* THE LETTERING (2026-11-13, mondo's polish pass: "go one or two more layers deep with the detail"; every district's signs were blank
+       panels): an arch part whose `key` is 'txt:WORDS|fg|bg|aspect' is a sign. The words are drawn once on a canvas of that aspect (width /
+       height of the quad that wears it, uv 'fit'), bold capitals fitted to the panel, in `fg` (a CSS colour) on `bg` (empty = no board: the
+       letters alone, on a `kind: 'over'` part). The part's `tint` stays white unless the letters are to be dimmed; `glow` lights the sign. */
+    var _hqArchSignCache = {};
+    function _hqArchSignTex(key) {
+        if (_hqArchSignCache[key]) return _hqArchSignCache[key];
+        var q = String(key).slice(4).split('|'), words = q[0] || '', fg = q[1] || '#ffffff', bg = q[2] || '', asp = Math.max(0.2, Math.min(24, parseFloat(q[3]) || 4));
+        var H = 128, W = Math.max(32, Math.min(2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;
+        var g = c.getContext('2d'); g.clearRect(0, 0, W, H);
+        if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
+        var px = 96; g.font = '900 ' + px + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif';
+        var tw = g.measureText(words).width || 1, sc = Math.min(1, (W * 0.9) / tw); px = Math.max(8, Math.floor(px * sc));
+        g.font = '900 ' + px + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = fg;
+        g.fillText(words, W / 2, H / 2 + px * 0.04);
+        var t = new THREE.CanvasTexture(c); t.anisotropy = 4;
+        return (_hqArchSignCache[key] = t);
+    }
     function _hqBuildArchRows(info, G, U) {
         var neon = !!(info.gen && info.gen.neon), mats = {}, made = 0;
         var matOf = function (b) {
             var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0, b.gain || 1].join('|'); if (mats[id]) return mats[id];
-            var tex = b.key ? _hzTex(b.key) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
+            var sign = !!b.key && String(b.key).indexOf('txt:') === 0;   // THE LETTERING: a sign's words, drawn once on a canvas
+            var tex = b.key ? (sign ? _hqArchSignTex(b.key) : _hzTex(b.key)) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
             if (b.kind === 'over') { o.transparent = true; o.alphaTest = 0.35; o.polygonOffset = true; o.polygonOffsetFactor = -1; o.polygonOffsetUnits = -1; }
             var m = new THREE.MeshPhongMaterial(o);
             if (b.ds) m.side = THREE.DoubleSide;
             m.color = new THREE.Color(b.tint);
-            if (tex) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
+            if (tex && !sign) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
             if (b.gain && b.gain !== 1) m.color.multiplyScalar(b.gain);
             if (b.glow > 0) { m.emissive = m.color.clone(); if (tex) m.emissiveMap = tex; m.emissiveIntensity = b.glow; }
             else m.emissive = new THREE.Color(neon ? 0x08060e : 0x0a0a0a);
@@ -72346,6 +72372,7 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), F = _hqEdgeLandFn(room, info), R = F.R, ROWS = HQ_EDGE_ROWS.filter(function (r) { return r <= F.reach; });
         var H = _hq, chunked = !!(H && G === H.shellGroup && typeof _hqChunkBig === 'function' && _hqChunkBig(H));
         var fogC = new THREE.Color((room.shell.sky && room.shell.sky.fog && room.shell.sky.fog.color != null) ? room.shell.sky.fog.color : 0xc8d8ea);
+        try { var sf = H && H.scene && H.scene.fog; if (sf && sf.color && sf.color.isColor) fogC.copy(sf.color); } catch (e) {}   // the fog as the room draws it (the near land fades to THIS colour; the far land's haze must be the same one)
         /* the sheets: the game's own ground sheets (the rock, the mossy grass, the sand); the snow is plain white */
         var mats = {};
         var matFor = function (key, far) {
@@ -85179,14 +85206,17 @@ const ThreeRenderer = (function () {
             } else if (c.look === 'fireescape') {
                 /* THE FIRE ESCAPE (AREA CONTENT D2, 2026-09-19): a steel ladder up the face, a grated LANDING CAGE at its head (a platform
                    0.9 m deep with a rail round it, brackets under) — chained through landing plateaus it is the tenement's fire escape */
-                [-w / 2, w / 2].forEach(function (lx) { var r = mk(new THREE.BoxGeometry(0.05 * U, (top + 0.1) * U, 0.05 * U), steel); r.position.set(lx * U, (top + 0.1) / 2 * U, 0.06 * U); });
+                var grab = c.landing ? 0.95 : 0.1;   // THE STEEL LANDING (2026-11-13): a ladder up onto a landing ends in two grab rails over the deck
+                [-w / 2, w / 2].forEach(function (lx) { var r = mk(new THREE.BoxGeometry(0.05 * U, (top + grab) * U, 0.05 * U), steel); r.position.set(lx * U, (top + grab) / 2 * U, 0.06 * U); });
                 for (var fy = 0.3; fy < L + 0.05; fy += 0.3) { var frung = mk(new THREE.CylinderGeometry(0.018 * U, 0.018 * U, w * U, 8), steel); frung.rotation.z = Math.PI / 2; frung.position.set(0, fy * U, 0.06 * U); }
                 var cageW = Math.max(1.4, w + 0.8), cageD = 0.9;
+                if (!c.landing) {   // (a head on a steel landing stands on the landing: no cage of its own)
                 var plat = mk(new THREE.BoxGeometry(cageW * U, 0.05 * U, cageD * U), iron); plat.position.set(0, (top + 0.02) * U, -(cageD / 2 - 0.06) * U);
                 for (var gx = -cageW / 2 + 0.12; gx < cageW / 2; gx += 0.12) { var slat = mk(new THREE.BoxGeometry(0.02 * U, 0.03 * U, (cageD - 0.1) * U), steel); slat.position.set(gx * U, (top + 0.06) * U, -(cageD / 2 - 0.06) * U); }
                 [[-cageW / 2, -cageD + 0.06], [cageW / 2, -cageD + 0.06], [-cageW / 2, 0.06], [cageW / 2, 0.06]].forEach(function (pp) { var post = mk(new THREE.BoxGeometry(0.04 * U, 1.0 * U, 0.04 * U), iron); post.position.set(pp[0] * U, (top + 0.52) * U, pp[1] * U); });
                 var railB = mk(new THREE.BoxGeometry(cageW * U, 0.04 * U, 0.04 * U), iron); railB.position.set(0, (top + 1.02) * U, -(cageD - 0.06) * U);
                 [-cageW / 2, cageW / 2].forEach(function (lx) { var railS = mk(new THREE.BoxGeometry(0.04 * U, 0.04 * U, cageD * U), iron); railS.position.set(lx * U, (top + 1.02) * U, -(cageD / 2 - 0.06) * U); });
+                }
                 for (var by2 = 1.2; by2 < L; by2 += 2.4) { var brk = mk(new THREE.BoxGeometry(0.05 * U, 0.05 * U, 0.22 * U), iron); brk.position.set(0, by2 * U, 0.17 * U); }
             } else if (c.look === 'rope') {
                 var rope = mk(new THREE.CylinderGeometry(0.028 * U, 0.028 * U, (top + 0.05) * U, 8), hemp); rope.position.set(0, (top + 0.05) / 2 * U, 0.05 * U);
@@ -85211,6 +85241,56 @@ const ThreeRenderer = (function () {
             G.add(g);
             c.group = g;
             H.climbs.push(c);
+        });
+        /* THE STEEL LANDING (2026-11-13, mondo: "Can i not just climb up the ladder and stand on the platform part?"): a fire escape's halfway
+           landing (data.js hqTerrainLandings: a slab the walker stands on, a wall along each rail) drawn as a steel platform: an iron deck
+           with a grating, posts and two rails along each open side (a gap where a ladder comes up), two struts back to the wall. Two meshes. */
+        var lands = (H.terrain && H.terrain.landings) || [];
+        lands.forEach(function (l) {
+            var ironG = [], steelG = [];
+            var box = function (arr, bw, bh, bd, x, y, z) { var bg = new THREE.BoxGeometry(bw * U, bh * U, bd * U); bg.translate(x * U, y * U, z * U); arr.push(bg); };
+            var strut = function (arr, t, ax, ay, az, bx, by, bz) {
+                var len = Math.hypot(bx - ax, by - ay, bz - az); if (!(len > 0.05)) return;
+                var sg = new THREE.BoxGeometry(t * U, t * U, len * U);
+                sg.applyMatrix4(new THREE.Matrix4().lookAt(new THREE.Vector3(ax, ay, az), new THREE.Vector3(bx, by, bz), new THREE.Vector3(0, 1, 0)));
+                sg.translate((ax + bx) / 2 * U, (ay + by) / 2 * U, (az + bz) / 2 * U); arr.push(sg);
+            };
+            box(ironG, l.w, 0.07, l.d, 0, -0.035, 0);
+            if (l.w >= l.d) { for (var sx = -l.w / 2 + 0.1; sx < l.w / 2 - 0.05; sx += 0.16) box(steelG, 0.025, 0.02, l.d - 0.12, sx, 0.01, 0); }
+            else { for (var sz = -l.d / 2 + 0.1; sz < l.d / 2 - 0.05; sz += 0.16) box(steelG, l.w - 0.12, 0.02, 0.025, 0, 0.01, sz); }
+            var mine = list.filter(function (c) { return c.landing === l.id; });
+            (l.rails || []).forEach(function (r) {
+                var alongX = Math.abs(r[2] - r[0]) > Math.abs(r[3] - r[1]), a0 = alongX ? r[0] : r[1], a1 = alongX ? r[2] : r[3], fix = alongX ? r[1] : r[0];
+                var runs = [[Math.min(a0, a1), Math.max(a0, a1)]];
+                mine.forEach(function (c) {   // a ladder's head on this side: the rail opens for it
+                    if (Math.abs((alongX ? c.z : c.x) - fix) > 0.25) return;
+                    var m = alongX ? c.x : c.z, ga = m - c.w / 2 - 0.08, gb = m + c.w / 2 + 0.08, next = [];
+                    runs.forEach(function (q) { if (gb <= q[0] || ga >= q[1]) { next.push(q); return; } if (ga - q[0] > 0.15) next.push([q[0], ga]); if (q[1] - gb > 0.15) next.push([gb, q[1]]); });
+                    runs = next;
+                });
+                runs.forEach(function (q) {
+                    var len = q[1] - q[0], mid = (q[0] + q[1]) / 2, n = Math.max(1, Math.ceil(len / 1.25));
+                    for (var k = 0; k <= n; k++) { var pa = q[0] + len * k / n; box(ironG, 0.045, 1.02, 0.045, (alongX ? pa : fix) - l.x, 0.51, (alongX ? fix : pa) - l.z); }
+                    [1.0, 0.52].forEach(function (ry) { if (alongX) box(ironG, len, 0.04, 0.04, mid - l.x, ry, fix - l.z); else box(ironG, 0.04, 0.04, len, fix - l.x, ry, mid - l.z); });
+                });
+            });
+            if (l.back != null) {   // the struts: from under the deck's outer edge down to the wall
+                var br = l.back * Math.PI / 180, bx = Math.sin(br), bz = -Math.cos(br), ns = (l.back === 0 || l.back === 180), half = ns ? l.d / 2 : l.w / 2, side = (ns ? l.w : l.d) / 2 - 0.12;
+                [-side, side].forEach(function (sd) {
+                    var ox = ns ? sd : -bx * (half - 0.1), oz = ns ? -bz * (half - 0.1) : sd, wx = ns ? sd : bx * half, wz = ns ? bz * half : sd;
+                    strut(ironG, 0.05, ox, -0.07, oz, wx, -0.95, wz);
+                });
+            }
+            var lg = new THREE.Group(); lg.position.set(l.x * U, l.y * U, l.z * U);
+            [[ironG, iron], [steelG, steel]].forEach(function (pair) {
+                if (!pair[0].length) return;
+                var pos = [], nor = [];
+                pair[0].forEach(function (bg) { var ng = bg.toNonIndexed(), pa = ng.attributes.position.array, na = ng.attributes.normal.array; for (var q = 0; q < pa.length; q++) { pos.push(pa[q]); nor.push(na[q]); } ng.dispose(); bg.dispose(); });
+                var mg = new THREE.BufferGeometry();
+                mg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); mg.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+                var mm = new THREE.Mesh(mg, pair[1]); mm.castShadow = true; mm.receiveShadow = true; mm._ew_pixelate = true; lg.add(mm);
+            });
+            G.add(lg);
         });
     }
     /* the climb within reach of the walker: { c, end: 'foot' | 'head' } or null */
@@ -87188,8 +87268,16 @@ const ThreeRenderer = (function () {
         try { _hqTickGunDoors(wdt, now); } catch (e) { if (!H._gunTickWarned) { H._gunTickWarned = true; console.warn('[HQ] gun doors tick', e); } }   /* THE DOOR WHEEL IN THE ROOM (Phase 3): the standing doors act */
         _hqTickSceneMoves();
         _hqTickRounds(wdt);
+        if (H._sceneDoor && H._sceneDoor.door) {   // scene A's lone door: the swing and the light in the doorway
+            var _sd = H._sceneDoor, _sn = performance.now();
+            if (_sd.k !== _sd.to) { var _sq = Math.min(1, (_sn - _sd.t0) / _sd.ms); _sd.k = _sd.from + (_sd.to - _sd.from) * (1 - Math.pow(1 - _sq, 3)); if (_sq >= 1) _sd.k = _sd.to; H.dirty = true; }
+            try { _menuApplyDoor({ door: _sd.door, doorLight: null, flash: 0 }, _sd.k, _sn); } catch (e) {}
+            if (_sd.glow) { _sd.glow.visible = _sd.k > 0.01; _sd.glow.material.opacity = Math.min(1, _sd.k * 1.4); }
+            if (_sd.light) _sd.light.intensity = _sd.k * 2.2;
+        }
         if (_keyFxList.length) { try { _updateKeyFx(); } catch (e) {} }   // scene E's key (keyPickupFx opts.at) lives in the room
-        if (H._sceneCastIds) _hqSceneCastApply();   // after the rounds: a walker the rounds just brought back in is out again the same frame   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
+        if (H._sceneCastIds) _hqSceneCastApply();
+        if (H._scenePlayerOut && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // a scene took the officer out of the picture   // after the rounds: a walker the rounds just brought back in is out again the same frame   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         if (_lens && _lens.cur) { var _lensA = performance.now(); _hqTickChars(wdt); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share
         else _hqTickChars(wdt);
         if (window.EWCine) { try { window.EWCine.frame(_hqCine() ? H.camera : null, { kind: 'hq', unit: _hqUnits(), key: String(H.opts.room || ''), site: (H.room && H.room.site) ? ((typeof window.hqSiteId === 'function') ? window.hqSiteId(H.room.site) : H.room.site) : String(H.opts.room || '') }); } catch (e) {} }
@@ -93175,18 +93263,28 @@ const ThreeRenderer = (function () {
             if (!ch || !ch.entry || !ch.entry.group) return false;
             o = o || {};
             var U = _hqUnits(), g = ch.entry.group;
-            if (o.x != null && o.z != null) { ch.x = +o.x; ch.z = +o.z; g.position.x = ch.x * U; g.position.z = ch.z * U; if (ch === _hq.player) { ch.moving = false; ch.svx = 0; ch.svz = 0; } }
+            if (o.x != null && o.z != null) { _hqSceneMoves = _hqSceneMoves.filter(function (m) { return m.ch !== ch; }); ch._sceneWalk = false; ch.x = +o.x; ch.z = +o.z; g.position.x = ch.x * U; g.position.z = ch.z * U; if (ch === _hq.player) { ch.moving = false; ch.svx = 0; ch.svz = 0; } }
             if (o.face != null) { ch.yaw = ch.targetYaw = _hqHeadingYaw(o.face); if (ch.entry.model) ch.entry.model.rotation.y = ch.yaw; if (ch === _hq.player && _hq.cam) { _hq.cam.yaw = _hqRad(o.face); _hq.cam.init = false; } }
-            if (o.show != null) { if (ch === _hq.player) g.visible = !!o.show; else _hqRoundsSetVisible(ch, !!o.show); }
+            if (o.show != null) { if (ch === _hq.player) { g.visible = !!o.show; _hq._scenePlayerOut = !o.show; } else _hqRoundsSetVisible(ch, !!o.show); }   // (the walker's own tick shows the body again: held out every frame, see the scene tick)
             if (o.sit != null && ch === _hq.player) ch.sit = o.sit ? { seat: null, t0: performance.now(), scene: true } : null;   // seated for a scene (no seat record: the walk's own tick is held)
             g.updateMatrixWorld(true); _hq.dirty = true;
             return true;
+        },
+        /* is a body's rig up WITH its clips (idle + walk)? The opening plays as the building first loads: it waits for this, or
+           the officer steps out of the car in the bind pose. */
+        sceneReady: function (who) {
+            if (!_hq || !who) return false;
+            var ch = null;
+            if (who === 'player') ch = _hq.player; else for (var i = 0; i < _hq.chars.length; i++) { if (_hq.chars[i] && _hq.chars[i].cast === who) { ch = _hq.chars[i]; break; } }
+            var a = ch && ch.entry && ch.entry.group && ch.entry.actions;
+            return !!(a && a.idle && (who !== 'player' || a.walk));
         },
         /* a scene's CAST: `ids` = the DOOR_CAST ids the scene keeps; everybody else in the room (the officer aside) is taken
            out for the scene. null puts back exactly the ones it took out. */
         sceneCast: function (ids) {
             if (!_hq) return 0;
-            _hq._sceneCastIds = ids || null;   // held for the scene's length: _hqTickSceneCast takes out whoever walks in later
+            _hq._sceneCastIds = ids || null;
+            if (!ids && _hq._scenePlayerOut) { _hq._scenePlayerOut = false; if (_hq.player && _hq.player.entry && _hq.player.entry.group) _hq.player.entry.group.visible = true; }   // the scene is over: the officer is back   // held for the scene's length: _hqTickSceneCast takes out whoever walks in later
             return _hqSceneCastApply();
         },
         /* where a body's HEAD is (the room's metres: { x, y, z }; y = up from the floor the room stands on) so a scene's
@@ -93211,6 +93309,53 @@ const ThreeRenderer = (function () {
             var U = _hqUnits();
             keyPickupFx(0, 0, { at: { scene: _hq.scene, x: (+o.x || 0) * U, y: (+o.y || 0) * U, z: (+o.z || 0) * U, ts: (+o.size || 0.5) * U } });
             _hq.dirty = true;
+            return true;
+        },
+        /* THE LONE DOOR (scene A, the opening; mondo 2026-11-13: "when the door opens there can be either darkness or light
+           inside of it"): the main menu's own free-standing door (_introBuildDoor, the same frame and leaf) stood in the room
+           for a scene. o = { x, z (m), face (deg), leaf (catalogue key) } builds it once; { open: 0..1, ms } swings it, the
+           doorway filling with white light as it opens; { remove: true } takes it out. */
+        sceneDoor: function (o) {
+            var H = _hq; if (!H || !H.scene || !o) return false;
+            var U = _hqUnits(), ts = 116;
+            if (o.remove) { var d0 = H._sceneDoor; if (d0) { d0.dead = true; if (d0.root.parent) d0.root.parent.remove(d0.root); try { _disposeR(d0.root); } catch (e) {} H._sceneDoor = null; H.dirty = true; } return true; }
+            if (o.open != null) { var d1 = H._sceneDoor; if (!d1) return false; d1.from = d1.k; d1.to = Math.max(0, Math.min(1, +o.open)); d1.t0 = performance.now(); d1.ms = Math.max(1, o.ms || 900); return true; }
+            if (H._sceneDoor) return true;
+            var D = _hqData(), key = (o.leaf && D && D.catalogue && D.catalogue[o.leaf]) ? o.leaf : 'leaf_hollow_core', cat = D && D.catalogue ? D.catalogue[key] : null;
+            if (!cat) return false;
+            var rec = { root: new THREE.Group(), door: null, k: 0, from: 0, to: 0, t0: 0, ms: 1, glow: null, light: null, dead: false };
+            rec.root.position.set((+o.x || 0) * U, 0, (+o.z || 0) * U);
+            rec.root.rotation.y = _hqHeadingYaw(o.face || 0);
+            H.scene.add(rec.root); H._sceneDoor = rec;
+            var build = function () {
+                if (rec.dead || _hq !== H) return;
+                var zi = { cx: 0, cy: 0, ox: 0, oy: 1, topZ: 0, len: 0, edgeDist: -0.85, bw: 1, bh: 1 };
+                var savedKit = _nrLastKit, n0 = _introFadeMats.length, dr = null;
+                _nrLastKit = { apronTop: 0, B: 0, G: 0, fy: 0, W: 0, moat: null };
+                try { dr = _introBuildDoor(zi, ts, { key: key, cat: cat }, 'prebuilt_giza'); } catch (e) { console.warn('[SCENE] the door', e); }
+                finally { _nrLastKit = savedKit; }
+                _introFadeMats.splice(n0);   // (the dissolve list is the battle intro's)
+                if (!dr || !dr.group) return;
+                rec.door = dr; rec.root.add(dr.group);
+                /* the builder stands the door off its zone's edge: bring the doorway itself onto the root, so (x, z) IS the door */
+                try {
+                    rec.root.updateMatrixWorld(true);
+                    var bx = new THREE.Box3().setFromObject(dr.group), cw = bx.getCenter(new THREE.Vector3()), cl = rec.root.worldToLocal(cw.clone());
+                    dr.group.position.x -= cl.x; dr.group.position.z -= cl.z;
+                } catch (e) {}
+                /* the light in the doorway: an unlit white sheet the size of the opening, just behind the leaf's plane, and a lamp */
+                var mo = dr.motion || {}, gw = (mo.ow || 0.72 * ts) * 0.96, gh = (mo.oh || 1.35 * ts) * 0.98;
+                var gm = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, side: THREE.DoubleSide, fog: false, depthWrite: false });
+                gm.toneMapped = false;
+                rec.glow = new THREE.Mesh(new THREE.PlaneGeometry(gw, gh), gm);
+                rec.glow.position.set(0, gh / 2, 0.04 * U); rec.glow.visible = false; rec.glow.renderOrder = 2;
+                rec.root.add(rec.glow);
+                rec.light = new THREE.PointLight(0xfff4dc, 0, 9 * U, 2); rec.light.position.set(0, gh * 0.55, -0.5 * U); rec.root.add(rec.light);
+                H.dirty = true;
+            };
+            var url = null; try { url = cat.file ? _hqModelUrl(cat) : null; } catch (e) {}
+            var ce = url ? _miscModelCache[url] : null;
+            if (url && !(ce && ce.root) && typeof THREE.GLTFLoader === 'function') _loadMiscModel(url, true, build); else build();
             return true;
         },
         /* a body WALKS to { x, z } over `ms` (the walk clip, turned along its way; `face` = the heading it ends on) */
@@ -93289,6 +93434,8 @@ const ThreeRenderer = (function () {
             heroShadow: function () { var L = _hq && _hq.heroLit; return Object.assign({ light: !!(L && L.isLight), hold: !!(L && L._ew_heroHold) }, _heroStat); },
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
             hqScene: function () { return _hq ? _hq.scene : null; },
+            /* the walker's clip right now (a scene check: which clip is the officer in?) */
+            playerAnim: function () { var H = _hq, ch = H && H.player, e = ch && ch.entry; if (!e) return null; var run = []; try { Object.keys(e.actions || {}).forEach(function (k) { var a = e.actions[k]; if (a && a.isRunning() && a.getEffectiveWeight() > 0.01) run.push(k + ':' + a.getClip().name + ':' + a.getEffectiveWeight().toFixed(2)); }); } catch (err) {} return { cur: e._ew_curAnim || null, running: run, moving: !!ch.moving, jumpT: ch.jumpT, sit: !!ch.sit, ride: !!(H.ride && H.ride.on), swim: !!ch.swim, strike: ch.strike ? ch.strike.name : null, drawn: !!(H.portal && H.portal.drawn), lean: e.model ? e.model.rotation.x : 0 }; },
             hqDoors: function () { if (!_hq) return null; var out = _hq.doors.slice(), st = _hq.stage; if (st && st.parts) for (var id in st.parts) { var P = st.parts[id].P; if (P && P.doors) out = out.concat(P.doors); } return out; },   // the door records of the room stood in + the rooms beside it (probes)
             hqInst: function () { return _hqInstStats(_hq); },
             /* THE CITY TRAFFIC (2026-11-13): the lights' colours and every vehicle (a probe reads them: which stand at a red, which bus waits) */

@@ -11,6 +11,8 @@ module.exports = { build: function (api) {
     /* the sheets (sprites.js URBAN_TEXTURES + the terrain keys): light ones take a tint cleanly */
     const GOLD = 'gold', BR1 = 'bricks_1', BR2 = 'bricks_2', BR3 = 'bricks_3', WOOD = 'wood_planks', PL = U('PlasterWallPainted1a'), ST = U('PlasterWallStucco1a'), MB = U('TileMarble1d'), MB3 = U('TileMarble3c'),
         SUB = U('TileSubway1a'), TG = U('TileGeneric1a'), CO = U('MetalCorrugatedPainted1a'), CO3 = U('MetalCorrugatedPainted3b'), CS = U('ConcreteStriped1c'), TR = U('MetalTruss1a'),
+        RF = U('RubberNonSlip1a'), RFC = U('ConcreteUnderTiles1'), GRL = U('MetalSubwayGrill1a'), CHK = U('TileGeneric5b'), RTL = U('TileSubway3a'), DADO = U('PlasterWallPainted2c'), SHUT = U('GlassWindowResidentialShutter1'), HAZ = U('SignHazard2a'),
+        DOORS = [U('DoorPaintedHalf1a'), U('DoorPaintedHalf3b'), U('DoorWoodenHalf1a'), U('DoorStorefrontHalf1a')],
         GT = U('GlassWindowTall1a-Glow'), GF = U('GlassWindowFactory2a-Glow'), GS = U('GlassWindowSquare3a-Glow'), GR = U('GlassWindowResidential1-Glow1');
     /* a tint over a sheet: the sheets are mid grey, so the colour is lifted (clamped) to read as itself; a plain colour is written as is */
     const hex = s => parseInt(String(s).replace('#', ''), 16);
@@ -65,16 +67,336 @@ module.exports = { build: function (api) {
                 P('box', c0[0], y, c0[1], key, tint, Object.assign({ size: [r3(wid), r3(h), r3(dep)], ry: rot, under: true }, o2));
                 if (posts) for (const sg of [-1, 1]) { const q = loc(lx + at + sg * (wid / 2 - 0.25), fd + dep - 0.25); P('cyl', q[0], 0, q[1], posts[0], posts[1], { r: 0.16, h: r3(y), seg: 8 }); }
                 return b; },
+            /* ── THE DETAIL LAYER (mondo 11-13 20:15: "go one or two more layers deep with the detail") ── */
+            hollow, fs: info.side.toLowerCase(), du: 0,
+            /* a box standing ON a face: u along it, `dep` out from the wall (`off` = a gap first) */
+            sbox: (side, u, y, w, h, dep, key, tint, o2) => { o2 = Object.assign({}, o2); const off = o2.off || 0; delete o2.off; const ns = side === 'n' || side === 's', sg = (side === 's' || side === 'e') ? 1 : -1, c = (ns ? hd : hw) + off + dep / 2;
+                return ns ? P('box', u, y, sg * c, key, tint, Object.assign({ size: [r3(w), r3(h), r3(dep)] }, o2)) : P('box', sg * c, y, u, key, tint, Object.assign({ size: [r3(dep), r3(h), r3(w)] }, o2)); },
+            /* a base course round the foot of the walls, broken at the doorway of a walk-in building */
+            plinth: (h, key, tint, out) => { out = out || 0.1; for (const side of ['n', 's', 'e', 'w']) { const half = (side === 'n' || side === 's') ? hw + out : hd + out;
+                if (hollow && side === b.fs) { const d0 = b.du; if (d0 - 1.05 > -half) b.sbox(side, (-half + d0 - 1.05) / 2, 0, d0 - 1.05 + half, h, out, key, tint); if (half > d0 + 1.05) b.sbox(side, (d0 + 1.05 + half) / 2, 0, half - d0 - 1.05, h, out, key, tint); }
+                else b.sbox(side, 0, 0, half * 2, h, out, key, tint); } return b; },
+            /* piers on a face at the given places (a shaft, a wider cap) */
+            piers: (side, us, y, h, w, key, tint, capKey, capTint) => { for (const u of us) { b.sbox(side, u, y, w, h, 0.2, key, tint); b.sbox(side, u, y + h - 0.3, w + 0.2, 0.3, 0.3, capKey === undefined ? key : capKey, capTint === undefined ? tint : capTint); } return b; },
+            /* a moulded cornice: a deep top course over a shallower bed course */
+            cornice: (y, key, tint, out) => { out = out || 0.34; b.trim(y, 0.24, key, tint, out); b.trim(y - 0.22, 0.22, key, tint, out * 0.5, { top: false }); return b; },
+            /* window joinery over a glass band: a head, a sill that sticks out, n bays of mullions */
+            frames: (side, u0, u1, y, h, n, tint, pr) => { pr = pr || 0.09; const L = u1 - u0, m = (u0 + u1) / 2; b.sbox(side, m, y + h, L + 0.3, 0.16, pr + 0.1, null, tint); b.sbox(side, m, y - 0.14, L + 0.4, 0.14, pr + 0.2, null, tint);
+                for (let i = 0; i <= n; i++) b.sbox(side, u0 + L * i / n, y, 0.12, h, pr + 0.07, null, tint); return b; },
+            /* a downpipe with its hopper head */
+            pipe: (side, u, h, tint) => { const ns = side === 'n' || side === 's', sg = (side === 's' || side === 'e') ? 1 : -1, c = (ns ? hd : hw) + 0.14; P('cyl', ns ? u : sg * c, 0, ns ? sg * c : u, null, tint || '#3a3d42', { r: 0.07, h: r3(h - 0.3), seg: 6, cap: false }); b.sbox(side, u, h - 0.42, 0.34, 0.3, 0.26, null, tint || '#3a3d42'); return b; },
+            /* an awning: a sloped cloth strip, striped when a second colour is given */
+            awning: (side, u0, u1, y, dep, tint, tint2) => { const L = u1 - u0, n = tint2 ? Math.max(2, Math.round(L / 1.1)) : 1, ns = side === 'n' || side === 's', sg = (side === 's' || side === 'e') ? 1 : -1, c = sg * ((ns ? hd : hw) + dep / 2);
+                for (let i = 0; i < n; i++) { const u = u0 + L * (i + 0.5) / n, w = L / n; b.roof('shed', ns ? u : c, ns ? c : u, ns ? w : dep, ns ? dep : w, y, dep * 0.42, PL, (i % 2 && tint2) ? tint2 : tint, { high: { s: 'n', n: 's', e: 'w', w: 'e' }[side], roof: false, ds: true }); }
+                b.sbox(side, (u0 + u1) / 2, y - 0.22, L, 0.22, 0.04, PL, tint, { off: dep - 0.04 }); return b; },
+            /* a wall lamp: a bracket and a lit glass */
+            lamp: (side, u, y, tint) => { b.sbox(side, u, y + 0.34, 0.08, 0.08, 0.34, null, '#2a2a2e'); b.sbox(side, u, y, 0.26, 0.36, 0.26, null, tint || '#ffe2a0', { off: 0.1, glow: 1 }); return b; },
+            /* a sign that hangs out square from the wall on an arm */
+            blade: (side, u, y, w, h, tint, glow) => { b.sbox(side, u, y + h, 0.07, 0.07, w + 0.25, null, '#2a2a2e'); b.sbox(side, u, y, 0.14, h, w, null, tint, { off: 0.2, glow: glow == null ? 0.7 : glow }); return b; },
+            /* a framed sign board flat on the wall */
+            board: (side, u0, u1, y, h, tint, frame, glow) => { const m = (u0 + u1) / 2, L = u1 - u0; b.sbox(side, m, y - 0.1, L + 0.2, h + 0.2, 0.12, null, frame || '#26262a'); b.sbox(side, m, y, L, h, 0.08, null, tint, { off: 0.1, glow: glow == null ? 0.7 : glow }); return b; },
+            /* a run of show bulbs */
+            bulbs: (side, u0, u1, y, n, tint, off) => { for (let i = 0; i < n; i++) b.sbox(side, u0 + (u1 - u0) * (n === 1 ? 0.5 : i / (n - 1)), y, 0.2, 0.2, 0.2, null, tint || '#fff2c0', { off: off || 0.02, glow: 1 }); return b; },
+            /* a louvred vent grille on the wall */
+            grille: (side, u, y, w, h) => { b.sbox(side, u, y - 0.05, (w || 0.9) + 0.1, (h || 0.55) + 0.1, 0.05, null, '#3c4046'); b.sbox(side, u, y, w || 0.9, h || 0.55, 0.04, GRL, '#9aa0a8', { off: 0.05, uv: 0.6 }); return b; },
+            /* roof plant: an air handler with its fan, a vent cowl */
+            ac: (x, z, y, wide) => { b.box(x, z, wide ? 2.2 : 1.4, 0.9, y, 0.95, CO, '#b9bcc0'); b.box(x, z, wide ? 2.36 : 1.56, 1.06, y, 0.12, null, '#55585e'); b.cyl(x, z, 0.33, y + 0.95, 0.07, null, '#2c2e33', { seg: 10 }); return b; },
+            cowl: (x, z, y) => { b.cyl(x, z, 0.2, y, 0.75, CO, '#9a9da2', { seg: 8 }); b.cyl(x, z, 0.36, y + 0.75, 0.16, null, '#55585e', { r2: 0.12, seg: 8 }); return b; },
+            /* corner stones up the four corners */
+            corners: (y, h, key, tint, w) => { w = w || 0.5; for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.box(sx * (hw + 0.1 - w / 2 + 0.06), sz * (hd + 0.1 - w / 2 + 0.06), w, w, y, h, key, tint, { top: false }); return b; },
+            /* ── roofs, AC units, more sheets (mondo 20:18 "roofs and ac units", 20:19 "different textures or decals for different parts") ── */
+            /* a parapet on top of the walls on the given sides, with a coping */
+            parapet: (sides, y, h, key, tint, cop) => { for (const side of sides) { const L = ((side === 'n' || side === 's') ? hw : hd) * 2 + 0.1; b.sbox(side, 0, y, L, h, 0.28, key, tint, { off: -0.23 }); b.sbox(side, 0, y + h, L + 0.1, 0.1, 0.4, CS, cop || '#c8c4bc', { off: -0.29 }); } return b; },
+            /* a wall AC unit on its bracket, its grille to the street */
+            wac: (side, u, y) => { b.sbox(side, u, y - 0.08, 0.8, 0.06, 0.5, null, '#3a3d42'); b.sbox(side, u, y, 0.9, 0.6, 0.45, CO, '#c4c7cb', { off: 0.03 }); b.sbox(side, u, y + 0.08, 0.7, 0.44, 0.03, GRL, '#8a9098', { off: 0.48, uv: 0.5 }); return b; },
+            /* a service door: a pack door sheet in a frame, a step */
+            sdoor: (side, u, i, tint) => { b.sbox(side, u, 0, 1.25, 2.25, 0.07, null, '#2e2e32'); b.sbox(side, u, 0.08, 1.05, 2.1, 0.03, DOORS[i || 0], tint || '#ffffff', { off: 0.07, uv: 'fit', kind: 'wall' }); b.sbox(side, u, 0, 1.5, 0.08, 0.5, CS, '#9a9a9a'); return b; },
+            /* a hazard plate */
+            haz: (side, u, y) => { b.sbox(side, u, y, 0.45, 0.45, 0.03, HAZ, '#ffffff', { off: 0.02, uv: 'fit', kind: 'wall' }); return b; },
+            /* a big roof unit: the cabinet on a kerb, two fans, a duct run to a riser, a hazard plate */
+            plant: (x, z, y, len) => { len = len || 3; b.box(x, z, 2.6, 1.5, y, 0.15, CS, '#8a8a8a'); b.box(x, z, 2.4, 1.3, y + 0.15, 1.2, CO, '#aeb2b8'); for (const s of [-1, 1]) b.cyl(x + s * 0.6, z, 0.42, y + 1.35, 0.08, null, '#2c2e33', { seg: 10 });
+                b.box(x + 1.2 + len / 2, z, len, 0.5, y + 0.3, 0.4, CO, '#9a9ea4'); b.box(x + 1.2 + len, z, 0.6, 0.6, y, 0.9, CO, '#9a9ea4'); P('quad', x, y + 0.5, z + 0.66, HAZ, 0xffffff, { size: [0.4, 0.4], uv: 'fit', kind: 'wall' }); return b; },
+            /* a skylight: a kerb, a lit glass lid */
+            sky: (x, z, y, w, d) => { b.box(x, z, w, d, y, 0.3, CS, '#8a8a8a'); b.box(x, z, w - 0.2, d - 0.2, y + 0.3, 0.1, GF, '#d8f0ff', { glow: 0.5 }); return b; },
+            /* a roof hatch with its ladder hoops */
+            hatch: (x, z, y) => { b.box(x, z, 1.0, 1.0, y, 0.35, CO3, '#5a5e66'); b.box(x + 0.7, z, 0.06, 0.6, y, 1.0, TR, '#888888'); return b; },
+            /* a gutter under an eave */
+            gutter: (side, y, over, tint) => { const L = ((side === 'n' || side === 's') ? hw : hd) * 2 + (over || 0) * 2; b.sbox(side, 0, y - 0.16, L, 0.16, 0.2, null, tint || '#4a4e55', { off: (over || 0) - 0.02 }); return b; },
+            /* ── THE LETTERING (the shared 'txt:WORDS|fg|bg|aspect' sign sheet, PR #1327): words over the lit panels; no bg = the letters alone ── */
+            txt: (side, u0, u1, y, h, words, fg, pr, glow, bg) => { const L = Math.abs(u1 - u0), o3 = { proud: pr || 0.12, uv: 'fit' }; if (!bg) o3.kind = 'over'; if (glow) o3.glow = glow;
+                return b.face(side, u0, u1, y, h, 'txt:' + words + '|' + fg + '|' + (bg || '') + '|' + (Math.round(L / h * 100) / 100), '#ffffff', o3); },
+            /* a word read down a blade sign, a letter a panel */
+            vtxt: (side, u, y1, step, w, word, fg, pr, glow) => { [...word].forEach((ch, i) => b.txt(side, u - w / 2, u + w / 2, y1 - (i + 1) * step + step * 0.08, step * 0.84, ch, fg, pr, glow)); return b; },
         };
-        fn(b);
+        { const dr = b.door; b.du = (b.fs === 'n' || b.fs === 's') ? dr[0] : dr[1]; }
+        fn(b); if (DETAIL[id]) DETAIL[id](b); if (ROOFS[id]) ROOFS[id](b); if (LETTERS[id]) LETTERS[id](b);
         { const ar = { k: 'arch', id: 'dc:' + id + ':arch', x: cx, z: cz, rot: 0, parts }; if (row.k === 'plateau') ar.y = 0;   /* over a roof-walk plateau the row would stand on its 7 m roof */ rows.push(ar); }
         return b;
     }
     const GLOW = { glow: 0.55 }, NEON = { glow: 1 };
+    /* ═══ THE DETAIL LAYER, per building (the polish pass, mondo 11-13 20:15): base courses, piers, cornices, window joinery, awnings, lamps,
+       hanging signs, show bulbs, downpipes, roof plant. Each runs after its building's massing; `F` is the front, `K` the back, `L` / `R` the flanks. ═══ */
+    const OPP = { n: 's', s: 'n', e: 'w', w: 'e' }, FLK = { n: ['w', 'e'], s: ['w', 'e'], e: ['n', 's'], w: ['n', 's'] };
+    const half = (b, side) => (side === 'n' || side === 's') ? b.hw : b.hd;
+    const spread = (a, z, n) => Array.from({ length: n }, (_, i) => a + (z - a) * (n === 1 ? 0.5 : i / (n - 1)));
+    const IRON = '#2a2a2e', CREAM = '#f0e6cc', ZINC = '#6a6f76';
+    const DETAIL = {
+        'P08-04-B1': b => { const F = b.fs, K = OPP[F], h = half(b, F), d = b.du;                              // CASINO
+            b.plinth(0.8, MB, '#241a30', 0.14); b.trim(4.5, 0.22, GOLD, null, 0.12, { top: false });
+            b.piers(F, [-h + 5.6, d - 1.5, d + 1.5, h - 0.6], 0.8, 8.8, 0.7, MB, '#2c2040', GOLD, null); b.piers(F, spread(-h + 8.5, h - 3, 4).filter(u => Math.abs(u - d) > 2.4), 4.7, 4.9, 0.45, MB, '#2c2040', GOLD, null);
+            b.frames(F, -h + 6, d - 1.4, 0.6, 2.6, 4, '#c9a24a'); b.frames(F, d + 1.4, h - 1, 0.6, 2.6, 4, '#c9a24a'); b.frames(F, -h + 6, h - 1, 5.2, 2.6, 10, '#c9a24a');
+            for (const s of FLK[F]) { b.piers(s, spread(-half(b, s) + 1.2, half(b, s) - 1.2, 4), 0.8, 8.8, 0.7, MB, '#2c2040', GOLD, null); b.board(s, -2.6, 2.6, 5.4, 2.2, '#ffd9a0', '#3a2a55', 0.6); b.pipe(s, half(b, s) - 0.5, 9.6, '#8a6a30'); }
+            b.piers(K, spread(-h + 1.5, h - 1.5, 6), 0.8, 8.8, 0.7, MB, '#2c2040'); b.grille(K, -3, 1.4, 1.4, 0.8); b.grille(K, 3, 1.4, 1.4, 0.8);
+            b.bulbs(F, d - 3.5, d + 3.5, 3.7, 9, '#fff2c0', 4.5); b.lamp(F, d - 2.1, 2.5); b.lamp(F, d + 2.1, 2.5);
+            b.ac(-1, -2, 13.8, true); b.ac(-1, 3, 13.8, true); b.cowl(1.5, 0.5, 13.8); b.trim(13.8, 0.14, CS, '#7a7480', -0.5, { top: false }); },
+        'P08-04-B2': b => { const F = b.fs, h = half(b, F);                                                    // PAWN
+            b.plinth(0.5, BR3, '#5a3a2a'); b.frames(F, -h + 1, h - 1, 0.7, 1.6, 4, '#2f5d50'); b.sbox(F, 0, 0.7, h * 2 - 2, 1.6, 0.05, GS, '#fff0c0', { glow: 0.45 });
+            b.sbox(F, 0, 0.7, h * 2 - 1.8, 1.6, 0.03, TR, '#444444', { off: 0.16 });                           /* the security mesh over the window */
+            b.blade(F, h - 0.6, 2.8, 0.9, 0.9, '#f0c020'); b.lamp(F, -h + 0.5, 2.3); b.pipe(OPP[F], h - 0.4, 4.2); b.grille(FLK[F][0], 0, 2.6); },
+        'P09-04-B1': b => {                                                                                    // COSTUME SHOPS
+            b.plinth(0.45, BR3, '#5a3028'); b.frames('s', -b.hw + 1.5, b.hw - 1.5, 0.5, 2.0, 6, '#5b3a22'); b.frames('s', -b.hw + 1, b.hw - 1, 4.2, 2.2, 8, '#5b3a22', 0.45); b.frames('w', -b.hd + 1, b.hd - 1, 4.2, 2.2, 5, '#5b3a22', 0.45);
+            for (const u of spread(-b.hw + 0.4, b.hw - 0.4, 7)) { b.sbox('s', u, 3.5, 0.18, 3.5, 0.06, WOOD, '#5b3a22', { off: 0.4 }); b.sbox('s', u, 3.0, 0.22, 0.5, 0.5, WOOD, '#5b3a22'); }
+            for (const u of spread(-b.hd + 0.4, b.hd - 0.4, 5)) { b.sbox('w', u, 3.5, 0.18, 3.5, 0.06, WOOD, '#5b3a22', { off: 0.4 }); b.sbox('e', u, 3.5, 0.18, 3.5, 0.06, WOOD, '#5b3a22', { off: 0.4 }); }
+            for (const [i, u] of spread(-b.hw + 3, b.hw - 3, 4).entries()) b.blade('s', u, 2.75, 0.8, 0.7, ['#d0306a', '#f0b020', '#2a9a8a', '#7a4fb0'][i], 0.5);
+            b.lamp('w', -b.hd + 1.2, 2.4); b.lamp('w', b.hd - 1.2, 2.4); b.pipe('n', -b.hw + 0.6, 7); b.pipe('n', b.hw - 0.6, 7); b.grille('n', 0, 1.6, 1.2, 0.7); },
+        'P09-04-B2': b => { const F = b.fs, h = half(b, F);                                                    // MASKS + WIGS
+            b.plinth(0.5, ST, '#4a2f70'); b.corners(0.5, 4.7, ST, '#f0e0ff', 0.55); b.frames(F, -h + 1, h - 1, 0.6, 2.2, 5, '#f0e0ff'); b.cornice(5.2, ST, '#f0e0ff', 0.3);
+            b.awning(F, -h + 0.8, h - 0.8, 2.95, 1.2, '#7a4fb0', '#f4ead6'); b.blade(F, -h + 0.5, 3.6, 1.0, 1.0, '#e0a0ff'); b.lamp(F, h - 0.5, 2.4, '#e8c8ff'); b.pipe(OPP[F], 0, 5.2); },
+        'P09-04-B3': b => { const F = b.fs, h = half(b, F);                                                    // TAILOR
+            b.plinth(0.9, CS, '#8a8f98'); b.trim(4.3, 0.14, CO3, '#1e5a5a', 0.1, { top: false });
+            b.sbox(F, 0, 0.9, h * 2 - 2, 1.7, 0.05, GF, '#d8f0ff', { glow: 0.4 }); b.frames(F, -h + 1, h - 1, 0.9, 1.7, 6, '#1e5a5a', 0.05);
+            b.board(F, -h + 1, h - 1, 2.9, 0.7, '#f4ead6', '#1e5a5a', 0.4); b.pipe(F, -h + 0.3, 4.4, '#1e5a5a'); b.pipe(F, h - 0.3, 4.4, '#1e5a5a'); b.grille(OPP[F], 0, 2.8); b.lamp(F, 0, 3.75); },
+        'P10-04-B1': b => {                                                                                    // CONCERT HALL
+            b.plinth(0.9, MB3, '#bdb6a8', 0.16); b.cornice(7, MB3, '#f4efe4', 0.4);
+            for (const s of ['e', 'w']) { const us = spread(-b.hd + 1.5, b.hd - 1.5, 7); b.piers(s, us, 0.9, 5.8, 0.8, MB3, '#f4efe4');
+                for (let i = 0; i < us.length - 1; i++) { const m = (us[i] + us[i + 1]) / 2; b.sbox(s, m, 2.2, 1.8, 3.2, 0.06, U('GlassWindowTall1a'), '#8090a8'); b.sbox(s, m, 5.4, 2.2, 0.2, 0.16, MB3, '#f4efe4'); } }
+            b.piers('s', spread(-b.hw + 1.5, b.hw - 1.5, 6), 0.9, 5.8, 0.8, MB3, '#f4efe4'); b.sbox('s', 0, 0, 5, 4.2, 0.08, CO3, '#5a5560'); b.lamp('s', -3.2, 3); b.lamp('s', 3.2, 3);
+            for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; b.box(Math.cos(a) * 8.75, 1.5 + Math.sin(a) * 8.75, 0.55, 0.55, 7, 5.6, ST, '#f8f2e4', { ry: -a / D2R, top: false }); }   /* the drum's piers */
+            b.cyl(0, 1.5, 8.7, 9.2, 2.2, U('GlassWindowTall1a'), '#8090a8', { seg: 28, cap: false }); b.cyl(0, 1.5, 8.9, 7, 0.5, MB3, '#f4efe4', { seg: 28 });
+            b.bulbs('n', -12.3, 12.3, 4.2, 22, '#fff2c0', 2.65); for (const s of [-1, 1]) b.bulbs('n', s * 1.25, s * 1.25, 6, 1, '#fff2c0', 1.5);
+            for (let i = 0; i < 9; i++) b.sbox('n', 1.25, 6.4 + i * 0.85, 0.18, 0.18, 0.18, null, '#fff2c0', { off: 1.4, glow: 1 }), b.sbox('n', -1.25, 6.4 + i * 0.85, 0.18, 0.18, 0.18, null, '#fff2c0', { off: 1.4, glow: 1 });
+            b.box(0, b.hd - 2.2, 9.3, 3.5, 15.9, 0.3, CS, '#3e3a44'); b.grille('s', 0, 12, 2.4, 1.4); b.ac(6, b.hd - 2.4, 16.2); b.cowl(-3, b.hd - 2.2, 16.2); },
+        'P11-04-B1': b => { const F = b.fs, h = half(b, F), d = b.du;                                          // RECORDING STUDIO
+            b.plinth(0.6, CS, '#1c1f26'); for (const u of spread(-h + 1, h - 1, 9)) if (Math.abs(u - d) > 1.4) b.sbox(F, u, 3.4, 0.14, 1.8, 0.14, WOOD, '#5e3c20');
+            b.canopy(3.4, 1.5, 2.5, 0.18, CO3, '#1c1f26'); b.lamp(F, d - 1.5, 2.0, '#ff5050'); b.sbox(F, d + 1.5, 2.25, 0.7, 0.3, 0.1, null, '#ff3030', { glow: 1 });   /* the ON AIR light */
+            for (const y of [1.3, 2.6, 3.9]) b.cyl(-b.hw, b.hd - 3.5, 3.66, y, 0.12, null, '#1c1f26', { seg: 24 });
+            b.pipe(OPP[F], -h + 0.5, 5.2); b.grille(OPP[F], 2, 1.5, 1.6, 0.9); b.grille(OPP[F], -3, 3.6); for (const y of [7.5, 9.5, 11.5]) b.cyl(b.hw - 4, -1, 0.5, y, 0.06, null, '#d03030', { seg: 8 }); },
+        'P11-04-B2': b => {                                                                                    // LOFTS
+            b.plinth(0.5, BR3, '#4e2e26'); b.frames('w', -b.hd + 1.5, b.hd - 1.5, 4.2, 2, 6, IRON); b.frames('w', -b.hd + 4, b.hd - 1.5, 0.8, 2.2, 5, IRON);
+            b.sbox('w', 0, 3.5, b.hd * 2 - 2.4, 0.12, 1.2, TR, '#333333', { under: true }); b.sbox('w', 0, 3.6, b.hd * 2 - 2.4, 1.0, 0.05, TR, '#333333', { off: 1.15 });   /* the fire escape balcony */
+            b.sbox('w', -b.hd + 2, 0, 0.8, 3.5, 0.06, TR, '#333333', { off: 0.9 }); b.trim(3.3, 0.2, BR3, '#5a3028', 0.06, { top: false });
+            b.pipe('w', -b.hd + 0.4, 7); b.pipe('e', 0, 7); b.grille('e', -3, 1.6); for (const y of [7.6, 9.0, 10.2]) b.cyl(b.hw - 3, b.hd - 4, 1.34, y, 0.1, null, IRON); },
+        'P08-05-B1': b => { const L = b.hd * 2, z0 = -b.hd, s1 = L * 0.31, s2 = L * 0.30, s3 = L - s1 - s2, zm = z0 + s1 + s2 / 2, zs = z0 + s1 + s2 + s3 / 2;   // RESTAURANT COURT
+            b.sbox('w', z0 + s1 / 2, 0, s1, 0.5, 0.1, BR1, '#a05a40', { off: 0.1 }); b.frames('w', z0 + 1.2, z0 + s1 - 1.2, 0.7, 1.9, 4, '#3a5a30', 0.2);
+            for (const u of [z0 + 1.2, z0 + s1 - 1.2]) { b.sbox('w', u - 0.35, 0.7, 0.4, 1.9, 0.06, WOOD, '#2a6a3a', { off: 0.2 }); b.sbox('w', u + 0.35, 0.7, 0.4, 1.9, 0.06, WOOD, '#2a6a3a', { off: 0.2 }); }   /* shutters */
+            b.blade('w', z0 + 0.6, 3.4, 0.9, 0.8, '#f4e8c8', 0.5); b.cyl(b.hw - 1.5, z0 + 2, 0.6, 9, 0.25, BR1, '#7a4030', { seg: 8 });
+            for (const sg of [-1, 1]) { b.cyl(-b.hw - 1.5, zm + sg * (s2 / 2 - 0.5), 0.16, 0, 3.6, PL, '#b02020', { seg: 8 }); b.sbox('w', zm + sg * 2.6, 1.5, 0.3, 0.7, 0.3, PL, '#d83030', { off: 0.9, glow: 0.9 }); }   /* red posts, paper lanterns */
+            b.sbox('w', zm, 0.6, s2 - 1.4, 1.6, 0.06, WOOD, '#3a2618', { off: 0.1 }); for (const u of spread(zm - s2 / 2 + 0.9, zm + s2 / 2 - 0.9, 7)) b.sbox('w', u, 0.6, 0.08, 1.6, 0.05, WOOD, '#8a5a34', { off: 0.16 });   /* the slatted front */
+            b.sbox('w', zs, 0, s3, 0.5, 0.1, BR3, '#5a3028', { off: 0.1 }); b.frames('w', zs - s3 / 2 + 1.2, zs + s3 / 2 - 1.2, 0.7, 2.2, 4, IRON, 0.2); b.frames('w', zs - s3 / 2 + 1.2, zs + s3 / 2 - 1.2, 4.2, 2, 5, IRON, 0.2);
+            b.awning('w', zs - s3 / 2 + 0.8, zs + s3 / 2 - 0.8, 3.0, 1.3, '#2a2a30', '#ff9030');
+            for (const sg of [-1, 1]) b.box(-0.6, zs + sg * (s3 / 2 - 1.2), b.hw * 2 - 3, 0.06, 8, 0.9, TR, '#333333'); b.box(-b.hw + 0.9, zs, 0.06, s3 - 2.4, 8, 0.9, TR, '#333333');   /* the terrace rail */
+            for (const u of spread(zs - s3 / 2 + 2, zs + s3 / 2 - 2, 4)) b.box(-0.6, u, b.hw * 2 - 3, 0.12, 9.5, 0.12, WOOD, '#5b3a22');
+            b.cyl(b.hw - 1.4, zs + s3 / 2 - 1.6, 0.66, 11.8, 0.3, null, '#2c2e33', { seg: 10 }); b.pipe('e', z0 + 1, 5); b.pipe('e', zs, 7); b.grille('e', zm, 1.5, 1.4, 0.8); b.ac(b.hw - 2, zm, 6.9); },
+        'P08-05-B2': b => { const F = b.fs, h = half(b, F);                                                    // BURGER DRIVE-IN
+            b.plinth(0.9, TG, '#d02828'); b.frames(F, -h + 1.5, h - 1.5, 0.9, 1.9, 5, '#c8ccd2'); b.bulbs(F, -h, h, 3.45, 9, '#fff2c0', F === 'e' ? 2.3 : 0.7);
+            b.sbox(OPP[F], 0, 1.1, 1.6, 1.1, 0.1, GS, '#fff0c0', { glow: 0.5 }); b.sbox(OPP[F], 0, 0.95, 2.0, 0.12, 0.45, CO, '#c8ccd2'); b.awning(OPP[F], -1.4, 1.4, 2.4, 0.9, '#d02828', '#f4f0e8');   /* the drive-up hatch */
+            b.board(FLK[F][0], -2.4, 2.4, 1.3, 1.4, '#fff6d0', '#d02828', 0.6); b.ac(0, 0, 3.9, true); b.cowl(1.6, 1.2, 3.9); b.cowl(-1.8, -1, 3.9); },
+        'P09-05-B1': b => { const d = b.du;                                                                    // COMEDY THEATER
+            b.plinth(0.9, ST, '#cdbd9c', 0.14); b.piers('n', [-b.hw + 0.5, -b.hw * 0.52, b.hw * 0.52, b.hw - 0.5], 0.9, 9.6, 0.9, ST, '#f0e0c0');
+            b.frames('n', -b.hw + 1, b.hw - 1, 5.2, 3.4, 9, '#5a2030'); for (const u of spread(-b.hw + 2.6, b.hw - 2.6, 5)) b.sbox('n', u, 8.75, 2.4, 0.5, 0.2, ST, '#f0e0c0');
+            b.trim(4.6, 0.3, ST, '#f0e0c0', 0.1, { top: false }); for (const y of [11.7, 12.9, 14.3]) b.sbox('n', 0, y - 0.02, y < 12 ? b.hw * 2 + 0.3 : y < 13 ? b.hw * 1.24 + 0.2 : b.hw * 0.52 + 0.2, 0.14, 0.8, CS, '#8a7a68', { off: -0.7 });
+            b.bulbs('n', d - 8.2, d + 8.2, 3.95, 17, '#fff2c0', 3.3); b.bulbs('n', d - 8.2, d + 8.2, 4.6, 17, '#ffd060', 3.3);
+            for (let i = 0; i < 11; i++) b.box(b.hw + 0.5, -b.hd - 1.98, 0.2, 0.2, 4.6 + i * 1.15, 0.2, null, '#fff2c0', { glow: 1 });
+            b.board('n', -b.hw + 1.2, d - 2.6, 0.9, 2.2, '#fff6d0', '#5a2030', 0.5); b.board('n', d + 2.6, b.hw - 1.2, 0.9, 2.2, '#fff6d0', '#5a2030', 0.5);   /* the poster cases */
+            for (const s of ['e', 'w']) { b.piers(s, spread(-b.hd + 1, b.hd - 1, 6), 0.9, 9.6, 0.7, BR1, '#8f5238', ST, '#f0e0c0'); b.pipe(s, b.hd - 0.5, 10.7); }
+            b.sbox('s', 0, 0, 3.4, 3.4, 0.08, CO3, '#5a2030'); b.lamp('s', 2.4, 2.8); b.grille('s', -5, 6, 1.8, 1.0); b.ac(-b.hw + 2, b.hd - 1.2, 10.62); b.ac(b.hw - 2, b.hd - 1.2, 10.62); },
+        'P10-05-B1': b => {                                                                                    // BACKSTAGE DOCK
+            b.plinth(1.0, CS, '#8a8a8a'); for (const s of [-1, 1]) { b.frames('s', s * 3.8 - 2.4, s * 3.8 + 2.4, 0, 3.6, 1, '#3c4048'); for (const y of [0.6, 1.2, 1.8, 2.4, 3.0]) b.sbox('s', s * 3.8, y, 4.7, 0.05, 0.03, null, '#8a6c10', { off: 0.1 }); }
+            for (const u of [-7.4, -3.8, 0, 3.8, 7.4].filter(u => Math.abs(u) < b.hw - 0.5)) b.sbox('s', u, 0.25, 0.5, 0.5, 0.14, null, '#1a1a1c', { off: 1.8 });   /* the dock bumpers */
+            b.sbox('s', 0, 1.0, b.hw * 2, 0.12, 0.2, null, '#e8c020', { off: 1.7 }); for (const u of [-b.hw + 0.6, b.hw - 0.6]) b.cyl(u, b.hd + 2.8, 0.1, 0, 4.2, TR, '#3c4048', { seg: 6 });
+            b.lamp('s', -b.hw + 1, 4.2, '#fff0c0'); b.lamp('s', b.hw - 1, 4.2, '#fff0c0'); b.lamp('s', 0, 4.2, '#fff0c0');
+            for (const s of ['e', 'w']) { for (const u of spread(-b.hd + 1, b.hd - 1, 4)) b.sbox(s, u, 1, 0.3, 6, 0.12, CO3, '#555b66'); b.pipe(s, -b.hd + 0.4, 7); } b.grille('n', -3, 4.6, 1.6, 0.9); b.grille('n', 3, 4.6, 1.6, 0.9); },
+        'P10-05-B2': b => { const F = b.fs, h = half(b, F);                                                    // CREW CANTEEN
+            b.plinth(0.6, BR3, '#8a7a68'); b.frames(F, -h + 1.5, h - 1.5, 0.8, 1.8, 5, '#5a6a3e'); b.awning(F, -h + 1, h - 1, 2.75, 1.3, '#7a8a5a', '#f0e8d0');
+            b.blade(F, h - 0.5, 2.9, 0.8, 0.6, '#f0e8d0', 0.4); b.cyl(h * 0.5, 0, 0.3, 3.8, 2.6, CO, '#8a8f98', { seg: 8 }); b.cyl(h * 0.5, 0, 0.45, 6.4, 0.2, null, '#55585e', { seg: 8 }); b.pipe(OPP[F], -h + 0.4, 3.8); b.grille(OPP[F], 1, 2.4); },
+        'P11-05-B1': b => {                                                                                    // FILM STUDIO
+            b.plinth(0.8, CS, '#b8ac90', 0.12); b.piers('n', spread(-b.hw + 0.6, b.hw - 0.6, 6), 0.8, 5.9, 0.7, ST, '#fff6e0'); b.frames('n', -b.hw + 1, b.hw - 1, 4.2, 2, 8, '#b03020');
+            b.sbox('n', 0, 0.8, 3.4, 2.6, 0.08, U('GlassWindowTall1a'), '#607088'); b.frames('n', -1.7, 1.7, 0.8, 2.6, 2, '#b03020', 0.08); b.bulbs('n', -4.6, 4.6, 3.45, 9, '#fff2c0', 1.85);
+            for (const u of [-7.5, 7.5].filter(u => Math.abs(u) < b.hw - 2)) b.board('n', u - 1.4, u + 1.4, 1.0, 2.2, '#fff6d0', '#b03020', 0.45);
+            const sd = b.hd * 2 - 10.5; for (const s of ['e', 'w']) for (const u of spread(b.hd - sd + 0.6, b.hd - 0.6, 5)) b.sbox(s, u, 0.8, 0.6, 8.7, 0.25, CO, '#c4b99c', { off: -0.5 });   /* the stage's buttress ribs */
+            b.frames('e', 2, 9, 0, 6.5, 2, '#24476e'); b.sbox('e', 5.5, 6.6, 7.6, 0.25, 0.9, CO3, '#24476e'); b.sbox('e', 0.6, 4.4, 0.4, 0.5, 0.3, null, '#ff3030', { glow: 1 });   /* the stage door's hood + the red light */
+            b.sbox('e', -4, 5, 4.2, 2.6, 0.1, null, '#fff6e0'); b.sbox('e', -4, 5.9, 3.4, 0.9, 0.04, null, '#b03020', { off: 0.1 });   /* the stage number panel */
+            b.pipe('w', b.hd - 0.6, 9.4); b.pipe('w', b.hd - sd + 0.4, 9.4); b.grille('s', -4, 5, 2.2, 1.2); b.grille('s', 4, 5, 2.2, 1.2); b.ac(-b.hw + 2, b.hd + 0.9, 0, true);
+            const wx = b.hw + 2.2, wz = b.hd + 2.2; b.cyl(wx, wz, 1.76, 9.6, 0.14, null, IRON, { seg: 16 }); b.cyl(wx, wz, 1.76, 11.6, 0.14, null, IRON, { seg: 16 }); b.box(wx, wz, 2.6, 0.1, 5, 0.1, TR, '#888888'); b.box(wx, wz, 0.1, 2.6, 5, 0.1, TR, '#888888'); },
+        'P08-06-B1': b => { const n = 4, sl = (b.hd * 2 - 3.5) / n, cols = ['#d83030', '#f0b020', '#2a9a6a', '#3070d0'];   // NIGHT MARKET
+            for (let i = 0; i < n; i++) { const z = -b.hd + 1.75 + (i + 0.5) * sl;
+                for (const sx of [-1, 1]) b.box(sx * (b.hw - 0.75), z, 0.05, sl + 0.5, 3.0, 0.4, PL, cols[i]);   /* the valances */
+                for (const u of spread(-b.hw + 2, b.hw - 2, 5)) b.box(u, z + sl / 2 - 0.3, 0.26, 0.26, 2.6, 0.36, PL, ['#ff5050', '#ffd060', '#60e0a0', '#70a0ff'][(i + Math.round(u)) & 3], { glow: 1 });   /* the lantern strings */
+                b.box(0, z + sl / 2 - 0.3, b.hw * 2 - 1.8, 0.03, 2.98, 0.03, null, IRON);
+                b.box(-1.6, z, 4.1, sl - 2.1, 1.5, 0.06, WOOD, '#5b3a22'); b.box(-1.6, z - (sl - 2.4) / 2 + 0.3, 3.4, 0.5, 1.56, 0.45, PL, cols[(i + 2) % 4]); b.box(-1.6, z + (sl - 2.4) / 2 - 0.3, 3.4, 0.5, 1.56, 0.3, WOOD, '#c8a060'); }
+            b.cyl(-b.hw + 1.2, -b.hd + 0.9, 0.14, 0, 5.4, TR, '#333333', { seg: 6 }); b.cyl(-b.hw + 1.2, b.hd - 0.9, 0.14, 0, 5.4, TR, '#333333', { seg: 6 });
+            b.box(-b.hw + 1.2, -b.hd + 0.9, 2.6, 0.2, 4.4, 1.0, null, '#ffd24a', { glow: 0.9 }); b.box(-b.hw + 1.2, b.hd - 0.9, 2.6, 0.2, 4.4, 1.0, null, '#ffd24a', { glow: 0.9 }); },
+        'P08-06-B2': b => { const F = b.fs, h = half(b, F);                                                    // NOODLE BAR
+            b.plinth(0.5, CS, '#3a2a24'); for (const sx of [-1, 1]) for (const sz of [-1, 1]) b.cyl(sx * (b.hw + 1.0), sz * (b.hd + 1.0), 0.16, 0, 4, PL, '#8a1818', { seg: 8 });
+            b.sbox(F, 0, 0.9, h * 2 - 2, 1.5, 0.06, GR, '#ffe6b0', { glow: 0.5 }); b.frames(F, -h + 1, h - 1, 0.9, 1.5, 6, '#2a1a12', 0.06); b.sbox(F, 0, 0.78, h * 2 - 1.4, 0.12, 0.6, WOOD, '#5b3a22');   /* the counter */
+            for (const u of spread(-h + 1.4, h - 1.4, 5)) b.sbox(F, u, 2.55, 0.5, 1.0, 0.03, PL, u ? '#f4e8c8' : '#2a1a12', { off: 0.75 });   /* the door cloths */
+            for (const u of [-h + 0.2, h - 0.2]) b.sbox(F, u, 2.3, 0.34, 0.7, 0.34, PL, '#e03030', { off: 1.0, glow: 0.9 }); b.cyl(0, 0, 0.3, 6.25, 1.6, CO, '#444444', { seg: 8 }); b.pipe(OPP[F], h - 0.4, 4); },
+        'P09-06-B1': b => { const d = b.du;                                                                    // CABARET
+            b.plinth(0.7, ST, '#5a1020', 0.12); b.corners(0.7, 6.8, ST, '#f0d8a0', 0.5); b.frames('n', -b.hw + 3.5, b.hw - 1, 4.2, 2.2, 6, '#f0d8a0');
+            for (const u of spread(-b.hw + 3.5, b.hw - 1, 7)) b.sbox('n', u, 6.4, 0.5, 0.5, 0.2, ST, '#f0d8a0'); b.trim(3.8, 0.2, ST, '#f0d8a0', 0.1, { top: false });
+            b.bulbs('n', d - 1.6, d + 1.6, 2.65, 7, '#ffb0c8', 1.6); b.lamp('n', d - 2.2, 2.2, '#ff90b0'); b.lamp('n', d + 2.2, 2.2, '#ff90b0');
+            b.board('n', d + 3, Math.min(b.hw - 1, d + 5.6), 0.9, 1.9, '#ffd0e0', '#f0d8a0', 0.5);
+            const tx = -b.hw, tz = -b.hd; for (const y of [3.6, 11]) b.cyl(tx, tz, 2.75, y, 0.25, ST, '#f0d8a0'); b.cyl(tx, tz, 2.64, 4.4, 2.2, GT, '#ffb0c8', { glow: 0.5, cap: false }); b.cyl(tx, tz, 2.64, 8.4, 1.8, GT, '#ffb0c8', { glow: 0.5, cap: false });
+            b.cyl(tx, tz, 0.12, 15.4, 1.8, GOLD, null, { r2: 0.02, seg: 6 }); for (const s of ['e', 'w']) { b.piers(s, spread(-b.hd + 2.8, b.hd - 0.8, 4), 0.7, 6.8, 0.6, PL, '#8a1428', ST, '#f0d8a0'); } b.pipe('s', b.hw - 0.5, 7.5); b.pipe('s', -b.hw + 0.5, 7.5); b.grille('s', 0, 1.6, 1.4, 0.8); },
+        'P09-06-B2': b => { const F = b.fs, h = half(b, F);                                                    // MAGIC SHOP
+            b.plinth(0.5, ST, '#201840'); b.frames(F, -h + 1, h - 1, 0.7, 2, 4, '#c8a84a'); b.corners(0.5, 4.5, ST, '#5a4a9a', 0.45);
+            b.blade(F, -h + 0.5, 3.4, 1.0, 1.1, '#c0a0ff'); b.lamp(F, h - 0.5, 2.3, '#c0a0ff'); b.cyl(0, 0, 0.5, 9.2, 0.9, null, '#c0a0ff', { r2: 0, seg: 4, glow: 0.9 }); b.cyl(0, 0, 0.5, 8.7, 0.5, null, '#c0a0ff', { r2: 0.5, seg: 4, glow: 0.9 }).r = 0.02;
+            for (const s of FLK[F]) b.sbox(s, 0, 2.2, 1.6, 1.6, 0.08, GS, '#c0a0ff', { glow: 0.5 }); b.pipe(OPP[F], 0, 5); },
+        'P09-06-B3': b => { const F = b.fs, h = half(b, F);                                                    // PROP STORE
+            b.plinth(0.8, CS, '#7a7a7a'); b.frames(F, -3, 3, 0, 3.3, 1, '#2c2c30'); for (const y of [0.55, 1.1, 1.65, 2.2, 2.75]) b.sbox(F, 0, y, 5.9, 0.05, 0.03, null, '#333338', { off: 0.1 });
+            for (const u of [-3.4, 3.4]) b.cyl(...(F === 's' || F === 'n' ? [u, (F === 's' ? 1 : -1) * (b.hd + 0.5)] : [(F === 'e' ? 1 : -1) * (b.hw + 0.5), u]), 0.14, 0, 1.0, null, '#e8c020', { seg: 8 });   /* bollards */
+            b.lamp(F, -h + 1, 3.6, '#fff0c0'); b.lamp(F, h - 1, 3.6, '#fff0c0'); b.sbox(F, -h + 1.6, 0.9, 1.1, 2.1, 0.06, CO3, '#6a4a1c'); b.pipe(F, h - 0.25, 4.6); for (const s of FLK[F]) for (const u of spread(-half(b, s) + 1, half(b, s) - 1, 3)) b.sbox(s, u, 0.8, 0.25, 3.8, 0.1, CO3, '#8a561e'); },
+        'P10-06-B1': b => { const d = b.du;                                                                    // STAGE WORKSHOP
+            b.plinth(0.9, CS, '#6a5a50', 0.12); b.trim(6.7, 0.3, BR3, '#5e463a', 0.1, { top: false });
+            b.frames('n', -b.hw + 1, d - 4.5, 2.6, 2.6, 5, IRON); b.frames('n', d + 4.5, b.hw - 6, 2.6, 2.6, 3, IRON); b.frames('n', d + 1.2, d + 4.4, 0, 3.6, 1, '#3c4048');
+            for (const y of [0.6, 1.2, 1.8, 2.4, 3.0]) b.sbox('n', d + 2.8, y, 3.1, 0.05, 0.03, null, '#8a6c10', { off: 0.1 });
+            b.piers('n', [-b.hw + 0.5, d - 1.6, d + 5, b.hw - 5.9], 0.9, 5.8, 0.7, BR3, '#7a5a4a', CS, '#b8ac9c'); b.lamp('n', d - 1.6, 2.6); b.sbox('n', d + 2.8, 3.9, 0.3, 0.3, 1.6, TR, '#e8c020');   /* the hoist beam */
+            const px = b.hw - 2.8, pz = -b.hd + 2.8; for (const y of [10.2, 12.4]) for (const sg of [-1, 1]) { b.box(px + sg * 2.83, pz, 0.06, 1.6, y, 1.4, GF, '#d8f0ff', { glow: 0.4 }); b.box(px, pz + sg * 2.83, 1.6, 0.06, y, 1.4, GF, '#d8f0ff', { glow: 0.4 }); }
+            b.box(px, pz, 5.9, 5.9, 14.7, 0.3, CS, '#b8ac9c'); b.cyl(-b.hw + 2.1, b.hd - 2.8, 0.62, 14.6, 0.4, BR2, '#4a342a', { seg: 10 });
+            for (const s of ['e', 's']) { b.piers(s, spread(-half(b, s) + 1, half(b, s) - 1, 5), 0.9, 5.8, 0.6, BR3, '#7a5a4a'); b.pipe(s, half(b, s) - 0.4, 7); } b.grille('s', 0, 4.5, 2, 1.1);
+            for (const u of spread(-3, 10, 5)) b.box(-b.hw - 1.7, u, 2.7, 0.1, 1.2, 0.5, WOOD, '#8a6a40'); },
+        'P11-06-B1': b => { const d = b.du;                                                                    // ARCADE
+            b.plinth(0.5, SUB, '#0c0a16'); b.cyl(-b.hw, 0, b.hd + 0.1, 0, 0.5, SUB, '#0c0a16', { arc: 180, a0: 90, seg: 24 });
+            b.frames('s', d + 4.5, b.hw - 1, 0.5, 2.3, 5, '#ff30c0'); for (const u of spread(-b.hw + 1.5, d - 4.5, 3)) b.board('s', u - 1.2, u + 1.2, 0.8, 1.9, ['#30e0ff', '#ffe030', '#ff30c0'][Math.abs(Math.round(u)) % 3], '#0c0a16', 0.6);   /* the cabinet posters */
+            b.bulbs('s', d - 3, d + 3, 4.1, 9, '#ffe030', 3.4); b.board('n', -6, 6, 3.4, 1.6, '#30e0ff', '#0c0a16', 0.7); for (const u of spread(-b.hw + 2, b.hw - 2, 6)) b.sbox('n', u, 0.5, 0.25, 2.4, 0.08, null, '#ff30c0', { glow: 1 });
+            b.trim(4.25, 0.12, null, '#ffe030', 0.12, NEON); b.cyl(-b.hw, 0, b.hd + 0.12, 4.25, 0.12, null, '#ffe030', { arc: 180, a0: 90, seg: 24, glow: 1 });
+            for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; b.box(b.hw - 6 + Math.cos(a) * 2.1, Math.sin(a) * 2.1, 0.3, 0.3, 7.7, 0.08, null, '#fff2c0', { glow: 1 }); } b.cyl(b.hw - 6, 0, 1.2, 7.7, 0.1, null, '#c89a10');
+            b.ac(2, -b.hd + 1.4, 6.3, true); b.ac(-4, -b.hd + 1.4, 6.3); b.cowl(6, 1.5, 6.3); b.pipe('e', 0, 6.3, '#1c1a2a'); },
+        'P11-06-B2': b => {                                                                                    // APARTMENTS
+            b.plinth(0.6, BR3, '#5a3428'); b.trim(3.5, 0.2, CS, '#c8b8a0', 0.08, { top: false }); b.trim(7, 0.2, CS, '#c8b8a0', 0.08, { top: false });
+            for (const y of [4.2, 7.7]) { b.frames('w', -b.hd + 1.4, b.hd - 1.4, y, 2, 6, CREAM); b.sbox('w', 0, y - 0.55, b.hd * 2 - 2.4, 1.0, 0.05, TR, '#333333', { off: 1.36 }); for (const sg of [-1, 1]) b.sbox('w', sg * (b.hd - 1.2), y - 0.55, 0.05, 1.0, 1.4, TR, '#333333'); }
+            b.sbox('w', 0, 0.7, 4, 2.3, 0.06, GR, '#ffe6b0', { glow: 0.35 }); b.frames('w', -2, 2, 0.7, 2.3, 3, CREAM, 0.06); b.awning('w', -2.4, 2.4, 3.05, 1.1, '#3a3038');
+            for (const s of ['n', 's']) for (const y of [1.2, 4.6, 8.1]) for (const u of [-b.hw / 2, b.hw / 2]) { b.sbox(s, u, y, 1.3, 1.6, 0.06, GR, '#ffe6b0', { glow: 0.35 }); b.sbox(s, u, y - 0.12, 1.6, 0.12, 0.2, CS, '#c8b8a0'); b.sbox(s, u, y + 1.6, 1.6, 0.16, 0.14, CS, '#c8b8a0'); }
+            b.pipe('e', -b.hd + 0.5, 10.5); b.pipe('e', b.hd - 0.5, 10.5); for (const y of [2.2, 5.6, 9.1]) b.sbox('e', 0, y, 0.9, 0.6, 0.45, CO, '#b9bcc0'); b.cyl(0, b.hd * 0.4, 0.4, 12.2, 2.6, BR3, '#5a3428', { seg: 8 }); },
+        'P09-07-B1': b => { const d = b.du;                                                                    // BAKERY
+            b.plinth(0.6, BR3, '#8a5a3a'); b.frames('s', -b.hw + 1.5, b.hw - 1.5, 0.6, 2, 6, '#6a3a2a'); b.corners(0.6, 4.4, BR3, '#8a5a3a', 0.5);
+            b.blade('s', -b.hw + 0.6, 3.5, 1.0, 0.9, '#f0e0b0', 0.5); b.lamp('s', d - 1.4, 2.3); b.lamp('s', d + 1.4, 2.3);
+            for (const s of [-1, 1]) { b.cyl(s * 5, -1, 0.62, 10, 0.25, BR3, '#4a3a34', { seg: 8 }); b.cyl(s * 5, -1, 0.28, 10.25, 0.6, null, '#b0582e', { seg: 8 }); }
+            for (const s of ['e', 'w']) { b.sbox(s, 0, 1.4, 1.5, 1.6, 0.06, GR, '#ffe6b0', { glow: 0.4 }); b.frames(s, -0.75, 0.75, 1.4, 1.6, 2, '#6a3a2a', 0.06); } b.sbox('n', 2, 0, 1.2, 2.2, 0.06, WOOD, '#6a3a2a'); b.grille('n', -2, 2.6, 1.4, 0.8); b.pipe('n', b.hw - 0.4, 5); },
+        'P09-07-B2': b => { const F = b.fs, h = half(b, F);                                                    // KEBAB
+            b.plinth(0.9, TG, '#2a6a4a'); b.frames(F, -h + 1.5, h - 1.5, 1.0, 1.4, 4, '#c8ccd2'); b.sbox(F, 0, 0.88, h * 2 - 2.4, 0.12, 0.55, CO, '#c8ccd2');   /* the serving shelf */
+            b.awning(F, -h + 1, h - 1, 2.45, 1.2, '#2a6a4a', '#f4f0e8'); b.blade(F, h - 0.4, 2.9, 0.7, 0.7, '#30ff90'); b.cyl(h * 0.4, 0, 0.26, 3.8, 2.2, CO, '#9a9da2', { seg: 8 }); b.cyl(h * 0.4, 0, 0.42, 6, 0.18, null, '#55585e', { seg: 8 }); b.pipe(OPP[F], 0, 3.8); },
+        'P10-07-B1': b => { const d = b.du;                                                                    // CREW HOUSE
+            b.plinth(0.6, BR3, '#4a4058'); b.trim(3.6, 0.22, CS, '#c8c0d0', 0.08, { top: false }); b.frames('n', -b.hw + 1.5, d - 1.6, 4.2, 2, 6, CREAM); b.frames('n', d + 1.6, b.hw - 1.5, 4.2, 2, 6, CREAM);
+            for (const u of spread(-b.hw + 2.5, b.hw - 2.5, 6)) if (Math.abs(u - d) > 2.2) { b.sbox('n', u, 0.9, 1.4, 1.9, 0.06, GR, '#ffe6b0', { glow: 0.4 }); b.frames('n', u - 0.7, u + 0.7, 0.9, 1.9, 2, CREAM, 0.06); }
+            b.lamp('n', d - 1.5, 2.3); b.lamp('n', d + 1.5, 2.3); b.corners(0.6, 6.4, BR3, '#5a4e6a', 0.5);
+            for (const x of [-b.hw + 3, b.hw - 3]) { b.cyl(x, 1.5, 0.45, 8, 2.6, BR3, '#4a4058', { seg: 8 }); b.cyl(x, 1.5, 0.58, 10.6, 0.2, BR3, '#3a3048', { seg: 8 }); }
+            b.sbox('s', 0, 0.2, 2.2, 3.3, 0.9, TR, '#333333'); b.sbox('s', 0, 3.5, 3.4, 0.1, 1.1, TR, '#333333'); b.pipe('s', -b.hw + 0.5, 7); b.pipe('s', b.hw - 0.5, 7); },
+        'P10-07-B2': b => {                                                                                    // BOX OFFICE
+            b.plinth(0.9, PL, '#7a1830'); b.frames('e', -b.hd + 1.2, b.hd - 1.2, 1.0, 1.5, 4, '#c9a24a'); b.frames('s', -b.hw + 1.2, b.hw - 1.2, 1.0, 1.5, 4, '#c9a24a');
+            b.sbox('e', 0, 0.88, b.hd * 2 - 2, 0.12, 0.4, GOLD, null); b.sbox('s', 0, 0.88, b.hw * 2 - 2, 0.12, 0.4, GOLD, null); b.bulbs('e', -b.hd + 0.6, b.hd - 0.6, 2.85, 8); b.bulbs('s', -b.hw + 0.6, b.hw - 0.6, 2.85, 8);
+            for (let i = 0; i < 8; i++) { const a = (i + 0.5) / 8 * Math.PI * 2; b.box(Math.cos(a) * 3.55, Math.sin(a) * 3.55, 0.3, 0.3, 3.7, 2.2, GOLD, null, { ry: -a / D2R, top: false }); } b.cyl(0, 0, 3.8, 5.75, 0.2, GOLD, null, { seg: 8 }); },
+        'P11-07-B1': b => {                                                                                    // CINEMA
+            b.plinth(0.9, MB, '#1a6a78', 0.14); for (const y of [9.2, 9.7, 10.2]) b.trim(y, 0.14, PL, '#1a8a9a', 0.07, { top: false });
+            b.piers('w', [-b.hd + 0.6, -3.4, 3.4, b.hd - 0.6], 4.7, 5.9, 0.8, ST, '#fff4dc'); b.frames('w', -b.hd + 1.5, -1.2, 5.6, 3.6, 4, '#1a8a9a'); b.frames('w', 1.2, b.hd - 1.5, 5.6, 3.6, 4, '#1a8a9a');
+            b.piers('s', spread(-b.hw + 0.6, b.hw - 0.6, 4), 4.7, 5.9, 0.8, ST, '#fff4dc'); b.frames('s', -b.hw + 1.5, b.hw - 1.5, 5.6, 3.6, 8, '#1a8a9a');
+            b.bulbs('w', -b.hd, b.hd, 3.38, 16, '#fff2c0', 2.62); b.bulbs('s', -b.hw, b.hw, 3.38, 14, '#fff2c0', 2.62); b.bulbs('w', -b.hd, b.hd, 4.45, 16, '#ff6070', 2.62); b.bulbs('s', -b.hw, b.hw, 4.45, 14, '#ff6070', 2.62);
+            for (let i = 0; i < 10; i++) { b.box(-b.hw - 1.52, 0.5, 0.08, 0.2, 5 + i * 1.2, 0.2, null, '#fff2c0', { glow: 1 }); b.box(-b.hw - 1.52, -0.5, 0.08, 0.2, 5 + i * 1.2, 0.2, null, '#fff2c0', { glow: 1 }); }
+            for (const u of [-b.hd + 2.6, b.hd - 2.6]) b.board('w', u - 1.3, u + 1.3, 0.95, 2.1, '#fff6d0', '#1a8a9a', 0.5); for (const u of spread(-b.hw + 3, b.hw - 3, 3)) b.board('s', u - 1.3, u + 1.3, 0.95, 2.1, '#fff6d0', '#1a8a9a', 0.5);
+            for (const s of ['n', 'e']) { b.piers(s, spread(-half(b, s) + 1, half(b, s) - 1, 5), 0.9, 9.7, 0.7, ST, '#e2d4b4'); b.pipe(s, half(b, s) - 0.5, 10.7); } b.sbox('e', 0, 0, 1.8, 2.3, 0.07, CO3, '#1a6a78'); b.lamp('e', 1.5, 2.5);
+            b.ac(b.hw - 2.5, -3, 10.62, true); b.ac(b.hw - 2.5, 3, 10.62, true); b.cowl(2, 0, 10.62); b.grille('n', 0, 6, 2.2, 1.2); },
+    };
 
+    /* ═══ ROOFS + AC UNITS + MORE SHEETS, per building (mondo 11-13 20:18 + 20:19): roof membranes and parapets, roof plant, skylights, hatches,
+       gutters, wall AC units, pack door sheets on the service doors, grill sheets, hazard plates, a second sheet for the base or a band ═══ */
+    const ROOFS = {
+        'P08-04-B1': b => { const F = b.fs, K = OPP[F];                                                        // CASINO
+            b.top(13.82, RF, '#5a5660', 1.0); b.plant(-b.hw + 5, 0, 13.8, 2.5); b.sky(2, -1.5, 13.8, 3, 2); b.hatch(-b.hw + 3, b.hd - 3.5, 13.8);
+            b.parapet([K, FLK[F][0], FLK[F][1]], 10.2, 0.5, MB, '#4a3560', '#c9a24a'); b.sdoor(K, 0, 0, '#b8a8c8'); b.haz(K, 1.2, 1.4); b.wac(K, -6, 5.4); b.wac(K, 6, 5.4); b.wac(K, -6, 2.6); b.wac(K, 6, 2.6);
+            b.sbox(K, 0, 0.8, half(b, K) * 2 - 1, 2.4, 0.03, DADO, '#8a7aa0', { off: 0.05, uv: [3.5, 3.2] }); },
+        'P08-04-B2': b => { const K = OPP[b.fs]; b.gutter(OPP['e'] === K ? 'w' : 'w', 4.2, 0.5); b.wac(K, -1.5, 2.6); b.sdoor(K, 1.5, 1); b.cowl(0, 0, 5.0); },
+        'P09-04-B1': b => { b.sdoor('n', -4, 2); b.sdoor('n', 4, 2); b.wac('n', -7, 5); b.wac('n', 0, 5); b.wac('n', 7, 5); b.wac('e', 0, 5); b.sbox('s', 0, 0.45, b.hw * 2 - 0.4, 0.05, 0.03, RTL, '#d0306a', { off: 0.05 });
+            b.plant(-b.hw + 3, -b.hd + 1.6, 7, 2); b.sky(4, 0, 7, 3, 1.6); b.hatch(b.hw - 1.5, -b.hd + 1.5, 7); },
+        'P09-04-B2': b => { const K = OPP[b.fs]; b.gutter('e', 5.2, 0.5); b.gutter('w', 5.2, 0.5); b.sdoor(K, -1.5, 2, '#c8b0e8'); b.wac(K, 1.6, 2.8); b.cyl(1.5, 1, 0.22, 6, 1.6, CO, '#9a9da2', { seg: 8 }); },
+        'P09-04-B3': b => { const K = OPP[b.fs]; b.sdoor(K, 2.5, 0, '#a8d0d0'); b.wac(K, -2.5, 2.6); b.haz(K, 3.6, 1.5); b.gutter('w', 4.4, 0); b.sbox(b.fs, 0, 0, half(b, b.fs) * 2 + 0.2, 0.9, 0.03, CHK, '#8ac0c0', { off: 0.1, uv: 1.75 }); },
+        'P10-04-B1': b => {                                                                                    // CONCERT HALL
+            for (const [x, z] of [[-b.hw + 2.5, -b.hd + 3], [b.hw - 2.5, -b.hd + 3]]) b.sky(x, z, 7, 2.4, 2.4);
+            b.plant(-b.hw + 3.5, b.hd - 2.2, 7, 2); b.plant(b.hw - 6.5, b.hd - 2.2, 7, 2); b.box(0, b.hd - 2.2, 8.4, 2.6, 16.2, 0.04, RF, '#55525c');
+            b.sdoor('s', -4.5, 0, '#c8c0b0'); b.sdoor('s', 4.5, 0, '#c8c0b0'); b.haz('s', 5.7, 1.5); b.wac('s', -7.5, 5); b.wac('s', 7.5, 5);
+            for (const s of ['e', 'w']) b.sbox(s, 0, 0.9, b.hd * 2 - 1, 0.5, 0.03, U('TileMarble1d'), '#6a6470', { off: 0.17 }); },
+        'P11-04-B1': b => { const K = OPP[b.fs]; b.sdoor(K, -2, 1, '#8a8f98'); b.wac(K, 5, 2.4); b.wac(K, 6.2, 2.4); b.haz(K, -0.8, 1.5); b.gutter('w', 5.2, 0.6, '#1c1f26');
+            b.cyl(-b.hw, b.hd - 3.5, 3.4, 5.61, 0.03, RF, '#3a3d46', { seg: 24 }); b.cyl(-b.hw, b.hd - 3.5, 0.8, 5.6, 0.35, GF, '#bfe0ff', { seg: 12, glow: 0.5 }); },
+        'P11-04-B2': b => { b.sdoor('w', -b.hd + 2.6, 2); b.wac('e', 3, 5); b.wac('e', -5, 5); b.wac('e', 3, 1.9); b.plant(-b.hw + 3, -b.hd + 2, 7, 2); b.sky(-1, 2, 7, 2.6, 1.8); b.sky(-1, -3, 7, 2.6, 1.8); b.hatch(-b.hw + 1.5, b.hd - 1.5, 7); },
+        'P08-05-B1': b => { const L = b.hd * 2, z0 = -b.hd, s1 = L * 0.31, s2 = L * 0.30, s3 = L - s1 - s2, zm = z0 + s1 + s2 / 2, zs = z0 + s1 + s2 + s3 / 2;
+            b.sbox('w', zs, 0.5, s3 - 0.4, 0.2, 0.03, CHK, '#e0e0e0', { off: 0.12, uv: 0.8 }); b.sbox('w', zm, 0, s2 - 1, 0.6, 0.05, RTL, '#b02020', { off: 0.1 });
+            for (const u of [z0 + 2, z0 + s1 - 2]) b.sbox('e', u, 1.4, 1.2, 1.5, 0.05, SHUT, '#d8c8a8', { uv: 'fit', kind: 'wall' });
+            b.sdoor('e', z0 + s1 / 2, 2); b.sdoor('e', zs + 1.5, 0); b.wac('e', zm - 2, 2.6); b.wac('e', zm + 2, 2.6); b.wac('e', zs - 2.5, 4.6); b.haz('e', zs + 2.7, 1.5);
+            b.box(0, zs, b.hw * 2 - 0.6, s3 - 0.6, 8.0, 0.03, CHK, '#b8b0a0', { uv: 1.2 }); b.gutter('n', 5, 0.5); },
+        'P08-05-B2': b => { const F = b.fs; b.sbox(F, 0, 0, half(b, F) * 2 + 0.24, 0.9, 0.03, CHK, '#ff5050', { off: 0.12, uv: 0.9 }); b.box(0.6, 0, b.hw * 2 + 3, b.hd * 2 + 1, 3.9, 0.03, RF, '#5a5a60'); b.plant(-1.5, -1.6, 3.9, 1.5); b.sdoor(FLK[F][1], 0, 0, '#f0d0d0'); b.wac(FLK[F][1], 2.2, 2.2); },
+        'P09-05-B1': b => { b.parapet(['e', 'w', 's'], 10.7, 0.55, BR1, '#8f5238', '#f0e0c0'); b.plant(-b.hw + 5, b.hd - 3.2, 10.62, 3); b.hatch(b.hw - 1.6, b.hd - 3.2, 10.62); b.sky(-b.hw + 1.6, 0, 10.62, 1.4, 3);
+            b.sdoor('s', -3.6, 0, '#c8a890'); b.sdoor('s', 3.6, 0, '#c8a890'); b.haz('s', 4.8, 1.5); b.wac('e', 0, 5); b.wac('e', 4, 5); b.wac('w', 0, 5); b.wac('w', 4, 5);
+            b.sbox('n', 0, 0.9, b.hw * 2 - 1.2, 0.5, 0.03, RTL, '#a03040', { off: 0.16 }); for (const s of ['e', 'w']) b.sbox(s, 0, 0.9, b.hd * 2 - 0.4, 2.6, 0.03, DADO, '#c89878', { off: 0.03, uv: [3.5, 3.4] }); },
+        'P10-05-B1': b => { b.sdoor('s', -b.hw + 1.2, 0, '#a8b0bc'); b.haz('s', -b.hw + 2.3, 1.6); b.haz('s', 0, 4.0); b.wac('n', -6, 2.6); b.wac('n', 6, 2.6); b.plant(-4, -b.hd + 1.6, 7, 3); b.hatch(b.hw - 1.5, -b.hd + 1.5, 7); b.sky(3, 1, 7, 3, 1.6); },
+        'P10-05-B2': b => { const F = b.fs, K = OPP[F]; b.gutter('n', 3.8, 0.4); b.gutter('s', 3.8, 0.4); b.sdoor(K, -2, 2); b.wac(K, 3, 2.3); b.sbox(F, 0, 0.6, half(b, F) * 2 - 0.3, 0.2, 0.03, CHK, '#b8c8a0', { off: 0.02, uv: 0.8 }); },
+        'P11-05-B1': b => { b.plant(-b.hw + 3.5, -b.hd + 6.5, 7, 2.5); b.sky(2, -b.hd + 4, 7, 3, 2); b.hatch(b.hw - 1.6, -b.hd + 8.5, 7);
+            b.sdoor('w', -b.hd + 6, 0, '#e0d4b8'); b.sdoor('w', b.hd - 4, 1); b.haz('w', b.hd - 2.8, 1.5); b.wac('w', -b.hd + 2, 5); b.wac('w', -b.hd + 4, 5); b.wac('s', -7, 3); b.wac('s', 7, 3);
+            b.sbox('n', 0, 0.8, b.hw * 2 - 1.5, 0.45, 0.03, RTL, '#b03020', { off: 0.14 }); for (const u of [0.25, 0.5, 0.75]) b.box(0, b.hd - (b.hd * 2 - 10.5) * u, b.hw * 2 - 0.6, 0.18, 9.4, 0.2, CO3, '#6a665c'); },
+        'P08-06-B2': b => { const K = OPP[b.fs]; b.sdoor(K, 2, 2, '#c09080'); b.wac(K, -2, 2.4); b.sbox(b.fs, 0, 0, half(b, b.fs) * 2 + 0.2, 0.8, 0.03, RTL, '#8a1818', { off: 0.1 }); b.box(0, 0, b.hw * 2 - 2.6, b.hd * 2 - 3.7, 6.26, 0.03, RF, '#2a2422'); },
+        'P09-06-B1': b => { b.gutter('e', 8, -0.75); b.gutter('w', 8, -0.75); b.gutter('s', 8, -0.75); b.sdoor('s', 3, 2, '#d0a0a0'); b.wac('s', -3, 5); b.wac('s', 5.5, 5); b.wac('e', 0, 5); b.haz('s', 4.2, 1.5);
+            b.sbox('n', (-b.hw + 3.5 + b.hw - 1) / 2, 0.7, b.hw * 2 - 5, 0.5, 0.03, U('TileMarble1d'), '#3a1420', { off: 0.14 }); for (const s of ['e', 'w']) b.sbox(s, 1, 0.7, b.hd * 2 - 4, 2.8, 0.03, DADO, '#b05868', { off: 0.03, uv: [3.5, 3.4] }); },
+        'P09-06-B2': b => { const K = OPP[b.fs]; b.sdoor(K, 1.6, 2, '#a898d8'); b.wac(K, -1.6, 2.6); b.sbox(b.fs, 0, 0, half(b, b.fs) * 2 + 0.2, 0.5, 0.03, CHK, '#8a70d0', { off: 0.1, uv: 0.8 }); },
+        'P09-06-B3': b => { const K = OPP[b.fs]; b.sdoor(K, -2, 0, '#d8b080'); b.wac(K, 2, 2.6); b.haz(b.fs, 3.6, 1.6); b.gutter('e', 4.6, 0.4); b.cowl(-1, 0, 5.4); b.cowl(2, 0, 5.2); },
+        'P10-06-B1': b => { b.sdoor('s', -5, 0, '#b8a090'); b.sdoor('e', 4, 1); b.haz('s', -3.8, 1.5); b.haz('n', b.du + 4.9, 1.6); b.wac('s', 4, 4.6); b.wac('s', 7, 4.6); b.wac('e', -4, 4.6);
+            b.gutter('w', 7.02, 0); b.plant(b.hw - 2.8, -b.hd + 2.8, 15, 0.6);
+            b.sbox('n', -b.hw / 2 - 1, 0.9, 6, 1.5, 0.03, DADO, '#a08878', { off: 0.03, uv: [3.5, 3] }); },
+        'P11-06-B1': b => { b.parapet(['n', 'e'], 6.3, 0.4, SUB, '#1c1a2a', '#30e0ff'); b.plant(-6, 2.5, 6.3, 3); b.sky(-10, -1, 6.3, 2, 2); b.hatch(b.hw - 1.5, b.hd - 1.5, 6.3);
+            b.sdoor('n', b.hw - 3, 0, '#5a5870'); b.haz('n', b.hw - 1.8, 1.5); b.wac('e', -3, 3.6); b.wac('e', 3, 3.6); b.sbox('s', (b.du + 4.5 + b.hw - 1) / 2, 0, b.hw - 1 - b.du - 4.5, 0.5, 0.03, CHK, '#ff30c0', { off: 0.12, uv: 0.7 }); },
+        'P11-06-B2': b => { b.gutter('e', 10.5, 0.4); b.gutter('w', 10.5, 0.4); b.sdoor('e', 0, 2, '#c8a090'); for (const y of [4.4, 7.9]) for (const u of [-b.hd + 2, b.hd - 2]) b.wac('e', u, y);
+            for (const s of ['n', 's']) for (const y of [1.2, 4.6, 8.1]) b.sbox(s, 0, y, 1.1, 1.6, 0.05, SHUT, '#c8b8a0', { uv: 'fit', kind: 'wall' }); b.sbox('w', 0, 0.6, b.hd * 2, 0.12, 0.03, CS, '#c8b8a0', { off: 0.1 }); },
+        'P09-07-B1': b => { b.gutter('n', 5, 0.4); b.gutter('s', 5, 0.4); b.sdoor('n', 2, 2, '#d8b890'); b.wac('n', -4.5, 2.6); b.sbox('s', 0, 0.6, b.hw * 2 - 0.3, 0.2, 0.03, CHK, '#e8d8b8', { off: 0.02, uv: 0.8 }); },
+        'P09-07-B2': b => { const K = OPP[b.fs]; b.sdoor(K, 2, 0, '#d8e0d8'); b.wac(K, -2, 2.3); b.gutter('s', 3.8, 0.6, '#1e4a34'); b.sbox(b.fs, 0, 0.9, half(b, b.fs) * 2 - 0.3, 0.12, 0.03, CHK, '#60c090', { off: 0.02, uv: 0.5 }); },
+        'P10-07-B1': b => { b.gutter('n', 7, 0.4); b.gutter('s', 7, 0.4); b.sdoor('s', 0, 2, '#b0a0c0'); b.wac('s', -8, 4.8); b.wac('s', 8, 4.8); b.wac('s', -8, 1.8); for (const s of ['e', 'w']) for (const y of [1.2, 4.6]) b.sbox(s, 0, y, 1.1, 1.6, 0.05, SHUT, '#c0b8d0', { uv: 'fit', kind: 'wall' }); },
+        'P10-07-B2': b => { b.parapet(['n', 'w', 'e', 's'], 3.7, 0.3, PL, '#c02848', '#c9a24a'); b.sdoor('n', 0, 3, '#ffd8e0'); b.wac('w', 0, 2.3); b.sbox('e', 0, 0, b.hd * 2 + 0.2, 0.9, 0.03, CHK, '#e04060', { off: 0.12, uv: 0.9 }); b.sbox('s', 0, 0, b.hw * 2 + 0.2, 0.9, 0.03, CHK, '#e04060', { off: 0.12, uv: 0.9 }); },
+        'P11-07-B1': b => { b.parapet(['n', 'e', 's'], 10.7, 0.55, ST, '#e2d4b4', '#1a8a9a'); b.plant(-2, -b.hd + 3, 10.62, 3); b.sky(-b.hw / 2, 3, 10.62, 2.4, 2.4); b.hatch(b.hw - 1.6, b.hd - 1.6, 10.62);
+            b.sdoor('n', -4, 0, '#d8ccb0'); b.sdoor('n', 4, 0, '#d8ccb0'); b.haz('n', 5.2, 1.5); b.wac('e', -5, 5.5); b.wac('e', 5, 5.5); b.wac('n', 0, 3.2);
+            for (const s of ['n', 'e']) b.sbox(s, 0, 0.9, half(b, s) * 2 - 1, 2.6, 0.03, DADO, '#c8b898', { off: 0.03, uv: [3.5, 3.4] }); b.sbox('w', 0, 0.9, b.hd * 2 - 1.5, 0.5, 0.03, CHK, '#1a8a9a', { off: 0.16, uv: 0.8 }); b.sbox('s', 0, 0.9, b.hw * 2 - 1.5, 0.5, 0.03, CHK, '#1a8a9a', { off: 0.16, uv: 0.8 }); },
+    };
+    /* ═══ THE LETTERING, per building: plain trade words on the sign panels (no invented names) ═══ */
+    const INK = '#1a1a1e', WHT = '#ffffff';
+    const LETTERS = {
+        'P08-04-B1': b => { const F = b.fs, d = b.du; b.txt(F, d - 3.2, d + 3.2, 3.94, 0.62, 'CASINO', '#fff2c0', 4.62, 0.9); for (const s of FLK[F]) b.txt(s, -2.4, 2.4, 5.6, 1.8, 'CASINO', '#5a1a30', 0.2); },
+        'P08-04-B2': b => { b.txt('s', -b.hw + 1.2, b.hw - 1.2, 2.75, 0.8, 'PAWN', INK, 0.11); },
+        'P09-04-B1': b => { b.txt('s', -5, 5, 7.1, 0.7, 'COSTUMES', '#f4ead6', 0.52); b.txt('w', -3.5, 3.5, 7.1, 0.7, 'COSTUMES', '#f4ead6', 0.52); },
+        'P09-04-B2': b => { b.txt('n', -b.hw + 1.2, b.hw - 1.2, 3.35, 0.6, 'MASKS + WIGS', INK, 0.11); },
+        'P09-04-B3': b => { const F = b.fs, h = half(b, F); b.txt(F, -h + 1.4, h - 1.4, 2.95, 0.6, 'TAILOR', '#1e5a5a', 0.2); },
+        'P10-04-B1': b => { b.txt('n', -12, -7.2, 4.42, 0.66, 'TONIGHT', '#b01828', 2.78); b.txt('n', 7.2, 12, 4.42, 0.66, 'LIVE MUSIC', '#b01828', 2.78); b.vtxt('n', 0, 13.3, 1.02, 1.5, 'CONCERT', '#b01828', 1.48); },
+        'P11-04-B1': b => { const d = b.du; b.txt('s', d + 2.3, b.hw - 1.8, 3.68, 0.74, 'RECORDING STUDIO', INK, 0.11); b.txt(b.fs, d + 1.18, d + 1.82, 2.28, 0.24, 'ON AIR', WHT, 0.12, 1); },
+        'P08-05-B1': b => { const L = b.hd * 2, z0 = -b.hd, s1 = L * 0.31, s2 = L * 0.30, s3 = L - s1 - s2, zm = z0 + s1 + s2 / 2, zs = z0 + s1 + s2 + s3 / 2;
+            b.txt('w', z0 + s1 / 2 - 2.6, z0 + s1 / 2 + 2.6, 3.7, 0.6, 'TRATTORIA', '#fff0d0', 0.2); b.txt('w', zm - 2, zm + 2, 2.56, 0.68, 'RAMEN', '#b02020', 0.11); b.txt('w', zs - 3.2, zs + 3.2, 6.3, 0.6, 'ROOFTOP GRILL', '#ffb060', 0.24, 0.8); },
+        'P08-05-B2': b => { const s = FLK[b.fs][0]; b.txt(s, -2.2, 2.2, 1.5, 1.0, 'BURGERS', '#d02828', 0.2); },
+        'P09-05-B1': b => { const d = b.du; b.txt('n', d - 7, d + 7, 4.0, 0.72, 'COMEDY TONIGHT', '#5a2030', 3.43); [...'COMEDY'].forEach((ch, i) => b.box(b.hw + 0.5, -b.hd - 1.93, 0.7, 0.02, 15.2 - (i + 1) * 1.7, 1.4, 'txt:' + ch + '|#fff6d0||0.5', '#ffffff', { uv: 'fit', kind: 'over', glow: 0.9 })); },
+        'P10-05-B1': b => { b.txt('s', -5.6, 5.6, 4.96, 0.68, 'LOADING DOCK', INK, 0.11); },
+        'P10-05-B2': b => { const F = b.fs; b.txt(F, -2.6, 2.6, 3.2, 0.5, 'CANTEEN', '#4a5a34', 0.08); },
+        'P11-05-B1': b => { b.txt('n', -4.6, 4.6, 3.32, 0.46, 'FILM STUDIO', '#fff6d0', 1.82, 0.9); b.txt('e', -5.6, -2.4, 5.95, 0.8, 'STAGE 1', WHT, 0.16); b.txt('e', 2.8, 8.2, 7.5, 1.2, 'STAGE DOOR', '#24476e', 0.11); },
+        'P08-06-B1': b => { b.txt('e', -6.5, 6.5, 5.28, 0.74, 'NIGHT MARKET', INK, 0.57); P0(b, -b.hw + 1.2, 4.5, -b.hd + 0.78, 180, 2.4, 0.8, 'MARKET'); P0(b, -b.hw + 1.2, 4.5, b.hd - 0.78, 0, 2.4, 0.8, 'MARKET'); },
+        'P08-06-B2': b => { b.txt('s', -3.2, 3.2, 2.78, 0.74, 'NOODLES', '#b02020', 0.11); },
+        'P09-06-B1': b => { b.txt('n', -b.hw + 4, b.hw - 1.5, 2.96, 0.68, 'CABARET', INK, 0.11); },
+        'P09-06-B2': b => { b.txt('s', -b.hw + 1.3, b.hw - 1.3, 3.16, 0.68, 'MAGIC + JOKES', INK, 0.11); },
+        'P09-06-B3': b => { b.txt('s', -b.hw + 1.4, b.hw - 1.4, 3.55, 0.6, 'PROP STORE', '#b8742a', 0.11); },
+        'P10-06-B1': b => { b.txt('n', -7.6, 3.6, 5.68, 0.84, 'SCENERY WORKSHOP', '#5e463a', 0.11); },
+        'P11-06-B1': b => { const d = b.du; b.txt('n', -5.6, 5.6, 3.55, 1.3, 'ARCADE', '#0c0a16', 0.2); b.txt('s', d + 4.8, b.hw - 1.3, 3.25, 0.9, 'ARCADE', '#30e0ff', 0.1, 1); },
+        'P09-07-B1': b => { b.txt('s', -3, 3, 3.5, 0.6, 'BAKERY', '#fff0d0', 0.08); },
+        'P09-07-B2': b => { b.txt('s', -4.7, 4.7, 2.66, 0.68, 'KEBAB  OPEN 24H', INK, 0.11); },
+        'P10-07-B1': b => { const d = b.du; b.txt('n', d - 1.6, d + 1.6, 3.05, 0.42, 'STAGE CREW', '#f0e6cc', 0.08); },
+        'P10-07-B2': b => { b.txt('e', -Math.min(2.4, b.hd - 0.6), Math.min(2.4, b.hd - 0.6), 3.32, 0.36, 'BOX OFFICE', '#5a1020', 0.12); b.txt('s', -Math.min(2.4, b.hw - 0.6), Math.min(2.4, b.hw - 0.6), 3.32, 0.36, 'BOX OFFICE', '#5a1020', 0.12); },
+        'P11-07-B1': b => { b.txt('w', -b.hd + 1, -1.6, 3.42, 1.06, 'NOW SHOWING', '#c02030', 2.63); b.txt('w', 1.6, b.hd - 1, 3.42, 1.06, 'DOUBLE FEATURE', '#c02030', 2.63); b.txt('s', -b.hw + 1.5, b.hw - 1.5, 3.42, 1.06, 'NOW SHOWING', '#c02030', 2.63);
+            b.vtxt('w', 0, 16.4, 1.75, 0.62, 'CINEMA', '#fff6d0', 1.53, 0.9); },
+    };
+    /* a free-standing word panel (x, z in the building's metres, ry its facing) */
+    function P0(b, x, y, z, ry, w, h, words) { b.parts.push({ s: 'quad', p: [r3(x), y, r3(z)], ry, size: [w, h], key: 'txt:' + words + '|' + INK + '||' + (Math.round(w / h * 100) / 100), uv: 'fit', tint: 0xffffff, kind: 'over' }); }
     /* ═══ P08-04 CASINO: the Strip's casino. Dark marble, brass bands, a domed corner tower, a red drive-up canopy ═══ */
     B('P08-04-B1', { walk: true, st: 2 }, b => {
-        b.walls(9.6, MB, '#4a3560'); b.trim(9.6, 0.6, GOLD, null); b.top(9.9, CS, '#5a5560', 0.2);
+        b.walls(9.6, MB, '#4a3560'); b.trim(9.6, 0.6, GOLD, null); b.top(9.9, RF, '#6a6670', 0.2);
         b.box(0, 0, b.hw * 2 - 1.6, b.hd * 2 - 3, 10.2, 3.2, ST, '#f1e2c0'); b.box(0, 0, b.hw * 2 - 1.2, b.hd * 2 - 2.6, 13.4, 0.4, GOLD, null);
         b.face('e', -b.hd + 6, b.door[1] - 1.4, 0.6, 2.6, GT, '#ffd9a0', GLOW); b.face('e', b.door[1] + 1.4, b.hd - 1, 0.6, 2.6, GT, '#ffd9a0', GLOW);
         b.face('e', -b.hd + 6, b.hd - 1, 5.2, 2.6, GS, '#ffc0e0', GLOW);
@@ -158,7 +480,7 @@ module.exports = { build: function (api) {
     });
     /* ═══ P09-05 COMEDY THEATER: a brick vaudeville house, a stepped front, a barrel roof, the yellow marquee, the blade sign ═══ */
     B('P09-05-B1', { walk: true, st: 3 }, b => {
-        b.walls(10.7, BR1, '#b06a48'); b.top(10.62, CS, '#6a5a50', 0.1);
+        b.walls(10.7, BR1, '#b06a48'); b.top(10.62, RFC, '#8a8078', 0.1);
         b.box(0, -b.hd + 0.3, b.hw * 2 + 0.1, 0.6, 10.5, 1.2, ST, '#f0e0c0'); b.box(0, -b.hd + 0.3, b.hw * 2 * 0.62, 0.6, 11.7, 1.2, ST, '#f0e0c0'); b.box(0, -b.hd + 0.3, b.hw * 2 * 0.26, 0.6, 12.9, 1.4, ST, '#f0e0c0');
         b.roof('barrel', 0, 1.2, b.hw * 2 - 4, b.hd * 2 - 3.6, 10.5, 4.2, CO, '#5a2030', { ridge: 'z', seg: 12, keyEnd: BR1, tintEnd: T('#b06a48', BR1) });
         b.face('n', -b.hw + 1, b.hw - 1, 5.2, 3.4, GT, '#ffe0a0', GLOW);
@@ -234,7 +556,7 @@ module.exports = { build: function (api) {
     });
     /* ═══ P11-06 ARCADE: black tile, a rounded west end, pink and cyan light bands, an arched entry, the gold token on the roof; the apartments ═══ */
     B('P11-06-B1', { walk: true, st: 1 }, b => {
-        b.walls(6.3, SUB, '#1c1a2a'); b.top(6.3, CS, '#2a2838', 0.1);
+        b.walls(6.3, SUB, '#1c1a2a'); b.top(6.3, RF, '#4a4858', 0.1);
         b.cyl(-b.hw, 0, b.hd, 0, 6.3, SUB, '#1c1a2a', { arc: 180, a0: 90, seg: 24 });
         for (const q of [[2.9, '#ff30c0'], [5.6, '#30e0ff']]) { b.trim(q[0], 0.25, null, q[1], 0.12, NEON); b.cyl(-b.hw, 0, b.hd + 0.12, q[0], 0.25, null, q[1], { arc: 180, a0: 90, seg: 24, glow: 1 }); }
         b.roof('barrel', b.door[0], b.hd + 1.75, 6.3, 3.5, 2.9, 1.1, null, '#30e0ff', { ridge: 'z', glow: 0.8, roof: false, ds: true });
@@ -265,14 +587,14 @@ module.exports = { build: function (api) {
         b.canopy(4, 1.5, 2.6, 0.2, CO, '#ffd24a', { glow: 0.3 });
     });
     B('P10-07-B2', { st: 1 }, b => {                                                                          // the box office: a red hall, an octagon lantern under a yellow cone
-        b.walls(3.7, PL, '#c02848'); b.top(3.7, CS, '#7a3040', 0.1); b.trim(3.3, 0.4, GOLD, null, 0.1, { top: false });
+        b.walls(3.7, PL, '#c02848'); b.top(3.7, RF, '#7a4050', 0.1); b.trim(3.3, 0.4, GOLD, null, 0.1, { top: false });
         b.face('e', -b.hd + 1.2, b.hd - 1.2, 1.0, 1.5, GS, '#fff0c0', GLOW); b.face('s', -b.hw + 1.2, b.hw - 1.2, 1.0, 1.5, GS, '#fff0c0', GLOW);
         b.cyl(0, 0, 3.6, 3.7, 2.2, PL, '#c02848', { seg: 8 }); b.cyl(0, 0, 3.65, 4.2, 1.2, GS, '#fff0c0', { seg: 8, glow: 0.55, cap: false }); b.cyl(0, 0, 4.4, 5.9, 2.6, CO, '#f0c020', { r2: 0, seg: 8, roof: true });
         b.cyl(0, 0, 0.3, 8.5, 1.2, GOLD, null, { r2: 0.05, seg: 6 });
     });
     /* ═══ P11-07 CINEMA: a cream deco front, a stepped top, the teal fin, the marquee round the corner ═══ */
     B('P11-07-B1', { walk: true, st: 3 }, b => {
-        b.walls(10.7, ST, '#f0e2c4'); b.top(10.62, CS, '#8a8070', 0.1);
+        b.walls(10.7, ST, '#f0e2c4'); b.top(10.62, RFC, '#9a9488', 0.1);
         b.box(-b.hw + 0.45, 0, 0.9, b.hd * 2 * 0.7, 10.5, 1.4, ST, '#f0e2c4'); b.box(-b.hw + 0.45, 0, 0.9, b.hd * 2 * 0.4, 11.9, 1.4, ST, '#f0e2c4');
         b.box(-b.hw - 0.75, 0, 1.5, 1.4, 3.6, 13.5, PL, '#1a8a9a', { glow: 0.5 });                             // the fin on the west front
         b.box(-b.hw - 1.3, 0, 2.6, b.hd * 2, 3.3, 1.3, PL, '#fff6d0', { glow: 0.6, under: true }); b.box(0, b.hd + 1.3, b.hw * 2, 2.6, 3.3, 1.3, PL, '#fff6d0', { glow: 0.6, under: true });
@@ -285,6 +607,7 @@ module.exports = { build: function (api) {
     const plot = (px, py) => ({ x: lx => r3(gx(px * 12) + lx * C), z: ly => r3(gx(py * 12) + ly * C) });
     const clearProps = (x0, z0, x1, z1) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.x > x0 && q.x < x1 && q.z > z0 && q.z < z1) props.splice(i, 1); } for (let i = features.length - 1; i >= 0; i--) { const q = features[i]; if (q.k === 'tree' && q.x > x0 && q.x < x1 && q.z > z0 && q.z < z1) features.splice(i, 1); } };
     const ghost = (x, z, w, d, h) => features.push(w >= d ? { k: 'wall', x0: r3(x - w / 2 + d / 2), z0: r3(z), x1: r3(x + w / 2 - d / 2), z1: r3(z), h, t: r3(d), key: 'urban:ConcreteStriped2a', ghost: true, rail: false } : { k: 'wall', x0: r3(x), z0: r3(z - d / 2 + w / 2), x1: r3(x), z1: r3(z + d / 2 - w / 2), h, t: r3(w), key: 'urban:ConcreteStriped2a', ghost: true, rail: false });
+    const parts_txt = (P, x, y, z, ry, w, h, words, fg) => { const q = P('quad', x, y, z, 'txt:' + words + '|' + fg + '||' + (Math.round(w / h * 100) / 100), null, { size: [w, h], ry, uv: 'fit', kind: 'over' }); q.tint = 0xffffff; return q; };
     const free = (id, x, z, fn) => { const parts = []; const P = (s, px, y, pz, key, tint, o2) => { const q = Object.assign({ s, p: [r3(px), r3(y), r3(pz)] }, o2 || {}); if (key) q.key = key; if (tint != null) q.tint = T(tint, key); parts.push(q); return q; }; fn(P); rows.push({ k: 'arch', id: 'dc:E-' + id + ':arch', x: r3(x), z: r3(z), rot: 0, parts }); };
     /* the VHS shop (the pack's whole building, real size 14.9 x 13.6 m, its entrance at +Z): on the yard south-west of the Costume shops, its
        entrance to the walk on its east (a prop's face turns it clockwise like a building's rot: 270 = the front to the east) */
@@ -294,7 +617,7 @@ module.exports = { build: function (api) {
       free('chapel', x, z, P => {
         P('box', 0, 0, 0, ST, '#fbf6ee', { size: [10.4, 4.4, 6.9], top: false }); P('roof', 0, 4.4, 0, CO, '#e88aa8', { form: 'gable', size: [10.4, 2.6, 6.9], over: 0.4, keyEnd: ST, tintEnd: T('#fbf6ee', ST), roof: true });
         P('box', 3.6, 0, 2.3, ST, '#fbf6ee', { size: [2.4, 8.2, 2.4] }); P('roof', 3.6, 8.2, 2.3, CO, '#e88aa8', { form: 'pyramid', size: [2.4, 3.4, 2.4], over: 0.25, roof: true }); P('cyl', 3.6, 11.5, 2.3, GOLD, null, { r: 0.18, r2: 0, h: 1.4, seg: 6 });
-        P('quad', -1.2, 0.5, 3.51, GS, '#ffd0e0', { size: [5.6, 2.2], glow: 0.55 }); P('quad', -1.2, 3.1, 3.52, null, '#ff80b0', { size: [5.6, 0.7], glow: 1 }); P('quad', 3.6, 0, 3.56, U('DoorWoodenHalf1a'), '#ffffff', { size: [1.75, 2.45], uv: 'fit', kind: 'wall' });
+        P('quad', -1.2, 0.5, 3.51, GS, '#ffd0e0', { size: [5.6, 2.2], glow: 0.55 }); P('quad', -1.2, 3.1, 3.52, null, '#ff80b0', { size: [5.6, 0.7], glow: 1 }); parts_txt(P, -1.2, 3.14, 3.55, 0, 5.2, 0.62, 'WEDDING CHAPEL', '#7a1038'); P('quad', 3.6, 0, 3.56, U('DoorWoodenHalf1a'), '#ffffff', { size: [1.75, 2.45], uv: 'fit', kind: 'wall' });
       }); ghost(x, z, 10.4, 6.9, 4.4); }
     /* THE STRIP'S FOUNTAIN (carried over): a round basin, two tiers, lit water, two palms, on the yard south-west of the Recording studio */
     { const p = plot(11, 4), x = p.x(3), z = p.z(9); clearProps(x - 6.9, z - 6.9, x + 6.9, z + 6.9);   // the basin fills squares 2..3 x 8..9
@@ -309,6 +632,7 @@ module.exports = { build: function (api) {
       const P = (s, x, y, z, key, tint, o2) => { const q = Object.assign({ s, p: [r3(x), y, r3(z)] }, o2); if (key) q.key = key; q.tint = T(tint, key); parts.push(q); };
       P('box', 0, 3.4, 0, CO, '#f0c020', { size: [9.6, 0.35, 6.4], under: true }); P('box', 0, 3.0, 0, null, '#111111', { size: [9.7, 0.4, 6.5], top: false });
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) P('cyl', sx * 4.4, 0, sz * 2.8, TR, '#333333', { r: 0.12, h: 3.4, seg: 6 });
+      for (const sg of [1, -1]) parts.push({ s: 'quad', p: [0, 3.02, sg * 3.27], ry: sg > 0 ? 0 : 180, size: [3.2, 0.36], key: 'txt:TAXI|#f0c020||8.89', uv: 'fit', tint: 0xffffff, kind: 'over', glow: 0.8 });
       rows.push({ k: 'arch', id: 'dc:E-taxi-canopy:arch', x: cx, z: cz, rot: 0, parts });
       const q2 = [], Q = (s, y, key, tint, o2) => { const q = Object.assign({ s, p: [0, y, 0] }, o2); if (key) q.key = key; q.tint = T(tint, key); q2.push(q); };
       Q('cyl', 0, PL, '#f0c020', { r: 2.2, h: 3.2, seg: 12 }); Q('cyl', 1.1, GS, '#cfe8ff', { r: 2.25, h: 1.3, seg: 12, glow: 0.5, cap: false }); Q('cyl', 3.2, CO, '#222222', { r: 2.8, r2: 0, h: 1.6, seg: 12, roof: true });

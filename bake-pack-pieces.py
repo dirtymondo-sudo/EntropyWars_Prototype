@@ -40,6 +40,8 @@ F = {
     'gasscene':      'gas-station/Gas_station/Models/Gas_station.fbx',
     'laundryscene':  'laundry/Laundry/Models/Laundry.fbx',
     'quequis':       'quequis-house/Quequis_House/Models/Quequis_House.fbx',
+    'tacosprops':    'tacos/Tacos/Models/Tacos_Props.fbx',
+    'playground':    'playground/Playground.fbx',                                                        # cursedlake's PS1 playground (project files asset-packs/other/cursedlake_ps1-playground/, unpacked as `playground/`)
     'industrial':    'domi236_ps1-industrial-pack-1/industrial pack/source/industrial_buildings.fbx',   # domi236's PS1 industrial pack (project files asset-packs/other/)
 }
 # (catalogue key, pack, scene nodes, rotz degrees)
@@ -123,6 +125,19 @@ JOBS += [
     ('street_signal', 'pizzeria', ['traffic_light'], 0),
     ('transit_bus', 'busstop', ['Bus', 'Tire', 'Tire_01', 'Tire_02', 'Tire_03', 'Cube.038', 'Cube.039', 'Cube.040', 'Cube.041'], 0),
     ('bus_stop_sign', 'busstop', ['Bus_stop_sign'], 0),
+]
+# THE CITY'S STREET PIECES (2026-11-13, DISASTER CITY, THE PROP PASS — mondo: "See what other assets/props are available that can be used
+# through out the city"): a pay phone and a power pole (Tacos), a heap of three garbage bags (6twelve), one bag and the dented metal can with its
+# lid (Trailer Park), and the playground's slide, swing set and sandbox (cursedlake's PS1 playground). Placed by docs/disaster-city/props.js.
+JOBS += [
+    ('public_phone', 'tacosprops', ['Public_phone_01'], 0, {'name': 'ebd_tacos_public_phone.glb'}),
+    ('power_pole', 'tacosprops', ['electric_pole'], 0, {'name': 'ebd_tacos_power_pole.glb'}),
+    ('garbage_bags', '6twelve', ['Garbage_bag', 'Garbage_bag_01', 'Garbage_bag_02'], 0),
+    ('garbage_bag', 'trailerpark', ['Garbage_bag_01'], 0),
+    ('metal_trash_can', 'trailerpark', ['trash_can_metal', 'trash_can_metal_top'], 0),
+    ('play_slide', 'playground', ['Slide'], 0, {'name': 'cl_playground_slide.glb'}),
+    ('play_swing', 'playground', ['SwingBase', 'Swing', 'Swing.001'], 0, {'name': 'cl_playground_swing.glb'}),
+    ('play_sandbox', 'playground', ['Sandbox'], 0, {'name': 'cl_playground_sandbox.glb'}),
 ]
 jobs = []
 for J in JOBS:
