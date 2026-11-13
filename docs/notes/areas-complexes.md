@@ -2451,9 +2451,10 @@ collision row with the skin off and gets ONE `k: 'arch'` row `dcu:<building id>`
   south guard rail + cable fence (then a dry ditch in the land), east parapet + pipe rail (you see the sea over it). Bayside's outer lines stay Bayside's.
 - B.js (two numbers, told to the Bayside thread): the north water's sink runs 2 m past the field's north edge (a rim at the city's level stood across the north
   end of the bay) and the deep sink's 12 m bank lies past the room's east edge (a sand bar rose along it).
-- NOT SEEN IN THE GAME: the headless browser run was refused (RULE #1c). Checked: `node --check`, the bake, and pictures of the land code alone (the real
-  function run in Node on the real room, drawn in a bare three.js page): /mnt/project-files/disaster-city-edges/built_land_check.jpg. Unchecked on screen:
-  the land's sheets and tints under the game's light, the seam at the field's edge, the fog-free far part against the sky, the game's own tree models.
+- SEEN IN THE GAME (11-13, headless, after mondo's "go ahead"): all four sides, the four corners and the seams at the city line; the land builds with no
+  error (20 pieces, 898 trees). Shots: /mnt/project-files/disaster-city-edges/ingame_1_north_west.jpg, ingame_2_south_east.jpg. One fix from it: the land's
+  baked haze now copies the room's own `scene.fog.color` (the far peaks were a different blue-grey than the fogged near slope). Left as seen: from high in the
+  air the forest hillside is bare past 60 m, the forest floor sheet is a bright green, the snow line is jagged.
 - NOT DONE: no road runs out into the desert (the streets end at the south line); no rocks / cactus on the desert (he asked for plain flat); the sky's far
   roster (`sky.scenery: 'city'`) is unchanged; the forest past 60 m is bare ground (in the fog from the streets).
 
