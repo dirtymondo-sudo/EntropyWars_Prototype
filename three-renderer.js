@@ -38256,6 +38256,7 @@ const ThreeRenderer = (function () {
         cybercar:      'Meshy_AI_a_cyberpunk_car_0915195427_texture.glb',
         firetruck:     'Meshy_AI_a_fire_truck_0915195407_texture.glb',
         schoolbus:     'Meshy_AI_a_school_bus_0915195620_texture.glb',
+        citybus:       'ebd_busstop_transit_bus.glb',   // THE CITY TRAFFIC (2026-11-13): the Bus stop pack's blue city bus (Bus Line 1), R2 Assets/world/packs/elbolilloduro/
         subway_cart:   'Meshy_AI_a_subway_train_cart_0915195417_texture.glb',
         subway_front:  'Meshy_AI_a_subway_train_front_0915195457_texture.glb',
         ambulance:     'Meshy_AI_an_ambulance_0915195334_texture.glb',
@@ -38459,6 +38460,7 @@ const ThreeRenderer = (function () {
         firetruck:    { m: 9.0, yaw: Math.PI / 2, foot: 2.2, w: 2.5, h: 3.4, color: 0xc81e1e, lift: 0.16, beacon: true },
         schoolbus:    { m: 10.5, yaw: Math.PI / 2, foot: 2.5, w: 2.5, h: 3.0, color: 0xf2b820, lift: 0.14 },
         ambulance:    { m: 6.2, yaw: Math.PI / 2, foot: 1.5, w: 2.3, h: 2.6, color: 0xf4f4f0, lift: 0.16, beacon: true },
+        citybus:      { m: 11.2, yaw: Math.PI / 2, foot: 2.6, w: 2.6, h: 3.4, color: 0x1e50b4, lift: 0.14 },   // THE CITY TRAFFIC: measured in Blender, 11.21 m long, nose at -X, doors on its right
         /* THE SUBWAY AT ITS REAL SIZE (ZONES_PLAN Z2, 2026-09-30 — mondo: the cars were drawn under size): the two GLBs measured
            (their accessor bounds: front 1 × 0.376 × 0.295, cart 1 × 0.358 × 0.294, long along X) and stood at a subway car's
            real 3.7 m from rail to roof, so each is its own length at that height (front 9.84 m, cart 10.33 m) and 2.9–3.0 m wide */
@@ -62458,7 +62460,7 @@ const ThreeRenderer = (function () {
            vertex's weights), blending into the pendant's own bone near the bail so the two never part when the body moves. It is
            one of the pendant's accents (comes off with it, hidden with it). Rebuilt with THE LAYERS (every wear change and every
            slider move: the cord follows the neck it lies on). Colour per pendant (WEAR_CORD.colors), else WEAR_CORD.color. */
-        var WEAR_CORD = { r: 0.0017, skin: 0.0022, cloth: 0.002, levels: [10, 20, 40, 64], iters: [140, 110, 70, 40], warm: 30, step: 0.004, settle: 20, pull: 0.45, finish: 6, fall: 0.0004, ring: 0.35, sides: 7, steps: 150, bone: 0.07,
+        var WEAR_CORD = { r: 0.0017, skin: 0.0022, cloth: 0.002, levels: [10, 20, 40, 64], iters: [140, 110, 70, 40], warm: 30, step: 0.004, settle: 20, pull: 0.45, finish: 6, fall: 0.0004, ring: 0.35, sides: 7, steps: 150, bone: 0.07, chain: 2.2,
                           colors: { ewm_crosspendant: 0x16130f, ewm_talisman: 0x4a2e1a, ewm_hagstone: 0x8a7656 }, color: 0x2a2018 };
         function wearCordOf(w) {
             return !!(w && w.mesh && w.solid && typeof wearGroupOf === 'function' && wearGroupOf(w.id) === 'pendants');
@@ -62705,7 +62707,10 @@ const ThreeRenderer = (function () {
                 return ks.map(function (bk) { return [+bk, m[bk] / (sum || 1)]; });
             });
             // the tube: a Catmull-Rom curve through the rope, a ring of WEAR_CORD.sides round it (parallel-transported frames)
-            var NSm = WEAR_CORD.steps, Rt = WEAR_CORD.r * Hm, SIDES = WEAR_CORD.sides, Cv = [], Cw = [];
+            /* THE CHAIN (2026-11-13, the gangster, mondo: "needs some bling"): a pendant that wears a colour (appearance.wearTint[id]: a gold
+               cross) hangs from a chain in that colour, not from the dark cord: WEAR_CORD.chain x as thick, metal */
+            var cTint = null; try { var cT = state.last && state.last.wearTint && state.last.wearTint[w.id]; if (typeof cT === 'string' && /^#[0-9a-f]{6}$/i.test(cT)) cTint = cT; } catch (eT) {}
+            var NSm = WEAR_CORD.steps, Rt = WEAR_CORD.r * Hm * (cTint ? WEAR_CORD.chain : 1), SIDES = WEAR_CORD.sides, Cv = [], Cw = [];
             for (i = 0; i <= NSm; i++) {
                 var u = i / NSm * M, s0 = Math.min(M - 1, Math.floor(u)), tt = u - s0;
                 var p0 = X[Math.max(0, s0 - 1)], p1 = X[s0], p2 = X[s0 + 1], p3 = X[Math.min(M, s0 + 2)], t2 = tt * tt, t3 = t2 * tt;
@@ -62750,6 +62755,8 @@ const ThreeRenderer = (function () {
                 (w.accents = w.accents || []).push(mh);
             }
             mh.geometry.dispose(); mh.geometry = g;
+            mh.userData._ewBase.set(cTint || (WEAR_CORD.colors[w.id] != null ? WEAR_CORD.colors[w.id] : WEAR_CORD.color));
+            if (mh.material) { mh.material.metalness = cTint ? 0.85 : 0; mh.material.roughness = cTint ? 0.35 : 0.82; }
             wearVC(mh, mh.userData._ewBase);
             w.cordPts = X;   // (probes)
         }
@@ -71343,6 +71350,8 @@ const ThreeRenderer = (function () {
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city') { try { _hqBuildRoadMarkings(room, info, G, TM); } catch (e) { console.warn('[HQ] the road markings failed', e); } }   // THE STREETS IN THE PACK (2026-09-17): the asphalt is the field's floor sheet; the paint, the kerbs, the manholes and the signs stand on it
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city' && info.gen.sidewalk > 0 && typeof window !== 'undefined' && window.EW_HQ_ROAD_TILES) { try { _hqBuildRoadTiles(room, info, G, TM); } catch (e) { console.warn('[HQ] the road tiles failed', e); } }   // the GLB tiles are opt-in since the pack landed (they distorted on every bend)
         if (_hqSliceDue()) yield;
+        if (info.signals && info.signals.length) { try { _hqBuildSignals(room, info, G); } catch (e) { console.warn('[HQ] the signals failed', e); } }   // THE CITY TRAFFIC (2026-11-13): before the cars, which read them
+        if (info.busStops && info.busStops.length) { try { _hqBuildBusStops(room, info, G); } catch (e) { console.warn('[HQ] the bus stops failed', e); } }
         if (info.traffic && info.traffic.length) { try { _hqBuildTraffic(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the traffic failed', e); } }
         if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         if (_hqSliceDue()) yield;
@@ -71729,8 +71738,9 @@ const ThreeRenderer = (function () {
             var grp = function (key, tintOwn) {   // tintOwn: the tint of a second sheet of the part (tintTop / tintEnd), none = the part's
                 key = key || null;
                 var kind = kindOf(key), tint = (tintOwn != null) ? (tintOwn >>> 0) : (P.tint != null) ? (P.tint >>> 0) : 0xffffff, glow = +P.glow || 0, ds = !!P.ds, roof = !!P.roof;
-                var id = [key || '', tint, glow, kind, ds ? 1 : 0, roof ? 1 : 0].join('|');
-                return G[id] || (G[id] = { key: key, tint: tint, glow: glow, kind: kind, ds: ds, roof: roof, pos: [], uv: [], idx: [], n: 0 });
+                var gain = (+P.gain > 0) ? +P.gain : 1;   // THE PAINTED WALL (2026-11-13, Bayside): `gain` lifts a sheet's tint past white (a grey stucco sheet under the city's tint reads as mud in a pastel; the light still shades it)
+                var id = [key || '', tint, glow, kind, ds ? 1 : 0, roof ? 1 : 0, gain].join('|');
+                return G[id] || (G[id] = { key: key, tint: tint, glow: glow, kind: kind, ds: ds, roof: roof, gain: gain, pos: [], uv: [], idx: [], n: 0 });
             };
             var put = function (g, v, uv) {   // a vertex in the part's frame → the room's metres
                 var lx = pp[0] + v[0] * pc + v[2] * ps, ly = pp[1] + v[1], lz = pp[2] - v[0] * ps + v[2] * pc;
@@ -71852,13 +71862,14 @@ const ThreeRenderer = (function () {
     function _hqBuildArchRows(info, G, U) {
         var neon = !!(info.gen && info.gen.neon), mats = {}, made = 0;
         var matOf = function (b) {
-            var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0].join('|'); if (mats[id]) return mats[id];
+            var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0, b.gain || 1].join('|'); if (mats[id]) return mats[id];
             var tex = b.key ? _hzTex(b.key) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
             if (b.kind === 'over') { o.transparent = true; o.alphaTest = 0.35; o.polygonOffset = true; o.polygonOffsetFactor = -1; o.polygonOffsetUnits = -1; }
             var m = new THREE.MeshPhongMaterial(o);
             if (b.ds) m.side = THREE.DoubleSide;
             m.color = new THREE.Color(b.tint);
             if (tex) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
+            if (b.gain && b.gain !== 1) m.color.multiplyScalar(b.gain);
             if (b.glow > 0) { m.emissive = m.color.clone(); if (tex) m.emissiveMap = tex; m.emissiveIntensity = b.glow; }
             else m.emissive = new THREE.Color(neon ? 0x08060e : 0x0a0a0a);
             m._ew_hzNear = true;
@@ -72737,6 +72748,9 @@ const ThreeRenderer = (function () {
         if (Lin < 1e-6 || Lout < 1e-6) return null;
         var din = [(B[0] - A[0]) / Lin, (B[1] - A[1]) / Lin], dout = [(C[0] - P[0]) / Lout, (C[1] - P[1]) / Lout];
         var dot = din[0] * dout[0] + din[1] * dout[1]; if (dot > 0.9995) return null;   // straight on: no corner
+        /* THE TURN-ROUND (THE CITY TRAFFIC, 2026-11-13): a route that doubles back on itself (the police line, a street's end) swings a half
+           circle from its lane into the lane coming back: radius = the lane's offset, its middle `r` short of the corner, so both ends meet the straights */
+        if (dot < -0.98) { var ln = Math.max(1.5, car.lane || 0), ru = Math.min(Math.PI * ln / 2, Lin * 0.45, Lout * 0.45); return { V: B, din: din, dout: dout, r: ru, sharp: 1, u: ln }; }
         var r = Math.min(HQ_TRAFFIC_TURN_R, Lin * 0.45, Lout * 0.45);
         return { V: B, din: din, dout: dout, r: r, sharp: Math.min(1, (1 - dot) / 2 * 2) };
     }
@@ -72759,6 +72773,11 @@ const ThreeRenderer = (function () {
             var kc = (i === 0) ? nSeg : 0; if (cs[kc] === undefined) cs[kc] = _hqRouteCorner(car, kc);
             var Cc = cs[kc]; if (Cc) { var duc = s - cum[kc]; if (duc > L / 2) duc -= L; if (duc < -L / 2) duc += L; if (Math.abs(duc) <= Cc.r) { pick = Cc; u = duc; } }
         }
+        if (pick && pick.u) {
+            var tu = (u + pick.r) / (2 * pick.r), ph = tu * Math.PI, lu = pick.u, nxu = -pick.din[1], nzu = pick.din[0], cu = Math.cos(ph), su = Math.sin(ph);
+            var cxu = pick.V[0] - pick.din[0] * pick.r, czu = pick.V[1] - pick.din[1] * pick.r;
+            return { x: cxu + nxu * lu * cu + pick.din[0] * lu * su, z: czu + nzu * lu * cu + pick.din[1] * lu * su, dx: -nxu * su + pick.din[0] * cu, dz: -nzu * su + pick.din[1] * cu, turn: 1 };
+        }
         if (pick) {
             var t = (u + pick.r) / (2 * pick.r), r = pick.r, V = pick.V, a0 = (1 - t) * (1 - t), a1 = 2 * (1 - t) * t, a2 = t * t;
             var x = a0 * (V[0] - pick.din[0] * r) + a1 * V[0] + a2 * (V[0] + pick.dout[0] * r);
@@ -72771,6 +72790,133 @@ const ThreeRenderer = (function () {
         var dx = (b[0] - a[0]) / segL, dz = (b[1] - a[1]) / segL;
         return { x: a[0] + (b[0] - a[0]) * tt + (-dz) * car.lane, z: a[1] + (b[1] - a[1]) * tt + dx * car.lane, dx: dx, dz: dz, turn: 0 };
     }
+    /* ── THE CITY TRAFFIC (2026-11-13, mondo: "traffic lights and intersections planned out for actual traffic and car routes. Bus sections
+       placed in each district with a bus route") ──
+       THE SIGNALS (info.signals, rows { x, z, arms: 'NESW', flash, off }): at each junction one mast per arm that traffic comes in on. The
+       mast is the Pizzeria pack's `street_signal` (a pole on the kerb corner to the driver's right, its arm reaching in over his lane, a
+       three-faced head: MEASURED in Blender, _HQ_SIGNAL.foot / faces / lensY are metres off the GLB's box middle, the face `own` looks back
+       down its own arm, the other two look down the cross street). The file's lenses are painted all lit, so every lens wears a flat disc
+       that this code paints bright or dark. The clock: `green` s, `yellow` s, `allRed` s for one street, then the same for the other; `flash`
+       = every face blinks red (the police hold the junction). Cars read `sig.state.ns / .ew` ('g' 'y' 'r' 'f') at their stop lines
+       (_hqRouteMarks, _hqTickTraffic). THE BUS STOPS (info.busStops, rows { x, z, name, end, signs: [{ x, z, ns }] }): a bus on a `bus`
+       route waits `busWait` s where its route passes a stop; each stop's sign poles are the Bus stop pack's `bus_stop_sign`.
+       Every junction and stop is one group in the plot chunks' list (not drawn past `farM` or off camera). Off: window.EW_HQ_NO_SIGNALS. */
+    var _HQ_SIGNAL = { green: 14, yellow: 3, allRed: 1.5, stopBack: 11.5, footOut: 7.9, farM: 230, carFarM: 210, busWait: 8, jamS: 5,
+        foot: [-2.585, 2.065], lensY: [5.71, 5.34, 4.97], lensR: 0.14,
+        faces: [{ x: 2.135, z: -1.705, nx: -1, nz: 0, own: true }, { x: 2.685, z: -2.225, nx: 0, nz: -1 }, { x: 2.715, z: -1.235, nx: 0, nz: 1 }],
+        /* the arm a driver comes in on: the turn that points the `own` face back at him, the kerb corner to his right (x east, z south) */
+        arm: { S: { ry: Math.PI / 2, cx: 1, cz: 1, axis: 'ns' }, W: { ry: 0, cx: -1, cz: 1, axis: 'ew' }, N: { ry: -Math.PI / 2, cx: -1, cz: -1, axis: 'ns' }, E: { ry: Math.PI, cx: 1, cz: -1, axis: 'ew' } },
+        lit: [0xff2a1a, 0xffb000, 0x22ff66], dark: [0x3a0c08, 0x3a2a06, 0x06301a] };
+    /* a group the plot chunks cull: its reach is a marker's own sphere (the models land later) */
+    function _hqSignalChunk(H, G, x, y, z, reachM, farM) {
+        var U = _hqUnits(), g = new THREE.Group(); g.position.set(x * U, y * U, z * U);
+        g._ew_hqSignal = 1;   // never in the static batch (its lenses change colour; _HQ_BATCH_FLAG_OFF)
+        G.add(g); G.updateWorldMatrix(true, false);
+        var mk = new THREE.Object3D(); mk._ew_ckRec = { C: new THREE.Vector3(x * U, (y + 3) * U, z * U).applyMatrix4(G.matrixWorld), R: reachM * U }; g.add(mk);
+        if (typeof _hqChunkReg === 'function') _hqChunkReg(H, g, farM * U);
+        return g;
+    }
+    function _hqSignalMat(hex) { var m = new THREE.MeshBasicMaterial({ color: hex }); m.fog = false; return m; }
+    function _hqBuildSignals(room, info, G) {
+        var H = _hq, rows = info.signals || [];
+        if (!rows.length || H.signals || (typeof window !== 'undefined' && window.EW_HQ_NO_SIGNALS)) return;
+        var U = _hqUnits(), K = _HQ_SIGNAL, disc = new THREE.CircleGeometry(K.lensR * U, 10), sigs = [];
+        rows.forEach(function (row, ri) {
+            var gy = hqTerrainHeight(info, row.x, row.z), g = _hqSignalChunk(H, G, row.x, gy, row.z, 13, K.farM);
+            var sig = { x: row.x, z: row.z, flash: !!row.flash, off: (row.off != null) ? +row.off : ri * 9, state: { ns: 'r', ew: 'r' }, mats: { ns: [], ew: [] }, glows: [], last: '' };
+            ['ns', 'ew'].forEach(function (ax) { for (var c = 0; c < 3; c++) sig.mats[ax].push(_hqSignalMat(K.dark[c])); });
+            String(row.arms || '').split('').forEach(function (a) {
+                var A = K.arm[a]; if (!A) return;
+                var mast = new THREE.Group(), cs = Math.cos(A.ry), sn = Math.sin(A.ry);
+                /* the pole's foot on the kerb corner: the group's middle = that corner less the turned foot offset */
+                var fx = K.foot[0] * cs + K.foot[1] * sn, fz = -K.foot[0] * sn + K.foot[1] * cs;
+                mast.position.set((A.cx * K.footOut - fx) * U, 0, (A.cz * K.footOut - fz) * U); mast.rotation.y = A.ry;
+                var inst = (typeof _hqCatGlb === 'function') ? _hqCatGlb('street_signal', U, {}) : null; if (inst) mast.add(inst);
+                var cross = (A.axis === 'ns') ? 'ew' : 'ns';
+                K.faces.forEach(function (f) {
+                    var ax = f.own ? A.axis : cross;
+                    for (var c = 0; c < 3; c++) {
+                        var d = new THREE.Mesh(disc, sig.mats[ax][c]);
+                        d.position.set((f.x + f.nx * 0.03) * U, K.lensY[c] * U, (f.z + f.nz * 0.03) * U); d.rotation.y = Math.atan2(f.nx, f.nz);
+                        d._ew_pixelate = true; mast.add(d);
+                    }
+                });
+                /* the head's glow over the lane, in its own street's colour */
+                if (typeof _hzGlowSprite === 'function') { var gl = _hzGlowSprite(1.5 * U, 0xffffff, 0.3, 0.0, 0.0, 0.0); gl.position.set(2.5 * U, K.lensY[1] * U, -1.72 * U); mast.add(gl); sig.glows.push({ s: gl, axis: A.axis }); }
+                g.add(mast);
+            });
+            sigs.push(sig);
+        });
+        H.signals = sigs; H.signalT = 0;
+        _hqTickSignals(0);
+        H.tickers.push(function (dt) { _hqTickSignals(dt); });
+    }
+    function _hqTickSignals(dt) {
+        var H = _hq, sigs = H && H.signals; if (!sigs || H.paused) return;
+        var K = _HQ_SIGNAL, half = K.green + K.yellow + K.allRed;
+        H.signalT = (H.signalT || 0) + Math.min(dt, 0.1);
+        for (var i = 0; i < sigs.length; i++) {
+            var sg = sigs[i], ns, ew;
+            if (sg.flash) { ns = ew = 'f'; var on = (Math.floor(H.signalT * 1.6) % 2) === 0, keyF = on ? 'F1' : 'F0'; if (keyF === sg.last) continue; sg.last = keyF; }
+            else {
+                var t = (H.signalT + sg.off) % (half * 2), second = t >= half, u = second ? t - half : t;
+                var a = (u < K.green) ? 'g' : (u < K.green + K.yellow) ? 'y' : 'r';
+                ns = second ? 'r' : a; ew = second ? a : 'r';
+                if (ns + ew === sg.last) continue; sg.last = ns + ew;
+            }
+            sg.state.ns = ns; sg.state.ew = ew;
+            var idx = function (s) { return s === 'r' ? 0 : s === 'y' ? 1 : s === 'g' ? 2 : (sg.last === 'F1' ? 0 : -1); };
+            var paint = function (ax, s) { var k = idx(s); for (var c = 0; c < 3; c++) sg.mats[ax][c].color.setHex(c === k ? K.lit[c] : K.dark[c]); return k; };
+            var kn = paint('ns', ns), ke = paint('ew', ew);
+            sg.glows.forEach(function (gw) { var k = (gw.axis === 'ns') ? kn : ke; gw.s.visible = k >= 0; if (k >= 0 && gw.s.material && gw.s.material.color) gw.s.material.color.setHex(K.lit[k]); });
+        }
+    }
+    function _hqBuildBusStops(room, info, G) {
+        var H = _hq, rows = info.busStops || [];
+        if (!rows.length || H.busStops || (typeof window !== 'undefined' && window.EW_HQ_NO_SIGNALS) || typeof _hqCatGlb !== 'function') return;
+        var U = _hqUnits();
+        rows.forEach(function (row) {
+            if (!row.signs || !row.signs.length) return;
+            var gy = hqTerrainHeight(info, row.x, row.z), g = _hqSignalChunk(H, G, row.x, gy, row.z, 12, 150);
+            row.signs.forEach(function (sn) {
+                var inst = _hqCatGlb('bus_stop_sign', U, {}); if (!inst) return;
+                var piv = new THREE.Group(); piv.add(inst);
+                piv.position.set((sn.x - row.x) * U, (hqTerrainHeight(info, sn.x, sn.z) - gy) * U, (sn.z - row.z) * U); piv.rotation.y = sn.ns ? Math.PI / 2 : 0;
+                g.add(piv);
+            });
+        });
+        H.busStops = rows;
+    }
+    /* a route's marks: `stops` = where its line crosses a signal's stop line ({ s, sig, axis }), `halts` = where it passes a bus stop
+       ({ s, name }; an `end` stop only the first time round, after the turn-round). `s` = metres along the route. */
+    function _hqRouteMarks(pts, cum, L, loop, sigs, busStops) {
+        var out = { stops: null, halts: null }, K = _HQ_SIGNAL;
+        var hits = function (px, pz, reach) {
+            var r = [];
+            for (var i = 0; i + 1 < pts.length; i++) {
+                var ax = pts[i][0], az = pts[i][1], bx = pts[i + 1][0], bz = pts[i + 1][1], sl = cum[i + 1] - cum[i]; if (sl < 1e-6) continue;
+                var t = ((px - ax) * (bx - ax) + (pz - az) * (bz - az)) / (sl * sl); if (t < -1e-4 || t > 1 + 1e-4) continue;
+                t = Math.max(0, Math.min(1, t));
+                if (Math.hypot(ax + (bx - ax) * t - px, az + (bz - az) * t - pz) > reach) continue;
+                var s = cum[i] + t * sl;
+                if (r.some(function (e) { var d = Math.abs(e - s); return d < 1 || (loop && Math.abs(d - L) < 1); })) continue;
+                r.push(s);
+            }
+            return r;
+        };
+        var axisAt = function (s) { var i = 0; while (i + 2 < cum.length && cum[i + 1] <= s) i++; return Math.abs(pts[i + 1][0] - pts[i][0]) > Math.abs(pts[i + 1][1] - pts[i][1]) ? 'ew' : 'ns'; };
+        if (sigs && sigs.length) {
+            var st = [];
+            sigs.forEach(function (sg) { hits(sg.x, sg.z, 2).forEach(function (sc) { var s = sc - K.stopBack; if (s < 0) { if (!loop) return; s += L; } st.push({ s: s, sig: sg, axis: axisAt(s) }); }); });
+            if (st.length) out.stops = st;
+        }
+        if (busStops && busStops.length) {
+            var hl = [];
+            busStops.forEach(function (bs) { var hs = hits(bs.x, bs.z, 3).sort(function (a, b) { return a - b; }); if (bs.end) hs = hs.slice(0, 1); hs.forEach(function (s) { hl.push({ s: s, name: bs.name }); }); });
+            if (hl.length) out.halts = hl;
+        }
+        return out;
+    }
     function _hqBuildTraffic(room, info, G, TM, rng) {
         var U = _hqUnits(), H = _hq, routes = info.traffic || [];
         if (!routes.length || H.traffic || (typeof window !== 'undefined' && window.EW_HQ_NO_TRAFFIC)) return;
@@ -72781,6 +72927,7 @@ const ThreeRenderer = (function () {
                 var pts = rt.loop ? rt.pts.concat([rt.pts[0]]) : rt.pts, cum = [0];
                 for (var i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
                 var L = cum[cum.length - 1]; if (L < 6) return;
+                var marks = _hqRouteMarks(pts, cum, L, !!rt.loop, H.signals, rt.bus ? info.busStops : null);   // THE CITY TRAFFIC: this route's stop lines and bus stops
                 var n = Math.max(1, rt.n | 0); if (typeof window !== 'undefined' && window.EW_PERF_LOW) n = Math.max(1, Math.ceil(n / 2));
                 for (var c = 0; c < n; c++) {
                     var kind = rt.kinds[c % rt.kinds.length];
@@ -72791,12 +72938,12 @@ const ThreeRenderer = (function () {
                     var Lp = (g._ew_lamps !== undefined) ? g._ew_lamps : { hx: 0.6 * U, hy: 0.7 * U, hz: (len / 2 + 0.1) * U, tx: 0.6 * U, ty: 0.75 * U, tz: -(len / 2 + 0.05) * U };
                     if (Lp) [-1, 1].forEach(function (sx) { var hl = _hzGlowSprite(0.42 * U, 0xfff2c8, 0.55, 0.0, 0.0, 0.0); hl.position.set(sx * Lp.hx, Lp.hy, Lp.hz); g.add(hl); var tl = _hzGlowSprite(0.28 * U, 0xff3030, 0.5, 0.0, 0.0, 0.0); tl.position.set(sx * Lp.tx, Lp.ty, Lp.tz); g.add(tl); });
                     g._ew_hqCar = kind; G.add(g);
-                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, len: len, hitT: 0 });
+                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
                 }
             });
         } finally { _hzKitTs = prevTs; }
         if (!cars.length) return;
-        cars.forEach(function (car) { var p = _hqRoutePose(car, car.s); car.g.position.set(p.x * U, hqTerrainHeight(info, p.x, p.z) * U + 0.3, p.z * U); car.g.rotation.y = Math.atan2(p.dx, p.dz); });
+        cars.forEach(function (car) { var p = _hqRoutePose(car, car.s); car.g.position.set(p.x * U, hqTerrainHeight(info, p.x, p.z) * U + 0.3, p.z * U); car.g.rotation.y = Math.atan2(p.dx, p.dz); car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; });
         H.traffic = cars;
         H.tickers.push(function (dt) { _hqTickTraffic(dt); });
     }
@@ -72808,15 +72955,52 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < cars.length; i++) {
             var car = cars[i], adv = car.v * dt;
             /* follow the car ahead on the same route: never closer than a length and a bit */
-            var gap = Infinity, leadLength = car.len;
-            for (var j = 0; j < cars.length; j++) { if (j === i || cars[j].route !== car.route) continue; var d = cars[j].s - car.s; if (car.loop) { d = ((d % car.L) + car.L) % car.L; } if (d > 0 && d < gap) { gap = d; leadLength = cars[j].len; } }
+            var gap = Infinity, leadLength = car.len, lead = null;
+            /* THE CITY TRAFFIC: `hold` = why it stands, 0 = at a red or a bus stop, n = queued behind n cars that are, -1 = no such reason */
+            var hold = -1, crossBlk = false;
+            for (var j = 0; j < cars.length; j++) { if (j === i || cars[j].route !== car.route) continue; var d = cars[j].s - car.s; if (car.loop) { d = ((d % car.L) + car.L) % car.L; } if (d > 0 && d < gap) { gap = d; leadLength = cars[j].len; lead = cars[j]; } }
             var need = (car.len + leadLength) / 2 + 2.5;
             /* THE TURN: brake into a bend (looked for a car-length ahead), pull away after it — the speed eases, never snaps */
             var tAhead = Math.max(_hqRoutePose(car, car.s).turn || 0, _hqRoutePose(car, (car.s + car.len + 3) % car.L).turn || 0);
             var vWant = car.v * (1 - 0.5 * tAhead);
             car.vNow = (car.vNow == null) ? vWant : car.vNow + (vWant - car.vNow) * Math.min(1, dt * 2.2);
             adv = car.vNow * dt;
-            if (gap - adv < need) adv = Math.max(0, gap - need);
+            if (gap - adv < need) { adv = Math.max(0, gap - need); if (lead && lead.hold >= 0 && lead.hold < 20) hold = lead.hold + 1; }
+            /* THE CITY TRAFFIC (2026-11-13): the car ahead in this lane on ANOTHER route (the ring, the through traffic and the buses share the avenues) */
+            if (car.jamFree > 0) car.jamFree -= dt;
+            else for (var j2 = 0; j2 < cars.length; j2++) {
+                var o2 = cars[j2]; if (j2 === i || o2.route === car.route || o2.x == null || car.x == null) continue;
+                var rx2 = o2.x - car.x, rz2 = o2.z - car.z, al2 = rx2 * car.dx + rz2 * car.dz; if (al2 <= 0 || al2 > 30) continue;
+                if (Math.abs(-rx2 * car.dz + rz2 * car.dx) > 1.8 || o2.dx * car.dx + o2.dz * car.dz < 0.5) continue;
+                /* two cars turning into one lane each see the other ahead: the first in the list goes */
+                if (i < j2 && -rx2 * o2.dx - rz2 * o2.dz > 0 && Math.abs(rx2 * o2.dz - rz2 * o2.dx) <= 1.8) continue;
+                var need2 = (car.len + o2.len) / 2 + 2.5;
+                if (al2 - adv < need2) { adv = Math.max(0, al2 - need2); if (o2.hold >= 0 && o2.hold < 20) hold = Math.max(hold, o2.hold + 1); else crossBlk = true; }
+            }
+            /* THE SIGNALS: a red or a yellow it can still stop for holds the nose at the stop line; the speed falls with the room left */
+            if (car.stops) for (var q = 0; q < car.stops.length; q++) {
+                var st = car.stops[q], dS = st.s - car.s; if (car.loop) { if (dS < -car.L / 2) dS += car.L; else if (dS > car.L / 2) dS -= car.L; }
+                var dn = dS - car.len / 2; if (dn < -1 || dn > 18) continue;
+                var sg = st.sig.state[st.axis]; if (sg === 'g' || sg === 'f' || (sg === 'y' && dn < 3)) continue;
+                var room = Math.max(0, dn - 0.4); if (car.vNow > room * 1.4 + 0.3) car.vNow = room * 1.4 + 0.3;
+                adv = Math.min(adv, car.vNow * dt, room); hold = 0;
+            }
+            /* THE BUS LINE: a bus pulls up at each of its stops and waits there */
+            if (car.halts) {
+                if (car.dwell > 0) { car.dwell -= dt; adv = 0; car.vNow = 0; hold = 0; }
+                else for (var hq = 0; hq < car.halts.length; hq++) {
+                    if (hq === car.lastHalt) continue;
+                    var dH = car.halts[hq].s - car.s; if (car.loop) { if (dH < -car.L / 2) dH += car.L; else if (dH > car.L / 2) dH -= car.L; }
+                    if (dH < -0.5 || dH > 16) continue;
+                    var roomH = Math.max(0, dH); if (car.vNow > roomH * 1.4 + 0.3) car.vNow = roomH * 1.4 + 0.3;
+                    adv = Math.min(adv, car.vNow * dt, roomH);
+                    if (dH - adv < 0.3) { car.dwell = _HQ_SIGNAL.busWait; car.lastHalt = hq; }
+                    break;
+                }
+            }
+            /* a knot (cars of different routes each waiting on the next, none at a red): after `jamS` s this one drives on through */
+            car.hold = (adv < 0.002) ? hold : -1;
+            if (adv < 0.002 && crossBlk && hold < 0) { car.jam = (car.jam || 0) + dt; if (car.jam > _HQ_SIGNAL.jamS) { car.jam = 0; car.jamFree = _HQ_SIGNAL.jamS; } } else car.jam = 0;
             // Yield to pedestrians and skaters along the upcoming path, including a bend
             // or an open route's respawn. Sampling avoids driving through someone on a turn.
             if (pl) {
@@ -72836,6 +73020,8 @@ const ThreeRenderer = (function () {
             if (car.yAt) { car.g.rotation.order = 'YXZ'; car.g.rotation.x = -Math.atan((car.yAt(car.s + 2) - car.yAt(car.s - 2)) / 4); }
             else if (info.slope) { car.g.rotation.order = 'YXZ'; car.g.rotation.x = -Math.atan((hqTerrainHeight(info, p.x + p.dx * 2, p.z + p.dz * 2) - hqTerrainHeight(info, p.x - p.dx * 2, p.z - p.dz * 2)) / 4); }   // G7: pitched with the city's slope
             car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; car.y = gy;
+            /* THE CITY TRAFFIC: a car far from the eye is not drawn (it still drives) */
+            if (H.camera) { var ce2 = H.camera.matrixWorld.elements, fx2 = car.g.position.x - ce2[12], fz2 = car.g.position.z - ce2[14], far2 = _HQ_SIGNAL.carFarM * U; var see2 = (typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL) || fx2 * fx2 + fz2 * fz2 < far2 * far2; if (car.g.visible !== see2) car.g.visible = see2; }
             if (car.hitT > 0) { car.hitT -= dt; continue; }
             /* THE HIT: the walker inside the car's box — shoved along its heading with a hop; a rider is thrown */
             if (!pl || adv <= 0 || (H.trafficHitUntil || 0) > (H.trafficTime || 0)) continue;
@@ -90958,7 +91144,7 @@ const ThreeRenderer = (function () {
        at once, like a `visible` write. Off: window.EW_HQ_NO_PROP_BATCH (props only) / EW_HQ_NO_BATCH (all). */
     var _hqBatchDraw = 0;   // > 0 while a renderer.render runs
     var _HQ_BATCH_FLAG_OFF = { _ew_hqInst: 1, _ew_hqCar: 1, _ew_hqSea: 1, _ew_hqOuter: 1, _ew_hqGround: 1, _ew_hqOuterSideIds: 1, _ew_hqTerrain: 1,
-                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1, _ew_text: 1 };
+                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1, _ew_text: 1, _ew_hqSignal: 1 };
     var _HQ_BATCH_MAPS = ['map', 'emissiveMap', 'alphaMap', 'normalMap', 'bumpMap', 'specularMap', 'aoMap', 'lightMap', 'envMap'];
     var _hqBatchIds = null, _hqBatchIdN = 0, _hqBatchM = null, _hqBatchM2 = null, _hqBatchN3 = null, _hqBatchV = null;
     function _hqBatchOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_BATCH; }
@@ -92811,6 +92997,8 @@ const ThreeRenderer = (function () {
             hqScene: function () { return _hq ? _hq.scene : null; },
             hqDoors: function () { if (!_hq) return null; var out = _hq.doors.slice(), st = _hq.stage; if (st && st.parts) for (var id in st.parts) { var P = st.parts[id].P; if (P && P.doors) out = out.concat(P.doors); } return out; },   // the door records of the room stood in + the rooms beside it (probes)
             hqInst: function () { return _hqInstStats(_hq); },
+            /* THE CITY TRAFFIC (2026-11-13): the lights' colours and every vehicle (a probe reads them: which stand at a red, which bus waits) */
+            traffic: function () { var H = _hq; if (!H) return null; return { signals: (H.signals || []).map(function (g) { return { x: g.x, z: g.z, ns: g.state.ns, ew: g.state.ew }; }), cars: (H.traffic || []).map(function (c) { return { kind: c.g._ew_hqCar, route: c.route, s: Math.round(c.s * 10) / 10, x: Math.round(c.x * 10) / 10, z: Math.round(c.z * 10) / 10, v: Math.round((c.vNow || 0) * 10) / 10, dwell: Math.round((c.dwell || 0) * 10) / 10, drawn: c.g.visible }; }) }; },
             hqText: function () { return _hqTextStats(); },   // R6: the HQ plates on the GPU vs CSS2D
             reflectors: function () { return (_hq && _hq.reflectors || []).map(function (r) { return { kind: r.kind, drawn: r.drawn, gain: r.mats[0] ? r.mats[0].uniforms.uGain.value : null }; }); },   // W4: the mirrored draws
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
