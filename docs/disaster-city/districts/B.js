@@ -806,6 +806,109 @@ function apply(ctx) {
      - every walk is whole empty squares, door to back wall.
    A room's frame is its building's: x along the front, +z out of the front door; square (c, r): c from the −x wall, r from the BACK wall.
    `hd` on a prop is the way its front looks in that frame (0 = to the back wall, 90 = +x, 180 = to the door, 270 = −x). */
+/* ── THE INTERIORS, SECOND PASS (2026-11-13, mondo 22:33: "do another interior pass ... make a list of models needed/wanted but not in the
+   bucket or game, and make meshy versions of them. The surfboards, for example ... Focus on aesthetic, vibe, atmosphere for the interiors") ──
+   New pieces (data.js catalogue, THE BAYSIDE INTERIOR PIECES): 15 Meshy models (surfboards, the board rack, the wetsuit rail, the sunglasses
+   spinner, the bellhop cart, cinema seat rows, the forklift, wrapped pallets, the outboard, lobster traps, the net, the ship's wheel and bell)
+   + the elegantcrow Beach Props Pack (life ring, swim ring, air mattresses, cool box, beach ball). Pieces other districts made (the claims list,
+   project files meshy/interior-claims.md) are placed only once their catalogue row is on main (`CAT.has`): rerunning the bake picks them up.
+   Same grid rule as the first pass: a blocker centred on whole shut squares, decor against the walls off the squares' middles.
+   A wall piece = a floor prop at a height (`y`) a few cm off the wall's paint (the liner stands 0.34 in). */
+const CAT = (() => { let c = null; const load = () => { if (c) return c; try { c = require('../../../load-data.js').loadGameData().DOOR_HQ.catalogue; } catch (e) { console.warn('[bayside] catalogue not read', e.message); c = {}; } return c; };
+    return { has: k => !!load()[k], row: k => load()[k] || null }; })();
+const quad = (x, y, z, w, h, ry, o) => A({ s: 'quad', p: [x, y, z], ry, size: [w, h] }, o);
+const glowT = (tint, g) => ({ tint, glow: g == null ? 1 : g });
+/* a wall sconce: a brass back plate and a lit shade, on the wall `side` ('b' back, 'f' front, 'l' left, 'r' right) of a W x D room */
+const sconce = (W, D, side, u, y, tint) => { const e = 0.36, sh = glowT(tint || 0xffe2a8, 1), br = mat('gold', T.WHITE, 1.5);
+    if (side === 'b') return [box(u, y, -D / 2 + e, 0.18, 0.34, 0.04, br), box(u, y + 0.08, -D / 2 + e + 0.14, 0.3, 0.3, 0.22, sh)];
+    if (side === 'f') return [box(u, y, D / 2 - e, 0.18, 0.34, 0.04, br), box(u, y + 0.08, D / 2 - e - 0.14, 0.3, 0.3, 0.22, sh)];
+    if (side === 'l') return [box(-W / 2 + e, y, u, 0.04, 0.34, 0.18, br), box(-W / 2 + e + 0.14, y + 0.08, u, 0.22, 0.3, 0.3, sh)];
+    return [box(W / 2 - e, y, u, 0.04, 0.34, 0.18, br), box(W / 2 - e - 0.14, y + 0.08, u, 0.22, 0.3, 0.3, sh)]; };
+/* a hung chandelier (the hotel, when the Entertainment district's crystal one is not on main): a chain, a brass drum, a ring of lit candles */
+const chandelier = (x, z, top) => { const br = mat('gold', T.WHITE, 1.6), p = [cyl(x, top - 1.2, z, 0.03, 1.2, A(trim(T.DARK), { seg: 5 })), cyl(x, top - 1.9, z, 0.22, 0.7, A(br, { seg: 10 })),
+        cyl(x, top - 1.75, z, 1.05, 0.1, A(br, { seg: 16, cap: false })), cyl(x, top - 2.25, z, 0.65, 0.08, A(br, { seg: 14, cap: false })), dome(x, top - 2.1, z, 0.3, 0.3, glowT(0xfff0c8, 0.9))];
+    for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5; p.push(cyl(x + Math.cos(a) * 1.0, top - 1.65, z + Math.sin(a) * 1.0, 0.045, 0.22, A(glowT(0xfff4d8, 1), { seg: 6 }))); }
+    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3 + 0.3; p.push(cyl(x + Math.cos(a) * 0.62, top - 2.17, z + Math.sin(a) * 0.62, 0.04, 0.18, A(glowT(0xfff4d8, 1), { seg: 6 }))); }
+    return p; };
+const SECOND = {
+    /* 1 the hotel lobby: marble pilasters + a crown moulding + a gilt line, sconces, two chandeliers over the walk, a backlit bar, desk lamps,
+       a rug under the sofas, the bellhop cart against the front wall */
+    'P08-08-B1': (R) => { const { P, cx, cz, W, D, H } = R, back = -D / 2 + 0.3, stone = mat('marble_light', T.CREAM, 1.7), gilt = mat('gold', T.WHITE, 1.5);
+        const pil = (x, zf) => P.push(box(x, 0, zf, 0.55, H - 0.4, 0.22, stone), box(x, H - 0.55, zf, 0.75, 0.25, 0.3, trim(T.CREAM)), box(x, 0, zf, 0.7, 0.3, 0.3, stone));
+        [0.5, 1.5, 2.5, 5.5, 6.5].forEach(k => { pil(cx(k), -D / 2 + 0.45); P.push(...sconce(W, D, 'b', cx(k), 2.7)); });
+        [0.5, 1.5, 4.5, 5.5, 6.5, 7.5].forEach(k => { pil(cx(k), D / 2 - 0.45); P.push(...sconce(W, D, 'f', cx(k), 2.7)); });
+        P.push(box(0, H - 0.42, -D / 2 + 0.42, W - 0.8, 0.3, 0.16, trim(T.CREAM)), box(0, H - 0.42, D / 2 - 0.42, W - 0.8, 0.3, 0.16, trim(T.CREAM)), box(-W / 2 + 0.42, H - 0.42, 0, 0.16, 0.3, D - 0.8, trim(T.CREAM)), box(W / 2 - 0.42, H - 0.42, 0, 0.16, 0.3, D - 0.8, trim(T.CREAM)));   // the crown moulding
+        P.push(box(0, 1.0, -D / 2 + 0.39, W - 0.8, 0.05, 0.04, gilt), box(-W / 2 + 0.39, 1.0, 0, 0.04, 0.05, D - 0.8, gilt), box(W / 2 - 0.39, 1.0, 0, 0.04, 0.05, D - 0.8, gilt));   // the gilt line on the dado
+        const ch = CAT.row('crystal_chandelier');                                                                                                // two chandeliers over the walk row
+        [cx(2), cx(6)].forEach(x => { if (ch) R.prop('crystal_chandelier', x, cz(1), 0, ch.ceil ? { y: H } : { y: H - (ch.h || 1.6) }); else P.push(...chandelier(x, cz(1), H)); });
+        P.push(quad(cx(7.5), 1.2, back + 0.09, 6.2, 1.4, 0, glowT(0xffb060, 0.55)), box(cx(7.5), 2.65, back + 0.14, 6.4, 0.12, 0.3, WOODT(0x70442c)));   // the bar's back light, a top shelf
+        [-2.6, 2.4].forEach(dx => P.push(cyl(cx(3.5) + dx, 1.13, cz(0) - 0.3, 0.07, 0.36, A(gilt, { seg: 6 })), cyl(cx(3.5) + dx, 1.45, cz(0) - 0.3, 0.2, 0.2, A(glowT(0x5ec080, 0.7), { seg: 8, r2: 0.12 }))));   // green desk lamps
+        P.push(quad(cx(0.5), 0.065, cz(0) + 0.2, 5.6, 3.0, 0, A(mat(KP.rubber, 0xc8a040, 1.7), { flat: true })), quad(cx(0.5), 0.07, cz(0) + 0.2, 5.0, 2.4, 0, A(mat(KP.rubber, 0x283a68, 1.7), { flat: true })));   // a rug under the sofas
+        R.prop('luggage_cart', cx(5) + 0.6, D / 2 - 0.8, 0);                                                                                    // the bellhop cart by the front wall
+    },
+    /* 2 the cinema: the seat rows (in the first pass's place), wall sconces down both sides of the hall, a gold runner up the centre aisle,
+       exit signs, NOW SHOWING over the hall's door, a menu board over the snack counter, the old projector on show in the foyer's front-left square */
+    'P10-08-B1': (R) => { const { P, cx, cz, W, D } = R, zp = -D / 2 + 21;
+        [0, 1, 2, 3, 4, 5].forEach(r => { P.push(...sconce(W, D, 'l', cz(r), 4.2, 0xffc890), ...sconce(W, D, 'r', cz(r), 4.2, 0xffc890));
+            P.push(quad(-W / 2 + 0.37, 3.2, cz(r), 1.4, 2.6, 90, glowT(0xffb070, 0.18)), quad(W / 2 - 0.37, 3.2, cz(r), 1.4, 2.6, 270, glowT(0xffb070, 0.18))); });   // the soft wash over each
+        P.push(quad(0, 0.07, (cz(0) - 1.75 + zp) / 2, 1.3, zp - cz(0) + 1.75, 0, A(mat(KP.rubber, 0xc89a3c, 1.7), { flat: true })));            // the gold runner
+        const ex = CAT.row('exit_sign') ? (x, z, y, hd) => R.prop('exit_sign', x, z, hd, { y, mount: 0 }) : () => {};
+        ex(cx(3), zp - 0.3, 2.85, 0); ex(-0.87, D / 2 - 0.45, 2.55, 0);
+        P.push(quad(0, 2.95, zp + 0.17, 3.0, 0.62, 0, { text: 'NOW SHOWING', ink: '#ffe08a', bg: '#200c14', glow: 0.9 }));                         // over the hall's door, foyer side
+        P.push(A(box(-1.6, 3.62, zp + 0.2, 0.09, 0.09, 0.06, glowT(0xfff0c0, 1)), { n: 17, step: [0.2, 0, 0] }), A(box(-1.6, 2.84, zp + 0.2, 0.09, 0.09, 0.06, glowT(0xfff0c0, 1)), { n: 17, step: [0.2, 0, 0] }));   // its marquee bulbs
+        P.push(quad(-W / 2 + 0.37, 2.2, cz(6), 2.8, 1.0, 90, { text: 'POPCORN  SODA  CANDY', ink: '#fff2c0', bg: '#30121c', glow: 0.8 }));
+        if (CAT.has('film_projector')) { R.prop('film_projector', cx(0), cz(7), 90); R.shut(0, 7, 0, 7, 1.8); }                                // the old projector on show (a blocker: centred on its square, shut)
+    },
+    /* 3 the loading dock: the forklift and two wrapped pallets on shut squares, a roller shutter + LOADING BAY over them, hazard paint along
+       the racking, high-bay lamps, a fire extinguisher by the door, the pallet jack when it is on main */
+    'P11-09-B1': (R, WOOD) => { const { P, cx, cz, D, H } = R, back = -D / 2 + 0.3;
+        R.prop('forklift', cx(7), cz(2), 270); R.shut(7, 2, 7, 2, 2.0);
+        R.prop('wrapped_pallet', cx(5), cz(0), 0); R.prop('wrapped_pallet', cx(6), cz(0), 90); R.shut(5, 0, 6, 0, 1.0);
+        if (CAT.has('pallet_jack')) R.prop('pallet_jack', cx(5) + 1.15, cz(0) + 1.1, 90);
+        P.push(quad(cx(5.5), 0, back + 0.08, 6.0, 4.3, 0, mat(K.corr, T.GREY, 1.5)), box(cx(5.5), 4.3, back + 0.15, 6.4, 0.45, 0.3, mat(KP.metal, T.DARK, 1.5)), box(cx(5.5) - 3.1, 0, back + 0.12, 0.2, 4.3, 0.2, trim(T.YELLOW)), box(cx(5.5) + 3.1, 0, back + 0.12, 0.2, 4.3, 0.2, trim(T.YELLOW)));   // the roller shutter
+        P.push(quad(cx(5.5), 4.9, back + 0.09, 3.6, 0.7, 0, { text: 'LOADING BAY', ink: '#1c1c1c', bg: '#e8c020' }));
+        P.push(quad(cx(1.5), 0.066, cz(0) + 1.62, 14.0, 0.22, 0, A(trim(T.YELLOW), { flat: true })), A(quad(cx(0) - 1.4, 0.07, cz(0) + 1.62, 0.3, 0.22, 0, A(trim(0x1c1c1c), { flat: true })), { n: 20, step: [0.7, 0, 0] }));   // the hazard paint
+        [2.5, 5.5].forEach(k => P.push(cyl(cx(k), H - 1.2, cz(1), 0.025, 1.2, A(trim(T.DARK), { seg: 4 })), cyl(cx(k), H - 1.55, cz(1), 0.45, 0.35, A(trim(0x50545c), { seg: 10, r2: 0.18 })), cyl(cx(k), H - 1.6, cz(1), 0.4, 0.05, A(glowT(0xf4f6ff, 1), { seg: 10 }))));   // the high-bay lamps
+        if (CAT.has('fire_extinguisher')) R.prop('fire_extinguisher', cx(4) + 1.3, D / 2 - 0.45, 0, { y: 0.95, mount: 0 });
+    },
+    /* 4 the surf shop: the board rack on its square, boards up both walls, the wetsuit rail, the sunglasses spinner, life ring, swim rings,
+       air beds, a cool box and a bin of beach balls, coloured bulbs strung under the ceiling, the shop's sign */
+    'P08-08-B2': (R) => { const { P, cx, cz, W, D, H } = R, back = -D / 2 + 0.3;
+        R.prop('surfboard_rack', cx(0), cz(0), 180); R.shut(0, 0, 0, 0, 2.3);
+        ['surfboard_long', 'surfboard_short', 'surfboard_fish', 'surfboard_short'].forEach((k, i) => R.prop(k, -W / 2 + 0.48, cz(0) + 0.6 + i * 2.3, 90));   // boards up the left wall
+        ['surfboard_long', 'surfboard_fish'].forEach((k, i) => R.prop(k, W / 2 - 0.48, cz(1) + 0.4 + i * 2.6, 270));                                 // and the right
+        R.prop('wetsuit_rail', cx(1), back + 0.45, 180);
+        R.prop('sunglasses_spinner', cx(1) - 1.2, D / 2 - 0.75, 0);
+        R.prop('beach_life_ring', 0.6, D / 2 - 0.42, 0, { y: 1.75 }); R.prop('beach_life_ring', W / 2 - 0.42, cz(3) - 1.3, 270, { y: 1.6 });
+        [0, 0.29, 0.58].forEach(y => R.prop('beach_swim_ring', W / 2 - 0.92, cz(3) + 1.0, 0, { y }));
+        R.prop('beach_air_mattress_blue', W / 2 - 0.85, cz(2) + 1.1, 0); R.prop('beach_air_mattress_pink', W / 2 - 0.85, cz(2) + 1.1, 0, { y: 0.18 });
+        R.prop('beach_cooler', cx(1) + 1.2, back + 0.4, 0);
+        P.push(cyl(cx(1) - 1.2, 0, back + 0.55, 0.42, 0.55, A(trim(T.STEEL), { seg: 10, cap: false })));                                       // the bin of beach balls
+        [[-0.12, -0.1], [0.14, 0.08], [-0.05, 0.16]].forEach((o, i) => R.prop('beach_ball', cx(1) - 1.2 + o[0], back + 0.55 + o[1], i * 40, { y: 0.25 + i * 0.12 }));
+        const bulbs = [0xff6060, 0xffd040, 0x60e0ff, 0x80ff90, 0xff90e0];
+        [cz(1), cz(3)].forEach(z => { P.push(box(0, H - 0.34, z, W - 0.9, 0.02, 0.02, trim(T.DARK))); for (let i = 0; i < 9; i++) P.push(dome(-W / 2 + 0.75 + i * (W - 1.5) / 8, H - 0.48, z, 0.08, 0.14, glowT(bulbs[i % 5], 1))); });
+        P.push(quad(cx(1), 2.15, back + 0.09, 3.0, 0.62, 0, { text: 'SURF SHOP', ink: '#ffffff', bg: '#1f6f8b', glow: 0.6 }));
+    },
+    /* 5 boat repair: the outboard (in the first pass's engine place, SECOND only adds), lobster pots, the net on the left wall, life rings,
+       paint tins on the bench, a work lamp over the hull */
+    'P09-08-B3': (R) => { const { P, cx, cz, W, D } = R, back = -D / 2 + 0.3;
+        R.prop('lobster_traps', cx(1) + 0.95, D / 2 - 0.75, 0);
+        R.prop('fishing_net_wall', -W / 2 + 0.4, cz(1), 90, { y: 0.55 });
+        R.prop('beach_life_ring', W / 2 - 0.42, cz(1), 270, { y: 1.7 }); R.prop('beach_life_ring', cx(2.5), back + 0.12, 180, { y: 2.15 });
+        [[T.RED, -0.2], [T.WHITE, 0.15], [T.NAVY, 0.5], [T.YELLOW, 0.85]].forEach(k => P.push(cyl(cx(0.5) - 2.6 + k[1], 0.9, cz(0) - 0.35, 0.12, 0.2, A(trim(k[0]), { seg: 8 }))));   // paint tins
+        P.push(cyl(cx(2.5), 2.6, cz(1), 0.02, 0.58, A(trim(T.DARK), { seg: 4 })), cyl(cx(2.5), 2.45, cz(1), 0.28, 0.2, A(trim(0x2c5a40), { seg: 10, r2: 0.12 })), cyl(cx(2.5), 2.43, cz(1), 0.24, 0.04, A(glowT(0xfff0c8, 1), { seg: 10 })));   // the work lamp
+        P.push(quad(cx(2.5), 0.065, cz(1), 4.4, 2.0, 0, A(trim(0x3a3630), { flat: true, glow: 0 })));                                          // the stain under the hull
+    },
+    /* 6 the harbour master: the ship's wheel over the cabinets, the bell by the door, a life ring, a chart on the wall, the chart lamp */
+    'bay-harbourmaster': (R) => { const { P, cx, cz, W, D } = R, back = -D / 2 + 0.3;
+        R.prop('ship_wheel', cx(0) - 0.45, back + 0.2, 180, { y: 1.7 });
+        R.prop('ships_bell', -W / 2 + 0.38, cz(1) - 0.2, 90, { y: 1.55 });
+        R.prop('beach_life_ring', cx(0) + 1.2, back + 0.12, 180, { y: 1.55 });
+        P.push(quad(W / 2 - 0.36, 1.35, cz(0), 1.7, 1.15, 270, trim(0x4a3a2a)), quad(W / 2 - 0.37, 1.42, cz(0), 1.5, 1.0, 270, trim(0xf0e6c8)), quad(W / 2 - 0.38, 1.6, cz(0) + 0.2, 0.7, 0.5, 270, trim(T.AQUA)));   // a chart in a frame
+        P.push(cyl(cx(1) - 0.9, 1.02, cz(0) + 0.45, 0.06, 0.35, A(mat('gold', T.WHITE, 1.5), { seg: 6 })), cyl(cx(1) - 0.9, 1.33, cz(0) + 0.45, 0.18, 0.16, A(glowT(0x60c088, 0.75), { seg: 8, r2: 0.1 })));   // the chart lamp
+    },
+};
+const WOODT = (tint) => mat(K.planks, tint, 1.9);
 function interiors(ctx, byId, push) {
     const { lateRows, props, r3 } = ctx, n = { rooms: 0, parts: 0, blocked: 0, props: 0 };
     const WOOD = (tint, g) => mat(K.planks, tint == null ? 0xc89868 : tint, g || 1.9), LAMP = { tint: 0xfff2cc, glow: 1, under: true };
@@ -829,7 +932,7 @@ function interiors(ctx, byId, push) {
                 coat(wall, h || R.H, 0.34, 2.2); coat(dado, 1.0, 0.36, 1.0);
                 if (ceil) P.push(box(0, R.H - 0.07, 0, W - 0.7, 0.04, D - 0.7, A({ under: true, roof: true, top: false, glow: 0.5 }, ceil))); },
         };
-        fn(R); push(id + ':in', row.x, row.z, rot, P); n.rooms++; n.parts += P.length;
+        fn(R); if (SECOND[id]) SECOND[id](R, WOOD, LAMP); const LP = lettered(P); push(id + ':in', row.x, row.z, rot, LP); n.rooms++; n.parts += LP.length;
     };
     /* 1 the hotel lobby (9 x 3; the door on square 3): the walk is the whole middle row */
     room('P08-08-B1', R => { const { P, cx, cz, D } = R, back = -D / 2 + 0.3;
@@ -864,7 +967,7 @@ function interiors(ctx, byId, push) {
         [-1, 1].forEach(k => P.push(A(box(k * 10.4, 0, back + 0.25, 0.42, 10.4, 0.3, trim(0x9c1c30)), { n: 4, step: [k * 0.46, 0, 0.02] })));     // the curtains
         P.push(box(0, 10.4, back + 0.3, W - 0.7, 0.9, 0.5, trim(0x9c1c30)));
         [2, 3, 4].forEach(rw => [0, 4].forEach(c0 => { const x = cx(c0 + 1);                                                                    // the seat blocks: two benches a square, facing the screen
-            [-0.8, 0.8].forEach(dz => P.push(box(x, 0, cz(rw) + dz, 10.0, 0.5, 0.7, trim(0xb02a3c)), box(x, 0.5, cz(rw) + dz + 0.42, 10.0, 0.75, 0.16, trim(0x8c1c2c)), A(box(x - 4.95, 0, cz(rw) + dz, 0.1, 0.72, 0.8, trim(0x2a2a30)), { n: 12, step: [0.9, 0, 0] })));
+            [-0.8, 0.8].forEach(dz => [-3.6, -1.2, 1.2, 3.6].forEach(dx => R.prop('cinema_seat_row', x + dx, cz(rw) + dz, 0)));   // (second pass: the Meshy seat rows in place of the plain benches)
             R.shut(c0, rw, c0 + 2, rw, 1.3); }));
         P.push(box(cx(3), 7.4, zp - 1.1, 6.5, 2.6, 1.9, A(wallM(T.LEMON, K.plaster), { under: true })), box(cx(3), 8.3, zp - 2.08, 1.0, 0.6, 0.06, { tint: 0xfff0b0, glow: 1 }));   // the projector booth, over the cross aisle
         P.push(A(box(cx(3) - 1.6, 0.02, cz(1), 0.12, 0.03, 0.5, { tint: 0xffe08a, glow: 0.9 }), { n: 5, step: [0, 0, 3.5] }), A(box(cx(3) + 1.6, 0.02, cz(1), 0.12, 0.03, 0.5, { tint: 0xffe08a, glow: 0.9 }), { n: 5, step: [0, 0, 3.5] }));   // the aisle lights
@@ -902,9 +1005,7 @@ function interiors(ctx, byId, push) {
             [T.AQUA, T.HOT, T.LEMON, T.MINT, T.CORAL, T.WHITE].forEach((t, i) => P.push(box(cx(1) - 0.9 + (i % 3) * 0.9, 0.9, cz(rw) - 0.6 + Math.floor(i / 3) * 1.2, 0.6, 0.12 + (i % 2) * 0.08, 0.7, trim(t))));   // folded shirts
             R.shut(1, rw, 1, rw, 1.0); });
         P.push(box(cx(0), 0, cz(4), 3.0, 1.05, 1.4, WOOD(0xc89868)), box(cx(0), 1.05, cz(4), 3.2, 0.06, 1.6, trim(T.AQUA))); R.prop('cash_register', cx(0) + 0.7, cz(4), 90, { y: 1.1 }); R.shut(0, 4, 0, 4, 1.2);
-        [[T.LEMON, 0], [T.HOT, 1], [T.MINT, 2], [T.ORANGE, 3]].forEach(k => { const z = cz(0) + 0.6 + k[1] * 2.3; P.push(box(-W / 2 + 0.42, 0, z, 0.1, 2.2, 0.55, A(trim(k[0]), { rx: 0 })), cyl(-W / 2 + 0.42, 2.2, z, 0.27, 0.4, A(trim(k[0]), { r2: 0.02, seg: 6 }))); });   // boards on the left wall
-        [[T.AQUA, 0], [T.CORAL, 1]].forEach(k => { const z = cz(1) + 0.4 + k[1] * 2.6; P.push(box(W / 2 - 0.42, 0, z, 0.1, 2.2, 0.55, trim(k[0])), cyl(W / 2 - 0.42, 2.2, z, 0.27, 0.4, A(trim(k[0]), { r2: 0.02, seg: 6 }))); });
-        P.push(box(cx(0.5), 1.95, back + 0.2, 5.6, 0.05, 0.05, trim(T.STEEL)), A(box(cx(0.5) - 2.4, 0.75, back + 0.2, 0.5, 1.2, 0.1, trim(0x24242c)), { n: 7, step: [0.8, 0, 0] }));   // the wetsuit rail
+        /* (the second pass: the boards on both walls and the wetsuit rail are the Meshy surfboards + wetsuit rail, SECOND below) */
         R.prop('office_plant', cx(2) + 1.15, cz(4) - 1.0);
         R.lamps([[cx(0), cz(2)], [cx(2), cz(2)]]);
     });
@@ -915,7 +1016,7 @@ function interiors(ctx, byId, push) {
         [T.RED, T.YELLOW, T.STEEL, T.ORANGE].forEach((t, i) => P.push(A(box(cx(0.5) - 2.4 + i * 0.3, 1.5 + (i % 2) * 0.4, back + 0.1, 0.12, 0.5, 0.03, trim(t)), { n: 4, step: [1.3, 0, 0] })));
         P.push(box(cx(0.5) - 2.0, 0.9, cz(0), 0.7, 0.3, 0.5, trim(T.RED)), box(cx(0.5) + 1.6, 0.9, cz(0) + 0.1, 0.5, 0.2, 0.9, trim(T.STEEL)));
         R.shut(0, 0, 1, 0, 1.2);
-        P.push(box(cx(4), 0, cz(0), 1.5, 0.5, 1.1, trim(0x50545c)), box(cx(4), 0.5, cz(0), 1.2, 0.8, 0.9, trim(0x8a9098)), cyl(cx(4) + 0.2, 1.3, cz(0), 0.16, 0.4, A(trim(T.RED), { seg: 8 })));   // the engine on its stand
+        R.prop('outboard_motor', cx(4), cz(0), 180);                                                                                            // the engine on its stand (second pass: the Meshy outboard)
         P.push(A(cyl(cx(4) - 1.3, 0, cz(0), 0.08, 2.9, A(trim(T.YELLOW), { seg: 4, cap: false })), { n: 2, step: [2.6, 0, 0] }), box(cx(4), 2.9, cz(0), 3.0, 0.16, 0.16, trim(T.YELLOW)), box(cx(4), 1.7, cz(0), 0.04, 1.2, 0.04, trim(T.DARK)));   // the hoist
         R.shut(4, 0, 4, 0, 2.9);
         [-1.3, 1.3].forEach(dx => P.push(box(cx(2.5) + dx, 0.9, cz(1), 0.12, 0.1, 1.9, WOOD(0xb89060)), A(box(cx(2.5) + dx, 0, cz(1) - 0.8, 0.1, 0.9, 0.1, WOOD(0xb89060)), { n: 2, step: [0, 0, 1.6] })));   // the trestles

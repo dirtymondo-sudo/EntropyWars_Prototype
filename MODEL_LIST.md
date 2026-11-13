@@ -19,13 +19,13 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 933 |
+| Asset pack | yes | 939 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 764 |
+| Meshy AI | no | 779 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -1982,6 +1982,26 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | trap_trip_wire_broken | `Assets/world/packs/traps/Trip_Wire_Broken.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
 | wall_chains | `Assets/world/packs/traps/Chain_Draped.glb` | Asset pack (author not recorded yet) | Traps pack (mondo's upload) |
 
+### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) — Meshy AI (15)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| cinema_seat_row | `Assets/world/props/meshy/cinema_seat_row.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| fishing_net_wall | `Assets/world/props/meshy/fishing_net_wall.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| forklift | `Assets/world/props/meshy/forklift.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| lobster_traps | `Assets/world/props/meshy/lobster_traps.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| luggage_cart | `Assets/world/props/meshy/luggage_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| outboard_motor | `Assets/world/props/meshy/outboard_motor.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| ship_wheel | `Assets/world/props/meshy/ship_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| ships_bell | `Assets/world/props/meshy/ships_bell.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| sunglasses_spinner | `Assets/world/props/meshy/sunglasses_spinner.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| surfboard_fish | `Assets/world/props/meshy/surfboard_fish.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| surfboard_long | `Assets/world/props/meshy/surfboard_long.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| surfboard_rack | `Assets/world/props/meshy/surfboard_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| surfboard_short | `Assets/world/props/meshy/surfboard_short.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| wetsuit_rail | `Assets/world/props/meshy/wetsuit_rail.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+| wrapped_pallet | `Assets/world/props/meshy/wrapped_pallet.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/) |
+
 ### Instruments + orchestral (mondo's upload) — Asset pack (author not recorded yet) (15)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2101,6 +2121,17 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | trash_bin | `Assets/world/packs/elbolilloduro/ebd_trailerpark_trash_bin.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
 | tube_tv | `Assets/world/packs/elbolilloduro/ebd_trailerpark_tube_tv.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
 | wall_clock | `Assets/world/packs/elbolilloduro/ebd_trailerpark_wall_clock.glb` | Asset pack | Trailer Park · Elbolilloduro · CC0 (piece cut out in Blender) |
+
+### Beach Props Pack · Elegant Crow (itch.io, name your own price; the author OKs commercial use) · OBJ -> GLB by Claude (Disaster City Bayside interiors) — Asset pack (6)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| beach_air_mattress_blue | `Assets/world/packs/elegantcrow_beach/beach_air_mattress_blue.glb` | Asset pack | Beach Props Pack · Elegant Crow (itch.io, name your own price; the author OKs commercial use) · OBJ -> GLB by Claude (Disaster City Bayside interiors) |
+| beach_air_mattress_pink | `Assets/world/packs/elegantcrow_beach/beach_air_mattress_pink.glb` | Asset pack | Beach Props Pack · Elegant Crow (itch.io, name your own price; the author OKs commercial use) · OBJ -> GLB by Claude (Disaster City Bayside interiors) |
+| beach_ball | `Assets/world/packs/elegantcrow_beach/beach_ball.glb` | Asset pack | Beach Props Pack · Elegant Crow (itch.io, name your own price; the author OKs commercial use) · OBJ -> GLB by Claude (Disaster City Bayside interiors) |
+| beach_cooler | `Assets/world/packs/elegantcrow_beach/beach_cooler.glb` | Asset pack | Beach Props Pack · Elegant Crow (itch.io, name your own price; the author OKs commercial use) · OBJ -> GLB by Claude (Disaster City Bayside interiors) |
+| beach_life_ring | `Assets/world/packs/elegantcrow_beach/beach_life_ring.glb` | Asset pack | Beach Props Pack · Elegant Crow (itch.io, name your own price; the author OKs commercial use) · OBJ -> GLB by Claude (Disaster City Bayside interiors) |
+| beach_swim_ring | `Assets/world/packs/elegantcrow_beach/beach_swim_ring.glb` | Asset pack | Beach Props Pack · Elegant Crow (itch.io, name your own price; the author OKs commercial use) · OBJ -> GLB by Claude (Disaster City Bayside interiors) |
 
 ### Trailer Park · Elbolilloduro · CC0 (one whole trailer cut out of the scene in Blender; DOOR_HQ.catalogue trailer_home_N in Area 51 + Skinwalker rooms) — Asset pack (6)
 
