@@ -29716,12 +29716,15 @@ const ThreeRenderer = (function () {
         return sp;
     }
     function keyPickupFx(tx, ty, opts) {
-        if (!scene) return;
         opts = opts || {};
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var wx = tx * ts + ts / 2;
-        var wz = ty * ts + ts / 2;
-        var baseY = _tileSurfaceY(tx, ty);
+        /* opts.at = { scene, x, y, z, ts } (2026-11-13, scene E: Rhonda hands over the office keys): the same celebration at a
+           world point of another scene (the HQ room), sized by `ts`, on the real clock, without the board's sparks and ring */
+        var at = opts.at || null;
+        if (!(at ? at.scene : scene)) return;
+        var ts = at ? at.ts : (CONFIG.tileSize || BASE_TILE);
+        var wx = at ? at.x : tx * ts + ts / 2;
+        var wz = at ? at.z : ty * ts + ts / 2;
+        var baseY = at ? at.y : _tileSurfaceY(tx, ty);
         var g = new THREE.Group();
         g.position.set(wx, baseY + ts * 0.30, wz);
         var holder = new THREE.Group();
@@ -29756,25 +29759,26 @@ const ThreeRenderer = (function () {
         var halo = _keyFxHalo(ts);
         g.add(halo);
         g.scale.setScalar(0.01);
-        scene.add(g);
+        (at ? at.scene : scene).add(g);
         _keyFxList.push({
             g: g, holder: holder, light: light, halo: halo,
-            t0: _animNow(), ts: ts, baseY: baseY, tx: tx, ty: ty,
-            burst: false, nextSpark: 500,
+            t0: at ? performance.now() : _animNow(), ts: ts, baseY: baseY, tx: tx, ty: ty,
+            burst: false, nextSpark: 500, real: !!at,
         });
+        if (at) return;
         _keyFxGroundRing(tx, ty);
         _keyFxSparkBurst(tx, ty, 12, baseY + ts * 0.25, false);
     }
     var _KEYFX_RISE = 450, _KEYFX_HOLD = 1650, _KEYFX_OUT = 420;
     function _updateKeyFx() {
         if (!_keyFxList.length) return;
-        var now = _animNow();
+        var now = _animNow(), nowReal = performance.now();
         for (var i = _keyFxList.length - 1; i >= 0; i--) {
             var f = _keyFxList[i];
-            var t = now - f.t0;
+            var t = (f.real ? nowReal : now) - f.t0;
             var total = _KEYFX_RISE + _KEYFX_HOLD + _KEYFX_OUT;
             if (t >= total || !f.g.parent) {
-                scene.remove(f.g);
+                if (f.g.parent) f.g.parent.remove(f.g);
                 if (f.halo) f.halo.material.dispose();
                 _keyFxList.splice(i, 1);
                 continue;
@@ -29797,7 +29801,7 @@ const ThreeRenderer = (function () {
                 f.holder.rotation.y = Math.PI * 3.2 + h * 0.0038;
                 f.light.intensity = 1.6 + Math.sin(h * 0.008) * 0.35;
                 f.halo.material.opacity = 0.5 + Math.sin(h * 0.008) * 0.08;
-                if (t >= f.nextSpark) {           // slow sparkle drip while hovering
+                if (!f.real && t >= f.nextSpark) {           // slow sparkle drip while hovering
                     f.nextSpark = t + 240;
                     _keyFxSparkBurst(f.tx, f.ty, 2, f.g.position.y, false);
                 }
@@ -29805,7 +29809,7 @@ const ThreeRenderer = (function () {
                 var o = (t - _KEYFX_RISE - _KEYFX_HOLD) / _KEYFX_OUT;
                 if (!f.burst) {
                     f.burst = true;
-                    _keyFxSparkBurst(f.tx, f.ty, 18, f.g.position.y, true);
+                    if (!f.real) _keyFxSparkBurst(f.tx, f.ty, 18, f.g.position.y, true);
                 }
                 f.g.scale.setScalar(Math.max(0.01, 1 - o * o));
                 f.g.position.y = topY + o * ts * 0.35;
@@ -71443,7 +71447,7 @@ const ThreeRenderer = (function () {
        textured shop now (the plain concrete box is gone). Blocking is the
        plan's own mass rule (hqTerrainSolidAt) — a building adds no blocker.
        ═══════════════════════════════════════════════════════════════════════ */
-    var HQ_TEXB = { cell: 1.75, storey: 3.5, parapet: 0.45, outset: 0.012, tint: 0xa8a49c, tintNeon: 0x62627a };
+    var HQ_TEXB = { cell: 1.75, storey: 3.5, parapet: 0.45, outset: 0.012, tint: 0xa8a49c, tintNeon: 0x62627a, bigWin: 1, archBase: 'urban:ConcreteStriped2a' };   // bigWin 0 = the old 1.75 m window squares (THE BIG WINDOWS)
     var _HQ_TEX_STYLES = {
         office:      { spandrel: 'ConcreteStriped', glass: 'GlassWindowSquare', ground: 'store', door: 'DoorStorefrontHalf', roof: 'ConcreteUnderTiles1', maxS: 6 },
         tower:       { spandrel: null, glass: 'GlassWindowTall', ground: 'store', door: 'DoorStorefrontHalf', roof: 'ConcreteUnderTiles1', tall: true, minS: 3 },
@@ -71590,11 +71594,20 @@ const ThreeRenderer = (function () {
             var cols = Math.max(1, Math.round(F.L / C)), cw = F.L / cols;
             if (F.front) doorCol = Math.max(0, Math.min(cols - 1, Math.floor(cols * (0.25 + rng() * 0.5))));
             if (F.front && hol) doorCol = -1;   // THE INSIDE: no door sheet, the doorway itself
-            if (!lot.roofOnly && !lot.noSkin) for (var r = 0; r < rows; r++) for (var ci = 0; ci < cols; ci++) {   // THE PRISM ROOFS: a prism building draws only the roof and the parapet here
+            /* THE BIG WINDOWS (2026-11-13, mondo: "the windows are too small, need to be scaled up, and remember the bottom row of these
+               buildings should be different/not windows"): a window is one per STOREY (3.5 m), never one per 1.75 m square, and the ground
+               storey carries none. Glass styles (office / tower / a glass sheet) draw their upper storeys as storey-high panes (bigGlass);
+               window decals (residential / stucco / a pack sheet's) are laid one per storey over the wall (bigOver). HQ_TEXB.bigWin 0 = the old squares. */
+            var BW = (HQ_TEXB.bigWin !== 0) && !lot.roofOnly && !lot.noSkin;
+            var bigGlass = BW && ((Q && Q.sheet && Q.sheet.glass) ? Q.sheet : (!Q && !P.one && (P.style === 'office' || P.style === 'tower')) ? P.win : null);
+            var bigOver = BW ? ((overOwn !== undefined) ? overOwn : (!Q && (P.style === 'residential' || P.style === 'stucco')) ? P.over : null) : null;
+            if (!lot.roofOnly && !lot.noSkin) for (var r = 0; r < rows; r++) for (var ci = 0; ci < cols; ci++) {
+                if (bigGlass && r >= 2) continue;   // THE PRISM ROOFS: a prism building draws only the roof and the parapet here
                 var ground = r === 0, upperOfStorey = (r % 2) === 1, top = r === rows - 1;
                 var cell = null, over = null, door = null;
                 if (P.style === 'office' || P.style === 'tower') {
                     if (ground) { cell = (F.front || F.L > 6) ? P.ground : P.wall; if (F.front && ci === doorCol) door = P.door; }
+                    else if (BW && r === 1) cell = P.wall;   // the fascia over the shopfront
                     else if (P.style === 'tower') cell = P.win;
                     else cell = upperOfStorey ? P.win : P.wall;
                 } else if (P.style === 'factory') {
@@ -71602,13 +71615,14 @@ const ThreeRenderer = (function () {
                     if (!ground && upperOfStorey && (ci % 2 === 0 || F.L < 5)) cell = P.win;
                     if (ground && F.front && ci === doorCol) door = P.door;
                 } else {   // residential / stucco
-                    cell = ground ? (P.base || P.wall) : ((top && P.top) ? P.top : P.wall);
+                    cell = ground ? (P.base || (BW && P.top) || P.wall) : ((top && P.top) ? P.top : P.wall);   // the ground row in its own sheet (the band / the stucco's trim)
                     if (upperOfStorey || (ground && !(F.front && ci === doorCol))) { if (!(ground && P.style === 'stucco')) over = P.over; }
                     if (ground && F.front && ci === doorCol) door = P.door;
                 }
                 if (Q) { cell = r === 0 ? Q.g0 : (r === 1 && Q.g1 ? Q.g1 : Q.sheet); over = null; door = (ground && F.front && ci === doorCol) ? door : null; }
                 if (ownG !== undefined && r === 0 && ownG) cell = { key: ownG, glass: /GlassWindow/.test(ownG) };
                 if (overOwn !== undefined) over = (r >= 3 && r % 2 === 1) ? overOwn : null;
+                if (BW) over = null;   // THE BIG WINDOWS: laid per storey below
                 if (door && doorKey !== undefined) door = doorKey ? { key: doorKey, half: true, pair: doorPair } : null;
                 if (!cell || !cell.key) continue;
                 var x0 = F.o[0] + F.a[0] * cw * ci, z0 = F.o[1] + F.a[1] * cw * ci, x1 = x0 + F.a[0] * cw, z1 = z0 + F.a[1] * cw, y0 = r * CY, y1 = y0 + CY, v0 = 0;
@@ -71629,6 +71643,22 @@ const ThreeRenderer = (function () {
                     var dw = door.wide ? cw : cw / 2, dx0 = x0 + F.a[0] * (cw - dw) / 2, dz0 = z0 + F.a[1] * (cw - dw) / 2, dx1 = dx0 + F.a[0] * dw, dz1 = dz0 + F.a[1] * dw;
                     var ox2 = F.n[0] * out * 1.5, oz2 = F.n[1] * out * 1.5;
                     batch.add(door.key, null, 'over', [W(dx0 + ox2, y0, dz0 + oz2), W(dx1 + ox2, y0, dz1 + oz2), W(dx1 + ox2, y1, dz1 + oz2), W(dx0 + ox2, y1, dz0 + oz2)], [[0, 0], [door.wide ? 2 : 1, 0], [door.wide ? 2 : 1, 1], [0, 1]]);
+                }
+            }
+            if ((bigGlass && bigGlass.key) || (bigOver && bigOver.key)) {   // THE BIG WINDOWS: storeys 1.. , one pane / one window per storey-wide bay
+                var SH = 2 * CY, office = bigGlass && bigGlass === P.win && P.style === 'office';
+                var bays = Math.max(1, Math.round(F.L / (office ? HQ_TEXB.cell * 1.5 : HQ_TEXB.storey))), bwd = F.L / bays, sp = office ? SH * 0.25 : 0;
+                for (var sN = 1; sN < st; sN++) for (var bi0 = 0; bi0 < bays; bi0++) {
+                    var bx0 = F.o[0] + F.a[0] * bwd * bi0, bz0 = F.o[1] + F.a[1] * bwd * bi0, bx1 = bx0 + F.a[0] * bwd, bz1 = bz0 + F.a[1] * bwd, by0 = sN * SH, by1 = by0 + SH;
+                    if (bigGlass && bigGlass.key) {
+                        if (sp > 0) batch.add(P.wall.key, null, 'wall', [W(bx0, by0, bz0), W(bx1, by0, bz1), W(bx1, by0 + sp, bz1), W(bx0, by0 + sp, bz0)], [[0, 0], [bwd / C, 0], [bwd / C, sp / CY], [0, sp / CY]]);   // the spandrel under the pane
+                        var gu = bigGlass.tall ? 2 : 1;
+                        batch.add(bigGlass.key, bigGlass.glow || null, 'glass', [W(bx0, by0 + sp, bz0), W(bx1, by0 + sp, bz1), W(bx1, by1, bz1), W(bx0, by1, bz0)], [[0, 0], [gu, 0], [gu, 1], [0, 1]]);
+                    }
+                    if (bigOver && bigOver.key) {
+                        var box = F.n[0] * out, boz = F.n[1] * out;
+                        batch.add(bigOver.key, bigOver.glow || null, 'over', [W(bx0 + box, by0, bz0 + boz), W(bx1 + box, by0, bz1 + boz), W(bx1 + box, by1, bz1 + boz), W(bx0 + box, by1, bz0 + boz)], [[0, 0], [1, 0], [1, 1], [0, 1]]);
+                    }
                 }
             }
             if (lot.flat || lot.noSkin) return;   // THE BUILDING TIERS: a walked roof has no parapet (THE ARCHITECTURE: `skin: false` draws no outside at all) (its rails, bridges and stairs meet the edge)
@@ -71734,6 +71764,15 @@ const ThreeRenderer = (function () {
         parts.forEach(function (P) {
             var pp = P.p || [0, 0, 0], pc = Math.cos(-(P.ry || 0) * D2R), ps = Math.sin(-(P.ry || 0) * D2R);
             var fit = P.uv === 'fit', mu = fit ? 1 : (Array.isArray(P.uv) ? +P.uv[0] : +P.uv) || C, mv = fit ? 1 : (Array.isArray(P.uv) ? +P.uv[1] : +P.uv) || C;
+            /* THE BIG WINDOWS (2026-11-13, mondo: windows too small; the bottom row is not windows): a repeated window sheet (urban GlassWindow* /
+               DecalWindows*) on a wall repeats once per STOREY, in whole rows (a 9 m wall = three rows of 3 m), never every 1.75 m: a `uv` number
+               under a storey (or none) is lifted; an [u, v] pair and 'fit' are the district's own and stay. A wall of them standing on the ground
+               and taller than a storey draws its ground storey in `keyBase` (none = HQ_TEXB.archBase for glass, nothing for a decal) in the part's
+               tint. `win: 'keep'` on a part turns both off. */
+            var wallH = (P.s === 'box' || P.s === 'quad') ? +(P.size || [])[1] || 0 : (P.s === 'cyl' || P.s === 'poly') ? +P.h || 0 : 0;
+            var winSheet = HQ_TEXB.bigWin !== 0 && P.win !== 'keep' && !fit && !Array.isArray(P.uv) && !(P.s === 'quad' && P.flat) && wallH > 0 && /^urban:(GlassWindow|DecalWindows)/.test(P.key || '');
+            if (winSheet && mv < HQ_TEXB.storey) { mv = (wallH >= HQ_TEXB.storey) ? wallH / Math.round(wallH / HQ_TEXB.storey) : Math.max(mv, wallH); mu = mv; }
+            var gSplit = (winSheet && pp[1] < 0.6 && wallH > HQ_TEXB.storey + 1) ? Math.min(mv, wallH - 1) : 0;
             var kindOf = function (key) { return P.kind || (/GlassWindow/.test(key || '') ? 'glass' : /^urban:(Decal|Door|Sign)/.test(key || '') ? 'over' : 'wall'); };
             var grp = function (key, tintOwn) {   // tintOwn: the tint of a second sheet of the part (tintTop / tintEnd), none = the part's
                 key = key || null;
@@ -71752,6 +71791,13 @@ const ThreeRenderer = (function () {
                 var i0 = put(g, a, [0, 0]), i1 = put(g, b, [u, 0]), i2 = put(g, c, [u, v]), i3 = put(g, d, [0, v]);
                 g.idx.push(i0, i1, i2, i0, i2, i3);
             };
+            var wq = function (key, a, b, c, d, w, h) {   // a WALL's face: its ground storey in the base sheet (THE BIG WINDOWS)
+                if (!(gSplit > 0) || h <= gSplit + 0.01) return quad(key, a, b, c, d, w, h);
+                var f = gSplit / h, mix = function (p, q) { return [p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f, p[2] + (q[2] - p[2]) * f]; }, d1 = mix(a, d), c1 = mix(b, c);
+                var bk = P.keyBase || (/DecalWindows/.test(key || '') ? null : HQ_TEXB.archBase);
+                if (bk) { var kd = P.kind; P.kind = 'wall'; var g0 = grp(bk); P.kind = kd; var j0 = put(g0, a, [0, 0]), j1 = put(g0, b, [w / C, 0]), j2 = put(g0, c1, [w / C, gSplit / C]), j3 = put(g0, d1, [0, gSplit / C]); g0.idx.push(j0, j1, j2, j0, j2, j3); }
+                quad(key, d1, c1, c, d, w, h - gSplit);
+            };
             var tri = function (key, a, b, c, w, h, tn) {
                 var g = grp(key, tn), u = fit ? 1 : w / mu, v = fit ? 1 : h / mv;
                 var i0 = put(g, a, [0, 0]), i1 = put(g, b, [u, 0]), i2 = put(g, c, [u / 2, v]);
@@ -71762,10 +71808,10 @@ const ThreeRenderer = (function () {
                 var w = S[0] / 2, h = S[1], d = S[2] / 2;
                 if (P.sides !== false) {
                     var fc = P.faces || 'fblr';
-                    if (fc.indexOf('f') >= 0) quad(key, [-w, 0, d], [w, 0, d], [w, h, d], [-w, h, d], 2 * w, h);
-                    if (fc.indexOf('b') >= 0) quad(key, [w, 0, -d], [-w, 0, -d], [-w, h, -d], [w, h, -d], 2 * w, h);
-                    if (fc.indexOf('r') >= 0) quad(key, [w, 0, d], [w, 0, -d], [w, h, -d], [w, h, d], 2 * d, h);
-                    if (fc.indexOf('l') >= 0) quad(key, [-w, 0, -d], [-w, 0, d], [-w, h, d], [-w, h, -d], 2 * d, h);
+                    if (fc.indexOf('f') >= 0) wq(key, [-w, 0, d], [w, 0, d], [w, h, d], [-w, h, d], 2 * w, h);
+                    if (fc.indexOf('b') >= 0) wq(key, [w, 0, -d], [-w, 0, -d], [-w, h, -d], [w, h, -d], 2 * w, h);
+                    if (fc.indexOf('r') >= 0) wq(key, [w, 0, d], [w, 0, -d], [w, h, -d], [w, h, d], 2 * d, h);
+                    if (fc.indexOf('l') >= 0) wq(key, [-w, 0, -d], [-w, 0, d], [-w, h, d], [-w, h, -d], 2 * d, h);
                 }
                 if (P.top !== false) quad(P.keyTop || key, [-w, h, d], [w, h, d], [w, h, -d], [-w, h, -d], 2 * w, 2 * d, tT);
                 if (P.under) quad(P.keyUnder || P.keyTop || key, [-w, 0, -d], [w, 0, -d], [w, 0, d], [-w, 0, d], 2 * w, 2 * d);
@@ -71844,13 +71890,13 @@ const ThreeRenderer = (function () {
                     var hx0 = Math.max(-qw, P.hole[0] - P.hole[1] / 2), hx1 = Math.min(qw, P.hole[0] + P.hole[1] / 2), hy = Math.min(qh, P.hole[2]);
                     var gq = grp(key), pv = function (x, y) { return put(gq, [x, y, 0], [(x + qw) / mu, y / mv]); }, rect = function (x0, y0, x1, y1) { if (x1 - x0 < 0.01 || y1 - y0 < 0.01) return; var i0 = pv(x0, y0), i1 = pv(x1, y0), i2 = pv(x1, y1), i3 = pv(x0, y1); gq.idx.push(i0, i1, i2, i0, i2, i3); };
                     rect(-qw, 0, hx0, qh); rect(hx1, 0, qw, qh); rect(hx0, hy, hx1, qh);
-                } else quad(key, [-qw, 0, 0], [qw, 0, 0], [qw, qh, 0], [-qw, qh, 0], 2 * qw, qh);
+                } else wq(key, [-qw, 0, 0], [qw, 0, 0], [qw, qh, 0], [-qw, qh, 0], 2 * qw, qh);
             } else if (P.s === 'poly') {
                 var pts = (P.pts || []).slice(), area = 0, phh = +P.h || 1;
                 if (pts.length < 3) return;
                 for (var pi = 0; pi < pts.length; pi++) { var pa = pts[pi], pb = pts[(pi + 1) % pts.length]; area += pa[0] * pb[1] - pb[0] * pa[1]; }
                 if (area > 0) pts.reverse();
-                for (var pj = 0; pj < pts.length; pj++) { var qa = pts[pj], qb = pts[(pj + 1) % pts.length]; quad(key, [qa[0], 0, qa[1]], [qb[0], 0, qb[1]], [qb[0], phh, qb[1]], [qa[0], phh, qa[1]], Math.hypot(qb[0] - qa[0], qb[1] - qa[1]), phh); }
+                for (var pj = 0; pj < pts.length; pj++) { var qa = pts[pj], qb = pts[(pj + 1) % pts.length]; wq(key, [qa[0], 0, qa[1]], [qb[0], 0, qb[1]], [qb[0], phh, qb[1]], [qa[0], phh, qa[1]], Math.hypot(qb[0] - qa[0], qb[1] - qa[1]), phh); }
                 if (P.top !== false) {
                     var gp = grp(P.keyTop || key, tT), ti = pts.map(function (q) { return put(gp, [q[0], phh, q[1]], [q[0] / mu, q[1] / mv]); });
                     for (var pk = 1; pk < ti.length - 1; pk++) gp.idx.push(ti[0], ti[pk], ti[pk + 1]);
@@ -82398,6 +82444,20 @@ const ThreeRenderer = (function () {
     }
     /* THE CUTSCENES: the bodies and props a scene set moving (hq.sceneWalk / hq.sceneProps), stepped once a frame */
     var _hqSceneMoves = [];
+    /* a scene's CAST: everybody in the room but the officer and the kept DOOR_CAST ids is taken out, every frame the
+       scene holds (a walker that comes in by a door mid-scene, a traveller, the janitor: mondo 2026-11-13, a man in black
+       walked in front of Agent Locke). ids null = put back exactly the ones taken out. */
+    function _hqSceneCastApply() {
+        var H = _hq; if (!H) return 0;
+        var ids = H._sceneCastIds || null, n = 0;
+        (H.chars || []).forEach(function (ch) {
+            if (!ch || ch === H.player || ch.kind === 'player' || !ch.entry || !ch.entry.group) return;
+            if (ids) { if ((ch.cast && ids.indexOf(ch.cast) >= 0) || !ch.entry.group.visible) return; ch._sceneOut = true; _hqRoundsSetVisible(ch, false); n++; }
+            else if (ch._sceneOut) { ch._sceneOut = false; _hqRoundsSetVisible(ch, true); n++; }
+        });
+        if (n) H.dirty = true;
+        return n;
+    }
     function _hqTickSceneMoves() {
         if (!_hqSceneMoves.length) return;
         var H = _hq, now = performance.now(), U = _hqUnits(), keep = [];
@@ -82517,6 +82577,7 @@ const ThreeRenderer = (function () {
             var arriving = _hqTravellers.filter(function (t) { return t.to === roomId && now - t.t < R.travelTtlMs; });
             _hqTravellers = _hqTravellers.filter(function (t) { return t.to !== roomId && now - t.t < R.travelTtlMs; });
             arriving.forEach(function (t, i) {
+                if (room && room.noWalkers) return;   // nobody walks through this room (your office)
                 if (!walksRace(t.race)) return;
                 if (typeof hqRoomTakesRace === 'function' && !hqRoomTakesRace(roomId, t.race)) return;   // THE AREA UNITS: a room with a table lets in only its own people
                 if (crowd && !crowd.take(t.race)) return;   // THE CROWD CAP
@@ -86913,7 +86974,9 @@ const ThreeRenderer = (function () {
         if (_hq !== H) return;
         try { _hqTickGunDoors(wdt, now); } catch (e) { if (!H._gunTickWarned) { H._gunTickWarned = true; console.warn('[HQ] gun doors tick', e); } }   /* THE DOOR WHEEL IN THE ROOM (Phase 3): the standing doors act */
         _hqTickSceneMoves();
-        _hqTickRounds(wdt);   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
+        _hqTickRounds(wdt);
+        if (_keyFxList.length) { try { _updateKeyFx(); } catch (e) {} }   // scene E's key (keyPickupFx opts.at) lives in the room
+        if (H._sceneCastIds) _hqSceneCastApply();   // after the rounds: a walker the rounds just brought back in is out again the same frame   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         if (_lens && _lens.cur) { var _lensA = performance.now(); _hqTickChars(wdt); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share
         else _hqTickChars(wdt);
         if (window.EWCine) { try { window.EWCine.frame(_hqCine() ? H.camera : null, { kind: 'hq', unit: _hqUnits(), key: String(H.opts.room || ''), site: (H.room && H.room.site) ? ((typeof window.hqSiteId === 'function') ? window.hqSiteId(H.room.site) : H.room.site) : String(H.opts.room || '') }); } catch (e) {} }
@@ -92910,14 +92973,32 @@ const ThreeRenderer = (function () {
            out for the scene. null puts back exactly the ones it took out. */
         sceneCast: function (ids) {
             if (!_hq) return 0;
-            var n = 0;
-            _hq.chars.forEach(function (ch) {
-                if (!ch || ch === _hq.player || ch.kind === 'player' || !ch.entry || !ch.entry.group) return;
-                if (ids) { if ((ch.cast && ids.indexOf(ch.cast) >= 0) || ch.away || !ch.entry.group.visible) return; ch._sceneOut = true; _hqRoundsSetVisible(ch, false); n++; }
-                else if (ch._sceneOut) { ch._sceneOut = false; _hqRoundsSetVisible(ch, true); n++; }
-            });
+            _hq._sceneCastIds = ids || null;   // held for the scene's length: _hqTickSceneCast takes out whoever walks in later
+            return _hqSceneCastApply();
+        },
+        /* where a body's HEAD is (the room's metres: { x, y, z }; y = up from the floor the room stands on) so a scene's
+           close-up frames the FACE whatever the body's height is (mondo 2026-11-13: Kit's mouth under the bar, the keys shot on
+           the recruit's hips). The rig's Head bone (the top of the neck), else 0.84 of the body's height. */
+        sceneHead: function (who) {
+            if (!_hq || !who) return null;
+            var ch = null;
+            if (who === 'player') ch = _hq.player; else for (var i = 0; i < _hq.chars.length; i++) { if (_hq.chars[i] && _hq.chars[i].cast === who) { ch = _hq.chars[i]; break; } }
+            if (!ch || !ch.entry || !ch.entry.group) return null;
+            var U = _hqUnits(), g = ch.entry.group, bone = null, v = new THREE.Vector3(), gp = new THREE.Vector3();
+            g.updateMatrixWorld(true);
+            g.traverse(function (o) { if (bone || !o.isBone) return; var n = String(o.name || '').toLowerCase().replace(/^mixamorig[:_]?/, ''); if (n === 'head') bone = o; });
+            g.getWorldPosition(gp);
+            if (bone) { bone.getWorldPosition(v); return { x: v.x / U, y: (v.y - gp.y) / U + (ch.y || 0), z: v.z / U, bone: true }; }
+            return { x: gp.x / U, y: (ch.heightM || 1.75) * 0.84 + (ch.y || 0), z: gp.z / U, bone: false };
+        },
+        /* the KEY (the battle's own key celebration, keyPickupFx) rising and turning at a point of the room: o = { x, y, z (m), size (m) }; warm = load its model only */
+        sceneKey: function (o) {
+            if (!_hq || !_hq.scene) return false;
+            if (!o || o.warm) { keyFxWarm(); return true; }
+            var U = _hqUnits();
+            keyPickupFx(0, 0, { at: { scene: _hq.scene, x: (+o.x || 0) * U, y: (+o.y || 0) * U, z: (+o.z || 0) * U, ts: (+o.size || 0.5) * U } });
             _hq.dirty = true;
-            return n;
+            return true;
         },
         /* a body WALKS to { x, z } over `ms` (the walk clip, turned along its way; `face` = the heading it ends on) */
         sceneWalk: function (who, o) {

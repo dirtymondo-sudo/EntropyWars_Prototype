@@ -2267,7 +2267,7 @@ Plots x 0-3, y 8-11 (room x -252..-84, z 84..252). All of it lives in `docs/disa
   so a design follows the plot if the plan moves. Helpers: `body` (solid box or hollow shell with a door hole), `truss`, `bay` / `bayX` (roller doors), `vents`, `house`.
 - **Walk-ins (11):** Freight gate, Power station, Machine shop, Loading office, Aerospace lab, Port office, Maintenance depot, Hangar, Water works, Rail service,
   and the Pump court sewer entry (`leaf: 'none'`). The rest are solid.
-- **Roof route:** Warehouse, the corner shop and Container court stay `plateau` rows (flat 7 m). Freight gate + Loading office became hollow 2-storey texbuildings
+- **Roof route:** Warehouse, the corner shop and Container court stay `plateau` rows (flat 7 m); every arch row carries `y: 0` so it stands on the ground, not on the plateau top (fixed PR after #1279). Freight gate + Loading office became hollow 2-storey texbuildings
   (roof slab at 7 m); NOT walk-tested from the bridges.
 - **Landmarks:** Power station (barrel roof + two striped stacks), Aerospace lab (dome + vault + control tower), Port office (green pyramid lantern), Container court
   (a stack of tinted containers on the roof), the Dock Edge gantry crane (`ind:crane`, truss parts; the game's `crane` is a horizon model, not a room prop).
@@ -2298,3 +2298,77 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
 - **Seen in the cloud browser** (WebGL2 headless): every plot from above, shots in `/mnt/project-files/disaster-city-southside/`. Not seen on his Mac yet.
   Interiors are the next pass (the seven walk-in shells are empty rooms with a floor and plaster walls).
 
+- **A ROOF IS NOT GROUND (2026-11-13, the shared-pieces thread, the root fix for the note above).** data.js hqTerrainCompile `archGround`: an arch
+  row with no `y` whose origin lies over a building plateau (`bld`) takes the ground that building stands on, never its roof. Four rows on main
+  still stood 7 m up (P09-08-B2, P09-09-B1, P10-09-B1, P11-09-B2); the headless compile now gives all 191 city arch rows base 0. `y: 0` in a
+  district file is harmless and no longer needed.
+
+## DISASTER CITY, THE BIG WINDOWS (2026-11-13, the shared-pieces thread)
+mondo (screenshot of two city blocks): "The buildings that use these repeated window textures from the urban pack, the windows are too small, need
+to be scaled up, and remember the bottom row of these buildings should be different/not windows". Both ways a city building is drawn put a window
+sheet on every 1.75 m square (a window about 1 m wide, two rows per storey, one at the pavement). Fixed in the shared code, three-renderer.js:
+- **The textured building** (`_hqTexBuilding`, every `texbuilding` and infill block not yet architected): one window per STOREY-wide bay (3.5 m).
+  Residential / stucco / pack-sheet decals are laid one per storey over the wall (`bigOver`), none on the ground storey, whose bottom row wears the
+  band / stucco trim sheet. Office: a 2.6 m pane over a spandrel per storey; tower: storey-high panes; both keep the shopfront glass at the ground with
+  a concrete fascia over it. Factory unchanged. `HQ_TEXB.bigWin = 0` = the old squares.
+- **The arch row** (`_hqArchGeometry`): a part whose `key` is `urban:GlassWindow*` / `urban:DecalWindows*` with no `uv` or a `uv` number under 3.5
+  repeats in whole storey rows (a 9 m wall = three rows of 3 m; a strip shorter than a storey = one row). An `[u, v]` pair and `'fit'` are the
+  district's own and stay. A box side / quad / poly wall of such a sheet that stands on the ground (part foot under 0.6 m) and is taller than
+  4.5 m draws its ground storey in `keyBase` (none = `HQ_TEXB.archBase`, plain concrete, in the part's tint; a decal draws nothing there).
+  `win: 'keep'` on a part turns both off. Cylinders get the bigger repeat but no base split.
+- NOT SEEN ON SCREEN (RULE #1c): checked by reading and `node --check` only.
+
+## DISASTER CITY, THE LEVELS — the city's ground at fifteen heights (2026-11-13, mondo's OK 18:30 "Build it as drawn")
+mondo 18:07: "more verticality ... Streets that slope, ramps, stairs ... different districts should have different elevations, bayside being
+the lowest (sea level) ... different elevations within the districts from plot to plot and even within plots."
+NOT SEEN IN THE GAME BY THE THREAD (no browser run, RULE #1c): checked headless only (compile, walk reach, every flight climbed).
+- **THE NUMBERS = `docs/disaster-city/levels.js`.** `grid[y][x]` = the level of plot P<x>-<y>; one level = 1.75 m; 0 = Bayside (sea),
+  14 = the Church (24.5 m). Change a number, rerun `node bake-disaster-city.js`; never edit the room. THE STADIUM's four plots
+  (P04-09, P05-09, P04-10, P05-10) keep ONE level. `pieces` = ground shaped inside a plot (`bowl` / `mound`): the Canal walk ditch (P00-03),
+  the Campus green amphitheatre (P00-05), the Event square court (P07-10). `stairs` = the pack flight per district.
+- **THE FORMAT (data.js `hqTerrainSlopeFn`): `terrain.slope = { cells: { res, x0, z0, nx, nz, d, f } }`.** `d` = base64 i16 cm, four corner
+  heights a square (NW NE SW SE), bilinear inside; two squares that disagree on a shared corner = a step (a retaining wall). `f` = a byte a
+  square, 1 = a walk-in building's floor. ON A LINE between squares the HIGHER side wins, unless a side is flagged (its floor then stands to
+  the line). `hqTerrainCompile` puts the lattice ON the squares' lines for such a room (581 nodes, x0 -253.75), so a step is one lattice cell
+  wide with its top edge on the line: fences / walls / hedges on a plot line stand on the top. Every slope-riding row (plateau, ramp, deck,
+  bridge, wall y, texbuilding base, arch base, lamps, signals, traffic, rails' g0 / g1) rides it with no edit in a district file.
+  `absY: true` on a row = its heights are already absolute (`_hqTSlopeFeatures` leaves it). `hqTerrainAdopt` now carries `info.slope`.
+  Compile: bounding boxes on the ordered rows (`orderedBB`), the city compiles in about 5 s headless (was 17 s before the levels).
+- **THE TOOL'S RULES (bake-disaster-city.js THE LEVELS; `ctx.LEVELS` + `ctx.lvOf(plot)` for the district hooks).** A building's squares are
+  flat at its base: its plot's level, or the kerb walk's height at its door when the door opens on a sloping street; an infill building over
+  a plot line takes the LOWEST level under it. Street squares (road + kerb walk) follow the road: flat within 2 squares of a plot's middle,
+  straight to the mid height at the plot line (1 level a plot = 6.25%, 2 = 12.5%: Port hill, Hotel Hill, Cinema hill, the police street).
+  Open squares: plot level + piece, joined to the building / the kerb at their corners. Arch rows get `y` = their building's base; props
+  with `y >= 1` get the ground added.
+- **THE CROSSINGS.** Every E / S walk port between two levels: a pack flight (`dc:stair:<plot><side>`, `stairs: true`, the low side first,
+  cut into the upper plot where short of room) and, on a one-level crossing with two free columns, one column as a plain 3-square ramp
+  (`dc:ramp:…`, the skate line). Today 100+ flights, about 40 ramps, 0 crossings closed. Roof bridges stand at the higher roof with a steel
+  flight on the lower one (`dc:roofstair:<RF>`). DOOR STOOPS (`dc:stoop:<building>`): a walk-in building whose doorway faces ground at
+  another height gets a one-square flight outside it.
+- **KNOWN, NOT FIXED.** (1) Two walk-in buildings back to back on a plot line at two levels (P03-05-B1 against P02-05) share the line's
+  nodes: the lower one shows a bank 0.9 m deep along its back wall. (2) Two doors face an infill building's wall across the plot line
+  (P08-02-B1, P02-05-B1): the city tool's own flaw, older than the levels. (3) Some stoops end 3.5 m from the next building's back wall
+  (the alley is that narrow); the walker leaves them sideways.
+- **NOT BUILT from the mock-up:** the park knoll + the Dish (district S made those plots the stadium), the Hero plaza stage (district H has
+  its colonnade there), the Service garage roof ramp, the Industrial loading-dock platforms, the Marina lookout beach steps (the beach
+  thread's ground). Mock-up + tools: `/mnt/project-files/disaster-city-vertical/` (shows the first grid, before the stadium).
+## DISASTER CITY, THE FINANCIAL DISTRICT'S ARCHITECTURE (2026-11-13) — docs/disaster-city/districts/F.js, data.js
+mondo 11-13: "architect the buildings in their respective districts plots ... every building should be unique and purposeful and
+recognizable"; his OK on the plan + mock-up 17:10 (project files `disaster-city-financial/`, `mock-src/` = the mock scene).
+- THE DISTRICT FILES: `bake-disaster-city.js` loads `docs/disaster-city/districts/<LETTER>.js` (the shared hook, PR #1274; this district = `F.js`). `tailor(PLAN, plotOf)` runs before the plan
+  is read (change a plot's cells / building slots); `build(api)` runs once every row exists, `api = { features, props, lateRows, bInfo,
+  PLAN, plotOf, C, N, HALF, r3, gx, gc }`. A district file touches its own plots only. Rerun `node bake-disaster-city.js` after an edit.
+- THE METHOD: a building keeps its collision row and loses its own skin (`texbuilding skin:false`, a roof-route `plateau` gets
+  `bld.skin:false`), then gets ONE `arch` row at the same x / z / rot. `frame(id, o)` in the file does that and can resize / move the
+  row (`w`, `d`, `dz`) so the walk-in inside matches the drawn body; `frontWithDoor` cuts the city door's doorway out of the front.
+  A mass outside the row's box needs its own collision (`texbuilding skin:false` in lateRows, `y` for one on a walked roof, ghost `wall`s).
+- THE 16: hotel (deco tower on the roof-route podium, verdigris roof, porte-cochère) · bank archive (concrete vault, drum corner) ·
+  GOBLIN BANK (marble temple, arch, six-column portico, verdigris dome; walk-in) · executive court (glass slab on stilts, helipad) ·
+  members club (oxblood brick, bow bay) · caterer yard (brick north wing on the roof route + dock wing + sawtooth kitchen round a yard) ·
+  bank offices (teal curtain wall, stone core; walk-in lobby) · vault annex (stepped bunker, steel door; walk-in) · taxi court (canopy,
+  checker fascia, dispatch office walk-in; a small store across the road) · tailor shops (pack_bld_08 kept) · intelligence office (black
+  glass tiers growing upward, radome; walk-in) · service garage (bow roof) · finance arcade (loggia; shop walk-in) · WORKER CAFE = the
+  pack's `city_diner` at real size (the plot P09-03 re-cut round it in `tailor`) · penthouse stair (point tower; walk-in) · private
+  garden (walled, arched gate, glass palm house walk-in). Fillers: `terrace` (bankers' brick houses), `shop`, `workshop`, `backlot` (infill).
+- GOLD = terrain key `gold` (gilt.png) only; never a tinted copper / metal, never the gold.png files (mondo 11-13 17:12).
+- No text signs yet (an arch part cannot write text). 6TWELVE was handed back (too big for any Financial slot).
