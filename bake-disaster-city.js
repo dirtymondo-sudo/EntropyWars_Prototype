@@ -720,9 +720,14 @@ lines.push("                features: [");
 dcCtx.lamps = lamps;
 dcRun('build');
 /* A TREE NEVER LEANS INTO A ROOM (2026-11-13, Southside: street trees seen inside the boxing gym): a tree within 2.5 m of a walk-in building's
-   walls is dropped (its crown is wider than the gap and shows indoors). A district's own tree with `keep: true` stays. */
-{ const hol = features.filter(f => f.k === 'texbuilding' && f.hollow), near = (t, b) => { const q = ((b.rot || 0) % 180) !== 0, hw = (q ? b.d : b.w) / 2, hd = (q ? b.w : b.d) / 2; return Math.hypot(Math.max(Math.abs(t.x - b.x) - hw, 0), Math.max(Math.abs(t.z - b.z) - hd, 0)) < 2.5; };
-  for (let i = features.length - 1; i >= 0; i--) { const t = features[i]; if (t.k === 'tree' && !t.keep && hol.some(b => near(t, b))) { features.splice(i, 1); count.treesIndoor = (count.treesIndoor || 0) + 1; } } }
+   walls (its crown is wider than the gap and shows indoors) MOVES to the nearest free yard square that is 2.5 m clear of every walk-in wall.
+   Never dropped (mondo: never delete content he did not name): with no such square within 8 squares it stays where it is. `keep: true` = never moved. */
+{ const hol = features.filter(f => f.k === 'texbuilding' && f.hollow), gap = (x, z, b) => { const q = ((b.rot || 0) % 180) !== 0, hw = (q ? b.d : b.w) / 2, hd = (q ? b.w : b.d) / 2; return Math.hypot(Math.max(Math.abs(x - b.x) - hw, 0), Math.max(Math.abs(z - b.z) - hd, 0)); };
+  const clear = (x, z) => !hol.some(b => gap(x, z, b) < 2.5), cellOfM = v => Math.floor((v + HALF) / C);
+  features.forEach(t => { if (t.k !== 'tree' || t.keep || clear(t.x, t.z)) return;
+      const cx0 = cellOfM(t.x), cy0 = cellOfM(t.z); let best = null;
+      for (let dy = -8; dy <= 8; dy++) for (let dx = -8; dx <= 8; dx++) { const cx = cx0 + dx, cy = cy0 + dy; if (!free(cx, cy, '.#') || !clear(gc(cx), gc(cy))) continue; const d = Math.hypot(dx, dy); if (!best || d < best[0]) best = [d, cx, cy]; }
+      if (best) { take(best[1], best[2]); t.x = gc(best[1]); t.z = gc(best[2]); count.treesMoved = (count.treesMoved || 0) + 1; } else count.treesStuck = (count.treesStuck || 0) + 1; }); }
 lines[lampLine] = "                    lamps: " + J(lamps) + ",";
 features.push(...lateRows);
 /* ── THE LEVELS, THE GROUND: every square's four corner heights (NW NE SW SE, centimetres) → `terrain.slope.cells`.

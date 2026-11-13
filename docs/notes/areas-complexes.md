@@ -2741,6 +2741,6 @@ cell plans 21:23 (/mnt/project-files/dc-entertainment/interiors_plan.jpg). All i
   (`EXTRA['E-chapel']` + its own texbuilding row, 3 x 2 squares, `leaf_motel` door): pews (kit `p`), the wedding altar (kit `w`, `lectern`).
   13 inside rows in all. NOT SEEN IN THE GAME; the roof route over the two halls wants a walk (the texbuilding's 0.45 m parapet ghost).
 - **A TREE NEVER LEANS INTO A ROOM + THE STADIUM ROAD (2026-11-13, the shared-pieces thread; Southside saw a road sign and street trees inside the
-  boxing gym).** bake-disaster-city.js drops a `tree` row within 2.5 m of a walk-in (`hollow`) building's walls (11 trees; a district's own tree
-  with `keep: true` stays), and the `stadium_downtown` road link stands on the road's dead end in P03-00 (-99.75, -229.25), no longer in the
+  boxing gym).** bake-disaster-city.js MOVES a `tree` row within 2.5 m of a walk-in (`hollow`) building's walls to the nearest free yard square 2.5 m clear
+  (11 trees; PR #1343 dropped them, the follow-up moves them: never delete content mondo did not name; `keep: true` = never moved), and the `stadium_downtown` road link stands on the road's dead end in P03-00 (-99.75, -229.25), no longer in the
   3.5 m alley beside the gym on its east door's step. Not seen on screen.
