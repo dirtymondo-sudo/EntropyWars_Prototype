@@ -39,6 +39,8 @@ Usage: pip install bpy==5.2.3 scipy pillow
               TOPCUT=0.3 (a torn top edge cut level, metres under the eyes: the spy),
               HANDCUT=1 (a bare hand fused to its sleeve goes, the body's own hand shows: politician, priest, shaman, telepath, vampire),
               DROP="x,y,z,r;..." (a stray shell left out by hand, its middle r from a point measured from the eyes; SHELLS=1 lists them)
+       batch 1 review of 11-13: NOHANDS=1 (the body's own hands show, Meshy's go), WINGKEEP=1 (a collar fused to the wings), NOHELD=1 (nothing in the
+              hands), LOCKREM=0, SHELLS=1 (print the shells)
 Notes: docs/notes/models-assets.md "THE MESHY OUTFITS".
 """
 import argparse, importlib.util, io, math, os, re, sys
@@ -257,6 +259,16 @@ def fit(name, gender, src, bodies_dir):
                 bmesh.ops.delete(bmg, geom=[v for v in bmg.verts if not v.link_faces], context='VERTS'); bmg.to_mesh(o.data); bmg.free()
                 dropped.append(('hand skin, glove kept', int(sk_.sum()))); keep.append(o); continue
             dropped.append(('hand', n)); bpy.data.objects.remove(o); continue
+        # IN THE HAND (NOHELD=1, off; 2026-11-13, mondo: "dont give her a sword ... characters will hold those weapons, dont make them part of
+        # the outfit"; the cowgirl came with a revolver in each hand): every face out at the hands (past NOHELDX of the arm span) goes
+        if E('NOHELD', 0):   # (face by face: Meshy fuses the gun to the hand's shell)
+            cen_ = np.array([p_.center for p_ in o.data.polygons]); go_ = np.abs(cen_[:, 0]) > E('NOHELDX', 0.8) * xmax
+            if go_.all(): dropped.append(('in the hand', n)); bpy.data.objects.remove(o); continue
+            if go_.any():
+                bmn = bmesh.new(); bmn.from_mesh(o.data); bmn.faces.ensure_lookup_table()
+                bmesh.ops.delete(bmn, geom=[bmn.faces[i] for i in np.nonzero(go_)[0]], context='FACES')
+                bmesh.ops.delete(bmn, geom=[v for v in bmn.verts if not v.link_faces], context='VERTS'); bmn.to_mesh(o.data); bmn.free()
+                dropped.append(('in the hand', int(go_.sum()))); c = co(o); cz = c[:, 2].mean(); cx = c[:, 0].mean(); n = len(o.data.polygons)
         # THE WINGS (--nowings; 2026-11-12, angel: Meshy gives her wings as flat sheets on red arms): a shell that sits wholly
         # behind her back (its middle WINGY behind the eyes) is left out; the look wears the creator's own Wings instead
         if NOWINGS and not isrem and c[:, 1].mean() > eye.y + E('WINGY', 0.22):
@@ -279,7 +291,7 @@ def fit(name, gender, src, bodies_dir):
         # A FLAKE (2026-11-12, catgirl: a skin-coloured chip floating beside a boot): a shell of a few faces, a few cm across
         if n < E('FLAKE', 30) and (c.max(0) - c.min(0)).max() < 0.04 * S / 1.9 and not (cz > chin - 0.02): dropped.append(('flake', n)); bpy.data.objects.remove(o); continue
         hd = math.hypot(cx - eye.x, c[:, 1].mean() - eye.y - 0.08)
-        inhead = (cz > chin - 0.02 and hd < 0.16) or (c[:, 2].min() > eye.z + E('EARZ', 0.08) and hd < E('EARR', 0.3))   # (+ a shell wholly above the brow, out to the side: the bunny girl's second ear went as 'long hair', 11-13)
+        inhead = (cz > chin - 0.02 and hd < 0.16) or ((c[:, 2].min() > eye.z + E('EARZ', 0.08) or cz > eye.z + E('HORNZ', 0.03)) and hd < E('EARR', 0.3))   # (+ a shell wholly above the brow, out to the side: the bunny girl's second ear went as 'long hair', a demon's curled horn stayed in her outfit, 11-13)
         if isrem and c[:, 2].min() > chin - 0.25 and not (cz > eye.z and n >= 60): dropped.append(('face bit', n)); bpy.data.objects.remove(o); continue
         if inhead and n < 25: dropped.append(('bit', n)); bpy.data.objects.remove(o); continue
         # THE BARE HAND ON A SLEEVE (env HANDCUT=1; 2026-11-13, mondo across the remake batches: "fingers look messed up": where Meshy
