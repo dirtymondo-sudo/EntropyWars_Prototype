@@ -47,9 +47,10 @@ module.exports.build = function (api) {
     const panel = (f, cx, y, len, h, off, L, o) => { const [p, ry] = FACE[f](cx, off + 0.05); return part('quad', [p[0], y, p[2]], L, Object.assign({ size: [r3(len), r3(h)] }, ry ? { ry } : {}, o || {})); };
     /* the cut-out window decals hold 2 x 2 small windows a sheet: drawn at twice the size, one row a strip (a window about 1.2 m wide) */
     const decal = L => L === RES || L === FAC;
-    const win = (f, cx, y, len, h, off, L) => panel(f, cx, y, len, h, off, L, decal(L) ? { uv: [C, C] } : null);
+    const WD = 5.25;   // THE BIG WINDOWS (mondo 11-13): a cut-out window sheet (2 x 2 windows) drawn 5.25 m a sheet, one row a strip: a window about 1.8 m wide
+    const win = (f, cx, y, len, h, off, L) => decal(L) ? panel(f, cx, y, len, WD / 2, off, L, { uv: [WD, WD] }) : panel(f, cx, y, len, h, off, L, null);
     const door = (f, cx, off, L, w) => panel(f, cx, 0, w || 1.9, 2.3, off + 0.03, L || DOORW, { uv: [r3((w || 1.9) / 2), 2.3], kind: 'wall' });
-    const rows = (f, cx, len, off, n, L, y0) => { const m = decal(L) ? C : T; for (let s = 0; s < n; s++) win(f, cx, (y0 == null ? 1.0 : y0) + s * C, Math.max(m, Math.floor(len / m) * m), T, off, L); };
+    const rows = (f, cx, len, off, n, L, y0) => { const m = decal(L) ? WD / 2 : T; for (let s = (decal(L) && n > 1) ? 1 : 0; s < n; s++) win(f, cx, (y0 == null ? 1.0 : y0) + s * C, Math.max(m, Math.floor(len / m) * m), T, off, L); };
     const allRows = (w, d, n, L, y0) => { rows('f', 0, w - T, d / 2, n, L, y0); rows('b', 0, w - T, d / 2, n, L, y0); rows('l', 0, d - T, w / 2, n, L, y0); rows('r', 0, d - T, w / 2, n, L, y0); };
     const parapet = (w, d, y, L, h) => { h = h || 0.9; box(0, y, d / 2 - 0.15, w, h, 0.3, L); box(0, y, -d / 2 + 0.15, w, h, 0.3, L); box(w / 2 - 0.15, y, 0, 0.3, h, d - 0.6, L); box(-w / 2 + 0.15, y, 0, 0.3, h, d - 0.6, L); };
     /* a cornice round a roof's edge: four strips OUTSIDE the footprint (a walked roof keeps its own slab clear) */
@@ -161,7 +162,6 @@ module.exports.build = function (api) {
         const pd = 3.2; box(0, 0, d / 2 + pd / 2, 10, 0.15, pd + 0.3, STONE); [-3.9, -1.3, 1.3, 3.9].forEach(x => { cyl(x, 0.15, d / 2 + pd - 0.5, 0.42, 6.0, MARB, 12); block(x, d / 2 + pd - 0.5, 0.8, 0.8, 6); });
         box(0, 6.15, d / 2 + pd / 2, 10.4, 0.85, pd + 0.2, MARB, { under: true }); gable(0, 7, d / 2 + pd / 2, 10.4, pd + 0.2, 1.8, 'z', VERD, MARB, 0.1); door('f', 0, d / 2, DOORW, 2.6);
         const r = Math.min(7.4, d / 2 - 4.6); cyl(0, 7, 0, r, 3.6, LIME, 28); cyl(0, 10.6, 0, r + 0.3, 0.4, MARB, 28); dome(0, 11, 0, r, VERD, 1, 28);
-        P.push(Object.assign({ s: 'dome', p: [0, 11, 0], r: r3(r + 0.08), h: r3(r + 0.08), arc: 18, a0: 51, seg: 6, rings: 6, ds: true, roof: true }, look(['calm_gunmetal', 0x707890])));   // the slit
         tier(0, 0, r * 1.7, r * 1.7, 10.6);
         const tx = -w / 2 + 3.2, tz = -d / 2 + 3.2; cyl(tx, 7, tz, 2.2, 2.4, LIME, 14); dome(tx, 9.4, tz, 2.2, VERD, 1, 14); tier(tx, tz, 3.4, 3.4, 9.4);
         box(w / 2 + 1.2, 3, 0, 2.4, 0.25, 5, MARB, { under: true }); door('r', 0, w / 2, DOORW);
@@ -216,8 +216,8 @@ module.exports.build = function (api) {
         front(w, 7, d, WHITE, D); shell(w, 7, d, WHITE); win('f', D.lx - 1.2 - (w / 2 + D.lx - 2) / 2, 0.6, Math.floor((w / 2 + D.lx - 2) / T) * T, 5.4, d / 2, GLT); win('f', D.lx + 4.7, 0.6, 7, 5.4, d / 2, GLT); win('f', D.lx, 2.5, T, 3.5, d / 2, GLT);
         win('b', 0, 2.6, w - C, T, d / 2, GL); vault(0, 7, 0, w, d + 1.6, 2.6, 'x', ALU, GLT);
         P.push(Object.assign({ s: 'box', p: [r3(-w / 2 + 1), 0, r3(d / 2 + 0.25)], size: [0.3, 7, 0.5], n: Math.floor((w - 12) / C) + 1, step: [C, 0, 0] }, look(ALU)));
-        const gx = w / 2 - 4.5; cyl(gx, 0, 0.6, 4.2, 1.2, CONCD, 16); P.push(Object.assign({ s: 'dome', p: [r3(gx), 4.2, 0.6], r: 5.6, h: 5.6, seg: 10, rings: 4, roof: true }, look(['calm_snow', 0xd4e2f4])));
-        cyl(gx, 1.2, 0.6, 5.6, 3.0, ['calm_snow', 0xd4e2f4], 10, 5.6, { cap: false }); block(gx, d / 2 + 2.2, 9, 4, 6);
+        const gx = w / 2 - 4.5, gz = d / 2 + 2.2; cyl(gx, 0, gz, 3.2, 1.2, CONCD, 16); P.push(Object.assign({ s: 'dome', p: [r3(gx), 4.2, r3(gz)], r: 4.2, h: 4.2, seg: 10, rings: 4, roof: true, glow: 0.3 }, look(['calm_tiles', 0xbcd4ff])));   // the planetarium globe stands OUT of the front (inside the hall it read as a grey lump)
+        cyl(gx, 1.2, gz, 3.2, 3.0, ['calm_tiles', 0xbcd4ff], 10, 4.2, { cap: false, glow: 0.3 }); block(gx, gz, 8, 8, 6);
         box(D.lx, 3.1, d / 2 + 1.5, 7, 0.25, 3, ['calm_snow', 0x3c7cd8], { under: true });
     };
     B.clinic = (w, d, row) => {   // the clinic: white tile, a glass-block round corner, a canopy on thin posts, the cross on a pylon. WALK-IN
