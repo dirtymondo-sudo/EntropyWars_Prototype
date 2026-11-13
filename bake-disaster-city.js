@@ -871,7 +871,11 @@ const dj = o => "wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face;
 lines.push("            doors: [");
 lines.push("                { id: 'harbour', " + dj(JOIN.harbour) + ", leaf: null, label: 'THE HARBOUR', sub: 'THE BOARDWALK · OUT ON THE PIER', action: { room: 'site_prebuilt_downtown_harbour', at: 'quay' },");
 lines.push("                  desc: 'The quay stops and the water starts. A pier goes on out into it, with a skiff tied at the end that nobody is minding.' },");
-lines.push("                { id: 'tower', " + dj(JOIN.tower) + ", leaf: 'leaf_entrance', label: 'THE TOWER', sub: 'THE PLAZA DOORS · INTO THE LOBBY', action: { room: 'site_prebuilt_downtown_lobby', at: 'avenue' },");
+/* a district file may move one of these doors into its own building (`joins = { tower: { x, z, face, sub } }`): Hero Plaza stands THE TOWER at the
+   lift bank of its walk-in lobby (mondo 11-13 22:30 "keep the new lobby"), so the plaza doorway is the lobby's own */
+DISTRICTS.forEach(m => Object.keys(m.joins || {}).forEach(k => { if (JOIN[k]) Object.assign(JOIN[k], m.joins[k]); }));
+const joinSub = (k, d) => (JOIN[k] && JOIN[k].sub) || d;
+lines.push("                { id: 'tower', " + dj(JOIN.tower) + ", leaf: 'leaf_entrance', label: 'THE TOWER', sub: '" + joinSub('tower', 'THE PLAZA DOORS · INTO THE LOBBY') + "', action: { room: 'site_prebuilt_downtown_lobby', at: 'avenue' },");
 lines.push("                  desc: 'The tower\\'s other doors, onto the avenue. The lobby is behind them, the intersection is behind the lobby, and the tower is above all of it for the rest of the year.' },");
 lines.push("                { id: 'mall', " + dj(JOIN.mall) + ", leaf: 'leaf_glass', label: 'THE MALL', sub: 'THE MAIN ENTRANCE · INTO THE MALL', action: { room: 'site_prebuilt_downtown_mall', at: 'street' },");
 lines.push("                  desc: 'The mall\\'s main entrance: sliding glass, a mat that says WELCOME, a sign that says OPEN and a smaller one, taped under it, that says NOTHING HAPPENED HERE.' },");
