@@ -71232,6 +71232,7 @@ const ThreeRenderer = (function () {
         /* THE SHAPES (EDITOR_PLAN E1): the textured-building rows — the city's lot builder, one merged batch for the room */
         if (info.texb && info.texb.length) { try { _hqBuildTexRows(info, G, U); } catch (e) { console.warn('[HQ] the textured buildings failed', e); } }
         if (info.texb && info.texb.length) { try { _hqBuildTexPacks(info, G, U, TM); } catch (e) { console.warn('[HQ] the pack buildings failed', e); } }   // THE PACK BUILDINGS (2026-11-03)
+        if (info.texb && info.texb.length) { try { _hqBuildTexDoors(info, G, U); } catch (e) { console.warn('[HQ] the city doors failed', e); } }   // THE CITY DOORS (2026-11-13)
         /* THE HALLS (D.U.M.B., 2026-09-17): the floor plan's own walls — the mask's boundary traced by data.js _hqTTraceMaskWalls, drawn to the ceiling in the plan's sheet; the walker never reads them (the mass is) */
         for (var pwi = 0, pws = info.planWalls || []; pwi < pws.length; pwi++) { drawWall(pws[pwi]); if ((pwi & 15) === 15 && _hqSliceDue()) yield; }
         if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the halls’ strip lights failed', e); } }
@@ -71683,6 +71684,66 @@ const ThreeRenderer = (function () {
             });
         } finally { _hzKitTs = prevTs; }
         return n;
+    }
+    /* THE CITY DOORS (2026-11-13, mondo: "any new buildings you make that will have an interior need workable swinging doors, just
+       like Door HQ"): every HOLLOW texbuilding's doorway (data.js hqTexbDoor: one face square wide, HQ_SHAPE_RULES.doorH high) hangs
+       a catalogue leaf that swings open for the walker and shuts behind — the HQ's double door by default (two leaves, one on each
+       jamb), the row's `leaf` any other swinging catalogue leaf ('leaf_shabby_wood', 'leaf_security', ...), `leaf: 'none'` = the bare
+       doorway as before. The leaves swing AWAY from the walker (in when you come from the street, out when you leave), so nobody
+       walks through one. Drawn only: the walker's gap is the wall rows' own (data.js hqTexBuildingRows). One shared model per leaf
+       key, so the instance pass batches a city's worth. window.EW_NO_CITY_DOORS = the bare doorways. */
+    var HQ_CITY_DOOR = { leaf: 'leaf_lobby_glass_double', angle: 1.45, speed: 1.9, reach: 2.6 };
+    function _hqBuildTexDoors(info, G, U) {
+        if (!_hq || (typeof window !== 'undefined' && window.EW_NO_CITY_DOORS) || typeof hqTexbDoor !== 'function') return 0;
+        var cat0 = _hqData().catalogue || {}, list = _hq.cityDoors || (_hq.cityDoors = []), n = 0;
+        info.texb.forEach(function (f) {
+            if (!f.hollow || f.leaf === 'none' || (typeof hqTexbPack === 'function' && hqTexbPack(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
+            var cat = cat0[f.leaf] || cat0[HQ_CITY_DOOR.leaf]; if (!cat || !cat.file) return;
+            if (cat.open && cat.open !== 'swing') cat = cat0[HQ_CITY_DOOR.leaf];
+            try {
+                var w = Math.max(2, f.w || 8), d = Math.max(2, f.d || 8), hol = hqTexbDoor({ w: w, door: f.door }), q = -((f.rot || 0) * Math.PI / 180), c = Math.cos(q), s = Math.sin(q);
+                var lz = (d - 0.12) / 2 - 0.12, ow = hol.cw - 0.04, oh = hol.doorH, dbl = !!cat.double || !!f.leafDouble, base = f.base || 0;
+                var g = new THREE.Group(); g.name = 'hq_city_door'; g.position.set((f.x + hol.lx * c + lz * s) * U, base * U + 0.3, (f.z - hol.lx * s + lz * c) * U); g.rotation.y = q;
+                var hingeRight = !dbl && cat.hinge === 'right', pv = new THREE.Group(), pv2 = null;
+                pv.position.x = (hingeRight ? 1 : -1) * (ow / 2) * U; g.add(pv);
+                var targetH = (oh - 0.015) * U, targetW = (dbl ? ow / 2 - 0.012 : ow - 0.01) * U, yawDeg = cat.yaw || 0;
+                var mk = function () { return _miscModelInstance(_hqModelUrl(cat), true, targetH, { fit: 'height', matPick: _hqPropMatPick, onDone: function (m0, sc, bb) {
+                    var m = m0.children[0]; if (m && yawDeg) m.rotation.y = yawDeg * Math.PI / 180;
+                    var sideways = (Math.abs(yawDeg) % 180) === 90, mw = (sideways ? (bb.max.z - bb.min.z) : (bb.max.x - bb.min.x)) * sc;
+                    if (mw > 0) m0.scale.x = targetW / mw;
+                    m0.scale.z = Math.min(1, m0.scale.x);
+                    if (_hq) _hq.dirty = true;
+                } }); };
+                var lg = mk();
+                if (dbl) {
+                    lg.position.x = (ow / 4) * U; pv.add(lg);
+                    pv2 = new THREE.Group(); pv2.position.x = (ow / 2) * U; g.add(pv2);
+                    var lg2 = mk(), turn2 = new THREE.Group(); turn2.rotation.y = Math.PI; turn2.add(lg2); turn2.position.x = -(ow / 4) * U; pv2.add(turn2);
+                } else { lg.position.x = (hingeRight ? -1 : 1) * (ow / 2) * U; pv.add(lg); }
+                (_hq.doorGroup || G).add(g);
+                /* the record, in the room's metres: the doorway's middle, the way out of it (the front's normal), the reach */
+                list.push({ id: f.id || null, x: f.x + hol.lx * c + lz * s, z: f.z - hol.lx * s + lz * c, nx: s, nz: c, y: base, pv: pv, pv2: pv2, sgn: hingeRight ? -1 : 1, t: 0, applied: 0, dir: 1, reach: HQ_CITY_DOOR.reach + ow / 2 });
+                n++;
+            } catch (e) { console.warn('[HQ] a city door failed', f.id, e); }
+        });
+        return n;
+    }
+    /* the leaves' frame: open while the walker stands within reach of the doorway, away from the side he is on */
+    function _hqTickCityDoors(dt) {
+        var H = _hq, L = H && H.cityDoors; if (!L || !L.length || !H.player) return;
+        var px = H.player.x, pz = H.player.z;
+        for (var i = 0; i < L.length; i++) {
+            var D = L[i], dx = px - D.x, dz = pz - D.z;
+            if (D.t === 0 && D.applied === 0 && (Math.abs(dx) > D.reach || Math.abs(dz) > D.reach)) continue;
+            var want = (dx * dx + dz * dz <= D.reach * D.reach) ? 1 : 0;
+            if (want && D.t === 0) D.dir = (dx * D.nx + dz * D.nz) >= 0 ? 1 : -1;   // outside → the leaves swing in; inside → out
+            if (D.t === want && D.applied === want) continue;
+            D.t = want ? Math.min(1, D.t + dt * HQ_CITY_DOOR.speed) : Math.max(0, D.t - dt * HQ_CITY_DOOR.speed);
+            var k = D.t < 0.5 ? 2 * D.t * D.t : 1 - Math.pow(-2 * D.t + 2, 2) / 2, a = D.sgn * D.dir * HQ_CITY_DOOR.angle * k;
+            D.pv.rotation.y = a; if (D.pv2) D.pv2.rotation.y = -a;
+            D.applied = (D.t === want) ? want : -1;
+            H.dirty = true;
+        }
     }
     /* THE PRISM BUILDINGS (2026-10-30, mondo: "where are those other building textures that were used for the prism buildings?"): a
        texbuilding row whose `key` is a prism building (data.js HQ_TEXB_PRISMS) drawn as the city's prism lots are (_nrSpriteBuilding),
@@ -85084,6 +85145,7 @@ const ThreeRenderer = (function () {
             if (H.opts.onPrompt) { try { H.opts.onPrompt(t); } catch (e) {} }
         }
         _hqTickDoors(dt, key);
+        _hqTickCityDoors(dt);   // THE CITY DOORS (2026-11-13)
         _hqTickAutoEnter(t);
         _hqTickPassages();   // THE PASSAGES (2026-10-01): the dark with the depth, the crossing at `deep`
         _hqPortalTickAim();   // THE DOOR GUN (9.5): the ghost follows the aim while it is drawn
