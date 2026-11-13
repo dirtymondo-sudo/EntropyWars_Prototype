@@ -1827,3 +1827,21 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
   returns FULL and flags the object's group (`_ew_bunFree`) to re-record next tick; count in `_ewBun.staleLights`.
   (2) `_ewRigTick`: a rig that grew bumps `_ewBun.epoch`, so every group re-records in that same frame.
 - A throw anywhere in a frame's bundle replay blacks the frame: keep new replay-time hooks inside a try.
+
+## THE MATERIAL RUNS + THE SKINNED PICK (2026-11-13, mondo's Atlantis fight at 4.7 fps on the Mac)
+- **Report**: F3 readout, WebGPU: 3750 draws, "3415 room hq_piece (outside its bundle)", "Pick (raycasts) 164/s · 819 ms/s", CPU 209 ms.
+  It was the new Atlantis board (PR #1246), not the Training Room: its sea life is the trigger, any room with ocean pack swimmers had it.
+- **Cause 1 (draws)**: the ocean pack FBX files hand meshes whose triangles switch material back and forth (clownfish: 890 triangles,
+  185 runs, 3 materials). three draws each run as one draw. The bundles replay them (not counted), but the unit ink / pixel mask pass
+  (three-post.js, a side render: bundles off, room props wear `_ew_pixelate`) drew every run again classic: 2323 + 1179 draws a frame.
+  Fix: `_ewGroupRuns(root)` at load (`_loadMiscModel` incl. the `_ewRig.src` moving copy, `_loadUnitGLB`): index rewritten once so each
+  material is ONE run. Same triangles and materials. Off: `window.EW_NO_GROUP_RUNS` before the file loads.
+- **Cause 2 (picks)**: three's `SkinnedMesh.raycast` keeps the sphere of the first pose (a shark's: 57 m) and skins every triangle
+  corner per ray: 27-56 ms for one ray through a unit, 1-4 ms per fish. The hover pick (`screenToUnit`) asks every unit per mouse
+  move, the wall-fade rays every swimmer near their line. Fix in `_bvhInstall`: THE SKINNED PICK, (1) a box round each bone's
+  bind-pose vertex sphere as the bones stand now rejects a ray, (2) else the triangles are tested against skinned points computed in
+  one typed-array pass, kept while no bone moves. Same hits as three (198 rays over units + swimmers: 0 mismatches in distance, face,
+  point, uv, normal). Off: `window.EW_NO_SKIN_PICK`. Lens Pick line now shows "skinned N/s past their pose box, M/s tested".
+- **Measured** (sandbox, SwiftShader WebGPU, Atlantis 4v4): draws 3657 -> 316, outside-bundle 3499 -> 166; 198 skinned rays
+  1163 ms -> 22 ms; hover pick 8.2 -> 1.2 ms per mouse move. Proof: /mnt/project-files/perf-atlantis-20261113/.
+- Not done: the mask pass still walks the room classic (166 draws); 20 point lights untouched; real Mac FPS not measured here.
