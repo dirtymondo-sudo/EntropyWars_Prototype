@@ -170,7 +170,30 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 | mummy (F) | batch two 11-12 | clean | done (mummyFace) | next | waiting | `--longhair --bodysuit` (bandages the colour of her skin: no colour cut, head + hands cut by place), hair mh_long01. Round 2 (11-12): loose ends hang whole, chin strip + hair flecks gone. Left: the suit's collar edge is angular, not seen in a battle |
 | angel (F) (mondo 11-12 playtest: he put a creator goddess dress on her himself, the T2 dress is not his pick) | batch two 11-12 | clean | done, soft (angelFace) | next | waiting | render on a DARK background (white wings on light grey came back dark blue); `--longhair --nowings --barearms --neckline`, `--repaint`, env `REPWARM=0.08 SKIN_T=0.3 LOCKT=0.3`; wings = the creator's Feathered (his OK 11-12). Round 2 (11-12): clean square neckline, whole straps, bodice hole + skirt patch gone. Round 3: the teeth behind her right arm gone (weights, not cloth). Left: small notches on the straps' outer edges, face plainer than the photo-real original |
 | AGENT LOCKE (cast, F) (mondo 11-12 "remake Locke to blink") | 11-12 | clean (ISLENECK + OPENSKIN + SKINISLE=400) | done, soft (lockeFace) | creator hair mh_elvs_short_side_do | live | sprites.js CAST_CREATOR_LOOKS: board, DOOR HQ, portrait studio; not yet seen in HQ / a fight |
-| everything else in group A | not started | | | | | |
+| politician (M) | batch 3 of 3, 11-13 | clean | owed | politicianFace | waiting | `RAY_IN=0.12 RAY_OUT=0.12 TORN=9` (jacket narrower than the body's shoulders: skin stood through). Creator glasses over the glasses painted in his face skin; hair mh_short01 |
+| popstar (F) | batch 3 of 3, 11-13 | clean | owed | popstarFace, soft | waiting | CREATOR CLOTHES (crop top, mini skirt, stiletto booties, tinted white): the T2 top + skirt came out in tatters under --neckline --barearms. No T2 piece shipped |
+| priest (M) | batch 3 of 3, 11-13 | clean | owed | priestFace | waiting | jacket envs as the politician |
+| priest (F, the nun) | batch 3 of 3, 11-13 | clean; a leg shows in the skirt's slit mid-stride | owed | nunFace, soft | waiting | `--headgear`; the veil stayed in the outfit; `hair: bald` |
+| professor (M) | batch 3 of 3, 11-13 | clean | owed | professorFace | waiting | jacket envs; creator glasses over painted ones (thick frames show under them: needs a glasses-off skin) |
+| ringmaster (M) | batch 3 of 3, 11-13 | clean | owed | ringmasterFace | waiting | beard is in the skin |
+| santa clause (M) | batch 3 of 3, 11-13 | one white flap on his back mid-stride; the creator beard hides under the fur collar | owed | santaFace | waiting | body mpfb_heavy; `SLEEVESEED=0.15 SLEEVER=0.24` (fur sleeves stood out in a T without it) |
+| scarecrow (M) | batch 3 of 3, 11-13 | clean clothes; HEAD IS A MAN'S, not the sack | owed | none (sack head) | waiting | `--headgear` (hat = hat piece). Needs a sack head piece (creator 'bag on head' did not show on the MPFB head) |
+| shaman (F) | batch 3 of 3, 11-13 | clean | owed | shamanFace, soft | waiting | hood + cloak in the outfit |
+| sheriff (M) | batch 3 of 3, 11-13 | clean | owed | sheriffFace | waiting | jacket envs; CREATOR hat ewb_cowboyhat_worn (T2 fused his) |
+| sidekick (M) | batch 3 of 3, 11-13 | clean | owed | none (goggles) | waiting | no eyeball shells: `EYEAT=0,-0.045,0.935`; creator hero mask |
+| spy (F) | batch 3 of 3, 11-13 | clean; dark hair paint on the dress back | owed | spyFace, soft | waiting | `--neckline --barearms` |
+| succubus (F) | batch 3 of 3, 11-13 | small bits float by both hands | owed | succubusFace (pink skin from her own head) | waiting | creator demon horns + devil tail; `FLAKE=120` did not catch the bits |
+| superhero (M) | batch 3 of 3, 11-13 | clean | owed | superheroFace | waiting |  |
+| superhero (F) | batch 3 of 3, 11-13 | CAPE: strips by the arms, bits by the hands, a flap mid-stride | owed | superherofFace, soft | waiting | second T2 run, `--longhair SLEEVER=0.07`. Next: creator cape `bcape_hero` and cut the T2 cape |
+| swordfighter (F) | batch 3 of 3, 11-13 | clean | owed | swordfighterFace, soft | waiting | creator katana on her back |
+| symbiote (F) | batch 3 of 3, 11-13 | clean (bare grey body) | owed | symbioteFace (grey skin from her own head) | waiting | no outfit piece: she has no clothes; body skin = her face skin's tone |
+| telepath (M) | batch 3 of 3, 11-13 | clean | owed | telepathFace | waiting | `hair: bald` |
+| telepath (F) | batch 3 of 3, 11-13 | clean | owed | telepathfFace, soft | waiting | CREATOR evening gown (his saved look's): T2 fused gown + arms + chest in one shell twice |
+| time cop (M) | batch 3 of 3, 11-13 | clean | owed | timecopFace | waiting | `--headgear` helmet = hat piece |
+| valkraye (F) | batch 3 of 3, 11-13 | greaves a little loose at the ankle | owed | valkrayeFace, soft | waiting | second T2 run, `--nowings WINGY=0.12`, creator Feathered wings, dark background render |
+| vampire (F) | batch 3 of 3, 11-13 | clean | owed | vampireFace, soft | waiting | second T2 run (first had no gown back under her hair) |
+| wizard (F, the witch) | batch 3 of 3, 11-13 | clean | owed | witchFace, soft | waiting | `LOCKS=0` (coat was read as a hair lock); CREATOR witch hat mhw_elvs_witchy_hallows_hat1; pieces named `ewm_t2witch_*` |
+| the rest of group A | batches 1 and 2 of 3 (meshy-remake-batches.md) | | | | | |
 
 ## 9. Standing rules for any session doing this
 
