@@ -14,10 +14,10 @@ Preview: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg.
 | BurgerPiz restaurant | Bayside | P09-09 Food hall | 16:46 | `city_burgerpiz` |
 | Tacos stand | Bayside | P08-09 Street market | 16:46 | `city_taco_stand` |
 | Diner | Financial | P09-03 Worker cafe | 16:44 | `city_diner` |
-| 6twelve convenience store | FREE (Financial released it 17:14: 22.8 x 21.1 m fits no Financial lot; Southside asked first, so it has first call) | | | `city_6twelve` |
+| 6twelve convenience store | FREE (Financial released it 17:14: 22.8 x 21.1 m fits no Financial lot; Southside passed too: no Southside lot fits it) | | | `city_6twelve` |
 | VHS shop | Entertainment | P09-04, the Costume shops yard (too wide beside the Cinema) | 16:47 | `city_vhs_shop` |
-| Laundry | Southside | P02-00 Laundry terraces | 16:49 | `city_laundry` |
-| House, Quequis house | Southside | P01-03 | 16:49 | `city_house`, `city_quequis_house` |
+| Laundry | Southside | P00-03 Canal walk, the north-east yard (16.7 m wide: too wide for the Laundry terraces lot) | 16:49 | `city_laundry` |
+| House, Quequis house | Southside | two houses on P01-03 Homes row, the Quequis house on P02-03 Pawnshop court (31.7 m wide: it takes the place of two lots) | 16:49 | `city_house`, `city_quequis_house` |
 | Bus stop | Southside | P00-02 Bus stop court | 16:49 | already in the game: `bus_shelter` |
 | Playground: not cut yet (ask the shared-pieces thread) | | | | |
 | Industrial pack (domi236: container, tank, vent, panel, skip, factory fronts) | cut by Industrial, shared by all | | 16:53 | by Industrial |

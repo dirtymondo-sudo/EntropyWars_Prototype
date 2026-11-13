@@ -193,13 +193,13 @@ exports.build = function (ctx) {
             (DS.extra ? DS.extra(C0) : []).forEach((X, n) => { const wp = world(X[0], X[1]); out.push({ k: 'texbuilding', id: old.id + '-x' + (n + 1), x: wp[0], z: wp[1], w: r3(X[2]), d: r3(X[3]), rot, storeys: X[4] || 2, style: 'factory', seed: 9500 + n, skin: false }); });
         }
         const wp = world(c.ox, c.oz), parts = DS.parts(c, C0);
-        out.push({ k: 'arch', id: 'ind:' + b.id, x: wp[0], z: wp[1], rot, parts });
+        out.push({ k: 'arch', id: 'ind:' + b.id, x: wp[0], y: 0, z: wp[1], rot, parts });   // y: 0 = stand on the ground, never on a roof-route plateau's 7 m top
         count2.arch++; count2.parts += parts.length;
     });
     /* DOCK EDGE (P00-11, no building): the port crane, the district's landmark — a truss gantry over the quay, a container on its hook */
     (function () {
         const p = plotOf['P00-11'], x = gx(p.x * N + 3.5), z = gx(p.y * N + 9), Y = T.yellow;
-        out.push({ k: 'arch', id: 'ind:crane', x, z, rot: 0, parts: [
+        out.push({ k: 'arch', id: 'ind:crane', x, y: 0, z, rot: 0, parts: [
             ...[[-5, -3.5], [-5, 3.5], [5, -3.5], [5, 3.5]].map(q => truss(q[0], 0, q[1], 1.4, 22, 1.4, Y)), truss(0, 20, -3.5, 11.4, 1.6, 1.4, Y), truss(0, 20, 3.5, 11.4, 1.6, 1.4, Y),
             truss(0, 22, 0, 3, 2.2, 30, Y), box(0, 24.2, 0, 4, 3, 5, PLAIN, Y), truss(0, 27.2, 0, 0.6, 5, 0.6, Y), box(0, 14.9, 9.5, 0.15, 7.1, 0.15, PLAIN, T.dark),
             box(0, 12.6, 9.5, 6.1, 2.3, 2.5, TIN, CT[1], { uv: [1.75, 2.3] }), ...[[-5, -3.5], [-5, 3.5], [5, -3.5], [5, 3.5]].map(q => box(q[0], 0, q[1], 2.2, 0.6, 2.2, U('ConcreteStriped2a'), 0xbbbbbb))] });

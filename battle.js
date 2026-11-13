@@ -23827,7 +23827,9 @@
                                        the commit puts them in the bag on a win, the debrief's REWARDS sheet lists them */
                                     let drops = null;
                                     try { if (won && typeof hqEncounterDrops === 'function') drops = hqEncounterDrops(_encFallenEnemies(seat)); } catch (e) { drops = null; }
-                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, retreat: !won && _encRetreatOn, units: vit, xpPool, bag: bagHome, gauge: gaugeHome, drops });
+                                    /* THE RECRUIT WALKS OUT (mondo 2026-11-13): a WON quest fight puts the officer back on their feet (the story's scenes and the walk after it are theirs) */
+                                    let _qRevive = false; try { const _qr = _encRun(); _qRevive = !!(won && _qr && _qr.quest); } catch (e) { _qRevive = false; }
+                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, retreat: !won && _encRetreatOn, units: vit, xpPool, bag: bagHome, gauge: gaugeHome, drops, reviveYou: _qRevive });
                                     /* 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §2.6): every native the party SEALED joins — the party, else the roster
                                        (the captured ledger: owned at once, never bought), else a bounty in gold */
                                     try {
