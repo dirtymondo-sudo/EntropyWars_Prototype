@@ -1178,6 +1178,8 @@
             delete _hqSurveyJobs[m.roomId];
             let info = null;
             if (m.info && !m.err) { try { info = (typeof window.hqTerrainAdopt === 'function') ? window.hqTerrainAdopt(m.roomId, m.info) : null; } catch (e) { console.warn('[HQ] survey adopt failed', m.roomId, e); } }
+            /* THE FINDS OFF THE PAGE (2026-11-13): the worker placed the room's finds on the record it compiled; taking them here keeps the finds warm from walking a big field on the page */
+            if (info && m.finds && typeof window.hqFindsAdopt === 'function') { try { window.hqFindsAdopt(m.roomId, m.finds, j ? j.fgen : null); } catch (e) {} }
             else if (m.err) console.warn('[HQ] survey failed', m.roomId, m.err);
             if (info && typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] surveyed ' + m.roomId + ' in ' + m.ms + ' ms');
             if (j) { if (info) j.resolve(info); else j.reject(new Error(m.err || 'the survey returned nothing')); }
@@ -1194,6 +1196,7 @@
                 let room = null; try { room = (typeof window.hqTerrainRoomPlain === 'function') ? window.hqTerrainRoomPlain(id) : null; } catch (e) {}
                 if (!_hqSurveyJobs[id]) _hqSurveyJobs[id] = _hqSurveyJob();
                 _hqSurveyJobs[id].t0 = performance.now();
+                _hqSurveyJobs[id].fgen = (typeof window.hqFindsGen === 'function') ? window.hqFindsGen() : null;
                 _hqSurveyJobs[id].rev = (typeof window.hqRoomRev === 'function') ? window.hqRoomRev(id) : null;   // THE GAME ROOM EDITS: the room's version this record is of
                 _hqSurveyBusy = id;
                 const prefabs = (typeof HQ_PREFABS !== 'undefined' && Object.keys(HQ_PREFABS).length) ? HQ_PREFABS : null;   // THE SHAPES (E1): the worker is handed the prefabs a room places

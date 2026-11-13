@@ -36,6 +36,11 @@ F = {
     'tacos':         'tacos/Tacos/Models/Tacos.fbx',
     'metro':         'metro/Metro_PSX/Models/Metro.fbx',
     'dinerscene':    'diner/DINER/Models/DINER.fbx',
+    'pizzeriascene': 'pizzeria-psx/Pizzeria/Models/Pizzeria_Scene.fbx',
+    'gasscene':      'gas-station/Gas_station/Models/Gas_station.fbx',
+    'laundryscene':  'laundry/Laundry/Models/Laundry.fbx',
+    'quequis':       'quequis-house/Quequis_House/Models/Quequis_House.fbx',
+    'industrial':    'domi236_ps1-industrial-pack-1/industrial pack/source/industrial_buildings.fbx',   # domi236's PS1 industrial pack (project files asset-packs/other/)
 }
 # (catalogue key, pack, scene nodes, rotz degrees)
 JOBS = [
@@ -80,11 +85,50 @@ AUDIT = [
 ]
 ROT = json.loads(arg('--rot') or '{}')   # {key: degrees} overrides while fitting the fronts
 JOBS += [(k, p, n, ROT.get(k, r)) for (k, p, n, r) in AUDIT]
+# THE CITY'S WHOLE BUILDINGS (2026-11-13, mondo: "Isnt there a pizza resturaunt and or gast station asset pack we downlaoded? Those
+# definitely need to be buildings somewhere"): each pack scene's building from the OUTSIDE (its shell, doors, windows, signs; never the
+# furniture or the stock), at true size, its entrance side at +Z — data.js HQ_PACK_BUILDINGS `city_*`. A region may be a `box`
+# [x0, x1, y0, y1] in the scene's metres in place of `near` (the gas station: the store, the canopy, the pumps, the price sign).
+# Who places which: docs/disaster-city/pack-claims.md.
+JOBS += [
+    ('city_pizzeria', 'pizzeriascene', [{'near': 'building_01.001', 'pad': 1.0, 'keep': r'^(building_01\.00[12]$|Door(\.001)?$|Glass$|Decorative_Sign)'}], -90),
+    ('city_gas_store', 'gasscene', [{'box': [-4, 27, 12, 31], 'keep': r'^(6twelve|Bathrooms|Door(_\d+)?$|Frame|Glass|Window_frame|ICE|Toilets_Sing|spotlight)'}], 0),
+    ('city_gas_canopy', 'gasscene', [{'box': [-7, 19, -14, 6], 'keep': r'^(Pillar|Fuel_pump|The_ceiling|Lamp|Sidewalk)'}], 0),
+    ('city_gas_sign', 'gasscene', [{'box': [-12, -7, -19, -14], 'keep': r'^6twelve_Sign'}], 0),
+    ('city_diner', 'dinerscene', [{'near': 'DINER', 'pad': 1.5, 'keep': r'^(DINER$|Entry|Sing_DINER|Sign|Door(_\d+)?$|Door_frame|Glass|Window_frame)'}], 0, {'cut': 2.3}),
+    ('city_burgerpiz', 'burgerpiz', [{'near': 'BurgerPiz', 'pad': 2.5, 'keep': r'^(BurgerPiz|RooftilesMetal|L$|Windows|Door_F|Door$|Door_01$|Wall_W)'}], -90),
+    ('city_6twelve', '6twelve', [{'near': '6twelve', 'pad': 1.0, 'keep': r'^(6twelve|Glasses|Door(_0[12])?$|Door_frame|Sign)'}], 0, {'cut': 0.6}),
+    ('city_taco_stand', 'tacos', [{'near': 'Taco_stand', 'pad': 1.5, 'keep': r'^(Taco_stand|Taco|Tacos)'}], 180),
+    ('city_laundry', 'laundryscene', [{'near': 'Laundry_building', 'pad': 1.0, 'keep': r'^(Laundry_building|Sign_Laundry|Door$|DoorsWood|Glass|Window_frame|frame_door)'}], -90),
+    ('city_vhs_shop', 'vhsshop', [{'near': 'Shop_VHS', 'pad': 0.5, 'keep': r'^(Shop_VHS$|Shop_VHS\._Windows|Door$|Frame_Door)'}], 180, {'cut': 3.6}),
+    ('city_house', 'house', ['House'], 0),
+    ('city_quequis_house', 'quequis', [{'near': 'Quequis_House', 'pad': 1.0, 'keep': r'^(Quequis_House|Frame$|Cube$|RooftilesMetal|Door_Q|Door_0[12]$|Frame_Door)'}], 180),
+    # THE INDUSTRIAL PACK (2026-11-13, Disaster City's Industrial district; shared by every district): domi236's PS1 industrial pack, its
+    # pieces at 0.4694 of the file's size (the container = a real 20 ft box, 6.06 m long), doors / fronts at +Z. Out: `ind_<key>.glb`
+    # for R2 Assets/world/packs/domi236_industrial/.
+    ('ind_container', 'industrial', ['Container01'], 0, {'name': 'ind_container.glb', 'scale': 0.4694}),
+    ('ind_skip', 'industrial', ['Trashcan01'], 0, {'name': 'ind_skip.glb', 'scale': 0.4694}),
+    ('ind_skip_full', 'industrial', ['Trashcan2'], 0, {'name': 'ind_skip_full.glb', 'scale': 0.4694}),
+    ('ind_silo', 'industrial', ['LiquidReservoir'], 0, {'name': 'ind_silo.glb', 'scale': 0.4694}),
+    ('ind_vent', 'industrial', ['Ventilation_1'], 0, {'name': 'ind_vent.glb', 'scale': 0.4694}),
+    ('ind_panel', 'industrial', ['ElectricalPanel'], 0, {'name': 'ind_panel.glb', 'scale': 0.4694}),
+    ('ind_factory_red', 'industrial', ['Building02'], 0, {'name': 'ind_factory_red.glb', 'scale': 0.4694}),
+    ('ind_factory_tan', 'industrial', ['Building01'], 0, {'name': 'ind_factory_tan.glb', 'scale': 0.4694}),
+    ('ind_factory_blue', 'industrial', ['Cube'], 0, {'name': 'ind_factory_blue.glb', 'scale': 0.4694}),
+]
+# THE CITY TRAFFIC (2026-11-13, mondo: "traffic lights and intersections ... Bus sections placed in each district with a bus route"): the
+# Pizzeria pack's mast-arm signal (its three lit faces look -X, +Z and -Z in the GLB, the blank one +X: three-renderer.js _HQ_SIGNAL), the
+# Bus stop pack's city bus with its four tyres and its four door leaves joined on (nose at -X, doors on its right) and its stop sign.
+JOBS += [
+    ('street_signal', 'pizzeria', ['traffic_light'], 0),
+    ('transit_bus', 'busstop', ['Bus', 'Tire', 'Tire_01', 'Tire_02', 'Tire_03', 'Cube.038', 'Cube.039', 'Cube.040', 'Cube.041'], 0),
+    ('bus_stop_sign', 'busstop', ['Bus_stop_sign'], 0),
+]
 jobs = []
 for J in JOBS:
     k, p, nodes, rz = J[:4]
     if ONLY and k not in ONLY: continue
-    jobs.append(dict({'file': os.path.join(PACKS, F[p]), 'search': os.path.join(PACKS, F[p].split('/')[0]), 'out': os.path.join(OUT, 'ebd_%s_%s.glb' % (p, k)), 'nodes': nodes, 'rotz': rz}, **(J[4] if len(J) > 4 else {})))
+    jobs.append(dict({'file': os.path.join(PACKS, F[p]), 'search': os.path.join(PACKS, F[p].split('/')[0]), 'out': os.path.join(OUT, (J[4].get('name') if len(J) > 4 and J[4].get('name') else 'ebd_%s_%s.glb' % (p, k))), 'nodes': nodes, 'rotz': rz}, **(J[4] if len(J) > 4 else {})))
 byfile = {}
 for j in jobs: byfile.setdefault(j['file'], []).append(j)
 def load(f):
@@ -97,6 +141,7 @@ for f,js in byfile.items():
     idx={}
     for r,ds,fs in os.walk(srch):
         for fn in fs: idx.setdefault(fn.lower(),os.path.join(r,fn))
+    if 'building2.jpg' in idx: idx.setdefault('building02.png',idx['building2.jpg'])   # the industrial pack's one renamed sheet
     for im in bpy.data.images:
         if im.source!='FILE' or im.packed_file: continue
         p=bpy.path.abspath(im.filepath)
@@ -117,10 +162,13 @@ for f,js in byfile.items():
         for n in j['nodes']:
             if isinstance(n,dict):   # a REGION (THE TOWN RIM's TRAILERS): every matching object whose middle is inside the near node's footprint
                 import re
-                ref=bpy.data.objects.get(n['near'])
-                if not ref: print('MISSING NODE',n['near'],'in',f); continue
-                rp=[ref.matrix_world@v.co for v in ref.data.vertices]; pad=n.get('pad',1.0); rx=re.compile(n['keep'])
-                x0=min(p.x for p in rp)-pad; x1=max(p.x for p in rp)+pad; y0=min(p.y for p in rp)-pad; y1=max(p.y for p in rp)+pad
+                rx=re.compile(n['keep'])
+                if n.get('box'): x0,x1,y0,y1=n['box']   # THE CITY'S WHOLE BUILDINGS: a plain box in the scene's metres
+                else:
+                    ref=bpy.data.objects.get(n['near'])
+                    if not ref: print('MISSING NODE',n['near'],'in',f); continue
+                    rp=[ref.matrix_world@v.co for v in ref.data.vertices]; pad=n.get('pad',1.0)
+                    x0=min(p.x for p in rp)-pad; x1=max(p.x for p in rp)+pad; y0=min(p.y for p in rp)-pad; y1=max(p.y for p in rp)+pad
                 for o in bpy.data.objects:
                     if o.type!='MESH' or not rx.search(o.name): continue
                     c=sum((o.matrix_world@v.co for v in o.data.vertices),Vector())/max(1,len(o.data.vertices))
@@ -149,7 +197,8 @@ for f,js in byfile.items():
         off=Vector(((mn.x+mx.x)/2,(mn.y+mx.y)/2,mn.z))
         rz=j.get('rotz',0)
         R=Matrix.Rotation(rz*3.14159265/180,4,'Z')
-        for o in meshes: o.data.transform(R@Matrix.Translation(-off))
+        SC=Matrix.Scale(j.get('scale',1.0),4)   # `scale` (THE INDUSTRIAL PACK): the piece at this share of the file's size
+        for o in meshes: o.data.transform(R@SC@Matrix.Translation(-off))
         if j.get('cut'):
             # `cut` (m over the base): everything under it goes (bisect, inner side cleared, the cut left open: it is under the ground)
             import bmesh
@@ -187,7 +236,7 @@ for f,js in byfile.items():
         os.makedirs(os.path.dirname(j['out']),exist_ok=True)
         bpy.ops.export_scene.gltf(filepath=j['out'],export_format='GLB',use_selection=False,export_apply=True,export_yup=True,export_image_format='AUTO',export_materials='EXPORT',export_animations=False,export_skins=False)
         d=mx-mn
-        print('OUT',j['out'],'dims_m',round(d.x,2),round(d.y,2),round(d.z,2),'tris',tris)
+        print('OUT',j['out'],'dims_m',round(d.x,2),round(d.y,2),round(d.z,2),'tris',tris,'rotz',rz)
 
 for t in (TMP, TMP + '1'):
     if os.path.exists(t): os.remove(t)

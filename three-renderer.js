@@ -38260,6 +38260,7 @@ const ThreeRenderer = (function () {
         cybercar:      'Meshy_AI_a_cyberpunk_car_0915195427_texture.glb',
         firetruck:     'Meshy_AI_a_fire_truck_0915195407_texture.glb',
         schoolbus:     'Meshy_AI_a_school_bus_0915195620_texture.glb',
+        citybus:       'ebd_busstop_transit_bus.glb',   // THE CITY TRAFFIC (2026-11-13): the Bus stop pack's blue city bus (Bus Line 1), R2 Assets/world/packs/elbolilloduro/
         subway_cart:   'Meshy_AI_a_subway_train_cart_0915195417_texture.glb',
         subway_front:  'Meshy_AI_a_subway_train_front_0915195457_texture.glb',
         ambulance:     'Meshy_AI_an_ambulance_0915195334_texture.glb',
@@ -38463,6 +38464,7 @@ const ThreeRenderer = (function () {
         firetruck:    { m: 9.0, yaw: Math.PI / 2, foot: 2.2, w: 2.5, h: 3.4, color: 0xc81e1e, lift: 0.16, beacon: true },
         schoolbus:    { m: 10.5, yaw: Math.PI / 2, foot: 2.5, w: 2.5, h: 3.0, color: 0xf2b820, lift: 0.14 },
         ambulance:    { m: 6.2, yaw: Math.PI / 2, foot: 1.5, w: 2.3, h: 2.6, color: 0xf4f4f0, lift: 0.16, beacon: true },
+        citybus:      { m: 11.2, yaw: Math.PI / 2, foot: 2.6, w: 2.6, h: 3.4, color: 0x1e50b4, lift: 0.14 },   // THE CITY TRAFFIC: measured in Blender, 11.21 m long, nose at -X, doors on its right
         /* THE SUBWAY AT ITS REAL SIZE (ZONES_PLAN Z2, 2026-09-30 — mondo: the cars were drawn under size): the two GLBs measured
            (their accessor bounds: front 1 × 0.376 × 0.295, cart 1 × 0.358 × 0.294, long along X) and stood at a subway car's
            real 3.7 m from rail to roof, so each is its own length at that height (front 9.84 m, cart 10.33 m) and 2.9–3.0 m wide */
@@ -46925,9 +46927,11 @@ const ThreeRenderer = (function () {
         function add(g, nm) { if (g && g.isObject3D && out.indexOf(g) < 0) { out.push(g); g._ew_bunName = nm; } }
         var here = (H.opts && H.opts.room) || 'room';
         add(H.shellGroup, here + ' shell'); add(H.propGroup, here + ' props'); add(H.doorGroup, here + ' doors');
+        if (H.chunks) for (var ck in H.chunks.cells) add(H.chunks.cells[ck], here + ' fences');   // THE CHUNKS: a plot's fences, a bundle of their own
         var st = H.stage;
         if (st && st.parts) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P) { add(E.P.shellGroup, id + ' shell'); add(E.P.propGroup, id + ' props'); add(E.P.doorGroup, id + ' doors'); } }
-        if (H.inst && H.inst.group) add(H.inst.group, 'instance pass');
+        if (H.inst && H.inst.cells) { for (var ic in H.inst.cells) add(H.inst.cells[ic], 'instance pass'); }   // THE CHUNKS: a cell of the pass, a bundle of its own
+        else if (H.inst && H.inst.group) add(H.inst.group, 'instance pass');
         return out;
     }
     /* THE FIELD BUNDLES (W5a round 5, 2026-10-04): the battle's room (_hqBuildRoomInBattle: the facility group's holders, one
@@ -47021,6 +47025,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
             if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); continue; }
+            if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); continue; }   // THE CHUNKS: a piece THE STATIC BATCH holds is not drawn (its merged mesh is hashed): only that it is held
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
             else if (c.isLight) { S.hs = _ewBunMix(S.hs, c.id); S.lit = true; }
             if (c.children.length) _ewBunWalk(c, S);
@@ -47057,6 +47062,7 @@ const ThreeRenderer = (function () {
         var objs = 0;
         for (i = 0; i < T.length; i++) {
             var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
+            if (g._ew_ckOut) continue;   // THE CHUNKS: a chunk off the camera is not drawn and not checked; its recording waits for it
             if (st.until > now) { if (g.isBundleGroup) _ewBunRelease(g); continue; }
             /* W5a: a group the frame does not draw (hidden, or a parked room under a hidden parent) is neither checked nor
                bundled — the walk over it was the check's whole cost when the HQ sat hidden behind a battle */
@@ -51688,6 +51694,7 @@ const ThreeRenderer = (function () {
         S.canvas = cv ? [cv.width, cv.height, cv.clientWidth, cv.clientHeight] : [0, 0, 0, 0];
         try { var pm = performance.memory; S.heap = pm ? [pm.usedJSHeapSize / 1048576, pm.jsHeapSizeLimit / 1048576] : null; } catch (e) { S.heap = null; }
         S.census = L.census || null;
+        S.chunks = _hq ? _hqChunkStats(_hq) : null;
         S.instPass = (_hq && typeof _hqInstStats === 'function') ? _hqInstStats(_hq) : (_fieldInstH ? _hqInstStats(_fieldInstH) : null);
         S.top = L.detail || []; S.roots = L.roots || null;
         S.why = L.why || [];
@@ -51742,6 +51749,7 @@ const ThreeRenderer = (function () {
         if (S.bvh) L.push('Pick (raycasts) ' + S.bvh.rays.toFixed(0) + '/s · ' + S.bvh.ms.toFixed(1) + ' ms/s · BVH ' + (S.bvh.on ? S.bvh.trees + ' trees (' + _lensFmtN(S.bvh.tris) + ' tris, ' + Math.round(S.bvh.buildMs) + ' ms to build)' + (S.bvh.slow ? ' · ' + S.bvh.slow + ' plain' : '') + (S.bvh.fails ? ' · ' + S.bvh.fails + ' failed' : '') : 'off') + ((S.bvh.skinOut || S.bvh.skinIn) ? ' · skinned ' + S.bvh.skinOut.toFixed(0) + '/s past their pose box, ' + S.bvh.skinIn.toFixed(0) + '/s tested' : ''));
         if (S.text) L.push('Text (HQ plates) ' + (S.text.cv ? 'canvas (node renderer)' : S.text.on ? 'troika' : (S.text.lib ? 'CSS2D (switched off)' : 'CSS2D (troika not loaded)')) + ' · ' + S.text.gpu + ' on the GPU · ' + S.text.css + ' CSS2D');
         try { var _fs = (typeof ThreeVFX !== 'undefined' && ThreeVFX.fxStats) ? ThreeVFX.fxStats() : null; if (_fs && (_fs.live || _fs.groups)) L.push('Particles ' + _fs.live + ' live · ' + _fs.draws + ' draws' + (_fs.batched ? ' (batched, ' + _fs.groups + ' kinds seen)' : ' (one per particle)') + (_fs.quarks && (_fs.quarks.on || _fs.quarks.made) ? ' · quarks layer ' + (_fs.quarks.on ? _fs.quarks.state : 'off') + ', ' + _fs.quarks.live + ' systems live' : '')); } catch (e) {}   // R7
+        if (S.chunks) L.push('Chunks' + (S.chunks.off ? ' (cull off)' : '') + ': fence plots ' + S.chunks.fencesDrawn + '/' + S.chunks.fences + ' drawn · prop cells ' + S.chunks.cellsDrawn + '/' + S.chunks.cells + ' drawn');
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
         if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ')); }
         if (S.why && S.why.length) {
@@ -61106,6 +61114,11 @@ const ThreeRenderer = (function () {
                 if (rc) { for (i = 0; i < N; i++) if (TS[i]) rc[weld[i]] = 1; }
                 for (i = 0; i < N; i++) if (rc ? rc[weld[i]] : TS[i]) { cov[i] = 1; }
             });
+            /* THE FOOT IN THE HEEL (2026-11-13, mondo on the popstar: "her feet are poking out of her heels"): a pack high heel is made
+               round a foot on tiptoe, the body's foot stands flat, so the forefoot lay outside the shoe, past every cover line, and
+               stayed drawn. The skin a SHOE's own delete list names is hidden whole, whatever the lines say (every pack shoe, every body) */
+            var shoeM = wearMask(part, function (w) { return w.cat === 'shoes'; });
+            if (shoeM) for (i = 0; i < N; i++) if (shoeM[i]) cov[i] = 1;
             return { cov: cov, push: push };
         }
         function wearCovers(w) { return !!(w.outer || (w.cat && w.cat !== 'underwear' && WEAR_LAYER.cats[w.cat])); }
@@ -62447,7 +62460,7 @@ const ThreeRenderer = (function () {
            vertex's weights), blending into the pendant's own bone near the bail so the two never part when the body moves. It is
            one of the pendant's accents (comes off with it, hidden with it). Rebuilt with THE LAYERS (every wear change and every
            slider move: the cord follows the neck it lies on). Colour per pendant (WEAR_CORD.colors), else WEAR_CORD.color. */
-        var WEAR_CORD = { r: 0.0017, skin: 0.0022, cloth: 0.002, levels: [10, 20, 40, 64], iters: [140, 110, 70, 40], warm: 30, step: 0.004, settle: 20, pull: 0.45, finish: 6, fall: 0.0004, ring: 0.35, sides: 7, steps: 150, bone: 0.07,
+        var WEAR_CORD = { r: 0.0017, skin: 0.0022, cloth: 0.002, levels: [10, 20, 40, 64], iters: [140, 110, 70, 40], warm: 30, step: 0.004, settle: 20, pull: 0.45, finish: 6, fall: 0.0004, ring: 0.35, sides: 7, steps: 150, bone: 0.07, chain: 2.2,
                           colors: { ewm_crosspendant: 0x16130f, ewm_talisman: 0x4a2e1a, ewm_hagstone: 0x8a7656 }, color: 0x2a2018 };
         function wearCordOf(w) {
             return !!(w && w.mesh && w.solid && typeof wearGroupOf === 'function' && wearGroupOf(w.id) === 'pendants');
@@ -62694,7 +62707,10 @@ const ThreeRenderer = (function () {
                 return ks.map(function (bk) { return [+bk, m[bk] / (sum || 1)]; });
             });
             // the tube: a Catmull-Rom curve through the rope, a ring of WEAR_CORD.sides round it (parallel-transported frames)
-            var NSm = WEAR_CORD.steps, Rt = WEAR_CORD.r * Hm, SIDES = WEAR_CORD.sides, Cv = [], Cw = [];
+            /* THE CHAIN (2026-11-13, the gangster, mondo: "needs some bling"): a pendant that wears a colour (appearance.wearTint[id]: a gold
+               cross) hangs from a chain in that colour, not from the dark cord: WEAR_CORD.chain x as thick, metal */
+            var cTint = null; try { var cT = state.last && state.last.wearTint && state.last.wearTint[w.id]; if (typeof cT === 'string' && /^#[0-9a-f]{6}$/i.test(cT)) cTint = cT; } catch (eT) {}
+            var NSm = WEAR_CORD.steps, Rt = WEAR_CORD.r * Hm * (cTint ? WEAR_CORD.chain : 1), SIDES = WEAR_CORD.sides, Cv = [], Cw = [];
             for (i = 0; i <= NSm; i++) {
                 var u = i / NSm * M, s0 = Math.min(M - 1, Math.floor(u)), tt = u - s0;
                 var p0 = X[Math.max(0, s0 - 1)], p1 = X[s0], p2 = X[s0 + 1], p3 = X[Math.min(M, s0 + 2)], t2 = tt * tt, t3 = t2 * tt;
@@ -62739,6 +62755,8 @@ const ThreeRenderer = (function () {
                 (w.accents = w.accents || []).push(mh);
             }
             mh.geometry.dispose(); mh.geometry = g;
+            mh.userData._ewBase.set(cTint || (WEAR_CORD.colors[w.id] != null ? WEAR_CORD.colors[w.id] : WEAR_CORD.color));
+            if (mh.material) { mh.material.metalness = cTint ? 0.85 : 0; mh.material.roughness = cTint ? 0.35 : 0.82; }
             wearVC(mh, mh.userData._ewBase);
             w.cordPts = X;   // (probes)
         }
@@ -63337,6 +63355,14 @@ const ThreeRenderer = (function () {
                 /* THE HAIR SWAY: the hair's spring chains swing after the clip (dt from the rig's own clock) */
                 var now = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000, sdt = state.swayT ? now - state.swayT : 0;
                 state.swayT = now;
+                /* THE HEAD SIZE (2026-11-13, mondo on Santa: "anyway we can make his head bigger or add a head size slider"): FACE > Head >
+                   Size (appearance.headSize, -1..1 = 50 %..150 %) scales the head BONE after the clip, so the skin, the hair, the beard, the
+                   eyes, the teeth and every hat grow with it and the neck blends by its own weights */
+                var hsV = state.last ? Math.max(-1, Math.min(1, +state.last.headSize || 0)) : 0;
+                if (hsV || state.headSized) {
+                    for (var hz = 0; hz < parts.length; hz++) { var hsk = parts[hz].body && parts[hz].body.skeleton, hbn = hsk && parts[hz].headBone >= 0 ? hsk.bones[parts[hz].headBone] : null; if (hbn) hbn.scale.setScalar(1 + hsV * 0.5); }
+                    state.headSized = !!hsV;
+                }
                 try { _ccArmClear(root, state, Math.min(0.1, sdt), state.shapeKey); } catch (e) { if (!state.clrWarned) { state.clrWarned = true; console.warn('[ThreeRenderer] arm clearance failed', e); } }   // THE ARM CLEARANCE (before the cloth reads the pose)
                 if (parts.some(function (p) { return p.hangCaps; })) {   // THE COAT HANG: the long coat's skirt off the legs (before anything reads the pose)
                     root.updateWorldMatrix(true, true);
@@ -68651,7 +68677,7 @@ const ThreeRenderer = (function () {
         }
     }
     /* the buckets → one mesh per role under G; mats(rk) → its material */
-    function _spFlush(B, G, mats, tag) {
+    function _spFlush(B, G, mats, tag, grpOf) {   // grpOf(rk): THE CHUNKS, a bucket's own group (else G)
         Object.keys(B).forEach(function (rk) {
             var bk = B[rk]; if (!bk.P.length) return;
             var geo = new THREE.BufferGeometry();
@@ -68661,7 +68687,7 @@ const ThreeRenderer = (function () {
             geo.computeBoundingSphere(); geo.computeBoundingBox();
             var mat = mats(rk), m = new THREE.Mesh(geo, mat);
             m.castShadow = !mat.transparent; m.receiveShadow = true; m.renderOrder = mat.transparent ? 3 : 1; m._ew_pixelate = true; m[tag] = true;
-            G.add(m);
+            ((grpOf && grpOf(rk)) || G).add(m);
         });
     }
     /* a piece's frame on the ground: the foot (fx, fz) and the way up (ux, uz) → world metres; local X across = (uz, −ux) (the builders' +X) */
@@ -68723,7 +68749,11 @@ const ThreeRenderer = (function () {
             _spSoup('rail', mk, function (soup) {
                 if (!soup) return;
                 var B = {}, mats = {}, ys0 = spec.top * SP.unit.pack, D2R = Math.PI / 180, glassy = spec.look === 'glass';
+                /* THE CHUNKS: in a big room a run goes to its plot's mesh (the bucket key carries the plot), one group per plot */
+                var ckH = (_hq && G === _hq.shellGroup && _hqChunkBig(_hq)) ? _hq : null, ckOf = {};
                 byModel[mk].forEach(function (r) {
+                    var ck = '';
+                    if (ckH) { var ckx = r.arc ? r.arc.x : (r.x0 + r.x1) / 2, ckz = r.arc ? r.arc.z : (r.z0 + r.z1) / 2, ckg = _hqChunkGroup(ckH, ckx, ckz); ck = '@' + ckg._ew_chunk; ckOf[ck] = ckg; }
                     var arc = r.arc, len = arc ? Math.abs(arc.a1 - arc.a0) * D2R * arc.r : Math.hypot(r.x1 - r.x0, r.z1 - r.z0);
                     if (len < 0.2) return;
                     var fit = _spRailFit(soup, spec, len), ys = (r.top || ys0) / ys0, sc = fit.scale;
@@ -68738,12 +68768,12 @@ const ThreeRenderer = (function () {
                         if (arc) { var a = at(lz).a, tx = sg * Math.cos(a), tz = sg * Math.sin(a); return [tz * x + tx * z, y, -tx * x + tz * z]; }
                         return [uz * x + ux * z, y, -ux * x + uz * z];
                     };
-                    _spEmit(fit.A, P, Nf, function (A, t) { return (_spIsGlass(A.mats[A.M[t]]) || (glassy && _spPane(A, t))) ? 'glass' : 'body'; }, texK, U, B);
+                    _spEmit(fit.A, P, Nf, function (A, t) { return ((_spIsGlass(A.mats[A.M[t]]) || (glassy && _spPane(A, t))) ? 'glass' : 'body') + ck; }, texK, U, B);
                 });
                 _spFlush(B, G, function (rk) {
-                    if (rk === 'glass') return mats.glass || (mats.glass = _spGlass());
+                    if (rk.indexOf('glass') === 0) return mats.glass || (mats.glass = _spGlass());
                     return mats.body || (mats.body = _spSheet(spec.look === 'wood' ? 'wood' : spec.look === 'stone' ? 'concrete' : null, spec.look));
-                }, '_ew_hqRailing');
+                }, '_ew_hqRailing', (ckH && ckH === _hq && ckH.chunks) ? function (rk) { var at = rk.indexOf('@'); return at >= 0 ? ckOf[rk.slice(at)] : null; } : null);
                 _objectsLanded = true;
             }, G);
         });
@@ -71235,7 +71265,9 @@ const ThreeRenderer = (function () {
         try { _hqBuildMarks(room, info, G, U); } catch (e) { console.warn('[HQ] the paint failed', e); }
         /* THE SHAPES (EDITOR_PLAN E1): the textured-building rows — the city's lot builder, one merged batch for the room */
         if (info.texb && info.texb.length) { try { _hqBuildTexRows(info, G, U); } catch (e) { console.warn('[HQ] the textured buildings failed', e); } }
+        if (info.arch && info.arch.length) { try { _hqBuildArchRows(info, G, U); } catch (e) { console.warn('[HQ] the architecture rows failed', e); } }   // THE ARCHITECTURE (2026-11-13)
         if (info.texb && info.texb.length) { try { _hqBuildTexPacks(info, G, U, TM); } catch (e) { console.warn('[HQ] the pack buildings failed', e); } }   // THE PACK BUILDINGS (2026-11-03)
+        if (info.texb && info.texb.length) { try { _hqBuildTexDoors(info, G, U); } catch (e) { console.warn('[HQ] the city doors failed', e); } }   // THE CITY DOORS (2026-11-13)
         /* THE HALLS (D.U.M.B., 2026-09-17): the floor plan's own walls — the mask's boundary traced by data.js _hqTTraceMaskWalls, drawn to the ceiling in the plan's sheet; the walker never reads them (the mass is) */
         for (var pwi = 0, pws = info.planWalls || []; pwi < pws.length; pwi++) { drawWall(pws[pwi]); if ((pwi & 15) === 15 && _hqSliceDue()) yield; }
         if (info.genPlan && info.gen && info.gen.kind === 'halls') { try { _hqBuildHallsLights(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the halls’ strip lights failed', e); } }
@@ -71318,6 +71350,8 @@ const ThreeRenderer = (function () {
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city') { try { _hqBuildRoadMarkings(room, info, G, TM); } catch (e) { console.warn('[HQ] the road markings failed', e); } }   // THE STREETS IN THE PACK (2026-09-17): the asphalt is the field's floor sheet; the paint, the kerbs, the manholes and the signs stand on it
         if (info.genPlan && info.genPlan.streets && info.gen && info.gen.kind === 'city' && info.gen.sidewalk > 0 && typeof window !== 'undefined' && window.EW_HQ_ROAD_TILES) { try { _hqBuildRoadTiles(room, info, G, TM); } catch (e) { console.warn('[HQ] the road tiles failed', e); } }   // the GLB tiles are opt-in since the pack landed (they distorted on every bend)
         if (_hqSliceDue()) yield;
+        if (info.signals && info.signals.length) { try { _hqBuildSignals(room, info, G); } catch (e) { console.warn('[HQ] the signals failed', e); } }   // THE CITY TRAFFIC (2026-11-13): before the cars, which read them
+        if (info.busStops && info.busStops.length) { try { _hqBuildBusStops(room, info, G); } catch (e) { console.warn('[HQ] the bus stops failed', e); } }
         if (info.traffic && info.traffic.length) { try { _hqBuildTraffic(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the traffic failed', e); } }
         if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         if (_hqSliceDue()) yield;
@@ -71556,7 +71590,7 @@ const ThreeRenderer = (function () {
             var cols = Math.max(1, Math.round(F.L / C)), cw = F.L / cols;
             if (F.front) doorCol = Math.max(0, Math.min(cols - 1, Math.floor(cols * (0.25 + rng() * 0.5))));
             if (F.front && hol) doorCol = -1;   // THE INSIDE: no door sheet, the doorway itself
-            if (!lot.roofOnly) for (var r = 0; r < rows; r++) for (var ci = 0; ci < cols; ci++) {   // THE PRISM ROOFS: a prism building draws only the roof and the parapet here
+            if (!lot.roofOnly && !lot.noSkin) for (var r = 0; r < rows; r++) for (var ci = 0; ci < cols; ci++) {   // THE PRISM ROOFS: a prism building draws only the roof and the parapet here
                 var ground = r === 0, upperOfStorey = (r % 2) === 1, top = r === rows - 1;
                 var cell = null, over = null, door = null;
                 if (P.style === 'office' || P.style === 'tower') {
@@ -71597,7 +71631,7 @@ const ThreeRenderer = (function () {
                     batch.add(door.key, null, 'over', [W(dx0 + ox2, y0, dz0 + oz2), W(dx1 + ox2, y0, dz1 + oz2), W(dx1 + ox2, y1, dz1 + oz2), W(dx0 + ox2, y1, dz0 + oz2)], [[0, 0], [door.wide ? 2 : 1, 0], [door.wide ? 2 : 1, 1], [0, 1]]);
                 }
             }
-            if (lot.flat) return;   // THE BUILDING TIERS: a walked roof has no parapet (its rails, bridges and stairs meet the edge)
+            if (lot.flat || lot.noSkin) return;   // THE BUILDING TIERS: a walked roof has no parapet (THE ARCHITECTURE: `skin: false` draws no outside at all) (its rails, bridges and stairs meet the edge)
             /* the parapet's outer face in the wall's sheet (the top row's, if any) */
             var pk = (Q && Q.parapet) || (P.top && P.top.key) || P.wall.key, ph = HQ_TEXB.parapet;
             var px0 = F.o[0], pz0 = F.o[1], px1 = F.o[0] + F.a[0] * F.L, pz1 = F.o[1] + F.a[1] * F.L;
@@ -71609,9 +71643,9 @@ const ThreeRenderer = (function () {
            from above — every textured building (the editor's BUILDING, a share of every city's lots) stood open-topped. Wound
            anticlockwise from above now (the walls were always right). */
         var rk = P.roof || 'urban:ConcreteUnderTiles1', ph2 = HQ_TEXB.parapet, t = 0.22;
-        batch.add(rk, null, hol ? 'ceil' : 'wall', [W(-hw, H + 0.02, hd), W(hw, H + 0.02, hd), W(hw, H + 0.02, -hd), W(-hw, H + 0.02, -hd)], [[0, 2 * hd / C], [2 * hw / C, 2 * hd / C], [2 * hw / C, 0], [0, 0]]);   // a hollow building's roof goes with HIDE ROOFS (C)
+        if (!lot.noSkin || lot.flat) batch.add(rk, null, hol ? 'ceil' : 'wall', [W(-hw, H + 0.02, hd), W(hw, H + 0.02, hd), W(hw, H + 0.02, -hd), W(-hw, H + 0.02, -hd)], [[0, 2 * hd / C], [2 * hw / C, 2 * hd / C], [2 * hw / C, 0], [0, 0]]);   // a hollow building's roof goes with HIDE ROOFS (C)
         if (hol) _hqTexInside(lot, batch, W, faces, hol, H, hw, hd);
-        if (lot.flat) return { H: H, plan: P };
+        if (lot.flat || lot.noSkin) return { H: H, plan: P };
         [[-hw, -hd, hw, -hd], [hw, -hd, hw, hd], [hw, hd, -hw, hd], [-hw, hd, -hw, -hd]].forEach(function (e) {
             var ex = e[2] - e[0], ez = e[3] - e[1], L = Math.hypot(ex, ez) || 1, nx = ez / L, nz = -ex / L;   // inward normal of this parapet run (ccw box → left-hand)
             batch.add(rk, null, 'wall', [W(e[0] - nx * t, H + ph2, e[1] - nz * t), W(e[2] - nx * t, H + ph2, e[3] - nz * t), W(e[2], H + ph2, e[3]), W(e[0], H + ph2, e[1])], [[0, t / C], [L / C, t / C], [L / C, 0], [0, 0]]);
@@ -71655,11 +71689,208 @@ const ThreeRenderer = (function () {
             var prism = typeof hqTexbPrism === 'function' && hqTexbPrism(f);   // THE PRISM BUILDINGS: their walls by _hqBuildTexPrisms (they need the kit), their roof + parapet here (THE PRISM ROOFS, 2026-10-30)
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door, keyGround: f.keyGround, keyDoor: f.keyDoor, keyOver: f.keyOver };
+            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, noSkin: f.skin === false && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door, keyGround: f.keyGround, keyDoor: f.keyDoor, keyOver: f.keyOver };
             _hqTexBuilding(lot, info, batch, rng, { neon: neonRoom }, U); n++;
         });
         batch.flush();
         return n;
+    }
+    /* THE ARCHITECTURE (2026-11-13, mondo on the 144-plot Disaster City: "use different materials/textures and tint them to match your
+       vision for the building ... use more complex geometry for some buildings, domes, roof tops, modern architecture, curves"): an
+       `arch` row = one building's LOOK as a list of parts, drawn only (the walker reads the texbuilding / wall / plateau rows beside
+       it; a texbuilding with `skin: false` keeps its walls, roof slab, doorway and inside and draws no outside).
+       ROW   { k: 'arch', id, x, z, rot (degrees clockwise, as a texbuilding: the front is the row's +z), y (the foot; none = the ground), parts: [...] }
+       PART  { s, p: [x, y, z] (the part's foot centre in the row's frame, metres), ry (degrees), key (a sheet: 'urban:<Name>', a terrain key,
+               'hq:<name>'; none = a plain colour), tint (0xRRGGBB over the sheet), glow (0..1: the sheet lit, a sign / a lit window), kind
+               ('wall' | 'glass' | 'over' = a cut-out decal), tintTop / tintEnd (the tint of keyTop / keyEnd: none = untinted), ds (two-sided), roof (true = hidden with HIDE ROOFS, as a building's roof),
+               uv (metres a sheet repeat spans: a number or [u, v]; 'fit' = the sheet once across each face),
+               n + step: [dx, dy, dz] (the part n times, stepped) · ring: { n, r, a0 } (the part n times round a circle, each turned outward) }
+       SHAPES  box    size: [w, h, d] · keyTop · top: false · sides: false · faces: 'fblr' (which sides: front +z, back, left -x, right) · under: true (the underside, an overhang)
+               cyl    r, h · r2 (the top's radius: a taper, 0 = a cone) · seg · arc + a0 (degrees: a curved wall) · ri (hollow: a ring / a drum's rim) · cap: false
+               dome   r, h (none = r) · rz (an oval plan) · arc + a0 (degrees: a half dome, a band shell; give it ds: true) · seg · rings
+               roof   form: 'gable' | 'hip' | 'pyramid' | 'shed' | 'barrel', size: [w, h, d] (the ridge along x; a shed's high edge at -z) · over (the eaves' overhang) · keyEnd (the gable wall) · seg
+               quad   size: [w, h] (a panel facing +z: a wall, a sign with uv: 'fit', a window) · hole: [x, w, h] (a doorway cut from its foot) · flat: true (size [w, d], lying, facing up: paint, water)
+               poly   pts: [[x, z], ...] (a convex plan), h · keyTop · top: false
+       One mesh per material per row (a building never joins a city-wide mesh: the plot chunks cull it whole). */
+    function _hqArchGeometry(row, C) {
+        var G = {}, D2R = Math.PI / 180;
+        var parts = [];
+        (row.parts || []).forEach(function (p0) {
+            if (!p0 || !p0.s) return;
+            var list = [p0];
+            if (p0.ring && p0.ring.n > 0) {
+                list = [];
+                for (var i = 0; i < p0.ring.n; i++) {
+                    var a = ((p0.ring.a0 || 0) + (p0.ring.arc || 360) * i / (p0.ring.arc && p0.ring.arc < 360 ? Math.max(1, p0.ring.n - 1) : p0.ring.n)) * D2R, pp = p0.p || [0, 0, 0];
+                    list.push(Object.assign({}, p0, { p: [pp[0] + Math.cos(a) * p0.ring.r, pp[1], pp[2] + Math.sin(a) * p0.ring.r], ry: (p0.ry || 0) + 90 - a / D2R, ring: null }));
+                }
+            }
+            list.forEach(function (p1) {
+                var n = Math.max(1, Math.min(200, Math.round(p1.n || 1))), st = p1.step || [0, 0, 0], q = p1.p || [0, 0, 0];
+                for (var k = 0; k < n; k++) parts.push(n > 1 ? Object.assign({}, p1, { p: [q[0] + st[0] * k, q[1] + st[1] * k, q[2] + st[2] * k] }) : p1);
+            });
+        });
+        var rc = Math.cos(-(row.rot || 0) * D2R), rs = Math.sin(-(row.rot || 0) * D2R), base = row.base || 0;
+        parts.forEach(function (P) {
+            var pp = P.p || [0, 0, 0], pc = Math.cos(-(P.ry || 0) * D2R), ps = Math.sin(-(P.ry || 0) * D2R);
+            var fit = P.uv === 'fit', mu = fit ? 1 : (Array.isArray(P.uv) ? +P.uv[0] : +P.uv) || C, mv = fit ? 1 : (Array.isArray(P.uv) ? +P.uv[1] : +P.uv) || C;
+            var kindOf = function (key) { return P.kind || (/GlassWindow/.test(key || '') ? 'glass' : /^urban:(Decal|Door|Sign)/.test(key || '') ? 'over' : 'wall'); };
+            var grp = function (key, tintOwn) {   // tintOwn: the tint of a second sheet of the part (tintTop / tintEnd), none = the part's
+                key = key || null;
+                var kind = kindOf(key), tint = (tintOwn != null) ? (tintOwn >>> 0) : (P.tint != null) ? (P.tint >>> 0) : 0xffffff, glow = +P.glow || 0, ds = !!P.ds, roof = !!P.roof;
+                var gain = (+P.gain > 0) ? +P.gain : 1;   // THE PAINTED WALL (2026-11-13, Bayside): `gain` lifts a sheet's tint past white (a grey stucco sheet under the city's tint reads as mud in a pastel; the light still shades it)
+                var id = [key || '', tint, glow, kind, ds ? 1 : 0, roof ? 1 : 0, gain].join('|');
+                return G[id] || (G[id] = { key: key, tint: tint, glow: glow, kind: kind, ds: ds, roof: roof, gain: gain, pos: [], uv: [], idx: [], n: 0 });
+            };
+            var put = function (g, v, uv) {   // a vertex in the part's frame → the room's metres
+                var lx = pp[0] + v[0] * pc + v[2] * ps, ly = pp[1] + v[1], lz = pp[2] - v[0] * ps + v[2] * pc;
+                g.pos.push(row.x + lx * rc + lz * rs, base + ly, row.z - lx * rs + lz * rc); g.uv.push(uv[0], uv[1]);
+                return g.n++;
+            };
+            var quad = function (key, a, b, c, d, w, h, tn) {   // anticlockwise seen from outside; w × h = its size in metres (the sheet's repeats)
+                var g = grp(key, tn), u = fit ? 1 : w / mu, v = fit ? 1 : h / mv;
+                var i0 = put(g, a, [0, 0]), i1 = put(g, b, [u, 0]), i2 = put(g, c, [u, v]), i3 = put(g, d, [0, v]);
+                g.idx.push(i0, i1, i2, i0, i2, i3);
+            };
+            var tri = function (key, a, b, c, w, h, tn) {
+                var g = grp(key, tn), u = fit ? 1 : w / mu, v = fit ? 1 : h / mv;
+                var i0 = put(g, a, [0, 0]), i1 = put(g, b, [u, 0]), i2 = put(g, c, [u / 2, v]);
+                g.idx.push(i0, i1, i2);
+            };
+            var S = P.size || [1, 1, 1], key = P.key || null, tT = (P.tintTop != null) ? P.tintTop : (P.keyTop ? 0xffffff : null), tE = (P.tintEnd != null) ? P.tintEnd : (P.keyEnd ? 0xffffff : null);
+            if (P.s === 'box') {
+                var w = S[0] / 2, h = S[1], d = S[2] / 2;
+                if (P.sides !== false) {
+                    var fc = P.faces || 'fblr';
+                    if (fc.indexOf('f') >= 0) quad(key, [-w, 0, d], [w, 0, d], [w, h, d], [-w, h, d], 2 * w, h);
+                    if (fc.indexOf('b') >= 0) quad(key, [w, 0, -d], [-w, 0, -d], [-w, h, -d], [w, h, -d], 2 * w, h);
+                    if (fc.indexOf('r') >= 0) quad(key, [w, 0, d], [w, 0, -d], [w, h, -d], [w, h, d], 2 * d, h);
+                    if (fc.indexOf('l') >= 0) quad(key, [-w, 0, -d], [-w, 0, d], [-w, h, d], [-w, h, -d], 2 * d, h);
+                }
+                if (P.top !== false) quad(P.keyTop || key, [-w, h, d], [w, h, d], [w, h, -d], [-w, h, -d], 2 * w, 2 * d, tT);
+                if (P.under) quad(P.keyUnder || P.keyTop || key, [-w, 0, -d], [w, 0, -d], [w, 0, d], [-w, 0, d], 2 * w, 2 * d);
+            } else if (P.s === 'cyl') {
+                var r = +P.r || 1, r2 = (P.r2 != null) ? +P.r2 : r, hh = +P.h || 1, arc = Math.min(360, +P.arc || 360) * D2R, a0 = (+P.a0 || 0) * D2R;
+                var seg = Math.max(3, Math.min(64, Math.round((P.seg || 16) * (arc / (2 * Math.PI)) + 0.49))), ri = +P.ri || 0, sl = Math.hypot(hh, r - r2);
+                var shell = function (ra, rb, inside) {
+                    var g = grp(key), lo = [], hi = [];
+                    for (var i = 0; i <= seg; i++) {
+                        var t = a0 + arc * i / seg, cx = Math.cos(t), cz = Math.sin(t), u = (inside ? 1 : -1) * arc * i / seg * Math.max(ra, rb) / mu;
+                        lo.push(put(g, [cx * ra, 0, cz * ra], [fit ? i / seg : u, 0])); hi.push(put(g, [cx * rb, hh, cz * rb], [fit ? i / seg : u, fit ? 1 : sl / mv]));
+                    }
+                    for (var j = 0; j < seg; j++) { if (inside) g.idx.push(lo[j], lo[j + 1], hi[j + 1], lo[j], hi[j + 1], hi[j]); else g.idx.push(lo[j + 1], lo[j], hi[j], lo[j + 1], hi[j], hi[j + 1]); }
+                };
+                shell(r, r2, false);
+                if (ri > 0) shell(ri, Math.max(0.01, ri * (r2 / r)), true);
+                if (P.cap !== false && r2 > 0.01) {
+                    var gt = grp(P.keyTop || key, tT), ri2 = ri > 0 ? ri * (r2 / r) : 0, ring = [], inner = [], cidx = -1;
+                    for (var i2 = 0; i2 <= seg; i2++) {
+                        var t2 = a0 + arc * i2 / seg, x2 = Math.cos(t2), z2 = Math.sin(t2);
+                        ring.push(put(gt, [x2 * r2, hh, z2 * r2], [x2 * r2 / mu, z2 * r2 / mv]));
+                        if (ri2 > 0) inner.push(put(gt, [x2 * ri2, hh, z2 * ri2], [x2 * ri2 / mu, z2 * ri2 / mv]));
+                    }
+                    if (!(ri2 > 0)) cidx = put(gt, [0, hh, 0], [0, 0]);
+                    for (var j2 = 0; j2 < seg; j2++) { if (ri2 > 0) gt.idx.push(inner[j2], ring[j2 + 1], ring[j2], inner[j2], inner[j2 + 1], ring[j2 + 1]); else gt.idx.push(cidx, ring[j2 + 1], ring[j2]); }
+                }
+                if (ri > 0 && arc < 2 * Math.PI - 1e-3) {   // a curved wall's two ends
+                    var e0 = [Math.cos(a0), Math.sin(a0)], e1 = [Math.cos(a0 + arc), Math.sin(a0 + arc)], k2 = r2 / r;
+                    quad(key, [e0[0] * ri, 0, e0[1] * ri], [e0[0] * r, 0, e0[1] * r], [e0[0] * r2, hh, e0[1] * r2], [e0[0] * ri * k2, hh, e0[1] * ri * k2], r - ri, hh);
+                    quad(key, [e1[0] * r, 0, e1[1] * r], [e1[0] * ri, 0, e1[1] * ri], [e1[0] * ri * k2, hh, e1[1] * ri * k2], [e1[0] * r2, hh, e1[1] * r2], r - ri, hh);
+                }
+            } else if (P.s === 'dome') {
+                var dr = +P.r || 1, dh = (P.h != null) ? +P.h : dr, drz = (P.rz != null) ? +P.rz : dr, ds2 = Math.max(6, Math.min(48, Math.round(P.seg || 16))), rg = Math.max(2, Math.min(16, Math.round(P.rings || 6)));
+                var gd = grp(key), grid = [];
+                for (var a2 = 0; a2 <= rg; a2++) {
+                    var ph = Math.PI / 2 * a2 / rg, cp = Math.cos(ph), sp = Math.sin(ph), rowv = [];
+                    for (var b2 = 0; b2 <= ds2; b2++) { var th = (+P.a0 || 0) * D2R + Math.min(360, +P.arc || 360) * D2R * b2 / ds2; rowv.push(put(gd, [dr * cp * Math.cos(th), dh * sp, drz * cp * Math.sin(th)], fit ? [b2 / ds2, a2 / rg] : [-th * dr / mu, ph * Math.max(dr, dh) / mv])); }
+                    grid.push(rowv);
+                }
+                for (var a3 = 0; a3 < rg; a3++) for (var b3 = 0; b3 < ds2; b3++) gd.idx.push(grid[a3][b3 + 1], grid[a3][b3], grid[a3 + 1][b3], grid[a3][b3 + 1], grid[a3 + 1][b3], grid[a3 + 1][b3 + 1]);
+            } else if (P.s === 'roof') {
+                var ov = +P.over || 0, bw = S[0] / 2, W2 = bw + ov, rh = S[1], D2 = S[2] / 2 + ov, form = P.form || 'gable', kE = P.keyEnd || key, sl2 = Math.hypot(rh, D2);
+                if (form === 'gable') {
+                    quad(key, [-W2, 0, D2], [W2, 0, D2], [W2, rh, 0], [-W2, rh, 0], 2 * W2, sl2);
+                    quad(key, [W2, 0, -D2], [-W2, 0, -D2], [-W2, rh, 0], [W2, rh, 0], 2 * W2, sl2);
+                    tri(kE, [bw, 0, D2], [bw, 0, -D2], [bw, rh, 0], 2 * D2, rh, tE); tri(kE, [-bw, 0, -D2], [-bw, 0, D2], [-bw, rh, 0], 2 * D2, rh, tE);
+                } else if (form === 'hip' || form === 'pyramid') {
+                    var rx = form === 'pyramid' ? 0 : Math.max(0, W2 - D2);
+                    quad(key, [-W2, 0, D2], [W2, 0, D2], [rx, rh, 0], [-rx, rh, 0], 2 * W2, sl2);
+                    quad(key, [W2, 0, -D2], [-W2, 0, -D2], [-rx, rh, 0], [rx, rh, 0], 2 * W2, sl2);
+                    tri(key, [W2, 0, D2], [W2, 0, -D2], [rx, rh, 0], 2 * D2, Math.hypot(rh, W2 - rx)); tri(key, [-W2, 0, -D2], [-W2, 0, D2], [-rx, rh, 0], 2 * D2, Math.hypot(rh, W2 - rx));
+                } else if (form === 'shed') {
+                    quad(key, [-W2, 0, D2], [W2, 0, D2], [W2, rh, -D2], [-W2, rh, -D2], 2 * W2, Math.hypot(rh, 2 * D2));
+                    quad(kE, [W2, 0, -D2], [-W2, 0, -D2], [-W2, rh, -D2], [W2, rh, -D2], 2 * W2, rh, tE);
+                    tri(kE, [W2, 0, D2], [W2, 0, -D2], [W2, rh, -D2], 2 * D2, rh, tE); tri(kE, [-W2, 0, -D2], [-W2, 0, D2], [-W2, rh, -D2], 2 * D2, rh, tE);
+                } else if (form === 'barrel') {
+                    var bs = Math.max(4, Math.min(32, Math.round(P.seg || 10))), gb = grp(key), L0 = [], R0 = [], arcL = 0, prev = null;
+                    for (var bi = 0; bi <= bs; bi++) {
+                        var an = Math.PI * bi / bs, bz = D2 * Math.cos(an), by = rh * Math.sin(an);
+                        if (prev) arcL += Math.hypot(bz - prev[0], by - prev[1]); prev = [bz, by];
+                        L0.push(put(gb, [-W2, by, bz], [0, fit ? bi / bs : arcL / mv])); R0.push(put(gb, [W2, by, bz], [fit ? 1 : 2 * W2 / mu, fit ? bi / bs : arcL / mv]));
+                    }
+                    for (var bj = 0; bj < bs; bj++) gb.idx.push(L0[bj], R0[bj], R0[bj + 1], L0[bj], R0[bj + 1], L0[bj + 1]);
+                    [1, -1].forEach(function (sd) {   // the two end walls: a fan under the vault
+                        var ge = grp(kE, tE), c0 = put(ge, [sd * bw, 0, 0], [0.5 * 2 * D2 / mu, 0]), ring2 = [];
+                        for (var ei = 0; ei <= bs; ei++) { var ea = Math.PI * ei / bs, ez = D2 * Math.cos(ea), ey = rh * Math.sin(ea); ring2.push(put(ge, [sd * bw, ey, ez], [(D2 - ez) / mu, ey / mv])); }
+                        for (var ej = 0; ej < bs; ej++) { if (sd > 0) ge.idx.push(c0, ring2[ej + 1], ring2[ej]); else ge.idx.push(c0, ring2[ej], ring2[ej + 1]); }
+                    });
+                }
+                if (ov > 0 && form !== 'shed') quad(P.keyUnder || key, [-W2, 0, -D2], [W2, 0, -D2], [W2, 0, D2], [-W2, 0, D2], 2 * W2, 2 * D2);
+                if (form === 'shed' && P.under) quad(P.keyUnder || key, [-W2, 0, D2], [-W2, rh, -D2], [W2, rh, -D2], [W2, 0, D2], 2 * D2, 2 * W2);
+            } else if (P.s === 'quad') {
+                var qw = S[0] / 2, qh = S[1];
+                if (P.flat) quad(key, [-qw, 0, qh / 2], [qw, 0, qh / 2], [qw, 0, -qh / 2], [-qw, 0, -qh / 2], 2 * qw, qh);
+                else if (P.hole && !fit) {   // a wall with a doorway: the hole [centre x, width, height] from the foot — the wall either side and the head over it
+                    var hx0 = Math.max(-qw, P.hole[0] - P.hole[1] / 2), hx1 = Math.min(qw, P.hole[0] + P.hole[1] / 2), hy = Math.min(qh, P.hole[2]);
+                    var gq = grp(key), pv = function (x, y) { return put(gq, [x, y, 0], [(x + qw) / mu, y / mv]); }, rect = function (x0, y0, x1, y1) { if (x1 - x0 < 0.01 || y1 - y0 < 0.01) return; var i0 = pv(x0, y0), i1 = pv(x1, y0), i2 = pv(x1, y1), i3 = pv(x0, y1); gq.idx.push(i0, i1, i2, i0, i2, i3); };
+                    rect(-qw, 0, hx0, qh); rect(hx1, 0, qw, qh); rect(hx0, hy, hx1, qh);
+                } else quad(key, [-qw, 0, 0], [qw, 0, 0], [qw, qh, 0], [-qw, qh, 0], 2 * qw, qh);
+            } else if (P.s === 'poly') {
+                var pts = (P.pts || []).slice(), area = 0, phh = +P.h || 1;
+                if (pts.length < 3) return;
+                for (var pi = 0; pi < pts.length; pi++) { var pa = pts[pi], pb = pts[(pi + 1) % pts.length]; area += pa[0] * pb[1] - pb[0] * pa[1]; }
+                if (area > 0) pts.reverse();
+                for (var pj = 0; pj < pts.length; pj++) { var qa = pts[pj], qb = pts[(pj + 1) % pts.length]; quad(key, [qa[0], 0, qa[1]], [qb[0], 0, qb[1]], [qb[0], phh, qb[1]], [qa[0], phh, qa[1]], Math.hypot(qb[0] - qa[0], qb[1] - qa[1]), phh); }
+                if (P.top !== false) {
+                    var gp = grp(P.keyTop || key, tT), ti = pts.map(function (q) { return put(gp, [q[0], phh, q[1]], [q[0] / mu, q[1] / mv]); });
+                    for (var pk = 1; pk < ti.length - 1; pk++) gp.idx.push(ti[0], ti[pk], ti[pk + 1]);
+                }
+            }
+        });
+        return G;
+    }
+    function _hqBuildArchRows(info, G, U) {
+        var neon = !!(info.gen && info.gen.neon), mats = {}, made = 0;
+        var matOf = function (b) {
+            var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0, b.gain || 1].join('|'); if (mats[id]) return mats[id];
+            var tex = b.key ? _hzTex(b.key) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
+            if (b.kind === 'over') { o.transparent = true; o.alphaTest = 0.35; o.polygonOffset = true; o.polygonOffsetFactor = -1; o.polygonOffsetUnits = -1; }
+            var m = new THREE.MeshPhongMaterial(o);
+            if (b.ds) m.side = THREE.DoubleSide;
+            m.color = new THREE.Color(b.tint);
+            if (tex) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
+            if (b.gain && b.gain !== 1) m.color.multiplyScalar(b.gain);
+            if (b.glow > 0) { m.emissive = m.color.clone(); if (tex) m.emissiveMap = tex; m.emissiveIntensity = b.glow; }
+            else m.emissive = new THREE.Color(neon ? 0x08060e : 0x0a0a0a);
+            m._ew_hzNear = true;
+            return (mats[id] = m);
+        };
+        info.arch.forEach(function (row) {
+            try {
+                var GG = _hqArchGeometry(row, HQ_TEXB.cell);
+                Object.keys(GG).forEach(function (id) {
+                    var b = GG[id]; if (!b.n) return;
+                    var pos = new Float32Array(b.pos.length);
+                    for (var i = 0; i < b.pos.length; i += 3) { pos[i] = b.pos[i] * U; pos[i + 1] = b.pos[i + 1] * U + 0.3; pos[i + 2] = b.pos[i + 2] * U; }
+                    var g = new THREE.BufferGeometry();
+                    g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2)); g.setIndex(b.idx); g.computeVertexNormals();
+                    var m = new THREE.Mesh(g, matOf(b)); m.renderOrder = b.kind === 'over' ? 2 : 1; m.castShadow = false; m._ew_hqTexBuilding = true; m._ew_hqArch = row.id || true; m.name = 'hq_arch';
+                    if (b.roof) { m._ew_hqPart = 'ceil'; m._ew_hqRoof = true; }
+                    G.add(m); made++;
+                });
+            } catch (e) { console.warn('[HQ] an architecture row failed', row && row.id, e); }
+        });
+        return made;
     }
     /* THE PACK BUILDINGS (2026-11-03, mondo on the Buildings pack's shop blocks: "incorporate those into the game like in disaster city and
        the map editor"): one of data.js HQ_PACK_BUILDINGS (a whole photo-textured model, its shop front at +Z) at a footprint `w` × `d`
@@ -71687,6 +71918,66 @@ const ThreeRenderer = (function () {
             });
         } finally { _hzKitTs = prevTs; }
         return n;
+    }
+    /* THE CITY DOORS (2026-11-13, mondo: "any new buildings you make that will have an interior need workable swinging doors, just
+       like Door HQ"): every HOLLOW texbuilding's doorway (data.js hqTexbDoor: one face square wide, HQ_SHAPE_RULES.doorH high) hangs
+       a catalogue leaf that swings open for the walker and shuts behind — the HQ's double door by default (two leaves, one on each
+       jamb), the row's `leaf` any other swinging catalogue leaf ('leaf_shabby_wood', 'leaf_security', ...), `leaf: 'none'` = the bare
+       doorway as before. The leaves swing AWAY from the walker (in when you come from the street, out when you leave), so nobody
+       walks through one. Drawn only: the walker's gap is the wall rows' own (data.js hqTexBuildingRows). One shared model per leaf
+       key, so the instance pass batches a city's worth. window.EW_NO_CITY_DOORS = the bare doorways. */
+    var HQ_CITY_DOOR = { leaf: 'leaf_lobby_glass_double', angle: 1.45, speed: 1.9, reach: 2.6 };
+    function _hqBuildTexDoors(info, G, U) {
+        if (!_hq || (typeof window !== 'undefined' && window.EW_NO_CITY_DOORS) || typeof hqTexbDoor !== 'function') return 0;
+        var cat0 = _hqData().catalogue || {}, list = _hq.cityDoors || (_hq.cityDoors = []), n = 0;
+        info.texb.forEach(function (f) {
+            if (!f.hollow || f.leaf === 'none' || (typeof hqTexbPack === 'function' && hqTexbPack(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
+            var cat = cat0[f.leaf] || cat0[HQ_CITY_DOOR.leaf]; if (!cat || !cat.file) return;
+            if (cat.open && cat.open !== 'swing') cat = cat0[HQ_CITY_DOOR.leaf];
+            try {
+                var w = Math.max(2, f.w || 8), d = Math.max(2, f.d || 8), hol = hqTexbDoor({ w: w, door: f.door }), q = -((f.rot || 0) * Math.PI / 180), c = Math.cos(q), s = Math.sin(q);
+                var lz = (d - 0.12) / 2 - 0.12, ow = hol.cw - 0.04, oh = hol.doorH, dbl = !!cat.double || !!f.leafDouble, base = f.base || 0;
+                var g = new THREE.Group(); g.name = 'hq_city_door'; g.position.set((f.x + hol.lx * c + lz * s) * U, base * U + 0.3, (f.z - hol.lx * s + lz * c) * U); g.rotation.y = q;
+                var hingeRight = !dbl && cat.hinge === 'right', pv = new THREE.Group(), pv2 = null;
+                pv.position.x = (hingeRight ? 1 : -1) * (ow / 2) * U; g.add(pv);
+                var targetH = (oh - 0.015) * U, targetW = (dbl ? ow / 2 - 0.012 : ow - 0.01) * U, yawDeg = cat.yaw || 0;
+                var mk = function () { return _miscModelInstance(_hqModelUrl(cat), true, targetH, { fit: 'height', matPick: _hqPropMatPick, onDone: function (m0, sc, bb) {
+                    var m = m0.children[0]; if (m && yawDeg) m.rotation.y = yawDeg * Math.PI / 180;
+                    var sideways = (Math.abs(yawDeg) % 180) === 90, mw = (sideways ? (bb.max.z - bb.min.z) : (bb.max.x - bb.min.x)) * sc;
+                    if (mw > 0) m0.scale.x = targetW / mw;
+                    m0.scale.z = Math.min(1, m0.scale.x);
+                    if (_hq) _hq.dirty = true;
+                } }); };
+                var lg = mk();
+                if (dbl) {
+                    lg.position.x = (ow / 4) * U; pv.add(lg);
+                    pv2 = new THREE.Group(); pv2.position.x = (ow / 2) * U; g.add(pv2);
+                    var lg2 = mk(), turn2 = new THREE.Group(); turn2.rotation.y = Math.PI; turn2.add(lg2); turn2.position.x = -(ow / 4) * U; pv2.add(turn2);
+                } else { lg.position.x = (hingeRight ? -1 : 1) * (ow / 2) * U; pv.add(lg); }
+                (_hq.doorGroup || G).add(g);
+                /* the record, in the room's metres: the doorway's middle, the way out of it (the front's normal), the reach */
+                list.push({ id: f.id || null, x: f.x + hol.lx * c + lz * s, z: f.z - hol.lx * s + lz * c, nx: s, nz: c, y: base, pv: pv, pv2: pv2, sgn: hingeRight ? -1 : 1, t: 0, applied: 0, dir: 1, reach: HQ_CITY_DOOR.reach + ow / 2 });
+                n++;
+            } catch (e) { console.warn('[HQ] a city door failed', f.id, e); }
+        });
+        return n;
+    }
+    /* the leaves' frame: open while the walker stands within reach of the doorway, away from the side he is on */
+    function _hqTickCityDoors(dt) {
+        var H = _hq, L = H && H.cityDoors; if (!L || !L.length || !H.player) return;
+        var px = H.player.x, pz = H.player.z;
+        for (var i = 0; i < L.length; i++) {
+            var D = L[i], dx = px - D.x, dz = pz - D.z;
+            if (D.t === 0 && D.applied === 0 && (Math.abs(dx) > D.reach || Math.abs(dz) > D.reach)) continue;
+            var want = (dx * dx + dz * dz <= D.reach * D.reach) ? 1 : 0;
+            if (want && D.t === 0) D.dir = (dx * D.nx + dz * D.nz) >= 0 ? 1 : -1;   // outside → the leaves swing in; inside → out
+            if (D.t === want && D.applied === want) continue;
+            D.t = want ? Math.min(1, D.t + dt * HQ_CITY_DOOR.speed) : Math.max(0, D.t - dt * HQ_CITY_DOOR.speed);
+            var k = D.t < 0.5 ? 2 * D.t * D.t : 1 - Math.pow(-2 * D.t + 2, 2) / 2, a = D.sgn * D.dir * HQ_CITY_DOOR.angle * k;
+            D.pv.rotation.y = a; if (D.pv2) D.pv2.rotation.y = -a;
+            D.applied = (D.t === want) ? want : -1;
+            H.dirty = true;
+        }
     }
     /* THE PRISM BUILDINGS (2026-10-30, mondo: "where are those other building textures that were used for the prism buildings?"): a
        texbuilding row whose `key` is a prism building (data.js HQ_TEXB_PRISMS) drawn as the city's prism lots are (_nrSpriteBuilding),
@@ -72397,7 +72688,10 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), plan = info.genPlan; if (!plan || !plan.streets || typeof _miscModelInstance !== 'function' || typeof _R2_MISC === 'undefined') return;
         var every = (typeof window !== 'undefined' && window.EW_PERF_LOW) ? 26 : 14, cap = 44, made = 0, walk = (plan.walkW || 0), lampH = 3.6 * U;
         var col = 0xffd8a0;
-        var lampMat = function (node, srcMat) { var nm = (srcMat && srcMat.name) || ''; if (nm === 'Glass') return new THREE.MeshBasicMaterial({ color: col, fog: false }); return new THREE.MeshLambertMaterial({ color: 0x23262e }); };
+        /* THE LAMPS SHARE THEIR TWO MATERIALS (2026-11-13, Disaster City's 288 lamps): one glass + one post material for every lamp, marked
+           _ew_shared, so THE INSTANCE PASS draws a cell's lamps as one InstancedMesh (a material per lamp made every lamp its own draw) */
+        var _lampMats = _hqBuildStreetLamps._mats || (_hqBuildStreetLamps._mats = (function () { var a = new THREE.MeshBasicMaterial({ color: col, fog: false }), b = new THREE.MeshLambertMaterial({ color: 0x23262e }); a._ew_shared = true; b._ew_shared = true; return { glass: a, post: b }; })());
+        var lampMat = function (node, srcMat) { var nm = (srcMat && srcMat.name) || ''; if (nm === 'Glass') return _lampMats.glass; return _lampMats.post; };
         /* THE STREET FURNITURE (2026-11-02, mondo: lamps "in the middle of a street or in a place where it doesnt make sense"): a city's lamps are
            the compile's own spots (data.js HQ_CITY_FURNITURE: the kerb line, on the squares' lines, never at a junction / a plaza / a door / a
            parked car) — `n` points out of the road, the head hangs over it. A survey from before the table keeps the old walk below. */
@@ -72454,6 +72748,9 @@ const ThreeRenderer = (function () {
         if (Lin < 1e-6 || Lout < 1e-6) return null;
         var din = [(B[0] - A[0]) / Lin, (B[1] - A[1]) / Lin], dout = [(C[0] - P[0]) / Lout, (C[1] - P[1]) / Lout];
         var dot = din[0] * dout[0] + din[1] * dout[1]; if (dot > 0.9995) return null;   // straight on: no corner
+        /* THE TURN-ROUND (THE CITY TRAFFIC, 2026-11-13): a route that doubles back on itself (the police line, a street's end) swings a half
+           circle from its lane into the lane coming back: radius = the lane's offset, its middle `r` short of the corner, so both ends meet the straights */
+        if (dot < -0.98) { var ln = Math.max(1.5, car.lane || 0), ru = Math.min(Math.PI * ln / 2, Lin * 0.45, Lout * 0.45); return { V: B, din: din, dout: dout, r: ru, sharp: 1, u: ln }; }
         var r = Math.min(HQ_TRAFFIC_TURN_R, Lin * 0.45, Lout * 0.45);
         return { V: B, din: din, dout: dout, r: r, sharp: Math.min(1, (1 - dot) / 2 * 2) };
     }
@@ -72476,6 +72773,11 @@ const ThreeRenderer = (function () {
             var kc = (i === 0) ? nSeg : 0; if (cs[kc] === undefined) cs[kc] = _hqRouteCorner(car, kc);
             var Cc = cs[kc]; if (Cc) { var duc = s - cum[kc]; if (duc > L / 2) duc -= L; if (duc < -L / 2) duc += L; if (Math.abs(duc) <= Cc.r) { pick = Cc; u = duc; } }
         }
+        if (pick && pick.u) {
+            var tu = (u + pick.r) / (2 * pick.r), ph = tu * Math.PI, lu = pick.u, nxu = -pick.din[1], nzu = pick.din[0], cu = Math.cos(ph), su = Math.sin(ph);
+            var cxu = pick.V[0] - pick.din[0] * pick.r, czu = pick.V[1] - pick.din[1] * pick.r;
+            return { x: cxu + nxu * lu * cu + pick.din[0] * lu * su, z: czu + nzu * lu * cu + pick.din[1] * lu * su, dx: -nxu * su + pick.din[0] * cu, dz: -nzu * su + pick.din[1] * cu, turn: 1 };
+        }
         if (pick) {
             var t = (u + pick.r) / (2 * pick.r), r = pick.r, V = pick.V, a0 = (1 - t) * (1 - t), a1 = 2 * (1 - t) * t, a2 = t * t;
             var x = a0 * (V[0] - pick.din[0] * r) + a1 * V[0] + a2 * (V[0] + pick.dout[0] * r);
@@ -72488,6 +72790,133 @@ const ThreeRenderer = (function () {
         var dx = (b[0] - a[0]) / segL, dz = (b[1] - a[1]) / segL;
         return { x: a[0] + (b[0] - a[0]) * tt + (-dz) * car.lane, z: a[1] + (b[1] - a[1]) * tt + dx * car.lane, dx: dx, dz: dz, turn: 0 };
     }
+    /* ── THE CITY TRAFFIC (2026-11-13, mondo: "traffic lights and intersections planned out for actual traffic and car routes. Bus sections
+       placed in each district with a bus route") ──
+       THE SIGNALS (info.signals, rows { x, z, arms: 'NESW', flash, off }): at each junction one mast per arm that traffic comes in on. The
+       mast is the Pizzeria pack's `street_signal` (a pole on the kerb corner to the driver's right, its arm reaching in over his lane, a
+       three-faced head: MEASURED in Blender, _HQ_SIGNAL.foot / faces / lensY are metres off the GLB's box middle, the face `own` looks back
+       down its own arm, the other two look down the cross street). The file's lenses are painted all lit, so every lens wears a flat disc
+       that this code paints bright or dark. The clock: `green` s, `yellow` s, `allRed` s for one street, then the same for the other; `flash`
+       = every face blinks red (the police hold the junction). Cars read `sig.state.ns / .ew` ('g' 'y' 'r' 'f') at their stop lines
+       (_hqRouteMarks, _hqTickTraffic). THE BUS STOPS (info.busStops, rows { x, z, name, end, signs: [{ x, z, ns }] }): a bus on a `bus`
+       route waits `busWait` s where its route passes a stop; each stop's sign poles are the Bus stop pack's `bus_stop_sign`.
+       Every junction and stop is one group in the plot chunks' list (not drawn past `farM` or off camera). Off: window.EW_HQ_NO_SIGNALS. */
+    var _HQ_SIGNAL = { green: 14, yellow: 3, allRed: 1.5, stopBack: 11.5, footOut: 7.9, farM: 230, carFarM: 210, busWait: 8, jamS: 5,
+        foot: [-2.585, 2.065], lensY: [5.71, 5.34, 4.97], lensR: 0.14,
+        faces: [{ x: 2.135, z: -1.705, nx: -1, nz: 0, own: true }, { x: 2.685, z: -2.225, nx: 0, nz: -1 }, { x: 2.715, z: -1.235, nx: 0, nz: 1 }],
+        /* the arm a driver comes in on: the turn that points the `own` face back at him, the kerb corner to his right (x east, z south) */
+        arm: { S: { ry: Math.PI / 2, cx: 1, cz: 1, axis: 'ns' }, W: { ry: 0, cx: -1, cz: 1, axis: 'ew' }, N: { ry: -Math.PI / 2, cx: -1, cz: -1, axis: 'ns' }, E: { ry: Math.PI, cx: 1, cz: -1, axis: 'ew' } },
+        lit: [0xff2a1a, 0xffb000, 0x22ff66], dark: [0x3a0c08, 0x3a2a06, 0x06301a] };
+    /* a group the plot chunks cull: its reach is a marker's own sphere (the models land later) */
+    function _hqSignalChunk(H, G, x, y, z, reachM, farM) {
+        var U = _hqUnits(), g = new THREE.Group(); g.position.set(x * U, y * U, z * U);
+        g._ew_hqSignal = 1;   // never in the static batch (its lenses change colour; _HQ_BATCH_FLAG_OFF)
+        G.add(g); G.updateWorldMatrix(true, false);
+        var mk = new THREE.Object3D(); mk._ew_ckRec = { C: new THREE.Vector3(x * U, (y + 3) * U, z * U).applyMatrix4(G.matrixWorld), R: reachM * U }; g.add(mk);
+        if (typeof _hqChunkReg === 'function') _hqChunkReg(H, g, farM * U);
+        return g;
+    }
+    function _hqSignalMat(hex) { var m = new THREE.MeshBasicMaterial({ color: hex }); m.fog = false; return m; }
+    function _hqBuildSignals(room, info, G) {
+        var H = _hq, rows = info.signals || [];
+        if (!rows.length || H.signals || (typeof window !== 'undefined' && window.EW_HQ_NO_SIGNALS)) return;
+        var U = _hqUnits(), K = _HQ_SIGNAL, disc = new THREE.CircleGeometry(K.lensR * U, 10), sigs = [];
+        rows.forEach(function (row, ri) {
+            var gy = hqTerrainHeight(info, row.x, row.z), g = _hqSignalChunk(H, G, row.x, gy, row.z, 13, K.farM);
+            var sig = { x: row.x, z: row.z, flash: !!row.flash, off: (row.off != null) ? +row.off : ri * 9, state: { ns: 'r', ew: 'r' }, mats: { ns: [], ew: [] }, glows: [], last: '' };
+            ['ns', 'ew'].forEach(function (ax) { for (var c = 0; c < 3; c++) sig.mats[ax].push(_hqSignalMat(K.dark[c])); });
+            String(row.arms || '').split('').forEach(function (a) {
+                var A = K.arm[a]; if (!A) return;
+                var mast = new THREE.Group(), cs = Math.cos(A.ry), sn = Math.sin(A.ry);
+                /* the pole's foot on the kerb corner: the group's middle = that corner less the turned foot offset */
+                var fx = K.foot[0] * cs + K.foot[1] * sn, fz = -K.foot[0] * sn + K.foot[1] * cs;
+                mast.position.set((A.cx * K.footOut - fx) * U, 0, (A.cz * K.footOut - fz) * U); mast.rotation.y = A.ry;
+                var inst = (typeof _hqCatGlb === 'function') ? _hqCatGlb('street_signal', U, {}) : null; if (inst) mast.add(inst);
+                var cross = (A.axis === 'ns') ? 'ew' : 'ns';
+                K.faces.forEach(function (f) {
+                    var ax = f.own ? A.axis : cross;
+                    for (var c = 0; c < 3; c++) {
+                        var d = new THREE.Mesh(disc, sig.mats[ax][c]);
+                        d.position.set((f.x + f.nx * 0.03) * U, K.lensY[c] * U, (f.z + f.nz * 0.03) * U); d.rotation.y = Math.atan2(f.nx, f.nz);
+                        d._ew_pixelate = true; mast.add(d);
+                    }
+                });
+                /* the head's glow over the lane, in its own street's colour */
+                if (typeof _hzGlowSprite === 'function') { var gl = _hzGlowSprite(1.5 * U, 0xffffff, 0.3, 0.0, 0.0, 0.0); gl.position.set(2.5 * U, K.lensY[1] * U, -1.72 * U); mast.add(gl); sig.glows.push({ s: gl, axis: A.axis }); }
+                g.add(mast);
+            });
+            sigs.push(sig);
+        });
+        H.signals = sigs; H.signalT = 0;
+        _hqTickSignals(0);
+        H.tickers.push(function (dt) { _hqTickSignals(dt); });
+    }
+    function _hqTickSignals(dt) {
+        var H = _hq, sigs = H && H.signals; if (!sigs || H.paused) return;
+        var K = _HQ_SIGNAL, half = K.green + K.yellow + K.allRed;
+        H.signalT = (H.signalT || 0) + Math.min(dt, 0.1);
+        for (var i = 0; i < sigs.length; i++) {
+            var sg = sigs[i], ns, ew;
+            if (sg.flash) { ns = ew = 'f'; var on = (Math.floor(H.signalT * 1.6) % 2) === 0, keyF = on ? 'F1' : 'F0'; if (keyF === sg.last) continue; sg.last = keyF; }
+            else {
+                var t = (H.signalT + sg.off) % (half * 2), second = t >= half, u = second ? t - half : t;
+                var a = (u < K.green) ? 'g' : (u < K.green + K.yellow) ? 'y' : 'r';
+                ns = second ? 'r' : a; ew = second ? a : 'r';
+                if (ns + ew === sg.last) continue; sg.last = ns + ew;
+            }
+            sg.state.ns = ns; sg.state.ew = ew;
+            var idx = function (s) { return s === 'r' ? 0 : s === 'y' ? 1 : s === 'g' ? 2 : (sg.last === 'F1' ? 0 : -1); };
+            var paint = function (ax, s) { var k = idx(s); for (var c = 0; c < 3; c++) sg.mats[ax][c].color.setHex(c === k ? K.lit[c] : K.dark[c]); return k; };
+            var kn = paint('ns', ns), ke = paint('ew', ew);
+            sg.glows.forEach(function (gw) { var k = (gw.axis === 'ns') ? kn : ke; gw.s.visible = k >= 0; if (k >= 0 && gw.s.material && gw.s.material.color) gw.s.material.color.setHex(K.lit[k]); });
+        }
+    }
+    function _hqBuildBusStops(room, info, G) {
+        var H = _hq, rows = info.busStops || [];
+        if (!rows.length || H.busStops || (typeof window !== 'undefined' && window.EW_HQ_NO_SIGNALS) || typeof _hqCatGlb !== 'function') return;
+        var U = _hqUnits();
+        rows.forEach(function (row) {
+            if (!row.signs || !row.signs.length) return;
+            var gy = hqTerrainHeight(info, row.x, row.z), g = _hqSignalChunk(H, G, row.x, gy, row.z, 12, 150);
+            row.signs.forEach(function (sn) {
+                var inst = _hqCatGlb('bus_stop_sign', U, {}); if (!inst) return;
+                var piv = new THREE.Group(); piv.add(inst);
+                piv.position.set((sn.x - row.x) * U, (hqTerrainHeight(info, sn.x, sn.z) - gy) * U, (sn.z - row.z) * U); piv.rotation.y = sn.ns ? Math.PI / 2 : 0;
+                g.add(piv);
+            });
+        });
+        H.busStops = rows;
+    }
+    /* a route's marks: `stops` = where its line crosses a signal's stop line ({ s, sig, axis }), `halts` = where it passes a bus stop
+       ({ s, name }; an `end` stop only the first time round, after the turn-round). `s` = metres along the route. */
+    function _hqRouteMarks(pts, cum, L, loop, sigs, busStops) {
+        var out = { stops: null, halts: null }, K = _HQ_SIGNAL;
+        var hits = function (px, pz, reach) {
+            var r = [];
+            for (var i = 0; i + 1 < pts.length; i++) {
+                var ax = pts[i][0], az = pts[i][1], bx = pts[i + 1][0], bz = pts[i + 1][1], sl = cum[i + 1] - cum[i]; if (sl < 1e-6) continue;
+                var t = ((px - ax) * (bx - ax) + (pz - az) * (bz - az)) / (sl * sl); if (t < -1e-4 || t > 1 + 1e-4) continue;
+                t = Math.max(0, Math.min(1, t));
+                if (Math.hypot(ax + (bx - ax) * t - px, az + (bz - az) * t - pz) > reach) continue;
+                var s = cum[i] + t * sl;
+                if (r.some(function (e) { var d = Math.abs(e - s); return d < 1 || (loop && Math.abs(d - L) < 1); })) continue;
+                r.push(s);
+            }
+            return r;
+        };
+        var axisAt = function (s) { var i = 0; while (i + 2 < cum.length && cum[i + 1] <= s) i++; return Math.abs(pts[i + 1][0] - pts[i][0]) > Math.abs(pts[i + 1][1] - pts[i][1]) ? 'ew' : 'ns'; };
+        if (sigs && sigs.length) {
+            var st = [];
+            sigs.forEach(function (sg) { hits(sg.x, sg.z, 2).forEach(function (sc) { var s = sc - K.stopBack; if (s < 0) { if (!loop) return; s += L; } st.push({ s: s, sig: sg, axis: axisAt(s) }); }); });
+            if (st.length) out.stops = st;
+        }
+        if (busStops && busStops.length) {
+            var hl = [];
+            busStops.forEach(function (bs) { var hs = hits(bs.x, bs.z, 3).sort(function (a, b) { return a - b; }); if (bs.end) hs = hs.slice(0, 1); hs.forEach(function (s) { hl.push({ s: s, name: bs.name }); }); });
+            if (hl.length) out.halts = hl;
+        }
+        return out;
+    }
     function _hqBuildTraffic(room, info, G, TM, rng) {
         var U = _hqUnits(), H = _hq, routes = info.traffic || [];
         if (!routes.length || H.traffic || (typeof window !== 'undefined' && window.EW_HQ_NO_TRAFFIC)) return;
@@ -72498,6 +72927,7 @@ const ThreeRenderer = (function () {
                 var pts = rt.loop ? rt.pts.concat([rt.pts[0]]) : rt.pts, cum = [0];
                 for (var i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
                 var L = cum[cum.length - 1]; if (L < 6) return;
+                var marks = _hqRouteMarks(pts, cum, L, !!rt.loop, H.signals, rt.bus ? info.busStops : null);   // THE CITY TRAFFIC: this route's stop lines and bus stops
                 var n = Math.max(1, rt.n | 0); if (typeof window !== 'undefined' && window.EW_PERF_LOW) n = Math.max(1, Math.ceil(n / 2));
                 for (var c = 0; c < n; c++) {
                     var kind = rt.kinds[c % rt.kinds.length];
@@ -72508,12 +72938,12 @@ const ThreeRenderer = (function () {
                     var Lp = (g._ew_lamps !== undefined) ? g._ew_lamps : { hx: 0.6 * U, hy: 0.7 * U, hz: (len / 2 + 0.1) * U, tx: 0.6 * U, ty: 0.75 * U, tz: -(len / 2 + 0.05) * U };
                     if (Lp) [-1, 1].forEach(function (sx) { var hl = _hzGlowSprite(0.42 * U, 0xfff2c8, 0.55, 0.0, 0.0, 0.0); hl.position.set(sx * Lp.hx, Lp.hy, Lp.hz); g.add(hl); var tl = _hzGlowSprite(0.28 * U, 0xff3030, 0.5, 0.0, 0.0, 0.0); tl.position.set(sx * Lp.tx, Lp.ty, Lp.tz); g.add(tl); });
                     g._ew_hqCar = kind; G.add(g);
-                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, len: len, hitT: 0 });
+                    cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
                 }
             });
         } finally { _hzKitTs = prevTs; }
         if (!cars.length) return;
-        cars.forEach(function (car) { var p = _hqRoutePose(car, car.s); car.g.position.set(p.x * U, hqTerrainHeight(info, p.x, p.z) * U + 0.3, p.z * U); car.g.rotation.y = Math.atan2(p.dx, p.dz); });
+        cars.forEach(function (car) { var p = _hqRoutePose(car, car.s); car.g.position.set(p.x * U, hqTerrainHeight(info, p.x, p.z) * U + 0.3, p.z * U); car.g.rotation.y = Math.atan2(p.dx, p.dz); car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; });
         H.traffic = cars;
         H.tickers.push(function (dt) { _hqTickTraffic(dt); });
     }
@@ -72525,15 +72955,52 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < cars.length; i++) {
             var car = cars[i], adv = car.v * dt;
             /* follow the car ahead on the same route: never closer than a length and a bit */
-            var gap = Infinity, leadLength = car.len;
-            for (var j = 0; j < cars.length; j++) { if (j === i || cars[j].route !== car.route) continue; var d = cars[j].s - car.s; if (car.loop) { d = ((d % car.L) + car.L) % car.L; } if (d > 0 && d < gap) { gap = d; leadLength = cars[j].len; } }
+            var gap = Infinity, leadLength = car.len, lead = null;
+            /* THE CITY TRAFFIC: `hold` = why it stands, 0 = at a red or a bus stop, n = queued behind n cars that are, -1 = no such reason */
+            var hold = -1, crossBlk = false;
+            for (var j = 0; j < cars.length; j++) { if (j === i || cars[j].route !== car.route) continue; var d = cars[j].s - car.s; if (car.loop) { d = ((d % car.L) + car.L) % car.L; } if (d > 0 && d < gap) { gap = d; leadLength = cars[j].len; lead = cars[j]; } }
             var need = (car.len + leadLength) / 2 + 2.5;
             /* THE TURN: brake into a bend (looked for a car-length ahead), pull away after it — the speed eases, never snaps */
             var tAhead = Math.max(_hqRoutePose(car, car.s).turn || 0, _hqRoutePose(car, (car.s + car.len + 3) % car.L).turn || 0);
             var vWant = car.v * (1 - 0.5 * tAhead);
             car.vNow = (car.vNow == null) ? vWant : car.vNow + (vWant - car.vNow) * Math.min(1, dt * 2.2);
             adv = car.vNow * dt;
-            if (gap - adv < need) adv = Math.max(0, gap - need);
+            if (gap - adv < need) { adv = Math.max(0, gap - need); if (lead && lead.hold >= 0 && lead.hold < 20) hold = lead.hold + 1; }
+            /* THE CITY TRAFFIC (2026-11-13): the car ahead in this lane on ANOTHER route (the ring, the through traffic and the buses share the avenues) */
+            if (car.jamFree > 0) car.jamFree -= dt;
+            else for (var j2 = 0; j2 < cars.length; j2++) {
+                var o2 = cars[j2]; if (j2 === i || o2.route === car.route || o2.x == null || car.x == null) continue;
+                var rx2 = o2.x - car.x, rz2 = o2.z - car.z, al2 = rx2 * car.dx + rz2 * car.dz; if (al2 <= 0 || al2 > 30) continue;
+                if (Math.abs(-rx2 * car.dz + rz2 * car.dx) > 1.8 || o2.dx * car.dx + o2.dz * car.dz < 0.5) continue;
+                /* two cars turning into one lane each see the other ahead: the first in the list goes */
+                if (i < j2 && -rx2 * o2.dx - rz2 * o2.dz > 0 && Math.abs(rx2 * o2.dz - rz2 * o2.dx) <= 1.8) continue;
+                var need2 = (car.len + o2.len) / 2 + 2.5;
+                if (al2 - adv < need2) { adv = Math.max(0, al2 - need2); if (o2.hold >= 0 && o2.hold < 20) hold = Math.max(hold, o2.hold + 1); else crossBlk = true; }
+            }
+            /* THE SIGNALS: a red or a yellow it can still stop for holds the nose at the stop line; the speed falls with the room left */
+            if (car.stops) for (var q = 0; q < car.stops.length; q++) {
+                var st = car.stops[q], dS = st.s - car.s; if (car.loop) { if (dS < -car.L / 2) dS += car.L; else if (dS > car.L / 2) dS -= car.L; }
+                var dn = dS - car.len / 2; if (dn < -1 || dn > 18) continue;
+                var sg = st.sig.state[st.axis]; if (sg === 'g' || sg === 'f' || (sg === 'y' && dn < 3)) continue;
+                var room = Math.max(0, dn - 0.4); if (car.vNow > room * 1.4 + 0.3) car.vNow = room * 1.4 + 0.3;
+                adv = Math.min(adv, car.vNow * dt, room); hold = 0;
+            }
+            /* THE BUS LINE: a bus pulls up at each of its stops and waits there */
+            if (car.halts) {
+                if (car.dwell > 0) { car.dwell -= dt; adv = 0; car.vNow = 0; hold = 0; }
+                else for (var hq = 0; hq < car.halts.length; hq++) {
+                    if (hq === car.lastHalt) continue;
+                    var dH = car.halts[hq].s - car.s; if (car.loop) { if (dH < -car.L / 2) dH += car.L; else if (dH > car.L / 2) dH -= car.L; }
+                    if (dH < -0.5 || dH > 16) continue;
+                    var roomH = Math.max(0, dH); if (car.vNow > roomH * 1.4 + 0.3) car.vNow = roomH * 1.4 + 0.3;
+                    adv = Math.min(adv, car.vNow * dt, roomH);
+                    if (dH - adv < 0.3) { car.dwell = _HQ_SIGNAL.busWait; car.lastHalt = hq; }
+                    break;
+                }
+            }
+            /* a knot (cars of different routes each waiting on the next, none at a red): after `jamS` s this one drives on through */
+            car.hold = (adv < 0.002) ? hold : -1;
+            if (adv < 0.002 && crossBlk && hold < 0) { car.jam = (car.jam || 0) + dt; if (car.jam > _HQ_SIGNAL.jamS) { car.jam = 0; car.jamFree = _HQ_SIGNAL.jamS; } } else car.jam = 0;
             // Yield to pedestrians and skaters along the upcoming path, including a bend
             // or an open route's respawn. Sampling avoids driving through someone on a turn.
             if (pl) {
@@ -72553,6 +73020,8 @@ const ThreeRenderer = (function () {
             if (car.yAt) { car.g.rotation.order = 'YXZ'; car.g.rotation.x = -Math.atan((car.yAt(car.s + 2) - car.yAt(car.s - 2)) / 4); }
             else if (info.slope) { car.g.rotation.order = 'YXZ'; car.g.rotation.x = -Math.atan((hqTerrainHeight(info, p.x + p.dx * 2, p.z + p.dz * 2) - hqTerrainHeight(info, p.x - p.dx * 2, p.z - p.dz * 2)) / 4); }   // G7: pitched with the city's slope
             car.x = p.x; car.z = p.z; car.dx = p.dx; car.dz = p.dz; car.y = gy;
+            /* THE CITY TRAFFIC: a car far from the eye is not drawn (it still drives) */
+            if (H.camera) { var ce2 = H.camera.matrixWorld.elements, fx2 = car.g.position.x - ce2[12], fz2 = car.g.position.z - ce2[14], far2 = _HQ_SIGNAL.carFarM * U; var see2 = (typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL) || fx2 * fx2 + fz2 * fz2 < far2 * far2; if (car.g.visible !== see2) car.g.visible = see2; }
             if (car.hitT > 0) { car.hitT -= dt; continue; }
             /* THE HIT: the walker inside the car's box — shoved along its heading with a hop; a rider is thrown */
             if (!pl || adv <= 0 || (H.trafficHitUntil || 0) > (H.trafficTime || 0)) continue;
@@ -85100,6 +85569,7 @@ const ThreeRenderer = (function () {
             if (H.opts.onPrompt) { try { H.opts.onPrompt(t); } catch (e) {} }
         }
         _hqTickDoors(dt, key);
+        _hqTickCityDoors(dt);   // THE CITY DOORS (2026-11-13)
         _hqTickAutoEnter(t);
         _hqTickPassages();   // THE PASSAGES (2026-10-01): the dark with the depth, the crossing at `deep`
         _hqPortalTickAim();   // THE DOOR GUN (9.5): the ghost follows the aim while it is drawn
@@ -86478,6 +86948,7 @@ const ThreeRenderer = (function () {
         if (H.ready || H.landed) _hqInstTick(H, now);   // THE INSTANCE PASS (OPEN_WORLD_PLAN Phase 0): the repeated props draw as batches once the room has landed
         if (H.ready || H.landed) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
         if (H.ready || H.landed) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
+        try { _hqChunkTick(H, now); } catch (e) { if (!H._ckWarned) { H._ckWarned = true; console.warn('[HQ] the chunk tick failed — every chunk drawn', e); } try { _hqChunkHome(H); } catch (e2) {} }   // THE CHUNKS: after the camera, before the draw
         if (H.ready) { try { _mmTick(H, now); } catch (e) { if (!_mmWarned) { _mmWarned = true; console.warn('[ThreeRenderer] the memory budget failed', e); } } }   // THE MEMORY BUDGET (G1)
         if (H.keyLamp) _hqKeyLampTick(H, dt);   // THE KEY LIGHT (2026-10-24): rides with the camera in an enclosed room
         _ewRimTick((H.sky && !_hqEnclosed(H.room)) ? Math.max(0, Math.min(1, +H.sky.night || 0)) : 0);   // THE UNIT RIM LIGHT + NIGHT FILL (2026-10-25): the walk's own night, as the fight reads its (they kept the last fight's)
@@ -86486,12 +86957,17 @@ const ThreeRenderer = (function () {
         _hqFarTick(H);   // THE FAR PLANE: past the sky ring, and past the eye however far the cinematic camera flew
         _lightMatchWalk(H);   // THE SAME LIGHT COUNT: the walk carries the board's dark lights
         var fogHold = _hqFogHold(H);   // THE FOG SETTING: Scene Fog off = a fog-free draw (the mirrors' too)
+        /* THE ONE MATRIX WALK (2026-11-13, the 144-plot city: 20,700 objects): every render of the frame (the mirrors, the model
+           mask's two, the shadow map, the picture) walked the whole scene's matrices again though nothing moves between them.
+           The walk runs once here; the frame's renders skip theirs. Off: window.EW_HQ_MW_EVERY_RENDER. */
+        var mwScene = H.scene, mwHold = mwScene.matrixWorldAutoUpdate === true && !(typeof window !== 'undefined' && window.EW_HQ_MW_EVERY_RENDER);
         try {
+            if (mwHold) { mwScene.updateMatrixWorld(); mwScene.matrixWorldAutoUpdate = false; }
             if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
             var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
             if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
             else renderer.render(H.scene, H.camera);
-        } finally { _hqFogBack(fogHold); }
+        } finally { if (mwHold) mwScene.matrixWorldAutoUpdate = true; _hqFogBack(fogHold); }
         /* NO HELD FRAME ON THE WAY BACK (2026-10-25, mondo: "no freeze"): the debrief's last picture fades on the room's first
            drawn frame with the walker in it — the room's files still landing land in the live picture — and THE WAY BACK's ease
            starts with the fade, not at the room's READY */
@@ -86580,6 +87056,7 @@ const ThreeRenderer = (function () {
             try { if (rec.im.parent) rec.im.parent.remove(rec.im); rec.im.dispose(); } catch (e) {}
         });
         if (I.group && I.group.parent) I.group.parent.remove(I.group);
+        if (I.cells && H.ckList) H.ckList = H.ckList.filter(function (g) { return g._ew_instCell == null; });   // THE CHUNKS: the cells go with the pass
     }
     function _hqInstBuild(H) {
         _hqInstDrop(H);
@@ -86601,12 +87078,13 @@ const ThreeRenderer = (function () {
         if (H.shadows) [H.propGroup, H.doorGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh && !o._ew_shadowFlagged) _flagMeshShadows(o); }); });   // the shadow tick's own flags, now — a batch copies them once
         H.scene.updateMatrixWorld(true);
         var sc = _hqInstScan(H), wp = new THREE.Vector3(), added = 0;
+        var big = _hqChunkBig(H);   // THE CHUNKS: a big room's cells are groups of their own (culled, bundled one by one), its small props a cell apart
         I.adds++; I.left = 0;
         Object.keys(sc.byKey).forEach(function (key) {
             var all = sc.byKey[key];
             if (all.length + (I.per[key] || 0) < RU.min) { I.left += all.length; return; }
             var cells = {};
-            all.forEach(function (o) { o.getWorldPosition(wp); var ck = Math.floor(wp.x / cellU) + ',' + Math.floor(wp.z / cellU); (cells[ck] || (cells[ck] = [])).push(o); });
+            all.forEach(function (o) { o.getWorldPosition(wp); var ck = Math.floor(wp.x / cellU) + ',' + Math.floor(wp.z / cellU) + ((big && _hqChunkSmall(H, o)) ? '|s' : ''); (cells[ck] || (cells[ck] = [])).push(o); });
             Object.keys(cells).forEach(function (ck) {
                 var list = cells[ck];
                 if (list.length < 2) { I.left += list.length; return; }
@@ -86623,7 +87101,14 @@ const ThreeRenderer = (function () {
                             inv: new THREE.Matrix4(), C: new THREE.Vector3(), R: 0, cache: new Float64Array(list.length * 16), rel: new Uint8Array(list.length) };   // Float64: see THE STILL BATCHES in _hqInstSync
                 _hqInstFit(rec);
                 list.forEach(function (o) { o.visible = false; o._ew_instHidden = true; if (o.geometry._ew_lodBase) { o.geometry = o.geometry._ew_lodBase; o._ew_lodL = 0; } });   // a hidden original keeps its full mesh (the seat ray, the gun)
-                I.group.add(im); I.recs.push(rec); I.copies += list.length; I.batches++; added++;
+                var host = I.group;
+                if (big) {
+                    I.cells = I.cells || {};
+                    host = I.cells[ck];
+                    if (!host) { host = I.cells[ck] = new THREE.Group(); host.name = 'hq_inst_cell'; host._ew_instCell = ck; I.group.add(host); _hqChunkReg(H, host, (/\|s$/.test(ck) ? _hqChunkRules().smallFar : _hqChunkRules().instFar) * _hqUnits()); }
+                    im._ew_ckRec = rec;
+                }
+                host.add(im); I.recs.push(rec); I.copies += list.length; I.batches++; added++;
                 I.per[key] = (I.per[key] || 0) + list.length;
             });
         });
@@ -86689,6 +87174,125 @@ const ThreeRenderer = (function () {
     function _hqInstStats(H) {
         var I = H && H.inst; if (!I) return null;
         return { batches: I.batches, copies: I.copies, left: I.left, adds: I.adds };
+    }
+    /* ══ THE CHUNKS (2026-11-13, mondo in the 144-plot Disaster City, WebGPU on the Mac: 12 fps, 3.3M triangles in 13 "terrain" draws;
+       "we have the plots already, why not just make those the chunks or like a group of them") ══
+       What the readout showed: the pack fences (_spBuildRailings) were ONE mesh per fence kind for the whole 504 m room (twelve
+       meshes, 4.3M triangles): one mesh cannot be culled, so every fence of the city drew every frame, and again in the model
+       mask. The instance pass cut its copies per 64 m cell so the frustum could drop a cell, but all of it sat in ONE render
+       bundle, and a bundle is replayed unculled. In a room at least HQ_ENGINE_RULES.chunkMinSpanM across:
+         · a fence run goes to its PLOT's mesh (chunkM = 42 m, the plot), each plot a group of its own under H.chunks.root (beside
+           the shell group in the part's root);
+         · the instance pass's cells are groups of their own (I.cells);
+         · each such group is its own render bundle (_ewBunTargets), and each frame (_hqChunkTick, before the draw) a group whose
+           sphere, padded chunkPadM, is off the camera or further than fenceFarM / instFarM reads `visible = false`: not drawn in
+           the picture, the shadow map or the mask, on every renderer. Its bundle keeps its recording (no re-record when it comes
+           back).
+       Nothing is removed: the hand-over, the crossing and the leave put every fence back in the shell group (_hqChunkHome) and
+       the instance pass is dropped as it always was. Off: window.EW_HQ_NO_CHUNK_CULL (every group drawn). */
+    function _hqChunkRules() {
+        var R = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES) ? HQ_ENGINE_RULES : {};
+        return { m: (R.chunkM > 0) ? +R.chunkM : 42, minSpan: (R.chunkMinSpanM > 0) ? +R.chunkMinSpanM : 200, pad: (R.chunkPadM >= 0) ? +R.chunkPadM : 15,
+                 fenceFar: (R.fenceFarM > 0) ? +R.fenceFarM : 120, instFar: (R.instFarM > 0) ? +R.instFarM : 260,
+                 smallR: (R.instSmallM > 0) ? +R.instSmallM : 1.7, smallFar: (R.instSmallFarM > 0) ? +R.instSmallFarM : 100 };
+    }
+    /* is this copy part of a SMALL placed prop (a cone, a pot, a bin, a hydrant: the whole placement's sphere under instSmallM)?
+       Measured once per placement (the child of the room's prop / shell / door group the copy hangs under), so a lamp's small
+       parts stay with its pole */
+    function _hqChunkSmall(H, o) {
+        var q = o;
+        while (q.parent && q.parent !== H.propGroup && q.parent !== H.shellGroup && q.parent !== H.doorGroup && q.parent !== H.scene) q = q.parent;
+        if (q._ew_ckSmall == null) {
+            var b = new THREE.Box3().setFromObject(q);
+            q._ew_ckSmall = !b.isEmpty() && b.getBoundingSphere(new THREE.Sphere()).radius < _hqChunkRules().smallR * _hqUnits();
+        }
+        return q._ew_ckSmall;
+    }
+    /* is this record's room cut in chunks? (the live walk's own room only: never the battle's room, a scratch build, a neighbour) */
+    function _hqChunkBig(H) {
+        if (!H || H.field || H.ghost || H !== _hq || !H.partRoot || !H.terrain) return false;
+        var T = H.terrain; if (!(T.nx > 0 && T.nz > 0 && T.res > 0)) return false;
+        return Math.max(T.nx, T.nz) * T.res >= _hqChunkRules().minSpan;
+    }
+    function _hqChunkReg(H, g, far) {
+        g._ew_ckFar = far; g._ew_ckOut = false; g._ew_ckN = -1; g._ew_ckAt = 0; g._ew_ckSph = null;
+        (H.ckList || (H.ckList = [])).push(g);
+        return g;
+    }
+    /* the fence group of a plot (metres → its plot) */
+    function _hqChunkGroup(H, xM, zM) {
+        var RU = _hqChunkRules(), U = _hqUnits(), ci = Math.floor(xM / RU.m), cj = Math.floor(zM / RU.m), key = ci + ',' + cj;
+        var C = H.chunks;
+        if (!C) { C = H.chunks = { root: new THREE.Group(), cells: {} }; C.root.name = 'hq_chunks'; H.partRoot.add(C.root); }
+        var g = C.cells[key];
+        if (!g) { g = C.cells[key] = new THREE.Group(); g.name = 'hq_chunk'; g._ew_chunk = key; C.root.add(g); _hqChunkReg(H, g, RU.fenceFar * U); }
+        return g;
+    }
+    var _hqCkFr = null, _hqCkM = null, _hqCkBox = null, _hqCkV = null, _hqCkS = null;
+    /* a group's sphere in the world: its meshes' geometry spheres, an instance batch's own (rec.C / rec.R) */
+    function _hqChunkSphere(g) {
+        var box = _hqCkBox || (_hqCkBox = new THREE.Box3()), v = _hqCkV || (_hqCkV = new THREE.Vector3()), n = 0, ch = g.children;
+        box.makeEmpty();
+        for (var i = 0; i < ch.length; i++) {
+            var c = ch[i], r = 0;
+            if (c._ew_ckRec) { v.copy(c._ew_ckRec.C); r = c._ew_ckRec.R; }
+            else if (c.isMesh && c.geometry) {
+                if (!c.geometry.boundingSphere) c.geometry.computeBoundingSphere();
+                var bs = c.geometry.boundingSphere; if (!bs || !(bs.radius >= 0)) continue;
+                c.updateWorldMatrix(true, false);
+                v.copy(bs.center).applyMatrix4(c.matrixWorld); r = bs.radius * c.matrixWorld.getMaxScaleOnAxis();
+            } else continue;
+            box.min.x = Math.min(box.min.x, v.x - r); box.min.y = Math.min(box.min.y, v.y - r); box.min.z = Math.min(box.min.z, v.z - r);
+            box.max.x = Math.max(box.max.x, v.x + r); box.max.y = Math.max(box.max.y, v.y + r); box.max.z = Math.max(box.max.z, v.z + r);
+            n++;
+        }
+        if (!n) return null;
+        return box.getBoundingSphere(new THREE.Sphere());
+    }
+    /* per frame, before the draw: which chunk groups the camera draws */
+    function _hqChunkTick(H, now) {
+        var L = H.ckList; if (!L || !L.length) return;
+        var cam = H.camera, off = (typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL) || !cam;
+        var RU = _hqChunkRules(), pad = RU.pad * _hqUnits(), drawn = 0;
+        if (!off) {
+            if (!_hqCkFr) { _hqCkFr = new THREE.Frustum(); _hqCkM = new THREE.Matrix4(); _hqCkS = new THREE.Sphere(); }
+            cam.updateMatrixWorld();   // the camera moved this tick; its inverse is three's at the draw
+            _hqCkM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+            _hqCkFr.setFromProjectionMatrix(_hqCkM, cam.coordinateSystem);
+        }
+        var ce = cam ? cam.matrixWorld.elements : null, S = _hqCkS;
+        for (var i = L.length - 1; i >= 0; i--) {
+            var g = L[i];
+            if (!g.parent) { g.visible = true; g._ew_ckOut = false; L.splice(i, 1); continue; }
+            if (off) { if (g._ew_ckOut) { g.visible = true; g._ew_ckOut = false; } drawn++; continue; }
+            if (g._ew_ckN !== g.children.length || now - g._ew_ckAt > 2000) { g._ew_ckN = g.children.length; g._ew_ckAt = now; g._ew_ckSph = _hqChunkSphere(g); }
+            var sp = g._ew_ckSph, out = false;
+            if (sp) {
+                var dx = sp.center.x - ce[12], dy = sp.center.y - ce[13], dz = sp.center.z - ce[14];
+                if (Math.sqrt(dx * dx + dy * dy + dz * dz) - sp.radius > g._ew_ckFar) out = true;
+                else { S.center.copy(sp.center); S.radius = sp.radius + pad; out = !_hqCkFr.intersectsSphere(S); }
+            }
+            if (out !== g._ew_ckOut) { g._ew_ckOut = out; g.visible = !out; }
+            if (!out) drawn++;
+        }
+        H.ckDrawn = drawn;
+    }
+    /* every fence back in the shell group, every group drawn (the hand-over, the crossing, the leave) */
+    function _hqChunkHome(H) {
+        if (!H) return;
+        var C = H.chunks; H.chunks = null;
+        if (C) {
+            for (var k in C.cells) { var g = C.cells[k]; g.visible = true; g._ew_ckOut = false; while (g.children.length) { var c = g.children[0]; if (H.shellGroup) H.shellGroup.add(c); else g.remove(c); } }
+            if (C.root.parent) C.root.parent.remove(C.root);
+        }
+        (H.ckList || []).forEach(function (g) { g.visible = true; g._ew_ckOut = false; });
+        H.ckList = null; H.ckDrawn = 0;
+    }
+    function _hqChunkStats(H) {
+        var L = H && H.ckList; if (!L || !L.length) return null;
+        var f = 0, fd = 0, c = 0, cd = 0;
+        for (var i = 0; i < L.length; i++) { var g = L[i]; if (g._ew_chunk != null) { f++; if (!g._ew_ckOut) fd++; } else { c++; if (!g._ew_ckOut) cd++; } }
+        return { fences: f, fencesDrawn: fd, cells: c, cellsDrawn: cd, off: typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL };
     }
     /* ══ THE INSTANCE PASS IN THE FIGHT (THE PERF PASS, 2026-10-01) ══
        The walk batched its repeated props, then _hqLeave handed the originals back and the battle drew the same room
@@ -90557,7 +91161,7 @@ const ThreeRenderer = (function () {
        at once, like a `visible` write. Off: window.EW_HQ_NO_PROP_BATCH (props only) / EW_HQ_NO_BATCH (all). */
     var _hqBatchDraw = 0;   // > 0 while a renderer.render runs
     var _HQ_BATCH_FLAG_OFF = { _ew_hqInst: 1, _ew_hqCar: 1, _ew_hqSea: 1, _ew_hqOuter: 1, _ew_hqGround: 1, _ew_hqOuterSideIds: 1, _ew_hqTerrain: 1,
-                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1, _ew_text: 1 };
+                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1, _ew_text: 1, _ew_hqSignal: 1 };
     var _HQ_BATCH_MAPS = ['map', 'emissiveMap', 'alphaMap', 'normalMap', 'bumpMap', 'specularMap', 'aoMap', 'lightMap', 'envMap'];
     var _hqBatchIds = null, _hqBatchIdN = 0, _hqBatchM = null, _hqBatchM2 = null, _hqBatchN3 = null, _hqBatchV = null;
     function _hqBatchOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_BATCH; }
@@ -90877,6 +91481,7 @@ const ThreeRenderer = (function () {
         try { _hqCullReset(H); } catch (e) {}   // THE PORTALS (G1): every part drawn before the records change hands (the next tick re-picks)
         try { _hqLodReset(H); } catch (e) {}   // THE LOD LEVELS: re-picked on the new part's list
         try { _hqInstDrop(H); } catch (e) {} H._instTried = false;
+        try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: the part you leave is a neighbour now, drawn whole
         /* the part you leave: its people stand down (the walker stays), its record becomes a neighbour's */
         var Q = { id: fromId, P: {}, extra: null, opts: Object.assign({}, H.opts, { room: fromId }), gate: null, step: _HQ_STAGE_STEPS.length, built: true, attached: true, t0: t0, rel: null };
         for (var k in H) if (!_hqZoneKey(k)) Q.P[k] = H[k];
@@ -91786,6 +92391,7 @@ const ThreeRenderer = (function () {
     }
     function _hqHandoverStash(H, opts) {
         _hqHandoverDrop();
+        try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: the fences ride in the shell group again
         try { _hqBatchDropAll(H); } catch (e) {}   // THE STATIC BATCH (Phase 11): the fight takes the pieces themselves (its keep radius, its wall fade)
         if (!opts || !opts.handover || !_hqHandoverRules().handover || !H || !H.scene) return false;
         try { (H.reflectors || []).forEach(function (r) { (r.targets || []).forEach(function (t) { if (t._ew_reflectOld) { try { t.material.dispose && t.material.dispose(); } catch (e) {} t.material = t._ew_reflectOld; t._ew_reflectOld = null; } }); }); } catch (e) {}
@@ -91801,6 +92407,7 @@ const ThreeRenderer = (function () {
         var H = _hq; if (!H) return;
         if (opts && opts.handover) _lightMatchNote(H); else _lightMatch.walk = 0;   // THE SAME LIGHT COUNT: the count the fight keeps
         try { if (_hqPassFadeEl) { _hqPassFadeEl.style.opacity = '0'; _hqPassFadeEl._o = '0'; } } catch (e) {}   // THE PASSAGES: the dark is the building's (the room change's own blink covers the crossing)
+        try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: every fence back in the shell group, every group drawn
         try { _hqBatchDropAll(H); } catch (e) {}   // THE STATIC BATCH (Phase 11): every merged piece handed back before anything takes the groups
         _ewHeightFogSet(0, 1, 0, 0); _HQ_AO.w = 0;   // THE PREMIUM POLISH: the height fog and the room-box AO are the building's alone
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setMotion) ThreePost.setMotion(0); } catch (e) {}   // THE THIRD PASS 6.4: the blur is the building's
@@ -92425,6 +93032,8 @@ const ThreeRenderer = (function () {
             hqScene: function () { return _hq ? _hq.scene : null; },
             hqDoors: function () { if (!_hq) return null; var out = _hq.doors.slice(), st = _hq.stage; if (st && st.parts) for (var id in st.parts) { var P = st.parts[id].P; if (P && P.doors) out = out.concat(P.doors); } return out; },   // the door records of the room stood in + the rooms beside it (probes)
             hqInst: function () { return _hqInstStats(_hq); },
+            /* THE CITY TRAFFIC (2026-11-13): the lights' colours and every vehicle (a probe reads them: which stand at a red, which bus waits) */
+            traffic: function () { var H = _hq; if (!H) return null; return { signals: (H.signals || []).map(function (g) { return { x: g.x, z: g.z, ns: g.state.ns, ew: g.state.ew }; }), cars: (H.traffic || []).map(function (c) { return { kind: c.g._ew_hqCar, route: c.route, s: Math.round(c.s * 10) / 10, x: Math.round(c.x * 10) / 10, z: Math.round(c.z * 10) / 10, v: Math.round((c.vNow || 0) * 10) / 10, dwell: Math.round((c.dwell || 0) * 10) / 10, drawn: c.g.visible }; }) }; },
             hqText: function () { return _hqTextStats(); },   // R6: the HQ plates on the GPU vs CSS2D
             reflectors: function () { return (_hq && _hq.reflectors || []).map(function (r) { return { kind: r.kind, drawn: r.drawn, gain: r.mats[0] ? r.mats[0].uniforms.uGain.value : null }; }); },   // W4: the mirrored draws
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */

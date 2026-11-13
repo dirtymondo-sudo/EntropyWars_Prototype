@@ -13,6 +13,8 @@ A unit with two genders is one entry: the same thread does both.
 RULE FOR ALL THREE (his words): creator clothes FIRST (the creator's quarterback helmet beat the Meshy one). Look through
 `EW_MH_WEAR` / MODEL_LIST.md for pieces that fit the unit before any Meshy call; Meshy only for the pieces the creator lacks.
 
+STATUS 11-13: batch 1 first pass shipped (19 looks; antihero, atlantean, fortune teller M held back; ghost M is a pack model, left). `mpfb_shapes.glb`: after merging main ALWAYS rerun `node bake-custom-shape.js` (it rebuilds from every custom_shapes/*.json), never pick one side's file. New bake tools for all threads: `EYE=` (bake-outfit.py) + `cy=top0.155` (bake-face.py), notes in models-assets.md "BATCH 1 OF 3".
+
 ## BATCH 1 of 3 (thread "Remake unit models, batch 1 of 3", branch claude/project-thread-4vyqdm)
 1. annunaki (M)
 2. antihero (M)
@@ -94,3 +96,29 @@ witch's hat, valkraye's wings, succubus horns + tail, swordfighter's katana, sid
 Weakest, for the next pass: superhero F's cape, scarecrow's head (needs a sack), succubus bits by the hands, professor's painted glasses.
 Probe lesson: the look probe at half size (450 x 550 viewport) is about 3x faster and survives two browsers; the first unit of a run
 is shot while still loading, so put a throwaway unit first. Not seen: any of them in a battle, on WebGPU, or on the other four bodies.
+
+### Batch 3, mondo's review of sheet 1 (2026-11-13, same thread)
+- Popstar ("surely theres a bra ... in the underwear section", "her feet are poking out of her heels"): top = creator `mhw_joepal_plain_bra`
+  tinted white. THE FOOT IN THE HEEL (three-renderer.js skinCover): the skin a SHOE's own delete list names is hidden whole (a pack heel
+  is made round a foot on tiptoe; the flat forefoot lay outside it). Every pack shoe, every body.
+- Santa ("make his head bigger or add a head size slider"): THE HEAD SIZE = FACE > Head > Size (`appearance.headSize`, -1..1 = 50..150 %,
+  the head BONE scaled in the rig's tick, so hair / beard / hats / eyes follow). Santa 0.8. A random face leaves it at 0.
+- Priest ("add a cross necklace"): creator `ewm_crosspendant`.
+- Nun ("hair or hood looks messed up"): her head was bare under the coif; creator `mh_short01` brown under the veil.
+- Spy ("dress straps are messed up, hand looks disconnected"): her halter straps are painted on the T2 skin and went with it. Bake
+  `TOPCUT=0.30` (dress cut level), `ARMALLX=0.3` (painted bracelet off the bare arm), `DROP` (shoulder lump, loose bracelet, underarm
+  pouch); straps = creator `mhw_punkduck_brazilian_bikini_bra` tinted red under the dress. Six creator dresses tried: all worse.
+- Politician ("neck or shirt seam looks jagged"): NOT FIXED. The collar piece is smooth at rest; the body's wider neck crosses the cloth cup
+  Meshy closes the collar with. Tried and thrown away: smoothing the collar's edge (no change), hiding the neck under it (the hidden
+  skin's edge scallops), laying the cup on the neck (z-fight at the throat). Next: a creator shirt + tie under a T2 jacket, or a new T2 run.
+- NO WEAPONS IN AN OUTFIT (mondo 11-13 16:57, on batch 2: "dont give her a sword ... characters will hold those weapons, dont make them part
+  of the outfit"): swordfighter's creator `ewm_katana` out of her look; bake `DROP` leaves out the holstered pistols (time cop, sidekick) and
+  the sheriff's holster + revolver. The spy's thigh pouch and the sheriff's lasso stay (not weapons to hold).
+- THE MESHY HANDS (coordinator, from batch 1: "fingers look messed up"): bake `HANDCUT=1` cuts a bare hand fused to its sleeve so the
+  body's hand shows: politician, priest, shaman, superhero F. Gloved units keep their gloves.
+- REVIEW ROUND 2 (mondo 11-13 17:08, pins on the round 1 sheet). Superhero F "super jagged sleeves and cape": her Meshy cape is one shell
+  with the suit, so bake `DROPCOL="0.667,0,0.188,0.35"` cuts it out by colour (shaded folds too) and the look wears the creator's
+  `bcape_hero`; `CUFF=1 CUFFIN=0.03` saws the sleeve ends straight across the arm. Shaman "juts out at a right angle": cape cloth within
+  16 cm of the arm line followed the arm (`SLEEVER=0.07` stops it) and 22 loose leaf patches on the cape drew as black squares (bake
+  `DROP`, the shoulder leaves stay). Nun "hair still messed up": no hair, the creator's `mhw_punkduck_swim_cap` in white is her coif under
+  the veil. Popstar "more dolled up": `mh_elvs_island_princess_hair` (ten tried on screen).

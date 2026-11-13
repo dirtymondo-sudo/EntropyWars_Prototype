@@ -25,6 +25,15 @@ const r3 = v => Math.round(v * 1000) / 1000;
 const gx = c => r3(-HALF + c * C);                                 // a cell LINE (0..144) in room metres
 const gc = c => r3(-HALF + (c + 0.5) * C);                         // a cell CENTRE
 const plotOf = {}; PLAN.plots.forEach(p => { plotOf[p.id] = p; });
+/* THE DISTRICT FILES (2026-11-13, the one hook for the nine district threads): docs/disaster-city/districts/<LETTER>.js (R C F U H E I S B),
+   one per district, so no district's code lands in this tool. A file may export any of: tailor(PLAN, plotOf) = here, before the plan is read;
+   apply(ctx) = after the buildings + their door steps exist, before the street furniture (take() cells there to keep them clear);
+   build(ctx) = after every row exists. ctx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell,
+   roofB, ROOF_H, C, N, HALF }. A district edits its own rows by id ('dc:' + building id) and pushes its own rows (arch rows to lateRows). */
+const DISTRICTS = (() => { const dir = path.join(REPO, 'docs/disaster-city/districts'); return !fs.existsSync(dir) ? [] : fs.readdirSync(dir).filter(f => /^[A-Z]\.js$/.test(f)).sort().map(f => require(path.join(dir, f))); })();
+let dcCtx = null;
+const dcRun = stage => DISTRICTS.forEach(m => { if (typeof m[stage] === 'function') m[stage](dcCtx); });
+DISTRICTS.forEach(m => { if (typeof m.tailor === 'function') m.tailor(PLAN, plotOf); });
 /* THE CROSSINGS (tailoring): the plan leaves a one-cell nub where a walk crosses a road (PPPPPPPRPPPP, RRRRRRRRPRRR). A row / column that is
    mostly pavement becomes a whole paved crossing; a lone pavement cell in a carriageway becomes road. */
 PLAN.plots.forEach(p => {
@@ -84,36 +93,75 @@ const TALL = { 'Superhero Tower': 12, 'Goblin Bank': 6, 'Luxury hotel': 10, 'Cit
 /* the plan's filler buildings wear the game's painted building sprites (solid, a painted front); its shop rows the Buildings pack's shop blocks (MODEL_LIST: Elbolilloduro, CC0) */
 const FILLER = { 'Residence / annex': ['building_2', 'building_4', 'building_6', 'building_8', 'building_9'], 'Local shop': ['shop', 'building_7', 'building_10'], 'Street kiosk / annex': ['shop', 'building_5', 'building_3'], 'Workshop / store': ['building_3', 'building_10', 'building_1'] };
 const PACKED = { 'Corner shops': 'pack_bld_08', 'West shops': 'pack_bld_09', 'East shops': 'pack_bld_07', 'Tailor shops': 'pack_bld_03', 'Bookshops': 'pack_bld_04', 'Costume shops': 'pack_bld_05', 'Coffee arcade': 'pack_bld_06', 'Repair shops': 'pack_bld_00', 'Pawnshop court': 'pack_bld_09', 'Restaurant court': 'pack_bld_08' };
+/* the pack blocks' own size in metres, [along the front, deep] (data.js HQ_PACK_BUILDINGS) */
+const PACK_W = { pack_bld_00: [28.18, 19.43], pack_bld_01: [34.05, 19.51], pack_bld_02: [40.8, 22.88], pack_bld_03: [23.19, 17.15], pack_bld_04: [25.49, 18.15], pack_bld_05: [29.79, 19.1],
+    pack_bld_06: [33.45, 18.67], pack_bld_07: [24.88, 16.24], pack_bld_08: [15.52, 13.95], pack_bld_09: [16.89, 13.86] };
+/* THE PACK FIT: the block (or two / three side by side) that fills a front `fw` metres long and `fd` deep at 0.9 to 1.15 of its true size, its depth
+   stretched no more than 0.7 to 1.5 → { keys, s } or null. `want` (the plot's old pick) wins a tie. District threads: call this, never write a pack row's `w` by hand. */
+function packFit(fw, fd, want) {
+    const K = Object.keys(PACK_W); let best = null;
+    const tryRow = keys => {
+        const sum = keys.reduce((a, k) => a + PACK_W[k][0], 0), s = fw / sum; if (s < 0.9 || s > 1.15) return;
+        let zs = 0; for (const k of keys) { const z = fd / (PACK_W[k][1] * s); if (z < 0.7 || z > 1.5) return; zs += Math.abs(Math.log(z)); }
+        const cost = Math.abs(s - 1) * 4 + zs / keys.length + (keys.length - 1) * 0.15 - (keys.includes(want) ? 0.05 : 0);
+        if (!best || cost < best.cost) best = { keys, s, cost };
+    };
+    K.forEach(a => { tryRow([a]); K.forEach(b => { if (b !== a) { tryRow([a, b]); K.forEach(c => { if (c !== a && c !== b) tryRow([a, b, c]); }); } }); });
+    return best;
+}
 const PAL = ['urban:TileGeneric1a', 'grass_2', 'urban:ConcreteStriped2a', 'urban:TileGeneric2a', 'urban:TileGeneric3a', 'urban:ConcreteUnderTiles1'];   // 1 pavement · 2 grass · 3 yard concrete · 4 marble (financial) · 5 plaza paving (civic, hero plaza) · 6 bare concrete (industrial); 0 = the room's asphalt
 
 /* ── the roof-route buildings (solid tiers whose roofs are walked) ── */
 const roofB = new Set(); PLAN.roofEdges.forEach(e => { roofB.add(e.a); roofB.add(e.b); });
 const ROOF_H = 7.0;   // two storeys of 3.5 m: every roof on a route stands level with the next (a bridge is level)
 
-const features = [], props = [], bInfo = [];
+const features = [], props = [], bInfo = [], lateRows = [];
 const count = { texb: 0, roofb: 0, infill: 0, bridges: 0, escapes: 0, trees: 0 };
 
 /* ── THE BUILDINGS ── */
 PLAN.plots.forEach(p => {
     const dd = D[p.d], ox = p.x * N, oy = p.y * N;
     p.buildings.forEach((b, bi) => {
-        const x0 = ox + b.x, y0 = oy + b.y, w = b.w * C, d = b.h * C, x = r3((gx(x0) + gx(x0 + b.w)) / 2), z = r3((gx(y0) + gx(y0 + b.h)) / 2);
+        const x0 = ox + b.x, y0 = oy + b.y, x = r3((gx(x0) + gx(x0 + b.w)) / 2), z = r3((gx(y0) + gx(y0 + b.h)) / 2);
         const door = b.doors[0], side = door ? door.side : 'S';
         const rot = { S: 0, W: 90, N: 180, E: 270 }[side];
+        /* THE FRONT IS THE ROW'S `w` (2026-11-13): a texbuilding's `w` runs ALONG ITS FRONT and `d` back from it, in the building's own turned
+           frame (data.js hqTexBuildingRows), so a building that faces east or west has the plan's two sides the other way round. (They were
+           written unturned: every east / west facing building that is not square stood a quarter turn off its footprint.) */
+        const ew = side === 'E' || side === 'W', w = (ew ? b.h : b.w) * C, d = (ew ? b.w : b.h) * C;
         /* the doorway's square of the front, 1 = its left as you face the front from outside */
         let col = 0;
         if (door) { const k = side === 'S' ? (door.x - b.x) : side === 'N' ? (b.x + b.w - 1 - door.x) : side === 'E' ? (b.y + b.h - 1 - door.y) : (door.y - b.y); col = Math.round(k * C / 1.75) + 1; }   // the front's face squares are 1.75 m: the doorway is the left half of the plan's door square
         const style = pick(dd.styles);
         let st = TALL[b.name] || pick(dd.storeys);
-        const info = { id: b.id, name: b.name, plot: p.id, d: p.d, x, z, w, d2: d, side, cx0: x0, cy0: y0, cw: b.w, ch: b.h, st };
+        const info = { id: b.id, name: b.name, plot: p.id, d: p.d, x, z, w: b.w * C, d2: b.h * C, side, cx0: x0, cy0: y0, cw: b.w, ch: b.h, st };
         if (roofB.has(b.id)) {
             /* a roof-route building: a solid building tier, its flat roof the walk (the plan's inside stair is a fire escape outside) */
-            features.push({ k: 'plateau', id: 'dc:' + b.id, x, z, w: r3(w), d: r3(d), h: ROOF_H, edge: 0.3, bld: { style, seed: features.length } });
+            features.push({ k: 'plateau', id: 'dc:' + b.id, x, z, w: r3(b.w * C), d: r3(b.h * C), h: ROOF_H, edge: 0.3, bld: { style, seed: features.length } });
             info.roof = ROOF_H; count.roofb++;
         } else {
             const row = { k: 'texbuilding', id: 'dc:' + b.id, x, z, w: r3(w), d: r3(d), rot, storeys: st, style, seed: features.length };
             if (b.name === 'Church') { row.key = 'church_1'; delete row.style; }
-            else if (PACKED[b.name] && bi === 0) { row.key = PACKED[b.name]; delete row.style; }
+            else if (PACKED[b.name] && bi === 0) {
+                /* THE SHOP BLOCKS AT THEIR OWN SIZE (2026-11-13, mondo: "make sure their scale is correct, right now they are way too small and i
+                   am taller than the door"): a pack block is a whole model the engine fits to the row's `w` (one scale, the height and the
+                   doors with it), so a 33 m block on a 10 m front stood at a third of its size. packFit picks the block, or the row of blocks
+                   side by side, whose own width fills the front at 0.9 to 1.15 of true size; the front is the first door side that takes one. */
+                let fit = null, fs = side;
+                for (const dr of b.doors.length ? b.doors : [{ side }]) { const e2 = dr.side === 'E' || dr.side === 'W'; fit = packFit((e2 ? b.h : b.w) * C, (e2 ? b.w : b.h) * C, PACKED[b.name]); if (fit) { fs = dr.side; break; } }
+                if (!fit) { row.key = 'shop'; row.storeys = Math.min(st, 3); delete row.style; }   // a front no block fits at true size: the painted shop
+                else {
+                    const e2 = fs === 'E' || fs === 'W', fw = (e2 ? b.h : b.w) * C, fd = (e2 ? b.w : b.h) * C, q = { S: 0, W: 90, N: 180, E: 270 }[fs] * Math.PI / 180;
+                    let u = -fw / 2;
+                    fit.keys.forEach((k, i) => {
+                        const bw = PACK_W[k][0] * fit.s, cu = u + bw / 2; u += bw;
+                        const r2 = i === 0 ? row : { k: 'texbuilding', id: 'dc:' + b.id + '-s' + (i + 1), storeys: st, seed: 9000 + lateRows.length };
+                        r2.x = r3(x + cu * Math.cos(q)); r2.z = r3(z + cu * Math.sin(q)); r2.w = r3(bw); r2.d = r3(fd); r2.rot = { S: 0, W: 90, N: 180, E: 270 }[fs]; r2.key = k; delete r2.style;
+                        if (i > 0) { lateRows.push(r2); count.texb++; }   // written after every other row, so no other building's seed moves
+                    });
+                    count.packs = (count.packs || 0) + fit.keys.length;
+                }
+            }
             else if (FILLER[b.name]) { row.key = pick(FILLER[b.name]); row.storeys = Math.min(st, 5); delete row.style; }
             else { row.hollow = true; if (col) row.door = col; }
             features.push(row); count.texb++;
@@ -140,7 +188,7 @@ for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) {
         const x0 = horizontal ? r.a : lo, x1 = horizontal ? r.b + 1 : hi, z0 = horizontal ? lo : r.a, z1 = horizontal ? hi : r.b + 1;
         const front = r.pat === 1 ? 'a' : r.pat === 2 ? 'b' : (rnd() < 0.5 ? 'a' : 'b');
         const rot = horizontal ? (front === 'a' ? 180 : 0) : (front === 'a' ? 90 : 270);
-        const row = { k: 'texbuilding', id: 'dc:in' + count.infill, x: r3((gx(x0) + gx(x1)) / 2), z: r3((gx(z0) + gx(z1)) / 2), w: r3((x1 - x0) * C), d: r3((z1 - z0) * C), rot, storeys: deep === 1 ? pick([1, 1, 2]) : pick([1, 2, 2, 3]), seed: features.length };
+        const row = { k: 'texbuilding', id: 'dc:in' + count.infill, x: r3((gx(x0) + gx(x1)) / 2), z: r3((gx(z0) + gx(z1)) / 2), w: r3((horizontal ? x1 - x0 : z1 - z0) * C), d: r3((horizontal ? z1 - z0 : x1 - x0) * C), rot, storeys: deep === 1 ? pick([1, 1, 2]) : pick([1, 2, 2, 3]), seed: features.length };
         if (len <= 3 && rnd() < 0.55) row.key = pick(INFILL[p.d]); else row.style = pick(dd.styles);
         features.push(row); count.infill++;
         cells.forEach(q => setCell(q[0], q[1], 'I'));
@@ -178,6 +226,8 @@ const occ = new Set();
 const free = (cx, cy, ok) => { if (cx < 0 || cy < 0 || cx >= 144 || cy >= 144) return false; const ch = cellAt(cx, cy); return (ok || '.#').indexOf(ch) >= 0 && !occ.has(cx + ',' + cy); };
 const take = (cx, cy) => occ.add(cx + ',' + cy);
 bInfo.forEach(b => (plotOf[b.plot].buildings.find(q => q.id === b.id).doors || []).forEach(dr => take(plotOf[b.plot].x * N + dr.ox, plotOf[b.plot].y * N + dr.oy)));   // a door's step stays clear
+dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF };
+dcRun('apply');
 
 /* ── THE DOORS (mondo 11-13 14:10, the decision card: "Replace today's streets with it"): this room IS `site_prebuilt_downtown_streets` now, so every
    door that led to the old streets leads here. Each stands FREE (wall: 'free') where the plan has its place: the tower's on the Superhero Tower's
@@ -309,7 +359,7 @@ const put = (p, key, lx, ly, face, o) => {
     const row = { key, x: r3(-HALF + (p.x * N + lx) * C), z: r3(-HALF + (p.y * N + ly) * C) }; if (face != null) row.face = face; if (o.floor) row.floor = true;
     props.push(row); return true;
 };
-const DECOR = new Set(['city_bench', 'park_bench', 'city_bin', 'signpost', 'fire_hydrant', 'traffic_cone', 'cardboard_boxes', 'psx_planter_pot_mp_1_full', 'round_table', 'pool_umbrella']);
+const DECOR = new Set(['city_bench', 'park_bench', 'city_bin', 'signpost', 'fire_hydrant', 'traffic_cone', 'cardboard_boxes', 'psx_planter_pot_mp_1_full', 'round_table', 'pool_umbrella', 'vending_machine']);
 const at = (name, fn) => (byName[name] || []).forEach(fn);
 const tree = (p, lx, ly, kind, h) => { lx = Math.floor(lx) + 0.5; ly = Math.floor(ly) + 0.5; const cx = p.x * N + Math.floor(lx), cy = p.y * N + Math.floor(ly); if (!free(cx, cy, '.#')) return; take(cx, cy); features.push({ k: 'tree', x: r3(-HALF + (p.x * N + lx) * C), z: r3(-HALF + (p.y * N + ly) * C), kind, h }); count.trees++; };
 /* a park plot's unconnected band: a tree a square */
@@ -332,9 +382,9 @@ at('Street market', p => { put(p, 'hot_dog_stand', 1.5, 2.5, 90, { quiet: true }
     else { put(p, 'car_cop', 1.5 + (i % 3), 4.9, 100 - i * 6, { road: true, quiet: true }); put(p, 'car_cop', 9.5 - (i % 2), 7.1, 280 + i * 5, { road: true, quiet: true }); } });
 /* the hubs */
 at('Hero plaza', p => { put(p, 'fountain', 5.5, 2.5, 0, { span: [[1, 0], [0, 1], [1, 1], [-1, 0], [0, -1]] }); put(p, 'city_bench', 2.5, 1.5, 180); put(p, 'city_bench', 8.5, 1.5, 180); put(p, 'planter', 1.5, 3.5); put(p, 'planter', 10.5, 3.5); put(p, 'hot_dog_stand', 2.5, 8.5, 90); put(p, 'city_bench', 8.5, 9.5, 0); tree(p, 1.5, 9.5, 'tree_3', 3.8); tree(p, 10.5, 9.5, 'tree_3', 3.8); });
-at('Civic plaza', p => { put(p, 'fountain', 2.5, 1.9, 0, { span: [[1, 0], [-1, 0]] }); put(p, 'angel_statue', 8.5, 1.9, 180); put(p, 'city_bench', 2.5, 10.2, 0); put(p, 'city_bench', 9.5, 10.2, 0); put(p, 'planter', 1.5, 9.5); put(p, 'planter', 10.5, 9.5); });
+at('Civic plaza', p => { put(p, 'fountain', 2.5, 1.9, 0, { span: [[1, 0], [-1, 0]] }); put(p, 'angel_statue', 8.5, 1.9, 180); put(p, 'city_bench', 4.6, 10.4, 0); put(p, 'city_bench', 9.5, 10.2, 0); put(p, 'planter', 1.5, 9.5); put(p, 'planter', 10.5, 9.5); });
 at('Memorial walk', p => { put(p, 'angel_statue', 9.0, 5.9, 270, { span: [[0, 1]] }); put(p, 'planter', 8.5, 4.5); put(p, 'planter', 8.5, 7.5); put(p, 'city_bench', 2.5, 2.5, 90); put(p, 'city_bench', 2.5, 8.5, 90); tree(p, 1.5, 1.5, 'tree_3', 3.6); tree(p, 10.5, 1.5, 'tree_3', 3.6); tree(p, 1.5, 10.5, 'tree_3', 3.6); tree(p, 10.5, 10.5, 'tree_3', 3.6); });
-at('Transit square', p => { put(p, 'bus_shelter', 2.5, 8.2, 0); put(p, 'bus_shelter', 8.5, 8.2, 0); put(p, 'school_bus', 5.5, 9.8, 90, { span: [[1, 0], [-1, 0]] }); put(p, 'city_bench', 2.5, 2.5, 90); put(p, 'signpost', 4.5, 4.5); });
+at('Transit square', p => { put(p, 'bus_shelter', 2.5, 8.2, 0); put(p, 'bus_shelter', 8.5, 8.2, 0); put(p, 'school_bus', 5.5, 9.8, 90, { span: [[1, 0], [-1, 0]] }); });   // the metro entrance + the bus terminal's roof: districts/C.js
 at('Transit court', p => { put(p, 'bus_shelter', 1.5, 1.5, 90, { quiet: true }); });
 at('Bus stop court', p => { put(p, 'bus_shelter', 1.5, 9.5, 90, { quiet: true }); put(p, 'city_bench', 10.5, 1.5, 270, { quiet: true }); });
 at('Taxi rank', p => { put(p, 'car_taxi', 1.6, 1.5, 0); put(p, 'car_taxi', 10.4, 1.5, 0); put(p, 'car_taxi', 1.6, 10.2, 180); put(p, 'car_taxi', 10.4, 10.2, 180); });
@@ -349,9 +399,9 @@ at('Vendor stalls', p => { put(p, 'hot_dog_stand', 1.5, 1.5, 180, { quiet: true 
 at('Park gate', p => { tree(p, 1.5, 10.2, 'tree_3', 3.8); tree(p, 4.5, 10.2, 'tree', 3.6); tree(p, 7.5, 10.2, 'tree_3', 3.8); tree(p, 10.5, 10.2, 'tree_2', 3.6); put(p, 'park_bench', 2.5, 1.6, 180); put(p, 'park_bench', 9.5, 1.6, 180); });
 at('Canal walk', p => { tree(p, 1.5, 2.5, 'tree_3', 3.6); tree(p, 3.5, 5.5, 'tree', 3.6); tree(p, 2.5, 9.5, 'tree_3', 3.8); tree(p, 9.5, 9.5, 'tree_2', 3.6); put(p, 'park_bench', 8.5, 2.5, 270); put(p, 'park_bench', 6.5, 8.5, 0); });
 /* the civic and the working plots */
-at('Fire Station', p => { put(p, 'fire_truck', 1.5, 10.4, 90, { quiet: true, walk: true }); });
-at('Police desk', p => { put(p, 'car_cop', 1.5, 10.4, 90, { quiet: true, walk: true }); put(p, 'car_cop', 10.5, 10.4, 90, { quiet: true, walk: true }); });
-at('Military offices', p => { put(p, 'military_tank', 1.6, 10.3, 90, { quiet: true, walk: true }); });
+at('Fire Station', p => { put(p, 'fire_truck', 4.71, 10.75, 180, { quiet: true, walk: true }); });   // nosing out of the middle engine bay (districts/C.js)
+at('Police desk', p => { put(p, 'car_cop', 4.6, 2.75, 20, { quiet: true, walk: true }); put(p, 'car_cop', 4.65, 6.95, 165, { quiet: true, walk: true }); });   // either side of the precinct's entrance
+at('Military offices', p => { put(p, 'military_tank', 2.7, 9.7, 0, { quiet: true, walk: true }); });
 at('Dock edge', p => { put(p, 'babel_crane', 2.5, 2.5, 90, { span: [[0, 1], [1, 0], [1, 1]] }); put(p, 'babel_crane', 2.5, 8.5, 90, { span: [[0, 1], [1, 0], [1, 1]] }); put(p, 'iso_tank', 8.5, 9.5, 0); put(p, 'iso_tank', 9.5, 8.5, 90); put(p, 'traffic_barrel', 8.5, 2.5); put(p, 'traffic_barrel', 9.3, 3.2); put(p, 'cardboard_boxes', 5.5, 9.5, 20); });
 at('Hangar apron', p => { put(p, 'iso_tank', 1.5, 1.5, 0, { quiet: true }); put(p, 'traffic_barrel', 1.5, 10.5, 0, { quiet: true }); put(p, 'traffic_cone', 10.5, 10.5, 0, { quiet: true }); });
 at('Observatory', p => { put(p, 'telescope', 10.5, 10.5, 200, { quiet: true, walk: true }); });
@@ -369,6 +419,16 @@ PLAN.plots.forEach(p => {
             else if (ch === '.' && kind === 'barrel') { if (qi === 0) put(p, 'traffic_barrel', q[0] + 0.5, q[1] + 0.5, 0, { quiet: true }); }
             else if ((ch === '.' || ch === 'P') && kind !== 'barrel') put(p, kind === 'bin' ? (qi === 0 ? 'city_bin' : 'psx_planter_pot_mp_1_full') : 'psx_planter_pot_mp_1_full', q[0] + 0.5, q[1] + 0.5, 0, { quiet: true, walk: true });
         });
+        /* THE VENDING MACHINES (mondo 11-13): two squares along the wall from the door, backs to the wall, facing out: a pair at every door of
+           the entertainment district, one at the first door of a civic / university / sports / plaza / bayside plot */
+        if ('E'.indexOf(p.d) >= 0 || (bi === 0 && 'CUSHB'.indexOf(p.d) >= 0)) {
+            const vs = (dr.side === 'N' || dr.side === 'S') ? [[dr.ox + 2, dr.oy], [dr.ox - 2, dr.oy]] : [[dr.ox, dr.oy + 2], [dr.ox, dr.oy - 2]];
+            let n = 0;
+            for (const q of vs) { if (n >= (p.d === 'E' && bi === 0 ? 2 : 1)) break; if (q[0] < 0 || q[1] < 0 || q[0] >= N || q[1] >= N) continue;
+                const wallBehind = { N: [0, 1], S: [0, -1], W: [1, 0], E: [-1, 0] }[dr.side];
+                if ('I'.indexOf(cellAt(p.x * N + q[0] + wallBehind[0], p.y * N + q[1] + wallBehind[1])) < 0) continue;
+                if (put(p, 'vending_machine', q[0] + 0.5, q[1] + 0.5, { N: 0, S: 180, W: 270, E: 90 }[dr.side], { quiet: true, walk: true })) { n++; count.vending = (count.vending || 0) + 1; } }
+        }
         if (bi === 0 && 'REIB'.indexOf(p.d) >= 0) {
             const sides = [['N', 0, -1], ['S', 0, 1], ['W', -1, 0], ['E', 1, 0]].filter(sd => !(b.doors || []).some(d => d.side === sd[0]));
             for (const sd of sides) { const lx = sd[1] ? (sd[1] < 0 ? b.x - 1 : b.x + b.w) : b.x + Math.floor(b.w / 2), ly = sd[2] ? (sd[2] < 0 ? b.y - 1 : b.y + b.h) : b.y + Math.floor(b.h / 2);
@@ -378,16 +438,102 @@ PLAN.plots.forEach(p => {
     });
     if (p.d === 'B') [[1.5, 1.5], [10.5, 10.5]].forEach(q => put(p, 'palm_tree', q[0], q[1], null, { quiet: true }));
 });
-/* the kerbs: a hydrant / a signpost / a bin on the walk squares beside the carriageway, at the square's road edge, every few squares */
-let kerbN = 0;
+/* THE KERBS (mondo 11-13: "so many street lamps ... What about fire hydrants? Vending machines? Bus stations?"), one rule for every street,
+   counted on each plot's own twelve squares so every block reads the same:
+   - THE STREET LAMPS stand on the kerb, ON THE LINE BETWEEN TWO SQUARES (never on a square's middle), head over the road: the +side kerb on
+     lines 2 and 8, the other kerb on lines 5 and 11 (a lamp every 21 m a side, staggered across the street)
+   - a FIRE HYDRANT on square 2 of the +side kerb, a signpost on square 2 of the other, a bin on square 8 of both, at the square's road edge
+   - a BUS STOP (the shelter, centred on its walk square, open to the road) on squares 4-6 of one kerb of every other road plot */
+let kerbN = 0; const lamps = [], busAt = new Set(); count.bus = 0; count.hydrants = 0;
+const kerbSides = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const isKerb = (cx, cy, sd) => cellAt(cx, cy) === 'P' && cellAt(cx + sd[0], cy + sd[1]) === 'R';
+const lampAdd = (x, z, nx, nz) => { if (lamps.some(l => Math.hypot(l.x - x, l.z - z) < 3)) return; lamps.push({ x: r3(x), z: r3(z), nx, nz }); };
+/* the bus stops first (they take three squares) */
+PLAN.plots.forEach(p => {
+    if ((p.x + p.y * 2) % 2) return;
+    for (const sd of kerbSides) {
+        let done = false;
+        for (let t = 0; t < N && !done; t++) {
+            const run = [4, 5, 6].map(a => sd[0] ? [p.x * N + t, p.y * N + a] : [p.x * N + a, p.y * N + t]);
+            if (!run.every(c => isKerb(c[0], c[1], sd) && !occ.has(c[0] + ',' + c[1]))) continue;
+            run.forEach(c => { take(c[0], c[1]); busAt.add(c[0] + ',' + c[1]); });
+            props.push({ key: 'bus_shelter', x: r3(gc(run[1][0])), z: r3(gc(run[1][1])), face: sd[0] > 0 ? 90 : sd[0] < 0 ? 270 : sd[1] > 0 ? 180 : 0 });
+            count.bus++; done = true;
+        }
+        if (done) break;
+    }
+});
+/* THE BUS LINE (THE CITY TRAFFIC, mondo 11-13: "Bus sections placed in each district with a bus route"): Bus Line 1 has one named stop in
+   every district, on a plot its route drives through. A stop uses the shelter the rule above already stood on that plot's kerb; a plot
+   with none gets one where three kerb squares in a row are free, nearest the plot's middle, without moving a lamp, a hydrant or a bin. Each stop: the point on the road's middle where the bus
+   waits, a stop sign pole on the kerb two squares along from the shelter and one on the kerb across the road (poles at the square's road
+   edge, never on a square's middle). The ninth stop is the line's end at the police line (THE TRAFFIC below turns the bus round there). */
+const BUS_LINE = ['P03-02', 'P04-01', 'P08-02', 'P08-05', 'P06-07', 'P03-05', 'P03-09', 'P04-11'];
+const BUS_END = { x: 7.4, y: 11, back: 12 };   // the turn-round on the south street, in plot squares; the bus waits `back` m after it
+const busStops = []; count.busNew = 0;
+const cellOf = v => Math.floor((v + HALF) / C);
+const shFace = sd => sd[0] > 0 ? 90 : sd[0] < 0 ? 270 : sd[1] > 0 ? 180 : 0;
+BUS_LINE.forEach(id => {
+    const p = plotOf[id]; let sh = null;
+    props.forEach(q => { if (sh || q.key !== 'bus_shelter') return; const cx = cellOf(q.x), cy = cellOf(q.z); if (Math.floor(cx / N) !== p.x || Math.floor(cy / N) !== p.y) return;
+        const sd = kerbSides.find(k => isKerb(cx, cy, k)); if (sd) sh = { cx, cy, sd }; });
+    if (!sh) {
+        let best = null;
+        for (const sd of kerbSides) for (let t = 0; t < N; t++) for (let a = 1; a <= 8; a++) {
+            const run = [a, a + 1, a + 2].map(k => sd[0] ? [p.x * N + t, p.y * N + k] : [p.x * N + k, p.y * N + t]);
+            if (!run.every(c => isKerb(c[0], c[1], sd) && !occ.has(c[0] + ',' + c[1]))) continue;
+            /* nothing the kerb rule stands moves for it: the shelter fills its middle square only, so that square is never a hydrant's, a
+               signpost's or a bin's (2 and 8) nor one beside a lamp's line (the + kerb's 2 and 8, the other's 5 and 11) */
+            const mid = a + 1, plus = sd[0] > 0 || sd[1] > 0, clash = mid === 2 || mid === 8 || (plus ? [1, 7] : [4, 5, 10, 11]).includes(mid);
+            const score = Math.abs(a - 4) + (clash ? 100 : 0); if (!best || score < best.score) best = { run, sd, score };
+        }
+        if (!best) { console.warn('no free kerb for a bus stop on', id, p.name); return; }
+        if (best.score >= 100) console.warn('a bus stop moves kerb furniture on', id, p.name);
+        { const c = best.run[1]; take(c[0], c[1]); busAt.add(c[0] + ',' + c[1]); }
+        props.push({ key: 'bus_shelter', x: r3(gc(best.run[1][0])), z: r3(gc(best.run[1][1])), face: shFace(best.sd) });
+        count.bus++; count.busNew++;
+        sh = { cx: best.run[1][0], cy: best.run[1][1], sd: best.sd };
+    }
+    const sd = sh.sd, al = sd[0] ? [0, 1] : [1, 0], signs = [];
+    const pole = (cx, cy, k) => ({ x: r3(gc(cx) + k[0] * 0.36 * C), z: r3(gc(cy) + k[1] * 0.36 * C), ns: !!sd[0] });
+    for (const k of [2, -2]) { const cx = sh.cx + al[0] * k, cy = sh.cy + al[1] * k; if (isKerb(cx, cy, sd) && !busAt.has(cx + ',' + cy)) { signs.push(pole(cx, cy, sd)); break; } }
+    { const cx = sh.cx + sd[0] * 5, cy = sh.cy + sd[1] * 5, op = [-sd[0], -sd[1]]; if (isKerb(cx, cy, op) && !busAt.has(cx + ',' + cy)) signs.push(pole(cx, cy, op)); }
+    busStops.push({ x: r3(sd[0] ? gc(sh.cx) + sd[0] * 2.5 * C : gc(sh.cx)), z: r3(sd[0] ? gc(sh.cy) : gc(sh.cy) + sd[1] * 2.5 * C), name: D[p.d].label, signs });
+});
+{ const ex = r3(-HALF + (BUS_END.x + 0.5) * PL - BUS_END.back), ez = r3(-HALF + (BUS_END.y + 0.5) * PL), cx = cellOf(ex), cy = cellOf(ez) - 3, signs = [];
+  if (isKerb(cx, cy, [0, 1])) signs.push({ x: r3(gc(cx)), z: r3(gc(cy) + 0.36 * C), ns: false }); else console.warn('no kerb for the end stop sign');
+  busStops.push({ x: ex, z: ez, name: 'BAYSIDE GATE', end: true, signs }); }
+count.busStops = busStops.length;
 for (let cy = 0; cy < 144; cy++) for (let cx = 0; cx < 144; cx++) {
-    if (cellAt(cx, cy) !== 'P' || occ.has(cx + ',' + cy)) continue;
-    const side = cellAt(cx + 1, cy) === 'R' ? [0.4, 0] : cellAt(cx - 1, cy) === 'R' ? [-0.4, 0] : cellAt(cx, cy + 1) === 'R' ? [0, 0.4] : cellAt(cx, cy - 1) === 'R' ? [0, -0.4] : null; if (!side) continue;
+    if (cellAt(cx, cy) !== 'P') continue;
+    kerbSides.forEach(sd => {
+        if (!isKerb(cx, cy, sd)) return;
+        const plus = sd[0] > 0 || sd[1] > 0, along = (sd[0] ? cy : cx), a = along % N;
+        /* the lamp on the line before this square */
+        if (a === (plus ? 2 : 5) || a === (plus ? 8 : 11)) {
+            const px = sd[0] ? cx : cx - 1, py = sd[0] ? cy - 1 : cy;
+            if (isKerb(px, py, sd) && !busAt.has(cx + ',' + cy) && !busAt.has(px + ',' + py))
+                lampAdd(sd[0] ? gc(cx) + sd[0] * 0.4 * C : gc(cx) - C / 2, sd[0] ? gc(cy) - C / 2 : gc(cy) + sd[1] * 0.4 * C, -sd[0], -sd[1]);
+        }
+    });
+    if (occ.has(cx + ',' + cy)) continue;
+    const sd = kerbSides.find(q => isKerb(cx, cy, q)); if (!sd) continue;
     if (cellAt(cx + 1, cy) === 'P' && cellAt(cx - 1, cy) === 'P' && cellAt(cx, cy + 1) === 'P' && cellAt(cx, cy - 1) === 'P') continue;
-    const along = side[0] ? cy : cx; if (along % 6 !== 2) continue;   // one every six squares, the same squares on both kerbs
-    const key = ['signpost', 'city_bin', 'fire_hydrant', 'city_bin'][Math.floor(along / 6) % 4]; kerbN++;
-    take(cx, cy); props.push({ key, x: r3(gc(cx) + side[0] * C), z: r3(gc(cy) + side[1] * C), face: side[0] > 0 ? 90 : side[0] < 0 ? 270 : side[1] > 0 ? 180 : 0 });
+    const plus = sd[0] > 0 || sd[1] > 0, a = (sd[0] ? cy : cx) % N;
+    const key = a === 2 ? (plus ? 'fire_hydrant' : 'signpost') : a === 8 ? 'city_bin' : null; if (!key) continue;
+    kerbN++; if (key === 'fire_hydrant') count.hydrants++;
+    take(cx, cy); props.push({ key, x: r3(gc(cx) + sd[0] * 0.4 * C), z: r3(gc(cy) + sd[1] * 0.4 * C), face: sd[0] > 0 ? 90 : sd[0] < 0 ? 270 : sd[1] > 0 ? 180 : 0 });
 }
+/* a plot with no street (a plaza, a park, a court): a lamp where four open squares meet, at the plot's quarter points, head to the middle */
+PLAN.plots.forEach(p => {
+    if (p.cells.some(r => r.indexOf('R') >= 0)) return;
+    [[3, 3], [9, 3], [3, 9], [9, 9]].forEach(q => {
+        const cx = p.x * N + q[0], cy = p.y * N + q[1];
+        if (![[0, 0], [-1, 0], [0, -1], [-1, -1]].every(d => '.P'.indexOf(cellAt(cx + d[0], cy + d[1])) >= 0)) return;
+        lampAdd(gc(cx) - C / 2, gc(cy) - C / 2, q[0] < 6 ? -0.71 : 0.71, q[1] < 6 ? -0.71 : 0.71);
+    });
+});
+count.lamps = lamps.length;
 
 /* ── THE GROUND: a sheet per square (0 the asphalt, 1 pavement, 2 grass, 3 yard concrete) ── */
 const paint = new Uint8Array(144 * 144);
@@ -415,14 +561,35 @@ Object.keys(roadAdj).sort().forEach(a => {
     });
 });
 
-/* ── THE TRAFFIC: two cars each way round the ring the plan's roads make north of Bayside ── */
+/* ── THE TRAFFIC (THE CITY TRAFFIC, mondo 11-13: "traffic lights and intersections planned out for actual traffic and car routes"; his OK on
+   the plan 17:33). Sixteen vehicles; every route keeps to the right (lane 3.5 m off the road's middle) and none enters the police streets
+   round the mall (x = 8 south of the cross street, the south street east of x = 8, x = 11):
+   - THE RING both ways (west avenue, north street, east avenue, cross street), three cars each
+   - THE WEST AVENUE RUN: the avenue's north end (it stops at the boxing gym) to the cross street's west end (the campus gate) and back,
+     turning round at both ends (the plan has no road out of the city), four cars
+   - THE FREIGHT RUN: the campus gate, down the west avenue through Industrial, along the south street to the police line and back, two trucks
+   - THE STRIP TAXIS: the cross street's east end, turning round short of the east avenue and at the far corner, two taxis
+   - BUS LINE 1, one bus each way: the police line (Bayside Gate), the south street, up the west avenue, round the ring, back down
+   THE SIGNALS: lights at the three big junctions (a mast for every arm), and the T at the police staging blinking red.
+   three-renderer.js _hqBuildSignals / _hqBuildBusStops / _hqBuildTraffic read the three rows. ── */
 const ctr = (x, y) => pc({ x, y });
 const ring = [ctr(3, 1), ctr(8, 1), ctr(8, 7), ctr(3, 7)];
+const busEnd = ctr(BUS_END.x, BUS_END.y);
 const TRAFFIC = [
-    { pts: ring, loop: true, n: 2, speed: 4.0, lane: 3.5, kinds: ['suv', 'taxi', 'cadillac', 'schoolbus', 'truck'] },
-    { pts: ring.slice().reverse(), loop: true, n: 2, speed: 4.0, lane: 3.5, kinds: ['taxi', 'suv', 'copcar', 'cadillac'] },
-    { pts: [ctr(0, 7), ctr(3, 7)], loop: false, n: 1, speed: 3.4, lane: 3.5, kinds: ['truck', 'suv'] },
+    { pts: ring, loop: true, n: 3, speed: 4.2, lane: 3.5, kinds: ['suv', 'taxi', 'cadillac'] },
+    { pts: ring.slice().reverse(), loop: true, n: 3, speed: 4.2, lane: 3.5, kinds: ['taxi', 'copcar', 'suv'] },
+    { pts: [ctr(3, 0.2), ctr(3, 7), ctr(0, 7), ctr(3, 7)], loop: true, n: 4, speed: 4.0, lane: 3.5, kinds: ['cadillac', 'suv', 'taxi', 'suv'] },
+    { pts: [ctr(0, 7), ctr(3, 7), ctr(3, 11), ctr(6.6, 11), ctr(3, 11), ctr(3, 7)], loop: true, n: 2, speed: 3.6, lane: 3.5, kinds: ['truck', 'truck'] },
+    { pts: [ctr(8.62, 7), ctr(11, 7)], loop: true, n: 2, speed: 3.8, lane: 3.5, kinds: ['taxi', 'taxi'] },
+    { pts: [busEnd, ctr(3, 11), ctr(3, 7), ctr(3, 1), ctr(8, 1), ctr(8, 7), ctr(3, 7), ctr(3, 11)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
+    { pts: [busEnd, ctr(3, 11), ctr(3, 7), ctr(8, 7), ctr(8, 1), ctr(3, 1), ctr(3, 7), ctr(3, 11)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
 ];
+const sigAt = (x, y, arms, o) => { const c = ctr(x, y); return Object.assign({ x: c[0], z: c[1], arms }, o || {}); };
+const SIGNALS = [sigAt(3, 1, 'NES', { off: 0 }), sigAt(3, 7, 'NESW', { off: 11 }), sigAt(8, 7, 'NESW', { off: 24 }), sigAt(8, 11, 'NEW', { flash: true })];
+/* every mast stands on a walk square at its junction's corner */
+SIGNALS.forEach(g => g.arms.split('').forEach(a => { const k = { S: [1, 1], W: [-1, 1], N: [-1, -1], E: [1, -1] }[a], ch = cellAt(cellOf(g.x + k[0] * 7.9), cellOf(g.z + k[1] * 7.9));
+    if (ch !== 'P') console.warn('signal mast off the walk', g.x, g.z, a, ch); }));
+count.vehicles = TRAFFIC.reduce((n, t) => n + t.n, 0); count.signals = SIGNALS.reduce((n, g) => n + g.arms.length, 0);
 /* ── the room ── */
 const J = v => JSON.stringify(v).replace(/"([a-zA-Z_][a-zA-Z0-9_]*)":/g, '$1:').replace(/"/g, "'");
 const spawnP = plotOf[PLAN.progression.start], sp = pc(spawnP);
@@ -430,7 +597,7 @@ const lines = [];
 lines.push("        /* DC144-BEGIN — DISASTER CITY, THE 144 PLOTS (2026-11-13): written by `node bake-disaster-city.js` from docs/disaster-city/city-layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
 lines.push("        site_prebuilt_downtown_streets: {");
 lines.push("            label: 'DISASTER CITY',");
-lines.push("            sub: 'SOUTHSIDE · CIVIC CENTER · FINANCIAL · UNIVERSITY · HERO PLAZA · ENTERTAINMENT · INDUSTRIAL · SPORTS + CULTURE · BAYSIDE',");
+lines.push("            sub: 'NINE DISTRICTS · 144 PLOTS',");
 lines.push("            kind: 'box', site: 'prebuilt_downtown', part: 'streets',");
 lines.push("            shell: hqCityShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + sp[0] + ", z: " + sp[1] + ", y: 4.6 } }),");
 lines.push("            parti: 'Nine districts of sixteen plots, every plot a twelve by twelve board: a city walked as a maze of yards, alleys, doors and roofs between a few plain roads.',");
@@ -440,13 +607,19 @@ lines.push("            terrain: {");
 lines.push("                res: 0.875,");
 lines.push("                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
 lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0, streets: " + J(streets) + ",");
+lines.push("                    lamps: " + J(lamps) + ",");
 lines.push("                       open: [] },");
 lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: 144, nz: 144, d: '" + b64 + "' },");
 lines.push("                features: [");
+dcRun('build');
+features.push(...lateRows);
 features.forEach(f => lines.push("                    " + J(f) + ","));
 lines.push("                ],");
 lines.push("                /* the cars: the ring (west avenue, the north street, the east avenue, the cross street), never the response streets round the mall */");
 lines.push("                traffic: " + J(TRAFFIC) + ",");
+lines.push("                /* THE CITY TRAFFIC: the junctions with traffic lights, and Bus Line 1's stops (the point the bus waits at, its sign poles) */");
+lines.push("                signals: " + J(SIGNALS) + ",");
+lines.push("                busStops: " + J(busStops) + ",");
 lines.push("            },");
 const dj = o => "wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face;
 lines.push("            doors: [");
