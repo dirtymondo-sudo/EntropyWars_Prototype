@@ -37,6 +37,8 @@ Usage: pip install bpy==5.2.3 scipy pillow
               priest, professor, sheriff), LOCKS=0 (a dark coat or gown read as a hair lock: the witch),
               ARMALLX=0.3 (with --barearms: a bracelet painted on the bare arm goes with the arm, the spy),
               TOPCUT=0.3 (a torn top edge cut level, metres under the eyes: the spy),
+              DROPCOL="r,g,b,tol" (a piece fused into the body shell goes by its colour: superhero F's cape),
+              CUFF=1 (with HANDCUT: the sleeve end sawn straight across the arm, superhero F),
               HANDCUT=1 (a bare hand fused to its sleeve goes, the body's own hand shows: politician, priest, shaman, telepath, vampire),
               DROP="x,y,z,r;..." (a stray shell left out by hand, its middle r from a point measured from the eyes; SHELLS=1 lists them)
        batch 1 review of 11-13: NOHANDS=1 (the body's own hands show, Meshy's go), WINGKEEP=1 (a collar fused to the wings), NOHELD=1 (nothing in the
@@ -300,19 +302,46 @@ def fit(name, gender, src, bodies_dir):
         inhead = (cz > chin - 0.02 and hd < 0.16) or ((c[:, 2].min() > eye.z + E('EARZ', 0.08) or cz > eye.z + E('HORNZ', 0.03)) and hd < E('EARR', 0.3))   # (+ a shell wholly above the brow, out to the side: the bunny girl's second ear went as 'long hair', a demon's curled horn stayed in her outfit, 11-13)
         if isrem and c[:, 2].min() > chin - 0.25 and not (cz > eye.z and n >= 60): dropped.append(('face bit', n)); bpy.data.objects.remove(o); continue
         if inhead and n < 25: dropped.append(('bit', n)); bpy.data.objects.remove(o); continue
+        # THE PAINTED-ON PIECE (env DROPCOL="r,g,b,tol"; 2026-11-13, superhero F, mondo: "super jagged sleeves and cape": her cape is one
+        # shell with the suit and hangs over the arms, so no shell can be dropped): every face of a body shell whose colour lies within
+        # tol of r,g,b goes, and the look wears the creator's piece in its place. SHELLS=1 prints each big shell's back colour
+        if os.environ.get('DROPCOL') and not inhead and n >= 1000:
+            me_ = o.data; fc_ = face_cols(o, PX, IW, IH); dc_ = [float(x) for x in os.environ['DROPCOL'].split(',')]
+            if E('SHELLS', 0):
+                cb_ = np.array([p.center for p in me_.polygons]); print('[bake-outfit] %s: shell %d faces, back colour %s' % (name, n, np.round(np.median(fc_[cb_[:, 1] > eye.y + 0.2], axis=0), 3)), flush=True)
+            nr_ = np.linalg.norm(fc_, axis=1); cut_ = (np.linalg.norm(fc_ - np.array(dc_[:3]), axis=1) < dc_[3]) | ((nr_ > E('DROPDARK', 0.05)) & ((fc_ @ np.array(dc_[:3])) / (nr_ * np.linalg.norm(dc_[:3]) + 1e-9) > E('DROPCOS', 0.94)))   # (its shaded folds too: the same hue, darker)
+            if cut_.any() and not cut_.all():
+                bmh = bmesh.new(); bmh.from_mesh(me_); bmh.faces.ensure_lookup_table()
+                bmesh.ops.delete(bmh, geom=[bmh.faces[i] for i in np.nonzero(cut_)[0]], context='FACES')
+                bmesh.ops.delete(bmh, geom=[v for v in bmh.verts if not v.link_faces], context='VERTS'); bmh.to_mesh(me_); bmh.free()
+                dropped.append(('painted-on piece cut by colour', int(cut_.sum())))
+                c = co(o); n = len(o.data.polygons)
         # THE BARE HAND ON A SLEEVE (env HANDCUT=1; 2026-11-13, mondo across the remake batches: "fingers look messed up": where Meshy
         # fuses a bare hand to its sleeve the hand is not a shell of its own, so it stayed, hid the body's hand and the unit kept Meshy's
         # mitten fingers): past the wrist (HANDLEN in from the arm's tip) a side whose faces are mostly skin-coloured (HANDSKIN) loses
         # all of them, nails and shading too, so the body's own hand shows. A glove is not skin-coloured and stays
         if E('HANDCUT', 0) and not inhead and np.abs(c[:, 0]).max() > xmax - E('HANDLEN', 0.12):
             me_ = o.data; cen_ = np.array([p.center for p in me_.polygons]); fc_ = face_cols(o, PX, IW, IH); cut_ = np.zeros(len(cen_), bool)
+            cuffs_ = []
             for sg_ in (-1, 1):
                 sel_ = cen_[:, 0] * sg_ > xmax - E('HANDLEN', 0.12)
-                if sel_.sum() >= 40 and (np.linalg.norm(fc_[sel_] - skin, axis=1) < SKIN_T).mean() > E('HANDSKIN', 0.6): cut_ |= sel_
+                if sel_.sum() >= 40 and (np.linalg.norm(fc_[sel_] - skin, axis=1) < SKIN_T).mean() > E('HANDSKIN', 0.6):
+                    cut_ |= sel_
+                    # THE LEVEL CUFF (env CUFF=1; superhero F, mondo: "super jagged sleeves"): the cut above follows the painted wrist line
+                    # and leaves saw teeth. The sleeve is sawn straight across the arm where the skin colour starts instead
+                    if E('CUFF', 0):
+                        zl_ = cen_[sel_, 2].min() - 0.01; arm_ = (cen_[:, 0] * sg_ > xmax - E('CUFFARM', 0.22)) & (cen_[:, 2] > zl_); ax_ = np.linalg.svd(cen_[arm_] - cen_[arm_].mean(0))[2][0]; ax_ = ax_ * (1 if ax_[0] * sg_ > 0 else -1)
+                        sk_ = arm_ & (np.linalg.norm(fc_ - skin, axis=1) < SKIN_T); t_ = cen_ @ ax_
+                        if E('SHELLS', 0): print('[bake-outfit] cuff', sg_, np.round(ax_, 2), 'xmax %.2f' % xmax, 'arm faces', int(arm_.sum()), 'skin', int(sk_.sum()), 'skin t', np.round(np.percentile(t_[sk_], [0, 3, 50, 100]), 3), 'arm t', np.round(np.percentile(t_[arm_], [0, 50, 100]), 3), flush=True)
+                        cuffs_.append((sg_, ax_, np.percentile(t_[sel_], 1) - E('CUFFIN', 0.004), zl_))
             if cut_.all(): dropped.append(('hand', n)); bpy.data.objects.remove(o); continue
             if cut_.any():
                 bmh = bmesh.new(); bmh.from_mesh(me_); bmh.faces.ensure_lookup_table()
                 bmesh.ops.delete(bmh, geom=[bmh.faces[i] for i in np.nonzero(cut_)[0]], context='FACES')
+                for sg_, ax_, t0_, zl_ in cuffs_:
+                    fs_ = [f for f in bmh.faces if f.calc_center_median().x * sg_ > xmax - E('CUFFARM', 0.22) and f.calc_center_median().z > zl_]
+                    gm_ = list(set(v for f in fs_ for v in f.verts)) + list(set(e for f in fs_ for e in f.edges)) + fs_
+                    bmesh.ops.bisect_plane(bmh, geom=gm_, plane_co=tuple(float(x) for x in ax_ * t0_), plane_no=tuple(float(x) for x in ax_), clear_outer=True)
                 bmesh.ops.delete(bmh, geom=[v for v in bmh.verts if not v.link_faces], context='VERTS'); bmh.to_mesh(me_); bmh.free()
                 dropped.append(('bare hand cut off a sleeve', int(cut_.sum())))
         if inhead or (isrem and cz > eye.z): headp.append(o)
