@@ -271,3 +271,11 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 - STILL OPEN: halfdemon M + men in black tie (the creator `ewb_tie` lets the shirt through, also on his saved classic-body looks: bake-clothes.py `tie` ease, needs the MPFB add-on here),
   mushroom girl neckline (`--neckline --repaint` did not cure it), pirate F bits between the legs, overlord gauntlet fingertips, hippie M trousers, a white cop + a female cop (his ask).
   Second T2 runs of king arthur, necromancer and hippie M were worse than the first and are not used.
+
+### Batch 2 review fixes, round 2 (2026-11-13)
+- TIE (halfdemon M, men in black, every look with `ewb_tie`): the shirt came through the creator tie. bake-clothes.py tie `ease` 0.019 -> 0.032, `ewb_tie.glb` rebaked.
+- HAIR UNDER A HAT (King Arthur bald in front under `ewm_royalcrown`): three-renderer.js hairUnderHats pulled hair BELOW the hat's lowest outer point up into it (a crown rim's normals point down and out). Hair below `hatLow` now stays. All hats.
+- Homosapien: `SKIN_T=0.12 RAY_IN=0.12 RAY_OUT=0.12 TORN=9` (holes behind the coat shoulders were torn faces; front stays open on this one).
+- Hippie M: T2 trousers dropped (`DROPAT=0,0,0.5,0.05 RAY_IN=0.12 RAY_OUT=0.12`), wears creator `mhw_elvs_gored_elephant_pants` tinted `#6a94c8`.
+- Men in black: remade look drops the coded blazer + shirt + trousers for pack `mhw_toigo_male_suit_tie_and_jacket` with black `ewb_tie` over its tie (a tint on the suit also colours its shirt, so the suit stays charcoal; a sliver of the suit's own tie shows beside the black one).
+- STILL OPEN: overlord fingertips, mushroom girl neckline, pirate F between the legs, necromancer slit, white cop + female cop.

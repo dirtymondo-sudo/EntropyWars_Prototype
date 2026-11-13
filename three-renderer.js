@@ -59205,6 +59205,10 @@ const ThreeRenderer = (function () {
             /* (THE QUICK PICKS: the hat points' box, `reach` wider - a hair point outside it has no hat point within reach) */
             var hb = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
             for (k = 0; k < HV.length; k += 2) { var hA = HV[k].mesh.geometry.attributes.position.array, hv = HV[k + 1] * 3; for (var hd = 0; hd < 3; hd++) { if (hA[hv + hd] < hb[hd]) hb[hd] = hA[hv + hd]; if (hA[hv + hd] > hb[hd + 3]) hb[hd + 3] = hA[hv + hd]; } }
+            /* (2026-11-13, King Arthur's crown left him bald in front: a crown's lower rim has normals that point DOWN and out, so the
+               hair on the temples under the rim read as "outside the hat" and was sucked up into it. Hair below the hat's lowest
+               outer point is not under the hat: it stays.) */
+            var hatLow = hb[1] - gap;
             for (k = 0; k < 3; k++) { hb[k] -= reach; hb[k + 3] += reach; }
             var nearest = function (x, y, z) {   // -> [id, d2] of the nearest outer hat vertex within reach
                 if (x < hb[0] || y < hb[1] || z < hb[2] || x > hb[3] || y > hb[4] || z > hb[5]) return null;
@@ -59216,7 +59220,7 @@ const ThreeRenderer = (function () {
                 return best < 0 ? null : [best, bd];
             };
             var need = function (x, y, z, out) {   // the pull that puts this point `gap` under the hat (0 = not under it / already under)
-                var r = nearest(x, y, z); out[3] = -1; if (!r) return 0;
+                var r = nearest(x, y, z); out[3] = -1; if (!r || y < hatLow) return 0;
                 var w = HV[r[0]], v = HV[r[0] + 1], A = w.mesh.geometry.attributes.position.array, Nn = w.mesh.geometry.attributes.normal.array;
                 var s = (x - A[v * 3]) * Nn[v * 3] + (y - A[v * 3 + 1]) * Nn[v * 3 + 1] + (z - A[v * 3 + 2]) * Nn[v * 3 + 2];
                 if (r[1] - s * s > lat2) return 0;
