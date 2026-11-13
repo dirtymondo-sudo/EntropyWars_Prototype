@@ -44,8 +44,9 @@ const pick = a => a[Math.floor(rnd() * a.length)];
 /* ── THE PLOT EDGES (mondo 11-13: "i dont like how it looks like the plots are separated by literal walls, and they are all the same wall"):
    no wall stands on a plot line. The plan rings every plot with a blocked band ('#') and a few gaps; here
    1. a building one square from its plot's edge GROWS into the band (two plots' buildings meet back to back: a street front, not a yard wall);
-   2. the band on a side the plan CONNECTS (a ground edge to that neighbour) opens: yard or pavement, walked across its whole width;
-   3. what is left on a side the plan does not connect is BUILT ON (infill buildings, below) or, on a park plot, planted. ── */
+   2. some of the band on a side the plan does NOT connect is built on (THE INFILL);
+   3. the rest gets a BOUNDARY picked per district and per run (THE BOUNDARIES: fences from the structural pack's railings, hedges, short walls,
+      rows of planters / police barricades / dumpsters / trees), never one wall everywhere (mondo 11-13 14:09: "there can still be walls ... get creative"). ── */
 const conn = new Set(); PLAN.groundEdges.forEach(e => { conn.add(e.a + '|' + e.b); conn.add(e.b + '|' + e.a); });
 const SIDE = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] };
 const sideOpen = (p, s) => conn.has(p.id + '|' + pid(p.x + SIDE[s][0], p.y + SIDE[s][1]));
@@ -60,15 +61,7 @@ PLAN.plots.forEach(p => {
         if (b.y + b.h === N - 1 && !has('S') && all(b.x, N - 1, b.x + b.w - 1, N - 1)) b.h++;
         for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) if (g[y][x] === '#') g[y][x] = 'I';
     });
-    const o = g.map(r => r.slice());
-    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
-        if (g[y][x] !== '#' || (x > 0 && x < N - 1 && y > 0 && y < N - 1)) continue;
-        const sides = []; if (y === 0) sides.push('N'); if (y === N - 1) sides.push('S'); if (x === 0) sides.push('W'); if (x === N - 1) sides.push('E');
-        if (!sides.every(sd => sideOpen(p, sd))) continue;
-        const ix = x === 0 ? 1 : x === N - 1 ? N - 2 : x, iy = y === 0 ? 1 : y === N - 1 ? N - 2 : y, inn = g[iy][ix];
-        o[y][x] = (inn === 'P' || inn === 'R' || inn === 'D') ? 'P' : '.';
-    }
-    p.cells = o.map(r => r.join(''));
+    p.cells = g.map(r => r.join(''));
 });
 const setCell = (cx, cy, ch) => { const p = plotOf[pid(Math.floor(cx / N), Math.floor(cy / N))], r = p.cells[cy % N].split(''); r[cx % N] = ch; p.cells[cy % N] = r.join(''); };
 const inCity = (cx, cy) => cx >= 0 && cy >= 0 && cx < 144 && cy < 144;
@@ -140,9 +133,9 @@ for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) {
     const flush = () => {
         if (!run) return; const r = run; run = null;
         const cells = []; for (let c = r.a; c <= r.b; c++) { if (r.pat & 1) cells.push(horizontal ? [c, line - 1] : [line - 1, c]); if (r.pat & 2) cells.push(horizontal ? [c, line] : [line, c]); }
+        const lenI = r.b - r.a + 1; if (r.open || lenI < 2 || rnd() > (r.outer ? 0.55 : 0.4)) return;
         cells.forEach(q => usedBand.add(q[0] + ',' + q[1]));
         const home = cells[0], p = plotOf[pid(Math.floor(home[0] / N), Math.floor(home[1] / N))], dd = D[p.d];
-        if (GREEN.test(p.name)) { cells.forEach(q => hedgeCells.push(q)); return; }
         const lo = (r.pat & 1) ? line - 1 : line, hi = (r.pat & 2) ? line + 1 : line, deep = hi - lo, len = r.b - r.a + 1;
         const x0 = horizontal ? r.a : lo, x1 = horizontal ? r.b + 1 : hi, z0 = horizontal ? lo : r.a, z1 = horizontal ? hi : r.b + 1;
         const front = r.pat === 1 ? 'a' : r.pat === 2 ? 'b' : (rnd() < 0.5 ? 'a' : 'b');
@@ -153,14 +146,15 @@ for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) {
         cells.forEach(q => setCell(q[0], q[1], 'I'));
     };
     for (let c = 0; c <= 144; c++) {
-        let pat = 0;
+        let pat = 0, open = false, outer = (L === 0 || L === N);
         if (c < 144) {
+            const k = Math.floor(c / N), PA = plotOf[horizontal ? pid(k, L - 1) : pid(L - 1, k)], PB = plotOf[horizontal ? pid(k, L) : pid(L, k)]; open = !!(PA && PB && conn.has(PA.id + '|' + PB.id));
             const A = horizontal ? [c, line - 1] : [line - 1, c], B = horizontal ? [c, line] : [line, c];
             if (inCity(A[0], A[1]) && cellAt(A[0], A[1]) === '#' && !usedBand.has(A[0] + ',' + A[1])) pat |= 1;
             if (inCity(B[0], B[1]) && cellAt(B[0], B[1]) === '#' && !usedBand.has(B[0] + ',' + B[1])) pat |= 2;
         }
-        if (run && (pat !== run.pat || c - run.a >= run.max)) flush();
-        if (pat && !run) run = { a: c, b: c, pat, max: 2 + Math.floor(rnd() * 4) }; else if (run) run.b = c;
+        if (run && (pat !== run.pat || c - run.a >= run.max || c % N === 0)) flush();
+        if (pat && !run) run = { a: c, b: c, pat, open, outer, max: 2 + Math.floor(rnd() * 4) }; else if (run) run.b = c;
     }
     flush();
 }
@@ -184,6 +178,63 @@ const occ = new Set();
 const free = (cx, cy, ok) => { const ch = cellAt(cx, cy); return (ok || '.#').indexOf(ch) >= 0 && !occ.has(cx + ',' + cy); };
 const take = (cx, cy) => occ.add(cx + ',' + cy);
 bInfo.forEach(b => (plotOf[b.plot].buildings.find(q => q.id === b.id).doors || []).forEach(dr => take(plotOf[b.plot].x * N + dr.ox, plotOf[b.plot].y * N + dr.oy)));   // a door's step stays clear
+
+/* ── THE BOUNDARIES: what stands where the plan closes a plot line. Per border (two plots' shared side) a first and a second recipe from the
+   district's list (LOW where the plan connects the plots: you see over it; TALL where it does not), alternating run by run.
+   A fence / hedge / wall stands ON the plot line (between squares); a row of planters / barricades / dumpsters / trees stands CENTRED on the
+   band's squares (it is the map: it blocks); a bench / bin beside a fence stands against it, OFF its square's centre (a unit stands on the centre). ── */
+const LOW = { R: ['rail:ranch', 'rail:spear', 'hedge:1.2', 'wall:1.2', 'planters', 'trees'], C: ['rail:bars', 'rail:balusters', 'planters', 'hedge:1.1', 'rail:parapet'], F: ['planters', 'rail:parapet', 'rail:balusters_d', 'rail:glass_panels'],
+    U: ['hedge:1.3', 'rail:ranch', 'trees', 'rail:parapet', 'planters'], H: ['planters', 'rail:balusters', 'rail:parapet', 'hedge:1.1'], E: ['rail:guard', 'barricades', 'rail:pipe', 'planters', 'dumpsters'],
+    I: ['rail:guard', 'rail:wire_fence', 'dumpsters', 'rail:cable_fence'], S: ['rail:bars', 'rail:pipe', 'hedge:1.2', 'rail:ranch', 'trees'], B: ['barricades', 'rail:pipe', 'planters', 'trees', 'barricades'] };
+const HIGH = { R: ['rail:wood_fence', 'wall:2.1', 'hedge:1.9', 'rail:spear', 'trees'], C: ['rail:spear', 'wall:2.1', 'rail:panel_fence', 'hedge:1.8'], F: ['rail:spear', 'wall:2.6', 'rail:panel_fence', 'planters'],
+    U: ['hedge:1.9', 'rail:spear', 'wall:1.9', 'trees'], H: ['rail:spear', 'wall:2.1', 'hedge:1.8'], E: ['rail:wood_fence', 'wall:2.6', 'rail:wire_fence', 'dumpsters'],
+    I: ['rail:wire_fence', 'wall:2.2', 'rail:panel_fence', 'rail:cable_fence', 'dumpsters'], S: ['rail:wire_fence', 'wall:1.9', 'rail:spear', 'hedge:1.8'], B: ['rail:wire_fence', 'wall:2.1', 'barricades', 'rail:spear'] };
+const BENCH = { R: 'park_bench', U: 'park_bench', S: 'park_bench', C: 'city_bench', H: 'city_bench', F: 'city_bench', B: 'city_bench' }, BIN = { C: 'city_bin', H: 'city_bin', B: 'city_bin', E: 'city_bin', S: 'city_bin', R: 'city_bin' };
+const edgeN = {};
+for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) for (let k = 0; k < N; k++) {
+    const line = L * N, PA = plotOf[horizontal ? pid(k, L - 1) : pid(L - 1, k)], PB = plotOf[horizontal ? pid(k, L) : pid(L, k)];
+    const joined = !!(PA && PB && conn.has(PA.id + '|' + PB.id)), home = (PA && PB) ? (rnd() < 0.5 ? PA : PB) : (PA || PB), dd = D[home.d];
+    const list = (joined ? LOW : HIGH)[home.d], first = pick(list); let second = pick(list); if (second === first) second = list[(list.indexOf(first) + 1) % list.length];
+    const A = c => horizontal ? [c, line - 1] : [line - 1, c], B = c => horizontal ? [c, line] : [line, c];
+    const band = q => inCity(q[0], q[1]) && cellAt(q[0], q[1]) === '#';
+    const runs = []; let run = null;
+    for (let c = k * N; c <= k * N + N; c++) {
+        const need = c < k * N + N && (band(A(c)) || band(B(c)));
+        if (run && (!need || c - run.a >= 6)) { runs.push(run); run = null; }
+        if (need) { if (!run) run = { a: c, b: c }; else run.b = c; }
+    }
+    runs.forEach((r, ri) => {
+        const rec = (ri % 2 === 0) ? first : second, kind = rec.split(':')[0], arg = rec.split(':')[1];
+        edgeN[kind] = (edgeN[kind] || 0) + 1;
+        const lz = gx(line), a0 = gx(r.a), a1 = gx(r.b + 1);
+        const seg = horizontal ? { x0: a0, z0: lz, x1: a1, z1: lz } : { x0: lz, z0: a0, x1: lz, z1: a1 };
+        const onLine = kind === 'rail' || kind === 'wall' || kind === 'hedge';
+        if (kind === 'rail') features.push(Object.assign({ k: 'rail' }, seg, { model: arg }));
+        if (kind === 'wall') features.push(Object.assign({ k: 'wall' }, seg, { h: Number(arg), t: 0.3, key: dd.wall, tint: '#ffffff' }));
+        if (kind === 'hedge') features.push(Object.assign({ k: 'wall' }, seg, { h: Number(arg), t: 0.9, key: 'leaves_3', tint: '#ffffff' }));
+        for (let c = r.a; c <= r.b; c++) {
+            const qa = A(c), qb = B(c), ba = band(qa), bb = band(qb), q = ba ? qa : qb, sideA = ba;
+            if (ba) setCell(qa[0], qa[1], '.'); if (bb) setCell(qb[0], qb[1], '.');
+            const i = c - r.a, cxm = gc(q[0]), czm = gc(q[1]);
+            /* toward the line from the square's middle, and the way a thing against the line faces (into its own plot) */
+            const tl = sideA ? 1 : -1, inFace = horizontal ? (sideA ? 0 : 180) : (sideA ? 270 : 90), off = 0.36 * C * tl;
+            if (onLine) {
+                if (i % 4 === 1 && BENCH[home.d] && kind !== 'hedge' ? true : (i % 4 === 1 && BENCH[home.d] && rnd() < 0.5)) { take(q[0], q[1]); props.push({ key: BENCH[home.d], x: r3(cxm + (horizontal ? 0 : off)), z: r3(czm + (horizontal ? off : 0)), face: inFace }); }
+                else if (i % 4 === 3 && dd.trees.length && rnd() < dd.treeP * 1.6) { take(q[0], q[1]); features.push({ k: 'tree', x: cxm, z: czm, kind: pick(dd.trees), h: r3(3.4 + rnd() * 0.8) }); count.trees++; }
+                else if (i % 4 === 3 && BIN[home.d] && rnd() < 0.5) { take(q[0], q[1]); props.push({ key: BIN[home.d], x: r3(cxm + (horizontal ? 0.3 * C : off)), z: r3(czm + (horizontal ? off : 0.3 * C)), face: inFace }); }
+                continue;
+            }
+            if (occ.has(q[0] + ',' + q[1])) continue; take(q[0], q[1]);
+            const along = horizontal ? 0 : 90;
+            if (kind === 'planters') props.push({ key: 'planter', x: cxm, z: czm, face: along });
+            if (kind === 'trees') { features.push({ k: 'tree', x: cxm, z: czm, kind: pick(dd.trees.length ? dd.trees : ['palm_tree_none']) === 'palm_tree_none' ? 'tree_3' : pick(dd.trees.length ? dd.trees : ['tree_3']), h: r3(3.4 + ((q[0] * 7 + q[1] * 3) % 5) * 0.2) }); count.trees++; }
+            if (kind === 'barricades') { if (i % 2 === 0) props.push({ key: 'item_police_barricade', x: cxm, z: czm, face: along });
+                else { const e = 0.5 * C * tl; props.push({ key: 'traffic_cone', x: r3(cxm + (horizontal ? -0.25 * C : e)), z: r3(czm + (horizontal ? e : -0.25 * C)) }, { key: 'traffic_cone', x: r3(cxm + (horizontal ? 0.25 * C : e)), z: r3(czm + (horizontal ? e : 0.25 * C)) }); } }
+            if (kind === 'dumpsters') props.push(i % 2 === 0 ? { key: 'dumpster', x: cxm, z: czm, face: inFace } : { key: home.d === 'I' ? 'traffic_barrel' : 'psx_wooden_crate_1', x: cxm, z: czm, face: along });
+        }
+    });
+}
+count.edges = edgeN;
 
 /* ── THE FIRE ESCAPES: the plan's inside stairs, outside — a landing half way up and two ladders, at both ends of every roof route ── */
 const rAdj = {}; PLAN.roofEdges.forEach(e => { (rAdj[e.a] = rAdj[e.a] || []).push(e.b); (rAdj[e.b] = rAdj[e.b] || []).push(e.a); });
@@ -225,13 +276,26 @@ const put = (p, key, lx, ly, face, o) => {
     o = o || {}; const cx = p.x * N + Math.floor(lx), cy = p.y * N + Math.floor(ly);
     if (!free(cx, cy, o.road ? '.#PR' : (o.walk ? '.#P' : '.#'))) { if (!o.quiet) console.warn('skip', key, p.id, p.name, lx, ly, cellAt(cx, cy)); return false; }
     take(cx, cy); if (o.span) o.span.forEach(q => take(cx + q[0], cy + q[1]));
+    /* THE SQUARE'S MIDDLE (mondo 11-13): a unit stands on it. A thing that blocks (cover, a stall, a statue) stands ON the middle; a thing that
+       does nothing in a fight (a bench, a bin, a cone, a pot) stands OFF it: against the building beside it, else toward its plot's edge */
+    if (!o.road && !o.span && !o.keep) {
+        if (DECOR.has(key)) {
+            const fx = lx - Math.floor(lx), fy = ly - Math.floor(ly);
+            if (Math.abs(fx - 0.5) < 0.3 && Math.abs(fy - 0.5) < 0.3) {
+                const solid = (dx, dy) => 'ID'.indexOf(cellAt(cx + dx, cy + dy)) >= 0;
+                if (solid(0, -1)) ly = Math.floor(ly) + 0.14; else if (solid(0, 1)) ly = Math.floor(ly) + 0.86; else if (solid(-1, 0)) lx = Math.floor(lx) + 0.14; else if (solid(1, 0)) lx = Math.floor(lx) + 0.86;
+                else if (Math.abs(lx - 6) > Math.abs(ly - 6)) lx = Math.floor(lx) + (lx < 6 ? 0.14 : 0.86); else ly = Math.floor(ly) + (ly < 6 ? 0.14 : 0.86);
+            }
+        } else if (!/^car_|truck|bus$|rowboat|crane|lighthouse|tank$|fountain/.test(key)) { lx = Math.floor(lx) + 0.5; ly = Math.floor(ly) + 0.5; }
+    }
     const row = { key, x: r3(-HALF + (p.x * N + lx) * C), z: r3(-HALF + (p.y * N + ly) * C) }; if (face != null) row.face = face; if (o.floor) row.floor = true;
     props.push(row); return true;
 };
+const DECOR = new Set(['city_bench', 'park_bench', 'city_bin', 'signpost', 'fire_hydrant', 'traffic_cone', 'cardboard_boxes', 'psx_planter_pot_mp_1_full', 'round_table', 'pool_umbrella']);
 const at = (name, fn) => (byName[name] || []).forEach(fn);
-const tree = (p, lx, ly, kind, h) => { const cx = p.x * N + Math.floor(lx), cy = p.y * N + Math.floor(ly); if (!free(cx, cy, '.#')) return; take(cx, cy); features.push({ k: 'tree', x: r3(-HALF + (p.x * N + lx) * C), z: r3(-HALF + (p.y * N + ly) * C), kind, h }); count.trees++; };
+const tree = (p, lx, ly, kind, h) => { lx = Math.floor(lx) + 0.5; ly = Math.floor(ly) + 0.5; const cx = p.x * N + Math.floor(lx), cy = p.y * N + Math.floor(ly); if (!free(cx, cy, '.#')) return; take(cx, cy); features.push({ k: 'tree', x: r3(-HALF + (p.x * N + lx) * C), z: r3(-HALF + (p.y * N + ly) * C), kind, h }); count.trees++; };
 /* a park plot's unconnected band: a tree a square */
-hedgeCells.forEach((q, i) => { const p = plotOf[pid(Math.floor(q[0] / N), Math.floor(q[1] / N))]; tree(p, q[0] % N + 0.5, q[1] % N + 0.5, ['tree_3', 'tree', 'tree_2', 'tree_4'][(q[0] + q[1] + i) % 4], 3.4 + ((q[0] * 7 + q[1] * 3) % 5) * 0.2); });
+if (0) hedgeCells.forEach((q, i) => { const p = plotOf[pid(Math.floor(q[0] / N), Math.floor(q[1] / N))]; tree(p, q[0] % N + 0.5, q[1] % N + 0.5, ['tree_3', 'tree', 'tree_2', 'tree_4'][(q[0] + q[1] + i) % 4], 3.4 + ((q[0] * 7 + q[1] * 3) % 5) * 0.2); });
 /* BAYSIDE, the opening: the response outside the mall (cop cars nose to tail down the response streets, barricades at the cordon, the ambulances at the medical staging) */
 at('Police staging', p => { [[1.5, 4.9, 70], [3.5, 7.1, 250], [5.6, 4.9, 110], [7.6, 7.1, 290], [9.6, 4.9, 80], [10.6, 7.2, 265]].forEach(q => put(p, 'car_cop', q[0], q[1], q[2], { road: true }));
     [[2.5, 9.5], [5.5, 9.5], [8.5, 9.5]].forEach(q => put(p, 'item_police_barricade', q[0], q[1], 0)); put(p, 'car_cop', 9.5, 10.5, 90); put(p, 'car_cop', 2.5, 10.5, 270); });
@@ -274,20 +338,27 @@ at('Dock edge', p => { put(p, 'babel_crane', 2.5, 2.5, 90, { span: [[0, 1], [1, 
 at('Hangar apron', p => { put(p, 'iso_tank', 1.5, 1.5, 0, { quiet: true }); put(p, 'traffic_barrel', 1.5, 10.5, 0, { quiet: true }); put(p, 'traffic_cone', 10.5, 10.5, 0, { quiet: true }); });
 at('Observatory', p => { put(p, 'telescope', 10.5, 10.5, 200, { quiet: true, walk: true }); });
 
-/* the dressing along the plot walls: a tree or a district piece on the yard band's squares (never a walk square, never by an opening) */
-const DRESS = { R: ['city_bin', 'park_bench', 'planter'], C: ['park_bench', 'planter', 'city_bin'], F: ['planter', 'planter', 'city_bench'], U: ['park_bench', 'planter'], H: ['city_bench', 'planter', 'city_bin', 'vending_machine'],
-    E: ['dumpster', 'cardboard_boxes', 'vending_machine', 'city_bin'], I: ['dumpster', 'traffic_barrel', 'cardboard_boxes', 'iso_tank', 'psx_metal_barrel_mp_1'], S: ['park_bench', 'city_bin'], B: ['city_bench', 'city_bin', 'planter'] };
+/* THE PLOTS' DRESSING, by district: every building's door is flanked (planters centred on the yard squares either side of the step; pots against
+   the wall where the step is pavement), and a service district's first building has its dumpster on a yard square against a wall with no door */
+const FLANK = { C: 'planter', F: 'planter', H: 'planter', U: 'planter', S: 'planter', B: 'planter', R: 'pot', E: 'bin', I: 'barrel' };
 PLAN.plots.forEach(p => {
-    const dd = D[p.d], ring = [];
-    for (let i = 1; i < N - 1; i++) { ring.push([i, 0, 180]); ring.push([i, N - 1, 0]); ring.push([0, i, 90]); ring.push([N - 1, i, 270]); }
-    const cand = ring.filter(q => '#.'.indexOf(p.cells[q[1]][q[0]]) >= 0 && free(p.x * N + q[0], p.y * N + q[1], '#.'));
-    for (let i = cand.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = cand[i]; cand[i] = cand[j]; cand[j] = t; }
-    let nT = dd.trees.length ? Math.round(dd.treeP * 5 + rnd()) : 0, nP = 2;
-    cand.forEach(q => {
-        if (nT > 0) { tree(p, q[0] + 0.5, q[1] + 0.5, pick(dd.trees), 3.4 + rnd() * 0.8); nT--; return; }
-        if (nP > 0) { const key = pick(DRESS[p.d]); put(p, key, q[0] + 0.5 + (q[0] === 0 ? -0.12 : q[0] === N - 1 ? 0.12 : 0), q[1] + 0.5 + (q[1] === 0 ? -0.12 : q[1] === N - 1 ? 0.12 : 0), q[2], { quiet: true }); nP--; }
+    p.buildings.forEach((b, bi) => {
+        const dr = (b.doors || [])[0]; if (!dr) return;
+        const fl = (dr.side === 'N' || dr.side === 'S') ? [[dr.ox - 1, dr.oy], [dr.ox + 1, dr.oy]] : [[dr.ox, dr.oy - 1], [dr.ox, dr.oy + 1]];
+        fl.forEach((q, qi) => {
+            if (q[0] < 0 || q[1] < 0 || q[0] >= N || q[1] >= N) return; const ch = p.cells[q[1]][q[0]], kind = FLANK[p.d];
+            if (ch === '.' && kind === 'planter') put(p, 'planter', q[0] + 0.5, q[1] + 0.5, (dr.side === 'N' || dr.side === 'S') ? 0 : 90, { quiet: true });
+            else if (ch === '.' && kind === 'barrel') { if (qi === 0) put(p, 'traffic_barrel', q[0] + 0.5, q[1] + 0.5, 0, { quiet: true }); }
+            else if ((ch === '.' || ch === 'P') && kind !== 'barrel') put(p, kind === 'bin' ? (qi === 0 ? 'city_bin' : 'psx_planter_pot_mp_1_full') : 'psx_planter_pot_mp_1_full', q[0] + 0.5, q[1] + 0.5, 0, { quiet: true, walk: true });
+        });
+        if (bi === 0 && 'REIB'.indexOf(p.d) >= 0) {
+            const sides = [['N', 0, -1], ['S', 0, 1], ['W', -1, 0], ['E', 1, 0]].filter(sd => !(b.doors || []).some(d => d.side === sd[0]));
+            for (const sd of sides) { const lx = sd[1] ? (sd[1] < 0 ? b.x - 1 : b.x + b.w) : b.x + Math.floor(b.w / 2), ly = sd[2] ? (sd[2] < 0 ? b.y - 1 : b.y + b.h) : b.y + Math.floor(b.h / 2);
+                if (lx < 0 || ly < 0 || lx >= N || ly >= N || p.cells[ly][lx] !== '.') continue;
+                if (put(p, 'dumpster', lx + 0.5, ly + 0.5, { N: 180, S: 0, W: 90, E: 270 }[sd[0]], { quiet: true })) break; }
+        }
     });
-    if (p.d === 'B') [[1.5, 1.5], [10.5, 10.5]].forEach(q => { if (free(p.x * N + 1, p.y * N + 1, '.') || true) put(p, 'palm_tree', q[0], q[1], null, { quiet: true }); });
+    if (p.d === 'B') [[1.5, 1.5], [10.5, 10.5]].forEach(q => put(p, 'palm_tree', q[0], q[1], null, { quiet: true }));
 });
 /* the kerbs: a hydrant / a signpost / a bin on the walk squares beside the carriageway, at the square's road edge, every few squares */
 let kerbN = 0;
@@ -295,8 +366,8 @@ for (let cy = 0; cy < 144; cy++) for (let cx = 0; cx < 144; cx++) {
     if (cellAt(cx, cy) !== 'P' || occ.has(cx + ',' + cy)) continue;
     const side = cellAt(cx + 1, cy) === 'R' ? [0.4, 0] : cellAt(cx - 1, cy) === 'R' ? [-0.4, 0] : cellAt(cx, cy + 1) === 'R' ? [0, 0.4] : cellAt(cx, cy - 1) === 'R' ? [0, -0.4] : null; if (!side) continue;
     if (cellAt(cx + 1, cy) === 'P' && cellAt(cx - 1, cy) === 'P' && cellAt(cx, cy + 1) === 'P' && cellAt(cx, cy - 1) === 'P') continue;
-    const along = side[0] ? cy : cx; if ((along * 7 + (side[0] ? cx : cy) * 3) % 11 !== 0) continue;
-    const key = ['fire_hydrant', 'signpost', 'city_bin', 'signpost'][kerbN++ % 4];
+    const along = side[0] ? cy : cx; if (along % 6 !== 2) continue;   // one every six squares, the same squares on both kerbs
+    const key = ['signpost', 'city_bin', 'fire_hydrant', 'city_bin'][Math.floor(along / 6) % 4]; kerbN++;
     take(cx, cy); props.push({ key, x: r3(gc(cx) + side[0] * C), z: r3(gc(cy) + side[1] * C), face: side[0] > 0 ? 90 : side[0] < 0 ? 270 : side[1] > 0 ? 180 : 0 });
 }
 
