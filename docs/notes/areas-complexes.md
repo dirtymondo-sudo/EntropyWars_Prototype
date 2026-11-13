@@ -2068,3 +2068,28 @@ Built for the nine district threads (each owns its 16 plots); NOT SEEN ON SCREEN
   0.9 to 1.15 of the block's own `w`. Today: Repair shops 00 (0.99), Pawnshop 09 (1.04), Tailor 08 (0.90), Coffee arcade 09 (1.04), West shops
   09 (1.04), Restaurant court + East shops = 08 + 09 side by side (0.97). Corner shops, Bookshops, Costume shops are roof-route tiers (no pack).
 - Pack building claims between districts: `docs/disaster-city/pack-claims.md`.
+
+## DISASTER CITY, THE ARCHITECTURE ROW — `k: 'arch'`, a building's look as a list of parts (2026-11-13, shared by the nine district threads)
+mondo: "use different materials/textures and tint them to match your vision for the building ... use more complex geometry for some
+buildings, domes, roof tops, modern architecture, curves". The texbuilding is a box in one global tint, so every district needed the same
+thing; ONE row kind does it (Sports + Culture thread owns it). Seen in the game (headless, a test Museum: portico, dome, tints).
+- **The row** (three-renderer.js `_hqArchGeometry` + `_hqBuildArchRows`; data.js hqRoomExpand hands `info.arch`): `{ k: 'arch', id, x, z,
+  rot (degrees clockwise, as a texbuilding: the front is the row's +z), y (the foot; none = the ground), parts: [...] }`. DRAWN ONLY: the
+  walker never reads it. One mesh per material per row (never a city-wide mesh, so the plot chunks cull a building whole): one row per building.
+- **A part**: `s` (shape), `p: [x, y, z]` (its foot centre in the row's frame), `ry` (degrees), `key` (a sheet: `urban:<Name>`, a terrain
+  key, `hq:<name>`; none = a plain colour), `tint` (0xRRGGBB over the sheet), `tintTop` / `tintEnd` (for keyTop / keyEnd; none = untinted),
+  `glow` (0..1, a sign / lit glass), `kind` ('wall' | 'glass' | 'over' = cut-out decal), `ds` (two-sided), `roof: true` (hidden with HIDE
+  ROOFS), `uv` (metres a repeat spans, a number or [u, v]; 'fit' = once across the face), `n` + `step: [dx, dy, dz]` (repeat),
+  `ring: { n, r, a0, arc }` (repeat round a circle, each turned outward).
+- **The shapes**: `box` size [w, h, d] (keyTop, top: false, sides: false, faces: 'fblr', under: true) · `cyl` r, h (r2 = a taper, 0 = a
+  cone; seg; arc + a0 = a curved wall; ri = a hollow ring; cap: false) · `dome` r, h, rz (arc + a0 = a half dome; seg, rings) · `roof`
+  form 'gable' | 'hip' | 'pyramid' | 'shed' | 'barrel', size [w, h, d], the ridge along x, a shed's high edge at -z (over = eaves, keyEnd,
+  seg) · `quad` size [w, h], a panel facing +z (hole: [x, w, h] = a doorway cut from its foot; flat: true = lying, facing up) · `poly`
+  pts [[x, z]...] convex, h.
+- **Collision, the inside, the walked roof** stay with the rows that already do them, with their own faces switched off: a `texbuilding`
+  with `skin: false` keeps its ghost walls, roof slab, doorway, city door leaf and hollow inside and draws no outside; a roof-route
+  `plateau` with `bld: { skin: false }` keeps its walked top (and still draws that roof slab) and draws no faces. Put an arch facade about
+  5 cm proud of the footprint. Things that stand outside the footprint (columns, canopy posts) need their own ghost `wall` rows if they
+  should block. Catalogue models are ordinary room props, not parts.
+- A doorway on a walk-in building: hqTexbDoor(row) gives its `lx`, `cw` (1.74 m) and 2.2 m height; cut the same hole in the arch front
+  with `{ s: 'quad', p: [0, 0, d / 2], size: [w, h], hole: [lx, cw, 2.2] }`.

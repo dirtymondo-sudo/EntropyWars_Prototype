@@ -59880,7 +59880,7 @@ function hqTerrainCompile(room, roomId) {
         for (const u of [-1, 0, 1]) for (const v of [-1, 0, 1]) { if (!u && !v) continue; const lx = u * (f.w / 2 + 0.8), lz = v * (f.d / 2 + 0.8), hh = hFinal(f.x + lx * c - lz * s, f.z + lx * s + lz * c); if (isFinite(hh) && hh < g) g = hh; }
         if (!isFinite(g) || g > f.h - 1) g = Math.min(f.h - 1, isFinite(g) ? g : 0);
         const B = (typeof f.bld === 'object') ? f.bld : {};
-        bldTexb.push({ k: 'texbuilding', id: f.id || ('bld:' + i), x: f.x, z: f.z, w: f.w, d: f.d, rot: f.rot || 0, base: _hqR4(g), h: _hqR4(f.h - g), storeys: Math.max(1, Math.min(12, Math.round((f.h - g) / HQ_SHAPE_RULES.texStorey))), flat: true, style: B.style || null, ruin: (B.ruin != null) ? B.ruin : 0, seed: (B.seed != null) ? B.seed : undefined });
+        bldTexb.push({ k: 'texbuilding', id: f.id || ('bld:' + i), x: f.x, z: f.z, w: f.w, d: f.d, rot: f.rot || 0, base: _hqR4(g), h: _hqR4(f.h - g), storeys: Math.max(1, Math.min(12, Math.round((f.h - g) / HQ_SHAPE_RULES.texStorey))), flat: true, style: B.style || null, ruin: (B.ruin != null) ? B.ruin : 0, seed: (B.seed != null) ? B.seed : undefined, skin: (B.skin === false) ? false : undefined });   // THE ARCHITECTURE: `bld.skin: false` = the tier draws no faces of its own (an `arch` row is its look)
     });
     /* ── sample the grid ── */
     const H = new Float32Array(nx * nz);

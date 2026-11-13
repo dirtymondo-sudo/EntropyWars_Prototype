@@ -71620,7 +71620,7 @@ const ThreeRenderer = (function () {
            from above — every textured building (the editor's BUILDING, a share of every city's lots) stood open-topped. Wound
            anticlockwise from above now (the walls were always right). */
         var rk = P.roof || 'urban:ConcreteUnderTiles1', ph2 = HQ_TEXB.parapet, t = 0.22;
-        if (!lot.noSkin) batch.add(rk, null, hol ? 'ceil' : 'wall', [W(-hw, H + 0.02, hd), W(hw, H + 0.02, hd), W(hw, H + 0.02, -hd), W(-hw, H + 0.02, -hd)], [[0, 2 * hd / C], [2 * hw / C, 2 * hd / C], [2 * hw / C, 0], [0, 0]]);   // a hollow building's roof goes with HIDE ROOFS (C)
+        if (!lot.noSkin || lot.flat) batch.add(rk, null, hol ? 'ceil' : 'wall', [W(-hw, H + 0.02, hd), W(hw, H + 0.02, hd), W(hw, H + 0.02, -hd), W(-hw, H + 0.02, -hd)], [[0, 2 * hd / C], [2 * hw / C, 2 * hd / C], [2 * hw / C, 0], [0, 0]]);   // a hollow building's roof goes with HIDE ROOFS (C)
         if (hol) _hqTexInside(lot, batch, W, faces, hol, H, hw, hd);
         if (lot.flat || lot.noSkin) return { H: H, plan: P };
         [[-hw, -hd, hw, -hd], [hw, -hd, hw, hd], [hw, hd, -hw, hd], [-hw, hd, -hw, -hd]].forEach(function (e) {
@@ -71679,12 +71679,12 @@ const ThreeRenderer = (function () {
        ROW   { k: 'arch', id, x, z, rot (degrees clockwise, as a texbuilding: the front is the row's +z), y (the foot; none = the ground), parts: [...] }
        PART  { s, p: [x, y, z] (the part's foot centre in the row's frame, metres), ry (degrees), key (a sheet: 'urban:<Name>', a terrain key,
                'hq:<name>'; none = a plain colour), tint (0xRRGGBB over the sheet), glow (0..1: the sheet lit, a sign / a lit window), kind
-               ('wall' | 'glass' | 'over' = a cut-out decal), ds (two-sided), roof (true = hidden with HIDE ROOFS, as a building's roof),
+               ('wall' | 'glass' | 'over' = a cut-out decal), tintTop / tintEnd (the tint of keyTop / keyEnd: none = untinted), ds (two-sided), roof (true = hidden with HIDE ROOFS, as a building's roof),
                uv (metres a sheet repeat spans: a number or [u, v]; 'fit' = the sheet once across each face),
                n + step: [dx, dy, dz] (the part n times, stepped) · ring: { n, r, a0 } (the part n times round a circle, each turned outward) }
        SHAPES  box    size: [w, h, d] · keyTop · top: false · sides: false · faces: 'fblr' (which sides: front +z, back, left -x, right) · under: true (the underside, an overhang)
                cyl    r, h · r2 (the top's radius: a taper, 0 = a cone) · seg · arc + a0 (degrees: a curved wall) · ri (hollow: a ring / a drum's rim) · cap: false
-               dome   r, h (none = r) · rz (an oval plan) · seg · rings
+               dome   r, h (none = r) · rz (an oval plan) · arc + a0 (degrees: a half dome, a band shell; give it ds: true) · seg · rings
                roof   form: 'gable' | 'hip' | 'pyramid' | 'shed' | 'barrel', size: [w, h, d] (the ridge along x; a shed's high edge at -z) · over (the eaves' overhang) · keyEnd (the gable wall) · seg
                quad   size: [w, h] (a panel facing +z: a wall, a sign with uv: 'fit', a window) · hole: [x, w, h] (a doorway cut from its foot) · flat: true (size [w, d], lying, facing up: paint, water)
                poly   pts: [[x, z], ...] (a convex plan), h · keyTop · top: false
@@ -71712,9 +71712,9 @@ const ThreeRenderer = (function () {
             var pp = P.p || [0, 0, 0], pc = Math.cos(-(P.ry || 0) * D2R), ps = Math.sin(-(P.ry || 0) * D2R);
             var fit = P.uv === 'fit', mu = fit ? 1 : (Array.isArray(P.uv) ? +P.uv[0] : +P.uv) || C, mv = fit ? 1 : (Array.isArray(P.uv) ? +P.uv[1] : +P.uv) || C;
             var kindOf = function (key) { return P.kind || (/GlassWindow/.test(key || '') ? 'glass' : /^urban:(Decal|Door|Sign)/.test(key || '') ? 'over' : 'wall'); };
-            var grp = function (key) {
+            var grp = function (key, tintOwn) {   // tintOwn: the tint of a second sheet of the part (tintTop / tintEnd), none = the part's
                 key = key || null;
-                var kind = kindOf(key), tint = (P.tint != null) ? (P.tint >>> 0) : 0xffffff, glow = +P.glow || 0, ds = !!P.ds, roof = !!P.roof;
+                var kind = kindOf(key), tint = (tintOwn != null) ? (tintOwn >>> 0) : (P.tint != null) ? (P.tint >>> 0) : 0xffffff, glow = +P.glow || 0, ds = !!P.ds, roof = !!P.roof;
                 var id = [key || '', tint, glow, kind, ds ? 1 : 0, roof ? 1 : 0].join('|');
                 return G[id] || (G[id] = { key: key, tint: tint, glow: glow, kind: kind, ds: ds, roof: roof, pos: [], uv: [], idx: [], n: 0 });
             };
@@ -71723,17 +71723,17 @@ const ThreeRenderer = (function () {
                 g.pos.push(row.x + lx * rc + lz * rs, base + ly, row.z - lx * rs + lz * rc); g.uv.push(uv[0], uv[1]);
                 return g.n++;
             };
-            var quad = function (key, a, b, c, d, w, h) {   // anticlockwise seen from outside; w × h = its size in metres (the sheet's repeats)
-                var g = grp(key), u = fit ? 1 : w / mu, v = fit ? 1 : h / mv;
+            var quad = function (key, a, b, c, d, w, h, tn) {   // anticlockwise seen from outside; w × h = its size in metres (the sheet's repeats)
+                var g = grp(key, tn), u = fit ? 1 : w / mu, v = fit ? 1 : h / mv;
                 var i0 = put(g, a, [0, 0]), i1 = put(g, b, [u, 0]), i2 = put(g, c, [u, v]), i3 = put(g, d, [0, v]);
                 g.idx.push(i0, i1, i2, i0, i2, i3);
             };
-            var tri = function (key, a, b, c, w, h) {
-                var g = grp(key), u = fit ? 1 : w / mu, v = fit ? 1 : h / mv;
+            var tri = function (key, a, b, c, w, h, tn) {
+                var g = grp(key, tn), u = fit ? 1 : w / mu, v = fit ? 1 : h / mv;
                 var i0 = put(g, a, [0, 0]), i1 = put(g, b, [u, 0]), i2 = put(g, c, [u / 2, v]);
                 g.idx.push(i0, i1, i2);
             };
-            var S = P.size || [1, 1, 1], key = P.key || null;
+            var S = P.size || [1, 1, 1], key = P.key || null, tT = (P.tintTop != null) ? P.tintTop : (P.keyTop ? 0xffffff : null), tE = (P.tintEnd != null) ? P.tintEnd : (P.keyEnd ? 0xffffff : null);
             if (P.s === 'box') {
                 var w = S[0] / 2, h = S[1], d = S[2] / 2;
                 if (P.sides !== false) {
@@ -71743,7 +71743,7 @@ const ThreeRenderer = (function () {
                     if (fc.indexOf('r') >= 0) quad(key, [w, 0, d], [w, 0, -d], [w, h, -d], [w, h, d], 2 * d, h);
                     if (fc.indexOf('l') >= 0) quad(key, [-w, 0, -d], [-w, 0, d], [-w, h, d], [-w, h, -d], 2 * d, h);
                 }
-                if (P.top !== false) quad(P.keyTop || key, [-w, h, d], [w, h, d], [w, h, -d], [-w, h, -d], 2 * w, 2 * d);
+                if (P.top !== false) quad(P.keyTop || key, [-w, h, d], [w, h, d], [w, h, -d], [-w, h, -d], 2 * w, 2 * d, tT);
                 if (P.under) quad(P.keyUnder || P.keyTop || key, [-w, 0, -d], [w, 0, -d], [w, 0, d], [-w, 0, d], 2 * w, 2 * d);
             } else if (P.s === 'cyl') {
                 var r = +P.r || 1, r2 = (P.r2 != null) ? +P.r2 : r, hh = +P.h || 1, arc = Math.min(360, +P.arc || 360) * D2R, a0 = (+P.a0 || 0) * D2R;
@@ -71759,7 +71759,7 @@ const ThreeRenderer = (function () {
                 shell(r, r2, false);
                 if (ri > 0) shell(ri, Math.max(0.01, ri * (r2 / r)), true);
                 if (P.cap !== false && r2 > 0.01) {
-                    var gt = grp(P.keyTop || key), ri2 = ri > 0 ? ri * (r2 / r) : 0, ring = [], inner = [], cidx = -1;
+                    var gt = grp(P.keyTop || key, tT), ri2 = ri > 0 ? ri * (r2 / r) : 0, ring = [], inner = [], cidx = -1;
                     for (var i2 = 0; i2 <= seg; i2++) {
                         var t2 = a0 + arc * i2 / seg, x2 = Math.cos(t2), z2 = Math.sin(t2);
                         ring.push(put(gt, [x2 * r2, hh, z2 * r2], [x2 * r2 / mu, z2 * r2 / mv]));
@@ -71778,7 +71778,7 @@ const ThreeRenderer = (function () {
                 var gd = grp(key), grid = [];
                 for (var a2 = 0; a2 <= rg; a2++) {
                     var ph = Math.PI / 2 * a2 / rg, cp = Math.cos(ph), sp = Math.sin(ph), rowv = [];
-                    for (var b2 = 0; b2 <= ds2; b2++) { var th = 2 * Math.PI * b2 / ds2; rowv.push(put(gd, [dr * cp * Math.cos(th), dh * sp, drz * cp * Math.sin(th)], fit ? [b2 / ds2, a2 / rg] : [-th * dr / mu, ph * Math.max(dr, dh) / mv])); }
+                    for (var b2 = 0; b2 <= ds2; b2++) { var th = (+P.a0 || 0) * D2R + Math.min(360, +P.arc || 360) * D2R * b2 / ds2; rowv.push(put(gd, [dr * cp * Math.cos(th), dh * sp, drz * cp * Math.sin(th)], fit ? [b2 / ds2, a2 / rg] : [-th * dr / mu, ph * Math.max(dr, dh) / mv])); }
                     grid.push(rowv);
                 }
                 for (var a3 = 0; a3 < rg; a3++) for (var b3 = 0; b3 < ds2; b3++) gd.idx.push(grid[a3][b3 + 1], grid[a3][b3], grid[a3 + 1][b3], grid[a3][b3 + 1], grid[a3 + 1][b3], grid[a3 + 1][b3 + 1]);
@@ -71787,7 +71787,7 @@ const ThreeRenderer = (function () {
                 if (form === 'gable') {
                     quad(key, [-W2, 0, D2], [W2, 0, D2], [W2, rh, 0], [-W2, rh, 0], 2 * W2, sl2);
                     quad(key, [W2, 0, -D2], [-W2, 0, -D2], [-W2, rh, 0], [W2, rh, 0], 2 * W2, sl2);
-                    tri(kE, [bw, 0, D2], [bw, 0, -D2], [bw, rh, 0], 2 * D2, rh); tri(kE, [-bw, 0, -D2], [-bw, 0, D2], [-bw, rh, 0], 2 * D2, rh);
+                    tri(kE, [bw, 0, D2], [bw, 0, -D2], [bw, rh, 0], 2 * D2, rh, tE); tri(kE, [-bw, 0, -D2], [-bw, 0, D2], [-bw, rh, 0], 2 * D2, rh, tE);
                 } else if (form === 'hip' || form === 'pyramid') {
                     var rx = form === 'pyramid' ? 0 : Math.max(0, W2 - D2);
                     quad(key, [-W2, 0, D2], [W2, 0, D2], [rx, rh, 0], [-rx, rh, 0], 2 * W2, sl2);
@@ -71795,8 +71795,8 @@ const ThreeRenderer = (function () {
                     tri(key, [W2, 0, D2], [W2, 0, -D2], [rx, rh, 0], 2 * D2, Math.hypot(rh, W2 - rx)); tri(key, [-W2, 0, -D2], [-W2, 0, D2], [-rx, rh, 0], 2 * D2, Math.hypot(rh, W2 - rx));
                 } else if (form === 'shed') {
                     quad(key, [-W2, 0, D2], [W2, 0, D2], [W2, rh, -D2], [-W2, rh, -D2], 2 * W2, Math.hypot(rh, 2 * D2));
-                    quad(kE, [W2, 0, -D2], [-W2, 0, -D2], [-W2, rh, -D2], [W2, rh, -D2], 2 * W2, rh);
-                    tri(kE, [W2, 0, D2], [W2, 0, -D2], [W2, rh, -D2], 2 * D2, rh); tri(kE, [-W2, 0, -D2], [-W2, 0, D2], [-W2, rh, -D2], 2 * D2, rh);
+                    quad(kE, [W2, 0, -D2], [-W2, 0, -D2], [-W2, rh, -D2], [W2, rh, -D2], 2 * W2, rh, tE);
+                    tri(kE, [W2, 0, D2], [W2, 0, -D2], [W2, rh, -D2], 2 * D2, rh, tE); tri(kE, [-W2, 0, -D2], [-W2, 0, D2], [-W2, rh, -D2], 2 * D2, rh, tE);
                 } else if (form === 'barrel') {
                     var bs = Math.max(4, Math.min(32, Math.round(P.seg || 10))), gb = grp(key), L0 = [], R0 = [], arcL = 0, prev = null;
                     for (var bi = 0; bi <= bs; bi++) {
@@ -71806,7 +71806,7 @@ const ThreeRenderer = (function () {
                     }
                     for (var bj = 0; bj < bs; bj++) gb.idx.push(L0[bj], R0[bj], R0[bj + 1], L0[bj], R0[bj + 1], L0[bj + 1]);
                     [1, -1].forEach(function (sd) {   // the two end walls: a fan under the vault
-                        var ge = grp(kE), c0 = put(ge, [sd * bw, 0, 0], [0.5 * 2 * D2 / mu, 0]), ring2 = [];
+                        var ge = grp(kE, tE), c0 = put(ge, [sd * bw, 0, 0], [0.5 * 2 * D2 / mu, 0]), ring2 = [];
                         for (var ei = 0; ei <= bs; ei++) { var ea = Math.PI * ei / bs, ez = D2 * Math.cos(ea), ey = rh * Math.sin(ea); ring2.push(put(ge, [sd * bw, ey, ez], [(D2 - ez) / mu, ey / mv])); }
                         for (var ej = 0; ej < bs; ej++) { if (sd > 0) ge.idx.push(c0, ring2[ej + 1], ring2[ej]); else ge.idx.push(c0, ring2[ej], ring2[ej + 1]); }
                     });
@@ -71828,7 +71828,7 @@ const ThreeRenderer = (function () {
                 if (area > 0) pts.reverse();
                 for (var pj = 0; pj < pts.length; pj++) { var qa = pts[pj], qb = pts[(pj + 1) % pts.length]; quad(key, [qa[0], 0, qa[1]], [qb[0], 0, qb[1]], [qb[0], phh, qb[1]], [qa[0], phh, qa[1]], Math.hypot(qb[0] - qa[0], qb[1] - qa[1]), phh); }
                 if (P.top !== false) {
-                    var gp = grp(P.keyTop || key), ti = pts.map(function (q) { return put(gp, [q[0], phh, q[1]], [q[0] / mu, q[1] / mv]); });
+                    var gp = grp(P.keyTop || key, tT), ti = pts.map(function (q) { return put(gp, [q[0], phh, q[1]], [q[0] / mu, q[1] / mv]); });
                     for (var pk = 1; pk < ti.length - 1; pk++) gp.idx.push(ti[0], ti[pk], ti[pk + 1]);
                 }
             }
