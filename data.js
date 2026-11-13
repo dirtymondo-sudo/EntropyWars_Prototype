@@ -39742,7 +39742,7 @@ const DOOR_HQ = {
         /* DC144-BEGIN — DISASTER CITY, THE 144 PLOTS (2026-11-13): written by `node bake-disaster-city.js` from docs/disaster-city/city-layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */
         site_prebuilt_downtown_streets: {
             label: 'DISASTER CITY',
-            sub: 'SOUTHSIDE · CIVIC CENTER · FINANCIAL · UNIVERSITY · HERO PLAZA · ENTERTAINMENT · INDUSTRIAL · SPORTS + CULTURE · BAYSIDE',
+            sub: 'NINE DISTRICTS · 144 PLOTS',
             kind: 'box', site: 'prebuilt_downtown', part: 'streets',
             shell: hqCityShell({ w: 504, d: 504, plate: { x: 105, z: 189, y: 4.6 } }),
             parti: 'Nine districts of sixteen plots, every plot a twelve by twelve board: a city walked as a maze of yards, alleys, doors and roofs between a few plain roads.',
