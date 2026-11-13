@@ -2102,6 +2102,28 @@ thing; ONE row kind does it (Sports + Culture thread owns it). Seen in the game 
   They are PROPS, not HQ_PACK_BUILDINGS, on purpose: a prop is never fitted to a footprint, so its scale cannot go wrong. Not seen in the game
   (Blender renders only: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg). The laundry's roof sign renders blank orange in Blender.
 
+## DISASTER CITY, CIVIC CENTER — the 28 buildings of district C (2026-11-13, mondo's OK 17:11)
+
+District C = plots x 4..7, y 0..3 of `site_prebuilt_downtown_streets`. Everything lives in ONE file:
+`docs/disaster-city/districts/C.js` (the shared district hook of bake-disaster-city.js loads it; `apply(ctx)`).
+- Authoring: `plot(px, py, fn)` then one `B(i, spec, fn)` per building, parts in LOCAL PLOT METRES with the helpers
+  box / cyl / cone / dome / roof / vault / door / ring / flag / face. `toArch()` turns each building into ONE
+  `k:'arch'` row (id `arch:<building id>`): 28 rows, 586 parts. Gold parts use key `gold` (never the riveted sheets).
+- Collision: the tool's own texbuilding / plateau rows stay, with `skin:false` (ghost walls). `spec.solids` resizes them
+  or adds extra ones (`-c<i>`); `spec.ghost` adds ghost wall rows (colonnades, towers); `spec.cells` takes plan cells.
+- NINE WALK-INS (hollow + the city swing door, one doorway each): Fire Station E, Civil Records W, City Hall S,
+  Council annex S, Courthouse S, Police E, Time Bureau W, Military offices N, Permit offices N. The interiors
+  themselves are NOT built yet (empty shells).
+- ROOF-ROUTE tiers keep the flat walked roof at 7 m and stay solid: Holding annex, Bail bonds, Public library,
+  Records garden, Army surplus. The landmark shapes (reading room, glasshouse, guard tower) stand on that roof.
+- Flattened from the mock-up: the raised stairs / podiums of City Hall, Courthouse and Library (ground level, so the
+  doors work). City Hall has the south door only.
+- The two open plots: Civic plaza (bandstand + plaza clock), Transit square (metro entrance, ticket rotunda, bus bays).
+- Texture findings (tints only darken; the city tint 0xa8a49c multiplies again): `marble_light` is the clean stone;
+  `marble`, `marble_2`, `rocks_1` are cobbles; roofs / domes / trim = `aluminium` tinted; PlasterWallPainted1a /
+  Stucco1a for tinted bodies (the 2x ones carry a base band); bricks_1 tinted = red brick.
+- Mock-up source (standalone three page): `docs/disaster-city/civic/`. Plan: https://claude.ai/artifact/TA61UXvfBcUexNL9yhJ19n
+
 ## DISASTER CITY, THE ENTERTAINMENT DISTRICT — the buildings, exteriors (2026-11-13, plots P08-04 .. P11-07)
 mondo 11-13 16:41 (architect every building, unique + recognizable) and 17:08 on the plan: "looks good, and remember this is basically
 replacing the strip that is currently in the game". File: `docs/disaster-city/districts/E.js` (the `build` stage of THE DISTRICT FILES);
@@ -2164,3 +2186,19 @@ district with a bus route". Plan + mock-up: `/mnt/project-files/city-traffic-pla
   each mast's facing and where its lens discs sit, the bus's nose direction, the sign poles' facing, and the frame rate.
 - Open: the plan's roads have pavement bands across them at some plot edges (P03-02, P08-05, the junction plots); cars drive over them.
   Left turns cross oncoming cars without waiting. Stop names are in the data but shown nowhere yet.
+
+## DISASTER CITY, THE INDUSTRIAL DISTRICT — the 28 buildings of district I (2026-11-13, mondo's OK 17:05)
+Plots x 0-3, y 8-11 (room x -252..-84, z 84..252). All of it lives in `docs/disaster-city/districts/I.js` (`build(ctx)`); rerun `node bake-disaster-city.js`.
+- **How a building is made:** its `dc:<id>` row becomes a `texbuilding` with `skin: false` (the walls you bump into, the roof slab, the doorway, the city swing door)
+  and an `ind:<id>` `k:'arch'` row draws the look. `DESIGN[<id>]` = `{ inside, st, leaf, extra, parts(c, C0) }`; `c` = the baked footprint (w along the front, d2 deep),
+  so a design follows the plot if the plan moves. Helpers: `body` (solid box or hollow shell with a door hole), `truss`, `bay` / `bayX` (roller doors), `vents`, `house`.
+- **Walk-ins (11):** Freight gate, Power station, Machine shop, Loading office, Aerospace lab, Port office, Maintenance depot, Hangar, Water works, Rail service,
+  and the Pump court sewer entry (`leaf: 'none'`). The rest are solid.
+- **Roof route:** Warehouse, the corner shop and Container court stay `plateau` rows (flat 7 m). Freight gate + Loading office became hollow 2-storey texbuildings
+  (roof slab at 7 m); NOT walk-tested from the bridges.
+- **Landmarks:** Power station (barrel roof + two striped stacks), Aerospace lab (dome + vault + control tower), Port office (green pyramid lantern), Container court
+  (a stack of tinted containers on the roof), the Dock Edge gantry crane (`ind:crane`, truss parts; the game's `crane` is a horizon model, not a room prop).
+- **THE INDUSTRIAL PACK:** domi236 PS1/PSX Industrial Pack #1 (CC0), cut by `bake-pack-pieces.py` (`ind_*` jobs, scale 0.4694 = a real 20 ft container) to R2
+  `Assets/world/packs/domi236_industrial/`. Catalogue keys, free for every district: `ind_container` (2.4 x 6.1 x 2.15, a row may carry `y` 2.15 a level to stack),
+  `ind_skip`, `ind_skip_full`, `ind_silo` (9.1 m), `ind_vent`, `ind_panel`, `ind_factory_red` / `_tan` / `_blue` (whole factory fronts; cut, not placed yet).
+- Checked in the cloud browser with a free camera over each plot (WebGL2). Not placed: the space shuttle (a horizon model only).

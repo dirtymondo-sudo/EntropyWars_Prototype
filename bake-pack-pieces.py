@@ -40,6 +40,7 @@ F = {
     'gasscene':      'gas-station/Gas_station/Models/Gas_station.fbx',
     'laundryscene':  'laundry/Laundry/Models/Laundry.fbx',
     'quequis':       'quequis-house/Quequis_House/Models/Quequis_House.fbx',
+    'industrial':    'domi236_ps1-industrial-pack-1/industrial pack/source/industrial_buildings.fbx',   # domi236's PS1 industrial pack (project files asset-packs/other/)
 }
 # (catalogue key, pack, scene nodes, rotz degrees)
 JOBS = [
@@ -102,6 +103,18 @@ JOBS += [
     ('city_vhs_shop', 'vhsshop', [{'near': 'Shop_VHS', 'pad': 0.5, 'keep': r'^(Shop_VHS$|Shop_VHS\._Windows|Door$|Frame_Door)'}], 180, {'cut': 3.6}),
     ('city_house', 'house', ['House'], 0),
     ('city_quequis_house', 'quequis', [{'near': 'Quequis_House', 'pad': 1.0, 'keep': r'^(Quequis_House|Frame$|Cube$|RooftilesMetal|Door_Q|Door_0[12]$|Frame_Door)'}], 180),
+    # THE INDUSTRIAL PACK (2026-11-13, Disaster City's Industrial district; shared by every district): domi236's PS1 industrial pack, its
+    # pieces at 0.4694 of the file's size (the container = a real 20 ft box, 6.06 m long), doors / fronts at +Z. Out: `ind_<key>.glb`
+    # for R2 Assets/world/packs/domi236_industrial/.
+    ('ind_container', 'industrial', ['Container01'], 0, {'name': 'ind_container.glb', 'scale': 0.4694}),
+    ('ind_skip', 'industrial', ['Trashcan01'], 0, {'name': 'ind_skip.glb', 'scale': 0.4694}),
+    ('ind_skip_full', 'industrial', ['Trashcan2'], 0, {'name': 'ind_skip_full.glb', 'scale': 0.4694}),
+    ('ind_silo', 'industrial', ['LiquidReservoir'], 0, {'name': 'ind_silo.glb', 'scale': 0.4694}),
+    ('ind_vent', 'industrial', ['Ventilation_1'], 0, {'name': 'ind_vent.glb', 'scale': 0.4694}),
+    ('ind_panel', 'industrial', ['ElectricalPanel'], 0, {'name': 'ind_panel.glb', 'scale': 0.4694}),
+    ('ind_factory_red', 'industrial', ['Building02'], 0, {'name': 'ind_factory_red.glb', 'scale': 0.4694}),
+    ('ind_factory_tan', 'industrial', ['Building01'], 0, {'name': 'ind_factory_tan.glb', 'scale': 0.4694}),
+    ('ind_factory_blue', 'industrial', ['Cube'], 0, {'name': 'ind_factory_blue.glb', 'scale': 0.4694}),
 ]
 # THE CITY TRAFFIC (2026-11-13, mondo: "traffic lights and intersections ... Bus sections placed in each district with a bus route"): the
 # Pizzeria pack's mast-arm signal (its three lit faces look -X, +Z and -Z in the GLB, the blank one +X: three-renderer.js _HQ_SIGNAL), the
@@ -115,7 +128,7 @@ jobs = []
 for J in JOBS:
     k, p, nodes, rz = J[:4]
     if ONLY and k not in ONLY: continue
-    jobs.append(dict({'file': os.path.join(PACKS, F[p]), 'search': os.path.join(PACKS, F[p].split('/')[0]), 'out': os.path.join(OUT, 'ebd_%s_%s.glb' % (p, k)), 'nodes': nodes, 'rotz': rz}, **(J[4] if len(J) > 4 else {})))
+    jobs.append(dict({'file': os.path.join(PACKS, F[p]), 'search': os.path.join(PACKS, F[p].split('/')[0]), 'out': os.path.join(OUT, (J[4].get('name') if len(J) > 4 and J[4].get('name') else 'ebd_%s_%s.glb' % (p, k))), 'nodes': nodes, 'rotz': rz}, **(J[4] if len(J) > 4 else {})))
 byfile = {}
 for j in jobs: byfile.setdefault(j['file'], []).append(j)
 def load(f):
@@ -128,6 +141,7 @@ for f,js in byfile.items():
     idx={}
     for r,ds,fs in os.walk(srch):
         for fn in fs: idx.setdefault(fn.lower(),os.path.join(r,fn))
+    if 'building2.jpg' in idx: idx.setdefault('building02.png',idx['building2.jpg'])   # the industrial pack's one renamed sheet
     for im in bpy.data.images:
         if im.source!='FILE' or im.packed_file: continue
         p=bpy.path.abspath(im.filepath)
@@ -183,7 +197,8 @@ for f,js in byfile.items():
         off=Vector(((mn.x+mx.x)/2,(mn.y+mx.y)/2,mn.z))
         rz=j.get('rotz',0)
         R=Matrix.Rotation(rz*3.14159265/180,4,'Z')
-        for o in meshes: o.data.transform(R@Matrix.Translation(-off))
+        SC=Matrix.Scale(j.get('scale',1.0),4)   # `scale` (THE INDUSTRIAL PACK): the piece at this share of the file's size
+        for o in meshes: o.data.transform(R@SC@Matrix.Translation(-off))
         if j.get('cut'):
             # `cut` (m over the base): everything under it goes (bisect, inner side cleared, the cut left open: it is under the ground)
             import bmesh

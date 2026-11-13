@@ -37,3 +37,7 @@ The better gold = R2 `Assets/Sprites/terrain/gilt.png` (Metal007, his pick 11-03
 bake-disaster-city.js loads `docs/disaster-city/districts/<LETTER>.js` (R C F U H E I S B), one file per district; never put district code in the shared tool.
 Exports, all optional: `tailor(PLAN, plotOf)` before the plan is read; `apply(ctx)` after the buildings and their door steps exist, before the street furniture; `build(ctx)` after every row exists.
 `ctx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF }`.
+
+## The industrial pack (Industrial thread, 11-13) — free for every district
+domi236 PS1/PSX Industrial Pack #1 (CC0). Catalogue keys: `ind_container`, `ind_skip`, `ind_skip_full`, `ind_silo`, `ind_vent`, `ind_panel`, `ind_factory_red`, `ind_factory_tan`, `ind_factory_blue`.
+Sizes + the stacking `y`: areas-complexes.md "THE INDUSTRIAL DISTRICT".
