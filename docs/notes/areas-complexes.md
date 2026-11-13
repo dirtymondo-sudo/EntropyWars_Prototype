@@ -2458,6 +2458,16 @@ collision row with the skin off and gets ONE `k: 'arch'` row `dcu:<building id>`
 - NOT DONE: no road runs out into the desert (the streets end at the south line); no rocks / cactus on the desert (he asked for plain flat); the sky's far
   roster (`sky.scenery: 'city'`) is unchanged; the forest past 60 m is bare ground (in the fog from the streets).
 
+**Civic Center, THE POLISH PASS (2026-11-13, mondo 20:15 "one or two more layers deep with the detail", 20:18 "roofs and ac units", 20:19
+"different textures or decals for different parts of the building"):** C.js `detail(Bd, D, walked, seed)` adds a second layer to every
+building from its own shapes (1524 parts over the 28 rows). Per ground wall block: a plinth (split at the walk-in door), the ground storey
+in its own sheet on the brick / plaster houses, a belt course, a cornice where none was drawn, two downpipes + a meter box, wall AC units
+on upper storeys. `roofKit(b)` on every block and upper tier: a roof deck sheet, a parapet on a bare roof, AC units on kerbs with a grill
+and a vent stack in the free spots (never under a drum / tower / pitched roof); on the five walked roof-route roofs each unit gets a ghost
+wall. Per walk-in door: pilasters, a canopy on brackets, a name board with a gilt plate (key `gold`), two lamps. Per drawn shop door: a
+striped awning, a sign board (no lettering), a blade sign. The sheets (plinth, ground storey, deck, plant) are picked per building by a
+seeded draw from the urban pack, his sheets as they are, only tinted. Headless shots after THE LEVELS need `y` = plot level × 1.75.
+
 ### HERO PLAZA, THE POLISH PASS (2026-11-13 20:15, mondo: "one more polish pass on the exteriors ... one or two more layers deep", + "roofs and ac units", + "different textures or decals for different parts of the building")
 - districts/H.js `DET[<building id>](a, door)` and `DET_OPEN[<piece>]`: a second parts list per building, added after its own by `dress()` in
   `build()`. `kit(a)` lays every piece against a wall by its side (`on(side, half, u, y, w, h, t, ...)`, u = world x on S/N, world z on E/W):
