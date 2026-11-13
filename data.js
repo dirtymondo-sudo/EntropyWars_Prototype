@@ -28386,7 +28386,7 @@ STORY_CUTSCENES.orientation_desk = {
         /* E6 · the office keys: on the recruit's FACE (mondo 2026-11-13: "the camera is focused on my crotch, it needs to show my
            face"), the key rising and turning beside it (the battle's own key celebration, three-renderer.js keyPickupFx) */
         { shot: { cam: [1.1, 1.6, 4.75, 180, 0, 30], eye: { who: 'player', dy: -0.03 } }, say: { who: 'RHONDA', text: 'These are the keys to your office. First door past the mop bucket.' },
-          act: [{ at: 0.5, do: 'key', x: 1.52, y: 1.0, z: 5.7, size: 0.45 }] },
+          act: [{ at: 0.5, do: 'key', x: 1.62, y: 1.0, z: 6.2, size: 0.38 }] },
     ],
 };
 /* B · THE TV CART (the approved storyboard's frames + mondo's lines, word for word; his change: B4 Locke on the far side
@@ -70772,6 +70772,8 @@ function hqCastInRoom(roomId, profile, opts) {
         if (!open.length) continue;
         /* a post taken WHILE a quest stage is current wins over the everyday posts (Locke at the recruit's door) */
         { const dur = open.filter(s => s.during); if (dur.length && dur.length < open.length) { open.length = 0; dur.forEach(s => open.push(s)); } }
+        /* a scene being REPLAYED wins over the live stage's post (Locke is at the TV cart for B's replay even while the office stage has her at the door) */
+        { const rp = open.filter(s => s.during && _hqCastSpotReplay(s.during)); if (rp.length && rp.length < open.length) { open.length = 0; rp.forEach(s => open.push(s)); } }
         const total = open.reduce((a, s) => a + (s.p == null ? 1 : s.p), 0);
         let roll = ((hqHash(id + '|' + salt) % 100000) / 100000) * Math.max(1, total), pick = null;
         for (const s of open) { roll -= (s.p == null ? 1 : s.p); if (roll <= 0) { pick = s; break; } }
