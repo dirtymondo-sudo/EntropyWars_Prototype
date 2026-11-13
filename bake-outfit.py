@@ -280,7 +280,7 @@ def fit(name, gender, src, bodies_dir):
         # remake's own space, as env SHELLS=1 prints them). Off by default
         if os.environ.get('SHELLS'): print('SHELL', n, c.mean(0).round(2), (c.max(0) - c.min(0)).round(2), col.round(2))
         if any(np.linalg.norm(c.mean(0) - np.array(q[:3])) < q[3] for q in DROPAT): dropped.append(('named (DROPAT)', n)); bpy.data.objects.remove(o); continue
-        # A COLOUR PAINTED OVER IN A NAMED SHELL (PAINTCOL='x,y,z,r,R,G,B,tol,zmin,R2,G2,B2;...', off; 2026-11-13, mushroom girl, mondo: "not sure if thats a
+        # A COLOUR PAINTED OVER IN A NAMED SHELL (PAINTCOL='x,y,z,r,R,G,B,tol,zmin,R2,G2,B2[,ymin];...', off; ymin = only faces past that y (the front, as SHELLS=1 prints 'PAINTCOL y'), so the hair painted on the back of the dress stays; 2026-11-13, mushroom girl, mondo: "not sure if thats a
         # necklace or her neck line is messed up": Meshy painted her brown curls onto the lace of her dress top; cut out they left bites and holes): in
         # the shell whose middle is within r of x,y,z the faces within tol of R,G,B above zmin take the UVs of the shell's face nearest in colour to
         # R2,G2,B2 (no texture is repainted)
@@ -289,7 +289,7 @@ def fit(name, gender, src, bodies_dir):
             fcs_ = face_cols(o, PX, IW, IH); uv_ = o.data.uv_layers[0].data; g_ = o.data.polygons[int(np.argmin(np.linalg.norm(fcs_ - np.array(q[9:12]), axis=1)))]
             u_ = sum((uv_[l].uv.copy() for l in g_.loop_indices), Vector((0, 0))) / len(g_.loop_indices); np_ = 0
             for p_ in o.data.polygons:
-                if np.linalg.norm(fcs_[p_.index] - np.array(q[4:7])) < q[7] and p_.center.z > q[8]:
+                if np.linalg.norm(fcs_[p_.index] - np.array(q[4:7])) < q[7] and p_.center.z > q[8] and (len(q) < 13 or p_.center.y > q[12]):
                     np_ += 1
                     for l in p_.loop_indices: uv_[l].uv = u_
             print('[bake-outfit] %s: %d faces painted over (PAINTCOL)' % (name, np_), flush=True)
