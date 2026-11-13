@@ -2146,6 +2146,47 @@ rerun `node bake-disaster-city.js` after any edit.
   the baked rows with the game's own `_hqArchGeometry` offline (/mnt/project-files/dc-entertainment/). Tints and the VHS shop's facing
   want a look on mondo's Mac.
 
+## DISASTER CITY, THE TRAFFIC — traffic lights, car routes, Bus Line 1 (2026-11-13, mondo's OK on the plan 17:33)
+mondo 11-13 17:20: "get some traffic lights and intersections planned out for actual traffic and car routes. Bus sections placed in each
+district with a bus route". Plan + mock-up: `/mnt/project-files/city-traffic-plan/` (traffic_plan_map.jpg, traffic_models_found.jpg).
+- THE ROADS (city-layout.json, plot coords): west avenue x = 3, east avenue x = 8 (and x = 11 south of the cross street), north street
+  y = 1, cross street y = 7, south street y = 11. Those street names are labels in notes only, not canon. The plan has NO road out of the
+  city: the west avenue stops at the Boxing gym (P03-00) and the cross street at the Campus gate (P00-07). Police streets (parked police
+  only, no moving car): x = 8 south of the cross street, the south street east of x = 8, x = 11.
+- THE MODELS (no Meshy; all Elbolilloduro CC0, cut by `bake-pack-pieces.py` jobs `street_signal`, `transit_bus`, `bus_stop_sign`, R2
+  `Assets/world/packs/elbolilloduro/`): `ebd_pizzeria_street_signal.glb` (the yellow three-faced head on a mast arm, 7.38 m, 970 tris),
+  `ebd_busstop_transit_bus.glb` (the blue city bus with its four tyres and door leaves joined on, 11.2 m, nose at -X, 6,482 tris),
+  `ebd_busstop_bus_stop_sign.glb`. Catalogue rows `street_signal`, `transit_bus`, `bus_stop_sign`; the traffic's vehicle kind `citybus`.
+  The battle maps' coded `traffic_light` prop is another thing and is untouched.
+- THE ROOM ROWS (terrain, written by bake-disaster-city.js "THE TRAFFIC" + "THE BUS LINE"; data.js passes them through beside `traffic`):
+  `signals: [{ x, z, arms: 'NESW', off, flash }]`, `busStops: [{ x, z, name, end, signs: [{ x, z, ns }] }]`, a route's `bus: true`.
+- THE SIGNALS (three-renderer.js `_HQ_SIGNAL`, `_hqBuildSignals`, `_hqTickSignals`): lights at (3,1) T, (3,7) and (8,7) crossroads, one mast
+  for every arm traffic comes in on (11), its pole on the kerb corner to the driver's right, the arm over his lane; the police staging T
+  (8,11) blinks red (3 masts). The file's lenses are painted all lit, so each lens wears a flat disc the code paints bright or dark; the
+  lens spots are MEASURED in Blender (metres off the GLB's box middle). Clock: 14 s green, 3 s yellow, 1.5 s all red, then the other street.
+- THE CARS (`_hqTickTraffic`): a car stops with its nose at the stop line (11.5 m before the junction's middle, where the road paint already
+  draws the line) on a red, or a yellow it can still stop for; it queues behind a car of ANOTHER route in its lane (before: only its own
+  route's); two cars turning into one lane, the first in the list goes; a knot of cars with no red behind it lets one drive through after
+  5 s. THE TURN-ROUND (`_hqRouteCorner` `u`): a route that doubles back swings a half circle from its lane into the lane coming back.
+  A vehicle further than 210 m from the camera is not drawn (it still drives).
+- THE ROUTES (16 vehicles, 5 before): the ring both ways 3 + 3; the west avenue run (the avenue's north end to the cross street's west
+  end, turning round at both dead ends) 4; the freight run (campus gate, west avenue, south street, round short of the police line) 2
+  trucks; the strip taxis (cross street east end) 2; Bus Line 1, one `citybus` each way (the police line, south street, up the west
+  avenue, round the ring, back down), waiting 8 s at each stop.
+- THE STOPS: nine, one per district: Southside P03-02, Civic Center P04-01, Financial P08-02, Entertainment P08-05, Hero Plaza P06-07,
+  University P03-05, Industrial P03-09, Sports + Culture P04-11, and BAYSIDE GATE, the line's end on the south street at the district
+  line where the police cars start. A stop uses the plot's shelter; five plots had none on their road and got one (three free kerb
+  squares in a row, without moving a lamp, hydrant or bin). Each stop: a sign pole by the shelter and one on the kerb across the road.
+- THE CULL: each junction and each stop is one group in the plot chunks' list (`_hqSignalChunk` → `_hqChunkReg`, not drawn past 230 m /
+  150 m or off camera) and flagged `_ew_hqSignal` so the static batch leaves it alone. Off: `window.EW_HQ_NO_SIGNALS`.
+- Probe: `ThreeRenderer.hq.dev.traffic()` = every light's colours and every vehicle's place, speed, wait.
+- NOT SEEN IN THE GAME: the headless browser run was refused (RULE #1c). Checked offline instead: the game's own route, signal and
+  traffic functions run in Node for a simulated hour on the baked rows: no car ran a red, the longest wait was 20 s (one red), every
+  vehicle kept lapping (a bus lap is about 9 minutes), the paths have no jump through the turn-rounds. Unseen and wanting mondo's eye:
+  each mast's facing and where its lens discs sit, the bus's nose direction, the sign poles' facing, and the frame rate.
+- Open: the plan's roads have pavement bands across them at some plot edges (P03-02, P08-05, the junction plots); cars drive over them.
+  Left turns cross oncoming cars without waiting. Stop names are in the data but shown nowhere yet.
+
 ## DISASTER CITY, THE INDUSTRIAL DISTRICT — the 28 buildings of district I (2026-11-13, mondo's OK 17:05)
 Plots x 0-3, y 8-11 (room x -252..-84, z 84..252). All of it lives in `docs/disaster-city/districts/I.js` (`build(ctx)`); rerun `node bake-disaster-city.js`.
 - **How a building is made:** its `dc:<id>` row becomes a `texbuilding` with `skin: false` (the walls you bump into, the roof slab, the doorway, the city swing door)

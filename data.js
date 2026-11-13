@@ -29590,6 +29590,11 @@ const DOOR_HQ = {
         street_drain:      { proc: 'manhole', h: 0.01, foot: 0 },                                                                                         // a manhole on the road: the urban pack's DecalManholeCover laid flat (2026-10-05, mondo: no Meshy drain GLB)
         escalator:         { file: 'Meshy_AI_an_escalator_0917064623_texture.glb',                base: 'misc', h: 4.6, foot: 0 },                          // Generic catalogue asset; the mall uses the fitted escalator builder.
         bus_shelter:       { file: 'ebd_busstop_bus_shelter.glb',                 base: 'misc', span: 3.8, foot: 1.2, rect: { hw: 1.9, hd: 0.9 }, block: true, turn: 90 },
+        /* THE CITY TRAFFIC (2026-11-13): the Pizzeria pack's mast-arm traffic light (three-renderer.js _hqBuildSignals paints its lenses), the Bus stop
+           pack's stop sign and its blue city bus (the traffic's `citybus`; the row is the editor's parked one, nose at -X like the cars) */
+        street_signal:     { file: 'ebd_pizzeria_street_signal.glb',              base: 'misc', h: 7.38, foot: 0.2 },
+        bus_stop_sign:     { file: 'ebd_busstop_bus_stop_sign.glb',               base: 'misc', h: 2.73, foot: 0.12 },
+        transit_bus:       { file: 'ebd_busstop_transit_bus.glb',                 base: 'misc', span: 11.2, foot: 2.6, rect: { hw: 1.4, hd: 5.6 }, block: true, vehicle: true, turn: 90 },
         /* THE TOWN HOUSES (2026-11-03, mondo: the rims are dead code, "obviously they need to go into the site rooms"): whole pack houses
            one by one, real size (`span` = the long side). The Trailer Park scene's six trailers (one cut per trailer, its door side to
            +Z = the row's `face`), Area 51's flight line and the Skinwalker fields; the Abandoned House's shell (its basement cut to the
@@ -41039,7 +41044,10 @@ const DOOR_HQ = {
                     {k:'texbuilding',id:'dc:ind-crane-leg3',x:-234.75,z:245,w:2.2,d:2.2,rot:0,storeys:2,style:'factory',seed:9603,skin:false},
                 ],
                 /* the cars: the ring (west avenue, the north street, the east avenue, the cross street), never the response streets round the mall */
-                traffic: [{pts:[[-105,-189],[105,-189],[105,63],[-105,63]],loop:true,n:2,speed:4,lane:3.5,kinds:['suv','taxi','cadillac','schoolbus','truck']},{pts:[[-105,63],[105,63],[105,-189],[-105,-189]],loop:true,n:2,speed:4,lane:3.5,kinds:['taxi','suv','copcar','cadillac']},{pts:[[-231,63],[-105,63]],loop:false,n:1,speed:3.4,lane:3.5,kinds:['truck','suv']}],
+                traffic: [{pts:[[-105,-189],[105,-189],[105,63],[-105,63]],loop:true,n:3,speed:4.2,lane:3.5,kinds:['suv','taxi','cadillac']},{pts:[[-105,63],[105,63],[105,-189],[-105,-189]],loop:true,n:3,speed:4.2,lane:3.5,kinds:['taxi','copcar','suv']},{pts:[[-105,-222.6],[-105,63],[-231,63],[-105,63]],loop:true,n:4,speed:4,lane:3.5,kinds:['cadillac','suv','taxi','suv']},{pts:[[-231,63],[-105,63],[-105,231],[46.2,231],[-105,231],[-105,63]],loop:true,n:2,speed:3.6,lane:3.5,kinds:['truck','truck']},{pts:[[131.04,63],[231,63]],loop:true,n:2,speed:3.8,lane:3.5,kinds:['taxi','taxi']},{pts:[[79.8,231],[-105,231],[-105,63],[-105,-189],[105,-189],[105,63],[-105,63],[-105,231]],loop:true,n:1,speed:3.8,lane:3.5,kinds:['citybus'],bus:true},{pts:[[79.8,231],[-105,231],[-105,63],[105,63],[105,-189],[-105,-189],[-105,63],[-105,231]],loop:true,n:1,speed:3.8,lane:3.5,kinds:['citybus'],bus:true}],
+                /* THE CITY TRAFFIC: the junctions with traffic lights, and Bus Line 1's stops (the point the bus waits at, its sign poles) */
+                signals: [{x:-105,z:-189,arms:'NES',off:0},{x:-105,z:63,arms:'NESW',off:11},{x:105,z:63,arms:'NESW',off:24},{x:105,z:231,arms:'NEW',flash:true}],
+                busStops: [{x:-105,z:-134.75,name:'SOUTHSIDE',signs:[{x:-112.49,z:-127.75,ns:true},{x:-97.51,z:-134.75,ns:true}]},{x:-64.75,z:-189,name:'CIVIC CENTER',signs:[{x:-57.75,z:-181.51,ns:false},{x:-64.75,z:-196.49,ns:false}]},{x:105,z:-134.75,name:'FINANCIAL',signs:[{x:97.51,z:-127.75,ns:true},{x:112.49,z:-134.75,ns:true}]},{x:105,z:-8.75,name:'ENTERTAINMENT',signs:[{x:97.51,z:-1.75,ns:true},{x:112.49,z:-8.75,ns:true}]},{x:19.25,z:63,name:'HERO PLAZA',signs:[{x:26.25,z:55.51,ns:false},{x:19.25,z:70.49,ns:false}]},{x:-105,z:-29.75,name:'UNIVERSITY',signs:[{x:-97.51,z:-22.75,ns:true},{x:-112.49,z:-29.75,ns:true}]},{x:-105,z:148.75,name:'INDUSTRIAL',signs:[{x:-97.51,z:155.75,ns:true},{x:-112.49,z:148.75,ns:true}]},{x:-64.75,z:231,name:'SPORTS + CULTURE',signs:[{x:-57.75,z:223.51,ns:false},{x:-64.75,z:238.49,ns:false}]},{x:67.8,z:231,name:'BAYSIDE GATE',end:true,signs:[{x:68.25,z:223.51,ns:false}]}],
             },
             doors: [
                 { id: 'harbour', wall: 'free', x: 243.25, z: 243.25, face: 180, leaf: null, label: 'THE HARBOUR', sub: 'THE BOARDWALK · OUT ON THE PIER', action: { room: 'site_prebuilt_downtown_harbour', at: 'quay' },
@@ -42556,6 +42564,11 @@ const DOOR_HQ = {
                 {key:'bus_shelter',x:96.25,z:187.25,face:90},
                 {key:'bus_shelter',x:103.25,z:222.25,face:180},
                 {key:'bus_shelter',x:187.25,z:222.25,face:180},
+                {key:'bus_shelter',x:-113.75,z:-134.75,face:90},
+                {key:'bus_shelter',x:96.25,z:-134.75,face:90},
+                {key:'bus_shelter',x:96.25,z:-8.75,face:90},
+                {key:'bus_shelter',x:-96.25,z:-29.75,face:270},
+                {key:'bus_shelter',x:-96.25,z:148.75,face:270},
                 {key:'city_bin',x:-112.35,z:-222.25,face:90},
                 {key:'city_bin',x:-97.65,z:-222.25,face:270},
                 {key:'fire_hydrant',x:-112.35,z:-201.25,face:90},
@@ -60127,6 +60140,9 @@ function hqTerrainCompile(room, roomId) {
                    bridges: [],  // THE BRIDGE LAYER (2026-09-19): filled after the field is final (hqTerrainBridges)
                    /* DISASTER CITY (2026-09-17): NPC TRAFFIC routes ({ pts, loop, n, speed, lane, kinds }) and THE CIRCUIT ({ label, pts, w, gates }) — read by three-renderer.js _hqBuildTraffic / _hqBuildRace */
                    traffic: (T.traffic || []).filter(t => t && Array.isArray(t.pts) && t.pts.length >= 2).map(t => Object.assign({ n: 4, speed: 7, lane: 2.2, loop: false, kinds: ['suv', 'cadillac'] }, t)),
+                   /* THE CITY TRAFFIC (2026-11-13): the junctions with traffic lights ({ x, z, arms: 'NESW', flash, off }) and the bus stops ({ x, z, name, end, signs }) — three-renderer.js _hqBuildSignals / _hqBuildBusStops; a route with `bus: true` waits at the stops */
+                   signals: (T.signals || []).filter(g => g && isFinite(g.x) && isFinite(g.z) && g.arms),
+                   busStops: (T.busStops || []).filter(b => b && isFinite(b.x) && isFinite(b.z)),
                    race: (T.race && Array.isArray(T.race.pts) && T.race.pts.length >= 3) ? Object.assign({ w: 10, gates: 8, label: 'THE CIRCUIT' }, T.race) : null };
     /* THE JOINED FLIGHTS (2026-10-06, mondo: "almost every stairs or ramp in the game has gaps on the sides / not connected at the edges"):
        the renderer used to CUT the field away round every flight (and every escalator) — 0.8 m past each side and half a cell before
