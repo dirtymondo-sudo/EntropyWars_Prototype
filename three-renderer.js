@@ -2052,7 +2052,7 @@ const ThreeRenderer = (function () {
        - The tree lives on the geometry (shared copies share it) and goes with it; disposing a geometry drops it.
        Off: window.EW_NO_BVH. The F3 lens shows rays, their time and the trees. */
     var BVH_MIN_TRIS = 256, BVH_BUDGET_TRIS = 60000, BVH_BUDGET_MS = 100, BVH_FORCE_AFTER = 6;
-    var _bvhStat = { rays: 0, ms: 0, trees: 0, tris: 0, buildMs: 0, slow: 0, fails: 0 }, _bvhWin = 0, _bvhSpent = 0, _bvhDepth = 0;
+    var _bvhStat = { rays: 0, ms: 0, trees: 0, tris: 0, buildMs: 0, slow: 0, fails: 0, skinOut: 0, skinIn: 0 }, _bvhWin = 0, _bvhSpent = 0, _bvhDepth = 0;
     var _bvhSphere = null, _bvhRay = null, _bvhInv = null;
     function _bvhLib() {
         try { return (typeof window !== 'undefined' && !window.EW_NO_BVH && window.EW_BVH_LIB && window.EW_BVH_LIB.MeshBVH) ? window.EW_BVH_LIB : null; } catch (e) { return null; }
@@ -2155,6 +2155,145 @@ const ThreeRenderer = (function () {
                     imMesh.raycast(raycaster, imHits);
                     for (var h = 0; h < imHits.length; h++) { imHits[h].instanceId = i; imHits[h].object = this; intersects.push(imHits[h]); }
                     imHits.length = 0;
+                }
+            };
+        }
+        /* THE SKINNED PICK (2026-11-13, mondo's Atlantis fight at 4.7 fps: "Pick (raycasts) 164/s · 819 ms/s"): three's
+           SkinnedMesh.raycast keeps the sphere of the pose it was FIRST asked in (a shark's: 57 m, the whole board) and then
+           walks every triangle, skinning each corner through four bone matrices as objects — 1-4 ms a ray for a 600-triangle
+           fish, tens of ms for a creator body, on every ray that crosses that old sphere. The hover pick asks every unit on
+           every mouse move, the wall-fade rays ask every swimmer near their line. Now, the same hits for far less:
+           1. THE POSE'S BOX: each bone keeps the sphere of the bind-pose vertices it moves (measured once per mesh); a skinned
+              vertex is a weighted mean of its bones' carried copies, so it lies inside the box round those spheres as the
+              bones stand NOW. A ray that misses the box is done (a few hundred multiplies).
+           2. THE POSE'S POINTS: a ray inside the box tests the triangles against the mesh's skinned points, worked out in one
+              typed-array pass and kept while no bone moves (the rays of one frame share them).
+           Not for a morphing mesh, weights that do not sum to 1 (no box), or a pre-r150 three. Off: window.EW_NO_SKIN_PICK. */
+        var SM = THREE.SkinnedMesh && THREE.SkinnedMesh.prototype;
+        if (SM && !SM._ew_skinRaycast && Object.prototype.hasOwnProperty.call(SM, 'raycast') && typeof SM.applyBoneTransform === 'function') {
+            var smPlain = SM.raycast, skX = new THREE.Matrix4(), skXi = new THREE.Matrix4(), skRay = new THREE.Ray(), skBox = new THREE.Box3(),
+                skM = new THREE.Matrix4(), skV = new THREE.Vector3(), skA = new THREE.Vector3(), skB = new THREE.Vector3(), skC = new THREE.Vector3(), skMs = null;
+            SM._ew_skinRaycast = smPlain;
+            /* once per mesh: the bind-space points, the four bones + weights of each, and each bone's sphere */
+            var skBuild = function (mesh) {
+                var g = mesh.geometry, sk = mesh.skeleton, pos = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
+                var n = pos.count, nb = sk.bones.length, P = new Float32Array(n * 3), J = new Uint16Array(n * 4), W = new Float32Array(n * 4);
+                var lo = new Float64Array(nb * 3).fill(Infinity), hi = new Float64Array(nb * 3).fill(-Infinity), used = new Uint8Array(nb), noBox = false;
+                for (var i = 0; i < n; i++) {
+                    skV.fromBufferAttribute(pos, i).applyMatrix4(mesh.bindMatrix);
+                    P[i * 3] = skV.x; P[i * 3 + 1] = skV.y; P[i * 3 + 2] = skV.z;
+                    var sum = 0;
+                    for (var k = 0; k < 4; k++) {
+                        var w = sw.getComponent(i, k), j = si.getComponent(i, k);
+                        if (!(w !== 0)) { W[i * 4 + k] = 0; continue; }
+                        if (!(j >= 0 && j < nb) || !sk.bones[j] || !sk.boneInverses[j]) return null;
+                        W[i * 4 + k] = w; J[i * 4 + k] = j; sum += w; used[j] = 1;
+                        var b = j * 3;
+                        if (skV.x < lo[b]) lo[b] = skV.x; if (skV.y < lo[b + 1]) lo[b + 1] = skV.y; if (skV.z < lo[b + 2]) lo[b + 2] = skV.z;
+                        if (skV.x > hi[b]) hi[b] = skV.x; if (skV.y > hi[b + 1]) hi[b + 1] = skV.y; if (skV.z > hi[b + 2]) hi[b + 2] = skV.z;
+                    }
+                    if (Math.abs(sum - 1) > 0.01) noBox = true;
+                }
+                var bones = [], S = [];
+                for (var q = 0; q < nb; q++) {
+                    if (!used[q]) continue;
+                    var c = q * 3, dx = hi[c] - lo[c], dy = hi[c + 1] - lo[c + 1], dz = hi[c + 2] - lo[c + 2];
+                    bones.push(q); S.push((lo[c] + hi[c]) / 2, (lo[c + 1] + hi[c + 1]) / 2, (lo[c + 2] + hi[c + 2]) / 2, Math.sqrt(dx * dx + dy * dy + dz * dz) / 2);
+                }
+                return { g: g, sk: sk, pv: pos.version, n: n, nb: nb, bind: mesh.bindMatrix.clone(), P: P, J: J, W: W, bones: bones, S: S, noBox: noBox, K: null, sig: NaN, sig2: NaN };
+            };
+            var skTri = function (mesh, C, K, ia, ib, ic, mat, mi, fi, raycaster, intersects) {
+                var a = ia * 3, b = ib * 3, c = ic * 3, back = mat.side === THREE.BackSide;
+                if (back) { var sw2 = a; a = c; c = sw2; }
+                var ax = K[a], ay = K[a + 1], az = K[a + 2];
+                var e1x = K[b] - ax, e1y = K[b + 1] - ay, e1z = K[b + 2] - az, e2x = K[c] - ax, e2y = K[c + 1] - ay, e2z = K[c + 2] - az;
+                var nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+                var o = skRay.origin, d = skRay.direction, DdN = d.x * nx + d.y * ny + d.z * nz, sign;
+                if (DdN > 0) { if (back || mat.side === THREE.FrontSide) return; sign = 1; } else if (DdN < 0) { sign = -1; DdN = -DdN; } else return;
+                var fx = o.x - ax, fy = o.y - ay, fz = o.z - az;
+                var u = sign * (d.x * (fy * e2z - fz * e2y) + d.y * (fz * e2x - fx * e2z) + d.z * (fx * e2y - fy * e2x)); if (u < 0) return;
+                var v = sign * (d.x * (e1y * fz - e1z * fy) + d.y * (e1z * fx - e1x * fz) + d.z * (e1x * fy - e1y * fx)); if (v < 0) return;
+                if (u + v > DdN) return;
+                var QdN = -sign * (fx * nx + fy * ny + fz * nz); if (QdN < 0) return;
+                var t = QdN / DdN, pt = new THREE.Vector3(o.x + d.x * t, o.y + d.y * t, o.z + d.z * t).applyMatrix4(skX);   // the pose's space → the world
+                var dist = raycaster.ray.origin.distanceTo(pt);
+                if (dist < raycaster.near || dist > raycaster.far) return;
+                /* the face as three hands it: in the mesh's own space */
+                skA.set(K[ia * 3], K[ia * 3 + 1], K[ia * 3 + 2]).applyMatrix4(mesh.bindMatrixInverse);
+                skB.set(K[ib * 3], K[ib * 3 + 1], K[ib * 3 + 2]).applyMatrix4(mesh.bindMatrixInverse);
+                skC.set(K[ic * 3], K[ic * 3 + 1], K[ic * 3 + 2]).applyMatrix4(mesh.bindMatrixInverse);
+                var hit = { distance: dist, point: pt, object: mesh, faceIndex: fi, face: { a: ia, b: ib, c: ic, normal: new THREE.Vector3(), materialIndex: mi } };
+                THREE.Triangle.getNormal(skA, skB, skC, hit.face.normal);
+                var uvA = C.g.attributes.uv;
+                if (uvA) {   // the hit's sheet point (the same weights three reads)
+                    var w1 = u / DdN, w2 = v / DdN, w0 = 1 - w1 - w2, qa = back ? ic : ia, qc = back ? ia : ic;
+                    hit.uv = new THREE.Vector2(uvA.getX(qa) * w0 + uvA.getX(ib) * w1 + uvA.getX(qc) * w2, uvA.getY(qa) * w0 + uvA.getY(ib) * w1 + uvA.getY(qc) * w2);
+                }
+                intersects.push(hit);
+            };
+            SM.raycast = function (raycaster, intersects) {
+                var g = this.geometry, sk = this.skeleton, mat = this.material;
+                var off = false; try { off = !!window.EW_NO_SKIN_PICK; } catch (e) {}
+                if (off || mat === undefined || !g || !sk || !sk.bones || !g.attributes || !g.attributes.position || g.attributes.position.itemSize !== 3 || !g.attributes.skinIndex || !g.attributes.skinWeight
+                    || (g.morphAttributes && g.morphAttributes.position && g.morphAttributes.position.length) || g.attributes.position.isInterleavedBufferAttribute) return smPlain.call(this, raycaster, intersects);
+                var C = this._ew_skP;
+                if (C === 0) return smPlain.call(this, raycaster, intersects);
+                if (!C || C.g !== g || C.sk !== sk || C.pv !== g.attributes.position.version || C.nb !== sk.bones.length || !C.bind.equals(this.bindMatrix)) {
+                    try { C = skBuild(this); } catch (e) { C = null; }
+                    this._ew_skP = C || 0;
+                    if (!C) return smPlain.call(this, raycaster, intersects);
+                }
+                /* the bones as they stand (three's own product: bone world × bone inverse), and the pose's signature */
+                var bones = C.bones, nb = bones.length, S = C.S, s1 = 0, s2 = 0;
+                if (!skMs || skMs.length < C.nb * 16) skMs = new Float64Array(Math.max(C.nb, 256) * 16);
+                skBox.makeEmpty();
+                for (var q = 0; q < nb; q++) {
+                    var j = bones[q], te = skM.multiplyMatrices(sk.bones[j].matrixWorld, sk.boneInverses[j]).elements, m0 = j * 16;
+                    for (var e = 0; e < 16; e++) { var x = te[e]; skMs[m0 + e] = x; s1 += x; s2 += x * (e + 1 + q); }
+                    var cx = S[q * 4], cy = S[q * 4 + 1], cz = S[q * 4 + 2];
+                    var wx = te[0] * cx + te[4] * cy + te[8] * cz + te[12], wy = te[1] * cx + te[5] * cy + te[9] * cz + te[13], wz = te[2] * cx + te[6] * cy + te[10] * cz + te[14];
+                    var c0 = te[0] * te[0] + te[1] * te[1] + te[2] * te[2], c1 = te[4] * te[4] + te[5] * te[5] + te[6] * te[6], c2 = te[8] * te[8] + te[9] * te[9] + te[10] * te[10], sc2 = Math.max(c0, c1, c2);
+                    /* a sheared bone (a scaled parent under a turned child): the columns are no longer square to each other, and the widest stretch is bounded by all nine */
+                    var sh = Math.abs(te[0] * te[4] + te[1] * te[5] + te[2] * te[6]) + Math.abs(te[0] * te[8] + te[1] * te[9] + te[2] * te[10]) + Math.abs(te[4] * te[8] + te[5] * te[9] + te[6] * te[10]);
+                    if (sh > 1e-4 * sc2) sc2 = c0 + c1 + c2;
+                    var r = S[q * 4 + 3] * Math.sqrt(sc2) * 1.0001 + 1e-6, mn = skBox.min, mx = skBox.max;
+                    if (wx - r < mn.x) mn.x = wx - r; if (wy - r < mn.y) mn.y = wy - r; if (wz - r < mn.z) mn.z = wz - r;
+                    if (wx + r > mx.x) mx.x = wx + r; if (wy + r > mx.y) mx.y = wy + r; if (wz + r > mx.z) mx.z = wz + r;
+                }
+                if (!(s1 === s1)) return smPlain.call(this, raycaster, intersects);   // a bone with no numbers yet
+                /* the ray in the pose's space (world = mesh world × bind inverse × pose) */
+                skX.multiplyMatrices(this.matrixWorld, this.bindMatrixInverse); skXi.copy(skX).invert();
+                skRay.copy(raycaster.ray).applyMatrix4(skXi);
+                if (!C.noBox && !skRay.intersectsBox(skBox)) { _bvhStat.skinOut++; return; }
+                _bvhStat.skinIn++;
+                var K = C.K, n = C.n;
+                if (!K || C.sig !== s1 || C.sig2 !== s2) {
+                    if (!K) K = C.K = new Float32Array(n * 3);
+                    var P = C.P, J = C.J, W = C.W, M = skMs;
+                    for (var i = 0; i < n; i++) {
+                        var px = P[i * 3], py = P[i * 3 + 1], pz = P[i * 3 + 2], ox = 0, oy = 0, oz = 0, i4 = i * 4;
+                        for (var k = 0; k < 4; k++) {
+                            var w = W[i4 + k]; if (w === 0) continue;
+                            var m = J[i4 + k] * 16;
+                            ox += w * (M[m] * px + M[m + 4] * py + M[m + 8] * pz + M[m + 12]);
+                            oy += w * (M[m + 1] * px + M[m + 5] * py + M[m + 9] * pz + M[m + 13]);
+                            oz += w * (M[m + 2] * px + M[m + 6] * py + M[m + 10] * pz + M[m + 14]);
+                        }
+                        K[i * 3] = ox; K[i * 3 + 1] = oy; K[i * 3 + 2] = oz;
+                    }
+                    C.sig = s1; C.sig2 = s2;
+                }
+                /* three's own walk: the groups of a several-material mesh, the draw range, three corners at a time */
+                var ix = g.index, ia2 = ix ? ix.array : null, N = ix ? ix.count : n, dr = g.drawRange, d0 = Math.max(0, dr.start), d1 = Math.min(N, dr.start + dr.count), t0, t1, f;
+                if (Array.isArray(mat)) {
+                    var gr = g.groups;
+                    for (var gi = 0; gi < gr.length; gi++) {
+                        var G = gr[gi], gm = mat[G.materialIndex]; if (!gm) continue;
+                        t0 = Math.max(G.start, d0); t1 = Math.min(N, Math.min(G.start + G.count, d1));
+                        for (f = t0; f + 2 < t1; f += 3) skTri(this, C, K, ia2 ? ia2[f] : f, ia2 ? ia2[f + 1] : f + 1, ia2 ? ia2[f + 2] : f + 2, gm, G.materialIndex, Math.floor(f / 3), raycaster, intersects);
+                    }
+                } else {
+                    for (f = d0; f + 2 < d1; f += 3) skTri(this, C, K, ia2 ? ia2[f] : f, ia2 ? ia2[f + 1] : f + 1, ia2 ? ia2[f + 2] : f + 2, mat, 0, Math.floor(f / 3), raycaster, intersects);
                 }
             };
         }
@@ -17601,6 +17740,7 @@ const ThreeRenderer = (function () {
                 var _pr = _procRigFor(url);   // THE PROCEDURAL RIGS: assemble once, on the cached root
                 var _land = function (deps) {
                     if (_pr) { try { e.procClips = _pr(root, gltf.animations || [], deps || []) || null; } catch (_pe) { console.warn('[3D] procRig failed', _pe); } }
+                    _ewGroupRuns(root);   // THE MATERIAL RUNS: one draw per material (the ocean pack's fish: up to 185 runs each)
                     // Geometry is shared by every clone — protect it from _disposeR.
                     root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
                     _swayScan(root);   // THE SWAY: a baked cape / tail rides spring bones (userData.ewSway, copied by every clone)
@@ -37351,6 +37491,42 @@ const ThreeRenderer = (function () {
         g._ew_bbox = new THREE.Box3().setFromObject(g);
         return g;
     }
+    /* THE MATERIAL RUNS (2026-11-13, mondo's Atlantis fight at 4.7 fps): a file can hand a mesh whose triangles switch material back and
+       forth — the ocean pack's clownfish is 890 triangles in 185 runs over 3 materials — and three draws every run as its own draw
+       call, in every pass (the picture, the shadow, the unit ink mask: 3,500 draws a frame for the sea life alone). The triangles of
+       one material become ONE run (the index is rewritten once, at load, before anything reads it): the same triangles, the same
+       materials, one draw per material. Off: window.EW_NO_GROUP_RUNS (before the file loads). */
+    function _ewGroupRuns(root) {
+        try { if (typeof window !== 'undefined' && window.EW_NO_GROUP_RUNS) return; } catch (e) {}
+        if (!root || !root.traverse) return;
+        root.traverse(function (n) {
+            if (!n.isMesh || !n.geometry || !Array.isArray(n.material)) return;
+            var g = n.geometry, gr = g.groups, pos = g.attributes && g.attributes.position;
+            if (g._ew_runs || !gr || gr.length < 2 || !pos) return;
+            g._ew_runs = true;
+            var dr = g.drawRange; if (dr.start !== 0 || dr.count !== Infinity) return;
+            var ix = g.index, N = ix ? ix.count : pos.count, order = [], cnt = {}, total = 0, i, k;
+            for (i = 0; i < gr.length; i++) {
+                var mi = gr[i].materialIndex | 0, c = Math.min(gr[i].count, N - gr[i].start);
+                if (!(gr[i].start >= 0) || !(c > 0)) continue;
+                if (cnt[mi] == null) { cnt[mi] = 0; order.push(mi); }
+                cnt[mi] += c; total += c;
+            }
+            if (!total || gr.length <= order.length) return;   // already one run per material
+            var out = new (pos.count > 65535 ? Uint32Array : Uint16Array)(total), at = {}, w = {}, o = 0;
+            for (i = 0; i < order.length; i++) { at[order[i]] = w[order[i]] = o; o += cnt[order[i]]; }
+            for (i = 0; i < gr.length; i++) {
+                var m2 = gr[i].materialIndex | 0, s0 = gr[i].start, c2 = Math.min(gr[i].count, N - s0);
+                if (!(s0 >= 0) || !(c2 > 0)) continue;
+                var q = w[m2];
+                if (ix) for (k = 0; k < c2; k++) out[q + k] = ix.getX(s0 + k); else for (k = 0; k < c2; k++) out[q + k] = s0 + k;
+                w[m2] = q + c2;
+            }
+            g.setIndex(new THREE.BufferAttribute(out, 1));
+            g.clearGroups();
+            for (i = 0; i < order.length; i++) g.addGroup(at[order[i]], cnt[order[i]], order[i]);
+        });
+    }
     function _loadMiscModel(url, isGLB, cb, opts) {
         var bg = !!(opts && opts.bg);   // THE BACKGROUND LANE (2026-09-20): a warm files itself behind the scene on screen
         var onFail = (opts && opts.onFail) || null;   // THE CHESS SET (2026-10-29): told when the file (or the piece) never comes, so the caller can build its own
@@ -37412,6 +37588,8 @@ const ThreeRenderer = (function () {
             var obj = (res && res.scene) ? res.scene : res;   // GLTF → {scene}, OBJ → Object3D
             if (_isOceanGlb(url)) _oceanGlbPrep(obj, res && res.animations);   // THE JELLYFISH + THE ANGLERFISH (2026-10-27)
             _instrPrep(obj, url);   // THE INSTRUMENTS: stood up the one way before it is measured
+            _ewGroupRuns(obj);   // THE MATERIAL RUNS: one draw per material
+            if (obj._ewRig && obj._ewRig.src && obj._ewRig.src !== obj) _ewGroupRuns(obj._ewRig.src);   // the moving copy the swimmers are cloned from
             _compactMobileModelTextures(obj);
             if (_isTrapsUrl(url)) _trapsDress(obj);   // THE TRAPS PACK: the pack's one swatch sheet on every piece (the files carry none)
             obj.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
@@ -51486,8 +51664,8 @@ const ThreeRenderer = (function () {
         S.room = _hq ? ((_hq.opts && _hq.opts.room) || 'central_egress') + (_hq.stage && _hq.stage.id && _hq.stage.id !== _hq.opts.room ? ' (part ' + _hq.stage.id + ')' : '') : '';
         S.batch = (_hq && typeof _hqBatchStats === 'function') ? _hqBatchStats(_hq) : null;
         try { var ks = _ktxStats(); S.ktx2 = { st: ks, loads: _asOptLoads, falls: _asOptFalls }; } catch (e) {}
-        S.bvh = { on: !!_bvhLib(), rays: _bvhStat.rays * 1000 / Math.max(1, span), ms: _bvhStat.ms * 1000 / Math.max(1, span), slow: _bvhStat.slow, trees: _bvhStat.trees, tris: _bvhStat.tris, buildMs: _bvhStat.buildMs, fails: _bvhStat.fails };
-        _bvhStat.rays = 0; _bvhStat.ms = 0; _bvhStat.slow = 0;   // per window; the trees are the session's
+        S.bvh = { on: !!_bvhLib(), rays: _bvhStat.rays * 1000 / Math.max(1, span), ms: _bvhStat.ms * 1000 / Math.max(1, span), slow: _bvhStat.slow, trees: _bvhStat.trees, tris: _bvhStat.tris, buildMs: _bvhStat.buildMs, fails: _bvhStat.fails, skinOut: _bvhStat.skinOut * 1000 / Math.max(1, span), skinIn: _bvhStat.skinIn * 1000 / Math.max(1, span) };
+        _bvhStat.rays = 0; _bvhStat.ms = 0; _bvhStat.slow = 0; _bvhStat.skinOut = 0; _bvhStat.skinIn = 0;   // per window; the trees are the session's
         S.lampN = (_hq && _hq.stage) ? _hq.stage.lampN : null;
         S.keep = (_ewGpu && renderer && renderer._ew_keep) ? _ewKeepStats() : null;
         try { S.text = _hqTextStats(); } catch (e) { S.text = null; }
@@ -51531,7 +51709,7 @@ const ThreeRenderer = (function () {
         L.push('JS heap ' + (S.heap ? Math.round(S.heap[0]) + ' / ' + Math.round(S.heap[1]) + ' MB' : 'n/a'));
         if (S.ktx2) L.push('KTX2 textures ' + (S.ktx2.st.loader ? 'on (' + S.ktx2.st.fmt + ')' : 'off (' + S.ktx2.st.off + ')') + ' · ' + S.ktx2.st.files + ' KTX2 models listed · ' + S.ktx2.loads + ' optimized loads' + (S.ktx2.falls ? ' · ' + S.ktx2.falls + ' fell back' : ''));
         try { var _pc = (typeof ThreePost !== 'undefined' && ThreePost.getPostChain) ? ThreePost.getPostChain() : null; if (_pc) L.push('Post ' + _pc.lib + ' · ' + _pc.passes + ' passes' + ((_pc.lib === 'pmndrs' || _pc.lib === 'node') ? ' · AO ' + _pc.ao + (_pc.n8ao !== 'idle' ? ' (N8AO ' + _pc.n8ao + ')' : '') + ' · A[' + _pc.effectsA + ']' : '')); } catch (e) {}   // R5
-        if (S.bvh) L.push('Pick (raycasts) ' + S.bvh.rays.toFixed(0) + '/s · ' + S.bvh.ms.toFixed(1) + ' ms/s · BVH ' + (S.bvh.on ? S.bvh.trees + ' trees (' + _lensFmtN(S.bvh.tris) + ' tris, ' + Math.round(S.bvh.buildMs) + ' ms to build)' + (S.bvh.slow ? ' · ' + S.bvh.slow + ' plain' : '') + (S.bvh.fails ? ' · ' + S.bvh.fails + ' failed' : '') : 'off'));
+        if (S.bvh) L.push('Pick (raycasts) ' + S.bvh.rays.toFixed(0) + '/s · ' + S.bvh.ms.toFixed(1) + ' ms/s · BVH ' + (S.bvh.on ? S.bvh.trees + ' trees (' + _lensFmtN(S.bvh.tris) + ' tris, ' + Math.round(S.bvh.buildMs) + ' ms to build)' + (S.bvh.slow ? ' · ' + S.bvh.slow + ' plain' : '') + (S.bvh.fails ? ' · ' + S.bvh.fails + ' failed' : '') : 'off') + ((S.bvh.skinOut || S.bvh.skinIn) ? ' · skinned ' + S.bvh.skinOut.toFixed(0) + '/s past their pose box, ' + S.bvh.skinIn.toFixed(0) + '/s tested' : ''));
         if (S.text) L.push('Text (HQ plates) ' + (S.text.cv ? 'canvas (node renderer)' : S.text.on ? 'troika' : (S.text.lib ? 'CSS2D (switched off)' : 'CSS2D (troika not loaded)')) + ' · ' + S.text.gpu + ' on the GPU · ' + S.text.css + ' CSS2D');
         try { var _fs = (typeof ThreeVFX !== 'undefined' && ThreeVFX.fxStats) ? ThreeVFX.fxStats() : null; if (_fs && (_fs.live || _fs.groups)) L.push('Particles ' + _fs.live + ' live · ' + _fs.draws + ' draws' + (_fs.batched ? ' (batched, ' + _fs.groups + ' kinds seen)' : ' (one per particle)') + (_fs.quarks && (_fs.quarks.on || _fs.quarks.made) ? ' · quarks layer ' + (_fs.quarks.on ? _fs.quarks.state : 'off') + ', ' + _fs.quarks.live + ' systems live' : '')); } catch (e) {}   // R7
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
@@ -51612,7 +51790,7 @@ const ThreeRenderer = (function () {
     }
     function _lensOpen() {
         if (_lens || typeof document === 'undefined' || !document.body) return;
-        _bvhStat.rays = 0; _bvhStat.ms = 0; _bvhStat.slow = 0;   // THE BVH: the pick numbers start with the lens
+        _bvhStat.rays = 0; _bvhStat.ms = 0; _bvhStat.slow = 0; _bvhStat.skinOut = 0; _bvhStat.skinIn = 0;   // THE BVH: the pick numbers start with the lens
         var L = _lens = {
             el: null, body: null, tog: null, orig: null, gpu: null, cur: null, last: null, detail: null, census: null, lightList: null,
             show: { chars: 1, props: 1, terrain: 1, fog: 1, env: 1, fx: 1, other: 1, outline: 1 }, shadows: true, post: true, lights: true, res: 0, gamePR: null, shadowWas: false,
