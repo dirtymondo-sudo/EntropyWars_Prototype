@@ -2201,3 +2201,19 @@ Studios' CC0 packs (see spells-vfx.md THE NOISE PACKS).
 - THE LAWN ON THE PAD (found proving this): THE GRASS FIELD grew tufts over the test chamber's pad in battle (the board's squares keep the
   grass tile TYPE as a rule), so the board looked like a lawn and the walked room did not. New `shell.grassField: false` (three-renderer.js
   `_ggBuild`: the battle's room says no grass field on its board); `training_hall` sets it. No tile type changed.
+
+## THE SUNKEN AGORA — Atlantis's board moved onto the sea floor (2026-11-13, mondo: "redesign the atlantis map ... i dont see any fish or coral at all ... an epic underwater deep oceanic kingdom with greek inspired architecture ... merges science fiction technology and magic")
+- STATUS: shipped 2026-11-13 after mondo: "thats good for now" (shots: /mnt/project-files/atlantis-redesign/).
+- Was: a window of THE TEMPLE (the dry air pocket: grey floor, the oracle pool, no sea life). Now: a window of THE ABYSS, the drowned room
+  that already holds the ocean pack (x -24.5..17.5, z 21..63, pinned in HQ_ARENA_RULES.within). The temple room is untouched.
+- The rule that made it possible: data.js `hqFieldRoomOk` lets a DROWNED room through when its sea says `field: true`
+  (`sea: { y: 26, under: true, field: true }`): the sea floor is ground, the water over it is only the look. Side effect: an encounter in
+  the abyss now fights on the sea floor where you swim (it used the site's old board).
+- The board: a `board` feature (12 x 12 pale marble squares, 1.2 m over the sand), a 2 x 2 marble block in each corner, a 7 m column before
+  each spawn row, four lit crystal pylons round the nexus, a coral stand on each flank; alike from both spawn rows and both flanks.
+  THE PALACE north of it (podium 4.7 m, broad stair, dome, four 9 m columns, two obelisks, two statues, two coils), colonnades down both
+  flanks with jellies hung between the columns, coral / anemone / clam scatter round the stylobate, the kelp forest to the west.
+- Swimmers keep OFF the board (every circle's centre and radius clear the squares): nothing swims between the eye and a unit. The humpback,
+  one tuna, three fish and two jellies that crossed the squares were moved to its edges (moved, not removed).
+- three-renderer.js: a room drawn round a battle board lights the prop lamps NEAREST the board first (`_hq.lightAt`); the walk keeps row order.
+- Sizes 9 / 10 / 11 / 12 baked, tools fit.js true for all four. Not checked: WebGPU, his Mac, online guest, exploration swim over the agora.
