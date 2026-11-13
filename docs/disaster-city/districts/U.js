@@ -265,6 +265,10 @@ module.exports.build = function (api) {
     const TRIM = ['calm_marble', 0xfffaf0], TRIMD = ['calm_marble', 0xc4bcb0], PIPE = ['calm_gunmetal', 0xc0c8d8], IRON = ['calm_gunmetal', 0x9098a8];
     const SIGNS = { bookshop: 0x3c8a5c, store: 0xe8443c, cafe: 0xf0a830, workshop: 0x3c7cd8, clinic: 0x3ab878, newsstand: 0xe8c040, foodstand: 0xe85a30, museum: 0x4a6cd0, library: 0x8a2c2c };
     const FLAT = { clinic: 5.6, store: 3.9 };
+    const LABEL = { library: ['LIBRARY', '#f4ecd8', '#5a1e1e'], lecture: ['LECTURE HALL', '#f4ecd8', '#5a1e1e'], dorm: ['DORMITORY', '#f4ecd8', '#5a1e1e'], cafe: ['CAFE', '#3a2a10', '#f0b040'], bookshop: ['BOOKS', '#f4ecd8', '#2c6a4a'],
+        workshop: ['BIKE REPAIR', '#ffffff', '#2c5cb0'], observatory: ['OBSERVATORY', '#e8f4ee', '#24584a'], lab: ['RESEARCH LAB', '#ffffff', '#2a3a4a'], annex: ['LAB ANNEX', '#ffffff', '#2a3a4a'], psych: ['PSYCHOLOGY', '#ffffff', '#2a6a68'],
+        museum: ['SCIENCE MUSEUM', '#ffffff', '#3a5cc0'], clinic: ['CLINIC', '#ffffff', '#2a9a64'], store: ['CORNER STORE', '#ffffff', '#c83a32'], newsstand: ['NEWS', '#2a2410', '#e8c040'], foodstand: ['HOT FOOD', '#ffffff', '#d84a28'],
+        secret: ['AUTHORISED STAFF ONLY', '#f0d040', '#202428'], gatehouse: ['SECURITY', '#ffffff', '#202428'] };
     const SCI = { lab: 1, annex: 1, court: 1, secret: 1, observatory: 1, psych: 1 };
     const polish = (kind, walkedRoof) => {
         const base = P.slice(), NRM = ry => { const q = (ry || 0) * Math.PI / 180; return [-Math.sin(q), Math.cos(q)]; }, sq = v => Math.abs(Math.round(v)) % 2 === 1 ? Math.abs(Math.round(v)) : 0;
@@ -330,6 +334,10 @@ module.exports.build = function (api) {
         if (shellBox) { const [x, , z] = shellBox.p, [w, , d] = shellBox.size;
             [-0.3, 0.3].forEach(a => part('quad', [x + a * w, 0.7, z - d / 2 - 0.13], ['urban:MetalSubwayGrill2a', 0xffffff], { size: [1.2, 0.8], uv: 'fit', kind: 'wall', ry: 180 }));
             if (SCI[kind]) part('quad', [x, 1.9, z - d / 2 - 0.13], ['urban:SignCaution1a', 0xffffff], { size: [0.7, 0.7], uv: 'fit', ry: 180, win: 'keep' }); }
+        /* SIGN LETTERING (the shared 'txt:' sheet, PR #1327): the building's plain name on a board over its first door — what it IS, no invented names */
+        if (LABEL[kind] && dl.length) { const D = dl[0], [nx, nz] = NRM(D.ry), o = D.ry ? { ry: D.ry } : {}, t = LABEL[kind], len = r3(Math.max(1.6, 0.32 * t[0].length + 0.7)), asp = Math.round(len / 0.55 * 10) / 10;
+            part('box', [D.x + nx * 0.14, 2.42, D.z + nz * 0.14], IRON, Object.assign({ size: [r3(len + 0.16), 0.71, 0.1] }, o));
+            P.push(Object.assign({ s: 'quad', p: [r3(D.x + nx * 0.2), 2.5, r3(D.z + nz * 0.2)], size: [len, 0.55], uv: 'fit', kind: 'wall', key: 'txt:' + t[0] + '|' + t[1] + '|' + t[2] + '|' + asp }, o)); }
         dl.forEach((D, i) => { const [nx, nz] = NRM(D.ry), tx = nz, tz = -nx, o = D.ry ? { ry: D.ry } : {};
             part('box', [D.x + nx * 0.45, 0.12, D.z + nz * 0.45], ['urban:RubberNonSlip1a', 0xffffff], Object.assign({ size: [r3(D.w), 0.025, 0.6], sides: false }, o));
             if (SCI[kind] && i === 0) part('quad', [D.x + tx * (D.w / 2 + 1.0) + nx * 0.06, 1.5, D.z + tz * (D.w / 2 + 1.0) + nz * 0.06], [kind === 'secret' ? 'urban:SignProhibited1a' : 'urban:SignHazard1a', 0xffffff], Object.assign({ size: [0.55, 0.55], uv: 'fit' }, o)); });
