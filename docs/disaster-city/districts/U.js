@@ -11,14 +11,14 @@
    Three landmarks stand over the rest: the observatory's green dome, the library's clock tower, the boiler stack. */
 'use strict';
 const T = 1.75, C = 3.5;
-/* ── the looks: [sheet, tint, the sheet's size in metres (none = one square)] — only sheets that stay themselves: an `urban:` sheet, an `hq:` painted
-   sheet, a calm sheet by its own name (a battle sheet's key is swapped for a dark calm sheet in the game: slate on it went black) ── */
+/* ── the looks: [sheet, tint, the sheet's size in metres (none = one square)] — only sheets that stay themselves: an `urban:` sheet or a calm sheet by its own
+   name (an `hq:` sheet drew BLACK on an arch part in the game) (a battle sheet's key is swapped for a dark calm sheet in the game: slate on it went black) ── */
 const BRICK = ['urban:TileSubway3a', 0xffffff, C], BRICKD = ['urban:TileSubway4a', 0xe0d0c8, C], BUFF = ['urban:TileSubway1a', 0xffffff, C], STONE = ['calm_marble', 0xfff2d8], LIME = ['urban:PlasterWallStucco1a', 0xf2e8d2], WHITE = ['urban:PlasterWallPainted1a', 0xffffff],
     SLATE = ['calm_tiles_small', 0x8498d0], SLATEG = ['calm_tiles_small', 0x90b8a0], VERD = ['calm_snow', 0x58c8a8], LEAD = ['calm_deckplate', 0xffffff], ALU = ['calm_tiles', 0xdfe6ee], CONC = ['urban:ConcreteStriped2a', 0xffffff], CONCD = ['urban:ConcreteStriped1a', 0xd8d0c4],
     GUN = ['calm_gunmetal', 0xffffff], BLACK = ['calm_gunmetal', 0xa0a8b8], CORR = ['urban:MetalCorrugatedPainted1a', 0xffffff], CORRG = ['urban:MetalCorrugatedPainted4c', 0xffffff], CORRR = ['urban:MetalCorrugatedPainted2a', 0xffffff],
-    TILEW = ['calm_tiles', 0xffffff], TILEC = ['calm_tiles', 0xffeec8], TILEB = ['calm_tiles', 0xa8d0f0], TILEN = ['calm_tiles', 0x4a6cb0], TEAL = ['hq:teal', 0xffffff], MINT = ['calm_tiles', 0x68d0b0],
+    TILEW = ['calm_tiles', 0xffffff], TILEC = ['calm_tiles', 0xffeec8], TILEB = ['calm_tiles', 0xa8d0f0], TILEN = ['calm_tiles', 0x4a6cb0], TEAL = ['calm_tiles', 0x3a7a78], MINT = ['calm_tiles', 0x68d0b0],
     GL = ['urban:GlassWindowSquare1a', 0xcfe4ee], GLT = ['urban:GlassWindowTall1a', 0xd4ecf0], GLB = ['urban:GlassWindowTall3a', 0xffffff], GLD = ['urban:GlassWindowFactory1a', 0x9098b0], GLR = ['urban:GlassWindowResidential1a', 0xdfe8f0], GLK = ['urban:GlassWindowSquare3a', 0xd8f4f0],
-    WOOD = ['calm_planks', 0xffffff], WOODG = ['calm_planks', 0xa8e0b8], MARB = ['hq:stone', 0xffffff], AWN = ['urban:TileSubway1a', 0xffffff], CREAM = ['urban:PlasterWallPainted1a', 0xf6e6b8], SAGE = ['urban:PlasterWallPainted1a', 0xa8c4a0], BLUE = ['urban:PlasterWallPainted1a', 0x98b0cc],
+    WOOD = ['calm_planks', 0xffffff], WOODG = ['calm_planks', 0xa8e0b8], MARB = ['calm_marble', 0xffffff], AWN = ['urban:TileSubway1a', 0xffffff], CREAM = ['urban:PlasterWallPainted1a', 0xf6e6b8], SAGE = ['urban:PlasterWallPainted1a', 0xa8c4a0], BLUE = ['urban:PlasterWallPainted1a', 0x98b0cc],
     RES = ['urban:DecalWindowsResidential1a', 0xffffff], FAC = ['urban:DecalWindowsFactory1a', 0xffffff], DOORW = ['urban:DoorWoodenHalf1a', 0xffffff], DOORS = ['urban:DoorStorefrontHalf1a', 0xffffff], DOORP = ['urban:DoorPaintedHalf2a', 0xffffff], TRUSS = ['urban:MetalTruss1a', 0xffffff];
 const r3 = v => Math.round(v * 1000) / 1000;
 
@@ -65,7 +65,8 @@ module.exports.build = function (api) {
     /* a small thing that blocks (a column, a tank): one ghost wall */
     const block = (lx, lz, w, d, h) => { const a = toWorld(lx - w / 2, lz), b = toWorld(lx + w / 2, lz); features.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], h: h || 3, t: r3(d), ghost: true, rail: false }); };
     /* a block on a walked roof (the dome's drum, the vault): a higher tier inside the tier, its own faces off */
-    const tier = (lx, lz, w, d, h) => { const [x, z] = toWorld(lx, lz), tw = turned(); features.push({ k: 'plateau', id: ctx.id + '-u' + (++sub), x, z, w: r3((tw ? d : w) - 0.3), d: r3((tw ? w : d) - 0.3), h: r3(h), edge: 0.15, bld: { skin: false, seed: 7000 + sub } }); };   // 0.15 m inside its drawn walls: the plateau's own cliff never shows through them
+    let tiers = [];
+    const tier = (lx, lz, w, d, h) => { tiers.push([lx, lz, w, d]); const [x, z] = toWorld(lx, lz), tw = turned(); features.push({ k: 'plateau', id: ctx.id + '-u' + (++sub), x, z, w: r3((tw ? d : w) - 0.3), d: r3((tw ? w : d) - 0.3), h: r3(h), edge: 0.15, bld: { skin: false, seed: 7000 + sub } }); };   // 0.15 m inside its drawn walls: the plateau's own cliff never shows through them
     /* the walk-in building's doorway, as data.js hqTexbDoor finds it: its square of the front (1 = the left as you face it) nearest x */
     const doorAt = (w, x) => { const L = w - 0.12, cols = Math.max(1, Math.round(L / T)), cw = L / cols, col = Math.max(0, Math.min(cols - 1, Math.round((x + L / 2) / cw - 0.5))); return { door: col + 1, lx: r3(-L / 2 + (col + 0.5) * cw), cw: r3(cw) }; };
     /* the front wall of a walk-in building: a panel with the doorway cut out (the leaf is the engine's) */
@@ -109,9 +110,9 @@ module.exports.build = function (api) {
         const rw = 14; box(0, 0, rz, rw, H - 1.5, rd, STONE, { top: false, faces: 'blr' }); gable(0, H - 1.5, rz, rw, rd + 0.6, 5.4, 'z', SLATE, STONE, 0.3); solid(0, rz, rw, rd, H - 1.5);
         [-1, 1].forEach(s => win(s < 0 ? 'l' : 'r', rz, 2.2, Math.floor((rd - 3.5) / T) * T, 5.2, rw / 2, GLT));
         const tx = w / 2 - 3.2, tz = nz + nd / 2 - 2.2, ts = 6.4; box(tx, 0, tz, ts, 22, ts, STONE, { top: false }); box(tx, 22, tz, ts + 0.6, 0.5, ts + 0.6, MARB, { under: true }); pyramid(tx, 22.5, tz, ts + 0.5, 6.5, SLATE);
-        [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => { const [p, ry] = FACE[f](cx, off + 0.06); P.push(Object.assign({ s: 'cyl', p: [p[0], 18.6, p[2]], r: 2.1, h: 0.12, seg: 20, ry: ry }, look(['hq:stone', 0xfff8e0]))); });
+        [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => { const [p, ry] = FACE[f](cx, off + 0.06); P.push(Object.assign({ s: 'cyl', p: [p[0], 18.6, p[2]], r: 2.1, h: 0.12, seg: 20, ry: ry }, look(['calm_snow', 0xfff8e0]))); });
         /* the clock faces: a pale disc on its edge is not a part shape, so each face is a square stone-framed panel + two hands */
-        [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => { panel(f, cx, 16.5, 4.2, 4.2, off + 0.02, ['hq:stone', 0xfff8e0]); panel(f, cx, 18.6, 0.22, 1.7, off + 0.06, [null, 0x202020]); panel(f, cx + 0.55, 18.5, 1.3, 0.22, off + 0.06, [null, 0x202020]); win(f, cx, 11.5, T, 3.5, off, GLT); });
+        [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => { panel(f, cx, 16.5, 4.2, 4.2, off + 0.02, ['calm_snow', 0xfff8e0]); panel(f, cx, 18.6, 0.22, 1.7, off + 0.06, [null, 0x202020]); panel(f, cx + 0.55, 18.5, 1.3, 0.22, off + 0.06, [null, 0x202020]); win(f, cx, 11.5, T, 3.5, off, GLT); });
         P.splice(P.findIndex(q => q.s === 'cyl' && q.h === 0.12), 2);   // (the lying discs are dropped: the panels are the faces)
     };
     B.cafe = (w, d, row) => {   // a brick house under a hipped slate roof, a glass conservatory, a striped awning, a round corner bay under a cone. WALK-IN
@@ -256,6 +257,83 @@ module.exports.build = function (api) {
     const KIND = { 'P00-04-B1': 'dorm', 'P01-04-B1': 'bookshop', 'P01-04-B2': 'PACK', 'P01-04-B3': 'workshop', 'P02-04-B1': 'observatory', 'P03-04-B1': 'faculty', 'P03-04-B2': 'newsstand',
         'P01-05-B1': 'lecture', 'P02-05-B1': 'lab', 'P02-05-B2': 'annex', 'P03-05-B1': 'psych', 'P03-05-B2': 'foodstand', 'P00-06-B1': 'cafe', 'P00-06-B2': 'PIZZA', 'P01-06-B1': 'library', 'P02-06-B1': 'court',
         'P03-06-B1': 'secret', 'P03-06-B2': 'gatehouse', 'P00-07-B1': 'gate', 'P01-07-B1': 'clinic', 'P01-07-B2': 'store', 'P02-07-B1': 'museum', 'P02-07-B2': 'pavilion' };
+    /* ── THE POLISH PASS (mondo 11-13 20:15: "one more polish pass on the exteriors ... go one or two more layers deep with the detail, the
+       foundation is already there and is good"): the second layer every building gets from its own parts, written once — a stone plinth, a
+       string course a storey, corner stones on brick and stone, a sill and a head on every window strip, a step and a lamp at every door,
+       downpipes with hoppers on the back corners, a hanging sign at the shops, plant on the flat roofs. Drawn only (arch parts). ── */
+    const MASON = /TileSubway|calm_marble|calm_castle/, WALLK = /TileSubway|calm_marble|calm_castle|Plaster|calm_tiles$|ConcreteStriped|calm_planks/;
+    const TRIM = ['calm_marble', 0xfffaf0], TRIMD = ['calm_marble', 0xc4bcb0], PIPE = ['calm_gunmetal', 0xc0c8d8], IRON = ['calm_gunmetal', 0x9098a8];
+    const SIGNS = { bookshop: 0x3c8a5c, store: 0xe8443c, cafe: 0xf0a830, workshop: 0x3c7cd8, clinic: 0x3ab878, newsstand: 0xe8c040, foodstand: 0xe85a30, museum: 0x4a6cd0, library: 0x8a2c2c };
+    const FLAT = { clinic: 5.6, store: 3.9 };
+    const SCI = { lab: 1, annex: 1, court: 1, secret: 1, observatory: 1, psych: 1 };
+    const polish = (kind, walkedRoof) => {
+        const base = P.slice(), NRM = ry => { const q = (ry || 0) * Math.PI / 180; return [-Math.sin(q), Math.cos(q)]; }, sq = v => Math.abs(Math.round(v)) % 2 === 1 ? Math.abs(Math.round(v)) : 0;
+        const doors = base.filter(q => q.s === 'quad' && /^urban:Door/.test(q.key || '')), holes = base.filter(q => q.s === 'quad' && q.hole);
+        const doorFace = {}; doors.forEach(q => { doorFace[(q.ry || 0) % 360] = true; }); holes.forEach(q => { doorFace[(q.ry || 0) % 360] = true; });
+        const FRY = { f: 0, b: 180, r: 270, l: 90 };
+        /* the walls: every plain upright box that stands on the ground */
+        let shellBox = null;
+        base.forEach(q => {
+            if (q.s !== 'box' || q.n || q.ry || q.ring || !q.size || q.sides === false || !WALLK.test(q.key || '')) return;
+            const [x, y, z] = q.p, [w, h, d] = q.size; if (y > 0.05 || h < 3 || Math.min(w, d) < 3) return;
+            if (!shellBox || w * d > shellBox.size[0] * shellBox.size[2]) shellBox = q;
+            const fc = q.faces || 'fblr', strip = (f, yy, hh, o, L) => { if (fc.indexOf(f) < 0) return;
+                if (f === 'f') box(x, yy, z + d / 2 + o / 2, w + 2 * o, hh, o, L, { under: true }); if (f === 'b') box(x, yy, z - d / 2 - o / 2, w + 2 * o, hh, o, L, { under: true });
+                if (f === 'r') box(x + w / 2 + o / 2, yy, z, o, hh, d, L, { under: true }); if (f === 'l') box(x - w / 2 - o / 2, yy, z, o, hh, d, L, { under: true }); };
+            const mason = MASON.test(q.key), T1 = mason ? TRIM : TRIMD;
+            'fblr'.split('').forEach(f => { if (!doorFace[FRY[f]]) strip(f, 0, 0.55, 0.12, TRIMD); });   // the plinth (never across a door)
+            for (let yy = C; yy < h - 1.2; yy += C) 'fblr'.split('').forEach(f => strip(f, yy - 0.09, 0.18, 0.09, T1));   // a string course a storey
+            if (mason && h >= 5) [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => { if ((b > 0 && fc.indexOf('f') < 0)) return;   // the corner stones
+                P.push(Object.assign({ s: 'box', p: [r3(x + a * (w / 2 - 0.12)), 0.6, r3(z + b * (d / 2 - 0.12))], size: [0.46, 0.34, 0.46], n: Math.max(1, Math.floor((h - 0.9) / 0.68)), step: [0, 0.68, 0] }, look(TRIM))); });
+            if (h >= 5) [-1, 1].forEach(a => { const px = x + a * (w / 2 + 0.1), pz = z - d / 2 + 0.5;   // a downpipe + its hopper on each back corner
+                cyl(px, 0, pz, 0.07, h - 0.3, PIPE, 6, null, { cap: false }); box(px, h - 0.55, pz, 0.3, 0.3, 0.3, PIPE); });
+        });
+        /* the windows: a sill under and a head over every strip of a window sheet */
+        base.forEach(q => { if (q.s !== 'quad' || q.hole || !/^urban:(GlassWindow|DecalWindows)/.test(q.key || '') || !q.size || q.size[0] < 1.5 || q.n) return;
+            const [nx, nz] = NRM(q.ry), [len, h] = q.size, o = { size: [r3(len + 0.3), 0.1, 0.26] }; if (q.ry) o.ry = q.ry;
+            part('box', [q.p[0] + nx * 0.02, q.p[1] - 0.1, q.p[2] + nz * 0.02], TRIM, o);
+            part('box', [q.p[0] + nx * 0.02, q.p[1] + h, q.p[2] + nz * 0.02], TRIM, Object.assign({}, o, { size: [r3(len + 0.2), 0.14, 0.2] })); });
+        /* the doors: a step, a lamp beside, the shop's hanging sign at the first */
+        const dl = doors.map(q => ({ x: q.p[0], z: q.p[2], ry: q.ry || 0, w: q.size[0] })).concat(holes.map(q => ({ x: q.p[0] + q.hole[0], z: q.p[2], ry: q.ry || 0, w: q.hole[1] })));
+        dl.forEach((D, i) => { const [nx, nz] = NRM(D.ry), tx = nz, tz = -nx, o = D.ry ? { ry: D.ry } : {};
+            part('box', [D.x + nx * 0.45, 0, D.z + nz * 0.45], TRIMD, Object.assign({ size: [r3(D.w + 0.8), 0.12, 0.9] }, o));
+            const lx = D.x + tx * (D.w / 2 + 0.4) + nx * 0.14, lz = D.z + tz * (D.w / 2 + 0.4) + nz * 0.14;
+            part('box', [lx, 2.3, lz], IRON, Object.assign({ size: [0.1, 0.1, 0.28] }, o)); part('box', [lx + nx * 0.1, 2.05, lz + nz * 0.1], [null, 0xffe2a0], Object.assign({ size: [0.2, 0.3, 0.2], glow: 1 }, o));
+            if (i === 0 && SIGNS[kind]) { const sx = D.x - tx * (D.w / 2 + 0.7) + nx * 0.62, sz = D.z - tz * (D.w / 2 + 0.7) + nz * 0.62;
+                part('box', [sx, 3.62, sz], IRON, Object.assign({ size: [0.06, 0.06, 1.2] }, o)); part('box', [sx, 2.8, sz], ['calm_snow', SIGNS[kind]], Object.assign({ size: [0.1, 0.8, 1.0], under: true }, o));
+                part('box', [sx, 2.95, sz], ['calm_snow', 0xfff4dc], Object.assign({ size: [0.13, 0.5, 0.7] }, o)); }
+        });
+        /* ROOFS + AC UNITS (mondo 20:18): wall units under the back and side windows of the lived-in buildings, plant on every flat roof —
+           condensers on a pad, a vent stack, a roof hatch; on a walked roof (the roof route) they stand along the back edge and block */
+        base.forEach((q, i) => { if (q.s !== 'quad' || !/^urban:(DecalWindowsResidential|GlassWindowResidential)/.test(q.key || '') || !(q.ry) || !q.size || q.size[0] < 3 || q.p[1] < 3) return;
+            const [nx, nz] = NRM(q.ry), tx = nz, tz = -nx, o = { ry: q.ry }, k = (i % 2 ? 0.25 : -0.25) * q.size[0];
+            part('box', [q.p[0] + tx * k + nx * 0.2, q.p[1] - 0.62, q.p[2] + tz * k + nz * 0.2], ['calm_tiles', 0xc4c8cc], Object.assign({ size: [0.8, 0.5, 0.42], under: true }, o));
+            part('quad', [q.p[0] + tx * k + nx * 0.43, q.p[1] - 0.56, q.p[2] + tz * k + nz * 0.43], ['urban:MetalSubwayGrill1a', 0xffffff], Object.assign({ size: [0.7, 0.38], uv: 'fit', kind: 'wall' }, o)); });
+        const unit = (ux, y, uz, blk) => { box(ux, y, uz, 1.9, 0.12, 1.4, TRIMD); box(ux, y + 0.12, uz, 1.5, 0.95, 1.0, ['calm_tiles', 0xc8ccd0]); cyl(ux, y + 1.07, uz, 0.36, 0.08, IRON, 10);
+            part('quad', [ux, y + 0.27, uz + 0.51], ['urban:MetalSubwayGrill1a', 0xffffff], { size: [1.3, 0.65], uv: 'fit', kind: 'wall' }); if (blk) block(ux, uz, 1.6, 1.1, y + 1.1); };
+        const stack = (vx, y, vz, blk) => { cyl(vx, y, vz, 0.22, 1.3, PIPE, 8); cyl(vx, y + 1.3, vz, 0.36, 0.14, PIPE, 8); if (blk) block(vx, vz, 0.6, 0.6, y + 1.4); };
+        const plant = (x, y, z, w, d, walked) => {
+            if (walked) {   // along the roof's edges, never within 5 m of a bridge / a stair / a ladder landing, never on a tier
+                const routes = []; features.forEach(f => { if (!/^(bridge|ramp|landing|climb|deck)$/.test(f.k)) return; [[f.x, f.z], [f.x0, f.z0], [f.x1, f.z1]].forEach(q => { if (q[0] != null && q[1] != null) routes.push(q); }); });
+                const free = (lx, lz) => { const [wx, wz] = toWorld(lx, lz); return !routes.some(q => Math.hypot(q[0] - wx, q[1] - wz) < 5) && !tiers.some(t => Math.abs(lx - t[0]) < t[2] / 2 + 1.4 && Math.abs(lz - t[1]) < t[3] / 2 + 1.2); };
+                const spots = []; [-1, 1].forEach(sd => [-0.3, -0.1, 0.1, 0.3].forEach(a => spots.push([a * w, sd * (d / 2 - 1.5)])));
+                const ok = spots.filter(q => free(q[0], q[1])).slice(0, 3);
+                ok.forEach((q, i) => (i < 2 ? unit : stack)(q[0], y, q[1], true));
+                return; }
+            [-0.28, 0.2].forEach(a => unit(x + a * w, y, z - 0.22 * d, false)); stack(x + 0.34 * w, y, z + 0.26 * d, false);
+            box(x - 0.36 * w, y, z + 0.22 * d, 1.1, 0.35, 1.1, IRON); box(x + 0.05 * w, y, z + 0.3 * d, 2.2, 0.5, 0.5, ['urban:MetalCorrugatedPainted1a', 0xffffff]);
+        };
+        if (walkedRoof) plant(0, 7, 0, walkedRoof[0], walkedRoof[1], true);
+        else if (FLAT[kind] && shellBox) plant(shellBox.p[0], FLAT[kind], shellBox.p[2], shellBox.size[0], shellBox.size[2], false);
+        /* TEXTURES + DECALS (mondo 20:19: "different textures or decals for different parts of the building"): a louvre grille low on the back
+           wall, a rubber mat on every door step, and on the science side a hazard plate by the door + a caution plate on the back wall */
+        if (shellBox) { const [x, , z] = shellBox.p, [w, , d] = shellBox.size;
+            [-0.3, 0.3].forEach(a => part('quad', [x + a * w, 0.7, z - d / 2 - 0.13], ['urban:MetalSubwayGrill2a', 0xffffff], { size: [1.2, 0.8], uv: 'fit', kind: 'wall', ry: 180 }));
+            if (SCI[kind]) part('quad', [x, 1.9, z - d / 2 - 0.13], ['urban:SignCaution1a', 0xffffff], { size: [0.7, 0.7], uv: 'fit', ry: 180, win: 'keep' }); }
+        dl.forEach((D, i) => { const [nx, nz] = NRM(D.ry), tx = nz, tz = -nx, o = D.ry ? { ry: D.ry } : {};
+            part('box', [D.x + nx * 0.45, 0.12, D.z + nz * 0.45], ['urban:RubberNonSlip1a', 0xffffff], Object.assign({ size: [r3(D.w), 0.025, 0.6], sides: false }, o));
+            if (SCI[kind] && i === 0) part('quad', [D.x + tx * (D.w / 2 + 1.0) + nx * 0.06, 1.5, D.z + tz * (D.w / 2 + 1.0) + nz * 0.06], [kind === 'secret' ? 'urban:SignProhibited1a' : 'urban:SignHazard1a', 0xffffff], Object.assign({ size: [0.55, 0.55], uv: 'fit' }, o)); });
+    };
     const ROT = { S: 0, W: 90, N: 180, E: 270 };
     const SHALLOW = { 'P03-05-B1': 3.5 };
     const count = { arch: 0, parts: 0 };
@@ -267,13 +345,14 @@ module.exports.build = function (api) {
            psychology lab, two levels under the research lab): it is one square shallower, its back a square off the line */
         if (SHALLOW[b.id] && !tierRow) { const cut = SHALLOW[b.id], q = rot * Math.PI / 180; row.d = r3(row.d - cut); row.x = r3(row.x - Math.sin(q) * cut / 2); row.z = r3(row.z + Math.cos(q) * cut / 2); }
         const d = tierRow ? (ew ? row.w : row.d) : row.d;
-        ctx = { id: 'dc:' + b.id, x: row.x, z: row.z, rot }; P = []; sub = 0;
+        ctx = { id: 'dc:' + b.id, x: row.x, z: row.z, rot }; P = []; sub = 0; tiers = [];
         if (kind === 'PACK') { delete row.style; row.key = 'pack_bld_09'; row.storeys = 3; return; }   // the shop block at its own size: 16.9 m wide on a 17.5 m front
         if (kind === 'PIZZA') {   // the chain's pizza place stands on this lot (a catalogue prop at its real size, its entrance to the south walk), the plan's row goes
             features.splice(features.indexOf(row), 1); props.push({ key: 'city_pizzeria', x: row.x, z: r3(row.z + (ew ? row.w : row.d) / 2 - 10.25 - 0.4), face: 180 }); return; }
         if (tierRow) { row.bld = Object.assign({}, row.bld, { skin: false }); delete row.bld.style; }
         else { row.skin = false; delete row.style; delete row.key; delete row.hollow; delete row.door; }
         B[kind](tierRow ? w + 0.3 : w, tierRow ? d + 0.3 : d, row);   // a roof-route building is a plateau: its drawn walls stand 0.15 m outside the plateau's own cliff
+        polish(kind, tierRow ? [w, d] : null);
         if (row.dead) features.splice(features.indexOf(row), 1);
         features.push(Object.assign({ k: 'arch', id: 'dcu:' + b.id, x: ctx.x, z: ctx.z }, tierRow ? { y: 0 } : {}, { rot, parts: P })); count.arch++; count.parts += P.length;   // y: 0 over a roof-walk plateau (harmless since main gives an arch row its ground)
     });
