@@ -866,6 +866,18 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   again); the fog / the Shadow Realm hid the Shadow Entities (`window._ewSceneCast`: a scene's cast is drawn whatever the fog
   says); the HUD is rebuilt under a scene (`.ew-scene-hid` sweep 4x a second); and THE CARRIED BODY: `_rigRescale` scaled by
   `ts` alone, so the walker's body carried onto a 3.5 m-square board stood TWICE the size of Locke and Kit (rig `bodyK` now).
+- **Rev 2 (2026-11-13, PR after #1244, mondo: "a little laggy, especially the first part ... replay just the cutscene ... the
+  portal to form in the air, which a door emerges from, which swings open and catgirl jumps out, she does the injured/getting up
+  animation from battle, then the shadow entities pounce forward out of the door, and they spawn right in front of you ... the
+  floating portal door can just be a prop ... when you defeat the shadow entities the portal closes")**:
+  THE AIR DOOR = three-vfx-effects.js `_sigAirDoor3D` (`questAirDoor`: a portal of two turning rings in the air, `emerge()`,
+  `open()`, `close()`), sized to the bodies, owned by battle.js `_questDoor` (`_questDoorUp/Watch/Drop`): it stands for the whole
+  fight, is stood up again if swept, closes when no enemy stands, drops with the fight. Actions `portal` / `door` / `open`;
+  `out` leaps from the door's sill and `knock: true` = the board's knockdown + get-up (Kit). The Shadow Entities' seats are
+  (2,5) (3,5), one open square from the recruit and Locke; they come out of the door in the slow-motion beat and the cut
+  lands them there, facing the party. THE WARM-UP: a scene opens on black and starts its clock once 12 frames run under
+  45 ms (0.4 to 3 s). THE REPLAY: pause menu > QUESTS, a finished fight stage with a scene shows REPLAY (map.js
+  `data-quest-replay`, `_questFightGo(id, { replay: true })`, console `Quests.replay()`); the party's own Catgirl sits it out.
 - **Not built yet** (the doc's build order): the new stage endings + the in-world quest marker (mock-up first) + `office_door`,
   D / E / F with the choice box, B the TV cart, A the intro. HQ scenes need an HQ host (cast walk / face / sit hooks).
 
