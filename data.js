@@ -28268,8 +28268,50 @@ const QUEST_FIGHTS = {
         enemies: [{ race: 'shadow entity', gender: 'male' }, { race: 'shadow entity', gender: 'male' }],
         portal: { x: 4, y: 2 },
         seats: { guest: { x: 4, y: 4 }, enemies: [{ x: 3, y: 1 }, { x: 5, y: 1 }] },
+        scene: 'orientation_ambush',   // THE CUTSCENES: played on the fight's own board before its first turn (STORY_CUTSCENES)
     },
 };
+/* ══ THE CUTSCENES (2026-11-12, mondo: "cinematic, think like a director in terms of shots, framing, composition, using the
+   camera as a character ... should include subtitles, no voice audio yet") ══
+   One row = one scene, played by three-camera.js EWScene on the live game (never a film): the cast are ROLES the host binds
+   to whoever is there (`player` = the officer the player made, `locke`, `guest` = the quest's guest, `foe1` / `foe2`), so
+   the player's own character is always in it. A row is BEATS; a beat is ONE SHOT that opens with a cut:
+     dur (s; a spoken beat holds for its reading time when left out) · shot { look, from, az, el, h, dist, over, fov, track,
+     to: { what the move ends on } } · say { who, text } · act [{ at, do, who, ... }] · slow { at, scale, ms }.
+   Refs: 'unit:<role>', 'seat:<role>' (where the role ends up), 'portal', 'tile:x,y', { mid: [ref, ref] }.
+   Lengths are BODIES (1 = a standing body, 1.75 m; a 3.5 m square = 2); az 0 = the eye south of the subject (or on the `from` subject's side), 90 = east.
+   THE WORDS ARE MONDO'S (the plan doc, "Okay i fixed the dialogue"): never reword a line here; the player never speaks.
+   Actions (battle.js _questSceneHost): portal · out (a hidden role leaps out of the portal onto its seat) · face (who, to) ·
+   pounce (who, to: leaps at a subject; the scene's cut drops the leap). */
+const STORY_CUTSCENES = {
+    /* C · THE AMBUSH: Tape 2 has just ended. The portal, Kit, the two Shadow Entities, the pounce in slow motion, cut to the fight. */
+    orientation_ambush: {
+        id: 'orientation_ambush', title: 'THE AMBUSH',
+        beats: [
+            /* C1 · behind the recruit's head: something forms on the pad */
+            { dur: 3.6, shot: { look: 'portal', from: 'unit:player', over: 1.3, az: 2.2, h: 0.72, el: 1.6, fov: 36, to: { over: 1.0 } },
+              act: [{ at: 0, do: 'face', who: 'player', to: 'portal' }, { at: 0, do: 'face', who: 'locke', to: 'portal' }, { at: 0.5, do: 'portal' }] },
+            /* C2 · Locke, alarmed: medium close, a slow push in */
+            { shot: { look: 'unit:locke', from: 'portal', az: 22, h: 0.86, el: -1, dist: 1.4, fov: 27, to: { dist: 1.15 } },
+              say: { who: 'AGENT LOCKE', text: 'That is not part of the training.' } },
+            /* C3 · Kit bursts out: low on the floor, she comes at the lens */
+            { dur: 4.4, shot: { look: { mid: ['seat:guest', 'portal'] }, from: 'unit:player', az: -28, h: 0.45, el: 2, dist: 4.2, fov: 40, to: { dist: 3.6 } },
+              act: [{ at: 0.25, do: 'out', who: 'guest', ms: 1000 }, { at: 1.7, do: 'face', who: 'guest', to: 'portal' }],
+              say: { who: 'KIT', text: "Shut it! Shut the door! They're right behind me!" } },
+            /* C4 · the doorway, past Kit: two shapes come through after her */
+            { dur: 2.8, shot: { look: 'portal', from: 'seat:guest', az: 9, h: 0.6, el: 2, dist: 4.7, fov: 34, to: { fov: 30 } },
+              act: [{ at: 0.3, do: 'out', who: 'foe1', ms: 800 }, { at: 0.8, do: 'out', who: 'foe2', ms: 800 }, { at: 1.7, do: 'face', who: 'foe1', to: 'unit:guest' }, { at: 1.7, do: 'face', who: 'foe2', to: 'unit:guest' }] },
+            /* C5 · Locke and the recruit, shoulder to shoulder */
+            { shot: { look: { mid: ['unit:locke', 'unit:player'] }, from: 'portal', az: -16, h: 0.8, el: 0, dist: 3.4, fov: 32, to: { dist: 3.0 } },
+              say: { who: 'AGENT LOCKE', text: 'Unauthorized doorway. Recruit, on me. Orientation is over.' } },
+            /* C6 · the pounce: from behind Kit, low, quarter speed; the cut to the fight comes in mid air */
+            { dur: 2.1, hold: true, shot: { look: { mid: ['seat:foe1', 'seat:foe2'] }, from: 'unit:guest', over: 1.9, az: 5, h: 0.62, el: 1.5, fov: 40, to: { fov: 35 } },
+              slow: { at: 0.35, scale: 0.25, ms: 2400 },
+              act: [{ at: 0.2, do: 'pounce', who: 'foe1', to: 'unit:guest', ms: 760 }, { at: 0.3, do: 'pounce', who: 'foe2', to: 'unit:guest', ms: 760 }] },
+        ],
+    },
+};
+function storyCutscene(id) { return (id && STORY_CUTSCENES[id]) ? STORY_CUTSCENES[id] : null; }
 function questDef(id) { return STORY_QUESTS.find(q => q.id === id) || null; }
 function questFightDef(id) { return (id && QUEST_FIGHTS[id]) ? Object.assign({ id }, QUEST_FIGHTS[id]) : null; }
 function questRecord(profile, make) {
@@ -28431,7 +28473,7 @@ function questAllyMembers(F) {
     });
 }
 if (typeof window !== 'undefined') {
-    window.STORY_QUESTS = STORY_QUESTS; window.QUEST_FIGHTS = QUEST_FIGHTS;
+    window.STORY_QUESTS = STORY_QUESTS; window.QUEST_FIGHTS = QUEST_FIGHTS; window.STORY_CUTSCENES = STORY_CUTSCENES; window.storyCutscene = storyCutscene;
     window.questDef = questDef; window.questFightDef = questFightDef; window.questProgress = questProgress;
     window.questEvent = questEvent; window.questLockedUnits = questLockedUnits; window.questTracker = questTracker;
     window.questJournal = questJournal; window.questFightPending = questFightPending; window.questFightLaunch = questFightLaunch;

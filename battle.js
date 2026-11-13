@@ -59746,6 +59746,125 @@
             } catch (e) { console.warn('[QUEST] the arrival failed — they stand on their seats', e); }
             return true;
         }
+        /* ══ THE CUTSCENES (2026-11-12): a quest fight with a `scene` (data.js STORY_CUTSCENES) opens on that scene, played on
+           the fight's own board by three-camera.js EWScene, in place of the dash-in / the portal leaps / the arrival crane.
+           Every body is already on its seat in the engine: the guest and the enemies are only HIDDEN (window._ewSceneHid, the
+           renderer's unit sync) until the scene brings them through the portal, and finish() (the natural end and a skip
+           alike) unhides everybody, drops any leap still in the air and the slow motion, so the cut to the fight lands on
+           the same board either way. Viewer-local, story only (VS-CPU): nothing on `state`, nothing relayed. ══ */
+        function _questSceneRow() {
+            const er = _encRun(), F = er && er.quest;
+            if (!F || !F.scene || window.EW_NO_CUTSCENES) return null;
+            /* why a scene that should play does not is said once, in the console (a silent fallback reads as a missing scene) */
+            const why = state.cameraDisabled ? 'the camera is disabled' : _skipVisuals() ? 'visuals are skipped' : state.devAutoSim ? 'auto-sim' :
+                (!window.EWScene || !window.EWCine) ? 'no director (three-camera.js)' : (typeof window.storyCutscene !== 'function' || !window.storyCutscene(F.scene)) ? 'no row ' + F.scene : '';
+            if (why) { if (er._sceneWhy !== why) { er._sceneWhy = why; console.warn('[SCENE] ' + F.scene + ' not played: ' + why); } return null; }
+            return window.storyCutscene(F.scene);
+        }
+        function _questSceneRoles() {
+            const B = _questFightBodies(); if (!B) return null;
+            const er = _encRun(), seats = er.field && er.field.seats && er.field.seats.lead;
+            const R = { player: _encLeadUnit(1, seats && seats[1]), guest: B.guest };
+            B.foes.forEach((u, i) => { R['foe' + (i + 1)] = u; });
+            (state.units || []).forEach(u => { if (u && u.player === 1 && !u.dead && u.appearance && u.appearance.cast && !R[u.appearance.cast]) R[u.appearance.cast] = u; });
+            return { B, R };
+        }
+        /* before the first frame is drawn: the ones who come through the portal are not in the room yet */
+        function _questSceneHide() {
+            const Q = _questSceneRoles(); if (!Q) return false;
+            const hid = {};
+            if (Q.B.guest) hid[Q.B.guest.id] = true;
+            Q.B.foes.forEach(u => { hid[u.id] = true; });
+            window._ewSceneHid = hid;
+            const cast = {}; (state.units || []).forEach(u => { if (u && !u.dead && !u._benched) cast[u.id] = true; }); window._ewSceneCast = cast;
+            try { addLog(`🚪 A portal forms. ${Q.B.guest ? unitDisplayName(Q.B.guest) : 'Someone'} comes through it${Q.B.foes.length ? ', and ' + Q.B.foes.length + ' ' + (Q.B.foes.length === 1 ? 'enemy comes' : 'enemies come') + ' after' : ''}.`); } catch (e) {}
+            return true;
+        }
+        function _questSceneHost() {
+            const Q = _questSceneRoles(); if (!Q) return null;
+            const { B, R } = Q, P = B.F.portal || { x: 0, y: 0 };
+            const FX = window.ThreeVFXEffects, TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : window.ThreeRenderer, TA = window.ThreeAnim;
+            const tile = (x, y) => { const w = FX && FX.tileWorld ? FX.tileWorld(x, y) : null; return w ? { x: w.x, y: w.y, z: w.z } : null; };
+            const out3 = [0, 0, 0];
+            const point = (ref) => {
+                if (ref === 'portal') return tile(P.x, P.y);
+                const m = /^(unit|seat|tile):(.+)$/.exec(String(ref)); if (!m) return null;
+                if (m[1] === 'tile') { const c = m[2].split(','); return tile(+c[0], +c[1]); }
+                const u = R[m[2]]; if (!u) return null;
+                if (m[1] === 'unit' && TR && TR.getUnitWorldPos && TR.getUnitWorldPos(u.id, out3)) return { x: out3[0], y: out3[1], z: out3[2] };
+                return tile(u.x, u.y);   // its seat (a body not in the room yet is looked for where it will stand)
+            };
+            const cell = (ref) => { if (ref === 'portal') return { x: P.x, y: P.y }; const m = /^(?:unit|seat):(.+)$/.exec(String(ref)); const u = m && R[m[1]]; if (u) return { x: u.x, y: u.y }; const t = /^tile:(-?\d+),(-?\d+)$/.exec(String(ref)); return t ? { x: +t[1], y: +t[2] } : null; };
+            const zAt = (x, y) => (typeof nearestWalkableZ === 'function') ? (nearestWalkableZ(x, y) || 0) : 0;
+            const face = (u, to) => { const c = cell(to); if (!u || !c) return; const dx = c.x - u.x, dy = c.y - u.y; if (dx || dy) { setUnitFacing(u, Math.abs(dy) >= Math.abs(dx) ? 0 : Math.sign(dx), Math.abs(dy) >= Math.abs(dx) ? Math.sign(dy) : 0); render(); } };
+            const show = (u) => { if (u && window._ewSceneHid) delete window._ewSceneHid[u.id]; };
+            const w0 = tile(0, 0), w1 = tile(1, 0);
+            let door = null, doorAt = 0, doorLead = 1500, over = false;
+            return {
+                /* a scene's lengths are BODIES (a standing body = 1, 1.75 m), so a shot frames the cast the same on any board's squares */
+                unit: (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? TR.bodyUnit() : ((w0 && w1) ? (Math.abs(w1.x - w0.x) || 128) / 2 : 64),
+                point,
+                act(a) {
+                    const u = a.who ? R[a.who] : null;
+                    if (a.do === 'portal') {
+                        /* the door is asked for until it stands, and stood up again if the board's start swept it away (a
+                           match clears its effects a moment after it begins): it is watched while the scene plays */
+                        let tries = 0, quick = false;
+                        const live = () => !!(door && !door.done && door.group && door.group.parent);
+                        const open = () => {
+                            if (over) return;
+                            if (!live()) {
+                                door = null;
+                                try { door = (FX && FX.questPortal) ? FX.questPortal(P.x, P.y, { riseMs: quick ? 200 : 900, openMs: quick ? 150 : 600, holdMs: 60000, big: !quick, scale: a.scale || 1 }) : null; } catch (e) { door = null; }
+                                if (door) { doorAt = performance.now(); doorLead = quick ? 350 : 1500; quick = true; }
+                                else if (++tries === 40) console.warn('[SCENE] the portal did not draw');
+                            }
+                            setTimeout(open, door ? 300 : 150);
+                        };
+                        open();
+                    }
+                    else if (a.do === 'out') { if (!u) return; show(u); if (!(u.x === P.x && u.y === P.y)) TA.jumpArc(u, P.x, P.y, u.x, u.y, zAt(P.x, P.y), u.z || 0, a.ms || 1000); }
+                    else if (a.do === 'face') face(u, a.to);
+                    else if (a.do === 'show') show(u);
+                    else if (a.do === 'pounce') {
+                        const c = cell(a.to); if (!u || !c) return;
+                        /* the square beside the prey on the hunter's side: the leap is cut before it lands */
+                        const sx = Math.sign(u.x - c.x), sy = Math.sign(u.y - c.y), tx = c.x + sx, ty = c.y + sy;
+                        if (tx === u.x && ty === u.y) return;
+                        TA.jumpArc(u, u.x, u.y, tx, ty, u.z || 0, zAt(tx, ty), a.ms || 760);
+                    }
+                },
+                slow(scale, ms) { if (TA && TA.slowMo) TA.slowMo(scale, ms); },
+                finish() {
+                    over = true; window._ewSceneHid = null; window._ewSceneCast = null;
+                    try { if (TR && TR.clearTimeWarp) TR.clearTimeWarp(); } catch (e) {}
+                    try { if (TR && TR.cancelJumpTween) [B.guest].concat(B.foes).forEach(u => { if (u) TR.cancelJumpTween(u.id); }); } catch (e) {}
+                    /* the door shuts on the cut: its effect is run forward to its own closing (three-vfx-effects.js _sigRun `skip`) */
+                    try { if (door && !door.done) door.skip = Math.max(0, doorLead + 60000 - (performance.now() - doorAt)); } catch (e) {}
+                    /* the fight opens the way _questFightSeat stood them: she with her back to the portal, they facing her */
+                    try { _questFightSeat(); render(); } catch (e) {}
+                }
+            };
+        }
+        function _questScenePlay(cb) {
+            const row = _questSceneRow(); if (!row) return false;
+            let done = false;
+            const end = () => { if (done) return; done = true; try { if (document && document.body) document.body.classList.remove('enc-arrival'); } catch (e) {} if (cb) cb(); };
+            /* the scene needs the 3D board (a match starts a few frames before its board is up): it waits for it, nobody
+               on screen who is not in the room yet and no turn begun; a board that never comes up starts the fight plain */
+            const t0 = performance.now();
+            const go = () => {
+                if (done) return;
+                const up = !!(window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive());
+                if (!up) { if (performance.now() - t0 < 15000) { setTimeout(go, 100); return; } console.warn('[SCENE] ' + row.id + ' not played: the 3D board never came up'); window._ewSceneHid = null; window._ewSceneCast = null; end(); return; }
+                const host = _questSceneHost();
+                let ok = false;
+                try { ok = !!host && window.EWScene.play(row, host, end); } catch (e) { console.error('[SCENE] the cutscene did not start', e); ok = false; }
+                if (!ok) { console.warn('[SCENE] ' + row.id + ' did not start'); try { if (host) host.finish(true); } catch (e) {} window._ewSceneHid = null; window._ewSceneCast = null; end(); }
+            };
+            go();
+            return true;
+        }
         function _encPartyDashIn() {
             const er = _encRun();
             if (!er || window.EW_ENC_NO_DASH_IN || state.cameraDisabled || _skipVisuals()) return false;
@@ -60167,8 +60286,10 @@
             addLog(`⚡ Round ${state.round}`);
             syncMusicToState();
 
-            if (_encRun()) _encPartyDashIn();   // THE DASH-IN: the party leaps in behind the lead as the crane lifts off
-            if (_encRun() && _encRun().quest) _questFightArrive();   // THE QUESTS: the guest and the enemies come out of the portal
+            /* THE CUTSCENES: a quest fight with a scene opens on it (the portal and who comes through are the scene's) */
+            const _qScene = !!(_encRun() && _questSceneRow() && _questSceneHide());
+            if (_encRun() && !_qScene) _encPartyDashIn();   // THE DASH-IN: the party leaps in behind the lead as the crane lifts off
+            if (_encRun() && _encRun().quest && !_qScene) _questFightArrive();   // THE QUESTS: the guest and the enemies come out of the portal
 
             invalidateLayoutCache();
             render();
@@ -60193,7 +60314,9 @@
                     if (typeof showCombatBanner === 'function') showCombatBanner('🏘 GUILD HUB', 'Walk to the cave entrance to begin the dungeon', 'neutral');
                     maybeAdvanceTurn();
                     setTimeout(_mdStartFreeRoam, 450);
-                } else if (_encRun() && _encArrivalRound(() => encounterOpening(() => maybeAdvanceTurn()))) {
+                } else if (_qScene && _questScenePlay(() => encounterOpening(() => maybeAdvanceTurn()))) {
+                    /* THE CUTSCENES: the scene plays, then the hard cut to the fight's frame and the first activation */
+                } else if (_encRun() && ((_qScene && (window._ewSceneHid = null), (window._ewSceneCast = null)), _encArrivalRound(() => encounterOpening(() => maybeAdvanceTurn())))) {
                     /* THE ARRIVAL: no ROUND 1 card (a card is a cut) — the letterbox rides the crane and the HUD
                        fades in as it lands; the first activation waits for the landing (and THE OPENING — the door that struck
                        first lands its act on the native, DOOR_GUN_PLAN §5.3) */

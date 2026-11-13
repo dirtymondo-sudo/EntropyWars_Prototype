@@ -834,6 +834,41 @@ Harness note: a real WebGPU canvas in headless Chromium here needs `--enable-uns
 --use-angle=swiftshader --use-vulkan=swiftshader --enable-features=Vulkan --disable-vulkan-surface` (without the Vulkan pair the
 swap chain's shared image cannot be made and the device is lost every second); one WebGPU browser at a time.
 
+### THE CUTSCENES — the director + C · THE AMBUSH (2026-11-12, mondo: "cinematic, think like a director in terms of shots, framing, composition, using the camera as a character ... should include subtitles, no voice audio yet")
+The plan of record (the 6 scenes A-F, his decisions, HIS lines word for word): the Claude Doc "Entropy Wars Quest System and First
+Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyboards he approved: project files
+`first-quest-cutscenes-20261112/storyboard_[B-F].jpg` (his two changes: B4 Locke on the far side of the TV cart; F the player alone until F4).
+- **In engine, never a film**: a scene plays on the live game with ROLES (`player` = the officer he made, `locke`, `guest`, `foe1/2`),
+  so the created character and the party are always in it.
+- **The rows**: data.js `STORY_CUTSCENES` (`storyCutscene(id)`). A row = BEATS; a beat = ONE SHOT that opens with a cut:
+  `dur` (a spoken beat holds its reading time when left out), `shot { look, from, az, el, h, dist, over, fov, track, to }`,
+  `say { who, text }`, `act [{ at, do, who, ... }]`, `slow { at, scale, ms }`, `hold` (a click cannot hurry it). Shots are written
+  against SUBJECTS (`unit:<role>`, `seat:<role>`, `portal`, `tile:x,y`, `{ mid: [..] }`), lengths in BODIES (1 = a standing body, 1.75 m: `ThreeRenderer.bodyUnit()`); `from` = a
+  second subject the angle counts from (`over` = that far behind it: the over-the-shoulder), so a row fits any party and layout.
+- **The director**: three-camera.js `EWScene.play(row, host, onEnd)` on THE SCRIPTED EYE (`EWCine.enter({ script: true })` +
+  `EWCine.pose()`: no panel, no mouse capture, no keys of its own). Overlay `#ewScene` (styles-cinematic.css): letterbox 12vh,
+  the words bottom centre (black, white outline, the speaker over the line), HOLD ESC TO SKIP. A line holds 0.06 s a character
+  (1.6 s least); click / SPACE / ENTER moves on. The grammar is the spell camera's (a beat cuts in, a move changes one thing).
+  The HOST is the scene's hands: `unit`, `point(ref)`, `act(a)`, `slow()`, `finish()`. Dev: `EWScene.state()`, `.next()`, `.stop()`.
+  Off: `window.EW_NO_CUTSCENES` (the old portal arrival plays).
+- **C · THE AMBUSH** (`orientation_ambush`, QUEST_FIGHTS.orientation_portal `scene`): plays on the fight's OWN board before its
+  first turn, in place of the dash-in / `_questFightArrive` / the arrival crane (battle.js `_questSceneRow/Hide/Host/Play`). Every
+  body is already on its seat in the engine; Kit and the two Shadow Entities are only hidden (`window._ewSceneHid`, the renderer's
+  unit sync) until the scene brings them out of the portal. Six shots: behind the recruit's head as the portal forms, Locke
+  ("That is not part of the training."), Kit bursts out low at the lens, the two shapes come through, Locke and the recruit
+  ("Unauthorized doorway. Recruit, on me. Orientation is over."), the pounce at quarter speed from behind Kit, then a HARD CUT
+  to the fight's frame. `finish()` (the end and a skip alike) unhides everybody, drops a leap still in the air
+  (`ThreeRenderer.cancelJumpTween`), the slow motion (`clearTimeWarp`) and shuts the portal (`_sigRun` `skip`), then
+  `encounterOpening(() => maybeAdvanceTurn())`. ui.js `_tutQuestPortal`: a fight with a scene skips the lesson-board portal (the
+  portal forms IN the scene) and the black cover lifts as the scene starts. Viewer-local, VS-CPU only: nothing relayed.
+- **Found on the way** (all on screen, headless): a match starts a few frames before its 3D board (the scene waits for
+  `ThreeAnim.isActive()`); the match start sweeps effects made in its first moments (the host watches the door and stands it up
+  again); the fog / the Shadow Realm hid the Shadow Entities (`window._ewSceneCast`: a scene's cast is drawn whatever the fog
+  says); the HUD is rebuilt under a scene (`.ew-scene-hid` sweep 4x a second); and THE CARRIED BODY: `_rigRescale` scaled by
+  `ts` alone, so the walker's body carried onto a 3.5 m-square board stood TWICE the size of Locke and Kit (rig `bodyK` now).
+- **Not built yet** (the doc's build order): the new stage endings + the in-world quest marker (mock-up first) + `office_door`,
+  D / E / F with the choice box, B the TV cart, A the intro. HQ scenes need an HQ host (cast walk / face / sit hooks).
+
 ## THE SAVE — the walk autosaves where you stand; CONTINUE lands there (2026-11-12, mondo)
 mondo: "there needs to be a save feature so that i am not always loading in the foyer every time".
 - **What was already saved**: the profile (`ew-profile-<slot>` in localStorage) holds the quests (`door.quests`), the party, the

@@ -16067,8 +16067,13 @@ const ThreeRenderer = (function () {
        held prop's holder, the x-ray twins) rides the clone. The fight's board is BASE_TILE, the debrief's menu size MENU_TILE,
        the walk BASE_TILE: re-baking the body for each (the creator look ~1-2 s) was the freeze at the debrief and on the way back */
     function _rigRescale(rig, ts) {
-        if (!rig || !rig.inner || !(rig.ts > 0) || !(ts > 0) || rig.ts === ts) return !!rig;
-        var k = ts / rig.ts, ch = rig.inner.children;
+        /* THE BIG SQUARES (2026-11-12): a body is ts × UNIT_SPRITE_SIZE_RATIO tall, so a carried body is rescaled by BOTH (bodyK =
+           the ratio it was built / last scaled at). It was ts alone: the walker's body carried onto a board of 3.5 m squares
+           stood twice the size of everyone built there (the player beside Agent Locke on the Training Room) */
+        var bk = UNIT_SPRITE_SIZE_RATIO, bk0 = (rig && rig.bodyK > 0) ? rig.bodyK : 1;
+        if (!rig || !rig.inner || !(rig.ts > 0) || !(ts > 0) || (rig.ts === ts && bk0 === bk)) return !!rig;
+        var k = (ts * bk) / (rig.ts * bk0), ch = rig.inner.children;
+        if (rig) rig.bodyK = bk;
         for (var i = 0; i < ch.length; i++) { ch[i].scale.multiplyScalar(k); ch[i].position.multiplyScalar(k); }
         if (rig.inner._ew_fitHalf) rig.inner._ew_fitHalf = [rig.inner._ew_fitHalf[0] * k, rig.inner._ew_fitHalf[1] * k];
         (rig.outlineMats || []).forEach(function (m) { if (m.uniforms && m.uniforms.uOutline) m.uniforms.uOutline.value *= k; });
@@ -18836,7 +18841,7 @@ const ThreeRenderer = (function () {
         // (second game onward, once the GLBs resolve synchronously from
         // cache). A rig baked for a different tile size is stale: re-bake.
         var appearanceKey = (def.creatorBase || def.mpfbBody) ? JSON.stringify(def.raceLook || normalizeCharacterAppearance(unit.appearance)) : '';   // (THE RACE LOOKS: the look the def dresses)   // (THE MPFB BODIES 2026-11-01: a new height re-bakes)
-        if (_rig && _rig.ts !== ts && _rig.appearanceKey === appearanceKey && !_rigCarryOff()) _rigRescale(_rig, ts);   // THE BODIES CARRY OVER: rescaled, not re-baked
+        if (_rig && (_rig.ts !== ts || (_rig.bodyK > 0 ? _rig.bodyK : 1) !== UNIT_SPRITE_SIZE_RATIO) && _rig.appearanceKey === appearanceKey && !_rigCarryOff()) _rigRescale(_rig, ts);   // THE BODIES CARRY OVER: rescaled, not re-baked
         if (_rig && (_rig.ts !== ts || _rig.appearanceKey !== appearanceKey)) {
             _disposeModelRig(_rig);
             _unitModelRigs.delete(unit.id);
@@ -19071,7 +19076,7 @@ const ThreeRenderer = (function () {
             // Register the rig cache record now; mixer/actions attach below
             // (they stay null for unrigged static models).
             var _rigRec = {
-                url: def.model, ts: ts, inner: inner, mixer: null, actions: null,
+                url: def.model, ts: ts, bodyK: UNIT_SPRITE_SIZE_RATIO, inner: inner, mixer: null, actions: null,
                 appearanceKey: appearanceKey, appearanceRig: appearanceRig, sway: entry._ew_sway || null, hairSweep: appearanceRig ? _hairSweep : null,
                 modelMats: entry.modelMats, silMats: entry.modelSilMats,
                 outlineMats: entry.modelOutlineMats
@@ -26652,6 +26657,11 @@ const ThreeRenderer = (function () {
                (the door's plate names it); it comes back the frame the door breaks */
             if (unit.status && unit.status.captured > 0) { entry.group.visible = false; entry._ew_heldHid = true; return; }
             if (entry._ew_heldHid) { entry._ew_heldHid = false; entry.group.visible = true; }
+            /* 🎬 THE CUTSCENES (2026-11-12, three-camera.js EWScene): a body the scene has not brought on yet (window._ewSceneHid: unit id -> true) is not drawn */
+            if (window._ewSceneHid && window._ewSceneHid[unit.id]) { entry.group.visible = false; entry._ew_sceneHid = true; return; }
+            if (entry._ew_sceneHid) { entry._ew_sceneHid = false; entry.group.visible = true; }
+            /* ... and a body the scene has on (window._ewSceneCast) is drawn whatever the fog or the plane says: a scene is staged, not scouted */
+            if (window._ewSceneCast && window._ewSceneCast[unit.id]) { entry.group.visible = true; return; }
             /* 🌑 THE SHADOW REALM: not on this turn's plane = not drawn, own units included */
             if (_realmOutOfView(unit)) { entry.group.visible = false; entry._ew_realmHid = true; return; }
             if (entry._ew_realmHid) { entry._ew_realmHid = false; entry.group.visible = true; }
@@ -30515,7 +30525,10 @@ const ThreeRenderer = (function () {
         for (var r = 0; r < toRemove.length; r++) _displaceTweens.delete(toRemove[r]);
         if (toRemove.length) _shadowsDirty = true;   // THE STATIC SHADOW: a landing refreshes the field's depth pass
     }
-
+    /* THE CUTSCENES (three-camera.js EWScene): a scene that ends mid-leap (the ambush's pounce, a skip) drops the leap and
+       the slow motion, so the cut lands on every body standing on its own square at real speed */
+    function cancelJumpTween(uid) { _jumpTweens.delete(uid); _knockRecs.delete(uid); }
+    function clearTimeWarp() { _warpScale = 1; _warpEndsAt = 0; }
     function startJumpTween(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var dist = Math.abs(toX - fromX) + Math.abs(toY - fromY);
@@ -93189,7 +93202,7 @@ const ThreeRenderer = (function () {
 
         startWalkTween, startDisplaceTween, startJumpTween, startStrikeLeapTween, startClipTravelTween, castTravels, startThrowArcTween, startDeathTween,
         startCarryHoldTween, endCarryHold, hasCarryHold,
-        setTimeWarp,
+        setTimeWarp, cancelJumpTween, clearTimeWarp,
         hitBlink,
         hitSide,
         /* THE STRIKE FRAME (2026-09-09): played-ms into the clip the unit's
@@ -93348,6 +93361,8 @@ const ThreeRenderer = (function () {
             }
             return top;
         },
+        /* a standing body's height in world units (heightRatio 1 = 1.75 m): THE CUTSCENES measure their shots in bodies */
+        bodyUnit: function () { return (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO; },
         getUnitWorldPos: function (uid, out) {
             var e = _getUnitEntry(uid);
             if (!e || !e.group || e.group.visible === false) return false;
