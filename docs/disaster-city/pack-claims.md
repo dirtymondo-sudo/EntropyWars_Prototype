@@ -43,3 +43,38 @@ A district file may export `room = { east, sea, backdropOpen }` (Bayside's beach
 ## The industrial pack (Industrial thread, 11-13) — free for every district
 domi236 PS1/PSX Industrial Pack #1 (CC0). Catalogue keys: `ind_container`, `ind_skip`, `ind_skip_full`, `ind_silo`, `ind_vent`, `ind_panel`, `ind_factory_red`, `ind_factory_tan`, `ind_factory_blue`.
 Sizes + the stacking `y`: areas-complexes.md "THE INDUSTRIAL DISTRICT".
+
+## The Meshy pieces of the second interior pass (mondo 11-13 22:33: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them")
+Every piece made here is a catalogue prop free for EVERY district once it is live (catalogue key = the name below). Before you make one on Meshy, look here: if
+another district already lists it, use theirs, don't make a second. Add your own rows when you start, so the others see them. The live working list is project files `meshy/interior-claims.md` (University claimed 18 there: Entertainment reuses its `pastry_case` + `rope_stanchion`).
+Files: R2 `Assets/world/props/meshy/<key>.glb` (meshopt + WebP, like the decor). Concepts + sources: project files `<district>/pass2/`.
+
+| Key | What | District making it | Status |
+|---|---|---|---|
+| `arcade_cabinet` | upright 1980s arcade cabinet, abstract art, no logos | Entertainment | live |
+| `pinball_machine` | pinball machine | Entertainment | live |
+| `claw_machine` | claw crane prize machine | Entertainment | live |
+| `air_hockey_table` | air hockey table | Entertainment | live |
+| `jukebox` | 1950s jukebox | Entertainment | live |
+| `roulette_table` | casino roulette table | Entertainment | live |
+| `blackjack_table` | half-moon card table | Entertainment | live |
+| `money_wheel` | casino money wheel on a stand | Entertainment | live |
+| `crystal_chandelier` | crystal chandelier (ceiling) | Entertainment | live |
+| `mixing_console` | studio mixing desk | Entertainment | live |
+| `drum_kit` | full drum kit | Entertainment | live |
+| `guitar_amp` | guitar amp stack | Entertainment | live |
+| `pa_speaker` | floor PA loudspeaker | Entertainment | live |
+| `followspot` | theatre follow spot on a tripod | Entertainment | live |
+| `film_camera` | vintage movie camera on a tripod | Entertainment | live |
+| `studio_light` | fresnel light on a wheeled stand | Entertainment | live |
+| `directors_chair` | director's chair, plain canvas | Entertainment | live |
+| `film_projector` | cinema film projector on its pedestal | Entertainment | live |
+| `bread_rack` | wooden bread rack, full | Entertainment | live |
+| `deck_oven` | steel bakery deck oven | Entertainment | live |
+| `wedding_cake` | four-tier wedding cake | Entertainment | live |
+| `costume_rack` | rolling rack of stage costumes | Entertainment | live |
+| `makeup_vanity` | dressing-room mirror with bulbs + stool | Entertainment | live |
+| `wedding_arch` | flower wedding arch | Entertainment | live |
+| `mirror_ball` | disco mirror ball (ceiling) | Entertainment | live |
+| `music_stand` | orchestra music stand | Entertainment | live |
+| `paper_lantern` | round red paper lantern (hanging) | Entertainment | live |
