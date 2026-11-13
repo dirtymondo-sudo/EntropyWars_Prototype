@@ -70,11 +70,11 @@ const B = {};
 /* 1 · THE WATERFRONT HOTEL: a nine-storey coral slab, a white eyebrow over every floor, a round glass corner tower under a mint dome */
 B.hotel = (W, D, lx) => {
     const H = 31.5, p = [];
-    p.push(box(0, 0, 0, W, H, D, A(wallM(T.CORAL), { keyTop: K.conc, tintTop: T.GREY })));
+    p.push(box(0, 0, 0, W, H, D, A(wallM(T.CORAL), { faces: 'blr', keyTop: K.conc, tintTop: T.GREY })), pane('f', W, D, 0, 3.5, W + 2 * E, H - 3.5, wallM(T.CORAL), -E));   // (the front is open behind the doorway: the lobby)
     p.push(doorFront(W, D, 3.5, lx, wallM(T.CREAM)));
     ['f', 'b'].forEach(s => p.push(pane(s, W, D, 0, 3.5, W - 3.5, H - 4.2, { key: K.win, uv: [3.5, 3.5] }, 0.02)));                    // a window a bay, two rows a floor
     ['l', 'r'].forEach(s => p.push(pane(s, W, D, 0, 3.5, 3.5, H - 4.2, glass(T.AQUA, K.gTall), 0.02)));                                 // a glass stair slot up each end
-    p.push(A(box(0, 3.4, 0, W + 1.4, 0.22, D + 1.4, A(trim(), { under: true })), { n: 9, step: [0, 3.5, 0] }));                         // the eyebrows
+    p.push(...band(W, D, 3.4, 0.22, 0.7, trim()), A(box(0, 6.9, 0, W + 1.4, 0.22, D + 1.4, A(trim(), { under: true })), { n: 8, step: [0, 3.5, 0] }));   // (the first is a band: a slab would cut through the lobby)                         // the eyebrows
     p.push(...band(W, D, H, 0.9, 0.12, wallM(T.CREAM)));
     /* the corner tower (the street corner: the front's right) */
     const tx = W / 2 - 2.6, tz = D / 2 - 2.6, tr = 4.0;
@@ -92,12 +92,11 @@ B.hotel = (W, D, lx) => {
 };
 
 /* 2 · THE SURF + BAIT SHACK: aqua corrugated, a lean-to roof, a striped awning, boards stood against the front */
-B.surf = (W, D) => {
+B.surf = (W, D, lx) => {
     const p = [];
-    p.push(box(0, 0, 0, W, 4.0, D, A(wallM(T.AQUA, K.corr), { top: false })));
+    p.push(box(0, 0, 0, W, 4.0, D, A(wallM(T.AQUA, K.corr), { faces: 'blr', top: false })), doorFront(W, D, 4.0, lx, wallM(T.AQUA, K.corr)));   // a walk-in (the interiors pass)
     p.push(roof('shed', 0, 4.0, 0, W, 2.2, D, A(wallM(T.STEEL, K.corr), { over: 0.6, keyEnd: K.corr, tintEnd: T.AQUA, under: true, roof: true })));
     p.push(pane('f', W, D, -1.2, 0.9, 5.25, 1.75, { key: K.shop, uv: [1.75, 1.75] }));
-    p.push(box(W / 2 - 1.9, 0, D / 2 + 0.03, 1.1, 2.3, 0.1, trim(T.DARK)));
     p.push(...awning(-0.6, 2.9, D / 2 + 1.0, W - 1.6, 2.0, T.RED));
     [[T.LEMON, 0], [T.HOT, 0.75], [T.MINT, 1.5]].forEach(c => p.push(box(-W / 2 + 0.7 + c[1], 0, D / 2 + 2.25, 0.5, 2.3, 0.09, trim(c[0])), cyl(-W / 2 + 0.7 + c[1], 2.3, D / 2 + 2.25, 0.25, 0.4, A(trim(c[0]), { r2: 0.02, seg: 6 }))));
     p.push(box(0, 4.6, D / 2 + 0.25, 5, 1.1, 0.15, A(trim(T.LEMON), { glow: 0.4 })));
@@ -121,9 +120,9 @@ B.icecream = (W, D) => {
 };
 
 /* 5 · THE BOAT WORKSHOP: teal corrugated under a barrel vault, a roller shutter, a hull on trestles is dressing */
-B.boatshop = (W, D) => {
+B.boatshop = (W, D, lx) => {
     const p = [];
-    p.push(box(0, 0, 0, W, 5.0, D, A(wallM(T.TEAL, K.corr), { top: false })));
+    p.push(box(0, 0, 0, W, 5.0, D, A(wallM(T.TEAL, K.corr), { faces: 'blr', top: false })), doorFront(W, D, 5.0, lx, wallM(T.TEAL, K.corr)));   // a walk-in (the interiors pass)
     p.push(roof('barrel', 0, 5.0, 0, D, 2.8, W, A(wallM(T.STEEL, K.corr), { ry: 90, over: 0.35, keyEnd: K.corr, tintEnd: T.TEAL, seg: 10, roof: true })));
     p.push(pane('f', W, D, -W / 2 + 4.4, 0, 5.2, 3.8, wallM(T.GREY, K.shutter), 0.02), pane('f', W, D, W / 2 - 3.5, 1.2, 3.5, 1.75, glass(T.GLASS, K.gFac), 0.02));
     p.push(box(-W / 2 + 4.4, 3.8, D / 2 + 0.2, 5.8, 0.3, 0.4, trim(T.YELLOW)));
@@ -331,11 +330,11 @@ B.carport = (len) => {
 };
 
 /* 22 · THE HARBOUR MASTER: a white house under a navy hip roof, a tower with a glazed lantern room, a flagpole */
-B.harbour = (W, D) => {
+B.harbour = (W, D, lx) => {
     const p = [], H = 7, tx = W / 2 - 1.75;
-    p.push(box(0, 0, 0, W, H, D, A(wallM(T.WHITE, K.plaster), { top: false })), roof('hip', 0, H, 0, W, 2.2, D, A(wallM(T.NAVY, K.corr), { over: 0.5, roof: true })));
-    p.push(...band(W, D, 0, 0.9, 0.06, trim(T.NAVY)));
-    p.push(pane('f', W, D, -1.75, 1.0, W - 5.25, 1.75, { key: K.win, uv: [3.5, 1.75] }, 0.02), pane('f', W, D, -1.75, 4.4, W - 5.25, 1.75, { key: K.win, uv: [3.5, 1.75] }, 0.02), pane('b', W, D, 0, 4.4, W - 3.5, 1.75, { key: K.win, uv: [3.5, 1.75] }, 0.02));
+    p.push(box(0, 0, 0, W, H, D, A(wallM(T.WHITE, K.plaster), { faces: 'blr', top: false })), doorFront(W, D, H, lx, wallM(T.WHITE, K.plaster)), roof('hip', 0, H, 0, W, 2.2, D, A(wallM(T.NAVY, K.corr), { over: 0.5, roof: true })));
+    p.push(...band(W, D, 0, 0.9, 0.06, trim(T.NAVY)).slice(1), box((-W / 2 + lx - 0.9) / 2, 0, D / 2 + 0.03, lx - 0.9 + W / 2, 0.9, 0.06, trim(T.NAVY)), box((lx + 0.9 + W / 2) / 2, 0, D / 2 + 0.03, W / 2 - lx - 0.9, 0.9, 0.06, trim(T.NAVY)));   // (the dado stops either side of the doorway)
+    p.push(pane('f', W, D, -2.6, 1.0, 1.5, 1.75, { key: K.win, uv: [3.5, 1.75] }, 0.02), pane('f', W, D, -1.75, 4.4, W - 5.25, 1.75, { key: K.win, uv: [3.5, 1.75] }, 0.02), pane('b', W, D, 0, 4.4, W - 3.5, 1.75, { key: K.win, uv: [3.5, 1.75] }, 0.02));
     p.push(box(tx, 0, D / 2 - 1.2, 3.3, 12.5, 3.3, wallM(T.WHITE, K.plaster)), box(tx, 0, D / 2 + 0.47, 1.2, 2.3, 0.06, trim(T.NAVY)));
     p.push(box(tx, 12.5, D / 2 - 1.2, 4.3, 0.25, 4.3, A(trim(T.NAVY), { under: true })), cyl(tx, 12.75, D / 2 - 1.2, 1.5, 2.1, A(glass(T.GLASS, K.gSq, 0.6), { seg: 12, cap: false })));
     p.push(cyl(tx, 14.85, D / 2 - 1.2, 2.0, 1.5, A(trim(T.NAVY), { r2: 0.05, seg: 12 })), cyl(tx, 16.35, D / 2 - 1.2, 0.07, 3.2, A(trim(), { seg: 6 })), box(tx + 0.75, 18.5, D / 2 - 1.2, 1.4, 0.85, 0.04, A(trim(T.RED), { ds: true })));
@@ -577,7 +576,7 @@ POLISH.market = (p, W, D, lx) => {
     p.push(A(box(-W / 2 + 0.15, 3.8, 0, 0.2, 0.2, D - 0.2, trim()), { n: k + 1, step: [(W - 0.3) / k, 0, 0] }));                                              // the tie beams
     /* the stalls along the back wall: a plank counter, a striped valance, crates of fruit */
     const ns = Math.max(2, Math.floor((W - 2) / 4.2));
-    for (let i = 0; i < ns; i++) { const x = -W / 2 + 2.6 + i * ((W - 5.2) / Math.max(1, ns - 1)), z = -D / 2 + 1.1, c = [T.ORANGE, T.LEAF, T.RED, T.LEMON][i % 4];
+    for (let i = 0; i < ns; i++) { const x = -W / 2 + 1.75 + i * 7, z = -D / 2 + 1.75, c = [T.ORANGE, T.LEAF, T.RED, T.LEMON][i % 4];
         p.push(box(x, 0, z, 2.8, 0.95, 1.0, mat(K.planks, T.WHITE, 2.0)), ...awning(x, 2.3, z + 0.5, 3.0, 1.3, [T.CORAL, T.AQUA, T.LEMON][i % 3]), box(x - 0.7, 0.95, z, 0.9, 0.22, 0.7, mat(K.planks, 0xc8a070, 1.9)), box(x - 0.7, 1.1, z, 0.8, 0.14, 0.6, trim(c)), box(x + 0.6, 0.95, z, 0.9, 0.22, 0.7, mat(K.planks, 0xc8a070, 1.9)), box(x + 0.6, 1.1, z, 0.8, 0.14, 0.6, trim([T.RED, T.LEMON, T.ORANGE, T.LEAF][i % 4]))); }
     p.push({ s: 'quad', flat: true, p: [0, 0.03, 0], size: [W - 0.6, D - 0.6], key: KP.tileD, tint: T.CREAM, gain: 1.7 });                                         // the hall's tiled floor
 };
@@ -753,12 +752,12 @@ function tailor(PLAN) {
 /* ── the build ── */
 const SIDE_ROT = { S: 0, W: 90, N: 180, E: 270 };
 const DESIGN = {
-    'P08-08-B1': { fn: 'hotel', storeys: 9 }, 'P08-08-B2': { fn: 'surf', storeys: 1, solid: true },
-    'P09-08-B2': { fn: 'icecream' }, 'P09-08-B3': { fn: 'boatshop', storeys: 2, solid: true },
+    'P08-08-B1': { fn: 'hotel', storeys: 2, floorIn: 'urban:TileMarble1a' }, 'P08-08-B2': { fn: 'surf', storeys: 1, door: 5 },
+    'P09-08-B2': { fn: 'icecream' }, 'P09-08-B3': { fn: 'boatshop', storeys: 1, door: 6, keyIn: 'urban:MetalCorrugatedPainted1a' },
     'P10-08-B1': { fn: 'cinema', storeys: 4 },
     'P08-09-B1': { fn: 'market', storeys: 1 }, 'P08-09-B2': { fn: 'florist', storeys: 1, solid: true },
     'P09-09-B1': { fn: 'foodhall' }, 'P10-09-B1': { fn: 'security' }, 'P10-09-B2': { fn: 'apartments', storeys: 3, solid: true },
-    'P11-09-B1': { fn: 'dock', storeys: 2 }, 'P11-09-B2': { fn: 'booth' },
+    'P11-09-B1': { fn: 'dock', storeys: 2, keyIn: 'urban:MetalCorrugatedPainted1a' }, 'P11-09-B2': { fn: 'booth' },
     'P10-10-B1': { fn: 'mall', storeys: 3 }, 'P11-10-B2': { fn: 'juice', storeys: 1, solid: true },
 };
 function apply(ctx) {
@@ -772,7 +771,7 @@ function apply(ctx) {
         if (row.k === 'plateau') { row.bld = Object.assign({}, row.bld, { skin: false }); rot = SIDE_ROT[info.side]; const ew = info.side === 'E' || info.side === 'W'; W = ew ? row.d : row.w; D = ew ? row.w : row.d;
             const p = ctx.plotOf[info.plot], b = p.buildings.find(q => q.id === id), dr = b.doors[0];
             const k = info.side === 'S' ? (dr.x - b.x) : info.side === 'N' ? (b.x + b.w - 1 - dr.x) : info.side === 'E' ? (b.y + b.h - 1 - dr.y) : (dr.y - b.y); lx = doorLx(W, Math.round(k * 3.5 / 1.75) + 1); }
-        else { row.skin = false; delete row.key; if (d.storeys) row.storeys = d.storeys; if (d.solid) { delete row.hollow; delete row.door; delete row.style; } W = row.w; D = row.d; rot = row.rot || 0; lx = doorLx(W, row.door); }
+        else { row.skin = false; delete row.key; if (d.storeys) row.storeys = d.storeys; if (d.solid) { delete row.hollow; delete row.door; delete row.style; } if (d.door) { row.hollow = true; row.door = d.door; } if (d.keyIn) row.keyIn = d.keyIn; if (d.floorIn) row.floorIn = d.floorIn; W = row.w; D = row.d; rot = row.rot || 0; lx = doorLx(W, row.door); }
         push(id, row.x, row.z, rot, B[d.fn](W, D, lx));
     });
     /* the things the plan has no building for: each on yard squares it takes (so no tree, bench or bin is dressed onto them) */
@@ -792,10 +791,164 @@ function apply(ctx) {
       [2.5, 6, 9.5].forEach((c, i) => push('bay-carport' + (i + 1), gx(9 * N + c), z, 180, B.carport(10.5))); }
     /* 22 the harbour master: the Boardwalk exit's south-west yard, its front to the road */
     { const x = gx(11 * N + 4), z = gx(11 * N + 10), W = 7, D = 7; takeRect(11, 11, 3, 9, 4, 10);
-      lateRows.push({ k: 'texbuilding', id: 'dc:bay-harbourmaster', x: r3(x), z: r3(z), w: W, d: D, rot: 180, storeys: 2, seed: 7711, skin: false }); push('bay-harbourmaster', x, z, 180, B.harbour(W, D)); }
+      const hm = { k: 'texbuilding', id: 'dc:bay-harbourmaster', x: r3(x), z: r3(z), w: W, d: D, rot: 180, storeys: 1, seed: 7711, skin: false, hollow: true, door: 2 }; lateRows.push(hm); byId[hm.id] = hm; push('bay-harbourmaster', x, z, 180, B.harbour(W, D, doorLx(W, 2))); }
     beach(ctx, push, ghost);
+    interiors(ctx, byId, push);
     console.warn('[bayside]', JSON.stringify(out));
 }
+/* ── THE INTERIORS (2026-11-13, mondo 21:04 "let's go ahead and do the interiors"; his OK on plan 2, 21:24) ──
+   Six walk-ins, each one room behind the city's swinging door, laid out ON THE 3.5 m BATTLE SQUARES (his rule, 21:14 + 21:17: "if its gonna
+   be a barrier it needs to snap to the grid/be centered on a cell, if its just a prop or dressing ... it needs to be not centered"; "a
+   intended walkway still needs to be one cell wide, not have stuff halfway on 2 cells"):
+     - a BLOCKER (a desk, a counter, a seat block, racking, the boat) is built over whole squares, centred, and each of its squares is shut
+       with a ghost wall, so nothing stands half on it;
+     - DECOR (plants, lamps, stools, boards on a wall, barrels in a corner) hugs the walls and the corners, off the squares' middles;
+     - every walk is whole empty squares, door to back wall.
+   A room's frame is its building's: x along the front, +z out of the front door; square (c, r): c from the −x wall, r from the BACK wall.
+   `hd` on a prop is the way its front looks in that frame (0 = to the back wall, 90 = +x, 180 = to the door, 270 = −x). */
+function interiors(ctx, byId, push) {
+    const { lateRows, props, r3 } = ctx, n = { rooms: 0, parts: 0, blocked: 0, props: 0 };
+    const WOOD = (tint, g) => mat(K.planks, tint == null ? 0xc89868 : tint, g || 1.9), LAMP = { tint: 0xfff2cc, glow: 1, under: true };
+    const room = (id, fn) => {
+        const row = byId['dc:' + id]; if (!row || !row.hollow) { console.warn('[bayside] no walk-in row for', id); return; }
+        const W = row.w, D = row.d, rot = row.rot || 0, q = rot * Math.PI / 180, c = Math.cos(q), s = Math.sin(q), P = [];
+        const at = (lx, lz) => [r3(row.x + lx * c - lz * s), r3(row.z + lx * s + lz * c)];
+        const R = {
+            W, D, P, cols: Math.round(W / 3.5), rows: Math.round(D / 3.5), H: row.storeys * 3.5 - 0.32,
+            cx: col => -W / 2 + (col + 0.5) * 3.5, cz: rw => -D / 2 + (rw + 0.5) * 3.5,
+            /* shut whole squares (c0..c1, r0..r1), h high */
+            shut(c0, r0, c1, r1, h) { for (let a = c0; a <= (c1 == null ? c0 : c1); a++) for (let b = r0; b <= (r1 == null ? r0 : r1); b++) { const w = at(R.cx(a), R.cz(b)); lateRows.push({ k: 'wall', x0: w[0], z0: w[1], x1: w[0], z1: w[1], h: h || 1.2, t: 3.3, key: K.stucco, ghost: true, rail: false }); n.blocked++; } },
+            /* a ghost wall along a line of the frame (a partition) */
+            line(x0, z0, x1, z1, h) { const a = at(x0, z0), b = at(x1, z1); lateRows.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], h, t: 0.3, key: K.stucco, ghost: true, rail: false }); },
+            prop(key, lx, lz, hd, o) { const w = at(lx, lz); props.push(A({ key, x: w[0], z: w[1], face: (((hd || 0) + rot) % 360 + 360) % 360, floor: true }, o)); n.props++; },   // `floor`: on the room's floor, never on the roof slab over it (three-renderer.js THE FLOOR UNDER IT)
+            lamps(list, y) { list.forEach(l => P.push(box(l[0], (y || R.H) - 0.14, l[1], 1.0, 0.12, 1.0, LAMP))); },
+            rug(x, z, w, d, o) { P.push(A({ s: 'quad', flat: true, p: [x, 0.06, z], size: [w, d] }, o)); },
+            /* the room's own paint over the inside walls (the row's inside is the bare sheet): a wall coat `h` high, a dado under it, a ceiling */
+            liner(wall, dado, ceil, h) { const lx = doorLx(W, row.door), coat = (m, hh, e, hole) => { if (!m) return;
+                P.push({ s: 'quad', p: [0, 0, -D / 2 + e], ry: 0, size: [W - 2 * e, hh], ...m }, A({ s: 'quad', p: [0, 0, D / 2 - e], ry: 180, size: [W - 2 * e, hh], hole: [-lx, 1.74, Math.min(2.2, hole)] }, m), { s: 'quad', p: [-W / 2 + e, 0, 0], ry: 270, size: [D - 2 * e, hh], ...m }, { s: 'quad', p: [W / 2 - e, 0, 0], ry: 90, size: [D - 2 * e, hh], ...m }); };
+                coat(wall, h || R.H, 0.34, 2.2); coat(dado, 1.0, 0.36, 1.0);
+                if (ceil) P.push(box(0, R.H - 0.07, 0, W - 0.7, 0.04, D - 0.7, A({ under: true, roof: true, top: false, glow: 0.5 }, ceil))); },
+        };
+        fn(R); push(id + ':in', row.x, row.z, rot, P); n.rooms++; n.parts += P.length;
+    };
+    /* 1 the hotel lobby (9 x 3; the door on square 3): the walk is the whole middle row */
+    room('P08-08-B1', R => { const { P, cx, cz, D } = R, back = -D / 2 + 0.3;
+        R.liner(wallM(T.CREAM, K.plaster), mat(K.marble, T.CORAL, 1.9), mat(KP.ceil, T.WHITE, 1.8));
+        R.rug(cx(3), cz(1.5), 2.3, 6.6, mat(KP.rubber, 0xc03048, 1.7));                                                                          // the red carpet, door to desk
+        P.push(box(cx(3.5), 0, cz(0), 6.4, 1.05, 1.5, WOOD(0xa87048)), box(cx(3.5), 1.05, cz(0), 6.7, 0.08, 1.8, mat(K.marble, T.WHITE, 1.8)));   // the reception desk
+        P.push(dome(cx(3.5) + 2.2, 1.13, cz(0) + 0.3, 0.12, 0.1, trim(T.YELLOW)), box(cx(3.5), 1.5, back + 0.05, 4.2, 1.4, 0.08, WOOD(0x7a5030)));  // the bell, the key rack
+        P.push(A(box(cx(3.5) - 1.8, 1.62, back + 0.11, 0.08, 0.22, 0.03, trim(T.YELLOW)), { n: 10, step: [0.4, 0, 0] }), A(box(cx(3.5) - 1.8, 2.2, back + 0.11, 0.08, 0.22, 0.03, trim(T.YELLOW)), { n: 10, step: [0.4, 0, 0] }));
+        R.shut(3, 0, 4, 0, 1.2);
+        P.push(box(cx(7.5), 0, cz(0), 6.4, 1.1, 1.3, WOOD(0x70442c)), box(cx(7.5), 1.1, cz(0), 6.6, 0.07, 1.55, trim(0x2c2c34)));                  // the bar
+        P.push(box(cx(7.5), 1.3, back + 0.12, 6.0, 0.06, 0.3, WOOD(0x70442c)), box(cx(7.5), 2.0, back + 0.12, 6.0, 0.06, 0.3, WOOD(0x70442c)));
+        [T.LEAF, T.ORANGE, T.AQUA, T.RED].forEach((t, i) => P.push(A(cyl(cx(7.5) - 2.7 + i * 0.35, 1.36 + (i % 2) * 0.7, back + 0.12, 0.07, 0.36, A(trim(t), { seg: 6 })), { n: 4, step: [1.4, 0, 0] })));
+        P.push(A(cyl(cx(7.5) - 2.0, 0, cz(0) + 1.45, 0.22, 0.78, A(trim(T.HOT), { seg: 10 })), { n: 3, step: [2.0, 0, 0] }));                    // three stools, on the squares' edge
+        R.shut(7, 0, 8, 0, 1.2);
+        R.prop('psx_sofa_1', cx(0), cz(0), 90); R.prop('psx_sofa_3', cx(1), cz(0), 180); R.prop('psx_sofa_4', cx(0), cz(2), 90);
+        P.push(cyl(cx(8), 0, cz(2), 1.55, R.H, A(glass(T.AQUA, K.gTall, 0.5), { seg: 16, cap: false })), box(cx(8) - 1.56, 0, cz(2), 0.06, 2.3, 1.1, trim(T.MINT)));   // the tower stair's drum, its door
+        R.shut(8, 2, 8, 2, 3);
+        [5, 6].forEach(k => P.push(box(cx(k), 0, back + 0.02, 2.5, 2.7, 0.06, trim(0x50545c)), box(cx(k) - 0.52, 0, back + 0.07, 1.0, 2.4, 0.04, trim(T.STEEL)), box(cx(k) + 0.52, 0, back + 0.07, 1.0, 2.4, 0.04, trim(T.STEEL)), box(cx(k), 2.8, back + 0.05, 0.5, 0.2, 0.05, { tint: T.ORANGE, glow: 1 })));   // the lifts
+        R.prop('office_plant', cx(2) + 0.9, cz(0) - 1.0); R.prop('office_plant', cx(1) + 1.2, cz(2) + 1.15); R.prop('office_plant', cx(6) + 1.2, cz(2) + 1.15); R.prop('office_plant', cx(5) + 1.75, cz(0) - 1.1);
+        P.push(box(cx(4) + 1.2, 0, cz(2) + 1.2, 0.8, 0.55, 0.4, trim(T.NAVY)), box(cx(4) + 0.4, 0, cz(2) + 1.25, 0.5, 0.7, 0.3, trim(T.TERRA)));  // luggage by the wall
+        R.lamps([1, 3, 5, 7].map(k => [cx(k), cz(1)]));
+    });
+    /* 2 the cinema (7 x 8; the door on square 3): the foyer is rows 6-7, the hall rows 0-5; the centre aisle and both cross aisles are whole squares */
+    room('P10-08-B1', R => { const { P, cx, cz, W, D } = R, back = -D / 2 + 0.3, zp = -D / 2 + 21, FH = 4.4;
+        R.liner(wallM(0x8a3040, K.plaster), mat(KP.rubber, 0x40242c, 1.6), mat(KP.ceil, 0x6a5058, 1.5));
+        R.rug(0, 0, W - 0.7, D - 0.7, mat(KP.rubber, 0xa02c40, 1.7));
+        [[-W / 2 + 0.3, cx(3) - 1.75], [cx(3) + 1.75, W / 2 - 0.3]].forEach(e => { P.push(box((e[0] + e[1]) / 2, 0, zp, e[1] - e[0], R.H, 0.3, wallM(T.CREAM, K.plaster))); R.line(e[0], zp, e[1], zp, R.H); });   // the wall between the foyer and the hall
+        P.push(box(cx(3), 2.7, zp, 3.5, R.H - 2.7, 0.3, wallM(T.CREAM, K.plaster)), box(cx(3), 2.5, zp, 3.9, 0.2, 0.5, trim(T.LEMON)));
+        P.push(box(0, FH, zp + 3.5, W - 0.6, 0.15, 6.8, A(mat(KP.ceil, T.WHITE, 1.6), { under: true, roof: true, glow: 0.5 })));                              // the foyer's ceiling
+        R.lamps([[cx(1), cz(6.5)], [cx(3), cz(6.5)], [cx(5), cz(6.5)]], FH);
+        P.push(box(0, 2.2, back + 0.1, 17.5, 7.4, 0.12, { tint: 0xf4f6ff, glow: 0.55 }), box(0, 2.0, back + 0.06, 18.1, 7.8, 0.08, trim(0x202028)));   // the screen
+        [-1, 1].forEach(k => P.push(A(box(k * 10.4, 0, back + 0.25, 0.42, 10.4, 0.3, trim(0x9c1c30)), { n: 4, step: [k * 0.46, 0, 0.02] })));     // the curtains
+        P.push(box(0, 10.4, back + 0.3, W - 0.7, 0.9, 0.5, trim(0x9c1c30)));
+        [2, 3, 4].forEach(rw => [0, 4].forEach(c0 => { const x = cx(c0 + 1);                                                                    // the seat blocks: two benches a square, facing the screen
+            [-0.8, 0.8].forEach(dz => P.push(box(x, 0, cz(rw) + dz, 10.0, 0.5, 0.7, trim(0xb02a3c)), box(x, 0.5, cz(rw) + dz + 0.42, 10.0, 0.75, 0.16, trim(0x8c1c2c)), A(box(x - 4.95, 0, cz(rw) + dz, 0.1, 0.72, 0.8, trim(0x2a2a30)), { n: 12, step: [0.9, 0, 0] })));
+            R.shut(c0, rw, c0 + 2, rw, 1.3); }));
+        P.push(box(cx(3), 7.4, zp - 1.1, 6.5, 2.6, 1.9, A(wallM(T.LEMON, K.plaster), { under: true })), box(cx(3), 8.3, zp - 2.08, 1.0, 0.6, 0.06, { tint: 0xfff0b0, glow: 1 }));   // the projector booth, over the cross aisle
+        P.push(A(box(cx(3) - 1.6, 0.02, cz(1), 0.12, 0.03, 0.5, { tint: 0xffe08a, glow: 0.9 }), { n: 5, step: [0, 0, 3.5] }), A(box(cx(3) + 1.6, 0.02, cz(1), 0.12, 0.03, 0.5, { tint: 0xffe08a, glow: 0.9 }), { n: 5, step: [0, 0, 3.5] }));   // the aisle lights
+        P.push(box(cx(0), 0, cz(6), 3.0, 1.05, 1.5, wallM(T.LEMON, K.plaster)), box(cx(0), 1.05, cz(6), 3.2, 0.07, 1.7, trim()), box(cx(0) - 0.6, 1.12, cz(6), 1.3, 0.55, 0.9, A(glass(T.GLASS, K.gSq, 0.5), { top: true })));   // the snack counter
+        P.push(A(box(cx(0) - 1.35, 0.25, cz(6) + 0.76, 0.3, 0.6, 0.02, trim(T.RED)), { n: 5, step: [0.6, 0, 0] }));
+        R.prop('cash_register', cx(0) + 0.9, cz(6), 180, { y: 1.12 }); R.shut(0, 6, 0, 6, 1.2);
+        R.prop('popcorn_cart', cx(1), cz(6), 180); R.shut(1, 6, 1, 6, 1.7);
+        R.prop('ticket_booth', cx(5), cz(6), 180); R.shut(5, 6, 5, 6, 2.6);
+        R.prop('psx_sofa_5', cx(6), cz(7), 270);
+        R.prop('office_plant', cx(0) - 1.1, cz(7) + 1.15); R.prop('office_plant', cx(6) + 1.15, cz(6) - 1.1);
+        [[1, T.HOT], [2, T.AQUA], [4, T.LEMON], [5, T.MINT]].forEach(k => P.push({ s: 'quad', p: [cx(k[0]), 1.2, D / 2 - 0.3], ry: 180, size: [1.5, 2.1], tint: 0x202028 }, { s: 'quad', p: [cx(k[0]), 1.3, D / 2 - 0.32], ry: 180, size: [1.3, 1.9], tint: k[1], glow: 0.35 }));   // poster frames on the front wall
+    });
+    /* 3 the loading dock (9 x 3; the door on square 5): the walk is the whole middle row */
+    room('P11-09-B1', R => { const { P, cx, cz, D } = R, back = -D / 2 + 0.3;
+        R.liner(wallM(T.STEEL, K.corr), mat(K.conc, T.YELLOW, 1.6), mat(K.corr, T.GREY, 1.6));
+        P.push(A(cyl(cx(0) - 1.55, 0, cz(0) - 0.6, 0.06, 4.4, A(trim(T.ORANGE), { seg: 4, cap: false })), { n: 5, step: [3.4, 0, 0] }), A(cyl(cx(0) - 1.55, 0, cz(0) + 0.6, 0.06, 4.4, A(trim(T.ORANGE), { seg: 4, cap: false })), { n: 5, step: [3.4, 0, 0] }));   // the racking
+        P.push(A(box(cx(1.5), 0.2, cz(0), 13.7, 0.1, 1.3, trim(T.NAVY)), { n: 4, step: [0, 1.35, 0] }));
+        [0.3, 1.65, 3.0].forEach((y, i) => P.push(A(box(cx(0) - 0.9 + i * 0.5, y, cz(0), 1.1, 0.9, 1.0, WOOD(i === 1 ? 0xb89060 : 0xd0a870)), { n: 6, step: [2.2, 0, 0] })));
+        R.shut(0, 0, 3, 0, 4.4);
+        R.prop('exec_desk', cx(8), cz(0), 180); R.prop('office_chair', cx(8), cz(0) - 1.0, 180); R.shut(8, 0, 8, 0, 1.0);
+        [0, 1, 2].forEach(k => R.prop('office_locker', cx(7) - 0.9 + k * 0.85, back + 0.35, 180));
+        R.prop('ind_container', cx(0.5), cz(2), 90); R.shut(0, 2, 1, 2, 2.2);
+        [3, 8].forEach((c0, i) => { P.push(box(cx(c0), 0, cz(2), 2.7, 1.3, 2.7, WOOD(0xc49a62)), box(cx(c0) + (i ? -0.4 : 0.4), 1.3, cz(2) + 0.3, 1.4, 1.2, 1.4, A(WOOD(0xd8b078), { ry: 20 })), box(cx(c0) - (i ? -0.7 : 0.7), 1.3, cz(2) - 0.6, 0.9, 0.7, 0.9, WOOD(0xb08850))); R.shut(c0, 2, c0, 2, 2.5); });
+        R.prop('psx_metal_barrel_mp_0', cx(4) - 1.2, back + 0.5); R.prop('psx_metal_barrel_mp_2', cx(4) - 0.35, back + 0.55);
+        R.prop('psx_wooden_crate_1', cx(6) + 1.2, cz(2) + 1.2, 30); P.push(box(cx(2) + 1.0, 0, cz(2) + 1.15, 1.2, 0.14, 1.0, WOOD(0xb89060)));     // a crate, a pallet by the wall
+        R.lamps([1, 4, 7].map(k => [cx(k), cz(1)]));
+    });
+    /* 4 the surf shop (3 x 5; the door on square 2): a walk down both sides of the tables */
+    room('P08-08-B2', R => { const { P, cx, cz, W, D } = R, back = -D / 2 + 0.3;
+        R.liner(wallM(T.AQUA, K.plaster), WOOD(0xf0e0c0, 2.0), mat(KP.ceil, T.WHITE, 1.8));
+        R.rug(0, 0, W - 0.6, D - 0.6, WOOD(0xd8b888, 1.8));                                                                                     // the plank floor
+        P.push(box(cx(2), 0, cz(0), 3.0, 2.5, 3.0, A(wallM(T.NAVY, K.corr), { faces: 'blr' })), A(box(cx(2) - 1.3, 0.2, cz(0) + 1.5, 0.44, 2.2, 0.05, trim(T.RED)), { n: 6, step: [0.52, 0, 0] }), box(cx(2), 2.4, cz(0) + 1.5, 3.1, 0.1, 0.1, trim()));   // the changing booth, its curtain
+        R.shut(2, 0, 2, 0, 2.5);
+        [1, 3].forEach(rw => { P.push(box(cx(1), 0.8, cz(rw), 3.0, 0.1, 3.0, WOOD(0xe0c090)), A(cyl(cx(1) - 1.3, 0, cz(rw) - 1.3, 0.07, 0.8, A(trim(), { seg: 6, cap: false })), { n: 2, step: [2.6, 0, 0] }), A(cyl(cx(1) - 1.3, 0, cz(rw) + 1.3, 0.07, 0.8, A(trim(), { seg: 6, cap: false })), { n: 2, step: [2.6, 0, 0] }));
+            [T.AQUA, T.HOT, T.LEMON, T.MINT, T.CORAL, T.WHITE].forEach((t, i) => P.push(box(cx(1) - 0.9 + (i % 3) * 0.9, 0.9, cz(rw) - 0.6 + Math.floor(i / 3) * 1.2, 0.6, 0.12 + (i % 2) * 0.08, 0.7, trim(t))));   // folded shirts
+            R.shut(1, rw, 1, rw, 1.0); });
+        P.push(box(cx(0), 0, cz(4), 3.0, 1.05, 1.4, WOOD(0xc89868)), box(cx(0), 1.05, cz(4), 3.2, 0.06, 1.6, trim(T.AQUA))); R.prop('cash_register', cx(0) + 0.7, cz(4), 90, { y: 1.1 }); R.shut(0, 4, 0, 4, 1.2);
+        [[T.LEMON, 0], [T.HOT, 1], [T.MINT, 2], [T.ORANGE, 3]].forEach(k => { const z = cz(0) + 0.6 + k[1] * 2.3; P.push(box(-W / 2 + 0.42, 0, z, 0.1, 2.2, 0.55, A(trim(k[0]), { rx: 0 })), cyl(-W / 2 + 0.42, 2.2, z, 0.27, 0.4, A(trim(k[0]), { r2: 0.02, seg: 6 }))); });   // boards on the left wall
+        [[T.AQUA, 0], [T.CORAL, 1]].forEach(k => { const z = cz(1) + 0.4 + k[1] * 2.6; P.push(box(W / 2 - 0.42, 0, z, 0.1, 2.2, 0.55, trim(k[0])), cyl(W / 2 - 0.42, 2.2, z, 0.27, 0.4, A(trim(k[0]), { r2: 0.02, seg: 6 }))); });
+        P.push(box(cx(0.5), 1.95, back + 0.2, 5.6, 0.05, 0.05, trim(T.STEEL)), A(box(cx(0.5) - 2.4, 0.75, back + 0.2, 0.5, 1.2, 0.1, trim(0x24242c)), { n: 7, step: [0.8, 0, 0] }));   // the wetsuit rail
+        R.prop('office_plant', cx(2) + 1.15, cz(4) - 1.0);
+        R.lamps([[cx(0), cz(2)], [cx(2), cz(2)]]);
+    });
+    /* 5 the boat repair (5 x 3; the door on square 2): the walk goes all round the hull */
+    room('P09-08-B3', R => { const { P, cx, cz, D } = R, back = -D / 2 + 0.3;
+        R.liner(wallM(T.TEAL, K.corr), mat(K.conc, T.GREY, 1.6), mat(K.corr, T.STEEL, 1.6));
+        P.push(box(cx(0.5), 0, cz(0), 6.4, 0.9, 1.3, WOOD(0xb89060)), box(cx(0.5), 1.3, back + 0.05, 5.6, 1.2, 0.06, trim(0x40444c)));             // the workbench, its tool board
+        [T.RED, T.YELLOW, T.STEEL, T.ORANGE].forEach((t, i) => P.push(A(box(cx(0.5) - 2.4 + i * 0.3, 1.5 + (i % 2) * 0.4, back + 0.1, 0.12, 0.5, 0.03, trim(t)), { n: 4, step: [1.3, 0, 0] })));
+        P.push(box(cx(0.5) - 2.0, 0.9, cz(0), 0.7, 0.3, 0.5, trim(T.RED)), box(cx(0.5) + 1.6, 0.9, cz(0) + 0.1, 0.5, 0.2, 0.9, trim(T.STEEL)));
+        R.shut(0, 0, 1, 0, 1.2);
+        P.push(box(cx(4), 0, cz(0), 1.5, 0.5, 1.1, trim(0x50545c)), box(cx(4), 0.5, cz(0), 1.2, 0.8, 0.9, trim(0x8a9098)), cyl(cx(4) + 0.2, 1.3, cz(0), 0.16, 0.4, A(trim(T.RED), { seg: 8 })));   // the engine on its stand
+        P.push(A(cyl(cx(4) - 1.3, 0, cz(0), 0.08, 2.9, A(trim(T.YELLOW), { seg: 4, cap: false })), { n: 2, step: [2.6, 0, 0] }), box(cx(4), 2.9, cz(0), 3.0, 0.16, 0.16, trim(T.YELLOW)), box(cx(4), 1.7, cz(0), 0.04, 1.2, 0.04, trim(T.DARK)));   // the hoist
+        R.shut(4, 0, 4, 0, 2.9);
+        [-1.3, 1.3].forEach(dx => P.push(box(cx(2.5) + dx, 0.9, cz(1), 0.12, 0.1, 1.9, WOOD(0xb89060)), A(box(cx(2.5) + dx, 0, cz(1) - 0.8, 0.1, 0.9, 0.1, WOOD(0xb89060)), { n: 2, step: [0, 0, 1.6] })));   // the trestles
+        R.prop('rowboat', cx(2.5), cz(1), 90, { y: 1.0 }); R.shut(2, 1, 3, 1, 1.8);
+        P.push(A(box(cx(4), 0, cz(2), 3.0, 0.14, 0.5, WOOD(0xd8b078)), { n: 4, step: [0, 0.3, 0] }), A(box(cx(4), 0.15, cz(2) - 0.9, 3.0, 0.14, 0.5, WOOD(0xc8a068)), { n: 4, step: [0, 0.3, 0] }), A(box(cx(4), 0.15, cz(2) + 0.9, 3.0, 0.14, 0.5, WOOD(0xc8a068)), { n: 4, step: [0, 0.3, 0] }));   // the timber stack
+        R.shut(4, 2, 4, 2, 1.3);
+        R.prop('ship_anchor', cx(0), cz(2), 90); P.push(cyl(cx(0) + 0.9, 0, cz(2) + 0.7, 0.45, 0.22, A(WOOD(0xd8c090), { seg: 10 })), cyl(cx(0) - 0.8, 0, cz(2) - 0.8, 0.38, 0.3, A(WOOD(0xd8c090), { seg: 10 })));   // the spare anchor, coils of rope
+        R.shut(0, 2, 0, 2, 1.9);
+        [0, 1, 2].forEach(k => R.prop('office_locker', cx(2.5) - 0.85 + k * 0.85, back + 0.35, 180));
+        R.prop('psx_metal_barrel_mp_1', cx(3) + 1.25, cz(2) + 1.2); R.prop('psx_metal_barrel_mp_3', cx(1) - 1.3, cz(2) + 1.2);
+        R.lamps([[cx(1), cz(1)], [cx(3), cz(1) + 1.75]]);
+    });
+    /* 6 the harbour master (2 x 2; the door on square 0): the tower's foot fills the front right square, the chart table the back right */
+    room('bay-harbourmaster', R => { const { P, cx, cz, W, D } = R, back = -D / 2 + 0.3;
+        R.liner(wallM(T.WHITE, K.plaster), WOOD(0x8a6a4a, 1.9), mat(KP.ceil, T.WHITE, 1.8));
+        R.rug(cx(0), 0, 2.4, D - 1.2, mat(KP.rubber, 0xb83848, 1.7));
+        P.push(box(cx(1) + 0.05, 0, D / 2 - 1.72, 3.3, R.H, 3.2, A(wallM(T.WHITE, K.plaster), { faces: 'bl', top: false })), box(cx(1) - 1.62, 0, D / 2 - 1.6, 0.05, 2.2, 1.0, trim(T.NAVY)));   // the tower's foot, its door
+        R.shut(1, 1, 1, 1, 3);
+        P.push(box(cx(1), 0, cz(0), 2.7, 1.0, 1.7, WOOD(0xa87850)), { s: 'quad', flat: true, p: [cx(1) - 0.2, 1.02, cz(0)], size: [1.7, 1.2], tint: 0xf4ecd0 }, { s: 'quad', flat: true, p: [cx(1) - 0.3, 1.03, cz(0) + 0.1], size: [0.9, 0.6], tint: T.AQUA });   // the chart table, a chart
+        R.prop('retro_radio', cx(1) + 0.95, cz(0) - 0.3, 180, { y: 1.02 }); R.shut(1, 0, 1, 0, 1.2);
+        R.prop('filing_cabinet', cx(0) - 0.9, back + 0.35, 180); R.prop('filing_cabinet', cx(0) - 0.05, back + 0.35, 180);
+        R.prop('brass_telescope', -W / 2 + 0.85, cz(0) + 1.3, 270);
+        R.lamps([[cx(0), cz(0.5)]]);
+    });
+    /* 7 the market hall (5 x 3, open): the stalls stand on squares 0, 2, 4 of the back row; a till on each, a crate stack on the middle of the front row's square 2 */
+    room('P08-09-B1', R => { const { P, cx, cz } = R;
+        [0, 2, 4].forEach(k => { R.prop('cash_register', cx(k) + 0.05, cz(0), 180, { y: 1.0 }); R.shut(k, 0, k, 0, 1.2); });
+        P.push(box(cx(2), 0, cz(2), 2.6, 0.9, 2.6, WOOD(0xc49a62)), box(cx(2) - 0.5, 0.9, cz(2) + 0.4, 1.3, 0.8, 1.3, A(WOOD(0xd8b078), { ry: 15 })), box(cx(2) + 0.7, 0.9, cz(2) - 0.6, 0.9, 0.35, 0.7, trim(T.ORANGE)));
+        R.shut(2, 2, 2, 2, 1.7);
+    });
+    console.warn('[bayside interiors]', JSON.stringify(n));
+}
+
 function beach(ctx, push, ghost) {
     const { lateRows, props, take, gc, gx, r3, N, paintCell } = ctx;
     const X0 = gx(144), XB = gx(146), XE = gx(144 + EAST), Z0 = gx(8 * N), Z1 = gx(12 * N);     // the city's east edge, the sea wall, the room's east edge; Bayside's north and south
