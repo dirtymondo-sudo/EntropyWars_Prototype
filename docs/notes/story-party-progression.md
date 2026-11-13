@@ -861,6 +861,11 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   (`ThreeRenderer.cancelJumpTween`), the slow motion (`clearTimeWarp`) and shuts the portal (`_sigRun` `skip`), then
   `encounterOpening(() => maybeAdvanceTurn())`. ui.js `_tutQuestPortal`: a fight with a scene skips the lesson-board portal (the
   portal forms IN the scene) and the black cover lifts as the scene starts. Viewer-local, VS-CPU only: nothing relayed.
+- **Found on the way** (all on screen, headless): a match starts a few frames before its 3D board (the scene waits for
+  `ThreeAnim.isActive()`); the match start sweeps effects made in its first moments (the host watches the door and stands it up
+  again); the fog / the Shadow Realm hid the Shadow Entities (`window._ewSceneCast`: a scene's cast is drawn whatever the fog
+  says); the HUD is rebuilt under a scene (`.ew-scene-hid` sweep 4x a second); and THE CARRIED BODY: `_rigRescale` scaled by
+  `ts` alone, so the walker's body carried onto a 3.5 m-square board stood TWICE the size of Locke and Kit (rig `bodyK` now).
 - **Not built yet** (the doc's build order): the new stage endings + the in-world quest marker (mock-up first) + `office_door`,
   D / E / F with the choice box, B the TV cart, A the intro. HQ scenes need an HQ host (cast walk / face / sit hooks).
 
