@@ -175,9 +175,27 @@ PLAN.roofEdges.forEach(e => {
 
 /* ── the squares something stands on (a prop, a tree, a landing): one thing a square ── */
 const occ = new Set();
-const free = (cx, cy, ok) => { const ch = cellAt(cx, cy); return (ok || '.#').indexOf(ch) >= 0 && !occ.has(cx + ',' + cy); };
+const free = (cx, cy, ok) => { if (cx < 0 || cy < 0 || cx >= 144 || cy >= 144) return false; const ch = cellAt(cx, cy); return (ok || '.#').indexOf(ch) >= 0 && !occ.has(cx + ',' + cy); };
 const take = (cx, cy) => occ.add(cx + ',' + cy);
 bInfo.forEach(b => (plotOf[b.plot].buildings.find(q => q.id === b.id).doors || []).forEach(dr => take(plotOf[b.plot].x * N + dr.ox, plotOf[b.plot].y * N + dr.oy)));   // a door's step stays clear
+
+/* ── THE DOORS (mondo 11-13 14:10, the decision card: "Replace today's streets with it"): this room IS `site_prebuilt_downtown_streets` now, so every
+   door that led to the old streets leads here. Each stands FREE (wall: 'free') where the plan has its place: the tower's on the Superhero Tower's
+   doorway, the mall's on the Mall concourse's, the sewer's on the Pump court's, the metro stair in the Transit square, the harbour at the Boardwalk
+   exit, the bay door (D.O.O.R.) in the Arrival court (the plan's start), the two roads at the road net's two dead ends, the taxi at the Taxi rank. ── */
+const FACE = { N: 0, E: 90, S: 180, W: 270 }, JOIN = {};
+const plotNamed = n => plotOf[n] || PLAN.plots.find(p => p.name === n);
+const bldDoor = (plotName, bName) => { const p = plotNamed(plotName), b = p.buildings.find(q => q.name === bName) || p.buildings[0], dr = b.doors[0], v = SIDE[dr.side];
+    const cx = p.x * N + dr.ox, cy = p.y * N + dr.oy; take(cx, cy); take(cx + v[0], cy + v[1]);
+    return { x: r3(gc(cx) - v[0] * (C / 2 - 0.25)), z: r3(gc(cy) - v[1] * (C / 2 - 0.25)), face: FACE[dr.side] }; };
+const spot = (plotName, lx, ly, face, ok) => { const p = plotNamed(plotName); let best = null;
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { if (!free(p.x * N + x, p.y * N + y, ok || '.P')) continue; const d = Math.hypot(x - lx, y - ly); if (!best || d < best[0]) best = [d, x, y]; }
+    const cx = p.x * N + best[1], cy = p.y * N + best[2]; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) take(cx + dx, cy + dy);
+    return { x: gc(cx), z: gc(cy), face }; };
+JOIN.tower = bldDoor('Superhero Tower', 'Superhero Tower'); JOIN.mall = bldDoor('Mall concourse', 'Mall concourse'); JOIN.sewer = bldDoor('Pump court', 'Pump court');
+JOIN.metro = spot('Transit square', 5, 2, 180); JOIN.harbour = spot('Boardwalk exit', 9, 9, 180); JOIN.bay = spot('Arrival court', 9, 6, 270);
+JOIN.downtown_strip = spot('P00-07', 1, 6, 270, 'RP.'); JOIN.stadium_downtown = spot('P03-00', 5, 1, 0, 'RP.');
+JOIN.garage_taxi = spot('Taxi rank', 3, 3, 270, '.P'); JOIN.streets_strip = spot('Church', 8, 8, 270); JOIN.streets_drain = spot('Canal walk', 6, 8, 270); JOIN.docks_sewer = spot('Dock edge', 6, 6, 90);
 
 /* ── THE BOUNDARIES: what stands where the plan closes a plot line. Per border (two plots' shared side) a first and a second recipe from the
    district's list (LOW where the plan connects the plots: you see over it; TALL where it does not), alternating run by run.
@@ -251,7 +269,7 @@ escapeAt.forEach(id => {
     const E = b.x + b.w / 2, W = b.x - b.w / 2, Sz = b.z + b.d2 / 2, Nz = b.z - b.d2 / 2, h2 = ROOF_H / 2;
     const tries = [];
     /* the square the landing stands on, and the one past it the ladder's foot is reached from (both open ground) */
-    const open2 = (cx, cy) => '.#P'.indexOf(cellAt(cx, cy)) >= 0;
+    const open2 = (cx, cy) => inCity(cx, cy) && '.#P'.indexOf(cellAt(cx, cy)) >= 0;
     for (let i = 0; i < b.ch; i++) { if (open2(b.cx0 + b.cw + 1, b.cy0 + i)) tries.push(['E', b.cx0 + b.cw, b.cy0 + i]); if (open2(b.cx0 - 2, b.cy0 + i)) tries.push(['W', b.cx0 - 1, b.cy0 + i]); }
     for (let i = 0; i < b.cw; i++) { if (open2(b.cx0 + i, b.cy0 + b.ch + 1)) tries.push(['S', b.cx0 + i, b.cy0 + b.ch]); if (open2(b.cx0 + i, b.cy0 - 2)) tries.push(['N', b.cx0 + i, b.cy0 - 1]); }
     /* a yard square first, a walk square if the building has no yard beside it; never where a roof bridge lands */
@@ -410,10 +428,10 @@ const J = v => JSON.stringify(v).replace(/"([a-zA-Z_][a-zA-Z0-9_]*)":/g, '$1:').
 const spawnP = plotOf[PLAN.progression.start], sp = pc(spawnP);
 const lines = [];
 lines.push("        /* DC144-BEGIN — DISASTER CITY, THE 144 PLOTS (2026-11-13): written by `node bake-disaster-city.js` from docs/disaster-city/city-layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */");
-lines.push("        site_prebuilt_downtown_city: {");
+lines.push("        site_prebuilt_downtown_streets: {");
 lines.push("            label: 'DISASTER CITY',");
 lines.push("            sub: 'SOUTHSIDE · CIVIC CENTER · FINANCIAL · UNIVERSITY · HERO PLAZA · ENTERTAINMENT · INDUSTRIAL · SPORTS + CULTURE · BAYSIDE',");
-lines.push("            kind: 'box', site: 'prebuilt_downtown', part: 'city',");
+lines.push("            kind: 'box', site: 'prebuilt_downtown', part: 'streets',");
 lines.push("            shell: hqCityShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + sp[0] + ", z: " + sp[1] + ", y: 4.6 } }),");
 lines.push("            parti: 'Nine districts of sixteen plots, every plot a twelve by twelve board: a city walked as a maze of yards, alleys, doors and roofs between a few plain roads.',");
 lines.push("            typology: 'grid',");
@@ -421,7 +439,7 @@ lines.push("            dc144: { cell: " + C + ", plot: " + PL + ", plots: " + N
 lines.push("            terrain: {");
 lines.push("                res: 0.875,");
 lines.push("                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
-lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0, streets: " + J(streets) + ",");
+lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0, streets: " + J(streets) + ",");
 lines.push("                       open: [] },");
 lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: 144, nz: 144, d: '" + b64 + "' },");
 lines.push("                features: [");
@@ -430,13 +448,26 @@ lines.push("                ],");
 lines.push("                /* the cars: the ring (west avenue, the north street, the east avenue, the cross street), never the response streets round the mall */");
 lines.push("                traffic: " + J(TRAFFIC) + ",");
 lines.push("            },");
-lines.push("            doors: [],");
+const dj = o => "wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face;
+lines.push("            doors: [");
+lines.push("                { id: 'harbour', " + dj(JOIN.harbour) + ", leaf: null, label: 'THE HARBOUR', sub: 'THE BOARDWALK · OUT ON THE PIER', action: { room: 'site_prebuilt_downtown_harbour', at: 'quay' },");
+lines.push("                  desc: 'The quay stops and the water starts. A pier goes on out into it, with a skiff tied at the end that nobody is minding.' },");
+lines.push("                { id: 'tower', " + dj(JOIN.tower) + ", leaf: 'leaf_entrance', label: 'THE TOWER', sub: 'THE PLAZA DOORS · INTO THE LOBBY', action: { room: 'site_prebuilt_downtown_lobby', at: 'avenue' },");
+lines.push("                  desc: 'The tower\\'s other doors, onto the avenue. The lobby is behind them, the intersection is behind the lobby, and the tower is above all of it for the rest of the year.' },");
+lines.push("                { id: 'mall', " + dj(JOIN.mall) + ", leaf: 'leaf_glass', label: 'THE MALL', sub: 'THE MAIN ENTRANCE · INTO THE MALL', action: { room: 'site_prebuilt_downtown_mall', at: 'street' },");
+lines.push("                  desc: 'The mall\\'s main entrance: sliding glass, a mat that says WELCOME, a sign that says OPEN and a smaller one, taped under it, that says NOTHING HAPPENED HERE.' },");
+lines.push("                { id: 'metro', " + dj(JOIN.metro) + ", way: 'stairway', passage: { model: 'metro_stairs', w: 3.6, h: 3.6, len: 10, deep: 6.5, rise: -0.55, land: 3.2, wall: 'urban:MetroWallTile', wallColor: 0xf0eee8, trim: 'urban:MetroConcrete', lift: 0.3 },");
+lines.push("                  label: 'THE METRO', sub: 'THE STAIR DOWN · THE PLATFORM', action: { room: 'site_prebuilt_downtown_subway', at: 'street' },");
+lines.push("                  desc: 'A stair down under a sign for every line. The platform under the tower has never once been touched; this is the other way onto it.' },");
+lines.push("                { id: 'sewer', " + dj(JOIN.sewer) + ", leaf: 'leaf_bulkhead', wide: true, label: 'THE SEWERS', sub: 'THE PUMPING STATION · DOWN INTO THE CULVERTS', action: { room: 'site_prebuilt_downtown_sewers', at: 'pump' },");
+lines.push("                  desc: 'A pumping station at the end of an alley, its bulkhead door open and its pumps running for a city that stopped paying them. The ladder inside goes down further than the tower ever went up.' },");
+lines.push("            ],");
 lines.push("            counters: [],");
 lines.push("            props: [");
 props.forEach(f => lines.push("                " + J(f) + ","));
 lines.push("            ],");
 lines.push("            agents: [], npcSpots: [],");
-lines.push("            spawn: { x: " + gc(spawnP.x * N + 8) + ", z: " + gc(spawnP.y * N + 5) + ", face: 90 },");
+lines.push("            spawn: { x: " + r3(JOIN.bay.x - 3.5) + ", z: " + JOIN.bay.z + ", face: 270 },");
 lines.push("        },");
 lines.push("        /* DC144-END */");
 const block = lines.join('\n') + '\n';
@@ -451,5 +482,26 @@ else {
     const at = src.indexOf(anchor); if (at < 0) { console.error('anchor not found'); process.exit(1); }
     src = src.slice(0, at) + block + src.slice(at);
 }
+/* THE JOINS: the rows outside the markers that named a spot in the old streets (each found by its own text; a rerun re-writes the same rows) */
+const sub = (re, to, what) => { if (!re.test(src)) { console.warn('JOIN not found:', what); return; } src = src.replace(re, to); };
+/* the old streets room keeps its place in the file under a new id (its fight board is cut from it: HQ_ARENA_RULES) */
+const blockEnd = src.indexOf('        /* DC144-END */');
+{ const i = src.indexOf("        site_prebuilt_downtown_streets: {\n            label: 'DISASTER CITY · DOWNTOWN',", blockEnd);
+  if (i > 0) { src = src.slice(0, i) + "        site_prebuilt_downtown_oldstreets: {   // THE OLD STREETS (2026-11-13): replaced by the 144 plots above (mondo's decision); kept, unlinked, as the room the site's fight board is cut from\n            label: 'DISASTER CITY · DOWNTOWN'," + src.slice(i + "        site_prebuilt_downtown_streets: {\n            label: 'DISASTER CITY · DOWNTOWN',".length);
+      const j = src.indexOf("kind: 'box', site: 'prebuilt_downtown', part: 'streets',", i); src = src.slice(0, j) + "kind: 'box', site: 'prebuilt_downtown', part: 'oldstreets'," + src.slice(j + "kind: 'box', site: 'prebuilt_downtown', part: 'streets',".length); } }
+['downtown_strip', 'stadium_downtown', 'garage_taxi', 'streets_strip', 'streets_drain', 'docks_sewer'].forEach(id => {
+    const i = src.indexOf("{ id: '" + id + "',"); if (i < 0) { console.warn('JOIN link not found:', id); return; }
+    const seg = src.slice(i, i + 900), o = JOIN[id];
+    const out = seg.replace(/(\{ site: 'prebuilt_downtown', part: 'streets', )[^\n]*?(sub: )/, "$1wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face + ", $2");
+    if (out === seg) console.warn('JOIN link end not found:', id); src = src.slice(0, i) + out + src.slice(i + 900);
+});
+sub(/(prebuilt_downtown:  \{ room: 'site_prebuilt_downtown_streets',  door: \{ id: 'bay', )[^}]*\}/, "$1wall: 'free', x: " + JOIN.bay.x + ", z: " + JOIN.bay.z + ", face: " + JOIN.bay.face + " }", 'entry');
+const hero = pc(plotNamed('Hero plaza'));
+sub(/site_prebuilt_downtown_streets: \{ x: [-\d.]+, z: [-\d.]+ \},(   \/\/ DISASTER CITY: the plaza)/, "site_prebuilt_downtown_streets: { x: " + hero[0] + ", z: " + r3(hero[1] + 1.75) + " },$1", 'marker');
+sub(/city: \{ room: 'site_prebuilt_downtown_streets', x: [-\d.]+, z: [-\d.]+, face: \d+ \}/, "city: { room: 'site_prebuilt_downtown_streets', x: " + r3(hero[0] - 3.5) + ", z: " + r3(hero[1] + 1.75) + ", face: 90 }", 'hub');
+const tapeB = bInfo.find(b => b.roof && b.d === 'R') || bInfo.find(b => b.roof);
+sub(/site_prebuilt_downtown_streets: \{ tape: \{ x: [-\d.]+, z: [-\d.]+ \} \}/, "site_prebuilt_downtown_streets: { tape: { x: " + tapeB.x + ", z: " + tapeB.z + " } }", 'tape');
+src = src.replace(/prebuilt_downtown: \{ room: 'site_prebuilt_downtown_streets', x: -24\.5, z: -14, r: 2\.6 \}/, "prebuilt_downtown: { room: 'site_prebuilt_downtown_oldstreets', x: -24.5, z: -14, r: 2.6 }");
+src = src.replace(/prebuilt_downtown: \{"room":"site_prebuilt_downtown_streets"/g, 'prebuilt_downtown: {"room":"site_prebuilt_downtown_oldstreets"');
 fs.writeFileSync(file, src);
 console.log('data.js written');
