@@ -218,7 +218,7 @@ plot(7, 3, () => { const PC = 'u_ConcreteStriped1e', PT = 0xfff8e8;
 /* ══ the parts as the game's `arch` parts (three-renderer.js _hqArchGeometry: box / cyl / dome / roof / quad) ══ */
 const r3 = v => Math.round(v * 1000) / 1000;
 const KEY = k => !k ? undefined : k.indexOf('u_') === 0 ? 'urban:' + k.slice(2) : k;
-const UV = k => /^u_(Decal|Glass|Door)/.test(k || '') ? 3.5 : 1.75;
+const UV = k => /^u_(DecalWindows|GlassWindow)/.test(k || '') ? undefined : /^u_(Decal|Glass|Door)/.test(k || '') ? 3.5 : 1.75;   // window sheets: no uv, the shared BIG WINDOWS rule sizes them (a storey a row, no ground row)
 const ROOF_KEY = 'urban:PlasterWallPainted1a', ROOF_TINT = 0xc8ccd0, RY = { S: 0, W: 90, N: 180, E: 270 };
 function toArch(p, D) {   // D = the walk-in doorway of this building, or null: { side, at, plane, cw }
     const out = [], o = p.o || {}, base = { key: KEY(p.key), tint: p.tint == null ? undefined : p.tint, uv: p.key ? UV(p.key) : undefined };
@@ -241,7 +241,7 @@ function toArch(p, D) {   // D = the walk-in doorway of this building, or null: 
         };
         const flatTop = o.top === 1 || (o.top !== 0 && h >= 2.5 && !o.alpha && /bricks|Plaster|Concrete|Corrugated|Glass/.test(p.key || ''));
         mk(0, p.y0, h, Object.assign({}, base, o.top === 0 ? { top: false } : flatTop ? { keyTop: ROOF_KEY, tintTop: ROOF_TINT } : {}, o.under ? { under: true } : {}));
-        if (o.win) { const y0 = p.y0 + (o.winY0 || 0); mk(0.05, y0, p.y1 - y0, { key: KEY(o.win), kind: 'over', uv: 3.5, top: false }, 3.5); }
+        if (o.win) { const y0 = p.y0 + (o.winY0 || 0); mk(0.05, y0, p.y1 - y0, { key: KEY(o.win), kind: 'over', top: false }, 3.5); }
     } else if (p.t === 'cyl') {
         const q = Object.assign({ s: 'cyl', p: [r3(p.x), r3(p.y0), r3(p.z)], r: p.r, h: r3(p.y1 - p.y0), seg: o.seg || 20 }, base);
         if (o.cone) { if (o.inv) { q.r = 0.03; q.r2 = p.r; } else q.r2 = 0; } else if (o.r2 != null) q.r2 = o.r2;
@@ -290,7 +290,7 @@ function apply(ctx) {
                 });
             }
             const parts = []; Bd.parts.forEach(p => toArch(p, D).forEach(q => parts.push(q)));
-            features.push({ k: 'arch', id: 'arch:' + id.slice(3), x: X0, z: Z0, parts }); n.arch++; n.parts += parts.length;
+            features.push({ k: 'arch', id: 'arch:' + id.slice(3), x: X0, z: Z0, y: 0, parts }); n.arch++; n.parts += parts.length;
             (Bd.ghost || []).forEach(g => { features.push({ k: 'wall', x0: r3(X0 + g[0]), z0: r3(Z0 + g[1]), x1: r3(X0 + g[2]), z1: r3(Z0 + g[3]), t: 0.3, y: g[4], ghost: true, rail: false }); n.ghosts++; });
             (Bd.cells || []).forEach(c => take(P.px * N + c[0], P.py * N + c[1]));
         });
