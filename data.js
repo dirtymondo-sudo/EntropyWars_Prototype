@@ -28224,6 +28224,10 @@ if (typeof window !== 'undefined') {
      { on: 'room',   room }                    the walk entered that room
      { on: 'lesson', lesson, filed? }          that tape was finished (`filed`: a tape already on the record counts)
      { on: 'fight',  fight }                   THAT fight (a QUEST_FIGHTS key) was WON; a loss or a retreat changes nothing
+     { on: 'talk',   who }                     the officer spoke to that cast member (a DOOR_CAST id) at their post
+   THE STAGES AFTER THE FIGHT (2026-11-13, the plan mondo approved: "Escort the Catgirl to the front desk" + "Walk to your
+   office"; "Rhonda deems her an emotional support anomaly and Kit joins the player's party"): `reward.at` = the stage
+   whose END pays the reward (left out = the quest's last), `holds.until` = the stage whose end lets the holds go.
    `start: 'hq'` = the quest begins by itself the first time the building is entered. `reward.unit` = a race that is
    LOCKED in the story party until the quest is complete, then joins the party (hqPartyUnlocked reads questLockedUnits).
    PROGRESS: profile.door.quests = { v, q: { <questId>: { status: 'active' | 'completed', stage, done: [stageId…], at,
@@ -28243,12 +28247,14 @@ const STORY_QUESTS = [
             { id: 'tape1',  objective: 'Finish Tape 1 · FIRST STEPS at the Range Console.', done: { on: 'lesson', lesson: 'first_steps', filed: true } },
             { id: 'tape2',  objective: 'Finish Tape 2 · THE PRESS.', done: { on: 'lesson', lesson: 'the_press' } },
             { id: 'portal', objective: 'Defeat the two Shadow Entities with the Catgirl.', done: { on: 'fight', fight: 'orientation_portal' } },
+            { id: 'desk',   objective: 'Escort the Catgirl to the front desk.', done: { on: 'talk', who: 'rhonda' } },
+            { id: 'office', objective: 'Walk to your office.', done: { on: 'room', room: 'office' } },
         ],
-        reward: { unit: 'catgirl', gender: 'female' },
+        reward: { unit: 'catgirl', gender: 'female', at: 'desk' },   // she joins at Rhonda's desk, not at the fight's win
         /* THE FIRST QUEST (mondo 2026-11-12: "I shouldnt have anyone at all in my roster except for me (door agent). The whole
            quest is about getting a first party member" + "none of that should be available" of the Range Console's game modes):
            until this quest is complete the story party is the officer alone and the Range Console deals the tapes only */
-        holds: { party: true, range: true },
+        holds: { party: true, range: true, until: 'desk' },
     },
 ];
 /* a quest's own fight: the officer's party + `guest` against `enemies` on `site`'s board, story rules (wipeout, nobody
@@ -28341,6 +28347,7 @@ function questStageMet(profile, st, ev) {
         return false;
     }
     if (d.on === 'fight') return !!(ev && ev.type === 'fight' && ev.fight === d.fight && ev.outcome === 'win');
+    if (d.on === 'talk') return !!(ev && ev.type === 'talk' && ev.who === d.who);
     return false;
 }
 /* THE ONE WRITER. ev = { type: 'hq' } | { type: 'room', room } | { type: 'lesson', lesson } | { type: 'fight', fight,
@@ -28359,7 +28366,7 @@ function questEvent(profile, ev, now) {
         }
         if (!pr || pr.status !== 'active') return;
         if (!Array.isArray(pr.done)) pr.done = [];
-        let first = true, moved = false;
+        let first = true, moved = false, paid = null;
         for (let guard = 0; guard < def.stages.length + 1; guard++) {
             const i = def.stages.findIndex(s => s.id === pr.stage);
             if (i < 0) { pr.stage = def.stages[0].id; continue; }   // a stage id the row no longer has: back to the first
@@ -28368,18 +28375,18 @@ function questEvent(profile, ev, now) {
             first = false; moved = true;
             if (pr.done.indexOf(st.id) < 0) pr.done.push(st.id);
             const nx = def.stages[i + 1];
+            /* the reward, once: at the end of `reward.at`'s stage, else with the last one */
+            if (!pr.reward && def.reward && (!nx || def.reward.at === st.id)) { pr.reward = iso; paid = questGrantReward(profile, def); }
             if (!nx) {
                 pr.status = 'completed'; pr.stage = null; pr.doneAt = iso;
-                let reward = null;
-                if (!pr.reward) { pr.reward = iso; reward = questGrantReward(profile, def); }
-                out.changes.push({ quest: def.id, kind: 'completed', title: def.title, objective: '', reward });
+                out.changes.push({ quest: def.id, kind: 'completed', title: def.title, objective: '', reward: paid });
                 return;
             }
             pr.stage = nx.id;
         }
         if (moved) {
             const st = questStageOf(def, pr);
-            out.changes.push({ quest: def.id, kind: 'updated', title: def.title, objective: st ? st.objective : '' });
+            out.changes.push({ quest: def.id, kind: 'updated', title: def.title, objective: st ? st.objective : '', reward: paid });
             if (st && st.done && st.done.on === 'fight') out.fight = st.done.fight;
         }
     });
@@ -28399,20 +28406,20 @@ function questLockedUnits(profile) {
     STORY_QUESTS.forEach(def => {
         const u = def.reward && def.reward.unit; if (!u) return;
         const pr = questProgress(profile, def.id);
-        if (!(pr && pr.status === 'completed') && out.indexOf(u) < 0) out.push(u);
+        if (!(pr && (pr.status === 'completed' || pr.reward)) && out.indexOf(u) < 0) out.push(u);
     });
     return out;
 }
 /* the units finished quests have handed over (their rewards) */
 function questRewardedUnits(profile) {
     const out = [];
-    STORY_QUESTS.forEach(def => { const u = def.reward && def.reward.unit; const pr = questProgress(profile, def.id); if (u && pr && pr.status === 'completed' && out.indexOf(u) < 0) out.push(u); });
+    STORY_QUESTS.forEach(def => { const u = def.reward && def.reward.unit; const pr = questProgress(profile, def.id); if (u && pr && (pr.status === 'completed' || pr.reward) && out.indexOf(u) < 0) out.push(u); });
     return out;
 }
 /* true while an unfinished quest still HOLDS `key` back ('party' = the story party is the officer alone, 'range' = the
    Range Console deals the tapes only) */
 function questHolds(profile, key) {
-    return STORY_QUESTS.some(def => { const pr = questProgress(profile, def.id); return !!(def.holds && def.holds[key]) && !(pr && pr.status === 'completed'); });
+    return STORY_QUESTS.some(def => { const pr = questProgress(profile, def.id); return !!(def.holds && def.holds[key]) && !(pr && (pr.status === 'completed' || (def.holds.until && Array.isArray(pr.done) && pr.done.indexOf(def.holds.until) >= 0))); });
 }
 /* the window under the strip: the first active quest's title + its current objective */
 function questTracker(profile) {
@@ -67237,7 +67244,8 @@ const DOOR_CAST = {
         name: 'KIT', title: 'INTAKE · PENDING · EMOTIONAL SUPPORT ANOMALY', dept: 'Reception (a chair)', model: 'kit', gender: 'female', base: 'catgirl',
         lines: [],
         spots: [
-            { room: 'central_egress', deg: 158, r: 6.7, level: 0, face: 338, pose: 'hqSit', reach: 2.0,
+            /* mondo 2026-11-12: Kit is not at the counter until Rhonda lets her stay (the first quest's `desk` stage) */
+            { room: 'central_egress', deg: 158, r: 6.7, level: 0, face: 338, pose: 'hqSit', reach: 2.0, after: { quest: 'orientation', stage: 'desk' },
               doing: 'On a folding chair at the counter, watching Rhonda not find her paperwork. Scheduled for deportation. The schedule is several centuries out.' },
         ],
     },
@@ -67348,6 +67356,9 @@ let _hqCastSalt = String(Math.floor(Math.random() * 1e9));
    once; `opts.salt` fixes the draw (tests), `opts.clearance` overrides
    the profile's level, `opts.force` = { id: spotIndex } pins members to a
    given spot (the screenshot probe; -1 = absent). */
+function _hqCastSpotAfter(profile, a) {
+    try { const pr = questProgress(profile, a.quest); return !!(pr && (pr.status === 'completed' || (Array.isArray(pr.done) && pr.done.indexOf(a.stage) >= 0))); } catch (e) { return false; }
+}
 function hqCastInRoom(roomId, profile, opts) {
     opts = opts || {};
     const out = [];
@@ -67359,6 +67370,7 @@ function hqCastInRoom(roomId, profile, opts) {
         if (!m || m.hidden || !Array.isArray(m.spots) || !m.spots.length) continue;
         const open = m.spots.filter(s => s && DOOR_HQ.rooms[hqCastSpotRoom(s)]
             && (s.p == null || s.p > 0)
+            && (!s.after || _hqCastSpotAfter(profile, s.after))   // THE QUESTS: a post taken only once a quest stage is behind the officer
             && (s.minClearance == null || cl >= s.minClearance)
             && (s.maxClearance == null || cl <= s.maxClearance));
         if (!open.length) continue;

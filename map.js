@@ -4375,6 +4375,7 @@
                 const rw = c.reward && c.reward.unit ? ' · ' + _hqEsc(String(c.reward.unit).toUpperCase()) + (c.reward.joined ? ' JOINED THE PARTY' : ' IS ON CALL · ENLIST HER FROM THE PAUSE MENU') : '';
                 return { html: `<b>QUEST COMPLETE</b><span>${title}${rw}</span>`, ms: 5200, done: true };
             }
+            if (c.reward && c.reward.unit) _questToastQ.push({ html: `<b>${_hqEsc(String(c.reward.unit).toUpperCase())}${c.reward.joined ? ' JOINED THE PARTY' : ' IS ON CALL'}</b><span>${c.reward.joined ? title : 'ENLIST HER FROM THE PAUSE MENU'}</span>`, ms: 4600, done: true });   // a reward paid mid-quest (reward.at)
             return { html: `<b>${c.kind === 'started' ? 'NEW QUEST' : 'QUEST UPDATED'} · ${title}</b><span>${_hqEsc(String(c.objective || '').toUpperCase())}</span>`, ms: 4200 };
         }
         function _questShow(changes, delay) {
@@ -7638,6 +7639,8 @@
             const room = _hqRoom();
             if (t.talk && _hqTalkStart(t)) return _hqTalkHtml();
             if (t.kind === 'cast') {
+                /* THE QUESTS: speaking to a cast member is an event a stage can end on (`done: { on: 'talk', who }`) */
+                try { if (t.cast && typeof window._questEvent === 'function') window._questEvent({ type: 'talk', who: t.cast }, { delay: 700 }); } catch (e) { console.warn('[QUEST] talk', e); }
                 /* a named cast member (data.js DOOR_CAST, 2026-09-06): their own
                    line when they have one (user-authored, A15 rule), the stage
                    direction for what they are doing under it */

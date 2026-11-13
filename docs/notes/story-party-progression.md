@@ -887,6 +887,13 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   them in slow motion. Locke's closing line is his new one ("Alright rook, you're officially hired. Your first shift starts
   now."). The height bug: a cut leap left the body in the air; three-renderer.js `cancelJumpTween` now LANDS the leap.
   The sill = battle.js `QUEST_DOOR_SILL` (1.0 body off the floor).
+- **THE STAGES AFTER THE FIGHT (2026-11-13, build step 2, the part with no HUD)**: ORIENTATION has 6 stages now: after the
+  fight `desk` ("Escort the Catgirl to the front desk.", `done: { on: 'talk', who: 'rhonda' }`) and `office` ("Walk to your
+  office.", room `office`). New in data.js: stage end `talk` (map.js `_hqNpcPanelHtml` files `{ type: 'talk', who }` when a
+  cast member's panel opens), `reward.at` (the stage whose end pays the reward: Kit joins at the desk, not at the win;
+  questLockedUnits / questRewardedUnits read the `pr.reward` stamp), `holds.until`, and a cast spot's `after: { quest, stage }`
+  (Kit's chair at the counter is empty until `desk` is done). Scenes D / E / F will hang on these stages. The world flag is
+  the existing `hqStoryFlags` / `hqStoryFlagSet` (profile.door.hq.flags): `office_door` goes there with scene F.
 - **Not built yet** (the doc's build order): the new stage endings + the in-world quest marker (mock-up first) + `office_door`,
   D / E / F with the choice box, B the TV cart, A the intro. HQ scenes need an HQ host (cast walk / face / sit hooks).
 
