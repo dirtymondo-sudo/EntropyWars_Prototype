@@ -59769,6 +59769,7 @@ function hqTerrainAdopt(roomId, plain, opts) {
     const info = plain;
     info.room = r; info.S = r.shell || {}; info.rules = hqTerrainRulesFor(r); info.roomId = roomId;
     info.hFn = (px, pz) => hqTerrainHeight(info, px, pz); info.hFnSampled = true;
+    if (!info.slope && r.terrain && r.terrain.slope) info.slope = hqTerrainSlopeFn(r.terrain);   // THE LEVELS: the base's profile is a function (never in the plain copy)
     info._climbEdges = null;
     (info.pads || []).forEach(p => { if (!p || !p.door) return; const d = (r.doors || []).find(q => q && q.id === p.door.id && q.wall === p.door.wall); if (d) p.door = d; });
     delete info.plain;
@@ -59882,8 +59883,51 @@ function hqTerrainIslandSinks(roomId) {
    (the land that met it was cut in Z0). null for a room without a slope. */
 /* the field's base at a point: `terrain.base` plus the slope's profile there (G7) */
 function _hqTBaseAt(info, x, z) { return (info.base || 0) + (info.slope ? info.slope(x, z) : 0); }
+/* THE LEVELS (DISASTER CITY, THE VERTICAL CITY, 2026-11-13 — mondo: "different districts should have different elevations ... and there can
+   be different elevations within the districts from plot to plot and even within plots"): `terrain.slope = { cells: { res, x0, z0, nx, nz, d } }`
+   — the base as a grid of SQUARES (res m a side, the first square's corner at x0, z0), each with its own four corner heights (d = base64 of
+   nx × nz × 4 little-endian i16, centimetres, in the order NW NE SW SE; bilinear inside a square; `f` = an optional base64 byte a square, see ON A LINE below). Two squares that agree on their shared
+   corners meet as one surface (a sloping street, a banked apron); two that do not are a STEP (a retaining wall between two plots' levels).
+   Everything that reads the slope (the features' lift, the lots, the traffic's pitch) reads this the same way. Outside the grid the edge
+   squares' heights hold. A row wearing `absY: true` keeps its authored heights (the tool wrote them absolute). */
+function hqSlopeCellsDecode(g) {
+    if (!g || !(g.nx > 0) || !(g.nz > 0) || !(g.res > 0) || typeof g.d !== 'string') return null;
+    if (g._dec && g._dec.src === g.d) return g._dec;
+    const u = _hqB64Dec(g.d), n = g.nx * g.nz * 4, a = new Int16Array(n), dv = new DataView(u.buffer, u.byteOffset, u.byteLength);
+    for (let k = 0; k < n && 2 * k + 1 < u.length; k++) a[k] = dv.getInt16(2 * k, true);
+    const dec = { src: g.d, a };
+    try { Object.defineProperty(g, '_dec', { value: dec, enumerable: false, configurable: true, writable: true }); } catch (e) {}
+    return dec;
+}
 function hqTerrainSlopeFn(T) {
-    const sl = T && T.slope; if (!sl || !Array.isArray(sl.pts) || !sl.pts.length) return null;
+    const sl = T && T.slope;
+    if (sl && sl.cells) {
+        const g = sl.cells, dec = hqSlopeCellsDecode(g); if (!dec) return null;
+        const a = dec.a, nx = g.nx, nz = g.nz, res = +g.res, gx0 = +g.x0 || 0, gz0 = +g.z0 || 0;
+        const fl = (typeof g.f === 'string' && g.f) ? _hqB64Dec(g.f) : null;
+        const cell = (i, j, u, v) => { const o = (j * nx + i) * 4; return ((a[o] * (1 - u) + a[o + 1] * u) * (1 - v) + (a[o + 2] * (1 - u) + a[o + 3] * u) * v) / 100; };
+        return (x, z) => {
+            let fx = (x - gx0) / res, fz = (z - gz0) / res;
+            const rx = Math.round(fx), rz = Math.round(fz), onX = Math.abs(fx - rx) < 1e-6 && rx > 0 && rx < nx, onZ = Math.abs(fz - rz) < 1e-6 && rz > 0 && rz < nz;
+            if (!onX && !onZ) {
+                let i = Math.floor(fx), j = Math.floor(fz);
+                if (i < 0) { i = 0; fx = 0; } else if (i >= nx) { i = nx - 1; fx = nx; }
+                if (j < 0) { j = 0; fz = 0; } else if (j >= nz) { j = nz - 1; fz = nz; }
+                return cell(i, j, fx - i, fz - j);
+            }
+            /* ON A LINE between squares (the field's lattice stands on them: hqTerrainCompile): the HIGHER side's height — a step's top edge is
+               the line itself, its face falls in the lower square's first lattice cell — unless a side wears the flag (`f`, a byte a square:
+               a walk-in building's floor), whose height then stands to the line, so no bank rises inside its wall */
+            let best = -Infinity, bestF = -Infinity;
+            const ii = onX ? [rx - 1, rx] : [Math.max(0, Math.min(nx - 1, Math.floor(fx)))], jj = onZ ? [rz - 1, rz] : [Math.max(0, Math.min(nz - 1, Math.floor(fz)))];
+            for (const i of ii) for (const j of jj) {
+                const h = cell(i, j, Math.max(0, Math.min(1, fx - i)), Math.max(0, Math.min(1, fz - j)));
+                if (h > best) best = h; if (fl && fl[j * nx + i] && h > bestF) bestF = h;
+            }
+            return bestF > -Infinity ? bestF : best;
+        };
+    }
+    if (!sl || !Array.isArray(sl.pts) || !sl.pts.length) return null;
     const P = sl.pts, n = P.length, ax = sl.axis === 'x' ? 0 : 1;
     return (x, z) => {
         const t = ax ? z : x;
@@ -59896,7 +59940,7 @@ function hqTerrainSlopeFn(T) {
 function _hqTSlopeFeatures(F, B) {
     const r2 = v => Math.round(v * 1000) / 1000;
     return F.map(f => {
-        if (f.texbOf) return f;   // THE REAL COLLISION: a grounded texbuilding is lifted by the ground under it (slope included) at the compile
+        if (f.texbOf || f.absY) return f;   // (absY, THE LEVELS: the row's heights are absolute already) THE REAL COLLISION: a grounded texbuilding is lifted by the ground under it (slope included) at the compile
         switch (f.k) {
             case 'plateau': return Object.assign({}, f, { h: r2(f.h + B(f.x, f.z)) });
             case 'ramp': return (f.x0 == null) ? f : Object.assign({}, f, { h0: r2(f.h0 + B(f.x0, f.z0)), h1: r2(f.h1 + B(f.x1, f.z1)) });
@@ -60197,7 +60241,10 @@ function hqTerrainCompile(room, roomId) {
         ? Math.max(0, +T.edgeOut || 0) : null;
     const res = T.res || (Math.max(S.w, S.d) <= R.fineBelow ? R.resFine : R.res);
     const latW = cut != null ? Math.max(halfW, S.w / 2 + cut + 0.5) : halfW, latD = cut != null ? Math.max(halfD, S.d / 2 + cut + 0.5) : halfD;
-    const nx = Math.ceil(2 * latW / res) + 1, nz = Math.ceil(2 * latD / res) + 1;
+    let nx = Math.ceil(2 * latW / res) + 1, nz = Math.ceil(2 * latD / res) + 1;
+    /* THE LEVELS: a room whose base is a grid of squares stands its lattice ON the squares' lines (one node more when that does it), so a
+       step between two squares is one lattice cell wide with its top edge on the line (never straddling it half a cell each side) */
+    if (T.slope && T.slope.cells) { const g = T.slope.cells, on = (n, g0) => { const q = ((+g0 || 0) + (n - 1) * res / 2) / res; return Math.abs(q - Math.round(q)) < 1e-6; }; if (!on(nx, g.x0) && on(nx + 1, g.x0)) nx++; if (!on(nz, g.z0) && on(nz + 1, g.z0)) nz++; }
     const x0 = -(nx - 1) * res / 2, z0 = -(nz - 1) * res / 2;
     const base = T.base || 0, seed = (typeof hqHash === 'function') ? hqHash(String(T.seedOf || roomId || room.label || 'terrain')) : 7;   // THE EDITOR (E0): `seedOf` = a copy's source id (the same noise)
     const X = hqRoomExpand(room);   // THE SHAPES (E1): openings, prefabs, kits and textured buildings as the compiler's own rows
@@ -60271,9 +60318,19 @@ function hqTerrainCompile(room, roomId) {
     const hmap = T.hmap ? hqGridDecode(T.hmap) : null;   // THE GROUND GRIDS (E3): the brushes' height delta, added after the rows
     let skipFlights = false;   // THE JOINED FLIGHTS (below): the ground a flight stands on — the field without the flights
     let skipFloats = false;    // THE GROUND UNDER (2026-11-03): the ground under the floating pieces — the field without them (info.GH)
+    /* THE LEVELS (2026-11-13): a box round every rect tier / flight / deck, so a node far from a row never runs its arithmetic (the city's
+       226 tiers and flights over 336,000 nodes: the compile took twice as long with the crossings' stairs in it). A row with no box (a
+       round tier, a hill, water) is read as before. */
+    const orderedBB = ordered.map(f => {
+        if (f.k === 'plateau' && !f.r && f.w > 0 && f.d > 0) { const q = (f.rot || 0) * Math.PI / 180, c = Math.abs(Math.cos(q)), s2 = Math.abs(Math.sin(q)), ex = c * f.w / 2 + s2 * f.d / 2 + 0.5, ez = s2 * f.w / 2 + c * f.d / 2 + 0.5; return [f.x - ex, f.x + ex, f.z - ez, f.z + ez]; }
+        if ((f.k === 'ramp' || f.k === 'deck') && typeof f.x0 === 'number' && typeof f.x1 === 'number' && typeof f.z0 === 'number' && typeof f.z1 === 'number' && f.w > 0) { const m = f.w / 2 + 0.5 + 0.03 * Math.hypot(f.x1 - f.x0, f.z1 - f.z0); return [Math.min(f.x0, f.x1) - m, Math.max(f.x0, f.x1) + m, Math.min(f.z0, f.z1) - m, Math.max(f.z0, f.z1) + m]; }
+        return null;
+    });
     const hBefore = (px, pz) => {
         let h = hBase(px, pz);
-        for (const f of ordered) {
+        for (let oi = 0; oi < ordered.length; oi++) {
+            const f = ordered[oi], bb = orderedBB[oi];
+            if (bb && (px < bb[0] || px > bb[1] || pz < bb[2] || pz > bb[3])) continue;
             if (skipFlights && f.k === 'ramp' && (f.escalator || (f.stairs && !f.float))) continue;
             if (skipFloats && f.float === true && (f.k === 'plateau' || (f.k === 'ramp' && f.stairs))) continue;
             if (f.k === 'ridge') { const r = _hqTPolyDist(px, pz, f.pts); h += f.h * _hqTSmooth(1 - r.d / (f.w / 2)); }
