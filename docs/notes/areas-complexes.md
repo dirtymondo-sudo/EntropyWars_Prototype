@@ -2379,3 +2379,7 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
 - HERO PLAZA, the lift (2026-11-13 19:10): districts/H.js `LIFT` now also sets `gain: 1.5` on every part whose key is a battle sheet
   (bricks_3, marble_light, aluminium, gold, wood_planks ...: the game draws those with the darker calm sheet), and leaves GlassWindow
   sheets with no added glow (the dark glass is the approved look; the Superhero Tower's shaft lost its glow). Seen on screen on the levels.
+- **THE DARK GLASS (mondo 11-13 19:02: "i actually like these dark looking windows, see if we can use them in any other buildings")**: the pack's
+  GlassWindow* sheets draw near black in an arch row and he wants that look, so never lift them (no glow / gain). Added in F.js: the hotel's
+  sky bar tier, the archive's stair drum, the palm house's vault + dome (back to glass), a clerestory on the garage, the shops' upper floor,
+  every third back lot a glass office block over a stone ground storey. The HOTEL gets a walk-in inside when the interiors start (his word).
