@@ -43154,7 +43154,7 @@ const DOOR_HQ = {
                 {key:'rowboat',x:-233.8,z:-92.4,face:90},
                 {key:'city_pizzeria',x:-222.25,z:20.85,face:180},
             ],
-            agents: [], npcSpots: [],
+            agents: [], npcSpots: [{x:173.25,z:-92.75,face:0,race:'king kong',say:['“…” “Was that you?” “…” “The tower.” “…” “Every year?” “…”']}],
             spawn: { x: 113.75, z: 190.75, face: 270 },
         },
         /* DC144-END */
