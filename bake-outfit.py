@@ -40,6 +40,7 @@ Usage: pip install bpy==5.2.3 scipy pillow
               DROPCOL="r,g,b,tol" (a piece fused into the body shell goes by its colour: superhero F's cape),
               CUFF=1 (with HANDCUT: the sleeve end sawn straight across the arm, superhero F),
               SNUG=0.004 (a suit's shoulders laid close on the skin so a creator cape covers them, superhero F),
+              CUFFHIDE=1 (the forearm's skin hidden level with the sleeve's end, superhero F),
               HANDCUT=1 (a bare hand fused to its sleeve goes, the body's own hand shows: politician, priest, shaman, telepath, vampire),
               DROP="x,y,z,r;..." (a stray shell left out by hand, its middle r from a point measured from the eyes; SHELLS=1 lists them)
        batch 1 review of 11-13: NOHANDS=1 (the body's own hands show, Meshy's go), WINGKEEP=1 (a collar fused to the wings), NOHELD=1 (nothing in the
@@ -779,6 +780,24 @@ def fit(name, gender, src, bodies_dir):
                     if j_ not in seen_: seen_.add(j_); comp_.append(j_); st_.append(j_)
             if len(comp_) < E('SKINISLE', 0) and not (max(pm.vertices[k_].co.z for k_ in comp_) > eyeM[2] - E('ISLENECK', 9) and E('ISLENECK', 0) and np.mean([abs(pm.vertices[k_].co.x - eyeM[0]) for k_ in comp_]) < E('ISLENECKX', 0.07)): ks -= set(comp_); ni_ += len(comp_)   # (never her neck: under a blouse collar the neck is cut off from the head's own skin and went black, Agent Locke)
         if ni_: print('[bake-outfit] %s: %d vertices of floating skin hidden' % (name, ni_), flush=True)
+    # THE SKIN AT THE CUFF (env CUFFHIDE=1; 2026-11-13, superhero F, mondo: "jaggedy around the arms"): the lines above hide the
+    # forearm's skin where a line meets the sleeve, which leaves a saw-toothed edge on the bare forearm below a short sleeve. The
+    # arm's skin is hidden by place: every vertex up the arm from the sleeve's end (CUFFPAD back from it), none below it
+    if E('CUFFHIDE', 0):
+        amw_ = marm.matrix_world; pb_ = marm.pose.bones
+        for pre_ in ('Left', 'Right'):
+            a_ = amw_ @ pb_[pre_ + 'Arm'].head; b_ = amw_ @ pb_[pre_ + 'Hand'].head; ab_ = (b_ - a_); L_ = ab_.length; ab_ = ab_ / L_
+            tc_ = [((v.co - a_).dot(ab_), ((v.co - a_) - ab_ * (v.co - a_).dot(ab_)).length) for o in cloth for v in o.data.vertices]
+            tc_ = [t for t, d in tc_ if d < E('CUFFR', 0.09) and 0.2 * L_ < t < 1.2 * L_]
+            if len(tc_) < 20: continue
+            end_ = float(np.percentile(tc_, 98)) - E('CUFFPAD', 0.012)
+            wa_ = sum(gw[n] for n in (pre_ + 'Arm', pre_ + 'ForeArm') if n in gw)
+            for i in np.nonzero(wa_ > 0.5)[0]:
+                t_ = (pm.vertices[int(i)].co - a_).dot(ab_)
+                if t_ < 0.25 * L_: continue
+                if t_ > end_: ks.add(int(i))
+                else: ks.discard(int(i))
+            print('[bake-outfit] %s: %s sleeve ends %.0f %% down the arm, the skin under it hidden to there' % (name, pre_, 100 * end_ / L_), flush=True)
     hidden = [i for i in range(len(pm.vertices)) if i not in ks]
     # a hm08 index is hidden only when every file vertex that carries it is
     shown_base = set(int(base[i]) for i in ks)
