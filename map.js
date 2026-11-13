@@ -4476,10 +4476,11 @@
                 setTimeout(() => { try { if (state.gameState === GS.HQ && !_hqSuspended) window._hqEnter({ room: to, quiet: true, from: 'walk' }); } catch (e) { console.warn('[SCENE] the way in', e); } }, 60);
             };
             const here = () => { try { const sc = TR.hq.dev.hqScene(); return !!(sc && sc.getObjectByName('hq_hq-cast-sedaniel')); } catch (e) { return false; } };
+            try { TR.hq.scenePlace('player', { show: false }); } catch (e) {}   // (mondo 11-13: "I am already standing by the door before sedaniel drops me off")
             const t0 = performance.now();
             const go = () => {
                 if (state.gameState !== GS.HQ || _hqSuspended || _hqCurRoom !== _INTRO_ROOM) { window._ewIntroLive = false; return; }
-                let up = false; try { up = here() && TR.hq.sceneReady('player'); } catch (e) { up = here(); }   // (the officer's clips too: no bind pose at the car)
+                let up = false; try { up = here() && TR.hq.sceneReady('player') && TR.hq.sceneReady('sedaniel'); } catch (e) { up = here(); }   // (the officer's clips too: no bind pose at the car)
                 if (!up && performance.now() - t0 < 20000) { setTimeout(go, 250); return; }
                 let ok = false;
                 try { ok = _questHqScene({ scene: _INTRO_SCENE, sceneAt: { x: -3.4, z: -41, face: 270 } }, { onEnd: out }, out); } catch (e) { console.error('[SCENE] the opening did not start', e); ok = false; }
@@ -4536,7 +4537,7 @@
             /* the scene's hands in the room: place / show / hide a body (three-renderer.js hq.scenePlace), the choice's world flags */
             const hand = (a) => { try {
                 if (!a || !TR || !TR.hq) return;
-                if (a.who && (a.do === 'place' || a.do === 'show' || a.do === 'hide') && TR.hq.scenePlace) TR.hq.scenePlace(a.who, { x: a.x, z: a.z, face: a.face, sit: (a.sit != null) ? a.sit : null, show: a.do === 'show' ? true : (a.do === 'hide' ? false : null) });
+                if (a.who && (a.do === 'place' || a.do === 'show' || a.do === 'hide') && TR.hq.scenePlace) TR.hq.scenePlace(a.who, { x: a.x, z: a.z, face: a.face, scale: a.scale, clip: a.clip, ms: a.ms, sit: (a.sit != null) ? a.sit : null, show: a.do === 'show' ? true : (a.do === 'hide' ? false : null) });
                 else if (a.who && a.do === 'walk' && TR.hq.sceneWalk) TR.hq.sceneWalk(a.who, { x: a.x, z: a.z, ms: a.ms, face: a.face });
                 else if (a.do === 'props' && TR.hq.sceneProps) TR.hq.sceneProps({ keys: a.keys, near: a.near, r: a.r, at: a.at, ms: a.ms, light: a.light });
                 else if (a.do === 'key' && TR.hq.sceneKey) TR.hq.sceneKey({ x: a.x, y: a.y, z: a.z, size: a.size });
