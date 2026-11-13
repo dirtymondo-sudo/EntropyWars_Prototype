@@ -2153,6 +2153,26 @@ his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:1
   The pack models (West / East shops, the taco stand) draw near-black in the headless probe only.
 - **Next: THE BEACH** (same thread): the room grows east of Bayside: sea wall, boardwalk, sand, the bay (terrain.sea), pier + pavilion,
   breakwater + lighthouse, lifeguard station, the BurgerPiz grill on a deck.
+- **THE BEACH (second delivery, 2026-11-13).** Outside the plot grid, along Bayside's east side: `B.js beach()`. From the city's edge
+  (x 252) east: the boardwalk (2 squares of planks, palms, benches, a spear rail on the sea wall), the sand shelf (y -1.05, about 19 m,
+  umbrellas, loungers, two lifeguard chairs, the volleyball net, the lifeguard hut), the bay (`terrain.sea` y -1.45, `field: true`; the
+  floor falls to -3.6), the PIER on the mall's axis (z 189: `deck` rows + the arch row `bay-pier`, the octagon pavilion at its head, the
+  bait hut), the BREAKWATER north (a concrete mole to a round head, the Marina's lighthouse stands on it), the GRILL DECK south
+  (`city_burgerpiz`, real size). Four ways out of the city (`WAYS`: plot squares turned to 'P', the edge rail / wall cut in `build`),
+  a sand ramp at each.
+- **What the beach added to the shared tool (every district may use it).** A district file may export
+  `room = { east, sea, backdropOpen }`: `east` = squares the room grows on EACH side (the field is centred, so no coordinate moves; the
+  west strip is closed by a ghost wall and the skyline stands inside it: `terrain.backdropInset.w`), `sea` = the room's `terrain.sea`,
+  `backdropOpen` = boxes [x0, z0, x1, z1] the skyline ring leaves empty (three-renderer.js `_hqBuildCityBackdrop`). `ctx.paintCell(cx, cy,
+  sheet)` paints a square outside the 144 x 144 grid. THE GROUND PALETTE IS FULL (8 sheets: the city's 6 + `wood_planks` + `desert`).
+  The room is now 644 m wide (shell w), 504 deep.
+- **The beach against THE LEVELS.** Outside the grid the slope carries the edge plot's level outward, so every beach row is `absY: true`
+  and the strip is first cut flat to 0 (a `sink` plateau); the Marina plot (level 1) comes down a 7 m ramp across the boardwalk. North
+  of Bayside the city's edge stands up to 21 m over the water as a cliff.
+- **NOT PROVEN in the headless browser:** no `city_*` pack building (the grill, the taco stand; also the diner, pizzerias, laundry in
+  other districts) attached in the thread's probe runs: only the shadow blob draws. The files are on the CDN and fetched. Check on a real
+  machine before blaming the placement.
+
 ## DISASTER CITY, SPORTS + CULTURE (2026-11-13, district S: plots P04..P07 × rows 08..11) — `docs/disaster-city/districts/S.js`
 mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is this not where the football field is supposed to go?", pick "Stadium on 4 plots, 3/4 size field").
 - One file, loaded by the bake's district hook. `tailor` rewrites the plan's squares; `apply` turns each plan row into collision only (`skin: false`) and pushes one `arch:S:<id>` row per building, plus `dc:S-*` rows (blocks nothing is drawn for: stands, kiosks, mast feet, the drum on the Wrestling hall roof, the clinic's glass corner).
