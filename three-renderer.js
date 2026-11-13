@@ -71244,6 +71244,7 @@ const ThreeRenderer = (function () {
         try { _hqBuildMarks(room, info, G, U); } catch (e) { console.warn('[HQ] the paint failed', e); }
         /* THE SHAPES (EDITOR_PLAN E1): the textured-building rows — the city's lot builder, one merged batch for the room */
         if (info.texb && info.texb.length) { try { _hqBuildTexRows(info, G, U); } catch (e) { console.warn('[HQ] the textured buildings failed', e); } }
+        if (info.arch && info.arch.length) { try { _hqBuildArchRows(info, G, U); } catch (e) { console.warn('[HQ] the architecture rows failed', e); } }   // THE ARCHITECTURE (2026-11-13)
         if (info.texb && info.texb.length) { try { _hqBuildTexPacks(info, G, U, TM); } catch (e) { console.warn('[HQ] the pack buildings failed', e); } }   // THE PACK BUILDINGS (2026-11-03)
         if (info.texb && info.texb.length) { try { _hqBuildTexDoors(info, G, U); } catch (e) { console.warn('[HQ] the city doors failed', e); } }   // THE CITY DOORS (2026-11-13)
         /* THE HALLS (D.U.M.B., 2026-09-17): the floor plan's own walls — the mask's boundary traced by data.js _hqTTraceMaskWalls, drawn to the ceiling in the plan's sheet; the walker never reads them (the mass is) */
@@ -71566,7 +71567,7 @@ const ThreeRenderer = (function () {
             var cols = Math.max(1, Math.round(F.L / C)), cw = F.L / cols;
             if (F.front) doorCol = Math.max(0, Math.min(cols - 1, Math.floor(cols * (0.25 + rng() * 0.5))));
             if (F.front && hol) doorCol = -1;   // THE INSIDE: no door sheet, the doorway itself
-            if (!lot.roofOnly) for (var r = 0; r < rows; r++) for (var ci = 0; ci < cols; ci++) {   // THE PRISM ROOFS: a prism building draws only the roof and the parapet here
+            if (!lot.roofOnly && !lot.noSkin) for (var r = 0; r < rows; r++) for (var ci = 0; ci < cols; ci++) {   // THE PRISM ROOFS: a prism building draws only the roof and the parapet here
                 var ground = r === 0, upperOfStorey = (r % 2) === 1, top = r === rows - 1;
                 var cell = null, over = null, door = null;
                 if (P.style === 'office' || P.style === 'tower') {
@@ -71607,7 +71608,7 @@ const ThreeRenderer = (function () {
                     batch.add(door.key, null, 'over', [W(dx0 + ox2, y0, dz0 + oz2), W(dx1 + ox2, y0, dz1 + oz2), W(dx1 + ox2, y1, dz1 + oz2), W(dx0 + ox2, y1, dz0 + oz2)], [[0, 0], [door.wide ? 2 : 1, 0], [door.wide ? 2 : 1, 1], [0, 1]]);
                 }
             }
-            if (lot.flat) return;   // THE BUILDING TIERS: a walked roof has no parapet (its rails, bridges and stairs meet the edge)
+            if (lot.flat || lot.noSkin) return;   // THE BUILDING TIERS: a walked roof has no parapet (THE ARCHITECTURE: `skin: false` draws no outside at all) (its rails, bridges and stairs meet the edge)
             /* the parapet's outer face in the wall's sheet (the top row's, if any) */
             var pk = (Q && Q.parapet) || (P.top && P.top.key) || P.wall.key, ph = HQ_TEXB.parapet;
             var px0 = F.o[0], pz0 = F.o[1], px1 = F.o[0] + F.a[0] * F.L, pz1 = F.o[1] + F.a[1] * F.L;
@@ -71619,9 +71620,9 @@ const ThreeRenderer = (function () {
            from above — every textured building (the editor's BUILDING, a share of every city's lots) stood open-topped. Wound
            anticlockwise from above now (the walls were always right). */
         var rk = P.roof || 'urban:ConcreteUnderTiles1', ph2 = HQ_TEXB.parapet, t = 0.22;
-        batch.add(rk, null, hol ? 'ceil' : 'wall', [W(-hw, H + 0.02, hd), W(hw, H + 0.02, hd), W(hw, H + 0.02, -hd), W(-hw, H + 0.02, -hd)], [[0, 2 * hd / C], [2 * hw / C, 2 * hd / C], [2 * hw / C, 0], [0, 0]]);   // a hollow building's roof goes with HIDE ROOFS (C)
+        if (!lot.noSkin || lot.flat) batch.add(rk, null, hol ? 'ceil' : 'wall', [W(-hw, H + 0.02, hd), W(hw, H + 0.02, hd), W(hw, H + 0.02, -hd), W(-hw, H + 0.02, -hd)], [[0, 2 * hd / C], [2 * hw / C, 2 * hd / C], [2 * hw / C, 0], [0, 0]]);   // a hollow building's roof goes with HIDE ROOFS (C)
         if (hol) _hqTexInside(lot, batch, W, faces, hol, H, hw, hd);
-        if (lot.flat) return { H: H, plan: P };
+        if (lot.flat || lot.noSkin) return { H: H, plan: P };
         [[-hw, -hd, hw, -hd], [hw, -hd, hw, hd], [hw, hd, -hw, hd], [-hw, hd, -hw, -hd]].forEach(function (e) {
             var ex = e[2] - e[0], ez = e[3] - e[1], L = Math.hypot(ex, ez) || 1, nx = ez / L, nz = -ex / L;   // inward normal of this parapet run (ccw box → left-hand)
             batch.add(rk, null, 'wall', [W(e[0] - nx * t, H + ph2, e[1] - nz * t), W(e[2] - nx * t, H + ph2, e[3] - nz * t), W(e[2], H + ph2, e[3]), W(e[0], H + ph2, e[1])], [[0, t / C], [L / C, t / C], [L / C, 0], [0, 0]]);
@@ -71665,11 +71666,206 @@ const ThreeRenderer = (function () {
             var prism = typeof hqTexbPrism === 'function' && hqTexbPrism(f);   // THE PRISM BUILDINGS: their walls by _hqBuildTexPrisms (they need the kit), their roof + parapet here (THE PRISM ROOFS, 2026-10-30)
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door, keyGround: f.keyGround, keyDoor: f.keyDoor, keyOver: f.keyOver };
+            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, noSkin: f.skin === false && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door, keyGround: f.keyGround, keyDoor: f.keyDoor, keyOver: f.keyOver };
             _hqTexBuilding(lot, info, batch, rng, { neon: neonRoom }, U); n++;
         });
         batch.flush();
         return n;
+    }
+    /* THE ARCHITECTURE (2026-11-13, mondo on the 144-plot Disaster City: "use different materials/textures and tint them to match your
+       vision for the building ... use more complex geometry for some buildings, domes, roof tops, modern architecture, curves"): an
+       `arch` row = one building's LOOK as a list of parts, drawn only (the walker reads the texbuilding / wall / plateau rows beside
+       it; a texbuilding with `skin: false` keeps its walls, roof slab, doorway and inside and draws no outside).
+       ROW   { k: 'arch', id, x, z, rot (degrees clockwise, as a texbuilding: the front is the row's +z), y (the foot; none = the ground), parts: [...] }
+       PART  { s, p: [x, y, z] (the part's foot centre in the row's frame, metres), ry (degrees), key (a sheet: 'urban:<Name>', a terrain key,
+               'hq:<name>'; none = a plain colour), tint (0xRRGGBB over the sheet), glow (0..1: the sheet lit, a sign / a lit window), kind
+               ('wall' | 'glass' | 'over' = a cut-out decal), tintTop / tintEnd (the tint of keyTop / keyEnd: none = untinted), ds (two-sided), roof (true = hidden with HIDE ROOFS, as a building's roof),
+               uv (metres a sheet repeat spans: a number or [u, v]; 'fit' = the sheet once across each face),
+               n + step: [dx, dy, dz] (the part n times, stepped) · ring: { n, r, a0 } (the part n times round a circle, each turned outward) }
+       SHAPES  box    size: [w, h, d] · keyTop · top: false · sides: false · faces: 'fblr' (which sides: front +z, back, left -x, right) · under: true (the underside, an overhang)
+               cyl    r, h · r2 (the top's radius: a taper, 0 = a cone) · seg · arc + a0 (degrees: a curved wall) · ri (hollow: a ring / a drum's rim) · cap: false
+               dome   r, h (none = r) · rz (an oval plan) · arc + a0 (degrees: a half dome, a band shell; give it ds: true) · seg · rings
+               roof   form: 'gable' | 'hip' | 'pyramid' | 'shed' | 'barrel', size: [w, h, d] (the ridge along x; a shed's high edge at -z) · over (the eaves' overhang) · keyEnd (the gable wall) · seg
+               quad   size: [w, h] (a panel facing +z: a wall, a sign with uv: 'fit', a window) · hole: [x, w, h] (a doorway cut from its foot) · flat: true (size [w, d], lying, facing up: paint, water)
+               poly   pts: [[x, z], ...] (a convex plan), h · keyTop · top: false
+       One mesh per material per row (a building never joins a city-wide mesh: the plot chunks cull it whole). */
+    function _hqArchGeometry(row, C) {
+        var G = {}, D2R = Math.PI / 180;
+        var parts = [];
+        (row.parts || []).forEach(function (p0) {
+            if (!p0 || !p0.s) return;
+            var list = [p0];
+            if (p0.ring && p0.ring.n > 0) {
+                list = [];
+                for (var i = 0; i < p0.ring.n; i++) {
+                    var a = ((p0.ring.a0 || 0) + (p0.ring.arc || 360) * i / (p0.ring.arc && p0.ring.arc < 360 ? Math.max(1, p0.ring.n - 1) : p0.ring.n)) * D2R, pp = p0.p || [0, 0, 0];
+                    list.push(Object.assign({}, p0, { p: [pp[0] + Math.cos(a) * p0.ring.r, pp[1], pp[2] + Math.sin(a) * p0.ring.r], ry: (p0.ry || 0) + 90 - a / D2R, ring: null }));
+                }
+            }
+            list.forEach(function (p1) {
+                var n = Math.max(1, Math.min(200, Math.round(p1.n || 1))), st = p1.step || [0, 0, 0], q = p1.p || [0, 0, 0];
+                for (var k = 0; k < n; k++) parts.push(n > 1 ? Object.assign({}, p1, { p: [q[0] + st[0] * k, q[1] + st[1] * k, q[2] + st[2] * k] }) : p1);
+            });
+        });
+        var rc = Math.cos(-(row.rot || 0) * D2R), rs = Math.sin(-(row.rot || 0) * D2R), base = row.base || 0;
+        parts.forEach(function (P) {
+            var pp = P.p || [0, 0, 0], pc = Math.cos(-(P.ry || 0) * D2R), ps = Math.sin(-(P.ry || 0) * D2R);
+            var fit = P.uv === 'fit', mu = fit ? 1 : (Array.isArray(P.uv) ? +P.uv[0] : +P.uv) || C, mv = fit ? 1 : (Array.isArray(P.uv) ? +P.uv[1] : +P.uv) || C;
+            var kindOf = function (key) { return P.kind || (/GlassWindow/.test(key || '') ? 'glass' : /^urban:(Decal|Door|Sign)/.test(key || '') ? 'over' : 'wall'); };
+            var grp = function (key, tintOwn) {   // tintOwn: the tint of a second sheet of the part (tintTop / tintEnd), none = the part's
+                key = key || null;
+                var kind = kindOf(key), tint = (tintOwn != null) ? (tintOwn >>> 0) : (P.tint != null) ? (P.tint >>> 0) : 0xffffff, glow = +P.glow || 0, ds = !!P.ds, roof = !!P.roof;
+                var id = [key || '', tint, glow, kind, ds ? 1 : 0, roof ? 1 : 0].join('|');
+                return G[id] || (G[id] = { key: key, tint: tint, glow: glow, kind: kind, ds: ds, roof: roof, pos: [], uv: [], idx: [], n: 0 });
+            };
+            var put = function (g, v, uv) {   // a vertex in the part's frame → the room's metres
+                var lx = pp[0] + v[0] * pc + v[2] * ps, ly = pp[1] + v[1], lz = pp[2] - v[0] * ps + v[2] * pc;
+                g.pos.push(row.x + lx * rc + lz * rs, base + ly, row.z - lx * rs + lz * rc); g.uv.push(uv[0], uv[1]);
+                return g.n++;
+            };
+            var quad = function (key, a, b, c, d, w, h, tn) {   // anticlockwise seen from outside; w × h = its size in metres (the sheet's repeats)
+                var g = grp(key, tn), u = fit ? 1 : w / mu, v = fit ? 1 : h / mv;
+                var i0 = put(g, a, [0, 0]), i1 = put(g, b, [u, 0]), i2 = put(g, c, [u, v]), i3 = put(g, d, [0, v]);
+                g.idx.push(i0, i1, i2, i0, i2, i3);
+            };
+            var tri = function (key, a, b, c, w, h, tn) {
+                var g = grp(key, tn), u = fit ? 1 : w / mu, v = fit ? 1 : h / mv;
+                var i0 = put(g, a, [0, 0]), i1 = put(g, b, [u, 0]), i2 = put(g, c, [u / 2, v]);
+                g.idx.push(i0, i1, i2);
+            };
+            var S = P.size || [1, 1, 1], key = P.key || null, tT = (P.tintTop != null) ? P.tintTop : (P.keyTop ? 0xffffff : null), tE = (P.tintEnd != null) ? P.tintEnd : (P.keyEnd ? 0xffffff : null);
+            if (P.s === 'box') {
+                var w = S[0] / 2, h = S[1], d = S[2] / 2;
+                if (P.sides !== false) {
+                    var fc = P.faces || 'fblr';
+                    if (fc.indexOf('f') >= 0) quad(key, [-w, 0, d], [w, 0, d], [w, h, d], [-w, h, d], 2 * w, h);
+                    if (fc.indexOf('b') >= 0) quad(key, [w, 0, -d], [-w, 0, -d], [-w, h, -d], [w, h, -d], 2 * w, h);
+                    if (fc.indexOf('r') >= 0) quad(key, [w, 0, d], [w, 0, -d], [w, h, -d], [w, h, d], 2 * d, h);
+                    if (fc.indexOf('l') >= 0) quad(key, [-w, 0, -d], [-w, 0, d], [-w, h, d], [-w, h, -d], 2 * d, h);
+                }
+                if (P.top !== false) quad(P.keyTop || key, [-w, h, d], [w, h, d], [w, h, -d], [-w, h, -d], 2 * w, 2 * d, tT);
+                if (P.under) quad(P.keyUnder || P.keyTop || key, [-w, 0, -d], [w, 0, -d], [w, 0, d], [-w, 0, d], 2 * w, 2 * d);
+            } else if (P.s === 'cyl') {
+                var r = +P.r || 1, r2 = (P.r2 != null) ? +P.r2 : r, hh = +P.h || 1, arc = Math.min(360, +P.arc || 360) * D2R, a0 = (+P.a0 || 0) * D2R;
+                var seg = Math.max(3, Math.min(64, Math.round((P.seg || 16) * (arc / (2 * Math.PI)) + 0.49))), ri = +P.ri || 0, sl = Math.hypot(hh, r - r2);
+                var shell = function (ra, rb, inside) {
+                    var g = grp(key), lo = [], hi = [];
+                    for (var i = 0; i <= seg; i++) {
+                        var t = a0 + arc * i / seg, cx = Math.cos(t), cz = Math.sin(t), u = (inside ? 1 : -1) * arc * i / seg * Math.max(ra, rb) / mu;
+                        lo.push(put(g, [cx * ra, 0, cz * ra], [fit ? i / seg : u, 0])); hi.push(put(g, [cx * rb, hh, cz * rb], [fit ? i / seg : u, fit ? 1 : sl / mv]));
+                    }
+                    for (var j = 0; j < seg; j++) { if (inside) g.idx.push(lo[j], lo[j + 1], hi[j + 1], lo[j], hi[j + 1], hi[j]); else g.idx.push(lo[j + 1], lo[j], hi[j], lo[j + 1], hi[j], hi[j + 1]); }
+                };
+                shell(r, r2, false);
+                if (ri > 0) shell(ri, Math.max(0.01, ri * (r2 / r)), true);
+                if (P.cap !== false && r2 > 0.01) {
+                    var gt = grp(P.keyTop || key, tT), ri2 = ri > 0 ? ri * (r2 / r) : 0, ring = [], inner = [], cidx = -1;
+                    for (var i2 = 0; i2 <= seg; i2++) {
+                        var t2 = a0 + arc * i2 / seg, x2 = Math.cos(t2), z2 = Math.sin(t2);
+                        ring.push(put(gt, [x2 * r2, hh, z2 * r2], [x2 * r2 / mu, z2 * r2 / mv]));
+                        if (ri2 > 0) inner.push(put(gt, [x2 * ri2, hh, z2 * ri2], [x2 * ri2 / mu, z2 * ri2 / mv]));
+                    }
+                    if (!(ri2 > 0)) cidx = put(gt, [0, hh, 0], [0, 0]);
+                    for (var j2 = 0; j2 < seg; j2++) { if (ri2 > 0) gt.idx.push(inner[j2], ring[j2 + 1], ring[j2], inner[j2], inner[j2 + 1], ring[j2 + 1]); else gt.idx.push(cidx, ring[j2 + 1], ring[j2]); }
+                }
+                if (ri > 0 && arc < 2 * Math.PI - 1e-3) {   // a curved wall's two ends
+                    var e0 = [Math.cos(a0), Math.sin(a0)], e1 = [Math.cos(a0 + arc), Math.sin(a0 + arc)], k2 = r2 / r;
+                    quad(key, [e0[0] * ri, 0, e0[1] * ri], [e0[0] * r, 0, e0[1] * r], [e0[0] * r2, hh, e0[1] * r2], [e0[0] * ri * k2, hh, e0[1] * ri * k2], r - ri, hh);
+                    quad(key, [e1[0] * r, 0, e1[1] * r], [e1[0] * ri, 0, e1[1] * ri], [e1[0] * ri * k2, hh, e1[1] * ri * k2], [e1[0] * r2, hh, e1[1] * r2], r - ri, hh);
+                }
+            } else if (P.s === 'dome') {
+                var dr = +P.r || 1, dh = (P.h != null) ? +P.h : dr, drz = (P.rz != null) ? +P.rz : dr, ds2 = Math.max(6, Math.min(48, Math.round(P.seg || 16))), rg = Math.max(2, Math.min(16, Math.round(P.rings || 6)));
+                var gd = grp(key), grid = [];
+                for (var a2 = 0; a2 <= rg; a2++) {
+                    var ph = Math.PI / 2 * a2 / rg, cp = Math.cos(ph), sp = Math.sin(ph), rowv = [];
+                    for (var b2 = 0; b2 <= ds2; b2++) { var th = (+P.a0 || 0) * D2R + Math.min(360, +P.arc || 360) * D2R * b2 / ds2; rowv.push(put(gd, [dr * cp * Math.cos(th), dh * sp, drz * cp * Math.sin(th)], fit ? [b2 / ds2, a2 / rg] : [-th * dr / mu, ph * Math.max(dr, dh) / mv])); }
+                    grid.push(rowv);
+                }
+                for (var a3 = 0; a3 < rg; a3++) for (var b3 = 0; b3 < ds2; b3++) gd.idx.push(grid[a3][b3 + 1], grid[a3][b3], grid[a3 + 1][b3], grid[a3][b3 + 1], grid[a3 + 1][b3], grid[a3 + 1][b3 + 1]);
+            } else if (P.s === 'roof') {
+                var ov = +P.over || 0, bw = S[0] / 2, W2 = bw + ov, rh = S[1], D2 = S[2] / 2 + ov, form = P.form || 'gable', kE = P.keyEnd || key, sl2 = Math.hypot(rh, D2);
+                if (form === 'gable') {
+                    quad(key, [-W2, 0, D2], [W2, 0, D2], [W2, rh, 0], [-W2, rh, 0], 2 * W2, sl2);
+                    quad(key, [W2, 0, -D2], [-W2, 0, -D2], [-W2, rh, 0], [W2, rh, 0], 2 * W2, sl2);
+                    tri(kE, [bw, 0, D2], [bw, 0, -D2], [bw, rh, 0], 2 * D2, rh, tE); tri(kE, [-bw, 0, -D2], [-bw, 0, D2], [-bw, rh, 0], 2 * D2, rh, tE);
+                } else if (form === 'hip' || form === 'pyramid') {
+                    var rx = form === 'pyramid' ? 0 : Math.max(0, W2 - D2);
+                    quad(key, [-W2, 0, D2], [W2, 0, D2], [rx, rh, 0], [-rx, rh, 0], 2 * W2, sl2);
+                    quad(key, [W2, 0, -D2], [-W2, 0, -D2], [-rx, rh, 0], [rx, rh, 0], 2 * W2, sl2);
+                    tri(key, [W2, 0, D2], [W2, 0, -D2], [rx, rh, 0], 2 * D2, Math.hypot(rh, W2 - rx)); tri(key, [-W2, 0, -D2], [-W2, 0, D2], [-rx, rh, 0], 2 * D2, Math.hypot(rh, W2 - rx));
+                } else if (form === 'shed') {
+                    quad(key, [-W2, 0, D2], [W2, 0, D2], [W2, rh, -D2], [-W2, rh, -D2], 2 * W2, Math.hypot(rh, 2 * D2));
+                    quad(kE, [W2, 0, -D2], [-W2, 0, -D2], [-W2, rh, -D2], [W2, rh, -D2], 2 * W2, rh, tE);
+                    tri(kE, [W2, 0, D2], [W2, 0, -D2], [W2, rh, -D2], 2 * D2, rh, tE); tri(kE, [-W2, 0, -D2], [-W2, 0, D2], [-W2, rh, -D2], 2 * D2, rh, tE);
+                } else if (form === 'barrel') {
+                    var bs = Math.max(4, Math.min(32, Math.round(P.seg || 10))), gb = grp(key), L0 = [], R0 = [], arcL = 0, prev = null;
+                    for (var bi = 0; bi <= bs; bi++) {
+                        var an = Math.PI * bi / bs, bz = D2 * Math.cos(an), by = rh * Math.sin(an);
+                        if (prev) arcL += Math.hypot(bz - prev[0], by - prev[1]); prev = [bz, by];
+                        L0.push(put(gb, [-W2, by, bz], [0, fit ? bi / bs : arcL / mv])); R0.push(put(gb, [W2, by, bz], [fit ? 1 : 2 * W2 / mu, fit ? bi / bs : arcL / mv]));
+                    }
+                    for (var bj = 0; bj < bs; bj++) gb.idx.push(L0[bj], R0[bj], R0[bj + 1], L0[bj], R0[bj + 1], L0[bj + 1]);
+                    [1, -1].forEach(function (sd) {   // the two end walls: a fan under the vault
+                        var ge = grp(kE, tE), c0 = put(ge, [sd * bw, 0, 0], [0.5 * 2 * D2 / mu, 0]), ring2 = [];
+                        for (var ei = 0; ei <= bs; ei++) { var ea = Math.PI * ei / bs, ez = D2 * Math.cos(ea), ey = rh * Math.sin(ea); ring2.push(put(ge, [sd * bw, ey, ez], [(D2 - ez) / mu, ey / mv])); }
+                        for (var ej = 0; ej < bs; ej++) { if (sd > 0) ge.idx.push(c0, ring2[ej + 1], ring2[ej]); else ge.idx.push(c0, ring2[ej], ring2[ej + 1]); }
+                    });
+                }
+                if (ov > 0 && form !== 'shed') quad(P.keyUnder || key, [-W2, 0, -D2], [W2, 0, -D2], [W2, 0, D2], [-W2, 0, D2], 2 * W2, 2 * D2);
+                if (form === 'shed' && P.under) quad(P.keyUnder || key, [-W2, 0, D2], [-W2, rh, -D2], [W2, rh, -D2], [W2, 0, D2], 2 * D2, 2 * W2);
+            } else if (P.s === 'quad') {
+                var qw = S[0] / 2, qh = S[1];
+                if (P.flat) quad(key, [-qw, 0, qh / 2], [qw, 0, qh / 2], [qw, 0, -qh / 2], [-qw, 0, -qh / 2], 2 * qw, qh);
+                else if (P.hole && !fit) {   // a wall with a doorway: the hole [centre x, width, height] from the foot — the wall either side and the head over it
+                    var hx0 = Math.max(-qw, P.hole[0] - P.hole[1] / 2), hx1 = Math.min(qw, P.hole[0] + P.hole[1] / 2), hy = Math.min(qh, P.hole[2]);
+                    var gq = grp(key), pv = function (x, y) { return put(gq, [x, y, 0], [(x + qw) / mu, y / mv]); }, rect = function (x0, y0, x1, y1) { if (x1 - x0 < 0.01 || y1 - y0 < 0.01) return; var i0 = pv(x0, y0), i1 = pv(x1, y0), i2 = pv(x1, y1), i3 = pv(x0, y1); gq.idx.push(i0, i1, i2, i0, i2, i3); };
+                    rect(-qw, 0, hx0, qh); rect(hx1, 0, qw, qh); rect(hx0, hy, hx1, qh);
+                } else quad(key, [-qw, 0, 0], [qw, 0, 0], [qw, qh, 0], [-qw, qh, 0], 2 * qw, qh);
+            } else if (P.s === 'poly') {
+                var pts = (P.pts || []).slice(), area = 0, phh = +P.h || 1;
+                if (pts.length < 3) return;
+                for (var pi = 0; pi < pts.length; pi++) { var pa = pts[pi], pb = pts[(pi + 1) % pts.length]; area += pa[0] * pb[1] - pb[0] * pa[1]; }
+                if (area > 0) pts.reverse();
+                for (var pj = 0; pj < pts.length; pj++) { var qa = pts[pj], qb = pts[(pj + 1) % pts.length]; quad(key, [qa[0], 0, qa[1]], [qb[0], 0, qb[1]], [qb[0], phh, qb[1]], [qa[0], phh, qa[1]], Math.hypot(qb[0] - qa[0], qb[1] - qa[1]), phh); }
+                if (P.top !== false) {
+                    var gp = grp(P.keyTop || key, tT), ti = pts.map(function (q) { return put(gp, [q[0], phh, q[1]], [q[0] / mu, q[1] / mv]); });
+                    for (var pk = 1; pk < ti.length - 1; pk++) gp.idx.push(ti[0], ti[pk], ti[pk + 1]);
+                }
+            }
+        });
+        return G;
+    }
+    function _hqBuildArchRows(info, G, U) {
+        var neon = !!(info.gen && info.gen.neon), mats = {}, made = 0;
+        var matOf = function (b) {
+            var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0].join('|'); if (mats[id]) return mats[id];
+            var tex = b.key ? _hzTex(b.key) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
+            if (b.kind === 'over') { o.transparent = true; o.alphaTest = 0.35; o.polygonOffset = true; o.polygonOffsetFactor = -1; o.polygonOffsetUnits = -1; }
+            var m = new THREE.MeshPhongMaterial(o);
+            if (b.ds) m.side = THREE.DoubleSide;
+            m.color = new THREE.Color(b.tint);
+            if (tex) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
+            if (b.glow > 0) { m.emissive = m.color.clone(); if (tex) m.emissiveMap = tex; m.emissiveIntensity = b.glow; }
+            else m.emissive = new THREE.Color(neon ? 0x08060e : 0x0a0a0a);
+            m._ew_hzNear = true;
+            return (mats[id] = m);
+        };
+        info.arch.forEach(function (row) {
+            try {
+                var GG = _hqArchGeometry(row, HQ_TEXB.cell);
+                Object.keys(GG).forEach(function (id) {
+                    var b = GG[id]; if (!b.n) return;
+                    var pos = new Float32Array(b.pos.length);
+                    for (var i = 0; i < b.pos.length; i += 3) { pos[i] = b.pos[i] * U; pos[i + 1] = b.pos[i + 1] * U + 0.3; pos[i + 2] = b.pos[i + 2] * U; }
+                    var g = new THREE.BufferGeometry();
+                    g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2)); g.setIndex(b.idx); g.computeVertexNormals();
+                    var m = new THREE.Mesh(g, matOf(b)); m.renderOrder = b.kind === 'over' ? 2 : 1; m.castShadow = false; m._ew_hqTexBuilding = true; m._ew_hqArch = row.id || true; m.name = 'hq_arch';
+                    if (b.roof) { m._ew_hqPart = 'ceil'; m._ew_hqRoof = true; }
+                    G.add(m); made++;
+                });
+            } catch (e) { console.warn('[HQ] an architecture row failed', row && row.id, e); }
+        });
+        return made;
     }
     /* THE PACK BUILDINGS (2026-11-03, mondo on the Buildings pack's shop blocks: "incorporate those into the game like in disaster city and
        the map editor"): one of data.js HQ_PACK_BUILDINGS (a whole photo-textured model, its shop front at +Z) at a footprint `w` × `d`
