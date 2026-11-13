@@ -28389,7 +28389,7 @@ STORY_CUTSCENES.orientation_desk = {
    picked; an option's `set` / `clear` are world flags (hqStoryFlags: office_door_open | office_door_closed).
    `fade` = the second of the beat the picture goes to black. `end` = where everybody is left (a skip lands the same). */
 STORY_CUTSCENES.orientation_office = {
-    id: 'orientation_office', title: 'THE OFFICE',
+    id: 'orientation_office', title: 'THE OFFICE', cast: ['locke'],   // nobody else is in the room for it
     end: [{ do: 'hide', who: 'locke' }, { do: 'place', who: 'player', x: 0.3, z: -0.3, face: 270 }],
     beats: [
         /* F1 · the door opens: still, long lens, from inside the room; the recruit in the doorway, alone */
@@ -28520,7 +28520,7 @@ function questHolds(profile, key) {
 function questTracker(profile) {
     for (const def of STORY_QUESTS) {
         const pr = questProgress(profile, def.id), st = questStageOf(def, pr);
-        if (st) return { quest: def.id, title: def.title, objective: st.objective, mark: st.mark || null, stage: st.id, done: st.done || null, scene: st.scene || null, sceneAt: st.sceneAt || null, n: def.stages.findIndex(s => s.id === st.id) + 1, total: def.stages.length };
+        if (st) return { quest: def.id, title: def.title, objective: st.objective, mark: st.mark || null, stage: st.id, done: st.done || null, scene: st.scene || null, sceneAt: st.sceneAt || null, then: st.then || null, n: def.stages.findIndex(s => s.id === st.id) + 1, total: def.stages.length };
     }
     return null;
 }
@@ -67475,12 +67475,13 @@ let _hqCastSalt = String(Math.floor(Math.random() * 1e9));
    given spot (the screenshot probe; -1 = absent). */
 /* THE SCENE REPLAY (2026-11-13): while a finished stage's scene is replayed from the journal (map.js _questStageReplay),
    that stage counts as the CURRENT one for the cast's posts, so everybody stands where the scene needs them */
+function hqCastSpotStageIs(a, stage) { return !!(a && (a.stage === stage || (Array.isArray(a.stages) && a.stages.indexOf(stage) >= 0))); }
 function _hqCastSpotReplay(a) {
-    try { const r = (typeof window !== 'undefined') ? window._ewSceneReplayStage : null; return !!(r && a && r.quest === a.quest && r.stage === a.stage); } catch (e) { return false; }
+    try { const r = (typeof window !== 'undefined') ? window._ewSceneReplayStage : null; return !!(r && a && r.quest === a.quest && hqCastSpotStageIs(a, r.stage)); } catch (e) { return false; }
 }
 function _hqCastSpotDuring(profile, a) {
     if (_hqCastSpotReplay(a)) return true;
-    try { const pr = questProgress(profile, a.quest); return !!(pr && pr.status === 'active' && pr.stage === a.stage); } catch (e) { return false; }
+    try { const pr = questProgress(profile, a.quest); return !!(pr && pr.status === 'active' && hqCastSpotStageIs(a, pr.stage)); } catch (e) { return false; }
 }
 function _hqCastSpotAfter(profile, a) {
     if (_hqCastSpotReplay(a)) return false;

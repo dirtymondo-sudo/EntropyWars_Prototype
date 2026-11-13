@@ -92295,6 +92295,19 @@ const ThreeRenderer = (function () {
             g.updateMatrixWorld(true); _hq.dirty = true;
             return true;
         },
+        /* a scene's CAST: `ids` = the DOOR_CAST ids the scene keeps; everybody else in the room (the officer aside) is taken
+           out for the scene. null puts back exactly the ones it took out. */
+        sceneCast: function (ids) {
+            if (!_hq) return 0;
+            var n = 0;
+            _hq.chars.forEach(function (ch) {
+                if (!ch || ch === _hq.player || ch.kind === 'player' || !ch.entry || !ch.entry.group) return;
+                if (ids) { if ((ch.cast && ids.indexOf(ch.cast) >= 0) || ch.away || !ch.entry.group.visible) return; ch._sceneOut = true; _hqRoundsSetVisible(ch, false); n++; }
+                else if (ch._sceneOut) { ch._sceneOut = false; _hqRoundsSetVisible(ch, true); n++; }
+            });
+            _hq.dirty = true;
+            return n;
+        },
         /* a body WALKS to { x, z } over `ms` (the walk clip, turned along its way; `face` = the heading it ends on) */
         sceneWalk: function (who, o) {
             if (!_hq || !who || !o) return false;

@@ -4449,7 +4449,7 @@
             if (!t || t.done.on !== 'room' || t.done.room !== room) { file(); return; }
             const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
             const here = (id) => { try { const sc = TR.hq.dev.hqScene(); return !!(sc && sc.getObjectByName('hq_hq-cast-' + id)); } catch (e) { return false; } };
-            const need = Object.keys(window.DOOR_CAST || {}).filter(id => (window.DOOR_CAST[id].spots || []).some(s => s && s.during && s.during.quest === t.quest && s.during.stage === t.stage));
+            const need = Object.keys(window.DOOR_CAST || {}).filter(id => (window.DOOR_CAST[id].spots || []).some(s => s && s.during && s.during.quest === t.quest && hqCastSpotStageIs(s.during, t.stage)));
             const t0 = performance.now();
             const go = () => {
                 if (state.gameState !== GS.HQ || _hqSuspended || _hqCurRoom !== room) return;   // left before it began: the stage stays, the next entry plays it
@@ -4461,7 +4461,12 @@
         function _questRoomScene(room, rp) {
             const t = _questSceneStage(rp);
             if (!t || t.done.on !== 'room' || t.done.room !== room) return false;
-            return _questHqScene(t, rp, () => { try { window._questEvent({ type: 'room', room }, { delay: 600 }); } catch (e) { console.warn('[QUEST] room', e); } });
+            const then = t.then || null;
+            return _questHqScene(t, rp, () => {
+                try { window._questEvent({ type: 'room', room }, { delay: then ? 0 : 600 }); } catch (e) { console.warn('[QUEST] room', e); }
+                /* the stage's `then`: what the scene leads straight into (B: the TV is on, Tape 1 starts) */
+                if (then && then.lesson && typeof window._tutorialStartFromHq === 'function') setTimeout(() => { try { window._tutorialStartFromHq(then.lesson); } catch (e) { console.warn('[SCENE] then', e); } }, 250);
+            });
         }
         function _questTalkScene(who, rp) {
             const t = _questSceneStage(rp);
@@ -4473,9 +4478,14 @@
             const row = window.storyCutscene(t.scene); if (!row) { console.warn('[SCENE] no row ' + t.scene); return false; }
             const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
             try { if (t.sceneAt && TR && TR.hq && TR.hq.dev && TR.hq.dev.teleport) TR.hq.dev.teleport(t.sceneAt); } catch (e) { console.warn('[SCENE] the officer could not be placed', e); }
-            const end = () => { _questTalkBusy = false; try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(false); } catch (e) {} if (rp) { try { if (rp.onEnd) rp.onEnd(); } catch (e) {} return; } file(); };
+            const end = () => { _questTalkBusy = false; try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(false); } catch (e) {} try { if (row.cast && TR && TR.hq && TR.hq.sceneCast) TR.hq.sceneCast(null); } catch (e) {} if (rp) { try { if (rp.onEnd) rp.onEnd(); } catch (e) {} return; } file(); };
             /* the scene's hands in the room: place / show / hide a body (three-renderer.js hq.scenePlace), the choice's world flags */
-            const hand = (a) => { try { if (a && a.who && (a.do === 'place' || a.do === 'show' || a.do === 'hide') && TR && TR.hq && TR.hq.scenePlace) TR.hq.scenePlace(a.who, { x: a.x, z: a.z, face: a.face, show: a.do === 'show' ? true : (a.do === 'hide' ? false : null) }); } catch (e) { console.warn('[SCENE] ' + a.do, e); } };
+            const hand = (a) => { try {
+                if (!a || !TR || !TR.hq) return;
+                if (a.who && (a.do === 'place' || a.do === 'show' || a.do === 'hide') && TR.hq.scenePlace) TR.hq.scenePlace(a.who, { x: a.x, z: a.z, face: a.face, sit: (a.sit != null) ? a.sit : null, show: a.do === 'show' ? true : (a.do === 'hide' ? false : null) });
+                else if (a.who && a.do === 'walk' && TR.hq.sceneWalk) TR.hq.sceneWalk(a.who, { x: a.x, z: a.z, ms: a.ms, face: a.face });
+                else if (a.do === 'props' && TR.hq.sceneProps) TR.hq.sceneProps({ keys: a.keys, near: a.near, r: a.r, at: a.at, ms: a.ms, light: a.light });
+            } catch (e) { console.warn('[SCENE] ' + (a && a.do), e); } };
             const host = { unit: 1, point: () => null, act: hand,
                            choose: (c, o) => { if (o && o.clear) _questSceneFlag(o.clear, false); if (o && o.set) _questSceneFlag(o.set, true); },
                            finish: () => { (row.end || []).forEach(hand); } };
@@ -4489,6 +4499,8 @@
             try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(true); } catch (e) {}
             try { ok = !!window.EWScene.play(row, host, end); } catch (e) { console.error('[SCENE] the scene did not start', e); ok = false; }
             if (!ok) { try { TR.hq.sceneCull(false); } catch (e) {} }
+            /* the row's `cast` = the only cast members in the scene: the room's other people step out for it */
+            else if (row.cast) { try { if (TR.hq.sceneCast) TR.hq.sceneCast(row.cast); } catch (e) { console.warn('[SCENE] cast', e); } }
             _questTalkBusy = ok;
             return ok;
         }
@@ -4512,7 +4524,7 @@
             };
             const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
             const here = (id) => { try { const sc = TR.hq.dev.hqScene(); return !!(sc && sc.getObjectByName('hq_hq-cast-' + id)); } catch (e) { return false; } };
-            const need = (who ? [who] : []).concat(Object.keys(window.DOOR_CAST || {}).filter(id => id !== who && (window.DOOR_CAST[id].spots || []).some(s => s && s.during && s.during.quest === questId && s.during.stage === stageId)));
+            const need = (who ? [who] : []).concat(Object.keys(window.DOOR_CAST || {}).filter(id => id !== who && (window.DOOR_CAST[id].spots || []).some(s => s && s.during && s.during.quest === questId && hqCastSpotStageIs(s.during, stageId))));
             const t0 = performance.now();
             const go = () => {
                 if (state.gameState !== GS.HQ || _hqSuspended || _hqCurRoom !== room) { window._ewSceneReplayStage = null; _questReplayBusy = false; return; }
