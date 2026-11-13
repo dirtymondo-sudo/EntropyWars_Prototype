@@ -2644,6 +2644,20 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - HERO PLAZA, the signs (2026-11-13 21:10): `kit().sign(side, half, u, y, w, h, words, fg, bg)` = a quad facing out of that wall with key
   `txt:WORDS|fg|bg|aspect` (THE SIGN LETTERING). Boards: HERO WORKSHOP, PRESS COURT, TRAINING HALL, TRANSIT COURT, DELIVERIES, DISPATCH, COFFEE,
   NEWS, SNACKS (the buildings' own plan names, nothing invented). `LIFT` leaves `txt:` keys alone. Seen in game reading the right way on S and N walls.
+
+### THE UNIVERSITY INSIDES (2026-11-13, mondo 21:04 "let's go ahead and do the interiors", his OK on the grid plan 21:23)
+His grid rule (21:14 + 21:17, all interiors): the city fights on 3.5 m squares; a BARRIER fills whole squares (centred, a 2-wide piece = 2 squares),
+a WALKWAY is a whole square wide with nothing halfway across two, dressing sits OFF the square centres.
+`districts/U.js` `ROOMS[kind].g` = the approved plan a walk-in building (rows listed BACK first, columns from the LEFT as you face the front from
+outside; '' = a walkway square, a word = what fills the square, `FILL[word]`). `inside(kind, row)` writes it: catalogue props (their `y` = on a
+table top), arch parts (counters, booths, plinths, the globe), ONE ghost block per filled square, partitions on the squares' edges (`glass` dark
+glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the row's `floorIn` / `keyIn`, `txt:` boards (MENU, TICKETS, KEYS, SCAN).
+- Library 8x4 (shelf wall, reading tables, the GALLERY: a plain `bridge` at 3.5 m over the back row + a `ramp` stair in its own square), student
+  cafe 7x4 (kitchen + counter block, tables, booths), research lab 8x4 (racks, benches, a dark-glass clean room 3x2), psychology lab 7x2
+  (observation room, reception, therapy office), research annex 9x3 (racks, consoles, specimen tanks, a scanner gate over the door square),
+  clinic 3x5 (waiting, reception, two beds, store), science museum 9x3 (cases, telescopes, globe, planets hung over the middle walkway), gate
+  lodge 2x2. The five roof-route buildings stay shut.
+- Plan sheet: /mnt/project-files/university-district/16_interior_plans_on_battle_grid.jpg.
 - **THE DEEPER HANGAR (2026-11-13, mondo 21:21 "make hangar deeper so it fits")**: `I.js` `fit` grows P03-10-B1 one square forward onto the walk in front of it (in `build`, NOT `tailor`: changing the plan re-rolls the whole city's random dressing): 31.5 x 14 m, four squares deep, 7 m walls
   under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. The street lamp on that square is taken off (`ctx.lamps`, the tool now writes its lamps line after the district build). Seen in the
   cloud browser from inside (as a 28 m long test build). INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.
