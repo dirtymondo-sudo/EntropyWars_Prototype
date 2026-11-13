@@ -7728,7 +7728,18 @@ html.ew-mobile .pause-card { max-height: calc(100dvh - 16px); }
 #hqPage .hq-quest-hd i { font-style: normal; font-size: 8px; letter-spacing: 0.18em; color: var(--hq-ink-mute); white-space: nowrap; }
 #hqPage .hq-quest-hd span { grid-column: 1 / -1; min-width: 0; font-family: 'Cormorant SC', serif; font-size: 13px; letter-spacing: 0.08em; line-height: 1.2; overflow-wrap: break-word; text-shadow: var(--hq-tshadow); }
 #hqPage .hq-quest-obj { font-size: 11px; line-height: 1.45; color: var(--hq-ink); overflow-wrap: break-word; }
-#hqPage .hq-quest-obj::before { content: '▶ '; color: var(--hq-sel); }
+#hqPage .hq-quest-obj::before { content: '◆ '; color: #ffd24a; font-size: 14px; line-height: 1; }
+/* THE QUEST MARKER (2026-11-13): the gold diamond over the stage's target (map.js _questMarkTick); black plate, white outline */
+#hqPage .hq-qmark { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 18; pointer-events: none; will-change: transform; }
+#hqPage .hq-qmark-gem { position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; transform: rotate(45deg) scale(0.8, 0.8) skew(12deg, 12deg); background: linear-gradient(135deg, #fff4c8 0 34%, #ffd24a 34%); border: 3px solid #000; box-shadow: 0 0 14px 4px rgba(255,210,74,0.55); animation: hqQmarkBob 1.6s ease-in-out infinite; }
+#hqPage .hq-qmark-plate { position: absolute; left: 0; bottom: 26px; transform: translateX(-50%); white-space: nowrap; padding: 4px 7px 3px; background: #000; border: 1px solid #fff; color: #fff; font-family: 'Press Start 2P', monospace; font-size: 8px; line-height: 1; letter-spacing: 0.02em; }
+#hqPage .hq-qmark-arrow { display: none; position: absolute; left: -28px; top: -9px; width: 56px; height: 18px; }
+#hqPage .hq-qmark-arrow::after { content: ''; position: absolute; right: 0; top: 2px; border: 7px solid transparent; border-left: 11px solid #ffd24a; border-right: 0; filter: drop-shadow(0 0 0 #000) drop-shadow(1px 0 0 #000) drop-shadow(-1px 0 0 #000) drop-shadow(0 1px 0 #000) drop-shadow(0 -1px 0 #000); }
+#hqPage .hq-qmark.edge .hq-qmark-arrow { display: block; }
+#hqPage .hq-qmark.edge .hq-qmark-gem { animation: none; }
+#hqPage .hq-qmark.edge .hq-qmark-plate { bottom: -6px; left: 34px; transform: none; }
+#hqPage .hq-qmark.edge.flip .hq-qmark-plate { left: auto; right: 34px; }
+@keyframes hqQmarkBob { 0%, 100% { margin-top: 0; } 50% { margin-top: -5px; } }
 /* the pause menu's command column scrolls on a short screen (an eleventh command since THE QUESTS) */
 #hqPage .hq-pause-nav { overflow-y: auto; min-height: 0; scrollbar-width: thin; scrollbar-color: rgba(184,160,96,0.4) transparent; }
 #hqPage .hq-pause-nav .hq-pause-cmd { flex-shrink: 0; }
