@@ -60008,7 +60008,8 @@
             const P = B.F.portal;
             try {
                 if (P && B.guest && typeof setUnitFacing === 'function') { const dx = Math.sign(B.guest.x - P.x), dy = Math.sign(B.guest.y - P.y); if (dx || dy) setUnitFacing(B.guest, Math.abs(dy) >= Math.abs(dx) ? 0 : dx, Math.abs(dy) >= Math.abs(dx) ? dy : 0); }
-                if (B.guest && typeof setUnitFacing === 'function') B.foes.forEach(u => { const dx = B.guest.x - u.x, dy = B.guest.y - u.y; if (dx || dy) setUnitFacing(u, Math.abs(dy) >= Math.abs(dx) ? 0 : Math.sign(dx), Math.abs(dy) >= Math.abs(dx) ? Math.sign(dy) : 0); });
+                const _qLead = (state.units || []).find(u => u && u.player === 1 && !u.dead && u !== B.guest) || B.guest;   /* they have come for the party now: the enemies face it (2026-11-13) */
+                if (_qLead && typeof setUnitFacing === 'function') B.foes.forEach(u => { const dx = _qLead.x - u.x, dy = _qLead.y - u.y; if (dx || dy) setUnitFacing(u, Math.abs(dy) >= Math.abs(dx) ? 0 : Math.sign(dx), Math.abs(dy) >= Math.abs(dx) ? Math.sign(dy) : 0); });
             } catch (e) {}
             return true;
         }
@@ -60037,6 +60038,40 @@
            renderer's unit sync) until the scene brings them through the portal, and finish() (the natural end and a skip
            alike) unhides everybody, drops any leap still in the air and the slow motion, so the cut to the fight lands on
            the same board either way. Viewer-local, story only (VS-CPU): nothing on `state`, nothing relayed. ══ */
+        /* THE AIR DOOR (2026-11-13, mondo: "the portal to form in the air, which a door emerges from, which swings open ... the
+           floating portal door can just be a prop that floats in the room during battle, not interactable, and then when you
+           defeat the shadow entities the portal closes"): three-vfx-effects.js questAirDoor over the fight's portal tile. One
+           per quest fight, viewer-local, nothing of the rules. `stage` 0 = the portal alone, 1 = the door is out, 2 = open; the
+           watch stands it up again at its stage if the match's start swept it away, closes it when no enemy is left
+           standing and drops it when the fight is gone. */
+        let _questDoor = null;
+        function _questDoorDrop() { const D = _questDoor; _questDoor = null; if (!D) return; if (D.timer) clearInterval(D.timer); try { if (D.fx) D.fx.kill(); } catch (e) {} }
+        function _questDoorUp(P, open) {
+            const FX = window.ThreeVFXEffects; if (!FX || typeof FX.questAirDoor !== 'function' || !P) return null;
+            if (!_questDoor) {
+                _questDoor = { P: { x: P.x, y: P.y }, fx: null, stage: 0, closed: false, tries: 0, timer: null };
+                _questDoor.timer = setInterval(_questDoorWatch, 300);
+            }
+            const D = _questDoor;
+            if (open) D.stage = 2;
+            if (!D.closed && !(D.fx && D.fx.alive())) {
+                /* a door sized to the bodies (2.6 m), its sill a body's waist off the floor */
+                const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128;
+                const body = (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? TR.bodyUnit() : ts;
+                D.fx = FX.questAirDoor(D.P.x, D.P.y, { scale: (1.5 * body) / (1.18 * ts), lift: (0.55 * body) / (0.95 * ts), instant: D.stage >= 2 || D.tries > 0 });
+                if (D.fx) { D.tries++; if (D.stage >= 1) D.fx.emerge(); if (D.stage >= 2) D.fx.open(); }
+            }
+            return D.fx;
+        }
+        function _questDoorWatch() {
+            const D = _questDoor; if (!D) return;
+            const er = _encRun();
+            if (!er || !er.quest || state.phase !== 'battle') { _questDoorDrop(); return; }
+            if (D.closed) { if (!(D.fx && D.fx.alive())) _questDoorDrop(); return; }
+            const foes = (state.units || []).some(u => u && u.player === 2 && !u.dead && !u._benched);
+            if (!foes) { D.closed = true; try { if (D.fx) D.fx.close(); } catch (e) {} return; }
+            if (!(D.fx && D.fx.alive())) _questDoorUp(D.P, false);
+        }
         function _questSceneRow() {
             const er = _encRun(), F = er && er.quest;
             if (!F || !F.scene || window.EW_NO_CUTSCENES) return null;
@@ -60060,6 +60095,7 @@
             const hid = {};
             if (Q.B.guest) hid[Q.B.guest.id] = true;
             Q.B.foes.forEach(u => { hid[u.id] = true; });
+            _questDoorDrop();   // a door left over from the last fight
             window._ewSceneHid = hid;
             const cast = {}; (state.units || []).forEach(u => { if (u && !u.dead && !u._benched) cast[u.id] = true; }); window._ewSceneCast = cast;
             try { addLog(`🚪 A portal forms. ${Q.B.guest ? unitDisplayName(Q.B.guest) : 'Someone'} comes through it${Q.B.foes.length ? ', and ' + Q.B.foes.length + ' ' + (Q.B.foes.length === 1 ? 'enemy comes' : 'enemies come') + ' after' : ''}.`); } catch (e) {}
@@ -60084,31 +60120,20 @@
             const face = (u, to) => { const c = cell(to); if (!u || !c) return; const dx = c.x - u.x, dy = c.y - u.y; if (dx || dy) { setUnitFacing(u, Math.abs(dy) >= Math.abs(dx) ? 0 : Math.sign(dx), Math.abs(dy) >= Math.abs(dx) ? Math.sign(dy) : 0); render(); } };
             const show = (u) => { if (u && window._ewSceneHid) delete window._ewSceneHid[u.id]; };
             const w0 = tile(0, 0), w1 = tile(1, 0);
-            let door = null, doorAt = 0, doorLead = 1500, over = false;
+            let over = false;
+            /* the door's sill, in board heights (a height = a square): a leap out of the door starts up there */
+            const sill = (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? (0.55 * TR.bodyUnit()) / ((typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128) : 0.3;
             return {
                 /* a scene's lengths are BODIES (a standing body = 1, 1.75 m), so a shot frames the cast the same on any board's squares */
                 unit: (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? TR.bodyUnit() : ((w0 && w1) ? (Math.abs(w1.x - w0.x) || 128) / 2 : 64),
                 point,
                 act(a) {
                     const u = a.who ? R[a.who] : null;
-                    if (a.do === 'portal') {
-                        /* the door is asked for until it stands, and stood up again if the board's start swept it away (a
-                           match clears its effects a moment after it begins): it is watched while the scene plays */
-                        let tries = 0, quick = false;
-                        const live = () => !!(door && !door.done && door.group && door.group.parent);
-                        const open = () => {
-                            if (over) return;
-                            if (!live()) {
-                                door = null;
-                                try { door = (FX && FX.questPortal) ? FX.questPortal(P.x, P.y, { riseMs: quick ? 200 : 900, openMs: quick ? 150 : 600, holdMs: 60000, big: !quick, scale: a.scale || 1 }) : null; } catch (e) { door = null; }
-                                if (door) { doorAt = performance.now(); doorLead = quick ? 350 : 1500; quick = true; }
-                                else if (++tries === 40) console.warn('[SCENE] the portal did not draw');
-                            }
-                            setTimeout(open, door ? 300 : 150);
-                        };
-                        open();
-                    }
-                    else if (a.do === 'out') { if (!u) return; show(u); if (!(u.x === P.x && u.y === P.y)) TA.jumpArc(u, P.x, P.y, u.x, u.y, zAt(P.x, P.y), u.z || 0, a.ms || 1000); }
+                    if (a.do === 'portal') _questDoorUp(P, false);
+                    else if (a.do === 'door') { const d = _questDoorUp(P, false); if (d) d.emerge(); if (_questDoor) _questDoor.stage = Math.max(_questDoor.stage, 1); }
+                    else if (a.do === 'open') { const d = _questDoorUp(P, false); if (d) d.open(); if (_questDoor) _questDoor.stage = 2; }
+                    /* out of the door: `knock` = she lands hard, goes over and gets up (the board's own knockdown + get-up) */
+                    else if (a.do === 'out') { if (!u) return; show(u); if (!(u.x === P.x && u.y === P.y)) TA.jumpArc(u, P.x, P.y, u.x, u.y, zAt(P.x, P.y) + sill, u.z || 0, a.ms || 1000, a.knock ? { knock: 'fling' } : undefined); }
                     else if (a.do === 'face') face(u, a.to);
                     else if (a.do === 'show') show(u);
                     else if (a.do === 'pounce') {
@@ -60124,8 +60149,8 @@
                     over = true; window._ewSceneHid = null; window._ewSceneCast = null;
                     try { if (TR && TR.clearTimeWarp) TR.clearTimeWarp(); } catch (e) {}
                     try { if (TR && TR.cancelJumpTween) [B.guest].concat(B.foes).forEach(u => { if (u) TR.cancelJumpTween(u.id); }); } catch (e) {}
-                    /* the door shuts on the cut: its effect is run forward to its own closing (three-vfx-effects.js _sigRun `skip`) */
-                    try { if (door && !door.done) door.skip = Math.max(0, doorLead + 60000 - (performance.now() - doorAt)); } catch (e) {}
+                    /* the door stays: open, floating over the portal tile for the whole fight (a skipped scene stands it up at once) */
+                    try { _questDoorUp(P, true); } catch (e) {}
                     /* the fight opens the way _questFightSeat stood them: she with her back to the portal, they facing her */
                     try { _questFightSeat(); render(); } catch (e) {}
                 }
