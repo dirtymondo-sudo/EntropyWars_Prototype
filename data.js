@@ -59146,14 +59146,24 @@ function hqTerrainWorkerServe(scope) {
         const m = ev && ev.data;
         if (!m || !m.roomId) return;
         const t0 = Date.now();
-        let out = null, err = null;
+        let out = null, err = null, finds = null;
         try {
             if (m.prefabs && typeof m.prefabs === 'object') Object.keys(m.prefabs).forEach(k => { HQ_PREFABS[k] = m.prefabs[k]; });   // THE SHAPES (E1): the prefabs the room places
             const room = m.room || DOOR_HQ.rooms[m.roomId];
             if (!room || !room.terrain) throw new Error('no terrain room ' + m.roomId);
-            out = hqTerrainPlain(hqTerrainCompile(room, m.roomId));
+            const compiled = hqTerrainCompile(room, m.roomId);
+            /* THE FINDS OFF THE PAGE (2026-11-13, the story-mode freeze): the room's finds need the walker's reach over the
+               whole field (seconds on a big room, the 504 m Disaster City above all), so they are placed HERE, on the record
+               just compiled, and cross with it; the page adopts them (hqFindsAdopt) and its finds warm never walks the field. */
+            try {
+                DOOR_HQ.rooms[m.roomId] = room;
+                Object.defineProperty(room, '_terrainInfo', { value: compiled, enumerable: false, configurable: true, writable: true });
+                finds = hqBuildFinds(m.roomId);
+            } catch (e) { finds = null; }
+            out = hqTerrainPlain(compiled);
         } catch (e) { err = String((e && e.message) || e); }
         const msg = { id: m.id, roomId: m.roomId, info: out, err, ms: Date.now() - t0 };
+        if (finds && !err) msg.finds = finds;
         try { scope.postMessage(msg, out ? _hqTerrainBuffers(out) : []); }
         catch (e) { try { scope.postMessage(msg); } catch (e2) { scope.postMessage({ id: m.id, roomId: m.roomId, info: null, err: String((e2 && e2.message) || e2), ms: Date.now() - t0 }); } }
     };
@@ -61193,19 +61203,64 @@ function hqShellDoorClearsFillet(S, wall, at, half, margin) {
     const len = (wall === 'n' || wall === 's') ? S.w : S.d;
     return Math.abs(at || 0) + (half || 0) + (margin || 0) <= len / 2 - r;
 }
+/* THE FIND GRID (2026-11-13, the story-mode freeze): hqFindSpot walks a room's floor in half-metre steps, and every step
+   used to read EVERY prop, wall, tree and scatter rock of the room. On the 504 m Disaster City (a million steps, thousands
+   of blockers) that was minutes of frozen page the moment the background finds warm reached it. A room with more than a
+   few dozen blockers files them once in 4 m cells (each in every cell its own reach + the widest margin touches) and a
+   step reads only its cell. The tests themselves are the same ones, so every find lands where it did. Kept on the room's
+   find info; rebuilt when the props array or the compiled field is another one. */
+const _HQ_FIND_NONE = [], _HQ_FIND_GRID_PAD = 1.0, _HQ_FIND_GRID_MIN = 48;
+function hqFindGrid(ri) {
+    const room = ri.room, props = room.props || [], ti = ri.terrain || null;
+    const c = ri._grid;
+    if (c !== undefined && c !== null && c.props === props && c.n === props.length && c.ti === ti) return c.grid;
+    let grid = null;
+    const count = props.length + (ti ? ((ti.trees || []).length + (ti.scatter || []).length + (ti.walls || []).length) : 0);
+    if (count > _HQ_FIND_GRID_MIN) {
+        const S = ri.S, C = 4, hw = S.w / 2, hd = S.d / 2, nx = Math.max(1, Math.ceil(S.w / C)), nz = Math.max(1, Math.ceil(S.d / C)), cells = new Array(nx * nz), PAD = _HQ_FIND_GRID_PAD + 0.05;
+        const ci = (v, h, n) => { const i = Math.floor((v + h) / C); return i < 0 ? 0 : (i >= n ? n - 1 : i); };
+        const file = (kind, o, x0, x1, z0, z1) => {
+            const a = ci(x0, hw, nx), b = ci(x1, hw, nx), e = ci(z0, hd, nz), f = ci(z1, hd, nz);
+            for (let i = a; i <= b; i++) for (let j = e; j <= f; j++) { const k = j * nx + i; (cells[k] || (cells[k] = { p: [], w: [], t: [], q: [] }))[kind].push(o); }
+        };
+        const cat = DOOR_HQ.catalogue || {};
+        for (const p of props) {
+            if (!p) continue;
+            const pc = cat[p.key] || {};
+            if (p.ceil || pc.ceil || (p.y || 0) > 0.5) continue;   // hqFindPropBlocks: never in the way
+            const px = p.wall === 'w' ? -hw : p.wall === 'e' ? hw : (p.x || 0), pz = p.wall === 'n' ? -hd : p.wall === 's' ? hd : (p.z || 0);
+            const rect = (p.rect === false) ? null : (p.rect || pc.rect);
+            let rx, rz;
+            if (rect && !p.wall) { rx = rect.hw; rz = rect.hd; }
+            else { const foot = (p.foot != null) ? p.foot : (pc.foot || 0); if (!(foot > 0) && !pc.block) continue; rx = rz = Math.max(foot, 0.3); }
+            file('p', p, px - rx - PAD, px + rx + PAD, pz - rz - PAD, pz + rz + PAD);
+        }
+        if (ti) {
+            for (const t of ti.trees || []) file('t', t, t.x - t.r - PAD, t.x + t.r + PAD, t.z - t.r - PAD, t.z + t.r + PAD);
+            for (const q of ti.scatter || []) file('q', q, q.x - q.r - PAD, q.x + q.r + PAD, q.z - q.r - PAD, q.z + q.r + PAD);
+            for (const w of ti.walls || []) { const m = w.t / 2 + 0.65; file('w', w, Math.min(w.x0, w.x1) - m, Math.max(w.x0, w.x1) + m, Math.min(w.z0, w.z1) - m, Math.max(w.z0, w.z1) + m); }
+        }
+        grid = { cells, at: (x, z) => ci(z, hd, nz) * nx + ci(x, hw, nx) };
+    }
+    Object.defineProperty(ri, '_grid', { value: { grid, props, n: props.length, ti }, enumerable: false, configurable: true, writable: true });
+    return grid;
+}
 function hqFindFree(ri, x, z, opts) {
     opts = opts || {};
     const R = opts.rules || HQ_FIND_RULES, S = ri.S, room = ri.room;
     if (Math.abs(x) > S.w / 2 - R.minWall || Math.abs(z) > S.d / 2 - R.minWall) return false;
     if (S.round > 0 && hqShellInFillet(S, x, z, R.minWall)) return false;   // THE RETRO-FUTURIST KIT: a filleted corner is wall
+    const G = (R.awayProp <= _HQ_FIND_GRID_PAD) ? hqFindGrid(ri) : null;
     if (ri.terrain) {
         const ti = ri.terrain;
         /* the cheap refusals first (2026-09-18): the reach set, the trees, the scatter, the walls — the sampled feet / fluid /
            slope reads are the dear ones, and every test is ANDed, so the order changes nothing but the time */
         if (ri.reach && !opts.hard && !ri.reach.has(hqTerrainNodeKey(ti, x, z))) return false;
-        for (const t of ti.trees) if (Math.hypot(x - t.x, z - t.z) < t.r + R.awayProp) return false;
-        for (const q of ti.scatter) if (Math.hypot(x - q.x, z - q.z) < q.r + R.awayProp) return false;
-        for (const w of ti.walls) if (_hqTSegDist(x, z, w.x0, w.z0, w.x1, w.z1).d < w.t / 2 + 0.6) return false;
+        /* THE FIND GRID (2026-11-13): a crowded room reads only the blockers filed near this point (same tests, same answer) */
+        const gc = G ? G.cells[G.at(x, z)] : null;
+        for (const t of (G ? (gc ? gc.t : _HQ_FIND_NONE) : ti.trees)) if (Math.hypot(x - t.x, z - t.z) < t.r + R.awayProp) return false;
+        for (const q of (G ? (gc ? gc.q : _HQ_FIND_NONE) : ti.scatter)) if (Math.hypot(x - q.x, z - q.z) < q.r + R.awayProp) return false;
+        for (const w of (G ? (gc ? gc.w : _HQ_FIND_NONE) : ti.walls)) if (_hqTSegDist(x, z, w.x0, w.z0, w.x1, w.z1).d < w.t / 2 + 0.6) return false;
         if (hqTerrainFeet(ti, x, z, null) === null || hqTerrainFluidAt(ti, x, z) || hqTerrainSlope(ti, x, z) > 0.45) return false;
     }
     if (ri.cave) {
@@ -61214,7 +61269,8 @@ function hqFindFree(ri, x, z, opts) {
         if (ri.reach && !ri.reach.has(c.x + ',' + c.y)) return false;
     }
     if (ri.board && !opts.onBoard) { const lim = ri.board.half + ri.board.gap + 0.9; if (Math.abs(x) < lim && Math.abs(z) < lim) return false; }
-    for (const p of room.props || []) if (hqFindPropBlocks(room, p, x, z, R.awayProp)) return false;
+    if (G) { const gp = G.cells[G.at(x, z)]; if (gp) for (const p of gp.p) if (hqFindPropBlocks(room, p, x, z, R.awayProp)) return false; }
+    else for (const p of room.props || []) if (hqFindPropBlocks(room, p, x, z, R.awayProp)) return false;
     for (const q of (room.npcSpots || []).concat(room.agents || [], room.onlineSpots || [])) if (q && q.x != null && Math.hypot(x - q.x, z - q.z) < R.awayNpc) return false;
     for (const c of room.counters || []) if (Math.hypot(x - c.x, z - c.z) < (c.radius || 2) + R.awayCounter) return false;
     for (const L of ri.landings) if (Math.hypot(x - L.x, z - L.z) < R.awayDoor) return false;
@@ -61230,20 +61286,44 @@ function hqFindFree(ri, x, z, opts) {
 /* a small room (the cold room is 4 × 4) has no point that keeps every
    distance — the rules RELAX in three steps before the room goes without */
 const HQ_FIND_RELAX = [null, { minWall: 0.8, awayDoor: 1.7, awaySpawn: 1.3, awayProp: 0.7, awayNpc: 0.9, apart: 1.8 }, { minWall: 0.7, awayDoor: 1.3, awaySpawn: 1.0, awayProp: 0.55, awayNpc: 0.8, apart: 1.4, awayCounter: 0.2 }];
+/* THE FAR POINTS FIRST (2026-11-13, the story-mode freeze): the spot is the free point with the highest score = its
+   distance from the way in + a hash under 1. So the room's half-metre points are read FARTHEST FIRST (filed once per room
+   in quarter-metre rings, kept on the find info) and the walk stops a metre and a quarter inside the first free one:
+   nothing nearer can win. Same points, same tests, same winner (an exact tie goes to the earlier point of the old
+   west-to-east walk); a big field is no longer tested point by point to the door. */
+function hqFindOrder(ri, from) {
+    const c = ri._order; if (c && c.fx === from.x && c.fz === from.z) return c;
+    const S = ri.S, step = 0.5, xs = [], zs = [];
+    for (let x = -S.w / 2 + 0.5; x <= S.w / 2 - 0.5 + 1e-6; x += step) xs.push(Math.round(x * 100) / 100);
+    for (let z = -S.d / 2 + 0.5; z <= S.d / 2 - 0.5 + 1e-6; z += step) zs.push(Math.round(z * 100) / 100);
+    const nx = xs.length, nz = zs.length, n = nx * nz, ring = new Int32Array(n);
+    let top = 0;
+    for (let i = 0, k = 0; i < nx; i++) for (let j = 0; j < nz; j++, k++) { const r = Math.floor(Math.hypot(xs[i] - from.x, zs[j] - from.z) * 4); ring[k] = r; if (r > top) top = r; }
+    const start = new Int32Array(top + 2);
+    for (let k = 0; k < n; k++) start[top - ring[k] + 1]++;
+    for (let r = 0; r <= top; r++) start[r + 1] += start[r];
+    const ord = new Uint32Array(n);
+    for (let k = 0; k < n; k++) ord[start[top - ring[k]]++] = k;
+    const o = { fx: from.x, fz: from.z, xs, zs, nz, n, ord };
+    Object.defineProperty(ri, '_order', { value: o, enumerable: false, configurable: true, writable: true });
+    return o;
+}
 function hqFindSpot(roomId, salt, avoid) {
     const ri = hqFindRoomInfo(roomId); if (!ri) return null;
-    const S = ri.S, from = ri.landings[0] || ri.room.spawn || { x: 0, z: 0 };
-    const step = 0.5;
+    const from = ri.landings[0] || ri.room.spawn || { x: 0, z: 0 };
+    const O = hqFindOrder(ri, from), xs = O.xs, zs = O.zs, nz = O.nz, ord = O.ord, n = O.n;
     for (let pass = 0; pass < HQ_FIND_RELAX.length; pass++) {
         const rules = HQ_FIND_RELAX[pass] ? Object.assign({}, HQ_FIND_RULES, HQ_FIND_RELAX[pass]) : HQ_FIND_RULES;
-        let best = null, bestS = -1;
-        for (let x = -S.w / 2 + 0.5; x <= S.w / 2 - 0.5 + 1e-6; x += step) {
-            for (let z = -S.d / 2 + 0.5; z <= S.d / 2 - 0.5 + 1e-6; z += step) {
-                const px = Math.round(x * 100) / 100, pz = Math.round(z * 100) / 100;
-                if (!hqFindFree(ri, px, pz, { avoid, rules })) continue;
-                const sc = Math.hypot(px - from.x, pz - from.z) + (hqHash(roomId + '|' + salt + '|' + px + ',' + pz) % 1000) / 1000;
-                if (sc > bestS) { bestS = sc; best = { x: px, z: pz, relax: pass }; if (ri.terrain) best.y = Math.round(hqTerrainHeight(ri.terrain, px, pz) * 100) / 100; }
-            }
+        let best = null, bestS = -1, bestI = -1;
+        const fopts = { avoid, rules };
+        for (let k = 0; k < n; k++) {
+            const idx = ord[k], px = xs[(idx / nz) | 0], pz = zs[idx % nz];
+            const far = Math.hypot(px - from.x, pz - from.z);
+            if (far + 1.25 <= bestS) break;       // every point after this one is under a quarter metre farther at most, and the hash adds under 1
+            if (far + 0.999 <= bestS) continue;   // this one cannot beat the best either
+            if (!hqFindFree(ri, px, pz, fopts)) continue;
+            const sc = far + (hqHash(roomId + '|' + salt + '|' + px + ',' + pz) % 1000) / 1000;
+            if (sc > bestS || (sc === bestS && idx < bestI)) { bestS = sc; bestI = idx; best = { x: px, z: pz, relax: pass }; if (ri.terrain) best.y = Math.round(hqTerrainHeight(ri.terrain, px, pz) * 100) / 100; }
         }
         if (best) return best;
     }
@@ -61296,7 +61376,18 @@ function hqFindsWarm(budgetMs) {
     }
     return 0;
 }
+/* THE FINDS OFF THE PAGE (2026-11-13): the survey worker's finds for a room it just compiled. Taken only when the page has
+   none of its own yet and no hqFindsDrop() ran since the job was posted (`gen` = hqFindsGen() at the post). */
+let _hqFindsGenN = 0;
+function hqFindsGen() { return _hqFindsGenN; }
+function hqFindsAdopt(roomId, rows, gen) {
+    if (!roomId || !Array.isArray(rows) || !DOOR_HQ.rooms[roomId] || _HQ_FINDS_CACHE[roomId]) return false;
+    if (gen != null && gen !== _hqFindsGenN) return false;
+    _HQ_FINDS_CACHE[roomId] = rows;
+    return true;
+}
 function hqFindsDrop() {
+    _hqFindsGenN++;
     Object.keys(_HQ_FINDS_CACHE).forEach(k => { delete _HQ_FINDS_CACHE[k]; });
     Object.keys(DOOR_HQ.rooms || {}).forEach(k => { const r = DOOR_HQ.rooms[k]; if (r && r._findInfo) delete r._findInfo; });
     Object.defineProperty(DOOR_HQ, 'finds', { configurable: true, enumerable: true, get: _hqFindsAll, set: _hqFindsPin });
@@ -70610,7 +70701,7 @@ if (typeof window !== 'undefined') {
     window.HQ_GUN_LESSONS = HQ_GUN_LESSONS; window.hqGunLessons = hqGunLessons; window.hqFindHardReach = hqFindHardReach; window.HQ_HARD_REACH = HQ_HARD_REACH;
     window.DOOR_TAPES = DOOR_TAPES; window.HQ_FIND_RULES = HQ_FIND_RULES; window.hqFindsInRoom = hqFindsInRoom; window.hqCollectFind = hqCollectFind; window.hqFindsBuildAll = hqFindsBuildAll;
     window.hqFindsSyncPay = hqFindsSyncPay; window.hqFindsTakenUnion = hqFindsTakenUnion; window.hqFindsSyncedTaken = hqFindsSyncedTaken;
-    window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqFindsForRoom = hqFindsForRoom; window.hqFindsWarm = hqFindsWarm; window.hqFindsDrop = hqFindsDrop; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
+    window.hqTapeShelf = hqTapeShelf; window.hqTapeCount = hqTapeCount; window.hqFindById = hqFindById; window.hqFindsForRoom = hqFindsForRoom; window.hqFindsWarm = hqFindsWarm; window.hqFindsDrop = hqFindsDrop; window.hqFindsAdopt = hqFindsAdopt; window.hqFindsGen = hqFindsGen; window.hqTapeById = hqTapeById; window.hqTapeClipUrl = hqTapeClipUrl; window.hqFindsRecord = hqFindsRecord;
     window.hqCaveDoorCell = hqCaveDoorCell; window.hqCaveRooms = hqCaveRooms;
     /* THE TERRAIN ROOM (2026-09-17) */
     window.hqShellInFillet = hqShellInFillet; window.hqShellDoorClearsFillet = hqShellDoorClearsFillet; window.HQ_TERRAIN_RULES = HQ_TERRAIN_RULES; window.HQ_TERRAIN_GEN = HQ_TERRAIN_GEN; window.HQ_ROOM_LOOKS = HQ_ROOM_LOOKS; window.hqTerrainMaskAt = hqTerrainMaskAt; window.hqTerrainOpenAt = hqTerrainOpenAt; window.hqTerrainRooms = hqTerrainRooms; window.hqTerrainInfo = hqTerrainInfo; window.hqTerrainTraps = hqTerrainTraps; window.hqTerrainCompile = hqTerrainCompile; window.hqTerrainSolidAt = hqTerrainSolidAt; window.hqTerrainSolidTop = hqTerrainSolidTop;
