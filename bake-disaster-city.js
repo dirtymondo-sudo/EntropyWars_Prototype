@@ -309,7 +309,7 @@ const put = (p, key, lx, ly, face, o) => {
     const row = { key, x: r3(-HALF + (p.x * N + lx) * C), z: r3(-HALF + (p.y * N + ly) * C) }; if (face != null) row.face = face; if (o.floor) row.floor = true;
     props.push(row); return true;
 };
-const DECOR = new Set(['city_bench', 'park_bench', 'city_bin', 'signpost', 'fire_hydrant', 'traffic_cone', 'cardboard_boxes', 'psx_planter_pot_mp_1_full', 'round_table', 'pool_umbrella']);
+const DECOR = new Set(['city_bench', 'park_bench', 'city_bin', 'signpost', 'fire_hydrant', 'traffic_cone', 'cardboard_boxes', 'psx_planter_pot_mp_1_full', 'round_table', 'pool_umbrella', 'vending_machine']);
 const at = (name, fn) => (byName[name] || []).forEach(fn);
 const tree = (p, lx, ly, kind, h) => { lx = Math.floor(lx) + 0.5; ly = Math.floor(ly) + 0.5; const cx = p.x * N + Math.floor(lx), cy = p.y * N + Math.floor(ly); if (!free(cx, cy, '.#')) return; take(cx, cy); features.push({ k: 'tree', x: r3(-HALF + (p.x * N + lx) * C), z: r3(-HALF + (p.y * N + ly) * C), kind, h }); count.trees++; };
 /* a park plot's unconnected band: a tree a square */
@@ -369,6 +369,16 @@ PLAN.plots.forEach(p => {
             else if (ch === '.' && kind === 'barrel') { if (qi === 0) put(p, 'traffic_barrel', q[0] + 0.5, q[1] + 0.5, 0, { quiet: true }); }
             else if ((ch === '.' || ch === 'P') && kind !== 'barrel') put(p, kind === 'bin' ? (qi === 0 ? 'city_bin' : 'psx_planter_pot_mp_1_full') : 'psx_planter_pot_mp_1_full', q[0] + 0.5, q[1] + 0.5, 0, { quiet: true, walk: true });
         });
+        /* THE VENDING MACHINES (mondo 11-13): two squares along the wall from the door, backs to the wall, facing out: a pair at every door of
+           the entertainment district, one at the first door of a civic / university / sports / plaza / bayside plot */
+        if ('E'.indexOf(p.d) >= 0 || (bi === 0 && 'CUSHB'.indexOf(p.d) >= 0)) {
+            const vs = (dr.side === 'N' || dr.side === 'S') ? [[dr.ox + 2, dr.oy], [dr.ox - 2, dr.oy]] : [[dr.ox, dr.oy + 2], [dr.ox, dr.oy - 2]];
+            let n = 0;
+            for (const q of vs) { if (n >= (p.d === 'E' && bi === 0 ? 2 : 1)) break; if (q[0] < 0 || q[1] < 0 || q[0] >= N || q[1] >= N) continue;
+                const wallBehind = { N: [0, 1], S: [0, -1], W: [1, 0], E: [-1, 0] }[dr.side];
+                if ('I'.indexOf(cellAt(p.x * N + q[0] + wallBehind[0], p.y * N + q[1] + wallBehind[1])) < 0) continue;
+                if (put(p, 'vending_machine', q[0] + 0.5, q[1] + 0.5, { N: 0, S: 180, W: 270, E: 90 }[dr.side], { quiet: true, walk: true })) { n++; count.vending = (count.vending || 0) + 1; } }
+        }
         if (bi === 0 && 'REIB'.indexOf(p.d) >= 0) {
             const sides = [['N', 0, -1], ['S', 0, 1], ['W', -1, 0], ['E', 1, 0]].filter(sd => !(b.doors || []).some(d => d.side === sd[0]));
             for (const sd of sides) { const lx = sd[1] ? (sd[1] < 0 ? b.x - 1 : b.x + b.w) : b.x + Math.floor(b.w / 2), ly = sd[2] ? (sd[2] < 0 ? b.y - 1 : b.y + b.h) : b.y + Math.floor(b.h / 2);
@@ -378,16 +388,61 @@ PLAN.plots.forEach(p => {
     });
     if (p.d === 'B') [[1.5, 1.5], [10.5, 10.5]].forEach(q => put(p, 'palm_tree', q[0], q[1], null, { quiet: true }));
 });
-/* the kerbs: a hydrant / a signpost / a bin on the walk squares beside the carriageway, at the square's road edge, every few squares */
-let kerbN = 0;
+/* THE KERBS (mondo 11-13: "so many street lamps ... What about fire hydrants? Vending machines? Bus stations?"), one rule for every street,
+   counted on each plot's own twelve squares so every block reads the same:
+   - THE STREET LAMPS stand on the kerb, ON THE LINE BETWEEN TWO SQUARES (never on a square's middle), head over the road: the +side kerb on
+     lines 2 and 8, the other kerb on lines 5 and 11 (a lamp every 21 m a side, staggered across the street)
+   - a FIRE HYDRANT on square 2 of the +side kerb, a signpost on square 2 of the other, a bin on square 8 of both, at the square's road edge
+   - a BUS STOP (the shelter, centred on its walk square, open to the road) on squares 4-6 of one kerb of every other road plot */
+let kerbN = 0; const lamps = [], busAt = new Set(); count.bus = 0; count.hydrants = 0;
+const kerbSides = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+const isKerb = (cx, cy, sd) => cellAt(cx, cy) === 'P' && cellAt(cx + sd[0], cy + sd[1]) === 'R';
+const lampAdd = (x, z, nx, nz) => { if (lamps.some(l => Math.hypot(l.x - x, l.z - z) < 3)) return; lamps.push({ x: r3(x), z: r3(z), nx, nz }); };
+/* the bus stops first (they take three squares) */
+PLAN.plots.forEach(p => {
+    if ((p.x + p.y * 2) % 2) return;
+    for (const sd of kerbSides) {
+        let done = false;
+        for (let t = 0; t < N && !done; t++) {
+            const run = [4, 5, 6].map(a => sd[0] ? [p.x * N + t, p.y * N + a] : [p.x * N + a, p.y * N + t]);
+            if (!run.every(c => isKerb(c[0], c[1], sd) && !occ.has(c[0] + ',' + c[1]))) continue;
+            run.forEach(c => { take(c[0], c[1]); busAt.add(c[0] + ',' + c[1]); });
+            props.push({ key: 'bus_shelter', x: r3(gc(run[1][0])), z: r3(gc(run[1][1])), face: sd[0] > 0 ? 90 : sd[0] < 0 ? 270 : sd[1] > 0 ? 180 : 0 });
+            count.bus++; done = true;
+        }
+        if (done) break;
+    }
+});
 for (let cy = 0; cy < 144; cy++) for (let cx = 0; cx < 144; cx++) {
-    if (cellAt(cx, cy) !== 'P' || occ.has(cx + ',' + cy)) continue;
-    const side = cellAt(cx + 1, cy) === 'R' ? [0.4, 0] : cellAt(cx - 1, cy) === 'R' ? [-0.4, 0] : cellAt(cx, cy + 1) === 'R' ? [0, 0.4] : cellAt(cx, cy - 1) === 'R' ? [0, -0.4] : null; if (!side) continue;
+    if (cellAt(cx, cy) !== 'P') continue;
+    kerbSides.forEach(sd => {
+        if (!isKerb(cx, cy, sd)) return;
+        const plus = sd[0] > 0 || sd[1] > 0, along = (sd[0] ? cy : cx), a = along % N;
+        /* the lamp on the line before this square */
+        if (a === (plus ? 2 : 5) || a === (plus ? 8 : 11)) {
+            const px = sd[0] ? cx : cx - 1, py = sd[0] ? cy - 1 : cy;
+            if (isKerb(px, py, sd) && !busAt.has(cx + ',' + cy) && !busAt.has(px + ',' + py))
+                lampAdd(sd[0] ? gc(cx) + sd[0] * 0.4 * C : gc(cx) - C / 2, sd[0] ? gc(cy) - C / 2 : gc(cy) + sd[1] * 0.4 * C, -sd[0], -sd[1]);
+        }
+    });
+    if (occ.has(cx + ',' + cy)) continue;
+    const sd = kerbSides.find(q => isKerb(cx, cy, q)); if (!sd) continue;
     if (cellAt(cx + 1, cy) === 'P' && cellAt(cx - 1, cy) === 'P' && cellAt(cx, cy + 1) === 'P' && cellAt(cx, cy - 1) === 'P') continue;
-    const along = side[0] ? cy : cx; if (along % 6 !== 2) continue;   // one every six squares, the same squares on both kerbs
-    const key = ['signpost', 'city_bin', 'fire_hydrant', 'city_bin'][Math.floor(along / 6) % 4]; kerbN++;
-    take(cx, cy); props.push({ key, x: r3(gc(cx) + side[0] * C), z: r3(gc(cy) + side[1] * C), face: side[0] > 0 ? 90 : side[0] < 0 ? 270 : side[1] > 0 ? 180 : 0 });
+    const plus = sd[0] > 0 || sd[1] > 0, a = (sd[0] ? cy : cx) % N;
+    const key = a === 2 ? (plus ? 'fire_hydrant' : 'signpost') : a === 8 ? 'city_bin' : null; if (!key) continue;
+    kerbN++; if (key === 'fire_hydrant') count.hydrants++;
+    take(cx, cy); props.push({ key, x: r3(gc(cx) + sd[0] * 0.4 * C), z: r3(gc(cy) + sd[1] * 0.4 * C), face: sd[0] > 0 ? 90 : sd[0] < 0 ? 270 : sd[1] > 0 ? 180 : 0 });
 }
+/* a plot with no street (a plaza, a park, a court): a lamp where four open squares meet, at the plot's quarter points, head to the middle */
+PLAN.plots.forEach(p => {
+    if (p.cells.some(r => r.indexOf('R') >= 0)) return;
+    [[3, 3], [9, 3], [3, 9], [9, 9]].forEach(q => {
+        const cx = p.x * N + q[0], cy = p.y * N + q[1];
+        if (![[0, 0], [-1, 0], [0, -1], [-1, -1]].every(d => '.P'.indexOf(cellAt(cx + d[0], cy + d[1])) >= 0)) return;
+        lampAdd(gc(cx) - C / 2, gc(cy) - C / 2, q[0] < 6 ? -0.71 : 0.71, q[1] < 6 ? -0.71 : 0.71);
+    });
+});
+count.lamps = lamps.length;
 
 /* ── THE GROUND: a sheet per square (0 the asphalt, 1 pavement, 2 grass, 3 yard concrete) ── */
 const paint = new Uint8Array(144 * 144);
@@ -440,6 +495,7 @@ lines.push("            terrain: {");
 lines.push("                res: 0.875,");
 lines.push("                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
 lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0, streets: " + J(streets) + ",");
+lines.push("                    lamps: " + J(lamps) + ",");
 lines.push("                       open: [] },");
 lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: 144, nz: 144, d: '" + b64 + "' },");
 lines.push("                features: [");
