@@ -2562,3 +2562,13 @@ on the solid buildings, the signal box's outside stair + a semaphore, the crane'
 ducts, rubber walkways, manhole decals in the yards, a second sheet on back walls and bases: subway / generic tile, brick, factory window decals). Houses: `houseMore` (corner boards,
 door hoods, shutters, sills, gutters, chimney caps). On the five walked roofs only edges and corners are dressed. Signs stay blank (no lettering part). Seen in the cloud browser (29
 close-ups, about two thirds framed the building; the rest were checked from neighbours' shots). `arch y` is lifted by THE LEVELS, so headless cameras add the plot's level.
+
+### THE UNIVERSITY POLISH PASS (2026-11-13, mondo 20:15 "one more polish pass on the exteriors ... one or two more layers deep", 20:18 "roofs and ac units", 20:19 "different textures or decals for different parts of the building")
+`districts/U.js` `polish(kind, walkedRoof)` runs after each builder and reads the building's own parts (22 rows, 1,228 parts now): a stone plinth
+(never across a door), a string course a storey, corner stones on brick / stone walls, a sill + a head on every window strip, a step with a rubber
+mat + a lit lamp at every door, a downpipe + hopper on each back corner, a hanging sign at the shops (`SIGNS`, a colour a trade, no lettering),
+wall AC units with a grille under the back / side residential windows, louvre grilles low on the back wall, hazard / caution plates on the science
+side (`SCI`). Roof plant: two condensers on pads + a vent stack; on a flat roof (`FLAT`) with a hatch and a duct, on a WALKED roof along an edge
+with a ghost wall each and never within 5 m of a bridge / stair / ladder point or on a tier.
+- An `hq:` sheet on an arch part drew BLACK in the game (trims, the porch): trims are `calm_marble` now. No `hq:` keys in U.js.
+- Seen in the game: plinth, sills, heads, corner stones, door step + mat, porch trim (library, dorm). NOT seen: roof plant, wall units, plates, signs.
