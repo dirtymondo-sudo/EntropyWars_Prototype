@@ -2199,7 +2199,7 @@ his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:1
   slabs), the wetsuit rail, the spinner, two life rings, a swim ring stack, air beds, a cool box, a bin of beach balls, coloured bulbs, the
   SURF SHOP board. BOAT the outboard (in place of the engine boxes; the hoist stays), lobster pots, the net, life rings, paint tins, a work
   lamp, an oil stain. HARBOUR the ship's wheel, the bell, a life ring, a framed chart, a chart lamp.
-  Reused when on main (`CAT.has`, rerun the bake): Entertainment's crystal_chandelier + film_projector, Hero Plaza's pallet_jack. Not used:
+  Reused (`CAT.has`, picked up by any rebake once on main): Entertainment's crystal_chandelier (the hotel, PLACED) + film_projector (the cinema foyer square 0,7, shut, PLACED), Hero Plaza's pallet_jack (not on main yet). Not used:
   University's rope_stanchion (a rope across a walk breaks the grid rule). Props cannot tilt (no pitch on a prop row), so no board hangs
   flat from the ceiling.
 - **NOT PROVEN in the headless browser:** no `city_*` pack building (the grill, the taco stand; also the diner, pizzerias, laundry in
@@ -2761,7 +2761,37 @@ cell plans 21:23 (/mnt/project-files/dc-entertainment/interiors_plan.jpg). All i
   hall's glass lobby drum became an open colonnade (the doorway is behind it). The wedding chapel is a walk-in shell of the file's own now
   (`EXTRA['E-chapel']` + its own texbuilding row, 3 x 2 squares, `leaf_motel` door): pews (kit `p`), the wedding altar (kit `w`, `lectern`).
   13 inside rows in all. NOT SEEN IN THE GAME; the roof route over the two halls wants a walk (the texbuilding's 0.45 m parapet ghost).
+- **THE SECOND PASS: ATMOSPHERE + 27 MESHY PIECES (2026-11-13 night, mondo 22:33: "after a district's first interior pass, do another interior
+  pass ... make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe,
+  atmosphere for the interiors").** All in `docs/disaster-city/districts/E.js` (rerun `node bake-disaster-city.js`).
+  - THE LIST (29 wanted, none in MODEL_LIST.md or the bucket): 27 made on Meshy by Claude (text-to-image concept, then image-to-3D smart topology,
+    1.5-6k tris), turned so the front is +Z, base at y 0, meshopt + WebP 1024 (optimize-assets.js; 76 MB -> 14 MB). R2 `Assets/world/props/meshy/<key>.glb`,
+    catalogue rows of the same key (data.js, "THE ENTERTAINMENT MESHY PIECES"; real size by `h`), ASSET_MANIFEST.json, MODEL_LIST.md. Keys:
+    arcade_cabinet, pinball_machine, claw_machine, air_hockey_table, jukebox, roulette_table, blackjack_table, money_wheel, crystal_chandelier,
+    mixing_console, drum_kit, guitar_amp, pa_speaker, followspot, film_camera, studio_light, directors_chair, film_projector, bread_rack, deck_oven,
+    wedding_cake, costume_rack, makeup_vanity, wedding_arch, mirror_ball, music_stand, paper_lantern. The other two (a pastry case, rope stanchions)
+    are University's (shared claims list: project files `meshy/interior-claims.md`; pack-claims.md "The Meshy pieces"). Concepts, Meshy
+    originals, the turned and the slimmed files: project files `dc-entertainment/pass2/`. No text or logos on any (the claw machine's first concept
+    had invented lettering: redone).
+  - THE PLACING (the cell plans mondo OK'd are kept; only a letter's look changes): the casino's two round tables are a roulette table (`r`) and
+    a blackjack table (`j`) with stools, its stage (on the door row: it now looks into the room) shows the money wheel; the arcade's cabinets are
+    three Meshy cabinets a square all facing the walk (the old back row faced the wall), one square of pinballs (`a`), one of claw cranes (`h`),
+    the Meshy air hockey table, a jukebox + a claw crane in the corner; the studio's drum kit, amp stacks and the console (the middle of its run);
+    costume racks (`R`), dressing-room vanities (`m`) everywhere; the cabaret band (drums, amp, PA) and table lamps; the concert hall's orchestra
+    (chairs, music stands, harp, cellos) and a conductor's stand; the film set's fresnels, the camera + fresnel + director's chair looking at the set;
+    the bakery's deck ovens, bread racks and a wedding cake on the counter; the cinema's old projector beside the ticket booth; the chapel's rose arch
+    and its cake.
+  - THE FINISH: what hangs over the walks (`hang`: crystal chandeliers in the casino and the concert hall lobby, the mirror ball in the cabaret and
+    the arcade, red paper lanterns over the ramen court), a painted ceiling under the slab (`ceil`), a wooden dado + rail round the walls (`dado`,
+    broken at the doorway), lit sconces along the side walls and the back (`sconce`). Glow sprites on the lamps' catalogue rows (no new prop lights:
+    the city's prop-light budget goes to the ceiling lamps).
+  - FIX: every inside prop is written `floor: true` (+ `y` = the plot's level + its height over the floor for a stage, a counter, a hang): before,
+    a catalogue prop in a blocked square stood on the square's ghost block (1-2.6 m up) or the roof slab (THE FLOOR UNDER IT).
 - **A TREE NEVER LEANS INTO A ROOM + THE STADIUM ROAD (2026-11-13, the shared-pieces thread; Southside saw a road sign and street trees inside the
   boxing gym).** bake-disaster-city.js MOVES a `tree` row within 2.5 m of a walk-in (`hollow`) building's walls to the nearest free yard square 2.5 m clear
   (11 trees; PR #1343 dropped them, the follow-up moves them: never delete content mondo did not name; `keep: true` = never moved), and the `stadium_downtown` road link stands on the road's dead end in P03-00 (-99.75, -229.25), no longer in the
   3.5 m alley beside the gym on its east door's step. Not seen on screen.
+- **22:30 mondo "keep the new lobby"**: the Superhero Tower's walk-in lobby opens on the PLAZA again, and the story door THE TOWER (into
+  site_prebuilt_downtown_lobby, which still leads on to the showroom and the stair down) stands at the lobby's lift bank, square (4, 0), sub
+  'THE LIFTS · INTO THE TOWER'. Mechanism: a district file may export `joins = { <JOIN key>: { x, z, face, sub } }`; bake-disaster-city.js applies
+  it before writing the doors. The lift core runs up to the ceiling so the door's housing does not show over it. Shot inside_5_tower_lobby_doors.jpg.

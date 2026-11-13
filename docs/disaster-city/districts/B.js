@@ -847,7 +847,7 @@ const SECOND = {
         R.prop('luggage_cart', cx(5) + 0.6, D / 2 - 0.8, 0);                                                                                    // the bellhop cart by the front wall
     },
     /* 2 the cinema: the seat rows (in the first pass's place), wall sconces down both sides of the hall, a gold runner up the centre aisle,
-       exit signs, NOW SHOWING over the hall's door, a menu board over the snack counter, the old projector in the foyer when it is on main */
+       exit signs, NOW SHOWING over the hall's door, a menu board over the snack counter, the old projector on show in the foyer's front-left square */
     'P10-08-B1': (R) => { const { P, cx, cz, W, D } = R, zp = -D / 2 + 21;
         [0, 1, 2, 3, 4, 5].forEach(r => { P.push(...sconce(W, D, 'l', cz(r), 4.2, 0xffc890), ...sconce(W, D, 'r', cz(r), 4.2, 0xffc890));
             P.push(quad(-W / 2 + 0.37, 3.2, cz(r), 1.4, 2.6, 90, glowT(0xffb070, 0.18)), quad(W / 2 - 0.37, 3.2, cz(r), 1.4, 2.6, 270, glowT(0xffb070, 0.18))); });   // the soft wash over each
@@ -857,7 +857,7 @@ const SECOND = {
         P.push(quad(0, 2.95, zp + 0.17, 3.0, 0.62, 0, { text: 'NOW SHOWING', ink: '#ffe08a', bg: '#200c14', glow: 0.9 }));                         // over the hall's door, foyer side
         P.push(A(box(-1.6, 3.62, zp + 0.2, 0.09, 0.09, 0.06, glowT(0xfff0c0, 1)), { n: 17, step: [0.2, 0, 0] }), A(box(-1.6, 2.84, zp + 0.2, 0.09, 0.09, 0.06, glowT(0xfff0c0, 1)), { n: 17, step: [0.2, 0, 0] }));   // its marquee bulbs
         P.push(quad(-W / 2 + 0.37, 2.2, cz(6), 2.8, 1.0, 90, { text: 'POPCORN  SODA  CANDY', ink: '#fff2c0', bg: '#30121c', glow: 0.8 }));
-        if (CAT.has('film_projector')) R.prop('film_projector', cx(4) + 0.9, D / 2 - 0.9, 0);
+        if (CAT.has('film_projector')) { R.prop('film_projector', cx(0), cz(7), 90); R.shut(0, 7, 0, 7, 1.8); }                                // the old projector on show (a blocker: centred on its square, shut)
     },
     /* 3 the loading dock: the forklift and two wrapped pallets on shut squares, a roller shutter + LOADING BAY over them, hazard paint along
        the racking, high-bay lamps, a fire extinguisher by the door, the pallet jack when it is on main */
