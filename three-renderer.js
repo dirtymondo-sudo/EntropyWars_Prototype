@@ -92252,6 +92252,26 @@ const ThreeRenderer = (function () {
         climbing: function () { var pl = _hq && _hq.player; return !!(pl && pl.climb); },
         portalDoors: function () { if (!_hq || !_hq.portal) return []; var o = []; for (var s in _hq.portal.placed) { var r = _hq.portal.placed[s]; o.push({ slot: s, x: r.px, y: r.py, z: r.pz, face: r.door.face, surf: r.portalSurf, leaf: r.leaf }); } return o; },
         finds: function () { return _hq ? _hq.finds.map(function (f) { return { id: f.id, kind: f.kind, x: f.x, y: f.y, z: f.z }; }) : []; },
+        /* THE QUEST MARKER (2026-11-13, mondo's OK on the mock-up): where a quest's target is on screen. t = { cast } (a
+           DOOR_CAST id standing in the room) | { door } (the id of a door of the room stood in). Returns { x, y (0..1 of
+           the canvas, y down), front (in front of the eye), dist (metres from the walker), label } or null. */
+        questMark: function (t) {
+            if (!_hq || !_hq.player || !_hq.camera || !t) return null;
+            var U = _hqUnits(), obj = null, up = 0, label = '';
+            if (t.cast) { for (var i = 0; i < _hq.chars.length; i++) { var ch = _hq.chars[i]; if (ch && ch.cast === t.cast && !ch.away && ch.entry && ch.entry.group) { obj = ch.entry.group; up = (ch.heightM || 1.75) + 0.5; label = ch.label || ''; break; } } }
+            else if (t.door) {
+                var ds = _hq.doors.slice(), st = _hq.stage; if (st && st.parts) for (var id in st.parts) { var P = st.parts[id].P; if (P && P.doors) ds = ds.concat(P.doors); }
+                for (var j = 0; j < ds.length; j++) { var d = ds[j]; if (d && d.door && d.door.id === t.door && d.group) { obj = d.group; up = (d.oh || 2.2) + 0.45; label = d.door.label || ''; break; } }
+            }
+            if (!obj) return null;
+            var v = new THREE.Vector3(); obj.getWorldPosition(v);
+            var pl = _hq.player, dist = Math.hypot(v.x / U - pl.x, v.z / U - pl.z);
+            v.y += up * U;
+            var cam = _hq.camera, e = cam.matrixWorldInverse.elements;
+            var front = (e[2] * v.x + e[6] * v.y + e[10] * v.z + e[14]) < 0;   // view-space z: negative = in front
+            v.project(cam);
+            return { x: v.x * 0.5 + 0.5, y: 0.5 - v.y * 0.5, front: front, dist: dist, label: label };
+        },
         pos: function () { if (!_hq || !_hq.player) return null; var p = _hq.player; return { x: p.x, z: p.z, y: p.y, deg: _hqNormDeg(Math.atan2(p.x, -p.z) * 180 / Math.PI), r: Math.hypot(p.x, p.z),
                                   /* THE SAVE (2026-11-12): the part the walker stands in (a stage crossing rebases the metres), the heading as goTo's `face`, off the ground, the editor */
                                   room: (_hq.opts && _hq.opts.room) || null, face: _hqNormDeg((Math.PI - (p.yaw || 0)) * 180 / Math.PI), air: !!p.air, edit: !!(_hq.opts && _hq.opts.edit), ready: !!_hq.ready }; },

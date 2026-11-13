@@ -4409,6 +4409,52 @@
             el.style.display = '';
         }
         window._questTrackerRender = _questTrackerRender;
+        /* THE QUEST MARKER (2026-11-13, mondo: "quest marker looks good" on the mock-up): a gold diamond over the current
+           stage's target (data.js stage `mark`), with a plate (name + metres). The target in view = the diamond floats
+           over it; out of view = it slides to the screen's edge with an arrow that points the way. A target in another
+           room = the door of this room that leads there (hqRouteNext). Walk only, viewer-local. `window.EW_NO_QUEST_MARK`. */
+        let _questMarkRaf = 0, _questMarkAt = 0, _questMarkT = null;
+        function _questMarkTarget() {
+            let t = null; try { t = (typeof window.questTracker === 'function') ? window.questTracker(_hqProfile()) : null; } catch (e) { t = null; }
+            const m = t && t.mark; if (!m || !m.room) return null;
+            if (_hqCurRoom === m.room) return m.cast ? { cast: m.cast } : null;
+            const hop = (typeof window.hqRouteNext === 'function') ? window.hqRouteNext(_hqCurRoom, m.room) : null;
+            return hop ? { door: hop.door } : null;
+        }
+        function _questMarkTick() {
+            _questMarkRaf = requestAnimationFrame(_questMarkTick);
+            const page = _hqEl('hqPage'); let el = _hqEl('hqQuestMark');
+            const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            const live = page && state.gameState === GS.HQ && !window.EW_NO_QUEST_MARK && TR && TR.hq && TR.hq.active() && typeof TR.hq.questMark === 'function'
+                && !_hqPanelTarget && !document.body.classList.contains('ew-scene') && !(window.EWCine && window.EWCine.on);
+            const now = performance.now();
+            if (live && now - _questMarkAt > 400) { _questMarkAt = now; try { _questMarkT = _questMarkTarget(); } catch (e) { _questMarkT = null; } }
+            let M = null; if (live && _questMarkT) { try { M = TR.hq.questMark(_questMarkT); } catch (e) { M = null; } }
+            if (!M) { if (el) el.style.display = 'none'; return; }
+            if (!el) {
+                el = document.createElement('div'); el.id = 'hqQuestMark'; el.className = 'hq-qmark';
+                el.innerHTML = '<i class="hq-qmark-arrow"></i><i class="hq-qmark-gem"></i><span class="hq-qmark-plate"></span>';
+                page.appendChild(el);
+            }
+            const W = page.clientWidth || window.innerWidth, H = page.clientHeight || window.innerHeight, pad = 44;
+            let x = M.x * W, y = M.y * H;
+            const inView = M.front && x >= pad && x <= W - pad && y >= pad + 30 && y <= H - pad;
+            const arrow = el.firstChild;
+            if (inView) { el.classList.remove('edge'); el.classList.remove('flip'); }
+            else {
+                /* out of view: from the screen's middle toward it (a target behind the eye mirrors), stopped at the edge */
+                let dx = x - W / 2, dy = y - H / 2;
+                if (!M.front) { dx = -dx; dy = Math.abs(dy) + H; }
+                const k = Math.min((W / 2 - pad) / Math.max(1e-3, Math.abs(dx)), (H / 2 - pad) / Math.max(1e-3, Math.abs(dy)));
+                x = W / 2 + dx * k; y = H / 2 + dy * k;
+                el.classList.add('edge'); el.classList.toggle('flip', x > W * 0.6);
+                arrow.style.transform = 'rotate(' + (Math.atan2(dy, dx) * 180 / Math.PI) + 'deg)';
+            }
+            el.style.display = ''; el.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+            const txt = String(M.label || '').toUpperCase() + '  ' + Math.max(1, Math.round(M.dist)) + 'm';
+            const plate = el.lastChild; if (plate.textContent !== txt) plate.textContent = txt;
+        }
+        if (!_questMarkRaf && typeof requestAnimationFrame === 'function') _questMarkRaf = requestAnimationFrame(_questMarkTick);
         /* THE JOURNAL: the pause menu's QUESTS page */
         function _hqPauseQuestsHtml() {
             let J = null;

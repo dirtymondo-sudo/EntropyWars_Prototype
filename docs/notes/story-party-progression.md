@@ -901,6 +901,13 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   three are stood on `afterSeats` (someone down is on their feet for it; the record is already written). Extra action
   `walk` (who, path). A shot's `h` is the LOOK height in bodies and `el` the eye's elevation in degrees: an
   over-the-shoulder wants h ~0.85 and el 6-7, not a high h. Headless stills only; Locke's walk-out unseen in motion.
+- **THE QUEST MARKER (2026-11-13, mondo on the mock-up: "quest marker looks good")**: a stage's `mark` = `{ room }` or
+  `{ cast, room }`. map.js `_questMarkTick` (rAF, `#hqQuestMark`, styles-base.css `.hq-qmark*`): in the mark's room the
+  target is the cast member, elsewhere the door of the room stood in that leads there (data.js `hqRouteNext`, a BFS
+  over the doors' `action.room`). three-renderer.js `hq.questMark({ cast | door })` projects it. In view = a gold diamond
+  over it with a black plate (NAME + metres); out of view = it slides to the screen edge with an arrow. The tracker's
+  bullet is the same diamond. Hidden under a panel and in a scene. `window.EW_NO_QUEST_MARK`. Never write
+  `window.fn = function () { return fn(); }` for a data.js global: the global IS window.fn (it recursed).
 - **Not built yet** (the doc's build order): the new stage endings + the in-world quest marker (mock-up first) + `office_door`,
   D / E / F with the choice box, B the TV cart, A the intro. HQ scenes need an HQ host (cast walk / face / sit hooks).
 

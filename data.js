@@ -28243,12 +28243,12 @@ const STORY_QUESTS = [
         summary: 'Walk to the Training Room and finish the first two tapes.',
         start: 'hq',
         stages: [
-            { id: 'walk',   objective: 'Go to the Training Room (Room 64).', done: { on: 'room', room: 'training' } },
+            { id: 'walk',   objective: 'Go to the Training Room (Room 64).', done: { on: 'room', room: 'training' }, mark: { room: 'training' } },
             { id: 'tape1',  objective: 'Finish Tape 1 · FIRST STEPS at the Range Console.', done: { on: 'lesson', lesson: 'first_steps', filed: true } },
             { id: 'tape2',  objective: 'Finish Tape 2 · THE PRESS.', done: { on: 'lesson', lesson: 'the_press' } },
             { id: 'portal', objective: 'Defeat the two Shadow Entities with the Catgirl.', done: { on: 'fight', fight: 'orientation_portal' } },
-            { id: 'desk',   objective: 'Escort the Catgirl to the front desk.', done: { on: 'talk', who: 'rhonda' } },
-            { id: 'office', objective: 'Walk to your office.', done: { on: 'room', room: 'office' } },
+            { id: 'desk',   objective: 'Escort the Catgirl to the front desk.', done: { on: 'talk', who: 'rhonda' }, mark: { cast: 'rhonda', room: 'central_egress' } },
+            { id: 'office', objective: 'Walk to your office.', done: { on: 'room', room: 'office' }, mark: { room: 'office' } },
         ],
         reward: { unit: 'catgirl', gender: 'female', at: 'desk' },   // she joins at Rhonda's desk, not at the fight's win
         /* THE FIRST QUEST (mondo 2026-11-12: "I shouldnt have anyone at all in my roster except for me (door agent). The whole
@@ -28459,9 +28459,25 @@ function questHolds(profile, key) {
 function questTracker(profile) {
     for (const def of STORY_QUESTS) {
         const pr = questProgress(profile, def.id), st = questStageOf(def, pr);
-        if (st) return { quest: def.id, title: def.title, objective: st.objective, n: def.stages.findIndex(s => s.id === st.id) + 1, total: def.stages.length };
+        if (st) return { quest: def.id, title: def.title, objective: st.objective, mark: st.mark || null, n: def.stages.findIndex(s => s.id === st.id) + 1, total: def.stages.length };
     }
     return null;
+}
+/* THE QUEST MARKER: the first step of the walk from room `from` to room `to` over the building's doors (a door's
+   `action.room`): { room, door } = the next room and the id of the door of `from` that leads to it, or null. A stage's
+   `mark` = { room } (a room to reach) | { cast, room } (a cast member at their post in that room). */
+function hqRouteNext(from, to) {
+    const R = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) || null;
+    if (!R || !R[from] || !R[to] || from === to) return null;
+    const prev = {}; prev[from] = null; const q = [from];
+    while (q.length) {
+        const c = q.shift(); if (c === to) break;
+        ((R[c] && R[c].doors) || []).forEach(d => { const n = d && d.action && d.action.room; if (n && R[n] && !(n in prev)) { prev[n] = { room: c, door: d.id }; q.push(n); } });
+    }
+    if (!(to in prev)) return null;
+    let c = to, hop = null;
+    while (prev[c]) { hop = { room: c, door: prev[c].door }; c = prev[c].room; }
+    return hop;
 }
 /* the journal: every quest on the record — its stages as far as they have been reached (a later one is not shown) */
 function questJournal(profile) {
