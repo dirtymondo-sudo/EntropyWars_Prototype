@@ -26940,6 +26940,19 @@ const DOOR_TEXT = {
         onLight: 'https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo.png',
         onMid:   'https://cdn.entropywars.net/Assets/ui/brand/DOOR_ColoredAndBlackLines_Logo.png',
         mono:    'https://cdn.entropywars.net/Assets/ui/brand/DOOR_BlackAndWhite_Logo.png',
+        /* THE OFFICIAL LOGO PIECES (mondo 2026-11-12, his DOOR folder -> Assets/ui/brand/door_logo/, kept as he exported it:
+           color/ + blackandwhite/, png/ + svg/, arc / cube / door / door-text / subtitle). `mark` = the arc + cube + door with NO
+           text (his own paths, his own layout, nothing redrawn): every small spot that already has the game's text beside it,
+           the door plates, the desk, the foyer's floor seal. `pieces` = the separate parts the intro animates one by one. */
+        mark:     'https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png',
+        markMono: 'https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_mono.png',
+        pieces: {
+            arc:      'https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/arc.png',
+            cube:     'https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/cube.png',
+            door:     'https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/door.png',
+            word:     'https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/door-text.png',
+            subtitle: 'https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/subtitle.png',
+        },
     },
 
     DEPARTMENTS: {
@@ -65136,6 +65149,12 @@ const HQ_LIGHT_RULES = {
        hemisphere / key / fill, so the hall beyond the doorway reads the same from both sides; false = each room its own rig.
        A room's own lamps: shell.lampK (0..1), its share of the Key Light: shell.keyLamp (three-renderer.js _hqJoinedHall / _hqLampK) */
     joinRig: true,
+    /* THE LIT ROOMS (2026-11-12, mondo: "whatever was making the foyer too bright, pretty much all the other rooms inside door hq have
+       the same issue, like the cafeteria, my office"): the Key Light (below) is for DARK rooms. A DOOR HQ room without its own
+       `shell.keyLamp` takes a share of it by how bright it already is = its mood's light × how pale its walls and floor are (the mean luminance of
+       shell.wallColor and shell.floorColor, each `wall` when the room names none): at or under `from` the whole Key Light, at or over `to` only `min` of it, a ramp between. Site rooms keep
+       it whole. on: false = every room the whole Key Light again (three-renderer.js _hqKeyLitK) */
+    keyLampLit: { on: true, from: 0.45, to: 0.75, min: 0.3, wall: 0.8 },
     /* THE PREMIUM POLISH — THE LIGHT PASS (PREMIUM_POLISH_PLAN §2, 2026-09-21). Every number here is the
        building's; a room overrides through its shell (`shell.rig`, `shell.heightFog`, `shell.atmos`,
        `shell.arrival`). The renderer's HQ_LIGHT_DEFAULT carries the same keys (premium-polish.test.js diffs them). */

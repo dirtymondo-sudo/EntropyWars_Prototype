@@ -3921,7 +3921,7 @@ body.diorama-3d .tile-underpass.jump::before {
 }
 /* Codex / Shop headers: seal + a sub-line under the existing title. */
 .door-hdr { display: inline-flex; align-items: center; justify-content: center; gap: 18px; text-align: left; }
-.door-hdr img { width: 64px; height: 64px; object-fit: contain; flex-shrink: 0; }
+.door-hdr img { width: 64px; height: 64px; object-fit: contain; flex-shrink: 0; margin-right: 12px; }   /* the no-text mark fills its box (2026-11-12): keep it off the title's first letter */
 .door-hdr-text { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.25; }
 .door-hdr-sub {
     font-family: 'DotGothic16', monospace; font-size: 9px; letter-spacing: 0.22em;

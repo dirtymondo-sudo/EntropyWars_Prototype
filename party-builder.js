@@ -2225,7 +2225,7 @@ const DOOR = (typeof window !== 'undefined' && window.DOOR_TEXT) || null;
 function DoorSeal({ size }) {
   size = size || 30;
   if (!(DOOR && DOOR.LOGO && DOOR.LOGO.onDark)) return h(SigilMark);
-  return h('img', { src: DOOR.LOGO.onDark, alt: '', draggable: false, style: { width: size, height: size, objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.7))', userSelect: 'none' } });
+  return h('img', { src: DOOR.LOGO.mark || DOOR.LOGO.onDark, alt: '', draggable: false, style: { width: size, height: size, objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.7))', userSelect: 'none' } });
 }
 /* Officer on desk: callsign + story clearance (NOT the ELO rank) — the
    head line of the monitor, same words as the match-select terminal. */

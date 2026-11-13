@@ -4656,7 +4656,7 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
    The studio card before the feature: CRT power-on line, the seal scaling in
    with a chromatic split, the department name typing out, one VHS tracking
    bar sweep, then a tape-stop out. Total 4.3 s (ui.js DOOR_IDENT_MS must
-   match). Built from the seal PNG — no mp4. Lives inside #titlePage and
+   match; the sting's tape stop in audio.js sits on the squish at 3.15 s, so the pieces all land before it). Built from his logo's separate pieces (2026-11-12) — no mp4. Lives inside #titlePage and
    covers it; .on = playing, .off = natural end, .skip = user skipped,
    .reduced = prefers-reduced-motion (static card, fade only, 1.8 s). */
 #titlePage.pre-ident .title-art-wrap,
@@ -4698,28 +4698,29 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
     100%  { opacity: 0; transform: scaleY(0.03) scaleX(1.35); filter: blur(6px) brightness(3); }
 }
 
+/* THE OFFICIAL LOGO, PIECE BY PIECE (mondo 2026-11-12): the box is his layout's mark + wordmark (905.21 x 870 of his
+   1635 x 1167 sheet, from x 365.07); every piece sits at its own place in it, in %. Nothing is redrawn or recoloured
+   except the wordmark, which is his black D.O.O.R shown white on the black card (invert). */
 .door-ident-seal {
-    position: relative; width: clamp(180px, 32vmin, 380px); aspect-ratio: 1;
-    animation: doorIdentJitter 0.32s steps(2, end) 1.95s 1;
+    position: relative; width: clamp(200px, 36vmin, 420px); aspect-ratio: 905.21 / 870;
+    animation: doorIdentJitter 0.32s steps(2, end) 2.3s 1;
 }
-.door-ident-seal img {
-    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain;
-    pointer-events: none;
-}
+.door-ident-seal img { position: absolute; pointer-events: none; -webkit-user-drag: none; }
+.door-ident-seal .di-cube { left: 20.172%; top: 8.895%; width: 59.655%; height: 71.671%; }
 .door-ident-seal .di-main {
     opacity: 0; filter: drop-shadow(0 0 18px rgba(255,255,255,0.25));
-    animation: doorIdentSeal 1.3s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s forwards;
+    animation: doorIdentSeal 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s forwards;
 }
 @keyframes doorIdentSeal {
     0%   { opacity: 0; transform: scale(1.75); filter: blur(14px) brightness(2.2); }
     55%  { opacity: 1; }
     100% { opacity: 1; transform: scale(1); filter: blur(0) drop-shadow(0 0 18px rgba(255,255,255,0.25)); }
 }
-/* chromatic split: two tinted copies fly in from either side and collapse
-   onto the white one (screen blend on black = pure colour fringing) */
+/* chromatic split: two tinted copies of the cube fly in from either side and collapse
+   onto it (screen blend on black = pure colour fringing) */
 .door-ident-seal .di-r, .door-ident-seal .di-b { opacity: 0; mix-blend-mode: screen; }
-.door-ident-seal .di-r { filter: sepia(1) saturate(7) hue-rotate(-45deg) brightness(1.15); animation: doorIdentSplitR 1.3s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s forwards; }
-.door-ident-seal .di-b { filter: sepia(1) saturate(7) hue-rotate(165deg) brightness(1.15); animation: doorIdentSplitB 1.3s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s forwards; }
+.door-ident-seal .di-r { filter: sepia(1) saturate(7) hue-rotate(-45deg) brightness(1.15); animation: doorIdentSplitR 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s forwards; }
+.door-ident-seal .di-b { filter: sepia(1) saturate(7) hue-rotate(165deg) brightness(1.15); animation: doorIdentSplitB 0.9s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s forwards; }
 @keyframes doorIdentSplitR {
     0%   { opacity: 0;    transform: translateX(-34px) scale(1.75); }
     35%  { opacity: 0.85; transform: translateX(-16px) scale(1.25); }
@@ -4730,6 +4731,29 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
     35%  { opacity: 0.85; transform: translateX(16px) scale(1.25); }
     100% { opacity: 0;    transform: translateX(0) scale(1); }
 }
+/* the arc: his own path, uncovered from its left foot over the top to its right foot (a stroke in the mask follows it) */
+.door-ident-seal .di-arc { position: absolute; left: 0; top: 0; width: 100%; height: 71.544%; overflow: visible; pointer-events: none; filter: drop-shadow(0 0 10px rgba(251,176,59,0.35)); }
+.door-ident-seal .di-arc-draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: doorIdentArc 0.75s cubic-bezier(0.45, 0, 0.2, 1) 0.75s forwards; }
+@keyframes doorIdentArc { to { stroke-dashoffset: 0; } }
+/* the door: swings shut onto the wall from its hinge edge, a flare of its knob's amber behind it that dies down */
+.door-ident-seal .di-door {
+    left: 50%; top: 26.813%; width: 7.457%; height: 22.397%;
+    transform-origin: 0 50%; opacity: 0;
+    animation: doorIdentDoor 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) 1.4s forwards;
+}
+@keyframes doorIdentDoor {
+    0%   { opacity: 0; transform: scaleX(0.02); filter: drop-shadow(0 0 0 rgba(251,176,59,0)); }
+    30%  { opacity: 1; transform: scaleX(0.45); filter: drop-shadow(0 0 16px rgba(251,176,59,1)) drop-shadow(0 0 5px #fff); }
+    100% { opacity: 1; transform: scaleX(1); filter: drop-shadow(0 0 3px rgba(251,176,59,0.55)); }
+}
+/* his D.O.O.R wordmark, under the mark where his sheet has it; wipes open from the middle */
+.door-ident-seal .di-word {
+    left: -9.154%; top: 72.902%; width: 118.31%; height: 35.354%;
+    filter: invert(1) drop-shadow(0 0 12px rgba(255,255,255,0.22));
+    clip-path: inset(0 50% 0 50%);
+    animation: doorIdentWord 0.45s cubic-bezier(0.3, 0.8, 0.3, 1) 1.7s forwards;
+}
+@keyframes doorIdentWord { to { clip-path: inset(0 0 0 0); } }
 @keyframes doorIdentJitter {
     0%   { transform: translateX(0); }
     25%  { transform: translateX(-4px) skewX(1.5deg); }
@@ -4745,24 +4769,24 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 .door-ident-text .di-l1 {
     font-size: clamp(11px, 1.55vw, 17px); letter-spacing: 0.34em; padding-left: 0.34em;
     clip-path: inset(0 100% 0 0);
-    animation: doorIdentType 0.9s steps(34, end) 1.25s forwards;
+    animation: doorIdentType 0.65s steps(34, end) 2.0s forwards;
 }
 @keyframes doorIdentType { to { clip-path: inset(0 0 0 0); } }
 .door-ident-text .di-l2 {
     margin-top: 1.2vh; font-size: clamp(9px, 1.1vw, 12px); letter-spacing: 0.55em; padding-left: 0.55em;
     color: rgba(255,255,255,0.5); opacity: 0;
-    animation: doorIdentFade 0.4s ease 2.35s forwards;
+    animation: doorIdentFade 0.35s ease 2.7s forwards;
 }
 @keyframes doorIdentFade { to { opacity: 1; } }
 
-/* one VHS tracking bar sweeps down the picture at ~1.9 s */
+/* one VHS tracking bar sweeps down the picture at ~2.25 s */
 .door-ident-tracking {
     position: absolute; left: 0; right: 0; height: 7%; top: -12%;
     background:
         repeating-linear-gradient(0deg, rgba(255,255,255,0.22) 0 2px, rgba(0,0,0,0.65) 2px 5px),
         linear-gradient(rgba(255,255,255,0.08), rgba(255,255,255,0.08));
     mix-blend-mode: screen; filter: blur(0.6px); opacity: 0; pointer-events: none;
-    animation: doorIdentTrack 0.55s linear 1.9s 1 forwards;
+    animation: doorIdentTrack 0.55s linear 2.25s 1 forwards;
 }
 @keyframes doorIdentTrack {
     0%   { top: -12%; opacity: 1; }
@@ -4791,7 +4815,9 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 .door-ident.reduced .di-b { display: none; }
 .door-ident.reduced .door-ident-stage { animation: doorIdentFade 0.4s ease forwards; }
 .door-ident.reduced .door-ident-seal { animation: none; }
-.door-ident.reduced .di-main { animation: none; opacity: 1; transform: none; }
+.door-ident.reduced .di-main, .door-ident.reduced .di-door { animation: none; opacity: 1; transform: none; }
+.door-ident.reduced .di-word { animation: none; clip-path: none; }
+.door-ident.reduced .di-arc-draw { animation: none; stroke-dashoffset: 0; }
 .door-ident.reduced .di-l1 { animation: none; clip-path: none; }
 .door-ident.reduced .di-l2 { animation: doorIdentFade 0.4s ease 0.3s forwards; }
 
