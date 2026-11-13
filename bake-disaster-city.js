@@ -31,8 +31,10 @@ const plotOf = {}; PLAN.plots.forEach(p => { plotOf[p.id] = p; });
    build(ctx) = after every row exists. ctx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell,
    roofB, ROOF_H, C, N, HALF }. A district edits its own rows by id ('dc:' + building id) and pushes its own rows (arch rows to lateRows). */
 const DISTRICTS = (() => { const dir = path.join(REPO, 'docs/disaster-city/districts'); return !fs.existsSync(dir) ? [] : fs.readdirSync(dir).filter(f => /^[A-Z]\.js$/.test(f)).sort().map(f => require(path.join(dir, f))); })();
+const PROPS = require(path.join(REPO, 'docs/disaster-city/props.js'));   // THE PROP PASS: the kerb's road signs, the set dressing, the prop check
+const dcOwn = new Set();                                                 // the props a district file stood (checked and reported, never moved)
 let dcCtx = null;
-const dcRun = stage => DISTRICTS.forEach(m => { if (typeof m[stage] === 'function') m[stage](dcCtx); });
+const dcRun = stage => { const before = new Set(dcCtx.props); DISTRICTS.forEach(m => { if (typeof m[stage] === 'function') m[stage](dcCtx); }); dcCtx.props.forEach(q => { if (!before.has(q)) dcOwn.add(q); }); };
 DISTRICTS.forEach(m => { if (typeof m.tailor === 'function') m.tailor(PLAN, plotOf); });
 /* THE ROOM PAST THE PLOTS (2026-11-13, Bayside's beach: mondo "bayside needs to have the actual bayside in it too (the beach), with sand and a
    pier"): a district file may export `room = { east: <cells>, sea: { y, key, field } }`. `east` grows the room that many cells past the
@@ -371,7 +373,7 @@ for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) for (let k 
             if (ba) setCell(qa[0], qa[1], '.'); if (bb) setCell(qb[0], qb[1], '.');
             const i = c - r.a, cxm = gc(q[0]), czm = gc(q[1]);
             /* toward the line from the square's middle, and the way a thing against the line faces (into its own plot) */
-            const tl = sideA ? 1 : -1, inFace = horizontal ? (sideA ? 0 : 180) : (sideA ? 270 : 90), off = 0.36 * C * tl;
+            const tl = sideA ? 1 : -1, inFace = horizontal ? (sideA ? 0 : 180) : (sideA ? 270 : 90), off = (kind === 'hedge' ? 0.2 : 0.29) * C * tl;   // THE PROP PASS: a bench's back a hand's width clear of the fence (0.36 touched it; a hedge is 0.9 m thick)
             if (onLine) {
                 if (i % 4 === 1 && BENCH[home.d] && kind !== 'hedge' ? true : (i % 4 === 1 && BENCH[home.d] && rnd() < 0.5)) { take(q[0], q[1]); props.push({ key: BENCH[home.d], x: r3(cxm + (horizontal ? 0 : off)), z: r3(czm + (horizontal ? off : 0)), face: inFace }); }
                 else if (i % 4 === 3 && dd.trees.length && rnd() < dd.treeP * 1.6) { take(q[0], q[1]); features.push({ k: 'tree', x: cxm, z: czm, kind: pick(dd.trees), h: r3(3.4 + rnd() * 0.8) }); count.trees++; }
@@ -608,9 +610,12 @@ for (let cy = 0; cy < 144; cy++) for (let cx = 0; cx < 144; cx++) {
     const sd = kerbSides.find(q => isKerb(cx, cy, q)); if (!sd) continue;
     if (cellAt(cx + 1, cy) === 'P' && cellAt(cx - 1, cy) === 'P' && cellAt(cx, cy + 1) === 'P' && cellAt(cx, cy - 1) === 'P') continue;
     const plus = sd[0] > 0 || sd[1] > 0, a = (sd[0] ? cy : cx) % N;
-    const key = a === 2 ? (plus ? 'fire_hydrant' : 'signpost') : a === 8 ? 'city_bin' : null; if (!key) continue;
+    /* THE PROP PASS (mondo 11-13): the kerb's sign is a real road sign turned to its lane's traffic (was a wooden country signpost); the kerb's bin is the green subway bin */
+    const key = a === 2 ? (plus ? 'fire_hydrant' : 'signpost') : a === 8 ? 'metro_bin' : null; if (!key) continue;
     kerbN++; if (key === 'fire_hydrant') count.hydrants++;
-    take(cx, cy); props.push({ key, x: r3(gc(cx) + sd[0] * 0.4 * C), z: r3(gc(cy) + sd[1] * 0.4 * C), face: sd[0] > 0 ? 90 : sd[0] < 0 ? 270 : sd[1] > 0 ? 180 : 0 });
+    take(cx, cy);
+    if (key === 'signpost') { const sg = PROPS.kerbSign(sd, cx, cy, ['P03-00', 'P00-07'].includes(plotAtCell(cx, cy).id)); props.push({ key: sg.key, x: r3(gc(cx) + sd[0] * 0.4 * C), z: r3(gc(cy) + sd[1] * 0.4 * C), face: sg.face, h: sg.h }); count.signs = (count.signs || 0) + 1; }
+    else props.push({ key, x: r3(gc(cx) + sd[0] * (key === 'metro_bin' ? 0.36 : 0.4) * C), z: r3(gc(cy) + sd[1] * (key === 'metro_bin' ? 0.36 : 0.4) * C), face: sd[0] > 0 ? 90 : sd[0] < 0 ? 270 : sd[1] > 0 ? 180 : 0 });
 }
 /* a plot with no street (a plaza, a park, a court): a lamp where four open squares meet, at the plot's quarter points, head to the middle */
 PLAN.plots.forEach(p => {
@@ -834,6 +839,14 @@ if (LV.mixed) console.warn('THE LEVELS: squares under two buildings of different
     props.forEach(q => { if (typeof q.y === 'number' && (q.y >= 1 || q.y <= -0.5)) q.y = r3(q.y + LV.at(q.x, q.z)); });
 }
 count.levels = lvCount;
+/* ── THE PROP PASS (docs/disaster-city/props.js; mondo 11-13: "cars on top of stuff, benches on top of fences, street signs half way inside
+   buildings ... way more attention to detail and care"): the set dressing, then THE PROP CHECK over every prop of the room, last of all ── */
+{
+    Object.assign(dcCtx, { own: dcOwn, at: LV.at, lamps, busStops, signals: SIGNALS, REPO });
+    count.dressing = PROPS.dress(dcCtx);
+    const pc = PROPS.check(dcCtx); count.propCheck = pc.tally;
+    fs.writeFileSync(path.join(REPO, 'docs/disaster-city/prop-check.txt'), 'THE PROP CHECK, written by node bake-disaster-city.js. A district file\'s own prop that stands in something is listed here for its thread; a shared prop with no clear spot is left out.\n' + JSON.stringify(pc.tally) + '\n' + pc.report.map(r => r.join('  ')).join('\n') + '\n');
+}
 lines[lvLine] = "                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gx(0) + ", nx: 144, nz: 144, f: '" + LV.f64 + "', d: '" + LV.b64 + "' } },";
 features.forEach(f => lines.push("                    " + J(f) + ","));
 lines.push("                ],");

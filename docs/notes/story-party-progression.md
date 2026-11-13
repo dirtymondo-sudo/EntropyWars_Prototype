@@ -941,6 +941,21 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   New HQ scene actions: `place` (who, x, z, face), `show`, `hide` = three-renderer.js `hq.scenePlace(who, o)`.
   The pick is saved as `office_door_open` | `office_door_closed` (hqStoryFlags); nothing reads it yet (the door leaf
   does not stand open). Dev: `Quests.roomScene()`.
+- **SCENE A, THE DROP-OFF (desert half, 2026-11-13)**: his OK on storyboard_A_desert.jpg + "when the door opens there can
+  be either darkness or light inside of it" (white light chosen). data.js `STORY_CUTSCENES.orientation_intro` (9 beats, no
+  lines) plays in its own scene room `intro_desert` (data.js, `sceneRoom: true, noWalkers: true`, sky `scenery: 'none'`, a
+  road strip at x -6, never saved as the last room: map.js `_HQ_SAVE_SKIP`). Sedaniel's post there carries
+  `live: '_ewIntroLive'` (hqCastInRoom: a spot that only exists while window[live] is truthy). map.js `_introDue()` (quest
+  row `intro`, stage `walk`, flag `intro_seen` unset) sends a story entry from the menu into the room first; `_introStart`
+  waits for Sedaniel + the officer's clips (`hq.sceneReady`), plays the scene, files `intro_seen`, enters the foyer.
+  Replay: quest card button REPLAY THE DROP-OFF (`_introReplay`, `Quests.intro()`), back to the room it was asked from.
+  Renderer: `hq.sceneDoor({x,z,face} | {open,ms} | {remove})` stands the main menu's free-standing door (`_introBuildDoor`,
+  seal + CROSSING sign on its local -Z = `face: 0` shows them to a camera south of it) with an unlit white sheet + lamp
+  in the doorway that come up with the swing; scene action `door`. `hide`/`show` of the player is held every frame
+  (`_scenePlayerOut`). `scenePlace` now cancels a running `sceneWalk` of the same body. `hq.dev.playerAnim()` = the
+  officer's clip. Off switch: `window.EW_NO_INTRO = true` (harnesses that enter story fresh need it). My picks: daylight;
+  a passenger-side travelling shot instead of the windscreen (Sedaniel's glass is solid). NOT BUILT: the elevator descent
+  + the lift doors on the foyer (needs his OK on frames first).
 - **SCENE B, THE TV CART (2026-11-13)**: data.js `STORY_CUTSCENES.orientation_tv` (12 beats, his lines word for word,
   the two long ones over two cards); it hangs on the `walk` stage (`scene`), so it plays the moment the recruit first
   stands in Room 64, and the stage's `then: { lesson: 'first_steps' }` starts Tape 1 when the scene ends (map.js

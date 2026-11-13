@@ -13,6 +13,7 @@ const ROOFC = U('ConcreteUnderTiles1'), CONC = U('ConcreteStriped2a'), CONCW = U
 const M_GREY = U('MetalCorrugatedPainted1a'), M_RED = U('MetalCorrugatedPainted2a'), M_OCHRE = U('MetalCorrugatedPainted3a'), M_GREEN = U('MetalCorrugatedPainted4a'), M_BLUE = U('MetalCorrugatedPainted5a');
 const G_TALL = U('GlassWindowTall1a'), G_TALL3 = U('GlassWindowTall3a'), G_SQ = U('GlassWindowSquare1a'), G_SQ3 = U('GlassWindowSquare3a'), G_FAC = U('GlassWindowFactory2a'), G_FAC1 = U('GlassWindowFactory1a'), G_RES = U('GlassWindowResidential1a');
 const T_RED = U('TileSubway3a'), T_BLUE = U('TileSubway3d'), T_OCHRE = U('TileSubway3b'), T_CHECK = U('TileGeneric5a');
+const GRILL = U('MetalSubwayGrill1a'), MARBLE = U('TileMarble1a'), MARBLE_D = U('TileMarble2d'), RUBBER = U('RubberNonSlip1a'), RUB_Y = U('RubberNonSlip3a'), PAVE = U('TileGeneric2a');
 const TRUSS = U('MetalTruss1b'), DOORS = U('DoorStorefrontHalf1b'), GOLD = 'gold';
 const STADIUM = ['P04-09', 'P05-09', 'P04-10', 'P05-10'];
 
@@ -60,7 +61,266 @@ exports.apply = (ctx) => {
     const tier = id => { const f = row(id); f.bld.skin = false; return f; };
     /* a block nothing is drawn for: a stand, a kiosk, a mast's foot (collision only) */
     const block = (id, x, z, w, d, st) => features.push({ k: 'texbuilding', id: 'dc:S-' + id, x: r3(x), z: r3(z), w, d, rot: 0, storeys: st || 1, style: 'office', seed: seed++, skin: false });
-    const B = (id, x, z, rot, parts) => lateRows.push({ k: 'arch', id: 'arch:S:' + id, x: r3(x), z: r3(z), y: 0, rot, parts: parts.flat(Infinity).map(clean) });
+    const B = (id, x, z, rot, parts) => lateRows.push({ k: 'arch', id: 'arch:S:' + id, x: r3(x), z: r3(z), y: 0, rot, parts: parts.concat(X[id] ? X[id]() : []).flat(Infinity).map(clean) });
+
+    /* ═══ THE POLISH PASS (mondo 11-13 20:15: "one more polish pass on the exteriors ... Go one or two more layers deep with the detail, the
+       foundation is already there and is good"; 20:18: "roofs and ac units"). X[id] = the second and third layer of a building, added to its
+       arch row: cornices and copings, sills and lintels, door surrounds and steps, wall lamps, gutters and downpipes, lettered signs
+       (three-renderer.js THE LETTERING), roof plant (AC units, vents, hatches, tanks), flags. Nothing at ground level stands out past 0.8 m. ═══ */
+    const X = {};
+    const STEEL = 0x4a5058, DARKM = 0x2a2e34, CREAM = 0xf2ead8, LAMP = 0xffe2a0;
+    /* a point on a face: u = along it (left to right as you look at it), out = off the wall */
+    const on = (face, w, d, u, out) => face === 'f' ? [u, d / 2 + out] : face === 'b' ? [-u, -d / 2 - out] : face === 'r' ? [w / 2 + out, -u] : [-w / 2 - out, u];
+    const RY = { f: 0, b: 180, r: -90, l: 90 }, STEP = { f: [1, 0], b: [-1, 0], r: [0, -1], l: [0, 1] };
+    /* a box on a face: bw along it, bh high, bt standing out; n of them a step apart */
+    const bx = (face, w, d, u, y, bw, bh, bt, o) => { o = o || {}; const q = on(face, w, d, u, bt / 2 + (o.out || 0)), ns = face === 'f' || face === 'b';
+        const P = Object.assign({ s: 'box', p: [q[0], y, q[1]], size: ns ? [bw, bh, bt] : [bt, bh, bw] }, o); delete P.out;
+        if (o.n > 1) P.step = [STEP[face][0] * o.st, 0, STEP[face][1] * o.st]; delete P.st; return P; };
+    /* the sills and lintels of a row of windows laid by panels() (same face, y, size, count, span, centre) */
+    const trim = (face, w, d, y, pw, ph, n, o) => { o = o || {}; const L = (face === 'f' || face === 'b') ? w : d, span = o.span || (L - pw - 1.2), st = n > 1 ? span / (n - 1) : 0, u0 = (o.c || 0) - span / 2, K = { key: o.key || WHITE, tint: o.tint, n, st };
+        return [bx(face, w, d, u0, y - 0.14, pw + 0.3, 0.14, 0.2, K), bx(face, w, d, u0, y + ph, pw + 0.24, 0.16, 0.12, K)]; };
+    /* shutters either side of a row of windows */
+    const shutters = (face, w, d, y, pw, ph, n, tint, o) => { o = o || {}; const L = (face === 'f' || face === 'b') ? w : d, span = o.span || (L - pw - 1.2), st = n > 1 ? span / (n - 1) : 0, u0 = (o.c || 0) - span / 2;
+        return [-1, 1].map(sd => bx(face, w, d, u0 + sd * (pw / 2 + 0.24), y, 0.42, ph, 0.06, { tint, n, st })); };
+    const cornice = (w, d, y, t, out, key, tint, o) => Object.assign({ s: 'box', p: [0, y, 0], size: [w + 2 * out, t, d + 2 * out], top: false, under: true, key, tint }, o || {});
+    const coping = (w, d, y, key, tint) => [bx('f', w, d, 0, y, w + 0.3, 0.3, 0.3, { out: -0.3, key, tint }), bx('b', w, d, 0, y, w + 0.3, 0.3, 0.3, { out: -0.3, key, tint }), bx('l', w, d, 0, y, d - 0.3, 0.3, 0.3, { out: -0.3, key, tint }), bx('r', w, d, 0, y, d - 0.3, 0.3, 0.3, { out: -0.3, key, tint })];
+    const pipe = (face, w, d, u, h, tint) => { const q = on(face, w, d, u, 0.1); return [{ s: 'cyl', p: [q[0], 0, q[1]], r: 0.07, h, seg: 6, tint: tint || DARKM }, bx(face, w, d, u, h - 0.3, 0.3, 0.3, 0.26, { tint: tint || DARKM })]; };
+    const gutter = (face, w, d, y, len, tint) => bx(face, w, d, 0, y, len, 0.16, 0.22, { tint: tint || DARKM });
+    const lamp = (face, w, d, u, y) => [bx(face, w, d, u, y, 0.34, 0.4, 0.3, { tint: LAMP, glow: 0.9 }), bx(face, w, d, u, y + 0.4, 0.44, 0.08, 0.38, { tint: DARKM })];
+    /* a lettered sign: the words on a board (bg) or alone (bg ''), sw × sh, its foot at y */
+    const sign = (face, w, d, u, y, sw, sh, words, fg, bg, o) => { o = o || {}; const q = on(face, w, d, u, 0.05 + (o.out || 0));
+        const P = { s: 'quad', p: [q[0], y, q[1]], ry: RY[face], size: [sw, sh], key: 'txt:' + words + '|' + fg + '|' + (bg || '') + '|' + (Math.round(sw / sh * 100) / 100), uv: 'fit', tint: 0xffffff, glow: o.glow, kind: bg ? undefined : 'over' };
+        return o.board ? [bx(face, w, d, u, y - 0.12, sw + 0.3, sh + 0.24, 0.14, { out: o.out || 0, tint: o.board }), Object.assign(P, { p: [on(face, w, d, u, 0.2 + (o.out || 0))[0], y, on(face, w, d, u, 0.2 + (o.out || 0))[1]] })] : P; };
+    /* a free-standing sign on any plane: a quad at [x, y, z] turned ry */
+    const signAt = (x, y, z, ry, sw, sh, words, fg, bg, glow) => ({ s: 'quad', p: [x, y, z], ry, size: [sw, sh], key: 'txt:' + words + '|' + fg + '|' + (bg || '') + '|' + (Math.round(sw / sh * 100) / 100), uv: 'fit', tint: 0xffffff, glow, kind: bg ? undefined : 'over' });
+    /* THE ROOF PLANT: an AC unit (a cabinet, its fan ring, its feet), a vent cowl, a roof hatch, a duct run, a water tank */
+    const ac = (x, y, z, sc) => { sc = sc || 1; return [{ s: 'box', p: [x, y + 0.14, z], size: [1.5 * sc, 0.95 * sc, 1.0 * sc], key: M_GREY, tint: 0xc8ccd0, uv: 1.2 }, { s: 'box', p: [x, y, z], size: [1.3 * sc, 0.14, 0.8 * sc], tint: DARKM },
+        { s: 'cyl', p: [x, y + 0.14 + 0.95 * sc, z], r: 0.36 * sc, h: 0.08, seg: 12, tint: DARKM }, { s: 'quad', p: [x, y + 0.3, z + 0.5 * sc + 0.01], size: [1.2 * sc, 0.6 * sc], key: GRILL, uv: 'fit' }]; };
+    const acRow = (x, y, z, n, dx, dz) => Array.from({ length: n }, (_, i) => ac(x + i * (dx || 0), y, z + i * (dz || 0)));
+    const wallAC = (face, w, d, u, y) => [bx(face, w, d, u, y, 0.9, 0.6, 0.45, { key: M_GREY, tint: 0xc8ccd0, uv: 0.9 }), bx(face, w, d, u, y + 0.08, 0.7, 0.44, 0.02, { key: GRILL, uv: [0.7, 0.44], out: 0.45 }), bx(face, w, d, u, y - 0.08, 1.0, 0.08, 0.5, { tint: DARKM })];
+    const vent = (x, y, z, r) => { r = r || 0.25; return [{ s: 'cyl', p: [x, y, z], r, h: 0.7, seg: 10, tint: 0x9aa0a8 }, { s: 'cyl', p: [x, y + 0.7, z], r: r * 1.7, r2: r * 0.6, h: 0.3, seg: 10, tint: 0x7a8088 }]; };
+    /* a rubber walkway laid on a flat roof between the plant */
+    const mat = (x, y, z, w2, d2) => ({ s: 'quad', flat: true, p: [x, y + 0.03, z], size: [w2, d2], key: RUBBER, uv: 1.75 });
+    const hatch = (x, y, z) => [{ s: 'box', p: [x, y, z], size: [1.2, 0.35, 1.2], key: M_GREY, tint: 0x8a9098, uv: 1.2 }, { s: 'box', p: [x, y + 0.35, z], size: [1.3, 0.08, 1.3], tint: DARKM }];
+    const duct = (x, y, z, len, alongZ) => [{ s: 'box', p: [x, y + 0.25, z], size: alongZ ? [0.6, 0.5, len] : [len, 0.5, 0.6], key: M_GREY, tint: 0xb0b6bc, uv: 1.2 }, { s: 'box', p: [x, y, z], size: alongZ ? [0.2, 0.25, len * 0.9] : [len * 0.9, 0.25, 0.2], tint: DARKM }];
+    const tank = (x, y, z, r, h) => [{ s: 'box', p: [x, y, z], size: [r * 1.6, 0.9, r * 1.6], top: false, key: TRUSS, uv: [1.1, 0.9], ds: true }, { s: 'cyl', p: [x, y + 0.9, z], r, h, seg: 14, key: M_OCHRE, tint: 0xb89878, uv: 1.5 }, { s: 'cyl', p: [x, y + 0.9 + h, z], r: r * 1.08, r2: 0, h: r * 0.7, seg: 14, tint: 0x5a4a40 }];
+    const flag = (x, y, z, h, tint) => [{ s: 'cyl', p: [x, y, z], r: 0.07, h, seg: 6, tint: 0xdddddd }, { s: 'quad', p: [x + 0.65, y + h - 0.95, z], size: [1.3, 0.85], tint, ds: true }];
+    const steps = (face, w, d, u, sw, n) => Array.from({ length: n }, (_, i) => bx(face, w, d, u, 0, sw + (n - 1 - i) * 0.0, 0.17 * (n - i), 0.36, { out: 0.36 * i, key: CONC }));
+    const surround = (face, w, d, u, dw, dh, key, tint) => [bx(face, w, d, u - dw / 2 - 0.2, 0, 0.3, dh + 0.3, 0.18, { key, tint }), bx(face, w, d, u + dw / 2 + 0.2, 0, 0.3, dh + 0.3, 0.18, { key, tint }), bx(face, w, d, u, dh + 0.05, dw + 0.9, 0.34, 0.26, { key, tint })];
+
+    /* THE MUSEUM: the name cut in the frieze, steps up to the portico, a dentil course, pilasters between the tall windows with sills and
+       keystones, a roundel in the pediment, a balustrade round the roof, a ring cornice and ribs on the drum, lamps and urns at the door,
+       roof plant behind the parapet */
+    X['P04-08-B1'] = () => { const w = 28, d = 24.5, o = [];
+        o.push(signAt(0, 8.72, 16.58, 0, 13, 1.05, 'MUSEUM OF THE CITY', '#3a3428', ''));
+        o.push({ s: 'box', p: [0, 0, 16.9], size: [21.5, 0.2, 0.9], key: MARBLE }, { s: 'box', p: [0, 0.2, 16.6], size: [21.5, 0.2, 0.5], key: MARBLE }, { s: 'box', p: [0, 0.36, 14.3], size: [20.6, 0.06, 4.1], key: MARBLE_D, uv: 1.75 });
+        o.push({ s: 'box', p: [-9.9, 8.3, 16.62], size: [0.3, 0.28, 0.16], key: WHITE, n: 34, step: [0.6, 0, 0] });
+        o.push({ s: 'cyl', p: [0, 10.6, 16.72], r: 0.8, h: 0.08, seg: 16, tint: 0x8fd6b8 });
+        ['l', 'r'].forEach(fc => { o.push(bx(fc, w, d, -10.25, 1.1, 0.7, 9.4, 0.22, { key: WHITE, tint: 0xf4e6c8, n: 7, st: 3.42 }), trim(fc, w, d, 2.6, 1.75, 5.6, 6, { key: WHITE }), bx(fc, w, d, -8.775, 8.36, 0.5, 0.5, 0.2, { key: WHITE, n: 6, st: 3.51 })); });
+        o.push(bx('b', w, d, -12, 1.1, 0.7, 9.4, 0.22, { key: WHITE, tint: 0xf4e6c8, n: 9, st: 3 }), pipe('b', w, d, -13.4, 10.5), pipe('b', w, d, 13.4, 10.5), wallAC('b', w, d, -6, 3.2), wallAC('b', w, d, 6, 3.2));
+        o.push(cornice(28, 24.5, 9.9, 0.3, 0.35, WHITE, 0xffffff));
+        /* the balustrade: a rail on a row of balusters round the roof slab */
+        [['f', 29, 49], ['b', 29, 49], ['l', 25.5, 43], ['r', 25.5, 43]].forEach(q => { o.push(bx(q[0], 29.4, 25.9, 0, 12.0, q[1], 0.14, 0.3, { out: -0.45, key: WHITE }), bx(q[0], 29.4, 25.9, -q[1] / 2 + 0.3, 11.2, 0.16, 0.8, 0.16, { out: -0.38, key: WHITE, n: q[2], st: (q[1] - 0.6) / (q[2] - 1) })); });
+        o.push({ s: 'cyl', p: [0, 14.55, 0], r: 6.6, h: 0.3, seg: 24, key: WHITE }, { s: 'cyl', p: [0, 12.3, 0], r: 6.5, h: 0.25, seg: 24, key: WHITE });
+        o.push({ s: 'box', p: [0, 12.3, 0], size: [0.3, 2.3, 0.3], key: WHITE, ring: { n: 12, r: 6.4, a0: 15 } });
+        o.push({ s: 'cyl', p: [0, 19.7, 0], r: 1.3, h: 0.2, seg: 12, key: WHITE }, { s: 'cyl', p: [0, 22.9, 0], r: 0.05, h: 1.6, seg: 5, tint: 0xdddddd });
+        o.push(surround('f', w, d, -2.625, 1.75, 2.3, WHITE, 0xffffff), lamp('f', w, d, -4.6, 2.4), lamp('f', w, d, -0.65, 2.4));
+        o.push({ s: 'box', p: [-10.9, 0, 15.4], size: [1.1, 1.1, 1.1], key: WHITE, n: 2, step: [21.8, 0, 0] }, { s: 'dome', p: [-10.9, 1.1, 15.4], r: 0.5, h: 0.7, seg: 8, rings: 3, tint: 0x8fd6b8, n: 2, step: [21.8, 0, 0] });
+        o.push(acRow(-10.5, 12.3, -9, 3, 1.9, 0), acRow(7, 12.3, -9, 2, 1.9, 0), hatch(10.5, 12.3, 8), mat(0, 12.3, -9, 26, 1.2), mat(10.5, 12.3, 0, 1.2, 17), vent(-10.5, 12.3, 8), vent(-9.2, 12.3, 8), duct(9.5, 12.3, -4.5, 6, true));
+        return o; };
+    /* THE GALLERY: the name on the glass box's fascia, black mullions and a sill on it, a steel coping, a lit door reveal, a cube on a plinth by
+       the door, a downpipe; the roof plant sits on the glass box (the roof itself is the roof walk) */
+    X['P05-08-B1'] = () => { const w = 17.6, d = 14.1, o = [];
+        o.push(signAt(3.2, 6.05, 8.83, 0, 5.4, 0.6, 'GALLERY', '#f4f4f4', ''));
+        o.push({ s: 'box', p: [-0.8, 3.4, 8.82], size: [0.1, 3.4, 0.06], tint: DARKM, n: 6, step: [1.6, 0, 0] }, { s: 'box', p: [3.2, 3.32, 7.2], size: [8.2, 0.1, 3.4], tint: DARKM }, { s: 'box', p: [3.2, 6.8, 7.2], size: [8.2, 0.12, 3.4], tint: DARKM });
+        o.push(bx('l', w, d, 0, 6.86, 14.3, 0.16, 0.12, { tint: STEEL }), bx('r', w, d, 0, 6.86, 14.3, 0.16, 0.12, { tint: STEEL }), bx('b', w, d, 0, 6.86, 17.8, 0.16, 0.12, { tint: STEEL }), bx('f', w, d, -4.9, 6.86, 7.9, 0.16, 0.12, { tint: STEEL }));
+        o.push(bx('f', w, d, -3.4, 2.82, 7.4, 0.08, 0.3, { tint: LAMP, glow: 0.8 }), pipe('b', w, d, -8.2, 6.9, STEEL), pipe('b', w, d, 8.2, 6.9, STEEL), wallAC('b', w, d, 3, 2.6), wallAC('b', w, d, 4.4, 2.6));
+        o.push({ s: 'box', p: [7.6, 0, 7.75], size: [1.0, 0.7, 1.0], key: MARBLE_D }, { s: 'box', p: [7.6, 0.7, 7.75], size: [0.7, 0.7, 0.7], tint: 0xff6a4a });
+        o.push(ac(1.6, 6.92, 7.2, 0.8), ac(4.8, 6.92, 7.2, 0.8));
+        return o; };
+    /* THE ART SUPPLY SHOP: a painted name board over the awning, a brick plinth, sills and lintels, a shop door, gutters and downpipes, a
+       chimney cap and pots, a brush-and-palette hanging sign, a ridge vent */
+    X['P05-08-B2'] = () => { const w = 17.5, d = 14, o = [];
+        o.push(sign('f', w, d, 0, 3.55, 9.5, 0.62, 'ART SUPPLIES', '#f2ead8', '#1e3a5a', { board: 0x16293f }));
+        o.push(bx('f', w, d, 0, 0, 17.7, 0.5, 0.1, { key: T_RED, tint: 0xa87868 }), bx('l', w, d, 0, 0, 14.2, 0.5, 0.1, { key: T_RED, tint: 0xa87868 }), bx('r', w, d, 0, 0, 14.2, 0.5, 0.1, { key: T_RED, tint: 0xa87868 }));
+        o.push(trim('f', w, d, 4.2, 1.5, 2, 5), trim('l', w, d, 4.2, 1.5, 2, 3), trim('r', w, d, 4.2, 1.5, 2, 3));
+        o.push(gutter('f', w, d, 6.84, 18.4, 0x2a3a4a), gutter('b', w, d, 6.84, 18.4, 0x2a3a4a), pipe('f', w, d, -8.4, 6.9, 0x2a3a4a), pipe('f', w, d, 8.4, 6.9, 0x2a3a4a), pipe('b', w, d, 8.4, 6.9, 0x2a3a4a));
+        o.push({ s: 'box', p: [5.5, 12.4, -3], size: [1.5, 0.2, 1.5], key: CONC }, { s: 'cyl', p: [5.2, 12.6, -3], r: 0.18, h: 0.5, seg: 8, tint: 0xb86a4a, n: 2, step: [0.6, 0, 0] });
+        o.push({ s: 'box', p: [-8.2, 3.3, 8.2], size: [0.08, 0.08, 1.2], tint: DARKM }, { s: 'cyl', p: [-8.2, 2.3, 8.75], r: 0.45, h: 0.06, seg: 12, tint: 0xf2c14a }, vent(-4, 9.2, 0, 0.2), wallAC('b', w, d, -5, 2.6), wallAC('l', w, d, 4, 2.6));
+        return o; };
+    /* THE SCULPTORS' WORKSHOP: a name board, a steel frame and a lamp over the roller door, a hazard kerb, gutters at the sawtooth valleys,
+       an extract stack and wall fans, a gantry beam with a hoist over the door */
+    X['P05-08-B3'] = () => { const w = 17.5, d = 10.5, o = [];
+        o.push(sign('f', w, d, 4.6, 4.6, 6.4, 0.6, 'SCULPTORS WORKSHOP', '#f4f4f4', '#27425e', { board: 0x1a2c40 }));
+        o.push(bx('f', w, d, -5.85, 0, 0.25, 3.8, 0.14, { tint: STEEL }), bx('f', w, d, -1.15, 0, 0.25, 3.8, 0.14, { tint: STEEL }), bx('f', w, d, -3.5, 3.6, 4.95, 0.3, 0.2, { tint: 0xe8c020 }), lamp('f', w, d, -3.5, 4.1));
+        o.push(bx('f', w, d, 0, 0, 17.7, 0.45, 0.1, { key: CONC }), bx('l', w, d, 0, 0, 10.7, 0.45, 0.1, { key: CONC }), bx('r', w, d, 0, 0, 10.7, 0.45, 0.1, { key: CONC }));
+        o.push({ s: 'box', p: [-3.5, 5.0, 6.1], size: [0.25, 0.4, 1.9], tint: 0xe8c020 }, { s: 'box', p: [-3.5, 4.3, 6.8], size: [0.3, 0.7, 0.3], tint: DARKM });
+        o.push(trim('f', w, d, 2.2, 2.6, 2.2, 2, { span: 4.2, c: 4.6, key: CONC }), pipe('f', w, d, 8.5, 5.6), pipe('b', w, d, -8.5, 5.6), pipe('b', w, d, 8.5, 5.6));
+        o.push({ s: 'cyl', p: [6.8, 5.6, -3.6], r: 0.35, h: 4.2, seg: 10, tint: 0x8a9098 }, { s: 'cyl', p: [6.8, 9.8, -3.6], r: 0.55, r2: 0.3, h: 0.4, seg: 10, tint: 0x6a7078 });
+        o.push({ s: 'cyl', p: [0, 3.6, -5.3], r: 0.55, h: 0.12, seg: 12, tint: DARKM, n: 2, step: [3, 0, 0] }, wallAC('r', w, d, 2, 2.4), wallAC('r', w, d, 3.4, 2.4));
+        return o; };
+    /* THE WRESTLING HALL: the marquee's letter board and its row of bulbs, poster cases by the doors, steps, a dentil course under the gilt band,
+       gilt caps on the pilasters, pennants on the front towers, gilt ribs and a base ring on the big top, lamps down the side walls, the side
+       walls' pilasters, downpipes; plant in the back corners of the roof terrace (off the roof walk's line) */
+    X['P06-08-B1'] = () => { const w = 28.1, d = 28.1, RED = 0xe2473a, o = [];
+        o.push(signAt(0, 3.45, 16.74, 0, 10.6, 1.0, 'WRESTLING TONIGHT', '#2a1410', '', 0));
+        o.push(signAt(0, 4.5, 16.74, 0, 7, 0.62, 'THE BIG TOP ARENA', '#8a1c14', ''));
+        o.push({ s: 'box', p: [-5.6, 3.02, 16.76], size: [0.16, 0.16, 0.1], tint: LAMP, glow: 1, n: 29, step: [0.4, 0, 0] }, { s: 'box', p: [-5.6, 5.36, 16.76], size: [0.16, 0.16, 0.1], tint: LAMP, glow: 1, n: 29, step: [0.4, 0, 0] });
+        o.push({ s: 'box', p: [-6.1, 2.98, 15.4], size: [0.12, 0.1, 2.7], tint: LAMP, glow: 0.8, n: 2, step: [12.2, 0, 0] });
+        [-9.2, -6.4, 6.4, 9.2].forEach((u, i) => o.push(bx('f', w, d, u, 0.9, 1.7, 2.3, 0.12, { key: GOLD, glow: 0.3, out: 0.5 }), bx('f', w, d, u, 1.02, 1.46, 2.06, 0.04, { tint: [0x2f5fd0, 0xd23a2a, 0x2f8f4a, 0xe8a020][i], out: 0.62 })));
+        o.push({ s: 'box', p: [0, 0, 17.0], size: [11, 0.18, 0.7], key: MARBLE }, { s: 'quad', flat: true, p: [0, 0.03, 15.4], size: [11.6, 2.6], key: U('RubberNonSlip2a'), uv: 1.75, kind: 'over' });
+        ['f', 'b', 'l', 'r'].forEach(fc => o.push(bx(fc, w, d, -13.6, 5.86, 0.34, 0.34, 0.2, { key: WHITE, tint: 0xfff6e0, n: 46, st: 0.6045, out: 0.2 })));
+        ['l', 'r', 'b'].forEach(fc => o.push(bx(fc, w, d, -12.4, 0, 1.3, 7, 0.5, { key: GOLD, glow: 0.3, n: 8, st: 3.543 }), bx(fc, w, d, -10.63, 4.3, 0.4, 0.5, 0.3, { tint: LAMP, glow: 0.8, n: 7, st: 3.543 })));
+        o.push(flag(-13, 12.4, 13, 2.6, RED), flag(13, 12.4, 13, 2.6, RED));
+        o.push({ s: 'box', p: [0, 7.02, 0], size: [0.3, 4, 0.3], key: GOLD, glow: 0.3, ring: { n: 16, r: 9.08 } }, { s: 'cyl', p: [0, 7.0, 0], r: 9.5, h: 0.4, seg: 32, key: GOLD, glow: 0.3 });
+        o.push(pipe('b', w, d, -13.6, 6.2), pipe('b', w, d, 13.6, 6.2));
+        o.push(acRow(-11.6, 7.02, -12.2, 2, 2, 0), acRow(9.6, 7.02, -12.2, 2, 2, 0), hatch(-12, 7.02, -8.6), vent(12.2, 7.02, -9.4), vent(12.2, 7.02, -8.2));
+        return o; };
+    /* THE CLUBHOUSE: the name on the blue band, white frames round the big windows, a brick plinth, a scalloped valance and pennants on the
+       canopy, the press box's antennae and its own AC, a clock on the gable end, downpipes */
+    X['P07-08-B1'] = () => { const w = 28.1, d = 10.6, o = [];
+        o.push(signAt(0, 5.25, 5.42, 0, 9, 0.62, 'CLUBHOUSE', '#f4f4f4', ''));
+        o.push(trim('f', w, d, 0.3, 2.4, 2.4, 6, { span: 22 }), bx('f', w, d, -11, 0.3, 0.14, 2.4, 0.08, { key: WHITE, n: 6, st: 4.4, out: 0.02 }), trim('b', w, d, 4.0, 1.6, 1.8, 7));
+        o.push(bx('b', w, d, 0, 0, 28.3, 0.6, 0.1, { key: CONC }), bx('l', w, d, 0, 0, 10.8, 0.6, 0.1, { key: CONC }), bx('r', w, d, 0, 0, 10.8, 0.6, 0.1, { key: CONC }));
+        o.push({ s: 'box', p: [-12.6, 3.95, 9.1], size: [0.6, 0.36, 0.06], tint: 0xf4f4f4, n: 22, step: [1.2, 0, 0] }, { s: 'box', p: [-12, 3.95, 9.1], size: [0.6, 0.36, 0.06], tint: 0x3b62c4, n: 21, step: [1.2, 0, 0] });
+        o.push({ s: 'cyl', p: [-14.1, 4.6, 0], r: 0.8, h: 0.1, seg: 16, tint: 0xf4f4f4, ry: 90 }, pipe('b', w, d, -13.8, 6.3), pipe('b', w, d, 13.8, 6.3), wallAC('b', w, d, -9, 2.2), wallAC('b', w, d, 9, 2.2));
+        o.push({ s: 'cyl', p: [-3.6, 9.8, -3.1], r: 0.05, h: 2.4, seg: 5, tint: 0xdddddd, n: 2, step: [7.2, 0, 0] }, ac(2.6, 9.8, -3.3, 0.8), { s: 'box', p: [0, 9.8, -3.1], size: [9.3, 0.14, 3.7], tint: DARKM, sides: true, top: false, under: true });
+        return o; };
+    /* THE GROUNDSKEEPER'S HOUSE: green shutters and flower boxes, a porch rail, a door hood, a stone plinth, gutters and downpipes, chimney
+       pots, a dormer on the front slope, a wall AC round the back */
+    X['P07-08-B2'] = () => { const w = 21, d = 17.5, GRN = 0x2f6f4a, o = [];
+        o.push(shutters('f', w, d, 0.9, 1.5, 1.7, 4, GRN, { span: 15 }), shutters('f', w, d, 3.9, 1.5, 1.7, 5, GRN), shutters('l', w, d, 3.9, 1.5, 1.7, 4, GRN), shutters('r', w, d, 3.9, 1.5, 1.7, 4, GRN));
+        o.push(bx('f', w, d, -7.5, 0.62, 1.7, 0.26, 0.3, { tint: 0x8a5a3a, n: 4, st: 5 }), bx('f', w, d, -7.5, 0.88, 1.5, 0.2, 0.24, { tint: 0xd24a6a, n: 4, st: 5 }));
+        o.push(trim('f', w, d, 3.9, 1.5, 1.7, 5), bx('f', w, d, 0, 0, 21.2, 0.5, 0.1, { key: CONC }), bx('l', w, d, 0, 0, 17.7, 0.5, 0.1, { key: CONC }), bx('r', w, d, 0, 0, 17.7, 0.5, 0.1, { key: CONC }));
+        o.push({ s: 'box', p: [-5.25, 0.85, 12.05], size: [3.4, 0.08, 0.08], key: WHITE, n: 4, step: [3.5, 0, 0] }, { s: 'box', p: [-6.4, 0, 12.05], size: [0.07, 0.85, 0.07], key: WHITE, n: 12, step: [1.166, 0, 0] });
+        o.push(gutter('f', w, d, 6.3, 22.4, 0x5a3a2a), gutter('b', w, d, 6.3, 22.4, 0x5a3a2a), pipe('f', w, d, -10.2, 6.3, 0x5a3a2a), pipe('f', w, d, 10.2, 6.3, 0x5a3a2a), pipe('b', w, d, 10.2, 6.3, 0x5a3a2a), wallAC('b', w, d, 4, 1.4));
+        o.push({ s: 'box', p: [-6, 11.6, -3], size: [1.6, 0.2, 1.6], key: CONC }, { s: 'cyl', p: [-6.3, 11.8, -3], r: 0.18, h: 0.5, seg: 8, tint: 0xb86a4a, n: 2, step: [0.6, 0, 0] });
+        o.push({ s: 'box', p: [4, 6.6, 5.4], size: [2.2, 1.7, 2.6], key: STUCCO, tint: 0xfff2cf }, { s: 'roof', form: 'gable', ry: 90, p: [4, 8.3, 5.4], size: [2.6, 1.1, 2.6], over: 0.2, key: T_RED, tint: 0xe08a5c }, { s: 'quad', p: [4, 6.9, 6.72], size: [1.3, 1.2], key: G_RES, uv: 'fit' });
+        return o; };
+    /* THE STADIUM: the scoreboard's lettering, the name over the press box and on the back walls, aisles and a front rail on each stand,
+       pilasters and gate signs on the back walls, pennants along the tops, dugouts on the sidelines, lamp heads on the masts, AC on the press box */
+    X['stadium'] = () => { const o = [];
+        o.push(signAt(-39.72, 9.3, 0, -90, 11.6, 1.2, 'HOME  14      VISITORS  10', '#ffb020', '#14161a', 0.9), signAt(-39.72, 7.2, 0, -90, 11.6, 1.0, 'QTR 3     08:42', '#ffe2a0', '#14161a', 0.9));
+        o.push({ s: 'box', p: [-40.25, 11.5, 0], size: [1.2, 0.3, 14.4], tint: 0x444a52 }, signAt(-40.77, 8.2, 0, 90, 10, 1.6, 'CITY STADIUM', '#f4f4f4', '#1b1e24'));
+        [-1, 1].forEach(dir => {
+            for (let k = 0; k < 8; k++) o.push({ s: 'box', p: [-23.3, 1.2 + k * 0.85, dir * (21.8 + k * 1.6)], size: [1.2, 0.03, 1.6], key: RUB_Y, uv: 1.2, n: 3, step: [23.3, 0, 0] });
+            o.push({ s: 'box', p: [0, 2.1, dir * 21.05], size: [70, 0.08, 0.08], tint: 0xdddddd }, { s: 'box', p: [-34.9, 1.2, dir * 21.05], size: [0.08, 0.9, 0.08], tint: 0xdddddd, n: 21, step: [3.49, 0, 0] });
+            o.push({ s: 'box', p: [0, 0, dir * 35.06], size: [70.2, 1.1, 0.12], key: CONC }, { s: 'box', p: [0, 0, dir * 21.0], size: [70, 1.2, 0.06], key: PAVE, uv: 1.75 });
+            o.push({ s: 'box', p: [-35, 0, dir * 35.1], size: [1.0, 9.6, 0.3], key: T_RED, tint: 0xb07a68, n: 11, step: [7, 0, 0] });
+            o.push({ s: 'cyl', p: [-31.5, 10.2, dir * 34.4], r: 0.06, h: 2.2, seg: 5, tint: 0xdddddd, n: 10, step: [7, 0, 0] });
+            for (let i = 0; i < 10; i++) o.push({ s: 'quad', p: [-31.5 + i * 7 + 0.55, 11.6, dir * 34.4], size: [1.1, 0.7], tint: i % 2 ? 0x3b62c4 : 0xf4f4f4, ds: true });
+            o.push(signAt(dir > 0 ? 0 : 0, 6.6, dir * 35.27, dir > 0 ? 0 : 180, 16, 1.4, 'CITY STADIUM', '#f4f4f4', '#3b62c4'));
+            [-21, 21].forEach((x, i) => o.push(signAt(x, 3.0, dir * 35.27, dir > 0 ? 0 : 180, 4.2, 0.6, dir > 0 ? (i ? 'GATE B' : 'GATE A') : (i ? 'GATE C' : 'GATE D'), '#1b1e24', '#f2ead8')));
+            /* a dugout on the sideline: a low roof on posts over the bench, on the lines between squares */
+            [-14, 0, 14].forEach(x => o.push({ s: 'roof', form: 'shed', ry: dir > 0 ? 0 : 180, p: [x, 2.1, dir * 20.3], size: [5, 0.5, 1.6], key: dir > 0 ? M_RED : M_BLUE, under: true, ds: true, uv: 2 }, { s: 'box', p: [x - 2.4, 0, dir * 21], size: [0.1, 2.5, 0.1], tint: 0xdddddd, n: 2, step: [4.8, 0, 0] }));
+        });
+        o.push(signAt(0, 9.95, 30.35, 180, 9, 0.6, 'PRESS', '#f4f4f4', ''), acRow(-8, 10.8, 32.6, 3, 2, 0), { s: 'cyl', p: [8, 10.8, 32.6], r: 0.05, h: 3, seg: 5, tint: 0xdddddd }, { s: 'dome', p: [5, 10.8, 32.6], r: 0.7, h: 0.5, seg: 10, rings: 3, tint: 0xdddddd });
+        o.push(signAt(-12.25, 2.85, 35.27, 0, 6, 0.6, 'LOCKER ROOMS', '#1b1e24', '#f2ead8'), lamp('f', 70, 70.06, -12.25, 3.6), lamp('f', 70, 70.06, 12.25, 3.6));
+        o.push({ s: 'box', p: [0, 10.3, -25.1], size: [70, 0.5, 0.2], tint: 0x27408a }, { s: 'box', p: [-33, 10.2, -30], size: [0.3, 0.3, 10], key: TRUSS, uv: [0.6, 1.1], n: 7, step: [11, 0, 0] });
+        [[-40.25, -26.25], [40.25, -26.25], [-40.25, 26.25], [40.25, 26.25]].forEach(q => o.push({ s: 'box', p: [q[0], 16.3, q[1]], size: [1.6, 0.12, 1.6], tint: STEEL }, { s: 'box', p: [q[0], 0, q[1]], size: [1.1, 0.5, 1.1], key: CONC }, { s: 'box', p: [q[0] - 1.35, 17.25, q[1] + 0.27], size: [0.7, 0.5, 0.06], tint: 0xffffff, glow: 1, n: 4, step: [0.9, 0, 0] }, { s: 'box', p: [q[0] - 1.35, 18.0, q[1] + 0.27], size: [0.7, 0.5, 0.06], tint: 0xffffff, glow: 1, n: 4, step: [0.9, 0, 0] }));
+        return o; };
+    /* THE ARENA LOADING DOCK: dock numbers over the roller doors, steel door frames and rubber bumpers, the name board, cage lamps, a wall
+       ladder to the roof, a pipe run, louvres; a second tank's worth of plant stays by the first (the roof is the roof walk) */
+    X['P06-09-B1'] = () => { const w = 24.6, d = 10.6, o = [];
+        [-7.5, 0, 7.5].forEach((u, i) => o.push(sign('f', w, d, u, 4.75, 1.0, 0.7, String(i + 1), '#14161a', '#f2cf4a', { out: 0.02 }), bx('f', w, d, u - 2.45, 1.3, 0.25, 3.5, 0.12, { tint: STEEL }), bx('f', w, d, u + 2.45, 1.3, 0.25, 3.5, 0.12, { tint: STEEL }), bx('f', w, d, u - 1.6, 0.75, 0.5, 0.5, 0.22, { key: RUBBER, uv: 0.5, n: 2, st: 3.2 }), lamp('f', w, d, u + 3.1, 4.0)));
+        o.push(sign('f', w, d, 0, 5.95, 9, 0.6, 'ARENA DELIVERIES', '#f2cf4a', '#2a2e34', { out: 0.02 }));
+        o.push(bx('b', w, d, 11, 0.4, 0.5, 6.9, 0.08, { tint: 0x9aa0a8 }), bx('b', w, d, 11, 0.6, 0.6, 0.06, 0.12, { tint: 0x9aa0a8, n: 1 }));
+        for (let i = 0; i < 16; i++) o.push(bx('b', w, d, 11, 0.6 + i * 0.42, 0.6, 0.05, 0.14, { tint: 0x9aa0a8 }));
+        o.push(bx('b', w, d, -4, 4.6, 14, 0.22, 0.22, { tint: 0x8a5a3a }), bx('l', w, d, 0, 2.2, 2.4, 1.6, 0.1, { key: GRILL, uv: [1.2, 0.8] }), bx('r', w, d, 0, 2.2, 2.4, 1.6, 0.1, { key: GRILL, uv: [1.2, 0.8] }));
+        o.push(pipe('b', w, d, -12, 6.9), pipe('l', w, d, 5, 6.9), ac(8, 7, -4.6, 0.8), vent(5.4, 7, -4.4), { s: 'box', p: [-7, 8.3, -3.4], size: [1.2, 0.7, 1.2], tint: 0x7a8088 });
+        return o; };
+    /* THE BOX OFFICE: the name over the awning, counters and frames at the ticket windows, poster cases, gilt bands and a ball finial on the
+       turret, a tile plinth, the sign fin's lettering, roof plant behind the parapet */
+    X['P06-09-B2'] = () => { const w = 17.5, d = 17.5, o = [];
+        o.push(sign('f', w, d, -3, 4.2, 8, 0.8, 'BOX OFFICE', '#f4f4f4', '#2f5fd0', { board: 0x1e3a8a }));
+        o.push(trim('f', w, d, 1.0, 1.6, 1.6, 4, { span: 8.6, c: -3 }), bx('f', w, d, -3, 0.82, 11, 0.1, 0.45, { key: WHITE }));
+        o.push(bx('r', w, d, -3, 0.9, 1.7, 2.4, 0.1, { tint: 0x1e3a8a, n: 3, st: 3 }), bx('r', w, d, -3, 1.02, 1.46, 2.16, 0.04, { tint: 0xe8a020, n: 3, st: 3, out: 0.1 }), bx('l', w, d, -3, 0.9, 1.7, 2.4, 0.1, { tint: 0x1e3a8a, n: 3, st: 3 }), bx('l', w, d, -3, 1.02, 1.46, 2.16, 0.04, { tint: 0xd23a2a, n: 3, st: 3, out: 0.1 }));
+        o.push({ s: 'cyl', p: [7.9, 3.2, 7.9], r: 2.38, h: 0.3, seg: 20, key: GOLD, glow: 0.3 }, { s: 'cyl', p: [7.9, 7.9, 7.9], r: 2.42, h: 0.3, seg: 20, key: GOLD, glow: 0.3 }, { s: 'dome', p: [7.9, 11.6, 7.9], r: 0.4, seg: 8, rings: 4, key: GOLD, glow: 0.3 });
+        o.push(bx('f', w, d, -1, 0, 15.6, 0.5, 0.08, { key: T_BLUE, tint: 0x6f90c8 }), bx('l', w, d, 0, 0, 17.6, 0.5, 0.08, { key: T_BLUE, tint: 0x6f90c8 }), bx('r', w, d, -1, 0, 15.6, 0.5, 0.08, { key: T_BLUE, tint: 0x6f90c8 }));
+        o.push(signAt(-8.24, 6.6, 9.2, 90, 0.85, 2.6, 'T', '#f4f4f4', ''), signAt(-8.76, 6.6, 9.2, -90, 0.85, 2.6, 'T', '#f4f4f4', ''));
+        o.push(coping(18.1, 18.1, 6.2, WHITE), acRow(-6.5, 6.2, -6, 2, 2, 0), mat(-1, 6.2, -4.2, 13, 1.1), vent(-2, 6.2, -6.5), hatch(2, 6.2, -6), duct(-5.5, 6.2, -2.5, 4, true), pipe('b', w, d, -8.5, 5.6), pipe('b', w, d, 8.5, 5.6));
+        return o; };
+    /* THE SPORTS CLINIC: the name in teal on the white wall, steel mullions on the glass corner and the ribbon, a steel coping, the cross
+       pylon's name, a lit canopy edge, downpipes, louvres; plant on the glass corner's own roof */
+    X['P07-09-B1'] = () => { const w = 28.1, d = 28.1, o = [];
+        o.push(signAt(-4.5, 5.75, 14.1, 0, 9, 0.8, 'SPORTS CLINIC', '#1f8f80', ''));
+        o.push({ s: 'box', p: [14, 0, 14], size: [0.12, 7.4, 0.1], tint: STEEL, ring: { n: 24, r: 4.93 } }, { s: 'cyl', p: [14, 7.4, 14], r: 5.0, h: 0.14, seg: 24, tint: STEEL }, { s: 'cyl', p: [14, 0, 14], r: 5.0, h: 0.35, seg: 24, key: MARBLE });
+        ['f', 'b', 'l', 'r'].forEach(fc => o.push(bx(fc, w, d, -12.6, 3.9, 0.1, 1.7, 0.08, { tint: STEEL, n: 15, st: 1.8, out: 0.08 }), bx(fc, w, d, 0, 6.86, 28.3, 0.16, 0.12, { tint: STEEL })));
+        o.push({ s: 'cyl', p: [3.5, 2.86, 17.2], r: 4.24, h: 0.06, seg: 24, tint: LAMP, glow: 0.7 }, signAt(-11.92, 4.6, 15.75, -90, 1.9, 0.45, 'CLINIC', '#1f8f80', ''), signAt(-12.58, 4.6, 15.75, 90, 1.9, 0.45, 'CLINIC', '#1f8f80', ''));
+        o.push(pipe('b', w, d, -13.9, 6.9, 0xc8ccd0), pipe('b', w, d, 13.9, 6.9, 0xc8ccd0), bx('b', w, d, -6, 1.6, 2.4, 1.6, 0.1, { key: GRILL, uv: [1.2, 0.8], n: 3, st: 6 }));
+        o.push(ac(13, 7.54, 13, 0.9), ac(15.4, 7.54, 14.6, 0.9), vent(14.4, 7.54, 16.6));
+        return o; };
+    /* THE TRAINING GYM: the name painted on the brick gable, stone sills and lintels on the factory windows, stone caps on the buttresses, a
+       stone door surround with lamps and the canopy's hangers, ridge ventilators along the bow roof, gutters and downpipes at every other
+       buttress, wall AC units and an extract fan on the back */
+    X['P06-10-B1'] = () => { const w = 28, d = 28, f = row('P06-10-B1'), hx = -14 + (f.door - 0.5) * 1.75, o = [];
+        o.push(signAt(0, 10.35, 14.05, 0, 13, 1.1, 'TRAINING GYM', '#f2ead8', ''), signAt(0, 5.44, 14.17, 0, 12, 0.56, 'BOXING   WEIGHTS   WRESTLING', '#f2ead8', ''));
+        ['l', 'r'].forEach(fc => o.push(trim(fc, w, d, 2.2, 2.2, 3.8, 7, { span: 21, key: CONC }), bx(fc, w, d, -12.25, 7, 1.5, 0.25, 1.0, { key: CONC, n: 8, st: 3.5 }), gutter(fc, w, d, 6.7, 29, DARKM), pipe(fc, w, d, -10.5, 6.7), pipe(fc, w, d, 3.5, 6.7)));
+        o.push(trim('f', w, d, 2.6, 2.2, 3.4, 4, { span: 21, key: CONC }), surround('f', w, d, hx, 1.75, 2.3, CONC), lamp('f', w, d, hx - 1.9, 2.5), lamp('f', w, d, hx + 1.9, 2.5));
+        o.push({ s: 'cyl', p: [hx - 2.7, 2.95, 16.4], r: 0.03, h: 2.3, seg: 4, tint: DARKM, n: 2, step: [5.4, 0, 0] });
+        o.push({ s: 'cyl', p: [0, 12.1, -9], r: 0.55, h: 0.7, seg: 10, tint: 0x6f8f6a, n: 4, step: [0, 0, 6] }, { s: 'cyl', p: [0, 12.8, -9], r: 0.85, r2: 0.2, h: 0.45, seg: 10, tint: 0x5a7a56, n: 4, step: [0, 0, 6] });
+        o.push(wallAC('b', w, d, -8, 2.4), wallAC('b', w, d, -6.6, 2.4), wallAC('b', w, d, 7, 2.4), { s: 'cyl', p: [0, 4.4, -14.1], r: 0.9, h: 0.14, seg: 14, tint: DARKM }, bx('b', w, d, 0, 0, 28.2, 1.2, 0.12, { key: CONC }));
+        return o; };
+    /* THE BAND SHELL: tonight's banner on the lighting rig, speaker stacks either side of the stage, a row of footlights, stage steps, gilt
+       ribs on the shell, a lamp over the stage door, a coping, plant on the backstage roof */
+    X['P07-10-B1'] = () => { const w = 28, d = 10.5, o = [];
+        o.push(signAt(4, 8.75, 6.72, 0, 11, 0.9, 'LIVE TONIGHT', '#f2ead8', '#8a1c14', 0.4));
+        o.push({ s: 'box', p: [-4.2, 0.9, 4.4], size: [1.3, 2.6, 1.1], tint: 0x16181c, n: 2, step: [16.4, 0, 0] }, { s: 'cyl', p: [-4.2, 2.6, 4.97], r: 0.4, h: 0.04, seg: 10, tint: 0x3a3f46, n: 2, step: [16.4, 0, 0] });
+        o.push({ s: 'box', p: [-3.5, 0.9, 5.05], size: [0.3, 0.16, 0.2], tint: LAMP, glow: 1, n: 16, step: [1, 0, 0] });
+        o.push({ s: 'box', p: [-5.6, 0, 4.6], size: [1.0, 0.3, 1.0], key: CONC }, { s: 'box', p: [-5.4, 0.3, 4.4], size: [0.6, 0.3, 0.8], key: CONC }, { s: 'box', p: [13.5, 0, 5.5], size: [1, 0.3, 0.5], key: CONC });
+        for (let i = 0; i < 7; i++) o.push({ s: 'dome', p: [4, 0.92, 5.2], r: 9.03, h: 5.42, rz: 5.03, arc: 2, a0: 195 + i * 25, seg: 2, rings: 8, key: GOLD, glow: 0.3, ds: true });
+        o.push(lamp('f', w, d, -11.375, 2.6), sign('f', w, d, -11.375, 3.2, 2.6, 0.4, 'STAGE DOOR', '#f2ead8', '#2a2e34'));
+        o.push(coping(28.4, 10.9, 7.5, DARK, 0x6a7080), acRow(-11, 7.5, -3, 3, 2, 0), mat(0, 7.5, -1.2, 25, 1.1), duct(-2, 7.5, -3.6, 9), vent(6, 7.5, -3.4), vent(7.4, 7.5, -3.4), hatch(11.5, 7.5, -2.6), pipe('b', w, d, -13.6, 7), pipe('b', w, d, 13.6, 7));
+        return o; };
+    /* THE STAGE DOOR HOUSE: stone sills and lintels, a gabled door hood on brackets with a lamp and a brass plate, a stone plinth and a string
+       course, bargeboards, a chimney with pots, gutters and downpipes, a wall AC round the back */
+    X['P07-10-B2'] = () => { const w = 17.5, d = 17.5, o = [];
+        o.push(trim('f', w, d, 1.0, 1.5, 1.9, 3, { span: 9, c: 2.5, key: CONC }), trim('f', w, d, 4.6, 1.5, 1.9, 5, { key: CONC }), trim('l', w, d, 4.6, 1.5, 1.9, 4, { key: CONC }), trim('r', w, d, 4.6, 1.5, 1.9, 4, { key: CONC }));
+        o.push({ s: 'roof', form: 'gable', p: [-6, 2.75, 9.15], size: [2.2, 0.7, 0.8], over: 0.1, key: DARK, tint: 0x6a6f7c }, bx('f', w, d, -6.9, 2.3, 0.12, 0.45, 0.7, { tint: DARKM, n: 2, st: 1.8 }), lamp('f', w, d, -4.7, 2.0), bx('f', w, d, -7.3, 1.3, 0.5, 0.34, 0.04, { key: GOLD, glow: 0.3 }), bx('f', w, d, -6, 0, 2, 0.17, 0.6, { key: CONC }));
+        o.push(bx('f', w, d, 0, 0, 17.7, 0.6, 0.1, { key: CONC }), bx('l', w, d, 0, 0, 17.7, 0.6, 0.1, { key: CONC }), bx('r', w, d, 0, 0, 17.7, 0.6, 0.1, { key: CONC }), bx('f', w, d, 0, 3.7, 17.7, 0.22, 0.1, { key: CONC }), bx('f', w, d, 0, 8.3, 17.7, 0.22, 0.1, { key: CONC }));
+        o.push({ s: 'box', p: [5, 8.4, -4], size: [1.3, 5.6, 1.3], key: T_OCHRE, tint: 0xc0a078 }, { s: 'box', p: [5, 14, -4], size: [1.6, 0.2, 1.6], key: CONC }, { s: 'cyl', p: [4.7, 14.2, -4], r: 0.18, h: 0.5, seg: 8, tint: 0xb86a4a, n: 2, step: [0.6, 0, 0] });
+        o.push(gutter('l', w, d, 8.2, 18.4), gutter('r', w, d, 8.2, 18.4), pipe('l', w, d, 8.4, 8.2), pipe('r', w, d, -8.4, 8.2), wallAC('b', w, d, 4, 1.8), wallAC('b', w, d, -3, 5.2));
+        return o; };
+    /* THE STADIUM GATE: the name on the arch, lanterns on the piers, ball finials */
+    X['P04-11-gate'] = () => [signAt(0, 4.25, 0.47, 0, 7.4, 0.42, 'CITY STADIUM', '#f2ead8', ''), signAt(0, 4.25, -0.47, 180, 7.4, 0.42, 'CITY STADIUM', '#f2ead8', ''),
+        { s: 'box', p: [-5.25, 3.2, 1.2], size: [0.4, 0.55, 0.4], tint: LAMP, glow: 0.9, n: 2, step: [10.5, 0, 0] }, { s: 'box', p: [-5.25, 3.75, 1.2], size: [0.52, 0.1, 0.52], tint: DARKM, n: 2, step: [10.5, 0, 0] },
+        { s: 'dome', p: [-5.25, 6.7, 0], r: 0.35, seg: 8, rings: 4, key: GOLD, glow: 0.3, n: 2, step: [10.5, 0, 0] }, { s: 'box', p: [-5.25, 0, 0], size: [2.5, 0.5, 2.5], key: CONC, n: 2, step: [10.5, 0, 0] }];
+    /* THE STALLS: a name board on each stall, crates and sacks on the counters */
+    X['P05-11-stalls'] = () => { const o = []; [['FRUIT', -5.25, '#d23a2a'], ['FISH', -1.75, '#2f5fd0'], ['BREAD', 1.75, '#b87a10'], ['FLOWERS', 5.25, '#2f8f4a']].forEach((q, i) => {
+        o.push(signAt(q[1], 2.45, 1.32, 0, 2.6, 0.42, q[0], '#f2ead8', q[2]), { s: 'box', p: [q[1] - 0.9, 0.95, 0.6], size: [0.6, 0.3, 0.5], tint: 0x8a5a3a, n: 3, step: [0.9, 0, 0] }, { s: 'box', p: [q[1] - 0.9, 1.25, 0.6], size: [0.5, 0.14, 0.4], tint: [0xe8a020, 0x9ab8c8, 0xd8b070, 0xd24a8a][i], n: 3, step: [0.9, 0, 0] }, { s: 'box', p: [q[1] + 1.1, 0, -0.6], size: [0.7, 0.6, 0.7], tint: 0x8a5a3a }); }); return o; };
+    /* THE FOOD KIOSK: the word on every other side, a serving shelf, a menu board, a lamp ring under the roof, a vent on the cap */
+    X['P05-11-B2'] = () => [{ s: 'quad', p: [0, 2.68, 0], size: [2.6, 0.44], key: 'txt:HOT FOOD|#f2ead8||5.91', uv: 'fit', tint: 0xffffff, kind: 'over', ring: { n: 3, r: 2.96, a0: 30 } }, { s: 'quad', p: [0, 2.68, 0], size: [2.6, 0.44], key: 'txt:DRINKS|#f2ead8||5.91', uv: 'fit', tint: 0xffffff, kind: 'over', ring: { n: 3, r: 2.96, a0: 90 } },
+        { s: 'cyl', p: [0, 1.06, 0], r: 3.7, h: 0.1, seg: 6, key: WHITE }, { s: 'cyl', p: [0, 3.14, 0], r: 3.5, h: 0.06, seg: 6, tint: LAMP, glow: 0.8 }, { s: 'cyl', p: [0, 0, 0], r: 3.5, h: 0.3, seg: 6, key: CONC }, vent(1, 4.6, 0.4, 0.18)];
+    /* THE EQUIPMENT DEPOT: the name over the canopy, bay numbers, steel frames on the roller doors, a door surround and lamp, a coping,
+       downpipes, the roof's AC row, ducts and vents, a stand under the ball */
+    X['P06-11-B1'] = () => { const w = 31.5, d = 10.5, f = row('P06-11-B1'), hx = -f.w / 2 + (f.door - 0.5) * 1.75, o = [];
+        o.push(signAt(2, 4.62, 5.5, 0, 12, 0.46, 'EQUIPMENT DEPOT', '#f4f4f4', '#2a2e34'));
+        [[-11, 'A'], [4.6, 'B'], [11, 'C']].forEach(q => o.push(bx('f', w, d, q[0] - 2.33, 0, 0.25, 3.6, 0.1, { tint: STEEL }), bx('f', w, d, q[0] + 2.33, 0, 0.25, 3.6, 0.1, { tint: STEEL }), sign('f', w, d, q[0] + 2.9, 2.0, 0.6, 0.6, q[1], '#14161a', '#f2ead8', { out: 0.02 })));
+        o.push(surround('f', w, d, hx, 1.75, 2.3, CONC), lamp('f', w, d, hx + 1.6, 2.5), bx('f', w, d, 0, 0, 31.7, 0.4, 0.06, { key: CONC }));
+        o.push(coping(31.9, 10.9, 5.1, DARK, 0x6a7080), acRow(-2, 5.1, -2.5, 4, 2, 0), mat(2, 5.1, -0.6, 22, 1.1), duct(9.5, 5.1, -2.6, 7), vent(13.6, 5.1, 2, 0.22), vent(13.6, 5.1, 0.8, 0.22), hatch(7, 5.1, 2), pipe('b', w, d, -15.4, 4.6), pipe('b', w, d, 15.4, 4.6), pipe('l', w, d, 4.5, 4.6));
+        o.push({ s: 'box', p: [-11.5, 5.1, 0], size: [3.2, 0.2, 3.2], tint: STEEL });
+        return o; };
+    /* THE RENTAL KIOSK: the word round the canopy edge, sills at the hatches, a tile plinth, a lamp ring */
+    X['P06-11-B2'] = () => [{ s: 'quad', p: [0, 3.0, 0], size: [3.2, 0.5], key: 'txt:RENTALS|#f4f4f4||6.4', uv: 'fit', tint: 0xffffff, kind: 'over', ring: { n: 4, r: 4.42, a0: 45 } },
+        { s: 'cyl', p: [0, 0.98, 0], r: 3.36, h: 0.12, seg: 20, key: WHITE }, { s: 'cyl', p: [0, 0, 0], r: 3.3, h: 0.4, seg: 20, key: T_BLUE, tint: 0x6f90c8 }, { s: 'cyl', p: [0, 2.94, 0], r: 3.3, h: 0.06, seg: 20, tint: LAMP, glow: 0.8 }, vent(0, 4.35, 0, 0.3)];
+    /* THE SOUTH GATEHOUSE: the name over the arch and on the hall, clock faces and string courses on the towers, window surrounds, a keystone,
+       a canopy fascia with bay numbers, a stone plinth, lamps, the hall roof's plant behind a coping */
+    X['P07-11-B1'] = () => { const w = 31.5, d = 10.5, f = row('P07-11-B1'), hx = -f.w / 2 + (f.door - 0.5) * 1.75, o = [];
+        o.push(signAt(10, 6.6, 6.22, 0, 6.6, 0.7, 'SOUTH GATE', '#3a3428', ''), sign('f', w, d, -4.4, 4.35, 9, 0.6, 'TICKETS', '#f4f4f4', '#3b62c4', { out: 0.02 }));
+        [-13.5, 13.5].forEach(x => { o.push({ s: 'cyl', p: [x, 8.6, 5.52], r: 0.85, h: 0.08, seg: 16, tint: 0xf4f4f4, ry: 0 }, { s: 'box', p: [x, 5.4, 3.2], size: [4.8, 0.25, 4.8], top: false, under: true, key: WHITE }, { s: 'box', p: [x, 10.2, 3.2], size: [4.9, 0.3, 4.9], top: false, under: true, key: WHITE }, { s: 'box', p: [x, 0, 3.2], size: [4.8, 0.6, 4.8], top: false, key: CONC });
+            o.push({ s: 'box', p: [x, 6.06, 5.56], size: [1.8, 0.14, 0.14], key: WHITE }, { s: 'box', p: [x, 8.8, 5.56], size: [1.74, 0.16, 0.1], key: WHITE }); });
+        o.push({ s: 'box', p: [10, 9.3, 5.6], size: [1.0, 0.9, 1.3], key: WHITE }, { s: 'box', p: [-4.4, 3.28, 8.72], size: [13.6, 0.3, 0.06], tint: 0x27408a });
+        o.push(trim('f', w, d, 1.0, 1.5, 1.6, 3, { span: 5.4, c: -7.4 }), bx('f', w, d, -7.4, 0.86, 7.4, 0.1, 0.4, { key: WHITE }), surround('f', w, d, hx, 1.75, 2.3, WHITE), lamp('f', w, d, hx + 1.7, 2.5), bx('f', w, d, -2, 0, 18, 0.5, 0.06, { key: CONC }));
+        o.push(coping(31.9, 10.9, 5.8, WHITE), acRow(-6, 5.8, -3, 3, 2, 0), mat(0, 5.8, -1.2, 20, 1.1), duct(3, 5.8, -3.2, 6), vent(-9, 5.8, -3, 0.22), hatch(7.5, 5.8, -2.6), pipe('b', w, d, -15.4, 5.2), pipe('b', w, d, 15.4, 5.2));
+        return o; };
+    /* THE GATE LODGE: green shutters, sills, a door with a hood and a lamp, a stone plinth, gutters and downpipes, a chimney with a pot */
+    X['P07-11-B2'] = () => { const f = row('P07-11-B2'), w = f.w, d = f.d, GRN = 0x2f6f4a, o = [];
+        o.push(shutters('f', w, d, 1.0, 1.4, 1.6, 2, GRN, { span: 5 }), shutters('l', w, d, 1.0, 1.4, 1.6, 4, GRN), shutters('r', w, d, 1.0, 1.4, 1.6, 4, GRN), trim('f', w, d, 1.0, 1.4, 1.6, 2, { span: 5 }), trim('l', w, d, 1.0, 1.4, 1.6, 4), trim('r', w, d, 1.0, 1.4, 1.6, 4));
+        o.push(bx('f', w, d, 0, 0, 1.2, 2.3, 0.06, { tint: GRN }), bx('f', w, d, 0, 2.4, 2, 0.14, 0.7, { key: GREENP, tint: 0x8fd6b8 }), lamp('f', w, d, 1.1, 1.9), bx('f', w, d, 0, 0, w + 0.2, 0.4, 0.08, { key: CONC }), bx('l', w, d, 0, 0, d + 0.2, 0.4, 0.08, { key: CONC }), bx('r', w, d, 0, 0, d + 0.2, 0.4, 0.08, { key: CONC }));
+        o.push(gutter('f', w, d, 3.5, w + 1.9, 0x3a4a40), gutter('b', w, d, 3.5, w + 1.9, 0x3a4a40), pipe('f', w, d, w / 2 - 0.3, 3.5, 0x3a4a40), pipe('b', w, d, w / 2 - 0.3, 3.5, 0x3a4a40), wallAC('b', w, d, 0, 1.2));
+        o.push({ s: 'box', p: [w / 4, 3.6, -d / 4], size: [1.0, 3.6, 1.0], key: STUCCO, tint: 0xe6dcc8 }, { s: 'box', p: [w / 4, 7.2, -d / 4], size: [1.25, 0.16, 1.25], key: CONC }, { s: 'cyl', p: [w / 4, 7.36, -d / 4], r: 0.18, h: 0.45, seg: 8, tint: 0xb86a4a });
+        return o; };
+
     const cellOf = v => Math.floor((v + ctx.HALF) / ctx.C);
     const prop = (key, x, z, face) => { take(cellOf(x), cellOf(z)); props.push({ key, x: r3(x), z: r3(z), face }); };
 
@@ -68,7 +328,7 @@ exports.apply = (ctx) => {
     { const f = walkin('P04-08-B1', 3), LIME = 0xfff0d6, VERD = 0xa8ecd2, hx = -14 + (f.door - 0.5) * 1.75;
       B('P04-08-B1', f.x, f.z, f.rot, [
         walls(28, 10.5, 24.5, WHITE, LIME, { door: [hx, 1.74, 2.2] }),
-        { s: 'box', p: [0, 0, 0], size: [28.3, 1.1, 24.8], faces: 'blr', top: false, key: CONC },
+        { s: 'box', p: [0, 0, 0], size: [28.3, 1.1, 24.8], faces: 'blr', top: false, key: MARBLE, uv: 1.75 },
         slab(29.4, 25.9, 10.5, 0.7, WHITE, 0xffffff, ROOFC),
         { s: 'box', p: [0, 11.2, 0], size: [28, 1.1, 24.5], key: WHITE, tint: LIME, keyTop: ROOFC, uv: 3.5 },
         { s: 'cyl', p: [-8.75, 0.4, 15.4], r: 0.6, r2: 0.52, h: 7.8, seg: 12, key: WHITE, n: 6, step: [3.5, 0, 0], uv: [1.75, 7.8] },
@@ -126,7 +386,7 @@ exports.apply = (ctx) => {
       for (let i = 0; i < 16; i++) stripes.push({ s: 'dome', p: [0, 11.02, 0], r: 9.4, h: 4.2, seg: 2, rings: 6, arc: 22.5, a0: i * 22.5, key: i % 2 ? REDP : WHITE, tint: i % 2 ? RED : 0xfff6e0 });
       B('P06-08-B1', f.x, f.z, 180, [
         { s: 'box', p: [0, 0, 0], size: [28.1, 7, 28.1], top: false, key: REDP, tint: RED, uv: 3.5 },
-        { s: 'box', p: [0, 0, 0], size: [28.4, 1.2, 28.4], top: false, key: DARK },
+        { s: 'box', p: [0, 0, 0], size: [28.4, 1.2, 28.4], top: false, key: MARBLE_D, uv: 1.75 },
         { s: 'box', p: [0, 6.2, 0], size: [28.5, 0.8, 28.5], top: false, key: GOLD, glow: 0.3 },
         { s: 'box', p: [-12.4, 0, 14.2], size: [1.3, 7, 0.5], key: GOLD, glow: 0.3, n: 8, step: [3.543, 0, 0] },
         { s: 'box', p: [0, 3.0, 15.4], size: [12, 2.6, 2.6], under: true, key: DARK, tint: 0x444444 },

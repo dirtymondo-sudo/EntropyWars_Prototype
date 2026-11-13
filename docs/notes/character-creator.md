@@ -1963,3 +1963,10 @@ Console: `window.EW_MOUTH_REST = false` = MakeHuman's mouth, or an object of off
 First round (width 0.35, corners 0.3) read as a smile on the catgirl and the mummy; toned down. Not the cause: the idle face's
 breath (jawOpen 0.02-0.035). Still open: Agent Locke's fitted face (lockeFace) keeps a heavy lip line.
 Proof: /mnt/project-files/meshy-remake-batch1/resting_mouth_before_after.jpg (plain face, knight, cowboy, wizard, catgirl, mummy, robinhood, Locke).
+
+## THE REMADE LOOKS SWITCH (2026-11-13, mondo: "a dev option in the settings to use all of these new race looks, saves to where i dont have to retoggle it on reloading the page, but off by default for now")
+- Settings > Developer > **Remade Race Looks: ON / OFF** (map.js `_toggleRemadeLooks`, button `mmRemadeLooksBtn`). Off by default; kept in localStorage `ew_remade_looks` ('1' = on), so it stays after a reload. Nothing in IndexedDB is read or written.
+- sprites.js `remadeLooksOn()` / `setRemadeLooksOn(on)`. The hook is ONE line in `getCharacterAppearanceModel`, the resolver every drawn unit goes through (creator viewer, party builder, board, HQ, team room, preload): a unit with NO look of its own wears `getRaceRemadeLook(race, gender)`; a race with no remade look keeps its Meshy model; a slot's own saved look and USE ORIGINAL MODEL (`model: 'original'`) still win. Cast members (DOOR_CAST_MODELS, the cutscene cast) are not race units and are untouched.
+- three-renderer.js: `_computeUnitStructuralSerial` hashes the switch (flipping it mid-battle rebuilds the units); `_ptSpec` photographs the remade look for the battle portrait of a unit with no look of its own (`_ptRemade`).
+- Viewer-local, looks only: nothing relayed online (each player sees by their own switch). `?likeness=1` is a different switch (the face-likeness picks in the creator).
+- Seen on screen (creator viewer, sheriff / popstar / pirate: off, on, on after reload): /mnt/project-files/remade-looks-switch/remade_looks_switch_proof.jpg. NOT seen: a battle board with the models drawn (the cloud browser was still loading them); there only the resolver was checked (5 of 8 units switched to their remade look).
