@@ -59799,7 +59799,7 @@
             const face = (u, to) => { const c = cell(to); if (!u || !c) return; const dx = c.x - u.x, dy = c.y - u.y; if (dx || dy) { setUnitFacing(u, Math.abs(dy) >= Math.abs(dx) ? 0 : Math.sign(dx), Math.abs(dy) >= Math.abs(dx) ? Math.sign(dy) : 0); render(); } };
             const show = (u) => { if (u && window._ewSceneHid) delete window._ewSceneHid[u.id]; };
             const w0 = tile(0, 0), w1 = tile(1, 0);
-            let door = null, doorAt = 0, over = false;
+            let door = null, doorAt = 0, doorLead = 1500, over = false;
             return {
                 /* a scene's lengths are BODIES (a standing body = 1, 1.75 m), so a shot frames the cast the same on any board's squares */
                 unit: (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? TR.bodyUnit() : ((w0 && w1) ? (Math.abs(w1.x - w0.x) || 128) / 2 : 64),
@@ -59807,9 +59807,20 @@
                 act(a) {
                     const u = a.who ? R[a.who] : null;
                     if (a.do === 'portal') {
-                        /* the effects' own scene comes up a moment after the board: the door is asked for until it stands */
-                        let tries = 0;
-                        const open = () => { if (over || door) return; try { door = (FX && FX.questPortal) ? FX.questPortal(P.x, P.y, { riseMs: 900, openMs: 600, holdMs: 60000, big: true, scale: a.scale || 1 }) : null; } catch (e) { door = null; } if (door) doorAt = performance.now(); else if (++tries < 40) setTimeout(open, 150); else console.warn('[SCENE] the portal did not draw'); };
+                        /* the door is asked for until it stands, and stood up again if the board's start swept it away (a
+                           match clears its effects a moment after it begins): it is watched while the scene plays */
+                        let tries = 0, quick = false;
+                        const live = () => !!(door && !door.done && door.group && door.group.parent);
+                        const open = () => {
+                            if (over) return;
+                            if (!live()) {
+                                door = null;
+                                try { door = (FX && FX.questPortal) ? FX.questPortal(P.x, P.y, { riseMs: quick ? 200 : 900, openMs: quick ? 150 : 600, holdMs: 60000, big: !quick, scale: a.scale || 1 }) : null; } catch (e) { door = null; }
+                                if (door) { doorAt = performance.now(); doorLead = quick ? 350 : 1500; quick = true; }
+                                else if (++tries === 40) console.warn('[SCENE] the portal did not draw');
+                            }
+                            setTimeout(open, door ? 300 : 150);
+                        };
                         open();
                     }
                     else if (a.do === 'out') { if (!u) return; show(u); if (!(u.x === P.x && u.y === P.y)) TA.jumpArc(u, P.x, P.y, u.x, u.y, zAt(P.x, P.y), u.z || 0, a.ms || 1000); }
@@ -59829,7 +59840,7 @@
                     try { if (TR && TR.clearTimeWarp) TR.clearTimeWarp(); } catch (e) {}
                     try { if (TR && TR.cancelJumpTween) [B.guest].concat(B.foes).forEach(u => { if (u) TR.cancelJumpTween(u.id); }); } catch (e) {}
                     /* the door shuts on the cut: its effect is run forward to its own closing (three-vfx-effects.js _sigRun `skip`) */
-                    try { if (door && !door.done) door.skip = Math.max(0, 61500 - (performance.now() - doorAt)); } catch (e) {}
+                    try { if (door && !door.done) door.skip = Math.max(0, doorLead + 60000 - (performance.now() - doorAt)); } catch (e) {}
                     /* the fight opens the way _questFightSeat stood them: she with her back to the portal, they facing her */
                     try { _questFightSeat(); render(); } catch (e) {}
                 }
