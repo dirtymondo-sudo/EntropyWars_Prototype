@@ -583,3 +583,4 @@ more bones. Answers, measured on the MPFB2 checkout (HEAD 6ff1eb35) and the pack
 - 2026-11-05: row 9 pass 3 THE BUMPS FIX (the two bumps at the sides / seat of every long coat came from the coat hang's leg push) — thread cmsg_01XWpxyTn3nnw98znVzKdFjsTMtQNY6h6CqMCyRFBsUfXj.
 - 2026-11-05: row 12w DONE: THE CLOTH COLLISION (every garment pushed out of the posed MPFB skin on the GPU, layer depth order) — thread cmsg_01XWpxyTn3nnw98znVzKdFjsRJYzgHjRXtmeoBaW2t94T1.
 - 2026-11-11: THE MESHY ANIMATION PULL: 130 Meshy library clips through the API (libs 7 MAL4 + 8 MAL5; pull-meshy-anims.py + build-mal.py), 16 idles + 19 walks as creator picks, combat clips unassigned (notes models-assets.md) — thread cmsg_01XWpxyTn3nnw98znVzKdFjsXSsMZ8FeMKTuiKwDFUnTFe.
+- 2026-11-13: row 21e: remake batch 3 of 3 (politician .. wizard F, 23 models) in the game as remade looks; status meshy-remake-plan.md section 8 + meshy-remake-batches.md.
