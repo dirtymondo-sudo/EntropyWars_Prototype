@@ -2328,6 +2328,11 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
   `dress()` in `a.done` reads the first part (the main block): dark base course, two downpipes with hoppers, and on a flat roof nobody walks two AC
   units with fans, two capped vents and a hatch (seated on a cornice slab when one lies on the block). Walked roofs get no roof units (nothing a unit
   would walk through).
+  THE SHEETS (20:19 "different textures or decals for different parts of the building"): each building's trim is ONE sheet picked by its id (painted
+  plaster 2a, marble tile, stone, wood, stucco 2a); `dress()` reads the main block's sheet and picks the base course (stone / brick / subway tile /
+  striped concrete), a frieze under the eaves (stucco 2a on brick, generic tile on plaster), corner piers in the base's sheet on two buildings in three,
+  and the decals: a pack warning sign (`urban:Sign*`) by a works building's doors, a vent grille (`urban:MetalSubwayGrill1a`) + a meter box elsewhere.
+  Only sheets already on the bucket; nothing repainted.
 - **Seen in the cloud browser** (WebGL2 headless): every plot from above, shots in `/mnt/project-files/disaster-city-southside/`. Not seen on his Mac yet.
   Interiors are the next pass (the seven walk-in shells are empty rooms with a floor and plaster walls).
 

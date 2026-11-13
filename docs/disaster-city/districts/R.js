@@ -51,6 +51,11 @@ function build(ctx) {
     /* ── THE ARCHITECT: a parts list in a frame ── */
     const arch = (fr, id) => {
         const P = [], a = { fr, P }, bands = new Set();
+        /* THE POLISH PASS, THE SHEETS (mondo 11-13 20:19: "different textures or decals for different parts of the building"): every building draws
+           its trim (sills, lintels, string courses, door hoods) in ONE sheet of its own, picked by its id; `dress()` then picks the base course, the
+           frieze, the corner piers and the wall decals to go with the main block's sheet */
+        let hsh = 0; for (let i = 0; i < id.length; i++) hsh = (hsh * 31 + id.charCodeAt(i)) >>> 0;
+        const TR = [{ key: 'urban:PlasterWallPainted2a', tint: 0xf0e8d8 }, { key: 'urban:TileMarble1a', tint: 0xe8e4dc }, { key: K.stone, tint: 0xe4dccc }, { key: K.wood, tint: 0xb89878 }, { key: 'urban:PlasterWallStucco2a', tint: 0xf4ecdc }][hsh % 5];
         const add = (o) => { P.push(tidy(o)); return a; };
         a.box = (x, y, z, w, h, d, key, tint, o) => add(Object.assign({ s: 'box', p: [x, y, z], size: [w, h, d], key, tint }, o));
         /* THE POLISH PASS, THE ROOFS (mondo 11-13 20:18: "roofs and ac units"): a pitched roof of a real size gets a ridge cap and two cowled vents
@@ -86,9 +91,9 @@ function build(ctx) {
                    proud of the wall; an upper window on a back or side wall now and then carries a wall unit */
                 const key = o.key === undefined ? K.winR : o.key, ww = o.ww || 1.7, wh = o.wh || 1.8, st = [s.st[0] * pitch, 0, s.st[1] * pitch], along0 = -(L - 2 * (o.margin || 0)) / 2 + pitch / 2;
                 if (GLASS.indexOf(key) >= 0 && o.trim !== false) {
-                    const s1 = spot(f, cx, cz, w, d, along0, 0.12), s2 = spot(f, cx, cz, w, d, along0, 0.07), tr = typeof o.trim === 'number' ? o.trim : TRIM;
-                    add({ s: 'box', p: [s1.p[0], y - 0.1, s1.p[1]], size: [ww + 0.3, 0.1, 0.24], ry: s.ry, key: K.plaster, tint: tr, n, step: st });
-                    add({ s: 'box', p: [s2.p[0], y + wh, s2.p[1]], size: [ww + 0.24, 0.17, 0.14], ry: s.ry, key: K.plaster, tint: tr, n, step: st });
+                    const s1 = spot(f, cx, cz, w, d, along0, 0.12), s2 = spot(f, cx, cz, w, d, along0, 0.07), tr = typeof o.trim === 'number' ? o.trim : TR.tint;
+                    add({ s: 'box', p: [s1.p[0], y - 0.1, s1.p[1]], size: [ww + 0.3, 0.1, 0.24], ry: s.ry, key: TR.key, tint: tr, n, step: st });
+                    add({ s: 'box', p: [s2.p[0], y + wh, s2.p[1]], size: [ww + 0.24, 0.17, 0.14], ry: s.ry, key: TR.key, tint: tr, n, step: st });
                     if (key === K.winR && y > 3 && (f === 'b' || f === 'l') && n >= 3) {
                         const s3 = spot(f, cx, cz, w, d, along0 + pitch, 0.24);
                         add({ s: 'box', p: [s3.p[0], y - 0.02, s3.p[1]], size: [0.78, 0.44, 0.46], ry: s.ry, key: K.metal, tint: 0xc4c8cc, n: Math.ceil((n - 1) / 3), step: [st[0] * 3, 0, st[2] * 3] });
@@ -105,7 +110,7 @@ function build(ctx) {
             for (let k = 0; k < n; k++) {
                 if (k === 0 && o.ground !== 'same') { a.wins(fs, cx, cz, w, d, 0.45, Object.assign({}, o, { key: o.gkey || K.winS, ww: o.gww || 2.4, wh: 2.1, n: o.n ? Math.max(1, Math.round(o.n / 2)) : undefined, pitch: (o.pitch || 2.9) * 2 })); continue; }
                 const yk = (o.y0 == null ? 1.0 : o.y0) + k * (o.per || 3.2), bk = [cx, cz, w, d, yk].join();
-                if (o.band !== false && !bands.has(bk)) { bands.add(bk); a.box(cx, yk - 0.5, cz, w + 0.22, 0.18, d + 0.22, K.plaster, typeof o.trim === 'number' ? o.trim : TRIM, { top: false }); }   // a string course under each upper floor's sills
+                if (o.band !== false && !bands.has(bk)) { bands.add(bk); a.box(cx, yk - 0.5, cz, w + 0.22, 0.18, d + 0.22, TR.key, typeof o.trim === 'number' ? o.trim : TR.tint, { top: false }); }   // a string course under each upper floor's sills
                 a.wins(fs, cx, cz, w, d, yk, o);
             }
             return a;
@@ -115,7 +120,7 @@ function build(ctx) {
             if (DOORS.indexOf(key) >= 0 && y < 0.3 && !(o && o.plain)) {   // THE POLISH PASS: a door stands on a stone step under a hood
                 const s1 = spot(f, cx, cz, w, d, along, 0.42), s2 = spot(f, cx, cz, w, d, along, 0.34);
                 add({ s: 'box', p: [s1.p[0], 0, s1.p[1]], size: [pw + 0.6, 0.16, 0.8], ry: s1.ry, key: K.conc, tint: 0xcfcac0 });
-                add({ s: 'box', p: [s2.p[0], y + ph + 0.14, s2.p[1]], size: [pw + 0.5, 0.12, 0.64], ry: s2.ry, key: K.plaster, tint: TRIM, under: true });
+                add({ s: 'box', p: [s2.p[0], y + ph + 0.14, s2.p[1]], size: [pw + 0.5, 0.12, 0.64], ry: s2.ry, key: TR.key, tint: TR.tint, under: true });
             }
             const s = spot(f, cx, cz, w, d, along, (o && o.off) || 0.07); return add(Object.assign({ s: 'quad', p: [s.p[0], y, s.p[1]], size: [pw, ph], ry: s.ry, key, tint, uv: key ? 'fit' : undefined }, o, { off: undefined }));
         };
@@ -133,7 +138,22 @@ function build(ctx) {
         const dress = () => {
             const m = P[0]; if (!m || m.s !== 'box' || (m.p && m.p[1]) || !(m.size[1] >= 3) || m.ry) return;
             const x = m.p[0], z = m.p[2], w = m.size[0], d = m.size[2], fc = m.faces || 'fblr'; let h = m.size[1];
-            add({ s: 'box', p: [x, 0, z], size: [w + 0.03, 0.4, d + 0.03], key: K.conc, tint: 0x7c7872, faces: fc, top: false });
+            const body = m.key, kind = (body === K.brick || body === K.brick2) ? 'brick' : body === K.stone ? 'stone' : (body === K.rib || body === K.board || body === K.metal || body === K.wood) ? 'shed' : 'plaster';
+            const BASE = { brick: [{ key: K.stone, tint: 0xb4ac9c }, { key: 'urban:ConcreteStriped1c', tint: 0xc0bcb4 }], stone: [{ key: K.stone, tint: 0x8c867c }],
+                shed: [{ key: 'urban:ConcreteStriped1c', tint: 0xb0aca4 }, { key: K.brick2, tint: 0xb89888 }], plaster: [{ key: K.brick2, tint: 0xc8a090 }, { key: 'urban:TileSubway3a', tint: 0xd8d4cc }, { key: K.stone, tint: 0xc4bcac }] }[kind];
+            const bs = BASE[hsh % BASE.length];
+            add({ s: 'box', p: [x, 0, z], size: [w + 0.03, 0.4, d + 0.03], key: bs.key, tint: bs.tint, faces: fc, top: false });                    // the base course, in its own sheet
+            if (h >= 4.2 && kind !== 'shed') add({ s: 'box', p: [x, h - 0.62, z], size: [w + 0.14, 0.42, d + 0.14], key: kind === 'brick' ? 'urban:PlasterWallStucco2a' : 'urban:TileGeneric1a', tint: kind === 'brick' ? 0xe8dcc4 : TR.tint, faces: fc, top: false });   // the frieze under the eaves
+            if (kind !== 'shed' && kind !== 'stone' && (hsh >> 3) % 3 !== 0 && fc === 'fblr') {                                                          // corner piers, the base's sheet run up the corners
+                add({ s: 'box', p: [x - w / 2 + 0.2, 0.4, z + d / 2 - 0.2], size: [0.52, h - 0.4, 0.52], key: bs.key, tint: bs.tint, top: false, n: 2, step: [w - 0.4, 0, 0] });
+                add({ s: 'box', p: [x - w / 2 + 0.2, 0.4, z - d / 2 + 0.2], size: [0.52, h - 0.4, 0.52], key: bs.key, tint: bs.tint, top: false, n: 2, step: [w - 0.4, 0, 0] });
+            }
+            /* the wall decals: a works building wears a warning sign by its doors; every other one a vent grille low on a side wall and a meter box */
+            if (kind === 'shed') { if (fc.indexOf('f') >= 0) add({ s: 'quad', p: [x + w / 2 - 0.9, 1.5, z + d / 2 + 0.09], size: [0.6, 0.6], ry: 0, key: 'urban:' + ['SignCaution1a', 'SignDanger1b', 'SignHazard1a', 'SignProhibited1a', 'SignProtective1b'][hsh % 5], uv: 'fit' }); }
+            else if (fc.indexOf('l') >= 0) {
+                add({ s: 'quad', p: [x - w / 2 - 0.09, 0.55, z - d * 0.2], size: [0.8, 0.55], ry: 90, key: 'urban:MetalSubwayGrill1a', uv: 'fit' });
+                add({ s: 'box', p: [x - w / 2 - 0.12, 1.0, z + d * 0.22], size: [0.2, 0.7, 0.5], key: K.metal, tint: 0x9aa0a6 });
+            }
             [[-1, 1, 'f', 'l'], [1, -1, 'b', 'r']].forEach(c => {
                 if (fc.indexOf(c[2]) < 0 && fc.indexOf(c[3]) < 0) return;
                 const px = x + c[0] * (w / 2 + 0.11), pz = z + c[1] * (d / 2 - 0.5);
