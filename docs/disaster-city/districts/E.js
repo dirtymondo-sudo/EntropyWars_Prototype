@@ -67,7 +67,7 @@ module.exports = { build: function (api) {
                 return b; },
         };
         fn(b);
-        rows.push({ k: 'arch', id: 'dc:' + id + ':arch', x: cx, z: cz, rot: 0, parts });
+        { const ar = { k: 'arch', id: 'dc:' + id + ':arch', x: cx, z: cz, rot: 0, parts }; if (row.k === 'plateau') ar.y = 0;   /* over a roof-walk plateau the row would stand on its 7 m roof */ rows.push(ar); }
         return b;
     }
     const GLOW = { glow: 0.55 }, NEON = { glow: 1 };
