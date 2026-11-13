@@ -31,6 +31,10 @@ Usage: pip install bpy==5.2.3 scipy pillow
               [--out charactercreation/wear] [--metal 0.0] [--rough 0.8] [--px 2048]
               [--headgear]   (a helmet / cowl that reaches below the eyes is kept as the hat: quarterback)
               [--neckline]   (the bare skin + painted necklace in a low neckline go, the body's skin shows: catgirl)
+       env (all off by default, batch 3 of 11-13): EYEAT=x,y,z (no eyeball shells behind goggles: the eyes' middle by hand, the sidekick),
+              SLEEVESEED / SLEEVER (how far off the arm a sleeve may start / run: Santa's fur sleeves 0.15 / 0.24, a cape fused to a
+              tight sleeve 0.07), RAY_IN=0.12 RAY_OUT=0.12 TORN=9 (a suit jacket narrower than the body's shoulders: politician,
+              priest, professor, sheriff), LOCKS=0 (a dark coat or gown read as a hair lock: the witch)
 Notes: docs/notes/models-assets.md "THE MESHY OUTFITS".
 """
 import argparse, importlib.util, io, math, os, re, sys
@@ -149,11 +153,13 @@ def fit(name, gender, src, bodies_dir):
             a, b = cand[i][2], cand[j][2]
             if abs(a[2] - b[2]) < 0.01 and 0.02 < abs(a[0] - b[0]) < 0.08 and abs(a[0] + b[0]) < 0.03:
                 if best is None or min(a[2], b[2]) > best[0]: best = (min(a[2], b[2]), cand[i][1], cand[j][1], (a + b) / 2)
+    if not best and os.environ.get('EYEAT'):   # (EYEAT=x,y,z, off: a unit whose eyes are behind goggles has no eyeball shells; the eyes' middle is given by hand, in the remake's own metres from its feet)
+        best = (0, None, None, np.array([float(x) for x in os.environ['EYEAT'].split(',')]) + np.array([0, 0, min(co(o)[:, 2].min() for o in sh)]))
     assert best, 'no eyes found'
     eyeN = best[3]; S = E('S', eyeM[2] / eyeN[2])
     for o in sh:
         for v in o.data.vertices: v.co *= S
-    eye = Vector(eyeN * S); eyes = {best[1], best[2]}
+    eye = Vector(eyeN * S); eyes = {best[1], best[2]} - {None}
     if NOWINGS:   # Meshy centres the whole model, wings and all, so the figure stands off the middle: back onto the body's eyes and the floor
         dy_ = eyeM[1] - eye.y; body_ = [o for o in sh if co(o)[:, 1].mean() + dy_ <= eyeM[1] + E('WINGY', 0.22)]
         dz_ = -min(co(o)[:, 2].min() for o in body_)
@@ -683,11 +689,11 @@ def fit(name, gender, src, bodies_dir):
             for sd in ('L', 'R'):
                 dl = [on_line(sd, v.co) for v in o.data.vertices]
                 gi = [g.index for g in o.vertex_groups if g.name in ARMN[sd]]
-                seeds = [v.index for v in o.data.vertices if dl[v.index][0] < 0.07 and 0.15 < dl[v.index][1] < 0.5 and sum(g.weight for g in v.groups if g.group in gi) > 0.6]
+                seeds = [v.index for v in o.data.vertices if dl[v.index][0] < E('SLEEVESEED', 0.07) and 0.15 < dl[v.index][1] < 0.5 and sum(g.weight for g in v.groups if g.group in gi) > 0.6]
                 seen_ = set(seeds); st_ = list(seeds)
                 while st_:
                     for k_ in adj[st_.pop()]:
-                        if k_ not in seen_ and dl[k_][0] < 0.16 and dl[k_][1] > 0.1: seen_.add(k_); st_.append(k_)
+                        if k_ not in seen_ and dl[k_][0] < E('SLEEVER', 0.16) and dl[k_][1] > 0.1: seen_.add(k_); st_.append(k_)   # (SLEEVESEED / SLEEVER: Santa's fur sleeves stand 10 cm off the arm; a cape fused to a tight sleeve is within 16 cm of it)
                 # THE HAND IN A BIG SHELL (2026-11-12, robinhood: Meshy fused his gloved hand to the tunic's skirt, the test above
                 # sent the glove to the hips and it hung in the air beside the hand): cloth tight round the wrist + hand (3.5 cm off
                 # the bone line, mostly arm weight) is on the arm too, with what joins it within 6 cm of the line
