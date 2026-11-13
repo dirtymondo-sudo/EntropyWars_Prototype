@@ -26461,6 +26461,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            doorway and down, sparks of the portal's own light crawl round the frame, the rings turn faster and throb; it
            builds over 3 s from menace(true) and stops with menace(false) or the close */
         var M = { at: null, lastS: 0, lastE: 0 };
+        /* rev 3b: the light in the doorway dies to a black-violet void as the menace builds (the smoke reads against it,
+           not against a white glare) and the rings bruise from teal to violet */
+        var voidMat = new THREE.MeshBasicMaterial({ color: 0x07040d, transparent: true, opacity: 0, depthWrite: false });
+        var voidPl = new THREE.Mesh(new THREE.PlaneGeometry(rig.ow, oh), voidMat); voidPl.position.set(0, oh / 2, 0.02 * rig.ts); voidPl.renderOrder = 151; rig.inner.add(voidPl);
+        var _cTeal = new THREE.Color(_DOOR_FX.teal), _cLight = new THREE.Color(_DOOR_FX.light), _cBruise = new THREE.Color(0x7a3cff), _cDeep = new THREE.Color(0x3a1466);
         var FB = { c: tilePx(tx, ty), bz: tileZ(tx, ty), ts: rig.ts }, liftPx = rig.group.position.y - _worldPos(tx, ty).y;
         var FORM = o.instant ? 1 : 900, RISE = 700, OPEN = 450, SHUT = 300, BACK = 400, GONE = 500;
         rig.setRise(0.02); rig.setOpen(0); rig.setLight(0); rig.setFade(0);
@@ -26485,6 +26490,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     _goSpray(FB, 1 + (mk > 0.6 ? 1 : 0), { sprite: 'lightning', lz: 3, ly: liftPx + oh * 0.5, r: rig.ow * 0.75, rz: oh * 0.55, v: 30, vz0: -20, vz1: 20, g: 0, drag: 2, s0: oh * 0.18, s0b: oh * 0.42, s1: oh * 0.1, op: 0.95, tint: (Math.random() < 0.5) ? _DOOR_FX.teal : 0xb48cff, ml0: 90, ml1: 190 });
                 }
             }
+            m1.color.copy(_cTeal).lerp(_cBruise, mk); m2.color.copy(_cLight).lerp(_cBruise, 0.8 * mk); m3.color.copy(_cTeal).lerp(_cDeep, mk);
             m1.opacity = 0.85 * Math.min(1, pk) * breathe; m2.opacity = 0.6 * Math.min(1, pk); m3.opacity = 0.5 * Math.min(1, pk) * breathe;
             var rk = (T.emergeAt != null) ? _sigClamp01((el - T.emergeAt) / RISE) : 0;
             var ok = (T.openAt != null) ? _sigClamp01((el - T.openAt) / OPEN) : 0;
@@ -26497,7 +26503,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
             rig.setRise(rk > 0 ? Math.max(0.02, _sigEaseOutBack(rk)) : 0.02);
             rig.inner.position.z = -0.25 * rig.ts * (1 - _sigEaseOutCubic(rk));   // it comes forward out of the portal
-            rig.setOpen(_sigEaseOutCubic(ok)); rig.setLight(light); rig.setFade(fade);
+            rig.setOpen(_sigEaseOutCubic(ok)); rig.setLight(light * (1 - 0.85 * mk)); rig.setFade(fade);
+            voidMat.opacity = 0.92 * mk * fade * _sigClamp01(ok * 2);
             if (c > SHUT + BACK + GONE && entry && entry.finish) entry.finish();
         });
         if (!entry) { _sigDisposeGroup(rig.group); return null; }
