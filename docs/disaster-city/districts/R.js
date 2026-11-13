@@ -64,12 +64,21 @@ function build(ctx) {
             o = o || {};
             fs.split('').forEach(f => {
                 const L = (f === 'f' || f === 'b') ? w : d, n = o.n || Math.max(1, Math.floor(L / (o.pitch || 2.9))), pitch = (L - 2 * (o.margin || 0)) / n, s = spot(f, cx, cz, w, d, -(L - 2 * (o.margin || 0)) / 2 + pitch / 2, o.off || 0.06);
-                add({ s: 'quad', p: [s.p[0], y, s.p[1]], size: [o.ww || 1.3, o.wh || 1.5], ry: s.ry, key: o.key === undefined ? K.winR : o.key, tint: o.tint, glow: o.glow, uv: o.uv || 'fit', kind: o.kind, n, step: [s.st[0] * pitch, 0, s.st[1] * pitch] });
+                add({ s: 'quad', p: [s.p[0], y, s.p[1]], size: [o.ww || 1.7, o.wh || 1.8], ry: s.ry, key: o.key === undefined ? K.winR : o.key, tint: o.tint, glow: o.glow, uv: o.uv || 'fit', kind: o.kind, n, step: [s.st[0] * pitch, 0, s.st[1] * pitch] });
             });
             return a;
         };
         /* floors of windows */
-        a.floors = (fs, cx, cz, w, d, n, o) => { o = o || {}; for (let k = 0; k < n; k++) a.wins(fs, cx, cz, w, d, (o.y0 == null ? 1.0 : o.y0) + k * (o.per || 3.2), o); return a; };
+        /* THE BIG WINDOWS (mondo 11-13 18:49: "the windows are too small ... the bottom row of these buildings should be different/not windows"):
+           a window is 1.7 x 1.8 m, and the ground row is half as many wide shop panes, not the upper floors' windows (`ground: 'same'` keeps it) */
+        a.floors = (fs, cx, cz, w, d, n, o) => {
+            o = o || {};
+            for (let k = 0; k < n; k++) {
+                if (k === 0 && o.ground !== 'same') { a.wins(fs, cx, cz, w, d, 0.45, Object.assign({}, o, { key: o.gkey || K.winS, ww: o.gww || 2.4, wh: 2.1, n: o.n ? Math.max(1, Math.round(o.n / 2)) : undefined, pitch: (o.pitch || 2.9) * 2 })); continue; }
+                a.wins(fs, cx, cz, w, d, (o.y0 == null ? 1.0 : o.y0) + k * (o.per || 3.2), o);
+            }
+            return a;
+        };
         /* one panel on a face: a sign (plain colour, lit), a door sheet, a shutter */
         a.panel = (f, cx, cz, w, d, along, y, pw, ph, key, tint, o) => { const s = spot(f, cx, cz, w, d, along, (o && o.off) || 0.07); return add(Object.assign({ s: 'quad', p: [s.p[0], y, s.p[1]], size: [pw, ph], ry: s.ry, key, tint, uv: key ? 'fit' : undefined }, o, { off: undefined })); };
         /* a canvas awning off a face: the high edge on the wall */
@@ -265,7 +274,7 @@ function build(ctx) {
         const W = fr.W, D = fr.D, PB = { key: 'pack_bld_09', w: 16.89, d: 13.86 };
         /* the pack block: the front's left corner (as the row's frame runs), a texbuilding row at 1.0 of its true width */
         const blk = fr.sub(-W / 2 + PB.w / 2, D / 2 - PB.d / 2, PB.w, PB.d);
-        const prow = { k: 'texbuilding', id: 'dc:P01-01-B1-shop', x: blk.x, z: blk.z, w: PB.w, d: PB.d, rot: fr.rot, storeys: 3, seed: 9100, key: PB.key }; out.push(prow);
+        const prow = { k: 'texbuilding', id: 'dc:P01-01-B1-shop', x: blk.x, z: blk.z, y: 0, w: PB.w, d: PB.d, rot: fr.rot, storeys: 3, seed: 9100, key: PB.key }; out.push(prow);
         const a = arch(fr, 'P01-01-B1'), CR = 0xf0e2c0, SG = 0x9cc4b8;
         const rx = -W / 2 + PB.w, rw = W - PB.w;                      // the wing beside the block
         a.box(rx + rw / 2, 0, 0, rw + 0.05, ROOF_H, D + 0.1, K.stucco, CR, { top: false, faces: 'fbr' });
