@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 922 |
+| Asset pack | yes | 925 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -2132,6 +2132,14 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | item_maat_feather | `Assets/world/props/misc/maat_feather.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | item_police_barricade | `Assets/world/props/misc/police_barricade.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 
+### Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| bus_shelter | `Assets/world/packs/elbolilloduro/ebd_busstop_bus_shelter.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
+| bus_stop_sign | `Assets/world/packs/elbolilloduro/ebd_busstop_bus_stop_sign.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
+| transit_bus | `Assets/world/packs/elbolilloduro/ebd_busstop_transit_bus.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2163,6 +2171,13 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | spell_one_angel_wing | `Assets/characters/gear/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
 | spell_one_bat_wing | `Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
 | spell_one_dragon_wing | `Assets/characters/gear/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
+
+### Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| cash_register | `Assets/world/packs/elbolilloduro/ebd_pizzeria_cash_register.glb` | Asset pack | Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| street_signal | `Assets/world/packs/elbolilloduro/ebd_pizzeria_street_signal.glb` | Asset pack | Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Low Poly Chess Set (mondo's upload, FBX) — Asset pack (author not recorded yet) (2)
 
@@ -2246,18 +2261,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | abandoned_house | `Assets/world/packs/elbolilloduro/ebd_abandonedhouse_house.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender, basement cut; DOOR_HQ.catalogue abandoned_house past the Haunted grounds) |
-
-### Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| bus_shelter | `Assets/world/packs/elbolilloduro/ebd_busstop_bus_shelter.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
-
-### Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| cash_register | `Assets/world/packs/elbolilloduro/ebd_pizzeria_cash_register.glb` | Asset pack | Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Meshy-style eagle export (mondo's upload), rig + 5 clips by Claude (bake-eagle.mjs) — Meshy AI, reworked by Claude (1)
 
@@ -2587,6 +2590,7 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | city_bench | `Assets/world/props/meshy/Meshy_AI_a_city_bench_0922010124_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | city_bin | `Assets/world/packs/elbolilloduro/ebd_6twelve_city_bin.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
 | city_trash_bin | `Assets/world/props/meshy/Meshy_AI_a_city_trash_bin_0917065157_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| citybus | `Assets/world/packs/elbolilloduro/ebd_busstop_transit_bus.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
 | clock | `Assets/world/props/meshy/Meshy_AI_analog_clock_realist_0727195259_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | confessional | `Assets/world/props/meshy/Meshy_AI_confessional_booth_0917035307_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | couples_bed | `Assets/world/packs/pizzadoggy_psx_mega_pack/furniture/bed_4.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
