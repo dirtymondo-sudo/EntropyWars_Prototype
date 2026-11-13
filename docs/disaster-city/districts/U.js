@@ -270,7 +270,7 @@ module.exports.build = function (api) {
         else { row.skin = false; delete row.style; delete row.key; delete row.hollow; delete row.door; }
         B[kind](tierRow ? w + 0.3 : w, tierRow ? d + 0.3 : d, row);   // a roof-route building is a plateau: its drawn walls stand 0.15 m outside the plateau's own cliff
         if (row.dead) features.splice(features.indexOf(row), 1);
-        features.push({ k: 'arch', id: 'dcu:' + b.id, x: ctx.x, z: ctx.z, rot, parts: P }); count.arch++; count.parts += P.length;
+        features.push(Object.assign({ k: 'arch', id: 'dcu:' + b.id, x: ctx.x, z: ctx.z }, tierRow ? { y: 0 } : {}, { rot, parts: P }));   // y: 0 over a roof-walk plateau, or the row stands on its 7 m roof count.arch++; count.parts += P.length;
     });
     /* the campus green's bandstand, on the grass south-west of the cross walks */
     { const p = PLAN.plots.find(q => q.name === 'Campus green'); if (p) { const x = r3(api.gx(p.x * 12 + 2.5)), z = r3(api.gx(p.y * 12 + 8.5)); ctx = { id: 'dc:green', x, z, rot: 0 }; P = []; B.bandstand(); features.push({ k: 'arch', id: 'dcu:bandstand', x, z, rot: 0, parts: P }); count.arch++; count.parts += P.length; } }

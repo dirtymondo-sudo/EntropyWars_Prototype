@@ -37,8 +37,13 @@ Usage: pip install bpy==5.2.3 scipy pillow
               priest, professor, sheriff), LOCKS=0 (a dark coat or gown read as a hair lock: the witch),
               ARMALLX=0.3 (with --barearms: a bracelet painted on the bare arm goes with the arm, the spy),
               TOPCUT=0.3 (a torn top edge cut level, metres under the eyes: the spy),
+              DROPCOL="r,g,b,tol" (a piece fused into the body shell goes by its colour: superhero F's cape),
+              CUFF=1 (with HANDCUT: the sleeve end sawn straight across the arm, superhero F),
+              SNUG=0.004 (a suit's shoulders laid close on the skin so a creator cape covers them, superhero F),
               HANDCUT=1 (a bare hand fused to its sleeve goes, the body's own hand shows: politician, priest, shaman, telepath, vampire),
               DROP="x,y,z,r;..." (a stray shell left out by hand, its middle r from a point measured from the eyes; SHELLS=1 lists them)
+       batch 1 review of 11-13: SNUG=1 (baggy trousers drawn in at the waist + hips), HATMIRROR=1|-1 (one half of the hat copied across), NOHANDS=1 (the body's own hands show, Meshy's go), WINGKEEP=1 (a collar fused to the wings), NOHELD=1 (nothing in the
+              hands), LOCKREM=0, SHELLS=1 (print the shells)
 Notes: docs/notes/models-assets.md "THE MESHY OUTFITS".
 """
 import argparse, importlib.util, io, math, os, re, sys
@@ -58,6 +63,7 @@ from mathutils.bvhtree import BVHTree  # noqa: E402
 from mathutils.kdtree import KDTree  # noqa: E402
 
 E = lambda k, d: float(os.environ.get(k, d))
+DROPAT = [[float(v) for v in q.split(',')] for q in os.environ.get('DROPAT', '').split(';') if q.strip()]
 SKIN_T = E('SKIN_T', 0.20)
 HEADGEAR = False
 NECKLINE = False
@@ -197,6 +203,25 @@ def fit(name, gender, src, bodies_dir):
         for o in sh:
             for v in o.data.vertices: v.co.y += dy_; v.co.z += dz_
         eye = eye + Vector((0, dy_, dz_))
+    # THE PAINTED-ON PIECE (env DROPCOL="r,g,b,tol"; 2026-11-13, superhero F, mondo: "super jagged sleeves and cape": her cape is one
+    # shell with the suit and hangs over the arms, so no shell can be dropped): every face of a big shell (1000 faces) whose colour
+    # lies within tol of r,g,b goes (DROPCOS: + its shaded folds, the same hue darker; off), and the look wears the creator's piece
+    # in its place. Done before the limbs are measured: with the cape left in, its hem was read as her hands + feet, the body's arms
+    # and legs were aimed at it and stood outside the sleeves and boots. SHELLS=1 prints each big shell's back colour
+    if os.environ.get('DROPCOL'):
+        dc_ = [float(x) for x in os.environ['DROPCOL'].split(',')]
+        for o in sh:
+            me_ = o.data
+            if len(me_.polygons) < 1000: continue
+            fc_ = face_cols(o, PX, IW, IH)
+            if E('SHELLS', 0):
+                cb_ = np.array([p.center for p in me_.polygons]); print('[bake-outfit] %s: shell %d faces, back colour %s' % (name, len(fc_), np.round(np.median(fc_[cb_[:, 1] > eye.y + 0.2], axis=0), 3)), flush=True)
+            nr_ = np.linalg.norm(fc_, axis=1); cut_ = (np.linalg.norm(fc_ - np.array(dc_[:3]), axis=1) < dc_[3]) | ((nr_ > E('DROPDARK', 0.05)) & ((fc_ @ np.array(dc_[:3])) / (nr_ * np.linalg.norm(dc_[:3]) + 1e-9) > E('DROPCOS', 2)))
+            if cut_.any() and not cut_.all():
+                bmh = bmesh.new(); bmh.from_mesh(me_); bmh.faces.ensure_lookup_table()
+                bmesh.ops.delete(bmh, geom=[bmh.faces[i] for i in np.nonzero(cut_)[0]], context='FACES')
+                bmesh.ops.delete(bmh, geom=[v for v in bmh.verts if not v.link_faces], context='VERTS'); bmh.to_mesh(me_); bmh.free()
+                print('[bake-outfit] %s: %d faces of a painted-on piece cut by colour' % (name, int(cut_.sum())), flush=True)
     allc = np.vstack([co(o) for o in sh if not (NOWINGS and co(o)[:, 1].mean() > eye.y + E('WINGY', 0.22))]); xmax = np.abs(allc[:, 0]).max()   # (never the wings: the hands are the widest point)
     tgt = {'L': Vector(allc[allc[:, 0] > 0.85 * xmax].mean(0)), 'R': Vector(allc[allc[:, 0] < -0.85 * xmax].mean(0))}
     ft = {'L': Vector(allc[(allc[:, 2] < 0.05 * S) & (allc[:, 0] > 0)].mean(0)), 'R': Vector(allc[(allc[:, 2] < 0.05 * S) & (allc[:, 0] < 0)].mean(0))}
@@ -246,6 +271,12 @@ def fit(name, gender, src, bodies_dir):
         c = co(o); cz = c[:, 2].mean(); cx = c[:, 0].mean(); n = len(o.data.polygons)
         col = np.median(face_cols(o, PX, IW, IH), axis=0)
         isrem = o in rem
+        if os.environ.get('SHELLS'): print('[shell] n=%d dz=%.2f..%.2f (mid %.2f) x=%.2f y=%.2f rem=%d col=%s dskin=%.2f' % (n, c[:, 2].min() - eye.z, c[:, 2].max() - eye.z, cz - eye.z, cx, c[:, 1].mean() - eye.y, isrem, np.round(col, 2), np.linalg.norm(col - skin)), flush=True)   # (SHELLS=1: every shell as the sorter sees it)
+        # NO WEAPONS IN AN OUTFIT (2026-11-13, mondo: "dont give her a sword ... characters will hold those weapons, dont make them
+        # part of the outfit"): env DROPAT='x,y,z,r;...' leaves out every loose shell whose middle is within r of a point (the
+        # remake's own space, as env SHELLS=1 prints them). Off by default
+        if os.environ.get('SHELLS'): print('SHELL', n, c.mean(0).round(2), (c.max(0) - c.min(0)).round(2), col.round(2))
+        if any(np.linalg.norm(c.mean(0) - np.array(q[:3])) < q[3] for q in DROPAT): dropped.append(('named (DROPAT)', n)); bpy.data.objects.remove(o); continue
         if abs(cx) > 0.8 * xmax and np.linalg.norm(col - skin) < SKIN_T and n < 1600:
             # THE GLOVE ON A BARE HAND (2026-11-12, robinhood: fingerless gloves; Meshy fuses the glove to the hand): only the
             # skin-coloured faces go; what is left (the glove's cuff + back) stays when it is a real piece (env GLOVE, faces)
@@ -256,13 +287,39 @@ def fit(name, gender, src, bodies_dir):
                 bmesh.ops.delete(bmg, geom=[v for v in bmg.verts if not v.link_faces], context='VERTS'); bmg.to_mesh(o.data); bmg.free()
                 dropped.append(('hand skin, glove kept', int(sk_.sum()))); keep.append(o); continue
             dropped.append(('hand', n)); bpy.data.objects.remove(o); continue
+        # IN THE HAND (NOHELD=1, off; 2026-11-13, mondo: "dont give her a sword ... characters will hold those weapons, dont make them part of
+        # the outfit"; the cowgirl came with a revolver in each hand): every face out at the hands (past NOHELDX of the arm span) goes
+        if E('NOHELD', 0):   # (face by face: Meshy fuses the gun to the hand's shell)
+            cen_ = np.array([p_.center for p_ in o.data.polygons]); go_ = np.abs(cen_[:, 0]) > E('NOHELDX', 0.8) * xmax
+            if go_.all(): dropped.append(('in the hand', n)); bpy.data.objects.remove(o); continue
+            if go_.any():
+                bmn = bmesh.new(); bmn.from_mesh(o.data); bmn.faces.ensure_lookup_table()
+                bmesh.ops.delete(bmn, geom=[bmn.faces[i] for i in np.nonzero(go_)[0]], context='FACES')
+                bmesh.ops.delete(bmn, geom=[v for v in bmn.verts if not v.link_faces], context='VERTS'); bmn.to_mesh(o.data); bmn.free()
+                dropped.append(('in the hand', int(go_.sum()))); c = co(o); cz = c[:, 2].mean(); cx = c[:, 0].mean(); n = len(o.data.polygons)
         # THE WINGS (--nowings; 2026-11-12, angel: Meshy gives her wings as flat sheets on red arms): a shell that sits wholly
         # behind her back (its middle WINGY behind the eyes) is left out; the look wears the creator's own Wings instead
-        if NOWINGS and not isrem and c[:, 1].mean() > eye.y + E('WINGY', 0.22): dropped.append(('wing', n)); bpy.data.objects.remove(o); continue
+        if NOWINGS and not isrem and c[:, 1].mean() > eye.y + E('WINGY', 0.22):
+            # THE COLLAR ON THE WINGS (WINGKEEP=1, off; 2026-11-13, annunaki, mondo: "needs the gold bling plate/necklace thing"): Meshy made
+            # his gold collar plate one shell with the wings, so --nowings took it too. The faces of a wing shell round the neck (WINGKX
+            # to the side, WINGKY behind the eyes, WINGKZ under them) stay as a piece of the outfit; small islands of them go
+            if E('WINGKEEP', 0) and n > 1000:
+                cen_ = np.array([p_.center for p_ in o.data.polygons])
+                k_ = (np.abs(cen_[:, 0] - eye.x) < E('WINGKX', 0.3)) & (cen_[:, 1] < eye.y + E('WINGKY', 0.24)) & (cen_[:, 2] > eye.z - E('WINGKZ', 0.5))
+                if k_.sum() > 150:
+                    bmw = bmesh.new(); bmw.from_mesh(o.data); bmw.faces.ensure_lookup_table()
+                    bmesh.ops.delete(bmw, geom=[bmw.faces[i] for i in np.nonzero(~k_)[0]], context='FACES')
+                    bmesh.ops.delete(bmw, geom=[v for v in bmw.verts if not v.link_faces], context='VERTS'); bmw.to_mesh(o.data); bmw.free()
+                    parts_ = split_loose([o]); big_ = max(parts_, key=lambda q: len(q.data.polygons))
+                    for q in parts_:
+                        if q is not big_ and len(q.data.polygons) < E('WINGKISLE', 60): bpy.data.objects.remove(q)
+                        else: keep.append(q)
+                    dropped.append(('wing, its collar kept', int(k_.sum()))); continue
+            dropped.append(('wing', n)); bpy.data.objects.remove(o); continue
         # A FLAKE (2026-11-12, catgirl: a skin-coloured chip floating beside a boot): a shell of a few faces, a few cm across
         if n < E('FLAKE', 30) and (c.max(0) - c.min(0)).max() < 0.04 * S / 1.9 and not (cz > chin - 0.02): dropped.append(('flake', n)); bpy.data.objects.remove(o); continue
         hd = math.hypot(cx - eye.x, c[:, 1].mean() - eye.y - 0.08)
-        inhead = cz > chin - 0.02 and hd < 0.16
+        inhead = (cz > chin - 0.02 and hd < 0.16) or ((c[:, 2].min() > eye.z + E('EARZ', 0.08) or cz > eye.z + E('HORNZ', 0.03)) and hd < E('EARR', 0.3))   # (+ a shell wholly above the brow, out to the side: the bunny girl's second ear went as 'long hair', a demon's curled horn stayed in her outfit, 11-13)
         if isrem and c[:, 2].min() > chin - 0.25 and not (cz > eye.z and n >= 60): dropped.append(('face bit', n)); bpy.data.objects.remove(o); continue
         if inhead and n < 25: dropped.append(('bit', n)); bpy.data.objects.remove(o); continue
         # THE BARE HAND ON A SLEEVE (env HANDCUT=1; 2026-11-13, mondo across the remake batches: "fingers look messed up": where Meshy
@@ -271,13 +328,26 @@ def fit(name, gender, src, bodies_dir):
         # all of them, nails and shading too, so the body's own hand shows. A glove is not skin-coloured and stays
         if E('HANDCUT', 0) and not inhead and np.abs(c[:, 0]).max() > xmax - E('HANDLEN', 0.12):
             me_ = o.data; cen_ = np.array([p.center for p in me_.polygons]); fc_ = face_cols(o, PX, IW, IH); cut_ = np.zeros(len(cen_), bool)
+            cuffs_ = []
             for sg_ in (-1, 1):
                 sel_ = cen_[:, 0] * sg_ > xmax - E('HANDLEN', 0.12)
-                if sel_.sum() >= 40 and (np.linalg.norm(fc_[sel_] - skin, axis=1) < SKIN_T).mean() > E('HANDSKIN', 0.6): cut_ |= sel_
+                if sel_.sum() >= 40 and (np.linalg.norm(fc_[sel_] - skin, axis=1) < SKIN_T).mean() > E('HANDSKIN', 0.6):
+                    cut_ |= sel_
+                    # THE LEVEL CUFF (env CUFF=1; superhero F, mondo: "super jagged sleeves"): the cut above follows the painted wrist line
+                    # and leaves saw teeth. The sleeve is sawn straight across the arm where the skin colour starts instead
+                    if E('CUFF', 0):
+                        zl_ = cen_[sel_, 2].min() - 0.01; arm_ = (cen_[:, 0] * sg_ > xmax - E('CUFFARM', 0.22)) & (cen_[:, 2] > zl_); ax_ = np.linalg.svd(cen_[arm_] - cen_[arm_].mean(0))[2][0]; ax_ = ax_ * (1 if ax_[0] * sg_ > 0 else -1)
+                        sk_ = arm_ & (np.linalg.norm(fc_ - skin, axis=1) < SKIN_T); t_ = cen_ @ ax_
+                        if E('SHELLS', 0): print('[bake-outfit] cuff', sg_, np.round(ax_, 2), 'xmax %.2f' % xmax, 'arm faces', int(arm_.sum()), 'skin', int(sk_.sum()), 'skin t', np.round(np.percentile(t_[sk_], [0, 3, 50, 100]), 3), 'arm t', np.round(np.percentile(t_[arm_], [0, 50, 100]), 3), flush=True)
+                        cuffs_.append((sg_, ax_, np.percentile(t_[sel_], 1) - E('CUFFIN', 0.004), zl_))
             if cut_.all(): dropped.append(('hand', n)); bpy.data.objects.remove(o); continue
             if cut_.any():
                 bmh = bmesh.new(); bmh.from_mesh(me_); bmh.faces.ensure_lookup_table()
                 bmesh.ops.delete(bmh, geom=[bmh.faces[i] for i in np.nonzero(cut_)[0]], context='FACES')
+                for sg_, ax_, t0_, zl_ in cuffs_:
+                    fs_ = [f for f in bmh.faces if f.calc_center_median().x * sg_ > xmax - E('CUFFARM', 0.22) and f.calc_center_median().z > zl_]
+                    gm_ = list(set(v for f in fs_ for v in f.verts)) + list(set(e for f in fs_ for e in f.edges)) + fs_
+                    bmesh.ops.bisect_plane(bmh, geom=gm_, plane_co=tuple(float(x) for x in ax_ * t0_), plane_no=tuple(float(x) for x in ax_), clear_outer=True)
                 bmesh.ops.delete(bmh, geom=[v for v in bmh.verts if not v.link_faces], context='VERTS'); bmh.to_mesh(me_); bmh.free()
                 dropped.append(('bare hand cut off a sleeve', int(cut_.sum())))
         if inhead or (isrem and cz > eye.z): headp.append(o)
@@ -366,7 +436,7 @@ def fit(name, gender, src, bodies_dir):
         hcol = np.median(np.vstack([face_cols(o, PX, IW, IH) for o in wig]), axis=0)
         for o in [o for o in keep if o not in headp]:
             c = co(o)
-            if (len(o.data.polygons) < E('LOCKN', 600) or o in rem) and c[:, 2].max() > eyeM[2] - 0.16 and np.linalg.norm(np.median(face_cols(o, PX, IW, IH), axis=0) - hcol) < E('LOCKT', 0.15):
+            if (len(o.data.polygons) < E('LOCKN', 600) or (o in rem and E('LOCKREM', 1))) and c[:, 2].max() > eyeM[2] - 0.16 and np.linalg.norm(np.median(face_cols(o, PX, IW, IH), axis=0) - hcol) < E('LOCKT', 0.15):
                 dropped.append(('hair lock', len(o.data.polygons))); keep.remove(o); bpy.data.objects.remove(o)
         # + HAIR FUSED TO THE CLOTHES (the catgirl: the locks over her shoulders are one shell with the jacket and stood up beside her
         # jaw as black shards): in the other shells the hair-coloured faces above the chin (LOCKZ under it) go
@@ -589,6 +659,17 @@ def fit(name, gender, src, bodies_dir):
     dg = bpy.context.evaluated_depsgraph_get(); ev = body.evaluated_get(dg)
     pm = bpy.data.meshes.new_from_object(ev, preserve_all_data_layers=True, depsgraph=dg); posed = bpy.data.objects.new('posed', pm); bpy.context.scene.collection.objects.link(posed)
     cloth = [o for o in keep if o not in wig]
+    # SNUG SHOULDERS (env SNUG = metres; 2026-11-13, superhero F, mondo: "her shoulders poke out of the cape"): the creator's capes
+    # are cut to the bare body, a Meshy suit stands a centimetre or two off it and came through the cape on the shoulders. Cloth
+    # above SNUGZ under the eyes and SNUGX out from the middle (the shoulders + upper arms) is laid SNUG off the posed skin
+    if E('SNUG', 0):
+        pb_ = BVHTree.FromPolygons([v.co.copy() for v in pm.vertices], [list(p.vertices) for p in pm.polygons]); ns_ = 0
+        for o in [o for o in cloth if o not in headp]:
+            for v in o.data.vertices:
+                if v.co.z < eyeM[2] - E('SNUGZ', 0.45) or abs(v.co.x - eyeM[0]) < E('SNUGX', 0.08): continue
+                loc, nor, idx, dist = pb_.find_nearest(v.co)
+                if loc is not None and dist > E('SNUG', 0) and (v.co - loc).dot(nor) > 0: v.co = loc + (v.co - loc).normalized() * E('SNUG', 0); ns_ += 1
+        print('[bake-outfit] %s: %d cloth vertices laid snug on the shoulders' % (name, ns_), flush=True)
     vs, fs, off = [], [], 0
     for o in cloth:
         vs += [v.co.copy() for v in o.data.vertices]; fs += [[off + i for i in p.vertices] for p in o.data.polygons]; off += len(o.data.vertices)
@@ -621,6 +702,7 @@ def fit(name, gender, src, bodies_dir):
         tot = sum(gw[n] for n in names); idx = np.nonzero(tot > 0.5)[0]
         hid = sum(1 for i in idx if i not in ks) / max(1, len(idx))
         print('[bake-outfit] %s: %s %.0f %% under cloth' % (name, names[0], hid * 100), flush=True)
+        if E('NOHANDS', 0) and 'Foot' not in names[0]: ks |= set(int(i) for i in idx); continue   # (NOHANDS: Meshy's own hands go below, the body's show)
         if hid > E('ALLHIDE', 0.35): ks -= set(int(i) for i in idx)
         else: ks |= set(int(i) for i in idx)
     # A LEG SEGMENT (thigh, calf) that is mostly under cloth is hidden whole (2026-11-12, mondo: "Knight has slivers of skin
@@ -729,6 +811,29 @@ def fit(name, gender, src, bodies_dir):
     bwt = [{body.vertex_groups[g.group].name: g.weight for g in v.groups if g.weight > 1e-4} for v in body.data.vertices]
     pbvh = BVHTree.FromPolygons([v.co.copy() for v in pm.vertices], [list(p.vertices) for p in pm.polygons if all(armw[i] < 0.5 for i in p.vertices)])
     unsleeved = 0; torn = 0
+    # THE SNUG WAIST (env SNUG=1, off; 2026-11-13, mondo on the gangster: "can we make these pants and the other baggier/bigger pants
+    # fit better/more snug around the bodies/ waists"): Meshy's baggy trousers stand a hand off the body at the waist, the seat and
+    # the belly. Cloth between the knees and SNUGTOP over the hip joints is drawn in toward the body's skin: its gap over SNUGD
+    # shrinks to SNUGK of itself (whole at the hips and waist, fading out to the knees so the legs stay baggy). Cloth further than
+    # SNUGMAX off the skin (a skirt's flare, a coat's tail) is left alone
+    snug_n = 0
+    if E('SNUG', 0):
+        hipz_ = (amw @ pbn['LeftUpLeg'].head).z; kneez_ = (amw @ pbn['LeftLeg'].head).z + E('SNUGKNEE', 0.0); topz_ = hipz_ + E('SNUGTOP', 0.22)
+        for o in cloth:
+            if o in headp or min(v.co.z for v in o.data.vertices) > kneez_ - E('SNUGHEM', 0.1): continue   # (trousers reach below the knee; a jacket, a coat, a belt over them is not drawn in)
+            for v in o.data.vertices:
+                z_ = v.co.z
+                if z_ < kneez_ or z_ > topz_ + 0.06: continue
+                f_ = min(1.0, (z_ - kneez_) / max(1e-6, (hipz_ - kneez_) * E('SNUGLEG', 0.6))) if z_ < hipz_ else (1.0 if z_ < topz_ else 1.0 - (z_ - topz_) / 0.06)
+                f_ = f_ * f_ * (3 - 2 * f_)
+                loc_, nrm_, _i, d_ = pbvh.find_nearest(v.co)
+                if loc_ is None or d_ < E('SNUGD', 0.01) or d_ > E('SNUGMAX', 0.2): continue
+                if (v.co - loc_).dot(nrm_) < 0: continue   # (inside the body: not this rule's)
+                nd_ = E('SNUGD', 0.01) + (d_ - E('SNUGD', 0.01)) * E('SNUGK', 0.3)
+                t_ = loc_ + (v.co - loc_) * (nd_ / d_)
+                if z_ < hipz_ + 0.03: t_.x = v.co.x + (t_.x - v.co.x) * min(1.0, max(0.0, (abs(v.co.x) - 0.015) / E('SNUGMID', 0.07)))   # (between the legs each side would go to its own leg and the seat's seam would open: there the cloth only comes in front to back)
+                v.co = v.co.lerp(t_, f_); snug_n += 1
+        print('[bake-outfit] %s: %d cloth vertices drawn in at the waist + hips (SNUG)' % (name, snug_n), flush=True)
     for o in cloth:
         bpy.ops.object.select_all(action='DESELECT'); o.select_set(True); bpy.context.view_layer.objects.active = o
         dt = o.modifiers.new('dt', 'DATA_TRANSFER'); dt.object = posed; dt.use_vert_data = True; dt.data_types_verts = {'VGROUP_WEIGHTS'}; dt.vert_mapping = 'POLYINTERP_NEAREST'
@@ -741,6 +846,19 @@ def fit(name, gender, src, bodies_dir):
                     for g in o.vertex_groups: g.remove([v.index])
                     hg.add([v.index], 1.0, 'REPLACE')
         names = {g.index: g.name for g in o.vertex_groups}
+        # THE HAND BITS (NOHANDS=1, off; 2026-11-13, conspiracy theorist, mondo: "fingers look messed up"): Meshy left finger tips, nails
+        # and palm scraps as part of a sleeve's shell; they hung beside the body's own fingers. Faces whose every vertex rides the
+        # hand + its fingers (NOHANDW of its weight) go. Not for a unit in gloves (they ARE its hands)
+        if E('NOHANDS', 0):
+            hn_ = set(i for i, n in names.items() if n in ('LeftHand', 'RightHand') or re.search(r'_[lr]$', n))
+            hw_ = [sum(g.weight for g in v.groups if g.group in hn_) for v in o.data.vertices]
+            go_ = [p_.index for p_ in o.data.polygons if all(hw_[i] > E('NOHANDW', 0.85) for i in p_.vertices)]
+            if go_:
+                bmh = bmesh.new(); bmh.from_mesh(o.data); bmh.faces.ensure_lookup_table()
+                bmesh.ops.delete(bmh, geom=[bmh.faces[i] for i in go_], context='FACES')
+                bmesh.ops.delete(bmh, geom=[v for v in bmh.verts if not v.link_faces], context='VERTS'); bmh.to_mesh(o.data); bmh.free()
+                print('[bake-outfit] %s: %d hand faces left out (the body\'s own hands show)' % (name, len(go_)), flush=True)
+            if not len(o.data.polygons): continue
         W = []
         # a shell on ONE side of the body (a boot, a greave, a gauntlet, a thigh holster) is on that limb: never loose cloth
         # (2026-11-12, mondo: "the cowboys boots are all messed up when he walks and getting distorted": a boot's sole and
@@ -898,6 +1016,17 @@ def fit(name, gender, src, bodies_dir):
     if torn: print('[bake-outfit] %s: %d torn faces left out' % (name, torn), flush=True)
     for g in out.values():
         g['P'] = np.vstack(g['P']); g['N'] = np.vstack(g['N']); g['F'] = np.array(g['F'])
+    # THE MIRRORED HAT (env HATMIRROR=1 / -1, 2026-11-13, mondo on the demon princess: "its only on one horn ... cant you just
+    # mirror the other horn"): the hat's half on that side of the body (+x / -x) is kept and copied across; the other half goes
+    if E('HATMIRROR', 0) and 'hat' in out:
+        g = out['hat']; s_ = 1.0 if E('HATMIRROR', 0) > 0 else -1.0
+        keep_ = [i for i, f in enumerate(g['F']) if g['P'][list(f), 0].mean() * s_ >= 0]
+        used_ = sorted(set(int(v) for i in keep_ for v in g['F'][i])); re_ = {v: i for i, v in enumerate(used_)}; n_ = len(used_)
+        P_ = g['P'][used_]; N_ = g['N'][used_]; W_ = [g['W'][v] for v in used_]
+        F_ = [tuple(re_[int(v)] for v in g['F'][i]) for i in keep_]; U_ = [g['FUV'][i] for i in keep_]
+        g['P'] = np.vstack([P_, P_ * np.array([-1.0, 1, 1])]); g['N'] = np.vstack([N_, N_ * np.array([-1.0, 1, 1])]); g['W'] = W_ + W_
+        g['F'] = np.array(F_ + [(f[0] + n_, f[2] + n_, f[1] + n_) for f in F_]); g['FUV'] = U_ + [[u[0], u[2], u[1]] for u in U_]
+        print('[bake-outfit] %s: hat mirrored from its %s half, %d triangles' % (name, '+x' if s_ > 0 else '-x', len(g['F'])), flush=True)
     from PIL import Image
     im = Image.fromarray((np.clip(PX[::-1, :, :3], 0, 1) * 255).astype(np.uint8), 'RGB')
     return out, hid_base, im
