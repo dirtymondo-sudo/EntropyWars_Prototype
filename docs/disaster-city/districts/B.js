@@ -399,6 +399,348 @@ B.lifeguard = () => {
 /* the volleyball net: two posts, the net between them (x along it) */
 B.net = () => [posts(-4.5, 0, 2, [9, 0, 0], 2.5, 0.07, trim(T.NAVY)), { s: 'quad', p: [0, 1.45, 0], size: [9, 1.0], key: 'urban:MetalTruss1a', kind: 'over', ds: true, uv: [0.5, 0.5], tint: T.WHITE }, box(0, 2.43, 0, 9, 0.05, 0.05, trim())];
 
+/* ══ THE POLISH PASS (2026-11-13, mondo 20:15: "one more polish pass on the exteriors ... go one or two more layers deep with the detail,
+   the foundation is already there and is good"; 20:18 "roofs and ac units"; 20:19 "and textures, different textures or decals for different
+   parts of the building") ══
+   A second layer over every building above (POLISH.<name> gets the same arguments and the parts list to add to): the building's NAME in
+   letters (the arch row's `text` part), a base course in a sheet of its own (tile, subway tile, marble, bare concrete), window sills and
+   heads, pilasters and dentils, downpipes with hoppers, wall AC units with grilles, vent grilles, service doors (the pack's door sheets),
+   wall lamps, and the roof: a membrane sheet, parapet coping, AC plant, vent stacks, hatches, aerials. Roof-route buildings (ice cream,
+   food hall, security, parking booth) keep their roofs clear: their plant hangs on the walls. */
+const KP = {
+    subway: 'urban:TileSubway1a', subwayB: 'urban:TileSubway3a', tileB: 'urban:TileGeneric3a', tileC: 'urban:TileGeneric6a', tileD: 'urban:TileGeneric2a', marbleB: 'urban:TileMarble2a',
+    under: 'urban:ConcreteUnderTiles1a', bare: 'urban:ConcreteUnderTiles1a', metal: 'urban:MetalCorrugatedPainted1a', wallTile: 'urban:TileSubway2a',   // (the metro pack's sheets drew black on an arch row: the urban pack's only)
+    rubber: 'urban:RubberNonSlip1a', rubberB: 'urban:RubberNonSlip3a',
+    grill: 'urban:MetalSubwayGrill1a', grillB: 'urban:MetalSubwayGrill2a', truss: 'urban:MetalTruss1a', ceil: 'urban:FibreCeilingTile1a',
+    doorP: 'urban:DoorPaintedHalf1a', doorP2: 'urban:DoorPaintedHalf3a', doorW: 'urban:DoorWoodenHalf1a', hazard: 'urban:SignHazard1a', caution: 'urban:SignCaution1a', strip: 'urban:ConcreteStriped1a',
+};
+const mat = (key, tint, gain) => ({ key, tint: tint == null ? T.WHITE : tint, gain: gain || 1.6 });
+const flen = (s, W, D) => (s === 'f' || s === 'b') ? W : D;
+const stepOf = (s, du) => s === 'f' ? [du, 0, 0] : s === 'b' ? [-du, 0, 0] : s === 'r' ? [0, 0, -du] : [0, 0, du];
+/* a box proud of a face (u along the face from its middle, as `pane`) */
+const bar = (s, W, D, u, y, w, h, dep, o, off) => { const q = (off || 0) + dep / 2; return s === 'f' ? box(u, y, D / 2 + q, w, h, dep, o) : s === 'b' ? box(-u, y, -D / 2 - q, w, h, dep, o) : s === 'r' ? box(W / 2 + q, y, -u, dep, h, w, o) : box(-W / 2 - q, y, u, dep, h, w, o); };
+const bars = (s, W, D, u0, du, n, y, w, h, dep, o, off) => A(bar(s, W, D, u0, y, w, h, dep, o, off), n > 1 ? { n, step: stepOf(s, du) } : {});
+const spot = (s, W, D, u, out) => s === 'f' ? [u, D / 2 + out] : s === 'b' ? [-u, -D / 2 - out] : s === 'r' ? [W / 2 + out, -u] : [-W / 2 - out, u];
+/* the word on a face: `proud` metres off the footprint's face */
+const sign = (s, W, D, u, y, w, h, text, o, proud) => pane(s, W, D, u, y, w, h, A({ text, ink: '#ffffff' }, o), (proud == null ? 0.03 : proud) - E);
+/* a sign board: a backing box and the word on it */
+const board = (s, W, D, u, y, w, h, text, bgTint, o, dep) => [bar(s, W, D, u, y, w, h, dep || 0.12, A(trim(bgTint), (o && o.glow) ? { glow: o.glow * 0.5 } : {})), sign(s, W, D, u, y + h * 0.08, w * 0.92, h * 0.84, text, o, (dep || 0.12) + 0.015)];
+/* a window row's sill and head */
+const winTrim = (s, W, D, u, y, w, h, tint) => [bar(s, W, D, u, y - 0.13, w + 0.3, 0.13, 0.18, trim(tint)), bar(s, W, D, u, y + h, w + 0.2, 0.12, 0.1, trim(tint))];
+/* pilasters along a face: `k` bays */
+const pilasters = (s, W, D, k, y, h, o, w, dep) => bars(s, W, D, -(flen(s, W, D) - (w || 0.4)) / 2, (flen(s, W, D) - (w || 0.4)) / k, k + 1, y, w || 0.4, h, dep || 0.1, o);
+/* a dentil course under a cornice */
+const dentils = (s, W, D, y, o) => { const L = flen(s, W, D), n = Math.max(2, Math.floor(L / 0.55)); return bars(s, W, D, -L / 2 + 0.2, (L - 0.4) / (n - 1), n, y, 0.26, 0.2, 0.14, o); };
+/* a downpipe: the hopper under the eaves, the pipe, its brackets, a shoe */
+const pipe = (s, W, D, u, H, tint, y0) => { const c = spot(s, W, D, u, 0.1), o = trim(tint == null ? T.STEEL : tint), b = y0 || 0;
+    return [cyl(c[0], b, c[1], 0.065, H - b - 0.3, A({ seg: 6, cap: false }, o)), box(c[0], H - 0.34, c[1], 0.3, 0.34, 0.26, o), A(box(c[0], b + 0.9, c[1], 0.22, 0.05, 0.22, trim(T.DARK)), { n: Math.max(1, Math.floor((H - b - 1) / 2.6)), step: [0, 2.6, 0] })]; };
+/* a wall AC unit: the box, its grille, the drip stain under it (the wall's own sheet, darker) */
+const ac = (s, W, D, u, y, wall) => { const p = [bar(s, W, D, u, y, 0.95, 0.62, 0.42, mat(KP.metal, T.STEEL, 1.5)), pane(s, W, D, u, y + 0.07, 0.72, 0.46, { key: KP.grill, uv: 'fit', tint: T.GREY, kind: 'wall' }, 0.43 - E), bar(s, W, D, u, y - 0.07, 0.8, 0.07, 0.3, trim(T.DARK))];
+    if (wall) p.push(pane(s, W, D, u, Math.max(0, y - 1.5), 0.5, Math.min(1.43, y), { key: wall.key, tint: wall.tint, gain: (wall.gain || 1) * 0.74 }, 0.012));
+    return p; };
+const acRow = (s, W, D, u0, du, n, y, wall) => { const p = []; for (let i = 0; i < n; i++) p.push(...ac(s, W, D, u0 + du * i, y, wall)); return p; };
+/* a vent grille, a service door (the pack's painted door, a step, a lamp over it), a wall lamp */
+const vent = (s, W, D, u, y, w, h) => [pane(s, W, D, u, y, w, h, { key: KP.grillB, uv: 'fit', tint: T.GREY, kind: 'wall' }, 0.03), bar(s, W, D, u, y - 0.06, w + 0.12, 0.06, 0.08, trim(T.DARK))];
+const lamp = (s, W, D, u, y) => [bar(s, W, D, u, y, 0.12, 0.3, 0.2, trim(T.DARK)), bar(s, W, D, u, y - 0.16, 0.26, 0.26, 0.26, A(trim(T.CREAM), { glow: 0.95 }), 0.16)];
+const svcDoor = (s, W, D, u, key, tint) => [pane(s, W, D, u, 0, 1.15, 2.2, { key: key || KP.doorP, uv: 'fit', tint: tint == null ? T.WHITE : tint, kind: 'wall', gain: 1.5 }, 0.03), bar(s, W, D, u, 2.2, 1.4, 0.1, 0.12, trim()), bar(s, W, D, u, 0, 1.5, 0.14, 0.5, mat(KP.bare, T.GREY)), ...lamp(s, W, D, u, 2.5)];
+/* the roof: an AC plant unit on a kerb (its fan on top, a grille on its face), a mushroom vent, a hatch, an aerial, a duct run */
+const plant = (x, y, z, big) => { const w = big ? 2.6 : 1.7, h = big ? 1.3 : 0.95, d = big ? 1.5 : 1.1;
+    return [box(x, y, z, w + 0.3, 0.14, d + 0.3, mat(KP.bare, T.GREY)), box(x, y + 0.14, z, w, h, d, mat(KP.metal, T.STEEL, 1.5)), { s: 'quad', p: [x, y + 0.24, z + d / 2 + 0.01], size: [w * 0.8, h * 0.72], key: KP.grill, uv: 'fit', tint: T.GREY, kind: 'wall' },
+        cyl(x - (big ? 0.6 : 0), y + 0.14 + h, z, 0.42, 0.1, A(trim(T.DARK), { seg: 10 })), ...(big ? [cyl(x + 0.6, y + 0.14 + h, z, 0.42, 0.1, A(trim(T.DARK), { seg: 10 }))] : [])]; };
+const stack = (x, y, z, h) => [cyl(x, y, z, 0.16, h || 0.8, A(trim(T.STEEL), { seg: 8, cap: false })), cyl(x, y + (h || 0.8), z, 0.32, 0.1, A(trim(T.STEEL), { seg: 8 }))];
+const hatch = (x, y, z) => [box(x, y, z, 1.1, 0.35, 1.1, mat(KP.bare, T.GREY)), box(x, y + 0.35, z, 1.2, 0.06, 1.2, mat(KP.metal, T.STEEL, 1.5))];
+const aerial = (x, y, z, h) => [cyl(x, y, z, 0.035, h, A(trim(T.DARK), { seg: 5 })), box(x, y + h * 0.72, z, 1.1, 0.03, 0.03, trim(T.DARK)), box(x, y + h * 0.86, z, 0.8, 0.03, 0.03, trim(T.DARK)), box(x, y + h - 0.05, z, 0.5, 0.03, 0.03, trim(T.DARK))];
+const duct = (x0, y, z0, x1, z1) => box((x0 + x1) / 2, y, (z0 + z1) / 2, Math.abs(x1 - x0) + 0.4, 0.4, Math.abs(z1 - z0) + 0.4, mat(KP.metal, T.STEEL, 1.5));
+/* a flat roof's finish: the membrane sheet just over the slab, a coping on the parapet line */
+const roofSkin = (W, D, y, key, tint, cx, cz) => A({ s: 'quad', flat: true, p: [cx || 0, y + 0.02, cz || 0], size: [W - 0.3, D - 0.3], key, tint: tint == null ? T.GREY : tint, gain: 1.5, roof: true });
+const coping = (W, D, y, tint, cx, cz) => band(W, D, y, 0.1, 0.16, trim(tint)).map(q => A(q, { p: [q.p[0] + (cx || 0), q.p[1], q.p[2] + (cz || 0)] }));
+const moved = (parts, dx, dz) => parts.map(q => A({}, q, { p: [q.p[0] + dx, q.p[1], q.p[2] + dz] }));
+/* a base course round a box in a sheet of its own */
+const plinth = (W, D, h, key, tint, gain) => band(W, D, 0, h, 0.07, mat(key, tint, gain));
+/* a planter: a tiled box, green in it */
+const planter = (x, z, w, d) => [box(x, 0, z, w, 0.55, d, mat(KP.tileB, T.TERRA, 1.8)), box(x, 0.5, z, w - 0.16, 0.34, d - 0.16, trim(T.LEAF))];
+
+/* a rail between the columns of a ring (n columns at radius r, the first at a0 degrees), `skip` = the bays left open (their index).
+   Written out one by one: the arch row's `ring` turns a part the mirrored way, right only for a part that is the same all round. */
+const ringRails = (cx, cz, n, r, a0, y, skip, o) => { const out = [], st = 360 / n, rr = r * Math.cos(st * Math.PI / 360), L = 2 * r * Math.sin(st * Math.PI / 360) - 0.3;
+    for (let i = 0; i < n; i++) { if ((skip || []).indexOf(i) >= 0) continue; const a = (a0 + st * (i + 0.5)) * Math.PI / 180; out.push(A(box(cx + Math.cos(a) * rr, y, cz + Math.sin(a) * rr, L, 0.07, 0.07, o || trim()), { ry: a * 180 / Math.PI + 90 })); }
+    return out; };
+/* THE LETTERING (three-renderer.js _hqArchSignTex, the city's shared sign part: key 'txt:WORDS|ink|bg|aspect'): a part written here with
+   `text` becomes that key; `vert: true` (a blade sign) becomes one square part a letter, stacked. */
+const lettered = (parts) => { const out = [];
+    parts.forEach(q => { if (q.text == null) { out.push(q); return; }
+        const o = A({}, q), word = String(q.text).replace(/'/g, ''), ink = q.ink || '#ffffff', bg = q.bg || '', w = q.size[0], h = q.size[1]; delete o.text; delete o.ink; delete o.bg; delete o.vert;
+        if (!q.vert) { out.push(A(o, { key: 'txt:' + word + '|' + ink + '|' + bg + '|' + (Math.round(w / h * 100) / 100), uv: 'fit', kind: bg ? 'wall' : 'over' })); return; }
+        const n = word.length, ch = h / n;
+        for (let i = 0; i < n; i++) out.push(A({}, o, { p: [q.p[0], q.p[1] + h - ch * (i + 1) + ch * 0.06, q.p[2]], size: [w, ch * 0.88], key: 'txt:' + word[i] + '|' + ink + '|' + bg + '|' + (Math.round(w / (ch * 0.88) * 100) / 100), uv: 'fit', kind: bg ? 'wall' : 'over' })); });
+    return out; };
+const POLISH = {};
+POLISH.hotel = (p, W, D, lx) => {
+    const H = 31.5, body = wallM(T.CORAL);
+    p.push(...plinth(W, D, 0.8, KP.marbleB, T.CREAM, 1.7), ...band(W, D, 3.05, 0.3, 0.1, trim()));
+    ['l', 'r', 'b'].forEach(s => p.push(pane(s, W, D, 0, 0.8, flen(s, W, D) + 2 * E, 2.25, mat(KP.subway, T.CREAM, 1.9), 0.01)));                       // the ground storey: cream tile, not the body's stucco
+    /* the balconies: a glass balustrade on every eyebrow, fins between the bays (front and back) */
+    const k = Math.max(2, Math.round((W - 3.5) / 3.5));
+    ['f', 'b'].forEach(s => {
+        p.push(A(bar(s, W, D, 0, 3.62, W - 3.5, 0.9, 0.05, A(glass(T.AQUA, K.gSq, 0.25), { uv: [1.75, 0.9], win: 'keep' }), 0.62), { n: 8, step: [0, 3.5, 0] }));
+        p.push(A(bar(s, W, D, 0, 4.52, W - 3.5, 0.05, 0.08, trim(), 0.6), { n: 8, step: [0, 3.5, 0] }));
+        p.push(bars(s, W, D, -(W - 3.5) / 2, (W - 3.5) / k, k + 1, 3.62, 0.09, H - 3.9, 0.66, trim(T.CREAM)));
+    });
+    /* the roof: membrane, the lift overrun, plant, stacks, the letters on a truss along the front */
+    p.push(roofSkin(W, D, H, KP.rubber, T.GREY), ...coping(W, D, H + 0.9, T.WHITE));
+    p.push(box(-W / 4, H, -D / 4, 4.2, 2.8, 3.6, wallM(T.CREAM, K.plaster)), box(-W / 4, H + 2.8, -D / 4, 4.6, 0.2, 4.0, trim()), ...moved(svcDoor('f', 4.2, 3.6, 0, KP.doorP2), -W / 4, -D / 4).map(q => A(q, { p: [q.p[0], q.p[1] + H, q.p[2]] })));
+    p.push(...plant(-W / 2 + 4, H, D / 4 - 1, true), ...plant(-W / 2 + 8, H, D / 4 - 1, true), ...plant(2, H, -D / 4, false), ...stack(4.5, H, -D / 4), ...stack(5.6, H, -D / 4), ...hatch(0, H, D / 4), duct(-W / 2 + 4, H + 0.5, D / 4 - 3, -W / 4, D / 4 - 3), ...aerial(-W / 4 + 1, H + 3.0, -D / 4, 4.5));
+    const sw = Math.min(W * 0.5, 15);
+    p.push({ s: 'quad', p: [-W / 2 + sw / 2 + 2, H + 0.9, D / 2 - 0.5], size: [sw, 3.4], key: KP.truss, kind: 'over', ds: true, uv: [1.75, 1.75], tint: T.STEEL });
+    p.push({ s: 'quad', p: [-W / 2 + sw / 2 + 2, H + 1.2, D / 2 - 0.44], size: [sw - 0.6, 2.8], text: 'HOTEL', ink: '#ff5a7a', glow: 0.9 });
+    /* the fin's letters, the canopy's, the door's lamps and planters */
+    const fx = -W / 2 + 5.25, fz = D / 2 + 1.0;
+    p.push({ s: 'quad', p: [fx - 0.26, 7.7, fz], ry: 90, size: [1.6, 16], text: 'HOTEL', vert: true, ink: '#ffffff', glow: 0.8 }, { s: 'quad', p: [fx + 0.26, 7.7, fz], ry: 270, size: [1.6, 16], text: 'HOTEL', vert: true, ink: '#ffffff', glow: 0.8 });
+    p.push({ s: 'quad', p: [lx, 3.06, D / 2 + 3.17], size: [3.2, 0.44], text: 'HOTEL', ink: '#ffffff', glow: 0.7 });
+    p.push(...lamp('f', W, D, lx - 2.4, 2.0), ...lamp('f', W, D, lx + 2.4, 2.0), ...planter(lx - 3.6, D / 2 + 0.6, 1.2, 0.9), ...planter(lx + 3.6, D / 2 + 0.6, 1.2, 0.9));
+    p.push({ s: 'quad', flat: true, p: [lx, 0.03, D / 2 + 1.7], size: [3.0, 3.2], key: KP.rubberB, tint: T.RED, gain: 1.6 });                                 // the door mat (a red carpet)
+    /* the back: the service door, a vent bank, the pipes down the back corners */
+    p.push(...svcDoor('b', W, D, W / 2 - 3, KP.doorP2), ...vent('b', W, D, W / 2 - 6, 1.2, 1.6, 1.0), ...vent('b', W, D, -W / 2 + 4, 1.2, 1.6, 1.0), ...pipe('b', W, D, W / 2 - 0.5, H, T.CREAM), ...pipe('b', W, D, -W / 2 + 0.5, H, T.CREAM));
+    p.push(...acRow('l', W, D, -D / 2 + 3, 0, 1, 1.4, null), ...acRow('r', W, D, D / 2 - 3, 0, 1, 1.4, null));
+    void body;
+};
+POLISH.surf = (p, W, D) => {
+    p.push(...plinth(W, D, 0.5, K.planks, 0x9a7a54, 1.4));
+    ['f', 'b'].forEach(s => p.push(bar(s, W, D, -W / 2 + 0.09, 0, 0.18, 4.0, 0.06, trim()), bar(s, W, D, W / 2 - 0.09, 0, 0.18, 4.0, 0.06, trim())));
+    p.push(sign('f', W, D, 0, 4.66, 4.6, 0.98, 'SURF SHOP', { ink: '#2c4470' }, 0.335));
+    p.push(...board('f', W, D, W / 2 - 1.9, 2.45, 1.1, 0.42, 'OPEN', T.RED, { glow: 0.5 }, 0.08));
+    p.push(pane('l', W, D, 0, 1.3, 1.6, 1.3, A(glass(T.GLASS, K.gRes, 0.3), { uv: 'fit' }), 0.02), ...winTrim('l', W, D, 0, 1.3, 1.6, 1.3), pane('r', W, D, 0, 1.3, 1.6, 1.3, A(glass(T.GLASS, K.gRes, 0.3), { uv: 'fit' }), 0.02), ...winTrim('r', W, D, 0, 1.3, 1.6, 1.3));
+    p.push(box(-W / 2 + 1.45, 1.7, D / 2 + 2.3, 2.3, 0.07, 0.07, { key: K.planks }), box(-W / 2 + 1.45, 0.25, D / 2 + 2.3, 2.3, 0.07, 0.3, { key: K.planks }));       // the board rack
+    p.push(...svcDoor('b', W, D, 0, KP.doorW), ...ac('b', W, D, -W / 2 + 1.5, 2.2, wallM(T.AQUA, K.corr)), ...pipe('b', W, D, W / 2 - 0.3, 4.0, T.WHITE));
+    const c = spot('b', W, D, W / 2 - 0.3, 0.55); p.push(cyl(c[0], 0, c[1], 0.42, 0.95, { key: K.planks, tint: 0x8a6a48, seg: 10 }));                                // the rain barrel under the pipe
+    p.push(...stack(W / 4, 4.9, -D / 4, 0.9));
+};
+POLISH.icecream = (p, W, D, lx) => {
+    const body = wallM(T.PINK);
+    p.push(...plinth(W, D, 0.7, KP.tileC, T.MINT, 1.9));
+    p.push(pilasters('f', W, D, Math.max(2, Math.round(W / 5.25)), 0.7, 5.6, wallM(T.CREAM, K.plaster)), ...['f', 'l', 'r'].map(s => dentils(s, W, D, 6.08, trim())));
+    p.push(...winTrim('f', W, D, 0, 4.0, W - 1.75, 1.75), ...winTrim('l', W, D, 0, 4.0, D - 3.5, 1.75), ...winTrim('r', W, D, 0, 4.0, D - 3.5, 1.75));
+    p.push(sign('f', W, D, 0, 6.36, Math.min(W - 2, 8), 0.56, 'ICE CREAM', { ink: '#ffffff' }, 0.31));
+    p.push(...board('f', W, D, 0, 3.42, Math.min(W - 3, 6), 0.5, 'SUNDAES  SHAKES  CONES', T.HOT, { glow: 0.4 }, 0.1));
+    p.push(...lamp('f', W, D, -W / 2 + 0.6, 2.9), ...lamp('f', W, D, W / 2 - 0.6, 2.9));
+    p.push(...svcDoor('b', W, D, W / 2 - 2, KP.doorP), ...acRow('b', W, D, -W / 2 + 2, 2.2, 3, 4.1, body), ...vent('b', W, D, 0, 1.0, 1.4, 0.9), ...pipe('b', W, D, W / 2 - 0.4, 6.3, T.MINT), ...pipe('b', W, D, -W / 2 + 0.4, 6.3, T.MINT));
+    p.push(pane('b', W, D, 0, 0.7, W + 2 * E, 2.3, mat(KP.wallTile, T.CREAM, 1.8), 0.008));                                                                       // the yard side's ground storey: white tile
+};
+POLISH.boatshop = (p, W, D) => {
+    p.push(...plinth(W, D, 0.7, KP.bare, T.GREY, 1.5));
+    'fb'.split('').forEach(s => p.push(bar(s, W, D, -W / 2 + 0.1, 0.7, 0.2, 4.0, 0.06, trim()), bar(s, W, D, W / 2 - 0.1, 0.7, 0.2, 4.0, 0.06, trim())));
+    p.push(...board('f', W, D, 0, 5.25, Math.min(W - 3, 7), 1.0, 'BOAT REPAIR', T.WHITE, { ink: '#2c4470' }, 0.14));
+    p.push(box(-W / 2 + 4.4, 4.2, D / 2 + 1.1, 0.22, 0.32, 2.2, mat(KP.metal, T.DARK, 1.3)), cyl(-W / 2 + 4.4, 3.0, D / 2 + 1.9, 0.03, 1.2, A(trim(T.DARK), { seg: 5, cap: false })), box(-W / 2 + 4.4, 2.8, D / 2 + 1.9, 0.22, 0.22, 0.1, trim(T.YELLOW)));   // the hoist beam, chain and hook
+    p.push(pane('f', W, D, -W / 2 + 1.2, 1.2, 0.6, 0.6, { key: KP.hazard, uv: 'fit', kind: 'wall' }, 0.03), pane('f', W, D, -W / 2 + 7.6, 1.2, 0.6, 0.6, { key: KP.caution, uv: 'fit', kind: 'wall' }, 0.03));
+    p.push(...winTrim('f', W, D, W / 2 - 3.5, 1.2, 3.5, 1.75, T.WHITE), ...lamp('f', W, D, -W / 2 + 4.4, 4.45));
+    ['l', 'r'].forEach(s => p.push(pane(s, W, D, 0, 2.4, D - 5, 1.4, A(glass(T.GLASS, K.gFac, 0.3), { uv: [1.75, 1.4] }), 0.02), ...winTrim(s, W, D, 0, 2.4, D - 5, 1.4), ...vent(s, W, D, D / 2 - 1.5, 3.4, 1.2, 0.8)));
+    p.push(...svcDoor('b', W, D, 0, KP.doorP2), ...pipe('f', W, D, W / 2 - 0.3, 5.0, T.WHITE), ...pipe('b', W, D, W / 2 - 0.3, 5.0, T.WHITE), ...ac('b', W, D, -W / 2 + 2, 2.4, wallM(T.TEAL, K.corr)));
+    [-D / 4, 0, D / 4].forEach(z => p.push(cyl(0, 7.7, z, 0.4, 0.55, A(mat(KP.metal, T.STEEL, 1.5), { seg: 10, roof: true })), cyl(0, 8.25, z, 0.5, 0.25, A(trim(T.STEEL), { r2: 0.1, seg: 10, roof: true }))));   // the ridge ventilators
+};
+POLISH.cinema = (p, W, D, lx) => {
+    const H = 14, fz = D / 2, fd = 8, AW = W, AD = D - fd, az = -fd / 2;
+    /* the front: a marble base, fluting on the upper tiers, neon lines, the letters */
+    p.push(pane('f', W, D, 0, 0, W + 2 * E, 0.9, mat(KP.marbleB, T.PINK, 1.7), 0.012), box(0, 0.9, fz + 0.06, W + 0.2, 0.1, 0.12, trim()));
+    const t2 = W * 0.68, n2 = Math.max(3, Math.floor((t2 - 1.2) / 1.3) + 1);
+    p.push(A(box(lx - (n2 - 1) * 0.65, 8.35, fz + 0.08, 0.26, 4.2, 0.16, trim()), { n: n2, step: [1.3, 0, 0] }));
+    p.push(A(box(lx, 13.4, fz - 0.44, W * 0.4 - 0.6, 0.14, 0.1, A(trim(T.HOT), { glow: 0.8 })), { n: 3, step: [0, 1.0, 0] }));
+    const bx = lx - W * 0.34 - 0.2;
+    p.push({ s: 'quad', p: [bx - 0.51, 9.2, fz + 0.9], ry: 90, size: [2.3, 15.8], text: 'CINEMA', vert: true, ink: '#ffe27a', glow: 0.95 }, { s: 'quad', p: [bx + 0.51, 9.2, fz + 0.9], ry: 270, size: [2.3, 15.8], text: 'CINEMA', vert: true, ink: '#ffe27a', glow: 0.95 });
+    p.push(box(lx, 3.05, fz + 5.45, 5.6, 1.2, 0.16, A(trim(T.WHITE), { glow: 0.45 })), { s: 'quad', p: [lx, 3.15, fz + 5.54], size: [5.2, 1.0], text: 'NOW SHOWING', ink: '#30343c' });
+    p.push(A(box(0, 2.84, 0, 0.16, 0.14, 0.16, A(trim(T.CREAM), { glow: 1 })), { p: [lx, 2.84, fz], ring: { n: 15, r: 5.15, a0: 6, arc: 168 } }));                            // the chaser bulbs under the marquee
+    [-1, 1].forEach(s => { const u = lx + s * (W * 0.34 + 1.9); p.push(bar('f', W, D, u, 0.78, 2.9, 0.12, 0.14, trim(T.LEMON)), bar('f', W, D, u, 5.3, 2.9, 0.12, 0.14, trim(T.LEMON)), bar('f', W, D, u - 1.39, 0.9, 0.12, 4.4, 0.14, trim(T.LEMON)), bar('f', W, D, u + 1.39, 0.9, 0.12, 4.4, 0.14, trim(T.LEMON))); });
+    p.push(...board('f', W, D, lx + 3.4, 2.5, 1.9, 0.4, 'TICKETS', T.HOT, { glow: 0.5 }, 0.08), pane('f', W, D, lx + 3.4, 1.1, 1.3, 1.2, A(glass(T.GLASS, K.gSq, 0.5), { uv: 'fit' }), 0.02), bar('f', W, D, lx + 3.4, 1.0, 1.6, 0.08, 0.3, trim()));
+    /* the auditorium: a tile base, pilasters, exits, plant on the roof */
+    const mv = q => moved(q, 0, az);
+    p.push(...mv(plinth(AW, AD, 1.0, KP.subwayB, T.CREAM, 1.8).slice(1)));
+    ['l', 'r'].forEach(s => p.push(...mv([pilasters(s, AW, AD, Math.max(2, Math.round(AD / 5.25)), 1.0, H - 1.5, wallM(T.LEMON, K.plaster), 0.5, 0.12)]), ...mv(svcDoor(s, AW, AD, -AD / 4, KP.doorP2, T.HOT)), ...mv(board(s, AW, AD, -AD / 4, 2.95, 1.2, 0.34, 'EXIT', T.LEAF, { glow: 0.6 }, 0.06)), ...mv(pipe(s, AW, AD, AD / 2 - 0.5, H - 0.5, T.CREAM))));
+    p.push(...mv(svcDoor('b', AW, AD, 0, KP.doorP2, T.HOT)), ...mv(acRow('b', AW, AD, -AW / 2 + 3, 0, 1, 2.6, wallM(T.CREAM, K.plaster))), ...mv(vent('b', AW, AD, AW / 2 - 3, 2.0, 2.0, 1.2)));
+    p.push(roofSkin(AW, AD, H, KP.rubber, T.GREY, 0, az), ...coping(AW, AD, H, T.LEMON, 0, az), ...plant(-AW / 4, H, az - 1, true), ...plant(AW / 4, H, az - 1, true), duct(-AW / 4, H + 0.5, az + 1.2, AW / 4, az + 1.2), ...stack(0, H, az - AD / 2 + 2), ...hatch(AW / 2 - 2.5, H, az - AD / 2 + 2.5));
+};
+POLISH.lookout = (p) => {
+    p.push(cyl(0, 0, 0, 3.95, 0.05, { key: KP.bare, tint: T.GREY, gain: 1.5, seg: 16 }));
+    p.push(box(0, 0.1, 0, 0.56, 0.14, 0.56, A(trim(T.CREAM), { ring: { n: 8, r: 2.9 } })), box(0, 3.14, 0, 0.56, 0.16, 0.56, A(trim(T.CREAM), { ring: { n: 8, r: 2.9 } })));
+    [0.95, 0.5].forEach(y => p.push(...ringRails(0, 0, 8, 2.9, 0, y, [0])));
+    p.push(cyl(0, 0.1, 0, 1.15, 0.45, { key: K.planks, ri: 0.75, seg: 12 }), cyl(0, 0.1, 0, 0.75, 0.9, A(mat(KP.tileB, T.TEAL, 1.8), { seg: 12 })), dome(0, 1.0, 0, 0.6, 0.45, trim(T.LEAF)));
+    p.push(box(0, 6.5, 0, 0.9, 0.04, 0.04, trim(T.DARK)), box(0, 6.5, 0, 0.04, 0.04, 0.9, trim(T.DARK)), box(0.3, 6.62, 0, 0.5, 0.22, 0.03, A(trim(T.RED), { ds: true })));
+    p.push(A(box(0, 3.0, 0, 0.14, 0.14, 0.14, A(trim(T.CREAM), { glow: 1 })), { ring: { n: 8, r: 2.45, a0: 22.5 } }));
+};
+POLISH.market = (p, W, D, lx) => {
+    p.push(box(0, 1.1, -D / 2 + 0.1, W + 0.1, 0.08, 0.34, trim()), box(-W / 2 + 0.1, 1.1, 0, 0.34, 0.08, D + 0.1, trim()), box(W / 2 - 0.1, 1.1, 0, 0.34, 0.08, D + 0.1, trim()));
+    p.push(pane('b', W, D, 0, 0, W, 1.1, mat(KP.tileD, T.AQUA, 1.8), 0.11), pane('l', W, D, 0, 0, D, 1.1, mat(KP.tileD, T.AQUA, 1.8), 0.11), pane('r', W, D, 0, 0, D, 1.1, mat(KP.tileD, T.AQUA, 1.8), 0.11));
+    p.push({ s: 'quad', p: [lx, 3.07, D / 2 + 0.22], size: [4.0, 0.76], text: 'MARKET', ink: '#ffffff', glow: 0.6 });
+    /* bunting under the front beam, lamps hung from it */
+    const nb = Math.max(4, Math.floor((W - 1) / 1.8));
+    [T.RED, T.LEMON, T.AQUA].forEach((c, i) => p.push(A(box(-W / 2 + 0.6 + i * 0.6, 3.55, D / 2 - 0.1, 0.34, 0.4, 0.03, A(trim(c), { ds: true })), { n: nb, step: [1.8, 0, 0] })));
+    const k = Math.round(W / 3.5);
+    p.push(A(cyl(-W / 2 + 0.15 + (W - 0.3) / k / 2, 3.2, 0, 0.02, 0.8, A(trim(T.DARK), { seg: 4, cap: false })), { n: k, step: [(W - 0.3) / k, 0, 0] }), A(dome(-W / 2 + 0.15 + (W - 0.3) / k / 2, 3.0, 0, 0.2, 0.22, A(trim(T.CREAM), { glow: 0.9, seg: 8 })), { n: k, step: [(W - 0.3) / k, 0, 0] }));
+    p.push(A(box(-W / 2 + 0.15, 3.8, 0, 0.2, 0.2, D - 0.2, trim()), { n: k + 1, step: [(W - 0.3) / k, 0, 0] }));                                              // the tie beams
+    /* the stalls along the back wall: a plank counter, a striped valance, crates of fruit */
+    const ns = Math.max(2, Math.floor((W - 2) / 4.2));
+    for (let i = 0; i < ns; i++) { const x = -W / 2 + 2.6 + i * ((W - 5.2) / Math.max(1, ns - 1)), z = -D / 2 + 1.1, c = [T.ORANGE, T.LEAF, T.RED, T.LEMON][i % 4];
+        p.push(box(x, 0, z, 2.8, 0.95, 1.0, mat(K.planks, T.WHITE, 2.0)), ...awning(x, 2.3, z + 0.5, 3.0, 1.3, [T.CORAL, T.AQUA, T.LEMON][i % 3]), box(x - 0.7, 0.95, z, 0.9, 0.22, 0.7, mat(K.planks, 0xc8a070, 1.9)), box(x - 0.7, 1.1, z, 0.8, 0.14, 0.6, trim(c)), box(x + 0.6, 0.95, z, 0.9, 0.22, 0.7, mat(K.planks, 0xc8a070, 1.9)), box(x + 0.6, 1.1, z, 0.8, 0.14, 0.6, trim([T.RED, T.LEMON, T.ORANGE, T.LEAF][i % 4]))); }
+    p.push({ s: 'quad', flat: true, p: [0, 0.03, 0], size: [W - 0.6, D - 0.6], key: KP.tileD, tint: T.CREAM, gain: 1.7 });                                         // the hall's tiled floor
+};
+POLISH.florist = (p, W, D, lx) => {
+    const r = W / 2 - 0.1, cz = D / 2 - r, bd = D - r - 0.6, sz = -D / 2 + bd / 2;
+    p.push(cyl(0, 0, cz, r + 0.06, 0.7, A(mat(KP.tileC, T.LILAC, 1.9), { seg: 24, cap: false })), cyl(0, 0.7, cz, r + 0.12, 0.08, A(trim(), { seg: 24, ri: r - 0.05 })), cyl(0, 2.3, cz, r + 0.06, 0.08, A(trim(), { seg: 24, ri: r - 0.02 })));
+    p.push(box(0, 0.78, 0, 0.09, 3.0, 0.09, A(trim(), { p: [0, 0.78, cz], ring: { n: 12, r: r + 0.03, a0: 15 } })));                                               // the mullions
+    p.push(...[-1, 1].map(s => box(lx + s * 1.0, 0, D / 2 + 0.06, 0.16, 2.4, 0.22, trim())), box(lx, 2.4, D / 2 + 0.06, 2.3, 0.16, 0.26, trim()));
+    p.push(cyl(r * 0.78, 0, D / 2 + 0.5, 0.06, 3.0, A(trim(T.DARK), { seg: 6 })), box(r * 0.78 - 0.9, 2.9, D / 2 + 0.5, 1.9, 0.06, 0.06, trim(T.DARK)), box(r * 0.78 - 0.9, 2.1, D / 2 + 0.5, 1.9, 0.7, 0.06, trim(T.LILAC)),
+        { s: 'quad', p: [r * 0.78 - 0.9, 2.16, D / 2 + 0.54], size: [1.75, 0.58], text: 'FLOWERS', ink: '#ffffff' }, { s: 'quad', p: [r * 0.78 - 0.9, 2.16, D / 2 + 0.46], ry: 180, size: [1.75, 0.58], text: 'FLOWERS', ink: '#ffffff' });
+    [[T.PINK, 40], [T.LEMON, 140], [T.HOT, 320], [T.LILAC, 220]].forEach(c => { const a = c[1] * Math.PI / 180, x = Math.cos(a) * (r + 0.6), z = cz + Math.sin(a) * (r + 0.6);
+        p.push(cyl(x, 0, z, 0.45, 0.5, A(mat(KP.tileB, T.TERRA, 1.8), { seg: 10 })), dome(x, 0.5, z, 0.5, 0.4, trim(T.LEAF)), dome(x + 0.15, 0.78, z, 0.2, 0.2, trim(c[0])), dome(x - 0.2, 0.74, z + 0.1, 0.17, 0.17, trim(c[0]))); });
+    /* the greenhouse shed: glazing bars, a ridge cresting, the water butt */
+    const nb = Math.max(3, Math.round(bd / 1.3));
+    ['l', 'r'].forEach(s => p.push(...moved([bars(s, W - 1.0, bd, -bd / 2 + 0.05, (bd - 0.1) / nb, nb + 1, 0.7, 0.08, 2.3, 0.06, trim())], 0, sz)));
+    p.push(box(0, 4.58, sz, 0.1, 0.14, bd + 0.3, trim()), ...moved(band(W - 1.0, bd, 2.95, 0.12, 0.08, trim()), 0, sz), ...moved(svcDoor('b', W - 1.0, bd, 0, KP.doorW), 0, sz));
+    p.push(cyl(-W / 2 + 0.2, 0, sz, 0.4, 1.0, A(mat(KP.metal, T.TEAL, 1.6), { seg: 10 })), ...moved(pipe('l', W - 1.0, bd, 0, 3.0, T.WHITE), 0, sz));
+};
+POLISH.foodhall = (p, W, D, lx) => {
+    p.push(...band(W, D, 0, 0.8, 0.05, mat(KP.tileB, T.TERRA, 1.8)), ...band(W, D, 3.2, 0.22, 0.05, wallM(T.SAND, K.plaster)));
+    const col = (x0, z0, n, step, y, h, s) => A(box(x0, y, z0, s, h, s, trim(T.CREAM)), { n, step });
+    const kx = Math.round(W / 3.5), kz = Math.round(D / 3.5);
+    [[0, 0.35, 0.95], [5.5, 0.3, 1.0]].forEach(c => p.push(col(-W / 2, D / 2 + 0.2, kx + 1, [W / kx, 0, 0], c[0], c[1], c[2]), col(-W / 2, -D / 2 - 0.2, kx + 1, [W / kx, 0, 0], c[0], c[1], c[2]), col(-W / 2 - 0.2, -D / 2 + D / kz, kz - 1, [0, 0, D / kz], c[0], c[1], c[2]), col(W / 2 + 0.2, -D / 2 + D / kz, kz - 1, [0, 0, D / kz], c[0], c[1], c[2])));
+    ['f', 'l', 'r', 'b'].forEach(s => p.push(dentils(s, W, D, 5.58, trim(T.CREAM))));
+    p.push(box(lx, 4.9, D / 2 + 2.45, 5.6, 0.08, 0.1, trim(T.DARK)), { s: 'quad', p: [lx, 4.95, D / 2 + 2.5], size: [5.4, 1.1], text: 'FOOD HALL', ink: '#d9704a', glow: 0.6 }, { s: 'quad', p: [lx, 4.95, D / 2 + 2.48], ry: 180, size: [5.4, 1.1], text: 'FOOD HALL', ink: '#d9704a', glow: 0.3 });
+    p.push(box(lx, 0, D / 2 + 0.77, 5.04, 0.9, 0.04, mat(KP.tileB, T.CREAM, 1.8)), ...lamp('f', W, D, lx - 1.7, 2.6).map(q => A(q, { p: [q.p[0], q.p[1], q.p[2] + 0.75] })), ...lamp('f', W, D, lx + 1.7, 2.6).map(q => A(q, { p: [q.p[0], q.p[1], q.p[2] + 0.75] })));
+    [-1, 1].forEach(s => p.push(...board('f', W, D, s * (W / 2 - 5.4), 3.95, 4.4, 0.5, s < 0 ? 'GRILL  NOODLES  TACOS' : 'COFFEE  JUICE  SWEETS', T.TERRA, { glow: 0.35 }, 0.42)));
+    /* the back: the kitchen door, AC units, the grease duct up the wall (the roof is a route: nothing stands on it) */
+    p.push(...svcDoor('b', W, D, W / 2 - 3, KP.doorP2), ...acRow('b', W, D, -W / 2 + 3, 2.4, 3, 3.6, null), ...vent('b', W, D, 0, 1.2, 1.8, 1.0));
+    const c = spot('b', W, D, W / 2 - 5.5, 0.32); p.push(box(c[0], 1.6, c[1], 0.55, 5.9, 0.55, mat(KP.metal, T.STEEL, 1.5)), cyl(c[0], 7.5, c[1], 0.45, 0.14, A(trim(T.STEEL), { seg: 8 })));
+    p.push(...pipe('l', W, D, D / 2 - 0.5, 5.8, T.SAND), ...pipe('r', W, D, -D / 2 + 0.5, 5.8, T.SAND));
+};
+POLISH.security = (p, W, D, lx) => {
+    const W1 = W + 0.5, D1 = D + 0.5, W0 = W - 0.5, D0 = D - 0.5;
+    p.push(...plinth(W0, D0, 0.6, KP.strip, T.YELLOW, 1.6));
+    p.push(...board('f', W1, D1, lx, 3.68, 4.4, 0.72, 'SECURITY', T.NAVY, {}, 0.08));
+    const n = Math.floor((W - 3) / 3.5) + 1;
+    ['f', 'b'].forEach(s => p.push(bars(s, W1, D1, -W / 2 + 2.6, 3.5, n, 4.5, 2.6, 0.1, 0.12, trim(T.DARK)), bars(s, W1, D1, -W / 2 + 2.6, 3.5, n, 5.2, 2.6, 0.08, 0.2, trim(T.DARK))));
+    ['l', 'r'].forEach(s => p.push(pane(s, W1, D1, 0, 4.6, D - 3, 0.6, A(glass(T.GLASS, K.gSq, 0.5), { uv: [2.4, 0.6] }), 0.02), bar(s, W1, D1, 0, 4.5, D - 2.8, 0.1, 0.12, trim(T.DARK)), ...vent(s, W0, D0, 0, 1.6, 1.4, 0.9), ...acRow(s, W0, D0, D0 / 2 - 2, 0, 1, 1.9, null)));
+    /* cameras under the oversail's front corners, floodlights on the cap, the keypad, the shutter's hazard jambs */
+    [-1, 1].forEach(s => p.push(box(s * (W1 / 2 - 0.3), 3.2, D1 / 2 - 0.2, 0.08, 0.3, 0.08, trim(T.DARK)), box(s * (W1 / 2 - 0.3), 3.06, D1 / 2 - 0.05, 0.16, 0.14, 0.36, trim(T.WHITE)), box(s * (W1 / 2 - 1.2), 6.98, D1 / 2 + 0.1, 0.5, 0.3, 0.2, A(trim(T.CREAM), { glow: 0.9 }))));
+    p.push(bar('f', W0, D0, lx + 1.35, 1.2, 0.2, 0.3, 0.06, trim(T.STEEL)), bar('f', W0, D0, lx + 1.35, 1.38, 0.06, 0.06, 0.02, A(trim(T.RED), { glow: 1 }), 0.06));
+    [-2.2, 2.2].forEach(d => p.push(bar('f', W0, D0, W / 2 - 4.2 + d, 0, 0.16, 3.1, 0.06, mat(KP.strip, T.YELLOW, 1.7))));
+    p.push(pane('f', W0, D0, W / 2 - 1.2, 1.5, 0.55, 0.55, { key: KP.hazard, uv: 'fit', kind: 'wall' }, 0.03));
+    /* the back: a door, a ladder to the roof, pipes */
+    p.push(...svcDoor('b', W0, D0, -W / 2 + 2.5, KP.doorP2, T.STEEL));
+    const c = spot('b', W1, D1, W / 2 - 2, 0.1); p.push(cyl(c[0] - 0.25, 0.4, c[1], 0.03, 7.0, A(trim(T.STEEL), { seg: 5, cap: false })), cyl(c[0] + 0.25, 0.4, c[1], 0.03, 7.0, A(trim(T.STEEL), { seg: 5, cap: false })), A(box(c[0], 0.6, c[1], 0.5, 0.03, 0.03, trim(T.STEEL)), { n: 19, step: [0, 0.35, 0] }));
+    p.push(...pipe('b', W1, D1, -W / 2 + 0.3, 6.4, T.DARK, 3.5), ...pipe('f', W1, D1, -W / 2 + 0.3, 6.4, T.DARK, 3.5));
+    p.push(...aerial(W / 2 + 1.2, 9.0, -D / 2 + 1.4, 2.0));
+};
+POLISH.apartments = (p, W, D, lx) => {
+    const H = 10.5, body = wallM(T.MINT);
+    p.push(...plinth(W, D, 0.8, KP.subwayB, T.TEAL, 1.9));
+    'fblr'.split('').forEach(s => { const len = flen(s, W, D); [0.9, 4.4, 7.9].forEach(y => p.push(...winTrim(s, W, D, 0, y, len - 3.5, 1.75))); });
+    ['b', 'l'].forEach(s => { const len = flen(s, W, D), n = Math.max(1, Math.floor((len - 5) / 3.5)); [3.45, 6.95].forEach(y => p.push(...acRow(s, W, D, -(n - 1) * 1.75, 3.5, n, y, body))); });
+    /* the balconies' posts and top rails, the door's hood and letter boxes */
+    const bw = W - 5.2, kb = Math.max(2, Math.round(bw / 3.5));
+    p.push(A(box(-1.75 - bw / 2 + 0.05, 3.56, D / 2 + 1.36, 0.08, 2.5, 0.08, trim()), { n: kb + 1, step: [(bw - 0.1) / kb, 0, 0] }), A(box(-1.75 - bw / 2 + 0.05, 7.06, D / 2 + 1.36, 0.08, 1.05, 0.08, trim()), { n: kb + 1, step: [(bw - 0.1) / kb, 0, 0] }));
+    p.push(A(box(-1.75, 4.51, D / 2 + 1.36, bw, 0.06, 0.1, trim()), { n: 2, step: [0, 3.5, 0] }));
+    p.push(...awning(lx, 2.45, D / 2 + 0.55, 2.4, 1.0, T.CORAL), ...lamp('f', W, D, lx + 1.3, 2.0), bar('f', W, D, lx - 1.6, 1.0, 1.0, 0.5, 0.14, mat(KP.metal, T.STEEL, 1.5)), ...board('f', W, D, lx - 1.6, 1.62, 1.0, 0.26, 'MAIL', T.NAVY, {}, 0.05));
+    p.push(...pipe('b', W, D, W / 2 - 0.4, H, T.WHITE), ...pipe('b', W, D, -W / 2 + 0.4, H, T.WHITE), ...pipe('l', W, D, D / 2 - 0.4, H, T.WHITE), ...svcDoor('b', W, D, 0, KP.doorW));
+    /* the roof: membrane, coping, the tank's ladder, a hatch, stacks, an aerial, plant */
+    p.push(roofSkin(W, D, H, KP.under, T.GREY), ...coping(W, D, H + 0.6, T.CORAL), ...hatch(W / 4, H, -D / 4), ...stack(0, H, 0), ...stack(1.2, H, 0), ...stack(-W / 4, H, D / 4, 1.1), ...aerial(W / 4 + 2, H, D / 4, 3.2), ...plant(W / 4, H, D / 4 - 0.5, false));
+    p.push(box(W / 2 - 1.6, H + 2.2, D / 2 + 0.3, 3.8, 0.22, 3.8, trim()), ...band(3.4, 3.4, 0, 0.8, 0.07, mat(KP.subwayB, T.TEAL, 1.9)).map(q => A(q, { p: [q.p[0] + W / 2 - 1.6, q.p[1], q.p[2] + D / 2 + 0.3] })));
+};
+POLISH.dock = (p, W, D, lx) => {
+    const H = 7;
+    p.push(...board('f', W, D, W / 2 - 6.5, 5.25, 9.5, 1.2, 'LOADING DOCK', T.NAVY, {}, 0.1));
+    let bay = 0;
+    for (let i = 0; i < 3; i++) { const u = -W / 2 + 4.4 + i * 5.25; if (Math.abs(u - lx) <= 3.2) continue; bay++;
+        p.push(...board('f', W, D, u, 4.85, 0.9, 0.8, String(bay), T.YELLOW, { ink: '#20242c' }, 0.08), bar('f', W, D, u - 1.6, 0.35, 0.3, 0.6, 0.18, mat(KP.rubber, T.DARK, 1.2), 0.06), bar('f', W, D, u + 1.6, 0.35, 0.3, 0.6, 0.18, mat(KP.rubber, T.DARK, 1.2), 0.06),
+            pane('f', W, D, u, 0.25, 3.6, 0.6, { key: KP.strip, tint: T.YELLOW, gain: 1.7, uv: [0.9, 0.6] }, 0.07), ...lamp('f', W, D, u, 4.3), bar('f', W, D, u - 1.9, 1.1, 0.14, 3.3, 0.08, trim(T.YELLOW)), bar('f', W, D, u + 1.9, 1.1, 0.14, 3.3, 0.08, trim(T.YELLOW))); }
+    p.push(pane('f', W, D, -W / 2 + 1.2, 1.6, 0.6, 0.6, { key: KP.caution, uv: 'fit', kind: 'wall' }, 0.03));
+    ['l', 'r'].forEach(s => p.push(...vent(s, W, D, -D / 4, 4.6, 1.8, 1.1), ...vent(s, W, D, D / 4, 4.6, 1.8, 1.1), pane(s, W, D, 0, 1.1, D - 2, 0.12, trim(T.YELLOW), 0.02), ...pipe(s, W, D, D / 2 - 0.4, H, T.NAVY), ...pipe(s, W, D, -D / 2 + 0.4, H, T.NAVY)));
+    p.push(...svcDoor('r', W, D, D / 2 - 3, KP.doorP2, T.YELLOW), ...svcDoor('b', W, D, 0, KP.doorP2, T.YELLOW), ...acRow('b', W, D, -W / 2 + 3, 3.0, 2, 3.0, null));
+    [-W / 4, W / 4].forEach(x => p.push(cyl(x, H, -D / 2 + 1.3, 0.36, 3.6, A(mat(KP.metal, T.STEEL, 1.5), { seg: 10, cap: false, roof: true })), cyl(x, H + 3.6, -D / 2 + 1.3, 0.5, 0.14, A(trim(T.DARK), { seg: 10, roof: true }))));
+    p.push(A(box(-W / 2 + 2.2, 4.4, D / 2 + 1.4, 0.1, 0.12, 2.6, trim(T.YELLOW)), { n: 4, step: [4.95, 0, 0] }));
+};
+POLISH.booth = (p, W, D) => {
+    p.push(...plinth(W, D, 0.6, KP.strip, T.YELLOW, 1.6));
+    p.push({ s: 'quad', p: [0, 4.05, D / 2 + 0.5], size: [0.9, 1.1], text: 'P', ink: '#2c4470' });
+    ['f', 'l', 'r'].forEach(s => p.push(sign(s, W, D, 0, 6.37, Math.min(flen(s, W, D) - 1, 5), 0.54, 'PARKING', {}, 0.15)));
+    p.push(bar('f', W, D, 0, 0.93, W - 1.5, 0.08, 0.36, mat(KP.metal, T.STEEL, 1.5)), ...board('f', W, D, 0, 3.0, Math.min(W - 1, 3.4), 0.36, 'PAY HERE', T.WHITE, { ink: '#2c4470' }, 0.11));
+    p.push(...ac('l', W, D, 0, 4.2, wallM(T.LEMON, K.plaster)), ...svcDoor('b', W, D, 0, KP.doorP, T.NAVY), ...pipe('b', W, D, W / 2 - 0.3, 6.3, T.NAVY), ...vent('r', W, D, 0, 4.2, 1.2, 0.8));
+    [-1, 1].forEach(s => p.push(box(s * (W / 2 - 0.2), 6.98, D / 2 + 0.2, 0.4, 0.26, 0.2, A(trim(T.CREAM), { glow: 0.9 }))));
+};
+POLISH.arch = (p, half) => {
+    p.push({ s: 'quad', p: [0, 6.0, 0.725], size: [2 * half - 4.8, 0.9], text: 'THE MALL', ink: '#ffffff', glow: 0.7 }, { s: 'quad', p: [0, 6.0, -0.725], ry: 180, size: [2 * half - 4.8, 0.9], text: 'THE MALL', ink: '#ffffff', glow: 0.7 });
+    [-1, 1].forEach(s => {
+        p.push(box(s * half, 0, 0, 2.74, 0.9, 2.74, mat(KP.marbleB, T.CREAM, 1.7)));
+        [1, -1].forEach(f => p.push(box(s * half, 1.5, f * 1.23, 1.5, 5.2, 0.06, wallM(T.CREAM, K.plaster)), box(s * half, 2.4, f * 1.27, 0.8, 3.0, 0.04, trim(f > 0 ? T.AQUA : T.LEMON)), box(s * half, 5.4, f * 1.29, 1.0, 0.08, 0.1, trim(T.DARK))));
+        p.push(box(s * (half - 1.35), 4.4, 0, 0.3, 0.5, 0.3, A(trim(T.CREAM), { glow: 0.95 })), box(s * (half - 1.28), 4.9, 0, 0.16, 0.1, 0.16, trim(T.DARK)));
+        p.push(A(box(s * half - 1.2, 7.92, 1.3, 0.26, 0.22, 0.14, trim()), { n: 5, step: [0.6, 0, 0] }), A(box(s * half - 1.2, 7.92, -1.3, 0.26, 0.22, 0.14, trim()), { n: 5, step: [0.6, 0, 0] }));
+    });
+};
+POLISH.bandstand = (p) => {
+    p.push(cyl(0, 0, 0, 4.8, 0.05, { key: KP.bare, tint: T.GREY, gain: 1.5, seg: 8 }));
+    p.push(box(0, 0.12, 0, 0.6, 0.16, 0.6, A(trim(T.CREAM), { ring: { n: 8, r: 3.7, a0: 22.5 } })), box(0, 3.42, 0, 0.6, 0.18, 0.6, A(trim(T.CREAM), { ring: { n: 8, r: 3.7, a0: 22.5 } })));
+    [1.0, 0.55].forEach(y => p.push(...ringRails(0, 0, 8, 3.7, 22.5, y, [1])));
+    p.push(A(box(0, 3.3, 0, 0.14, 0.14, 0.14, A(trim(T.CREAM), { glow: 1 })), { ring: { n: 16, r: 3.2 } }));
+    p.push(dome(0, 8.0, 0, 0.26, 0.3, trim(T.LEMON)), cyl(0, 4.1, 0, 4.12, 0.14, A(trim(T.CREAM), { ri: 3.9, seg: 16, roof: true })));
+    p.push(box(0, 0, 4.55, 2.6, 0.08, 0.5, { key: K.marble }));
+};
+POLISH.mall = (p, W, D, lx) => {
+    const H = 10.5, arm = 8.4, cw = (W - arm) / 2, cd = (D - arm) / 2, vh = 9.0, pz = D / 2 + 0.9;
+    [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(c => {
+        const x = c[0] * (arm / 2 + cw / 2), z = c[1] * (arm / 2 + cd / 2), mv = q => moved(q, x, z), body = wallM(c[0] * c[1] > 0 ? T.SAND : T.CREAM);
+        const outS = (c[1] > 0 ? 'f' : 'b'), outX = (c[0] > 0 ? 'r' : 'l');
+        [outS, outX].forEach(s => { const len = flen(s, cw, cd);
+            p.push(...mv([pane(s, cw, cd, 0, 0, len + 2 * E, 0.6, mat(KP.marbleB, T.TERRA, 1.7), 0.035), bar(s, cw, cd, 0, 4.45, len + 0.2, 0.28, 0.12, trim()), pilasters(s, cw, cd, Math.max(2, Math.round(len / 5.25)), 0.6, H - 0.6, wallM(T.CREAM, K.plaster), 0.5, 0.09)]));
+            p.push(...mv(winTrim(s, cw, cd, 0, 5.3, len - 1.75, 3.5)), ...mv([dentils(s, cw, cd, H - 0.26, trim())])); });
+        p.push(...mv(pipe(outX, cw, cd, c[1] > 0 ? -cd / 2 + 0.4 : cd / 2 - 0.4, H, T.CREAM)));
+        if (c[1] < 0) p.push(...mv(acRow('b', cw, cd, -cw / 2 + 2.5, 2.6, Math.max(1, Math.floor((cw - 4) / 2.6)), 4.0, body)));
+        /* a lantern on each hip */
+        p.push(box(x, H + 2.6, z, 1.3, 0.9, 1.3, A(wallM(T.CREAM, K.plaster), { roof: true })), roof('pyramid', x, H + 3.5, z, 1.3, 0.9, 1.3, A(mat(KP.tileB, T.TERRA, 1.8), { over: 0.3, roof: true })), ...allFaces(1.3, 1.3, H + 2.75, 0.6, { key: KP.grillB, uv: 'fit', tint: T.GREY, kind: 'wall', roof: true }, 0.01).map(q => A(q, { p: [q.p[0] + x, q.p[1], q.p[2] + z], size: [0.9, 0.6] })));
+    });
+    /* the plaza side: shop names over the awnings */
+    p.push(...moved(board('f', cw, cd, 0, 4.78, Math.min(cw - 2, 5), 0.48, 'SHOPS', T.CORAL, { glow: 0.4 }, 0.14), -(arm / 2 + cw / 2), arm / 2 + cd / 2), ...moved(board('f', cw, cd, 0, 4.78, Math.min(cw - 2, 5), 0.48, 'CAFE', T.CORAL, { glow: 0.4 }, 0.14), arm / 2 + cw / 2, arm / 2 + cd / 2));
+    p.push({ s: 'quad', p: [0, 9.56, pz + 0.82], size: [arm - 3.0, 0.88], text: 'THE MALL', ink: '#ffffff', glow: 0.8 });
+    [-1, 1].forEach(s => p.push(box(s * (arm / 2 + 0.3), 0, pz, 1.56, 0.9, 1.86, mat(KP.marbleB, T.CREAM, 1.7)), box(s * (arm / 2 + 0.3), 2.0, pz + 0.92, 0.9, 5.6, 0.05, wallM(T.CREAM, K.plaster)), box(s * (arm / 2 + 0.3), 6.0, pz + 1.06, 0.3, 0.5, 0.3, A(trim(T.CREAM), { glow: 0.95 }))));
+    /* the vault's glass ends: mullions and a transom */
+    [['b', arm, D], ['l', W, arm], ['r', W, arm]].forEach(c => p.push(bars(c[0], c[1], c[2], -arm / 2 + 0.06, (arm - 0.12) / 4, 5, 0, 0.14, vh, 0.1, trim()), bar(c[0], c[1], c[2], 0, 3.3, arm, 0.14, 0.1, trim()), bar(c[0], c[1], c[2], 0, vh - 0.2, arm + 0.2, 0.3, 0.14, trim())));
+    p.push(bar('f', arm, D, -arm / 2 + 0.07, 0, 0.14, vh, 0.1, trim()), bar('f', arm, D, arm / 2 - 0.07, 0, 0.14, vh, 0.1, trim()), bar('f', arm, D, 0, 3.3, arm, 0.14, 0.1, trim()));
+    p.push(A(box(0, vh + 3.3, 0, 0.3, 0.5, 0.2, A(trim(), { roof: true })), { ring: { n: 12, r: 5.75 } }));                                                     // brackets round the drum
+};
+POLISH.juice = (p, W, D) => {
+    const r = Math.min(D / 2 - 0.05, 5.2), top = 3.4 + r * 0.92, WD = D - 1.2;
+    p.push(...moved(plinth(W, WD, 0.5, KP.tileC, T.ORANGE, 1.9), 0, -0.6), cyl(0, 0, 0, r + 0.05, 0.5, A(mat(KP.tileC, T.ORANGE, 1.9), { seg: 24, cap: false })));
+    p.push(box(0, 2.76, r + 1.06, 3.8, 0.66, 0.08, trim()), { s: 'quad', p: [0, 2.8, r + 1.11], size: [3.5, 0.58], text: 'JUICE', ink: '#ff8a1c' });
+    p.push(cyl(-1.3, top - 1.0, 0.8, 0.26, 3.4, A(trim(), { seg: 10 })), A(cyl(-1.3, top - 0.3, 0.8, 0.275, 0.28, A(trim(T.RED), { seg: 10, cap: false })), { n: 4, step: [0, 0.62, 0] }));        // the straw
+    p.push(box(-0.9, top + 0.75, 0, 1.6, 0.1, 0.8, A(trim(T.LEAF), { ry: -25, under: true })));
+    p.push(roofSkin(W, WD, 3.3, KP.under, T.GREY, 0, -0.6), ...plant(-W / 2 + 2, 3.3, -D / 2 + 1.6, false), ...plant(W / 2 - 2, 3.3, -D / 2 + 1.6, false), ...stack(-W / 2 + 4, 3.3, -D / 2 + 1.4), ...stack(W / 2 - 4, 3.3, -D / 2 + 1.4));
+    p.push(...moved([...svcDoor('b', W, WD, W / 2 - 2, KP.doorP, T.ORANGE), ...ac('b', W, WD, -W / 2 + 2, 1.9, wallM(T.CREAM)), ...pipe('b', W, WD, 0, 3.3, T.ORANGE), ...lamp('f', W, WD, -W / 2 + 0.5, 2.3), ...lamp('f', W, WD, W / 2 - 0.5, 2.3)], 0, -0.6));
+    p.push(bar('f', 4.4, 1.4, 0, 0.9, 4.6, 0.07, 0.3, { key: K.marble }, r - 0.5));
+};
+POLISH.carport = (p, len) => {
+    const k = Math.round(len / 3.5);
+    p.push(A(box(-len / 2 + 0.4, 2.42, 2.3, 0.12, 0.2, 4.6, trim(T.NAVY)), { n: k + 1, step: [(len - 0.8) / k, 0, 0] }), box(0, 3.8, 5.2, len, 0.16, 0.08, trim()), box(0, 2.56, -1.4, len, 0.14, 0.14, trim()));
+    p.push(A(box(-len / 2 + 0.4 + (len - 0.8) / k / 2, 2.36, 2.0, 1.2, 0.06, 0.16, A(trim(T.CREAM), { glow: 0.9 })), { n: k, step: [(len - 0.8) / k, 0, 0] }));
+    p.push(A(box(-len / 2 + 0.4, 0, 0, 0.4, 0.5, 0.4, mat(KP.strip, T.YELLOW, 1.6)), { n: k + 1, step: [(len - 0.8) / k, 0, 0] }), cyl(len / 2 - 0.4, 0, -1.4, 0.05, 2.56, A(trim(T.STEEL), { seg: 6, cap: false })));
+};
+POLISH.harbour = (p, W, D) => {
+    const H = 7, tx = W / 2 - 1.75, tz = D / 2 - 1.2;
+    p.push(...band(W, D, 0, 0.9, 0.075, mat(KP.subwayB, T.NAVY, 2.0)), ...band(W, D, 3.5, 0.16, 0.08, trim(T.NAVY)));
+    p.push(...winTrim('f', W, D, -1.75, 1.0, W - 5.25, 1.75, T.NAVY), ...winTrim('f', W, D, -1.75, 4.4, W - 5.25, 1.75, T.NAVY), ...winTrim('b', W, D, 0, 4.4, W - 3.5, 1.75, T.NAVY));
+    p.push(sign('f', W, D, -1.75, 3.0, Math.min(W - 5.5, 3.4), 0.42, 'HARBOUR MASTER', { ink: '#2c4470' }, 0.02));
+    p.push(...band(3.3, 3.3, 7.4, 0.3, 0.06, trim(T.NAVY)).map(q => A(q, { p: [q.p[0] + tx, q.p[1], q.p[2] + tz] })), ...band(3.3, 3.3, 10.4, 0.3, 0.06, trim(T.RED)).map(q => A(q, { p: [q.p[0] + tx, q.p[1], q.p[2] + tz] })));
+    [4.4, 8.2, 11.0].forEach(y => p.push({ s: 'quad', p: [tx, y, tz + 1.65 + E + 0.02], size: [0.7, 1.2], key: K.gSq, tint: T.GLASS, glow: 0.4, gain: 2.2, uv: 'fit' }));
+    p.push(...band(4.1, 4.1, 13.65, 0.06, 0.05, trim()).map(q => A(q, { p: [q.p[0] + tx, q.p[1], q.p[2] + tz] })), cyl(0, 12.75, 0, 0.04, 0.95, A(trim(), { seg: 5, cap: false, p: [tx, 12.75, tz], ring: { n: 4, r: 2.9, a0: 45 } })));
+    p.push(box(tx, 2.45, D / 2 + 0.75, 1.8, 0.12, 0.7, A(trim(T.NAVY), { under: true })), ...lamp('f', W, D, tx + 1.0, 1.9).map(q => A(q, { p: [q.p[0], q.p[1], q.p[2] + 0.45] })));
+    p.push(box(tx, 17.6, tz, 1.6, 0.04, 0.04, trim()), box(tx - 0.6, 17.0, tz, 0.5, 0.5, 0.03, A(trim(T.LEMON), { ds: true })), box(tx + 0.6, 17.0, tz, 0.5, 0.5, 0.03, A(trim(T.HOT), { ds: true })));
+    p.push(box(-W / 4, H + 0.6, -D / 5, 0.8, 1.9, 0.8, A(wallM(T.WHITE, K.plaster), { roof: true })), box(-W / 4, H + 2.5, -D / 5, 1.0, 0.14, 1.0, A(trim(T.NAVY), { roof: true })));
+    p.push(...pipe('l', W, D, D / 2 - 0.3, H, T.NAVY), ...pipe('b', W, D, W / 2 - 0.3, H, T.NAVY), ...ac('b', W, D, -W / 2 + 1.5, 1.6, wallM(T.WHITE, K.plaster)), ...svcDoor('l', W, D, -1, KP.doorW));
+};
+POLISH.bait = (p) => { p.push(...board('f', 4.2, 4.2, 0.4, 3.0, 2.2, 0.55, 'BAIT', T.WHITE, { ink: '#2c4470' }, 0.5), ...plinth(4.2, 4.2, 0.4, K.planks, 0x8a6a48, 1.4), ...pipe('l', 4.2, 4.2, 1.8, 2.6, T.WHITE), ...stack(1.2, 3.3, -0.8, 0.6)); };
+POLISH.lifeguard = (p) => { const y0 = 1.3; p.push({ s: 'quad', p: [0, y0 + 0.3, 1.03], size: [2.8, 0.42], text: 'LIFEGUARD', ink: '#ffffff', bg: '#e8483c' }, box(1.2, y0 + 2.0, 1.1, 0.5, 0.5, 0.08, trim(T.RED)), box(1.2, y0 + 2.12, 1.15, 0.26, 0.26, 0.04, trim()), ...aerial(-1.6, y0 + 2.46, -1.6, 1.6)); };
+POLISH.pavilion = (p) => {
+    p.push(box(0, 0.17, 0, 0.62, 0.16, 0.62, A(trim(T.CREAM), { ring: { n: 8, r: 6.0, a0: 22.5 } })), box(0, 3.82, 0, 0.62, 0.18, 0.62, A(trim(T.CREAM), { ring: { n: 8, r: 6.0, a0: 22.5 } })));
+    [1.0, 0.55].forEach(y => p.push(...ringRails(0, 0, 8, 6.0, 22.5, y, [3, 7])));
+    p.push(A(box(0, 3.7, 0, 0.14, 0.14, 0.14, A(trim(T.CREAM), { glow: 1 })), { ring: { n: 24, r: 5.4 } }), cyl(0, 1.0, 0, 1.45, 0.08, { key: K.marble, seg: 8 }));
+};
+Object.keys(POLISH).forEach(name => { const base = B[name]; B[name] = (...a) => { const p = base(...a); try { POLISH[name](p, ...a); } catch (e) { console.warn('[bayside] polish failed', name, e); } return lettered(p); }; });
+
 /* ── the plan: the cinema and the mall face WEST ── */
 const WEST = { 'P10-08-B1': { x: 2, y: 5, ox: 1, oy: 5, side: 'W' }, 'P10-10-B1': { x: 2, y: 5, ox: 1, oy: 5, side: 'W' } };
 /* the ways out onto the boardwalk: pavement through the yard and the edge band of the four east plots (plot cells x, rows y0..y1) */

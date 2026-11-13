@@ -2169,6 +2169,17 @@ his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:1
 - **The beach against THE LEVELS.** Outside the grid the slope carries the edge plot's level outward, so every beach row is `absY: true`
   and the strip is first cut flat to 0 (a `sink` plateau); the Marina plot (level 1) comes down a 7 m ramp across the boardwalk. North
   of Bayside the city's edge stands up to 21 m over the water as a cliff.
+- **THE POLISH PASS (third delivery, 2026-11-13; mondo 20:15 "one or two more layers deep", 20:18 "roofs and ac units", 20:19 "different
+  textures or decals for different parts of the building").** `B.js` `POLISH.<name>(parts, ...same args)` adds a second layer to every
+  building (the wrapper at the end of the section runs it and `lettered()`): the building's NAME (parts written with `text` become the
+  city's shared sign key `txt:WORDS|ink|bg|aspect`; `vert: true` = one part a letter, a blade sign), a base course in its own sheet
+  (marble, subway tile, generic tile, bare concrete, planks), sills / heads / pilasters / dentils, downpipes with hoppers, wall AC units
+  with a grille and a drip stain, vent grilles, service doors (the pack's door sheets), wall lamps, and the roofs: a membrane sheet,
+  coping, AC plant on kerbs, vent stacks, hatches, aerials, ducts. Roof-route buildings keep clear roofs (plant on the walls).
+  Helpers: `bar / bars / pilasters / dentils / winTrim / pipe / ac / acRow / vent / lamp / svcDoor / plant / stack / hatch / aerial /
+  roofSkin / coping / plinth / board / sign / ringRails`. LESSONS: the metro pack's sheets (`urban:Metro*`) drew BLACK on an arch row,
+  use the urban pack's; the arch row's `ring` turns parts the mirrored way (fine for a column, wrong for a rail: `ringRails` writes
+  each with its own `ry`); a probe camera's `y` is ABSOLUTE, so on the raised north row add the plot's level or it is underground.
 - **NOT PROVEN in the headless browser:** no `city_*` pack building (the grill, the taco stand; also the diner, pizzerias, laundry in
   other districts) attached in the thread's probe runs: only the shadow blob draws. The files are on the CDN and fetched. Check on a real
   machine before blaming the placement.
