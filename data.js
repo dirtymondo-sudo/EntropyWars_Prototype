@@ -28247,7 +28247,8 @@ const STORY_QUESTS = [
             { id: 'tape1',  objective: 'Finish Tape 1 · FIRST STEPS at the Range Console.', done: { on: 'lesson', lesson: 'first_steps', filed: true } },
             { id: 'tape2',  objective: 'Finish Tape 2 · THE PRESS.', done: { on: 'lesson', lesson: 'the_press' } },
             { id: 'portal', objective: 'Defeat the two Shadow Entities with the Catgirl.', done: { on: 'fight', fight: 'orientation_portal' } },
-            { id: 'desk',   objective: 'Escort the Catgirl to the front desk.', done: { on: 'talk', who: 'rhonda' }, mark: { cast: 'rhonda', room: 'central_egress' } },
+            { id: 'desk',   objective: 'Escort the Catgirl to the front desk.', done: { on: 'talk', who: 'rhonda' }, mark: { cast: 'rhonda', room: 'central_egress' },
+              scene: 'orientation_desk', sceneAt: { x: 1.1, z: 6.5, face: 0 } },   // E plays when the officer speaks to her; the stage ends with it
             { id: 'office', objective: 'Walk to your office.', done: { on: 'room', room: 'office' }, mark: { room: 'office' } },
         ],
         reward: { unit: 'catgirl', gender: 'female', at: 'desk' },   // she joins at Rhonda's desk, not at the fight's win
@@ -28358,6 +28359,28 @@ STORY_CUTSCENES.orientation_aftermath = {
           act: [{ at: 1.6, do: 'walk', who: 'locke', path: [[4, 5], [4, 6], [4, 7]] }] },
     ],
 };
+/* E · RHONDA LETS HER STAY (the plan doc's shot list + mondo's lines, word for word). An HQ scene: every shot is a placed
+   camera (`cam`, the main hall's metres: the approved storyboard's own frames); the recruit stands at the stage's
+   `sceneAt`, Kit at her `during` spot beside him. Played by map.js _questTalkScene when the officer speaks to Rhonda. */
+STORY_CUTSCENES.orientation_desk = {
+    id: 'orientation_desk', title: 'RHONDA LETS HER STAY',
+    beats: [
+        /* E1 · the two arrive at the counter: wide across the desk, Rhonda's back in the foreground */
+        { dur: 2.8, shot: { cam: [-0.6, 1.4, 0.8, 176, -2, 40], to: { cam: [-0.45, 1.4, 1.0, 176, -2, 40] } } },
+        /* E2 · Rhonda looks at the paperwork: over the recruit's shoulder, long lens */
+        { shot: { cam: [1.7, 1.68, 7.7, 16, -5, 28] }, say: { who: 'RHONDA', text: 'Name. Species. Reality of origin.' } },
+        { shot: { cam: [0.0, 1.4, 4.9, 180, 0, 22] }, say: { who: 'KIT', text: "Kit. Catgirl. It's... gone." } },
+        /* E3 · the paperwork goes on the misfiled stack: close on the desk */
+        { shot: { cam: [0.5, 1.55, 3.3, 27, -27, 30] }, say: { who: 'RHONDA', text: 'Clumsy me. I seem to have misfiled the paperwork.' } },
+        /* E4 · "emotional support anomaly": medium on Rhonda, a slow push in over two cards */
+        { shot: { cam: [0.0, 1.35, 4.6, 0, -4, 22], to: { cam: [0.0, 1.35, 4.4, 0, -4, 22] } }, say: { who: 'RHONDA', text: 'Here we go. Deportation hearing. Earliest opening is in four hundred years.' } },
+        { shot: { cam: [0.0, 1.35, 4.4, 0, -4, 22], to: { cam: [0.0, 1.35, 4.2, 0, -4, 22] } }, say: { who: 'RHONDA', text: 'Until then, she is your emotional support anomaly. Sign here.' } },
+        /* E5 · Kit's relief: close */
+        { dur: 2.4, shot: { cam: [0.0, 1.4, 4.9, 180, 0, 22], to: { cam: [0.0, 1.4, 5.1, 180, 0, 22] } } },
+        /* E6 · Rhonda slides the office keys across: close on the counter */
+        { shot: { cam: [1.1, 1.75, 4.9, 180, -30, 35] }, say: { who: 'RHONDA', text: 'These are the keys to your office. First door past the mop bucket.' } },
+    ],
+};
 function storyCutscene(id) { return (id && STORY_CUTSCENES[id]) ? STORY_CUTSCENES[id] : null; }
 function questDef(id) { return STORY_QUESTS.find(q => q.id === id) || null; }
 function questFightDef(id) { return (id && QUEST_FIGHTS[id]) ? Object.assign({ id }, QUEST_FIGHTS[id]) : null; }
@@ -28459,7 +28482,7 @@ function questHolds(profile, key) {
 function questTracker(profile) {
     for (const def of STORY_QUESTS) {
         const pr = questProgress(profile, def.id), st = questStageOf(def, pr);
-        if (st) return { quest: def.id, title: def.title, objective: st.objective, mark: st.mark || null, n: def.stages.findIndex(s => s.id === st.id) + 1, total: def.stages.length };
+        if (st) return { quest: def.id, title: def.title, objective: st.objective, mark: st.mark || null, stage: st.id, done: st.done || null, scene: st.scene || null, sceneAt: st.sceneAt || null, n: def.stages.findIndex(s => s.id === st.id) + 1, total: def.stages.length };
     }
     return null;
 }
@@ -67294,6 +67317,9 @@ const DOOR_CAST = {
         name: 'KIT', title: 'INTAKE · PENDING · EMOTIONAL SUPPORT ANOMALY', dept: 'Reception (a chair)', model: 'kit', gender: 'female', base: 'catgirl',
         lines: [],
         spots: [
+            /* the escort (the first quest's `desk` stage): she stands at the counter, where scene E plays */
+            { room: 'central_egress', deg: 180, r: 6.5, level: 0, face: 0, pose: 'hqTalk', reach: 2.0, during: { quest: 'orientation', stage: 'desk' },
+              doing: 'At the counter, waiting to be processed.' },
             /* mondo 2026-11-12: Kit is not at the counter until Rhonda lets her stay (the first quest's `desk` stage) */
             { room: 'central_egress', deg: 158, r: 6.7, level: 0, face: 338, pose: 'hqSit', reach: 2.0, after: { quest: 'orientation', stage: 'desk' },
               doing: 'On a folding chair at the counter, watching Rhonda not find her paperwork. Scheduled for deportation. The schedule is several centuries out.' },
@@ -67406,6 +67432,9 @@ let _hqCastSalt = String(Math.floor(Math.random() * 1e9));
    once; `opts.salt` fixes the draw (tests), `opts.clearance` overrides
    the profile's level, `opts.force` = { id: spotIndex } pins members to a
    given spot (the screenshot probe; -1 = absent). */
+function _hqCastSpotDuring(profile, a) {
+    try { const pr = questProgress(profile, a.quest); return !!(pr && pr.status === 'active' && pr.stage === a.stage); } catch (e) { return false; }
+}
 function _hqCastSpotAfter(profile, a) {
     try { const pr = questProgress(profile, a.quest); return !!(pr && (pr.status === 'completed' || (Array.isArray(pr.done) && pr.done.indexOf(a.stage) >= 0))); } catch (e) { return false; }
 }
@@ -67420,7 +67449,8 @@ function hqCastInRoom(roomId, profile, opts) {
         if (!m || m.hidden || !Array.isArray(m.spots) || !m.spots.length) continue;
         const open = m.spots.filter(s => s && DOOR_HQ.rooms[hqCastSpotRoom(s)]
             && (s.p == null || s.p > 0)
-            && (!s.after || _hqCastSpotAfter(profile, s.after))   // THE QUESTS: a post taken only once a quest stage is behind the officer
+            && (!s.after || _hqCastSpotAfter(profile, s.after))
+            && (!s.during || _hqCastSpotDuring(profile, s.during))   // a post taken only WHILE a quest stage is the current one   // THE QUESTS: a post taken only once a quest stage is behind the officer
             && (s.minClearance == null || cl >= s.minClearance)
             && (s.maxClearance == null || cl <= s.maxClearance));
         if (!open.length) continue;
