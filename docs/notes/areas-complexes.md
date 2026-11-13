@@ -2102,6 +2102,32 @@ thing; ONE row kind does it (Sports + Culture thread owns it). Seen in the game 
   They are PROPS, not HQ_PACK_BUILDINGS, on purpose: a prop is never fitted to a footprint, so its scale cannot go wrong. Not seen in the game
   (Blender renders only: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg). The laundry's roof sign renders blank orange in Blender.
 
+## HERO PLAZA, THE BUILDINGS — the district architected (2026-11-13, mondo's OK 17:12 "looks good")
+mondo 11-13: nine district threads "architect the buildings in their respective districts plots ... every building should be unique and
+purposeful and recognizable". Hero Plaza (plots x4..7, y4..7 of the 144; room metres -84..84) is laid out like a theme-park hub: the
+Superhero Tower is the weenie seen from everywhere, every walk ends at a clear silhouette. Plan doc: https://claude.ai/artifact/36EML6wNh4PjGRH6u2hzhy.
+- **The file**: `docs/disaster-city/districts/H.js` = every building as a parts list (`B`, by the plan's building id), the open
+  ground's drawn pieces (`OPEN`: the plaza's colonnade + bandstand + flags, the memorial's curved wall + obelisk + flame, the two avenue
+  gateways) and one swap (`SWAP`: the Local shop's lot wears the chain pizzeria `city_pizzeria` at real size, mondo 17:07 "a chain").
+- **The tool**: bake-disaster-city.js THE DISTRICT FILES calls its `build(ctx)` after all other passes
+  (no random number drawn: no other district's rows move) and writes one `k: 'arch'` row per building. The plan's own row keeps collision,
+  inside, door and walked roof with `skin: false`; a file's `row` says what else changes (storeys, leaf, solid, hollow + doorSide, pack +
+  packSide, replace = smaller footprints, remove = walked through).
+- **The 23**: News office (art-deco ziggurat, copper-green cornices, mast) · Hero workshop (brick, sawtooth roof, roller shutter) · pizzeria ·
+  Workshop store (ochre brick, green gable) · Superhero Tower (columned marble podium, glass shaft + white fins, round drum, overhanging
+  observation ring, gilt dome + pyramid + spire, about 88 m) · Press court (glass pavilion under a floating slab) · Apartments A · Coffee
+  arcade (glass barrel vault, striped arcade, a giant cup) · the pack shop block at true size (pack_bld_09) · the plaza · Training hall (brick
+  armory, four turrets, glass monitor; roof route) · Tower service (plant: cooling towers, striped stack, tank, pipes, dock) · Apartment
+  stair (tenement, iron stair face, water tower) · Townhouse row (three gables) · the memorial · Transit court (tile station, canopy, clock
+  tower; roof route) · Office court (teal slab on stilts, fins, round stair tower) · the Annex (stone pavilion; roof route) · Market steps
+  (cobble terrace, three tent stalls, walked through) · Kiosks · Delivery yard (depot, shed roof, dock) · Dispatch office · the Gateways.
+- **Inside** (hollow texbuilding + the city swing door): News office, Hero workshop, Tower, Press court, Coffee arcade, Tower service,
+  Apartment stair, Office court, Delivery yard. The three roof-route buildings (Training hall, Transit court, Annex) stay solid plateaus:
+  their roofs are the route. Furnishing = a later pass (the Metro pack's pieces belong in the Transit court).
+- **Rules learned**: a tint MULTIPLIES a sheet (and the city's building tint multiplies again), so pale tints on pale sheets; his glass
+  sheets are dark window grids, lit with the part's `glow`. `gold` = the terrain key (gilt.png); never the gold*.png files, not even in a
+  mock-up. The arch row has no lettering: sign boards are plain panels until a lettering part exists. No tilted parts: a stair flight is
+  stepped boxes, an arch is a barrel roof on a beam.
 ## DISASTER CITY, BAYSIDE — the district's architecture (2026-11-13, thread "Design Bayside district buildings")
 mondo's district ask (16:41) + "bayside needs to have the actual bayside in it too (the beach), with sand and a pier and stuff" (17:05) +
 his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:11). Plan doc: https://claude.ai/artifact/S8nPJ2AF6soGsNFSgf9VkL.
@@ -2181,6 +2207,18 @@ rerun `node bake-disaster-city.js` after any edit.
   the baked rows with the game's own `_hqArchGeometry` offline (/mnt/project-files/dc-entertainment/). Tints and the VHS shop's facing
   want a look on mondo's Mac.
 
+### HERO PLAZA, proven in the game (2026-11-13 evening) — four things the first bake got wrong
+- **A roof-route building's arch row needs `y: 0`.** An arch row with no `y` stands on the ground under its origin, and under a roof-route
+  `plateau` that ground is the 7 m roof: the Training hall, Transit court and Office annex floated on a dark terrace block. districts/H.js
+  writes `y: 0` on every arch row whose collision row is a plateau.
+- **The tool's back-lot infill** (`dc:in<n>`, the same pack sheet over and over) stood on the plaza's north edge in front of the Workshop
+  store and the pizzeria's corner; `build()` drops the infill rows in that band (by place, not by number). The other infill rows stay.
+- **A tint multiplies the sheet**, so a blue tint on the red corrugated sheet (MetalCorrugatedPainted2a) is near black: the yard wears the
+  blue sheet (…5a), the slate townhouse roofs the grey one (…1a). Pick a sheet of the colour, then tint.
+- **The shade lift**: every textured part with no glow of its own gets `glow: 0.16` (`LIFT`), since a sheet in the city's shade read near
+  black in the headless browser. The city_pizzeria prop's entrance faces the plaza with `face: 180` on the N side (proven on screen).
+- Probe recipe that worked: scratch copy of playtest_city.js, routed responses one at a time, 320x200 while loading, then 1280x800;
+  first-person views with `ThreeRenderer.hq.dev.lookAt(x, z, pitch)` in the view's `eval`, overviews with `y: 55`.
 ## DISASTER CITY, THE TRAFFIC — traffic lights, car routes, Bus Line 1 (2026-11-13, mondo's OK on the plan 17:33)
 mondo 11-13 17:20: "get some traffic lights and intersections planned out for actual traffic and car routes. Bus sections placed in each
 district with a bus route". Plan + mock-up: `/mnt/project-files/city-traffic-plan/` (traffic_plan_map.jpg, traffic_models_found.jpg).
