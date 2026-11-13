@@ -366,52 +366,53 @@ module.exports.build = function (api) {
         const seg = (x0, z0, x1, z1, h) => { const a = toWorld(x0, z0), b = toWorld(x1, z1); features.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], h, t: 0.2, ghost: true, rail: false }); };
         const WOODD = ['calm_planks', 0xb89878], STEEL = ['calm_tiles', 0xc8d0d8], DARK = ['calm_gunmetal', 0xb0b8c8], CUSH = ['calm_snow', 0x4a8a9c];
         const board = (lx, y, lz, len, hh, ry, txt, fg, bg) => P.push(Object.assign({ s: 'quad', p: [r3(lx), y, r3(lz)], size: [len, hh], uv: 'fit', kind: 'wall', key: 'txt:' + txt + '|' + fg + '|' + bg + '|' + Math.round(len / hh * 10) / 10 }, ry ? { ry } : {}));
+        let BF = 0;   // the city's prop face: 0 looks at the BACK wall, 180 at the door; a wall-backed piece in the back row looks at the door (BF = 180)
         const FILL = {
             /* (x, z) = the square's middle; back = the square's back edge is the room's wall */
-            shelfw: (x, z) => { [-0.85, 0.85].forEach(a => prop('library_shelf_full', x + a, z - 0.35, 0)); box(x, 0, z - 1.2, 3.4, 3.2, 0.5, WOODD); fill(x, z, 2.6); },
+            shelfw: (x, z) => { [-0.85, 0.85].forEach(a => prop('library_shelf_full', x + a, z - 0.35, 180)); box(x, 0, z - 1.2, 3.4, 3.2, 0.5, WOODD); fill(x, z, 2.6); },
             shelf: (x, z) => { [-0.85, 0.85].forEach(a => { prop('library_shelf_full', x - 0.5, z + a, 270); prop('library_shelf_full', x + 0.5, z + a, 90); }); fill(x, z, 2.6); },
             rtable: (x, z) => { prop('conference_table', x, z, 90); [-0.9, 0.9].forEach(a => { prop('cafeteria_chair', x - 1.25, z + a, 90); prop('cafeteria_chair', x + 1.25, z + a, 270); }); prop('desk_lamp', x + 0.3, z - 0.7, 0, 0.76); fill(x, z, 1.0); },
-            arm: (x, z) => { prop('psx_armchair_1', x - 0.8, z - 0.5, 20); prop('psx_armchair_1', x + 0.8, z - 0.5, 340); prop('psx_coffee_table_1', x, z + 0.7, 0); fill(x, z, 1.0); },
+            arm: (x, z) => { prop('psx_armchair_1', x - 0.8, z - 0.5, 200); prop('psx_armchair_1', x + 0.8, z - 0.5, 160); prop('psx_coffee_table_1', x, z + 0.7, 0); fill(x, z, 1.0); },
             arm1: (x, z) => { prop('psx_armchair_1', x, z, 0); prop('globe_lamp', x - 1.1, z - 1.1, 0); fill(x, z, 1.0); },
-            ldesk: (x, z) => { prop('round_desk', x, z, 0); prop('office_chair', x, z - 0.9, 0); prop('desk_lamp', x + 0.6, z + 0.2, 0, 0.76); fill(x, z, 1.0); },
-            pdesk: (x, z) => { prop('tanker_desk', x, z, 0); prop('office_chair', x, z - 0.9, 0); prop('desk_lamp', x - 0.5, z + 0.1, 0, 0.76); board(x, 1.6, z - cd / 2 + 0.3, 1.6, 0.5, 0, 'KEYS', '#f4ecd8', '#5a3a1e'); fill(x, z, 1.0); },
+            ldesk: (x, z) => { prop('round_desk', x, z, 0); prop('office_chair', x, z - 0.9, 180); prop('desk_lamp', x + 0.6, z + 0.2, 0, 0.76); fill(x, z, 1.0); },
+            pdesk: (x, z) => { prop('tanker_desk', x, z, 0); prop('office_chair', x, z - 0.9, 180); prop('desk_lamp', x - 0.5, z + 0.1, 0, 0.76); board(x, 1.6, z - cd / 2 + 0.3, 1.6, 0.5, 0, 'KEYS', '#f4ecd8', '#5a3a1e'); fill(x, z, 1.0); },
             files: (x, z) => { [-1, 0, 1].forEach(a => prop('filing_cabinet', x + a, z - 0.6, 0)); fill(x, z, 1.4); },
             stair: () => {},
-            range: (x, z) => { prop('kitchen_range', x - 0.8, z - 0.9, 0); prop('kitchen_range', x + 0.8, z - 0.9, 0); fill(x, z, 1.2); },
-            sinks: (x, z) => { prop('sink_row', x, z - 0.9, 0); fill(x, z, 1.2); },
-            fridge: (x, z) => { prop('round_fridge', x - 0.8, z - 0.9, 0); prop('mini_fridge', x + 0.7, z - 0.9, 0); fill(x, z, 1.8); },
-            cake: (x, z) => { box(x, 0, z - 0.9, 3.2, 0.95, 0.9, WOODD); prop('coffee_maker', x - 0.7, z - 0.9, 0, 0.95); prop('coffee_maker', x + 0.3, z - 0.9, 0, 0.95); fill(x, z, 1.2); },
+            range: (x, z) => { prop('kitchen_range', x - 0.8, z - 0.9, 180); prop('kitchen_range', x + 0.8, z - 0.9, 180); fill(x, z, 1.2); },
+            sinks: (x, z) => { prop('sink_row', x, z - 0.9, 180); fill(x, z, 1.2); },
+            fridge: (x, z) => { prop('round_fridge', x - 0.8, z - 0.9, 180); prop('mini_fridge', x + 0.7, z - 0.9, 180); fill(x, z, 1.8); },
+            cake: (x, z) => { box(x, 0, z - 0.9, 3.2, 0.95, 0.9, WOODD); prop('coffee_maker', x - 0.7, z - 0.9, 180, 0.95); prop('coffee_maker', x + 0.3, z - 0.9, 180, 0.95); fill(x, z, 1.2); },
             counter: (x, z) => { box(x, 0, z, 3.5, 1.05, 1.0, WOODD); box(x, 1.05, z, 3.5, 0.06, 1.15, STEEL, { under: true }); prop('coffee_mug', x + 0.8, z + 0.2, 0, 1.11); fill(x, z, 1.2); },
             till: (x, z) => { box(x, 0, z, 3.5, 1.05, 1.0, WOODD); box(x, 1.05, z, 3.5, 0.06, 1.15, STEEL, { under: true }); prop('cash_register', x - 0.5, z, 0, 1.11); board(x, 2.4, z - 0.4, 2.6, 0.6, 0, 'MENU', '#f4ecd8', '#2a2a2a'); fill(x, z, 1.2); },
-            ctable: (x, z) => { prop('tulip_table', x, z, 0); [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([a, b], i) => prop('tulip_chair', x + a * 0.95, z + b * 0.95, [180, 0, 270, 90][i])); fill(x, z, 0.9); },
+            ctable: (x, z) => { prop('tulip_table', x, z, 0); [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([a, b], i) => prop('tulip_chair', x + a * 0.95, z + b * 0.95, [0, 180, 270, 90][i])); fill(x, z, 0.9); },
             booth: (x, z) => { box(x, 0, z + 0.4, 1.1, 0.74, 2.0, WOODD); [-1, 1].forEach(a => { box(x + a * 1.15, 0, z + 0.4, 0.75, 0.45, 2.0, CUSH); box(x + a * 1.5, 0, z + 0.4, 0.14, 1.2, 2.0, CUSH); }); prop('coffee_mug', x + 0.2, z + 0.1, 0, 0.74); fill(x, z, 1.2); },
-            racks: (x, z) => { [-1.1, 0, 1.1].forEach(a => prop('server_rack', x + a, z - 0.9, 0)); fill(x, z, 2.1); },
-            mstack: (x, z) => { prop('monitor_stack', x - 0.6, z - 0.9, 0); prop('retro_console', x + 0.7, z - 0.4, 0); fill(x, z, 2.0); },
+            racks: (x, z) => { [-1.1, 0, 1.1].forEach(a => prop('server_rack', x + a, z - 0.9, BF)); fill(x, z, 2.1); },
+            mstack: (x, z) => { prop('monitor_stack', x - 0.6, z - 0.9, BF); prop('retro_console', x + 0.7, z - 0.4, BF); fill(x, z, 2.0); },
             tank: (x, z) => { prop('iso_tank', x, z, 0); box(x, 0, z, 2.6, 0.12, 2.6, DARK); fill(x, z, 1.4); },
             stable: (x, z) => { prop('steel_table', x - 0.8, z, 0); prop('steel_table', x + 0.8, z, 0); fill(x, z, 0.9); },
             bench: (x, z) => { box(x, 0, z, 3.4, 0.9, 1.4, STEEL); box(x, 0.9, z, 3.5, 0.06, 1.5, DARK, { under: true }); prop('psx_pc_monitor_mp_1', x - 0.8, z, 0, 0.96); prop('item_potion_flask', x + 0.7, z + 0.3, 0, 0.96); fill(x, z, 1.0); },
-            lockers: (x, z) => { [-1.2, -0.4, 0.4, 1.2].forEach(a => prop('locker', x + a, z - 0.9, 0)); fill(x, z, 1.9); },
-            cabinets: (x, z) => { [-0.9, 0.9].forEach(a => prop('round_cabinet', x + a, z - 0.8, 0)); prop('metal_shelving', x, z + 0.5, 0); fill(x, z, 1.8); },
-            desk: (x, z) => { prop('tanker_desk', x, z, 0); prop('computer_chair_grey', x, z - 0.9, 0); prop('psx_pc_monitor_mp_1', x + 0.3, z, 0, 0.76); fill(x, z, 1.0); },
+            lockers: (x, z) => { [-1.2, -0.4, 0.4, 1.2].forEach(a => prop('locker', x + a, z - 0.9, BF)); fill(x, z, 1.9); },
+            cabinets: (x, z) => { [-0.9, 0.9].forEach(a => prop('round_cabinet', x + a, z - 0.8, BF)); prop('metal_shelving', x, z + 0.5, BF); fill(x, z, 1.8); },
+            desk: (x, z) => { prop('tanker_desk', x, z, 0); prop('computer_chair_grey', x, z - 0.9, 180); prop('psx_pc_monitor_mp_1', x + 0.3, z, 0, 0.76); fill(x, z, 1.0); },
             crates: (x, z) => { prop('cardboard_boxes', x - 0.7, z - 0.5, 15); prop('cardboard_boxes', x + 0.7, z + 0.5, 290); prop('cardboard_box', x + 0.8, z - 0.8, 40); fill(x, z, 1.0); },
-            console: (x, z) => { [-0.9, 0.9].forEach(a => prop('retro_console', x + a, z - 0.6, 0)); prop('monitor_stack', x, z - 1.3, 0); fill(x, z, 1.6); },
-            recep: (x, z) => { box(x, 0, z, 3.5, 1.05, 0.9, STEEL); box(x, 1.05, z, 3.5, 0.06, 1.05, DARK, { under: true }); prop('office_chair', x, z - 1.0, 0); prop('psx_pc_monitor_mp_1', x - 0.6, z, 0, 1.11); fill(x, z, 1.2); },
-            wait: (x, z) => { [-1.1, -0.35, 0.4, 1.15].forEach(a => prop('molded_chair', x + a, z + 0.9, 180)); prop('potted_plant', x - 1.2, z - 1.0, 0); fill(x, z, 0.9); },
+            console: (x, z) => { [-0.9, 0.9].forEach(a => prop('retro_console', x + a, z - 0.6, BF)); prop('monitor_stack', x, z - 1.3, BF); fill(x, z, 1.6); },
+            recep: (x, z) => { box(x, 0, z, 3.5, 1.05, 0.9, STEEL); box(x, 1.05, z, 3.5, 0.06, 1.05, DARK, { under: true }); prop('office_chair', x, z - 1.0, 180); prop('psx_pc_monitor_mp_1', x - 0.6, z, 180, 1.11); fill(x, z, 1.2); },
+            wait: (x, z) => { [-1.1, -0.35, 0.4, 1.15].forEach(a => prop('molded_chair', x + a, z + 0.9, 0)); prop('potted_plant', x - 1.2, z - 1.0, 0); fill(x, z, 0.9); },
             egg: (x, z) => { prop('egg_chair', x, z, 45); prop('rug_round', x + 0.3, z + 0.3, 0); fill(x, z, 1.3); },
-            couch: (x, z) => { prop('curved_couch', x, z - 0.5, 0); fill(x, z, 1.0); },
+            couch: (x, z) => { prop('curved_couch', x, z - 0.5, BF); fill(x, z, 1.0); },
             bed: (x, z) => { prop('hospital_bed', x, z, 90); prop('round_cabinet', x - 1.1, z - 1.1, 0); fill(x, z, 1.0); },
-            vend: (x, z) => { prop('vending_machine', x - 0.6, z - 0.9, 0); prop('potted_plant', x + 1.0, z + 0.9, 0); fill(x, z, 1.9); },
+            vend: (x, z) => { prop('vending_machine', x - 0.6, z - 0.9, BF); prop('potted_plant', x + 1.0, z + 0.9, 0); fill(x, z, 1.9); },
             btele: (x, z) => { cyl(x, 0, z, 1.4, 0.35, ['calm_marble', 0xffffff], 12); prop('brass_telescope', x, z, 30, 0.35); fill(x, z, 1.6); },
             tele: (x, z) => { cyl(x, 0, z, 1.4, 0.35, ['calm_marble', 0xffffff], 12); prop('telescope', x, z, 330, 0.35); fill(x, z, 1.6); },
-            case: (x, z) => { [-0.85, 0.85].forEach(a => prop('psx_display_cabinet_mp_1', x + a, z - 0.5, 0)); fill(x, z, 2.1); },
+            case: (x, z) => { [-0.85, 0.85].forEach(a => prop('psx_display_cabinet_mp_1', x + a, z - 0.5, BF)); fill(x, z, 2.1); },
             fish: (x, z) => { box(x, 0, z, 2.8, 0.7, 1.4, ['calm_marble', 0xffffff]); prop('psx_fish_skeleton_mp_1', x, z, 0, 0.7); fill(x, z, 1.4); },
-            trophy: (x, z) => { prop('trophy_case', x, z - 0.3, 0); fill(x, z, 2.1); },
+            trophy: (x, z) => { prop('trophy_case', x, z - 0.3, BF); fill(x, z, 2.1); },
             ticket: (x, z) => { box(x, 0, z, 3.2, 1.05, 0.9, WOODD); prop('cash_register', x - 0.5, z, 0, 1.05); board(x, 1.9, z - 0.2, 2.4, 0.5, 0, 'TICKETS', '#ffffff', '#3a5cc0'); fill(x, z, 1.2); },
             mbench: (x, z) => { prop('metro_bench', x, z, 0); fill(x, z, 0.9); },
             /* THE SECOND PASS (mondo 11-13 22:33: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of
                them ... Focus on aesthetic, vibe, atmosphere for the interiors"): the University's own Meshy pieces, each on whole squares */
-            fhood: (x, z) => { prop('fume_hood', x, z - 0.95, 0); prop('lab_glassware', x - 0.5, z - 0.95, 10, 0.92); fill(x, z, 2.4); },
-            specs: (x, z) => { prop('specimen_shelf', x - 0.84, z - 1.05, 0); prop('specimen_shelf', x + 0.84, z - 1.05, 0); fill(x, z, 2.1); },
+            fhood: (x, z) => { prop('fume_hood', x, z - 0.95, 180); prop('lab_glassware', x - 0.5, z - 0.95, 190, 0.92); fill(x, z, 2.4); },
+            specs: (x, z) => { prop('specimen_shelf', x - 0.84, z - 1.05, 180); prop('specimen_shelf', x + 0.84, z - 1.05, 180); fill(x, z, 2.1); },
             chaise: (x, z) => { prop('therapy_chaise', x - 0.2, z - 0.3, 20); prop('globe_lamp', x + 1.2, z - 1.2, 0); prop('rug_round', x - 0.2, z + 0.2, 0); fill(x, z, 1.0); },
             orrery: (x, z) => { cyl(x, 0, z, 0.75, 0.9, ['calm_marble', 0xffffff], 16); cyl(x, 0.9, z, 0.85, 0.06, ['calm_gunmetal', 0xc8b070], 16); prop('brass_orrery', x, z, 0, 0.96); fill(x, z, 2.0); },
             meteor: (x, z) => { prop('meteorite_plinth', x, z - 0.2, 20); [[-1.1, -1.1], [1.1, -1.1], [-1.1, 0.9], [1.1, 0.9]].forEach(([a, b]) => prop('rope_stanchion', x + a, z + b, 0)); fill(x, z, 1.4); },
@@ -421,7 +422,7 @@ module.exports.build = function (api) {
             dino2: (x, z) => fill(x, z, 3.0),
             globe: (x, z) => { cyl(x, 0, z, 0.5, 0.9, DARK, 10); cyl(x, 0.9, z, 0.2, 1.2, ['calm_tiles', 0x6aa8e0], 14, 1.2); P.push(Object.assign({ s: 'dome', p: [r3(x), 2.1, r3(z)], r: 1.2, h: 1.2, seg: 14, rings: 5 }, look(['calm_tiles', 0x6aa8e0]))); fill(x, z, 2.4); },
         };
-        R.g.forEach((line, ri) => line.forEach((t, ci) => { if (!t) return; const x = ox - W / 2 + (ci + 0.5) * cw, z = oz - D / 2 + (ri + 0.5) * cd; if (FILL[t]) FILL[t](x, z); else console.warn('university: no fill', t); }));
+        R.g.forEach((line, ri) => line.forEach((t, ci) => { if (!t) return; BF = ri === 0 ? 180 : 0; const x = ox - W / 2 + (ci + 0.5) * cw, z = oz - D / 2 + (ri + 0.5) * cd; if (FILL[t]) FILL[t](x, z); else console.warn('university: no fill', t); }));
         /* partitions on the squares' edges ([c0, r0, c1, r1] in squares, r counted from the FRONT): dark glass or plaster, a ghost wall each */
         const edge = (e, L, glass) => { const x0 = ox - W / 2 + e[0] * cw, x1 = ox - W / 2 + e[2] * cw, z0 = oz + D / 2 - e[1] * cd, z1 = oz + D / 2 - e[3] * cd, hh = Math.min(H, 3.2);
             if (Math.abs(x0 - x1) < 0.01) box(x0, 0, (z0 + z1) / 2, 0.12, hh, Math.abs(z1 - z0), L, glass ? { kind: 'glass', win: 'keep' } : {}); else box((x0 + x1) / 2, 0, z0, Math.abs(x1 - x0), hh, 0.12, L, glass ? { kind: 'glass', win: 'keep' } : {});
@@ -464,24 +465,24 @@ module.exports.build = function (api) {
             Object.assign({ s: 'cyl', p: [X(rx), r3(y - 0.06), Z(rz)], r: r3(r * 0.3), h: 0.14, seg: 10 }, GLOW(bulb || 0xffe2a8))); };
         /* a lit window on a wall (daylight through glass the facade's windows stand for): wall 'l' | 'r' | 'b', along = room-local x or z */
         const window_ = (wall, along, y, w, h, L) => { const e = 0.33, g = Object.assign(lk(L || ['urban:GlassWindowTall1a', 0xd8ecff, null, 1.4]), { glow: 0.7, win: 'keep' });
-            const at = wall === 'l' ? [X(-W / 2 + e), Z(along), 270] : wall === 'r' ? [X(W / 2 - e), Z(along), 90] : [X(along), Z(-D / 2 + e), 0];
-            P.push({ s: 'box', p: [at[0], r3(y - 0.12), at[1]], size: [r3(w + 0.3), r3(h + 0.24), 0.06], ry: at[2], tint: 0x5a4632 }, Object.assign({ s: 'quad', p: [at[0], r3(y), at[1]], size: [r3(w), r3(h)], ry: at[2] }, g)); };
+            const at = wall === 'l' ? [-W / 2 + e, along, 270, 1, 0] : wall === 'r' ? [W / 2 - e, along, 90, -1, 0] : [along, -D / 2 + e, 0, 0, 1], gx = at[0] + at[3] * 0.05, gz = at[1] + at[4] * 0.05;   // the glass 5 cm proud of its frame (inside the frame it never showed)
+            P.push({ s: 'box', p: [X(at[0]), r3(y - 0.12), Z(at[1])], size: [r3(w + 0.3), r3(h + 0.24), 0.06], ry: at[2], tint: 0x5a4632 }, Object.assign({ s: 'quad', p: [X(gx), r3(y), Z(gz)], size: [r3(w), r3(h)], ry: at[2] }, g)); };
         const rug = (rx, rz, w, d, L) => P.push(Object.assign({ s: 'quad', flat: true, p: [X(rx), 0.03, Z(rz)], size: [r3(w), r3(d)] }, lk(L)));
         /* a prop room-local; `wall`: 'b' back, 'f' front, 'l' left, 'r' right = stand against it, its front to the room */
-        const WF = { b: 0, f: 180, l: 90, r: 270 };
+        const WF = { b: 180, f: 0, l: 90, r: 270 };   // the city's face: 0 looks at the BACK wall (-z), 180 at the door, 90 at +x
         const dress = (key, rx, rz, f, y) => prop(key, X(rx), Z(rz), f || 0, y);
         const onWall = (key, wall, along, f) => { const e = 0.42, p = wall === 'b' ? [along, -D / 2 + e] : wall === 'f' ? [along, D / 2 - e] : wall === 'l' ? [-W / 2 + e, along] : [W / 2 - e, along]; dress(key, p[0], p[1], WF[wall] + (f || 0)); };
         const books = (rx, rz, y, n, f) => { for (let i = 0; i < n; i++) dress('psx_book_mp_' + (1 + ((i * 3 + Math.round(rx * 7)) % 10 + 10) % 10), rx + (i % 2) * 0.05, rz + (i % 3) * 0.03, (f || 0) + i * 9, r3(y + i * 0.045)); };
         const ATMOS = {
             library: () => {   // a reading hall at night: forest green over walnut, a coffered cream ceiling, brass chandeliers, green lamps on every table
-                liner(M('urban:PlasterWallPainted1a', 0x2e5a40, 1.5), M('calm_planks', 0x7a5034, 1.4), 1.35, ['urban:FibreCeilingTile1a', 0xf2e2c0, null, 1.6, 0.4], ['calm_planks', 0x5a3820]);
+                liner(M('urban:PlasterWallPainted1a', 0x3c7454, 1.8), M('calm_planks', 0x946440, 1.5), 1.35, ['urban:FibreCeilingTile1a', 0xf2e2c0, null, 1.6, 0.4], ['calm_planks', 0x5a3820]);
                 [2, 4, 6].forEach(ci => P.push({ s: 'box', p: [X(sx(ci) - cw / 2), r3(H - 0.6), Z(0)], size: [0.3, 0.5, r3(D - 0.8)], key: 'calm_planks', tint: 0x6a4428, under: true }));   // the ceiling's beams
                 [[1, 1.5], [3.5, 1.5], [5, 1.5], [3.5, 3]].forEach(([c, r]) => { const rx = -W / 2 + c * cw + cw / 2, rz = -D / 2 + r * cd + (r === 3 ? 0 : cd / 2); dress('library_chandelier', rx, rz, 0, r3(Math.min(6.4, H - 1.6))); P.push({ s: 'cyl', p: [X(rx), r3(Math.min(6.4, H - 1.6) + 1.1), Z(rz)], r: 0.02, h: r3(H - Math.min(6.4, H - 1.6) - 1.1), seg: 4, tint: 0x8a6a30, cap: false }); });
                 [-1, 1].forEach(sg => [-0.25, 0.25].forEach(a => window_(sg < 0 ? 'l' : 'r', a * D * 0.9, 4.6, 1.5, 4.2)));                                   // tall lit windows over the gallery line
                 rug(dX, D / 2 - 3.9, 2.0, 6.6, M('calm_carpet', 0x8a2a2a, 1.3));                                                          // the red runner from the door
                 R.g.forEach((line, ri) => line.forEach((t, ci) => { const x = sx(ci), z = sz(ri);
                     if (t === 'rtable') { dress('banker_lamp', x + 0.12, z - 0.75, 180, 0.76); dress('banker_lamp', x - 0.12, z + 0.75, 0, 0.76); books(x + 0.2, z + 0.25, 0.76, 3, 15); dress('psx_open_book_mp_1', x - 0.15, z - 0.2, 80, 0.76); }
-                    if (t === 'shelfw' && (ci === 1 || ci === 6)) dress('library_ladder', x + 0.6, z + 0.05, 180);   // its top hooks lean to the shelves                                                // a rolling ladder against the shelf wall
+                    if (t === 'shelfw' && (ci === 1 || ci === 6)) dress('library_ladder', x + 0.6, z + 0.05, 0);   // its top hooks lean to the shelves                                                // a rolling ladder against the shelf wall
                     if (t === 'ldesk') { books(x - 0.5, z - 0.1, 0.76, 4, 0); dress('banker_lamp', x - 0.55, z + 0.35, 180, 0.76); } }));
                 onWall('wall_clock', 'f', dX); dress('globe_lamp', sx(1) - 1.15, sz(3) + 1.1, 0); dress('potted_plant', sx(7) - 1.2, sz(3) + 1.15, 0); dress('potted_plant', sx(0) + 1.2, sz(1) - 1.15, 0);
                 onWall('notice_board', 'l', sz(2.5)); onWall('chalkboard', 'r', sz(2));
@@ -492,8 +493,8 @@ module.exports.build = function (api) {
                 R.g.forEach((line, ri) => line.forEach((t, ci) => { const x = sx(ci), z = sz(ri);
                     if (t === 'booth') pendant(x, z + 0.4, 2.1, { key: 'calm_tiles', tint: 0xd88a30, glow: 0.35 }, 0xffcf80, 0.3);
                     if (t === 'ctable') pendant(x, z, 2.3, { key: 'calm_tiles', tint: 0x2a5a48, glow: 0.2 }, 0xffe0a0, 0.32);
-                    if (t === 'counter' && ci === 2) dress('espresso_machine', x - 0.6, z - 0.05, 180, 1.11);
-                    if (t === 'counter' && ci === 3) dress('pastry_case', x - 0.2, z, 0, 1.11); }));
+                    if (t === 'counter' && ci === 2) dress('espresso_machine', x - 0.6, z - 0.05, 0, 1.11);
+                    if (t === 'counter' && ci === 3) dress('pastry_case', x - 0.2, z, 180, 1.11); }));
                 [0.5, 2.5].forEach(c => pendant(-W / 2 + c * cw + cw / 2, sz(1), 2.6, { key: 'calm_gunmetal', tint: 0x30343a }, 0xfff0c8, 0.22));                // over the counter
                 window_('r', -cd * 0.6, 1.3, 2.4, 2.6, ['urban:GlassWindowResidential1a', 0xfff0d8, null, 1.4]); window_('r', cd * 0.6, 1.3, 2.4, 2.6, ['urban:GlassWindowResidential1a', 0xfff0d8, null, 1.4]);
                 onWall('chalkboard', 'l', sz(2)); onWall('wall_clock', 'f', dX); dress('potted_plant', sx(6) + 1.2, sz(2) - 1.2, 0); dress('office_plant', sx(4) + 1.2, sz(3) + 1.15, 0); dress('potted_plant', sx(0) + 1.15, sz(2) + 1.15, 0);
@@ -504,7 +505,7 @@ module.exports.build = function (api) {
                 R.g.forEach((line, ri) => line.forEach((t, ci) => { const x = sx(ci), z = sz(ri);
                     if (t === 'bench') { dress('microscope', x + 0.05, z - 0.3, 180, 0.96); dress('lab_glassware', x + 1.0, z - 0.35, 200, 0.96); dress('papers_a', x - 0.2, z + 0.45, 10, 0.96); } }));
                 onWall('exit_sign', 'f', dX); onWall('fire_extinguisher', 'f', dX + 1.4); onWall('notice_board', 'l', sz(1)); onWall('wall_clock', 'r', sz(1));
-                dress('anatomy_skeleton', sx(4) + 1.2, sz(3) + 1.0, 200);
+                dress('anatomy_skeleton', sx(4) + 1.2, sz(3) + 1.0, 20);
             },
             psych: () => {   // soft and quiet: sage over oak, warm low lamps, a rug under the waiting chairs
                 liner(M('urban:PlasterWallPainted1a', 0x9cb8a0, 1.9), M('calm_planks', 0x9a7450, 1.4), 1.0, ['urban:FibreCeilingTile1a', 0xfff4e4, null, 1.6, 0.35], ['calm_planks', 0x7a5a3a]);
@@ -525,11 +526,11 @@ module.exports.build = function (api) {
                 for (let ri = 0; ri < nr; ri++) panelL(sx(1), sz(ri), 1.2, 1.2);
                 R.g.forEach((line, ri) => line.forEach((t, ci) => { const x = sx(ci), z = sz(ri);
                     if (t === 'bed') { const inn = ci === 0 ? 1 : -1; dress('iv_stand', x + inn * 1.1, z - 1.1, 0); dress('privacy_screen', x + inn * 1.45, z + 0.4, inn > 0 ? 270 : 90); } }));
-                dress('wheelchair', sx(2) + 0.95, sz(2) - 1.0, 250); dress('anatomy_skeleton', sx(1) + 1.2, sz(0) - 1.15, 0);
+                dress('wheelchair', sx(2) + 0.95, sz(2) - 1.0, 250); dress('anatomy_skeleton', sx(1) + 1.2, sz(0) - 1.15, 180);
                 onWall('exit_sign', 'f', dX); onWall('wall_clock', 'l', sz(4)); onWall('notice_board', 'r', sz(2));
             },
             museum: () => {   // the night gallery: deep blue walls over marble, a dark ceiling, a lit skylight over the walk, spots on every case
-                liner(M('urban:PlasterWallPainted1a', 0x2c3c64, 1.6), M('urban:TileMarble1a', 0xf4f0e8, 1.3), 1.2, ['calm_gunmetal', 0x2a3040, null, 1.0, 0.2], ['calm_marble', 0xd8c8a0]);
+                liner(M('urban:PlasterWallPainted1a', 0x2c3c64, 1.6), M('urban:TileMarble1a', 0xf4f0e8, 1.3), 1.2, ['urban:FibreCeilingTile1a', 0x8a98c0, null, 1.4, 0.3], ['calm_marble', 0xd8c8a0]);
                 for (let ci = 0; ci < nc; ci++) panelL(sx(ci), sz(1), 2.6, 1.6, 0xeaf2ff);                                                                     // the skylight over the middle walk
                 R.g.forEach((line, ri) => line.forEach((t, ci) => { if (!t || t === 'dino2' || ri === 1) return; const x = sx(ci) + (t === 'dino' ? cw / 2 : 0), z = sz(ri) + (ri ? -0.6 : 0.6);
                     P.push({ s: 'cyl', p: [X(x), r3(H - 0.5), Z(z)], r: 0.09, r2: 0.13, h: 0.24, seg: 8, tint: 0x202428, cap: false }, Object.assign({ s: 'cyl', p: [X(x), r3(H - 0.53), Z(z)], r: 0.085, h: 0.03, seg: 8 }, GLOW(0xfff0d0)));
