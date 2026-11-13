@@ -104,7 +104,7 @@ def landmarks(rgb):
 
 REPO = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'charactercreation', 'mpfb') + os.sep
 unit, body, stock, key = A['unit'], A.get('body', 'mpfb_male'), A['stock'], A['key']
-cy0 = float(A.get('cy', 1.5)); pitch0 = float(A.get('pitch', 15)); out = A.get('out', '.')
+cy0 = float(A.get('cy', 1.5)) if not str(A.get('cy', '')).startswith('top') else 0.0; pitch0 = float(A.get('pitch', 15)); out = A.get('out', '.')
 LEYE = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246]; REYE = [263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466]
 LIPS = [78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308, 191, 80, 81, 82, 13, 312, 311, 310, 415]
 BROW = [70, 63, 105, 66, 107, 336, 296, 334, 293, 300]
@@ -127,6 +127,8 @@ M = Glb(REPO + body + '.glb').prim(body); mimg = np.asarray(M['img']).astype(flo
 mcy = mpos[:, 1].max() - 0.155; mrgb, mP, _ = front(mpos, M['uv'], M['idx'], mimg, 0.0, mcy, 0.16); mL, Pm = lm3(mrgb, mP)
 # ---- the unit head, brought into MPFB space ----
 U = Glb(unit).prim(); uimg = np.asarray(U['img']).astype(float)
+if str(A.get('cy', '')).startswith('top'):   # cy=top<d> (2026-11-13): the head's middle = the top of the figure on its middle line, less d metres (0.155 = a bare head; more under a hat or horns)
+    _m = U['pos'][np.abs(U['pos'][:, 0]) < 0.05]; cy0 = float(_m[:, 1].max()) - float(A['cy'][3:] or 0.155); print('cy = %.3f' % cy0, flush=True)
 a = np.radians(pitch0); c = np.array([0, cy0, 0.0]); R0 = np.array([[1, 0, 0], [0, np.cos(a), np.sin(a)], [0, -np.sin(a), np.cos(a)]])
 upos = (U['pos'] - c) @ R0.T + c + np.array([0, mcy - cy0, 0])
 ok = None

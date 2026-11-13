@@ -122,6 +122,8 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
 - `bake-face.py` (2026-11-12): an old Meshy unit's head -> MPFB head shape + face skin (`<race>Face`, `ew_face_<race>`). Notes: character-creator.md "THE UNIT FACES".
 - `bake-beards.py` (2026-11-02): `python3 -I bake-beards.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks [--only full]` joins a pack beard + moustache
   into one Facial hair pick (`ewb_beard_<key>.glb`). Notes: character-creator.md "THE JOINED BEARDS".
+- `bake-disaster-city.js` (2026-11-13): writes the 144-plot Disaster City room (`site_prebuilt_downtown_streets`; the old streets = `…_oldstreets`) into data.js from
+  `docs/disaster-city/city-layout.json`. Notes: areas-complexes.md "DISASTER CITY, THE 144 PLOTS".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
   the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes

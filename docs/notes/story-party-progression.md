@@ -916,8 +916,32 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   own frames. Kit stands at the counter WHILE the stage is current (cast spot `during`), sits on her chair after it
   (`after`). `hq.sceneCull(on)` = nobody culled by a bind-pose sphere while a scene plays. Dev: `Quests.talk('rhonda')`.
   Headless: after a container restart the cast models took ~2 min to land; empty first shots were that, not the scene.
-- **Not built yet** (the doc's build order): the new stage endings + the in-world quest marker (mock-up first) + `office_door`,
-  D / E / F with the choice box, B the TV cart, A the intro. HQ scenes need an HQ host (cast walk / face / sit hooks).
+- **EVERY SCENE REPLAYS (2026-11-13, mondo on E: "can i not replay it? we literally added a replay system so i can check these
+  things")**: the quest card (pause menu > QUESTS) lists one REPLAY button per cutscene of a finished stage, in play order
+  (map.js `_hqPauseQuestsHtml`, `.hq-qj-replays`). The fight's opening scene = `data-quest-replay` (scene + fight, as before).
+  Its `after` scene = `data-quest-only="after"` -> `_questFightGo(id, { replay, only: 'after' })` -> the run's `sceneOnly`
+  -> battle.js `_questAfterOnly`: the board comes up, the enemies are taken off it, the aftermath plays and its end goes
+  straight back to the room through `backToMainMenu` with a result stamped `sceneOnly` (no turn dealt, no finalizeMatch, no
+  commit, no XP, no toast). A stage's own scene (a talk, a room) = `data-quest-stage="quest/stage"` -> map.js
+  `_questStageReplay`: `window._ewSceneReplayStage = { quest, stage }` makes that stage count as current for the cast's
+  posts (data.js `_hqCastSpotReplay` in `_hqCastSpotDuring` / `After`: Kit stands at the counter, Locke at the office door),
+  the room is entered again (`_hqEnter` now takes `onReady`), the scene plays once its cast is in the room, nothing is
+  filed, and the room is entered once more at its end so everybody is back at today's post. Console: `Quests.replay(id,
+  'after')`, `Quests.replayStage('orientation', 'desk' | 'office')`.
+- **SCENE F, THE OFFICE (2026-11-13)**: data.js `STORY_CUTSCENES.orientation_office` (9 beats: the approved storyboard's
+  frames, his 5 lines word for word, the recruit ALONE until F4); the `office` stage carries `scene`. map.js: a stage that
+  ends on a ROOM and has a scene is not filed on entry (`_questRoomSceneDue`); `_questRoomSceneGo` plays it once the room
+  stands and its cast is in (`_questRoomScene` -> `_questHqScene`, the host E uses too) and the scene's END files the room
+  (the quest completes there). Locke has a post in the office `during` that stage (a `during` post now wins over the
+  everyday posts in `hqCastInRoom`); the scene hides her at F1, shows her at F4, takes her out under the fade.
+  New in the director (three-camera.js): THE CHOICE BOX (`choice: { options: [{ label, set, clear }] }`: the beat holds
+  on its shot until one is picked by click, LEFT / RIGHT + ENTER, or 1 / 2; host `choose` files the option's world flags;
+  a skip never passes an unanswered choice, it lands on that beat with every action on the way done), `fade` (the second
+  of a beat the picture goes to black), row `end` (where everybody is left: a skip lands the same), `EWScene.pick(i)`.
+  New HQ scene actions: `place` (who, x, z, face), `show`, `hide` = three-renderer.js `hq.scenePlace(who, o)`.
+  The pick is saved as `office_door_open` | `office_door_closed` (hqStoryFlags); nothing reads it yet (the door leaf
+  does not stand open). Dev: `Quests.roomScene()`.
+- **Not built yet**: B the TV cart, A the intro (Sedaniel = DOOR_CAST.sedaniel, the roster Honda Civic; the foyer's entrance lift).
 
 ## THE SAVE — the walk autosaves where you stand; CONTINUE lands there (2026-11-12, mondo)
 mondo: "there needs to be a save feature so that i am not always loading in the foyer every time".

@@ -170,6 +170,30 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 | mummy (F) | batch two 11-12 | clean | done (mummyFace) | next | waiting | `--longhair --bodysuit` (bandages the colour of her skin: no colour cut, head + hands cut by place), hair mh_long01. Round 2 (11-12): loose ends hang whole, chin strip + hair flecks gone. Left: the suit's collar edge is angular, not seen in a battle |
 | angel (F) (mondo 11-12 playtest: he put a creator goddess dress on her himself, the T2 dress is not his pick) | batch two 11-12 | clean | done, soft (angelFace) | next | waiting | render on a DARK background (white wings on light grey came back dark blue); `--longhair --nowings --barearms --neckline`, `--repaint`, env `REPWARM=0.08 SKIN_T=0.3 LOCKT=0.3`; wings = the creator's Feathered (his OK 11-12). Round 2 (11-12): clean square neckline, whole straps, bodice hole + skirt patch gone. Round 3: the teeth behind her right arm gone (weights, not cloth). Left: small notches on the straps' outer edges, face plainer than the photo-real original |
 | AGENT LOCKE (cast, F) (mondo 11-12 "remake Locke to blink") | 11-12 | clean (ISLENECK + OPENSKIN + SKINISLE=400) | done, soft (lockeFace) | creator hair mh_elvs_short_side_do | live | sprites.js CAST_CREATOR_LOOKS: board, DOOR HQ, portrait studio; not yet seen in HQ / a fight |
+| BATCH 1 OF 3 (11-13, meshy-remake-batches.md; mondo: "creator clothes first, Meshy for the pieces we don't have"). All: first pass, one look from four sides + a walk frame, NOT seen in a battle, no round of fixes yet | | | | | waiting | bakes: `EYE=` from `bake-t2-eyes.py` on every unit (see models-assets.md "BATCH 1 OF 3") |
+| annunaki (M) | 11-13 | clean | owed | annunakiFace (beard is in the skin) | waiting | creator Anunnaki headdress + Egyptian collar + Feathered wings (tinted brown); T2 robe `--nowings` |
+| astronaut (M) | 11-13 | clean | owed | none (stock face behind the visor) | waiting | creator Astronaut helmet + backpack; T2 suit `--headgear` (its own helmet shell not used) |
+| barbarella (F) | 11-13, creator clothes only | see sheet | owed | barbarellaFace, soft | waiting | T2 leotard came out ragged at the hips: one-piece swimsuit + knee boots tinted white, gloves, gun belt, thigh holster |
+| bunny girl (F) | 11-13 | skin patches on the thighs, strap ends by the hips | owed | bunnygirlFace, soft (anime face does not carry) | waiting | T2 ears = hat piece; `--longhair --barearms` |
+| chef (M) | 11-13, creator clothes only | clean | owed | chefFace | waiting | his saved chef look (coat, trousers, shoes, chef hat) moved to mpfb_male; the T2 whites showed the shoulders through |
+| clown (M) | 11-13 | clean | owed | clownFace (the paint carries well) | waiting | `RAY_IN=0.12 RAY_OUT=0.12 TORN=9` (batch 3's jacket envs) + `SKIN_T=0.1` (his white face paint is near the jacket's grey) |
+| conspiracy theorist (M) | 11-13 | clean | owed | conspiracyFace | waiting | creator wireless headset; `RAY_IN=0.12 RAY_OUT=0.12 TORN=9` (batch 3's jacket envs) |
+| cowboy (F) | 11-13 | clean | owed | cowgirlFace, soft | waiting | creator cowboy hat; T2 keeps her red hair shell; `RAY_IN=0.12 RAY_OUT=0.12` |
+| cult leader (M) | 11-13 | clean | owed | cultleaderFace | waiting | all T2 |
+| demon (F) | 11-13 | clean | owed | his saved look's face | waiting | his saved demon look (red skin, faun horns, elf ears) + the T2 skirt, top and sleeves in place of its creator clothes |
+| demon princess (F) | 11-13 | skin patches at the shoulders, hair shards | owed | demonprincessFace, soft | waiting | `LOCKS=0` (with `--longhair` the bodice went with the hair: black on black); T2 horns = hat piece |
+| fairy (F) | 11-13 | clean | owed | fairyFace, soft | waiting | creator Fairy moth wings (the original's are brown and veined: his pick); `--nowings` |
+| fallen angel (F) | 11-13 | pale patch in the skirt's slit | owed | fallenangelFace, soft | waiting | creator Feathered wings tinted black; `--nowings` |
+| firefighter (M) | 11-13 | clean | owed | firefighterFace | waiting | creator Firefighter helmet + air tank; T2 coat + trousers |
+| fortune teller (F) | 11-13 | clean | owed | fortunetellerfFace, soft | waiting | `--longhair` |
+| gangster (M) | 11-13 | clean (his tattoos are gone: bare body skin) | owed | gangsterFace | waiting | T2 trousers + sneakers only (`SKIN_T=0.45 ARMX=0 --barearms`), no do-rag (the creator one sat above his head) |
+| general (M) | 11-13 | clean | owed | generalFace | waiting | creator Officer cap; `RAY_IN=0.12 RAY_OUT=0.12 TORN=9` (batch 3's jacket envs) |
+| ghost (F) | 11-13 | clean | owed | ghostFace, soft (pale blue tone) | waiting | `--longhair`; she is not see-through like the original |
+| giant (M) | 11-13 | clean | owed | giantFace | waiting | all T2; normal height (the race is 1.7x) |
+| antihero (M) | HELD BACK 11-13 | the old head stays inside the suit, body leans | | fitted, not shipped | | head + suit are one T2 shell; rerun the T2 or cut by place |
+| atlantean (F) | HELD BACK 11-13 | her old body stays inside the clothes | | fitted, not shipped | | trident + cape move Meshy's centre; bare midriff is part of the shell |
+| fortune teller (M) | HELD BACK 11-13 | bald old head behind the hood, holes in the cloak's back | | fitted, not shipped | | |
+| ghost (M) | not a Meshy model (pack sheet ghost) | | | | | left as is |
 | politician (M) | batch 3 of 3, 11-13 | clean | owed | politicianFace | waiting | `RAY_IN=0.12 RAY_OUT=0.12 TORN=9` (jacket narrower than the body's shoulders: skin stood through). Creator glasses over the glasses painted in his face skin; hair mh_short01 |
 | popstar (F) | batch 3 of 3, 11-13 | clean | owed | popstarFace, soft | waiting | CREATOR CLOTHES (crop top, mini skirt, stiletto booties, tinted white): the T2 top + skirt came out in tatters under --neckline --barearms. No T2 piece shipped |
 | priest (M) | batch 3 of 3, 11-13 | clean | owed | priestFace | waiting | jacket envs as the politician |
@@ -193,7 +217,29 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 | valkraye (F) | batch 3 of 3, 11-13 | greaves a little loose at the ankle | owed | valkrayeFace, soft | waiting | second T2 run, `--nowings WINGY=0.12`, creator Feathered wings, dark background render |
 | vampire (F) | batch 3 of 3, 11-13 | clean | owed | vampireFace, soft | waiting | second T2 run (first had no gown back under her hair) |
 | wizard (F, the witch) | batch 3 of 3, 11-13 | clean | owed | witchFace, soft | waiting | `LOCKS=0` (coat was read as a hair lock); CREATOR witch hat mhw_elvs_witchy_hallows_hat1; pieces named `ewm_t2witch_*` |
-| the rest of group A | batches 1 and 2 of 3 (meshy-remake-batches.md) | | | | | |
+| the rest of group A | batch 2 of 3 (meshy-remake-batches.md) | | | | | |
+| **BATCH 2 of 3 (11-13, meshy-remake-batches.md, thread "Remake unit models, batch 2 of 3"): FIRST PASS, one front look each + four sides, his visual pass is next** | | | | | | sources `/mnt/project-files/meshy-remake-b2/`; creator pieces first, Meshy for the rest |
+| glitch (M) | 11-13 | rough | owed | none (no face on the old model) | waiting | T2 body worn as a suit: `LOCKS=0 ... --bodysuit`; head = stock skin `culturalibre_dr_manhattan` (plain blue, not his circuit pattern) |
+| halfdemon (M + F) | 11-13, NO Meshy | front ok | owed | M full, F soft | waiting | saved look's clothes (overcoat / evening gown, pack horns) on `mpfb_male` / `mpfb_female` + the unit's face; M beard piece off (it is in the skin) |
+| hippie (M + F) | 11-13 | front ok | owed | M full (`hairrgb=150,115,70 hairtol=50`), F soft | waiting | M hat = pack `mhw_mindfront_fishing_hat_01` tinted (the T2 run fused his hat into the hair) |
+| homosapien (M) | 11-13 | skin fleck on the coat's left shoulder | owed | full (`hairrgb=15,15,15 hairtol=30`) | waiting | `SKIN_T=0.12` |
+| ice queen (F) | 11-13 | front ok | owed | soft | waiting | `LOCKS=0` (the bodice is the colour of her hair and went as a hair lock); crown = creator `ewm_icecrown` |
+| ki fighter (F) | 11-13 | front ok, face reads older than the original | owed | soft | waiting | defaults |
+| King Arthur (M) | 11-13 | front ok | owed | full (`hairrgb=95,70,45 hairtol=40`) | waiting | crown = the T2 one (`ewm_t2kingarthur_hat`): the creator's `ewm_royalcrown` sank into the hair |
+| luchador (M) | 11-13 | front ok | owed | full (his mask is painted in the skin under the mask piece) | waiting | mask = creator `ewb_luchador`; singlet + boots = T2 |
+| mad scientist (M + F) | 11-13, NO Meshy | front ok | owed | M full (`hairrgb=235,235,235 hairtol=40 tonepct=25`), F soft | waiting | saved look's clothes (lab coat) on the MPFB bodies + the unit's face; M beard piece off |
+| marksman (M + F) | 11-13 | M ok; F spikes at the wrists, rough arm edges | owed | M full (`hairrgb=20,20,20 hairtol=30`), F soft | waiting | F: her top is PAINTED on the T2 body shell and the MPFB bust came through it: `LOCKS=0 RAY_IN=0.09 ... --barearms` + the creator's `mhw_elvs_lara_tank1` (black) over it |
+| men in black (M) | 11-13, NO Meshy | front ok | owed | soft (painted sunglasses smeared a full fit) | waiting | saved look's suit + sunglasses on `mpfb_male` |
+| mime (F) | 11-13 | front ok | owed | soft (her white face paint is the toned skin) | waiting | beret = creator `ewm_beret` |
+| mushroom girl (F) | 11-13 | front ok; cap smaller than the original's | owed | soft | waiting | cap = creator `ewm_mushroomcap` (the T2 run gave no cap) |
+| necromancer (F) | 11-13 | front ok | owed | soft | waiting | defaults |
+| nephilim (M) | 11-13 | front ok | owed | full, pink (`hairrgb=60,30,70 hairtol=45`) | waiting | `--nowings`, wings = creator Feathered tinted purple; height 1.15 (the creator's top; his Meshy model is 1.5) |
+| nordic (M) | 11-13 | front ok | owed | full (`hairrgb=225,210,160 hairtol=50`) | waiting | dark background render |
+| orb of light (F) | 11-13 | ROUGH: the body shows through the gold suit at the chest, a loose strip by her right arm | owed | soft, gold tint | waiting | `--bodysuit --longhair`; skin `skinTint: pick` gold |
+| overlord (M) | 11-13 | front ok | owed | none (helmet: no face found), stock skin | waiting | `LOCKS=0`; helmet = creator `ewm_overlordhelm` (the T2 one lost its shell); height 1.15 (Meshy 1.3) |
+| pirate (M + F) | 11-13 | front ok | owed | M full, F soft | waiting | M: second T2 run, no eye shells: `EYEH=0.873` (new, off by default); hat = creator `ewm_tricorn`. F: hat = T2 (`ewm_t2piratef_hat`, it has her skull) |
+| police officer (M) | 11-13 (second T2 run) | front ok | owed | full (stock `middleage_caucasian_male` toned down to him) | waiting | + creator `ewm_policebadge` |
+| batches 1 and 3 | their threads | | | | | |
 
 ## 9. Standing rules for any session doing this
 
