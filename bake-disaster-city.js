@@ -229,15 +229,6 @@ bInfo.forEach(b => (plotOf[b.plot].buildings.find(q => q.id === b.id).doors || [
 dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF };
 dcRun('apply');
 
-/* ── THE DISTRICTS' OWN BUILDINGS (2026-11-13, mondo: "Every building should be unique and purposeful and recognizable"): a district thread keeps
-   its architecture in docs/disaster-city/districts/<letter>.js; its `apply(ctx)` turns the rows above into its own (an `arch` row per building for
-   the look, the texbuilding / tier kept for the walker with its faces off) and marks the squares the dressing must leave clear ── */
-const DIST_DIR = path.join(REPO, 'docs/disaster-city/districts');
-if (fs.existsSync(DIST_DIR)) fs.readdirSync(DIST_DIR).filter(f => /^[A-Z]\.js$/.test(f)).sort().forEach(f => {
-    const got = require(path.join(DIST_DIR, f)).apply({ PLAN, features, props, bInfo, lateRows, gx, gc, take, free, roofB, ROOF_H, C, N, HALF, plotOf });
-    console.log('district ' + f[0] + ':', JSON.stringify(got));
-});
-
 /* ── THE DOORS (mondo 11-13 14:10, the decision card: "Replace today's streets with it"): this room IS `site_prebuilt_downtown_streets` now, so every
    door that led to the old streets leads here. Each stands FREE (wall: 'free') where the plan has its place: the tower's on the Superhero Tower's
    doorway, the mall's on the Mall concourse's, the sewer's on the Pump court's, the metro stair in the Transit square, the harbour at the Boardwalk
