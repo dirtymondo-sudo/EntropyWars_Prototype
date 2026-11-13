@@ -2376,3 +2376,6 @@ recognizable"; his OK on the plan + mock-up 17:10 (project files `disaster-city-
 **Civic Center, the big windows (2026-11-13 evening):** C.js no longer writes a `uv` on `urban:DecalWindows*` / `urban:GlassWindow*`
 parts or on the `win` overlay, so the shared BIG WINDOWS rule sizes them (one row a storey, no window row on the ground storey).
 Every Civic arch row carries `y: 0` (the tool adds the building's base level). Seen in game (library, courthouse).
+- HERO PLAZA, the lift (2026-11-13 19:10): districts/H.js `LIFT` now also sets `gain: 1.5` on every part whose key is a battle sheet
+  (bricks_3, marble_light, aluminium, gold, wood_planks ...: the game draws those with the darker calm sheet), and leaves GlassWindow
+  sheets with no added glow (the dark glass is the approved look; the Superhero Tower's shaft lost its glow). Seen on screen on the levels.
