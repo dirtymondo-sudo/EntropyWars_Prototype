@@ -41,7 +41,7 @@ Usage: pip install bpy==5.2.3 scipy pillow
               CUFF=1 (with HANDCUT: the sleeve end sawn straight across the arm, superhero F),
               HANDCUT=1 (a bare hand fused to its sleeve goes, the body's own hand shows: politician, priest, shaman, telepath, vampire),
               DROP="x,y,z,r;..." (a stray shell left out by hand, its middle r from a point measured from the eyes; SHELLS=1 lists them)
-       batch 1 review of 11-13: NOHANDS=1 (the body's own hands show, Meshy's go), WINGKEEP=1 (a collar fused to the wings), NOHELD=1 (nothing in the
+       batch 1 review of 11-13: SNUG=1 (baggy trousers drawn in at the waist + hips), HATMIRROR=1|-1 (one half of the hat copied across), NOHANDS=1 (the body's own hands show, Meshy's go), WINGKEEP=1 (a collar fused to the wings), NOHELD=1 (nothing in the
               hands), LOCKREM=0, SHELLS=1 (print the shells)
 Notes: docs/notes/models-assets.md "THE MESHY OUTFITS".
 """
@@ -794,6 +794,29 @@ def fit(name, gender, src, bodies_dir):
     bwt = [{body.vertex_groups[g.group].name: g.weight for g in v.groups if g.weight > 1e-4} for v in body.data.vertices]
     pbvh = BVHTree.FromPolygons([v.co.copy() for v in pm.vertices], [list(p.vertices) for p in pm.polygons if all(armw[i] < 0.5 for i in p.vertices)])
     unsleeved = 0; torn = 0
+    # THE SNUG WAIST (env SNUG=1, off; 2026-11-13, mondo on the gangster: "can we make these pants and the other baggier/bigger pants
+    # fit better/more snug around the bodies/ waists"): Meshy's baggy trousers stand a hand off the body at the waist, the seat and
+    # the belly. Cloth between the knees and SNUGTOP over the hip joints is drawn in toward the body's skin: its gap over SNUGD
+    # shrinks to SNUGK of itself (whole at the hips and waist, fading out to the knees so the legs stay baggy). Cloth further than
+    # SNUGMAX off the skin (a skirt's flare, a coat's tail) is left alone
+    snug_n = 0
+    if E('SNUG', 0):
+        hipz_ = (amw @ pbn['LeftUpLeg'].head).z; kneez_ = (amw @ pbn['LeftLeg'].head).z + E('SNUGKNEE', 0.0); topz_ = hipz_ + E('SNUGTOP', 0.22)
+        for o in cloth:
+            if o in headp or min(v.co.z for v in o.data.vertices) > kneez_ - E('SNUGHEM', 0.1): continue   # (trousers reach below the knee; a jacket, a coat, a belt over them is not drawn in)
+            for v in o.data.vertices:
+                z_ = v.co.z
+                if z_ < kneez_ or z_ > topz_ + 0.06: continue
+                f_ = min(1.0, (z_ - kneez_) / max(1e-6, (hipz_ - kneez_) * E('SNUGLEG', 0.6))) if z_ < hipz_ else (1.0 if z_ < topz_ else 1.0 - (z_ - topz_) / 0.06)
+                f_ = f_ * f_ * (3 - 2 * f_)
+                loc_, nrm_, _i, d_ = pbvh.find_nearest(v.co)
+                if loc_ is None or d_ < E('SNUGD', 0.01) or d_ > E('SNUGMAX', 0.2): continue
+                if (v.co - loc_).dot(nrm_) < 0: continue   # (inside the body: not this rule's)
+                nd_ = E('SNUGD', 0.01) + (d_ - E('SNUGD', 0.01)) * E('SNUGK', 0.3)
+                t_ = loc_ + (v.co - loc_) * (nd_ / d_)
+                if z_ < hipz_ + 0.03: t_.x = v.co.x + (t_.x - v.co.x) * min(1.0, max(0.0, (abs(v.co.x) - 0.015) / E('SNUGMID', 0.07)))   # (between the legs each side would go to its own leg and the seat's seam would open: there the cloth only comes in front to back)
+                v.co = v.co.lerp(t_, f_); snug_n += 1
+        print('[bake-outfit] %s: %d cloth vertices drawn in at the waist + hips (SNUG)' % (name, snug_n), flush=True)
     for o in cloth:
         bpy.ops.object.select_all(action='DESELECT'); o.select_set(True); bpy.context.view_layer.objects.active = o
         dt = o.modifiers.new('dt', 'DATA_TRANSFER'); dt.object = posed; dt.use_vert_data = True; dt.data_types_verts = {'VGROUP_WEIGHTS'}; dt.vert_mapping = 'POLYINTERP_NEAREST'
@@ -976,6 +999,17 @@ def fit(name, gender, src, bodies_dir):
     if torn: print('[bake-outfit] %s: %d torn faces left out' % (name, torn), flush=True)
     for g in out.values():
         g['P'] = np.vstack(g['P']); g['N'] = np.vstack(g['N']); g['F'] = np.array(g['F'])
+    # THE MIRRORED HAT (env HATMIRROR=1 / -1, 2026-11-13, mondo on the demon princess: "its only on one horn ... cant you just
+    # mirror the other horn"): the hat's half on that side of the body (+x / -x) is kept and copied across; the other half goes
+    if E('HATMIRROR', 0) and 'hat' in out:
+        g = out['hat']; s_ = 1.0 if E('HATMIRROR', 0) > 0 else -1.0
+        keep_ = [i for i, f in enumerate(g['F']) if g['P'][list(f), 0].mean() * s_ >= 0]
+        used_ = sorted(set(int(v) for i in keep_ for v in g['F'][i])); re_ = {v: i for i, v in enumerate(used_)}; n_ = len(used_)
+        P_ = g['P'][used_]; N_ = g['N'][used_]; W_ = [g['W'][v] for v in used_]
+        F_ = [tuple(re_[int(v)] for v in g['F'][i]) for i in keep_]; U_ = [g['FUV'][i] for i in keep_]
+        g['P'] = np.vstack([P_, P_ * np.array([-1.0, 1, 1])]); g['N'] = np.vstack([N_, N_ * np.array([-1.0, 1, 1])]); g['W'] = W_ + W_
+        g['F'] = np.array(F_ + [(f[0] + n_, f[2] + n_, f[1] + n_) for f in F_]); g['FUV'] = U_ + [[u[0], u[2], u[1]] for u in U_]
+        print('[bake-outfit] %s: hat mirrored from its %s half, %d triangles' % (name, '+x' if s_ > 0 else '-x', len(g['F'])), flush=True)
     from PIL import Image
     im = Image.fromarray((np.clip(PX[::-1, :, :3], 0, 1) * 255).astype(np.uint8), 'RGB')
     return out, hid_base, im
