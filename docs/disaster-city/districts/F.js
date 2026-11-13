@@ -24,7 +24,7 @@ const quad = (x, y, z, w, h, ry, key, tint, o) => Object.assign({ s: 'quad', p: 
 const onFace = (f, x, z, w, d, out) => f === 'f' ? [x, z + d / 2 + out, 0] : f === 'b' ? [x, z - d / 2 - out, 180] : f === 'r' ? [x + w / 2 + out, z, 270] : [x - w / 2 - out, z, 90];
 /* windows: the pack's see-through decal (two windows a 3.5 m tile, one storey tall) on the named faces of a box */
 function wins(P, faces, x, y, z, w, h, d, key, margin) {
-    for (const f of faces) { const q = onFace(f, x, z, w, d, 0.05), len = (f === 'f' || f === 'b' ? w : d) - (margin == null ? 1.4 : margin); if (len > 1) P.push(quad(q[0], y, q[1], len, h, q[2], key || WIN, WHITE, { uv: [3.5, 3.5] })); }
+    for (const f of faces) { const q = onFace(f, x, z, w, d, 0.05), len = (f === 'f' || f === 'b' ? w : d) - (margin == null ? 1.4 : margin); if (len > 1) P.push(quad(q[0], y, q[1], len, h, q[2], key || WIN, WHITE)); }   // no uv: the shared code sizes a window sheet to a storey bay (THE BIG WINDOWS)
 }
 /* a vertical half disc (a round arch's head, a fanlight): a dome squeezed flat */
 const fan = (x, y, z, r, ry, key, tint, o) => Object.assign({ s: 'dome', p: [r3(x), r3(y), r3(z)], r, h: r, rz: 0.06, ry: ry || 0, key, tint, seg: 16, rings: 5 }, o || {});
@@ -203,7 +203,7 @@ module.exports = {
         (() => {
             const T = frame('P11-00-B1', { st: 1, w: 16, d: 6.5, dz: -1.0 }); if (!T) return; const P = [], W = 28, D = 13, BLUE = 0xa8d0f0, cz = 1.0;   // the slab's own middle: the row was moved back onto the lobby
             P.push(cyl(-12.6, 0, cz + D / 2 - 0.8, 0.45, 5.25, CONC, 0xc8c8c8, { seg: 12, cap: false, n: 8, step: [3.6, 0, 0] }), cyl(-12.6, 0, cz - D / 2 + 0.8, 0.45, 5.25, CONC, 0xc8c8c8, { seg: 12, cap: false, n: 8, step: [3.6, 0, 0] }));
-            P.push(box(0, 0, 0, T.W + 0.1, 5.25, T.D + 0.1, GT4, 0xd8e8f0, { uv: [3.5, 5.25], top: false })); fakeDoor(P, 0, 0, T.D / 2 + 0.12, 0, DS, WHITE, 2.8, 2.8);
+            P.push(box(0, 0, 0, T.W + 0.1, 5.25, T.D + 0.1, GT4, 0xd8e8f0, { uv: [3.5, 5.25], top: false, keyBase: GT4 })); fakeDoor(P, 0, 0, T.D / 2 + 0.12, 0, DS, WHITE, 2.8, 2.8);
             P.push(box(0, 5.25, cz, W, 17.5, D, GS1, BLUE, { uv: 3.5, under: true, keyTop: U('ConcreteUnderTiles1') }));
             P.push(box(0, 5.1, cz, W + 0.7, 0.3, D + 0.7, ALU, 0xe8eef2, { n: 6, step: [0, 3.5, 0], under: true }));
             P.push(box(-W / 2 + 1.6, 0, cz, 3.2, 26.5, D + 0.2, STONE, 0xd0d4d8, { uv: 3.5 }));                                     // the stone lift core
@@ -266,7 +266,7 @@ module.exports = {
                taller than the slab, plant on the roof ═══ */
         (() => {
             const T = frame('P10-01-B1', { hollow: true, st: 2 }); if (!T) return; const P = [], W = T.W, D = T.D, TEAL = 0x9ae0d8, F = D / 2;
-            P.push(box(0, 0, 0, W + 0.1, 7, D + 0.1, GT, 0xe0f0ec, { uv: [3.5, 7], top: false, faces: 'blr' })); frontWithDoor(P, T, 0, 7, GT, 0xe0f0ec, { uv: [3.5, 7] });
+            P.push(box(0, 0, 0, W + 0.1, 7, D + 0.1, GT, 0xe0f0ec, { uv: [3.5, 7], top: false, faces: 'blr', keyBase: GT })); frontWithDoor(P, T, 0, 7, GT, 0xe0f0ec, { uv: [3.5, 7], keyBase: GT });
             P.push(box(-W / 2 + 6, 0, F + 0.45, 0.8, 7, 0.8, STONE, 0xd8d8d0, { n: Math.floor((W - 7) / 3.3) + 1, step: [3.3, 0, 0], top: false }));
             P.push(box(0, 7, 0, W + 0.1, 24.5, D + 1.2, GS2, TEAL, { uv: 3.5, under: true, keyTop: U('ConcreteUnderTiles1') }));
             P.push(box(0, 6.86, 0, W + 0.9, 0.28, D + 2.0, ALU, 0xeef2f4, { n: 8, step: [0, 3.5, 0], under: true }));
@@ -355,7 +355,7 @@ module.exports = {
                over, a clock gable, a glazed roof lantern; the news kiosk opposite ═══ */
         (() => {
             const T = frame('P08-03-B1', { hollow: true, st: 1, d: 6.5, dz: -2.0, leaf: 'leaf_lobby_glass_double' }); if (!T) return; const P = [], W = T.W, F = T.D / 2, SAND = 0xf4dcb0, TR = 0xe0c898, FD = 10.5, cz = 2.0, FF = cz + FD / 2;
-            P.push(box(0, 0, 0, W + 0.1, 5.2, T.D + 0.1, STONE, SAND, { top: false, faces: 'blr' })); frontWithDoor(P, T, 0, 5.2, GT, 0xf0e8d0, { uv: [3.0, 5.2] });
+            P.push(box(0, 0, 0, W + 0.1, 5.2, T.D + 0.1, STONE, SAND, { top: false, faces: 'blr' })); frontWithDoor(P, T, 0, 5.2, GT, 0xf0e8d0, { uv: [3.0, 5.2], keyBase: GT });
             const n = 4, bay = (W - 1) / n;
             P.push(box(-W / 2 + 0.5, 0, FF - 0.5, 1.0, 3.6, 1.0, STONE, TR, { n: n + 1, step: [bay, 0, 0], top: false }));
             P.push(box(0, 3.6, FF - 0.5, W + 0.1, 1.6, 1.0, STONE, SAND, { under: true, top: false }));

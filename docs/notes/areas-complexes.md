@@ -2267,7 +2267,7 @@ Plots x 0-3, y 8-11 (room x -252..-84, z 84..252). All of it lives in `docs/disa
   so a design follows the plot if the plan moves. Helpers: `body` (solid box or hollow shell with a door hole), `truss`, `bay` / `bayX` (roller doors), `vents`, `house`.
 - **Walk-ins (11):** Freight gate, Power station, Machine shop, Loading office, Aerospace lab, Port office, Maintenance depot, Hangar, Water works, Rail service,
   and the Pump court sewer entry (`leaf: 'none'`). The rest are solid.
-- **Roof route:** Warehouse, the corner shop and Container court stay `plateau` rows (flat 7 m). Freight gate + Loading office became hollow 2-storey texbuildings
+- **Roof route:** Warehouse, the corner shop and Container court stay `plateau` rows (flat 7 m); every arch row carries `y: 0` so it stands on the ground, not on the plateau top (fixed PR after #1279). Freight gate + Loading office became hollow 2-storey texbuildings
   (roof slab at 7 m); NOT walk-tested from the bridges.
 - **Landmarks:** Power station (barrel roof + two striped stacks), Aerospace lab (dome + vault + control tower), Port office (green pyramid lantern), Container court
   (a stack of tinted containers on the roof), the Dock Edge gantry crane (`ind:crane`, truss parts; the game's `crane` is a horizon model, not a room prop).
@@ -2275,6 +2275,48 @@ Plots x 0-3, y 8-11 (room x -252..-84, z 84..252). All of it lives in `docs/disa
   `Assets/world/packs/domi236_industrial/`. Catalogue keys, free for every district: `ind_container` (2.4 x 6.1 x 2.15, a row may carry `y` 2.15 a level to stack),
   `ind_skip`, `ind_skip_full`, `ind_silo` (9.1 m), `ind_vent`, `ind_panel`, `ind_factory_red` / `_tan` / `_blue` (whole factory fronts; cut, not placed yet).
 - Checked in the cloud browser with a free camera over each plot (WebGL2). Not placed: the space shuttle (a horizon model only).
+
+## DISASTER CITY, SOUTHSIDE — the buildings of district R, exteriors (2026-11-13, mondo's OK 17:14 "pizza yes, ok")
+Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's north-west corner, world x and z under -84). All of it is
+`docs/disaster-city/districts/R.js` (the district hook: `apply` + `build`); nothing of it is in the shared tool. Rerun `node bake-disaster-city.js` after an edit.
+- **The look**: old working neighbourhood. Brick, painted plaster, stucco, ribbed metal, timber; every building its own tints; pitched, hipped, barrel,
+  sawtooth and shed roofs; overhangs, awnings, cornices, chimneys, water towers. Each building is ONE `k: 'arch'` row (`dc:<id>-arch`, `y: 0`).
+  **An arch row over a roof-walk plateau MUST carry `y: 0`**: without it the row takes the ground under its origin, which is the plateau's 7 m roof, and
+  the whole front floats a storey up (seen in the first browser run).
+- **Collision**: the building's own `texbuilding` row stays with `skin: false` (ghost walls + roof); extra wings are `wall` rows with `ghost: true`.
+  The five roof-route buildings (P01-00-B1, P01-00-B3, P02-00-B1, P02-01-B2, P01-01-B1) keep their `plateau` with `bld.skin: false`: the roof is still walked.
+- **Walk-in (hollow + the city swing door)**: the Church, the Bakery, the Boxing gym, the Community kitchen, the Dojo, the Auto garage, the Pawnshop. The rest are fronts.
+- **The buildings**: Church (tower, apse dome, east front) · Townhouses · Bakery · Bike workshop · Laundry terraces · Boxing gym (barrel roof) · Row house ·
+  Community kitchen · two apartment blocks (alike on purpose) · Corner shops (a Buildings-pack block `pack_bld_09` at 1.0 of its true width + a four-shop arcade) ·
+  Tenement with its fire stair · Walk-up flats · Dojo · Bus depot (office + barrel canopy) · Market hall (open, stalls) · Carpenter shed · Auto garage (sawtooth) ·
+  Gatehouse · News kiosk (round) · Pawnshop (three gilt balls: `key: 'gold'` = gilt.png) · boathouse + a `stream` canal on the Canal walk · a car wash on the Street court.
+- **Pack whole buildings** (catalogue props, real size, entrance +Z): `city_pizzeria` in place of P01-02-B2 (the chain); two `city_house` on Homes row;
+  `city_quequis_house` in place of P02-03-B2 + B3 (31.7 m wide, so the TV and lock repair shops are gone); `city_laundry` on the Canal walk's north-east yard
+  (16.7 m wide: the Laundry terraces lot is too small, that building keeps a designed wash-house front). `city_6twelve` not used: no lot fits 22.8 x 21.1 m.
+- **The back lots**: the district's infill rows (`dc:inN` inside Southside) restyled in three plain kinds (they may repeat). **The clearing**: trees, rails,
+  fence walls and furniture standing inside a new footprint are removed by R.js itself (its own plots only).
+- **Seen in the cloud browser** (WebGL2 headless): every plot from above, shots in `/mnt/project-files/disaster-city-southside/`. Not seen on his Mac yet.
+  Interiors are the next pass (the seven walk-in shells are empty rooms with a floor and plaster walls).
+
+- **A ROOF IS NOT GROUND (2026-11-13, the shared-pieces thread, the root fix for the note above).** data.js hqTerrainCompile `archGround`: an arch
+  row with no `y` whose origin lies over a building plateau (`bld`) takes the ground that building stands on, never its roof. Four rows on main
+  still stood 7 m up (P09-08-B2, P09-09-B1, P10-09-B1, P11-09-B2); the headless compile now gives all 191 city arch rows base 0. `y: 0` in a
+  district file is harmless and no longer needed.
+
+## DISASTER CITY, THE BIG WINDOWS (2026-11-13, the shared-pieces thread)
+mondo (screenshot of two city blocks): "The buildings that use these repeated window textures from the urban pack, the windows are too small, need
+to be scaled up, and remember the bottom row of these buildings should be different/not windows". Both ways a city building is drawn put a window
+sheet on every 1.75 m square (a window about 1 m wide, two rows per storey, one at the pavement). Fixed in the shared code, three-renderer.js:
+- **The textured building** (`_hqTexBuilding`, every `texbuilding` and infill block not yet architected): one window per STOREY-wide bay (3.5 m).
+  Residential / stucco / pack-sheet decals are laid one per storey over the wall (`bigOver`), none on the ground storey, whose bottom row wears the
+  band / stucco trim sheet. Office: a 2.6 m pane over a spandrel per storey; tower: storey-high panes; both keep the shopfront glass at the ground with
+  a concrete fascia over it. Factory unchanged. `HQ_TEXB.bigWin = 0` = the old squares.
+- **The arch row** (`_hqArchGeometry`): a part whose `key` is `urban:GlassWindow*` / `urban:DecalWindows*` with no `uv` or a `uv` number under 3.5
+  repeats in whole storey rows (a 9 m wall = three rows of 3 m; a strip shorter than a storey = one row). An `[u, v]` pair and `'fit'` are the
+  district's own and stay. A box side / quad / poly wall of such a sheet that stands on the ground (part foot under 0.6 m) and is taller than
+  4.5 m draws its ground storey in `keyBase` (none = `HQ_TEXB.archBase`, plain concrete, in the part's tint; a decal draws nothing there).
+  `win: 'keep'` on a part turns both off. Cylinders get the bigger repeat but no base split.
+- NOT SEEN ON SCREEN (RULE #1c): checked by reading and `node --check` only.
 
 ## DISASTER CITY, THE FINANCIAL DISTRICT'S ARCHITECTURE (2026-11-13) — docs/disaster-city/districts/F.js, data.js
 mondo 11-13: "architect the buildings in their respective districts plots ... every building should be unique and purposeful and
