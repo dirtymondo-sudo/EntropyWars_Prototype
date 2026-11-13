@@ -518,6 +518,11 @@ const TRAFFIC = [
     { pts: [ctr(0, 7), ctr(3, 7)], loop: false, n: 1, speed: 3.4, lane: 3.5, kinds: ['truck', 'suv'] },
 ];
 /* ── the room ── */
+/* ── THE DISTRICT ARCHITECTS (2026-11-13, mondo: "architect the buildings in their respective districts plots"): a district thread's own file
+   dc-<district>.js re-dresses its district's buildings once every row above is written (its rows' skins off, one `k: 'arch'` parts row a
+   building). One line per district here; each file touches only its own plots. ── */
+['university'].forEach(n => { const f = path.join(REPO, 'dc-' + n + '.js'); if (fs.existsSync(f)) count[n] = require(f)({ PLAN, features, props, bInfo, ROOF_H, C, N, gx, gc, r3 }); });
+
 const J = v => JSON.stringify(v).replace(/"([a-zA-Z_][a-zA-Z0-9_]*)":/g, '$1:').replace(/"/g, "'");
 const spawnP = plotOf[PLAN.progression.start], sp = pc(spawnP);
 const lines = [];
