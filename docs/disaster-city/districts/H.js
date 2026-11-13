@@ -76,7 +76,7 @@ B['P05-04-B3'] = { row: { solid: true }, parts() { const a = sheet(), OC = 0xe6c
 B['P06-04-B1'] = { row: { storeys: 2 }, parts(door) { const a = sheet(), GL = 0xcfe6ff, WH = 0xf6f8fb, MB = 0xf6f1e4;
     a.shell(28, 7, 28, MARBLE, MB, door); a.box(0, 7, 0, 31, 0.8, 31, MARBLE, 0xffffff, { under: true });
     a.cols(-14, 15.3, 14, 15.3, 9, 0.5, 7, MARBLE, 0xffffff); a.cols(-14, -15.3, 14, -15.3, 9, 0.5, 7, MARBLE, 0xffffff); a.cols(15.3, -10.5, 15.3, 10.5, 7, 0.5, 7, MARBLE, 0xffffff); a.cols(-15.3, -10.5, -15.3, 10.5, 7, 0.5, 7, MARBLE, 0xffffff);
-    a.box(0, 7.8, 0, 17.5, 49, 17.5, G_TALL, GL, { glow: 0.45 }); a.cyl(-8.75, 7.8, 8.75, 6, 56, G_SQ, 0xe0f0ff, { seg: 24, glow: 0.45 });
+    a.box(0, 7.8, 0, 17.5, 49, 17.5, G_TALL, GL, { glow: 0.45 }); a.cyl(-8.75, 7.8, 8.75, 6, 56, G_SQ, 0xe0f0ff, { seg: 24 });
     for (const c of [[1, 1], [1, -1], [-1, -1]]) a.box(c[0] * 9.2, 7.8, c[1] * 9.2, 1.4, 53, 1.4, ALU, WH);
     for (let y = 21; y < 56; y += 10.5) a.box(0, y, 0, 18.4, 0.5, 18.4, ALU, WH, { under: true });
     a.cyl(0, 56.8, 0, 15, 1.4, ALU, WH, { seg: 32 }); a.cyl(0, 58.2, 0, 12.5, 3.5, G_SQ, 0xe0f0ff, { seg: 32, glow: 0.5, cap: false }); a.cyl(0, 61.7, 0, 13.5, 0.8, ALU, WH, { seg: 32 });
@@ -246,7 +246,8 @@ function build(ctx) {
     const { PLAN, features, props, bInfo, r3, C } = ctx, M = { district: 'H', B, OPEN, SWAP }; let nArch = 0;
     const R3 = v => typeof v === 'number' ? Math.round(v * 1000) / 1000 : Array.isArray(v) ? v.map(R3) : (v && typeof v === 'object') ? Object.fromEntries(Object.entries(v).map(e => [e[0], R3(e[1])])) : v;
     /* the shade lift: a sheet in the city's shade reads near black, so every textured part keeps a little of its own light */
-    const LIFT = ps => ps.map(p => (p.key && !(p.glow > 0)) ? Object.assign({}, p, { glow: 0.16 }) : p);
+    /* a battle-sheet key (bricks_3, aluminium, marble_light, gold ...) is drawn with its darker calm sheet in the game: `gain` 1.5 lifts it back */
+    const LIFT = ps => ps.map(p => { if (!p.key) return p; const q = Object.assign({}, p); if (!(q.glow > 0) && !/GlassWindow/.test(q.key)) q.glow = 0.16;   /* the dark glass stays dark (mondo 19:02) */ if (!/^(urban|hq):/.test(q.key) && !(q.gain > 0)) q.gain = 1.5; return q; });
     /* the tool's back-lot infill on the plaza's north edge stood in front of the Workshop store and the pizzeria's corner: off */
     for (let i = features.length - 1; i >= 0; i--) { const f = features[i]; if (f.k === 'texbuilding' && /^dc:in\d+$/.test(f.id || '') && f.x > -42 && f.x < 0 && f.z > -45 && f.z < -38) features.splice(i, 1); }
     const ROT = { S: 0, W: 90, N: 180, E: 270 }, SIDE_OF = { 0: 'S', 90: 'W', 180: 'N', 270: 'E' };

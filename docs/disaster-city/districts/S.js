@@ -351,3 +351,13 @@ exports.apply = (ctx) => {
         panels('f', f.w, f.d, 1.0, 1.4, 1.6, 2, G_RES, { span: 5 }), panels('l', f.w, f.d, 1.0, 1.4, 1.6, 4, G_RES), panels('r', f.w, f.d, 1.0, 1.4, 1.6, 4, G_RES),
       ]); }
 };
+
+/* ═══ build: THE GIANT APE (the plan's home for him was Park west, now the stadium). mondo 11-13 19:25: "put king kong in the district with the
+   most high rises or tall buildings" = FINANCIAL (5 to 11 storeys). He stands on the open ground at the foot of the Penthouse stair tower
+   (P10-03, the tallest), on a square's middle, off every path; his line is his own from the old streets. ═══ */
+exports.build = (ctx) => {
+    if (!ctx.npcSpots) return;
+    const x = ctx.gc(121), z = ctx.gc(45);
+    ctx.take(121, 45);
+    ctx.npcSpots.push({ x, z, face: 0, race: 'king kong', say: ['“…” “Was that you?” “…” “The tower.” “…” “Every year?” “…”'] });
+};

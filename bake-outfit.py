@@ -65,6 +65,7 @@ from mathutils.kdtree import KDTree  # noqa: E402
 
 E = lambda k, d: float(os.environ.get(k, d))
 DROPAT = [[float(v) for v in q.split(',')] for q in os.environ.get('DROPAT', '').split(';') if q.strip()]
+CUTCOL = [[float(v) for v in q.split(',')] for q in os.environ.get('CUTCOL', '').split(';') if q.strip()]   # 'x,y,z,r,R,G,B,tol;...' (off)
 SKIN_T = E('SKIN_T', 0.20)
 HEADGEAR = False
 NECKLINE = False
@@ -278,6 +279,27 @@ def fit(name, gender, src, bodies_dir):
         # remake's own space, as env SHELLS=1 prints them). Off by default
         if os.environ.get('SHELLS'): print('SHELL', n, c.mean(0).round(2), (c.max(0) - c.min(0)).round(2), col.round(2))
         if any(np.linalg.norm(c.mean(0) - np.array(q[:3])) < q[3] for q in DROPAT): dropped.append(('named (DROPAT)', n)); bpy.data.objects.remove(o); continue
+        # A COLOUR CUT OUT OF A NAMED SHELL (CUTCOL='x,y,z,r,R,G,B,tol[,ymax];...', off; 2026-11-13, King Arthur: his ragged cape was one shell with his shoulder
+        # armour and chest strap; mondo: "yes i want the chest strap back"): in the shell whose middle is within r of x,y,z the faces
+        # within tol of R,G,B go, then what is left in islands under CUTISLE 30 faces
+        cc_ = [q for q in CUTCOL if np.linalg.norm(c.mean(0) - np.array(q[:3])) < q[3]]
+        if cc_:
+            fcs_ = face_cols(o, PX, IW, IH); bmc = bmesh.new(); bmc.from_mesh(o.data); bmc.faces.ensure_lookup_table()
+            go_ = [bmc.faces[i_] for i_ in range(len(fcs_)) if any(np.linalg.norm(fcs_[i_] - np.array(q[4:7])) < q[7] or (len(q) > 8 and bmc.faces[i_].calc_center_median().y > q[8]) for q in cc_)]   # (+ a 9th number: every face behind that y goes too, a strap's back half under a creator cape)
+            bmesh.ops.delete(bmc, geom=go_, context='FACES'); bmc.faces.ensure_lookup_table(); seen_ = set(); sm_ = []
+            for f0 in bmc.faces:
+                if f0.index in seen_: continue
+                comp_ = [f0]; seen_.add(f0.index); k_ = 0
+                while k_ < len(comp_):
+                    for e_ in comp_[k_].edges:
+                        for f1 in e_.link_faces:
+                            if f1.index not in seen_: seen_.add(f1.index); comp_.append(f1)
+                    k_ += 1
+                if len(comp_) < E('CUTISLE', 30): sm_ += comp_
+            bmesh.ops.delete(bmc, geom=sm_, context='FACES'); bmesh.ops.delete(bmc, geom=[v for v in bmc.verts if not v.link_faces], context='VERTS')
+            dropped.append(('colour cut (CUTCOL)', len(go_) + len(sm_))); bmc.to_mesh(o.data); bmc.free()
+            if len(o.data.polygons) == 0: bpy.data.objects.remove(o); continue
+            c = co(o); cz = c[:, 2].mean(); cx = c[:, 0].mean(); n = len(o.data.polygons); col = np.median(face_cols(o, PX, IW, IH), axis=0)
         if abs(cx) > 0.8 * xmax and np.linalg.norm(col - skin) < SKIN_T and n < 1600:
             # THE GLOVE ON A BARE HAND (2026-11-12, robinhood: fingerless gloves; Meshy fuses the glove to the hand): only the
             # skin-coloured faces go; what is left (the glove's cuff + back) stays when it is a real piece (env GLOVE, faces)

@@ -59248,6 +59248,7 @@ const ThreeRenderer = (function () {
                 if (any) {
                     spaceSmooth(HP, 2, HAIR_HAT.smooth * Hm).run(D);
                     for (k = 0; k < M; k++) {
+                        if (HP[k * 3 + 1] < hatLow) continue;   // (hair below the hat's rim keeps its place: the smoothed pull dragged it under the scalp, a bald band under a crown)
                         var x = HP[k * 3] + D[k * 3], y = HP[k * 3 + 1] + D[k * 3 + 1], z = HP[k * 3 + 2] + D[k * 3 + 2], o3 = pick[k] * 3;
                         t4[0] = t4[1] = t4[2] = 0; need(x, y, z, t4);
                         p[o3] = x + t4[0]; p[o3 + 1] = y + t4[1]; p[o3 + 2] = z + t4[2];
