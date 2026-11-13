@@ -2295,6 +2295,9 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
   (16.7 m wide: the Laundry terraces lot is too small, that building keeps a designed wash-house front). `city_6twelve` not used: no lot fits 22.8 x 21.1 m.
 - **The back lots**: the district's infill rows (`dc:inN` inside Southside) restyled in three plain kinds (they may repeat). **The clearing**: trees, rails,
   fence walls and furniture standing inside a new footprint are removed by R.js itself (its own plots only).
+- **Follow-up (same day)**: the Corner shops' pack block row carries `y: 0` too (it stood on the 7 m roof). THE BIG WINDOWS (mondo 18:49): R.js windows are
+  'fit' quads, so the shared repeat rule skips them; the helper now draws 1.7 x 1.8 m windows and `a.floors` draws the GROUND row as half as many wide
+  shop panes (`urban:GlassWindowSquare1a`), never the upper floors' window (`ground: 'same'` opts out).
 - **Seen in the cloud browser** (WebGL2 headless): every plot from above, shots in `/mnt/project-files/disaster-city-southside/`. Not seen on his Mac yet.
   Interiors are the next pass (the seven walk-in shells are empty rooms with a floor and plaster walls).
 
