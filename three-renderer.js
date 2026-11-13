@@ -46921,9 +46921,11 @@ const ThreeRenderer = (function () {
         function add(g, nm) { if (g && g.isObject3D && out.indexOf(g) < 0) { out.push(g); g._ew_bunName = nm; } }
         var here = (H.opts && H.opts.room) || 'room';
         add(H.shellGroup, here + ' shell'); add(H.propGroup, here + ' props'); add(H.doorGroup, here + ' doors');
+        if (H.chunks) for (var ck in H.chunks.cells) add(H.chunks.cells[ck], here + ' fences');   // THE CHUNKS: a plot's fences, a bundle of their own
         var st = H.stage;
         if (st && st.parts) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P) { add(E.P.shellGroup, id + ' shell'); add(E.P.propGroup, id + ' props'); add(E.P.doorGroup, id + ' doors'); } }
-        if (H.inst && H.inst.group) add(H.inst.group, 'instance pass');
+        if (H.inst && H.inst.cells) { for (var ic in H.inst.cells) add(H.inst.cells[ic], 'instance pass'); }   // THE CHUNKS: a cell of the pass, a bundle of its own
+        else if (H.inst && H.inst.group) add(H.inst.group, 'instance pass');
         return out;
     }
     /* THE FIELD BUNDLES (W5a round 5, 2026-10-04): the battle's room (_hqBuildRoomInBattle: the facility group's holders, one
@@ -47017,6 +47019,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
             if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); continue; }
+            if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); continue; }   // THE CHUNKS: a piece THE STATIC BATCH holds is not drawn (its merged mesh is hashed): only that it is held
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
             else if (c.isLight) { S.hs = _ewBunMix(S.hs, c.id); S.lit = true; }
             if (c.children.length) _ewBunWalk(c, S);
@@ -47053,6 +47056,7 @@ const ThreeRenderer = (function () {
         var objs = 0;
         for (i = 0; i < T.length; i++) {
             var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
+            if (g._ew_ckOut) continue;   // THE CHUNKS: a chunk off the camera is not drawn and not checked; its recording waits for it
             if (st.until > now) { if (g.isBundleGroup) _ewBunRelease(g); continue; }
             /* W5a: a group the frame does not draw (hidden, or a parked room under a hidden parent) is neither checked nor
                bundled — the walk over it was the check's whole cost when the HQ sat hidden behind a battle */
@@ -51684,6 +51688,7 @@ const ThreeRenderer = (function () {
         S.canvas = cv ? [cv.width, cv.height, cv.clientWidth, cv.clientHeight] : [0, 0, 0, 0];
         try { var pm = performance.memory; S.heap = pm ? [pm.usedJSHeapSize / 1048576, pm.jsHeapSizeLimit / 1048576] : null; } catch (e) { S.heap = null; }
         S.census = L.census || null;
+        S.chunks = _hq ? _hqChunkStats(_hq) : null;
         S.instPass = (_hq && typeof _hqInstStats === 'function') ? _hqInstStats(_hq) : (_fieldInstH ? _hqInstStats(_fieldInstH) : null);
         S.top = L.detail || []; S.roots = L.roots || null;
         S.why = L.why || [];
@@ -51738,6 +51743,7 @@ const ThreeRenderer = (function () {
         if (S.bvh) L.push('Pick (raycasts) ' + S.bvh.rays.toFixed(0) + '/s · ' + S.bvh.ms.toFixed(1) + ' ms/s · BVH ' + (S.bvh.on ? S.bvh.trees + ' trees (' + _lensFmtN(S.bvh.tris) + ' tris, ' + Math.round(S.bvh.buildMs) + ' ms to build)' + (S.bvh.slow ? ' · ' + S.bvh.slow + ' plain' : '') + (S.bvh.fails ? ' · ' + S.bvh.fails + ' failed' : '') : 'off') + ((S.bvh.skinOut || S.bvh.skinIn) ? ' · skinned ' + S.bvh.skinOut.toFixed(0) + '/s past their pose box, ' + S.bvh.skinIn.toFixed(0) + '/s tested' : ''));
         if (S.text) L.push('Text (HQ plates) ' + (S.text.cv ? 'canvas (node renderer)' : S.text.on ? 'troika' : (S.text.lib ? 'CSS2D (switched off)' : 'CSS2D (troika not loaded)')) + ' · ' + S.text.gpu + ' on the GPU · ' + S.text.css + ' CSS2D');
         try { var _fs = (typeof ThreeVFX !== 'undefined' && ThreeVFX.fxStats) ? ThreeVFX.fxStats() : null; if (_fs && (_fs.live || _fs.groups)) L.push('Particles ' + _fs.live + ' live · ' + _fs.draws + ' draws' + (_fs.batched ? ' (batched, ' + _fs.groups + ' kinds seen)' : ' (one per particle)') + (_fs.quarks && (_fs.quarks.on || _fs.quarks.made) ? ' · quarks layer ' + (_fs.quarks.on ? _fs.quarks.state : 'off') + ', ' + _fs.quarks.live + ' systems live' : '')); } catch (e) {}   // R7
+        if (S.chunks) L.push('Chunks' + (S.chunks.off ? ' (cull off)' : '') + ': fence plots ' + S.chunks.fencesDrawn + '/' + S.chunks.fences + ' drawn · prop cells ' + S.chunks.cellsDrawn + '/' + S.chunks.cells + ' drawn');
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
         if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ')); }
         if (S.why && S.why.length) {
@@ -68647,7 +68653,7 @@ const ThreeRenderer = (function () {
         }
     }
     /* the buckets → one mesh per role under G; mats(rk) → its material */
-    function _spFlush(B, G, mats, tag) {
+    function _spFlush(B, G, mats, tag, grpOf) {   // grpOf(rk): THE CHUNKS, a bucket's own group (else G)
         Object.keys(B).forEach(function (rk) {
             var bk = B[rk]; if (!bk.P.length) return;
             var geo = new THREE.BufferGeometry();
@@ -68657,7 +68663,7 @@ const ThreeRenderer = (function () {
             geo.computeBoundingSphere(); geo.computeBoundingBox();
             var mat = mats(rk), m = new THREE.Mesh(geo, mat);
             m.castShadow = !mat.transparent; m.receiveShadow = true; m.renderOrder = mat.transparent ? 3 : 1; m._ew_pixelate = true; m[tag] = true;
-            G.add(m);
+            ((grpOf && grpOf(rk)) || G).add(m);
         });
     }
     /* a piece's frame on the ground: the foot (fx, fz) and the way up (ux, uz) → world metres; local X across = (uz, −ux) (the builders' +X) */
@@ -68719,7 +68725,11 @@ const ThreeRenderer = (function () {
             _spSoup('rail', mk, function (soup) {
                 if (!soup) return;
                 var B = {}, mats = {}, ys0 = spec.top * SP.unit.pack, D2R = Math.PI / 180, glassy = spec.look === 'glass';
+                /* THE CHUNKS: in a big room a run goes to its plot's mesh (the bucket key carries the plot), one group per plot */
+                var ckH = (_hq && G === _hq.shellGroup && _hqChunkBig(_hq)) ? _hq : null, ckOf = {};
                 byModel[mk].forEach(function (r) {
+                    var ck = '';
+                    if (ckH) { var ckx = r.arc ? r.arc.x : (r.x0 + r.x1) / 2, ckz = r.arc ? r.arc.z : (r.z0 + r.z1) / 2, ckg = _hqChunkGroup(ckH, ckx, ckz); ck = '@' + ckg._ew_chunk; ckOf[ck] = ckg; }
                     var arc = r.arc, len = arc ? Math.abs(arc.a1 - arc.a0) * D2R * arc.r : Math.hypot(r.x1 - r.x0, r.z1 - r.z0);
                     if (len < 0.2) return;
                     var fit = _spRailFit(soup, spec, len), ys = (r.top || ys0) / ys0, sc = fit.scale;
@@ -68734,12 +68744,12 @@ const ThreeRenderer = (function () {
                         if (arc) { var a = at(lz).a, tx = sg * Math.cos(a), tz = sg * Math.sin(a); return [tz * x + tx * z, y, -tx * x + tz * z]; }
                         return [uz * x + ux * z, y, -ux * x + uz * z];
                     };
-                    _spEmit(fit.A, P, Nf, function (A, t) { return (_spIsGlass(A.mats[A.M[t]]) || (glassy && _spPane(A, t))) ? 'glass' : 'body'; }, texK, U, B);
+                    _spEmit(fit.A, P, Nf, function (A, t) { return ((_spIsGlass(A.mats[A.M[t]]) || (glassy && _spPane(A, t))) ? 'glass' : 'body') + ck; }, texK, U, B);
                 });
                 _spFlush(B, G, function (rk) {
-                    if (rk === 'glass') return mats.glass || (mats.glass = _spGlass());
+                    if (rk.indexOf('glass') === 0) return mats.glass || (mats.glass = _spGlass());
                     return mats.body || (mats.body = _spSheet(spec.look === 'wood' ? 'wood' : spec.look === 'stone' ? 'concrete' : null, spec.look));
-                }, '_ew_hqRailing');
+                }, '_ew_hqRailing', (ckH && ckH === _hq && ckH.chunks) ? function (rk) { var at = rk.indexOf('@'); return at >= 0 ? ckOf[rk.slice(at)] : null; } : null);
                 _objectsLanded = true;
             }, G);
         });
@@ -86460,6 +86470,7 @@ const ThreeRenderer = (function () {
         if (H.ready || H.landed) _hqInstTick(H, now);   // THE INSTANCE PASS (OPEN_WORLD_PLAN Phase 0): the repeated props draw as batches once the room has landed
         if (H.ready || H.landed) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
         if (H.ready || H.landed) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
+        try { _hqChunkTick(H, now); } catch (e) { if (!H._ckWarned) { H._ckWarned = true; console.warn('[HQ] the chunk tick failed — every chunk drawn', e); } try { _hqChunkHome(H); } catch (e2) {} }   // THE CHUNKS: after the camera, before the draw
         if (H.ready) { try { _mmTick(H, now); } catch (e) { if (!_mmWarned) { _mmWarned = true; console.warn('[ThreeRenderer] the memory budget failed', e); } } }   // THE MEMORY BUDGET (G1)
         if (H.keyLamp) _hqKeyLampTick(H, dt);   // THE KEY LIGHT (2026-10-24): rides with the camera in an enclosed room
         _ewRimTick((H.sky && !_hqEnclosed(H.room)) ? Math.max(0, Math.min(1, +H.sky.night || 0)) : 0);   // THE UNIT RIM LIGHT + NIGHT FILL (2026-10-25): the walk's own night, as the fight reads its (they kept the last fight's)
@@ -86468,12 +86479,17 @@ const ThreeRenderer = (function () {
         _hqFarTick(H);   // THE FAR PLANE: past the sky ring, and past the eye however far the cinematic camera flew
         _lightMatchWalk(H);   // THE SAME LIGHT COUNT: the walk carries the board's dark lights
         var fogHold = _hqFogHold(H);   // THE FOG SETTING: Scene Fog off = a fog-free draw (the mirrors' too)
+        /* THE ONE MATRIX WALK (2026-11-13, the 144-plot city: 20,700 objects): every render of the frame (the mirrors, the model
+           mask's two, the shadow map, the picture) walked the whole scene's matrices again though nothing moves between them.
+           The walk runs once here; the frame's renders skip theirs. Off: window.EW_HQ_MW_EVERY_RENDER. */
+        var mwScene = H.scene, mwHold = mwScene.matrixWorldAutoUpdate === true && !(typeof window !== 'undefined' && window.EW_HQ_MW_EVERY_RENDER);
         try {
+            if (mwHold) { mwScene.updateMatrixWorld(); mwScene.matrixWorldAutoUpdate = false; }
             if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
             var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
             if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
             else renderer.render(H.scene, H.camera);
-        } finally { _hqFogBack(fogHold); }
+        } finally { if (mwHold) mwScene.matrixWorldAutoUpdate = true; _hqFogBack(fogHold); }
         /* NO HELD FRAME ON THE WAY BACK (2026-10-25, mondo: "no freeze"): the debrief's last picture fades on the room's first
            drawn frame with the walker in it — the room's files still landing land in the live picture — and THE WAY BACK's ease
            starts with the fade, not at the room's READY */
@@ -86562,6 +86578,7 @@ const ThreeRenderer = (function () {
             try { if (rec.im.parent) rec.im.parent.remove(rec.im); rec.im.dispose(); } catch (e) {}
         });
         if (I.group && I.group.parent) I.group.parent.remove(I.group);
+        if (I.cells && H.ckList) H.ckList = H.ckList.filter(function (g) { return g._ew_instCell == null; });   // THE CHUNKS: the cells go with the pass
     }
     function _hqInstBuild(H) {
         _hqInstDrop(H);
@@ -86583,12 +86600,13 @@ const ThreeRenderer = (function () {
         if (H.shadows) [H.propGroup, H.doorGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh && !o._ew_shadowFlagged) _flagMeshShadows(o); }); });   // the shadow tick's own flags, now — a batch copies them once
         H.scene.updateMatrixWorld(true);
         var sc = _hqInstScan(H), wp = new THREE.Vector3(), added = 0;
+        var big = _hqChunkBig(H);   // THE CHUNKS: a big room's cells are groups of their own (culled, bundled one by one), its small props a cell apart
         I.adds++; I.left = 0;
         Object.keys(sc.byKey).forEach(function (key) {
             var all = sc.byKey[key];
             if (all.length + (I.per[key] || 0) < RU.min) { I.left += all.length; return; }
             var cells = {};
-            all.forEach(function (o) { o.getWorldPosition(wp); var ck = Math.floor(wp.x / cellU) + ',' + Math.floor(wp.z / cellU); (cells[ck] || (cells[ck] = [])).push(o); });
+            all.forEach(function (o) { o.getWorldPosition(wp); var ck = Math.floor(wp.x / cellU) + ',' + Math.floor(wp.z / cellU) + ((big && _hqChunkSmall(H, o)) ? '|s' : ''); (cells[ck] || (cells[ck] = [])).push(o); });
             Object.keys(cells).forEach(function (ck) {
                 var list = cells[ck];
                 if (list.length < 2) { I.left += list.length; return; }
@@ -86605,7 +86623,14 @@ const ThreeRenderer = (function () {
                             inv: new THREE.Matrix4(), C: new THREE.Vector3(), R: 0, cache: new Float64Array(list.length * 16), rel: new Uint8Array(list.length) };   // Float64: see THE STILL BATCHES in _hqInstSync
                 _hqInstFit(rec);
                 list.forEach(function (o) { o.visible = false; o._ew_instHidden = true; if (o.geometry._ew_lodBase) { o.geometry = o.geometry._ew_lodBase; o._ew_lodL = 0; } });   // a hidden original keeps its full mesh (the seat ray, the gun)
-                I.group.add(im); I.recs.push(rec); I.copies += list.length; I.batches++; added++;
+                var host = I.group;
+                if (big) {
+                    I.cells = I.cells || {};
+                    host = I.cells[ck];
+                    if (!host) { host = I.cells[ck] = new THREE.Group(); host.name = 'hq_inst_cell'; host._ew_instCell = ck; I.group.add(host); _hqChunkReg(H, host, (/\|s$/.test(ck) ? _hqChunkRules().smallFar : _hqChunkRules().instFar) * _hqUnits()); }
+                    im._ew_ckRec = rec;
+                }
+                host.add(im); I.recs.push(rec); I.copies += list.length; I.batches++; added++;
                 I.per[key] = (I.per[key] || 0) + list.length;
             });
         });
@@ -86671,6 +86696,125 @@ const ThreeRenderer = (function () {
     function _hqInstStats(H) {
         var I = H && H.inst; if (!I) return null;
         return { batches: I.batches, copies: I.copies, left: I.left, adds: I.adds };
+    }
+    /* ══ THE CHUNKS (2026-11-13, mondo in the 144-plot Disaster City, WebGPU on the Mac: 12 fps, 3.3M triangles in 13 "terrain" draws;
+       "we have the plots already, why not just make those the chunks or like a group of them") ══
+       What the readout showed: the pack fences (_spBuildRailings) were ONE mesh per fence kind for the whole 504 m room (twelve
+       meshes, 4.3M triangles): one mesh cannot be culled, so every fence of the city drew every frame, and again in the model
+       mask. The instance pass cut its copies per 64 m cell so the frustum could drop a cell, but all of it sat in ONE render
+       bundle, and a bundle is replayed unculled. In a room at least HQ_ENGINE_RULES.chunkMinSpanM across:
+         · a fence run goes to its PLOT's mesh (chunkM = 42 m, the plot), each plot a group of its own under H.chunks.root (beside
+           the shell group in the part's root);
+         · the instance pass's cells are groups of their own (I.cells);
+         · each such group is its own render bundle (_ewBunTargets), and each frame (_hqChunkTick, before the draw) a group whose
+           sphere, padded chunkPadM, is off the camera or further than fenceFarM / instFarM reads `visible = false`: not drawn in
+           the picture, the shadow map or the mask, on every renderer. Its bundle keeps its recording (no re-record when it comes
+           back).
+       Nothing is removed: the hand-over, the crossing and the leave put every fence back in the shell group (_hqChunkHome) and
+       the instance pass is dropped as it always was. Off: window.EW_HQ_NO_CHUNK_CULL (every group drawn). */
+    function _hqChunkRules() {
+        var R = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES) ? HQ_ENGINE_RULES : {};
+        return { m: (R.chunkM > 0) ? +R.chunkM : 42, minSpan: (R.chunkMinSpanM > 0) ? +R.chunkMinSpanM : 200, pad: (R.chunkPadM >= 0) ? +R.chunkPadM : 15,
+                 fenceFar: (R.fenceFarM > 0) ? +R.fenceFarM : 120, instFar: (R.instFarM > 0) ? +R.instFarM : 260,
+                 smallR: (R.instSmallM > 0) ? +R.instSmallM : 1.7, smallFar: (R.instSmallFarM > 0) ? +R.instSmallFarM : 100 };
+    }
+    /* is this copy part of a SMALL placed prop (a cone, a pot, a bin, a hydrant: the whole placement's sphere under instSmallM)?
+       Measured once per placement (the child of the room's prop / shell / door group the copy hangs under), so a lamp's small
+       parts stay with its pole */
+    function _hqChunkSmall(H, o) {
+        var q = o;
+        while (q.parent && q.parent !== H.propGroup && q.parent !== H.shellGroup && q.parent !== H.doorGroup && q.parent !== H.scene) q = q.parent;
+        if (q._ew_ckSmall == null) {
+            var b = new THREE.Box3().setFromObject(q);
+            q._ew_ckSmall = !b.isEmpty() && b.getBoundingSphere(new THREE.Sphere()).radius < _hqChunkRules().smallR * _hqUnits();
+        }
+        return q._ew_ckSmall;
+    }
+    /* is this record's room cut in chunks? (the live walk's own room only: never the battle's room, a scratch build, a neighbour) */
+    function _hqChunkBig(H) {
+        if (!H || H.field || H.ghost || H !== _hq || !H.partRoot || !H.terrain) return false;
+        var T = H.terrain; if (!(T.nx > 0 && T.nz > 0 && T.res > 0)) return false;
+        return Math.max(T.nx, T.nz) * T.res >= _hqChunkRules().minSpan;
+    }
+    function _hqChunkReg(H, g, far) {
+        g._ew_ckFar = far; g._ew_ckOut = false; g._ew_ckN = -1; g._ew_ckAt = 0; g._ew_ckSph = null;
+        (H.ckList || (H.ckList = [])).push(g);
+        return g;
+    }
+    /* the fence group of a plot (metres → its plot) */
+    function _hqChunkGroup(H, xM, zM) {
+        var RU = _hqChunkRules(), U = _hqUnits(), ci = Math.floor(xM / RU.m), cj = Math.floor(zM / RU.m), key = ci + ',' + cj;
+        var C = H.chunks;
+        if (!C) { C = H.chunks = { root: new THREE.Group(), cells: {} }; C.root.name = 'hq_chunks'; H.partRoot.add(C.root); }
+        var g = C.cells[key];
+        if (!g) { g = C.cells[key] = new THREE.Group(); g.name = 'hq_chunk'; g._ew_chunk = key; C.root.add(g); _hqChunkReg(H, g, RU.fenceFar * U); }
+        return g;
+    }
+    var _hqCkFr = null, _hqCkM = null, _hqCkBox = null, _hqCkV = null, _hqCkS = null;
+    /* a group's sphere in the world: its meshes' geometry spheres, an instance batch's own (rec.C / rec.R) */
+    function _hqChunkSphere(g) {
+        var box = _hqCkBox || (_hqCkBox = new THREE.Box3()), v = _hqCkV || (_hqCkV = new THREE.Vector3()), n = 0, ch = g.children;
+        box.makeEmpty();
+        for (var i = 0; i < ch.length; i++) {
+            var c = ch[i], r = 0;
+            if (c._ew_ckRec) { v.copy(c._ew_ckRec.C); r = c._ew_ckRec.R; }
+            else if (c.isMesh && c.geometry) {
+                if (!c.geometry.boundingSphere) c.geometry.computeBoundingSphere();
+                var bs = c.geometry.boundingSphere; if (!bs || !(bs.radius >= 0)) continue;
+                c.updateWorldMatrix(true, false);
+                v.copy(bs.center).applyMatrix4(c.matrixWorld); r = bs.radius * c.matrixWorld.getMaxScaleOnAxis();
+            } else continue;
+            box.min.x = Math.min(box.min.x, v.x - r); box.min.y = Math.min(box.min.y, v.y - r); box.min.z = Math.min(box.min.z, v.z - r);
+            box.max.x = Math.max(box.max.x, v.x + r); box.max.y = Math.max(box.max.y, v.y + r); box.max.z = Math.max(box.max.z, v.z + r);
+            n++;
+        }
+        if (!n) return null;
+        return box.getBoundingSphere(new THREE.Sphere());
+    }
+    /* per frame, before the draw: which chunk groups the camera draws */
+    function _hqChunkTick(H, now) {
+        var L = H.ckList; if (!L || !L.length) return;
+        var cam = H.camera, off = (typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL) || !cam;
+        var RU = _hqChunkRules(), pad = RU.pad * _hqUnits(), drawn = 0;
+        if (!off) {
+            if (!_hqCkFr) { _hqCkFr = new THREE.Frustum(); _hqCkM = new THREE.Matrix4(); _hqCkS = new THREE.Sphere(); }
+            cam.updateMatrixWorld();   // the camera moved this tick; its inverse is three's at the draw
+            _hqCkM.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+            _hqCkFr.setFromProjectionMatrix(_hqCkM, cam.coordinateSystem);
+        }
+        var ce = cam ? cam.matrixWorld.elements : null, S = _hqCkS;
+        for (var i = L.length - 1; i >= 0; i--) {
+            var g = L[i];
+            if (!g.parent) { g.visible = true; g._ew_ckOut = false; L.splice(i, 1); continue; }
+            if (off) { if (g._ew_ckOut) { g.visible = true; g._ew_ckOut = false; } drawn++; continue; }
+            if (g._ew_ckN !== g.children.length || now - g._ew_ckAt > 2000) { g._ew_ckN = g.children.length; g._ew_ckAt = now; g._ew_ckSph = _hqChunkSphere(g); }
+            var sp = g._ew_ckSph, out = false;
+            if (sp) {
+                var dx = sp.center.x - ce[12], dy = sp.center.y - ce[13], dz = sp.center.z - ce[14];
+                if (Math.sqrt(dx * dx + dy * dy + dz * dz) - sp.radius > g._ew_ckFar) out = true;
+                else { S.center.copy(sp.center); S.radius = sp.radius + pad; out = !_hqCkFr.intersectsSphere(S); }
+            }
+            if (out !== g._ew_ckOut) { g._ew_ckOut = out; g.visible = !out; }
+            if (!out) drawn++;
+        }
+        H.ckDrawn = drawn;
+    }
+    /* every fence back in the shell group, every group drawn (the hand-over, the crossing, the leave) */
+    function _hqChunkHome(H) {
+        if (!H) return;
+        var C = H.chunks; H.chunks = null;
+        if (C) {
+            for (var k in C.cells) { var g = C.cells[k]; g.visible = true; g._ew_ckOut = false; while (g.children.length) { var c = g.children[0]; if (H.shellGroup) H.shellGroup.add(c); else g.remove(c); } }
+            if (C.root.parent) C.root.parent.remove(C.root);
+        }
+        (H.ckList || []).forEach(function (g) { g.visible = true; g._ew_ckOut = false; });
+        H.ckList = null; H.ckDrawn = 0;
+    }
+    function _hqChunkStats(H) {
+        var L = H && H.ckList; if (!L || !L.length) return null;
+        var f = 0, fd = 0, c = 0, cd = 0;
+        for (var i = 0; i < L.length; i++) { var g = L[i]; if (g._ew_chunk != null) { f++; if (!g._ew_ckOut) fd++; } else { c++; if (!g._ew_ckOut) cd++; } }
+        return { fences: f, fencesDrawn: fd, cells: c, cellsDrawn: cd, off: typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL };
     }
     /* ══ THE INSTANCE PASS IN THE FIGHT (THE PERF PASS, 2026-10-01) ══
        The walk batched its repeated props, then _hqLeave handed the originals back and the battle drew the same room
@@ -90859,6 +91003,7 @@ const ThreeRenderer = (function () {
         try { _hqCullReset(H); } catch (e) {}   // THE PORTALS (G1): every part drawn before the records change hands (the next tick re-picks)
         try { _hqLodReset(H); } catch (e) {}   // THE LOD LEVELS: re-picked on the new part's list
         try { _hqInstDrop(H); } catch (e) {} H._instTried = false;
+        try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: the part you leave is a neighbour now, drawn whole
         /* the part you leave: its people stand down (the walker stays), its record becomes a neighbour's */
         var Q = { id: fromId, P: {}, extra: null, opts: Object.assign({}, H.opts, { room: fromId }), gate: null, step: _HQ_STAGE_STEPS.length, built: true, attached: true, t0: t0, rel: null };
         for (var k in H) if (!_hqZoneKey(k)) Q.P[k] = H[k];
@@ -91768,6 +91913,7 @@ const ThreeRenderer = (function () {
     }
     function _hqHandoverStash(H, opts) {
         _hqHandoverDrop();
+        try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: the fences ride in the shell group again
         try { _hqBatchDropAll(H); } catch (e) {}   // THE STATIC BATCH (Phase 11): the fight takes the pieces themselves (its keep radius, its wall fade)
         if (!opts || !opts.handover || !_hqHandoverRules().handover || !H || !H.scene) return false;
         try { (H.reflectors || []).forEach(function (r) { (r.targets || []).forEach(function (t) { if (t._ew_reflectOld) { try { t.material.dispose && t.material.dispose(); } catch (e) {} t.material = t._ew_reflectOld; t._ew_reflectOld = null; } }); }); } catch (e) {}
@@ -91783,6 +91929,7 @@ const ThreeRenderer = (function () {
         var H = _hq; if (!H) return;
         if (opts && opts.handover) _lightMatchNote(H); else _lightMatch.walk = 0;   // THE SAME LIGHT COUNT: the count the fight keeps
         try { if (_hqPassFadeEl) { _hqPassFadeEl.style.opacity = '0'; _hqPassFadeEl._o = '0'; } } catch (e) {}   // THE PASSAGES: the dark is the building's (the room change's own blink covers the crossing)
+        try { _hqChunkHome(H); } catch (e) {}   // THE CHUNKS: every fence back in the shell group, every group drawn
         try { _hqBatchDropAll(H); } catch (e) {}   // THE STATIC BATCH (Phase 11): every merged piece handed back before anything takes the groups
         _ewHeightFogSet(0, 1, 0, 0); _HQ_AO.w = 0;   // THE PREMIUM POLISH: the height fog and the room-box AO are the building's alone
         try { if (typeof ThreePost !== 'undefined' && ThreePost.setMotion) ThreePost.setMotion(0); } catch (e) {}   // THE THIRD PASS 6.4: the blur is the building's

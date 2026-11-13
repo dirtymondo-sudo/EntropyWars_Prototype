@@ -1845,3 +1845,28 @@ scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 
 - **Measured** (sandbox, SwiftShader WebGPU, Atlantis 4v4): draws 3657 -> 316, outside-bundle 3499 -> 166; 198 skinned rays
   1163 ms -> 22 ms; hover pick 8.2 -> 1.2 ms per mouse move. Proof: /mnt/project-files/perf-atlantis-20261113/.
 - Not done: the mask pass still walks the room classic (166 draws); 20 point lights untouched; real Mac FPS not measured here.
+
+## THE CHUNKS + THE ONE MATRIX WALK (2026-11-13, mondo in the 144-plot Disaster City on the Mac, WebGPU: 12 fps, "3.29M" triangles in 13 terrain draws; "we have the plots already, why not just make those the chunks or like a group of them")
+three-renderer.js + data.js HQ_ENGINE_RULES (`chunkM: 42, chunkMinSpanM: 200, chunkPadM: 15, fenceFarM: 120, instFarM: 260, instSmallM: 1.7, instSmallFarM: 100`).
+- **What the readout meant**: the six heaviest "hq_part terrain" draws (913K, 751K ...) were the STAIRS PACK fences. `_spBuildRailings`
+  made ONE mesh per fence kind and role for the whole room: twelve meshes, 4.27M triangles (non-indexed), in the shell's render bundle
+  (replayed unculled) and, wearing `_ew_pixelate`, drawn again by the model mask (the lens's "extra" pass). The instance pass cut its
+  copies per 64 m cell (989 batches, 4.4M triangles: a 5,201-triangle Meshy prop x 315, the lamps x 288 ...) but all of it sat in ONE
+  bundle, so no cell was ever culled. Measured headless: 10.6M triangles a frame from the spawn, 20,700 objects in the scene.
+- **THE CHUNKS** (`_hqChunkBig`: the live walk's own room, at least chunkMinSpanM across; never the battle's room, a scratch build, a
+  stage neighbour): a fence run goes to its PLOT's mesh (`_spFlush(..., grpOf)`), each plot a group under `H.chunks.root` (`hq_chunks`,
+  beside the shell group in the part's root); the instance pass's cells are groups (`I.cells`, `hq_inst_cell`), and a placed prop
+  whose whole sphere is under instSmallM (`_hqChunkSmall`: measured per placement, so a lamp's small parts stay with its pole) sits
+  in a cell of its own kind (`|s`). Every such group is its own bundle target (`_ewBunTargets`) and is listed in `H.ckList`.
+  `_hqChunkTick` (each frame, after the camera, before the draw; every renderer): a group whose sphere + chunkPadM is off the camera,
+  or further than its far (fences fenceFarM, cells instFarM, small cells instSmallFarM), reads `visible = false`: not in the picture,
+  the shadow map or the mask. `_ewBunTick` skips a group that is out (`_ew_ckOut`) without releasing it: its recording waits, no
+  re-record when it comes back. `_ewBunWalk` no longer hashes a piece THE STATIC BATCH holds (only that it is held).
+- **Nothing is removed**: `_hqChunkHome` (the hand-over to a fight, the crossing, the leave) puts every fence back in the shell group
+  and shows every group; the instance pass is dropped as before. Off live: `window.EW_HQ_NO_CHUNK_CULL = true` (all drawn).
+- **THE ONE MATRIX WALK**: the walk frame runs `scene.updateMatrixWorld()` once and holds `matrixWorldAutoUpdate` false for its
+  renders (mirrors, the mask's two, the shadow map, the picture: four walks of 20,700 objects a frame before). Off:
+  `window.EW_HQ_MW_EVERY_RENDER = true`.
+- **Lens**: new line `Chunks: fence plots a/b drawn · prop cells c/d drawn`.
+- **Not done**: the ground (256 tiles, 670K triangles) and the buildings stay in the shell bundle, drawn whole; the dense Meshy props
+  have no LOD files (`optimize-assets --lod` would give the LOD tick levels to draw); the fence pack pieces are ~500 triangles a metre.
