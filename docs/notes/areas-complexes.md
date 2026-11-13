@@ -2451,9 +2451,10 @@ collision row with the skin off and gets ONE `k: 'arch'` row `dcu:<building id>`
   south guard rail + cable fence (then a dry ditch in the land), east parapet + pipe rail (you see the sea over it). Bayside's outer lines stay Bayside's.
 - B.js (two numbers, told to the Bayside thread): the north water's sink runs 2 m past the field's north edge (a rim at the city's level stood across the north
   end of the bay) and the deep sink's 12 m bank lies past the room's east edge (a sand bar rose along it).
-- NOT SEEN IN THE GAME: the headless browser run was refused (RULE #1c). Checked: `node --check`, the bake, and pictures of the land code alone (the real
-  function run in Node on the real room, drawn in a bare three.js page): /mnt/project-files/disaster-city-edges/built_land_check.jpg. Unchecked on screen:
-  the land's sheets and tints under the game's light, the seam at the field's edge, the fog-free far part against the sky, the game's own tree models.
+- SEEN IN THE GAME (11-13, headless, after mondo's "go ahead"): all four sides, the four corners and the seams at the city line; the land builds with no
+  error (20 pieces, 898 trees). Shots: /mnt/project-files/disaster-city-edges/ingame_1_north_west.jpg, ingame_2_south_east.jpg. One fix from it: the land's
+  baked haze now copies the room's own `scene.fog.color` (the far peaks were a different blue-grey than the fogged near slope). Left as seen: from high in the
+  air the forest hillside is bare past 60 m, the forest floor sheet is a bright green, the snow line is jagged.
 - NOT DONE: no road runs out into the desert (the streets end at the south line); no rocks / cactus on the desert (he asked for plain flat); the sky's far
   roster (`sky.scenery: 'city'`) is unchanged; the forest past 60 m is bare ground (in the fog from the streets).
 
@@ -2466,3 +2467,98 @@ and a vent stack in the free spots (never under a drum / tower / pitched roof); 
 wall. Per walk-in door: pilasters, a canopy on brackets, a name board with a gilt plate (key `gold`), two lamps. Per drawn shop door: a
 striped awning, a sign board (no lettering), a blade sign. The sheets (plinth, ground storey, deck, plant) are picked per building by a
 seeded draw from the urban pack, his sheets as they are, only tinted. Headless shots after THE LEVELS need `y` = plot level × 1.75.
+
+### HERO PLAZA, THE POLISH PASS (2026-11-13 20:15, mondo: "one more polish pass on the exteriors ... one or two more layers deep", + "roofs and ac units", + "different textures or decals for different parts of the building")
+- districts/H.js `DET[<building id>](a, door)` and `DET_OPEN[<piece>]`: a second parts list per building, added after its own by `dress()` in
+  `build()`. `kit(a)` lays every piece against a wall by its side (`on(side, half, u, y, w, h, t, ...)`, u = world x on S/N, world z on E/W):
+  plinth (open at the doorway), course, frames (sill + head), pil, pipe, lamp, vent, ac, awning, balcony, and for roofs rTop (a roof surface
+  in its own sheet), parapet, rAC (air handler on a pad with grilles), rVent, rDuct, rHut (stair hut with a door), rSky, rail.
+- One sheet once on one face = `panel()` (`uv: 'fit'`, `faces` = the outward face, `top: false`): door leaves (urban:DoorWoodenHalf1a,
+  DoorPaintedHalf1a / 2a, DoorStorefrontHalf1a), window decals (DecalWindowsResidential1a / 2a, DecalWindowsFactory1a: each sheet is 2x2
+  windows, so a panel about 3.2 x 5.5 m reads as two storeys), grilles (MetalSubwayGrill1a), hazard plates (SignHazard1a), shutters
+  (GlassWindowResidentialShutter1). Decal / Door / Sign keys draw see-through by themselves.
+- Sheets by part: feet in ConcreteUnderTiles1 (reads as granite), terraces in TileGeneric1a / 3a pavers, membrane roofs in RubberNonSlip1a,
+  the tower's step and the bandstand floor in TileMarble1a checker, the arcade floor TileMarble3c, the station canopy floor TileMarble2a.
+- About 2,400 parts for the district (was about 480). Seen in the game on every building. No lettering (the arch row has none).
+## DISASTER CITY, THE PROP PASS — every prop checked against the real city, the street dressed (2026-11-13, mondo 19:30 + his OK 20:03 "Build all of it")
+mondo: "cars on top of stuff, benches on top of fences, street signs half way inside buildings. Just needs way more attention to detail and care ...
+there is this green trash bin in the subway area that needs to go in the city. See what other assets/props are available."
+- CAUSE: the shared street dressing (bake-disaster-city.js) was placed from the PLAN's squares, with the catalogue's blocker sizes, before the nine
+  district files drew their own buildings (arch rows) and before THE LEVELS. So vending machines / pots / cones stood in the new walls, cars were
+  put on one square each (a 5 m car is 1.5 squares: the Bayside police line parked into itself), benches touched their fence.
+- `docs/disaster-city/props.js` (repo-only, read by the tool; NOT a game file): `kerbSign` · `dress(ctx)` · `check(ctx)`. The tool calls dress + check
+  LAST (after the district files' `build` and THE LEVELS). ctx gains `own` (the props a district file pushed), `at` (the ground), lamps, busStops, signals.
+- THE PROP CHECK: every prop's REAL footprint (props.js SIZE, measured on the GLBs at the catalogue's height / span, the catalogue `turn` applied; else
+  the catalogue rect / foot) against every texbuilding, plateau, arch part that stands on the ground (box / cyl / dome / quad / poly below 2 m), doorway
+  (1.5 m out from an arch quad's `hole`), fence, hedge, wall, stair, ladder, tree, lamp, sign pole, and every other prop; and against the ground (no
+  step of the levels under a footprint). A SHARED prop that clashes moves to the nearest clear spot: a car along its own street (whole car on the
+  road), a wall thing (vending machine, utility box, cabinet, fan unit) out from the wall then along it, and then FLUSH back on the real wall (`snug`),
+  a decor thing within 2.5 m staying off its square's middle, a blocking thing to a free square's middle. No spot = left out. A DISTRICT's own prop is
+  never moved: listed in `docs/disaster-city/prop-check.txt` (rewritten every bake) for its thread. First run: 1713 checked, 242 moved, 180 set flush,
+  6 left out, 6 district props listed (three taxis under the Taxi court's canopy, a car in each garage, a shelter).
+- THE KERBS: the street sign is a real road sign (Roads pack `roads_g_sign_*`, row `h: 2.4`; the file's plate faces +x, turned to the traffic of the
+  lane beside the kerb, right-hand traffic); the dead ends (P03-00, P00-07) wear the dead-end sign. Was the Meshy blank WOODEN signpost. The kerb bin is
+  the green subway bin `metro_bin` (Metro.glb#trash_can); `city_bin` stays at the fences and the doors.
+- THE BUS SHELTERS: the catalogue's `turn: 90` lays the roof ACROSS the pavement for the face the kerb rule gave (front = -cos/-sin of face). The check
+  turns every shared shelter +90 (roof along the kerb, open to the road) and writes `rect: false` (its catalogue rect is a quarter turn off the
+  model). The catalogue row is untouched (five other rooms use it).
+- THE SET DRESSING (all models already in the catalogue): a green bin at every shelter's end and by the metro stair; per plot, against a blank wall on a
+  yard square, by district (props.js DRESS): utility boxes, electrical cabinets (ind_panel), fan units (ind_vent), barrels, crates, cardboard boxes;
+  sandbags at the cordon's barricades; a manhole cover (street_drain) on each street plot's flat middle; door pots at 0.55 m (the pack's pot is 23 cm),
+  a cactus at some doors of Southside / Bayside / Entertainment.
+- Benches by a fence: 0.29 squares off the middle (0.2 by a hedge), was 0.36 (the back touched the fence).
+- FACES (worked out from the model files): a prop's group turns PI - face; a +z front looks compass `face` (0 north, 90 east); a +x front looks
+  (-cos, -sin) of face. Benches, vending machines, the shelter (before its turn), utility_box: +z. Road signs, bus_stop_sign, ind_vent, ind_panel: +x.
+- NOT DONE / OPEN: the `planter` proc is a plain wooden bed with soil (no plants) and stands 333 times; the second wave (public phone, electric poles,
+  garbage bags, tires, playground) needs cutting from the packs. Tools + before / after maps: /mnt/project-files/city-props/.
+## THE STEEL LANDING — a fire escape's platform, no terrain lump (2026-11-13)
+mondo: "wherever there are ladders, there is a raised piece of terrain to go with it that looks wrong, and its easy to fall off of and i can
+climb it just by jumping up next to it ... Can i not just climb up the ladder and stand on the platform part?" He picked "Steel platform you
+stand on". The lump was the fire escape's halfway LANDING, a 1.6 x 2.2 m terrain `plateau` (the height field can only draw it as a slanted
+block). 25 of them, city rooms only: `site_prebuilt_downtown_streets` 18 (bake-disaster-city.js, the `escapeAt` loop),
+`site_prebuilt_cyberpunk_streets` 5 (STACK W + E1 had a second, wider plateau for the stair's head: one landing each now, 4 rows),
+`site_prebuilt_downtown_oldstreets` 2. Every other ladder in the game climbs straight onto a real tier.
+- **The row**: `{ k: 'landing', x, z, w, d, h | y, back, gaps? }` (data.js `hqTerrainLandings`, compiled in `hqTerrainCompile` before the first
+  `hqTerrainClimbs`): `h` over the LOWEST ground under it (or absolute `y`), `back` = the heading of the building's side (no rail),
+  `gaps: [[heading, a, b]]` = a stair's mouth in a rail. It becomes a hidden `bridge` slab (`hide`, `landing`, 0.1 thick: the ground under it
+  stays flat and walked) + one hung `ghost` wall per open side (`y0` = the slab, 1.05 high: the walker cannot step off). A landing with no
+  mass behind it (its building became a walk-in: P01-08-B1) gets an unseen wall on the back too (`guard`).
+- **The ladders**: `hqTerrainClimbs` gives a foot / a head on a landing the slab's height (`c.footOn` / `c.landing`); `hqTerrainClimbEdges`
+  takes for such an end the nearest grid node that STANDS on the slab (the nearest node may lie under a rail: two city landings fell out of
+  the reach until this).
+- **The look** (three-renderer.js `_hqBuildClimbs`, after the ladders): an iron deck + a grating, posts and two rails along each `rails` run
+  (open where a ladder's head stands on that side), two struts to the wall; two merged meshes a landing. A fireescape ladder whose head is on a
+  landing draws no cage of its own and ends in two grab rails.
+- Checked offline (node, the compiled rooms, against main): same ladders, same reach flags on every ladder end, the same tapes with the same
+  `hard` flags in the three rooms; standing on each slab, the ground under it, every rail blocks. NOT SEEN ON SCREEN (RULE #1c).
+- After merging main in Disaster City: `node bake-disaster-city.js` (the tool writes the `landing` rows).
+
+### THE PROP PASS, SECOND WAVE (2026-11-13, PR after #1315)
+Eight pieces cut from the packs by bake-pack-pieces.py and wired as catalogue rows (data.js, above ind_factory_red): `public_phone`, `power_pole` (Tacos),
+`garbage_bags` (6twelve), `garbage_bag`, `metal_trash_can` (Trailer Park), `play_slide`, `play_swing`, `play_sandbox` (Cursedlake PS1 Playground, R2
+`Assets/world/packs/cursedlake_playground/`). props.js dress() places them: a pay phone against a wall on every third plot of R C H E S U B, garbage beside
+every shared dumpster (a metal can at every third), a power pole a square on from every third kerb lamp of Southside + Industrial, one playground on
+Southside's Townhouse court (Park west + Dorm court had no free 2 x 2). The phone's hood is the file's -z (catalogue turn 180); the pole's crossarm is its x.
+Not found in the packs: loose tyres (the sewers pack has one, not cut).
+## DISASTER CITY, THE ENTERTAINMENT DISTRICT — the polish pass (2026-11-13 evening)
+mondo 20:15 "one more polish pass on the exteriors ... go one or two more layers deep with the detail", 20:18 "roofs and ac units", 20:19
+"and textures, different textures or decals for different parts of the building". All in `docs/disaster-city/districts/E.js`, no shared code.
+- Two maps run after each building's massing: `DETAIL[id]` (base courses, piers with caps, moulded cornices, window joinery over every glass
+  band, striped awnings, wall lamps, hanging blade signs, framed boards / poster cases, show-bulb runs on the marquees, downpipes, grilles) and
+  `ROOFS[id]` (roof membrane sheets, parapets with copings, roof plant with ducts, skylights, hatches, gutters, wall AC units, service doors).
+- The builder's new helpers: sbox (a box standing on a face), plinth (broken at a walk-in doorway), piers, cornice, frames, pipe, awning, lamp,
+  blade, board, bulbs, grille, ac, cowl, corners, parapet, wac, sdoor, haz, plant, sky, hatch, gutter.
+- New sheets in use (all his urban pack, tinted, none repainted): RubberNonSlip1a + ConcreteUnderTiles1 (flat roofs), MetalSubwayGrill1a
+  (grilles, AC fronts), TileGeneric5b (checker bases), TileSubway3a (red tile bases), PlasterWallPainted2c (two-tone flank walls),
+  DoorPaintedHalf / DoorWoodenHalf / DoorStorefrontHalf (service doors, `uv: 'fit'`), GlassWindowResidentialShutter1, SignHazard2a, and the
+  dark GlassWindowTall1a (Concert hall drum + flanks, Film studio lobby; mondo 19:02 likes the dark glass).
+- Size: 31 arch rows, about 2,500 parts, about 29,000 triangles (was 5,100). Still NOT SEEN IN THE GAME; drawn offline with the game's arch
+  geometry (/mnt/project-files/dc-entertainment/polish_details.jpg). Signs and marquees are still blank lit panels.
+
+### THE INDUSTRIAL DISTRICT, THE POLISH PASS (2026-11-13, mondo 20:15 "one or two more layers deep with the detail", 20:18 "roofs and ac units", 20:19 "different textures or decals for different parts of the building")
+`districts/I.js` now adds two more lists to each building's arch row (303 parts -> about 1200, still one row a building): `MORE[id]` (plinths, corner posts, cornices, door surrounds +
+canopies + glowing lamps, window sills / lintels / mullions, downpipes + gutters, ribs on every barrel roof, ladders, blank sign boards, hazard plates, bollards, rust streaks, door decals
+on the solid buildings, the signal box's outside stair + a semaphore, the crane's rails / cab glass / beacon) and `ROOFS[id]` (roof AC units `ac`, wall units `wac`, parapets, hatches,
+ducts, rubber walkways, manhole decals in the yards, a second sheet on back walls and bases: subway / generic tile, brick, factory window decals). Houses: `houseMore` (corner boards,
+door hoods, shutters, sills, gutters, chimney caps). On the five walked roofs only edges and corners are dressed. Signs stay blank (no lettering part). Seen in the cloud browser (29
+close-ups, about two thirds framed the building; the rest were checked from neighbours' shots). `arch y` is lifted by THE LEVELS, so headless cameras add the plot's level.

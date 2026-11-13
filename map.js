@@ -1632,7 +1632,7 @@
            as before. The quests, the party, the bag are the profile's own and were saved already. Never in the car (it is
            between floors), in the air, in the editor, or under a load card. Off: `?noresume` / window.EW_HQ_NO_RESUME (the
            record is still filed). Console: _hqSaveState(). ── */
-        const _HQ_SAVE_KEY = 'ew-hq-save-', _HQ_SAVE_MS = 4000, _HQ_SAVE_SKIP = { car: 1 };
+        const _HQ_SAVE_KEY = 'ew-hq-save-', _HQ_SAVE_MS = 4000, _HQ_SAVE_SKIP = { car: 1, intro_desert: 1 };   // (a scene room is never a place to wake up in)
         let _hqSaveArmed = false, _hqSaveLast = null;
         function _hqSaveSlot() { try { const PS = window.ProfileSystem; const i = PS && typeof PS.getActiveProfileIndex === 'function' ? PS.getActiveProfileIndex() : null; return (i === null || i === undefined) ? null : i; } catch (e) { return null; } }
         function _hqSaveRead() {
@@ -2032,6 +2032,13 @@
             if (opts.from === 'play' && opts.resume && !opts.room && !opts.at && _hqResumeOn()) _resume = _hqSaveRead();
             _hqSaveArmed = false;
             let roomId = opts.room || (returning ? _hqLastRoom : (_resume ? _resume.room : (opts.from === 'play' ? _hqArrivalRoom() : 'central_egress')));
+            /* THE OPENING (scene A, 2026-11-13): the first walk into the building starts on the road instead: the scene room is
+               entered, the scene plays when it stands, and its end walks the officer into the foyer (_introStart) */
+            if (opts.from === 'play' && !opts.room && !opts.at && _introDue()) {
+                roomId = _INTRO_ROOM; _resume = null; window._ewIntroLive = true;
+                const _or0 = opts.onReady;
+                opts = Object.assign({}, opts, { onReady: () => { try { if (_or0) _or0(); } catch (e) {} setTimeout(() => _introStart(false, null), 400); } });
+            }
             /* THE ENTRY (2026-09-17 — the user: "if I walk into a door or entry labeled Cyberpunk City it needs to take me to the grid;
                same with the Strip"): a bypassed BOARD ROOM (data.js DOOR_HQ.siteRooms.entry — Cyberpunk City, the Strip, Downtown)
                lands in the part that stands for the site, whatever led here (a threshold, GO on the map, a return from a match,
@@ -4446,6 +4453,50 @@
             return !!(t && t.done.on === 'room' && t.done.room === room && window.storyCutscene(t.scene));
         }
         /* the room stands: the scene plays once its cast is in the room; its end files the stage (a scene that cannot start files it at once) */
+        /* ── THE OPENING (scene A, the desert half; mondo's script + the storyboard he OK'd 2026-11-13) ── the scene room
+           `intro_desert` + STORY_CUTSCENES.orientation_intro. Due = ORIENTATION still on its first stage and the flag
+           `intro_seen` not filed. window._ewIntroLive puts Sedaniel on the road (data.js DOOR_CAST spot `live`). The end
+           (or a skip) files the flag and enters the foyer; a replay from the quest card goes back to the room it left. */
+        const _INTRO_ROOM = 'intro_desert', _INTRO_SCENE = 'orientation_intro';
+        function _introDue() {
+            try {
+                if (window.EW_NO_CUTSCENES || window.EW_NO_INTRO || !_hqRoomExists(_INTRO_ROOM) || typeof window.storyCutscene !== 'function' || !window.storyCutscene(_INTRO_SCENE)) return false;
+                const p = _hqProfile(); if (!p) return false;
+                const t = (typeof window.questTracker === 'function') ? window.questTracker(p) : null;
+                if (!t || t.quest !== 'orientation' || t.stage !== 'walk') return false;
+                return !((typeof hqStoryFlags === 'function') ? hqStoryFlags(p) : {}).intro_seen;
+            } catch (e) { return false; }
+        }
+        function _introStart(replay, backRoom) {
+            const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            const out = () => {
+                window._ewIntroLive = false;
+                if (!replay) _questSceneFlag('intro_seen', true);
+                const to = (replay && backRoom && _hqRoomExists(backRoom)) ? backRoom : _hqArrivalRoom();
+                setTimeout(() => { try { if (state.gameState === GS.HQ && !_hqSuspended) window._hqEnter({ room: to, quiet: true, from: 'walk' }); } catch (e) { console.warn('[SCENE] the way in', e); } }, 60);
+            };
+            const here = () => { try { const sc = TR.hq.dev.hqScene(); return !!(sc && sc.getObjectByName('hq_hq-cast-sedaniel')); } catch (e) { return false; } };
+            const t0 = performance.now();
+            const go = () => {
+                if (state.gameState !== GS.HQ || _hqSuspended || _hqCurRoom !== _INTRO_ROOM) { window._ewIntroLive = false; return; }
+                let up = false; try { up = here() && TR.hq.sceneReady('player'); } catch (e) { up = here(); }   // (the officer's clips too: no bind pose at the car)
+                if (!up && performance.now() - t0 < 20000) { setTimeout(go, 250); return; }
+                let ok = false;
+                try { ok = _questHqScene({ scene: _INTRO_SCENE, sceneAt: { x: -3.4, z: -41, face: 270 } }, { onEnd: out }, out); } catch (e) { console.error('[SCENE] the opening did not start', e); ok = false; }
+                if (!ok) out();
+            };
+            go();
+        }
+        /* the opening again, from the quest card */
+        function _introReplay() {
+            if (_questTalkBusy || _hqSuspended || window.EW_NO_CUTSCENES || state.gameState !== GS.HQ || !_hqRoomExists(_INTRO_ROOM)) return false;
+            const back = _hqCurRoom;
+            window._ewIntroLive = true;
+            try { window._hqClosePanel(); } catch (e) {}
+            _hqSetPrompt(null);
+            if (!window._hqEnter({ room: _INTRO_ROOM, quiet: true, from: 'walk', onReady: () => setTimeout(() => _introStart(true, back), 400) })) { window._ewIntroLive = false; return false; }
+            return true;
+        }
         function _questRoomSceneGo(room) {
             const file = () => { try { window._questEvent({ type: 'room', room }, { delay: 600 }); } catch (e) { console.warn('[QUEST] room event', e); } };
             const t = _questSceneStage(null);
@@ -4489,6 +4540,7 @@
                 else if (a.who && a.do === 'walk' && TR.hq.sceneWalk) TR.hq.sceneWalk(a.who, { x: a.x, z: a.z, ms: a.ms, face: a.face });
                 else if (a.do === 'props' && TR.hq.sceneProps) TR.hq.sceneProps({ keys: a.keys, near: a.near, r: a.r, at: a.at, ms: a.ms, light: a.light });
                 else if (a.do === 'key' && TR.hq.sceneKey) TR.hq.sceneKey({ x: a.x, y: a.y, z: a.z, size: a.size });
+                else if (a.do === 'door' && TR.hq.sceneDoor) TR.hq.sceneDoor({ x: a.x, z: a.z, face: a.face, leaf: a.leaf, open: a.open, ms: a.ms, remove: a.remove });
             } catch (e) { console.warn('[SCENE] ' + (a && a.do), e); } };
             const host = { unit: 1, point: () => null, act: hand,
                            choose: (c, o) => { if (o && o.clear) _questSceneFlag(o.clear, false); if (o && o.set) _questSceneFlag(o.set, true); },
@@ -4627,6 +4679,7 @@
                     const sc = (id) => (id && typeof window.storyCutscene === 'function') ? window.storyCutscene(id) : null;
                     const btn = (attrs, row, tip) => `<button class="hq-btn" ${attrs} title="${_hqEsc(tip)}">REPLAY ▸ ${_hqEsc(String(row.title || 'THE CUTSCENE').toUpperCase())}</button>`;
                     let bs = '';
+                    if (def && def.intro && sc(def.intro)) bs += btn('data-quest-intro="1"', sc(def.intro), 'Play the opening again');   // scene A: seen before the first stage
                     ((def && def.stages) || []).forEach(st => {
                         const sd = (q.stages || []).find(x => x.id === st.id);
                         if (!sd || !sd.done) return;
@@ -4650,12 +4703,13 @@
         if (!window._questReplayWired) {
             window._questReplayWired = true;
             document.addEventListener('click', (e) => {
-                const b = e.target && e.target.closest ? e.target.closest('[data-quest-replay],[data-quest-stage]') : null; if (!b) return;
+                const b = e.target && e.target.closest ? e.target.closest('[data-quest-replay],[data-quest-stage],[data-quest-intro]') : null; if (!b) return;
                 e.preventDefault(); e.stopPropagation();
                 const id = b.getAttribute('data-quest-replay'), stg = b.getAttribute('data-quest-stage'), only = b.getAttribute('data-quest-only') || null;
                 try { if (typeof window._hqClosePause === 'function') window._hqClosePause(); } catch (err) {}
                 let ok = false;
-                if (stg) { const c = stg.split('/'); ok = _questStageReplay(c[0], c[1]); }
+                if (b.hasAttribute('data-quest-intro')) ok = _introReplay();
+                else if (stg) { const c = stg.split('/'); ok = _questStageReplay(c[0], c[1]); }
                 else ok = window._questFightGo(id, { replay: true, only });
                 if (!ok) { try { playSfx('uiError'); } catch (err) {} }
             }, true);
@@ -4686,6 +4740,7 @@
             roomScene: (room) => _questRoomScene(room || _hqCurRoom, null),   // dev: play the room scene of the current stage
             fight: (id) => window._questFightGo(id),
             replay: (id, only) => window._questFightGo(id || 'orientation_portal', { replay: true, only: only || null }),   // only 'after' = the aftermath alone
+            intro: () => _introReplay(),   // dev: scene A, the opening
             replayStage: (quest, stage) => _questStageReplay(quest || 'orientation', stage || 'desk'),   // a stage's own scene (E at Rhonda's desk)
         };
         /* ══ THE DOOR GUN — THE PORTABLE THRESHOLD (HQ plan 9.5, 2026-09-15 rev 13) ══
@@ -9913,6 +9968,10 @@
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? ' active' : ''}" id="mmCreatorHiderBtn" onclick="window._toggleCreatorHider()">${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? 'Creator Item Hider: ON' : 'Creator Item Hider: OFF'}</button>
                         </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Remade Race Looks — every unit with no look of its own wears its race's remade look (its own clothes as separate pieces on the new body, with a face that talks and emotes) in place of its old model: creator, party builder, battles, DOOR HQ, the team room. A race with no remade look yet keeps its old model; a slot's own saved look and USE ORIGINAL MODEL still win. Only on this browser, remembered after a reload. Off by default.${typeof window.RACE_REMADE_LOOKS === 'object' ? ` ${Object.keys(window.RACE_REMADE_LOOKS).length} races have one.` : ''}</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn${typeof window.remadeLooksOn === 'function' && window.remadeLooksOn() ? ' active' : ''}" id="mmRemadeLooksBtn" onclick="window._toggleRemadeLooks()">${typeof window.remadeLooksOn === 'function' && window.remadeLooksOn() ? 'Remade Race Looks: ON' : 'Remade Race Looks: OFF'}</button>
+                        </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Face Lab (experimental) — in the character creator, a FACE LAB button by FACE CLOSE-UP opens a window that plays the MPFB body's face shapes: open mouth, talk (reads a line you type), lip flap, roll eyes, blink, wink, look around, laugh, moan, cry, scream and more, plus a slider for each of the 67 raw face shapes. Looks only, nothing saved. ?facelab=1 in the address turns it on too.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${window.EWFaceLab && window.EWFaceLab.enabled() ? ' active' : ''}" id="mmFaceLabBtn" onclick="window._toggleFaceLab()">${window.EWFaceLab && window.EWFaceLab.enabled() ? 'Face Lab: ON' : 'Face Lab: OFF'}</button>
@@ -10112,6 +10171,15 @@
             window.setCreatorHiderOn(on);
             const btn = document.getElementById('mmCreatorHiderBtn');
             if (btn) { btn.textContent = 'Creator Item Hider: ' + (on ? 'ON' : 'OFF'); btn.classList.toggle('active', on); }
+        };
+
+        // Settings → Developer: THE REMADE LOOKS SWITCH (2026-11-13) — every unit with no look of its own wears its race's remade
+        // look (sprites.js remadeLooksOn; localStorage ew_remade_looks). Units already on screen rebuild on their next draw.
+        window._toggleRemadeLooks = function() {
+            if (typeof window.setRemadeLooksOn !== 'function') return;
+            const on = window.setRemadeLooksOn(!window.remadeLooksOn());
+            const btn = document.getElementById('mmRemadeLooksBtn');
+            if (btn) { btn.textContent = 'Remade Race Looks: ' + (on ? 'ON' : 'OFF'); btn.classList.toggle('active', on); }
         };
 
         // Settings → Developer: THE FACE LAB (2026-11-11) — the character creator's FACE LAB button on / off (three-renderer.js
