@@ -6,7 +6,8 @@
    row of parts over the same footprint (docs/notes/areas-complexes.md "THE ARCHITECTURE ROW"). All numbers are metres from the building's
    footprint centre, x east, z south; `hw` / `hd` are the footprint's half sides. Notes: areas-complexes.md "THE ENTERTAINMENT DISTRICT". */
 module.exports = { build: function (api) {
-    const { C, gx, r3, features, lateRows, props, bInfo } = api;
+    const { C, gx, r3, features, lateRows, props, bInfo, plotOf } = api;
+    const EXTRA = {};   // a building of this file's own that the plan does not hold (the wedding chapel): id -> its footprint, like a bInfo row
     const D2R = Math.PI / 180, U = n => 'urban:' + n;
     /* the sheets (sprites.js URBAN_TEXTURES + the terrain keys): light ones take a tint cleanly */
     const GOLD = 'gold', BR1 = 'bricks_1', BR2 = 'bricks_2', BR3 = 'bricks_3', WOOD = 'wood_planks', PL = U('PlasterWallPainted1a'), ST = U('PlasterWallStucco1a'), MB = U('TileMarble1d'), MB3 = U('TileMarble3c'),
@@ -22,11 +23,15 @@ module.exports = { build: function (api) {
     /* B(id, o, fn): one building. o.walk = a walk-in shell (hollow, the city door in the plan's doorway), o.st = its storeys (the collision's
        and the roof slab's height), o.open = no collision row at all (an open pavilion). fn(b) writes the parts. */
     function B(id, o, fn) {
-        const info = bInfo.find(q => q.id === id); if (!info) { console.error('entertainment: no building', id); return; }
-        const row = features.find(f => f.id === 'dc:' + id); if (!row) { console.error('entertainment: no row', id); return; }
+        const info = EXTRA[id] || bInfo.find(q => q.id === id); if (!info) { console.error('entertainment: no building', id); return; }
+        let row = features.find(f => f.id === 'dc:' + id); if (!row) { console.error('entertainment: no row', id); return; }
         const hw = info.cw * C / 2, hd = info.ch * C / 2, cx = r3(gx(info.cx0) + hw), cz = r3(gx(info.cy0) + hd);
         dropLate(id);
         let rot = 0, lx = 0, hollow = false;
+        if (row.k === 'plateau' && o.walk) {   /* a walk-in roof tier: a hollow texbuilding in the plateau's place, two storeys = the same 7 m walked roof slab (as the Industrial district does); its doorway = the plan's first door */
+            const pb = plotOf[info.plot].buildings.find(v => v.id === id), dr = pb.doors[0], sd = info.side, kk = sd === 'S' ? (dr.x - pb.x) : sd === 'N' ? (pb.x + pb.w - 1 - dr.x) : sd === 'E' ? (pb.y + pb.h - 1 - dr.y) : (dr.y - pb.y);
+            const nr = { k: 'texbuilding', id: row.id, seed: (row.bld && row.bld.seed) || 0, door: Math.round(kk * C / 1.75) + 1 }; features[features.indexOf(row)] = nr; row = nr; o = Object.assign({}, o, { st: 2 });
+        }
         if (row.k === 'plateau') { row.bld = Object.assign({}, row.bld || {}, { skin: false }); }
         else if (o.open) { features.splice(features.indexOf(row), 1); }
         else {
@@ -220,9 +225,9 @@ module.exports = { build: function (api) {
             b.plinth(0.6, BR3, '#8a7a68'); b.frames(F, -h + 1.5, h - 1.5, 0.8, 1.8, 5, '#5a6a3e'); b.awning(F, -h + 1, h - 1, 2.75, 1.3, '#7a8a5a', '#f0e8d0');
             b.blade(F, h - 0.5, 2.9, 0.8, 0.6, '#f0e8d0', 0.4); b.cyl(h * 0.5, 0, 0.3, 3.8, 2.6, CO, '#8a8f98', { seg: 8 }); b.cyl(h * 0.5, 0, 0.45, 6.4, 0.2, null, '#55585e', { seg: 8 }); b.pipe(OPP[F], -h + 0.4, 3.8); b.grille(OPP[F], 1, 2.4); },
         'P11-05-B1': b => {                                                                                    // FILM STUDIO
-            b.plinth(0.8, CS, '#b8ac90', 0.12); b.piers('n', spread(-b.hw + 0.6, b.hw - 0.6, 6), 0.8, 5.9, 0.7, ST, '#fff6e0'); b.frames('n', -b.hw + 1, b.hw - 1, 4.2, 2, 8, '#b03020');
-            b.sbox('n', 0, 0.8, 3.4, 2.6, 0.08, U('GlassWindowTall1a'), '#607088'); b.frames('n', -1.7, 1.7, 0.8, 2.6, 2, '#b03020', 0.08); b.bulbs('n', -4.6, 4.6, 3.45, 9, '#fff2c0', 1.85);
-            for (const u of [-7.5, 7.5].filter(u => Math.abs(u) < b.hw - 2)) b.board('n', u - 1.4, u + 1.4, 1.0, 2.2, '#fff6d0', '#b03020', 0.45);
+            b.plinth(0.8, CS, '#b8ac90', 0.12); b.piers('n', spread(-b.hw + 0.6, b.hw - 0.6, 6).filter(u => Math.abs(u - b.du) > 1.4), 0.8, 5.9, 0.7, ST, '#fff6e0'); b.frames('n', -b.hw + 1, b.hw - 1, 4.2, 2, 8, '#b03020');
+            if (Math.abs(b.du) > 2.9) { b.sbox('n', 0, 0.8, 3.4, 2.6, 0.08, U('GlassWindowTall1a'), '#607088'); b.frames('n', -1.7, 1.7, 0.8, 2.6, 2, '#b03020', 0.08); } b.bulbs('n', -4.6, 4.6, 3.45, 9, '#fff2c0', 1.85);
+            for (const u of [-7.5, 7.5].filter(u => Math.abs(u) < b.hw - 2 && Math.abs(u - b.du) > 2.6)) b.board('n', u - 1.4, u + 1.4, 1.0, 2.2, '#fff6d0', '#b03020', 0.45);
             const sd = b.hd * 2 - 10.5; for (const s of ['e', 'w']) for (const u of spread(b.hd - sd + 0.6, b.hd - 0.6, 5)) b.sbox(s, u, 0.8, 0.6, 8.7, 0.25, CO, '#c4b99c', { off: -0.5 });   /* the stage's buttress ribs */
             b.frames('e', 2, 9, 0, 6.5, 2, '#24476e'); b.sbox('e', 5.5, 6.6, 7.6, 0.25, 0.9, CO3, '#24476e'); b.sbox('e', 0.6, 4.4, 0.4, 0.5, 0.3, null, '#ff3030', { glow: 1 });   /* the stage door's hood + the red light */
             b.sbox('e', -4, 5, 4.2, 2.6, 0.1, null, '#fff6e0'); b.sbox('e', -4, 5.9, 3.4, 0.9, 0.04, null, '#b03020', { off: 0.1 });   /* the stage number panel */
@@ -412,7 +417,12 @@ module.exports = { build: function (api) {
         'P10-07-B1': { g: ['EEE.UU.NN', '.........', 'EE..T..RR'], keyIn: PL, floorIn: WOOD, rug: '#4a4058', table: '#8a5a34', lamp: '#fff0d0' },
         'P11-07-B1': { g: ['.....', 'HH.HH', 'HH.HH', 'HH.HH', '.I.Q.'], keyIn: PL, floorIn: U('RubberNonSlip1a'), rug: '#7a2030', rake: 1, seatFace: 'back', seat: '#a02838', screen: true, lamp: '#ffe0a0' },
     };
-    const BLOCK_H = { S: 1.8, T: 1.0, B: 2.2, c: 2.4, G: 1.0, K: 2.2, H: 1.2, L: 1.0, U: 1.0, X: 1.2, M: 1.2, P: 1.3, V: 2.4, A: 1.9, R: 1.8, m: 2.0, O: 2.2, W: 1.0, F: 4.2, Y: 2.2, Z: 1.0, D: 2.4, J: 0.9, C: 1.1, I: 2.6, Q: 1.7, E: 1.2, N: 1.9 };
+    Object.assign(INSIDE, {
+        'P10-04-B1': { g: ['m.RR..PL', '.GGGGGG.', '.GGGGGG.', '........', 'HHH..HHH', 'HHH..HHH', 'HHH..HHH', 'I......Q'], keyIn: MB3, floorIn: WOOD, rug: '#7a2030', rake: 4, seatFace: 'back', seat: '#8a1c2c', lamp: '#fff2c0' },
+        'P11-05-B1': { g: ['FFF..YYD', '........', 'GGG.k.X.', 'GGG.....', '........', 'R.L..m.N', '........', 'Z......D'], keyIn: CO, floorIn: CS, rug: null, stage: 'set', lamp: '#f0f4ff' },
+        'E-chapel': { g: ['pwp', 'p.p'], keyIn: ST, floorIn: WOOD, rug: '#b03060', lamp: '#ffd0e0' },
+    });
+    const BLOCK_H = { k: 1.9, p: 1.0, w: 2.6, S: 1.8, T: 1.0, B: 2.2, c: 2.4, G: 1.0, K: 2.2, H: 1.2, L: 1.0, U: 1.0, X: 1.2, M: 1.2, P: 1.3, V: 2.4, A: 1.9, R: 1.8, m: 2.0, O: 2.2, W: 1.0, F: 4.2, Y: 2.2, Z: 1.0, D: 2.4, J: 0.9, C: 1.1, I: 2.6, Q: 1.7, E: 1.2, N: 1.9 };
     /* KIT[letter](k): k.part(s, lx, y, lz, key, tint, o) = a part in the square's frame; k.prop(key, lx, lz, turn) = a catalogue prop; k.i / k.n = this square's place in its run */
     const KIT = {
         S: k => { k.part('box', 0, 0, -0.3, PL, k.S.rug || '#7a2030', { size: [3.4, 0.1, 2.4] }); for (const x of [-1.05, 0, 1.05]) k.prop('slot_machine', x, -0.7, 0); },
@@ -463,6 +473,15 @@ module.exports = { build: function (api) {
         C: k => { k.part('box', 0, 0, 0.6, WOOD, '#5b3a22', { size: [3.5, 1.0, 0.7] }); k.part('quad', 0, 0.15, 0.96, GS, '#fff0c0', { size: [3.3, 0.7], glow: 0.5, uv: 'fit', win: 'keep' }); k.part('box', 0, 1.0, 0.6, MB3, '#e9e4da', { size: [3.5, 0.05, 0.8] });
             k.part('box', 0, 0, -1.45, WOOD, '#3a2212', { size: [3.5, 2.2, 0.45] }); for (const y of [0.7, 1.25, 1.8]) for (let i = 0; i < 6; i++) k.part('box', -1.4 + i * 0.56, y, -1.15, PL, ['#ff30c0', '#ffe030', '#30e0ff', '#d8a860'][(i + Math.round(y * 2)) % 4], { size: [0.36, 0.3, 0.3] });
             if (k.i === 0) k.part('box', -1.1, 1.05, 0.6, null, '#2a2a2e', { size: [0.4, 0.3, 0.4] }); if (k.i === 0 && k.S.words && k.S.words.C) k.sign(k.S.words.C, k.n > 1 ? 1.75 : 0, 2.3, -1.2, 3.0, 0.5); },
+        /* a film camera on its tripod beside a lamp on a stand */
+        k: k => { for (let i = 0; i < 3; i++) { const a = i * 2.094; k.part('cyl', -0.6 + Math.cos(a) * 0.3, 0, Math.sin(a) * 0.3, null, '#2a2a2e', { r: 0.03, h: 1.3, seg: 6 }); } k.part('box', -0.6, 1.3, 0, null, '#1a1a1e', { size: [0.4, 0.4, 0.8] }); k.part('cyl', -0.6, 1.72, -0.2, null, '#3c4046', { r: 0.2, h: 0.1, seg: 10 }); k.part('box', -0.6, 1.4, 0.5, null, '#55585e', { size: [0.24, 0.24, 0.3] });
+            k.part('cyl', 0.9, 0, -0.3, null, '#2a2a2e', { r: 0.04, h: 1.9, seg: 6 }); k.part('cyl', 0.9, 0, -0.3, null, '#2a2a2e', { r: 0.35, h: 0.04, seg: 10 }); k.part('box', 0.9, 1.6, -0.3, null, '#1a1a1e', { size: [0.6, 0.5, 0.4] }); k.part('quad', 0.9, 1.65, -0.09, null, '#fff6d0', { size: [0.5, 0.4], glow: 1 }); },
+        /* chapel pews: three benches that look at the altar */
+        p: k => { for (const z of [-1.1, 0, 1.1]) { k.part('box', 0, 0.3, z, WOOD, '#8a5a34', { size: [2.9, 0.12, 0.5] }); k.part('box', 0, 0.3, z + 0.28, WOOD, '#8a5a34', { size: [2.9, 0.7, 0.08] }); for (const x of [-1.4, 1.4]) k.part('box', x, 0, z + 0.05, WOOD, '#5b3a22', { size: [0.08, 0.75, 0.6] }); } },
+        /* the wedding altar: a flower arch, the lectern, two candle stands on a round rug */
+        w: k => { k.part('cyl', 0, 0.02, 0, PL, '#f4c0d0', { r: 1.6, h: 0.03, seg: 20 }); for (const x of [-1.1, 1.1]) k.part('cyl', x, 0, -0.9, PL, '#f8f0f0', { r: 0.1, h: 2.1, seg: 8 }); k.part('box', 0, 2.1, -0.9, PL, '#f8f0f0', { size: [2.5, 0.16, 0.25] });
+            for (let i = 0; i < 9; i++) k.part('cyl', -1.2 + i * 0.3, 2.2 + Math.sin(i / 8 * Math.PI) * 0.35, -0.9, PL, ['#f080a0', '#ffffff', '#f8b0c8'][i % 3], { r: 0.2, h: 0.24, seg: 8 });
+            k.prop('lectern', 0, -0.3, 0); for (const x of [-1.35, 1.35]) { k.part('cyl', x, 0, 0.2, GOLD, null, { r: 0.05, h: 1.1, seg: 6 }); k.part('box', x, 1.1, 0.2, null, '#fff2c0', { size: [0.1, 0.2, 0.1], glow: 1 }); } },
         I: k => k.prop('ticket_booth', 0, 0, 0),
         Q: k => k.prop('popcorn_cart', 0, 0, 0),
         E: k => { k.prop('dorm_bed', -0.85, 0, 0); k.prop('dorm_bed', 0.85, 0, 0); },
@@ -479,7 +498,7 @@ module.exports = { build: function (api) {
             if (!KIT[ch]) { console.error('entertainment: no kit for', ch); continue; }
             /* the square looks at its nearest walkway: the front first, then the back, the left, the right (seat rows look where the plan says) */
             let d = [[0, 1], [0, -1], [-1, 0], [1, 0]].find(q => at(c + q[0], r + q[1]) === '.') || [0, 1]; if (ch === 'H' && S.seatFace === 'back') d = [0, -1];
-            if (ch === 'G' || ch === 'F') d = [0, 1];
+            if (ch === 'G' || ch === 'F') d = [0, 1]; if (ch === 'p') d = [0, -1];
             const w = loc(d[0], d[1]), f = ((Math.round(-Math.atan2(w[0], w[1]) / D2R) % 360) + 360) % 360, a = -f * D2R, ca = Math.cos(a), sa = Math.sin(a);
             let i = 0, n = 1; while (at(c - i - 1, r) === ch) i++; while (at(c - i + n, r) === ch) n++;
             const k = { S, r, c, i, n, H, edge: { front: at(c, r + 1) !== ch, back: at(c, r - 1) !== ch },
@@ -527,12 +546,12 @@ module.exports = { build: function (api) {
         b.face('s', -b.hw + 1, b.hw - 1, 2.9, 0.7, null, '#f4ead6', { glow: 0.4 });
     });
     /* ═══ P10-04 CONCERT HALL: the district's landmark. A pale stone podium (its roof walked), a drum, a green dome, a glass lobby, the marquee ═══ */
-    B('P10-04-B1', {}, b => {
+    B('P10-04-B1', { walk: true }, b => {
         b.walls(7, MB3, '#e9e4da'); b.trim(7, 0.5, CS, '#cfc8b8', 0.2, { top: false });
         b.cyl(0, 1.5, 8.6, 7, 6, ST, '#efe8d8', { seg: 28, cap: false }); b.cyl(0, 1.5, 8.85, 12.6, 0.7, GOLD, null, { seg: 28 }); b.dome(0, 1.5, 8.6, 13.3, 4.4, CO, '#3f9c86', { seg: 28, rings: 7, roof: true });
         b.cyl(0, 1.5, 0.6, 17.6, 3.5, GOLD, null, { r2: 0, seg: 8 });
         b.box(0, b.hd - 2.2, 9, 3.2, 7, 9, BR3, '#5a5560');                                                    // the fly tower over the stage (south)
-        b.cyl(0, -b.hd, 5.2, 0, 4.3, GT, '#cfe8ff', { arc: 180, a0: 180, glow: 0.55, seg: 24 }); b.cyl(0, -b.hd, 5.7, 4.3, 0.9, PL, '#b01828', { arc: 180, a0: 180, glow: 0.35, seg: 24 });   // the glass lobby drum + its red fascia
+        for (let i = 0; i <= 8; i++) { const a = (180 + i * 22.5) * D2R, x = Math.cos(a) * 5.2, z = -b.hd + Math.sin(a) * 5.2; if (Math.abs(x - b.door[0]) > 1.3) { b.cyl(x, z, 0.32, 0, 4.3, MB3, '#f4efe4', { seg: 10 }); b.cyl(x, z, 0.45, 0, 0.4, MB3, '#bdb6a8', { seg: 10 }); } }   /* the lobby's open colonnade (it was a glass drum: the doorway is behind it now) */ b.cyl(0, -b.hd, 5.7, 4.3, 0.9, PL, '#b01828', { arc: 180, a0: 180, glow: 0.35, seg: 24 });   // the glass lobby drum + its red fascia
         b.box(0, -b.hd - 1.4, 25, 2.6, 4.3, 0.9, PL, '#b01828', { glow: 0.35, under: true });                  // the marquee's wings
         for (const s of [-1, 1]) { b.cyl(s * 12, -b.hd - 2.3, 0.3, 0, 4.3, MB, '#555', { seg: 8 }); b.face('n', s * 9.6 - 2.6, s * 9.6 + 2.6, 4.36, 0.78, null, '#fff6d0', { glow: 0.9, proud: 2.75 }); }
         b.box(0, -b.hd - 0.6, 2.8, 1.6, 5.2, 9, PL, '#b01828', { glow: 0.45 });                                // the blade sign
@@ -600,7 +619,7 @@ module.exports = { build: function (api) {
         b.face('n', -b.hw + 1.5, b.hw - 1.5, 0.8, 1.8, GR, '#ffe6b0', GLOW);
     });
     /* ═══ P11-05 FILM STUDIO: a cream sound stage under a great vault, the front office (its roof walked), the blue stage door, the water tower ═══ */
-    B('P11-05-B1', {}, b => {
+    B('P11-05-B1', { walk: true }, b => {
         b.walls(7, ST, '#f2e6c8'); b.trim(7, 0.45, PL, '#b03020', 0.12, { top: false });
         b.face('n', -b.hw + 1, b.hw - 1, 4.2, 2, GS, '#ffe6b0', GLOW);
         const sd = b.hd * 2 - 10.5;                                                                            // the stage: the back 17.5 m (the north 10.5 m stay the walked roof)
@@ -712,13 +731,18 @@ module.exports = { build: function (api) {
     /* the VHS shop (the pack's whole building, real size 14.9 x 13.6 m, its entrance at +Z): on the yard south-west of the Costume shops, its
        entrance to the walk on its east (a prop's face turns it clockwise like a building's rot: 270 = the front to the east) */
     { const p = plot(9, 4), x = p.x(3), z = p.z(9.2); clearProps(x - 7, z - 7.6, x + 7, z + 7.6); props.push({ key: 'city_vhs_shop', x, z, face: 270 }); }
-    /* THE STRIP'S WEDDING CHAPEL (the Strip's own landmark, carried over): white, a pink roof, a little steeple, on the yard west of the Cinema */
-    { const p = plot(11, 7), x = p.x(3), z = p.z(2); clearProps(x - 5.4, z - 3.6, x + 5.4, z + 3.6);   // squares 1..4 x 1..2, filled
-      free('chapel', x, z, P => {
-        P('box', 0, 0, 0, ST, '#fbf6ee', { size: [10.4, 4.4, 6.9], top: false }); P('roof', 0, 4.4, 0, CO, '#e88aa8', { form: 'gable', size: [10.4, 2.6, 6.9], over: 0.4, keyEnd: ST, tintEnd: T('#fbf6ee', ST), roof: true });
-        P('box', 3.6, 0, 2.3, ST, '#fbf6ee', { size: [2.4, 8.2, 2.4] }); P('roof', 3.6, 8.2, 2.3, CO, '#e88aa8', { form: 'pyramid', size: [2.4, 3.4, 2.4], over: 0.25, roof: true }); P('cyl', 3.6, 11.5, 2.3, GOLD, null, { r: 0.18, r2: 0, h: 1.4, seg: 6 });
-        P('quad', -1.2, 0.5, 3.51, GS, '#ffd0e0', { size: [5.6, 2.2], glow: 0.55 }); P('quad', -1.2, 3.1, 3.52, null, '#ff80b0', { size: [5.6, 0.7], glow: 1 }); parts_txt(P, -1.2, 3.14, 3.55, 0, 5.2, 0.62, 'WEDDING CHAPEL', '#7a1038'); P('quad', 3.6, 0, 3.56, U('DoorWoodenHalf1a'), '#ffffff', { size: [1.75, 2.45], uv: 'fit', kind: 'wall' });
-      }); ghost(x, z, 10.4, 6.9, 4.4); }
+    /* THE STRIP'S WEDDING CHAPEL (the Strip's own landmark, carried over): white, a pink roof, a little steeple over its door, on the yard west of
+       the Cinema. A walk-in shell of this file's own (the plan holds no chapel): squares 1..3 x 1..2 of plot P11-07, its front to the south walk. */
+    { const p = plot(11, 7), x = p.x(2.5), z = p.z(2); clearProps(x - 5.4, z - 3.6, x + 5.4, z + 3.6);
+      EXTRA['E-chapel'] = { id: 'E-chapel', name: 'Wedding chapel', plot: 'P11-07', cx0: 11 * 12 + 1, cy0: 7 * 12 + 1, cw: 3, ch: 2, side: 'S' };
+      features.push({ k: 'texbuilding', id: 'dc:E-chapel', seed: 77, x, z, w: 10.5, d: 7, rot: 0, storeys: 1 });
+      B('E-chapel', { walk: true, st: 1, leaf: 'leaf_motel' }, b => {
+        b.walls(3.6, ST, '#fbf6ee'); b.plinth(0.5, MB3, '#e0c8d0'); b.roof('gable', 0, 0, b.hw * 2, b.hd * 2, 3.6, 2.6, CO, '#e88aa8', { ridge: 'x', over: 0.4, keyEnd: ST, tintEnd: T('#fbf6ee', ST) });
+        b.box(b.door[0], b.hd - 1.2, 2.4, 2.4, 4.6, 3.4, ST, '#fbf6ee'); b.roof('pyramid', b.door[0], b.hd - 1.2, 2.4, 2.4, 8.0, 3.2, CO, '#e88aa8', { over: 0.25 }); b.cyl(b.door[0], b.hd - 1.2, 0.18, 11.1, 1.4, GOLD, null, { r2: 0, seg: 6 });
+        for (const sg of [-1, 1]) { const u = b.door[0] + sg * 3.1; b.face('s', u - 1.3, u + 1.3, 0.7, 1.9, GS, '#ffd0e0', { glow: 0.55 }); b.frames('s', u - 1.3, u + 1.3, 0.7, 1.9, 2, '#e88aa8'); }
+        b.face('s', b.door[0] - 2.6, b.door[0] + 2.6, 2.75, 0.62, null, '#ff80b0', { glow: 1 }); b.txt('s', b.door[0] - 2.5, b.door[0] + 2.5, 2.78, 0.56, 'WEDDING CHAPEL', '#7a1038', 0.11);
+        b.lamp('s', b.door[0] - 1.3, 2.0, '#ffd0e0'); b.lamp('s', b.door[0] + 1.3, 2.0, '#ffd0e0'); b.pipe('n', b.hw - 0.4, 3.6, '#e0c8d0'); b.wac('n', -2, 2.2); b.gutter('n', 3.6, 0.4, '#e0c8d0'); b.gutter('s', 3.6, 0.4, '#e0c8d0');
+      }); }
     /* THE STRIP'S FOUNTAIN (carried over): a round basin, two tiers, lit water, two palms, on the yard south-west of the Recording studio */
     { const p = plot(11, 4), x = p.x(3), z = p.z(9); clearProps(x - 6.9, z - 6.9, x + 6.9, z + 6.9);   // the basin fills squares 2..3 x 8..9
       free('fountain', x, z, P => {
