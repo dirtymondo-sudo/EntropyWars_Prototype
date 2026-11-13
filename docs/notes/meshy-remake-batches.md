@@ -96,3 +96,20 @@ witch's hat, valkraye's wings, succubus horns + tail, swordfighter's katana, sid
 Weakest, for the next pass: superhero F's cape, scarecrow's head (needs a sack), succubus bits by the hands, professor's painted glasses.
 Probe lesson: the look probe at half size (450 x 550 viewport) is about 3x faster and survives two browsers; the first unit of a run
 is shot while still loading, so put a throwaway unit first. Not seen: any of them in a battle, on WebGPU, or on the other four bodies.
+
+### Batch 3, mondo's review of sheet 1 (2026-11-13, same thread)
+- Popstar ("surely theres a bra ... in the underwear section", "her feet are poking out of her heels"): top = creator `mhw_joepal_plain_bra`
+  tinted white. THE FOOT IN THE HEEL (three-renderer.js skinCover): the skin a SHOE's own delete list names is hidden whole (a pack heel
+  is made round a foot on tiptoe; the flat forefoot lay outside it). Every pack shoe, every body.
+- Santa ("make his head bigger or add a head size slider"): THE HEAD SIZE = FACE > Head > Size (`appearance.headSize`, -1..1 = 50..150 %,
+  the head BONE scaled in the rig's tick, so hair / beard / hats / eyes follow). Santa 0.8. A random face leaves it at 0.
+- Priest ("add a cross necklace"): creator `ewm_crosspendant`.
+- Nun ("hair or hood looks messed up"): her head was bare under the coif; creator `mh_short01` brown under the veil.
+- Spy ("dress straps are messed up, hand looks disconnected"): her halter straps are painted on the T2 skin and went with it. Bake
+  `TOPCUT=0.30` (dress cut level), `ARMALLX=0.3` (painted bracelet off the bare arm), `DROP` (shoulder lump, loose bracelet, underarm
+  pouch); straps = creator `mhw_punkduck_brazilian_bikini_bra` tinted red under the dress. Six creator dresses tried: all worse.
+- Politician ("neck or shirt seam looks jagged"): NOT FIXED. The collar piece is smooth at rest; the body's wider neck crosses the cloth cup
+  Meshy closes the collar with. Tried and thrown away: smoothing the collar's edge (no change), hiding the neck under it (the hidden
+  skin's edge scallops), laying the cup on the neck (z-fight at the throat). Next: a creator shirt + tie under a T2 jacket, or a new T2 run.
+- THE MESHY HANDS (coordinator, from batch 1: "fingers look messed up"): bake `HANDCUT=1` cuts a bare hand fused to its sleeve so the
+  body's hand shows: politician, priest, shaman, superhero F. Gloved units keep their gloves.
