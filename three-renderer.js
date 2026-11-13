@@ -34755,17 +34755,31 @@ const ThreeRenderer = (function () {
         //    sky) and to a sky event (the blood moon shows through). The map tint below still washes it.
         '  float dayK=clamp(uSkyDay,0.0,1.0)*(1.0-night*0.9)*(1.0-uSkyAmt*0.7)*(1.0-bsun)*(1.0-0.7*lun);\n' +
         '  if(dayK>0.001){ float h=clamp(el,-1.0,1.0); float dcl=clamp(uSkyClouds+wStorm*0.85,0.0,1.0);\n' +
-        // 2026-09-22 (the user: "the city sky is too bright"): the horizon band a notch deeper and bluer, the ground haze below it darker —
-        // the pale near-white horizon read as a glowing band once the fog washed into it (the bloom no longer touches it, THE HDR BLOOM)
-        '    vec3 zen=vec3(0.17,0.42,0.88); vec3 hor=vec3(0.58,0.72,0.92); vec3 below=vec3(0.48,0.56,0.68);\n' +
-        '    vec3 dsky=mix(hor,zen,pow(smoothstep(0.0,1.0,h),0.55)); dsky=mix(below,dsky,smoothstep(-0.22,0.02,h));\n' +
-        '    dsky+=vec3(1.0,0.97,0.88)*smoothstep(0.045,0.030,sa)*2.4*(1.0-dcl*0.8);\n' +
-        '    dsky+=vec3(1.0,0.90,0.70)*exp(-sa*4.0)*0.55*(1.0-dcl*0.6)+vec3(1.0,0.95,0.85)*exp(-sa*1.4)*0.12;\n' +
-        '    float cl=fbmW(nd*vec2(3.2,5.0)+vec2(t*0.006+uSkyFlow,0.0),6.4,nd.x)+0.5*fbmW(nd*vec2(7.0,11.0)-vec2(t*0.004,0.3),14.0,nd.x);\n' +
-        '    float cover=smoothstep(0.66-0.40*dcl,0.96-0.34*dcl,cl)*smoothstep(-0.02,0.12,h)*step(0.001,dcl);\n' +
-        '    vec3 cloudC=mix(vec3(0.80,0.82,0.88),vec3(1.0),smoothstep(0.55,1.0,cl)); cloudC=mix(cloudC,cloudC*0.70,dcl*0.55*(1.0-smoothstep(0.7,1.0,cl)));\n' +
-        '    dsky=mix(dsky,cloudC,cover*0.92);\n' +
-        '    float dlum=dot(dsky,vec3(0.299,0.587,0.114)); dsky=mix(dsky,vec3(dlum)*vec3(0.92,0.95,1.02),dcl*0.45); dsky*=1.0-0.30*wStorm;\n' +
+        // ── THE BLUE DAY (2026-11-13, mondo: "the daytime sky ... looks too cloudy and washed out, like it looks very white. i want
+        //    blue sunny skies with realistic fluffy clouds"): the board's camera only ever sees the LOW sky, and there the old
+        //    dome was its pale horizon colour under a soft sheet of fbm haze (about half the sky at clouds 0.3), then washed
+        //    toward the row's pale tint. Now: a saturated blue all the way down (only a thin paler band on the horizon itself);
+        //    the clouds are cumulus on a flat layer overhead (rd.xz over the altitude: puffs shrink and stack toward the
+        //    horizon, no az seam), crisp-edged heaps with clear blue between, sunlit white on the sun's side and blue-grey in
+        //    their shade; clouds 0.3 = about a quarter of the sky. A cover past ~0.55 still closes into the grey overcast
+        //    (Antarctica, the haunted grounds, a storm). The map tint washes a day sky far less (see the wash below). ──
+        '    float ovc=smoothstep(0.55,0.95,dcl);\n' +
+        '    vec3 zen=vec3(0.06,0.25,0.72); vec3 hor=vec3(0.30,0.56,0.92); vec3 rim=vec3(0.55,0.74,0.95); vec3 below=vec3(0.38,0.52,0.72);\n' +
+        '    vec3 dsky=mix(hor,zen,pow(smoothstep(0.0,1.0,h),0.60)); dsky=mix(dsky,rim,exp(-max(h,0.0)*14.0)*0.85); dsky=mix(below,dsky,smoothstep(-0.22,0.02,h));\n' +
+        '    vec2 cp=rd.xz/(max(h,0.0)+0.14)*1.9+vec2(t*0.004+uSkyFlow,uSkyLift*0.5);\n' +
+        '    vec2 sdir=normalize(sunDir.xz+vec2(1e-4))*0.10;\n' +
+        '    float cdet=fbm(cp*3.3+vec2(7.3,1.9)-vec2(t*0.003,0.0));\n' +
+        '    float cd=fbm(cp)*0.76+cdet*0.24; float cd2=fbm(cp+sdir)*0.76+cdet*0.24;\n' +
+        '    float thr=0.60-0.20*dcl-0.14*ovc; float cfade=smoothstep(0.015,0.10,h)*step(0.001,dcl);\n' +
+        '    float cover=smoothstep(thr,thr+0.07,cd)*cfade;\n' +
+        '    float lit=clamp(0.58+(cd-cd2)*9.0,0.0,1.0); float core=smoothstep(thr+0.06,thr+0.26,cd);\n' +
+        '    vec3 cloudC=mix(vec3(0.55,0.63,0.78),vec3(0.98,0.98,0.96),lit); cloudC=mix(cloudC,cloudC*vec3(0.80,0.83,0.90),core*0.55);\n' +
+        '    cloudC=mix(cloudC,vec3(0.62,0.65,0.70)*(0.75+0.35*lit),ovc*0.8); cloudC=mix(cloudC,mix(rim,cloudC,0.55),exp(-max(h,0.0)*9.0));\n' +
+        '    dsky+=vec3(1.0,0.97,0.88)*smoothstep(0.045,0.030,sa)*2.4*(1.0-ovc*0.8)*(1.0-cover*0.9);\n' +
+        '    dsky+=(vec3(1.0,0.90,0.70)*exp(-sa*4.0)*0.40*(1.0-ovc*0.6)+vec3(1.0,0.95,0.85)*exp(-sa*1.4)*0.08)*(1.0-cover*0.6);\n' +
+        '    cloudC+=vec3(1.0,0.95,0.82)*exp(-sa*3.0)*0.22*(1.0-core)*(1.0-ovc);\n' +
+        '    dsky=mix(dsky,cloudC,cover*0.96);\n' +
+        '    float dlum=dot(dsky,vec3(0.299,0.587,0.114)); dsky=mix(dsky,vec3(dlum)*vec3(0.92,0.95,1.02),ovc*0.55); dsky*=1.0-0.30*wStorm;\n' +
         '    col=mix(col,dsky,dayK); }\n' +
         // ── THE PAINTED SKY (2026-10-24, mondo's 80s/90s anime watercolour skies, data.js HQ_PAINTED_SKIES): his painting takes
         //    the place of the cosmic / day sky above. A strip 360° round: u = the bearing (the seam straight behind the board, the
@@ -34798,8 +34812,9 @@ const ThreeRenderer = (function () {
         '    col=mix(col,col*vec3(1.25,0.82,0.62)+vec3(0.30,0.12,0.05)*toSun,clamp(uDusk*lowB*0.85,0.0,1.0)*(1.0-clamp(uPaintAmt,0.0,1.0)*uPaintDuskOn)); }\n' +
         // ── per-map sky wash (state.mapEnv.tint): pull the dome toward the
         //    map's palette; highlights (sun/moon/stars) still modulate it ──
+        //    THE BLUE DAY (2026-11-13): a day sky keeps its blue: the wash is cut to 45% on the horizon, 15% from 17 deg up
         '  if(uMapTintAmt>0.001){ float ml=dot(col,vec3(0.299,0.587,0.114));\n' +
-        '    col=mix(col,uMapTint*(0.45+1.10*ml),clamp(uMapTintAmt,0.0,1.0)*(1.0-clamp(uPaintAmt,0.0,1.0))); }\n' +
+        '    col=mix(col,uMapTint*(0.45+1.10*ml),clamp(uMapTintAmt,0.0,1.0)*(1.0-clamp(uPaintAmt,0.0,1.0))*(1.0-dayK*mix(0.55,0.85,smoothstep(0.0,0.30,el)))); }\n' +
         // ── THE TOTAL SOLAR ECLIPSE (2026-10-17, mondo: "make the celestial events look more realistic and badass"): drawn
         //    last (display space) so no day sky or map tint washes it. Daylight collapses to a deep eclipse twilight with a
         //    sunset glow on every horizon; the moon's disc is pitch black; the pearly corona streams out of it (broad helmet
@@ -47709,16 +47724,27 @@ const ThreeRenderer = (function () {
                 var dayK = T.clamp(Day, 0, 1).mul(one.sub(night.mul(0.9))).mul(one.sub(Amt.mul(0.7))).mul(one.sub(bsun)).mul(one.sub(lun.mul(0.7))).toVar();
                 T.If(dayK.greaterThan(0.001), function () {
                     var h = T.clamp(el, -1, 1).toVar(), dcl = T.clamp(Clouds.add(wStorm.mul(0.85)), 0, 1).toVar();
-                    var dsky = T.mix(V3(0.58, 0.72, 0.92), V3(0.17, 0.42, 0.88), T.pow(ss(0, 1, h), 0.55)).toVar();
-                    dsky.assign(T.mix(V3(0.48, 0.56, 0.68), dsky, ss(-0.22, 0.02, h)));
-                    dsky.addAssign(V3(1, 0.97, 0.88).mul(ss(0.045, 0.03, sa)).mul(2.4).mul(one.sub(dcl.mul(0.8))));
-                    dsky.addAssign(V3(1, 0.9, 0.7).mul(T.exp(sa.mul(-4))).mul(0.55).mul(one.sub(dcl.mul(0.6))).add(V3(1, 0.95, 0.85).mul(T.exp(sa.mul(-1.4))).mul(0.12)));
-                    var cl = fbmW(nd.mul(V2(3.2, 5)).add(V2(t.mul(0.006).add(Flow), 0)), 6.4, nd.x).add(fbmW(nd.mul(V2(7, 11)).sub(V2(t.mul(0.004), 0.3)), 14, nd.x).mul(0.5)).toVar();
-                    var cover = ss(F(0.66).sub(dcl.mul(0.4)), F(0.96).sub(dcl.mul(0.34)), cl).mul(ss(-0.02, 0.12, h)).mul(T.step(0.001, dcl));
-                    var cloudC = T.mix(V3(0.8, 0.82, 0.88), V3(1), ss(0.55, 1, cl)).toVar();
-                    cloudC.assign(T.mix(cloudC, cloudC.mul(0.7), dcl.mul(0.55).mul(one.sub(ss(0.7, 1, cl)))));
-                    dsky.assign(T.mix(dsky, cloudC, cover.mul(0.92)));
-                    dsky.assign(T.mix(dsky, V3(L.lum(dsky)).mul(V3(0.92, 0.95, 1.02)), dcl.mul(0.45))); dsky.mulAssign(one.sub(wStorm.mul(0.3)));
+                    /* THE BLUE DAY (2026-11-13): the GLSL block (see _envDomeFS), keep the numbers in step */
+                    var ovc = ss(0.55, 0.95, dcl).toVar(), hp = T.max(h, 0).toVar(), rim = V3(0.55, 0.74, 0.95);
+                    var dsky = T.mix(V3(0.30, 0.56, 0.92), V3(0.06, 0.25, 0.72), T.pow(ss(0, 1, h), 0.60)).toVar();
+                    dsky.assign(T.mix(dsky, rim, T.exp(hp.mul(-14)).mul(0.85)));
+                    dsky.assign(T.mix(V3(0.38, 0.52, 0.72), dsky, ss(-0.22, 0.02, h)));
+                    var cp = V2(rd.x, rd.z).div(hp.add(0.14)).mul(1.9).add(V2(t.mul(0.004).add(Flow), Lift.mul(0.5))).toVar();
+                    var sdir = T.normalize(V2(sunDir.x, sunDir.z).add(1e-4)).mul(0.10);
+                    var cdet = fbm(cp.mul(3.3).add(V2(7.3, 1.9)).sub(V2(t.mul(0.003), 0))).toVar();
+                    var cd = fbm(cp).mul(0.76).add(cdet.mul(0.24)).toVar(), cd2 = fbm(cp.add(sdir)).mul(0.76).add(cdet.mul(0.24)).toVar();
+                    var thr = F(0.60).sub(dcl.mul(0.20)).sub(ovc.mul(0.14)).toVar(), cfade = ss(0.015, 0.10, h).mul(T.step(0.001, dcl));
+                    var cover = ss(thr, thr.add(0.07), cd).mul(cfade).toVar();
+                    var lit = T.clamp(cd.sub(cd2).mul(9).add(0.58), 0, 1).toVar(), core = ss(thr.add(0.06), thr.add(0.26), cd).toVar();
+                    var cloudC = T.mix(V3(0.55, 0.63, 0.78), V3(0.98, 0.98, 0.96), lit).toVar();
+                    cloudC.assign(T.mix(cloudC, cloudC.mul(V3(0.80, 0.83, 0.90)), core.mul(0.55)));
+                    cloudC.assign(T.mix(cloudC, V3(0.62, 0.65, 0.70).mul(lit.mul(0.35).add(0.75)), ovc.mul(0.8)));
+                    cloudC.assign(T.mix(cloudC, T.mix(rim, cloudC, 0.55), T.exp(hp.mul(-9))));
+                    dsky.addAssign(V3(1, 0.97, 0.88).mul(ss(0.045, 0.03, sa)).mul(2.4).mul(one.sub(ovc.mul(0.8))).mul(one.sub(cover.mul(0.9))));
+                    dsky.addAssign(V3(1, 0.9, 0.7).mul(T.exp(sa.mul(-4))).mul(0.40).mul(one.sub(ovc.mul(0.6))).add(V3(1, 0.95, 0.85).mul(T.exp(sa.mul(-1.4))).mul(0.08)).mul(one.sub(cover.mul(0.6))));
+                    cloudC.addAssign(V3(1, 0.95, 0.82).mul(T.exp(sa.mul(-3))).mul(0.22).mul(one.sub(core)).mul(one.sub(ovc)));
+                    dsky.assign(T.mix(dsky, cloudC, cover.mul(0.96)));
+                    dsky.assign(T.mix(dsky, V3(L.lum(dsky)).mul(V3(0.92, 0.95, 1.02)), ovc.mul(0.55))); dsky.mulAssign(one.sub(wStorm.mul(0.3)));
                     col.assign(T.mix(col, dsky, dayK));
                 });
                 T.If(PAmt.greaterThan(0.001), function () {
@@ -47754,7 +47780,7 @@ const ThreeRenderer = (function () {
                 });
                 T.If(MTintA.greaterThan(0.001), function () {
                     var ml = L.lum(col);
-                    col.assign(T.mix(col, MTint.mul(ml.mul(1.1).add(0.45)), T.clamp(MTintA, 0, 1).mul(one.sub(T.clamp(PAmt, 0, 1)))));
+                    col.assign(T.mix(col, MTint.mul(ml.mul(1.1).add(0.45)), T.clamp(MTintA, 0, 1).mul(one.sub(T.clamp(PAmt, 0, 1))).mul(one.sub(dayK.mul(T.mix(0.55, 0.85, ss(0, 0.30, el)))))));   // THE BLUE DAY: a day sky keeps its blue
                 });
                 /* THE TOTAL SOLAR ECLIPSE: the GLSL block (see _envDomeFS) */
                 T.If(bsun.greaterThan(0.001), function () {

@@ -469,6 +469,22 @@ it does nothing, so it just needs to not show up. Happens on walls and stuff".
 - Fix: battle.js `fieldCellRock(x, y)` (beside fieldCellFixed, same field lookup: the encounter's field, else the arena's) and
   map.js `unitCanTraverse` refuses it, so move / jump ranges, paths, the AI and previews all agree. Map geometry untouched.
 
+## THE BLUE DAY (2026-11-13, mondo: "the daytime sky ... looks too cloudy and washed out, like it looks very white. i want blue sunny skies with realistic fluffy clouds")
+- CAUSE: the board camera only sees the LOW sky. There the day dome was its pale horizon colour (0.58, 0.72, 0.92), under a soft fbm
+  haze sheet covering about half the sky at `clouds: 0.3` (drawn on az / el, so it smeared sideways), then washed 25-40% toward the
+  row's pale `tint`. Scene Fog is off, so the horizon haze band was not part of it.
+- NOW (three-renderer.js `_envDomeFS` "THE BLUE DAY" + the TSL twin in `reg(_envDomeFS(), 'sky dome')`, keep in step): zenith
+  (0.06, 0.25, 0.72), low sky (0.30, 0.56, 0.92), only a thin paler rim on the horizon itself. Clouds = cumulus on a flat layer
+  (`rd.xz / (h + 0.14) * 1.9`: puffs shrink and stack toward the horizon, no az seam), 3 fbm reads: crisp cover threshold
+  `0.60 − 0.20 × clouds − 0.14 × overcast`, lit side from the density step toward the sun (`cd − cd2`), blue-grey shade, darker cores.
+  `clouds` 0.3 = about a quarter of the sky; past ~0.55 (`ovc`) it still closes into the grey overcast (Antarctica, the haunted
+  grounds, a storm). The map tint washes a day sky far less (× 0.45 on the horizon, × 0.15 from 17° up, scaled by dayK), so the
+  desert rows are blue with a little warm at the rim. Night, dusk, the events, the painted skies and the fog band are untouched;
+  no data rows changed (a row's `clouds` is still the dial).
+- Headroom: the lit cloud tops stop at 0.98 and the sun glow was cut 0.55 → 0.40, since his Mac (WebGPU) renders brighter.
+- Bench used: a standalone WebGL page running the old and new `_envDomeFS` on a full-screen quad (fast to iterate), then the boards.
+  Proof: /mnt/project-files/blue-day-sky/.
+
 ## THE SKY SEAM (2026-10-14)
 mondo: "there is a seam in the sky that has been there since the very beginning ... right down the middle of the sky
 from the view of when the camera looks up at the zodiac signs." ROOT CAUSE: `_envDomeFS` (and its TSL twin, 'sky dome')
