@@ -2150,3 +2150,16 @@ rerun `node bake-disaster-city.js` after any edit.
   so a shell's drawn walls must reach that height. NOT SEEN IN THE GAME: the cloud browser timed out on the full city; checked by drawing
   the baked rows with the game's own `_hqArchGeometry` offline (/mnt/project-files/dc-entertainment/). Tints and the VHS shop's facing
   want a look on mondo's Mac.
+
+### HERO PLAZA, proven in the game (2026-11-13 evening) — four things the first bake got wrong
+- **A roof-route building's arch row needs `y: 0`.** An arch row with no `y` stands on the ground under its origin, and under a roof-route
+  `plateau` that ground is the 7 m roof: the Training hall, Transit court and Office annex floated on a dark terrace block. districts/H.js
+  writes `y: 0` on every arch row whose collision row is a plateau.
+- **The tool's back-lot infill** (`dc:in<n>`, the same pack sheet over and over) stood on the plaza's north edge in front of the Workshop
+  store and the pizzeria's corner; `build()` drops the infill rows in that band (by place, not by number). The other infill rows stay.
+- **A tint multiplies the sheet**, so a blue tint on the red corrugated sheet (MetalCorrugatedPainted2a) is near black: the yard wears the
+  blue sheet (…5a), the slate townhouse roofs the grey one (…1a). Pick a sheet of the colour, then tint.
+- **The shade lift**: every textured part with no glow of its own gets `glow: 0.16` (`LIFT`), since a sheet in the city's shade read near
+  black in the headless browser. The city_pizzeria prop's entrance faces the plaza with `face: 180` on the N side (proven on screen).
+- Probe recipe that worked: scratch copy of playtest_city.js, routed responses one at a time, 320x200 while loading, then 1280x800;
+  first-person views with `ThreeRenderer.hq.dev.lookAt(x, z, pitch)` in the view's `eval`, overviews with `y: 55`.

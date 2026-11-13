@@ -9,7 +9,7 @@
 const U = n => 'urban:' + n;
 const STUCCO = U('PlasterWallStucco2a'), PLASTER = U('PlasterWallPainted1b'), CONC = U('ConcreteStriped2a'), CONC1 = U('ConcreteStriped1c'), TILE = U('TileSubway1a');
 const G_TALL = U('GlassWindowTall1a'), G_SQ = U('GlassWindowSquare1a'), G_FAC = U('GlassWindowFactory1a'), G_RES = U('GlassWindowResidential1a'), G_RES2 = U('GlassWindowResidential2a');
-const CORR = U('MetalCorrugatedPainted1a'), CORR2 = U('MetalCorrugatedPainted2a'), BRICK = 'bricks_3', MARBLE = 'marble_light', ALU = 'aluminium', GOLD = 'gold', WOOD = 'wood_planks', COBBLE = 'cobblestone', METAL = 'metal';
+const CORR = U('MetalCorrugatedPainted1a'), CORR2 = U('MetalCorrugatedPainted2a'), CORR5 = U('MetalCorrugatedPainted5a'), BRICK = 'bricks_3', MARBLE = 'marble_light', ALU = 'aluminium', GOLD = 'gold', WOOD = 'wood_planks', COBBLE = 'cobblestone', METAL = 'metal';
 const SIDE_RY = { S: 0, W: 90, N: 180, E: 270 };
 
 /* one building's parts, written with short helpers (x, z = the part's middle; y = its foot) */
@@ -140,7 +140,7 @@ B['P07-05-B1'] = { row: { storeys: 2, leaf: 'leaf_security' }, parts(door) { con
 
 /* 13 · APARTMENT STAIR — the tenement whose street face is an iron stair: landings, flights, rails; a wooden water tower on the roof */
 B['P04-06-B1'] = { row: { storeys: 2, leaf: 'leaf_shabby_wood' }, parts(door) { const a = sheet(), h = 21, IR = 0x3a3a40;
-    a.shell(14, 3.5, 24.5, BRICK, 0x9a5048, door); a.box(0, 3.5, 0, 14.1, h - 3.5, 24.6, G_RES2, 0xc87060, { top: false, glow: 0.12 }); a.box(0, h, 0, 15.1, 0.7, 25.6, ALU, 0xe4d8be, { under: true });
+    a.shell(14, 3.5, 24.5, BRICK, 0xd88470, door); a.box(0, 3.5, 0, 14.1, h - 3.5, 24.6, G_RES2, 0xffb098, { top: false, glow: 0.12 }); a.box(0, h, 0, 15.1, 0.7, 25.6, ALU, 0xe4d8be, { under: true });
     for (let i = 0; i < 5; i++) { const y = 3.5 + i * 3.5, s = i % 2 ? 1 : -1;
         a.box(8.15, y, 0, 2.2, 0.14, 13, METAL, IR, { under: true }); a.box(9.2, y, 0, 0.07, 1.1, 13, METAL, IR);
         if (i < 4) for (let k = 0; k < 8; k++) a.box(7.6, y + (k + 1) * 0.4, s * (4.2 - k * 1.05), 0.9, 0.1, 1.05, METAL, IR, { under: true }); }
@@ -151,7 +151,7 @@ B['P04-06-B1'] = { row: { storeys: 2, leaf: 'leaf_shabby_wood' }, parts(door) { 
 /* 14 · TOWNHOUSE ROW — three joined houses, each its own colour and gable, stoops and painted doors on the north walk */
 B['P04-06-B2'] = { row: { solid: true }, parts() { const a = sheet(), T = [0xe08a72, 0xf0dca0, 0x88a8c4], DR = [0x3a6a48, 0x8a2a2a, 0x2a427a];
     for (let i = 0; i < 3; i++) { const x = -5.85 + i * 5.85, hh = 10.5 + (i === 1 ? 1.2 : 0), key = i === 1 ? PLASTER : BRICK;
-        a.box(x, 0, 0, 5.85, hh, 17.6, key, T[i], { top: false }); a.roof('gable', x, hh, 0, 17.6, 3, 5.85, CORR2, i === 1 ? 0xa85048 : 0x586878, { ry: 90, over: 0.25, keyEnd: key, tintEnd: T[i] });
+        a.box(x, 0, 0, 5.85, hh, 17.6, key, T[i], { top: false }); a.roof('gable', x, hh, 0, 17.6, 3, 5.85, i === 1 ? CORR2 : CORR, i === 1 ? 0xe07060 : 0x8098b0, { ry: 90, over: 0.25, keyEnd: key, tintEnd: T[i] });
         a.box(x, 0, -9.6, 2.4, 0.5, 1.6, MARBLE, 0xd8d0c0); a.box(x - 0.9, 0.5, -8.86, 1.1, 2.3, 0.12, WOOD, DR[i]); a.box(x + 1.2, 1.4, -8.86, 1.5, 1.6, 0.1, G_SQ, 0xd8ecf8);
         for (const y of [4.6, 7.8]) for (const o of [-1.3, 1.3]) a.box(x + o, y, -8.86, 1.3, 1.8, 0.1, G_SQ, 0xd8ecf8); }
     return a.P; } };
@@ -197,8 +197,8 @@ B['P05-07-B2'] = { row: { replace: [{ dx: -4.5, dz: 0, w: 5.2, d: 5.2 }, { dx: 4
     return a.P; } };
 
 /* 21 · DELIVERY YARD — the depot: blue-grey corrugated under a single-pitch roof, four roller shutters, a raised dock and its canopy (north) */
-B['P07-07-B1'] = { row: { storeys: 1, leaf: 'leaf_security' }, parts(door) { const a = sheet(), BL = 0x9ab4cc, RD = 0xc85a48;
-    a.shell(31.5, 6, 10.5, CORR2, BL, door); a.roof('shed', 0, 6, 0, 31.6, 2.4, 10.6, CORR, RD, { ry: 180, keyEnd: CORR2, tintEnd: BL });
+B['P07-07-B1'] = { row: { storeys: 1, leaf: 'leaf_security' }, parts(door) { const a = sheet(), BL = 0xe0ecf8, RD = 0xc85a48;
+    a.shell(31.5, 6, 10.5, CORR5, BL, door); a.roof('shed', 0, 6, 0, 31.6, 2.4, 10.6, CORR, RD, { ry: 180, keyEnd: CORR5, tintEnd: BL });
     for (const x of [-13, -8.2, 8.2, 13]) a.box(x, 0.2, -5.36, 4, 3.6, 0.12, ALU, 0xd6dade); a.box(0, 4.6, -6.8, 31.5, 0.3, 3, CORR, RD, { under: true });
     return a.P; } };
 
@@ -245,6 +245,10 @@ const PACK_W = { pack_bld_08: 15.52, pack_bld_09: 16.89 };
 function build(ctx) {
     const { PLAN, features, props, bInfo, r3, C } = ctx, M = { district: 'H', B, OPEN, SWAP }; let nArch = 0;
     const R3 = v => typeof v === 'number' ? Math.round(v * 1000) / 1000 : Array.isArray(v) ? v.map(R3) : (v && typeof v === 'object') ? Object.fromEntries(Object.entries(v).map(e => [e[0], R3(e[1])])) : v;
+    /* the shade lift: a sheet in the city's shade reads near black, so every textured part keeps a little of its own light */
+    const LIFT = ps => ps.map(p => (p.key && !(p.glow > 0)) ? Object.assign({}, p, { glow: 0.16 }) : p);
+    /* the tool's back-lot infill on the plaza's north edge stood in front of the Workshop store and the pizzeria's corner: off */
+    for (let i = features.length - 1; i >= 0; i--) { const f = features[i]; if (f.k === 'texbuilding' && /^dc:in\d+$/.test(f.id || '') && f.x > -42 && f.x < 0 && f.z > -45 && f.z < -38) features.splice(i, 1); }
     const ROT = { S: 0, W: 90, N: 180, E: 270 }, SIDE_OF = { 0: 'S', 90: 'W', 180: 'N', 270: 'E' };
     const planB = id => { for (const p of PLAN.plots) { const b = p.buildings.find(q => q.id === id); if (b) return b; } return null; };
     const doorOf = row => { if (!row || row.k !== 'texbuilding' || !row.hollow) return null;   // data.js hqTexbDoor, in the row's own frame
@@ -271,11 +275,11 @@ function build(ctx) {
                 if (S.storeys) row.storeys = S.storeys; else if (S.solid) row.storeys = 2;
                 if (S.leaf) row.leaf = S.leaf;
             }
-            if (def.parts) { features.push({ k: 'arch', id: 'arch:' + bid, x: c.x, z: c.z, rot: 0, parts: R3(def.parts((S.remove || S.replace) ? null : doorOf(row), c)) }); nArch++; }
+            if (def.parts) { features.push({ k: 'arch', id: 'arch:' + bid, x: c.x, z: c.z, rot: 0, ...(row.k === 'plateau' ? { y: 0 } : {}), parts: LIFT(R3(def.parts((S.remove || S.replace) ? null : doorOf(row), c))) }); nArch++; }
             if (def.props) def.props(c).forEach(q => props.push(R3(q)));
         });
         (M.OPEN || []).forEach(o => {
-            features.push({ k: 'arch', id: 'arch:' + M.district + ':' + o.id, x: o.x, z: o.z, rot: 0, parts: R3(o.parts()) }); nArch++;
+            features.push({ k: 'arch', id: 'arch:' + M.district + ':' + o.id, x: o.x, z: o.z, rot: 0, parts: LIFT(R3(o.parts())) }); nArch++;
             (o.walls || []).forEach((q, n) => features.push({ k: 'texbuilding', id: 'dc:' + M.district + ':' + o.id + '-w' + n, x: r3(o.x + q[0]), z: r3(o.z + q[1]), w: q[2], d: q[3], rot: 0, storeys: 3, seed: 1, skin: false }));
         });
         Object.keys(M.SWAP || {}).forEach(bid => {   // a plan building replaced by a whole catalogue building (a prop: real size, entrance at +Z, solid)
