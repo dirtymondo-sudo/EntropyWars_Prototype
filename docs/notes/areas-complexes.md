@@ -2518,3 +2518,17 @@ Eight pieces cut from the packs by bake-pack-pieces.py and wired as catalogue ro
 every shared dumpster (a metal can at every third), a power pole a square on from every third kerb lamp of Southside + Industrial, one playground on
 Southside's Townhouse court (Park west + Dorm court had no free 2 x 2). The phone's hood is the file's -z (catalogue turn 180); the pole's crossarm is its x.
 Not found in the packs: loose tyres (the sewers pack has one, not cut).
+## DISASTER CITY, THE ENTERTAINMENT DISTRICT — the polish pass (2026-11-13 evening)
+mondo 20:15 "one more polish pass on the exteriors ... go one or two more layers deep with the detail", 20:18 "roofs and ac units", 20:19
+"and textures, different textures or decals for different parts of the building". All in `docs/disaster-city/districts/E.js`, no shared code.
+- Two maps run after each building's massing: `DETAIL[id]` (base courses, piers with caps, moulded cornices, window joinery over every glass
+  band, striped awnings, wall lamps, hanging blade signs, framed boards / poster cases, show-bulb runs on the marquees, downpipes, grilles) and
+  `ROOFS[id]` (roof membrane sheets, parapets with copings, roof plant with ducts, skylights, hatches, gutters, wall AC units, service doors).
+- The builder's new helpers: sbox (a box standing on a face), plinth (broken at a walk-in doorway), piers, cornice, frames, pipe, awning, lamp,
+  blade, board, bulbs, grille, ac, cowl, corners, parapet, wac, sdoor, haz, plant, sky, hatch, gutter.
+- New sheets in use (all his urban pack, tinted, none repainted): RubberNonSlip1a + ConcreteUnderTiles1 (flat roofs), MetalSubwayGrill1a
+  (grilles, AC fronts), TileGeneric5b (checker bases), TileSubway3a (red tile bases), PlasterWallPainted2c (two-tone flank walls),
+  DoorPaintedHalf / DoorWoodenHalf / DoorStorefrontHalf (service doors, `uv: 'fit'`), GlassWindowResidentialShutter1, SignHazard2a, and the
+  dark GlassWindowTall1a (Concert hall drum + flanks, Film studio lobby; mondo 19:02 likes the dark glass).
+- Size: 31 arch rows, about 2,500 parts, about 29,000 triangles (was 5,100). Still NOT SEEN IN THE GAME; drawn offline with the game's arch
+  geometry (/mnt/project-files/dc-entertainment/polish_details.jpg). Signs and marquees are still blank lit panels.
