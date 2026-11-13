@@ -60247,6 +60247,33 @@
             if (!ok) window._ewSceneCast = null;
             return ok;
         }
+        /* THE SCENE REPLAY (2026-11-13, mondo: "can i not replay it? we literally added a replay system so i can check these
+           things"): the journal's REPLAY of the aftermath alone. The fight's board is up with everybody seated; the enemies
+           are taken off it, the scene plays as it does after a win, and its end goes straight back to the room: no turn is
+           ever dealt, nothing is finalized, committed or filed (no result, no XP, no record). */
+        function _questAfterOnly() {
+            const er = _encRun(), F = er && er.quest; if (!F || !F.after) return false;
+            const seat = getViewerPlayer();
+            state.units = (state.units || []).filter(u => u && u.player === seat);
+            _questDoorDrop();
+            try { render(); } catch (e) {}
+            const back = () => {
+                window._hqEncounterRun = null; _encMatch = null;
+                window._hqEncounterResult = { won: true, sceneOnly: true, site: er.site, room: er.room, race: er.race, label: er.label || er.race, walker: er.walker || null };
+                try { backToMainMenu(); } catch (e) { console.error('[SCENE] the replay could not go back to the room', e); }
+            };
+            /* the scene needs the 3D board (a match starts a few frames before it is up): wait for it, as the opening scene does */
+            const t0 = performance.now();
+            const go = () => {
+                const up = !!(window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive());
+                if (!up && performance.now() - t0 < 15000) { setTimeout(go, 100); return; }
+                let ok = false;
+                try { ok = !!_questAfterPlay(F, er._roleIds || null, back); } catch (e) { console.error('[SCENE] the aftermath replay did not start', e); ok = false; }
+                if (!ok) { console.warn('[SCENE] ' + F.after + ' not replayed'); back(); }
+            };
+            go();
+            return true;
+        }
         function _encPartyDashIn() {
             const er = _encRun();
             if (!er || window.EW_ENC_NO_DASH_IN || state.cameraDisabled || _skipVisuals()) return false;
@@ -60671,9 +60698,11 @@
             /* THE CUTSCENES: a quest fight with a scene opens on it (the portal and who comes through are the scene's) */
             /* who is who in this quest fight, by id (the `after` scene reads it once the fight is over) */
             try { const _er0 = _encRun(), _Q0 = (_er0 && _er0.quest) ? _questSceneRoles() : null; if (_Q0) { _er0._roleIds = {}; Object.keys(_Q0.R).forEach(k => { if (_Q0.R[k]) _er0._roleIds[k] = _Q0.R[k].id; }); } } catch (e) {}
-            const _qScene = !!(_encRun() && _questSceneRow() && _questSceneHide());
-            if (_encRun() && !_qScene) _encPartyDashIn();   // THE DASH-IN: the party leaps in behind the lead as the crane lifts off
-            if (_encRun() && _encRun().quest && !_qScene) _questFightArrive();   // THE QUESTS: the guest and the enemies come out of the portal
+            /* THE SCENE REPLAY (2026-11-13): the journal asked for the fight's `after` scene alone (the run's `sceneOnly`) */
+            const _qOnly = !!(_encRun() && _encRun().sceneOnly === 'after' && _encRun().quest && _encRun().quest.after && !state.devAutoSim);
+            const _qScene = !_qOnly && !!(_encRun() && _questSceneRow() && _questSceneHide());
+            if (_encRun() && !_qScene && !_qOnly) _encPartyDashIn();   // THE DASH-IN: the party leaps in behind the lead as the crane lifts off
+            if (_encRun() && _encRun().quest && !_qScene && !_qOnly) _questFightArrive();   // THE QUESTS: the guest and the enemies come out of the portal
 
             invalidateLayoutCache();
             render();
@@ -60698,6 +60727,8 @@
                     if (typeof showCombatBanner === 'function') showCombatBanner('🏘 GUILD HUB', 'Walk to the cave entrance to begin the dungeon', 'neutral');
                     maybeAdvanceTurn();
                     setTimeout(_mdStartFreeRoam, 450);
+                } else if (_qOnly && _questAfterOnly()) {
+                    /* THE SCENE REPLAY: the aftermath alone, then straight back to the room */
                 } else if (_qScene && _questScenePlay(() => encounterOpening(() => maybeAdvanceTurn()))) {
                     /* THE CUTSCENES: the scene plays, then the hard cut to the fight's frame and the first activation */
                 } else if (_encRun() && ((_qScene && (window._ewSceneHid = null), (window._ewSceneCast = null)), _encArrivalRound(() => encounterOpening(() => maybeAdvanceTurn())))) {

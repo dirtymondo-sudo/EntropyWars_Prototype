@@ -67432,10 +67432,17 @@ let _hqCastSalt = String(Math.floor(Math.random() * 1e9));
    once; `opts.salt` fixes the draw (tests), `opts.clearance` overrides
    the profile's level, `opts.force` = { id: spotIndex } pins members to a
    given spot (the screenshot probe; -1 = absent). */
+/* THE SCENE REPLAY (2026-11-13): while a finished stage's scene is replayed from the journal (map.js _questStageReplay),
+   that stage counts as the CURRENT one for the cast's posts, so everybody stands where the scene needs them */
+function _hqCastSpotReplay(a) {
+    try { const r = (typeof window !== 'undefined') ? window._ewSceneReplayStage : null; return !!(r && a && r.quest === a.quest && r.stage === a.stage); } catch (e) { return false; }
+}
 function _hqCastSpotDuring(profile, a) {
+    if (_hqCastSpotReplay(a)) return true;
     try { const pr = questProgress(profile, a.quest); return !!(pr && pr.status === 'active' && pr.stage === a.stage); } catch (e) { return false; }
 }
 function _hqCastSpotAfter(profile, a) {
+    if (_hqCastSpotReplay(a)) return false;
     try { const pr = questProgress(profile, a.quest); return !!(pr && (pr.status === 'completed' || (Array.isArray(pr.done) && pr.done.indexOf(a.stage) >= 0))); } catch (e) { return false; }
 }
 function hqCastInRoom(roomId, profile, opts) {
