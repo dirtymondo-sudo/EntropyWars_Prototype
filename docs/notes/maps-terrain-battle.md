@@ -2203,7 +2203,7 @@ Studios' CC0 packs (see spells-vfx.md THE NOISE PACKS).
   `_ggBuild`: the battle's room says no grass field on its board); `training_hall` sets it. No tile type changed.
 
 ## THE SUNKEN AGORA — Atlantis's board moved onto the sea floor (2026-11-13, mondo: "redesign the atlantis map ... i dont see any fish or coral at all ... an epic underwater deep oceanic kingdom with greek inspired architecture ... merges science fiction technology and magic")
-- STATUS: built on branch `claude/project-thread-1tyvi9`, NOT merged: waits for mondo's OK on the plan + screenshots (/mnt/project-files/atlantis-redesign/).
+- STATUS: shipped 2026-11-13 after mondo: "thats good for now" (shots: /mnt/project-files/atlantis-redesign/).
 - Was: a window of THE TEMPLE (the dry air pocket: grey floor, the oracle pool, no sea life). Now: a window of THE ABYSS, the drowned room
   that already holds the ocean pack (x -24.5..17.5, z 21..63, pinned in HQ_ARENA_RULES.within). The temple room is untouched.
 - The rule that made it possible: data.js `hqFieldRoomOk` lets a DROWNED room through when its sea says `field: true`
