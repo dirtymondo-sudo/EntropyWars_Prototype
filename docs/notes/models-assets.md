@@ -1534,6 +1534,16 @@ head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay t
   a ray test for "round the arm" (cuffs failed it and flared into plates) and aiming the forearm at the sleeve's middle (tore the
   cowboy's shoulders). His "elbows bending backwards" on the wizard was not seen again after the sleeve test; unconfirmed.
 - **Round 4 (11-12, mondo: "fix the wizards tall boots showing through his robe")**: THE CLOTH OVER A LEG. LOOSE CLOTH shared the skirt's leg weight evenly between both legs + the hips, so the robe front stayed behind when a leg stepped forward (Idle_11 stance, every stride) and the boot shaft came out through it. Now only the cloth BETWEEN the legs is shared (|x| under 3 cm full, fading out by 9 cm: LOOSEX0 / LOOSEX1 / LOOSESIDE 0.7); cloth in front of, behind and outside a leg keeps most of that leg's weight. Tried first and dropped: cutting the boot tops under the hem (bare shin showed in the same place). All three rebaked; cowboy coat tail + knight cape checked from four sides + walking. Proof `/mnt/project-files/meshy-parts-20261112/wizard_boots_fixed.jpg`.
+- **Batch 2 of 3 (11-13, mondo: "make new models for all of the units ... see what is available from the clothes in the character creator ... meshy for parts and pieces we don't have")**:
+  glitch .. police officer (meshy-remake-batches.md), 25 models, `RACE_REMADE_LOOKS` rows + per-unit commands in meshy-remake-plan.md section 8.
+  The five with a saved creator look (halfdemon M + F, mad scientist M + F, men in black) used NO Meshy: the saved clothes on the MPFB body +
+  the unit's face. Creator pieces picked over the T2 ones: ice crown, overlord helmet, mushroom cap, beret, tricorn (M), luchador mask, police
+  badge, fishing hat (hippie M), a tank top (marksman F), Feathered wings (nephilim). New in bake-outfit.py, off by default: env `EYEH=<0..1>`
+  (NO EYE SHELLS: Meshy fused the eyes into the face under a hat's shadow twice running on the pirate; the eyes' height as a part of the
+  figure's). Lessons: a garment the colour of the unit's hair is dropped as A HAIR LOCK (`LOCKS=0`: ice queen bodice, overlord armour, glitch
+  body); a top PAINTED on the T2 body shell cannot hold the MPFB bust (marksman F): wear a creator top over it; the look probe
+  (`look.js`) must block the world preload (every non-character GLB / audio request) or the viewer takes minutes, and wait for the
+  host's `ew-cv-ready` class, not a fixed time; three browsers at once is the most 16 GB holds.
 - **In the game**: sprites.js EW_MH_WEAR rows `ewm_t2*` (outfits are category `equipment`, shown on the Armour tab; hats on Hats),
   `RACE_REMADE_LOOKS` + `getRaceRemadeLook(race, gender)`, party-builder.js USE THE REMADE <RACE> LOOK (beside USE THE SAVED LOOK) and
   REMADE LOOK inside the creator. The race's default idle can crouch a creator rig (knight, wizard): the looks carry `idle: Idle_11`.

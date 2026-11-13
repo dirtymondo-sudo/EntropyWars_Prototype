@@ -1920,6 +1920,14 @@ The tongue showing in the Face Lab talk pose (jawOpen 0.5 + mouthFunnel 0.3) is 
 Proof `/mnt/project-files/meshy-parts-20261112/three_faces.jpg`. Known on the knight: painted brows are rough, thin hair-edge lines
 at the right cheek, a pale strip at the hairline.
 
+**BATCH 2 OF 3 (11-13)** - 23 more unit faces (`<key>Face` + `ew_face_<key>`; keys: halfdemon, halfdemonf, hippie, hippief, homosapien, icequeen,
+kifighter, kingarthur, luchador, madscientist, madscientistf, marksman, marksmanf, meninblack, mime, mushroomgirl, necromancer, nephilim, nordic,
+pirate, piratef, policeofficer, orboflight). `cy=` is found by the landmarker on the unit's front render (eyes' row in the picture x the file's
+1.7 m). Men: full fit, `pitch=0` (+ the `hairrgb` in meshy-remake-plan.md section 8). Women + men in black: THE SOFT FACE set
+(`depth=0.25 wide=0 low=0.5 browfit=0 lipsrigid=1 lips=0 beard=1`) + the knight's look sliders, creator brows / lashes / lip tint. No face: overlord
+(helmet), glitch. A stock skin far darker than the unit clips the tone gain (police officer on `young_african_male`: gain 2.5, he came out pale):
+pick a LIGHTER stock and let the gain bring it down. Not looked at in the Face Lab (blink / talk) for this batch.
+
 **BATCH ONE OF THE DEMO STARTERS (11-12)** - `zombieFace` + `ew_face_zombie`, `robinhoodFace` + `ew_face_robinhood` (both looks `mhBrows: own`).
 - zombie: `unit=zombie.glb body=mpfb_female stock=.../skin_young_caucasian_female.jpg key=zombieFace skin=ew_face_zombie pitch=0 brow0=0.05 brow1=0.065 hairrgb=25,28,32 hairside=- hairtol=45 eye0=0.004 eye1=0.011 tonepct=85`
   (the pack zombie skins are green: a plain skin toned to her white face matches her Meshy body shells).

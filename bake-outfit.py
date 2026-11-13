@@ -149,11 +149,15 @@ def fit(name, gender, src, bodies_dir):
             a, b = cand[i][2], cand[j][2]
             if abs(a[2] - b[2]) < 0.01 and 0.02 < abs(a[0] - b[0]) < 0.08 and abs(a[0] + b[0]) < 0.03:
                 if best is None or min(a[2], b[2]) > best[0]: best = (min(a[2], b[2]), cand[i][1], cand[j][1], (a + b) / 2)
+    if not best and os.environ.get('EYEH'):   # NO EYE SHELLS (Meshy fused them into the face: a hat's shadow, a squint): env EYEH = the eyes' height as a part of the figure's (off by default)
+        allv = np.vstack([co(o) for o in sh]); ez = allv[:, 2].min() + E('EYEH', 0.93) * (allv[:, 2].max() - allv[:, 2].min())
+        fr = allv[(np.abs(allv[:, 0]) < 0.04) & (np.abs(allv[:, 2] - ez) < 0.015)]
+        best = (ez, None, None, np.array([0.0, float(fr[:, 1].min()) + 0.012, ez]))
     assert best, 'no eyes found'
     eyeN = best[3]; S = E('S', eyeM[2] / eyeN[2])
     for o in sh:
         for v in o.data.vertices: v.co *= S
-    eye = Vector(eyeN * S); eyes = {best[1], best[2]}
+    eye = Vector(eyeN * S); eyes = {best[1], best[2]} - {None}
     if NOWINGS:   # Meshy centres the whole model, wings and all, so the figure stands off the middle: back onto the body's eyes and the floor
         dy_ = eyeM[1] - eye.y; body_ = [o for o in sh if co(o)[:, 1].mean() + dy_ <= eyeM[1] + E('WINGY', 0.22)]
         dz_ = -min(co(o)[:, 2].min() for o in body_)
