@@ -103,6 +103,14 @@ JOBS += [
     ('city_house', 'house', ['House'], 0),
     ('city_quequis_house', 'quequis', [{'near': 'Quequis_House', 'pad': 1.0, 'keep': r'^(Quequis_House|Frame$|Cube$|RooftilesMetal|Door_Q|Door_0[12]$|Frame_Door)'}], 180),
 ]
+# THE CITY TRAFFIC (2026-11-13, mondo: "traffic lights and intersections ... Bus sections placed in each district with a bus route"): the
+# Pizzeria pack's mast-arm signal (its three lit faces look -X, +Z and -Z in the GLB, the blank one +X: three-renderer.js _HQ_SIGNAL), the
+# Bus stop pack's city bus with its four tyres and its four door leaves joined on (nose at -X, doors on its right) and its stop sign.
+JOBS += [
+    ('street_signal', 'pizzeria', ['traffic_light'], 0),
+    ('transit_bus', 'busstop', ['Bus', 'Tire', 'Tire_01', 'Tire_02', 'Tire_03', 'Cube.038', 'Cube.039', 'Cube.040', 'Cube.041'], 0),
+    ('bus_stop_sign', 'busstop', ['Bus_stop_sign'], 0),
+]
 jobs = []
 for J in JOBS:
     k, p, nodes, rz = J[:4]
