@@ -86933,8 +86933,16 @@ const ThreeRenderer = (function () {
         try { _hqTickGunDoors(wdt, now); } catch (e) { if (!H._gunTickWarned) { H._gunTickWarned = true; console.warn('[HQ] gun doors tick', e); } }   /* THE DOOR WHEEL IN THE ROOM (Phase 3): the standing doors act */
         _hqTickSceneMoves();
         _hqTickRounds(wdt);
+        if (H._sceneDoor && H._sceneDoor.door) {   // scene A's lone door: the swing and the light in the doorway
+            var _sd = H._sceneDoor, _sn = performance.now();
+            if (_sd.k !== _sd.to) { var _sq = Math.min(1, (_sn - _sd.t0) / _sd.ms); _sd.k = _sd.from + (_sd.to - _sd.from) * (1 - Math.pow(1 - _sq, 3)); if (_sq >= 1) _sd.k = _sd.to; H.dirty = true; }
+            try { _menuApplyDoor({ door: _sd.door, doorLight: null, flash: 0 }, _sd.k, _sn); } catch (e) {}
+            if (_sd.glow) { _sd.glow.visible = _sd.k > 0.01; _sd.glow.material.opacity = Math.min(1, _sd.k * 1.4); }
+            if (_sd.light) _sd.light.intensity = _sd.k * 2.2;
+        }
         if (_keyFxList.length) { try { _updateKeyFx(); } catch (e) {} }   // scene E's key (keyPickupFx opts.at) lives in the room
-        if (H._sceneCastIds) _hqSceneCastApply();   // after the rounds: a walker the rounds just brought back in is out again the same frame   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
+        if (H._sceneCastIds) _hqSceneCastApply();
+        if (H._scenePlayerOut && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // a scene took the officer out of the picture   // after the rounds: a walker the rounds just brought back in is out again the same frame   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
         if (_lens && _lens.cur) { var _lensA = performance.now(); _hqTickChars(wdt); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share
         else _hqTickChars(wdt);
         if (window.EWCine) { try { window.EWCine.frame(_hqCine() ? H.camera : null, { kind: 'hq', unit: _hqUnits(), key: String(H.opts.room || ''), site: (H.room && H.room.site) ? ((typeof window.hqSiteId === 'function') ? window.hqSiteId(H.room.site) : H.room.site) : String(H.opts.room || '') }); } catch (e) {} }
@@ -92920,18 +92928,28 @@ const ThreeRenderer = (function () {
             if (!ch || !ch.entry || !ch.entry.group) return false;
             o = o || {};
             var U = _hqUnits(), g = ch.entry.group;
-            if (o.x != null && o.z != null) { ch.x = +o.x; ch.z = +o.z; g.position.x = ch.x * U; g.position.z = ch.z * U; if (ch === _hq.player) { ch.moving = false; ch.svx = 0; ch.svz = 0; } }
+            if (o.x != null && o.z != null) { _hqSceneMoves = _hqSceneMoves.filter(function (m) { return m.ch !== ch; }); ch._sceneWalk = false; ch.x = +o.x; ch.z = +o.z; g.position.x = ch.x * U; g.position.z = ch.z * U; if (ch === _hq.player) { ch.moving = false; ch.svx = 0; ch.svz = 0; } }
             if (o.face != null) { ch.yaw = ch.targetYaw = _hqHeadingYaw(o.face); if (ch.entry.model) ch.entry.model.rotation.y = ch.yaw; if (ch === _hq.player && _hq.cam) { _hq.cam.yaw = _hqRad(o.face); _hq.cam.init = false; } }
-            if (o.show != null) { if (ch === _hq.player) g.visible = !!o.show; else _hqRoundsSetVisible(ch, !!o.show); }
+            if (o.show != null) { if (ch === _hq.player) { g.visible = !!o.show; _hq._scenePlayerOut = !o.show; } else _hqRoundsSetVisible(ch, !!o.show); }   // (the walker's own tick shows the body again: held out every frame, see the scene tick)
             if (o.sit != null && ch === _hq.player) ch.sit = o.sit ? { seat: null, t0: performance.now(), scene: true } : null;   // seated for a scene (no seat record: the walk's own tick is held)
             g.updateMatrixWorld(true); _hq.dirty = true;
             return true;
+        },
+        /* is a body's rig up WITH its clips (idle + walk)? The opening plays as the building first loads: it waits for this, or
+           the officer steps out of the car in the bind pose. */
+        sceneReady: function (who) {
+            if (!_hq || !who) return false;
+            var ch = null;
+            if (who === 'player') ch = _hq.player; else for (var i = 0; i < _hq.chars.length; i++) { if (_hq.chars[i] && _hq.chars[i].cast === who) { ch = _hq.chars[i]; break; } }
+            var a = ch && ch.entry && ch.entry.group && ch.entry.actions;
+            return !!(a && a.idle && (who !== 'player' || a.walk));
         },
         /* a scene's CAST: `ids` = the DOOR_CAST ids the scene keeps; everybody else in the room (the officer aside) is taken
            out for the scene. null puts back exactly the ones it took out. */
         sceneCast: function (ids) {
             if (!_hq) return 0;
-            _hq._sceneCastIds = ids || null;   // held for the scene's length: _hqTickSceneCast takes out whoever walks in later
+            _hq._sceneCastIds = ids || null;
+            if (!ids && _hq._scenePlayerOut) { _hq._scenePlayerOut = false; if (_hq.player && _hq.player.entry && _hq.player.entry.group) _hq.player.entry.group.visible = true; }   // the scene is over: the officer is back   // held for the scene's length: _hqTickSceneCast takes out whoever walks in later
             return _hqSceneCastApply();
         },
         /* where a body's HEAD is (the room's metres: { x, y, z }; y = up from the floor the room stands on) so a scene's
@@ -92956,6 +92974,53 @@ const ThreeRenderer = (function () {
             var U = _hqUnits();
             keyPickupFx(0, 0, { at: { scene: _hq.scene, x: (+o.x || 0) * U, y: (+o.y || 0) * U, z: (+o.z || 0) * U, ts: (+o.size || 0.5) * U } });
             _hq.dirty = true;
+            return true;
+        },
+        /* THE LONE DOOR (scene A, the opening; mondo 2026-11-13: "when the door opens there can be either darkness or light
+           inside of it"): the main menu's own free-standing door (_introBuildDoor, the same frame and leaf) stood in the room
+           for a scene. o = { x, z (m), face (deg), leaf (catalogue key) } builds it once; { open: 0..1, ms } swings it, the
+           doorway filling with white light as it opens; { remove: true } takes it out. */
+        sceneDoor: function (o) {
+            var H = _hq; if (!H || !H.scene || !o) return false;
+            var U = _hqUnits(), ts = 116;
+            if (o.remove) { var d0 = H._sceneDoor; if (d0) { d0.dead = true; if (d0.root.parent) d0.root.parent.remove(d0.root); try { _disposeR(d0.root); } catch (e) {} H._sceneDoor = null; H.dirty = true; } return true; }
+            if (o.open != null) { var d1 = H._sceneDoor; if (!d1) return false; d1.from = d1.k; d1.to = Math.max(0, Math.min(1, +o.open)); d1.t0 = performance.now(); d1.ms = Math.max(1, o.ms || 900); return true; }
+            if (H._sceneDoor) return true;
+            var D = _hqData(), key = (o.leaf && D && D.catalogue && D.catalogue[o.leaf]) ? o.leaf : 'leaf_hollow_core', cat = D && D.catalogue ? D.catalogue[key] : null;
+            if (!cat) return false;
+            var rec = { root: new THREE.Group(), door: null, k: 0, from: 0, to: 0, t0: 0, ms: 1, glow: null, light: null, dead: false };
+            rec.root.position.set((+o.x || 0) * U, 0, (+o.z || 0) * U);
+            rec.root.rotation.y = _hqHeadingYaw(o.face || 0);
+            H.scene.add(rec.root); H._sceneDoor = rec;
+            var build = function () {
+                if (rec.dead || _hq !== H) return;
+                var zi = { cx: 0, cy: 0, ox: 0, oy: 1, topZ: 0, len: 0, edgeDist: -0.85, bw: 1, bh: 1 };
+                var savedKit = _nrLastKit, n0 = _introFadeMats.length, dr = null;
+                _nrLastKit = { apronTop: 0, B: 0, G: 0, fy: 0, W: 0, moat: null };
+                try { dr = _introBuildDoor(zi, ts, { key: key, cat: cat }, 'prebuilt_giza'); } catch (e) { console.warn('[SCENE] the door', e); }
+                finally { _nrLastKit = savedKit; }
+                _introFadeMats.splice(n0);   // (the dissolve list is the battle intro's)
+                if (!dr || !dr.group) return;
+                rec.door = dr; rec.root.add(dr.group);
+                /* the builder stands the door off its zone's edge: bring the doorway itself onto the root, so (x, z) IS the door */
+                try {
+                    rec.root.updateMatrixWorld(true);
+                    var bx = new THREE.Box3().setFromObject(dr.group), cw = bx.getCenter(new THREE.Vector3()), cl = rec.root.worldToLocal(cw.clone());
+                    dr.group.position.x -= cl.x; dr.group.position.z -= cl.z;
+                } catch (e) {}
+                /* the light in the doorway: an unlit white sheet the size of the opening, just behind the leaf's plane, and a lamp */
+                var mo = dr.motion || {}, gw = (mo.ow || 0.72 * ts) * 0.96, gh = (mo.oh || 1.35 * ts) * 0.98;
+                var gm = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, side: THREE.DoubleSide, fog: false, depthWrite: false });
+                gm.toneMapped = false;
+                rec.glow = new THREE.Mesh(new THREE.PlaneGeometry(gw, gh), gm);
+                rec.glow.position.set(0, gh / 2, 0.04 * U); rec.glow.visible = false; rec.glow.renderOrder = 2;
+                rec.root.add(rec.glow);
+                rec.light = new THREE.PointLight(0xfff4dc, 0, 9 * U, 2); rec.light.position.set(0, gh * 0.55, -0.5 * U); rec.root.add(rec.light);
+                H.dirty = true;
+            };
+            var url = null; try { url = cat.file ? _hqModelUrl(cat) : null; } catch (e) {}
+            var ce = url ? _miscModelCache[url] : null;
+            if (url && !(ce && ce.root) && typeof THREE.GLTFLoader === 'function') _loadMiscModel(url, true, build); else build();
             return true;
         },
         /* a body WALKS to { x, z } over `ms` (the walk clip, turned along its way; `face` = the heading it ends on) */
@@ -93034,6 +93099,8 @@ const ThreeRenderer = (function () {
             heroShadow: function () { var L = _hq && _hq.heroLit; return Object.assign({ light: !!(L && L.isLight), hold: !!(L && L._ew_heroHold) }, _heroStat); },
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
             hqScene: function () { return _hq ? _hq.scene : null; },
+            /* the walker's clip right now (a scene check: which clip is the officer in?) */
+            playerAnim: function () { var H = _hq, ch = H && H.player, e = ch && ch.entry; if (!e) return null; var run = []; try { Object.keys(e.actions || {}).forEach(function (k) { var a = e.actions[k]; if (a && a.isRunning() && a.getEffectiveWeight() > 0.01) run.push(k + ':' + a.getClip().name + ':' + a.getEffectiveWeight().toFixed(2)); }); } catch (err) {} return { cur: e._ew_curAnim || null, running: run, moving: !!ch.moving, jumpT: ch.jumpT, sit: !!ch.sit, ride: !!(H.ride && H.ride.on), swim: !!ch.swim, strike: ch.strike ? ch.strike.name : null, drawn: !!(H.portal && H.portal.drawn), lean: e.model ? e.model.rotation.x : 0 }; },
             hqDoors: function () { if (!_hq) return null; var out = _hq.doors.slice(), st = _hq.stage; if (st && st.parts) for (var id in st.parts) { var P = st.parts[id].P; if (P && P.doors) out = out.concat(P.doors); } return out; },   // the door records of the room stood in + the rooms beside it (probes)
             hqInst: function () { return _hqInstStats(_hq); },
             /* THE CITY TRAFFIC (2026-11-13): the lights' colours and every vehicle (a probe reads them: which stand at a red, which bus waits) */

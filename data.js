@@ -28240,6 +28240,7 @@ const STORY_QUESTS = [
     {
         id: 'orientation', v: 1,
         title: 'ORIENTATION',   // mondo's to name
+        intro: 'orientation_intro',   // scene A, the opening: played before the first stage (map.js _introGo), replayed from the quest card
         officerUp: true,   // mondo 2026-11-13: the recruit is always on their feet for this quest's scenes and walks (revived after the fight)
         summary: 'Walk to the Training Room and finish the first two tapes.',
         start: 'hq',
@@ -28388,6 +28389,47 @@ STORY_CUTSCENES.orientation_desk = {
         { shot: { cam: [1.1, 1.6, 4.75, 180, 0, 30], eye: { who: 'player', dy: -0.03 } }, say: { who: 'RHONDA', text: 'These are the keys to your office. First door past the mop bucket.' },
           act: [{ at: 0.5, do: 'key', x: 1.62, y: 1.0, z: 6.2, size: 0.38 }] },
     ],
+};
+/* A · THE OPENING, the desert half (his script + the storyboard he OK'd 2026-11-13, "yeah looks good"; his add: light in the
+   open doorway so the step into the elevator makes sense). An HQ scene in the scene room `intro_desert`: the road runs north
+   along x -6, the lone door stands at 0, -44 (act `door`: three-renderer.js hq.sceneDoor), SEDANIEL (DOOR_CAST.sedaniel, he
+   drives himself) carries the recruit up the road, drops them at the door and leaves; the recruit steps through into the
+   light. Nobody speaks. Played by map.js _introGo on the first walk into the building, and from the quest card. */
+STORY_CUTSCENES.orientation_intro = {
+    id: 'orientation_intro', title: 'THE DROP-OFF',
+    cast: ['sedaniel'],
+    beats: [
+        /* A1 · the sun, then a slow tilt down to the road */
+        { dur: 5.2, shot: { cam: [-6, 1.6, 64, 0, 58, 40], to: { cam: [-6, 1.6, 64, 0, 3, 40] } },
+          act: [{ at: 0, do: 'door', x: 0, z: -44, face: 0 }, { at: 0, do: 'hide', who: 'player' },
+                { at: 0, do: 'place', who: 'sedaniel', x: -6, z: 58, face: 0 }, { at: 0.1, do: 'walk', who: 'sedaniel', x: -6, z: 30, ms: 5000, face: 0 }] },
+        /* A2 · bird's eye: one sedan on one road in an empty desert, the camera travelling with it */
+        { dur: 4.2, shot: { cam: [-6, 78, 30.4, 0, -89, 20], to: { cam: [-6, 78, 12.4, 0, -89, 20] } },
+          act: [{ at: 0, do: 'place', who: 'sedaniel', x: -6, z: 30, face: 0 }, { at: 0.05, do: 'walk', who: 'sedaniel', x: -6, z: 12, ms: 4200, face: 0 }] },
+        /* A3 · low beside the road: he passes */
+        { dur: 3.6, shot: { cam: [-2.4, 0.35, -2, 156, 7, 40] },
+          act: [{ at: 0, do: 'place', who: 'sedaniel', x: -6, z: 24, face: 0 }, { at: 0.05, do: 'walk', who: 'sedaniel', x: -6, z: -16, ms: 3500, face: 0 }] },
+        /* A4 · the passenger side, travelling with the car (his glass is solid: the recruit is behind it, nobody is driving) */
+        { dur: 4.0, shot: { cam: [-2.9, 1.2, -13.6, 90, 0, 32], to: { cam: [-2.9, 1.2, -25.6, 90, 0, 32] } },
+          act: [{ at: 0, do: 'place', who: 'sedaniel', x: -6, z: -14, face: 0 }, { at: 0.05, do: 'walk', who: 'sedaniel', x: -6, z: -26, ms: 4000, face: 0 }] },
+        /* A5 · wide: the lone door in the right third, the sedan pulls up (the main menu's frame, on purpose) */
+        { dur: 4.8, shot: { cam: [1.6, 1.5, -32.5, 20, -1, 45] },
+          act: [{ at: 0, do: 'place', who: 'sedaniel', x: -6, z: -22, face: 0 }, { at: 0.05, do: 'walk', who: 'sedaniel', x: -6, z: -41, ms: 3600, face: 0 }] },
+        /* A6 · over the car roof: the recruit is out, holding out a tip */
+        { dur: 3.6, shot: { cam: [-8.6, 1.62, -39.4, -79, -7, 32] },
+          act: [{ at: 0, do: 'place', who: 'sedaniel', x: -6, z: -41, face: 0 }, { at: 0, do: 'place', who: 'player', x: -3.4, z: -41, face: 270 }, { at: 0, do: 'show', who: 'player' }] },
+        /* A7 · he drives off; the recruit is left small in the frame */
+        { dur: 4.6, shot: { cam: [-0.6, 1.3, -33.5, 28, 0, 45], to: { cam: [-0.6, 1.3, -33.5, 16, 0, 45] } },
+          act: [{ at: 0.2, do: 'walk', who: 'sedaniel', x: -6, z: -140, ms: 6500, face: 0 }, { at: 0.9, do: 'place', who: 'player', x: -3.4, z: -41, face: 0 }] },
+        /* A8 · the one close-up: the scoff */
+        { dur: 2.8, shot: { cam: [-3.1, 1.5, -43.3, 172, 0, 26], eye: { who: 'player', dy: -0.04 } },
+          act: [{ at: 0, do: 'hide', who: 'sedaniel' }] },
+        /* A9 · from behind: the door opens, light fills it, the recruit steps through; the picture goes with them */
+        { dur: 5.0, hold: true, fade: 4.1, shot: { cam: [0.55, 1.55, -39.4, 5, -2, 36], to: { cam: [0.4, 1.5, -40.6, 4, -2, 36] } },
+          act: [{ at: 0, do: 'place', who: 'player', x: 0, z: -41.6, face: 0 }, { at: 0.7, do: 'door', open: 1, ms: 1300 },
+                { at: 2.4, do: 'walk', who: 'player', x: 0, z: -44.9, ms: 1700, face: 0 }] },
+    ],
+    end: [{ do: 'door', remove: true }, { do: 'show', who: 'player' }],
 };
 /* B · THE TV CART (the approved storyboard's frames + mondo's lines, word for word; his change: B4 Locke on the far side
    of the cart, his head covered her). An HQ scene in room `training`, the orientation corner by the main hall door (the
@@ -36301,6 +36343,28 @@ const DOOR_HQ = {
         /* ── ROOM ½ · THE DOOR GARDEN — the greenhouse: trellises of vines
            with tiny doors at the ends of the stems, purple grow lamps, the
            beds, the gardener who will not say what they are watered with. ── */
+        /* THE ROAD (scene A, the opening; 2026-11-13): the desert the recruit is driven through, one road, one door standing in
+           it. A SCENE ROOM (`sceneRoom`): no door leads here, nobody lives or walks here, the save never files it; map.js
+           _introGo enters it for STORY_CUTSCENES.orientation_intro and leaves for the foyer when the scene ends. The road
+           runs north along x -6; the lone door (three-renderer.js hq.sceneDoor) stands at 0, -44. */
+        intro_desert: {
+            label: 'THE ROAD',
+            sub: 'ONE ROAD · ONE DOOR',
+            kind: 'box', sceneRoom: true, noWalkers: true, quiet: true,
+            shell: hqAncientShell({ w: 160, d: 300, h: 20, wallH: 20, floor: 'desert', apron: 'desert', skirt: 'dirt_2', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: 0, z: -147, y: 5.0 },
+                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.62 },
+                                    sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0xd8b370, amount: 0.55, top: 0.05, band: 0.45, density: 0.018 }, scenery: 'none' },   // an empty horizon
+                                    look: HQ_ROOM_LOOKS.plateau }),
+            terrain: { res: 1, levelM: 3.5,
+                floor: 'desert', cliff: 'bricks_1', path: 'urban_street',
+                noise: { amp: 0, scale: 20 }, crag: false,
+                features: [
+                    { k: 'path', pts: [[-6, 148], [-6, -148]], w: 5 },   // the one road
+                ],
+            },
+            doors: [], counters: [], props: [], agents: [], lines: [],
+            spawn: { x: -3.6, z: -41, face: 270 },
+        },
         doorgarden: {
             label: 'THE DOOR GARDEN',
             sub: 'THE GREENHOUSE · GROWN, NOT BUILT',
@@ -62580,7 +62644,7 @@ function hqRosterHomeRooms() {
     const rooms = DOOR_HQ.rooms || {}, nRooms = Object.keys(rooms).length;   // the editor's world doc adds rooms after boot: the count keys the cache
     if (_hqRosterHomeCache && _hqRosterHomeCache.nRooms === nRooms) return _hqRosterHomeCache;
     _hqRosterHomeCache = Object.keys(rooms).filter(id => {
-        const r = rooms[id]; if (!r || id === 'car' || r.site || r.quiet) return false;
+        const r = rooms[id]; if (!r || id === 'car' || r.site || r.quiet || r.noWalkers || r.sceneRoom) return false;
         if (r.kind === 'bay' && r.corridor === false) return false;
         const hub = (typeof hqHubOf === 'function') ? hqHubOf(id) : null;
         if (hub && (hub.id === 'city' || hub.id === 'underworld')) return false;
@@ -70773,6 +70837,9 @@ const DOOR_CAST = {
         spots: [
             { room: 'bay_terrestrial', deg: -38, r: 10.6, face: 52, reach: 2.8, rad: 1.5,
               doing: 'Parked on the one corridor with a parking lot. Four doors, all of which open and close. He is paid in oil changes.' },
+            /* scene A, the opening: he drives the recruit to the lone door (`live` = only while map.js runs the intro) */
+            { room: 'intro_desert', x: -6, z: 60, face: 0, reach: 0, rad: 1.5, live: '_ewIntroLive',
+              doing: 'On the one road, taking you to the one door.' },
         ],
     },
     janitor: {
@@ -70830,12 +70897,14 @@ function hqCastInRoom(roomId, profile, opts) {
         const open = m.spots.filter(s => s && DOOR_HQ.rooms[hqCastSpotRoom(s)]
             && (s.p == null || s.p > 0)
             && (!s.after || _hqCastSpotAfter(profile, s.after))
+            && (!s.live || (typeof window !== 'undefined' && !!window[s.live]))   // a post that exists only while a scene runs (Sedaniel on the road)
             && (!s.during || _hqCastSpotDuring(profile, s.during))   // a post taken only WHILE a quest stage is the current one   // THE QUESTS: a post taken only once a quest stage is behind the officer
             && (s.minClearance == null || cl >= s.minClearance)
             && (s.maxClearance == null || cl <= s.maxClearance));
         if (!open.length) continue;
         /* a post taken WHILE a quest stage is current wins over the everyday posts (Locke at the recruit's door) */
         { const dur = open.filter(s => s.during); if (dur.length && dur.length < open.length) { open.length = 0; dur.forEach(s => open.push(s)); } }
+        { const lv = open.filter(s => s.live); if (lv.length && lv.length < open.length) { open.length = 0; lv.forEach(s => open.push(s)); } }   // a live scene's post wins over everything
         /* a scene being REPLAYED wins over the live stage's post (Locke is at the TV cart for B's replay even while the office stage has her at the door) */
         { const rp = open.filter(s => s.during && _hqCastSpotReplay(s.during)); if (rp.length && rp.length < open.length) { open.length = 0; rp.forEach(s => open.push(s)); } }
         const total = open.reduce((a, s) => a + (s.p == null ? 1 : s.p), 0);
