@@ -2770,3 +2770,28 @@ piece the UI Maker can pin to a screen side. Proof: /mnt/project-files/team-sele
   the switch fires `ew-live-portraits`). Settings > Video > Live Portraits On/Off (`ew_livePortraits`, default On; Off = stills);
   console kill `window.EW_NO_LIVE_PORTRAITS`. Creator bodies blink (faceIdle); Locke's Meshy model has no eyelids, she only
   sways and breathes until she is remade on a creator body (the remade-looks thread). Viewer-local, nothing relayed.
+
+## THE OFFICIAL DOOR LOGO (2026-11-12/13, mondo's DOOR folder)
+mondo: "Uploaded a folder called DOOR to the inbox ... the DOOR logo, color and black and white ... separated out into
+individual pieces, so you can animate the intro logo animation better ... the game is already putting the text, so thats why
+included the parts without the text ... there is a carpet in the foyer that needs to use these logo assets, not ai generated.
+Please replace any ai generated DOOR logos with these assets."
+- **His files, as he exported them:** R2 `Assets/ui/brand/door_logo/{color,blackandwhite}/{png,svg}/` = arc, cube, door,
+  door-text (the D.O.O.R wordmark), subtitle, and the whole logo (`colored_black_bg`, `blackandwhite`). The text SVGs need
+  the STIX Two Text font: use the PNGs for text. Never redraw / recolour them.
+- **THE MARK (no text):** `door_logo/door_mark_color.png` + `door_mark_mono.png` (1024 x 795, + .svg) = his whole-logo SVG
+  cropped to the arc + cube + door (viewBox 365.07 0 905.21 702.5; text + rules taken out, his paths untouched).
+  data.js `DOOR_TEXT.LOGO.mark / markMono / pieces`.
+- **Where the mark is now** (each had the 1920 x 1080 with-text PNG shrunk tiny beside the game's own text): the title
+  corner seal, the main menu seal, every `.door-hdr` header (codex, credits, shop, orientation), the HQ strip, the HQ loading
+  card, the HQ pause title, the forge head, the party builder `DoorSeal`, the onboarding card, the orientation tape's seal
+  slide, the hud.js UI Maker sample pages, the plate over every crossing door + HQ portal, the round dispatch desk.
+  The 3D planes are 1 : 0.776 now (the old square plane stretched a 16:9 image).
+- **THE FOYER FLOOR SEAL** (three-renderer.js `door_seal`): the navy disc, brass rings and rim text stay; the code-drawn
+  circle / square / door device + "D.O.O.R." + "CANON REALITY" lines are gone, his mark is drawn in the middle when it lands.
+- **THE INTRO** (index.html `#doorIdent`, styles-cinematic.css `.door-ident-seal`): the box is 905.21 x 870 of his sheet;
+  the cube lands with the colour split (0.3 s), his arc path is uncovered left foot to right foot by a mask stroke (0.75 s),
+  the door swings in from its hinge with an amber flare (1.4 s), his wordmark wipes open (1.7 s, shown white by `invert`),
+  the game's line types (2.0 s), PRESENTS (2.7 s). Still 4.3 s: audio.js identSting's tape stop sits on the squish at 3.15 s.
+- **Left as they were** (his own earlier with-text exports, used big or as a watermark / ink mask): `DOOR_TEXT.LOGO.onDark /
+  onLight / onMid / mono`, the CSS `--door-seal-*` (dossier watermarks, result stamps), the ID card crest.

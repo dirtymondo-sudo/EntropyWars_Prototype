@@ -52992,7 +52992,7 @@ const ThreeRenderer = (function () {
         var plateW = Math.max(ow, 0.7 * ts);
         var plate = _box(plateW * 0.62, plateW * 0.62, 0.03 * ts, plateMat);
         plate.position.set(0, oh + lh + 0.08 * ts + plateW * 0.31, 0); D.add(plate);
-        var sealUrl = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.LOGO) ? DOOR_TEXT.LOGO.onDark : null;
+        var sealUrl = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.LOGO) ? (DOOR_TEXT.LOGO.mark || DOOR_TEXT.LOGO.onDark) : null;   // his no-text mark (2026-11-12)
         if (sealUrl && typeof textureLoader !== 'undefined') {
             if (!_introSealTex) {
                 _introSealTex = textureLoader.load(sealUrl, function () { _objectsLanded = true; });
@@ -53000,7 +53000,7 @@ const ThreeRenderer = (function () {
             }
             var sealMat = new THREE.MeshBasicMaterial({ map: _introSealTex, transparent: true, depthWrite: false, fog: false });
             _introFadeMats.push(sealMat);
-            var seal = new THREE.Mesh(new THREE.PlaneGeometry(plateW * 0.54, plateW * 0.54), sealMat);
+            var seal = new THREE.Mesh(new THREE.PlaneGeometry(plateW * 0.54, plateW * 0.54 * 0.776), sealMat);   // the mark is 1024 x 795
             seal.position.set(0, plate.position.y, -0.02 * ts); seal.rotation.y = Math.PI;
             D.add(seal);
         }
@@ -65772,7 +65772,7 @@ const ThreeRenderer = (function () {
     }
     function _hqSealTexture() {
         if (_hqSealTex) return _hqSealTex;
-        var url = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.LOGO && DOOR_TEXT.LOGO.onDark) || null;
+        var url = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.LOGO && (DOOR_TEXT.LOGO.mark || DOOR_TEXT.LOGO.onDark)) || null;   // his no-text mark (2026-11-12)
         if (!url) return null;
         var t = textureLoader.load(url, function () { if (_hq) _hq.dirty = true; });
         t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
@@ -74814,10 +74814,12 @@ const ThreeRenderer = (function () {
            door_seal: the seal inlaid in the terrazzo — a 3.6 m canvas decal
            like the ritual circle: a navy disc, a brass double ring, the
            Customs & Admissions slogan and the department's name round the
-           rim, and in the middle the doctrine as a device — a door standing
-           in a square standing in a circle (corners make doors). Cached by
-           key; the text is fixed at build (the motto that changes with the
-           chapter is the Bureau's plaque, 4.4). */
+           rim. THE OFFICIAL LOGO (mondo 2026-11-12: "there is a carpet in
+           the foyer that needs to use these logo assets, not ai generated"):
+           the middle is HIS logo, the no-text mark (arc + cube + door,
+           DOOR_TEXT.LOGO.mark) drawn in when it lands; the code-drawn
+           circle / square / door device and its two text lines are gone
+           (the rim already carries the name). Cached by key. */
         door_seal: function (U) {
             var g = new THREE.Group();
             if (typeof document === 'undefined') return g;
@@ -74846,15 +74848,21 @@ const ThreeRenderer = (function () {
                 ring('EVERY CROSSING IS INSPECTED  ·  EVERY ENTITY IS FILED', 418, Math.PI * 0.06, Math.PI * 0.94, 'bold 30px serif', BRASS);
                 x.fillStyle = BRASS; x.font = 'bold 44px serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
                 x.fillText('✦', cx + 418, cy); x.fillText('✦', cx - 418, cy);
-                /* the device: a circle, a square, a door */
-                x.strokeStyle = BRASS; x.lineWidth = 6; x.beginPath(); x.arc(cx, cy, 250, 0, Math.PI * 2); x.stroke();
-                x.lineWidth = 8; x.strokeRect(cx - 176, cy - 176, 352, 352);
-                x.fillStyle = TEAL; x.fillRect(cx - 62, cy - 150, 124, 250);
-                x.strokeStyle = BRASS; x.lineWidth = 6; x.strokeRect(cx - 62, cy - 150, 124, 250);
-                x.fillStyle = BRASS; x.beginPath(); x.arc(cx + 38, cy - 10, 9, 0, Math.PI * 2); x.fill();
-                x.fillStyle = BRASS; x.font = 'bold 58px serif'; x.fillText('D.O.O.R.', cx, cy + 148);
-                x.font = 'bold 22px serif'; x.fillText('CANON REALITY  ·  CUSTOMS & ADMISSIONS', cx, cy + 205);
                 tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter; tex.anisotropy = 4; _hzFacTexCache[key] = tex;
+                /* his mark, inside the teal ring (r 352): 560 px wide, its own 1024 x 795 shape kept, never stretched or recoloured */
+                var markUrl = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.LOGO) ? (DOOR_TEXT.LOGO.mark || null) : null;
+                if (markUrl && typeof Image !== 'undefined') {
+                    var im = new Image(); im.crossOrigin = 'anonymous';
+                    im.onload = function () {
+                        try {
+                            var mw = 560, mh = mw * (im.naturalHeight || 795) / (im.naturalWidth || 1024);
+                            x.drawImage(im, cx - mw / 2, cy - mh / 2 + 8, mw, mh);
+                            tex.needsUpdate = true;
+                            if (_hq) _hq.dirty = true;
+                        } catch (e) {}
+                    };
+                    im.src = markUrl;
+                }
             }
             var m = new THREE.Mesh(new THREE.PlaneGeometry(3.6 * U, 3.6 * U), new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.96, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 }));
             m.rotation.x = -Math.PI / 2; m.position.y = 0.005 * U; g.add(m);
@@ -75893,7 +75901,7 @@ const ThreeRenderer = (function () {
         var seal = _hqSealTexture();
         if (seal) {
             var sm = new THREE.MeshBasicMaterial({ map: seal, transparent: true, depthWrite: false, fog: false });
-            var pl = new THREE.Mesh(new THREE.PlaneGeometry(0.82 * U, 0.82 * U), sm);
+            var pl = new THREE.Mesh(new THREE.PlaneGeometry(0.82 * U, 0.82 * 0.776 * U), sm);   // the mark is 1024 x 795
             var sa = (room.spawn && room.spawn.deg) || 180;
             pl.position.copy(_hqPolarW(sa, D.rOuter + 0.02, D.h * 0.5));
             pl.rotation.y = Math.PI - _hqRad(sa);
@@ -79046,11 +79054,11 @@ const ThreeRenderer = (function () {
             grp.add(plate);
             /* the seal (the crossing's own texture, loaded once) */
             try {
-                var sealUrl = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.LOGO) ? DOOR_TEXT.LOGO.onDark : null;
+                var sealUrl = (typeof DOOR_TEXT !== 'undefined' && DOOR_TEXT.LOGO) ? (DOOR_TEXT.LOGO.mark || DOOR_TEXT.LOGO.onDark) : null;   // his no-text mark (2026-11-12)
                 if (sealUrl && typeof textureLoader !== 'undefined') {
                     if (!_introSealTex) { _introSealTex = textureLoader.load(sealUrl, function () { if (_hq) _hq.dirty = true; }); _introSealTex.minFilter = THREE.LinearMipmapLinearFilter; _introSealTex.magFilter = THREE.LinearFilter; }
                     var sealMat = new THREE.MeshBasicMaterial({ map: _introSealTex, transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide });
-                    var seal = new THREE.Mesh(new THREE.PlaneGeometry(plateW * 0.54 * U, plateW * 0.54 * U), sealMat);
+                    var seal = new THREE.Mesh(new THREE.PlaneGeometry(plateW * 0.54 * U, plateW * 0.54 * 0.776 * U), sealMat);   // the mark is 1024 x 795
                     seal.position.set(0, plate.position.y, 0.02 * U); grp.add(seal);
                 }
             } catch (e) {}
