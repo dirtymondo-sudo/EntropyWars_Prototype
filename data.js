@@ -55288,9 +55288,9 @@ function hqTexBuildingGround(f, hAt) {
 function hqRoomExpand(room, prefabs) {
     const T = (room && room.terrain) || {}, F = Array.isArray(T.features) ? T.features : [];
     const PF = prefabs || HQ_PREFABS;
-    const busy = F.some(f => f && (f.k === 'opening' || f.k === 'prefab' || f.k === 'kit' || f.k === 'texbuilding'));
-    if (!busy) return { features: F, props: [], marks: [], texb: [] };
-    const props = [], marks = [], texb = [];
+    const busy = F.some(f => f && (f.k === 'opening' || f.k === 'prefab' || f.k === 'kit' || f.k === 'texbuilding' || f.k === 'arch'));
+    if (!busy) return { features: F, props: [], marks: [], texb: [], arch: [] };
+    const props = [], marks = [], texb = [], arch = [];
     const walk = (rows, depth, P, from, path) => {
         const out = [];
         (rows || []).forEach(f0 => {
@@ -55324,7 +55324,11 @@ function hqRoomExpand(room, prefabs) {
     /* the texbuildings: drawn by the renderer from info.texb, walked as their rows */
     const tb = [];
     rows.forEach(f => { if (f.k === 'texbuilding') { texb.push(f); hqTexBuildingRows(f).forEach(r => tb.push(r)); } });
-    rows = rows.filter(f => f.k !== 'texbuilding').concat(tb);
+    /* THE ARCHITECTURE (2026-11-13): an `arch` row is DRAWN ONLY (three-renderer.js _hqBuildArchRows: a list of parts — box, cylinder,
+       dome, roof, panel, polygon — each in its own sheet and tint). The walker never reads it: a building's walls, roof and inside are
+       the `texbuilding` row beside it (`skin: false` = that row draws no outside of its own), a `wall`, a `plateau`. */
+    rows.forEach(f => { if (f.k === 'arch') arch.push(f); });
+    rows = rows.filter(f => f.k !== 'texbuilding' && f.k !== 'arch').concat(tb);
     /* the openings last: every wall they name is cut into its pieces where it stands in the list */
     const ops = {};
     rows.forEach(f => { if (f.k === 'opening' && f.wall) (ops[f.wall] || (ops[f.wall] = [])).push(f); });
@@ -55334,7 +55338,7 @@ function hqRoomExpand(room, prefabs) {
         if (f.k === 'wall' && f.id != null && ops[f.id]) { hqOpeningPieces(f, ops[f.id]).forEach(p => cut.push(p)); return; }
         cut.push(f);
     });
-    return { features: cut, props, marks, texb };
+    return { features: cut, props, marks, texb, arch };
 }
 /* one row's expansion alone (the editor's pick proxies for a prefab / kit placement): its rows in room metres */
 function hqRowExpand(row, prefabs) { return hqRoomExpand({ terrain: { features: [row] } }, prefabs).features; }
@@ -60353,6 +60357,7 @@ function hqTerrainCompile(room, roomId) {
        joins the room's marks, and every textured building is handed to the renderer with the ground it stands on */
     X.props.forEach(p => { if (p && p.key) info.scatter.push(Object.assign({}, p)); });
     info.marksX = boards.length ? (X.marks || []).concat(hqTerrainBoardMarks(boards)) : X.marks;   // THE BOARD: its squares join the paint
+    info.arch = (X.arch || []).map(f => Object.assign({}, f, { base: (typeof f.y === 'number') ? f.y : (h => isFinite(h) ? _hqR4(h) : 0)(hAt(+f.x || 0, +f.z || 0)) }));   // THE ARCHITECTURE: each row with the ground under its origin
     info.texb = X.texb.map(f => Object.assign({}, f, { base: (typeof f.y === 'number') ? f.y : texbGround.has(f) ? texbGround.get(f) : hqTexBuildingGround(f, hAt) })).concat(bldTexb);
     return info;
 }
