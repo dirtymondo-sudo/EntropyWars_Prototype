@@ -43096,7 +43096,7 @@ const DOOR_HQ = {
                 {key:'city_laundry',x:-219.05,z:-114.8,face:180},
                 {key:'rowboat',x:-233.8,z:-92.4,face:90},
             ],
-            agents: [], npcSpots: [],
+            agents: [], npcSpots: [{x:173.25,z:-92.75,face:0,race:'king kong',say:['“…” “Was that you?” “…” “The tower.” “…” “Every year?” “…”']}],
             spawn: { x: 113.75, z: 190.75, face: 270 },
         },
         /* DC144-END */

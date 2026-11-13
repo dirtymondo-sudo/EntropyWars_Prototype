@@ -2383,3 +2383,4 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
   GlassWindow* sheets draw near black in an arch row and he wants that look, so never lift them (no glow / gain). Added in F.js: the hotel's
   sky bar tier, the archive's stair drum, the palm house's vault + dome (back to glass), a clerestory on the garage, the shops' upper floor,
   every third back lot a glass office block over a stone ground storey. The HOTEL gets a walk-in inside when the interiors start (his word).
+- THE GIANT APE (mondo 11-13 19:25: "put king kong in the district with the most high rises or tall buildings"): Financial (5 to 11 storeys). S.js `build` pushes him to `ctx.npcSpots` (new in the bake hook: a district's people, written to the room's `npcSpots`) at (173.25, -92.75), the open ground at the foot of the Penthouse stair tower (P10-03), with his own line from the old streets.
