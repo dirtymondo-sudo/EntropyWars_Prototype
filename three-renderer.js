@@ -75137,7 +75137,7 @@ const ThreeRenderer = (function () {
             shaft.position.set(0, (H / 2) * U, -0.03 * U); g.add(shaft);
             var glass = new THREE.Mesh(new THREE.PlaneGeometry(W * U, H * U), new THREE.MeshPhongMaterial({ color: 0x9fc7ff, transparent: true, opacity: 0.16, shininess: 160, specular: 0xffffff, depthWrite: false }));
             glass.position.set(0, (H / 2) * U, 0.05 * U); glass.renderOrder = 2; g.add(glass);
-            if (tex && _hq) _hq.tickers.push(function (dt, now) { tex.offset.y = (now * 0.00006) % 1; });
+            if (tex && _hq) { var _shH = _hq; _hq.tickers.push(function (dt) { var k = (_shH._shaftK != null) ? _shH._shaftK : 1; tex.offset.y = ((tex.offset.y + Math.min(dt || 0, 0.1) * 0.06 * k) % 1 + 1) % 1; }); }   // the speed a scene sets (hq.sceneShaft: minus = the car going down)
             return g;
         },
         concrete_pillar: function (U) {
@@ -78234,7 +78234,7 @@ const ThreeRenderer = (function () {
                 var pL = new THREE.Plane(), pR = new THREE.Plane();
                 eL.material = eL.material.clone(); eL.material.clippingPlanes = [pL];
                 eR.material = eR.material.clone(); eR.material.clippingPlanes = [pR];
-                motion = { mode: 'elevator', parts: [{ m: eL, x0: eL.position.x, dir: -1 }, { m: eR, x0: eR.position.x, dir: 1 }], travel: half * 0.96 * U, ow: ow, clips: [{ dir: -1, plane: pL }, { dir: 1, plane: pR }] };
+                motion = { mode: 'elevator', parts: [{ m: eL, x0: eL.position.x, dir: -1 }, { m: eR, x0: eR.position.x, dir: 1 }], travel: half * 0.96 * U, ow: ow, cage: [brace, brace2, seam], clips: [{ dir: -1, plane: pL }, { dir: 1, plane: pR }] };
                 renderer.localClippingEnabled = true;
             } else if (leafKey) {
                 var cat = leafCat;
@@ -86000,7 +86000,9 @@ const ThreeRenderer = (function () {
             /* THE DOOR GUN rev 2: a FLAT threshold (a floor hatch, a ceiling hatch) stands open — it is a hole you fall through, not a door you press into */
             /* rev 5: a placed WALL door stands open too (HQ_PORTAL_RULES.leafAlways) — Portal's are always open; the leaf lies near flat beside the frame */
             var want = (d.portalSurf && (d.portalSurf !== 'wall' || _hqPortalRules().leafAlways)) ? 1 : ((targetKey === 'door:' + d.door.id && !HQ_DOOR_LOCKED[d.state] && !d.angle) ? 1 : 0);   // THE SUSPICIOUS ANGLE: no swing until measured
-            if (!want && d.npcOpenUntil && d.npcOpenUntil > performance.now() && !HQ_DOOR_LOCKED[d.state]) want = 1;   // THE ROUNDS (2026-09-19): a walker going through swings the leaf
+            if (!want && d.npcOpenUntil && d.npcOpenUntil > performance.now() && !HQ_DOOR_LOCKED[d.state]) want = 1;
+            if (d.sceneOpen) want = 1;   // a scene holds it open (hq.sceneDoor { id }), locked or not
+            if (mo.cage && (!!d.sceneOpen) !== !!d._cageOff) { d._cageOff = !!d.sceneOpen; mo.cage.forEach(function (c) { c.visible = !d._cageOff; }); }   // (the scene's lift opens clear: no cross braces in the way of the recruit stepping out)   // THE ROUNDS (2026-09-19): a walker going through swings the leaf
             _hqDoorMotionStep(d, want, dt);
         }
     }
@@ -93304,6 +93306,8 @@ const ThreeRenderer = (function () {
         },
         /* is a body's rig up WITH its clips (idle + walk)? The opening plays as the building first loads: it waits for this, or
            the officer steps out of the car in the bind pose. */
+        /* the car's shaft window streams at k times its speed (minus = the landings rise past: the car going down); 1 = back */
+        sceneShaft: function (k) { if (!_hq) return false; _hq._shaftK = (+k || 0); return true; },
         sceneReady: function (who) {
             if (!_hq || !who) return false;
             var ch = null;
@@ -93352,6 +93356,7 @@ const ThreeRenderer = (function () {
         sceneDoor: function (o) {
             var H = _hq; if (!H || !H.scene || !o) return false;
             var U = _hqUnits(), ts = 116;
+            if (o.id) { var dd = null; (H.doors || []).forEach(function (x) { if (x && x.door && x.door.id === o.id) dd = x; }); if (!dd) return false; dd.sceneOpen = !!o.open; return true; }   // a ROOM door the scene opens (scene A's front lift); open: false gives it back
             if (o.remove) { var d0 = H._sceneDoor; if (d0) { d0.dead = true; if (d0.root.parent) d0.root.parent.remove(d0.root); try { _disposeR(d0.root); } catch (e) {} H._sceneDoor = null; H.dirty = true; } return true; }
             if (o.open != null) { var d1 = H._sceneDoor; if (!d1) return false; d1.from = d1.k; d1.to = Math.max(0, Math.min(1, +o.open)); d1.t0 = performance.now(); d1.ms = Math.max(1, o.ms || 900); return true; }
             if (H._sceneDoor) return true;
