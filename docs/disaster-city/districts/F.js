@@ -79,7 +79,7 @@ module.exports = {
             return T;
         };
         const local = (T, lx, lz) => { const q = T.rot * Math.PI / 180, c = Math.cos(q), s = Math.sin(q); return [r3(T.x + lx * c - lz * s), r3(T.z + lx * s + lz * c)]; };
-        const emit = (T, parts) => { features.push({ k: 'arch', id: 'dc:' + T.id + ':arch', x: T.x, z: T.z, rot: T.rot, parts: parts.filter(Boolean) }); made++; };
+        const emit = (T, parts) => { features.push({ k: 'arch', id: 'dc:' + T.id + ':arch', x: T.x, z: T.z, y: 0, rot: T.rot, parts: parts.filter(Boolean) }); made++; };   // y: 0 = from the ground (over a roof-route plateau the row would stand on its 7 m roof)
         const prop = (T, key, lx, lz, face, o) => { const w = local(T, lx, lz); props.push(Object.assign({ key, x: w[0], z: w[1], face: ((face || 0) + 360 - T.rot + 180) % 360 }, o || {})); };
 
         /* ── the repeating kinds (mondo: "its also okay to make the more reptitive buildings look similar like apartments") ── */
@@ -280,8 +280,8 @@ module.exports = {
         /* ═══ 8. THE VAULT ANNEX — a bunker: stepped dark stone, no windows, a round-headed steel vault door in a stepped portal, four
                camera drums, a low concrete cap ═══ */
         (() => {
-            const T = frame('P11-01-B1', { hollow: true, st: 3, leaf: 'leaf_security', leafDouble: true }); if (!T) return; const P = [], W = T.W, D = T.D, DK = 0xa8aeba, F = D / 2, lx = T.lx;
-            P.push(box(0, 0, 0, W + 0.1, 3.4, D + 0.1, GUN, DK, { top: false, faces: 'blr' })); frontWithDoor(P, T, 0, 3.4, GUN, DK);
+            const T = frame('P11-01-B1', { hollow: true, st: 1, leaf: 'leaf_security', leafDouble: true }); if (!T) return; const P = [], W = T.W, D = T.D, DK = 0xa8aeba, F = D / 2, lx = T.lx;
+            P.push(box(0, 0, 0, W + 0.1, 3.7, D + 0.1, GUN, DK, { top: false, faces: 'blr' })); frontWithDoor(P, T, 0, 3.7, GUN, DK);   // the inside is one storey: it stays under the first step
             P.push(box(0, 3.4, 0, W - 1.2, 3.2, D - 1.2, GUN, DK), box(0, 6.6, 0, W - 2.6, 2.8, D - 2.6, GUN, DK));
             P.push(box(0, 9.4, 0, W - 5.5, 3.2, D - 5, CONC, 0xb4b8bc), box(0, 12.6, 0, W - 3.5, 0.9, D - 3, CONC, 0x94989e, { under: true }), dome(0, 13.5, 0, 6.5, 2.1, CONC2, 0xbcc0c4, { seg: 28 }));
             for (const c of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) P.push(cyl(c[0] * (W / 2 - 1.0), 0, c[1] * (F - 1.0), 2.3, 11.5, GUN, 0x969ca8, { seg: 16, cap: false }), cyl(c[0] * (W / 2 - 1.0), 11.5, c[1] * (F - 1.0), 2.6, 0.5, CONC, 0x94989e, { seg: 16 }));
@@ -377,7 +377,7 @@ module.exports = {
         /* ═══ 14. THE WORKER CAFE — the DINER pack building at its real size in the middle of its plot; the terrace beside it ═══ */
         (() => {
             const row = rowOf('P09-03-B1'); if (!row) return;
-            props.unshift({ key: 'city_diner', x: row.x, z: r3(row.z - 0.1), face: 0 });   // first in the list: a whole building should not land after a thousand small props
+            props.unshift({ key: 'city_diner', x: row.x, z: r3(row.z - 0.1), face: 180 });   // face 180 = its entrance and DINER sign to the south (seen in game)
             drop(row);
         })();
         terrace('P09-03-B2', 2, [0xb8b0a0, 0xc8806c]);
