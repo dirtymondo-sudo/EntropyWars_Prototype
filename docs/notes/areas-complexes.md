@@ -2362,6 +2362,21 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
   still stood 7 m up (P09-08-B2, P09-09-B1, P10-09-B1, P11-09-B2); the headless compile now gives all 191 city arch rows base 0. `y: 0` in a
   district file is harmless and no longer needed.
 
+- **THE INSIDES** (2026-11-13; mondo 21:04 "let's go ahead and do the interiors", his OK 21:23 on the plan
+  `/mnt/project-files/disaster-city-southside/interiors_1.jpg` + `interiors_2.jpg`): the seven walk-in buildings are furnished, all in R.js
+  (`inside(id, gx, gy, fn)` at the end of `build`). THE SQUARES (his 21:14 + 21:17): a room is read on the city's 3.5 m battle squares
+  (`bake-disaster-city.js C`, not the 1.75 m tile). A piece a unit cannot walk through fills WHOLE squares, centred (`R.cell`; `R.block` = its
+  ghost wall); every other square is a clear walkway one square wide or more, the door opens onto one; decor is on a wall, in a corner or
+  overhead. A room's plan is X from the left wall (facing the front from outside), Y from the BACK wall; `(gx, gy)` = where the first whole square
+  starts (the church and the garage stand 1 m off the lines: the church has 1 m strips, the garage's back strip holds the workbenches).
+  Squares: church 5x5, bakery 3x5, boxing gym 5x5, pawnshop 5x3, community kitchen 8x3, dojo 9x3, garage 8x6.
+  Pieces with no model are parts of the room's own arch row `dc:<id>-in` (not dressed by `dress()`): the ring (2x2 squares), the heavy bags on wall
+  brackets, the dumbbell rack + bench press, the two-post lift (a `car_pack_2` at y 1.58 on it), the tyre stacks, the dojo mat (5x2 squares, its seams
+  on the squares), the striking posts, the counters, the pawnshop's bars, the kitchen's serving line, the bakery wall, the garage office's walls.
+  Everything else is a catalogue prop (`R.put`), reported in prop-check.txt as "in building" (a district's own prop is never moved).
+  The front doors are the city's swing leaves (already there); the two inner openings (bakery, garage office) are open, one square wide.
+  Deviation from the first sketch: no raised chancel (heights are whole blocks), pews in two blocks with side aisles.
+
 ## DISASTER CITY, THE BIG WINDOWS (2026-11-13, the shared-pieces thread)
 mondo (screenshot of two city blocks): "The buildings that use these repeated window textures from the urban pack, the windows are too small, need
 to be scaled up, and remember the bottom row of these buildings should be different/not windows". Both ways a city building is drawn put a window
