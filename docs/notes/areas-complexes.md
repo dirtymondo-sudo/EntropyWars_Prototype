@@ -2658,3 +2658,34 @@ glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the 
   clinic 3x5 (waiting, reception, two beds, store), science museum 9x3 (cases, telescopes, globe, planets hung over the middle walkway), gate
   lodge 2x2. The five roof-route buildings stay shut.
 - Plan sheet: /mnt/project-files/university-district/16_interior_plans_on_battle_grid.jpg.
+- **THE DEEPER HANGAR (2026-11-13, mondo 21:21 "make hangar deeper so it fits")**: `I.js` `fit` grows P03-10-B1 one square forward onto the walk in front of it (in `build`, NOT `tailor`: changing the plan re-rolls the whole city's random dressing): 31.5 x 14 m, four squares deep, 7 m walls
+  under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. The street lamp on that square is taken off (`ctx.lamps`, the tool now writes its lamps line after the district build). Seen in the
+  cloud browser from inside (as a 28 m long test build). INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.
+
+## DISASTER CITY, THE ENTERTAINMENT DISTRICT — the insides (2026-11-13 night)
+mondo 21:04 "after the district threads do their exterior polish, let's go ahead and do the interiors"; his grid rule 21:14 + 21:17 (a
+blocker snaps to the battle squares and fills whole ones, a walkway is a whole square wide, decoration sits off centre); his "okay" on the
+cell plans 21:23 (/mnt/project-files/dc-entertainment/interiors_plan.jpg). All in `docs/disaster-city/districts/E.js`.
+- The ten walk-in shells are furnished IN PLACE in the city room (no door to another room): `INSIDE[id] = { g: [rows of letters], keyIn,
+  floorIn, rug, ... }`. A letter is one 3.5 m square: `.` = walkway, any other letter = a blocker drawn by `KIT[letter]` in the square's own
+  frame (+z looks at the nearest walkway) under a ghost block the size of the square (`BLOCK_H`). Rows are written back first, the door row
+  last, left = left as you face the building. The tool refuses a plan that is not the shell's size or whose doorway square is not a walkway.
+- Kits: S slot bank (3 `slot_machine`), T round table + stools, B bar + back shelf, c cashier cage, G stage (or the workshop's half-built
+  set), K kitchen line (`kitchen_range`), H seat block (raked by `rake`), L `psx_sofa_1`, U `curved_couch` + TV, X mixing desk, M drum kit,
+  P `decor_piano`, V vocal booth, A six arcade cabinets (shapes: the model list has no cabinet), R costume rail / amps / lumber, m mirrors,
+  O ovens, W `steel_table` benches, F backdrop flat, Y crates, Z `exec_desk`, D `library_shelf_full`, J air hockey, C shop counter,
+  I `ticket_booth`, Q `popcorn_cart`, E `dorm_bed` bunks, N `locker` row. Plus ceiling light panels over the walkways, a lit EXIT over every
+  doorway inside, the Cinema's screen, the inside wall and floor sheets (`keyIn` / `floorIn`).
+- The rooms: Casino, Recording studio, Restaurant court, Comedy theater, Cabaret, Stage workshop, Arcade, Bakery, Crew house, Cinema.
+  10 `dc:<id>:in` arch rows, about 1,900 parts, about 19,500 triangles; 82 catalogue props (docs/disaster-city/prop-check.txt lists them as
+  "in building": that is where they belong, the check keeps a district's own props).
+- NOT SEEN IN THE GAME (offline render of the baked rows only: interiors_built.jpg). Unknown until walked: how bright the insides are, prop
+  facings, whether the wall-mounted props (`locker`, `kitchen_range`) sit right. Next (his "and yes" 21:23): insides for the wedding chapel,
+  the Concert hall and the Film studio (solid today).
+- THE THREE MORE INSIDES (same night, his "and yes" 21:23): the Concert hall and the Film studio were roof-route plateaus (solid); `B(id,
+  { walk: true })` on a plateau now swaps in a hollow `texbuilding` of two storeys (the same 7 m walked roof slab, as the Industrial district
+  does), its doorway the plan's first door. Concert hall inside: lobby, raked seat blocks, a two-square-deep stage, backstage. Film studio
+  inside: backdrops, a half-built set, a camera + lamp (kit `k`), the director's desk, wardrobe, make-up, the front office. The Concert
+  hall's glass lobby drum became an open colonnade (the doorway is behind it). The wedding chapel is a walk-in shell of the file's own now
+  (`EXTRA['E-chapel']` + its own texbuilding row, 3 x 2 squares, `leaf_motel` door): pews (kit `p`), the wedding altar (kit `w`, `lectern`).
+  13 inside rows in all. NOT SEEN IN THE GAME; the roof route over the two halls wants a walk (the texbuilding's 0.45 m parapet ghost).
