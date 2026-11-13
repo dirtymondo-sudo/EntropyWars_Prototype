@@ -36,7 +36,8 @@ Usage: pip install bpy==5.2.3 scipy pillow
               tight sleeve 0.07), RAY_IN=0.12 RAY_OUT=0.12 TORN=9 (a suit jacket narrower than the body's shoulders: politician,
               priest, professor, sheriff), LOCKS=0 (a dark coat or gown read as a hair lock: the witch),
               ARMALLX=0.3 (with --barearms: a bracelet painted on the bare arm goes with the arm, the spy),
-              TOPCUT=0.3 (a torn top edge cut level, metres under the eyes: the spy), NECKIN=1 (the neck hidden under a shirt collar: the politician),
+              TOPCUT=0.3 (a torn top edge cut level, metres under the eyes: the spy),
+              HANDCUT=1 (a bare hand fused to its sleeve goes, the body's own hand shows: politician, priest, shaman, telepath, vampire),
               DROP="x,y,z,r;..." (a stray shell left out by hand, its middle r from a point measured from the eyes; SHELLS=1 lists them)
 Notes: docs/notes/models-assets.md "THE MESHY OUTFITS".
 """
@@ -264,6 +265,21 @@ def fit(name, gender, src, bodies_dir):
         inhead = cz > chin - 0.02 and hd < 0.16
         if isrem and c[:, 2].min() > chin - 0.25 and not (cz > eye.z and n >= 60): dropped.append(('face bit', n)); bpy.data.objects.remove(o); continue
         if inhead and n < 25: dropped.append(('bit', n)); bpy.data.objects.remove(o); continue
+        # THE BARE HAND ON A SLEEVE (env HANDCUT=1; 2026-11-13, mondo across the remake batches: "fingers look messed up": where Meshy
+        # fuses a bare hand to its sleeve the hand is not a shell of its own, so it stayed, hid the body's hand and the unit kept Meshy's
+        # mitten fingers): past the wrist (HANDLEN in from the arm's tip) a side whose faces are mostly skin-coloured (HANDSKIN) loses
+        # all of them, nails and shading too, so the body's own hand shows. A glove is not skin-coloured and stays
+        if E('HANDCUT', 0) and not inhead and np.abs(c[:, 0]).max() > xmax - E('HANDLEN', 0.12):
+            me_ = o.data; cen_ = np.array([p.center for p in me_.polygons]); fc_ = face_cols(o, PX, IW, IH); cut_ = np.zeros(len(cen_), bool)
+            for sg_ in (-1, 1):
+                sel_ = cen_[:, 0] * sg_ > xmax - E('HANDLEN', 0.12)
+                if sel_.sum() >= 40 and (np.linalg.norm(fc_[sel_] - skin, axis=1) < SKIN_T).mean() > E('HANDSKIN', 0.6): cut_ |= sel_
+            if cut_.all(): dropped.append(('hand', n)); bpy.data.objects.remove(o); continue
+            if cut_.any():
+                bmh = bmesh.new(); bmh.from_mesh(me_); bmh.faces.ensure_lookup_table()
+                bmesh.ops.delete(bmh, geom=[bmh.faces[i] for i in np.nonzero(cut_)[0]], context='FACES')
+                bmesh.ops.delete(bmh, geom=[v for v in bmh.verts if not v.link_faces], context='VERTS'); bmh.to_mesh(me_); bmh.free()
+                dropped.append(('bare hand cut off a sleeve', int(cut_.sum())))
         if inhead or (isrem and cz > eye.z): headp.append(o)
         keep.append(o)
     for o in eyes: bpy.data.objects.remove(o)
@@ -591,10 +607,6 @@ def fit(name, gender, src, bodies_dir):
             if hw[v.index] > 0.5 and v.co.z > eyeM[2] + E('HOODZ', 0.045):
                 upper_.append(v.index)
                 if hoodbvh is not None and (hoodbvh.ray_cast(v.co + v.normal * 0.001, v.normal, E('RAY_OUT', 0.07))[0] is not None or hoodbvh.ray_cast(v.co, -v.normal, E('RAY_IN', 0.05))[0] is not None) and hoodbvh.ray_cast(Vector((v.co.x, v.co.y, eyeM[2] + 0.02)), Vector((0, 0, 1)), 0.4)[0] is not None: hood_.append(v.index)
-            # (env NECKIN; 2026-11-13, politician, mondo: "neck or shirt seam looks jagged": the body's neck is wider than Meshy's, so it
-            # came out through the shirt collar in saw teeth) the neck's own skin, from NECKINZ under the eyes down, is hidden like the
-            # body's where the collar lies within NECKOUT outside it or NECKINR inside it
-            if E('NECKIN', 0) and nw[v.index] > hw[v.index] and v.co.z < eyeM[2] - E('NECKINZ', 0.13) and (bvh.ray_cast(v.co + v.normal * 0.001, v.normal, E('NECKOUT', 0.04))[0] is not None or bvh.ray_cast(v.co, -v.normal, E('NECKINR', 0.03))[0] is not None): continue
             ks.add(v.index)
             continue
         h1 = bvh.ray_cast(v.co + v.normal * 0.001, v.normal, E('RAY_LEG', 0.45) if legw[v.index] > 0.5 else E('RAY_OUT', 0.07)); h2 = bvh.ray_cast(v.co, -v.normal, E('RAY_IN', 0.05))
