@@ -8,9 +8,9 @@ Preview: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg.
 
 | Pack building | District | Plot | Asked (UTC 11-13) | Cut |
 |---|---|---|---|---|
-| Pizzeria (pizzeria-psx) | SHARED: an in-universe chain, any district (first: Sports + Culture P05-11) | any | 17:07 | `city_pizzeria` |
-| Gas station (gas-station) | SHARED: an in-universe chain, any district (first: Sports + Culture P07-11) | any | 17:07 | `city_gas_store` + `city_gas_canopy` + `city_gas_sign` |
-| Playground (other/cursedlake_ps1-playground) | Sports + Culture | | 16:45 | no |
+| Pizzeria (pizzeria-psx) | SHARED: an in-universe chain, any district (placed: Sports + Culture P05-11) | any | 17:07 | `city_pizzeria` |
+| Gas station (gas-station) | SHARED: an in-universe chain, any district (not placed yet: Sports + Culture dropped it 17:55, no lot fits) | any | 17:07 | `city_gas_store` + `city_gas_canopy` + `city_gas_sign` |
+| Playground (other/cursedlake_ps1-playground) | FREE (Sports + Culture released it 17:55: its park became the stadium) | | | no |
 | BurgerPiz restaurant | Bayside | P09-09 Food hall | 16:46 | `city_burgerpiz` |
 | Tacos stand | Bayside | P08-09 Street market | 16:46 | `city_taco_stand` |
 | Diner | Financial | P09-03 Worker cafe | 16:44 | `city_diner` |
@@ -19,7 +19,7 @@ Preview: /mnt/project-files/disaster-city-shared/pack_buildings_cut.jpg.
 | Laundry | Southside | P02-00 Laundry terraces | 16:49 | `city_laundry` |
 | House, Quequis house | Southside | P01-03 | 16:49 | `city_house`, `city_quequis_house` |
 | Bus stop | Southside | P00-02 Bus stop court | 16:49 | already in the game: `bus_shelter` |
-| Playground: not cut yet (Sports + Culture cuts it itself or asks) | | | | |
+| Playground: not cut yet (ask the shared-pieces thread) | | | | |
 | Industrial pack (domi236: container, tank, vent, panel, skip, factory fronts) | cut by Industrial, shared by all | | 16:53 | by Industrial |
 | Metro station pieces (already in the game, `base: 'metro'`) | Hero Plaza | P06-06 Transit court | 16:46 | in game |
 
