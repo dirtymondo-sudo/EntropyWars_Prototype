@@ -19,13 +19,13 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 913 |
+| Asset pack | yes | 925 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 732 |
+| Meshy AI | no | 734 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -497,7 +497,7 @@ MakeHuman beards). `_open` / `_closed` files are the same garment with the front
 | ewf_fur · Fur (whole body) | `Assets/characters/creator/wear/ewf_fur.glb` | MakeHuman parts, baked by Claude in Blender | MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py) |
 | ewf_fur_werewolf · Fur (whole body), werewolf colours | `Assets/characters/creator/wear/ewf_fur_werewolf.glb` | MakeHuman parts, baked by Claude in Blender | MPFB 2 hair editor fur (Tomáš Klecer templates, MakeHuman CC0) grown + baked to a body shell in cloud Blender (bake-fur.py) |
 
-### 5e. Meshy pieces in the creator (159 files, `Assets/characters/creator/wear/ewm_*`, PR #829)
+### 5e. Meshy pieces in the creator (161 files, `Assets/characters/creator/wear/ewm_*`, PR #829)
 
 Made 2026-11-03 on Meshy through the API (concept image -> mondo's OK -> model) and fitted on the MPFB bodies in Blender
 (bake-meshy.py): hats, creature heads, armour, equipment, tails. Column = the creator's own id · label (tab).
@@ -571,6 +571,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ewm_strawhat · Floppy straw hat (hats) | `Assets/characters/creator/wear/ewm_strawhat.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2angel_outfit · Angel dress (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2angel_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2annunaki_outfit · Annunaki outfit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2annunaki_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_t2astronaut_hat · Astronaut helmet (Meshy remake) (hats) | `Assets/characters/creator/wear/ewm_t2astronaut_hat.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2astronaut_outfit · Astronaut outfit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2astronaut_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2bunnygirl_hat · Bunny girl headpiece (Meshy remake) (hats) | `Assets/characters/creator/wear/ewm_t2bunnygirl_hat.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2bunnygirl_outfit · Bunny girl outfit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2bunnygirl_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
@@ -594,6 +595,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | ewm_t2ghostf_outfit · Ghost outfit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2ghostf_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2giant_outfit · Giant outfit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2giant_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2glitch_outfit · Glitch body (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2glitch_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
+| ewm_t2halfdemonf_outfit · Halfdemon (F) dress (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2halfdemonf_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2hippie_outfit · Hippie outfit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2hippie_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2hippief_outfit · Hippie (F) outfit (Meshy remake) (equipment) | `Assets/characters/creator/wear/ewm_t2hippief_outfit.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
 | ewm_t2homosapien_hat · Homosapien headwear (Meshy remake) (hats) | `Assets/characters/creator/wear/ewm_t2homosapien_hat.glb` | Meshy AI | Meshy AI piece made by Claude through the Meshy API (concept -> mondo's OK -> model), fitted on the MPFB bodies in Blender (bake-meshy.py, PR #829) |
@@ -2027,6 +2029,20 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | lion | `Assets/world/animals/PSX_lion.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
 | wolf | `Assets/world/animals/Wolf1.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
 
+### PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) — Asset pack (9)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| ind_container | `Assets/world/packs/domi236_industrial/ind_container.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
+| ind_factory_blue | `Assets/world/packs/domi236_industrial/ind_factory_blue.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
+| ind_factory_red | `Assets/world/packs/domi236_industrial/ind_factory_red.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
+| ind_factory_tan | `Assets/world/packs/domi236_industrial/ind_factory_tan.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
+| ind_panel | `Assets/world/packs/domi236_industrial/ind_panel.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
+| ind_silo | `Assets/world/packs/domi236_industrial/ind_silo.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
+| ind_skip | `Assets/world/packs/domi236_industrial/ind_skip.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
+| ind_skip_full | `Assets/world/packs/domi236_industrial/ind_skip_full.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
+| ind_vent | `Assets/world/packs/domi236_industrial/ind_vent.glb` | Asset pack | PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) |
+
 ### House · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (7)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2116,6 +2132,14 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | item_maat_feather | `Assets/world/props/misc/maat_feather.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 | item_police_barricade | `Assets/world/props/misc/police_barricade.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (ultimate spell props, concepts picked by mondo 2026-11-03: barricade U01a, flat earth U03b, scales U04a, feather U06a) |
 
+### Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| bus_shelter | `Assets/world/packs/elbolilloduro/ebd_busstop_bus_shelter.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
+| bus_stop_sign | `Assets/world/packs/elbolilloduro/ebd_busstop_bus_stop_sign.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
+| transit_bus | `Assets/world/packs/elbolilloduro/ebd_busstop_transit_bus.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
+
 ### Survival PSX · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (3)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2147,6 +2171,13 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | spell_one_angel_wing | `Assets/characters/gear/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
 | spell_one_bat_wing | `Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
 | spell_one_dragon_wing | `Assets/characters/gear/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
+
+### Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| cash_register | `Assets/world/packs/elbolilloduro/ebd_pizzeria_cash_register.glb` | Asset pack | Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
+| street_signal | `Assets/world/packs/elbolilloduro/ebd_pizzeria_street_signal.glb` | Asset pack | Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Low Poly Chess Set (mondo's upload, FBX) — Asset pack (author not recorded yet) (2)
 
@@ -2230,18 +2261,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | abandoned_house | `Assets/world/packs/elbolilloduro/ebd_abandonedhouse_house.glb` | Asset pack | Abandoned House · Elbolilloduro · CC0 (the house exterior cut out in Blender, basement cut; DOOR_HQ.catalogue abandoned_house past the Haunted grounds) |
-
-### Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| bus_shelter | `Assets/world/packs/elbolilloduro/ebd_busstop_bus_shelter.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
-
-### Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| cash_register | `Assets/world/packs/elbolilloduro/ebd_pizzeria_cash_register.glb` | Asset pack | Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) |
 
 ### Meshy-style eagle export (mondo's upload), rig + 5 clips by Claude (bake-eagle.mjs) — Meshy AI, reworked by Claude (1)
 
@@ -2571,6 +2590,7 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | city_bench | `Assets/world/props/meshy/Meshy_AI_a_city_bench_0922010124_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | city_bin | `Assets/world/packs/elbolilloduro/ebd_6twelve_city_bin.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
 | city_trash_bin | `Assets/world/props/meshy/Meshy_AI_a_city_trash_bin_0917065157_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| citybus | `Assets/world/packs/elbolilloduro/ebd_busstop_transit_bus.glb` | Asset pack | Bus stop · Elbolilloduro · CC0 (piece cut out in Blender) |
 | clock | `Assets/world/props/meshy/Meshy_AI_analog_clock_realist_0727195259_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | confessional | `Assets/world/props/meshy/Meshy_AI_confessional_booth_0917035307_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | couples_bed | `Assets/world/packs/pizzadoggy_psx_mega_pack/furniture/bed_4.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
