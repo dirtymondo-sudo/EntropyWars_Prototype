@@ -2383,4 +2383,27 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
   GlassWindow* sheets draw near black in an arch row and he wants that look, so never lift them (no glow / gain). Added in F.js: the hotel's
   sky bar tier, the archive's stair drum, the palm house's vault + dome (back to glass), a clerestory on the garage, the shops' upper floor,
   every third back lot a glass office block over a stone ground storey. The HOTEL gets a walk-in inside when the interiors start (his word).
+<<<<<<< HEAD
 - THE GIANT APE (mondo 11-13 19:25: "put king kong in the district with the most high rises or tall buildings"): Financial (5 to 11 storeys). S.js `build` pushes him to `ctx.npcSpots` (new in the bake hook: a district's people, written to the room's `npcSpots`) at (173.25, -92.75), the open ground at the foot of the Penthouse stair tower (P10-03), with his own line from the old streets.
+=======
+
+## DISASTER CITY, THE UNIVERSITY DISTRICT (2026-11-13, the University thread; mondo's OK 19:24)
+mondo 16:41: "architect the buildings in their respective districts plots ... every building should be unique and purposeful and recognizable".
+`docs/disaster-city/districts/U.js` (the district hook, `build(ctx)`) re-dresses the district's 22 buildings (plots x 0-3, y 4-7): each keeps its
+collision row with the skin off and gets ONE `k: 'arch'` row `dcu:<building id>` (425 parts in all) + the bandstand on the Campus green.
+- **Old campus (west)**: red brick (`urban:TileSubway3a` at 3.5 m a sheet, its dark band a string course per storey), pale stone (`calm_marble`), blue
+  slate (`calm_tiles_small` tinted). Dorm court (four wings round a court, archway), lecture hall (six-column porch, lead vault; roof route), library
+  (gothic gables, clock tower; walk-in), student cafe (hip roof, conservatory, turret; walk-in), campus gate (two turrets, arch), bookshops, faculty homes.
+- **Science side (east)**: observatory (podium with a walked 7 m terrace, verdigris dome = `calm_snow` tinted, `glow: 0.3`), research lab (sawtooth roof,
+  glass stair drum; walk-in), lab annex, service court (vaulted shed, boiler chimney, tanks), psychology lab (rounded ends; walk-in), research annex,
+  science museum (barrel roof, the planetarium globe standing out of the front; walk-in), clinic, pavilion, guard post, stands, corner store.
+- **The chain**: the pizzeria (`city_pizzeria` prop, real size) stands on the old student-flats lot P00-06-B2; no gas station (no lot fits one). The
+  pack shop block P01-04-B2 = `pack_bld_09` at its own size.
+- **Lessons** (for every district file): (1) a battle-sheet key in an arch part (bricks_3, concrete_floor, aluminium, tilefloor, gunmetal) is swapped in
+  the game for a DARK calm sheet (`CALM_TERRAIN.of`), so tinted roofs / domes drew near black: use an `urban:` sheet, an `hq:` sheet or a calm sheet by
+  its own name. (2) A roof-route plateau draws its own concrete cliff: the drawn walls stand 0.15 m outside it, a tier plateau 0.15 m inside its walls.
+  (3) The unlit side of a dome reads black: `glow: 0.3`. (4) A walk-in building's back never stands ON a plot line under a higher plot (`SHALLOW`).
+  (5) THE BIG WINDOWS: cut-out window sheets are drawn 5.25 m a sheet (a window about 1.8 m), none on the ground storey of a taller building.
+- Seen in the game (headless, 14 views) before the globe / window pass; that last pass is checked by `node --check` + the bake only.
+- Next pass: interiors of the roof-route buildings; the U plots' infill buildings are untouched.
+>>>>>>> origin/main
