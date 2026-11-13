@@ -2598,3 +2598,5 @@ with a ghost wall each and never within 5 m of a bridge / stair / ladder point o
   (CASINO, CINEMA down the fin, NOW SHOWING, COMEDY TONIGHT, CONCERT down the blade, NIGHT MARKET, ARCADE, BOX OFFICE, RAMEN, BAKERY, TAXI,
   WEDDING CHAPEL ...; no invented names). Helpers `b.txt(side, u0, u1, y, h, words, fg, proud, glow, bg)` and `b.vtxt` (a word read down a
   blade, a letter a panel). Dark letters sit over the lit panels (`kind: 'over'`, no board); light letters glow.
+- **The University's sign lettering** (11-13, on the shared `txt:` sheet of PR #1327): `LABEL[kind]` in districts/U.js puts the building's plain name
+  (LIBRARY, LECTURE HALL, CAFE, BOOKS, CLINIC, ...: what it is, no invented names) on a board over its first door. Not seen on screen.
