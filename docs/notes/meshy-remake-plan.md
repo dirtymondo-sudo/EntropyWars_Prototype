@@ -172,6 +172,7 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 | AGENT LOCKE (cast, F) (mondo 11-12 "remake Locke to blink") | 11-12 | clean (ISLENECK + OPENSKIN + SKINISLE=400) | done, soft (lockeFace) | creator hair mh_elvs_short_side_do | live | sprites.js CAST_CREATOR_LOOKS: board, DOOR HQ, portrait studio; not yet seen in HQ / a fight |
 | BATCH 1 OF 3 (11-13, meshy-remake-batches.md; mondo: "creator clothes first, Meshy for the pieces we don't have"). All: first pass, one look from four sides + a walk frame, NOT seen in a battle, no round of fixes yet | | | | | waiting | bakes: `EYE=` from `bake-t2-eyes.py` on every unit (see models-assets.md "BATCH 1 OF 3") |
 | batch 1 review round | 11-13 | his 12 pinned notes fixed (collar, real hands, ears, hair under hats, chain, helmet) | | | waiting | flags: models-assets.md "BATCH 1, HIS REVIEW" |
+| batch 1 review round 2 | 11-13 | snug trousers (gangster, conspiracy, general, clown), bunny girl in creator top + shorts + boots, demon princess horn mirrored | | | waiting | models-assets.md "BATCH 1, REVIEW ROUND 2" |
 | annunaki (M) | 11-13 | clean | owed | annunakiFace (beard is in the skin) | waiting | creator Anunnaki headdress + Egyptian collar + Feathered wings (tinted brown); T2 robe `--nowings` |
 | astronaut (M) | 11-13 | clean | owed | none (stock face behind the visor) | waiting | creator Astronaut helmet + backpack; T2 suit `--headgear` (its own helmet shell not used) |
 | barbarella (F) | 11-13, creator clothes only | see sheet | owed | barbarellaFace, soft | waiting | T2 leotard came out ragged at the hips: one-piece swimsuit + knee boots tinted white, gloves, gun belt, thigh holster |
@@ -279,3 +280,10 @@ Cost: 15 Meshy credits per model, about 1,200 for group A. Each new garment shap
 - Hippie M: T2 trousers dropped (`DROPAT=0,0,0.5,0.05 RAY_IN=0.12 RAY_OUT=0.12`), wears creator `mhw_elvs_gored_elephant_pants` tinted `#6a94c8`.
 - Men in black: remade look drops the coded blazer + shirt + trousers for pack `mhw_toigo_male_suit_tie_and_jacket` with black `ewb_tie` over its tie (a tint on the suit also colours its shirt, so the suit stays charcoal; a sliver of the suit's own tie shows beside the black one).
 - STILL OPEN: overlord fingertips, mushroom girl neckline, pirate F between the legs, necromancer slit, white cop + female cop.
+
+### Batch 2 review fixes, round 3 (2026-11-13)
+- Men in black: "the tie should not be outside his suit". New piece `mhw_toigo_male_suit_black.glb` = the pack suit `mhw_toigo_male_suit_tie_and_jacket` with its texture's cloth darkened and its tie made black (a NEW file, the pack file is untouched); the look wears it without `ewb_tie`.
+- Homosapien: head looked cut off in the walk (neck skin hidden under the coat collar). Rebake adds `--neckline` (`SKIN_T=0.12 RAY_IN=0.12 RAY_OUT=0.12 TORN=9 --neckline`).
+- King Arthur: hair `mh_long01` (hair004 parts off the forehead and read as a receding hairline). `--neckline --barearms` was tried and dropped (it ate the shoulder armour and most of the cape). STILL OPEN: cape edge at the neck line, jagged bracers seen from behind.
+- Police officer: THE REMADE ALTS. sprites.js `RACE_REMADE_ALTS` + `getRaceRemadeAlts`, party-builder.js one button per alt. White officer = same outfit, stock `young_caucasian_male`. Female officer = the male T2 baked on the female body (`LOCKS=0 RAY_IN=0.12 RAY_OUT=0.12 TORN=9`, `ewm_t2policeofficerf_outfit`), make-up face. The buttons were not seen on screen.
+- STILL OPEN: halfdemon M coat hip in the walk, overlord fingertips, mushroom girl neckline, pirate F between the legs, necromancer slit.
