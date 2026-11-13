@@ -2383,9 +2383,7 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
   GlassWindow* sheets draw near black in an arch row and he wants that look, so never lift them (no glow / gain). Added in F.js: the hotel's
   sky bar tier, the archive's stair drum, the palm house's vault + dome (back to glass), a clerestory on the garage, the shops' upper floor,
   every third back lot a glass office block over a stone ground storey. The HOTEL gets a walk-in inside when the interiors start (his word).
-<<<<<<< HEAD
 - THE GIANT APE (mondo 11-13 19:25: "put king kong in the district with the most high rises or tall buildings"): Financial (5 to 11 storeys). S.js `build` pushes him to `ctx.npcSpots` (new in the bake hook: a district's people, written to the room's `npcSpots`) at (173.25, -92.75), the open ground at the foot of the Penthouse stair tower (P10-03), with his own line from the old streets.
-=======
 
 ## DISASTER CITY, THE UNIVERSITY DISTRICT (2026-11-13, the University thread; mondo's OK 19:24)
 mondo 16:41: "architect the buildings in their respective districts plots ... every building should be unique and purposeful and recognizable".
@@ -2406,4 +2404,3 @@ collision row with the skin off and gets ONE `k: 'arch'` row `dcu:<building id>`
   (5) THE BIG WINDOWS: cut-out window sheets are drawn 5.25 m a sheet (a window about 1.8 m), none on the ground storey of a taller building.
 - Seen in the game (headless, 14 views) before the globe / window pass; that last pass is checked by `node --check` + the bake only.
 - Next pass: interiors of the roof-route buildings; the U plots' infill buildings are untouched.
->>>>>>> origin/main
