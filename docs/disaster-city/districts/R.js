@@ -169,11 +169,11 @@ function build(ctx) {
     })();
     (() => {   // B3 the bike workshop (roof walk): blue-grey ribbed metal, two roll-up doors, a water tank on the roof
         const fr = frameOf('P01-00-B3'); roofWalk('P01-00-B3');
-        const a = arch(fr, 'P01-00-B3'), W = fr.W, D = fr.D, BL = 0x8fb4c4;
+        const a = arch(fr, 'P01-00-B3'), W = fr.W, D = fr.D, BL = 0xb4d8e8;
         a.box(0, 0, 0, W + 0.1, ROOF_H, D + 0.1, K.rib, BL, { top: false });
         a.wins('f', 0, 0, W, D, 0, { n: 2, ww: W * 0.34, wh: 3.4, key: K.metal, tint: 0xe8ecf0, margin: 1 });
         a.panel('f', 0, 0, W, D, 0, 4.1, W * 0.7, 1.2, null, 0xf08a2c, { glow: 0.45 });
-        a.wins('f', 0, 0, W, D, 5.7, { n: 6, ww: 1.8, wh: 0.9, key: K.winF }); a.wins('lr', 0, 0, W, D, 4.6, { n: 3, key: K.winF, ww: 1.8, wh: 1.4 });
+        a.wins('f', 0, 0, W, D, 5.7, { n: 6, ww: 1.8, wh: 0.9, key: K.winF }); a.wins('lr', 0, 0, W, D, 4.6, { n: 3, key: K.winF, ww: 1.8, wh: 1.4 });  a.wins('b', 0, 0, W, D, 4.6, { n: 5, key: K.winF, ww: 1.8, wh: 1.4 }); a.wins('b', 0, 0, W, D, 1.2, { n: 5, key: K.winF, ww: 1.8, wh: 1.4 });
         a.parapet(0, ROOF_H, 0, W, D, 0.6, K.rib, 0x6f8c98);
         a.cyl(W / 2 - 2.6, ROOF_H + 1.6, -D / 2 + 2.6, 1.5, 2.6, K.wood, 0xd0a070, { seg: 12 }); a.cyl(W / 2 - 2.6, ROOF_H + 4.2, -D / 2 + 2.6, 1.7, 1.2, K.rib, 0x707478, { r2: 0, seg: 12 });
         a.box(W / 2 - 2.6, ROOF_H, -D / 2 + 2.6, 2.4, 1.6, 2.4, null, 0x3a3c40, { top: false });
@@ -366,7 +366,7 @@ function build(ctx) {
     })();
     (() => {   // B2 the pizzeria (the Pizzeria pack's building, the city's chain): its shop front on the yard
         const old = rowOf('P01-02-B2'), fx = old.x, z0 = old.z - 7; drop('P01-02-B2');
-        prop('city_pizzeria', fx, z0 + 10.25, 180); claim({ x0: fx - 5.6, x1: fx + 5.6, z0: z0 - 0.3, z1: z0 + 21 });
+        prop('city_pizzeria', fx, z0 + 10.25, 180); claim({ x0: fx - 5.6, x1: fx + 5.6, z0: z0 - 0.3, z1: z0 + 32.5 });   // (+ the tree line in front of its door)
     })();
     (() => {   // B3 the carpenter's shed: timber boards, one grey slope, a lean-to over the saw bench
         const fr = frameOf('P01-02-B3'); solid('P01-02-B3', fr, 4.0);
