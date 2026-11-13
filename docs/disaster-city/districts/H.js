@@ -68,7 +68,7 @@ B['P05-04-B1'] = { row: { storeys: 2, leaf: 'leaf_security' }, parts(door) { con
 /* 4 · WORKSHOP STORE — ochre brick under a green gable, a blue awning */
 B['P05-04-B3'] = { row: { solid: true }, parts() { const a = sheet(), OC = 0xe6c274;
     a.box(0, 0, 0, 10.6, 7, 17.6, BRICK, OC, { top: false }); a.roof('gable', 0, 7, 0, 17.6, 4, 10.6, CORR, 0x5f9a72, { ry: 90, over: 0.5, keyEnd: BRICK, tintEnd: OC });
-    a.box(0, 0.5, -8.86, 7, 2.5, 0.12, G_SQ, 0xd8ecf8); a.roof('shed', 0, 3.2, -9.9, 10.4, 1.1, 2.2, null, 0x3f72c0, { under: true }); a.cyl(0, 8.4, -8.9, 1.1, 0.25, ALU, 0xffffff, { seg: 14, ry: 0 });
+    a.box(0, 0.5, -8.86, 7, 2.5, 0.12, G_SQ, 0xd8ecf8); a.roof('shed', 0, 3.2, -9.9, 10.4, 1.1, 2.2, null, 0x3f72c0, { under: true, ry: 180 }); a.cyl(0, 8.4, -8.9, 1.1, 0.25, ALU, 0xffffff, { seg: 14, ry: 0 });
     return a.P; } };
 
 /* 5 · SUPERHERO TOWER — the district's weenie: a columned marble podium, a glass shaft with white fins, a round drum on the plaza corner,
@@ -232,6 +232,309 @@ const OPEN = [
         return a.P; } })),
 ];
 
+/* ── THE POLISH PASS (2026-11-13, mondo 20:15: "one more polish pass on the exteriors ... go one or two more layers deep with the detail,
+   the foundation is already there and is good"): a second parts list per building, added after its own: plinths, string courses, window
+   sills and heads, pilasters, downpipes, wall lamps, vents, awnings, balconies, merlons, roof kit. No lettering (the arch row has none),
+   no gold but the `gold` key, the glass left dark. `kit(a)` are the helpers: every piece is laid against a wall by its side. ── */
+const DARK = 0x3a3d42, STONE = 0xa8a294, WARM = 0xffd9a0, FACE = { S: 'f', N: 'b', E: 'r', W: 'l' };
+const GRILL = U('MetalSubwayGrill1a'), HAZ = U('SignHazard1a'), GRANITE = U('ConcreteUnderTiles1'), PAVER = U('TileGeneric1a'), PAVER_D = U('TileGeneric3a'), TAR = U('RubberNonSlip1a'), CHECK = U('TileMarble1a');
+const D_WOOD = U('DoorWoodenHalf1a'), D_GREY = U('DoorPaintedHalf1a'), D_RED = U('DoorPaintedHalf2a'), D_SHOP = U('DoorStorefrontHalf1a'), DEC_R1 = U('DecalWindowsResidential1a'), DEC_R2 = U('DecalWindowsResidential2a'), DEC_F = U('DecalWindowsFactory1a'), SHUT = U('GlassWindowResidentialShutter1');
+function kit(a) {
+    const K = {
+        /* a box laid on a wall: side S/N/E/W, half = that wall's distance from the middle, u = along the wall (world x on S/N, world z on E/W), t = how far it stands out */
+        on(side, half, u, y, w, h, t, key, tint, o) {
+            const s = (side === 'S' || side === 'E') ? 1 : -1, c = s * (half + t / 2);
+            return (side === 'S' || side === 'N') ? a.box(u, y, c, w, h, t, key, tint, o) : a.box(c, y, u, t, h, w, key, tint, o); },
+        doorU: door => door ? door.lx * (door.side === 'S' || door.side === 'W' ? 1 : -1) : null,
+        sides: (sx, sz) => [['S', sz / 2, sx], ['N', sz / 2, sx], ['E', sx / 2, sz], ['W', sx / 2, sz]],
+        /* a base course right round, open at the doorway */
+        plinth(sx, sz, h, door, key, tint, out) { out = out || 0.1; const du = K.doorU(door);
+            K.sides(sx, sz).forEach(([sd, half, L]) => { const e = L / 2 + out;
+                if (door && door.side === sd) { const g0 = du - door.cw / 2 - 0.12, g1 = du + door.cw / 2 + 0.12;
+                    if (g0 > -e) K.on(sd, half, (-e + g0) / 2, 0, g0 + e, h, out, key, tint); if (g1 < e) K.on(sd, half, (g1 + e) / 2, 0, e - g1, h, out, key, tint); }
+                else K.on(sd, half, 0, 0, 2 * e, h, out, key, tint); }); },
+        course: (sx, sz, y, h, out, key, tint, o) => a.box(0, y, 0, sx + 2 * out, h, sz + 2 * out, key, tint, Object.assign({ under: true }, o)),
+        /* sills and heads for a row of windows `w` wide, `hh` tall, feet at y */
+        frames(side, half, us, y, w, hh, key, tint, o) { us.forEach(u => { K.on(side, half, u, y - 0.14, w + 0.36, 0.14, 0.3, key, tint, o); K.on(side, half, u, y + hh, w + 0.36, 0.2, 0.24, key, tint, o); }); },
+        pil(side, half, us, y, h, w, t, key, tint, o) { us.forEach(u => K.on(side, half, u, y, w, h, t, key, tint, o)); },
+        /* one sheet, once, on the outward face only: a window, a door leaf, a decal of windows, a grille, a hazard plate */
+        panel: (side, half, u, y, w, h, key, tint, o) => K.on(side, half, u, y, w, h, 0.07, key, tint == null ? 0xffffff : tint, Object.assign({ uv: 'fit', faces: FACE[side], top: false }, o)),
+        win(side, half, us, y, w, hh, key, tint, o) { us.forEach(u => K.panel(side, half, u, y, w, hh, key, tint, o)); },
+        decal(side, half, us, y, w, h, key) { us.forEach(u => K.panel(side, half, u, y, w, h, key)); },
+        door: (side, half, u, y, w, h, key, tint) => K.panel(side, half, u, y, w, h, key || D_WOOD, tint),
+        hazard: (side, half, u, y, w, h) => K.panel(side, half, u, y, w, h, HAZ),
+        /* real lettering on a board (THE SIGN LETTERING, PR #1327: key 'txt:WORDS|fg|bg|aspect', a panel facing out of the wall) */
+        sign(side, half, u, y, w, h, words, fg, bg) { const s = (side === 'S' || side === 'E') ? 1 : -1, c = s * (half + 0.1), ns = side === 'S' || side === 'N';
+            return a.quad(ns ? u : c, y, ns ? c : u, w, h, SIDE_RY[side], 'txt:' + words + '|' + fg + '|' + (bg || '') + '|' + Math.max(1, Math.round(w / h)), null, Object.assign({ uv: 'fit' }, bg ? {} : { kind: 'over' })); },
+        /* a roof surface in its own sheet, and a low parapet round it */
+        rTop: (x, y, z, w, d, key, tint) => a.box(x, y, z, w, 0.05, d, key, tint == null ? 0xffffff : tint, { roof: true }),
+        parapet(x, y, z, w, d, h, key, tint) { for (const s of [-1, 1]) { a.box(x, y, z + s * (d / 2 - 0.12), w, h, 0.24, key, tint, { roof: true }); a.box(x + s * (w / 2 - 0.12), y, z, 0.24, h, d - 0.48, key, tint, { roof: true }); } },
+        /* a downpipe with its hopper, down a wall */
+        pipe(side, half, u, h, tint) { K.on(side, half, u, 0, 0.14, h, 0.14, METAL, tint || DARK); K.on(side, half, u, h - 0.35, 0.4, 0.35, 0.3, METAL, tint || DARK); },
+        lamp(side, half, u, y) { K.on(side, half, u, y, 0.14, 0.1, 0.32, null, DARK); K.on(side, half + 0.2, u, y - 0.3, 0.18, 0.3, 0.18, null, 0xd8963c, { glow: 0.7 }); },   // (seen in game: a pale glow box read as a sheet of paper, so the lantern is small and amber)
+        lamps(door, half, y) { if (!door) return; const du = K.doorU(door); K.lamp(door.side, half, du - door.cw / 2 - 0.55, y || 2.5); K.lamp(door.side, half, du + door.cw / 2 + 0.55, y || 2.5); },
+        vent(side, half, u, y, w, h) { K.on(side, half, u, y - 0.06, (w || 1.2) + 0.12, (h || 0.8) + 0.12, 0.05, null, DARK); K.panel(side, half + 0.05, u, y, w || 1.2, h || 0.8, GRILL); },
+        ac(side, half, u, y) { K.on(side, half, u, y, 0.95, 0.62, 0.5, ALU, 0xd8dce0); K.on(side, half, u, y - 0.1, 0.8, 0.1, 0.55, null, DARK); K.panel(side, half + 0.5, u, y + 0.07, 0.8, 0.48, GRILL); },
+        /* a flat canopy with a hanging valance */
+        awning(side, half, u, y, w, dep, tint, tint2) { K.on(side, half, u, y, w, 0.12, dep, null, tint, { under: true }); K.on(side, half + dep - 0.06, u, y - 0.34, w, 0.34, 0.06, null, tint2 || tint); },
+        balcony(side, half, u, y, w) { K.on(side, half, u, y, w, 0.12, 1.0, CONC1, 0xe8e4da, { under: true }); K.on(side, half + 0.95, u, y + 0.12, w, 0.9, 0.05, METAL, DARK); },
+        /* roof kit: an air handler, a stub vent, a stair bulkhead, a skylight */
+        rAC(x, y, z) { a.box(x, y, z, 2.0, 0.16, 1.5, CONC1, 0xb8b8b2, { roof: true }); a.box(x, y + 0.16, z, 1.7, 1.0, 1.2, ALU, 0xd8dce0, { roof: true }); a.cyl(x, y + 1.16, z, 0.42, 0.12, null, DARK, { seg: 10, roof: true });
+            a.box(x, y + 0.3, z + 0.62, 1.4, 0.7, 0.04, GRILL, 0xffffff, { uv: 'fit', faces: 'f', top: false, roof: true }); a.box(x, y + 0.3, z - 0.62, 1.4, 0.7, 0.04, GRILL, 0xffffff, { uv: 'fit', faces: 'b', top: false, roof: true }); },
+        /* a long duct run on a roof */
+        rDuct(x, y, z, len, alongX) { a.box(x, y + 0.3, z, alongX ? len : 0.7, 0.55, alongX ? 0.7 : len, ALU, 0xc8ccd0, { roof: true }); },
+        rVent(x, y, z) { a.cyl(x, y, z, 0.2, 0.8, METAL, 0xb0b4b8, { seg: 8, roof: true }); a.cyl(x, y + 0.8, z, 0.34, 0.2, METAL, 0xb0b4b8, { seg: 8, r2: 0.1, roof: true }); },
+        rHut(x, y, z, key, tint) { a.box(x, y, z, 3, 2.5, 3, key, tint, { roof: true }); a.box(x, y + 2.5, z, 3.4, 0.2, 3.4, CONC1, 0xe8e4da, { under: true, roof: true }); a.box(x, y, z + 1.52, 1, 2.05, 0.06, D_GREY, 0xffffff, { uv: 'fit', faces: 'f', top: false, roof: true }); },
+        rSky(x, y, z, w, d) { a.box(x, y, z, w, 0.5, d, G_SQ, 0xd8ecf8, { roof: true }); },
+        rail(sx, sz, y, tint) { for (const s of [-1, 1]) { a.box(0, y, s * sz / 2, sx, 1.0, 0.06, METAL, tint || DARK, { roof: true }); a.box(s * sx / 2, y, 0, 0.06, 1.0, sz, METAL, tint || DARK, { roof: true }); } },
+        /* skip the pieces that would cross the doorway */
+        clear(door, side, us, m) { if (!door || door.side !== side) return us; const du = K.doorU(door); return us.filter(u => Math.abs(u - du) > (m || 1.8)); },
+    };
+    return K;
+}
+const steps = (lo, hi, st) => { const r = []; for (let v = lo; v <= hi + 1e-6; v += st) r.push(Math.round(v * 1000) / 1000); return r; };
+const DET = {};
+
+/* 1 · NEWS OFFICE: a dark stone foot, fluted piers between the window strips on every tier, copper sills and heads, corner finials, lanterns */
+DET['P04-04-B1'] = (a, door) => { const K = kit(a), IV2 = 0xfff4dc, CU = 0x5fae9c;
+    K.plinth(28, 28, 0.9, door, GRANITE, 0xffffff, 0.12);
+    K.sides(28, 28).forEach(([sd, half]) => {
+        K.frames(sd, half, K.clear(door, sd, [-10.5, -3.5, 3.5, 10.5], 1.2), 1.4, 2.2, 8.4, ALU, CU);
+        K.pil(sd, half, K.clear(door, sd, [-13.4, -7, 0, 7, 13.4], 2.4), 0.9, 9.6, 0.9, 0.22, STUCCO, IV2);
+        K.frames(sd, 10.5, [-7, 0, 7], 12, 2.2, 8.6, ALU, CU); K.pil(sd, 10.5, [-9.9, -3.5, 3.5, 9.9], 11.7, 9.9, 0.8, 0.2, STUCCO, IV2);
+        K.frames(sd, 7, [0], 23, 2.2, 5.4, ALU, CU); K.pil(sd, 7, [-6.4, -2.4, 2.4, 6.4], 22.8, 6.4, 0.7, 0.18, STUCCO, IV2); });
+    for (const c of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { a.box(c[0] * 13.2, 11.1, c[1] * 13.2, 1.5, 1.8, 1.5, STUCCO, IV2, { roof: true }); a.roof('pyramid', c[0] * 13.2, 12.9, c[1] * 13.2, 1.5, 0.9, 1.5, ALU, CU);
+        a.box(c[0] * 9.8, 22.2, c[1] * 9.8, 1.2, 1.5, 1.2, STUCCO, IV2, { roof: true }); a.roof('pyramid', c[0] * 9.8, 23.7, c[1] * 9.8, 1.2, 0.8, 1.2, ALU, CU);
+        a.box(c[0] * 6.3, 29.8, c[1] * 6.3, 1, 1.2, 1, STUCCO, IV2, { roof: true }); }
+    K.rTop(0, 11.1, 0, 28.2, 28.2, PAVER, 0xd8d0c0); K.rTop(0, 22.2, 0, 21.2, 21.2, PAVER, 0xd8d0c0); K.rTop(0, 29.8, 0, 14.2, 14.2, PAVER_D); K.parapet(0, 11.1, 0, 28.6, 28.6, 0.5, STUCCO, IV2); K.parapet(0, 22.2, 0, 21.6, 21.6, 0.5, STUCCO, IV2);
+    K.rAC(-12, 11.15, 4); K.rAC(-12, 11.15, 7); K.rAC(12, 11.15, -4); K.rAC(12, 11.15, -7); K.rDuct(12, 11.15, 3, 8, false); K.rVent(4, 11.15, 12.2); K.rVent(-4, 11.15, -12.2); K.rAC(8.6, 22.25, 0); K.rVent(-8.6, 22.25, 3);
+    a.cyl(0, 44.2, 0, 0.5, 0.35, null, 0xff3020, { seg: 8, glow: 1 });   // the mast's warning light
+    K.lamps(door, 14, 2.9);
+    if (door) { const du = K.doorU(door); K.on(door.side, 14, du, 4.2, 7, 1.1, 0.14, null, 0x2a3a34); K.sign(door.side, 14.06, du, 4.3, 6.4, 0.9, 'NEWS', '#e8d9a8', ''); } };
+
+/* 2 · HERO WORKSHOP: a concrete foot, brick piers, an eaves gutter and downpipes, louvres, lamps by the shutter, a framed sign board */
+DET['P05-04-B1'] = (a, door) => { const K = kit(a), BR2 = 0xb85c44;
+    K.plinth(17.5, 14, 0.6, door, CONC1, 0xb8b8b2, 0.1);
+    K.pil('N', 7, K.clear(door, 'N', [-8.4, -4.375, 0, 4.375, 8.4]), 0.6, 6.4, 0.7, 0.16, BRICK, BR2); K.pil('S', 7, K.clear(door, 'S', [-8.4, -4.375, 0, 8.4]), 0.6, 6.4, 0.7, 0.16, BRICK, BR2);
+    K.pil('E', 8.75, K.clear(door, 'E', [-6.65, 0, 6.65]), 0.6, 6.4, 0.7, 0.16, BRICK, BR2); K.pil('W', 8.75, K.clear(door, 'W', [-6.65, 6.65]), 0.6, 6.4, 0.7, 0.16, BRICK, BR2);
+    K.course(17.5, 14, 6.72, 0.2, 0.2, METAL, DARK); K.pipe('N', 7, -8.0, 6.7); K.pipe('N', 7, 8.0, 6.7); K.pipe('S', 7, -8.0, 6.7);
+    K.vent('E', 8.75, -3.3, 4.6); K.vent('E', 8.75, 3.3, 4.6); K.vent('N', 7, -2.2, 4.6); K.vent('N', 7, 2.2, 4.6);
+    K.lamp('S', 7, 1.1, 4.2); K.lamp('S', 7, 8.1, 4.2);
+    K.on('S', 7.14, 0, 5.1, 12.3, 0.1, 0.12, null, DARK); K.on('S', 7.14, 0, 6.5, 12.3, 0.1, 0.12, null, DARK); K.on('S', 7.14, -6.1, 5.1, 0.1, 1.5, 0.12, null, DARK); K.on('S', 7.14, 6.1, 5.1, 0.1, 1.5, 0.12, null, DARK);
+    K.sign('S', 7.2, 0, 5.3, 11.4, 1.1, 'HERO WORKSHOP', '#2a2a2e', '');
+    for (const x of [1.45, 7.75]) { K.on('S', 7, x, 0, 0.3, 4.4, 0.24, null, DARK); K.hazard('S', 7.24, x, 0, 0.3, 1.2); }
+    K.ac('W', 8.75, 4, 3.2); K.ac('W', 8.75, 5.4, 3.2);                                   // the shutter's yellow guides
+    a.cyl(6.6, 12.5, -4.6, 0.6, 0.25, METAL, 0x8a8e92, { seg: 10 }); a.cyl(6.6, 7.3, -4.6, 0.75, 0.3, METAL, 0x8a8e92, { seg: 10, roof: true });
+    K.lamps(door, door && (door.side === 'N' || door.side === 'S') ? 7 : 8.75, 2.6); };
+
+/* 4 · WORKSHOP STORE: quoins, a shop-window frame, upper windows with sills on the long sides, a chimney, pipes */
+DET['P05-04-B3'] = a => { const K = kit(a), CRM = 0xfff2d2, GN = 0x5f9a72;
+    K.plinth(10.6, 17.6, 0.45, null, BRICK, 0x9a7a48, 0.1);
+    for (const c of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) a.box(c[0] * 5.05, 0.45, c[1] * 8.55, 0.7, 6.55, 0.7, STUCCO, CRM, { top: false });
+    K.on('N', 8.8, 0, 0.36, 7.4, 0.14, 0.3, null, GN); K.on('N', 8.8, 0, 3.0, 7.4, 0.16, 0.26, null, GN); K.pil('N', 8.8, [-3.6, -1.2, 1.2, 3.6], 0.5, 2.5, 0.12, 0.2, null, GN);
+    for (const sd of ['E', 'W']) { K.decal(sd, 5.3, [-4.6, 4.6], 1.0, 3.2, 5.2, DEC_R1); K.ac(sd, 5.3, 0, 4.4); }
+    K.decal('N', 8.8, [0], 3.9, 5.2, 2.6, DEC_R1); K.door('N', 8.93, 2.6, 0.5, 1.1, 2.3, D_SHOP);
+    K.door('S', 8.8, 2.2, 0, 1.1, 2.2, D_GREY); K.decal('S', 8.8, [-1.6], 3.6, 3.2, 2.6, DEC_R1); K.lamp('S', 8.8, 3.3, 2.5); K.pipe('S', 8.8, -4.6, 6.9); K.pipe('N', 8.8, 4.9, 6.9);
+    a.box(2.4, 8.2, 4.5, 0.9, 3.4, 0.9, BRICK, 0xc89a58, { roof: true }); a.box(2.4, 11.6, 4.5, 1.15, 0.2, 1.15, CONC1, 0xd8d4c8, { roof: true }); a.cyl(2.4, 11.8, 4.5, 0.2, 0.5, null, 0x9a5a3c, { seg: 8, roof: true }); };
+
+/* 5 · SUPERHERO TOWER: a stepped base, an architrave and a gilt frieze on the podium, fins on the shaft, bands on the drum, a rail on the ring */
+DET['P06-04-B1'] = (a, door) => { const K = kit(a), WH = 0xf6f8fb;
+    a.box(0, 0, 0, 32, 0.22, 32, MARBLE, 0xe2dccc, { keyTop: CHECK, tintTop: 0xffffff }); K.rTop(0, 7.8, 0, 30.6, 30.6, PAVER, 0xe6e2d8); K.parapet(0, 7.8, 0, 30.9, 30.9, 0.6, MARBLE, 0xffffff); K.course(28, 28, 6.15, 0.55, 1.35, MARBLE, 0xf2ecde); K.course(28, 28, 6.72, 0.14, 1.5, GOLD, 0xffffff);
+    K.sides(17.5, 17.5).forEach(([sd, half]) => K.pil(sd, half, [-5.8, -2.9, 2.9, 5.8], 7.8, 49, 0.22, 0.32, ALU, WH));
+    for (const y of [18, 28.5, 39, 49.5, 60]) a.cyl(-8.75, y, 8.75, 6.14, 0.4, ALU, WH, { seg: 24 });
+    a.cyl(0, 58.2, 0, 14.8, 1.1, ALU, WH, { seg: 32, ri: 14.68 }); a.cyl(0, 62.5, 0, 13.3, 0.9, ALU, WH, { seg: 32, ri: 13.2 });
+    for (const c of [[1, 1], [1, -1], [-1, -1]]) K.rAC(c[0] * 12, 7.8, c[1] * 12); K.rVent(12, 7.85, 0); K.rVent(0, 7.85, -12); K.rDuct(12, 7.85, -5, 9, false); K.rDuct(4, 7.85, -12, 9, true);
+    a.box(0, 31.8, 9.02, 6.9, 0.2, 0.34, ALU, WH); a.box(0, 39.2, 9.02, 6.9, 0.2, 0.34, ALU, WH);                       // the shield's frame
+    a.cyl(0, 87.6, 0, 0.3, 0.4, null, 0xff3020, { seg: 8, glow: 1 });
+    if (door) { const du = K.doorU(door); K.pil(door.side, 14, [du - door.cw / 2 - 0.45, du + door.cw / 2 + 0.45], 0, 3.1, 0.5, 0.3, GOLD, 0xffffff); K.on(door.side, 14, du, 2.6, door.cw + 1.9, 0.5, 0.36, GOLD, 0xffffff); K.lamps(door, 14.2, 2.4); } };
+
+/* 6 · PRESS COURT: a kerb, slim mullions on the glass, a dark fascia on the floating roof, press steps, a dish on the roof */
+DET['P07-04-B1'] = (a, door) => { const K = kit(a);
+    K.plinth(24.5, 14, 0.3, door, CONC1, 0xd8d8d2, 0.1);
+    for (const sd of ['S', 'N']) K.pil(sd, 7, K.clear(door, sd, steps(-10.5, 10.5, 3.5), 1.3), 0.3, 4.3, 0.12, 0.14, ALU, 0xffffff);
+    for (const sd of ['E', 'W']) K.pil(sd, 12.25, K.clear(door, sd, [-3.5, 0, 3.5], 1.3), 0.3, 4.3, 0.12, 0.14, ALU, 0xffffff);
+    K.course(24.5, 14, 2.5, 0.1, 0.09, ALU, 0xffffff);
+    a.box(0, 5.42, 0.8, 28.7, 0.14, 18.8, METAL, DARK, { roof: true }); a.box(0, 4.42, 0.8, 28.56, 0.18, 18.66, null, 0x24488a, { top: false, under: false });
+    K.sign('S', 10.1, 0, 4.66, 9, 0.68, 'PRESS COURT', '#ffffff', '#24488a');
+    a.box(0, 0, 10.6, 24, 0.16, 1.2, CONC1, 0xe4e4de); a.box(0, 0, 11.6, 26, 0.08, 1.0, CONC1, 0xdadad4);
+    K.rTop(0, 5.4, 0.8, 28.3, 18.4, TAR, 0xffffff); K.rAC(-9, 5.56, -3); K.rAC(-5.5, 5.56, -3); K.rSky(2, 5.45, 2, 8, 3); a.cyl(8, 5.56, -3, 0.12, 1.3, METAL, 0xb0b4b8, { seg: 6, roof: true }); a.dome(8, 6.5, -3, 1.2, 0.5, ALU, 0xe8ecf0, { roof: true });
+    for (const x of [8.2, 9.8, 11.4]) a.cyl(x, 0, 10.6, 0.26, 0.3, CONC1, 0xd0d0ca, { seg: 8 });
+    K.lamps(door, door && (door.side === 'N' || door.side === 'S') ? 7 : 12.25, 2.9); };
+
+/* 7 · APARTMENTS A: a belt course, balconies on the back, an entrance canopy between the bays, pipes, a stair hut and vents on the roof */
+function aptDress(a, sx, sz, st, baySide) { const K = kit(a), h = st * 3.5, opp = { W: 'E', E: 'W', N: 'S', S: 'N' }[baySide], ew = baySide === 'E' || baySide === 'W';
+    const hb = (ew ? sx : sz) / 2, L = ew ? sz : sx;
+    K.plinth(sx, sz, 0.5, null, STUCCO, 0xb8b0a0, 0.12); K.course(sx, sz, 3.4, 0.24, 0.16, STUCCO, 0xf2ecde);
+    for (let f = 1; f < st; f++) for (const u of [-0.28 * L, 0.28 * L]) K.balcony(opp, hb, u, f * 3.5, 3);
+    K.awning(baySide, hb, 0, 2.7, 3.4, 1.5, 0x2c5a48, 0x2c5a48); K.door(baySide, hb, -0.55, 0, 1.1, 2.3, D_WOOD); K.door(baySide, hb, 0.55, 0, 1.1, 2.3, D_WOOD); K.lamp(baySide, hb, -1.3, 2.4); K.lamp(baySide, hb, 1.3, 2.4);
+    K.door(opp, hb, 0, 0, 1.1, 2.2, D_GREY); for (let f = 1; f < st; f++) { K.ac(opp, hb, -0.28 * L + 2.2, f * 3.5 + 1.4); if (f % 2) K.ac(opp, hb, 0.28 * L - 2.2, f * 3.5 + 1.4); }
+    K.rTop(0, h + 0.6, 0, sx - 0.5, sz - 0.5, TAR, 0xffffff);
+    K.pipe(opp, hb, 0, h); K.pipe(opp, hb, -L / 2 + 0.5, h); K.pipe(opp, hb, L / 2 - 0.5, h);
+    K.rHut(-sx * 0.2, h + 0.6, sz * 0.2, BRICK, 0xb86a58); K.rVent(sx * 0.1, h + 0.6, sz * 0.3); K.rVent(-sx * 0.3, h + 0.6, -sz * 0.3); K.rAC(sx * 0.2, h + 0.6, sz * 0.05);
+    a.cyl(-sx * 0.3, h + 0.6, sz * 0.38, 0.05, 3.2, METAL, 0xb0b4b8, { seg: 5, roof: true }); }
+DET['P07-04-B2'] = a => aptDress(a, 17.5, 24.5, 5, 'W');
+
+/* 8 · COFFEE ARCADE: a brown dado, shuttered upper windows on the blank sides, menu boards by the door, a saucer under the cup, a flue */
+DET['P04-05-B1'] = (a, door) => { const K = kit(a), CR2 = 0xfff0d0, BRN = 0x8a5230;
+    K.plinth(17.5, 17.5, 0.9, door, STUCCO, BRN, 0.1); K.course(17.5, 17.5, 6.5, 0.22, 0.18, STUCCO, CR2);
+    for (const sd of ['N', 'S', 'W']) { const us = [-5.2, 0, 5.2];
+        K.win(sd, 8.8, us, 3.3, 2.0, 2.6, G_SQ, 0xd8ecf8); K.frames(sd, 8.8, us, 3.3, 2.0, 2.6, STUCCO, CR2);
+        us.forEach(u => { K.panel(sd, 8.8, u - 1.45, 3.3, 0.8, 2.6, SHUT, 0xc89a70); K.panel(sd, 8.8, u + 1.45, 3.3, 0.8, 2.6, SHUT, 0xc89a70); K.on(sd, 8.8, u, 2.75, 2.2, 0.4, 0.45, WOOD, 0x6a4a2c); K.on(sd, 8.8 + 0.05, u, 3.15, 2.0, 0.3, 0.35, null, 0x4f8a48); }); }
+    if (door) { const du = K.doorU(door); for (const s of [-1, 1]) K.on(door.side, 8.8, du + s * (door.cw / 2 + 1.0), 0.9, 0.9, 1.4, 0.08, null, 0x2a2420); K.lamps(door, 8.8, 2.6); }
+    K.rTop(0, 7.5, 0, 18.1, 18.1, PAVER_D); a.box(11.3, 0, 0, 5, 0.06, 17.5, U('TileMarble3c'), 0xffffff); K.rAC(-6.5, 7.55, -6.5); K.ac('W', 8.8, 3, 1.6);
+    a.cyl(-3, 12.15, 5.5, 3.5, 0.25, MARBLE, 0xffffff, { seg: 18 }); a.cyl(6, 7.5, -6.5, 0.3, 2.6, METAL, 0xb0b4b8, { seg: 8, roof: true }); a.cyl(6, 10.1, -6.5, 0.45, 0.25, METAL, 0x8a8e92, { seg: 8, r2: 0.15, roof: true });
+    K.pipe('W', 8.8, -8.2, 6.9); K.pipe('W', 8.8, 8.2, 6.9);
+    K.on('E', 8.8, 0, 5.75, 7, 0.7, 0.12, null, BRN); K.sign('E', 8.84, 0, 5.8, 5.4, 0.6, 'COFFEE', '#fff0d0', '');   /* above the arcade's vaults (they hid it lower) */ };
+
+/* 11 · TRAINING HALL: a stone foot, stone sills and heads, merlons round the walked roof, bands on the turrets, porch steps */
+DET['P06-05-B1'] = a => { const K = kit(a), ST = 0xe6dcc6, BR = 0xc08468;
+    K.plinth(28.1, 28.1, 1.0, null, GRANITE, 0xffffff, 0.14);
+    for (const sd of ['N', 'S']) K.frames(sd, 14.1, sd === 'N' ? [-9.2, 9.2] : [-9.2, -4.6, 4.6, 9.2], 1, 2.6, 4.6, MARBLE, ST);
+    for (const sd of ['E', 'W']) K.frames(sd, 14.1, [-9.2, -4.6, 0, 4.6, 9.2], 1, 2.6, 4.6, MARBLE, ST);
+    for (const u of steps(-9.8, 9.8, 2.8)) for (const s of [-1, 1]) { a.box(u, 7.05, s * 14.05, 1.4, 0.8, 0.5, BRICK, BR, { roof: true }); a.box(s * 14.05, 7.05, u, 0.5, 0.8, 1.4, BRICK, BR, { roof: true }); }
+    for (const c of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) { for (const y of [6.6, 10.1]) a.cyl(c[0] * 13.6, y, c[1] * 13.6, 2.56, 0.35, MARBLE, ST, { seg: 12 }); a.cyl(c[0] * 13.6, 13.7, c[1] * 13.6, 0.12, 0.9, GOLD, 0xffffff, { seg: 6, r2: 0.02, roof: true }); }
+    a.box(0, 0, -17.9, 5, 0.34, 1.2, MARBLE, STONE); a.box(0, 0, -18.9, 6, 0.17, 1.0, MARBLE, STONE);
+    for (const x of [-9.2, 9.2]) a.box(x, 6.62, -14.28, 2.2, 0.1, 0.2, METAL, DARK);
+    K.sign('N', 14.1, 0, 5.5, 8, 0.9, 'TRAINING HALL', '#fff4dc', '#7a2a2a');
+    K.door('N', 17.27, -0.8, 0, 1.6, 3, D_WOOD); K.door('N', 17.27, 0.8, 0, 1.6, 3, D_WOOD); K.door('S', 14.1, 0, 0, 1.2, 2.3, D_GREY); K.lamp('S', 14.1, 1.2, 2.6);
+    K.rAC(-9, 7.05, 10); K.rAC(-6.5, 7.05, 10); K.rAC(9, 7.05, 10); K.rVent(9, 7.05, -10); K.rVent(-9, 7.05, -10); K.rDuct(-7.75, 7.05, 6, 6, false);                                     // the banners' rods
+    K.lamp('N', 17.15, -2.2, 2.9); K.lamp('N', 17.15, 2.2, 2.9); K.pipe('S', 14.1, -11, 6.6); K.pipe('S', 14.1, 11, 6.6); };
+
+/* 12 · TOWER SERVICE: a foot, concrete ribs, a roof rail, a ladder on the stack, a catwalk between the cooling towers, dock bumpers and lamps */
+DET['P07-05-B1'] = (a, door) => { const K = kit(a), RB = 0xd2d8dc;
+    K.plinth(28, 24.5, 0.7, door, CONC1, 0x9a9e9e, 0.12);
+    K.pil('N', 12.25, K.clear(door, 'N', steps(-11.5, 11.5, 4.6)), 0.7, 8.8, 0.6, 0.3, CONC, RB); K.pil('E', 14, K.clear(door, 'E', steps(-9.2, 9.2, 4.6)), 0.7, 8.8, 0.6, 0.3, CONC, RB);
+    K.pil('S', 12.25, K.clear(door, 'S', [-13, -9, 13]), 0.7, 8.8, 0.6, 0.3, CONC, RB);
+    K.rTop(0, 14.9, 0, 28.1, 24.6, PAVER_D); K.rAC(-11, 14.95, 9.5); K.rAC(-8, 14.95, 9.5); K.rAC(11, 14.95, 9.5); K.rDuct(0, 14.95, 9.5, 14, true); K.rHut(11, 14.9, 2, CONC, 0xc4ccd2);
+    K.rail(28.3, 24.8, 14.9, 0xe8b820); a.box(10.9, 14.9, -5.9, 0.5, 13, 0.08, METAL, DARK, { roof: true });
+    a.box(0, 17.2, 5, 20, 0.12, 1.2, METAL, DARK, { roof: true }); a.box(0, 17.32, 5.6, 20, 0.9, 0.05, METAL, 0xe8b820, { roof: true });
+    for (const x of [-12, -4, 4]) a.cyl(x, 14.9, -7, 0.2, 0.7, METAL, 0x8a8e92, { seg: 6, roof: true });
+    for (const x of [-3, 2, 7, 11]) K.on('S', 14.6, x, 0.35, 0.5, 0.6, 0.14, null, 0x202022); for (const x of steps(-3, 11, 2)) a.box(x, 0.55, 14.62, 2, 0.5, 0.04, HAZ, 0xffffff, { uv: 'fit', faces: 'f', top: false });
+    for (const x of [-1, 4, 9]) K.lamp('S', 12.25, x, 4.4); K.vent('N', 12.25, -8, 12.2, 2.4, 1.0); K.vent('N', 12.25, 8, 12.2, 2.4, 1.0); K.vent('E', 14, 0, 12.2, 2.4, 1.0);
+    K.lamps(door, door && (door.side === 'N' || door.side === 'S') ? 12.25 : 14, 2.6); };
+
+/* 13 · APARTMENT STAIR: a foot, a belt course, cornice brackets, air units on the back, an awning over the door, a stair hut */
+DET['P04-06-B1'] = (a, door) => { const K = kit(a), h = 21, CRM = 0xe4d8be;
+    K.plinth(14, 24.5, 0.6, door, BRICK, 0x8a4a40, 0.1); K.course(14, 24.5, 3.38, 0.24, 0.14, ALU, CRM);
+    for (const u of steps(-6, 6, 2)) for (const sd of ['N', 'S']) K.on(sd, 12.3, u, h - 0.5, 0.3, 0.5, 0.45, ALU, CRM);
+    for (const u of steps(-11, 11, 2)) K.on('W', 7.05, u, h - 0.5, 0.3, 0.5, 0.45, ALU, CRM);
+    [[-8, 5.2], [3, 5.2], [-3, 8.7], [8, 8.7], [-8, 12.2], [0, 12.2], [5, 15.7], [-5, 19.2]].forEach(q => K.ac('W', 7.05, q[0], q[1]));
+    K.pipe('W', 7.05, -11.6, h); K.pipe('W', 7.05, 11.6, h); K.pipe('N', 12.3, -5, h); K.pipe('S', 12.3, -5, h);
+    if (door) { const du = K.doorU(door), hf = door.side === 'N' || door.side === 'S' ? 12.3 : 7.05; if (door.side !== 'E') K.awning(door.side, hf, du, 2.5, 3, 1.3, 0x7a2a2a, 0x7a2a2a); K.lamps(door, hf, 2.4); }
+    K.rTop(0, h + 0.7, 0, 14.9, 25.4, TAR, 0xffffff); K.parapet(0, h + 0.7, 0, 15.1, 25.6, 0.5, BRICK, 0xd88470); K.rAC(-4, h + 0.75, -9); K.rHut(3, h + 0.7, 6, BRICK, 0xd88470); K.rVent(3, h + 0.7, -3); K.rVent(-4, h + 0.7, 4); K.rVent(4, h + 0.7, -9); };
+
+/* 14 · TOWNHOUSE ROW: sills and heads, door hoods, stoop rails, a cornice each, chimneys, back windows and doors, pipes between the houses */
+DET['P04-06-B2'] = a => { const K = kit(a), TR = [0xfff0e0, 0xf6f0e0, 0xeef4fa], DR = [0x3a6a48, 0x8a2a2a, 0x2a427a];
+    for (let i = 0; i < 3; i++) { const x = -5.85 + i * 5.85, hh = 10.5 + (i === 1 ? 1.2 : 0);
+        K.on('N', 8.8, x, 0, 5.95, 0.5, 0.1, MARBLE, STONE);
+        K.frames('N', 8.8, [x - 1.3, x + 1.3], 4.6, 1.3, 1.8, STUCCO, TR[i]); K.frames('N', 8.8, [x - 1.3, x + 1.3], 7.8, 1.3, 1.8, STUCCO, TR[i]); K.frames('N', 8.8, [x + 1.2], 1.4, 1.5, 1.6, STUCCO, TR[i]);
+        K.on('N', 8.8, x - 0.9, 2.95, 1.7, 0.14, 0.8, null, DR[i], { under: true }); K.on('N', 8.8, x - 0.9, 2.8, 1.4, 0.15, 0.2, STUCCO, TR[i]);
+        for (const o of [-1.15, 1.15]) a.box(x + o, 0.5, -9.9, 0.06, 0.9, 1.4, METAL, DARK);
+        K.on('N', 8.8, x, hh - 0.55, 5.85, 0.3, 0.3, STUCCO, TR[i]); K.on('N', 8.8, x, hh - 0.2, 5.95, 0.2, 0.45, STUCCO, TR[i]);
+        K.lamp('N', 8.8, x - 1.9, 2.5);
+        a.box(x + 1.9, hh + 0.4, 3, 0.9, 3.4, 0.9, BRICK, 0xc07860, { roof: true }); a.box(x + 1.9, hh + 3.8, 3, 1.1, 0.18, 1.1, CONC1, 0xd8d4c8, { roof: true }); a.cyl(x + 1.9, hh + 3.98, 3, 0.18, 0.45, null, 0x9a5a3c, { seg: 8, roof: true });
+        K.decal('S', 8.8, [x], 4.0, 4.2, 5.8, i === 1 ? DEC_R1 : DEC_R2); K.win('S', 8.8, [x + 1.2], 1.3, 1.3, 1.8, G_SQ, 0xd8ecf8); K.frames('S', 8.8, [x + 1.2], 1.3, 1.3, 1.8, STUCCO, TR[i]); K.ac('S', 8.8, x + 2.2, 4.4);
+        K.door('N', 8.93, x - 0.9, 0.5, 1.1, 2.3, [D_WOOD, D_RED, D_GREY][i]);
+        K.door('S', 8.8, x - 1.1, 0.25, 1.0, 2.1, D_GREY); K.on('S', 8.8, x - 1.1, 0, 1.6, 0.25, 1.0, MARBLE, STONE);
+        if (i) K.pipe('N', 8.8, x - 2.925, hh - 1.2); }
+    for (const sd of ['E', 'W']) { K.decal(sd, 8.775, [-4.6, 4.6], 4.0, 3.4, 5.6, DEC_R2); K.on(sd, 8.775, 0, 0, 17.7, 0.5, 0.1, MARBLE, STONE); }
+    K.on('S', 8.8, 0, 0, 17.6, 0.5, 0.1, MARBLE, STONE); };
+
+/* 16 · TRANSIT COURT: a green tile foot and belt, piers, high windows, posts and a fascia on the canopy, bands and a louvre on the clock tower */
+DET['P06-06-B1'] = a => { const K = kit(a), TL2 = 0xfffaea, GR = 0x3f8a72, GD = 0x2c6a56;
+    K.plinth(28.1, 24.6, 1.0, null, TILE, GD, 0.12); K.course(28.1, 24.6, 3.9, 0.3, 0.1, null, GR);
+    K.pil('S', 12.3, steps(-11.75, 11.75, 4.7), 1, 5.6, 0.7, 0.2, TILE, TL2); K.win('S', 12.3, [-9.4, -4.7, 0, 4.7, 9.4], 4.4, 3, 1.5, G_SQ, 0xd8ecff); K.frames('S', 12.3, [-9.4, -4.7, 0, 4.7, 9.4], 4.4, 3, 1.5, null, GR);
+    for (const sd of ['E', 'W']) { K.pil(sd, 14.05, steps(-9.4, 9.4, 4.7), 1, 5.6, 0.7, 0.2, TILE, TL2); K.win(sd, 14.05, [-7.05, -2.35, 2.35, 7.05], 4.4, 3, 1.5, G_SQ, 0xd8ecff); K.frames(sd, 14.05, [-7.05, -2.35, 2.35, 7.05], 4.4, 3, 1.5, null, GR); }
+    for (const x of steps(-14, 6, 5)) { a.cyl(x, 0, -17.5, 0.16, 4.4, null, GR, { seg: 8 }); a.cyl(x, 0, -17.5, 0.3, 0.35, CONC1, 0xd8d8d2, { seg: 8 }); }
+    a.box(-3, 0, -15.2, 24, 0.06, 5.6, U('TileMarble2a'), 0xffffff); K.door('S', 12.3, 11, 0, 1.2, 2.3, D_GREY); K.rDuct(-7.25, 7.05, 2, 9, false);
+    a.box(-3, 4.3, -18.02, 24.1, 0.7, 0.08, null, GR); a.box(-3, 4.9, -15.2, 24.2, 0.08, 5.7, METAL, DARK, { roof: true });
+    K.pil('N', 12.3, [-11.9, -7.4, -3, 1.4, 5.8], 0.3, 3.6, 0.14, 0.2, ALU, 0xffffff); K.on('N', 12.3, -3, 3.9, 17.4, 0.2, 0.2, ALU, 0xffffff);
+    for (const y of [7.0, 12.6, 17.6]) a.box(11.5, y, -10, 5.3, 0.35, 5.3, null, GR, { under: true });
+    a.box(11.5, 9.2, -12.54, 1.6, 2.4, 0.08, CORR, 0x8a9096); a.box(8.96, 9.2, -10, 0.08, 2.4, 1.6, CORR, 0x8a9096);
+    for (const q of [[11.5, -12.62, 3.5, 0.1], [8.88, -10, 0.1, 3.5]]) { a.box(q[0], 13.45, q[1], q[2], 0.16, q[3], GOLD, 0xffffff); a.box(q[0], 16.8, q[1], q[2], 0.16, q[3], GOLD, 0xffffff); }
+    K.sign('N', 11.76, -3, 7.8, 12, 1.8, 'TRANSIT COURT', '#fffaea', '');
+    a.cyl(11.5, 23.5, -10, 0.06, 2.4, ALU, 0xffffff, { seg: 5, roof: true });
+    K.on('N', 11.6 - 0.15, -3, 7.5, 13.4, 0.12, 0.34, null, GD, { roof: true }); K.on('N', 11.6 - 0.15, -3, 9.78, 13.4, 0.12, 0.34, null, GD, { roof: true });
+    K.rAC(-9, 7.05, 6); K.rAC(-5.5, 7.05, 6); K.rSky(2, 7.05, 4, 6, 2.4); K.rSky(2, 7.05, 8.5, 6, 2.4); K.rVent(8, 7.05, 8); };
+
+/* 17 · OFFICE COURT: white spandrel lines on every floor, mullions in the lobby, an entrance canopy, rings on the stair tower, roof kit and a mast */
+DET['P07-06-B1'] = (a, door) => { const K = kit(a), WH = 0xf8f8f4;
+    for (const y of steps(7, 21, 3.5)) a.box(-1, y - 0.12, 0, 19.78, 0.24, 21.28, CONC1, WH, { top: false, under: false });
+    for (const sd of ['N', 'S']) K.pil(sd, 10.5, K.clear(door, sd, steps(-7, 7, 3.5), 1.3), 0, 3.5, 0.12, 0.14, ALU, 0xffffff);
+    K.pil('E', 8.75, K.clear(door, 'E', steps(-7, 7, 3.5), 1.3), 0, 3.5, 0.12, 0.14, ALU, 0xffffff);
+    for (const y of steps(3.5, 24.5, 3.5)) a.cyl(8.75, y, 10.5, 3.48, 0.22, CONC1, WH, { seg: 18 });
+    a.box(-9.6, 3.3, 0, 1.2, 0.2, 19.4, CONC1, WH, { under: true });
+    if (door) { const du = K.doorU(door), hf = door.side === 'N' || door.side === 'S' ? 10.5 : 8.75; K.awning(door.side, hf, du, 2.75, 4.2, 2.2, 0xf8f8f4, 0x2f8a7a); K.lamps(door, hf, 2.4); }
+    K.rTop(-1, 25.1, 0, 20.2, 21.7, TAR, 0xffffff); K.rDuct(-4, 25.15, 4.5, 8, true); K.rAC(-7, 25.15, 9); K.rAC(-7, 25.1, 6); K.rAC(-7, 25.1, 3); K.rAC(-7, 25.1, -7); K.rVent(-3, 25.1, 8); K.rail(20.2, 21.7, 25.1, 0xd8dce0);
+    a.cyl(2, 28.7, -3, 0.1, 6, ALU, 0xffffff, { seg: 6, r2: 0.03, roof: true }); a.cyl(2, 34.6, -3, 0.22, 0.3, null, 0xff3020, { seg: 8, glow: 1 }); };
+
+/* 18 · THE ANNEX: a grey foot, tall windows in marble surrounds, dentils under the cornice, column bases, porch steps and a door, a balustrade */
+DET['P07-06-B2'] = a => { const K = kit(a), MW = 0xffffff;
+    K.plinth(10.6, 17.6, 0.7, null, GRANITE, 0xffffff, 0.12);
+    for (const sd of ['N', 'S']) { K.win(sd, 8.8, [-2.6, 2.6], 1.6, 1.6, 3.6, G_TALL, 0xb8d4ec); K.frames(sd, 8.8, [-2.6, 2.6], 1.6, 1.6, 3.6, MARBLE, MW); }
+    K.win('E', 5.3, [-6, -2, 2, 6], 1.6, 1.6, 3.6, G_TALL, 0xb8d4ec); K.frames('E', 5.3, [-6, -2, 2, 6], 1.6, 1.6, 3.6, MARBLE, MW);
+    K.win('W', 5.3, [-7, 7], 1.6, 1.6, 3.6, G_TALL, 0xb8d4ec); K.frames('W', 5.3, [-7, 7], 1.6, 1.6, 3.6, MARBLE, MW);
+    for (const u of steps(-4.4, 4.4, 2.2)) for (const sd of ['N', 'S']) K.on(sd, 8.8, u, 6.2, 0.4, 0.4, 0.3, MARBLE, MW);
+    for (const u of steps(-7.7, 7.7, 2.2)) K.on('E', 5.3, u, 6.2, 0.4, 0.4, 0.3, MARBLE, MW);
+    for (const z of [-4.5, -1.5, 1.5, 4.5]) { a.box(-6.5, 0, z, 1.1, 0.35, 1.1, MARBLE, 0xe6e0d2); a.box(-6.5, 4.9, z, 1.0, 0.3, 1.0, MARBLE, MW); }
+    a.box(-7.6, 0, 0, 1.2, 0.2, 11, MARBLE, STONE); K.door('W', 5.3, -0.55, 0, 1.1, 3.0, D_WOOD); K.door('W', 5.3, 0.55, 0, 1.1, 3.0, D_WOOD); K.rAC(2, 7.05, 5); K.rVent(-2, 7.05, -5); K.on('W', 5.3, 0, 3.2, 2.8, 0.3, 0.2, MARBLE, MW);
+    for (const s of [-1, 1]) { a.box(0, 7.05, s * 8.7, 10.6, 0.8, 0.14, MARBLE, 0xf2ecdc, { roof: true }); a.box(s * 5.2, 7.05, 0, 0.14, 0.8, 17.4, MARBLE, 0xf2ecdc, { roof: true }); } };
+
+/* 19 · MARKET STEPS: a counter under each tent, a valance on each tent, steps to the avenue */
+DET['P05-07-B1'] = a => { const TN = [0xc8443c, 0xe6dec6, 0x2f8a60];
+    for (let i = 0; i < 3; i++) { const x = -5.6 + i * 5.6;
+        a.box(x, 0.12, 1.6, 3.8, 0.9, 0.9, WOOD, 0xb08a5c); a.box(x, 1.02, 1.6, 4.0, 0.08, 1.1, WOOD, 0x8a6a44, { under: true });
+        for (const s of [-1, 1]) { a.box(x, 3.1, s * 2.86, 5.4, 0.34, 0.05, null, TN[i]); a.box(x + s * 2.66, 3.1, 0, 0.05, 0.34, 5.7, null, TN[i]); }
+        a.cyl(x, 5.4, 0, 0.1, 0.5, GOLD, 0xffffff, { seg: 6, r2: 0.02 }); }
+    a.box(0, 0, 5.75, 17.5, 0.12, 0.9, MARBLE, STONE); a.box(0, 0, -5.75, 17.5, 0.12, 0.9, MARBLE, STONE); };
+
+/* 20 · KIOSKS: a counter ledge and a window band on the round kiosk; a counter, a menu board and roof posts on the snack stand */
+DET['P05-07-B2'] = a => {
+    a.cyl(-4.5, 0, 0, 2.72, 0.5, null, 0x2c6446, { seg: 8 }); a.cyl(-4.5, 1.05, 0, 2.95, 0.12, WOOD, 0xb08a5c, { seg: 8 }); a.cyl(-4.5, 1.25, 0, 2.64, 1.3, G_SQ, 0xd8ecf8, { seg: 8, cap: false, win: 'keep' });
+    a.cyl(-4.5, 5.6, 0, 0.05, 0.5, GOLD, 0xffffff, { seg: 5 });
+    a.box(4, 0, -0.5, 6.12, 0.45, 4.12, CONC1, 0xc8c8c2, { top: false }); a.box(4, 1.0, 1.75, 4.8, 0.1, 0.5, WOOD, 0xb08a5c, { under: true }); a.box(4, 2.45, 1.54, 4.4, 0.5, 0.06, null, 0x2a2420); a.quad(4, 2.5, 1.6, 3.6, 0.4, 0, 'txt:SNACKS|#ffe6a0||9', null, { uv: 'fit', kind: 'over' });
+    for (const x of [0.8, 7.2]) a.cyl(x, 0, 3.0, 0.07, 3, ALU, 0xffffff, { seg: 6 });
+    for (const x of [1.75, 3.25, 4.75, 6.25]) a.box(x, 2.32, 3.1, 0.75, 0.3, 0.05, null, 0xf8f8f4);
+    a.box(6.2, 3.25, -1.6, 0.9, 0.6, 0.7, ALU, 0xd8dce0, { roof: true }); };
+
+/* 21 · DELIVERY YARD: a foot, dark shutter jambs and heads, bumpers, canopy posts, a gutter and pipes, lamps over the docks, high windows, turbine vents */
+DET['P07-07-B1'] = (a, door) => { const K = kit(a), RD = 0xc85a48;
+    K.plinth(31.5, 10.5, 0.5, door, CONC1, 0x9a9e9e, 0.1);
+    for (const x of [-13, -8.2, 8.2, 13]) { K.on('N', 5.3, x - 2.15, 0.2, 0.3, 3.9, 0.2, null, DARK); K.on('N', 5.3, x + 2.15, 0.2, 0.3, 3.9, 0.2, null, DARK); K.on('N', 5.3, x, 3.8, 4.6, 0.3, 0.22, null, 0xe8b820);
+        K.lamp('N', 5.3, x, 4.5); for (const o of [-1.4, 1.4]) K.on('N', 5.3, x + o, 0.2, 0.4, 0.5, 0.16, null, 0x202022); K.hazard('N', 5.52, x - 2.15, 0.2, 0.3, 1.2); K.hazard('N', 5.52, x + 2.15, 0.2, 0.3, 1.2); }
+    K.sign('N', 5.3, 0, 5.0, 8, 0.8, 'DELIVERIES', '#ffffff', '#24488a');
+    for (const x of steps(-15, 15, 7.5)) a.cyl(x, 0, -8.1, 0.12, 4.6, METAL, DARK, { seg: 6 });
+    a.box(0, 4.42, -8.32, 31.6, 0.2, 0.08, null, RD);
+    K.on('S', 5.3, 0, 5.75, 31.7, 0.18, 0.2, METAL, DARK); K.pipe('S', 5.3, -15.2, 5.8); K.pipe('S', 5.3, 15.2, 5.8); K.pipe('S', 5.3, 0, 5.8);
+    K.decal('S', 5.3, K.clear(door, 'S', steps(-12, 12, 6), 2.2), 2.4, 3.2, 3, DEC_F); K.ac('S', 5.3, -9, 2.6); K.ac('S', 5.3, 9, 2.6);
+    for (const x of [-10.6, -5, 5, 10.6]) { a.cyl(x, 8.5, 1.5, 0.35, 0.5, METAL, 0xb0b4b8, { seg: 8, roof: true }); a.dome(x, 9.0, 1.5, 0.45, 0.4, METAL, 0xb0b4b8, { roof: true }); }
+    for (const sd of ['E', 'W']) { K.vent(sd, 15.8, 0, 4.2, 1.6, 1.0); K.pil(sd, 15.8, [-5.1, 5.1], 0.5, 5.5, 0.3, 0.12, ALU, 0xd6dade); }
+    K.lamps(door, door && (door.side === 'N' || door.side === 'S') ? 5.3 : 15.8, 2.6); };
+
+/* 22 · DISPATCH OFFICE: a foot, a framed window, a door and its lamp, posts under the big roof, a dark fascia, an air unit */
+DET['P07-07-B2'] = a => { const K = kit(a);
+    K.plinth(10.05, 7.05, 0.45, null, CONC1, 0xb0b0aa, 0.1); K.frames('S', 3.55, [0], 0.9, 6, 1.9, CONC1, 0xf0f0ea); K.pil('S', 3.55, [-1, 1], 0.9, 1.9, 0.1, 0.14, CONC1, 0xf0f0ea);
+    K.door('E', 5.05, 1.6, 0, 1.0, 2.2, D_RED); K.rTop(0.8, 4.0, 0.8, 12.8, 9.8, TAR, 0xffffff); K.lamp('E', 5.05, 2.5, 2.5); K.win('N', 3.55, [-2.5, 2.5], 1.2, 1.6, 1.4, G_SQ, 0xd8ecf8); K.frames('N', 3.55, [-2.5, 2.5], 1.2, 1.6, 1.4, CONC1, 0xf0f0ea);
+    K.sign('S', 3.55, 0, 2.95, 4.4, 0.5, 'DISPATCH', '#ffffff', '#2a2a2e');
+    for (const q of [[7, 5.5], [7, -3.9], [-5.4, 5.5]]) a.cyl(q[0], 0, q[1], 0.1, 3.6, ALU, 0xffffff, { seg: 6 });
+    a.box(0.8, 3.52, 0.8, 13.06, 0.16, 10.06, METAL, DARK, { top: false, under: false }); K.ac('W', 5.05, -1.5, 2.2); K.pipe('N', 3.55, -4.6, 3.5); };
+
+/* the open pieces: bases, capitals and a gilt line on the colonnade; a rail, steps and a finial on the bandstand; flag-pole feet and balls;
+   a cap and a step on the memorial wall; feet, gilt bands and lanterns on the gateways */
+const DET_OPEN = {
+    plaza(a) { const R = 12, bx = 15.75, bz = 22.75;
+        a.P.push({ s: 'cyl', p: [0, 0, 0], r: 0.66, h: 0.4, seg: 10, key: MARBLE, tint: 0xe6e0d2, ring: { n: 9, r: R, a0: 200, arc: 140 } }); a.P.push({ s: 'cyl', p: [0, 5.25, 0], r: 0.62, h: 0.35, seg: 10, key: MARBLE, tint: 0xffffff, ring: { n: 9, r: R, a0: 200, arc: 140 } });
+        a.cyl(0, 6.4, 0, R + 0.85, 0.16, GOLD, 0xffffff, { seg: 40, arc: 150, a0: 195, ri: R - 0.85 }); a.cyl(0, 0, 0, R + 1.3, 0.16, MARBLE, 0xe2dccc, { seg: 40, arc: 156, a0: 192, ri: R - 1.3 });
+        a.cyl(bx, 0, bz, 4.9, 0.22, MARBLE, 0xd8d2c4, { seg: 16 }); a.cyl(bx, 0.45, bz, 3.4, 0.03, CHECK, 0xffffff, { seg: 16 }); a.cyl(bx, 1.4, bz, 3.72, 0.1, MARBLE, 0xffffff, { seg: 16, ri: 3.5 }); a.cyl(bx, 6.85, bz, 0.12, 0.9, GOLD, 0xffffff, { seg: 6, r2: 0.02, roof: true });
+        a.cyl(bx, 3.3, bz, 4.5, 0.3, ALU, 0x4f9a88, { seg: 16, ri: 3.3 });
+        for (const q of [[-8, 5.5], [8, 5.5], [0, 7.5]]) { a.cyl(q[0], 0, q[1], 0.4, 0.5, MARBLE, 0xe6e0d2, { seg: 8 }); a.dome(q[0], 9, q[1], 0.16, 0.2, GOLD, 0xffffff); } },
+    memorial(a) { a.cyl(0, 3.2, 0, 9.14, 0.22, MARBLE, 0xd8d4c8, { seg: 32, arc: 112, a0: -56, ri: 8.26 }); a.cyl(0, 0, 0, 9.5, 0.3, MARBLE, 0xb8b4a8, { seg: 32, arc: 114, a0: -57, ri: 7.9 });
+        a.cyl(-14, 0, 0, 3, 0.25, MARBLE, 0xd0cabc, { seg: 4, ry: 45 }); a.cyl(-14, 0.9, 6, 1.12, 0.14, GOLD, 0xffffff, { seg: 12, ri: 0.9 }); a.cyl(-14, 0, 6, 1.5, 0.2, MARBLE, 0xb8b4a8, { seg: 12 }); },
+    gate(a) { for (const z of [-10.5, 10.5]) { a.box(0, 0, z, 3.6, 0.9, 3.6, MARBLE, 0xd8d2c4); a.box(0, 6, z, 3.2, 0.35, 3.2, GOLD, 0xffffff); a.box(0, 2.4, z, 3.16, 0.2, 3.16, MARBLE, 0xffffff);
+            for (const s of [-1, 1]) { a.box(s * 1.66, 3.4, z, 0.3, 0.45, 0.3, null, WARM, { glow: 1 }); a.box(s * 1.58, 3.9, z, 0.2, 0.1, 0.4, null, DARK); } }
+        a.box(0, 8.5, 0, 1.3, 0.12, 18, GOLD, 0xffffff); a.box(0, 10.5, 0, 1.3, 0.12, 18, GOLD, 0xffffff); },
+};
+
 /* 3 · THE PIZZERIA — the chain's pack building (mondo 11-13 17:07: a chain, one a district) at real size on the Local shop's lot, door north */
 const SWAP = { 'P05-04-B2': { key: 'city_pizzeria', side: 'N', hw: 5.05, hd: 10.25, push: 0.75 } };
 
@@ -247,9 +550,11 @@ function build(ctx) {
     const R3 = v => typeof v === 'number' ? Math.round(v * 1000) / 1000 : Array.isArray(v) ? v.map(R3) : (v && typeof v === 'object') ? Object.fromEntries(Object.entries(v).map(e => [e[0], R3(e[1])])) : v;
     /* the shade lift: a sheet in the city's shade reads near black, so every textured part keeps a little of its own light */
     /* a battle-sheet key (bricks_3, aluminium, marble_light, gold ...) is drawn with its darker calm sheet in the game: `gain` 1.5 lifts it back */
-    const LIFT = ps => ps.map(p => { if (!p.key) return p; const q = Object.assign({}, p); if (!(q.glow > 0) && !/GlassWindow/.test(q.key)) q.glow = 0.16;   /* the dark glass stays dark (mondo 19:02) */ if (!/^(urban|hq):/.test(q.key) && !(q.gain > 0)) q.gain = 1.5; return q; });
+    const LIFT = ps => ps.map(p => { if (!p.key || /^txt:/.test(p.key)) return p; const q = Object.assign({}, p); if (!(q.glow > 0) && !/GlassWindow/.test(q.key)) q.glow = 0.16;   /* the dark glass stays dark (mondo 19:02) */ if (!/^(urban|hq):/.test(q.key) && !(q.gain > 0)) q.gain = 1.5; return q; });
     /* the tool's back-lot infill on the plaza's north edge stood in front of the Workshop store and the pizzeria's corner: off */
     for (let i = features.length - 1; i >= 0; i--) { const f = features[i]; if (f.k === 'texbuilding' && /^dc:in\d+$/.test(f.id || '') && f.x > -42 && f.x < 0 && f.z > -45 && f.z < -38) features.splice(i, 1); }
+    /* the polish pass: a building's second parts list, written after its own */
+    const dress = (P, fn, door) => { if (!fn) return P; const a = sheet(); fn(a, door); return P.concat(a.P); };
     const ROT = { S: 0, W: 90, N: 180, E: 270 }, SIDE_OF = { 0: 'S', 90: 'W', 180: 'N', 270: 'E' };
     const planB = id => { for (const p of PLAN.plots) { const b = p.buildings.find(q => q.id === id); if (b) return b; } return null; };
     const doorOf = row => { if (!row || row.k !== 'texbuilding' || !row.hollow) return null;   // data.js hqTexbDoor, in the row's own frame
@@ -276,11 +581,12 @@ function build(ctx) {
                 if (S.storeys) row.storeys = S.storeys; else if (S.solid) row.storeys = 2;
                 if (S.leaf) row.leaf = S.leaf;
             }
-            if (def.parts) { features.push({ k: 'arch', id: 'arch:' + bid, x: c.x, z: c.z, rot: 0, ...(row.k === 'plateau' ? { y: 0 } : {}), parts: LIFT(R3(def.parts((S.remove || S.replace) ? null : doorOf(row), c))) }); nArch++; }
+            const dr0 = (S.remove || S.replace) ? null : doorOf(row);
+            if (def.parts) { features.push({ k: 'arch', id: 'arch:' + bid, x: c.x, z: c.z, rot: 0, ...(row.k === 'plateau' ? { y: 0 } : {}), parts: LIFT(R3(dress(def.parts(dr0, c), DET[bid], dr0))) }); nArch++; }
             if (def.props) def.props(c).forEach(q => props.push(R3(q)));
         });
         (M.OPEN || []).forEach(o => {
-            features.push({ k: 'arch', id: 'arch:' + M.district + ':' + o.id, x: o.x, z: o.z, rot: 0, parts: LIFT(R3(o.parts())) }); nArch++;
+            features.push({ k: 'arch', id: 'arch:' + M.district + ':' + o.id, x: o.x, z: o.z, rot: 0, parts: LIFT(R3(dress(o.parts(), DET_OPEN[o.id.replace(/\d+$/, '')], null))) }); nArch++;
             (o.walls || []).forEach((q, n) => features.push({ k: 'texbuilding', id: 'dc:' + M.district + ':' + o.id + '-w' + n, x: r3(o.x + q[0]), z: r3(o.z + q[1]), w: q[2], d: q[3], rot: 0, storeys: 3, seed: 1, skin: false }));
         });
         Object.keys(M.SWAP || {}).forEach(bid => {   // a plan building replaced by a whole catalogue building (a prop: real size, entrance at +Z, solid)

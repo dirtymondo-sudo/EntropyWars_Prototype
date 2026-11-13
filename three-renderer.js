@@ -71915,16 +71915,35 @@ const ThreeRenderer = (function () {
         });
         return G;
     }
+    /* THE LETTERING (2026-11-13, mondo's polish pass: "go one or two more layers deep with the detail"; every district's signs were blank
+       panels): an arch part whose `key` is 'txt:WORDS|fg|bg|aspect' is a sign. The words are drawn once on a canvas of that aspect (width /
+       height of the quad that wears it, uv 'fit'), bold capitals fitted to the panel, in `fg` (a CSS colour) on `bg` (empty = no board: the
+       letters alone, on a `kind: 'over'` part). The part's `tint` stays white unless the letters are to be dimmed; `glow` lights the sign. */
+    var _hqArchSignCache = {};
+    function _hqArchSignTex(key) {
+        if (_hqArchSignCache[key]) return _hqArchSignCache[key];
+        var q = String(key).slice(4).split('|'), words = q[0] || '', fg = q[1] || '#ffffff', bg = q[2] || '', asp = Math.max(0.2, Math.min(24, parseFloat(q[3]) || 4));
+        var H = 128, W = Math.max(32, Math.min(2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;
+        var g = c.getContext('2d'); g.clearRect(0, 0, W, H);
+        if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
+        var px = 96; g.font = '900 ' + px + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif';
+        var tw = g.measureText(words).width || 1, sc = Math.min(1, (W * 0.9) / tw); px = Math.max(8, Math.floor(px * sc));
+        g.font = '900 ' + px + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = fg;
+        g.fillText(words, W / 2, H / 2 + px * 0.04);
+        var t = new THREE.CanvasTexture(c); t.anisotropy = 4;
+        return (_hqArchSignCache[key] = t);
+    }
     function _hqBuildArchRows(info, G, U) {
         var neon = !!(info.gen && info.gen.neon), mats = {}, made = 0;
         var matOf = function (b) {
             var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0, b.gain || 1].join('|'); if (mats[id]) return mats[id];
-            var tex = b.key ? _hzTex(b.key) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
+            var sign = !!b.key && String(b.key).indexOf('txt:') === 0;   // THE LETTERING: a sign's words, drawn once on a canvas
+            var tex = b.key ? (sign ? _hqArchSignTex(b.key) : _hzTex(b.key)) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
             if (b.kind === 'over') { o.transparent = true; o.alphaTest = 0.35; o.polygonOffset = true; o.polygonOffsetFactor = -1; o.polygonOffsetUnits = -1; }
             var m = new THREE.MeshPhongMaterial(o);
             if (b.ds) m.side = THREE.DoubleSide;
             m.color = new THREE.Color(b.tint);
-            if (tex) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
+            if (tex && !sign) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
             if (b.gain && b.gain !== 1) m.color.multiplyScalar(b.gain);
             if (b.glow > 0) { m.emissive = m.color.clone(); if (tex) m.emissiveMap = tex; m.emissiveIntensity = b.glow; }
             else m.emissive = new THREE.Color(neon ? 0x08060e : 0x0a0a0a);
@@ -72795,13 +72814,33 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < 4; i++) { B.pos.push(p[i][0] * U, p[i][1] * U + 0.3, p[i][2] * U); B.uv.push(uvs[i][0], uvs[i][1]); }
             var b = B.n; B.idx.push(b, b + 2, b + 1, b, b + 3, b + 2); B.n += 4;
         };
+        /* THE MARKS RIDE THE GROUND (2026-11-13, mondo: "giant walls ... standing on the other side of them, they disappear"): a kerb
+           stone / an edge line was ONE quad for its whole run, with a height read at the run's two ends only. On the city's levels a
+           run climbs many metres, so the kerb's face (lowest end to highest end) stood as a one-sided wall beside the street and the
+           edge line cut under / hung over the road. `runCuts` cuts a run [a, b] where the ground under it changes its slope (sampled
+           every 0.875 m, the lattice's step; `hs` = the heights to follow, functions of u): a flat street stays one quad. */
+        var runCuts = function (a, b, hs) {
+            var out = [a], nS = Math.max(1, Math.ceil((b - a) / 0.875)), stp = (b - a) / nS, last = hs.map(function (f) { return f(a); }), lastU = a, slope = null;
+            for (var i = 1; i <= nS; i++) {
+                var u = i === nS ? b : a + stp * i, cur = hs.map(function (f) { return f(u); }), sl = cur.map(function (c, j) { return (c - last[j]) / stp; });
+                if (slope && sl.some(function (v, j) { return Math.abs(v - slope[j]) > 0.002; })) { out.push(lastU); slope = sl; }
+                else if (!slope) slope = sl;
+                last = cur; lastU = u;
+            }
+            out.push(b); return out;
+        };
         var flat = function (B, cx, cz, dx, dz, len, wid, ofs, uvScale) {
             /* a rectangle centred at (cx, cz) shifted `ofs` across the direction (dx, dz), `len` along it, `wid` across; flat on the ground at its four corners */
-            var nx = -dz, nz = dx, hx = dx * len / 2, hz = dz * len / 2, wx = nx * wid / 2, wz = nz * wid / 2, ox = nx * ofs, oz = nz * ofs;
-            var c = [[cx + ox - hx - wx, cz + oz - hz - wz], [cx + ox + hx - wx, cz + oz + hz - wz], [cx + ox + hx + wx, cz + oz + hz + wz], [cx + ox - hx + wx, cz + oz - hz + wz]];
-            var p = c.map(function (q) { return [q[0], hAt(q[0], q[1]) + lift, q[1]]; });
+            var nx = -dz, nz = dx, wx = nx * wid / 2, wz = nz * wid / 2, ox = nx * ofs, oz = nz * ofs;
+            var at = function (u, sgn) { return [cx + ox + dx * u + wx * sgn, cz + oz + dz * u + wz * sgn]; };
+            var cuts = len > 1.75 ? runCuts(-len / 2, len / 2, [function (u) { var q = at(u, -1); return hAt(q[0], q[1]); }, function (u) { var q = at(u, 1); return hAt(q[0], q[1]); }]) : [-len / 2, len / 2];
             var s = uvScale || 1;
-            quad(B, [p[0], p[3], p[2], p[1]], [[0, 0], [s, 0], [s, s], [0, s]]);
+            for (var ci = 0; ci + 1 < cuts.length; ci++) {
+                var c = [at(cuts[ci], -1), at(cuts[ci + 1], -1), at(cuts[ci + 1], 1), at(cuts[ci], 1)];
+                var p = c.map(function (q) { return [q[0], hAt(q[0], q[1]) + lift, q[1]]; });
+                if (cuts.length > 2 && Math.max(Math.abs(p[1][1] - p[0][1]), Math.abs(p[2][1] - p[3][1])) > 0.3 * (cuts[ci + 1] - cuts[ci]) + 0.02) continue;   // a step in the ground (a retaining wall's line): the line breaks there, never a strip up the step
+                quad(B, [p[0], p[3], p[2], p[1]], [[0, 0], [s, 0], [s, s], [0, s]]);
+            }
         };
         var dir = function (a, b) { var dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1; return { x: dx / L, z: dz / L, L: L }; };
         var manholes = 0, signs = 0, madeSigns = [], deadEnds = [];
@@ -72853,17 +72892,24 @@ const ThreeRenderer = (function () {
                     var run = null, kOff = w / 2 + R.kerbW / 2;
                     var flushK = function () {
                         if (!run || run[1] - run[0] < 0.4) { run = null; return; }
-                        var a = run[0], b = run[1], ax = pts[k][0] + d.x * a, az = pts[k][1] + d.z * a, bx = pts[k][0] + d.x * b, bz = pts[k][1] + d.z * b;
                         var nx = -d.z * sd, nz = d.x * sd;   // out of the road
-                        var iA = [ax + nx * (w / 2), az + nz * (w / 2)], iB = [bx + nx * (w / 2), bz + nz * (w / 2)], oA = [ax + nx * (w / 2 + R.kerbW), az + nz * (w / 2 + R.kerbW)], oB = [bx + nx * (w / 2 + R.kerbW), bz + nz * (w / 2 + R.kerbW)];
-                        var yTop = Math.max(hAt(oA[0], oA[1]), hAt(oB[0], oB[1])) + 0.012, yRoad = Math.min(hAt(iA[0], iA[1]), hAt(iB[0], iB[1])) - 0.05;
-                        var vl = (b - a) / 1.75;
-                        /* the top: inner edge to outer edge; the face: down from the inner edge to the road (winding by side) */
-                        var top = [[iA[0], yTop, iA[1]], [oA[0], yTop, oA[1]], [oB[0], yTop, oB[1]], [iB[0], yTop, iB[1]]];
-                        var face = [[iA[0], yRoad, iA[1]], [iA[0], yTop, iA[1]], [iB[0], yTop, iB[1]], [iB[0], yRoad, iB[1]]];
-                        if (sd > 0) { top.reverse(); face.reverse(); }
-                        quad(Bk, top, [[0, 0], [0.18, 0], [0.18, vl], [0, vl]]);
-                        quad(Bk, face, [[0, 0], [0.1, 0], [0.1, vl], [0, vl]]);
+                        var inAt = function (u) { return [pts[k][0] + d.x * u + nx * (w / 2), pts[k][1] + d.z * u + nz * (w / 2)]; }, outAt = function (u) { return [pts[k][0] + d.x * u + nx * (w / 2 + R.kerbW), pts[k][1] + d.z * u + nz * (w / 2 + R.kerbW)]; };
+                        var hIn = function (u) { var q = inAt(u); return hAt(q[0], q[1]); }, hOut = function (u) { var q = outAt(u); return hAt(q[0], q[1]); };
+                        /* the stone's top at a point of the run: the sidewalk's height there; beside a bank / a retaining wall it keeps to the road (never a strip up the bank) */
+                        var topAt = function (u) { var hi = hIn(u), ho = hOut(u); return (Math.abs(ho - hi) > 0.4 ? hi : Math.max(hi, ho)) + 0.012; };
+                        var cuts = runCuts(run[0], run[1], [hIn, hOut]);
+                        for (var ci = 0; ci + 1 < cuts.length; ci++) {
+                            var a = cuts[ci], b = cuts[ci + 1], iA = inAt(a), iB = inAt(b), oA = outAt(a), oB = outAt(b);
+                            var tA = topAt(a), tB = topAt(b), rA = hIn(a) - 0.05, rB = hIn(b) - 0.05;
+                            if (Math.max(Math.abs(tB - tA), Math.abs(rB - rA)) > 0.3 * (b - a) + 0.02) continue;   // a step in the ground under the run: the stone breaks there
+                            var v0 = (a - run[0]) / 1.75, v1 = (b - run[0]) / 1.75;
+                            /* the top: inner edge to outer edge; the face: down from the inner edge to the road (winding by side) */
+                            var top = [[iA[0], tA, iA[1]], [oA[0], tA, oA[1]], [oB[0], tB, oB[1]], [iB[0], tB, iB[1]]], topUv = [[0, v0], [0.18, v0], [0.18, v1], [0, v1]];
+                            var face = [[iA[0], rA, iA[1]], [iA[0], tA, iA[1]], [iB[0], tB, iB[1]], [iB[0], rB, iB[1]]], faceUv = [[0, v0], [0.1, v0], [0.1, v1], [0, v1]];
+                            if (sd > 0) { top.reverse(); face.reverse(); topUv.reverse(); faceUv.reverse(); }
+                            quad(Bk, top, topUv);
+                            quad(Bk, face, faceUv);
+                        }
                         run = null;
                     };
                     var kA = mitre(k, sd, kOff), kB = mitre(k + 1, sd, kOff);

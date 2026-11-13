@@ -252,14 +252,129 @@ function toArch(p, D) {   // D = the walk-in doorway of this building, or null: 
         if (p.shape === 'shed') { ry = { N: 0, S: 180, E: 90, W: 270 }[o.high || 'N']; sw = o.high === 'E' || o.high === 'W'; }
         else if (p.shape === 'pyr') { } else if (p.shape === 'hip') { sw = d > w; ry = sw ? 90 : 0; } else if (o.axis === 'z') { ry = 90; sw = true; }
         const q = Object.assign({ s: 'roof', form: p.shape === 'pyr' ? 'pyramid' : p.shape, p: [r3(cx), r3(p.y0), r3(cz)], ry: ry || undefined, size: [r3(sw ? d : w), p.h, r3(sw ? w : d)], roof: true, ds: p.shape === 'barrel' || undefined }, base);
-        if (o.over) q.over = o.over; if (p.shape === 'barrel') q.seg = 12;
+        if (o.over) q.over = o.over; if (p.shape === 'barrel') q.seg = 12; if (o.ds) q.ds = true;
         out.push(clean(q));
+    } else if (p.t === 'sign') {   // THE LETTERING: a canvas sign sheet, fitted
+        out.push({ s: 'quad', p: [r3(p.x), r3(p.y), r3(p.z)], ry: RY[p.face] || undefined, size: [r3(p.w), r3(p.h)], key: 'txt:' + p.text + '|' + p.fg + '|' + p.bg + '|' + r3(p.w / p.h), uv: 'fit', kind: 'wall' });
     } else if (p.t === 'door') {   // a drawn double door, shut (a building with no inside)
         const v = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] }[p.face], ry = RY[p.face], al = p.face === 'S' || p.face === 'N' ? [1, 0] : [0, 1];
         [-0.5, 0.5].forEach(s => out.push({ s: 'quad', p: [r3(p.x + al[0] * s + v[0] * 0.07), 0, r3(p.z + al[1] * s + v[1] * 0.07)], ry, size: [1.0, 2.3], key: 'urban:DoorStorefrontHalf1a', uv: 'fit', kind: 'wall' }));
         out.push(clean({ s: 'quad', p: [r3(p.x + v[0] * 0.06), 2.3, r3(p.z + v[1] * 0.06)], ry: ry || undefined, size: [2.3, 0.25], tint: 0x2a2d33 }));
     }
     return out;
+}
+
+/* ══ THE POLISH PASS (mondo 11-13 20:15: "one more polish pass on the exteriors ... one or two more layers deep with the detail"): a second
+   layer every building gets from its own shapes. Per ground wall block: a concrete plinth (split at the walk-in door), a belt course over
+   the ground storey, a cornice + dentil band where none was drawn, two downpipes + a meter box, and on a free flat roof a parapet, an AC
+   unit and vent stacks (never on a walked roof-route roof). Per walk-in door: stone pilasters, a canopy, two lamps. Per drawn shop door:
+   an awning with a valance, a sign board (no lettering: his "no AI logos"), a blade sign. ══ */
+/* THE LETTERING (the shared 'txt:WORDS|fg|bg|aspect' sign sheet, PR #1327): the name of each building, from the plan mondo approved */
+const NAMES = { '4,0,0': 'FIRE STATION', '5,0,0': 'CIVIL RECORDS', '5,0,1': 'NOTARY + COPIES', '5,0,2': 'SIGN WORKSHOP', '6,0,0': 'CITY HALL', '7,0,0': 'COUNCIL ANNEX',
+    '4,1,0': 'DISPATCH', '4,1,1': 'COFFEE + DONUTS', '5,1,0': 'CITY MOTOR POOL', '5,1,1': 'NEWS + FLOWERS', '7,1,0': 'COURTHOUSE', '7,1,1': 'COURT CAFE', '4,2,0': 'POLICE',
+    '5,2,0': 'HOLDING ANNEX', '5,2,1': 'BAIL BONDS', '5,2,2': 'IMPOUND GARAGE', '6,2,0': 'RECORDS GARDEN', '7,2,0': 'TIME BUREAU', '7,2,1': 'WATCHMAKER', '5,3,0': 'PUBLIC LIBRARY',
+    '6,3,0': 'MILITARY OFFICES', '6,3,1': 'ARMY SURPLUS', '6,3,2': 'ARMORY', '7,3,0': 'PERMIT OFFICES' };
+const HEX = n => '#' + ('000000' + n.toString(16)).slice(-6);
+const WALLK = /bricks|Plaster|Stucco|marble_light|Concrete|Corrugated/, AWN = [0xb03a2a, 0x2a6a4a, 0x2a4a8a, 0xc89a2a, 0x7a2a5a, 0x1f6f78];
+function detail(Bd, D, walked, seed, name) {
+    const src = Bd.parts, out = [], ghosts = [], add = p => out.push(p), TRIM = 0xe6e0d2, PIPE = 0x3a4046;
+    const bx = (x0, z0, x1, z1, y0, y1, key, tint, o) => add({ t: 'box', x0: Math.min(x0, x1), z0: Math.min(z0, z1), x1: Math.max(x0, x1), z1: Math.max(z0, z1), y0, y1, key, tint, o: Object.assign({}, o) });
+    const cy = (x, z, r, y0, y1, key, tint, o) => add({ t: 'cyl', x, z, r, y0, y1, key, tint, o: Object.assign({ seg: 6 }, o) });
+    const fp = q => q.t === 'box' || q.t === 'roof' ? [q.x0, q.z0, q.x1, q.z1] : [q.x - q.r, q.z - q.r, q.x + q.r, q.z + q.r];
+    const hit = (a, b, m) => a[0] < b[2] - m && a[2] > b[0] + m && a[1] < b[3] - m && a[3] > b[1] + m;
+    let rnd = seed; const R = () => { rnd = (rnd * 9301 + 49297) % 233280; return rnd / 233280; };
+    /* THE SHEETS (mondo 20:19 "different textures or decals for different parts of the building"): each building draws its own base, ground
+       storey, roof deck and plant sheets from the urban pack (his sheets as they are, only tinted) */
+    const pick = arr => arr[Math.floor(R() * arr.length) % arr.length];
+    const PLINTH = pick([['u_ConcreteStriped1a', 0x9a9a98], ['u_ConcreteStriped2c', 0xb0aca4], ['u_TileGeneric1a', 0x8c9096], ['bricks_3', 0xd0c8c0], ['u_TileMarble1d', 0xb8b4ac], ['u_TileSubway3a', 0xa8aca8]]);
+    const GROUND = pick([['u_PlasterWallStucco1a', 0xe8e0d0], ['u_ConcreteStriped1c', 0xd8d4cc], ['u_TileSubway1a', 0xe0e4e0], ['u_TileMarble1a', 0xe6e0d6], ['u_PlasterWallPainted1a', 0xd8d0c0], ['u_TileGeneric3a', 0xd0d4d8]]);
+    const DECK = pick([['u_RubberNonSlip1a', 0xa0a4a8], ['u_RubberNonSlip3a', 0xb0b0b0], ['u_ConcreteStriped1c', 0xa8a8a4], ['u_TileGeneric2a', 0xa4a8ac], ['u_FibreCeilingTile1a', 0x9c9c98]]);
+    const PLANT = pick(['u_MetalCorrugatedPainted1a', 'u_MetalCorrugatedPainted4a', 'u_MetalCorrugatedPainted1a']);
+    /* the roof kit of one ground block: the roof level is the wall head or the low slab the design laid on it; whatever stands taller
+       there (a drum, a tower, a pitched roof) is kept clear, the AC units take the free spots. A walked roof gets ghost walls round them. */
+    const roofKit = b => {
+        const H = b.y1, W = b.x1 - b.x0, Dp = b.z1 - b.z0; if (W < 5 || Dp < 5 || H < 3) return;
+        const topOf = q => q.t === 'box' || q.t === 'cyl' ? q.y1 : q.y0 + q.h, In = [b.x0 + 0.6, b.z0 + 0.6, b.x1 - 0.6, b.z1 - 0.6];
+        const on = src.filter(q => q !== b && q.y0 != null && q.y0 >= H - 0.8 && hit(fp(q), In, 0));
+        const low = on.filter(q => q.t === 'box' && topOf(q) <= H + 1.0 && q.x1 - q.x0 > W * 0.7 && q.z1 - q.z0 > Dp * 0.7), tall = on.filter(q => low.indexOf(q) < 0);
+        const RH = low.reduce((m, q) => Math.max(m, topOf(q)), H), t = 0.25, ph = 0.55, m0 = walked ? 2.6 : 1.0;
+        if (!on.length && !walked) {
+            bx(b.x0, b.z0, b.x1, b.z0 + t, RH, RH + ph, STONE, TRIM); bx(b.x0, b.z1 - t, b.x1, b.z1, RH, RH + ph, STONE, TRIM);
+            bx(b.x0, b.z0 + t, b.x0 + t, b.z1 - t, RH, RH + ph, STONE, TRIM); bx(b.x1 - t, b.z0 + t, b.x1, b.z1 - t, RH, RH + ph, STONE, TRIM);
+        }
+        if (!tall.length) bx(b.x0 + t, b.z0 + t, b.x1 - t, b.z1 - t, RH, RH + 0.04, DECK[0], DECK[1]);
+        const taken = tall.map(fp), want = W * Dp > 300 ? 4 : W * Dp > 150 ? 3 : W * Dp > 60 ? 2 : 1; let got = 0;
+        for (let tr = 0; tr < 40 && got < want; tr++) {
+            const ax = b.x0 + m0 + R() * (W - 2 * m0 - 1.8), az = b.z0 + m0 + R() * (Dp - 2 * m0 - 1.2), F2 = [ax - 0.5, az - 0.5, ax + 2.3, az + 1.7];
+            if (W - 2 * m0 < 1.8 || Dp - 2 * m0 < 1.2 || taken.some(f => hit(f, F2, 0))) continue;
+            taken.push(F2); got++;
+            bx(ax - 0.1, az - 0.1, ax + 1.9, az + 1.3, RH, RH + 0.15, null, 0x55585c); bx(ax, az, ax + 1.8, az + 1.2, RH + 0.15, RH + 1.05, PLANT, 0xe8ecf0);
+            bx(ax + 0.1, az - 0.02, ax + 1.7, az, RH + 0.3, RH + 0.9, 'u_MetalSubwayGrill1a', null); cy(ax + 0.9, az + 0.6, 0.42, RH + 1.05, RH + 1.12, null, 0x2c2f33, { seg: 10 });
+            cy(ax + 2.05, az + 0.3, 0.1, RH, RH + 0.7, null, 0x8a8f94); cy(ax + 2.05, az + 0.3, 0.17, RH + 0.7, RH + 0.78, null, 0x6a6f74);
+            if (walked) ghosts.push([ax, az + 0.6, ax + 1.8, az + 0.6, RH + 1.05, 1.2]);
+        }
+    };
+    src.forEach(b => {
+        if (b.t === 'box' && b.key && !(b.o && b.o.alpha) && b.y1 - b.y0 >= 2.5 && !(WALLK.test(b.key) && b.y0 === 0 && b.y1 >= 5.5)) roofKit(b);   // the upper tiers, the glass blocks, the low shops: the roof only
+        if (b.t !== 'box' || !WALLK.test(b.key || '') || b.y0 !== 0 || b.y1 < 5.5 || b.x1 - b.x0 < 5 || b.z1 - b.z0 < 5 || (b.o && b.o.alpha)) return;
+        const F = [b.x0, b.z0, b.x1, b.z1], H = b.y1, g = 0.07;
+        /* the plinth: four strips, the door's side in two */
+        const strip = (side, a0, a1, gg, y0, y1, key, tint) => { if (a1 - a0 < 0.3) return; if (side === 'N') bx(a0, b.z0 - gg, a1, b.z0, y0, y1, key, tint, { top: 0 }); else if (side === 'S') bx(a0, b.z1, a1, b.z1 + gg, y0, y1, key, tint, { top: 0 }); else if (side === 'W') bx(b.x0 - gg, a0, b.x0, a1, y0, y1, key, tint, { top: 0 }); else bx(b.x1, a0, b.x1 + gg, a1, y0, y1, key, tint, { top: 0 }); };
+        const skin = (gg, y0, y1, key, tint) => ['N', 'S', 'W', 'E'].forEach(side => {
+            const ns = side === 'N' || side === 'S', a0 = (ns ? b.x0 : b.z0) - gg, a1 = (ns ? b.x1 : b.z1) + gg, pl = { S: b.z1, N: b.z0, E: b.x1, W: b.x0 }[side];
+            if (D && D.side === side && Math.abs(pl - D.plane) < 0.4 && a0 < D.at && a1 > D.at) { strip(side, a0, D.at - D.cw / 2 - 0.3, gg, y0, y1, key, tint); strip(side, D.at + D.cw / 2 + 0.3, a1, gg, y0, y1, key, tint); if (y1 > 2.9) { const yy = Math.max(y0, 2.6); strip(side, D.at - D.cw / 2 - 0.3, D.at + D.cw / 2 + 0.3, gg, yy, y1, key, tint); } }
+            else strip(side, a0, a1, gg, y0, y1, key, tint);
+        });
+        skin(g, 0, 0.55, PLINTH[0], PLINTH[1]);
+        /* the ground storey in its own sheet (brick / plaster houses; the stone landmarks keep their stone) */
+        if (/bricks|Plaster|Stucco/.test(b.key) && H >= 6.5 && GROUND[0] !== b.key) skin(0.035, 0.55, 3.32, GROUND[0], GROUND[1]);
+        /* the belt course over the ground storey */
+        if (H >= 6.5) bx(b.x0 - 0.06, b.z0 - 0.06, b.x1 + 0.06, b.z1 + 0.06, 3.32, 3.5, STONE, TRIM, { top: 0 });
+        /* the cornice + dentil band, where the design drew nothing on the wall head */
+        const above = src.filter(q => q !== b && (q.y0 != null) && q.y0 >= H - 0.8 && q.y0 <= H + 0.6 && hit(fp(q), F, 0.2));
+        if (!above.length) {
+            bx(b.x0 - 0.1, b.z0 - 0.1, b.x1 + 0.1, b.z1 + 0.1, H - 0.5, H - 0.3, STONE, TRIM, { top: 0 });
+            bx(b.x0 - 0.24, b.z0 - 0.24, b.x1 + 0.24, b.z1 + 0.24, H - 0.3, H + 0.02, STONE, TRIM, { top: 0 });
+        }
+        /* THE ROOF (mondo 20:18 "roofs and ac units"): on a free flat roof a parapet, AC units on kerbs, a duct run, vent stacks, a hatch.
+           Low slabs the design laid on the wall head (a cornice slab) lift the roof level; anything taller there means the roof is taken. */
+        roofKit(b);
+        /* the wall AC units: on the upper storeys of the brick / plaster houses (never the stone landmarks) */
+        if (/bricks|Plaster|Stucco/.test(b.key) && H >= 6.5) for (let u = 0, nW = 2 + Math.floor(R() * 3); u < nW; u++) {
+            const side = 'NSWE'[Math.floor(R() * 4)], ns = side === 'N' || side === 'S', len = ns ? b.x1 - b.x0 : b.z1 - b.z0, a = (ns ? b.x0 : b.z0) + 1 + R() * (len - 2.7), y = 3.5 * (1 + Math.floor(R() * Math.max(1, Math.floor((H - 3.5) / 3.5)))) + 0.9;
+            if (y + 0.5 > H - 0.6) continue; const pl = { N: b.z0, S: b.z1, W: b.x0, E: b.x1 }[side], sg = side === 'N' || side === 'W' ? -1 : 1;
+            if (ns) { bx(a, pl, a + 0.75, pl + sg * 0.5, y, y + 0.45, null, 0xb4b9be); bx(a + 0.06, pl + sg * 0.5, a + 0.69, pl + sg * 0.52, y + 0.06, y + 0.39, null, 0x3a3e43); bx(a - 0.03, pl, a + 0.78, pl + sg * 0.42, y - 0.05, y, null, 0x30343a); }
+            else { bx(pl, a, pl + sg * 0.5, a + 0.75, y, y + 0.45, null, 0xb4b9be); bx(pl + sg * 0.5, a + 0.06, pl + sg * 0.52, a + 0.69, y + 0.06, y + 0.39, null, 0x3a3e43); bx(pl, a - 0.03, pl + sg * 0.42, a + 0.78, y - 0.05, y, null, 0x30343a); }
+        }
+        /* two downpipes with a shoe + a hopper, a meter box */
+        [[b.x0 - 0.1, b.z0 + 0.5], [b.x1 + 0.1, b.z1 - 0.5]].forEach((c, i) => {
+            cy(c[0], c[1], 0.06, 0.1, H - 0.5, null, PIPE); bx(c[0] - 0.12, c[1] - 0.12, c[0] + 0.12, c[1] + 0.12, H - 0.5, H - 0.25, null, PIPE);
+            [2.2, H - 2].forEach(y => { if (y > 1 && y < H - 0.8) bx(c[0] - 0.09, c[1] - 0.09, c[0] + 0.09, c[1] + 0.09, y, y + 0.06, null, 0x25282c); });
+            if (i === 0) bx(c[0] - 0.08, c[1] + 0.5, c[0] + 0.1, c[1] + 1.1, 0.9, 1.7, null, 0x7d8388);
+        });
+    });
+    /* the walk-in door: pilasters, a canopy on brackets, two lamps */
+    if (D) {
+        const v = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] }[D.side], ns = D.side === 'S' || D.side === 'N', hw = D.cw / 2;
+        const P = (a, t) => ns ? [D.at + a, D.plane + v[1] * t] : [D.plane + v[0] * t, D.at + a];
+        const seg = (a0, a1, t0, t1, y0, y1, key, tint, o) => { const A = P(a0, t0), Bq = P(a1, t1); bx(A[0], A[1], Bq[0], Bq[1], y0, y1, key, tint, o); };
+        [-1, 1].forEach(sg => { seg(sg * (hw + 0.12), sg * (hw + 0.52), 0, 0.22, 0, 2.75, STONE, TRIM); seg(sg * (hw + 0.06), sg * (hw + 0.58), 0, 0.28, 0, 0.3, STONE, TRIM); seg(sg * (hw + 0.06), sg * (hw + 0.58), 0, 0.28, 2.55, 2.75, STONE, TRIM);
+            seg(sg * (hw + 0.2), sg * (hw + 0.44), 0.22, 0.95, 2.75, 2.87, null, 0x30343a);                                                   // the bracket
+            const L = P(sg * (hw + 0.95), 0.12); bx(L[0] - 0.1, L[1] - 0.1, L[0] + 0.1, L[1] + 0.1, 2.05, 2.4, null, 0xfff0c0, { glow: 0.9 }); bx(L[0] - 0.13, L[1] - 0.13, L[0] + 0.13, L[1] + 0.13, 2.4, 2.46, null, 0x25282c); });
+        seg(-hw - 0.75, hw + 0.75, 0, 1.1, 2.87, 3.05, null, 0x30343a); seg(-hw - 0.6, hw + 0.6, 0.02, 0.1, 3.05, 3.6, null, 0x23262b); if (name) { const A = P(0, 0.11); add({ t: 'sign', x: A[0], z: A[1], y: 3.11, face: D.side, w: 2 * hw + 1.1, h: 0.44, text: name, fg: '#e8c860', bg: '#23262b' }); } else seg(-hw - 0.45, hw + 0.45, 0.1, 0.13, 3.15, 3.5, 'gold', null);   // the canopy, the name board, its gilt plate
+    }
+    /* a drawn shop door: an awning + valance, a sign board, a blade sign */
+    src.filter(q => q.t === 'door').forEach((d, i) => {
+        const v = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] }[d.face], ns = d.face === 'S' || d.face === 'N', col = AWN[(seed + i * 3) % AWN.length];
+        const P = (a, t) => ns ? [d.x + a, d.z + v[1] * t] : [d.x + v[0] * t, d.z + a];
+        const seg = (a0, a1, t0, t1, y0, y1, key, tint, o) => { const A = P(a0, t0), Bq = P(a1, t1); bx(A[0], A[1], Bq[0], Bq[1], y0, y1, key, tint, o); };
+        const A = P(-1.9, 0.05), Bq = P(1.9, 1.35);
+        add({ t: 'roof', shape: 'shed', x0: Math.min(A[0], Bq[0]), z0: Math.min(A[1], Bq[1]), x1: Math.max(A[0], Bq[0]), z1: Math.max(A[1], Bq[1]), y0: 2.55, h: 0.65, key: null, tint: col, o: { high: { S: 'N', N: 'S', E: 'W', W: 'E' }[d.face], ds: true } });
+        seg(-1.9, 1.9, 1.3, 1.35, 2.3, 2.56, null, 0xf2ead8); for (let a = -1.9; a < 1.8; a += 0.76) seg(a, a + 0.38, 1.352, 1.36, 2.3, 2.56, null, col);
+        seg(-2.0, 2.0, 0.03, 0.14, 3.3, 4.0, null, 0x23262b); if (name) { const A2 = P(0, 0.15); add({ t: 'sign', x: A2[0], z: A2[1], y: 3.38, face: d.face, w: 3.8, h: 0.54, text: name, fg: '#ffffff', bg: HEX(col) }); } else seg(-1.8, 1.8, 0.14, 0.17, 3.45, 3.85, null, col, { glow: 0.2 });
+        seg(2.3, 2.38, 0.05, 0.85, 2.9, 3.6, null, col); seg(2.28, 2.4, 0.05, 0.9, 3.6, 3.66, null, 0x25282c);
+    });
+    out.ghosts = ghosts; return out;
 }
 
 /* ══ apply(ctx): called by bake-disaster-city.js after its building loop. ctx = { PLAN, features, props, bInfo, gx, take, roofB, ROOF_H } ══ */
@@ -290,6 +405,8 @@ function apply(ctx) {
                 });
             }
             const parts = []; Bd.parts.forEach(p => toArch(p, D).forEach(q => parts.push(q)));
+            const det = detail(Bd, D, !!(pb && roofB.has(pb.id)), 17 + P.px * 31 + P.py * 7 + k * 13, NAMES[P.px + ',' + P.py + ',' + Bd.i]); det.forEach(p => toArch(p, null).forEach(q => parts.push(q)));
+            det.ghosts.forEach(g => { features.push({ k: 'wall', x0: r3(X0 + g[0]), z0: r3(Z0 + g[1]), x1: r3(X0 + g[2]), z1: r3(Z0 + g[3]), t: g[5], y: g[4], ghost: true, rail: false }); n.ghosts++; });
             features.push({ k: 'arch', id: 'arch:' + id.slice(3), x: X0, z: Z0, y: 0, parts }); n.arch++; n.parts += parts.length;
             (Bd.ghost || []).forEach(g => { features.push({ k: 'wall', x0: r3(X0 + g[0]), z0: r3(Z0 + g[1]), x1: r3(X0 + g[2]), z1: r3(Z0 + g[3]), t: 0.3, y: g[4], ghost: true, rail: false }); n.ghosts++; });
             (Bd.cells || []).forEach(c => take(P.px * N + c[0], P.py * N + c[1]));

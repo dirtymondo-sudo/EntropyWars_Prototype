@@ -2169,6 +2169,17 @@ his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:1
 - **The beach against THE LEVELS.** Outside the grid the slope carries the edge plot's level outward, so every beach row is `absY: true`
   and the strip is first cut flat to 0 (a `sink` plateau); the Marina plot (level 1) comes down a 7 m ramp across the boardwalk. North
   of Bayside the city's edge stands up to 21 m over the water as a cliff.
+- **THE POLISH PASS (third delivery, 2026-11-13; mondo 20:15 "one or two more layers deep", 20:18 "roofs and ac units", 20:19 "different
+  textures or decals for different parts of the building").** `B.js` `POLISH.<name>(parts, ...same args)` adds a second layer to every
+  building (the wrapper at the end of the section runs it and `lettered()`): the building's NAME (parts written with `text` become the
+  city's shared sign key `txt:WORDS|ink|bg|aspect`; `vert: true` = one part a letter, a blade sign), a base course in its own sheet
+  (marble, subway tile, generic tile, bare concrete, planks), sills / heads / pilasters / dentils, downpipes with hoppers, wall AC units
+  with a grille and a drip stain, vent grilles, service doors (the pack's door sheets), wall lamps, and the roofs: a membrane sheet,
+  coping, AC plant on kerbs, vent stacks, hatches, aerials, ducts. Roof-route buildings keep clear roofs (plant on the walls).
+  Helpers: `bar / bars / pilasters / dentils / winTrim / pipe / ac / acRow / vent / lamp / svcDoor / plant / stack / hatch / aerial /
+  roofSkin / coping / plinth / board / sign / ringRails`. LESSONS: the metro pack's sheets (`urban:Metro*`) drew BLACK on an arch row,
+  use the urban pack's; the arch row's `ring` turns parts the mirrored way (fine for a column, wrong for a rail: `ringRails` writes
+  each with its own `ry`); a probe camera's `y` is ABSOLUTE, so on the raised north row add the plot's level or it is underground.
 - **NOT PROVEN in the headless browser:** no `city_*` pack building (the grill, the taco stand; also the diner, pizzerias, laundry in
   other districts) attached in the thread's probe runs: only the shadow blob draws. The files are on the CDN and fetched. Check on a real
   machine before blaming the placement.
@@ -2182,6 +2193,16 @@ mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is 
 - The Museum faces SOUTH, not the plan's north (its portico on a three-square forecourt that runs into the stadium concourse); the Band shell is solid (its stage shows through the open front). The two street kiosks are 2 × 2 squares. THE PIZZERIA = the shared chain prop `city_pizzeria` at (-31.5, 246.75) face 90 on six squares by three (the plan's Vendor stalls building is gone); four stalls on squares beside it.
 - GOLD = key `'gold'` (the gilt sheet) on the Wrestling hall and the Clubhouse band. Thin posts stand on the lines between squares; anything thick on a square's middle has a block under it.
 - NOT DONE: no gas station (it needs about 28 × 45 m, the road plots have 10.5 m: the South gatehouse stands there); the Playground pack is not used (the park is the stadium now); no signs / lettering; the stands are solid (nobody climbs them); the Giant Ape's home was Park west (asked mondo, default: the field).
+
+- THE EXTERIOR POLISH (2026-11-13, mondo 20:15 "one or two more layers deep" + 20:18 "roofs and ac units" + 20:19 "different textures or decals for
+  different parts of the building"): S.js `apply` has a detail layer per building, `X[id]()`, joined to the building's parts by `B`. Helpers: `trim`,
+  `cornice`, `coping`, `shutters`, `surround`, `pipe` + `gutter`, `lamp`, `sign` / `signAt`, `ac` / `acRow` / `wallAC`, `vent`, `duct`, `tank`, `hatch`,
+  `mat` (a roof sheet), `flag`, `steps`. Each building now has a base course, a body, a trim and a roof sheet of different existing textures
+  (marble, rubber, subway grill, generic tile; nothing repainted), roof plant on every flat roof, and lettered signs.
+- THE LETTERING (three-renderer.js `_hqArchSignTex`, shared by every district): an arch part `key: 'txt:WORDS|fg|bg|aspect'` draws the words on a canvas
+  sheet (uv 'fit', no city tint). Empty bg = letters only (use `kind: 'over'`). No apostrophes in the words (the bake writes single-quoted strings).
+  Seen in the cloud browser: marquee, scoreboard, gym, box office, depot, gallery, art supplies signs. Low contrast, to raise later: the museum frieze
+  and SOUTH GATE (dark letters on stone).
 
 ## DISASTER CITY, CIVIC CENTER — the 28 buildings of district C (2026-11-13, mondo's OK 17:11)
 
@@ -2321,6 +2342,18 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
 - **On THE LEVELS** (Southside stands on levels 10 to 14, 17.5 to 24.5 m): the tool lifts every arch row onto its building's base, so R.js keeps
   writing `y: 0`. Rows the tool does NOT lift ask R.js `plotY(px, py)`: the pack block's `texbuilding` and the canal's water. The canal is the levels'
   sunk ditch on P00-03 (levels.js `pieces`): the `stream` runs north-south on its bed (water 0.5 m deep), the boathouse stands on the east bank.
+- **THE POLISH PASS** (mondo 11-13 20:15 "one or two more layers deep with the detail", 20:18 "roofs and ac units"): all in R.js's helpers, so every
+  Southside building gets it. `a.wins`: a stone sill + lintel on every glazed opening (`trim: false` off, `trim: 0x..` its tint), a wall AC unit under
+  every third upper window on back and left walls. `a.floors`: a string course under each upper floor (`band: false`). `a.panel`: a door sheet gets a
+  step and a hood (`plain: true`). `a.roof`: ridge cap + two cowled vents on a gable, a vent on a hip, ridge ventilators on a barrel (`bare: true`).
+  `dress()` in `a.done` reads the first part (the main block): dark base course, two downpipes with hoppers, and on a flat roof nobody walks two AC
+  units with fans, two capped vents and a hatch (seated on a cornice slab when one lies on the block). Walked roofs get no roof units (nothing a unit
+  would walk through).
+  THE SHEETS (20:19 "different textures or decals for different parts of the building"): each building's trim is ONE sheet picked by its id (painted
+  plaster 2a, marble tile, stone, wood, stucco 2a); `dress()` reads the main block's sheet and picks the base course (stone / brick / subway tile /
+  striped concrete), a frieze under the eaves (stucco 2a on brick, generic tile on plaster), corner piers in the base's sheet on two buildings in three,
+  and the decals: a pack warning sign (`urban:Sign*`) by a works building's doors, a vent grille (`urban:MetalSubwayGrill1a`) + a meter box elsewhere.
+  Only sheets already on the bucket; nothing repainted.
 - **Seen in the cloud browser** (WebGL2 headless): every plot from above, shots in `/mnt/project-files/disaster-city-southside/`. Not seen on his Mac yet.
   Interiors are the next pass (the seven walk-in shells are empty rooms with a floor and plaster walls).
 
@@ -2378,6 +2411,16 @@ NOT SEEN IN THE GAME BY THE THREAD (no browser run, RULE #1c): checked headless 
 - **NOT BUILT from the mock-up:** the park knoll + the Dish (district S made those plots the stadium), the Hero plaza stage (district H has
   its colonnade there), the Service garage roof ramp, the Industrial loading-dock platforms, the Marina lookout beach steps (the beach
   thread's ground). Mock-up + tools: `/mnt/project-files/disaster-city-vertical/` (shows the first grid, before the stadium).
+## DISASTER CITY, THE PHANTOM WALLS — the kerb stones on a sloping street (2026-11-13, mondo 20:04, SEEN IN THE BROWSER)
+mondo: "On the street with all the cars parked in bayside, there are these giant walls ... standing on the other side of them, they disappear."
+- NOT a retaining wall, not a border leftover: three-renderer.js road markings (`_ew_hqRoadMark`, THE KERB STONES). A kerb run was ONE quad pair for
+  the whole stretch of street with `yTop` = the highest end and `yRoad` = the lowest end. Flat city: a 6 cm lip. On THE LEVELS a run climbs up to
+  21 m, so its face stood as a one-sided wall (front faces only) along the kerb of every sloping street; worst on the police street (east avenue,
+  level 0 to 10). The edge lines had the same fault (one flat quad a run: under / over the road).
+- THE FIX: `runCuts(a, b, hs)` cuts a run where the ground under it changes slope (sampled every 0.875 m); the kerb and `flat()` (edge lines)
+  build a piece per cut with a height at each corner. A flat street stays one quad. Beside a bank (outer ground > 0.4 m off the road) the stone
+  keeps to the road's height. One mesh for the whole room, so every district is covered. Probe: the tallest triangle of the mesh (was 21 m).
+
 ## DISASTER CITY, THE FINANCIAL DISTRICT'S ARCHITECTURE (2026-11-13) — docs/disaster-city/districts/F.js, data.js
 mondo 11-13: "architect the buildings in their respective districts plots ... every building should be unique and purposeful and
 recognizable"; his OK on the plan + mock-up 17:10 (project files `disaster-city-financial/`, `mock-src/` = the mock scene).
@@ -2409,6 +2452,22 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
   GlassWindow* sheets draw near black in an arch row and he wants that look, so never lift them (no glow / gain). Added in F.js: the hotel's
   sky bar tier, the archive's stair drum, the palm house's vault + dome (back to glass), a clerestory on the garage, the shops' upper floor,
   every third back lot a glass office block over a stone ground storey. The HOTEL gets a walk-in inside when the interiors start (his word).
+- **THE SECOND LAYERS (mondo 11-13 20:15 "one more polish pass on the exteriors ... go one or two more layers deep with the detail"; 20:18
+  "roofs and ac units"; 20:19 "and textures, different textures or decals for different parts of the building")**: `districts/F-detail.js`
+  (required by F.js; the tool only reads `<LETTER>.js` as a district) runs on every Financial building's parts in `emit`, by building id or
+  by kind (terrace / shop / workshop / backlot). It adds: belt courses, dentils, sills, keystones, door hoods, downpipes, lamps, railings;
+  ROOFS (a deck sheet, parapets, AC units with grille faces, chillers, vents, ducts, stair heads, water tanks, skylights; AC boxes + grilles
+  on back and side walls); OTHER SHEETS on other parts, all from the urban pack as it is: `MetalSubwayGrill1a` (louvres), `MetalTruss1a`
+  (sign frames, a cut-out), `RubberNonSlip1a` / `ConcreteUnderTiles2` (roof decks), `FibreCeilingTile1a` (soffits under the taxi canopy and
+  the executive slab), `TileSubway1a` (the taxi rank's tiled wall, the kitchen dado), `TileSubway3a` (shop risers), `TileGeneric5a` /
+  `TileMarble2a` / `TileMarble3a` (checker floors and bands), the `Sign*` plates (caution / hazard / no entry / helmet, `uv: 'fit'`).
+  SIGNS: an arch part cannot write text, so `letters()` builds block letters from boxes (a 5 x 7 face, greedy rectangles): HOTEL (gold, on
+  the marquee + down a red blade), ARCHIVE, BANK (gold, twice), CATERING, VAULT (gold), TAXI (lit, on a truss), STORE, GARAGE, ARCADE
+  (gold), NEWS, and BOOKS / TAILOR / FLORIST on the shops' awning valances (`shop(id, { sign })`). Plain trade words only; nothing on the
+  intelligence office or the members club. Rules kept: gold = the `gold` sheet with `gain` 1.5; glass never lifted; walked roofs (hotel
+  podium, club, caterer north wing, P09-00 shop + workshop) get nothing on the deck; nothing new sticks out past 0.8 m at ground level.
+  Cost: the district's arch rows went 671 -> ~2300 parts and ~8 -> ~17 materials a building (each sheet + tint is one mesh per building),
+  data.js + ~135 KB. Only a walk-in's roof deck carries `roof: true` (a roof flag is its own mesh). No tools beyond the bake.
 - THE GIANT APE (mondo 11-13 19:25: "put king kong in the district with the most high rises or tall buildings"): Financial (5 to 11 storeys). S.js `build` pushes him to `ctx.npcSpots` (new in the bake hook: a district's people, written to the room's `npcSpots`) at (173.25, -92.75), the open ground at the foot of the Penthouse stair tower (P10-03), with his own line from the old streets.
 
 ## DISASTER CITY, THE UNIVERSITY DISTRICT (2026-11-13, the University thread; mondo's OK 19:24)
@@ -2458,6 +2517,28 @@ collision row with the skin off and gets ONE `k: 'arch'` row `dcu:<building id>`
 - NOT DONE: no road runs out into the desert (the streets end at the south line); no rocks / cactus on the desert (he asked for plain flat); the sky's far
   roster (`sky.scenery: 'city'`) is unchanged; the forest past 60 m is bare ground (in the fog from the streets).
 
+**Civic Center, THE POLISH PASS (2026-11-13, mondo 20:15 "one or two more layers deep with the detail", 20:18 "roofs and ac units", 20:19
+"different textures or decals for different parts of the building"):** C.js `detail(Bd, D, walked, seed)` adds a second layer to every
+building from its own shapes (1524 parts over the 28 rows). Per ground wall block: a plinth (split at the walk-in door), the ground storey
+in its own sheet on the brick / plaster houses, a belt course, a cornice where none was drawn, two downpipes + a meter box, wall AC units
+on upper storeys. `roofKit(b)` on every block and upper tier: a roof deck sheet, a parapet on a bare roof, AC units on kerbs with a grill
+and a vent stack in the free spots (never under a drum / tower / pitched roof); on the five walked roof-route roofs each unit gets a ghost
+wall. Per walk-in door: pilasters, a canopy on brackets, a name board with a gilt plate (key `gold`), two lamps. Per drawn shop door: a
+striped awning, a sign board (no lettering), a blade sign. The sheets (plinth, ground storey, deck, plant) are picked per building by a
+seeded draw from the urban pack, his sheets as they are, only tinted. Headless shots after THE LEVELS need `y` = plot level × 1.75.
+
+### HERO PLAZA, THE POLISH PASS (2026-11-13 20:15, mondo: "one more polish pass on the exteriors ... one or two more layers deep", + "roofs and ac units", + "different textures or decals for different parts of the building")
+- districts/H.js `DET[<building id>](a, door)` and `DET_OPEN[<piece>]`: a second parts list per building, added after its own by `dress()` in
+  `build()`. `kit(a)` lays every piece against a wall by its side (`on(side, half, u, y, w, h, t, ...)`, u = world x on S/N, world z on E/W):
+  plinth (open at the doorway), course, frames (sill + head), pil, pipe, lamp, vent, ac, awning, balcony, and for roofs rTop (a roof surface
+  in its own sheet), parapet, rAC (air handler on a pad with grilles), rVent, rDuct, rHut (stair hut with a door), rSky, rail.
+- One sheet once on one face = `panel()` (`uv: 'fit'`, `faces` = the outward face, `top: false`): door leaves (urban:DoorWoodenHalf1a,
+  DoorPaintedHalf1a / 2a, DoorStorefrontHalf1a), window decals (DecalWindowsResidential1a / 2a, DecalWindowsFactory1a: each sheet is 2x2
+  windows, so a panel about 3.2 x 5.5 m reads as two storeys), grilles (MetalSubwayGrill1a), hazard plates (SignHazard1a), shutters
+  (GlassWindowResidentialShutter1). Decal / Door / Sign keys draw see-through by themselves.
+- Sheets by part: feet in ConcreteUnderTiles1 (reads as granite), terraces in TileGeneric1a / 3a pavers, membrane roofs in RubberNonSlip1a,
+  the tower's step and the bandstand floor in TileMarble1a checker, the arcade floor TileMarble3c, the station canopy floor TileMarble2a.
+- About 2,400 parts for the district (was about 480). Seen in the game on every building. No lettering (the arch row has none).
 ## DISASTER CITY, THE PROP PASS — every prop checked against the real city, the street dressed (2026-11-13, mondo 19:30 + his OK 20:03 "Build all of it")
 mondo: "cars on top of stuff, benches on top of fences, street signs half way inside buildings. Just needs way more attention to detail and care ...
 there is this green trash bin in the subway area that needs to go in the city. See what other assets/props are available."
@@ -2538,5 +2619,73 @@ mondo 20:15 "one more polish pass on the exteriors ... go one or two more layers
 canopies + glowing lamps, window sills / lintels / mullions, downpipes + gutters, ribs on every barrel roof, ladders, blank sign boards, hazard plates, bollards, rust streaks, door decals
 on the solid buildings, the signal box's outside stair + a semaphore, the crane's rails / cab glass / beacon) and `ROOFS[id]` (roof AC units `ac`, wall units `wac`, parapets, hatches,
 ducts, rubber walkways, manhole decals in the yards, a second sheet on back walls and bases: subway / generic tile, brick, factory window decals). Houses: `houseMore` (corner boards,
-door hoods, shutters, sills, gutters, chimney caps). On the five walked roofs only edges and corners are dressed. Signs stay blank (no lettering part). Seen in the cloud browser (29
+door hoods, shutters, sills, gutters, chimney caps). On the five walked roofs only edges and corners are dressed. Signs carry real words since the shared `txt:` sheet landed (PR #1327): `sign(..., words, fg)` and `txt(...)` lay letters over a board; the words are the plan names (WAREHOUSE, POWER STATION, CANTEEN, HARDWARE ...) and bay numbers. Seen in the cloud browser (29
 close-ups, about two thirds framed the building; the rest were checked from neighbours' shots). `arch y` is lifted by THE LEVELS, so headless cameras add the plot's level.
+
+### THE UNIVERSITY POLISH PASS (2026-11-13, mondo 20:15 "one more polish pass on the exteriors ... one or two more layers deep", 20:18 "roofs and ac units", 20:19 "different textures or decals for different parts of the building")
+`districts/U.js` `polish(kind, walkedRoof)` runs after each builder and reads the building's own parts (22 rows, 1,228 parts now): a stone plinth
+(never across a door), a string course a storey, corner stones on brick / stone walls, a sill + a head on every window strip, a step with a rubber
+mat + a lit lamp at every door, a downpipe + hopper on each back corner, a hanging sign at the shops (`SIGNS`, a colour a trade, no lettering),
+wall AC units with a grille under the back / side residential windows, louvre grilles low on the back wall, hazard / caution plates on the science
+side (`SCI`). Roof plant: two condensers on pads + a vent stack; on a flat roof (`FLAT`) with a hatch and a duct, on a WALKED roof along an edge
+with a ghost wall each and never within 5 m of a bridge / stair / ladder point or on a tier.
+- An `hq:` sheet on an arch part drew BLACK in the game (trims, the porch): trims are `calm_marble` now. No `hq:` keys in U.js.
+- Seen in the game: plinth, sills, heads, corner stones, door step + mat, porch trim (library, dorm). NOT seen: roof plant, wall units, plates, signs.
+
+**Civic Center, the lettering (2026-11-13):** C.js `NAMES` gives 24 buildings their name; the walk-in name board and the shop sign board
+wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no name keeps the gilt plate / blank board. Seen in game.
+
+- THE LETTERING (same evening, the shared `txt:` sign sheet of PR #1327): `LETTERS[id]` in E.js puts plain trade words on the sign panels
+  (CASINO, CINEMA down the fin, NOW SHOWING, COMEDY TONIGHT, CONCERT down the blade, NIGHT MARKET, ARCADE, BOX OFFICE, RAMEN, BAKERY, TAXI,
+  WEDDING CHAPEL ...; no invented names). Helpers `b.txt(side, u0, u1, y, h, words, fg, proud, glow, bg)` and `b.vtxt` (a word read down a
+  blade, a letter a panel). Dark letters sit over the lit panels (`kind: 'over'`, no board); light letters glow.
+- **The University's sign lettering** (11-13, on the shared `txt:` sheet of PR #1327): `LABEL[kind]` in districts/U.js puts the building's plain name
+  (LIBRARY, LECTURE HALL, CAFE, BOOKS, CLINIC, ...: what it is, no invented names) on a board over its first door. Not seen on screen.
+- HERO PLAZA, the signs (2026-11-13 21:10): `kit().sign(side, half, u, y, w, h, words, fg, bg)` = a quad facing out of that wall with key
+  `txt:WORDS|fg|bg|aspect` (THE SIGN LETTERING). Boards: HERO WORKSHOP, PRESS COURT, TRAINING HALL, TRANSIT COURT, DELIVERIES, DISPATCH, COFFEE,
+  NEWS, SNACKS (the buildings' own plan names, nothing invented). `LIFT` leaves `txt:` keys alone. Seen in game reading the right way on S and N walls.
+
+### THE UNIVERSITY INSIDES (2026-11-13, mondo 21:04 "let's go ahead and do the interiors", his OK on the grid plan 21:23)
+His grid rule (21:14 + 21:17, all interiors): the city fights on 3.5 m squares; a BARRIER fills whole squares (centred, a 2-wide piece = 2 squares),
+a WALKWAY is a whole square wide with nothing halfway across two, dressing sits OFF the square centres.
+`districts/U.js` `ROOMS[kind].g` = the approved plan a walk-in building (rows listed BACK first, columns from the LEFT as you face the front from
+outside; '' = a walkway square, a word = what fills the square, `FILL[word]`). `inside(kind, row)` writes it: catalogue props (their `y` = on a
+table top), arch parts (counters, booths, plinths, the globe), ONE ghost block per filled square, partitions on the squares' edges (`glass` dark
+glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the row's `floorIn` / `keyIn`, `txt:` boards (MENU, TICKETS, KEYS, SCAN).
+- Library 8x4 (shelf wall, reading tables, the GALLERY: a plain `bridge` at 3.5 m over the back row + a `ramp` stair in its own square), student
+  cafe 7x4 (kitchen + counter block, tables, booths), research lab 8x4 (racks, benches, a dark-glass clean room 3x2), psychology lab 7x2
+  (observation room, reception, therapy office), research annex 9x3 (racks, consoles, specimen tanks, a scanner gate over the door square),
+  clinic 3x5 (waiting, reception, two beds, store), science museum 9x3 (cases, telescopes, globe, planets hung over the middle walkway), gate
+  lodge 2x2. The five roof-route buildings stay shut.
+- Plan sheet: /mnt/project-files/university-district/16_interior_plans_on_battle_grid.jpg.
+- **THE DEEPER HANGAR (2026-11-13, mondo 21:21 "make hangar deeper so it fits")**: `I.js` `fit` grows P03-10-B1 one square forward onto the walk in front of it (in `build`, NOT `tailor`: changing the plan re-rolls the whole city's random dressing): 31.5 x 14 m, four squares deep, 7 m walls
+  under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. The street lamp on that square is taken off (`ctx.lamps`, the tool now writes its lamps line after the district build). Seen in the
+  cloud browser from inside (as a 28 m long test build). INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.
+
+## DISASTER CITY, THE ENTERTAINMENT DISTRICT — the insides (2026-11-13 night)
+mondo 21:04 "after the district threads do their exterior polish, let's go ahead and do the interiors"; his grid rule 21:14 + 21:17 (a
+blocker snaps to the battle squares and fills whole ones, a walkway is a whole square wide, decoration sits off centre); his "okay" on the
+cell plans 21:23 (/mnt/project-files/dc-entertainment/interiors_plan.jpg). All in `docs/disaster-city/districts/E.js`.
+- The ten walk-in shells are furnished IN PLACE in the city room (no door to another room): `INSIDE[id] = { g: [rows of letters], keyIn,
+  floorIn, rug, ... }`. A letter is one 3.5 m square: `.` = walkway, any other letter = a blocker drawn by `KIT[letter]` in the square's own
+  frame (+z looks at the nearest walkway) under a ghost block the size of the square (`BLOCK_H`). Rows are written back first, the door row
+  last, left = left as you face the building. The tool refuses a plan that is not the shell's size or whose doorway square is not a walkway.
+- Kits: S slot bank (3 `slot_machine`), T round table + stools, B bar + back shelf, c cashier cage, G stage (or the workshop's half-built
+  set), K kitchen line (`kitchen_range`), H seat block (raked by `rake`), L `psx_sofa_1`, U `curved_couch` + TV, X mixing desk, M drum kit,
+  P `decor_piano`, V vocal booth, A six arcade cabinets (shapes: the model list has no cabinet), R costume rail / amps / lumber, m mirrors,
+  O ovens, W `steel_table` benches, F backdrop flat, Y crates, Z `exec_desk`, D `library_shelf_full`, J air hockey, C shop counter,
+  I `ticket_booth`, Q `popcorn_cart`, E `dorm_bed` bunks, N `locker` row. Plus ceiling light panels over the walkways, a lit EXIT over every
+  doorway inside, the Cinema's screen, the inside wall and floor sheets (`keyIn` / `floorIn`).
+- The rooms: Casino, Recording studio, Restaurant court, Comedy theater, Cabaret, Stage workshop, Arcade, Bakery, Crew house, Cinema.
+  10 `dc:<id>:in` arch rows, about 1,900 parts, about 19,500 triangles; 82 catalogue props (docs/disaster-city/prop-check.txt lists them as
+  "in building": that is where they belong, the check keeps a district's own props).
+- NOT SEEN IN THE GAME (offline render of the baked rows only: interiors_built.jpg). Unknown until walked: how bright the insides are, prop
+  facings, whether the wall-mounted props (`locker`, `kitchen_range`) sit right. Next (his "and yes" 21:23): insides for the wedding chapel,
+  the Concert hall and the Film studio (solid today).
+- THE THREE MORE INSIDES (same night, his "and yes" 21:23): the Concert hall and the Film studio were roof-route plateaus (solid); `B(id,
+  { walk: true })` on a plateau now swaps in a hollow `texbuilding` of two storeys (the same 7 m walked roof slab, as the Industrial district
+  does), its doorway the plan's first door. Concert hall inside: lobby, raked seat blocks, a two-square-deep stage, backstage. Film studio
+  inside: backdrops, a half-built set, a camera + lamp (kit `k`), the director's desk, wardrobe, make-up, the front office. The Concert
+  hall's glass lobby drum became an open colonnade (the doorway is behind it). The wedding chapel is a walk-in shell of the file's own now
+  (`EXTRA['E-chapel']` + its own texbuilding row, 3 x 2 squares, `leaf_motel` door): pews (kit `p`), the wedding altar (kit `w`, `lectern`).
+  13 inside rows in all. NOT SEEN IN THE GAME; the roof route over the two halls wants a walk (the texbuilding's 0.45 m parapet ghost).
