@@ -85642,7 +85642,7 @@ const ThreeRenderer = (function () {
                 ch.held.quaternion.copy(hq).invert();
                 ch.held.scale.setScalar(1 / (hs.x || 1));
             }
-            if (ch.kind === 'player') e.group.visible = !H.fp && !(H.focus && H.focus.k > 0.3);
+            if (ch.kind === 'player') e.group.visible = !H.fp && !(H.focus && H.focus.k > 0.3) && !H._scenePlayerOut;   // (a scene took the officer out of the picture: hq.scenePlace show)
             var want = 'idle';
             /* a placed cast member holds its building pose (sits, mops,
                kneels…) once the library bake has landed the clip */
@@ -93293,6 +93293,11 @@ const ThreeRenderer = (function () {
             if (o.x != null && o.z != null) { _hqSceneMoves = _hqSceneMoves.filter(function (m) { return m.ch !== ch; }); ch._sceneWalk = false; ch.x = +o.x; ch.z = +o.z; g.position.x = ch.x * U; g.position.z = ch.z * U; if (ch === _hq.player) { ch.moving = false; ch.svx = 0; ch.svz = 0; } }
             if (o.face != null) { ch.yaw = ch.targetYaw = _hqHeadingYaw(o.face); if (ch.entry.model) ch.entry.model.rotation.y = ch.yaw; if (ch === _hq.player && _hq.cam) { _hq.cam.yaw = _hqRad(o.face); _hq.cam.init = false; } }
             if (o.show != null) { if (ch === _hq.player) { g.visible = !!o.show; _hq._scenePlayerOut = !o.show; } else _hqRoundsSetVisible(ch, !!o.show); }   // (the walker's own tick shows the body again: held out every frame, see the scene tick)
+            /* `scale`: the body at k times its own size for the room's life (scene A: Sedaniel at a real car's size beside the
+               officer; a unit's battle size is a toy's). `clip` + `ms`: the officer plays one of the rig's clips once (hqNo = the
+               head shake) and goes back to standing. */
+            if (o.scale > 0) { if (g._ew_sceneS0 == null) g._ew_sceneS0 = g.scale.x || 1; g.scale.setScalar(g._ew_sceneS0 * o.scale); }
+            if (o.clip && ch === _hq.player && ch.entry.actions && ch.entry.actions[o.clip]) ch.strike = { name: o.clip, until: performance.now() + Math.max(200, o.ms || 1500), fresh: true };
             if (o.sit != null && ch === _hq.player) ch.sit = o.sit ? { seat: null, t0: performance.now(), scene: true } : null;   // seated for a scene (no seat record: the walk's own tick is held)
             g.updateMatrixWorld(true); _hq.dirty = true;
             return true;
@@ -93304,7 +93309,9 @@ const ThreeRenderer = (function () {
             var ch = null;
             if (who === 'player') ch = _hq.player; else for (var i = 0; i < _hq.chars.length; i++) { if (_hq.chars[i] && _hq.chars[i].cast === who) { ch = _hq.chars[i]; break; } }
             var a = ch && ch.entry && ch.entry.group && ch.entry.actions;
-            return !!(a && a.idle && (who !== 'player' || a.walk));
+            if (!(a && a.idle && (who !== 'player' || a.walk))) return false;
+            var mesh = false; ch.entry.group.traverse(function (o) { if (o.isMesh) mesh = true; });   // (the model itself, not only its group)
+            return mesh;
         },
         /* a scene's CAST: `ids` = the DOOR_CAST ids the scene keeps; everybody else in the room (the officer aside) is taken
            out for the scene. null puts back exactly the ones it took out. */
@@ -93462,7 +93469,7 @@ const ThreeRenderer = (function () {
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
             hqScene: function () { return _hq ? _hq.scene : null; },
             /* the walker's clip right now (a scene check: which clip is the officer in?) */
-            playerAnim: function () { var H = _hq, ch = H && H.player, e = ch && ch.entry; if (!e) return null; var run = []; try { Object.keys(e.actions || {}).forEach(function (k) { var a = e.actions[k]; if (a && a.isRunning() && a.getEffectiveWeight() > 0.01) run.push(k + ':' + a.getClip().name + ':' + a.getEffectiveWeight().toFixed(2)); }); } catch (err) {} return { cur: e._ew_curAnim || null, running: run, moving: !!ch.moving, jumpT: ch.jumpT, sit: !!ch.sit, ride: !!(H.ride && H.ride.on), swim: !!ch.swim, strike: ch.strike ? ch.strike.name : null, drawn: !!(H.portal && H.portal.drawn), lean: e.model ? e.model.rotation.x : 0 }; },
+            playerAnim: function () { var H = _hq, ch = H && H.player, e = ch && ch.entry; if (!e) return null; var run = []; try { Object.keys(e.actions || {}).forEach(function (k) { var a = e.actions[k]; if (a && a.isRunning() && a.getEffectiveWeight() > 0.01) run.push(k + ':' + a.getClip().name + ':' + a.getEffectiveWeight().toFixed(2)); }); } catch (err) {} return { cur: e._ew_curAnim || null, keys: Object.keys(e.actions || {}).join(','), running: run, moving: !!ch.moving, jumpT: ch.jumpT, sit: !!ch.sit, ride: !!(H.ride && H.ride.on), swim: !!ch.swim, strike: ch.strike ? ch.strike.name : null, drawn: !!(H.portal && H.portal.drawn), lean: e.model ? e.model.rotation.x : 0 }; },
             hqDoors: function () { if (!_hq) return null; var out = _hq.doors.slice(), st = _hq.stage; if (st && st.parts) for (var id in st.parts) { var P = st.parts[id].P; if (P && P.doors) out = out.concat(P.doors); } return out; },   // the door records of the room stood in + the rooms beside it (probes)
             hqInst: function () { return _hqInstStats(_hq); },
             /* THE CITY TRAFFIC (2026-11-13): the lights' colours and every vehicle (a probe reads them: which stand at a red, which bus waits) */

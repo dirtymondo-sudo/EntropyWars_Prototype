@@ -281,7 +281,7 @@ const spot = (plotName, lx, ly, face, ok) => { const p = plotNamed(plotName); le
     return { x: gc(cx), z: gc(cy), face }; };
 JOIN.tower = bldDoor('Superhero Tower', 'Superhero Tower'); JOIN.mall = bldDoor('Mall concourse', 'Mall concourse'); JOIN.sewer = bldDoor('Pump court', 'Pump court');
 JOIN.metro = spot('Transit square', 5, 2, 180); JOIN.harbour = spot('Boardwalk exit', 9, 9, 180); JOIN.bay = spot('Arrival court', 9, 6, 270);
-JOIN.downtown_strip = spot('P00-07', 1, 6, 270, 'RP.'); JOIN.stadium_downtown = spot('P03-00', 5, 1, 0, 'RP.');
+JOIN.downtown_strip = spot('P00-07', 1, 6, 270, 'RP.'); JOIN.stadium_downtown = spot('P03-00', 7, 6, 0, 'R');   // 2026-11-13: on the road's dead end itself (was the 3.5 m alley beside the boxing gym, on its east door's step: Southside saw its sign indoors)
 JOIN.garage_taxi = spot('Taxi rank', 3, 3, 270, '.P'); JOIN.streets_strip = spot('Church', 8, 8, 270); JOIN.streets_drain = spot('Canal walk', 6, 8, 270); JOIN.docks_sewer = spot('Dock edge', 6, 6, 90);
 
 /* THE LEVELS, THE CROSSINGS' STAIRS (after the doors above have their squares, before anything is dressed) */
@@ -713,11 +713,17 @@ lines.push("                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:C
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
 const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)
 lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0, streets: " + J(streets) + ",");
-lines.push("                    lamps: " + J(lamps) + ",");
+const lampLine = lines.length; lines.push("");   // written after the district files' build (a district may take a lamp off a square it built on: ctx.lamps)
 lines.push("                       open: [] },");
 lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + NXP + ", nz: 144, d: '" + b64 + "' },");
 lines.push("                features: [");
+dcCtx.lamps = lamps;
 dcRun('build');
+/* A TREE NEVER LEANS INTO A ROOM (2026-11-13, Southside: street trees seen inside the boxing gym): a tree within 2.5 m of a walk-in building's
+   walls is dropped (its crown is wider than the gap and shows indoors). A district's own tree with `keep: true` stays. */
+{ const hol = features.filter(f => f.k === 'texbuilding' && f.hollow), near = (t, b) => { const q = ((b.rot || 0) % 180) !== 0, hw = (q ? b.d : b.w) / 2, hd = (q ? b.w : b.d) / 2; return Math.hypot(Math.max(Math.abs(t.x - b.x) - hw, 0), Math.max(Math.abs(t.z - b.z) - hd, 0)) < 2.5; };
+  for (let i = features.length - 1; i >= 0; i--) { const t = features[i]; if (t.k === 'tree' && !t.keep && hol.some(b => near(t, b))) { features.splice(i, 1); count.treesIndoor = (count.treesIndoor || 0) + 1; } } }
+lines[lampLine] = "                    lamps: " + J(lamps) + ",";
 features.push(...lateRows);
 /* ── THE LEVELS, THE GROUND: every square's four corner heights (NW NE SW SE, centimetres) → `terrain.slope.cells`.
    - a BUILDING's squares are flat at its base: the plot's level, or the kerb walk's height at its door when its door opens on a sloping
