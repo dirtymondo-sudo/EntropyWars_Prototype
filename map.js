@@ -9913,6 +9913,10 @@
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? ' active' : ''}" id="mmCreatorHiderBtn" onclick="window._toggleCreatorHider()">${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? 'Creator Item Hider: ON' : 'Creator Item Hider: OFF'}</button>
                         </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Remade Race Looks — every unit with no look of its own wears its race's remade look (its own clothes as separate pieces on the new body, with a face that talks and emotes) in place of its old model: creator, party builder, battles, DOOR HQ, the team room. A race with no remade look yet keeps its old model; a slot's own saved look and USE ORIGINAL MODEL still win. Only on this browser, remembered after a reload. Off by default.${typeof window.RACE_REMADE_LOOKS === 'object' ? ` ${Object.keys(window.RACE_REMADE_LOOKS).length} races have one.` : ''}</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn${typeof window.remadeLooksOn === 'function' && window.remadeLooksOn() ? ' active' : ''}" id="mmRemadeLooksBtn" onclick="window._toggleRemadeLooks()">${typeof window.remadeLooksOn === 'function' && window.remadeLooksOn() ? 'Remade Race Looks: ON' : 'Remade Race Looks: OFF'}</button>
+                        </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Face Lab (experimental) — in the character creator, a FACE LAB button by FACE CLOSE-UP opens a window that plays the MPFB body's face shapes: open mouth, talk (reads a line you type), lip flap, roll eyes, blink, wink, look around, laugh, moan, cry, scream and more, plus a slider for each of the 67 raw face shapes. Looks only, nothing saved. ?facelab=1 in the address turns it on too.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${window.EWFaceLab && window.EWFaceLab.enabled() ? ' active' : ''}" id="mmFaceLabBtn" onclick="window._toggleFaceLab()">${window.EWFaceLab && window.EWFaceLab.enabled() ? 'Face Lab: ON' : 'Face Lab: OFF'}</button>
@@ -10112,6 +10116,15 @@
             window.setCreatorHiderOn(on);
             const btn = document.getElementById('mmCreatorHiderBtn');
             if (btn) { btn.textContent = 'Creator Item Hider: ' + (on ? 'ON' : 'OFF'); btn.classList.toggle('active', on); }
+        };
+
+        // Settings → Developer: THE REMADE LOOKS SWITCH (2026-11-13) — every unit with no look of its own wears its race's remade
+        // look (sprites.js remadeLooksOn; localStorage ew_remade_looks). Units already on screen rebuild on their next draw.
+        window._toggleRemadeLooks = function() {
+            if (typeof window.setRemadeLooksOn !== 'function') return;
+            const on = window.setRemadeLooksOn(!window.remadeLooksOn());
+            const btn = document.getElementById('mmRemadeLooksBtn');
+            if (btn) { btn.textContent = 'Remade Race Looks: ' + (on ? 'ON' : 'OFF'); btn.classList.toggle('active', on); }
         };
 
         // Settings → Developer: THE FACE LAB (2026-11-11) — the character creator's FACE LAB button on / off (three-renderer.js
