@@ -51,30 +51,30 @@ Files: R2 `Assets/world/props/meshy/<key>.glb` (meshopt + WebP, like the decor).
 
 | Key | What | District making it | Status |
 |---|---|---|---|
-| `arcade_cabinet` | upright 1980s arcade cabinet, abstract art, no logos | Entertainment | making |
-| `pinball_machine` | pinball machine | Entertainment | making |
-| `claw_machine` | claw crane prize machine | Entertainment | making |
-| `air_hockey_table` | air hockey table | Entertainment | making |
-| `jukebox` | 1950s jukebox | Entertainment | making |
-| `roulette_table` | casino roulette table | Entertainment | making |
-| `blackjack_table` | half-moon card table | Entertainment | making |
-| `money_wheel` | casino money wheel on a stand | Entertainment | making |
-| `crystal_chandelier` | crystal chandelier (ceiling) | Entertainment | making |
-| `mixing_console` | studio mixing desk | Entertainment | making |
-| `drum_kit` | full drum kit | Entertainment | making |
-| `guitar_amp` | guitar amp stack | Entertainment | making |
-| `pa_speaker` | floor PA loudspeaker | Entertainment | making |
-| `followspot` | theatre follow spot on a tripod | Entertainment | making |
-| `film_camera` | vintage movie camera on a tripod | Entertainment | making |
-| `studio_light` | fresnel light on a wheeled stand | Entertainment | making |
-| `directors_chair` | director's chair, plain canvas | Entertainment | making |
-| `film_projector` | cinema film projector on its pedestal | Entertainment | making |
-| `bread_rack` | wooden bread rack, full | Entertainment | making |
-| `deck_oven` | steel bakery deck oven | Entertainment | making |
-| `wedding_cake` | four-tier wedding cake | Entertainment | making |
-| `costume_rack` | rolling rack of stage costumes | Entertainment | making |
-| `makeup_vanity` | dressing-room mirror with bulbs + stool | Entertainment | making |
-| `wedding_arch` | flower wedding arch | Entertainment | making |
-| `mirror_ball` | disco mirror ball (ceiling) | Entertainment | making |
-| `music_stand` | orchestra music stand | Entertainment | making |
-| `paper_lantern` | round red paper lantern (hanging) | Entertainment | making |
+| `arcade_cabinet` | upright 1980s arcade cabinet, abstract art, no logos | Entertainment | live |
+| `pinball_machine` | pinball machine | Entertainment | live |
+| `claw_machine` | claw crane prize machine | Entertainment | live |
+| `air_hockey_table` | air hockey table | Entertainment | live |
+| `jukebox` | 1950s jukebox | Entertainment | live |
+| `roulette_table` | casino roulette table | Entertainment | live |
+| `blackjack_table` | half-moon card table | Entertainment | live |
+| `money_wheel` | casino money wheel on a stand | Entertainment | live |
+| `crystal_chandelier` | crystal chandelier (ceiling) | Entertainment | live |
+| `mixing_console` | studio mixing desk | Entertainment | live |
+| `drum_kit` | full drum kit | Entertainment | live |
+| `guitar_amp` | guitar amp stack | Entertainment | live |
+| `pa_speaker` | floor PA loudspeaker | Entertainment | live |
+| `followspot` | theatre follow spot on a tripod | Entertainment | live |
+| `film_camera` | vintage movie camera on a tripod | Entertainment | live |
+| `studio_light` | fresnel light on a wheeled stand | Entertainment | live |
+| `directors_chair` | director's chair, plain canvas | Entertainment | live |
+| `film_projector` | cinema film projector on its pedestal | Entertainment | live |
+| `bread_rack` | wooden bread rack, full | Entertainment | live |
+| `deck_oven` | steel bakery deck oven | Entertainment | live |
+| `wedding_cake` | four-tier wedding cake | Entertainment | live |
+| `costume_rack` | rolling rack of stage costumes | Entertainment | live |
+| `makeup_vanity` | dressing-room mirror with bulbs + stool | Entertainment | live |
+| `wedding_arch` | flower wedding arch | Entertainment | live |
+| `mirror_ball` | disco mirror ball (ceiling) | Entertainment | live |
+| `music_stand` | orchestra music stand | Entertainment | live |
+| `paper_lantern` | round red paper lantern (hanging) | Entertainment | live |
