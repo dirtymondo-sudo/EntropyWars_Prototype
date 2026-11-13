@@ -2644,3 +2644,39 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - HERO PLAZA, the signs (2026-11-13 21:10): `kit().sign(side, half, u, y, w, h, words, fg, bg)` = a quad facing out of that wall with key
   `txt:WORDS|fg|bg|aspect` (THE SIGN LETTERING). Boards: HERO WORKSHOP, PRESS COURT, TRAINING HALL, TRANSIT COURT, DELIVERIES, DISPATCH, COFFEE,
   NEWS, SNACKS (the buildings' own plan names, nothing invented). `LIFT` leaves `txt:` keys alone. Seen in game reading the right way on S and N walls.
+
+### HERO PLAZA, THE INSIDES (2026-11-13 night, mondo's OK 21:22 "ok and yes" on the floor plans; his grid rule 21:14 + 21:17)
+- **The rule** (his words, for all interiors): "if its gonna be a barrier it needs to snap to the grid / be centered on a cell, if its just a prop or
+  dressing ... then it needs to be not centered ... a intended walkway still needs to be one cell wide, not have stuff halfway on 2 cells". The grid is
+  the 3.5 m battle square (`C` in bake-disaster-city.js), never the 1.75 m tile.
+- **Where**: docs/disaster-city/districts/H.js `insideKit(row)` + `IN[building id]` (after the exteriors, before `build`). Each room is written in ITS
+  OWN frame on its own squares: `K.at(i, j, w, h)` = the middle of a square / a block of squares, i from the left wall, j from the back wall, the door
+  in the last row, +z = the room's front; `build` turns it by the row's `rot`, so one layout serves any facing. Per room: ONE `arch` row
+  `arch:<id>:in` (rot = the row's; the tool lifts it by the id), the room's props, and ghost `wall` rows (the collision of the built pieces).
+- **Kit**: `counter` (bar + back unit, staff between), `glass` (a glass wall along squares), `lifts` (a lift core, a door a square), `column`,
+  `trophies` (gilt cups under a glass top: the `gold` key only), `desks` (two tanker desks back to back, chairs, screens), `line` (n of one prop in a
+  row), `table` (+ four chairs), `decor` (by a corner of its square), `mon` (a screen: drawn, glowing), `sign` (txt: lettering), `floor` (a sheet 3 cm up).
+- **No prop carries a `y`** (the tool reads a prop `y` of 1 m or more as a height from the room's floor and adds the level; under 1 m it is left
+  alone and would sit at the wrong height on THE LEVELS): a thing on a desk or a counter is a drawn part (screens, tills, coffee machines, the podium).
+- **Keep parts 0.45 m off the inside of a wall**: the room's own plaster wall is drawn about 0.35 m inside the footprint line; a sign or a banner
+  closer than that is behind it (the first COFFEE sign and the lobby banners were).
+- **The rooms** (squares): News office newsroom 8 x 8 (TV wall, glass editor's office, eight desk squares, meeting table, reception) · Hero workshop
+  garage 5 x 4 (bench, lockers, a 2 x 2 vehicle bay with `parked_car`, console, crates) · Superhero Tower lobby 8 x 8 (checker marble, lift core,
+  round desk 2 x 2, six trophy cases, four columns, couches, banners) · Press court briefing room 7 x 4 (stage + backdrop + podium, two 2 x 2 chair
+  blocks, cameras, flags) · Coffee arcade cafe 5 x 5 (counter, four tables, sofas) · Tower service plant room 8 x 7 (three `boiler`s, a 2 x 2 water
+  tank, control desk under a wall of screens, cage fence, crates + barrels, lockers, generator, ceiling pipes) · Apartment stair lobby 7 x 4
+  (mailboxes, a 2 x 2 stair to a closed landing, lift, super's counter, sofa, vending) · Office court lobby 6 x 5 (lifts, `metro_gate` lines,
+  reception, a glass meeting corner) · Delivery yard depot 9 x 3 (pack shelving, `conveyor`, pallets, dispatcher desks).
+- **TRAINING HALL = a walk-in now** (`row: { inside: 'N' }`: `build` puts a hollow texbuilding, 2 storeys, in the roof tier's place, as I.js does; its
+  roof slab is still walked at 7 m, the bridge RF90 still lands on it). The gym floor 8 x 8: a 2 x 2 sparring ring, weight racks, four punching-bag
+  frames, lockers, benches. Its north porch is open now (side walls + a lintel), the doorway cut in the shell.
+- **TRANSIT COURT stays solid** (mondo said yes to opening it; NOT done): the roof stair of bridge RF90 stands on its roof (its plot is one level
+  under the Training hall's) and the tool cannot stand a flight on a walk-in roof slab ("put the two plots on one level in levels.js"). Opening it
+  needs either the two plots on one level (levels.js, the shared thread's) or a floating flight in the tool.
+- **THE TOWER'S DOOR**: the story door THE TOWER (bake-disaster-city.js `JOIN.tower`, into `site_prebuilt_downtown_lobby`) stands free in the
+  Superhero Tower's NORTH (plaza) doorway and its dark housing reaches about 3.5 m into the shell. So the walk-in lobby's own doorway is on the EAST
+  side (`doorSide: 'E'`); the plaza doors stay the story door. Two lobbies for one tower: mondo's call which one stays.
+- **A car that did not draw**: `car_cyber` drew only its glow in the headless run (no `pack` on its row); the bay holds `parked_car` (the sedan).
+- **The prop check** lists every inside prop as "building" under district_reported: expected (a district's own props are reported, never moved).
+- Headless proof: camera INSIDE a room = teleport to a spot in the room's frame turned by `rot`, `y` = the plot's level x 1.75, `fp: true`.
+  Shots /mnt/project-files/disaster-city-hero-plaza/inside_*.jpg.
