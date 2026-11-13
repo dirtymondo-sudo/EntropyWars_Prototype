@@ -23857,7 +23857,7 @@
                             try {
                                 if (erun.quest && erun.quest.id && typeof questEvent === 'function') {
                                     _questRes = questEvent(p, { type: 'fight', fight: erun.quest.id, outcome: won ? 'win' : ((!won && _encRetreatOn) ? 'escaped' : 'loss') });
-                                    (_questRes.changes || []).forEach(c => { if (c.kind === 'completed') addLog(`📜 QUEST COMPLETE — ${c.title}.${c.reward && c.reward.unit ? ' ' + String(c.reward.unit).toUpperCase() + (c.reward.joined ? ' joins THE PARTY.' : ' is ON CALL for the party.') : ''}`); });
+                                    (_questRes.changes || []).forEach(c => { if (c.kind === 'updated' && c.objective) addLog(`📜 QUEST UPDATED — ${c.title}. ${c.objective}`); if (c.kind === 'completed') addLog(`📜 QUEST COMPLETE — ${c.title}.${c.reward && c.reward.unit ? ' ' + String(c.reward.unit).toUpperCase() + (c.reward.joined ? ' joins THE PARTY.' : ' is ON CALL for the party.') : ''}`); });
                                 }
                             } catch (e) { console.warn('[QUEST] the fight could not be filed', e); _questRes = null; }
                             PS.saveProfile(idx, p);
