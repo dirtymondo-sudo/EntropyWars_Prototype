@@ -361,7 +361,7 @@ module.exports.build = function (api) {
         const R = ROOMS[kind], q0 = ctx.rot * Math.PI / 180, c0 = Math.cos(q0), s0 = Math.sin(q0), dx = row.x - ctx.x, dz = row.z - ctx.z, ox = dx * c0 + dz * s0, oz = -dx * s0 + dz * c0;
         const W = row.w, D = row.d, nc = R.g[0].length, nr = R.g.length, cw = W / nc, cd = D / nr, H = Math.max(3.4, (row.storeys || 1) * C - 0.3);
         Object.assign(row, { floorIn: R.floorIn, keyIn: R.keyIn });
-        const prop = (key, lx, lz, f, y) => { const [x, z] = toWorld(lx, lz), q = { key, x, z, face: ((ctx.rot + (f || 0)) % 360 + 360) % 360 }; if (y) q.y = r3(y); props.push(q); };
+        const prop = (key, lx, lz, f, y, top) => { const [x, z] = toWorld(lx, lz), q = { key, x, z, face: ((ctx.rot + (f || 0)) % 360 + 360) % 360 }; if (y) q.y = r3(y); if (!top) q.floor = true; props.push(q); };   // floor: on the room's floor, never on its own square's ghost block (top = on the gallery's slab)
         const fill = (lx, lz, h) => block(lx, lz, Math.min(3.3, cw - 0.2), Math.min(3.3, cd - 0.2), h);
         const seg = (x0, z0, x1, z1, h) => { const a = toWorld(x0, z0), b = toWorld(x1, z1); features.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], h, t: 0.2, ghost: true, rail: false }); };
         const WOODD = ['calm_planks', 0xb89878], STEEL = ['calm_tiles', 0xc8d0d8], DARK = ['calm_gunmetal', 0xb0b8c8], CUSH = ['calm_snow', 0x4a8a9c];
@@ -422,7 +422,7 @@ module.exports.build = function (api) {
         if (R.gallery) {   // the library's gallery: a walk one square wide over the back row of shelves, the stair in its own square
             const zb = oz - D / 2 + cd / 2, a = toWorld(ox - W / 2, zb), b = toWorld(ox + W / 2, zb); features.push({ k: 'bridge', id: ctx.id + '-gal', x0: a[0], z0: a[1], x1: b[0], z1: b[1], w: r3(cd), y: 3.5, plain: true, key: 'calm_planks' });
             const sx = ox + W / 2 - cw / 2, s0 = toWorld(sx, oz - D / 2 + 2 * cd), s1 = toWorld(sx, oz - D / 2 + cd); features.push({ k: 'ramp', id: ctx.id + '-galstair', x0: s0[0], z0: s0[1], x1: s1[0], z1: s1[1], w: r3(cw - 0.3), h0: 0, h1: 3.5, stairs: true });
-            box(ox, 3.5, zb + cd / 2 - 0.05, W - cw, 1.0, 0.08, ['calm_gunmetal', 0xb0b8c8]); for (let ci = 0; ci < nc; ci++) { const x = ox - W / 2 + (ci + 0.5) * cw; [-0.85, 0.85].forEach(q => prop('library_shelf_full', x + q, zb - cd / 2 + 0.55, 0, 3.5)); }
+            box(ox, 3.5, zb + cd / 2 - 0.05, W - cw, 1.0, 0.08, ['calm_gunmetal', 0xb0b8c8]); for (let ci = 0; ci < nc; ci++) { const x = ox - W / 2 + (ci + 0.5) * cw; [-0.85, 0.85].forEach(q => prop('library_shelf_full', x + q, zb - cd / 2 + 0.55, 0, 0, true)); }
         }
     };
     const ROT = { S: 0, W: 90, N: 180, E: 270 };
