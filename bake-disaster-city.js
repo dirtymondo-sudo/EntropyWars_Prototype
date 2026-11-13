@@ -236,7 +236,24 @@ const free = (cx, cy, ok) => { if (cx < 0 || cy < 0 || cx >= 144 || cy >= 144) r
 const take = (cx, cy) => occ.add(cx + ',' + cy);
 bInfo.forEach(b => (plotOf[b.plot].buildings.find(q => q.id === b.id).doors || []).forEach(dr => take(plotOf[b.plot].x * N + dr.ox, plotOf[b.plot].y * N + dr.oy)));   // a door's step stays clear
 const paintCell = (cx, cy, key) => { let i = PAL.indexOf(key); if (i < 0) { if (PAL.length >= 8) throw new Error('the ground palette is full (8 sheets): ' + key); PAL.push(key); i = PAL.length - 1; } paintExt.set(cx + ',' + cy, i + 1); };
-dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, ROOM, paintCell };
+/* ── THE LEVELS (THE VERTICAL CITY, 2026-11-13 — mondo: "Streets that slope, ramps, stairs ... different districts should have different
+   elevations, bayside being the lowest (sea level), and there can be different elevations within the districts from plot to plot and even
+   within plots"; his OK on the elevation plan 18:30). docs/disaster-city/levels.js holds a level per plot (one level = 1.75 m). The room's
+   ground is `terrain.slope.cells` (data.js hqTerrainSlopeFn): every square with its own four corner heights, written at the end of this
+   tool (THE LEVELS, THE GROUND). Here, before anything is dressed: THE CROSSINGS' STAIRS. Where the plan lets a walk cross two plots on
+   different levels, a flight of the stairs pack climbs it (one level a square: the stair pitch), on the lower plot's squares first, then cut
+   into the upper plot's; where one level is crossed on a walk two squares wide, one square is the stair and the other a smooth ramp three
+   squares long (a bank to skate). Their squares are taken, so nothing is dressed onto a flight. ── */
+const LEVELS = require(path.join(REPO, 'docs/disaster-city/levels.js')), LVM = LEVELS.M;
+const lvOf = p => LEVELS.grid[p.y][p.x];
+const plotAtCell = (cx, cy) => plotOf[pid(Math.floor(cx / N), Math.floor(cy / N))];
+const roadFollow = (cx, cy) => {   // a carriageway square, or the pavement square beside one (the kerb walk): they ride the street's slope
+    if (!inCity(cx, cy)) return false; const ch = cellAt(cx, cy); if (ch === 'R') return true; if (ch !== 'P') return false;
+    const px = Math.floor(cx / N), py = Math.floor(cy / N);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = cx + dx, y = cy + dy; if (inCity(x, y) && Math.floor(x / N) === px && Math.floor(y / N) === py && cellAt(x, y) === 'R') return true; }
+    return false;
+};
+dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf, ROOM, paintCell };
 dcRun('apply');
 
 /* ── THE DOORS (mondo 11-13 14:10, the decision card: "Replace today's streets with it"): this room IS `site_prebuilt_downtown_streets` now, so every
@@ -256,6 +273,48 @@ JOIN.tower = bldDoor('Superhero Tower', 'Superhero Tower'); JOIN.mall = bldDoor(
 JOIN.metro = spot('Transit square', 5, 2, 180); JOIN.harbour = spot('Boardwalk exit', 9, 9, 180); JOIN.bay = spot('Arrival court', 9, 6, 270);
 JOIN.downtown_strip = spot('P00-07', 1, 6, 270, 'RP.'); JOIN.stadium_downtown = spot('P03-00', 5, 1, 0, 'RP.');
 JOIN.garage_taxi = spot('Taxi rank', 3, 3, 270, '.P'); JOIN.streets_strip = spot('Church', 8, 8, 270); JOIN.streets_drain = spot('Canal walk', 6, 8, 270); JOIN.docks_sewer = spot('Dock edge', 6, 6, 90);
+
+/* THE LEVELS, THE CROSSINGS' STAIRS (after the doors above have their squares, before anything is dressed) */
+const lvCut = new Map(), lvStairs = [], lvCount = { flights: 0, ramps: 0, cut: 0, steep: 0, closed: 0 };
+PLAN.plots.forEach(p => {
+    [['E', 1, 0], ['S', 0, 1]].forEach(([s, dx, dy]) => {
+        const q = plotOf[pid(p.x + dx, p.y + dy)]; if (!q || p.ports[s] !== 'walk') return;
+        const d = Math.abs(lvOf(p) - lvOf(q)); if (!d) return;
+        const hiP = lvOf(p) > lvOf(q) ? p : q, loP = hiP === p ? q : p, lineC = (dx ? p.x + 1 : p.y + 1) * N;   // the plot line, in squares
+        const toLo = loP === q ? 1 : -1;                                                                            // the lower plot is on the line's + side or its − side
+        /* a square of the crossing: `k` along the line (a global square index), `i` squares back from the line on a side */
+        const sq = (k, side, i) => { const a = side > 0 ? lineC + i : lineC - 1 - i; return dx ? [a, k] : [k, a]; };
+        const walkSq = (c) => inCity(c[0], c[1]) && 'P.G'.indexOf(cellAt(c[0], c[1])) >= 0 && !roadFollow(c[0], c[1]);
+        const ks = []; for (let k = 0; k < N; k++) { const g = (dx ? p.y : p.x) * N + k; if (walkSq(sq(g, 1, 0)) && walkSq(sq(g, -1, 0))) ks.push(g); }
+        if (!ks.length) { console.warn("THE LEVELS: a walk the plan joins has no open square on the line", p.id, s, q.id); lvCount.closed++; return; }
+        const runs = []; ks.forEach(k => { const r = runs[runs.length - 1]; if (r && r[r.length - 1] === k - 1) r.push(k); else runs.push([k]); });
+        runs.forEach(run => {
+            const avail = (side, cols, max) => { let n = 0; while (n < max && cols.every(k => { const c = sq(k, side, n); return walkSq(c) && !occ.has(c[0] + ',' + c[1]); })) n++; return n; };
+            /* one level on a walk two squares wide: a stair on one square, a ramp three squares long on the other */
+            let cols = run, rampK = null;
+            if (d === 1 && run.length >= 2) { const rk = ((p.x + p.y) % 2) ? run[run.length - 1] : run[0]; if (avail(toLo, [rk], 4) >= 4) { rampK = rk; cols = run.filter(k => k !== rk); } }
+            const nLo = Math.min(d, avail(toLo, cols, d + 1)), nHi = Math.min(d - nLo, avail(-toLo, cols, d + 1)), m = nLo + nHi;
+            if (!m) { console.warn('THE LEVELS: no room for a stair', p.id, s, q.id); lvCount.closed++; return; }
+            const per = d * LVM / m;   // metres a square
+            if (per / C > 1.001) { console.warn('THE LEVELS: a stair steeper than the walk climbs', p.id, s, q.id, 'squares', m, 'levels', d); lvCount.steep++; }
+            const along = (cols[0] + cols[cols.length - 1] + 1) / 2, lineM = gx(lineC), fa = r3(lineM + toLo * nLo * C), ta = r3(lineM - toLo * nHi * C), am = gx(along);
+            const row = { k: 'ramp', id: 'dc:stair:' + p.id + s + (runs.length > 1 ? ':' + run[0] : ''), absY: true, x0: dx ? fa : am, z0: dx ? am : fa, x1: dx ? ta : am, z1: dx ? am : ta, w: r3(cols.length * C), h0: r3(lvOf(loP) * LVM), h1: r3(lvOf(hiP) * LVM), stairs: true, model: LEVELS.stairs[loP.d] || 'concrete', edge: 0.01 };
+            features.push(row); lvStairs.push(row); lvCount.flights++;
+            cols.forEach(k => {
+                for (let i = 0; i < nHi; i++) { const c = sq(k, -toLo, i); lvCut.set(c[0] + ',' + c[1], { x: !!dx, line: lineC, dir: -toLo, m: nHi, h0: lvOf(hiP) * LVM - nHi * per, h1: lvOf(hiP) * LVM }); lvCount.cut++; }
+                for (let i = 0; i <= nLo; i++) { const c = sq(k, toLo, i); take(c[0], c[1]); }
+                for (let i = 0; i <= nHi; i++) { const c = sq(k, -toLo, i); take(c[0], c[1]); }
+            });
+            if (rampK != null) {
+                const rm = gc(rampK), f3 = r3(lineM + toLo * 3 * C);
+                features.push({ k: 'ramp', id: 'dc:ramp:' + p.id + s, absY: true, x0: dx ? f3 : rm, z0: dx ? rm : f3, x1: dx ? lineM : rm, z1: dx ? rm : lineM, w: C, h0: r3(lvOf(loP) * LVM), h1: r3(lvOf(hiP) * LVM), edge: 0.2 });
+                for (let i = 0; i <= 3; i++) { const c = sq(rampK, toLo, i); take(c[0], c[1]); }
+                { const c = sq(rampK, -toLo, 0); take(c[0], c[1]); }
+                lvCount.ramps++;
+            }
+        });
+    });
+});
 
 /* ── THE BOUNDARIES: what stands where the plan closes a plot line. Per border (two plots' shared side) a first and a second recipe from the
    district's list (LOW where the plan connects the plots: you see over it; TALL where it does not), alternating run by run.
@@ -622,6 +681,8 @@ lines.push("                res: 0.875,");
 if (ROOM.sea) lines.push("                sea: " + J(ROOM.sea) + ",");
 if (ROOM.east) lines.push("                backdropInset: { w: " + r3(ROOM.east * C) + " }," + (ROOM.backdropOpen.length ? " backdropOpen: " + J(ROOM.backdropOpen) + "," : ""));
 lines.push("                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
+lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
+const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)
 lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0, streets: " + J(streets) + ",");
 lines.push("                    lamps: " + J(lamps) + ",");
 lines.push("                       open: [] },");
@@ -629,6 +690,127 @@ lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + 
 lines.push("                features: [");
 dcRun('build');
 features.push(...lateRows);
+/* ── THE LEVELS, THE GROUND: every square's four corner heights (NW NE SW SE, centimetres) → `terrain.slope.cells`.
+   - a BUILDING's squares are flat at its base: the plot's level, or the kerb walk's height at its door when its door opens on a sloping
+     street (the doorway meets the pavement; along the rest of that front the wall's foot is buried or stands on a plinth, as on any hill);
+   - a STREET square (the carriageway + the kerb walk) follows the street: flat for two squares either side of the plot's middle (the
+     junction, the bus stop), then a straight grade to the half-way height at the plot line: one level a plot = 6.25 %, two = 12.5 %;
+   - an open square takes, corner by corner: its building's base where it touches a building, the street's height where it touches the kerb
+     walk (an apron, never a step at a kerb), else the plot's level plus the plot's own piece (levels.js `pieces`: a bowl, a mound);
+   - two plots on different levels never share a corner's height: the plot line is a retaining wall, except where a flight crosses it.
+   Then the rows that name a height are put on it: the roof bridges (a bridge between two roofs at different heights lies at the higher
+   roof, a flight on the lower roof climbs to it), the architecture rows (each at its building's base), a prop hung at a height. ── */
+const LV = (() => {
+    const W = 144, K = (cx, cy) => cy * W + cx, base = new Float32Array(W * W).fill(NaN), rf = new Uint8Array(W * W);
+    for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) rf[K(cx, cy)] = roadFollow(cx, cy) ? 1 : 0;
+    const grade = t => Math.min(1, Math.max(0, (t - 2) / 4)) * 0.5;
+    const roadM = (p, lx, ly) => {   // the street's height at a plot-local point (squares from the plot's NW corner)
+        const ox = lx - 6, oy = ly - 6; let s, t, q;
+        if (Math.abs(oy) >= Math.abs(ox)) { s = oy > 0 ? 'S' : 'N'; t = Math.abs(oy); q = plotOf[pid(p.x, p.y + (oy > 0 ? 1 : -1))]; }
+        else { s = ox > 0 ? 'E' : 'W'; t = Math.abs(ox); q = plotOf[pid(p.x + (ox > 0 ? 1 : -1), p.y)]; }
+        return (lvOf(p) + ((p.ports[s] === 'road' && q) ? (lvOf(q) - lvOf(p)) * grade(t) : 0)) * LVM;
+    };
+    /* the buildings' squares and bases */
+    const planB = {}; PLAN.plots.forEach(p => p.buildings.forEach(b => { planB[b.id] = { p, b }; }));
+    const baseOf = {};
+    const bldBase = (id, x, z, ex, ez) => {
+        const m = /^dc:(P\d\d-\d\d-B\d+)/.exec(id || ''), pb = m && planB[m[1]];
+        if (!pb) {   // a building the plan does not have (an infill, a stand): the lowest plot level under it — its walls reach the ground on every side, the uphill side stands buried
+            let lo = Infinity; for (const u of [-1, 1]) for (const v of [-1, 1]) { const p = plotAtCell(Math.max(0, Math.min(143, Math.floor((x + u * ex + HALF) / C))), Math.max(0, Math.min(143, Math.floor((z + v * ez + HALF) / C)))); lo = Math.min(lo, lvOf(p)); }
+            return lo * LVM; }
+        if (baseOf[m[1]] != null) return baseOf[m[1]];
+        const dr = pb.b.doors && pb.b.doors[0], p = pb.p; let h = lvOf(p) * LVM;
+        if (dr && rf[K(p.x * N + dr.ox, p.y * N + dr.oy)]) h = roadM(p, dr.ox + 0.5, dr.oy + 0.5);
+        return (baseOf[m[1]] = Math.round(h * 100) / 100);
+    };
+    let mixed = 0; const flag = new Uint8Array(W * W);   // 1 = a walk-in building's floor (its height stands to the square's line: hqTerrainSlopeFn ON A LINE)
+    features.forEach(f => {
+        if (!(f.k === 'texbuilding' || (f.k === 'plateau' && f.bld)) || !(f.w > 0) || !(f.d > 0)) return;
+        const turned = Math.round((f.rot || 0) / 90) % 2 !== 0, ex = (turned ? f.d : f.w) / 2 - 0.06, ez = (turned ? f.w : f.d) / 2 - 0.06, h = bldBase(f.id, f.x, f.z, ex, ez);
+        for (let cy = Math.max(0, Math.floor((f.z - ez + HALF) / C)); cy <= Math.min(W - 1, Math.floor((f.z + ez + HALF) / C)); cy++)
+            for (let cx = Math.max(0, Math.floor((f.x - ex + HALF) / C)); cx <= Math.min(W - 1, Math.floor((f.x + ex + HALF) / C)); cx++) { const k = K(cx, cy); if (!isNaN(base[k]) && Math.abs(base[k] - h) > 0.02) mixed++; if (isNaN(base[k]) || h < base[k]) base[k] = h; if (f.hollow) flag[k] = 1; }
+    });
+    /* the plots' pieces */
+    const pieces = {}; (LEVELS.pieces || []).forEach(q => { (pieces[q.plot] = pieces[q.plot] || []).push(q); });
+    const pieceM = (p, lx, ly) => { let v = 0; (pieces[p.id] || []).forEach(q => { const t = Math.min(lx - q.x0, q.x1 - lx, ly - q.y0, q.y1 - ly); if (t > 0) v += (q.k === 'bowl' ? -1 : 1) * Math.min(q.by, t * (q.rate || 1)); }); return v * LVM; };
+    (LEVELS.pieces || []).forEach(q => { const p = plotOf[q.plot]; for (let y = q.y0; y < q.y1; y++) for (let x = q.x0; x < q.x1; x++) { const cx = p.x * N + x, cy = p.y * N + y; if (!isNaN(base[K(cx, cy)]) || rf[K(cx, cy)]) console.warn('THE LEVELS: piece on a building / a street square', q.plot, x, y); } });
+    /* THE DOOR STOOPS: a walk-in building grown to its plot's line opens onto the NEXT plot; where that ground stands at another height
+       than the building's floor, a flight one square wide joins them outside the doorway (cut into the ground when the door is lower) */
+    const natural = (cx, cy) => { const k = K(cx, cy), p = plotAtCell(cx, cy); return !isNaN(base[k]) ? base[k] : rf[k] ? roadM(p, cx - p.x * N + 0.5, cy - p.y * N + 0.5) : lvOf(p) * LVM; };
+    const stoops = [];
+    features.forEach(f => {
+        if (f.k !== 'texbuilding' || !f.hollow) return;
+        const L = Math.max(2, f.w) - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols, col = (isFinite(+f.door) && +f.door >= 1) ? Math.min(cols - 1, Math.round(+f.door) - 1) : Math.floor((cols - 1) / 2), lx = -L / 2 + (col + 0.5) * cw;   // data.js hqTexbDoor
+        const q = (f.rot || 0) * Math.PI / 180, c = Math.round(Math.cos(q)), sn = Math.round(Math.sin(q)), wx = f.x + lx * c + (f.d / 2) * sn, wz = f.z - lx * sn + (f.d / 2) * c;   // the doorway's middle on the wall line; (sn, c) points out
+        const hb = bldBase(f.id, f.x, f.z, 1, 1), cellOf = t => [Math.floor((wx + sn * t + HALF) / C), Math.floor((wz + c * t + HALF) / C)];
+        const c0 = cellOf(0.5); if (!inCity(c0[0], c0[1]) || !isNaN(base[K(c0[0], c0[1])])) return;
+        const g0 = natural(c0[0], c0[1]); if (Math.abs(g0 - hb) <= 0.3) return;
+        const m = Math.max(1, Math.ceil(Math.abs(g0 - hb) / LVM - 0.01)), cells = [];
+        for (let i = 0; i < m; i++) { const cc = cellOf(0.5 + i * C); if (!inCity(cc[0], cc[1]) || !isNaN(base[K(cc[0], cc[1])]) || cellAt(cc[0], cc[1]) === 'R') break; cells.push(cc); }
+        if (!cells.length) { console.warn('THE LEVELS: no room for a door stoop', f.id); return; }
+        const g1 = natural(cells[cells.length - 1][0], cells[cells.length - 1][1]), n = cells.length, axisX = sn !== 0, line = ((axisX ? wx : wz) + HALF) / C, dir = axisX ? sn : c;
+        if (Math.abs(g1 - hb) / (n * C) > 1.001) console.warn('THE LEVELS: a door stoop steeper than the walk climbs', f.id);
+        cells.forEach(cc => lvCut.set(cc[0] + ',' + cc[1], { x: axisX, line, dir, m: n, h0: hb, h1: g1 }));
+        const ex = wx + sn * n * C, ez = wz + c * n * C, up = g1 > hb;
+        stoops.push({ k: 'ramp', id: 'dc:stoop:' + String(f.id).replace(/^dc:/, ''), absY: true, x0: r3(up ? wx : ex), z0: r3(up ? wz : ez), x1: r3(up ? ex : wx), z1: r3(up ? ez : wz), w: 3.4, h0: r3(Math.min(hb, g1)), h1: r3(Math.max(hb, g1)), stairs: true, model: LEVELS.stairs[plotAtCell(c0[0], c0[1]).d] || 'concrete', edge: 0.01 });
+    });
+    const cm = new Int16Array(W * W * 4);
+    for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) {
+        const k = K(cx, cy), p = plotAtCell(cx, cy), px = p.x * N, py = p.y * N, cut = lvCut.get(cx + ',' + cy);
+        [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([ax, ay], ci) => {
+            const vx = cx + ax, vy = cy + ay, lx = vx - px, ly = vy - py; let h;
+            if (!isNaN(base[k])) h = base[k];
+            else if (cut) h = cut.h0 + (cut.h1 - cut.h0) * Math.min(1, Math.max(0, ((cut.x ? vx : vy) - cut.line) * cut.dir / cut.m));
+            else if (rf[k]) h = roadM(p, lx, ly);
+            else {
+                let bs = 0, bn = 0, road = false;
+                for (let dy = -1; dy <= 0; dy++) for (let dx = -1; dx <= 0; dx++) { const x = vx + dx, y = vy + dy; if (x < px || y < py || x >= px + N || y >= py + N) continue; const kk = K(x, y); if (!isNaN(base[kk])) { bs += base[kk]; bn++; } else if (rf[kk]) road = true; }
+                h = bn ? bs / bn : road ? roadM(p, lx, ly) : lvOf(p) * LVM + pieceM(p, lx, ly);
+            }
+            cm[k * 4 + ci] = Math.round(h * 100);
+        });
+    }
+    const at = (x, z) => {   // the ground at a room point (data.js hqTerrainSlopeFn's own arithmetic)
+        let fx = (x + HALF) / C, fz = (z + HALF) / C, i = Math.floor(fx), j = Math.floor(fz);
+        if (i < 0) { i = 0; fx = 0; } else if (i >= W) { i = W - 1; fx = W; } if (j < 0) { j = 0; fz = 0; } else if (j >= W) { j = W - 1; fz = W; }
+        const u = fx - i, v = fz - j, o = (j * W + i) * 4;
+        return ((cm[o] * (1 - u) + cm[o + 1] * u) * (1 - v) + (cm[o + 2] * (1 - u) + cm[o + 3] * u) * v) / 100;
+    };
+    return { cm, at, baseOf, bldBase, mixed, stoops, f64: Buffer.from(flag).toString('base64'), b64: Buffer.from(cm.buffer, cm.byteOffset, cm.byteLength).toString('base64') };
+})();
+features.push(...LV.stoops); lvCount.stoops = LV.stoops.length;
+if (LV.mixed) console.warn('THE LEVELS: squares under two buildings of different bases:', LV.mixed);
+/* the roof bridges: each at its roofs' real height; two roofs at different heights → the slab at the higher, a flight on the lower roof up to it */
+{
+    const rowOf = {}; features.forEach(f => { if (f.id) rowOf[f.id] = f; });
+    const roofY = id => { const r = rowOf['dc:' + id]; return !r ? null : r.k === 'plateau' ? LV.at(r.x, r.z) + r.h : LV.at(r.x, r.z) + (r.storeys || 2) * 3.5 + 0.02; };   // a tier's top; a walked texbuilding's roof slab (data.js hqTexBuildingRows)
+    let stepped = 0;
+    PLAN.roofEdges.forEach(e => {
+        const br = rowOf['dc:' + e.id], A = bInfo.find(b => b.id === e.a), B = bInfo.find(b => b.id === e.b); if (!br || !A || !B) return;
+        const horiz = Math.abs(br.z1 - br.z0) < 0.01, first = horiz ? (A.x < B.x ? A : B) : (A.z < B.z ? A : B), second = first === A ? B : A;   // end 0 stands on `first`, end 1 on `second`
+        const y0 = roofY(first.id), y1 = roofY(second.id); if (y0 == null || y1 == null) return;
+        br.y = r3(Math.max(y0, y1)); br.absY = true;
+        const dh = Math.abs(y0 - y1); if (dh <= 0.5) return;
+        const low = y0 < y1 ? first : second, end = y0 < y1 ? [br.x0, br.z0] : [br.x1, br.z1], dir = y0 < y1 ? -1 : 1;   // the flight runs from the slab's end back into the lower roof
+        if (rowOf['dc:' + low.id].k !== 'plateau') console.warn('THE LEVELS: the lower roof of', e.id, 'is a walk-in building (its roof is a slab, a flight cannot stand on it): put the two plots on one level in levels.js');
+        const depth = (horiz ? low.w : low.d2) - 1.5 - 1.0, run = Math.min(dh / 0.5, depth);
+        if (run < dh - 0.01) console.warn('THE LEVELS: roof flight too steep', e.id, 'rise', dh.toFixed(2), 'run', run.toFixed(2));
+        const fx = horiz ? end[0] + dir * run : end[0], fz = horiz ? end[1] : end[1] + dir * run;
+        features.push({ k: 'ramp', id: 'dc:roofstair:' + e.id, absY: true, x0: r3(fx), z0: r3(fz), x1: r3(end[0]), z1: r3(end[1]), w: 3.2, h0: r3(Math.min(y0, y1)), h1: r3(Math.max(y0, y1)), stairs: true, model: 'steel', edge: 0.01 });
+        stepped++;
+    });
+    lvCount.roofFlights = stepped;
+    /* the architecture rows: each on its building's base (a row with no building of the plan: the ground under its origin, a hair inside its plot) */
+    features.forEach(f => {
+        if (f.k !== 'arch') return;
+        const m = /(P\d\d-\d\d-B\d+)/.exec(f.id || ''), g = (m && LV.baseOf[m[1]] != null) ? LV.baseOf[m[1]] : LV.at(f.x + 0.01, f.z + 0.01);
+        f.y = r3((typeof f.y === 'number' ? f.y : 0) + g);
+    });
+    /* a prop hung at a height (a stacked container): the height is from the room's floor (three-renderer.js THE TIER HEIGHT), so the ground under it is added */
+    props.forEach(q => { if (typeof q.y === 'number' && (q.y >= 1 || q.y <= -0.5)) q.y = r3(q.y + LV.at(q.x, q.z)); });
+}
+count.levels = lvCount;
+lines[lvLine] = "                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gx(0) + ", nx: 144, nz: 144, f: '" + LV.f64 + "', d: '" + LV.b64 + "' } },";
 features.forEach(f => lines.push("                    " + J(f) + ","));
 lines.push("                ],");
 lines.push("                /* the cars: the ring (west avenue, the north street, the east avenue, the cross street), never the response streets round the mall */");

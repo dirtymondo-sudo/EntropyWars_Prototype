@@ -457,9 +457,14 @@ function apply(ctx) {
 function beach(ctx, push, ghost) {
     const { lateRows, props, take, gc, gx, r3, N, paintCell } = ctx;
     const X0 = gx(144), XB = gx(146), XE = gx(144 + EAST), Z0 = gx(8 * N), Z1 = gx(12 * N);     // the city's east edge, the sea wall, the room's east edge; Bayside's north and south
-    const rect = (x0, z0, x1, z1, h, o) => lateRows.push(Object.assign({ k: 'plateau', x: r3((x0 + x1) / 2), z: r3((z0 + z1) / 2), w: r3(x1 - x0), d: r3(z1 - z0), h }, o));
+    const rect = (x0, z0, x1, z1, h, o) => lateRows.push(Object.assign({ k: 'plateau', x: r3((x0 + x1) / 2), z: r3((z0 + z1) / 2), w: r3(x1 - x0), d: r3(z1 - z0), h, absY: true }, o));   // absY: the beach is at sea level whatever the city's levels beside it
     const ZN = Z0 + 7, ZS = gx(136), XG = gx(158), XD = gx(151.5);                              // the mole's south side; the grill deck's north side and east side; where the shelf starts down
     /* the water: north of Bayside (under the quay wall), the shelf, the deep, east of the mole's arm, east of the grill deck */
+    /* THE LEVELS: the ground east of the city would carry the edge plot's level out to sea (the Marina plot stands a level up), so the whole
+       beach strip is first cut flat to level 0; the Marina's way out comes down a ramp across the boardwalk's width */
+    rect(X0 + 0.4, Z0, XE + 2, Z1 + 2, 0, { sink: true, edge: 0.3 });
+    { const lv = (ctx.lvOf && ctx.plotOf['P11-08']) ? ctx.lvOf(ctx.plotOf['P11-08']) * ctx.LEVELS.M : 0;
+      if (lv > 0) lateRows.push({ k: 'ramp', x0: r3(X0 + 0.2), z0: gx(8 * N + 6), x1: r3(XB - 0.4), z1: gx(8 * N + 6), w: 7, h0: lv, h1: 0, edge: 0.2, absY: true }); }
     rect(X0 + 0.6, -ctx.HALF, XE + 2, Z0, DEEP, { sink: true, edge: 0.4 });
     rect(XB, ZN, XE + 2, ZS, SHELF, { sink: true, edge: 0.3 });
     rect(XD, ZN, XE + 2, ZS, DEEP, { sink: true, edge: 12 });
@@ -467,13 +472,13 @@ function beach(ctx, push, ghost) {
     rect(XG, ZS - 0.4, XE + 2, Z1 + 2, DEEP, { sink: true, edge: 0.4 });
     /* the mole's arm out to the light (the boardwalk's level), its round head */
     rect(gx(159), ZN - 0.5, gx(161), gx(104), 0, { edge: 0.4 });
-    lateRows.push({ k: 'plateau', x: gx(160), z: gx(105), r: 6.2, h: 0, edge: 0.4 });
+    lateRows.push({ k: 'plateau', x: gx(160), z: gx(105), r: 6.2, h: 0, edge: 0.4, absY: true });
     /* the ramps down to the sand, off the boardwalk at each way out of the city */
     const RAMPS = [gx(8 * N + 6), gx(9 * N + 10), gx(10 * N + 10), gx(11 * N + 2.5)];
-    RAMPS.forEach(z => lateRows.push({ k: 'ramp', x0: XB - 0.2, z0: r3(z), x1: r3(XB + 7), z1: r3(z), w: 3.5, h0: 0, h1: SHELF, edge: 0.2 }));
+    RAMPS.forEach(z => lateRows.push({ k: 'ramp', x0: XB - 0.2, z0: r3(z), x1: r3(XB + 7), z1: r3(z), w: 3.5, h0: 0, h1: SHELF, edge: 0.2, absY: true }));
     /* the pier (the mall's axis: rows 5-6 of the row-10 plots), its head, the bait hut's bit of deck */
     const ZP = gx(10 * N + 6), XH0 = gx(157), XH1 = gx(163);
-    lateRows.push({ k: 'deck', x0: XB - 0.3, z0: ZP, x1: XH0, z1: ZP, w: 7, y: 0 }, { k: 'deck', x0: XH0, z0: ZP, x1: XH1, z1: ZP, w: 21, y: 0, rails: false }, { k: 'deck', x0: gx(152), z0: r3(ZP - 7), x1: gx(154), z1: r3(ZP - 7), w: 7, y: 0, rails: false });
+    lateRows.push({ k: 'deck', x0: XB - 0.3, z0: ZP, x1: XH0, z1: ZP, w: 7, y: 0, absY: true }, { k: 'deck', x0: XH0, z0: ZP, x1: XH1, z1: ZP, w: 21, y: 0, rails: false, absY: true }, { k: 'deck', x0: gx(152), z0: r3(ZP - 7), x1: gx(154), z1: r3(ZP - 7), w: 7, y: 0, rails: false, absY: true });
     push('bay-pier', XB, ZP, 0, B.pier(XH0 - XB, 7));
     push('bay-pavilion', (XH0 + XH1) / 2, ZP, 0, B.pavilion()); ghost((XH0 + XH1) / 2, ZP, 2.6, 1.0);
     push('bay-bait', gx(153), ZP - 7.6, 0, B.bait()); ghost(gx(153), ZP - 7.6, 4.2, 2.6);
