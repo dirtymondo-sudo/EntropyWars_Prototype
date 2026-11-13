@@ -28,12 +28,14 @@ const SIZE = {
     fire_hydrant: { r: 0.25 }, signpost: { hw: 0.68, hd: 0.57 }, utility_box: { hw: 0.32, hd: 0.26 }, ind_vent: { hw: 0.19, hd: 0.36 }, ind_panel: { hw: 0.23, hd: 0.36 },
     psx_metal_barrel_mp_0: { r: 0.35 }, psx_metal_barrel_mp_1: { r: 0.35 }, psx_metal_barrel_mp_2: { r: 0.35 }, psx_metal_barrel_mp_3: { r: 0.35 },
     meshy_sandbags: { hw: 1.0, hd: 0.42 }, angel_statue: { hw: 1.4, hd: 0.56 }, cardboard_boxes: { r: 0.45 }, palm_tree: { r: 0.3 }, hot_dog_stand: { r: 0.95 },
+    public_phone: { hw: 0.29, hd: 0.28 }, power_pole: { r: 0.22 }, garbage_bags: { r: 0.5 }, garbage_bag: { r: 0.45 }, metal_trash_can: { r: 0.41 },
+    play_slide: { hw: 0.58, hd: 1.7 }, play_swing: { hw: 1.58, hd: 0.9 }, play_sandbox: { hw: 1.0, hd: 1.0 },
     psx_planter_pot_mp_1_full: { r: 0.3 }, psx_potted_cactus_mp_1: { r: 0.25 }, telescope: { hw: 0.8, hd: 0.5 }, rowboat: { hw: 1.5, hd: 0.53 },
 };
 for (let i = 0; i < 15; i++) SIZE['roads_g_sign_' + String(i).padStart(3, '0')] = { r: 0.2 };
 /* a thing that does nothing in a fight stands OFF its square's middle (mondo 11-13) */
-const DECOR = /bench|_bin$|signpost|roads_g_sign|fire_hydrant|traffic_cone|cardboard|planter_pot|cactus|round_table|pool_umbrella|vending|utility_box|ind_vent|ind_panel|barrel|crate|sandbags|supply/;
-const WALLED = /vending_machine|utility_box|ind_vent|ind_panel/;                    // stands with its back to a wall
+const DECOR = /bench|_bin$|signpost|roads_g_sign|fire_hydrant|traffic_cone|cardboard|planter_pot|cactus|round_table|pool_umbrella|vending|utility_box|ind_vent|ind_panel|barrel|crate|sandbags|supply|public_phone|power_pole|garbage|trash_can|play_sandbox/;
+const WALLED = /vending_machine|utility_box|ind_vent|ind_panel|public_phone/;                    // stands with its back to a wall
 const FIXED = /^city_|babel_crane|lighthouse|fountain|^ind_container|^ind_silo|^ind_skip|street_drain|quarter_pipe|field_goal/;   // a landmark / a district's set piece / a flat decal: checked against nothing, never moved
 
 let SRC = null; const catCache = {};
@@ -123,7 +125,7 @@ const DRESS = {
     H: ['utility_box', 'ind_vent'], E: ['ind_vent', 'crate', 'boxes', 'ind_panel'], I: ['barrels', 'crate', 'ind_vent', 'ind_panel', 'barrels', 'crates'], S: ['utility_box', 'ind_vent', 'crate'], B: ['ind_vent', 'utility_box', 'crate'],
 };
 function dress(ctx) {
-    const { PLAN, props, cellAt, free, take, C, N, HALF, r3 } = ctx, n = { wall: 0, bins: 0, sandbags: 0, drains: 0, pots: 0 };
+    const { PLAN, props, cellAt, free, take, C, N, HALF, r3 } = ctx, n = { wall: 0, bins: 0, sandbags: 0, drains: 0, pots: 0, phones: 0, garbage: 0, poles: 0, play: 0 };
     const gc = c => -HALF + (c + 0.5) * C;
     const faceZ = (dx, dz) => Math.round((Math.atan2(dx, -dz) / D2R + 360) % 360);     // a +z front looking (dx, dz)
     const faceX = (dx, dz) => Math.round((Math.atan2(-dz, -dx) / D2R + 360) % 360);    // a +x front looking (dx, dz)
@@ -136,7 +138,8 @@ function dress(ctx) {
         const f = (q.face || 0), al = (f === 90 || f === 270) ? [0, 1] : [1, 0];       // the kerb rule's face: 90 / 270 = a north-south kerb
         props.push({ key: 'metro_bin', x: r3(q.x + al[0] * 2.45), z: r3(q.z + al[1] * 2.45), face: f }); n.bins++; });
     PLAN.plots.forEach(p => {
-        const list = DRESS[p.d] || [], doors = []; p.buildings.forEach(b => (b.doors || []).forEach(d => doors.push(d)));
+        const list = (DRESS[p.d] || []).slice(), doors = [];
+        if ('RCHESUB'.indexOf(p.d) >= 0 && (p.x * 3 + p.y * 5) % 3 === 0) list.unshift('phone');   // a pay phone on some plots of the lived-in districts p.buildings.forEach(b => (b.doors || []).forEach(d => doors.push(d)));
         const spots = [];
         for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) {
             const cx = p.x * N + lx, cy = p.y * N + ly, ch = cellAt(cx, cy);
@@ -154,7 +157,8 @@ function dress(ctx) {
             used.push(s); take(s.cx, s.cy);
             const out = [-s.d[0], -s.d[1]], al = [s.d[1], s.d[0]], at = (back, side) => ({ x: r3(gc(s.cx) + s.d[0] * (C / 2 - back) + al[0] * (side || 0)), z: r3(gc(s.cy) + s.d[1] * (C / 2 - back) + al[1] * (side || 0)) });
             const h7 = (s.cx * 7 + s.cy * 3) % 4;
-            if (kind === 'utility_box') props.push(Object.assign({ key: 'utility_box', face: faceZ(out[0], out[1]) }, at(0.42)));
+            if (kind === 'phone') { props.push(Object.assign({ key: 'public_phone', face: faceZ(out[0], out[1]) }, at(0.34))); n.phones++; }
+            else if (kind === 'utility_box') props.push(Object.assign({ key: 'utility_box', face: faceZ(out[0], out[1]) }, at(0.42)));
             else if (kind === 'ind_panel') props.push(Object.assign({ key: 'ind_panel', face: faceX(out[0], out[1]) }, at(0.4)));
             else if (kind === 'ind_vent') props.push(Object.assign({ key: 'ind_vent', face: faceX(out[0], out[1]) }, at(0.36)));
             else if (kind === 'barrels') { props.push(Object.assign({ key: 'psx_metal_barrel_mp_' + h7 }, at(0.55, -0.45)), Object.assign({ key: 'psx_metal_barrel_mp_' + ((h7 + 2) % 4) }, at(0.55, 0.4))); if (h7 % 2) props.push(Object.assign({ key: 'psx_metal_barrel_mp_' + ((h7 + 1) % 4) }, at(1.25, 0.05))); }
@@ -175,6 +179,22 @@ function dress(ctx) {
         props.push({ key: 'meshy_sandbags', x: r3(q.x + o[0]), z: r3(q.z + o[1]), face: q.face || 0 }); n.sandbags++; });
     /* the metro's stair (Transit square): a green bin either side of it */
     PLAN.plots.filter(p => p.name === 'Transit square').forEach(p => { [[4.5, 2.5], [7.5, 2.5]].forEach(q => { const cx = p.x * N + Math.floor(q[0]), cy = p.y * N + Math.floor(q[1]); if (!free(cx, cy, '.P')) return; take(cx, cy); props.push({ key: 'metro_bin', x: r3(-HALF + (p.x * N + q[0]) * C + 1.0), z: r3(-HALF + (p.y * N + q[1]) * C) }); n.bins++; }); });
+    /* THE SECOND WAVE (pieces cut from the packs): garbage by the dumpsters, power poles on the kerbs of the working districts, a playground */
+    const plotAt = (x, z) => PLAN.plots.find(pl => pl.x === Math.floor((x + HALF) / (C * N)) && pl.y === Math.floor((z + HALF) / (C * N)));
+    props.slice().forEach((q, i) => { if (q.key !== 'dumpster' || ctx.own.has(q)) return;
+        const th = Math.PI - (q.face || 0) * D2R, a = rotP(1.85, 0.15, th), b = rotP(-1.8, 0.1, th);
+        props.push({ key: i % 2 ? 'garbage_bag' : 'garbage_bags', x: r3(q.x + a[0]), z: r3(q.z + a[1]), face: (i * 67) % 360 }); n.garbage++;
+        if (i % 3 === 0) { props.push({ key: 'metal_trash_can', x: r3(q.x + b[0]), z: r3(q.z + b[1]), face: (i * 41) % 360 }); n.garbage++; } });
+    (ctx.lamps || []).forEach((l, i) => { const p = plotAt(l.x, l.z); if (!p || 'RI'.indexOf(p.d) < 0 || i % 3) return;
+        const al = [-(l.nz || 0), l.nx || 0];                                             // along the kerb, a square on from the lamp
+        props.push({ key: 'power_pole', x: r3(l.x + al[0] * C), z: r3(l.z + al[1] * C), face: l.nx ? 0 : 90 }); n.poles++; });
+    PLAN.plots.filter(p => /^(Townhouse court|Park west|Dorm court)$/.test(p.name)).forEach(p => {   // a 2 x 2 squares yard: the swing, the slide, the sandbox between
+        for (let ly = 1; ly < N - 2; ly++) for (let lx = 1; lx < N - 2; lx++) { const cx = p.x * N + lx, cy = p.y * N + ly;
+            if (![[0, 0], [1, 0], [0, 1], [1, 1]].every(d => free(cx + d[0], cy + d[1], '.'))) continue;
+            [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(d => take(cx + d[0], cy + d[1]));
+            props.push({ key: 'play_swing', x: r3(gc(cx)), z: r3(gc(cy)), face: 0 }, { key: 'play_slide', x: r3(gc(cx + 1)), z: r3(gc(cy + 1)), face: 0 },
+                { key: 'play_sandbox', x: r3(gc(cx + 1) - 0.4), z: r3(gc(cy) - 0.3), face: 0 });
+            n.play++; return; } });
     return n;
 }
 
