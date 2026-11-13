@@ -384,7 +384,7 @@ DET['P04-05-B1'] = (a, door) => { const K = kit(a), CR2 = 0xfff0d0, BRN = 0x8a52
     K.rTop(0, 7.5, 0, 18.1, 18.1, PAVER_D); a.box(11.3, 0, 0, 5, 0.06, 17.5, U('TileMarble3c'), 0xffffff); K.rAC(-6.5, 7.55, -6.5); K.ac('W', 8.8, 3, 1.6);
     a.cyl(-3, 12.15, 5.5, 3.5, 0.25, MARBLE, 0xffffff, { seg: 18 }); a.cyl(6, 7.5, -6.5, 0.3, 2.6, METAL, 0xb0b4b8, { seg: 8, roof: true }); a.cyl(6, 10.1, -6.5, 0.45, 0.25, METAL, 0x8a8e92, { seg: 8, r2: 0.15, roof: true });
     K.pipe('W', 8.8, -8.2, 6.9); K.pipe('W', 8.8, 8.2, 6.9);
-    K.on('E', 8.8, 0, 5.75, 7, 0.7, 0.12, null, BRN); K.sign('E', 8.84, 0, 5.8, 5.4, 0.6, 'COFFEE', '#fff0d0', '');   // above the arcade's vaults (they hid it lower) };
+    K.on('E', 8.8, 0, 5.75, 7, 0.7, 0.12, null, BRN); K.sign('E', 8.84, 0, 5.8, 5.4, 0.6, 'COFFEE', '#fff0d0', '');   /* above the arcade's vaults (they hid it lower) */ };
 
 /* 11 · TRAINING HALL: a stone foot, stone sills and heads, merlons round the walked roof, bands on the turrets, porch steps */
 DET['P06-05-B1'] = a => { const K = kit(a), ST = 0xe6dcc6, BR = 0xc08468;

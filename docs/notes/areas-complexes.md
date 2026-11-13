@@ -2604,3 +2604,6 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
   blade, a letter a panel). Dark letters sit over the lit panels (`kind: 'over'`, no board); light letters glow.
 - **The University's sign lettering** (11-13, on the shared `txt:` sheet of PR #1327): `LABEL[kind]` in districts/U.js puts the building's plain name
   (LIBRARY, LECTURE HALL, CAFE, BOOKS, CLINIC, ...: what it is, no invented names) on a board over its first door. Not seen on screen.
+- HERO PLAZA, the signs (2026-11-13 21:10): `kit().sign(side, half, u, y, w, h, words, fg, bg)` = a quad facing out of that wall with key
+  `txt:WORDS|fg|bg|aspect` (THE SIGN LETTERING). Boards: HERO WORKSHOP, PRESS COURT, TRAINING HALL, TRANSIT COURT, DELIVERIES, DISPATCH, COFFEE,
+  NEWS, SNACKS (the buildings' own plan names, nothing invented). `LIFT` leaves `txt:` keys alone. Seen in game reading the right way on S and N walls.
