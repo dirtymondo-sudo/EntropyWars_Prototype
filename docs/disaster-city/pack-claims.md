@@ -32,3 +32,8 @@ Not claimed, free to ask for: the Pizzeria scene's 21 small backdrop buildings (
 
 ## The gold (mondo 11-13 17:12: "we absolutely never use that gold texture anywhere in the game, there is a better gold texture")
 The better gold = R2 `Assets/Sprites/terrain/gilt.png` (Metal007, his pick 11-03, PR #867). In the game the terrain key `gold` (also `gold_2`, `gold_3`) already IS that sheet, so an arch part writes `key: 'gold'`. Never load the files `terrain/gold.png`, `gold_2.png`, `gold_3.png` by name, in the game or in a mock-up (a mock-up that reads the bucket file shows him the banned sheet). The shared pieces (city doors, shop blocks, `city_*` buildings) use no gold sheet.
+
+## The district files (the ONE hook, 11-13 17:22)
+bake-disaster-city.js loads `docs/disaster-city/districts/<LETTER>.js` (R C F U H E I S B), one file per district; never put district code in the shared tool.
+Exports, all optional: `tailor(PLAN, plotOf)` before the plan is read; `apply(ctx)` after the buildings and their door steps exist, before the street furniture; `build(ctx)` after every row exists.
+`ctx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF }`.
