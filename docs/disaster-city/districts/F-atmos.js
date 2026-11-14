@@ -17,8 +17,11 @@
 module.exports = function (K, A) {
     const { box, cyl, quad, U } = K, { props } = A, r3 = v => Math.round(v * 1000) / 1000;
     const GILT = 'gold', WHITE = 0xffffff, IRON = 0x24272c, WARM = 0xffe2a8;
+    /* a hall whose facade's cornice slab runs through its storey (the hotel: a marble slab, under face at 6.38 m, over the whole plan) hangs its
+       ceiling under that slab, or the slab's unlit underside is the ceiling the walker sees */
+    const LOW = { 'P08-00-B1': 6.3 };
     const kit = (T, g, I) => {
-        const W = T.W, D = T.D, W2 = W / 2, D2 = D / 2, E = 0.24, H = Math.max(2.5, (T.row.storeys || 1) * 3.5 - 0.32), lx = T.lx, dw = T.cw + 0.12;
+        const W = T.W, D = T.D, W2 = W / 2, D2 = D / 2, E = 0.24, H = LOW[T.id] || Math.max(2.5, (T.row.storeys || 1) * 3.5 - 0.32), lx = T.lx, dw = T.cw + 0.12;
         const Q = (...p) => I.Q.push(...p.filter(Boolean));
         /* a prop at room-local (x, z), its front turned `hd` (0 = to the back wall, 180 = to the door side, 90 = to +x) */
         const P = (key, x, z, hd, o) => I.put(key, r3(x), r3(z), 'f', Object.assign({ face: (((hd || 0) + T.rot) % 360 + 360) % 360 }, o || {}));
@@ -124,7 +127,7 @@ module.exports = function (K, A) {
            a loaded cash cart beside the counting table, a counting machine on it, an old safe by the clerk. */
         'P11-01-B1': (T, A) => {
             const { H, W2, D2, c, P, onWall } = A, zc = c(0, 4)[1];
-            A.liner({ dado: ['calm_gunmetal', 0x4a564e, 1.2], dh: 1.2, rail: [null, 0xe8b820], skirt: [null, 0x1a1c1e], ceil: ['calm_concrete', 0xc8ccd0, 0.6] });
+            A.liner({ dado: ['calm_gunmetal', 0x4a564e, 1.2], dh: 1.2, rail: [null, 0xe8b820], skirt: [null, 0x1a1c1e], ceil: ['calm_concrete', 0xc8ccd0, 0.75] });
             for (const x of [-5.25, 5.25, -12.6, 12.6]) onWall('deposit_box_wall', 'b', x, 0, 0.3);
             P('money_sacks', 0, -11.2, 180); P('money_sacks', -3.3, -11.3, 200);
             P('cash_cart', c(3, 2)[0], c(3, 2)[1], 90); I_solid(T, A, c(3, 2)[0] - 0.6, c(3, 2)[1], c(3, 2)[0] + 0.6, c(3, 2)[1], 0.7, 1.0);
@@ -157,7 +160,7 @@ module.exports = function (K, A) {
            monitors on the console, a bare lamp low over the interview table, red beacons over the gates, a shredder by the guard. */
         'P10-02-B1': (T, A) => {
             const { H, W2, D2, c, P } = A;
-            A.liner({ dado: ['calm_gunmetal', 0x262a30, 1.0], dh: 2.3, rail: [null, 0x3a4a5a], skirt: [null, 0x111316], ceil: ['calm_concrete', 0x8a9098, 0.36] });
+            A.liner({ dado: ['calm_gunmetal', 0x262a30, 1.0], dh: 2.3, rail: [null, 0x3a4a5a], skirt: [null, 0x111316], ceil: ['calm_concrete', 0x8a9098, 0.5] });
             const m = c(2, 0); P('map_table', m[0], m[1], 180); I_solid(T, A, m[0] - 1.1, m[1], m[0] + 1.1, m[1], 1.4, 0.95);
             A.Q(box(m[0], 2.0, m[1], 2.4, 0.06, 1.5, null, 0x1a1c20, { under: true }), box(m[0], 1.98, m[1], 2.0, 0.03, 1.1, null, 0xdff0ff, { glow: 1, under: true }), cyl(m[0], 2.06, m[1], 0.012, H - 2.06, null, IRON, { seg: 4, cap: false }));
             P('evidence_board', -3.05, c(1, 0)[1] - 1.0, 90);
