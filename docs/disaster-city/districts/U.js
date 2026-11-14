@@ -128,7 +128,7 @@ module.exports.build = function (api) {
         [-1, 1].forEach(s => { box(s * (aw / 2 - 1.2), 0, 0, 2.4, 9.5, d, STONE, { top: false }); solid(s * (aw / 2 - 1.2), 0, 2.4, d, 9.5);
             cyl(s * (aw / 2 + 1.6), 0, d / 2 - 1.0, 2.5, 13, BRICK, 8); cyl(s * (aw / 2 + 1.6), 13, d / 2 - 1.0, 2.8, 0.5, MARB, 8); cone(s * (aw / 2 + 1.6), 13.5, d / 2 - 1.0, 3.0, 5.2, SLATE, 8); block(s * (aw / 2 + 1.6), d / 2 + 0.2, 4.6, 2.6, 13);
             win('f', s * (aw / 2 + 1.6), 9.5, 0.9, 2.4, d / 2 + 1.5, GLT); const cx = s * (aw / 2 + 2 + ww / 2);
-            if (s > 0) { const r2 = solid(cx, 0, ww, wd, 7, { hollow: true, leaf: 'leaf_shabby_wood' }), D = doorAt(r2.w, 1.5); r2.door = D.door; P.push(Object.assign({ s: 'quad', p: [r3(cx), 0, r3(wd / 2)], size: [r3(ww), 7], hole: [D.lx, D.cw, 2.2] }, look(BRICK))); box(cx, 0, 0, ww, 7, wd, BRICK, { faces: 'blr', top: false }); }
+            if (s > 0) { const r2 = solid(cx, 0, ww, wd, 7, { hollow: true, leaf: 'leaf_shabby_wood' }), D = doorAt(r2.w, 1.5); r2.door = D.door; lodgeRow = r2; P.push(Object.assign({ s: 'quad', p: [r3(cx), 0, r3(wd / 2)], size: [r3(ww), 7], hole: [D.lx, D.cw, 2.2] }, look(BRICK))); box(cx, 0, 0, ww, 7, wd, BRICK, { faces: 'blr', top: false }); }
             else { box(cx, 0, 0, ww, 7, wd, BRICK, { top: false }); solid(cx, 0, ww, wd, 7); }
             gable(cx, 7, 0, ww, wd, 3.2, 'x', SLATE, BRICK, 0.35); rows('f', s * (aw / 2 + 4.6 + (ww - 2.6) / 2) - (s > 0 ? 0 : 0), ww - 4.4, wd / 2, 1, RES, 4.5); rows('b', cx, ww - T, wd / 2, 2, RES); });
         box(0, 5.2, 0, aw - 4.8, 4.3, d, STONE, { top: false, under: true, faces: 'fb' }); box(0, 4.8, 0, aw - 4.4, 0.5, d + 0.3, MARB, { under: true }); box(0, 9.5, 0, aw + 0.4, 0.5, d + 0.4, MARB, { under: true });
@@ -342,6 +342,209 @@ module.exports.build = function (api) {
             part('box', [D.x + nx * 0.45, 0.12, D.z + nz * 0.45], ['urban:RubberNonSlip1a', 0xffffff], Object.assign({ size: [r3(D.w), 0.025, 0.6], sides: false }, o));
             if (SCI[kind] && i === 0) part('quad', [D.x + tx * (D.w / 2 + 1.0) + nx * 0.06, 1.5, D.z + tz * (D.w / 2 + 1.0) + nz * 0.06], [kind === 'secret' ? 'urban:SignProhibited1a' : 'urban:SignHazard1a', 0xffffff], Object.assign({ size: [0.55, 0.55], uv: 'fit' }, o)); });
     };
+    /* ── THE INSIDES (mondo 11-13 21:04 "let's go ahead and do the interiors", his OK on the grid plan 21:23; his grid rule 21:14 + 21:17: a
+       barrier fills whole 3.5 m battle squares, a walkway is a whole square wide, dressing sits OFF the square centres). One room a walk-in
+       building; ROOMS[kind].g = the approved plan, rows listed BACK first, columns from the LEFT as you face the front from outside; '' =
+       a walkway square, a word = what fills that square (FILL). Catalogue props + arch parts; every filled square gets one ghost block. ── */
+    let lodgeRow = null;
+    const ROOMS = {
+        library: { floorIn: 'calm_planks', keyIn: 'urban:PlasterWallPainted1a', g: [['shelfw', 'shelfw', 'shelfw', 'shelfw', 'shelfw', 'shelfw', 'shelfw', 'shelfw'], ['', 'rtable', '', 'shelf', '', 'rtable', '', 'stair'], ['', 'rtable', '', 'shelf', '', 'rtable', '', ''], ['arm', '', '', 'ldesk', '', '', '', 'files']], gallery: true },
+        cafe: { floorIn: 'urban:TileGeneric5a', keyIn: 'urban:PlasterWallStucco1a', g: [['range', 'sinks', 'fridge', 'cake', '', 'ctable', ''], ['counter', 'till', 'counter', 'counter', '', '', ''], ['', '', '', '', '', 'ctable', ''], ['booth', 'booth', '', '', '', 'booth', 'booth']] },
+        lab: { floorIn: 'calm_tiles', keyIn: 'urban:PlasterWallPainted1a', g: [['racks', 'racks', 'racks', 'mstack', 'fhood', 'tank', 'stable', 'tank'], ['', '', '', '', '', '', '', ''], ['', 'bench', 'bench', '', 'bench', 'bench', '', ''], ['lockers', '', '', '', '', '', 'desk', 'crates']], glass: [[5, 2, 5, 4], [5, 2, 6, 2], [7, 2, 8, 2]] },
+        psych: { floorIn: 'calm_carpet', keyIn: 'urban:PlasterWallPainted1a', g: [['mstack', '', '', 'recep', '', 'couch', 'chaise'], ['egg', '', 'wait', '', '', '', 'arm1']], glass: [[2, 1, 2, 2]], part: [[5, 1, 5, 2]] },
+        secret: { floorIn: 'calm_concrete', keyIn: 'urban:ConcreteStriped1a', g: [['racks', 'racks', 'racks', '', 'console', 'specs', 'tank', 'tank', 'tank'], ['', '', '', '', '', '', '', '', ''], ['crates', 'crates', '', 'desk', '', '', 'stable', '', 'lockers']], gate: [4, 1] },
+        clinic: { floorIn: 'calm_tiles_small', keyIn: 'urban:TileGeneric1a', g: [['lockers', '', 'cabinets'], ['bed', '', 'bed'], ['', '', ''], ['recep', 'recep', ''], ['wait', '', 'vend']], part: [[0, 2, 2, 2], [0, 4, 1, 4], [2, 4, 3, 4]] },
+        museum: { floorIn: 'urban:TileMarble1a', keyIn: 'urban:PlasterWallPainted1a', g: [['btele', 'case', 'case', 'orrery', 'case', 'case', 'meteor', 'fish', 'tele'], ['', '', '', '', '', '', '', '', ''], ['globe', '', 'ticket', '', '', 'mbench', 'dino', 'dino2', 'trophy']], planets: true },
+        lodge: { floorIn: 'calm_planks', keyIn: 'urban:PlasterWallStucco1a', g: [['pdesk', ''], ['arm1', '']] },
+    };
+    const inside = (kind, row) => {
+        const R = ROOMS[kind], q0 = ctx.rot * Math.PI / 180, c0 = Math.cos(q0), s0 = Math.sin(q0), dx = row.x - ctx.x, dz = row.z - ctx.z, ox = dx * c0 + dz * s0, oz = -dx * s0 + dz * c0;
+        const W = row.w, D = row.d, nc = R.g[0].length, nr = R.g.length, cw = W / nc, cd = D / nr, H = Math.max(3.4, (row.storeys || 1) * C - 0.3);
+        Object.assign(row, { floorIn: R.floorIn, keyIn: R.keyIn });
+        const prop = (key, lx, lz, f, y, top) => { const [x, z] = toWorld(lx, lz), q = { key, x, z, face: ((ctx.rot + (f || 0)) % 360 + 360) % 360 }; if (y) q.y = r3(y); if (!top) q.floor = true; props.push(q); };   // floor: on the room's floor, never on its own square's ghost block (top = on the gallery's slab)
+        const fill = (lx, lz, h) => block(lx, lz, Math.min(3.3, cw - 0.2), Math.min(3.3, cd - 0.2), h);
+        const seg = (x0, z0, x1, z1, h) => { const a = toWorld(x0, z0), b = toWorld(x1, z1); features.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], h, t: 0.2, ghost: true, rail: false }); };
+        const WOODD = ['calm_planks', 0xb89878], STEEL = ['calm_tiles', 0xc8d0d8], DARK = ['calm_gunmetal', 0xb0b8c8], CUSH = ['calm_snow', 0x4a8a9c];
+        const board = (lx, y, lz, len, hh, ry, txt, fg, bg) => P.push(Object.assign({ s: 'quad', p: [r3(lx), y, r3(lz)], size: [len, hh], uv: 'fit', kind: 'wall', key: 'txt:' + txt + '|' + fg + '|' + bg + '|' + Math.round(len / hh * 10) / 10 }, ry ? { ry } : {}));
+        let BF = 0;   // the city's prop face: 0 looks at the BACK wall, 180 at the door; a wall-backed piece in the back row looks at the door (BF = 180)
+        const FILL = {
+            /* (x, z) = the square's middle; back = the square's back edge is the room's wall */
+            shelfw: (x, z) => { [-0.85, 0.85].forEach(a => prop('library_shelf_full', x + a, z - 0.35, 180)); box(x, 0, z - 1.2, 3.4, 3.2, 0.5, WOODD); fill(x, z, 2.6); },
+            shelf: (x, z) => { [-0.85, 0.85].forEach(a => { prop('library_shelf_full', x - 0.5, z + a, 270); prop('library_shelf_full', x + 0.5, z + a, 90); }); fill(x, z, 2.6); },
+            rtable: (x, z) => { prop('conference_table', x, z, 90); [-0.9, 0.9].forEach(a => { prop('cafeteria_chair', x - 1.25, z + a, 90); prop('cafeteria_chair', x + 1.25, z + a, 270); }); prop('desk_lamp', x + 0.3, z - 0.7, 0, 0.76); fill(x, z, 1.0); },
+            arm: (x, z) => { prop('psx_armchair_1', x - 0.8, z - 0.5, 200); prop('psx_armchair_1', x + 0.8, z - 0.5, 160); prop('psx_coffee_table_1', x, z + 0.7, 0); fill(x, z, 1.0); },
+            arm1: (x, z) => { prop('psx_armchair_1', x, z, 0); prop('globe_lamp', x - 1.1, z - 1.1, 0); fill(x, z, 1.0); },
+            ldesk: (x, z) => { prop('round_desk', x, z, 0); prop('office_chair', x, z - 0.9, 180); prop('desk_lamp', x + 0.6, z + 0.2, 0, 0.76); fill(x, z, 1.0); },
+            pdesk: (x, z) => { prop('tanker_desk', x, z, 0); prop('office_chair', x, z - 0.9, 180); prop('desk_lamp', x - 0.5, z + 0.1, 0, 0.76); board(x, 1.6, z - cd / 2 + 0.3, 1.6, 0.5, 0, 'KEYS', '#f4ecd8', '#5a3a1e'); fill(x, z, 1.0); },
+            files: (x, z) => { [-1, 0, 1].forEach(a => prop('filing_cabinet', x + a, z - 0.6, 0)); fill(x, z, 1.4); },
+            stair: () => {},
+            range: (x, z) => { prop('kitchen_range', x - 0.8, z - 0.9, 180); prop('kitchen_range', x + 0.8, z - 0.9, 180); fill(x, z, 1.2); },
+            sinks: (x, z) => { prop('sink_row', x, z - 0.9, 180); fill(x, z, 1.2); },
+            fridge: (x, z) => { prop('round_fridge', x - 0.8, z - 0.9, 180); prop('mini_fridge', x + 0.7, z - 0.9, 180); fill(x, z, 1.8); },
+            cake: (x, z) => { box(x, 0, z - 0.9, 3.2, 0.95, 0.9, WOODD); prop('coffee_maker', x - 0.7, z - 0.9, 180, 0.95); prop('coffee_maker', x + 0.3, z - 0.9, 180, 0.95); fill(x, z, 1.2); },
+            counter: (x, z) => { box(x, 0, z, 3.5, 1.05, 1.0, WOODD); box(x, 1.05, z, 3.5, 0.06, 1.15, STEEL, { under: true }); prop('coffee_mug', x + 0.8, z + 0.2, 0, 1.11); fill(x, z, 1.2); },
+            till: (x, z) => { box(x, 0, z, 3.5, 1.05, 1.0, WOODD); box(x, 1.05, z, 3.5, 0.06, 1.15, STEEL, { under: true }); prop('cash_register', x - 0.5, z, 0, 1.11); board(x, 2.4, z - 0.4, 2.6, 0.6, 0, 'MENU', '#f4ecd8', '#2a2a2a'); fill(x, z, 1.2); },
+            ctable: (x, z) => { prop('tulip_table', x, z, 0); [[0, 1], [0, -1], [1, 0], [-1, 0]].forEach(([a, b], i) => prop('tulip_chair', x + a * 0.95, z + b * 0.95, [0, 180, 270, 90][i])); fill(x, z, 0.9); },
+            booth: (x, z) => { box(x, 0, z + 0.4, 1.1, 0.74, 2.0, WOODD); [-1, 1].forEach(a => { box(x + a * 1.15, 0, z + 0.4, 0.75, 0.45, 2.0, CUSH); box(x + a * 1.5, 0, z + 0.4, 0.14, 1.2, 2.0, CUSH); }); prop('coffee_mug', x + 0.2, z + 0.1, 0, 0.74); fill(x, z, 1.2); },
+            racks: (x, z) => { [-1.1, 0, 1.1].forEach(a => prop('server_rack', x + a, z - 0.9, BF)); fill(x, z, 2.1); },
+            mstack: (x, z) => { prop('monitor_stack', x - 0.6, z - 0.9, BF); prop('retro_console', x + 0.7, z - 0.4, BF); fill(x, z, 2.0); },
+            tank: (x, z) => { prop('iso_tank', x, z, 0); box(x, 0, z, 2.6, 0.12, 2.6, DARK); fill(x, z, 1.4); },
+            stable: (x, z) => { prop('steel_table', x - 0.8, z, 0); prop('steel_table', x + 0.8, z, 0); fill(x, z, 0.9); },
+            bench: (x, z) => { box(x, 0, z, 3.4, 0.9, 1.4, STEEL); box(x, 0.9, z, 3.5, 0.06, 1.5, DARK, { under: true }); prop('psx_pc_monitor_mp_1', x - 0.8, z, 0, 0.96); prop('item_potion_flask', x + 0.7, z + 0.3, 0, 0.96); fill(x, z, 1.0); },
+            lockers: (x, z) => { [-1.2, -0.4, 0.4, 1.2].forEach(a => prop('locker', x + a, z - 0.9, BF)); fill(x, z, 1.9); },
+            cabinets: (x, z) => { [-0.9, 0.9].forEach(a => prop('round_cabinet', x + a, z - 0.8, BF)); prop('metal_shelving', x, z + 0.5, BF); fill(x, z, 1.8); },
+            desk: (x, z) => { prop('tanker_desk', x, z, 0); prop('computer_chair_grey', x, z - 0.9, 180); prop('psx_pc_monitor_mp_1', x + 0.3, z, 0, 0.76); fill(x, z, 1.0); },
+            crates: (x, z) => { prop('cardboard_boxes', x - 0.7, z - 0.5, 15); prop('cardboard_boxes', x + 0.7, z + 0.5, 290); prop('cardboard_box', x + 0.8, z - 0.8, 40); fill(x, z, 1.0); },
+            console: (x, z) => { [-0.9, 0.9].forEach(a => prop('retro_console', x + a, z - 0.6, BF)); prop('monitor_stack', x, z - 1.3, BF); fill(x, z, 1.6); },
+            recep: (x, z) => { box(x, 0, z, 3.5, 1.05, 0.9, STEEL); box(x, 1.05, z, 3.5, 0.06, 1.05, DARK, { under: true }); prop('office_chair', x, z - 1.0, 180); prop('psx_pc_monitor_mp_1', x - 0.6, z, 180, 1.11); fill(x, z, 1.2); },
+            wait: (x, z) => { [-1.1, -0.35, 0.4, 1.15].forEach(a => prop('molded_chair', x + a, z + 0.9, 0)); prop('potted_plant', x - 1.2, z - 1.0, 0); fill(x, z, 0.9); },
+            egg: (x, z) => { prop('egg_chair', x, z, 45); prop('rug_round', x + 0.3, z + 0.3, 0); fill(x, z, 1.3); },
+            couch: (x, z) => { prop('curved_couch', x, z - 0.5, BF); fill(x, z, 1.0); },
+            bed: (x, z) => { prop('hospital_bed', x, z, 90); prop('round_cabinet', x - 1.1, z - 1.1, 0); fill(x, z, 1.0); },
+            vend: (x, z) => { prop('vending_machine', x - 0.6, z - 0.9, BF); prop('potted_plant', x + 1.0, z + 0.9, 0); fill(x, z, 1.9); },
+            btele: (x, z) => { cyl(x, 0, z, 1.4, 0.35, ['calm_marble', 0xffffff], 12); prop('brass_telescope', x, z, 30, 0.35); fill(x, z, 1.6); },
+            tele: (x, z) => { cyl(x, 0, z, 1.4, 0.35, ['calm_marble', 0xffffff], 12); prop('telescope', x, z, 330, 0.35); fill(x, z, 1.6); },
+            case: (x, z) => { [-0.85, 0.85].forEach(a => prop('psx_display_cabinet_mp_1', x + a, z - 0.5, BF)); fill(x, z, 2.1); },
+            fish: (x, z) => { box(x, 0, z, 2.8, 0.7, 1.4, ['calm_marble', 0xffffff]); prop('psx_fish_skeleton_mp_1', x, z, 0, 0.7); fill(x, z, 1.4); },
+            trophy: (x, z) => { prop('trophy_case', x, z - 0.3, BF); fill(x, z, 2.1); },
+            ticket: (x, z) => { box(x, 0, z, 3.2, 1.05, 0.9, WOODD); prop('cash_register', x - 0.5, z, 0, 1.05); board(x, 1.9, z - 0.2, 2.4, 0.5, 0, 'TICKETS', '#ffffff', '#3a5cc0'); fill(x, z, 1.2); },
+            mbench: (x, z) => { prop('metro_bench', x, z, 0); fill(x, z, 0.9); },
+            /* THE SECOND PASS (mondo 11-13 22:33: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of
+               them ... Focus on aesthetic, vibe, atmosphere for the interiors"): the University's own Meshy pieces, each on whole squares */
+            fhood: (x, z) => { prop('fume_hood', x, z - 0.95, 180); prop('lab_glassware', x - 0.5, z - 0.95, 190, 0.92); fill(x, z, 2.4); },
+            specs: (x, z) => { prop('specimen_shelf', x - 0.84, z - 1.05, 180); prop('specimen_shelf', x + 0.84, z - 1.05, 180); fill(x, z, 2.1); },
+            chaise: (x, z) => { prop('therapy_chaise', x - 0.2, z - 0.3, 20); prop('globe_lamp', x + 1.2, z - 1.2, 0); prop('rug_round', x - 0.2, z + 0.2, 0); fill(x, z, 1.0); },
+            orrery: (x, z) => { cyl(x, 0, z, 0.75, 0.9, ['calm_marble', 0xffffff], 16); cyl(x, 0.9, z, 0.85, 0.06, ['calm_gunmetal', 0xc8b070], 16); prop('brass_orrery', x, z, 0, 0.96); fill(x, z, 2.0); },
+            meteor: (x, z) => { prop('meteorite_plinth', x, z - 0.2, 20); [[-1.1, -1.1], [1.1, -1.1], [-1.1, 0.9], [1.1, 0.9]].forEach(([a, b]) => prop('rope_stanchion', x + a, z + b, 0)); fill(x, z, 1.4); },
+            dino: (x, z) => { const cx = x + cw / 2; box(cx, 0, z, 2 * cw - 0.5, 0.3, cd - 0.5, ['calm_marble', 0x9a9488]); prop('dinosaur_skeleton', cx, z, 90, 0.3);   // two squares: the skeleton walks along the room, over both
+                [-1, 0, 1].forEach(sx => [-1, 1].forEach(sz => prop('rope_stanchion', cx + sx * (cw - 0.12), z + sz * (cd / 2 - 0.12), 0)));   // a rope round the plinth, on its own squares' edges
+                board(cx + 1.6, 0.9, z - cd / 2 + 0.3, 1.3, 0.4, 180, 'FOSSIL', '#f4ecd8', '#2a2a2a'); fill(x, z, 3.0); },
+            dino2: (x, z) => fill(x, z, 3.0),
+            globe: (x, z) => { cyl(x, 0, z, 0.5, 0.9, DARK, 10); cyl(x, 0.9, z, 0.2, 1.2, ['calm_tiles', 0x6aa8e0], 14, 1.2); P.push(Object.assign({ s: 'dome', p: [r3(x), 2.1, r3(z)], r: 1.2, h: 1.2, seg: 14, rings: 5 }, look(['calm_tiles', 0x6aa8e0]))); fill(x, z, 2.4); },
+        };
+        R.g.forEach((line, ri) => line.forEach((t, ci) => { if (!t) return; BF = ri === 0 ? 180 : 0; const x = ox - W / 2 + (ci + 0.5) * cw, z = oz - D / 2 + (ri + 0.5) * cd; if (FILL[t]) FILL[t](x, z); else console.warn('university: no fill', t); }));
+        /* partitions on the squares' edges ([c0, r0, c1, r1] in squares, r counted from the FRONT): dark glass or plaster, a ghost wall each */
+        const edge = (e, L, glass) => { const x0 = ox - W / 2 + e[0] * cw, x1 = ox - W / 2 + e[2] * cw, z0 = oz + D / 2 - e[1] * cd, z1 = oz + D / 2 - e[3] * cd, hh = Math.min(H, 3.2);
+            if (Math.abs(x0 - x1) < 0.01) box(x0, 0, (z0 + z1) / 2, 0.12, hh, Math.abs(z1 - z0), L, glass ? { kind: 'glass', win: 'keep' } : {}); else box((x0 + x1) / 2, 0, z0, Math.abs(x1 - x0), hh, 0.12, L, glass ? { kind: 'glass', win: 'keep' } : {});
+            seg(x0, z0, x1, z1, hh); };
+        (R.glass || []).forEach(e => edge(e, ['urban:GlassWindowSquare1a', 0xcfe4ee], true)); (R.part || []).forEach(e => edge(e, ['urban:PlasterWallPainted1a', 0xffffff], false));
+        if (R.gate) { const x = ox - W / 2 + (R.gate[0] + 0.5) * cw, z = oz + D / 2 - (R.gate[1] + 0.5) * cd; [-1, 1].forEach(a => box(x + a * 1.55, 0, z, 0.3, 2.4, 1.0, DARK)); box(x, 2.4, z, 3.4, 0.3, 1.0, DARK, { under: true }); board(x, 2.45, z + 0.51, 2.6, 0.22, 0, 'SCAN', '#f0d040', '#202428'); }
+        if (R.planets) [[0.18, 0.5, 0xe8a040], [0.3, 0.32, 0x6aa8e0], [0.42, 0.42, 0xd86040], [0.56, 0.75, 0xd8b890], [0.7, 0.6, 0xe0d0a0], [0.82, 0.36, 0x8ac8d8]].forEach(([a, r, col], i) => { const x = ox - W / 2 + a * W, z = oz + (i % 2 ? 0.5 : -0.5), y = 4.2 + (i % 3) * 0.3;
+            cyl(x, y - r, z, 0.03, r, [null, col], 10, r, { glow: 0.5 }); P.push({ s: 'dome', p: [r3(x), r3(y), r3(z)], r, h: r, seg: 10, rings: 4, tint: col, glow: 0.5 }); cyl(x, y + r, z, 0.015, Math.max(0.3, H - y - r), DARK, 4, null, { cap: false }); });
+        if (R.gallery) {   // the library's gallery: a walk one square wide over the back row of shelves, the stair in its own square
+            const zb = oz - D / 2 + cd / 2, a = toWorld(ox - W / 2, zb), b = toWorld(ox + W / 2, zb); features.push({ k: 'bridge', id: ctx.id + '-gal', x0: a[0], z0: a[1], x1: b[0], z1: b[1], w: r3(cd), y: 3.5, plain: true, key: 'calm_planks' });
+            const sx = ox + W / 2 - cw / 2, s0 = toWorld(sx, oz - D / 2 + 2 * cd), s1 = toWorld(sx, oz - D / 2 + cd); features.push({ k: 'ramp', id: ctx.id + '-galstair', x0: s0[0], z0: s0[1], x1: s1[0], z1: s1[1], w: r3(cw - 0.3), h0: 0, h1: 3.5, stairs: true });
+            box(ox, 3.5, zb + cd / 2 - 0.05, W - cw, 1.0, 0.08, ['calm_gunmetal', 0xb0b8c8]); for (let ci = 0; ci < nc; ci++) { const x = ox - W / 2 + (ci + 0.5) * cw; [-0.85, 0.85].forEach(q => prop('library_shelf_full', x + q, zb - cd / 2 + 0.55, 0, 0, true)); }
+        }
+        /* ── THE ATMOSPHERE (the second pass, mondo 11-13 22:33: "do another interior pass ... Focus on aesthetic, vibe, atmosphere for the
+           interiors"). Each room: its own paint over the bare inside sheet (a wall coat, a dado, a skirting, a crown and a LIT ceiling: the
+           hollow building's own ceiling draws black), its own light (lit ceiling panels, pendants, strips, chandeliers, lamp glows: drawn
+           glow, the city room's ten real lights stay with the streets), and dressing OFF the square centres (books, glassware, plants,
+           clocks, runners on the walkways: nothing that blocks stands on a walkway square, nothing sits half across two). ── */
+        const nCol = Math.max(1, Math.round((W - 0.12) / T)), dX = -(W - 0.12) / 2 + ((row.door || Math.ceil(nCol / 2)) - 0.5) * (W - 0.12) / nCol;   // the doorway's middle, room-local
+        const sx = ci => -W / 2 + (ci + 0.5) * cw, sz = ri => -D / 2 + (ri + 0.5) * cd, X = rx => r3(ox + rx), Z = rz => r3(oz + rz);
+        const M = (key, tint, gain) => [key, tint, null, gain];
+        const lk = L => Object.assign(look([L[0], L[1]]), L[3] ? { gain: L[3] } : {});
+        const coat = (L, h, e) => { const o = lk(L); h = r3(h);
+            P.push(Object.assign({ s: 'quad', p: [X(0), 0, Z(-D / 2 + e)], size: [r3(W - 2 * e), h] }, o), Object.assign({ s: 'quad', p: [X(0), 0, Z(D / 2 - e)], ry: 180, size: [r3(W - 2 * e), h], hole: [r3(-dX), 1.8, Math.min(2.25, h)] }, o),
+                Object.assign({ s: 'quad', p: [X(-W / 2 + e), 0, Z(0)], ry: 270, size: [r3(D - 2 * e), h] }, o), Object.assign({ s: 'quad', p: [X(W / 2 - e), 0, Z(0)], ry: 90, size: [r3(D - 2 * e), h] }, o)); };
+        /* a band round the walls (skirting, chair rail, crown): four thin boxes y up, t proud of the coat; the front one broken at the doorway */
+        const band = (L, y, h, t, e) => { const o = lk(L), f = e + t / 2, run = (x0, x1, z) => { if (x1 - x0 > 0.05) P.push(Object.assign({ s: 'box', p: [X((x0 + x1) / 2), r3(y), Z(z)], size: [r3(x1 - x0), r3(h), r3(t)] }, o)); };
+            run(-W / 2 + e, W / 2 - e, -D / 2 + f); if (y < 2.25) { run(-W / 2 + e, dX - 0.95, D / 2 - f); run(dX + 0.95, W / 2 - e, D / 2 - f); } else run(-W / 2 + e, W / 2 - e, D / 2 - f);
+            [-1, 1].forEach(sg => P.push(Object.assign({ s: 'box', p: [X(sg * (W / 2 - f)), r3(y), Z(0)], size: [r3(t), r3(h), r3(D - 2 * e)] }, o))); };
+        const liner = (wall, dado, dadoH, ceil, trimL) => { coat(wall, H, 0.34); if (dado) coat(dado, dadoH, 0.355); const tl = trimL || ['calm_gunmetal', 0x8a8a90];
+            band(tl, 0, 0.14, 0.05, 0.36); if (dado) band(tl, dadoH - 0.03, 0.06, 0.05, 0.36); band(tl, H - 0.26, 0.22, 0.12, 0.36);
+            if (ceil) P.push(Object.assign({ s: 'box', p: [X(0), r3(H - 0.06), Z(0)], size: [r3(W - 0.7), 0.04, r3(D - 0.7)], under: true, roof: true, top: false }, lk(ceil), { glow: ceil[4] == null ? 0.45 : ceil[4] })); };
+        const GLOW = tint => ({ tint, glow: 1, under: true });
+        /* lights (drawn): a flush lit panel; a fluorescent strip; a pendant (cord, a shade, a lit bulb under it) */
+        const panelL = (rx, rz, w, d, tint) => { P.push({ s: 'box', p: [X(rx), r3(H - 0.11), Z(rz)], size: [r3(w + 0.14), 0.05, r3(d + 0.14)], tint: 0x9a9ea6, under: true }, Object.assign({ s: 'box', p: [X(rx), r3(H - 0.13), Z(rz)], size: [r3(w), 0.03, r3(d)] }, GLOW(tint || 0xf4f8ff))); };
+        const strip = (rx, rz, len, alongZ, tint) => { const sz2 = alongZ ? [0.24, 0.07, len] : [len, 0.07, 0.24]; P.push({ s: 'box', p: [X(rx), r3(H - 0.34), Z(rz)], size: sz2, tint: 0xd8dce2, under: true }, Object.assign({ s: 'box', p: [X(rx), r3(H - 0.36), Z(rz)], size: [sz2[0] * 0.7, 0.03, sz2[2] * 0.7].map(r3) }, GLOW(tint || 0xeef8ff)));
+            P.push({ s: 'cyl', p: [X(rx), r3(H - 0.34), Z(rz)], r: 0.01, h: 0.34, seg: 4, tint: 0x30343a, cap: false }); };
+        const pendant = (rx, rz, y, shade, bulb, r) => { r = r || 0.28; P.push({ s: 'cyl', p: [X(rx), r3(y + 0.26), Z(rz)], r: 0.012, h: r3(H - y - 0.26), seg: 4, tint: 0x202020, cap: false },
+            Object.assign({ s: 'cyl', p: [X(rx), r3(y), Z(rz)], r: r3(r), r2: r3(r * 0.25), h: 0.28, seg: 14, ds: true, cap: false }, shade),
+            Object.assign({ s: 'cyl', p: [X(rx), r3(y - 0.06), Z(rz)], r: r3(r * 0.3), h: 0.14, seg: 10 }, GLOW(bulb || 0xffe2a8))); };
+        /* a lit window on a wall (daylight through glass the facade's windows stand for): wall 'l' | 'r' | 'b', along = room-local x or z */
+        const window_ = (wall, along, y, w, h, L) => { const e = 0.33, g = Object.assign(lk(L || ['urban:GlassWindowTall1a', 0xd8ecff, null, 1.4]), { glow: 0.7, win: 'keep' });
+            const at = wall === 'l' ? [-W / 2 + e, along, 270, 1, 0] : wall === 'r' ? [W / 2 - e, along, 90, -1, 0] : [along, -D / 2 + e, 0, 0, 1], gx = at[0] + at[3] * 0.05, gz = at[1] + at[4] * 0.05;   // the glass 5 cm proud of its frame (inside the frame it never showed)
+            P.push({ s: 'box', p: [X(at[0]), r3(y - 0.12), Z(at[1])], size: [r3(w + 0.3), r3(h + 0.24), 0.06], ry: at[2], tint: 0x5a4632 }, Object.assign({ s: 'quad', p: [X(gx), r3(y), Z(gz)], size: [r3(w), r3(h)], ry: at[2] }, g)); };
+        const rug = (rx, rz, w, d, L) => P.push(Object.assign({ s: 'quad', flat: true, p: [X(rx), 0.03, Z(rz)], size: [r3(w), r3(d)] }, lk(L)));
+        /* a prop room-local; `wall`: 'b' back, 'f' front, 'l' left, 'r' right = stand against it, its front to the room */
+        const WF = { b: 180, f: 0, l: 90, r: 270 };   // the city's face: 0 looks at the BACK wall (-z), 180 at the door, 90 at +x
+        const dress = (key, rx, rz, f, y) => prop(key, X(rx), Z(rz), f || 0, y);
+        const onWall = (key, wall, along, f) => { const e = 0.42, p = wall === 'b' ? [along, -D / 2 + e] : wall === 'f' ? [along, D / 2 - e] : wall === 'l' ? [-W / 2 + e, along] : [W / 2 - e, along]; dress(key, p[0], p[1], WF[wall] + (f || 0)); };
+        const books = (rx, rz, y, n, f) => { for (let i = 0; i < n; i++) dress('psx_book_mp_' + (1 + ((i * 3 + Math.round(rx * 7)) % 10 + 10) % 10), rx + (i % 2) * 0.05, rz + (i % 3) * 0.03, (f || 0) + i * 9, r3(y + i * 0.045)); };
+        const ATMOS = {
+            library: () => {   // a reading hall at night: forest green over walnut, a coffered cream ceiling, brass chandeliers, green lamps on every table
+                liner(M('urban:PlasterWallPainted1a', 0x3c7454, 1.8), M('calm_planks', 0x946440, 1.5), 1.35, ['urban:FibreCeilingTile1a', 0xf2e2c0, null, 1.6, 0.4], ['calm_planks', 0x5a3820]);
+                [2, 4, 6].forEach(ci => P.push({ s: 'box', p: [X(sx(ci) - cw / 2), r3(H - 0.6), Z(0)], size: [0.3, 0.5, r3(D - 0.8)], key: 'calm_planks', tint: 0x6a4428, under: true }));   // the ceiling's beams
+                [[1, 1.5], [3.5, 1.5], [5, 1.5], [3.5, 3]].forEach(([c, r]) => { const rx = -W / 2 + c * cw + cw / 2, rz = -D / 2 + r * cd + (r === 3 ? 0 : cd / 2); dress('library_chandelier', rx, rz, 0, r3(Math.min(6.4, H - 1.6))); P.push({ s: 'cyl', p: [X(rx), r3(Math.min(6.4, H - 1.6) + 1.1), Z(rz)], r: 0.02, h: r3(H - Math.min(6.4, H - 1.6) - 1.1), seg: 4, tint: 0x8a6a30, cap: false }); });
+                [-1, 1].forEach(sg => [-0.25, 0.25].forEach(a => window_(sg < 0 ? 'l' : 'r', a * D * 0.9, 4.6, 1.5, 4.2)));                                   // tall lit windows over the gallery line
+                rug(dX, D / 2 - 3.9, 2.0, 6.6, M('calm_carpet', 0x8a2a2a, 1.3));                                                          // the red runner from the door
+                R.g.forEach((line, ri) => line.forEach((t, ci) => { const x = sx(ci), z = sz(ri);
+                    if (t === 'rtable') { dress('banker_lamp', x + 0.12, z - 0.75, 180, 0.76); dress('banker_lamp', x - 0.12, z + 0.75, 0, 0.76); books(x + 0.2, z + 0.25, 0.76, 3, 15); dress('psx_open_book_mp_1', x - 0.15, z - 0.2, 80, 0.76); }
+                    if (t === 'shelfw' && (ci === 1 || ci === 6)) dress('library_ladder', x + 0.6, z + 0.05, 0);   // its top hooks lean to the shelves                                                // a rolling ladder against the shelf wall
+                    if (t === 'ldesk') { books(x - 0.5, z - 0.1, 0.76, 4, 0); dress('banker_lamp', x - 0.55, z + 0.35, 180, 0.76); } }));
+                onWall('wall_clock', 'f', dX); dress('globe_lamp', sx(1) - 1.15, sz(3) + 1.1, 0); dress('potted_plant', sx(7) - 1.2, sz(3) + 1.15, 0); dress('potted_plant', sx(0) + 1.2, sz(1) - 1.15, 0);
+                onWall('notice_board', 'l', sz(2.5)); onWall('chalkboard', 'r', sz(2));
+            },
+            cafe: () => {   // warm and busy: cream walls over a bottle-green tiled dado, ceiling fans, amber pendants over the booths
+                liner(M('urban:PlasterWallStucco1a', 0xf6e2b8, 2.0), M('urban:TileSubway2a', 0x5a9a7a, 1.5), 1.2, ['urban:FibreCeilingTile1a', 0xfff2dc, null, 1.6, 0.45], ['calm_planks', 0x6a4a30]);
+                [1, 3, 5].forEach(ci => dress('psx_ceiling_fan_mp_1_1_light_on', sx(ci), sz(2), 0, r3(H - 0.65)));
+                R.g.forEach((line, ri) => line.forEach((t, ci) => { const x = sx(ci), z = sz(ri);
+                    if (t === 'booth') pendant(x, z + 0.4, 2.1, { key: 'calm_tiles', tint: 0xd88a30, glow: 0.35 }, 0xffcf80, 0.3);
+                    if (t === 'ctable') pendant(x, z, 2.3, { key: 'calm_tiles', tint: 0x2a5a48, glow: 0.2 }, 0xffe0a0, 0.32);
+                    if (t === 'counter' && ci === 2) dress('espresso_machine', x - 0.6, z - 0.05, 0, 1.11);
+                    if (t === 'counter' && ci === 3) dress('pastry_case', x - 0.2, z, 180, 1.11); }));
+                [0.5, 2.5].forEach(c => pendant(-W / 2 + c * cw + cw / 2, sz(1), 2.6, { key: 'calm_gunmetal', tint: 0x30343a }, 0xfff0c8, 0.22));                // over the counter
+                window_('r', -cd * 0.6, 1.3, 2.4, 2.6, ['urban:GlassWindowResidential1a', 0xfff0d8, null, 1.4]); window_('r', cd * 0.6, 1.3, 2.4, 2.6, ['urban:GlassWindowResidential1a', 0xfff0d8, null, 1.4]);
+                onWall('chalkboard', 'l', sz(2)); onWall('wall_clock', 'f', dX); dress('potted_plant', sx(6) + 1.2, sz(2) - 1.2, 0); dress('office_plant', sx(4) + 1.2, sz(3) + 1.15, 0); dress('potted_plant', sx(0) + 1.15, sz(2) + 1.15, 0);
+            },
+            lab: () => {   // clinical and cool: white walls over blue-grey steel, a bright tiled ceiling, fluorescent strips over every walk
+                liner(M('urban:PlasterWallPainted1a', 0xf2f6f8, 1.8), M('calm_tiles', 0x9ab0c4, 1.3), 1.1, ['urban:FibreCeilingTile1a', 0xffffff, null, 1.7, 0.55], ['calm_gunmetal', 0xb0b8c4]);
+                for (let ci = 0; ci < nc; ci++) [1, 3].forEach(ri => strip(sx(ci), sz(ri), 2.4, false));
+                R.g.forEach((line, ri) => line.forEach((t, ci) => { const x = sx(ci), z = sz(ri);
+                    if (t === 'bench') { dress('microscope', x + 0.05, z - 0.3, 180, 0.96); dress('lab_glassware', x + 1.0, z - 0.35, 200, 0.96); dress('papers_a', x - 0.2, z + 0.45, 10, 0.96); } }));
+                onWall('exit_sign', 'f', dX); onWall('fire_extinguisher', 'f', dX + 1.4); onWall('notice_board', 'l', sz(1)); onWall('wall_clock', 'r', sz(1));
+                dress('anatomy_skeleton', sx(4) + 1.2, sz(3) + 1.0, 20);
+            },
+            psych: () => {   // soft and quiet: sage over oak, warm low lamps, a rug under the waiting chairs
+                liner(M('urban:PlasterWallPainted1a', 0x9cb8a0, 1.9), M('calm_planks', 0x9a7450, 1.4), 1.0, ['urban:FibreCeilingTile1a', 0xfff4e4, null, 1.6, 0.35], ['calm_planks', 0x7a5a3a]);
+                [1, 3, 5].forEach(ci => pendant(sx(ci), sz(1), 2.5, { key: 'calm_tiles', tint: 0xf0e6d0, glow: 0.4 }, 0xffe6b8, 0.36));
+                rug(sx(2), sz(1), 2.6, 2.2, M('calm_carpet', 0xc8a070, 1.2)); dress('table_lamp', sx(3) + 1.25, sz(0) + 0.1, 0, 1.11);
+                dress('potted_plant', sx(4) + 1.2, sz(0) - 1.15, 0); dress('office_plant', sx(1) - 1.2, sz(0) - 1.15, 0); onWall('wall_clock', 'b', sx(4)); onWall('wall_shelf', 'r', sz(1));
+            },
+            secret: () => {   // the research annex after hours: dark concrete, cold blue strips, a red light over the scanner
+                liner(M('urban:ConcreteStriped1a', 0x8a929c, 1.2), M('calm_gunmetal', 0x5a6068, 1.2), 1.0, ['calm_gunmetal', 0x3a4048, null, 1.0, 0.15], ['calm_gunmetal', 0xd8b030]);
+                for (let ci = 0; ci < nc; ci += 2) strip(sx(ci), sz(1), 2.6, false, 0x9ad8ff);
+                [6, 7, 8].forEach(ci => P.push(Object.assign({ s: 'box', p: [X(sx(ci)), 0.13, Z(sz(0))], size: [2.7, 0.03, 2.7] }, GLOW(0x58e0c8))));                   // the tanks' lit floors
+                if (R.gate) { const x = sx(R.gate[0]); P.push(Object.assign({ s: 'dome', p: [X(x), 2.72, Z(D / 2 - (R.gate[1] + 0.5) * cd)], r: 0.12, h: 0.12, seg: 8, rings: 2 }, GLOW(0xff3020))); }
+                for (let ci = 0; ci < nc; ci++) if (ci !== Math.floor((dX + W / 2) / cw)) [-1, 1].forEach(sg => P.push({ s: 'quad', flat: true, p: [X(sx(ci)), 0.03, Z(sz(1) + sg * (cd / 2 - 0.08))], size: [r3(cw - 0.1), 0.12], tint: 0xe0b820, glow: 0.3 }));   // the walk's hazard edge
+                onWall('exit_sign', 'f', dX); onWall('fire_extinguisher', 'b', sx(3));
+            },
+            clinic: () => {   // pale mint tile, a white dado, a bright panelled ceiling, screens and drips by the beds
+                liner(M('urban:PlasterWallPainted1a', 0xc8ecdc, 1.9), M('urban:TileGeneric1a', 0xffffff, 1.4), 1.3, ['urban:FibreCeilingTile1a', 0xffffff, null, 1.7, 0.55], ['calm_gunmetal', 0xb8c4c8]);
+                for (let ri = 0; ri < nr; ri++) panelL(sx(1), sz(ri), 1.2, 1.2);
+                R.g.forEach((line, ri) => line.forEach((t, ci) => { const x = sx(ci), z = sz(ri);
+                    if (t === 'bed') { const inn = ci === 0 ? 1 : -1; dress('iv_stand', x + inn * 1.1, z - 1.1, 0); dress('privacy_screen', x + inn * 1.45, z + 0.4, inn > 0 ? 270 : 90); } }));
+                dress('wheelchair', sx(2) + 0.95, sz(2) - 1.0, 250); dress('anatomy_skeleton', sx(1) + 1.2, sz(0) - 1.15, 180);
+                onWall('exit_sign', 'f', dX); onWall('wall_clock', 'l', sz(4)); onWall('notice_board', 'r', sz(2));
+            },
+            museum: () => {   // the night gallery: deep blue walls over marble, a dark ceiling, a lit skylight over the walk, spots on every case
+                liner(M('urban:PlasterWallPainted1a', 0x2c3c64, 1.6), M('urban:TileMarble1a', 0xf4f0e8, 1.3), 1.2, ['urban:FibreCeilingTile1a', 0x8a98c0, null, 1.4, 0.3], ['calm_marble', 0xd8c8a0]);
+                for (let ci = 0; ci < nc; ci++) panelL(sx(ci), sz(1), 2.6, 1.6, 0xeaf2ff);                                                                     // the skylight over the middle walk
+                R.g.forEach((line, ri) => line.forEach((t, ci) => { if (!t || t === 'dino2' || ri === 1) return; const x = sx(ci) + (t === 'dino' ? cw / 2 : 0), z = sz(ri) + (ri ? -0.6 : 0.6);
+                    P.push({ s: 'cyl', p: [X(x), r3(H - 0.5), Z(z)], r: 0.09, r2: 0.13, h: 0.24, seg: 8, tint: 0x202428, cap: false }, Object.assign({ s: 'cyl', p: [X(x), r3(H - 0.53), Z(z)], r: 0.085, h: 0.03, seg: 8 }, GLOW(0xfff0d0)));
+                    P.push({ s: 'cyl', p: [X(x), r3(H - 0.26), Z(z)], r: 0.015, h: 0.26, seg: 4, tint: 0x202428, cap: false }); }));
+                onWall('exit_sign', 'f', dX); dress('potted_plant', sx(4) + 1.2, sz(2) + 1.15, 0);
+            },
+            lodge: () => {   // the porter's lodge: oak to the waist, a bare bulb, the radio on
+                liner(M('urban:PlasterWallStucco1a', 0xf0dcb0, 2.0), M('calm_planks', 0x8a6040, 1.4), 1.2, ['urban:FibreCeilingTile1a', 0xfff0d8, null, 1.5, 0.35], ['calm_planks', 0x5a3a20]);
+                pendant(0, 0, 2.4, { key: 'calm_gunmetal', tint: 0x2a4a3a }, 0xffd890, 0.3);
+                dress('retro_radio', sx(0) + 0.6, sz(0) + 0.15, 200, 0.76); dress('psx_clock_1', sx(0) - 0.7, sz(0) + 0.2, 160, 0.76); onWall('wall_clock', 'l', sz(1)); onWall('notice_board', 'r', sz(0));
+            },
+        };
+        if (ATMOS[kind]) ATMOS[kind]();
+    };
     const ROT = { S: 0, W: 90, N: 180, E: 270 };
     const SHALLOW = { 'P03-05-B1': 3.5 };
     const count = { arch: 0, parts: 0 };
@@ -353,7 +556,7 @@ module.exports.build = function (api) {
            psychology lab, two levels under the research lab): it is one square shallower, its back a square off the line */
         if (SHALLOW[b.id] && !tierRow) { const cut = SHALLOW[b.id], q = rot * Math.PI / 180; row.d = r3(row.d - cut); row.x = r3(row.x - Math.sin(q) * cut / 2); row.z = r3(row.z + Math.cos(q) * cut / 2); }
         const d = tierRow ? (ew ? row.w : row.d) : row.d;
-        ctx = { id: 'dc:' + b.id, x: row.x, z: row.z, rot }; P = []; sub = 0; tiers = [];
+        ctx = { id: 'dc:' + b.id, x: row.x, z: row.z, rot }; P = []; sub = 0; tiers = []; lodgeRow = null;
         if (kind === 'PACK') { delete row.style; row.key = 'pack_bld_09'; row.storeys = 3; return; }   // the shop block at its own size: 16.9 m wide on a 17.5 m front
         if (kind === 'PIZZA') {   // the chain's pizza place stands on this lot (a catalogue prop at its real size, its entrance to the south walk), the plan's row goes
             features.splice(features.indexOf(row), 1); props.push({ key: 'city_pizzeria', x: row.x, z: r3(row.z + (ew ? row.w : row.d) / 2 - 10.25 - 0.4), face: 180 }); return; }
@@ -361,6 +564,7 @@ module.exports.build = function (api) {
         else { row.skin = false; delete row.style; delete row.key; delete row.hollow; delete row.door; }
         B[kind](tierRow ? w + 0.3 : w, tierRow ? d + 0.3 : d, row);   // a roof-route building is a plateau: its drawn walls stand 0.15 m outside the plateau's own cliff
         polish(kind, tierRow ? [w, d] : null);
+        { const ir = kind === 'gate' ? lodgeRow : row; if (ir && ir.hollow && ROOMS[kind === 'gate' ? 'lodge' : kind]) inside(kind === 'gate' ? 'lodge' : kind, ir); }
         if (row.dead) features.splice(features.indexOf(row), 1);
         features.push(Object.assign({ k: 'arch', id: 'dcu:' + b.id, x: ctx.x, z: ctx.z }, tierRow ? { y: 0 } : {}, { rot, parts: P })); count.arch++; count.parts += P.length;   // y: 0 over a roof-walk plateau (harmless since main gives an arch row its ground)
     });

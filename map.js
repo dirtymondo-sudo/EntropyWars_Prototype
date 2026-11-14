@@ -4469,17 +4469,46 @@
         }
         function _introStart(replay, backRoom) {
             const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
-            const out = () => {
+            /* the end: the flag, and the walk is the recruit's (a replay goes back to the room it was asked from) */
+            const done = (stay) => {
                 window._ewIntroLive = false;
                 if (!replay) _questSceneFlag('intro_seen', true);
+                if (stay && !replay) return;
                 const to = (replay && backRoom && _hqRoomExists(backRoom)) ? backRoom : _hqArrivalRoom();
                 setTimeout(() => { try { if (state.gameState === GS.HQ && !_hqSuspended) window._hqEnter({ room: to, quiet: true, from: 'walk' }); } catch (e) { console.warn('[SCENE] the way in', e); } }, 60);
             };
+            /* THE RIDE DOWN + THE ARRIVAL (scene A's second half, mondo's OK 2026-11-13): the car, then the foyer's front lift */
+            const sceneIn = (room, scene, at, next) => {
+                const row = (typeof window.storyCutscene === 'function') ? window.storyCutscene(scene) : null;
+                if (!row || !_hqRoomExists(room) || window.EW_NO_CUTSCENES) { next(false); return; }
+                const t1 = performance.now();
+                const play = () => {
+                    if (state.gameState !== GS.HQ || _hqSuspended || _hqCurRoom !== room) { next(false); return; }
+                    let up = false; try { up = TR.hq.sceneReady('player'); } catch (e) { up = true; }
+                    if (!up && performance.now() - t1 < 20000) { setTimeout(play, 250); return; }
+                    let ok = false;
+                    try { ok = _questHqScene({ scene, sceneAt: at }, { onEnd: () => next(true) }, () => next(true)); } catch (e) { console.error('[SCENE] ' + scene + ' did not start', e); ok = false; }
+                    if (!ok) next(false);
+                };
+                setTimeout(() => {
+                    try { if (state.gameState === GS.HQ && !_hqSuspended && window._hqEnter({ room, quiet: true, from: 'walk', onReady: () => setTimeout(play, 400) })) return; } catch (e) { console.warn('[SCENE] the way to ' + room, e); }
+                    next(false);
+                }, 60);
+            };
+            const out = () => {
+                window._ewIntroLive = false;
+                const foyer = _hqArrivalRoom() === _HQ_FOYER;
+                sceneIn('car', 'orientation_ride', { x: -0.15, z: 0.2, face: 0 }, () => {
+                    if (!foyer) { done(false); return; }
+                    sceneIn(_HQ_FOYER, 'orientation_arrive', { x: 0, z: 2.75, face: 0 }, (played) => done(played));
+                });
+            };
             const here = () => { try { const sc = TR.hq.dev.hqScene(); return !!(sc && sc.getObjectByName('hq_hq-cast-sedaniel')); } catch (e) { return false; } };
+            try { TR.hq.scenePlace('player', { show: false }); } catch (e) {}   // (mondo 11-13: "I am already standing by the door before sedaniel drops me off")
             const t0 = performance.now();
             const go = () => {
                 if (state.gameState !== GS.HQ || _hqSuspended || _hqCurRoom !== _INTRO_ROOM) { window._ewIntroLive = false; return; }
-                let up = false; try { up = here() && TR.hq.sceneReady('player'); } catch (e) { up = here(); }   // (the officer's clips too: no bind pose at the car)
+                let up = false; try { up = here() && TR.hq.sceneReady('player') && TR.hq.sceneReady('sedaniel'); } catch (e) { up = here(); }   // (the officer's clips too: no bind pose at the car)
                 if (!up && performance.now() - t0 < 20000) { setTimeout(go, 250); return; }
                 let ok = false;
                 try { ok = _questHqScene({ scene: _INTRO_SCENE, sceneAt: { x: -3.4, z: -41, face: 270 } }, { onEnd: out }, out); } catch (e) { console.error('[SCENE] the opening did not start', e); ok = false; }
@@ -4536,11 +4565,12 @@
             /* the scene's hands in the room: place / show / hide a body (three-renderer.js hq.scenePlace), the choice's world flags */
             const hand = (a) => { try {
                 if (!a || !TR || !TR.hq) return;
-                if (a.who && (a.do === 'place' || a.do === 'show' || a.do === 'hide') && TR.hq.scenePlace) TR.hq.scenePlace(a.who, { x: a.x, z: a.z, face: a.face, sit: (a.sit != null) ? a.sit : null, show: a.do === 'show' ? true : (a.do === 'hide' ? false : null) });
+                if (a.who && (a.do === 'place' || a.do === 'show' || a.do === 'hide') && TR.hq.scenePlace) TR.hq.scenePlace(a.who, { x: a.x, z: a.z, face: a.face, scale: a.scale, clip: a.clip, ms: a.ms, sit: (a.sit != null) ? a.sit : null, show: a.do === 'show' ? true : (a.do === 'hide' ? false : null) });
                 else if (a.who && a.do === 'walk' && TR.hq.sceneWalk) TR.hq.sceneWalk(a.who, { x: a.x, z: a.z, ms: a.ms, face: a.face });
                 else if (a.do === 'props' && TR.hq.sceneProps) TR.hq.sceneProps({ keys: a.keys, near: a.near, r: a.r, at: a.at, ms: a.ms, light: a.light });
                 else if (a.do === 'key' && TR.hq.sceneKey) TR.hq.sceneKey({ x: a.x, y: a.y, z: a.z, size: a.size });
-                else if (a.do === 'door' && TR.hq.sceneDoor) TR.hq.sceneDoor({ x: a.x, z: a.z, face: a.face, leaf: a.leaf, open: a.open, ms: a.ms, remove: a.remove });
+                else if (a.do === 'door' && TR.hq.sceneDoor) TR.hq.sceneDoor({ id: a.id, x: a.x, z: a.z, face: a.face, leaf: a.leaf, open: a.open, ms: a.ms, remove: a.remove });
+                else if (a.do === 'shaft' && TR.hq.sceneShaft) TR.hq.sceneShaft(a.k);
             } catch (e) { console.warn('[SCENE] ' + (a && a.do), e); } };
             const host = { unit: 1, point: () => null, act: hand,
                            choose: (c, o) => { if (o && o.clear) _questSceneFlag(o.clear, false); if (o && o.set) _questSceneFlag(o.set, true); },
