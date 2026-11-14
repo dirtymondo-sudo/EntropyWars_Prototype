@@ -2242,6 +2242,12 @@ mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is 
   wall that runs along the front, 90 = across it). Same leaves, same swing-away as the front door (`_hq.cityDoors`). Drawn only: the district's
   walls leave the gap.
 
+- THE RESIDENTS' BEDROOMS (2026-11-14, mondo 02:21 "District threads add them"; brief /mnt/project-files/disaster-city-residents/bedrooms-brief.md):
+  the three Sports residences are walk-ins now (ids kept): P06-09-B2 the Quarterback (the Box office house, door in face square 7), P07-08-B2
+  the Luchador (the veranda house, door 7), P07-10-B2 the Juggernaut (the ochre house, door 2). S.js `home(id, { bed, bedU, bedDoor, door })`:
+  a living room across the front three rows of squares (sofa, table), a wall with a swinging door, the bedroom across the back two (one
+  `psx_bed_4_*` on a corner square, a wardrobe on the other corner, a bedside table, a rug), a 3.1 m ceiling. The residents' code finds the bed.
+
 ## DISASTER CITY, CIVIC CENTER — the 28 buildings of district C (2026-11-13, mondo's OK 17:11)
 
 District C = plots x 4..7, y 0..3 of `site_prebuilt_downtown_streets`. Everything lives in ONE file:
