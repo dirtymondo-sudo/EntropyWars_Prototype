@@ -45176,6 +45176,7 @@ const ThreeRenderer = (function () {
         if (_ewGpuInfo.lost) s += ' · DEVICE LOST: ' + _ewGpuInfo.lost + (_ewGpuInfo.rebuilds ? ' (rebuilt ' + Math.min(3, _ewGpuInfo.rebuilds) + '×)' : '');
         if (_ewBun.marked.length) {
             s += ' · bundles ' + _ewBun.marked.length + ' groups, ' + _ewBun.objs + ' meshes (replayed, not in the draw count), ' + _ewBun.recRate + ' re-records/s';
+            if (_ewBun.rpShow) s += ' · refreshed ' + _ewBun.rpShow.asked + ' of ' + _ewBun.rpShow.all + ' a frame';
             var wr = _ewBun.whyRate, ws = []; if (wr) for (var wk in wr) ws.push(wk + ' ' + wr[wk]);
             if (ws.length) s += ' (' + ws.join(', ') + ')';
             s += ' · check ' + _ewBun.msAvg.toFixed(2) + ' ms/frame';
@@ -46906,9 +46907,74 @@ const ThreeRenderer = (function () {
             var prev = this._currentRenderBundle; this._currentRenderBundle = null;
             try { return rs.apply(this, arguments); } finally { this._currentRenderBundle = prev; }
         };
+        /* THE QUIET REPLAY (2026-11-14, mondo in Disaster City: 14.9 fps, "Draw calls 95" yet "submit 52.8 ms"): a recorded group
+           is replayed in one GPU call, but three still asks EVERY object in it, in every pass of the frame (the picture, the model
+           mask, the sun's depth), whether it needs a refresh (needsRefresh: a frame lookup, the monitor, five checks) and, for a
+           material that carries a node of its own (the game's dressed materials: monitor.hasNode), refreshes it IN FULL each time:
+           6,200 objects x 3.3 passes a frame for a city where nothing in those groups changed (a group whose own signature moved
+           is re-recorded by _ewBunTick, and a re-record refreshes everything it holds).
+           For a STATIC group whose recording is current and has been through one whole replay by three since it was made:
+             · the plain objects share one monitor per shader: only the first of each is asked (it is the one three hands the
+               frame's shared camera / light / fog buffers to; three answers "nothing" for the rest);
+             · an object with a node of its own is refreshed in full every frame as before while its refresh writes anything
+               to the GPU; once it wrote nothing for REST frames in a row it is refreshed every REST-th frame (its turn by its
+               place), and every frame again as soon as one of those writes something. Skinned / morphing / dynamically
+               instanced objects are never rested.
+           Off: window.EW_BUN_FULL_REFRESH. Counts: _ewBun.rpAsked / rpAll per frame (the lens's bundles line). */
+        ['updateBinding', 'updateBindings', 'createBindings'].forEach(function (k) {
+            var f = B[k]; if (typeof f !== 'function') return;
+            B[k] = function (b) { var gn = b && b.groupNode; if (!(gn && gn.shared === true)) _ewBun.upN = (_ewBun.upN | 0) + 1; return f.apply(this, arguments); };   // the frame's shared buffers (camera, lights) are written every frame by whoever comes first: not a sign the object changed
+        });
+        var RP_REST = 20;
+        var rpStep = function (R, ro) {
+            var N = R._nodes, t = N.needsRefresh(ro);
+            if (t === 2 || t === 'full') { N.updateBefore(ro); R._geometries.updateForRender(ro); N.updateForRender(ro); R._bindings.updateForRender(ro); N.updateAfter(ro); }
+            else if (t === 1 || t === 'shared') { N.updateBefore(ro); N.updateForRender(ro); R._bindings.updateSharedForRender(ro); N.updateAfter(ro); }
+        };
+        var rpList = function (R, bd) {
+            var ros = bd.renderObjects, reps = [], dyn = [], seen = new Set();
+            for (var i = 0; i < ros.length; i++) {
+                var ro = ros[i], mon = ro.getMonitor(), o = ro.object;
+                var anim = !!(mon.hasAnimation || mon.hasDynamicInstancing(o) || mon.needsVelocity(R) || (o && (o.isSkinnedMesh || o.morphTargetInfluences)));
+                if (mon.hasNode || anim) { ro._ew_rq = 0; ro._ew_rqOk = !anim; dyn.push(ro); }
+                else if (!seen.has(mon)) { seen.add(mon); reps.push(ro); }
+            }
+            return (bd._ewRep = { v: bd.version, n: ros.length, reps: reps, dyn: dyn });
+        };
+        var rpReplay = function (R, bd) {
+            var L = bd._ewRep; if (!L || L.v !== bd.version || L.n !== bd.renderObjects.length) L = rpList(R, bd);
+            var i, ro, F = _ewBun.frame | 0, asked = 0;
+            for (i = 0; i < L.reps.length; i++) rpStep(R, L.reps[i]);
+            asked += L.reps.length;
+            var D = L.dyn, woke = false, held = null, u0, rested;
+            for (i = 0; i < D.length; i++) {
+                ro = D[i]; rested = ro._ew_rqOk && ro._ew_rq >= RP_REST;
+                if (rested && !woke && ((F + i) % RP_REST) !== 0) { (held || (held = [])).push(ro); continue; }
+                u0 = _ewBun.upN | 0;
+                rpStep(R, ro); asked++;
+                if ((_ewBun.upN | 0) !== u0) { ro._ew_rq = 0; if (rested) woke = true; } else ro._ew_rq++;
+            }
+            /* a rested object wrote on its turn: what changed may be the same for all of them (the pass's camera in an object's
+               own buffer) — every rested one is refreshed this frame, and rests again only after REST quiet frames */
+            if (woke && held) { for (i = 0; i < held.length; i++) { held[i]._ew_rq = 0; rpStep(R, held[i]); asked++; } _ewBun.rpWoke = (_ewBun.rpWoke | 0) + 1; }
+            _ewBun.rpAsked = (_ewBun.rpAsked | 0) + asked; _ewBun.rpAll = (_ewBun.rpAll | 0) + bd.renderObjects.length;
+        };
         var rb = r._renderBundle;
         if (rb) r._renderBundle = function (bundle) {   // the count three keeps for the bundle, for ThreeRenderer.bundles()
-            var out = rb.apply(this, arguments);
+            var out, g0 = bundle.bundleGroup, fast = false, cur = false, bd0 = null;
+            try {
+                bd0 = this.backend.get(this._bundles.get(g0, bundle.camera, this._currentRenderContext));
+                cur = bd0.bundleGPU !== undefined && g0.version === bd0.version && !!bd0.renderObjects;
+                if (cur && g0.static === true && bd0._ewLoopV === bd0.version && !(typeof window !== 'undefined' && window.EW_BUN_FULL_REFRESH)) {
+                    rpReplay(this, bd0);
+                    this.backend.addBundle(this._currentRenderContext, this._bundles.get(g0, bundle.camera, this._currentRenderContext));
+                    fast = true;
+                }
+            } catch (e) {
+                if (!_ewBun.rpWarned) { _ewBun.rpWarned = true; console.warn('[ThreeRenderer] the quiet replay failed — three replays every object', e); }
+                fast = false; if (bd0) bd0._ewLoopV = -1;
+            }
+            if (!fast) { out = rb.apply(this, arguments); if (bd0) { if (cur) bd0._ewLoopV = bd0.version; _ewBun.rpAll = (_ewBun.rpAll | 0) + (bd0.renderObjects ? bd0.renderObjects.length : 0); _ewBun.rpAsked = (_ewBun.rpAsked | 0) + (bd0.renderObjects ? bd0.renderObjects.length : 0); } }
             try {
                 var g = bundle.bundleGroup, bd = this.backend.get(this._bundles.get(g, bundle.camera, this._currentRenderContext)), ros = bd.renderObjects;
                 if (g._ew_bun && ros) {
@@ -46968,6 +47034,16 @@ const ThreeRenderer = (function () {
             return (g._ew_reachIdx = { n: ch.length, at: now, cells: C, big: big, cell: CELL });
         }
         r._projectObject = function (object, camera, groupOrder, renderList, clippingContext) {
+            /* THE MOVERS OUT (2026-11-14, Disaster City): a piece that moves inside a recorded group (a traffic car in the shell, a
+               kicked can, a lamp's wax: `_ew_bunOut`, set where it is built or by THE STILL WALK while it moves) is handed to the
+               list the group itself was handed to — it draws the classic way, culled, with this frame's matrices, and the group's
+               recording neither holds it nor follows it. Without this ONE moving car turned the whole shell's recording into one
+               three refreshes object by object every pass (the group "demoted": 4,400 objects). */
+            if (object._ew_bunOut === true && _ewBun.inRec > 0 && this._ew_bunBase && !_ewBunNoOut()) {
+                var n0 = _ewBun.inRec, b0 = this._ew_bunBase;
+                _ewBun.inRec = 0; this._ew_bunBase = null;
+                try { return po.call(this, object, camera, groupOrder, b0, clippingContext); } finally { _ewBun.inRec = n0; this._ew_bunBase = b0; }
+            }
             var R = this._ew_reach;
             if (R && object.visible !== false) {
                 var csp = object._ew_ckSph;
@@ -46995,11 +47071,12 @@ const ThreeRenderer = (function () {
                    repeated the bottom ones) — the panes draw the groups the classic way too */
                 /* THE MASK'S OWN BUNDLES (2026-11-14): the static mask pass draws through a camera of its own (three-post.js), so a
                    culled chunk (the camera already dropped it when it is off: visible = false) replays its own mask recording */
-                if (this._ew_maskBun && !this._ew_paneRender && object._ew_ckFar != null && !object._ew_bunFree && !object._ew_bunMiss) { _ewBun.inRec++; try { return po.apply(this, arguments); } finally { _ewBun.inRec--; } }
+                if (this._ew_maskBun && !this._ew_paneRender && object._ew_ckFar != null && !object._ew_bunFree && !object._ew_bunMiss) { var pbM = this._ew_bunBase; this._ew_bunBase = renderList; _ewBun.inRec++; try { return po.apply(this, arguments); } finally { _ewBun.inRec--; this._ew_bunBase = pbM; } }
                 if (this._ew_sideRender || this._ew_paneRender) { object.isBundleGroup = false; try { return po.apply(this, arguments); } finally { object.isBundleGroup = true; } }
                 /* THE FIELD BUNDLES: a piece of the battle's room off the main camera is not drawn (a recording is unculled) */
                 if (object._ew_bunSph && camera && camera === _ewBun.cullCam && !_ewBunSeen(object._ew_bunSph, camera)) return;
-                _ewBun.inRec++; try { return po.apply(this, arguments); } finally { _ewBun.inRec--; }
+                var pbB = this._ew_bunBase; this._ew_bunBase = renderList;
+                _ewBun.inRec++; try { return po.apply(this, arguments); } finally { _ewBun.inRec--; this._ew_bunBase = pbB; }
             }
             if (_ewBun.inRec > 0 && object.frustumCulled === true) { object.frustumCulled = false; try { return po.apply(this, arguments); } finally { object.frustumCulled = true; } }
             return po.apply(this, arguments);
@@ -47106,11 +47183,13 @@ const ThreeRenderer = (function () {
         v = _ewBunMix(v, Math.round(e[12] * 1000)); v = _ewBunMix(v, Math.round(e[13] * 1000)); v = _ewBunMix(v, Math.round(e[14] * 1000));
         S.hs = h; S.hv = v; S.n++;
     }
+    function _ewBunNoOut() { return typeof window !== 'undefined' && !!window.EW_BUN_NO_OUT; }
     function _ewBunWalk(o, S) {
         var ch = o.children;
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
             if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); continue; }
+            if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); continue; }   // THE MOVERS OUT: drawn outside the recording, only that it is out
             if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); continue; }   // THE CHUNKS: a piece THE STATIC BATCH holds is not drawn (its merged mesh is hashed): only that it is held
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
             else if (c.isLight) { S.hs = _ewBunMix(S.hs, c.id); S.lit = true; }
@@ -47133,6 +47212,7 @@ const ThreeRenderer = (function () {
         }
         var t0 = performance.now(), W = _ewBun.why;
         _ewBun.frame = (_ewBun.frame | 0) + 1;
+        _ewBun.rpShow = { asked: _ewBun.rpAsked | 0, all: _ewBun.rpAll | 0 }; _ewBun.rpAsked = 0; _ewBun.rpAll = 0;   // THE QUIET REPLAY: the last frame's count
         var T = walk ? _ewBunTargets(H) : _ewBunFieldTargets(), FR = _ewBun.frame;
         _ewBun.cullCam = field ? (cam || null) : null;
         for (i = 0; i < T.length; i++) T[i]._ew_bunT = FR;
@@ -47145,7 +47225,8 @@ const ThreeRenderer = (function () {
         if (sc.environment) LG = _ewBunMix(LG, sc.environment.id);
         var lampMoved = LG !== _ewBun.lampG; _ewBun.lampG = LG;
         var G = _ewBunMix(LG, _ewBun.epoch);
-        var objs = 0;
+        var objs = 0, quietN = 0, addNB = _ewAddCount(), addMovedB = addNB !== _ewBun.addN, bunEvery = typeof window !== 'undefined' && !!window.EW_BUN_CHECK_EVERY;
+        _ewBun.addN = addNB;
         for (i = 0; i < T.length; i++) {
             var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
             if (g._ew_ckOut) continue;   // THE CHUNKS: a chunk off the camera is not drawn and not checked; its recording waits for it
@@ -47154,10 +47235,16 @@ const ThreeRenderer = (function () {
                bundled — the walk over it was the check's whole cost when the HQ sat hidden behind a battle */
             var shown = true; for (var q = g; q; q = q.parent) { if (q.visible === false) { shown = false; break; } if (q === sc) break; if (!q.parent) shown = false; }
             if (!shown) { if (g.isBundleGroup) _ewBunRelease(g); continue; }
+            /* THE QUIET GROUPS (2026-11-14, Disaster City: "check 7.25 ms/frame" on mondo's Mac, 6,400 meshes hashed every frame):
+               a recorded group whose signature has not moved for QUIET checks is checked every third frame (its turn by its place
+               in the list), and at once on a frame where anything joined the scene (Object3D.add), a resource it holds was freed,
+               a pipeline was missing or the lamps changed. A change with none of those tells (a piece hidden or moved by hand)
+               shows at most two frames late. Off: window.EW_BUN_CHECK_EVERY. */
+            if (walk && g.isBundleGroup && st.quiet >= 40 && !addMovedB && !g._ew_bunMiss && !g._ew_bunFree && st.G === G && ((FR + i) % 3) !== 0 && !bunEvery) { objs += st.n | 0; quietN++; continue; }
             var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false, lit: false, noV: !!st.dyn };
             _ewBunWalk(g, S);
-            var v0 = g.version;
-            objs += S.n;
+            var v0 = g.version, recs0 = _ewBun.recs;
+            objs += S.n; st.n = S.n;
             var stat = !(S.dyn || st.dyn), miss = !!g._ew_bunMiss;
             g._ew_bunMiss = false;
             if (!g.isBundleGroup) {
@@ -47181,6 +47268,7 @@ const ThreeRenderer = (function () {
                 g.version++; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             }
             g._ew_bunFree = false;
+            st.quiet = (_ewBun.recs === recs0 && !miss) ? (st.quiet | 0) + 1 : 0;
             if (miss && g.isBundleGroup) { st.why.cold = (st.why.cold || 0) + 1; W.cold++; g.version++; _ewBun.recs++; }   // a pipeline was still compiling at the last recording
             g.static = stat;
             /* THE FIELD BUNDLES: the sphere a held-still piece is culled by, measured again at each recording (never one that
@@ -47188,7 +47276,7 @@ const ThreeRenderer = (function () {
             if (g._ew_bunCull && stat && !S.lit && g.isBundleGroup) { if (!g._ew_bunSph || g.version !== v0) g._ew_bunSph = _ewBunSphere(g); }
             else g._ew_bunSph = null;
         }
-        _ewBun.objs = objs;
+        _ewBun.objs = objs; _ewBun.quietN = quietN;
         _ewBun.last = T;
         _ewBun.ms += performance.now() - t0; _ewBun.msN++;
         if (now - _ewBun.rateAt > 1000) {
@@ -73364,7 +73452,7 @@ const ThreeRenderer = (function () {
                     /* the lamps: a pack car's own measured spots (THE CAR PACK, g._ew_lamps — world units), else the old guess */
                     var Lp = (g._ew_lamps !== undefined) ? g._ew_lamps : { hx: 0.6 * U, hy: 0.7 * U, hz: (len / 2 + 0.1) * U, tx: 0.6 * U, ty: 0.75 * U, tz: -(len / 2 + 0.05) * U };
                     if (Lp) [-1, 1].forEach(function (sx) { var hl = _hzGlowSprite(0.42 * U, 0xfff2c8, 0.55, 0.0, 0.0, 0.0); hl.position.set(sx * Lp.hx, Lp.hy, Lp.hz); g.add(hl); var tl = _hzGlowSprite(0.28 * U, 0xff3030, 0.5, 0.0, 0.0, 0.0); tl.position.set(sx * Lp.tx, Lp.ty, Lp.tz); g.add(tl); });
-                    g._ew_hqCar = kind; G.add(g);
+                    g._ew_hqCar = kind; g._ew_bunOut = true; G.add(g);   // THE MOVERS OUT: a car drives; the shell's recording stays still
                     cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
                 }
             });
@@ -87978,7 +88066,7 @@ const ThreeRenderer = (function () {
             if (st.full > 0) st.full--;
             for (i = 0; i < n; i++) {
                 c = ch[i]; c.updateMatrixWorld(true); s = _hqStillSum(c);
-                if (seed && C[i] === c && s !== SM[i]) { mv.add(c); AT[i] = now; }
+                if (seed && C[i] === c && s !== SM[i]) { mv.add(c); AT[i] = now; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; } }
                 C[i] = c; SM[i] = s;
                 j = i * 10; p = c.position; q = c.quaternion; sc = c.scale;
                 T[j] = p.x; T[j + 1] = p.y; T[j + 2] = p.z; T[j + 3] = q._x; T[j + 4] = q._y; T[j + 5] = q._z; T[j + 6] = q._w; T[j + 7] = sc.x; T[j + 8] = sc.y; T[j + 9] = sc.z;
@@ -87999,19 +88087,19 @@ const ThreeRenderer = (function () {
                 T[j] = p.x; T[j + 1] = p.y; T[j + 2] = p.z; T[j + 3] = q._x; T[j + 4] = q._y; T[j + 5] = q._z; T[j + 6] = q._w; T[j + 7] = sc.x; T[j + 8] = sc.y; T[j + 9] = sc.z;
                 if (C[i] !== c) { C[i] = c; AT[i] = now; S.fresh++; }
                 else if (isNew) S.fresh++;
-                else { AT[i] = now; mv.add(c); S.movers++; }   // it moved: every frame from here
+                else { AT[i] = now; mv.add(c); if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; } S.movers++; }   // it moved: every frame from here (and out of its group's recording)
                 continue;
             }
-            if (hasWk && wk.has(c)) { mv.add(c); AT[i] = now; hasMv = true; }
+            if (hasWk && wk.has(c)) { mv.add(c); AT[i] = now; hasMv = true; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; } }
             if (hasMv && mv.has(c)) {
                 c.updateMatrixWorld(true); s = _hqStillSum(c);
                 if (s !== SM[i]) { SM[i] = s; AT[i] = now; }
-                else if (now - AT[i] > HQ_STILL_HOLD_MS) mv.delete(c);
+                else if (now - AT[i] > HQ_STILL_HOLD_MS) { mv.delete(c); if (c._ew_bunOutA) { c._ew_bunOut = undefined; c._ew_bunOutA = false; } }   // at rest: back into its group's recording
                 S.movers++; continue;
             }
             if ((i >= i0 && i < i1) || i + n < i1) {   // this frame's slice of the rest
                 c.updateMatrixWorld(true); s = _hqStillSum(c);
-                if (s !== SM[i]) { mv.add(c); AT[i] = now; SM[i] = s; }
+                if (s !== SM[i]) { mv.add(c); AT[i] = now; SM[i] = s; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; } }
                 S.swept++;
             }
         }
