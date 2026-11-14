@@ -2460,6 +2460,7 @@
         /* EXIT on the strip: the building stops being home — Back buttons
            land on the main menu again until the next Play. */
         window._hqExitToMenu = function () {
+            try { if (typeof window._pdForget === 'function') window._pdForget(); } catch (e) {}   // THE PLOT DUNGEONS: the level is left
             window._hqLeave();
             _hqHome = false;
             window._hqPreselect = null;
@@ -2529,6 +2530,7 @@
             _hqLastRoom = room; _hqLastDoor = null;
             return window._hqEnter({ room, at: { x: sp.x, z: sp.z, y: 0, face: sp.face || 0 }, quiet: true, from: 'pd' });
         };
+        window._pdForget = function () { _pd = null; };
         window._pdLeave = function () {
             _pd = null;
             try { window._hqExitToMenu(); } catch (e) { console.warn('[PD] leave', e); }
@@ -2658,6 +2660,7 @@
                 Object.keys(N.slots).forEach(s => { const pid = N.slots[s]; if (pdSlotOf(S, pid) !== s || (S.rot[pid] || 0) !== (N.rot[pid] || 0)) h += plate(N, s, 'pv'); });
                 pdJoins(id, N).forEach(j => { const a = px(j.slotA), b = px(j.slotB); h += `<circle class="pd-join" cx="${(a[0] + b[0]) / 2 + U / 2}" cy="${(a[1] + b[1]) / 2 + U / 2}" r="5"/>`; });
             }
+            Object.keys(V.L.tokens || {}).forEach(tk => { const sl = pdSlotOf(S, S.vars['tok_' + tk]); if (!sl) return; const o = px(sl); h += `<rect class="pd-tok" x="${o[0] + U / 2 - 6}" y="${o[1] + U / 2 - 6}" width="12" height="12"/>`; });
             if (at) { const o = px(at.slot), pid = S.slots[at.slot], rot = S.rot[pid] || 0, c = [1, 0, -1, 0][rot], s2 = [0, 1, 0, -1][rot], M = PD_RULES.plotM;
                 const gx = at.x * c + at.z * s2, gz = -at.x * s2 + at.z * c;
                 h += `<circle class="pd-you" cx="${o[0] + U / 2 + gx / M * U}" cy="${o[1] + U / 2 + gz / M * U}" r="4"/>`; }
@@ -2681,6 +2684,8 @@
             return h;
         }
         function _pdPanelAct(act) {
+            if (act.indexOf('enter:') === 0) { window._pdEnter(act.slice(6)); return; }
+            if (act.indexOf('wipe:') === 0) { window.PD.reset(act.slice(5)); window._pdRenderSelect(); return; }
             if (!_pd) return;
             const t = _hqPanelTarget, id = _pd.id, S = pdState(id), C = (t && t.counter) || {};
             const all = pdMoves(id, S).filter(m => !C.pdPlots || C.pdPlots.indexOf(m.plot) >= 0);
@@ -2702,7 +2707,7 @@
 .pd-vac{fill:#000;stroke:#444;stroke-width:1.5;stroke-dasharray:3 4}
 .pd-port{stroke:#e8e8e8;stroke-width:7;stroke-linecap:butt}.pd-port.upper{stroke:#ffb35a}.pd-port.trace{stroke:#7dff9a;stroke-width:3}.pd-port.pipe{stroke:#6ab7ff;stroke-width:4}.pd-port.track{stroke:#ff8ad0;stroke-width:3}
 .pd-port.pv{stroke:#ffd84a;stroke-width:3;stroke-dasharray:4 3}
-.pd-join{fill:#ffd84a}.pd-you{fill:#ff5a5a;stroke:#fff;stroke-width:1.5}
+.pd-tok{fill:#c9a2ff;stroke:#fff;stroke-width:1.5}.pd-join{fill:#ffd84a}.pd-you{fill:#ff5a5a;stroke:#fff;stroke-width:1.5}
 .pd-role{fill:#b9bec7;font:8px monospace;text-anchor:middle}
 .pd-key{margin:6px 0 0;font-size:11px;color:#b9bec7}.pd-key i{display:inline-block;width:10px;height:10px;margin:0 4px 0 8px;vertical-align:middle}.pd-key .k1{background:#12303a;border:1px solid #5fd6ee}.pd-key .k2{background:#ff5a5a;border-radius:50%}.pd-key .k3{border:1px dashed #ffd84a}
 .pd-moves{display:flex;flex-direction:column;gap:6px;min-width:190px;flex:1}
@@ -2710,16 +2715,46 @@
 .pd-note{margin:2px 0;font-size:12px;color:#b9bec7}.pd-note.bad{color:#ff8a8a}
 .pd-actions{flex-wrap:wrap}
 .pd-confirm:not([disabled]){background:#1c6b2c!important;border-color:#7dff9a!important;color:#fff!important}
-.pd-back{background:#7a1c1c!important;border-color:#ff8a8a!important;color:#fff!important}`;
+.pd-back{background:#7a1c1c!important;border-color:#ff8a8a!important;color:#fff!important}
+.pd-sel-note{color:#b9bec7;font-size:13px;margin:6px 4px 14px}
+.pd-sel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.pd-sel-card{background:#000;border:2px solid #fff;padding:12px;display:flex;flex-direction:column;gap:6px}
+.pd-sel-verb{font-size:11px;letter-spacing:2px;color:#5fd6ee}
+.pd-sel-title{font-size:17px;color:#fff;line-height:1.2}
+.pd-sel-state{font-size:11px;color:#8a8f98}.pd-sel-state.ok{color:#7dff9a}
+.pd-sel-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.pd-sel-go{background:#1c6b2c!important;border-color:#7dff9a!important;color:#fff!important}`;
             document.head.appendChild(st);
         }
         document.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-pd]') : null; if (!b || b.disabled) return; e.preventDefault(); _pdPanelAct(b.getAttribute('data-pd')); });
         window.PD = {
             state: () => _pd ? { level: _pd.id, state: pdState(_pd.id), at: _pdAt(), moves: pdMoves(_pd.id, pdState(_pd.id)), joins: pdJoins(_pd.id, pdState(_pd.id)), undo: _pd.undo.length } : null,
             go: (id) => window._pdEnter(id), leave: () => window._pdLeave(),
-            move: (m) => _pdDoMove(m), undo: () => _pdUndo(), act: (cid) => { const o = pdOfRoom(ThreeRenderer.hq.pd.at().room), C = o && (DOOR_HQ.rooms[pdRoomId(o.level, o.plot)].counters || []).find(c => c.id === cid); return C ? _pdAct(C) : false; },
+            move: (m) => _pdDoMove(m), undo: () => _pdUndo(), act: (cid) => { if (!_pd) return false; let C = null; Object.keys(pdLevel(_pd.id).L.plots).forEach(p => { C = C || (DOOR_HQ.rooms[pdRoomId(_pd.id, p)].counters || []).find(c => c.id === cid); }); return C ? _pdAct(C) : false; },   // (console: a press by its counter id, wherever you stand)
             reset: (id) => { if (_pd && (!id || id === _pd.id)) return _pdReset(); try { const A = _pdSaveAll(); delete A.levels[id]; localStorage.setItem(PD_RULES.saveKey, JSON.stringify(A)); } catch (e) {} return true; },
         };
+        /* the level list (Settings > Developer > Open Plot Dungeons → index.html #pdSelectPage): every type, its levels, SOLVED marks */
+        window._goToPlotDungeons = function () {
+            if (typeof isOnlineMatch === 'function' && isOnlineMatch()) { _hqToast('PLOT DUNGEONS · closed during an online match', 2200); return; }
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            _pdStyle(); _showTitlePage('pdSelectPage'); window._pdRenderSelect();
+        };
+        window._pdRenderSelect = function () {
+            const body = document.getElementById('pdSelectBody'); if (!body) return;
+            const sv = _pdSaveAll().levels || {}, V = pdLevels();
+            let h = '<p class="pd-sel-note">Test build. Each dungeon is one puzzle idea; walk to a console, a dial or the model and press E. Names, enemies and places are stand-ins.</p><div class="pd-sel-grid">';
+            Object.keys(PD_DUNGEONS).forEach(type => {
+                const T = PD_DUNGEONS[type]; if (T.hidden) return;
+                (T.levels || []).forEach((L, i) => {
+                    const id = type + (i + 1), s = sv[id];
+                    h += `<div class="pd-sel-card"><div class="pd-sel-verb">${_pdEsc(T.verb || '')}${(T.levels.length > 1) ? ' · LEVEL ' + (i + 1) : ''}</div><div class="pd-sel-title">${_pdEsc(L.title || T.label)}</div>`
+                       + `<div class="pd-sel-state${s && s.solved ? ' ok' : ''}">${s && s.solved ? 'SOLVED · ' + (s.moves | 0) + ' MOVES' : s ? 'IN PROGRESS' : 'NOT STARTED'}</div>`
+                       + `<div class="pd-sel-btns"><button class="pm-set-btn pd-sel-go" data-pd="enter:${id}">ENTER</button>${s ? `<button class="pm-set-btn" data-pd="wipe:${id}">START OVER</button>` : ''}</div></div>`;
+                });
+            });
+            body.innerHTML = h + '</div>';
+        };
+        window._pdSelectBack = function () { try { state.gameState = GS.MAIN_MENU; } catch (e) {} window._openMainMenuSettings(); };
         /* ?pd=<level> in the url: straight into a level, once per page */
         let _pdBootDone = false;
         window._pdBootParam = function () {
@@ -4644,6 +4679,7 @@
             let el = _hqEl('hqQuest');
             let t = null;
             try { t = (typeof window.questTracker === 'function') ? window.questTracker(_hqProfile()) : null; } catch (e) { t = null; }
+            if (typeof window._pdActive === 'function' && window._pdActive()) t = null;   // THE PLOT DUNGEONS: the test build is no part of the story's quest
             if (!t) { if (el) el.style.display = 'none'; return; }
             if (!el) {
                 el = document.createElement('div'); el.id = 'hqQuest'; el.className = 'hq-quest';
@@ -10219,6 +10255,10 @@
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Spell Library — browse, edit, add, delete and reassign every spell/ability, preview animations in the Spell Lab, then export your changes as JSON for Claude to make live.${(typeof window.EWSpellMods !== 'undefined' && (() => { const c = window.EWSpellMods.counts(); const n = c.modified + c.added + c.deleted + c.learnsets + c.raceAbilities; return n ? ` <span style="color:#ffd86a">●</span> ${n} pending change group${n === 1 ? '' : 's'}${window.EWSpellMods.doc.enabled ? '' : ' (DISABLED)'}` : ''; })()) || ''}</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._goToSpellLibrary()">Open Spell Library</button>
+                        </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Plot Dungeons — the puzzle dungeon test build: ten dungeons made of plots that turn and slide. Progress saves per dungeon, apart from the story.</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn" onclick="window._goToPlotDungeons()">Open Plot Dungeons</button>
                         </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Race Editor — every race's base stats, name, types, elements, terrain and range; rank a stat by dragging, set its floor and ceiling, edit the letter grades and the level curve, then export your changes as JSON for Claude to make live.${(typeof window.EWRaceMods !== 'undefined' && (() => { const n = window.EWRaceMods.total(); return n ? ` <span style="color:#ffd86a">●</span> ${n} pending edit${n === 1 ? '' : 's'}${window.EWRaceMods.doc.enabled ? '' : ' (DISABLED)'}` : ''; })()) || ''}</div>
                         <div class="pm-set-row" style="margin-bottom:14px">

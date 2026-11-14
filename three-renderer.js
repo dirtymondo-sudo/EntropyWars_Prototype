@@ -93373,7 +93373,8 @@ const ThreeRenderer = (function () {
         room: function () { return _hq ? (_hq.opts.room || 'central_egress') : null; },
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): { id, nbs, parts: { id: { built, step, attached, rel } }, crossed, lampN, skyYaw, blending } | null */
         stage: _hqStageStatus,
-        pd: { move: _hqPdMove, refresh: _hqPdRefresh, at: _hqPdAt, top: _hqPdTop, busy: function () { return !!(_hq && _hq.pd); } },   // THE PLOT DUNGEONS
+        pd: { move: _hqPdMove, refresh: _hqPdRefresh, at: _hqPdAt, top: _hqPdTop, busy: function () { return !!(_hq && _hq.pd); },
+              objs: function () { return (_hq && _hq.pdDrawn || []).map(function (o) { return { id: o.row.id, on: o.grp.visible, off: !!o.grp._ew_pdOff, lit: o.lit, solid: !!o.blk }; }); } },   // THE PLOT DUNGEONS
         batch: function () { return _hqBatchStats(_hq); },   // THE STATIC BATCH (Phase 11): per part { phase, batches, pieces, verts, broken, scanned }
         /* THE FAR SHELLS / THE LOD LEVELS (OPEN_WORLD_PLAN Phase 10): { parts, built, shown, tris, far (m), waiting: [ids] } and
            { meshes, full, lod1, lod2, culled, swaps } — null outside the walk (or before the first tick) */
