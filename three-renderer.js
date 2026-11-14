@@ -72009,10 +72009,9 @@ const ThreeRenderer = (function () {
             if (!f.hollow || f.leaf === 'none' || (typeof hqTexbPack === 'function' && hqTexbPack(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
             var cat = cat0[f.leaf] || cat0[HQ_CITY_DOOR.leaf]; if (!cat || !cat.file) return;
             if (cat.open && cat.open !== 'swing') cat = cat0[HQ_CITY_DOOR.leaf];
-            try {
-                var w = Math.max(2, f.w || 8), d = Math.max(2, f.d || 8), hol = hqTexbDoor({ w: w, door: f.door }), q = -((f.rot || 0) * Math.PI / 180), c = Math.cos(q), s = Math.sin(q);
-                var lz = (d - 0.12) / 2 - 0.12, ow = hol.cw - 0.04, oh = hol.doorH, dbl = !!cat.double || !!f.leafDouble, base = f.base || 0;
-                var g = new THREE.Group(); g.name = 'hq_city_door'; g.position.set((f.x + hol.lx * c + lz * s) * U, base * U + 0.3, (f.z - hol.lx * s + lz * c) * U); g.rotation.y = q;
+            /* one doorway's leaves: (wx, wz) = its middle in the room's metres, q = the wall's turn, ow / oh = the opening */
+            var hang = function (cat, wx, wz, q, ow, oh, dbl, base, id) {
+                var g = new THREE.Group(); g.name = 'hq_city_door'; g.position.set(wx * U, base * U + 0.3, wz * U); g.rotation.y = q;
                 var hingeRight = !dbl && cat.hinge === 'right', pv = new THREE.Group(), pv2 = null;
                 pv.position.x = (hingeRight ? 1 : -1) * (ow / 2) * U; g.add(pv);
                 var targetH = (oh - 0.015) * U, targetW = (dbl ? ow / 2 - 0.012 : ow - 0.01) * U, yawDeg = cat.yaw || 0;
@@ -72031,8 +72030,20 @@ const ThreeRenderer = (function () {
                 } else { lg.position.x = (hingeRight ? -1 : 1) * (ow / 2) * U; pv.add(lg); }
                 (_hq.doorGroup || G).add(g);
                 /* the record, in the room's metres: the doorway's middle, the way out of it (the front's normal), the reach */
-                list.push({ id: f.id || null, x: f.x + hol.lx * c + lz * s, z: f.z - hol.lx * s + lz * c, nx: s, nz: c, y: base, pv: pv, pv2: pv2, sgn: hingeRight ? -1 : 1, t: 0, applied: 0, dir: 1, reach: HQ_CITY_DOOR.reach + ow / 2 });
+                list.push({ id: id || null, x: wx, z: wz, nx: Math.sin(q), nz: Math.cos(q), y: base, pv: pv, pv2: pv2, sgn: hingeRight ? -1 : 1, t: 0, applied: 0, dir: 1, reach: HQ_CITY_DOOR.reach + ow / 2 });
                 n++;
+            };
+            try {
+                var w = Math.max(2, f.w || 8), d = Math.max(2, f.d || 8), hol = hqTexbDoor({ w: w, door: f.door }), q = -((f.rot || 0) * Math.PI / 180), c = Math.cos(q), s = Math.sin(q);
+                var lz = (d - 0.12) / 2 - 0.12, base = f.base || 0;
+                hang(cat, f.x + hol.lx * c + lz * s, f.z - hol.lx * s + lz * c, q, hol.cw - 0.04, hol.doorH, !!cat.double || !!f.leafDouble, base, f.id);
+                /* THE INNER DOORS (2026-11-13, the interiors pass): the row's `inner: [{ x, z, rot, w, leaf, double }]` hangs more swinging
+                   leaves inside it, in the building's own frame (x along the front from its middle, z toward the front, rot 0 = in a wall
+                   that runs along the front, 90 = across it). Drawn only: the district's own walls leave the gap. */
+                (f.inner || []).forEach(function (r, i) {
+                    var ci = cat0[r.leaf] || cat0['leaf_office']; if (!ci || !ci.file || (ci.open && ci.open !== 'swing')) ci = cat;
+                    hang(ci, f.x + (r.x || 0) * c + (r.z || 0) * s, f.z - (r.x || 0) * s + (r.z || 0) * c, q - (r.rot || 0) * Math.PI / 180, (r.w || 1.75) - 0.04, r.h || hol.doorH, r.double != null ? !!r.double : !!ci.double, base, (f.id || '') + ':in' + i);
+                });
             } catch (e) { console.warn('[HQ] a city door failed', f.id, e); }
         });
         return n;
