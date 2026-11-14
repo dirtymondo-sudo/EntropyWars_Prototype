@@ -3009,4 +3009,8 @@ a different time ... only use units on the roster". He picked "Routines now, bed
   sleeps two; housemates take them in list order. A resident with a bed walks in at bedtime, lies on it (segment `sleep`, `top` = the
   catalogue seat or 0.5 m) and walks out at its wake time; without one it still goes in through the door. The rig carries slot
   `hqSleep` = UAL2 LayToIdle trimmed to its first 0.05 s (flat on the back), feet to the bed's front (its `face`): NOT SEEN ON SCREEN.
-  A home a district could not open moves: Bunny girl -> P11-06-B2 Apartments (Entertainment PR #1359).
+  A home a district could not open moves: Bunny girl -> P11-06-B2 Apartments (Entertainment PR #1359); Ki fighter + Swordfighter ->
+  P03-00-B2, Cult leader -> P02-01-B1, Gangster + Homosapien -> P00-01-B2 (Southside PR #1370); Nephilim -> P07-04-B2 (Hero Plaza PR #1372).
+  The Politician keeps the hotel P08-00-B1 (a walk-in since PR #1358). The Ghost has `noBed` (it haunts the hotel by day). A bed on a
+  district's ghost block (Sports, Southside) is reached from the walked square beside it. 2026-11-14 03:15: 41 of 44 sleep in a bed
+  (not the Honda Civic, King Kong on his field, the Ghost).

@@ -67595,7 +67595,7 @@ const HQ_CITY_RESIDENTS = {
         { race: 'sidekick', home: 'P07-04-B2', homeName: 'Apartments A', day: [[23, 7, 'S', 'home'], [8, 18, 'W', 'b:P05-04-B1'], [18, 23, 'O', 'b:P06-04-B1']] },
         { race: 'superhero', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[0, 6, 'S', 'home'], [7, 11, 'W', 'b:P06-05-B1'], [11, 19, 'P', 'p:P05-05'], [19, 24, 'W', 'b:P06-04-B1']] },
         { race: 'eagleman', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[21, 4, 'S', 'home'], [5, 20, 'W', 'p:P05-05']] },
-        { race: 'nephilim', home: 'P04-05-B2', homeName: 'Hero Plaza residence', day: [[23, 7, 'S', 'home'], [9, 17, 'W', 'b:P06-05-B1'], [17, 22, 'O', 'b:P04-05-B1']] },
+        { race: 'nephilim', home: 'P07-04-B2', homeName: 'Apartments A', day: [[23, 7, 'S', 'home'], [9, 17, 'W', 'b:P06-05-B1'], [17, 22, 'O', 'b:P04-05-B1']] },
         { race: 'police officer', home: 'P07-04-B2', homeName: 'Apartments A', day: [[8, 15, 'S', 'home'], [16, 24, 'W', 'b:P04-02-B1'], [0, 7, 'P', 'd:HE']] },
         /* ENTERTAINMENT */
         { race: 'clown', home: 'P10-07-B1', homeName: 'Crew house', day: [[2, 10, 'S', 'home'], [11, 14, 'W', 'b:P09-05-B1'], [14, 18, 'O', 'b:P11-06-B1'], [19, 1, 'W', 'b:P09-05-B1']] },
