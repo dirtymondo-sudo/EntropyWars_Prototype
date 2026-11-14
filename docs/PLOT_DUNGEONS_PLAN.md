@@ -1,25 +1,26 @@
-# PLOT DUNGEONS — the plan (puzzle dungeon vertical slices, a standalone mode)
+# PLOT DUNGEONS — the plan (puzzle dungeon vertical slices, a standalone test build)
 
-*Plan document, 2026-11-14. Planning only: nothing in the game is built or changed by this doc. Thread "Plan the puzzle dungeon
-vertical slices". Copies: repo `docs/PLOT_DUNGEONS_PLAN.md` and `/mnt/project-files/dungeons/PLOT_DUNGEONS_PLAN.md`. The five boards,
-start and solved, on one sheet: `/mnt/project-files/dungeons/boards_start_solved.png`.*
+*Plan document, 2026-11-14, amended the same day with mondo's answers (§1, §13). Nothing in the game is built yet. Thread "Plan the puzzle dungeon
+vertical slices". Copies: repo `docs/PLOT_DUNGEONS_PLAN.md` and `/mnt/project-files/dungeons/PLOT_DUNGEONS_PLAN.md`. Slices 5.1-5.5,
+start and solved, on one sheet: `/mnt/project-files/dungeons/boards_start_solved.png`; the other five are drawn in the source packs.*
 
 **Read this first if you are a fresh chat picking this up.** This doc is enough to start. It tells you what mondo asked, what the two
 source packs said, what changed to fit Entropy Wars, which files and functions to touch, the phases in order with their checks, and
-what mondo still has to approve. **Nothing here is approved for building yet** (his rule: map / UI / camera design needs a plan and a
-mock-up, then his explicit OK). §13 lists what he approves. Once he answers, write his answers into §13, then start Phase 0.
+what is decided. **The direction is approved** (mondo 2026-11-14 09:32 UTC: build all of them so he can test them, go with the
+recommendations, naming and wiring into the game are low priority). §13 holds the decisions. Start at Phase 0.
 
 ---
 
 ## 0. In one paragraph
 
-Five small puzzle dungeons, one puzzle verb each (ROTATE, SLIDE, CONNECT, GROW AND CARRY, ESCORT), each a 3 × 3 board of Disaster
-City-sized plots (42 m, a 12 × 12 battle board each, 126 m a side). You walk in third person as the officer, work an in-world 3 × 3
-model of the board, and whole plots turn or slide (with you standing on them when the puzzle needs it). Two of the five hold one
-fixed fight on their own plot, fought on that plot as a normal exploration battle. The mode starts from **Settings > Developer > Open
-Plot Dungeons** while it is a prototype, and from a main-menu button once mondo likes the first slice. It never touches story mode,
-the zones or Online PvP. The engine idea is to build each plot as its own **stage part** (the system that already joins DOOR HQ's
-wings with no loading card) and move a part by changing its pose at runtime. Phase 0 proves that before any content is built.
+Ten small puzzle dungeons, every design from mondo's two packs, each a 3 × 3 board of Disaster City-sized plots (42 m, a 12 × 12 battle
+board each, 126 m a side). You walk in third person as the officer, work an in-world 3 × 3 model of the board, and whole plots turn or
+slide (with you standing on them when the puzzle needs it). A few hold one fixed fight on their own plot, fought on that plot as a normal
+exploration battle. **This is a standalone test build, not a mode of its own:** dungeons will later be part of story mode and connect to
+it, but for now each one opens on its own from **Settings > Developer > Open Plot Dungeons** so mondo can check that the puzzles play
+well. Names, menu wiring, story links and final enemies come later and are low priority. The engine idea is to build each plot as its
+own **stage part** (the system that already joins DOOR HQ's wings with no loading card) and move a part by changing its pose at
+runtime. Phase 0 proves that before any content is built.
 
 ---
 
@@ -30,6 +31,14 @@ wings with no loading card) and move a part by changing its pose at runtime. Pha
   disaster city and all their rules and layers, so you should make the plan more tailored for entropy wars and the codebase so a fresh
   chat could read the plan and pick it up no problem. But basically review these prototypes and plans and improve upon them and make
   one plan doc combining everything."
+- **His answers (2026-11-14 09:32 UTC, this thread):** "We are just testing out the puzzles dungeons right now, they will eventually be in
+  the game, but right now i just want to make sure the puzzles play well before wiring them into the game and naming them and all that,
+  that stuff is low priority at this stage. Dungeons is not a separate mode, it will be a part of the stoy mode and connect, but right now
+  we just need a standalone versions of the dungeon so i can test. I dont want any swaps, just build all of them so i can test them. The
+  enemies would just depend on what zone the dungeon is in and who i wanna out in there, once again not a huge priority right now. And
+  we are going to put different types of dungones in different places, so dont get attached that this type of dungeon has to have these
+  enemies. Basically im saying a lot of your questions are just kinda up in the air and dont matter at this poiint. We are in the building
+  and experimenting phase, so just go with your recommended. Amend the doc to reflect all this"
 - **Source A**, `dungeon_vertical_slices.pdf` ("PLOT DUNGEONS / VERTICAL SLICE ATLAS", 6 pages). Five slices: 01 ROTATE *The Turning
   Tomb* (catacombs), 02 SLIDE *The Missing Street* (Disaster City), 03 ROUTE *Three Little Worlds* (fairy forest, marbles),
   04 CONNECT *Two to Open* (circuit, two locks), 05 STAGE *The Procession* (catacombs or H-Wing, a guardian moved by a bell).
@@ -50,21 +59,21 @@ These come from mondo, CLAUDE.md and team memory. Each one changes something in 
 
 | Rule | What it means here |
 |---|---|
-| **"No puzzles"** stands over the story zones (ZONES_PLAN.md, LEVEL_DESIGN_PLAN.md, EDITOR_PLAN D6). | mondo now asks for puzzle dungeons himself, as a **standalone mode**. The plan keeps every puzzle inside this mode: no plot dungeon is reachable from DOOR HQ, a zone, the directory or the quest log. He confirms this reading in §13 Q1. |
-| Never invent names or logos. | The slice titles are **working titles from his two packs** (§13 Q2). "DOOR Works" becomes the game's real HQ floor **THE WORKS** (`works`, "2 · THE WORKS"). "Catacombs" is the real room **THE CATACOMBS** (`site_prebuilt_vatican_catacombs`). The mode's label is **PLOT DUNGEONS** (the PDF's own title) until he names it. UI words stay plain labels (TURN LEFT, SLIDE NORTH, UNDO, RESET, BACK, CONFIRM). |
-| Only roster units. | "Tomb guardians", "sentries", "scavengers", "security units", "creatures" and the "stone guardian" become real races from `AVAILABLE_RACES`, picked from each look's own area-unit list (§5, his pick in §13 Q5-Q6). Units are named after their race. No new characters. |
+| **"No puzzles"** stood over the story zones (ZONES_PLAN.md, LEVEL_DESIGN_PLAN.md, EDITOR_PLAN D6). | **Changed by mondo 2026-11-14:** puzzle dungeons will be part of story mode and connect to it. For now they are a standalone test build only: no plot dungeon is reachable from DOOR HQ, a zone, the directory or the quest log yet. Wiring them into the zones is a later plan, not this one. |
+| Never invent names or logos. | The slice titles are **working titles from his two packs**; naming is low priority (mondo 11-14). "DOOR Works" becomes the game's real HQ floor **THE WORKS** (`works`, "2 · THE WORKS"). "Catacombs" is the real room **THE CATACOMBS** (`site_prebuilt_vatican_catacombs`). The test launcher's label is **PLOT DUNGEONS** (the PDF's own title) until he names it. UI words stay plain labels (TURN LEFT, SLIDE NORTH, UNDO, RESET, BACK, CONFIRM). |
+| Only roster units. | "Tomb guardians", "sentries", "scavengers", "security units", "creatures" and the "stone guardian" become real races from `AVAILABLE_RACES`, picked from each look's own area-unit list as placeholders. A dungeon's real enemies follow the zone it ends up in and who mondo wants there; a puzzle type is never tied to a place or to enemies (mondo 11-14). Units are named after their race. No new characters. |
 | Never repaint or rebake his textures. Gold = the `gold` terrain key (gilt.png), never the gold*.png files. | Each slice borrows the shell sheets, mood, fog and look of an existing room (§6.2). Tints only where the district threads already tint (a tint multiplies a sheet). |
 | Reuse R2 assets, pack first. Meshy only with his approval. No SFX generation. | Every piece in §8 is checked against MODEL_LIST.md and the pack name list first. Missing pieces go to him as a list. Sounds come from the existing sfx (`playSfx`, `playDoorSfx`). |
 | 1 tile per square, battle squares 3.5 m. Blockers centred on whole squares; walkways whole squares wide; nothing half across two squares; decor off centre. | The source packs used 3.65 m cells. Here a cell **is** a 3.5 m battle square, so a plot is 42 m and a board is 126 m (§4). |
 | Interiors get working swing doors like DOOR HQ. | Every doorway that is a door hangs a catalogue leaf (§6.6). Exit gates are doors with a locked state. |
-| Fewer NPCs, none blocking, no followers. | The walk is the officer alone (the party is not drawn following). Only the enemies of the two fights and the one escorted guardian are bodies. "The party rides the plot" = the officer rides it. |
+| Fewer NPCs, none blocking, no followers. | The walk is the officer alone (the party is not drawn following). Only the enemies of the fights and the one escorted guardian are bodies. "The party rides the plot" = the officer rides it. |
 | PS1 window UI: panels black with a white outline, BACK red, CONFIRM green, no text cut off, no sideways scroll. | The 3 × 3 model's panel and the slice list follow it (§6.5). |
 | Bloom and fog off, real lights, no placeholder geometry. | Shapes drawn in code are only allowed where a district thread already uses `k: 'arch'` parts for architecture. Props are models. |
-| Every distinct complaint is its own thread; design needs his OK; every delivery posted. | One thread per phase (§9), each starts with a mock-up for his OK when it adds a new look or layout. |
+| Every distinct complaint is its own thread; design needs his OK; every delivery posted. | One thread per phase (§9). mondo's 11-14 answer is the OK for the ten test boards as drawn in the two packs and here: build them, post each as it lands, and let his play-testing drive the changes. A new look or layout he has not seen still gets a mock-up first. |
 | NO TESTS, no CI; `node --check` the JS you touched. No playtest unless mondo asks in the thread (RULE #1c). | Proof is offline (§10). Screens only when he asks for a playtest himself. |
 | Never create new GAME .js files. Repo-root tooling is fine. | Runtime code goes into data.js, three-renderer.js, map.js, index.html (and ui.js / hud.js if a panel needs it). The tool `bake-dungeons.js` sits at the repo root. |
-| Online PvP parity (RULE #2). | The mode is single player and never online. Its fights are local exploration battles with no guest, so nothing is relayed. Say so in each PR. |
-| Never delete content he did not name. | **Mystery Dungeon** (main menu, `_goToMysteryDungeon`, the 10-floor crawl) stays exactly as it is. Plot Dungeons is a separate thing. |
+| Online PvP parity (RULE #2). | The test build is single player and never online. Its fights are local exploration battles with no guest, so nothing is relayed. Say so in each PR. |
+| Never delete content he did not name. | **Mystery Dungeon** (main menu, `_goToMysteryDungeon`, the 10-floor crawl) stays exactly as it is. Plot dungeons are a separate thing. |
 
 ---
 
@@ -115,8 +124,9 @@ The board logic of all ten slices was checked at the port level with two small s
 11. **Names and units** follow §2.
 12. **Overlap.** Both packs have a rotating catacomb hub with a key. They merge into one slice (5.1): source B's layout and fight, source
     A's dial, preview, sightline and "the dial always works".
-13. **One verb per place.** The five picks use five different looks (catacombs, Disaster City, THE WORKS, fairy forest, H-Wing) so the
-    mode shows off five places, and the five verbs build on each other's engine pieces in the build order (§9).
+13. **All ten are built** (mondo 11-14: "no swaps, just build all of them"). The two rotating crypts (A01, B1) stay two separate layouts
+    on the same engine, so both versions can be played. The looks below are only the packs' own places for testing; any dungeon type can
+    stand in any zone later.
 
 ---
 
@@ -200,12 +210,14 @@ the joins it would make glowing), CONFIRM, UNDO, RESET, BACK. Nothing needs an o
 
 ---
 
-## 5. The five slices
+## 5. The ten slices (all built)
 
-Each slice lists: the look it borrows, the board, the moves, the solution (checked), the fight, the first view, and what it needs.
-Enemy picks are **proposals** from the look's own area-unit list (data.js `hqRoomNatives(<room>)`); mondo picks (§13 Q5).
+Each slice lists: the look it borrows for the test, the board, the moves, the solution (checked), the fight, the first view, and what it
+needs. Enemies are **placeholders** from the look's own area-unit list (data.js `hqRoomNatives(<room>)`), set in the slice's layout file
+so mondo can change them in one line. A slice's place, look and enemies are not part of its puzzle: the same board can be dressed for any
+zone later. Order: 5.1-5.5 are the first five designed in full; 5.6-5.10 the other five.
 
-### 5.1 ROTATE · *The Turning Crypt* (working title; sources A01 + B1)
+### 5.1 ROTATE · *The Turning Crypt* (working title; source B1, with source A's dial, preview and sightline)
 
 - **Look:** `site_prebuilt_vatican_catacombs` (THE CATACOMBS): floor `dungeon`, walls `bricks_3`, dado `bricks_2`, trim `marble`, teal
   retro look, candle rings, fog off per the visual rules.
@@ -223,7 +235,7 @@ Enemy picks are **proposals** from the look's own area-unit list (data.js `hqRoo
   Back in B2, turn left: the arms go from S + W to S + E. Walk east into B3, win the fight, take the key. Back in B2, turn left again:
   S + E becomes E + N. Walk north to A2 and open the gate with the key. Turning right twice from arrival (W + N, then N + E) also
   works. Either way it is two presses.
-- **Fight (B3, fixed):** three units on the 8 × 8 hall. Proposal: **undead** × 2 (melee, start near the west door) + **necromancer**
+- **Fight (B3, fixed):** three units on the 8 × 8 hall. Placeholder: **undead** × 2 (melee, start near the west door) + **necromancer**
   (ranged, behind the rear pair of sarcophagi). Alternatives from the room's list: ghoul, gargoyle, ghost. Party starts in the west
   corridor squares and the hall's west column. The key lies on the hall's east wall and is taken after the win.
 - **First view:** from C2 the barred window high in the north wall frames the light shaft over A2's gate (`light_shaft` prop, the room's
@@ -275,7 +287,7 @@ Enemy picks are **proposals** from the look's own area-unit list (data.js `hqRoo
 - **Solution:** walk C2 → C1 → B1; win the fight at the spring; open the valve: water runs east into B2's west arm and the dormant trellis
   grows into a climbable **root ramp** up to +7 m (the plot gains a feature it keeps). Stand in B2's centre, turn it so the ramp points
   north; climb to A2's exit. Pointing it east reaches B3's cache.
-- **Fight (B1, fixed):** three units, a shallow channel across the hall with two crossings and roots as cover. Proposal: **goblin** × 2 +
+- **Fight (B1, fixed):** three units, a shallow channel across the hall with two crossings and roots as cover. Placeholder: **goblin** × 2 +
   **swamp monster**. Alternatives from the glade's list: gnome, mushroom girl, tree person.
 - **Rule taught:** a plot can gain a permanent traversal feature and carry it into another useful pose. The growth stays inside B2 and
   never stretches across a seam.
@@ -286,7 +298,7 @@ Enemy picks are **proposals** from the look's own area-unit list (data.js `hqRoo
 - **Board:** C1 ENTRY / BELL (the model, the bell, the recall) · C2 GUARDIAN BAY · B2 TWO-STOP HUB (4 × 4 holding chamber H) · B1 CAPPED
   BRANCH (false lead) · B3 PLATE (a large plate with the guardian's footprints) · C3 EXIT GATE · A1-A3 walls. A fixed gallery on the
   board's south side (squares 10-11 of row C) joins C1 to C3; railings keep the officer out of the guardian's lanes.
-- **The guardian:** a roster unit walking as a body, not a fighter. Proposal: **golem**. Alternatives: gargoyle, chess piece (his pick).
+- **The guardian:** a roster unit walking as a body, not a fighter: **golem** (a layout-file line; gargoyle or chess piece also fit).
 - **Moves:** the bell sends the guardian one chamber along the hub's connected port; B2 turns only between its **two detents, SW and NE**
   (it cannot stop at SE or NW), and only while the guardian stands wholly inside H. Arrows on the model preview where the next bell sends
   it. RECALL puts the guardian back in C2 and the hub to SW.
@@ -294,16 +306,67 @@ Enemy picks are **proposals** from the look's own area-unit list (data.js `hqRoo
   guardian rides it). Ring again: H → B3, onto the plate. Its weight opens the gate; walk the gallery to C3.
 - **Fight:** none.
 
-### 5.6 The bank (kept for later slices or as swaps)
+### 5.6 ROTATE · *The Turning Tomb* (working title; source A01)
 
-| Slice | Source | Verb | Why it is not in the first five | Engine it needs |
-|---|---|---|---|---|
-| *Missing Channel* (sewers) | B2 | slide + water | Same verb as 5.2; the water flow is a nice second step for SLIDE | slide (5.2) + a scripted stream |
-| *Traveling Door* (THE WORKS) | B5 | slide with height (move a stairwell) | Same verb as 5.2; the best "SLIDE level 2" | slide + ports at two heights |
-| *Three-Rail Crossing* (Disaster City) | B3 | rotate with no rider, elevated route | Disaster City already has 5.2; needs the catwalk + grind | rotate (5.1) + upper decks + `_hq.rails` |
-| *Three Little Worlds* (fairy forest) | A03 | route marbles | The fairy forest already has 5.4; the marbles are new tech with little search | rotate + scripted rolling balls |
+- **Look:** THE CATACOMBS, as 5.1. Same rotor engine, a different board, so the two can be compared in play.
+- **Board:** C2 FOYER (ports N + the way in, the model, the barred sight window) · B2 HUB (4 × 4 chamber, two-arm L, starts S + E, the dial
+  at its centre) · B1 KEY CRYPT (dead end, port E, the gold key on square (5,5)) · B3 EXIT HALL (ports W + E, the locked gate on its east
+  edge) · every other plot sealed.
+- **Solution (2 quarter turns):** enter B2 from C2 (the east gate is locked). Turn right: S + E becomes S + W. Walk west into B1, take the
+  key. Back in B2, turn left: S + W becomes S + E. Walk east through B3 and unlock the gate.
+- **Fight:** optional, in C2 before the controls wake: the party on squares (4-7, 9), two sentries on (3,3) and (8,3), low cover on (3,5)
+  and (8,5) (source A's numbers less one). Placeholder sentries: **skeleton** × 2.
+- **Next difficulty (later):** a second hub.
 
-mondo may swap any bank slice into the five (§13 Q3).
+### 5.7 SLIDE · *Missing Channel* (working title; source B2)
+
+- **Look:** the sewers (`site_prebuilt_downtown_sewers`): `urban:ConcreteStriped2c` floor, `bricks_2` walls, plan walls, no sky.
+- **Board:** A1, A2 masonry (sealed) · A3 PUMP (S + N, the exit beyond it) · B1 ELBOW (S + E, fixed) · B2 ELBOW (W + N, slides) · B3 empty ·
+  C1 INLET (S + N, the fight and the console) · C2 empty · C3 STRAIGHT (W + E, slides). Only slots B2, B3, C2, C3 take part. Each moving
+  plot carries a pipe and its own maintenance walkway, so water and the walk join together.
+- **Solution (3 slides, shortest):** elbow B2 → B3; straight C3 → C2; straight C2 → B2. Open the water and follow it C1 → B1 → B2 → B3 → A3
+  to the pump and the exit.
+- **Fight (C1, fixed, before the console wakes):** three units round a central pump housing (full cover) and two equipment banks.
+  Placeholder: **zombie** × 2 + **gangster**.
+- **Water:** a scripted stream along joined pipes only (`stream` rows switched on per joined plot); it washes debris off a small recess
+  in C1 (a find).
+
+### 5.8 SLIDE WITH HEIGHT · *Traveling Door* (working title; source B5)
+
+- **Look:** THE WORKS, as 5.3 (a second board on the same floor's look).
+- **Board:** C1 ENTRY (S + E, the console, the fight) · A2 EXIT (+7 m, port S high) · A1 records, A3 office, B1 machinery (sealed) ·
+  moving slots B2, B3, C2, C3 hold one empty slot, a T hall (W + N + S), a straight passage (W + E) and a **stairwell** (south door at
+  ground, north door at +7 m). Start: B2 empty, B3 hall, C2 passage, C3 stairs.
+- **Solution (5 slides, shortest):** hall B3 → B2; stairs C3 → B3; passage C2 → C3; hall B2 → C2; stairs B3 → B2. Walk C1 east into the
+  hall, north into the stairs, climb to A2. The first move makes it look worse on purpose.
+- **Fight (C1, fixed):** three units, a security desk as centre cover, machinery blocking one sightline, a side aisle. Placeholder:
+  **men in black** × 2 + **droid**.
+
+### 5.9 ROTATE, NO RIDER, ELEVATED · *Three-Rail Crossing* (working title; source B3)
+
+- **Look:** Disaster City, as 5.2 (roof level of a collapsed block).
+- **Board:** C1 ENTRY (S + N + E, the fight, the console) · B1 LAUNCH (stairs from its south port up to +7 m; its rail piece bends) · B2 RAIL
+  (straight) · B3 LANDING (bends) · C2 UNDERPASS (W + E, the lower recovery loop) · C3 EXIT at +7 m · A1-A3 roofs (sealed, scenery).
+- **Moves:** B1, B2, B3 turn their elevated pieces from the console in C1 (nobody rides).
+- **Solution (3 alignments):** B1 to S + E (a half turn), B2 to W + E (a quarter), B3 to W + S (a half). Climb B1's launch stairs, cross
+  the middle row on the catwalk (walk it, or grind its rail on the skateboard), come down into C3's high exit.
+- **Recovery:** a fall lands in the underpass, which leads back to the launch stairs; the alignment stays.
+- **Fight (C1, fixed):** three units among wrecks, one raised firing position. Placeholder: **gangster** × 2 + **marksman** (on the
+  raised spot).
+
+### 5.10 ROUTE · *Three Little Worlds* (working title; source A03)
+
+- **Look:** the fairy forest, as 5.4 (a second board in the same look).
+- **Board:** C1 ENTRY (the southern gallery, the model, the loader) · B1 DISPENSER (a fixed chute from its lip into the bowl at B2's centre) ·
+  B2 JUNCTION (one radial downhill track from the centre to an edge; turns to aim N, E or S; west is a return gutter) · A2 BLUE TRIANGLE,
+  B3 RED CIRCLE, C2 YELLOW SQUARE (receiving bowls on fixed tracks) · C3 EXIT WALK · A1, A3 roots (sealed).
+- **Moves:** at C1 load a colour, turn B2 (the bowl holds the marble while it turns), press RELEASE. Turning is locked while a marble
+  rolls. A right socket keeps its marble; a wrong one sends it back.
+- **Solution (3 releases):** blue, aim north; red, aim east; yellow, aim south. The three symbols over the exit light; walk the gallery
+  to C3.
+- **Heights (in 1.75 m blocks, from source A's +6 / +5 / +4 / +3 m):** source lip +5.25 m, bowl +5.25 m, every outlet +3.5 m, receivers
+  +1.75 m above the gallery's floor. The outlet height is the same in every pose, so the rails never change shape.
+- **The marbles** roll on scripted paths along authored curves (§3.2 item 10). No fight.
 
 ---
 
@@ -331,7 +394,7 @@ the written block).
   Each room copies its look room's `shell` sheets, `mood`, `look`, light colour and music key, sized 42 × 42 m, with `terrain.gen =
   { kind: 'plan', look }` and `space` / `hall` features drawn from the cells (the editor's E5 layout rows), props from marks, ghost
   walls for blockers, and `pd: '<slice>'` on every room.
-- **Never on the story side:** rooms with `pd` have no door from any story room, are never charted in the directory, carry no `site`
+- **Not on the story side yet** (until the later wiring plan): rooms with `pd` have no door from any story room, are never charted in the directory, carry no `site`
   unless the fight path needs one (see 6.4), and `bake-arenas.js` must skip them (add `if (room.pd) continue` and check with
   `node bake-arenas.js --dry-run` that no pick changes).
 
@@ -380,9 +443,9 @@ and the room re-enters with the walk's door-blink (`ThreeRenderer.hq.enter({ wal
 door). Reliable, but each move costs a short black dip. Kill switch `window.EW_PD_BLINK = true` forces this path even when the primary
 works, for comparison.
 
-**Why most slices are easy either way.** Only two slices change the ground under the officer while the officer stands on it (5.1, 5.4).
-In 5.2, 5.3 and 5.5 the officer stands on a fixed overlook or gallery while plots move, so those moves are drawn only; the walked ground
-changes once (a bridge opens, a gate opens).
+**Why most slices are easy either way.** Only three slices change the ground under the officer while the officer stands on it (5.1, 5.4,
+5.6). In the other seven the officer stands on a fixed overlook, gallery or console plot while plots move, so those moves are drawn only;
+the walked ground changes once (a bridge opens, a gate opens, the arranged plots join).
 
 ### 6.4 The fights
 
@@ -395,7 +458,7 @@ changes once (a bridge opens, a gate opens).
 - `hqEncounterRoomOk(roomId)` needs `hqRoomSite(roomId)`. Either give the fight room its look room's `site` (and keep bake-arenas.js
   skipping `pd` rooms) or let the PD fight row name the site directly. Decide in Phase 1 by reading `hqEncounterLaunch`.
 - The party is a saved team from the Squad Desk (map.js `_openSquadDesk`, the same desk Play VS CPU uses), every vessel unlocked like
-  Play VS CPU (§13 Q4). Wipeout to win; a loss or retreat keeps the puzzle state and puts the officer at the fight plot's door.
+  Play VS CPU (decided, §13). Wipeout to win; a loss or retreat keeps the puzzle state and puts the officer at the fight plot's door.
 - While a fight runs, every move is frozen. After the win the plot's controls wake (Turning Crypt: the key can be taken).
 - Story XP, levels and capture are not touched (the fight is not a story fight). Online: none.
 
@@ -434,12 +497,12 @@ changes once (a bridge opens, a gate opens).
   child of its part while the hub turns, so it rides it. Disaster City's `hqCityGrid` / `hqResidentTimeline` are the model for a real
   walk map if a later slice needs one.
 
-### 6.8 How the mode starts and ends
+### 6.8 How the test build starts and ends
 
 - **Settings > Developer > Open Plot Dungeons** (map.js, beside "Open Spell Library": `<button class="pm-set-btn"
-  onclick="window._goToPlotDungeons()">`). Later a main-menu button `mm-btn-plotdungeons` in index.html's `.mm-buttons`, under Mystery
-  Dungeon (§13 Q2).
-- `window._goToPlotDungeons()` shows a slice list page (`pdSelectPage` in index.html: the built slices, each with its look and SOLVED
+  onclick="window._goToPlotDungeons()">`). No main-menu button: dungeons are not a mode of their own. When they join story mode they
+  will be entered from the zones; that wiring is a later plan.
+- `window._goToPlotDungeons()` shows a slice list page (`pdSelectPage` in index.html: all ten slices, each with its look and SOLVED
   mark; PS1 window).
 - `_pdEnter(slice)` enters like `window._hqEditEnter` does (map.js): `state.gameState = GS.HQ`, `_showTitlePage('hqPage')`, then
   `ThreeRenderer.hq.enter({ host, room: <entry plot room>, profile, avatar: _hqAvatar(profile), onPrompt, onInteract: _pdInteract,
@@ -448,6 +511,8 @@ changes once (a bridge opens, a gate opens).
 - `?pd=<slice>` in the URL boots straight into a slice (like `?edit`), for checks.
 - Kill switches and readers: `window.EW_PD_BLINK` (the fallback path), `ThreeRenderer.hq.dev.pd()` (the live board, the joins, the
   officer's slot and seam state).
+- **Built to move later:** keep the board logic (data.js `pd*`) and the plot rooms free of anything test-only, so the same rooms can be
+  given doors from a zone when mondo wires them in. Only `_goToPlotDungeons`, `pdSelectPage` and the pause are test-only.
 
 ### 6.9 The R2 / CDN pipeline (every phase that ships)
 
@@ -491,7 +556,8 @@ CLAUDE.md RULE #1 and #1b, unchanged:
 
 **Method (MODEL_LIST.md "PACK-FIRST", mondo 11-04):** look in MODEL_LIST §6 / §7 (in the game), §13 (on R2, not wired), then
 `/mnt/project-files/asset-packs/contents-lists/object_names_in_every_downloaded_pack.json`. Cut pack pieces with `bake-pack-pieces.py`.
-Only then a Meshy row, naming the packs checked, added to the claims list, and **only with mondo's approval**. Pizza Doggy PSX pack
+Only then a Meshy row, naming the packs checked, added to the claims list, and **only with mondo's approval**. While the puzzles are
+being tested, a missing piece stands in as the nearest existing model; the Meshy list goes to him once the puzzles play well. Pizza Doggy PSX pack
 pieces carry a no-AI licence: never feed them or their renders to Meshy.
 
 | Slice | Needs | In the game already (check first) | Packs to check | Likely missing |
@@ -501,6 +567,11 @@ pieces carry a no-AI licence: never feed them or their renders to Meshy.
 | Two to Open | battery, two locks, splitter / corner machines, traces, consoles, gate | psx batteries (`psx_battery_*`, `psx_car_battery_1`), `gate_valve`, `signal_lever_frame`, `cable_drum`, psx pipes (straight / corner / cross / valve holder) | moltenmaps (Battery colours, Generator, Command Console, Wall Pipe, Wall Lights), ebd_mine (Cables, Generator), alxlab (WideDoorsLocked) | a lock receiver with a lamp |
 | Root That Remembers | trellis (dormant / grown), root ramp, spring + valve, channel, cache | the glade's own trees, `stream` rows, `gate_valve` | ebd_vegetation, ebd_trees-psx, ebd_arboles | trellis and root ramp in two states |
 | The Procession | bell, plate with footprints, cable, railings, gate | `ships_bell`, the stairs pack railings, `cable_drum` | gothic (GuardRail), metro (Railing), alxlab (Rail) | the floor plate with footprints |
+| Turning Tomb | as Turning Crypt + low cover | as Turning Crypt | as Turning Crypt | as Turning Crypt |
+| Missing Channel | pipes (straight, elbow), maintenance walkways, pump, valve, debris | psx pipes (straight / corner / cross / valve holder), `gate_valve`, `centrifugal_pump` | ebd_sewers (Pipe, debris), moltenmaps (Wall Pipe) | pump house if `centrifugal_pump` does not read |
+| Traveling Door | stairwell, T hall, security desk, machinery | THE WORKS floor's props, Industrial's `maintenance_stairs` | gothic (Stair pieces), ebd_metro (Stairs, Railing) | none expected |
+| Three-Rail Crossing | elevated catwalk + rail, launch stairs, wrecks | `railing_1m` (a grind rail), `wreckage`, city cars | ebd_mine (Rails), gothic (Stair, GuardRail) | a catwalk deck piece if the stairs pack has none |
+| Three Little Worlds | chute, bowl, curved tracks, marbles, three sockets with symbols | `pipe` rows (`k: 'rail'`, model `pipe`) for tracks | ebd_vegetation, ebd_trees-psx | the bowl and the marble sockets |
 
 Everything placed goes through the catalogue (data.js HQ_CATALOGUE_ALL) and therefore the editor can place it too (mondo: every
 MODEL_LIST model placeable).
@@ -510,8 +581,9 @@ MODEL_LIST model placeable).
 ## 9. The phases (one thread each, in this order)
 
 Every phase: read this doc + docs/notes/areas-complexes.md "PLOT DUNGEONS"; post a checklist; deliver per §6.9; write the phase's notes;
-end with what mondo should look at. Phases 2-6 each **start with a top-down mock-up of the slice (the board in every state, the
-fight plot, the first view) for his OK** before building the rooms.
+post each slice the moment it is playable (mondo tests it) and end with what he should try. The ten boards are approved as drawn
+(mondo 11-14), so a slice phase goes straight to building; his play-testing drives changes. Dressing is test-grade: the look's sheets and
+existing models, no new art.
 
 ### Phase 0 — The moving plot (engine proof, no content)
 
@@ -526,7 +598,7 @@ fight plot, the first view) for his OK** before building the rooms.
   on a fixed part; every part drawn; shadows and lamps follow.
 - **Decision recorded:** primary works, or switch to the fallback (§6.3). Post it to mondo either way.
 
-### Phase 1 — The mode shell + the kit
+### Phase 1 — The test launcher + the kit
 
 - **Build:** `bake-dungeons.js` (all of §6.1, with one tiny test slice), the `PD-BEGIN` / `PD-END` blocks, `pd` rooms skipped by
   bake-arenas.js and the directory, Settings > Developer > Open Plot Dungeons, `_goToPlotDungeons` + `pdSelectPage`, `_pdEnter` /
@@ -537,48 +609,51 @@ fight plot, the first view) for his OK** before building the rooms.
 - **Accept (offline):** `node bake-dungeons.js --dry-run` passes the test slice and fails a deliberately broken copy (a half-square
   blocker, a port off squares 5-6, a wrong solution); `node bake-arenas.js --dry-run` shows no pick change; `node --check` on every
   edited file; load-data.js compiles every pd room (`hqTerrainCompile`) and times it.
-- **Mock-up for his OK:** the panel and the slice list (UI design needs it).
+- The panel and the slice list follow the PS1 window rules; post a screenshot only if mondo asks for one.
 
-### Phase 2 — Slice 5.1 *The Turning Crypt* (ROTATE)
+### Phase 2 — ROTATE WITH A RIDER: 5.1 *The Turning Crypt* + 5.6 *The Turning Tomb*
 
-- Mock-up → his OK → layout file → bake → the room look (catacombs sheets, candles, bones, the light shaft) → the fight (THE SWITCH) →
-  the key (a find) → the gate (`leaf_portcullis`, pd state) → the memorial (a plain inscription: his words, or none until he gives them;
-  never invented lore).
-- **Accept:** the tool replays the solution (2 turns); B3's field audit ≥ 48; `PD.solve('crypt')` reaches SOLVED headless in
-  load-data.js terms (board logic); his look on screen.
+- Both layout files → bake → the catacombs look (sheets, candles, bones, the light shaft) → the rotor and its dial → the fights (THE
+  SWITCH) → the key (a find) → the gate (`leaf_portcullis`, pd state) → the memorial (no text; a carved image only, decided).
+- **Accept:** the tool replays both solutions (2 turns each); each fight plot's field audit ≥ 48; `PD.solve('crypt')` / `PD.solve('tomb')`
+  reach SOLVED in load-data.js; posted for his test.
 
-### Phase 3 — Slice 5.2 *The Missing Street* (SLIDE)
+### Phase 3 — SLIDE: 5.2 *The Missing Street*, 5.7 *Missing Channel*, 5.8 *Traveling Door*
 
-- Overlook part, slide tween, vacancy pit + railings, retractable bridge (a join that opens when the middle row is street), the refuge
-  gate, rubble plots in the city's materials. Pack check for rubble; Meshy list to him if nothing fits.
-- **Accept:** shortest solution 4 printed by the tool; the bridge only opens on a street-street-street row; slides refused while the
-  officer is off the overlook.
+- The slide tween, the vacancy pit + railings, the overlook / console plots, joins made by the arranged plots. Missing Street: the
+  retractable bridge and the refuge gate. Missing Channel: the scripted water along joined pipes, the inlet fight. Traveling Door: ports
+  at two heights (the stairwell), the security fight.
+- **Accept:** shortest solutions 4, 3 and 5 printed by the tool; a join only opens when the arranged route is whole; slides refused while
+  the officer stands on the board.
 
-### Phase 4 — Slice 5.3 *Two to Open* (CONNECT)
+### Phase 4 — MOVES WITH NO RIDER: 5.3 *Two to Open*, 5.9 *Three-Rail Crossing*, 5.10 *Three Little Worlds*
 
-- Rotations with no rider, the traces (lit only along joined paths), two independent lock lamps, the AND gate, controls frozen while
-  crossing.
-- **Accept:** 4 presses minimal; each lock lights alone; the gate shuts again if a lock goes dark before the officer crosses (or the
-  controls are frozen, as source A says; pick one with mondo in the mock-up).
+- Two to Open: the traces (lit only along joined paths), two lock lamps, the AND gate, controls frozen while crossing (decided).
+- Three-Rail Crossing: the +7 m catwalk with a grind rail, the launch stairs, the underpass recovery, the fight with a raised spot.
+- Three Little Worlds: the loader, the scripted marbles on authored curves, the turn lock while a marble rolls, sockets that keep or
+  return a marble, the three lit symbols.
+- **Accept:** 4 presses, 3 alignments and 3 releases minimal; each lock lights alone; a fall from the catwalk always leads back to the
+  launch stairs; a wrong socket always returns its marble.
 
-### Phase 5 — Slice 5.4 *Root That Remembers* (GROW AND CARRY)
+### Phase 5 — STATE THAT TRAVELS: 5.4 *Root That Remembers*
 
 - The part variant swap (`pd_root_B2` → `pd_root_B2_grown`, rebuilt once, behind the growth animation), the water from the spring, the
   ramp to +7 m, the upper exit and cache, the fight at the spring.
 - **Accept:** the ramp only grows when the arm faces the spring; the grown ramp keeps its growth through every turn; the cache is
   reachable only with the ramp east.
 
-### Phase 6 — Slice 5.5 *The Procession* (ESCORT)
+### Phase 6 — ESCORT: 5.5 *The Procession*
 
 - The guardian body and its lanes, the bell (one chamber per ring), the two detents, RECALL, the plate opening the gate, railings on the
   gallery.
 - **Accept:** the hub refuses to turn unless the guardian is wholly inside H; the bell refuses a lane with no connected port; RECALL
   restores both.
 
-### Phase 7 — The polish and the menu
+### Phase 7 — Tune from his tests
 
-- The main-menu button (once mondo says so), the slice list's look, missing models (approved Meshy only), lighting and atmosphere
-  passes per look, music per look (existing tracks), MODEL_LIST.md, the notes.
+- Fix what mondo's play-testing finds (pace, readability, camera on a turning plot, panel words). Then, when he says so: the Meshy list for
+  missing pieces, lighting and atmosphere per look, MODEL_LIST.md, and the later plan for wiring dungeons into story mode (doors from
+  zones, names, enemies per zone).
 - **Accept:** every slice solvable from a fresh save; leave and come back keeps the board; every text fits in his theme.
 
 ---
@@ -597,7 +672,7 @@ fight plot, the first view) for his OK** before building the rooms.
   - `ThreeRenderer.hq.dev.teleport` further than ~110 m puts the camera underground; teleport in short hops.
   - Screenshots take 15 to 40 s each; a timed effect needs a long hold. A headless window blurs on every evaluate and drops held keys:
     use `ThreeRenderer.hq.dev.press(key, on)` for walking.
-- Ask mondo for his own look on: the turn (does riding read well, §13 Q7), the panel, the frame rate on the weak Chrome PC his friend uses.
+- Ask mondo for his own look on: the turn (does riding read well, §13 item 7), the panel, the frame rate on the weak Chrome PC his friend uses.
 
 ---
 
@@ -607,13 +682,13 @@ fight plot, the first view) for his OK** before building the rooms.
 |---|---|---|
 | A draw path bakes world positions (static batch, instances, shadows) | Phase 0 | Keep moving parts out of that path with a flag; fall back to §6.3's blink if needed |
 | `partsBuilt` and the one-hop ring | Phase 0 | Per-zone build-all for pd zones only |
-| The current part is the origin, so the world turns round a rider | Phase 0, 2 | Turn the sky and every other part; ask mondo if it reads (§13 Q7) |
+| The current part is the origin, so the world turns round a rider | Phase 0, 2 | Turn the sky and every other part (decided, §13); mondo judges it in play |
 | The fight path needs a `site` | Phase 1 | Decide by reading `hqEncounterLaunch`; keep bake-arenas.js skipping `pd` |
-| Story leakage (a pd room in the directory, a door from HQ) | Phase 1 | `pd` rooms never charted; check the directory list and `hqWorldGraph` |
+| A test room showing up in story mode before it is wired | Phase 1 | `pd` rooms never charted until the wiring plan; check the directory list and `hqWorldGraph` |
 | The listed solution is not the only one | every slice | The tool prints the minimal count; mondo decides if a shortcut is OK |
 | A soft lock | every slice | Rule 4.3.9: a control is always reachable; RESET always works |
 | Facing faults | every slice | §6.6 checklist; facings in the plot's own frame |
-| Missing art | Phases 2-6 | Pack first; one Meshy list per slice to mondo |
+| Missing art | Phases 2-6 | Pack first; plain stand-ins from existing models while testing; one Meshy list to mondo when the puzzles play well |
 
 ---
 
@@ -624,39 +699,39 @@ fight plot, the first view) for his OK** before building the rooms.
 | data.js | `DOOR_HQ.rooms`, `HQ_WORLD.zones`, `HQ_STAGE_RULES`, `hqWorldFrame`, `hqStageRel`, `hqStageNeighbours`, `hqStageSpanAt`, `hqTerrainCompile`, `_hqTGenerate` (plan gen), `hqPlanFieldSeats`, `HQ_FIELD_RULES`, `hqFieldFrame`, `hqEncounterLaunch`, `hqRoomSite`, `doorSiteState`, `QUEST_FIGHTS` (shape), `hqRoomNatives` | `PD_DUNGEONS` (+ `PD-BEGIN/END` block), `PD_RULES`, `pdBoard`, `pdMoves`, `pdApplyMove`, `pdJoins`, `pdConnected`, `pdSolved`, `pdFrame` |
 | three-renderer.js | `_hqEnter`, `_hqStageRootPlace`, `_hqStageRing`, `_hqStageOwner`, `_hqStageAsk`, `_hqStageEdgeOpen`, `_hqBuildDoors`, `_hqBuildCounters`, `_hqPlaceProps`, `_hqTickWalker`, `_hqSurface`, `_hqNavQuery`, `_hqSpawnRounds`, `_hqTickResidents`, `_hqChunkTick`, `hq.dev` | `_hqPdMove`, `_hqPdTick`, `_hqPdModel`, `_hqPdTraces`, `_hqPdGuardian`, `hq.pd`, `hq.dev.pd` |
 | map.js | `_hqEditEnter` / `_hqEditLeave` (the template), `_hqInteractTarget`, `_hqOpenPanel`, `_hqEncounterFire`, `_hqStageCrossed`, `_openSquadDesk`, the Settings > Developer block (`_toggleRemadeLooks` pattern) | `_goToPlotDungeons`, `_pdEnter`, `_pdLeave`, `_pdInteract`, `_pdPanel`, `_pdSave` / `_pdLoad`, `_pdFight`, `PD` helpers, `?pd=` boot |
-| index.html | `.mm-buttons`, the pages, the `?v=` token | `pdSelectPage`; later `mm-btn-plotdungeons` |
+| index.html | the pages, the `?v=` token | `pdSelectPage` |
 | bake-arenas.js | the site loop | skip rooms with `pd` |
 | bake-dungeons.js (new tooling) | patterns from bake-disaster-city.js | the whole tool |
 | docs/dungeons/*.json (new) | the shape of docs/disaster-city/city-layout.json | one layout per slice |
 
 ---
 
-## 13. What mondo approves (answer these before Phase 0)
+## 13. Decisions (mondo 2026-11-14 09:32 UTC: "just go with your recommended")
 
-My recommendation is in **bold** for each.
+Settled; build on these. Change one only if mondo says so.
 
-1. **The puzzle rule.** Puzzles live only in this standalone mode; story mode and the zones stay puzzle-free as before. **Yes, keep it
-   that way.**
-2. **Names and entry.** The mode label (PLOT DUNGEONS, from your PDF) and the five working titles (The Turning Crypt, The Missing
-   Street, Two to Open, Root That Remembers, The Procession) — keep, or give your own. Entry: **Settings > Developer > Open Plot
-   Dungeons while it is a prototype, a main-menu button under Mystery Dungeon after you like slice 1.**
-3. **The five slices.** **5.1 to 5.5 as listed**, or swap in a bank slice (Missing Channel, Traveling Door, Three-Rail Crossing, Three
-   Little Worlds).
-4. **The fight party.** **A saved team from the Squad Desk, every vessel unlocked (like Play VS CPU)**, or the story party.
-5. **Enemies.** Crypt: **undead × 2 + necromancer** (or ghoul, gargoyle, ghost). Spring: **goblin × 2 + swamp monster** (or gnome,
-   mushroom girl, tree person).
-6. **The guardian** in The Procession: **golem** (or gargoyle, chess piece).
-7. **Riding a turning plot.** **The camera turns with you (the world swings round you)**, or the camera holds north and you see yourself
-   turn. Decide on screen after Phase 0.
-8. **Two to Open:** if a lock goes dark mid-crossing, **the controls are frozen while you cross (source A)**, or the gate shuts.
-9. **Meshy.** Approve per slice the short list of missing pieces after the pack check (§8): dial, key, collapsed rubble, lock receiver,
-   trellis + root ramp, footprint plate.
-10. **The memorial inscription** (Turning Crypt): your words, or **no text (a carved image only)**.
-11. **Browser proof.** Say "playtest" in a phase's thread when you want screenshots; otherwise each phase ships checked offline and
-    waits for your look.
+1. **Puzzles:** allowed in dungeons. Dungeons will be part of story mode later; for now they are a standalone test build, not reachable
+   from story.
+2. **Entry:** Settings > Developer > Open Plot Dungeons. No main-menu button. Working titles from his packs; naming later.
+3. **Slices:** all ten, no swaps (§5.1-5.10). The two crypt versions are two layouts on one engine.
+4. **Fight party:** a saved team from the Squad Desk, every vessel unlocked (like Play VS CPU).
+5. **Enemies:** placeholders from each look's area-unit list, one line each in the layout files: crypt undead × 2 + necromancer; tomb
+   skeleton × 2; spring goblin × 2 + swamp monster; channel zombie × 2 + gangster; traveling door men in black × 2 + droid; rail crossing
+   gangster × 2 + marksman. Real enemies follow the zone a dungeon ends up in and mondo's picks. No dungeon type is tied to a place or to
+   enemies.
+6. **Guardian:** golem.
+7. **Riding camera:** the camera turns with the rider (the world swings round). mondo judges it in play.
+8. **Two to Open:** the controls freeze while the officer crosses the gate.
+9. **Art:** stand-ins from existing models while testing; the Meshy list goes to mondo once the puzzles play well.
+10. **The memorial:** a carved image, no text.
+11. **Proof:** offline checks per phase; a browser run only when mondo asks for a playtest in the thread.
+
+Later, low priority (not for now): the names, wiring dungeons into story mode and its zones, final enemies per zone.
 
 ---
 
 ## 14. Log
 
-- 2026-11-14: plan written (this doc). Both packs reviewed, all ten solutions checked, five slices picked, nothing built. Waits for §13.
+- 2026-11-14 03:15 UTC: plan written. Both packs reviewed, all ten solutions checked, five slices picked, nothing built.
+- 2026-11-14 09:32 UTC: mondo's answers. Amended: a standalone test build (dungeons join story mode later), all ten slices built, the
+  recommendations taken as decisions (§13), enemies are zone placeholders. Next: Phase 0.
