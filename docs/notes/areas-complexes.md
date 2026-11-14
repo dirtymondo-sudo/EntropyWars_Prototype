@@ -2783,6 +2783,32 @@ glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the 
   `walls` are partitions on the lines between squares with one-square doorways; `decor` is off centre / on the walls. One arch row per room `ind:<id>:in`; props are
   `floor:true`; `keyIn` / `floorIn` / `tintIn` set per room. The doorway square is asserted to be a walkway (else the room is left out with a console line). To change a room:
   edit its `IN` row, `node bake-disaster-city.js`. Plans: /mnt/project-files/disaster-city-industrial/interiors_plan_1..3.jpg.
+- **THE INDUSTRIAL INSIDES, SECOND PASS (2026-11-14, mondo 11-13 22:33: "after a district's first interior pass, do another interior pass ... make a
+  list of models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere").** I.js
+  `SECOND[id](Q)` runs after each room's first pass; `kit2()` gives `Q`: `paint` (a dado coat 0.345 m in, the front one with the doorway cut, a
+  stripe, a skirting), `ceil` (a dark deck under the roof slab: the hollow ceiling draws black; roof trusses), `sky` (lit skylight glass), `hb`
+  (a Meshy high-bay lamp + a lit bulb), `strip`, `pend`, `beacon`, `sign` (lettered `txt:` sheet with a background), `onWall` (a flat wall piece
+  at a height), `pipe` (a pipe run on a wall), `lines` (yellow safety lines round every blocked square that meets a walk), `exit` (EXIT over the
+  doorway) and `block(i, j, w, d, h, fn)`: a NEW blocker on whole squares, refused (console line) on the doorway square or if any walk square
+  would be cut off from the door (flood fill, partitions respected). 11 new blocker squares: forklift + wrapped pallets (Freight gate), lathe +
+  drill (Machine shop), rocket engine + satellite (Aerospace lab), the ship model in its glass case (Port office), jet engine + tug + work
+  steps (Hangar; the back-right pocket by the lockers is parked equipment now), the signal lever frame (Rail service).
+  THE MODELS (20 Meshy, text-to-image concept -> image-to-3d meshy-t2.5, base at y 0, metallic 0, front +Z, optimize-assets.js; R2
+  `Assets/world/props/meshy/<key>.glb`; data.js "THE INDUSTRIAL INTERIOR PIECES"; originals + concepts in project files
+  disaster-city-industrial/meshy/; packs checked first): steam_turbine, centrifugal_pump, gate_valve (they replace the first pass's shape
+  drums / pump bodies / handwheels inside `KIT.turbine` / `pump` / `pipes`; beds, risers, rails, pipes kept), high_bay_lamp, gauge_board,
+  metal_lathe, drill_press, tool_pegboard, gas_cylinder_rack, air_compressor, jet_engine_stand, aircraft_tug, maintenance_stairs,
+  rocket_engine, signal_lever_frame, railway_lantern, platform_scale, chain_hoist, ship_model, cable_drum. Reused: Bayside's forklift,
+  wrapped_pallet, ship_wheel, ships_bell; Southside's tool_chest / tire_stack / engine_hoist and Hero Plaza's welding_cart only through
+  `HAS(key)` (their rows were not on main at this bake: rerun the bake once they land).
+  FACING FIX: `KIT.files` / `shelf` / `racks` along a side wall faced INTO the wall ('l' gave 270): now 'l' = 90, 'r' = 270 (city face: 90 looks
+  at +x). Loading office files + shelf + racks, depot shelf.
+  THE SEWERS DOOR (the "mirrored shop-front sheet" in the Pump court): bake-disaster-city.js puts JOIN.sewer FREE 0.25 m outside the Pump
+  court's plan doorway, and three-renderer.js `_hqBuildCityEntrances` stands a 10 x 6 m SPRITE building (a pixel shop front, "ONE $PRICE")
+  behind every leafed free door of a city room: it stood through the Pump court (seen mirrored from inside) and the 3.3 m bulkhead panel
+  covered the room's own doorway. Now `dcCtx.JOIN` is open to the district files (`build`); I.js `Q.join('sewer', lx, lz)` hangs the bulkhead
+  on the Pump court's BACK wall facing in (walk in through the valve house, down through the bulkhead), and a door row's `noEntrance: true`
+  (written by `dj()`) skips the sprite building + awning + sign. The tower and mall join doors still get their sprite entrance buildings.
   under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. The street lamp on that square is taken off (`ctx.lamps`, the tool now writes its lamps line after the district build). Seen in the
   cloud browser from inside (as a 28 m long test build). INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.
 

@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 815 |
+| Meshy AI | no | 835 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -1883,6 +1883,31 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | decor_wall_torch_bracket | `Assets/world/props/meshy_decor/wall_torch_bracket.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | decor_windpump_tower | `Assets/world/props/meshy_decor/windpump_tower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | decor_windpump_wheel | `Assets/world/props/meshy_decor/windpump_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+
+### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) — Meshy AI (20)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| air_compressor | `Assets/world/props/meshy/air_compressor.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| aircraft_tug | `Assets/world/props/meshy/aircraft_tug.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| cable_drum | `Assets/world/props/meshy/cable_drum.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| centrifugal_pump | `Assets/world/props/meshy/centrifugal_pump.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| chain_hoist | `Assets/world/props/meshy/chain_hoist.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| drill_press | `Assets/world/props/meshy/drill_press.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| gas_cylinder_rack | `Assets/world/props/meshy/gas_cylinder_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| gate_valve | `Assets/world/props/meshy/gate_valve.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| gauge_board | `Assets/world/props/meshy/gauge_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| high_bay_lamp | `Assets/world/props/meshy/high_bay_lamp.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| jet_engine_stand | `Assets/world/props/meshy/jet_engine_stand.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| maintenance_stairs | `Assets/world/props/meshy/maintenance_stairs.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| metal_lathe | `Assets/world/props/meshy/metal_lathe.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| platform_scale | `Assets/world/props/meshy/platform_scale.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| railway_lantern | `Assets/world/props/meshy/railway_lantern.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| rocket_engine | `Assets/world/props/meshy/rocket_engine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| ship_model | `Assets/world/props/meshy/ship_model.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| signal_lever_frame | `Assets/world/props/meshy/signal_lever_frame.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| steam_turbine | `Assets/world/props/meshy/steam_turbine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
+| tool_pegboard | `Assets/world/props/meshy/tool_pegboard.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) |
 
 ### Low-poly cars · GGBot — Asset pack (20)
 
