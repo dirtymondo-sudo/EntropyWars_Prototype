@@ -47184,6 +47184,38 @@ const ThreeRenderer = (function () {
         S.hs = h; S.hv = v; S.n++;
     }
     function _ewBunNoOut() { return typeof window !== 'undefined' && !!window.EW_BUN_NO_OUT; }
+    /* THE CHANGERS OUT (2026-11-14, mondo's readout after THE MOVERS OUT: "1.9 re-records/s (values 1.9)", the shell drawn piece by
+       piece again): with the cars out the shell's recording was a STILL one, so each change of a traffic signal's lens colour
+       re-recorded all 4,400 pieces — about twice a second, too slow to count as churning (5 in 2 s) and be demoted. The top walk
+       of a group keeps each direct child's own value hash; a child whose values changed 3 times within 20 s is drawn outside the
+       recording from then on (`_ew_bunOut`, as a mover is). Only once the room is ready (a room still landing moves everything). */
+    function _ewBunWalkTop(g, S) {
+        var ch = g.children, now = _ewBun.now || 0, watch = !S.noV && !!(_hq && _hq.ready) && !_ewBunNoOut(), cand = null;
+        for (var i = 0; i < ch.length; i++) {
+            var c = ch[i];
+            if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); continue; }
+            if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); continue; }
+            if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); continue; }
+            var v0 = S.hv; S.hv = 0;
+            if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
+            else if (c.isLight) { S.hs = _ewBunMix(S.hs, c.id); S.lit = true; }
+            if (c.children.length) _ewBunWalk(c, S);
+            var sub = S.hv; S.hv = _ewBunMix(v0, sub);
+            if (watch) {
+                if (c._ew_bunCv !== undefined && c._ew_bunCv !== sub) {
+                    if (now - (c._ew_bunCt || 0) > 20000) { c._ew_bunCt = now; c._ew_bunCn = 1; }
+                    else if (++c._ew_bunCn >= 3) (cand || (cand = [])).push(c);
+                }
+                c._ew_bunCv = sub;
+            }
+        }
+        /* the pieces that keep changing go out (a row of lamp glows on one flickering material is many at once); a quarter of the
+           group or more at once is the whole room changing (the hour): left to the group's own demotion */
+        if (cand) {
+            if (cand.length <= Math.max(16, Math.min(400, ch.length >> 2))) for (var k = 0; k < cand.length; k++) { cand[k]._ew_bunOut = true; cand[k]._ew_bunOutV = true; _ewBun.outV = (_ewBun.outV | 0) + 1; }
+            else for (var k2 = 0; k2 < cand.length; k2++) cand[k2]._ew_bunCn = 0;
+        }
+    }
     function _ewBunWalk(o, S) {
         var ch = o.children;
         for (var i = 0; i < ch.length; i++) {
@@ -47241,8 +47273,12 @@ const ThreeRenderer = (function () {
                a pipeline was missing or the lamps changed. A change with none of those tells (a piece hidden or moved by hand)
                shows at most two frames late. Off: window.EW_BUN_CHECK_EVERY. */
             if (walk && g.isBundleGroup && st.quiet >= 40 && !addMovedB && !g._ew_bunMiss && !g._ew_bunFree && st.G === G && ((FR + i) % 3) !== 0 && !bunEvery) { objs += st.n | 0; quietN++; continue; }
+            /* a demoted group is tried as a still recording again (30 s, then twice as long each time, 8 min at most): what made
+               it churn may be out of it by now (THE CHANGERS OUT finds the pieces only while the values are hashed) */
+            if (st.dyn && st.dynAt && walk && now - st.dynAt > Math.min(480000, 30000 * Math.pow(2, Math.max(0, (st.dynN | 0) - 1)))) { st.dyn = false; st.dynAt = 0; st.times = []; st.vt = []; }
             var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false, lit: false, noV: !!st.dyn };
-            _ewBunWalk(g, S);
+            _ewBun.now = now;
+            if (walk) _ewBunWalkTop(g, S); else _ewBunWalk(g, S);
             var v0 = g.version, recs0 = _ewBun.recs;
             objs += S.n; st.n = S.n;
             var stat = !(S.dyn || st.dyn), miss = !!g._ew_bunMiss;
@@ -47255,8 +47291,10 @@ const ThreeRenderer = (function () {
                 st.why[st.hs !== S.hs ? 'tree' : 'values']++; W[st.hs !== S.hs ? 'tree' : 'values']++;
                 st.times.push(now);
                 while (st.times.length && now - st.times[0] > 2000) st.times.shift();
+                /* a slow churn (2 a second never makes 5 in 2 s): 8 value re-records within 20 s demote the group too */
+                if (stat && st.hs === S.hs) { (st.vt || (st.vt = [])).push(now); while (st.vt.length && now - st.vt[0] > 20000) st.vt.shift(); if (st.vt.length >= 8) { st.dyn = true; st.dynAt = now; st.dynN = (st.dynN | 0) + 1; stat = false; st.times = []; st.vt = []; } }
                 if (st.times.length >= 5) {
-                    if (stat && st.hs === S.hs) { st.dyn = true; stat = false; st.times = []; }   // only values keep moving: three checks them
+                    if (stat && st.hs === S.hs) { st.dyn = true; st.dynAt = now; st.dynN = (st.dynN | 0) + 1; stat = false; st.times = []; }   // only values keep moving: three checks them
                     else { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
                 }
                 g.version++; st.G = G; st.hs = S.hs; st.hv = S.hv; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
@@ -51925,6 +51963,10 @@ const ThreeRenderer = (function () {
         if (S.text) L.push('Text (HQ plates) ' + (S.text.cv ? 'canvas (node renderer)' : S.text.on ? 'troika' : (S.text.lib ? 'CSS2D (switched off)' : 'CSS2D (troika not loaded)')) + ' · ' + S.text.gpu + ' on the GPU · ' + S.text.css + ' CSS2D');
         try { var _fs = (typeof ThreeVFX !== 'undefined' && ThreeVFX.fxStats) ? ThreeVFX.fxStats() : null; if (_fs && (_fs.live || _fs.groups)) L.push('Particles ' + _fs.live + ' live · ' + _fs.draws + ' draws' + (_fs.batched ? ' (batched, ' + _fs.groups + ' kinds seen)' : ' (one per particle)') + (_fs.quarks && (_fs.quarks.on || _fs.quarks.made) ? ' · quarks layer ' + (_fs.quarks.on ? _fs.quarks.state : 'off') + ', ' + _fs.quarks.live + ' systems live' : '')); } catch (e) {}   // R7
         if (S.chunks) L.push('Chunks' + (S.chunks.off ? ' (cull off)' : '') + ': fence plots ' + S.chunks.fencesDrawn + '/' + S.chunks.fences + ' drawn · prop cells ' + S.chunks.cellsDrawn + '/' + S.chunks.cells + ' drawn' + (S.chunks.props || S.chunks.rooms ? ' · prop plots ' + S.chunks.propsDrawn + '/' + S.chunks.props + ' · rooms ' + S.chunks.roomsDrawn + '/' + S.chunks.rooms : ''));
+        try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
+            var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
+            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0));
+        } catch (e) {}
         if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept');
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
         if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ')); }
@@ -73325,7 +73367,8 @@ const ThreeRenderer = (function () {
     /* a group the plot chunks cull: its reach is a marker's own sphere (the models land later) */
     function _hqSignalChunk(H, G, x, y, z, reachM, farM) {
         var U = _hqUnits(), g = new THREE.Group(); g.position.set(x * U, y * U, z * U);
-        g._ew_hqSignal = 1;   // never in the static batch (its lenses change colour; _HQ_BATCH_FLAG_OFF)
+        g._ew_hqSignal = 1; g._ew_bunOut = true;   // THE CHANGERS OUT: its lenses change colour, the shell's recording stays still
+          // never in the static batch (its lenses change colour; _HQ_BATCH_FLAG_OFF)
         G.add(g); G.updateWorldMatrix(true, false);
         var mk = new THREE.Object3D(); mk._ew_ckRec = { C: new THREE.Vector3(x * U, (y + 3) * U, z * U).applyMatrix4(G.matrixWorld), R: reachM * U }; g.add(mk);
         if (typeof _hqChunkReg === 'function') _hqChunkReg(H, g, farM * U);

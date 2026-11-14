@@ -1957,6 +1957,19 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE CHANGERS OUT (2026-11-14, the regression after THE MOVERS OUT)
+
+mondo's Mac on #1391: 11.2 fps (was 14.9), "1.9 re-records/s (values 1.9)", shell 2,802 draws "outside its bundle", bundles holding 881
+meshes only. With the cars out the shell was a STILL recording for the first time, so any piece whose values change (a traffic signal's
+lens colour, a flickering glow) re-recorded all 4,400 pieces; ~2 a second never reaches the "5 in 2 s" that demotes a group, so it went on
+forever. Before #1391 the cars had demoted the shell and this never showed. Lesson: making a group static exposes every slow changer in it.
+- `_ewBunWalkTop` (walk rooms): each direct child's own value hash; a child that changed 3 times in 20 s goes `_ew_bunOut` for good
+  (`_ew_bunOutV`), unless a quarter of the group (or > 400) would go at once (the hour changing = left to demotion). Only once `_hq.ready`.
+- Traffic signals are `_ew_bunOut` from the build.
+- A slow churn demotes too: 8 value re-records in 20 s. A demoted group is retried as static after 30 s, doubling to 8 min.
+- Lens line "Re-recorded most: <group> (values, tree, rests) · changers moved out N". Cloud browser: 0 re-records/s after 4, 3 moved out,
+  draws 540 → 147.
+
 ## THE MOVERS OUT + THE QUIET REPLAY + THE QUIET GROUPS (2026-11-14, Disaster City, after THE STILL WALK)
 
 mondo's Mac after THE STILL WALK: 14.9 fps (was 7.3), matrix walk 4.25 ms, but "Draw calls 95" with "submit 52.8 ms" and
