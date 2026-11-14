@@ -1887,3 +1887,31 @@ three-renderer.js + data.js HQ_ENGINE_RULES (`chunkM: 42, chunkMinSpanM: 200, ch
   the same rows as the direct path. City finds in Node: over 10 min -> 6.9 s (what is left is the reach flood, now in the worker).
 - **Rule for big rooms.** Anything that walks a whole terrain room per point (finds, reach, nav) must run in the survey worker
   or be budgeted across frames. No worker (EW_HQ_NO_SURVEY, file://) = the finds still build on the page after the room's own entry.
+
+## THE PROP CHUNKS + THE MASK'S OWN BUNDLES + THE STILL CHUNKS + THE LOD LEVELS (2026-11-14, Disaster City perf)
+mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (submit 100.8), 3748 draws, "2996 site props
+(outside its bundle)", extra pass 1958 draws / 4.05M tris, props 3165 calls / 4.55M tris, check 13.2 ms.
+- **THE PROP CHUNKS (three-renderer.js, after `_hqChunkStats`).** In a chunked room (`_hqChunkBig`) every prop placement under
+  `H.propGroup` moves into a chunk group (`_hqPropChunkSweep`, every 1.5 s or on a child-count change): props inside a closed
+  hollow building (`H.terrain.texb` hollow, inset `roomInsetM`) go in that building's room group (`'b|<bld>'`, drawn within
+  `roomFarM` 40 m, glass is opaque so they only show through open doorways); the rest go in the 42 m plot chunks
+  (`ci,cj`, `|s` for small ones = `instSmallFarM`, else `propFarM` 260). The chunk walk culls them like the shell fences.
+  Placements holding a light stay put. Instance cells key the same way (`b|` cells). `_hqPropChunkHome` puts everything back
+  (hand-over, leave). Static batch: merged meshes are hosted IN their chunk (`_hqBatchHost`), chunk visibility is not a "change".
+  Render bundles: one bundle per chunk group (`_ewBunTargets`). Off: `window.EW_HQ_NO_PROP_CHUNKS` (then re-enter).
+  Rules: data.js HQ_ENGINE_RULES `propFarM`, `roomFarM`, `roomInsetM`.
+- **THE MASK'S OWN BUNDLES (three-post.js static mask + three-renderer.js `_ewBunSetup`).** The model pixel mask (layer 8,
+  half res) drew every static prop classic, one by one (the lens "extra" pass). It now renders with its own camera clone
+  (`_maskCamS`) and `_renderer._ew_maskBun`, so chunk groups record their own mask bundles. Off: `window.EW_MASK_NO_BUNDLES`.
+- **THE STILL CHUNKS.** An out chunk (off camera / past its far) also gets `matrixWorldAutoUpdate = false`, so three's per-frame
+  matrix walk skips it (~35K objects in the city). Its matrices are refreshed as it leaves and on any frame something was added
+  to the scene (`_ewAddCount`, a counter on Object3D.add). Collision snaps compose local matrices (`_mcSnap`), so unaffected.
+  Off: `window.EW_HQ_CHUNK_MW_ALWAYS`.
+- **THE LOD LEVELS shipped.** The LOD path (`_lodUrls`, `_hqLodTick`) had never run: no `.lodN.glb` was in ASSET_MANIFEST.json.
+  Baked (meshopt simplify, same mesh names/order) and uploaded lod1/lod2 for the heaviest city repeats: city bench, traffic
+  cone, police barricade, folding chair, hydrant, utility box, potted plant, palm, cup, cardboard boxes, sandbags, popcorn cart,
+  ambulance, candle, piano, football, missile, conveyor (30 files, new-folder paths). Off: `window.EW_NO_LOD`.
+- **Sandbox numbers (spawn camera, same view).** Mask static 852 draws / 3.14M tris -> 50-169 / ~0.2M; extra pass 854 / 3.18M
+  -> 171 / 233K; props outside bundle 2475 -> 54; prop plots 32/240 drawn, rooms 0/88 drawn. The cloud shell draws classic
+  (sandbox artefact), so compare counts, not FPS. Left: the bundle check cost (the shell walks ~10K children a frame), pixel
+  ratio 2 on his Mac (Settings Render Scale exists; default untouched), one WebGPU "Texture with '' label" submit error.
