@@ -82770,6 +82770,7 @@ const ThreeRenderer = (function () {
        city door swings for a resident (_hqTickCityDoors), the arrival clears them off the officer's landing for a few seconds.
        In this room the rounds' random extras and travellers stay out (the residents ARE the room's people), a spot native whose
        race is a resident is the resident (its spot and its line). window.EW_HQ_NO_RESIDENTS = off; dev hq.residents(). */
+    var HQ_RES_SLEEP = { clip: 'LayToIdle', lib: 1, trim: [0, 0.05], ts: 0.2 };   // asleep in bed: the get-up's first frames, flat on the back, barely moving
     function _hqResRoom(roomId) {
         if ((typeof window !== 'undefined' && window.EW_HQ_NO_RESIDENTS) || _hqRoundsOff()) return false;
         return typeof HQ_CITY_RESIDENTS !== 'undefined' && HQ_CITY_RESIDENTS.room === roomId && typeof hqCityGrid === 'function' && typeof hqResidentTimeline === 'function';
@@ -82802,7 +82803,10 @@ const ThreeRenderer = (function () {
     function _hqResSpawn(H, s, at) {
         var r = s.r, U = _hqUnits(), line = null, sub = 'LIVES AT ' + String(r.homeName || r.home).toUpperCase();
         if (at.spot && at.spot.say) { var sy = at.spot.say; line = Array.isArray(sy) ? (sy.length ? sy[((typeof hqHash === 'function' ? hqHash(H.res.day + '|' + r.race + '|say') : 0) % sy.length)] : null) : String(sy); }
-        var ch = _hqSpawnCharacter({ id: s.id, kind: 'npc', race: r.race, gender: s.gender, x: at.x, z: at.z, y: _hqHasGround() ? undefined : 0, face: 0, line: line, sub: sub });
+        /* THE BEDS (2026-11-14): the rig carries the sleep pose (UAL2 LayToIdle held on its first frames: flat on the back) beside its own slots */
+        var def = null; try { var _s3 = _hq3DOn(); var base = (typeof getRace3DModel === 'function') ? getRace3DModel(r.race, s.gender) : null; _hq3DOff(_s3);
+            if (base && base.libClips && !base.libClips.hqSleep) { var lc = Object.assign({}, base.libClips), lt = Object.assign({}, base.libTimeScales); lc.hqSleep = { clip: HQ_RES_SLEEP.clip, lib: HQ_RES_SLEEP.lib, trim: HQ_RES_SLEEP.trim.slice(), pinXZ: true }; lt.hqSleep = HQ_RES_SLEEP.ts; def = Object.assign({}, base, { libClips: lc, libTimeScales: lt }); } } catch (e) { def = null; }
+        var ch = _hqSpawnCharacter({ id: s.id, kind: 'npc', race: r.race, gender: s.gender, def: def || undefined, x: at.x, z: at.z, y: _hqHasGround() ? undefined : 0, face: 0, line: line, sub: sub });
         if (!ch) return null;
         ch.resident = s; s.ch = ch;
         var y = _hqNavQuery(at.x, at.z, null); if (y !== null && y !== undefined && isFinite(y)) { ch.y = ch.visY = y; }
@@ -82860,6 +82864,14 @@ const ThreeRenderer = (function () {
             if (!at.moving) s.held = 0;
             if (!at.moving && s.lag > 0) s.lag = Math.max(0, s.lag - dt * rate);
             ch.x = at.x; ch.z = at.z; ch.moving = !!at.moving;
+            if (at.sleep) {   // THE BEDS: on the bed (its floor = the floor it walked in on), feet to the bed's foot
+                if (!ch._resSleep) { ch._resSleep = true; ch.yaw = ch.targetYaw = _hqHeadingYaw(at.face || 0); }
+                ch.visY = ch.y + (at.top || 0.5);
+                ch.entry.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
+                if (ch._resBlk) { ch._resBlk.y = ch.y; ch._resBlk.top = ch.y + 2.6; }
+                pts.push(ch); return;
+            }
+            if (ch._resSleep) { ch._resSleep = false; ch.visY = ch.y; }
             var y = _hqNavQuery(ch.x, ch.z, ch.y); if (y !== null && y !== undefined && isFinite(y)) ch.y = y;
             ch.visY += (ch.y - ch.visY) * Math.min(1, dt * 14); if (Math.abs(ch.y - ch.visY) < 0.004) ch.visY = ch.y;
             ch.targetYaw = at.moving ? at.face * Math.PI / 180 : (at.spot ? _hqHeadingYaw(at.spot.face || 0) : ch.targetYaw);
@@ -85779,6 +85791,7 @@ const ThreeRenderer = (function () {
             if (ch.pose && ch.kind !== 'player' && e.actions && e.actions[ch.pose]) want = ch.pose;
             /* THE ROUNDS (2026-09-19): a walker on its loop plays the walk clip at a stroll's pace */
             if ((ch.rounds || ch.resident) && ch.kind !== 'player') { want = ch.moving ? 'walk' : 'idle'; if (e.actions && e.actions.walk) { var wts = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = wts * 0.62; } }
+            if (ch._resSleep && e.actions && e.actions.hqSleep) want = 'hqSleep';   // THE RESIDENTS' BEDS (2026-11-14)
             if (ch._sceneWalk && ch.kind !== 'player' && e.actions && e.actions.walk) { want = 'walk'; var swt = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = swt * 0.62; }   // THE CUTSCENES: a cast member a scene walks (hq.sceneWalk)
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
