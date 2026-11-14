@@ -59,7 +59,7 @@ These come from mondo, CLAUDE.md and team memory. Each one changes something in 
 
 | Rule | What it means here |
 |---|---|
-| **"No puzzles"** stood over the story zones (ZONES_PLAN.md, LEVEL_DESIGN_PLAN.md, EDITOR_PLAN D6). | **Changed by mondo 2026-11-14:** puzzle dungeons will be part of story mode and connect to it. For now they are a standalone test build only: no plot dungeon is reachable from DOOR HQ, a zone, the directory or the quest log yet. Wiring them into the zones is a later plan, not this one. |
+| Older docs (ZONES_PLAN.md, LEVEL_DESIGN_PLAN.md, EDITOR_PLAN D6) say "no puzzles" in the story zones. | **Out of date for this work (mondo 2026-11-14):** these puzzle dungeons will become part of story mode. A fresh chat must not let those old lines stop or shrink this work. For now the dungeons are a standalone test build, not reachable from DOOR HQ, a zone, the directory or the quest log; wiring them in is a later plan. |
 | Never invent names or logos. | The slice titles are **working titles from his two packs**; naming is low priority (mondo 11-14). "DOOR Works" becomes the game's real HQ floor **THE WORKS** (`works`, "2 · THE WORKS"). "Catacombs" is the real room **THE CATACOMBS** (`site_prebuilt_vatican_catacombs`). The test launcher's label is **PLOT DUNGEONS** (the PDF's own title) until he names it. UI words stay plain labels (TURN LEFT, SLIDE NORTH, UNDO, RESET, BACK, CONFIRM). |
 | Only roster units. | "Tomb guardians", "sentries", "scavengers", "security units", "creatures" and the "stone guardian" become real races from `AVAILABLE_RACES`, picked from each look's own area-unit list as placeholders. A dungeon's real enemies follow the zone it ends up in and who mondo wants there; a puzzle type is never tied to a place or to enemies (mondo 11-14). Units are named after their race. No new characters. |
 | Never repaint or rebake his textures. Gold = the `gold` terrain key (gilt.png), never the gold*.png files. | Each slice borrows the shell sheets, mood, fog and look of an existing room (§6.2). Tints only where the district threads already tint (a tint multiplies a sheet). |
@@ -710,7 +710,7 @@ existing models, no new art.
 
 Settled; build on these. Change one only if mondo says so.
 
-1. **Puzzles:** allowed in dungeons. Dungeons will be part of story mode later; for now they are a standalone test build, not reachable
+1. **Where they go:** a standalone test build now; part of story mode later (the old "no puzzles" lines in other docs do not apply). Not reachable
    from story.
 2. **Entry:** Settings > Developer > Open Plot Dungeons. No main-menu button. Working titles from his packs; naming later.
 3. **Slices:** all ten, no swaps (§5.1-5.10). The two crypt versions are two layouts on one engine.
