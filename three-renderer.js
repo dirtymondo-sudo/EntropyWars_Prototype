@@ -46905,7 +46905,61 @@ const ThreeRenderer = (function () {
             return out;
         };
         var po = r._projectObject;
-        r._projectObject = function (object, camera) {
+        /* THE LAMP'S REACH (2026-11-14, Disaster City: the lamp's shadow walked the whole city six times a frame): a shadow drawn
+           through a perspective camera (a point lamp's six sides, a spot) sees nothing farther than its far plane, yet three walked
+           every object of the scene for each side (~120,000 visits a frame in the city) and drew the unculled pieces past it (the
+           GPU clipped them). Now, inside such a render, a chunk whose sphere lies past the reach is skipped whole, and a room's
+           shell (still pieces, over 256 children) walks only the children filed in the 8 m cells the reach
+           touches (+ the few too big for cells; the file is made once and again when its child count changes). Same shadow
+           (nothing past the far plane can draw). Off: window.EW_SHADOW_REACH_OFF = true. */
+        var rReach = r.render;   // (its own name: `ro` above is the opaque-list hook's three original, and one var in this function is one slot)
+        r.render = function (sc, cam) {
+            var prev = this._ew_reach;
+            this._ew_reach = null;
+            if (sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial && cam && cam.isPerspectiveCamera && cam.far > 0 && !window.EW_SHADOW_REACH_OFF) {
+                cam.updateMatrixWorld();
+                var ce = cam.matrixWorld.elements;
+                this._ew_reach = { x: ce[12], y: ce[13], z: ce[14], far: cam.far };
+            }
+            try { return rReach.apply(this, arguments); } finally { this._ew_reach = prev; }
+        };
+        var _rchB = new THREE.Box3(), _rchS = new THREE.Sphere();
+        function reachOut(R, sp) { var dx = sp.center.x - R.x, dy = sp.center.y - R.y, dz = sp.center.z - R.z, lim = R.far + sp.radius; return dx * dx + dy * dy + dz * dz > lim * lim; }
+        function reachFile(g) {
+            var I = g._ew_reachIdx, now = performance.now();
+            if (I && I.n === g.children.length) return I;
+            if (I && now - I.at < 3000) return null;   // still filling (a room landing): the plain walk until it holds
+            var C = new Map(), big = [], CELL = 8 * _hqUnits(), ch = g.children;
+            for (var i = 0; i < ch.length; i++) {
+                _rchB.makeEmpty(); _rchB.expandByObject(ch[i]);
+                if (_rchB.isEmpty()) { big.push(ch[i]); continue; }
+                _rchB.getBoundingSphere(_rchS);
+                var rr = _rchS.radius;
+                if (!isFinite(rr) || rr > CELL * 4) { big.push(ch[i]); continue; }
+                var i0 = Math.floor((_rchS.center.x - rr) / CELL), i1 = Math.floor((_rchS.center.x + rr) / CELL), j0 = Math.floor((_rchS.center.z - rr) / CELL), j1 = Math.floor((_rchS.center.z + rr) / CELL);
+                for (var a = i0; a <= i1; a++) for (var b = j0; b <= j1; b++) { var k = a + ',' + b, L = C.get(k); if (!L) C.set(k, L = []); L.push(ch[i]); }
+            }
+            return (g._ew_reachIdx = { n: ch.length, at: now, cells: C, big: big, cell: CELL });
+        }
+        r._projectObject = function (object, camera, groupOrder, renderList, clippingContext) {
+            var R = this._ew_reach;
+            if (R && object.visible !== false) {
+                var csp = object._ew_ckSph;
+                if (csp && object._ew_ckFar != null && reachOut(R, csp)) return;   // a chunk past the lamp's reach
+                if (object.children.length > 256 && !object.isClippingGroup && object._ew_bunName && / shell$/.test(object._ew_bunName) && object.layers.test(camera.layers)) {   // a room's shell: still pieces only
+                    var I = reachFile(object);
+                    if (I) {
+                        var CL = I.cell, i0 = Math.floor((R.x - R.far) / CL), i1 = Math.floor((R.x + R.far) / CL), j0 = Math.floor((R.z - R.far) / CL), j1 = Math.floor((R.z + R.far) / CL);
+                        var go = object.renderOrder, seen = new Set();
+                        for (var a = i0; a <= i1; a++) for (var b = j0; b <= j1; b++) {
+                            var L = I.cells.get(a + ',' + b); if (!L) continue;
+                            for (var q = 0; q < L.length; q++) { var c = L[q]; if (!seen.has(c) && c.parent === object) { seen.add(c); this._projectObject(c, camera, go, renderList, clippingContext); } }
+                        }
+                        for (var q2 = 0; q2 < I.big.length; q2++) if (I.big[q2].parent === object) this._projectObject(I.big[q2], camera, go, renderList, clippingContext);
+                        return;
+                    }
+                }
+            }
             if (object.isBundleGroup === true) {
                 /* a side render (the post's model mask: two layer passes into one target, one camera) would replay the first
                    pass's recording in the second — it draws the group the classic way */
