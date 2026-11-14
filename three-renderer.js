@@ -51781,6 +51781,7 @@ const ThreeRenderer = (function () {
         try { var pm = performance.memory; S.heap = pm ? [pm.usedJSHeapSize / 1048576, pm.jsHeapSizeLimit / 1048576] : null; } catch (e) { S.heap = null; }
         S.census = L.census || null;
         S.chunks = _hq ? _hqChunkStats(_hq) : null;
+        S.still = _hq ? _hqStillStats() : null;
         S.instPass = (_hq && typeof _hqInstStats === 'function') ? _hqInstStats(_hq) : (_fieldInstH ? _hqInstStats(_fieldInstH) : null);
         S.top = L.detail || []; S.roots = L.roots || null;
         S.why = L.why || [];
@@ -51836,6 +51837,7 @@ const ThreeRenderer = (function () {
         if (S.text) L.push('Text (HQ plates) ' + (S.text.cv ? 'canvas (node renderer)' : S.text.on ? 'troika' : (S.text.lib ? 'CSS2D (switched off)' : 'CSS2D (troika not loaded)')) + ' · ' + S.text.gpu + ' on the GPU · ' + S.text.css + ' CSS2D');
         try { var _fs = (typeof ThreeVFX !== 'undefined' && ThreeVFX.fxStats) ? ThreeVFX.fxStats() : null; if (_fs && (_fs.live || _fs.groups)) L.push('Particles ' + _fs.live + ' live · ' + _fs.draws + ' draws' + (_fs.batched ? ' (batched, ' + _fs.groups + ' kinds seen)' : ' (one per particle)') + (_fs.quarks && (_fs.quarks.on || _fs.quarks.made) ? ' · quarks layer ' + (_fs.quarks.on ? _fs.quarks.state : 'off') + ', ' + _fs.quarks.live + ' systems live' : '')); } catch (e) {}   // R7
         if (S.chunks) L.push('Chunks' + (S.chunks.off ? ' (cull off)' : '') + ': fence plots ' + S.chunks.fencesDrawn + '/' + S.chunks.fences + ' drawn · prop cells ' + S.chunks.cellsDrawn + '/' + S.chunks.cells + ' drawn' + (S.chunks.props || S.chunks.rooms ? ' · prop plots ' + S.chunks.propsDrawn + '/' + S.chunks.props + ' · rooms ' + S.chunks.roomsDrawn + '/' + S.chunks.rooms : ''));
+        if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept');
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
         if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ')); }
         if (S.why && S.why.length) {
@@ -87652,7 +87654,7 @@ const ThreeRenderer = (function () {
            The walk runs once here; the frame's renders skip theirs. Off: window.EW_HQ_MW_EVERY_RENDER. */
         var mwScene = H.scene, mwHold = mwScene.matrixWorldAutoUpdate === true && !(typeof window !== 'undefined' && window.EW_HQ_MW_EVERY_RENDER);
         try {
-            if (mwHold) { mwScene.updateMatrixWorld(); mwScene.matrixWorldAutoUpdate = false; }
+            if (mwHold) { _hqStillSceneWalk(mwScene); mwScene.matrixWorldAutoUpdate = false; }   // THE STILL WALK: the still groups walk only what moved
             if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
             var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
             if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
@@ -87890,11 +87892,145 @@ const ThreeRenderer = (function () {
     function _ewAddCount() {
         if (typeof THREE !== 'undefined' && THREE.Object3D && !THREE.Object3D.prototype._ew_addHookR) {
             var P = THREE.Object3D.prototype, add = P.add;
-            P.add = function () { _ewAddN++; return add.apply(this, arguments); };
+            P.add = function () { _ewAddN++; if (_hqStArmedN > 0) _hqStillAdded(this); return add.apply(this, arguments); };
             P._ew_addHookR = true;
         }
         return _ewAddN;
     }
+    /* ══ THE STILL WALK (2026-11-14, mondo in Disaster City: "still really slow and laggy ... there have to be multiple huge
+       performance saves that you are missing") ══
+       three walks EVERY object of the scene once a frame (updateMatrixWorld: each one's matrix composed again from its position,
+       turn and size, then multiplied with its parent's), drawn or not, moved or not: 59,000 objects in the city, of which about
+       300 move (the people, 16 cars, the doors). THE STILL CHUNKS (the same day) meant to leave the off-camera chunks out by
+       clearing matrixWorldAutoUpdate, but three's walk recurses into the children regardless — it left nothing out.
+       A chunked room's shell group and each of its chunk groups (prop plots, rooms, fence plots) now walk themselves, inside the
+       frame's ONE walk only (_hqStWalk; any other caller gets three's own walk, untouched):
+         · a chunk off the camera is not walked at all (its matrices were made current as it left; what lands in it meanwhile is
+           placed by _hqChunkTick);
+         · of a drawn group, each direct child's own position / turn / size is compared with last frame's (ten numbers): one that
+           changed is walked at once, and stays walked every frame for HOLD ms after its last change (a car and its wheels);
+         · a child something was added under (a file landed: Object3D.add tells) is walked that frame;
+         · the rest is walked a slice a frame, the whole group every SWEEP ms, and a child whose INNER parts turned out to move
+           (a lamp's wax, a fan, a swaying sign, a fish's bones) joins the every-frame list the same way;
+         · the group itself moving (a part shifted), a chunk coming back onto the camera: the whole group, twice.
+       So a still wall costs one compare; a mover inside a model starts at most SWEEP ms late the first time it is seen.
+       _hqStillWake(o) puts a piece on the every-frame list by hand (a mover that must not start late).
+       Off: window.EW_HQ_STILL_OFF. Counts: ThreeRenderer.hq.dev.still(). */
+    var _hqStWalk = false, _hqStNow = 0, _hqStArmedN = 0, _hqStProto = null;
+    var _hqStS = { groups: 0, out: 0, full: 0, tops: 0, fresh: 0, movers: 0, swept: 0, ms: 0 }, _hqStLast = null, _hqStMs = 0;
+    var HQ_STILL_SWEEP_MS = 500, HQ_STILL_HOLD_MS = 4000;
+    function _hqStillOff() { return typeof window !== 'undefined' && !!window.EW_HQ_STILL_OFF; }
+    function _hqStillArm(g) {
+        if (!g || g._ew_st) return;
+        _ewAddCount();   // the add hook
+        if (!_hqStProto) _hqStProto = THREE.Object3D.prototype.updateMatrixWorld;
+        g._ew_st = { i: 0, mv: new Set(), fresh: new Set(), wake: new Set(), full: 2, at: 0, out: false, own: NaN, C: null, T: null, SM: null, AT: null, cap: 0 };
+        g.updateMatrixWorld = _hqStillUpdate; _hqStArmedN++;
+    }
+    function _hqStillDisarm(g) {
+        if (!g || !g._ew_st) return;
+        g._ew_st = null; delete g.updateMatrixWorld; _hqStArmedN = Math.max(0, _hqStArmedN - 1);
+    }
+    /* Object3D.add: `par` is getting a child — the still group's direct child it sits under is walked next frame */
+    function _hqStillAdded(par) {
+        for (var q = par, top = null, d = 0; q && d < 32; top = q, q = q.parent, d++) {
+            var st = q._ew_st;
+            if (st) { if (top) st.fresh.add(top); return; }
+        }
+    }
+    /* a piece that is about to move: walked every frame from now (until HOLD ms after it rests) */
+    function _hqStillWake(o) {
+        for (var q = o, top = null, d = 0; q && d < 32; top = q, q = q.parent, d++) {
+            var st = q._ew_st;
+            if (st) { if (top) st.wake.add(top); return; }
+        }
+    }
+    function _hqStillSum(o) {
+        var e = o.matrixWorld.elements, s = e[12] + e[13] * 1.618 + e[14] * 2.414 + e[0] * 3.3 + e[5] * 5.7 + e[10] * 7.1 + e[1] * 11.3 + e[2] * 13.7 + e[6] * 17.9, ch = o.children;
+        for (var i = 0, n = ch.length; i < n; i++) s += _hqStillSum(ch[i]);
+        return s;
+    }
+    /* a group's own book: per direct child (by its place in .children) the ten numbers of its last pose, its subtree's
+       checksum and when it last moved — kept in the group's arrays, never on the children (10,000 pieces of many kinds: a
+       property read off each is a slow, megamorphic one) */
+    function _hqStillBook(st, n) {
+        if (st.C && st.cap >= n) return;
+        var cap = Math.max(16, Math.ceil(n * 1.25)), T = new Float64Array(cap * 10), SM = new Float64Array(cap), AT = new Float64Array(cap), C = new Array(cap);
+        if (st.C) { T.set(st.T); SM.set(st.SM); AT.set(st.AT); for (var i = 0; i < st.cap; i++) C[i] = st.C[i]; }
+        st.T = T; st.SM = SM; st.AT = AT; st.C = C; st.cap = cap;
+    }
+    function _hqStillUpdate(force) {
+        var st = this._ew_st;
+        if (!_hqStWalk || !st || _hqStillOff()) return (_hqStProto || THREE.Object3D.prototype.updateMatrixWorld).call(this, force);
+        var S = _hqStS; S.groups++;
+        if (this._ew_ckOut) { st.out = true; S.out++; return; }
+        if (st.out) { st.out = false; st.full = 2; }
+        if (this.matrixAutoUpdate) this.updateMatrix();
+        if (this.matrixWorldAutoUpdate === true) { if (this.parent === null) this.matrixWorld.copy(this.matrix); else this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix); }
+        this.matrixWorldNeedsUpdate = false;
+        var e = this.matrixWorld.elements, own = e[12] + e[13] * 1.618 + e[14] * 2.414 + e[0] * 3.3 + e[5] * 5.7 + e[10] * 7.1 + e[1] * 11.3 + e[2] * 13.7 + e[6] * 17.9;
+        var moved = own !== st.own; st.own = own;
+        var ch = this.children, n = ch.length, now = _hqStNow, mv = st.mv, fr = st.fresh, wk = st.wake, c, i, s, j, p, q, sc;
+        _hqStillBook(st, n);
+        var T = st.T, SM = st.SM, AT = st.AT, C = st.C;
+        if (moved || st.full > 0) {   // the whole group
+            var seed = !moved;
+            if (st.full > 0) st.full--;
+            for (i = 0; i < n; i++) {
+                c = ch[i]; c.updateMatrixWorld(true); s = _hqStillSum(c);
+                if (seed && C[i] === c && s !== SM[i]) { mv.add(c); AT[i] = now; }
+                C[i] = c; SM[i] = s;
+                j = i * 10; p = c.position; q = c.quaternion; sc = c.scale;
+                T[j] = p.x; T[j + 1] = p.y; T[j + 2] = p.z; T[j + 3] = q._x; T[j + 4] = q._y; T[j + 5] = q._z; T[j + 6] = q._w; T[j + 7] = sc.x; T[j + 8] = sc.y; T[j + 9] = sc.z;
+            }
+            if (fr.size) fr.clear();
+            st.at = now; S.full++; S.tops += n;
+            return;
+        }
+        var dt = Math.min(HQ_STILL_SWEEP_MS, Math.max(0, now - st.at)); st.at = now;
+        var k = n ? Math.min(n, Math.ceil(n * dt / HQ_STILL_SWEEP_MS)) : 0, i0 = n ? st.i % n : 0, i1 = i0 + k;
+        st.i = n ? i1 % n : 0;
+        var hasMv = mv.size > 0, hasFr = fr.size > 0, hasWk = wk.size > 0;
+        for (i = 0; i < n; i++) {
+            c = ch[i]; j = i * 10; p = c.position; q = c.quaternion; sc = c.scale;
+            var isNew = C[i] !== c || (hasFr && fr.has(c));   // new at this place, or something landed under it
+            if (isNew || T[j] !== p.x || T[j + 1] !== p.y || T[j + 2] !== p.z || T[j + 3] !== q._x || T[j + 4] !== q._y || T[j + 5] !== q._z || T[j + 6] !== q._w || T[j + 7] !== sc.x || T[j + 8] !== sc.y || T[j + 9] !== sc.z) {
+                c.updateMatrixWorld(true); SM[i] = _hqStillSum(c);
+                T[j] = p.x; T[j + 1] = p.y; T[j + 2] = p.z; T[j + 3] = q._x; T[j + 4] = q._y; T[j + 5] = q._z; T[j + 6] = q._w; T[j + 7] = sc.x; T[j + 8] = sc.y; T[j + 9] = sc.z;
+                if (C[i] !== c) { C[i] = c; AT[i] = now; S.fresh++; }
+                else if (isNew) S.fresh++;
+                else { AT[i] = now; mv.add(c); S.movers++; }   // it moved: every frame from here
+                continue;
+            }
+            if (hasWk && wk.has(c)) { mv.add(c); AT[i] = now; hasMv = true; }
+            if (hasMv && mv.has(c)) {
+                c.updateMatrixWorld(true); s = _hqStillSum(c);
+                if (s !== SM[i]) { SM[i] = s; AT[i] = now; }
+                else if (now - AT[i] > HQ_STILL_HOLD_MS) mv.delete(c);
+                S.movers++; continue;
+            }
+            if ((i >= i0 && i < i1) || i + n < i1) {   // this frame's slice of the rest
+                c.updateMatrixWorld(true); s = _hqStillSum(c);
+                if (s !== SM[i]) { mv.add(c); AT[i] = now; SM[i] = s; }
+                S.swept++;
+            }
+        }
+        if (hasFr) fr.clear();
+        if (hasWk) wk.clear();
+        if (mv.size > 32 && (st.gc = (st.gc | 0) + 1) % 120 === 0) { var self = this; mv.forEach(function (m) { if (m.parent !== self) mv.delete(m); }); }
+        S.tops += n;
+    }
+    /* the frame's one walk of the walk's scene */
+    function _hqStillSceneWalk(sc) {
+        var S = _hqStS; S.groups = S.out = S.full = S.tops = S.fresh = S.movers = S.swept = 0;
+        var t0 = performance.now();
+        _hqStNow = t0; _hqStWalk = true;
+        try { sc.updateMatrixWorld(); } finally { _hqStWalk = false; }
+        var ms = performance.now() - t0;
+        _hqStMs = _hqStMs ? _hqStMs * 0.9 + ms * 0.1 : ms;
+        _hqStLast = { groups: S.groups, out: S.out, full: S.full, tops: S.tops, fresh: S.fresh, movers: S.movers, swept: S.swept, ms: +_hqStMs.toFixed(2), off: _hqStillOff() };
+    }
+    function _hqStillStats() { return _hqStLast; }
     function _hqChunkRules() {
         var R = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES) ? HQ_ENGINE_RULES : {};
         return { m: (R.chunkM > 0) ? +R.chunkM : 42, minSpan: (R.chunkMinSpanM > 0) ? +R.chunkMinSpanM : 200, pad: (R.chunkPadM >= 0) ? +R.chunkPadM : 15,
@@ -87958,6 +88094,7 @@ const ThreeRenderer = (function () {
     /* per frame, before the draw: which chunk groups the camera draws */
     function _hqChunkTick(H, now) {
         var L = H.ckList; if (!L || !L.length) return;
+        if (H.shellGroup && !H.shellGroup._ew_st && _hqChunkBig(H)) _hqStillArm(H.shellGroup);   // THE STILL WALK
         var cam = H.camera, off = (typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL) || !cam;
         var RU = _hqChunkRules(), pad = RU.pad * _hqUnits(), drawn = 0;
         if (!off) {
@@ -87970,7 +88107,9 @@ const ThreeRenderer = (function () {
         var mwAll = typeof window !== 'undefined' && !!window.EW_HQ_CHUNK_MW_ALWAYS, addN = _ewAddCount(), addMoved = H._ckAddN !== addN; H._ckAddN = addN;
         for (var i = L.length - 1; i >= 0; i--) {
             var g = L[i];
-            if (!g.parent) { g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; L.splice(i, 1); continue; }
+            if (!g.parent) { g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; _hqStillDisarm(g); L.splice(i, 1); continue; }
+            if (!g._ew_st && (g._ew_pChunk || g._ew_chunk != null)) _hqStillArm(g);   // THE STILL WALK
+            var grew = g._ew_ckN !== g.children.length;
             if (off) { if (g._ew_ckOut) { g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; } drawn++; continue; }
             /* a prop chunk is measured through every piece in it (a walk of the chunk): again only when something joined the
                scene since (a file landed: at most every 4 s) or its own count changed, and every 60 s */
@@ -87988,7 +88127,7 @@ const ThreeRenderer = (function () {
                 g._ew_ckOut = out; g.visible = !out;
                 if (out && !mwAll) g.updateMatrixWorld(true);   // its world matrices current as it leaves the walk
                 g.matrixWorldAutoUpdate = !out || mwAll;
-            } else if (out && addMoved && !g.matrixWorldAutoUpdate) g.updateMatrixWorld(true);   // something joined the scene (a file landed): an out chunk's new pieces get their place
+            } else if (out && !g.matrixWorldAutoUpdate && (g._ew_st ? (grew || g._ew_st.fresh.size > 0) : addMoved)) { g.updateMatrixWorld(true); if (g._ew_st) g._ew_st.fresh.clear(); }   // something joined THIS chunk (a file landed, a prop swept in): an out chunk's new pieces get their place
             if (!out) drawn++;
         }
         H.ckDrawn = drawn;
@@ -87999,10 +88138,11 @@ const ThreeRenderer = (function () {
         try { _hqPropChunkHome(H); } catch (e) { console.warn('[HQ] the prop chunks could not go home', e); }   // THE PROP CHUNKS: every prop back under the prop group
         var C = H.chunks; H.chunks = null;
         if (C) {
-            for (var k in C.cells) { var g = C.cells[k]; g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; while (g.children.length) { var c = g.children[0]; if (H.shellGroup) H.shellGroup.add(c); else g.remove(c); } }
+            for (var k in C.cells) { var g = C.cells[k]; g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; _hqStillDisarm(g); while (g.children.length) { var c = g.children[0]; if (H.shellGroup) H.shellGroup.add(c); else g.remove(c); } }
             if (C.root.parent) C.root.parent.remove(C.root);
         }
-        (H.ckList || []).forEach(function (g) { g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; });
+        (H.ckList || []).forEach(function (g) { g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; _hqStillDisarm(g); });
+        _hqStillDisarm(H.shellGroup);
         H.ckList = null; H.ckDrawn = 0;
     }
     function _hqChunkStats(H) {
@@ -88109,7 +88249,7 @@ const ThreeRenderer = (function () {
         var C = H && H.pChunks; if (!C) return;
         H.pChunks = null; H._pcN = -1; H._pcSet = null;
         for (var k in C) {
-            var g = C[k]; g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true;
+            var g = C[k]; g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; _hqStillDisarm(g);
             var P = g.parent || H.propGroup;
             while (g.children.length) { var c = g.children[0]; if (P) P.add(c); else g.remove(c); }
             if (g.parent) g.parent.remove(g);
@@ -92221,7 +92361,10 @@ const ThreeRenderer = (function () {
     /* the watchdog: every piece of every live batch as it was */
     function _hqBatchCheck(R, B) {
         var root = R[B.grp]; if (!root) return;
-        root.updateMatrixWorld(true);
+        /* THE STILL WALK: a chunked room's groups keep their own matrices current (a moved piece at once, a moved inner part within
+           its sweep) — the forced walk of the whole city twice a second is three's own only where nothing else walks */
+        if (!_hqStillOff() && (root._ew_st || (R.pChunks && root === R.propGroup && R.ckList && R.ckList.length))) root.updateWorldMatrix(true, false);
+        else root.updateMatrixWorld(true);
         var inv = _hqBatchM || (_hqBatchM = new THREE.Matrix4()), tmp = _hqBatchM2 || (_hqBatchM2 = new THREE.Matrix4());
         inv.copy(root.matrixWorld).invert();
         B.batches.slice().forEach(function (rec) {
@@ -94071,6 +94214,7 @@ const ThreeRenderer = (function () {
             renderer: function () { return renderer; },
             /* THE STILL MATRICES: the last scene walk (objects seen, kept, remade, run by their own method) */
             /* THE STILL TORCH: how many walk frames held the hero light's map, and why the last one did or did not */
+            still: function () { return _hqStillStats(); }, stillWalk: function (dtMs) { if (!_hq) return null; var t0 = performance.now(); _hqStillSceneWalk(_hq.scene); return { ms: +(performance.now() - t0).toFixed(2), last: _hqStLast }; }, stillWake: function (o) { _hqStillWake(o); },
             heroShadow: function () { var L = _hq && _hq.heroLit; return Object.assign({ light: !!(L && L.isLight), hold: !!(L && L._ew_heroHold) }, _heroStat); },
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
             hqScene: function () { return _hq ? _hq.scene : null; },
