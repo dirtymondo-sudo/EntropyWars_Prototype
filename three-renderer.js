@@ -46930,7 +46930,61 @@ const ThreeRenderer = (function () {
             return out;
         };
         var po = r._projectObject;
-        r._projectObject = function (object, camera) {
+        /* THE LAMP'S REACH (2026-11-14, Disaster City: the lamp's shadow walked the whole city six times a frame): a shadow drawn
+           through a perspective camera (a point lamp's six sides, a spot) sees nothing farther than its far plane, yet three walked
+           every object of the scene for each side (~120,000 visits a frame in the city) and drew the unculled pieces past it (the
+           GPU clipped them). Now, inside such a render, a chunk whose sphere lies past the reach is skipped whole, and a room's
+           shell (still pieces, over 256 children) walks only the children filed in the 8 m cells the reach
+           touches (+ the few too big for cells; the file is made once and again when its child count changes). Same shadow
+           (nothing past the far plane can draw). Off: window.EW_SHADOW_REACH_OFF = true. */
+        var rReach = r.render;   // (its own name: `ro` above is the opaque-list hook's three original, and one var in this function is one slot)
+        r.render = function (sc, cam) {
+            var prev = this._ew_reach;
+            this._ew_reach = null;
+            if (sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial && cam && cam.isPerspectiveCamera && cam.far > 0 && !window.EW_SHADOW_REACH_OFF) {
+                cam.updateMatrixWorld();
+                var ce = cam.matrixWorld.elements;
+                this._ew_reach = { x: ce[12], y: ce[13], z: ce[14], far: cam.far };
+            }
+            try { return rReach.apply(this, arguments); } finally { this._ew_reach = prev; }
+        };
+        var _rchB = new THREE.Box3(), _rchS = new THREE.Sphere();
+        function reachOut(R, sp) { var dx = sp.center.x - R.x, dy = sp.center.y - R.y, dz = sp.center.z - R.z, lim = R.far + sp.radius; return dx * dx + dy * dy + dz * dz > lim * lim; }
+        function reachFile(g) {
+            var I = g._ew_reachIdx, now = performance.now();
+            if (I && I.n === g.children.length) return I;
+            if (I && now - I.at < 3000) return null;   // still filling (a room landing): the plain walk until it holds
+            var C = new Map(), big = [], CELL = 8 * _hqUnits(), ch = g.children;
+            for (var i = 0; i < ch.length; i++) {
+                _rchB.makeEmpty(); _rchB.expandByObject(ch[i]);
+                if (_rchB.isEmpty()) { big.push(ch[i]); continue; }
+                _rchB.getBoundingSphere(_rchS);
+                var rr = _rchS.radius;
+                if (!isFinite(rr) || rr > CELL * 4) { big.push(ch[i]); continue; }
+                var i0 = Math.floor((_rchS.center.x - rr) / CELL), i1 = Math.floor((_rchS.center.x + rr) / CELL), j0 = Math.floor((_rchS.center.z - rr) / CELL), j1 = Math.floor((_rchS.center.z + rr) / CELL);
+                for (var a = i0; a <= i1; a++) for (var b = j0; b <= j1; b++) { var k = a + ',' + b, L = C.get(k); if (!L) C.set(k, L = []); L.push(ch[i]); }
+            }
+            return (g._ew_reachIdx = { n: ch.length, at: now, cells: C, big: big, cell: CELL });
+        }
+        r._projectObject = function (object, camera, groupOrder, renderList, clippingContext) {
+            var R = this._ew_reach;
+            if (R && object.visible !== false) {
+                var csp = object._ew_ckSph;
+                if (csp && object._ew_ckFar != null && reachOut(R, csp)) return;   // a chunk past the lamp's reach
+                if (object.children.length > 256 && !object.isClippingGroup && object._ew_bunName && / shell$/.test(object._ew_bunName) && object.layers.test(camera.layers)) {   // a room's shell: still pieces only
+                    var I = reachFile(object);
+                    if (I) {
+                        var CL = I.cell, i0 = Math.floor((R.x - R.far) / CL), i1 = Math.floor((R.x + R.far) / CL), j0 = Math.floor((R.z - R.far) / CL), j1 = Math.floor((R.z + R.far) / CL);
+                        var go = object.renderOrder, seen = new Set();
+                        for (var a = i0; a <= i1; a++) for (var b = j0; b <= j1; b++) {
+                            var L = I.cells.get(a + ',' + b); if (!L) continue;
+                            for (var q = 0; q < L.length; q++) { var c = L[q]; if (!seen.has(c) && c.parent === object) { seen.add(c); this._projectObject(c, camera, go, renderList, clippingContext); } }
+                        }
+                        for (var q2 = 0; q2 < I.big.length; q2++) if (I.big[q2].parent === object) this._projectObject(I.big[q2], camera, go, renderList, clippingContext);
+                        return;
+                    }
+                }
+            }
             if (object.isBundleGroup === true) {
                 /* a side render (the post's model mask: two layer passes into one target, one camera) would replay the first
                    pass's recording in the second — it draws the group the classic way */
@@ -78457,6 +78511,7 @@ const ThreeRenderer = (function () {
             G.add(grp);
             _hq.counters.push({ counter: c, group: grp, level: level, plateEl: pm.el, plateGpu: pm.gpu, x: null, z: null, marker: marker });
         });
+        if (room.pd) { try { _hqPdBuild(room); } catch (e) { console.warn('[PD] the plot\'s objects', e); } }   // THE PLOT DUNGEONS: the caps, the gates, the lit lines
     }
     /* THE BATTLE MARKER (2026-09-12): the glowing beacon every playable
        site wears (on its entry part) — an amber floor ring, a soft column
@@ -78771,7 +78826,7 @@ const ThreeRenderer = (function () {
                     try { _hqHeroShadow(ppl, p.key, room); } catch (e) {}
                 }
                 G.add(grp);
-                _hq.props.push({ key: p.key, grp: grp });
+                if (p.pd) { grp._ew_pd = true; grp._ew_noInstance = true; } _hq.props.push({ key: p.key, grp: grp, row: p });
                 if (cat.vehicle) { try { _hqVehicleRegister(p, cat, grp, y); } catch (e) { console.warn('[HQ] vehicle', e); } }   // THE DEEP (2026-09-18): the skiff / the bathyscaphe — E boards it
                 if (tabletop) _hq.tabletops.push({ key: p.key, grp: grp, y: y });   // THE TABLETOP SEAT
                 _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` / `ramp`
@@ -78846,7 +78901,7 @@ const ThreeRenderer = (function () {
                 grp.add(gl);
             }
             G.add(grp);
-            _hq.props.push({ key: p.key, grp: grp });
+            if (p.pd) { grp._ew_pd = true; grp._ew_noInstance = true; } _hq.props.push({ key: p.key, grp: grp, row: p });
             try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
         };
         var rows = (room.props || []).concat(_hq.terrainScatter || []);
@@ -81814,6 +81869,7 @@ const ThreeRenderer = (function () {
     var HQ_BLK_STAND_PAD = 0.12;   // standing on / landing on a top: the body's centre, not its disc, must be over it
     /* does the blocker's footprint, grown by `pad`, contain (x, z)? */
     function _hqBlkContains(b, x, z, pad) {
+        if (b.obj && b.obj._ew_pdOff) return false;   // THE PLOT DUNGEONS: an open gate, a joined port's cap
         if (b.mc) return _mcNear(b, x, z, pad);   // THE REAL COLLISION: a mesh's box — its readers ask the columns (_mcFeet, _mcSolid, _mcTopUnder)
         var U = _hqUnits();
         var bx = b.obj.position.x / U, bz = b.obj.position.z / U;
@@ -82032,7 +82088,7 @@ const ThreeRenderer = (function () {
             if (dist < bestD) { bestD = dist; best = d.angle ? { kind: 'door', id: d.door.id, label: 'SUSPICIOUS ANGLE', sub: '', state: d.state, door: d.door, rec: d, angle: true, walkThrough: false } : { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d, walkThrough: _hqDoorWalkThrough(d) }; }
         });
         _hq.counters.forEach(function (c) {
-            if (c.level !== lvl) return;
+            if (c.level !== lvl || c.pdOff) return;
             var cx = c.group.position.x / U, cz = c.group.position.z / U;
             var dist = Math.hypot(cx - pl.x, cz - pl.z);
             if (dist > (c.counter.radius || 2)) return;
@@ -82969,7 +83025,7 @@ const ThreeRenderer = (function () {
     function _hqSpawnRounds(room, opts) {
         var H = _hq; if (!H) return;
         H.rounds = H.rounds || [];
-        if (_hqRoundsOff()) return;
+        if (_hqRoundsOff() || (room && room.pd)) return;   // THE PLOT DUNGEONS: nobody walks a puzzle's plots
         var roomId = opts.room || 'central_egress', prof = opts.profile, av = opts.avatar || {};
         var crowd = opts._crowd || null;   // THE CROWD CAP (2026-10-01): the room's one budget, shared with _hqSpawnPopulation
         var R = _hqRoundsRules(), now = performance.now();
@@ -91334,6 +91390,9 @@ const ThreeRenderer = (function () {
         for (var id in st.parts) { var E = st.parts[id]; if (E.attached) _hqStageTickPart(H, E, dt, now); }
         if (now - st.lampAt > (HQ_STAGE_RULES.lampPickMs || 500) || st.lampN < 0) { st.lampAt = now; _hqStageLamps(H); }
         if (st.blend) _hqStageBlendTick(H, now);
+        if (H.room && H.room.pd) _hqPdBeat(H, now);
+        if (H.pdTop) _hqPdTopCam(H);
+        if (H.pd) { _hqPdTick(H, now); return; }   // THE PLOT DUNGEONS: a plot is moving — no crossing mid-move
         _hqStageCross(H, now);
     }
     function _hqStageBuildTick(H, now) {
@@ -91886,7 +91945,7 @@ const ThreeRenderer = (function () {
        at once, like a `visible` write. Off: window.EW_HQ_NO_PROP_BATCH (props only) / EW_HQ_NO_BATCH (all). */
     var _hqBatchDraw = 0;   // > 0 while a renderer.render runs
     var _HQ_BATCH_FLAG_OFF = { _ew_hqInst: 1, _ew_hqCar: 1, _ew_hqSea: 1, _ew_hqOuter: 1, _ew_hqGround: 1, _ew_hqOuterSideIds: 1, _ew_hqTerrain: 1,
-                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1, _ew_text: 1, _ew_hqSignal: 1 };
+                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1, _ew_text: 1, _ew_hqSignal: 1, _ew_pd: 1 };
     var _HQ_BATCH_MAPS = ['map', 'emissiveMap', 'alphaMap', 'normalMap', 'bumpMap', 'specularMap', 'aoMap', 'lightMap', 'envMap'];
     var _hqBatchIds = null, _hqBatchIdN = 0, _hqBatchM = null, _hqBatchM2 = null, _hqBatchN3 = null, _hqBatchV = null;
     function _hqBatchOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_BATCH; }
@@ -91940,6 +91999,7 @@ const ThreeRenderer = (function () {
         if (m.transparent && !(m.opacity >= 1 && m.alphaTest > 0 && m.depthWrite !== false) && !(m.blending === THREE.AdditiveBlending && m.depthWrite === false)) return false;   // a see-through piece is sorted by its own centre: only a cut-out (or an additive glow, order-free) merges
         for (var i = 0; i < _HQ_BATCH_MAPS.length; i++) { var t = m[_HQ_BATCH_MAPS[i]]; if (t && (!t.image || !(t.version > 0) || t.isVideoTexture || t.isCubeTexture || t.isRenderTargetTexture)) return false; }   // its sheets landed
         for (var k in o) if (_HQ_BATCH_FLAG_OFF[k]) return false;
+        for (var q = o.parent; q; q = q.parent) if (q._ew_pd) return false;   // THE PLOT DUNGEONS: a piece the board shows and hides is never merged
         return true;
     }
     function _hqBatchRel(o, inv, out) { return out.multiplyMatrices(inv, o.matrixWorld); }
@@ -92661,6 +92721,145 @@ const ThreeRenderer = (function () {
     function _hqStageLeave(H) {
         var st = H && H.stage; if (!st) return;
         for (var id in st.parts) { var E = st.parts[id]; try { if (E.gate) E.gate.close(); } catch (e) {} if (!E.attached) { try { E.P.partRoot.traverse(function (o) { _disposeR(o); }); } catch (e) {} } }
+    }
+    /* ══ THE PLOT DUNGEONS (docs/PLOT_DUNGEONS_PLAN.md §6.3, 2026-11-14) ══════════════════════════════════════════════════════════
+       A dungeon's plots are stage parts (data.js pdInstall): each is built once in its own frame and placed by its pose. A MOVE
+       (a plot turns a quarter, a plot slides one slot) is a tween of the parts' poses from the board before to the board after:
+       `frames` = { roomId: { x, z, y, rot } } in the zone's metres, rot in quarter turns (a fraction while it turns). The current
+       part is the scene's origin, so every other part is placed by its frame SEEN FROM the current part's: when the plot under
+       the officer turns, the rest of the board (and the sky, and the key light) swings round it the other way, which is the same
+       picture as the plot turning under a camera that rides it. The walker's keys are dropped while a move runs (nothing moves
+       under walking feet); the board's rules, the joins and the save are map.js / data.js's (pdSync), which call refresh() after. */
+    /* THE PD OBJECTS: a plot's drawn rows (data.js pdRoomDef → room.pdDraw: the port caps and jambs, the gates' bars, the lit
+       traces, the lamps, the cover blockers) built into the part's own group, so they turn and slide with their plot. Each row
+       may wear `show` (a condition: drawn and solid only while it holds) and `lit` (its glow on only while it holds);
+       _hqPdApply reads the live board (pdCheck) for every part on the stage and for the props / counters whose rows wear one. */
+    function _hqPdBuild(room) {
+        if (!room || !room.pd || !room.pdDraw) return;
+        var U = _hqUnits(), G = _hq.doorGroup, out = [];
+        room.pdDraw.forEach(function (r) {
+            var grp = new THREE.Group(), y0 = r.y || 0, mat = null;
+            grp._ew_pd = true; grp._ew_noInstance = true;
+            grp.position.set((r.x || 0) * U, y0 * U, (r.z || 0) * U);
+            if (!r.ghost) {
+                mat = _hqMat(r.tex || null, r.tu || 1, r.tv || 1, { color: r.color != null ? r.color : (r.tex ? 0xffffff : 0x8a8f98), shininess: r.k === 'bars' ? 40 : 8 });
+                if (r.glow != null) { mat.emissive = new THREE.Color(r.glow); mat.emissiveIntensity = r.lit ? 0.03 : 1; }
+                var add = function (w, h, d, x, y, z) { var m = _hqBox(w, h, d, mat); m.position.set(x * U, y * U, z * U); m._ew_pd = true; m.castShadow = r.k !== 'bars' && h > 0.5; m.receiveShadow = true; grp.add(m); };
+                if (r.k === 'bars') {
+                    /* a gate: upright bars every half metre between two beams, across the row's long side */
+                    mat.color.set(r.color != null ? r.color : 0x2c2f33);
+                    var along = r.w >= r.d, L = along ? r.w : r.d, n = Math.max(2, Math.round(L / 0.5));
+                    for (var i = 0; i <= n; i++) { var o = -L / 2 + L * i / n; add(0.12, r.h, 0.12, along ? o : 0, r.h / 2, along ? 0 : o); }
+                    [0.25, r.h - 0.2].forEach(function (yy) { add(along ? L : 0.16, 0.16, along ? 0.16 : L, 0, yy, 0); });
+                } else add(r.w, r.h, r.d, 0, r.h / 2, 0);
+            }
+            G.add(grp);
+            var blk = null;
+            if (r.block) { blk = { obj: grp, rad: Math.max(r.w, r.d) / 2, y: y0, top: y0 + r.h, rect: { hw: r.w / 2, hd: r.d / 2 }, yaw: 0 }; _hq.blockers.push(blk); }
+            out.push({ row: r, grp: grp, mat: mat, blk: blk, lit: null });
+        });
+        _hq.pdDrawn = out;
+    }
+    function _hqPdApply(H) {
+        var room = H && H.room; if (!room || !room.pd || typeof pdCheck !== 'function') return;
+        var id = room.pd, S = pdState(id), st = H.stage, recs = [H];
+        if (st) for (var pid in st.parts) recs.push(st.parts[pid].P);
+        var set = function (grp, on) { if (grp.visible !== on) grp.visible = on; grp._ew_pdOff = !on; };
+        recs.forEach(function (R) {
+            if (!R) return;
+            (R.pdDrawn || []).forEach(function (o) {
+                if (o.row.show) set(o.grp, !!pdCheck(id, S, o.row.show));
+                if (o.row.lit && o.mat) { var l = !!pdCheck(id, S, o.row.lit); if (o.lit !== l) { o.lit = l; o.mat.emissiveIntensity = l ? 1 : 0.03; } }
+            });
+            (R.props || []).forEach(function (p) { if (p.row && p.row.pd && p.row.pd.show) set(p.grp, !!pdCheck(id, S, p.row.pd.show)); });
+            (R.counters || []).forEach(function (c) {
+                if (!c.counter || !c.counter.pdShow) return;
+                var on = !!pdCheck(id, S, c.counter.pdShow); if (c.pdOff === !on) return;
+                c.pdOff = !on; c.group.visible = on; c.group.traverse(function (q) { if (q !== c.group && (q.isCSS2DObject || q.isSprite || q.isMesh)) q.visible = on; });
+            });
+        });
+    }
+    /* the walk's own beat for a dungeon: the objects follow the board ~3 times a second, and map.js hears where the officer stands
+       (the exit's ring, the fights) */
+    function _hqPdBeat(H, now) {
+        if ((H._pdBeatAt || 0) > now) return; H._pdBeatAt = now + 300;
+        try { _hqPdApply(H); } catch (e) { if (!H._pdBeatErr) { H._pdBeatErr = 1; console.warn('[PD] apply', e); } }
+        try { if (typeof window._pdBeat === 'function' && H.player) window._pdBeat({ room: (H.stage && H.stage.id) || H.id, x: H.player.x, z: H.player.z, y: H.player.y }); } catch (e2) {}
+    }
+    function _hqPdPose(H, frames) {
+        var st = H.stage; if (!st) return;
+        var A = frames[st.id]; if (!A) return;
+        var U = _hqUnits(), th = A.rot * Math.PI / 2, c = Math.cos(th), s = Math.sin(th);
+        for (var id in st.parts) {
+            var E = st.parts[id], B = frames[id]; if (!B || !E.attached) continue;
+            var dx = B.x - A.x, dz = B.z - A.z, R = E.P.partRoot;
+            R.position.set((dx * c - dz * s) * U, ((B.y || 0) - (A.y || 0)) * U, (dx * s + dz * c) * U);
+            R.rotation.set(0, (B.rot - A.rot) * Math.PI / 2, 0);
+            R.updateMatrixWorld(true);
+        }
+    }
+    function _hqPdMove(spec, done) {
+        var H = _hq, st = H && H.stage; if (!st || !spec || !spec.from || !spec.to) { if (done) done(false); return false; }
+        if (H.pd) return false;
+        H.pd = { from: spec.from, to: spec.to, t0: performance.now(), ms: Math.max(1, spec.ms || 1500), done: done || null, sky: 0 };
+        return true;
+    }
+    function _hqPdTick(H, now) {
+        var M = H.pd, st = H.stage; if (!M || !st) return;
+        H.keys = {}; H.pad = null; H.padKeys = {};   // nothing moves under walking feet
+        var k = Math.max(0, Math.min(1, (now - M.t0) / M.ms)), e = k * k * (3 - 2 * k), fr = {};
+        for (var id in M.to) {
+            var a = M.from[id] || M.to[id], b = M.to[id];
+            fr[id] = { x: a.x + (b.x - a.x) * e, z: a.z + (b.z - a.z) * e, y: (a.y || 0) + ((b.y || 0) - (a.y || 0)) * e, rot: a.rot + (b.rot - a.rot) * e };
+        }
+        _hqPdPose(H, fr);
+        /* the plot under the officer turns: the sky's bodies and the key light swing with the rest of the board */
+        var cur = M.to[st.id], cur0 = M.from[st.id] || cur, want = cur ? -(cur.rot - cur0.rot) * e * Math.PI / 2 : 0, d = want - M.sky;
+        if (d) {
+            M.sky = want;
+            var RY = new THREE.Matrix4().makeRotationY(d);
+            H.scene.children.forEach(function (c) {
+                if (c.isDirectionalLight) { c.position.applyMatrix4(RY); return; }
+                if (H.sky && (c === H.sky.group || c === H.sky.landmarks)) { c.rotation.y += d; c.updateMatrixWorld(true); }
+            });
+            if (H.keyDir) H.keyDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), d);
+            st.skyYaw += d;
+        }
+        if (k >= 1) { H.pd = null; if (M.done) { try { M.done(true); } catch (err) { console.warn('[PD] the move\'s end threw', err); } } }
+    }
+    /* the board changed (map.js wrote it with pdSync): the stage re-reads its neighbours, their poses and the joined spans */
+    function _hqPdRefresh() {
+        var H = _hq, st = H && H.stage; if (!st) return false;
+        st.nbsAll = _hqStageNbsOf(st.id); st.nbs = st.nbsAll;
+        for (var id in st.parts) { st.parts[id]._trkSpans = null; st.parts[id]._trkSpansFor = null; }
+        _hqStageRing(H);
+        st.lampN = -1;
+        try { _hqShadowArm(H.room); } catch (e) {}
+        try { _hqPdApply(H); } catch (e2) { console.warn('[PD] apply', e2); }
+        return true;
+    }
+    /* a dev eye straight down on the board (proof shots, checks): pd.top({ x, z, h }) in the current part's metres, pd.top(null) = the
+       walk's eye back. The ceilings and the fog are put away while it is up. */
+    function _hqPdTop(spec) {
+        var H = _hq; if (!H) return false;
+        var T = H.pdTop;
+        if (T && !spec) { (T.hid || []).forEach(function (o) { o.visible = true; }); if (T.fog !== undefined) H.scene.fog = T.fog; H.camera.up.set(0, 1, 0); H.pdTop = null; return true; }
+        if (!spec) return false;
+        H.pdTop = Object.assign(T || { hid: null, fog: undefined }, { x: spec.x || 0, z: spec.z || 0, h: spec.h || 80, hid: null });
+        if (T) (T.hid || []).forEach(function (o) { o.visible = true; });
+        return true;
+    }
+    function _hqPdTopCam(H) {
+        var T = H.pdTop, U = _hqUnits(), cam = H.camera;
+        if (T.fog === undefined) { T.fog = H.scene.fog; }
+        H.scene.fog = null;
+        if (!T.hid || T.n !== H.scene.children.length) { T.hid = T.hid || []; T.n = H.scene.children.length; H.scene.traverse(function (o) { if ((o._ew_hqPart === 'ceil' || o._ew_hqRoof) && o.visible) { o.visible = false; T.hid.push(o); } }); }
+        cam.up.set(0, 0, -1); cam.position.set(T.x * U, T.h * U, T.z * U); cam.lookAt(T.x * U, 0, T.z * U); cam.updateMatrixWorld(true);
+    }
+    /* where the officer stands: the current part and the feet in its own metres */
+    function _hqPdAt() {
+        var H = _hq; if (!H || !H.player) return null;
+        return { room: (H.stage && H.stage.id) || (H.opts && H.opts.room), x: H.player.x, z: H.player.z, y: H.player.y, moving: !!H.pd };
     }
     function _hqStageStatus() {
         var H = _hq, st = H && H.stage; if (!st) return null;
@@ -93395,6 +93594,8 @@ const ThreeRenderer = (function () {
         room: function () { return _hq ? (_hq.opts.room || 'central_egress') : null; },
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): { id, nbs, parts: { id: { built, step, attached, rel } }, crossed, lampN, skyYaw, blending } | null */
         stage: _hqStageStatus,
+        pd: { move: _hqPdMove, refresh: _hqPdRefresh, at: _hqPdAt, top: _hqPdTop, busy: function () { return !!(_hq && _hq.pd); },
+              objs: function () { return (_hq && _hq.pdDrawn || []).map(function (o) { return { id: o.row.id, on: o.grp.visible, off: !!o.grp._ew_pdOff, lit: o.lit, solid: !!o.blk }; }); } },   // THE PLOT DUNGEONS
         batch: function () { return _hqBatchStats(_hq); },   // THE STATIC BATCH (Phase 11): per part { phase, batches, pieces, verts, broken, scanned }
         /* THE FAR SHELLS / THE LOD LEVELS (OPEN_WORLD_PLAN Phase 10): { parts, built, shown, tris, far (m), waiting: [ids] } and
            { meshes, full, lod1, lod2, culled, swaps } — null outside the walk (or before the first tick) */

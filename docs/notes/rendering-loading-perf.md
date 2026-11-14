@@ -1938,3 +1938,21 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
 - PR #1377 (prop chunks, mask bundles, still chunks, LOD rows) was rolled back in PR #1379 while this was found; it comes back
   after a clean city load.
 - 11-14 10:10: mondo's F3 after #1381 loaded fine (5.5 FPS, picks 0/s); the #1377 pass is back (re-land of the rollback).
+
+## THE LAMP'S REACH (2026-11-14, Disaster City shadows)
+- After PR #1382 his Mac lens showed shadow 824 of 894 draws. The cloud browser (city, spawn): one drawn frame = the scene,
+  two mask passes, the sun's map and the nearest lamp's six sides (the hero lamp, `_hqHeroGate`: a `lava_lamp` prop's point
+  light, reach 3.5 m). Each side walked the WHOLE scene (~120,000 `_projectObject` visits a frame) and drew the unculled
+  pieces past its far plane.
+- **Fix (`_ewBunSetup`, three-renderer.js).** A render wrapper flags a shadow pass through a perspective camera (`_ew_reach`:
+  camera position + far). Inside it a chunk (`_ew_ckSph`) past the reach is skipped whole, and a room's shell (`_ew_bunName`
+  "... shell", >256 children) walks only children filed in 8 m cells the reach touches (`_ew_reachIdx`, built once, rebuilt
+  when the child count changes; pieces over 32 m always walked). Measured: lamp-side visits 120K -> 18K a frame, lamp draws
+  -24% (only pieces past the far plane), screenshots on/off differ less than two frames of the same setting.
+  Off: `window.EW_SHADOW_REACH_OFF = true`.
+- Sandbox share of the draw step before this: sun map ~40%, lamp sides ~17%, masks ~6%. The sun map is next.
+- 11-14 ~11:00: #1383 turned the city black (every frame threw `can't access property "test" of undefined` in three's
+  `_projectObject`): the new render wrapper was `var ro = r.render` inside `_ewBunSetup`, which already had `var ro =
+  r._renderObjects` for the opaque-list hook; one var slot, so the hook called render(list). Rolled back (#1384), renamed
+  `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
+  `_ewBunSetup` gets a name grep-checked against the whole function.
