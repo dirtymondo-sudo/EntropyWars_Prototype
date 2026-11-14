@@ -6,7 +6,7 @@
    row of parts over the same footprint (docs/notes/areas-complexes.md "THE ARCHITECTURE ROW"). All numbers are metres from the building's
    footprint centre, x east, z south; `hw` / `hd` are the footprint's half sides. Notes: areas-complexes.md "THE ENTERTAINMENT DISTRICT". */
 module.exports = { build: function (api) {
-    const { C, gx, r3, features, lateRows, props, bInfo, plotOf } = api;
+    const { C, gx, r3, features, lateRows, props, bInfo, plotOf, lvOf, LEVELS } = api;
     const EXTRA = {};   // a building of this file's own that the plan does not hold (the wedding chapel): id -> its footprint, like a bInfo row
     const D2R = Math.PI / 180, U = n => 'urban:' + n;
     /* the sheets (sprites.js URBAN_TEXTURES + the terrain keys): light ones take a tint cleanly */
@@ -134,7 +134,7 @@ module.exports = { build: function (api) {
             vtxt: (side, u, y1, step, w, word, fg, pr, glow) => { [...word].forEach((ch, i) => b.txt(side, u - w / 2, u + w / 2, y1 - (i + 1) * step + step * 0.08, step * 0.84, ch, fg, pr, glow)); return b; },
         };
         { const dr = b.door; b.du = (b.fs === 'n' || b.fs === 's') ? dr[0] : dr[1]; }
-        fn(b); if (DETAIL[id]) DETAIL[id](b); if (ROOFS[id]) ROOFS[id](b); if (LETTERS[id]) LETTERS[id](b); if (INSIDE[id] && hollow) inside(b, INSIDE[id], { loc, cx, cz, fw, fd, row, lx });
+        fn(b); if (DETAIL[id]) DETAIL[id](b); if (ROOFS[id]) ROOFS[id](b); if (LETTERS[id]) LETTERS[id](b); if (INSIDE[id] && hollow) inside(b, INSIDE[id], { loc, cx, cz, fw, fd, row, lx, gy: lvOf(plotOf[info.plot]) * LEVELS.M });
         { const ar = { k: 'arch', id: 'dc:' + id + ':arch', x: cx, z: cz, rot: 0, parts }; if (row.k === 'plateau') ar.y = 0;   /* over a roof-walk plateau the row would stand on its 7 m roof */ rows.push(ar); }
         return b;
     }
@@ -406,28 +406,37 @@ module.exports = { build: function (api) {
        as you face the building from outside. Catalogue props where the model list has one (slot machines, sofas, beds, ranges, the piano, the
        ticket booth, the popcorn cart ...), three.js parts for the rest (there is no arcade cabinet, seat row or stage model). ═══ */
     const INSIDE = {
-        'P08-04-B1': { g: ['SSS.cc.BB', '.........', 'SS..T.T.G'], keyIn: MB, floorIn: U('TileMarble3c'), rug: '#7a2030', table: '#1a6a3a', lamp: '#ffd9a0', words: { c: 'CASHIER', B: 'BAR' } },
-        'P11-04-B1': { g: ['R.M.P.V', '......V', 'L..XXX.', 'L......'], keyIn: WOOD, floorIn: WOOD, rug: '#3a3d46', R: 'amps', lamp: '#fff0d0' },
-        'P08-05-B1': { g: ['KKKKKKKKK', 'T.T.BB.LL', '.........'], keyIn: PL, floorIn: CHK, rug: null, table: '#f0e6d0', lamp: '#ffe6b0', words: { B: 'RAMEN' } },
-        'P09-05-B1': { g: ['L.RR..mm', '.GGGGGG.', '........', 'HHH..HHH', 'HHH..HHH', 'HHH..HHH', '........', 'I.....Q.'], keyIn: BR1, floorIn: WOOD, rug: '#7a2838', rake: 3, seatFace: 'back', seat: '#b03040', lamp: '#ffe0a0' },
-        'P09-06-B1': { g: ['m.R', 'GGG', '.T.', 'B.T', '..T'], keyIn: PL, floorIn: WOOD, rug: '#6a1830', table: '#f0d8a0', lamp: '#ffb0c8' },
-        'P10-06-B1': { g: ['YY.ZZ.DD', '........', 'GGG..DD.', 'GGG.....', '.....FFF', 'WW......', 'WW...FFF', 'RR......'], keyIn: BR3, floorIn: CS, rug: null, R: 'lumber', stage: 'set', lamp: '#f0f4ff' },
-        'P11-06-B1': { g: ['UAAAA.C', '.......', 'J..AA.D'], keyIn: SUB, floorIn: U('RubberNonSlip1a'), rug: '#241a40', lamp: '#30e0ff', words: { C: 'PRIZES' } },
-        'P09-07-B1': { g: ['OOO', '..K', 'WW.', 'CC.', '..D'], keyIn: SUB, floorIn: CHK, rug: null, lamp: '#fff0d0', words: { C: 'FRESH BREAD' } },
-        'P10-07-B1': { g: ['EEE.UU.NN', '.........', 'EE..T..RR'], keyIn: PL, floorIn: WOOD, rug: '#4a4058', table: '#8a5a34', lamp: '#fff0d0' },
-        'P11-07-B1': { g: ['.....', 'HH.HH', 'HH.HH', 'HH.HH', '.I.Q.'], keyIn: PL, floorIn: U('RubberNonSlip1a'), rug: '#7a2030', rake: 1, seatFace: 'back', seat: '#a02838', screen: true, lamp: '#ffe0a0' },
+        'P08-04-B1': { g: ['SSS.cc.BB', '.........', 'SS..r.j.G'], keyIn: MB, floorIn: U('TileMarble3c'), rug: '#7a2030', table: '#1a6a3a', lamp: '#ffd9a0', words: { c: 'CASHIER', B: 'BAR' }, hang: 'crystal_chandelier', dado: '#3a2212', ceil: '#5a1a28', sconce: '#ffd9a0', stage: 'wheel' },
+        'P11-04-B1': { g: ['R.M.P.V', '......V', 'L..XXX.', 'L......'], keyIn: WOOD, floorIn: WOOD, rug: '#3a3d46', R: 'amps', lamp: '#fff0d0', dado: '#2a2a30', ceil: '#2a2630', sconce: '#ffb070', juke: true },
+        'P08-05-B1': { g: ['KKKKKKKKK', 'T.T.BB.LL', '.........'], keyIn: PL, floorIn: CHK, rug: null, table: '#f0e6d0', lamp: '#ffe6b0', words: { B: 'RAMEN' }, hang: 'paper_lantern', hangAll: true, dado: '#6a2018', ceil: '#3a2a22', juke: true },
+        'P09-05-B1': { g: ['L.RR..mm', '.GGGGGG.', '........', 'HHH..HHH', 'HHH..HHH', 'HHH..HHH', '........', 'I.....Q.'], keyIn: BR1, floorIn: WOOD, rug: '#7a2838', rake: 3, seatFace: 'back', seat: '#b03040', lamp: '#ffe0a0', dado: '#2a1418', ceil: '#24161a', sconce: '#ffc890' },
+        'P09-06-B1': { g: ['m.R', 'GGG', '.T.', 'B.T', '..T'], keyIn: PL, floorIn: WOOD, rug: '#6a1830', table: '#f0d8a0', lamp: '#ffb0c8', hang: 'mirror_ball', hangOne: true, dado: '#2a0a14', ceil: '#2a1020', sconce: '#ff90b0', T: 'lamp', stage: 'band' },
+        'P10-06-B1': { g: ['YY.ZZ.DD', '........', 'GGG..DD.', 'GGG.....', '.....FFF', 'WW......', 'WW...FFF', 'RR......'], keyIn: BR3, floorIn: CS, rug: null, R: 'lumber', stage: 'set', lamp: '#f0f4ff', set: 'lights' },
+        'P11-06-B1': { g: ['UAaAh.C', '.......', 'J..AA.D'], keyIn: SUB, floorIn: U('RubberNonSlip1a'), rug: '#241a40', lamp: '#30e0ff', words: { C: 'PRIZES' }, hang: 'mirror_ball', hangOne: true, dado: '#14102a', ceil: '#100c20', sconce: '#ff30c0', D: 'juke' },
+        'P09-07-B1': { g: ['OOO', '..K', 'WW.', 'CC.', '..D'], keyIn: SUB, floorIn: CHK, rug: null, lamp: '#fff0d0', words: { C: 'FRESH BREAD' }, D: 'bread', C: 'bread', O: 'deck', dado: '#8a5a34', ceil: '#f0e6d0' },
+        'P10-07-B1': { g: ['EEE.UU.NN', '.........', 'EE..T..RR'], keyIn: PL, floorIn: WOOD, rug: '#4a4058', table: '#8a5a34', lamp: '#fff0d0', dado: '#5b3a22', ceil: '#d8d0c0' },
+        'P11-07-B1': { g: ['.....', 'HH.HH', 'HH.HH', 'HH.HH', '.I.Q.'], keyIn: PL, floorIn: U('RubberNonSlip1a'), rug: '#7a2030', rake: 1, seatFace: 'back', seat: '#a02838', screen: true, lamp: '#ffe0a0', dado: '#2a0a10', ceil: '#18080c', sconce: '#ffb070', I: 'projector' },
     };
     Object.assign(INSIDE, {
-        'P10-04-B1': { g: ['m.RR..PL', '.GGGGGG.', '.GGGGGG.', '........', 'HHH..HHH', 'HHH..HHH', 'HHH..HHH', 'I......Q'], keyIn: MB3, floorIn: WOOD, rug: '#7a2030', rake: 4, seatFace: 'back', seat: '#8a1c2c', lamp: '#fff2c0' },
-        'P11-05-B1': { g: ['FFF..YYD', '........', 'GGG.k.X.', 'GGG.....', '........', 'R.L..m.N', '........', 'Z......D'], keyIn: CO, floorIn: CS, rug: null, stage: 'set', lamp: '#f0f4ff' },
-        'E-chapel': { g: ['pwp', 'p.p'], keyIn: ST, floorIn: WOOD, rug: '#b03060', lamp: '#ffd0e0' },
+        'P10-04-B1': { g: ['m.RR..PL', '.GGGGGG.', '.GGGGGG.', '........', 'HHH..HHH', 'HHH..HHH', 'HHH..HHH', 'I......Q'], keyIn: MB3, floorIn: WOOD, rug: '#7a2030', rake: 4, seatFace: 'back', seat: '#8a1c2c', lamp: '#fff2c0', hang: 'crystal_chandelier', hangRow: 3, dado: '#3a2212', ceil: '#4a1a22', sconce: '#ffe0a0', stage: 'orchestra' },
+        'P11-05-B1': { g: ['FFF..YYD', '........', 'GGG.k.X.', 'GGG.....', '........', 'R.L..m.N', '........', 'Z......D'], keyIn: CO, floorIn: CS, rug: null, stage: 'set', lamp: '#f0f4ff', set: 'lights', ceil: '#1a1c22' },
+        'E-chapel': { g: ['pwp', 'p.p'], keyIn: ST, floorIn: WOOD, rug: '#b03060', lamp: '#ffd0e0', dado: '#f4e8e0', ceil: '#fff0f4', sconce: '#ffe0e8' },
     });
-    const BLOCK_H = { k: 1.9, p: 1.0, w: 2.6, S: 1.8, T: 1.0, B: 2.2, c: 2.4, G: 1.0, K: 2.2, H: 1.2, L: 1.0, U: 1.0, X: 1.2, M: 1.2, P: 1.3, V: 2.4, A: 1.9, R: 1.8, m: 2.0, O: 2.2, W: 1.0, F: 4.2, Y: 2.2, Z: 1.0, D: 2.4, J: 0.9, C: 1.1, I: 2.6, Q: 1.7, E: 1.2, N: 1.9 };
+    const BLOCK_H = { r: 1.0, j: 1.0, a: 1.9, h: 1.9, k: 1.9, p: 1.0, w: 2.6, S: 1.8, T: 1.0, B: 2.2, c: 2.4, G: 1.0, K: 2.2, H: 1.2, L: 1.0, U: 1.0, X: 1.2, M: 1.2, P: 1.3, V: 2.4, A: 1.9, R: 1.8, m: 2.0, O: 2.2, W: 1.0, F: 4.2, Y: 2.2, Z: 1.0, D: 2.4, J: 0.9, C: 1.1, I: 2.6, Q: 1.7, E: 1.2, N: 1.9 };
+    const HANG = { crystal_chandelier: 1.4, mirror_ball: 0.9, paper_lantern: 0.7 };   // the catalogue `h` of what hangs over a walk (PASS 2)
+    const stool = (k, x, z) => { k.part('cyl', x, 0, z, null, '#2a2a2e', { r: 0.05, h: 0.7, seg: 6 }); k.part('cyl', x, 0.7, z, PL, '#8a2030', { r: 0.2, h: 0.07, seg: 10 }); };
     /* KIT[letter](k): k.part(s, lx, y, lz, key, tint, o) = a part in the square's frame; k.prop(key, lx, lz, turn) = a catalogue prop; k.i / k.n = this square's place in its run */
     const KIT = {
         S: k => { k.part('box', 0, 0, -0.3, PL, k.S.rug || '#7a2030', { size: [3.4, 0.1, 2.4] }); for (const x of [-1.05, 0, 1.05]) k.prop('slot_machine', x, -0.7, 0); },
         T: k => { k.part('cyl', 0, 0, 0, null, '#2a2a2e', { r: 0.14, h: 0.72, seg: 8 }); k.part('cyl', 0, 0.72, 0, PL, k.S.table || '#8a5a34', { r: 1.05, h: 0.07, seg: 16 }); k.part('cyl', 0, 0.7, 0, WOOD, '#5b3a22', { r: 1.1, h: 0.04, seg: 16 });
-            for (let i = 0; i < 4; i++) { const a = (i + 0.5) * Math.PI / 2, x = Math.cos(a) * 1.38, z = Math.sin(a) * 1.38; k.part('cyl', x, 0, z, null, '#2a2a2e', { r: 0.05, h: 0.45, seg: 6 }); k.part('cyl', x, 0.45, z, PL, '#8a2030', { r: 0.22, h: 0.08, seg: 10 }); } },
+            for (let i = 0; i < 4; i++) { const a = (i + 0.5) * Math.PI / 2, x = Math.cos(a) * 1.38, z = Math.sin(a) * 1.38; k.part('cyl', x, 0, z, null, '#2a2a2e', { r: 0.05, h: 0.45, seg: 6 }); k.part('cyl', x, 0.45, z, PL, '#8a2030', { r: 0.22, h: 0.08, seg: 10 }); }
+            if (k.S.T === 'lamp') k.prop('table_lamp', 0.25, -0.2, 0, { y: 0.79 }); },
+        /* PASS 2 (mondo 11-13 22:33 "focus on aesthetic, vibe, atmosphere"): the casino's roulette + blackjack tables (Meshy), stools on the players' side */
+        r: k => { k.prop('roulette_table', 0, -0.45, 0); for (const x of [-0.75, 0, 0.75]) stool(k, x, 0.75); },
+        j: k => { k.prop('blackjack_table', 0, -0.5, 0); for (const a of [-60, -20, 20, 60]) stool(k, Math.sin(a * D2R) * 1.2, -0.5 + Math.cos(a * D2R) * 1.05); },
+        /* PASS 2: the arcade's pinball pair (a) and claw crane pair (h) */
+        a: k => { for (const x of [-0.8, 0.8]) k.prop('pinball_machine', x, -0.55, 0); },
+        h: k => { for (const x of [-0.85, 0.85]) k.prop('claw_machine', x, -0.9, 0); },
         B: k => { k.part('box', 0, 0, 0.75, WOOD, '#4a2c18', { size: [3.5, 1.05, 0.7] }); k.part('box', 0, 1.05, 0.8, MB3, '#e9e4da', { size: [3.5, 0.06, 0.95] }); k.part('box', 0, 0, -1.5, WOOD, '#3a2212', { size: [3.5, 2.2, 0.4] });
             for (const y of [1.0, 1.55]) { k.part('box', 0, y, -1.24, WOOD, '#5b3a22', { size: [3.4, 0.05, 0.3] }); for (let i = 0; i < 7; i++) k.part('box', -1.5 + i * 0.5, y + 0.05, -1.22, null, ['#40c060', '#e0a020', '#c03030', '#3080d0'][(i + (y > 1.2 ? 1 : 0)) % 4], { size: [0.12, 0.32, 0.12], glow: 0.6 }); }
             for (const x of [-1.1, 0, 1.1]) { k.part('cyl', x, 0, 1.45, null, '#2a2a2e', { r: 0.05, h: 0.7, seg: 6 }); k.part('cyl', x, 0.7, 1.45, PL, '#8a2030', { r: 0.2, h: 0.07, seg: 10 }); }
@@ -438,76 +447,105 @@ module.exports = { build: function (api) {
             if (k.edge.front) { k.part('box', 0, 0.9, 1.68, null, '#1a1a1e', { size: [3.5, 0.12, 0.14] }); if (!set) for (const x of [-1.1, 0, 1.1]) k.part('box', x, 0.9, 1.5, null, '#fff2c0', { size: [0.3, 0.14, 0.2], glow: 1 }); }
             if (k.edge.back) { if (set) { k.part('quad', 0, 0.9, -1.5, PL, ['#8ab8e0', '#e0a070', '#6a9a6a'][k.i % 3], { size: [3.5, 3.4], ds: true }); k.part('box', 0, 0.9, -1.62, WOOD, '#8a6a40', { size: [3.5, 3.4, 0.08] }); }
                 else k.part('quad', 0, 0.9, -1.55, PL, '#8a1428', { size: [3.5, Math.max(2, k.H - 1.2)], ds: true, uv: [0.6, 3] }); }
+            if (k.S.stage === 'wheel') k.prop('money_wheel', 0, -0.9, 0, { y: 0.9 });
+            if (k.S.stage === 'band') { if (k.i === 0) { k.prop('drum_kit', 0.15, -0.55, 0, { y: 0.9 }); k.prop('pa_speaker', -1.35, 1.05, 0, { y: 0.9 }); } if (k.i === k.n - 1) { k.prop('guitar_amp', -0.4, -1.2, 0, { y: 0.9 }); k.prop('pa_speaker', 1.35, 1.05, 0, { y: 0.9 }); } }
+            if (k.S.stage === 'orchestra') { if (k.edge.back && !k.edge.front) { for (const x of [-0.85, 0.85]) { k.prop('folding_chair', x, -0.55, 0, { y: 0.9 }); k.prop('music_stand', x + 0.1, 0.45, 180, { y: 0.9 }); }
+                    const ins = ['instrument_harp', null, 'instrument_cello', null, 'instrument_cello', null][k.i % 6]; if (ins) k.prop(ins, 1.4, -1.25, 0, { y: 0.9 }); }
+                if (k.edge.front && k.i === Math.floor(k.n / 2)) { k.part('box', -1.2, 0.9, 0.9, WOOD, '#3a2212', { size: [0.9, 0.2, 0.9] }); k.prop('music_stand', -1.2, 0.55, 180, { y: 1.1 }); } }
+            if (k.S.set === 'lights' && set && k.edge.front && (k.i === 0 || k.i === k.n - 1)) k.prop('studio_light', k.i === 0 ? -1.2 : 1.2, 1.1, 180 + (k.i === 0 ? -25 : 25), { y: 0.9 });
             if (!set && k.i === Math.floor(k.n / 2) && k.edge.front) { k.part('cyl', 0, 0.9, 0.6, null, '#2a2a2e', { r: 0.03, h: 1.4, seg: 6 }); k.part('cyl', 0, 0.9, 0.6, null, '#2a2a2e', { r: 0.2, h: 0.03, seg: 10 }); k.part('box', 0, 2.3, 0.6, null, '#55585e', { size: [0.08, 0.16, 0.08] }); } },
         K: k => { k.part('box', 0, 0, 0.6, CO, '#c4c7cb', { size: [3.5, 0.9, 0.8] }); k.part('box', 0, 0.9, 0.6, null, '#d8dade', { size: [3.5, 0.04, 0.9] }); k.part('box', 0, 2.1, -1.0, CO, '#9a9ea4', { size: [3.3, 0.5, 1.2] });
             if (k.i % 2 === 0) k.prop('kitchen_range', 0, -1.3, 0); else { k.part('box', -0.8, 0, -1.3, CO, '#b9bcc0', { size: [1.4, 1.9, 0.7] }); k.part('box', 0.9, 0, -1.3, CO, '#c4c7cb', { size: [1.5, 0.9, 0.7] }); } },
         H: k => { const y0 = k.S.rake != null ? Math.max(0, k.r - k.S.rake) * 0.3 : 0; if (y0 > 0) k.part('box', 0, 0, 0, WOOD, '#3a2a24', { size: [3.5, y0, 3.5] });
             for (const z of [-0.85, 0.85]) for (const x of [-1.3, -0.43, 0.43, 1.3]) { k.part('box', x, y0 + 0.2, z, PL, k.S.seat || '#b03040', { size: [0.78, 0.26, 0.6] }); k.part('box', x, y0 + 0.2, z - 0.36, PL, k.S.seat || '#b03040', { size: [0.78, 0.85, 0.14] }); k.part('box', x, y0, z, null, '#1e1e22', { size: [0.5, 0.2, 0.4] }); } },
-        L: k => { k.part('box', 0, 0, 0, PL, k.S.rug || '#4a4058', { size: [3.3, 0.03, 3.3] }); k.prop('psx_sofa_1', 0, -0.5, 0); k.part('box', 0.2, 0, 1.0, WOOD, '#5b3a22', { size: [1.2, 0.4, 0.6] }); },
+        L: k => { k.part('box', 0, 0, 0, PL, k.S.rug || '#4a4058', { size: [3.3, 0.03, 3.3] }); k.prop('psx_sofa_1', 0, -0.5, 0); k.part('box', 0.2, 0, 1.0, WOOD, '#5b3a22', { size: [1.2, 0.4, 0.6] }); if (k.S.juke && k.once('juke')) k.prop('jukebox', 1.25, -1.15, 0); },
         U: k => { k.part('box', 0, 0, 0, PL, k.S.rug || '#4a4058', { size: [3.3, 0.03, 3.3] }); if (k.i === 0) k.prop('curved_couch', k.n > 1 ? 1.75 : 0, -0.3, 0); k.part('box', 0, 0, 1.1, WOOD, '#3a2a24', { size: [1.6, 0.45, 0.5] }); k.part('box', 0, 0.45, 1.1, null, '#1a1a1e', { size: [0.7, 0.5, 0.4] }); k.part('quad', 0, 0.5, 0.89, null, '#a0d8ff', { size: [0.56, 0.4], ry: 180, glow: 0.9 }); },
-        X: k => { k.part('box', 0, 0, 0, WOOD, '#3a2a24', { size: [3.5, 0.78, 1.1] }); k.part('box', 0, 0.78, 0.1, null, '#1c1f26', { size: [3.4, 0.12, 0.9] }); for (let i = 0; i < 10; i++) k.part('box', -1.5 + i * 0.33, 0.9, 0.2, null, i % 3 ? '#e0e0e0' : '#ff5040', { size: [0.06, 0.04, 0.4], glow: 0.5 });
+        X: k => { if (k.i === Math.floor(k.n / 2)) { k.prop('mixing_console', 0, -0.2, 0); k.part('cyl', 0, 0, 1.15, null, '#2a2a2e', { r: 0.28, h: 0.5, seg: 10 }); return; }   /* PASS 2: the Meshy console in the middle, racks beside it */
+            k.part('box', 0, 0, 0, WOOD, '#3a2a24', { size: [3.5, 0.78, 1.1] }); k.part('box', 0, 0.78, 0.1, null, '#1c1f26', { size: [3.4, 0.12, 0.9] }); for (let i = 0; i < 10; i++) k.part('box', -1.5 + i * 0.33, 0.9, 0.2, null, i % 3 ? '#e0e0e0' : '#ff5040', { size: [0.06, 0.04, 0.4], glow: 0.5 });
             k.part('box', 0, 0.9, -0.42, null, '#1a1a1e', { size: [1.3, 0.8, 0.08] }); k.part('quad', 0, 0.96, -0.37, null, '#60e0a0', { size: [1.16, 0.66], glow: 0.9 }); k.part('cyl', 0, 0, 1.15, null, '#2a2a2e', { r: 0.28, h: 0.5, seg: 10 }); },
-        M: k => { k.part('box', 0, 0, 0, PL, '#7a2030', { size: [3.0, 0.18, 3.0] }); k.part('cyl', 0, 0.18, 0.3, PL, '#c02030', { r: 0.42, h: 0.5, seg: 14 }); k.part('cyl', -0.75, 0.18, -0.2, PL, '#c02030', { r: 0.3, h: 0.62, seg: 12 }); k.part('cyl', 0.75, 0.18, -0.2, PL, '#c02030', { r: 0.26, h: 0.7, seg: 12 });
-            for (const x of [-1.0, 1.0]) { k.part('cyl', x, 0.18, 0.5, null, '#8a8a8a', { r: 0.02, h: 1.1, seg: 6 }); k.part('cyl', x, 1.28, 0.5, GOLD, null, { r: 0.3, h: 0.02, seg: 12 }); } k.part('cyl', 0, 0.18, -0.9, null, '#2a2a2e', { r: 0.2, h: 0.5, seg: 10 }); },
+        M: k => { k.part('box', 0, 0, 0, PL, '#7a2030', { size: [3.0, 0.18, 3.0] }); k.prop('drum_kit', 0, 0.05, 0, { y: 0.18 }); },   /* PASS 2: the Meshy kit on its riser (was cylinders) */
         P: k => { k.prop('decor_piano', 0, -0.2, 0); k.part('box', 0, 0, 0.9, WOOD, '#2a1a12', { size: [0.9, 0.48, 0.4] }); },
         V: k => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) k.part('box', sx * 1.55, 0, sz * 1.55, null, '#2a2a2e', { size: [0.12, 2.4, 0.12] }); k.part('box', 0, 2.4, 0, WOOD, '#5e3c20', { size: [3.3, 0.1, 3.3] });
             for (const a of [0, 90, 180, 270]) k.part('quad', Math.sin(a * D2R) * 1.55, 0.9, Math.cos(a * D2R) * 1.55, U('GlassWindowTall1a'), '#8090a8', { size: [3.0, 1.5], ry: a, uv: 'fit', ds: true, win: 'keep' });
             for (const a of [0, 90, 180, 270]) k.part('quad', Math.sin(a * D2R) * 1.55, 0, Math.cos(a * D2R) * 1.55, WOOD, '#5e3c20', { size: [3.1, 0.9], ry: a, ds: true });
             k.part('cyl', 0, 0, 0, null, '#2a2a2e', { r: 0.03, h: 1.5, seg: 6 }); k.part('box', 0, 1.5, 0, null, '#8a8a8a', { size: [0.1, 0.2, 0.1] }); },
-        A: k => { for (const sz of [1, -1]) for (const x of [-1.1, 0, 1.1]) { const c2 = ['#ff30c0', '#30e0ff', '#ffe030', '#60ff80'][(k.i * 3 + Math.round(x + 1.1) + (sz > 0 ? 0 : 2)) % 4], z = sz * 0.45;
-                k.part('box', x, 0, z, PL, '#1c1a2a', { size: [0.9, 1.85, 0.8] }); k.part('box', x, 0.85, z + sz * 0.5, null, '#2a2838', { size: [0.9, 0.1, 0.3] }); k.part('quad', x, 1.0, z + sz * 0.41, null, c2, { size: [0.7, 0.5], ry: sz > 0 ? 0 : 180, glow: 1 }); k.part('quad', x, 1.56, z + sz * 0.41, null, '#ffffff', { size: [0.8, 0.24], ry: sz > 0 ? 0 : 180, glow: 0.8 }); } },
-        R: k => { if (k.S.R === 'amps') { for (const x of [-1.1, 0, 1.1]) { k.part('box', x, 0, -1.2, PL, '#1a1a1e', { size: [0.95, x ? 0.85 : 1.5, 0.5] }); k.part('quad', x, 0.1, -0.94, GRL, '#9aa0a8', { size: [0.8, 0.6], uv: 0.4 }); } k.prop('instrument_guitar', -0.6, -0.5, 0); k.prop('instrument_guitar', 0.7, -0.5, 0); return; }
+        A: k => { for (const x of [-1.1, 0, 1.1]) k.prop('arcade_cabinet', x, -0.7, 0); k.part('quad', 0, 0, -0.7, null, ['#ff30c0', '#30e0ff'][k.i % 2], { size: [3.3, 1.4], flat: true, glow: 0.35 }); },   /* PASS 2: three Meshy cabinets a square, all facing the walk (the old back row faced the wall), a lit strip under them */
+        R: k => { if (k.S.R === 'amps') { k.prop('guitar_amp', -1.05, -1.15, 0); k.prop('guitar_amp', 1.05, -1.15, 0); k.prop('instrument_guitar', -0.3, -0.6, 0); k.prop('instrument_guitar', 0.45, -0.6, 0); return; }
             if (k.S.R === 'lumber') { for (const x of [-1.6, 0, 1.6]) k.part('box', x, 0, -0.9, TR, '#3c4046', { size: [0.1, 2.2, 1.4] }); for (const y of [0.3, 1.0, 1.7]) for (let i = 0; i < 4; i++) k.part('box', 0, y + i * 0.09, -0.9 - 0.3 + i * 0.2, WOOD, i % 2 ? '#c8a060' : '#b08a58', { size: [3.4, 0.08, 0.5] }); return; }
-            for (const x of [-1.5, 1.5]) k.part('cyl', x, 0, 0, null, '#8a8a8a', { r: 0.04, h: 1.7, seg: 6 }); k.part('box', 0, 1.68, 0, null, '#8a8a8a', { size: [3.1, 0.05, 0.05] });
-            for (let i = 0; i < 9; i++) k.part('box', -1.3 + i * 0.32, 0.55, 0, PL, ['#d0306a', '#f0b020', '#2a9a8a', '#7a4fb0', '#f4ead6', '#3070d0'][(i + k.i * 2) % 6], { size: [0.22, 1.1, 0.5] }); },
-        m: k => { k.part('box', 0, 0, -1.25, WOOD, '#5b3a22', { size: [3.4, 0.78, 0.6] }); for (const x of [-1.1, 0, 1.1]) { k.part('quad', x, 0.95, -1.5, null, '#cfe8ff', { size: [0.85, 1.05], glow: 0.5 }); for (const sx of [-0.5, 0.5]) for (const y of [1.1, 1.5, 1.9]) k.part('box', x + sx, y, -1.5, null, '#fff2c0', { size: [0.08, 0.08, 0.08], glow: 1 });
-                k.part('cyl', x, 0, -0.55, null, '#2a2a2e', { r: 0.2, h: 0.45, seg: 10 }); } },
-        O: k => { k.part('box', -0.85, 0, -1.25, CO, '#55585e', { size: [1.6, 2.0, 0.9] }); for (const y of [0.35, 0.95, 1.55]) k.part('quad', -0.85, y, -0.79, null, '#ff9030', { size: [1.3, 0.4], glow: 0.8 }); k.prop('kitchen_range', 0.9, -1.3, 0); k.part('box', 0, 2.15, -1.1, CO, '#9a9ea4', { size: [3.4, 0.45, 1.2] });
+            k.prop('costume_rack', -0.2, -0.95, 0); k.prop('costume_rack', 0.25, 0.55, 0); },   /* PASS 2: two Meshy costume racks (were shape rails) */
+        m: k => { for (const x of [-0.85, 0.85]) k.prop('makeup_vanity', x, -1.1, 0); },   /* PASS 2: two Meshy dressing-room vanities, bulbs round the mirrors */
+        O: k => { if (k.S.O === 'deck') { k.prop('deck_oven', -0.85, -1.1, 0); k.prop('deck_oven', 0.9, -1.1, 0); k.part('box', 0, 2.15, -1.1, CO, '#9a9ea4', { size: [3.4, 0.45, 1.2] });
+                k.part('box', 0, 0, 0.75, WOOD, '#b08a58', { size: [2.6, 0.85, 0.7] }); for (const x of [-0.8, 0, 0.8]) k.part('cyl', x, 0.85, 0.75, PL, '#d8a860', { r: 0.26, h: 0.14, seg: 10 }); return; }
+            k.part('box', -0.85, 0, -1.25, CO, '#55585e', { size: [1.6, 2.0, 0.9] }); for (const y of [0.35, 0.95, 1.55]) k.part('quad', -0.85, y, -0.79, null, '#ff9030', { size: [1.3, 0.4], glow: 0.8 }); k.prop('kitchen_range', 0.9, -1.3, 0); k.part('box', 0, 2.15, -1.1, CO, '#9a9ea4', { size: [3.4, 0.45, 1.2] });
             k.part('box', 0, 0, 0.7, WOOD, '#b08a58', { size: [2.6, 0.85, 0.8] }); for (const x of [-0.8, 0, 0.8]) k.part('cyl', x, 0.85, 0.7, PL, '#d8a860', { r: 0.26, h: 0.14, seg: 10 }); },
         W: k => { k.prop('steel_table', -0.9, 0, 0); k.prop('steel_table', 0.9, 0, 0); k.part('box', 0, 0.78, 0, WOOD, '#c8a060', { size: [2.8, 0.06, 0.3], ry: 12 }); k.part('box', -1.0, 0.78, 0.15, null, '#c03030', { size: [0.3, 0.2, 0.2] }); },
         F: k => { k.part('quad', 0, 0, 0, PL, ['#8ab8e0', '#e09060', '#5a9a6a'][(k.r + k.i) % 3], { size: [3.5, 4.2], ds: true }); for (const x of [-1.4, 0, 1.4]) { k.part('box', x, 0, -0.06, WOOD, '#8a6a40', { size: [0.08, 4.2, 0.08] }); k.part('box', x, 0, -0.7, WOOD, '#8a6a40', { size: [0.08, 0.08, 1.4] }); } },
         Y: k => { k.part('box', -0.8, 0, -0.6, WOOD, '#b08a58', { size: [1.3, 1.1, 1.3] }); k.part('box', 0.75, 0, -0.5, WOOD, '#9a7248', { size: [1.2, 1.0, 1.2], ry: 8 }); k.part('box', -0.1, 0, 0.9, WOOD, '#c8a060', { size: [1.1, 0.9, 1.0], ry: -6 }); k.part('box', -0.7, 1.1, -0.6, WOOD, '#9a7248', { size: [1.0, 0.9, 1.0], ry: 15 }); },
         Z: k => { if (k.i === 0) { k.prop('exec_desk', k.n > 1 ? 1.75 : 0, 0.3, 0); k.prop('exec_chair', k.n > 1 ? 1.75 : 0, -0.8, 0); } else k.part('box', 0.8, 0, -1.3, CO3, '#5a5e66', { size: [1.0, 1.4, 0.6] }); },
-        D: k => { k.prop('library_shelf_full', -0.9, -1.0, 0); k.prop('library_shelf_full', 0.9, -1.0, 0); },
-        J: k => { k.part('box', 0, 0.5, 0, PL, '#f0f0f4', { size: [2.6, 0.32, 1.4] }); for (const sx of [-1, 1]) for (const sz of [-1, 1]) k.part('box', sx * 1.1, 0, sz * 0.5, null, '#2a2838', { size: [0.14, 0.5, 0.14] }); k.part('quad', 0, 0.83, 0, null, '#30e0ff', { size: [2.4, 1.2], flat: true, glow: 0.7 }); },
+        D: k => { if (k.S.D === 'bread') { k.prop('bread_rack', -0.85, -1.2, 0); k.prop('bread_rack', 0.85, -1.2, 0); return; } if (k.S.D === 'juke') { k.prop('jukebox', -0.9, -1.2, 0); k.prop('claw_machine', 0.85, -0.9, 0); return; }
+            k.prop('library_shelf_full', -0.9, -1.0, 0); k.prop('library_shelf_full', 0.9, -1.0, 0); },
+        J: k => { k.prop('air_hockey_table', 0, 0, 0); },   /* PASS 2: the Meshy table (was shapes) */
         C: k => { k.part('box', 0, 0, 0.6, WOOD, '#5b3a22', { size: [3.5, 1.0, 0.7] }); k.part('quad', 0, 0.15, 0.96, GS, '#fff0c0', { size: [3.3, 0.7], glow: 0.5, uv: 'fit', win: 'keep' }); k.part('box', 0, 1.0, 0.6, MB3, '#e9e4da', { size: [3.5, 0.05, 0.8] });
-            k.part('box', 0, 0, -1.45, WOOD, '#3a2212', { size: [3.5, 2.2, 0.45] }); for (const y of [0.7, 1.25, 1.8]) for (let i = 0; i < 6; i++) k.part('box', -1.4 + i * 0.56, y, -1.15, PL, ['#ff30c0', '#ffe030', '#30e0ff', '#d8a860'][(i + Math.round(y * 2)) % 4], { size: [0.36, 0.3, 0.3] });
+            if (k.S.C === 'bread') { k.prop('bread_rack', -0.85, -1.3, 0); k.prop('bread_rack', 0.85, -1.3, 0); if (k.i === k.n - 1) k.prop('wedding_cake', 1.1, 0.6, 0, { y: 1.05 }); }
+            else { k.part('box', 0, 0, -1.45, WOOD, '#3a2212', { size: [3.5, 2.2, 0.45] }); for (const y of [0.7, 1.25, 1.8]) for (let i = 0; i < 6; i++) k.part('box', -1.4 + i * 0.56, y, -1.15, PL, ['#ff30c0', '#ffe030', '#30e0ff', '#d8a860'][(i + Math.round(y * 2)) % 4], { size: [0.36, 0.3, 0.3] }); }
             if (k.i === 0) k.part('box', -1.1, 1.05, 0.6, null, '#2a2a2e', { size: [0.4, 0.3, 0.4] }); if (k.i === 0 && k.S.words && k.S.words.C) k.sign(k.S.words.C, k.n > 1 ? 1.75 : 0, 2.3, -1.2, 3.0, 0.5); },
         /* a film camera on its tripod beside a lamp on a stand */
-        k: k => { for (let i = 0; i < 3; i++) { const a = i * 2.094; k.part('cyl', -0.6 + Math.cos(a) * 0.3, 0, Math.sin(a) * 0.3, null, '#2a2a2e', { r: 0.03, h: 1.3, seg: 6 }); } k.part('box', -0.6, 1.3, 0, null, '#1a1a1e', { size: [0.4, 0.4, 0.8] }); k.part('cyl', -0.6, 1.72, -0.2, null, '#3c4046', { r: 0.2, h: 0.1, seg: 10 }); k.part('box', -0.6, 1.4, 0.5, null, '#55585e', { size: [0.24, 0.24, 0.3] });
-            k.part('cyl', 0.9, 0, -0.3, null, '#2a2a2e', { r: 0.04, h: 1.9, seg: 6 }); k.part('cyl', 0.9, 0, -0.3, null, '#2a2a2e', { r: 0.35, h: 0.04, seg: 10 }); k.part('box', 0.9, 1.6, -0.3, null, '#1a1a1e', { size: [0.6, 0.5, 0.4] }); k.part('quad', 0.9, 1.65, -0.09, null, '#fff6d0', { size: [0.5, 0.4], glow: 1 }); },
+        k: k => { const t = k.turnTo(-1, 0);   /* PASS 2: the Meshy movie camera, a fresnel and the director's chair, all looking at the set (the squares to the left) */
+            k.prop('film_camera', 0.1, -0.1, t); k.prop('studio_light', 0.95, -1.1, t + 20); k.prop('directors_chair', 0.95, 0.95, t); },
         /* chapel pews: three benches that look at the altar */
         p: k => { for (const z of [-1.1, 0, 1.1]) { k.part('box', 0, 0.3, z, WOOD, '#8a5a34', { size: [2.9, 0.12, 0.5] }); k.part('box', 0, 0.3, z + 0.28, WOOD, '#8a5a34', { size: [2.9, 0.7, 0.08] }); for (const x of [-1.4, 1.4]) k.part('box', x, 0, z + 0.05, WOOD, '#5b3a22', { size: [0.08, 0.75, 0.6] }); } },
         /* the wedding altar: a flower arch, the lectern, two candle stands on a round rug */
-        w: k => { k.part('cyl', 0, 0.02, 0, PL, '#f4c0d0', { r: 1.6, h: 0.03, seg: 20 }); for (const x of [-1.1, 1.1]) k.part('cyl', x, 0, -0.9, PL, '#f8f0f0', { r: 0.1, h: 2.1, seg: 8 }); k.part('box', 0, 2.1, -0.9, PL, '#f8f0f0', { size: [2.5, 0.16, 0.25] });
-            for (let i = 0; i < 9; i++) k.part('cyl', -1.2 + i * 0.3, 2.2 + Math.sin(i / 8 * Math.PI) * 0.35, -0.9, PL, ['#f080a0', '#ffffff', '#f8b0c8'][i % 3], { r: 0.2, h: 0.24, seg: 8 });
+        w: k => { k.part('cyl', 0, 0.02, 0, PL, '#f4c0d0', { r: 1.6, h: 0.03, seg: 20 }); k.prop('wedding_arch', 0, -1.0, 0);   /* PASS 2: the Meshy rose arch (was cylinders), the cake on its little table */
+            k.part('cyl', -1.3, 0, -1.25, WOOD, '#f4ece4', { r: 0.32, h: 0.74, seg: 12 }); k.prop('wedding_cake', -1.3, -1.25, 0, { y: 0.75 });
             k.prop('lectern', 0, -0.3, 0); for (const x of [-1.35, 1.35]) { k.part('cyl', x, 0, 0.2, GOLD, null, { r: 0.05, h: 1.1, seg: 6 }); k.part('box', x, 1.1, 0.2, null, '#fff2c0', { size: [0.1, 0.2, 0.1], glow: 1 }); } },
-        I: k => k.prop('ticket_booth', 0, 0, 0),
+        I: k => { if (k.S.I === 'projector') { k.prop('ticket_booth', 0.4, 0, 0); k.prop('film_projector', -1.3, -0.55, 25); return; } k.prop('ticket_booth', 0, 0, 0); },   /* PASS 2: the cinema shows an old projector beside its booth */
         Q: k => k.prop('popcorn_cart', 0, 0, 0),
         E: k => { k.prop('dorm_bed', -0.85, 0, 0); k.prop('dorm_bed', 0.85, 0, 0); },
         N: k => { for (const x of [-1.2, -0.4, 0.4, 1.2]) k.prop('locker', x, -1.4, 0); k.part('box', 0, 0, 0.3, WOOD, '#8a5a34', { size: [2.8, 0.45, 0.4] }); },
     };
     function inside(b, S, env) {
-        const g = S.g, nR = g.length, nC = g[0].length, { loc, cx, cz, fw, fd, row, lx } = env, H = Math.max(2.6, (row.storeys || 2) * 3.5 - 0.35);
+        const g = S.g, nR = g.length, nC = g[0].length, { loc, cx, cz, fw, fd, row, lx } = env, H = Math.max(2.6, (row.storeys || 2) * 3.5 - 0.35), gy = env.gy || 0, done = new Set();
+        const ang = w => ((Math.round(-Math.atan2(w[0], w[1]) / D2R) % 360) + 360) % 360;
+        /* PASS 2: the walkway squares something hangs over: every other one (`hangAll`), the one nearest the middle (`hangOne`), else every other one of row `hangRow` (1) */
+        const hangAt = new Set(); if (S.hang) { let best = null, bd = 1e9; for (let r = 0; r < nR; r++) for (let c = 0; c < nC; c++) { if (g[r][c] !== '.') continue;
+            if (S.hangAll ? (r + c) % 2 === 1 : !S.hangOne && r === (S.hangRow != null ? S.hangRow : 1) && c % 2 === 0) hangAt.add(r + ',' + c);
+            const dd = Math.abs(r - (nR - 1) / 2) + Math.abs(c - (nC - 1) / 2); if (dd < bd) { bd = dd; best = r + ',' + c; } } if (S.hangOne && best) hangAt.add(best); }
+        /* a catalogue prop ON THE ROOM'S FLOOR (`floor: true`: never on the ghost block over its square, nor the roof slab: three-renderer.js THE FLOOR UNDER IT);
+           `o.y` = its height over the floor (a table top, a stage, a ceiling hang), written as the absolute height (the plot's level + y) */
+        const putProp = (key, wx, wz, face, o) => { const q = { key, x: r3(wx), z: r3(wz), face: ((Math.round(face) % 360) + 360) % 360, floor: true }; if (o && o.y != null) q.y = r3(gy + o.y); props.push(q); return q; };
         if (Math.abs(nC * C - fw * 2) > 0.1 || Math.abs(nR * C - fd * 2) > 0.1) { console.error('entertainment: the inside plan of', b.id, 'is', nC + 'x' + nR, 'squares, the shell', (fw * 2 / C) + 'x' + (fd * 2 / C)); return; }
         row.keyIn = S.keyIn; row.floorIn = S.floorIn; const parts = [], at = (c, r) => (r < 0 || r >= nR || c < 0 || c >= nC) ? '#' : g[r][c];
         const dc = Math.floor((lx + fw) / C); if (at(dc, nR - 1) !== '.') console.error('entertainment: the doorway square of', b.id, 'is not a walkway');
         for (let r = 0; r < nR; r++) for (let c = 0; c < nC; c++) { const ch = g[r][c], u = -fw + (c + 0.5) * C, v = -fd + (r + 0.5) * C, o = loc(u, v);
             if (ch === '.') { if (S.rug) parts.push({ s: 'quad', p: [o[0], 0.02, o[1]], size: [C, C], flat: true, key: PL, tint: T(S.rug, PL) });
-                if ((r + c) % 2 === 0) { parts.push({ s: 'box', p: [o[0], r3(H - 0.14), o[1]], size: [1.3, 0.1, 0.5], tint: hex(S.lamp || '#fff0d0'), glow: 1, roof: true }); } continue; }
+                if ((r + c) % 2 === 0) { parts.push({ s: 'box', p: [o[0], r3(H - 0.14), o[1]], size: [1.3, 0.1, 0.5], tint: hex(S.lamp || '#fff0d0'), glow: 1, roof: true }); }
+                /* PASS 2: what hangs over the walk (decoration, off the square's centre, well over head height): chandeliers, the mirror ball, lanterns */
+                if (hangAt.has(r + ',' + c)) { const hh = HANG[S.hang] || 1; putProp(S.hang, cx + o[0] + 0.35, cz + o[1] - 0.25, 0, { y: Math.max(2.1, H - hh - (S.hang === 'paper_lantern' ? 0.25 : 0.05)) }); }
+                continue; }
             if (!KIT[ch]) { console.error('entertainment: no kit for', ch); continue; }
             /* the square looks at its nearest walkway: the front first, then the back, the left, the right (seat rows look where the plan says) */
             let d = [[0, 1], [0, -1], [-1, 0], [1, 0]].find(q => at(c + q[0], r + q[1]) === '.') || [0, 1]; if (ch === 'H' && S.seatFace === 'back') d = [0, -1];
-            if (ch === 'G' || ch === 'F') d = [0, 1]; if (ch === 'p') d = [0, -1];
+            if ((ch === 'G' && at(c, r + 1) !== '#') || ch === 'F') d = [0, 1]; if (ch === 'p') d = [0, -1];   /* (PASS 2: a stage on the door row, the casino's, looks into the room, not at the front wall) */
             const w = loc(d[0], d[1]), f = ((Math.round(-Math.atan2(w[0], w[1]) / D2R) % 360) + 360) % 360, a = -f * D2R, ca = Math.cos(a), sa = Math.sin(a);
             let i = 0, n = 1; while (at(c - i - 1, r) === ch) i++; while (at(c - i + n, r) === ch) n++;
             const k = { S, r, c, i, n, H, edge: { front: at(c, r + 1) !== ch, back: at(c, r - 1) !== ch },
                 part: (s, px, y, pz, key, tint, o2) => { const q = Object.assign({ s, p: [r3(o[0] + px * ca + pz * sa), r3(y), r3(o[1] - px * sa + pz * ca)] }, o2 || {}); q.ry = (((q.ry || 0) + f) % 360 + 360) % 360; if (key) q.key = key; if (tint != null) q.tint = T(tint, key); parts.push(q); return q; },
-                prop: (key, px, pz, turn) => props.push({ key, x: r3(cx + o[0] + px * ca + pz * sa), z: r3(cz + o[1] - px * sa + pz * ca), face: (f + (turn || 0)) % 360 }),
+                prop: (key, px, pz, turn, o3) => putProp(key, cx + o[0] + px * ca + pz * sa, cz + o[1] - px * sa + pz * ca, f + 180 + (turn || 0), o3),   /* (+180: a prop's `face` is a heading, 0 = its front to -z, 180 = to +z — `f` is the square's own frame turn, so without it every prop showed the walk its back; seen on screen 11-14) */
+                turnTo: (dc2, dr2) => ((ang(loc(dc2, dr2)) - f) % 360 + 360) % 360, once: tag => !done.has(tag) && !!done.add(tag),
                 sign: (words, px, y, pz, sw, sh) => { const q = k.part('quad', px, y, pz, 'txt:' + words + '|#fff2c0||' + (Math.round(sw / sh * 100) / 100), null, { size: [sw, sh], uv: 'fit', kind: 'over', glow: 0.9 }); q.tint = 0xffffff; } };
             KIT[ch](k);
             features.push({ k: 'wall', x0: r3(cx + o[0]), z0: r3(cz + o[1]), x1: r3(cx + o[0]), z1: r3(cz + o[1]), h: BLOCK_H[ch] || 1.2, t: C, key: 'urban:ConcreteStriped2a', ghost: true, rail: false });
         }
+        /* PASS 2, THE ROOM'S FINISH: a painted ceiling under the slab (the bare inside sheet reads black up there), a dado round the walls, lit
+           sconces along the side walls and the back (decoration: on the walls, over the blockers' heads) */
+        const fF = ang(loc(0, 1));
+        if (S.ceil) { const o = loc(0, 0); parts.push({ s: 'box', p: [o[0], r3(H - 0.04), o[1]], ry: fF, size: [r3(fw * 2 - 0.6), 0.03, r3(fd * 2 - 0.6)], key: PL, tint: T(S.ceil, PL), glow: 0.3, under: true, roof: true, top: false }); }
+        if (S.dado) for (const [u, v, du, dv, L] of [[0, -fd + 0.3, 0, 1, fw * 2 - 0.6], [0, fd - 0.3, 0, -1, fw * 2 - 0.6], [-fw + 0.3, 0, 1, 0, fd * 2 - 0.6], [fw - 0.3, 0, -1, 0, fd * 2 - 0.6]]) {
+            const o = loc(u, v), q = { s: 'quad', p: [o[0], 0.02, o[1]], ry: ang(loc(du, dv)), size: [r3(L), 1.05], key: WOOD, tint: T(S.dado, WOOD) }; if (dv < 0) q.hole = [r3(-lx), 1.74, 1.05]; parts.push(q);
+            const t = loc(u + du * 0.03, v + dv * 0.03); parts.push({ s: 'box', p: [t[0], 1.05, t[1]], ry: ang(loc(du, dv)), size: [r3(L), 0.06, 0.06], key: WOOD, tint: T(S.dado, WOOD) }); }
+        if (S.sconce) { const sc = (u, v, du, dv) => { const o = loc(u, v); parts.push({ s: 'quad', p: [o[0], 2.05, o[1]], ry: ang(loc(du, dv)), size: [0.7, 1.0], tint: hex(S.sconce), glow: 0.35 }); const b2 = loc(u + du * 0.08, v + dv * 0.08); parts.push({ s: 'box', p: [b2[0], 2.35, b2[1]], ry: ang(loc(du, dv)), size: [0.22, 0.3, 0.14], tint: hex(S.sconce), glow: 1 }); };
+            for (let r = 0; r < nR; r++) { const v = -fd + (r + 0.5) * C; if (r === nR - 1 && nR > 1) continue; sc(-fw + 0.32, v, 1, 0); sc(fw - 0.32, v, -1, 0); }
+            for (let c = 1; c < nC; c += 2) sc(-fw + c * C, -fd + 0.32, 0, 1); }
         /* the lit EXIT over the doorway, inside; the cinema's screen on the back wall */
         { const o = loc(lx, fd - 0.3), w = loc(0, -1), f = ((Math.round(-Math.atan2(w[0], w[1]) / D2R) % 360) + 360) % 360; parts.push({ s: 'quad', p: [o[0], 2.3, o[1]], ry: f, size: [0.9, 0.3], key: 'txt:EXIT|#ffffff|#1a8a3a|3', uv: 'fit', tint: 0xffffff, glow: 0.9 }); }
         if (S.screen) { const o = loc(0, -fd + 0.3), w = loc(0, 1), f = ((Math.round(-Math.atan2(w[0], w[1]) / D2R) % 360) + 360) % 360; parts.push({ s: 'quad', p: [o[0], 1.6, o[1]], ry: f, size: [r3(fw * 2 - 3), r3(Math.min(6, H - 2.4))], tint: 0xe8f4ff, glow: 0.9 }); parts.push({ s: 'quad', p: [loc(0, -fd + 0.28)[0], 1.4, loc(0, -fd + 0.28)[1]], ry: f, size: [r3(fw * 2 - 2.6), r3(Math.min(6, H - 2.4) + 0.4)], tint: 0x101014 }); }

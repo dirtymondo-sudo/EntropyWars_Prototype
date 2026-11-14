@@ -281,8 +281,9 @@ const spot = (plotName, lx, ly, face, ok) => { const p = plotNamed(plotName); le
     return { x: gc(cx), z: gc(cy), face }; };
 JOIN.tower = bldDoor('Superhero Tower', 'Superhero Tower'); JOIN.mall = bldDoor('Mall concourse', 'Mall concourse'); JOIN.sewer = bldDoor('Pump court', 'Pump court');
 JOIN.metro = spot('Transit square', 5, 2, 180); JOIN.harbour = spot('Boardwalk exit', 9, 9, 180); JOIN.bay = spot('Arrival court', 9, 6, 270);
-JOIN.downtown_strip = spot('P00-07', 1, 6, 270, 'RP.'); JOIN.stadium_downtown = spot('P03-00', 5, 1, 0, 'RP.');
+JOIN.downtown_strip = spot('P00-07', 1, 6, 270, 'RP.'); JOIN.stadium_downtown = spot('P03-00', 7, 6, 0, 'R');   // 2026-11-13: on the road's dead end itself (was the 3.5 m alley beside the boxing gym, on its east door's step: Southside saw its sign indoors)
 JOIN.garage_taxi = spot('Taxi rank', 3, 3, 270, '.P'); JOIN.streets_strip = spot('Church', 8, 8, 270); JOIN.streets_drain = spot('Canal walk', 6, 8, 270); JOIN.docks_sewer = spot('Dock edge', 6, 6, 90);
+dcCtx.JOIN = JOIN;   // THE JOINS a district may move in `build` (a link door that belongs inside one of its own walk-ins: I.js puts the sewers door on the Pump court's back wall)
 
 /* THE LEVELS, THE CROSSINGS' STAIRS (after the doors above have their squares, before anything is dressed) */
 const lvCut = new Map(), lvStairs = [], lvCount = { flights: 0, ramps: 0, cut: 0, steep: 0, closed: 0 };
@@ -719,6 +720,15 @@ lines.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + 
 lines.push("                features: [");
 dcCtx.lamps = lamps;
 dcRun('build');
+/* A TREE NEVER LEANS INTO A ROOM (2026-11-13, Southside: street trees seen inside the boxing gym): a tree within 2.5 m of a walk-in building's
+   walls (its crown is wider than the gap and shows indoors) MOVES to the nearest free yard square that is 2.5 m clear of every walk-in wall.
+   Never dropped (mondo: never delete content he did not name): with no such square within 8 squares it stays where it is. `keep: true` = never moved. */
+{ const hol = features.filter(f => f.k === 'texbuilding' && f.hollow), gap = (x, z, b) => { const q = ((b.rot || 0) % 180) !== 0, hw = (q ? b.d : b.w) / 2, hd = (q ? b.w : b.d) / 2; return Math.hypot(Math.max(Math.abs(x - b.x) - hw, 0), Math.max(Math.abs(z - b.z) - hd, 0)); };
+  const clear = (x, z) => !hol.some(b => gap(x, z, b) < 2.5), cellOfM = v => Math.floor((v + HALF) / C);
+  features.forEach(t => { if (t.k !== 'tree' || t.keep || clear(t.x, t.z)) return;
+      const cx0 = cellOfM(t.x), cy0 = cellOfM(t.z); let best = null;
+      for (let dy = -8; dy <= 8; dy++) for (let dx = -8; dx <= 8; dx++) { const cx = cx0 + dx, cy = cy0 + dy; if (!free(cx, cy, '.#') || !clear(gc(cx), gc(cy))) continue; const d = Math.hypot(dx, dy); if (!best || d < best[0]) best = [d, cx, cy]; }
+      if (best) { take(best[1], best[2]); t.x = gc(best[1]); t.z = gc(best[2]); count.treesMoved = (count.treesMoved || 0) + 1; } else count.treesStuck = (count.treesStuck || 0) + 1; }); }
 lines[lampLine] = "                    lamps: " + J(lamps) + ",";
 features.push(...lateRows);
 /* ── THE LEVELS, THE GROUND: every square's four corner heights (NW NE SW SE, centimetres) → `terrain.slope.cells`.
@@ -858,11 +868,15 @@ lines.push("                /* THE CITY TRAFFIC: the junctions with traffic ligh
 lines.push("                signals: " + J(SIGNALS) + ",");
 lines.push("                busStops: " + J(busStops) + ",");
 lines.push("            },");
-const dj = o => "wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face;
+const dj = o => "wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face + (o.noEntrance ? ", noEntrance: true" : "");   // noEntrance: a door a district hung inside its own building (no sprite entrance building)
 lines.push("            doors: [");
 lines.push("                { id: 'harbour', " + dj(JOIN.harbour) + ", leaf: null, label: 'THE HARBOUR', sub: 'THE BOARDWALK · OUT ON THE PIER', action: { room: 'site_prebuilt_downtown_harbour', at: 'quay' },");
 lines.push("                  desc: 'The quay stops and the water starts. A pier goes on out into it, with a skiff tied at the end that nobody is minding.' },");
-lines.push("                { id: 'tower', " + dj(JOIN.tower) + ", leaf: 'leaf_entrance', label: 'THE TOWER', sub: 'THE PLAZA DOORS · INTO THE LOBBY', action: { room: 'site_prebuilt_downtown_lobby', at: 'avenue' },");
+/* a district file may move one of these doors into its own building (`joins = { tower: { x, z, face, sub } }`): Hero Plaza stands THE TOWER at the
+   lift bank of its walk-in lobby (mondo 11-13 22:30 "keep the new lobby"), so the plaza doorway is the lobby's own */
+DISTRICTS.forEach(m => Object.keys(m.joins || {}).forEach(k => { if (JOIN[k]) Object.assign(JOIN[k], m.joins[k]); }));
+const joinSub = (k, d) => (JOIN[k] && JOIN[k].sub) || d;
+lines.push("                { id: 'tower', " + dj(JOIN.tower) + ", leaf: 'leaf_entrance', label: 'THE TOWER', sub: '" + joinSub('tower', 'THE PLAZA DOORS · INTO THE LOBBY') + "', action: { room: 'site_prebuilt_downtown_lobby', at: 'avenue' },");
 lines.push("                  desc: 'The tower\\'s other doors, onto the avenue. The lobby is behind them, the intersection is behind the lobby, and the tower is above all of it for the rest of the year.' },");
 lines.push("                { id: 'mall', " + dj(JOIN.mall) + ", leaf: 'leaf_glass', label: 'THE MALL', sub: 'THE MAIN ENTRANCE · INTO THE MALL', action: { room: 'site_prebuilt_downtown_mall', at: 'street' },");
 lines.push("                  desc: 'The mall\\'s main entrance: sliding glass, a mat that says WELCOME, a sign that says OPEN and a smaller one, taped under it, that says NOTHING HAPPENED HERE.' },");

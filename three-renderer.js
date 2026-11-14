@@ -72040,11 +72040,12 @@ const ThreeRenderer = (function () {
     /* the leaves' frame: open while the walker stands within reach of the doorway, away from the side he is on */
     function _hqTickCityDoors(dt) {
         var H = _hq, L = H && H.cityDoors; if (!L || !L.length || !H.player) return;
-        var px = H.player.x, pz = H.player.z;
+        var P = (H.res && H.res.pts && H.res.pts.length) ? H.res.pts : [H.player];   // THE RESIDENTS (2026-11-14): the officer and the drawn residents
         for (var i = 0; i < L.length; i++) {
-            var D = L[i], dx = px - D.x, dz = pz - D.z;
-            if (D.t === 0 && D.applied === 0 && (Math.abs(dx) > D.reach || Math.abs(dz) > D.reach)) continue;
-            var want = (dx * dx + dz * dz <= D.reach * D.reach) ? 1 : 0;
+            var D = L[i], dx = 0, dz = 0, near = false;
+            for (var pi = 0; pi < P.length; pi++) { var ex = P[pi].x - D.x, ez = P[pi].z - D.z; if (Math.abs(ex) <= D.reach && Math.abs(ez) <= D.reach && ex * ex + ez * ez <= D.reach * D.reach) { dx = ex; dz = ez; near = true; break; } if (pi === 0) { dx = ex; dz = ez; } }
+            if (D.t === 0 && D.applied === 0 && !near) continue;
+            var want = near ? 1 : 0;
             if (want && D.t === 0) D.dir = (dx * D.nx + dz * D.nz) >= 0 ? 1 : -1;   // outside → the leaves swing in; inside → out
             if (D.t === want && D.applied === want) continue;
             D.t = want ? Math.min(1, D.t + dt * HQ_CITY_DOOR.speed) : Math.max(0, D.t - dt * HQ_CITY_DOOR.speed);
@@ -72268,7 +72269,9 @@ const ThreeRenderer = (function () {
         if (!room.shell.open || !info.gen || info.gen.kind !== 'city') return;
         var U = _hqUnits();
         (room.doors || []).forEach(function (door, i) {
-            if (door.way || !door.leaf) return;
+            /* `noEntrance: true` (2026-11-14, Disaster City): the door hangs INSIDE a real building of the room (the sewers bulkhead on the Pump
+               court's back wall): no sprite building behind it, no awning, no sign (the sprite stood through the Pump court, seen mirrored inside) */
+            if (door.way || !door.leaf || door.noEntrance) return;
             var f = _hqBoxWall(room, door.wall, door), depth = 6, width = door.wide ? 10 : 8;
             var y = hqTerrainDoorY(room, door), setback = depth / 2 + 0.16;
             if (TK && typeof _nrSpriteBuilding === 'function') {
@@ -75137,7 +75140,7 @@ const ThreeRenderer = (function () {
             shaft.position.set(0, (H / 2) * U, -0.03 * U); g.add(shaft);
             var glass = new THREE.Mesh(new THREE.PlaneGeometry(W * U, H * U), new THREE.MeshPhongMaterial({ color: 0x9fc7ff, transparent: true, opacity: 0.16, shininess: 160, specular: 0xffffff, depthWrite: false }));
             glass.position.set(0, (H / 2) * U, 0.05 * U); glass.renderOrder = 2; g.add(glass);
-            if (tex && _hq) _hq.tickers.push(function (dt, now) { tex.offset.y = (now * 0.00006) % 1; });
+            if (tex && _hq) { var _shH = _hq; _hq.tickers.push(function (dt) { var k = (_shH._shaftK != null) ? _shH._shaftK : 1; tex.offset.y = ((tex.offset.y + Math.min(dt || 0, 0.1) * 0.06 * k) % 1 + 1) % 1; }); }   // the speed a scene sets (hq.sceneShaft: minus = the car going down)
             return g;
         },
         concrete_pillar: function (U) {
@@ -78234,7 +78237,7 @@ const ThreeRenderer = (function () {
                 var pL = new THREE.Plane(), pR = new THREE.Plane();
                 eL.material = eL.material.clone(); eL.material.clippingPlanes = [pL];
                 eR.material = eR.material.clone(); eR.material.clippingPlanes = [pR];
-                motion = { mode: 'elevator', parts: [{ m: eL, x0: eL.position.x, dir: -1 }, { m: eR, x0: eR.position.x, dir: 1 }], travel: half * 0.96 * U, ow: ow, clips: [{ dir: -1, plane: pL }, { dir: 1, plane: pR }] };
+                motion = { mode: 'elevator', parts: [{ m: eL, x0: eL.position.x, dir: -1 }, { m: eR, x0: eR.position.x, dir: 1 }], travel: half * 0.96 * U, ow: ow, cage: [brace, brace2, seam], clips: [{ dir: -1, plane: pL }, { dir: 1, plane: pR }] };
                 renderer.localClippingEnabled = true;
             } else if (leafKey) {
                 var cat = leafCat;
@@ -81185,9 +81188,11 @@ const ThreeRenderer = (function () {
                until tomorrow (data.js hqEncounterCleared — the record the commit wrote) */
             var gone = [];
             try { var cl = (prof && typeof hqEncounterCleared === 'function') ? hqEncounterCleared(prof, opts.room) : null; if (cl && cl.ids) gone = cl.ids; } catch (e) { gone = []; }
+            var resRaces = _hqResRoom(opts.room) ? _hqResRaces() : null;   // THE RESIDENTS (2026-11-14): a spot's race that lives in the city is the resident, at its spot by its day
             spots.forEach(function (spot, si) {
                 var rh = spot.race;
-                if (gone.indexOf('hq-native-' + si) >= 0) return;   // beaten today — the room is yours
+                if (gone.indexOf('hq-native-' + si) >= 0) return;
+                if (resRaces && rh && resRaces[rh]) return;   // beaten today — the room is yours
                 /* THE AREA UNITS (2026-10-24, data.js hqSpotRaces): with the room's table on, a placed person off the list stands as a race on it */
                 var swap = (typeof hqSpotRaces === 'function') ? hqSpotRaces(crowd.room || opts.room, si, spot) : null;
                 if (swap) { rh = null; for (var q = 0; q < swap.length && !rh; q++) if (!crowd.has(swap[q]) && typeof getRace3DModel === 'function' && (getRace3DModel(swap[q], 'male') || getRace3DModel(swap[q], 'female'))) rh = swap[q]; if (!rh) return; }
@@ -81218,7 +81223,7 @@ const ThreeRenderer = (function () {
                 } else free.push(spot);
             });
             spots = free;
-            var n = Math.min(spots.length, owned.length, 3);
+            var n = resRaces ? 0 : Math.min(spots.length, owned.length, 3);   // (THE RESIDENTS: no roster draw in the residents' city)
             for (var k = 0; k < n; k++) {
                 var rk2 = owned[k];
                 if (gone.indexOf('hq-npc-' + k) >= 0) continue;   // a roster draw beaten today (9.4 stage 2)
@@ -82658,7 +82663,8 @@ const ThreeRenderer = (function () {
             if (!hit) return;
             try {
                 _hqRoundsSetVisible(ch, false);
-                if (ch.rounds) { var rd = ch.rounds; rd.state = 'away'; rd.until = now + 5000 + Math.random() * 7000; rd.path = null; rd.leftBy = null; }
+                if (ch.resident) ch.resident.hideUntil = now + 5000 + Math.random() * 7000;   // THE RESIDENTS: off the landing a few seconds, then back where their day has them
+                else if (ch.rounds) { var rd = ch.rounds; rd.state = 'away'; rd.until = now + 5000 + Math.random() * 7000; rd.path = null; rd.leftBy = null; }
                 else ch.cleared = true;   // not in the room this visit
                 n++;
             } catch (e) {}
@@ -82742,6 +82748,118 @@ const ThreeRenderer = (function () {
         }
         _hqSceneMoves = keep; if (H) H.dirty = true;
     }
+    /* ══ THE RESIDENTS (2026-11-14, mondo: "one of every unit in disaster city ... a more advanced version of the routines they walk
+       in door hq ... a residential home they go to at night ... or out partying at night and sleep a different time") ══
+       Disaster City's people (data.js HQ_CITY_RESIDENTS: one of each of the city's units, a home, a day of blocks) live a day on
+       the world clock: data.js hqResidentTimeline lays each one's day out on the city's walk map (hqCityGrid, the 3.5 m squares:
+       pavements first, doorways, stairs, the bus for a long trip) and hqResidentAt reads where it is at an hour, so a resident is
+       where its day says whether or not the officer saw it walk there. Only the nearest `drawn` (drawnLow on a weak PC) within
+       `radius` m have a body (kept until `keepM`, at most `bodies` rigs kept, the rest disposed); asleep, at work behind a door,
+       on the bus = not in the street. The officer in the way holds a walker (its day runs late, caught up while it stands), a
+       city door swings for a resident (_hqTickCityDoors), the arrival clears them off the officer's landing for a few seconds.
+       In this room the rounds' random extras and travellers stay out (the residents ARE the room's people), a spot native whose
+       race is a resident is the resident (its spot and its line). window.EW_HQ_NO_RESIDENTS = off; dev hq.residents(). */
+    function _hqResRoom(roomId) {
+        if ((typeof window !== 'undefined' && window.EW_HQ_NO_RESIDENTS) || _hqRoundsOff()) return false;
+        return typeof HQ_CITY_RESIDENTS !== 'undefined' && HQ_CITY_RESIDENTS.room === roomId && typeof hqCityGrid === 'function' && typeof hqResidentTimeline === 'function';
+    }
+    function _hqResRaces() { var o = {}; if (typeof HQ_CITY_RESIDENTS !== 'undefined') HQ_CITY_RESIDENTS.list.forEach(function (r) { o[r.race] = 1; }); return o; }
+    function _hqResStart(room, opts) {
+        var H = _hq, roomId = opts.room; if (!H || !_hqResRoom(roomId)) return false;
+        var G = null; try { G = hqCityGrid(roomId); } catch (e) { console.warn('[HQ] the residents: no walk map', e); }
+        if (!G) return false;
+        var gone = []; try { var cl = (opts.profile && typeof hqEncounterCleared === 'function') ? hqEncounterCleared(opts.profile, roomId) : null; if (cl && cl.ids) gone = cl.ids; } catch (e) { gone = []; }
+        var day = (typeof hqToday === 'function') ? hqToday() : '';
+        var list = [];
+        HQ_CITY_RESIDENTS.list.forEach(function (r) {
+            var id = 'hq-res-' + (r.race + (r.gender ? '-' + r.gender : '')).replace(/\s+/g, '_');
+            if (gone.indexOf(id) >= 0) return;   // beaten today: gone until tomorrow
+            var hm = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'male'), hf = typeof getRace3DModel === 'function' && !!getRace3DModel(r.race, 'female');
+            var g = r.gender || ((hm && hf) ? (((typeof hqHash === 'function' ? hqHash(r.race + '|res') : 0) & 1) ? 'female' : 'male') : (hm ? 'male' : 'female'));
+            list.push({ r: r, id: id, gender: g, tl: null, day: null, ch: null, lag: 0, held: 0, want: false, loading: false, hideUntil: 0 });
+        });
+        H.res = { G: G, day: day, list: list, next: 0, pts: [], lastPick: 0 };
+        return true;
+    }
+    function _hqResDispose(H, s) {
+        var ch = s.ch; s.ch = null; if (!ch) return;
+        try { var rig = _unitModelRigs.get(ch.id); if (rig) { _disposeModelRig(rig); _unitModelRigs.delete(ch.id); } _modelAnimState.delete(ch.id); } catch (e) {}
+        try { H.charGroup.remove(ch.entry.group); _disposeR(ch.entry.group); } catch (e) {}
+        var ci = H.chars.indexOf(ch); if (ci >= 0) H.chars.splice(ci, 1);
+        for (var i = H.blockers.length - 1; i >= 0; i--) if (H.blockers[i].obj === ch.entry.group) H.blockers.splice(i, 1);
+    }
+    function _hqResSpawn(H, s, at) {
+        var r = s.r, U = _hqUnits(), line = null, sub = 'LIVES AT ' + String(r.homeName || r.home).toUpperCase();
+        if (at.spot && at.spot.say) { var sy = at.spot.say; line = Array.isArray(sy) ? (sy.length ? sy[((typeof hqHash === 'function' ? hqHash(H.res.day + '|' + r.race + '|say') : 0) % sy.length)] : null) : String(sy); }
+        var ch = _hqSpawnCharacter({ id: s.id, kind: 'npc', race: r.race, gender: s.gender, x: at.x, z: at.z, y: _hqHasGround() ? undefined : 0, face: 0, line: line, sub: sub });
+        if (!ch) return null;
+        ch.resident = s; s.ch = ch;
+        var y = _hqNavQuery(at.x, at.z, null); if (y !== null && y !== undefined && isFinite(y)) { ch.y = ch.visY = y; }
+        ch.entry.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
+        for (var i = H.blockers.length - 1; i >= 0; i--) if (H.blockers[i].obj === ch.entry.group) { ch._resBlk = H.blockers[i]; break; }
+        return ch;
+    }
+    function _hqTickResidents(dt) {
+        var H = _hq, S = H && H.res; if (!S) return;
+        var off = (typeof window !== 'undefined' && window.EW_HQ_NO_RESIDENTS);
+        var now = performance.now(), rate = (typeof hqClockRate === 'function') ? hqClockRate() : (1 / 60), hour = _hqClockHourNow(), R = HQ_CITY_RESIDENTS, U = _hqUnits();
+        /* a new day: each day re-laid when nobody is watching it (one a frame) */
+        var day = (typeof hqToday === 'function') ? hqToday() : S.day; if (day !== S.day) S.day = day;
+        if (!off) for (var b = 0; b < S.list.length; b++) { var s0 = S.list[(S.next + b) % S.list.length]; if (s0.day !== S.day && !(s0.ch && !s0.ch.away)) { try { s0.tl = hqResidentTimeline(S.G, s0.r, S.day); } catch (e) { s0.tl = null; } s0.day = S.day; S.next = (S.next + b + 1) % S.list.length; break; } }
+        var pl = H.player, scene = !!H._sceneCastIds;
+        /* who has a body: the nearest in the street (every 0.4 s) */
+        if (now - S.lastPick > 400) {
+            S.lastPick = now;
+            var lowPC = !!(typeof window !== 'undefined' && window.EW_PERF_LOW), cap = off ? 0 : (lowPC ? R.drawnLow : R.drawn), cand = [];
+            S.list.forEach(function (s) {
+                s.want = false; if (!s.tl || !pl || off) return;
+                var at = hqResidentAt(s.tl, hour - s.lag); s.at = at; if (!at || !at.vis || now < s.hideUntil) return;
+                var d = Math.hypot(at.x - pl.x, at.z - pl.z); if (d > ((s.ch && !s.ch.away) ? R.keepM : R.radius)) return;
+                cand.push({ s: s, d: d });
+            });
+            cand.sort(function (a, b) { return a.d - b.d; });
+            cand.slice(0, cap).forEach(function (c) { c.s.want = true; });
+            S.list.forEach(function (s) {
+                if (s.want && !s.ch && !s.loading) {
+                    var def = (typeof getRace3DModel === 'function') ? getRace3DModel(s.r.race, s.gender) : null, url = def && def.model;
+                    var hot = !url || !!(_unitGlbCache[url] && _unitGlbCache[url].root) || (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS);
+                    if (hot) _hqResSpawn(H, s, s.at);
+                    else { s.loading = true; _bgLoadDepth++; try { _loadUnitGLB(url, function () { s.loading = false; }); } finally { _bgLoadDepth--; } }   // streams in the background lane; the next pick stands it
+                }
+                if (s.ch) { var show = s.want && !scene && !s.ch._sceneOut && !s.ch.cleared; if (show === !!s.ch.away) { _hqRoundsSetVisible(s.ch, show); H.dirty = true; } }
+            });
+            /* past `bodies` rigs: the farthest unseen ones go */
+            var kept = S.list.filter(function (s) { return s.ch; });
+            if (kept.length > R.bodies) {
+                kept.filter(function (s) { return s.ch.away; }).map(function (s) { return { s: s, d: (pl && s.at) ? Math.hypot(s.at.x - pl.x, s.at.z - pl.z) : 1e9 }; })
+                    .sort(function (a, b) { return b.d - a.d; }).slice(0, kept.length - R.bodies).forEach(function (o) { _hqResDispose(H, o.s); });
+            }
+        }
+        /* the drawn ones walk their day */
+        var pts = []; if (pl) pts.push(pl);
+        if (!H.paused) S.list.forEach(function (s) {
+            var ch = s.ch; if (!ch || ch.away || !s.tl) return;
+            var at = hqResidentAt(s.tl, hour - s.lag); if (!at) return;
+            if (!at.vis) { _hqRoundsSetVisible(ch, false); H.dirty = true; return; }   // in through its door / on the bus: gone that frame, not at the next pick
+            /* the officer in the way: the walker holds (its day runs late); a stand catches the late time back up */
+            if (at.moving && pl && !pl.away && s.held < 3) {
+                var fx = Math.sin(at.face * Math.PI / 180), fz = Math.cos(at.face * Math.PI / 180), px = pl.x - ch.x, pz = pl.z - ch.z, pd = Math.hypot(px, pz);
+                if (pd < 1.1 && (px * fx + pz * fz) / Math.max(0.01, pd) > 0.3 && Math.abs((pl.y || 0) - (ch.y || 0)) < 1.5) { s.lag = Math.min(0.5, s.lag + dt * rate); s.held += dt; ch.moving = false; return; }
+            }
+            if (!at.moving) s.held = 0;
+            if (!at.moving && s.lag > 0) s.lag = Math.max(0, s.lag - dt * rate);
+            ch.x = at.x; ch.z = at.z; ch.moving = !!at.moving;
+            var y = _hqNavQuery(ch.x, ch.z, ch.y); if (y !== null && y !== undefined && isFinite(y)) ch.y = y;
+            ch.visY += (ch.y - ch.visY) * Math.min(1, dt * 14); if (Math.abs(ch.y - ch.visY) < 0.004) ch.visY = ch.y;
+            ch.targetYaw = at.moving ? at.face * Math.PI / 180 : (at.spot ? _hqHeadingYaw(at.spot.face || 0) : ch.targetYaw);
+            if (!at.moving && at.k === 'stay' && at.seg !== s.seg) { s.seg = at.seg; if (!at.spot) ch.targetYaw = _hqHeadingYaw(at.face || 0); }
+            var dy = ch.targetYaw - ch.yaw; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; ch.yaw += dy * Math.min(1, dt * 8);
+            ch.entry.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
+            if (ch._resBlk) { ch._resBlk.y = ch.y; ch._resBlk.top = ch.y + 2.6; }
+            pts.push(ch);
+        });
+        S.pts = pts;
+    }
     function _hqTickRounds(dt) {
         var H = _hq; if (!H || !H.rounds || !H.rounds.length || _hqRoundsOff()) return;
         if (!H.nav || !H.nav.done) { _hqNavBuild(HQ_NAV_BUDGET_MS); if (!H.nav.done) return; }
@@ -82760,6 +82878,7 @@ const ThreeRenderer = (function () {
         _hqNavStart();   // the lattice (built over the next frames) — started first so the stops' floor reads leave the people out of the furniture
         var gone = [];
         try { var cl = (prof && typeof hqEncounterCleared === 'function') ? hqEncounterCleared(prof, roomId) : null; if (cl && cl.ids) gone = cl.ids; } catch (e) { gone = []; }
+        var resRoom = false; try { resRoom = _hqResStart(room, opts); } catch (e) { console.warn('[HQ] the residents skipped', e); }   // THE RESIDENTS (2026-11-14): the city's own people
         var stops = _hqRoundsStops();
         var genderOf = function (rk, want) { var hm = !!getRace3DModel(rk, 'male'), hf = !!getRace3DModel(rk, 'female');
             /* a SITE SKIN lends a gender the roster lacks (sprites.js RACE_MODEL_SKINS — the female cyberpunk cop, Cyberpunk City only) */
@@ -82795,7 +82914,7 @@ const ThreeRenderer = (function () {
         /* 2 · THE EXTRAS: the room's population by the tags (data.js hqRoomPopulation) */
         var pop = null;
         try { pop = (typeof hqRoomPopulation === 'function') ? hqRoomPopulation(roomId, prof, { perfLow: !!(typeof window !== 'undefined' && window.EW_PERF_LOW) }) : null; } catch (e) { console.warn('[HQ] population read failed', e); }
-        if (pop && pop.draw && pop.draw.length && stops.length) {
+        if (pop && pop.draw && pop.draw.length && stops.length && !resRoom) {
             var pool = pop.pool.filter(walksRace), used = {};
             var doorStops = stops.filter(function (s) { return s.kind === 'door' && s.rec && !HQ_DOOR_LOCKED[s.rec.state]; });
             _bgLoadDepth++;   // THE BACKGROUND LANE (2026-09-20): the extras' rigs stream three at a time behind the room's own props
@@ -82844,7 +82963,7 @@ const ThreeRenderer = (function () {
             var arriving = _hqTravellers.filter(function (t) { return t.to === roomId && now - t.t < R.travelTtlMs; });
             _hqTravellers = _hqTravellers.filter(function (t) { return t.to !== roomId && now - t.t < R.travelTtlMs; });
             arriving.forEach(function (t, i) {
-                if (room && room.noWalkers) return;   // nobody walks through this room (your office)
+                if ((room && room.noWalkers) || resRoom) return;   // (THE RESIDENTS: the city's people are its residents)   // nobody walks through this room (your office)
                 if (!walksRace(t.race)) return;
                 if (typeof hqRoomTakesRace === 'function' && !hqRoomTakesRace(roomId, t.race)) return;   // THE AREA UNITS: a room with a table lets in only its own people
                 if (crowd && !crowd.take(t.race)) return;   // THE CROWD CAP
@@ -85642,13 +85761,13 @@ const ThreeRenderer = (function () {
                 ch.held.quaternion.copy(hq).invert();
                 ch.held.scale.setScalar(1 / (hs.x || 1));
             }
-            if (ch.kind === 'player') e.group.visible = !H.fp && !(H.focus && H.focus.k > 0.3);
+            if (ch.kind === 'player') e.group.visible = !H.fp && !(H.focus && H.focus.k > 0.3) && !H._scenePlayerOut;   // (a scene took the officer out of the picture: hq.scenePlace show)
             var want = 'idle';
             /* a placed cast member holds its building pose (sits, mops,
                kneels…) once the library bake has landed the clip */
             if (ch.pose && ch.kind !== 'player' && e.actions && e.actions[ch.pose]) want = ch.pose;
             /* THE ROUNDS (2026-09-19): a walker on its loop plays the walk clip at a stroll's pace */
-            if (ch.rounds && ch.kind !== 'player') { want = ch.moving ? 'walk' : 'idle'; if (e.actions && e.actions.walk) { var wts = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = wts * 0.62; } }
+            if ((ch.rounds || ch.resident) && ch.kind !== 'player') { want = ch.moving ? 'walk' : 'idle'; if (e.actions && e.actions.walk) { var wts = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = wts * 0.62; } }
             if (ch._sceneWalk && ch.kind !== 'player' && e.actions && e.actions.walk) { want = 'walk'; var swt = e.actions.walk._ew_ts0 || 1; e.actions.walk.timeScale = swt * 0.62; }   // THE CUTSCENES: a cast member a scene walks (hq.sceneWalk)
             if (ch.kind === 'player') {
                 want = (ch.jumpT >= 0) ? 'jump' : (ch.moving ? (ch.running ? 'run' : 'walk') : 'idle');
@@ -86000,7 +86119,9 @@ const ThreeRenderer = (function () {
             /* THE DOOR GUN rev 2: a FLAT threshold (a floor hatch, a ceiling hatch) stands open — it is a hole you fall through, not a door you press into */
             /* rev 5: a placed WALL door stands open too (HQ_PORTAL_RULES.leafAlways) — Portal's are always open; the leaf lies near flat beside the frame */
             var want = (d.portalSurf && (d.portalSurf !== 'wall' || _hqPortalRules().leafAlways)) ? 1 : ((targetKey === 'door:' + d.door.id && !HQ_DOOR_LOCKED[d.state] && !d.angle) ? 1 : 0);   // THE SUSPICIOUS ANGLE: no swing until measured
-            if (!want && d.npcOpenUntil && d.npcOpenUntil > performance.now() && !HQ_DOOR_LOCKED[d.state]) want = 1;   // THE ROUNDS (2026-09-19): a walker going through swings the leaf
+            if (!want && d.npcOpenUntil && d.npcOpenUntil > performance.now() && !HQ_DOOR_LOCKED[d.state]) want = 1;
+            if (d.sceneOpen) want = 1;   // a scene holds it open (hq.sceneDoor { id }), locked or not
+            if (mo.cage && (!!d.sceneOpen) !== !!d._cageOff) { d._cageOff = !!d.sceneOpen; mo.cage.forEach(function (c) { c.visible = !d._cageOff; }); }   // (the scene's lift opens clear: no cross braces in the way of the recruit stepping out)   // THE ROUNDS (2026-09-19): a walker going through swings the leaf
             _hqDoorMotionStep(d, want, dt);
         }
     }
@@ -87295,6 +87416,7 @@ const ThreeRenderer = (function () {
         try { _hqTickGunDoors(wdt, now); } catch (e) { if (!H._gunTickWarned) { H._gunTickWarned = true; console.warn('[HQ] gun doors tick', e); } }   /* THE DOOR WHEEL IN THE ROOM (Phase 3): the standing doors act */
         _hqTickSceneMoves();
         _hqTickRounds(wdt);
+        try { _hqTickResidents(wdt); } catch (e) { if (!H._resWarned) { H._resWarned = true; console.warn('[HQ] the residents tick', e); } }   // THE RESIDENTS (2026-11-14)
         if (H._sceneDoor && H._sceneDoor.door) {   // scene A's lone door: the swing and the light in the doorway
             var _sd = H._sceneDoor, _sn = performance.now();
             if (_sd.k !== _sd.to) { var _sq = Math.min(1, (_sn - _sd.t0) / _sd.ms); _sd.k = _sd.from + (_sd.to - _sd.from) * (1 - Math.pow(1 - _sq, 3)); if (_sq >= 1) _sd.k = _sd.to; H.dirty = true; }
@@ -93146,6 +93268,8 @@ const ThreeRenderer = (function () {
             _hq.player = nu; _hq.dirty = true;
             return true;
         },
+        /* THE RESIDENTS (2026-11-14): where each one is now (dev) */
+        residents: function () { var S = _hq && _hq.res; if (!S) return null; var h = _hqClockHourNow(); return S.list.map(function (s) { var a = s.tl ? hqResidentAt(s.tl, h - s.lag) : null; return { race: s.r.race, gender: s.gender, home: s.r.homeName, at: a ? a.k : null, place: a ? a.place : null, x: a ? Math.round(a.x) : null, z: a ? Math.round(a.z) : null, drawn: !!(s.ch && !s.ch.away) }; }); },
         focused: function () { return !!(_hq && _hq.focus && !_hq.focus.out); },
         refreshLamps: _hqRefreshLamps,
         goTo: _hqGoTo,
@@ -93293,18 +93417,27 @@ const ThreeRenderer = (function () {
             if (o.x != null && o.z != null) { _hqSceneMoves = _hqSceneMoves.filter(function (m) { return m.ch !== ch; }); ch._sceneWalk = false; ch.x = +o.x; ch.z = +o.z; g.position.x = ch.x * U; g.position.z = ch.z * U; if (ch === _hq.player) { ch.moving = false; ch.svx = 0; ch.svz = 0; } }
             if (o.face != null) { ch.yaw = ch.targetYaw = _hqHeadingYaw(o.face); if (ch.entry.model) ch.entry.model.rotation.y = ch.yaw; if (ch === _hq.player && _hq.cam) { _hq.cam.yaw = _hqRad(o.face); _hq.cam.init = false; } }
             if (o.show != null) { if (ch === _hq.player) { g.visible = !!o.show; _hq._scenePlayerOut = !o.show; } else _hqRoundsSetVisible(ch, !!o.show); }   // (the walker's own tick shows the body again: held out every frame, see the scene tick)
+            /* `scale`: the body at k times its own size for the room's life (scene A: Sedaniel at a real car's size beside the
+               officer; a unit's battle size is a toy's). `clip` + `ms`: the officer plays one of the rig's clips once (hqNo = the
+               head shake) and goes back to standing. */
+            if (o.scale > 0) { if (g._ew_sceneS0 == null) g._ew_sceneS0 = g.scale.x || 1; g.scale.setScalar(g._ew_sceneS0 * o.scale); }
+            if (o.clip && ch === _hq.player && ch.entry.actions && ch.entry.actions[o.clip]) ch.strike = { name: o.clip, until: performance.now() + Math.max(200, o.ms || 1500), fresh: true };
             if (o.sit != null && ch === _hq.player) ch.sit = o.sit ? { seat: null, t0: performance.now(), scene: true } : null;   // seated for a scene (no seat record: the walk's own tick is held)
             g.updateMatrixWorld(true); _hq.dirty = true;
             return true;
         },
         /* is a body's rig up WITH its clips (idle + walk)? The opening plays as the building first loads: it waits for this, or
            the officer steps out of the car in the bind pose. */
+        /* the car's shaft window streams at k times its speed (minus = the landings rise past: the car going down); 1 = back */
+        sceneShaft: function (k) { if (!_hq) return false; _hq._shaftK = (+k || 0); return true; },
         sceneReady: function (who) {
             if (!_hq || !who) return false;
             var ch = null;
             if (who === 'player') ch = _hq.player; else for (var i = 0; i < _hq.chars.length; i++) { if (_hq.chars[i] && _hq.chars[i].cast === who) { ch = _hq.chars[i]; break; } }
             var a = ch && ch.entry && ch.entry.group && ch.entry.actions;
-            return !!(a && a.idle && (who !== 'player' || a.walk));
+            if (!(a && a.idle && (who !== 'player' || a.walk))) return false;
+            var mesh = false; ch.entry.group.traverse(function (o) { if (o.isMesh) mesh = true; });   // (the model itself, not only its group)
+            return mesh;
         },
         /* a scene's CAST: `ids` = the DOOR_CAST ids the scene keeps; everybody else in the room (the officer aside) is taken
            out for the scene. null puts back exactly the ones it took out. */
@@ -93345,6 +93478,7 @@ const ThreeRenderer = (function () {
         sceneDoor: function (o) {
             var H = _hq; if (!H || !H.scene || !o) return false;
             var U = _hqUnits(), ts = 116;
+            if (o.id) { var dd = null; (H.doors || []).forEach(function (x) { if (x && x.door && x.door.id === o.id) dd = x; }); if (!dd) return false; dd.sceneOpen = !!o.open; return true; }   // a ROOM door the scene opens (scene A's front lift); open: false gives it back
             if (o.remove) { var d0 = H._sceneDoor; if (d0) { d0.dead = true; if (d0.root.parent) d0.root.parent.remove(d0.root); try { _disposeR(d0.root); } catch (e) {} H._sceneDoor = null; H.dirty = true; } return true; }
             if (o.open != null) { var d1 = H._sceneDoor; if (!d1) return false; d1.from = d1.k; d1.to = Math.max(0, Math.min(1, +o.open)); d1.t0 = performance.now(); d1.ms = Math.max(1, o.ms || 900); return true; }
             if (H._sceneDoor) return true;
@@ -93462,7 +93596,7 @@ const ThreeRenderer = (function () {
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
             hqScene: function () { return _hq ? _hq.scene : null; },
             /* the walker's clip right now (a scene check: which clip is the officer in?) */
-            playerAnim: function () { var H = _hq, ch = H && H.player, e = ch && ch.entry; if (!e) return null; var run = []; try { Object.keys(e.actions || {}).forEach(function (k) { var a = e.actions[k]; if (a && a.isRunning() && a.getEffectiveWeight() > 0.01) run.push(k + ':' + a.getClip().name + ':' + a.getEffectiveWeight().toFixed(2)); }); } catch (err) {} return { cur: e._ew_curAnim || null, running: run, moving: !!ch.moving, jumpT: ch.jumpT, sit: !!ch.sit, ride: !!(H.ride && H.ride.on), swim: !!ch.swim, strike: ch.strike ? ch.strike.name : null, drawn: !!(H.portal && H.portal.drawn), lean: e.model ? e.model.rotation.x : 0 }; },
+            playerAnim: function () { var H = _hq, ch = H && H.player, e = ch && ch.entry; if (!e) return null; var run = []; try { Object.keys(e.actions || {}).forEach(function (k) { var a = e.actions[k]; if (a && a.isRunning() && a.getEffectiveWeight() > 0.01) run.push(k + ':' + a.getClip().name + ':' + a.getEffectiveWeight().toFixed(2)); }); } catch (err) {} return { cur: e._ew_curAnim || null, keys: Object.keys(e.actions || {}).join(','), running: run, moving: !!ch.moving, jumpT: ch.jumpT, sit: !!ch.sit, ride: !!(H.ride && H.ride.on), swim: !!ch.swim, strike: ch.strike ? ch.strike.name : null, drawn: !!(H.portal && H.portal.drawn), lean: e.model ? e.model.rotation.x : 0 }; },
             hqDoors: function () { if (!_hq) return null; var out = _hq.doors.slice(), st = _hq.stage; if (st && st.parts) for (var id in st.parts) { var P = st.parts[id].P; if (P && P.doors) out = out.concat(P.doors); } return out; },   // the door records of the room stood in + the rooms beside it (probes)
             hqInst: function () { return _hqInstStats(_hq); },
             /* THE CITY TRAFFIC (2026-11-13): the lights' colours and every vehicle (a probe reads them: which stand at a red, which bus waits) */
