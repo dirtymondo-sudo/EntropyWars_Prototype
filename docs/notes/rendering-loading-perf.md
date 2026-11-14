@@ -1956,3 +1956,20 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   r._renderObjects` for the opaque-list hook; one var slot, so the hook called render(list). Rolled back (#1384), renamed
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
+
+## THE UNSEEN LAMP + THE SCANS ON CHANGE (2026-11-14, Disaster City, his 7.3 FPS readout)
+His Mac after THE LAMP'S REACH: CPU 129.5 ms (submit 69.3), shadow 776 of 1,056 draws / 3.22M tris, "0 re-records/s".
+A CDP CPU profile of the city in the cloud browser (harness `/profile` endpoint, `scratchpad prof_an.js`: self time folded
+onto the nearest game function) showed the 60 ms outside the draws was whole-scene walks (37,000 objects) on timers.
+- **THE UNSEEN LAMP (`_hqHeroGate`).** The 776 shadow draws were the hero lamp's six cube sides drawing the nearby instance
+  batches + merged batches classic (one batch spans a 42 m plot; the lamp reaches 3.5 m), every frame, with the lamp streets
+  away. A point lamp whose reach sphere (x1.15) is off the camera has its map held; it redraws the frame the sphere is back.
+  Off: `window.EW_HERO_SHADOW_UNSEEN = true`.
+- **The scans, now on change** (`_ewAddCount`: every Object3D.add counted; zero adds a frame standing still in the city):
+  the hero lamp's caster list (was a scene walk every 100 ms; now on an add, and every 2 s); a prop chunk's sphere
+  (`Box3.setFromObject` of the chunk every 4 s; now on an add / count change, and every 60 s); the LOD list (`_hqLodScan`
+  every 2 s; now on an add or a landed level `_lodLandN`, and every 30 s); CSS2DRenderer (three scene walks a frame; skipped
+  while the scene holds no label, `window.EW_CSS2D_ALWAYS`); THE MEMORY BUDGET over its cap with nothing free to drop
+  (`_mmLive` every 4 s; now waits 30 s); the pixel mask's timed scan 400 -> 1500 ms (adds still re-scan at once).
+- Left, in order: the shell is ONE group of 10,000 pieces (matrix walk, bundle check 7 ms, every pass) -> chunk it like the
+  props; the static batch's forced matrix walk every 500 ms; Firefox's cost per draw.

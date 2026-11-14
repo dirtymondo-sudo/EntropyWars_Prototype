@@ -37874,6 +37874,7 @@ const ThreeRenderer = (function () {
             list.push({ url: u, at: e.at || 0, bytes: e.bytes || 0, loading: !!e.loading, failed: !!e.failed, one: !!e._ewOneFile, x: !!(e.xcbs && e.xcbs.length), live: isLive });
         }
         var go = _mmPick(list, t, idle, tot - cap * MM_FLOOR, MM_MAX);
+        if (!go.length) _mmAt = now + 26000;   // over the budget with nothing free to drop (it is all on the stage): the whole-scene read waits 30 s
         go.forEach(_mmEvict);
         if (go.length) { _objectsDirty = true; try { console.log('[ThreeRenderer] THE MEMORY BUDGET: ' + go.length + ' idle model(s) dropped (' + (_mmFreed / 1048576).toFixed(1) + ' MB so far)'); } catch (x) {} }
     }
@@ -52317,6 +52318,19 @@ const ThreeRenderer = (function () {
             var um = sc.updateMatrixWorld;
             sc.updateMatrixWorld = function () { this._ew_mwAt = _css2dTick; return um.apply(this, arguments); };
             sc._ew_mwStamp = true;
+        }
+        /* THE EMPTY LABEL LAYER (2026-11-14): CSS2DRenderer walks the whole scene three times a frame (37,000 objects in the
+           city) to find its labels. The scene's label count is read when something joined the scene (at most twice a second)
+           and every 60 s; with none, and none last time (the renderer has hidden what left), the pass is skipped.
+           Off: window.EW_CSS2D_ALWAYS = true. */
+        if (!window.EW_CSS2D_ALWAYS) {
+            var cNow = performance.now(), cAdd = _ewAddCount();
+            if (sc._ew_c2N === undefined || (sc._ew_c2Add !== cAdd && cNow - sc._ew_c2At > 500) || cNow - sc._ew_c2At > 60000) {
+                var cn = 0; sc.traverse(function (o) { if (o.isCSS2DObject) cn++; });
+                sc._ew_c2Was = sc._ew_c2N; sc._ew_c2N = cn; sc._ew_c2Add = cAdd; sc._ew_c2At = cNow;
+            }
+            if (sc._ew_c2N === 0 && sc._ew_c2Was === 0) { _css2dTick++; return; }
+            if (sc._ew_c2N === 0) sc._ew_c2Was = 0;   // this pass hides what left; the next is skipped
         }
         var fresh = sc._ew_mwAt === _css2dTick, au = sc.matrixWorldAutoUpdate;
         if (fresh) sc.matrixWorldAutoUpdate = false;
@@ -86744,6 +86758,7 @@ const ThreeRenderer = (function () {
        light's own place, reach and map size are in the number too. Only the hero light: the sun's map pulses as it did.
        The fight never holds (renderFrame clears the hold).
        Off: window.EW_HERO_SHADOW_EVERY_FRAME = true (live). ThreeRenderer.hq.dev.heroShadow() = the counts. */
+    var _heroFr = null, _heroFrM = null, _heroFrS = null;
     var HERO_STILL_MS = 1500, HERO_REFRESH_MS = 1000, HERO_LIST_MS = 100, HERO_TEXEL = 0.25, HERO_FLESH_M = 0.35;
     var _heroF64 = new Float64Array(1), _heroU32 = new Uint32Array(_heroF64.buffer);
     var _heroStat = { frames: 0, held: 0, drawn: 0, moving: 0, changed: 0, drift: 0, inReach: 0, casters: 0, why: '' };
@@ -86809,8 +86824,31 @@ const ThreeRenderer = (function () {
         for (var up = L; up && up !== H.scene; up = up.parent) {}
         if (!up) { _hqHeroRelease(L); return; }   // the light is not in the walk's scene this frame
         var G = L._ew_gate || (L._ew_gate = { list: null, listAt: -1e9, sig: 0, since: now, drawnAt: -1e9 });
-        /* the list of casters, read again every HERO_LIST_MS (a piece that lands joins the map within that) */
-        if (!G.list || now - G.listAt > HERO_LIST_MS) {
+        /* THE UNSEEN LAMP (2026-11-14, Disaster City: the lamp's six sides were 776 of the frame's 1,056 draws with the lamp
+           streets away): a point lamp lights nothing past its reach, so when the sphere of its reach is off the camera no
+           shadow of it is on screen. Its map is held (never read: nothing it lights is drawn) and redrawn on the first
+           frame the sphere is back in view. A lamp with no reach (distance 0) is never held this way.
+           Off: window.EW_HERO_SHADOW_UNSEEN = true. */
+        if (L.isPointLight && L.distance > 0 && H.camera && !window.EW_HERO_SHADOW_UNSEEN) {
+            if (!_heroFr) { _heroFr = new THREE.Frustum(); _heroFrM = new THREE.Matrix4(); _heroFrS = new THREE.Sphere(); }
+            var hc = H.camera, le0 = L.matrixWorld.elements;
+            _heroFrM.multiplyMatrices(hc.projectionMatrix, hc.matrixWorldInverse);
+            _heroFr.setFromProjectionMatrix(_heroFrM, hc.coordinateSystem);
+            _heroFrS.center.set(le0[12], le0[13], le0[14]); _heroFrS.radius = L.distance * 1.15;
+            if (!_heroFr.intersectsSphere(_heroFrS)) {
+                G.drawnAt = -1e9;   // back in view: the map draws that frame
+                L._ew_heroHold = true;
+                if (L.shadow.autoUpdate !== false) { L.shadow.autoUpdate = false; L._ew_heroAuto = true; }
+                L.shadow.needsUpdate = false;
+                ST.frames++; ST.held++; ST.why = 'off the camera';
+                return;
+            }
+        }
+        /* the list of casters, read again when something joined the scene (at most every HERO_LIST_MS; a piece that lands
+           joins the map within that) and every 2 s for a flag set late */
+        var heroAdd = _ewAddCount();
+        if (!G.list || (G.addN !== heroAdd && now - G.listAt > HERO_LIST_MS) || now - G.listAt > 2000) {
+            G.addN = heroAdd;
             var list = [];
             H.scene.traverse(function (o) {
                 if (!o.isMesh || !o.castShadow) return;
@@ -87934,7 +87972,9 @@ const ThreeRenderer = (function () {
             var g = L[i];
             if (!g.parent) { g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; L.splice(i, 1); continue; }
             if (off) { if (g._ew_ckOut) { g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; } drawn++; continue; }
-            if (g._ew_ckN !== g.children.length || now - g._ew_ckAt > (g._ew_pChunk ? 4000 : 2000)) { g._ew_ckN = g.children.length; g._ew_ckAt = now; g._ew_ckSph = _hqChunkSphere(g); }
+            /* a prop chunk is measured through every piece in it (a walk of the chunk): again only when something joined the
+               scene since (a file landed: at most every 4 s) or its own count changed, and every 60 s */
+            if (g._ew_ckN !== g.children.length || (g._ew_pChunk ? ((g._ew_ckAdd !== addN && now - g._ew_ckAt > 4000) || now - g._ew_ckAt > 60000) : now - g._ew_ckAt > 2000)) { g._ew_ckN = g.children.length; g._ew_ckAt = now; g._ew_ckAdd = addN; g._ew_ckSph = _hqChunkSphere(g); }
             var sp = g._ew_ckSph, out = false;
             if (sp) {
                 var dx = sp.center.x - ce[12], dy = sp.center.y - ce[13], dz = sp.center.z - ce[14];
@@ -88119,7 +88159,7 @@ const ThreeRenderer = (function () {
        swapped keeps the full one's bounding sphere and box (culling and the batch frames stay right); a level never gets
        coarser than asked (a missing level 1 means the full mesh until it lands). Nothing leaves the walk on a level: the
        hand-over, the swap and the leave put every mesh back on its full geometry. Off: window.EW_NO_LOD (then re-enter). */
-    var _lodV = null, _lodS = null;
+    var _lodV = null, _lodS = null, _lodLandN = 0;
     function _lodOff() { return typeof window !== 'undefined' && !!window.EW_NO_LOD; }
     function _lodRules() {
         var R = (typeof HQ_ENGINE_RULES !== 'undefined' && HQ_ENGINE_RULES) ? HQ_ENGINE_RULES : {};
@@ -88190,7 +88230,7 @@ const ThreeRenderer = (function () {
                         else geos.forEach(function (g, j) {
                             if (!g) return;
                             var b = meshes[j].geometry, lv = b._ew_lods || (b._ew_lods = []);
-                            g._ew_lodLevel = i + 1; lv[i] = g;
+                            g._ew_lodLevel = i + 1; lv[i] = g; _lodLandN++;
                         });
                         end();
                     }, function () { end(); }, {});
@@ -88228,7 +88268,9 @@ const ThreeRenderer = (function () {
         if (!H.camera || now - (H._lodAt || 0) < RU.tickMs) return;
         H._lodAt = now;
         var L = H.lod || (H.lod = { list: [], scanAt: 0, swaps: 0, culled: 0, lv: [0, 0, 0] });
-        if (now - L.scanAt > RU.rescanMs) _hqLodScan(H, L);
+        /* the list is read again when something joined the scene or a level landed (at most every rescanMs), and every 30 s */
+        var lodSig = _ewAddCount() + '|' + _lodLandN;
+        if ((L.sig !== lodSig && now - L.scanAt > RU.rescanMs) || now - L.scanAt > 30000 || !L.scanAt) { L.sig = lodSig; _hqLodScan(H, L); }
         var cam = H.camera, cp = _lodS || (_lodS = new THREE.Vector3());
         cam.updateMatrixWorld(); cp.setFromMatrixPosition(cam.matrixWorld);
         /* k: the screen fraction per unit of (diameter / distance) — the vertical field of view */
