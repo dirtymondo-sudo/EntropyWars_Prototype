@@ -1,5 +1,5 @@
 THE PROP CHECK, written by node bake-disaster-city.js. A district file's own prop that stands in something is listed here for its thread; a shared prop with no clear spot is left out.
-{"checked":3333,"clear":1489,"moved":359,"left_out":14,"district_reported":1424,"by":{"car_cop in lamp":2,"car_cop in prop":4,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":15,"item_police_barricade in step":5,"planter in arch":10,"dumpster in step":7,"dumpster in arch":2,"planter in stairs":1,"planter in prop":3,"planter in doorway":1,"vending_machine in arch":34,"vending_machine in doorway":2,"public_phone in arch":12,"ind_vent in arch":12,"utility_box in arch":9,"ind_panel in arch":9,"utility_box in step":4,"traffic_cone in arch":20,"traffic_cone in step":28,"traffic_cone in building":12,"psx_wooden_crate_1 in prop":1,"psx_wooden_crate_1 in step":2,"psx_wooden_crate_1 in arch":1,"ticket_booth in step":1,"popcorn_cart in step":1,"psx_planter_pot_mp_1_full in arch":86,"psx_planter_pot_mp_1_full in doorway":5,"psx_potted_cactus_mp_1 in arch":7,"psx_potted_cactus_mp_1 in doorway":1,"psx_planter_pot_mp_1_full in prop":1,"fire_hydrant in stairs":1,"roads_g_sign_008 in arch":1,"metro_bin in pole":1,"roads_g_sign_005 in arch":1,"metro_bin in arch":2,"psx_metal_barrel_mp_0 in arch":6,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in arch":15,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_wooden_crate_3 in building":10,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_3 in arch":1,"psx_metal_barrel_mp_2 in prop":1,"metal_trash_can in step":6,"garbage_bags in stairs":2,"garbage_bag in step":1,"garbage_bag in arch":1,"garbage_bags in step":1,"garbage_bags in prop":3,"garbage_bags in arch":1,"garbage_bag in prop":2,"garbage_bags in building":3,"garbage_bag in building":3,"metal_trash_can in building":1,"power_pole in prop":1},"snugged":163}
+{"checked":3416,"clear":1486,"moved":358,"left_out":14,"district_reported":1511,"by":{"car_cop in lamp":2,"car_cop in prop":4,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":15,"item_police_barricade in step":5,"planter in arch":10,"dumpster in step":7,"dumpster in arch":2,"planter in stairs":1,"planter in prop":3,"planter in doorway":1,"vending_machine in arch":34,"vending_machine in doorway":2,"public_phone in arch":12,"ind_vent in arch":12,"utility_box in arch":9,"ind_panel in arch":9,"utility_box in step":4,"traffic_cone in arch":20,"traffic_cone in step":28,"traffic_cone in building":12,"psx_wooden_crate_1 in prop":1,"psx_wooden_crate_1 in step":2,"psx_wooden_crate_1 in arch":1,"ticket_booth in step":1,"popcorn_cart in step":1,"psx_planter_pot_mp_1_full in arch":79,"psx_potted_cactus_mp_1 in arch":15,"psx_planter_pot_mp_1_full in doorway":6,"psx_planter_pot_mp_1_full in prop":1,"fire_hydrant in stairs":1,"roads_g_sign_008 in arch":1,"metro_bin in pole":1,"roads_g_sign_005 in arch":1,"metro_bin in arch":2,"psx_metal_barrel_mp_0 in arch":6,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in arch":15,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_wooden_crate_3 in building":10,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_3 in arch":1,"psx_metal_barrel_mp_2 in prop":1,"meshy_sandbags in tree":1,"meshy_sandbags in prop":1,"metal_trash_can in building":2,"garbage_bag in stairs":2,"garbage_bags in step":1,"garbage_bags in arch":1,"garbage_bag in step":1,"garbage_bag in prop":3,"garbage_bag in arch":1,"garbage_bags in prop":2,"garbage_bag in building":3,"metal_trash_can in stairs":1,"garbage_bags in building":3,"power_pole in prop":1},"snugged":163}
 psx_sofa_1  85.75  113.75  building
 psx_sofa_3  85.75  110.25  building
 psx_sofa_4  92.75  113.75  building
@@ -73,6 +73,7 @@ psx_wooden_crate_1  242.05  149.95  building
 forklift  243.25  152.25  building
 wrapped_pallet  250.25  145.25  building
 wrapped_pallet  250.25  148.75  building
+pallet_jack  249.15  146.4  building
 fire_extinguisher  241.95  143.05  building
 office_plant  125.4  98.75  building
 surfboard_rack  117.25  85.75  building
@@ -329,6 +330,41 @@ trash_bin  -49.5  -53  building
 water_cooler  -69.5  -60  building
 office_plant  -76.5  -66  building
 potted_plant  -66  -49.5  building
+papers_a  -51.2  -60.8  building
+coffee_mug  -50.2  -60.7  building
+papers_b  -50.3  -61.7  building
+coffee_mug  -51.35  -61.8  building
+papers_a  -54.7  -60.8  building
+coffee_mug  -53.7  -60.7  building
+papers_b  -53.8  -61.7  building
+coffee_mug  -54.85  -61.8  building
+papers_a  -61.7  -60.8  building
+coffee_mug  -60.7  -60.7  building
+papers_b  -60.8  -61.7  building
+coffee_mug  -61.85  -61.8  building
+papers_a  -65.2  -60.8  building
+coffee_mug  -64.2  -60.7  building
+papers_b  -64.3  -61.7  building
+coffee_mug  -65.35  -61.8  building
+papers_a  -51.2  -67.8  building
+coffee_mug  -50.2  -67.7  building
+papers_b  -50.3  -68.7  building
+coffee_mug  -51.35  -68.8  building
+papers_a  -54.7  -67.8  building
+coffee_mug  -53.7  -67.7  building
+papers_b  -53.8  -68.7  building
+coffee_mug  -54.85  -68.8  building
+papers_a  -61.7  -67.8  building
+coffee_mug  -60.7  -67.7  building
+papers_b  -60.8  -68.7  building
+coffee_mug  -61.85  -68.8  building
+papers_a  -65.2  -67.8  building
+coffee_mug  -64.2  -67.7  building
+papers_b  -64.3  -68.7  building
+coffee_mug  -65.35  -68.8  building
+photocopier  -75.25  -71.75  building
+newspaper_bundles  -56.65  -76.35  building
+newspaper_bundles  -76.35  -69.25  building
 office_locker  -6.15  -82.25  building
 office_locker  -5.25  -82.25  building
 office_locker  -4.35  -82.25  building
@@ -345,6 +381,10 @@ psx_metal_barrel_mp_1  -11  -70.5  building
 traffic_cone  -6.5  -70.5  building
 traffic_cone  -7.5  -77.5  building
 trash_bin  -13.5  -80  building
+welding_cart  -7.85  -75.25  building
+engine_hoist  -1.3  -79  building
+tool_chest  -0.6  -71.35  building
+tire_stack  -13.35  -70.65  building
 computer_chair_blue  21  -61.8  building
 computer_chair_blue  21  -64.2  building
 curved_couch  29.75  -71.75  building
@@ -355,6 +395,10 @@ potted_plant  34.5  -76.5  building
 potted_plant  7.5  -76.5  building
 potted_plant  31  -49.5  building
 potted_plant  11  -49.5  building
+rope_stanchion  21.729  -68.25  building
+rope_stanchion  16.929  -68.25  building
+rope_stanchion  21.729  -71.75  building
+rope_stanchion  16.929  -71.75  building
 folding_chair  53.6  -79.1  building
 folding_chair  53.6  -77.7  building
 folding_chair  53.6  -76.3  building
@@ -387,8 +431,12 @@ folding_chair  68.9  -79.1  building
 folding_chair  68.9  -77.7  building
 folding_chair  68.9  -76.3  building
 folding_chair  68.9  -74.9  building
+studio_camera  50.75  -71.75  building
+studio_camera  71.75  -71.75  building
 potted_plant  53  -70.5  building
 potted_plant  69.5  -70.5  building
+studio_light  49.8  -78.75  building
+studio_light  72.7  -78.75  building
 vending_machine  -82.25  -39.65  building
 vending_machine  -82.25  -40.85  building
 psx_dinner_table_1  -75.25  -26.25  building
@@ -417,6 +465,16 @@ potted_plant  -67  -41.5  arch
 trash_bin  -80  -41.5  building
 potted_plant  -70.5  -28.5  building
 office_plant  -80  -31  building
+coffee_mug  -75.45  -26.5  building
+coffee_mug  -75  -25.95  building
+coffee_mug  -75.45  -33.5  building
+coffee_mug  -75  -32.95  building
+coffee_mug  -68.45  -26.5  building
+coffee_mug  -68  -25.95  building
+coffee_mug  -68.45  -33.5  building
+coffee_mug  -68  -32.95  building
+coffee_maker  -83.5  -32.5  building
+espresso_machine  -83.5  -28.3  building
 boiler  75.25  -12.25  building
 boiler  68.25  -12.25  building
 boiler  61.25  -12.25  building
@@ -451,6 +509,12 @@ mop_bucket  70.5  -34.5  building
 traffic_cone  59  -11  building
 psx_metal_barrel_mp_3  49.5  -31  building
 trash_bin  66  -27.5  building
+wet_floor_sign  58.85  -30.85  building
+mailbox_bank  -83.32  33.8  building
+mailbox_bank  -83.32  32.65  building
+mailbox_bank  -83.32  31.5  building
+mailbox_bank  -83.32  30.35  building
+mailbox_bank  -83.32  29.2  building
 exec_chair  -82.45  14  building
 psx_sofa_3  -75.25  33.25  building
 vending_machine  -72.35  33.25  building
@@ -458,6 +522,8 @@ vending_machine  -71.15  33.25  building
 potted_plant  -70.5  11  building
 trash_bin  -70.5  31  building
 office_plant  -76.5  11  building
+doormat  -71  20.138  building
+umbrella_stand  -70.65  16.95  building
 metro_gate  78.75  7.65  building
 metro_gate  78.75  8.75  building
 metro_gate  78.75  9.85  building
@@ -482,6 +548,8 @@ potted_plant  83.5  27.5  building
 office_plant  74  7.5  building
 water_cooler  74  27.5  building
 trash_bin  67  13.5  building
+rug_office  68.25  26.25  building
+globe_lamp  69.5  7.55  building
 ebd_gasstation_metal_shelving  71.75  82.25  building
 ebd_gasstation_metal_shelving  68.25  82.25  building
 ebd_gasstation_metal_shelving  61.25  82.25  building
@@ -502,6 +570,12 @@ cardboard_box  66  83.5  building
 trash_bin  53  83.5  building
 psx_metal_barrel_mp_2  53  74  building
 traffic_cone  66  74  building
+pallet_jack  54.65  74.65  building
+hand_truck  65.75  74.25  building
+newspaper_bundles  63.65  83.25  building
+newspaper_bundles  55.35  83.25  building
+clipboard_flat  46.1  75.05  building
+coffee_mug  44.2  75.15  building
 office_locker  34.15  -8.75  building
 office_locker  33.25  -8.75  building
 office_locker  32.35  -8.75  building
@@ -514,6 +588,14 @@ office_locker  11.35  -8.75  building
 office_locker  9.65  -8.75  building
 office_locker  8.75  -8.75  building
 office_locker  7.85  -8.75  building
+punching_bag  33.25  -15.15  building
+punching_bag  33.25  -16.35  building
+punching_bag  8.75  -15.15  building
+punching_bag  8.75  -16.35  building
+punching_bag  33.25  -25.65  building
+punching_bag  33.25  -26.85  building
+punching_bag  8.75  -25.65  building
+punching_bag  8.75  -26.85  building
 metro_bench  33.25  -33.25  building
 metro_bench  29.75  -33.25  building
 metro_bench  12.25  -33.25  building
@@ -522,6 +604,10 @@ water_cooler  27.5  -34.5  building
 trash_bin  14.5  -34.5  building
 traffic_cone  27.5  -24  building
 traffic_cone  14.5  -21.5  building
+treadmill  29.75  -29.75  building
+treadmill  12.25  -29.75  building
+dumbbell_rack  26.25  -8.75  building
+weight_bench  15.75  -8.75  building
 car_truck  -229.25  103.25  building
 tanker_desk  -243.25  92.75  building
 crt_terminal  -242.9  92.75  building
@@ -644,6 +730,7 @@ metal_lathe  -93.1  99.75  building
 drill_press  -85.35  106.15  building
 tool_chest  -84.85  107.55  building
 gas_cylinder_rack  -93.95  107.65  building
+welding_cart  -93.8  106.35  building
 air_compressor  -89.25  114.95  building
 exit_sign  -94.18  102.365  building
 tanker_desk  -180.25  145.25  building
@@ -1437,4 +1524,4 @@ psx_metal_barrel_mp_3  -204.3  -139.45  building  left out
 psx_metal_barrel_mp_1  -205.15  -139.45  building  left out
 psx_metal_barrel_mp_0  -204.8  -138.75  building  left out
 psx_wooden_crate_3  245.75  -1.75  building  left out
-garbage_bag  201.1  80.6  building  left out
+garbage_bags  201.1  80.6  building  left out

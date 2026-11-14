@@ -2740,6 +2740,32 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - **The prop check** lists every inside prop as "building" under district_reported: expected (a district's own props are reported, never moved).
 - Headless proof: camera INSIDE a room = teleport to a spot in the room's frame turned by `rot`, `y` = the plot's level x 1.75, `fp: true`.
   Shots /mnt/project-files/disaster-city-hero-plaza/inside_*.jpg.
+### HERO PLAZA, THE SECOND INSIDES PASS (2026-11-13 night, mondo 22:33: "do another interior pass ... make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere for the interiors")
+- **Where**: H.js `IN2[building id]`, run after the room's first-pass `IN[id]` on the same kit; new kit helpers `put` (a prop with `floor: true`
+  and an optional `y`: 0.76 a desk top, 0.86 a cafe table, 0.95 a back counter, 1.13 a bar top), `wall(key, side, u, y)` (b / f / l / r, 0.45 m
+  off the footprint), `liner(wall, dado, ceil, {dado, rail, skirt})` (B.js R.liner: quads over the bare inside sheet, the front one holed at the
+  door `K.dlx` = data.js hqTexbDoor's lx), `lamp` (a lit panel just under the ceiling, `roof: true`), `pendant`, `sconce`, `rug`. `K.H` = the
+  ceiling (storeys x 3.5 - 0.32).
+- **Light**: drawn and glowing (panels, pendants, sconces). Real lamps are NOT used: a room holds HQ_PROP_LIGHT_MAX = 10 point lights and the
+  whole city is ONE room.
+- **The Meshy list** (made here; claims shared by the districts in project files meshy/interior-claims.md): treadmill, welding_cart,
+  photocopier, newspaper_bundles, studio_camera, pallet_jack, hand_truck, mailbox_bank. Text-to-image concept (nano-banana-pro) ->
+  image-to-3D (meshy-t2.5, smart topology), metallic 0, front turned to +Z (studio camera + pallet jack were sideways), optimize-assets.js
+  (19 MB -> 3.3 MB, .opt.glb beside each on R2 `Assets/world/props/meshy/`), ASSET_MANIFEST.json rows, data.js 'Meshy city interiors'.
+  Originals + concepts: project files disaster-city-hero-plaza/meshy/.
+- **Other districts' pieces** are placed through `HAS(key)` (the key has a row in data.js): Southside's punching_bag (hung on the gym's frames,
+  the drawn bags stay as the fallback), dumbbell_rack, weight_bench, tool_chest, engine_hoist, tire_stack; University's espresso_machine,
+  pastry_case, rope_stanchion; Entertainment's studio_light. Rerun the bake after their PRs merge and they appear.
+- **Swaps with a fallback**: the press court's drawn TV cameras -> studio_camera; the apartment's grill mailboxes -> five mailbox_bank units on
+  a dark wood plinth (same ghost).
+- **Fixes found on the way (11-14)**: (1) a belt course over a walk-in room is a RING of four strips (`RING_COURSE` while the room's IN runs):
+  its full slab ran through the room under the ceiling and hid the lit ceiling. (2) `K.wall` passes `mount: 0`: the catalogue `mount` was added
+  on top of the given height (clocks and exit signs over the ceiling; Codex review). (3) `K.prop` / `K.put` add 180 to the face: a prop's
+  `face` is a heading (0 = its front to -z), the kit writes the room frame's (0 = to the door), so chairs, lockers and wall pieces showed the
+  walk their backs (Entertainment + University found the same).
+- **Headless**: the bigger Meshy pieces (treadmill, photocopier, welding cart, cameras, pallet jack, hand truck, mailboxes) load (the files
+  parse, the rows stand at the right height, the welding cart's shadow shows) but the headless browser does not draw them, like the city's
+  Meshy cars; the newspaper bundles draw. Check them on a real GPU.
 ### THE UNIVERSITY INSIDES (2026-11-13, mondo 21:04 "let's go ahead and do the interiors", his OK on the grid plan 21:23)
 His grid rule (21:14 + 21:17, all interiors): the city fights on 3.5 m squares; a BARRIER fills whole squares (centred, a 2-wide piece = 2 squares),
 a WALKWAY is a whole square wide with nothing halfway across two, dressing sits OFF the square centres.
