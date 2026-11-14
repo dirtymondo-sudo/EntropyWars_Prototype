@@ -91174,6 +91174,8 @@ const ThreeRenderer = (function () {
         for (var id in st.parts) { var E = st.parts[id]; if (E.attached) _hqStageTickPart(H, E, dt, now); }
         if (now - st.lampAt > (HQ_STAGE_RULES.lampPickMs || 500) || st.lampN < 0) { st.lampAt = now; _hqStageLamps(H); }
         if (st.blend) _hqStageBlendTick(H, now);
+        if (H.pdTop) _hqPdTopCam(H);
+        if (H.pd) { _hqPdTick(H, now); return; }   // THE PLOT DUNGEONS: a plot is moving — no crossing mid-move
         _hqStageCross(H, now);
     }
     function _hqStageBuildTick(H, now) {
@@ -92495,6 +92497,88 @@ const ThreeRenderer = (function () {
         var st = H && H.stage; if (!st) return;
         for (var id in st.parts) { var E = st.parts[id]; try { if (E.gate) E.gate.close(); } catch (e) {} if (!E.attached) { try { E.P.partRoot.traverse(function (o) { _disposeR(o); }); } catch (e) {} } }
     }
+    /* ══ THE PLOT DUNGEONS (docs/PLOT_DUNGEONS_PLAN.md §6.3, 2026-11-14) ══════════════════════════════════════════════════════════
+       A dungeon's plots are stage parts (data.js pdInstall): each is built once in its own frame and placed by its pose. A MOVE
+       (a plot turns a quarter, a plot slides one slot) is a tween of the parts' poses from the board before to the board after:
+       `frames` = { roomId: { x, z, y, rot } } in the zone's metres, rot in quarter turns (a fraction while it turns). The current
+       part is the scene's origin, so every other part is placed by its frame SEEN FROM the current part's: when the plot under
+       the officer turns, the rest of the board (and the sky, and the key light) swings round it the other way, which is the same
+       picture as the plot turning under a camera that rides it. The walker's keys are dropped while a move runs (nothing moves
+       under walking feet); the board's rules, the joins and the save are map.js / data.js's (pdSync), which call refresh() after. */
+    function _hqPdPose(H, frames) {
+        var st = H.stage; if (!st) return;
+        var A = frames[st.id]; if (!A) return;
+        var U = _hqUnits(), th = A.rot * Math.PI / 2, c = Math.cos(th), s = Math.sin(th);
+        for (var id in st.parts) {
+            var E = st.parts[id], B = frames[id]; if (!B || !E.attached) continue;
+            var dx = B.x - A.x, dz = B.z - A.z, R = E.P.partRoot;
+            R.position.set((dx * c - dz * s) * U, ((B.y || 0) - (A.y || 0)) * U, (dx * s + dz * c) * U);
+            R.rotation.set(0, (B.rot - A.rot) * Math.PI / 2, 0);
+            R.updateMatrixWorld(true);
+        }
+    }
+    function _hqPdMove(spec, done) {
+        var H = _hq, st = H && H.stage; if (!st || !spec || !spec.from || !spec.to) { if (done) done(false); return false; }
+        if (H.pd) return false;
+        H.pd = { from: spec.from, to: spec.to, t0: performance.now(), ms: Math.max(1, spec.ms || 1500), done: done || null, sky: 0 };
+        return true;
+    }
+    function _hqPdTick(H, now) {
+        var M = H.pd, st = H.stage; if (!M || !st) return;
+        H.keys = {}; H.pad = null; H.padKeys = {};   // nothing moves under walking feet
+        var k = Math.max(0, Math.min(1, (now - M.t0) / M.ms)), e = k * k * (3 - 2 * k), fr = {};
+        for (var id in M.to) {
+            var a = M.from[id] || M.to[id], b = M.to[id];
+            fr[id] = { x: a.x + (b.x - a.x) * e, z: a.z + (b.z - a.z) * e, y: (a.y || 0) + ((b.y || 0) - (a.y || 0)) * e, rot: a.rot + (b.rot - a.rot) * e };
+        }
+        _hqPdPose(H, fr);
+        /* the plot under the officer turns: the sky's bodies and the key light swing with the rest of the board */
+        var cur = M.to[st.id], cur0 = M.from[st.id] || cur, want = cur ? -(cur.rot - cur0.rot) * e * Math.PI / 2 : 0, d = want - M.sky;
+        if (d) {
+            M.sky = want;
+            var RY = new THREE.Matrix4().makeRotationY(d);
+            H.scene.children.forEach(function (c) {
+                if (c.isDirectionalLight) { c.position.applyMatrix4(RY); return; }
+                if (H.sky && (c === H.sky.group || c === H.sky.landmarks)) { c.rotation.y += d; c.updateMatrixWorld(true); }
+            });
+            if (H.keyDir) H.keyDir.applyAxisAngle(new THREE.Vector3(0, 1, 0), d);
+            st.skyYaw += d;
+        }
+        if (k >= 1) { H.pd = null; if (M.done) { try { M.done(true); } catch (err) { console.warn('[PD] the move\'s end threw', err); } } }
+    }
+    /* the board changed (map.js wrote it with pdSync): the stage re-reads its neighbours, their poses and the joined spans */
+    function _hqPdRefresh() {
+        var H = _hq, st = H && H.stage; if (!st) return false;
+        st.nbsAll = _hqStageNbsOf(st.id); st.nbs = st.nbsAll;
+        for (var id in st.parts) { st.parts[id]._trkSpans = null; st.parts[id]._trkSpansFor = null; }
+        _hqStageRing(H);
+        st.lampN = -1;
+        try { _hqShadowArm(H.room); } catch (e) {}
+        return true;
+    }
+    /* a dev eye straight down on the board (proof shots, checks): pd.top({ x, z, h }) in the current part's metres, pd.top(null) = the
+       walk's eye back. The ceilings and the fog are put away while it is up. */
+    function _hqPdTop(spec) {
+        var H = _hq; if (!H) return false;
+        var T = H.pdTop;
+        if (T && !spec) { (T.hid || []).forEach(function (o) { o.visible = true; }); if (T.fog !== undefined) H.scene.fog = T.fog; H.camera.up.set(0, 1, 0); H.pdTop = null; return true; }
+        if (!spec) return false;
+        H.pdTop = Object.assign(T || { hid: null, fog: undefined }, { x: spec.x || 0, z: spec.z || 0, h: spec.h || 80, hid: null });
+        if (T) (T.hid || []).forEach(function (o) { o.visible = true; });
+        return true;
+    }
+    function _hqPdTopCam(H) {
+        var T = H.pdTop, U = _hqUnits(), cam = H.camera;
+        if (T.fog === undefined) { T.fog = H.scene.fog; }
+        H.scene.fog = null;
+        if (!T.hid || T.n !== H.scene.children.length) { T.hid = T.hid || []; T.n = H.scene.children.length; H.scene.traverse(function (o) { if ((o._ew_hqPart === 'ceil' || o._ew_hqRoof) && o.visible) { o.visible = false; T.hid.push(o); } }); }
+        cam.up.set(0, 0, -1); cam.position.set(T.x * U, T.h * U, T.z * U); cam.lookAt(T.x * U, 0, T.z * U); cam.updateMatrixWorld(true);
+    }
+    /* where the officer stands: the current part and the feet in its own metres */
+    function _hqPdAt() {
+        var H = _hq; if (!H || !H.player) return null;
+        return { room: (H.stage && H.stage.id) || (H.opts && H.opts.room), x: H.player.x, z: H.player.z, y: H.player.y, moving: !!H.pd };
+    }
     function _hqStageStatus() {
         var H = _hq, st = H && H.stage; if (!st) return null;
         var parts = {}; for (var id in st.parts) { var E = st.parts[id]; parts[id] = { built: E.built, step: E.step, attached: E.attached, rel: E.rel, slice: E.slice || null, warm: E.warm ? { mats: E.warm.mats, texN: E.warm.texN, frames: E.warm.frames, ms: +E.warm.ms.toFixed(1), full: E.warm.full, done: E.warm.done } : null, trk: E.trk ? { near: E.trk.near, far: E.trk.far, nearPending: E.trk.nearPending, farPending: E.trk.farPending } : null, waitMs: E.attached ? null : Math.round(performance.now() - (E.t0 || 0)) }; }
@@ -93228,6 +93312,7 @@ const ThreeRenderer = (function () {
         room: function () { return _hq ? (_hq.opts.room || 'central_egress') : null; },
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): { id, nbs, parts: { id: { built, step, attached, rel } }, crossed, lampN, skyYaw, blending } | null */
         stage: _hqStageStatus,
+        pd: { move: _hqPdMove, refresh: _hqPdRefresh, at: _hqPdAt, top: _hqPdTop, busy: function () { return !!(_hq && _hq.pd); } },   // THE PLOT DUNGEONS
         batch: function () { return _hqBatchStats(_hq); },   // THE STATIC BATCH (Phase 11): per part { phase, batches, pieces, verts, broken, scanned }
         /* THE FAR SHELLS / THE LOD LEVELS (OPEN_WORLD_PLAN Phase 10): { parts, built, shown, tris, far (m), waiting: [ids] } and
            { meshes, full, lod1, lod2, culled, swaps } — null outside the walk (or before the first tick) */

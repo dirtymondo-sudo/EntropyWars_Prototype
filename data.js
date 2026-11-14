@@ -57342,6 +57342,15 @@ function hqStageNeighbours(roomId) {
             out.push({ id: other, rel, rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) }, spans: [], links: [], beside: true, via: nb.id });
         });
     });
+    /* THE PLOT DUNGEONS (2026-11-14): every other plot of the level's board is drawn at all times, joined or not (the vacancy, the
+       exit seen across the board, a plot that slides far from you) — a part BESIDE with no span: built and placed, never crossed into */
+    if (R.pd && typeof pdBesideRooms === 'function') pdBesideRooms(roomId).forEach(other => {
+        if (out.some(n => n.id === other) || !hqStagePart(other)) return;
+        const rel = hqStageRel(roomId, other); if (!rel) return;
+        const S = DOOR_HQ.rooms[other].shell, hw = S.w / 2, hd = S.d / 2;
+        const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(rel, p[0], p[1]));
+        out.push({ id: other, rel, rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) }, spans: [], links: [], beside: true });
+    });
     /* the host last (G6): a site's own edge joins (the gate onto the flight line) win over the land that holds them all */
     return out.filter(nb => !nb.host).concat(out.filter(nb => nb.host));
 }
@@ -76687,8 +76696,356 @@ function hqOutTray(profile) {
     return { found, total, blank: Math.max(0, total - found), recent };
 }
 
+/* PD-BEGIN */
+/* ══ THE PLOT DUNGEONS (docs/PLOT_DUNGEONS_PLAN.md, 2026-11-14) ══════════════════════════════════════════════════════════════════
+   Puzzle dungeons made of 42 m plots (a 12 × 12 board of 3.5 m squares each) on a 3 × 3 board. Whole plots TURN (a quarter turn about
+   their centre) or SLIDE (one slot), with the officer standing on them when the puzzle asks for it. A test build for now (Settings >
+   Developer > Open Plot Dungeons); the dungeons join story mode later, so nothing here is test-only but the launcher in map.js.
+
+   HOW IT IS BUILT (one engine, every dungeon is data):
+     PD_LOOKS      the borrowed looks (a look = the sheets, the mood and the wall kind of an existing room; never repainted).
+     PD_DUNGEONS   the dungeon TYPES; each type holds `levels` (the first level is the prototype, a harder one is one more row).
+                   A level = its plots (12 strings of 12 squares each + marks), the board (which plot stands in which slot at the
+                   start), the rules of its moves, its controls, its fight, its exit. To tweak a dungeon, edit its level row; to add
+                   a harder level, append a row to the type's `levels`; nothing else changes.
+     pdInstall()   turns every level into real rooms (`pd_<level>_<plot>`: a box room with a drawn floor plan, DOOR_HQ.rooms) and one
+                   stage zone (`pd_<level>`, HQ_WORLD.zones + HQ_STAGE_RULES.zones), so each plot is a STAGE PART: built once in its
+                   own frame, placed by its pose, walked across joins with no loading card (the system that joins DOOR HQ's wings).
+     pdState / pdSync   the LIVE board: which plot stands in which slot and how it is turned. pdSync writes the parts' frames and
+                   the joins (two ports that meet at the same height) into the zone, so the stage's own readers see the live board.
+     pdMoves / pdApplyMove / pdNet / pdCheck   the pure board rules (no renderer): the legal moves, a move, what is joined, a condition.
+
+   THE GRAMMAR (a plot's `cells`, 12 strings × 12 chars, north row first, west column first, squares 0-11):
+     '#' solid mass (the look's wall, trees or rock)      '.' floor                     'o' floor under a whole-square blocker
+     '=' the upper deck (+7 m)                            '/' a stair / ramp square     '~' water     ' ' a drop (nothing)
+   A PORT is squares 5-6 of an edge (7 m wide): the plot has a ground port on a side when both squares are floor, an upper port when
+   both are deck. Everything else is a MARK ({ k, x, y } in squares, fractions allowed): a control, a prop, a spawn, a fight seat.
+   A plot's centre is the corner shared by squares (5,5) (5,6) (6,5) (6,6), so a quarter turn carries whole squares onto whole squares.
+   `rot` counts quarter turns to the LEFT (north goes to the west), the stage's own sense (rotation.y = rot · π / 2). */
+const PD_RULES = {
+    sq: 3.5, n: 12, plotM: 42, upperM: 7.0, portSq: [5, 6],
+    turnMs: 1500, slideMs: 2000,
+    chamberM: 7.0,          // a rider stands inside the turning plot's 4 × 4 chamber (squares 4-7): |x|, |z| < 7 m of its centre
+    saveKey: 'ew-pd-save-v1',
+};
+const PD_SIDES = ['n', 'e', 's', 'w'];
+const PD_OPP = { n: 's', s: 'n', e: 'w', w: 'e' };
+/* the looks: `from` = the room whose shell sheets, mood, fog and grade the plots borrow; `gen` = the plan generator's wall kind;
+   `h` = the plots' headroom (a closed look's ceiling); `open` = under the sky (the look room's own sky row) */
+const PD_LOOKS = {
+    crypt:  { from: 'site_prebuilt_vatican_catacombs', gen: { look: 'walls', wallKey: 'bricks_3' }, h: 6.6, path: 'dungeon' },
+    city:   { from: 'site_prebuilt_downtown_streets', gen: { look: 'walls', wallKey: 'urban:ConcreteStriped2a', wallH: 5.25 }, open: true,
+              floor: 'urban:TileGeneric1a', cliff: 'urban:ConcreteStriped2a', path: 'urban_street' },
+    works:  { from: 'works', gen: { look: 'walls', wallKey: 'drywall' }, h: 5.25, floor: 'concrete_floor', cliff: 'drywall', path: 'concrete_floor',
+              shell: { pipes: false, strips: false, mood: { light: 0xf4f0e8, ambient: 0.8 } } },
+    forest: { from: 'site_prebuilt_fairy_forest_glade', gen: { look: 'trees', kinds: ['tree_3', 'tree', 'tree_2'], treeGap: 2.5, depth: 3 }, open: true },
+    hwing:  { from: 'hwing_floor', gen: { look: 'walls', wallKey: 'wallpaper' }, h: 3.5 },
+    sewer:  { from: 'site_prebuilt_downtown_sewers', gen: { look: 'walls', wallKey: 'bricks_2' }, h: 5.5 },
+    spike:  { from: 'hwing_floor', gen: { look: 'walls', wallKey: 'wallpaper' }, h: 3.5 },
+};
+/* shared plot pieces (a level's `plots` may name one with `use`, and override any field) */
+const PD_PIECES = {
+    mass: { role: 'MASS', cells: ['############', '############', '############', '############', '############', '############', '############', '############', '############', '############', '############', '############'] },
+};
+const PD_DUNGEONS = {
+    /* PD-LEVELS-BEGIN (the dungeons' rows; written by hand, checked by `node bake-dungeons.js`) */
+    /* PHASE 0, the engine proof: an elbow that turns between a start plot and two dead ends. Behind `?pd=spike1` only (hidden: true). */
+    spike: { label: 'ENGINE PROOF', verb: 'ROTATE', look: 'spike', hidden: true, levels: [{
+        title: 'THE TURNING PLOT',
+        plots: {
+            start: { role: 'START', cells: [
+                '#####..#####', '#####..#####', '#####..#####', '#####..#####', '###......###', '###......###',
+                '###......###', '###......###', '###......###', '###......###', '############', '############'],
+                marks: [{ k: 'spawn', x: 6, y: 8, face: 0 }] },
+            rotor: { role: 'ROTOR', turn: true, ride: true, cells: [
+                '############', '############', '############', '############', '####....####', '........####',
+                '........####', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
+                marks: [{ k: 'dial', x: 6, y: 6 }] },
+            west: { role: 'WEST END', cells: [
+                '############', '############', '############', '############', '####........', '####........',
+                '####........', '####........', '############', '############', '############', '############'] },
+            east: { role: 'EAST END', cells: [
+                '############', '############', '############', '############', '........####', '........####',
+                '........####', '........####', '############', '############', '############', '############'] },
+        },
+        board: { B1: 'west', B2: 'rotor', B3: 'east', C2: 'start' },
+        entry: 'start',
+    }] },
+    /* PD-LEVELS-END */
+};
+/* ── the readers ───────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
+/* every level, flat: id = <type><n> (crypt1, crypt2 …) → { id, type, n, T (the type row), L (the level row) } */
+let _pdIndex = null;
+function pdLevels() {
+    if (_pdIndex) return _pdIndex;
+    const out = {};
+    Object.keys(PD_DUNGEONS).forEach(type => {
+        const T = PD_DUNGEONS[type];
+        (T.levels || []).forEach((L, i) => { const id = type + (i + 1); out[id] = { id, type, n: i + 1, T, L, zone: 'pd_' + id, look: PD_LOOKS[L.look || T.look] || PD_LOOKS.spike }; });
+    });
+    return (_pdIndex = out);
+}
+function pdLevel(id) { return pdLevels()[id] || null; }
+function pdRoomId(id, plotId) { return 'pd_' + id + '_' + plotId; }
+/* a room id → { level, plot } (null for a room that is no plot) */
+function pdOfRoom(roomId) { const r = (DOOR_HQ.rooms || {})[roomId]; return (r && r.pd) ? { level: r.pd, plot: r.pdPlot } : null; }
+/* a level's plot row, a shared piece resolved (`use`) */
+function pdPlot(id, plotId) {
+    const V = pdLevel(id); if (!V) return null;
+    const P = (V.L.plots || {})[plotId]; if (!P) return null;
+    return P.use ? Object.assign({}, PD_PIECES[P.use] || {}, P) : P;
+}
+/* a slot's centre on the board, metres: 'B2' = (0, 0); rows A-C north to south, columns 1-3 west to east. A slot past the board
+   (column 0 or 4, row '@' or 'D') holds a fixed part beside it (an overlook, a refuge). */
+function pdSlotXZ(slot) {
+    const r = String(slot).charCodeAt(0) - 65, c = parseInt(String(slot).slice(1), 10);
+    return { x: (c - 2) * PD_RULES.plotM, z: (r - 1) * PD_RULES.plotM, r, c };
+}
+function pdSlotName(r, c) { return String.fromCharCode(65 + r) + c; }
+function pdSlotBeside(slot, side) {
+    const p = pdSlotXZ(slot), d = { n: [-1, 0], s: [1, 0], e: [0, 1], w: [0, -1] }[side];
+    return pdSlotName(p.r + d[0], p.c + d[1]);
+}
+/* a side of a plot in its own frame → the side it faces on the board when the plot is turned `rot` quarter turns to the left */
+function pdSideOnBoard(side, rot) { return PD_SIDES[((PD_SIDES.indexOf(side) - rot) % 4 + 4) % 4]; }
+function pdSideInPlot(boardSide, rot) { return PD_SIDES[((PD_SIDES.indexOf(boardSide) + rot) % 4 + 4) % 4]; }
+/* the two squares of a side's port, in the plot's own frame: [[x, y], [x, y]] */
+function pdPortSquares(side) {
+    const a = PD_RULES.portSq[0], b = PD_RULES.portSq[1], n = PD_RULES.n - 1;
+    return side === 'n' ? [[a, 0], [b, 0]] : side === 's' ? [[a, n], [b, n]] : side === 'w' ? [[0, a], [0, b]] : [[n, a], [n, b]];
+}
+const PD_WALK = { '.': 1, 'o': 1, '/': 1, '~': 1 };
+/* a plot's ports in its own frame: { ground: 'ns', upper: 'e', <net>: '…' } — the walked layers come from the cells, a net layer
+   (a trace, a pipe, a track: not walked) from the plot's own `net` row */
+function pdPlotPorts(P) {
+    const out = { ground: '', upper: '' }, C = (P && P.cells) || [];
+    PD_SIDES.forEach(s => {
+        const q = pdPortSquares(s).map(p => (C[p[1]] || '')[p[0]]);
+        if (q.every(ch => PD_WALK[ch])) out.ground += s;
+        else if (q.every(ch => ch === '=')) out.upper += s;
+    });
+    if (P && P.ports) Object.keys(P.ports).forEach(k => { out[k] = P.ports[k]; });   // an explicit row wins (a port the cells cannot say)
+    if (P && P.net) Object.keys(P.net).forEach(k => { out[k] = P.net[k]; });
+    return out;
+}
+/* ── the live board ────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
+/* a fresh state from the level's row: { slots: { slot: plotId }, rot: { plotId: q }, vars, items, fights, moves, solved } */
+function pdNewState(id) {
+    const V = pdLevel(id); if (!V) return null;
+    const S = { level: id, slots: {}, rot: {}, vars: Object.assign({}, V.L.vars || {}), items: {}, fights: {}, moves: 0, solved: false, log: [] };
+    Object.keys(V.L.board || {}).forEach(slot => { const pid = V.L.board[slot]; if (pid) { S.slots[slot] = pid; S.rot[pid] = ((V.L.rot || {})[pid] || 0); } });
+    return S;
+}
+const _pdLive = {};
+function pdState(id) { return _pdLive[id] || (_pdLive[id] = pdNewState(id)); }
+function pdSetState(id, S) { _pdLive[id] = S; return S; }
+function pdSlotOf(S, plotId) { return Object.keys(S.slots).find(s => S.slots[s] === plotId) || null; }
+/* the joins of a board: two plots in slots side by side whose ports of ONE layer face each other → [{ a, b (plot ids), side (a's own
+   side), bSide, layer, slotA, slotB }] */
+function pdJoins(id, S, layers) {
+    const out = [], L = layers || ['ground', 'upper'];
+    Object.keys(S.slots).forEach(slot => {
+        const a = S.slots[slot], Pa = pdPlot(id, a); if (!Pa) return;
+        const pa = pdPlotPorts(Pa), ra = S.rot[a] || 0;
+        ['e', 's'].forEach(bs => {   // each pair once: this slot's east and south neighbours
+            const other = pdSlotBeside(slot, bs), b = S.slots[other]; if (!b) return;
+            const Pb = pdPlot(id, b), pb = pdPlotPorts(Pb), rb = S.rot[b] || 0;
+            const sa = pdSideInPlot(bs, ra), sb = pdSideInPlot(PD_OPP[bs], rb);
+            L.forEach(layer => { if ((pa[layer] || '').indexOf(sa) >= 0 && (pb[layer] || '').indexOf(sb) >= 0) out.push({ a, b, side: sa, bSide: sb, layer, slotA: slot, slotB: other }); });
+        });
+    });
+    return out;
+}
+/* what is joined to `from` on a layer: the set of plot ids reached through joined ports. A plot's own ports of one layer are all
+   joined inside it unless its row says `split: { <layer>: ['ns', 'e'] }` (groups of sides that are joined inside). */
+function pdNet(id, S, layer, from) {
+    const J = pdJoins(id, S, [layer]), seen = {}, q = [];
+    const grp = (plot, side) => { const P = pdPlot(id, plot), sp = P && P.split && P.split[layer]; if (!sp) return '*'; const g = sp.find(x => x.indexOf(side) >= 0); return g || side; };
+    const push = (plot, g) => { const k = plot + '|' + g; if (!seen[k]) { seen[k] = 1; q.push([plot, g]); } };
+    const P0 = pdPlot(id, from); if (!P0) return {};
+    const sp0 = P0.split && P0.split[layer];
+    if (sp0) sp0.forEach(g => push(from, g)); else push(from, '*');
+    while (q.length) {
+        const cur = q.pop();
+        J.forEach(j => {
+            if (j.a === cur[0] && (cur[1] === '*' || cur[1].indexOf(j.side) >= 0 || grp(j.a, j.side) === cur[1])) push(j.b, grp(j.b, j.bSide));
+            if (j.b === cur[0] && (cur[1] === '*' || cur[1].indexOf(j.bSide) >= 0 || grp(j.b, j.bSide) === cur[1])) push(j.a, grp(j.a, j.side));
+        });
+    }
+    const out = {}; Object.keys(seen).forEach(k => { out[k.split('|')[0]] = true; });
+    return out;
+}
+/* a condition (a gate's `needs`, a move's `when`): { has: item } | { fight: id } | { var: name, eq } | { net: layer, from, to: [plots] }
+   | { all: [...] } | { any: [...] } | { not: cond } */
+function pdCheck(id, S, c) {
+    if (!c) return true;
+    if (Array.isArray(c)) return c.every(x => pdCheck(id, S, x));
+    if (c.all) return c.all.every(x => pdCheck(id, S, x));
+    if (c.any) return c.any.some(x => pdCheck(id, S, x));
+    if (c.not) return !pdCheck(id, S, c.not);
+    if (c.has) return !!S.items[c.has];
+    if (c.fight) return !!S.fights[c.fight];
+    if (c.var) return (c.eq === undefined) ? !!S.vars[c.var] : S.vars[c.var] === c.eq;
+    if (c.net) { const N = pdNet(id, S, c.net, c.from); return [].concat(c.to || []).every(p => N[p]); }
+    if (c.rot) return (S.rot[c.rot] || 0) === (c.eq || 0);
+    if (c.slot) return S.slots[c.slot] === c.plot;
+    return true;
+}
+/* the quarter turns a plot may make: `turn: true` = one either way; `turn: { detents: [0, 2] }` = only between those poses;
+   `turn: { dirs: [1] }` = one way only */
+function pdTurnSteps(P, rot) {
+    if (!P || !P.turn) return [];
+    const T = (P.turn === true) ? {} : P.turn;
+    if (T.detents) { const i = T.detents.indexOf(((rot % 4) + 4) % 4), nx = T.detents[(i + 1) % T.detents.length]; let d = ((nx - rot) % 4 + 4) % 4; if (d === 3) d = -1; return d ? [d] : []; }
+    return (T.dirs || [1, -1]).slice();
+}
+/* the legal moves of a board (the rules only: where the officer stands is the caller's, pdMoveBlocked):
+   [{ t: 'turn', plot, by (quarter turns: +1 left, −1 right, 2 a half turn) } | { t: 'slide', plot, from, to, side }] */
+function pdMoves(id, S) {
+    const V = pdLevel(id), out = []; if (!V) return out;
+    const vac = (V.L.vacant || []).filter(s => !S.slots[s]);
+    Object.keys(S.slots).forEach(slot => {
+        const pid = S.slots[slot], P = pdPlot(id, pid); if (!P) return;
+        if (P.turn && pdCheck(id, S, P.turnWhen)) pdTurnSteps(P, S.rot[pid] || 0).forEach(by => out.push({ t: 'turn', plot: pid, by }));
+        if (P.slide && pdCheck(id, S, P.slideWhen)) PD_SIDES.forEach(side => { const to = pdSlotBeside(slot, side); if (vac.indexOf(to) >= 0) out.push({ t: 'slide', plot: pid, from: slot, to, side }); });
+    });
+    return out;
+}
+/* a move applied to a COPY of the state (the caller keeps the old one for UNDO) */
+function pdApplyMove(id, S, m) {
+    const N = JSON.parse(JSON.stringify(S));
+    if (m.t === 'turn') N.rot[m.plot] = (((N.rot[m.plot] || 0) + m.by) % 4 + 4) % 4;
+    else if (m.t === 'slide') { delete N.slots[m.from]; N.slots[m.to] = m.plot; }
+    else if (m.t === 'set') N.vars[m.name] = m.value;
+    N.moves = (N.moves || 0) + 1;
+    return N;
+}
+/* a plot's frame on the board from a state: { x, z, rot } (zone metres) */
+function pdFrame(S, plotId) { const slot = pdSlotOf(S, plotId); if (!slot) return null; const p = pdSlotXZ(slot); return { x: p.x, z: p.z, rot: S.rot[plotId] || 0, slot }; }
+/* the plot the point (zone metres) stands on, and where in it: { plot, slot, x, z (the plot's own metres), chamber } */
+function pdWhere(S, gx, gz) {
+    const M = PD_RULES.plotM, slots = Object.keys(S.slots);
+    for (let i = 0; i < slots.length; i++) {
+        const p = pdSlotXZ(slots[i]); if (Math.abs(gx - p.x) > M / 2 || Math.abs(gz - p.z) > M / 2) continue;
+        const pid = S.slots[slots[i]], rot = S.rot[pid] || 0, c = _HQ_ROT[rot][0], s = _HQ_ROT[rot][1], dx = gx - p.x, dz = gz - p.z;
+        const x = dx * c - dz * s, z = dx * s + dz * c;
+        return { plot: pid, slot: slots[i], x, z, chamber: Math.abs(x) < PD_RULES.chamberM && Math.abs(z) < PD_RULES.chamberM };
+    }
+    return null;
+}
+/* why a move may not be made from where the officer stands (null = it may): a rider stays inside the chamber of a plot that turns
+   under them; nobody stands on a plot that slides, or on a plot whose row says `ride: false` */
+function pdMoveBlocked(id, S, m, at) {
+    const P = pdPlot(id, m.plot); if (!P) return 'no such plot';
+    if (!at || at.plot !== m.plot) return null;
+    if (m.t === 'slide') return 'STEP OFF THE PLOT FIRST';
+    if (P.ride === false) return 'STEP OFF THE PLOT FIRST';
+    return at.chamber ? null : 'STAND IN THE MIDDLE OF THE PLOT';
+}
+/* ── the rooms ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
+/* a mask of a plot's squares merged into whole-square rectangles: [{ x0, y0, x1, y1 }] (squares, x1 / y1 exclusive) */
+function pdRects(cells, pick) {
+    const n = PD_RULES.n, used = []; for (let y = 0; y < n; y++) used.push(new Array(n).fill(false));
+    const on = (x, y) => x >= 0 && y >= 0 && x < n && y < n && !used[y][x] && pick((cells[y] || '')[x] || '#', x, y);
+    const out = [];
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        if (!on(x, y)) continue;
+        let x1 = x; while (on(x1 + 1, y)) x1++;
+        let y1 = y, ok = true;
+        while (ok) { for (let k = x; k <= x1; k++) if (!on(k, y1 + 1)) { ok = false; break; } if (ok) y1++; }
+        for (let j = y; j <= y1; j++) for (let k = x; k <= x1; k++) used[j][k] = true;
+        out.push({ x0: x, y0: y, x1: x1 + 1, y1: y1 + 1 });
+    }
+    return out;
+}
+/* squares → the plot's own metres (a square's corner; fractions allowed) */
+function pdM(v) { return -PD_RULES.plotM / 2 + PD_RULES.sq * v; }
+function pdRectM(r) { return { x: (pdM(r.x0) + pdM(r.x1)) / 2, z: (pdM(r.y0) + pdM(r.y1)) / 2, w: (r.x1 - r.x0) * PD_RULES.sq, d: (r.y1 - r.y0) * PD_RULES.sq }; }
+/* one plot's room row (a box room with a drawn floor plan), built from its cells, its marks and the look */
+function pdRoomDef(id, plotId) {
+    const V = pdLevel(id), P = pdPlot(id, plotId); if (!V || !P) return null;
+    const K = V.look, src = (DOOR_HQ.rooms || {})[K.from] || {}, S0 = src.shell || {}, T0 = src.terrain || {}, M = PD_RULES.plotM;
+    const upper = PD_RULES.upperM, hasUpper = (P.cells || []).some(r => r.indexOf('=') >= 0 || r.indexOf('/') >= 0);
+    const h = K.open ? 9 : Math.max(K.h || 4, hasUpper ? upper + 3.5 : 0);
+    const shell = Object.assign({
+        w: M, d: M, h, wallH: h, dadoH: S0.dadoH || 1, edge: 'open',
+        floor: S0.floor, wall: S0.wall, dado: S0.dado, trim: S0.trim, ceiling: S0.ceiling,
+        floorColor: S0.floorColor, wallColor: S0.wallColor, dadoColor: S0.dadoColor, ceilColor: S0.ceilColor, ceilTile: S0.ceilTile,
+        pipes: false, strips: false, mood: S0.mood, fog: S0.fog, look: S0.look,
+        lights: [],
+    }, K.open ? { open: true, sky: S0.sky, apron: S0.apron, skirt: S0.skirt } : null, K.shell || null, P.shell || null);
+    if (K.floor) shell.floor = K.floor;
+    const features = [];
+    pdRects(P.cells, ch => !!PD_WALK[ch]).forEach(r => features.push(Object.assign({ k: 'space' }, pdRectM(r))));
+    const room = {
+        label: (V.L.title || V.T.label) + ' · ' + (P.role || plotId.toUpperCase()), sub: V.T.verb || '', kind: 'box', pd: id, pdPlot: plotId,
+        shell,
+        terrain: {
+            res: 0.4375, floor: K.floor || T0.floor || S0.floor, cliff: K.cliff || T0.cliff || S0.wall, path: K.path || T0.path || S0.floor,
+            noise: { amp: 0, scale: 5 }, crag: false, outer: false,
+            gen: Object.assign({ kind: 'plan', rim: 0, forceGrow: -0.3 }, K.gen, K.open ? null : { wallH: h }),
+            features,
+        },
+        doors: [], counters: [], props: [],
+    };
+    /* the marks: a spawn is the room's own arrival point; the rest are added by the kinds map.js / the renderer know */
+    (P.marks || []).forEach(m => {
+        const x = pdM(m.x), z = pdM(m.y);
+        if (m.k === 'spawn') room.pdSpawn = { x, z, face: m.face || 0 };
+        else if (m.k === 'dial' || m.k === 'console' || m.k === 'model') room.counters.push({ id: 'pd_' + m.k + (m.id ? '_' + m.id : ''), x, z, face: m.face || 0, radius: m.r || 1.6, proc: 'pd_control', pdKind: m.k,
+            pdPlots: m.plots || (m.k === 'dial' ? [plotId] : null), label: m.label || (m.k === 'dial' ? 'THE DIAL' : m.k === 'console' ? 'THE CONSOLE' : 'THE MODEL'), verb: m.verb || 'USE', plateY: 1.5 });
+        else if (m.k === 'prop' && m.key) room.props.push(Object.assign({ key: m.key, x, z }, m.rot != null ? { rot: m.rot } : null, m.y3 != null ? { y: m.y3 } : null, m.s != null ? { scale: m.s } : null));
+    });
+    return room;
+}
+/* every level's rooms into DOOR_HQ.rooms and its zone into HQ_WORLD (once, at load; pdSync keeps the zone live after) */
+let _pdInstalled = false;
+function pdInstall() {
+    if (_pdInstalled || typeof DOOR_HQ === 'undefined' || !DOOR_HQ.rooms || typeof HQ_WORLD === 'undefined') return false;
+    _pdInstalled = true;
+    const V = pdLevels();
+    Object.keys(V).forEach(id => {
+        const L = V[id].L, zone = V[id].zone, parts = {};
+        Object.keys(L.plots || {}).forEach(pid => { const rid = pdRoomId(id, pid), def = pdRoomDef(id, pid); if (def) { DOOR_HQ.rooms[rid] = def; } });
+        HQ_WORLD.zones[zone] = { label: V[id].L.title || V[id].T.label, ground: 'pd', hub: pdRoomId(id, L.entry), sky: null, clock: false, pd: id, parts, joins: [] };
+        if (HQ_STAGE_RULES.zones.indexOf(zone) < 0) HQ_STAGE_RULES.zones.push(zone);
+        pdSync(id);
+    });
+    if (!HQ_WORLD.grounds.pd) HQ_WORLD.grounds.pd = { label: 'PLOT DUNGEONS', note: 'the puzzle dungeons: each level its own stage of 42 m plots' };
+    return true;
+}
+/* the live board written into the level's zone: every placed plot's frame, and the joins of the walked layers (kind 'hall', the
+   port's 7 m span). The world index and the stage's caches are dropped so the stage's own readers see it. */
+function pdSync(id) {
+    const V = pdLevel(id), Z = V && HQ_WORLD.zones[V.zone]; if (!Z) return false;
+    const S = pdState(id), parts = {}, half = PD_RULES.sq;
+    Object.keys(V.L.plots || {}).forEach(pid => {
+        const F = pdFrame(S, pid);
+        /* a plot that stands in no slot (a variant waiting to be swapped in) is parked far under the board, never joined */
+        parts[pdRoomId(id, pid)] = F ? { x: F.x, z: F.z, y: 0, rot: F.rot } : { x: 0, z: 0, y: -400, rot: 0, pdOff: true };
+    });
+    Z.parts = parts;
+    Z.joins = pdJoins(id, S).map(j => ({ a: pdRoomId(id, j.a), b: pdRoomId(id, j.b), side: j.side, span: [-half, half], kind: 'hall', pdLayer: j.layer, y: j.layer === 'upper' ? PD_RULES.upperM : 0 }));
+    _hqWorldIdx = null;
+    if (typeof _hqStageNearbyCache !== 'undefined') Object.keys(_hqStageNearbyCache).forEach(k => { if (k.indexOf('pd_' + id + '_') === 0) delete _hqStageNearbyCache[k]; });
+    return true;
+}
+/* every OTHER placed plot of a plot's level: the stage draws the whole board at all times (the vacancy, the exit seen across the
+   board, a plot sliding far from you), joined or not → [roomId] */
+function pdBesideRooms(roomId) {
+    const o = pdOfRoom(roomId); if (!o) return [];
+    const S = pdState(o.level);
+    return Object.keys(S.slots).map(s => pdRoomId(o.level, S.slots[s])).filter(r => r !== roomId && DOOR_HQ.rooms[r]);
+}
+pdInstall();
+/* PD-END */
 if (typeof window !== 'undefined') {
     window.DOOR_HQ = DOOR_HQ;
+    /* THE PLOT DUNGEONS */
+    window.PD_RULES = PD_RULES; window.PD_DUNGEONS = PD_DUNGEONS; window.PD_LOOKS = PD_LOOKS; window.pdLevels = pdLevels; window.pdLevel = pdLevel; window.pdRoomId = pdRoomId; window.pdOfRoom = pdOfRoom;
+    window.pdPlot = pdPlot; window.pdSlotXZ = pdSlotXZ; window.pdPlotPorts = pdPlotPorts; window.pdNewState = pdNewState; window.pdState = pdState; window.pdSetState = pdSetState; window.pdSlotOf = pdSlotOf;
+    window.pdJoins = pdJoins; window.pdNet = pdNet; window.pdCheck = pdCheck; window.pdMoves = pdMoves; window.pdApplyMove = pdApplyMove; window.pdFrame = pdFrame; window.pdWhere = pdWhere; window.pdMoveBlocked = pdMoveBlocked;
+    window.pdSync = pdSync; window.pdInstall = pdInstall; window.pdSideOnBoard = pdSideOnBoard; window.pdSideInPlot = pdSideInPlot; window.pdM = pdM;
     window.DOOR_ROSTER_LINES = DOOR_ROSTER_LINES;
     window.DOOR_ROSTER_CRYPTIDS = DOOR_ROSTER_CRYPTIDS;
     window.hqRosterLines = hqRosterLines;
