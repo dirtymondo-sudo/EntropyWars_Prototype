@@ -1,5 +1,5 @@
 THE PROP CHECK, written by node bake-disaster-city.js. A district file's own prop that stands in something is listed here for its thread; a shared prop with no clear spot is left out.
-{"checked":3851,"clear":1634,"moved":360,"left_out":14,"district_reported":1796,"by":{"car_cop in lamp":2,"car_cop in prop":4,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":15,"item_police_barricade in step":5,"planter in arch":10,"dumpster in step":7,"dumpster in arch":2,"planter in stairs":1,"planter in prop":3,"planter in doorway":1,"vending_machine in arch":34,"vending_machine in doorway":2,"public_phone in arch":12,"ind_vent in arch":12,"utility_box in arch":9,"ind_panel in arch":9,"utility_box in step":4,"traffic_cone in arch":20,"traffic_cone in step":28,"traffic_cone in building":12,"psx_wooden_crate_1 in prop":1,"psx_wooden_crate_1 in step":2,"psx_wooden_crate_1 in arch":1,"ticket_booth in step":1,"popcorn_cart in step":1,"psx_planter_pot_mp_1_full in arch":79,"psx_potted_cactus_mp_1 in arch":15,"psx_planter_pot_mp_1_full in doorway":8,"psx_planter_pot_mp_1_full in prop":1,"fire_hydrant in stairs":1,"roads_g_sign_008 in arch":1,"metro_bin in pole":1,"roads_g_sign_005 in arch":1,"metro_bin in arch":2,"psx_metal_barrel_mp_0 in arch":6,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in arch":15,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_wooden_crate_3 in building":10,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_3 in arch":1,"psx_metal_barrel_mp_2 in prop":1,"meshy_sandbags in tree":1,"meshy_sandbags in prop":1,"metal_trash_can in building":2,"garbage_bag in stairs":2,"garbage_bags in step":1,"garbage_bags in arch":1,"garbage_bag in step":1,"garbage_bag in prop":3,"garbage_bag in arch":1,"garbage_bags in prop":2,"garbage_bag in building":3,"metal_trash_can in stairs":1,"garbage_bags in building":3,"power_pole in prop":1},"snugged":163}
+{"checked":3890,"clear":1634,"moved":363,"left_out":14,"district_reported":1832,"by":{"car_cop in lamp":2,"car_cop in prop":4,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":15,"item_police_barricade in step":5,"planter in arch":10,"dumpster in step":7,"dumpster in arch":2,"planter in stairs":1,"planter in prop":3,"planter in doorway":1,"vending_machine in arch":34,"vending_machine in doorway":2,"public_phone in arch":12,"ind_vent in arch":12,"utility_box in arch":9,"ind_panel in arch":9,"utility_box in step":4,"traffic_cone in arch":20,"traffic_cone in step":28,"traffic_cone in building":12,"psx_wooden_crate_1 in prop":1,"psx_wooden_crate_1 in step":2,"psx_wooden_crate_1 in arch":1,"ticket_booth in step":1,"popcorn_cart in step":1,"psx_planter_pot_mp_1_full in arch":87,"psx_planter_pot_mp_1_full in doorway":6,"psx_potted_cactus_mp_1 in arch":6,"psx_potted_cactus_mp_1 in doorway":2,"psx_planter_pot_mp_1_full in prop":1,"fire_hydrant in stairs":1,"roads_g_sign_008 in arch":1,"metro_bin in pole":1,"roads_g_sign_005 in arch":1,"metro_bin in arch":2,"psx_metal_barrel_mp_0 in arch":6,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in arch":15,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_wooden_crate_3 in building":10,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_3 in arch":1,"psx_metal_barrel_mp_2 in prop":1,"meshy_sandbags in tree":1,"meshy_sandbags in prop":1,"metal_trash_can in step":6,"garbage_bag in stairs":2,"garbage_bags in step":1,"garbage_bags in arch":1,"garbage_bag in step":1,"garbage_bag in prop":3,"garbage_bag in arch":1,"garbage_bags in prop":2,"garbage_bag in building":3,"garbage_bags in building":3,"metal_trash_can in building":1,"power_pole in prop":1},"snugged":163}
 psx_sofa_1  85.75  113.75  building
 psx_sofa_3  85.75  110.25  building
 psx_sofa_4  92.75  113.75  building
@@ -131,6 +131,7 @@ potted_plant  184.95  154.45  building
 filing_cabinet  226.65  247.85  building
 filing_cabinet  225.8  247.85  building
 brass_telescope  226.65  245.45  building
+dinosaur_skeleton  -63  103.25  building
 psx_planter_pot_mp_1_full  -68.95  114.45  building
 psx_planter_pot_mp_1_full  -57.05  114.45  building
 demon_statue  -75.25  113.75  building
@@ -143,6 +144,16 @@ armour_stand  -50.75  110.25  building
 armour_stand  -50.75  103.25  building
 decor_armour_plinth  -55.3  114.8  building
 decor_armour_plinth  -55.3  98.7  building
+gallery_ottoman  -68.25  92.75  building
+gallery_ottoman  -57.75  92.75  building
+greek_amphora  -70.595  113.575  building
+museum_vitrine  -70.7  110.075  building
+greek_amphora  -70.595  106.575  building
+museum_vitrine  -70.7  99.925  building
+gclock  -69.405  109.2  building
+gallery_ottoman  -60.9  114.625  building
+dumbbell_rack  7.7  190.75  building
+weight_bench  8.05  194.25  building
 office_locker  34.3  202.37  building
 office_locker  33.25  202.37  building
 office_locker  32.2  202.37  building
@@ -170,6 +181,20 @@ filing_cabinet  34.475  181.3  building
 potted_plant  34.3  175.7  building
 trophy_case  12.25  181.44  building
 trophy_case  8.75  181.44  building
+squat_rack  33.25  194.25  building
+rowing_machine  33.25  187.25  building
+treadmill  15.75  194.25  building
+treadmill  12.25  194.25  building
+exercise_bike  30.45  182.84  building
+exercise_bike  28.35  182.84  building
+exercise_bike  26.25  182.84  building
+water_cooler  23.1  182.42  building
+medicine_ball_rack  7.595  183.225  building
+doormat  20.129  175.7  building
+rug_office  29.75  180.25  building
+shower_stall  22.75  202.37  building
+shower_stall  19.25  202.37  building
+laundry_cart  23.8  196.875  building
 metal_shelving  30.625  251.475  building
 metal_shelving  28.875  251.475  building
 metal_shelving  27.125  251.475  building
@@ -180,6 +205,7 @@ traffic_cone  31.01  245  building
 football  30.8  246.4  building
 football  30.45  246.925  building
 football  30.94  247.45  building
+line_marker  25.27  247.45  building
 tanker_desk  19.25  250.25  building
 office_chair  19.25  251.475  building
 office_locker  23.94  246.4  building
@@ -205,6 +231,11 @@ psx_metal_barrel_mp_1  0.7  247.8  building
 psx_metal_barrel_mp_2  0.7  246.925  building
 meshy_sandbags  1.05  242.375  building
 utility_box  6.51  247.45  building
+water_cooler  18.13  245.175  building
+ball_cart  28  242.2  building
+tackling_sled  12.25  246.75  building
+ride_on_mower  2.03  246.75  building
+tool_chest  6.405  245.525  building
 metro_bench  71.75  243.25  building
 vending_machine  60.025  247.1  building
 psx_planter_pot_mp_1_full  65.8  242.2  building
@@ -221,6 +252,11 @@ punch_clock  49.49  246.75  building
 monitor_stack  47.25  251.44  building
 office_chair  47.25  249.2  building
 lost_shelf  42.56  246.75  building
+ticket_machine  68.95  242.06  building
+ticket_machine  67.2  242.06  building
+scarf_rack  72.73  246.225  building
+water_cooler  49.7  245.07  building
+metal_detector  43.925  242.2  building
 psx_bed_4_1  1.75  127.75  building
 psx_bedside_table_1  0.875  131.6  building
 psx_wardrobe_mp_1  15.75  127.33  building
