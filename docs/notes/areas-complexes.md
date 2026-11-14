@@ -2780,6 +2780,12 @@ glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the 
   `HAS(key)` (their rows were not on main at this bake: rerun the bake once they land).
   FACING FIX: `KIT.files` / `shelf` / `racks` along a side wall faced INTO the wall ('l' gave 270): now 'l' = 90, 'r' = 270 (city face: 90 looks
   at +x). Loading office files + shelf + racks, depot shelf.
+  THE SEWERS DOOR (the "mirrored shop-front sheet" in the Pump court): bake-disaster-city.js puts JOIN.sewer FREE 0.25 m outside the Pump
+  court's plan doorway, and three-renderer.js `_hqBuildCityEntrances` stands a 10 x 6 m SPRITE building (a pixel shop front, "ONE $PRICE")
+  behind every leafed free door of a city room: it stood through the Pump court (seen mirrored from inside) and the 3.3 m bulkhead panel
+  covered the room's own doorway. Now `dcCtx.JOIN` is open to the district files (`build`); I.js `Q.join('sewer', lx, lz)` hangs the bulkhead
+  on the Pump court's BACK wall facing in (walk in through the valve house, down through the bulkhead), and a door row's `noEntrance: true`
+  (written by `dj()`) skips the sprite building + awning + sign. The tower and mall join doors still get their sprite entrance buildings.
   under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. The street lamp on that square is taken off (`ctx.lamps`, the tool now writes its lamps line after the district build). Seen in the
   cloud browser from inside (as a 28 m long test build). INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.
 

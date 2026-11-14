@@ -486,7 +486,7 @@ exports.build = function (ctx) {
     const DJ = (() => { try { return require('fs').readFileSync(require('path').join(__dirname, '..', '..', '..', 'data.js'), 'utf8'); } catch (e) { return ''; } })();
     const HAS = k => new RegExp('^\\s*' + k + '\\s*:\\s*\\{\\s*file:', 'm').test(DJ);
     const sgn = (x, y, z, w, h, words, ink, bg, ry) => Object.assign({ s: 'quad', p: [r3(x), r3(y), r3(z)], size: [r3(w), r3(h)], key: 'txt:' + words + '|' + ink + '|' + (bg || '') + '|' + (Math.round(w / h * 100) / 100), uv: 'fit', tint: 0xffffff, kind: 'over' }, ry ? { ry } : {});
-    const kit2 = (K, S, dc, c, ghost) => {
+    const kit2 = (K, S, dc, c, ghost, W2, rot) => {
         const { H, fw, fd } = K, C2 = C / 2, E2 = 0.345, dX = c.door.lx, dW = c.door.cw + 0.12;
         const cx = i => K.lx(i + 0.5), cz = j => K.lz(j + 0.5);   // a square's centre (i from the left wall, j from the front)
         const key = (i, j) => i + ',' + j, shut = new Set(), cut = new Set();
@@ -502,6 +502,8 @@ exports.build = function (ctx) {
             K, H, fw, fd, cx, cz, dX,
             part() { for (const q of arguments) K.part(q); },
             P: (k, x, z, hd, y, more) => K.P(k, x, z, hd, y, more),
+            /* a link door of the bake's (JOIN) moved onto this room's wall from the inside, its face to the room (the free door's panel stands 0.5 m proud) */
+            join(id, lx, lz) { if (!ctx.JOIN || !ctx.JOIN[id]) { console.log('industrial 2nd pass: no join', id); return; } const p = W2(lx, lz); ctx.JOIN[id] = { x: p[0], z: p[1], face: (rot + 180) % 360, noEntrance: true }; count2.joinMoved = id; },
             exit() { K.P('exit_sign', dX, fd / 2 - 0.32, 0); },   // the lit EXIT over the doorway, inside
             has: HAS,
             /* a NEW blocker on whole squares: never the doorway, never one that cuts a walk square off from the door */
@@ -676,11 +678,16 @@ exports.build = function (ctx) {
             Q.pipe('l', 3.6, T.teal, -Q.fd / 2 + 1, Q.fd / 2 - 1); Q.sign('b', Q.cx(1.5), 3.0, 2.8, 0.45, 'HIGH LIFT PUMPS', '#f4f1ea', '#2f5f4a');
             Q.K.wallProp('fire_extinguisher', 'f', 1.6); Q.lines();
         },
-        /* PUMP COURT: the valve house over the culverts: wet concrete, a red emergency light, the gauge board, the valves on the main, the manhole */
+        /* PUMP COURT: the valve house over the culverts: wet concrete, a red emergency light, the gauge board, the valves on the main, a manhole, the
+           bulkhead down to the sewers on the back wall */
         'P02-11-B1': Q => {
             Q.paint(U('ConcreteStriped1a'), 0x5d6670, 1.2, T.yellow, 1.0); Q.ceil(PLAIN, 0x44484e, 0.04);
             [1.5, 3.5].forEach(j => Q.strip(Q.cx(1.4), Q.K.lz(j), 2.2, true, 0xdff4ff)); Q.beacon(Q.fw / 2 - 0.4, 2.4, Q.cz(4), 0xff2a1a);
-            Q.onWall('gauge_board', 'r', Q.cz(3.5), 1.25); Q.part({ s: 'quad', flat: true, p: [r3(Q.cx(1) + 0.4), 0.02, r3(Q.cz(4) - 0.2)], size: [1.1, 1.1], key: U('DecalManholeCover'), kind: 'over', uv: 'fit' });
+            Q.onWall('gauge_board', 'r', Q.cz(3.5), 1.25); Q.part({ s: 'quad', flat: true, p: [r3(Q.cx(0) - 0.6), 0.02, r3(Q.cz(4) + 0.4)], size: [1.1, 1.1], key: U('DecalManholeCover'), kind: 'over', uv: 'fit' });
+            /* THE SEWERS DOOR (bake-disaster-city.js JOIN.sewer, "on the Pump court's doorway") stood FREE 0.25 m outside this front wall, its 3.3 m
+               panel over most of this room's own doorway: the room could not be walked into. It hangs on the back wall now, at the end of the walk
+               (square 1, 4): in through the valve house, down through the bulkhead. */
+            Q.join('sewer', Q.cx(1), -Q.fd / 2 + 0.36);
             Q.P('wet_floor_sign', Q.cx(1) + 1.1, Q.cz(1) - 0.9, 200); Q.lines();
         },
         /* RAIL SERVICE: the signal box: brick, a warm bulb, the lever frame on its own square, the hand lamps by the door and on the desk */
@@ -713,7 +720,7 @@ exports.build = function (ctx) {
         for (let i = 0; i < S.W; i++) for (let j = 0; j < S.D; j++) if ((i + j) % 2 === 0 && !S.g.some(q => i >= q[1] && i < q[1] + q[3] && j >= q[2] && j < q[2] + q[4]))
             parts.push(box(K.lx(i + 0.5), H - 0.1, K.lz(j + 0.5), 1.4, 0.08, 0.5, null, 0xfff4d6, { glow: 1 }));
         if (S.decor) S.decor(K);
-        if (SECOND[b.id]) SECOND[b.id](kit2(K, S, dc, c, (i, j, h) => { const p = W2(K.lx(i + 0.5), K.lz(j + 0.5)); features.push({ k: 'wall', x0: p[0], z0: p[1], x1: p[0], z1: p[1], h: h || 1.2, t: C, key: CONC, ghost: true, rail: false }); count2.inBlocks2 = (count2.inBlocks2 || 0) + 1; }));
+        if (SECOND[b.id]) SECOND[b.id](kit2(K, S, dc, c, (i, j, h) => { const p = W2(K.lx(i + 0.5), K.lz(j + 0.5)); features.push({ k: 'wall', x0: p[0], z0: p[1], x1: p[0], z1: p[1], h: h || 1.2, t: C, key: CONC, ghost: true, rail: false }); count2.inBlocks2 = (count2.inBlocks2 || 0) + 1; }, W2, rot));
         const wp = W2(0, 0); out.push({ k: 'arch', id: 'ind:' + b.id + ':in', x: wp[0], y: 0, z: wp[1], rot, parts }); count2.inRooms = (count2.inRooms || 0) + 1; count2.inParts = (count2.inParts || 0) + parts.length;
     };
     const texbDoor = f => { const L = Math.max(2, +f.w || 8) - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols; let col = Math.floor((cols - 1) / 2); if (isFinite(+f.door) && +f.door >= 1) col = Math.min(cols - 1, Math.round(+f.door) - 1); return { lx: -L / 2 + (col + 0.5) * cw, cw, cols }; };   // data.js hqTexbDoor

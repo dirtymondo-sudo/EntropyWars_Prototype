@@ -72268,7 +72268,9 @@ const ThreeRenderer = (function () {
         if (!room.shell.open || !info.gen || info.gen.kind !== 'city') return;
         var U = _hqUnits();
         (room.doors || []).forEach(function (door, i) {
-            if (door.way || !door.leaf) return;
+            /* `noEntrance: true` (2026-11-14, Disaster City): the door hangs INSIDE a real building of the room (the sewers bulkhead on the Pump
+               court's back wall): no sprite building behind it, no awning, no sign (the sprite stood through the Pump court, seen mirrored inside) */
+            if (door.way || !door.leaf || door.noEntrance) return;
             var f = _hqBoxWall(room, door.wall, door), depth = 6, width = door.wide ? 10 : 8;
             var y = hqTerrainDoorY(room, door), setback = depth / 2 + 0.16;
             if (TK && typeof _nrSpriteBuilding === 'function') {
