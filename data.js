@@ -67520,12 +67520,12 @@ const HQ_CITY_RESIDENTS = {
         /* SOUTHSIDE */
         { race: 'priest', gender: 'male', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[22, 5, 'S', 'home'], [6, 20, 'W', 'b:P00-00-B1'], [20, 22, 'O', 'b:P00-01-B1']] },
         { race: 'priest', gender: 'female', home: 'P00-02-B2', homeName: 'Southside apartments', day: [[21, 5, 'S', 'home'], [5, 13, 'W', 'b:P00-00-B1'], [13, 17, 'W', 'b:P00-01-B1'], [17, 21, 'W', 'b:P00-00-B1']] },
-        { race: 'ki fighter', home: 'P01-00-B1', homeName: 'Townhouses', day: [[21, 4, 'S', 'home'], [5, 12, 'W', 'b:P03-01-B1'], [13, 17, 'W', 'b:P03-00-B1'], [17, 21, 'O', 'p:P01-02']] },
-        { race: 'swordfighter', home: 'P01-00-B1', homeName: 'Townhouses', day: [[23, 7, 'S', 'home'], [8, 17, 'W', 'b:P03-01-B1'], [18, 23, 'O', 'p:P01-01']] },
-        { race: 'gangster', home: 'P01-03-B1', homeName: 'Homes row', day: [[5, 13, 'S', 'home'], [14, 20, 'W', 'b:P02-03-B1'], [21, 5, 'O', 'b:P08-04-B1']] },
-        { race: 'homosapien', home: 'P01-03-B2', homeName: 'Homes row', day: [[23, 7, 'S', 'home'], [8, 17, 'W', 'b:P01-00-B2'], [18, 23, 'O', 'p:P02-00']] },
+        { race: 'ki fighter', home: 'P03-00-B2', homeName: 'Southside residence', day: [[21, 4, 'S', 'home'], [5, 12, 'W', 'b:P03-01-B1'], [13, 17, 'W', 'b:P03-00-B1'], [17, 21, 'O', 'p:P01-02']] },
+        { race: 'swordfighter', home: 'P03-00-B2', homeName: 'Southside residence', day: [[23, 7, 'S', 'home'], [8, 17, 'W', 'b:P03-01-B1'], [18, 23, 'O', 'p:P01-01']] },
+        { race: 'gangster', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[5, 13, 'S', 'home'], [14, 20, 'W', 'b:P02-03-B1'], [21, 5, 'O', 'b:P08-04-B1']] },
+        { race: 'homosapien', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[23, 7, 'S', 'home'], [8, 17, 'W', 'b:P01-00-B2'], [18, 23, 'O', 'p:P02-00']] },
         { race: 'conspiracy theorist', home: 'P02-01-B1', homeName: 'Tenement', day: [[4, 12, 'S', 'home'], [13, 19, 'W', 'b:P00-06-B1'], [19, 23, 'O', 'b:P01-06-B1'], [23, 4, 'P', 'd:R']] },
-        { race: 'cult leader', home: 'P02-01-B2', homeName: 'Walk-up flats', day: [[1, 9, 'S', 'home'], [10, 16, 'W', 'b:P00-01-B1'], [16, 21, 'O', 'p:P01-02'], [21, 1, 'P', 'p:P00-03']] },
+        { race: 'cult leader', home: 'P02-01-B1', homeName: 'Tenement', day: [[1, 9, 'S', 'home'], [10, 16, 'W', 'b:P00-01-B1'], [16, 21, 'O', 'p:P01-02'], [21, 1, 'P', 'p:P00-03']] },
         { race: 'firefighter', home: 'P03-00-B2', homeName: 'Southside residence', day: [[22, 6, 'S', 'home'], [7, 19, 'W', 'b:P04-00-B1'], [19, 22, 'O', 'b:P03-00-B1']] },
         /* FINANCIAL */
         { race: 'halfdemon', home: 'P10-03-B1', homeName: 'Penthouse stair', day: [[6, 14, 'S', 'home'], [15, 18, 'O', 'b:P11-03-B1'], [19, 23, 'O', 'b:P08-01-B1'], [23, 5, 'O', 'b:P08-04-B1']] },
