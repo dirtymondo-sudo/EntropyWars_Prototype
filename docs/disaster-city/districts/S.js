@@ -415,14 +415,13 @@ exports.apply = (ctx) => {
       ]);
       prop('field_goal_post', gc(86), gc(105), 90); }
     /* THE GROUNDSKEEPER'S HOUSE: cream stucco, a terracotta hip roof, a porch on posts, a chimney. Solid. */
-    { const f = solid('P07-08-B2', 2);
+    { const f = walkin('P07-08-B2', 2, 7);   // THE LUCHADOR'S HOME (the residents' bedrooms): a walk-in, the door in face square 7
       B('P07-08-B2', f.x, f.z, f.rot, [
-        walls(21, 6.4, 17.5, STUCCO, 0xfff2cf),
+        walls(21, 6.4, 17.5, STUCCO, 0xfff2cf, { door: [0.875, 1.74, 2.2] }),
         { s: 'roof', form: 'hip', p: [0, 6.4, 0], size: [21, 4, 17.5], over: 0.7, key: T_RED, tint: 0xe08a5c, uv: 2 },
         { s: 'roof', form: 'shed', ry: 180, p: [0, 2.9, 10.5], size: [14.8, 0.9, 3.5], key: T_RED, tint: 0xe08a5c, under: true, ds: true, uv: 2 },
         { s: 'cyl', p: [-7, 0, 12.05], r: 0.16, h: 2.95, seg: 8, key: WHITE, n: 5, step: [3.5, 0, 0] },
         panels('f', 21, 17.5, 0.9, 1.5, 1.7, 4, G_RES, { span: 15 }), panels('f', 21, 17.5, 3.9, 1.5, 1.7, 5, G_RES), panels('l', 21, 17.5, 3.9, 1.5, 1.7, 4, G_RES), panels('r', 21, 17.5, 3.9, 1.5, 1.7, 4, G_RES),
-        { s: 'quad', p: [0, 0, 8.78], size: [1.3, 2.3], key: DOORS, uv: 'fit', kind: 'wall' },
         { s: 'box', p: [-6, 6.4, -3], size: [1.3, 5.2, 1.3], key: T_RED, tint: 0xc98a70 },
       ]); }
 
@@ -469,9 +468,9 @@ exports.apply = (ctx) => {
         { s: 'box', p: [-7, 7, -3.4], size: [5, 1.3, 1.6], key: M_GREY, tint: 0x9aa4ac },
       ]); }
     /* THE BOX OFFICE: a round corner turret with a cone roof, ticket windows under a striped awning, a tall sign fin. Solid. */
-    { const f = solid('P06-09-B2', 2);
+    { const f = walkin('P06-09-B2', 2, 7);   // THE QUARTERBACK'S HOME: a walk-in, the door in face square 7 (between the windows and the turret)
       B('P06-09-B2', f.x, f.z, f.rot, [
-        walls(17.5, 5.6, 17.5, T_BLUE, 0xcfe0ff),
+        walls(17.5, 5.6, 17.5, T_BLUE, 0xcfe0ff, { door: [2.625, 1.74, 2.2] }),
         { s: 'box', p: [0, 5.6, 0], size: [18.1, 0.6, 18.1], key: WHITE, keyTop: ROOFC, under: true },
         { s: 'cyl', p: [7.9, 0, 7.9], r: 2.3, h: 8.2, seg: 20, key: WHITE }, { s: 'cyl', p: [7.9, 8.2, 7.9], r: 2.8, r2: 0, h: 3.4, seg: 20, key: REDP, tint: 0xe2473a },
         { s: 'quad', p: [7.9, 1.1, 7.9], size: [1.1, 1.5], key: G_RES, uv: 'fit', ring: { n: 4, r: 2.34, a0: -25, arc: 140 } },
@@ -531,13 +530,13 @@ exports.apply = (ctx) => {
         { s: 'box', p: [-3, 9.1, 6.3], size: [0.7, 0.8, 0.7], tint: 0x222222, n: 5, step: [3.5, 0, 0] },
       ]); }
     /* THE STAGE DOOR HOUSE: a narrow brick townhouse, a steep gable facing the square, a round attic window, a blue door. Solid. */
-    { const f = solid('P07-10-B2', 2);
+    { const f = walkin('P07-10-B2', 2, 2);   // THE JUGGERNAUT'S HOME: a walk-in, the door where the blue door was painted
       B('P07-10-B2', f.x, f.z, f.rot, [
-        walls(17.5, 8.4, 17.5, T_OCHRE, 0xd8b890),
+        walls(17.5, 8.4, 17.5, T_OCHRE, 0xd8b890, { door: [-6.125, 1.74, 2.2] }),
         { s: 'roof', form: 'gable', ry: 90, p: [0, 8.4, 0], size: [17.5, 5.5, 17.5], over: 0.5, key: DARK, tint: 0x6a6f7c, keyEnd: T_OCHRE },
         panels('f', 17.5, 17.5, 1.0, 1.5, 1.9, 3, G_RES, { span: 9, c: 2.5 }), panels('f', 17.5, 17.5, 4.6, 1.5, 1.9, 5, G_RES),
         { s: 'cyl', p: [0, 10.6, 8.78], r: 0.9, h: 0.06, seg: 16, key: G_SQ, tint: 0xffffff },
-        { s: 'quad', p: [-6, 0, 8.78], size: [1.3, 2.4], tint: 0x2f5fd0 },
+
         panels('l', 17.5, 17.5, 4.6, 1.5, 1.9, 4, G_RES), panels('r', 17.5, 17.5, 4.6, 1.5, 1.9, 4, G_RES),
       ]); }
 
@@ -782,6 +781,34 @@ exports.apply = (ctx) => {
       I.block(8, 1, 1, 1, 2); I.prop('lost_shelf', 8.84, 1.5, 270);
       [1.5, 3, 5.5, 8].forEach(u => I.lampAt(u, 1.2, h));
       I.done(); }
+
+    /* ═══ THE RESIDENTS' BEDROOMS (mondo 11-14 02:21 "District threads add them"; /mnt/project-files/disaster-city-residents/bedrooms-brief.md):
+       the three Sports residences are walk-ins with a ground-floor bedroom, one bed each. The residents' code finds a bed by its key
+       (/bed|cot/) inside the home's footprint. 5 squares deep: a living room across the front three rows, the bedroom across the back two.
+       The bed, the wardrobe, the sofa and the table each fill one square; the rest is decor against the walls. ═══ */
+    const home = (id, o) => { const I = inside(id, { h: o.h, wall: o.wall, floor: o.floor, leaf: 'leaf_suburban' }), P = I.parts, Wn = Math.round(I.f.w / 3.5), h = 3.1;
+        I.wall('u', 3, 0, Wn, h, [[o.bedDoor + 0.5, 'leaf_wooden', 'BEDROOM']], { tint: o.tint, frame: 0x5a3c22 }); I.ceil(0, 0, Wn, 5, h, WHITE, 0xe8e2d4);
+        /* the bedroom: the bed in a back corner square, the wardrobe in the other, a bedside table, a rug */
+        const bu = o.bedU, wu = bu === 0 ? Wn - 1 : 0;
+        I.block(bu, 4, 1, 1, 0.9); I.prop(o.bed, bu + 0.5, 4.5, bu === 0 ? 90 : 270); I.prop('psx_bedside_table_1', bu + (bu === 0 ? 0.25 : 0.75), 3.4, 180);
+        I.block(wu, 4, 1, 1, 2.1); I.prop('psx_wardrobe_mp_1', wu + 0.5, 4.62, 0); I.prop('rug_round', o.bedDoor + 0.5, 4.2, 0); I.lampAt(Wn / 2, 4, h);
+        /* the living room: the sofa and the table on squares of the side away from the door, plants and a clock on the walls */
+        const su = o.door <= 1 ? Wn - 1 : 0;
+        I.block(su, 1, 1, 1, 0.9); I.prop('psx_sofa_1', su + 0.5, 1.5, su === 0 ? 90 : 270); I.block(su, 2, 1, 1, 0.8); I.prop('psx_dinner_table_1', su + 0.5, 2.5, 0);
+        I.prop('potted_plant', su === 0 ? 0.2 : Wn - 0.2, 0.25, 0); I.prop('psx_tv_table_1', su === 0 ? Wn - 0.25 : 0.25, 1.5, su === 0 ? 270 : 90); I.lampAt(Wn / 2, 1.5, h);
+        if (o.extra) o.extra(I, P, Wn);
+        I.done(); };
+    /* the Quarterback (the Box office house): footballs and a cup by the bed */
+    home('P06-09-B2', { h: 5.6, wall: WHITE, floor: 'wood_planks', tint: 0xcfe0ff, door: 3, bedDoor: 2, bedU: 0, bed: 'psx_bed_4_1',
+        extra: (I, P, Wn) => { I.prop('football', 1.3, 4.85, 0); I.prop('football', 1.45, 4.8, 60); const q2 = I.loc(Wn - 1.3, 4.8); P.push({ s: 'cyl', p: [q2[0], 0, q2[1]], r: 0.28, h: 0.9, seg: 10, key: MARBLE_D, uv: [1.75, 0.9] }); I.prop('decor_trophy_cup', Wn - 1.3, 4.8, 0, { y: 1.0 }); } });
+    /* the Luchador (the house with the veranda): a small mat and the ring's colours on the bedroom wall */
+    home('P07-08-B2', { h: 6.4, wall: STUCCO, floor: 'wood_planks', tint: 0xfff2cf, door: 3, bedDoor: 2, bedU: 5, bed: 'psx_bed_4_2',
+        extra: (I, P, Wn) => { const m0 = I.loc(2.5, 4.3); P.push({ s: 'box', p: [m0[0], 0, m0[1]], size: [3.0, 0.06, 2.2], key: RUB_Y, tint: 0xc83a3a, uv: 1.75 });
+            const q2 = I.loc(3, 5); P.push({ s: 'quad', p: [q2[0], 1.6, q2[1] + 0.5], size: [2.6, 0.5], key: txt(2.6, 0.5, 'LUCHA LIBRE', '#f2ead8', '#a02028'), uv: 'fit', tint: 0xffffff }); } });
+    /* the Juggernaut (the tall ochre house): a dumbbell rack on the bedroom wall */
+    home('P07-10-B2', { h: 8.4, wall: WHITE, floor: 'wood_planks', tint: 0xd8b890, door: 0, bedDoor: 2, bedU: 4, bed: 'psx_bed_4_3',
+        extra: (I, P, Wn) => { const r0 = I.loc(2.5, 4.78); P.push({ s: 'box', p: [r0[0], 0, r0[1]], size: [2.6, 0.9, 0.5], key: M_GREY, tint: 0x30343a, uv: 1.2 });
+            for (let i = 0; i < 6; i++) { const x0 = r0[0] - 1.1 + i * 0.44, rr = 0.1 + 0.012 * i; P.push({ s: 'box', p: [x0, 0.95 + rr - 0.03, r0[1] + 0.1], size: [0.06, 0.06, 0.42], tint: 0x9098a0 }, { s: 'box', p: [x0, 0.95, r0[1] - 0.08], size: [2 * rr, 2 * rr, 0.1], tint: 0x1c1c1c }, { s: 'box', p: [x0, 0.95, r0[1] + 0.28], size: [2 * rr, 2 * rr, 0.1], tint: 0x1c1c1c }); } } });
 };
 
 /* ═══ build: THE GIANT APE (the plan's home for him was Park west, now the stadium). mondo 11-13 19:25: "put king kong in the district with the
