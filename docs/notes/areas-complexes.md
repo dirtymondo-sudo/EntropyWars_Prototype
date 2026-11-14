@@ -3057,4 +3057,42 @@ and asked for one plan to build them as a standalone mode from the main menu or 
 GROW AND CARRY fairy forest, ESCORT H-Wing), each plot a stage part moved by a live pose, Phase 0 = the engine proof.
 AMENDED 11-14 09:32 (mondo): a standalone TEST build of ALL TEN pack designs (Settings > Developer > Open Plot Dungeons), dungeons
 join story mode later (the old "no puzzles" lines in other docs do not apply to them), recommendations taken as decisions (plan §13), enemies are zone placeholders and
-no dungeon type is tied to a place. Nothing built yet. Its §14 is the log: append one line there per phase, phase notes here.
+no dungeon type is tied to a place. Its §14 is the log: append one line there per phase, phase notes here.
+
+### PLOT DUNGEONS, THE BUILD (2026-11-14, all ten prototypes, PR of thread "Build the puzzle dungeons")
+**The way in:** Settings > Developer > Open Plot Dungeons (the level list, SOLVED marks, START OVER), or `?pd=<level>` in the URL
+(crypt1, tomb1, street1, channel1, door1, connect1, rail1, worlds1, root1, escort1; `spike1` = the hidden engine proof).
+**To tweak a dungeon or add a harder level** edit data.js between `PD-LEVELS-BEGIN` / `PD-LEVELS-END`, then `node bake-dungeons.js`:
+- `PD_DUNGEONS.<type>.levels[]`: one row per level. The first is the prototype; a harder level is ONE MORE ROW (it shows in the list
+  as LEVEL 2 by itself, its id is `<type>2`). Nothing else changes: no room block, no bake, no new file.
+- A level = `plots` (each 12 strings of 12 squares + `marks`), `board` (slot → plot at the start; slots past the 3 x 3 such as B0 / B4
+  hold fixed parts beside it), `rot` (start turns), `vacant` (the slots a slide may use), `entry`, `goal` (the checker's condition),
+  and optionally `tokens`, `grows`, `keep`, `safe`.
+- Squares: `#` mass, `.` floor, `o` whole-square blocker (the look's or the plot's `cover` prop), `=` the +7 m deck, `/` a flight
+  (it climbs toward the deck beside it; `climb: { 'x,y': 'n' }` says otherwise), `~` water (walked, not drawn yet), space = a drop.
+- A port is squares 5-6 of an edge. `ports: { ground: 'ew', upper: 'n' }` overrides what the squares say (an open machine floor).
+  `net: { trace: 'ns' }` gives a plot ports on a layer nobody walks (a trace, a pipe, a track).
+- A plot moves when its row says `turn: true` (or `{ detents: [0, 2] }`, `{ dirs: [1] }`) / `slide: true`; `turnWhen` / `slideWhen`
+  are conditions; `ride: false` = nobody may stand on it while it moves.
+- Marks (data.js pdRoomDef lists every field): spawn, dial / console / model (the board panel), prop, act (anything you press E on:
+  `needs`, `no`, `say`, `set`, `give`, `fight`, `send`, `route`, `rotTo`), take (an item), gate (bars; `needs` + E, or `auto`),
+  exit (walking there solves it), fight (the stand-in), trace / lamp / box (drawn, may be `lit` / `show` by a condition), rail.
+- Conditions (data.js pdCheck): `{ has }`, `{ fight }`, `{ var, eq }`, `{ net, from, to }`, `{ joined: [plot, side, layer] }`,
+  `{ link: [a, b] }`, `{ rot, eq }`, `{ slot, plot }`, `{ all }` (or a plain list), `{ any }`, `{ not }`.
+- Looks: `PD_LOOKS` (the sheets, mood and wall kind of an existing room; a dungeon type is NOT tied to a look: change `look`).
+**How it works:** data.js `pdInstall()` builds every plot's room (`pd_<level>_<plot>`, a box room with a drawn floor plan) and one
+stage zone per level at load. The live board is `pdState` (slots, rot, vars, items, fights); `pdSync` writes the parts' frames and
+the joins into the zone so the stage's own readers see it. three-renderer.js `hq.pd` tweens the parts (the current part is the scene's
+origin, so when the plot under you turns the rest of the board, the sky and the key light swing the other way), builds the drawn rows
+(`_hqPdBuild`: caps, jambs, bars, traces, lamps, blockers; never batched or instanced) and shows / lights / un-blocks them from
+the board ~3 times a second (`_hqPdApply`). map.js holds the panel, the presses (`_pdAct` → data.js `pdDoAct`), the exit ring, the save
+(localStorage `ew-pd-save-v1`, apart from the story's) and the launcher. Single player only; nothing is on `state` or relayed.
+**`node bake-dungeons.js [level]`** (repo tooling, writes nothing): checks the grammar and searches each level's `goal` breadth first
+over the board's own rules, printing the shortest solution. It ignores where the officer stands; the walk is proven in the browser.
+**Proven in the browser 11-14** (officer walked, shots in /mnt/project-files/dungeons/proof/): all ten, start to exit.
+**Honest limits of this first build:** (1) fights are STAND-INS: the mark lists the placeholder enemies, pressing FIGHT counts it as
+won; the real field fight (hqEncounterLaunch on the fixed plot) is the next step. (2) The guardian of The Procession is the
+angel statue prop that appears stop to stop (no walk cycle, no golem body yet). (3) Three Little Worlds is flat: the marbles are lit
+blocks, no rolling, no 1.75 m height steps. (4) Missing Channel has no drawn water, the pipe lights instead. (5) Rubble plots are
+plain paved blocks with a wreck. (6) The 3 x 3 model is the panel's drawing, the in-world table is a map table prop. (7) The plots
+have no decor pass and the closed looks are dim. (8) The world clock runs, so an open look can be at night.

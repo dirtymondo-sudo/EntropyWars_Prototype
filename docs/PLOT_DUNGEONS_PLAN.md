@@ -735,3 +735,9 @@ Later, low priority (not for now): the names, wiring dungeons into story mode an
 - 2026-11-14 03:15 UTC: plan written. Both packs reviewed, all ten solutions checked, five slices picked, nothing built.
 - 2026-11-14 09:32 UTC: mondo's answers. Amended: a standalone test build (dungeons join story mode later), all ten slices built, the
   recommendations taken as decisions (§13), enemies are zone placeholders. Next: Phase 0.
+- 2026-11-14 (build thread): Phase 0 proven (a plot turns with the officer on it; every plot is a stage part with a live pose, no
+  fallback needed). The architecture changed from §6.1 for the better: NO layout json and NO baked room block. The dungeons are hand
+  rows in data.js `PD_DUNGEONS` (types → `levels[]`), `pdInstall()` builds their rooms and zones at load, `bake-dungeons.js` only
+  CHECKS them and prints each shortest solution. All ten prototypes built and walked start to exit in the browser. Fights are
+  stand-ins. The how-to and the honest limits: docs/notes/areas-complexes.md "PLOT DUNGEONS, THE BUILD".
+

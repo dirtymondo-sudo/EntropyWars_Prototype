@@ -57348,6 +57348,15 @@ function hqStageNeighbours(roomId) {
             out.push({ id: other, rel, rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) }, spans: [], links: [], beside: true, via: nb.id });
         });
     });
+    /* THE PLOT DUNGEONS (2026-11-14): every other plot of the level's board is drawn at all times, joined or not (the vacancy, the
+       exit seen across the board, a plot that slides far from you) — a part BESIDE with no span: built and placed, never crossed into */
+    if (R.pd && typeof pdBesideRooms === 'function') pdBesideRooms(roomId).forEach(other => {
+        if (out.some(n => n.id === other) || !hqStagePart(other)) return;
+        const rel = hqStageRel(roomId, other); if (!rel) return;
+        const S = DOOR_HQ.rooms[other].shell, hw = S.w / 2, hd = S.d / 2;
+        const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(rel, p[0], p[1]));
+        out.push({ id: other, rel, rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) }, spans: [], links: [], beside: true });
+    });
     /* the host last (G6): a site's own edge joins (the gate onto the flight line) win over the land that holds them all */
     return out.filter(nb => !nb.host).concat(out.filter(nb => nb.host));
 }
@@ -76693,8 +76702,718 @@ function hqOutTray(profile) {
     return { found, total, blank: Math.max(0, total - found), recent };
 }
 
+/* PD-BEGIN */
+/* ══ THE PLOT DUNGEONS (docs/PLOT_DUNGEONS_PLAN.md, 2026-11-14) ══════════════════════════════════════════════════════════════════
+   Puzzle dungeons made of 42 m plots (a 12 × 12 board of 3.5 m squares each) on a 3 × 3 board. Whole plots TURN (a quarter turn about
+   their centre) or SLIDE (one slot), with the officer standing on them when the puzzle asks for it. A test build for now (Settings >
+   Developer > Open Plot Dungeons); the dungeons join story mode later, so nothing here is test-only but the launcher in map.js.
+
+   HOW IT IS BUILT (one engine, every dungeon is data):
+     PD_LOOKS      the borrowed looks (a look = the sheets, the mood and the wall kind of an existing room; never repainted).
+     PD_DUNGEONS   the dungeon TYPES; each type holds `levels` (the first level is the prototype, a harder one is one more row).
+                   A level = its plots (12 strings of 12 squares each + marks), the board (which plot stands in which slot at the
+                   start), the rules of its moves, its controls, its fight, its exit. To tweak a dungeon, edit its level row; to add
+                   a harder level, append a row to the type's `levels`; nothing else changes.
+     pdInstall()   turns every level into real rooms (`pd_<level>_<plot>`: a box room with a drawn floor plan, DOOR_HQ.rooms) and one
+                   stage zone (`pd_<level>`, HQ_WORLD.zones + HQ_STAGE_RULES.zones), so each plot is a STAGE PART: built once in its
+                   own frame, placed by its pose, walked across joins with no loading card (the system that joins DOOR HQ's wings).
+     pdState / pdSync   the LIVE board: which plot stands in which slot and how it is turned. pdSync writes the parts' frames and
+                   the joins (two ports that meet at the same height) into the zone, so the stage's own readers see the live board.
+     pdMoves / pdApplyMove / pdNet / pdCheck   the pure board rules (no renderer): the legal moves, a move, what is joined, a condition.
+
+   THE GRAMMAR (a plot's `cells`, 12 strings × 12 chars, north row first, west column first, squares 0-11):
+     '#' solid mass (the look's wall, trees or rock)      '.' floor                     'o' floor under a whole-square blocker
+     '=' the upper deck (+7 m)                            '/' a stair / ramp square     '~' water     ' ' a drop (nothing)
+   A PORT is squares 5-6 of an edge (7 m wide): the plot has a ground port on a side when both squares are floor, an upper port when
+   both are deck. Everything else is a MARK ({ k, x, y } in squares, fractions allowed): a control, a prop, a spawn, a fight seat.
+   A plot's centre is the corner shared by squares (5,5) (5,6) (6,5) (6,6), so a quarter turn carries whole squares onto whole squares.
+   `rot` counts quarter turns to the LEFT (north goes to the west), the stage's own sense (rotation.y = rot · π / 2). */
+const PD_RULES = {
+    sq: 3.5, n: 12, plotM: 42, upperM: 7.0, portSq: [5, 6],
+    turnMs: 1500, slideMs: 2000,
+    chamberM: 7.0,          // a rider stands inside the turning plot's 4 × 4 chamber (squares 4-7): |x|, |z| < 7 m of its centre
+    saveKey: 'ew-pd-save-v1',
+};
+const PD_SIDES = ['n', 'e', 's', 'w'];
+const PD_OPP = { n: 's', s: 'n', e: 'w', w: 'e' };
+/* the looks: `from` = the room whose shell sheets, mood, fog and grade the plots borrow; `gen` = the plan generator's wall kind;
+   `h` = the plots' headroom (a closed look's ceiling); `open` = under the sky (the look room's own sky row) */
+const PD_LOOKS = {
+    crypt:  { from: 'site_prebuilt_vatican_catacombs', gen: { look: 'walls', wallKey: 'bricks_3' }, h: 6.6, path: 'dungeon' },
+    city:   { from: 'site_prebuilt_downtown_streets', gen: { look: 'walls', wallKey: 'urban:ConcreteStriped2a', wallH: 1.4, pathGrow: 0 }, open: true, paths: true,
+              floor: 'urban:TileGeneric1a', cliff: 'urban:ConcreteStriped2a', path: 'urban_street' },
+    works:  { from: 'works', gen: { look: 'walls', wallKey: 'drywall' }, h: 5.25, floor: 'concrete_floor', cliff: 'drywall', path: 'concrete_floor',
+              shell: { pipes: false, strips: false, mood: { light: 0xf4f0e8, ambient: 0.8 } } },
+    forest: { from: 'site_prebuilt_fairy_forest_glade', gen: { look: 'trees', kinds: ['tree_3', 'tree', 'tree_2'], treeGap: 2.5, depth: 3 }, open: true, stairs: false },
+    hwing:  { from: 'hwing_floor', gen: { look: 'walls', wallKey: 'wallpaper' }, h: 3.5 },
+    sewer:  { from: 'site_prebuilt_downtown_sewers', gen: { look: 'walls', wallKey: 'bricks_2' }, h: 5.5 },
+    spike:  { from: 'hwing_floor', gen: { look: 'walls', wallKey: 'wallpaper' }, h: 3.5 },
+};
+/* shared plot pieces (a level's `plots` may name one with `use`, and override any field) */
+const PD_PIECES = {
+    mass: { role: 'MASS', cells: ['############', '############', '############', '############', '############', '############', '############', '############', '############', '############', '############', '############'] },
+};
+PD_PIECES.rubble = { role: 'RUBBLE', ports: { ground: '' }, cells: ['############', '############', '############', '############', '####....####', '####....####', '####....####', '####....####', '############', '############', '############', '############'],
+    marks: [{ k: 'prop', key: 'crashed_car_2', x: 5.5, y: 6, rot: 30 }, { k: 'prop', key: 'traffic_barrel', x: 7.2, y: 4.8 }, { k: 'prop', key: 'item_police_barricade', x: 6.8, y: 7.2, rot: 70 }] };
+const PD_DUNGEONS = {
+    /* PD-LEVELS-BEGIN (the dungeons' rows; written by hand, checked by `node bake-dungeons.js`) */
+    /* PHASE 0, the engine proof: an elbow that turns between a start plot and two dead ends. Behind `?pd=spike1` only (hidden: true). */
+    spike: { label: 'ENGINE PROOF', verb: 'ROTATE', look: 'spike', hidden: true, levels: [{
+        title: 'THE TURNING PLOT',
+        plots: {
+            start: { role: 'START', cells: [
+                '#####..#####', '#####..#####', '#####..#####', '#####..#####', '###......###', '###......###',
+                '###......###', '###......###', '###......###', '###......###', '############', '############'],
+                marks: [{ k: 'spawn', x: 6, y: 8, face: 0 }] },
+            rotor: { role: 'ROTOR', turn: true, ride: true, cells: [
+                '############', '############', '############', '############', '####....####', '........####',
+                '........####', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
+                marks: [{ k: 'dial', x: 7.5, y: 7.5 }] },
+            west: { role: 'WEST END', cells: [
+                '############', '############', '############', '############', '####........', '####........',
+                '####........', '####........', '############', '############', '############', '############'] },
+            east: { role: 'EAST END', cells: [
+                '############', '############', '############', '############', '........####', '........####',
+                '........####', '........####', '############', '############', '############', '############'] },
+        },
+        board: { B1: 'west', B2: 'rotor', B3: 'east', C2: 'start' },
+        entry: 'start', goal: { link: ['rotor', 'east'] },
+    }] },
+    /* 5.1 ROTATE · the rotor's two arms point at what they join; two quarter turns */
+    crypt: { label: 'THE TURNING CRYPT', verb: 'ROTATE', look: 'crypt', levels: [{
+        title: 'THE TURNING CRYPT',
+        plots: {
+            entry: { role: 'ENTRY', cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '###......###', '###......###', '###......###', '###......###', '###......###', '###......###', '#####..#####', '#####..#####'],
+                marks: [{ k: 'spawn', x: 6, y: 10, face: 0 }, { k: 'model', x: 4, y: 7.5 }, { k: 'prop', key: 'candle_ring', x: 8.4, y: 4.6 }] },
+            rotor: { role: 'ROTOR', turn: true, ride: true, cells: ['############', '############', '############', '############', '####....####', '........####', '........####', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
+                marks: [{ k: 'dial', x: 7.5, y: 7.5 }] },
+            memorial: { role: 'MEMORIAL', cells: ['############', '############', '############', '####....####', '####....####', '####........', '####........', '####....####', '####....####', '############', '############', '############'],
+                marks: [{ k: 'prop', key: 'angel_statue', x: 4.6, y: 6, rot: 90 }, { k: 'prop', key: 'candle_ring', x: 5.4, y: 3.6 }, { k: 'prop', key: 'candle_ring', x: 5.4, y: 8.4 },
+                    { k: 'act', id: 'carving', x: 5.4, y: 6, label: 'THE CARVING', verb: 'LOOK', say: 'A WHEEL WITH TWO ARMS. EACH ARM POINTS AT A DOOR.' }] },
+            keycrypt: { role: 'KEY CRYPT', cover: 'sarcophagus', cells: ['############', '############', '##........##', '##........##', '##.oo..oo.##', '..........##', '..........##', '##.oo..oo.##', '##........##', '##........##', '############', '############'],
+                marks: [{ k: 'fight', id: 'crypt', x: 3, y: 6, label: 'UNDEAD ×2 + NECROMANCER', enemies: [{ race: 'undead', x: 3.5, y: 4.5 }, { race: 'undead', x: 3.5, y: 7.5 }, { race: 'necromancer', x: 8.5, y: 6 }] },
+                    { k: 'take', item: 'key', x: 9.5, y: 6, needs: { fight: 'crypt' }, no: 'DEFEAT THE GUARDS FIRST' }] },
+            exit: { role: 'EXIT', cells: ['############', '############', '###......###', '###......###', '###......###', '###......###', '###......###', '###......###', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
+                marks: [{ k: 'gate', id: 'exit', side: 's', inset: 2, needs: { has: 'key' }, no: 'LOCKED. IT WANTS A KEY.' }, { k: 'prop', key: 'light_shaft', x: 6, y: 4 }, { k: 'prop', key: 'candle_ring', x: 6, y: 4 }, { k: 'exit', x: 6, y: 4 }] },
+        },
+        board: { A2: 'exit', B1: 'memorial', B2: 'rotor', B3: 'keycrypt', C2: 'entry' },
+        entry: 'entry', goal: [{ var: 'gate_exit' }, { link: ['rotor', 'exit'] }],
+    }] },
+    /* 5.6 ROTATE · the same rotor on another board: the key is behind you, the exit is where you first looked */
+    tomb: { label: 'THE TURNING TOMB', verb: 'ROTATE', look: 'crypt', levels: [{
+        title: 'THE TURNING TOMB',
+        plots: {
+            foyer: { role: 'FOYER', cover: 'sarcophagus', cells: ['#####..#####', '#####..#####', '##........##', '##........##', '##........##', '##.o....o.##', '##........##', '##........##', '##........##', '##........##', '#####..#####', '#####..#####'],
+                marks: [{ k: 'spawn', x: 6, y: 10, face: 0 }, { k: 'model', x: 4, y: 8.5 },
+                    { k: 'fight', id: 'foyer', x: 6, y: 6, label: 'SKELETON ×2', enemies: [{ race: 'skeleton', x: 3.5, y: 4.5 }, { race: 'skeleton', x: 8.5, y: 4.5 }] }] },
+            hub: { role: 'HUB', turn: true, ride: true, turnWhen: { fight: 'foyer' }, cells: ['############', '############', '############', '############', '####....####', '####........', '####........', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
+                marks: [{ k: 'dial', x: 7.5, y: 7.5 }] },
+            keycrypt: { role: 'KEY CRYPT', cells: ['############', '############', '##........##', '##........##', '##........##', '##..........', '##..........', '##........##', '##........##', '##........##', '############', '############'],
+                marks: [{ k: 'take', item: 'key', x: 5.5, y: 5.5 }, { k: 'prop', key: 'candle_ring', x: 3, y: 3 }, { k: 'prop', key: 'candle_ring', x: 3, y: 9 }] },
+            exithall: { role: 'EXIT HALL', cells: ['############', '############', '############', '##........##', '##........##', '............', '............', '##........##', '##........##', '############', '############', '############'],
+                marks: [{ k: 'gate', id: 'exit', side: 'e', inset: 2, needs: { has: 'key' }, no: 'LOCKED. IT WANTS A KEY.' }, { k: 'prop', key: 'light_shaft', x: 11, y: 6 }, { k: 'exit', x: 11, y: 6, r: 2 }] },
+        },
+        board: { B1: 'keycrypt', B2: 'hub', B3: 'exithall', C2: 'foyer' },
+        entry: 'foyer', goal: [{ var: 'gate_exit' }, { link: ['hub', 'exithall'] }],
+    }] },
+    /* 5.2 SLIDE · a street cut in pieces: slide the plots next to the gap until the middle row is one street (4 slides) */
+    street: { label: 'THE MISSING STREET', verb: 'SLIDE', look: 'city', levels: [{
+        title: 'THE MISSING STREET',
+        plots: {
+            overlook: { role: 'OVERLOOK', cells: ['############', '############', '######.....#', '######.....#', '######.....#', '######......', '######......', '######.....#', '######.....#', '######.....#', '############', '############'],
+                marks: [{ k: 'spawn', x: 8, y: 8, face: 90 }, { k: 'console', x: 8, y: 3.5 }, { k: 'prop', key: 'traffic_cone', x: 10.6, y: 4.4 }] },
+            st1: { role: 'STREET', slide: true, cells: ['############', '############', '############', '############', '############', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'prop', key: 'traffic_barrel', x: 3.5, y: 4.6 }] },
+            st2: { role: 'STREET', slide: true, cells: ['############', '############', '############', '############', '############', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'prop', key: 'traffic_cone', x: 8.5, y: 7.4 }] },
+            st3: { role: 'STREET', slide: true, cells: ['############', '############', '############', '############', '############', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'prop', key: 'item_police_barricade', x: 6, y: 4.5 }] },
+            rb1: { role: 'RUBBLE', slide: true, use: 'rubble' }, rb2: { role: 'RUBBLE', slide: true, use: 'rubble' }, rb3: { role: 'RUBBLE', slide: true, use: 'rubble' },
+            rb4: { role: 'RUBBLE', slide: true, use: 'rubble' }, rb5: { role: 'RUBBLE', slide: true, use: 'rubble' },
+            refuge: { role: 'REFUGE', cells: ['############', '############', '############', '##.....#####', '##.....#####', '.......#####', '.......#####', '##.....#####', '##.....#####', '############', '############', '############'], marks: [{ k: 'exit', x: 4, y: 6 }, { k: 'prop', key: 'item_police_barricade', x: 6.5, y: 3.5 }] },
+        },
+        board: { A1: 'rb1', A3: 'rb2', B0: 'overlook', B1: 'rb3', B2: 'st1', B3: 'st2', B4: 'refuge', C1: 'rb4', C2: 'st3', C3: 'rb5' },
+        vacant: ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'],
+        safe: ['overlook'], safeSay: 'GO BACK TO THE OVERLOOK FIRST',
+        entry: 'overlook', goal: { net: 'ground', from: 'overlook', to: ['refuge'] },
+    }] },
+    /* 5.7 SLIDE · two pipe plots and two gaps: join the channel from the inlet to the pump (3 slides), then open the water */
+    channel: { label: 'MISSING CHANNEL', verb: 'SLIDE', look: 'sewer', levels: [{
+        title: 'MISSING CHANNEL',
+        plots: {
+            inlet: { role: 'INLET', net: { pipe: 'n' }, cover: 'centrifugal_pump', cells: ['#####..#####', '##........##', '##........##', '##........##', '##...oo...##', '##...oo...##', '##........##', '##........##', '##........##', '##........##', '#####..#####', '#####..#####'],
+                marks: [{ k: 'spawn', x: 6, y: 10, face: 0 }, { k: 'console', x: 3.5, y: 8.5 },
+                    { k: 'fight', id: 'inlet', x: 6, y: 7, label: 'ZOMBIE ×2 + GANGSTER', enemies: [{ race: 'zombie', x: 3.5, y: 3.5 }, { race: 'zombie', x: 8.5, y: 3.5 }, { race: 'gangster', x: 6, y: 2.5 }] },
+                    { k: 'act', id: 'valve', key: 'gate_valve', x: 8.5, y: 8.5, label: 'THE VALVE', verb: 'OPEN', needs: { net: 'pipe', from: 'inlet', to: ['pump'] }, no: 'THE CHANNEL IS NOT JOINED YET', set: { water: true }, say: 'WATER RUNS TO THE PUMP', show: { not: { var: 'water' } } },
+                    { k: 'trace', layer: 'pipe', src: 'inlet', color: 0x3aa0ff, size: 0.5, th: 0.5, y3: 3.6, pts: [[4.3, 0], [4.3, 6]] }] },
+            elbow1: { role: 'ELBOW', net: { pipe: 'se' }, cells: ['############', '############', '############', '############', '############', '#####.......', '#####.......', '#####..#####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'], marks: [{ k: 'trace', layer: 'pipe', src: 'inlet', color: 0x3aa0ff, size: 0.5, th: 0.5, y3: 3.6, pts: [[4.3, 12], [4.3, 4.3], [12, 4.3]] }] },
+            elbow2: { role: 'ELBOW', slide: true, slideWhen: { fight: 'inlet' }, net: { pipe: 'wn' }, cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '#####..#####', '.......#####', '.......#####', '############', '############', '############', '############', '############'], marks: [{ k: 'trace', layer: 'pipe', src: 'inlet', color: 0x3aa0ff, size: 0.5, th: 0.5, y3: 3.6, pts: [[0, 4.3], [4.3, 4.3], [4.3, 0]] }] },
+            straight: { role: 'STRAIGHT', slide: true, slideWhen: { fight: 'inlet' }, net: { pipe: 'we' }, cells: ['############', '############', '############', '############', '############', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'trace', layer: 'pipe', src: 'inlet', color: 0x3aa0ff, size: 0.5, th: 0.5, y3: 3.6, pts: [[0, 4.3], [12, 4.3]] }] },
+            pump: { role: 'PUMP', net: { pipe: 's' }, cells: ['#####..#####', '#####..#####', '#####..#####', '###......###', '###......###', '###......###', '###......###', '###......###', '###......###', '#####..#####', '#####..#####', '#####..#####'],
+                marks: [{ k: 'prop', key: 'centrifugal_pump', x: 3.8, y: 5.5 }, { k: 'gate', id: 'pump', x: 6, y: 3, w: 2, auto: true, needs: { var: 'water' } }, { k: 'prop', key: 'light_shaft', x: 6, y: 1.5 }, { k: 'exit', x: 6, y: 1.5, r: 2 }, { k: 'trace', layer: 'pipe', src: 'inlet', color: 0x3aa0ff, size: 0.5, th: 0.5, y3: 3.6, pts: [[4.3, 12], [4.3, 6]] }] },
+        },
+        board: { A3: 'pump', B1: 'elbow1', B2: 'elbow2', C1: 'inlet', C3: 'straight' },
+        vacant: ['B2', 'B3', 'C2', 'C3'], keep: ['water'],
+        entry: 'inlet', goal: { var: 'water' },
+    }] },
+    /* 5.8 SLIDE WITH HEIGHT · the stairwell is a plot: bring the hall, then the stairs, under the high exit (5 slides) */
+    door: { label: 'TRAVELING DOOR', verb: 'SLIDE', look: 'works', levels: [{
+        title: 'TRAVELING DOOR',
+        plots: {
+            entry: { role: 'ENTRY', cover: 'retro_console', cells: ['############', '############', '##........##', '##........##', '##........##', '##...oo.....', '##..........', '##........##', '##........##', '##........##', '############', '############'],
+                marks: [{ k: 'spawn', x: 3.5, y: 8, face: 90 }, { k: 'console', x: 8.5, y: 8.5 },
+                    { k: 'fight', id: 'entry', x: 6, y: 6, label: 'MEN IN BLACK ×2 + DROID', enemies: [{ race: 'men_in_black', x: 7.5, y: 3.5 }, { race: 'men_in_black', x: 8.5, y: 7.5 }, { race: 'droid', x: 9.5, y: 5.5 }] }] },
+            hall: { role: 'T HALL', slide: true, slideWhen: { fight: 'entry' }, cells: ['#####..#####', '#####..#####', '#####..#####', '###......###', '###......###', '.........###', '.........###', '###......###', '###......###', '#####..#####', '#####..#####', '#####..#####'] },
+            passage: { role: 'PASSAGE', slide: true, slideWhen: { fight: 'entry' }, cells: ['############', '############', '############', '############', '############', '............', '............', '############', '############', '############', '############', '############'] },
+            stairs: { role: 'STAIRWELL', slide: true, slideWhen: { fight: 'entry' }, cells: ['#####==#####', '#####==#####', '#####==#####', '#####==#####', '#####//#####', '#####//#####', '#####//#####', '#####//#####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'] },
+            exit: { role: 'EXIT', cells: ['############', '############', '###======###', '###======###', '###======###', '###======###', '###======###', '#####==#####', '#####==#####', '#####==#####', '#####==#####', '#####==#####'], marks: [{ k: 'exit', x: 6, y: 4.5 }, { k: 'prop', key: 'light_shaft', x: 6, y: 4.5, y3: 7 }] },
+        },
+        board: { A2: 'exit', B3: 'hall', C1: 'entry', C2: 'passage', C3: 'stairs' },
+        vacant: ['B2', 'B3', 'C2', 'C3'],
+        entry: 'entry', goal: { all: [{ net: 'ground', from: 'entry', to: ['stairs'] }, { net: 'upper', from: 'stairs', to: ['exit'] }] },
+    }] },
+    /* 5.3 CONNECT · nobody rides: turn four plates from the gallery until the battery feeds both locks (4 presses) */
+    connect: { label: 'TWO TO OPEN', verb: 'CONNECT', look: 'works', levels: [{
+        title: 'TWO TO OPEN',
+        plots: {
+            entry: { role: 'ENTRY', ports: { ground: 'e' }, cells: ['............', '............', '............', '............', '............', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'spawn', x: 3, y: 6, face: 90 }, { k: 'console', x: 6, y: 7.6 }, { k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }] },
+            battery: { role: 'BATTERY', ports: { ground: 'ew' }, net: { trace: 'n' }, cells: ['............', '............', '............', '............', '............', '............', '............', '############', '############', '############', '############', '############'],
+                marks: [{ k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 2.5]] }, { k: 'box', x: 6, y: 3.5, w: 3.5, d: 3.5, h: 2.2, color: 0x2a3136 }, { k: 'box', x: 6, y: 3.5, w: 3.7, d: 3.7, h: 0.3, y3: 1.2, color: 0x20262a, glow: 0x7dff9a }, { k: 'prop', key: 'cable_drum', x: 8.8, y: 3.3 }] },
+            exit: { role: 'EXIT', ports: { ground: 'w' }, cells: ['............', '............', '............', '............', '............', '............', '............', '############', '############', '############', '############', '############'],
+                marks: [{ k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'gate', id: 'exit', x: 7, y: 6, ax: 'z', w: 2, auto: true, needs: { net: 'trace', from: 'battery', to: ['lockl', 'lockr'] } },
+                    { k: 'lamp', x: 6.3, y: 4.7, lit: { net: 'trace', from: 'battery', to: ['lockl'] } }, { k: 'lamp', x: 6.3, y: 7.3, lit: { net: 'trace', from: 'battery', to: ['lockr'] } },
+                    { k: 'act', id: 'sign', x: 5, y: 7.3, label: 'THE SIGN', verb: 'READ', say: 'BOTH LIGHTS OPEN DOOR' }, { k: 'exit', x: 10, y: 6, r: 2 }] },
+            feed: { role: 'FEED', turn: true, ride: false, ports: { ground: '' }, net: { trace: 'ns' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 12]] }] },
+            splitter: { role: 'SPLITTER', turn: true, ride: false, ports: { ground: '' }, net: { trace: 'esw' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[0, 6], [12, 6]] }, { k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 6], [6, 12]] }] },
+            corner1: { role: 'CORNER', turn: true, ride: false, ports: { ground: '' }, net: { trace: 'es' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[12, 6], [6, 6], [6, 12]] }] },
+            corner3: { role: 'CORNER', turn: true, ride: false, ports: { ground: '' }, net: { trace: 'ws' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[0, 6], [6, 6], [6, 12]] }] },
+            lockl: { role: 'LOCK L', ports: { ground: '' }, net: { trace: 'n' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 6]] }, { k: 'lamp', x: 6, y: 6.6, h: 3, lit: { net: 'trace', from: 'battery', to: ['lockl'] } }, { k: 'box', x: 6, y: 6.6, w: 2.4, d: 2.4, h: 1.2, color: 0x2a3136 }] },
+            lockr: { role: 'LOCK R', ports: { ground: '' }, net: { trace: 'n' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 6]] }, { k: 'lamp', x: 6, y: 6.6, h: 3, lit: { net: 'trace', from: 'battery', to: ['lockr'] } }, { k: 'box', x: 6, y: 6.6, w: 2.4, d: 2.4, h: 1.2, color: 0x2a3136 }] },
+        },
+        board: { A1: 'corner1', A2: 'splitter', A3: 'corner3', B1: 'lockl', B2: 'feed', B3: 'lockr', C1: 'entry', C2: 'battery', C3: 'exit' },
+        rot: { feed: 1, splitter: 1, corner1: 1, corner3: 3 },
+        entry: 'entry', goal: { net: 'trace', from: 'battery', to: ['lockl', 'lockr'] },
+    }] },
+    /* 5.9 ROTATE, NO RIDER, ELEVATED · line up three high pieces from the console, then climb and cross (launch, rail, landing) */
+    rail: { label: 'THREE-RAIL CROSSING', verb: 'ROTATE', look: 'city', levels: [{
+        title: 'THREE-RAIL CROSSING',
+        plots: {
+            entry: { role: 'ENTRY', cover: 'crashed_car_2', cells: ['#####..#####', '#####..#####', '##........##', '##........##', '##........##', '##..o.......', '##..o.......', '##......o.##', '##......o.##', '##........##', '##........##', '############'],
+                marks: [{ k: 'spawn', x: 6, y: 9.5, face: 0 }, { k: 'console', x: 3.5, y: 8.5 },
+                    { k: 'fight', id: 'entry', x: 6, y: 6, label: 'GANGSTER ×2 + MARKSMAN', enemies: [{ race: 'gangster', x: 3.5, y: 3.5 }, { race: 'gangster', x: 8.5, y: 4.5 }, { race: 'marksman', x: 8.5, y: 2.5 }] }] },
+            launch: { role: 'LAUNCH', turn: true, ride: false, turnWhen: { fight: 'entry' }, ports: { ground: 's', upper: 'e' }, cells: ['############', '############', '############', '############', '############', '#####=======', '#####=======', '#####==#####', '#####//#####', '#####//#####', '#####//#####', '#####//#####'] },
+            mid: { role: 'RAIL', turn: true, ride: false, turnWhen: { fight: 'entry' }, cells: ['############', '############', '############', '############', '############', '============', '============', '############', '############', '############', '############', '############'] },
+            landing: { role: 'LANDING', turn: true, ride: false, turnWhen: { fight: 'entry' }, cells: ['############', '############', '############', '############', '############', '=======#####', '=======#####', '#####==#####', '#####==#####', '#####==#####', '#####==#####', '#####==#####'] },
+            under: { role: 'UNDERPASS', cells: ['############', '############', '############', '############', '############', '.........###', '.........###', '############', '############', '############', '############', '############'], marks: [{ k: 'prop', key: 'crashed_car_2', x: 7, y: 6, rot: 90 }] },
+            exit: { role: 'EXIT', cells: ['#####==#####', '#####==#####', '#####==#####', '#####==#####', '#####==#####', '###======###', '###======###', '###======###', '###======###', '###======###', '############', '############'], marks: [{ k: 'exit', x: 6, y: 7 }] },
+        },
+        board: { B1: 'launch', B2: 'mid', B3: 'landing', C1: 'entry', C2: 'under', C3: 'exit' },
+        rot: { launch: 2, mid: 1, landing: 2 },
+        entry: 'entry', goal: { all: [{ net: 'ground', from: 'entry', to: ['launch'] }, { net: 'upper', from: 'launch', to: ['exit'] }] },
+    }] },
+    /* 5.10 ROUTE · load a colour, aim the junction, release: each marble to its own world (3 releases) */
+    worlds: { label: 'THREE LITTLE WORLDS', verb: 'ROUTE', look: 'forest', levels: [{
+        title: 'THREE LITTLE WORLDS',
+        plots: {
+            entry: { role: 'ENTRY', ports: { ground: 'e' }, cells: ['............', '............', '............', '............', '............', '............', '............', '############', '############', '############', '############', '############'],
+                marks: [{ k: 'spawn', x: 2.5, y: 6, face: 90 }, { k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'console', x: 4.5, y: 7.6, label: 'THE JUNCTION' },
+                    { k: 'act', id: 'blue', x: 6.5, y: 7.6, key: 'floating_orb', label: 'BLUE MARBLE', verb: 'LOAD', needs: { not: { var: 'got_blue' } }, no: 'ALREADY HOME', set: { marble: 'blue' }, say: 'BLUE IS IN THE BOWL' },
+                    { k: 'act', id: 'red', x: 8, y: 7.6, key: 'floating_orb', label: 'RED MARBLE', verb: 'LOAD', needs: { not: { var: 'got_red' } }, no: 'ALREADY HOME', set: { marble: 'red' }, say: 'RED IS IN THE BOWL' },
+                    { k: 'act', id: 'yellow', x: 9.5, y: 7.6, key: 'floating_orb', label: 'YELLOW MARBLE', verb: 'LOAD', needs: { not: { var: 'got_yellow' } }, no: 'ALREADY HOME', set: { marble: 'yellow' }, say: 'YELLOW IS IN THE BOWL' },
+                    { k: 'act', id: 'release', x: 11, y: 7.6, key: 'evac_button', label: 'RELEASE', verb: 'PRESS', no: 'NOTHING IS LOADED',
+                        route: { layer: 'track', from: 'junction', var: 'marble', sockets: { blue: 'blue', red: 'red', yellow: 'yellow' }, won: 'got_', yes: 'IT ROLLS HOME', back: 'WRONG WORLD. IT ROLLS BACK.' } }] },
+            dispenser: { role: 'DISPENSER', ports: { ground: '' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'box', x: 8, y: 6, w: 3, d: 3, h: 2.6, color: 0x4a4038 }, { k: 'box', x: 10.5, y: 6, w: 3.5, d: 0.6, h: 0.3, y3: 2.0, color: 0x4a4038 }] },
+            junction: { role: 'JUNCTION', turn: true, ride: false, ports: { ground: '' }, net: { track: 'n' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'],
+                marks: [{ k: 'box', x: 6, y: 6, w: 4, d: 4, h: 1.6, color: 0x4a4038 }, { k: 'trace', layer: 'track', color: 0xff8ad0, size: 0.5, pts: [[6, 0], [6, 4]], lit: { joined: ['junction', 'n', 'track'] } },
+                    { k: 'box', x: 6, y: 6, w: 1, d: 1, h: 1, y3: 1.6, color: 0x101820, glow: 0x3a8cff, show: { var: 'marble', eq: 'blue' } },
+                    { k: 'box', x: 6, y: 6, w: 1, d: 1, h: 1, y3: 1.6, color: 0x201010, glow: 0xff3a3a, show: { var: 'marble', eq: 'red' } },
+                    { k: 'box', x: 6, y: 6, w: 1, d: 1, h: 1, y3: 1.6, color: 0x202010, glow: 0xffd83a, show: { var: 'marble', eq: 'yellow' } }] },
+            blue: { role: 'BLUE WORLD', ports: { ground: '' }, net: { track: 's' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'track', color: 0x3a8cff, size: 0.5, pts: [[6, 12], [6, 7.5]], lit: { var: 'got_blue' } }, { k: 'box', x: 6, y: 6, w: 3, d: 3, h: 1.0, color: 0x3a3a3a }, { k: 'box', x: 6, y: 6, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0x3a8cff, lit: { var: 'got_blue' } }] },
+            red: { role: 'RED WORLD', ports: { ground: '' }, net: { track: 'w' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'track', color: 0xff3a3a, size: 0.5, pts: [[0, 6], [4.5, 6]], lit: { var: 'got_red' } }, { k: 'box', x: 6, y: 6, w: 3, d: 3, h: 1.0, color: 0x3a3a3a }, { k: 'box', x: 6, y: 6, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0xff3a3a, lit: { var: 'got_red' } }] },
+            yellow: { role: 'YELLOW WORLD', ports: { ground: 'ew' }, net: { track: 'n' }, cells: ['............', '............', '............', '............', '............', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'trace', layer: 'track', color: 0xffd83a, size: 0.5, pts: [[6, 0], [6, 2]], lit: { var: 'got_yellow' } }, { k: 'box', x: 6, y: 3, w: 3, d: 3, h: 1.0, color: 0x3a3a3a }, { k: 'box', x: 6, y: 3, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0xffd83a, lit: { var: 'got_yellow' } }] },
+            exit: { role: 'EXIT WALK', ports: { ground: 'w' }, cells: ['............', '............', '............', '............', '............', '............', '............', '############', '############', '############', '############', '############'],
+                marks: [{ k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'gate', id: 'exit', x: 5, y: 6, ax: 'z', w: 2, auto: true, needs: [{ var: 'got_blue' }, { var: 'got_red' }, { var: 'got_yellow' }] },
+                    { k: 'lamp', x: 4.3, y: 4.6, color: 0x3a8cff, lit: { var: 'got_blue' } }, { k: 'lamp', x: 4.3, y: 7.4, color: 0xff3a3a, lit: { var: 'got_red' } }, { k: 'lamp', x: 5.7, y: 7.4, color: 0xffd83a, lit: { var: 'got_yellow' } },
+                    { k: 'exit', x: 9, y: 6, r: 2 }] },
+        },
+        board: { A2: 'blue', B1: 'dispenser', B2: 'junction', B3: 'red', C1: 'entry', C2: 'yellow', C3: 'exit' },
+        rot: { junction: 1 },
+        entry: 'entry', goal: [{ var: 'got_blue' }, { var: 'got_red' }, { var: 'got_yellow' }],
+    }] },
+    /* 5.4 GROW AND CARRY · water the trellis and it grows a root ramp it keeps; turn the plot to carry the ramp to the high exit */
+    root: { label: 'ROOT THAT REMEMBERS', verb: 'GROW', look: 'forest', levels: [{
+        title: 'ROOT THAT REMEMBERS',
+        plots: {
+            entry: { role: 'ENTRY', cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '###......###', '.........###', '.........###', '###......###', '###......###', '###......###', '###......###', '#####..#####'], marks: [{ k: 'spawn', x: 6, y: 9.5, face: 0 }, { k: 'model', x: 8, y: 8.5 }] },
+            path: { role: 'PATH', cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '#####..#####', '#####.......', '#####.......', '############', '############', '############', '############', '############'], marks: [{ k: 'prop', key: 'fallen_log', x: 3.6, y: 7.6 }] },
+            spring: { role: 'SPRING', cover: 'stump', cells: ['############', '############', '##........##', '##........##', '##........##', '##..........', '##..o..o....', '##........##', '##........##', '##........##', '#####..#####', '#####..#####'],
+                marks: [{ k: 'fight', id: 'spring', x: 6, y: 8, label: 'GOBLIN ×2 + SWAMP MONSTER', enemies: [{ race: 'goblin', x: 4.5, y: 4.5 }, { race: 'goblin', x: 7.5, y: 4.5 }, { race: 'swamp_monster', x: 6, y: 3 }] },
+                    { k: 'act', id: 'valve', key: 'gate_valve', x: 8.5, y: 3.5, label: 'THE SPRING', verb: 'OPEN', needs: { fight: 'spring' }, no: 'NOT WHILE THEY GUARD IT', set: { watered: true }, say: 'WATER RUNS EAST. SOMETHING GROWS.', show: { not: { var: 'watered' } } }] },
+            trellis: { role: 'TRELLIS', turn: true, ride: true, cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '####....####', '............', '............', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'], marks: [{ k: 'dial', x: 7.5, y: 7.5 }, { k: 'prop', key: 'door_vine', x: 6, y: 1.5 }] },
+            grown: { role: 'ROOT RAMP', turn: true, ride: true, ports: { ground: 'esw', upper: 'n' }, climb: { '5,0': 'n' }, cells: ['#####//#####', '#####//#####', '#####//#####', '#####//#####', '####....####', '............', '............', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'], marks: [{ k: 'dial', x: 7.5, y: 7.5 }] },
+            exit: { role: 'EXIT', cells: ['############', '############', '###======###', '###======###', '###======###', '###======###', '###======###', '#####==#####', '#####==#####', '#####==#####', '#####==#####', '#####==#####'], marks: [{ k: 'exit', x: 6, y: 4.5 }] },
+            cache: { role: 'CACHE', cells: ['############', '############', '############', '######====##', '######====##', '==========##', '==========##', '######====##', '######====##', '############', '############', '############'], marks: [{ k: 'act', id: 'cache', key: 'candle_ring', x: 8, y: 6, label: 'THE CACHE', verb: 'TAKE', set: { cache: true }, say: 'THE CACHE IS YOURS', show: { not: { var: 'cache' } } }] },
+        },
+        board: { A2: 'exit', B1: 'spring', B2: 'trellis', B3: 'cache', C1: 'path', C2: 'entry' },
+        rot: { trellis: 2 }, keep: ['watered', 'cache'],
+        grows: [{ when: { var: 'watered' }, from: 'trellis', to: 'grown' }],
+        entry: 'entry', goal: { net: 'upper', from: 'grown', to: ['exit'] },
+    }] },
+    /* 5.5 ESCORT · you never touch the guardian: ring it into the hub, turn the hub under it, ring it onto the plate */
+    escort: { label: 'THE PROCESSION', verb: 'ESCORT', look: 'hwing', levels: [{
+        title: 'THE PROCESSION',
+        plots: {
+            entry: { role: 'ENTRY', cells: ['############', '############', '############', '############', '############', '#...........', '#...........', '#..........#', '#..........#', '############', '############', '############'],
+                marks: [{ k: 'spawn', x: 2.5, y: 6, face: 90 }, { k: 'console', x: 5, y: 7.6, label: 'THE HUB' },
+                    { k: 'act', id: 'bell', key: 'ships_bell', y3: 1.2, x: 7, y: 7.6, label: 'THE BELL', verb: 'RING', send: 'guard', no: 'IT HAS NOWHERE TO GO', say: 'THE GUARDIAN WALKS' },
+                    { k: 'act', id: 'recall', key: 'evac_button', x: 9, y: 7.6, label: 'RECALL', verb: 'PRESS', set: { tok_guard: 'bay' }, rotTo: { hub: 0 }, say: 'THE GUARDIAN IS BACK IN ITS BAY' }] },
+            bay: { role: 'GUARDIAN BAY', ports: { ground: 'new' }, cells: ['#####..#####', '####....####', '####....####', '####....####', '####....####', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'rail', x0: 4, y0: 5, x1: 8, y1: 5 }] },
+            hub: { role: 'HUB', turn: { detents: [0, 2] }, ride: false, turnWhen: { var: 'tok_guard', eq: 'hub' }, cells: ['############', '############', '############', '############', '####....####', '........####', '........####', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'] },
+            branch: { role: 'CAPPED BRANCH', cells: ['############', '############', '############', '############', '####....####', '####........', '####........', '####....####', '############', '############', '############', '############'] },
+            plate: { role: 'PLATE', cells: ['############', '############', '############', '###......###', '###......###', '.........###', '.........###', '###......###', '###......###', '############', '############', '############'], marks: [{ k: 'prop', key: 'trap_pressure_plate', x: 6, y: 6, h: 0.2 }] },
+            exit: { role: 'EXIT', cells: ['############', '############', '############', '############', '############', '...........#', '...........#', '############', '############', '############', '############', '############'],
+                marks: [{ k: 'gate', id: 'exit', x: 6, y: 6, ax: 'z', w: 2, auto: true, needs: { var: 'tok_guard', eq: 'plate' } }, { k: 'exit', x: 9.5, y: 6, r: 2 }] },
+        },
+        tokens: { guard: { at: 'bay', key: 'angel_statue', label: 'THE GUARDIAN',
+            stops: { bay: { x: 6, y: 2.5 }, hub: { x: 6, y: 6 }, plate: { x: 6, y: 6 }, branch: { x: 6, y: 6 } },
+            steps: [{ from: 'bay', to: 'hub', when: { link: ['bay', 'hub'] } }, { from: 'hub', to: 'plate', when: { link: ['hub', 'plate'] }, say: 'THE GUARDIAN STEPS ONTO THE PLATE' },
+                { from: 'hub', to: 'branch', when: { link: ['hub', 'branch'] }, say: 'THE GUARDIAN WALKS INTO A DEAD END' }, { from: 'branch', to: 'hub', when: { link: ['hub', 'branch'] } }] } },
+        board: { B1: 'branch', B2: 'hub', B3: 'plate', C1: 'entry', C2: 'bay', C3: 'exit' },
+        entry: 'entry', goal: { var: 'tok_guard', eq: 'plate' },
+    }] },
+    /* PD-LEVELS-END */
+};
+/* ── the readers ───────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
+/* every level, flat: id = <type><n> (crypt1, crypt2 …) → { id, type, n, T (the type row), L (the level row) } */
+let _pdIndex = null;
+function pdLevels() {
+    if (_pdIndex) return _pdIndex;
+    const out = {};
+    Object.keys(PD_DUNGEONS).forEach(type => {
+        const T = PD_DUNGEONS[type];
+        (T.levels || []).forEach((L, i) => { const id = type + (i + 1); out[id] = { id, type, n: i + 1, T, L, zone: 'pd_' + id, look: PD_LOOKS[L.look || T.look] || PD_LOOKS.spike }; });
+    });
+    return (_pdIndex = out);
+}
+function pdLevel(id) { return pdLevels()[id] || null; }
+function pdRoomId(id, plotId) { return 'pd_' + id + '_' + plotId; }
+/* a room id → { level, plot } (null for a room that is no plot) */
+function pdOfRoom(roomId) { const r = (DOOR_HQ.rooms || {})[roomId]; return (r && r.pd) ? { level: r.pd, plot: r.pdPlot } : null; }
+/* a level's plot row, a shared piece resolved (`use`) */
+function pdPlot(id, plotId) {
+    const V = pdLevel(id); if (!V) return null;
+    const P = (V.L.plots || {})[plotId]; if (!P) return null;
+    return P.use ? Object.assign({}, PD_PIECES[P.use] || {}, P) : P;
+}
+/* a slot's centre on the board, metres: 'B2' = (0, 0); rows A-C north to south, columns 1-3 west to east. A slot past the board
+   (column 0 or 4, row '@' or 'D') holds a fixed part beside it (an overlook, a refuge). */
+function pdSlotXZ(slot) {
+    const r = String(slot).charCodeAt(0) - 65, c = parseInt(String(slot).slice(1), 10);
+    return { x: (c - 2) * PD_RULES.plotM, z: (r - 1) * PD_RULES.plotM, r, c };
+}
+function pdSlotName(r, c) { return String.fromCharCode(65 + r) + c; }
+function pdSlotBeside(slot, side) {
+    const p = pdSlotXZ(slot), d = { n: [-1, 0], s: [1, 0], e: [0, 1], w: [0, -1] }[side];
+    return pdSlotName(p.r + d[0], p.c + d[1]);
+}
+/* a side of a plot in its own frame → the side it faces on the board when the plot is turned `rot` quarter turns to the left */
+function pdSideOnBoard(side, rot) { return PD_SIDES[((PD_SIDES.indexOf(side) - rot) % 4 + 4) % 4]; }
+function pdSideInPlot(boardSide, rot) { return PD_SIDES[((PD_SIDES.indexOf(boardSide) + rot) % 4 + 4) % 4]; }
+/* the two squares of a side's port, in the plot's own frame: [[x, y], [x, y]] */
+function pdPortSquares(side) {
+    const a = PD_RULES.portSq[0], b = PD_RULES.portSq[1], n = PD_RULES.n - 1;
+    return side === 'n' ? [[a, 0], [b, 0]] : side === 's' ? [[a, n], [b, n]] : side === 'w' ? [[0, a], [0, b]] : [[n, a], [n, b]];
+}
+const PD_WALK = { '.': 1, 'o': 1, '/': 1, '~': 1 };
+/* a plot's ports in its own frame: { ground: 'ns', upper: 'e', <net>: '…' } — the walked layers come from the cells, a net layer
+   (a trace, a pipe, a track: not walked) from the plot's own `net` row */
+function pdPlotPorts(P) {
+    const out = { ground: '', upper: '' }, C = (P && P.cells) || [];
+    PD_SIDES.forEach(s => {
+        const q = pdPortSquares(s).map(p => (C[p[1]] || '')[p[0]]);
+        if (q.every(ch => PD_WALK[ch])) out.ground += s;
+        else if (q.every(ch => ch === '=')) out.upper += s;
+    });
+    if (P && P.ports) Object.keys(P.ports).forEach(k => { out[k] = P.ports[k]; });   // an explicit row wins (a port the cells cannot say)
+    if (P && P.net) Object.keys(P.net).forEach(k => { out[k] = P.net[k]; });
+    return out;
+}
+/* ── the live board ────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
+/* a fresh state from the level's row: { slots: { slot: plotId }, rot: { plotId: q }, vars, items, fights, moves, solved } */
+function pdNewState(id) {
+    const V = pdLevel(id); if (!V) return null;
+    const S = { level: id, slots: {}, rot: {}, vars: Object.assign({}, V.L.vars || {}), items: {}, fights: {}, moves: 0, solved: false, log: [] };
+    Object.keys(V.L.tokens || {}).forEach(t => { S.vars['tok_' + t] = V.L.tokens[t].at; });
+    Object.keys(V.L.board || {}).forEach(slot => { const pid = V.L.board[slot]; if (pid) { S.slots[slot] = pid; S.rot[pid] = ((V.L.rot || {})[pid] || 0); } });
+    return S;
+}
+const _pdLive = {};
+function pdState(id) { return _pdLive[id] || (_pdLive[id] = pdNewState(id)); }
+function pdSetState(id, S) { _pdLive[id] = S; return S; }
+function pdSlotOf(S, plotId) { return Object.keys(S.slots).find(s => S.slots[s] === plotId) || null; }
+/* the joins of a board: two plots in slots side by side whose ports of ONE layer face each other → [{ a, b (plot ids), side (a's own
+   side), bSide, layer, slotA, slotB }] */
+function pdJoins(id, S, layers) {
+    const out = [], L = layers || ['ground', 'upper'];
+    Object.keys(S.slots).forEach(slot => {
+        const a = S.slots[slot], Pa = pdPlot(id, a); if (!Pa) return;
+        const pa = pdPlotPorts(Pa), ra = S.rot[a] || 0;
+        ['e', 's'].forEach(bs => {   // each pair once: this slot's east and south neighbours
+            const other = pdSlotBeside(slot, bs), b = S.slots[other]; if (!b) return;
+            const Pb = pdPlot(id, b), pb = pdPlotPorts(Pb), rb = S.rot[b] || 0;
+            const sa = pdSideInPlot(bs, ra), sb = pdSideInPlot(PD_OPP[bs], rb);
+            L.forEach(layer => { if ((pa[layer] || '').indexOf(sa) >= 0 && (pb[layer] || '').indexOf(sb) >= 0) out.push({ a, b, side: sa, bSide: sb, layer, slotA: slot, slotB: other }); });
+        });
+    });
+    return out;
+}
+/* what is joined to `from` on a layer: the set of plot ids reached through joined ports. A plot's own ports of one layer are all
+   joined inside it unless its row says `split: { <layer>: ['ns', 'e'] }` (groups of sides that are joined inside). */
+function pdNet(id, S, layer, from) {
+    const J = pdJoins(id, S, [layer]), seen = {}, q = [];
+    const grp = (plot, side) => { const P = pdPlot(id, plot), sp = P && P.split && P.split[layer]; if (!sp) return '*'; const g = sp.find(x => x.indexOf(side) >= 0); return g || side; };
+    const push = (plot, g) => { const k = plot + '|' + g; if (!seen[k]) { seen[k] = 1; q.push([plot, g]); } };
+    const P0 = pdPlot(id, from); if (!P0) return {};
+    const sp0 = P0.split && P0.split[layer];
+    if (sp0) sp0.forEach(g => push(from, g)); else push(from, '*');
+    while (q.length) {
+        const cur = q.pop();
+        J.forEach(j => {
+            if (j.a === cur[0] && (cur[1] === '*' || cur[1].indexOf(j.side) >= 0 || grp(j.a, j.side) === cur[1])) push(j.b, grp(j.b, j.bSide));
+            if (j.b === cur[0] && (cur[1] === '*' || cur[1].indexOf(j.bSide) >= 0 || grp(j.b, j.bSide) === cur[1])) push(j.a, grp(j.a, j.side));
+        });
+    }
+    const out = {}; Object.keys(seen).forEach(k => { out[k.split('|')[0]] = true; });
+    return out;
+}
+/* every join of a state on every layer of the level (the walked two + the plots' net layers), kept for the state last asked */
+let _pdJC = null;
+function _pdJoinsOf(id, S) {
+    if (_pdJC && _pdJC.S === S && _pdJC.id === id && _pdJC.k === JSON.stringify([S.slots, S.rot])) return _pdJC.J;
+    const V = pdLevel(id), layers = { ground: 1, upper: 1 };
+    Object.keys(V.L.plots || {}).forEach(p => { const P = pdPlot(id, p); Object.keys((P && P.net) || {}).forEach(k => { layers[k] = 1; }); Object.keys((P && P.ports) || {}).forEach(k => { layers[k] = 1; }); });
+    _pdJC = { S, id, k: JSON.stringify([S.slots, S.rot]), J: pdJoins(id, S, Object.keys(layers)) };
+    return _pdJC.J;
+}
+/* a level's `grows` rows ({ when, from, to }): a plot that gained a feature for good is its other drawing (the same slot, the same
+   turn) from then on, whatever a RESET or an UNDO puts back */
+function pdGrow(id, S) {
+    const V = pdLevel(id);
+    ((V && V.L.grows) || []).forEach(g => { const slot = pdSlotOf(S, g.from); if (slot && pdCheck(id, S, g.when)) { S.slots[slot] = g.to; S.rot[g.to] = S.rot[g.from] || 0; } });
+    return S;
+}
+/* a thing pressed (an `act` mark, a gate, a key): the state after it, or why not → { ok, S (a new state), say } */
+function pdDoAct(id, S, A) {
+    const V = pdLevel(id);
+    if (A.needs && !pdCheck(id, S, A.needs)) return { ok: false, say: A.no || 'NOTHING HAPPENS' };
+    const N = JSON.parse(JSON.stringify(S)); let say = A.say || null;
+    if (A.set) Object.assign(N.vars, A.set);
+    if (A.toggle) N.vars[A.toggle] = !N.vars[A.toggle];
+    if (A.give) N.items[A.give] = true;
+    if (A.fight) N.fights[A.fight] = true;
+    if (A.swap) { const slot = pdSlotOf(N, A.swap[0]); if (slot) { N.slots[slot] = A.swap[1]; N.rot[A.swap[1]] = N.rot[A.swap[0]] || 0; } }
+    if (A.rotTo) Object.keys(A.rotTo).forEach(p => { N.rot[p] = A.rotTo[p]; });
+    if (A.send) {
+        const T = (V.L.tokens || {})[A.send], k = 'tok_' + A.send, st = T && (T.steps || []).find(s => s.from === N.vars[k] && pdCheck(id, N, s.when));
+        if (!st) return { ok: false, say: A.no || 'IT DOES NOT MOVE' };
+        N.vars[k] = st.to; say = st.say || say;
+    }
+    if (A.route) {
+        const R = A.route, load = N.vars[R.var]; if (!load) return { ok: false, say: R.empty || 'NOTHING IS LOADED' };
+        const j = pdJoins(id, N, [R.layer]).find(q => q.a === R.from || q.b === R.from), to = j ? (j.a === R.from ? j.b : j.a) : null;
+        N.vars[R.var] = null;
+        if (to && R.sockets[to] === load) { N.vars[R.won + load] = true; say = R.yes || 'IT FITS'; } else say = R.back || 'IT ROLLS BACK';
+    }
+    pdGrow(id, N);
+    if (A.solve || (V.L.solvedWhen && pdCheck(id, N, V.L.solvedWhen))) N.solved = true;
+    return { ok: true, S: N, say };
+}
+/* a condition (a gate's `needs`, a move's `when`): { joined: [plot, side, layer] } | { link: [plotA, plotB], layer } | { has: item } | { fight: id } | { var: name, eq } | { net: layer, from, to: [plots] }
+   | { all: [...] } | { any: [...] } | { not: cond } */
+function pdCheck(id, S, c) {
+    if (!c) return true;
+    if (Array.isArray(c)) return c.every(x => pdCheck(id, S, x));
+    if (c.all) return c.all.every(x => pdCheck(id, S, x));
+    if (c.any) return c.any.some(x => pdCheck(id, S, x));
+    if (c.not) return !pdCheck(id, S, c.not);
+    if (c.has) return !!S.items[c.has];
+    if (c.fight) return !!S.fights[c.fight];
+    if (c.var) return (c.eq === undefined) ? !!S.vars[c.var] : S.vars[c.var] === c.eq;
+    if (c.net) { const N = pdNet(id, S, c.net, c.from); return [].concat(c.to || []).every(p => N[p]); }
+    if (c.rot) return (S.rot[c.rot] || 0) === (c.eq || 0);
+    if (c.slot) return S.slots[c.slot] === c.plot;
+    if (c.joined) return _pdJoinsOf(id, S).some(j => j.layer === (c.joined[2] || 'ground') && ((j.a === c.joined[0] && j.side === c.joined[1]) || (j.b === c.joined[0] && j.bSide === c.joined[1])));
+    if (c.link) return _pdJoinsOf(id, S).some(j => j.layer === (c.layer || 'ground') && ((j.a === c.link[0] && j.b === c.link[1]) || (j.a === c.link[1] && j.b === c.link[0])));
+    return true;
+}
+/* the quarter turns a plot may make: `turn: true` = one either way; `turn: { detents: [0, 2] }` = only between those poses;
+   `turn: { dirs: [1] }` = one way only */
+function pdTurnSteps(P, rot) {
+    if (!P || !P.turn) return [];
+    const T = (P.turn === true) ? {} : P.turn;
+    if (T.detents) { const i = T.detents.indexOf(((rot % 4) + 4) % 4), nx = T.detents[(i + 1) % T.detents.length]; let d = ((nx - rot) % 4 + 4) % 4; if (d === 3) d = -1; return d ? [d] : []; }
+    return (T.dirs || [1, -1]).slice();
+}
+/* the legal moves of a board (the rules only: where the officer stands is the caller's, pdMoveBlocked):
+   [{ t: 'turn', plot, by (quarter turns: +1 left, −1 right, 2 a half turn) } | { t: 'slide', plot, from, to, side }] */
+function pdMoves(id, S) {
+    const V = pdLevel(id), out = []; if (!V) return out;
+    const vac = (V.L.vacant || []).filter(s => !S.slots[s]);
+    Object.keys(S.slots).forEach(slot => {
+        const pid = S.slots[slot], P = pdPlot(id, pid); if (!P) return;
+        if (P.turn && pdCheck(id, S, P.turnWhen)) pdTurnSteps(P, S.rot[pid] || 0).forEach(by => out.push({ t: 'turn', plot: pid, by }));
+        if (P.slide && pdCheck(id, S, P.slideWhen)) PD_SIDES.forEach(side => { const to = pdSlotBeside(slot, side); if (vac.indexOf(to) >= 0) out.push({ t: 'slide', plot: pid, from: slot, to, side }); });
+    });
+    return out;
+}
+/* a move applied to a COPY of the state (the caller keeps the old one for UNDO) */
+function pdApplyMove(id, S, m) {
+    const N = JSON.parse(JSON.stringify(S));
+    if (m.t === 'turn') N.rot[m.plot] = (((N.rot[m.plot] || 0) + m.by) % 4 + 4) % 4;
+    else if (m.t === 'slide') { delete N.slots[m.from]; N.slots[m.to] = m.plot; }
+    else if (m.t === 'set') N.vars[m.name] = m.value;
+    N.moves = (N.moves || 0) + 1;
+    return N;
+}
+/* a plot's frame on the board from a state: { x, z, rot } (zone metres) */
+function pdFrame(S, plotId) { const slot = pdSlotOf(S, plotId); if (!slot) return null; const p = pdSlotXZ(slot); return { x: p.x, z: p.z, rot: S.rot[plotId] || 0, slot }; }
+/* the plot the point (zone metres) stands on, and where in it: { plot, slot, x, z (the plot's own metres), chamber } */
+function pdWhere(S, gx, gz) {
+    const M = PD_RULES.plotM, slots = Object.keys(S.slots);
+    for (let i = 0; i < slots.length; i++) {
+        const p = pdSlotXZ(slots[i]); if (Math.abs(gx - p.x) > M / 2 || Math.abs(gz - p.z) > M / 2) continue;
+        const pid = S.slots[slots[i]], rot = S.rot[pid] || 0, c = _HQ_ROT[rot][0], s = _HQ_ROT[rot][1], dx = gx - p.x, dz = gz - p.z;
+        const x = dx * c - dz * s, z = dx * s + dz * c;
+        return { plot: pid, slot: slots[i], x, z, chamber: Math.abs(x) < PD_RULES.chamberM && Math.abs(z) < PD_RULES.chamberM };
+    }
+    return null;
+}
+/* why a move may not be made from where the officer stands (null = it may): a rider stays inside the chamber of a plot that turns
+   under them; nobody stands on a plot that slides, or on a plot whose row says `ride: false` */
+function pdMoveBlocked(id, S, m, at) {
+    const P = pdPlot(id, m.plot), V = pdLevel(id); if (!P) return 'no such plot';
+    if (V.L.safe && at && V.L.safe.indexOf(at.plot) < 0) return V.L.safeSay || 'STEP OFF THE BOARD FIRST';
+    if (!at || at.plot !== m.plot) return null;
+    if (m.t === 'slide') return 'STEP OFF THE PLOT FIRST';
+    if (P.ride === false) return 'STEP OFF THE PLOT FIRST';
+    return at.chamber ? null : 'STAND IN THE MIDDLE OF THE PLOT';
+}
+/* ── the rooms ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
+/* a mask of a plot's squares merged into whole-square rectangles: [{ x0, y0, x1, y1 }] (squares, x1 / y1 exclusive) */
+function pdRects(cells, pick) {
+    const n = PD_RULES.n, used = []; for (let y = 0; y < n; y++) used.push(new Array(n).fill(false));
+    const on = (x, y) => x >= 0 && y >= 0 && x < n && y < n && !used[y][x] && pick((cells[y] || '')[x] || '#', x, y);
+    const out = [];
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        if (!on(x, y)) continue;
+        let x1 = x; while (on(x1 + 1, y)) x1++;
+        let y1 = y, ok = true;
+        while (ok) { for (let k = x; k <= x1; k++) if (!on(k, y1 + 1)) { ok = false; break; } if (ok) y1++; }
+        for (let j = y; j <= y1; j++) for (let k = x; k <= x1; k++) used[j][k] = true;
+        out.push({ x0: x, y0: y, x1: x1 + 1, y1: y1 + 1 });
+    }
+    return out;
+}
+/* squares → the plot's own metres (a square's corner; fractions allowed) */
+function pdM(v) { return -PD_RULES.plotM / 2 + PD_RULES.sq * v; }
+function pdRectM(r) { return { x: (pdM(r.x0) + pdM(r.x1)) / 2, z: (pdM(r.y0) + pdM(r.y1)) / 2, w: (r.x1 - r.x0) * PD_RULES.sq, d: (r.y1 - r.y0) * PD_RULES.sq }; }
+/* a side's edge in the plot's own metres: the port's centre on the edge (x, z), the unit vector INTO the plot (nx, nz), and the
+   axis the edge runs along */
+function pdSideGeo(side) {
+    const h = PD_RULES.plotM / 2;
+    return side === 'n' ? { x: 0, z: -h, nx: 0, nz: 1, ax: 'x' } : side === 's' ? { x: 0, z: h, nx: 0, nz: -1, ax: 'x' }
+         : side === 'w' ? { x: -h, z: 0, nx: 1, nz: 0, ax: 'z' } : { x: h, z: 0, nx: -1, nz: 0, ax: 'z' };
+}
+/* a box row laid on an edge: `across` metres along the edge (centred `off` metres from the port's centre), `deep` metres into the
+   plot starting `inset` metres from the edge */
+function pdEdgeBox(side, off, across, inset, deep, more) {
+    const g = pdSideGeo(side), c = inset + deep / 2;
+    return Object.assign({ k: 'box', x: g.x + g.nx * c + (g.ax === 'x' ? off : 0), z: g.z + g.nz * c + (g.ax === 'z' ? off : 0),
+        w: g.ax === 'x' ? across : deep, d: g.ax === 'x' ? deep : across }, more);
+}
+/* the default objects of the controls (catalogue keys; a mark's own `key` wins, `key: false` = none) */
+const PD_CONTROL_KEYS = { dial: 'signal_lever_frame', console: 'retro_console', model: 'map_table' };
+const PD_CONTROL_LABELS = { dial: 'THE DIAL', console: 'THE CONSOLE', model: 'THE MODEL' };
+/* one plot's room row (a box room with a drawn floor plan), built from its cells, its marks and the look.
+   THE MARKS ({ k, x, y } in squares from the plot's north-west corner; a square's centre is i + 0.5):
+     spawn    { face }                                   where the level starts (the entry plot)
+     dial | console | model   { plots: [ids], label }    opens the board panel (a dial moves its own plot; a console the listed
+                                                         plots, or every moving plot; a model only shows + RESET)
+     prop     { key, rot, y3, h, show: cond }            a catalogue prop (decor off centre, a blocker centred on a square)
+     act      { id, label, verb, key, needs, no, say, set, toggle, give, fight, swap, rotTo, send, route, solve, show }
+                                                         a thing you press E on: `needs` (a condition) or it says `no`; then it
+                                                         writes the state (pdDoAct) and says `say`. `show` hides it (and its prop)
+     take     { item, key, label }                       an item picked up once (a key)
+     gate     { id, side | (x, y, ax), needs, auto, label, no }   bars across a port (or anywhere): opened with E when `needs`
+                                                         holds, or by itself while it holds (`auto: true`)
+     exit     { r }                                      walking here solves the level
+     trace    { layer, src, pts: [[x, y] …], size, y3, color }   a lit line (a trace, a pipe, a rail) of a net layer, alight
+                                                         while this plot is joined to the plot `src` on that layer
+     lamp     { lit: cond, color }                       a signal lamp on a post
+     box      { w, d, h (metres), y3, tex, color, glow, show, lit, block }   a plain drawn box
+     rail     { x0, y0, x1, y1 }                         a railing (blocks the walk)
+     fightSeat / anything else                           kept on the room (`pdMarks`) for the kinds map.js knows */
+function pdRoomDef(id, plotId) {
+    const V = pdLevel(id), P = pdPlot(id, plotId); if (!V || !P) return null;
+    const K = V.look, src = (DOOR_HQ.rooms || {})[K.from] || {}, S0 = src.shell || {}, T0 = src.terrain || {}, M = PD_RULES.plotM, SQ = PD_RULES.sq;
+    const upper = PD_RULES.upperM, cells = P.cells || [], hasUpper = cells.some(r => r.indexOf('=') >= 0 || r.indexOf('/') >= 0);
+    const h = K.open ? 9 : Math.max(K.h || 4, hasUpper ? upper + (K.h || 4) : 0);
+    const shell = Object.assign({
+        w: M, d: M, h, wallH: h, dadoH: S0.dadoH || 1, edge: 'open',
+        floor: S0.floor, wall: S0.wall, dado: S0.dado, trim: S0.trim, ceiling: S0.ceiling,
+        floorColor: S0.floorColor, wallColor: S0.wallColor, dadoColor: S0.dadoColor, ceilColor: S0.ceilColor, ceilTile: S0.ceilTile,
+        pipes: false, strips: false, mood: S0.mood, fog: S0.fog, look: S0.look,
+        lights: [],
+    }, K.open ? { open: true, sky: S0.sky, apron: S0.apron, skirt: S0.skirt } : null, K.shell || null, P.shell || null);
+    if (K.floor) shell.floor = K.floor;
+    const features = [], draw = [], wallTex = (K.gen && K.gen.wallKey) || S0.wall || null, at = (x, y) => (cells[y] || '')[x] || '#';
+    const open = ch => !!PD_WALK[ch] || ch === '=';
+    /* the walked squares: `space` rows; a look with `paths` also lays a `path` row inside each (the field paints it with the
+       look's path sheet, so a street reads as a street beside the block's paving) */
+    pdRects(cells, open).forEach(r => {
+        const m = pdRectM(r);
+        features.push(Object.assign({ k: 'space' }, m));
+        if (!K.paths) return;
+        const lx = m.w >= m.d, sh = lx ? m.d : m.w, hl = Math.max(0.1, (lx ? m.w : m.d) / 2 - sh / 2);
+        features.push({ k: 'path', w: sh, pts: lx ? [[m.x - hl, m.z], [m.x + hl, m.z]] : [[m.x, m.z - hl], [m.x, m.z + hl]] });
+    });
+    pdRects(cells, ch => ch === '=').forEach(r => features.push(Object.assign({ k: 'plateau', h: upper, edge: 0.01 }, pdRectM(r))));
+    /* a run of '/' squares is one flight: it climbs toward the side where the deck ('=') lies */
+    pdRects(cells, ch => ch === '/').forEach(r => {
+        const m = pdRectM(r), up = [['n', r.x0, r.y0 - 1], ['s', r.x0, r.y1], ['w', r.x0 - 1, r.y0], ['e', r.x1, r.y0]].find(q => at(q[1], q[2]) === '=');
+        const dir = (P.climb && P.climb[r.x0 + ',' + r.y0]) || (up ? up[0] : 'n'), ns = dir === 'n' || dir === 's', sg = (dir === 'n' || dir === 'w') ? -1 : 1;
+        const len = ns ? m.d : m.w, f = { k: 'ramp', w: ns ? m.w : m.d, h0: 0, h1: upper, edge: 0.01 };
+        if (ns) Object.assign(f, { x0: m.x, x1: m.x, z0: m.z - sg * len / 2, z1: m.z + sg * len / 2 }); else Object.assign(f, { z0: m.z, z1: m.z, x0: m.x - sg * len / 2, x1: m.x + sg * len / 2 });
+        if (K.stairs !== false) Object.assign(f, { stairs: true, model: 'external' });
+        features.push(f);
+    });
+    const room = {
+        label: (V.L.title || V.T.label) + ' · ' + (P.role || plotId.toUpperCase()), sub: V.T.verb || '', kind: 'box', pd: id, pdPlot: plotId,
+        shell,
+        terrain: {
+            res: 0.4375, floor: K.floor || T0.floor || S0.floor, cliff: K.cliff || T0.cliff || S0.wall, path: K.path || T0.path || S0.floor,
+            noise: { amp: 0, scale: 5 }, crag: false, outer: false,
+            gen: Object.assign({ kind: 'plan', rim: 0, forceGrow: -0.3 }, K.gen, K.open ? null : { wallH: h }),
+            features,
+        },
+        doors: [], counters: [], props: (P.props || []).slice(), pdDraw: draw, pdMarks: [],
+    };
+    /* the ports: a jamb each side (the plan's walls stop short of the plot's edge) and a CAP that closes the port while nothing
+       is joined to it (a wall of the look under a ceiling, a parapet under the sky) */
+    const ports = pdPlotPorts(P);
+    ['ground', 'upper'].forEach(layer => (ports[layer] || '').split('').forEach(side => {
+        const y = layer === 'upper' ? upper : 0, hh = K.open ? 1.1 : Math.max(2, h - y);
+        draw.push(pdEdgeBox(side, 0, SQ * 2, 0, 0.3, { id: 'cap_' + layer + side, y, h: hh, tex: wallTex, tu: 4, tv: hh / 1.75, color: K.capColor, block: true, show: { not: { joined: [plotId, side, layer] } } }));
+        if (!K.open) [-1, 1].forEach(sg => draw.push(pdEdgeBox(side, sg * (SQ + 0.2), 0.4, 0, 1.0, { id: 'jamb_' + layer + side + sg, y, h: hh, tex: wallTex, tu: 0.5, tv: hh / 1.75, color: K.capColor })));
+    }));
+    /* the whole-square blockers ('o'): the look's cover piece, one per run, and a blocker over the whole run */
+    pdRects(cells, ch => ch === 'o').forEach((r, i) => {
+        const m = pdRectM(r), key = P.cover || K.cover;
+        if (key) room.props.push(Object.assign({ key, x: m.x, z: m.z, rot: m.w > m.d ? 90 : 0 }, (P.coverH || K.coverH) ? { h: P.coverH || K.coverH } : null));
+        draw.push({ k: 'box', id: 'cover' + i, ghost: true, x: m.x, z: m.z, y: 0, w: m.w - 0.3, d: m.d - 0.3, h: 1.4, block: true });
+    });
+    /* a ceiling lamp over each open floor of 2 × 2 squares or more (a closed look only) */
+    if (!K.open) pdRects(cells, open).filter(r => (r.x1 - r.x0) >= 2 && (r.y1 - r.y0) >= 2).slice(0, 8).forEach(r => { const m = pdRectM(r); shell.lights.push({ x: m.x, z: m.z }); });
+    const counter = (m, x, z, more) => room.counters.push(Object.assign({ id: 'pd_' + m.k + '_' + (m.id || room.counters.length), x, z, face: m.face || 0, radius: m.r || 3, plateY: m.plateY || 1.7,
+        label: m.label || '', verb: m.verb || 'USE' }, m.show ? { pdShow: m.show } : null, more));
+    const prop = (key, x, z, m, show) => { if (key) room.props.push(Object.assign({ key, x, z }, m.rot != null ? { rot: m.rot } : null, m.y3 != null ? { y: m.y3 } : null, m.h != null ? { h: m.h } : null, show ? { pd: { show } } : null)); };
+    (P.marks || []).forEach(m => {
+        const x = pdM(m.x), z = pdM(m.y);
+        if (m.k === 'spawn') room.pdSpawn = { x, z, face: m.face || 0 };
+        else if (m.k === 'dial' || m.k === 'console' || m.k === 'model') {
+            const all = Object.keys(V.L.plots).filter(p => { const Q = pdPlot(id, p); return Q.turn || Q.slide; });
+            counter(Object.assign({ label: PD_CONTROL_LABELS[m.k] }, m), x, z, { proc: 'pd_control', pdKind: m.k, pdPlots: m.plots || (m.k === 'dial' ? [plotId] : all) });
+            prop(m.key === false ? null : (m.key || PD_CONTROL_KEYS[m.k]), x, z, m, null);
+        }
+        else if (m.k === 'prop') prop(m.key, x, z, m, m.show);
+        else if (m.k === 'act') { counter(m, x, z, { proc: 'pd_act', pdAct: m }); prop(m.key, x, z, m, m.show); }
+        else if (m.k === 'take') {
+            const show = { not: { has: m.item } };
+            counter(Object.assign({ label: 'THE KEY', verb: 'TAKE' }, m, { show }), x, z, { proc: 'pd_act', pdAct: Object.assign({ give: m.item, say: 'TAKEN' }, m) });
+            prop(m.key || 'key', x, z, Object.assign({ y3: 1.0 }, m), show);
+            draw.push({ k: 'box', id: 'stand_' + m.item, x, z, y: 0, w: 0.7, d: 0.7, h: 0.95, tex: S0.trim || wallTex, tu: 0.5, tv: 0.6, block: true });
+        }
+        else if (m.k === 'gate') {
+            const gv = 'gate_' + (m.id || 'a'), show = m.auto ? { not: m.needs } : { not: { var: gv } };
+            let g;
+            if (m.side) g = pdEdgeBox(m.side, 0, SQ * 2, (m.inset != null ? m.inset : 0.5) * SQ, 0.2, {});
+            else g = { k: 'box', x, z, w: m.ax === 'z' ? 0.2 : (m.w || 2) * SQ, d: m.ax === 'z' ? (m.w || 2) * SQ : 0.2 };
+            draw.push(Object.assign(g, { k: 'bars', id: gv, y: m.y3 || 0, h: Math.min(4, h - (m.y3 || 0)), show, block: true }));
+            if (!m.auto) {
+                const sg = m.side ? pdSideGeo(m.side) : { nx: 0, nz: 0 };
+                counter(Object.assign({ label: 'THE GATE', verb: 'OPEN', r: 4.2 }, m, { show }), g.x + sg.nx * 1.2, g.z + sg.nz * 1.2, { proc: 'pd_act', pdAct: { needs: m.needs, no: m.no || 'LOCKED', set: { [gv]: true }, say: m.say || 'THE GATE OPENS' } });
+            }
+        }
+        else if (m.k === 'fight') counter(Object.assign({ label: 'ENEMIES', verb: 'FIGHT', r: 5 }, m, { show: { not: { fight: m.id } } }), x, z, { proc: 'pd_act', pdAct: { fight: m.id, enemies: m.enemies || [], needs: m.needs, no: m.no, say: m.say || 'THE WAY IS CLEAR' } });
+        else if (m.k === 'exit') room.pdExit = { x, z, r: m.r || 2.5 };
+        else if (m.k === 'trace') {
+            const sz = m.size || 0.25, lit = m.lit || { net: m.layer, from: m.src, to: [plotId] };
+            for (let i = 1; i < (m.pts || []).length; i++) {
+                const a = m.pts[i - 1], b = m.pts[i], ax = pdM(a[0]), az = pdM(a[1]), bx = pdM(b[0]), bz = pdM(b[1]);
+                draw.push({ k: 'box', id: 'tr_' + (m.layer || '') + draw.length, x: (ax + bx) / 2, z: (az + bz) / 2, y: m.y3 != null ? m.y3 : 0.03, w: Math.abs(bx - ax) + sz, d: Math.abs(bz - az) + sz, h: m.th || 0.08,
+                    color: m.dark != null ? m.dark : 0x20262a, glow: m.color != null ? m.color : 0x7dff9a, lit, block: !!m.block });
+            }
+        }
+        else if (m.k === 'lamp') {
+            draw.push({ k: 'box', id: 'lamp_post' + draw.length, x, z, y: 0, w: 0.16, d: 0.16, h: m.h || 2.4, color: 0x2a2f33 });
+            draw.push({ k: 'box', id: 'lamp' + draw.length, x, z, y: m.h || 2.4, w: 0.55, d: 0.55, h: 0.55, color: 0x30363a, glow: m.color != null ? m.color : 0x7dff9a, lit: m.lit || null });
+        }
+        else if (m.k === 'box') draw.push(Object.assign({}, m, { k: 'box', x, z, y: m.y3 || 0 }));
+        else if (m.k === 'rail') features.push(Object.assign({ k: 'rail', x0: pdM(m.x0), z0: pdM(m.y0), x1: pdM(m.x1), z1: pdM(m.y1) }, m.model ? { model: m.model } : null));
+        else room.pdMarks.push(Object.assign({}, m, { mx: x, mz: z }));
+    });
+    /* a token (a guardian that is sent from stop to stop): its body stands at this plot's stop while the token is here */
+    Object.keys(V.L.tokens || {}).forEach(tk => {
+        const T = V.L.tokens[tk], st = (T.stops || {})[plotId]; if (!st || !T.key) return;
+        room.props.push({ key: T.key, x: pdM(st.x), z: pdM(st.y), rot: st.rot || 0, pd: { show: { var: 'tok_' + tk, eq: plotId } } });
+    });
+    return room;
+}
+/* every level's rooms into DOOR_HQ.rooms and its zone into HQ_WORLD (once, at load; pdSync keeps the zone live after) */
+let _pdInstalled = false;
+function pdInstall() {
+    if (_pdInstalled || typeof DOOR_HQ === 'undefined' || !DOOR_HQ.rooms || typeof HQ_WORLD === 'undefined') return false;
+    _pdInstalled = true;
+    const V = pdLevels();
+    Object.keys(V).forEach(id => {
+        const L = V[id].L, zone = V[id].zone, parts = {};
+        Object.keys(L.plots || {}).forEach(pid => { const rid = pdRoomId(id, pid), def = pdRoomDef(id, pid); if (def) { DOOR_HQ.rooms[rid] = def; } });
+        HQ_WORLD.zones[zone] = { label: V[id].L.title || V[id].T.label, ground: 'pd', hub: pdRoomId(id, L.entry), sky: null, clock: false, pd: id, parts, joins: [] };
+        if (HQ_STAGE_RULES.zones.indexOf(zone) < 0) HQ_STAGE_RULES.zones.push(zone);
+        pdSync(id);
+    });
+    if (!HQ_WORLD.grounds.pd) HQ_WORLD.grounds.pd = { label: 'PLOT DUNGEONS', note: 'the puzzle dungeons: each level its own stage of 42 m plots' };
+    return true;
+}
+/* the live board written into the level's zone: every placed plot's frame, and the joins of the walked layers (kind 'hall', the
+   port's 7 m span). The world index and the stage's caches are dropped so the stage's own readers see it. */
+function pdSync(id) {
+    const V = pdLevel(id), Z = V && HQ_WORLD.zones[V.zone]; if (!Z) return false;
+    const S = pdState(id), parts = {}, half = PD_RULES.sq;
+    Object.keys(V.L.plots || {}).forEach(pid => {
+        const F = pdFrame(S, pid);
+        /* a plot that stands in no slot (a variant waiting to be swapped in) is parked far under the board, never joined */
+        parts[pdRoomId(id, pid)] = F ? { x: F.x, z: F.z, y: 0, rot: F.rot } : { x: 0, z: 0, y: -400, rot: 0, pdOff: true };
+    });
+    Z.parts = parts;
+    Z.joins = pdJoins(id, S).map(j => ({ a: pdRoomId(id, j.a), b: pdRoomId(id, j.b), side: j.side, span: [-half, half], kind: 'hall', pdLayer: j.layer, y: j.layer === 'upper' ? PD_RULES.upperM : 0 }));
+    _pdJC = null;
+    _hqWorldIdx = null;
+    if (typeof _hqStageNearbyCache !== 'undefined') Object.keys(_hqStageNearbyCache).forEach(k => { if (k.indexOf('pd_' + id + '_') === 0) delete _hqStageNearbyCache[k]; });
+    return true;
+}
+/* every OTHER placed plot of a plot's level: the stage draws the whole board at all times (the vacancy, the exit seen across the
+   board, a plot sliding far from you), joined or not → [roomId] */
+function pdBesideRooms(roomId) {
+    const o = pdOfRoom(roomId); if (!o) return [];
+    return Object.keys(pdLevel(o.level).L.plots).map(p => pdRoomId(o.level, p)).filter(r => r !== roomId && DOOR_HQ.rooms[r]);
+}
+pdInstall();
+/* PD-END */
 if (typeof window !== 'undefined') {
     window.DOOR_HQ = DOOR_HQ;
+    /* THE PLOT DUNGEONS */
+    window.PD_RULES = PD_RULES; window.PD_DUNGEONS = PD_DUNGEONS; window.PD_LOOKS = PD_LOOKS; window.pdLevels = pdLevels; window.pdLevel = pdLevel; window.pdRoomId = pdRoomId; window.pdOfRoom = pdOfRoom;
+    window.pdPlot = pdPlot; window.pdSlotXZ = pdSlotXZ; window.pdPlotPorts = pdPlotPorts; window.pdNewState = pdNewState; window.pdState = pdState; window.pdSetState = pdSetState; window.pdSlotOf = pdSlotOf;
+    window.pdJoins = pdJoins; window.pdNet = pdNet; window.pdCheck = pdCheck; window.pdMoves = pdMoves; window.pdApplyMove = pdApplyMove; window.pdFrame = pdFrame; window.pdWhere = pdWhere; window.pdMoveBlocked = pdMoveBlocked;
+    window.pdSync = pdSync; window.pdInstall = pdInstall; window.pdSideOnBoard = pdSideOnBoard; window.pdSideInPlot = pdSideInPlot; window.pdM = pdM; window.pdDoAct = pdDoAct; window.pdGrow = pdGrow; window.pdCheck = pdCheck; window.pdBesideRooms = pdBesideRooms;
     window.DOOR_ROSTER_LINES = DOOR_ROSTER_LINES;
     window.DOOR_ROSTER_CRYPTIDS = DOOR_ROSTER_CRYPTIDS;
     window.hqRosterLines = hqRosterLines;
