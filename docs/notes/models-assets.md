@@ -1699,7 +1699,7 @@ mondo: "now how do we put these models both in the character creator and in the 
   (wear ×1.25, hair ×1.44, mpfb ×1.51, PSX Mega Pack ×1.50, elbolilloduro ×1.35). The rest were kept (under 5 % gain: mostly JPEG
   texture files like hq/models, top_fangs). eagle.glb is a zip, not a GLB (eagle_rigged.glb is the one used).
 - R2 `Assets/opt/<sha8>_<name>.opt.glb`; ASSET_MANIFEST.json rows for each copy + its original (+710 originals) + `alt`. Token
-  `20261114-optall01-cors`.
+  `20261114-optall02-cors`.
 - Proof: a bare three r128 page drew 9 originals vs copies (hair, mpfb body, wear helmet + beard, PSX box + armchair, 6twelve store,
   Meshy apple, retro tree): 0 pixels differ (`/mnt/project-files/optimize-models/original_vs_optimized.png`). Gotcha seen there: GLTFLoader's
   mesh order changes from one load to the next (async), so two see-through meshes at the same spot (hair + scalp) can swap draw order
