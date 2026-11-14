@@ -2566,6 +2566,13 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
   the roof flight there now stands on the hotel's roof slab. props.js `INDOOR` (a WeakSet a district adds its indoor rows to): the prop check
   does not report them for standing inside their own building, only against the inside's own pieces and other props. NO REAL LIGHTS inside
   (the city has no light rows; lamps are glowing parts): the halls are as bright as the engine's walk-in buildings are.
+- **THE BEDROOMS (mondo 11-14 02:21, the residents' brief `/mnt/project-files/disaster-city-residents/bedrooms-brief.md`).** The four
+  Bankers' terraces (P11-00-B2 Goblin, P10-01-B2 Men in black, P11-02-B2 Spy, P09-03-B2 General + Time cop) are walk-in homes: F.js
+  `terrace` makes the row hollow (one storey inside, the first house's door = the city door, the other houses keep drawn doors); F-inside.js
+  `home(beds)` = the two back rows a bedroom behind a wall with one whole square open (a `psx_bed_*` a resident on the back row, a
+  wardrobe), the front room with the door's column clear. The Politician sleeps in the HOTEL after all (P08-00-B1 is a walk-in since THE
+  INSIDES): a walled room two squares by two in the lobby's front corner, `psx_bed_2`. The Halfdemon: the Penthouse stair lobby's end column
+  behind a wall, `royal_bed`. The residents' code finds any /bed|cot/ prop inside the home's footprint.
 - THE GIANT APE (mondo 11-13 19:25: "put king kong in the district with the most high rises or tall buildings"): Financial (5 to 11 storeys). S.js `build` pushes him to `ctx.npcSpots` (new in the bake hook: a district's people, written to the room's `npcSpots`) at (173.25, -92.75), the open ground at the foot of the Penthouse stair tower (P10-03), with his own line from the old streets.
 
 ## DISASTER CITY, THE UNIVERSITY DISTRICT (2026-11-13, the University thread; mondo's OK 19:24)

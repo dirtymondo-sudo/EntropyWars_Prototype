@@ -96,18 +96,23 @@ module.exports = {
         /* ── the repeating kinds (mondo: "its also okay to make the more reptitive buildings look similar like apartments") ── */
         /* the bankers' terrace: brick houses under slate roofs, stone base, stoops, dormers, a stack each */
         const terrace = (id, n, tints) => {
-            const T = frame(id, { st: 3 }); if (!T) return; T.kind = 'terrace'; T.n = n; const P = [], hw = T.W / n, D = T.D;
+            /* THE BEDROOMS (mondo 11-14 02:21): the terrace is a walk-in home (one hall, a storey high inside); its first house's door is the city door */
+            const r0 = rowOf(id); if (!r0) return; const hw0 = r0.w / n, L0 = r0.w - 0.12, cw0 = L0 / Math.round(L0 / 1.75), dcol = Math.round((-r0.w / 2 + hw0 * 0.28 + L0 / 2) / cw0) + 1;
+            const T = frame(id, { st: 1, hollow: true, door: dcol, leaf: 'leaf_office' }); if (!T) return; T.kind = 'terrace'; T.n = n; const P = [], hw = T.W / n, D = T.D;
             for (let i = 0; i < n; i++) {
-                const x = -T.W / 2 + hw * (i + 0.5), H = 10.5 + (i % 2) * 0.6, dc = [0x8a3a30, 0x2f5a48, 0x30405a][i % 3];
-                P.push(box(x, 0, 0, hw + 0.04, H, D + 0.1, i % 2 ? BR3 : BR1, tints[i % tints.length], { top: false }));
-                P.push(box(x, 0, 0, hw + 0.06, 1.3, D + 0.3, STONE, 0xbdb6a8));
+                const x = -T.W / 2 + hw * (i + 0.5), H = 10.5 + (i % 2) * 0.6, dc = [0x8a3a30, 0x2f5a48, 0x30405a][i % 3], key = i % 2 ? BR3 : BR1, tint = tints[i % tints.length], own = !i;
+                const fc = 'b' + (i === 0 ? 'l' : '') + (i === n - 1 ? 'r' : '');   // (no party walls drawn through the walked hall)
+                P.push(box(x, 0, 0, hw + 0.04, H, D + 0.1, key, tint, { top: false, faces: fc }), quad(x, 0, D / 2 + 0.05, hw + 0.04, H, 0, key, tint, own ? { hole: [T.lx - x, T.cw, 2.2] } : {}));
+                P.push(box(x, 0, 0, hw + 0.06, 1.3, D + 0.3, STONE, 0xbdb6a8, { faces: fc, top: false }));
+                if (own) { const a = x - hw / 2 - 0.03, b = T.lx - T.cw / 2 - 0.02, c = T.lx + T.cw / 2 + 0.02, e = x + hw / 2 + 0.03; if (b - a > 0.05) P.push(quad((a + b) / 2, 0, D / 2 + 0.15, b - a, 1.3, 0, STONE, 0xbdb6a8)); P.push(quad((c + e) / 2, 0, D / 2 + 0.15, e - c, 1.3, 0, STONE, 0xbdb6a8)); }
+                else P.push(quad(x, 0, D / 2 + 0.15, hw + 0.06, 1.3, 0, STONE, 0xbdb6a8));
                 wins(P, 'fb', x, 3.6, 0, hw, 3.5, D + 0.1, WIN, 0.8); wins(P, 'fb', x, 7.0, 0, hw, 3.5, D + 0.1, WIN, 0.8);
                 P.push(box(x, H, 0, hw + 0.2, 0.45, D + 0.7, STONE, 0xd8d0c0));
                 P.push(roof('hip', x, H + 0.45, 0, hw - 0.2, 3.0, D - 0.2, GUN, SLATE));
                 P.push(box(x - hw * 0.2, H + 0.5, D / 2 - 1.4, 1.3, 1.5, 1.4, STONE, 0xd8d0c0), box(x + hw * 0.2, H + 0.5, D / 2 - 1.4, 1.3, 1.5, 1.4, STONE, 0xd8d0c0));
                 P.push(box(x + hw / 2 - 0.6, H, -D / 4, 0.9, 4.6, 0.9, BR3, 0xa07060));
-                P.push(box(x - hw * 0.22, 0, D / 2 + 0.75, 2.2, 0.35, 1.3, STONE, 0xbdb6a8));
-                fakeDoor(P, x - hw * 0.22, 0.35, D / 2 + 0.11, 0, DW, dc, 1.8, 2.6);
+                if (own) P.push(box(T.lx - T.cw / 2 - 0.16, 0, D / 2 + 0.2, 0.3, 2.5, 0.3, STONE, 0xd8d0c0), box(T.lx + T.cw / 2 + 0.16, 0, D / 2 + 0.2, 0.3, 2.5, 0.3, STONE, 0xd8d0c0), box(T.lx, 2.22, D / 2 + 0.2, T.cw + 0.92, 0.3, 0.3, STONE, 0xd8d0c0));
+                else { P.push(box(x - hw * 0.22, 0, D / 2 + 0.75, 2.2, 0.35, 1.3, STONE, 0xbdb6a8)); fakeDoor(P, x - hw * 0.22, 0.35, D / 2 + 0.11, 0, DW, dc, 1.8, 2.6); }
                 P.push(quad(x + hw * 0.2, 1.4, D / 2 + 0.11, Math.min(1.8, hw * 0.34), 2.0, 0, GR, WHITE, { uv: [1.8, 2.0] }));
             }
             emit(T, P);

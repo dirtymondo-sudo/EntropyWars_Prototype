@@ -56,7 +56,25 @@ module.exports = function (K, A) {
     };
     const look = (T, keyIn, floorIn) => { if (keyIn) T.row.keyIn = keyIn; if (floorIn) T.row.floorIn = floorIn; };
 
+    /* THE BEDROOMS (mondo 11-14 02:21, the residents' brief): a bankers' terrace is one walk-in home. The bedroom is the two back rows behind
+       a wall with one whole square left open; a bed a resident on the back row (the residents' code finds any /bed|cot/ prop in the home),
+       a wardrobe; the front room keeps the door's column clear and has a sofa, a table and a kitchen counter down the far column. */
+    const home = beds => (T, g, I) => {
+        look(T, U('PlasterWallPainted1b'), 'wood_planks'); const H = 3.18, c = g.c, n = g.nx, zp = c(0, 1)[1] + 1.75, BED = ['psx_bed_4_1', 'psx_bed_5_2'];
+        I.partition(g.lw, zp, c(1, 0)[0] - 1.75, zp, H, U('PlasterWallPainted1b'), 0xe8e0d0); I.partition(c(1, 0)[0] + 1.75, zp, g.rw, zp, H, U('PlasterWallPainted1b'), 0xe8e0d0);
+        for (let k = 0; k < beds; k++) { const p = c(k * 2, 0); I.put(BED[k % 2], p[0], p[1], 'f'); I.put('psx_bedside_table_1', p[0] + 1.35, p[1] - 1.2, 'f'); I.put('table_lamp', p[0] + 1.35, p[1] - 1.2, 'f', { y: 0.66 }); }
+        const w = n > 3 ? c(n - 1, 0) : c(0, 1); I.put('psx_wardrobe_mp_1', w[0], w[1], n > 3 ? 'f' : 'r');
+        I.put('rug_round', c(1, 0)[0] + 0.9, c(1, 0)[1] + 1.2, 'f'); I.put('potted_plant', g.rw - 0.5, zp - 0.5, 'f');
+        const e = n - 1;
+        I.put('psx_dinner_table_1', c(e, 2)[0], c(e, 2)[1], 'f'); I.put('psx_chair_mp_1', c(e, 2)[0] - 1.25, c(e, 2)[1] + 0.9, 'r');
+        I.put('psx_sofa_3', c(e, 3)[0], c(e, 3)[1], 'l'); I.put('rug_office', c(e - 1, 3)[0] + 0.9, c(e - 1, 3)[1] + 0.8, 'f'); I.put('globe_lamp', g.rw - 0.5, c(e, 3)[1] + 1.75, 'f');
+        I.counter(c(e, 4)[0], c(e, 4)[1], 3.3, false, { tint: 0xe8e0d0, key: U('PlasterWallPainted1a'), topTint: 0x40444a, top: null }); I.put('mini_fridge', c(e, 4)[0] - 1.2, g.fw - 0.45, 'b', { y: 1.13 });
+        if (n > 3) { I.put('library_shelf_full', c(e - 2, 2)[0], zp + 0.75, 'f'); I.put('psx_armchair_1', c(e - 1, 4)[0] + 0.9, c(e - 1, 4)[1] + 0.8, 'b'); }
+        I.put('office_plant', g.lw + 0.5, zp + 0.5, 'f');
+        I.ceilLamp(c(1, 0)[0], c(0, 0)[1] + 1.75, H); I.ceilLamp(c(Math.min(e, 1), 3)[0], c(0, 3)[1], H, n > 3 ? 2 : 1, [7, 0, 0]);
+    };
     const INS = {
+        'P11-00-B2': home(1), 'P10-01-B2': home(1), 'P11-02-B2': home(1), 'P09-03-B2': home(2),
         /* 1. THE HOTEL LOBBY (8 x 8, 6.7 m high): reception across the back between the lifts and the stair door, a lounge with the piano on
               one side, the bar down the other, two dining tables by the front */
         'P08-00-B1': (T, g, I) => {
@@ -72,7 +90,13 @@ module.exports = function (K, A) {
             for (const j of [2, 3, 4]) I.put('tulip_chair', c(6, j)[0] + 1.15, c(6, j)[1] + 0.9, 'r');
             for (const p of [c(6, 6), c(7, 7)]) { I.put('tulip_table', p[0], p[1], 'f'); I.put('tulip_chair', p[0] - 0.9, p[1] - 0.9, 'r'); I.put('tulip_chair', p[0] + 0.9, p[1] + 0.9, 'l'); }
             I.chandelier(0, 0, H, 1.6, 1.5); I.chandelier(-7, 5, H, 1.2, 0.9); I.chandelier(7, 5, H, 1.2, 0.9);
-            I.put('palm_tree', g.lw + 0.6, g.fw - 0.6, 'f', { h: 2.6 }); I.put('palm_tree', g.rw - 0.6, g.bw + 0.9, 'f', { h: 2.6 }); I.put('potted_plant', c(2, 7)[0] + 1.2, g.fw - 0.5, 'f'); I.put('potted_plant', c(5, 7)[0] + 1.2, g.fw - 0.5, 'f');
+            /* THE POLITICIAN'S ROOM (the residents' brief: "a hotel room is fine"): the front corner, two squares by two, walled to 3.2 m under a lid, a whole square left open as its door */
+            { const x1 = c(1, 0)[0] + 1.75, z0 = c(0, 6)[1] - 1.75, RW = U('PlasterWallPainted1b');
+              I.partition(g.lw, z0, x1, z0, 3.2, RW, 0xe8dcc8); I.partition(x1, c(0, 7)[1] - 1.75, x1, g.fw, 3.2, RW, 0xe8dcc8);
+              I.Q.push(box((g.lw + x1) / 2, 3.2, (z0 + g.fw) / 2, x1 - g.lw + 0.2, 0.15, g.fw - z0 + 0.2, RW, 0xe8dcc8, { under: true }), box(x1, 2.3, c(0, 6)[1], 0.2, 0.9, 3.5, RW, 0xe8dcc8));
+              I.put('psx_bed_2', c(0, 7)[0], c(0, 7)[1], 'r'); I.put('psx_bedside_table_1', c(0, 7)[0] - 1.2, c(0, 7)[1] - 1.4, 'r'); I.put('table_lamp', c(0, 7)[0] - 1.2, c(0, 7)[1] - 1.4, 'r', { y: 0.66 });
+              I.put('psx_wardrobe_mp_1', c(0, 6)[0], c(0, 6)[1], 'f'); I.put('rug_round', c(1, 7)[0] - 0.7, c(1, 7)[1] - 0.9, 'f'); I.Q.push(box(c(0, 7)[0], 3.0, c(0, 7)[1], 0.5, 0.12, 0.5, null, LAMP, { glow: 1 })); }
+            I.put('palm_tree', c(2, 7)[0] - 1.2, g.fw - 0.6, 'f', { h: 2.6 }); I.put('palm_tree', g.rw - 0.6, g.bw + 0.9, 'f', { h: 2.6 }); I.put('potted_plant', c(2, 7)[0] + 1.2, g.fw - 0.5, 'f'); I.put('potted_plant', c(5, 7)[0] + 1.2, g.fw - 0.5, 'f');
             I.Q.push(quad(T.lx, 0.04, c(4, 6)[1], 2.4, 6.6, 0, null, 0xa01828, { flat: true }));
         },
         /* 3. THE GOBLIN BANK (6 x 6 squares and a strip each side, 13.7 m high): a teller line across the hall with a two-square gate, the
@@ -168,7 +192,10 @@ module.exports = function (K, A) {
             look(T, U('PlasterWallStucco1a'), U('TileMarble3a')); const H = 3.18, c = g.c;
             I.counter(c(1, 0)[0], c(1, 0)[1], 2.6, false, { tint: 0x6a3a28, topTint: 0xf0e8d8 }); I.put('desk_lamp', c(1, 0)[0] - 0.8, c(1, 0)[1], 'f', { y: 1.13 }); I.put('office_chair', c(1, 0)[0], c(1, 0)[1] - 1.0, 'f');
             I.Q.push(box(c(0, 0)[0], 0.9, g.bw + 0.1, 2.8, 1.3, 0.2, ALU, 0xb8bcc0), box(c(0, 0)[0] - 1.2, 0.98, g.bw + 0.21, 0.5, 0.26, 0.02, null, IRON, { n: 5, step: [0.6, 0, 0] }), box(c(0, 0)[0] - 1.2, 1.4, g.bw + 0.21, 0.5, 0.26, 0.02, null, IRON, { n: 5, step: [0.6, 0, 0] }), box(c(0, 0)[0] - 1.2, 1.82, g.bw + 0.21, 0.5, 0.26, 0.02, null, IRON, { n: 5, step: [0.6, 0, 0] }));
-            I.lift(c(3, 0)[0], g.bw + 0.03, 0);
+            I.lift(c(2, 0)[0], g.bw + 0.03, 0);
+            /* THE HALFDEMON'S BEDROOM (the residents' brief, 11-14): the end column behind a wall, its front square left open as the way in; a royal bed on the back square */
+            { const x0 = c(3, 0)[0] - 1.75, RW = U('PlasterWallStucco1a'); I.partition(x0, g.bw, x0, c(3, 1)[1] + 1.75, H, RW, 0xd8c8b8);
+              I.put('royal_bed', c(3, 0)[0], c(3, 0)[1], 'f'); I.put('psx_bedside_table_1', c(3, 0)[0] - 1.3, c(3, 0)[1] + 1.3, 'f'); I.put('table_lamp', c(3, 0)[0] - 1.3, c(3, 0)[1] + 1.3, 'f', { y: 0.66 }); I.put('rug_round', c(3, 1)[0] - 0.5, c(3, 1)[1] + 0.7, 'f'); }
             I.put('psx_sofa_3', c(0, 1)[0], c(0, 1)[1], 'r'); I.put('rug_round', c(1, 1)[0] - 0.8, c(1, 1)[1] + 1.0, 'f'); I.put('coffee_table', c(1, 1)[0] - 0.8, c(1, 1)[1] + 1.0, 'f');
             I.put('potted_plant', g.lw + 0.5, g.fw - 0.5, 'f'); I.put('potted_plant', g.rw - 0.5, g.fw - 0.5, 'f'); I.put('globe_lamp', g.rw - 0.5, c(3, 1)[1] + 0.9, 'f');
             I.chandelier(0, c(0, 1)[1], H, 0.3, 0.7);
