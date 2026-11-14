@@ -2753,6 +2753,13 @@ glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the 
   specimen_shelf, therapy_chaise, wheelchair. Pack check first: the Molten orrery is sci-fi, no pack has a microscope / fume hood / IV
   stand / skeleton / wheelchair / chaise / stanchion.
 - **THE DEEPER HANGAR (2026-11-13, mondo 21:21 "make hangar deeper so it fits")**: `I.js` `fit` grows P03-10-B1 one square forward onto the walk in front of it (in `build`, NOT `tailor`: changing the plan re-rolls the whole city's random dressing): 31.5 x 14 m, four squares deep, 7 m walls
+- **THE INDUSTRIAL INSIDES (2026-11-13, mondo "all okay" 22:25 on the grid plan):** all 11 Industrial walk-ins are furnished. Code: I.js `IN[id]` (one spec per room, written on
+  the room's own 3.5 m squares: i from the left wall, j from the front wall, j 0 = the door's row), `KIT` (the square fillers: truck, veh, desk, files, shelf, racks, lockers,
+  cont, crates, barrels, boiler, panel, tesla, bench, conv, counter, bigdesk, table, vend, seat, rocket, scope, dish, radio, chart, missile + turbine / pump / pipes built from
+  arch parts, no model exists) and `inside()` (called from the building loop). His grid rule: every `g` blocker fills whole squares and gets one ghost `wall` block per square;
+  `walls` are partitions on the lines between squares with one-square doorways; `decor` is off centre / on the walls. One arch row per room `ind:<id>:in`; props are
+  `floor:true`; `keyIn` / `floorIn` / `tintIn` set per room. The doorway square is asserted to be a walkway (else the room is left out with a console line). To change a room:
+  edit its `IN` row, `node bake-disaster-city.js`. Plans: /mnt/project-files/disaster-city-industrial/interiors_plan_1..3.jpg.
   under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. The street lamp on that square is taken off (`ctx.lamps`, the tool now writes its lamps line after the district build). Seen in the
   cloud browser from inside (as a 28 m long test build). INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.
 
