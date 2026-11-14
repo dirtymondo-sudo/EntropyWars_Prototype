@@ -1957,6 +1957,18 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE OUTS ON A REPLAY FRAME (2026-11-14, a bug shipped in #1391 / #1393, fixed the same day)
+
+three r186 `_projectObject` projects a BundleGroup's children ONLY when the bundle needs a new recording; on a replay frame it pushes the
+bundle and returns. So a piece that is out of the recording (`_ew_bunOut`: traffic cars, signals, movers, changers) was drawn on record
+frames only: with a still shell (0 re-records/s) the cars and signals were INVISIBLE. mondo's readout showed it: no `_ew_hqCar` /
+`_ew_hqSignal` draws in the scene pass. I had read "34 shell draws outside its bundle" in the cloud lens as proof; it was a record frame.
+- Fix: `_ewBunTick`'s walk collects the out pieces per group (`g._ew_bunOuts`); the `_projectObject` wrapper, when the group's recording
+  is current for this camera + context (`_ewBunCurrent`), projects them itself into the list the group was handed to (`_ewBunOutsDraw`).
+  A flag set / cleared by THE STILL WALK marks the group `_ew_bunDirty` so the quiet-group skip does not delay its walk.
+- Proof to use next time: wrap `onBeforeRender` of the out meshes and count per frame over replay frames (scratchpad outs.js).
+- Rule: before diverting anything out of a three code path, read whether three runs that path every frame.
+
 ## THE CHANGERS OUT (2026-11-14, the regression after THE MOVERS OUT)
 
 mondo's Mac on #1391: 11.2 fps (was 14.9), "1.9 re-records/s (values 1.9)", shell 2,802 draws "outside its bundle", bundles holding 881
