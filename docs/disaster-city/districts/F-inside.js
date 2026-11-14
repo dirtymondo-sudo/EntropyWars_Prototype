@@ -12,6 +12,7 @@
 const { INDOOR } = require('../props.js');
 module.exports = function (K, A) {
     const { box, cyl, dome, quad, STONE, ALU, GUN, WOOD, CONC, CORR2, U } = K, { local, props, features, lateRows } = A, WHITE = 0xffffff;
+    const atmos = require('./F-atmos.js')(K, A);   // THE SECOND PASS (2026-11-14): light, panelling and the Meshy pieces over each hall's first pass
     const r3 = v => Math.round(v * 1000) / 1000;
     const IRON = 0x24272c, LAMP = 0xffd890, BRASS = { gain: 1.5 }, GRILL = U('MetalSubwayGrill1a'), CR = 0xd8d0c0;
     /* the city's full squares inside a building, in its own frame */
@@ -210,5 +211,5 @@ module.exports = function (K, A) {
             I.Q.push(box(-7, 3.0, zf, 0.5, 0.1, 0.3, null, 0xd0a0ff, { glow: 0.8, n: 5, step: [3.5, 0, 0] }));
         },
     };
-    return T => { const f = INS[T.id]; if (!f || !T.row || !T.row.hollow) return; const I = ctx(T), g = grid(T), n0 = props.length; f(T, g, I); I.done(); if (process.env.DC_F_DEBUG) console.log('[inside]', T.id, 'rot', T.rot, g.nx + ' x ' + g.nz, 'X', g.X.join(','), 'Z', g.Z.join(','), 'bad', props.slice(n0).filter(p => !isFinite(p.x) || !isFinite(p.z)).map(p => p.key).join(',')); };
+    return T => { const f = INS[T.id]; if (!f || !T.row || !T.row.hollow) return; const I = ctx(T), g = grid(T), n0 = props.length; f(T, g, I); atmos(T, g, I, n0); I.done(); if (process.env.DC_F_DEBUG) console.log('[inside]', T.id, 'rot', T.rot, g.nx + ' x ' + g.nz, 'X', g.X.join(','), 'Z', g.Z.join(','), 'bad', props.slice(n0).filter(p => !isFinite(p.x) || !isFinite(p.z)).map(p => p.key).join(',')); };
 };
