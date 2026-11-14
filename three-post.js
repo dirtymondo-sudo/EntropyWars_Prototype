@@ -1305,7 +1305,6 @@ const ThreePost = (function () {
     var PIX_SCAN_MS = 400;      // re-tag newly spawned models a few times a second
     var _maskRT = null, _maskMatSkin = null, _maskMatStatic = null;
     var _maskW = 0, _maskH = 0, _maskScanAt = 0, _maskVec = null, _maskClearCol = null;
-    var _maskCamS = null;   // THE MASK'S OWN BUNDLES: the static pass's camera
     /* THE MASK SEES NEW MODELS AT ONCE (2026-11-05, mondo: "these crystals are not pixelating, or it looks like they are
        flickering on and off of being pixelated", the Singularity Arena on WebGPU): a mesh only reached the mask once the
        scan above tagged it, and the scan ran every PIX_SCAN_MS. The board's crystal clusters are rebuilt whenever the
@@ -1411,24 +1410,9 @@ const ThreePost = (function () {
                     sc.overrideMaterial = _maskMatSkin;
                     _renderer.render(sc, mc);
 
-                    /* THE MASK'S OWN BUNDLES (2026-11-14, mondo's Disaster City: 1958 of the frame's 3748 draws were this pass — every
-                       static model mesh one draw, a side render drawing every bundled group the classic way): on the node renderer
-                       the static pass draws through a camera of its own (a bundle is kept per group, camera and target, so it never
-                       replays the skinned pass's recording), and the walk's culled chunks (the prop plots, the closed rooms, the
-                       instance cells, the fence plots: three-renderer.js _ewBunSetup) replay their own mask recording. Off:
-                       window.EW_MASK_NO_BUNDLES */
-                    var mcS = mc;
-                    if (!panes && _renderer.isWebGPURenderer && !(typeof window !== 'undefined' && window.EW_MASK_NO_BUNDLES)) {
-                        if (!_maskCamS || _maskCamS.type !== mc.type) { _maskCamS = mc.clone(false); _maskCamS.matrixAutoUpdate = false; _maskCamS.matrixWorldAutoUpdate = false; }
-                        mcS = _maskCamS;
-                        ['near', 'far', 'fov', 'aspect', 'zoom', 'left', 'right', 'top', 'bottom', 'coordinateSystem'].forEach(function (k) { if (mc[k] !== undefined) mcS[k] = mc[k]; });
-                        mcS.matrix.copy(mc.matrixWorld); mcS.matrixWorld.copy(mc.matrixWorld); mcS.matrixWorldInverse.copy(mc.matrixWorldInverse);
-                        mcS.projectionMatrix.copy(mc.projectionMatrix); mcS.projectionMatrixInverse.copy(mc.projectionMatrixInverse);
-                        _renderer._ew_maskBun = true;
-                    }
-                    mcS.layers.set(PIX_LAYER_STATIC);
+                    mc.layers.set(PIX_LAYER_STATIC);
                     sc.overrideMaterial = _maskMatStatic;
-                    try { _renderer.render(sc, mcS); } finally { _renderer._ew_maskBun = false; }
+                    _renderer.render(sc, mc);
                     /* THE GRASS TAKES NO INK: the grass field once more (the one mesh, drawn alone), its own material writing each tuft's
                        view depth (green + blue) in place of its colour (three-renderer.js _ggMaskU); the bodies' depth above hides a tuft behind one */
                     var gmU = _styleGrassU();
