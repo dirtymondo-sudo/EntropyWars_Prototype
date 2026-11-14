@@ -131,6 +131,8 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
   `<name>.opt.glb` (meshopt + WebP, NO quantize: r128 reads it raw on the CPU) beside each GLB; `npm run manifest --
   <bucket mirror>` writes ASSET_MANIFEST.json ([bytes, sha] per bucket path). The game loads a listed `.opt.glb` in place
   of its original and fetches every listed file as `?h=<sha>`. Notes: docs/notes/models-assets.md "THE ASSETS".
+  `--lossless` (2026-11-14): byte-exact repack (meshopt in place + PNG→lossless WebP, verified) — the one for creator data files;
+  notes models-assets.md "THE LOSSLESS PASS".
   Phase 10: `--lod` also bakes `<name>.lod1.glb` / `.lod2.glb` (geometry only) that the game draws far off.
   Phase 11 (the smooth attach: sliced build, compile warm-up, static batch, bitmaps): notes in
   rendering-loading-perf.md "THE SMOOTH ATTACH".

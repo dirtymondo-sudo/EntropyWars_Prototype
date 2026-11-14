@@ -13,6 +13,9 @@
 //     npm run optimize -- <dir> --ktx2             # the textures as KTX2 / Basis (RENDERER_PLAN R3) instead of WebP:
 //                                                  #   they stay compressed ON the GPU (4-8x less video memory)
 //     npm run optimize -- <dir> --ktx2 uastc       # every texture UASTC (sharper, ~5x bigger download than etc1s)
+//     npm run optimize -- <dir> --lossless         # THE LOSSLESS REPACK (2026-11-14): the file exactly as it is once decoded
+//                                                  #   (meshopt on the views in place, PNG → lossless WebP, pixel- and byte-checked);
+//                                                  #   the one for the creator's data files and anything whose look must not move
 //     npm run optimize -- <mirror>/Assets --flat <mirror>/Assets/opt --root <mirror>
 //                                                  # every result in ONE folder (one upload), named <hash>_<name>.opt.glb,
 //                                                  #   plus alt.json there: { "<original bucket path>": "<copy's bucket path>" }
@@ -78,7 +81,7 @@ function walk(p, out) {
 function mb(n) { return (n / 1048576).toFixed(n < 10485760 ? 2 : 1) + ' MB'; }
 
 function parseArgs(argv) {
-    const o = { inputs: [], out: null, size: 2048, force: false, dry: false, check: false, lod: false, ktx2: null, flat: null, root: null };
+    const o = { inputs: [], out: null, size: 2048, force: false, dry: false, check: false, lod: false, ktx2: null, flat: null, root: null, lossless: false };
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === '--out') o.out = argv[++i];
@@ -87,6 +90,7 @@ function parseArgs(argv) {
         else if (a === '--dry-run') o.dry = true;
         else if (a === '--check') o.check = true;
         else if (a === '--lod') o.lod = true;
+        else if (a === '--lossless') o.lossless = true;
         else if (a === '--flat') o.flat = argv[++i];
         else if (a === '--root') o.root = argv[++i];
         else if (a === '--ktx2') o.ktx2 = /^(etc1s|uastc)$/i.test(argv[i + 1] || '') ? argv[++i].toLowerCase() : 'etc1s';
@@ -188,6 +192,170 @@ async function optimizeOne(D, io, src, dst, size, ktx2) {
     }
     const bytes = await io.writeBinary(doc);
     return Buffer.from(bytes);
+}
+
+/* ══ THE LOSSLESS REPACK (--lossless, 2026-11-14, mondo: "make optimized versions of all of the glbs that dont have one yet") ══
+   The same file, byte for byte once decoded: no gltf-transform round trip (it interleaves, pads a 3-byte attribute to 4 —
+   three then hands the game an InterleavedBufferAttribute whose .array is not the attribute — reorders vertices, dedups
+   and prunes accessors the creator's data files reach by range or by vertex). Every bufferView keeps its place, its stride
+   and its accessors; only its BYTES are stored smaller:
+   - a vertex / animation / matrix view whose stride is a multiple of 4: EXT_meshopt_compression ATTRIBUTES, filter NONE
+     (the meshopt byte codec: lossless); an index view (u16 / u32): INDICES (the plain sequence codec: the triangle list
+     comes back in the same order, not even rotated). Anything else (a 3- or 6-byte custom attribute of the creator's
+     clothes, a u8 index, a view two kinds of accessor share) stays as it is.
+   - a PNG texture: WebP LOSSLESS (`exact`: the colour under a clear pixel kept too), kept only when every pixel decodes
+     back identical and it is smaller; a 16-bit or colour-profiled PNG stays PNG. A JPEG stays the same JPEG (re-coding a
+     JPEG either loses or grows).
+   - a file that is already compressed (meshopt, Draco, WebP, KTX2) or keeps its data outside the GLB is left alone.
+   losslessVerify() decodes the result with meshoptimizer's own decoder and compares every view and every texture's pixels
+   to the original; main() writes nothing that fails it. */
+const LL_SKIP_EXT = /^(EXT_meshopt_compression|KHR_draco_mesh_compression|EXT_texture_webp|KHR_texture_basisu|EXT_texture_avif)$/;
+function glbParse(buf) {
+    if (buf.length < 20 || buf.readUInt32LE(0) !== 0x46546C67 || buf.readUInt32LE(16) !== 0x4E4F534A) return null;
+    const jl = buf.readUInt32LE(12), json = JSON.parse(buf.slice(20, 20 + jl).toString('utf8'));
+    let bin = null, o = 20 + jl;
+    if (o + 8 <= buf.length && buf.readUInt32LE(o + 4) === 0x004E4942) bin = buf.slice(o + 8, o + 8 + buf.readUInt32LE(o));
+    return { json, bin };
+}
+function glbWrite(json, bin) {
+    let js = Buffer.from(JSON.stringify(json), 'utf8');
+    if (js.length % 4) js = Buffer.concat([js, Buffer.alloc(4 - js.length % 4, 0x20)]);
+    if (bin && bin.length % 4) bin = Buffer.concat([bin, Buffer.alloc(4 - bin.length % 4)]);
+    const total = 12 + 8 + js.length + (bin ? 8 + bin.length : 0), h = Buffer.alloc(12), jh = Buffer.alloc(8);
+    h.writeUInt32LE(0x46546C67, 0); h.writeUInt32LE(2, 4); h.writeUInt32LE(total, 8);
+    jh.writeUInt32LE(js.length, 0); jh.writeUInt32LE(0x4E4F534A, 4);
+    const parts = [h, jh, js];
+    if (bin) { const bh = Buffer.alloc(8); bh.writeUInt32LE(bin.length, 0); bh.writeUInt32LE(0x004E4942, 4); parts.push(bh, bin); }
+    return Buffer.concat(parts);
+}
+const LL_COMP = { 5120: 1, 5121: 1, 5122: 2, 5123: 2, 5125: 4, 5126: 4 }, LL_NUM = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT2: 4, MAT3: 9, MAT4: 16 };
+/* what reads each bufferView: { sizes: Set of element sizes, idx: used as primitive indices, other: used otherwise, offs: [byteOffset...] } */
+function llViewUse(json) {
+    const use = (json.bufferViews || []).map(() => ({ sizes: new Set(), idx: false, other: false, offs: [] }));
+    const idxAcc = new Set();
+    (json.meshes || []).forEach(m => (m.primitives || []).forEach(p => { if (p.indices != null) idxAcc.add(p.indices); }));
+    (json.accessors || []).forEach((a, ai) => {
+        if (a.bufferView != null && use[a.bufferView]) {
+            const u = use[a.bufferView]; u.sizes.add((LL_COMP[a.componentType] || 0) * (LL_NUM[a.type] || 0)); u.offs.push(a.byteOffset || 0);
+            if (idxAcc.has(ai)) u.idx = true; else u.other = true;
+        }
+        if (a.sparse) {   // the sparse side views: read as their own element sizes
+            const si = a.sparse.indices, sv = a.sparse.values;
+            if (si && use[si.bufferView]) { use[si.bufferView].sizes.add(LL_COMP[si.componentType] || 0); use[si.bufferView].offs.push(si.byteOffset || 0); use[si.bufferView].idx = true; }
+            if (sv && use[sv.bufferView]) { use[sv.bufferView].sizes.add((LL_COMP[a.componentType] || 0) * (LL_NUM[a.type] || 0)); use[sv.bufferView].offs.push(sv.byteOffset || 0); use[sv.bufferView].other = true; }
+        }
+    });
+    return use;
+}
+async function losslessOne(D, buf) {
+    const { mo, sharp } = D;
+    const g = glbParse(buf);
+    if (!g) return { skip: 'not a GLB' };
+    const J = JSON.parse(JSON.stringify(g.json)), bin = g.bin;
+    const used = (J.extensionsUsed || []).filter(e => LL_SKIP_EXT.test(e));
+    if (used.length) return { skip: 'already compressed (' + used.join(', ') + ')' };
+    if ((J.buffers || []).length !== 1 || J.buffers[0].uri != null || !bin) return { skip: 'data outside the GLB' };
+    if ((J.images || []).some(im => im.uri != null)) return { skip: 'a texture outside the GLB' };
+    const views = J.bufferViews || [], use = llViewUse(J);
+    const imgView = new Map();
+    (J.images || []).forEach((im, i) => { if (im.bufferView != null) imgView.set(im.bufferView, i); });
+    /* the textures: PNG → lossless WebP, pixel-checked */
+    const newImg = new Map(), webpImgs = new Set();
+    for (const [bv, ii] of imgView) {
+        const im = J.images[ii]; if (im.mimeType !== 'image/png') continue;
+        const v = views[bv], src = bin.slice(v.byteOffset || 0, (v.byteOffset || 0) + v.byteLength);
+        let meta; try { meta = await sharp(src).metadata(); } catch (e) { continue; }
+        if (meta.depth !== 'uchar' || meta.hasProfile || meta.icc) continue;
+        let out; try { out = await sharp(src).webp({ lossless: true, exact: true, effort: 4 }).toBuffer(); } catch (e) { continue; }
+        if (out.length > src.length * (1 - MIN_GAIN)) continue;
+        const a = await sharp(src).ensureAlpha().raw().toBuffer({ resolveWithObject: true }), b = await sharp(out).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+        if (a.info.width !== b.info.width || a.info.height !== b.info.height || Buffer.compare(a.data, b.data) !== 0) continue;
+        newImg.set(bv, out); webpImgs.add(ii);
+    }
+    /* the views: meshopt where it is exact, else the same bytes */
+    const pieces = [], fbIdx = J.buffers.length;
+    let fbLen = 0, mopt = 0;
+    for (let i = 0; i < views.length; i++) {
+        const v = views[i], off = v.byteOffset || 0, raw = bin.slice(off, off + v.byteLength);
+        if (newImg.has(i)) { pieces.push({ i, data: newImg.get(i) }); continue; }
+        if (imgView.has(i) || v.extensions) { pieces.push({ i, data: raw }); continue; }
+        const u = use[i];
+        let mode = null, stride = 0;
+        if (u.sizes.size === 1 && !(u.idx && u.other)) {
+            const es = [...u.sizes][0];
+            if (u.idx && v.byteStride == null && (es === 2 || es === 4)) { mode = 'INDICES'; stride = es; }
+            else if (!u.idx) { stride = v.byteStride || es; if (stride % 4 || stride > 256 || (v.byteStride == null && u.offs.some(x => x % stride))) stride = 0; else mode = 'ATTRIBUTES'; }
+        }
+        if (!mode || !stride || v.byteLength % stride) { pieces.push({ i, data: raw }); continue; }
+        const count = v.byteLength / stride;
+        let enc;
+        try { enc = Buffer.from(mo.MeshoptEncoder.encodeGltfBuffer(new Uint8Array(raw.buffer, raw.byteOffset, raw.byteLength), count, stride, mode)); }
+        catch (e) { pieces.push({ i, data: raw }); continue; }
+        if (enc.length > raw.length * (1 - MIN_GAIN)) { pieces.push({ i, data: raw }); continue; }
+        pieces.push({ i, data: enc, mo: { stride, count, mode } }); mopt++;
+    }
+    if (!mopt && !newImg.size) return { skip: 'nothing smaller' };
+    /* the new BIN, each view 4-aligned; a meshopt view's plain bytes live in the fallback buffer (never fetched) */
+    const chunks = []; let pos = 0;
+    for (const p of pieces) {
+        if (pos % 4) { chunks.push(Buffer.alloc(4 - pos % 4)); pos += 4 - pos % 4; }
+        const v = views[p.i];
+        if (p.mo) {
+            if (fbLen % 4) fbLen += 4 - fbLen % 4;
+            v.extensions = Object.assign({}, v.extensions || {}, { EXT_meshopt_compression: { buffer: 0, byteOffset: pos, byteLength: p.data.length, byteStride: p.mo.stride, count: p.mo.count, mode: p.mo.mode } });
+            v.buffer = fbIdx; v.byteOffset = fbLen; fbLen += v.byteLength;
+        } else { v.buffer = 0; v.byteOffset = pos; v.byteLength = p.data.length; }
+        chunks.push(p.data); pos += p.data.length;
+    }
+    if (pos % 4) chunks.push(Buffer.alloc(4 - pos % 4));
+    const nb = Buffer.concat(chunks);
+    J.buffers[0].byteLength = nb.length;
+    const addExt = (name) => { J.extensionsUsed = J.extensionsUsed || []; J.extensionsRequired = J.extensionsRequired || []; if (J.extensionsUsed.indexOf(name) < 0) J.extensionsUsed.push(name); if (J.extensionsRequired.indexOf(name) < 0) J.extensionsRequired.push(name); };
+    if (mopt) { J.buffers.push({ byteLength: fbLen, extensions: { EXT_meshopt_compression: { fallback: true } } }); addExt('EXT_meshopt_compression'); }
+    if (webpImgs.size) {
+        webpImgs.forEach(ii => { J.images[ii].mimeType = 'image/webp'; });
+        (J.textures || []).forEach(t => { if (t.source != null && webpImgs.has(t.source)) { t.extensions = Object.assign({}, t.extensions || {}, { EXT_texture_webp: { source: t.source } }); delete t.source; } });
+        addExt('EXT_texture_webp');
+    }
+    return { buf: glbWrite(J, nb), views: mopt, images: newImg.size };
+}
+/* the proof: every view decodes to the original bytes, every texture to the original pixels, the JSON is the original's
+   but for the fields the repack owns → null when exact, else what differs */
+async function losslessVerify(D, srcBuf, optBuf) {
+    const { mo, sharp } = D;
+    const A = glbParse(srcBuf), B = glbParse(optBuf);
+    if (!A || !B) return 'does not parse';
+    const va = A.json.bufferViews || [], vb = B.json.bufferViews || [];
+    if (va.length !== vb.length) return 'view count ' + va.length + ' → ' + vb.length;
+    for (let i = 0; i < va.length; i++) {
+        const a = va[i], b = vb[i], ra = A.bin.slice(a.byteOffset || 0, (a.byteOffset || 0) + a.byteLength);
+        const imA = (A.json.images || []).findIndex(im => im.bufferView === i);
+        const m = b.extensions && b.extensions.EXT_meshopt_compression;
+        let rb;
+        if (m) {
+            const out = new Uint8Array(m.count * m.byteStride);
+            mo.MeshoptDecoder.decodeGltfBuffer(out, m.count, m.byteStride, new Uint8Array(B.bin.buffer, B.bin.byteOffset + m.byteOffset, m.byteLength), m.mode, m.filter);
+            rb = Buffer.from(out);
+            if (b.byteLength !== a.byteLength) return 'view ' + i + ' length';
+        } else rb = B.bin.slice(b.byteOffset || 0, (b.byteOffset || 0) + b.byteLength);
+        if ((a.byteStride || null) !== (b.byteStride || null)) return 'view ' + i + ' stride ' + a.byteStride + ' → ' + b.byteStride;
+        if (imA >= 0 && B.json.images[imA].mimeType !== A.json.images[imA].mimeType) {
+            const x = await sharp(ra).ensureAlpha().raw().toBuffer(), y = await sharp(rb).ensureAlpha().raw().toBuffer();
+            if (Buffer.compare(x, y) !== 0) return 'texture ' + imA + ' pixels differ';
+        } else if (Buffer.compare(ra, rb) !== 0) return 'view ' + i + ' bytes differ';
+    }
+    /* the JSON: everything but the repack's own fields is the original's */
+    const strip = (j, webp) => {
+        const c = JSON.parse(JSON.stringify(j));
+        delete c.extensionsUsed; delete c.extensionsRequired; c.buffers = (c.buffers || []).slice(0, 1).map(b => ({}));
+        (c.bufferViews || []).forEach(v => { delete v.buffer; delete v.byteOffset; delete v.byteLength; if (v.extensions) { delete v.extensions.EXT_meshopt_compression; if (!Object.keys(v.extensions).length) delete v.extensions; } });
+        (c.images || []).forEach(im => { delete im.mimeType; });
+        (c.textures || []).forEach(t => { if (t.extensions && t.extensions.EXT_texture_webp) { t.source = t.extensions.EXT_texture_webp.source; delete t.extensions.EXT_texture_webp; if (!Object.keys(t.extensions).length) delete t.extensions; } });
+        const canon = x => Array.isArray(x) ? '[' + x.map(canon).join(',') + ']' : x && typeof x === 'object' ? '{' + Object.keys(x).sort().map(k => JSON.stringify(k) + ':' + canon(x[k])).join(',') + '}' : JSON.stringify(x);
+        return canon(c);   // (key order free: a texture's source comes back last)
+    };
+    if (strip(A.json) !== strip(B.json)) return 'the JSON differs beyond the repack';
+    return null;
 }
 
 /* the triangles a document draws (indexed or not; TRIANGLES mode only) */
@@ -336,8 +504,24 @@ async function main() {
     for (const j of todo) {
         const before = fs.statSync(j.src).size;
         let buf;
+        if (o.lossless) {   // THE LOSSLESS REPACK: the same bytes once decoded, proven before it is written
+            let r;
+            try { r = await losslessOne(D, fs.readFileSync(j.src)); }
+            catch (e) { failed++; console.log(`  FAIL  ${j.src}: ${e && e.message ? e.message.split('\n')[0] : e}`); continue; }
+            if (r.skip) {
+                kept++; console.log(`  keep  ${mb(before).padStart(9)}  ${j.src}  (${r.skip})`);
+                try { if (fs.existsSync(j.dst)) fs.unlinkSync(j.dst); } catch (e) {}
+                if (j.key && alt[j.key]) { delete alt[j.key]; saveAlt(); }
+                continue;
+            }
+            let bad = null;
+            try { bad = await losslessVerify(D, fs.readFileSync(j.src), r.buf); } catch (e) { bad = 'verify: ' + (e && e.message ? e.message : e); }
+            if (bad) { failed++; console.log(`  BAD   ${j.src}: ${bad} (not written)`); continue; }
+            buf = r.buf;
+        } else {
         try { buf = await optimizeOne(D, io, j.src, j.dst, o.size, o.ktx2); }
         catch (e) { failed++; console.log(`  FAIL  ${j.src}: ${e && e.message ? e.message.split('\n')[0] : e}`); continue; }
+        }
         if (buf.length > before * (1 - MIN_GAIN)) {
             kept++; console.log(`  keep  ${mb(before).padStart(9)}  ${j.src}  (the result was ${mb(buf.length)}: not worth a second file)`);
             try { if (fs.existsSync(j.dst)) fs.unlinkSync(j.dst); } catch (e) {}
@@ -386,4 +570,4 @@ async function main() {
 }
 
 if (require.main === module) main().catch(e => { console.error(e); process.exit(1); });
-module.exports = { flatName, bucketKey, optName, lodName, isSource, isDerived, targetFor, parseArgs, walk, OPT_SUFFIX, LOD_RATIOS, LOD_MIN_TRIS, lodEligible, docTris, texSlots };
+module.exports = { losslessOne, losslessVerify, glbParse, glbWrite, flatName, bucketKey, optName, lodName, isSource, isDerived, targetFor, parseArgs, walk, OPT_SUFFIX, LOD_RATIOS, LOD_MIN_TRIS, lodEligible, docTris, texSlots };
