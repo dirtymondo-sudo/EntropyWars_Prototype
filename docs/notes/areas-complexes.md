@@ -2422,6 +2422,7 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
   The front doors are the city's swing leaves (already there); the two inner openings (bakery, garage office) are open, one square wide.
   Deviation from the first sketch: no raised chancel (heights are whole blocks), pews in two blocks with side aisles.
 - **THE SECOND INTERIOR PASS** (2026-11-13; mondo 22:33 "after a district's first interior pass, do another interior pass ... make a list of FACING (coordinator 11-14): checked every room; the bakery's and the pawnshop's two display cases stood one behind the other (the first one's glass at the second one's back), now side by side, glass to the shop floor; every shelf, locker, rack and chest faces its walkway.
+- **THE BEDROOMS** (2026-11-14; mondo picked "District threads add them" 02:21 on the residents thread's card; brief: project files disaster-city-residents/bedrooms-brief.md). R.js opens the four Southside homes as walk-ins with real doors (`a.shell` + the hollow row; the painted door sheets gone; `groundPanes` keeps the front's ground panes off the doorway; the row house porch deck is now a 0.12 m step): P00-01-B2 apartments A (Priest, Gangster, Homosapien), P00-02-B2 apartments B (Nun, + a lounge), P02-01-B1 the tenement (Conspiracy theorist, Cult leader, + a store), P03-00-B2 the row house (Firefighter, Ki fighter, Swordfighter). Bedrooms on the GROUND floor under their own ceiling (`R.H` a storey); `part()` = a partition on a square line with whole-square doorways (wall + skirting + ghost); `bed()` = the bed centred on its square on a ghost, its long side along Y. Southside has no other home that can open (townhouses + walk-up flats = roof walks, homes row = pack houses), so those five residents moved into these four. HEADLESS: in apartments A the beds only drew with `window.EW_HQ_NO_PROP_BATCH = true` (the prop static batch dropped them; seen before as the flaky pawnshop views).
   models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere"):
   - THE MODELS: 18 Meshy pieces (Claude's concept, Meshy nano-banana-pro -> image-to-3D meshy-t2.5 smart topology, optimised to `.opt.glb`),
     R2 `Assets/world/props/meshy/<key>.glb`, rows in data.js HQ_CATALOGUE_ALL group 'Meshy city interiors', ASSET_MANIFEST.json, MODEL_LIST.md
@@ -2811,6 +2812,16 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - **Headless**: the bigger Meshy pieces (treadmill, photocopier, welding cart, cameras, pallet jack, hand truck, mailboxes) load (the files
   parse, the rows stand at the right height, the welding cart's shadow shows) but the headless browser does not draw them, like the city's
   Meshy cars; the newspaper bundles draw. Check them on a real GPU.
+### HERO PLAZA, THE RESIDENTS' BEDROOMS (2026-11-14, mondo picked "District threads add them"; brief: project files disaster-city-residents/bedrooms-brief.md)
+- Apartments A (P07-04-B2) is a walk-in now (`row: { storeys: 1, hollow: true, doorSide: 'W' }`, `apartments(..., door)` puts the doorway in
+  its ground-floor shell, `aptDress(..., door)` hangs the awning + lamps over it): a flat of three bedrooms behind partitions, the Sidekick
+  (squares 0-1), the Nephilim (2-4; his plan home P04-05-B2 is a pack model) and the Police officer (5-6), off a hall (rows 3-4).
+- Superhero Tower (P06-04-B1): the lobby stays; its two back corners (2 x 2 squares by the lift core, each with its trophy case) are the
+  Superhero's (left) and Eagleman's (right) rooms. The directory board moved out to row 4. Apartment stair (P04-06-B1): the Antihero's room in
+  the front-right corner (squares 5-6, rows 2-3), its doorway on the hall walk; the umbrella stand + notice board moved out.
+- Helpers: `partition(K, x0, z0, x1, z1, gaps, tint)` (painted plaster, gain 2.0: bare PLASTER reads near black; ghost + skirting; a lintel
+  over each one-square gap), `bedSet(K, bx, bz, bf, bed, wx, wz, wf, side, rugT)` (bf = where the foot points, kit faces). THE PSX BEDS' length
+  runs along their own x with the headboard at +x: the prop's face is bf + 270 (seen on screen).
 ### THE UNIVERSITY INSIDES (2026-11-13, mondo 21:04 "let's go ahead and do the interiors", his OK on the grid plan 21:23)
 His grid rule (21:14 + 21:17, all interiors): the city fights on 3.5 m squares; a BARRIER fills whole squares (centred, a 2-wide piece = 2 squares),
 a WALKWAY is a whole square wide with nothing halfway across two, dressing sits OFF the square centres.
@@ -2998,7 +3009,11 @@ a different time ... only use units on the roster". He picked "Routines now, bed
   sleeps two; housemates take them in list order. A resident with a bed walks in at bedtime, lies on it (segment `sleep`, `top` = the
   catalogue seat or 0.5 m) and walks out at its wake time; without one it still goes in through the door. The rig carries slot
   `hqSleep` = UAL2 LayToIdle trimmed to its first 0.05 s (flat on the back), feet to the bed's front (its `face`): NOT SEEN ON SCREEN.
-  A home a district could not open moves: Bunny girl -> P11-06-B2 Apartments (Entertainment PR #1359).
+  A home a district could not open moves: Bunny girl -> P11-06-B2 Apartments (Entertainment PR #1359); Ki fighter + Swordfighter ->
+  P03-00-B2, Cult leader -> P02-01-B1, Gangster + Homosapien -> P00-01-B2 (Southside PR #1370); Nephilim -> P07-04-B2 (Hero Plaza PR #1372).
+  The Politician keeps the hotel P08-00-B1 (a walk-in since PR #1358). The Ghost has `noBed` (it haunts the hotel by day). A bed on a
+  district's ghost block (Sports, Southside) is reached from the walked square beside it. 2026-11-14 03:15: 41 of 44 sleep in a bed
+  (not the Honda Civic, King Kong on his field, the Ghost).
 
 ## PLOT DUNGEONS — the puzzle dungeon vertical slices (2026-11-14, PLAN ONLY, waits mondo's answers)
 mondo uploaded two prototype packs from another chat (a PDF atlas + an HTML design pack, copies in /mnt/project-files/dungeons/source/)
