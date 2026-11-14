@@ -2999,3 +2999,11 @@ a different time ... only use units on the roster". He picked "Routines now, bed
   catalogue seat or 0.5 m) and walks out at its wake time; without one it still goes in through the door. The rig carries slot
   `hqSleep` = UAL2 LayToIdle trimmed to its first 0.05 s (flat on the back), feet to the bed's front (its `face`): NOT SEEN ON SCREEN.
   A home a district could not open moves: Bunny girl -> P11-06-B2 Apartments (Entertainment PR #1359).
+
+## PLOT DUNGEONS — the puzzle dungeon vertical slices (2026-11-14, PLAN ONLY, waits mondo's answers)
+mondo uploaded two prototype packs from another chat (a PDF atlas + an HTML design pack, copies in /mnt/project-files/dungeons/source/)
+and asked for one plan to build them as a standalone mode from the main menu or Settings. The plan is **docs/PLOT_DUNGEONS_PLAN.md**
+(also /mnt/project-files/dungeons/): five 3 x 3 boards of 42 m plots (ROTATE catacombs, SLIDE Disaster City, CONNECT THE WORKS,
+GROW AND CARRY fairy forest, ESCORT H-Wing), each plot a stage part moved by a live pose, Phase 0 = the engine proof. Puzzles stay
+inside this mode only (the story zones keep NO PUZZLES). Nothing built. Its §13 lists what mondo approves; its §14 is the log —
+append one line there per phase and put the phase notes here.
