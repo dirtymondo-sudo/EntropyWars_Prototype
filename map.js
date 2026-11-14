@@ -2714,8 +2714,8 @@
 .pd-mv{text-align:left;white-space:normal}.pd-mv.on{outline:2px solid #ffd84a}
 .pd-note{margin:2px 0;font-size:12px;color:#b9bec7}.pd-note.bad{color:#ff8a8a}
 .pd-actions{flex-wrap:wrap}
-.pd-confirm:not([disabled]){background:#1c6b2c!important;border-color:#7dff9a!important;color:#fff!important}
-.pd-back{background:#7a1c1c!important;border-color:#ff8a8a!important;color:#fff!important}
+#hqPanelBody button.hq-btn.pd-confirm:not([disabled]){background:#1c6b2c!important;border:2px solid #7dff9a!important;color:#fff!important}
+#hqPanelBody .pd-actions button.hq-btn.pd-back[data-close]{background:#7a1c1c!important;border:2px solid #ff8a8a!important;color:#fff!important}
 .pd-sel-note{color:#b9bec7;font-size:13px;margin:6px 4px 14px}
 .pd-sel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
 .pd-sel-card{background:#000;border:2px solid #fff;padding:12px;display:flex;flex-direction:column;gap:6px}
@@ -2723,7 +2723,7 @@
 .pd-sel-title{font-size:17px;color:#fff;line-height:1.2}
 .pd-sel-state{font-size:11px;color:#8a8f98}.pd-sel-state.ok{color:#7dff9a}
 .pd-sel-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
-.pd-sel-go{background:#1c6b2c!important;border-color:#7dff9a!important;color:#fff!important}`;
+#pdSelectBody button.pm-set-btn.pd-sel-go{background:#1c6b2c!important;border:2px solid #7dff9a!important;color:#fff!important}`;
             document.head.appendChild(st);
         }
         document.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-pd]') : null; if (!b || b.disabled) return; e.preventDefault(); _pdPanelAct(b.getAttribute('data-pd')); });

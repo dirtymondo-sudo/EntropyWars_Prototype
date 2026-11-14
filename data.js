@@ -77311,7 +77311,7 @@ function pdRoomDef(id, plotId) {
     });
     /* a ceiling lamp over each open floor of 2 × 2 squares or more (a closed look only) */
     if (!K.open) pdRects(cells, open).filter(r => (r.x1 - r.x0) >= 2 && (r.y1 - r.y0) >= 2).slice(0, 8).forEach(r => { const m = pdRectM(r); shell.lights.push({ x: m.x, z: m.z }); });
-    const counter = (m, x, z, more) => room.counters.push(Object.assign({ id: 'pd_' + m.k + '_' + (m.id || room.counters.length), x, z, face: m.face || 0, radius: m.r || 2.4, plateY: m.plateY || 1.7,
+    const counter = (m, x, z, more) => room.counters.push(Object.assign({ id: 'pd_' + m.k + '_' + (m.id || room.counters.length), x, z, face: m.face || 0, radius: m.r || 3, plateY: m.plateY || 1.7,
         label: m.label || '', verb: m.verb || 'USE' }, m.show ? { pdShow: m.show } : null, more));
     const prop = (key, x, z, m, show) => { if (key) room.props.push(Object.assign({ key, x, z }, m.rot != null ? { rot: m.rot } : null, m.y3 != null ? { y: m.y3 } : null, m.h != null ? { h: m.h } : null, show ? { pd: { show } } : null)); };
     (P.marks || []).forEach(m => {
