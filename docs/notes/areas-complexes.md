@@ -2735,6 +2735,14 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
   pastry_case, rope_stanchion; Entertainment's studio_light. Rerun the bake after their PRs merge and they appear.
 - **Swaps with a fallback**: the press court's drawn TV cameras -> studio_camera; the apartment's grill mailboxes -> five mailbox_bank units on
   a dark wood plinth (same ghost).
+- **Fixes found on the way (11-14)**: (1) a belt course over a walk-in room is a RING of four strips (`RING_COURSE` while the room's IN runs):
+  its full slab ran through the room under the ceiling and hid the lit ceiling. (2) `K.wall` passes `mount: 0`: the catalogue `mount` was added
+  on top of the given height (clocks and exit signs over the ceiling; Codex review). (3) `K.prop` / `K.put` add 180 to the face: a prop's
+  `face` is a heading (0 = its front to -z), the kit writes the room frame's (0 = to the door), so chairs, lockers and wall pieces showed the
+  walk their backs (Entertainment + University found the same).
+- **Headless**: the bigger Meshy pieces (treadmill, photocopier, welding cart, cameras, pallet jack, hand truck, mailboxes) load (the files
+  parse, the rows stand at the right height, the welding cart's shadow shows) but the headless browser does not draw them, like the city's
+  Meshy cars; the newspaper bundles draw. Check them on a real GPU.
 ### THE UNIVERSITY INSIDES (2026-11-13, mondo 21:04 "let's go ahead and do the interiors", his OK on the grid plan 21:23)
 His grid rule (21:14 + 21:17, all interiors): the city fights on 3.5 m squares; a BARRIER fills whole squares (centred, a 2-wide piece = 2 squares),
 a WALKWAY is a whole square wide with nothing halfway across two, dressing sits OFF the square centres.
