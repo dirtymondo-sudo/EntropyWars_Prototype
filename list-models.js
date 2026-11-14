@@ -77,6 +77,7 @@ const HOW = {
     MOCAP:     { label: 'Motion capture (real actors), cut into loops by Claude', human: 'yes (motion)' },
 };
 const SOURCES = [
+    { re: /world\/props\/meshy\/(anatomy_skeleton|banker_lamp|brass_orrery|dinosaur_skeleton|espresso_machine|fume_hood|iv_stand|lab_glassware|library_chandelier|library_ladder|meteorite_plinth|microscope|pastry_case|privacy_screen|rope_stanchion|specimen_shelf|therapy_chaise|wheelchair)\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy)' },
     { re: /ew_plant_(thornvine|gasplant|healflower|apple)\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12)' },
     // the shared animation libraries
     { re: /Assets\/Models\/UAL\d/, how: 'PACK', src: 'Universal Animation Library · Quaternius · CC0' },
@@ -109,6 +110,9 @@ const SOURCES = [
     // THE PACK ROADS (2026-11-09): every piece of Elbolilloduro's Roads pack, one GLB each (bake-roads.py; data.js HQ_CATALOGUE_ROADS)
     { re: /Assets\/world\/packs\/elbolilloduro\/roads\//, how: 'PACK', src: 'Roads · Elbolilloduro · CC0 (every piece of the pack cut into its own GLB in Blender by bake-roads.py; data.js HQ_CATALOGUE_ROADS, editor group Roads)' },
     // THE MESHY SWAP (2026-11-03): one piece cut out of an Elbolilloduro pack scene by Claude in Blender (bake-pack-pieces.py), Assets/misc/ebd_<pack>_<item>.glb
+    // THE BAYSIDE INTERIOR PIECES (2026-11-13, mondo 22:33 "make meshy versions of them. The surfboards, for example"; claims: project files meshy/interior-claims.md)
+    { re: /Assets\/world\/props\/meshy\/(surfboard_long|surfboard_short|surfboard_fish|surfboard_rack|wetsuit_rail|sunglasses_spinner|luggage_cart|cinema_seat_row|forklift|wrapped_pallet|outboard_motor|lobster_traps|fishing_net_wall|ship_wheel|ships_bell)\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Bayside interiors, mondo 2026-11-13: "make meshy versions of them"; originals in project files meshy/bayside/)' },
+    { re: /Assets\/world\/packs\/elegantcrow_beach\//, how: 'PACK', src: 'Beach Props Pack · Elegant Crow (itch.io, name your own price; the author OKs commercial use) · OBJ -> GLB by Claude (Disaster City Bayside interiors)' },
     // THE INDUSTRIAL PACK (2026-11-13, Disaster City's Industrial district): domi236's PS1/PSX Industrial Pack #1, cut by bake-pack-pieces.py ind_*
     // THE PLAYGROUND (2026-11-13, the city prop pass): Cursedlake's PS1 Playground from mondo's asset-packs folder, cut by bake-pack-pieces.py play_*
     { re: /Assets\/world\/packs\/cursedlake_playground\//, how: 'PACK', src: 'PS1 Playground · Cursedlake · from mondo\'s asset-packs folder (each piece cut out in Blender by bake-pack-pieces.py play_*; DOOR_HQ.catalogue play_*, Disaster City)' },

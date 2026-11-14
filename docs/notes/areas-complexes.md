@@ -2181,6 +2181,27 @@ his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:1
   use the urban pack's; the arch row's `ring` turns parts the mirrored way (fine for a column, wrong for a rail: `ringRails` writes
   each with its own `ry`); a probe camera's `y` is ABSOLUTE, so on the raised north row add the plot's level or it is underground.
 - **THE INTERIORS (2026-11-13, mondo 21:04; his OK on plan 2, 21:24)**: `interiors()` in docs/disaster-city/districts/B.js. Seven rooms: the hotel lobby, the cinema (foyer + one hall behind a partition), the loading dock, the surf shop, boat repair, the harbour master (these three were solid: now `hollow` with a `door` square in DESIGN, their arch box `faces: 'blr'` + a `doorFront`), the market's tills. HIS GRID RULE (21:14 + 21:17): the squares are the 3.5 m battle squares; a blocker is built over WHOLE squares, centred, and every one of its squares is shut with a ghost wall (`R.shut`); decor hugs walls / corners off the squares' middles; a walk is whole empty squares. A room's frame = its building's (x along the front, +z out of the door; square (c, r), r from the back wall); `R.prop(key, lx, lz, hd)` turns a prop by the building's `rot` (hd 180 = looks at the door). The inside's walls / floor are the texbuilding row's `keyIn` / `floorIn`; its ceiling is `storeys x 3.5 - 0.32` (the hotel's row is 2 storeys now: the lobby; the tower above is the arch row). A prop set on a counter takes `y >= 1` (the bake adds the ground under it only from 1 m). The market's stalls moved onto squares 0, 2, 4 of its back row. Stays a front: ice cream, food hall, security, booth (the roof walk), apartments, juice bar, florist.
+- **THE INTERIORS, SECOND PASS (2026-11-13, mondo 22:33: "do another interior pass ... make a list of models needed/wanted but not in the
+  bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere")**: `SECOND[<room id>]` in B.js runs after each
+  first-pass room. NEW MODELS (data.js catalogue "THE BAYSIDE INTERIOR PIECES", any district may use them): 15 Meshy (concept by text-to-image,
+  then image-to-3d meshy-t2.5; script + originals in project files `meshy/bayside/`; meshopt + WebP 1024 by optimize-assets.js; R2
+  `Assets/world/props/meshy/<key>.glb`): surfboard_long / _short / _fish, surfboard_rack, wetsuit_rail, sunglasses_spinner, luggage_cart,
+  cinema_seat_row (simplified to 3,940 triangles: 48 in the hall), forklift (8,022), wrapped_pallet, outboard_motor, lobster_traps,
+  fishing_net_wall, ship_wheel, ships_bell. Human-made first: the elegantcrow Beach Props Pack (project files asset-packs/other/, OBJ -> GLB
+  by a small converter, R2 `Assets/world/packs/elegantcrow_beach/`): beach_life_ring, beach_swim_ring, beach_air_mattress_blue / _pink,
+  beach_cooler, beach_ball. The city's shared list of interior Meshy claims: project files `meshy/interior-claims.md`.
+  What each room got: HOTEL marble pilasters, crown moulding, a gilt line, 11 brass sconces, two chandeliers over the walk (the Entertainment
+  district's `crystal_chandelier` once it is on main, else a brass candle ring in parts), a backlit bar, green desk lamps, a rug under the
+  sofas, the bellhop cart. CINEMA the seat-row models where the plain benches stood (same shut squares), sconces + a soft wash down both
+  hall walls, a gold runner up the centre aisle, exit signs, NOW SHOWING with marquee bulbs over the hall door, a POPCORN SODA CANDY board.
+  DOCK the forklift (square 7,2) and two wrapped pallets (5,0 + 6,0) on shut squares, a roller shutter + LOADING BAY, hazard paint along the
+  racking, two high-bay lamps, a fire extinguisher. SURF the board rack (square 0,0, shut), six boards up the walls (in place of the plain
+  slabs), the wetsuit rail, the spinner, two life rings, a swim ring stack, air beds, a cool box, a bin of beach balls, coloured bulbs, the
+  SURF SHOP board. BOAT the outboard (in place of the engine boxes; the hoist stays), lobster pots, the net, life rings, paint tins, a work
+  lamp, an oil stain. HARBOUR the ship's wheel, the bell, a life ring, a framed chart, a chart lamp.
+  Reused (`CAT.has`, picked up by any rebake once on main): Entertainment's crystal_chandelier (the hotel, PLACED) + film_projector (the cinema foyer square 0,7, shut, PLACED), Hero Plaza's pallet_jack (not on main yet). Not used:
+  University's rope_stanchion (a rope across a walk breaks the grid rule). Props cannot tilt (no pitch on a prop row), so no board hangs
+  flat from the ceiling.
 - **NOT PROVEN in the headless browser:** no `city_*` pack building (the grill, the taco stand; also the diner, pizzerias, laundry in
   other districts) attached in the thread's probe runs: only the shadow blob draws. The files are on the CDN and fetched. Check on a real
   machine before blaming the placement.
@@ -2732,7 +2753,36 @@ glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the 
   clinic 3x5 (waiting, reception, two beds, store), science museum 9x3 (cases, telescopes, globe, planets hung over the middle walkway), gate
   lodge 2x2. The five roof-route buildings stay shut.
 - Plan sheet: /mnt/project-files/university-district/16_interior_plans_on_battle_grid.jpg.
+- **THE SECOND PASS, THE ATMOSPHERE (2026-11-13 night, mondo 22:33: "do another interior pass ... make a list of models needed/wanted but
+  not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere")**. U.js `ATMOS[kind]` at the end of
+  `inside()`: `liner(wall, dado, dadoH, ceil, trim)` paints each room over the bare inside sheet (a wall coat 0.34 m in, a dado, a skirting,
+  a chair rail, a crown, a LIT ceiling box: the hollow building's own ceiling draws black; the front coat has the doorway cut, `dX` = the
+  doorway's middle from `row.door`), lights are DRAWN glow (`panelL` flush panels, `strip` fluorescents, `pendant` cord + shade + lit bulb,
+  `window_` a lit glass panel in a dark frame), the city room's ten real prop lights stay with the streets. Dressing goes OFF the square
+  centres (books, glassware, lamps on the tables; plants, clocks, boards, exit signs on the walls; flat runners over walks).
+  Library: forest green over walnut, beams, four brass chandeliers, tall lit windows, a red runner, a banker's lamp at every table end, two
+  rolling ladders. Cafe: cream over a bottle-green tiled dado, three ceiling fans, amber pendants over booths, espresso machine + pastry case
+  on the counter. Lab: white over blue-grey steel, fluorescents over every walk, microscopes + glassware on the benches, a FUME HOOD square.
+  Psychology: sage over oak, warm pendants, a rug, the therapist's CHAISE square. Annex: dark concrete, cold strips, lit tank floors, a red
+  light over the scanner, yellow walk edges, a SPECIMEN SHELF square. Clinic: mint over white tile, panels down the aisle, IV stands +
+  privacy screens by the beds, a wheelchair, the anatomy skeleton. Museum: navy over marble, a lit skylight over the walk, a spot over every
+  exhibit, the DINOSAUR on two squares (rope round it), the ORRERY and the METEORITE squares. Lodge: oak to the waist, a bulb, the radio.
+  New blocker squares (dead-end squares off the walks, every walk kept): lab back row col 4, annex back row col 5, museum back row cols 3 + 6,
+  front row cols 6-7; psychology back row col 6 holds the chaise in place of the second curved couch.
+  18 Meshy models (catalogue `group: 'Meshy props · city interiors'`, R2 Assets/world/props/meshy/<key>.glb, optimized; MODEL_LIST SOURCES
+  row; concepts + originals in project files university-interiors-2/meshy; shared list for other districts: project files
+  meshy/interior-claims.md): anatomy_skeleton, banker_lamp, brass_orrery, dinosaur_skeleton, espresso_machine, fume_hood, iv_stand,
+  lab_glassware, library_chandelier, library_ladder, meteorite_plinth, microscope, pastry_case, privacy_screen, rope_stanchion,
+  specimen_shelf, therapy_chaise, wheelchair. Pack check first: the Molten orrery is sci-fi, no pack has a microscope / fume hood / IV
+  stand / skeleton / wheelchair / chaise / stanchion.
 - **THE DEEPER HANGAR (2026-11-13, mondo 21:21 "make hangar deeper so it fits")**: `I.js` `fit` grows P03-10-B1 one square forward onto the walk in front of it (in `build`, NOT `tailor`: changing the plan re-rolls the whole city's random dressing): 31.5 x 14 m, four squares deep, 7 m walls
+- **THE INDUSTRIAL INSIDES (2026-11-13, mondo "all okay" 22:25 on the grid plan):** all 11 Industrial walk-ins are furnished. Code: I.js `IN[id]` (one spec per room, written on
+  the room's own 3.5 m squares: i from the left wall, j from the front wall, j 0 = the door's row), `KIT` (the square fillers: truck, veh, desk, files, shelf, racks, lockers,
+  cont, crates, barrels, boiler, panel, tesla, bench, conv, counter, bigdesk, table, vend, seat, rocket, scope, dish, radio, chart, missile + turbine / pump / pipes built from
+  arch parts, no model exists) and `inside()` (called from the building loop). His grid rule: every `g` blocker fills whole squares and gets one ghost `wall` block per square;
+  `walls` are partitions on the lines between squares with one-square doorways; `decor` is off centre / on the walls. One arch row per room `ind:<id>:in`; props are
+  `floor:true`; `keyIn` / `floorIn` / `tintIn` set per room. The doorway square is asserted to be a walkway (else the room is left out with a console line). To change a room:
+  edit its `IN` row, `node bake-disaster-city.js`. Plans: /mnt/project-files/disaster-city-industrial/interiors_plan_1..3.jpg.
   under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. The street lamp on that square is taken off (`ctx.lamps`, the tool now writes its lamps line after the district build). Seen in the
   cloud browser from inside (as a 28 m long test build). INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.
 
