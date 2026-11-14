@@ -2835,6 +2835,15 @@ glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the 
   covered the room's own doorway. Now `dcCtx.JOIN` is open to the district files (`build`); I.js `Q.join('sewer', lx, lz)` hangs the bulkhead
   on the Pump court's BACK wall facing in (walk in through the valve house, down through the bulkhead), and a door row's `noEntrance: true`
   (written by `dj()`) skips the sprite building + awning + sign. The tower and mall join doors still get their sprite entrance buildings.
+- **THE INDUSTRIAL HOMES (2026-11-14, the residents' bedrooms; mondo picked "District threads add them" 02:21; brief
+  /mnt/project-files/disaster-city-residents/bedrooms-brief.md):** three of the four workers' houses are WALK-IN HOMES (I.js DESIGN `inside: true`,
+  `leaf_suburban_house`, plan building ids kept): P02-09-B2 the KNIGHT, P01-11-B2 the ASTRONAUT, P00-09-B2 the MARKSMAN (P00-10-B2 stays outside-only).
+  On a walk-in house the painted ground-floor unit nearest the real doorway moves onto it (`homeUnits`: stoop, porch, lamp, window) and drops its
+  painted door. IN rows with `home: true` (no office light panels) and `H: 3.2` (a plaster ceiling at 3.2 m inside the 6.6 m shell): a front room
+  (TV + sofa + coffee table), a fitted kitchen, a dinner table, and the BEDROOM behind a partition with a one-square doorway: ONE single bed each
+  (psx_bed_5_1, headboard to the back wall, a bedside table + lamp), a wardrobe. Every piece centred on its square, the walk from the
+  door whole squares; rugs, plants, pendants and each sleeper's own thing (sword over the bed, telescope + globe lamp, rifle over the gun bench) off
+  centre. KIT bed/wardrobe/sofa/tv/dine/kitchen: a bed's headboard is its model's +x end (hd 90 = to the back wall).
   under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. The street lamp on that square is taken off (`ctx.lamps`, the tool now writes its lamps line after the district build). Seen in the
   cloud browser from inside (as a 28 m long test build). INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.
 
