@@ -94138,6 +94138,30 @@ const ThreeRenderer = (function () {
         },
         /* is a body's rig up WITH its clips (idle + walk)? The opening plays as the building first loads: it waits for this, or
            the officer steps out of the car in the bind pose. */
+        /* a TV switched on to STATIC (scene B, mondo 2026-11-14: "needs to have static / tv turn on"): an unlit sheet of moving
+           snow { x, y, z (the screen's centre, m), w, h (m), face (deg, the way the screen looks) }; { off: true } takes it away */
+        sceneScreen: function (o) {
+            var H = _hq; if (!H || !H.scene || !o) return false;
+            if (H._sceneScreen) { var o0 = H._sceneScreen; o0.dead = true; if (o0.m.parent) o0.m.parent.remove(o0.m); try { o0.m.geometry.dispose(); o0.m.material.dispose(); o0.tex.dispose(); } catch (e) {} H._sceneScreen = null; H.dirty = true; }
+            if (o.off || typeof document === 'undefined') return true;
+            var U = _hqUnits(), c = document.createElement('canvas'); c.width = 80; c.height = 60;
+            var x = c.getContext('2d'), img = x.createImageData(80, 60);
+            var tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.NearestFilter; tex.magFilter = THREE.NearestFilter; tex.generateMipmaps = false;
+            var mat = new THREE.MeshBasicMaterial({ map: tex, fog: false }); mat.toneMapped = false;
+            var m = new THREE.Mesh(new THREE.PlaneGeometry((o.w || 0.3) * U, (o.h || 0.23) * U), mat);
+            m.position.set((+o.x || 0) * U, (+o.y || 0) * U, (+o.z || 0) * U); m.rotation.y = _hqHeadingYaw(o.face || 0); m.renderOrder = 3;
+            H.scene.add(m);
+            var rec = { m: m, tex: tex, dead: false, last: 0 };
+            var snow = function () {
+                var dd = img.data, roll = Math.random() * 60 | 0;
+                for (var i = 0; i < dd.length; i += 4) { var row = (i >> 2) / 80 | 0, v = (Math.random() * 235 + 20) | 0; if (Math.abs(row - roll) < 3) v = Math.min(255, v + 50); dd[i] = v; dd[i + 1] = v; dd[i + 2] = Math.min(255, v + 12); dd[i + 3] = 255; }
+                x.putImageData(img, 0, 0); tex.needsUpdate = true;
+            };
+            snow();
+            H.tickers.push(function (dt, now) { if (rec.dead) return; var t = now || performance.now(); if (t - rec.last < 45) return; rec.last = t; snow(); H.dirty = true; });
+            H._sceneScreen = rec; H.dirty = true;
+            return true;
+        },
         /* the car's shaft window streams at k times its speed (minus = the landings rise past: the car going down); 1 = back */
         sceneShaft: function (k) { if (!_hq) return false; _hq._shaftK = (+k || 0); return true; },
         sceneReady: function (who) {
@@ -94267,6 +94291,9 @@ const ThreeRenderer = (function () {
         sceneCull: function (on) {
             _hqSceneNoCull = !!on;
             if (!_hq) return false;
+            /* NO DOOR TEXT IN A SCENE (mondo 2026-11-14: "get rid of the floating door text during cutscenes"): every plate (the door
+               names, the room plates) is out of the picture while a scene plays; the plates' own tick only writes their inner group */
+            try { _hq.scene.traverse(function (o) { if (o.name === 'hq_plate' && o._ew_text) { if (on) { if (o._ew_sceneVis == null) { o._ew_sceneVis = o.visible; o.visible = false; } } else if (o._ew_sceneVis != null) { o.visible = o._ew_sceneVis; o._ew_sceneVis = null; } } }); } catch (e) {}
             _hq.chars.forEach(function (ch) { var e = ch && ch.entry; if (!e || !e.group) return; e.group.traverse(function (n) { if (n.isSkinnedMesh && !n._ew_silhouette) n.frustumCulled = on ? false : !!(ch.kind !== 'player' && n.geometry && n.geometry._ew_skinPad); }); });
             return true;
         },

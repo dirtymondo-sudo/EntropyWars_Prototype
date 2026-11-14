@@ -990,6 +990,17 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   (5) THE RECRUIT WALKS OUT: a WON quest fight stands the officer back up on 1 HP (battle.js `reviveYou` ->
   hqPartyAfterMatch), and while a quest marked `officerUp` (ORIENTATION) is unfinished hqPartyRecord keeps the officer up
   and in slot 1, so a save where the fight already dropped him heals on the next read (no second Catgirl in scene E).
+- **HIS 14 NOV NOTES ON B, D, F (2026-11-14)**: B: the VHS deck + tape are cut to real size (training props `span` 0.34 /
+  0.19); "Welcome..." and "Under my watch..." frame the TV and Locke centred; "I'm Agent Locke..." cuts to a straight-on
+  close-up of her face (`eye`). The TV no longer loses its picture: act `screen` = three-renderer.js `hq.sceneScreen({ x, y, z,
+  w, h, face } | { off })`, a static plane on the tube's glass (rolling band, repainted every 45 ms; the old scene point
+  light is gone); row `end` turns it off. D: Locke faces the Catgirl on the line before, turns to the recruit on "You stood
+  your ground"; Kit: "Deportation? No! Please. You can't send me back." / "Those monsters... destroyed everything."; Locke:
+  "The rules are the rules." E: the keys shot no longer bobs: map.js `eyeFit` fits a shot's `eye` height once, before the
+  beat plays, never again while it is on screen. F: no floating door text in any scene (`hq.sceneCull(true)` hides every
+  `hq_plate`); new opening: a low shot of the recruit's legs walking in by the egress door, two slow pans over the desk,
+  bed and sink, the recruit walks forward to camera, Locke comes in behind him on "Your office. Hope you like it." (him in
+  front, the door and locks behind), then he turns to her for the rest.
 - **Not built yet**: A the intro (Sedaniel = DOOR_CAST.sedaniel, the roster Honda Civic; the foyer's entrance lift).
 
 ## THE SAVE — the walk autosaves where you stand; CONTINUE lands there (2026-11-12, mondo)

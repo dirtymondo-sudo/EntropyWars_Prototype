@@ -4839,6 +4839,7 @@
                 else if (a.do === 'key' && TR.hq.sceneKey) TR.hq.sceneKey({ x: a.x, y: a.y, z: a.z, size: a.size });
                 else if (a.do === 'door' && TR.hq.sceneDoor) TR.hq.sceneDoor({ id: a.id, x: a.x, z: a.z, face: a.face, leaf: a.leaf, open: a.open, ms: a.ms, remove: a.remove });
                 else if (a.do === 'shaft' && TR.hq.sceneShaft) TR.hq.sceneShaft(a.k);
+                else if (a.do === 'screen' && TR.hq.sceneScreen) TR.hq.sceneScreen({ x: a.x, y: a.y, z: a.z, w: a.w, h: a.h, face: a.face, off: a.off });
             } catch (e) { console.warn('[SCENE] ' + (a && a.do), e); } };
             const host = { unit: 1, point: () => null, act: hand,
                            choose: (c, o) => { if (o && o.clear) _questSceneFlag(o.clear, false); if (o && o.set) _questSceneFlag(o.set, true); },
@@ -4853,8 +4854,12 @@
             try { if (t.sceneAt && TR.hq.scenePlace) TR.hq.scenePlace('player', { x: t.sceneAt.x, z: t.sceneAt.z, face: t.sceneAt.face || 0 }); } catch (e) {}
             /* a shot's `eye: { who, dy }`: the camera's height = that body's head + dy (the row's own height is kept as the base, so a replay reads the same) */
             const eyeFit = () => {
-                (row.beats || []).forEach(b => {
+                /* a shot already on screen keeps its height (mondo 2026-11-14: the keys shot "is bumpy / moving up and down": the
+                   head bobs with the idle and every re-read moved the camera with it) */
+                let cur = -1; try { const st = window.EWScene && window.EWScene.state(); if (st && st.id === row.id) cur = st.beat; } catch (e) {}
+                (row.beats || []).forEach((b, bi) => {
                     const sh = b && b.shot; if (!sh || !sh.eye || !Array.isArray(sh.cam) || !TR.hq.sceneHead) return;
+                    if (bi <= cur && sh._y0 != null) return;
                     if (sh._y0 == null) { sh._y0 = sh.cam[1]; sh._y1 = (sh.to && Array.isArray(sh.to.cam)) ? sh.to.cam[1] : null; }
                     const h = TR.hq.sceneHead(sh.eye.who); if (!h) return;
                     const y = +(h.y + (sh.eye.dy || 0)).toFixed(3);
