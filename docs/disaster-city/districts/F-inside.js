@@ -60,7 +60,7 @@ module.exports = function (K, A) {
        a wall with one whole square left open; a bed a resident on the back row (the residents' code finds any /bed|cot/ prop in the home),
        a wardrobe; the front room keeps the door's column clear and has a sofa, a table and a kitchen counter down the far column. */
     const home = beds => (T, g, I) => {
-        look(T, U('PlasterWallPainted1b'), 'wood'); const H = 3.18, c = g.c, n = g.nx, zp = c(0, 1)[1] + 1.75, BED = ['psx_bed_4_1', 'psx_bed_5_2'];
+        look(T, U('PlasterWallPainted1b'), 'wood_planks'); const H = 3.18, c = g.c, n = g.nx, zp = c(0, 1)[1] + 1.75, BED = ['psx_bed_4_1', 'psx_bed_5_2'];
         I.partition(g.lw, zp, c(1, 0)[0] - 1.75, zp, H, U('PlasterWallPainted1b'), 0xe8e0d0); I.partition(c(1, 0)[0] + 1.75, zp, g.rw, zp, H, U('PlasterWallPainted1b'), 0xe8e0d0);
         for (let k = 0; k < beds; k++) { const p = c(k * 2, 0); I.put(BED[k % 2], p[0], p[1], 'f'); I.put('psx_bedside_table_1', p[0] + 1.35, p[1] - 1.2, 'f'); I.put('table_lamp', p[0] + 1.35, p[1] - 1.2, 'f', { y: 0.66 }); }
         const w = n > 3 ? c(n - 1, 0) : c(0, 1); I.put('psx_wardrobe_mp_1', w[0], w[1], n > 3 ? 'f' : 'r');

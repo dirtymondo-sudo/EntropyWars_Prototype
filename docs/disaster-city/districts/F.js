@@ -101,8 +101,9 @@ module.exports = {
             const T = frame(id, { st: 1, hollow: true, door: dcol, leaf: 'leaf_office' }); if (!T) return; T.kind = 'terrace'; T.n = n; const P = [], hw = T.W / n, D = T.D;
             for (let i = 0; i < n; i++) {
                 const x = -T.W / 2 + hw * (i + 0.5), H = 10.5 + (i % 2) * 0.6, dc = [0x8a3a30, 0x2f5a48, 0x30405a][i % 3], key = i % 2 ? BR3 : BR1, tint = tints[i % tints.length], own = !i;
-                P.push(box(x, 0, 0, hw + 0.04, H, D + 0.1, key, tint, { top: false, faces: 'blr' }), quad(x, 0, D / 2 + 0.05, hw + 0.04, H, 0, key, tint, own ? { hole: [T.lx - x, T.cw, 2.2] } : {}));
-                P.push(box(x, 0, 0, hw + 0.06, 1.3, D + 0.3, STONE, 0xbdb6a8, { faces: 'blr' }));
+                const fc = 'b' + (i === 0 ? 'l' : '') + (i === n - 1 ? 'r' : '');   // (no party walls drawn through the walked hall)
+                P.push(box(x, 0, 0, hw + 0.04, H, D + 0.1, key, tint, { top: false, faces: fc }), quad(x, 0, D / 2 + 0.05, hw + 0.04, H, 0, key, tint, own ? { hole: [T.lx - x, T.cw, 2.2] } : {}));
+                P.push(box(x, 0, 0, hw + 0.06, 1.3, D + 0.3, STONE, 0xbdb6a8, { faces: fc, top: false }));
                 if (own) { const a = x - hw / 2 - 0.03, b = T.lx - T.cw / 2 - 0.02, c = T.lx + T.cw / 2 + 0.02, e = x + hw / 2 + 0.03; if (b - a > 0.05) P.push(quad((a + b) / 2, 0, D / 2 + 0.15, b - a, 1.3, 0, STONE, 0xbdb6a8)); P.push(quad((c + e) / 2, 0, D / 2 + 0.15, e - c, 1.3, 0, STONE, 0xbdb6a8)); }
                 else P.push(quad(x, 0, D / 2 + 0.15, hw + 0.06, 1.3, 0, STONE, 0xbdb6a8));
                 wins(P, 'fb', x, 3.6, 0, hw, 3.5, D + 0.1, WIN, 0.8); wins(P, 'fb', x, 7.0, 0, hw, 3.5, D + 0.1, WIN, 0.8);
