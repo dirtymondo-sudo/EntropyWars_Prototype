@@ -1887,3 +1887,16 @@ three-renderer.js + data.js HQ_ENGINE_RULES (`chunkM: 42, chunkMinSpanM: 200, ch
   the same rows as the direct path. City finds in Node: over 10 min -> 6.9 s (what is left is the reach flood, now in the worker).
 - **Rule for big rooms.** Anything that walks a whole terrain room per point (finds, reach, nav) must run in the survey worker
   or be budgeted across frames. No worker (EW_HQ_NO_SURVEY, file://) = the finds still build on the page after the room's own entry.
+
+## THE SEAT GRID (2026-11-14, Disaster City: card held 5+ min, then ~1 FPS)
+- **Cause.** `_hqSeatTabletops` (THE TABLETOP SEAT) cast one ray per tabletop prop against the WHOLE prop group + shell
+  (`intersectObject(root, true)`, ~35,000 meshes in the city, ~9-25 ms a ray) and `_hqSeatLater` re-runs it after every model
+  that lands. One city load in the cloud browser: 17,332 seat rays, 193 s of main thread. The interiors passes added the tabletops.
+  The lens "Pick (raycasts) ~105/s · ~950 ms/s · 25K plain" on his Mac was this.
+- **Fix (three-renderer.js `_hqSeatGrid`).** Once per pass every mesh the whole walk would test (same roots, same layer test) is
+  filed in 4 m cells by its world sphere (spheres over 24 m go in a short always-tested list); each tabletop ray tests its own
+  cell + that list. Checked in the city: 900 rays, 0 differing hits, 22,986 ms -> 640 ms (+87 ms to build the grid).
+  Off: `window.EW_HQ_SEAT_WHOLE = true`.
+- The loading card's own big draw count (16,700 calls behind the card) is the settle warm-up drawing everything once on purpose.
+- PR #1377 (prop chunks, mask bundles, still chunks, LOD rows) was rolled back in PR #1379 while this was found; it comes back
+  after a clean city load.

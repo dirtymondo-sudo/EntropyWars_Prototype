@@ -78556,13 +78556,15 @@ const ThreeRenderer = (function () {
         var U = _hqUnits(), rc = _hqSeatRay || (_hqSeatRay = new THREE.Raycaster());
         var roots = [H.propGroup, H.shellGroup].filter(Boolean);
         var wp = new THREE.Vector3(), down = new THREE.Vector3(0, -1, 0), moved = 0;
+        var near = (typeof window !== 'undefined' && window.EW_HQ_SEAT_WHOLE) ? null : _hqSeatGrid(roots, rc, U);
         H.tabletops.slice().sort(function (a, b) { return a.y - b.y; }).forEach(function (t) {
             if (!t.grp.parent) return;
             t.grp.getWorldPosition(wp);
             var yA = t.y * U;                                    // the authored height in world units (the group's y before any seat)
             rc.set(new THREE.Vector3(wp.x, yA + 0.45 * U, wp.z), down); rc.near = 0; rc.far = 0.95 * U; rc.camera = _hqSeatCamera(H);   // sprites need a camera or three.js logs an error per sprite (they are skipped below anyway)
             var best = null, hits = [];
-            for (var r = 0; r < roots.length; r++) { try { rc.intersectObject(roots[r], true, hits); } catch (e) { } }
+            if (near) { try { rc.intersectObjects(near(wp.x, wp.z), false, hits); } catch (e) { } }
+            else for (var r = 0; r < roots.length; r++) { try { rc.intersectObject(roots[r], true, hits); } catch (e) { } }
             for (var i = 0; i < hits.length; i++) {
                 var h = hits[i], o = h.object; if (!o || o.isSprite || o.isLine) continue;
                 var own = false, q = o; while (q) { if (q === t.grp) { own = true; break; } q = q.parent; }
@@ -78578,6 +78580,49 @@ const ThreeRenderer = (function () {
             } else if (!t.seated && typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.warn('[HQ] tabletop', t.key, 'in', H.opts && H.opts.room, 'has nothing under it at y', t.y);
         });
         if (moved) H.dirty = true;
+    }
+    /* THE SEAT GRID (2026-11-14, Disaster City: the loading card held for minutes, then ~1 FPS): each tabletop's ray walked the
+       whole prop group + shell (35,000 meshes in the city, ~9 ms a ray) and the pass re-runs after every model that lands, so
+       the city's tabletops cost ~2,500 rays and 25 s of the main thread in one load. A ray straight down at (x, z) can only meet
+       a mesh whose world sphere covers that point: the pass files every mesh the whole walk would test (same roots, same layer
+       test) in 4 m cells by its world sphere once, and each ray tests its own cell plus the few meshes too big for cells. Same
+       hits (three sorts them by distance as before). Off: window.EW_HQ_SEAT_WHOLE = true. */
+    function _hqSeatGrid(roots, rc, U) {
+        var CELL = 4 * U, BIG = 24 * U, cells = new Map(), big = [], sp = new THREE.Sphere();
+        roots.forEach(function (root) {
+            (function walk(o) {
+                if (o.layers.test(rc.layers) && (o.isMesh || o.isPoints) && o.geometry) {
+                    var g = o.geometry, bs = o.boundingSphere || null;
+                    if (o.isInstancedMesh || o.isBatchedMesh || o.isSkinnedMesh) {
+                        try { if (!o.boundingSphere && o.computeBoundingSphere) o.computeBoundingSphere(); bs = o.boundingSphere; } catch (e) { bs = null; }
+                    } else {
+                        if (!g.boundingSphere) { try { g.computeBoundingSphere(); } catch (e) {} }
+                        bs = g.boundingSphere;
+                    }
+                    if (!bs || !(bs.radius >= 0) || !isFinite(bs.radius)) big.push(o);
+                    else {
+                        sp.copy(bs).applyMatrix4(o.matrixWorld);
+                        var r = sp.radius;
+                        if (!isFinite(r) || r > BIG) big.push(o);
+                        else {
+                            var i0 = Math.floor((sp.center.x - r) / CELL), i1 = Math.floor((sp.center.x + r) / CELL);
+                            var j0 = Math.floor((sp.center.z - r) / CELL), j1 = Math.floor((sp.center.z + r) / CELL);
+                            for (var i = i0; i <= i1; i++) for (var j = j0; j <= j1; j++) {
+                                var k = i + ',' + j, L = cells.get(k);
+                                if (!L) cells.set(k, L = []);
+                                L.push(o);
+                            }
+                        }
+                    }
+                }
+                var ch = o.children;
+                for (var c = 0; c < ch.length; c++) walk(ch[c]);
+            })(root);
+        });
+        return function (x, z) {
+            var L = cells.get(Math.floor(x / CELL) + ',' + Math.floor(z / CELL));
+            return L ? L.concat(big) : big;
+        };
     }
     function _hqSeatLater() {
         if (_hqSeatTimer) return;
