@@ -3056,5 +3056,5 @@ and asked for one plan to build them as a standalone mode from the main menu or 
 (also /mnt/project-files/dungeons/): five 3 x 3 boards of 42 m plots (ROTATE catacombs, SLIDE Disaster City, CONNECT THE WORKS,
 GROW AND CARRY fairy forest, ESCORT H-Wing), each plot a stage part moved by a live pose, Phase 0 = the engine proof.
 AMENDED 11-14 09:32 (mondo): a standalone TEST build of ALL TEN pack designs (Settings > Developer > Open Plot Dungeons), dungeons
-join story mode later (puzzles allowed in dungeons), recommendations taken as decisions (plan §13), enemies are zone placeholders and
+join story mode later (the old "no puzzles" lines in other docs do not apply to them), recommendations taken as decisions (plan §13), enemies are zone placeholders and
 no dungeon type is tied to a place. Nothing built yet. Its §14 is the log: append one line there per phase, phase notes here.
