@@ -784,6 +784,7 @@ const ThreePost = (function () {
             'uRayCol':        { value: new THREE.Vector3(1.0, 0.94, 0.82) },
             'uRayThr':        { value: new THREE.Vector2(0.3, 1.0) },   // x: the luminance a pixel must pass to throw a shaft (the frame's own), y: the shaft's gain
             'tRaySrc':        { value: null },   // THE RAY SOURCE (2026-10-24): the frame's light sources at 1/8 size (_RaySrcShader)
+            'uRaySky':        { value: 0.0 },    // THE SKY'S RAYS (2026-11-14): 1 = only the sky throws rays (the slider's sun / moon rays), 0 = every light (a finisher beat)
             'uNightTint':     { value: new THREE.Vector3(0.68, 0.78, 1.08) },
             // ── spell grade (see spellGrade() above) ──
             'uSpotDim':       { value: 0.0 },
@@ -3159,7 +3160,7 @@ const ThreePost = (function () {
             var _bRender = P.passB.render;
             P.passB.render = function (r, inp, out, d, s) {
                 P.lastIn = inp;
-                if (frameU.uCineOn.value > 0.5 && inp) _raySrcRender(r, inp.texture, inp.width, inp.height, cu);   // THE RAY SOURCE
+                if (frameU.uCineOn.value > 0.5 && inp) _raySrcRender(r, inp.texture, inp.width, inp.height, cu, composer.inputBuffer && composer.inputBuffer.depthTexture);   // THE RAY SOURCE (+ THE SKY'S RAYS: the scene's own depth)
                 return _bRender.call(this, r, inp, out, d, s);
             };
             composer.addPass(P.passB);
@@ -3391,12 +3392,14 @@ const ThreePost = (function () {
     /* THE RAY SOURCE on the node renderer (_RaySrcShader): the frame's input at 1/8 size, the cells too little lit to be a light
        left dark. Drawn only while the rays are on (_ngRender flips autoUpdate); its first draw is the frame twin's warm-up. */
     function _ngRaySrc(P, tex) {
-        var T = P.T, F = T.float, V2 = T.vec2, V3 = T.vec3, uRT = _ngR(P, P.U.cu.uRayThr, 'vec2'), LUM = V3(0.299, 0.587, 0.114);
+        var T = P.T, F = T.float, V2 = T.vec2, V3 = T.vec3, uRT = _ngR(P, P.U.cu.uRayThr, 'vec2'), uSky = _ngR(P, P.U.cu.uRaySky, 'float'), LUM = V3(0.299, 0.587, 0.114);
         var rt = T.rtt(T.Fn(function () {
             var u = T.uv(), tx = F(1).div(P.uDRes), acc = V3(0).toVar(), cov = F(0).toVar();
             for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) {
-                var s = tex.sample(u.add(V2(i * 2 - 3, j * 2 - 3).mul(tx))).rgb;
+                var q = u.add(V2(i * 2 - 3, j * 2 - 3).mul(tx));
+                var s = tex.sample(q).rgb;
                 var k = T.smoothstep(uRT.x, uRT.x.mul(1.8).add(0.04), T.dot(s, LUM));
+                k = k.mul(T.select(uSky.greaterThan(0.5), T.step(0.999999, P.depthTex.sample(q).r), F(1)));   // THE SKY'S RAYS: the sky only
                 acc.addAssign(s.mul(k)); cov.addAssign(k);
             }
             return T.vec4(acc.div(16).mul(T.smoothstep(0.25, 0.5, cov.div(16))), 1);
@@ -3858,6 +3861,10 @@ const ThreePost = (function () {
         var renderPass = new THREE.RenderPass(scene, null);
         renderPass.clear = true;
         renderPass.clearAlpha = 0;
+        (function (rp) {   // THE SKY'S RAYS: the scene's sky as a mask, while the read buffer's depth is still the scene's
+            var r0 = rp.render;
+            rp.render = function (r, wb, rb) { var o = r0.apply(this, arguments); try { _skyMaskAfterScene(r, rb); } catch (e) { _skyMaskTex = null; } return o; };
+        })(renderPass);
         _composer.addPass(renderPass);
 
         // THE THIRD PASS 3.4: SSAO right after the scene, off the depth the RenderPass just wrote (no second scene render)
@@ -3935,7 +3942,7 @@ const ThreePost = (function () {
         (function (cp) {   // THE RAY SOURCE: the light sources of this pass's input, before it draws
             var cr = cp.render;
             cp.render = function (r, wb, rb) {
-                if (rb) _raySrcRender(r, rb.texture, rb.width, rb.height, cp.material.uniforms);
+                if (rb) _raySrcRender(r, rb.texture, rb.width, rb.height, cp.material.uniforms, _skyMaskTex);   // (THE SKY'S RAYS: the mask made right after the scene)
                 return cr.apply(this, arguments);
             };
         })(_cinematicPass);
@@ -4050,9 +4057,52 @@ const ThreePost = (function () {
             cam.updateMatrixWorld();
             _rbD.setFromMatrixPosition(cam.matrixWorld);
             _rbD.subVectors(_rb.p, _rbD);
+            if (U.uRaySky) U.uRaySky.value = 0;   // a finisher's light is its own (the column, the rose window): every light throws
             return _raysAim(U, cam, _rbD, _rb.light, b);
         }
-        return _raysAim(U, cam, _sunRayDir(), _sunLight, s);
+        var sk = _skyRayLight(ctx);
+        if (U.uRaySky) U.uRaySky.value = _raySkyOn();
+        return sk ? _raysAim(U, cam, sk.dir, sk.light, s) : _raysAim(U, cam, _sunRayDir(), _sunLight, s);
+    }
+    /* THE SKY'S RAYS (2026-11-14, mondo: "my unit rim light makes light rays but i think i just want the light rays to come from
+       above like the sun or the moon"): the slider's rays came off every bright pixel, so a rim-lit unit (THE UNIT RIM LIGHT),
+       a lamp, a lit wall all threw shafts. Now only the SKY throws them (uRaySky: the ray source keeps a pixel only where the
+       scene drew nothing, i.e. the dome; the 3D moon writes no depth for this), and they aim at the body the dome draws:
+       the sun by day, the moon by night, by the world clock where the room has one (ThreeRenderer.getSkyLightDir). The rim
+       light, the slider and its 0 = off are untouched; a finisher beat (rayBeat) keeps its own light. No sky on screen = no
+       shafts. Back to the old every-light rays: window.EW_RAYS_ANY_LIGHT = true (live). */
+    function _raySkyOn() { return (typeof window !== 'undefined' && window.EW_RAYS_ANY_LIGHT) ? 0 : 1; }
+    var _skyRayL = null;
+    function _skyRayLight(ctx) {
+        var o = null;
+        try { o = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getSkyLightDir) ? ThreeRenderer.getSkyLightDir(ctx === 'hq' ? 'hq' : 'battle') : null; } catch (e) { o = null; }
+        if (!o || !o.dir) return null;
+        if (!_skyRayL) _skyRayL = { dir: new THREE.Vector3(), light: { color: new THREE.Color(), intensity: 1 } };
+        _skyRayL.dir.copy(o.dir);
+        if (o.moon) { _skyRayL.light.color.setRGB(0.78, 0.86, 1.0); _skyRayL.light.intensity = 0.5; }
+        else { _skyRayL.light.color.setRGB(1.0, 0.94, 0.82); _skyRayL.light.intensity = 1; }
+        return _skyRayL;
+    }
+    /* the classic chain's sky: 1 where the scene drew nothing (depth still cleared), at half size, made right after the
+       RenderPass (its depth is gone by the frame pass). Only while sky rays are on; else none (the rays see every light). */
+    var _skyMaskC = null, _skyMaskTex = null;
+    function _skyMaskAfterScene(r, rb) {
+        var U = _cinematicPass && _cinematicPass.material && _cinematicPass.material.uniforms;
+        _skyMaskTex = null;
+        if (!U || !U.uRaySky || !(U.uRays && U.uRays.value > 0.001) || !(U.uRaySky.value > 0.5) || !rb || !rb.depthTexture) return;
+        var W = Math.max(1, rb.width >> 1), H = Math.max(1, rb.height >> 1), M = _skyMaskC;
+        if (!M) {
+            M = _skyMaskC = { scene: new THREE.Scene(), cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1),
+                mat: new THREE.ShaderMaterial({ uniforms: { tDepth: { value: null } }, vertexShader: _RaySrcShader.vertexShader,
+                    fragmentShader: 'uniform sampler2D tDepth; varying vec2 vUv; void main() { gl_FragColor = vec4(vec3(step(0.999999, texture2D(tDepth, vUv).r)), 1.0); }',
+                    depthTest: false, depthWrite: false }),
+                rt: new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, format: THREE.RGBAFormat, depthBuffer: false, stencilBuffer: false }) };
+            var q = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), M.mat); q.frustumCulled = false; M.scene.add(q);
+        } else if (M.rt.width !== W || M.rt.height !== H) M.rt.setSize(W, H);
+        M.mat.uniforms.tDepth.value = rb.depthTexture;
+        var prev = r.getRenderTarget();
+        r.setRenderTarget(M.rt); r.render(M.scene, M.cam); r.setRenderTarget(prev);
+        _skyMaskTex = M.rt.texture;
     }
     /* THE RAY SOURCE (2026-10-24, mondo: "There are light rays thats look like they come from every star in the sky, thats
        defnitely overkill"): the rays used to gather every full-size pixel past the bar, and at night the bar is the dark
@@ -4066,12 +4116,14 @@ const ThreePost = (function () {
     var _RaySrcShader = {
         vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
         fragmentShader: [
-            'uniform sampler2D tDiffuse; uniform vec2 uTexel; uniform vec2 uRayThr; varying vec2 vUv;',
+            'uniform sampler2D tDiffuse; uniform sampler2D tSky; uniform float uRaySky; uniform vec2 uTexel; uniform vec2 uRayThr; varying vec2 vUv;',
             'void main() {',
             '  vec3 acc = vec3(0.0); float cov = 0.0;',
             '  for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) {',
-            '    vec3 s = texture2D(tDiffuse, vUv + vec2(float(i) * 2.0 - 3.0, float(j) * 2.0 - 3.0) * uTexel).rgb;',
+            '    vec2 q = vUv + vec2(float(i) * 2.0 - 3.0, float(j) * 2.0 - 3.0) * uTexel;',
+            '    vec3 s = texture2D(tDiffuse, q).rgb;',
             '    float k = smoothstep(uRayThr.x, uRayThr.x * 1.8 + 0.04, dot(s, vec3(0.299, 0.587, 0.114)));',
+            '    if (uRaySky > 0.5) k *= step(0.999999, texture2D(tSky, q).r);   // THE SKY\'S RAYS: only where nothing was drawn (the sky)',
             '    acc += s * k; cov += k;',
             '  }',
             '  gl_FragColor = vec4(acc / 16.0 * smoothstep(0.25, 0.5, cov / 16.0), 1.0);',
@@ -4079,8 +4131,10 @@ const ThreePost = (function () {
         ].join('\n')
     };
     var _raySrc = null;
-    /* WebGL: the frame pass's input (inTex, w × h pixels) → the 1/8 source, into U.tRaySrc. Only while the rays are on. */
-    function _raySrcRender(r, inTex, w, h, U) {
+    /* WebGL: the frame pass's input (inTex, w × h pixels) → the 1/8 source, into U.tRaySrc. Only while the rays are on.
+       skyTex (THE SKY'S RAYS): the scene's depth (pmndrs) or _skyMaskC's mask (the classic chain) — 1 where nothing was drawn.
+       None = every light throws rays, as before. */
+    function _raySrcRender(r, inTex, w, h, U, skyTex) {
         if (!U || !U.tRaySrc || !(U.uRays && U.uRays.value > 0.001) || !inTex || !(w > 0 && h > 0)) return;
         var W = Math.max(1, Math.floor(w / RAY_SRC_DIV)), H = Math.max(1, Math.floor(h / RAY_SRC_DIV));
         var R = _raySrc;
@@ -4088,7 +4142,7 @@ const ThreePost = (function () {
             if (R) { try { R.rt.dispose(); } catch (e) {} }
             if (!R) {
                 R = { scene: new THREE.Scene(), cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1),
-                      mat: new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, uTexel: { value: new THREE.Vector2() }, uRayThr: { value: new THREE.Vector2(0.3, 1) } },
+                      mat: new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, tSky: { value: null }, uRaySky: { value: 0 }, uTexel: { value: new THREE.Vector2() }, uRayThr: { value: new THREE.Vector2(0.3, 1) } },
                           vertexShader: _RaySrcShader.vertexShader, fragmentShader: _RaySrcShader.fragmentShader, depthTest: false, depthWrite: false }) };
                 var q = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), R.mat); q.frustumCulled = false; R.scene.add(q);
             }
@@ -4097,6 +4151,8 @@ const ThreePost = (function () {
             _raySrc = R;
         } else if (R.rt.width !== W || R.rt.height !== H) R.rt.setSize(W, H);
         if (U.uRayThr) R.mat.uniforms.uRayThr.value.copy(U.uRayThr.value);
+        var sky = !!(skyTex && U.uRaySky && U.uRaySky.value > 0.5);
+        R.mat.uniforms.tSky.value = sky ? skyTex : null; R.mat.uniforms.uRaySky.value = sky ? 1 : 0;
         R.mat.uniforms.tDiffuse.value = inTex;
         R.mat.uniforms.uTexel.value.set(1 / w, 1 / h);
         var prev = r.getRenderTarget();
@@ -4311,7 +4367,9 @@ const ThreePost = (function () {
                 _cinematicPass.material.uniforms['uNightGrade'].value = _rn2.grade;
                 var _bg2 = _brightGain() * _rn2.lift; _cinematicPass.material.uniforms['uGain'].value = _bg2;
                 var _kl = opts && opts.keyLight, _kd = (opts && opts.keyDir) || (_kl && _kl.position) || null;
-                var _ry2 = _raysAim(_cinematicPass.material.uniforms, cam, _kd, _kl, (opts && opts.keyDir !== undefined || _kl) ? _raysStrength('hq') : 0);
+                var _sk2 = _skyRayLight('hq');   // THE SKY'S RAYS: the dome's sun / moon (the room's key where it has no open sky)
+                if (_cinematicPass.material.uniforms.uRaySky) _cinematicPass.material.uniforms.uRaySky.value = _raySkyOn();
+                var _ry2 = _raysAim(_cinematicPass.material.uniforms, cam, _sk2 ? _sk2.dir : _kd, _sk2 ? _sk2.light : _kl, (opts && opts.keyDir !== undefined || _kl) ? _raysStrength('hq') : 0);
                 _cinematicPass.material.uniforms['uFilmic'].value = _filmic ? 1 : 0;
                 var _lc2 = _lkCin(); _cinematicPass.enabled = !!(_lc2.crt || _lc2.vignette || _lkLensChroma() > 0.01 || _mb2 > 0.001 || Math.abs(_bg2 - 1) > 0.002
                     || _rn2.grade > 0.001 || _ry2 > 0.001 || _filmic);

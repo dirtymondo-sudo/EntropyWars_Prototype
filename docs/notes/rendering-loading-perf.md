@@ -1055,6 +1055,16 @@ battles and exploring alike". Proven in a VS CPU arena: frame mean luma 40 at 0.
   pass's 24 taps read that little picture (`tRaySrc`) instead of the full frame. Drawn only while the rays are on (the node
   renderer's rtt flips `autoUpdate`). Checked: Göbekli Tepe night sky, rays 1, the rays' own contribution (rays 1 minus
   rays 0) before = streaks across the whole starry sky, after = only off the braziers and the zone glow; WebGPU rays draw.
+- **THE SKY'S RAYS** (2026-11-14, mondo: "my unit rim light makes light rays but i think i just want the light rays to come
+  from above like the sun or the moon"): the slider's Light Rays now come only from the SKY. The ray source (`_RaySrcShader`,
+  `_ngRaySrc`) keeps a tap only where the scene drew nothing (depth still cleared = the dome: `uRaySky`, depth >= 0.999999);
+  pmndrs reads `composer.inputBuffer.depthTexture`, the node chain `P.depthTex`, the classic chain a half-size mask made right
+  after its RenderPass (`_skyMaskAfterScene`, its depth is gone by the frame pass). The 3D moon (`_skyMoon`) writes no depth
+  so it counts as sky. The rays aim at the body the dome draws (`ThreeRenderer.getSkyLightDir(ctx)`: sun by day, moon by
+  night, the world clock's pair in a clocked room, un-yawed), sun warm / moon cool; the battle used to aim at the key light.
+  The rim light, the slider and 0 = off are untouched; a finisher `rayBeat` keeps every light (`uRaySky` 0). No sky on screen =
+  no shafts. Old rays live: `window.EW_RAYS_ANY_LIGHT = true`. Checked on Shasta, day + night, rays 1: before = streaks off
+  the lit tiles, the units and the board; after = shafts only falling out of the sky (pmndrs + the node chain on WebGL 2).
 - **THE NO-STALL READ** (`_aeMeasure`): the 16 × 16 frame read that feeds the rays' bar and the building's auto exposure
   used `readRenderTargetPixels` every 220 ms, which makes the CPU wait for the GPU to finish the frame. WebGL 2 now uses
   `readRenderTargetPixelsAsync` (a pixel buffer + fence), as the node renderer already did. Sandbox (llvmpipe), Light Rays

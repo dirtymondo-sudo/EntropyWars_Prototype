@@ -35392,7 +35392,10 @@ const ThreeRenderer = (function () {
             matPick: function (node, srcMat) {
                 var m = new THREE.MeshBasicMaterial({
                     map: (srcMat && srcMat.map) || null,
-                    side: THREE.FrontSide, depthWrite: true, fog: false
+                    /* THE SKY'S RAYS (2026-11-14): no depth written — the moon is sky, so the Light Rays' sky test
+                       (three-post.js _RaySrcShader: nothing drawn there) lets it throw rays. It is the farthest opaque
+                       thing, drawn last of them, and still depth TESTED, so every nearer body still covers it */
+                    side: THREE.FrontSide, depthWrite: false, fog: false
                 });
                 _skyMoonMats.push(m);
                 return m;
@@ -36345,6 +36348,28 @@ const ThreeRenderer = (function () {
         try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_lightRays', String(_rayStrength)); } catch (e) {}
     }
     function getLightRayStrength() { return _rayStrength; }
+    /* THE SKY'S RAYS (2026-11-14, mondo: "my unit rim light makes light rays but i think i just want the light rays to come from
+       above like the sun or the moon"): the Light Rays aim at the body the sky dome draws — the sun by day, the moon by night
+       (the dome's own uDayNight; THE WORLD CLOCK's uSunDir / uMoonDir in a clocked room, the dome's fixed pair elsewhere), turned
+       back out of the dome's yaw so it is a world direction. A body under the horizon hands over to the other one when that one
+       is up. ctx 'hq' = the building's dome (null when the room has no open sky); else the battle's. { dir, moon } or null. */
+    var _skyLightOut = null;
+    function getSkyLightDir(ctx) {
+        if (!_envUni || typeof THREE === 'undefined') return null;
+        if (ctx === 'hq') { if (!(_hq && _hq.sky && _hq.sky.dome)) return null; }
+        else if (!_envDome) return null;
+        var u = _envUni, n = +u.uDayNight.value || 0, ck = Math.max(0, Math.min(1, +u.uSunClock.value || 0));
+        if (!_skyLightOut) _skyLightOut = { dir: new THREE.Vector3(), sun: new THREE.Vector3(), moonV: new THREE.Vector3(), moon: false };
+        var O = _skyLightOut;
+        O.sun.set(0.50, 0.40, -0.58).lerp(u.uSunDir.value, ck).normalize();
+        O.moonV.set(-0.50, 0.40, 0.56).lerp(u.uMoonDir.value, ck).normalize();
+        var moon = n >= 0.5, b = moon ? O.moonV : O.sun, o = moon ? O.sun : O.moonV;
+        if (b.y < 0 && o.y > 0) { moon = !moon; b = o; }
+        var yw = +u.uSkyYaw.value || 0, cy = Math.cos(yw), sy = Math.sin(yw);
+        O.dir.set(b.x * cy + b.z * sy, b.y, -b.x * sy + b.z * cy);
+        O.moon = moon;
+        return O;
+    }
 
     function _mulberry32(a) {
         return function () {
@@ -95553,6 +95578,7 @@ const ThreeRenderer = (function () {
         castChainFor: _castChainFor,
 
         setLightRayStrength, getLightRayStrength,
+        getSkyLightDir,   // THE SKY'S RAYS (2026-11-14): where the sky draws its sun / moon (the Light Rays aim there)
         setUnitLight, getUnitLight,   // THE UNIT RIM LIGHT rev 2: the Graphics settings
         setFieldFogScale,   // THE ROOM SETTINGS (2026-10-20): Fog Density on a fight's room height fog
         boardFog: function () {   // THE BOARD FOG (2026-11-01): a read for probes — the live share, rect and shape (world units)
