@@ -861,25 +861,25 @@ IN2['P07-06-B1'] = K => { const at = K.at;
 /* THE RESIDENTS' ROOMS (11-14): a plaster partition along a square edge (x0,z0 -> x1,z1, room metres) with its ghost, a skirting, and
    one-square doorways (`gaps`: [from, to] metres along it) under a lintel; a bed + wardrobe + bedside table + lamp + rug set. */
 function partition(K, x0, z0, x1, z1, gaps, tint) { const a = K.a, H = K.H, T = 0.16, ew = Math.abs(x1 - x0) > Math.abs(z1 - z0), L0 = ew ? Math.min(x0, x1) : Math.min(z0, z1), L1 = ew ? Math.max(x0, x1) : Math.max(z0, z1), c = ew ? z0 : x0;
-    const seg = (u0, u1, y, h) => { const m = (u0 + u1) / 2, l = u1 - u0; if (l < 0.05) return; if (ew) a.box(m, y, c, l, h, T, PLASTER, tint || 0xeee2cc); else a.box(c, y, m, T, h, l, PLASTER, tint || 0xeee2cc);
+    const G = { gain: 2.0 };   // the painted coat's lift (K.liner's PAINT2): bare PLASTER reads near black in the city's shade
+    const seg = (u0, u1, y, h) => { const m = (u0 + u1) / 2, l = u1 - u0; if (l < 0.05) return; if (ew) a.box(m, y, c, l, h, T, PLASTER_A, tint || 0xeee2cc, G); else a.box(c, y, m, T, h, l, PLASTER_A, tint || 0xeee2cc, G);
         if (y === 0) { if (ew) { a.box(m, 0, c, l, 0.14, T + 0.04, WOOD, 0x4a3020); K.ghost(m, c, l, T, H); } else { a.box(c, 0, m, T + 0.04, 0.14, l, WOOD, 0x4a3020); K.ghost(c, m, T, l, H); } } };
     let u = L0; for (const g of (gaps || []).slice().sort((p, q) => p[0] - q[0])) { seg(u, g[0], 0, H); seg(g[0], g[1], 2.3, H - 2.3); u = g[1]; } seg(u, L1, 0, H); }
 function bedSet(K, bx, bz, bf, bed, wx, wz, wf, side, rugT, o) { o = o || {};
-    K.prop(bed, bx, bz, bf); K.prop(o.wardrobe || 'psx_wardrobe_mp_1', wx, wz, wf);
+    K.prop(bed, bx, bz, (bf + 270) % 360); K.prop(o.wardrobe || 'psx_wardrobe_mp_1', wx, wz, wf);   // (the PSX bed's length runs along its own x, the headboard at +x: +270 puts the head where `bf` says, seen on screen 11-14)
     const r = bf * Math.PI / 180, hx = Math.sin(r), hz = -Math.cos(r), sx = -hz * side, sz = hx * side;   // hx/hz: toward the bed's head (the wall); sx/sz: its side
     K.put(o.table || 'psx_bedside_table_1', bx + hx * 0.75 + sx * 1.15, bz + hz * 0.75 + sz * 1.15, bf); K.put('table_lamp', bx + hx * 0.75 + sx * 1.15, bz + hz * 0.75 + sz * 1.15, bf, 0.64);
     K.rug(bx - hx * 1.9, bz - hz * 1.9, Math.abs(hx) > 0.5 ? 1.4 : 2.4, Math.abs(hx) > 0.5 ? 2.4 : 1.4, 'carpet', rugT, 1.6); }
-IN['P07-04-B2'] = K => { const a = K.a, at = K.at, H = K.H, PART = 0xeee2cc, zF = at(0, 2)[1] + 1.75, T = 0.16;
+IN['P07-04-B2'] = K => { const at = K.at, PART = 0xf2e6d0, zF = at(0, 2)[1] + 1.75;
     K.floor(WOOD, 0xb08a64, 3.5);
     K.liner(PAINT2(0xe8d8b8), WOODM(0x6a4a30), CEIL(), { dado: 0.9, rail: 0x4a3020 });
     /* the partitions: two side walls between the rooms, the bedrooms' front wall with three one-square doorways */
-    for (const x of [at(1, 0)[0] + 1.75, at(4, 0)[0] + 1.75]) { const z = (-K.D / 2 + zF) / 2, d = zF + K.D / 2; a.box(x, 0, z, T, H, d, PLASTER, PART); K.ghost(x, z, T, d, H); }
-    for (const i of [0, 2, 4, 6]) { const x = at(i, 0)[0]; a.box(x, 0, zF, 3.5, H, T, PLASTER, PART); a.box(x, 0, zF, 3.52, 0.14, T + 0.04, WOOD, 0x4a3020); K.ghost(x, zF, 3.5, T, H); }
-    for (const i of [1, 3, 5]) { const x = at(i, 0)[0]; a.box(x, 2.3, zF, 3.5, H - 2.3, T, PLASTER, PART); }   // the lintel over each doorway
+    for (const x of [at(1, 0)[0] + 1.75, at(4, 0)[0] + 1.75]) partition(K, x, -K.D / 2, x, zF, null, PART);
+    partition(K, -K.W / 2, zF, K.W / 2, zF, [1, 3, 5].map(i => [at(i, 0)[0] - 1.75, at(i, 0)[0] + 1.75]), PART);   // a lintel over each doorway
     /* the bedrooms: [bed square, wardrobe square, bed key, rug tint, lamp tint] */
     for (const [bi, wi, bed, rugT, sh] of [[0, 1, 'psx_bed_4_2', 0x2a4a7a, 0x3a5a8a], [2, 4, 'psx_bed_5_3', 0x6a2a3a, 0x7a3a2a], [6, 5, 'psx_bed_5_1', 0x2a3a5a, 0x5a5a62]]) {
         const [bx, bz] = at(bi, 0), [wx, wz] = at(wi, 0), s = bi < wi ? 1 : -1;
-        K.prop(bed, bx, bz, 0); K.prop('psx_wardrobe_mp_1', wx, wz, 0);
+        K.prop(bed, bx, bz, 270); K.prop('psx_wardrobe_mp_1', wx, wz, 0);   // (270: the head to the back wall, see bedSet)
         K.put('psx_bedside_table_1', bx + s * 1.25, bz - 1.25, 0); K.put('table_lamp', bx + s * 1.25, bz - 1.25, 0, 0.64);
         K.rug(bx, bz + 2.2, 2.4, 1.6, 'carpet', rugT, 1.6);
         K.pendant((bx + wx) / 2, at(bi, 1)[1], 0.7, sh); }

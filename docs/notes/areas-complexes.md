@@ -2766,6 +2766,16 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - **Headless**: the bigger Meshy pieces (treadmill, photocopier, welding cart, cameras, pallet jack, hand truck, mailboxes) load (the files
   parse, the rows stand at the right height, the welding cart's shadow shows) but the headless browser does not draw them, like the city's
   Meshy cars; the newspaper bundles draw. Check them on a real GPU.
+### HERO PLAZA, THE RESIDENTS' BEDROOMS (2026-11-14, mondo picked "District threads add them"; brief: project files disaster-city-residents/bedrooms-brief.md)
+- Apartments A (P07-04-B2) is a walk-in now (`row: { storeys: 1, hollow: true, doorSide: 'W' }`, `apartments(..., door)` puts the doorway in
+  its ground-floor shell, `aptDress(..., door)` hangs the awning + lamps over it): a flat of three bedrooms behind partitions, the Sidekick
+  (squares 0-1), the Nephilim (2-4; his plan home P04-05-B2 is a pack model) and the Police officer (5-6), off a hall (rows 3-4).
+- Superhero Tower (P06-04-B1): the lobby stays; its two back corners (2 x 2 squares by the lift core, each with its trophy case) are the
+  Superhero's (left) and Eagleman's (right) rooms. The directory board moved out to row 4. Apartment stair (P04-06-B1): the Antihero's room in
+  the front-right corner (squares 5-6, rows 2-3), its doorway on the hall walk; the umbrella stand + notice board moved out.
+- Helpers: `partition(K, x0, z0, x1, z1, gaps, tint)` (painted plaster, gain 2.0: bare PLASTER reads near black; ghost + skirting; a lintel
+  over each one-square gap), `bedSet(K, bx, bz, bf, bed, wx, wz, wf, side, rugT)` (bf = where the foot points, kit faces). THE PSX BEDS' length
+  runs along their own x with the headboard at +x: the prop's face is bf + 270 (seen on screen).
 ### THE UNIVERSITY INSIDES (2026-11-13, mondo 21:04 "let's go ahead and do the interiors", his OK on the grid plan 21:23)
 His grid rule (21:14 + 21:17, all interiors): the city fights on 3.5 m squares; a BARRIER fills whole squares (centred, a 2-wide piece = 2 squares),
 a WALKWAY is a whole square wide with nothing halfway across two, dressing sits OFF the square centres.
