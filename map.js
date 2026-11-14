@@ -2599,6 +2599,34 @@
             Object.assign(N, { items: S.items, fights: S.fights, solved: S.solved, moves: 0 }); Object.assign(N.vars, _pdKeptVars(S));
             return _pdGo(N, { then: () => { _pd.undo = []; } });
         }
+        /* a thing pressed (a gate, a key, a valve, a bell, a fight's stand-in): data.js pdDoAct says what the board becomes, or why not */
+        function _pdAct(C) {
+            if (!_pd) return false;
+            const id = _pd.id, S = pdState(id), A = C.pdAct || {};
+            try { if (ThreeRenderer.hq.pd.busy()) return false; } catch (e) { return false; }
+            const R = pdDoAct(id, S, A);
+            let say = R.say;
+            /* THE FIGHT, for now a stand-in: the enemies are listed, the fight is counted as won (the real field fight is the next step) */
+            if (R.ok && A.fight && (A.enemies || []).length) say = 'STAND-IN FIGHT WON · ' + (C.label || 'ENEMIES');
+            if (say) _hqToast(_pdEsc(say), 3200);
+            if (!R.ok) { try { playSfx('uiButtonCancel'); } catch (e) {} return false; }
+            try { playSfx('uiButtonClick'); } catch (e) {}
+            const was = S.solved;
+            return _pdGo(R.S, { undo: false, quiet: true, then: () => { if (!was && pdState(id).solved) _pdSolvedSay(); } });
+        }
+        function _pdSolvedSay() {
+            if (!_pd) return;
+            const V = pdLevel(_pd.id), S = pdState(_pd.id);
+            _hqToast('<b>SOLVED</b> · ' + _pdEsc(V.L.title || V.T.label) + ' · ' + (S.moves | 0) + ' MOVES', 6000);
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+        }
+        /* the renderer's beat (~3 a second): the officer inside the exit's ring solves the level */
+        window._pdBeat = function (p) {
+            if (!_pd || !p) return;
+            const R = DOOR_HQ.rooms[p.room], E = R && R.pd === _pd.id && R.pdExit; if (!E) return;
+            const S = pdState(_pd.id); if (S.solved || Math.hypot(p.x - E.x, p.z - E.z) > E.r) return;
+            S.solved = true; _pdSave(); _pdSolvedSay();
+        };
         /* ── the panel: the 3 × 3 model, the moves, PREVIEW → CONFIRM ── */
         function _pdMoveLabel(id, m) {
             const P = pdPlot(id, m.plot), role = (P && P.role) || m.plot.toUpperCase();
@@ -2689,7 +2717,7 @@
         window.PD = {
             state: () => _pd ? { level: _pd.id, state: pdState(_pd.id), at: _pdAt(), moves: pdMoves(_pd.id, pdState(_pd.id)), joins: pdJoins(_pd.id, pdState(_pd.id)), undo: _pd.undo.length } : null,
             go: (id) => window._pdEnter(id), leave: () => window._pdLeave(),
-            move: (m) => _pdDoMove(m), undo: () => _pdUndo(),
+            move: (m) => _pdDoMove(m), undo: () => _pdUndo(), act: (cid) => { const o = pdOfRoom(ThreeRenderer.hq.pd.at().room), C = o && (DOOR_HQ.rooms[pdRoomId(o.level, o.plot)].counters || []).find(c => c.id === cid); return C ? _pdAct(C) : false; },
             reset: (id) => { if (_pd && (!id || id === _pd.id)) return _pdReset(); try { const A = _pdSaveAll(); delete A.levels[id]; localStorage.setItem(PD_RULES.saveKey, JSON.stringify(A)); } catch (e) {} return true; },
         };
         /* ?pd=<level> in the url: straight into a level, once per page */
@@ -8221,6 +8249,7 @@
                 if (act) { window._hqDoAction(act, t); return; }
             }
             /* THE PLOT DUNGEONS: a dial / a console / the model opens the board's panel */
+            if (t && t.kind === 'counter' && t.counter && t.counter.proc === 'pd_act') { _pdAct(t.counter); return; }
             if (t && t.kind === 'counter' && t.counter && t.counter.proc === 'pd_control') { _pdStyle(); if (_pd) _pd.sel = null; _hqOpenPanel(t); return; }
             /* THE MARKER (2026-09-20): the floating crystal opens ITS OWN panel — the party, the checklist, FIGHT — never the terminal */
             if (t && t.kind === 'counter' && t.counter && t.counter.proc === 'battle_marker') { _hqOpenPanel(t); return; }

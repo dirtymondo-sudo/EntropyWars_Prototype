@@ -76771,6 +76771,43 @@ const PD_DUNGEONS = {
         board: { B1: 'west', B2: 'rotor', B3: 'east', C2: 'start' },
         entry: 'start',
     }] },
+    /* 5.1 ROTATE · the rotor's two arms point at what they join; two quarter turns */
+    crypt: { label: 'THE TURNING CRYPT', verb: 'ROTATE', look: 'crypt', levels: [{
+        title: 'THE TURNING CRYPT',
+        plots: {
+            entry: { role: 'ENTRY', cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '###......###', '###......###', '###......###', '###......###', '###......###', '###......###', '#####..#####', '#####..#####'],
+                marks: [{ k: 'spawn', x: 6, y: 10, face: 0 }, { k: 'model', x: 4, y: 7.5 }, { k: 'prop', key: 'candle_ring', x: 8.4, y: 4.6 }] },
+            rotor: { role: 'ROTOR', turn: true, ride: true, cells: ['############', '############', '############', '############', '####....####', '........####', '........####', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
+                marks: [{ k: 'dial', x: 6, y: 6 }] },
+            memorial: { role: 'MEMORIAL', cells: ['############', '############', '############', '####....####', '####....####', '####........', '####........', '####....####', '####....####', '############', '############', '############'],
+                marks: [{ k: 'prop', key: 'angel_statue', x: 4.6, y: 6, rot: 90 }, { k: 'prop', key: 'candle_ring', x: 5.4, y: 3.6 }, { k: 'prop', key: 'candle_ring', x: 5.4, y: 8.4 },
+                    { k: 'act', id: 'carving', x: 5.4, y: 6, label: 'THE CARVING', verb: 'LOOK', say: 'A WHEEL WITH TWO ARMS. EACH ARM POINTS AT A DOOR.' }] },
+            keycrypt: { role: 'KEY CRYPT', cover: 'sarcophagus', cells: ['############', '############', '##........##', '##........##', '##.oo..oo.##', '..........##', '..........##', '##.oo..oo.##', '##........##', '##........##', '############', '############'],
+                marks: [{ k: 'fight', id: 'crypt', x: 3, y: 6, label: 'UNDEAD ×2 + NECROMANCER', enemies: [{ race: 'undead', x: 3.5, y: 4.5 }, { race: 'undead', x: 3.5, y: 7.5 }, { race: 'necromancer', x: 8.5, y: 6 }] },
+                    { k: 'take', item: 'key', x: 9.5, y: 6, needs: { fight: 'crypt' }, no: 'DEFEAT THE GUARDS FIRST' }] },
+            exit: { role: 'EXIT', cells: ['############', '############', '###......###', '###......###', '###......###', '###......###', '###......###', '###......###', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
+                marks: [{ k: 'gate', id: 'exit', side: 's', inset: 2, needs: { has: 'key' }, no: 'LOCKED. IT WANTS A KEY.' }, { k: 'prop', key: 'light_shaft', x: 6, y: 4 }, { k: 'prop', key: 'candle_ring', x: 6, y: 4 }, { k: 'exit', x: 6, y: 4 }] },
+        },
+        board: { A2: 'exit', B1: 'memorial', B2: 'rotor', B3: 'keycrypt', C2: 'entry' },
+        entry: 'entry',
+    }] },
+    /* 5.6 ROTATE · the same rotor on another board: the key is behind you, the exit is where you first looked */
+    tomb: { label: 'THE TURNING TOMB', verb: 'ROTATE', look: 'crypt', levels: [{
+        title: 'THE TURNING TOMB',
+        plots: {
+            foyer: { role: 'FOYER', cover: 'sarcophagus', cells: ['#####..#####', '#####..#####', '##........##', '##........##', '##........##', '##.o....o.##', '##........##', '##........##', '##........##', '##........##', '#####..#####', '#####..#####'],
+                marks: [{ k: 'spawn', x: 6, y: 10, face: 0 }, { k: 'model', x: 4, y: 8.5 },
+                    { k: 'fight', id: 'foyer', x: 6, y: 6, label: 'SKELETON ×2', enemies: [{ race: 'skeleton', x: 3.5, y: 4.5 }, { race: 'skeleton', x: 8.5, y: 4.5 }] }] },
+            hub: { role: 'HUB', turn: true, ride: true, turnWhen: { fight: 'foyer' }, cells: ['############', '############', '############', '############', '####....####', '####........', '####........', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
+                marks: [{ k: 'dial', x: 6, y: 6 }] },
+            keycrypt: { role: 'KEY CRYPT', cells: ['############', '############', '##........##', '##........##', '##........##', '##..........', '##..........', '##........##', '##........##', '##........##', '############', '############'],
+                marks: [{ k: 'take', item: 'key', x: 5.5, y: 5.5 }, { k: 'prop', key: 'candle_ring', x: 3, y: 3 }, { k: 'prop', key: 'candle_ring', x: 3, y: 9 }] },
+            exithall: { role: 'EXIT HALL', cells: ['############', '############', '############', '##........##', '##........##', '............', '............', '##........##', '##........##', '############', '############', '############'],
+                marks: [{ k: 'gate', id: 'exit', side: 'e', inset: 2, needs: { has: 'key' }, no: 'LOCKED. IT WANTS A KEY.' }, { k: 'prop', key: 'light_shaft', x: 11, y: 6 }, { k: 'exit', x: 11, y: 6, r: 2 }] },
+        },
+        board: { B1: 'keycrypt', B2: 'hub', B3: 'exithall', C2: 'foyer' },
+        entry: 'foyer',
+    }] },
     /* PD-LEVELS-END */
 };
 /* ── the readers ───────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
@@ -76833,6 +76870,7 @@ function pdPlotPorts(P) {
 function pdNewState(id) {
     const V = pdLevel(id); if (!V) return null;
     const S = { level: id, slots: {}, rot: {}, vars: Object.assign({}, V.L.vars || {}), items: {}, fights: {}, moves: 0, solved: false, log: [] };
+    Object.keys(V.L.tokens || {}).forEach(t => { S.vars['tok_' + t] = V.L.tokens[t].at; });
     Object.keys(V.L.board || {}).forEach(slot => { const pid = V.L.board[slot]; if (pid) { S.slots[slot] = pid; S.rot[pid] = ((V.L.rot || {})[pid] || 0); } });
     return S;
 }
@@ -76875,7 +76913,41 @@ function pdNet(id, S, layer, from) {
     const out = {}; Object.keys(seen).forEach(k => { out[k.split('|')[0]] = true; });
     return out;
 }
-/* a condition (a gate's `needs`, a move's `when`): { has: item } | { fight: id } | { var: name, eq } | { net: layer, from, to: [plots] }
+/* every join of a state on every layer of the level (the walked two + the plots' net layers), kept for the state last asked */
+let _pdJC = null;
+function _pdJoinsOf(id, S) {
+    if (_pdJC && _pdJC.S === S && _pdJC.id === id && _pdJC.k === JSON.stringify([S.slots, S.rot])) return _pdJC.J;
+    const V = pdLevel(id), layers = { ground: 1, upper: 1 };
+    Object.keys(V.L.plots || {}).forEach(p => { const P = pdPlot(id, p); Object.keys((P && P.net) || {}).forEach(k => { layers[k] = 1; }); Object.keys((P && P.ports) || {}).forEach(k => { layers[k] = 1; }); });
+    _pdJC = { S, id, k: JSON.stringify([S.slots, S.rot]), J: pdJoins(id, S, Object.keys(layers)) };
+    return _pdJC.J;
+}
+/* a thing pressed (an `act` mark, a gate, a key): the state after it, or why not → { ok, S (a new state), say } */
+function pdDoAct(id, S, A) {
+    const V = pdLevel(id);
+    if (A.needs && !pdCheck(id, S, A.needs)) return { ok: false, say: A.no || 'NOTHING HAPPENS' };
+    const N = JSON.parse(JSON.stringify(S)); let say = A.say || null;
+    if (A.set) Object.assign(N.vars, A.set);
+    if (A.toggle) N.vars[A.toggle] = !N.vars[A.toggle];
+    if (A.give) N.items[A.give] = true;
+    if (A.fight) N.fights[A.fight] = true;
+    if (A.swap) { const slot = pdSlotOf(N, A.swap[0]); if (slot) { N.slots[slot] = A.swap[1]; N.rot[A.swap[1]] = N.rot[A.swap[0]] || 0; } }
+    if (A.rotTo) Object.keys(A.rotTo).forEach(p => { N.rot[p] = A.rotTo[p]; });
+    if (A.send) {
+        const T = (V.L.tokens || {})[A.send], k = 'tok_' + A.send, st = T && (T.steps || []).find(s => s.from === N.vars[k] && pdCheck(id, N, s.when));
+        if (!st) return { ok: false, say: A.no || 'IT DOES NOT MOVE' };
+        N.vars[k] = st.to; say = st.say || say;
+    }
+    if (A.route) {
+        const R = A.route, load = N.vars[R.var]; if (!load) return { ok: false, say: R.empty || 'NOTHING IS LOADED' };
+        const j = pdJoins(id, N, [R.layer]).find(q => q.a === R.from || q.b === R.from), to = j ? (j.a === R.from ? j.b : j.a) : null;
+        N.vars[R.var] = null;
+        if (to && R.sockets[to] === load) { N.vars[R.won + load] = true; say = R.yes || 'IT FITS'; } else say = R.back || 'IT ROLLS BACK';
+    }
+    if (A.solve || (V.L.solvedWhen && pdCheck(id, N, V.L.solvedWhen))) N.solved = true;
+    return { ok: true, S: N, say };
+}
+/* a condition (a gate's `needs`, a move's `when`): { joined: [plot, side, layer] } | { link: [plotA, plotB], layer } | { has: item } | { fight: id } | { var: name, eq } | { net: layer, from, to: [plots] }
    | { all: [...] } | { any: [...] } | { not: cond } */
 function pdCheck(id, S, c) {
     if (!c) return true;
@@ -76889,6 +76961,8 @@ function pdCheck(id, S, c) {
     if (c.net) { const N = pdNet(id, S, c.net, c.from); return [].concat(c.to || []).every(p => N[p]); }
     if (c.rot) return (S.rot[c.rot] || 0) === (c.eq || 0);
     if (c.slot) return S.slots[c.slot] === c.plot;
+    if (c.joined) return _pdJoinsOf(id, S).some(j => j.layer === (c.joined[2] || 'ground') && ((j.a === c.joined[0] && j.side === c.joined[1]) || (j.b === c.joined[0] && j.bSide === c.joined[1])));
+    if (c.link) return _pdJoinsOf(id, S).some(j => j.layer === (c.layer || 'ground') && ((j.a === c.link[0] && j.b === c.link[1]) || (j.a === c.link[1] && j.b === c.link[0])));
     return true;
 }
 /* the quarter turns a plot may make: `turn: true` = one either way; `turn: { detents: [0, 2] }` = only between those poses;
@@ -76961,12 +77035,47 @@ function pdRects(cells, pick) {
 /* squares → the plot's own metres (a square's corner; fractions allowed) */
 function pdM(v) { return -PD_RULES.plotM / 2 + PD_RULES.sq * v; }
 function pdRectM(r) { return { x: (pdM(r.x0) + pdM(r.x1)) / 2, z: (pdM(r.y0) + pdM(r.y1)) / 2, w: (r.x1 - r.x0) * PD_RULES.sq, d: (r.y1 - r.y0) * PD_RULES.sq }; }
-/* one plot's room row (a box room with a drawn floor plan), built from its cells, its marks and the look */
+/* a side's edge in the plot's own metres: the port's centre on the edge (x, z), the unit vector INTO the plot (nx, nz), and the
+   axis the edge runs along */
+function pdSideGeo(side) {
+    const h = PD_RULES.plotM / 2;
+    return side === 'n' ? { x: 0, z: -h, nx: 0, nz: 1, ax: 'x' } : side === 's' ? { x: 0, z: h, nx: 0, nz: -1, ax: 'x' }
+         : side === 'w' ? { x: -h, z: 0, nx: 1, nz: 0, ax: 'z' } : { x: h, z: 0, nx: -1, nz: 0, ax: 'z' };
+}
+/* a box row laid on an edge: `across` metres along the edge (centred `off` metres from the port's centre), `deep` metres into the
+   plot starting `inset` metres from the edge */
+function pdEdgeBox(side, off, across, inset, deep, more) {
+    const g = pdSideGeo(side), c = inset + deep / 2;
+    return Object.assign({ k: 'box', x: g.x + g.nx * c + (g.ax === 'x' ? off : 0), z: g.z + g.nz * c + (g.ax === 'z' ? off : 0),
+        w: g.ax === 'x' ? across : deep, d: g.ax === 'x' ? deep : across }, more);
+}
+/* the default objects of the controls (catalogue keys; a mark's own `key` wins, `key: false` = none) */
+const PD_CONTROL_KEYS = { dial: 'signal_lever_frame', console: 'retro_console', model: 'map_table' };
+const PD_CONTROL_LABELS = { dial: 'THE DIAL', console: 'THE CONSOLE', model: 'THE MODEL' };
+/* one plot's room row (a box room with a drawn floor plan), built from its cells, its marks and the look.
+   THE MARKS ({ k, x, y } in squares from the plot's north-west corner; a square's centre is i + 0.5):
+     spawn    { face }                                   where the level starts (the entry plot)
+     dial | console | model   { plots: [ids], label }    opens the board panel (a dial moves its own plot; a console the listed
+                                                         plots, or every moving plot; a model only shows + RESET)
+     prop     { key, rot, y3, h, show: cond }            a catalogue prop (decor off centre, a blocker centred on a square)
+     act      { id, label, verb, key, needs, no, say, set, toggle, give, fight, swap, rotTo, send, route, solve, show }
+                                                         a thing you press E on: `needs` (a condition) or it says `no`; then it
+                                                         writes the state (pdDoAct) and says `say`. `show` hides it (and its prop)
+     take     { item, key, label }                       an item picked up once (a key)
+     gate     { id, side | (x, y, ax), needs, auto, label, no }   bars across a port (or anywhere): opened with E when `needs`
+                                                         holds, or by itself while it holds (`auto: true`)
+     exit     { r }                                      walking here solves the level
+     trace    { layer, src, pts: [[x, y] …], size, y3, color }   a lit line (a trace, a pipe, a rail) of a net layer, alight
+                                                         while this plot is joined to the plot `src` on that layer
+     lamp     { lit: cond, color }                       a signal lamp on a post
+     box      { w, d, h (metres), y3, tex, color, glow, show, lit, block }   a plain drawn box
+     rail     { x0, y0, x1, y1 }                         a railing (blocks the walk)
+     fightSeat / anything else                           kept on the room (`pdMarks`) for the kinds map.js knows */
 function pdRoomDef(id, plotId) {
     const V = pdLevel(id), P = pdPlot(id, plotId); if (!V || !P) return null;
-    const K = V.look, src = (DOOR_HQ.rooms || {})[K.from] || {}, S0 = src.shell || {}, T0 = src.terrain || {}, M = PD_RULES.plotM;
-    const upper = PD_RULES.upperM, hasUpper = (P.cells || []).some(r => r.indexOf('=') >= 0 || r.indexOf('/') >= 0);
-    const h = K.open ? 9 : Math.max(K.h || 4, hasUpper ? upper + 3.5 : 0);
+    const K = V.look, src = (DOOR_HQ.rooms || {})[K.from] || {}, S0 = src.shell || {}, T0 = src.terrain || {}, M = PD_RULES.plotM, SQ = PD_RULES.sq;
+    const upper = PD_RULES.upperM, cells = P.cells || [], hasUpper = cells.some(r => r.indexOf('=') >= 0 || r.indexOf('/') >= 0);
+    const h = K.open ? 9 : Math.max(K.h || 4, hasUpper ? upper + (K.h || 4) : 0);
     const shell = Object.assign({
         w: M, d: M, h, wallH: h, dadoH: S0.dadoH || 1, edge: 'open',
         floor: S0.floor, wall: S0.wall, dado: S0.dado, trim: S0.trim, ceiling: S0.ceiling,
@@ -76975,8 +77084,19 @@ function pdRoomDef(id, plotId) {
         lights: [],
     }, K.open ? { open: true, sky: S0.sky, apron: S0.apron, skirt: S0.skirt } : null, K.shell || null, P.shell || null);
     if (K.floor) shell.floor = K.floor;
-    const features = [];
-    pdRects(P.cells, ch => !!PD_WALK[ch]).forEach(r => features.push(Object.assign({ k: 'space' }, pdRectM(r))));
+    const features = [], draw = [], wallTex = (K.gen && K.gen.wallKey) || S0.wall || null, at = (x, y) => (cells[y] || '')[x] || '#';
+    const open = ch => !!PD_WALK[ch] || ch === '=';
+    pdRects(cells, open).forEach(r => features.push(Object.assign({ k: 'space' }, pdRectM(r))));
+    pdRects(cells, ch => ch === '=').forEach(r => features.push(Object.assign({ k: 'plateau', h: upper, edge: 0.01 }, pdRectM(r))));
+    /* a run of '/' squares is one flight: it climbs toward the side where the deck ('=') lies */
+    pdRects(cells, ch => ch === '/').forEach(r => {
+        const m = pdRectM(r), up = [['n', r.x0, r.y0 - 1], ['s', r.x0, r.y1], ['w', r.x0 - 1, r.y0], ['e', r.x1, r.y0]].find(q => at(q[1], q[2]) === '=');
+        const dir = (P.climb && P.climb[r.x0 + ',' + r.y0]) || (up ? up[0] : 'n'), ns = dir === 'n' || dir === 's', sg = (dir === 'n' || dir === 'w') ? -1 : 1;
+        const len = ns ? m.d : m.w, f = { k: 'ramp', w: ns ? m.w : m.d, h0: 0, h1: upper, edge: 0.01 };
+        if (ns) Object.assign(f, { x0: m.x, x1: m.x, z0: m.z - sg * len / 2, z1: m.z + sg * len / 2 }); else Object.assign(f, { z0: m.z, z1: m.z, x0: m.x - sg * len / 2, x1: m.x + sg * len / 2 });
+        if (K.stairs !== false) Object.assign(f, { stairs: true, model: 'external' });
+        features.push(f);
+    });
     const room = {
         label: (V.L.title || V.T.label) + ' · ' + (P.role || plotId.toUpperCase()), sub: V.T.verb || '', kind: 'box', pd: id, pdPlot: plotId,
         shell,
@@ -76986,15 +77106,76 @@ function pdRoomDef(id, plotId) {
             gen: Object.assign({ kind: 'plan', rim: 0, forceGrow: -0.3 }, K.gen, K.open ? null : { wallH: h }),
             features,
         },
-        doors: [], counters: [], props: [],
+        doors: [], counters: [], props: (P.props || []).slice(), pdDraw: draw, pdMarks: [],
     };
-    /* the marks: a spawn is the room's own arrival point; the rest are added by the kinds map.js / the renderer know */
+    /* the ports: a jamb each side (the plan's walls stop short of the plot's edge) and a CAP that closes the port while nothing
+       is joined to it (a wall of the look under a ceiling, a parapet under the sky) */
+    const ports = pdPlotPorts(P);
+    ['ground', 'upper'].forEach(layer => (ports[layer] || '').split('').forEach(side => {
+        const y = layer === 'upper' ? upper : 0, hh = K.open ? 1.1 : Math.max(2, h - y);
+        draw.push(pdEdgeBox(side, 0, SQ * 2, 0, 0.3, { id: 'cap_' + layer + side, y, h: hh, tex: wallTex, tu: 4, tv: hh / 1.75, color: K.capColor, block: true, show: { not: { joined: [plotId, side, layer] } } }));
+        if (!K.open) [-1, 1].forEach(sg => draw.push(pdEdgeBox(side, sg * (SQ + 0.2), 0.4, 0, 1.0, { id: 'jamb_' + layer + side + sg, y, h: hh, tex: wallTex, tu: 0.5, tv: hh / 1.75, color: K.capColor })));
+    }));
+    /* the whole-square blockers ('o'): the look's cover piece, one per run, and a blocker over the whole run */
+    pdRects(cells, ch => ch === 'o').forEach((r, i) => {
+        const m = pdRectM(r), key = P.cover || K.cover;
+        if (key) room.props.push(Object.assign({ key, x: m.x, z: m.z, rot: m.w > m.d ? 90 : 0 }, (P.coverH || K.coverH) ? { h: P.coverH || K.coverH } : null));
+        draw.push({ k: 'box', id: 'cover' + i, ghost: true, x: m.x, z: m.z, y: 0, w: m.w - 0.3, d: m.d - 0.3, h: 1.4, block: true });
+    });
+    /* a ceiling lamp over each open floor of 2 × 2 squares or more (a closed look only) */
+    if (!K.open) pdRects(cells, open).filter(r => (r.x1 - r.x0) >= 2 && (r.y1 - r.y0) >= 2).slice(0, 8).forEach(r => { const m = pdRectM(r); shell.lights.push({ x: m.x, z: m.z }); });
+    const counter = (m, x, z, more) => room.counters.push(Object.assign({ id: 'pd_' + m.k + '_' + (m.id || room.counters.length), x, z, face: m.face || 0, radius: m.r || 2.4, plateY: m.plateY || 1.7,
+        label: m.label || '', verb: m.verb || 'USE' }, m.show ? { pdShow: m.show } : null, more));
+    const prop = (key, x, z, m, show) => { if (key) room.props.push(Object.assign({ key, x, z }, m.rot != null ? { rot: m.rot } : null, m.y3 != null ? { y: m.y3 } : null, m.h != null ? { h: m.h } : null, show ? { pd: { show } } : null)); };
     (P.marks || []).forEach(m => {
         const x = pdM(m.x), z = pdM(m.y);
         if (m.k === 'spawn') room.pdSpawn = { x, z, face: m.face || 0 };
-        else if (m.k === 'dial' || m.k === 'console' || m.k === 'model') room.counters.push({ id: 'pd_' + m.k + (m.id ? '_' + m.id : ''), x, z, face: m.face || 0, radius: m.r || 1.6, proc: 'pd_control', pdKind: m.k,
-            pdPlots: m.plots || (m.k === 'dial' ? [plotId] : null), label: m.label || (m.k === 'dial' ? 'THE DIAL' : m.k === 'console' ? 'THE CONSOLE' : 'THE MODEL'), verb: m.verb || 'USE', plateY: 1.5 });
-        else if (m.k === 'prop' && m.key) room.props.push(Object.assign({ key: m.key, x, z }, m.rot != null ? { rot: m.rot } : null, m.y3 != null ? { y: m.y3 } : null, m.s != null ? { scale: m.s } : null));
+        else if (m.k === 'dial' || m.k === 'console' || m.k === 'model') {
+            const all = Object.keys(V.L.plots).filter(p => { const Q = pdPlot(id, p); return Q.turn || Q.slide; });
+            counter(Object.assign({ label: PD_CONTROL_LABELS[m.k] }, m), x, z, { proc: 'pd_control', pdKind: m.k, pdPlots: m.plots || (m.k === 'dial' ? [plotId] : all) });
+            prop(m.key === false ? null : (m.key || PD_CONTROL_KEYS[m.k]), x, z, m, null);
+        }
+        else if (m.k === 'prop') prop(m.key, x, z, m, m.show);
+        else if (m.k === 'act') { counter(m, x, z, { proc: 'pd_act', pdAct: m }); prop(m.key, x, z, m, m.show); }
+        else if (m.k === 'take') {
+            const show = { not: { has: m.item } };
+            counter(Object.assign({ label: 'THE KEY', verb: 'TAKE' }, m, { show }), x, z, { proc: 'pd_act', pdAct: Object.assign({ give: m.item, say: 'TAKEN' }, m) });
+            prop(m.key || 'key', x, z, Object.assign({ y3: 1.0 }, m), show);
+            draw.push({ k: 'box', id: 'stand_' + m.item, x, z, y: 0, w: 0.7, d: 0.7, h: 0.95, tex: S0.trim || wallTex, tu: 0.5, tv: 0.6, block: true });
+        }
+        else if (m.k === 'gate') {
+            const gv = 'gate_' + (m.id || 'a'), show = m.auto ? { not: m.needs } : { not: { var: gv } };
+            let g;
+            if (m.side) g = pdEdgeBox(m.side, 0, SQ * 2, (m.inset != null ? m.inset : 0.5) * SQ, 0.2, {});
+            else g = { k: 'box', x, z, w: m.ax === 'z' ? 0.2 : (m.w || 2) * SQ, d: m.ax === 'z' ? (m.w || 2) * SQ : 0.2 };
+            draw.push(Object.assign(g, { k: 'bars', id: gv, y: m.y3 || 0, h: Math.min(4, h - (m.y3 || 0)), show, block: true }));
+            if (!m.auto) {
+                const sg = m.side ? pdSideGeo(m.side) : { nx: 0, nz: 0 };
+                counter(Object.assign({ label: 'THE GATE', verb: 'OPEN', r: 4.2 }, m, { show }), g.x + sg.nx * 1.2, g.z + sg.nz * 1.2, { proc: 'pd_act', pdAct: { needs: m.needs, no: m.no || 'LOCKED', set: { [gv]: true }, say: m.say || 'THE GATE OPENS' } });
+            }
+        }
+        else if (m.k === 'fight') counter(Object.assign({ label: 'ENEMIES', verb: 'FIGHT', r: 5 }, m, { show: { not: { fight: m.id } } }), x, z, { proc: 'pd_act', pdAct: { fight: m.id, enemies: m.enemies || [], needs: m.needs, no: m.no, say: m.say || 'THE WAY IS CLEAR' } });
+        else if (m.k === 'exit') room.pdExit = { x, z, r: m.r || 2.5 };
+        else if (m.k === 'trace') {
+            const sz = m.size || 0.25, lit = m.lit || { net: m.layer, from: m.src, to: [plotId] };
+            for (let i = 1; i < (m.pts || []).length; i++) {
+                const a = m.pts[i - 1], b = m.pts[i], ax = pdM(a[0]), az = pdM(a[1]), bx = pdM(b[0]), bz = pdM(b[1]);
+                draw.push({ k: 'box', id: 'tr_' + (m.layer || '') + draw.length, x: (ax + bx) / 2, z: (az + bz) / 2, y: m.y3 != null ? m.y3 : 0.03, w: Math.abs(bx - ax) + sz, d: Math.abs(bz - az) + sz, h: m.th || 0.08,
+                    color: m.dark != null ? m.dark : 0x20262a, glow: m.color != null ? m.color : 0x7dff9a, lit, block: !!m.block });
+            }
+        }
+        else if (m.k === 'lamp') {
+            draw.push({ k: 'box', id: 'lamp_post' + draw.length, x, z, y: 0, w: 0.16, d: 0.16, h: m.h || 2.4, color: 0x2a2f33 });
+            draw.push({ k: 'box', id: 'lamp' + draw.length, x, z, y: m.h || 2.4, w: 0.55, d: 0.55, h: 0.55, color: 0x30363a, glow: m.color != null ? m.color : 0x7dff9a, lit: m.lit || null });
+        }
+        else if (m.k === 'box') draw.push(Object.assign({}, m, { k: 'box', x, z, y: m.y3 || 0 }));
+        else if (m.k === 'rail') features.push(Object.assign({ k: 'rail', x0: pdM(m.x0), z0: pdM(m.y0), x1: pdM(m.x1), z1: pdM(m.y1) }, m.model ? { model: m.model } : null));
+        else room.pdMarks.push(Object.assign({}, m, { mx: x, mz: z }));
+    });
+    /* a token (a guardian that is sent from stop to stop): its body stands at this plot's stop while the token is here */
+    Object.keys(V.L.tokens || {}).forEach(tk => {
+        const T = V.L.tokens[tk], st = (T.stops || {})[plotId]; if (!st || !T.key) return;
+        room.props.push({ key: T.key, x: pdM(st.x), z: pdM(st.y), rot: st.rot || 0, pd: { show: { var: 'tok_' + tk, eq: plotId } } });
     });
     return room;
 }
@@ -77026,6 +77207,7 @@ function pdSync(id) {
     });
     Z.parts = parts;
     Z.joins = pdJoins(id, S).map(j => ({ a: pdRoomId(id, j.a), b: pdRoomId(id, j.b), side: j.side, span: [-half, half], kind: 'hall', pdLayer: j.layer, y: j.layer === 'upper' ? PD_RULES.upperM : 0 }));
+    _pdJC = null;
     _hqWorldIdx = null;
     if (typeof _hqStageNearbyCache !== 'undefined') Object.keys(_hqStageNearbyCache).forEach(k => { if (k.indexOf('pd_' + id + '_') === 0) delete _hqStageNearbyCache[k]; });
     return true;
@@ -77034,8 +77216,7 @@ function pdSync(id) {
    board, a plot sliding far from you), joined or not → [roomId] */
 function pdBesideRooms(roomId) {
     const o = pdOfRoom(roomId); if (!o) return [];
-    const S = pdState(o.level);
-    return Object.keys(S.slots).map(s => pdRoomId(o.level, S.slots[s])).filter(r => r !== roomId && DOOR_HQ.rooms[r]);
+    return Object.keys(pdLevel(o.level).L.plots).map(p => pdRoomId(o.level, p)).filter(r => r !== roomId && DOOR_HQ.rooms[r]);
 }
 pdInstall();
 /* PD-END */
@@ -77045,7 +77226,7 @@ if (typeof window !== 'undefined') {
     window.PD_RULES = PD_RULES; window.PD_DUNGEONS = PD_DUNGEONS; window.PD_LOOKS = PD_LOOKS; window.pdLevels = pdLevels; window.pdLevel = pdLevel; window.pdRoomId = pdRoomId; window.pdOfRoom = pdOfRoom;
     window.pdPlot = pdPlot; window.pdSlotXZ = pdSlotXZ; window.pdPlotPorts = pdPlotPorts; window.pdNewState = pdNewState; window.pdState = pdState; window.pdSetState = pdSetState; window.pdSlotOf = pdSlotOf;
     window.pdJoins = pdJoins; window.pdNet = pdNet; window.pdCheck = pdCheck; window.pdMoves = pdMoves; window.pdApplyMove = pdApplyMove; window.pdFrame = pdFrame; window.pdWhere = pdWhere; window.pdMoveBlocked = pdMoveBlocked;
-    window.pdSync = pdSync; window.pdInstall = pdInstall; window.pdSideOnBoard = pdSideOnBoard; window.pdSideInPlot = pdSideInPlot; window.pdM = pdM;
+    window.pdSync = pdSync; window.pdInstall = pdInstall; window.pdSideOnBoard = pdSideOnBoard; window.pdSideInPlot = pdSideInPlot; window.pdM = pdM; window.pdDoAct = pdDoAct; window.pdCheck = pdCheck; window.pdBesideRooms = pdBesideRooms;
     window.DOOR_ROSTER_LINES = DOOR_ROSTER_LINES;
     window.DOOR_ROSTER_CRYPTIDS = DOOR_ROSTER_CRYPTIDS;
     window.hqRosterLines = hqRosterLines;

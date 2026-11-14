@@ -78427,6 +78427,7 @@ const ThreeRenderer = (function () {
             G.add(grp);
             _hq.counters.push({ counter: c, group: grp, level: level, plateEl: pm.el, plateGpu: pm.gpu, x: null, z: null, marker: marker });
         });
+        if (room.pd) { try { _hqPdBuild(room); } catch (e) { console.warn('[PD] the plot\'s objects', e); } }   // THE PLOT DUNGEONS: the caps, the gates, the lit lines
     }
     /* THE BATTLE MARKER (2026-09-12): the glowing beacon every playable
        site wears (on its entry part) — an amber floor ring, a soft column
@@ -78741,7 +78742,7 @@ const ThreeRenderer = (function () {
                     try { _hqHeroShadow(ppl, p.key, room); } catch (e) {}
                 }
                 G.add(grp);
-                _hq.props.push({ key: p.key, grp: grp });
+                if (p.pd) { grp._ew_pd = true; grp._ew_noInstance = true; } _hq.props.push({ key: p.key, grp: grp, row: p });
                 if (cat.vehicle) { try { _hqVehicleRegister(p, cat, grp, y); } catch (e) { console.warn('[HQ] vehicle', e); } }   // THE DEEP (2026-09-18): the skiff / the bathyscaphe — E boards it
                 if (tabletop) _hq.tabletops.push({ key: p.key, grp: grp, y: y });   // THE TABLETOP SEAT
                 _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` / `ramp`
@@ -78816,7 +78817,7 @@ const ThreeRenderer = (function () {
                 grp.add(gl);
             }
             G.add(grp);
-            _hq.props.push({ key: p.key, grp: grp });
+            if (p.pd) { grp._ew_pd = true; grp._ew_noInstance = true; } _hq.props.push({ key: p.key, grp: grp, row: p });
             try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
         };
         var rows = (room.props || []).concat(_hq.terrainScatter || []);
@@ -81784,6 +81785,7 @@ const ThreeRenderer = (function () {
     var HQ_BLK_STAND_PAD = 0.12;   // standing on / landing on a top: the body's centre, not its disc, must be over it
     /* does the blocker's footprint, grown by `pad`, contain (x, z)? */
     function _hqBlkContains(b, x, z, pad) {
+        if (b.obj && b.obj._ew_pdOff) return false;   // THE PLOT DUNGEONS: an open gate, a joined port's cap
         if (b.mc) return _mcNear(b, x, z, pad);   // THE REAL COLLISION: a mesh's box — its readers ask the columns (_mcFeet, _mcSolid, _mcTopUnder)
         var U = _hqUnits();
         var bx = b.obj.position.x / U, bz = b.obj.position.z / U;
@@ -82002,7 +82004,7 @@ const ThreeRenderer = (function () {
             if (dist < bestD) { bestD = dist; best = d.angle ? { kind: 'door', id: d.door.id, label: 'SUSPICIOUS ANGLE', sub: '', state: d.state, door: d.door, rec: d, angle: true, walkThrough: false } : { kind: 'door', id: d.door.id, label: d.door.label, sub: d.door.sub, state: d.state, door: d.door, rec: d, walkThrough: _hqDoorWalkThrough(d) }; }
         });
         _hq.counters.forEach(function (c) {
-            if (c.level !== lvl) return;
+            if (c.level !== lvl || c.pdOff) return;
             var cx = c.group.position.x / U, cz = c.group.position.z / U;
             var dist = Math.hypot(cx - pl.x, cz - pl.z);
             if (dist > (c.counter.radius || 2)) return;
@@ -82939,7 +82941,7 @@ const ThreeRenderer = (function () {
     function _hqSpawnRounds(room, opts) {
         var H = _hq; if (!H) return;
         H.rounds = H.rounds || [];
-        if (_hqRoundsOff()) return;
+        if (_hqRoundsOff() || (room && room.pd)) return;   // THE PLOT DUNGEONS: nobody walks a puzzle's plots
         var roomId = opts.room || 'central_egress', prof = opts.profile, av = opts.avatar || {};
         var crowd = opts._crowd || null;   // THE CROWD CAP (2026-10-01): the room's one budget, shared with _hqSpawnPopulation
         var R = _hqRoundsRules(), now = performance.now();
@@ -91174,6 +91176,7 @@ const ThreeRenderer = (function () {
         for (var id in st.parts) { var E = st.parts[id]; if (E.attached) _hqStageTickPart(H, E, dt, now); }
         if (now - st.lampAt > (HQ_STAGE_RULES.lampPickMs || 500) || st.lampN < 0) { st.lampAt = now; _hqStageLamps(H); }
         if (st.blend) _hqStageBlendTick(H, now);
+        if (H.room && H.room.pd) _hqPdBeat(H, now);
         if (H.pdTop) _hqPdTopCam(H);
         if (H.pd) { _hqPdTick(H, now); return; }   // THE PLOT DUNGEONS: a plot is moving — no crossing mid-move
         _hqStageCross(H, now);
@@ -91728,7 +91731,7 @@ const ThreeRenderer = (function () {
        at once, like a `visible` write. Off: window.EW_HQ_NO_PROP_BATCH (props only) / EW_HQ_NO_BATCH (all). */
     var _hqBatchDraw = 0;   // > 0 while a renderer.render runs
     var _HQ_BATCH_FLAG_OFF = { _ew_hqInst: 1, _ew_hqCar: 1, _ew_hqSea: 1, _ew_hqOuter: 1, _ew_hqGround: 1, _ew_hqOuterSideIds: 1, _ew_hqTerrain: 1,
-                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1, _ew_text: 1, _ew_hqSignal: 1 };
+                               _ew_leaf: 1, _ew_reflect: 1, _ew_reflectOld: 1, _ew_decal: 1, _ew_shaft: 1, _ew_lods: 1, _ew_hqMarker: 1, _ew_fieldPick: 1, _ew_hqBatch: 1, _ew_text: 1, _ew_hqSignal: 1, _ew_pd: 1 };
     var _HQ_BATCH_MAPS = ['map', 'emissiveMap', 'alphaMap', 'normalMap', 'bumpMap', 'specularMap', 'aoMap', 'lightMap', 'envMap'];
     var _hqBatchIds = null, _hqBatchIdN = 0, _hqBatchM = null, _hqBatchM2 = null, _hqBatchN3 = null, _hqBatchV = null;
     function _hqBatchOff() { return typeof window !== 'undefined' && !!window.EW_HQ_NO_BATCH; }
@@ -91782,6 +91785,7 @@ const ThreeRenderer = (function () {
         if (m.transparent && !(m.opacity >= 1 && m.alphaTest > 0 && m.depthWrite !== false) && !(m.blending === THREE.AdditiveBlending && m.depthWrite === false)) return false;   // a see-through piece is sorted by its own centre: only a cut-out (or an additive glow, order-free) merges
         for (var i = 0; i < _HQ_BATCH_MAPS.length; i++) { var t = m[_HQ_BATCH_MAPS[i]]; if (t && (!t.image || !(t.version > 0) || t.isVideoTexture || t.isCubeTexture || t.isRenderTargetTexture)) return false; }   // its sheets landed
         for (var k in o) if (_HQ_BATCH_FLAG_OFF[k]) return false;
+        for (var q = o.parent; q; q = q.parent) if (q._ew_pd) return false;   // THE PLOT DUNGEONS: a piece the board shows and hides is never merged
         return true;
     }
     function _hqBatchRel(o, inv, out) { return out.multiplyMatrices(inv, o.matrixWorld); }
@@ -92505,6 +92509,62 @@ const ThreeRenderer = (function () {
        the officer turns, the rest of the board (and the sky, and the key light) swings round it the other way, which is the same
        picture as the plot turning under a camera that rides it. The walker's keys are dropped while a move runs (nothing moves
        under walking feet); the board's rules, the joins and the save are map.js / data.js's (pdSync), which call refresh() after. */
+    /* THE PD OBJECTS: a plot's drawn rows (data.js pdRoomDef → room.pdDraw: the port caps and jambs, the gates' bars, the lit
+       traces, the lamps, the cover blockers) built into the part's own group, so they turn and slide with their plot. Each row
+       may wear `show` (a condition: drawn and solid only while it holds) and `lit` (its glow on only while it holds);
+       _hqPdApply reads the live board (pdCheck) for every part on the stage and for the props / counters whose rows wear one. */
+    function _hqPdBuild(room) {
+        if (!room || !room.pd || !room.pdDraw) return;
+        var U = _hqUnits(), G = _hq.doorGroup, out = [];
+        room.pdDraw.forEach(function (r) {
+            var grp = new THREE.Group(), y0 = r.y || 0, mat = null;
+            grp._ew_pd = true; grp._ew_noInstance = true;
+            grp.position.set((r.x || 0) * U, y0 * U, (r.z || 0) * U);
+            if (!r.ghost) {
+                mat = _hqMat(r.tex || null, r.tu || 1, r.tv || 1, { color: r.color != null ? r.color : (r.tex ? 0xffffff : 0x8a8f98), shininess: r.k === 'bars' ? 40 : 8 });
+                if (r.glow != null) { mat.emissive = new THREE.Color(r.glow); mat.emissiveIntensity = r.lit ? 0.03 : 1; }
+                var add = function (w, h, d, x, y, z) { var m = _hqBox(w, h, d, mat); m.position.set(x * U, y * U, z * U); m._ew_pd = true; m.castShadow = r.k !== 'bars' && h > 0.5; m.receiveShadow = true; grp.add(m); };
+                if (r.k === 'bars') {
+                    /* a gate: upright bars every half metre between two beams, across the row's long side */
+                    mat.color.set(r.color != null ? r.color : 0x2c2f33);
+                    var along = r.w >= r.d, L = along ? r.w : r.d, n = Math.max(2, Math.round(L / 0.5));
+                    for (var i = 0; i <= n; i++) { var o = -L / 2 + L * i / n; add(0.12, r.h, 0.12, along ? o : 0, r.h / 2, along ? 0 : o); }
+                    [0.25, r.h - 0.2].forEach(function (yy) { add(along ? L : 0.16, 0.16, along ? 0.16 : L, 0, yy, 0); });
+                } else add(r.w, r.h, r.d, 0, r.h / 2, 0);
+            }
+            G.add(grp);
+            var blk = null;
+            if (r.block) { blk = { obj: grp, rad: Math.max(r.w, r.d) / 2, y: y0, top: y0 + r.h, rect: { hw: r.w / 2, hd: r.d / 2 }, yaw: 0 }; _hq.blockers.push(blk); }
+            out.push({ row: r, grp: grp, mat: mat, blk: blk, lit: null });
+        });
+        _hq.pdDrawn = out;
+    }
+    function _hqPdApply(H) {
+        var room = H && H.room; if (!room || !room.pd || typeof pdCheck !== 'function') return;
+        var id = room.pd, S = pdState(id), st = H.stage, recs = [H];
+        if (st) for (var pid in st.parts) recs.push(st.parts[pid].P);
+        var set = function (grp, on) { if (grp.visible !== on) grp.visible = on; grp._ew_pdOff = !on; };
+        recs.forEach(function (R) {
+            if (!R) return;
+            (R.pdDrawn || []).forEach(function (o) {
+                if (o.row.show) set(o.grp, !!pdCheck(id, S, o.row.show));
+                if (o.row.lit && o.mat) { var l = !!pdCheck(id, S, o.row.lit); if (o.lit !== l) { o.lit = l; o.mat.emissiveIntensity = l ? 1 : 0.03; } }
+            });
+            (R.props || []).forEach(function (p) { if (p.row && p.row.pd && p.row.pd.show) set(p.grp, !!pdCheck(id, S, p.row.pd.show)); });
+            (R.counters || []).forEach(function (c) {
+                if (!c.counter || !c.counter.pdShow) return;
+                var on = !!pdCheck(id, S, c.counter.pdShow); if (c.pdOff === !on) return;
+                c.pdOff = !on; c.group.visible = on; c.group.traverse(function (q) { if (q !== c.group && (q.isCSS2DObject || q.isSprite || q.isMesh)) q.visible = on; });
+            });
+        });
+    }
+    /* the walk's own beat for a dungeon: the objects follow the board ~3 times a second, and map.js hears where the officer stands
+       (the exit's ring, the fights) */
+    function _hqPdBeat(H, now) {
+        if ((H._pdBeatAt || 0) > now) return; H._pdBeatAt = now + 300;
+        try { _hqPdApply(H); } catch (e) { if (!H._pdBeatErr) { H._pdBeatErr = 1; console.warn('[PD] apply', e); } }
+        try { if (typeof window._pdBeat === 'function' && H.player) window._pdBeat({ room: (H.stage && H.stage.id) || H.id, x: H.player.x, z: H.player.z, y: H.player.y }); } catch (e2) {}
+    }
     function _hqPdPose(H, frames) {
         var st = H.stage; if (!st) return;
         var A = frames[st.id]; if (!A) return;
@@ -92554,6 +92614,7 @@ const ThreeRenderer = (function () {
         _hqStageRing(H);
         st.lampN = -1;
         try { _hqShadowArm(H.room); } catch (e) {}
+        try { _hqPdApply(H); } catch (e2) { console.warn('[PD] apply', e2); }
         return true;
     }
     /* a dev eye straight down on the board (proof shots, checks): pd.top({ x, z, h }) in the current part's metres, pd.top(null) = the
