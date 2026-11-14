@@ -56232,6 +56232,12 @@ const HQ_ENGINE_RULES = {
        pass. A placed prop whose whole sphere is under `instSmallM` (a cone, a pot, a bin, a hydrant) sits in a cell of its
        own kind that stops at `instSmallFarM`. three-renderer.js _hqChunkTick. Off: window.EW_HQ_NO_CHUNK_CULL. */
     chunkM: 42, chunkMinSpanM: 200, chunkPadM: 15, fenceFarM: 120, instFarM: 260, instSmallM: 1.7, instSmallFarM: 100,
+    /* THE PROP CHUNKS + THE CLOSED ROOMS (2026-11-14, Disaster City at 6.8 fps after the interior passes): in the same rooms every
+       placed prop sits in its plot's group (small ones apart, as above), drawn to `propFarM`; the props standing inside a HOLLOW
+       building's walls (`roomInsetM` in from them) are that building's own group, drawn while the camera is within `roomFarM` of
+       them (the city's windows are opaque sheets: only an open doorway looks in). Each group its own render bundle, culled like
+       the plots. three-renderer.js _hqPropChunkSweep. Off: window.EW_HQ_NO_PROP_CHUNKS. */
+    propFarM: 260, roomFarM: 40, roomInsetM: 0.25,
     /* THE LOD LEVELS (§5.9, Phase 10, 2026-09-27): a prop whose `<name>.lod1.glb` / `.lod2.glb` the manifest lists draws level 1
        once its bounding sphere covers less than `lodScreen[0]` of the viewport's height, level 2 under `lodScreen[1]`
        (`lodHys` of a band either side of a line so nothing flickers); a prop under `cullM` stops drawing under `lodCull`
