@@ -2398,7 +2398,7 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
   Everything else is a catalogue prop (`R.put`), reported in prop-check.txt as "in building" (a district's own prop is never moved).
   The front doors are the city's swing leaves (already there); the two inner openings (bakery, garage office) are open, one square wide.
   Deviation from the first sketch: no raised chancel (heights are whole blocks), pews in two blocks with side aisles.
-- **THE SECOND INTERIOR PASS** (2026-11-13; mondo 22:33 "after a district's first interior pass, do another interior pass ... make a list of
+- **THE SECOND INTERIOR PASS** (2026-11-13; mondo 22:33 "after a district's first interior pass, do another interior pass ... make a list of FACING (coordinator 11-14): checked every room; the bakery's and the pawnshop's two display cases stood one behind the other (the first one's glass at the second one's back), now side by side, glass to the shop floor; every shelf, locker, rack and chest faces its walkway.
   models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere"):
   - THE MODELS: 18 Meshy pieces (Claude's concept, Meshy nano-banana-pro -> image-to-3D meshy-t2.5 smart topology, optimised to `.opt.glb`),
     R2 `Assets/world/props/meshy/<key>.glb`, rows in data.js HQ_CATALOGUE_ALL group 'Meshy city interiors', ASSET_MANIFEST.json, MODEL_LIST.md
