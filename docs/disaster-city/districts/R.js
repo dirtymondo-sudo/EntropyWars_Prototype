@@ -696,7 +696,7 @@ function build(ctx) {
         counter(R, 5.2, R.cy(2), 3.4, 0.9, K.wood, 0xb88858); R.block(0, 2, 2, 1, 6.8, 1.1, 1.1);                                  // THE SECOND PASS: the counter's left half is the
         R.put('pastry_case', R.cx(0) - 0.05, R.cy(2), 's', { span: 1.9 });                                                         // pastry case (University's Meshy model), cakes to the shop
         R.put('cash_register', 5.9, R.cy(2), 's', { y: 1.01 });
-        R.put('psx_display_cabinet_mp_1', R.cx(0) - 0.55, R.cy(3), 'e'); R.put('psx_display_cabinet_mp_1', R.cx(0) + 0.55, R.cy(3), 'e'); R.block(0, 3, 1, 1, 2.2, 1.4, 2.1);   // the bread cabinets, back to back
+        R.put('psx_display_cabinet_mp_1', R.cx(0), R.cy(3) - 0.5, 'e'); R.put('psx_display_cabinet_mp_1', R.cx(0), R.cy(3) + 0.5, 'e'); R.block(0, 3, 1, 1, 1.0, 2.2, 2.1);   // the bread cabinets, side by side, their glass to the way (THE SECOND PASS: they stood one behind the other, the first one's glass at the second one's back)
         [[0, 4], [2, 4]].forEach(v => { R.cell('tulip_table', v[0], v[1], 's'); R.put('tulip_chair', R.cx(v[0]) - 0.95, R.cy(v[1]), 'e'); R.put('tulip_chair', R.cx(v[0]) + 0.95, R.cy(v[1]), 'w'); });
         [1.2, 2.3, 3.4, 4.5].forEach(X => R.put('wall_shelf', X, 7.24, 's', { mount: 1.7 }));
         R.put('kitchen_range', R.cx(0, 2) - 0.85, R.cy(0), 's'); R.put('kitchen_range', R.cx(0, 2) + 0.85, R.cy(0), 's'); R.block(0, 0, 2, 1, 3.4, 1.2, 1.2);   // the two ovens
@@ -752,7 +752,7 @@ function build(ctx) {
         R.block(0, 1, 4, 1, 13.8, 1.1, 2.6); R.put('cash_register', 6.0, cy + 0.05, 's', { y: 1.02 });
         R.cell('round_cabinet', 0, 0, 's');
         [4.6, 6.6, 8.6, 10.6, 12.6].forEach((X, i) => R.put('psx_shelf_mp_' + [2, 3, 5, 6, 7][i], X, 0.3, 's'));           // the stock on the back wall
-        R.put('psx_display_cabinet_mp_2', R.cx(0) - 0.55, R.cy(2), 'e'); R.put('psx_display_cabinet_mp_2', R.cx(0) + 0.55, R.cy(2), 'e'); R.block(0, 2, 1, 1, 2.2, 1.4, 2.1);
+        R.put('psx_display_cabinet_mp_2', R.cx(0), R.cy(2) - 0.68, 'e'); R.put('psx_display_cabinet_mp_2', R.cx(0), R.cy(2) + 0.68, 'e'); R.block(0, 2, 1, 1, 1.0, 2.8, 2.2);   // THE SECOND PASS: side by side, glass to the shop floor (they stood one behind the other)
         [7.6, 8.4, 9.2].forEach(Y => R.put('instrument_guitar', 17.3, Y, 'w', { y: 1.2 }));
         R.put('meshy_tube_tv', 16.9, 0.5, 's'); R.put('tube_tv', 16.9, 0.5, 's', { y: 0.56 }); R.put('retro_radio', 16.2, 0.4, 's');
         R.put('psx_armchair_1', 16.7, 9.8, 'w'); R.put('psx_painting_1', 2.6, 10.3, 'n', { y: 1.6 }); R.put('clock', 4.4, 10.3, 'n', { y: 1.8 });

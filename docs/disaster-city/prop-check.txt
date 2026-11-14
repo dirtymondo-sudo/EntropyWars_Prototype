@@ -484,8 +484,8 @@ candelabra  -237.25  -238.55  building
 votive_stand  -235  -227.18  building
 votive_stand  -223.4  -227.18  building
 pastry_case  -197.8  -243.25  building
-psx_display_cabinet_mp_1  -198.3  -239.75  building
-psx_display_cabinet_mp_1  -197.2  -239.75  building
+psx_display_cabinet_mp_1  -197.75  -240.25  building
+psx_display_cabinet_mp_1  -197.75  -239.25  building
 tulip_table  -197.75  -236.25  building
 tulip_chair  -198.7  -236.25  building
 tulip_chair  -196.8  -236.25  building
@@ -535,8 +535,8 @@ psx_shelf_mp_3  -136.9  -118.6  building
 psx_shelf_mp_5  -134.9  -118.6  building
 psx_shelf_mp_6  -132.9  -118.6  building
 psx_shelf_mp_7  -130.9  -118.6  building
-psx_display_cabinet_mp_2  -142.3  -110.25  building
-psx_display_cabinet_mp_2  -141.2  -110.25  building
+psx_display_cabinet_mp_2  -141.75  -110.93  building
+psx_display_cabinet_mp_2  -141.75  -109.57  building
 meshy_tube_tv  -126.6  -118.5  building
 tube_tv  -126.6  -118.5  building
 retro_radio  -127.3  -118.6  building
