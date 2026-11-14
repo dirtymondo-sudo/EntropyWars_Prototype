@@ -1957,6 +1957,29 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE STILL WALK (2026-11-14, Disaster City, after THE UNSEEN LAMP)
+
+mondo: "Still really slow and laggy ... there have to be multiple huge performance saves that you are missing" (7.3 fps, CPU 129.5 ms of
+which submit 69.3: ~60 ms a frame was NOT the draw).
+
+- What it was: three's `scene.updateMatrixWorld()` (once a frame since THE ONE MATRIX WALK) composes + multiplies the matrix of EVERY
+  object, drawn or not, moved or not. The city has 59,082 objects; ~300 move (people, 16 cars, doors). Cloud Chrome: 21-45 ms a walk.
+- THE STILL CHUNKS (same day) did nothing for the walk: `matrixWorldAutoUpdate = false` on a group only skips that group's own
+  multiply, three recurses into the children regardless (36,145 objects under off-camera chunks were still walked). Lesson: read
+  three's method before trusting a flag.
+- The fix (`_hqStillArm / _hqStillUpdate / _hqStillSceneWalk`, three-renderer.js before `_hqChunkRules`): in a chunked room the shell
+  group and every chunk group (prop plots, rooms, fence plots) carry their own `updateMatrixWorld`, used ONLY inside `_hqFrame`'s one
+  walk (`_hqStWalk`); any other caller gets three's walk. Off-camera chunk: nothing. Drawn group: per direct child a 10-number compare
+  of position / quaternion / scale; changed = walked now and for 4 s after (HQ_STILL_HOLD_MS); a child that got an `add` under it
+  (the Object3D.add hook, `_hqStillAdded`) = walked that frame; the rest in slices, all of it every 500 ms (HQ_STILL_SWEEP_MS), a child
+  whose subtree checksum changed joins the movers (inner parts: wax, fans, sway pivots, bones). Group moved / chunk back on camera =
+  whole group twice (seeds the movers).
+- Known limit: an INNER part that starts moving with no add and no move of its placement starts up to 500 ms late the first time.
+  A mover that must not: `_hqStillWake(obj)` (also `ThreeRenderer.hq.dev.stillWake`).
+- `_hqBatchCheck` no longer force-walks the shell + prop groups every 500 ms in such a room (it was the whole city twice a second).
+- `_hqChunkTick`: an out chunk is re-walked only when something joined THAT chunk (was: any add anywhere, e.g. a gun flash).
+- Lens: new line `Matrix walk N ms/frame · still groups …`. Counts: `ThreeRenderer.hq.dev.still()`. Off: `window.EW_HQ_STILL_OFF`.
+
 ## THE UNSEEN LAMP + THE SCANS ON CHANGE (2026-11-14, Disaster City, his 7.3 FPS readout)
 His Mac after THE LAMP'S REACH: CPU 129.5 ms (submit 69.3), shadow 776 of 1,056 draws / 3.22M tris, "0 re-records/s".
 A CDP CPU profile of the city in the cloud browser (harness `/profile` endpoint, `scratchpad prof_an.js`: self time folded
