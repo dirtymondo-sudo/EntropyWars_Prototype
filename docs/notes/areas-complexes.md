@@ -2242,6 +2242,28 @@ mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is 
   double }]` hangs more swinging leaves inside the building, in its own frame (x along the front from its middle, z toward the front, rot 0 = in a
   wall that runs along the front, 90 = across it). Same leaves, same swing-away as the front door (`_hq.cityDoors`). Drawn only: the district's
   walls leave the gap.
+- THE SECOND PASS (2026-11-14, mondo 11-13 22:33: "after a district's first interior pass, do another interior pass ... make a list of models
+  needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere for the interiors").
+  S.js `inside()` kit grew (new methods only): `I.doors` (the front doorway + every I.wall doorway), `I.edges/runs` (a room's four edges, outer
+  wall 0.33 m in (the drawn face is 0.06 m in, its inside face 0.24 m more), inner wall 0.13 m off its line, doorways cut below their heads), `I.coat(u0, v0, u1, v1, y0, y1, L)` (paint / panelling quads),
+  `I.band` (skirting, dado rail, cornice), `I.liner` (coat + dado + rail + skirting + crown), `I.floorOf` (a parquet / carpet quad), `I.ceilLit`
+  (a glowing ceiling: the hollow building's own ceiling draws black), `I.strip`, `I.pendant`, `I.picLight`, `I.onWall(key, u, v, th, y)` (mount 0).
+  Light is drawn glow only. Museum: each hall its colour (cream / warm stone / Pompeian red / navy / oxblood) under a gilt rail at 4.2 m, warm
+  stone above, a lit coffered ceiling with gilt beams, a red runner door -> rotunda, MUSEUM OF THE CITY over the rotunda's door; University's
+  dinosaur_skeleton on the plinth with the live dinosaur (npcSpot) kept on the rotunda's back right square looking at it; a crystal chandelier
+  over it; eight Meshy oils under picture lights + two gallery_ottoman benches + two library chandeliers in the gallery (parquet floor);
+  amphorae + coin cases in Antiquity; arms_trophy plaques + banners in the Arms hall; the grandfather clock in the entrance hall. The
+  Antiquity columns take Financial's marble_bust once its catalogue row is on main (`HAS(key)` reads data.js at bake time; until then the cups
+  stay; rebake after Financial merges); the museum's two cups also stand in the gym's trophy room. Gym: charcoal dado + white stripe in the
+  hall, trusses, strips, bunting, a lit roof; Southside's punching_bag x2 (on the old brackets), dumbbell_rack, weight_bench replace the drawn
+  ones; squat_rack, rowing_machine, two treadmills (Hero Plaza) on blocked squares, three exercise_bike, speed bags, gloves, medicine_ball_rack,
+  water cooler; lobby / office / trophy room (HALL OF FAME) / locker room (white tile, two shower stalls on blocked squares) lined and lit.
+  Depot: blue-grey dado + yellow band, aisle lines, strips, line_marker (replaces the drawn boxes), ball_cart, tackling_sled + ride_on_mower on
+  blocked squares, pegboards + tool chest; the office lined. South Gate: navy dado + cream, bunting, SOUTH GATE on the wall, two ticket_machine,
+  scarf_rack; stewards + security lined; a metal_detector arch. The 18 new Meshy models: data.js "THE SPORTS + CULTURE INTERIOR PIECES",
+  R2 Assets/world/props/meshy/<key>.glb (the optimized copy), originals + concepts in project files disaster-city-sports-culture/interiors2/meshy/.
+  MANIFEST GOTCHA: `node manifest-assets.js <dir> --prefix Assets/world/props/meshy/ --merge` DROPS every other row under that prefix (132
+  rows gone); add the new rows to main's manifest by hand (a few lines of node) instead.
 
 - THE RESIDENTS' BEDROOMS (2026-11-14, mondo 02:21 "District threads add them"; brief /mnt/project-files/disaster-city-residents/bedrooms-brief.md):
   the three Sports residences are walk-ins now (ids kept): P06-09-B2 the Quarterback (the Box office house, door in face square 7), P07-08-B2
@@ -2574,6 +2596,19 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
   wardrobe), the front room with the door's column clear. The Politician sleeps in the HOTEL after all (P08-00-B1 is a walk-in since THE
   INSIDES): a walled room two squares by two in the lobby's front corner, `psx_bed_2`. The Halfdemon: the Penthouse stair lobby's end column
   behind a wall, `royal_bed`. The residents' code finds any /bed|cot/ prop inside the home's footprint.
+- **THE INSIDES, SECOND PASS (2026-11-14, mondo 11-13 22:33: "after a district's first interior pass, do another interior pass ... make a list of
+  models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere").**
+  `districts/F-atmos.js` (required by F-inside.js; `atmos(T, g, I)` runs after `INS[id]`, its parts go into the same `dc:<id>:in` row).
+  Kit: `liner` (a wall coat 0.27 m in from the outer face = 3 cm before the inside sheet, so the first pass's lift doors / mail boxes / screens at
+  0.33 stay in front; a dado + rail, skirting, crown; the LIT ceiling deck: `glow` on a sheet, the hollow building's ceiling draws black),
+  `coffers` (beams on the squares' lines), `panel` / `strip` / `pend` / `sconce` (drawn glow), `window_` (a daylit sheet + frame + muntins on a
+  wall: the facade's glass stands for it), `pilaster`, `rug`, `P(key, x, z, hd)` (hd 0 = front to the back wall, 180 = to the door side),
+  `onWall` (mount 0, `y` = height). New blockers (map table, cash cart) stand on a square's middle with `I.solid`; everything else is off-centre
+  or on a wall. Facing check (11-14): every first-pass sofa, locker, shelf, fridge, cabinet, vault door, bench and the piano was rendered from
+  +Z / -Z: all fronts are +Z and DIR 'f' = 180 points them at the room, so nothing faced the wall. 22 Meshy pieces (data.js "THE FINANCIAL
+  INTERIOR PIECES", R2 Assets/world/props/meshy/<key>.glb, optimized; originals + concepts in project files disaster-city-financial/meshy/).
+  Left alone: the Bankers' terrace homes, the hotel's Politician room and the penthouse's bedroom column (the residents' bedrooms work).
+  The hotel's facade slab (`:arch`, marble, under face 6.38 m) runs through its storey: F-atmos.js `LOW` hangs that hall's ceiling at 6.3 m.
 - THE GIANT APE (mondo 11-13 19:25: "put king kong in the district with the most high rises or tall buildings"): Financial (5 to 11 storeys). S.js `build` pushes him to `ctx.npcSpots` (new in the bake hook: a district's people, written to the room's `npcSpots`) at (173.25, -92.75), the open ground at the foot of the Penthouse stair tower (P10-03), with his own line from the old streets.
 
 ## DISASTER CITY, THE UNIVERSITY DISTRICT (2026-11-13, the University thread; mondo's OK 19:24)
@@ -2812,6 +2847,16 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - **Headless**: the bigger Meshy pieces (treadmill, photocopier, welding cart, cameras, pallet jack, hand truck, mailboxes) load (the files
   parse, the rows stand at the right height, the welding cart's shadow shows) but the headless browser does not draw them, like the city's
   Meshy cars; the newspaper bundles draw. Check them on a real GPU.
+### HERO PLAZA, THE RESIDENTS' BEDROOMS (2026-11-14, mondo picked "District threads add them"; brief: project files disaster-city-residents/bedrooms-brief.md)
+- Apartments A (P07-04-B2) is a walk-in now (`row: { storeys: 1, hollow: true, doorSide: 'W' }`, `apartments(..., door)` puts the doorway in
+  its ground-floor shell, `aptDress(..., door)` hangs the awning + lamps over it): a flat of three bedrooms behind partitions, the Sidekick
+  (squares 0-1), the Nephilim (2-4; his plan home P04-05-B2 is a pack model) and the Police officer (5-6), off a hall (rows 3-4).
+- Superhero Tower (P06-04-B1): the lobby stays; its two back corners (2 x 2 squares by the lift core, each with its trophy case) are the
+  Superhero's (left) and Eagleman's (right) rooms. The directory board moved out to row 4. Apartment stair (P04-06-B1): the Antihero's room in
+  the front-right corner (squares 5-6, rows 2-3), its doorway on the hall walk; the umbrella stand + notice board moved out.
+- Helpers: `partition(K, x0, z0, x1, z1, gaps, tint)` (painted plaster, gain 2.0: bare PLASTER reads near black; ghost + skirting; a lintel
+  over each one-square gap), `bedSet(K, bx, bz, bf, bed, wx, wz, wf, side, rugT)` (bf = where the foot points, kit faces). THE PSX BEDS' length
+  runs along their own x with the headboard at +x: the prop's face is bf + 270 (seen on screen).
 ### THE UNIVERSITY INSIDES (2026-11-13, mondo 21:04 "let's go ahead and do the interiors", his OK on the grid plan 21:23)
 His grid rule (21:14 + 21:17, all interiors): the city fights on 3.5 m squares; a BARRIER fills whole squares (centred, a 2-wide piece = 2 squares),
 a WALKWAY is a whole square wide with nothing halfway across two, dressing sits OFF the square centres.
@@ -2999,4 +3044,16 @@ a different time ... only use units on the roster". He picked "Routines now, bed
   sleeps two; housemates take them in list order. A resident with a bed walks in at bedtime, lies on it (segment `sleep`, `top` = the
   catalogue seat or 0.5 m) and walks out at its wake time; without one it still goes in through the door. The rig carries slot
   `hqSleep` = UAL2 LayToIdle trimmed to its first 0.05 s (flat on the back), feet to the bed's front (its `face`): NOT SEEN ON SCREEN.
-  A home a district could not open moves: Bunny girl -> P11-06-B2 Apartments (Entertainment PR #1359).
+  A home a district could not open moves: Bunny girl -> P11-06-B2 Apartments (Entertainment PR #1359); Ki fighter + Swordfighter ->
+  P03-00-B2, Cult leader -> P02-01-B1, Gangster + Homosapien -> P00-01-B2 (Southside PR #1370); Nephilim -> P07-04-B2 (Hero Plaza PR #1372).
+  The Politician keeps the hotel P08-00-B1 (a walk-in since PR #1358). The Ghost has `noBed` (it haunts the hotel by day). A bed on a
+  district's ghost block (Sports, Southside) is reached from the walked square beside it. 2026-11-14 03:15: 41 of 44 sleep in a bed
+  (not the Honda Civic, King Kong on his field, the Ghost).
+
+## PLOT DUNGEONS — the puzzle dungeon vertical slices (2026-11-14, PLAN ONLY, waits mondo's answers)
+mondo uploaded two prototype packs from another chat (a PDF atlas + an HTML design pack, copies in /mnt/project-files/dungeons/source/)
+and asked for one plan to build them as a standalone mode from the main menu or Settings. The plan is **docs/PLOT_DUNGEONS_PLAN.md**
+(also /mnt/project-files/dungeons/): five 3 x 3 boards of 42 m plots (ROTATE catacombs, SLIDE Disaster City, CONNECT THE WORKS,
+GROW AND CARRY fairy forest, ESCORT H-Wing), each plot a stage part moved by a live pose, Phase 0 = the engine proof. Puzzles stay
+inside this mode only (the story zones keep NO PUZZLES). Nothing built. Its §13 lists what mondo approves; its §14 is the log —
+append one line there per phase and put the phase notes here.

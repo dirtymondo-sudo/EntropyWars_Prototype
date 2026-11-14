@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 843 |
+| Meshy AI | no | 883 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -1884,6 +1884,33 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | decor_windpump_tower | `Assets/world/props/meshy_decor/windpump_tower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | decor_windpump_wheel | `Assets/world/props/meshy_decor/windpump_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 
+### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) — Meshy AI (22)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| atm | `Assets/world/props/meshy/atm.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| bar_stool | `Assets/world/props/meshy/bar_stool.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| bird_cage | `Assets/world/props/meshy/bird_cage.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| cash_cart | `Assets/world/props/meshy/cash_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| chesterfield_sofa | `Assets/world/props/meshy/chesterfield_sofa.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| concierge_podium | `Assets/world/props/meshy/concierge_podium.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| deposit_box_wall | `Assets/world/props/meshy/deposit_box_wall.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| evidence_board | `Assets/world/props/meshy/evidence_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| floor_safe | `Assets/world/props/meshy/floor_safe.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| iron_garden_bench | `Assets/world/props/meshy/iron_garden_bench.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| key_rack | `Assets/world/props/meshy/key_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| map_table | `Assets/world/props/meshy/map_table.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| marble_bust | `Assets/world/props/meshy/marble_bust.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| money_counter | `Assets/world/props/meshy/money_counter.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| money_sacks | `Assets/world/props/meshy/money_sacks.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| newspaper_rack | `Assets/world/props/meshy/newspaper_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| paper_shredder | `Assets/world/props/meshy/paper_shredder.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| radio_console | `Assets/world/props/meshy/radio_console.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| reel_to_reel | `Assets/world/props/meshy/reel_to_reel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| stock_ticker | `Assets/world/props/meshy/stock_ticker.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| stone_urn | `Assets/world/props/meshy/stone_urn.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+| wingback_chair | `Assets/world/props/meshy/wingback_chair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) |
+
 ### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Industrial interiors, second pass, 2026-11-14) — Meshy AI (20)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2029,6 +2056,29 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | specimen_shelf | `Assets/world/props/meshy/specimen_shelf.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
 | therapy_chaise | `Assets/world/props/meshy/therapy_chaise.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
 | wheelchair | `Assets/world/props/meshy/wheelchair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+
+### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) — Meshy AI (18)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| arms_trophy | `Assets/world/props/meshy/arms_trophy.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| ball_cart | `Assets/world/props/meshy/ball_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| exercise_bike | `Assets/world/props/meshy/exercise_bike.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| gallery_ottoman | `Assets/world/props/meshy/gallery_ottoman.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| greek_amphora | `Assets/world/props/meshy/greek_amphora.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| line_marker | `Assets/world/props/meshy/line_marker.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| medicine_ball_rack | `Assets/world/props/meshy/medicine_ball_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| metal_detector | `Assets/world/props/meshy/metal_detector.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| museum_vitrine | `Assets/world/props/meshy/museum_vitrine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| painting_landscape | `Assets/world/props/meshy/painting_landscape.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| painting_portrait | `Assets/world/props/meshy/painting_portrait.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| painting_seascape | `Assets/world/props/meshy/painting_seascape.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| ride_on_mower | `Assets/world/props/meshy/ride_on_mower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| rowing_machine | `Assets/world/props/meshy/rowing_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| scarf_rack | `Assets/world/props/meshy/scarf_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| squat_rack | `Assets/world/props/meshy/squat_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| tackling_sled | `Assets/world/props/meshy/tackling_sled.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| ticket_machine | `Assets/world/props/meshy/ticket_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
 
 ### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Disaster City interiors, Southside pass 2 (mondo 11-13 22:33: "make meshy versions of them"); claims list project files meshy/interior-claims.md — Meshy AI (18)
 
