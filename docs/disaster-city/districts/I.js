@@ -28,14 +28,26 @@ exports.build = function (ctx) {
         return [box(0, 0, 0, w, h, d, key, tint, { faces: 'blr', top: false, uv: o.uv }), { s: 'quad', p: [0, 0, r3(d / 2)], size: [r3(w), h], key, tint, uv: o.uv, hole: [r3(c.door.lx), r3(c.door.cw), 2.2] },
             box(0, h, 0, w, 0.12, d, o.top || ROOF, o.topTint || 0x9a9da0, { roof: true })];
     };
+    /* a house's ground-floor units (painted door, stoop, porch, lamp, window): x0 + k sx, the one nearest a real doorway moved onto it */
+    const homeUnits = (c, nd, sx) => { const xs = []; for (let k = 0; k < nd; k++) xs.push({ x: -c.fw / 2 + sx / 2 + k * sx, door: false });
+        if (c.door) { let b = 0; xs.forEach((u, k) => { if (Math.abs(u.x - c.door.lx) < Math.abs(xs[b].x - c.door.lx)) b = k; }); xs[b] = { x: c.door.lx, door: true }; } return xs; };
     const CT = [0x4c78c9, 0xc0522d, 0x4f8f55, 0xe0b02e, 0xd9d9d9, 0x8a3d6b, 0x2f8f9a];
     const house = (tint, hipped) => c => {
         const long = c.fd > c.fw, o = [...body(c, 6.6, U('PlasterWallStucco1a'), tint)];
         o.push(hipped ? roof('hip', 0, 6.6, 0, c.fw + 1, 3, c.fd + 1, U('MetalCorrugatedPainted3a'), 0xffffff) : roof('gable', 0, 6.6, 0, (long ? c.fd : c.fw) + 1, 3, (long ? c.fw : c.fd) + 1, U('MetalCorrugatedPainted3a'), 0xffffff, { ry: long ? 90 : 0, keyEnd: U('PlasterWallStucco1a'), tintEnd: tint }));
         const nd = Math.max(2, Math.floor(c.fw / 5.5)), sx = c.fw / nd;
-        o.push(box(-c.fw / 2 + sx / 2, 0, c.fd / 2 + 0.1, 1, 2.05, 0.1, U('DoorWoodenHalf1a'), 0xffffff, { uv: 'fit', faces: 'f', top: false, n: nd, step: [sx, 0, 0] }));
-        o.push(box(-c.fw / 2 + sx / 2, 0, c.fd / 2 + 0.6, 1.8, 0.3, 1.1, U('ConcreteStriped2a'), 0xdddddd, { n: nd, step: [sx, 0, 0] }));
-        [1.0, 4.3].forEach(y => o.push(box(-c.fw / 2 + sx / 2 + (y < 2 ? 1.9 : 0), y, c.fd / 2 + 0.1, 1.75, 1.75, 0.1, U('DecalWindowsResidential1a'), 0xffffff, { uv: 'fit', faces: 'f', top: false, n: y < 2 && sx < 4.4 ? 0 : nd, step: [sx, 0, 0] })));
+        if (!c.door) {
+            o.push(box(-c.fw / 2 + sx / 2, 0, c.fd / 2 + 0.1, 1, 2.05, 0.1, U('DoorWoodenHalf1a'), 0xffffff, { uv: 'fit', faces: 'f', top: false, n: nd, step: [sx, 0, 0] }));
+            o.push(box(-c.fw / 2 + sx / 2, 0, c.fd / 2 + 0.6, 1.8, 0.3, 1.1, U('ConcreteStriped2a'), 0xdddddd, { n: nd, step: [sx, 0, 0] }));
+            [1.0, 4.3].forEach(y => o.push(box(-c.fw / 2 + sx / 2 + (y < 2 ? 1.9 : 0), y, c.fd / 2 + 0.1, 1.75, 1.75, 0.1, U('DecalWindowsResidential1a'), 0xffffff, { uv: 'fit', faces: 'f', top: false, n: y < 2 && sx < 4.4 ? 0 : nd, step: [sx, 0, 0] })));
+        } else {   // a walk-in home (the residents' bedrooms, 2026-11-14): the ground-floor unit nearest the real doorway moves onto it and loses its painted door (the swing leaf hangs there)
+            homeUnits(c, nd, sx).forEach(u => {
+                if (!u.door) o.push(box(u.x, 0, c.fd / 2 + 0.1, 1, 2.05, 0.1, U('DoorWoodenHalf1a'), 0xffffff, { uv: 'fit', faces: 'f', top: false }));
+                o.push(box(u.x, 0, c.fd / 2 + 0.6, 1.8, 0.3, 1.1, U('ConcreteStriped2a'), 0xdddddd));
+                if (sx >= 4.4) o.push(box(u.x + 1.9, 1.0, c.fd / 2 + 0.1, 1.75, 1.75, 0.1, U('DecalWindowsResidential1a'), 0xffffff, { uv: 'fit', faces: 'f', top: false }));
+            });
+            o.push(box(-c.fw / 2 + sx / 2, 4.3, c.fd / 2 + 0.1, 1.75, 1.75, 0.1, U('DecalWindowsResidential1a'), 0xffffff, { uv: 'fit', faces: 'f', top: false, n: nd, step: [sx, 0, 0] }));
+        }
         o.push(box(long ? 1.5 : -c.fw / 3.4, 7.4, long ? -c.fd / 3.4 : 1.5, 0.9, 3, 0.9, 'bricks_3', T.brick, { n: 3, step: long ? [0, 0, c.fd / 3.4] : [c.fw / 3.4, 0, 0], roof: true }));
         return o.filter(q => q.n !== 0);
     };
@@ -77,7 +89,9 @@ exports.build = function (ctx) {
             for (let l = 0; l < 3; l++) for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { s = (s * 73 + 17) % 101;
                 o.push(box(-c.fw / 2 + lx * (i + 0.5), l * 2.333, -c.fd / 2 + lz * (j + 0.5), lx - 0.06 + (i === 0 || i === nx - 1 ? 0.1 : 0), 2.3, lz - 0.06 + (j === 0 || j === nz - 1 ? 0.1 : 0), TIN, CT[s % CT.length], { top: l === 2, uv: [1.75, 2.3] })); }
             return o; } },
-        'P00-09-B2': { st: 2, parts: house(T.ochre) }, 'P02-09-B2': { st: 2, parts: house(T.sage, true) }, 'P00-10-B2': { st: 2, parts: house(T.dblue) }, 'P01-11-B2': { st: 2, parts: house(T.pink) },
+        /* the four workers' houses; three are WALK-IN HOMES since 2026-11-14 (the residents' bedrooms: the Marksman, the Knight, the Astronaut sleep here; IN below) */
+        'P00-09-B2': { inside: true, st: 2, leaf: 'leaf_suburban_house', parts: house(T.ochre) }, 'P02-09-B2': { inside: true, st: 2, leaf: 'leaf_suburban_house', parts: house(T.sage, true) },
+        'P00-10-B2': { st: 2, parts: house(T.dblue) }, 'P01-11-B2': { inside: true, st: 2, leaf: 'leaf_suburban_house', parts: house(T.pink) },
         'P01-09-B1': { inside: true, st: 2, parts: c => {   // LOADING OFFICE: a white upper floor cantilevered over a dark base, ribbon windows, a mast (the roof walked)
             const R = c.fw / 2 + 1.5, o = [...body(c, 3.5, ROOF, 0xcccccc, { top: PLAIN, topTint: T.white })];
             o.push(box(0, 3.5, R - 0.8, 2 * R, 3.5, 1.6, PLAIN, T.white, { under: true, top: false }), box(0, 3.5, -R + 0.8, 2 * R, 3.5, 1.6, PLAIN, T.white, { under: true, top: false }),
@@ -320,11 +334,13 @@ exports.build = function (ctx) {
             return o; },
     };
     const houseMore = (c, tint) => { const long = c.fd > c.fw, nd = Math.max(2, Math.floor(c.fw / 5.5)), sx = c.fw / nd, x0 = -c.fw / 2 + sx / 2, F = c.fd / 2, WH = 0xf4f1ea;
+        const porch = x => [box(x, 2.3, F + 0.55, 1.7, 0.12, 1, U('MetalCorrugatedPainted3a'), 0xffffff, { under: true }), box(x - 0.75, 0.3, F + 0.95, 0.1, 2, 0.1, PLAIN, WH), box(x + 0.75, 0.3, F + 0.95, 0.1, 2, 0.1, PLAIN, WH), box(x + 0.85, 2.05, F + 0.2, 0.22, 0.22, 0.2, null, LAMP, { glow: 0.8 })];
         const o = [...ring(c, 0, 0.45, 0.1, CONC, 0xb8b0a0), ...corners(c, 0.45, 6.15, 0.3, PLAIN, WH), box(0, 3.4, F + 0.08, c.fw + 0.2, 0.18, 0.12, PLAIN, WH),
-            box(x0, 2.3, F + 0.55, 1.7, 0.12, 1, U('MetalCorrugatedPainted3a'), 0xffffff, { n: nd, step: [sx, 0, 0], under: true }), box(x0 - 0.75, 0.3, F + 0.95, 0.1, 2, 0.1, PLAIN, WH, { n: nd, step: [sx, 0, 0] }), box(x0 + 0.75, 0.3, F + 0.95, 0.1, 2, 0.1, PLAIN, WH, { n: nd, step: [sx, 0, 0] }),
+            ...(c.door ? homeUnits(c, nd, sx).flatMap(u => porch(u.x)) : [box(x0, 2.3, F + 0.55, 1.7, 0.12, 1, U('MetalCorrugatedPainted3a'), 0xffffff, { n: nd, step: [sx, 0, 0], under: true }), box(x0 - 0.75, 0.3, F + 0.95, 0.1, 2, 0.1, PLAIN, WH, { n: nd, step: [sx, 0, 0] }), box(x0 + 0.75, 0.3, F + 0.95, 0.1, 2, 0.1, PLAIN, WH, { n: nd, step: [sx, 0, 0] }),
+                box(x0 + 0.85, 2.05, F + 0.2, 0.22, 0.22, 0.2, null, LAMP, { glow: 0.8, n: nd, step: [sx, 0, 0] })]),
             box(x0, 4.14, F + 0.12, 2.05, 0.14, 0.28, PLAIN, WH, { n: nd, step: [sx, 0, 0] }), box(x0, 6.05, F + 0.1, 2.05, 0.16, 0.16, PLAIN, WH, { n: nd, step: [sx, 0, 0] }),
             box(x0 - 1.1, 4.3, F + 0.1, 0.4, 1.75, 0.06, PLAIN, 0x3d5a4a, { n: nd, step: [sx, 0, 0] }), box(x0 + 1.1, 4.3, F + 0.1, 0.4, 1.75, 0.06, PLAIN, 0x3d5a4a, { n: nd, step: [sx, 0, 0] }),
-            box(x0 + 0.85, 2.05, F + 0.2, 0.22, 0.22, 0.2, null, LAMP, { glow: 0.8, n: nd, step: [sx, 0, 0] }), ...pipes(c, 6.6, 0.25),
+            ...pipes(c, 6.6, 0.25),
             box(0, 1.6, -F - 0.1, 1.75, 1.75, 0.08, U('DecalWindowsResidential1a'), 0xffffff, { uv: 'fit', faces: 'b', top: false, n: 1 }), box(-c.fw / 2 + sx / 2, 4.3, -F - 0.1, 1.75, 1.75, 0.08, U('DecalWindowsResidential1a'), 0xffffff, { uv: 'fit', faces: 'b', top: false, n: nd, step: [sx, 0, 0] })];
         if (!long) o.push(box(0, 6.5, F + 0.55, c.fw + 1.1, 0.14, 0.18, PLAIN, T.dark), box(0, 6.5, -F - 0.55, c.fw + 1.1, 0.14, 0.18, PLAIN, T.dark));
         else o.push(box(c.fw / 2 + 0.55, 6.5, 0, 0.18, 0.14, c.fd + 1.1, PLAIN, T.dark), box(-c.fw / 2 - 0.55, 6.5, 0, 0.18, 0.14, c.fd + 1.1, PLAIN, T.dark));
@@ -429,8 +445,24 @@ exports.build = function (ctx) {
         /* the main pipes: two fat pipes on saddles along the run, a gate valve a square */
         pipes(K, x, z, gw, gd) { const n = Math.max(1, Math.round(gd / C)); K.part(box(x - 0.6, 0.5, z, 0.8, 0.8, gd - 0.2, PLAIN, T.teal), box(x + 0.6, 0.5, z, 0.8, 0.8, gd - 0.2, PLAIN, TEAL2), box(x, 0, z - gd / 2 + C / 2, 2.4, 0.5, 0.4, CONC, 0x9a9a9a, { n, step: [0, 0, C] }),
             box(x - 0.6, 0.45, z - gd / 2 + 0.6, 0.95, 0.9, 0.2, PLAIN, T.dark, { n: n + 1, step: [0, 0, (gd - 1.2) / n] })); for (let k = 0; k < n; k++) K.P('gate_valve', x + 0.6, z - gd / 2 + C / 2 + k * C, 0, 0.52); },   // a gate valve a square on the second pipe (the second pass; the first drew a stem + a red wheel)
+        /* ── THE HOMES (2026-11-14, the residents' bedrooms: mondo's "District threads add them"; the brief /mnt/project-files/disaster-city-residents/bedrooms-brief.md).
+           Each piece centred on its own square(s); `o` = { k: catalogue key, hd: facing }. A bed's headboard is its model's +x end: hd 90 puts the head
+           to the back wall, 270 to the front, 180 to the right, 0 to the left. The residents' code finds a bed by its key (/bed|cot/). */
+        bed(K, x, z, gw, gd, o) { const hd = o.hd, a = (hd - 180) * Math.PI / 180, hx = Math.cos(a), hz = Math.sin(a), sd = o.side || 1, sx = -hz * sd, sz = hx * sd;   // h = toward the headboard, s = the side its bedside table stands (o.side -1 = the other)
+            K.P(o.k || 'psx_bed_5_1', x, z, hd);
+            K.P('psx_bedside_table_1', x + hx * 1.0 + sx * 1.1, z + hz * 1.0 + sz * 1.1, hd); K.P(o.lamp || 'psx_lamp_1_on', x + hx * 1.0 + sx * 1.1, z + hz * 1.0 + sz * 1.1, hd, 0.64); },
+        wardrobe(K, x, z, gw, gd, o) { K.P('psx_wardrobe_mp_1', x, z, o.hd); },
+        sofa(K, x, z, gw, gd, o) { const a = (o.hd - 180) * Math.PI / 180, fx = -Math.sin(a), fz = Math.cos(a);   // f = the way the seat looks
+            K.P(o.k || 'psx_sofa_3', x - fx * 0.35, z - fz * 0.35, o.hd); K.P('psx_coffee_table_1', x + fx * 0.95, z + fz * 0.95, o.hd); },
+        tv(K, x, z, gw, gd, o) { K.P('psx_tv_table_1', x, z, o.hd); K.P('psx_tv_mp_1', x, z, o.hd, 0.74); },
+        dine(K, x, z, gw, gd, o) { K.P('psx_dinner_table_1', x, z, o.hd || 0); [[0, 0.75, 0], [0, -0.75, 180], [0.9, 0, 270], [-0.9, 0, 90]].forEach(q => K.P('psx_chair_mp_1', x + q[0], z + q[1], q[2])); },
+        /* a kitchen on its squares: a fitted run centred on them (cupboards, a dark worktop), the range at one end, a round fridge at the other */
+        kitchen(K, x, z, gw, gd, o) { const long = gd > gw, L = (long ? gd : gw) - 0.8, hd = o.hd, run = (u, v) => long ? [x + v, z + u] : [x + u, z + v];
+            K.part(long ? box(x, 0, z, 0.9, 0.9, L, 'wood_planks', 0xd8cbb0) : box(x, 0, z, L, 0.9, 0.9, 'wood_planks', 0xd8cbb0), long ? box(x, 0.9, z, 1.0, 0.06, L + 0.1, PLAIN, 0x2a2c30) : box(x, 0.9, z, L + 0.1, 0.06, 1.0, PLAIN, 0x2a2c30));
+            const r = run(-L / 2 + 0.75, 0), f = run(L / 2 - 0.5, 0), m = run(0.2, 0);
+            K.P('kitchen_range', r[0], r[1], hd); K.P('round_fridge', f[0], f[1], hd); K.P('coffee_maker', m[0], m[1], hd, 0.96); },
     };
-    const KH = { truck: 2.8, veh: 1.9, cont: 6.4, shelf: 1.9, racks: 2.2, lockers: 1.9, boiler: 2.4, tesla: 2.8, turbine: 3.4, rocket: 4, missile: 2, vend: 1.9, radio: 2.2, dish: 2.6, scope: 2.6, pump: 1.6, pipes: 1.4, files: 1.4 };
+    const KH = { bed: 1.0, wardrobe: 2.1, sofa: 1.0, tv: 1.5, dine: 0.9, kitchen: 1.0, truck: 2.8, veh: 1.9, cont: 6.4, shelf: 1.9, racks: 2.2, lockers: 1.9, boiler: 2.4, tesla: 2.8, turbine: 3.4, rocket: 4, missile: 2, vend: 1.9, radio: 2.2, dish: 2.6, scope: 2.6, pump: 1.6, pipes: 1.4, files: 1.4 };
     const CSF = U('ConcreteStriped1b'), IN = {
         'P00-08-B1': { W: 8, D: 8, keyIn: U('ConcreteStriped1a'), floorIn: CSF, walls: [[6, 0, 6, 1], [6, 2, 8, 2]],
             g: [['truck', 2, 3, 3, 1], ['desk', 7, 0, 1, 1], ['files', 7, 1, 1, 1], ['cont', 0, 6, 2, 2], ['crates', 3, 6, 3, 1], ['shelf', 6, 7, 2, 1], ['lockers', 0, 0, 1, 1], ['barrels', 0, 4, 1, 1]],
@@ -466,6 +498,14 @@ exports.build = function (ctx) {
         'P02-11-B1': { W: 3, D: 5, keyIn: U('ConcreteStriped1a'), floorIn: CSF, walls: [],
             g: [['pipes', 0, 1, 1, 3], ['lockers', 2, 2, 1, 1], ['crates', 0, 0, 1, 1]],
             decor(K) { K.wallProp('breaker_panel', 'r', 3.4); K.wallProp('notice_board', 'f', 0.6); K.P('traffic_barrel', K.lx(1.5), K.lz(0.3), 0); K.P('traffic_barrel', K.lx(0.4), K.lz(4.5), 0); } },
+        /* THE HOMES (see KIT): a front room (the walk from the door whole squares wide), a kitchen, a table, the bedroom behind a partition with a one-square doorway */
+        'P02-09-B2': { W: 5, D: 5, H: 3.2, home: true, keyIn: PLAIN, tintIn: 0xd8cdb4, floorIn: 'wood_planks', walls: [[2, 3, 3, 3], [4, 3, 5, 3], [2, 3, 2, 5]],   // THE KNIGHT: door on the left square
+            g: [['bed', 4, 4, 1, 1, { hd: 90, k: 'psx_bed_5_1', side: -1 }], ['wardrobe', 2, 4, 1, 1, { hd: 180 }], ['kitchen', 0, 4, 2, 1, { hd: 180 }], ['dine', 1, 3, 1, 1, {}], ['tv', 3, 0, 1, 1, { hd: 0 }], ['sofa', 3, 1, 1, 1, { hd: 180 }]] },
+        'P01-11-B2': { W: 5, D: 5, H: 3.2, home: true, keyIn: PLAIN, tintIn: 0xe2d6c8, floorIn: 'wood_planks', walls: [[0, 3, 1, 3], [2, 3, 3, 3], [3, 3, 3, 5]],   // THE ASTRONAUT: door on the right square
+            g: [['bed', 0, 4, 1, 1, { hd: 90, k: 'psx_bed_5_1' }], ['wardrobe', 2, 4, 1, 1, { hd: 180 }], ['kitchen', 3, 4, 2, 1, { hd: 180 }], ['dine', 3, 3, 1, 1, {}], ['tv', 1, 0, 1, 1, { hd: 0 }], ['sofa', 1, 1, 1, 1, { hd: 180 }]] },
+        'P00-09-B2': { W: 8, D: 4, H: 3.2, home: true, keyIn: PLAIN, tintIn: 0xd9cfb8, floorIn: 'wood_planks', walls: [[0, 2, 1, 2], [2, 2, 3, 2], [3, 2, 3, 4]],   // THE MARKSMAN: door on square 6
+            g: [['bed', 0, 3, 1, 1, { hd: 90, k: 'psx_bed_5_1' }], ['wardrobe', 2, 3, 1, 1, { hd: 180 }], ['bench', 0, 0, 1, 1], ['dine', 3, 0, 1, 1, {}], ['tv', 5, 3, 1, 1, { hd: 180 }], ['sofa', 5, 2, 1, 1, { hd: 0 }],
+                ['kitchen', 7, 2, 1, 2, { hd: 270 }]] },
         'P03-11-B1': { W: 3, D: 2, keyIn: 'bricks_3', tintIn: T.brick, floorIn: 'wood_planks', walls: [],
             g: [['racks', 1, 1, 2, 1], ['desk', 2, 0, 1, 1]],
             decor(K) { K.wallProp('departures_board', 'r', 1.2); K.wallProp('wall_clock', 'r', 0.5); K.wallProp('locker', 'l', 1.2); K.wallProp('locker', 'l', 1.9); K.P('coffee_maker', K.lx(1.4), K.lz(0.2), 0, 0.5); K.P('psx_wooden_crate_3', K.lx(1.4), K.lz(0.2), 0); } },
@@ -698,10 +738,35 @@ exports.build = function (ctx) {
             Q.P('railway_lantern', Q.cx(2) + 0.55, Q.cz(0) - 0.05, 180, 0.78); Q.P('railway_lantern', Q.cx(1) + 1.2, Q.fd / 2 - 0.5, 160);
             Q.K.wallProp('fire_extinguisher', 'f', 1.6);
         },
+        /* THE HOMES (the residents' bedrooms): a painted wainscot, a plaster ceiling at 3.2 m, warm pendants over the sofa, the table and the bed,
+           a rug, plants in the corners, and one thing of the sleeper's own (all off the square centres) */
+        'P02-09-B2': Q => {   // THE KNIGHT
+            Q.paint(U('PlasterWallPainted1c'), 0x4b5d3a, 1.0, 0x2a2c30, 1.1); Q.ceil(U('PlasterWallPainted1a'), 0xf2ece0, 0.3);
+            [[3, 1], [1, 3], [4, 4]].forEach(q => Q.pend(Q.cx(q[0]), Q.cz(q[1]) + (q[0] === 4 ? 0.9 : 0), 2.45, 0x3d4a2e, 0xffd9a0, 0.26));
+            Q.P('psx_carpet_mp_1', Q.cx(3) + 0.3, Q.cz(0.5), 90, 0.02); Q.P('psx_carpet_mp_1', Q.cx(3), Q.cz(3) + 0.4, 0, 0.02);
+            Q.P('office_plant', Q.cx(4) + 1.2, Q.cz(0) + 1.2, 0); Q.P('potted_plant', Q.cx(0) - 1.2, Q.cz(2) - 0.2, 0);
+            Q.onWall('psx_sword_mp_1', 'b', Q.cx(4), 1.75, 0.38);
+            Q.P('psx_shelf_mp_5', Q.cx(2) - 1.25, Q.cz(1), 90);
+        },
+        'P01-11-B2': Q => {   // THE ASTRONAUT
+            Q.paint(U('PlasterWallPainted1c'), 0x2f4a6b, 1.0, 0xdfe6ee, 1.1); Q.ceil(U('PlasterWallPainted1a'), 0xeef0f2, 0.3);
+            [[1, 1], [3, 3], [0, 4]].forEach(q => Q.pend(Q.cx(q[0]), Q.cz(q[1]) + (q[1] === 4 ? 0.9 : 0), 2.45, 0x2a3a52, 0xfff0d0, 0.26));
+            Q.P('psx_carpet_mp_1', Q.cx(1) - 0.3, Q.cz(0.5), 90, 0.02); Q.P('rug_round', Q.cx(1), Q.cz(3) + 0.3, 0, 0.02);
+            Q.P('brass_telescope', Q.cx(0) - 0.9, Q.cz(2) + 0.6, 90); Q.P('globe_lamp', Q.cx(2) + 1.15, Q.cz(3) + 1.15, 0);
+            Q.P('office_plant', Q.cx(3) - 1.2, Q.cz(0) + 1.2, 0);
+        },
+        'P00-09-B2': Q => {   // THE MARKSMAN
+            Q.paint(U('PlasterWallPainted1c'), 0x6b4a2e, 1.0, 0x2a2c30, 1.1); Q.ceil(U('PlasterWallPainted1a'), 0xf0e8da, 0.3);
+            [[5, 2], [3, 0], [0, 3], [6.5, 1]].forEach(q => Q.pend(Q.cx(q[0]), Q.cz(q[1]) + (q[1] === 3 && q[0] === 0 ? 0.9 : 0), 2.45, 0x4a3420, 0xffd9a0, 0.26));
+            Q.P('psx_carpet_mp_1', Q.cx(5), Q.cz(2.5), 90, 0.02); Q.P('rug_round', Q.cx(1), Q.cz(2.5), 0, 0.02);
+            Q.onWall('sniper', 'f', Q.cx(0), 1.7, 0.4); Q.P('psx_shotgun_ammo_1', Q.cx(0) + 0.35, Q.cz(0) + 0.1, 20, 0.78); Q.P('psx_shotgun_ammo_2', Q.cx(0) - 0.4, Q.cz(0) - 0.1, 0, 0.78);
+            Q.P('office_plant', Q.cx(4) - 1.2, Q.cz(3) - 1.2, 0); Q.P('potted_plant', Q.cx(7) + 1.2, Q.cz(0) + 1.2, 0); Q.P('psx_shelf_mp_5', Q.cx(4) + 1.1, Q.cz(0) + 1.25, 0);
+        },
     };
     const inside = (b, c, world, rot, row) => {
-        const S = IN[b.id]; if (!S) return; const fw = c.fw, fd = c.fd, H = (row.storeys || 2) * 3.5 - 0.32, parts = [], W2 = (lx, lz) => world(c.ox + lx, c.oz + lz);
+        const S = IN[b.id]; if (!S) return; const fw = c.fw, fd = c.fd, H = S.H || (row.storeys || 2) * 3.5 - 0.32, parts = [], W2 = (lx, lz) => world(c.ox + lx, c.oz + lz);
         const dc = Math.floor((c.door.lx + fw / 2) / C);
+        if (process.env.IND_DEBUG) console.log('industrial room', b.id, 'squares', fw / C, 'x', fd / C, 'door square', dc, 'door lx', c.door.lx);
         if (S.g.some(q => q[2] === 0 && dc >= q[1] && dc < q[1] + q[3])) { console.log('industrial: the doorway square of', b.id, 'is not a walkway, the inside is left out'); return; }
         row.keyIn = S.keyIn; row.floorIn = S.floorIn; if (S.tintIn) row.tintIn = S.tintIn;
         const K = { H, fw, fd, lx: i => -fw / 2 + i * C, lz: j => fd / 2 - j * C, part() { for (const q of arguments) parts.push(q); },
@@ -717,7 +782,7 @@ exports.build = function (ctx) {
             parts.push(box((x0 + x1) / 2, 0, (z0 + z1) / 2, Math.abs(x1 - x0) + 0.2, H, Math.abs(z1 - z0) + 0.2, S.keyIn, S.tintIn || 0xffffff, { top: false }));
             features.push({ k: 'wall', x0: a[0], z0: a[1], x1: e[0], z1: e[1], h: H, t: 0.3, key: CONC, ghost: true, rail: false }); });
         /* ceiling light panels over the walkways, every other square */
-        for (let i = 0; i < S.W; i++) for (let j = 0; j < S.D; j++) if ((i + j) % 2 === 0 && !S.g.some(q => i >= q[1] && i < q[1] + q[3] && j >= q[2] && j < q[2] + q[4]))
+        if (!S.home) for (let i = 0; i < S.W; i++) for (let j = 0; j < S.D; j++) if ((i + j) % 2 === 0 && !S.g.some(q => i >= q[1] && i < q[1] + q[3] && j >= q[2] && j < q[2] + q[4]))
             parts.push(box(K.lx(i + 0.5), H - 0.1, K.lz(j + 0.5), 1.4, 0.08, 0.5, null, 0xfff4d6, { glow: 1 }));
         if (S.decor) S.decor(K);
         if (SECOND[b.id]) SECOND[b.id](kit2(K, S, dc, c, (i, j, h) => { const p = W2(K.lx(i + 0.5), K.lz(j + 0.5)); features.push({ k: 'wall', x0: p[0], z0: p[1], x1: p[0], z1: p[1], h: h || 1.2, t: C, key: CONC, ghost: true, rail: false }); count2.inBlocks2 = (count2.inBlocks2 || 0) + 1; }, W2, rot));
