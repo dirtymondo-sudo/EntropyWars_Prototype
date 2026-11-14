@@ -218,15 +218,18 @@ B.security = (W, D, lx) => {
     return p;
 };
 
-/* 13 · THE STAFF APARTMENTS: a mint three-storey walk-up, balconies, a coral stair tower, a water tank */
-B.apartments = (W, D) => {
+/* 13 · THE STAFF APARTMENTS: a mint three-storey walk-up, balconies, a coral stair tower, a water tank.
+   2026-11-14 (the residents: mondo 02:21 "District threads add them"): a walk-in, the city's swing door on the front's left square, the
+   ground floor the Pirate, the Chef and the Hippie's flat (interiors, room 7); the ground-floor front windows stop short of the door */
+const aptWin = (s, W, D, y) => s === 'f' && y < 1 ? 7 : ((s === 'f' || s === 'b') ? W : D) - 3.5;
+B.apartments = (W, D, lx) => {
     const p = [], H = 10.5;
-    p.push(box(0, 0, 0, W, H, D, A(wallM(T.MINT), { keyTop: K.conc, tintTop: T.GREY })));
-    'fblr'.split('').forEach(s => { const len = (s === 'f' || s === 'b') ? W : D; p.push(pane(s, W, D, 0, 0.9, len - 3.5, 1.75, { key: K.win, uv: [3.5, 1.75] }, 0.02), pane(s, W, D, 0, 4.4, len - 3.5, 1.75, { key: K.win, uv: [3.5, 1.75] }, 0.02), pane(s, W, D, 0, 7.9, len - 3.5, 1.75, { key: K.win, uv: [3.5, 1.75] }, 0.02)); });
+    p.push(box(0, 0, 0, W, H, D, A(wallM(T.MINT), { faces: 'blr', keyTop: K.conc, tintTop: T.GREY })), doorFront(W, D, H, lx, wallM(T.MINT)));
+    'fblr'.split('').forEach(s => [0.9, 4.4, 7.9].forEach(y => p.push(pane(s, W, D, 0, y, aptWin(s, W, D, y), 1.75, { key: K.win, uv: [3.5, 1.75] }, 0.02))));
     p.push(A(box(-1.75, 3.4, D / 2 + 0.7, W - 5.2, 0.16, 1.4, A(trim(), { under: true })), { n: 2, step: [0, 3.5, 0] }), A(box(-1.75, 3.56, D / 2 + 1.36, W - 5.2, 0.95, 0.08, trim(T.CORAL)), { n: 2, step: [0, 3.5, 0] }));
     p.push(...band(W, D, H, 0.6, 0.1, trim()));
-    p.push(box(W / 2 - 1.6, 0, D / 2 + 0.3, 3.4, H + 2.2, 3.4, wallM(T.CORAL)), pane('f', 3.4, 3.4, 0, 1.0, 1.2, H, glass(T.AQUA, K.gTall, 0.4), 0.02));
-    p[p.length - 1].p = [W / 2 - 1.6, 1.0, D / 2 + 2.0 + E + 0.02];
+    p.push(box(W / 2 - 1.75, 0, D / 2 + 0.3, 3.5, H + 2.2, 3.4, wallM(T.CORAL)), pane('f', 3.5, 3.4, 0, 1.0, 1.2, H, glass(T.AQUA, K.gTall, 0.4), 0.02));   // (squared onto the front right square, 11-14: its foot is the flat's stair cupboard)
+    p[p.length - 1].p = [W / 2 - 1.75, 1.0, D / 2 + 2.0 + E + 0.02];
     p.push(cyl(-W / 2 + 3.2, H + 1.6, -D / 2 + 3.2, 1.4, 1.9, A(wallM(T.CREAM, K.planks), { seg: 12 })), cyl(-W / 2 + 3.2, H + 3.5, -D / 2 + 3.2, 1.55, 0.8, A(trim(T.CORAL), { r2: 0.05, seg: 12 })));
     p.push(A(cyl(-W / 2 + 2.3, H, -D / 2 + 2.3, 0.1, 1.6, A(trim(T.DARK), { seg: 6, cap: false })), { n: 2, step: [1.8, 0, 0] }), A(cyl(-W / 2 + 2.3, H, -D / 2 + 4.1, 0.1, 1.6, A(trim(T.DARK), { seg: 6, cap: false })), { n: 2, step: [1.8, 0, 0] }));
     return p;
@@ -630,7 +633,7 @@ POLISH.security = (p, W, D, lx) => {
 POLISH.apartments = (p, W, D, lx) => {
     const H = 10.5, body = wallM(T.MINT);
     p.push(...plinth(W, D, 0.8, KP.subwayB, T.TEAL, 1.9));
-    'fblr'.split('').forEach(s => { const len = flen(s, W, D); [0.9, 4.4, 7.9].forEach(y => p.push(...winTrim(s, W, D, 0, y, len - 3.5, 1.75))); });
+    'fblr'.split('').forEach(s => [0.9, 4.4, 7.9].forEach(y => p.push(...winTrim(s, W, D, 0, y, aptWin(s, W, D, y), 1.75))));
     ['b', 'l'].forEach(s => { const len = flen(s, W, D), n = Math.max(1, Math.floor((len - 5) / 3.5)); [3.45, 6.95].forEach(y => p.push(...acRow(s, W, D, -(n - 1) * 1.75, 3.5, n, y, body))); });
     /* the balconies' posts and top rails, the door's hood and letter boxes */
     const bw = W - 5.2, kb = Math.max(2, Math.round(bw / 3.5));
@@ -640,7 +643,7 @@ POLISH.apartments = (p, W, D, lx) => {
     p.push(...pipe('b', W, D, W / 2 - 0.4, H, T.WHITE), ...pipe('b', W, D, -W / 2 + 0.4, H, T.WHITE), ...pipe('l', W, D, D / 2 - 0.4, H, T.WHITE), ...svcDoor('b', W, D, 0, KP.doorW));
     /* the roof: membrane, coping, the tank's ladder, a hatch, stacks, an aerial, plant */
     p.push(roofSkin(W, D, H, KP.under, T.GREY), ...coping(W, D, H + 0.6, T.CORAL), ...hatch(W / 4, H, -D / 4), ...stack(0, H, 0), ...stack(1.2, H, 0), ...stack(-W / 4, H, D / 4, 1.1), ...aerial(W / 4 + 2, H, D / 4, 3.2), ...plant(W / 4, H, D / 4 - 0.5, false));
-    p.push(box(W / 2 - 1.6, H + 2.2, D / 2 + 0.3, 3.8, 0.22, 3.8, trim()), ...band(3.4, 3.4, 0, 0.8, 0.07, mat(KP.subwayB, T.TEAL, 1.9)).map(q => A(q, { p: [q.p[0] + W / 2 - 1.6, q.p[1], q.p[2] + D / 2 + 0.3] })));
+    p.push(box(W / 2 - 1.75, H + 2.2, D / 2 + 0.3, 3.9, 0.22, 3.8, trim()), ...band(3.5, 3.4, 0, 0.8, 0.07, mat(KP.subwayB, T.TEAL, 1.9)).map(q => A(q, { p: [q.p[0] + W / 2 - 1.75, q.p[1], q.p[2] + D / 2 + 0.3] })));
 };
 POLISH.dock = (p, W, D, lx) => {
     const H = 7;
@@ -756,7 +759,7 @@ const DESIGN = {
     'P09-08-B2': { fn: 'icecream' }, 'P09-08-B3': { fn: 'boatshop', storeys: 1, door: 6, keyIn: 'urban:MetalCorrugatedPainted1a' },
     'P10-08-B1': { fn: 'cinema', storeys: 4 },
     'P08-09-B1': { fn: 'market', storeys: 1 }, 'P08-09-B2': { fn: 'florist', storeys: 1, solid: true },
-    'P09-09-B1': { fn: 'foodhall' }, 'P10-09-B1': { fn: 'security' }, 'P10-09-B2': { fn: 'apartments', storeys: 3, solid: true },
+    'P09-09-B1': { fn: 'foodhall' }, 'P10-09-B1': { fn: 'security' }, 'P10-09-B2': { fn: 'apartments', storeys: 3, door: 2 },
     'P11-09-B1': { fn: 'dock', storeys: 2, keyIn: 'urban:MetalCorrugatedPainted1a' }, 'P11-09-B2': { fn: 'booth' },
     'P10-10-B1': { fn: 'mall', storeys: 3 }, 'P11-10-B2': { fn: 'juice', storeys: 1, solid: true },
 };
@@ -845,6 +848,20 @@ const SECOND = {
         [-2.6, 2.4].forEach(dx => P.push(cyl(cx(3.5) + dx, 1.13, cz(0) - 0.3, 0.07, 0.36, A(gilt, { seg: 6 })), cyl(cx(3.5) + dx, 1.45, cz(0) - 0.3, 0.2, 0.2, A(glowT(0x5ec080, 0.7), { seg: 8, r2: 0.12 }))));   // green desk lamps
         P.push(quad(cx(0.5), 0.065, cz(0) + 0.2, 5.6, 3.0, 0, A(mat(KP.rubber, 0xc8a040, 1.7), { flat: true })), quad(cx(0.5), 0.07, cz(0) + 0.2, 5.0, 2.4, 0, A(mat(KP.rubber, 0x283a68, 1.7), { flat: true })));   // a rug under the sofas
         R.prop('luggage_cart', cx(5) + 0.6, D / 2 - 0.8, 0);                                                                                    // the bellhop cart by the front wall
+        /* THE GUEST ROOM (2026-11-14, the residents: the Popstar sleeps here, not in the lobby): the front row's squares 5-7 walled off, full
+           height; its door is the whole of square 5 (a lintel over it), the couples bed on square 6 (its head on the front wall), the make-up
+           vanity on square 7; both shut. The bellhop cart stays at the door: the guest's luggage. */
+        { const zw = cz(1) + 1.75, xa = cx(5) - 1.75, xb = cx(6) - 1.75, xc = cx(7) + 1.75, zf = D / 2 - 0.34, wall = wallM(T.CREAM, K.plaster), rose = mat(K.plaster, 0xe8b8c4, 1.8);
+          P.push(box((xb + xc) / 2, 0, zw, xc - xb, H, 0.24, wall), box(cx(5), 2.7, zw, 3.5, H - 2.7, 0.24, wall), box(xa, 0, (zw + zf) / 2, 0.24, H, zf - zw, wall), box(xc, 0, (zw + zf) / 2, 0.24, H, zf - zw, wall));
+          P.push(box(cx(5), 2.55, zw, 3.62, 0.16, 0.34, gilt), box(xa + 0.17, 0, zw, 0.12, 2.7, 0.34, trim(T.CREAM)), box(xb - 0.06, 0, zw, 0.12, 2.7, 0.34, trim(T.CREAM)));   // the door's gilt head, its jambs
+          R.line(xb, zw, xc, zw, H); R.line(xa, zw, xa, D / 2, H); R.line(xc, zw, xc, D / 2, H);
+          P.push(quad((xb + xc) / 2, 0, zw + 0.13, xc - xb, H - 0.4, 0, rose), quad(xa + 0.13, 0, (zw + zf) / 2, zf - zw, H - 0.4, 270, rose), quad(xc - 0.13, 0, (zw + zf) / 2, zf - zw, H - 0.4, 90, rose));   // the room's rose walls
+          P.push(quad(cx(5), 2.7, zw + 0.13, 3.5, H - 3.1, 0, rose));
+          P.push(quad(cx(6), 0.065, cz(2) - 0.2, 3.0, 2.6, 0, A(mat(KP.rubber, 0xf0e4e8, 1.8), { flat: true })), quad(cx(6), 0.07, cz(2) - 0.2, 2.6, 2.2, 0, A(mat(KP.rubber, 0xc04878, 1.7), { flat: true })));
+          R.prop('couples_bed', cx(6), cz(2), 0); R.prop('makeup_vanity', cx(7), cz(2), 270); R.shut(6, 2, 7, 2, 1.0);
+          [-1.3, 1.3].forEach(dx => R.prop('psx_bedside_table_2', cx(6) + dx, zf - 0.35, 180));
+          R.prop('table_lamp', cx(6) - 1.3, zf - 0.35, 180, { y: 0.59 }); R.prop('mirror_ball', cx(6), cz(2) - 0.2, 0, { y: H - 1.1 });
+          R.lamps([[cx(5), cz(2)], [cx(7), cz(2)]]); }
     },
     /* 2 the cinema: the seat rows (in the first pass's place), wall sconces down both sides of the hall, a gold runner up the centre aisle,
        exit signs, NOW SHOWING over the hall's door, a menu board over the snack counter, the old projector on show in the foyer's front-left square */
@@ -1028,6 +1045,44 @@ function interiors(ctx, byId, push) {
         [0, 1, 2].forEach(k => R.prop('office_locker', cx(2.5) - 0.85 + k * 0.85, back + 0.35, 180));
         R.prop('psx_metal_barrel_mp_1', cx(3) + 1.25, cz(2) + 1.2); R.prop('psx_metal_barrel_mp_3', cx(1) - 1.3, cz(2) + 1.2);
         R.lamps([[cx(1), cz(1)], [cx(3), cz(1) + 1.75]]);
+    });
+    /* 7 the staff apartments' ground floor (5 x 5; the door on square 0; 2026-11-14 the residents: the Pirate, the Chef and the Hippie sleep
+       here, mondo 02:21). A flat under a ceiling at 3.3 m: the hall is column 0 from the door to the bedroom's door (square (0,1)), the walk to
+       the stair is row 4; the kitchen, the table and the sofa on rows 2-3; the bedroom is rows 0-1 behind a wall: three singles on squares
+       (2..4,0), their heads on the back wall, two wardrobes on (0..1,0), row 1 its walk. Every bed, wardrobe, table, counter, sofa on a whole
+       square and shut; lamps, rugs, the nightstands, the guitar, the plant off centre. */
+    room('P10-09-B2', R => { const { P, cx, cz, W, D } = R, back = -D / 2 + 0.3, CH = 3.3, zw = cz(1) + 1.75, x0 = cx(1) - 1.75, e = 0.35;
+        const plaster = wallM(0xf0e2c4, K.plaster), sea = mat(K.plaster, 0xb4d4cc, 1.8);
+        R.liner(plaster, WOOD(0x5a8a7a, 1.9), null, CH + 0.1);
+        P.push(box(0, CH, 0, W - 0.7, 0.06, D - 0.7, A({ under: true, roof: true, top: false, glow: 0.5 }, mat(KP.ceil, T.WHITE, 1.8))));          // the ground floor's ceiling
+        R.rug(0, 0, W - 0.6, D - 0.6, WOOD(0xb88a5c, 1.8));                                                                                     // the floorboards
+        /* the bedroom wall: from square 1 to the right wall, the hall's square 0 its door (a lintel over it) */
+        P.push(box((x0 + W / 2 - e) / 2, 0, zw, W / 2 - e - x0, CH, 0.24, plaster), box((-W / 2 + e + x0) / 2, 2.5, zw, x0 + W / 2 - e, CH - 2.5, 0.24, plaster), box((-W / 2 + e + x0) / 2, 2.42, zw, x0 + W / 2 - e, 0.1, 0.3, WOOD(0x6a4a30)));
+        R.line(x0, zw, W / 2, zw, CH);
+        P.push(quad(0, 0, -D / 2 + e, W - 0.72, CH, 0, sea), quad(-W / 2 + e, 0, (zw - D / 2) / 2, zw + D / 2 - e, CH, 270, sea), quad(W / 2 - e, 0, (zw - D / 2) / 2, zw + D / 2 - e, CH, 90, sea), quad((x0 + W / 2 - e) / 2, 0, zw - 0.13, W / 2 - e - x0, CH, 180, sea));   // the bedroom's sea-glass walls
+        /* the bedroom: three singles, a nightstand by each, two wardrobes, a window over each bed */
+        [['psx_bed_5_1', 2], ['psx_bed_5_2', 3], ['psx_bed_5_3', 4]].forEach(b => { R.prop(b[0], cx(b[1]), cz(0), 180);
+            P.push(quad(cx(b[1]), 1.35, -D / 2 + 0.37, 1.9, 1.35, 0, trim(T.WHITE)), quad(cx(b[1]), 1.42, -D / 2 + 0.38, 1.7, 1.2, 0, glowT(0xc4e4ff, 0.55)), box(cx(b[1]), 2.85, -D / 2 + 0.45, 2.3, 0.06, 0.06, trim(T.STEEL)));
+            [-1, 1].forEach(k => P.push(box(cx(b[1]) + k * 1.05, 0.4, -D / 2 + 0.47, 0.32, 2.42, 0.06, trim([0xd06030, 0x3060a0, 0x60a040][b[1] - 2])))); });   // the curtains
+        R.shut(2, 0, 4, 0, 1.0);
+        [cx(2) + 1.75, cx(3) + 1.75].forEach(x => R.prop('psx_bedside_table_1', x, back + 0.3, 180));
+        R.prop('table_lamp', cx(3) + 1.75, back + 0.3, 180, { y: 0.64 }); R.prop('lava_lamp', cx(2) + 1.75, back + 0.3, 0, { y: 0.64 });
+        R.prop('psx_wardrobe_mp_1', cx(0), cz(0), 180); R.prop('psx_wardrobe_mp_1_2', cx(1), cz(0), 180); R.shut(0, 0, 1, 0, 2.1);
+        R.prop('instrument_guitar', cx(1) + 1.4, back + 0.35, 180);                                                                             // the Hippie's guitar against the wall
+        R.prop('ships_bell', W / 2 - 0.38, cz(0) + 1.3, 270, { y: 1.55 });                                                                     // the Pirate's bell on the wall by his bed
+        P.push(quad(cx(3), 0.07, cz(1) - 0.6, 9.2, 1.1, 0, A(mat(KP.rubber, 0x2c5868, 1.7), { flat: true })), quad(cx(2) - 1.1, 0.075, cz(0) + 0.2, 0.9, 1.6, 0, A(mat(KP.rubber, 0xd89040, 1.7), { flat: true })));   // a runner, the Hippie's rug
+        /* the living room: the TV on square (1,2), the sofa facing it on (2,2), the table on (2,3) with three chairs; the kitchen on the right wall */
+        R.prop('psx_tv_table_1', cx(1), cz(2), 90); R.prop('psx_tv_mp_1', cx(1), cz(2), 90, { y: 0.74 }); R.prop('psx_sofa_1', cx(2), cz(2), 270); R.shut(1, 2, 2, 2, 1.0);
+        P.push(quad(cx(1.5), 0.07, cz(2) + 0.2, 2.8, 2.2, 0, A(mat(KP.rubber, 0xc8783a, 1.7), { flat: true })));
+        R.prop('psx_dinner_table_1', cx(2), cz(3), 0); R.prop('psx_chair_mp_1', cx(2) - 0.85, cz(3), 90); R.prop('psx_chair_mp_1', cx(2) + 0.85, cz(3), 270); R.prop('psx_chair_mp_1', cx(2), cz(3) + 0.8, 0); R.shut(2, 3, 2, 3, 0.9);
+        R.prop('sink_row', cx(4), cz(2), 270); R.prop('kitchen_range', cx(4), cz(3), 270); R.shut(4, 2, 4, 3, 1.0);
+        P.push(quad(W / 2 - 0.37, 0.95, cz(2.5), 6.6, 0.75, 90, mat(KP.subwayB, T.WHITE, 1.9)), box(W / 2 - 0.5, 1.8, cz(2.5), 0.3, 0.05, 5.0, WOOD(0x7a5030)));   // the tiles, a shelf
+        [T.RED, T.LEMON, T.AQUA, T.HOT].forEach((t, i) => P.push(cyl(W / 2 - 0.5, 1.85, cz(2.5) - 1.8 + i * 1.2, 0.09, 0.22, A(trim(t), { seg: 6 }))));   // jars on it
+        /* the hall: letter boxes by the door, a plant; the stair cupboard fills the front right square (the tower's foot) */
+        P.push(A(box(-W / 2 + 0.42, 1.25, cz(4) - 1.2, 0.12, 0.34, 0.42, trim(T.STEEL)), { n: 3, step: [0, 0, -0.48] }));
+        R.prop('potted_plant', cx(0) - 1.2, cz(3) + 1.3);
+        P.push(box(cx(4) + 0.15, 0, cz(4) + 0.15, 3.2, CH, 3.2, wallM(T.CORAL, K.plaster)), box(cx(4) - 1.63, 0, cz(4), 0.05, 2.3, 1.1, trim(T.MINT))); R.shut(4, 4, 4, 4, CH);
+        R.lamps([[cx(3), cz(0) + 0.6], [cx(0.5), cz(0.5)], [cx(1.5), cz(2.5)], [cx(4), cz(2.5)], [cx(0), cz(4)], [cx(2), cz(4)]], CH);
     });
     /* 6 the harbour master (2 x 2; the door on square 0): the tower's foot fills the front right square, the chart table the back right */
     room('bay-harbourmaster', R => { const { P, cx, cz, W, D } = R, back = -D / 2 + 0.3;
