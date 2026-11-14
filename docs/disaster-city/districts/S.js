@@ -971,6 +971,14 @@ exports.apply = (ctx) => {
    most high rises or tall buildings" = FINANCIAL (5 to 11 storeys). He stands on the open ground at the foot of the Penthouse stair tower
    (P10-03, the tallest), on a square's middle, off every path; his line is his own from the old streets. ═══ */
 exports.build = (ctx) => {
+    /* THE WALK-INS' WALLS (the second interior pass, 2026-11-14): a plot-border edge (hedge / wall / rail) laid along a walk-in's own wall
+       stood half inside the room (the Equipment depot's east end: the x = 0 hedge, 0.9 m thick, came 0.45 m through the wall). Such an edge is
+       MOVED out, its inner face 5 cm clear of the building, never dropped. */
+    (ctx.features ? ['P04-08-B1', 'P06-10-B1', 'P06-11-B1', 'P07-11-B1'] : []).forEach(id => { const b = ctx.features.find(q => q.id === 'dc:' + id); if (!b) return;
+        const ew = (b.rot || 0) % 180 ? b.d : b.w, ed = (b.rot || 0) % 180 ? b.w : b.d, X0 = b.x - ew / 2, X1 = b.x + ew / 2, Z0 = b.z - ed / 2, Z1 = b.z + ed / 2;
+        ctx.features.forEach(f => { if (!(f.k === 'wall' || f.k === 'rail') || f.ghost || f.x0 == null) return; const t = (f.t || 0.3) / 2;
+            if (f.x0 === f.x1 && Math.max(f.z0, f.z1) > Z0 + 0.3 && Math.min(f.z0, f.z1) < Z1 - 0.3 && f.x0 + t > X0 && f.x0 - t < X1) { const nx = (f.x0 - X0 < X1 - f.x0) ? X0 - t - 0.05 : X1 + t + 0.05; f.x0 = f.x1 = Math.round(nx * 1000) / 1000; }
+            else if (f.z0 === f.z1 && Math.max(f.x0, f.x1) > X0 + 0.3 && Math.min(f.x0, f.x1) < X1 - 0.3 && f.z0 + t > Z0 && f.z0 - t < Z1) { const nz = (f.z0 - Z0 < Z1 - f.z0) ? Z0 - t - 0.05 : Z1 + t + 0.05; f.z0 = f.z1 = Math.round(nz * 1000) / 1000; } }); });
     if (!ctx.npcSpots) return;
     const x = ctx.gc(121), z = ctx.gc(45);
     ctx.take(121, 45);
