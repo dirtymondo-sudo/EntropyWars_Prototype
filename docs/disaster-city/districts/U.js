@@ -84,11 +84,14 @@ module.exports.build = function (api) {
         [-1, 1].forEach(s => { const cx = s * (gap / 2 + fl / 2); box(cx, 0, d / 2 - t / 2, fl, H, t, BRICK, { top: false }); rows('f', cx, fl - T, d / 2, 3, RES); solid(cx, d / 2 - t / 2, fl, t, H); });
         box(0, 4.6, d / 2 - t / 2, gap, H - 4.6, t, BRICK, { top: false, under: true, faces: 'fb' }); box(0, 4.2, d / 2 - t / 2, gap + 0.6, 0.5, t + 0.3, LIME, { under: true }); win('f', 0, 6, 3.5, T, d / 2, RES);
         gable(0, H, d / 2 - t / 2, w, t, 3.6, 'x', SLATE, BRICK); gable(0, H, d / 2 - 0.2, 6.4, 1.2, 2.6, 'z', SLATE, LIME, 0.2);
-        box(0, 0, -d / 2 + t / 2, w, H, t, BRICK, { top: false }); rows('b', 0, w - T, d / 2, 3, RES); rows('f', 0, w - 2 * t - T, -d / 2 + t, 3, RES); gable(0, H, -d / 2 + t / 2, w, t, 3.6, 'x', SLATE, BRICK); solid(0, -d / 2 + t / 2, w, t, H);
+        /* THE BEDROOMS (mondo 11-14 02:21 "District threads add them": the Telepath and the Zombie sleep here): the hall in the middle of
+           the back wing is a WALK-IN (the row keeps its id dc:P00-04-B1), its door on the court across from the archway; 4 x 2 whole squares */
+        const hw = 14, D = doorAt(hw, 0), bz = -d / 2 + t / 2; row.dead = false; Object.assign(row, { hollow: true, door: D.door, leaf: 'leaf_suburban', storeys: 3, w: hw, d: t }); [row.x, row.z] = toWorld(0, bz);
+        box(0, 0, bz, w, H, t, BRICK, { top: false, faces: 'blr' }); P.push(Object.assign({ s: 'quad', p: [0, 0, r3(-d / 2 + t)], size: [r3(w), H], hole: [D.lx, D.cw, 2.2] }, look(BRICK)));
+        rows('b', 0, w - T, d / 2, 3, RES); rows('f', 0, w - 2 * t - T, -d / 2 + t, 3, RES); gable(0, H, bz, w, t, 3.6, 'x', SLATE, BRICK); [-1, 1].forEach(s => solid(s * (hw / 2 + (w - hw) / 4), bz, (w - hw) / 2, t, H));
         [-1, 1].forEach(s => { const cx = s * (w / 2 - t / 2), len = d - 2 * t; box(cx, 0, 0, t, H, len, BRICK, { top: false, faces: 'lr' }); rows(s < 0 ? 'l' : 'r', 0, len - T, w / 2, 3, RES); rows(s < 0 ? 'r' : 'l', 0, len - T, -(w / 2 - t), 3, RES);
             gable(cx, H, 0, t, len + 0.5, 3.6, 'z', SLATE, BRICK); solid(cx, 0, t, len, H);
             box(s * (w / 2 - 1.2), H, d / 2 - 2, 1.1, 5, 1.1, BRICKD); box(s * (w / 2 - 1.2), H, -d / 2 + 2, 1.1, 5, 1.1, BRICKD); });
-        door('b', 0, -(d / 2 - t), DOORW, 2.6);   // the hall door, across the court from the archway
     };
     B.lecture = (w, d) => {   // roof route: a brick hall, a six-column porch + pediment, a lead vault over the auditorium
         box(0, 0, 0, w, 7, d, BRICK, { top: false }); box(0, 0, 0, w + 0.4, 1.0, d + 0.4, LIME); allRows(w, d, 1, GLT, 1.6); win('l', 0, 3.35, d - C, T, w / 2, GLT); win('r', 0, 3.35, d - C, T, w / 2, GLT);
@@ -136,12 +139,23 @@ module.exports.build = function (api) {
         [-1, 1].forEach(s => box(s * 2.0, 0, d / 2 + 0.9, 0.1, 3.6, 1.8, ['urban:MetalTruss1a', 0x404040], { kind: 'over', ds: true }));
     };
     B.faculty = (w, d, row) => {   // a terrace of gabled houses, each its own colour, bay window, stoop and chimney
-        const n = Math.max(3, Math.round(w / 7.5)), hw = w / n, looks = [BRICK, CREAM, SAGE, BLUE, BUFF]; Object.assign(row, { hollow: false, storeys: 2 }); delete row.door;
-        for (let i = 0; i < n; i++) { const cx = -w / 2 + hw * (i + 0.5), L = looks[i % looks.length];
-            box(cx, 0, 0, hw - 0.1, 7, d, L, { top: false }); rows('f', cx + 0.9, hw - 3.6, d / 2, 1, RES, 4.5); rows('b', cx, hw - T, d / 2, 2, RES);
+        /* THE BEDROOMS (mondo 11-14 02:21 "District threads add them": the Professor, the Mad scientist and the Reptilian sleep here): the
+           left end house is a WALK-IN (the row keeps its id dc:P03-04-B1), three whole squares wide, the others two each, every house on
+           the 3.5 m battle squares (w = 9 squares) */
+        const n = Math.max(3, Math.round(w / 7.5)), looks = [BRICK, CREAM, SAGE, BLUE, BUFF], hw0 = Math.abs(w - 31.5) < 0.2 ? 10.5 : w / n;
+        const widths = [hw0].concat(Array.from({ length: n - 1 }, () => (w - hw0) / (n - 1))), D = doorAt(hw0, 1.9);
+        let x0 = -w / 2;
+        for (let i = 0; i < n; i++) { const hw = widths[i], cx = x0 + hw / 2, L = looks[i % looks.length]; x0 += hw;
+            if (i === 0) {   // the walk-in: a front with the doorway cut out (the engine's swing leaf), walls on the other three sides
+                Object.assign(row, { hollow: true, door: D.door, leaf: 'leaf_suburban', storeys: 2, w: r3(hw) }); [row.x, row.z] = toWorld(cx, 0);
+                P.push(Object.assign({ s: 'quad', p: [r3(cx), 0, r3(d / 2)], size: [r3(hw - 0.1), 7], hole: [D.lx, D.cw, 2.2] }, look(L))); box(cx, 0, 0, hw - 0.1, 7, d, L, { top: false, faces: 'blr' });
+                win('l', 0, 1.0, T, T, w / 2, GLR);   // a ground-floor window on the terrace's end wall (the bedroom's daylight)
+            } else box(cx, 0, 0, hw - 0.1, 7, d, L, { top: false });
+            rows('f', cx + 0.9, hw - 3.6, d / 2, 1, RES, 4.5); rows('b', cx, hw - T, d / 2, 2, RES);
             if (i % 2 === 0) gable(cx, 7, 0, hw, d, 3.4, 'z', SLATE, L, 0.35); else { gable(cx, 7, 0, hw, d, 3.0, 'x', SLATEG, L, 0.35); box(cx, 7.3, d / 4, 2, 1.6, 1.6, L, { top: false }); gable(cx, 8.9, d / 4, 2, 1.8, 0.9, 'z', SLATEG, L, 0.15); win('f', cx, 7.6, 1.2, 1.1, d / 4 + 0.8, GLR); }
             box(cx - 1.7, 0.5, d / 2 + 0.45, 2.6, 3.0, 0.9, MARB); win('f', cx - 1.7, 1.2, T, T, d / 2 + 0.9, GLR); shed(cx - 1.7, 3.5, d / 2 + 0.5, 2.9, 1.1, 0.5, SLATE, 0);
-            box(cx + 1.9, 0, d / 2 + 0.6, 1.8, 0.3, 1.2, STONE); door('f', cx + 1.9, d / 2, DOORW, 1.3); box(cx + hw / 2 - 0.9, 7, -1, 0.9, 4.6, 0.9, BRICKD); }
+            const dx = i === 0 ? cx + D.lx : cx + 1.9; box(dx, 0, d / 2 + 0.6, 1.8, 0.3, 1.2, STONE); if (i) door('f', dx, d / 2, DOORW, 1.3); box(cx + hw / 2 - 0.9, 7, -1, 0.9, 4.6, 0.9, BRICKD); }
+        solid((hw0 + (w - hw0) / 2) - w / 2, 0, w - hw0, d, 7);   // the other houses: one solid block
     };
     B.bookshop = (w, d) => {   // roof route: a painted shopfront under a striped awning, cream plaster over it, a deep cornice
         box(0, 0, 0, w, 3.5, d, WOODG, { top: false }); box(0, 3.5, 0, w, 3.5, d, CREAM, { top: false }); win('f', -0.9, 0.6, Math.floor((w - 4) / T) * T, 2.4, d / 2, GLB); win('r', 0, 0.6, d - C, 2.4, w / 2, GLB); door('f', w / 2 - 1.6, d / 2, DOORS);
@@ -356,6 +370,9 @@ module.exports.build = function (api) {
         clinic: { floorIn: 'calm_tiles_small', keyIn: 'urban:TileGeneric1a', g: [['lockers', '', 'cabinets'], ['bed', '', 'bed'], ['', '', ''], ['recep', 'recep', ''], ['wait', '', 'vend']], part: [[0, 2, 2, 2], [0, 4, 1, 4], [2, 4, 3, 4]] },
         museum: { floorIn: 'urban:TileMarble1a', keyIn: 'urban:PlasterWallPainted1a', g: [['btele', 'case', 'case', 'orrery', 'case', 'case', 'meteor', 'fish', 'tele'], ['', '', '', '', '', '', '', '', ''], ['globe', '', 'ticket', '', '', 'mbench', 'dino', 'dino2', 'trophy']], planets: true },
         lodge: { floorIn: 'calm_planks', keyIn: 'urban:PlasterWallStucco1a', g: [['pdesk', ''], ['arm1', '']] },
+        /* THE BEDROOMS (the residents' brief, mondo 11-14 02:21): a bed a resident, each on its own whole square, its head on the back wall */
+        faculty: { floorIn: 'calm_planks', keyIn: 'urban:PlasterWallPainted1a', g: [['sbed1', 'sbed2', 'sbed3'], ['', '', ''], ['ward', 'study', '']] },
+        dorm: { floorIn: 'calm_carpet', keyIn: 'urban:PlasterWallPainted1a', g: [['dbed', 'ddesk', 'ddesk', 'dbed'], ['', '', '', '']] },
     };
     const inside = (kind, row) => {
         const R = ROOMS[kind], q0 = ctx.rot * Math.PI / 180, c0 = Math.cos(q0), s0 = Math.sin(q0), dx = row.x - ctx.x, dz = row.z - ctx.z, ox = dx * c0 + dz * s0, oz = -dx * s0 + dz * c0;
@@ -420,6 +437,14 @@ module.exports.build = function (api) {
                 [-1, 0, 1].forEach(sx => [-1, 1].forEach(sz => prop('rope_stanchion', cx + sx * (cw - 0.12), z + sz * (cd / 2 - 0.12), 0)));   // a rope round the plinth, on its own squares' edges
                 board(cx + 1.6, 0.9, z - cd / 2 + 0.3, 1.3, 0.4, 180, 'FOSSIL', '#f4ecd8', '#2a2a2a'); fill(x, z, 3.0); },
             dino2: (x, z) => fill(x, z, 3.0),
+            /* THE BEDROOMS: psx_bed_5 = a single (2.7 m, its headboard at the model's +x: face 90 puts it on the back wall); dorm_bed = the
+               pack's single pre-turned (face 180 = its head on the back wall); bedside things inside the bed's own square */
+            sbed1: (x, z) => FILL.sbed(x, z, 1), sbed2: (x, z) => FILL.sbed(x, z, 2), sbed3: (x, z) => FILL.sbed(x, z, 3),
+            sbed: (x, z, v) => { prop('psx_bed_5_' + v, x, z, 90); prop('psx_bedside_table_1_' + v, x - 1.22, z - 1.2, 180); prop('table_lamp', x - 1.22, z - 1.25, 0, 0.64); fill(x, z, 1.0); },
+            ward: (x, z) => { prop('psx_wardrobe_mp_1_2', x - 0.75, z + 1.2, 0); prop('psx_shelf_mp_5_2', x + 0.85, z + 1.25, 0); fill(x, z, 2.2); },
+            study: (x, z) => { prop('tanker_desk', x, z + 0.95, 0); prop('psx_chair_mp_3_1', x, z + 0.1, 180); prop('desk_lamp', x + 0.55, z + 1.05, 0, 0.76); fill(x, z, 1.0); },
+            dbed: (x, z) => { prop('dorm_bed', x, z, 180); prop('psx_bedside_table_2_1', x + (x < ox ? 1.0 : -1.0), z - 1.25, 180); fill(x, z, 1.0); },
+            ddesk: (x, z) => { prop('school_desk', x - 0.7, z - 1.0, 180); prop('psx_chair_mp_1_2', x - 0.7, z - 0.25, 0); prop('psx_wardrobe_mp_1_3', x + 0.95, z - 1.2, 180); fill(x, z, 2.2); },
             globe: (x, z) => { cyl(x, 0, z, 0.5, 0.9, DARK, 10); cyl(x, 0.9, z, 0.2, 1.2, ['calm_tiles', 0x6aa8e0], 14, 1.2); P.push(Object.assign({ s: 'dome', p: [r3(x), 2.1, r3(z)], r: 1.2, h: 1.2, seg: 14, rings: 5 }, look(['calm_tiles', 0x6aa8e0]))); fill(x, z, 2.4); },
         };
         R.g.forEach((line, ri) => line.forEach((t, ci) => { if (!t) return; BF = ri === 0 ? 180 : 0; const x = ox - W / 2 + (ci + 0.5) * cw, z = oz - D / 2 + (ri + 0.5) * cd; if (FILL[t]) FILL[t](x, z); else console.warn('university: no fill', t); }));
@@ -441,6 +466,7 @@ module.exports.build = function (api) {
            hollow building's own ceiling draws black), its own light (lit ceiling panels, pendants, strips, chandeliers, lamp glows: drawn
            glow, the city room's ten real lights stay with the streets), and dressing OFF the square centres (books, glassware, plants,
            clocks, runners on the walkways: nothing that blocks stands on a walkway square, nothing sits half across two). ── */
+        let HC = H;   // the drawn ceiling's height (a home's room is one storey: its own lower ceiling, the hall's height above it unseen)
         const nCol = Math.max(1, Math.round((W - 0.12) / T)), dX = -(W - 0.12) / 2 + ((row.door || Math.ceil(nCol / 2)) - 0.5) * (W - 0.12) / nCol;   // the doorway's middle, room-local
         const sx = ci => -W / 2 + (ci + 0.5) * cw, sz = ri => -D / 2 + (ri + 0.5) * cd, X = rx => r3(ox + rx), Z = rz => r3(oz + rz);
         const M = (key, tint, gain) => [key, tint, null, gain];
@@ -452,15 +478,15 @@ module.exports.build = function (api) {
         const band = (L, y, h, t, e) => { const o = lk(L), f = e + t / 2, run = (x0, x1, z) => { if (x1 - x0 > 0.05) P.push(Object.assign({ s: 'box', p: [X((x0 + x1) / 2), r3(y), Z(z)], size: [r3(x1 - x0), r3(h), r3(t)] }, o)); };
             run(-W / 2 + e, W / 2 - e, -D / 2 + f); if (y < 2.25) { run(-W / 2 + e, dX - 0.95, D / 2 - f); run(dX + 0.95, W / 2 - e, D / 2 - f); } else run(-W / 2 + e, W / 2 - e, D / 2 - f);
             [-1, 1].forEach(sg => P.push(Object.assign({ s: 'box', p: [X(sg * (W / 2 - f)), r3(y), Z(0)], size: [r3(t), r3(h), r3(D - 2 * e)] }, o))); };
-        const liner = (wall, dado, dadoH, ceil, trimL) => { coat(wall, H, 0.34); if (dado) coat(dado, dadoH, 0.355); const tl = trimL || ['calm_gunmetal', 0x8a8a90];
-            band(tl, 0, 0.14, 0.05, 0.36); if (dado) band(tl, dadoH - 0.03, 0.06, 0.05, 0.36); band(tl, H - 0.26, 0.22, 0.12, 0.36);
-            if (ceil) P.push(Object.assign({ s: 'box', p: [X(0), r3(H - 0.06), Z(0)], size: [r3(W - 0.7), 0.04, r3(D - 0.7)], under: true, roof: true, top: false }, lk(ceil), { glow: ceil[4] == null ? 0.45 : ceil[4] })); };
+        const liner = (wall, dado, dadoH, ceil, trimL) => { coat(wall, HC, 0.34); if (dado) coat(dado, dadoH, 0.355); const tl = trimL || ['calm_gunmetal', 0x8a8a90];
+            band(tl, 0, 0.14, 0.05, 0.36); if (dado) band(tl, dadoH - 0.03, 0.06, 0.05, 0.36); band(tl, HC - 0.26, 0.22, 0.12, 0.36);
+            if (ceil) P.push(Object.assign({ s: 'box', p: [X(0), r3(HC - 0.06), Z(0)], size: [r3(W - 0.7), 0.04, r3(D - 0.7)], under: true, roof: true, top: false }, lk(ceil), { glow: ceil[4] == null ? 0.45 : ceil[4] })); };
         const GLOW = tint => ({ tint, glow: 1, under: true });
         /* lights (drawn): a flush lit panel; a fluorescent strip; a pendant (cord, a shade, a lit bulb under it) */
-        const panelL = (rx, rz, w, d, tint) => { P.push({ s: 'box', p: [X(rx), r3(H - 0.11), Z(rz)], size: [r3(w + 0.14), 0.05, r3(d + 0.14)], tint: 0x9a9ea6, under: true }, Object.assign({ s: 'box', p: [X(rx), r3(H - 0.13), Z(rz)], size: [r3(w), 0.03, r3(d)] }, GLOW(tint || 0xf4f8ff))); };
-        const strip = (rx, rz, len, alongZ, tint) => { const sz2 = alongZ ? [0.24, 0.07, len] : [len, 0.07, 0.24]; P.push({ s: 'box', p: [X(rx), r3(H - 0.34), Z(rz)], size: sz2, tint: 0xd8dce2, under: true }, Object.assign({ s: 'box', p: [X(rx), r3(H - 0.36), Z(rz)], size: [sz2[0] * 0.7, 0.03, sz2[2] * 0.7].map(r3) }, GLOW(tint || 0xeef8ff)));
-            P.push({ s: 'cyl', p: [X(rx), r3(H - 0.34), Z(rz)], r: 0.01, h: 0.34, seg: 4, tint: 0x30343a, cap: false }); };
-        const pendant = (rx, rz, y, shade, bulb, r) => { r = r || 0.28; P.push({ s: 'cyl', p: [X(rx), r3(y + 0.26), Z(rz)], r: 0.012, h: r3(H - y - 0.26), seg: 4, tint: 0x202020, cap: false },
+        const panelL = (rx, rz, w, d, tint) => { P.push({ s: 'box', p: [X(rx), r3(HC - 0.11), Z(rz)], size: [r3(w + 0.14), 0.05, r3(d + 0.14)], tint: 0x9a9ea6, under: true }, Object.assign({ s: 'box', p: [X(rx), r3(HC - 0.13), Z(rz)], size: [r3(w), 0.03, r3(d)] }, GLOW(tint || 0xf4f8ff))); };
+        const strip = (rx, rz, len, alongZ, tint) => { const sz2 = alongZ ? [0.24, 0.07, len] : [len, 0.07, 0.24]; P.push({ s: 'box', p: [X(rx), r3(HC - 0.34), Z(rz)], size: sz2, tint: 0xd8dce2, under: true }, Object.assign({ s: 'box', p: [X(rx), r3(HC - 0.36), Z(rz)], size: [sz2[0] * 0.7, 0.03, sz2[2] * 0.7].map(r3) }, GLOW(tint || 0xeef8ff)));
+            P.push({ s: 'cyl', p: [X(rx), r3(HC - 0.34), Z(rz)], r: 0.01, h: 0.34, seg: 4, tint: 0x30343a, cap: false }); };
+        const pendant = (rx, rz, y, shade, bulb, r) => { r = r || 0.28; P.push({ s: 'cyl', p: [X(rx), r3(y + 0.26), Z(rz)], r: 0.012, h: r3(HC - y - 0.26), seg: 4, tint: 0x202020, cap: false },
             Object.assign({ s: 'cyl', p: [X(rx), r3(y), Z(rz)], r: r3(r), r2: r3(r * 0.25), h: 0.28, seg: 14, ds: true, cap: false }, shade),
             Object.assign({ s: 'cyl', p: [X(rx), r3(y - 0.06), Z(rz)], r: r3(r * 0.3), h: 0.14, seg: 10 }, GLOW(bulb || 0xffe2a8))); };
         /* a lit window on a wall (daylight through glass the facade's windows stand for): wall 'l' | 'r' | 'b', along = room-local x or z */
@@ -536,6 +562,20 @@ module.exports.build = function (api) {
                     P.push({ s: 'cyl', p: [X(x), r3(H - 0.5), Z(z)], r: 0.09, r2: 0.13, h: 0.24, seg: 8, tint: 0x202428, cap: false }, Object.assign({ s: 'cyl', p: [X(x), r3(H - 0.53), Z(z)], r: 0.085, h: 0.03, seg: 8 }, GLOW(0xfff0d0)));
                     P.push({ s: 'cyl', p: [X(x), r3(H - 0.26), Z(z)], r: 0.015, h: 0.26, seg: 4, tint: 0x202428, cap: false }); }));
                 onWall('exit_sign', 'f', dX); dress('potted_plant', sx(4) + 1.2, sz(2) + 1.15, 0);
+            },
+            faculty: () => {   // a lived-in townhouse bedroom: warm cream over oak, a low lit ceiling, a lamp by every bed, the end window
+                HC = 3.5; liner(M('urban:PlasterWallStucco1a', 0xf0dcb8, 1.9), M('calm_planks', 0x8a6040, 1.4), 1.0, ['urban:FibreCeilingTile1a', 0xfff2dc, null, 1.6, 0.4], ['calm_planks', 0x5a3a20]);
+                [0, 1, 2].forEach(ci => pendant(sx(ci), sz(1), 2.6, { key: 'calm_tiles', tint: 0xe8d8b0, glow: 0.35 }, 0xffe2a8, 0.3));
+                rug(sx(1) - 0.4, sz(1) + 0.2, 4.2, 2.2, M('calm_carpet', 0x7a3a3a, 1.2)); window_('l', sz(1), 1.0, 1.6, 1.6, ['urban:GlassWindowResidential1a', 0xfff0d8, null, 1.4]);
+                books(sx(1) - 0.4, sz(2) + 1.2, 0.76, 4, 0); dress('potted_plant', sx(2) + 1.2, sz(1) - 1.2, 0);
+                onWall('wall_clock', 'r', sz(1)); onWall('notice_board', 'f', sx(1) - 0.4);
+            },
+            dorm: () => {   // the dormitory hall: pale blue over oak, posters of notices, strip lights, a rug between the beds
+                HC = 3.5; liner(M('urban:PlasterWallPainted1a', 0xb8cce0, 1.9), M('calm_planks', 0x9a7450, 1.4), 1.0, ['urban:FibreCeilingTile1a', 0xffffff, null, 1.6, 0.45], ['calm_planks', 0x6a4a30]);
+                [0.5, 2.5].forEach(c => strip(-W / 2 + (c + 0.5) * cw, sz(1), 2.4, false, 0xfff4e0));
+                rug(sx(1) + cw / 2, sz(1) - 0.3, 4.6, 2.0, M('calm_carpet', 0x3a5a8a, 1.2));
+                dress('potted_plant', sx(0) - 1.2, sz(1) + 1.15, 0); dress('cardboard_box', sx(3) + 1.15, sz(1) + 1.1, 25); dress('desk_lamp', sx(1) - 0.35, sz(0) - 1.05, 180, 0.76); dress('desk_lamp', sx(2) - 0.35, sz(0) - 1.05, 180, 0.76);
+                onWall('notice_board', 'l', sz(1)); onWall('wall_clock', 'r', sz(1)); onWall('exit_sign', 'f', dX);
             },
             lodge: () => {   // the porter's lodge: oak to the waist, a bare bulb, the radio on
                 liner(M('urban:PlasterWallStucco1a', 0xf0dcb0, 2.0), M('calm_planks', 0x8a6040, 1.4), 1.2, ['urban:FibreCeilingTile1a', 0xfff0d8, null, 1.5, 0.35], ['calm_planks', 0x5a3a20]);
