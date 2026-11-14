@@ -415,6 +415,9 @@ module.exports = { build: function (api) {
         'P11-06-B1': { g: ['UAaAh.C', '.......', 'J..AA.D'], keyIn: SUB, floorIn: U('RubberNonSlip1a'), rug: '#241a40', lamp: '#30e0ff', words: { C: 'PRIZES' }, hang: 'mirror_ball', hangOne: true, dado: '#14102a', ceil: '#100c20', sconce: '#ff30c0', D: 'juke' },
         'P09-07-B1': { g: ['OOO', '..K', 'WW.', 'CC.', '..D'], keyIn: SUB, floorIn: CHK, rug: null, lamp: '#fff0d0', words: { C: 'FRESH BREAD' }, D: 'bread', C: 'bread', O: 'deck', dado: '#8a5a34', ceil: '#f0e6d0' },
         'P10-07-B1': { g: ['EEE.UU.NN', '.........', 'EE..T..RR'], keyIn: PL, floorIn: WOOD, rug: '#4a4058', table: '#8a5a34', lamp: '#fff0d0', dado: '#5b3a22', ceil: '#d8d0c0' },
+        /* THE BUNNY GIRL'S FLAT (11-14, the residents thread's bedrooms brief): the apartments' ground floor under a low ceiling — her bed centred on its square, a
+           costume rail, a kitchenette counter, her vanity, a sofa; the walk one square wide from the door */
+        'P11-06-B2': { g: ['Rb.L', '....', 'K..v', '....', '....'], keyIn: PL, floorIn: WOOD, rug: '#5a2a44', table: '#8a5a34', lamp: '#ffe0e8', dado: '#3a1a2a', ceil: '#e8d8d8', sconce: '#ff9ac0', ceilH: 3.15 },
         'P11-07-B1': { g: ['.....', 'HH.HH', 'HH.HH', 'HH.HH', '.I.Q.'], keyIn: PL, floorIn: U('RubberNonSlip1a'), rug: '#7a2030', rake: 1, seatFace: 'back', seat: '#a02838', screen: true, lamp: '#ffe0a0', dado: '#2a0a10', ceil: '#18080c', sconce: '#ffb070', I: 'projector' },
     };
     Object.assign(INSIDE, {
@@ -422,7 +425,7 @@ module.exports = { build: function (api) {
         'P11-05-B1': { g: ['FFF..YYD', '........', 'GGG.k.X.', 'GGG.....', '........', 'R.L..m.N', '........', 'Z......D'], keyIn: CO, floorIn: CS, rug: null, stage: 'set', lamp: '#f0f4ff', set: 'lights', ceil: '#1a1c22' },
         'E-chapel': { g: ['pwp', 'p.p'], keyIn: ST, floorIn: WOOD, rug: '#b03060', lamp: '#ffd0e0', dado: '#f4e8e0', ceil: '#fff0f4', sconce: '#ffe0e8' },
     });
-    const BLOCK_H = { r: 1.0, j: 1.0, a: 1.9, h: 1.9, k: 1.9, p: 1.0, w: 2.6, S: 1.8, T: 1.0, B: 2.2, c: 2.4, G: 1.0, K: 2.2, H: 1.2, L: 1.0, U: 1.0, X: 1.2, M: 1.2, P: 1.3, V: 2.4, A: 1.9, R: 1.8, m: 2.0, O: 2.2, W: 1.0, F: 4.2, Y: 2.2, Z: 1.0, D: 2.4, J: 0.9, C: 1.1, I: 2.6, Q: 1.7, E: 1.2, N: 1.9 };
+    const BLOCK_H = { b: 1.0, v: 1.6, r: 1.0, j: 1.0, a: 1.9, h: 1.9, k: 1.9, p: 1.0, w: 2.6, S: 1.8, T: 1.0, B: 2.2, c: 2.4, G: 1.0, K: 2.2, H: 1.2, L: 1.0, U: 1.0, X: 1.2, M: 1.2, P: 1.3, V: 2.4, A: 1.9, R: 1.8, m: 2.0, O: 2.2, W: 1.0, F: 4.2, Y: 2.2, Z: 1.0, D: 2.4, J: 0.9, C: 1.1, I: 2.6, Q: 1.7, E: 1.2, N: 1.9 };
     const HANG = { crystal_chandelier: 1.4, mirror_ball: 0.9, paper_lantern: 0.7 };   // the catalogue `h` of what hangs over a walk (PASS 2)
     const stool = (k, x, z) => { k.part('cyl', x, 0, z, null, '#2a2a2e', { r: 0.05, h: 0.7, seg: 6 }); k.part('cyl', x, 0.7, z, PL, '#8a2030', { r: 0.2, h: 0.07, seg: 10 }); };
     /* KIT[letter](k): k.part(s, lx, y, lz, key, tint, o) = a part in the square's frame; k.prop(key, lx, lz, turn) = a catalogue prop; k.i / k.n = this square's place in its run */
@@ -501,10 +504,12 @@ module.exports = { build: function (api) {
         I: k => { if (k.S.I === 'projector') { k.prop('ticket_booth', 0.4, 0, 0); k.prop('film_projector', -1.3, -0.55, 25); return; } k.prop('ticket_booth', 0, 0, 0); },   /* PASS 2: the cinema shows an old projector beside its booth */
         Q: k => k.prop('popcorn_cart', 0, 0, 0),
         E: k => { k.prop('dorm_bed', -0.85, 0, 0); k.prop('dorm_bed', 0.85, 0, 0); },
+        b: k => { k.part('box', 0, 0, 0, PL, k.S.rug || '#4a4058', { size: [3.3, 0.03, 3.3] }); k.prop('couples_bed', 0, 0, 0); k.part('box', 1.3, 0, -0.75, WOOD, '#5b3a22', { size: [0.5, 0.55, 0.45] }); k.prop('table_lamp', 1.3, -0.75, 0, { y: 0.55 }); },   /* a home's bed, centred on its square (beds are blockers: whole squares, mondo 11-13), a nightstand + lamp beside it */
+        v: k => { k.prop('makeup_vanity', 0, -1.1, 0); k.part('cyl', 0.15, 0, -0.35, PL, '#c05a80', { r: 0.22, h: 0.45, seg: 10 }); },   /* one vanity and its stool */
         N: k => { for (const x of [-1.2, -0.4, 0.4, 1.2]) k.prop('locker', x, -1.4, 0); k.part('box', 0, 0, 0.3, WOOD, '#8a5a34', { size: [2.8, 0.45, 0.4] }); },
     };
     function inside(b, S, env) {
-        const g = S.g, nR = g.length, nC = g[0].length, { loc, cx, cz, fw, fd, row, lx } = env, H = Math.max(2.6, (row.storeys || 2) * 3.5 - 0.35), gy = env.gy || 0, done = new Set();
+        const g = S.g, nR = g.length, nC = g[0].length, { loc, cx, cz, fw, fd, row, lx } = env, H = S.ceilH || Math.max(2.6, (row.storeys || 2) * 3.5 - 0.35), gy = env.gy || 0, done = new Set();
         const ang = w => ((Math.round(-Math.atan2(w[0], w[1]) / D2R) % 360) + 360) % 360;
         /* PASS 2: the walkway squares something hangs over: every other one (`hangAll`), the one nearest the middle (`hangOne`), else every other one of row `hangRow` (1) */
         const hangAt = new Set(); if (S.hang) { let best = null, bd = 1e9; for (let r = 0; r < nR; r++) for (let c = 0; c < nC; c++) { if (g[r][c] !== '.') continue;
@@ -721,7 +726,7 @@ module.exports = { build: function (api) {
         b.face('s', b.door[0] + 4.5, b.hw - 1, 0.5, 2.3, GT, '#a0ffff', GLOW);
         b.cyl(b.hw - 6, 0, 2.6, 7.2, 0.5, null, '#f0c020', { glow: 0.5 }); b.cyl(b.hw - 6, 0, 0.3, 6.3, 0.9, TR, '#444444', { seg: 6 });
     });
-    B('P11-06-B2', { st: 3 }, b => {                                                                          // the apartments (the repeating kind): brick, a gable, balconies
+    B('P11-06-B2', { walk: true, st: 3 }, b => {   /* (11-14: walk-in; its ground floor is the Bunny girl's flat, INSIDE below) */                                                                          // the apartments (the repeating kind): brick, a gable, balconies
         b.walls(10.5, BR2, '#9a5a44'); b.roof('gable', 0, 0, b.hw * 2, b.hd * 2, 10.5, 3, CO, '#3a3038', { ridge: 'z', over: 0.4, keyEnd: BR2, tintEnd: T('#9a5a44', BR2) });
         for (const y of [4.2, 7.7]) { b.face('w', -b.hd + 1.4, b.hd - 1.4, y, 2, GR, '#ffe6b0', GLOW); b.box(-b.hw - 0.7, 0, 1.4, b.hd * 2 - 2.4, y - 0.7, 0.15, TR, '#333333', { under: true }); }
     });

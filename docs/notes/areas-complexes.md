@@ -2227,6 +2227,22 @@ mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is 
   Seen in the cloud browser: marquee, scoreboard, gym, box office, depot, gallery, art supplies signs. Low contrast, to raise later: the museum frieze
   and SOUTH GATE (dark letters on stone).
 
+- THE INTERIORS (2026-11-13, mondo 21:04 "let's go ahead and do the interiors", his OK on the plan 21:19; plan drawing
+  /mnt/project-files/disaster-city-sports-culture/interiors/interiors_plan_v2.png). S.js `inside(id, { wall, floor, leaf })` lays a walk-in's rooms
+  on the building's own 3.5 m BATTLE SQUARES: (u, v) = squares from the front's left corner as you face it from outside, v back from the front wall.
+  `I.wall(axis, at, a, b, h, [[middle, leaf, words]])` = a partition on a square line (arch boxes + ghost walls, a 1.75 m doorway in the middle of
+  one square's edge, a lettered sign over it, a swinging leaf), `I.block(u, v, nu, nv, h)` = a thing that blocks, whole squares (a ghost wall),
+  `I.prop(key, u, v, turn)` = a catalogue model, `I.ceil`, `I.lampAt`. His rules (21:14 / 21:17): blockers fill whole squares, walkways are a whole
+  square wide, decor stands off the squares' middles against a wall.
+  Museum (8 x 7): entrance hall + ticket desk, rotunda with the dinosaur (an npcSpot of the dinosaur race standing in a ring of rope, no line), Antiquity,
+  Arms hall, painting gallery. Training Gym (8 x 8): lobby, office, trophy room, main hall (ring, heavy bags, weights, mat: built from parts),
+  locker room. Equipment Depot (9 x 3): bay A, grounds office, bay B, bay C. South Gate ticket hall (9 x 3): ticket hall + counter, stewards'
+  room, security + lost property. NOT built from the plan: the turnstile room (the building has one doorway, so nothing leads through it).
+- THE INNER DOORS (three-renderer.js `_hqBuildTexDoors`, shared by every district): a hollow texbuilding row's `inner: [{ x, z, rot, w, leaf,
+  double }]` hangs more swinging leaves inside the building, in its own frame (x along the front from its middle, z toward the front, rot 0 = in a
+  wall that runs along the front, 90 = across it). Same leaves, same swing-away as the front door (`_hq.cityDoors`). Drawn only: the district's
+  walls leave the gap.
+
 ## DISASTER CITY, CIVIC CENTER — the 28 buildings of district C (2026-11-13, mondo's OK 17:11)
 
 District C = plots x 4..7, y 0..3 of `site_prebuilt_downtown_streets`. Everything lives in ONE file:
@@ -2529,6 +2545,21 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
   podium, club, caterer north wing, P09-00 shop + workshop) get nothing on the deck; nothing new sticks out past 0.8 m at ground level.
   Cost: the district's arch rows went 671 -> ~2300 parts and ~8 -> ~17 materials a building (each sheet + tint is one mesh per building),
   data.js + ~135 KB. Only a walk-in's roof deck carries `roof: true` (a roof flag is its own mesh). No tools beyond the bake.
+- **THE INSIDES (mondo 11-13 21:04 "after the district threads do their exterior polish, let's go ahead and do the interiors"; his OK on the plan
+  21:19; the hotel is his exception, 19:02).** `districts/F-inside.js` (required by F.js; `furnish(T)` runs in `emit` for every hollow building)
+  fills the ten walk-in halls: hotel lobby, Goblin Bank hall, bank offices lobby, vault annex, taxi dispatch, drivers' store, intelligence
+  office, finance arcade, penthouse stair lobby, palm house. THE SQUARES (mondo 21:14 + 21:17, 3.5 m): `grid(T)` finds the CITY's whole squares
+  inside a building in its own frame (`g.c(i, j)`, i along the front, j from the back wall); a thing that blocks (counter, sofa, vault, cage,
+  gold pile, planting bed, gate) stands on a whole square's middle or fills whole squares, so every walkway is whole squares; decor (plants,
+  lamps, chairs, rugs) stands off the middles; what hangs flat on a wall (lift doors, mail boxes, screens, the vault door, the arcade's booths)
+  takes no square. Furniture = catalogue props (`I.put`, turned in the building's frame: 'f' looks at the front door); counters, cages, beds,
+  gold, lift doors and lamps are parts of ONE arch row a building (`dc:<id>:in`) with a ghost `wall` row each for the walker. `keyIn` /
+  `floorIn` on the building's row pick the hall's wall + floor sheets. THE HOTEL: `frame(id, { inside: true })` swaps its roof-route plateau
+  for a hollow two-storey texbuilding (the same 7 m walked roof; I.js did it first); the tower's collision on the terrace is four HUNG ghost
+  walls (`lift`: they start over the roof, the lobby under them is walked). The tool warns "the lower roof of RF67 is a walk-in building":
+  the roof flight there now stands on the hotel's roof slab. props.js `INDOOR` (a WeakSet a district adds its indoor rows to): the prop check
+  does not report them for standing inside their own building, only against the inside's own pieces and other props. NO REAL LIGHTS inside
+  (the city has no light rows; lamps are glowing parts): the halls are as bright as the engine's walk-in buildings are.
 - THE GIANT APE (mondo 11-13 19:25: "put king kong in the district with the most high rises or tall buildings"): Financial (5 to 11 storeys). S.js `build` pushes him to `ctx.npcSpots` (new in the bake hook: a district's people, written to the room's `npcSpots`) at (173.25, -92.75), the open ground at the foot of the Penthouse stair tower (P10-03), with his own line from the old streets.
 
 ## DISASTER CITY, THE UNIVERSITY DISTRICT (2026-11-13, the University thread; mondo's OK 19:24)
@@ -2802,6 +2833,17 @@ glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the 
   lab_glassware, library_chandelier, library_ladder, meteorite_plinth, microscope, pastry_case, privacy_screen, rope_stanchion,
   specimen_shelf, therapy_chaise, wheelchair. Pack check first: the Molten orrery is sci-fi, no pack has a microscope / fume hood / IV
   stand / skeleton / wheelchair / chaise / stanchion.
+- **THE BEDROOMS (2026-11-14, the residents' brief, mondo 02:21 "District threads add them")**. Two homes opened as walk-ins, row ids kept
+  (the residents find a home by `dc:<id>` and sleep in any /bed|cot/ prop inside its footprint). FACULTY HOMES `dc:P03-04-B1`: the terrace's
+  left end house is the walk-in, its houses now 10.5 + 7 + 7 + 7 m (all on the 3.5 m squares; were 4 x 7.875), the row shrinks to that
+  house (10.5 x 10.5, 3 x 3 squares, leaf_suburban), the other three are one solid `-u1`; a ground-floor window on the terrace's end wall.
+  Room `faculty`: three psx_bed_5_1/_2/_3 singles on the back row (Professor, Mad scientist, Reptilian), each with a bedside table + lamp in
+  its own square; the middle row a walk; the front row a wardrobe + shelf square, a study desk square, the doorway square. DORM
+  `dc:P00-04-B1` (was a dead row): the hall in the middle of the back wing, its door on the court across from the archway (the drawn
+  closed door that stood at the archway's court mouth is gone: it was this hall door, misplaced), 14 x 7 m = 4 x 2 squares; the back
+  wing's ends are two solids. Room `dorm`: dorm_bed + bedside table at both back corners (Telepath, Zombie), two desk + wardrobe squares
+  between, the front row a walk. Both rooms draw their own ceiling at 3.5 m (`HC`, the liner's ceiling height; the hall above unseen).
+  BED FACING: psx_bed_5 has its headboard at the model's +x, so face 90 = head on the back wall; dorm_bed (`turn: 90`) face 180.
 - **THE DEEPER HANGAR (2026-11-13, mondo 21:21 "make hangar deeper so it fits")**: `I.js` `fit` grows P03-10-B1 one square forward onto the walk in front of it (in `build`, NOT `tailor`: changing the plan re-rolls the whole city's random dressing): 31.5 x 14 m, four squares deep, 7 m walls
 - **THE INDUSTRIAL INSIDES (2026-11-13, mondo "all okay" 22:25 on the grid plan):** all 11 Industrial walk-ins are furnished. Code: I.js `IN[id]` (one spec per room, written on
   the room's own 3.5 m squares: i from the left wall, j from the front wall, j 0 = the door's row), `KIT` (the square fillers: truck, veh, desk, files, shelf, racks, lockers,
@@ -2928,4 +2970,10 @@ a different time ... only use units on the roster". He picked "Routines now, bed
   world clock, the floor from _hqNavQuery; the officer in front holds a walker up to 3 s, the lag caught back up while it stands). City
   doors swing for drawn residents (_hqTickCityDoors). The arrival clear hides a resident 5-12 s. Walk/idle like the rounds.
   Kill switch `window.EW_HQ_NO_RESIDENTS`; dev `hq.residents()`.
-- NEXT (his OK first): walk-in BEDROOMS (a bed per home, sleep pose = UAL2 LayToIdle frame 0; beds psx_bed_*, couples_bed, dorm_bed, cot).
+- THE BEDS (2026-11-14, his pick "District threads add them"): each district thread builds its homes' ground-floor bedrooms
+  (brief: /mnt/project-files/disaster-city-residents/bedrooms-brief.md); this thread builds the sleeping. hqCityGrid `beds` = every
+  prop matching /bed|cot/ (not hospital / track / bedside / _frame) on a walk-in's ground floor, by building; a couples / royal bed
+  sleeps two; housemates take them in list order. A resident with a bed walks in at bedtime, lies on it (segment `sleep`, `top` = the
+  catalogue seat or 0.5 m) and walks out at its wake time; without one it still goes in through the door. The rig carries slot
+  `hqSleep` = UAL2 LayToIdle trimmed to its first 0.05 s (flat on the back), feet to the bed's front (its `face`): NOT SEEN ON SCREEN.
+  A home a district could not open moves: Bunny girl -> P11-06-B2 Apartments (Entertainment PR #1359).
