@@ -562,7 +562,7 @@ function insideKit(row) {
         H: (row.storeys || 1) * 3.5 - 0.32,                                                                       // the ceiling (the row's inside roof, as B.js reads it)
         dlx: (() => { const L = Math.max(2, W) - 0.12, n = Math.max(1, Math.round(L / 1.75)), cw = L / n; let c = Math.floor((n - 1) / 2); if (row.door >= 1) c = Math.min(n - 1, Math.round(row.door) - 1); return -L / 2 + (c + 0.5) * cw; })(),   // data.js hqTexbDoor's lx
         at: (i, j, w, h) => [-W / 2 + (i + (w || 1) / 2) * SQ, -D / 2 + (j + (h || 1) / 2) * SQ],                 // the middle of a square / a block of squares
-        prop(key, lx, lz, face) { const p = world(lx, lz); props.push({ key, x: p[0], z: p[1], face: ((((face || 0) + rot) % 360) + 360) % 360 }); },
+        prop(key, lx, lz, face) { const p = world(lx, lz); props.push({ key, x: p[0], z: p[1], face: ((((face || 0) + rot + 180) % 360) + 360) % 360 }); },   // (+180, 11-14: a prop's `face` is a heading, 0 = its front to -z; the kit's `face` is the room frame's 0 = its front to +z, the door. Seen: chairs and lockers showed the walk their backs; Entertainment + University found the same)
         ghost(lx, lz, w, d, h) { const A = w >= d ? world(lx - (w - d) / 2, lz) : world(lx, lz - (d - w) / 2), B = w >= d ? world(lx + (w - d) / 2, lz) : world(lx, lz + (d - w) / 2);
             ghosts.push({ k: 'wall', x0: A[0], z0: A[1], x1: B[0], z1: B[1], h, t: Math.min(w, d), key: CONC, ghost: true, rail: false }); },
         floor(key, tint, uv) { a.box(0, 0, 0, W - 0.5, 0.03, D - 0.5, key, tint, { uv: uv || 3.5, faces: '' }); },
@@ -602,7 +602,7 @@ function insideKit(row) {
         /* THE SECOND PASS (11-13 night, mondo: "focus on aesthetic, vibe, atmosphere for the interiors"): the helpers below dress a room
            over its first-pass layout. Nothing here blocks a square (decor hugs the walls, off the squares' middles) unless it says `ghost`. */
         /* a prop with the room's own floor under it (`floor: true`: never the roof slab over it) and an optional height (a desk top, a wall) */
-        put(key, lx, lz, face, y, o) { const p = world(lx, lz); props.push(Object.assign({ key, x: p[0], z: p[1], face: ((((face || 0) + rot) % 360) + 360) % 360, floor: true }, y != null ? { y } : {}, o || {})); },
+        put(key, lx, lz, face, y, o) { const p = world(lx, lz); props.push(Object.assign({ key, x: p[0], z: p[1], face: ((((face || 0) + rot + 180) % 360) + 360) % 360, floor: true }, y != null ? { y } : {}, o || {})); },
         /* a prop on a wall at height y (mount 0: the catalogue mount would lift it again): side 'b' (the back), 'l', 'r', 'f' (the front, the door's), u = along it from its middle (+x on b / f, +z on l / r) */
         wall(key, side, u, y, o) { const e = 0.45, P = { b: [u, -D / 2 + e, 0], f: [u, D / 2 - e, 180], l: [-W / 2 + e, u, 270], r: [W / 2 - e, u, 90] }[side]; K.put(key, P[0], P[1], P[2], y, Object.assign({ mount: 0 }, o)); },
         /* the room's own paint over the bare inside sheet (B.js R.liner): a wall coat, a dado under it, a skirting, a lit ceiling */
