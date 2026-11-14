@@ -28340,7 +28340,7 @@ STORY_CUTSCENES.orientation_aftermath = {
     beats: [
         /* D1 · the room after the fight: wide, still, a breath */
         { dur: 2.8, shot: { look: { mid: ['unit:guest', 'unit:locke'] }, az: 62, h: 1.0, el: 8, dist: 7.2, fov: 40 },
-          act: [{ at: 0, do: 'face', who: 'player', to: 'unit:guest' }, { at: 0, do: 'face', who: 'guest', to: 'unit:player' }, { at: 0, do: 'face', who: 'locke', to: 'unit:player' }] },
+          act: [{ at: 0, do: 'face', who: 'player', to: 'unit:guest' }, { at: 0, do: 'face', who: 'guest', to: 'unit:player' }, { at: 0, do: 'face', who: 'locke', to: 'unit:guest' }] },   // (mondo 11-14: the doorway line is said to the Catgirl)
         /* D2 · Kit thanks you: over the recruit's shoulder at her */
         { shot: { look: 'unit:guest', from: 'unit:player', over: 1.5, az: 12, h: 0.85, el: 6, fov: 34, to: { over: 1.3 } },
           say: { who: 'KIT', text: 'You saved me. Thank you. Both of you.' } },
@@ -28348,18 +28348,19 @@ STORY_CUTSCENES.orientation_aftermath = {
         { shot: { look: 'unit:locke', az: -12, h: 0.86, el: -1, dist: 2.3, fov: 30, to: { dist: 2.0 } },
           say: { who: 'AGENT LOCKE', text: "That is the third unauthorized doorway this week. They are becoming more of a pattern I'm afraid." } },
         { shot: { look: 'unit:locke', az: -12, h: 0.86, el: -1, dist: 2.0, fov: 30, to: { dist: 1.7 } },
-          say: { who: 'AGENT LOCKE', text: 'You stood your ground, recruit. Most people would have ran away.' } },
+          say: { who: 'AGENT LOCKE', text: 'You stood your ground, recruit. Most people would have ran away.' },
+          act: [{ at: 0, do: 'face', who: 'locke', to: 'unit:player' }] },   // (mondo 11-14: "she needs to turn her body to face the player")
         /* D4 · the order: Locke and Kit in one frame, the recruit's back in the foreground */
         { shot: { look: { mid: ['unit:locke', 'unit:guest'] }, from: 'unit:player', over: 2.0, az: -8, h: 0.8, el: 7, fov: 42 },
           say: { who: 'AGENT LOCKE', text: 'Escort the anomaly to the front desk. Rhonda will process her for deportation.' } },
         /* D5 · Kit begs: close, the longest hold of the scene, a slow push in over two cards */
         { shot: { look: 'unit:guest', from: 'unit:player', az: -12, h: 0.86, el: -1, dist: 1.6, fov: 26, to: { dist: 1.35 } },
-          say: { who: 'KIT', text: "No! Please. You can't send me back." } },
+          say: { who: 'KIT', text: "Deportation? No! Please. You can't send me back." } },   // (mondo 11-14, his new line)
         { shot: { look: 'unit:guest', from: 'unit:player', az: -12, h: 0.86, el: -1, dist: 1.35, fov: 26, to: { dist: 1.05 } },
-          say: { who: 'KIT', text: 'There is nothing to go back to. Those things took all of it.' } },
+          say: { who: 'KIT', text: 'Those monsters... destroyed everything.' } },
         /* D6 · wide: Locke's last word, and she walks out of frame; the two stay */
         { dur: 4.6, shot: { look: { mid: ['unit:guest', 'unit:player'] }, az: -66, h: 0.95, el: 6, dist: 8.5, fov: 40 },
-          say: { who: 'AGENT LOCKE', text: 'The book is the book. Front desk.' },
+          say: { who: 'AGENT LOCKE', text: 'The rules are the rules. Front desk.' },
           act: [{ at: 1.6, do: 'walk', who: 'locke', path: [[4, 5], [4, 6], [4, 7]] }] },
     ],
 };
@@ -28472,7 +28473,7 @@ STORY_CUTSCENES.orientation_arrive = {
    props (keys, near, at [dx, dz] from their own spots, ms; light) · place ... sit. */
 STORY_CUTSCENES.orientation_tv = {
     id: 'orientation_tv', title: 'THE TV CART', cast: ['locke'],
-    end: [{ do: 'props', keys: ['decor_av_cart', 'tube_tv', 'vhs_player', 'vhs_tape'], near: [-5.25, 29.4], at: [0, 0], ms: 0 },
+    end: [{ do: 'screen', off: true }, { do: 'props', keys: ['decor_av_cart', 'tube_tv', 'vhs_player', 'vhs_tape'], near: [-5.25, 29.4], at: [0, 0], ms: 0 },
           { do: 'place', who: 'locke', x: -6.35, z: 29.3, face: 0 }, { do: 'place', who: 'player', x: -5.25, z: 27.2, face: 180, sit: false }],
     beats: [
         /* B1 · the room: wide from the pad, a slow pull back; the recruit just inside the door, Locke and the cart at the wall */
@@ -28487,7 +28488,7 @@ STORY_CUTSCENES.orientation_tv = {
           act: [{ at: 0.3, do: 'props', keys: ['decor_av_cart', 'tube_tv', 'vhs_player', 'vhs_tape'], near: [-5.25, 29.4], at: [0, 0], ms: 3600 },
                 { at: 0.3, do: 'walk', who: 'locke', x: -6.35, z: 29.3, ms: 3600, face: 0 }] },
         /* B4 · Locke and the TV: over the recruit's shoulder, Locke on the far side of the cart */
-        { shot: { cam: [-6.0, 1.55, 25.1, 198, -3, 32] }, say: { who: 'AGENT LOCKE', text: 'Welcome to the Department of Orthogonal Realities, or D.O.O.R.' } },
+        { shot: { cam: [-5.9, 1.5, 25.2, 181, -3, 34], to: { cam: [-5.9, 1.5, 25.35, 181, -3, 34] } }, say: { who: 'AGENT LOCKE', text: 'Welcome to the Department of Orthogonal Realities, or D.O.O.R.' } },   // (mondo 11-14: the TV and Locke in the middle, not off to the side)
         /* medium on Locke beside the set, a slow push in */
         { shot: { cam: [-5.3, 1.5, 27.5, 151, -1, 28], to: { cam: [-5.4, 1.5, 27.7, 151, -1, 28] } },
           say: { who: 'AGENT LOCKE', text: 'Here at D.O.O.R. we are responsible for investigating and maintaining doorways between realities.' } },
@@ -28495,9 +28496,10 @@ STORY_CUTSCENES.orientation_tv = {
         { shot: { cam: [-5.8, 1.2, 28.4, -15, 0, 30] }, say: { who: 'AGENT LOCKE', text: 'Due to recent events, the agency lowered its recruitment standards,' } },
         { shot: { cam: [-5.4, 1.5, 27.7, 151, -1, 28], to: { cam: [-5.5, 1.5, 27.9, 151, -1, 28] } },
           say: { who: 'AGENT LOCKE', text: 'which is why our hiring department reached out to you.' } },
-        { shot: { cam: [-5.5, 1.5, 27.9, 151, -1, 28] }, say: { who: 'AGENT LOCKE', text: "I'm Agent Locke, your direct superior." } },
+        /* (mondo 11-14: "need to cut to a closeup of her face straight in saying this") */
+        { shot: { cam: [-6.35, 1.6, 28.35, 180, 0, 26], eye: { who: 'locke', dy: -0.04 } }, say: { who: 'AGENT LOCKE', text: "I'm Agent Locke, your direct superior." } },
         /* back over the shoulder for the rule */
-        { shot: { cam: [-6.0, 1.55, 25.1, 198, -3, 32], to: { cam: [-5.95, 1.55, 25.4, 198, -3, 32] } },
+        { shot: { cam: [-5.9, 1.5, 25.35, 181, -3, 34], to: { cam: [-5.9, 1.5, 25.55, 181, -3, 34] } },
           say: { who: 'AGENT LOCKE', text: 'Under my watch you will do things by the book, down to the letter.' } },
         { shot: { cam: [-5.55, 1.52, 28.0, 151, -1, 24] }, say: { who: 'AGENT LOCKE', text: 'Even when the book changes unexpectedly.' } },
         { shot: { cam: [-5.55, 1.52, 28.0, 151, -1, 24], to: { cam: [-5.65, 1.52, 28.2, 151, -1, 24] } },
@@ -28505,7 +28507,7 @@ STORY_CUTSCENES.orientation_tv = {
         /* B5 · the TV snaps on: a slow push in until the screen fills the frame, then black */
         { dur: 4.2, hold: true, fade: 3.5, shot: { cam: [-5.25, 1.14, 27.6, 180, 0, 26], to: { cam: [-5.25, 1.12, 28.6, 180, 0, 26] } },
           say: { who: 'AGENT LOCKE', text: 'Now pay attention. Watch closely.' },
-          act: [{ at: 1.2, do: 'props', keys: ['tube_tv'], near: [-5.25, 29.4], light: { color: 0xbcd6ff, intensity: 1.6, dist: 5, y: 0.25, z: -0.5 } }] },
+          act: [{ at: 1.2, do: 'screen', x: -5.16, y: 1.31, z: 29.12, w: 0.4, h: 0.3, face: 0 }] },   // (mondo 11-14: the set switches on to STATIC; the old lamp on the set is gone)
     ],
 };
 /* F · THE OFFICE (the approved storyboard's frames + mondo's lines, word for word; his change: the recruit is ALONE until
@@ -28516,22 +28518,32 @@ STORY_CUTSCENES.orientation_tv = {
    `fade` = the second of the beat the picture goes to black. `end` = where everybody is left (a skip lands the same). */
 STORY_CUTSCENES.orientation_office = {
     id: 'orientation_office', title: 'THE OFFICE', cast: ['locke'],   // nobody else is in the room for it
-    end: [{ do: 'hide', who: 'locke' }, { do: 'place', who: 'player', x: 0.3, z: -0.3, face: 270 }],
+    end: [{ do: 'hide', who: 'locke' }, { do: 'door', id: 'egress', open: false }, { do: 'place', who: 'player', x: 0.3, z: -0.3, face: 270 }],
     beats: [
-        /* F1 · the door opens: still, long lens, from inside the room; the recruit in the doorway, alone */
-        { dur: 2.8, shot: { cam: [2.4, 1.2, -0.3, 86, 2, 30] },
-          act: [{ at: 0, do: 'hide', who: 'locke' }, { at: 0, do: 'place', who: 'player', x: -1.1, z: -0.5, face: 90 }] },
-        /* F2 · the pan: a slow sideways travel low across the room, the clutter in the foreground */
-        { dur: 6.5, shot: { cam: [-2.0, 0.75, 1.75, -28, 4, 45], to: { cam: [1.0, 0.6, 1.3, 28, 6, 45] } },
-          act: [{ at: 0, do: 'place', who: 'player', x: -1.2, z: -0.5, face: 90 }] },
-        /* F3 · small and cramped: the high corner, wide lens, the recruit alone in the middle of it; Locke is heard from the door */
-        { shot: { cam: [2.45, 2.8, 1.9, 50, -36, 68] }, act: [{ at: 0, do: 'place', who: 'player', x: 0.0, z: 0.1, face: 0 }],
-          say: { who: 'AGENT LOCKE', text: 'Your office. Hope you like it.' } },
-        { shot: { cam: [2.45, 2.8, 1.9, 50, -36, 68] }, act: [{ at: 0.5, do: 'place', who: 'player', x: 0.0, z: 0.1, face: 270 }],
+        /* (mondo 11-14: "a low angle of the players feet/legs walking in, then slow pans across the desk or the bed and sink, then he
+           walks forward and that when Locke comes in ... Player in foreground, door and locks in background as she walks in and
+           delivers that line", and after it "player needs to turn around") */
+        /* F1 · low on the floor: the recruit's feet and legs come in through the door */
+        { dur: 3.4, shot: { cam: [0.4, 0.2, 1.2, 57, 7, 46] },
+          act: [{ at: 0, do: 'hide', who: 'locke' }, { at: 0, do: 'door', id: 'egress', open: true }, { at: 0, do: 'place', who: 'player', x: -2.55, z: -0.5, face: 90 },
+                { at: 0.3, do: 'walk', who: 'player', x: -1.45, z: -0.5, ms: 2700, face: 90 }] },
+        /* F2 · the slow pan: the sink and the mop, along the wall to the desk */
+        { dur: 5.2, shot: { cam: [-0.4, 1.3, 0.95, 22, -12, 50], to: { cam: [-0.2, 1.3, 0.95, -38, -12, 50] } },
+          act: [{ at: 0, do: 'place', who: 'player', x: -1.45, z: -0.5, face: 0 }] },
+        /* the pan goes on: the desk round to the cot */
+        { dur: 4.4, shot: { cam: [-0.2, 1.25, 0.6, -45, -14, 50], to: { cam: [-0.2, 1.2, 0.5, -112, -12, 50] } } },
+        /* F3 · the recruit walks into the room, toward us; the doorway behind him */
+        { dur: 2.4, shot: { cam: [2.35, 1.55, 0.25, 84, -3, 40] },
+          act: [{ at: 0, do: 'place', who: 'player', x: -1.45, z: -0.5, face: 90 }, { at: 0.1, do: 'walk', who: 'player', x: 0.35, z: -0.3, ms: 2100, face: 90 }] },
+        /* Locke comes in behind him and says it: the recruit in the foreground, the door behind */
+        { shot: { cam: [2.35, 1.55, 0.25, 84, -3, 40] }, say: { who: 'AGENT LOCKE', text: 'Your office. Hope you like it.' },
+          act: [{ at: 0, do: 'place', who: 'player', x: 0.35, z: -0.3, face: 90 }, { at: 0, do: 'place', who: 'locke', x: -3.05, z: -0.5, face: 90 }, { at: 0, do: 'show', who: 'locke' },
+                { at: 0.05, do: 'walk', who: 'locke', x: -1.75, z: -0.5, ms: 1900, face: 90 }] },
+        /* F4 · he turns round: over his shoulder at her */
+        { shot: { cam: [1.15, 1.62, 0.0, 82, -3, 34] },
+          act: [{ at: 0, do: 'place', who: 'locke', x: -1.75, z: -0.5, face: 90 }, { at: 0, do: 'place', who: 'player', x: 0.35, z: -0.3, face: 270 }],
           say: { who: 'AGENT LOCKE', text: 'Due to recent budget cuts, this is the best we could do on short notice.' } },
-        /* F4 · Locke in the doorway: over the recruit's shoulder */
         { shot: { cam: [1.0, 1.62, 0.05, 80, -3, 34] },
-          act: [{ at: 0, do: 'show', who: 'locke' }, { at: 0, do: 'place', who: 'player', x: 0.3, z: -0.3, face: 270 }],
           say: { who: 'AGENT LOCKE', text: 'Being a door agent is not for the faint of heart.' } },
         /* F5 · the parents hint: close on her, a slow push in over two cards */
         { shot: { cam: [-0.75, 1.6, -0.42, 88, -2, 24], to: { cam: [-0.88, 1.6, -0.42, 88, -2, 24] } },
@@ -34205,8 +34217,8 @@ const DOOR_HQ = {
                    is the battle camera's side. The cutscenes' shots are planned on these spots: keep the lane from the door to the cart clear. */
                 { key: 'decor_av_cart',  x: -5.25, z: 29.4, face: 0 },
                 { key: 'tube_tv',        x: -5.25, z: 29.4, y: 1.1, face: 0 },
-                { key: 'vhs_player',     x: -5.25, z: 29.4, y: 0.67, face: 0 },
-                { key: 'vhs_tape',       x: -5.1, z: 29.35, y: 0.135, face: 20 },
+                { key: 'vhs_player',     x: -5.25, z: 29.4, y: 0.67, face: 0, span: 0.34 },   // (mondo 11-14: "VHS too big": a real deck, a real tape)
+                { key: 'vhs_tape',       x: -5.1, z: 29.35, y: 0.135, face: 20, span: 0.19 },
                 { key: 'school_desk',    x: -7.35, z: 26.0, face: 0 }, { key: 'school_desk', x: -5.25, z: 26.0, face: 0 }, { key: 'school_desk', x: -3.15, z: 26.0, face: 0 },
                 /* ROOM 64'S THINGS, MOVED IN: the range console's desk on the west wall, the forty-four-minute corner, the lockers, the cooler, the sign */
                 { key: 'tanker_desk',    wall: 'w', z: 0 },
