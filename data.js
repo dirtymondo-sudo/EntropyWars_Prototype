@@ -67518,7 +67518,10 @@ function hqCityGrid(roomId) {
     (room.props || []).forEach(p => {
         if (!p || !/bed|cot/i.test(p.key || '') || /hospital|track|bedside|_frame$/i.test(p.key)) return;
         const d = CAT[p.key]; if (!d) return;
-        const k = sqOf(p.x, p.z); if (k < 0 || bid[k] < 0 || !comp[k]) return;
+        const k0 = sqOf(p.x, p.z); if (k0 < 0 || bid[k0] < 0) return;
+        let k = comp[k0] ? k0 : -1;   // a bed on a blocked square (a district's ghost block under it): the sleeper walks to the walked square beside it
+        if (k < 0) { let bd = Infinity; for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const n = k0 + dj * nx + di; if ((di || dj) && n >= 0 && n < N && Math.abs((n % nx) - (k0 % nx)) <= 1 && bid[n] === bid[k0] && comp[n]) { const dd = Math.hypot(cx(n % nx) - p.x, cz(Math.floor(n / nx)) - p.z) + (di && dj ? 0.5 : 0); if (dd < bd) { bd = dd; k = n; } } } }
+        if (k < 0) return;
         if (p.y != null && +p.y - groundAt(p.x, p.z) > 1.0) return;   // an upper floor's bed: the walk map is the ground floor
         (beds[bid[k]] = beds[bid[k]] || []).push({ key: p.key, x: p.x, z: p.z, face: +p.face || 0, top: (p.y != null ? +p.y - groundAt(p.x, p.z) : 0) + (+d.seat || 0.5), cap: /couples|royal/i.test(p.key) ? 2 : 1, k });
     });
