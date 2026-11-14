@@ -66767,7 +66767,7 @@ const HQ_CITY_RESIDENTS = {
         { race: 'clown', home: 'P10-07-B1', homeName: 'Crew house', day: [[2, 10, 'S', 'home'], [11, 14, 'W', 'b:P09-05-B1'], [14, 18, 'O', 'b:P11-06-B1'], [19, 1, 'W', 'b:P09-05-B1']] },
         { race: 'mime', home: 'P10-07-B1', homeName: 'Crew house', day: [[1, 9, 'S', 'home'], [10, 17, 'W', 'p:P08-05'], [18, 24, 'W', 'b:P09-05-B1']] },
         { race: 'ringmaster', home: 'P10-07-B1', homeName: 'Crew house', day: [[3, 11, 'S', 'home'], [12, 18, 'W', 'b:P10-06-B1'], [19, 2, 'W', 'b:P09-06-B1']] },
-        { race: 'bunny girl', home: 'P11-04-B2', homeName: 'Lofts', day: [[5, 13, 'S', 'home'], [14, 18, 'O', 'b:P11-06-B1'], [19, 4, 'W', 'b:P08-04-B1']] },
+        { race: 'bunny girl', home: 'P11-06-B2', homeName: 'Apartments', day: [[5, 13, 'S', 'home'], [14, 18, 'O', 'b:P11-06-B1'], [19, 4, 'W', 'b:P08-04-B1']] },
         { race: 'popstar', home: 'P08-08-B1', homeName: 'Waterfront hotel', day: [[4, 12, 'S', 'home'], [13, 18, 'W', 'b:P11-04-B1'], [19, 1, 'W', 'b:P10-04-B1'], [1, 4, 'O', 'b:P09-06-B1']] },
         /* SPORTS + CULTURE */
         { race: 'quarterback', home: 'P06-09-B2', homeName: 'Sports residence', day: [[23, 6, 'S', 'home'], [7, 13, 'W', 'p:P05-09'], [14, 17, 'W', 'b:P06-10-B1'], [19, 23, 'O', 'p:P08-05']] },
@@ -66941,7 +66941,18 @@ function hqCityGrid(roomId) {
         for (const ox of [0, -1.1, 1.1]) for (const oz of [0, -1.1, 1.1]) { const x = mx + ox, z = mz + oz; let cl = Infinity; L.forEach(q => { cl = Math.min(cl, Math.hypot(x - q[0], z - q[1]) - q[2]); }); const sc = Math.min(cl, 1.2) - 0.05 * Math.hypot(ox, oz); if (sc > bs) { bs = sc; best = { x, z }; } }
         if (best && (best.x !== mx || best.z !== mz)) pt.set(k, best);
     });
-    const G = { roomId, nx, nz, x0, z0, res, N, walk, comp, openE, openS, cost, bid, bld, byB, stops, groundAt, soft, pt, paths: new Map(), spawn: seed };
+    /* THE BEDS (2026-11-14): every bed / cot standing on a walk-in's ground floor, by building (a couples bed or a royal bed sleeps two);
+       `top` = where a sleeper lies (the catalogue's seat, else 0.5 m) */
+    const beds = {};
+    (room.props || []).forEach(p => {
+        if (!p || !/bed|cot/i.test(p.key || '') || /hospital|track|bedside|_frame$/i.test(p.key)) return;
+        const d = CAT[p.key]; if (!d) return;
+        const k = sqOf(p.x, p.z); if (k < 0 || bid[k] < 0 || !comp[k]) return;
+        if (p.y != null && +p.y - groundAt(p.x, p.z) > 1.0) return;   // an upper floor's bed: the walk map is the ground floor
+        (beds[bid[k]] = beds[bid[k]] || []).push({ key: p.key, x: p.x, z: p.z, face: +p.face || 0, top: (p.y != null ? +p.y - groundAt(p.x, p.z) : 0) + (+d.seat || 0.5), cap: /couples|royal/i.test(p.key) ? 2 : 1, k });
+    });
+    Object.keys(beds).forEach(b => beds[b].sort((a, c) => (a.x - c.x) || (a.z - c.z)));
+    const G = { roomId, nx, nz, x0, z0, res, N, walk, comp, openE, openS, cost, bid, bld, byB, stops, groundAt, soft, pt, beds, paths: new Map(), spawn: seed };
     _hqCityGridCache = { key, G };
     return G;
 }
@@ -67047,7 +67058,17 @@ function hqResidentPlace(G, r, place) {
                 while (q.length) { const k = q.pop(), i = k % G.nx; [[i < G.nx - 1 && G.openE[k], k + 1], [i > 0 && G.openE[k - 1], k - 1], [G.openS[k], k + G.nx], [k >= G.nx && G.openS[k - G.nx], k - G.nx]].forEach(([o, n]) => { if (o && !seen.has(n) && G.bid[n] === bi) { seen.add(n); q.push(n); } }); }
                 B.inside = Array.from(seen);
             }
-            if (B.inside.length && G.comp[B.inner]) return { kind: 'inside', at: B.inner, x: B.ax, z: B.az, cells: B.inside, bld: bi, door: { x: B.bx, z: B.bz } };
+            if (B.inside.length && G.comp[B.inner]) {
+                const res = { kind: 'inside', at: B.inner, x: B.ax, z: B.az, cells: B.inside, bld: bi, door: { x: B.bx, z: B.bz } };
+                /* THE BEDS: a resident's own bed in its home, the housemates in list order (a double sleeps two) */
+                const L = (G.beds && G.beds[bi]) || [];
+                if (L.length && id === String(r.home)) {
+                    let slot = R.list.filter(q => q.home === r.home).indexOf(r), bd = null;
+                    for (const b of L) { if (slot < b.cap) { bd = b; break; } slot -= b.cap; }
+                    if (bd) { const w = (G.pt && G.pt.get(bd.k)) || sq(bd.k); res.bed = Object.assign({}, bd, { wx: w.x, wz: w.z }); }
+                }
+                return res;
+            }
         }
         const fr = R.fronts[id];
         if (fr) { const at = hqCityNearest(G, fr[0], fr[1]); if (at >= 0) { const p = sq(at); return { kind: 'in', at, x: p.x, z: p.z }; } }
@@ -67117,6 +67138,12 @@ function hqResidentTimeline(G, r, dayKey) {
     const stay = (u0, u1, pl, cur, kind, place, errand) => {
         if (u1 - u0 < 0.02) return cur;
         if (kind === 'S' && r.outdoors) { segs.push({ u0, u1, k: 'stay', x: cur.x, z: cur.z, face: 0, place }); return cur; }   // asleep where it stands (the giant ape on the field)
+        if (kind === 'S' && pl.bed) {   // THE BEDS: in to its own bed and lies down till it gets up
+            const bd = pl.bed, bed = { x: bd.wx, z: bd.wz, k: bd.k };
+            if (cur.k !== bd.k) { const end = leg(u0, cur, cur.k, bed, bd.k, place); if (end != null && end < u1 - 0.05) u0 = end; else if (end != null) { truncate(u0); } }
+            segs.push({ u0, u1, k: 'stay', sleep: true, x: bd.x, z: bd.z, face: bd.face, top: bd.top, place });
+            return bed;
+        }
         if (kind === 'S' || pl.kind === 'in') { segs.push({ u0, u1, k: 'in', x: pl.x, z: pl.z, place }); return { x: pl.x, z: pl.z, k: pl.at }; }
         if (pl.kind === 'spot') { segs.push({ u0, u1, k: 'stay', x: pl.x, z: pl.z, face: pl.face, spot: pl.spot, place }); return { x: pl.x, z: pl.z, k: pl.at }; }
         const pause = pl.kind === 'inside' ? R.potterH : kind === 'P' ? R.patrolH : R.wanderH, reach = pl.kind === 'inside' ? 1e9 : (errand ? R.errandR : R.wanderR);
@@ -67185,7 +67212,7 @@ function hqResidentAt(tl, h) {
         const a = P.pts[p - 1], b = P.pts[p] || a, seg = Math.max(1e-6, P.cum[p] - P.cum[p - 1]), t = Math.max(0, Math.min(1, (d - P.cum[p - 1]) / seg));
         return { vis: true, x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, face: Math.atan2(b.x - a.x, b.z - a.z) * 180 / Math.PI, moving: true, k: 'walk', seg: lo, place: s.place, path: P, d };
     }
-    return { vis: s.k === 'stay', x: s.x, z: s.z, face: s.face || 0, moving: false, k: s.k, seg: lo, place: s.place, spot: s.spot || null };
+    return { vis: s.k === 'stay', x: s.x, z: s.z, face: s.face || 0, moving: false, k: s.k, seg: lo, place: s.place, spot: s.spot || null, sleep: !!s.sleep, top: s.top || 0 };
 }
 /* THE SWARM'S RACE (rev 2): any of the room's natives, seeded by the caller's stream — the target's own race is one of them
    ("more ghouls"), another is as likely ("a swarm of skeletons"); null = no native the roster carries */

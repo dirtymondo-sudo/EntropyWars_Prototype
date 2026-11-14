@@ -2942,4 +2942,10 @@ a different time ... only use units on the roster". He picked "Routines now, bed
   world clock, the floor from _hqNavQuery; the officer in front holds a walker up to 3 s, the lag caught back up while it stands). City
   doors swing for drawn residents (_hqTickCityDoors). The arrival clear hides a resident 5-12 s. Walk/idle like the rounds.
   Kill switch `window.EW_HQ_NO_RESIDENTS`; dev `hq.residents()`.
-- NEXT (his OK first): walk-in BEDROOMS (a bed per home, sleep pose = UAL2 LayToIdle frame 0; beds psx_bed_*, couples_bed, dorm_bed, cot).
+- THE BEDS (2026-11-14, his pick "District threads add them"): each district thread builds its homes' ground-floor bedrooms
+  (brief: /mnt/project-files/disaster-city-residents/bedrooms-brief.md); this thread builds the sleeping. hqCityGrid `beds` = every
+  prop matching /bed|cot/ (not hospital / track / bedside / _frame) on a walk-in's ground floor, by building; a couples / royal bed
+  sleeps two; housemates take them in list order. A resident with a bed walks in at bedtime, lies on it (segment `sleep`, `top` = the
+  catalogue seat or 0.5 m) and walks out at its wake time; without one it still goes in through the door. The rig carries slot
+  `hqSleep` = UAL2 LayToIdle trimmed to its first 0.05 s (flat on the back), feet to the bed's front (its `face`): NOT SEEN ON SCREEN.
+  A home a district could not open moves: Bunny girl -> P11-06-B2 Apartments (Entertainment PR #1359).
