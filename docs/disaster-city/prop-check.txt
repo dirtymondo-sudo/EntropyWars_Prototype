@@ -1,5 +1,5 @@
 THE PROP CHECK, written by node bake-disaster-city.js. A district file's own prop that stands in something is listed here for its thread; a shared prop with no clear spot is left out.
-{"checked":3227,"clear":1489,"moved":359,"left_out":14,"district_reported":1318,"by":{"car_cop in lamp":2,"car_cop in prop":4,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":15,"item_police_barricade in step":5,"planter in arch":10,"dumpster in step":7,"dumpster in arch":2,"planter in stairs":1,"planter in prop":3,"planter in doorway":1,"vending_machine in arch":34,"vending_machine in doorway":2,"public_phone in arch":12,"ind_vent in arch":12,"utility_box in arch":9,"ind_panel in arch":9,"utility_box in step":4,"traffic_cone in arch":20,"traffic_cone in step":28,"traffic_cone in building":12,"psx_wooden_crate_1 in prop":1,"psx_wooden_crate_1 in step":2,"psx_wooden_crate_1 in arch":1,"ticket_booth in step":1,"popcorn_cart in step":1,"psx_planter_pot_mp_1_full in arch":86,"psx_planter_pot_mp_1_full in doorway":5,"psx_potted_cactus_mp_1 in arch":7,"psx_potted_cactus_mp_1 in doorway":1,"psx_planter_pot_mp_1_full in prop":1,"fire_hydrant in stairs":1,"roads_g_sign_008 in arch":1,"metro_bin in pole":1,"roads_g_sign_005 in arch":1,"metro_bin in arch":2,"psx_metal_barrel_mp_0 in arch":6,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in arch":15,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_wooden_crate_3 in building":10,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_3 in arch":1,"psx_metal_barrel_mp_2 in prop":1,"metal_trash_can in step":6,"garbage_bags in stairs":2,"garbage_bag in step":1,"garbage_bag in arch":1,"garbage_bags in step":1,"garbage_bags in prop":3,"garbage_bags in arch":1,"garbage_bag in prop":2,"garbage_bags in building":3,"garbage_bag in building":3,"metal_trash_can in building":1,"power_pole in prop":1},"snugged":163}
+{"checked":3280,"clear":1489,"moved":359,"left_out":14,"district_reported":1371,"by":{"car_cop in lamp":2,"car_cop in prop":4,"car_taxi in arch":1,"car_taxi in building":1,"planter in step":15,"item_police_barricade in step":5,"planter in arch":10,"dumpster in step":7,"dumpster in arch":2,"planter in stairs":1,"planter in prop":3,"planter in doorway":1,"vending_machine in arch":34,"vending_machine in doorway":2,"public_phone in arch":12,"ind_vent in arch":12,"utility_box in arch":9,"ind_panel in arch":9,"utility_box in step":4,"traffic_cone in arch":20,"traffic_cone in step":28,"traffic_cone in building":12,"psx_wooden_crate_1 in prop":1,"psx_wooden_crate_1 in step":2,"psx_wooden_crate_1 in arch":1,"ticket_booth in step":1,"popcorn_cart in step":1,"psx_planter_pot_mp_1_full in arch":86,"psx_planter_pot_mp_1_full in doorway":5,"psx_potted_cactus_mp_1 in arch":7,"psx_potted_cactus_mp_1 in doorway":1,"psx_planter_pot_mp_1_full in prop":1,"fire_hydrant in stairs":1,"roads_g_sign_008 in arch":1,"metro_bin in pole":1,"roads_g_sign_005 in arch":1,"metro_bin in arch":2,"psx_metal_barrel_mp_0 in arch":6,"psx_metal_barrel_mp_2 in arch":5,"psx_wooden_crate_3 in arch":15,"psx_metal_barrel_mp_3 in building":1,"psx_metal_barrel_mp_1 in building":1,"psx_metal_barrel_mp_0 in building":1,"psx_wooden_crate_3 in building":10,"psx_metal_barrel_mp_1 in arch":1,"psx_metal_barrel_mp_3 in arch":1,"psx_metal_barrel_mp_2 in prop":1,"metal_trash_can in step":6,"garbage_bags in stairs":2,"garbage_bag in step":1,"garbage_bag in arch":1,"garbage_bags in step":1,"garbage_bags in prop":3,"garbage_bags in arch":1,"garbage_bag in prop":2,"garbage_bags in building":3,"garbage_bag in building":3,"metal_trash_can in building":1,"power_pole in prop":1},"snugged":163}
 psx_sofa_1  85.75  113.75  building
 psx_sofa_3  85.75  110.25  building
 psx_sofa_4  92.75  113.75  building
@@ -557,6 +557,15 @@ punch_clock  -235.9  91.32  building
 notice_board  -228.9  91.32  building
 breaker_panel  -217.32  99.4  building
 breaker_panel  -217.32  102.55  building
+forklift  -243.1  110.25  building
+wrapped_pallet  -235.55  117.15  building
+wrapped_pallet  -237  117.45  building
+platform_scale  -217.6  100.05  building
+cable_drum  -244.55  113.15  building
+fire_extinguisher  -226.1  91.32  building
+exit_sign  -231.871  91.32  building
+steam_turbine  -140  102.68  building
+steam_turbine  -154  102.68  building
 boiler  -134.75  117.25  building
 boiler  -138.25  117.25  building
 boiler  -141.75  117.25  building
@@ -580,6 +589,9 @@ breaker_panel  -133.32  110.25  building
 monitor_stack  -158.9  118.68  building
 wall_clock  -154.7  118.68  building
 office_chair  -155.75  114.1  building
+cable_drum  -133.5  95.85  building
+fire_extinguisher  -141.75  91.32  building
+exit_sign  -147.871  91.32  building
 steel_table  -85.75  88.375  building
 desk_lamp  -85.75  88.375  building
 steel_table  -85.75  90.125  building
@@ -628,6 +640,11 @@ locker_bench  -92.15  110.25  building
 punch_clock  -94.18  106.05  building
 breaker_panel  -94.18  99.05  building
 notice_board  -89.25  115.18  building
+metal_lathe  -93.1  99.75  building
+drill_press  -85.35  106.15  building
+gas_cylinder_rack  -93.95  107.65  building
+air_compressor  -89.25  114.95  building
+exit_sign  -94.18  102.365  building
 tanker_desk  -180.25  145.25  building
 crt_terminal  -179.9  145.25  building
 office_chair  -180.25  146.2  building
@@ -705,6 +722,9 @@ office_plant  -176.4  138.6  building
 office_plant  -194.6  159.6  building
 notice_board  -180.25  133.32  building
 rug_office  -197.75  155.05  building
+hook_rail  -184.1  133.32  building
+fire_extinguisher  -193.9  133.32  building
+exit_sign  -189.871  133.32  building
 server_rack  -124.25  156.85  building
 server_rack  -124.25  155.75  building
 server_rack  -124.25  154.65  building
@@ -732,6 +752,10 @@ chalkboard  -125.68  145.25  fence
 globe_lamp  -116.55  127.75  building
 office_plant  -116.725  148.4  building
 eeg_rack  -121.625  156.1  building
+rocket_engine  -124.25  145.25  building
+satellite  -124.45  131.25  building
+exit_sign  -115.82  146.108  building
+fire_extinguisher  -115.82  138.25  building
 metro_bench  -236.25  194.85  building
 metro_bench  -235.35  193.35  building
 tanker_desk  -243.25  194.25  building
@@ -768,6 +792,9 @@ notice_board  -234.82  191.8  building
 office_plant  -239.05  194.775  building
 water_cooler  -240.8  194.95  building
 rug_office  -239.75  173.25  building
+ship_model  -236.25  169.75  building
+ship_lantern  -236.15  172.75  building
+banker_lamp  -243.15  174  building
 car_truck  -134.75  183.75  building
 car_suv  -141.75  182  building
 car_taxi  -152.25  182  building
@@ -809,6 +836,12 @@ punch_clock  -160.68  184.1  building
 traffic_cone  -145.6  180.25  building
 traffic_cone  -148.4  183.4  building
 psx_metal_barrel_mp_1  -138.25  187.95  building
+air_compressor  -133.5  190.75  building
+gas_cylinder_rack  -160.55  187.25  building
+psx_jerrycan_1  -156.95  189.55  building
+psx_jerrycan_1  -156.65  189.4  building
+fire_extinguisher  -142.1  175.32  building
+exit_sign  -147.871  175.32  building
 steel_table  -85.75  168.875  arch
 desk_lamp  -85.75  168.875  building
 steel_table  -85.75  170.625  building
@@ -827,6 +860,17 @@ folding_chair  -92.05  169.75  building
 traffic_cone  -94.85  173.25  building
 traffic_cone  -94.85  194.25  building
 notice_board  -97.68  190.4  arch
+jet_engine_stand  -92.75  169.75  building
+aircraft_tug  -85.75  194.25  building
+maintenance_stairs  -89.25  194.25  building
+fire_extinguisher  -97.68  180.6  arch
+fire_extinguisher  -97.68  193.9  arch
+gate_valve  -180.85  246.75  building
+gate_valve  -180.85  243.25  building
+gate_valve  -180.85  239.75  building
+centrifugal_pump  -183.75  246.75  building
+centrifugal_pump  -183.75  243.25  building
+centrifugal_pump  -183.75  239.75  building
 tanker_desk  -190.75  250.25  building
 crt_terminal  -190.4  250.25  building
 office_chair  -190.75  251.2  building
@@ -845,6 +889,10 @@ retro_control_panel  -192.18  243.25  building
 breaker_panel  -192.18  239.75  building
 breaker_panel  -192.18  246.4  building
 notice_board  -184.1  234.82  building
+fire_extinguisher  -184.1  234.82  building
+gate_valve  -142.35  246.75  building
+gate_valve  -142.35  243.25  building
+gate_valve  -142.35  239.75  building
 locker  -147.7  243.95  building
 locker  -148.4  243.95  building
 locker  -149.1  243.95  building
@@ -857,6 +905,7 @@ breaker_panel  -150.18  246.4  building
 notice_board  -142.1  234.82  building
 traffic_barrel  -145.25  235.55  building
 traffic_barrel  -141.4  250.25  building
+wet_floor_sign  -146.35  240.65  building
 server_rack  -112.75  239.75  building
 server_rack  -113.85  239.75  building
 server_rack  -114.95  239.75  building
@@ -873,6 +922,10 @@ locker  -108.82  238.7  building
 locker  -108.82  241.15  building
 coffee_maker  -113.4  235.2  building
 psx_wooden_crate_3  -113.4  235.2  building
+signal_lever_frame  -110.25  239.35  building
+railway_lantern  -117.8  236.3  building
+railway_lantern  -114.95  235  building
+fire_extinguisher  -114.1  234.82  building
 fighter_jet  -89.4  183.75  building
 bus_shelter  -249.8  -158.5  arch
 car_pack_2  -155.4  -158  building
