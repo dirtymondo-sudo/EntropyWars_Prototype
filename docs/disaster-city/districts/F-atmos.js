@@ -25,7 +25,7 @@ module.exports = function (K, A) {
         /* a wall piece with its back to wall 'b' | 'f' | 'l' | 'r', `along` = x (b/f) or z (l/r), `e` = half its depth */
         const onWall = (key, wall, along, y, e, o) => { e = E + (e || 0.15); const at = wall === 'b' ? [along, -D2 + e, 180] : wall === 'f' ? [along, D2 - e, 0] : wall === 'l' ? [-W2 + e, along, 90] : [W2 - e, along, 270];
             P(key, at[0], at[1], at[2], Object.assign({ y: r3(y), mount: 0 }, o || {})); };
-        const coat = (key, tint, h, gain, e) => { e = e || 0.27; const o = Object.assign({ kind: 'wall' }, gain ? { gain } : {});
+        const coat = (key, tint, h, gain, e, glow) => { e = e || 0.27; const o = Object.assign({ kind: 'wall' }, gain ? { gain } : {}, glow ? { glow } : {});
             Q(quad(0, 0, -D2 + e, W - 2 * e, h, 0, key, tint, o), quad(0, 0, D2 - e, W - 2 * e, h, 180, key, tint, Object.assign({ hole: [r3(-lx), r3(dw), Math.min(2.25, h)] }, o)),
                 quad(-W2 + e, 0, 0, D - 2 * e, h, 270, key, tint, o), quad(W2 - e, 0, 0, D - 2 * e, h, 90, key, tint, o)); };
         /* a band round the four walls (skirting, rail, crown): `t` proud of the coat, broken at the doorway under the door head */
@@ -33,9 +33,9 @@ module.exports = function (K, A) {
             run(-W2 + e, W2 - e, -D2 + f); if (y < 2.3) { run(-W2 + e, lx - dw / 2, D2 - f); run(lx + dw / 2, W2 - e, D2 - f); } else run(-W2 + e, W2 - e, D2 - f);
             for (const sg of [-1, 1]) Q(box(sg * (W2 - f), y, 0, t, h, D - 2 * e, key, tint, o)); };
         /* the lining: a wall coat, a dado to `dh` with its rail, a skirting, a crown and the lit ceiling deck */
-        const liner = o => { if (o.wall) coat(o.wall[0], o.wall[1], H, o.wall[2]); if (o.dado) { coat(o.dado[0], o.dado[1], o.dh, o.dado[2], 0.275); band(o.dh - 0.03, 0.07, 0.05, o.rail ? o.rail[0] : null, o.rail ? o.rail[1] : 0x3a2418, o.rail && o.rail[2]); }
+        const liner = o => { if (o.wall) coat(o.wall[0], o.wall[1], H, o.wall[2], 0.27, o.wall[3] == null ? 0.14 : o.wall[3]); if (o.dado) { coat(o.dado[0], o.dado[1], o.dh, o.dado[2], 0.275); band(o.dh - 0.03, 0.07, 0.05, o.rail ? o.rail[0] : null, o.rail ? o.rail[1] : 0x3a2418, o.rail && o.rail[2]); }
             band(0, 0.15, 0.05, o.skirt ? o.skirt[0] : null, o.skirt ? o.skirt[1] : 0x2a2420); if (o.crown) band(H - 0.3, 0.26, 0.14, o.crown[0], o.crown[1], o.crown[2]);
-            if (o.ceil) Q(box(0, H - 0.05, 0, W - 0.6, 0.04, D - 0.6, o.ceil[0], o.ceil[1], { glow: o.ceil[2], under: true, roof: true, top: false })); };
+            if (o.ceil) Q(box(0, H - 0.05, 0, W - 0.6, 0.04, D - 0.6, o.ceil[0], o.ceil[1], { glow: o.ceil[2], gain: o.ceil[3] || 1.4, under: true, roof: true, top: false })); };
         /* coffer beams under the ceiling on the squares' lines (every `every` squares) */
         const coffers = (key, tint, every, deep) => { deep = deep || 0.35; const lines = (vals, n) => vals.filter((v, i) => i % every === 0).map(v => v - 1.75);
             for (const x of lines(g.X)) if (x > -W2 + 1 && x < W2 - 1) Q(box(x, H - deep, 0, 0.3, deep - 0.04, D - 0.7, key, tint, { under: true }));
@@ -66,7 +66,7 @@ module.exports = function (K, A) {
            wingbacks by the fire-side sofas, stools at the bar, crystal chandeliers over both lounges, urns by the desk. */
         'P08-00-B1': (T, A) => {
             const { H, W2, D2, c, P, onWall } = A;
-            A.liner({ wall: [U('PlasterWallStucco1a'), 0xeadcc0, 1.3], dado: ['calm_planks', 0x6a3c22, 1.2], dh: 1.3, rail: [GILT, WHITE, { gain: 1.4 }], skirt: ['calm_planks', 0x2a160c], crown: ['calm_marble', 0xf0e6d4], ceil: [U('FibreCeilingTile1a'), 0xfff0d8, 0.45] });
+            A.liner({ wall: [U('PlasterWallStucco1a'), 0xeadcc0, 1.3], dado: ['calm_planks', 0x6a3c22, 1.2], dh: 1.3, rail: [GILT, WHITE, { gain: 1.4 }], skirt: ['calm_planks', 0x2a160c], crown: ['calm_marble', 0xf0e6d4], ceil: [U('FibreCeilingTile1a'), 0xfff0d8, 0.9] });
             A.coffers('calm_planks', 0x4a2a18, 2, 0.45);
             for (const z of [-10.5, -3.5]) A.pilaster('l', z, 'calm_marble', 0xe8e0d0, 0.6, GILT, WHITE); for (const z of [-10.5, 3.5, 10.5]) A.pilaster('r', z, 'calm_marble', 0xe8e0d0, 0.6, GILT, WHITE);
             for (const x of [-10.5, -6.3, 6.3, 10.3]) A.pilaster('b', x, 'calm_marble', 0xe8e0d0, 0.6, GILT, WHITE); for (const x of [-5.5, 7, 10.5]) A.pilaster('f', x, 'calm_marble', 0xe8e0d0, 0.6, GILT, WHITE);
@@ -89,7 +89,7 @@ module.exports = function (K, A) {
            counting machines on the teller counters, ticker machines on the managers' desks, old safes in the back corners, urns by the doors. */
         'P10-00-B1': (T, A) => {
             const { H, W2, D2, c, P, onWall } = A;
-            A.liner({ wall: ['calm_marble', 0xeee6d6, 1.2], dado: [U('TileMarble1a'), 0x3a5a48, 1.1], dh: 1.6, rail: [GILT, WHITE, { gain: 1.4 }], skirt: ['calm_marble', 0x24382c], crown: [GILT, WHITE, { gain: 1.3 }], ceil: [U('PlasterWallStucco1a'), 0xf6eedc, 0.42] });
+            A.liner({ wall: ['calm_marble', 0xeee6d6, 1.2], dado: [U('TileMarble1a'), 0x3a5a48, 1.1], dh: 1.6, rail: [GILT, WHITE, { gain: 1.4 }], skirt: ['calm_marble', 0x24382c], crown: [GILT, WHITE, { gain: 1.3 }], ceil: [U('PlasterWallStucco1a'), 0xf6eedc, 0.84] });
             A.coffers('calm_marble', 0xe0d6c0, 1, 0.6);
             for (const z of [-7, 0, 6]) { A.pilaster('l', z, 'calm_marble', 0xf2ecde, 0.9, GILT, WHITE); A.pilaster('r', z, 'calm_marble', 0xf2ecde, 0.9, GILT, WHITE); }
             for (const x of [-10.5, -5.0, 5.0, 10.5]) A.pilaster('b', x, 'calm_marble', 0xf2ecde, 0.9, GILT, WHITE); for (const x of [-7, 7]) A.pilaster('f', x, 'calm_marble', 0xf2ecde, 0.9, GILT, WHITE);
@@ -109,7 +109,7 @@ module.exports = function (K, A) {
            a copier and a shredder by the manager's desk, a keypad by the lifts. */
         'P10-01-B1': (T, A) => {
             const { H, W2, D2, c, P, onWall, lx } = A;
-            A.liner({ wall: [U('PlasterWallPainted1a'), 0xe4eaec, 1.2], dado: ['calm_planks', 0x7a5638, 1.3], dh: 1.0, rail: ['calm_gunmetal', 0x2f6a6a], skirt: [null, 0x1e2a2c], crown: ['calm_gunmetal', 0x2f6a6a], ceil: [U('FibreCeilingTile1a'), 0xffffff, 0.5] });
+            A.liner({ wall: [U('PlasterWallPainted1a'), 0xe4eaec, 1.2], dado: ['calm_planks', 0x7a5638, 1.3], dh: 1.0, rail: ['calm_gunmetal', 0x2f6a6a], skirt: [null, 0x1e2a2c], crown: ['calm_gunmetal', 0x2f6a6a], ceil: [U('FibreCeilingTile1a'), 0xffffff, 0.9] });
             A.Q(quad(1.75, 0, -D2 + 0.29, 9.6, 4.6, 0, 'calm_planks', 0x6a4428, { kind: 'wall' }), box(1.75, 4.6, -D2 + 0.33, 9.8, 0.12, 0.12, 'calm_gunmetal', 0x2f6a6a));
             for (const x of A.X) for (const z of [-3.5, 3.5]) A.panel(x, z, 1.2, 1.2);
             for (const x of [-12.5, -9.2, 3.3, 6.6, 9.9, 13.2]) A.window_('f', x, 1.15, 2.6, 4.1, 0x1e3a3a, U('GlassWindowTall1a'));
@@ -124,7 +124,7 @@ module.exports = function (K, A) {
            a loaded cash cart beside the counting table, a counting machine on it, an old safe by the clerk. */
         'P11-01-B1': (T, A) => {
             const { H, W2, D2, c, P, onWall } = A, zc = c(0, 4)[1];
-            A.liner({ dado: ['calm_gunmetal', 0x4a564e, 1.2], dh: 1.2, rail: [null, 0xe8b820], skirt: [null, 0x1a1c1e], ceil: ['calm_concrete', 0xc8ccd0, 0.3] });
+            A.liner({ dado: ['calm_gunmetal', 0x4a564e, 1.2], dh: 1.2, rail: [null, 0xe8b820], skirt: [null, 0x1a1c1e], ceil: ['calm_concrete', 0xc8ccd0, 0.6] });
             for (const x of [-5.25, 5.25, -12.6, 12.6]) onWall('deposit_box_wall', 'b', x, 0, 0.3);
             P('money_sacks', 0, -11.2, 180); P('money_sacks', -3.3, -11.3, 200);
             P('cash_cart', c(3, 2)[0], c(3, 2)[1], 90); I_solid(T, A, c(3, 2)[0] - 0.6, c(3, 2)[1], c(3, 2)[0] + 0.6, c(3, 2)[1], 0.7, 1.0);
@@ -139,7 +139,7 @@ module.exports = function (K, A) {
         /* THE TAXI DISPATCH: chequered yellow, the radio set beside the desk, the car keys on the wall, a cooler by the lockers, a lit ceiling */
         'P08-02-B1': (T, A) => {
             const { H, W2, D2, P, onWall } = A;
-            A.liner({ wall: [U('PlasterWallPainted1a'), 0xf0dc90, 1.2], dado: ['calm_gunmetal', 0x2a2a2a, 1.0], dh: 1.1, rail: [U('TileGeneric1a'), 0xf2c200], skirt: [null, 0x111111], ceil: [U('FibreCeilingTile1a'), 0xfff8e8, 0.5] });
+            A.liner({ wall: [U('PlasterWallPainted1a'), 0xf0dc90, 1.2], dado: ['calm_gunmetal', 0x2a2a2a, 1.0], dh: 1.1, rail: [U('TileGeneric1a'), 0xf2c200], skirt: [null, 0x111111], ceil: [U('FibreCeilingTile1a'), 0xfff8e8, 0.85] });
             P('radio_console', -W2 + 0.65, -D2 + 0.6, 180); onWall('key_rack', 'l', 0.4, 1.35, 0.12, { span: 1.0 }); P('meshy_water_cooler', W2 - 0.5, D2 - 0.9, 270);
             P('psx_walkie_talkie_2', -1.6, -D2 + 0.6, 180, { y: 1.0 }); onWall('wall_clock', 'b', 1.2, 2.3, 0.04);
             A.strip(0, 0, 2.4, false);
@@ -147,7 +147,7 @@ module.exports = function (K, A) {
         /* THE DRIVERS' STORE: bright and white, a red stripe, the newspaper rack by the door, a cash machine, coffee on the counter */
         'P08-02-B2': (T, A) => {
             const { H, W2, D2, c, P } = A;
-            A.liner({ wall: [U('PlasterWallPainted1a'), 0xf4f2ec, 1.3], dado: ['calm_tiles', 0xffffff, 1.1], dh: 1.2, rail: [null, 0xe24a1c], skirt: [null, 0x30302e], crown: [null, 0xe24a1c], ceil: [U('FibreCeilingTile1a'), 0xffffff, 0.55] });
+            A.liner({ wall: [U('PlasterWallPainted1a'), 0xf4f2ec, 1.3], dado: ['calm_tiles', 0xffffff, 1.1], dh: 1.2, rail: [null, 0xe24a1c], skirt: [null, 0x30302e], crown: [null, 0xe24a1c], ceil: [U('FibreCeilingTile1a'), 0xffffff, 0.95] });
             P('newspaper_rack', -3.4, D2 - 0.6, 0); P('atm', 4.6, D2 - 0.65, 0);
             P('espresso_machine', c(4, 0)[0], c(4, 0)[1] + 0.7, 270, { y: 1.13 });
             for (const x of [-7, 0, 7]) A.strip(x, D2 - 1.0, 2.4, false);
@@ -157,7 +157,7 @@ module.exports = function (K, A) {
            monitors on the console, a bare lamp low over the interview table, red beacons over the gates, a shredder by the guard. */
         'P10-02-B1': (T, A) => {
             const { H, W2, D2, c, P } = A;
-            A.liner({ dado: ['calm_gunmetal', 0x262a30, 1.0], dh: 2.3, rail: [null, 0x3a4a5a], skirt: [null, 0x111316], ceil: ['calm_concrete', 0x8a9098, 0.18] });
+            A.liner({ dado: ['calm_gunmetal', 0x262a30, 1.0], dh: 2.3, rail: [null, 0x3a4a5a], skirt: [null, 0x111316], ceil: ['calm_concrete', 0x8a9098, 0.36] });
             const m = c(2, 0); P('map_table', m[0], m[1], 180); I_solid(T, A, m[0] - 1.1, m[1], m[0] + 1.1, m[1], 1.4, 0.95);
             A.Q(box(m[0], 2.0, m[1], 2.4, 0.06, 1.5, null, 0x1a1c20, { under: true }), box(m[0], 1.98, m[1], 2.0, 0.03, 1.1, null, 0xdff0ff, { glow: 1, under: true }), cyl(m[0], 2.06, m[1], 0.012, H - 2.06, null, IRON, { seg: 4, cap: false }));
             P('evidence_board', -3.05, c(1, 0)[1] - 1.0, 90);
@@ -173,7 +173,7 @@ module.exports = function (K, A) {
            booth, a counting machine at Loans, the jewellery case and an old safe at the Pawn end, two cash machines on the end wall */
         'P08-03-B1': (T, A) => {
             const { H, W2, D2, c, P } = A, zb = -D2 + 0.24;
-            A.liner({ wall: [U('PlasterWallStucco1a'), 0xf0e2c8, 1.25], dado: ['calm_marble', 0x9a6a5a, 1.1], dh: 1.1, rail: [GILT, WHITE, { gain: 1.4 }], skirt: ['calm_marble', 0x3a2420], crown: [GILT, WHITE, { gain: 1.3 }], ceil: [U('FibreCeilingTile1a'), 0xfff0dc, 0.45] });
+            A.liner({ wall: [U('PlasterWallStucco1a'), 0xf0e2c8, 1.25], dado: ['calm_marble', 0x9a6a5a, 1.1], dh: 1.1, rail: [GILT, WHITE, { gain: 1.4 }], skirt: ['calm_marble', 0x3a2420], crown: [GILT, WHITE, { gain: 1.3 }], ceil: [U('FibreCeilingTile1a'), 0xfff0dc, 0.9] });
             A.coffers('calm_marble', 0xe8dcc4, 1, 0.3);
             P('stock_ticker', c(1, 0)[0] - 0.9, zb + 0.32, 180, { y: 1.12 }); P('money_counter', c(2, 0)[0] - 0.8, zb + 0.32, 180, { y: 1.12 });
             P('jewelry_case', c(3, 0)[0], D2 - 0.75, 0); P('floor_safe', c(4, 0)[0] - 0.6, D2 - 0.65, 0);
@@ -183,7 +183,7 @@ module.exports = function (K, A) {
         /* THE PENTHOUSE STAIR LOBBY (columns 0-2; column 3 is the Halfdemon's bedroom): a lit ceiling, a wingback by the sofa, a painting */
         'P10-03-B1': (T, A) => {
             const { H, W, D, P, onWall } = A;
-            A.Q(box(0, H - 0.05, 0, W - 0.6, 0.04, D - 0.6, U('FibreCeilingTile1a'), 0xfff0dc, { glow: 0.45, under: true, roof: true, top: false }));
+            A.Q(box(0, H - 0.05, 0, W - 0.6, 0.04, D - 0.6, U('FibreCeilingTile1a'), 0xfff0dc, { glow: 0.9, gain: 1.4, under: true, roof: true, top: false }));
             P('wingback_chair', -0.9, 1.0, 270); onWall('psx_painting_1', 'l', 0, 1.9, 0.05, { h: 0.9 });
         },
         /* THE PALM HOUSE: daylight through the glass roof, iron benches on the walk, a birdcage in the corner, urns at the pool */
