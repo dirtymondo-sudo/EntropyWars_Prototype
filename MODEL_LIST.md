@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 865 |
+| Meshy AI | no | 883 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -2056,6 +2056,29 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | specimen_shelf | `Assets/world/props/meshy/specimen_shelf.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
 | therapy_chaise | `Assets/world/props/meshy/therapy_chaise.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
 | wheelchair | `Assets/world/props/meshy/wheelchair.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy) |
+
+### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) — Meshy AI (18)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| arms_trophy | `Assets/world/props/meshy/arms_trophy.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| ball_cart | `Assets/world/props/meshy/ball_cart.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| exercise_bike | `Assets/world/props/meshy/exercise_bike.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| gallery_ottoman | `Assets/world/props/meshy/gallery_ottoman.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| greek_amphora | `Assets/world/props/meshy/greek_amphora.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| line_marker | `Assets/world/props/meshy/line_marker.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| medicine_ball_rack | `Assets/world/props/meshy/medicine_ball_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| metal_detector | `Assets/world/props/meshy/metal_detector.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| museum_vitrine | `Assets/world/props/meshy/museum_vitrine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| painting_landscape | `Assets/world/props/meshy/painting_landscape.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| painting_portrait | `Assets/world/props/meshy/painting_portrait.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| painting_seascape | `Assets/world/props/meshy/painting_seascape.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| ride_on_mower | `Assets/world/props/meshy/ride_on_mower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| rowing_machine | `Assets/world/props/meshy/rowing_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| scarf_rack | `Assets/world/props/meshy/scarf_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| squat_rack | `Assets/world/props/meshy/squat_rack.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| tackling_sled | `Assets/world/props/meshy/tackling_sled.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
+| ticket_machine | `Assets/world/props/meshy/ticket_machine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Sports + Culture interiors, second pass, 2026-11-14) |
 
 ### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Disaster City interiors, Southside pass 2 (mondo 11-13 22:33: "make meshy versions of them"); claims list project files meshy/interior-claims.md — Meshy AI (18)
 

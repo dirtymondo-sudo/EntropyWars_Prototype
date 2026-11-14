@@ -624,8 +624,11 @@ exports.apply = (ctx) => {
         const fw = th => ((540 - th - (f.rot || 0)) % 360 + 360) % 360;   // a prop's `face` from a turn in the building's frame (0 = it looks at the front wall, 90 = to the right)
         const ghost = (lx, lz, w, d, h) => { const a = w >= d ? wld(lx - w / 2 + d / 2, lz) : wld(lx, lz - d / 2 + w / 2), b = w >= d ? wld(lx + w / 2 - d / 2, lz) : wld(lx, lz + d / 2 - w / 2);
             lateRows.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], h: r3(h), t: r3(Math.min(w, d)), key: CONC, ghost: true, rail: false }); };
+        const fL = Wm - 0.12, fCols = Math.max(1, Math.round(fL / 1.75)), fCw = fL / fCols, fCol = Math.min(fCols - 1, Math.max(0, Math.round(+f.door || 1) - 1));   // the front doorway (data.js hqTexbDoor)
         const I = {
             f, parts, loc, fw, H: (f.h > 0 ? f.h : f.storeys * 3.5) - 0.32,
+            NU: Math.round(Wm / SQ), NV: Math.round(Dm / SQ), wld,
+            doors: [{ axis: 'u', at: 0, m: (-fL / 2 + (fCol + 0.5) * fCw + Wm / 2) / SQ, w: fCw + 0.06, h: 2.2 }],   // every doorway on a square line: the front's, then the inner walls' (I.wall)
             /* a wall on a square line: axis 'u' = along the front at v = at, 'v' = front to back at u = at; from a to b (squares); doors = [[middle (squares), leaf, words]] */
             wall(axis, at, a, b, h, doors, K) { K = K || {}; let cur = a;
                 const piece = (x0, x1) => { if (x1 - x0 < 0.02) return; const m = (x0 + x1) / 2, L = (x1 - x0) * SQ, P = axis === 'u' ? loc(m, at) : loc(at, m);
@@ -633,6 +636,7 @@ exports.apply = (ctx) => {
                     parts.push({ s: 'box', p: [P[0], 0, P[1]], size: axis === 'u' ? [L, 0.16, T + 0.06] : [T + 0.06, 0.16, L], tint: K.skirt || 0x3a3a3a });
                     ghost(P[0], P[1], axis === 'u' ? L : 0.3, axis === 'u' ? 0.3 : L, h); };
                 (doors || []).slice().sort((x, y) => x[0] - y[0]).forEach(dr => { const g = DW / 2 / SQ, P = axis === 'u' ? loc(dr[0], at) : loc(at, dr[0]);
+                    I.doors.push({ axis, at, m: dr[0], w: DW, h: DH });
                     piece(cur, dr[0] - g); cur = dr[0] + g;
                     parts.push({ s: 'box', p: [P[0], DH, P[1]], size: axis === 'u' ? [DW, h - DH, T] : [T, h - DH, DW], key: K.key || o.wall, tint: K.tint, uv: 3.5, under: true, glow: 0.3 });
                     [-1, 1].forEach(sd => parts.push({ s: 'box', p: axis === 'u' ? [P[0] + sd * (DW / 2 + 0.06), 0, P[1]] : [P[0], 0, P[1] + sd * (DW / 2 + 0.06)], size: [axis === 'u' ? 0.12 : T + 0.08, DH + 0.1, axis === 'u' ? T + 0.08 : 0.12], tint: K.frame || 0x4a3a2c }));
@@ -651,10 +655,60 @@ exports.apply = (ctx) => {
             prop(key, u, v, th, x) { const P = loc(u, v), Wd = wld(P[0], P[1]); props.push(Object.assign({ key, x: Wd[0], z: Wd[1], face: fw(th || 0) }, (x && x.y != null) ? {} : { floor: true }, x || {})); },   // `floor`: on the room's floor, never on a ghost wall's top
             /* a ceiling lamp: a glowing pan under y */
             lampAt(u, v, y) { const P = loc(u, v); parts.push({ s: 'box', p: [P[0], y - 0.5, P[1]], size: [0.04, 0.5, 0.04], tint: DARKM }, { s: 'cyl', p: [P[0], y - 0.72, P[1]], r: 0.42, r2: 0.16, h: 0.22, seg: 10, tint: DARKM }, { s: 'cyl', p: [P[0], y - 0.78, P[1]], r: 0.3, h: 0.06, seg: 10, tint: LAMP, glow: 1 }); },
+            /* ── THE SECOND PASS KIT (the atmosphere: mondo 11-13 22:33 "do another interior pass ... Focus on aesthetic, vibe, atmosphere for the
+               interiors"). A ROOM = squares u0..u1 × v0..v1. Its four edges are either the building's own wall (the coat stands 0.33 m in: the
+               drawn face is 0.06 m in from the row's edge, the inside face 0.24 m further) or an inner wall (0.13 m off its middle line); every doorway on an edge (the front's, I.wall's) is cut out
+               of each layer below its head. L = { key, tint, gain, uv, glow }. Nothing here blocks: walls, trim, light and floor paint only. ── */
+            edges(u0, v0, u1, v1, sides) { const NU = I.NU, NV = I.NV, eOf = out => out ? 0.33 : T / 2 + 0.02, eL = eOf(u0 <= 0), eR = eOf(u1 >= NU), eF = eOf(v0 <= 0), eB = eOf(v1 >= NV), out = [];
+                const sd = sides || 'fblr';
+                /* per edge: the line's points a → b (local metres, along the edge), its fixed coordinate, the facing (ry) and the doorways on it (squares) */
+                if (sd.includes('b')) out.push({ k: 'b', along: 'x', a: loc(u0, 0)[0] + eL, b: loc(u1, 0)[0] - eR, c: loc(0, v1)[1] + eB, ry: 0, n: [0, 1], ds: I.doors.filter(d => d.axis === 'u' && Math.abs(d.at - v1) < 1e-6 && d.m > u0 && d.m < u1).map(d => ({ x: loc(d.m, 0)[0], w: d.w, h: d.h })) });
+                if (sd.includes('f')) out.push({ k: 'f', along: 'x', a: loc(u0, 0)[0] + eL, b: loc(u1, 0)[0] - eR, c: loc(0, v0)[1] - eF, ry: 180, n: [0, -1], ds: I.doors.filter(d => d.axis === 'u' && Math.abs(d.at - v0) < 1e-6 && d.m > u0 && d.m < u1).map(d => ({ x: loc(d.m, 0)[0], w: d.w, h: d.h })) });
+                if (sd.includes('l')) out.push({ k: 'l', along: 'z', a: loc(0, v1)[1] + eB, b: loc(0, v0)[1] - eF, c: loc(u0, 0)[0] + eL, ry: 270, n: [1, 0], ds: I.doors.filter(d => d.axis === 'v' && Math.abs(d.at - u0) < 1e-6 && d.m > v0 && d.m < v1).map(d => ({ x: loc(0, d.m)[1], w: d.w, h: d.h })) });
+                if (sd.includes('r')) out.push({ k: 'r', along: 'z', a: loc(0, v1)[1] + eB, b: loc(0, v0)[1] - eF, c: loc(u1, 0)[0] - eR, ry: 90, n: [-1, 0], ds: I.doors.filter(d => d.axis === 'v' && Math.abs(d.at - u1) < 1e-6 && d.m > v0 && d.m < v1).map(d => ({ x: loc(0, d.m)[1], w: d.w, h: d.h })) });
+                return out; },
+            /* the runs of an edge between its doorways (y0 under a door's head) and the heads over them */
+            runs(E, y0, y1) { const out = []; let cur = E.a; const ds = y0 < 2.3 ? E.ds.slice().sort((p, q) => p.x - q.x) : [];
+                ds.forEach(d => { const g0 = d.x - d.w / 2, g1 = d.x + d.w / 2; if (g0 - cur > 0.03) out.push([cur, g0, y0, y1]); if (y1 > d.h + 0.02) out.push([Math.max(cur, g0), Math.min(E.b, g1), Math.max(y0, d.h), y1]); cur = Math.max(cur, g1); });
+                if (E.b - cur > 0.03) out.push([cur, E.b, y0, y1]); return out; },
+            /* a coat of paint / panelling on a room's walls from y0 to y1 (e: how far proud of the edge, for layers) */
+            coat(u0, v0, u1, v1, y0, y1, L, o) { o = o || {}; const lift = o.lift || 0;
+                I.edges(u0, v0, u1, v1, o.sides).forEach(E => I.runs(E, y0, y1).forEach(r => { const m = (r[0] + r[1]) / 2, len = r[1] - r[0], c = E.c + (E.k === 'b' || E.k === 'l' ? lift : -lift);
+                    parts.push(Object.assign({ s: 'quad', p: E.along === 'x' ? [m, r[2], c] : [c, r[2], m], ry: E.ry, size: [len, r[3] - r[2]], uv: 3.5 }, L, { glow: Math.min(1, (L.glow || 0) + 0.12) })); })); },   // (+0.12 glow: the insides have no real light; a deep colour read black)
+            /* a band round a room (skirting, dado rail, picture rail, cornice): a box h tall, t deep, at y */
+            band(u0, v0, u1, v1, y, h, t, L, o) { o = o || {};
+                I.edges(u0, v0, u1, v1, o.sides).forEach(E => I.runs(E, y, y + h).forEach(r => { const m = (r[0] + r[1]) / 2, len = r[1] - r[0], c = E.c + E.n[0] * t / 2 + E.n[1] * t / 2;
+                    parts.push(Object.assign({ s: 'box', p: E.along === 'x' ? [m, r[2], c] : [c, r[2], m], size: E.along === 'x' ? [len, r[3] - r[2], t] : [t, r[3] - r[2], len], uv: 1.75 }, L)); })); },
+            /* the whole liner: a wall coat, a dado (panelling below dh) with its rail, a skirting and a cornice at the top */
+            liner(u0, v0, u1, v1, top, wall, dado, dh, trim, o) { o = o || {}; I.coat(u0, v0, u1, v1, 0, top, wall, o);
+                if (dado) { I.coat(u0, v0, u1, v1, 0, dh, dado, Object.assign({}, o, { lift: 0.015 })); I.band(u0, v0, u1, v1, dh - 0.03, 0.07, 0.05, trim, o); }
+                I.band(u0, v0, u1, v1, 0, 0.16, 0.05, trim, o); if (!o.noCrown) I.band(u0, v0, u1, v1, top - 0.18, 0.18, 0.1, trim, o); },
+            /* a floor laid over a room (a parquet, a carpet, a mat): a flat quad 3 cm up, `in` metres in from the room's lines */
+            floorOf(u0, v0, u1, v1, L, inset, y) { const P = loc((u0 + u1) / 2, (v0 + v1) / 2), i2 = inset == null ? 0.14 : inset;
+                parts.push(Object.assign({ s: 'quad', flat: true, p: [P[0], y || 0.035, P[1]], size: [(u1 - u0) * SQ - 2 * i2, (v1 - v0) * SQ - 2 * i2], uv: 1.75 }, L)); },
+            /* a lit ceiling (the hollow building's own ceiling draws black): a flush panel under y, glowing */
+            ceilLit(u0, v0, u1, v1, y, L) { const P = loc((u0 + u1) / 2, (v0 + v1) / 2); parts.push(Object.assign({ s: 'box', p: [P[0], y - 0.05, P[1]], size: [(u1 - u0) * SQ - 0.3, 0.04, (v1 - v0) * SQ - 0.3], under: true, top: false, uv: 3.5, glow: 0.4 }, L)); },
+            /* a fluorescent strip on a short drop (drawn glow), along u or v */
+            strip(u, v, len, alongV, y, tint) { const P = loc(u, v), sz = alongV ? [0.26, 0.07, len] : [len, 0.07, 0.26];
+                parts.push({ s: 'box', p: [P[0], y - 0.32, P[1]], size: sz, tint: 0xd8dce2, under: true }, { s: 'box', p: [P[0], y - 0.34, P[1]], size: [sz[0] * 0.72, 0.03, sz[2] * 0.72], tint: tint || 0xeef6ff, glow: 1, under: true },
+                    { s: 'box', p: [P[0], y - 0.25, P[1]], size: [0.02, 0.25, 0.02], tint: DARKM }); },
+            /* a pendant: a cord from the ceiling (top), a shade, a lit bulb */
+            pendant(u, v, y, top, shade, bulb, r) { const P = loc(u, v); r = r || 0.3;
+                parts.push({ s: 'cyl', p: [P[0], y + 0.26, P[1]], r: 0.012, h: Math.max(0.05, top - y - 0.26), seg: 4, tint: 0x202020 }, Object.assign({ s: 'cyl', p: [P[0], y, P[1]], r, r2: r * 0.25, h: 0.28, seg: 14, ds: true }, shade),
+                    { s: 'cyl', p: [P[0], y - 0.06, P[1]], r: r * 0.32, h: 0.14, seg: 10, tint: bulb || 0xffe2a8, glow: 1 }); },
+            /* a picture light: a brass bar over a painting on edge E-side ('b'|'f'|'l'|'r') of a room line, at along (local metres) */
+            picLight(side, line, along, y, w) { const n = { b: [0, 1], f: [0, -1], l: [1, 0], r: [-1, 0] }[side], c = line + (n[0] + n[1]) * 0.2, x = side === 'b' || side === 'f';
+                parts.push({ s: 'box', p: x ? [along, y, c] : [c, y, along], size: x ? [w, 0.07, 0.1] : [0.1, 0.07, w], key: GOLD, glow: 0.2 }, { s: 'box', p: x ? [along, y - 0.04, c] : [c, y - 0.04, along], size: x ? [w * 0.9, 0.02, 0.05] : [0.05, 0.02, w * 0.9], tint: 0xfff0c8, glow: 1 },
+                    { s: 'box', p: x ? [along, y - 0.06, line + (n[0] + n[1]) * 0.08] : [line + (n[0] + n[1]) * 0.08, y - 0.06, along], size: x ? [0.05, 0.05, 0.16] : [0.16, 0.05, 0.05], key: GOLD }); },
+            /* a model hung on a wall: square-space (u, v) at the wall, turned th (0 looks at the front), at y with no catalogue mount */
+            onWall(key, u, v, th, y, x) { I.prop(key, u, v, th, Object.assign({ y, mount: 0 }, x || {})); },
             done() { lateRows.push({ k: 'arch', id: 'arch:S:' + id + ':in', x: r3(f.x), z: r3(f.z), y: 0, rot: f.rot, parts: parts.flat(Infinity).map(clean) }); },
         };
         return I;
     };
+    /* a catalogue row on main? (another district's Meshy model lands with its own PR: until then the first pass's piece stays) */
+    const DATA = (() => { try { return require('fs').readFileSync(require('path').join(__dirname, '..', '..', '..', 'data.js'), 'utf8'); } catch (e) { return ''; } })();
+    const HAS = key => new RegExp('^\\s+' + key + ':\\s+\\{', 'm').test(DATA);
     const txt = (w, sh, words, fg, bg) => 'txt:' + words + '|' + fg + '|' + (bg || '') + '|' + (Math.round(w / sh * 100) / 100);
     /* a rope line: brass posts with a red rope, from local a to b */
     const ropeLine = (P, a, b) => { const n = Math.max(2, Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 1.3) + 1);
@@ -673,7 +727,10 @@ exports.apply = (ctx) => {
         P.push({ s: 'box', p: [c0[0], 0, c0[1]], size: [6.4, 0.05, 2.9], key: MARBLE_D, uv: 1.75 },
           { s: 'box', p: [c0[0], 0, c0[1] + 1.9], size: [1.5, 0.9, 0.08], tint: 0x3a2c20 }, { s: 'quad', p: [c0[0], 0.5, c0[1] + 1.95], size: [1.4, 0.3], key: txt(1.4, 0.3, 'DINOSAUR', '#f2ead8', ''), uv: 'fit', tint: 0xffffff, kind: 'over' });
         [[-3.25, -1.5, 3.25, -1.5], [-3.25, 1.5, 3.25, 1.5], [-3.25, -1.5, -3.25, 1.5], [3.25, -1.5, 3.25, 1.5]].forEach(e => ropeLine(P, [c0[0] + e[0], c0[1] + e[1]], [c0[0] + e[2], c0[1] + e[3]]));
-        if (ctx.npcSpots) ctx.npcSpots.push({ x: r3(f0.x + c0[0]), z: r3(f0.z + c0[1]), face: 180, race: 'dinosaur' });   // the race's own model, standing in the ring of rope (no line: it does not talk)
+        /* THE SECOND PASS: the plinth holds the University's Meshy dinosaur skeleton (a museum's dinosaur is its bones); the live dinosaur
+           (the race's own model, the first pass's stand-in) is kept, off the plinth on the rotunda's back right square, looking at it */
+        I.prop('dinosaur_skeleton', 4, 3.5, 90);
+        if (ctx.npcSpots) { const n0 = I.wld(I.loc(4.5, 4.5)[0], I.loc(4.5, 4.5)[1]); ctx.npcSpots.push({ x: n0[0], z: n0[1], face: I.fw(0), race: 'dinosaur' }); }   // (no line: it does not talk)
         [[2, 2], [6, 2], [2, 5], [6, 5]].forEach(a => { const q2 = I.loc(a[0], a[1]), dx = a[0] === 2 ? 0.3 : -0.3, dz = a[1] === 2 ? -0.3 : 0.3; P.push({ s: 'cyl', p: [q2[0] + dx, 0, q2[1] + dz], r: 0.28, h: h, seg: 10, key: MARBLE, uv: [1.75, h] }, { s: 'box', p: [q2[0] + dx, h, q2[1] + dz], size: [0.8, 0.2, 0.8], key: MARBLE_D }); });
         I.lampAt(3.5, 2.5, 6.5); I.lampAt(4.5, 2.5, 6.5); I.lampAt(3.5, 4.5, 6.5); I.lampAt(4.5, 4.5, 6.5); }
       /* the entrance hall: the ticket desk in the back right square, a rope line beside it */
@@ -684,16 +741,49 @@ exports.apply = (ctx) => {
         I.prop('psx_planter_pot_mp_1_full', 2.3, 0.3, 0); I.prop('psx_planter_pot_mp_1_full', 5.7, 0.3, 0); I.lampAt(4, 1, 6.5); }
       /* Antiquity: statues and the sarcophagus down the outer wall, the walk along the inner one */
       I.block(0, 0, 1, 1, 2.5); I.prop('demon_statue', 0.5, 0.5, 90); I.block(0, 2, 1, 1, 1.4); I.prop('sarcophagus', 0.5, 2.5, 0); I.block(0, 4, 1, 1, 2.5); I.prop('angel_statue', 0.5, 4.5, 90);
-      [1.5, 3.5].forEach(v => { const q2 = I.loc(0.5, v); P.push({ s: 'cyl', p: [q2[0] - 1.2, 0, q2[1]], r: 0.3, h: 1.1, seg: 10, key: MARBLE_D, uv: [1.75, 1.1] }); I.prop('decor_trophy_cup', 0.5 - 1.2 / 3.5, v, 90, { y: 1.1 }); });
+      [1.5, 3.5].forEach(v => { const q2 = I.loc(0.5, v); P.push({ s: 'cyl', p: [q2[0] - 1.2, 0, q2[1]], r: 0.3, h: 1.1, seg: 10, key: MARBLE_D, uv: [1.75, 1.1] }); I.prop(HAS('marble_bust') ? 'marble_bust' : 'decor_trophy_cup', 0.5 - 1.2 / 3.5, v, 90, HAS('marble_bust') ? { y: 1.1, h: 0.75 } : { y: 1.1 }); });   // the plan's busts (Financial's Meshy bust once its row is on main); the cups moved to the gym's trophy room
       I.lampAt(1, 1.5, 6.5); I.lampAt(1, 3.5, 6.5);
       /* the Arms hall: cabinets and armour stands down the outer wall */
       [0, 2, 4].forEach(v => { I.block(7, v, 1, 1, 2.2); I.prop('psx_display_cabinet_mp_1', 7.5, v + 0.5, 270, { h: 2.4 }); });
       [1, 3].forEach(v => { I.block(7, v, 1, 1, 2.2); I.prop('armour_stand', 7.5, v + 0.5, 270); const q2 = I.loc(7.5, v + 0.5); P.push({ s: 'cyl', p: [q2[0], 0, q2[1]], r: 1.1, h: 0.14, seg: 16, key: MARBLE_D, uv: 1.75 }); });
       I.prop('decor_armour_plinth', 6.2, 0.2, 0); I.prop('decor_armour_plinth', 6.2, 4.8, 0); I.lampAt(7, 1.5, 6.5); I.lampAt(7, 3.5, 6.5);
       /* the painting gallery: paintings on the back wall, two benches on square middles in the back row */
-      [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5].forEach((u, i) => { const q2 = I.loc(u, 7); P.push({ s: 'box', p: [q2[0], 1.3, q2[1] + 0.5], size: [2.0, 1.5, 0.08], key: GOLD, glow: 0.2 }, { s: 'box', p: [q2[0], 1.4, q2[1] + 0.55], size: [1.8, 1.3, 0.04], glow: 0.3, key: [T_RED, GREENP, BLUEP, OCHRE, T_BLUE, REDP, M_GREEN, T_OCHRE][i], uv: 0.9 }); });
-      I.block(2, 6, 1, 1, 0.9); I.prop('city_bench', 2.5, 6.5, 0); I.block(5, 6, 1, 1, 0.9); I.prop('city_bench', 5.5, 6.5, 0);
+      /* (THE SECOND PASS: the eight painted boards are gilt-framed Meshy oils now, one a square, each under a brass picture light) */
+      [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5].forEach((u, i) => { const k = ['painting_landscape', 'painting_portrait', 'painting_seascape', 'painting_portrait'][i % 4], H0 = { painting_landscape: [1.05, 1.69], painting_portrait: [1.2, 1.4], painting_seascape: [1.15, 1.46] }[k];
+        I.onWall(k, u, 7 - 0.42 / 3.5, 0, H0[0]); I.picLight('b', I.loc(0, 7)[1] + 0.31, I.loc(u, 0)[0], H0[0] + H0[1] + 0.14, 1.0); });
+      I.block(2, 6, 1, 1, 0.9); I.prop('gallery_ottoman', 2.5, 6.5, 0); I.block(5, 6, 1, 1, 0.9); I.prop('gallery_ottoman', 5.5, 6.5, 0);
       [1, 3, 5, 7].forEach(u => I.lampAt(u, 6, 6.5));
+      /* ═══ THE SECOND PASS: THE MUSEUM (the atmosphere). A hushed, warm, old museum: each hall its own colour under a gilt picture rail at
+         the partitions' top (4.2 m), warm stone above it up to a lit coffered ceiling, a red runner from the door to the dinosaur, gilt-framed
+         oils under picture lights on an oxblood wall, a crystal chandelier over the skeleton and two library chandeliers over the gallery. ═══ */
+      { const H = I.H, TR = { key: GOLD, glow: 0.15 }, WOOD = { key: 'calm_planks', tint: 0x4a2e1c, uv: 1.4 }, ST = { key: 'calm_marble', tint: 0xf0e2c4, gain: 1.1, glow: 0.12 };
+        /* the halls: entrance (cream stucco over walnut), rotunda (warm stone over dark marble), Antiquity (Pompeian red over black),
+           the Arms hall (navy over oak), the gallery (oxblood over walnut, a parquet floor) */
+        I.liner(2, 0, 6, 2, h, { key: STUCCO, tint: 0xf4e4c4, gain: 1.15, glow: 0.12 }, WOOD, 1.1, TR);
+        I.liner(2, 2, 6, 5, h, ST, { key: MARBLE_D, uv: 1.75 }, 0.9, TR);
+        I.liner(0, 0, 2, 5, h, { key: WHITE, tint: 0xa8402c, gain: 1.2, glow: 0.1 }, { key: DARK, tint: 0x24201c, glow: 0.05 }, 1.0, TR);
+        I.liner(6, 0, 8, 5, h, { key: WHITE, tint: 0x2c3e66, gain: 1.2, glow: 0.1 }, { key: 'calm_planks', tint: 0x6a4a2c, uv: 1.4 }, 1.2, TR);
+        I.liner(0, 5, 8, 7, h, { key: WHITE, tint: 0x6a1e24, gain: 1.25, glow: 0.1 }, WOOD, 0.85, TR);
+        I.floorOf(0, 5, 8, 7, { key: 'calm_planks', tint: 0xb07a4a, uv: 1.2 }, 0.3, 0.045);
+        /* above the partitions: warm stone to the ceiling, a cornice, a lit coffered ceiling (gilt beams on every square line) */
+        I.coat(0, 0, I.NU, I.NV, h, H, ST); I.band(0, 0, I.NU, I.NV, h - 0.02, 0.24, 0.16, TR); I.band(0, 0, I.NU, I.NV, H - 0.5, 0.5, 0.22, { key: 'calm_marble', tint: 0xe8d8b8 });
+        I.ceilLit(0, 0, I.NU, I.NV, H, { key: 'calm_marble', tint: 0xfff4dc, glow: 0.55 });
+        for (let u = 1; u < I.NU; u++) { const x = I.loc(u, 0)[0]; P.push({ s: 'box', p: [x, H - 0.42, 0], size: [0.3, 0.36, I.NV * 3.5 - 0.5], key: GOLD, tint: 0xc8a050, under: true, glow: 0.1 }); }
+        for (let v = 1; v < I.NV; v++) { const z = I.loc(0, v)[1]; P.push({ s: 'box', p: [0, H - 0.42, z], size: [I.NU * 3.5 - 0.5, 0.36, 0.3], key: GOLD, tint: 0xc8a050, under: true, glow: 0.1 }); }
+        /* the red runner: from the front door to the rotunda's doorway, and round the plinth's rope */
+        { const a = I.loc(3.38, 0), b = I.loc(3.38, 2); P.push({ s: 'quad', flat: true, p: [a[0], 0.045, (a[1] + b[1]) / 2], size: [1.6, Math.abs(a[1] - b[1]) - 0.3], key: 'calm_carpet', tint: 0x8a1a22, uv: 1.2 }, { s: 'quad', flat: true, p: [a[0], 0.05, (a[1] + b[1]) / 2], size: [1.3, Math.abs(a[1] - b[1]) - 0.3], key: 'calm_carpet', tint: 0x9e2228, uv: 1.2 }); }
+        /* the rotunda: the crystal chandelier over the skeleton on a chain from the ceiling; MUSEUM OF THE CITY over the rotunda's doorway */
+        { const c = I.loc(4, 3.5); I.prop('crystal_chandelier', 4, 3.5, 0, { y: 7.2, h: 1.6 }); P.push({ s: 'cyl', p: [c[0], 8.75, c[1]], r: 0.03, h: H - 8.75, seg: 5, tint: 0x8a7040 }); }
+        { const q2 = I.loc(4, 2); P.push({ s: 'quad', p: [q2[0], 3.05, q2[1] + 0.14], size: [5.6, 0.5], key: txt(5.6, 0.5, 'MUSEUM OF THE CITY', '#e8c870', ''), uv: 'fit', tint: 0xffffff, kind: 'over' }); }
+        /* the gallery: two library chandeliers hung over the benches */
+        [2.5, 5.5].forEach(u => { const c = I.loc(u, 6.5); I.prop('library_chandelier', u, 6.5, 0, { y: 5.8, h: 1.1 }); P.push({ s: 'cyl', p: [c[0], 6.9, c[1]], r: 0.025, h: H - 6.9, seg: 5, tint: 0x5a4a30 }); });
+        /* Antiquity: two black-figure amphorae and a coin case along the inner wall (off the walk's middle) */
+        I.prop('greek_amphora', 1.83, 0.55, 270); I.prop('museum_vitrine', 1.8, 1.55, 270); I.prop('greek_amphora', 1.83, 2.55, 270); I.prop('museum_vitrine', 1.8, 4.45, 270);
+        /* the Arms hall: shield-and-sword plaques on the inner wall (either side of its doorway), banners high on the outer wall */
+        I.onWall('arms_trophy', 6 + 0.2 / 3.5, 1.5, 90, 2.3); I.onWall('arms_trophy', 6 + 0.2 / 3.5, 4.5, 90, 2.3);
+        [1, 2.5, 4].forEach(v => I.onWall('banner', 8 - 0.28 / 3.5, v, 270, 6.2));
+        /* the entrance hall: the grandfather clock in the front left corner, a bench of the museum's own by the ticket desk's rope */
+        I.prop('gclock', 2.17, 1.8, 90); I.prop('gallery_ottoman', 4.6, 0.25, 180, { h: 0.5 }); }
       I.done(); }
 
     /* ── THE TRAINING GYM, 8 × 8 squares, the door in square u4: lobby (front desk), office and trophy room across the front under a low
@@ -711,13 +801,10 @@ exports.apply = (ctx) => {
         [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]].forEach(a => { const y = I.H; P.push({ s: 'box', p: [c0[0] + a[0], y - 1.0, c0[1] + a[1]], size: [0.04, 1.0, 0.04], tint: DARKM }, { s: 'cyl', p: [c0[0] + a[0], y - 1.3, c0[1] + a[1]], r: 0.6, r2: 0.2, h: 0.3, seg: 10, tint: DARKM }, { s: 'cyl', p: [c0[0] + a[0], y - 1.36, c0[1] + a[1]], r: 0.45, h: 0.06, seg: 10, tint: LAMP, glow: 1 }); }); }
       /* heavy bags on the left wall: a square each, a bracket off the wall, a chain, the bag */
       [2, 4].forEach(v => { const b0 = I.block(0, v, 1, 1, 2.4);
-        P.push({ s: 'box', p: [b0[0] - 0.85, 3.3, b0[1]], size: [1.9, 0.12, 0.12], tint: DARKM }, { s: 'box', p: [b0[0], 2.5, b0[1]], size: [0.03, 0.8, 0.03], tint: 0x909090 },
-          { s: 'cyl', p: [b0[0], 0.9, b0[1]], r: 0.36, h: 1.6, seg: 12, key: REDP, tint: 0x7a2018, uv: [1.2, 1.6] }, { s: 'cyl', p: [b0[0], 2.5, b0[1]], r: 0.36, r2: 0.1, h: 0.14, seg: 12, tint: 0x3a2018 }); });
-      /* the weights corner (right wall): a dumbbell rack against the wall, two benches beside it, all off the squares' middles */
-      { const r0 = I.loc(7.72, 4.5);
-        P.push({ s: 'box', p: [r0[0], 0, r0[1]], size: [0.5, 0.9, 2.6], key: M_GREY, tint: 0x30343a, uv: 1.2 }, { s: 'box', p: [r0[0] - 0.1, 0.9, r0[1]], size: [0.7, 0.05, 2.7], tint: DARKM });
-        for (let i = 0; i < 6; i++) { const z0 = r0[1] - 1.1 + i * 0.44, rr = 0.1 + 0.012 * i; P.push({ s: 'box', p: [r0[0] - 0.12, 0.95 + rr - 0.03, z0], size: [0.42, 0.06, 0.06], tint: 0x9098a0 }, { s: 'box', p: [r0[0] - 0.3, 0.95, z0], size: [0.1, 2 * rr, 2 * rr], tint: 0x1c1c1c }, { s: 'box', p: [r0[0] + 0.06, 0.95, z0], size: [0.1, 2 * rr, 2 * rr], tint: 0x1c1c1c }); }
-        [5.15, 5.85].forEach(v => { const b0 = I.loc(7.62, v); P.push({ s: 'box', p: [b0[0], 0.36, b0[1]], size: [1.2, 0.1, 0.36], tint: 0x1c1c1c }, { s: 'box', p: [b0[0] - 0.45, 0, b0[1]], size: [0.08, 0.36, 0.3], tint: 0x9098a0 }, { s: 'box', p: [b0[0] + 0.45, 0, b0[1]], size: [0.08, 0.36, 0.3], tint: 0x9098a0 }); }); }
+        P.push({ s: 'box', p: [b0[0] - 0.85, 3.3, b0[1]], size: [1.9, 0.12, 0.12], tint: DARKM }); I.prop('punching_bag', 0.5, v + 0.5, 90, { y: 1.0 }); });   // (THE SECOND PASS: Southside's Meshy bag + chains in place of the drawn cylinder, its top at the bracket)
+      /* the weights corner (right wall): Southside's Meshy dumbbell rack against the wall, its weight bench beside it (THE SECOND PASS: in place
+         of the drawn box rack and the two box benches), all off the squares' middles */
+      I.prop('dumbbell_rack', 7.8, 4.5, 270); I.prop('weight_bench', 7.7, 5.5, 270);
       /* the wrestling mat: on the floor, walked over */
       { const m0 = I.loc(7, 3); P.push({ s: 'box', p: [m0[0], 0, m0[1]], size: [6.6, 0.07, 6.6], key: RUB_Y, tint: 0x3a78c8, uv: 1.75 }, { s: 'cyl', p: [m0[0], 0.07, m0[1]], r: 2.2, h: 0.012, seg: 28, tint: 0xf0e8d0 }, { s: 'cyl', p: [m0[0], 0.082, m0[1]], r: 2.05, h: 0.012, seg: 28, key: RUB_Y, tint: 0x3a78c8, uv: 1.75 }); }
       [[1.5, 3], [1.5, 5], [6.5, 4.6]].forEach(a => I.lampAt(a[0], a[1], I.H));
@@ -736,8 +823,45 @@ exports.apply = (ctx) => {
       I.block(1, 1, 1, 1, 1); I.prop('tanker_desk', 1.5, 1.5, 0); I.prop('office_chair', 1.5, 1.85, 180); I.prop('filing_cabinet', 0.15, 1.8, 90); I.prop('potted_plant', 0.2, 0.2, 0); I.lampAt(1.5, 0.8, h);
       /* the trophy room: the case along the back wall (two squares), cups on a plinth */
       I.block(6, 1, 2, 1, 2.1); I.prop('trophy_case', 6.5, 1.84, 0); I.prop('trophy_case', 7.5, 1.84, 0);
-      { const q2 = I.loc(7.7, 0.3); P.push({ s: 'cyl', p: [q2[0], 0, q2[1]], r: 0.3, h: 1.0, seg: 10, key: MARBLE_D, uv: [1.75, 1] }); I.prop('decor_trophy_cup', 7.7, 0.3, 0, { y: 1.0 }); }
+      [7.7, 6.95, 6.2].forEach(u => { const q2 = I.loc(u, 0.3); P.push({ s: 'cyl', p: [q2[0], 0, q2[1]], r: 0.3, h: 1.0, seg: 10, key: MARBLE_D, uv: [1.75, 1] }); I.prop('decor_trophy_cup', u, 0.3, 0, { y: 1.0 }); });   // (the second pass: the museum's two cups moved here)
       I.lampAt(6.5, 0.8, h);
+      /* ═══ THE SECOND PASS: THE TRAINING GYM (the atmosphere). An old-school fight gym: the main hall's red tile over a charcoal dado with a
+         white stripe, steel trusses with strip lights and bunting under a lit roof, the real gear (bags, rack, bench, a squat cage, rowers on
+         the wall, treadmills, bikes, speed bags); a cream lobby and a green office under lit ceilings, a panelled trophy room, a white-tiled
+         locker room with showers. ═══ */
+      { const H = I.H, h0 = h + 0.14, WH = { tint: 0xf2f0ea, glow: 0.2 }, DADO = { key: DARK, tint: 0x34363a, glow: 0.05 }, PANEL = { key: 'calm_planks', tint: 0x5a3a24, uv: 1.4 };
+        /* the main hall: the dado + its stripe on the tall walls (the red tile above is the building's own) */
+        I.coat(0, 2, 8, 6, 0, 1.3, DADO); I.band(0, 2, 8, 6, 1.3, 0.12, 0.04, WH); I.band(0, 2, 8, 6, 0, 0.16, 0.05, { tint: 0x1c1c1e });
+        /* the roof: a lit corrugated ceiling, three steel trusses across, strip lights between them, bunting along the hall */
+        I.ceilLit(0, 2, 8, 6, H, { key: M_GREY, tint: 0xc8ccd0, glow: 0.3 });
+        [2.6, 4, 5.4].forEach(v => { const z = I.loc(0, v)[1]; P.push({ s: 'box', p: [0, H - 0.9, z], size: [I.NU * 3.5 - 0.5, 0.8, 0.22], key: TRUSS, tint: 0x8a9098, uv: 0.8, under: true, ds: true }); });
+        [1, 3, 5, 7].forEach(u => [3.3, 4.7].forEach(v => I.strip(u, v, 2.6, true, H - 0.6)));
+        [3.3, 4.7].forEach((v, k) => { const z = I.loc(0, v)[1], n = 26, L = I.NU * 3.5 - 1.2; P.push({ s: 'box', p: [0, 5.15, z], size: [L, 0.015, 0.015], tint: 0x202020 });
+          for (let i = 0; i < n; i++) P.push({ s: 'cyl', p: [-L / 2 + (i + 0.5) * L / n, 4.75, z], r: 0.01, r2: 0.18, h: 0.4, seg: 3, ry: 90, tint: [0xc82828, 0xf2f0ea, 0x2848a8][(i + k) % 3], glow: 0.2 }); });
+        /* the gear: a squat cage in the back left corner, a rower against the left wall between the bags, two treadmills against the back
+           wall (their runners face it), three bikes against the front wall, speed bags + gloves on the walls, a medicine-ball rack on the mat */
+        I.block(0, 5, 1, 1, 2.3); I.prop('squat_rack', 0.5, 5.5, 90);
+        I.block(0, 3, 1, 1, 0.8); I.prop('rowing_machine', 0.5, 3.5, 0);
+        I.block(5, 5, 1, 1, 1.4); I.prop('treadmill', 5.5, 5.5, 0); I.block(6, 5, 1, 1, 1.4); I.prop('treadmill', 6.5, 5.5, 0);
+        [1.3, 1.9, 2.5].forEach(u => I.prop('exercise_bike', u, 2.24, 180));
+        [1.5, 2.6].forEach(u => I.onWall('speed_bag', u, 6 - 0.55 / 3.5, 0, 1.45));
+        I.onWall('boxing_gloves', 0.12, 3.05, 90, 1.5); I.onWall('boxing_gloves', 0.12, 4.95, 90, 1.5); I.prop('water_cooler', 3.4, 2.12, 180);
+        I.prop('medicine_ball_rack', 7.83, 2.35, 270);
+        /* the lobby: cream over charcoal with a red stripe, a lit ceiling, the notice board, a clock over the hall's door, a mat */
+        I.liner(3, 0, 5, 2, h, { key: STUCCO, tint: 0xf2e6cc, gain: 1.1, glow: 0.15 }, DADO, 1.1, { tint: 0xb02828, glow: 0.1 }); I.ceilLit(3, 0, 5, 2, h, { key: U('FibreCeilingTile1a'), tint: 0xfff6e4, glow: 0.45 });
+        I.onWall('notice_board', 3.45, 2 - 0.14 / 3.5, 0, 1.2); I.onWall('wall_clock', 4.5, 2 - 0.14 / 3.5, 0, 2.55); I.prop('doormat', I.doors[0].m, 0.2, 0);
+        /* the office: green over oak panelling, a lit ceiling, a rug under the desk, a chalkboard + a clock */
+        I.liner(0, 0, 3, 2, h, { key: WHITE, tint: 0x5f7a58, gain: 1.15, glow: 0.12 }, PANEL, 1.0, { key: 'calm_planks', tint: 0x3a2414 }); I.ceilLit(0, 0, 3, 2, h, { key: U('FibreCeilingTile1a'), tint: 0xfff2dc, glow: 0.45 });
+        I.prop('rug_office', 1.5, 1.5, 0); I.onWall('chalkboard', 0.08, 0.9, 90, 1.0); I.onWall('wall_clock', 2.4, 2 - 0.14 / 3.5, 0, 2.5);
+        /* the trophy room: deep green over dark panelling to the rail, gold trim, a runner, HALL OF FAME over the cases under picture lights */
+        I.liner(5, 0, 8, 2, h, { key: WHITE, tint: 0x24483a, gain: 1.2, glow: 0.1 }, PANEL, 1.3, { key: GOLD, glow: 0.15 }); I.ceilLit(5, 0, 8, 2, h, { key: U('FibreCeilingTile1a'), tint: 0xffecc8, glow: 0.4 });
+        { const q2 = I.loc(7, 2); P.push({ s: 'quad', p: [q2[0], 2.4, q2[1] + 0.14], size: [3.4, 0.42], key: txt(3.4, 0.42, 'HALL OF FAME', '#e8c870', ''), uv: 'fit', tint: 0xffffff, kind: 'over' }); [6.5, 7.5].forEach(u => I.picLight('b', q2[1] + 0.11, I.loc(u, 0)[0], 2.25, 1.4)); }
+        { const a = I.loc(5.1, 0.5), b = I.loc(7.9, 0.5); P.push({ s: 'quad', flat: true, p: [(a[0] + b[0]) / 2, 0.045, a[1]], size: [Math.abs(b[0] - a[0]), 1.2], key: 'calm_carpet', tint: 0x7a1a20, uv: 1.2 }); }
+        /* the locker room: white tile to 1.8 m under pale blue, a lit ceiling, strips, two showers against the back wall in the middle */
+        I.liner(0, 6, 8, 8, h, { key: WHITE, tint: 0xb8cad8, gain: 1.15, glow: 0.15 }, { key: U('TileSubway1a'), tint: 0xf4f6f8, gain: 1.1, glow: 0.12, uv: 1.75 }, 1.8, { tint: 0x4a6a8a });
+        I.ceilLit(0, 6, 8, 8, h, { key: U('FibreCeilingTile1a'), tint: 0xf4fbff, glow: 0.45 }); [1.5, 6.5].forEach(u => I.strip(u, 7, 2.4, false, h + 0.2));
+        I.block(3, 7, 1, 1, 2.1); I.prop('shower_stall', 3.5, 7.82, 0); I.block(4, 7, 1, 1, 2.1); I.prop('shower_stall', 4.5, 7.82, 0);
+        I.prop('laundry_cart', 3.2, 6.25, 0); I.onWall('wall_clock', 2.6, 6 + 0.14 / 3.5, 180, 2.5); }
       I.done(); }
 
     /* ── THE EQUIPMENT DEPOT, 9 × 3 squares, the door in square u3: bay A (field gear), the grounds office (the door opens into it), bay B
@@ -747,7 +871,7 @@ exports.apply = (ctx) => {
       /* bay A: shelving across the back (two squares), cones, footballs and the line marker along the left wall */
       [0, 1].forEach(u => { I.block(u, 2, 1, 1, 1.8); [0.25, 0.75].forEach(t => I.prop('metal_shelving', u + t, 2.85, 0)); });
       [0.5, 0.75, 1.0].forEach(v => I.prop('traffic_cone', 0.14, v, 0)); I.prop('football', 0.2, 1.4, 0); I.prop('football', 0.3, 1.55, 40); I.prop('football', 0.16, 1.7, 80);
-      { const q2 = I.loc(1.78, 1.7); P.push({ s: 'box', p: [q2[0], 0.2, q2[1]], size: [0.5, 0.5, 0.8], tint: 0xe8e8e8 }, { s: 'box', p: [q2[0], 0, q2[1] - 0.3], size: [0.6, 0.3, 0.3], tint: 0x202020 }, { s: 'box', p: [q2[0], 0.7, q2[1] + 0.5], size: [0.4, 0.04, 0.5], tint: 0x808890 }); }
+      I.prop('line_marker', 1.78, 1.7, 90);   // (THE SECOND PASS: the Meshy line-marking cart in place of the three drawn boxes)
       /* the grounds office: the desk on the back square's middle, lockers and the time clock on the walls */
       I.block(3, 2, 1, 1, 1); I.prop('tanker_desk', 3.5, 2.5, 0); I.prop('office_chair', 3.5, 2.85, 180); [1.4, 1.65, 1.9].forEach(v => I.prop('office_locker', 2.16, v, 90)); I.prop('punch_clock', 3.86, 1.5, 270);
       /* bay B: shelving across the back (three squares), a crate stack on one square, a pallet of boxes by the wall */
@@ -758,6 +882,23 @@ exports.apply = (ctx) => {
       [7, 8].forEach(u => { I.block(u, 2, 1, 1, 1); I.prop('steel_table', u + 0.5, 2.5, 0); });
       I.prop('psx_metal_barrel_mp_1', 8.8, 1.8, 0); I.prop('psx_metal_barrel_mp_2', 8.8, 1.55, 0); I.prop('meshy_sandbags', 8.7, 0.25, 90); I.prop('utility_box', 7.14, 1.7, 90);
       [1, 3, 5.5, 8].forEach(u => I.lampAt(u, 1.2, h));
+      /* ═══ THE SECOND PASS: THE EQUIPMENT DEPOT (the atmosphere). A working groundskeeper's store: blue-grey painted block to 1.2 m under a
+         safety-yellow band in the bays, the aisles lined in yellow on the floor, strip lights under a lit corrugated ceiling, the field gear
+         itself (a tackling sled in the stores, the ride-on mower in the workshop by the tools, a ball cage by bay A's door); the office pale
+         green over oak, a lit ceiling, a clock, the notice board, the water cooler. ═══ */
+      { const H = I.H, BAND = { tint: 0xe8b818, glow: 0.2 }, LOW = { key: CONCW, tint: 0x6a7a8c, gain: 1.1, glow: 0.08 };
+        [[0, 2], [4, 7], [7, 9]].forEach(r => { I.coat(r[0], 0, r[1], 3, 0, 1.2, LOW); I.band(r[0], 0, r[1], 3, 1.2, 0.12, 0.03, BAND); I.band(r[0], 0, r[1], 3, 0, 0.14, 0.05, { tint: 0x26282c });
+          I.ceilLit(r[0], 0, r[1], 3, H, { key: M_GREY, tint: 0xd0d4d8, glow: 0.3 });
+          const a = I.loc(r[0], 1)[0] + 0.3, b = I.loc(r[1], 1)[0] - 0.3, z = I.loc(0, 1.97)[1]; P.push({ s: 'quad', flat: true, p: [(a + b) / 2, 0.045, z], size: [Math.abs(b - a), 0.1], tint: 0xe8c020, glow: 0.15 });
+          for (let u = r[0]; u < r[1]; u++) I.strip(u + 0.5, 1.7, 2.4, false, H); });
+        I.liner(2, 0, 4, 3, H, { key: WHITE, tint: 0xb8d4b0, gain: 1.15, glow: 0.12 }, { key: 'calm_planks', tint: 0x7a5434, uv: 1.4 }, 1.0, { key: 'calm_planks', tint: 0x4a3020 }, { noCrown: true });
+        I.ceilLit(2, 0, 4, 3, H, { key: U('FibreCeilingTile1a'), tint: 0xfff4e0, glow: 0.45 });
+        I.onWall('notice_board', 2.5, 3 - 0.3 / 3.5, 0, 1.25); I.onWall('wall_clock', 3.5, 3 - 0.3 / 3.5, 0, 2.55); I.prop('water_cooler', 3.82, 1.05, 270);
+        /* the gear */
+        I.prop('ball_cart', 1.0, 0.2, 180);
+        I.block(5, 1, 1, 1, 1.4); I.prop('tackling_sled', 5.5, 1.5, 0);
+        I.block(8, 1, 1, 1, 1.2); I.prop('ride_on_mower', 8.42, 1.5, 0);
+        [7.5, 8.5].forEach(u => I.onWall('tool_pegboard', u, 3 - 0.3 / 3.5, 0, 1.25)); I.prop('tool_chest', 7.17, 1.15, 90); }
       I.done(); }
 
     /* ── THE SOUTH GATE TICKET HALL, 9 × 3 squares, the door in square u3: the ticket hall (a counter with four windows across the back),
@@ -780,6 +921,21 @@ exports.apply = (ctx) => {
       I.block(7, 2, 1, 1, 2.2); I.prop('monitor_stack', 7.5, 2.84, 0); I.prop('office_chair', 7.5, 2.2, 180);
       I.block(8, 1, 1, 1, 2); I.prop('lost_shelf', 8.84, 1.5, 270);
       [1.5, 3, 5.5, 8].forEach(u => I.lampAt(u, 1.2, h));
+      /* ═══ THE SECOND PASS: THE SOUTH GATE (the atmosphere). Match-day in the club's colours: cream walls over a navy dado with a red rail,
+         a lit ceiling, strips, bunting across the hall, the self-service ticket machines by the door, a scarf stand, SOUTH GATE painted on the
+         wall; the stewards' room grey-green with its notice board and water cooler; security dim blue with the walk-through arch. ═══ */
+      { const H = I.H, RED = { tint: 0xb82830, glow: 0.12 }, NAVY = { key: WHITE, tint: 0x22345c, gain: 1.15, glow: 0.06 };
+        I.liner(0, 0, 4, 3, H, { key: STUCCO, tint: 0xf4e8cc, gain: 1.1, glow: 0.15 }, NAVY, 1.2, RED, { noCrown: true }); I.ceilLit(0, 0, 4, 3, H, { key: U('FibreCeilingTile1a'), tint: 0xfff8ea, glow: 0.45 });
+        [1, 2].forEach(v => I.strip(2, v, 2.4, false, H));
+        { const z = I.loc(0, 0.95)[1], a = I.loc(0.1, 0)[0], b = I.loc(3.9, 0)[0], n = 22, L = Math.abs(b - a), x0 = Math.min(a, b);
+          P.push({ s: 'box', p: [(a + b) / 2, 3.02, z], size: [L, 0.015, 0.015], tint: 0x202020 });
+          for (let i = 0; i < n; i++) P.push({ s: 'cyl', p: [x0 + (i + 0.5) * L / n, 2.66, z], r: 0.01, r2: 0.16, h: 0.36, seg: 3, ry: 90, tint: [0x2a4a9a, 0xf2f0ea, 0xb82830][i % 3], glow: 0.2 }); }
+        { const q2 = I.loc(0, 1.5); P.push({ s: 'quad', p: [q2[0] + 0.28, 2.1, q2[1]], ry: 270, size: [3.4, 0.55], key: txt(3.4, 0.55, 'SOUTH GATE', '#2a4a9a', ''), uv: 'fit', tint: 0xffffff, kind: 'over' }); }
+        I.prop('ticket_machine', 1.3, 0.16, 180); I.prop('ticket_machine', 1.8, 0.16, 180); I.prop('scarf_rack', 0.22, 1.35, 90);
+        I.liner(4, 0, 7, 3, H, { key: WHITE, tint: 0xc8d2c4, gain: 1.15, glow: 0.12 }, { key: WHITE, tint: 0x5a6e60, gain: 1.1, glow: 0.06 }, 1.1, { tint: 0x2a3a30 }, { noCrown: true });
+        I.ceilLit(4, 0, 7, 3, H, { key: U('FibreCeilingTile1a'), tint: 0xf8fbff, glow: 0.4 }); I.onWall('notice_board', 4 + 0.14 / 3.5, 1.6, 90, 1.2); I.prop('water_cooler', 6.8, 1.02, 270);
+        I.liner(7, 0, 9, 3, H, { key: WHITE, tint: 0x6a7a96, gain: 1.1, glow: 0.08 }, { key: DARK, tint: 0x2a3040, glow: 0.04 }, 1.1, { tint: 0x1a1e28 }, { noCrown: true });
+        I.ceilLit(7, 0, 9, 3, H, { key: U('FibreCeilingTile1a'), tint: 0xdfe8ff, glow: 0.3 }); I.prop('metal_detector', 8.45, 0.2, 180); }
       I.done(); }
 
     /* ═══ THE RESIDENTS' BEDROOMS (mondo 11-14 02:21 "District threads add them"; /mnt/project-files/disaster-city-residents/bedrooms-brief.md):
@@ -815,6 +971,14 @@ exports.apply = (ctx) => {
    most high rises or tall buildings" = FINANCIAL (5 to 11 storeys). He stands on the open ground at the foot of the Penthouse stair tower
    (P10-03, the tallest), on a square's middle, off every path; his line is his own from the old streets. ═══ */
 exports.build = (ctx) => {
+    /* THE WALK-INS' WALLS (the second interior pass, 2026-11-14): a plot-border edge (hedge / wall / rail) laid along a walk-in's own wall
+       stood half inside the room (the Equipment depot's east end: the x = 0 hedge, 0.9 m thick, came 0.45 m through the wall). Such an edge is
+       MOVED out, its inner face 5 cm clear of the building, never dropped. */
+    (ctx.features ? ['P04-08-B1', 'P06-10-B1', 'P06-11-B1', 'P07-11-B1'] : []).forEach(id => { const b = ctx.features.find(q => q.id === 'dc:' + id); if (!b) return;
+        const ew = (b.rot || 0) % 180 ? b.d : b.w, ed = (b.rot || 0) % 180 ? b.w : b.d, X0 = b.x - ew / 2, X1 = b.x + ew / 2, Z0 = b.z - ed / 2, Z1 = b.z + ed / 2;
+        ctx.features.forEach(f => { if (!(f.k === 'wall' || f.k === 'rail') || f.ghost || f.x0 == null) return; const t = (f.t || 0.3) / 2;
+            if (f.x0 === f.x1 && Math.max(f.z0, f.z1) > Z0 + 0.3 && Math.min(f.z0, f.z1) < Z1 - 0.3 && f.x0 + t > X0 && f.x0 - t < X1) { const nx = (f.x0 - X0 < X1 - f.x0) ? X0 - t - 0.05 : X1 + t + 0.05; f.x0 = f.x1 = Math.round(nx * 1000) / 1000; }
+            else if (f.z0 === f.z1 && Math.max(f.x0, f.x1) > X0 + 0.3 && Math.min(f.x0, f.x1) < X1 - 0.3 && f.z0 + t > Z0 && f.z0 - t < Z1) { const nz = (f.z0 - Z0 < Z1 - f.z0) ? Z0 - t - 0.05 : Z1 + t + 0.05; f.z0 = f.z1 = Math.round(nz * 1000) / 1000; } }); });
     if (!ctx.npcSpots) return;
     const x = ctx.gc(121), z = ctx.gc(45);
     ctx.take(121, 45);

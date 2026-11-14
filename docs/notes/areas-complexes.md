@@ -2242,6 +2242,28 @@ mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is 
   double }]` hangs more swinging leaves inside the building, in its own frame (x along the front from its middle, z toward the front, rot 0 = in a
   wall that runs along the front, 90 = across it). Same leaves, same swing-away as the front door (`_hq.cityDoors`). Drawn only: the district's
   walls leave the gap.
+- THE SECOND PASS (2026-11-14, mondo 11-13 22:33: "after a district's first interior pass, do another interior pass ... make a list of models
+  needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere for the interiors").
+  S.js `inside()` kit grew (new methods only): `I.doors` (the front doorway + every I.wall doorway), `I.edges/runs` (a room's four edges, outer
+  wall 0.33 m in (the drawn face is 0.06 m in, its inside face 0.24 m more), inner wall 0.13 m off its line, doorways cut below their heads), `I.coat(u0, v0, u1, v1, y0, y1, L)` (paint / panelling quads),
+  `I.band` (skirting, dado rail, cornice), `I.liner` (coat + dado + rail + skirting + crown), `I.floorOf` (a parquet / carpet quad), `I.ceilLit`
+  (a glowing ceiling: the hollow building's own ceiling draws black), `I.strip`, `I.pendant`, `I.picLight`, `I.onWall(key, u, v, th, y)` (mount 0).
+  Light is drawn glow only. Museum: each hall its colour (cream / warm stone / Pompeian red / navy / oxblood) under a gilt rail at 4.2 m, warm
+  stone above, a lit coffered ceiling with gilt beams, a red runner door -> rotunda, MUSEUM OF THE CITY over the rotunda's door; University's
+  dinosaur_skeleton on the plinth with the live dinosaur (npcSpot) kept on the rotunda's back right square looking at it; a crystal chandelier
+  over it; eight Meshy oils under picture lights + two gallery_ottoman benches + two library chandeliers in the gallery (parquet floor);
+  amphorae + coin cases in Antiquity; arms_trophy plaques + banners in the Arms hall; the grandfather clock in the entrance hall. The
+  Antiquity columns take Financial's marble_bust once its catalogue row is on main (`HAS(key)` reads data.js at bake time; until then the cups
+  stay; rebake after Financial merges); the museum's two cups also stand in the gym's trophy room. Gym: charcoal dado + white stripe in the
+  hall, trusses, strips, bunting, a lit roof; Southside's punching_bag x2 (on the old brackets), dumbbell_rack, weight_bench replace the drawn
+  ones; squat_rack, rowing_machine, two treadmills (Hero Plaza) on blocked squares, three exercise_bike, speed bags, gloves, medicine_ball_rack,
+  water cooler; lobby / office / trophy room (HALL OF FAME) / locker room (white tile, two shower stalls on blocked squares) lined and lit.
+  Depot: blue-grey dado + yellow band, aisle lines, strips, line_marker (replaces the drawn boxes), ball_cart, tackling_sled + ride_on_mower on
+  blocked squares, pegboards + tool chest; the office lined. South Gate: navy dado + cream, bunting, SOUTH GATE on the wall, two ticket_machine,
+  scarf_rack; stewards + security lined; a metal_detector arch. The 18 new Meshy models: data.js "THE SPORTS + CULTURE INTERIOR PIECES",
+  R2 Assets/world/props/meshy/<key>.glb (the optimized copy), originals + concepts in project files disaster-city-sports-culture/interiors2/meshy/.
+  MANIFEST GOTCHA: `node manifest-assets.js <dir> --prefix Assets/world/props/meshy/ --merge` DROPS every other row under that prefix (132
+  rows gone); add the new rows to main's manifest by hand (a few lines of node) instead.
 
 - THE RESIDENTS' BEDROOMS (2026-11-14, mondo 02:21 "District threads add them"; brief /mnt/project-files/disaster-city-residents/bedrooms-brief.md):
   the three Sports residences are walk-ins now (ids kept): P06-09-B2 the Quarterback (the Box office house, door in face square 7), P07-08-B2
