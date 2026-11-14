@@ -66504,6 +66504,497 @@ function hqRoomPopulation(roomId, profile, opts) {
     } catch (e) { group = null; }
     return { kind, site, hub: hubId, pool, tiers, n: draw.length, draw, seed, m2: Math.round(m2), group };
 }
+/* ══ THE RESIDENTS (2026-11-14, mondo: "one of every unit in disaster city (the ones that belong there) ... a more advanced version of the
+   routines the walk in door hq. Ideally every one of these units can have a residential home they go to at night with a bed, or they are
+   out partying at night and sleep a different time ... Only use units on the roster, dont make up new npcs"; his OK on the plan + mock-up
+   (/mnt/project-files/disaster-city-residents/), "Routines now, bedrooms next") ══
+   Disaster City's people are ONE OF EACH unit that lives there (his AREA UNITS table for the room + the plan's cast anchors,
+   docs/disaster-city/city-layout.json `cast`), every one with a HOME (a building id of the 144-plot plan) and a DAY on the world clock
+   (HQ_WORLD_CLOCK: one game hour = one real minute): `day` = [[from, to, kind, place], ...] in game hours, kind S sleep / W work /
+   O out / P patrol. A gap between two rows is time on the street (the walk, the bus, an errand near the next place).
+   PLACES: 'home' · 'b:<building id>' (a walk-in building: they walk in through its door and potter between its squares; any other
+   building: they go in through the front and are inside, unseen) · 'p:<plot id>' (they wander the plot's open squares) · 'd:<letters>'
+   (the streets of those districts) · 'road:<letters>' (the carriageways: the car) · 'beach' (the sand east of Bayside) · 'spot:<race>'
+   (the room's own authored spot for that race: they stand on it and say its line). Asleep = inside their home (the walk-in BEDROOMS are
+   the next pass). Long trips (more than `busM` of walking) ride BUS LINE 1 (terrain.busStops): unseen between the two stops.
+   THE ROUTE MAP (hqCityGrid): the room read as its 3.5 m squares — every wall / fence / building wall (hqTexBuildingRows: the walk-in's
+   doorway is the gap), solid building, plateau, tree, stream, blocking prop, the water under the sea, the ground's heights (THE LEVELS:
+   two squares meet only where the ground is one surface, or a stair / ramp row crosses) — and A* over it (hqCityPath). Pure, cached per
+   room; three-renderer.js "THE RESIDENTS" draws the nearest `drawn` of them (`drawnLow` on EW_PERF_LOW) within `radius` metres and moves
+   each on its own timeline (hqResidentTimeline / hqResidentAt: a pure function of the hour, so the city is where the clock says when you
+   arrive). Viewer-local: nothing on `state`, nothing relayed (RULE #2). Kill switch window.EW_HQ_NO_RESIDENTS; dev hq.residents(). */
+const HQ_CITY_RESIDENTS = {
+    room: 'site_prebuilt_downtown_streets',
+    drawn: 8, drawnLow: 4, radius: 70, keepM: 85, bodies: 14,      // the bodies: the nearest `drawn` within `radius` m; one drawn stays until `keepM`; at most `bodies` rigs kept
+    walkSpeed: 1.35, carSpeed: 5, busM: 150, busSpeed: 9,          // m/s; a walk longer than busM metres rides the bus
+    roadCost: 2.5, stepM: 0.35, doorGapM: 0.95,                    // the route map: a carriageway square costs more (the pavement first); a step the walk takes; the narrowest gap walked
+    potterH: [0.35, 0.9], wanderH: [0.12, 0.45], patrolH: [0.03, 0.15], wanderR: 26, errandR: 14,   // pauses (game hours) inside / out / on patrol; how far a wander leg reaches
+    beach: [256, 96, 304, 246],                                    // x0 z0 x1 z1 (room metres): the sand east of Bayside
+    districts: { R: [0, 0], C: [1, 0], F: [2, 0], U: [0, 1], H: [1, 1], E: [2, 1], I: [0, 2], S: [1, 2], B: [2, 2] },   // a district's first plot (×4)
+    fronts: {
+        'P00-01-B2': [-225.75, -190.75], 'P00-02-B2': [-225.75, -148.75], 'P01-00-B1': [-183.75, -232.75], 'P01-03-B1': [-183.75, -106.75], 'P01-03-B2': [-183.75, -103.25], 'P02-01-B1': [-141.75, -190.75],
+        'P02-01-B2': [-152.25, -190.75], 'P03-00-B2': [-96.25, -232.75], 'P08-01-B1': [110.25, -190.75], 'P08-00-B1': [103.25, -246.75], 'P11-00-B2': [229.25, -232.75], 'P10-01-B2': [183.75, -190.75],
+        'P11-02-B2': [229.25, -148.75], 'P09-03-B2': [134.75, -106.75], 'P03-04-B1': [-96.25, -64.75], 'P01-05-B1': [-190.75, -36.75], 'P00-04-B1': [-232.75, -78.75], 'P07-04-B2': [64.75, -64.75],
+        'P04-05-B2': [-68.25, -19.25], 'P11-04-B2': [232.75, -64.75], 'P06-09-B2': [15.75, 145.25], 'P07-08-B2': [61.25, 103.25], 'P06-08-B1': [19.25, 89.25], 'P07-10-B2': [57.75, 190.75],
+        'P02-09-B2': [-152.25, 148.75], 'P01-11-B2': [-194.25, 229.25], 'P00-09-B2': [-236.25, 145.25], 'P10-09-B2': [183.75, 148.75], 'P09-09-B1': [145.25, 131.25]
+    },                                                    // building id → [x, z]: the square in front of a building without a walk-in door (bake: node scratch, see notes)
+    list: [
+        /* SOUTHSIDE */
+        { race: 'priest', gender: 'male', home: 'P00-01-B2', homeName: 'Southside apartments', day: [[22, 5, 'S', 'home'], [6, 20, 'W', 'b:P00-00-B1'], [20, 22, 'O', 'b:P00-01-B1']] },
+        { race: 'priest', gender: 'female', home: 'P00-02-B2', homeName: 'Southside apartments', day: [[21, 5, 'S', 'home'], [5, 13, 'W', 'b:P00-00-B1'], [13, 17, 'W', 'b:P00-01-B1'], [17, 21, 'W', 'b:P00-00-B1']] },
+        { race: 'ki fighter', home: 'P01-00-B1', homeName: 'Townhouses', day: [[21, 4, 'S', 'home'], [5, 12, 'W', 'b:P03-01-B1'], [13, 17, 'W', 'b:P03-00-B1'], [17, 21, 'O', 'p:P01-02']] },
+        { race: 'swordfighter', home: 'P01-00-B1', homeName: 'Townhouses', day: [[23, 7, 'S', 'home'], [8, 17, 'W', 'b:P03-01-B1'], [18, 23, 'O', 'p:P01-01']] },
+        { race: 'gangster', home: 'P01-03-B1', homeName: 'Homes row', day: [[5, 13, 'S', 'home'], [14, 20, 'W', 'b:P02-03-B1'], [21, 5, 'O', 'b:P08-04-B1']] },
+        { race: 'homosapien', home: 'P01-03-B2', homeName: 'Homes row', day: [[23, 7, 'S', 'home'], [8, 17, 'W', 'b:P01-00-B2'], [18, 23, 'O', 'p:P02-00']] },
+        { race: 'conspiracy theorist', home: 'P02-01-B1', homeName: 'Tenement', day: [[4, 12, 'S', 'home'], [13, 19, 'W', 'b:P00-06-B1'], [19, 23, 'O', 'b:P01-06-B1'], [23, 4, 'P', 'd:R']] },
+        { race: 'cult leader', home: 'P02-01-B2', homeName: 'Walk-up flats', day: [[1, 9, 'S', 'home'], [10, 16, 'W', 'b:P00-01-B1'], [16, 21, 'O', 'p:P01-02'], [21, 1, 'P', 'p:P00-03']] },
+        { race: 'firefighter', home: 'P03-00-B2', homeName: 'Southside residence', day: [[22, 6, 'S', 'home'], [7, 19, 'W', 'b:P04-00-B1'], [19, 22, 'O', 'b:P03-00-B1']] },
+        /* FINANCIAL */
+        { race: 'halfdemon', home: 'P10-03-B1', homeName: 'Penthouse stair', day: [[6, 14, 'S', 'home'], [15, 18, 'O', 'b:P11-03-B1'], [19, 23, 'O', 'b:P08-01-B1'], [23, 5, 'O', 'b:P08-04-B1']] },
+        { race: 'politician', home: 'P08-00-B1', homeName: 'Luxury hotel', day: [[0, 7, 'S', 'home'], [8, 17, 'W', 'b:P06-00-B1'], [18, 24, 'O', 'b:P08-01-B1']] },
+        { race: 'goblin', home: 'P11-00-B2', homeName: 'Bankers’ terrace', day: [[22, 6, 'S', 'home'], [7, 19, 'W', 'b:P10-00-B1'], [19, 22, 'O', 'b:P11-01-B1']] },
+        { race: 'men in black', home: 'P10-01-B2', homeName: 'Bankers’ terrace', day: [[12, 18, 'S', 'home'], [19, 3, 'W', 'b:P10-02-B1'], [3, 11, 'P', 'd:F']] },
+        { race: 'spy', home: 'P11-02-B2', homeName: 'Bankers’ terrace', day: [[3, 11, 'S', 'home'], [12, 18, 'W', 'b:P10-02-B1'], [19, 23, 'O', 'b:P08-01-B1'], [23, 3, 'O', 'b:P08-04-B1']] },
+        { race: 'general', home: 'P09-03-B2', homeName: 'Bankers’ terrace', day: [[22, 5, 'S', 'home'], [6, 18, 'W', 'b:P06-03-B1'], [19, 22, 'O', 'b:P08-01-B1']] },
+        { race: 'time cop', home: 'P09-03-B2', homeName: 'Bankers’ terrace', day: [[2, 10, 'S', 'home'], [11, 1, 'W', 'b:P07-02-B1']] },
+        { race: 'honda civic', home: 'P08-02-B1', homeName: 'Taxi court', car: true, day: [[23, 7, 'S', 'home'], [7, 23, 'P', 'road:FE']] },
+        /* UNIVERSITY */
+        { race: 'professor', home: 'P03-04-B1', homeName: 'Faculty homes', day: [[23, 6, 'S', 'home'], [8, 16, 'W', 'b:P01-05-B1'], [16, 22, 'O', 'b:P01-06-B1']] },
+        { race: 'mad scientist', home: 'P03-04-B1', homeName: 'Faculty homes', day: [[8, 15, 'S', 'home'], [16, 7, 'W', 'b:P02-05-B1']] },
+        { race: 'reptilian', home: 'P03-04-B1', homeName: 'Faculty homes', day: [[21, 5, 'S', 'home'], [6, 14, 'W', 'b:P03-06-B1'], [14, 18, 'O', 'b:P02-07-B1'], [18, 21, 'W', 'b:P03-06-B1']] },
+        { race: 'telepath', home: 'P00-04-B1', homeName: 'Dorm', day: [[0, 8, 'S', 'home'], [9, 17, 'W', 'b:P03-05-B1'], [18, 24, 'O', 'b:P00-06-B1']] },
+        { race: 'zombie', home: 'P00-04-B1', homeName: 'Dorm', day: [[8, 18, 'S', 'home'], [19, 7, 'P', 'd:UR']] },
+        /* HERO PLAZA */
+        { race: 'antihero', home: 'P04-06-B1', homeName: 'Apartment stair', day: [[7, 15, 'S', 'home'], [15, 19, 'O', 'b:P04-05-B1'], [20, 6, 'P', 'd:H']] },
+        { race: 'sidekick', home: 'P07-04-B2', homeName: 'Apartments A', day: [[23, 7, 'S', 'home'], [8, 18, 'W', 'b:P05-04-B1'], [18, 23, 'O', 'b:P06-04-B1']] },
+        { race: 'superhero', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[0, 6, 'S', 'home'], [7, 11, 'W', 'b:P06-05-B1'], [11, 19, 'P', 'p:P05-05'], [19, 24, 'W', 'b:P06-04-B1']] },
+        { race: 'eagleman', home: 'P06-04-B1', homeName: 'Superhero Tower', day: [[21, 4, 'S', 'home'], [5, 20, 'W', 'p:P05-05']] },
+        { race: 'nephilim', home: 'P04-05-B2', homeName: 'Hero Plaza residence', day: [[23, 7, 'S', 'home'], [9, 17, 'W', 'b:P06-05-B1'], [17, 22, 'O', 'b:P04-05-B1']] },
+        { race: 'police officer', home: 'P07-04-B2', homeName: 'Apartments A', day: [[8, 15, 'S', 'home'], [16, 24, 'W', 'b:P04-02-B1'], [0, 7, 'P', 'd:HE']] },
+        /* ENTERTAINMENT */
+        { race: 'clown', home: 'P10-07-B1', homeName: 'Crew house', day: [[2, 10, 'S', 'home'], [11, 14, 'W', 'b:P09-05-B1'], [14, 18, 'O', 'b:P11-06-B1'], [19, 1, 'W', 'b:P09-05-B1']] },
+        { race: 'mime', home: 'P10-07-B1', homeName: 'Crew house', day: [[1, 9, 'S', 'home'], [10, 17, 'W', 'p:P08-05'], [18, 24, 'W', 'b:P09-05-B1']] },
+        { race: 'ringmaster', home: 'P10-07-B1', homeName: 'Crew house', day: [[3, 11, 'S', 'home'], [12, 18, 'W', 'b:P10-06-B1'], [19, 2, 'W', 'b:P09-06-B1']] },
+        { race: 'bunny girl', home: 'P11-04-B2', homeName: 'Lofts', day: [[5, 13, 'S', 'home'], [14, 18, 'O', 'b:P11-06-B1'], [19, 4, 'W', 'b:P08-04-B1']] },
+        { race: 'popstar', home: 'P08-08-B1', homeName: 'Waterfront hotel', day: [[4, 12, 'S', 'home'], [13, 18, 'W', 'b:P11-04-B1'], [19, 1, 'W', 'b:P10-04-B1'], [1, 4, 'O', 'b:P09-06-B1']] },
+        /* SPORTS + CULTURE */
+        { race: 'quarterback', home: 'P06-09-B2', homeName: 'Sports residence', day: [[23, 6, 'S', 'home'], [7, 13, 'W', 'p:P05-09'], [14, 17, 'W', 'b:P06-10-B1'], [19, 23, 'O', 'p:P08-05']] },
+        { race: 'luchador', home: 'P07-08-B2', homeName: 'Sports residence', day: [[2, 10, 'S', 'home'], [11, 16, 'W', 'b:P06-10-B1'], [17, 1, 'W', 'b:P06-08-B1']] },
+        { race: 'juggernaut', home: 'P07-10-B2', homeName: 'Sports residence', day: [[22, 6, 'S', 'home'], [7, 15, 'W', 'b:P06-10-B1'], [18, 22, 'O', 'b:P06-08-B1']] },
+        { race: 'knight', home: 'P02-09-B2', homeName: 'Industrial house', day: [[22, 6, 'S', 'home'], [8, 18, 'W', 'b:P04-08-B1'], [18, 21, 'O', 'p:P04-09']] },
+        { race: 'king kong', home: 'p:P05-09', homeName: 'the stadium field', outdoors: true, day: [[22, 6, 'S', 'home'], [7, 21, 'P', 'spot:king kong']] },
+        /* INDUSTRIAL */
+        { race: 'astronaut', home: 'P01-11-B2', homeName: 'Industrial house', day: [[22, 5, 'S', 'home'], [6, 18, 'W', 'b:P03-09-B1'], [18, 21, 'O', 'b:P03-10-B1']] },
+        { race: 'marksman', home: 'P00-09-B2', homeName: 'Industrial house', day: [[23, 6, 'S', 'home'], [7, 19, 'W', 'b:P00-08-B1'], [19, 22, 'O', 'b:P03-11-B1']] },
+        /* BAYSIDE */
+        { race: 'pirate', home: 'P10-09-B2', homeName: 'Staff apartments', day: [[4, 12, 'S', 'home'], [13, 20, 'W', 'b:P09-08-B3'], [20, 3, 'O', 'beach']] },
+        { race: 'chef', home: 'P10-09-B2', homeName: 'Staff apartments', day: [[21, 4, 'S', 'home'], [5, 15, 'W', 'b:P09-09-B1'], [15, 19, 'O', 'p:P08-09']] },
+        { race: 'hippie', home: 'P10-09-B2', homeName: 'Staff apartments', day: [[0, 8, 'S', 'home'], [9, 17, 'W', 'p:P08-09'], [17, 23, 'O', 'beach']] },
+        { race: 'ghost', home: 'P08-08-B1', homeName: 'Waterfront hotel', day: [[6, 21, 'S', 'home'], [22, 5, 'P', 'b:P08-08-B1']] },
+    ],
+};
+let _hqCityGridCache = null;
+/* THE ROUTE MAP of a room: { nx, nz, x0, z0, res, walk (Uint8: 0 no, 1 ground, 2 road), comp (the walk's own component: 1), openE / openS (Uint8: the
+   square to the east / south is walked to), cost, bid (Int16: the walk-in building a square is inside, -1), bld [{ id, inner, outer, ax, az, bx, bz, cells }],
+   byB { id: index }, stops [square] (the bus), spawn }. null when the room is not a terrain room. */
+function hqCityGrid(roomId) {
+    const room = (DOOR_HQ.rooms || {})[roomId], T = room && room.terrain;
+    if (!T || !room.shell) return null;
+    const key = roomId + '|' + (T.features || []).length + '|' + (room.props || []).length;
+    if (_hqCityGridCache && _hqCityGridCache.key === key) return _hqCityGridCache.G;
+    const R = HQ_CITY_RESIDENTS, res = 3.5, S = room.shell, hw = (S.w || 100) / 2, hd = (S.d || 100) / 2;
+    const nx = Math.round(2 * hw / res), nz = Math.round(2 * hd / res), x0 = -hw, z0 = -hd, N = nx * nz;
+    const cx = i => x0 + (i + 0.5) * res, cz = j => z0 + (j + 0.5) * res;
+    const sqOf = (x, z) => { const i = Math.floor((x - x0) / res), j = Math.floor((z - z0) / res); return (i < 0 || j < 0 || i >= nx || j >= nz) ? -1 : j * nx + i; };
+    const F = T.features || [], slopeFn = (typeof hqTerrainSlopeFn === 'function') ? hqTerrainSlopeFn(T) : null, base = +T.base || 0;
+    const sinks = F.filter(f => f.k === 'plateau' && f.sink), decks = F.filter(f => f.k === 'deck');
+    const inRect = (f, x, z, m) => Math.abs(x - f.x) <= f.w / 2 - (m || 0) && Math.abs(z - f.z) <= f.d / 2 - (m || 0);
+    const segD = (px, pz, ax, az, bx, bz) => { const dx = bx - ax, dz = bz - az, L2 = dx * dx + dz * dz; let t = L2 ? ((px - ax) * dx + (pz - az) * dz) / L2 : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(px - ax - dx * t, pz - az - dz * t); };
+    const onDeck = (x, z) => decks.find(f => segD(x, z, f.x0, f.z0, f.x1, f.z1) <= (f.w || 2) / 2);
+    const groundAt = (x, z) => {
+        const dk = onDeck(x, z); if (dk) return +dk.y || 0;
+        for (let k = sinks.length - 1; k >= 0; k--) if (inRect(sinks[k], x, z)) return +sinks[k].h;
+        return base + (slopeFn ? slopeFn(x, z) : 0);
+    };
+    const walk = new Uint8Array(N).fill(1), bid = new Int16Array(N).fill(-1), cover = new Uint16Array(N * 2), force = new Uint8Array(N * 2);
+    const seaY = (T.sea && isFinite(+T.sea.y)) ? +T.sea.y : -Infinity;
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) { const x = cx(i), z = cz(j); if (!onDeck(x, z) && groundAt(x, z) < seaY - 0.05) walk[j * nx + i] = 0; }
+    /* blocked squares: a rect (turned by quarter turns), a disc */
+    const blockRect = (x, z, w, d, rot, m) => {
+        const turned = Math.round((rot || 0) / 90) % 2 !== 0, ex = (turned ? d : w) / 2 + (m || 0), ez = (turned ? w : d) / 2 + (m || 0);
+        for (let j = Math.max(0, Math.floor((z - ez - z0) / res)); j <= Math.min(nz - 1, Math.floor((z + ez - z0) / res)); j++)
+            for (let i = Math.max(0, Math.floor((x - ex - x0) / res)); i <= Math.min(nx - 1, Math.floor((x + ex - x0) / res)); i++)
+                if (Math.abs(cx(i) - x) <= ex && Math.abs(cz(j) - z) <= ez) walk[j * nx + i] = 0;
+    };
+    /* the walls: each run of wall along a square's side is a slot of 0.25 m covered (14 slots a side); a side whose free run is under doorGapM is shut.
+       `cover` keeps, per square, its east side (2k) and its south side (2k + 1) as a 14-bit mask */
+    const SL = 14, slot = res / SL;
+    const markWall = (ax, az, bx, bz) => {
+        const L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L / 0.2));
+        for (let s = 0; s <= n; s++) {
+            const x = ax + (bx - ax) * s / n, z = az + (bz - az) * s / n, fx = (x - x0) / res, fz = (z - z0) / res;
+            const dX = Math.abs(fx - Math.round(fx)), dZ = Math.abs(fz - Math.round(fz));
+            if (dX <= dZ) {   // nearest a north-south line: the east side of the square west of it
+                const li = Math.round(fx) - 1, j = Math.floor(fz); if (li < 0 || li >= nx - 1 || j < 0 || j >= nz) continue;
+                const b = Math.max(0, Math.min(SL - 1, Math.floor((z - (z0 + j * res)) / slot))); cover[2 * (j * nx + li)] |= (1 << b);
+            } else {
+                const lj = Math.round(fz) - 1, i = Math.floor(fx); if (lj < 0 || lj >= nz - 1 || i < 0 || i >= nx) continue;
+                const b = Math.max(0, Math.min(SL - 1, Math.floor((x - (x0 + i * res)) / slot))); cover[2 * (lj * nx + i) + 1] |= (1 << b);
+            }
+        }
+    };
+    const shut = m => { let run = 0, best = 0; for (let b = 0; b < SL; b++) { if (m & (1 << b)) run = 0; else { run++; if (run > best) best = run; } } return best * slot < R.doorGapM; };
+    const bld = [], byB = {};
+    F.forEach(f => {
+        try {
+            if (f.k === 'texbuilding') {
+                const hollow = f.hollow && !(typeof hqTexbPack === 'function' && hqTexbPack(f)) && !(typeof hqTexbPrism === 'function' && hqTexbPrism(f));
+                hqTexBuildingRows(f).forEach(r => { if (r.k === 'wall' && !r.lift) markWall(r.x0, r.z0, r.x1, r.z1); });
+                if (!hollow) { blockRect(f.x, f.z, f.w, f.d, f.rot, 0.15); return; }
+                const D = hqTexbDoor(f), q = (+f.rot || 0) * Math.PI / 180, c = Math.cos(q), s = Math.sin(q), hdd = Math.max(2, +f.d || 8) / 2;
+                const P = (lx, lz) => [f.x + lx * c - lz * s, f.z + lx * s + lz * c], a = P(D.lx, hdd - 0.85), b = P(D.lx, hdd + 0.95), ai = P(D.lx, hdd - 1.75), bo = P(D.lx, hdd + 1.75);
+                const B = { id: String(f.id || '').replace(/^dc:/, ''), ax: a[0], az: a[1], bx: b[0], bz: b[1], inner: sqOf(ai[0], ai[1]), outer: sqOf(bo[0], bo[1]), cells: [], f };
+                const turned = Math.round((+f.rot || 0) / 90) % 2 !== 0, ex = (turned ? f.d : f.w) / 2 - 0.2, ez = (turned ? f.w : f.d) / 2 - 0.2;
+                for (let j = Math.max(0, Math.floor((f.z - ez - z0) / res)); j <= Math.min(nz - 1, Math.floor((f.z + ez - z0) / res)); j++)
+                    for (let i = Math.max(0, Math.floor((f.x - ex - x0) / res)); i <= Math.min(nx - 1, Math.floor((f.x + ex - x0) / res)); i++)
+                        if (Math.abs(cx(i) - f.x) <= ex && Math.abs(cz(j) - f.z) <= ez) { bid[j * nx + i] = bld.length; B.cells.push(j * nx + i); }
+                if (B.inner >= 0 && bid[B.inner] < 0) { bid[B.inner] = bld.length; B.cells.push(B.inner); }
+                if (B.id) byB[B.id] = bld.length;
+                bld.push(B);
+            } else if (f.k === 'plateau' && !f.sink) blockRect(f.x, f.z, f.w, f.d, 0, 0.15);
+            else if (f.k === 'wall' || f.k === 'rail') {
+                if (f.lift) return;
+                if (typeof f.y === 'number') { const g = groundAt((f.x0 + f.x1) / 2, (f.z0 + f.z1) / 2), top = f.absY ? f.y : f.y + g; if (top - g > 5 || top - g < 0.45) return; }
+                markWall(f.x0, f.z0, f.x1, f.z1);
+            } else if (f.k === 'tree') { const k = sqOf(f.x, f.z); if (k >= 0) walk[k] = 0; }
+            else if (f.k === 'stream' && Array.isArray(f.pts)) {
+                for (let p = 1; p < f.pts.length; p++) { const A = f.pts[p - 1], Bp = f.pts[p], L = Math.hypot(Bp[0] - A[0], Bp[1] - A[1]), n = Math.max(1, Math.ceil(L / 0.5));
+                    for (let s = 0; s <= n; s++) blockRect(A[0] + (Bp[0] - A[0]) * s / n, A[1] + (Bp[1] - A[1]) * s / n, (f.w || 2) + 0.4, (f.w || 2) + 0.4, 0, 0); }
+            }
+        } catch (e) {}
+    });
+    /* the props: a BIG one (a car, a container, a jet, a pack building: a rect of 6 m² or more) shuts the squares whose middle it covers; a small
+       one (a bench, a planter, a vending machine) leaves the square walked and is a disc the walk keeps clear of (`soft`: square → [[x, z, r]]) */
+    const CAT = DOOR_HQ.catalogue || {}, soft = new Map();
+    (room.props || []).forEach(p => {
+        const d = p && CAT[p.key]; if (!d || (+p.y || 0) > 1.0) return;
+        const turned = Math.round((+p.face || 0) / 90) % 2 !== 0, hwx = d.rect ? (turned ? d.rect.hd : d.rect.hw) : (+d.foot || 0) / 2, hdz = d.rect ? (turned ? d.rect.hw : d.rect.hd) : (+d.foot || 0) / 2;
+        if (!(hwx > 0.12) && !(hdz > 0.12)) return;
+        if (4 * hwx * hdz >= 6 && (d.block || d.rect)) { blockRect(p.x, p.z, 2 * hwx, 2 * hdz, 0, 0); return; }
+        if (!d.rect && (+d.foot || 0) < 0.45 && !d.block) return;
+        const r = Math.hypot(hwx, hdz) * 0.85;
+        for (let j = Math.floor((p.z - r - 0.5 - z0) / res); j <= Math.floor((p.z + r + 0.5 - z0) / res); j++) for (let i = Math.floor((p.x - r - 0.5 - x0) / res); i <= Math.floor((p.x + r + 0.5 - x0) / res); i++) {
+            if (i < 0 || j < 0 || i >= nx || j >= nz) continue; const k = j * nx + i; if (!soft.has(k)) soft.set(k, []); soft.get(k).push([p.x, p.z, r]);
+        }
+    });
+    /* the stairs and ramps: a flight joins the squares it crosses whatever their heights (the ground either end is the flight's own) */
+    F.forEach(f => {
+        if (f.k !== 'ramp' || f.x0 == null) return;
+        const L = Math.hypot(f.x1 - f.x0, f.z1 - f.z0); if (!(L > 0)) return;
+        const ux = (f.x1 - f.x0) / L, uz = (f.z1 - f.z0) / L; let prev = -1;
+        for (let t = -1.4; t <= L + 1.4; t += 0.35) {
+            const k = sqOf(f.x0 + ux * t, f.z0 + uz * t); if (k < 0 || k === prev) continue;
+            if (prev >= 0) { const di = (k % nx) - (prev % nx), dj = Math.floor(k / nx) - Math.floor(prev / nx);
+                if (di === 1 && !dj) force[2 * prev] = 1; else if (di === -1 && !dj) force[2 * k] = 1; else if (dj === 1 && !di) force[2 * prev + 1] = 1; else if (dj === -1 && !di) force[2 * k + 1] = 1; }
+            if (walk[k] === 0 && bid[k] < 0) walk[k] = 1;
+            prev = k;
+        }
+    });
+    /* THE DOORWAYS: a walk-in's two door squares are walked whatever stands by them (the doorway's own walk is the door's points), the side
+       between them open (the gap may straddle two squares' sides: the wall test alone would shut both) */
+    const doorSide = new Uint8Array(N * 2);
+    bld.forEach(B => {
+        const a = B.inner, b = B.outer; if (a < 0 || b < 0) return;
+        const di = (b % nx) - (a % nx), dj = Math.floor(b / nx) - Math.floor(a / nx); if (Math.abs(di) + Math.abs(dj) !== 1) return;
+        walk[a] = walk[a] || 1; walk[b] = walk[b] || 1;
+        const k = (di === 1 || dj === 1) ? a : b; doorSide[2 * k + (di ? 0 : 1)] = 1;
+    });
+    /* the roads: a square on a city street's carriageway costs `roadCost` */
+    const streets = (T.gen && Array.isArray(T.gen.streets)) ? T.gen.streets : [];
+    for (let k = 0; k < N; k++) {
+        if (!walk[k]) continue; const x = cx(k % nx), z = cz(Math.floor(k / nx));
+        for (const st of streets) { const P = st.pts || []; let hit = false; for (let p = 1; p < P.length && !hit; p++) if (segD(x, z, P[p - 1][0], P[p - 1][1], P[p][0], P[p][1]) <= (st.w || 10) / 2 - 1.6) hit = true; if (hit) { walk[k] = 2; break; } }
+    }
+    /* the sides: both squares walked, the side not walled, and the ground one surface (or a flight) */
+    const openE = new Uint8Array(N), openS = new Uint8Array(N), tol = R.stepM;
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+        const k = j * nx + i; if (!walk[k]) continue;
+        if (i < nx - 1 && walk[k + 1] && (doorSide[2 * k] || !shut(cover[2 * k]))) {
+            const lx = x0 + (i + 1) * res; let ok = force[2 * k] === 1 || doorSide[2 * k] === 1;
+            if (!ok) { ok = true; for (const v of [0.25, 0.75]) { const z = z0 + (j + v) * res; if (Math.abs(groundAt(lx - 0.12, z) - groundAt(lx + 0.12, z)) > tol) { ok = false; break; } } }
+            if (ok) openE[k] = 1;
+        }
+        if (j < nz - 1 && walk[k + nx] && (doorSide[2 * k + 1] || !shut(cover[2 * k + 1]))) {
+            const lz = z0 + (j + 1) * res; let ok = force[2 * k + 1] === 1 || doorSide[2 * k + 1] === 1;
+            if (!ok) { ok = true; for (const v of [0.25, 0.75]) { const x = x0 + (i + v) * res; if (Math.abs(groundAt(x, lz - 0.12) - groundAt(x, lz + 0.12)) > tol) { ok = false; break; } } }
+            if (ok) openS[k] = 1;
+        }
+    }
+    /* the walk's own component: everything reached from the room's spawn (the west strip behind the city's ghost wall, a walled yard: not walked) */
+    const comp = new Uint8Array(N), sp = room.spawn || { x: 0, z: 0 };
+    let seed = sqOf(+sp.x || 0, +sp.z || 0);
+    if (seed < 0 || !walk[seed]) { let best = -1, bd = Infinity; for (let k = 0; k < N; k++) if (walk[k]) { const d = Math.hypot(cx(k % nx) - (+sp.x || 0), cz(Math.floor(k / nx)) - (+sp.z || 0)); if (d < bd) { bd = d; best = k; } } seed = best; }
+    if (seed >= 0) {
+        const q = [seed]; comp[seed] = 1;
+        while (q.length) { const k = q.pop(), i = k % nx;
+            const nb = [i < nx - 1 && openE[k] ? k + 1 : -1, i > 0 && openE[k - 1] ? k - 1 : -1, openS[k] ? k + nx : -1, k >= nx && openS[k - nx] ? k - nx : -1];
+            for (const m of nb) if (m >= 0 && m < N && !comp[m]) { comp[m] = 1; q.push(m); } }
+    }
+    const cost = new Float32Array(N); for (let k = 0; k < N; k++) cost[k] = walk[k] === 2 ? R.roadCost : 1;
+    const stops = (T.busStops || []).map(b => b && hqCityNearest({ nx, nz, x0, z0, res, comp }, +b.x, +b.z)).filter(k => k >= 0);
+    /* a square's walked point: its middle, or the spot in it farthest from its small props */
+    const pt = new Map();
+    soft.forEach((L, k) => {
+        const mx = cx(k % nx), mz = cz(Math.floor(k / nx)); let best = null, bs = -Infinity;
+        for (const ox of [0, -1.1, 1.1]) for (const oz of [0, -1.1, 1.1]) { const x = mx + ox, z = mz + oz; let cl = Infinity; L.forEach(q => { cl = Math.min(cl, Math.hypot(x - q[0], z - q[1]) - q[2]); }); const sc = Math.min(cl, 1.2) - 0.05 * Math.hypot(ox, oz); if (sc > bs) { bs = sc; best = { x, z }; } }
+        if (best && (best.x !== mx || best.z !== mz)) pt.set(k, best);
+    });
+    const G = { roomId, nx, nz, x0, z0, res, N, walk, comp, openE, openS, cost, bid, bld, byB, stops, groundAt, soft, pt, paths: new Map(), spawn: seed };
+    _hqCityGridCache = { key, G };
+    return G;
+}
+/* the nearest walked square (in the walk's component) to a point, -1 none; `ok(k)` narrows it */
+function hqCityNearest(G, x, z, ok) {
+    const i0 = Math.floor((x - G.x0) / G.res), j0 = Math.floor((z - G.z0) / G.res);
+    for (let r = 0; r < 40; r++) {
+        let best = -1, bd = Infinity;
+        for (let j = j0 - r; j <= j0 + r; j++) for (let i = i0 - r; i <= i0 + r; i++) {
+            if (Math.max(Math.abs(i - i0), Math.abs(j - j0)) !== r || i < 0 || j < 0 || i >= G.nx || j >= G.nz) continue;
+            const k = j * G.nx + i; if (!G.comp[k] || (ok && !ok(k))) continue;
+            const d = Math.hypot(G.x0 + (i + 0.5) * G.res - x, G.z0 + (j + 0.5) * G.res - z); if (d < bd) { bd = d; best = k; }
+        }
+        if (best >= 0) return best;
+    }
+    return -1;
+}
+/* A* over the squares (8 ways, no corner cut), the squares a → b; null = no way. `ok(k)` keeps the walk to some squares (the car: the roads) */
+function hqCityPath(G, a, b, ok) {
+    if (a < 0 || b < 0 || !G.comp[a] || !G.comp[b]) return null;
+    if (a === b) return [a];
+    const ck = ok ? null : a * G.N + b;
+    if (ck !== null && G.paths.has(ck)) return G.paths.get(ck);
+    const nx = G.nx, N = G.N, g = new Float32Array(N).fill(Infinity), came = new Int32Array(N).fill(-1), closed = new Uint8Array(N);
+    const bi = b % nx, bj = Math.floor(b / nx), h = k => { const di = Math.abs(k % nx - bi), dj = Math.abs(Math.floor(k / nx) - bj); return Math.max(di, dj) + 0.4142 * Math.min(di, dj); };
+    const heap = []; const push = (f, k) => { heap.push([f, k]); let c = heap.length - 1; while (c > 0) { const p = (c - 1) >> 1; if (heap[p][0] <= heap[c][0]) break; const t = heap[p]; heap[p] = heap[c]; heap[c] = t; c = p; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let c = 0; for (;;) { const l = 2 * c + 1, r = l + 1; let m = c; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === c) break; const t = heap[m]; heap[m] = heap[c]; heap[c] = t; c = m; } } return top; };
+    const open = (k, di, dj) => { const i = k % nx; if (di === 1) return i < nx - 1 && G.openE[k]; if (di === -1) return i > 0 && G.openE[k - 1]; if (dj === 1) return G.openS[k]; return k >= nx && G.openS[k - nx]; };
+    const step = (k, di, dj) => k + di + dj * nx;
+    g[a] = 0; push(h(a), a); let found = false, n = 0;
+    while (heap.length) {
+        const k = pop()[1]; if (closed[k]) continue; if (k === b) { found = true; break; } closed[k] = 1; if (++n > 60000) break;
+        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+            let m;
+            if (di && dj) { const kx = step(k, di, 0), kz = step(k, 0, dj); if (!open(k, di, 0) || !open(k, 0, dj) || !open(kx, 0, dj) || !open(kz, di, 0)) continue; m = step(k, di, dj); }
+            else { if (!open(k, di, dj)) continue; m = step(k, di, dj); }
+            if (closed[m] || (ok && !ok(m))) continue;
+            if (G.bid[m] !== G.bid[k] && G.bid[m] >= 0 && G.bid[k] >= 0) continue;   // never from one building straight into another
+            const ng = g[k] + ((di && dj) ? 1.4142 : 1) * (G.cost[k] + G.cost[m]) / 2;
+            if (ng < g[m]) { g[m] = ng; came[m] = k; push(ng + h(m), m); }
+        }
+    }
+    if (!found) { if (ck !== null) G.paths.set(ck, null); return null; }
+    const out = []; for (let k = b; k !== -1; k = came[k]) out.push(k); out.reverse();
+    if (ck !== null) { if (G.paths.size > 6000) G.paths.clear(); G.paths.set(ck, out); }
+    return out;
+}
+/* the squares → a polyline in metres: the square middles, a walk-in's doorway walked square on (its two door points), straightened where the
+   line stays on open squares; { pts: [{ x, z }], cum: [m], len } */
+function hqCityPts(G, cells, from, to) {
+    const nx = G.nx, mid = k => (G.pt && G.pt.get(k)) || ({ x: G.x0 + (k % nx + 0.5) * G.res, z: G.z0 + (Math.floor(k / nx) + 0.5) * G.res });
+    const raw = [{ x: from.x, z: from.z, fix: true }];
+    for (let c = 0; c < cells.length; c++) {
+        const k = cells[c], prev = c > 0 ? cells[c - 1] : -1;
+        if (prev >= 0 && G.bid[k] !== G.bid[prev]) {
+            const B = G.bld[G.bid[k] >= 0 ? G.bid[k] : G.bid[prev]];
+            if (B) { const inward = G.bid[k] >= 0; raw.push(inward ? { x: B.bx, z: B.bz, fix: true } : { x: B.ax, z: B.az, fix: true }); raw.push(inward ? { x: B.ax, z: B.az, fix: true } : { x: B.bx, z: B.bz, fix: true }); }
+        }
+        if (c > 0 && c < cells.length - 1) raw.push(mid(k));
+    }
+    raw.push({ x: to.x, z: to.z, fix: true });
+    const clear = (a, b) => {
+        const L = Math.hypot(b.x - a.x, b.z - a.z), n = Math.max(1, Math.ceil(L / 0.6)); let pk = -1;
+        for (let s = 0; s <= n; s++) {
+            const x = a.x + (b.x - a.x) * s / n, z = a.z + (b.z - a.z) * s / n, i = Math.floor((x - G.x0) / G.res), j = Math.floor((z - G.z0) / G.res), k = j * nx + i;
+            if (i < 0 || j < 0 || i >= nx || j >= G.nz || !G.comp[k]) return false;
+            const sf = G.soft && G.soft.get(k); if (sf && sf.some(q => Math.hypot(x - q[0], z - q[1]) < q[2] + 0.35)) return false;
+            if (pk >= 0 && k !== pk) {
+                if (G.bid[k] !== G.bid[pk]) return false;
+                const di = (k % nx) - (pk % nx), dj = Math.floor(k / nx) - Math.floor(pk / nx);
+                const op = (q, a2, b2) => a2 === 1 ? G.openE[q] : a2 === -1 ? G.openE[q - 1] : b2 === 1 ? G.openS[q] : G.openS[q - nx];
+                if (Math.abs(di) + Math.abs(dj) === 1) { if (!op(pk, di, dj)) return false; }
+                else if (Math.abs(di) === 1 && Math.abs(dj) === 1) { if (!((op(pk, di, 0) && op(pk + di, 0, dj)) || (op(pk, 0, dj) && op(pk + dj * nx, di, 0)))) return false; }
+                else return false;
+            }
+            pk = k;
+        }
+        return true;
+    };
+    const pts = [raw[0]];
+    let i = 0;
+    while (i < raw.length - 1) {
+        let j = i + 1;
+        while (j + 1 < raw.length && !raw[j].fix && clear(raw[i], raw[j + 1])) j++;
+        pts.push(raw[j]); i = j;
+    }
+    const cum = [0]; for (let p = 1; p < pts.length; p++) cum.push(cum[p - 1] + Math.hypot(pts[p].x - pts[p - 1].x, pts[p].z - pts[p - 1].z));
+    return { pts: pts.map(p => ({ x: p.x, z: p.z })), cum, len: cum[cum.length - 1] };
+}
+/* a resident's place → what it is in the room: { kind: 'in' | 'inside' | 'area' | 'spot', at: square, x, z, face, cells?, bld?, car? } */
+function hqResidentPlace(G, r, place) {
+    const R = HQ_CITY_RESIDENTS, room = DOOR_HQ.rooms[G.roomId] || {}, sq = k => ({ x: G.x0 + (k % G.nx + 0.5) * G.res, z: G.z0 + (Math.floor(k / G.nx) + 0.5) * G.res });
+    if (place === 'home') place = /^p:|^d:|^beach/.test(r.home) ? r.home : 'b:' + r.home;
+    const m = /^(b|p|d|road|spot):(.+)$/.exec(place) || (place === 'beach' ? ['', 'beach', ''] : null); if (!m) return null;
+    const plotSquares = (px, py) => { const out = [], ox = Math.round((-252 - G.x0) / G.res), oz = Math.round((-252 - G.z0) / G.res); for (let j = 0; j < 12; j++) for (let i = 0; i < 12; i++) { const k = (oz + py * 12 + j) * G.nx + ox + px * 12 + i; if (k >= 0 && k < G.N) out.push(k); } return out; };
+    const area = (cells, car) => { const c = cells.filter(k => G.comp[k] && G.bid[k] < 0 && (!car || G.walk[k] === 2)); if (!c.length) return null; const at = c[Math.floor(c.length / 2)], p = sq(at); return { kind: 'area', at, x: p.x, z: p.z, cells: c, car: !!car }; };
+    if (m[1] === 'b') {
+        const id = m[2], bi = G.byB[id];
+        if (bi != null) {
+            const B = G.bld[bi]; if (!B.inside) {   // the squares inside reached from its doorway
+                const seen = new Set(), q = (B.inner >= 0 && G.comp[B.inner]) ? [B.inner] : [];
+                q.forEach(k => seen.add(k));
+                while (q.length) { const k = q.pop(), i = k % G.nx; [[i < G.nx - 1 && G.openE[k], k + 1], [i > 0 && G.openE[k - 1], k - 1], [G.openS[k], k + G.nx], [k >= G.nx && G.openS[k - G.nx], k - G.nx]].forEach(([o, n]) => { if (o && !seen.has(n) && G.bid[n] === bi) { seen.add(n); q.push(n); } }); }
+                B.inside = Array.from(seen);
+            }
+            if (B.inside.length && G.comp[B.inner]) return { kind: 'inside', at: B.inner, x: B.ax, z: B.az, cells: B.inside, bld: bi, door: { x: B.bx, z: B.bz } };
+        }
+        const fr = R.fronts[id];
+        if (fr) { const at = hqCityNearest(G, fr[0], fr[1]); if (at >= 0) { const p = sq(at); return { kind: 'in', at, x: p.x, z: p.z }; } }
+        if (bi != null) { const B = G.bld[bi], at = hqCityNearest(G, B.bx, B.bz); if (at >= 0) { const p = sq(at); return { kind: 'in', at, x: p.x, z: p.z }; } }
+        const f = ((room.terrain && room.terrain.features) || []).find(q => q && q.id === 'dc:' + id);   // a building the plan moved: the street square nearest its middle
+        if (f) { const at = hqCityNearest(G, +f.x || 0, +f.z || 0); if (at >= 0) { const p = sq(at); return { kind: 'in', at, x: p.x, z: p.z }; } }
+        return null;
+    }
+    if (m[1] === 'p') { const pm = /^P(\d\d)-(\d\d)$/.exec(m[2]); return pm ? area(plotSquares(+pm[1], +pm[2])) : null; }
+    if (m[1] === 'd' || m[1] === 'road') { let c = []; m[2].split('').forEach(L => { const o = R.districts[L]; if (o) for (let py = 0; py < 4; py++) for (let px = 0; px < 4; px++) c = c.concat(plotSquares(o[0] * 4 + px, o[1] * 4 + py)); }); return area(c, m[1] === 'road'); }
+    if (m[1] === 'beach') { const b = R.beach, c = []; for (let k = 0; k < G.N; k++) { const p = sq(k); if (p.x >= b[0] && p.x <= b[2] && p.z >= b[1] && p.z <= b[3]) c.push(k); } return area(c); }
+    if (m[1] === 'spot') { const sp = (room.npcSpots || []).find(s => s && s.race === m[2] && s.x != null); if (!sp) return null; const at = hqCityNearest(G, sp.x, sp.z || 0); return at < 0 ? null : { kind: 'spot', at, x: sp.x, z: sp.z || 0, face: sp.face || 0, spot: sp }; }
+    return null;
+}
+/* A RESIDENT'S DAY: segments over one cycle that starts when its sleep starts (asleep at home: the one place the day is sure of).
+   u = hours since that start. { t0, segs: [{ u0, u1, k: 'in' | 'stay' | 'walk' | 'bus', x, z, face, path?, place }], r, home }. Pure:
+   seeded by `dayKey` (hqToday) + the race, so the same day draws the same day. A walk that would reach the next place early spends the
+   spare time on an errand round it (the street); a late one starts the place late; the walk home to bed is early enough to be in by
+   the cycle's end. */
+function hqResidentTimeline(G, r, dayKey) {
+    const R = HQ_CITY_RESIDENTS, rate = (typeof hqClockRate === 'function') ? hqClockRate() : (1 / 60), speed = r.car ? R.carSpeed : R.walkSpeed;
+    const rng = (() => { let s = (typeof hqHash === 'function' ? hqHash(String(dayKey) + '|' + r.race + '|' + (r.gender || '') + '|res') : 7) >>> 0 || 1; return () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return (s % 100000) / 100000; }; })();
+    const between = p => p[0] + (p[1] - p[0]) * rng();
+    const sq = k => ({ x: G.x0 + (k % G.nx + 0.5) * G.res, z: G.z0 + (Math.floor(k / G.nx) + 0.5) * G.res });
+    const hoursOf = m => (m / speed) * rate;
+    const sleepI = Math.max(0, r.day.findIndex(b => b[2] === 'S')), t0 = r.day[sleepI][0];
+    const U = h => ((h - t0) % 24 + 24) % 24;
+    const blocks = r.day.slice(sleepI).concat(r.day.slice(0, sleepI)).map((b, i) => { const u0 = i === 0 ? 0 : U(b[0]); let u1 = U(b[1]); if (u1 <= u0) u1 += 24; return { u0, u1: Math.min(24, u1), kind: b[2], place: b[3] }; });
+    const roadOk = r.car ? (k => G.walk[k] === 2) : null;
+    if (!G.outCells) { G.outCells = []; for (let k = 0; k < G.N; k++) if (G.comp[k] && G.bid[k] < 0) G.outCells.push(k); }
+    const segs = [];
+    const cutPath = (P, d) => { const pts = [P.pts[0]], cum = [0]; for (let p = 1; p < P.pts.length; p++) { if (P.cum[p] >= d) { const a = P.pts[p - 1], b = P.pts[p], t = (d - P.cum[p - 1]) / Math.max(1e-6, P.cum[p] - P.cum[p - 1]); pts.push({ x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t }); cum.push(d); break; } pts.push(P.pts[p]); cum.push(P.cum[p]); } return { pts, cum, len: cum[cum.length - 1] }; };
+    const posOf = s => s.k === 'walk' ? s.path.pts[s.path.pts.length - 1] : { x: s.x, z: s.z };
+    const here = p => ({ x: p.x, z: p.z, k: hqCityNearest(G, p.x, p.z) });
+    /* cut the day at `t`: everything from t on is dropped, the segment across t ends there; returns where the resident stands at t */
+    const truncate = t => {
+        while (segs.length && segs[segs.length - 1].u0 >= t) segs.pop();
+        const s = segs[segs.length - 1]; if (!s) return null;
+        if (s.u1 > t) { if (s.k === 'walk') { const f = (t - s.u0) / Math.max(1e-6, s.u1 - s.u0); s.path = cutPath(s.path, f * s.path.len); } s.u1 = t; }
+        return here(posOf(s));
+    };
+    /* a walk from `from` (square a) to `to` (square b): one segment, or three with the bus between the stops nearest either end */
+    const leg = (u, from, a, to, b, place) => {
+        const cells = hqCityPath(G, a, b, roadOk); if (!cells) return null;
+        const P = hqCityPts(G, cells, from, to);
+        if (!r.car && !r.outdoors && P.len > R.busM && G.stops.length >= 2) {
+            const near = (x, z) => { let best = -1, bd = Infinity; G.stops.forEach(s => { const p = sq(s), d = Math.hypot(p.x - x, p.z - z); if (d < bd) { bd = d; best = s; } }); return best; };
+            const sa = near(from.x, from.z), sb = near(to.x, to.z);
+            if (sa !== sb) {
+                const c1 = hqCityPath(G, a, sa), c2 = hqCityPath(G, sb, b);
+                if (c1 && c2) {
+                    const pa = sq(sa), pb = sq(sb), P1 = hqCityPts(G, c1, from, pa), P2 = hqCityPts(G, c2, pb, to);
+                    if (P1.len + P2.len < P.len * 0.7) {
+                        let v = u;
+                        segs.push({ u0: v, u1: v + hoursOf(P1.len), k: 'walk', path: P1, place }); v = segs[segs.length - 1].u1;
+                        segs.push({ u0: v, u1: v + Math.hypot(pb.x - pa.x, pb.z - pa.z) * 1.35 / R.busSpeed * rate + 0.08, k: 'bus', x: pb.x, z: pb.z, place }); v = segs[segs.length - 1].u1;
+                        segs.push({ u0: v, u1: v + hoursOf(P2.len), k: 'walk', path: P2, place });
+                        return segs[segs.length - 1].u1;
+                    }
+                }
+            }
+        }
+        segs.push({ u0: u, u1: u + hoursOf(P.len), k: 'walk', path: P, place });
+        return segs[segs.length - 1].u1;
+    };
+    /* time AT a place, u0 → u1: unseen inside, pottering inside a walk-in, wandering an area, on a spot; returns where it ends */
+    const stay = (u0, u1, pl, cur, kind, place, errand) => {
+        if (u1 - u0 < 0.02) return cur;
+        if (kind === 'S' && r.outdoors) { segs.push({ u0, u1, k: 'stay', x: cur.x, z: cur.z, face: 0, place }); return cur; }   // asleep where it stands (the giant ape on the field)
+        if (kind === 'S' || pl.kind === 'in') { segs.push({ u0, u1, k: 'in', x: pl.x, z: pl.z, place }); return { x: pl.x, z: pl.z, k: pl.at }; }
+        if (pl.kind === 'spot') { segs.push({ u0, u1, k: 'stay', x: pl.x, z: pl.z, face: pl.face, spot: pl.spot, place }); return { x: pl.x, z: pl.z, k: pl.at }; }
+        const pause = pl.kind === 'inside' ? R.potterH : kind === 'P' ? R.patrolH : R.wanderH, reach = pl.kind === 'inside' ? 1e9 : (errand ? R.errandR : R.wanderR);
+        let u = u0, at = cur, guard = 0;
+        while (u < u1 - 0.02 && guard++ < 80) {
+            const p = Math.min(u1 - u, between(pause)); segs.push({ u0: u, u1: u + p, k: 'stay', x: at.x, z: at.z, face: Math.floor(rng() * 360), place }); u += p;
+            if (u >= u1 - 0.02) break;
+            const near = pl.cells.filter(k => { const q = sq(k); return Math.hypot(q.x - at.x, q.z - at.z) <= reach; }), pool = near.length > 1 ? near : pl.cells;
+            const tk = pool[Math.floor(rng() * pool.length)], tq = sq(tk);
+            const end = leg(u, at, at.k, tq, tk, place); if (end == null) continue;
+            if (end > u1) { const t = truncate(u1); u = u1; if (t) at = t; break; }
+            u = end; at = { x: tq.x, z: tq.z, k: tk };
+        }
+        if (u < u1) segs.push({ u0: u, u1, k: 'stay', x: at.x, z: at.z, face: 0, place });
+        return at;
+    };
+    const places = blocks.map(b => { const p = hqResidentPlace(G, r, b.place); if (!p || !r.car || p.kind === 'area') return p;   // a car parks on the street square nearest its home's door
+        const at = hqCityNearest(G, p.x, p.z, roadOk); if (at < 0) return p; const q = sq(at); return { kind: 'in', at, x: q.x, z: q.z }; });
+    const home = places[0]; if (!home) return null;
+    let cur = stay(0, blocks[0].u1, home, { x: home.x, z: home.z, k: home.at }, 'S', 'home'), u = blocks[0].u1;
+    for (let i = 1; i <= blocks.length; i++) {
+        const last = i === blocks.length, b = last ? { u0: 24, u1: 24, kind: 'S', place: 'home' } : blocks[i], pl = last ? home : places[i];
+        if (!pl) continue;
+        if (cur.k == null || cur.k < 0) cur = here(cur);
+        const target = { x: pl.x, z: pl.z }, n0 = segs.length;
+        let end = (cur.k === pl.at && Math.hypot(cur.x - target.x, cur.z - target.z) < 0.3) ? u : leg(u, cur, cur.k, target, pl.at, b.place);
+        if (end == null) end = u;
+        if (last && end > 24) {   // the walk home: leave early enough to be in by the end of the cycle
+            const need = end - u; segs.length = n0;
+            const t = Math.max(blocks[blocks.length - 1].u0 + 0.1, 24 - need - 0.05), at = truncate(Math.min(u, t));
+            if (at) cur = at; u = Math.min(u, t);
+            end = leg(u, cur, cur.k, target, pl.at, b.place); if (end == null) end = u;
+        } else if (!last && end < b.u0 - 0.5 && (pl.kind === 'in' || pl.kind === 'inside')) {   // early: an errand round the place, then in
+            segs.length = n0;
+            const outK = pl.kind === 'inside' ? hqCityNearest(G, pl.door.x, pl.door.z) : pl.at, outP = sq(outK);
+            const e1 = leg(u, cur, cur.k, outP, outK, b.place);
+            if (e1 != null) {
+                const ring = G.outCells.filter(k => { const q = sq(k); return Math.hypot(q.x - outP.x, q.z - outP.z) <= R.errandR; });
+                let at = { x: outP.x, z: outP.z, k: outK };
+                if (ring.length > 2) at = stay(e1, b.u0 - 0.15, { kind: 'area', cells: ring }, at, 'O', b.place, true);
+                const back = Math.max(e1, segs.length ? segs[segs.length - 1].u1 : e1);
+                end = leg(back, at, at.k, target, pl.at, b.place); if (end == null) end = back;
+            } else end = leg(u, cur, cur.k, target, pl.at, b.place) || u;
+        }
+        u = end; cur = { x: target.x, z: target.z, k: pl.at };
+        if (last) break;
+        if (u < b.u0 && (pl.kind === 'in' || pl.kind === 'inside')) { segs.push({ u0: u, u1: b.u0, k: pl.kind === 'in' ? 'in' : 'stay', x: target.x, z: target.z, face: 0, place: b.place }); u = b.u0; }
+        if (u < b.u1) { cur = stay(u, b.u1, pl, cur, b.kind, b.place); u = b.u1; }
+    }
+    /* a cycle that ran past 24 h (late everywhere): squeezed into the day; a short one ends in bed */
+    const endU = segs.length ? segs[segs.length - 1].u1 : 24;
+    if (endU > 24) { const k = 24 / endU; segs.forEach(s => { s.u0 *= k; s.u1 *= k; }); }
+    else if (endU < 24) segs.push({ u0: endU, u1: 24, k: home.kind === 'area' ? 'stay' : 'in', x: home.x, z: home.z, place: 'home' });
+    return { t0, segs, r, home };
+}
+/* where a resident is at hour `h` (game hours): { vis, x, z, face, moving, k, seg, place } (vis false = inside / on the bus) */
+function hqResidentAt(tl, h) {
+    if (!tl || !tl.segs.length) return null;
+    const u = ((h - tl.t0) % 24 + 24) % 24, S = tl.segs;
+    let lo = 0, hi = S.length - 1;
+    while (lo < hi) { const m = (lo + hi + 1) >> 1; if (S[m].u0 <= u) lo = m; else hi = m - 1; }
+    const s = S[lo];
+    if (s.k === 'walk') {
+        const P = s.path, f = Math.max(0, Math.min(1, (u - s.u0) / Math.max(1e-6, s.u1 - s.u0))), d = f * P.len;
+        let p = 1; while (p < P.cum.length - 1 && P.cum[p] < d) p++;
+        const a = P.pts[p - 1], b = P.pts[p] || a, seg = Math.max(1e-6, P.cum[p] - P.cum[p - 1]), t = Math.max(0, Math.min(1, (d - P.cum[p - 1]) / seg));
+        return { vis: true, x: a.x + (b.x - a.x) * t, z: a.z + (b.z - a.z) * t, face: Math.atan2(b.x - a.x, b.z - a.z) * 180 / Math.PI, moving: true, k: 'walk', seg: lo, place: s.place, path: P, d };
+    }
+    return { vis: s.k === 'stay', x: s.x, z: s.z, face: s.face || 0, moving: false, k: s.k, seg: lo, place: s.place, spot: s.spot || null };
+}
 /* THE SWARM'S RACE (rev 2): any of the room's natives, seeded by the caller's stream — the target's own race is one of them
    ("more ghouls"), another is as likely ("a swarm of skeletons"); null = no native the roster carries */
 function hqSwarmRace(natives, rnd) {

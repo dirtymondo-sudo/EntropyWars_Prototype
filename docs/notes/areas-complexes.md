@@ -2899,3 +2899,32 @@ cell plans 21:23 (/mnt/project-files/dc-entertainment/interiors_plan.jpg). All i
   site_prebuilt_downtown_lobby, which still leads on to the showroom and the stair down) stands at the lobby's lift bank, square (4, 0), sub
   'THE LIFTS · INTO THE TOWER'. Mechanism: a district file may export `joins = { <JOIN key>: { x, z, face, sub } }`; bake-disaster-city.js applies
   it before writing the doors. The lift core runs up to the ceiling so the door's housing does not show over it. Shot inside_5_tower_lobby_doors.jpg.
+
+## DISASTER CITY, THE RESIDENTS (2026-11-14, thread "Populate Disaster City with NPC routines")
+mondo: "one of every unit in disaster city (the ones that belong there, not the entire game roster) ... a more advanced version of
+the routines they walk in door hq ... a residential home they go to at night with a bed, or they are out partying at night and sleep
+a different time ... only use units on the roster". He picked "Routines now, bedrooms next": asleep = in through the front door for now.
+- THE CAST: data.js `HQ_CITY_RESIDENTS.list` = his AREA UNITS table for site_prebuilt_downtown_streets + the plan anchors
+  (docs/disaster-city/city-layout.json `cast`): 44 residents, the priest male + female both, the Honda Civic a car on the roads, King
+  Kong outdoors on his plot (no bus), the Ghost haunting its own house at night. Door Agent left out (no walker rig). Each: `home`
+  (a plan building id), `homeName`, `day` = [from, to, 'S'leep | 'W'ork | 'O'ut | 'P'atrol, place]. Places: 'home', 'b:<building>',
+  'p:<plot>', 'd:<district letters>', 'road:<letters>' (a car), 'beach', 'spot:<race>' (the room's npcSpot of that race, its `say`).
+  Plan + mock-ups: /mnt/project-files/disaster-city-residents/. Roof patrols in the plan became street patrols (d:R, d:H) for now.
+- THE WALK MAP: data.js `hqCityGrid(roomId)` (cached) = the room on 3.5 m squares (184 x 144): ground (deck > sink > slope), water,
+  walls as 14 quarter-metre slots a square side (a side is shut when its longest gap is under doorGapM), height steps over 0.35 m
+  shut a side, ramps force theirs open, BIG props (6 m² or more) shut squares, small props are discs the path keeps 0.35 m clear of
+  (`soft`, a square's walked point `pt` = its freest spot), roads cost `roadCost`. A walk-in's two door squares (along the door's
+  normal) are walked and joined whatever stands by them. `bld` = the 79 walk-ins (inner/outer door points, `bid` on their squares).
+  `fronts` = the street square at each non-walk-in home/work door (from the tailored plan's door step; a moved building falls back to
+  its feature's middle). Build ~0.45 s in node, once, at the room's spawn.
+- THE DAY: `hqResidentTimeline(G, r, dayKey)` lays a 24 h cycle from the sleep block: walks (8-way A*, string-pulled, door anchors),
+  the bus (Bus Line 1 stops) when a walk is over busM and the bus saves 30%, pottering inside a walk-in, wandering an area, patrols,
+  an errand round the place when early, the walk home leaving in time. Seeded by day + race (hqHash). `hqResidentAt(tl, hour)` =
+  { vis, x, z, face, moving, k: in|stay|walk|bus, place }. Checked headless: all 44 build, 0 jumps, 0 gaps, 24.00 h each.
+- THE BODIES (three-renderer.js "THE RESIDENTS"): `_hqResStart` (from _hqSpawnRounds; in this room the rounds' extras, travellers and
+  the roster draw stay out, a spot whose race is a resident is left to the resident), `_hqTickResidents` (every 0.4 s the nearest
+  `drawn` / `drawnLow` within `radius` get a body, kept to `keepM`, at most `bodies` rigs, then disposed; per frame the position from the
+  world clock, the floor from _hqNavQuery; the officer in front holds a walker up to 3 s, the lag caught back up while it stands). City
+  doors swing for drawn residents (_hqTickCityDoors). The arrival clear hides a resident 5-12 s. Walk/idle like the rounds.
+  Kill switch `window.EW_HQ_NO_RESIDENTS`; dev `hq.residents()`.
+- NEXT (his OK first): walk-in BEDROOMS (a bed per home, sleep pose = UAL2 LayToIdle frame 0; beds psx_bed_*, couples_bed, dorm_bed, cot).
