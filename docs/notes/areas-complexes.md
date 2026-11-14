@@ -2543,6 +2543,18 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
   the roof flight there now stands on the hotel's roof slab. props.js `INDOOR` (a WeakSet a district adds its indoor rows to): the prop check
   does not report them for standing inside their own building, only against the inside's own pieces and other props. NO REAL LIGHTS inside
   (the city has no light rows; lamps are glowing parts): the halls are as bright as the engine's walk-in buildings are.
+- **THE INSIDES, SECOND PASS (2026-11-14, mondo 11-13 22:33: "after a district's first interior pass, do another interior pass ... make a list of
+  models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere").**
+  `districts/F-atmos.js` (required by F-inside.js; `atmos(T, g, I)` runs after `INS[id]`, its parts go into the same `dc:<id>:in` row).
+  Kit: `liner` (a wall coat 0.27 m in from the outer face = 3 cm before the inside sheet, so the first pass's lift doors / mail boxes / screens at
+  0.33 stay in front; a dado + rail, skirting, crown; the LIT ceiling deck: `glow` on a sheet, the hollow building's ceiling draws black),
+  `coffers` (beams on the squares' lines), `panel` / `strip` / `pend` / `sconce` (drawn glow), `window_` (a daylit sheet + frame + muntins on a
+  wall: the facade's glass stands for it), `pilaster`, `rug`, `P(key, x, z, hd)` (hd 0 = front to the back wall, 180 = to the door side),
+  `onWall` (mount 0, `y` = height). New blockers (map table, cash cart) stand on a square's middle with `I.solid`; everything else is off-centre
+  or on a wall. Facing check (11-14): every first-pass sofa, locker, shelf, fridge, cabinet, vault door, bench and the piano was rendered from
+  +Z / -Z: all fronts are +Z and DIR 'f' = 180 points them at the room, so nothing faced the wall. 22 Meshy pieces (data.js "THE FINANCIAL
+  INTERIOR PIECES", R2 Assets/world/props/meshy/<key>.glb, optimized; originals + concepts in project files disaster-city-financial/meshy/).
+  Left alone: the Bankers' terrace homes, the hotel's Politician room and the penthouse's bedroom column (the residents' bedrooms work).
 - THE GIANT APE (mondo 11-13 19:25: "put king kong in the district with the most high rises or tall buildings"): Financial (5 to 11 storeys). S.js `build` pushes him to `ctx.npcSpots` (new in the bake hook: a district's people, written to the room's `npcSpots`) at (173.25, -92.75), the open ground at the foot of the Penthouse stair tower (P10-03), with his own line from the old streets.
 
 ## DISASTER CITY, THE UNIVERSITY DISTRICT (2026-11-13, the University thread; mondo's OK 19:24)
