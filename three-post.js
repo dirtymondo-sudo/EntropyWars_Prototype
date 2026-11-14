@@ -1303,7 +1303,7 @@ const ThreePost = (function () {
     // material.skinning to match the mesh type or the shader reads attributes the
     // geometry doesn't have.
     var PIX_LAYER_SKIN = 7, PIX_LAYER_STATIC = 8;
-    var PIX_SCAN_MS = 400;      // re-tag newly spawned models a few times a second
+    var PIX_SCAN_MS = 1500;     // a flag set after the add (every add re-scans at once, _pixHookAdd); was 400: a whole-scene walk 2.5x a second (2026-11-14)
     var _maskRT = null, _maskMatSkin = null, _maskMatStatic = null;
     var _maskW = 0, _maskH = 0, _maskScanAt = 0, _maskVec = null, _maskClearCol = null;
     var _maskCamS = null;   // THE MASK'S OWN BUNDLES: the static pass's camera
