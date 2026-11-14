@@ -530,7 +530,7 @@ module.exports = { build: function (api) {
             let i = 0, n = 1; while (at(c - i - 1, r) === ch) i++; while (at(c - i + n, r) === ch) n++;
             const k = { S, r, c, i, n, H, edge: { front: at(c, r + 1) !== ch, back: at(c, r - 1) !== ch },
                 part: (s, px, y, pz, key, tint, o2) => { const q = Object.assign({ s, p: [r3(o[0] + px * ca + pz * sa), r3(y), r3(o[1] - px * sa + pz * ca)] }, o2 || {}); q.ry = (((q.ry || 0) + f) % 360 + 360) % 360; if (key) q.key = key; if (tint != null) q.tint = T(tint, key); parts.push(q); return q; },
-                prop: (key, px, pz, turn, o3) => putProp(key, cx + o[0] + px * ca + pz * sa, cz + o[1] - px * sa + pz * ca, f + (turn || 0), o3),
+                prop: (key, px, pz, turn, o3) => putProp(key, cx + o[0] + px * ca + pz * sa, cz + o[1] - px * sa + pz * ca, f + 180 + (turn || 0), o3),   /* (+180: a prop's `face` is a heading, 0 = its front to -z, 180 = to +z — `f` is the square's own frame turn, so without it every prop showed the walk its back; seen on screen 11-14) */
                 turnTo: (dc2, dr2) => ((ang(loc(dc2, dr2)) - f) % 360 + 360) % 360, once: tag => !done.has(tag) && !!done.add(tag),
                 sign: (words, px, y, pz, sw, sh) => { const q = k.part('quad', px, y, pz, 'txt:' + words + '|#fff2c0||' + (Math.round(sw / sh * 100) / 100), null, { size: [sw, sh], uv: 'fit', kind: 'over', glow: 0.9 }); q.tint = 0xffffff; } };
             KIT[ch](k);

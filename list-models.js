@@ -78,6 +78,7 @@ const HOW = {
 };
 const SOURCES = [
     { re: /world\/props\/meshy\/(treadmill|welding_cart|photocopier|newspaper_bundles|studio_camera|pallet_jack|hand_truck|mailbox_bank)\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (Disaster City interiors, Hero Plaza second pass, mondo 2026-11-13: "make meshy versions of them"; claims in project files meshy/interior-claims.md)' },
+    { re: /world\/props\/meshy\/(anatomy_skeleton|banker_lamp|brass_orrery|dinosaur_skeleton|espresso_machine|fume_hood|iv_stand|lab_glassware|library_chandelier|library_ladder|meteorite_plinth|microscope|pastry_case|privacy_screen|rope_stanchion|specimen_shelf|therapy_chaise|wheelchair)\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (THE CITY INTERIORS: the University second pass, mondo 2026-11-13 "make meshy versions of them"; concepts in project files university-interiors-2/meshy)' },
     { re: /ew_plant_(thornvine|gasplant|healflower|apple)\.glb/, how: 'MESHY', src: 'Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12)' },
     // the shared animation libraries
     { re: /Assets\/Models\/UAL\d/, how: 'PACK', src: 'Universal Animation Library · Quaternius · CC0' },
