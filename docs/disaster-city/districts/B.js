@@ -1063,7 +1063,7 @@ function interiors(ctx, byId, push) {
         /* the bedroom: three singles, a nightstand by each, two wardrobes, a window over each bed */
         [['psx_bed_5_1', 2], ['psx_bed_5_2', 3], ['psx_bed_5_3', 4]].forEach(b => { R.prop(b[0], cx(b[1]), cz(0), 180);
             P.push(quad(cx(b[1]), 1.35, -D / 2 + 0.37, 1.9, 1.35, 0, trim(T.WHITE)), quad(cx(b[1]), 1.42, -D / 2 + 0.38, 1.7, 1.2, 0, glowT(0xc4e4ff, 0.55)), box(cx(b[1]), 2.85, -D / 2 + 0.45, 2.3, 0.06, 0.06, trim(T.STEEL)));
-            [-1, 1].forEach(k => P.push(box(cx(b[1]) + k * 1.05, 0.4, -D / 2 + 0.47, 0.32, 2.42, 0.06, trim([0xd06030, 0x3060a0, 0x60a040][b[1] - 2])))); });   // the curtains
+            [-1, 1].forEach(k => P.push(A(box(cx(b[1]) + k * 1.08, 1.05, -D / 2 + 0.48, 0.12, 1.78, 0.08, trim([0xd06030, 0x3060a0, 0x60a040][b[1] - 2])), { n: 3, step: [k * 0.1, 0, 0.03] }))); });   // the curtains, hung from the rail in folds
         R.shut(2, 0, 4, 0, 1.0);
         [cx(2) + 1.75, cx(3) + 1.75].forEach(x => R.prop('psx_bedside_table_1', x, back + 0.3, 180));
         R.prop('table_lamp', cx(3) + 1.75, back + 0.3, 180, { y: 0.64 }); R.prop('lava_lamp', cx(2) + 1.75, back + 0.3, 0, { y: 0.64 });
