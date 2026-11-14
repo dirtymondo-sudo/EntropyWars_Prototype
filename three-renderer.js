@@ -47071,12 +47071,15 @@ const ThreeRenderer = (function () {
                    repeated the bottom ones) — the panes draw the groups the classic way too */
                 /* THE MASK'S OWN BUNDLES (2026-11-14): the static mask pass draws through a camera of its own (three-post.js), so a
                    culled chunk (the camera already dropped it when it is off: visible = false) replays its own mask recording */
-                if (this._ew_maskBun && !this._ew_paneRender && object._ew_ckFar != null && !object._ew_bunFree && !object._ew_bunMiss) { var pbM = this._ew_bunBase; this._ew_bunBase = renderList; _ewBun.inRec++; try { return po.apply(this, arguments); } finally { _ewBun.inRec--; this._ew_bunBase = pbM; } }
+                if (this._ew_maskBun && !this._ew_paneRender && object._ew_ckFar != null && !object._ew_bunFree && !object._ew_bunMiss) { var pbM = this._ew_bunBase; this._ew_bunBase = renderList; var outsM = object._ew_bunOuts, replayM = !!outsM && _ewBunCurrent(this, object, camera); _ewBun.inRec++; try { po.apply(this, arguments); } finally { _ewBun.inRec--; this._ew_bunBase = pbM; } if (replayM) _ewBunOutsDraw(this, object, outsM, camera, renderList, clippingContext); return; }
                 if (this._ew_sideRender || this._ew_paneRender) { object.isBundleGroup = false; try { return po.apply(this, arguments); } finally { object.isBundleGroup = true; } }
                 /* THE FIELD BUNDLES: a piece of the battle's room off the main camera is not drawn (a recording is unculled) */
                 if (object._ew_bunSph && camera && camera === _ewBun.cullCam && !_ewBunSeen(object._ew_bunSph, camera)) return;
                 var pbB = this._ew_bunBase; this._ew_bunBase = renderList;
-                _ewBun.inRec++; try { return po.apply(this, arguments); } finally { _ewBun.inRec--; this._ew_bunBase = pbB; }
+                var outsB = object._ew_bunOuts, replayB = !!outsB && _ewBunCurrent(this, object, camera);
+                _ewBun.inRec++; try { po.apply(this, arguments); } finally { _ewBun.inRec--; this._ew_bunBase = pbB; }
+                if (replayB) _ewBunOutsDraw(this, object, outsB, camera, renderList, clippingContext);
+                return;
             }
             if (_ewBun.inRec > 0 && object.frustumCulled === true) { object.frustumCulled = false; try { return po.apply(this, arguments); } finally { object.frustumCulled = true; } }
             return po.apply(this, arguments);
@@ -47183,6 +47186,16 @@ const ThreeRenderer = (function () {
         v = _ewBunMix(v, Math.round(e[12] * 1000)); v = _ewBunMix(v, Math.round(e[13] * 1000)); v = _ewBunMix(v, Math.round(e[14] * 1000));
         S.hs = h; S.hv = v; S.n++;
     }
+    /* three projects a bundle group's children only on the frame it records them; on a replay frame the pieces that are OUT of
+       the recording (THE MOVERS OUT) are projected here, into the list the group was handed to */
+    function _ewBunCurrent(R, g, camera) {
+        if (g.visible === false || !g.layers.test(camera.layers)) return false;
+        try { var bd = R.backend.get(R._bundles.get(g, camera, R._currentRenderContext)); return bd.bundleGPU !== undefined && g.version === bd.version; } catch (e) { return false; }
+    }
+    function _ewBunOutsDraw(R, g, outs, camera, renderList, clippingContext) {
+        var go = g.renderOrder;
+        for (var i = 0; i < outs.length; i++) { var o = outs[i]; if (o._ew_bunOut === true && o.parent) R._projectObject(o, camera, go, renderList, clippingContext); }
+    }
     function _ewBunNoOut() { return typeof window !== 'undefined' && !!window.EW_BUN_NO_OUT; }
     /* THE CHANGERS OUT (2026-11-14, mondo's readout after THE MOVERS OUT: "1.9 re-records/s (values 1.9)", the shell drawn piece by
        piece again): with the cars out the shell's recording was a STILL one, so each change of a traffic signal's lens colour
@@ -47194,7 +47207,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
             if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); continue; }
-            if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); continue; }
+            if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }
             if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); continue; }
             var v0 = S.hv; S.hv = 0;
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
@@ -47221,7 +47234,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
             if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); continue; }
-            if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); continue; }   // THE MOVERS OUT: drawn outside the recording, only that it is out
+            if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }   // THE MOVERS OUT: drawn outside the recording, only that it is out
             if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); continue; }   // THE CHUNKS: a piece THE STATIC BATCH holds is not drawn (its merged mesh is hashed): only that it is held
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
             else if (c.isLight) { S.hs = _ewBunMix(S.hs, c.id); S.lit = true; }
@@ -47272,13 +47285,15 @@ const ThreeRenderer = (function () {
                in the list), and at once on a frame where anything joined the scene (Object3D.add), a resource it holds was freed,
                a pipeline was missing or the lamps changed. A change with none of those tells (a piece hidden or moved by hand)
                shows at most two frames late. Off: window.EW_BUN_CHECK_EVERY. */
-            if (walk && g.isBundleGroup && st.quiet >= 40 && !addMovedB && !g._ew_bunMiss && !g._ew_bunFree && st.G === G && ((FR + i) % 3) !== 0 && !bunEvery) { objs += st.n | 0; quietN++; continue; }
+            if (walk && g.isBundleGroup && st.quiet >= 40 && !addMovedB && !g._ew_bunMiss && !g._ew_bunFree && !g._ew_bunDirty && st.G === G && ((FR + i) % 3) !== 0 && !bunEvery) { objs += st.n | 0; quietN++; continue; }
             /* a demoted group is tried as a still recording again (30 s, then twice as long each time, 8 min at most): what made
                it churn may be out of it by now (THE CHANGERS OUT finds the pieces only while the values are hashed) */
             if (st.dyn && st.dynAt && walk && now - st.dynAt > Math.min(480000, 30000 * Math.pow(2, Math.max(0, (st.dynN | 0) - 1)))) { st.dyn = false; st.dynAt = 0; st.times = []; st.vt = []; }
             var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false, lit: false, noV: !!st.dyn };
             _ewBun.now = now;
             if (walk) _ewBunWalkTop(g, S); else _ewBunWalk(g, S);
+            g._ew_bunDirty = false;
+            g._ew_bunOuts = S.outs || null;   // THE MOVERS OUT: the pieces the frame draws beside this group's recording
             var v0 = g.version, recs0 = _ewBun.recs;
             objs += S.n; st.n = S.n;
             var stat = !(S.dyn || st.dyn), miss = !!g._ew_bunMiss;
@@ -88109,7 +88124,7 @@ const ThreeRenderer = (function () {
             if (st.full > 0) st.full--;
             for (i = 0; i < n; i++) {
                 c = ch[i]; c.updateMatrixWorld(true); s = _hqStillSum(c);
-                if (seed && C[i] === c && s !== SM[i]) { mv.add(c); AT[i] = now; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; } }
+                if (seed && C[i] === c && s !== SM[i]) { mv.add(c); AT[i] = now; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; this._ew_bunDirty = true; } }
                 C[i] = c; SM[i] = s;
                 j = i * 10; p = c.position; q = c.quaternion; sc = c.scale;
                 T[j] = p.x; T[j + 1] = p.y; T[j + 2] = p.z; T[j + 3] = q._x; T[j + 4] = q._y; T[j + 5] = q._z; T[j + 6] = q._w; T[j + 7] = sc.x; T[j + 8] = sc.y; T[j + 9] = sc.z;
@@ -88130,19 +88145,19 @@ const ThreeRenderer = (function () {
                 T[j] = p.x; T[j + 1] = p.y; T[j + 2] = p.z; T[j + 3] = q._x; T[j + 4] = q._y; T[j + 5] = q._z; T[j + 6] = q._w; T[j + 7] = sc.x; T[j + 8] = sc.y; T[j + 9] = sc.z;
                 if (C[i] !== c) { C[i] = c; AT[i] = now; S.fresh++; }
                 else if (isNew) S.fresh++;
-                else { AT[i] = now; mv.add(c); if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; } S.movers++; }   // it moved: every frame from here (and out of its group's recording)
+                else { AT[i] = now; mv.add(c); if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; this._ew_bunDirty = true; } S.movers++; }   // it moved: every frame from here (and out of its group's recording)
                 continue;
             }
-            if (hasWk && wk.has(c)) { mv.add(c); AT[i] = now; hasMv = true; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; } }
+            if (hasWk && wk.has(c)) { mv.add(c); AT[i] = now; hasMv = true; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; this._ew_bunDirty = true; } }
             if (hasMv && mv.has(c)) {
                 c.updateMatrixWorld(true); s = _hqStillSum(c);
                 if (s !== SM[i]) { SM[i] = s; AT[i] = now; }
-                else if (now - AT[i] > HQ_STILL_HOLD_MS) { mv.delete(c); if (c._ew_bunOutA) { c._ew_bunOut = undefined; c._ew_bunOutA = false; } }   // at rest: back into its group's recording
+                else if (now - AT[i] > HQ_STILL_HOLD_MS) { mv.delete(c); if (c._ew_bunOutA) { c._ew_bunOut = undefined; c._ew_bunOutA = false; this._ew_bunDirty = true; } }   // at rest: back into its group's recording
                 S.movers++; continue;
             }
             if ((i >= i0 && i < i1) || i + n < i1) {   // this frame's slice of the rest
                 c.updateMatrixWorld(true); s = _hqStillSum(c);
-                if (s !== SM[i]) { mv.add(c); AT[i] = now; SM[i] = s; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; } }
+                if (s !== SM[i]) { mv.add(c); AT[i] = now; SM[i] = s; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; this._ew_bunDirty = true; } }
                 S.swept++;
             }
         }
