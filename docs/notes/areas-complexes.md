@@ -2398,6 +2398,29 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
   Everything else is a catalogue prop (`R.put`), reported in prop-check.txt as "in building" (a district's own prop is never moved).
   The front doors are the city's swing leaves (already there); the two inner openings (bakery, garage office) are open, one square wide.
   Deviation from the first sketch: no raised chancel (heights are whole blocks), pews in two blocks with side aisles.
+- **THE SECOND INTERIOR PASS** (2026-11-13; mondo 22:33 "after a district's first interior pass, do another interior pass ... make a list of FACING (coordinator 11-14): checked every room; the bakery's and the pawnshop's two display cases stood one behind the other (the first one's glass at the second one's back), now side by side, glass to the shop floor; every shelf, locker, rack and chest faces its walkway.
+  models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere"):
+  - THE MODELS: 18 Meshy pieces (Claude's concept, Meshy nano-banana-pro -> image-to-3D meshy-t2.5 smart topology, optimised to `.opt.glb`),
+    R2 `Assets/world/props/meshy/<key>.glb`, rows in data.js HQ_CATALOGUE_ALL group 'Meshy city interiors', ASSET_MANIFEST.json, MODEL_LIST.md
+    (list-models.js SOURCES row): boxing_ring, punching_bag, speed_bag, weight_bench, dumbbell_rack, boxing_gloves, car_lift, tire_stack,
+    tool_chest, engine_hoist, wing_chun_dummy, dojo_weapon_rack, taiko_drum, votive_stand, candelabra, jewelry_case, steam_table, stock_pots.
+    Sources (prompts, concepts, raw GLBs, scripts): /mnt/project-files/disaster-city-southside/meshy2/. The four second-pass threads share ONE
+    claims list, /mnt/project-files/meshy/interior-claims.md (Hero Plaza reuses the gym + workshop six). Southside also places University's
+    `pastry_case` and Entertainment's `bread_rack` + `paper_lantern` by key (they show once those threads' rows are on main).
+  - THE STAND-INS OUT: the code ring, bags, rack, bench press, lift posts, tyre stacks, striking posts and serving line are those models now; every
+    blocker keeps its whole-square ghost (`R.block`). The car on the lift stands on the model's arms (y 1.0, the block 0.98).
+  - THE LOOK: `R.liner(wall, dado, ceil)` paints each room (a wall coat 3 cm in front of the hollow texbuilding's inside walls, which stand 0.30 m in from the row's edge; the doorway cut
+    where hqTexbDoor cuts it, a dado + rail, a ceiling glowing a little: the bare inside was the grey keyIn sheet under a black ceiling);
+    `R.lamp` lit ceiling fittings (strip lights on chains in the garage, a light rig over the ring); `R.wq` wall panels (lit side windows in the
+    church, the gym mirror, trade-word signs with the shared `txt:` key: BOXING, WE BUY GOLD, PAWN, HOT MEALS). Per room: church limewash + oak
+    dado + timber ceiling on beams, candelabras, votive stands, stained glass between the hangings; bakery butter-yellow over white tile, flour
+    sacks, pots, menu board; gym bare brick over an oxblood band, tin ceiling on steel beams, speed bags, gloves, rubber under the weights;
+    pawnshop bottle green, jewellery case on square (1, 2); kitchen mustard over pale blue tile, steam tables, stock pots on the range; dojo paper-white in
+    a dark timber frame, taiko on (6, 2), weapon racks; garage pale over a blue band, yellow bay lines, tool chests, engine crane on (7, 1).
+  - FIXED ON THE WAY: a catalogue `wall` piece hangs at `mount` + `y`, so the tapestries, the cross, the bakery shelf and the dojo banner hung
+    above their ceilings (give the height as `mount`); the gym mirror stood inside the wall facing out (a quad's ry 90 faces −x, 270 faces +x);
+    `R.put` keeps every prop 0.4 m off the outer walls (in front of the coat); a room's ceiling is the texbuilding's `h` − 0.32 (R.H read
+    the storeys: the ceiling lamps, hung at R.H − 0.2, sat above the real ceilings).
 
 ## DISASTER CITY, THE BIG WINDOWS (2026-11-13, the shared-pieces thread)
 mondo (screenshot of two city blocks): "The buildings that use these repeated window textures from the urban pack, the windows are too small, need
@@ -2786,6 +2809,32 @@ glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the 
   `walls` are partitions on the lines between squares with one-square doorways; `decor` is off centre / on the walls. One arch row per room `ind:<id>:in`; props are
   `floor:true`; `keyIn` / `floorIn` / `tintIn` set per room. The doorway square is asserted to be a walkway (else the room is left out with a console line). To change a room:
   edit its `IN` row, `node bake-disaster-city.js`. Plans: /mnt/project-files/disaster-city-industrial/interiors_plan_1..3.jpg.
+- **THE INDUSTRIAL INSIDES, SECOND PASS (2026-11-14, mondo 11-13 22:33: "after a district's first interior pass, do another interior pass ... make a
+  list of models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere").** I.js
+  `SECOND[id](Q)` runs after each room's first pass; `kit2()` gives `Q`: `paint` (a dado coat 0.345 m in, the front one with the doorway cut, a
+  stripe, a skirting), `ceil` (a dark deck under the roof slab: the hollow ceiling draws black; roof trusses), `sky` (lit skylight glass), `hb`
+  (a Meshy high-bay lamp + a lit bulb), `strip`, `pend`, `beacon`, `sign` (lettered `txt:` sheet with a background), `onWall` (a flat wall piece
+  at a height), `pipe` (a pipe run on a wall), `lines` (yellow safety lines round every blocked square that meets a walk), `exit` (EXIT over the
+  doorway) and `block(i, j, w, d, h, fn)`: a NEW blocker on whole squares, refused (console line) on the doorway square or if any walk square
+  would be cut off from the door (flood fill, partitions respected). 11 new blocker squares: forklift + wrapped pallets (Freight gate), lathe +
+  drill (Machine shop), rocket engine + satellite (Aerospace lab), the ship model in its glass case (Port office), jet engine + tug + work
+  steps (Hangar; the back-right pocket by the lockers is parked equipment now), the signal lever frame (Rail service).
+  THE MODELS (20 Meshy, text-to-image concept -> image-to-3d meshy-t2.5, base at y 0, metallic 0, front +Z, optimize-assets.js; R2
+  `Assets/world/props/meshy/<key>.glb`; data.js "THE INDUSTRIAL INTERIOR PIECES"; originals + concepts in project files
+  disaster-city-industrial/meshy/; packs checked first): steam_turbine, centrifugal_pump, gate_valve (they replace the first pass's shape
+  drums / pump bodies / handwheels inside `KIT.turbine` / `pump` / `pipes`; beds, risers, rails, pipes kept), high_bay_lamp, gauge_board,
+  metal_lathe, drill_press, tool_pegboard, gas_cylinder_rack, air_compressor, jet_engine_stand, aircraft_tug, maintenance_stairs,
+  rocket_engine, signal_lever_frame, railway_lantern, platform_scale, chain_hoist, ship_model, cable_drum. Reused: Bayside's forklift,
+  wrapped_pallet, ship_wheel, ships_bell; Southside's tool_chest / tire_stack / engine_hoist and Hero Plaza's welding_cart only through
+  `HAS(key)` (their rows were not on main at this bake: rerun the bake once they land).
+  FACING FIX: `KIT.files` / `shelf` / `racks` along a side wall faced INTO the wall ('l' gave 270): now 'l' = 90, 'r' = 270 (city face: 90 looks
+  at +x). Loading office files + shelf + racks, depot shelf.
+  THE SEWERS DOOR (the "mirrored shop-front sheet" in the Pump court): bake-disaster-city.js puts JOIN.sewer FREE 0.25 m outside the Pump
+  court's plan doorway, and three-renderer.js `_hqBuildCityEntrances` stands a 10 x 6 m SPRITE building (a pixel shop front, "ONE $PRICE")
+  behind every leafed free door of a city room: it stood through the Pump court (seen mirrored from inside) and the 3.3 m bulkhead panel
+  covered the room's own doorway. Now `dcCtx.JOIN` is open to the district files (`build`); I.js `Q.join('sewer', lx, lz)` hangs the bulkhead
+  on the Pump court's BACK wall facing in (walk in through the valve house, down through the bulkhead), and a door row's `noEntrance: true`
+  (written by `dj()`) skips the sprite building + awning + sign. The tower and mall join doors still get their sprite entrance buildings.
   under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. The street lamp on that square is taken off (`ctx.lamps`, the tool now writes its lamps line after the district build). Seen in the
   cloud browser from inside (as a 28 m long test build). INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.
 

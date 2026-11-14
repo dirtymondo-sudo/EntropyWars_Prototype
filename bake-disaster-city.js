@@ -283,6 +283,7 @@ JOIN.tower = bldDoor('Superhero Tower', 'Superhero Tower'); JOIN.mall = bldDoor(
 JOIN.metro = spot('Transit square', 5, 2, 180); JOIN.harbour = spot('Boardwalk exit', 9, 9, 180); JOIN.bay = spot('Arrival court', 9, 6, 270);
 JOIN.downtown_strip = spot('P00-07', 1, 6, 270, 'RP.'); JOIN.stadium_downtown = spot('P03-00', 7, 6, 0, 'R');   // 2026-11-13: on the road's dead end itself (was the 3.5 m alley beside the boxing gym, on its east door's step: Southside saw its sign indoors)
 JOIN.garage_taxi = spot('Taxi rank', 3, 3, 270, '.P'); JOIN.streets_strip = spot('Church', 8, 8, 270); JOIN.streets_drain = spot('Canal walk', 6, 8, 270); JOIN.docks_sewer = spot('Dock edge', 6, 6, 90);
+dcCtx.JOIN = JOIN;   // THE JOINS a district may move in `build` (a link door that belongs inside one of its own walk-ins: I.js puts the sewers door on the Pump court's back wall)
 
 /* THE LEVELS, THE CROSSINGS' STAIRS (after the doors above have their squares, before anything is dressed) */
 const lvCut = new Map(), lvStairs = [], lvCount = { flights: 0, ramps: 0, cut: 0, steep: 0, closed: 0 };
@@ -867,7 +868,7 @@ lines.push("                /* THE CITY TRAFFIC: the junctions with traffic ligh
 lines.push("                signals: " + J(SIGNALS) + ",");
 lines.push("                busStops: " + J(busStops) + ",");
 lines.push("            },");
-const dj = o => "wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face;
+const dj = o => "wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face + (o.noEntrance ? ", noEntrance: true" : "");   // noEntrance: a door a district hung inside its own building (no sprite entrance building)
 lines.push("            doors: [");
 lines.push("                { id: 'harbour', " + dj(JOIN.harbour) + ", leaf: null, label: 'THE HARBOUR', sub: 'THE BOARDWALK · OUT ON THE PIER', action: { room: 'site_prebuilt_downtown_harbour', at: 'quay' },");
 lines.push("                  desc: 'The quay stops and the water starts. A pier goes on out into it, with a skiff tied at the end that nobody is minding.' },");
