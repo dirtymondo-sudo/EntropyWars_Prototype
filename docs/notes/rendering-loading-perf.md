@@ -1957,6 +1957,34 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE MOVERS OUT + THE QUIET REPLAY + THE QUIET GROUPS (2026-11-14, Disaster City, after THE STILL WALK)
+
+mondo's Mac after THE STILL WALK: 14.9 fps (was 7.3), matrix walk 4.25 ms, but "Draw calls 95" with "submit 52.8 ms" and
+"check 7.60 ms/frame". The draw time was not draws.
+
+- What it was: three's `_renderBundle` replays a recording in one GPU call but still loops over EVERY render object in it, each pass
+  (picture, model mask, sun depth = 3.3 a frame), calling `_nodes.needsRefresh`; a material whose monitor says `hasNode` (the depth
+  pass's materials, the game's dressed ones) answers FULL every time = updateBefore + geometry + nodes + ALL bindings per object.
+  And the shell was not even a static recording: the 16 traffic cars are children of the shell group, their matrices move every
+  frame, so `_ewBunTick` re-recorded it 5 times then DEMOTED it (st.dyn: three checks every object's values every pass).
+- THE MOVERS OUT: `object._ew_bunOut === true` → the `_projectObject` wrapper hands it to the list the bundle group itself was handed
+  to (`this._ew_bunBase`): classic draw, culled, current matrices; `_ewBunWalk` hashes only "it is out". Set on traffic cars at build
+  (`_hqBuildTraffic`) and by THE STILL WALK on any direct child it finds moving (`_ew_bunOutA`, cleared when it rests 4 s).
+  Off: `window.EW_BUN_NO_OUT`. Cloud browser: shell "outside its bundle" 5,988 draws → 34 (the cars).
+- THE QUIET REPLAY (the `rb` wrapper in `_ewBunSetup`): for a STATIC group whose recording is current and has had one whole replay
+  by three since it was made (`bd._ewLoopV`): plain objects = only the first per monitor (one per shader; three hands that one the
+  shared camera/light buffers and answers NONE for the rest); `hasNode` objects = refreshed in full while their refresh writes a
+  non-shared buffer, rested after 20 frames with no write (every 20th frame, by place); a rested one that writes wakes all rested
+  ones of that recording the same frame. Skinned / morph / dynamic-instanced never rest. Measured: main pass asks 47 of 5,933 shell
+  objects. Moving the camera / the sun does not write object buffers (three computes model-view in the shader), checked.
+  Off: `window.EW_BUN_FULL_REFRESH`. Lens: "refreshed N of M a frame".
+- THE QUIET GROUPS (`_ewBunTick`): a recorded group unchanged for 40 checks is hashed every third frame; every group on a frame with
+  an `Object3D.add`, a freed resource, a missing pipeline or a lamp change. Off: `window.EW_BUN_CHECK_EVERY`.
+- Sandbox lesson: at 0.5 fps a group never reaches "5 changes in 2 s", so it re-records every frame instead of demoting; the shell
+  drew classic there for that reason (not the texture shrink). With the cars out the sandbox finally matches the Mac's shape.
+- three r186 facts worth keeping: `RenderObject.getMonitor()` is the node builder state's observer (shared per shader);
+  `createBindings()` reuses shared bind groups per builder state; `needsRefresh` returns SHARED once per render per monitor.
+
 ## THE STILL WALK (2026-11-14, Disaster City, after THE UNSEEN LAMP)
 
 mondo: "Still really slow and laggy ... there have to be multiple huge performance saves that you are missing" (7.3 fps, CPU 129.5 ms of
