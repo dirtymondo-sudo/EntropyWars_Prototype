@@ -2226,6 +2226,22 @@ mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is 
   Seen in the cloud browser: marquee, scoreboard, gym, box office, depot, gallery, art supplies signs. Low contrast, to raise later: the museum frieze
   and SOUTH GATE (dark letters on stone).
 
+- THE INTERIORS (2026-11-13, mondo 21:04 "let's go ahead and do the interiors", his OK on the plan 21:19; plan drawing
+  /mnt/project-files/disaster-city-sports-culture/interiors/interiors_plan_v2.png). S.js `inside(id, { wall, floor, leaf })` lays a walk-in's rooms
+  on the building's own 3.5 m BATTLE SQUARES: (u, v) = squares from the front's left corner as you face it from outside, v back from the front wall.
+  `I.wall(axis, at, a, b, h, [[middle, leaf, words]])` = a partition on a square line (arch boxes + ghost walls, a 1.75 m doorway in the middle of
+  one square's edge, a lettered sign over it, a swinging leaf), `I.block(u, v, nu, nv, h)` = a thing that blocks, whole squares (a ghost wall),
+  `I.prop(key, u, v, turn)` = a catalogue model, `I.ceil`, `I.lampAt`. His rules (21:14 / 21:17): blockers fill whole squares, walkways are a whole
+  square wide, decor stands off the squares' middles against a wall.
+  Museum (8 x 7): entrance hall + ticket desk, rotunda with the dinosaur (an npcSpot of the dinosaur race standing in a ring of rope, no line), Antiquity,
+  Arms hall, painting gallery. Training Gym (8 x 8): lobby, office, trophy room, main hall (ring, heavy bags, weights, mat: built from parts),
+  locker room. Equipment Depot (9 x 3): bay A, grounds office, bay B, bay C. South Gate ticket hall (9 x 3): ticket hall + counter, stewards'
+  room, security + lost property. NOT built from the plan: the turnstile room (the building has one doorway, so nothing leads through it).
+- THE INNER DOORS (three-renderer.js `_hqBuildTexDoors`, shared by every district): a hollow texbuilding row's `inner: [{ x, z, rot, w, leaf,
+  double }]` hangs more swinging leaves inside the building, in its own frame (x along the front from its middle, z toward the front, rot 0 = in a
+  wall that runs along the front, 90 = across it). Same leaves, same swing-away as the front door (`_hq.cityDoors`). Drawn only: the district's
+  walls leave the gap.
+
 ## DISASTER CITY, CIVIC CENTER — the 28 buildings of district C (2026-11-13, mondo's OK 17:11)
 
 District C = plots x 4..7, y 0..3 of `site_prebuilt_downtown_streets`. Everything lives in ONE file:
