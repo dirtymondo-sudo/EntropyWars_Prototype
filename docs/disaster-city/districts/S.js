@@ -701,7 +701,7 @@ exports.apply = (ctx) => {
                 parts.push({ s: 'box', p: x ? [along, y, c] : [c, y, along], size: x ? [w, 0.07, 0.1] : [0.1, 0.07, w], key: GOLD, glow: 0.2 }, { s: 'box', p: x ? [along, y - 0.04, c] : [c, y - 0.04, along], size: x ? [w * 0.9, 0.02, 0.05] : [0.05, 0.02, w * 0.9], tint: 0xfff0c8, glow: 1 },
                     { s: 'box', p: x ? [along, y - 0.06, line + (n[0] + n[1]) * 0.08] : [line + (n[0] + n[1]) * 0.08, y - 0.06, along], size: x ? [0.05, 0.05, 0.16] : [0.16, 0.05, 0.05], key: GOLD }); },
             /* a model hung on a wall: square-space (u, v) at the wall, turned th (0 looks at the front), at y with no catalogue mount */
-            onWall(key, u, v, th, y, x) { I.prop(key, u, v, th, Object.assign({ y, mount: 0 }, x || {})); },
+            onWall(key, u, v, th, y, x) { I.prop(key, u, v, th, Object.assign({ y, mount: 0, floor: true }, x || {})); },   // floor: its y is measured from the room's ground, never from the wall's top beside it (Codex, PR #1375: paintings stood at the wall's top)
             done() { lateRows.push({ k: 'arch', id: 'arch:S:' + id + ':in', x: r3(f.x), z: r3(f.z), y: 0, rot: f.rot, parts: parts.flat(Infinity).map(clean) }); },
         };
         return I;
@@ -741,7 +741,7 @@ exports.apply = (ctx) => {
         I.prop('psx_planter_pot_mp_1_full', 2.3, 0.3, 0); I.prop('psx_planter_pot_mp_1_full', 5.7, 0.3, 0); I.lampAt(4, 1, 6.5); }
       /* Antiquity: statues and the sarcophagus down the outer wall, the walk along the inner one */
       I.block(0, 0, 1, 1, 2.5); I.prop('demon_statue', 0.5, 0.5, 90); I.block(0, 2, 1, 1, 1.4); I.prop('sarcophagus', 0.5, 2.5, 0); I.block(0, 4, 1, 1, 2.5); I.prop('angel_statue', 0.5, 4.5, 90);
-      [1.5, 3.5].forEach(v => { const q2 = I.loc(0.5, v); P.push({ s: 'cyl', p: [q2[0] - 1.2, 0, q2[1]], r: 0.3, h: 1.1, seg: 10, key: MARBLE_D, uv: [1.75, 1.1] }); I.prop(HAS('marble_bust') ? 'marble_bust' : 'decor_trophy_cup', 0.5 - 1.2 / 3.5, v, 90, HAS('marble_bust') ? { y: 1.1, h: 0.75 } : { y: 1.1 }); });   // the plan's busts (Financial's Meshy bust once its row is on main); the cups moved to the gym's trophy room
+      [1.5, 3.5].forEach(v => { const q2 = I.loc(0.5, v); P.push({ s: 'cyl', p: [q2[0] - 1.2, 0, q2[1]], r: 0.3, h: 1.1, seg: 10, key: MARBLE_D, uv: [1.75, 1.1] }); I.prop(HAS('marble_bust') ? 'marble_bust' : 'decor_trophy_cup', 0.5 - 1.2 / 3.5, v, 90, HAS('marble_bust') ? { y: 1.1, h: 0.75, floor: true } : { y: 1.1, floor: true }); });   // the plan's busts (Financial's Meshy bust once its row is on main); the cups moved to the gym's trophy room
       I.lampAt(1, 1.5, 6.5); I.lampAt(1, 3.5, 6.5);
       /* the Arms hall: cabinets and armour stands down the outer wall */
       [0, 2, 4].forEach(v => { I.block(7, v, 1, 1, 2.2); I.prop('psx_display_cabinet_mp_1', 7.5, v + 0.5, 270, { h: 2.4 }); });
@@ -773,10 +773,10 @@ exports.apply = (ctx) => {
         /* the red runner: from the front door to the rotunda's doorway, and round the plinth's rope */
         { const a = I.loc(3.38, 0), b = I.loc(3.38, 2); P.push({ s: 'quad', flat: true, p: [a[0], 0.045, (a[1] + b[1]) / 2], size: [1.6, Math.abs(a[1] - b[1]) - 0.3], key: 'calm_carpet', tint: 0x8a1a22, uv: 1.2 }, { s: 'quad', flat: true, p: [a[0], 0.05, (a[1] + b[1]) / 2], size: [1.3, Math.abs(a[1] - b[1]) - 0.3], key: 'calm_carpet', tint: 0x9e2228, uv: 1.2 }); }
         /* the rotunda: the crystal chandelier over the skeleton on a chain from the ceiling; MUSEUM OF THE CITY over the rotunda's doorway */
-        { const c = I.loc(4, 3.5); I.prop('crystal_chandelier', 4, 3.5, 0, { y: 7.2, h: 1.6 }); P.push({ s: 'cyl', p: [c[0], 8.75, c[1]], r: 0.03, h: H - 8.75, seg: 5, tint: 0x8a7040 }); }
+        { const c = I.loc(4, 3.5); I.prop('crystal_chandelier', 4, 3.5, 0, { y: 7.2, h: 1.6, floor: true }); P.push({ s: 'cyl', p: [c[0], 8.75, c[1]], r: 0.03, h: H - 8.75, seg: 5, tint: 0x8a7040 }); }
         { const q2 = I.loc(4, 2); P.push({ s: 'quad', p: [q2[0], 3.05, q2[1] + 0.14], size: [5.6, 0.5], key: txt(5.6, 0.5, 'MUSEUM OF THE CITY', '#e8c870', ''), uv: 'fit', tint: 0xffffff, kind: 'over' }); }
         /* the gallery: two library chandeliers hung over the benches */
-        [2.5, 5.5].forEach(u => { const c = I.loc(u, 6.5); I.prop('library_chandelier', u, 6.5, 0, { y: 5.8, h: 1.1 }); P.push({ s: 'cyl', p: [c[0], 6.9, c[1]], r: 0.025, h: H - 6.9, seg: 5, tint: 0x5a4a30 }); });
+        [2.5, 5.5].forEach(u => { const c = I.loc(u, 6.5); I.prop('library_chandelier', u, 6.5, 0, { y: 5.8, h: 1.1, floor: true }); P.push({ s: 'cyl', p: [c[0], 6.9, c[1]], r: 0.025, h: H - 6.9, seg: 5, tint: 0x5a4a30 }); });
         /* Antiquity: two black-figure amphorae and a coin case along the inner wall (off the walk's middle) */
         I.prop('greek_amphora', 1.83, 0.55, 270); I.prop('museum_vitrine', 1.8, 1.55, 270); I.prop('greek_amphora', 1.83, 2.55, 270); I.prop('museum_vitrine', 1.8, 4.45, 270);
         /* the Arms hall: shield-and-sword plaques on the inner wall (either side of its doorway), banners high on the outer wall */
@@ -801,7 +801,7 @@ exports.apply = (ctx) => {
         [[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]].forEach(a => { const y = I.H; P.push({ s: 'box', p: [c0[0] + a[0], y - 1.0, c0[1] + a[1]], size: [0.04, 1.0, 0.04], tint: DARKM }, { s: 'cyl', p: [c0[0] + a[0], y - 1.3, c0[1] + a[1]], r: 0.6, r2: 0.2, h: 0.3, seg: 10, tint: DARKM }, { s: 'cyl', p: [c0[0] + a[0], y - 1.36, c0[1] + a[1]], r: 0.45, h: 0.06, seg: 10, tint: LAMP, glow: 1 }); }); }
       /* heavy bags on the left wall: a square each, a bracket off the wall, a chain, the bag */
       [2, 4].forEach(v => { const b0 = I.block(0, v, 1, 1, 2.4);
-        P.push({ s: 'box', p: [b0[0] - 0.85, 3.3, b0[1]], size: [1.9, 0.12, 0.12], tint: DARKM }); I.prop('punching_bag', 0.5, v + 0.5, 90, { y: 1.0 }); });   // (THE SECOND PASS: Southside's Meshy bag + chains in place of the drawn cylinder, its top at the bracket)
+        P.push({ s: 'box', p: [b0[0] - 0.85, 3.3, b0[1]], size: [1.9, 0.12, 0.12], tint: DARKM }); I.prop('punching_bag', 0.5, v + 0.5, 90, { y: 1.0, floor: true }); });   // (THE SECOND PASS: Southside's Meshy bag + chains in place of the drawn cylinder, its top at the bracket)
       /* the weights corner (right wall): Southside's Meshy dumbbell rack against the wall, its weight bench beside it (THE SECOND PASS: in place
          of the drawn box rack and the two box benches), all off the squares' middles */
       I.prop('dumbbell_rack', 7.8, 4.5, 270); I.prop('weight_bench', 7.7, 5.5, 270);
@@ -823,7 +823,7 @@ exports.apply = (ctx) => {
       I.block(1, 1, 1, 1, 1); I.prop('tanker_desk', 1.5, 1.5, 0); I.prop('office_chair', 1.5, 1.85, 180); I.prop('filing_cabinet', 0.15, 1.8, 90); I.prop('potted_plant', 0.2, 0.2, 0); I.lampAt(1.5, 0.8, h);
       /* the trophy room: the case along the back wall (two squares), cups on a plinth */
       I.block(6, 1, 2, 1, 2.1); I.prop('trophy_case', 6.5, 1.84, 0); I.prop('trophy_case', 7.5, 1.84, 0);
-      [7.7, 6.95, 6.2].forEach(u => { const q2 = I.loc(u, 0.3); P.push({ s: 'cyl', p: [q2[0], 0, q2[1]], r: 0.3, h: 1.0, seg: 10, key: MARBLE_D, uv: [1.75, 1] }); I.prop('decor_trophy_cup', u, 0.3, 0, { y: 1.0 }); });   // (the second pass: the museum's two cups moved here)
+      [7.7, 6.95, 6.2].forEach(u => { const q2 = I.loc(u, 0.3); P.push({ s: 'cyl', p: [q2[0], 0, q2[1]], r: 0.3, h: 1.0, seg: 10, key: MARBLE_D, uv: [1.75, 1] }); I.prop('decor_trophy_cup', u, 0.3, 0, { y: 1.0, floor: true }); });   // (the second pass: the museum's two cups moved here)
       I.lampAt(6.5, 0.8, h);
       /* ═══ THE SECOND PASS: THE TRAINING GYM (the atmosphere). An old-school fight gym: the main hall's red tile over a charcoal dado with a
          white stripe, steel trusses with strip lights and bunting under a lit roof, the real gear (bags, rack, bench, a squat cage, rowers on
