@@ -3014,3 +3014,11 @@ a different time ... only use units on the roster". He picked "Routines now, bed
   The Politician keeps the hotel P08-00-B1 (a walk-in since PR #1358). The Ghost has `noBed` (it haunts the hotel by day). A bed on a
   district's ghost block (Sports, Southside) is reached from the walked square beside it. 2026-11-14 03:15: 41 of 44 sleep in a bed
   (not the Honda Civic, King Kong on his field, the Ghost).
+
+## PLOT DUNGEONS — the puzzle dungeon vertical slices (2026-11-14, PLAN ONLY, waits mondo's answers)
+mondo uploaded two prototype packs from another chat (a PDF atlas + an HTML design pack, copies in /mnt/project-files/dungeons/source/)
+and asked for one plan to build them as a standalone mode from the main menu or Settings. The plan is **docs/PLOT_DUNGEONS_PLAN.md**
+(also /mnt/project-files/dungeons/): five 3 x 3 boards of 42 m plots (ROTATE catacombs, SLIDE Disaster City, CONNECT THE WORKS,
+GROW AND CARRY fairy forest, ESCORT H-Wing), each plot a stage part moved by a live pose, Phase 0 = the engine proof. Puzzles stay
+inside this mode only (the story zones keep NO PUZZLES). Nothing built. Its §13 lists what mondo approves; its §14 is the log —
+append one line there per phase and put the phase notes here.
