@@ -67214,7 +67214,7 @@ const HQ_CITY_RESIDENTS = {
     fronts: {
         'P00-01-B2': [-225.75, -190.75], 'P00-02-B2': [-225.75, -148.75], 'P01-00-B1': [-183.75, -232.75], 'P01-03-B1': [-183.75, -106.75], 'P01-03-B2': [-183.75, -103.25], 'P02-01-B1': [-141.75, -190.75],
         'P02-01-B2': [-152.25, -190.75], 'P03-00-B2': [-96.25, -232.75], 'P08-01-B1': [110.25, -190.75], 'P08-00-B1': [103.25, -246.75], 'P11-00-B2': [229.25, -232.75], 'P10-01-B2': [183.75, -190.75],
-        'P11-02-B2': [229.25, -148.75], 'P09-03-B2': [134.75, -106.75], 'P03-04-B1': [-96.25, -64.75], 'P01-05-B1': [-190.75, -36.75], 'P00-04-B1': [-232.75, -78.75], 'P07-04-B2': [64.75, -64.75],
+        'P11-02-B2': [229.25, -148.75], 'P09-03-B2': [134.75, -106.75], 'P03-04-B1': [-95.5, -76.2], 'P01-05-B1': [-190.75, -36.75], 'P00-04-B1': [-232.75, -78.75], 'P07-04-B2': [64.75, -64.75],
         'P04-05-B2': [-68.25, -19.25], 'P11-04-B2': [232.75, -64.75], 'P06-09-B2': [15.75, 145.25], 'P07-08-B2': [61.25, 103.25], 'P06-08-B1': [19.25, 89.25], 'P07-10-B2': [57.75, 190.75],
         'P02-09-B2': [-152.25, 148.75], 'P01-11-B2': [-194.25, 229.25], 'P00-09-B2': [-236.25, 145.25], 'P10-09-B2': [183.75, 148.75], 'P09-09-B1': [145.25, 131.25]
     },                                                    // building id → [x, z]: the square in front of a building without a walk-in door (bake: node scratch, see notes)
@@ -67270,7 +67270,7 @@ const HQ_CITY_RESIDENTS = {
         { race: 'pirate', home: 'P10-09-B2', homeName: 'Staff apartments', day: [[4, 12, 'S', 'home'], [13, 20, 'W', 'b:P09-08-B3'], [20, 3, 'O', 'beach']] },
         { race: 'chef', home: 'P10-09-B2', homeName: 'Staff apartments', day: [[21, 4, 'S', 'home'], [5, 15, 'W', 'b:P09-09-B1'], [15, 19, 'O', 'p:P08-09']] },
         { race: 'hippie', home: 'P10-09-B2', homeName: 'Staff apartments', day: [[0, 8, 'S', 'home'], [9, 17, 'W', 'p:P08-09'], [17, 23, 'O', 'beach']] },
-        { race: 'ghost', home: 'P08-08-B1', homeName: 'Waterfront hotel', day: [[6, 21, 'S', 'home'], [22, 5, 'P', 'b:P08-08-B1']] },
+        { race: 'ghost', home: 'P08-08-B1', homeName: 'Waterfront hotel', noBed: true, day: [[6, 21, 'S', 'home'], [22, 5, 'P', 'b:P08-08-B1']] },
     ],
 };
 let _hqCityGridCache = null;
@@ -67550,8 +67550,8 @@ function hqResidentPlace(G, r, place) {
                 const res = { kind: 'inside', at: B.inner, x: B.ax, z: B.az, cells: B.inside, bld: bi, door: { x: B.bx, z: B.bz } };
                 /* THE BEDS: a resident's own bed in its home, the housemates in list order (a double sleeps two) */
                 const L = (G.beds && G.beds[bi]) || [];
-                if (L.length && id === String(r.home)) {
-                    let slot = R.list.filter(q => q.home === r.home).indexOf(r), bd = null;
+                if (L.length && id === String(r.home) && !r.noBed) {   // (noBed: the Ghost haunts the hotel by day, it takes nobody's bed)
+                    let slot = R.list.filter(q => q.home === r.home && !q.noBed).indexOf(r), bd = null;
                     for (const b of L) { if (slot < b.cap) { bd = b; break; } slot -= b.cap; }
                     if (bd) { const w = (G.pt && G.pt.get(bd.k)) || sq(bd.k); res.bed = Object.assign({}, bd, { wx: w.x, wz: w.z }); }
                 }
@@ -67640,7 +67640,7 @@ function hqResidentTimeline(G, r, dayKey) {
             const p = Math.min(u1 - u, between(pause)); segs.push({ u0: u, u1: u + p, k: 'stay', x: at.x, z: at.z, face: Math.floor(rng() * 360), place }); u += p;
             if (u >= u1 - 0.02) break;
             const near = pl.cells.filter(k => { const q = sq(k); return Math.hypot(q.x - at.x, q.z - at.z) <= reach; }), pool = near.length > 1 ? near : pl.cells;
-            const tk = pool[Math.floor(rng() * pool.length)], tq = sq(tk);
+            const tk = pool[Math.floor(rng() * pool.length)], tq = (G.pt && G.pt.get(tk)) || sq(tk);   // (a square's walked point: beside its bed / bench, not in it)
             const end = leg(u, at, at.k, tq, tk, place); if (end == null) continue;
             if (end > u1) { const t = truncate(u1); u = u1; if (t) at = t; break; }
             u = end; at = { x: tq.x, z: tq.z, k: tk };
