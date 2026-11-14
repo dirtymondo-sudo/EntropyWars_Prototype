@@ -94,15 +94,18 @@ B['P07-04-B1'] = { row: { storeys: 1 }, parts(door) { const a = sheet();
     return a.P; } };
 
 /* 7 · APARTMENTS A — the repeatable block: stone foot, terracotta floors, two bay stacks, a cornice, a water tank */
-function apartments(sx, sz, st, tint, baySide) { const a = sheet(), h = st * 3.5;
-    a.box(0, 0, 0, sx + 0.1, 3.5, sz + 0.1, STUCCO, 0xe6dfd0, { top: false }); a.box(0, 3.5, 0, sx + 0.1, h - 3.5, sz + 0.1, G_RES, tint, { top: false, glow: 0.12 });
+function apartments(sx, sz, st, tint, baySide, door) { const a = sheet(), h = st * 3.5;
+    if (door) a.shell(sx, 3.5, sz, STUCCO, 0xe6dfd0, door); else a.box(0, 0, 0, sx + 0.1, 3.5, sz + 0.1, STUCCO, 0xe6dfd0, { top: false });   // a walk-in's ground floor has the real doorway (11-14, the residents' bedrooms) a.box(0, 3.5, 0, sx + 0.1, h - 3.5, sz + 0.1, G_RES, tint, { top: false, glow: 0.12 });
     a.box(0, h, 0, sx + 1.1, 0.6, sz + 1.1, ALU, 0xf2ecde, { under: true }); a.box(0, h + 0.6, 0, sx, 0.7, sz, BRICK, 0xb86a58, { keyTop: CONC, tintTop: 0x8a8a86 });
     const n = { W: [-1, 0], E: [1, 0], N: [0, -1], S: [0, 1] }[baySide];
     for (const o of [-0.28, 0.28]) { if (n[0]) a.box(n[0] * (sx / 2 + 0.6), 3.5, o * sz, 1.2, h - 5.25, 3.2, G_RES, 0xf0e6d6, { glow: 0.12 }); else a.box(o * sx, 3.5, n[1] * (sz / 2 + 0.6), 3.2, h - 5.25, 1.2, G_RES, 0xf0e6d6, { glow: 0.12 }); }
     a.cyl(sx * 0.25, h + 2.6, -sz * 0.25, 1.7, 2.6, WOOD, 0xb89068, { seg: 12 }); a.cyl(sx * 0.25, h + 5.2, -sz * 0.25, 1.9, 1.2, null, 0x6a5848, { seg: 12, r2: 0 });
     a.cyl(sx * 0.25, h + 1.3, -sz * 0.25, 1.2, 1.3, METAL, 0x55585c, { seg: 4, cap: false });
     return a.P; }
-B['P07-04-B2'] = { row: { solid: true }, parts() { return apartments(17.5, 24.5, 5, 0xe6a288, 'W'); } };
+/* (11-14, mondo picked "District threads add them": the city's residents sleep in real beds) Apartments A is a walk-in now: a ground-floor
+   flat of three bedrooms (Sidekick, Police officer, Nephilim) off a front hall, IN['P07-04-B2'] below. The plan id stays: the residents find
+   their home by it. */
+B['P07-04-B2'] = { row: { storeys: 1, hollow: true, doorSide: 'W' }, parts(door) { return apartments(17.5, 24.5, 5, 0xe6a288, 'W', door); } };
 
 /* 8 · COFFEE ARCADE — a cafe hall under a glass barrel vault, a four-bay striped arcade on columns along the walk, a giant cup on the roof.
        (The plan's pack block moved next door: 9.) */
@@ -368,17 +371,18 @@ DET['P07-04-B1'] = (a, door) => { const K = kit(a);
     K.lamps(door, door && (door.side === 'N' || door.side === 'S') ? 7 : 12.25, 2.9); };
 
 /* 7 · APARTMENTS A: a belt course, balconies on the back, an entrance canopy between the bays, pipes, a stair hut and vents on the roof */
-function aptDress(a, sx, sz, st, baySide) { const K = kit(a), h = st * 3.5, opp = { W: 'E', E: 'W', N: 'S', S: 'N' }[baySide], ew = baySide === 'E' || baySide === 'W';
+function aptDress(a, sx, sz, st, baySide, door) { const K = kit(a), h = st * 3.5, opp = { W: 'E', E: 'W', N: 'S', S: 'N' }[baySide], ew = baySide === 'E' || baySide === 'W';
     const hb = (ew ? sx : sz) / 2, L = ew ? sz : sx;
     K.plinth(sx, sz, 0.5, null, STUCCO, 0xb8b0a0, 0.12); K.course(sx, sz, 3.4, 0.24, 0.16, STUCCO, 0xf2ecde);
     for (let f = 1; f < st; f++) for (const u of [-0.28 * L, 0.28 * L]) K.balcony(opp, hb, u, f * 3.5, 3);
-    K.awning(baySide, hb, 0, 2.7, 3.4, 1.5, 0x2c5a48, 0x2c5a48); K.door(baySide, hb, -0.55, 0, 1.1, 2.3, D_WOOD); K.door(baySide, hb, 0.55, 0, 1.1, 2.3, D_WOOD); K.lamp(baySide, hb, -1.3, 2.4); K.lamp(baySide, hb, 1.3, 2.4);
+    if (door && door.side === baySide) { const du = K.doorU(door); K.awning(baySide, hb, du, 2.7, 3.4, 1.5, 0x2c5a48, 0x2c5a48); K.lamps(door, hb, 2.4); }   // a walk-in: the real swing door
+    else { K.awning(baySide, hb, 0, 2.7, 3.4, 1.5, 0x2c5a48, 0x2c5a48); K.door(baySide, hb, -0.55, 0, 1.1, 2.3, D_WOOD); K.door(baySide, hb, 0.55, 0, 1.1, 2.3, D_WOOD); K.lamp(baySide, hb, -1.3, 2.4); K.lamp(baySide, hb, 1.3, 2.4); }
     K.door(opp, hb, 0, 0, 1.1, 2.2, D_GREY); for (let f = 1; f < st; f++) { K.ac(opp, hb, -0.28 * L + 2.2, f * 3.5 + 1.4); if (f % 2) K.ac(opp, hb, 0.28 * L - 2.2, f * 3.5 + 1.4); }
     K.rTop(0, h + 0.6, 0, sx - 0.5, sz - 0.5, TAR, 0xffffff);
     K.pipe(opp, hb, 0, h); K.pipe(opp, hb, -L / 2 + 0.5, h); K.pipe(opp, hb, L / 2 - 0.5, h);
     K.rHut(-sx * 0.2, h + 0.6, sz * 0.2, BRICK, 0xb86a58); K.rVent(sx * 0.1, h + 0.6, sz * 0.3); K.rVent(-sx * 0.3, h + 0.6, -sz * 0.3); K.rAC(sx * 0.2, h + 0.6, sz * 0.05);
     a.cyl(-sx * 0.3, h + 0.6, sz * 0.38, 0.05, 3.2, METAL, 0xb0b4b8, { seg: 5, roof: true }); }
-DET['P07-04-B2'] = a => aptDress(a, 17.5, 24.5, 5, 'W');
+DET['P07-04-B2'] = (a, door) => aptDress(a, 17.5, 24.5, 5, 'W', door);
 
 /* 8 · COFFEE ARCADE: a brown dado, shuttered upper windows on the blank sides, menu boards by the door, a saucer under the cup, a flue */
 DET['P04-05-B1'] = (a, door) => { const K = kit(a), CR2 = 0xfff0d0, BRN = 0x8a5230;
@@ -786,8 +790,18 @@ IN2['P06-04-B1'] = K => { const a = K.a, at = K.at;
     a.cyl(dx, K.H - 1.2, dz, 2.7, 0.12, null, 0xfff0d0, { seg: 24, ri: 2.4, glow: 1, roof: true }); for (const c of [[1, 0], [-1, 0], [0, 1], [0, -1]]) a.cyl(dx + c[0] * 2.55, K.H - 1.08, dz + c[1] * 2.55, 0.015, 1.08, null, 0x1a1a1a, { seg: 4, roof: true });
     for (const p of [[1, 1], [6, 1], [1, 4], [6, 4], [2, 6], [5, 6]]) K.pendant(...at(p[0], p[1]), 1.8, 0x7a1a24, 0xffe2a8);
     for (const s of ['l', 'r']) for (const j of [1, 6]) K.sconce(s, at(0, j)[1], 2.6);
-    K.wall('directory_board', 'r', at(7, 1)[1], 1.0); K.wall('wall_clock', 'l', at(0, 1)[1], 4.6); K.wall('exit_sign', 'f', K.dlx, 2.75);
-    if (HAS('rope_stanchion')) for (const j of [5, 6]) { const z = at(0, j)[1]; K.put('rope_stanchion', K.dlx - 1.6, z, 90); K.put('rope_stanchion', K.dlx + 3.2, z, 90); } };
+    K.wall('directory_board', 'r', at(7, 4)[1], 1.0); K.wall('wall_clock', 'l', at(0, 1)[1], 4.6); K.wall('exit_sign', 'f', K.dlx, 2.75);   // (the board moved out of Eagleman's room, 11-14)
+    if (HAS('rope_stanchion')) for (const j of [5, 6]) { const z = at(0, j)[1]; K.put('rope_stanchion', K.dlx - 1.6, z, 90); K.put('rope_stanchion', K.dlx + 3.2, z, 90); }
+    TOWER_ROOMS(K); };
+/* THE RESIDENTS' ROOMS in the tower (11-14, bedrooms brief): the lobby keeps everything; its two back corners (2 x 2 squares beside the lift
+   core, each with its trophy case) are walled off as bedrooms, a one-square doorway each off the lobby: the Superhero's (left, squares 0-1)
+   and Eagleman's (right, 6-7). Bed at the back wall next to the trophies, the wardrobe on the side wall. */
+function TOWER_ROOMS(K) { const at = K.at, zF = at(0, 1)[1] + 1.75;
+    for (const [i0, iw] of [[0, 2], [6, 0]]) { const xi = at(i0, 0)[0], xe = at(iw === 2 ? 1 : 6, 0)[0] + (iw === 2 ? 1.75 : -1.75), xo = iw === 2 ? -K.W / 2 : K.W / 2, dI = iw === 2 ? 1 : 6;
+        partition(K, xe, -K.D / 2, xe, zF); partition(K, xo, zF, xe, zF, [[Math.min(at(dI, 0)[0] - 1.75, at(dI, 0)[0] + 1.75), Math.max(at(dI, 0)[0] - 1.75, at(dI, 0)[0] + 1.75)]], 0xf6eedd); }
+    bedSet(K, ...at(1, 0), 0, 'psx_bed_4_3', ...at(0, 1), 270, 1, 0xa02030);      // the Superhero
+    bedSet(K, ...at(6, 0), 0, 'psx_bed_4_4', ...at(7, 1), 90, -1, 0x2f5f9a);        // Eagleman
+    K.pendant(...at(0, 0), 1.8, 0x7a1a24, 0xffe2a8); K.pendant(...at(7, 0), 1.8, 0x7a1a24, 0xffe2a8); }
 /* 4 · PRESS COURT: blue-grey walls over a dark dado, a red carpet under the seats, ceiling panels, a lighting truss with its cans over the stage;
    the TV cameras are the Meshy pedestal camera (the drawn ones stay as the fallback), studio lights at the stage's ends (Entertainment's) */
 IN2['P07-04-B1'] = K => { const a = K.a, at = K.at;
@@ -825,8 +839,12 @@ IN2['P04-06-B1'] = K => { const at = K.at;
     K.liner(PAINT2(0xb8c4a0, U('PlasterWallPainted2a'), 2.0), WOODM(0x4a3020), CEIL(), { dado: 1.1 }); K.floor(U('TileGeneric5a'), 0xffffff, 3.5);
     { const x = at(4, 0)[0], z0 = at(4, 1)[1], z1 = K.D / 2 - 0.5; K.rug(x, (z0 + z1) / 2, 2.2, z1 - z0, 'carpet', 0x8a2a2a, 1.6); for (const j of [1, 2, 3]) K.pendant(x, at(4, j)[1], 2.6, 0x5a3a20); }
     K.lamp(...at(5, 0, 2), 3, 0.6); for (const j of [1, 3]) K.sconce('l', at(0, j)[1], 2.2); K.sconce('r', at(6, 2)[1], 2.2);
-    K.put('doormat', K.dlx, K.D / 2 - 1.0, 0); K.put('umbrella_stand', at(5, 3)[0] - 1.2, at(5, 3)[1] + 1.1, 0);
-    K.wall('notice_board', 'r', at(6, 3)[1], 1.2); K.wall('wall_clock', 'b', at(5, 0, 2)[0], 3.0); K.wall('exit_sign', 'f', K.dlx, 2.75); };
+    K.put('doormat', K.dlx, K.D / 2 - 1.0, 0); K.put('umbrella_stand', K.dlx - 1.4, K.D / 2 - 0.6, 0);   // (the stand + the board moved out of the Antihero's room, 11-14)
+    K.wall('notice_board', 'f', at(2, 3)[0], 1.2); K.wall('wall_clock', 'b', at(5, 0, 2)[0], 3.0); K.wall('exit_sign', 'f', K.dlx, 2.75);
+    /* THE RESIDENTS' ROOM (11-14, bedrooms brief): the Antihero's, the front-right corner (squares 5-6, rows 2-3) walled off the stair hall,
+       its doorway one square on the hall walk (square 5, row 2 -> the walk at square 4). Bed head to the right wall, wardrobe in the corner. */
+    { const xw = at(4, 0)[0] + 1.75, zb = at(0, 1)[1] + 1.75; partition(K, xw, zb, xw, K.D / 2, [[zb, zb + 3.5]]); partition(K, xw, zb, K.W / 2, zb);
+      bedSet(K, ...at(6, 2), 90, 'psx_bed_5_4', ...at(6, 3), 90, 1, 0x3a3a40); K.pendant(...at(5, 2), 0.7, 0x2a2a2e); } };
 /* 8 · OFFICE COURT: cool grey walls over a marble dado, a grid of ceiling panels, the building directory, a globe lamp by the couch, a rug under
    the meeting table */
 IN2['P07-06-B1'] = K => { const at = K.at;
@@ -834,6 +852,43 @@ IN2['P07-06-B1'] = K => { const at = K.at;
     for (const i of [0, 2, 4]) for (const j of [1, 3]) K.lamp(...at(i, j, 2, 1), 1.4, 1.4);
     K.wall('directory_board', 'l', at(0, 2)[1], 1.0); K.wall('wall_clock', 'r', at(5, 2)[1], 2.4); K.wall('exit_sign', 'f', K.dlx, 2.45); K.wall('fire_extinguisher', 'f', K.dlx - 1.5, 1.0);
     K.put('rug_office', ...at(5, 4), 0); K.put('globe_lamp', at(0, 4)[0] - 1.2, at(0, 4)[1] - 1.25, 0); };
+/* 13b · APARTMENTS A (11-14, the residents' bedrooms brief, project files disaster-city-residents/bedrooms-brief.md "Hero Plaza (H)"): the ground
+   floor is a flat, 7 x 5 squares, the swing door (the plan's) in the front row at square 0. Three bedrooms across the back three rows behind plaster
+   partitions on the squares' edges, each with a one-square doorway off the hall: the Sidekick's (squares 0-1, doorway 1), the Nephilim's
+   (2-4, doorway 3), the Police officer's (5-6, doorway 5). Each bed and wardrobe fills a whole square
+   at the back wall; bedside tables, lamps, rugs = decor off the squares' middles. The hall (rows 3-4): a sofa (square 3) and a dining table
+   (square 6) on whole squares in the front row, row 3 the walk from the door, whole squares wide. Beds = PSX singles (the residents' code takes any key matching /bed|cot/). */
+/* THE RESIDENTS' ROOMS (11-14): a plaster partition along a square edge (x0,z0 -> x1,z1, room metres) with its ghost, a skirting, and
+   one-square doorways (`gaps`: [from, to] metres along it) under a lintel; a bed + wardrobe + bedside table + lamp + rug set. */
+function partition(K, x0, z0, x1, z1, gaps, tint) { const a = K.a, H = K.H, T = 0.16, ew = Math.abs(x1 - x0) > Math.abs(z1 - z0), L0 = ew ? Math.min(x0, x1) : Math.min(z0, z1), L1 = ew ? Math.max(x0, x1) : Math.max(z0, z1), c = ew ? z0 : x0;
+    const seg = (u0, u1, y, h) => { const m = (u0 + u1) / 2, l = u1 - u0; if (l < 0.05) return; if (ew) a.box(m, y, c, l, h, T, PLASTER, tint || 0xeee2cc); else a.box(c, y, m, T, h, l, PLASTER, tint || 0xeee2cc);
+        if (y === 0) { if (ew) { a.box(m, 0, c, l, 0.14, T + 0.04, WOOD, 0x4a3020); K.ghost(m, c, l, T, H); } else { a.box(c, 0, m, T + 0.04, 0.14, l, WOOD, 0x4a3020); K.ghost(c, m, T, l, H); } } };
+    let u = L0; for (const g of (gaps || []).slice().sort((p, q) => p[0] - q[0])) { seg(u, g[0], 0, H); seg(g[0], g[1], 2.3, H - 2.3); u = g[1]; } seg(u, L1, 0, H); }
+function bedSet(K, bx, bz, bf, bed, wx, wz, wf, side, rugT, o) { o = o || {};
+    K.prop(bed, bx, bz, bf); K.prop(o.wardrobe || 'psx_wardrobe_mp_1', wx, wz, wf);
+    const r = bf * Math.PI / 180, hx = Math.sin(r), hz = -Math.cos(r), sx = -hz * side, sz = hx * side;   // hx/hz: toward the bed's head (the wall); sx/sz: its side
+    K.put(o.table || 'psx_bedside_table_1', bx + hx * 0.75 + sx * 1.15, bz + hz * 0.75 + sz * 1.15, bf); K.put('table_lamp', bx + hx * 0.75 + sx * 1.15, bz + hz * 0.75 + sz * 1.15, bf, 0.64);
+    K.rug(bx - hx * 1.9, bz - hz * 1.9, Math.abs(hx) > 0.5 ? 1.4 : 2.4, Math.abs(hx) > 0.5 ? 2.4 : 1.4, 'carpet', rugT, 1.6); }
+IN['P07-04-B2'] = K => { const a = K.a, at = K.at, H = K.H, PART = 0xeee2cc, zF = at(0, 2)[1] + 1.75, T = 0.16;
+    K.floor(WOOD, 0xb08a64, 3.5);
+    K.liner(PAINT2(0xe8d8b8), WOODM(0x6a4a30), CEIL(), { dado: 0.9, rail: 0x4a3020 });
+    /* the partitions: two side walls between the rooms, the bedrooms' front wall with three one-square doorways */
+    for (const x of [at(1, 0)[0] + 1.75, at(4, 0)[0] + 1.75]) { const z = (-K.D / 2 + zF) / 2, d = zF + K.D / 2; a.box(x, 0, z, T, H, d, PLASTER, PART); K.ghost(x, z, T, d, H); }
+    for (const i of [0, 2, 4, 6]) { const x = at(i, 0)[0]; a.box(x, 0, zF, 3.5, H, T, PLASTER, PART); a.box(x, 0, zF, 3.52, 0.14, T + 0.04, WOOD, 0x4a3020); K.ghost(x, zF, 3.5, T, H); }
+    for (const i of [1, 3, 5]) { const x = at(i, 0)[0]; a.box(x, 2.3, zF, 3.5, H - 2.3, T, PLASTER, PART); }   // the lintel over each doorway
+    /* the bedrooms: [bed square, wardrobe square, bed key, rug tint, lamp tint] */
+    for (const [bi, wi, bed, rugT, sh] of [[0, 1, 'psx_bed_4_2', 0x2a4a7a, 0x3a5a8a], [2, 4, 'psx_bed_5_3', 0x6a2a3a, 0x7a3a2a], [6, 5, 'psx_bed_5_1', 0x2a3a5a, 0x5a5a62]]) {
+        const [bx, bz] = at(bi, 0), [wx, wz] = at(wi, 0), s = bi < wi ? 1 : -1;
+        K.prop(bed, bx, bz, 0); K.prop('psx_wardrobe_mp_1', wx, wz, 0);
+        K.put('psx_bedside_table_1', bx + s * 1.25, bz - 1.25, 0); K.put('table_lamp', bx + s * 1.25, bz - 1.25, 0, 0.64);
+        K.rug(bx, bz + 2.2, 2.4, 1.6, 'carpet', rugT, 1.6);
+        K.pendant((bx + wx) / 2, at(bi, 1)[1], 0.7, sh); }
+    /* the hall: a sofa facing the bedrooms, the dining table on the right, a rug and lamps down the walk */
+    K.prop('psx_sofa_1', ...at(3, 4), 180); K.decor('potted_plant', 2, 4, -1, 1); K.decor('potted_plant', 6, 3, 1, -1);
+    K.table(6, 4, 'psx_dinner_table_1', 'cafeteria_chair');
+    K.rug(at(3, 3)[0], at(3, 3)[1] + 1.75, 10.5, 2.2, 'carpet', 0x7a5a3a, 1.5);
+    for (const i of [1, 3, 5]) K.lamp(at(i, 3)[0], at(i, 3)[1] + 1.75, 1.2, 1.2, 0xfff0d0);
+    K.wall('wall_clock', 'f', at(5, 4)[0], 2.2); K.put('doormat', K.dlx, K.D / 2 - 1.0, 0); K.put('umbrella_stand', K.dlx + 1.4, K.D / 2 - 0.6, 0); };
 /* 9 · DELIVERY YARD: pale corrugated walls over a hazard band, cool strip lights down the walk, the pallet jack by the pallets, a hand truck, bundles
    of papers by the racks, the dispatch board */
 IN2['P07-07-B1'] = K => { const at = K.at;
