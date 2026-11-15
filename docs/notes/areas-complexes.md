@@ -3450,3 +3450,34 @@ mondo 11-15 13:18 on the east range of PR #1424: "that looks terrible. you just 
 mountains in the north and remove the one you added". The east edge is the open bay again (E.js exports no `e.cap`); `edges.sign` is
 `{ side: 'n', at: 100, d: 30, ... }`: on the north range over the city's east half, land about y 55..59 there. The `edges` district export and
 the renderer's THE HILL SIGN stay as written above. LESSON: never add land he did not ask for; "use the mountains" meant the ones that exist.
+
+## DISASTER CITY, THE URBAN DECAY PASS (2026-11-15)
+mondo: "Utilize this pack to the fullest throughout disaster city ... The roads and wood and carpet and pretty much everything in this pack is
+better textures"; his OK on the plan sheet (`/mnt/project-files/urban-decay-city/plan_now_vs_new.jpg`): "looks good, and you can still use the
+old textures too except for tilegeneric2a, the calm wood planks, the calm carpet, and the road". The pack = Strideh's Urban Decay Textures v1.4
+(sprites.js URBAN_DECAY_FAMILIES, editor.md "THE URBAN DECAY PACK").
+- **Where**: `docs/disaster-city/urban-decay.js`, run by `node bake-disaster-city.js` after the sign fonts (the last pass over the features). It
+  only RENAMES sheet keys (and lifts `gain` where the new sheet is darker); district files keep writing the keys they know. `DC_NO_UD=1` = off.
+- **RULED OUT in the city** (the bake throws if one is left): `urban:TileGeneric2a`, `calm_planks`, `wood_planks` (the calm look draws it as
+  calm_planks), `calm_carpet`, the plaster sheet as the road.
+- **THE STACKING RULE** (his pins: "this one isnt stackable (strip across it)"): a wall that repeats upward wears a PLAIN sheet (the `a` of a
+  family). Base-band / plinth / pipe variants = a ground storey only; `*Moulding*` = one cornice band; `MetalShippingContainer*` = one container
+  side; `ConcreteCurb*` = one kerb strip. A roof sheet (`MetalRoofTiles*`) goes on roofs only.
+- **The ground**: road `urban:RoadGeneric1a` (same value as the old tinted plaster, floorTint kept), walk + path `ConcreteSidewalk1a`, yards
+  `ConcreteSlab2a`, pale plazas `ConcreteHexagons1a`, dark plazas `ConcreteHexagons2b`, walk-on roofs `ConcreteRoofBitumen1a`, boardwalks
+  `WoodGeneric1a`, the steep banks (cliff) `ConcreteWoodFormed1a`. The palette is FULL at 8 (the renderer reads 8), so the walk is one sheet
+  city-wide: a sheet per district needs more palette slots in both renderers first.
+- **The 765 retaining blocks / yard walls** by district: R BrickUrban3a, C ConcretePrecast1c, F BrickMasonry1a, U BrickWide2a, H ConcreteWoodFormed1a,
+  E ConcreteGeneric3a, I BrickCinder1a, S ConcretePanels3a, B ConcreteGeneric1a.
+- **Brick**: `bricks_1` / `bricks_3` drew as the calm grey stones under each district's tint; they are grey pack brick of the same value now
+  (BrickUrban3a / 4a, BrickMasonry1a / 2a, BrickCinder4a), so the tints still colour them. LESSON: never put a red brick sheet under a tint.
+- **Wood**: every `wood_planks` / `calm_planks` part -> `WoodGeneric1a` (E 1b, B 1c); building floors -> `WoodFlooring1a..1d` by district, seeded
+  by the building id; roof crossings `WoodGeneric2a`. three-renderer.js HQ_ARCH_SURFACE.wood (the bare brown parts) = `urban:WoodGeneric1a` too.
+- **Carpet**: `calm_carpet` -> U CarpetPattern1c, C CarpetPlain1c, S CarpetDiamond1c (the reds, as before).
+- **Others**: `TileGeneric2a` parts -> TileLinoleum1a; shop floors `TileGeneric5a` -> TileLinoleum1c; inside walls PlasterWallPainted1a ->
+  PlasterWallGeneric1a, PlasterWallStucco1a -> PlasterWallGeneric3a; flat roof tops -> ConcreteRoofBitumen1a; pitched roofs (not Industrial) ->
+  MetalRoofTiles1a (gain x1.28); Industrial shed walls 2.6 m+ -> MetalWallRibbed1a (gain x1.28); H striped concrete -> ConcretePrecast2a; I / S / R
+  striped concrete parts -> ConcretePanels3a / ConcretePrecast1c / ConcreteGeneric2a.
+- **NOT BUILT YET**: crossings / arrows / box junctions from RoadDouble + RoadZone (need a ground decal row), kerb stones (ConcreteCurb), roller
+  shutters on closed shops, container sides, chain-link, vent covers, leak + oil stains, the new manholes, facade brick on the plaster buildings.
+- NOT SEEN ON SCREEN (RULE #1c). Checked offline on the baked room: none of the ruled-out sheets left, every `urban:` key exists.

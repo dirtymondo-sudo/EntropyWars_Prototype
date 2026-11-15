@@ -72501,7 +72501,7 @@ const ThreeRenderer = (function () {
         paint:    { key: 'urban:PlasterWallPainted1a', avg: [0.525, 0.514, 0.494] },             // painted plaster / render: every light or coloured mass
         metal:    { key: 'calm_rivets',                avg: [0.424, 0.431, 0.443], shine: 26 },  // plate steel: the dark greys (frames, posts, rails, grilles)
         concrete: { key: 'calm_concrete',              avg: [0.365, 0.357, 0.345] },             // cast concrete: the mid greys (plinths, kerbs, slabs)
-        wood:     { key: 'calm_planks',                avg: [0.369, 0.298, 0.231] }              // boards: the browns (counters, shelves, benches, beams)
+        wood:     { key: 'urban:WoodGeneric1a',        avg: [0.396, 0.349, 0.290] }              // boards: the browns (counters, shelves, benches, beams). The Urban Decay pack's boards (mondo 11-15: no calm wood planks in the city)
     };
     function _hqArchSurface(tint) {
         var t = (tint == null) ? 0xffffff : (tint >>> 0), r = ((t >> 16) & 255) / 255, g = ((t >> 8) & 255) / 255, b = (t & 255) / 255;
