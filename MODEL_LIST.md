@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 981 |
+| Asset pack | yes | 1005 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -1955,6 +1955,35 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | decor_wall_torch_bracket | `Assets/world/props/meshy_decor/wall_torch_bracket.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | decor_windpump_tower | `Assets/world/props/meshy_decor/windpump_tower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | decor_windpump_wheel | `Assets/world/props/meshy_decor/windpump_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+
+### PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) — Asset pack (24)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| psxg_coffin | `Assets/world/packs/blendervoyage_graveyard/psxg_coffin.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_dead_bush_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_dead_bush_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_dead_bush_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_dead_bush_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_dead_tree_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_dead_tree_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_dead_tree_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_dead_tree_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_dirt_grave | `Assets/world/packs/blendervoyage_graveyard/psxg_dirt_grave.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_iron_gate_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_iron_gate_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_iron_gate_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_iron_gate_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_jack_o_lantern_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_jack_o_lantern_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_jack_o_lantern_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_jack_o_lantern_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_railing | `Assets/world/packs/blendervoyage_graveyard/psxg_railing.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_railing_corner | `Assets/world/packs/blendervoyage_graveyard/psxg_railing_corner.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_rock_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_rock_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_rock_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_rock_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_rock_3 | `Assets/world/packs/blendervoyage_graveyard/psxg_rock_3.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_rock_4 | `Assets/world/packs/blendervoyage_graveyard/psxg_rock_4.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_stepping_stone_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_stepping_stone_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_stepping_stone_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_stepping_stone_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_tombstone_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_tombstone_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_tombstone_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_tombstone_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_tombstone_3 | `Assets/world/packs/blendervoyage_graveyard/psxg_tombstone_3.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_wall | `Assets/world/packs/blendervoyage_graveyard/psxg_wall.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_wall_corner | `Assets/world/packs/blendervoyage_graveyard/psxg_wall_corner.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_wall_pillar | `Assets/world/packs/blendervoyage_graveyard/psxg_wall_pillar.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
 
 ### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) — Meshy AI (22)
 

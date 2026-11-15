@@ -107,6 +107,8 @@ const SOURCES = [
     { re: /Assets\/world\/packs\/pizzadoggy_psx_mega_pack\//, how: 'PACK', src: 'PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files)' },
     { re: /Assets\/Metro_PSX\//, how: 'PACK', src: 'Metro PSX · Elbolilloduro · CC0' },
     { re: /Assets\/halloween\//, how: 'PACK', src: 'Halloween pack · Elbolilloduro · CC0' },
+    // THE PSX GRAVEYARD PACK (2026-11-15): BlenderVoyage's pack (mondo's upload), each piece cut into its own GLB (data.js HQ_CATALOGUE_GRAVEYARD)
+    { re: /Assets\/world\/packs\/blendervoyage_graveyard\//, how: 'PACK', src: 'PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page\'s licence (each piece cut out of the pack\'s one GLB, unchanged)' },
     { re: /Assets\/christmas\//, how: 'PACK', src: 'Christmas pack · Elbolilloduro' },
     // THE PACK ROADS (2026-11-09): every piece of Elbolilloduro's Roads pack, one GLB each (bake-roads.py; data.js HQ_CATALOGUE_ROADS)
     { re: /Assets\/world\/packs\/elbolilloduro\/roads\//, how: 'PACK', src: 'Roads · Elbolilloduro · CC0 (every piece of the pack cut into its own GLB in Blender by bake-roads.py; data.js HQ_CATALOGUE_ROADS, editor group Roads)' },
