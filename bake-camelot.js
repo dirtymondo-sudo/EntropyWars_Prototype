@@ -104,7 +104,10 @@ note('THE PALACE: the Keep (the Throne Hall), the two wings, the eight towers, t
 /* THE KEEP — the tall middle block: the Throne Hall is its ground floor (14 m to its ceiling), 28 m of pale stone to the battlements, a
    blue hipped roof, a tower on each corner, the portal between two turrets under the great window, THE GREAT SPIRE out of the roof */
 const KH = 28;
-const KEEP = kq('keep', Q.keep, 'S', 14, { floorIn: 'marble' }, (a, w, d, door) => {
+/* (ONE STACKED BUILDING, 2026-11-15: the palace is walked into in its OWN room, site_prebuilt_camelot_palace, bake-camelot-castle.js. Here the
+   Keep and the wings are solid: their doors are this room's doors, and the wicket in each is shut by a drawn leaf behind the door's own.) */
+const KEEP = kq('keep', Q.keep, 'S', 14, { hollow: false, leaf: undefined, leafDouble: undefined, keyIn: undefined, floorIn: undefined }, (a, w, d, door) => {
+    a.box(door.lx, 0, d / 2 + 0.02, door.cw, 2.2, 0.06, WOODK, TIMBER);
     a.shell(w, 14, d, WALL, PALE, door); a.box(0, 14, 0, w + 0.1, KH - 14, d + 0.1, WALL, PALE, { top: false, under: true });
     a.box(0, 0, 0, w + 0.8, 1.2, d + 0.8, WALL, STONE2, { faces: 'blr' });
     for (const y of [13.6, 20.8]) a.box(0, y, 0, w + 0.6, 0.5, d + 0.6, WALL, STONE3, { under: true });
@@ -137,6 +140,7 @@ const KEEP = kq('keep', Q.keep, 'S', 14, { floorIn: 'marble' }, (a, w, d, door) 
 /* A WING — two tall storeys of hall under a steep blue roof, a tower on each outer corner (the rear one the taller, so all eight show from
    the Market); `out` = which side is its free end (-1 west, 1 east), so the two are mirror images */
 const wing = (id, q, out, o) => kq(id, q, 'S', 7, o, (a, w, d, door) => {
+    a.box(door.lx, 0, d / 2 + 0.02, door.cw, 2.2, 0.06, WOODK, TIMBER);
     a.shell(w, 7, d, WALL, STONE, door); a.box(0, 7, 0, w + 0.1, 7, d + 0.1, WALL, STONE, { top: false, under: true });
     a.box(0, 0, 0, w + 0.7, 1.1, d + 0.7, WALL, STONE2, { faces: 'blr' }); a.box(0, 6.7, 0, w + 0.5, 0.45, d + 0.5, WALL, STONE3, { under: true });
     a.box(0, 13.4, 0, w + 0.9, 0.6, d + 0.9, WALL, STONE3, { under: true }); a.box(0, 14, 0, w + 0.5, 0.3, d + 0.5, WALL, 0x8c8a88, { roof: true }); a.crown(w + 0.5, d + 0.5, 14.3, WALL, STONE);
@@ -149,7 +153,7 @@ const wing = (id, q, out, o) => kq(id, q, 'S', 7, o, (a, w, d, door) => {
     a.box(-out * (w / 2 - 3), 14.3, -d / 2 + 3, 2.2, 10.5, 2.2, WALL, STONE2, { roof: true }); a.box(-out * (w / 2 - 3), 24.8, -d / 2 + 3, 2.7, 0.5, 2.7, WALL, STONE3, { roof: true });
     a.tower(out * w / 2, d / 2, 4.2, 0, 24, 11, STONE); a.tower(out * w / 2, -d / 2, 3.6, 0, 30, 10, STONE);
 });
-const WEST = wing('west_wing', Q.westWing, -1, { leafDouble: false }), EAST = wing('east_wing', Q.eastWing, 1, { leafDouble: false });
+const WEST = wing('west_wing', Q.westWing, -1, { hollow: false, leaf: undefined, leafDouble: undefined, keyIn: undefined, floorIn: undefined }), EAST = wing('east_wing', Q.eastWing, 1, { hollow: false, leaf: undefined, leafDouble: undefined, keyIn: undefined, floorIn: undefined });
 /* what the towers weigh */
 [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach((c, i) => solid('keep_tower_' + i, KEEP.at(c[0] * KEEP.fw / 2, c[1] * KEEP.fd / 2), 4.4, 3));
 [-1, 1].forEach((s, i) => solid('door_turret_' + i, KEEP.at(s * 8, KEEP.fd / 2 + 1.5), 2.8, 3));
@@ -194,23 +198,7 @@ const ARMOURY = lodge('armoury', Q.armoury, 'W', { leafDouble: false }, (a, w, d
 arch.forEach(feat);
 
 /* ── THE INSIDES ── */
-/* THE THRONE HALL (the Keep's ground floor): the throne on the middle line at the back, the long carpet to it, THE ROUND TABLE before it,
-   the feast tables either side, armour along the walls, THE GREAT STAIR's door in the back wall. Left and right are mirror images. */
-put(KEEP, 'royal_throne', 0, -16, { face: 180 }); for (const z of [-11, -5, 13]) put(KEEP, 'holy_carpet', 0, z, { face: 180 });
-put(KEEP, 'round_table', 0, 4, {});
-for (const s of [-1, 1]) { put(KEEP, 'lion_statue', s * 4.5, -15.5, { face: 180 }); put(KEEP, 'brazier', s * 7.5, -15, {}); put(KEEP, 'brazier', s * 5, 17, {}); put(KEEP, 'brazier', s * 20, 0, {});
-    for (const z of [-14, -7, 7, 14]) put(KEEP, 'armour_stand', s * 22, z, { face: s < 0 ? 90 : 270 });
-    for (const z of [-3, 9]) { put(KEEP, 'psx_table_large_2', s * 14, z, { face: 90 }); put(KEEP, 'church_pew', s * 14, z + 1.6, { face: 180 }); put(KEEP, 'church_pew', s * 14, z - 1.6, { face: 0 }); }
-    put(KEEP, 'crystal_chandelier', s * 13, 3, { floor: true, y: T2 + 11.4 }); put(KEEP, 'dojo_weapon_rack', s * 16, -19.6, { face: 180 }); }
-put(KEEP, 'crystal_chandelier', 0, 4, { floor: true, y: T2 + 11.4 }); put(KEEP, 'crystal_chandelier', 0, -11, { floor: true, y: T2 + 11.4 });
-/* the West Wing: THE KITCHEN */
-put(WEST, 'cauldron', -9, -10, {}); put(WEST, 'cauldron', -5, -11, {}); put(WEST, 'stock_pots', 0, -12.4, { face: 180 }); put(WEST, 'brazier', 5, -11, {}); put(WEST, 'bread_rack', -12.6, -3, { face: 90 }); put(WEST, 'bread_rack', -12.6, 3, { face: 90 });
-put(WEST, 'psx_table_large_3', -3, -2, {}); put(WEST, 'psx_table_large_3', 4, -2, {}); put(WEST, 'psx_table_large_2', 0, 5, { face: 90 }); put(WEST, 'church_pew', 0, 6.6, { face: 180 }); put(WEST, 'church_pew', 0, 3.4, { face: 0 });
-put(WEST, 'meshy_burlap_sack', 10, 8, {}); put(WEST, 'meshy_burlap_sack', 11.4, 6.4, { face: 40 }); put(WEST, 'meshy_burlap_sack', 11, 10, { face: 200 }); put(WEST, 'psx_wooden_crate_2', 10.5, -8, {}); put(WEST, 'psx_wooden_crate_3', 11.6, -5.6, {});
-/* the East Wing: THE BARRACKS, the Knights' */
-for (const z of [-9, -5, -1, 3]) for (const s of [-1, 1]) put(EAST, 'dorm_bed', s * 11, z, { face: s < 0 ? 90 : 270 });
-for (const x of [-6, -2, 2, 6]) put(EAST, 'armour_stand', x, -12.4, { face: 180 }); put(EAST, 'dojo_weapon_rack', -10, -12.6, { face: 180 }); put(EAST, 'dojo_weapon_rack', 10, -12.6, { face: 180 });
-put(EAST, 'sea_chest', -11.5, 9, { face: 90 }); put(EAST, 'sea_chest', 11.5, 9, { face: 270 }); put(EAST, 'brazier', 0, 0, {}); put(EAST, 'map_table', 0, 7, {});
+/* (the Throne Hall, the Kitchen and the Barracks are furnished in the palace's own room) */
 /* the Stables */
 for (const [k, x] of [['horse', -4.2], ['horse_brown', 0], ['horse_black', 4.2]]) put(STABLES, k, x, -8.5, { face: 180 }); put(STABLES, 'horse_brown', -4.2, -1, { face: 90 }); put(STABLES, 'meshy_burlap_sack', 5, 6, {}); put(STABLES, 'meshy_burlap_sack', 5.6, 8, { face: 70 }); put(STABLES, 'psx_wooden_crate_3', -5, 8, {});
 /* the Armoury: harness on stands down both walls, the racks at the back, the quartermaster's table */
@@ -228,19 +216,18 @@ for (let i = 0; i < 6; i++) for (const s of [-1, 1]) feat({ k: 'tree', x: g(48 +
 both('planter', 1.6, 33); both('brazier', 1.6, 35);
 
 /* ── THE WAYS (the Great Stair and the sally port are doors of this room; the wardrobe and the well are DOOR_HQ.links rows that end here) ── */
-{ const p = KEEP.at(16, -19.9);
-  doors.push({ id: 'keep', wall: 'free', x: p[0], z: p[1], face: 180, leaf: 'leaf_shabby_wood', label: 'THE KEEP', sub: 'THE GREAT STAIR · THE SOLAR · THE BATTLEMENTS',
-      action: { room: 'site_prebuilt_camelot_keep', at: 'ward' }, desc: 'The stair door in the back wall of the Throne Hall. The stair behind it goes up to the battlements and does not stop there.' });
+{ const PAL = 'site_prebuilt_camelot_palace', way = (id, B, label, sub, desc) => { const p = B.at(B.door.lx, B.fd / 2 + 0.3); doors.push({ id, wall: 'free', x: p[0], z: p[1], face: 180, leaf: 'leaf_shabby_wood', label, sub, action: { room: PAL, at: id }, desc }); };
+  way('portal', KEEP, 'CAMELOT CASTLE', 'THE PORTAL · THE THRONE HALL · THE GREAT STAIR', 'The great doors of the Keep, and the man-sized door in them. Everything the castle has is behind this one: the hall, the stair, the king.');
+  way('kitchen', WEST, 'CAMELOT CASTLE', 'THE KITCHEN DOOR · THE WEST WING', 'The kitchen door in the West Wing. It smells of bread from here.');
+  way('guard', EAST, 'CAMELOT CASTLE', 'THE GUARD DOOR · THE EAST WING', 'The guard room door in the East Wing. Somebody inside is sharpening something.');
   doors.push({ id: 'postern', wall: 'free', x: g(41.5), z: r2(g(Q.hill[3]) + 0.45), face: 180, leaf: 'leaf_shabby_wood', label: 'MERLIN’S UNDERCROFT', sub: 'THE SALLY PORT · UNDER THE HILL',
-      action: { room: 'site_prebuilt_camelot_dungeon', at: 'postern' }, desc: 'A low door in the foot of the castle hill, beside the Grand Stair. It goes down under the castle, which the besiegers should have found suspicious.' }); }
+      action: { room: PAL, at: 'postern' }, desc: 'A low door in the foot of the castle hill, beside the Grand Stair. It goes down under the castle, which the besiegers should have found suspicious.' }); }
 const ends = { haunted_camelot: { wall: 'free', x: r2(mid(Q.westWing)[0] - 7.3), z: r2(g(Q.westWing[3]) + 1.6), face: 180 }, well_camelot: { wall: 'free', x: g(53.5), z: g(56.6), face: 180 } };
 
 /* ── who stands here: the old ward's four, with their own lines, in their new places; a knight in the barracks, two at the stair's head ── */
 npc.push({ x: g(44.6), z: g(57.4), face: 180, race: 'knight', say: say('knight') }); npc.push({ x: g(51.4), z: g(57.4), face: 180, race: 'knight' });
 npc.push({ x: g(49.6), z: g(56.9), face: 300, race: 'swordfighter', say: say('swordfighter') });
 npc.push({ x: g(56.5), z: g(54.2), face: 240, race: 'robinhood', say: say('robinhood') });
-{ const p = KEEP.at(3, -13); npc.push({ x: p[0], z: p[1], face: 180, race: 'king arthur', say: say('king arthur') }); }
-{ const p = EAST.at(2, 3); npc.push({ x: p[0], z: p[1], face: 180, race: 'knight' }); }
 
 return { F, props, doors, npc, marks, arch, X, Z, feat, raw, note, sheet, building, put, ends, Q, T1, T2 };
 }
