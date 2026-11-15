@@ -47623,7 +47623,7 @@ const ThreeRenderer = (function () {
         var ch = g.children, now = _ewBun.now || 0, watch = !S.noV && !!(_hq && _hq.ready) && !_ewBunNoOut(), cand = null;
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
-            if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); S.cH = (S.cH | 0) + 1; continue; }
+            if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); if (c._ew_bRec) S.cB = (S.cB | 0) + 1; else S.cH = (S.cH | 0) + 1; continue; }   // (a piece the merge holds reads hidden while a frame draws)
             if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }
             if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); S.cB = (S.cB | 0) + 1; continue; }
             var v0 = S.hv; S.hv = 0;
@@ -47747,7 +47747,13 @@ const ThreeRenderer = (function () {
                 if (stat && st.hs === S.hs) { (st.vt || (st.vt = [])).push(now); while (st.vt.length && now - st.vt[0] > 20000) st.vt.shift(); if (st.vt.length >= 8) { st.dyn = true; st.dynAt = now; st.dynN = (st.dynN | 0) + 1; stat = false; st.times = []; st.vt = []; } }
                 if (st.times.length >= 5) {
                     if (stat && st.hs === S.hs) { st.dyn = true; st.dynAt = now; st.dynN = (st.dynN | 0) + 1; stat = false; st.times = []; }   // only values keep moving: three checks them
-                    else { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
+                    /* THE SHELL KEEPS ITS RECORDING (2026-11-15, mondo's F3s in Disaster City: "SLOW RIGHT NOW: shell (10655 pieces) is
+                       drawn piece by piece", 2 to 15 times a session, 5 s each): a big still group (a big room's shell: ~10,000
+                       children, nearly all hidden behind their merged squares) costs three a walk of every child in every pass
+                       while it is released, ~10 ms a frame for 5 s, because 5 pieces started or stopped moving within 2 s. A
+                       re-record costs that walk ONCE. So such a group rests only when its list changes on about every third
+                       frame (24 times in 2 s); below that it is recorded again each time. The old 5: window.EW_BUN_REST_AT_5. */
+                    else if (st.times.length >= ((walk && g._ew_st && g.children.length > 1000 && !(typeof window !== 'undefined' && window.EW_BUN_REST_AT_5)) ? 24 : 5)) { st.until = now + 5000; st.times = []; st.why.rests++; W.rests++; _ewBunRelease(g); continue; }   // the tree itself churns: classic for a while
                 }
                 g.version++; st.G = G; st.hs = S.hs; st.hv = S.hv; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             } else if (st.G !== G || g._ew_bunFree) {   // the lamps / a freed resource it holds: re-records, and none of it counts as the group churning
