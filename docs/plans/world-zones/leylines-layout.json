@@ -1,0 +1,785 @@
+{
+"area": "Leylines",
+"version": "plan-1",
+"squareMeters": 3.5,
+"plotCells": 12,
+"districts": {
+"G": "G\u00f6bekli Tepe",
+"B": "Bug Colony (NEW)",
+"S": "Stonehenge",
+"Y": "The Ley Lines (the road)",
+"T": "Babel",
+"Z": "Technoticlan"
+},
+"rooms": [
+{
+"room": "Leylines",
+"cols": 9,
+"rows": 5,
+"plots": [
+{
+"id": "P00-00",
+"name": "The Dig",
+"district": "G\u00f6bekli Tepe",
+"level": 1,
+"what": "trenches, tarps, tools",
+"from": "G\u00f6bekli Tepe: THE DIG",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-00",
+"name": "The Mound",
+"district": "G\u00f6bekli Tepe",
+"level": 3,
+"what": "the tell itself",
+"from": "G\u00f6bekli Tepe: THE MOUND",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-00",
+"name": "The Sentinel",
+"district": "G\u00f6bekli Tepe",
+"level": 2,
+"what": "one pillar apart from the rest",
+"from": "G\u00f6bekli Tepe: THE SENTINEL",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-00",
+"name": "The Hive",
+"district": "Bug Colony (NEW)",
+"level": 2,
+"what": "a hive the size of a house",
+"from": "NEW (your zone list: Bug Colony) (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-00",
+"name": "The Anthill",
+"district": "Bug Colony (NEW)",
+"level": 3,
+"what": "LANDMARK: the hill",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-00",
+"name": "The Flower Field",
+"district": "Bug Colony (NEW)",
+"level": 1,
+"what": "flowers taller than you",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-00",
+"name": "The Barrows",
+"district": "Stonehenge",
+"level": 2,
+"what": "burial mounds",
+"from": "Stonehenge: THE BARROWS",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-00",
+"name": "The Bank",
+"district": "Stonehenge",
+"level": 2,
+"what": "the chalk bank",
+"from": "Stonehenge: THE BANK",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-00",
+"name": "The Ditch",
+"district": "Stonehenge",
+"level": 1,
+"what": "the ditch outside it",
+"from": "Stonehenge: THE DITCH",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-01",
+"name": "The First Doorway",
+"district": "G\u00f6bekli Tepe",
+"level": 1,
+"what": "a stone doorway with no wall",
+"from": "G\u00f6bekli Tepe: THE FIRST DOORWAY",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "The Four Enclosures",
+"district": "G\u00f6bekli Tepe",
+"level": 2,
+"what": "LANDMARK: four rings of T-pillars",
+"from": "G\u00f6bekli Tepe: FOUR ENCLOSURES \u00b7 THE T-PILLARS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Well",
+"district": "G\u00f6bekli Tepe",
+"level": 1,
+"what": "a well older than the stones",
+"from": "G\u00f6bekli Tepe: the well (exists)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"the well: the Cavern",
+"secret"
+]
+},
+{
+"id": "P03-01",
+"name": "The Honeycomb",
+"district": "Bug Colony (NEW)",
+"level": 1,
+"what": "wax cells you walk between",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-01",
+"name": "The Ant Tunnels",
+"district": "Bug Colony (NEW)",
+"level": 0,
+"what": "the ways down into the hill",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-01",
+"name": "The Tall Grass",
+"district": "Bug Colony (NEW)",
+"level": 1,
+"what": "grass over your head",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-01",
+"name": "The Avenue",
+"district": "Stonehenge",
+"level": 1,
+"what": "the way the sun comes in",
+"from": "Stonehenge: THE AVENUE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-01",
+"name": "The Sarsen Circle",
+"district": "Stonehenge",
+"level": 2,
+"what": "LANDMARK: the circle and the trilithons",
+"from": "Stonehenge: THE SARSEN CIRCLE \u00b7 THE TRILITHONS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-01",
+"name": "The Plain",
+"district": "Stonehenge",
+"level": 1,
+"what": "open grass",
+"from": "Stonehenge: THE PLAIN",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "The West Mouth",
+"district": "The Ley Lines (the road)",
+"level": 1,
+"what": "the line comes up out of a tunnel",
+"from": "The Ley Lines: the mouth to Giza (exists)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": [
+"The Desert: Giza (robbers' tunnel)",
+"secret"
+]
+},
+{
+"id": "P01-02",
+"name": "The Niches",
+"district": "The Ley Lines (the road)",
+"level": 1,
+"what": "niches cut along the line",
+"from": "The Ley Lines: THE NICHES",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-02",
+"name": "The Forks, west",
+"district": "The Ley Lines (the road)",
+"level": 1,
+"what": "the line splits north and south",
+"from": "The Ley Lines: THE FORKS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The Great Line",
+"district": "The Ley Lines (the road)",
+"level": 1,
+"what": "the line, straight as a ruler",
+"from": "The Ley Lines: THE GREAT LINE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-02",
+"name": "The Nexus",
+"district": "The Ley Lines (the road)",
+"level": 1,
+"what": "LANDMARK: where every line crosses",
+"from": "The Ley Lines: THE NEXUS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"The Cavern (down the line)",
+"open"
+]
+},
+{
+"id": "P05-02",
+"name": "The Great Line, east",
+"district": "The Ley Lines (the road)",
+"level": 1,
+"what": "the line",
+"from": "The Ley Lines: THE GREAT LINE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-02",
+"name": "The Forks, east",
+"district": "The Ley Lines (the road)",
+"level": 1,
+"what": "the line splits again",
+"from": "The Ley Lines: THE FORKS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-02",
+"name": "The Niches, east",
+"district": "The Ley Lines (the road)",
+"level": 1,
+"what": "more niches",
+"from": "The Ley Lines: THE NICHES",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-02",
+"name": "The East Mouth",
+"district": "The Ley Lines (the road)",
+"level": 1,
+"what": "the line goes on under the hill",
+"from": "The Ley Lines: a mouth",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-03",
+"name": "The Brick Stacks",
+"district": "Babel",
+"level": 1,
+"what": "stacked brick, waiting",
+"from": "Babel: THE BRICK STACKS",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-03",
+"name": "The Tower",
+"district": "Babel",
+"level": 8,
+"what": "LANDMARK: four tiers and the spiral",
+"from": "Babel: THE FOUR TIERS \u00b7 THE SPIRAL \u00b7 THE UNFINISHED TOP",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"inside: the Tower (new)",
+"new"
+]
+},
+{
+"id": "P02-03",
+"name": "The Tower, east",
+"district": "Babel",
+"level": 8,
+"what": "the other half of it",
+"from": "Babel: THE FOUR TIERS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "The Crane",
+"district": "Babel",
+"level": 2,
+"what": "the crane",
+"from": "Babel: THE CRANE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-03",
+"name": "The Causeway",
+"district": "Technoticlan",
+"level": 1,
+"what": "the causeway over the water",
+"from": "Technoticlan: THE CAUSEWAY",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-03",
+"name": "The Canal",
+"district": "Technoticlan",
+"level": 1,
+"what": "the canal, boats",
+"from": "Technoticlan: THE CANAL",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-03",
+"name": "The Ball Court",
+"district": "Technoticlan",
+"level": 1,
+"what": "the court and its rings",
+"from": "Technoticlan: THE BALL COURT",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-03",
+"name": "The Pyramid",
+"district": "Technoticlan",
+"level": 6,
+"what": "LANDMARK: the stepped pyramid",
+"from": "Technoticlan: THE PYRAMID",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"inside: the Pyramid (new)",
+"new"
+]
+},
+{
+"id": "P08-03",
+"name": "The Pyramid, east",
+"district": "Technoticlan",
+"level": 6,
+"what": "its other half",
+"from": "Technoticlan: THE PYRAMID",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-04",
+"name": "The Kiln",
+"district": "Babel",
+"level": 1,
+"what": "the kiln, still hot",
+"from": "Babel: THE KILN",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-04",
+"name": "The First Tier",
+"district": "Babel",
+"level": 3,
+"what": "the ramp onto the tower",
+"from": "Babel: THE FOUR TIERS",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-04",
+"name": "The Workers' Camp",
+"district": "Babel",
+"level": 1,
+"what": "tents and cook fires",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-04",
+"name": "The Clay Pits",
+"district": "Babel",
+"level": 0,
+"what": "where the brick comes from",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-04",
+"name": "The Causeway, south",
+"district": "Technoticlan",
+"level": 1,
+"what": "the long way in",
+"from": "Technoticlan: THE CAUSEWAY",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-04",
+"name": "The Canal, south",
+"district": "Technoticlan",
+"level": 1,
+"what": "floating gardens",
+"from": "Technoticlan: THE CANAL",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-04",
+"name": "The Plaza",
+"district": "Technoticlan",
+"level": 1,
+"what": "the square under the pyramid",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-04",
+"name": "The Pyramid Stair",
+"district": "Technoticlan",
+"level": 3,
+"what": "the stair up the south face",
+"from": "Technoticlan: THE PYRAMID",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-04",
+"name": "The Portcullis",
+"district": "Technoticlan",
+"level": 1,
+"what": "a gate into the ground",
+"from": "Technoticlan: the way to Agartha (hidden today)",
+"ports": [
+"N",
+"W"
+],
+"exit": [
+"Agartha",
+"secret"
+]
+}
+],
+"cells": [
+"gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+"gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+"gggggggggggggggggDDDgggggggggggggggggggggggggggggggggpppggggggRRRggggggggggggggggggggggggggggggggggggggggggg",
+"ggppppppppggggggDDDDDggggggggggggggggggggGGGggggggggpppppgggggRRRggRRRggggDDDggggggggggggggggggggggggggggggg",
+"ggppppppppgggggDDDDDDDgggggggmmgggggggggGGGGGggggggpppppppggggRRRggRRRgggDDDDDgDDDgggggggggggggggggggggggggg",
+"ggggggggggggggDDDDDDDDDggggggmmggggggggGGGGGGGggggpppxxxpppggggggggRRRgggDDDDDDDDDDggggggggggggggggggggggggg",
+"ggggggggggggggDDDDDDDDDggggggmmggggggggGGGGGGGggggpppxxxpppggggggggggggggDDDDDDDDDDggggggggggggggggggggggggg",
+"ggpppppgggggggDDDDDDDDDggggggggggggggggGGGGGGGggggpppxxxpppgggggRRRgggggggDDDgDDDDDggggggggggggggggggggggggg",
+"ggpppppggggggggDDDDDDDggggggggggggggggggGGGGGggggggpppppppggggggRRRgRRRggggggggDDDggmmmmmmmmmmmmpppppppppppp",
+"ggggggggggggggggDDDDDggggggggggggggggggggGGGggggggggpppppgggggggRRRgRRRgggggggggggggmmmmmmmmmmmmpppppppppppp",
+"gggggggggggggggggDDDgggggggggggggggggggggggggggggggggpppggggggggggggRRRggggggggggggggggggggggggggggggggggggg",
+"gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+"gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+"ggggggggggggggmmmggmmmgggggggggggggggggggggggggggggggggggggggTTTTggggggggggggggggggggggggggggggggggggggggggg",
+"gggggggggggggmmgmmmmgmmgggggggggggggggGGggGGgggggggggggggggggTTTTgggggggggggggggggggggggrrrrrggggggggggggggg",
+"gggggggggggggmgggmmgggmgggggggggggggggGGggGGggggggxxxggggggggTTTTggggggggggggggggggggggrrgggrrgggggggggggggg",
+"gggggggggggggmmgmmmmgmmgggggggggggggggggggggggggggxxxggggggggTTTTgggggggggggggggggggggrrgggggrrggggggggggggg",
+"ggggmggmggggggmmmggmmmgggggggwwwggggggggggggggggggxppppppxggggggggggggggmmmmmmmmmmmmggrggmmgggrggggggggggggg",
+"ggggmggmggggggmmmggmmmgggggggwwwggggggggGGggGGgggggggggxxxgggggggggTTTTgmmmmmmmmmmmmggrggmmgggrggggggggggggg",
+"gggggggggggggmmgmmmmgmmggggggwwwggggggggGGggGGgggggggggxxxgggggggggTTTTgggggggggggggggrgggggggrggggggggggggg",
+"gggggggggggggmgggmmgggmggggggggggggggggggggggggggggggggggggggggggggTTTTgggggggggggggggrrgggggrrggggggggggggg",
+"gggggggggggggmmgmmmmgmmggggggggggggggggggggggggggggggggggggggggggggTTTTggggggggggggggggrrgggrrgggggggggggggg",
+"ggggggggggggggmmmggmmmggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggrrrrrggggggggggggggg",
+"gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg",
+"gggggggggggggggggggggggggggggGGggggggggggggggggggggggGGggggggggggggggggggggggGGggggggggggggggggggggggggggggg",
+"gggggggggggggggggggggggggggggGGggggggggggggggggggggggGGggggggggggggggggggggggGGggggggggggggggggggggggggggggg",
+"gggggggggggggggggggggggggggggGGggggggggggggggggggggggGGggggggggggggggggggggggGGggggggggggggggggggggggggggggg",
+"gggggggggggggggggggggggggggggGGggggggggggggggggggggggGGGgggggggggggggggggggggGGggggggggggggggggggggggggggggg",
+"gggggggggggggggggggggggggggggGGgggggggggggggggggggggGGGGGggggggggggggggggggggGGggggggggggggggggggggggggggggg",
+"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"gggggggggggggggggggggggggggggGGggggggggggggggggggggGGGGGGGgggggggggggggggggggGGggggggggggggggggggggggggggggg",
+"gggggggggggggggggggggggggggggGGgggggggggggggggggggggGGGGGggggggggggggggggggggGGggggggggggggggggggggggggggggg",
+"gggggggggggggggggggggggggggggGGggggggggggggggggggggggGGGgggggggggggggggggggggGGggggggggggggggggggggggggggggg",
+"gggggggggggggggggggggggggggggGGggggggggggggggggggggggGGggggggggggggggggggggggGGggggggggggggggggggggggggggggg",
+"gggggggggggggggggggggggggggggGGggggggggggggggggggggggGGggggggggggggggggggggggGGggggggggggggggggggggggggggggg",
+"ddddddddddddddddddddddddddddddddddddddddddddddddwwwwwmmwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"ddddddddddddddddddddddddddddddddddddddddddddddddwwwwwmmwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmDDDDDDDDDDDDDDDDDDDDDDm",
+"ddddddddddddddBBBBBBBBBBBBBBBBBBBBdddddjjjjjjdddwwwwwmmwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmDDDDDDDDDDDDDDDDDDDDDDm",
+"ddBBBdddddddddBBBBBBBBBBBBBBBBBBBBdddddddjddddddwwwwwmmwwwwwmmmmmwwmmmmmmmRRRRRRRRmmmDDDDDDDDDDDDDDDDDDDDDDm",
+"ddBBBdddddddddBBBBBBBBBBBBBBBBBBBBdddddddjddddddwwwwwmmwwwwwmmmmmwwmmmmmmmRRRRRRRRmmmDDDBBBBBBBBBBBBBBBBDDDm",
+"ddddddddddddddBBBDDDDDDDDDDDDDDBBBdddddddjddddddmmmmmmmmmmmmmmmmmwwmmmmmmmRRRRRRRRmmmDDDBBBBBBBBBBBBBBBBDDDm",
+"dddddddBBBddddBBBDDDDDDDDDDDDDDBBBdddddddjddddddmmmmmmmmmmmmmmmmmwwmmmmmmmRRRRRRRRmmmDDDBBBBBBBBBBBBBBBBDDDm",
+"dddddddBBBddddBBBDDDDDDDDDDDDDDBBBdddddddjddddddwwwwwwwwwwwwmmmmmwwmmmmmmmRRRRRRRRmmmDDDBBBBBBBBBBBBBBBBDDDm",
+"ddddddddddddddBBBDDDDDDDDDDDDDDBBBdddddddjddddddwwwwwwwwwwwwmmmmmwwmmmmmmmRRRRRRRRmmmDDDBBBBBBBBBBBBBBBBDDDm",
+"ddddddddddddddBBBDDDDDDDDDDDDDDBBBdddddddjddddddwwwwwwwwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmDDDBBBBBBBBBBBBBBBBDDDm",
+"ddddddddddddddBBBDDDDDDDDDDDDDDBBBddddddddddddddwwwwwwwwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmDDDBBBBBBBBBBBBBBBBDDDm",
+"ddddddddddddddBBBDDDDDDDDDDDDDDBBBddddddddddddddwwwwwwwwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmDDDBBBBBBBBBBBBBBBBDDDm",
+"ddddddddddddddBBBBBBBBBBBBBBBBBBBBddddddddddddddwwwwwwwwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmDDDDooDDDDDDDDDDDDDDDDm",
+"ddddddddddddddBBBBBBBBBBBBBBBBBBBBddddddddddddddwwwwwwwwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmDDDDooDDDDDDDDDDDDDDDDm",
+"ddddddddddddddBBBBBBBBBBBBBBBBBBBBddddddddddddddwwwwwwwwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmDDDDooDDDDDDDDDDDDDDDDm",
+"ddddddddddddddBBBBBBBBBBBBBBBBBBBBdddddpppddddddwwwwwwwwwwwwmmmmmwwmgggmmmmmmmmmmmmmmDDDDooDDDDDDDDDDDDDDDDm",
+"dddddhhhddddddBBBBBBBBBBBBBBBBBBBBddddpppppdddddwwwwwwwwwwwwmmmmmwwmgggmmmmmmmmmmmmmmDDDDooDDDDDDDDDDDDDDDDm",
+"ddddhhhhhddddddddppdddddddddddddddddddpppppdddddmmmmmmmmmmmmmmmmmwwmgggmmmmmmmmmmmmmmmmmmoommmmmmmmmmmmmmmmm",
+"ddddhhhhhddddddddppdddddddBBddddddddddppppppppddmmmmmmmmmmmmmmmmmwwmmmmmmmmmmmmmmmmmmmmmmoommmmmmmmmmmmmmmmm",
+"ddddhhhhhddddddddppdddddddBBddBBdddddddppppppppdwwwwwwwwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmmmmmoommmmmmmmmmxxmmmmm",
+"dddddhhhdddddddddppdddddddddddBBddddddddddpppppdwwwwwwwwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmmmmmoommmmmmmmmmxxmmmmm",
+"dddddddddddddddddppdddddddddddddddddddddddpppppdwwwwwwwwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmmmmmoommmmmmmmmmmmmmmmm",
+"dddddddddddddddddppddddddddddddddddddddddddpppddwwwwwwwwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"dddddddddddddddddppdddddddddddddddddddddddddddddwwwwwwwwwwwwmmmmmwwmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+]
+}
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "dirt path",
+"g": "grass",
+"w": "water",
+"b": "bridge / deck over water",
+"s": "snow",
+"r": "sarsen stones",
+"x": "a hole down",
+"f": "concrete floor",
+"c": "corn (cannot walk; the rows are the walls)",
+"d": "sand",
+"m": "standing stone, old paving",
+"l": "lava (cannot walk)",
+"h": "the kiln",
+"k": "cloud you walk on",
+"v": "open sky (a fall)",
+"u": "sea floor",
+"a": "the drop into the dark",
+"B": "brick, building",
+"i": "ice",
+"o": "cobbles / worn stone",
+"y": "crystal",
+"q": "the collider ring corridor",
+"e": "grey dust",
+"n": "red ground",
+"z": "the Sea of Possibility (cannot walk)",
+"j": "plank pier / deck",
+"G": "the ley line / honey",
+"V": "nothing (cannot walk)",
+"D": "earth mound / stepped stone",
+"R": "ball court / flowers",
+"T": "tall grass (cannot walk)",
+"S": "light"
+}
+}
