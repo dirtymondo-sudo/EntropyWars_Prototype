@@ -240,19 +240,16 @@
                     return s;
                 } catch (e) { return 'unreadable (' + (e && e.message) + ')'; }
             }
-            /* the building's own lines ([HQ] entered / left / landed, the lab sweep): where the session was, in its log */
-            (function () {
-                var o = console.log;
-                console.log = function () {
-                    try {
-                        var a = arguments[0];
-                        if (typeof a === 'string' && (a.indexOf('[HQ]') === 0 || a.indexOf('[MENU]') === 0 || a.indexOf('THE LAB SWEEP') > 0)) {
-                            push(T.logs, stamp() + ' log ' + Array.prototype.map.call(arguments, function (v) { return String(v); }).join(' ').slice(0, 200), 30);
-                        }
-                    } catch (x) {}
-                    return o.apply(console, arguments);
-                };
-            })();
+            /* the building's own lines are NOT wrapped (a console.log wrapper made every line in the console point at this page
+               instead of its own file, mondo's paste 11-15): the room comes from where(), read on every third save, and a room
+               change is noted in the log here */
+            var lastRoom = null;
+            function roomNote() {
+                try {
+                    var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, rm = (TR && TR.hq && TR.hq.room) ? TR.hq.room() : null;
+                    if (rm !== lastRoom) { lastRoom = rm; push(T.logs, stamp() + ' room ' + (rm || 'left the building'), 30); }
+                } catch (x) {}
+            }
             function save() { try { T.saved = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(T)); } catch (e) {} }
             window.addEventListener('pagehide', function () { T.clean = true; save(); });
             window.addEventListener('pageshow', function (e) { if (e && e.persisted) { T.clean = false; save(); } });
@@ -290,6 +287,7 @@
                     var ago = lastFrame ? Math.round(performance.now() - lastFrame) : 0;
                     T.lastFrameAgo = lastFrame ? ago + 'ms' : '?';
                     if (!document.hidden && ago > 5000) T.frozen = Math.max(T.frozen || 0, ago);
+                    roomNote();
                     if (!(saves++ % 3)) T.where = where();
                     localStorage.setItem(KEY, JSON.stringify(T));
                 } catch (e) {}
