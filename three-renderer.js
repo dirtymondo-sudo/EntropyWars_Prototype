@@ -1088,6 +1088,9 @@ const ThreeRenderer = (function () {
        renderOrder 0 / 2 and write no depth, so the LATER draw wins) and, on a true-ground field, are draped over the room's ground
        RING_FIELD_LIFT × the plates' own lift — never buried by a slope's bulge or a plate's 7 cm */
     var RING_RENDER_ORDER = 4, RING_FIELD_SEGS = 10, RING_FIELD_LIFT = 1.75;
+    /* THE RING STAYS ON ITS OWN FLOOR (2026-11-15): the ring's plane is the ground within RING_FLAT_REACH squares of the feet;
+       a step steeper than RING_SHEER_RISE (rise over run, ~72 deg) is a wall the ring never climbs (_fieldDrapeRing) */
+    var RING_FLAT_REACH = 0.3, RING_SHEER_RISE = 3.0, RING_DRAPE_SEGS = 8;
 
     /* THE RING LOOK (2026-10-17, mondo: "let me mess with the unit selection rings in the ui editor. like let me change how
        they look and how the directional arrow looks and also let me choose to have them on only for the current unit"): the
@@ -20204,7 +20207,7 @@ const ThreeRenderer = (function () {
         for (var _rpI = 0; _rpI < _rpStr.length; _rpI++) _rpHash = (_rpHash * 31 + _rpStr.charCodeAt(_rpI)) % 997;
         /* THE RINGS ABOVE (2026-09-23): the reticle draws AFTER every tile highlight (renderOrder 4 — the plates are 0 / 2, neither
            writes depth) and, under a true-ground field, is a GRID that _fieldRingsTick drapes on the room's ground above the plates */
-        var _retSegs = 1;   // rev 2: the ring is a flat plane on a field too (_fieldDrapeRing lifts it, never bends it)
+        var _retSegs = RING_DRAPE_SEGS;   // THE RING STAYS ON ITS OWN FLOOR: a grid, flat on flat ground; _fieldDrapeRing carries its vertices up a bank that comes through it
         var reticle = new THREE.Mesh(
             new THREE.PlaneGeometry(ts * RETICLE_SPAN, ts * RETICLE_SPAN, _retSegs, _retSegs),
             _makeTeamReticleMaterial(ringCol, (_rpHash % 63) * 0.1,
@@ -20233,7 +20236,7 @@ const ThreeRenderer = (function () {
             /* The tile UNDER the current unit: a white glowing outline, near-
                empty body — the default "this is who's acting" marker. Rides
                the unit group so walks/knockbacks carry it automatically. */
-            var _selSegs = 1;   // rev 2: flat on a field too
+            var _selSegs = RING_DRAPE_SEGS;   // THE RING STAYS ON ITS OWN FLOOR: a grid (see _retSegs)
             var _selCov = _hlCover(0.96);   // THE TILES TOUCH
             var selTile = _hlFit(new THREE.Mesh(
                 new THREE.PlaneGeometry(ts * _selCov, ts * _selCov, _selSegs, _selSegs),
@@ -20383,19 +20386,40 @@ const ThreeRenderer = (function () {
         var mw = mesh.matrixWorld; _frInv.copy(mw).invert();
         var o = mesh._ew_drapeOrig, v = _frV, i, n = pos.count;
         /* THE PLANE: the highest ground sample under the ring, capped */
-        var hi = top;
+        /* THE RING STAYS ON ITS OWN FLOOR (2026-11-15, mondo: "why is this white square outline being drawn higher than it is
+           supposed to be"): a unit in a pit / at a cliff's foot wore its white tile + ring half a square up in the air — the
+           corners read the ground on top of the wall beside it and the whole plane rose to the cap. Now the plane lies on the
+           ground AT THE FEET (the samples within RING_FLAT_REACH of the unit's spot), and each vertex is WALKED out from that
+           spot along the ground: a slope / a crater's bank that comes up through the plane carries that vertex up with it
+           (never cut off), a sheer face (a step steeper than RING_SHEER_RISE, up or down) ends the walk and the vertex holds
+           the last height — a wall never lifts the ring, the part of it inside the wall is simply hidden by the wall. On
+           flat ground nothing rides, so the ring is the flat plane it always was. */
+        var hi = top, cx0 = mw.elements[12], cz0 = mw.elements[14], k;
+        var stepLen = ts * 0.11, reach = ts * RING_FLAT_REACH;
+        var c0 = _fieldGroundSampleAt(cx0, cz0, Math.floor(cx0 / ts), Math.floor(cz0 / ts), top);
+        if (c0 === null || c0 === undefined) c0 = top;
+        if (c0 > hi) hi = c0;
+        var gv = mesh._ew_drapeGv; if (!gv || gv.length !== n) gv = mesh._ew_drapeGv = new Float32Array(n);
         for (i = 0; i < n; i++) {
             v.set(o[i * 3], o[i * 3 + 1], o[i * 3 + 2]).applyMatrix4(mw);
-            var s = _fieldGroundSampleAt(v.x, v.z, Math.floor(v.x / ts), Math.floor(v.z / ts), top);   // THE TWO FLOORS: each sample on the floor nearest the body's
-            if (s === null || s === undefined) continue;
-            if (s > hi) hi = s;
+            var ddx = v.x - cx0, ddz = v.z - cz0, dist = Math.sqrt(ddx * ddx + ddz * ddz), prev = c0;
+            var K = Math.max(1, Math.ceil(dist / stepLen)), run = dist / K;
+            if (run > 0) for (k = 1; k <= K; k++) {
+                var px = cx0 + ddx * k / K, pz = cz0 + ddz * k / K;
+                var s = _fieldGroundSampleAt(px, pz, Math.floor(px / ts), Math.floor(pz / ts), top);   // THE TWO FLOORS: each sample on the floor nearest the body's
+                if (s === null || s === undefined) continue;
+                if (Math.abs(s - prev) > RING_SHEER_RISE * run) break;
+                prev = s;
+                if (run * k <= reach && s > hi) hi = s;
+            }
+            gv[i] = prev;
         }
         if (hi > top + cap) hi = top + cap;
         if (skin !== null && skin !== undefined && skin > hi) hi = skin;   // THE SKIN LINE: never under the liquid the body wades in
         var planeY = hi + lift;
         for (i = 0; i < n; i++) {
             v.set(o[i * 3], o[i * 3 + 1], o[i * 3 + 2]).applyMatrix4(mw);
-            v.y = planeY; v.applyMatrix4(_frInv); pos.setXYZ(i, v.x, v.y, v.z);
+            v.y = Math.max(planeY, gv[i] + lift); v.applyMatrix4(_frInv); pos.setXYZ(i, v.x, v.y, v.z);
         }
         pos.needsUpdate = true; try { geo.computeBoundingSphere(); } catch (e) {}
         mesh._ew_draped = true;
