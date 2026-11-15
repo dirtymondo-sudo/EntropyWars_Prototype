@@ -72537,7 +72537,9 @@ const ThreeRenderer = (function () {
             };
             var put = function (g, v, uv) {   // a vertex in the part's frame → the room's metres
                 var lx = pp[0] + v[0] * pc + v[2] * ps, ly = pp[1] + v[1], lz = pp[2] - v[0] * ps + v[2] * pc;
-                g.pos.push(row.x + lx * rc + lz * rs, base + ly, row.z - lx * rs + lz * rc); g.uv.push(uv[0], uv[1]);
+                var wx = row.x + lx * rc + lz * rs, wz = row.z - lx * rs + lz * rc, gy = base;
+                if (typeof row.ground === 'function') { var gh = row.ground(wx, wz); if (isFinite(gh)) gy = gh; }   // THE HUGGING ROWS (data.js): each corner on the ground under it
+                g.pos.push(wx, gy + ly, wz); g.uv.push(uv[0], uv[1]);
                 return g.n++;
             };
             var quad = function (key, a, b, c, d, w, h, tn) {   // anticlockwise seen from outside; w × h = its size in metres (the sheet's repeats)
