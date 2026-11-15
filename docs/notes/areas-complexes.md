@@ -3117,3 +3117,25 @@ deep), Police (3 x 5: desk, cells with drawn bars), Time Bureau (3 x 4), Militar
   read dark, most at night. A fix belongs in three-renderer.js (a light budget per walk-in), not in the district file. In the cloud
   browser the rooms were seen with walls, floors, partitions, cell bars, flags, chairs and cabinets; the engines, desks and beds are
   instanced props and were not caught on a shot. Walking in through the swing doors was not tried (the probe teleports).
+- **THE SECOND PASS (2026-11-15, mondo 11-13 22:33: "after a district's first interior pass, do another interior pass ... make meshy versions
+  ... Focus on aesthetic, vibe, atmosphere")**: C.js "THE SECOND PASS". `LOOK[key]` dresses the first pass's lining (`A.line`): lining lit by
+  its own `glow` + `gain`, a lit ceiling deck (`glow`, `roof`), a lower ceiling where an office stood in a shaft (Courthouse 7.0, Police 4.2,
+  Time Bureau 7.0, Military 4.4), a floor sheet, a two-tone dado. `SECOND[key](A, K)` with `kit()` (room-plot metres): sheet / coat / band /
+  liner (wainscot, rail, skirting, crown), coffers, panel / strip / pend / sconce (drawn glow only), win (a daylit sheet, no GlassWindow key),
+  pilaster, rug, sign (`txt:` lettering), P (heading), hang (a piece flat on the lining). toArch got `t: 'raw'` (an arch part as written),
+  `gain` / `roof` on boxes, `gain` / `glow` on the lining quads.
+- FACES FIXED: FS / FW / FN / FE were 0 / 90 / 180 / 270 ("0 looks south"), but a prop's `face` is the renderer's heading (0 = its +Z front to
+  -z): every first-pass prop showed the room its back. Now FS 180, FW 270, FN 0, FE 90.
+- WALL PIECES FIXED: `put` snaps a WALLD piece set out toward an OUTER wall (|dx| or |dz| > 1.3) flat onto the lining (they stood 7 cm off
+  the shell, behind the lining 17 cm in: tube maps, punch clocks, world clocks, shelves, extinguishers); a BACKD piece (lockers, filing
+  cabinets, shelves, server racks, the range) on a square against the outer wall behind it stands with its back on that wall.
+- WALKS FIXED (a BFS from the door over the squares): Time Bureau's desk + great clock moved one square east (the east half was shut off),
+  Military's map table one row south (rows 2 were shut off), Permit's two corner planters are dressing now (the whole hall was shut off).
+  Left: one dead square in the mayor's office corner, one in the Council annex (empty, first pass).
+- Stand-ins swapped for the plan's names: Courthouse exec desk -> judges_bench, lectern -> witness_stand; Military conference table -> map_table.
+- 24 Meshy pieces (data.js "THE CIVIC INTERIOR PIECES", R2 Assets/world/props/meshy/<key>.glb optimized, front +Z): turnout_gear_rack,
+  hose_rack, scba_rack, ladder_wall_rack, card_catalog, microfiche_reader, city_scale_model, city_seal, judges_bench, witness_stand,
+  lady_justice, mugshot_wall, riot_gear_rack, steel_toilet, giant_hourglass, astronomical_clock, rifle_rack, footlocker, field_radio,
+  number_dispenser, now_serving_sign, brochure_rack, form_counter, ballot_box. Reused: high_bay_lamp, ships_bell, radio_console,
+  evidence_board, map_table, marble_bust, wingback_chair, painting_portrait, crystal_chandelier, brass_orrery, banker_lamp. Originals,
+  concepts, fronts sheet, plan sheet: project files disaster-city-civic/interiors2/.
