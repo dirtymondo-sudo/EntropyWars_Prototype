@@ -4099,8 +4099,15 @@ update that rule" (CLAUDE.md RULE #1c + owner-rules.md rewritten: browser runs w
   row. Now: six headstones, three graves, a wooden picket panel, two iron fence panels, two iron gate leaves, two brick wall panels, two scarecrows on
   poles, two straw bales, a tilled bed + three crops, five bare trees, four pumpkins, two candle clumps, a shovel, a cobweb. `h` = each piece's real
   height, read from the file's geometry (centimetres), so every piece stands at true size. Nothing uploaded, nothing generated. MODEL_LIST.md rerun.
-  Still in his packs and not used yet (bucket `dirtymondo`, `project-files/asset-packs/`): the BlenderVoyage PSX graveyard pack (three more tombstones,
-  two iron gates, a railing, a dirt grave, dead bushes, two jack-o'-lanterns) needs cutting up and an upload; the bus-stop pack has a `Wheat` sheaf.
+  Still in his packs and not used yet (bucket `dirtymondo`, `project-files/asset-packs/`): the bus-stop pack has a `Wheat` sheaf.
+- **THE PSX GRAVEYARD PACK IS A PROP KIT TOO** (mondo 11-15 "yes do that please"; data.js `HQ_CATALOGUE_GRAVEYARD`, 24 rows `psxg_*`, `base: 'asset'`):
+  BlenderVoyage's pack is one GLB; a scratch splitter (plain Python, no Blender: it copies a node's meshes, materials and pictures byte for byte into a
+  new GLB, keeps the node's turn and scale, drops its place in the pack's layout) cut 24 pieces, uploaded to R2
+  `Assets/world/packs/blendervoyage_graveyard/psxg_<piece>.glb` with `node sync-zip.js --put`: three tombstones, a dirt grave mound, a coffin, two iron
+  gate leaves, an iron railing + corner, a low stone wall + pillar + corner, two carved jack-o'-lanterns, two dead bushes, two dead trees, four
+  rocks, two stepping stones. list-models.js has its SOURCES row (its licence is the pack page's: not checked by Claude). In the Estate: the pack's
+  tombstones mixed into both graveyards' rows, a fresh mound before every other stone, pillars and small iron leaves where each walk enters, dead
+  trees, bushes, rocks, jack-o'-lanterns in the graveyards and on the house's porch. Corn still waits for the Meshy key (mondo 11-15).
 - **IN THE ESTATE (bake-estate.js):** headstones and graves in the Family Plot and the Graveyard (were standing stones), a shovel, pumpkins, candles;
   the iron fence along the foot of the house's lawn; real iron leaves on the Iron Gate (its piers moved inside the track); bare pack trees round the
   house; THE SCARECROW on its pole with a pumpkin patch; straw bales in rows over the Hay Field, a stack by the truck and by the barn, bales in the
