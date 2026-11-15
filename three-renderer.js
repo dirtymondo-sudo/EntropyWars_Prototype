@@ -46717,11 +46717,15 @@ const ThreeRenderer = (function () {
             var bl = T.attribute('aBlend', 'vec2');
             var c = tint(tri(map, 1, null, !!D.ntF), D.tFloor).toVar();
             var cb = D.steep ? T.max(bl.x, T.float(1).sub(T.smoothstep(0.25, 0.6, w.y))).toVar() : bl.x;   // THE BANKS WEAR THE WALL (_hqTerrainMat)
-            var cliff = tint(tri(D.cliff || map, D.cliffK || 1, cb, !!D.ntC), D.tCliff), path = tint(tri(D.path || map, 1, bl.y, !!D.ntP), D.tPath);
+            /* THE NATURAL ROCK (= _hqTerrainMat): the land's tone drift; a natural cliff sheet mixed with itself read 3.4 x larger */
+            var natDrift = T.float(0.80).add(NZ.vnoise(uyv.mul(0.085).add(wp.y.div(TM).mul(0.05)).add(3.7)).mul(0.30)).add(NZ.vnoise(uyv.mul(0.41).add(19.1)).sub(0.5).mul(0.12)).toVar();
+            var cliffRaw = tri(D.cliff || map, D.cliffK || 1, cb, !!D.ntC);
+            if (D.natC) cliffRaw = T.mix(cliffRaw, tri(D.cliff || map, (D.cliffK || 1) * 0.29, cb, false), 0.42).mul(T.vec4(natDrift, natDrift, natDrift, 1));
+            var cliff = tint(cliffRaw, D.tCliff), path = tint(tri(D.path || map, 1, bl.y, !!D.ntP), D.tPath);
             if (pal.length && builder.geometry && builder.geometry.hasAttribute('aPaintA')) {
                 var A = T.attribute('aPaintA', 'vec3'), B = T.attribute('aPaintB', 'vec3'), C = T.attribute('aPaintC', 'vec3');
                 var W = [A.x, A.y, A.z, B.x, B.y, B.z, C.x, C.y], pc = T.vec4(0).toVar(), pw = T.float(0).toVar();
-                pal.forEach(function (t, i) { T.If(W[i].greaterThan(cut), function () { pc.addAssign(T.texture(t, uyv).grad(gyx, gyy).mul(W[i])); }); pw.addAssign(W[i]); });
+                pal.forEach(function (t, i) { var nat = !!(D.palNt && D.palNt[i]); T.If(W[i].greaterThan(cut), function () { var px = rd(t, uyv, gyx, gyy, nat); pc.addAssign((nat ? px.mul(T.vec4(natDrift, natDrift, natDrift, 1)) : px).mul(W[i])); }); pw.addAssign(W[i]); });
                 T.If(pw.greaterThan(0.001), function () { c.assign(T.mix(c, pc.div(pw), T.clamp(pw, 0, 1))); });
             }
             c.assign(T.mix(c, path, bl.y));
@@ -68956,6 +68960,14 @@ const ThreeRenderer = (function () {
            (the city's levels) a steep face wears the room's CLIFF sheet (the city: concrete, a retaining wall), read on the face's
            own axis like any cliff; a street's slope, a ramp and a flight of stairs are far too flat to count. Both renderers. */
         var steepCliff = !!(info.slope && info.paint && info.paint.pal && info.paint.pal.length) && !(typeof window !== 'undefined' && window.EW_NO_STEEP_CLIFF);
+        /* THE NATURAL ROCK (2026-11-15, mondo on the Hollywood Hills pictures: "the sides/cliffs texture looks too repeated, it needs to look more
+           natural"). The rock sheet is one even pattern of cracks at one size, so even read without a repeat (ntRead) a cliff was a wall of
+           same-size cells, and rock PAINTED on a gentler slope was the plain sheet, a tile a square. A natural cliff sheet (the calm noTile list)
+           is now (1) mixed 42 % with the same sheet read 3.4 x larger (big slabs under the small cracks), (2) drifted in tone over the land
+           (natDrift: two noises, about 40 m and 8 m, 0.74..1.16), and a painted natural sheet is read without a repeat and drifts the same.
+           Both renderers (_ewNodeTerrain reads palNt / ntC). Kill switch window.EW_NO_NATURAL_ROCK. */
+        var natOn = !(typeof window !== 'undefined' && window.EW_NO_NATURAL_ROCK);
+        var palNt = pal.map(function (k) { return (natOn && _calmNoTile(k)) ? 1 : 0; }), natC = (natOn && ntC) ? 1 : 0;
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
             sh.uniforms.uTriTM = { value: (info._TM || 1) };
@@ -68969,7 +68981,8 @@ const ThreeRenderer = (function () {
                 pf += 'varying vec3 vPaintA;\nvarying vec3 vPaintB;\nvarying vec3 vPaintC;\n';
                 var W = ['vPaintA.x', 'vPaintA.y', 'vPaintA.z', 'vPaintB.x', 'vPaintB.y', 'vPaintB.z', 'vPaintC.x', 'vPaintC.y'];
                 pb = ' float pW = 0.0; vec4 pCol = vec4(0.0);\n';
-                palTex.forEach(function (t, i) { pb += ' if ( ' + W[i] + ' > uTriCut ) pCol += textureGrad( tPaint' + i + ', triUy, triGyX, triGyY ) * ' + W[i] + '; pW += ' + W[i] + ';\n'; });
+                /* THE NATURAL ROCK (below): a painted NATURAL sheet (rock, dirt, grass, snow: the calm table's noTile list) is read without a repeat and takes the land's tone drift */
+                palTex.forEach(function (t, i) { pb += ' if ( ' + W[i] + ' > uTriCut ) pCol += ' + (palNt[i] ? 'ntRead( tPaint' + i + ', triUy, triGyX, triGyY, 1.0 ) * natDrift' : 'textureGrad( tPaint' + i + ', triUy, triGyX, triGyY )') + ' * ' + W[i] + '; pW += ' + W[i] + ';\n'; });
                 pb += ' if ( pW > 0.001 ) texelColor = mix( texelColor, pCol / pW, clamp( pW, 0.0, 1.0 ) );\n';
             }
             sh.vertexShader = pv + sh.vertexShader;
@@ -68986,11 +68999,11 @@ const ThreeRenderer = (function () {
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvTriPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvTriN = normalize(mat3(modelMatrix) * objectNormal);');
             sh.uniforms.uTriCut = _hqTriCutU;   // THE WEIGHTED SHEETS (below)
             sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nuniform float uCliffK;\nuniform float uTriCut;\nuniform vec3 uFloorT;\nuniform vec3 uCliffT;\nuniform vec3 uPathT;\nuniform vec3 uNt;\n' + _CALM_NT_GLSL + 'varying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
-                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec2 triGyX = dFdx( triUy ); vec2 triGyY = dFdy( triUy ); vec2 triGxX = dFdx( triUx ); vec2 triGxY = dFdy( triUx ); vec2 triGzX = dFdx( triUz ); vec2 triGzY = dFdy( triUz );\n vec4 texelColor = vec4( 0.0 );\n if ( triW.y > uTriCut ) texelColor += ntRead( map, triUy, triGyX, triGyY, uNt.x ) * triW.y; if ( triW.x > uTriCut ) texelColor += ntRead( map, triUx, triGxX, triGxY, uNt.x ) * triW.x; if ( triW.z > uTriCut ) texelColor += ntRead( map, triUz, triGzX, triGzY, uNt.x ) * triW.z;\n texelColor.rgb *= uFloorT;\n vec4 cliffColor = vec4( 0.0 );\n float cliffB = vBlend.x;\n' + (steepCliff ? ' cliffB = max( cliffB, 1.0 - smoothstep( 0.25, 0.6, triW.y ) );\n' : '') + ' if ( cliffB > uTriCut ) { if ( triW.y > uTriCut ) cliffColor += ntRead( tCliff, triUy * uCliffK, triGyX * uCliffK, triGyY * uCliffK, uNt.z ) * triW.y; if ( triW.x > uTriCut ) cliffColor += ntRead( tCliff, triUx * uCliffK, triGxX * uCliffK, triGxY * uCliffK, uNt.z ) * triW.x; if ( triW.z > uTriCut ) cliffColor += ntRead( tCliff, triUz * uCliffK, triGzX * uCliffK, triGzY * uCliffK, uNt.z ) * triW.z; }\n cliffColor.rgb *= uCliffT;\n vec4 pathColor = vec4( 0.0 );\n if ( vBlend.y > uTriCut ) { if ( triW.y > uTriCut ) pathColor += ntRead( tPath, triUy, triGyX, triGyY, uNt.y ) * triW.y; if ( triW.x > uTriCut ) pathColor += ntRead( tPath, triUx, triGxX, triGxY, uNt.y ) * triW.x; if ( triW.z > uTriCut ) pathColor += ntRead( tPath, triUz, triGzX, triGzY, uNt.y ) * triW.z; }\n pathColor.rgb *= uPathT;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), cliffB );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
+                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec2 triGyX = dFdx( triUy ); vec2 triGyY = dFdy( triUy ); vec2 triGxX = dFdx( triUx ); vec2 triGxY = dFdy( triUx ); vec2 triGzX = dFdx( triUz ); vec2 triGzY = dFdy( triUz );\n vec4 texelColor = vec4( 0.0 );\n if ( triW.y > uTriCut ) texelColor += ntRead( map, triUy, triGyX, triGyY, uNt.x ) * triW.y; if ( triW.x > uTriCut ) texelColor += ntRead( map, triUx, triGxX, triGxY, uNt.x ) * triW.x; if ( triW.z > uTriCut ) texelColor += ntRead( map, triUz, triGzX, triGzY, uNt.x ) * triW.z;\n texelColor.rgb *= uFloorT;\n float natDrift = 0.80 + 0.30 * ntN( triUy * 0.085 + vTriPos.y / uTriTM * 0.05 + 3.7 ) + 0.12 * ( ntN( triUy * 0.41 + 19.1 ) - 0.5 );\n vec4 cliffColor = vec4( 0.0 );\n float cliffB = vBlend.x;\n' + (steepCliff ? ' cliffB = max( cliffB, 1.0 - smoothstep( 0.25, 0.6, triW.y ) );\n' : '') + ' if ( cliffB > uTriCut ) { if ( triW.y > uTriCut ) cliffColor += ntRead( tCliff, triUy * uCliffK, triGyX * uCliffK, triGyY * uCliffK, uNt.z ) * triW.y; if ( triW.x > uTriCut ) cliffColor += ntRead( tCliff, triUx * uCliffK, triGxX * uCliffK, triGxY * uCliffK, uNt.z ) * triW.x; if ( triW.z > uTriCut ) cliffColor += ntRead( tCliff, triUz * uCliffK, triGzX * uCliffK, triGzY * uCliffK, uNt.z ) * triW.z;' + (natC ? ' float natK = 0.29 * uCliffK; vec4 natBig = vec4( 0.0 ); if ( triW.y > uTriCut ) natBig += textureGrad( tCliff, triUy * natK + 0.37, triGyX * natK, triGyY * natK ) * triW.y; if ( triW.x > uTriCut ) natBig += textureGrad( tCliff, triUx * natK + 0.37, triGxX * natK, triGxY * natK ) * triW.x; if ( triW.z > uTriCut ) natBig += textureGrad( tCliff, triUz * natK + 0.37, triGzX * natK, triGzY * natK ) * triW.z; cliffColor = mix( cliffColor, natBig, 0.42 ); cliffColor.rgb *= natDrift;' : '') + ' }\n cliffColor.rgb *= uCliffT;\n vec4 pathColor = vec4( 0.0 );\n if ( vBlend.y > uTriCut ) { if ( triW.y > uTriCut ) pathColor += ntRead( tPath, triUy, triGyX, triGyY, uNt.y ) * triW.y; if ( triW.x > uTriCut ) pathColor += ntRead( tPath, triUx, triGxX, triGxY, uNt.y ) * triW.x; if ( triW.z > uTriCut ) pathColor += ntRead( tPath, triUz, triGzX, triGzY, uNt.y ) * triW.z; }\n pathColor.rgb *= uPathT;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), cliffB );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
                 .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
         };
-        m.customProgramCacheKey = function () { return 'hqTerrainTri3' + (palTex.length ? 'P' + palTex.length : '') + (steepCliff ? 'S' : ''); };
-        _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex, cliffK: 1 / look.cliffZoom, tFloor: look.floor, tCliff: look.cliff, tPath: look.path, ntF: ntF, ntP: ntP, ntC: ntC, steep: steepCliff });   // WEBGPU W1: the same sheets for the node renderer
+        m.customProgramCacheKey = function () { return 'hqTerrainTri4' + (palTex.length ? 'P' + palTex.length + 'n' + palNt.join('') : '') + (steepCliff ? 'S' : '') + (natC ? 'N' : ''); };
+        _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex, cliffK: 1 / look.cliffZoom, tFloor: look.floor, tCliff: look.cliff, tPath: look.path, ntF: ntF, ntP: ntP, ntC: ntC, steep: steepCliff, palNt: palNt, natC: natC });   // WEBGPU W1: the same sheets for the node renderer
         return m;
     }
     function _hqTerrainGround(x, z) {
@@ -73544,6 +73557,18 @@ const ThreeRenderer = (function () {
             if (mats[mk]) return mats[mk];
             var tex = key === 'snow' ? null : _hzTex(key === 'rock' ? 'mountain' : key === 'grass' ? 'grass' : key === 'cliff' ? 'cliff' : 'desert');
             var m = new THREE.MeshLambertMaterial({ map: tex || null, vertexColors: true, fog: !far });
+            /* THE NATURAL ROCK on the land past the edge (2026-11-15, see _hqTerrainMat): the far mountains and sea cliffs were one small sheet repeated
+               up a whole range. The sheet is mixed with itself read 3.7 x larger and its tone drifts over the land (WebGL; the node renderer keeps the plain sheet). */
+            if (tex && !(typeof window !== 'undefined' && window.EW_NO_NATURAL_ROCK)) {
+                var rocky = (key === 'rock' || key === 'cliff');
+                m.onBeforeCompile = function (sh) {
+                    sh.fragmentShader = _CALM_NT_GLSL + sh.fragmentShader.replace('#include <map_fragment>',
+                        '#ifdef USE_MAP\n vec4 sampledDiffuseColor = texture2D( map, vMapUv );\n' +
+                        (rocky ? ' sampledDiffuseColor = mix( sampledDiffuseColor, texture2D( map, vMapUv * 0.27 + 0.37 ), 0.45 );\n' : '') +
+                        ' sampledDiffuseColor.rgb *= 0.82 + 0.28 * ntN( vMapUv * 0.07 + 3.7 ) + 0.10 * ( ntN( vMapUv * 0.33 + 19.1 ) - 0.5 );\n diffuseColor *= sampledDiffuseColor;\n#endif');
+                };
+                m.customProgramCacheKey = function () { return 'hqEdgeLandNat' + (rocky ? 'R' : ''); };
+            }
             m._ew_hqEdgeLand = true; mats[mk] = m; return m;
         };
         var colOf = function (P) {   // the vertex tint by kind (the sheet's own colour is 1)
