@@ -4270,5 +4270,13 @@ hangar and the ward were still the old BSP rooms and the pyramid had no inside. 
   lanterns, helm, capstan) inside a group moved to her berth, her waterline on this room's sea; `hull.moored` skips the wake and the bow spray
   (the deck room itself is unchanged). She is her real size: 119 x 49 m (34 x 14 squares) plus the beakhead, bow east, her stern at the Long
   Pier's end, so she runs out of the Harbour into the Ocean's plots. bake-beach.js reads her deck heights from that room (it refuses to bake if
-  the room is no longer the 34 x 14 galleon) and writes them into the squares she stands on, so this room's ground is her decks. Boarding is
-  still the gangway link to her Main Deck room. Any room can berth a galleon room this way.
+  the room is no longer the 34 x 14 galleon). Boarding is still the gangway link to her Main Deck room. Any room can berth a galleon room this way.
+- **SEEN ON SCREEN (same day, mondo: "yes please"; playtest_city.js, 13 views, HEAD 5c2f4fb + this change):** the real ship stands at the pier
+  (stern gallery, her name, masts, sails, rigging); the shore, the huts, the Quay shed, the Volcano Island and the Triangle's island all draw.
+  Two things the pictures showed and this change fixed: (1) her castle breaks were grey rock (this room's ground steps wearing the cliff sheet),
+  so the ground under her is now one flat block hidden inside the hull (0.8 m under her lowest deck; it only keeps walkers and boats out) and
+  `_hqBuildMoored` draws her decks itself as one planked sheet over her own compiled heights; (2) Room 345's fight marker stood on the Boardwalk
+  (`HQ_AREA_MARKERS` is where a site's fight is entered), now on the Island Beach by the cabin door. Probe lessons: `--flags=EW_NO_MODEL_QUEUE`
+  killed the browser three times in this room (every model at once); without it and `--wait=70000` it runs. New probe options: `--pre=<js>`
+  (run before the room is entered) and `EW_LIVE_LOG=1`. STILL TRUE: the pier meets her flat stern head-on; the huts' colours read muted.
+
