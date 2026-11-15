@@ -3539,6 +3539,17 @@ old textures too except for tilegeneric2a, the calm wood planks, the calm carpet
   PlasterWallGeneric1a, PlasterWallStucco1a -> PlasterWallGeneric3a; flat roof tops -> ConcreteRoofBitumen1a; pitched roofs (not Industrial) ->
   MetalRoofTiles1a (gain x1.28); Industrial shed walls 2.6 m+ -> MetalWallRibbed1a (gain x1.28); H striped concrete -> ConcretePrecast2a; I / S / R
   striped concrete parts -> ConcretePanels3a / ConcretePrecast1c / ConcreteGeneric2a.
-- **NOT BUILT YET**: crossings / arrows / box junctions from RoadDouble + RoadZone (need a ground decal row), kerb stones (ConcreteCurb), roller
-  shutters on closed shops, container sides, chain-link, vent covers, leak + oil stains, the new manholes, facade brick on the plaster buildings.
-- NOT SEEN ON SCREEN (RULE #1c). Checked offline on the baked room: none of the ruled-out sheets left, every `urban:` key exists.
+- **THE SECOND PASS (same day, mondo: "run it in the browser")**: the roller shutters (`GlassWindowResidentialShutter1`, a window's sheet) ->
+  `MetalShutter1a`; THE PAINTED BRICK: in R / H / U / I an outdoor wall mass or wall panel in `PlasterWallPainted1a` -> `BrickPainted1a` (white
+  brick, so the district's tint paints it; rows whose id ends `-in` are inside walls and stay); three-renderer.js `_hqRoadTexKey`: the manhole is
+  `urban:DecalManholeCover1`, and THE OIL STAINS (`urban:DecalStainOil1`, one merged mesh, every 23 m in a lane, turned four ways) where a room's
+  `gen.stains` asks (the bake writes it).
+- **What the city already had** (found when it ran): the generated streets already draw zebra crossings, stop bars, kerbs and manholes
+  (`_hqBuildRoadMarks`: "paint quads 1271 kerb 926 manholes 99"); the fences are the `wire_fence` model and the containers the `ind_container`
+  model, so the pack's chain-link and container sheets have no surface to go on there. 290 of the 357 buildings are `skin: false` (their
+  district drew the facade from tinted parts), so a facade swap is a per-part rule, not a style.
+- **Still open**: a kerb strip sheet (ConcreteCurb needs its own UVs), arrows / box junctions (RoadDouble / RoadZone), leak stains under
+  roof lines, vent covers, the interior ceiling lights, a walk sheet per district (the palette is full at 8).
+- SEEN in the cloud browser (WebGL2 headless, `/mnt/project-files/urban-decay-city/`): see the shots there. HARNESS: a scratch copy of
+  playtest_city.js with `require('playwright')` + `executablePath: /opt/pw-browsers/chromium`; `--wait=330000`; a view needs `y` = the
+  compiled ground (`hqTerrainHeight(hqTerrainInfo(room), x, z)`), the city's ground is 0 to 25 m and a view at y 0 is under it.

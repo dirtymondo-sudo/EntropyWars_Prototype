@@ -73527,7 +73527,7 @@ const ThreeRenderer = (function () {
     var HQ_ROAD = { dashLen: 1.6, dashGap: 1.6, dashW: 0.14, edgeIn: 0.35, edgeW: 0.12, zebraBar: 0.42, zebraGap: 0.42, zebraLen: 2.6, zebraBack: 1.0, stopW: 0.32,
                     kerbW: 0.3, kerbH: 0.13, manholeEvery: 19, manholeR: 0.42, signEvery: 27, signH: 2.3, cornerTrim: 0.6 };
     function _hqRoadTexKey(kind) {
-        var K = { asphalt: 'urban:PlasterWallPainted1b', pavement: 'urban:TileGeneric1a', kerb: 'urban:PlasterWallPainted1a', yard: 'urban:ConcreteStriped2a', manhole: 'urban:DecalManholeCover' };
+        var K = { asphalt: 'urban:PlasterWallPainted1b', pavement: 'urban:TileGeneric1a', kerb: 'urban:PlasterWallPainted1a', yard: 'urban:ConcreteStriped2a', manhole: 'urban:DecalManholeCover1', stain: 'urban:DecalStainOil1' };   // manhole + stain: the Urban Decay pack's (2026-11-15)
         return K[kind] || null;
     }
     /* THE HOARDING SIGNS (2026-09-17): the pack's DANGER / CAUTION / HAZARD plates on a yard wall's street face, one or two per run, seeded by the run's own coordinates */
@@ -73566,7 +73566,7 @@ const ThreeRenderer = (function () {
         var inOpenR = function (px, pz, m) { return opensR.some(function (o) { return (o.r != null) ? Math.hypot(px - o.x, pz - o.z) < o.r + m : _hqTPolyDist(px, pz, [[o.x0, o.z0], [o.x1, o.z1]]).d < (o.w || 0) / 2 + m; }); };
         /* the merged quad lists: flat quads on the ground (a, b, c, d in metres, y = the ground + lift), each with its own uv */
         var bucket = function () { return { pos: [], uv: [], idx: [], n: 0 }; };
-        var Bw = bucket(), Bk = bucket(), Bm = bucket();   // white paint · kerb stones · manholes
+        var Bw = bucket(), Bk = bucket(), Bm = bucket(), Bs = bucket();   // white paint · kerb stones · manholes · oil stains
         var quad = function (B, p, uvs, ny) {
             /* p = four [x, y, z] in metres (ccw seen from above), uvs = four [u, v] */
             for (var i = 0; i < 4; i++) { B.pos.push(p[i][0] * U, p[i][1] * U + 0.3, p[i][2] * U); B.uv.push(uvs[i][0], uvs[i][1]); }
@@ -73601,7 +73601,7 @@ const ThreeRenderer = (function () {
             }
         };
         var dir = function (a, b) { var dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1; return { x: dx / L, z: dz / L, L: L }; };
-        var manholes = 0, signs = 0, madeSigns = [], deadEnds = [];
+        var manholes = 0, stains = 0, signs = 0, madeSigns = [], deadEnds = [];
         streets.forEach(function (st, si) {
             var pts = st.pts, w = st.w, n = pts.length, loop = n > 2 && pts[0][0] === pts[n - 1][0] && pts[0][1] === pts[n - 1][1];
             var corner = {};
@@ -73702,6 +73702,13 @@ const ThreeRenderer = (function () {
                     if (inOther(hx, hz, si, 0.8) || inPad(hx, hz, 2.4) || nearFurn(hx, hz, 1.2)) continue;
                     flat(Bm, hx, hz, d.x, d.z, R.manholeR * 2, R.manholeR * 2, 0); manholes++;
                 }
+                /* THE OIL STAINS (2026-11-15, the Urban Decay pack; a room asks with gen.stains): a dark patch in a lane now and then, turned four ways, clear of the mouths and the manholes' rhythm */
+                if (info.gen && info.gen.stains) for (var s6 = 11 + (si * 7) % 13; s6 < L - 4; s6 += 23) {
+                    var lane6 = ((stains % 2) ? -1 : 1) * Math.min(w * 0.24, 2.4), ox6 = pts[k][0] + d.x * s6 + (-d.z) * lane6, oz6 = pts[k][1] + d.z * s6 + d.x * lane6;
+                    if (inOther(ox6, oz6, si, 1.4) || inPad(ox6, oz6, 2.8)) continue;
+                    var q6 = stains % 4, sz6 = 2.1 + (stains % 3) * 0.5;
+                    flat(Bs, ox6, oz6, (q6 & 1) ? -d.x : d.x, (q6 & 2) ? -d.z : d.z, sz6, sz6, 0); stains++;
+                }
                 /* THE SPEED SIGNS: on the sidewalk, alternating sides, facing the traffic */
                 for (var s5 = 9 + (si * 7) % 11; s5 < L - 4; s5 += R.signEvery) {
                     var sdS = (signs % 2) ? 1 : -1, sOff = w / 2 + Math.min(walk, 1.2) * 0.55 + 0.3;
@@ -73732,6 +73739,7 @@ const ThreeRenderer = (function () {
         var kerbTex = _hzTex(_hqRoadTexKey('kerb')), kerbMat = new THREE.MeshPhongMaterial({ map: kerbTex || null, color: neon ? 0x9a9ab0 : 0xc8c6c0, shininess: 4, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }); kerbMat.emissive = new THREE.Color(0x1a1a1a);
         var mhTex = _hzTex(_hqRoadTexKey('manhole')), mhMat = new THREE.MeshLambertMaterial({ map: mhTex || null, transparent: true, alphaTest: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff });
         mk(Bk, kerbMat, 2); mk(Bw, paint, 3); if (mhTex) mk(Bm, mhMat, 3);
+        if (Bs.n) { var stTex = _hzTex(_hqRoadTexKey('stain')); if (stTex) mk(Bs, new THREE.MeshLambertMaterial({ map: stTex, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff }), 2); }   // under the paint and the manholes
         /* the posts: a plate on a pole, a blocker under it */
         var poleMat = new THREE.MeshPhongMaterial({ color: 0x5a5e66, shininess: 40 });
         var placePlate = function (name, x, z, yaw, h, wM) {
