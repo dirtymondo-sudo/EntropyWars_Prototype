@@ -106,18 +106,18 @@ plot(7, 0, () => {
         [3.5, 7].forEach(y => box(10.2, 7.3, 24.3, 17.8, y - 0.12, y + 0.12, STONE)); box(9.2, 6.3, 25.2, 18.6, 10.5, 10.95, STONE, null, { under: 1 });
         cyl(29.6, 12.25, 5.5, 0, 9, 'u_PlasterWallPainted1a', 0xf4efe4, { seg: 28 });
         ring(14, 29.6, 12.25, 6.15, 0.17, 0, 10.4, STONE, null); cyl(29.6, 12.25, 5.0, 9, 10.4, 'u_GlassWindowSquare1a', 0xdff4ff, { seg: 28 }); cyl(29.6, 12.25, 6.7, 10.4, 10.8, STONE, null, { seg: 28 }); dome(29.6, 12.25, 5.3, 10.8, 1.9, ALU, VERD); });
-    B(1, { st: 2, ghost: [] }, () => { const W = 0xffffff, WZ = [27.75, 28.75, 30.75, 31.75];                                                           // THE MAYOR'S HOUSE = THE WHITE HOUSE (mondo 11-15): white, a flat roof behind a balustrade, a tall four-column portico to the west lawn
-        box(24.5, 21, 42, 42, 0, 7.6, STONE, W, { win: WR }); box(24.3, 20.8, 42, 42, 7.6, 7.95, STONE, W);
-        [[24.3, 20.8, 42, 21], [24.3, 41.8, 42, 42], [24.3, 20.8, 24.5, 42], [41.8, 20.8, 42, 42]].forEach(b => { box(b[0], b[1], b[2], b[3], 8.55, 8.7, STONE, W); box(b[0] + 0.04, b[1] + 0.04, b[2] - 0.04, b[3] - 0.04, 7.95, 8.55, 'u_MetalTruss4a', W, { alpha: 1 }); });   // the balustrade
-        for (let z = 21; z <= 42; z += 3.5) box(24.25, z - 0.2, 24.55, z + 0.2, 7.95, 8.75, STONE, W); for (let x = 28; x <= 42; x += 3.5) { box(x - 0.2, 20.75, x + 0.2, 21.05, 7.95, 8.75, STONE, W); box(x - 0.2, 41.75, x + 0.2, 42, 7.95, 8.75, STONE, W); }
-        box(27, 24, 28.2, 25.2, 7.6, 9.6, STONE, W); box(37.8, 36, 39, 37.2, 7.6, 9.6, STONE, W);
-        box(22.1, 27.3, 24.5, 32.2, 0, 0.3, STONE, 0xf1ece0); WZ.forEach(z => { cyl(22.6, z, 0.34, 0.3, 0.55, STONE, W, { seg: 12 }); cyl(22.6, z, 0.26, 0.55, 6.6, STONE, W, { seg: 12 }); cyl(22.6, z, 0.36, 6.6, 6.9, STONE, W, { seg: 12 }); });
-        box(22.1, 27.3, 24.5, 32.2, 6.9, 7.6, STONE, W); box(21.95, 27.15, 24.5, 32.35, 7.6, 7.8, STONE, W); roof('gable', 22.1, 27.3, 24.5, 32.2, 7.8, 1.5, STONE, W, { axis: 'x' });
-        box(24.38, 28.6, 24.5, 30.9, 0, 3.3, STONE, 0xf1ece0); box(24.34, 28.4, 24.5, 31.1, 3.3, 3.6, STONE, W);                                              // the door's stone frame + its head
+    B(1, { st: 2, ghost: [] }, () => { const W = 0xffffff, WZ = [27.75, 28.75, 30.75, 31.75], L = { glow: 0.22 }, LT = { glow: 0.22, top: 1 };                    // THE MAYOR'S HOUSE = THE WHITE HOUSE (mondo 11-15): white (lifted a little so its shaded front still reads white), a flat roof behind a parapet, a tall four-column portico to the west lawn
+        box(24.5, 21, 42, 42, 0, 7.6, STONE, W, { win: WR, glow: 0.22 }); box(24.3, 20.8, 42, 42, 7.6, 7.95, STONE, W, L);
+        [[24.3, 20.8, 42, 21.05], [24.3, 41.75, 42, 42], [24.3, 20.8, 24.55, 42], [41.75, 20.8, 42, 42]].forEach(b => box(b[0], b[1], b[2], b[3], 7.95, 8.6, STONE, W, LT));                                  // the parapet
+        for (let z = 21; z <= 42; z += 3.5) box(24.2, z - 0.25, 24.6, z + 0.25, 7.95, 8.85, STONE, W, LT); for (let x = 28; x <= 42; x += 3.5) { box(x - 0.25, 20.7, x + 0.25, 21.1, 7.95, 8.85, STONE, W, LT); box(x - 0.25, 41.7, x + 0.25, 42, 7.95, 8.85, STONE, W, LT); }
+        box(27, 24, 28.2, 25.2, 7.6, 9.6, STONE, W, L); box(37.8, 36, 39, 37.2, 7.6, 9.6, STONE, W, L);
+        box(22.1, 27.3, 24.5, 32.2, 0, 0.3, STONE, 0xf1ece0); WZ.forEach(z => { cyl(22.6, z, 0.34, 0.3, 0.55, STONE, W, { seg: 12, glow: 0.22 }); cyl(22.6, z, 0.26, 0.55, 6.6, STONE, W, { seg: 12, glow: 0.22 }); cyl(22.6, z, 0.36, 6.6, 6.9, STONE, W, { seg: 12, glow: 0.22 }); });
+        box(22.1, 27.3, 24.5, 32.2, 6.9, 7.6, STONE, W, L); box(21.95, 27.15, 24.5, 32.35, 7.6, 7.8, STONE, W, L); roof('gable', 22.1, 27.3, 24.5, 32.2, 7.8, 1.5, STONE, W, { axis: 'x', glow: 0.22 });
+        box(24.38, 28.6, 24.5, 30.9, 0, 3.3, STONE, 0xf1ece0, L); box(24.34, 28.4, 24.5, 31.1, 3.3, 3.6, STONE, W, L);                                        // the door's stone frame + its head
         [27.0, 32.5].forEach(z => { cyl(21.6, z, 0.07, 0, 2.6, null, 0x15171a, { seg: 6 }); dome(21.6, z, 0.26, 2.6, 0.42, null, 0xfff0c0, { glow: 1 }); });      // the two lamps of the walk
         flag(33.25, 31.5, 13.2, 0xb03a2a);
         iron(3.5, 24.5, 17.5, 24.5); iron(17.5, 24.5, 17.5, 28); iron(17.5, 31.5, 17.5, 38.5);                                                                 // the lawn's fence: the walk side + the north side, the gate facing the portico
-        door(24.5, 29.75, 'W'); }); });
+        push({ t: 'door', x: 24.5, z: 29.75, face: 'W', plain: true }); }); });
 
 /* ───────── row 1: the avenue ───────── */
 plot(4, 1, () => { const G = 0xeeeae0;
@@ -426,7 +426,7 @@ function detail(Bd, D, walked, seed, name) {
         seg(-hw - 0.75, hw + 0.75, 0, 1.1, 2.87, 3.05, null, 0x30343a); seg(-hw - 0.6, hw + 0.6, 0.02, 0.1, 3.05, 3.6, null, 0x23262b); if (name) { const A = P(0, 0.11); add({ t: 'sign', x: A[0], z: A[1], y: 3.11, face: D.side, w: 2 * hw + 1.1, h: 0.44, text: name, fg: '#e8c860', bg: '#23262b' }); } else seg(-hw - 0.45, hw + 0.45, 0.1, 0.13, 3.15, 3.5, 'gold', null);   // the canopy, the name board, its gilt plate
     }
     /* a drawn shop door: an awning + valance, a sign board, a blade sign */
-    src.filter(q => q.t === 'door').forEach((d, i) => {
+    src.filter(q => q.t === 'door' && !q.plain).forEach((d, i) => {   // (a `plain` door: a house, no shop front)
         const v = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] }[d.face], ns = d.face === 'S' || d.face === 'N', col = AWN[(seed + i * 3) % AWN.length];
         const P = (a, t) => ns ? [d.x + a, d.z + v[1] * t] : [d.x + v[0] * t, d.z + a];
         const seg = (a0, a1, t0, t1, y0, y1, key, tint, o) => { const A = P(a0, t0), Bq = P(a1, t1); bx(A[0], A[1], Bq[0], Bq[1], y0, y1, key, tint, o); };
