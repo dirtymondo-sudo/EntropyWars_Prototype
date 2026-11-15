@@ -47018,6 +47018,15 @@ const ThreeRenderer = (function () {
             return base.call(this, builder, g);
         };
     }
+    /* THE SHEET STACK (see _hqStackPrep): the colour is the texel of the point's own layer (three multiplies the points' colour
+       in, as for any vertexColors look), the glow is the point's glow, times that texel where the part's glow read its sheet */
+    function _ewNodeStack(nm, m, D) {
+        var T = _ewNodeU.T, sk = T.attribute('ewSk', 'vec4');
+        var k = sk.w.add(0.5).floor(), layer = k.mul(0.5).floor(), um = k.sub(layer.mul(2));
+        var tx = T.texture(D.tex, T.uv()).depth(layer.toInt());
+        nm.colorNode = tx;
+        nm.emissiveNode = sk.rgb.mul(T.mix(T.vec3(1, 1, 1), tx.rgb, um));
+    }
     /* the classic hook stack → the node material: the base hook (by identity or its _ewNode tag), then each layer over it */
     function _ewNodeDress(nm, m) {
         _ewNodePop(nm, m);   // first, so it grades setupOutput's input and every layer below wraps it
@@ -47037,6 +47046,7 @@ const ThreeRenderer = (function () {
         else if (D && D.k === 'calmfluid') _ewNodeCalmFluid(nm, m, D);   // THE CALM GROUND
         else if (D && (D.k === 'grass' || D.k === 'wind' || D.k === 'kelp')) _ewNodeSway(nm, D);
         else if (D && D.k === 'ggrass') _ewNodeGGrass(nm, D);   // THE GRASS FIELD
+        else if (D && D.k === 'stack') _ewNodeStack(nm, m, D);   // THE SHEET STACK
         else if (D && D.k === 'fxop') nm.opacityNode = _ewNodeU.T.materialOpacity.mul(_ewNodeU.T.attribute('aEwOp', 'float'));   // three-vfx.js's batched particles
         if (m.ewCol === 'on') { C.ewcol = (C.ewcol || 0) + 1; _ewNodeCol(nm); }   // THE CLOTH COLLISION (after the skinning)
         for (var i = layers.length - 1; i >= 0; i--) _ewNodeOutLayer(nm, layers[i]);
@@ -52417,7 +52427,7 @@ const ThreeRenderer = (function () {
         } catch (e) {}
         if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept');
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
-        if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ')); }
+        if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ') + ((typeof _hqStk !== 'undefined' && _hqStk.arrays.length) ? ' · sheet stacks ' + _hqStk.arrays.length + ' (' + _hqStk.sheets + ' sheets)' : '')); }
         if (S.why && S.why.length) {
             L.push('Own draw calls, why not merged (scene pass, one frame):');
             S.why.forEach(function (r) { L.push('  ' + pad(r[1], 6) + r[0]); });
@@ -93580,12 +93590,12 @@ const ThreeRenderer = (function () {
         return [_hqBatchId(t.image), t.repeat.x, t.repeat.y, t.offset.x, t.offset.y, t.center.x, t.center.y, t.rotation, t.wrapS, t.wrapT, t.magFilter, t.minFilter, t.anisotropy, _ewTexCSKey(t), t.flipY, t.format, t.type, t.premultiplyAlpha, t.generateMipmaps, t.matrixAutoUpdate].join(',');
     }
     /* the look: two materials with one key draw the same */
-    function _hqBatchMatKey(m, vc) {
-        var a = [m.type, _hqBatchId(m.onBeforeCompile), m.customProgramCacheKey ? m.customProgramCacheKey() : '', vc ? 'vc' : (m.color ? m.color.getHex() : ''), m.emissive ? m.emissive.getHex() : '', m.emissiveIntensity,
+    function _hqBatchMatKey(m, vc, sk) {
+        var a = [m.type, _hqBatchId(m.onBeforeCompile), m.customProgramCacheKey ? m.customProgramCacheKey() : '', vc ? 'vc' : (m.color ? m.color.getHex() : ''), sk ? 'sk' : (m.emissive ? m.emissive.getHex() : ''), sk ? 'sk' : m.emissiveIntensity,
                  m.specular ? m.specular.getHex() : '', m.shininess, m.roughness, m.metalness, m.opacity, m.transparent, m.alphaTest, m.side, m.shadowSide, m.depthWrite, m.depthTest, m.depthFunc, m.blending,
                  m.fog, m.vertexColors, m.flatShading, m.toneMapped, m.dithering, m.polygonOffset, m.polygonOffsetFactor, m.polygonOffsetUnits, m.colorWrite, m.premultipliedAlpha, m.reflectivity, m.combine,
                  m.lightMapIntensity, m.aoMapIntensity, m.normalScale ? m.normalScale.x + '/' + m.normalScale.y : '', m.bumpScale, m.skinning, m.morphTargets];
-        for (var i = 0; i < _HQ_BATCH_MAPS.length; i++) a.push(_hqBatchTexKey(m[_HQ_BATCH_MAPS[i]]));
+        for (var i = 0; i < _HQ_BATCH_MAPS.length; i++) a.push(sk ? (i === 0 ? 'stack' + sk.arr.id : '') : _hqBatchTexKey(m[_HQ_BATCH_MAPS[i]]));   // THE SHEET STACK: the sheet is a layer, not a look
         for (var k in m) if (k.indexOf('_ew_') === 0 && k.indexOf('_ew_bun') !== 0) { var v = m[k]; a.push(k + '=' + ((v !== null && typeof v === 'object') ? _hqBatchId(v) : v)); }   // `_ew_bun*` = the recorder's own notes, never a look
         if (m.defines) for (var d in m.defines) a.push('#' + d + '=' + m.defines[d]);
         return a.join('|');
@@ -93658,13 +93668,14 @@ const ThreeRenderer = (function () {
     }
     /* the merge: one geometry in the shell group's space, positions and normals through each piece's matrix, the winding
        turned for a mirrored piece; always indexed */
-    function _hqBatchMerge(cs, vc) {
+    function _hqBatchMerge(cs, vc, sk) {
         var g0 = cs[0].g, names = Object.keys(g0.attributes), nV = 0, nI = 0;
         var vcOwn = !!g0.attributes.color, vcArr = null, vcSz = vcOwn ? g0.attributes.color.itemSize : 3;   // THE ONE PAINT
         cs.forEach(function (c) { var n = c.g.attributes.position.count; nV += n; nI += c.g.index ? c.g.index.count : n; });
         var geo = new THREE.BufferGeometry(), arrs = {};
         names.forEach(function (nm) { var a = g0.attributes[nm]; arrs[nm] = (vc && nm === 'color') ? null : new a.array.constructor(nV * a.itemSize); });
         if (vc) vcArr = new Float32Array(nV * vcSz);
+        var skArr = sk ? new Float32Array(nV * 4) : null;   // THE SHEET STACK: glow colour + (layer x 2 + glow reads the sheet)
         var idx = nV > 65535 ? new Uint32Array(nI) : new Uint16Array(nI);
         var N3 = _hqBatchN3 || (_hqBatchN3 = new THREE.Matrix3()), v = _hqBatchV || (_hqBatchV = new THREE.Vector3());
         var vo = 0, io = 0;
@@ -93678,10 +93689,19 @@ const ThreeRenderer = (function () {
                     if (vcSz === 4) vcArr[cb + ci * 4 + 3] = ca ? ca.getW(ci) : 1;
                 }
             }
+            var skT = null;
+            if (sk) {
+                var se = _hqStackOf(c.m), em = c.m.emissive, ei = c.m.emissiveIntensity, sw = se.layer * 2 + (c.m.emissiveMap ? 1 : 0), sb = vo * 4;
+                for (var si = 0; si < n; si++) { skArr[sb + si * 4] = em.r * ei; skArr[sb + si * 4 + 1] = em.g * ei; skArr[sb + si * 4 + 2] = em.b * ei; skArr[sb + si * 4 + 3] = sw; }
+                c.m.map.updateMatrix(); skT = c.m.map.matrix.elements;
+            }
             names.forEach(function (nm) {
                 if (vc && nm === 'color') return;
                 var a = g.attributes[nm], src = a.array, dst = arrs[nm], sz = a.itemSize, base = vo * sz;
-                if (nm === 'position') { for (var i = 0; i < n; i++) { v.fromBufferAttribute(a, i).applyMatrix4(M); dst[base + i * 3] = v.x; dst[base + i * 3 + 1] = v.y; dst[base + i * 3 + 2] = v.z; } }
+                if (sk && nm === 'uv') {   // the sheet's own repeat / offset / turn, written into the points (the stack has none)
+                    for (var ui = 0; ui < n; ui++) { var uu = a.getX(ui), uv = a.getY(ui); dst[base + ui * 2] = skT[0] * uu + skT[3] * uv + skT[6]; dst[base + ui * 2 + 1] = skT[1] * uu + skT[4] * uv + skT[7]; }
+                }
+                else if (nm === 'position') { for (var i = 0; i < n; i++) { v.fromBufferAttribute(a, i).applyMatrix4(M); dst[base + i * 3] = v.x; dst[base + i * 3 + 1] = v.y; dst[base + i * 3 + 2] = v.z; } }
                 else if (nm === 'normal') { for (var i2 = 0; i2 < n; i2++) { v.fromBufferAttribute(a, i2).applyMatrix3(N3).normalize(); dst[base + i2 * 3] = v.x; dst[base + i2 * 3 + 1] = v.y; dst[base + i2 * 3 + 2] = v.z; } }
                 else if (src.length === n * sz) dst.set(src, base);
                 else for (var i3 = 0; i3 < n * sz; i3++) dst[base + i3] = src[i3];
@@ -93696,6 +93716,7 @@ const ThreeRenderer = (function () {
         });
         names.forEach(function (nm) { if (vc && nm === 'color') return; var a = g0.attributes[nm]; geo.setAttribute(nm, new THREE.BufferAttribute(arrs[nm], a.itemSize, a.normalized)); });
         if (vc) geo.setAttribute('color', new THREE.BufferAttribute(vcArr, vcSz));
+        if (sk) geo.setAttribute('ewSk', new THREE.BufferAttribute(skArr, 4));
         geo.setIndex(new THREE.BufferAttribute(io < idx.length ? idx.subarray(0, io) : idx, 1));
         geo.computeBoundingSphere(); geo.computeBoundingBox();
         return geo;
@@ -93726,8 +93747,9 @@ const ThreeRenderer = (function () {
         /* THE SHELL CELLS, a piece alone in its look and square: no merge — a stand-in mesh on the piece's OWN geometry (nothing
            copied), placed where the piece stands, hung in the square's group so it is culled with the square. Only when the
            square's group exists and the piece's place splits cleanly into position / turn / scale. */
-        var vcm = (!single && B.vc && _hqBatchVcOk(c0.m)) ? _hqBatchVcMat(B, c0.m) : null;   // THE ONE PAINT
-        var geo = single ? c0.g : _hqBatchMerge(cs, !!vcm);
+        var ske = (!single && B.vc) ? _hqStackOf(c0.m) : null;   // THE SHEET STACK
+        var vcm = ske ? _hqStackMat(B, c0.m, ske) : (!single && B.vc && _hqBatchVcOk(c0.m)) ? _hqBatchVcMat(B, c0.m) : null;   // THE ONE PAINT
+        var geo = single ? c0.g : _hqBatchMerge(cs, !!vcm, ske);
         var mesh = new THREE.Mesh(geo, vcm || c0.m);
         if (single) {
             c0.M.decompose(mesh.position, mesh.quaternion, mesh.scale); mesh.updateMatrix();
@@ -93773,6 +93795,111 @@ const ThreeRenderer = (function () {
         if (m.customProgramCacheKey !== THREE.Material.prototype.customProgramCacheKey) c.customProgramCacheKey = m.customProgramCacheKey;
         for (var p in m) if (p.indexOf('_ew_') === 0 && p.indexOf('_ew_bun') !== 0 && Object.prototype.hasOwnProperty.call(m, p)) c[p] = m[p];
         c._ew_onePaint = true;
+        return (L[k] = c);
+    }
+    /* THE SHEET STACK (2026-11-15, mondo in Disaster City after THE ONE PAINT: 32 FPS at 4,247 meshes, the price holds). What
+       still split the shell's 3,223 draws was the sheet: 125 of its pictures are the Urban pack's 128 x 128 tiles (1,515 draws),
+       18 more are 1024 x 1024 (485 draws), and a lit part's glow colour. Same-size sheets with the same sampling now stand as
+       the layers of ONE array texture, and in a big room's shell a part whose look differs only by which of those sheets it
+       wears, by its colour or by its glow merges with the others: each point carries its layer and its glow (`ewSk`: glow
+       rgb, layer x 2 + "the glow reads the sheet"), its colour (THE ONE PAINT) and its uv with the sheet's own repeat /
+       offset already applied. The merged mesh wears a copy of the look with no sheet of its own, tagged for the node renderer
+       (_ewNodeStack: colour = the layer's texel, glow = glow x texel where it read the sheet).
+       A layer is filled on the graphics card from the sheet's OWN picture by the very call three uploads the sheet with
+       (copyExternalImageToTexture, same flip, same alpha), and its mips by three's own generator: nothing decoded twice,
+       resized or repainted, so a layer's texels are the sheet's. WebGPU only (the fill is its call). A lost device's stack
+       is filled again (_hqStackWatch). Only plain opaque Phong / Lambert parts with one sheet (the glow's may be the same
+       one). The stacks live for the session (the 128 px one is 8 MB). Off: window.EW_HQ_NO_STACK before the room. */
+    var _hqStk = { byImg: (typeof WeakMap !== 'undefined') ? new WeakMap() : null, arrays: [], sheets: 0, skipped: {}, fills: 0 };
+    function _hqStackBackend() { var be = renderer && renderer.backend; return (be && be.isWebGPUBackend && be.device && be.device.queue && be.textureUtils && typeof be.textureUtils._generateMipmaps === 'function' && typeof renderer.initTexture === 'function') ? be : null; }
+    function _hqStackOff() { return _ewGpu !== 'webgpu' || !_hqStk.byImg || !THREE.DataArrayTexture || !_hqStackBackend() || (typeof window !== 'undefined' && (window.EW_HQ_NO_STACK || window.EW_HQ_NO_ONE_PAINT || window.EW_HQ_NO_SHELL_CELLS)); }
+    /* the sheet a look could stack (its `map`), or null */
+    function _hqStackTex(m) {
+        if (!m || !(m.isMeshPhongMaterial || m.isMeshLambertMaterial) || !_hqBatchVcOk(m) || m.transparent || m.alphaTest > 0 || m._ewNode || m.ewCol === 'on') return null;
+        if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile || (m.clippingPlanes && m.clippingPlanes.length)) return null;
+        var t = m.map; if (!t || !t.image || !(t.version > 0) || t.isCanvasTexture || t.isCompressedTexture || t.isVideoTexture || t.isDataTexture || t.isRenderTargetTexture || t.isCubeTexture || (t.channel | 0) !== 0) return null;
+        if (t.format !== THREE.RGBAFormat || t.type !== THREE.UnsignedByteType || (t.mipmaps && t.mipmaps.length)) return null;
+        var im = t.image; if (!(im.width > 0 && im.height > 0) || im.complete === false || im.data) return null;
+        for (var i = 1; i < _HQ_BATCH_MAPS.length; i++) { var o = m[_HQ_BATCH_MAPS[i]]; if (o && !(_HQ_BATCH_MAPS[i] === 'emissiveMap' && o === t)) return null; }
+        return t;
+    }
+    function _hqStackKey(t) { return [t.image.width, t.image.height, t.wrapS, t.wrapT, t.magFilter, t.minFilter, t.anisotropy, t.colorSpace, t.flipY, t.premultiplyAlpha, t.generateMipmaps].join(','); }
+    /* the layer a look wears: { arr, layer, key, ver } or null */
+    function _hqStackOf(m) {
+        if (_hqStackOff()) return null;
+        var t = _hqStackTex(m); if (!t) return null;
+        var e = _hqStk.byImg.get(t.image); if (!e || e.arr._ew_dead) return null;
+        return (e.key === _hqStackKey(t) && e.ver === t.version) ? e : null;   // sampled as the stack is, and the picture the layer was filled from
+    }
+    /* fill every layer from its sheet's own picture, as three uploads that sheet; false when the card refused */
+    function _hqStackFill(arr) {
+        var be = _hqStackBackend(); if (!be) return false;
+        var dev = null, scoped = false, popped = false;
+        try {
+            var td = be.get(arr);
+            if (!td || !td.texture) { renderer.initTexture(arr); td = be.get(arr); }
+            var gt = td && td.texture; if (!gt) return false;
+            var L = arr._ew_srcs, w = arr.image.width, h = arr.image.height, q = be.device.queue; dev = be.device;
+            /* the card's own refusal is not a throw: it comes back later. A refused stack is dropped and the shell merges again without it */
+            try { if (dev.pushErrorScope && dev.popErrorScope) { dev.pushErrorScope('validation'); scoped = true; } } catch (eS) { scoped = false; }
+            for (var i = 0; i < L.length; i++) {
+                var t = L[i];
+                q.copyExternalImageToTexture({ source: t.image, flipY: !!t.flipY }, { texture: gt, mipLevel: 0, origin: { x: 0, y: 0, z: i }, premultipliedAlpha: !!t.premultiplyAlpha }, { width: w, height: h });
+            }
+            if (arr.generateMipmaps) be.textureUtils._generateMipmaps(gt);
+            if (scoped) { popped = true; try { dev.popErrorScope().then(function (err) {
+                if (!err || arr._ew_dead) return;
+                arr._ew_dead = true; _hqStk.skipped.refused = (_hqStk.skipped.refused | 0) + L.length;
+                console.warn('[HQ batch] the card refused a sheet stack (' + arr.name + '), its sheets stay their own', err && err.message);
+                try { if (_hq) { _hqBatchDrop(_hq); _hq.batch = null; _hq.batchP = null; } } catch (eB) {}
+            }, function () {}); } catch (eP) {} }
+            arr._ew_gpu = gt; _hqStk.fills++;
+            return true;
+        } catch (e) {
+            if (scoped && !popped) { try { dev.popErrorScope().then(function () {}, function () {}); } catch (eP2) {} }   // never leave the scope open
+            console.warn('[HQ batch] a sheet stack could not be filled, its sheets stay their own', e); return false;
+        }
+    }
+    /* once a frame: a stack whose texture on the card is not the one last filled (a lost device, a rebuilt renderer) is filled again */
+    function _hqStackWatch() {
+        var A = _hqStk.arrays; if (!A.length) return;
+        var be = _hqStackBackend(); if (!be) return;
+        for (var i = 0; i < A.length; i++) { var arr = A[i]; if (arr._ew_dead) continue; var td = be.get(arr); if (td && td.texture && td.texture !== arr._ew_gpu) _hqStackFill(arr); }
+    }
+    /* before a shell build: every sheet its parts could stack stands in a stack. Always true (the fill is at once). */
+    function _hqStackPrep(R, B, now) {
+        if (_hqStackOff() || B.grp === 'propGroup' || !_hq || R[B.grp] !== _hq.shellGroup || !_hqChunkBig(_hq)) return true;
+        try {
+            var groups = {}, seen = new Set(), K = _hqStk.skipped;
+            for (var i = 0; i < B.cands.length; i++) {
+                var t = _hqStackTex(B.cands[i].m); if (!t || seen.has(t.image)) continue;
+                seen.add(t.image);
+                var e0 = _hqStk.byImg.get(t.image); if (e0 && !e0.arr._ew_dead && e0.ver === t.version) continue;
+                var k = _hqStackKey(t); (groups[k] || (groups[k] = [])).push(t);
+            }
+            for (var k2 in groups) {
+                var G = groups[k2], t0 = G[0], w = t0.image.width, h = t0.image.height, n = G.length, sz = w * h * 4;
+                if (n < 2) { K.alone = (K.alone | 0) + 1; continue; }
+                if (sz * n > 100663296) { K.tooBig = (K.tooBig | 0) + n; continue; }
+                var arr = new THREE.DataArrayTexture(new Uint8Array(sz * n), w, h, n);
+                arr.format = THREE.RGBAFormat; arr.type = THREE.UnsignedByteType; arr.wrapS = t0.wrapS; arr.wrapT = t0.wrapT; arr.magFilter = t0.magFilter; arr.minFilter = t0.minFilter;
+                arr.anisotropy = t0.anisotropy; arr.colorSpace = t0.colorSpace; arr.flipY = false; arr.premultiplyAlpha = t0.premultiplyAlpha; arr.generateMipmaps = t0.generateMipmaps;
+                arr.name = 'ew sheet stack ' + w + 'x' + h + ' x' + n; arr._ew_stack = true; arr._ew_srcs = G.slice(); arr.needsUpdate = true;
+                if (!_hqStackFill(arr)) { arr._ew_dead = true; try { arr.dispose(); } catch (eD) {} K.refused = (K.refused | 0) + n; continue; }
+                for (var j = 0; j < n; j++) _hqStk.byImg.set(G[j].image, { arr: arr, layer: j, key: k2, ver: G[j].version });
+                _hqStk.arrays.push(arr); _hqStk.sheets += n;
+            }
+        } catch (e) { console.warn('[HQ batch] the sheet stack failed, the sheets stay their own', e); }
+        return true;
+    }
+    /* the look a stacked batch wears: the part's look with no sheet and no colour of its own (one per look per room) */
+    function _hqStackMat(B, m, e) {
+        var k = _hqBatchMatKey(m, true, e), L = B.vcMats || (B.vcMats = {}), c = L[k];
+        if (c) return c;
+        c = m.clone(); c.map = null; c.emissiveMap = null; c.color.setRGB(1, 1, 1); c.vertexColors = true; c.emissive.setRGB(0, 0, 0); c.emissiveIntensity = 1; c.name = (m.name || '') + ' (sheet stack)';
+        for (var p in m) if (p.indexOf('_ew_') === 0 && p.indexOf('_ew_bun') !== 0 && Object.prototype.hasOwnProperty.call(m, p)) c[p] = m[p];
+        c._ew_onePaint = true; c._ew_stacked = true;
+        _ewNodeTag(c, { k: 'stack', tex: e.arr });
         return (L[k] = c);
     }
     /* THE SHELL CELLS (2026-11-15, mondo in Disaster City: 20 FPS with our code at 21 ms and a quarter of the pixels changing
@@ -93831,7 +93958,7 @@ const ThreeRenderer = (function () {
             if (_hqBatchStill(c, root, inv, tmp) && _hqBatchPieceOk(c.o)) {
                 if (!c.g.boundingSphere) c.g.computeBoundingSphere();
                 sph.copy(c.g.boundingSphere.center).applyMatrix4(c.M);
-                var mkey = mk[c.m.uuid] || (mk[c.m.uuid] = _hqBatchMatKey(c.m, B.vc && _hqBatchVcOk(c.m)));
+                var mkey = mk[c.m.uuid] || (mk[c.m.uuid] = _hqBatchMatKey(c.m, B.vc && _hqBatchVcOk(c.m), B.vc ? _hqStackOf(c.m) : null));
                 var key = mkey + '#' + c.sig + '#' + c.o.castShadow + c.o.receiveShadow + '#' + c.o.renderOrder + '#' + c.o.layers.mask + '#' + Math.floor(sph.x / T) + ':' + Math.floor(sph.z / T) + '#' + _hqBatchHost(c.o, root).id;   // THE PROP CHUNKS: one chunk per batch
                 if (!groups[key]) { groups[key] = []; keys.push(key); }
                 groups[key].push(c);
@@ -93900,6 +94027,7 @@ const ThreeRenderer = (function () {
     /* every frame of the walk (after the room is ready): the current part and the drawn neighbours, HQ_BATCH.sliceMs in all */
     function _hqBatchTick(H, now) {
         if (_hqBatchOff()) { _hqBatchDropAll(H); return; }
+        _hqStackWatch();   // THE SHEET STACK
         var recs = [H]; if (H.stage) for (var id in H.stage.parts) if (H.stage.parts[id].attached) recs.push(H.stage.parts[id].P);
         var end = _alNow() + ((typeof window !== 'undefined' && window.EW_HQ_BATCH_SLICE_MS > 0) ? window.EW_HQ_BATCH_SLICE_MS : !H.ready ? HQ_CARD_SLICE_MS : HQ_BATCH.sliceMs);   // the probe's knob (a slow machine)
         for (var r = 0; r < recs.length; r++) {
@@ -93922,7 +94050,7 @@ const ThreeRenderer = (function () {
                 B.scanAn = _bAn; B.phase = 'scan'; B.it = _hqBatchScan(R, B);   // THE PERF PASS 2: the late pieces
             }
             if (B.phase === 'wait') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
-            if (B.phase === 'watch') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
+            if (B.phase === 'watch') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs) && _hqStackPrep(R, B, now)) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
             if (_alNow() >= end) return;
             _hqSliceEnd = end;
             var res = null;
@@ -95859,6 +95987,7 @@ const ThreeRenderer = (function () {
             heroShadow: function () { var L = _hq && _hq.heroLit; return Object.assign({ light: !!(L && L.isLight), hold: !!(L && L._ew_heroHold) }, _heroStat); },
             /* the building's own scene (the walkthrough probes, 2026-09-11) */
             hqScene: function () { return _hq ? _hq.scene : null; },
+            stack: function () { return { off: _hqStackOff(), arrays: _hqStk.arrays.map(function (t) { return t.name + (t._ew_dead ? ' (dead)' : ''); }), sheets: _hqStk.sheets, skipped: _hqStk.skipped, fills: _hqStk.fills }; },   // THE SHEET STACK
             /* the walker's clip right now (a scene check: which clip is the officer in?) */
             playerAnim: function () { var H = _hq, ch = H && H.player, e = ch && ch.entry; if (!e) return null; var run = []; try { Object.keys(e.actions || {}).forEach(function (k) { var a = e.actions[k]; if (a && a.isRunning() && a.getEffectiveWeight() > 0.01) run.push(k + ':' + a.getClip().name + ':' + a.getEffectiveWeight().toFixed(2)); }); } catch (err) {} return { cur: e._ew_curAnim || null, keys: Object.keys(e.actions || {}).join(','), running: run, moving: !!ch.moving, jumpT: ch.jumpT, sit: !!ch.sit, ride: !!(H.ride && H.ride.on), swim: !!ch.swim, strike: ch.strike ? ch.strike.name : null, drawn: !!(H.portal && H.portal.drawn), lean: e.model ? e.model.rotation.x : 0 }; },
             hqDoors: function () { if (!_hq) return null; var out = _hq.doors.slice(), st = _hq.stage; if (st && st.parts) for (var id in st.parts) { var P = st.parts[id].P; if (P && P.doors) out = out.concat(P.doors); } return out; },   // the door records of the room stood in + the rooms beside it (probes)
