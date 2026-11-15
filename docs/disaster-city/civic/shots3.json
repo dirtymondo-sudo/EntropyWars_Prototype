@@ -1,0 +1,8 @@
+[{"name":"1_overview","q":"labels=1","cam":[84,150,262],"look":[84,0,92],"fov":38},
+ {"name":"2_cityhall_courthouse","q":"","cam":[112,16,95],"look":[104,12,20],"fov":50},
+ {"name":"3_fire_station_row","q":"","cam":[52,20,74],"look":[38,6,22],"fov":58},
+ {"name":"4_police_records_time","q":"","cam":[84,46,182],"look":[84,4,100],"fov":62},
+ {"name":"5_library_military_permit","q":"","cam":[60,35,215],"look":[80,4,150],"fov":55},
+ {"name":"6_scale_police_door","q":"","cam":[26,1.7,106],"look":[13,4,100],"fov":60},
+ {"name":"7_scale_library_door","q":"","cam":[93,1.7,153],"look":[77,6,146],"fov":62},
+ {"name":"8_time_bureau","q":"","cam":[128,3,97],"look":[156,13,104],"fov":70}]

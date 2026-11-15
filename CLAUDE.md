@@ -22,7 +22,7 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 | `docs/notes/spells-vfx.md` | Spell VFX/timing, spell camera, finishers + EXECUTIONS, spell director. | Any spell / VFX work. |
 | `docs/notes/door-gun-skate-vehicles.md` | Door Gun revs, skateboarding revs, vehicles. | Those systems. |
 | `docs/notes/character-creator.md` | Character creator revs 3-11, cloth, wardrobe. | Creator work. |
-| `docs/notes/character-models-plan.md` | THE TRACKER for all new character-model work: MPFB bodies, creator rebuild, pack + Blender clothes, sway, the Meshy list, owner thread + status per piece. | BEFORE any MPFB / creator / clothes / sway / Meshy-part / face work; update its row in the same PR. |
+| `docs/notes/character-models-plan.md` | THE TRACKER for all new character-model work: MPFB bodies, creator rebuild, pack + Blender clothes, sway, the Meshy list, owner thread + status per piece. Remaking Meshy units (clothes + faces): `docs/notes/meshy-remake-plan.md`. | BEFORE any MPFB / creator / clothes / sway / Meshy-part / face work; update its row in the same PR. |
 | `MODEL_LIST.md` (`node list-models.js` writes it) | THE master list: every 3D model in the game + how it was made (pack/author, MakeHuman, Meshy, Blender, code) + §8b every horizon / sky / monument builder and what it is made of (model files or three.js shapes) + §10 decor still missing. | ANY model OR horizon builder added/changed (a new `_hz*` / `_NR_BUILDERS` / `_hqLandmarkBuilders` / `_monBuilders` entry lands in §8b by itself): add a SOURCES row in list-models.js if new folder/pack/maker, rerun it, commit MODEL_LIST.md in the same PR (mondo 11-03). |
 | `docs/notes/models-assets.md` | Model batches, kits, model queue, asset store, matte bake. | Adding models/assets. |
 | `docs/notes/maps-terrain-battle.md` | Battle maps, moving maps, horizon, planets, sky. | Battle map work. |
@@ -116,14 +116,25 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
 - `r2-layout.js` (2026-11-04): THE R2 LAYOUT (docs/notes/r2-layout-plan.md): `--copy/--verify <wave>`, `--manifest`, `--archive`.
   Moved folders = sprites.js EW_ASSET_MOVES (+ r2-layout.json); upload NEW files to the new folders.
 - `bake-faces.js` (2026-11-03): .mhm face -> creator FACE preset. Notes: character-creator.md "THE FACE PRESETS".
+- `bake-custom-shape.js` (2026-11-11): custom head shapes into mpfb_shapes.glb. Notes: character-creator.md "THE CUSTOM SHAPES".
+- `bake-outfit.py` (2026-11-12): a Meshy T2 a-pose remake of a unit -> its clothes as creator pieces on the MPFB bodies (`ewm_t2<unit>_outfit/_hat.glb`;
+  sprites.js RACE_REMADE_LOOKS). Notes: models-assets.md "THE MESHY OUTFITS".
+- `bake-face.py` (2026-11-12): an old Meshy unit's head -> MPFB head shape + face skin (`<race>Face`, `ew_face_<race>`). Notes: character-creator.md "THE UNIT FACES".
 - `bake-beards.py` (2026-11-02): `python3 -I bake-beards.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks [--only full]` joins a pack beard + moustache
   into one Facial hair pick (`ewb_beard_<key>.glb`). Notes: character-creator.md "THE JOINED BEARDS".
+- `bake-disaster-city.js` (2026-11-13): writes the 144-plot Disaster City room (`site_prebuilt_downtown_streets`; the old streets = `…_oldstreets`) into data.js from
+  `docs/disaster-city/city-layout.json`. Notes: areas-complexes.md "DISASTER CITY, THE 144 PLOTS".
+- `bake-cutscenes.js` (2026-11-15): `node bake-cutscenes.js <Entropy_Wars_Cutscene_Notes_….json> [--dry-run]` bakes mondo's CUTSCENE EDITOR export: changed
+  lines into data.js STORY_CUTSCENES word for word; prints the cuts, added lines and notes to do by hand. Notes: story-party-progression.md "THE CUTSCENE EDITOR".
+- `bake-dungeons.js` (2026-11-14): checks the plot dungeons (data.js PD_DUNGEONS). Notes: areas-complexes.md "PLOT DUNGEONS, THE BUILD".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
   the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes
   `<name>.opt.glb` (meshopt + WebP, NO quantize: r128 reads it raw on the CPU) beside each GLB; `npm run manifest --
   <bucket mirror>` writes ASSET_MANIFEST.json ([bytes, sha] per bucket path). The game loads a listed `.opt.glb` in place
   of its original and fetches every listed file as `?h=<sha>`. Notes: docs/notes/models-assets.md "THE ASSETS".
+  `--lossless` (2026-11-14): byte-exact repack (meshopt in place + PNG→lossless WebP, verified) — the one for creator data files;
+  notes models-assets.md "THE LOSSLESS PASS".
   Phase 10: `--lod` also bakes `<name>.lod1.glb` / `.lod2.glb` (geometry only) that the game draws far off.
   Phase 11 (the smooth attach: sliced build, compile warm-up, static batch, bitmaps): notes in
   rendering-loading-perf.md "THE SMOOTH ATTACH".

@@ -80,7 +80,9 @@
                 try { if (typeof window._ensureDevPanel === 'function') window._ensureDevPanel(); } catch {}
                 try { if (typeof window._maybeShowOnboarding === 'function') window._maybeShowOnboarding(); } catch {}
                 try { if (typeof window._hqDevPillRefresh === 'function') window._hqDevPillRefresh(); } catch {}
-                try { if (typeof window._edBootParam === 'function') window._edBootParam(); } catch {}   // THE EDITOR (E0): ?edit[=<room>] opens it once
+                try { if (typeof window._edBootParam === 'function') window._edBootParam(); } catch {}
+                try { if (typeof window._pdBootParam === 'function') window._pdBootParam(); } catch {}   // THE PLOT DUNGEONS: ?pd=<level> opens one once
+   // THE EDITOR (E0): ?edit[=<room>] opens it once
             }
 
             if (pageId === 'modePage') {
@@ -127,6 +129,9 @@
                through it (_goToPlayHub → _menuScenePlayBeat; the beat lives in
                three-renderer.js ThreeRenderer.menu) */
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.menu && ThreeRenderer.menu.active()) ThreeRenderer.menu.reset(); } catch (e) {}
+            /* THE INVITE LINK (PvP demo lobby, 2026-11-11): a page opened from ?join=CODE goes from ENTER to the team pick
+               ("JOINING ROOM X"); DEPLOY joins that room (_sqDeploy → window._goToInviteJoin) */
+            if (window._ewInvite) { _hqHome = false; _openSquadDesk('online', 'invite'); }
         }
 
         window._goToPlayHub = function(opts) {
@@ -146,8 +151,11 @@
                 /* THE INTAKE (2026-09-21): a profile with no agent on file creates one FIRST — the creator over the
                    menu; ENLIST files the officer (a D.O.O.R. agent) and Play resumes into the building */
                 if (!opts.enlisted && _hqIntakeNeeded()) { _hqIntakeOpen(); return; }
+                /* THE SAVE (2026-11-12): CONTINUE lands where the officer last stood; a NEW GAME drops the slot's old record */
+                const _wasStarted = _storyOnFile() && !opts.enlisted;
+                if (!_wasStarted) { try { _hqSaveClear(); } catch (e) {} }
                 _storyMarkStarted();   // NEW GAME → CONTINUE from here on (_mmRefreshPlayLabel)
-                if (window._hqEnter({ from: 'play' })) return;
+                if (window._hqEnter({ from: 'play', resume: _wasStarted })) return;
             }
             _storyMarkStarted();
             playSfx('uiButtonConfirm');
@@ -173,6 +181,13 @@
                 if (cpu) cpu.style.display = opts.classic ? '' : 'none';
             } catch (e) {}
             try { const hs = document.getElementById('playHubSquad'); if (hs) hs.innerHTML = opts.classic ? '' : ((window._ewSquad && window._ewSquad.mode === 'online') ? window._sqStripHtml(window._ewSquad, { change: true }) : ''); } catch (e) {}
+            /* THE ROOM (PvP demo lobby, 2026-11-11): the name the opponent sees (CHANGE renames the profile) and the
+               "N players online · N searching" line (online.js) — online only */
+            try {
+                const nm = document.getElementById('playHubName'), on = document.getElementById('playHubOnline');
+                if (nm) { if (opts.classic) nm.innerHTML = ''; else if (typeof window._lrPaintNamePlate === 'function') window._lrPaintNamePlate(false); }
+                if (on) { if (opts.classic) on.style.display = 'none'; else if (typeof window._lrPaintOnline === 'function') window._lrPaintOnline(); }
+            } catch (e) {}
             try {
                 var prof = window.ProfileSystem && window.ProfileSystem.getActiveProfile();
                 var eloTag = document.getElementById('playHubEloTag');
@@ -307,7 +322,19 @@
         function _sqDups(slots) { return (typeof teamDuplicateRaces === 'function') ? teamDuplicateRaces((slots || []).map(_sqRaceKey)) : []; }
         /* HOMOSAPIEN OUT (mondo, 2026-10-23): a race that left the roster (state.js teamRemovedRaces). The team is kept, flagged,
            and does not cross until the forge swaps it out; a bigger sheet still crosses when THE PICK can leave it on file. */
-        function _sqGone(slots) { return (typeof teamRemovedRaces === 'function') ? teamRemovedRaces((slots || []).map(_sqRaceKey)) : []; }
+        /* THE DEMO (2026-11-10, data.js DEMO_RULES): with the Demo switch on, a champ outside the demo roster (or an unlock
+           this account does not own yet) is held back the same way — the team is kept, flagged, and does not cross */
+        function _sqDemoBar(slots) {
+            if (typeof demoModeOn !== 'function' || !demoModeOn() || typeof isUnitUnlocked !== 'function') return [];
+            const out = [];
+            (slots || []).map(_sqRaceKey).forEach(r => { if (r && out.indexOf(r) < 0 && !isUnitUnlocked(r)) out.push(r); });
+            return out;
+        }
+        function _sqGone(slots) {
+            const gone = (typeof teamRemovedRaces === 'function') ? teamRemovedRaces((slots || []).map(_sqRaceKey)) : [];
+            _sqDemoBar(slots).forEach(r => { if (gone.indexOf(r) < 0) gone.push(r); });
+            return gone;
+        }
         function _sqGoneBlock(t) {
             const gone = _sqGone(t.slots);
             if (!gone.length) return [];
@@ -316,7 +343,12 @@
             const left = new Set(t.slots.map(_sqRaceKey).filter(r => gone.indexOf(r) < 0)).size;
             return left < SQ_DEPLOY ? gone : [];
         }
-        function _sqGoneText(d) { return 'Out of the game: ' + d.map(r => _sqRaceLabel({ race: r })).join(', '); }
+        function _sqGoneText(d) {
+            const demo = (typeof demoModeOn === 'function' && demoModeOn()) ? d.filter(r => !(typeof teamRemovedRaces === 'function' && teamRemovedRaces([r]).length)) : [];
+            const gone = d.filter(r => demo.indexOf(r) < 0);
+            const names = l => l.map(r => _sqRaceLabel({ race: r })).join(', ');
+            return [gone.length ? 'Out of the game: ' + names(gone) : '', demo.length ? 'Not in the Demo: ' + names(demo) : ''].filter(Boolean).join(' · ');
+        }
         /* the team cannot cross as it stands: the deployed members repeat a race (or a bigger sheet has too few different races to pick from) */
         function _sqTwice(t) {
             const n = t.slots.length;
@@ -340,9 +372,19 @@
         /* a slot's face: the 128×128 portrait when the vessel has one (cover), else the map sprite (contain) */
         function _sqFace(s, extra) {
             let url = '', portrait = false;
-            try { if (typeof getUnitPortraitUrl === 'function') { url = getUnitPortraitUrl({ race: s.race, gender: s.gender || 'male' }) || ''; portrait = !!url; } } catch (e) {}
+            try { if (typeof getUnitPortraitUrl === 'function') { url = getUnitPortraitUrl({ race: s.race, gender: s.gender || 'male', appearance: s.appearance || null }) || ''; portrait = !!url; } } catch (e) {}   // (appearance: a slot in a look of its own shows that model's face, three-renderer.js THE PORTRAIT STUDIO)
             if (!url) { try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl(s.race || 'door agent', s.gender || 'male', UNIT_CLASS) || ''; } catch (e) {} }
-            return `<span class="sq-face ${portrait ? 'is-portrait' : 'is-sprite'}${extra ? ' ' + extra : ''}"><i${url ? ` style="background-image:url('${_sqEsc(url)}')"` : ''}></i></span>`;
+            return `<span class="sq-face ${portrait ? 'is-portrait' : 'is-sprite'}${extra ? ' ' + extra : ''}"><i${url ? ` style="background-image:url('${_sqEsc(url)}')"` : ''}></i>${_sqMastery(s)}</span>`;
+        }
+        /* THE MASTERY LEVEL (mondo 2026-11-11): the unit's cosmetic level on its face. A face that came from the other
+           player carries its own `lv` (the Room's seat); my own squads read my profile. `lv: 0` = no plate. */
+        function _sqMastery(s) {
+            try {
+                if (!s || !s.race || typeof unitMasteryChipHtml !== 'function') return '';
+                let lv = s.lv;
+                if (lv === undefined && window.ProfileSystem && typeof window.ProfileSystem.unitMasteryLevel === 'function') lv = window.ProfileSystem.unitMasteryLevel(s.race);
+                return unitMasteryChipHtml(lv, 'on-face');
+            } catch (e) { return ''; }
         }
         window._sqFaceHtml = s => _sqFace(s || {});   // the ready room (online.js) draws the same faces
         /* the squad strip (online hub / quick play / the ready room): faces + the team name (+ CHANGE) */
@@ -437,8 +479,12 @@
             if (!body) return;
             const kicker = document.getElementById('sqKicker'), sub = document.getElementById('sqSub'), count = document.getElementById('sqCount'), foot = document.getElementById('sqFoot');
             const online = _sqMode === 'online';
-            if (kicker) kicker.textContent = online ? 'ONLINE PVP' : 'PLAY VS CPU';
-            if (sub) sub.textContent = online ? ('Online · ' + SQ_DEPLOY + 'v' + SQ_DEPLOY + ' (the 4v4 / 5v5 switch sets it). Pick the team you queue with.') : (SQ_DEPLOY === 5 ? 'Pick a team of 5, then pick the map (5v5 on the 9×9 and 11×11 arenas).' : 'Pick a team, then pick the map.');
+            /* THE ROOM (PvP demo lobby, 2026-11-11): the title bar's third line did not fit the bar (cut off, with a scrollbar)
+               online — the kicker carries the team size (it follows the 4v4 / 5v5 switch) and, from an invite link, the room
+               being joined; the online sub line stays empty (styles-base.css hides an empty one) */
+            const invite = online && _sqNext === 'invite' && window._ewInvite;
+            if (kicker) kicker.textContent = online ? ('ONLINE PVP · ' + (invite ? 'JOINING ROOM ' + window._ewInvite : SQ_DEPLOY + 'V' + SQ_DEPLOY)) : 'PLAY VS CPU';
+            if (sub) sub.textContent = online ? '' : (SQ_DEPLOY === 5 ? 'Pick a team of 5, then pick the map (5v5 on the 9×9 and 11×11 arenas).' : 'Pick a team, then pick the map.');
             const presets = _sqPresets();
             const max = (window.ProfileSystem && window.ProfileSystem.MAX_TEAM_PRESETS) || 20;
             const saved = _sqSavedCount();   // THE RANDOM TEAM is not a saved team
@@ -559,6 +605,10 @@
                animation (a scale about the centre) never shrinks the bar the row is kept under. */
             let hr = null;
             if (head && head.getClientRects().length) {
+                /* THE ROOM (PvP demo lobby, 2026-11-11): the UI Maker's 112 px title bar was a few px shorter than its words
+                   (kicker + title), so a scrollbar stood in the bar; a bar that overflows by a sliver shows the sliver */
+                head.style.removeProperty('overflow');
+                if (head.scrollHeight > head.clientHeight && head.scrollHeight - head.clientHeight <= 10) head.style.setProperty('overflow', 'visible', 'important');
                 head.style.removeProperty('max-width');
                 let b = head.getBoundingClientRect(), cx = b.left + b.width / 2, w = head.offsetWidth, left = cx - w / 2;
                 if (w > 0 && left + w > innerWidth - 6) {
@@ -886,6 +936,7 @@
                 if (_sqMode === 'cpu') _sqToDesk();
                 else if (_sqNext === 'quickplay') window._goToQuickPlay();
                 else if (_sqNext === 'friendly') window._goToFriendlyMatch();
+                else if (_sqNext === 'invite') window._goToInviteJoin();   // THE INVITE LINK
                 else _showPlayHubPage({ classic: false });
             }, 900);
         }
@@ -921,6 +972,7 @@
             try { playSfx('uiButtonConfirm'); } catch (e) {}
             window._ewSquad = null;
             window._sqRandomDrop();   // THE RANDOM TEAM
+            if (_sqNext === 'invite') { window._ewInvite = null; _sqNext = 'hub'; }   // THE INVITE LINK: backing out drops it
             window._ewRosterScope = 'owned';
             state.gameState = GS.MAIN_MENU;
             window._hqReturnOrMenu();
@@ -1128,6 +1180,8 @@
             delete _hqSurveyJobs[m.roomId];
             let info = null;
             if (m.info && !m.err) { try { info = (typeof window.hqTerrainAdopt === 'function') ? window.hqTerrainAdopt(m.roomId, m.info) : null; } catch (e) { console.warn('[HQ] survey adopt failed', m.roomId, e); } }
+            /* THE FINDS OFF THE PAGE (2026-11-13): the worker placed the room's finds on the record it compiled; taking them here keeps the finds warm from walking a big field on the page */
+            if (info && m.finds && typeof window.hqFindsAdopt === 'function') { try { window.hqFindsAdopt(m.roomId, m.finds, j ? j.fgen : null); } catch (e) {} }
             else if (m.err) console.warn('[HQ] survey failed', m.roomId, m.err);
             if (info && typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] surveyed ' + m.roomId + ' in ' + m.ms + ' ms');
             if (j) { if (info) j.resolve(info); else j.reject(new Error(m.err || 'the survey returned nothing')); }
@@ -1144,6 +1198,7 @@
                 let room = null; try { room = (typeof window.hqTerrainRoomPlain === 'function') ? window.hqTerrainRoomPlain(id) : null; } catch (e) {}
                 if (!_hqSurveyJobs[id]) _hqSurveyJobs[id] = _hqSurveyJob();
                 _hqSurveyJobs[id].t0 = performance.now();
+                _hqSurveyJobs[id].fgen = (typeof window.hqFindsGen === 'function') ? window.hqFindsGen() : null;
                 _hqSurveyJobs[id].rev = (typeof window.hqRoomRev === 'function') ? window.hqRoomRev(id) : null;   // THE GAME ROOM EDITS: the room's version this record is of
                 _hqSurveyBusy = id;
                 const prefabs = (typeof HQ_PREFABS !== 'undefined' && Object.keys(HQ_PREFABS).length) ? HQ_PREFABS : null;   // THE SHAPES (E1): the worker is handed the prefabs a room places
@@ -1270,7 +1325,8 @@
                     if (g && g.total > 0) {
                         pct = Math.round(100 * g.done / g.total);
                         /* THE ASSET STORE (2026-09-20): how many of the room's files came off the disk, not the network */
-                        txt = 'loading ' + label + ' · ' + g.done + ' / ' + g.total + ' files' + (g.cached ? ' · ' + g.cached + ' from the store' : '') + (g.pending === 0 && !g.player ? ' · dressing the officer…' : '');
+                        txt = 'loading ' + label + ' · ' + g.done + ' / ' + g.total + ' files' + (g.cached ? ' · ' + g.cached + ' from the store' : '') + (g.pending === 0 && !g.player ? ' · dressing the officer…' : '')
+                            + (g.landed && !g.ready ? ' · setting the room…' : '');   // THE CARD WAITS (2026-11-12): every file is in; the shaders, the sheets and the props' passes finish under the card
                     } else if (g) {
                         txt = baseNote;
                     }
@@ -1570,6 +1626,50 @@
             return _hqRoomExists(_HQ_FOYER);
         }
         function _hqArrivalRoom() { return _hqFoyerOn() ? _HQ_FOYER : 'central_egress'; }
+        /* ── THE SAVE (2026-11-12, mondo: "there needs to be a save feature so that i am not always loading in the foyer every
+           time") — the walk AUTOSAVES where the officer stands: the room, the feet, the heading. One small record per profile
+           slot in localStorage (`ew-hq-save-<slot>`; never the profile blob: it is written every few seconds), filed when a
+           room is ready, every _HQ_SAVE_MS while the feet have moved, and when the tab is hidden / closed. CONTINUE (Play on a
+           story already started) lands THERE instead of the foyer; a NEW GAME drops the record and arrives through the foyer
+           as before. The quests, the party, the bag are the profile's own and were saved already. Never in the car (it is
+           between floors), in the air, in the editor, or under a load card. Off: `?noresume` / window.EW_HQ_NO_RESUME (the
+           record is still filed). Console: _hqSaveState(). ── */
+        const _HQ_SAVE_KEY = 'ew-hq-save-', _HQ_SAVE_MS = 4000, _HQ_SAVE_SKIP = { car: 1, intro_desert: 1 };   // (a scene room is never a place to wake up in)
+        let _hqSaveArmed = false, _hqSaveLast = null;
+        function _hqSaveSlot() { try { const PS = window.ProfileSystem; const i = PS && typeof PS.getActiveProfileIndex === 'function' ? PS.getActiveProfileIndex() : null; return (i === null || i === undefined) ? null : i; } catch (e) { return null; } }
+        function _hqSaveRead() {
+            try {
+                const slot = _hqSaveSlot(); if (slot === null) return null;
+                const sv = JSON.parse(localStorage.getItem(_HQ_SAVE_KEY + slot) || 'null');
+                if (!sv || typeof sv.room !== 'string' || !_hqRoomExists(sv.room) || _HQ_SAVE_SKIP[sv.room]) return null;
+                if (!isFinite(+sv.x) || !isFinite(+sv.z)) return null;
+                return { room: sv.room, x: +sv.x, z: +sv.z, y: isFinite(+sv.y) ? +sv.y : 0, face: isFinite(+sv.face) ? +sv.face : 0, t: +sv.t || 0 };
+            } catch (e) { return null; }
+        }
+        function _hqSaveClear() { try { const slot = _hqSaveSlot(); if (slot !== null) localStorage.removeItem(_HQ_SAVE_KEY + slot); } catch (e) {} _hqSaveLast = null; }
+        function _hqSaveWrite(force) {
+            try {
+                if (!_hqSaveArmed || state.gameState !== GS.HQ) return false;
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || !ThreeRenderer.hq.active() || !ThreeRenderer.hq.pos) return false;
+                const ps = ThreeRenderer.hq.pos();
+                if (!ps || ps.air || ps.edit || !ps.room || ps.room !== _hqCurRoom || _HQ_SAVE_SKIP[ps.room] || (DOOR_HQ.rooms[ps.room] || {}).pd || !isFinite(ps.x) || !isFinite(ps.z)) return false;
+                const L = _hqSaveLast;
+                if (!force && L && L.room === ps.room && Math.abs(L.x - ps.x) < 0.25 && Math.abs(L.z - ps.z) < 0.25 && Math.abs(L.face - ps.face) < 8) return false;
+                const slot = _hqSaveSlot(); if (slot === null) return false;
+                const r3 = v => Math.round(v * 1000) / 1000;
+                const sv = { v: 1, room: ps.room, x: r3(ps.x), z: r3(ps.z), y: r3(isFinite(ps.y) ? ps.y : 0), face: Math.round(ps.face * 10) / 10, t: Date.now() };
+                localStorage.setItem(_HQ_SAVE_KEY + slot, JSON.stringify(sv));
+                _hqSaveLast = sv;
+                return true;
+            } catch (e) { return false; }
+        }
+        function _hqResumeOn() { try { return !window.EW_HQ_NO_RESUME && !/[?&]noresume\b/.test(location.search); } catch (e) { return true; } }
+        window._hqSaveState = function () { return { armed: _hqSaveArmed, saved: _hqSaveRead(), resume: _hqResumeOn() }; };
+        try {
+            setInterval(() => { _hqSaveWrite(false); }, _HQ_SAVE_MS);
+            document.addEventListener('visibilitychange', () => { if (document.hidden) _hqSaveWrite(true); });
+            window.addEventListener('pagehide', () => { _hqSaveWrite(true); });
+        } catch (e) {}
         /* THE MANDELA ROOM (Phase 8 stage 2): entries per room this session, and what stood last time */
         const _hqEachN = {}, _hqEachLast = {};
         /* a forced room variant for a dev run: '<id>' stands it, 'none' / '' stands the sheet, undefined = roll */
@@ -1734,8 +1834,11 @@
                 }
                 if (opts.avatarOnly) return true;
                 _hqWarmedArrival = true;
-                if (ThreeRenderer.hq.warmRoom) ThreeRenderer.hq.warmRoom(_hqArrivalRoom());
-                _hqSurveyWarmAround(_hqArrivalRoom());
+                /* THE SAVE (2026-11-12): a story on file continues in its saved room — that is the room to warm */
+                let warmId = _hqArrivalRoom();
+                try { const sv = (_storyOnFile() && _hqResumeOn()) ? _hqSaveRead() : null; if (sv) warmId = sv.room; } catch (e) {}
+                if (ThreeRenderer.hq.warmRoom) ThreeRenderer.hq.warmRoom(warmId);
+                _hqSurveyWarmAround(warmId);
             } catch (e) { console.warn('[HQ] arrival warm failed', e); }
             return true;
         };
@@ -1925,7 +2028,19 @@
             const seamless = (opts.seamless && opts.seamless.eye && typeof opts.seamless.fade === 'function') ? opts.seamless : null;
             /* which room: an explicit ask, else the room the player left from
                (a return), else the egress (Play always starts on the floor) */
-            let roomId = opts.room || (returning ? _hqLastRoom : (opts.from === 'play' ? _hqArrivalRoom() : 'central_egress'));
+            /* THE SAVE (2026-11-12): CONTINUE = the room on file, the feet and the heading on file (a free spot for goTo below);
+               still a fresh arrival for everything else (the visit, the variants' roll, the day's sheet) */
+            let _resume = null;
+            if (opts.from === 'play' && opts.resume && !opts.room && !opts.at && _hqResumeOn()) _resume = _hqSaveRead();
+            _hqSaveArmed = false;
+            let roomId = opts.room || (returning ? _hqLastRoom : (_resume ? _resume.room : (opts.from === 'play' ? _hqArrivalRoom() : 'central_egress')));
+            /* THE OPENING (scene A, 2026-11-13): the first walk into the building starts on the road instead: the scene room is
+               entered, the scene plays when it stands, and its end walks the officer into the foyer (_introStart) */
+            if (opts.from === 'play' && !opts.room && !opts.at && _introDue()) {
+                roomId = _INTRO_ROOM; _resume = null; window._ewIntroLive = true;
+                const _or0 = opts.onReady;
+                opts = Object.assign({}, opts, { onReady: () => { try { if (_or0) _or0(); } catch (e) {} setTimeout(() => _introStart(false, null), 400); } });
+            }
             /* THE ENTRY (2026-09-17 — the user: "if I walk into a door or entry labeled Cyberpunk City it needs to take me to the grid;
                same with the Strip"): a bypassed BOARD ROOM (data.js DOOR_HQ.siteRooms.entry — Cyberpunk City, the Strip, Downtown)
                lands in the part that stands for the site, whatever led here (a threshold, GO on the map, a return from a match,
@@ -1941,7 +2056,13 @@
                 }
             } catch (e) { console.warn('[HQ] site entry failed', e); }
             if (!_hqRoomExists(roomId)) roomId = 'central_egress';
+            if (_resume && roomId === _resume.room) opts.at = { x: _resume.x, z: _resume.z, y: _resume.y, face: _resume.face };   // THE SAVE: where the officer stood
             _hqCurRoom = roomId;
+            /* THE QUESTS (2026-11-12): the walk entered a room — a quest that starts in the building starts, a stage that
+               wants this room is done; the toast waits for the load card */
+            /* THE HQ SCENES: a stage that ends on this room and carries a scene (F, the office) plays it once the room stands; the scene's end files the room */
+            let _qRoomScene = false; try { _qRoomScene = !opts.edit && !window._ewSceneReplayStage && !window._ewSceneEdPlay && _questRoomSceneDue(roomId); } catch (e) { _qRoomScene = false; }
+            try { if (!opts.edit && !_qRoomScene && typeof window._questEvent === 'function') window._questEvent({ type: 'room', room: roomId }, { delay: walking ? 900 : 2600 }); } catch (e) { console.warn('[QUEST] room event', e); }
             /* ROOM VARIANTS (HQ plan 5.1, 2026-09-11): a fresh arrival rolls the
                building's variants for this visit (Room 86 after hours = the
                MÖBIUS STRIP CLUB); a return from a screen or a match and a
@@ -2041,6 +2162,7 @@
                     /* THE DOOR GUN (HQ plan 9.5): the pair on file (cleared on a fresh arrival — the rope is for one visit),
                        the filer a click calls (LEFT = A, RIGHT = B → the slot), the beats (drawn / holstered / refused),
                        and the TOUCH crossing a flat threshold reports (rev 2: a floor / ceiling hatch is fallen through) */
+                    walk: !!walking,   // THE CARD WAITS (2026-11-12): a walk through a door keeps its blink (the renderer's settle skips the batch wait)
                     arrive: seamless ? seamless.eye : null,   // THE WAY BACK: the camera starts at the debrief's eye
                     onFirstFrame: seamless ? () => { try { seamless.fade(); } catch (e) {} } : null,   // NO HELD FRAME (2026-10-25, mondo: "no freeze"): the debrief's picture fades on the room's first drawn frame, never at its READY
                     from: opts.from || null,   // THE BODIES CARRY OVER (2026-10-25): back from a fight, the walker takes its own body back
@@ -2083,6 +2205,9 @@
                     onReady: () => {
                         if (loadGeneration !== _hqLoadGeneration || loadReady) return;
                         loadReady = true;
+                        _hqSaveArmed = true; setTimeout(() => { _hqSaveWrite(true); }, 0);   // THE SAVE: the room stands — file it
+                        if (typeof opts.onReady === 'function') { try { opts.onReady(); } catch (e) { console.warn('[HQ] onReady', e); } }
+                        if (_qRoomScene) setTimeout(() => { try { _questRoomSceneGo(roomId); } catch (e) { console.warn('[SCENE] room scene', e); } }, 300);
                         if (seamless) { try { ThreeRenderer.hq.hush((window.HQ_CROWD_RULES && window.HQ_CROWD_RULES.hushMs) || 1800); } catch (e) {} try { seamless.fade(); } catch (e) {} return; }   // THE HUSH (2026-10-01): no people prompt as the held frame fades   // THE WAY BACK: the held frame fades over the ready room (no card, no arrival card)
                         const wait = Math.max(0, (walking ? 150 : 900) - (performance.now() - enteredAt));   // THE GATE: enteredAt is when the card went up — the renderer's ready is the real wait
                         _hqLoadFadeTimer = setTimeout(() => {
@@ -2342,6 +2467,7 @@
         /* EXIT on the strip: the building stops being home — Back buttons
            land on the main menu again until the next Play. */
         window._hqExitToMenu = function () {
+            try { if (typeof window._pdForget === 'function') window._pdForget(); } catch (e) {}   // THE PLOT DUNGEONS: the level is left
             window._hqLeave();
             _hqHome = false;
             window._hqPreselect = null;
@@ -2377,6 +2503,212 @@
         window._edBootParam = function () {
             if (_edBootDone) return; _edBootDone = true;
             try { const m = /[?&]edit(?:=([^&#]*))?(?:[&#]|$)/.exec(location.search); if (m) setTimeout(() => window._goToEditor({ room: m[1] ? decodeURIComponent(m[1]) : null }), 0); } catch (e) {}
+        };
+        /* ══ THE PLOT DUNGEONS (docs/PLOT_DUNGEONS_PLAN.md, 2026-11-14) — the test launcher + the walk's glue ═══════════════════
+           data.js holds the dungeons (PD_DUNGEONS), their rooms and the board's rules; three-renderer.js moves the plots (hq.pd).
+           Here: the way in (Settings > Developer > Open Plot Dungeons → the level list → _pdEnter; `?pd=<level>` boots straight
+           in), the things you press (_pdAct: a lever, a button, a valve, a gate; there is NO panel and no list of moves: one lever
+           is one move, and the wide view shows it), the move itself (_pdGo: the rules, the tween, the board written back, the
+           save), and the save (localStorage
+           PD_RULES.saveKey, never the story's). Single player, never online: nothing here is on `state` or relayed (RULE #2).
+           Console: PD.state() · PD.reset(level) · PD.solve(level) · PD.go(level). */
+        let _pd = null;   // { id, undo: [states] }
+        const _pdEsc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        function _pdSaveAll() { try { return JSON.parse(localStorage.getItem(PD_RULES.saveKey) || 'null') || { levels: {} }; } catch (e) { return { levels: {} }; } }
+        function _pdSave() {
+            if (!_pd) return;
+            try { const A = _pdSaveAll(); A.levels = A.levels || {}; A.levels[_pd.id] = Object.assign({}, pdState(_pd.id), { log: undefined, at: Date.now() }); localStorage.setItem(PD_RULES.saveKey, JSON.stringify(A)); } catch (e) {}
+        }
+        function _pdLoad(id) {
+            const sv = (_pdSaveAll().levels || {})[id], S0 = pdNewState(id);
+            if (!sv || !sv.slots || !sv.rot) return S0;
+            /* a save of another shape of the level (its plots changed since) starts over: no migration */
+            const ok = Object.keys(sv.slots).every(s => (pdLevel(id).L.plots || {})[sv.slots[s]]) && Object.keys(sv.slots).length === Object.keys(S0.slots).length;
+            return ok ? Object.assign(S0, { slots: sv.slots, rot: sv.rot, vars: Object.assign({}, S0.vars, sv.vars), items: sv.items || {}, fights: sv.fights || {}, moves: sv.moves || 0, solved: !!sv.solved }) : S0;
+        }
+        window._pdActive = function () { return _pd ? _pd.id : null; };
+        window._pdEnter = function (id) {
+            const V = (typeof pdLevel === 'function') ? pdLevel(id) : null;
+            if (!V) { console.warn('[PD] no such level', id); return false; }
+            pdSetState(id, _pdLoad(id)); pdSync(id);
+            _pd = { id, undo: [] };
+            /* every plot's floor plan compiled here (a 42 m plot is quick), so the stage builds the whole board at once */
+            Object.keys(V.L.plots).forEach(pid => { try { hqTerrainInfo(pdRoomId(id, pid)); } catch (e) { console.warn('[PD] the floor plan of ' + pid, e); } });
+            const room = pdRoomId(id, V.L.entry), sp = (DOOR_HQ.rooms[room] || {}).pdSpawn || { x: 0, z: 0, face: 0 };
+            _hqLastRoom = room; _hqLastDoor = null;
+            return window._hqEnter({ room, at: { x: sp.x, z: sp.z, y: 0, face: sp.face || 0 }, quiet: true, from: 'pd' });
+        };
+        window._pdForget = function () { _pd = null; };
+        window._pdLeave = function () {
+            _pd = null;
+            try { window._hqExitToMenu(); } catch (e) { console.warn('[PD] leave', e); }
+        };
+        /* where the officer stands on the board: { plot, slot, x, z, chamber } (null off every plot) */
+        function _pdAt() {
+            if (!_pd) return null;
+            try { const a = ThreeRenderer.hq.pd.at(); if (!a) return null; const g = hqWorldToZone(a.room, a.x, a.z); return g ? pdWhere(pdState(_pd.id), g.x, g.z) : null; } catch (e) { return null; }
+        }
+        /* every placed plot's frame as the renderer's tween wants it: { roomId: { x, z, y, rot } } */
+        function _pdFrames(id, S) {
+            const out = {};
+            Object.keys(S.slots).forEach(s => { const pid = S.slots[s], F = pdFrame(S, pid); out[pdRoomId(id, pid)] = { x: F.x, z: F.z, y: 0, rot: F.rot }; });
+            return out;
+        }
+        /* the board goes from the live state to N: the rules where the officer stands, the tween, the board written back.
+           opts: { ms, by: { plot: quarter turns } (the way a turn goes; else the short way), undo: false (do not file it), quiet } */
+        function _pdGo(N, opts) {
+            opts = opts || {};
+            if (!_pd || !N) return false;
+            const id = _pd.id, S = pdState(id);
+            try { if (ThreeRenderer.hq.pd.busy()) return false; } catch (e) { return false; }
+            const from = _pdFrames(id, S), to = _pdFrames(id, N), at = _pdAt();
+            let changed = 0, turnOnly = true, why = null;
+            Object.keys(to).forEach(rid => {
+                const a = from[rid], b = to[rid]; if (!a) { from[rid] = b; return; }
+                const pid = DOOR_HQ.rooms[rid].pdPlot;
+                let d = (opts.by && opts.by[pid] != null) ? opts.by[pid] : (((b.rot - a.rot) % 4) + 4) % 4; if (!(opts.by && opts.by[pid] != null) && d === 3) d = -1;
+                b.rot = a.rot + d;
+                const moved = d !== 0 || a.x !== b.x || a.z !== b.z; if (!moved) return;
+                changed++; if (a.x !== b.x || a.z !== b.z) turnOnly = false;
+                if (at && at.plot === pid) why = why || pdMoveBlocked(id, S, (a.x !== b.x || a.z !== b.z) ? { t: 'slide', plot: pid } : { t: 'turn', plot: pid }, at);
+            });
+            if (why) { _hqToast(_pdEsc(why), 2600); try { playSfx('uiButtonCancel'); } catch (e) {} return false; }
+            const done = () => {
+                if (!_pd || _pd.id !== id) return;
+                if (opts.undo !== false) { _pd.undo.push(S); if (_pd.undo.length > 60) _pd.undo.shift(); }
+                pdSetState(id, N); pdSync(id);
+                try { ThreeRenderer.hq.pd.refresh(); } catch (e) { console.warn('[PD] refresh', e); }
+                _pdSave();
+                if (typeof opts.then === 'function') { try { opts.then(); } catch (e) { console.warn('[PD] then', e); } }
+            };
+            if (!changed) { done(); return true; }
+            window._hqClosePanel();
+            try { if (!opts.quiet && typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 0.35 }); } catch (e) {}
+            const ms = opts.ms || (turnOnly ? PD_RULES.turnMs : PD_RULES.slideMs);
+            let ok = false; try { ok = ThreeRenderer.hq.pd.move({ from, to, ms, wide: opts.wide === false ? null : _pdWide(id, S, N) }, done); } catch (e) { console.warn('[PD] move', e); }
+            if (!ok) done();
+            /* no prompt over the wide view: it comes back when the eye is down again */
+            _hqSetPrompt(null);
+            const back = () => { if (!_pd) return; let up = false; try { up = ThreeRenderer.hq.pd.busy() || ThreeRenderer.hq.pd.wide(); } catch (e) {} if (up) { setTimeout(back, 200); return; } try { _hqSetPrompt(ThreeRenderer.hq.target()); } catch (e) {} };
+            setTimeout(back, 300);
+            return true;
+        }
+        /* THE WIDE VIEW's frame: the box round every slot the level uses (the board, its gaps, the parts beside it), zone metres */
+        function _pdWide(id, S, N) {
+            const V = pdLevel(id), M = PD_RULES.plotM / 2; let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+            Object.keys(S.slots).concat(Object.keys(N.slots), V.L.vacant || []).forEach(s => { const p = pdSlotXZ(s); x0 = Math.min(x0, p.x - M); x1 = Math.max(x1, p.x + M); z0 = Math.min(z0, p.z - M); z1 = Math.max(z1, p.z + M); });
+            return Object.assign({ cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, w: x1 - x0, d: z1 - z0 }, PD_RULES.wide);
+        }
+        function _pdDoMove(m) {
+            if (!_pd) return false;
+            const id = _pd.id, S = pdState(id);
+            if (!pdMoves(id, S).some(x => JSON.stringify(x) === JSON.stringify(m))) return false;
+            return _pdGo(pdApplyMove(id, S, m), m.t === 'turn' ? { by: { [m.plot]: m.by }, ms: Math.abs(m.by) > 1 ? PD_RULES.turnMs * 1.6 : PD_RULES.turnMs } : {});
+        }
+        function _pdUndo() {
+            if (!_pd || !_pd.undo.length) return false;
+            const P = _pd.undo[_pd.undo.length - 1], S = pdState(_pd.id);
+            const N = Object.assign(JSON.parse(JSON.stringify(P)), { items: S.items, fights: S.fights, vars: Object.assign({}, P.vars, _pdKeptVars(S)), solved: S.solved, moves: (S.moves || 0) + 1 });
+            return _pdGo(N, { undo: false, then: () => { _pd.undo.pop(); } });
+        }
+        /* the vars a RESET / an UNDO never takes back (a level's `keep` list: a grown root, a taken key is an item anyway) */
+        function _pdKeptVars(S) { const V = pdLevel(_pd.id), out = {}; ((V && V.L.keep) || []).forEach(k => { if (S.vars[k] !== undefined) out[k] = S.vars[k]; }); return out; }
+        function _pdReset() {
+            if (!_pd) return false;
+            const S = pdState(_pd.id), N = pdNewState(_pd.id);
+            Object.assign(N, { items: S.items, fights: S.fights, solved: S.solved, moves: 0 }); Object.assign(N.vars, _pdKeptVars(S));
+            return _pdGo(N, { then: () => { _pd.undo = []; } });
+        }
+        /* a thing pressed (a gate, a key, a valve, a bell, a fight's stand-in): data.js pdDoAct says what the board becomes, or why not */
+        function _pdAct(C) {
+            if (!_pd) return false;
+            const id = _pd.id, S = pdState(id), A = C.pdAct || {};
+            try { if (ThreeRenderer.hq.pd.busy() || _pd.pulling) return false; } catch (e) { return false; }
+            const R = pdDoAct(id, S, A);
+            let say = R.say;
+            /* THE FIGHT, for now a stand-in: the enemies are listed, the fight is counted as won (the real field fight is the next step) */
+            if (R.ok && A.fight && (A.enemies || []).length) say = 'STAND-IN FIGHT WON · ' + (C.label || 'ENEMIES');
+            /* THE LEVER: one move of one plot; the plot you stand on carries you */
+            const why = (R.ok && R.move) ? pdMoveBlocked(id, S, R.move, _pdAt()) : null;
+            if (why) { _hqToast(_pdEsc(why), 2600); try { playSfx('uiButtonCancel'); } catch (e) {} return false; }
+            if (say) _hqToast(_pdEsc(say), 3200);
+            if (!R.ok) { try { playSfx('uiButtonCancel'); } catch (e) {} return false; }
+            try { playSfx('uiButtonClick'); } catch (e) {}
+            const was = S.solved;
+            if (R.move) {
+                /* the arm is thrown first (you see your own pull), then the eye rises and the plot moves */
+                let thrown = false; try { thrown = !!ThreeRenderer.hq.pd.pull(C.id); } catch (e) {}
+                const go = () => { _pd && (_pd.pulling = false); if (_pd && _pd.id === id) _pdGo(R.S, R.move.t === 'turn' ? { by: { [R.move.plot]: R.move.by } } : {}); };
+                if (!thrown) { go(); return true; }
+                _pd.pulling = true; setTimeout(go, 460); return true;
+            }
+            return _pdGo(R.S, { undo: false, quiet: true, then: () => { if (!was && pdState(id).solved) _pdSolvedSay(); } });
+        }
+        function _pdSolvedSay() {
+            if (!_pd) return;
+            const V = pdLevel(_pd.id), S = pdState(_pd.id);
+            _hqToast('<b>SOLVED</b> · ' + _pdEsc(V.L.title || V.T.label) + ' · ' + (S.moves | 0) + ' MOVES', 6000);
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+        }
+        /* the renderer's beat (~3 a second): the officer inside the exit's ring solves the level */
+        window._pdBeat = function (p) {
+            if (!_pd || !p) return;
+            const R = DOOR_HQ.rooms[p.room], E = R && R.pd === _pd.id && R.pdExit; if (!E) return;
+            const S = pdState(_pd.id); if (S.solved || Math.hypot(p.x - E.x, p.z - E.z) > E.r) return;
+            S.solved = true; _pdSave(); _pdSolvedSay();
+        };
+        function _pdPanelAct(act) {
+            if (act.indexOf('enter:') === 0) { window._pdEnter(act.slice(6)); return; }
+            if (act.indexOf('wipe:') === 0) { window.PD.reset(act.slice(5)); window._pdRenderSelect(); return; }
+        }
+        function _pdStyle() {
+            if (document.getElementById('pdStyle')) return;
+            const st = document.createElement('style'); st.id = 'pdStyle';
+            st.textContent = `
+.pd-sel-note{color:#b9bec7;font-size:13px;margin:6px 4px 14px}
+.pd-sel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.pd-sel-card{background:#000;border:2px solid #fff;padding:12px;display:flex;flex-direction:column;gap:6px}
+.pd-sel-verb{font-size:11px;letter-spacing:2px;color:#5fd6ee}
+.pd-sel-title{font-size:17px;color:#fff;line-height:1.2}
+.pd-sel-state{font-size:11px;color:#8a8f98}.pd-sel-state.ok{color:#7dff9a}
+.pd-sel-btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+#pdSelectBody button.pm-set-btn.pd-sel-go{background:#1c6b2c!important;border:2px solid #7dff9a!important;color:#fff!important}`;
+            document.head.appendChild(st);
+        }
+        document.addEventListener('click', (e) => { const b = e.target && e.target.closest ? e.target.closest('[data-pd]') : null; if (!b || b.disabled) return; e.preventDefault(); _pdPanelAct(b.getAttribute('data-pd')); });
+        window.PD = {
+            state: () => _pd ? { level: _pd.id, state: pdState(_pd.id), at: _pdAt(), moves: pdMoves(_pd.id, pdState(_pd.id)), joins: pdJoins(_pd.id, pdState(_pd.id)), undo: _pd.undo.length } : null,
+            go: (id) => window._pdEnter(id), leave: () => window._pdLeave(),
+            move: (m) => _pdDoMove(m), undo: () => _pdUndo(), act: (cid) => { if (!_pd) return false; let C = null; Object.keys(pdLevel(_pd.id).L.plots).forEach(p => { C = C || (DOOR_HQ.rooms[pdRoomId(_pd.id, p)].counters || []).find(c => c.id === cid); }); return C ? _pdAct(C) : false; },   // (console: a press by its counter id, wherever you stand)
+            reset: (id) => { if (_pd && (!id || id === _pd.id)) return _pdReset(); try { const A = _pdSaveAll(); delete A.levels[id]; localStorage.setItem(PD_RULES.saveKey, JSON.stringify(A)); } catch (e) {} return true; },
+        };
+        /* the level list (Settings > Developer > Open Plot Dungeons → index.html #pdSelectPage): every type, its levels, SOLVED marks */
+        window._goToPlotDungeons = function () {
+            if (typeof isOnlineMatch === 'function' && isOnlineMatch()) { _hqToast('PLOT DUNGEONS · closed during an online match', 2200); return; }
+            try { playSfx('uiButtonConfirm'); } catch (e) {}
+            _pdStyle(); _showTitlePage('pdSelectPage'); window._pdRenderSelect();
+        };
+        window._pdRenderSelect = function () {
+            const body = document.getElementById('pdSelectBody'); if (!body) return;
+            const sv = _pdSaveAll().levels || {}, V = pdLevels();
+            let h = '<p class="pd-sel-note">Test build. Each dungeon is one puzzle idea. Levers and buttons stand in the rooms: one lever moves one piece, and its lamp has the colour of that piece. Names, enemies and places are stand-ins.</p><div class="pd-sel-grid">';
+            Object.keys(PD_DUNGEONS).forEach(type => {
+                const T = PD_DUNGEONS[type]; if (T.hidden) return;
+                (T.levels || []).forEach((L, i) => {
+                    const id = type + (i + 1), s = sv[id];
+                    h += `<div class="pd-sel-card"><div class="pd-sel-verb">${_pdEsc(T.verb || '')}${(T.levels.length > 1) ? ' · LEVEL ' + (i + 1) : ''}</div><div class="pd-sel-title">${_pdEsc(L.title || T.label)}</div>`
+                       + `<div class="pd-sel-state${s && s.solved ? ' ok' : ''}">${s && s.solved ? 'SOLVED · ' + (s.moves | 0) + ' MOVES' : s ? 'IN PROGRESS' : 'NOT STARTED'}</div>`
+                       + `<div class="pd-sel-btns"><button class="pm-set-btn pd-sel-go" data-pd="enter:${id}">ENTER</button>${s ? `<button class="pm-set-btn" data-pd="wipe:${id}">START OVER</button>` : ''}</div></div>`;
+                });
+            });
+            body.innerHTML = h + '</div>';
+        };
+        window._pdSelectBack = function () { try { state.gameState = GS.MAIN_MENU; } catch (e) {} window._openMainMenuSettings(); };
+        /* ?pd=<level> in the url: straight into a level, once per page */
+        let _pdBootDone = false;
+        window._pdBootParam = function () {
+            if (_pdBootDone) return; _pdBootDone = true;
+            try { const m = /[?&]pd=([^&#]*)/.exec(location.search); if (m) setTimeout(() => window._pdEnter(decodeURIComponent(m[1])), 0); } catch (e) {}
         };
         /* the editor's viewport: `o` = { room, edit: { tick(dt, H), play }, onReady, onEscape } */
         window._hqEditEnter = function (o) {
@@ -2437,6 +2769,12 @@
            rebuilt at the last door); false = the classic page was shown. */
         window._hqReturnOrMenu = function (fallbackPage) {
             fallbackPage = fallbackPage || 'mainMenuPage';
+            /* THE QUESTS (2026-11-12): a tape that leads straight into a quest's fight (ui.js sets the marker) — the building is
+               not re-entered in between; ui.js starts the fight on the lesson's own board next, and comes back here if it cannot */
+            if (window._questFightPending) return true;
+            /* THE TUTORIAL (2026-11-12): NEXT TAPE / RESTART on a lesson started at the Range Console — ui.js _tutChain starts the next
+               lesson next (a building re-entered here loaded under that lesson's match and its board was never drawn: all black) */
+            if (window._tutChainPending) return true;
             const enabled = window._hqEnabled();
             const alive = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active());
             /* THE TUTORIAL: a lesson started from the shelf goes back to the shelf */
@@ -2495,7 +2833,8 @@
                 const eyeHere = !!(arrive && arrive.eye && (!arrive.eye.room || arrive.eye.room === _hqLastRoom));
                 if (arrive && !eyeHere) arriveDrop();
                 if (window._hqEnter({ room: _hqLastRoom, at: _hqLastDoor, quiet: true, from: 'return', seamless: eyeHere ? arrive : null })) {
-                    if (encRes) setTimeout(() => { try {
+                    if (encRes && encRes.quest && encRes.quest.changes && encRes.quest.changes.length) { try { _questShow(encRes.quest.changes, 5200); } catch (e) {} }   // THE QUESTS: after the fight's own toast
+                    if (encRes && !encRes.sceneOnly) setTimeout(() => { try {   // a scene replay is not a fight: no toast
                         /* THE PARTY (2026-09-19): the second line reads what the fight did to the party — the down, the treatment */
                         const pr = encRes.party || null;
                         const partyLine = (pr ? (pr.restored ? ' · THE PARTY WAS TREATED' : pr.down ? ` · ${pr.down} DOWN — HEAL THEM OR REST IN MEDICAL` : ' · THE PARTY STANDS') : '')
@@ -2553,6 +2892,7 @@
             { id: 'resume',    label: 'RESUME',    sub: 'BACK TO THE BUILDING' },
             { id: 'party',     label: 'PARTY',     sub: 'TWO SHIFTS · FIELD MEDICINE' },
             { id: 'items',     label: 'ITEMS',     sub: 'THE BAG · POTIONS · RESTOCK' },
+            { id: 'quests',    label: 'QUESTS',    sub: 'THE JOURNAL' },   // THE QUESTS (2026-11-12)
             { id: 'officer',   label: 'OFFICER',   sub: 'YOUR FILE' },
             { id: 'settings',  label: 'SETTINGS',  sub: 'AUDIO · DISPLAY · CONTROLS' },
             { id: 'directory', label: 'DIRECTORY', sub: 'THE MAP · EVERY ROOM YOU HAVE REACHED' },
@@ -2686,9 +3026,13 @@
         }
         function _hqPausePortrait(m, u) {
             let url = null;
+            /* THE MODEL PORTRAITS (2026-11-12): a member in a model of its own (the officer's look, a story character) shows that
+               model's face (three-renderer.js THE PORTRAIT STUDIO); until it is photographed, the officer's stored photo below */
+            try { if (!u && m && m.meta && m.meta.appearance && window.EWPortraits) { const own = window.EWPortraits.url({ race: m.meta.race || 'door agent', gender: m.meta.gender, appearance: m.meta.appearance }); if (own) return { url: own, kind: 'portrait' }; } } catch (e) {}
+            try { if (u && u.appearance && window.EWPortraits) { const ownU = window.EWPortraits.url(u); if (ownU) return { url: ownU, kind: 'portrait' }; } } catch (e) {}
             /* THE INTAKE (2026-09-21): the officer's card wears THE PHOTO the creator took (the ID card's) */
             try { if (m && m.you && typeof window.hqLook === 'function') { const lk = window.hqLook(_hqProfile()); if (lk && lk.portrait && m.meta && m.meta.appearance) return { url: lk.portrait, kind: 'portrait' }; } } catch (e) {}
-            try { if (typeof getUnitPortraitUrl === 'function') url = getUnitPortraitUrl(u || { race: m.meta && m.meta.race, gender: m.meta && m.meta.gender }); } catch (e) {}
+            try { if (typeof getUnitPortraitUrl === 'function') url = getUnitPortraitUrl(u || { race: m.meta && m.meta.race, gender: m.meta && m.meta.gender, appearance: (m.meta && m.meta.appearance) || null }); } catch (e) {}
             if (url) return { url, kind: 'portrait' };
             try { if (typeof getR2RaceSpriteUrl === 'function') url = getR2RaceSpriteUrl((m.meta && m.meta.race) || 'door agent', (m.meta && m.meta.gender) || 'male', UNIT_CLASS); } catch (e) {}
             return url ? { url, kind: 'sprite' } : null;
@@ -2883,7 +3227,7 @@
             let canon = '';
             try { canon = (typeof window.hqCanonToday === 'function') ? String(window.hqCanonToday() || '') : ''; } catch (e) {}
             const where = room ? (((room.roomNo != null) ? 'ROOM ' + room.roomNo + ' · ' : '') + (room.label || '')) : '';
-            return `<div class="hq-pause-title"><img src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><div><b>PAUSED</b><span>D.O.O.R. HEADQUARTERS${where ? ' · ' + _hqEsc(where) : ''}</span></div></div>`
+            return `<div class="hq-pause-title"><img src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png" alt="" draggable="false"><div><b>PAUSED</b><span>D.O.O.R. HEADQUARTERS${where ? ' · ' + _hqEsc(where) : ''}</span></div></div>`
                 + `<div class="hq-pause-vitals">`
                 + `<span><b>${_hqEsc((profile && profile.username) || 'UNFILED')}</b><i>L${cl.level} · ${_hqEsc(cl.title)}</i></span>`
                 + `<span><b>💰 ${gold.toLocaleString()}</b><i>HAZARD PAY</i></span>`
@@ -3421,6 +3765,7 @@
                 if (P.cmd === 'party') body.innerHTML = safe(() => (P.member != null) ? _hqPauseMemberHtml(P.member) : _hqPausePartyHtml(), 'party');
                 else if (P.cmd === 'items') body.innerHTML = safe(_hqPauseBagHtml, 'items');
                 else if (P.cmd === 'officer') body.innerHTML = safe(_hqPauseOfficerHtml, 'officer');
+                else if (P.cmd === 'quests') body.innerHTML = safe(_hqPauseQuestsHtml, 'quests');
                 else if (P.cmd === 'settings') {
                     body.innerHTML = `<div class="hq-panel-hd"><b>SETTINGS</b><span>AUDIO · DISPLAY · CONTROLS · THE BUILDING</span></div><div class="mm-settings-body hq-pause-settings" id="hqPauseSettingsBody"></div>`;
                     window._hqPauseSettingsBody = _hqEl('hqPauseSettingsBody');
@@ -3728,7 +4073,12 @@
         function _hqConsoleTerminal(t) {
             const c = t && t.counter;
             const act = (c && c.action) || {};
-            if (act.overlay === 'training') return _hqRangeTerminal(c.id || 'range');
+            if (act.overlay === 'training') {
+                /* THE FIRST QUEST (mondo 2026-11-12): until it is complete the Range Console is the tapes' panel, never the terminal's game modes */
+                let _held = false; try { _held = typeof window.questHolds === 'function' && window.questHolds(_hqProfile(), 'range'); } catch (e) { _held = false; }
+                if (_held) return false;
+                return _hqRangeTerminal(c.id || 'range');
+            }
             if (act.overlay === 'dispatch' && t.viaTerminal) return _hqDeskTerminal(c.id || 'dispatch', c.label || 'DISPATCH');
             return false;
         }
@@ -3771,6 +4121,7 @@
         function _hqSetPrompt(t) {
             const el = _hqEl('hqPrompt');
             if (!el) return;
+            try { if (t && _pd && ThreeRenderer.hq.pd.wide()) t = null; } catch (e) {}   // THE PLOT DUNGEONS: no prompt over the wide view
             /* THE ENCOUNTER (9.4 rev 17): the gun HOLSTERED and a native in reach + sight — the prompt names the click; drawn, the click is the door gun's */
             let hushed = false; try { hushed = !!(ThreeRenderer.hq.hushed && ThreeRenderer.hq.hushed()); } catch (e) {}   // THE HUSH (2026-10-01): no ATTACK prompt on arrival either
             if (!hushed && !_hqPanelTarget && (!t || t.kind === 'npc') && _hqEncounterEnabled() && _hqEncounterRoomOkNow()) {
@@ -4231,6 +4582,680 @@
             void el.offsetWidth; el.classList.add('show');
             clearTimeout(_hqToast._t);
             _hqToast._t = setTimeout(() => { el.classList.remove('show'); setTimeout(() => { if (!el.classList.contains('show')) el.style.display = 'none'; }, 400); }, ms || 3200);
+        }
+        /* ══ THE QUESTS (2026-11-12, mondo: "implement a quest system in the story mode") ══════════════════════════════════
+           data.js STORY_QUESTS / QUEST_FIGHTS + questEvent (the one writer) are the system; this is the building's side:
+           _questEvent files an event on the profile in ONE transaction and shows what it changed (the toast, the tracker);
+           THE TRACKER (#hqQuest) is the plate under the strip with the current objective; THE JOURNAL is the pause menu's
+           QUESTS page (_hqPauseQuestsHtml); _questFightGo starts a quest's own fight through the encounter's party-seated
+           launch (the Range Console's row, and ui.js when the tape that leads into it ends). Story only, viewer-local,
+           nothing on `state`, nothing relayed (RULE #2). Dev: window.Quests.state() / .reset(). */
+        const _questToastQ = [];
+        let _questToastT = null;
+        function _questToastPump() {
+            if (_questToastT || !_questToastQ.length) return;
+            if (state.gameState !== GS.HQ) { _questToastQ.length = 0; return; }
+            const t = _questToastQ.shift();
+            _hqToast(t.html, t.ms || 3800);
+            try { playSfx(t.done ? 'levelUp' : 'uiButtonConfirm'); } catch (e) {}
+            _questToastT = setTimeout(() => { _questToastT = null; _questToastPump(); }, (t.ms || 3800) + 300);
+        }
+        function _questChangeToast(c) {
+            const title = _hqEsc(String(c.title || '').toUpperCase());
+            if (c.kind === 'completed') {
+                const rw = c.reward && c.reward.unit ? ' · ' + _hqEsc(String(c.reward.unit).toUpperCase()) + (c.reward.joined ? ' JOINED THE PARTY' : ' IS ON CALL · ENLIST HER FROM THE PAUSE MENU') : '';
+                return { html: `<b>QUEST COMPLETE</b><span>${title}${rw}</span>`, ms: 5200, done: true };
+            }
+            if (c.reward && c.reward.unit) _questToastQ.push({ html: `<b>${_hqEsc(String(c.reward.unit).toUpperCase())}${c.reward.joined ? ' JOINED THE PARTY' : ' IS ON CALL'}</b><span>${c.reward.joined ? title : 'ENLIST HER FROM THE PAUSE MENU'}</span>`, ms: 4600, done: true });   // a reward paid mid-quest (reward.at)
+            return { html: `<b>${c.kind === 'started' ? 'NEW QUEST' : 'QUEST UPDATED'} · ${title}</b><span>${_hqEsc(String(c.objective || '').toUpperCase())}</span>`, ms: 4200 };
+        }
+        function _questShow(changes, delay) {
+            (changes || []).forEach(c => _questToastQ.push(_questChangeToast(c)));
+            _questTrackerRender();
+            if (_questToastQ.length) setTimeout(_questToastPump, Math.max(0, delay | 0));
+        }
+        window._questEvent = function (ev, o) {
+            o = o || {};
+            if (typeof window.questEvent !== 'function') return null;
+            if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return null;
+            if (window._ewSceneEdPlay) return null;   // THE CUTSCENE EDITOR is playing a scene: nothing it walks through is filed on the quest
+            const res = _hqPartyTx(p => window.questEvent(p, ev));
+            if (!res || !Array.isArray(res.changes)) return null;
+            if (!o.silent) _questShow(res.changes, o.delay);
+            else _questTrackerRender();
+            return res;
+        };
+        function _questTrackerRender() {
+            const page = _hqEl('hqPage'); if (!page) return;
+            let el = _hqEl('hqQuest');
+            let t = null;
+            try { t = (typeof window.questTracker === 'function') ? window.questTracker(_hqProfile()) : null; } catch (e) { t = null; }
+            if (typeof window._pdActive === 'function' && window._pdActive()) t = null;   // THE PLOT DUNGEONS: the test build is no part of the story's quest
+            if (!t) { if (el) el.style.display = 'none'; return; }
+            if (!el) {
+                el = document.createElement('div'); el.id = 'hqQuest'; el.className = 'hq-quest';
+                el.title = 'The journal (the pause menu: QUESTS)';
+                el.addEventListener('click', () => { try { window._hqOpenPause('quests'); } catch (e) {} });
+                page.appendChild(el);
+            }
+            el.innerHTML = `<div class="hq-quest-hd"><b>QUEST</b><i>${t.n} / ${t.total}</i><span>${_hqEsc(String(t.title).toUpperCase())}</span></div><div class="hq-quest-obj">${_hqEsc(t.objective)}</div>`;
+            el.style.display = '';
+        }
+        window._questTrackerRender = _questTrackerRender;
+        /* THE QUEST MARKER (2026-11-13, mondo: "quest marker looks good" on the mock-up): a gold diamond over the current
+           stage's target (data.js stage `mark`), with a plate (name + metres). The target in view = the diamond floats
+           over it; out of view = it slides to the screen's edge with an arrow that points the way. A target in another
+           room = the door of this room that leads there (hqRouteNext). Walk only, viewer-local. `window.EW_NO_QUEST_MARK`. */
+        /* THE HQ SCENES (2026-11-13): a stage with `scene` that ends on `talk` plays it in the room when the officer speaks to
+           that cast member: the officer is stood on the stage's `sceneAt`, the scene's shots are placed cameras (`cam`),
+           and its end files the talk (the stage's own end, so a skipped scene lands where a watched one does). */
+        let _questTalkBusy = false;
+        function _questSceneStage(rp) {
+            let t = null;
+            /* THE SCENE REPLAY: `rp` = { quest, stage } of a finished stage, read off the quest's row; nothing is filed at its end */
+            if (rp) { try { const def = window.questDef(rp.quest), st = def && def.stages.find(x => x.id === rp.stage); t = st ? { scene: st.scene || null, sceneAt: st.sceneAt || null, done: st.done || null } : null; } catch (e) { t = null; } }
+            else { try { t = (typeof window.questTracker === 'function') ? window.questTracker(_hqProfile()) : null; } catch (e) { t = null; } }
+            return (t && t.scene && t.done) ? t : null;
+        }
+        function _questSceneFlag(name, on) {
+            if (!name) return;
+            try {
+                const PS = window.ProfileSystem, idx = PS && PS.getActiveProfileIndex ? PS.getActiveProfileIndex() : null; if (idx == null) return;
+                const p = PS.loadProfile(idx); if (!p) return;
+                if (typeof hqStoryFlagSet === 'function' && hqStoryFlagSet(p, name, !!on)) PS.saveProfile(idx, p);
+            } catch (e) { console.warn('[SCENE] flag', e); }
+        }
+        /* a stage that ends on a ROOM and carries a scene (F, the office): is it due in this room now? */
+        function _questRoomSceneDue(room) {
+            if (window.EW_NO_CUTSCENES || !window.EWScene || !window.EWCine || typeof window.storyCutscene !== 'function') return false;
+            const t = _questSceneStage(null);
+            return !!(t && t.done.on === 'room' && t.done.room === room && window.storyCutscene(t.scene));
+        }
+        /* the room stands: the scene plays once its cast is in the room; its end files the stage (a scene that cannot start files it at once) */
+        /* ── THE OPENING (scene A, the desert half; mondo's script + the storyboard he OK'd 2026-11-13) ── the scene room
+           `intro_desert` + STORY_CUTSCENES.orientation_intro. Due = ORIENTATION still on its first stage and the flag
+           `intro_seen` not filed. window._ewIntroLive puts Sedaniel on the road (data.js DOOR_CAST spot `live`). The end
+           (or a skip) files the flag and enters the foyer; a replay from the quest card goes back to the room it left. */
+        const _INTRO_ROOM = 'intro_desert', _INTRO_SCENE = 'orientation_intro';
+        function _introDue() {
+            try {
+                if (window._ewSceneEdPlay || window.EW_NO_CUTSCENES || window.EW_NO_INTRO || !_hqRoomExists(_INTRO_ROOM) || typeof window.storyCutscene !== 'function' || !window.storyCutscene(_INTRO_SCENE)) return false;
+                const p = _hqProfile(); if (!p) return false;
+                const t = (typeof window.questTracker === 'function') ? window.questTracker(p) : null;
+                if (!t || t.quest !== 'orientation' || t.stage !== 'walk') return false;
+                return !((typeof hqStoryFlags === 'function') ? hqStoryFlags(p) : {}).intro_seen;
+            } catch (e) { return false; }
+        }
+        function _introStart(replay, backRoom) {
+            const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            /* the end: the flag, and the walk is the recruit's (a replay goes back to the room it was asked from) */
+            window._ewIntroChain = true;   // the whole opening (the road, the car, the foyer) is running: up until `done` (the cutscene editor's watch reads it)
+            const done = (stay) => {
+                window._ewIntroLive = false; window._ewIntroChain = false;
+                if (!replay) _questSceneFlag('intro_seen', true);
+                if (stay && !replay) return;
+                const to = (replay && backRoom && _hqRoomExists(backRoom)) ? backRoom : _hqArrivalRoom();
+                setTimeout(() => { try { if (state.gameState === GS.HQ && !_hqSuspended) window._hqEnter({ room: to, quiet: true, from: 'walk' }); } catch (e) { console.warn('[SCENE] the way in', e); } }, 60);
+            };
+            /* THE RIDE DOWN + THE ARRIVAL (scene A's second half, mondo's OK 2026-11-13): the car, then the foyer's front lift */
+            const sceneIn = (room, scene, at, next) => {
+                const row = (typeof window.storyCutscene === 'function') ? window.storyCutscene(scene) : null;
+                if (!row || !_hqRoomExists(room) || window.EW_NO_CUTSCENES) { next(false); return; }
+                const t1 = performance.now();
+                const play = () => {
+                    if (state.gameState !== GS.HQ || _hqSuspended || _hqCurRoom !== room) { next(false); return; }
+                    let up = false; try { up = TR.hq.sceneReady('player'); } catch (e) { up = true; }
+                    if (!up && performance.now() - t1 < 20000) { setTimeout(play, 250); return; }
+                    let ok = false;
+                    try { ok = _questHqScene({ scene, sceneAt: at }, { onEnd: () => next(true) }, () => next(true)); } catch (e) { console.error('[SCENE] ' + scene + ' did not start', e); ok = false; }
+                    if (!ok) next(false);
+                };
+                setTimeout(() => {
+                    try { if (state.gameState === GS.HQ && !_hqSuspended && window._hqEnter({ room, quiet: true, from: 'walk', onReady: () => setTimeout(play, 400) })) return; } catch (e) { console.warn('[SCENE] the way to ' + room, e); }
+                    next(false);
+                }, 60);
+            };
+            const out = () => {
+                window._ewIntroLive = false;
+                const foyer = _hqArrivalRoom() === _HQ_FOYER;
+                sceneIn('car', 'orientation_ride', { x: -0.15, z: 0.2, face: 0 }, () => {
+                    if (!foyer) { done(false); return; }
+                    sceneIn(_HQ_FOYER, 'orientation_arrive', { x: 0, z: 2.75, face: 0 }, (played) => done(played));
+                });
+            };
+            const here = () => { try { const sc = TR.hq.dev.hqScene(); return !!(sc && sc.getObjectByName('hq_hq-cast-sedaniel')); } catch (e) { return false; } };
+            try { TR.hq.scenePlace('player', { show: false }); } catch (e) {}   // (mondo 11-13: "I am already standing by the door before sedaniel drops me off")
+            const t0 = performance.now();
+            const go = () => {
+                if (state.gameState !== GS.HQ || _hqSuspended || _hqCurRoom !== _INTRO_ROOM) { window._ewIntroLive = false; window._ewIntroChain = false; return; }
+                let up = false; try { up = here() && TR.hq.sceneReady('player') && TR.hq.sceneReady('sedaniel'); } catch (e) { up = here(); }   // (the officer's clips too: no bind pose at the car)
+                if (!up && performance.now() - t0 < 20000) { setTimeout(go, 250); return; }
+                let ok = false;
+                try { ok = _questHqScene({ scene: _INTRO_SCENE, sceneAt: { x: -3.4, z: -41, face: 270 } }, { onEnd: out }, out); } catch (e) { console.error('[SCENE] the opening did not start', e); ok = false; }
+                if (!ok) out();
+            };
+            go();
+        }
+        /* the opening again, from the quest card */
+        function _introReplay() {
+            if (_questTalkBusy || _hqSuspended || window.EW_NO_CUTSCENES || state.gameState !== GS.HQ || !_hqRoomExists(_INTRO_ROOM)) return false;
+            const back = _hqCurRoom;
+            window._ewIntroLive = true;
+            try { window._hqClosePanel(); } catch (e) {}
+            _hqSetPrompt(null);
+            if (!window._hqEnter({ room: _INTRO_ROOM, quiet: true, from: 'walk', onReady: () => setTimeout(() => _introStart(true, back), 400) })) { window._ewIntroLive = false; return false; }
+            return true;
+        }
+        function _questRoomSceneGo(room) {
+            const file = () => { try { window._questEvent({ type: 'room', room }, { delay: 600 }); } catch (e) { console.warn('[QUEST] room event', e); } };
+            const t = _questSceneStage(null);
+            if (!t || t.done.on !== 'room' || t.done.room !== room) { file(); return; }
+            const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            const here = (id) => { try { const sc = TR.hq.dev.hqScene(); return !!(sc && sc.getObjectByName('hq_hq-cast-' + id)); } catch (e) { return false; } };
+            const need = Object.keys(window.DOOR_CAST || {}).filter(id => (window.DOOR_CAST[id].spots || []).some(s => s && s.during && s.during.quest === t.quest && hqCastSpotStageIs(s.during, t.stage)));
+            const t0 = performance.now();
+            const go = () => {
+                if (state.gameState !== GS.HQ || _hqSuspended || _hqCurRoom !== room) return;   // left before it began: the stage stays, the next entry plays it
+                if (!need.every(here) && performance.now() - t0 < 20000) { setTimeout(go, 250); return; }
+                if (!_questRoomScene(room, null)) file();
+            };
+            go();
+        }
+        function _questRoomScene(room, rp) {
+            const t = _questSceneStage(rp);
+            if (!t || t.done.on !== 'room' || t.done.room !== room) return false;
+            const then = t.then || null;
+            return _questHqScene(t, rp, () => {
+                try { window._questEvent({ type: 'room', room }, { delay: then ? 0 : 600 }); } catch (e) { console.warn('[QUEST] room', e); }
+                /* the stage's `then`: what the scene leads straight into (B: the TV is on, Tape 1 starts) */
+                if (then && then.lesson && typeof window._tutorialStartFromHq === 'function') setTimeout(() => { try { window._tutorialStartFromHq(then.lesson); } catch (e) { console.warn('[SCENE] then', e); } }, 250);
+            });
+        }
+        function _questTalkScene(who, rp) {
+            const t = _questSceneStage(rp);
+            if (!t || t.done.on !== 'talk' || t.done.who !== who) return false;
+            return _questHqScene(t, rp, () => { try { window._questEvent({ type: 'talk', who }, { delay: 600 }); } catch (e) { console.warn('[QUEST] talk', e); } });
+        }
+        function _questHqScene(t, rp, file) {
+            if (_questTalkBusy || window.EW_NO_CUTSCENES || !window.EWScene || !window.EWCine || typeof window.storyCutscene !== 'function') return false;
+            const row = window.storyCutscene(t.scene); if (!row) { console.warn('[SCENE] no row ' + t.scene); return false; }
+            const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            try { if (t.sceneAt && TR && TR.hq && TR.hq.dev && TR.hq.dev.teleport) TR.hq.dev.teleport(t.sceneAt); } catch (e) { console.warn('[SCENE] the officer could not be placed', e); }
+            const end = () => { _questTalkBusy = false; if (eyeT) { clearInterval(eyeT); eyeT = 0; } try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(false); } catch (e) {} try { if (row.cast && TR && TR.hq && TR.hq.sceneCast) TR.hq.sceneCast(null); } catch (e) {} if (rp) { try { if (rp.onEnd) rp.onEnd(); } catch (e) {} return; } file(); };
+            /* the scene's hands in the room: place / show / hide a body (three-renderer.js hq.scenePlace), the choice's world flags */
+            const hand = (a) => { try {
+                if (!a || !TR || !TR.hq) return;
+                if (a.who && (a.do === 'place' || a.do === 'show' || a.do === 'hide') && TR.hq.scenePlace) TR.hq.scenePlace(a.who, { x: a.x, z: a.z, face: a.face, scale: a.scale, clip: a.clip, ms: a.ms, sit: (a.sit != null) ? a.sit : null, show: a.do === 'show' ? true : (a.do === 'hide' ? false : null) });
+                else if (a.who && a.do === 'walk' && TR.hq.sceneWalk) TR.hq.sceneWalk(a.who, { x: a.x, z: a.z, ms: a.ms, face: a.face });
+                else if (a.do === 'props' && TR.hq.sceneProps) TR.hq.sceneProps({ keys: a.keys, near: a.near, r: a.r, at: a.at, ms: a.ms, light: a.light });
+                else if (a.do === 'key' && TR.hq.sceneKey) TR.hq.sceneKey({ x: a.x, y: a.y, z: a.z, size: a.size });
+                else if (a.do === 'door' && TR.hq.sceneDoor) TR.hq.sceneDoor({ id: a.id, x: a.x, z: a.z, face: a.face, leaf: a.leaf, open: a.open, ms: a.ms, remove: a.remove });
+                else if (a.do === 'shaft' && TR.hq.sceneShaft) TR.hq.sceneShaft(a.k);
+                else if (a.do === 'screen' && TR.hq.sceneScreen) TR.hq.sceneScreen({ x: a.x, y: a.y, z: a.z, w: a.w, h: a.h, face: a.face, off: a.off });
+            } catch (e) { console.warn('[SCENE] ' + (a && a.do), e); } };
+            const host = { unit: 1, point: () => null, act: hand,
+                           choose: (c, o) => { if (o && o.clear) _questSceneFlag(o.clear, false); if (o && o.set) _questSceneFlag(o.set, true); },
+                           finish: () => { (row.end || []).forEach(hand); } };
+            /* the walker stands still under the scene's camera, so its body is put on the mark here (the walk's own tick would only move it after the scene) */
+            try {
+                const sc = TR && TR.hq && TR.hq.dev && TR.hq.dev.hqScene ? TR.hq.dev.hqScene() : null, g = sc ? sc.getObjectByName('hq_hq-player') : null, U = (window.EWCine && window.EWCine.unit) || 0;
+                const pp = TR.hq.pos();
+                if (g && pp && t.sceneAt && window.DOOR_HQ && window.DOOR_HQ.units) { g.position.x = pp.x * window.DOOR_HQ.units; g.position.z = pp.z * window.DOOR_HQ.units; g.updateMatrixWorld(true); }
+            } catch (e) { console.warn('[SCENE] the officer body could not be placed', e); }
+            /* the officer stands still on the mark (no walk left over from the way in) */
+            try { if (t.sceneAt && TR.hq.scenePlace) TR.hq.scenePlace('player', { x: t.sceneAt.x, z: t.sceneAt.z, face: t.sceneAt.face || 0 }); } catch (e) {}
+            /* a shot's `eye: { who, dy }`: the camera's height = that body's head + dy (the row's own height is kept as the base, so a replay reads the same) */
+            const eyeFit = () => {
+                /* a shot already on screen keeps its height (mondo 2026-11-14: the keys shot "is bumpy / moving up and down": the
+                   head bobs with the idle and every re-read moved the camera with it) */
+                let cur = -1; try { const st = window.EWScene && window.EWScene.state(); if (st && st.id === row.id) cur = st.beat; } catch (e) {}
+                (row.beats || []).forEach((b, bi) => {
+                    const sh = b && b.shot; if (!sh || !sh.eye || !Array.isArray(sh.cam) || !TR.hq.sceneHead) return;
+                    if (bi <= cur && sh._y0 != null) return;
+                    if (sh._y0 == null) { sh._y0 = sh.cam[1]; sh._y1 = (sh.to && Array.isArray(sh.to.cam)) ? sh.to.cam[1] : null; }
+                    const h = TR.hq.sceneHead(sh.eye.who); if (!h) return;
+                    const y = +(h.y + (sh.eye.dy || 0)).toFixed(3);
+                    sh.cam[1] = y; if (sh._y1 != null) sh.to.cam[1] = +(y + (sh._y1 - sh._y0)).toFixed(3);
+                });
+            };
+            /* read again while the scene plays: a body whose rig lands a moment late is framed by its real head from its next shot on */
+            let eyeT = 0;
+            try {
+                eyeFit();
+                if ((row.beats || []).some(b => b && b.shot && b.shot.eye)) eyeT = setInterval(() => { try { eyeFit(); } catch (e) {} }, 400);
+                if ((row.beats || []).some(b => (b.act || []).some(a => a && a.do === 'key')) && TR.hq.sceneKey) TR.hq.sceneKey({ warm: true });
+            } catch (e) { console.warn('[SCENE] eye', e); }
+            let ok = false;
+            try { if (TR && TR.hq && TR.hq.sceneCull) TR.hq.sceneCull(true); } catch (e) {}
+            try { ok = !!window.EWScene.play(row, host, end); } catch (e) { console.error('[SCENE] the scene did not start', e); ok = false; }
+            if (!ok) { try { TR.hq.sceneCull(false); } catch (e) {} }
+            /* the row's `cast` = the only cast members in the scene: the room's other people step out for it */
+            else if (row.cast) { try { if (TR.hq.sceneCast) TR.hq.sceneCast(row.cast); } catch (e) { console.warn('[SCENE] cast', e); } }
+            _questTalkBusy = ok;
+            return ok;
+        }
+        /* THE SCENE REPLAY of a stage's own scene (E at Rhonda's desk): the room is entered again with that stage counted as
+           the current one for the cast's posts (data.js _hqCastSpotReplay: Kit stands at the counter), the scene plays once
+           the cast it needs is in the room, and the room is entered once more at its end so everybody is back at today's
+           post. Nothing is filed: a finished stage never moves. */
+        let _questReplayBusy = false;
+        function _questStageReplay(questId, stageId) {
+            if (_questReplayBusy || _questTalkBusy || _hqSuspended || window.EW_NO_CUTSCENES) return false;
+            let st = null; try { const def = window.questDef(questId); st = def && def.stages.find(x => x.id === stageId); } catch (e) { st = null; }
+            if (!st || !st.scene || !st.done || (st.done.on !== 'talk' && st.done.on !== 'room')) return false;
+            const room = (st.done.on === 'room') ? st.done.room : ((st.mark && st.mark.room) || _hqCurRoom);
+            if (!_hqRoomExists(room)) return false;
+            const who = st.done.who, at = st.sceneAt ? { x: st.sceneAt.x, z: st.sceneAt.z, face: st.sceneAt.face || 0 } : null;
+            _questReplayBusy = true;
+            window._ewSceneReplayStage = { quest: questId, stage: stageId };
+            const done = () => {
+                window._ewSceneReplayStage = null; _questReplayBusy = false;
+                setTimeout(() => { try { if (state.gameState === GS.HQ && !_hqSuspended && _hqCurRoom === room) window._hqEnter({ room, at, quiet: true, from: 'walk' }); } catch (e) {} }, 350);
+            };
+            const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            const here = (id) => { try { const sc = TR.hq.dev.hqScene(); return !!(sc && sc.getObjectByName('hq_hq-cast-' + id)); } catch (e) { return false; } };
+            const need = (who ? [who] : []).concat(Object.keys(window.DOOR_CAST || {}).filter(id => id !== who && (window.DOOR_CAST[id].spots || []).some(s => s && s.during && s.during.quest === questId && hqCastSpotStageIs(s.during, stageId))));
+            const t0 = performance.now();
+            const go = () => {
+                if (state.gameState !== GS.HQ || _hqSuspended || _hqCurRoom !== room) { window._ewSceneReplayStage = null; _questReplayBusy = false; return; }
+                if (!need.every(here) && performance.now() - t0 < 20000) { setTimeout(go, 250); return; }
+                const rp = { quest: questId, stage: stageId, onEnd: done };
+                if (!(st.done.on === 'room' ? _questRoomScene(room, rp) : _questTalkScene(who, rp))) done();
+            };
+            _hqLastRoom = room; _hqLastDoor = null;
+            try { window._hqClosePanel(); } catch (e) {}
+            _hqSetPrompt(null);
+            if (!window._hqEnter({ room, at, quiet: true, from: 'walk', onReady: () => setTimeout(go, 400) })) { window._ewSceneReplayStage = null; _questReplayBusy = false; return false; }
+            return true;
+        }
+        let _questMarkRaf = 0, _questMarkAt = 0, _questMarkT = null;
+        function _questMarkTarget() {
+            let t = null; try { t = (typeof window.questTracker === 'function') ? window.questTracker(_hqProfile()) : null; } catch (e) { t = null; }
+            const m = t && t.mark; if (!m || !m.room) return null;
+            if (_hqCurRoom === m.room) return m.cast ? { cast: m.cast } : null;
+            const hop = (typeof window.hqRouteNext === 'function') ? window.hqRouteNext(_hqCurRoom, m.room) : null;
+            return hop ? { door: hop.door } : null;
+        }
+        function _questMarkTick() {
+            _questMarkRaf = requestAnimationFrame(_questMarkTick);
+            const page = _hqEl('hqPage'); let el = _hqEl('hqQuestMark');
+            const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            const live = page && state.gameState === GS.HQ && !window.EW_NO_QUEST_MARK && TR && TR.hq && TR.hq.active() && typeof TR.hq.questMark === 'function'
+                && !_hqPanelTarget && !document.body.classList.contains('ew-scene') && !(window.EWCine && window.EWCine.on);
+            const now = performance.now();
+            if (live && now - _questMarkAt > 400) { _questMarkAt = now; try { _questMarkT = _questMarkTarget(); } catch (e) { _questMarkT = null; } }
+            let M = null; if (live && _questMarkT) { try { M = TR.hq.questMark(_questMarkT); } catch (e) { M = null; } }
+            if (!M) { if (el) el.style.display = 'none'; return; }
+            if (!el) {
+                el = document.createElement('div'); el.id = 'hqQuestMark'; el.className = 'hq-qmark';
+                el.innerHTML = '<i class="hq-qmark-arrow"></i><i class="hq-qmark-gem"></i><span class="hq-qmark-plate"></span>';
+                page.appendChild(el);
+            }
+            const W = page.clientWidth || window.innerWidth, H = page.clientHeight || window.innerHeight, pad = 44;
+            let x = M.x * W, y = M.y * H;
+            const inView = M.front && x >= pad && x <= W - pad && y >= pad + 30 && y <= H - pad;
+            const arrow = el.firstChild;
+            if (inView) { el.classList.remove('edge'); el.classList.remove('flip'); }
+            else {
+                /* out of view: from the screen's middle toward it (a target behind the eye mirrors), stopped at the edge */
+                let dx = x - W / 2, dy = y - H / 2;
+                if (!M.front) { dx = -dx; dy = Math.abs(dy) + H; }
+                const k = Math.min((W / 2 - pad) / Math.max(1e-3, Math.abs(dx)), (H / 2 - pad) / Math.max(1e-3, Math.abs(dy)));
+                x = W / 2 + dx * k; y = H / 2 + dy * k;
+                el.classList.add('edge'); el.classList.toggle('flip', x > W * 0.6);
+                arrow.style.transform = 'rotate(' + (Math.atan2(dy, dx) * 180 / Math.PI) + 'deg)';
+            }
+            el.style.display = ''; el.style.transform = 'translate(' + Math.round(x) + 'px,' + Math.round(y) + 'px)';
+            const txt = String(M.label || '').toUpperCase() + '  ' + Math.max(1, Math.round(M.dist)) + 'm';
+            const plate = el.lastChild; if (plate.textContent !== txt) plate.textContent = txt;
+        }
+        if (!_questMarkRaf && typeof requestAnimationFrame === 'function') _questMarkRaf = requestAnimationFrame(_questMarkTick);
+        /* THE JOURNAL: the pause menu's QUESTS page */
+        function _hqPauseQuestsHtml() {
+            let J = null;
+            try { J = (typeof window.questJournal === 'function') ? window.questJournal(_hqProfile()) : null; } catch (e) { J = null; }
+            const nA = J ? J.active.length : 0, nC = J ? J.completed.length : 0;
+            let html = `<div class="hq-panel-hd"><b>QUESTS</b><span>${nA} ACTIVE · ${nC} COMPLETE</span></div>`;
+            if (!J || (!nA && !nC)) return html + '<p class="hq-panel-desc">No quests on file.</p>';
+            const card = (q) => {
+                const done = q.status === 'completed';
+                let h = `<div class="hq-qj${done ? ' done' : ''}"><div class="hq-qj-hd"><b>${_hqEsc(String(q.title).toUpperCase())}</b><i class="hq-lamp-chip st-${done ? 'stabilized' : 'unstable'}">${done ? 'COMPLETE' : 'ACTIVE'}</i></div>`;
+                h += `<p class="hq-qj-sum">${_hqEsc(q.summary || '')}</p><ul class="hq-qj-stages">`;
+                q.stages.forEach(s => { h += `<li class="${s.done ? 'done' : 'cur'}"><i>${s.done ? '✓' : '▶'}</i><span>${_hqEsc(s.objective)}</span></li>`; });
+                h += '</ul>';
+                /* THE REPLAY (2026-11-13, mondo: "Is there a way for me to replay just the cutscene easily without making a new
+                   profile and doing the tutorial all over again?"): a fight stage that is done and opens on a cutscene plays
+                   again from here (the scene, then the fight; nothing is filed twice: a finished stage never moves) */
+                /* EVERY SCENE (2026-11-13, mondo: "can i not replay it? we literally added a replay system so i can check these
+                   things"): each cutscene of a finished stage has its own button, in the order they play. The fight's opening
+                   scene plays with its fight; its `after` scene and a stage's own scene (a talk, a room) play alone. */
+                try {
+                    const def = (typeof window.questDef === 'function') ? window.questDef(q.quest || q.id) : null;
+                    const sc = (id) => (id && typeof window.storyCutscene === 'function') ? window.storyCutscene(id) : null;
+                    const btn = (attrs, row, tip) => `<button class="hq-btn" ${attrs} title="${_hqEsc(tip)}">REPLAY ▸ ${_hqEsc(String(row.title || 'THE CUTSCENE').toUpperCase())}</button>`
+                        + `<button class="hq-btn" data-scene-ed="${_hqEsc(row.id || '')}" title="Change this cutscene's lines and write notes on its shots (the cutscene editor)">EDIT</button>`;   // THE CUTSCENE EDITOR (2026-11-15)
+                    let bs = '';
+                    if (def && def.intro && sc(def.intro)) bs += btn('data-quest-intro="1"', sc(def.intro), 'Play the opening again');   // scene A: seen before the first stage
+                    ((def && def.stages) || []).forEach(st => {
+                        const sd = (q.stages || []).find(x => x.id === st.id);
+                        if (!sd || !sd.done) return;
+                        const F = (st.done && st.done.on === 'fight' && typeof window.questFightDef === 'function') ? window.questFightDef(st.done.fight) : null;
+                        if (F && sc(F.scene)) bs += btn(`data-quest-replay="${_hqEsc(F.id)}"`, sc(F.scene), 'Play this cutscene and its fight again');
+                        if (F && sc(F.after)) bs += btn(`data-quest-replay="${_hqEsc(F.id)}" data-quest-only="after"`, sc(F.after), 'Play this cutscene again, without the fight');
+                        if (sc(st.scene)) bs += btn(`data-quest-stage="${_hqEsc(def.id + '/' + st.id)}"`, sc(st.scene), 'Play this cutscene again');
+                    });
+                    if (bs) h += `<div class="hq-panel-actions hq-qj-replays">${bs}</div>`;
+                } catch (e) {}
+                if (q.reward && q.reward.unit) h += `<div class="hq-qj-rw"><b>REWARD</b><span>${_hqEsc(String(q.reward.unit).toUpperCase())} JOINS THE PARTY${done ? ' · PAID' : ''}</span></div>`;
+                return h + '</div>';
+            };
+            if (nA) { html += `<div class="hq-pp-sec"><b>ACTIVE</b><span>THE CURRENT OBJECTIVE IS MARKED ▶</span></div>` + J.active.map(card).join(''); }
+            if (nC) { html += `<div class="hq-pp-sec"><b>COMPLETE</b><span>ON THE RECORD</span></div>` + J.completed.map(card).join(''); }
+            return html;
+        }
+        /* a quest's own fight: the party-seated launch the marker uses, on the fight's board, the guest beside the party.
+           From the building (the Range Console's row) or straight after the tape that leads into it (ui.js, the building
+           not on screen: _hqLeave is a no-op then). false = it did not start. */
+        if (!window._questReplayWired) {
+            window._questReplayWired = true;
+            document.addEventListener('click', (e) => {
+                const b = e.target && e.target.closest ? e.target.closest('[data-quest-replay],[data-quest-stage],[data-quest-intro]') : null; if (!b) return;
+                e.preventDefault(); e.stopPropagation();
+                const id = b.getAttribute('data-quest-replay'), stg = b.getAttribute('data-quest-stage'), only = b.getAttribute('data-quest-only') || null;
+                try { if (typeof window._hqClosePause === 'function') window._hqClosePause(); } catch (err) {}
+                let ok = false;
+                if (b.hasAttribute('data-quest-intro')) ok = _introReplay();
+                else if (stg) { const c = stg.split('/'); ok = _questStageReplay(c[0], c[1]); }
+                else ok = window._questFightGo(id, { replay: true, only });
+                if (!ok) { try { playSfx('uiError'); } catch (err) {} }
+            }, true);
+        }
+        window._questFightGo = function (fightId, opts) {
+            if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return false;   // RULE #2: never from an online seat
+            let F = null;
+            try { F = (typeof window.questFightPending === 'function') ? window.questFightPending(_hqProfile()) : null; } catch (e) { F = null; }
+            /* THE REPLAY: a fight already won plays again (the journal's REPLAY button, console Quests.replay()) */
+            if (opts && opts.replay && fightId && !(F && F.id === fightId)) { try { F = (typeof window.questFightDef === 'function') ? window.questFightDef(fightId) : null; } catch (e) { F = null; } }
+            if (!F || (fightId && F.id !== fightId)) return false;
+            try {
+                const pf = (typeof window.hqPartyFit === 'function') ? window.hqPartyFit(_hqProfile()) : null;
+                if (pf && pf.total > 0 && !pf.ready) { _hqToast('<b>THE PARTY IS DOWN</b><span>NOBODY FIT TO FIGHT · A HEALING ZONE, THE COT OR THE PAUSE MENU</span>', 3600); try { playSfx('uiError'); } catch (e) {} return false; }
+            } catch (e) {}
+            const L = (typeof window.questFightLaunch === 'function') ? window.questFightLaunch(F.id, { partyLevel: _hqPartyLevelNow() }) : null;
+            if (!L) return false;
+            if (opts && opts.replay) L.replay = true;
+            if (opts && opts.replay && opts.only) L.sceneOnly = opts.only;   // THE SCENE REPLAY: only that scene of the fight (battle.js: 'after' = the aftermath on the board, no fight, no result)
+            if (L.room && _hqRoomExists(L.room)) { _hqCurRoom = L.room; }   // the result comes home to the fight's room
+            return _hqEncounterStart(L, null, null);
+        };
+        window.Quests = {
+            state: () => { try { const p = _hqProfile(); return { record: p && p.door && p.door.quests, tracker: window.questTracker(p), fight: window.questFightPending(p) }; } catch (e) { return null; } },
+            reset: () => { _hqPartyTx(p => { if (p && p.door) delete p.door.quests; return true; }); _questTrackerRender(); return true; },
+            event: (ev) => window._questEvent(ev),
+            talk: (who) => _questTalkScene(who),   // dev: play the talk scene of the current stage
+            roomScene: (room) => _questRoomScene(room || _hqCurRoom, null),   // dev: play the room scene of the current stage
+            fight: (id) => window._questFightGo(id),
+            replay: (id, only) => window._questFightGo(id || 'orientation_portal', { replay: true, only: only || null }),   // only 'after' = the aftermath alone
+            intro: () => _introReplay(),   // dev: scene A, the opening
+            replayStage: (quest, stage) => _questStageReplay(quest || 'orientation', stage || 'desk'),   // a stage's own scene (E at Rhonda's desk)
+        };
+        /* ══ THE CUTSCENE EDITOR — THE PAGE (2026-11-15, mondo: "a cutscene editor so I can change the dialogue easily and give
+           notes and export it all for you to work with and implement"). `window.EWSceneEd.open(sceneId)` puts one full-screen
+           window over whatever is up (Settings > Developer > Open Cutscene Editor; the QUESTS page's EDIT beside every REPLAY).
+           The scenes in play order on the left, every shot of the picked scene on the right: type in a line and it is changed
+           (yellow, the shipped words under it, RESET), add a line after a shot, cut one, split one at the cursor; any number
+           of tagged notes per shot and one for the whole scene; PLAY FROM HERE runs the journal's own replay from that shot
+           (from anywhere, whatever the quest's progress: _sedPlay). EXPORT FOR CLAUDE saves the file and copies the text.
+           All of it is data.js's record (sceneEd*: localStorage, his device only, viewer-local: RULE #2 has nothing to
+           mirror); typing never redraws the page (the caret stays), only the buttons do. ══ */
+        let _sedCur = null, _sedCaret = null, _sedMsg = '';
+        const _sedEl = () => document.getElementById('ewSceneEd');
+        function _sedInHq() { try { return state.gameState === GS.HQ; } catch (e) { return false; } }   // the pause menu over the building counts: PLAY closes it first
+        /* PLAY FROM THE EDITOR, ANYWHERE (2026-11-15, mondo: "obviously if I need a cutscene editor i need to be able to play the
+           cutscenes from it. Put the playing the scenes from the quests tab into the cutscene editor"): every scene plays from
+           the editor wherever it was opened and whatever the quest's progress. From the menu the building is entered first
+           (the arrival room, no opening, no save touched), then the journal's own replay runs: it loads the scene's room,
+           stands its cast and plays it. While it runs `window._ewSceneEdPlay` is up: no room scene of the live quest starts
+           and NO quest event is filed (a profile mid-quest is left exactly where it was). A fight's opening scene plays ALONE
+           (battle.js `sceneOnly: 'scene'`: no fight after it). When the scene is over and the building stands again, the
+           editor comes back up on that scene, over the pause menu. */
+        function _sedCanPlay(sc) {   // '' = it can play now, else why not
+            if (!sc || !sc.play) return 'THIS SCENE HAS NO WAY TO PLAY YET';
+            if (!window.EWScene || !window.EWCine || window.EW_NO_CUTSCENES) return 'CUTSCENES ARE SWITCHED OFF';
+            try { if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return 'NOT DURING AN ONLINE MATCH'; } catch (e) {}
+            try { if ([GS.BATTLE, GS.LOBBY, GS.POST_MATCH].indexOf(state.gameState) >= 0) return 'LEAVE THE MATCH FIRST, THEN PLAY THE SCENE'; } catch (e) {}
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq) return 'THE BUILDING IS NOT LOADED YET, TRY AGAIN IN A MOMENT';
+            return '';
+        }
+        let _sedRun = null;
+        function _sedRunEnd(reopen) {
+            const r = _sedRun; _sedRun = null; window._ewSceneEdPlay = false;
+            try { window.EWScene.from(null); } catch (e) {}
+            if (r && r.timer) clearInterval(r.timer);
+            if (!r || !reopen) return;
+            try { if (state.gameState === GS.HQ) { window._hqOpenPause('quests'); _sedOpen(r.id); } } catch (e) { console.warn('[SCENE ED] the editor did not come back', e); }
+        }
+        function _sedPlay(id, beat) {
+            const sc = window.sceneEdList().find(x => x.id === id); if (_sedCanPlay(sc) || _sedRun) { try { playSfx('uiError'); } catch (e) {} return false; }
+            const fail = (why) => {
+                console.warn('[SCENE ED] ' + id + ' did not start: ' + why);
+                try { window.EWScene.from(null); } catch (e) {}
+                _sedRunEnd(false);
+                try { playSfx('uiError'); _hqToast('<b>THE SCENE DID NOT START</b><span>' + _hqEsc(String(why).toUpperCase()) + '</span>', 4200); } catch (e) {}
+                if (state.gameState === GS.HQ) { try { window._hqOpenPause('quests'); } catch (e) {} }
+                _sedOpen(id); _sedSay('THE SCENE DID NOT START: ' + String(why).toUpperCase());
+            };
+            const go = () => {
+                if (!_sedRun || _sedRun.id !== id) return;
+                let ok = false;
+                try {
+                    if (sc.play.kind === 'intro') ok = _introReplay();
+                    else if (sc.play.kind === 'stage') ok = _questStageReplay(sc.play.quest, sc.play.stage);
+                    else ok = window._questFightGo(sc.play.fight, { replay: true, only: sc.play.only || 'scene' });
+                } catch (e) { console.warn('[SCENE ED] play', e); ok = false; }
+                if (!ok) fail('the building was busy, try again');
+            };
+            try { window.EWScene.from(id, beat | 0, sc.play.chain || null); } catch (e) {}
+            _sedClose();
+            try { if (typeof window._hqClosePause === 'function') window._hqClosePause(); } catch (e) {}
+            window._ewSceneEdPlay = true;
+            const R = _sedRun = { id: id, t0: performance.now(), seen: false, lastOn: 0, timer: 0 };
+            /* the watch: the scene was on, it is over, the building stands again and nothing is loading -> the editor comes back */
+            R.timer = setInterval(() => {
+                if (_sedRun !== R) { clearInterval(R.timer); return; }
+                const now = performance.now(); let on = false; try { on = !!(window.EWScene && window.EWScene.on); } catch (e) {}
+                if (on) { R.seen = true; R.lastOn = now; return; }
+                const card = document.getElementById('hqLoad'), loading = !!(card && card.style.display !== 'none');
+                if (!R.seen) { if (loading || state.gameState === GS.BATTLE) R.t0 = now; else if (now - R.t0 > 90000) fail('it took too long to start'); return; }   // a load in progress never times out
+                if (loading || window._ewIntroLive || window._ewIntroChain || _questReplayBusy || _questTalkBusy) { R.lastOn = now; return; }
+                let stands = true; try { stands = !!ThreeRenderer.hq.sceneReady('player'); } catch (e) { stands = true; }   // the room the scene went back to is up (a quiet entry shows no load card)
+                if (state.gameState === GS.HQ && !stands && now - R.lastOn < 30000) return;
+                if (state.gameState === GS.HQ && !_hqSuspended && now - R.lastOn > 2500) _sedRunEnd(true);
+                else if (state.gameState === GS.HQ && _hqSuspended && now - R.lastOn > 4000) _sedRunEnd(true);   // something paused the building under it: the run is over, never left hanging
+                else if (state.gameState !== GS.HQ && state.gameState !== GS.BATTLE && now - R.lastOn > 4000) _sedRunEnd(false);   // he left for the menu
+            }, 400);
+            if (state.gameState === GS.HQ) { setTimeout(go, 60); return true; }
+            /* from the menu: into the building first (the arrival room; an explicit room = no opening, no resume) */
+            let ok = false;
+            try { ok = !!window._hqEnter({ from: 'play', room: _hqArrivalRoom(), quiet: true, onReady: () => setTimeout(go, 700) }); } catch (e) { console.warn('[SCENE ED] the way in', e); ok = false; }
+            if (!ok) { fail('the building could not be entered'); return false; }
+            return true;
+        }
+        function _sedCountsText(c) { return c.lines + (c.lines === 1 ? ' LINE CHANGED' : ' LINES CHANGED') + ' · ' + c.notes + (c.notes === 1 ? ' NOTE' : ' NOTES'); }
+        function _sedSceneSmall(id) { const c = window.sceneEdCounts(id); return (c.lines || c.notes) ? _sedCountsText(c) : ''; }
+        function _sedRowHtml(id, row, E, i, canPlay) {
+            const b = row.beats[i], L = E && E.lines[i], A = E && E.adds[i], N = (E && E.notes[i]) || [], tags = window.SCENE_ED_TAGS;
+            const has = !!(L || A || N.length), cut = !!(L && L.cut);
+            let prevWho = ''; for (let k = i; k >= 0 && !prevWho; k--) if (row.beats[k].say && row.beats[k].say.who) prevWho = row.beats[k].say.who;
+            let h = `<div class="sed-row${has ? ' has' : ''}" data-row="${i}"><div class="sed-hd"><span>SHOT ${i + 1} · ${_hqEsc(window.sceneEdShotInfo(b))}</span><div class="sed-acts">`
+                + `<button type="button" class="sed-chip" data-sed="note" data-i="${i}">+ NOTE</button>`
+                + `<button type="button" class="sed-chip" data-sed="play" data-i="${i}"${canPlay ? '' : ' disabled'}>▸ PLAY FROM HERE</button>`
+                + (L ? `<button type="button" class="sed-chip" data-sed="reset" data-i="${i}">↺ RESET LINE</button>` : '') + '</div></div>';
+            if (b.say) {
+                h += `<div class="sed-who">${_hqEsc(b.say.who || '')}</div><textarea rows="1" spellcheck="true" class="${L && !cut ? 'ch' : ''}${cut ? ' cut' : ''}" data-line="${i}"${cut ? ' readonly' : ''}>${_hqEsc(L && !cut ? L.text : b.say.text)}</textarea>`
+                    + `<div class="sed-was" data-was="${i}"${L ? '' : ' style="display:none"'}>${cut ? 'THIS LINE IS CUT' : 'WAS: ' + _hqEsc(b.say.text)}</div>`;
+            }
+            ((A && A.list) || []).forEach((a, n) => {
+                h += `<div class="sed-add"><div class="sed-ttl">NEW LINE AFTER SHOT ${i + 1} · IT PLAYS ON THIS SHOT'S LAST FRAME</div>`
+                    + `<input type="text" data-addwho="${i}:${n}" value="${_hqEsc(a.who || prevWho)}" placeholder="WHO SAYS IT">`
+                    + `<textarea rows="1" spellcheck="true" data-add="${i}:${n}" placeholder="The new line">${_hqEsc(a.text || '')}</textarea>`
+                    + `<button type="button" class="sed-chip" data-sed="adddel" data-i="${i}" data-n="${n}">✕ REMOVE</button></div>`;
+            });
+            N.forEach((nt, n) => {
+                h += `<div class="sed-note"><div class="sed-acts">` + tags.map(t => `<button type="button" class="sed-chip${nt.tag === t ? ' sel' : ''}" data-sed="tag" data-i="${i}" data-n="${n}" data-tag="${t}">${t}</button>`).join('') + '</div>'
+                    + `<textarea rows="1" spellcheck="true" class="note" data-note="${i}:${n}" placeholder="What should change in this shot?">${_hqEsc(nt.text || '')}</textarea>`
+                    + `<button type="button" class="sed-chip" data-sed="notedel" data-i="${i}" data-n="${n}">✕ REMOVE</button></div>`;
+            });
+            h += `<div class="sed-acts sed-foot"><button type="button" class="sed-chip" data-sed="add" data-i="${i}">+ ADD A LINE AFTER</button>`;
+            if (b.say && !b.choice) h += `<button type="button" class="sed-chip" data-sed="cut" data-i="${i}">${cut ? 'RESTORE THIS LINE' : 'CUT THIS LINE'}</button>` + (cut ? '' : `<button type="button" class="sed-chip" data-sed="split" data-i="${i}">SPLIT AT THE CURSOR</button>`);
+            return h + '</div></div>';
+        }
+        function _sedFit(root) { (root || _sedEl()).querySelectorAll('textarea').forEach(ta => { if (ta.closest('.sed-out') || ta.hasAttribute('data-snote')) return; ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; }); }
+        function _sedTopText() { return _sedMsg || (_sedCountsText(window.sceneEdCounts()) + ' · SAVED ON THIS DEVICE'); }
+        function _sedRender(focusSel) {
+            const el = _sedEl(); if (!el) return;
+            const list = window.sceneEdList(); if (!list.length) { el.innerHTML = '<div class="sed-win sed-top"><button type="button" class="sed-btn back" data-sed="back">◂ BACK</button><h1>CUTSCENE EDITOR</h1><span class="sed-mini">NO CUTSCENES ON FILE</span></div>'; return; }
+            if (!_sedCur || !list.some(x => x.id === _sedCur)) _sedCur = list[0].id;
+            const sc = list.find(x => x.id === _sedCur), row = window.storyCutsceneShipped(sc.id), E = window.sceneEdScene(sc.id, false), why = _sedCanPlay(sc);
+            const main0 = el.querySelector('.sed-main'), keep = (main0 && main0.getAttribute('data-id') === sc.id) ? main0.scrollTop : 0;
+            const nLines = row.beats.filter(b => b.say).length;
+            let h = `<div class="sed-win sed-top"><button type="button" class="sed-btn back" data-sed="back">◂ BACK</button><h1>CUTSCENE EDITOR</h1><div class="sed-top-r"><span class="sed-mini" id="sedTop">${_hqEsc(_sedTopText())}</span>`
+                + `<button type="button" class="sed-btn${window.sceneEdBarOn() ? ' on' : ''}" data-sed="bar" title="PREV SHOT, NEXT SHOT and N · NOTE on screen while a scene plays">NOTES BAR IN SCENES: ${window.sceneEdBarOn() ? 'ON' : 'OFF'}</button>`
+                + `<button type="button" class="sed-btn ok" data-sed="export">EXPORT FOR CLAUDE</button></div></div>`;
+            h += '<div class="sed-win sed-side"><div class="sed-ttl">SCENES, IN THE ORDER THEY PLAY</div><div>'
+                + list.map(x => { const sm = _sedSceneSmall(x.id); return `<button type="button" class="sed-sc${x.id === sc.id ? ' on' : ''}" data-sed="scene" data-id="${_hqEsc(x.id)}">${_hqEsc(String(x.title).toUpperCase())}<small data-small="${_hqEsc(x.id)}">${_hqEsc(sm)}</small></button>`; }).join('') + '</div>'
+                + `<div class="sed-ttl">NOTE FOR THE WHOLE SCENE</div><textarea class="note" data-snote="1" rows="4" spellcheck="true" placeholder="Anything about the scene as a whole">${_hqEsc((E && E.note) || '')}</textarea>`
+                + `<div class="sed-acts"><button type="button" class="sed-btn ok" data-sed="play" data-i="0"${why ? ' disabled' : ''}>▸ PLAY THIS SCENE</button></div>`
+                + `<div class="sed-mini">${_hqEsc(why || (_sedInHq() ? 'IT PLAYS HERE AND THE EDITOR COMES BACK WHEN IT ENDS.' : 'IT LOADS THE BUILDING, PLAYS THE SCENE, THEN THE EDITOR COMES BACK.'))}</div>`
+                + `<div class="sed-acts"><button type="button" class="sed-chip" data-sed="clear" data-what="notes">CLEAR THIS SCENE'S NOTES</button><button type="button" class="sed-chip" data-sed="clear" data-what="lines">RESET THIS SCENE'S LINES</button></div></div>`;
+            h += `<div class="sed-win sed-main" data-id="${_hqEsc(sc.id)}"><div class="sed-ttl">${_hqEsc(String(sc.title).toUpperCase())} · ${row.beats.length} SHOTS · ${nLines} LINES</div>`
+                + row.beats.map((b, i) => _sedRowHtml(sc.id, row, E, i, !why)).join('') + '</div>';
+            el.innerHTML = h;
+            _sedFit(el);
+            const main = el.querySelector('.sed-main'); if (main) main.scrollTop = keep;
+            if (focusSel) { const f = el.querySelector(focusSel); if (f) { try { f.focus(); const v = f.value || ''; f.setSelectionRange(v.length, v.length); } catch (e) {} } }
+        }
+        function _sedTouch(i) {   // typing: the counts and the row's frame follow, the page is not redrawn
+            const el = _sedEl(); if (!el) return;
+            const top = el.querySelector('#sedTop'); _sedMsg = ''; if (top) top.textContent = _sedTopText();
+            const sm = el.querySelector('[data-small="' + _sedCur + '"]'); if (sm) sm.textContent = _sedSceneSmall(_sedCur);
+            if (i == null) return;
+            const E = window.sceneEdScene(_sedCur, false), r = el.querySelector('[data-row="' + i + '"]');
+            if (r) r.classList.toggle('has', !!(E && (E.lines[i] || E.adds[i] || (E.notes[i] || []).length)));
+        }
+        function _sedSay(msg) { _sedMsg = msg; const top = _sedEl() && _sedEl().querySelector('#sedTop'); if (top) top.textContent = msg; }
+        function _sedExport() {
+            const el = _sedEl(); if (!el) return;
+            const X = window.sceneEdExport(), txt = window.sceneEdExportText(X);
+            const d = new Date(), p2 = n => String(n).padStart(2, '0');
+            const name = 'Entropy_Wars_Cutscene_Notes_' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '-' + p2(d.getHours()) + p2(d.getMinutes()) + '.json';
+            let saved = false, copied = false;
+            if (X.scenes.length) {
+                try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(X, null, 1)], { type: 'application/json' })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 1500); saved = true; } catch (e) { saved = false; }
+            }
+            const box = document.createElement('div'); box.className = 'sed-out';
+            box.innerHTML = `<div class="sed-win"><div class="sed-ttl">EXPORT FOR CLAUDE</div><div class="sed-mini" id="sedOutMsg"></div><textarea readonly></textarea>`
+                + `<div class="sed-acts" style="justify-content:space-between"><button type="button" class="sed-btn back" data-sed="outback">◂ BACK</button><button type="button" class="sed-btn ok" data-sed="copy">COPY THE TEXT</button></div></div>`;
+            box.querySelector('textarea').value = txt;
+            el.appendChild(box);
+            const msg = () => { const m = box.querySelector('#sedOutMsg'); if (m) m.textContent = !X.scenes.length ? 'NOTHING TO EXPORT YET: CHANGE A LINE OR WRITE A NOTE FIRST.' : ((saved ? 'SAVED ' + name + ' TO YOUR DOWNLOADS. ' : 'THE FILE DID NOT SAVE. ') + (copied ? 'THE TEXT BELOW IS COPIED. ' : '') + 'DROP THE FILE, OR PASTE THE TEXT, IN A THREAD.'); };
+            msg();
+            try { if (X.scenes.length && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => { copied = true; msg(); }, () => {}); } catch (e) {}
+        }
+        function _sedOnClick(e) {
+            const b = e.target && e.target.closest ? e.target.closest('[data-sed]') : null; if (!b || b.disabled) return;
+            const k = b.getAttribute('data-sed'), i = +b.getAttribute('data-i'), n = +b.getAttribute('data-n'), id = _sedCur;
+            const row = window.storyCutsceneShipped(id);
+            _sedMsg = '';
+            try { playSfx('uiButtonClick'); } catch (err) {}
+            if (k === 'back') return _sedClose();
+            if (k === 'outback') { const o = _sedEl().querySelector('.sed-out'); if (o) o.remove(); return; }
+            if (k === 'copy') { const ta = _sedEl().querySelector('.sed-out textarea'); try { ta.focus(); ta.select(); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value); else document.execCommand('copy'); b.textContent = 'COPIED'; } catch (err) {} return; }
+            if (k === 'export') return _sedExport();
+            if (k === 'bar') { window.sceneEdBarSet(!window.sceneEdBarOn()); return _sedRender(); }
+            if (k === 'scene') { _sedCur = b.getAttribute('data-id'); _sedCaret = null; return _sedRender(); }
+            if (k === 'play') return _sedPlay(id, i || 0);
+            if (k === 'clear') {   // two clicks: the first one arms it
+                if (b.getAttribute('data-armed') !== '1') { b.setAttribute('data-armed', '1'); b.textContent = 'CLICK AGAIN TO CONFIRM'; b.classList.add('sel'); return; }
+                window.sceneEdClear(id, b.getAttribute('data-what')); return _sedRender();
+            }
+            if (k === 'note') { const m = window.sceneEdNoteSet(id, i, null, 'CAMERA', ''); return _sedRender('[data-note="' + i + ':' + m + '"]'); }
+            if (k === 'notedel') { window.sceneEdNoteSet(id, i, n, null, null); return _sedRender(); }
+            if (k === 'tag') { const E = window.sceneEdScene(id, false), nt = E && E.notes[i] && E.notes[i][n]; if (nt) window.sceneEdNoteSet(id, i, n, b.getAttribute('data-tag'), nt.text); return _sedRender(); }
+            if (k === 'reset') { window.sceneEdLineSet(id, i, null, false); return _sedRender(); }
+            if (k === 'cut') { const E = window.sceneEdScene(id, false), L = E && E.lines[i]; if (L && L.cut) window.sceneEdLineSet(id, i, null, false); else window.sceneEdLineSet(id, i, L ? L.text : null, true); return _sedRender(); }
+            if (k === 'add') { let who = ''; for (let q = i; q >= 0 && !who; q--) if (row.beats[q].say && row.beats[q].say.who) who = row.beats[q].say.who; const m = window.sceneEdAddSet(id, i, null, who, ''); return _sedRender('[data-add="' + i + ':' + m + '"]'); }
+            if (k === 'adddel') { window.sceneEdAddSet(id, i, n, null, null); return _sedRender(); }
+            if (k === 'split') {
+                const ta = _sedEl().querySelector('[data-line="' + i + '"]'), txt = ta ? ta.value : '', pos = (_sedCaret && _sedCaret.i === i) ? _sedCaret.pos : -1;
+                const a = txt.slice(0, Math.max(0, pos)).trim(), c = txt.slice(Math.max(0, pos)).trim();
+                if (pos <= 0 || !a || !c) { _sedSay('CLICK IN THE LINE WHERE IT SHOULD SPLIT, THEN PRESS SPLIT AT THE CURSOR'); return; }
+                window.sceneEdLineSet(id, i, a, false);
+                window.sceneEdAddSet(id, i, null, row.beats[i].say.who, c);
+                const E = window.sceneEdScene(id, false), A = E && E.adds[i]; if (A && A.list.length > 1) { A.list.unshift(A.list.pop()); window.sceneEdAddSet(id, i, 0, A.list[0].who, A.list[0].text); }   // straight after its first half
+                return _sedRender('[data-add="' + i + ':0"]');
+            }
+        }
+        function _sedOnInput(e) {
+            const t = e.target; if (!t || !t.getAttribute) return;
+            const id = _sedCur;
+            if (t.hasAttribute('data-snote')) { window.sceneEdNoteSet(id, 'scene', 0, null, t.value); return _sedTouch(null); }
+            if (t.hasAttribute('data-line')) {
+                const i = +t.getAttribute('data-line'), row = window.storyCutsceneShipped(id);
+                window.sceneEdLineSet(id, i, t.value, false);
+                const ch = t.value.replace(/\s*\n\s*/g, ' ') !== row.beats[i].say.text && !!t.value.trim();
+                t.classList.toggle('ch', ch);
+                const was = _sedEl().querySelector('[data-was="' + i + '"]'); if (was) { was.style.display = ch ? '' : 'none'; was.textContent = 'WAS: ' + row.beats[i].say.text; }
+                _sedCaret = { i: i, pos: t.selectionStart };
+                _sedFit(t.parentNode); return _sedTouch(i);
+            }
+            const two = (a) => (t.getAttribute(a) || '').split(':').map(Number);
+            if (t.hasAttribute('data-note')) { const [i, n] = two('data-note'); const E = window.sceneEdScene(id, false), nt = E && E.notes[i] && E.notes[i][n]; window.sceneEdNoteSet(id, i, n, nt ? nt.tag : 'CAMERA', t.value); _sedFit(t.parentNode); return _sedTouch(i); }
+            if (t.hasAttribute('data-add') || t.hasAttribute('data-addwho')) {
+                const [i, n] = two(t.hasAttribute('data-add') ? 'data-add' : 'data-addwho'), box = t.closest('.sed-add');
+                window.sceneEdAddSet(id, i, n, box.querySelector('[data-addwho]').value, box.querySelector('[data-add]').value);
+                _sedFit(box); return _sedTouch(i);
+            }
+        }
+        function _sedCaretNote(e) { const t = e.target; if (t && t.hasAttribute && t.hasAttribute('data-line')) _sedCaret = { i: +t.getAttribute('data-line'), pos: t.selectionStart }; }
+        function _sedOnKey(e) {
+            e.stopPropagation();   // the pause menu and the building never see the typing
+            if (e.type !== 'keydown') return;
+            _sedCaretNote(e);
+            if (e.key === 'Enter' && !e.shiftKey && e.target && e.target.tagName === 'TEXTAREA' && !e.target.hasAttribute('data-snote') && !e.target.hasAttribute('data-note')) e.preventDefault();   // a line is one card: no line breaks
+            if (e.key === 'Escape') { e.preventDefault(); const o = _sedEl().querySelector('.sed-out'); if (o) o.remove(); else _sedClose(); }
+        }
+        function _sedOpen(sceneId) {
+            if (typeof window.sceneEdList !== 'function') return false;
+            if (window.EWScene && window.EWScene.on) return false;
+            if (window.sceneEdStore().bar == null) window.sceneEdBarSet(true);   // the first time the editor opens, the notes bar comes on
+            if (sceneId && window.storyCutsceneShipped(sceneId)) _sedCur = sceneId;
+            let el = _sedEl();
+            if (!el) {
+                el = document.createElement('div'); el.id = 'ewSceneEd'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Cutscene editor');
+                el.addEventListener('click', _sedOnClick);
+                el.addEventListener('input', _sedOnInput);
+                ['keydown', 'keyup', 'keypress'].forEach(t => el.addEventListener(t, _sedOnKey));
+                ['mouseup', 'keyup', 'focusout'].forEach(t => el.addEventListener(t, _sedCaretNote));
+                ['mousedown', 'mouseup', 'wheel', 'contextmenu', 'pointerdown', 'pointerup', 'dblclick'].forEach(t => el.addEventListener(t, ev => ev.stopPropagation()));
+                document.body.appendChild(el);
+            }
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.sceneFreePointer) ThreeRenderer.hq.sceneFreePointer(); } catch (e) {}   // (a plain exitPointerLock reads as ESC in the building)
+            _sedMsg = ''; _sedRender();
+            return true;
+        }
+        function _sedClose() { const el = _sedEl(); if (el && el.parentNode) el.parentNode.removeChild(el); return true; }
+        window.EWSceneEd = { open: _sedOpen, close: _sedClose, play: _sedPlay, get on() { return !!_sedEl(); },
+            /* dev: what an editor play is waiting on */
+            run: () => { const c = document.getElementById('hqLoad'); return _sedRun ? { id: _sedRun.id, seen: _sedRun.seen, scene: !!(window.EWScene && window.EWScene.on), loading: !!(c && c.style.display !== 'none'), intro: !!window._ewIntroLive, chain: !!window._ewIntroChain, replay: _questReplayBusy, talk: _questTalkBusy, suspended: _hqSuspended, gs: state.gameState, room: _hqCurRoom } : null; } };
+        if (!window._sedWired) {
+            window._sedWired = true;
+            document.addEventListener('click', (e) => {
+                const b = e.target && e.target.closest ? e.target.closest('[data-scene-ed]') : null; if (!b) return;
+                e.preventDefault(); e.stopPropagation();
+                try { playSfx('uiButtonConfirm'); } catch (err) {}
+                _sedOpen(b.getAttribute('data-scene-ed') || null);
+            }, true);
         }
         /* ══ THE DOOR GUN — THE PORTABLE THRESHOLD (HQ plan 9.5, 2026-09-15 rev 13) ══
            Two doors the officer places (renderer `_hqPortalAim` / `_hqPortalBuild`);
@@ -4848,6 +5873,10 @@
                 const p = _hqProfile();
                 if (p && typeof window.hqPartyForLaunch === 'function') {
                     if (typeof window.hqPartyRecord === 'function' && !window.hqPartyRecord(p)) _hqPartySeed();
+                    /* THE PRUNE BEFORE EVERY FIGHT (mondo 2026-11-12: "it gives me bigfoot and honda civic out of no where"): a party
+                       filed before a unit was locked still carried it, and only a NEW filing pruned. Whoever the officer may not
+                       field is relieved here (never the officer; data.js hqPartyPrune) */
+                    else if (typeof window.hqPartyPrune === 'function') _hqPartyTx(q => { const r = window.hqPartyPrune(q); return !!(r && r.dropped && r.dropped.length); });
                     if (typeof window.hqPartyStock === 'function') _hqPartyTx(q => window.hqPartyStock(q));   // THE POCKETS (2026-09-20): topped up from the bag before every fight
                     out = window.hqPartyForLaunch(_hqProfile());
                 }
@@ -4864,6 +5893,31 @@
                 party.enemyTeam = L.enemyTeam || L.teamSize;   // THE GROUP (2026-09-21): the native + its companions — never the crossing's team size; the bench is the officer's alone
                 party.enemyLevels = Array.isArray(L.levels) ? L.levels.slice() : null;   // THE LEVELS: the adaptive levels, the lead's first
                 party.swarm = L.swarm || null;   // THE SWARM (CAPTURE_PLAN §5.2): all n on the board — the seats below size for it
+                /* THE QUESTS (2026-11-12): a quest fight's GUEST stands on the board beside the first shift (one seat more than
+                   the shift for this fight only; she carries no partyId, so nothing of hers is written back to the party) */
+                try {
+                    const g = (L.quest && typeof window.questGuestMember === 'function') ? window.questGuestMember(L.quest, L.partyLevel) : null;
+                    /* the fight's ALLIES (Agent Locke) stand right after the first shift, the guest after them */
+                    const al = (L.quest && typeof window.questAllyMembers === 'function') ? window.questAllyMembers(L.quest) : [];
+                    /* THE REPLAY: the scene is hers to enter, so the Catgirl the quest already gave the party sits this one out */
+                    if (L.replay && g && Array.isArray(party.members)) {
+                        for (let i = party.members.length - 1; i >= 0; i--) {
+                            const m = party.members[i];
+                            if (!m || m.you || !m.meta || m.meta.race !== g.meta.race) continue;
+                            party.members.splice(i, 1);
+                            if (Array.isArray(party.ids)) party.ids.splice(i, 1);
+                            if ((party.deploy | 0) > i) party.deploy = (party.deploy | 0) - 1;
+                        }
+                    }
+                    const extra = al.concat(g ? [g] : []);
+                    if (extra.length && Array.isArray(party.members)) {
+                        const at = Math.max(0, Math.min(party.members.length, (party.deploy | 0) || party.members.length));
+                        party.members.splice(at, 0, ...extra);
+                        if (Array.isArray(party.ids)) party.ids.splice(at, 0, ...extra.map(() => null));
+                        party.questDeploy = at + extra.length;
+                        L.teamSize = Math.max(L.teamSize | 0, at + extra.length);
+                    }
+                } catch (e) { console.warn('[QUEST] the guest could not be seated', e); }
             }
             /* ESCAPE (EXPLORATION_BATTLES §6): the door this room was entered by — a retreat or a loss someone got out of
                comes back to the room there (the run marker's `entry`, home on the result) */
@@ -4877,7 +5931,7 @@
             window._hqEncounterRun = { site: L.site, room: L.room || _hqCurRoom, race: L.encounter.race, label: L.encounter.label, gesture: L.encounter.gesture, id: L.encounter.id || null,
                                        date: (typeof hqToday === 'function') ? hqToday() : null, at: Date.now(), noIntro: true, armed: true,   // `armed`: battle.js startMatch spends it on THIS launch; a later match finds it spent and drops a stale marker
                                        eye: eye, walker: ev ? { x: ev.x, z: ev.z, y: ev.y, yaw: ev.yaw, pitch: ev.pitch } : null, field: field || null, gm: L.gm,
-                                       swarm: L.swarm || null, entry: _entryDoor };   // THE SWARM: battle.js keeps every native on the board
+                                       swarm: L.swarm || null, entry: _entryDoor, quest: L.quest || null, sceneOnly: L.sceneOnly || null };   // THE SWARM: battle.js keeps every native on the board · THE QUESTS: the quest's own fight (battle.js seats it round the portal, the commit files it)
             window._hqEncounterRun.night = _hqClockNightIn(L.room || _hqCurRoom);   // THE WORLD CLOCK (Phase 3): the fight starts at the room's hour — round 1 is night when the sun is down (getCurrentCyclePhase)
             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's standing doors (and a pre-placed capture door) on the
                fight's board go onto their cells before the seats (battle.js encounterCarryDoors); the striking door's act is
@@ -5538,6 +6592,7 @@
            discovery is the profile's; the map animates it on the next open */
         function _hqRecordRoomSeen(roomId) {
             try {
+                if ((DOOR_HQ.rooms[roomId] || {}).pd) return;   // THE PLOT DUNGEONS: a test board is never charted
                 if (typeof window.hqRoomSee !== 'function') return;
                 const PS = window.ProfileSystem;
                 if (!PS || typeof PS.getActiveProfileIndex !== 'function') return;
@@ -6615,11 +7670,18 @@
             /* THE TUTORIAL (plan 4.3): the tape on the tube TV, then the lessons on the grid */
             const _tp = (typeof window.tutorialProgress === 'function') ? window.tutorialProgress(_hqProfile()) : null;
             const _tpLine = _tp ? (_tp.coreDone + '/' + _tp.coreTotal + ' CORE TAPES FILED' + (_tp.tape ? ' · TAPE WATCHED' : '')) : '';
+            /* THE QUESTS (2026-11-12): a quest whose current objective is a fight on this grid offers it here (the retry after a loss or a retreat) */
+            let _qf = null;
+            try { _qf = (typeof window.questFightPending === 'function') ? window.questFightPending(_hqProfile()) : null; } catch (e) { _qf = null; }
+            if (_qf && _qf.room === _hqCurRoom) {
+                html += '<div class="hq-panel-actions"><button class="hq-btn hq-btn-primary" data-quest-fight="' + _hqEsc(_qf.id) + '" title="The quest\'s fight, with your party">QUEST ▸ ' + _hqEsc(String(_qf.label || 'THE FIGHT').toUpperCase()) + '</button></div>';
+            }
+            let _qHeld = false; try { _qHeld = typeof window.questHolds === 'function' && window.questHolds(_hqProfile(), 'range'); } catch (e) { _qHeld = false; }
             html += '<div class="hq-panel-actions">'
                 + '<button class="hq-btn hq-btn-primary" data-tutorial="tape" title="The orientation tape on the tube TV, then TAPE 1 · FIRST STEPS on this grid">ORIENTATION ▸ THE TAPE + LESSON 1</button>'
                 + '<button class="hq-btn" data-fn="_goToTutorial" title="Every lesson on the shelf — core and optional">LESSONS ▸ THE SHELF' + (_tpLine ? ' · ' + _hqEsc(_tpLine) : '') + '</button>'
-                + '<button class="hq-btn" data-range="prebuilt_training" title="Arena · 4v4 on the 8×8 Training Room board · free CPU pool">SPARRING ▸ TRAINING ROOM · 4v4</button>'
-                + '<button class="hq-btn" data-range="prebuilt_holosim" title="Arena · 4v4 on the Holo Sim floor · free CPU pool · nothing is filed">PRACTICE ▸ HOLO SIM · 4v4</button>'
+                + (_qHeld ? '' : '<button class="hq-btn" data-range="prebuilt_training" title="Arena · 4v4 on the 8×8 Training Room board · free CPU pool">SPARRING ▸ TRAINING ROOM · 4v4</button>'
+                + '<button class="hq-btn" data-range="prebuilt_holosim" title="Arena · 4v4 on the Holo Sim floor · free CPU pool · nothing is filed">PRACTICE ▸ HOLO SIM · 4v4</button>')
                 + '<button class="hq-btn" data-close="1">NOTED</button></div>';
             html += '<p class="hq-panel-note">Simulated crossings are INTERNAL: no site file, no mastery, no Code Red. The walls are real; the stakes are not. The grid beside you is the one you will fight on.</p>';
             return html;
@@ -7363,6 +8425,8 @@
             const room = _hqRoom();
             if (t.talk && _hqTalkStart(t)) return _hqTalkHtml();
             if (t.kind === 'cast') {
+                /* THE QUESTS: speaking to a cast member is an event a stage can end on (`done: { on: 'talk', who }`) */
+                try { if (t.cast && typeof window._questEvent === 'function') window._questEvent({ type: 'talk', who: t.cast }, { delay: 700 }); } catch (e) { console.warn('[QUEST] talk', e); }
                 /* a named cast member (data.js DOOR_CAST, 2026-09-06): their own
                    line when they have one (user-authored, A15 rule), the stage
                    direction for what they are doing under it */
@@ -7421,6 +8485,8 @@
         /* E: direct doors go through, a console lights its screen (THE
            TERMINAL), everything else opens its panel */
         function _hqInteractTarget(t) {
+            /* THE CUTSCENES: speaking to the cast member a quest stage ends on plays that stage's scene, no panel */
+            if (t && t.kind === 'cast' && t.cast && _questTalkScene(t.cast)) return;
             /* THE FINDS (9.1): E on a glowing object takes it — no panel, the walk never pauses */
             if (t && t.kind === 'find') { window._hqTakeFind(t); return; }
             /* THE PROP PASS 5.2 (PREMIUM_POLISH_PLAN, 2026-09-21): E on a seat sits (E again stands) — no panel */
@@ -7440,6 +8506,8 @@
                 if (act && t.walkThrough) return;
                 if (act) { window._hqDoAction(act, t); return; }
             }
+            /* THE PLOT DUNGEONS: a dial / a console / the model opens the board's panel */
+            if (t && t.kind === 'counter' && t.counter && t.counter.proc === 'pd_act') { _pdAct(t.counter); return; }
             /* THE MARKER (2026-09-20): the floating crystal opens ITS OWN panel — the party, the checklist, FIGHT — never the terminal */
             if (t && t.kind === 'counter' && t.counter && t.counter.proc === 'battle_marker') { _hqOpenPanel(t); return; }
             if (t && t.kind === 'counter' && t.counter && t.counter.action && t.counter.action.overlay === 'training') {
@@ -7602,6 +8670,8 @@
             const tr = e.target.closest('[data-transcript]');
             if (tr && !tr.disabled) { try { if (typeof window._ewImitationReport === 'function') window._ewImitationReport(); } catch (err) { console.warn('[HQ] transcript', err); } return; }
             /* THE TUTORIAL (Room 64): the tape + a lesson from the RANGE console; the match returns you to the console */
+            const qfBtn = e.target.closest('[data-quest-fight]');   // THE QUESTS: the Range Console's row
+            if (qfBtn && !qfBtn.disabled) { const _qid = qfBtn.getAttribute('data-quest-fight'); window._hqClosePanel({ keepPaused: true }); if (!window._questFightGo(_qid)) { try { playSfx('uiError'); } catch (err) {} } return; }
             const tutBtn = e.target.closest('[data-tutorial]');
             if (tutBtn && !tutBtn.disabled) {
                 const id = tutBtn.getAttribute('data-tutorial');
@@ -7690,6 +8760,17 @@
             window._ewRosterScope = 'all';   // THE ROSTER LOCK (2026-09-20): online PvP = the whole roster for everyone
             _resetLobbyPages('lobbyFriendlyMain');
             _showTitlePage('lobbyPage');
+        };
+        /* THE INVITE LINK (PvP demo lobby, 2026-11-11): the squad deployed, straight into the friend's room — a dead code
+           stays on Friendly with the code typed in and a line saying so (online.js _lrJoinInvite) */
+        window._goToInviteJoin = function() {
+            if (!_sqArmed('online')) { _openSquadDesk('online', 'invite'); return; }
+            state.gameState = GS.LOBBY;
+            window._ewRosterScope = 'all';
+            _sqNext = 'hub';   // after this room, the squad desk's next stop is the online hub again
+            _resetLobbyPages('lobbyFriendlyMain');
+            _showTitlePage('lobbyPage');
+            if (typeof window._lrJoinInvite === 'function') window._lrJoinInvite();
         };
 
         window._goToVsCpu = function(o) {
@@ -8003,6 +9084,8 @@
         }
 
         function _resetLobbyPages(showId) {
+            /* THE ROOM: online.js owns the lobby's pages (the windows over the whole page vs the old card) */
+            if (typeof window._lobbyShowPage === 'function') { window._lobbyShowPage(showId); return; }
             ['lobbyQuickPlay', 'lobbyFriendlyMain', 'lobbyHosting', 'lobbyJoining', 'lobbyConnected'].forEach(function(p) {
                 var el = document.getElementById(p);
                 if (el) el.style.display = p === showId ? 'block' : 'none';
@@ -9394,6 +10477,14 @@
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._goToSpellLibrary()">Open Spell Library</button>
                         </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Cutscene Editor — change any line of a story cutscene (it shows in the replay at once, on this device), write camera / acting / timing notes on any shot, then export it all for Claude to make live. Every scene plays straight from it, here or in the building.</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn" onclick="window.EWSceneEd && window.EWSceneEd.open()">Open Cutscene Editor</button>
+                        </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Plot Dungeons — the puzzle dungeon test build: ten dungeons made of plots that turn and slide. Progress saves per dungeon, apart from the story.</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn" onclick="window._goToPlotDungeons()">Open Plot Dungeons</button>
+                        </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Race Editor — every race's base stats, name, types, elements, terrain and range; rank a stat by dragging, set its floor and ceiling, edit the letter grades and the level curve, then export your changes as JSON for Claude to make live.${(typeof window.EWRaceMods !== 'undefined' && (() => { const n = window.EWRaceMods.total(); return n ? ` <span style="color:#ffd86a">●</span> ${n} pending edit${n === 1 ? '' : 's'}${window.EWRaceMods.doc.enabled ? '' : ' (DISABLED)'}` : ''; })()) || ''}</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._goToRaceEditor('settings')">Open Race Editor</button>
@@ -9407,6 +10498,14 @@
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Creator Item Hider — in the character creator, a ✕ on every hair style, clothing piece, accessory, skin, eye colour and idle pose hides it from the creator's lists (and from RANDOM), and a ✎ renames it (only the name on its tile). Nothing is deleted: SHOW puts it back, and a look wearing a hidden piece still loads. F2 in the creator opens and closes it too. EXPORT HIDDEN + NAMES (top of the creator) hands both lists to a thread to bake in for every player.${typeof window.creatorHiddenList === 'function' && window.creatorHiddenList().length ? ` <span style="color:#ffd86a">●</span> ${window.creatorHiddenList().length} hidden` : ''}</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? ' active' : ''}" id="mmCreatorHiderBtn" onclick="window._toggleCreatorHider()">${typeof window.creatorHiderOn === 'function' && window.creatorHiderOn() ? 'Creator Item Hider: ON' : 'Creator Item Hider: OFF'}</button>
+                        </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Remade Race Looks — every unit with no look of its own wears its race's remade look (its own clothes as separate pieces on the new body, with a face that talks and emotes) in place of its old model: creator, party builder, battles, DOOR HQ, the team room. A race with no remade look yet keeps its old model; a slot's own saved look and USE ORIGINAL MODEL still win. Only on this browser, remembered after a reload. Off by default.${typeof window.RACE_REMADE_LOOKS === 'object' ? ` ${Object.keys(window.RACE_REMADE_LOOKS).length} races have one.` : ''}</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn${typeof window.remadeLooksOn === 'function' && window.remadeLooksOn() ? ' active' : ''}" id="mmRemadeLooksBtn" onclick="window._toggleRemadeLooks()">${typeof window.remadeLooksOn === 'function' && window.remadeLooksOn() ? 'Remade Race Looks: ON' : 'Remade Race Looks: OFF'}</button>
+                        </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Face Lab (experimental) — in the character creator, a FACE LAB button by FACE CLOSE-UP opens a window that plays the MPFB body's face shapes: open mouth, talk (reads a line you type), lip flap, roll eyes, blink, wink, look around, laugh, moan, cry, scream and more, plus a slider for each of the 67 raw face shapes. Looks only, nothing saved. ?facelab=1 in the address turns it on too.</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn${window.EWFaceLab && window.EWFaceLab.enabled() ? ' active' : ''}" id="mmFaceLabBtn" onclick="window._toggleFaceLab()">${window.EWFaceLab && window.EWFaceLab.enabled() ? 'Face Lab: ON' : 'Face Lab: OFF'}</button>
                         </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Unlock every vessel for testing. View-only — nothing is written to your account or the server, so it can't corrupt your roster. Toggle off to return to your real unlocks.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
@@ -9455,15 +10554,14 @@
             'prebuilt_shasta_delta', 'prebuilt_stonehenge_delta', 'prebuilt_giza_delta',
             'prebuilt_heaven_delta', 'prebuilt_hell_delta', 'prebuilt_cyberpunk_delta', 'prebuilt_camelot_delta',
             'prebuilt_stadium_delta', 'prebuilt_moon_delta', 'prebuilt_mars_delta',
-            'prebuilt_stonehenge', 'prebuilt_moon', 'prebuilt_gobekli',
-            'prebuilt_dumb', 'prebuilt_cern',
+            'prebuilt_gobekli_delta', 'prebuilt_dumb_delta', 'prebuilt_cern_delta',   // the big site boards left the game 2026-11-11: their 12×12 maps
         ];
         let _trainMapIndex = 0;
         let _trainMapSetting = 'rotate';
         /* THE FIVE ARENAS (2026-11-01, mondo: "Can we make it just cycle through like the same 5 random maps so it doesnt have to
            load a new one in between each match?"): the Map dropdown's "Rotate 5 random arenas" rotates as Rotate does, through 5
            arenas drawn at random from the PvP pool at launch (a new 5 each launch). Every room, floor plan and shader of those 5
-           is warm after the first lap, so no later match builds anything new. Gauntlet keeps its own 5 full maps. */
+           is warm after the first lap, so no later match builds anything new. Gauntlet rotates the same maps since 2026-11-11. */
         let _trainMapFew = 0, _trainMapFewPick = null;
         function _trainMapReadSetting() {
             const v = document.getElementById('mmTrainMap')?.value || 'rotate';
@@ -9483,15 +10581,12 @@
         }
         let _trainModeSetting = 'arena';
 
-        /* Gauntlet fields 8-unit rosters — official compatibleMaps exclude
-           the cramped Δ boards, so its rotation only draws the full maps. */
-        const _TRAIN_MAP_POOL_FULL = _TRAIN_MAP_POOL.filter(id => !/_delta$/.test(id));
         /* The labs' map rotation (2026-10-07): train on the boards PvP actually
            deals — the 12×12 arenas of data.js hqArenaPvpPool (the online pool) —
            instead of the old 8×8 Δ list above (Hell's Δ isn't even an arena any
-           more). Gauntlet keeps its full maps; the old list is the fallback. */
+           more). The old list is the fallback. */
         function _trainMapPoolFor(modeId) {
-            if (modeId === 'gauntlet') return _TRAIN_MAP_POOL_FULL;
+            /* Gauntlet drew only the big site boards; they left the game 2026-11-11 (mondo), so it rotates the 12×12 maps like the rest */
             try {
                 const p = (typeof window.hqArenaPvpPool === 'function') ? window.hqArenaPvpPool(4) : null;   // THE ARENA SIZES: the labs field 4v4 — the 10s and 12s
                 if (p && p.length) return _trainMapFewOf(p);
@@ -9609,6 +10704,24 @@
             if (btn) { btn.textContent = 'Creator Item Hider: ' + (on ? 'ON' : 'OFF'); btn.classList.toggle('active', on); }
         };
 
+        // Settings → Developer: THE REMADE LOOKS SWITCH (2026-11-13) — every unit with no look of its own wears its race's remade
+        // look (sprites.js remadeLooksOn; localStorage ew_remade_looks). Units already on screen rebuild on their next draw.
+        window._toggleRemadeLooks = function() {
+            if (typeof window.setRemadeLooksOn !== 'function') return;
+            const on = window.setRemadeLooksOn(!window.remadeLooksOn());
+            const btn = document.getElementById('mmRemadeLooksBtn');
+            if (btn) { btn.textContent = 'Remade Race Looks: ' + (on ? 'ON' : 'OFF'); btn.classList.toggle('active', on); }
+        };
+
+        // Settings → Developer: THE FACE LAB (2026-11-11) — the character creator's FACE LAB button on / off (three-renderer.js
+        // EW_FACE_LAB; localStorage ew_facelab, also ?facelab=1). An open creator shows the button the next time it draws.
+        window._toggleFaceLab = function() {
+            if (!window.EWFaceLab) return;
+            const on = window.EWFaceLab.setEnabled(!window.EWFaceLab.enabled());
+            const btn = document.getElementById('mmFaceLabBtn');
+            if (btn) { btn.textContent = 'Face Lab: ' + (on ? 'ON' : 'OFF'); btn.classList.toggle('active', on); }
+        };
+
         // Settings → Developer: flip the view-layer unlock-all flag. Never
         // writes to the profile/server — isUnitUnlocked() just reads true while
         // it's on. Re-render any open unlock-aware screen so it updates live.
@@ -9669,7 +10782,7 @@
         };
 
         const MS_GAME_MODES = [
-            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Destroy the Cube, wipe out the enemy, or find all 5 hidden Keys. Three Nexus zones (the center + both spawns, yours starts captured) are the economy: 4 ticks flip one — step in, channel, or hold it — a zone you hold heals your team and burns the enemy, you RESPAWN only on a zone you hold (lose them all and your fallen stay down), and every non-home zone is ×1.5 Cube damage. Zones can be built on, dug and flooded. After 20 rounds the higher Arena score wins; a bounty kill scores double a normal kill, and more the longer the streak it ends. A tied score goes to the side holding more Keys, then Sudden Death.', tag: null, locked: false },
+            { id: 'arena', icon: '🏰', label: 'Arena', desc: 'Win by Wipeout, destroying the Enemy Cube, or finding all 5 Hidden Keys. Composite score determines the winner after 20 rounds.', tag: null, locked: false },
             { id: 'tdm', icon: '💀', label: 'Team Deathmatch', desc: 'Most kills in 12 rounds wins. Wipeout also wins instantly. Sudden Death if tied.', tag: null, locked: false },
             { id: 'clash', icon: '🎴', label: 'Clash', desc: 'Classic JRPG battle — 4v4 on a fixed stage, no movement. Two parties face off across the field: attack, cast, use an item, or Guard, then the next unit steps up. Wipe out the enemy party to win.', tag: 'NEW', locked: false },
             { id: 'simul', icon: '♟️', label: 'Simul', desc: 'SIMULTANEOUS turns — both sides secretly order one unit (any unit, 2 AP), then the orders play out together: priority first, then speed. Displaced targets are re-acquired or the action whiffs. Most kills in 12 rounds wins.', tag: 'EXPERIMENTAL', locked: false },
@@ -9684,21 +10797,22 @@
         const MS_MAP_LIST = (() => {
             const list = [];
             const meta = (typeof EW_MAP_META !== 'undefined') ? EW_MAP_META : [];
-            meta.filter(m => !m.isDelta).forEach(m => {
+            /* THE BIG SITE BOARDS ARE OUT (2026-11-11, mondo: "yes those should go too"): the old voxel site boards (16×16 to 24×24) are never
+               listed; a whole board cut from its own room (`arena`: the Fairy Forest 20×20) stays */
+            meta.filter(m => !m.isDelta && m.arena).forEach(m => {
                 list.push({ modeId: m.id, name: m.label, size: m.w + '×' + m.h, team: m.teamSize, floors: false, w: m.w, h: m.h, isPrebuilt: true, tier: m.tier, biomes: m.biomes });
             });
             list.push({ modeId: 'prebuilt_custommap', name: 'Custom Map', size: '20×20', team: 6, floors: false, w: 20, h: 20, isPrebuilt: true });
             /* Clash's fixed JRPG stage — only ever offered when the Clash mode
                is selected (it's the mode's sole compatible map). */
             list.push({ modeId: 'clash_stage', name: 'Temple', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true });
-            /* THE CLASH TEMPLE (2026-10-20): the stage is the Temple room's cut; the old voxel Temple stays beside it under Clash */
-            list.push({ modeId: 'clash_stage_voxel', name: 'Temple · voxel', size: '10×10', team: 4, floors: false, w: 10, h: 10, isPrebuilt: true });
+            /* THE CLASH TEMPLE (2026-10-20): the stage is the Temple room's cut (the old voxel Temple left the list 2026-11-11, mondo) */
             // The 8×8 Δ boards — one per launch map, played as-is in every mode
             // (Arena included: each carries its own centre nexus zone).
             meta.filter(m => m.isDelta).forEach(m => {
                 /* THE ARENAS (E8, 2026-09-30): a site's Δ became its arena (data.js HQ_ARENA_RULES) — `arena` labels it; a complex
                    part's own Δ (`area`) stays registered for the HQ encounter fallback but the console never lists it */
-                list.push({ modeId: m.id, name: m.label, size: (m.w || 8) + '×' + (m.h || 8) + (m.arena ? ' ARENA' : ' Δ'), team: m.teamSize, floors: false, w: m.w || 8, h: m.h || 8, isPrebuilt: true, isDelta: true, arena: !!m.arena, area: m.area || null, tier: m.tier, biomes: m.biomes,
+                list.push({ modeId: m.id, name: m.label, size: (m.w || 8) + '×' + (m.h || 8) + (m.arena ? '' : ' Δ'), team: m.teamSize, floors: false, w: m.w || 8, h: m.h || 8, isPrebuilt: true, isDelta: true, arena: !!m.arena, area: m.area || null, tier: m.tier, biomes: m.biomes,
                             sizeOf: m.sizeOf || null, arenaSize: m.arenaSize || null });   // THE ARENA SIZES: a 9 / 10 / 11 cut rides its site's card (the SIZE field picks it)
             });
             return list;
@@ -10152,7 +11266,7 @@
                 const mode = GAME_MODES[launchModeId];
                 const ROSTER = _reservesLaunch ? (_RR.roster || 8) : ((mpMode && mpMode.rosterSize) || 8);
                 const DEPLOY = _reservesLaunch
-                    ? Math.max(1, Math.min(_RR.deploy || 4, CONFIG.teamSize || 4))
+                    ? Math.max(1, Math.min(Math.max(_RR.deploy || 4, (_encParty_ && _encPeek.questDeploy) | 0), CONFIG.teamSize || 4))   // THE QUESTS: a quest's guest is one seat more
                     : ((mpMode && mpMode.deploySize) || 4);
                 CONFIG.teamSize = ROSTER;
                 CONFIG.gauntletDeploy = DEPLOY;
@@ -11653,38 +12767,22 @@
 
         /* ── 🌊 LIQUID SPREAD — Minecraft-style flow (2026-07-14, springs
            2026-07-20) ─────────────────────────────────────────────────────
-           Two kinds of liquid tile, one predictable rule set:
-           • NATURAL pools (map-generated lakes / lava rivers) are SETTLED:
-             their surface sits inset below the tile top (that's how they
-             render), so they only spread where the ground actually DROPS —
-             neighbours strictly below the source's level. A flat lake stays
-             in its basin and never grows a fringe.
-           • SPRINGS (spell-conjured liquid — state.liquidSprings, keyed
-             "x,y", synced to the guest like any state field) are OVERFULL:
-             fresh liquid poured onto the ground. A spring additionally
-             overflows exactly ONE tile onto LEVEL ground (a puddle halo
-             around the source), and from there keeps running wherever the
-             ground drops, like everything else.
-           In both cases runoff fans out up to LIQUID_SPREAD_RANGE tiles per
-           terrace (Minecraft does 7; our boards are small so we do 3) — and it
-           NEVER climbs back up. Pouring off a LEDGE resets the range: the
-           landing tile behaves like a fresh spring at its own level
-           (Minecraft's falling-water rule), so liquid on a tall stack
-           cascades all the way down and spreads out at the bottom;
-           three-renderer bridges each 2+-level drop with an animated
-           waterfall column. The flow is DERIVED state:
-           recomputed lazily whenever terrain / heights change, never written
+           (REWRITTEN 2026-11-11, mondo: liquid is painted on the terrain now, so the Minecraft fan is gone.)
+           • Liquid lies on the squares it was put on: a spell's liquid covers exactly the spell's own squares.
+             It never creeps sideways over level ground (no halo round a spring).
+           • It RUNS DOWN: any liquid square pours onto a neighbour that is strictly lower, and from there down
+             every further drop. It never climbs. three-renderer bridges a 2+-level drop with a waterfall column.
+           • It FILLS A HOLE: spell liquid (state.liquidSprings) or runoff that lies in a hole (_liquidInHole)
+             covers the hole's level floor. A map's own settled pool never grows over its own floor.
+           The flow is DERIVED state: recomputed lazily whenever terrain / heights change, never written
            into boardTerrain — so both online clients derive the identical flow
            from the synced terrain (+ synced liquidSprings) for free.
-           three-renderer draws flow tiles as
-           thin animated fluid slabs (~1/3 block at the source edge, thinning
-           with distance). Gameplay hooks: water-family flow soaks units and
+           Gameplay hooks: water-family flow soaks units and
            conducts lightning (battle.js _isWetTile), oil-family flow detonates
            with the slick (_isOilTile), lava flow burns like the lava it came
            from (applyTerrainTurnEffects / battle.js _isLavaTile), and ANY
            liquid — source or flow — breaks a fall (state.js applyFallDamage).
-           Lava spreads SHORTER than water (2 vs 3), same ratio Minecraft uses
-           (4 vs 8). */
+           _LIQUID_SPREADS now only names the families that run (the per-family range is unused). */
         const LIQUID_SPREAD_RANGE = 3;
 
         function liquidFamilyOf(t) {
@@ -11717,13 +12815,62 @@
             return true;
         }
 
+        /* 🕳️ THE HOLE (2026-11-11, mondo: "a regular line spell on flat terrain shouldnt make a whole 3x3 of liquid, just a
+           1x3 ... I still want the liquid to flow down from higher terrain to lower terrain and for filling a hole with
+           liquid to be possible"). Liquid lies on the squares it was put on and never creeps sideways over level ground.
+           The one level run left is a HOLE: the level floor round (x,y) with higher ground (or the board's edge) on every
+           side and no lower square to drain into, at most LIQUID_HOLE_CAP squares. Liquid in a hole fills its floor. A
+           plateau (lower ground beside it), a room (walls, not ground, hold it) and open floor are not holes. */
+        const LIQUID_HOLE_CAP = 16;
+        let _liquidHoleMemo = {};
+        function _liquidHoleCell(x, y, h) {
+            if (!isInside(x, y) || getBaseHeightAt(x, y) !== h) return false;
+            return !!liquidFamilyOf(getTerrainAt(x, y)) || _liquidFlowCanEnter(x, y);
+        }
+        function _liquidInHole(x, y) {
+            const k0 = x + ',' + y;
+            if (k0 in _liquidHoleMemo) return _liquidHoleMemo[k0];
+            const h = getBaseHeightAt(x, y);
+            const seen = new Set([k0]), cells = [{ x, y }];
+            let hole = true, rim = false;
+            for (let i = 0; i < cells.length && hole; i++) {
+                const c = cells[i];
+                for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const nx = c.x + dx, ny = c.y + dy;
+                    if (!isInside(nx, ny)) continue;                       // the board's edge holds it
+                    const nh = getBaseHeightAt(nx, ny);
+                    if (nh > h) { rim = true; continue; }                  // the hole's side
+                    if (nh < h) { hole = false; break; }                   // it drains away: no hole
+                    const k = nx + ',' + ny;
+                    if (seen.has(k)) continue;
+                    if (!_liquidHoleCell(nx, ny, h)) { hole = false; break; }   // level ground a prop / wall terrain stands on: not a dug side
+                    seen.add(k); cells.push({ x: nx, y: ny });
+                    if (cells.length > LIQUID_HOLE_CAP) { hole = false; break; }
+                }
+            }
+            if (!rim) hole = false;
+            if (hole) for (const c of cells) _liquidHoleMemo[c.x + ',' + c.y] = true;
+            else _liquidHoleMemo[k0] = false;
+            return hole;
+        }
+        /* Does liquid on (sx,sy) run onto its neighbour (nx,ny)? Down a drop always; over level ground only inside a hole.
+           The one rule the flow map, the spell forecast and the hit pass share. */
+        function liquidRunsOnto(sx, sy, nx, ny) {
+            if (!_liquidFlowCanEnter(nx, ny)) return false;
+            const sh = getBaseHeightAt(sx, sy), nh = getBaseHeightAt(nx, ny);
+            if (nh > sh) return false;
+            if (state.edgeWalls && typeof wallBlocksStep === 'function' && wallBlocksStep(sx, sy, nx, ny, sh, nh)) return false;
+            return nh < sh || _liquidInHole(sx, sy);
+        }
+        window.liquidRunsOnto = liquidRunsOnto;
+
         function _recomputeLiquidFlow() {
             _liquidFlowMap = {};
+            _liquidHoleMemo = {};
             if (!state || !state.boardTerrain) return;
             const W = bw(), H = bh();
             if (!W || !H) return;
-            // multi-source BFS; queue order keeps d nondecreasing, so the first
-            // assignment a tile gets is its minimal distance (nearest source wins)
+            // multi-source BFS, first come first kept (the nearest source wins)
             const queue = [];
             const springs = state.liquidSprings || {};
             for (let y = 0; y < H; y++) {
@@ -11732,15 +12879,15 @@
                     if (fam && _LIQUID_SPREADS[fam]) {
                         const sh = getBaseHeightAt(x, y);
                         const _sp = !!springs[x + ',' + y];
-                        queue.push({ x, y, d: 0, fam, srcH: sh, h: sh,
-                                     spring: _sp, fromSpring: _sp });
+                        /* run: this liquid moves (a spell's spring, or runoff that has fallen off a ledge). A map's own
+                           settled pool only pours where the ground drops; it never fills the floor it already lies on. */
+                        queue.push({ x, y, fam, srcH: sh, h: sh, run: _sp, fromSpring: _sp });
                     }
                 }
             }
             let qi = 0;
             while (qi < queue.length) {
                 const c = queue[qi++];
-                if (c.d >= (_LIQUID_SPREADS[c.fam] || 0)) continue;
                 for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
                     const nx = c.x + dx, ny = c.y + dy;
                     if (!_liquidFlowCanEnter(nx, ny)) continue;
@@ -11750,38 +12897,17 @@
                     /* THE FLOORS (2026-10-30, mondo: the goo "spread through the walls too"): a wall on the edge between the two
                        squares (a custom map's room walls, state.edgeWalls) holds the liquid back like it holds a body */
                     if (state.edgeWalls && typeof wallBlocksStep === 'function' && wallBlocksStep(c.x, c.y, nx, ny, c.h, nh)) continue;
-                    // DOWNHILL rule: runoff must end up strictly below the
-                    // source block's level (level ground = contained pool).
-                    // EXCEPTION — a SPRING source (spell-conjured, overfull)
-                    // overflows exactly one tile onto LEVEL ground: the level
-                    // step is only allowed directly off the spring itself
-                    // (d === 0), so the flat halo is 1 tile wide and any
-                    // further travel must genuinely drop.
-                    if (nh >= c.srcH && !(c.spring && c.d === 0 && nh === c.srcH)) continue;
+                    /* LEVEL GROUND (2026-11-11): no sideways creep. The old one-square halo round every spring is gone (a
+                       1x3 line made a 3x5 pool); the only level run is filling THE HOLE the liquid lies in. */
+                    if (nh === c.h && !(c.run && _liquidInHole(c.x, c.y))) continue;
                     const k = nx + ',' + ny;
-                    const prev = _liquidFlowMap[k];
-                    if (prev && prev.d <= c.d + 1) continue;
-                    /* s: the level of the surface this run pours from (the renderer drops the sheet from there, so
-                       a level overflow is a thin film BELOW its source, never a slab standing over it); sp: the run
-                       began at a spring (spell liquid), not a map's own settled pool */
-                    _liquidFlowMap[k] = { t: c.fam, d: c.d + 1, s: c.srcH, sp: !!c.fromSpring };
-                    if (nh < c.h) {
-                        // 🌊 WATERFALL LANDING (2026-07-20): pouring off a ledge
-                        // RESETS the spread — like Minecraft, fallen liquid
-                        // starts over where it lands. The landing tile acts as
-                        // a fresh spring at its own level: full spread range
-                        // downhill again plus the 1-tile level-ground halo, so
-                        // liquid placed on a tall stack cascades to the ground
-                        // and fans out there instead of dying on the cliff.
-                        // Terminates: every reset is strictly lower than the
-                        // last, and flat steps still burn the d budget.
-                        queue.push({ x: nx, y: ny, d: 0, fam: c.fam, srcH: nh, h: nh, spring: true, fromSpring: c.fromSpring });
-                    } else {
-                        // level step (spring halo): carry the source level so
-                        // the runoff can never creep back up a ledge
-                        queue.push({ x: nx, y: ny, d: c.d + 1, fam: c.fam, srcH: c.srcH,
-                                     h: Math.min(c.h, nh), spring: false, fromSpring: c.fromSpring });
-                    }
+                    if (_liquidFlowMap[k]) continue;
+                    /* s: the level of the surface this run pours from (the renderer drops the sheet from there); sp: the run
+                       began at a spring (spell liquid), not a map's own settled pool; d stays 1 (a full sheet, no thinning fan) */
+                    const srcH = nh < c.h ? c.h : c.srcH;
+                    _liquidFlowMap[k] = { t: c.fam, d: 1, s: srcH, sp: !!c.fromSpring };
+                    /* 🌊 a drop: the liquid lands and keeps running down every further drop (and fills a hole it lands in) */
+                    queue.push({ x: nx, y: ny, fam: c.fam, srcH: srcH, h: nh, run: true, fromSpring: c.fromSpring });
                 }
             }
         }
@@ -16354,6 +17480,13 @@
 
         function defeatUnit(unit, killer) {
             if (!unit || unit.dead || unit._dying) return;
+            /* 👁 THE ASTRAL BODY (battle.js): a body and its spirit are one unit with one HP bar. Whichever piece took the
+               blow, the UNIT dies, on the body's tile, and the sleeping copy leaves the board without a death of its own. */
+            if ((unit._astralOfId || unit._astralBodyId) && typeof astralOnDeath === 'function') {
+                const _au = astralOnDeath(unit);
+                if (!_au) return;
+                if (_au !== unit) return defeatUnit(_au, killer);
+            }
 
             unit.hp = 0;
             unit._dying = true;
@@ -20055,6 +21188,15 @@
 
         function _meTerrainBg(terrainKey) {
             if (!terrainKey) return '';
+            /* THE CALM LOOK (the rollout batch 4, 2026-11-11): the voxel editor's flat grid and its palette show the sheet the board
+               draws — the key's calm twin (data.js CALM_TERRAIN) unless window.EW_NO_CALM_LOOK; his pixel sheet otherwise */
+            try {
+                const CT = (typeof CALM_TERRAIN !== 'undefined') ? CALM_TERRAIN : null;
+                if (CT && CT.sheets && !window.EW_NO_CALM_LOOK) {
+                    const c = CT.sheets[terrainKey] ? terrainKey : (CT.of && CT.of[terrainKey]);
+                    if (c && CT.sheets[c]) return `url('${CT.base + CT.sheets[c][0]}')`;
+                }
+            } catch (e) {}
             if (typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[terrainKey]) {
                 return `url('${TERRAIN_SPRITES[terrainKey][0]}')`;
             }

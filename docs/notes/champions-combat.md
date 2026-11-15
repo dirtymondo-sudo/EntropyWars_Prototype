@@ -1979,6 +1979,31 @@ battle.js (after doJump) `getClimbTilesFrom` / `getClimbTiles` / `doClimb` / `_s
   one-shot under the jump arc; not moved = a 220 ms drop to the foot (+ the fall clip on a knock-off).
 - Not built: AI climbing / AI pathing over climbable faces; Nexus ignoring climbers.
 
+## THE CLIMB PREVIEW + THE ONE MOVE PREVIEW (2026-11-11, mondo: "move/arrow previews need to show the climb animation too ... my unit walked there and started climbing and ended my turn")
+- The bug: in MOVE a lit climb ledge (sandstone `move-climb`) was no walk tile and no jump tile, so the hover fell through to
+  the chase ("Move towards") and drew a plain walk arrow; the click (clickTile order: walk, jump, CLIMB, chase) climbed and
+  ended the turn. The CLIMB verb's own mode drew no hover at all.
+- battle.js `_drawMovePlan(unit, x, y, z, want)` = the old `_updateMoveHoverPreview` body, same order as the click, with a
+  climb branch (2b): the walk to the foot in blue (findMovePath), the face as its own sandstone arrow (0xd9a066),
+  `climbPreviewLeg(c, wpY)` = the waypoints (flags `climb: 'up' | 'down' | 'mantle'`, `face`), `climbPreviewTags(c)` = the
+  ghost's word chips: CLIMB / CLIMB DOWN (2 AP, `c.instant`) or HANG (1 AP left), "N TURNS" on a tall face, and ENDS TURN.
+  The pick is the click's own `_climbPick`. A walk to the foot that slides off on ice previews as the walk it is (doClimb
+  re-checks the foot and does not climb). The hang ghost stands in the FOOT column (where the unit really is) with the
+  body on the wall; the 2 AP ghost stands on the ledge. Modes: move (walk, jump, climb, chase), jump, climb.
+- three-renderer.js THE ACTION PREVIEW MOTION: leg types `climb` (the board's `climbWall` clip, down = backwards) and
+  `mantle` (`climbMantle`); `motion.hang` freezes the clip on the wall like the board's hang. `_makeGhostBadgeSprite`
+  takes `badges.tags: [{ t, c }]` (plain word chips beside the eye / −N / status chips).
+- `window.previewMovePlan(unit, x, y, z, 'move' | 'jump' | 'climb')`: the tile quick menu's Move here / Take Off + Move /
+  Jump here / Climb rows (hud.js `_pvKind`) now show the same route + hologram on hover (they showed nothing unless the
+  walk slid on ice). hud.js `_clearMoveArrowPreview` also clears `moveHoverDest`.
+- `moveRouteWps(unit, approach, yAt)` (THE REAL ROUTE): the move-then-act previews (battle.js `_drawSpellApproachPreview`,
+  hud.js `_showMoveArrowPreview`, `_showTileMoveTowardsPreview`) drew a straight line from the unit to the step tile;
+  they now follow findMovePath (the via step first, hop legs arched, a JUMP approach as one arc).
+- Not touched: dash / leap / blink spell landings (ui.js THE ACTION PREVIEW MOTION: straight by rule), exploration (no
+  tile route there). In MOVE a ledge with a plain move square behind it on the same ray still hands the hover AND the
+  click to that square (THE SEE-THROUGH CLIMB, three-renderer `_boardFloorPick`): use the CLIMB verb or the tile menu.
+- Viewer-local, nothing relayed (the guest computes its own preview; doClimb is emitted as before).
+
 ## THE REAL-LOOKING COPY (2026-10-20) — battle.js, three-renderer.js
 mondo: "scarecrow's stuffed double needs to be its actual 3d model, not its pixel sprite. this goes for all copy/clone
 moves. From the enemy perspective they need to look indistinguishable from the actual unit."
@@ -2162,6 +2187,7 @@ Plan of record: the "Three Clocks CPU Plan" page (https://claude.ai/artifact/DxJ
 ## THE PLAYER'S TACTICS (auto battle) (2026-10-23, mondo: "for the player to be able to apply them to their units so they dont have to manually fight for them, like they can be on auto battle") — battle.js, hud.js, online.js
 - **Set it.** Root verb ♟ TACTICS (hud.js `_hrlgTacticPartyBlades` + `_hrlgTacticBlades`): the party list (acting unit first, each with its Tactic) and beside it MANUAL + the six AI_TACTICS rows for the picked unit. Picking for the acting unit hands the turn to the AI at once; for a teammate it applies on its next turn. Not on Mystery Dungeon (own chips) or in the tutorial.
 - **Engine.** battle.js `setUnitTactic(id, tactic|null)` writes `unit.tactic`; `unitOnTactic(u)` is the gate (battle phase, controller ≠ AI, not possessed, not MD/tutorial) and is folded into `_mdUnitAuto`, so every AI-routing path (activation, `_shouldAIRun`, runComputerTurn, stall watchdog, safety timer, selectUnit, imitation skip, ActionMenu/turn column) covers it. `unitTacticProblem` greys Siege (no enemy Cube), Search (mode has no Keys), Intercept (neither), Heal (no heal/healAll/selfHeal/revive/zoneHeal/seedHeal kind and no Healing Potion — the Heal job's own list). MANUAL mid-turn: `_tacticWhenIdle` waits for the AI's step to finish, then restarts the shot clock + selects the unit. The tactic survives death/respawn (same unit object).
+- **TAKING A UNIT OFF AUTO (2026-11-11, mondo: "Need there to be an easy way to take a unit off of auto tactics, I can turn them on easily but once they are on it's hard to stop bc they just go on auto").** Measured: an auto turn lasts 1-4 s and MANUAL was one row of seven in a window that only stood during that unit's own turn. Now: (1) **the AUTO lamp** — hud.js `TurnIcon` wraps `TurnIconBody`; every unit of the viewer's that is `unitOnTactic` carries a lit `AUTO ✕` button (`.ew-tc-auto`) beside its turn-order icon on every turn; one click = `_ewTakeControl([id], true)` = `setUnitTactic(id, null)` (online.js sends a guest's click as `setTactic`; the enemy never sees your lamps). (2) **TAKE CONTROL** — `TacticWatch` shows a green `.hrlg-confirm.takectl` + `ALL MANUAL · N ON AUTO` (`.hrlg-allman`) beside the top of the list (`.hrlg-tacwatch-btns`, absolute, so the seven rows keep their room); the watch has its own 200 ms tick so it leaves at the turn handoff. (3) **ALL MANUAL** row under the Tactics menu's party list (`_ewTacticUnits` = fallen units too; battle.js `setUnitTactic` + online.js now let a FALLEN unit go back to MANUAL, never onto a Tactic). (4) battle.js `queueComputerAction` drops a queued AI step when the unit was on a Tactic at queue time and is MANUAL when it would begin (nothing spent; setUnitTactic's hand-back selects the unit). Kept: the TACTICS verb, the MANUAL row, the Mystery Dungeon chips. Proof `/mnt/project-files/auto-tactics-off-20261111/` (VS CPU + friendly room, both seats, WebGL2). Not done: no keyboard key for it; the lamp of an icon folded into "+N" is not shown (ALL MANUAL covers it).
 - **During its turn.** hud.js `TacticWatch`: the command menu's spot shows "<name> · <TACTIC>", `aiTacticReason`, and the Tactic list (MANUAL = take control). The prompt bar is silent for a Tactic unit.
 - **Online.** The host owns unit.tactic (plain unit data → state-sync). Guest picks emit `game-action {type:'setTactic'}`; host handler checks the unit is the sender's (any time, not only its turn). The guest's units on a Tactic are played by the host's AI like the whole-side Auto mode.
 
@@ -4949,6 +4975,59 @@ Report: /mnt/project-files/pvp-playtest-20261109/PVP_PLAYTEST_REPORT.md. Proof: 
 - Undefined-name sweep of online.js (eslint no-undef, globals = every top-level name of the 21 game scripts + index.html
   inline scripts + `window.X =` writes): `showVictoryScreen` was the only one; clean now. server.js clean (node globals).
 
+## THE HOST'S RELOAD, RESTORED (2026-11-11, token 20261111-hostrestore-02-cors) — online.js only
+
+The seat is held while a page reloads (PR #1075), but the match lives on the host's page, so a host reload still ended
+it for both seats (PR #1102 only made that a clear notice). Now the host's reload keeps the match.
+
+- **The save.** `_hostSaveWrite(force)`: the host writes its own whole match (`_serializeState` unfiltered + `_packClock`
+  + `_matchId`) to sessionStorage `ew_hostSave` (about 90 KB) after a state-sync (1.5 s throttle), on the 2 s seat-hold
+  beat and on `pagehide`. Only a QUIET board with a unit up is kept (`_ewRecoverySnapshotReady`, no action / walk / death
+  in flight, `_blitzActiveUnitId` set; simul needs no unit), so a restored match always has somebody whose turn it is.
+- **The restore.** `_hostRestoreBegin()` runs from the rejoin answer when the page booted into a rejoin as host: same
+  match id or nothing; `NET._hostRestoring` holds the recovery poll (it used to answer `recovery-unavailable` at once);
+  `_recoveryArenaWait(data, then)` surveys the arena's room first; then `_applyRemoteState(save)` (the reloaded guest's
+  path; `_restoreOnlineContext` gives the host its seat + controllers). The poll then sends the guest the snapshot as
+  after any drop. No save / another match's save / a save that will not apply = the old notice.
+- **Mid-action reload = that action is undone for both seats** (the last quiet save is laid back). Known: a host can
+  undo its own action by reloading while it plays. Not closed; say so if it matters.
+- Cleared with the session (NET reset, backToMainMenu, `_recoveryFailure`). The save never leaves the host's browser.
+- Two-seat proof (Chromium x2, Hell Arena TDM): host reload on its own turn, on the guest's turn, in round 5 after
+  kills (state identical before/after: HP, AP, MP, kills, log, graves), mid-walk (rolled back, both agree); play went on
+  through fights and rounds; forfeit gave both result screens; rematch started by itself; a guest reload after a host
+  restore came back; with the save blocked both seats still get the notice. Back in 30-40 s in the sandbox. 0 page errors.
+  Shots /mnt/project-files/pvp-verify-20261110/host_restore_*.jpg. The live tier popup can show again on the reloaded
+  page (display only, same as a guest reload). Not checked: CLASH / simul restore, real WebGPU, real network.
+
+## THE RELOAD, TWO SEATS (2026-11-10, token 20261111-reloadroom-01-cors) — online.js only
+Two-seat check of PR #1072-#1075 plus traps, CLASH and the end-of-round relays (two Chromium pages, shared playtest
+harness, shots in `/mnt/project-files/pvp-verify-20261110/`). All of #1072-#1075 held. Five things fixed:
+- **THE ROOM ON A RELOAD:** a guest that reloaded came back on the bare baked board (voxel columns, no site room): the
+  recovery snapshot's `applyGameMode` ran before the fresh page had surveyed the arena room, and the renderer latches the
+  room once (`_arenaLatch`). `_recoveryArenaWait` (in the `recovery-snapshot` handler, now `_onRecoverySnapshot`) runs
+  `_hqArenaWarm` first and applies after it, capped at `RECOVERY_ARENA_WAIT_MS` (30 s, inside the 60 s restore window);
+  a page still in its fight waits for nothing. The fight's map id is kept in sessionStorage `ew_rejoinMap` (written by
+  the seat-hold interval) so the boot rejoin starts the survey while the socket connects.
+- **THE HOST'S RELOAD:** the match lives on the host's page. A reloaded host sat in 'setup' with the title screen's
+  default units, sent THAT as the recovery snapshot, the guest applied it, and both seats sat on a dead board. A page that
+  booted into a rejoin (`NET._bootRejoin`) and is not in a battle now answers `recovery-unavailable`, so both seats get
+  server.js failRecovery's notice ("The host page lost its active match") in ~20 s. Restoring the host's match from its
+  own saved snapshot is NOT built (offered to mondo). `backToMainMenu`'s online teardown also runs for a boot-rejoin page.
+- **THE SQUAD ON A RELOAD:** `NET._squad` died with the page, so a reloaded seat's REMATCH opened the party builder
+  while the other seat sat locked. Kept in sessionStorage `ew_rejoinSquad`, restored at the boot rejoin.
+- **THE CHIP LEAVES WITH THE ROOM (F8):** `#netStatusIndicator` is hidden when `!NET.online || !NET.roomCode`.
+- **`eor-focus` on a half square:** a weather callout's dive is the mean of its tiles (4.5,4.5); no fog set holds a half
+  square, so the guest never got that camera move. Host filter + guest gate round to the nearest square.
+- Checked and fine, both seats: guest To the Moon landing pick + own throw line into fog, host Infernal Hurl, Swing Door
+  prompt kept off both logs, Fire for Effect mark + detonation, Scrap Mine / Tesla Coil (`_deployedObjects`, on both
+  boards), hidden Snare (`state.traps` empty on the guest until sprung), CLASH (no MOVE, no throws by design, in sync),
+  result-screen drop + rematch, rematch keeps 5 rounds, closed tab -> VICTORY at 90 s from either seat.
+- Not bugs: CLASH's ROUNDS stepper stays at "∞"; a ground unit may stand under a flyer; the host's `_fullLogEntries` holds
+  every line (the fog filter runs at render: compare seats with `_logVisible`).
+- Harness: pick races in the party builder by clicking the ROSTER tab, the slot, then the card (a pick jumps to ABILITIES);
+  `location.reload()` through `ph eval` reloads a seat; `location.href='about:blank'` closes its tab.
+
+
 ## THE CAMERA SHOWS SOMETHING (2026-11-09, token 20261109-camnothing-01-cors) — battle.js, state.js, online.js
 mondo: "Still lots of camera issues, like the end of round camera focusing on nothing or action camera focusing on nothing
 ... might be from when i move the camera around and then the automatic camera takes over, or it just seems like a lot of
@@ -5031,3 +5110,286 @@ board 125+ -> 0, self facing along the row 144-157 -> 0, on an ally two squares 
 now: cut to the close-up, cut back to the player's own angle on the shielded units, short slide home.
 Not compared: the `buff` family's glam beat (Protect ends the turn; it still opens with the new rule). Not run with two
 seats (the guest runs the same rigs on the relayed shot). Tools + proof: /mnt/project-files/pupil-shield-camera-20261110/.
+
+## THE HURRICANE'S RAIN (2026-11-11)
+mondo: "During a hurricane, there is rain on the screen, but I saw some grass tiles on fire ... Rain should always put out fire."
+- Cause: the Hurricane is a homing storm, so `w.tiles` is only its eye square; `soaks` only reached that one square while the
+  rain column was drawn over it and read as rain over the board. Thunderstorm and Blood Rain are `global`, so they were fine.
+- Fix: state.js WEATHER_REGISTRY.hurricane `rainWide: true` + `weatherRainIsWide(w)` (global OR def.rainWide), read by
+  `weatherRainsOnTile` and the round-start soak in `applyWeatherTurnEffects`. So under a Hurricane, on every unroofed square:
+  ground fire goes out when it forms and every round end (rainOnTheBoard), no new ground fire (igniteTile / _ewRainOnTile),
+  burning units doused, grounded units Wet each round, fight lava hardens: exactly the Thunderstorm's rain rules.
+- NOT `global`: the eye, the fling, the -10 DEF and the flooded trail stay local.
+- The rain is drawn map-wide too (three-renderer.js rain zones, ui.js 2D path), nothing removed.
+- Audit: Thunderstorm, Blood Rain = global + soaks (fine). Blizzard = snow, freezes its trail (ice on fire = water, PR #974).
+  Tesseract Storm = geometry shards, not water. Hurricane has no Summon spell (natural roll only).
+- Proof (VS CPU, Mount Shasta Arena): /mnt/project-files/hurricane-rain-20261111/.
+
+## THE SIX RULE ANSWERS (2026-11-10, mondo's answers on the "PvP demo set and open rules" doc: 1B 2A 3A 4A 5A 6C 7B 8B 9A 10B 11B 12A)
+Kept as they were (A): delayed blasts hit enemies only (2), Guard restores twice (3), a thrown body can land on an ally (4), a
+tackle into a wall pays its bonus and the slam (5), Marked is used up by a physical hit / basic attack only (9), the R10 storm bolt
+runs through water / metal squares only (12). Changed:
+- 1 EITHER SIDE'S REMAINS: Cannibalize and Carrion Feast eat an enemy's bones OR an ally's gravestone (battle.js
+  spellCorpseUsable; SPELL_KIND_META `notOwnGrave` bars only the feeder's own left grave). Same heal, same +corpseDelay on a body
+  still down, ally or enemy. ai.js picks an enemy's remains first, an ally's only when none is in reach.
+- 6 EVERY ARRIVAL SETS OFF OVERWATCH: resolveTileArrival's `finally` calls checkOverwatchTriggers for every `via` but 'move' and
+  'climb' (those call it themselves after their own slide), where the body came to rest: pushed, pulled, thrown, dashed,
+  teleported, through a door. One shot per Guard stance as before; fog / invisible / range / LOS gates unchanged. Host-side like
+  the walk's shot, same relays.
+- 7 NO HAND RAISED TO THE CHARMER: battle.js getCharmer(unit) (unit._charmSourceId, stamped in applyStatusPayload, dropped by
+  STATUS_DEFS.charm.onRemove). A Charmed unit cannot basic-attack, counter, Overwatch-shoot or aim a unit-targeted offensive cast
+  at its charmer (doAttack / doSpell gates, the three target drums, hud.js quick menu rows, ai.js getTargetPriority + the ward
+  forecast). Tile / area / directional casts stay free, like Provoke. It still cannot move; it may act on anyone else.
+- 8 MINIMIZED IS HARDER TO HIT (his card pick: "Dodge at the 25% cap"): getEvasionChance returns data.js EVASION_CAP (0.25) for
+  a unit with `minimize`; hard CC still zeroes it, spells still always land, a back-arc swing still can't be dodged.
+- 10 ONE FLEE ENDS THE FEAR: the feared activation clears `feared` after _fearFleeMove actually ran; a cornered unit that
+  cowered keeps it.
+- 11 ONE WET WEATHER AT A TIME: state.js weathersOppose is also true for two DIFFERENT wet weathers (Thunderstorm, Hurricane,
+  Blood Rain, Blizzard), so the three opposite-weather paths apply: a cast one drives the one up off, the natural roll never forms
+  a second, tickWeather settles a leftover pair. The same weather recast still renews. Two dry weathers may stand together.
+Status page lines (charm, feared, minimize), the two feed spells' text, Pixie Prank's text and the FACING lesson's Overwatch line
+were rewritten to match. Not played in a browser (boot + function probe only); not run with two seats.
+
+## THE CHARM LINE ON A BOARD CLICK + THE GUEST'S OWN REFUSAL LINES (2026-11-11)
+Two-seat check of rule 7 B found the guest got no reason when it clicked its charmer. Two causes, both fixed:
+- battle.js `_outOfReachLine`: the charmer is off a charmed unit's attack list and off its unit-aimed offensive casts, so a board
+  click on it was refused as "X is out of reach this turn." Now it returns the engine's own Charm line ("is charmed and cannot
+  attack …" / "cannot cast <spell> at …"), solo, host and guest alike. Area / tile / directional casts are untouched.
+- A guest's refused click is written on the guest only (the pick is never sent). online.js `_applyRemoteState` replaced the whole
+  log with each host snapshot, so every such line was wiped within a second or two. battle.js addLog `o.mine` tags these lines
+  (`lg`, `lgN` = host lines above it) and `_applyRemoteState` puts them back in place. Call sites: `_ewGuestBoardPick` (attack,
+  unit spell, tile spell, item) and `_aimRefused`. A shorter host log (new match) drops them.
+- Proof: two real seats, guest's charmed unit clicks its charmer with ATTACK then Shrink Ray armed; both lines stay in the guest's
+  log through four host updates, in order, and never appear in the host's log. /mnt/project-files/demo-set-20261110/rule-proof/.
+
+## THE ZONE STEPS (2026-11-11) — a zone on dug / raised ground
+
+mondo (Fairy Forest Arena, Firefox webgpu): "fix how the nexus zone looks all janky whenever the terrain is raised or lowered. The
+outline of the nexus should always look straight and sleek even when the terrain its on gets deformed. And the nexus yellow should
+always cover the 4 tiles it is on ... and not get torn and jagged on the ridges."
+
+- Cause (three-renderer.js): each zone tile wore the move tiles' drape (`_buildDrapeGeo`, 6 × 6). THE CLIFF LINE holds every vertex
+  past a step steeper than 1.2; since THE FULL BLOCK a dig is a whole square deep (wall slope ~2.5), so the plate stayed flat at the
+  pit's floor and the bowl's wall stood through its outer third. A raised block's plate followed the room's lumps under the block's
+  flat top (most of it buried). TDM's spawn strips never rebuilt on a terrain change at all.
+- Fix: `_zoneStepGeo` — every zone on the true ground (the nexuses, the Arena spawn nexuses, the roaming nexus, TDM's spawn strips) is
+  ONE geometry over its tiles, 12 × 12 a square, read from the ground as the floor mesh draws it (`_fieldGroundSampler` bare + drawn).
+  THE FILL lies on the drawn ground (down a dig's wall, flat on a block's top) and stands as a wall on a block's side inside the zone.
+  THE RIM BAND (`_zoneStepBand`: the look's rim width) lies on the ground as it was before the dig, lowered by whole blocks only as far
+  as it can go without being buried (one level per tile), a curtain of fill joining it to the fill below; where two tiles' rims differ
+  the rim turns down the corner (the wall between them + a post on the outer face). Same two materials / maps as before (THE ZONE
+  LOOK), so WebGL2 and WebGPU draw the same thing. `_nxStepGeo` keeps a zone's geometry while `_zoneStepSig` holds (tiles, the tops
+  and digs of each tile and the eight round it, the skin line).
+- Old per-tile drape still draws: the two columns' boards, a tile under a deck (THE ZONE ON THE GROUND), `window.EW_NO_ZONE_STEPS`.
+- Hashes: `_nexusTopsHash` reads the diagonals too; `_spawnTopsHash` is new (a dig under a TDM strip rebuilds it).
+- Known: one rim level per tile, so a crater whose edge crosses a zone leaves that tile's rim a block over the crater floor (curtain
+  under it). Light walls (UI Maker, default 0) still stand on the tile tops. Proof (WebGL2 headless): /mnt/project-files/nexus-zone-steps/.
+
+## THE FLING THAT COMES BACK (2026-11-11, mondo: "this tornado moved to the same tile as my cowboy in between rounds, but it didnt fling him") — battle.js
+- Cause: `vortexFlingUnit` returned silently when the body ended on its start tile. That happens when (a) the throw goes one
+  square, slams the board edge / a wall and the rebound carries it straight back into the eye (a body one square from the edge,
+  heading at the edge), or (b) a body / wall beside it stops the throw at once (bowling crash hands the momentum over). The strike
+  and the slam damage landed, but there was no "flings" line, no lift-spin-hurl, no FLUNG pop: the storm read as doing nothing.
+- Fix (no rule change, same shared slide): that case now logs "The Tornado flings X north, and X is thrown straight back into
+  the eye at F2!" (went out and came back) or "... but X is stopped short and stays in the eye at F2!" (never left), hoisted
+  before the slam / crash lines, plays the lift-spin-hurl to the square it struck then the slide's own steps back, shows the
+  FLUNG pop, and returns `moved: true` so the round end waits for it. Covers the round-end strike, a landing in the eye and a
+  walk through it (all three call `vortexFlingUnit`); hurricane too. No second landing chain (the body never left for good).
+- Not changed, his call: a body that bounces straight back still ends the round standing in the eye.
+- Proof (WebGL2 headless, Hell Arena (Calm)): /mnt/project-files/tornado-fling-20261111/ (before.log, after.log, before_after.jpg;
+  repro.js cases shotb0 = bounce back, shotp2 = stopped short). The motion itself was not viewed (headless too slow for frames).
+
+## THE FIRE CATCHES WHOEVER STANDS ON IT (2026-11-12, mondo: "this chess piece is clearly on a tile on fire but it doesnt have the burning status effect")
+Before: only the forest fire (`_reactFireForest`) set a unit Burning when the square under it was lit; a fire spell on grass (Dragon Fist), Wall of
+Fire, fanned flames (gust / shove), the round's spread and a Hell door's own-side bodies left the unit on a burning square with no Burn until the
+round tick. Now battle.js `igniteTile` calls `_fireCatchesUnitAt` on a newly lit square: Burn 2 (status only, no ignition damage), skipped for
+flyers, lava-adapted, fire drinkers, units already Burning; the normal status immunity still answers ("resists Burn", e.g. Astronaut). Forest, oil
+blast and Hell door pass `noCatch` (they apply their own burn); `tickBurningTiles` spread and the Hell lane call the helper directly.
+Proof: /mnt/project-files/burning-tile-catch-20261112/ (WebGL2, Training Room, Dragon Fist on tall grass).
+
+## THE WALK-IN SELF CAST (2026-11-12, mondo: "Scatter shot wasnt moveing+casting for me")
+A self-cast that only hits the enemies in its own reach lit MOVE→CAST on the Abilities list (hasReachableTarget walks the caster and asks its
+pool), but picking it only offered CONFIRM on the caster, and the cast was refused ("no enemy in range and in sight to hit"). On an enemy's
+quick menu Scatter Shot read as a plain cast at any distance (the aim gate says yes to every self-cast) and was refused the same way.
+Covered rows (battle.js `_selfPoolSpell`): the random-target rows (Scatter Shot, Things That Go Bump, The Whole House Shakes, Stack Overflow,
+Every Eye at Once) and the enemy-only novas (`_selfNovaEnemyOnly`: Meow, Demonic Roar, Fear, Requiem, Quake, Hey Over Here… 31 rows).
+Now they follow the one MOVE→CAST rule: with nobody in reach from where the caster stands, the list names the enemies a step brings into
+reach (`_selfPoolWalkIn` → `_getSpellApproachTargets`), CONFIRM / a board click on that enemy walks to the farthest square that still has it
+in the pool (`findSpellApproachTile`) and casts on the caster. With somebody already in reach nothing changed (CONFIRM on the caster).
+`findSpellApproachTile` now returns null for every other self-cast (it used to hand back a random far tile). hud.js: `_aimSelf`, the target
+rows (a self-cast lists walk-in enemies only) and the enemy quick menu's Scatter Shot row (in reach = in the pool, else ↳ MOVE).
+No rule changed, no data.js row changed. Proof: /mnt/project-files/scatter-shot-move-cast/ (WebGL2, VS CPU, Mount Shasta).
+
+## THE PANEL LIFT + THE FLYER'S PIVOT (2026-11-12, mondo, the Seraphim on Vatican City) — battle.js, three-camera.js
+mondo: "he sits too low in the frame and he's covered by the battle panel and the camera orbits around him so it just looks and feel bad".
+Two causes, both viewer-local camera only (no state, nothing to relay):
+- THE FLYER'S PIVOT: `_camFocalZAt` gave an airborne flyer its RULE height; the body is drawn up to 0.65 of a level lower
+  (unitElevationZ's hover sink), so the focal stood over its head and an orbit turned round empty air. It now returns the
+  drawn hover height. Kill switch `EW_NO_FLYER_PIVOT`.
+- THE PANEL LIFT: THE ONE BATTLE PANEL lies under the middle of the screen, and THE SUB MENU RULE gave the action menu
+  alone no slide at all. `_menuFreeArea` now hands the root area a `lift` (NDC, at most PANEL_LIFT_MAX 0.3): the middle of
+  the band between the score bars and the panel's top under the middle of the screen (PANEL_LIFT_SPAN). `_ewMenuSlide`
+  returns it as cy with cx 0 (still no sideways slide at root). three-camera.js: when the slide would sink the eye under
+  the lens floor (a low hand orbit), only the eye stops; the aim keeps its slid place, so the lift survives the low orbit.
+  Kill switch `EW_NO_PANEL_LIFT`. Classic layout (side menus) is unchanged.
+- Proof (Vatican City, Superhero flying, 1728x904, WebGL2): /mnt/project-files/unit-frame-20261112/. Body 55-58% down the
+  screen before, 39-42% after, default view and a tilt-87 orbit. Not checked: his Mac / WebGPU, the online guest, a look
+  past the horizon (tilt > 90 keeps the old floor rule), the root two-shot with the lift added.
+- Tune: PANEL_LIFT_SHARE (0.5 since his same-day follow-up "a little lower, like somewhere in between": half way from the
+  screen's middle to the band's middle; the first cut went all the way) and PANEL_LIFT_MAX.
+
+## THE PANEL CENTRE (2026-11-12, mondo, Infernal Hurl's landing pick on Hollow Earth) — battle.js
+mondo: "now that the battle panel sits kinda more towards the bottom of the screen, can we fix this framing that is showing the board on the right side of the screen".
+- THE CLEAR DROP (`_clearDropFrame`) searched its slide from -0.3 to 0.8 across, made for menus down the left side; with THE
+  ONE BATTLE PANEL up it parked the landing squares in the strip beside the panel. With the panel up the search is
+  ±PANEL_CENTRE_CX (0.05) across and -0.1..0.55 up: centred, raised over the panel, every square still clickable.
+- `_menuFreeArea` (sub menu up over the panel): the strip beside a bay is only taken when the band over the whole panel is
+  under PANEL_CENTRE_MIN_BAND (0.3) of the screen; else the full width over it (cx 0) for the range fit and the two-shot.
+- Kill switch `EW_NO_PANEL_CENTRE`. Classic layout unchanged. Viewer-local camera only.
+- Proof /mnt/project-files/unit-frame-20261112/infernal_hurl_before_top_after_bottom.jpg (1728x904: slide cx 0.1 -> 0; his
+  larger window gave far more). Seen at ±0.1; shipped ±0.05 without a second look. Not checked: his Mac, online guest, toss picks.
+
+## THE LOWER SUB FRAME (2026-11-12, mondo, Tape 2's attack list in the Training Room) — battle.js
+mondo: "everything is framed a little too high and the green super effective exclamation point icon is being cropped/covered up by the scoreboard".
+- With a sub menu open over THE ONE BATTLE PANEL `_menuFreeArea` raised the frame to the middle of the band between the score
+  bars and the panel's TALLEST bay (cy up to 0.3), so a target standing up the screen from the framed pair (his Dummy A,
+  hovered on the board while the list's cursor framed Sister + Dummy B) had its plate + matchup icon under the score bars.
+- Now cy = PANEL_SUB_SHARE (0.6) of the way to the middle of the band over the bays under the middle of the screen
+  (PANEL_SUB_SPAN 0.12 each side), and hh = what is really free round that point (score bars above, those bays below; at most
+  the old 0.6). Used by the two-shot, the range fit and the slide alike. Kill switch `EW_NO_PANEL_SUB_LOWER`.
+- Proof (Training Room, Annunaki's attack list, 1728x904): slide 0.30 -> 0.17, the far target's plate 130 -> 165 px down.
+  /mnt/project-files/unit-frame-20261112/attack_list_before_top_after_bottom.jpg (the before half is the old slide on the
+  new pose). Not replayed: Tape 2 itself, his Mac. A target outside the framed pair can still sit high if it is far up-screen.
+
+## THE GARDEN — seeds need water, plants replace the aura trees (2026-11-12, mondo; plan doc https://claude.ai/artifact/2hDVKXrT82a2FfypmiKwdV)
+mondo: "You have to water them for them to sprout, this can be rain water, water from a spell, etc. But instead of turning into
+trees, I want the leech seed to turn into a plant monster with thorny vines that acts like a turret ... The poison seed ... emits
+poison gas in an aoe ... the healing seed ... some sort of flowery healing thing." His answers (doc section 8): dry seed keeps its
+under-foot effect; Watering Can yes; real HP bar; cap 2 per type per planter (upgrades may raise it); plants do not block sight;
+Blood Rain does not water; thorn vine reach 2 (an upgrade may lengthen it); Bumper Crop option 1 (its seeds need water).
+- battle.js THE GARDEN block (beside `_seedBesideWater`): `seed.watered`; `_seedWaterSourceAt` (rain = Thunderstorm / Hurricane,
+  water / deep water / healing spring beside it, water on it, a Wet unit of the planter's side on it); `waterSeedsAt(x, y)` is
+  called from `triggerTerrainSpellReaction` for every tile a WATER-element spell strikes. Growth tick
+  (`applySeedTileEffects_endOfRound`): watered before this round end -> grows now; finds water now -> sprouts, grows next round
+  end; dry -> never. A plain (Bumper Crop) seed still dry after 2 round ends withers.
+- Grown plant = a `state.turrets` row with `plant: 'heal' | 'poison' | 'leech'` (`_standPlant`): real HP = 35 % of the planter's
+  max HP (min 60), no `hitsToKill`, `processTurretVolleys` skips it. It acts in `applySeedTileEffects_endOfRound` through the old
+  aura numbers (`applyAuraTreeEffectToUnit`): flower heals allies within 1 (7 %, double in rain), gas plant 5 % + Poison 2 to
+  enemies within 1, thorn vine 6.5 % from the ONE nearest enemy within `range` (2) it has a clear line to (`_plantLashTarget`,
+  `turretHasShotAt`), sent to the weakest ally. Drought = wilts, skips the round. Burning tile = -25 % max HP a round end.
+  Permafrost (`witherTrees`) kills it. Cap: `PLANT_CAP_PER_TYPE` 2 (+ passive hook `plantCapBonus`); reach hook `plantRangeBonus`
+  (no row carries either hook yet). Green Thumb counts plants + planted trees; Trunk Throw still counts trees only.
+- Plain seeds (Bumper Crop) still grow ordinary trees (`state.plantedTrees`, choppable, block sight). The old Healing / Toxin /
+  Leech aura TREES are no longer created (the code path stays for old state).
+- data.js: `wateringCan` (Agriculture T1, kind aoe, `aoeMask [[0,0]]`, noDamage, `waterCan`: the tile is watered, its fire goes
+  out, whoever stands there is Wet). Seed / Bumper Crop / Green Thumb / Permafrost texts rewritten.
+- three-renderer.js THE GARDEN: `_buildSeed3D` (mound + seed, or the sprout once watered; the 2D seed sprites are no longer
+  drawn), `_buildPlant3D` (Meshy models `Assets/world/props/meshy/ew_plant_thornvine|gasplant|healflower.glb`, team ring, HP bar
+  black with a white outline facing the camera). hud.js tile card: seed dry / watered text, plant text + HP.
+- NOT BUILT YET (his OK given, later PRs): Bee Queen pollen (Pollinate + Honey, pollen boosts her ATK + speed), Apple Seed ->
+  apple tree (a real tree: existing tree model + the pack's apples, drops a healing apple), upgrade rows for the cap / reach,
+  the CPU learning to water (ai.js still plants seeds as before and never casts Watering Can on purpose).
+
+## THE ASTRAL BODY + SLEEPING, build 1 (2026-11-12, mondo: "put the sleeping status effect on the physical body and the projecting status effect on the projection. Treat them like 2 separate units, but one shared HP bar" + "yes damage should wake a sleeper")
+Plan of record: the Claude Doc https://claude.ai/artifact/4Yup3jQwxJkTYjf1qh1jVx (4 builds). This is build 1.
+- data.js STATUS_DEFS `sleep` (SLP "Sleeping"): can't move or act, `wakeOnDamage` (battle.js applyDamageToUnit clears it after the
+  hit line, never on an astral body), `countsAs: ['stun']` so every "vs Stunned" bonus reads a sleeper too. Lullaby + Counting Sheep
+  now apply Sleeping (1 round); Sleep Paralysis stays Stun. `projecting` (PRJ): onRemove -> `astralEnd`.
+- A spell row with `astral: { cord, end }` (only Spirit Walk so far: cord 4, end 'follow', cooldown 2) calls battle.js `astralBegin`
+  in the escape branch. THE SPIRIT IS THE UNIT ITSELF (keeps id, turn, spells; status `projecting`, `_astralBodyId`, `_astralCord`).
+  THE BODY is a plain copy pushed into state.units: id `<player>-ab<n>`, `_astralOfId`, `sleep: 99`, never activates. Ids only, no
+  object refs (RULE #2), so the guest gets both from the state sync with no relay.
+- ONE HP BAR: `astralSyncHp` after every damage / heal moves the other piece by the same delta. Either piece at 0 = the unit dies
+  on the BODY's square, one kill (map.js defeatUnit -> `astralOnDeath`).
+- The spirit: data.js `unitPassiveValue` hands it the Ghost row (PASSIVE_DEFS.incorporeal: physical immune + phasing); it can't basic
+  attack, cast a physical spell or another astral spell (`spellBlockReason` 'Projecting'), use items, Inspect, build, or carry a Key
+  (Keys / flags stay with the body). Moves only inside the cord (`astralCordFilter` in getMoveTiles). Ground hazards, traps, seeds,
+  weather, quakes skip it (battle.js + state.js gates on `unitIsSpirit`); arriving still sets off Overwatch.
+- END: the activation after the cast one (`astralSpendActivation`) or the status running out. end 'follow' = the body is pulled to
+  the spirit's square (Spirit Walk). `astralLanded` then runs the normal tile arrival.
+- NOT IN BUILD 1 (builds 2-4): psychic x1.5 vs projecting, Stun / Silence snapping the spirit home, dream bonuses on the empty body,
+  the Shadow Realm window, the Astral Projection spell, Spirit Guide rework, Cut the Cord, Silver Cord, CPU play of it. Known gaps:
+  an AoE covering both pieces takes HP twice; no early return; the body stands idle (no slump pose); statuses worn at the cast stay
+  on the spirit.
+- Proof (VS CPU + a 2-seat online room, guest cast): /mnt/project-files/astral-projection-20261112/build1_*.jpg.
+## THE POLLEN — the Bee Queen gathers from the Healing Flower (2026-11-12, mondo: "Both", "maybe the pollen can boost her attack and speed too")
+- battle.js THE POLLEN block (after `_standPlant`): a `heal` plant row carries `pollen` (1 when it grows, regrown at each round end by
+  `_pollenRoundEnd`). `_gatherPollen(unit)` runs for `race === 'bee queen'` at the top of `checkSeedStepTrigger` (move end) and at round
+  end: every flower within 1 tile (any side's) gives its pollen, up to `POLLEN_MAX` 3. The count is the plain number `unit.pollen`.
+- HONEY: `getPollenPowerBonus` (+8 per pollen) is added inside `getPlantedTreeBonus`, so it reaches basic attacks and spell power at
+  every place the Green Thumb bonus is read; `getEffectiveSpd` adds `getPollenSpdBonus` (+8 per pollen).
+- POLLINATE (data.js `pollinate`, Royal Hive T1, 10 MP, 1 AP, range 3, flag `pollinate`): costs 1 pollen; a seed on the tile grows now
+  (`_growSeedIntoTree`, no water), or a hurt plant is mended 50% of max HP. Refused before MP with no pollen or nothing on the tile;
+  `hasSpellTargetInRange` reads NO TARGET with no pollen. ai.js casts it on its own side's nearest seed in reach.
+- Shown: hud.js `_hrlgStatusChips` "POLLEN n/3", three-renderer.js `_plateStatusBadgesHtml` "POL n".
+- My picks, his to change: 8/8 per pollen, max 3, any side's flower, mend 50%. Not built: Drones fetching pollen.
+
+### build 2 (2026-11-12, same thread): the psychic bonus, the rude awakening, one blow per action
+- PSYCHIC x1.5: battle.js `_hitDamageMath` multiplies a psychic-element, non-DoT hit on a SPIRIT by STATUS_DEFS.projecting.psychicMult
+  inside the capped offensive product (so previews agree); callout "MIND EXPOSED". The body is not paid twice: dream spells already
+  read it as Stunned (Sleeping countsAs stun).
+- THE RUDE AWAKENING: applyStatusPayload, after a status lands on a spirit: any `blockAction` status (Stun, Sleeping, Frozen...) or
+  one on STATUS_DEFS.projecting.snapOn (Silence) calls `astralSnapHome`: end mode forced to 'return', so even Spirit Walk's spirit
+  goes back to the body's square; the status stays on the unit. Log "X is silenced: the spirit snaps back to its body!".
+- ONE ACTION, ONE BLOW: applyDamageToUnit, a sourced non-DoT hit on a piece stamps `_astralHitKey` (= `_protectAttackKey`, one action
+  of one unit) + `_astralHitPiece` on the spirit; the same action reaching the OTHER piece does nothing. Multi-hits keep landing on
+  the first piece. Closes build 1's "AoE takes HP twice" gap.
+- Status page text for Sleeping + Projecting added (data.js STATUS description table; missing in build 1).
+- Checked in a VS CPU match by eval: fire 117 on the spirit, same action on the body 0; psychic on the spirit 194 vs 117 plain,
+  psychic on the body 117; Silence sent the spirit home and removed the body. Still open: early return, body slump pose, CPU play,
+  builds 3-4.
+
+## THE APPLE TREE — Apple Seed, a real tree that drops healing apples (2026-11-12, mondo: "eventually both"; Apple Seed OK'd)
+- data.js `appleSeed` (Agriculture T2, 25 MP, range 3): rides `kind: 'seedHeal'` with `seedType: 'apple'` (battle.js cast branch `_sType`),
+  so every menu / CPU / targeting table that knows the Healing Seed knows it. The dry seed has no under-foot effect.
+- Watered, `_growSeedIntoTree` takes the TREE path (not `_standPlant`): an ordinary `tree` object + a state.plantedTrees row
+  `{ apple: true, appleAge }`. It blocks sight, is chopped like any tree, counts for Green Thumb + Trunk Throw.
+- battle.js THE APPLE TREE block: `_appleTreesRoundEnd` (in the player-1 round-end block) drops one apple every `APPLE_EVERY_ROUNDS` 2
+  on a free tile beside the tree, at most `APPLE_MAX_PER_TREE` 2 lying around it. state.apples = `{id,x,y}` rows (ride the snapshot).
+  `_eatAppleAt` (top of `checkSeedStepTrigger`): ANY hurt unit ending a move on one heals `APPLE_HEAL_PCT` 20% max HP. Full HP = it stays.
+  Apples stay when the tree is cut. Pollinate grows an Apple Seed at once too.
+- three-renderer.js THE APPLE TREE: `_buildApple3D` (ground) + `_buildAppleCanopy` (5 in the leaves), one Meshy apple
+  `Assets/world/props/meshy/ew_plant_apple.glb` (no pack has an apple). The tree itself is the board's stock tree model.
+- My picks, his to change: every 2 rounds, 2 lying, 20%, either side may eat. Not built: fire burning apples, a tile card for an apple.
+### build 3 (2026-11-12, same thread): THE REALM WINDOW
+- battle.js `unitCrossesRealm` (a spirit) + `unitSeesRealm` (a spirit, or a race on data.js REALM_SIGHT_RACES: ghost, shadow entity).
+  `isUnitRealmShieldedFrom`: a spirit and a Shadow Realm pair reach each other both ways; the sleeping body stays walled off, and
+  zones / weather (null actor) still never reach in. `isUnitSeenAcrossRealm` feeds `isUnitOutOfRealmView`: on a seer's turn the pair
+  is drawn on the normal board; on the pair's turns a spirit is drawn in their plane. Ghost + Shadow Entity look, cannot touch.
+- three-renderer.js: a unit seen across is a dim shade (REALM_SEEN_OPACITY 0.42), still under the viewer's fog.
+- Checked in VS CPU (Mount Shasta): Shadow Entity's turn showed the pair; shield true before Spirit Walk, false after; the body's hit
+  did 0; Shadow Crush listed the realm Demon as a target and took 982 -> 798.
+  /mnt/project-files/astral-projection-20261112/build3_spirit_targets_realm_unit.jpg. Not checked: a realm pair hitting the spirit
+  through the menus (function only), the online guest view.
+
+### build 4a (2026-11-12, same thread): the new spells + Spirit Guide + CPU
+- data.js `raceAstralProjection` (T3, astralprojection family, 75 MP, kind escape, step out 6, `astral: { cord: 6, end: 'return' }`,
+  cooldown 3; VFX = Spirit Walk's, three-vfx-effects.js SPELL_MAP alias). `raceSpiritGuide` REWORKED: `astralAlly: { cord: 6, end:
+  'return' }` (was Invisible 1 + Levitating 2); battle.js buff branch -> `astralProjectAlly`: the ally's body sleeps on its square, the
+  spirit appears on the nearest open square beside it. `raceCutTheCord` (T2, Dream Predation `astral` family: dreameater, succubus;
+  50 MP, 80 dmg psychic, range 4, `statusEffects: [{ id: 'stun', duration: 1, ifTargetHas: 'projecting' }]`): the Stun lands only on a
+  spirit and THE RUDE AWAKENING snaps it home. Names were proposals in the accepted plan doc; his to rename.
+- ai.js: `_aiHasMagicToFight`; an astral escape scores only for a magic user with enemies within 4, no Key, body not about to die;
+  Spirit Guide the same for the ally. Physical hits on a spirit were already priced 0 (the Ghost check reads unitPassiveValue), and
+  the psychic x1.5 rides the forecast math.
+- Checked in VS CPU: Spirit Guide on King Arthur (spirit beside body, returned at his next turn's end, log line), Astral Projection
+  (cord 6, no move tile past it), Cut the Cord's hit + payload by eval (126 dmg, snapped home, Stunned). NOT checked: the CPU casting
+  any of it in a real match, the online guest view of build 3-4.
+- STILL OPEN (needs mondo): Silver Cord passive + the early return (a new menu command = UI design, his OK first), body slump pose,
+  the CPU guarding its own body.
+
+### build 4b (2026-11-12, mondo picked "RETURN row in the command menu" on the decision card, then "ok" on the mock-up)
+- RETURN TO BODY: battle.js `canAstralReturn` / `doAstralReturn` (free, no AP, the turn goes on, own turn only, not while action-locked).
+  The spell's own ending applies (Spirit Walk: body pulled to the spirit; else the spirit goes home). hud.js: for a projecting unit the
+  row takes the ATTACK row's place (id `astralReturn`). online.js wraps it like doGuard + host case 'doAstralReturn' (RULE #2).
+- SILVER CORD: data.js `passiveSilverCord` (T1, astralprojection family): hooks `astralCordBonus: 2` (astralBegin) and
+  `astralReturnProtect` (doAstralReturn -> Protect 1 round).
+- Checked in VS CPU: Spy + Silver Cord, Spirit Walk cord 6, row pressed, body pulled, Protected, turn still on (AP 1). Not checked online.
+
+
+## EVERY EXTRA SOURCE PAYS ENTROPY (2026-11-13, mondo's pick on the AP tally card)
+A hit still presses once (+2 AP, once per unit turn). Each source past the first on the hit that pays (super effective
+type, element weakness, status combo, crit) now vents a press's worth (PRESS_REFUND_AP x ENTROPY_PTS.pressOverflowAP = 16)
+into the team's gauge. Before, only a crit on top of another source did (WEAK_CRIT). battle.js applyPressTurn
+(`opts.hits`, `_pressBestSources`); the result carries `hits`, `extraSources`, `entropyGained` for THE AP TALLY
+(spells-vfx.md). The AP side is unchanged. Tutorial recap line (the_press) updated.

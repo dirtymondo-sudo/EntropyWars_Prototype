@@ -1506,6 +1506,145 @@ mondo 11-02: "similar to the capes and the hair, can we add jiggle physics to th
   bone at rest, idle and walking). Probe = a scratch Playwright page through playtest_creator.js's routes, DOOR Agent slot >
   GEAR > CHARACTER CREATOR > MPFB FEMALE, EWCharViewer.dev.model() for the bones, EWCharViewer.snapshot({yaw}) per frame.
 
+## THE MESHY OUTFITS (2026-11-12, character-models-plan.md row 21d)
+
+mondo 11-12: "i like route 2 better" + "Go". A unit's own clothes, remade by Meshy as separate shells, worn on the MPFB body so the
+head is the MPFB head (67 face shapes, eyes, teeth, tongue). Meshy models stay the units' defaults.
+
+- **The remake** (15 credits, ~1 min, Meshy API through the proxy): `POST /openapi/v1/image-to-3d` with a front render of the old unit,
+  `model_type: smart-topology`, `ai_model: meshy-t2`, `texture_model: meshy-n1`, `pose_mode: a-pose`, `target_polycount: 15000`.
+  One GLB object made of loose shells. `meshy-t2.5` does NOT separate. No body under the clothes.
+- **`bake-outfit.py`** (repo root; `pip install bpy==5.2.3 scipy pillow`; reads the five `mpfb_<body>.glb` from R2 copies):
+  `python3 -I bake-outfit.py --name cowboy --label Cowboy --gender male --src cowboy_t2a.glb --bodies <dir>` writes
+  `charactercreation/wear/ewm_t2<name>_outfit.glb` (+ `_hat.glb`) through bake-clothes.py `write_glb` (compact layout, `solid`,
+  `del` = the hm08 skin indices under the cloth). Steps: scale by the eyeball shells; cut the skin-coloured faces off the face shell
+  (flood fill) so the collar stays; drop bare hands + the unit's hair (the look picks pack hair); size hats to the MPFB head; aim the
+  body's arms + legs down the sleeves, copy the posed body's weights, un-skin to rest; loose cloth off the legs (a skirt, a cape)
+  shares its leg weight between both legs + the hips (env LOOSE0 / LOOSE1 / LOOSEHIP); the other four bodies = the offsets of the 12
+  nearest skin vertices. Env knobs: SKIN_T, S, HS, SY, SZ, BRIM, BRIMHI, SCALP, RAY_OUT, RAY_LEG, RAY_IN, ALLHIDE.
+- **Gotchas**: Blender's UV v is 1 - glTF's (a scrambled texture = that); a robe needs RAY_LEG (45 cm) or the legs show through it;
+  tall boots under a robe poke through when the leg swings; `new_from_object` needs `preserve_all_data_layers=True`.
+- **Boots (11-12, PR after #1153, mondo: boots distort on the walk + "pointy things sticking out the back")**: a shell on ONE side of
+  the body (boot, greave, gauntlet, holster) is never loose cloth (its sole stood far off the skin, so the loose rule gave it to the
+  hips + the other leg); footwear's toe weight goes to the foot (a stiff sole); a spur (Meshy fuses it to the boot as a horn) is laid
+  flat on the heel (env SPURS=0 keeps it). The remade button no longer needs a RACE_CREATOR_LOOKS look (knight + wizard had none).
+- **Round 3 (11-12, mondo: wizard "two pointy parts near his butt", knight "slivers of skin outside of her boots")**: THE SLEEVE TEST
+  (cloth keeps arm weights only when the mesh's own edges join it to the cloth round the upper arm; the skirt beside the hanging hands
+  had the hand's weights; env SLEEVES=0 off) and a thigh / calf that is 70 % under cloth is hidden whole (LEGHIDE). TRIED AND DROPPED:
+  a ray test for "round the arm" (cuffs failed it and flared into plates) and aiming the forearm at the sleeve's middle (tore the
+  cowboy's shoulders). His "elbows bending backwards" on the wizard was not seen again after the sleeve test; unconfirmed.
+- **Round 4 (11-12, mondo: "fix the wizards tall boots showing through his robe")**: THE CLOTH OVER A LEG. LOOSE CLOTH shared the skirt's leg weight evenly between both legs + the hips, so the robe front stayed behind when a leg stepped forward (Idle_11 stance, every stride) and the boot shaft came out through it. Now only the cloth BETWEEN the legs is shared (|x| under 3 cm full, fading out by 9 cm: LOOSEX0 / LOOSEX1 / LOOSESIDE 0.7); cloth in front of, behind and outside a leg keeps most of that leg's weight. Tried first and dropped: cutting the boot tops under the hem (bare shin showed in the same place). All three rebaked; cowboy coat tail + knight cape checked from four sides + walking. Proof `/mnt/project-files/meshy-parts-20261112/wizard_boots_fixed.jpg`.
+- **Batch 2 of 3 (11-13, mondo: "make new models for all of the units ... see what is available from the clothes in the character creator ... meshy for parts and pieces we don't have")**:
+  glitch .. police officer (meshy-remake-batches.md), 25 models, `RACE_REMADE_LOOKS` rows + per-unit commands in meshy-remake-plan.md section 8.
+  The five with a saved creator look (halfdemon M + F, mad scientist M + F, men in black) used NO Meshy: the saved clothes on the MPFB body +
+  the unit's face. Creator pieces picked over the T2 ones: ice crown, overlord helmet, mushroom cap, beret, tricorn (M), luchador mask, police
+  badge, fishing hat (hippie M), a tank top (marksman F), Feathered wings (nephilim). New in bake-outfit.py, off by default: env `EYEH=<0..1>`
+  (NO EYE SHELLS: Meshy fused the eyes into the face under a hat's shadow twice running on the pirate; the eyes' height as a part of the
+  figure's). Lessons: a garment the colour of the unit's hair is dropped as A HAIR LOCK (`LOCKS=0`: ice queen bodice, overlord armour, glitch
+  body); a top PAINTED on the T2 body shell cannot hold the MPFB bust (marksman F): wear a creator top over it; the look probe
+  (`look.js`) must block the world preload (every non-character GLB / audio request) or the viewer takes minutes, and wait for the
+  host's `ew-cv-ready` class, not a fixed time; three browsers at once is the most 16 GB holds.
+- **In the game**: sprites.js EW_MH_WEAR rows `ewm_t2*` (outfits are category `equipment`, shown on the Armour tab; hats on Hats),
+  `RACE_REMADE_LOOKS` + `getRaceRemadeLook(race, gender)`, party-builder.js USE THE REMADE <RACE> LOOK (beside USE THE SAVED LOOK) and
+  REMADE LOOK inside the creator. The race's default idle can crouch a creator rig (knight, wizard): the looks carry `idle: Idle_11`.
+- Sources kept: /mnt/project-files/meshy-parts-20261112/ (the three T2 GLBs, the in-game sheet, scripts).
+- **Batch one of the demo starters (11-12, mondo: "demo starters is good")**: zombie (F), catgirl (F), robinhood (M), quarterback (M):
+  `ewm_t2zombie_outfit`, `ewm_t2catgirl_outfit` (+ `_hat` = her black ears, on the Hats tab, not in the look: his saved catgirl look has
+  its own ears), `ewm_t2robinhood_outfit`, `ewm_t2quarterback_outfit` + `_hat` (the helmet). Sources + look check sheets:
+  /mnt/project-files/meshy-remake-batch1/. The djinn was REFUSED twice by Meshy's safety check (`provider_content_refused`, a bare chest); not worked around.
+  New rules in bake-outfit.py (all seven units rebaked with them, cowboy / knight / wizard rechecked from four sides + walking):
+  THE GLOVE ON A BARE HAND (a skin-coloured hand shell loses only its skin faces when 150+ glove faces are left: fingerless gloves; env GLOVE),
+  A FLAKE (a shell under 30 faces and 4 cm, off the head, is dropped; env FLAKE), `--headgear` (a helmet / cowl that reaches below the eyes is
+  the hat, not hair, and is not lifted like a brim; the look picks `hair: 'bald'`), THE HAND IN A BIG SHELL (cloth tight round the wrist + hand
+  stays on the arm even when the shell is not joined to upper-arm cloth; env WRIST / WRISTR), THE SCALP UNDER A HOOD (the crown is hidden under
+  the outfit's own hood when 60 % of it is covered; a high collar is not a hood; env HOODZ / HOODMIN), A TORN FACE (a face whose edge grew 3x
+  and past 6 cm in the un-skin is left out; env TORN). Tried and dropped: a "skin chip" rule (small skin-coloured shells): it took pieces of
+  the knight's armour and the zombie's rags.
+  Gotchas: Meshy's T2 run varies: robinhood's first run fused a bow string into his hand + skirt shell (a second run was clean). The zombie's
+  whole bloody skin comes as shells and is worn as clothes over the hidden body (her hands too); the look's skin is `sohh_female_zombie_skin`.
+  A front render should be cropped to the figure before it is sent (the first four went out small in the frame and still worked).
+  A HAIR LOCK (11-12, mondo: "some sort of strip hanging off the back of the [zombie]'s head and back"): a shell under 600 faces in the
+  unit's hair colour that reaches the head is hair too and is not exported (env LOCKS / LOCKN / LOCKT; off under --headgear).
+  THE BARE NECKLINE (11-12, mondo on the catgirl: "the necklace looks messed up or painted on"): Meshy gives the bare skin in a low
+  neckline as part of the top's shell with the necklace smeared into its texture, and the choker as spiky shards. `--neckline` (catgirl
+  only) cuts the skin-coloured faces from the chin to the bust (flood from the throat) + what they enclose + the small shells round the
+  neck, so the body's own skin shows; her look wears his saved look's `ewm_crosspendant` (+ its tint, + its code cord). Also in A HAIR
+  LOCK: what is left of the face's own shell in hair colour is hair at any size, and HAIR FUSED TO THE CLOTHES (hair-coloured faces of
+  other shells above chin - 5 cm, env LOCKZ) is cut (catgirl 48 faces, knight 1). Left: the top's own neckline edge is jagged.
+  ROUND 3 (11-12, mondo: "what are all those jagged black spots around her neck"), all under `--neckline`: (1) THE THROAT: everything
+  in front of the neck (NECKX each side, chin to NECKCUT under it) goes: the neck in the chin's shadow, the painted straps. (2) THE
+  LONG HAIR: her waist-long Meshy hair is one 2,580-face shell that is not a head piece (the "hair shells" the bake found were her
+  ears, so the hair colour test never matched): a shell reaching above the eyes with a fifth of it above the chin is hair; only its
+  part down her back stays (HAIRBACK/HAIRTOP: Meshy made no jacket under it, without it her back is bare patches), and on any other
+  shell everything above the chin goes. (3) THE CLEAN NECK OPENING: the jacket's inner edges are re-cut straight (bisect planes, SCX
+  each side, SCZ above the top's edge). (4) THE SKIN AT THE OPENING'S EDGE: most of the "black spots" were NOT cloth: a body triangle
+  with one hidden corner is not drawn, so skin hidden under the jacket's edge bit saw teeth into the open chest and the jacket's
+  black inside showed through. The shown skin now grows OPENRING (3) rings under the edge (skin with cloth straight in front, or
+  inside OPENX2 with no same-facing cloth under it). Lesson: before cutting cloth, render the outfit GLB alone; if the teeth are not
+  in it they are holes in the body. Left: 3-4 small notches on her right collar with the hair off, one skin triangle on her left
+  shoulder, the cross of the pendant sits under the top's edge (the cord shows).
+  A PAIR OF LEGS (11-12, mondo on the catgirl: "she has her heel sticking out of the back of her boot"): it was the skin chip by her
+  left boot. Not cloth: her right calf was 71 % under the stocking (hidden whole, LEGHIDE 0.7), her left 68 % (shown), so the back
+  of the left ankle stood outside the boot. When one leg of a pair is hidden whole the other is too from LEGPAIR 0.5 on. All seven
+  remade units rebaked: only the catgirl's file changed.
+  BATCH TWO (11-12, mummy F + angel F; mondo "whats the progress of the other units"), four new bake-outfit.py flags, all off by
+  default (the nine earlier units rebaked: no file changed): `--longhair` (a shell that reaches above the eyes with a fifth of it
+  above the chin is hair and goes whole; the look wears a creator hair), `--bodysuit` (mummy: bandages the colour of her skin, the
+  colour flood took her chest wraps or nothing. No colour cut: the head goes from BSNECK under the chin, the hands past BSHAND of
+  the arm span, everything else, painted skin included, is the suit; the body's skin above the collar + two rings is shown),
+  `--nowings` (angel: shells wholly behind her back are left out, the arm span and the centring ignore them: Meshy centres the model
+  wings and all, so her dress sat 20 cm in front of the body until it was moved back onto the body's eyes and the floor), `--barearms`
+  (a sleeveless dress: skin-coloured faces out from the middle go, not the feet). Angel input: render on a DARK background, on
+  light grey her white wings came back dark blue. Commands: mummy `--longhair --bodysuit`; angel `SKIN_T=0.3 LOCKZ=0.25 LOCKT=0.3
+  ... --longhair --nowings --barearms --neckline`. Looks: mummy = suit + mh_long01 black; angel = dress + creator Feathered wings +
+  mh_long01 blond. Left: see the status table in meshy-remake-plan.md.
+  BATCH TWO, ROUND 2 (11-12, mondo: "the mummy bandages and the angel neckline definitely need work"; the nine other units rebaked: no
+  file changed). MUMMY (`--bodysuit`): A HANGING END (a shell under BSSTRIP 500 faces hangs stiff from the ONE bone its top is on:
+  weighted vertex by vertex its top went with the arm and its tip with the hips, the torn middle was left out and the tip floated by
+  her hand), A CUT-OFF BIT (what a torn face cuts off its shell, under BSCHIP 40 triangles, goes with it), BSSPIKE (a face un-posed
+  up past the collar is torn: the strip to her chin), THE BACK UNDER LONG HAIR (with `--longhair`: between the shoulder blades the
+  suit lies no more than BSBACK 6 mm off the body; Meshy modelled it round her own hair and the lumps stood through the creator hair
+  as tan flecks). ANGEL: new flag `--repaint` = PAINTED OVER (faces painted in her hair's or skin's colour take the colour of the
+  nearest plain cloth: their UVs go to that face's middle, no texture is repainted. Cutting them out with LOCKZ 0.25 was the ragged
+  neckline and the hole in the bodice; REPWARM adds "redder than blue"; a whole shell in skin colour = her bare legs under the skirt,
+  the "skin patch on the back of the skirt", is left out). With `--barearms --neckline`: THE ARM OPENINGS + THE NAPE (straight cuts
+  AHX out from the middle above AHZ, and behind the square neck above NAPE; tooth triangles with two free edges go, EARS; long faces
+  cut up, STRAPSEG), THE STRAPS ON THE SKIN (cloth from BAZ up lies STRAPOFF 10 mm outside the body and takes the weights of the skin
+  under it: with the arm's weight taken off, her shoulder rose through the strap when the arm came down), shown skin grows BARING 2
+  rings round the arm openings, flaps past the arm opening after the un-pose are left out (AHPAD). Angel command now:
+  `REPWARM=0.08 LOCKT=0.3 SKIN_T=0.3 ... --longhair --nowings --barearms --neckline --repaint` (no LOCKZ).
+  ROUND 3 (11-12, mondo "keep improving them"): the teeth on the back of the angel's dress behind her right arm were not in the cloth,
+  they were WEIGHTS: the back panel beside her arm took the weights of the arm skin nearest to it and stood out in spikes when the
+  body was un-posed. THE STRAPS ON THE SKIN now takes the weights of the nearest skin that is NOT arm (kdb / noarm), for all cloth
+  within STRAPNEAR 8 cm of the skin (was 3 cm: a seam of two kinds of weights ran through the arm opening); BARING 1 ring. ONE SIDE
+  LIKE THE OTHER (MIRD: a face out past the neck stays only when its mirror lies on cloth) is in but took 4 faces. Tried + dropped on
+  the mummy: a straight bisect of the collar (a spike stood up from her chest; her uneven collar is the suit's painted skin against
+  the body's, not shape) and `skinTint: pick` (paints her whole skin one flat colour, face included).
+  ROUND 4 (11-12, mondo after his playtest: "Robinhood has his shoulders and ear skin sticking out. Catgirl has a weird piece of
+  floating skin under her crotch"; he put a creator goddess dress on the angel himself). ROBINHOOD, now `ARMSKIN=0.35 ... --barearms`:
+  his bare arms were a shell of their own, exported as pink painted cloth with the body's shoulders standing through it. THE BARE
+  ARMS IN ANOTHER SHELL (skin-coloured faces out from the middle go in every shell whose skin faces lie ARMMEAN 20 cm out on
+  average, so not the quiver's leather; ARMSKIN = that colour match, his arms are paler than his face; islands under ARMISLE go),
+  and without `--neckline` the body's upper arm + shoulder skin is shown whole, hidden only within SHNEAR 1.2 cm of cloth (the arm
+  bands): the hidden skin under the cape's edge had bitten a jagged hole into the arm. The dress rules of round 2/3 (straps, arm
+  openings, BARING) now need `--barearms --neckline` together. THE EARS UNDER A HOOD: under a real hood the head from HOODEAR 7 cm
+  out to each side, behind the face, is hidden. CATGIRL, now `SKINISLE=200 ... --neckline`: A FLOATING PIECE OF SKIN (a patch of
+  shown skin under SKINISLE vertices cut off by hidden skin is hidden; the skin between her legs is on the hips, not a leg).
+  The seven other units rebaked: no file changed.
+  Open: a few skin flecks on robinhood's hood front, a skin chip by the catgirl's left boot, light patches on her sleeves (the lacing in
+  Meshy's texture), the knight's and zombie's walk hunches (the race's own walk clip), no sway, stock faces until the face step.
+
+- **BATCH 1, HIS REVIEW (11-13, twelve pinned notes on the contact sheet; flags per unit = /mnt/project-files/meshy-remake-b1/scripts/rebake.sh)**. New bake-outfit.py envs, all off by default:
+- **BATCH 1, REVIEW ROUND 2 (11-13, five more pinned notes)**. `SNUG=1` (THE SNUG WAIST: trouser shells, the ones that reach below the knee, are drawn in toward the skin between the knees and SNUGTOP 0.22 over the hip joints, gap x SNUGK 0.3, fading to the knees; between the legs only front to back, else the seat's seam opens; jackets / coats / belts untouched) on gangster, conspiracy, general, clown. `HATMIRROR=1/-1` (the hat's +x / -x half copied across: the demon princess had a stray shard beside her left horn, -1). Bunny girl = creator clothes only now (his: "it needs to be a tight tucked in top", "ankles/legs messed up/not in boot"): One piece bikini01 under Female short jeans + Biker boots female, all tinted #141416, T2 ears kept; her T2 outfit file stays in the catalog, unworn. Sheet batch1_review_round2.jpg.
+- **BATCH 1, REVIEW ROUND 3 (11-13, demon princess: "her butt and back is sticking out the back of the dress", "her arms are not in the sleeves")**. The back was BODY SKIN standing through the dress (not a hole in the cloth): `RAY_IN=0.12` hides it. `NOARMS=1` (NOARMW 0.6): every cloth face that rides the arms + hands goes and the arms' skin shows; Meshy's long gloves were torn strips hanging beside her arms. The look wears creator Gloves long tinted #141416 in their place. Left: a few pale flecks at the bodice's left edge, bare skin at her side under the arm.
+  `NOHANDS=1` (+ `NOHANDW`): THE BIG ONE. A unit whose T2 hands were more than 35 % "under cloth" had the BODY'S hands hidden and wore Meshy's fused fingers ("fingers look messed up"; the whole point of the remake is the MPFB fingers). With it the outfit's faces that ride the hand + finger bones go and the body's hands always show. On: annunaki, conspiracy, cowgirl, fallen angel, fortune teller F, gangster, general (NOHANDW 0.3: cuff shards), ghost F. NOT the giant (his painted tattooed arms end in pale body hands) or a unit in gloves.
+  `WINGKEEP=1`: a wing shell's faces round the neck stay (the annunaki's gold collar was one shell with his wings and went with `--nowings`). `NOHELD=1`: every face out at the hands goes (his rule: no weapons in an outfit; the cowgirl's hand revolvers turned out to be the game's own held weapons). `LOCKREM=0`: the face's own shell is never a hair lock (demon princess: her bodice). `SHELLS=1` prints every shell as the sorter sees it. + a shell wholly above the brow or with its middle above the eyes, out to 0.3 m, is headgear (the bunny girl's second ear went as 'long hair'; a demon's curled T2 horn stayed in her outfit beside the creator horns).
+  Bare skin Meshy modelled (thigh patches, a leg in a slit, shoulders): `ARMX=0 ARMZ=2 ARMMEAN=0 --barearms` cuts every skin-coloured face anywhere (bunny girl, fallen angel, demon princess); T2 hair fused to a dress: `--longhair` (+ `--neckline SKIN_T=0.32` on the fallen angel; `--neckline` tore the demon princess' gloves, not used).
+  Looks: annunaki without the creator collar; astronaut `ewm_t2astronaut_hat` = the creator Astronaut helmet grown x1.32 about a point high in it (astro_helmet.py in the scripts folder; the creator one ends at the nose on an MPFB head; a `--headgear` rebake of the astronaut overwrites it); barbarella without the thigh holster (a gun); bunny girl + black short jeans; chef bald under the hat, general mh_short04 (HAIR UNDER THE HAT pulls fuller styles in and bares the scalp); giant mh_short04 + Viking beard; gangster red do-rag + gold cross on THE CHAIN (three-renderer.js WEAR_CORD.chain: a pendant that wears a wearTint hangs from a metal chain in that colour, 2.2 x the cord). Left + told him: demon princess bare patch low on her back + tatters at the shoulders; the giant keeps Meshy hands.
+- **BATCH 1 OF 3 (11-13, mondo: "new models for all of the units ... see what is available from the clothes in the character creator ... meshy for parts and pieces we don't have"; split in meshy-remake-batches.md)**: 19 remade looks (annunaki .. giant; status + per-unit flags in meshy-remake-plan.md section 8). CREATOR FIRST: headgear, props and wings are creator pieces wherever one exists (Anunnaki headdress, Egyptian collar, Astronaut helmet + backpack, Firefighter helmet + air tank, Officer cap, cowboy hat, headset, Feathered / Fairy moth wings); chef and barbarella wear creator clothes only (their T2 clothes were worse); the demon keeps his saved look's body + horns + ears. Sources: /mnt/project-files/meshy-remake-b1/ (T2 GLBs, eyes.txt, units.json, the scripts).
+  New in bake-outfit.py, all OFF unless asked (the earlier units' bakes are unchanged): `EYE=x,y,z EYEW=` = THE EYES GIVEN (the middle between the eyes in the T2 file's own coordinates; the figure is moved onto the middle line; tiny shells at the eyes go). Found by `bake-t2-eyes.py` (repo root) (a face landmarker on a front drawing of the T2 head). Why: Meshy's eyeball shells are missing on about a third of runs and earrings / buttons pass for them (atlantean scaled to her earrings, bunny girl half size). NO EYEBALL SHELLS and no EYE: the eyes are placed from the crown (EYEHAT / EYEK / EYEIN). A crash on the emptied face shell fixed.
+  Lessons: white clothes need the DARK background render (astronaut, barbarella, bunny girl, chef); `--longhair` on black hair over a black dress takes the bodice (demon princess: `LOCKS=0`); a shirtless unit = `SKIN_T=0.45 ARMX=0 --barearms` (gangster); look.js: the first unit of a run is still loading at 30 s, put a warm-up unit first, and one browser at a time (two timed out the screenshots).
+  THE SHOULDER SKIN on wide jackets (clown, general, conspiracy theorist, cowgirl's bust): the outfit GLB alone was whole, the body's skin came through when the arms came down; `RAY_OUT=0.15` and `TORN=1` did not cure it, batch 3's jacket envs did (`RAY_IN=0.12 RAY_OUT=0.12 TORN=9`: the skin stood more than 5 cm OUTSIDE the cloth). Held back: antihero, atlantean, fortune teller (M) (the old head / body stays inside the clothes). Left on the shipped ones: bunny girl thigh patches + strap ends, demon princess shoulder patches + hair shards, fallen angel pale patch in the slit.
 ## THE MESHY PIECES (2026-11-03, character-models-plan.md row 16)
 mondo: "now how do we put these models both in the character creator and in the game for spells". This is the creator half.
 - `bake-meshy.py` (repo root, imports bake-clothes.py): `python3 -I bake-meshy.py --mpfb /tmp/mpfb2 [--only key1,key2] [--views dir]`
@@ -1543,6 +1682,29 @@ mondo: "now how do we put these models both in the character creator and in the 
 - §10 sorts all 184 procedural catalogue stand-ins: 92 need a new model (concept prompts + doubled tri targets, also in project files
   meshy/decor/decor_prompts.json), 32 swap to a model already in the game, 60 are not a model job; + 4 missing spell props + the
   old wishlists' items with no stand-in. Gotcha: iterating DOOR_HQ's keys in the sandbox hangs (lazy getters) — read named tables only.
+
+## THE LOSSLESS PASS (2026-11-14, mondo: "make optimized versions of all of the glbs or models that dont have an optimized version yet ... help the character creator and disaster city load faster")
+- The gap: 2,322 GLBs on R2 had no `.opt.glb` (bucket listed through the API, compared to ASSET_MANIFEST files + alt). 1,922 of them are
+  ones the game names (basename in a game script, or any creator wear / hair / mpfb file); the other 400 (3.1 GB) are per-character
+  Meshy animation exports nothing loads and were left alone. The interior-pass Meshy props were already meshopt + WebP in place (skipped).
+- **`optimize-assets.js --lossless`** (new): NO gltf-transform round trip. The creator's files are data, not plain scenes: wear has
+  3- and 6-byte custom attributes (`_N` i8, `_D_<body>` i16) the code reads by `.array` (gltf-transform pads them to 4 → interleaved
+  attribute → wrong normals/offsets), mpfb_classic_bust / mpfb_shapes keep shapes as vertex RANGES (reorder would scramble them).
+  So the repack keeps every bufferView in place: meshopt ATTRIBUTES (filter NONE) on views whose stride is a multiple of 4, INDICES
+  (sequence codec, not TRIANGLES: no rotation) on u16/u32 index views, anything else raw; PNG → WebP lossless (`exact`), kept only if
+  every pixel decodes back the same; JPEG untouched; already-compressed files skipped. `losslessVerify` decodes every view with
+  meshoptimizer's decoder and compares bytes + pixels + the JSON; nothing that fails it is written. No KTX2 flag, so `_asResolve`
+  also hands these to the creator (wear + hair call `_ktxNoCompress`, which only refuses KTX2 copies).
+- Run: `--lossless --check --flat <mirror>/Assets/opt --root <mirror>`, 4 shards: 1,513 copies, 0 failed, 786 MB → 577 MB
+  (wear ×1.25, hair ×1.44, mpfb ×1.51, PSX Mega Pack ×1.50, elbolilloduro ×1.35). The rest were kept (under 5 % gain: mostly JPEG
+  texture files like hq/models, top_fangs). eagle.glb is a zip, not a GLB (eagle_rigged.glb is the one used).
+- R2 `Assets/opt/<sha8>_<name>.opt.glb`; ASSET_MANIFEST.json rows for each copy + its original (+710 originals) + `alt`. Token
+  `20261114-optall02-cors`.
+- Proof: a bare three r128 page drew 9 originals vs copies (hair, mpfb body, wear helmet + beard, PSX box + armchair, 6twelve store,
+  Meshy apple, retro tree): 0 pixels differ (`/mnt/project-files/optimize-models/original_vs_optimized.png`). Gotcha seen there: GLTFLoader's
+  mesh order changes from one load to the next (async), so two see-through meshes at the same spot (hair + scalp) can swap draw order
+  between ANY two loads, original or not; the creator rebuilds hair in traverse order with its own renderOrder, so it does not care.
+- Next time: rerun the gap script (list the bucket, compare to manifest alt + `.opt.glb` siblings), then the same command on the new files.
 
 ## THE MESHY DECOR (2026-11-03, mondo: "put the 71 new meshy models in the game")
 The 71 decor + spell-prop models Claude made on Meshy (concepts approved by mondo; IDs D02-D92 / S01-S04 in project files
@@ -1735,6 +1897,64 @@ back to what they were".
   (elbows out, reads as hands on hips), Old (hunched), Strutting (arms flail), Stiff + ArmsBySide (same as Neutral).
   Review sheets: /mnt/project-files/mocap-rev2/s100_*.png.
 
+## THE MESHY ANIMATION PULL (2026-11-11) — libs 7 + 8 (MAL4_Sniper.glb, MAL5_Sniper.glb)
+mondo: "With Meshy animations, I was only able to download 20 at a time with the Sniper ... are you able to go on there and download more
+animations that would be useful and give different units more personality with their walks and idles and spells and attacks".
+- YES, through the Meshy API (api.meshy.ai is a connected service in the cloud environment: the Network secret adds the key, send any
+  dummy Bearer). `GET /openapi/v1/animations/library` = 678 clips (action_id, key, category; free). ONE rigging task on the male sniper
+  (`POST /rigging {model_url: his Idle_5 _withSkin GLB on the CDN}`, 5 credits, task 01a1c9cb-7b9c-7114-9415-a804d3fe308e, expires on
+  Meshy's side after a while: the tool rigs again), then `POST /animations {rig_task_id, action_ids: [up to 10]}` = one GLB per batch,
+  one clip per action already named by the library key, 3 credits a clip. This pull: 130 clips, 395 credits (15,781 -> 15,386).
+- TOOLS (repo root): `python3 pull-meshy-anims.py meshy-anim-pull.json <out dir> [set...]` (`--library` prints Meshy's list; the spec
+  holds the sets of action_ids), then `python3 -I build-mal.py <out.glb> <batch.glb...> [--inplace clips] [--drop clips] [--report j]`
+  packs them animation-only like MAL1-3 (26 nodes, no mesh; scale tracks and the constant bone-offset tracks dropped: 53 clips = 2.8 MB).
+- THE TRAVEL: about half of Meshy's walks and every sprint carry root motion (hips end 0.5-2.9 m away). `--inplace` takes the
+  straight-line travel out of the Hips track (Elderly_Shaky_Walk, Limping_Walk, Sneaky_Walk, Stylish_Walk, walking_2,
+  Cautious_Crouch_Walk_Forward, Stumble_Walk, Funky_Walk, the 6 sprints). The combat clips in MAL5 keep their travel (use pinXZ / pinHips
+  on the slot). Dropped from MAL4: Catching_Breath (runs 4.4 m then stops), Stage_Walk (4 m, uneven), Idle_13 (= mage_soell_cast_5).
+- THE STRIDE: build-mal.py measures one stride cycle by forward kinematics (left foot minus right foot along +Z from the hips, upward
+  zero crossings); a walk's board `ts` = cycle / 0.52, capped at 3.6 (Sneaky, Slow orc, Elderly are slow walks). Limping_Walk's leg
+  tracks are too flat for the measure: 1.75 s read off the frame sheet.
+- THE REST POSE (same day, mondo: "Their knees look bent backwards in a lot of these"): MEASURED in the creator (hip-knee-ankle on the
+  MPFB body, signed): the old picks never pass straight, the new ones bent up to 38 deg the wrong way. CAUSE: the retarget plays a clip as
+  each bone's turn away from the LIBRARY FILE'S REST POSE (_libEnsureSrc reads the file's nodes), and the API rigged the new skeleton on the
+  sniper as he stands in his Idle_5 export (knees 51 deg, hips 8 cm low, its own bone axes), so every clip lost that much knee bend.
+  FIX in build-mal.py `--rest <calib batch.glb> <MAL1_Sniper.glb> Idle_5,Regular_Jump` (ALWAYS pass it): the same Meshy actions exist in
+  MAL1 and were pulled once on the new rig (spec set `calib` = 245 Idle_5, 1 Walking_Woman, 466 Regular_Jump, 9 credits); per bone
+  rest_new = rest_old x inverse(world_old(t)) x world_new(t), constant under 1 deg over Idle_5, averaged with Regular_Jump, written into
+  the nodes (the clips' tracks untouched). A first try (turn each bone to MAL1's rest DIRECTIONS) left 9 deg: the two rigs put the knee
+  joint in different places, so directions are not comparable. After: all 16 idles + 19 walks measured, none passes straight
+  (/mnt/project-files/meshy-anim-pull-20261111/proof/knees_before_after.jpg). ANY new rigging task needs its own calib pull.
+- MAL4 (lib 7, 53): Idle, Idle_02, Idle_03, Idle_3, Idle_4, Idle_6, Idle_7, Idle_8, Idle_9, Idle_12, Idle_14, Idle_15, Alert, Combat_Stance,
+  Axe_Stance, Long_/Short_/Axe_Breathe_and_Look_Around, Confused_Scratch, Scheming_Hand_Rub, Hand_on_Hip_Gesture, Boxing_Warmup;
+  Casual_Walk, Confident_Walk, Confident_Strut, Flirty_Strut, Injured_Walk, Monster_Walk, Mummy_Stagger, Proud_Strut, Quick_Walk,
+  Red_Carpet_Walk, Slow_Orc_Walk, Thoughtful_Walk, Unsteady_Walk, Elderly_Shaky_Walk, Limping_Walk, Sneaky_Walk, Stylish_Walk, walking_2,
+  Walk_Fight_Forward, Cautious_Crouch_Walk_Forward, Spear_Walk, Stumble_Walk, Funky_Walk; Run_02, Run_03, Lean_Forward_Sprint,
+  Standard_Forward_Charge, Male_/Female_Head_Down_Charge, run_fast_2, run_fast_3.
+- MAL5 (lib 8, 74): casts Charged_Spell_Cast_1, mage_soell_cast_5, mage_soell_cast_8, Skill_02, Crouch_Charge_and_Throw,
+  Jump_and_Slam_Back_Down; attacks Attack, Double_Blade_Spin, Double_Combo_Attack, Left_Slash, Simple_Kick, Side_Shot, Triple_Combo_Attack,
+  Counterstrike, Dodge_and_Counter, Flying_Fist_Kick, Reaping_Swing, Left_Jab_/Left_Hook_/Right_Uppercut_from_Guard, Lunge_Roundhouse_Kick,
+  Elbow_Strike, Leg_Sweep, High_Kick, Lunge_Spin_Kick, Punch_Forward_with_Both_Fists, Charged_Axe_Chop, Axe_Spin_Attack, Weapon_Combo,
+  Weapon_Combo_2, Archery_Shot, Draw_and_Shoot_from_Back, Draw_and_Shoot_Left, Crouch_Pull_and_Throw, Over_Shoulder_Throw,
+  Grip_and_Throw_Down, baseball_pitching, Double_kick_forward; hits + deaths Hit_Reaction, Electrocution_Reaction, Hit_Reaction_to_Waist,
+  Face_Punch_Reaction_1/_2, Knock_Down, dying_backwards, Shot_and_Fall_Backward/_Forward, Electrocuted_Fall,
+  Fall_Dead_from_Abdominal_Injury, Shot_and_Blown_Back, Strangled_and_Fall_Forward; guards Block1, Block2, Block4, Sword_Parry,
+  Two_Handed_Parry, Stand_Dodge_1, Roll_Dodge, Quick_Step_and_Spin_Dodge; emotes Chest_Pound_Taunt, Victory_Cheer, Victory_Fist_Pump,
+  victory, Neck_Slashing_Gesture, Show_Both_Arm_Muscles, Formal_Bow, Gentlemans_Bow, Shrug, Finger_Wag_No, Angry_Stomp, Shouting_Angrily,
+  Zombie_Scream, Wave_One_Hand, Agree_Gesture.
+- WIRED (sprites.js): EW_ANIM_LIB_URLS 7 + 8; CREATOR PICKS ONLY (his 11-05 rule: no race default changes): 16 idles in EW_IDLE_POSES
+  (ids MAL_<clip>: Meshy calm / still / arms out / idle 7 / 9 / 12, Breathe long / short, Hunched breathing, Look around, Alert, Fight
+  ready, Combat stance, Head scratch, Hand on hip, Hand rub) and 19 walks in EW_WALK_STYLES (Casual, Meshy walk 2, Quick, Proud strut,
+  Confident strut, Stylish, Flirty strut, Thoughtful, Marching, Fighting advance, Crouched, Sneaky, Monster, Slow orc, Mummy, Unsteady,
+  Injured, Limping, Elderly). Not offered as picks (still in the file): the idles that turn round / bend back / jump / crouch-rise, the
+  walks with a hand gesture (Confident_Walk, Red_Carpet_Walk), Stumble_Walk, Funky_Walk, the runs.
+- NOT DONE: no MAL5 clip is on a slot. They show in the spell editor's clip picker (EWCharViewer.libClips) and can go on a character with
+  `lib: {slot: {clip, lib: 8, ts, strikeAt}}`; each needs its strike frame read off a sheet first (THE STRIKE FRAME). The library files
+  load with the others at start (2.8 + 3.7 MB before the edge's brotli, once, then the asset store keeps them).
+- PROOF: frame sheets of every clip on the sniper /mnt/project-files/meshy-anim-pull-20261111/sheets/; the real creator (WebGL2,
+  software GL) with picks made by clicking the rows /mnt/project-files/meshy-anim-pull-20261111/proof/. Board play of a picked walk was
+  not looked at.
+
 ## THE CHRISTMAS PACK IS Y-UP (2026-11-05)
 mondo's console showed `THREE.ColladaLoader: You are loading an asset with a Z-UP coordinate system ... see #24289` (and the parser's
 `File version 1.4.1` debug line) on every load. The only COLLADA file in the game is the Christmas pack
@@ -1768,3 +1988,33 @@ fake-light cards + the loose textures folder + the licence PDF are pack source i
 Ten Meshy props swapped to it the same day (MODEL_LIST §12b table; catalogue `base: 'psxmp'`, _MISC_GLB `psxmp/...` via the
 sprites.js EW_ASSET_MOVES alias `Assets/misc/psxmp/`; facings measured from vertices, never renders). MODEL_LIST §12b = the inventory, the licence rules (no AI use of any kind, no standalone
 redistribution, never in the repo) and the Meshy / code swap candidates by name. Credited in data.js EW_CREDITS.
+
+## THE PROCEDURAL RIGS IN THE TEAM ROOM (2026-11-12)
+- mondo on Select Your Team: "the occulus eyeball doesnt show up on this screen, only the wings". The team room (`_trBuildMember`)
+  never read `entry.procClips`: a boneless assembly (Occulus, Seraphim, UFO forms, chess pieces, unicorn) got no core eye
+  (`_procRigAttachEye`) and no mixer, so it stood as its bare file, still. Now like the dock and the viewer: the eye goes on after
+  the room's look, the assembly's own `idle` clip plays, its clips feed the room's poses, and `_procRigEyeTrack(eye, T.camera)`
+  (new optional camera argument) turns the eye to the room's camera. The board is untouched.
+- Proof: /mnt/project-files/oculus-team-room/oculus_eye_on_team_select.jpg (headless, WebGL2).
+
+  AGENT LOCKE (11-12, mondo: "Ship, and remake Locke to blink"): the first CAST member on a creator body. Old rig rendered front,
+  Meshy T2 a-pose (task 01a1d095), `ISLENECK=0.2 OPENSKIN=1 OPENX=0.045 OPENX2=0.045 OPENZ=0.3 SKINISLE=400 python3 -I bake-outfit.py
+  --name locke --label "Agent Locke" --gender female --src locke_t2.glb --bodies charactercreation/mpfb` (delete the bogus `_hat`).
+  New knobs: OPENSKIN (the open-collar skin rule without the rest of --neckline: --neckline cut her blouse collar away) and
+  ISLENECK (SKINISLE never hides an island near the neck: under a blouse collar the neck is cut off from the head's skin and went
+  black; off by default so the catgirl's file is byte-identical). Her body stood through the suit at the bust, shoulders, crotch
+  and calves until SKINISLE hid those islands. Hair shells are not exported: creator `mh_elvs_short_side_do` tinted #e6e6ea.
+  Face: bake-face.py from the OLD rig (`lockeFace`, `ew_face_locke`, stock=middleage_caucasian_female, hairrgb=225,225,228).
+  Wiring: sprites.js CAST_CREATOR_LOOKS + getCastLookModel; getCastModel (DOOR HQ, portrait studio) and getRace3DModel's cast
+  branch (the board, with the Door Agent's gun) return the creator def with its `raceLook`; three-renderer.js _ptSpec passes that
+  look. `window.EW_DISABLE_CAST_LOOKS = true` = her old rig. Seen: viewer four sides + walk + head, a portrait-studio bust. NOT
+  seen: her in DOOR HQ or in the first fight. Left: small dark teeth in the blouse collar's V, mouth reads a little pursed, the
+  fringe sweeps to the other side from her old model. Proof: /mnt/project-files/meshy-remake-batch1/locke_look_check.jpg.
+  LOCKE'S COLLAR (11-12, mondo: "fix the dark teeth in the v of the blouse collar"): her command is now `ISLENECK=0.2 OPENFRONT=1
+  SKINISLE=400` (OPENSKIN dropped). OPENFRONT (off by default): skin on the front of the chest with no cloth straight in front
+  of it and none within 8 cm behind it (not her bust standing through the blouse) is shown + one ring under the collar's edge,
+  and the collar's cloth (z above eye - 0.27, |x| < 0.07) is lifted 6 mm outside the skin so that ring does not stand through.
+  Tried and dropped: the ring without the lift (skin patch on the blouse), the lift down to the bust (blouse through the jacket).
+  File 921dfad8. Proof: /mnt/project-files/meshy-remake-batch1/locke_collar_before_after.jpg.
+
+- **THE MESHY OUTFITS, BATCH 3 OF 3 (11-13, mondo: "make new models for all of the units ... a combination of stuff we already have and new stuff with meshy")**: politician .. wizard F, 23 models; list + status `meshy-remake-batches.md`, rows `meshy-remake-plan.md` section 8. New bake-outfit.py envs, all off by default: `EYEAT` (eyes by hand, no eyeball shells behind goggles), `SLEEVESEED` / `SLEEVER` (fur sleeves; a cape fused to a sleeve). Found: a suit jacket narrower than the MPFB shoulders lets the skin through (`RAY_IN=0.12 RAY_OUT=0.12 TORN=9`); a dark coat / gown that holds the face is dropped whole as a hair lock (`LOCKS=0`); gown + bare arms + chest in one shell cannot be cut (telepath F: creator gown instead); T2 runs vary enough that a second run fixed vampire + valkraye.

@@ -143,6 +143,11 @@ async function waitFor(page, fn, ms, every = 400) {
         i.value = c;
         window.lobbyJoinRoom && window.lobbyJoinRoom();
       }, code);
+      /* THE ROOM (2026-11-11): the match waits for both READY lamps (server countdown 3 s) */
+      await waitFor(guest, () => !!(window._NET && window._NET.role === 'guest' && document.getElementById('lrReadyBtn')), 15000);
+      await sleep(600);
+      await host.evaluate(() => window.lobbyToggleReady && window.lobbyToggleReady());
+      await guest.evaluate(() => window.lobbyToggleReady && window.lobbyToggleReady());
     }
   }
 

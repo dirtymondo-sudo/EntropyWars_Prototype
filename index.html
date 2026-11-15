@@ -48,7 +48,7 @@
        changed follows the next bake (ew_shipped_keys records them, null = taken out on purpose, which stays out); a value
        the player set stays theirs. hud.js THE SHIPPED SETUP does the same for the UI Maker store. ES5 on purpose. */
     (function () {
-        var SHIP = /* SHIPPED-KEYS:BEGIN */{"ew_audioVolumes":"{\"music\":0.68,\"sfx\":0.27,\"ambience\":0.8}","ew_bloomStrength_v2":"0.05","ew_bloomStrength_v3":"0","ew_bloomStrength_v4":"0","ew_cinematic":"{\"crt\":true,\"vignette\":true,\"scanline\":0.015,\"chroma\":0.30000000000000004,\"curvature\":0.025,\"vigAmount\":0.1,\"vigSize\":0.225,\"vigSoft\":0.55}","ew_cinematicActionCam":"0","ew_dofStrength":"0.15","ew_exposure":"1","ew_exposure_hq":"1.25","ew_filmicTone":"1","ew_fogGrid":"0","ew_hud_theme":"c_mvc8nxl9fo9g","ew_impactFx":"1","ew_lightRays":"0.1","ew_nightMood":"0.1","ew_plateStyle":"bars","ew_polish":"{\"ssaoStrength\":0,\"atmos\":1.6,\"motionBlur\":0.15,\"ssaoMode\":1,\"quarksFx\":1,\"keyLight\":0.55}","ew_retro":"{\"enabled\":true,\"preset\":\"green\",\"pixelSize\":2,\"pixelScope\":\"models\",\"ditherStrength\":0,\"ditherScale\":1,\"grain\":0.006,\"levels\":48,\"tintAmount\":0.1,\"fogEnabled\":true,\"fogDensity\":0.00008,\"fogHorizon\":0.05}","ew_ringVitals":"0","ew_scene_looks":"off","ew_unitLight":"{\"on\":true,\"strength\":1,\"color\":\"#a8c4ff\",\"fill\":1.05}"}/* SHIPPED-KEYS:END */;
+        var SHIP = /* SHIPPED-KEYS:BEGIN */{"ew_audioVolumes":"{\"music\":0.68,\"sfx\":0.27,\"ambience\":0.8}","ew_bloomStrength_v2":"0.05","ew_bloomStrength_v3":"0","ew_bloomStrength_v4":"0","ew_cinematic":"{\"crt\":true,\"vignette\":true,\"scanline\":0.015,\"chroma\":0.30000000000000004,\"curvature\":0.025,\"vigAmount\":0.1,\"vigSize\":0.225,\"vigSoft\":0.55}","ew_cinematicActionCam":"0","ew_dofStrength":"0.15","ew_exposure":"1","ew_exposure_hq":"1.25","ew_filmicTone":"1","ew_fogGrid":"0","ew_hud_theme":"c_mw5p8wvy2q54","ew_impactFx":"1","ew_lightRays":"0.1","ew_nightMood":"0.1","ew_plateStyle":"bars","ew_polish":"{\"ssaoStrength\":0,\"atmos\":1.6,\"motionBlur\":0.15,\"ssaoMode\":1,\"quarksFx\":1,\"keyLight\":0.55}","ew_retro":"{\"enabled\":true,\"preset\":\"green\",\"pixelSize\":1,\"pixelScope\":\"models\",\"ditherStrength\":0,\"ditherScale\":1,\"grain\":0.006,\"levels\":48,\"tintAmount\":0.1,\"fogEnabled\":true,\"fogDensity\":0.00008,\"fogHorizon\":0.05}","ew_ringVitals":"0","ew_scene_looks":"off","ew_unitLight":"{\"on\":true,\"strength\":1,\"color\":\"#a8c4ff\",\"fill\":1.05}"}/* SHIPPED-KEYS:END */;
         try {
             var LS = window.localStorage, REC = 'ew_shipped_keys', rec = {}, out = {}, k, cur, has = Object.prototype.hasOwnProperty;
             try { rec = JSON.parse(LS.getItem(REC) || '{}') || {}; } catch (e) { rec = {}; }
@@ -146,7 +146,7 @@
             } catch (e) { out.push('gpu probe failed: ' + e.message); }
             /* WEBGPU_PLAN W0: the mode asked for, what the board renderer really runs on, and the WebGPU adapter */
             try {
-                out.push('webgpu: navigator.gpu ' + (navigator.gpu ? 'present' : 'missing') + '  mode asked: ' + (window.EW_GPU_MODE || 'webgl') +
+                out.push('webgpu: navigator.gpu ' + (navigator.gpu ? 'present' : 'missing') + '  pick: ' + (window.EW_GPU_PICK || 'auto') + '  mode: ' + (window.EW_GPU_MODE || 'webgl') + '  (' + (window.EW_GPU_WHY || '') + ')' +
                     '  node lib: ' + (window.THREE_GPU ? 'loaded' : 'not loaded'));
                 if (window.EW_GPU_ADAPTER) out.push('webgpu adapter: ' + window.EW_GPU_ADAPTER);
                 var st = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.gpuStatus) ? ThreeRenderer.gpuStatus() : null;   // a top-level const: no window.ThreeRenderer
@@ -165,9 +165,42 @@
             var KEY = 'ew_freeze_trail', prev = null;
             try { prev = localStorage.getItem(KEY); } catch (e) {}
             diag.prevTrail = prev;
+            /* THE CRASH TRAIL (2026-11-15, mondo: "Crashed inside the door main hall/lobby", Firefox WebGPU, a console with no
+               error in it). The trail was only readable through ?ewdiag=1 and only for ONE reload: the next load wrote over
+               it. Now a session says how it ended (`clean` is set on pagehide; a tab that crashed or hung never sets it;
+               `frozen` = the picture stopped for 5 s+ while the page still ran), where it was (the building's room, the
+               model memory, the renderer line), and the building's own [HQ] lines sit in its log. A session that did not
+               end cleanly is (a) printed at the top of the NEXT load's console as one [CRASH TRAIL] block, so a console
+               paste carries it, and (b) kept in `ew_freeze_trail_hist` (the last 3), listed by ?ewdiag=1. */
+            var HKEY = 'ew_freeze_trail_hist', hist = [];
+            try { hist = JSON.parse(localStorage.getItem(HKEY) || '[]') || []; } catch (e) { hist = []; }
+            diag.trailHist = hist;
+            diag.trailLines = function (P) {
+                var L = ['started ' + P.started + ', last alive ' + P.saved + ' (' + P.up + ' in), build ' + P.build,
+                    'ended: ' + (P.clean ? 'closed or reloaded normally' : 'NOT cleanly (crash, hang or killed tab)') + (P.frozen ? ' · the picture had stopped for ' + P.frozen + ' ms while the page still ran' : ''),
+                    'where: ' + (P.where || '?'),
+                    'state: ' + (P.game || '-') + ' · frames ' + P.frames + ' · last frame ' + P.lastFrameAgo + ' before the last save'], i;
+                var st = P.stalls || [], inp = P.inputs || [], lg = P.logs || [];
+                for (i = 0; i < Math.min(3, st.length); i++) L.push('stall ' + st[i].ms + ' ms at ' + st[i].at + ' | ' + st[i].last);
+                for (i = Math.max(0, inp.length - 12); i < inp.length; i++) L.push('input ' + inp[i]);
+                for (i = Math.max(0, lg.length - 16); i < lg.length; i++) L.push('log ' + lg[i]);
+                return L;
+            };
+            try {
+                var P0 = prev ? JSON.parse(prev) : null;
+                /* ALWAYS printed (mondo 11-15: his hall crash left the page alive, so the reload was a clean pagehide and the
+                   block never showed): the last session's trail is the first console line of every load; every session is kept
+                   (the last 4), so one extra reload no longer loses the crash */
+                if (P0) {
+                    hist.push(P0); while (hist.length > 4) hist.shift();
+                    try { localStorage.setItem(HKEY, JSON.stringify(hist)); } catch (e) {}
+                    var bad = !P0.clean || P0.frozen;
+                    console.warn('[CRASH TRAIL] the session before this one' + (bad ? ' did NOT end cleanly' : ' (the page was still alive when it was closed or reloaded)') + '. Paste this block to Claude:\n  ' + diag.trailLines(P0).join('\n  '));
+                }
+            } catch (e) {}
             try { if (localStorage.getItem('ew_no_freeze_trail') === '1') return; } catch (e) { return; }
             var T = { started: new Date().toISOString(), build: '', inputs: [], logs: [], stalls: [] };
-            var t0 = Date.now(), lastFrame = 0, frames = 0;
+            var t0 = Date.now(), lastFrame = 0, frames = 0, saves = 0;
             function stamp() { return ((Date.now() - t0) / 1000).toFixed(1) + 's'; }
             function push(arr, v, cap) { arr.push(v); if (arr.length > cap) arr.shift(); }
             function label(el) {
@@ -197,6 +230,33 @@
             window.addEventListener('keydown', function (e) {
                 try { if (!e.repeat) push(T.inputs, stamp() + ' key ' + e.key + ' | ' + game(), 40); } catch (x) {}
             }, true);
+            function where() {
+                try {
+                    var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, s = '';
+                    if (!TR) return 'the renderer is not up';
+                    if (TR.hq) {
+                        var rm = TR.hq.room ? TR.hq.room() : null;
+                        s += rm ? 'DOOR HQ room ' + rm : 'not in the building';
+                        var m = TR.hq.mem ? TR.hq.mem() : null;
+                        if (m && m.misc && m.rigs) s += ' · models ' + Math.round(m.misc.mb + m.rigs.mb) + '/' + m.budget + ' MB (' + (m.misc.n + m.rigs.n) + ' files)';
+                    }
+                    if (TR.gpuStatus) s += ' · ' + String(TR.gpuStatus()).slice(0, 200);
+                    return s;
+                } catch (e) { return 'unreadable (' + (e && e.message) + ')'; }
+            }
+            /* the building's own lines are NOT wrapped (a console.log wrapper made every line in the console point at this page
+               instead of its own file, mondo's paste 11-15): the room comes from where(), read on every third save, and a room
+               change is noted in the log here */
+            var lastRoom = null;
+            function roomNote() {
+                try {
+                    var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, rm = (TR && TR.hq && TR.hq.room) ? TR.hq.room() : null;
+                    if (rm !== lastRoom) { lastRoom = rm; push(T.logs, stamp() + ' room ' + (rm || 'left the building'), 30); }
+                } catch (x) {}
+            }
+            function save() { try { T.saved = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(T)); } catch (e) {} }
+            window.addEventListener('pagehide', function () { T.clean = true; save(); });
+            window.addEventListener('pageshow', function (e) { if (e && e.persisted) { T.clean = false; save(); } });
             ['warn', 'error'].forEach(function (k) {
                 var o = console[k];
                 console[k] = function () {
@@ -205,7 +265,7 @@
                         s = k + ' ' + s.slice(0, 240);
                         var L = T.logs[T.logs.length - 1];
                         if (L && L.slice(L.indexOf(' ') + 1) === s) return o.apply(console, arguments);   // (a repeat of the line before)
-                        push(T.logs, stamp() + ' ' + s, 20);
+                        push(T.logs, stamp() + ' ' + s, 30);
                     } catch (x) {}
                     return o.apply(console, arguments);
                 };
@@ -228,7 +288,11 @@
                 try {
                     T.build = window._EW_BUILD_TOKEN || '';
                     T.saved = new Date().toISOString(); T.up = stamp(); T.frames = frames; T.game = game();
-                    T.lastFrameAgo = lastFrame ? Math.round(performance.now() - lastFrame) + 'ms' : '?';
+                    var ago = lastFrame ? Math.round(performance.now() - lastFrame) : 0;
+                    T.lastFrameAgo = lastFrame ? ago + 'ms' : '?';
+                    if (!document.hidden && ago > 5000) T.frozen = Math.max(T.frozen || 0, ago);
+                    roomNote();
+                    if (!(saves++ % 3)) T.where = where();
                     localStorage.setItem(KEY, JSON.stringify(T));
                 } catch (e) {}
             }, 1000);
@@ -255,11 +319,16 @@
                 else {
                     lines.push('PREVIOUS SESSION (started ' + P.started + ', last saved ' + P.saved + ' after ' + P.up + ', build ' + P.build + '):');
                     lines.push('  state at the last save: ' + (P.game || '?') + '  frames ' + P.frames + '  last frame ' + P.lastFrameAgo + ' before it');
+                    lines.push('  ended: ' + (P.clean ? 'cleanly' : 'NOT cleanly') + (P.frozen ? ' · picture stopped ' + P.frozen + ' ms' : '') + '  where: ' + (P.where || '?'));
                     section('  LONGEST STALLS (ms, when, state, last input)', (P.stalls || []).map(function (s) { return s.ms + ' at ' + s.at + ' | ' + s.game + ' | ' + s.last; }));
                     section('  LAST INPUTS', P.inputs || []);
                     section('  LAST WARNINGS / ERRORS', P.logs || []);
                 }
             } catch (e) { lines.push('PREVIOUS SESSION: unreadable (' + e.message + ')'); }
+            try {
+                var HH = diag.trailHist || [];
+                for (var hi = HH.length - 1; hi >= 0; hi--) { lines.push(''); lines.push('EARLIER SESSION ' + (HH.length - hi) + ' of ' + HH.length + ' (newest first):'); lines = lines.concat(diag.trailLines(HH[hi]).map(function (x) { return '  ' + x; })); }
+            } catch (e) {}
             var report = lines.join('\n');
             var old = document.getElementById('ew-diag-overlay');
             if (old && old.parentNode) old.parentNode.removeChild(old);
@@ -528,6 +597,9 @@
     <!-- MORE FONTS (2026-10-20, mondo: "can we possibly add more fonts to the game"): the 61 extra faces in the UI Maker's
          font lists (hud.js FONTS, same order). Only the font rules load here; a font file downloads once text uses it. -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Silkscreen:wght@400;700&family=Pixelify+Sans:wght@400;700&family=Jersey+10&family=Tiny5&family=Micro+5&family=Jacquard+12&family=Bytesized&family=Share+Tech+Mono&family=Kode+Mono:wght@400;700&family=MedievalSharp&family=Uncial+Antiqua&family=Pirata+One&family=UnifrakturMaguntia&family=Almendra:wght@400;700&family=Almendra+SC&family=Metamorphous&family=Marcellus+SC&family=IM+Fell+English+SC&family=New+Rocker&family=Grenze+Gotisch:wght@400;700;900&family=Macondo&family=Eagle+Lake&family=Germania+One&family=Alegreya+SC:wght@400;700&family=Orbitron:wght@400;700;900&family=Audiowide&family=Michroma&family=Oxanium:wght@400;700&family=Chakra+Petch:wght@400;700&family=Rajdhani:wght@400;700&family=Exo+2:wght@400;700;900&family=Russo+One&family=Major+Mono+Display&family=Syncopate:wght@400;700&family=Zen+Dots&family=Quantico:wght@400;700&family=Electrolize&family=Anton&family=Bebas+Neue&family=Oswald:wght@400;700&family=Archivo+Black&family=Bungee&family=Black+Ops+One&family=Staatliches&family=Bowlby+One+SC&family=Rubik+Mono+One&family=Teko:wght@400;700&family=Righteous&family=Monoton&family=Luckiest+Guy&family=Creepster&family=Butcherman&family=Eater&family=Metal+Mania&family=Rubik+Glitch&family=Special+Elite&family=Permanent+Marker&family=Rock+Salt&display=swap" rel="stylesheet">
+    <!-- THE SIGN FONTS (2026-11-15, mondo: "do a font pass on all of the buildings that have text"): the faces of Disaster City's signs
+         that the two sheets above do not carry (three-renderer.js HQ_SIGN_FONTS). All Open Font License; a file downloads once a sign uses it. -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600&family=Playfair+Display:wght@900&family=Limelight&family=Pacifico&family=Alfa+Slab+One&family=Graduate&family=Saira+Stencil+One&family=Rye&display=swap" rel="stylesheet">
     <!-- YOUR FONTS (2026-10-21, mondo: "can you add these fonts to the game, specically as options for the floating text, but
          also anywhere else that has text options"): his own fonts on R2 (Assets/ui/fonts/), in every UI Maker font list
          (hud.js FONTS group "Your fonts", same names). A file downloads only once text on screen uses it. -->
@@ -649,24 +721,103 @@
         /* THE WEBGPU SWITCH (WEBGPU_PLAN.md W0, 2026-10-03): which renderer draws the board, the HQ and the menu scene.
            ?ew_gpu=webgpu  three's WebGPURenderer on WebGPU (it falls back to its WebGL 2 backend by itself without WebGPU)
            ?ew_gpu=webgl2  the same WebGPURenderer forced onto its WebGL 2 backend (separates "WebGPU" from "the node renderer")
-           ?ew_gpu=webgl   the classic WebGLRenderer, the default — nothing changes for a player
+           ?ew_gpu=webgl   the classic WebGLRenderer
+           ?ew_gpu=auto    (the default since 2026-11-11) WebGPU where it works, else the classic renderer: see below
            The query is remembered (localStorage ew_gpu) until another one replaces it. three.webgpu.js shares three.core.js with
            the shim's three.module.js, so every THREE class the game makes is the class the node renderer draws; only the
            renderer and the node classes come from it, on window.THREE_GPU. It is fetched only on the two node modes: this
            classic script writes the module tag, so it runs in document order after the shim and before the deferred game
            scripts (Firefox allows one import map only, so the map above stays the same on every mode). On the node modes the
            W0 picture is plain on purpose (no post, no shader hooks, stand-ins for the shader materials); the frame is the test. */
+        /* WEBGPU BY DEFAULT (2026-11-11, mondo: "make the default game webgpu ... I dont wanna have to type ?ew_gpu=webgpu
+           anymore or tell friends to type that"). The choice (window.EW_GPU_PICK) is 'auto' unless a link (?ew_gpu=auto |
+           webgpu | webgl2 | webgl, remembered) or Settings > Video > Renderer says otherwise. AUTO means WebGPU where it
+           works and the classic WebGLRenderer where it does not:
+           - no navigator.gpu (Firefox without the flag, an old Safari, a plain http page): classic, decided right here;
+           - navigator.gpu is there: the node renderer loads, and a PROBE asks for a real adapter and a device. No adapter, a
+             software adapter (a CPU drawing WebGPU is slower than the classic renderer on the GPU) or a refused device is
+             remembered (localStorage ew_gpu_probe) and Auto draws classic: at once when the board renderer is not made yet
+             (it reads EW_GPU_MODE when it is made), else from the next load (this load three's renderer has already fallen
+             back to its own WebGL 2 backend). A remembered "no" is asked again on every load, so a browser update that
+             brings WebGPU turns it on one load later;
+           - the node renderer's init failing, or its device dying three times, writes the same "no" (three-renderer.js).
+           A picked WebGPU / WebGL is never second-guessed. window.EW_GPU_WHY says why in words (F3, ?ewdiag=1, the row). */
         (function () {
-            var m = null;
+            var pick = null, probe = '';
             try {
-                var q = /[?&]ew_gpu=(webgpu|webgl2|webgl)\b/.exec(location.search);
-                if (q) { m = q[1]; localStorage.setItem('ew_gpu', m); } else m = localStorage.getItem('ew_gpu');
+                var q = /[?&]ew_gpu=(auto|webgpu|webgl2|webgl)\b/.exec(location.search);
+                if (q) { pick = q[1]; localStorage.setItem('ew_gpu', pick); } else pick = localStorage.getItem('ew_gpu');
+                if (q && pick === 'auto') localStorage.removeItem('ew_gpu_probe');   // a link asking for Auto asks afresh
+                probe = localStorage.getItem('ew_gpu_probe') || '';
+                /* 'bad:<time>:<why>' = the node renderer itself failed although the probe passed; kept a week, the probe cannot clear it */
+                var bm = /^bad:(\d+):/.exec(probe);
+                if (bm && !(Date.now() - (+bm[1]) < 7 * 864e5)) { probe = ''; localStorage.removeItem('ew_gpu_probe'); }
             } catch (e) {}
-            if (m !== 'webgpu' && m !== 'webgl2') m = 'webgl';
+            if (pick !== 'webgpu' && pick !== 'webgl2' && pick !== 'webgl') pick = 'auto';
+            var gpu = null; try { gpu = navigator.gpu; } catch (e) {}
+            var has = !!(gpu && typeof gpu.requestAdapter === 'function');
+            var m = pick, why = 'picked ' + pick;
+            if (pick === 'auto') {
+                if (!has) { m = 'webgl'; why = 'Auto: this browser has no WebGPU'; }
+                else if (probe.indexOf('no:') === 0) { m = 'webgl'; why = 'Auto: WebGPU did not work here (' + probe.slice(3) + ')'; }
+                else if (probe.indexOf('bad:') === 0) { m = 'webgl'; why = 'Auto: WebGPU would not start here (' + probe.replace(/^bad:\d+:/, '') + ')'; }
+                else { m = 'webgpu'; why = probe === 'ok' ? 'Auto: WebGPU works here' : 'Auto: trying WebGPU'; }
+            }
+            window.EW_GPU_PICK = pick;
             window.EW_GPU_MODE = m;
+            window.EW_GPU_WHY = why;
+            function remember(v) {
+                try { if (v.indexOf('bad:') !== 0 && (localStorage.getItem('ew_gpu_probe') || '').indexOf('bad:') === 0) return; localStorage.setItem('ew_gpu_probe', v); } catch (e) {}
+            }
+            /* three-renderer.js calls this when the node renderer fails for good; on Auto the page comes back classic, once */
+            window._ewGpuFailed = function (reason, reload) {
+                if (window.EW_GPU_PICK !== 'auto') return false;
+                remember('bad:' + Date.now() + ':' + String(reason || 'failed').slice(0, 80));
+                window.EW_GPU_WHY = 'Auto: WebGPU would not start here (' + reason + '), the classic renderer from the next load';
+                if (!reload) return true;
+                try { if (sessionStorage.getItem('ew_gpu_reloaded')) return true; sessionStorage.setItem('ew_gpu_reloaded', '1'); } catch (e) { return true; }
+                try { location.reload(); } catch (e) {}
+                return true;
+            };
+            /* Settings > Video > Renderer: store the pick; it applies on reload (the reload drops a ?ew_gpu= left in the address) */
+            window._ewSetGpuPick = function (p) {
+                if (p !== 'webgpu' && p !== 'webgl2' && p !== 'webgl') p = 'auto';
+                try { localStorage.setItem('ew_gpu', p); if (p === 'auto') localStorage.removeItem('ew_gpu_probe'); } catch (e) {}
+                window.EW_GPU_PICK_NEXT = p;
+            };
+            window._ewGpuReload = function () {
+                try {
+                    var u = new URL(location.href); u.searchParams.delete('ew_gpu');
+                    if (u.href !== location.href) { location.replace(u.href); return; }
+                } catch (e) {}
+                location.reload();
+            };
+            if (pick === 'auto' && has) {
+                var done = false;
+                var no = function (r) {
+                    if (done) return; done = true;
+                    remember('no:' + r);
+                    if (window.EW_GPU_MODE === 'webgpu' && !window.EW_GPU_MADE) {   // the board renderer is not made yet: it will be the classic one
+                        window.EW_GPU_MODE = 'webgl'; window.EW_GPU_WHY = 'Auto: WebGPU did not work here (' + r + ')';
+                    }
+                };
+                var ok = function () {
+                    if (done) return; done = true;
+                    remember('ok');
+                    if (window.EW_GPU_MODE === 'webgpu' && !/would not start/.test(window.EW_GPU_WHY || '')) window.EW_GPU_WHY = 'Auto: WebGPU works here';
+                };
+                try {
+                    gpu.requestAdapter().then(function (a) {
+                        if (!a) return no('no adapter');
+                        var i = a.info || {};
+                        if (a.isFallbackAdapter || i.isFallbackAdapter) return no('software adapter');
+                        return a.requestDevice().then(function (d) { try { d.destroy(); } catch (e) {} ok(); });
+                    }).catch(function (e) { no('refused: ' + String(e && e.message || e).slice(0, 60)); });
+                } catch (e) { no('refused: ' + String(e && e.message || e).slice(0, 60)); }
+            }
             if (m === 'webgl') return;
             /* WEBGPU_PLAN W4: the HQ plates draw as canvas-painted planes on the node renderer (troika is GLSL); no switch here */
-            window.EW_QUARKS = false;       // three.quarks draws through GLSL materials: no Spell FX Layer on the node renderer
+            /* the Spell FX Layer (three.quarks) runs on the node renderer too since 2026-11-11: three-vfx.js draws its particles itself there */
             document.write('<link rel="modulepreload" href="https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js">' +
                 '<script type="module">import * as W from "three/webgpu"; window.THREE_GPU = W;' +
                 ' if (navigator.gpu && navigator.gpu.requestAdapter) navigator.gpu.requestAdapter().then(function (a) {' +
@@ -1060,10 +1211,22 @@
                 <div class="ls-grain"></div>
                 <div class="door-ident-crt"></div>
                 <div class="door-ident-stage">
+                    <!-- THE OFFICIAL LOGO, PIECE BY PIECE (mondo 2026-11-12): his separate exports (Assets/ui/brand/door_logo/color/) at
+                         their own places in his layout. The cube lands with the colour split, the arc (his own path) draws round it,
+                         the door opens, his D.O.O.R wordmark wipes in; the game's own line types under it (no subtitle piece: no
+                         doubled text). styles-cinematic.css .door-ident-seal; ui.js DOOR_IDENT_MS. -->
                     <div class="door-ident-seal">
-                        <img class="di-r" src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
-                        <img class="di-b" src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
-                        <img class="di-main" src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                        <img class="di-cube di-r" src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/cube.png" alt="" draggable="false">
+                        <img class="di-cube di-b" src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/cube.png" alt="" draggable="false">
+                        <img class="di-cube di-main" src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/cube.png" alt="" draggable="false">
+                        <svg class="di-arc" viewBox="0 0 905.21 622.43" aria-hidden="true">
+                            <defs><mask id="diArcMask" maskUnits="userSpaceOnUse" x="-20" y="-20" width="945.21" height="662.43">
+                                <path class="di-arc-draw" d="M43.5,626 A443.4,443.4 0 1 1 861.7,626" pathLength="1" fill="none" stroke="#fff" stroke-width="36"/>
+                            </mask></defs>
+                            <path mask="url(#diArcMask)" fill="#fbb03b" d="M905.21,452.61c0,60.06-11.7,117.37-32.94,169.82h-20.92c22.79-52.74,35.42-110.9,35.42-172.01,0-239.78-194.38-434.16-434.17-434.16S18.44,210.64,18.44,450.42c0,61.11,12.62,119.27,35.41,172.01h-20.91C11.7,569.98,0,512.67,0,452.61,0,202.65,202.64,0,452.6,0S905.21,202.65,905.21,452.61Z"/>
+                        </svg>
+                        <img class="di-door" src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/door.png" alt="" draggable="false">
+                        <img class="di-word" src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/color/png/door-text.png" alt="" draggable="false">
                     </div>
                     <div class="door-ident-text">
                         <div class="di-l1">DEPARTMENT OF ORTHOGONAL REALITIES</div>
@@ -1088,7 +1251,7 @@
             <button id="enterGameBtn" class="title-enter-btn">› ENTER ‹</button>
             <!-- D.O.O.R. seal (DOOR_DESIGN §3.4) — white-text variant, dark bg only -->
             <div class="door-title-seal" aria-hidden="true">
-                <img src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                <img src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png" alt="" draggable="false">
                 <span>A DEPARTMENT OF ORTHOGONAL REALITIES PRODUCTION<br>EVERY CROSSING IS INSPECTED · EVERY ENTITY IS FILED</span>
             </div>
             <div class="title-version-line" style="position:absolute;right:18px;bottom:12px;z-index:3;font-family:'DotGothic16',monospace;font-size:10px;letter-spacing:0.18em;color:rgba(255,255,255,0.32);pointer-events:none">ENTROPY WARS · BUILD v207 · © 2026 DIRTYMONDO</div>
@@ -1159,7 +1322,7 @@
                 </div>
             </div>
             <div class="door-menu-seal" aria-hidden="true">
-                <img src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                <img src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png" alt="" draggable="false">
                 <span>DEPT. OF ORTHOGONAL REALITIES</span>
             </div>
             <div class="mm-elo-display">
@@ -1179,7 +1342,7 @@
             <div class="ms-container codex-container">
                 <div class="ms-top-bar">
                     <button class="ms-back-btn" onclick="window._codexBack()">← Back</button>
-                    <div class="ms-title-text door-hdr"><img src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><span class="door-hdr-text">CLASSIFIED DOSSIER INDEX<span class="door-hdr-sub">D.O.O.R. RECORDS · ENTITY REGISTRY</span></span></div>
+                    <div class="ms-title-text door-hdr"><img src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png" alt="" draggable="false"><span class="door-hdr-text">CLASSIFIED DOSSIER INDEX<span class="door-hdr-sub">D.O.O.R. RECORDS · ENTITY REGISTRY</span></span></div>
                     <div style="width:60px"></div>
                 </div>
                 <div class="codex-body" id="codexBody"></div>
@@ -1192,7 +1355,7 @@
             <div class="ms-container codex-container">
                 <div class="ms-top-bar">
                     <button class="ms-back-btn" onclick="window._creditsBack()">← Back</button>
-                    <div class="ms-title-text door-hdr"><img src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><span class="door-hdr-text">CREDITS</span></div>
+                    <div class="ms-title-text door-hdr"><img src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png" alt="" draggable="false"><span class="door-hdr-text">CREDITS</span></div>
                     <div style="width:60px"></div>
                 </div>
                 <div class="credits-body" id="creditsBody" tabindex="-1"></div>
@@ -1225,6 +1388,19 @@
             </div>
         </div>
 
+        <!-- PAGE: PLOT DUNGEONS (the puzzle dungeon test build — Settings → Developer). Body is rendered by map.js
+             _pdRenderSelect; docs/PLOT_DUNGEONS_PLAN.md. -->
+        <div id="pdSelectPage" class="title-page">
+            <div class="ms-container codex-container">
+                <div class="ms-top-bar">
+                    <button class="ms-back-btn" onclick="window._pdSelectBack()">← Back</button>
+                    <div class="ms-title-text">PLOT DUNGEONS — TEST BUILD</div>
+                    <div style="width:60px"></div>
+                </div>
+                <div class="codex-body" id="pdSelectBody"></div>
+            </div>
+        </div>
+
         <!-- PAGE: STANDALONE PARTY BUILDER (Team Archive / Forge) — React
              party-builder.js mounts here in standalone mode (saved teams
              locker + full forge, no match attached). -->
@@ -1237,7 +1413,7 @@
             <div class="ms-container codex-container">
                 <div class="ms-top-bar">
                     <button class="ms-back-btn" onclick="window._shopBack()">← Back</button>
-                    <div class="ms-title-text door-hdr"><img src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><span class="door-hdr-text">D.O.O.R. · SHOP<span class="door-hdr-sub">CUSTOMS &amp; ADMISSIONS · DECLASSIFICATION</span></span></div>
+                    <div class="ms-title-text door-hdr"><img src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png" alt="" draggable="false"><span class="door-hdr-text">D.O.O.R. · SHOP<span class="door-hdr-sub">CUSTOMS &amp; ADMISSIONS · DECLASSIFICATION</span></span></div>
                     <div id="shopWallet" class="ew-wallet" style="min-width:80px;text-align:right"></div>
                 </div>
                 <div class="codex-body" id="shopBody"></div>
@@ -1277,12 +1453,15 @@
                 <div class="mm-rule"></div>
                 <!-- THE SQUAD DESK (2026-09-30): the team picked on the way in (map.js _sqStripHtml) -->
                 <div class="sq-strip-host" id="playHubSquad"></div>
+                <!-- THE ROOM (PvP demo lobby, 2026-11-11): the name your opponent sees, with CHANGE (online.js _lrNamePlate) -->
+                <div class="sq-strip-host" id="playHubName"></div>
                 <div class="mm-buttons">
                     <button class="mm-btn mm-btn-quickplay" onclick="window._goToQuickPlay()"><span class="mm-label">Quick Play</span><span class="mm-desc-text">Ranked online — find an opponent fast</span></button>
                     <button class="mm-btn mm-btn-friendly" onclick="window._goToFriendlyMatch()"><span class="mm-label">Friendly Match</span><span class="mm-desc-text">Play a friend with a room code</span></button>
                     <button class="mm-btn mm-btn-vscpu" id="playHubVsCpu" style="display:none" onclick="window._goToVsCpu()"><span class="mm-label">VS CPU</span><span class="mm-desc-text">Battle the computer offline — every mode</span></button>
                     <button class="mm-btn mm-btn-return" onclick="window._playHubBack()"><span class="mm-label">Back</span><span class="mm-desc-text">Back to the team pick</span></button>
                 </div>
+                <div class="lr-hub-online" id="playHubOnline" style="display:none"><i></i><span></span></div>
             </div>
             <div class="mm-elo-display">
                 <span class="mm-elo-tag" id="playHubEloTag"></span>
@@ -1336,7 +1515,7 @@
             <div id="hqStage" class="hq-stage"></div>
             <div id="hqStrip" class="hq-strip">
                 <div class="hq-strip-l">
-                    <img src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                    <img src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png" alt="" draggable="false">
                     <!-- THE HQ HUD PASS (2026-09-16): the room you stand in IS the title (map.js _hqFillStrip); the building's name + the room number ride under it -->
                     <div><b id="hqRoomTitle">THE MAIN HALL</b><span id="hqRoomName">D.O.O.R. HEADQUARTERS · OPERATIONS RING</span></div>
                 </div>
@@ -1400,7 +1579,7 @@
             <div id="hqLoad" class="hq-load">
                 <div class="ls-grain"></div>
                 <div class="hq-load-card">
-                    <img src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false">
+                    <img src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png" alt="" draggable="false">
                     <b>D.O.O.R. HEADQUARTERS</b>
                     <span>CLEARANCE CHECK · PLEASE HOLD</span>
                     <i id="hqLoadNote">verifying your corners…</i>
@@ -1418,7 +1597,7 @@
             <div class="ms-container codex-container">
                 <div class="ms-top-bar">
                     <button class="ms-back-btn" onclick="window._tutorialBack()">← Back</button>
-                    <div class="ms-title-text door-hdr"><img src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"><span class="door-hdr-text">ORIENTATION · DAY 1<span class="door-hdr-sub">D.O.O.R. TRAINING FACILITY · ROOM 64 · THE TAPES</span></span></div>
+                    <div class="ms-title-text door-hdr"><img src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png" alt="" draggable="false"><span class="door-hdr-text">ORIENTATION · DAY 1<span class="door-hdr-sub">D.O.O.R. TRAINING FACILITY · ROOM 64 · THE TAPES</span></span></div>
                     <div style="width:60px"></div>
                 </div>
                 <div class="codex-body tut-shelf" id="tutorialBody"></div>
@@ -1443,113 +1622,10 @@
 
         <!-- PAGE 3: Online Lobby (Quick Play + Friendly) -->
         <div id="lobbyPage" class="title-page">
+            <!-- THE ROOM (PvP demo lobby, 2026-11-11, mondo approved "Build as drawn"): Quick Play, Friendly and the Room are
+                 PS1 windows over the whole page (.lobby-room, styles-base.css "THE ROOM"); online.js _lrRender draws the
+                 seats and the rules from the server's lobby-state. The old card below keeps the "Both Players Joined" beat. -->
             <div class="mode-card lobby-inner">
-                <!-- Quick Play: ranked queue with mode picker -->
-                <div id="lobbyQuickPlay" style="display:none">
-                    <div class="lobby-player-badge p1">RANKED MATCHMAKING</div>
-                    <div class="lobby-kicker">Quick Play</div>
-                    <div class="lobby-subtitle" style="margin-bottom:14px;">Pick a mode. The map is drawn at random.</div>
-
-                    <div class="lobby-config-section">
-                        <div class="lobby-config-label">GAME MODE</div>
-                        <div class="lobby-ranked-sizes" id="lobbyQueueModes">
-                            <button class="ranked-size-btn active" data-mode="arena" onclick="lobbySetQueueMode('arena')">🏰 Arena</button>
-                            <button class="ranked-size-btn" data-mode="tdm" onclick="lobbySetQueueMode('tdm')">💀 TDM</button>
-                            <button class="ranked-size-btn" data-mode="clash" onclick="lobbySetQueueMode('clash')">🎴 Clash</button>
-                        </div>
-                    </div>
-
-                    <!-- THE SQUAD DESK (2026-09-30): the squad is picked before the lobby (always 4v4 online); the server draws the map -->
-                    <div class="lobby-config-section">
-                        <div class="lobby-config-label">YOUR SQUAD · 4v4</div>
-                        <div class="sq-strip-host" id="lobbyQueueSquad"></div>
-                    </div>
-
-                    <div class="lobby-ranked-info">
-                        <div class="lobby-ranked-elo" id="lobbyQueueElo">ELO: 1200</div>
-                    </div>
-                    <button class="sq-cta lobby-queue-start" id="lobbyQueueStartBtn" onclick="lobbyJoinQueue()">Search for Opponent</button>
-                    <div id="lobbyQueueSearching" style="display:none">
-                        <!-- THE SQUAD DESK (2026-09-30): the search is a radar sweep round the squad (styles-base.css "THE QUEUE") -->
-                        <div class="lq-radar"><i></i><i></i><i></i><span class="lq-sweep"></span><span class="lq-core" id="lobbyQueueTimer">0:00</span></div>
-                        <div class="lobby-status waiting" id="lobbyQueueStatus">Searching for opponent…</div>
-                        <button class="sq-ghost lq-cancel" onclick="lobbyLeaveQueue()">Cancel</button>
-                    </div>
-                    <button class="lobby-back" id="lobbyRankedBackBtn" onclick="lobbyBackToPlayHub()">← Back</button>
-                </div>
-
-                <!-- Friendly: Create / Join -->
-                <div id="lobbyFriendlyMain" style="display:none">
-                    <div class="lobby-kicker">Friendly Match</div>
-                    <div class="lobby-title">Room Code</div>
-                    <div class="lobby-subtitle">One player creates a room, the other joins with a code.</div>
-                    <div class="lobby-actions">
-                        <button class="primary-lobby" onclick="lobbyCreateRoom()">Create Room</button>
-                        <div class="lobby-or">— or —</div>
-                        <button class="secondary-lobby" onclick="lobbyShowJoin()">Join Room</button>
-                    </div>
-                    <button class="lobby-back" onclick="lobbyBackToPlayHub()">← Back</button>
-                </div>
-
-                <!-- Friendly: Hosting (waiting for guest) -->
-                <div id="lobbyHosting" style="display:none">
-                    <div class="lobby-player-badge p1">YOU ARE PLAYER 1 (BLUE)</div>
-                    <div class="lobby-kicker">Room Created</div>
-                    <div class="lobby-title">Share This Code</div>
-                    <div class="lobby-subtitle">Send this code to your friend.</div>
-                    <div class="lobby-code-display" id="lobbyRoomCode">-----</div>
-
-                    <!-- Host Config Panel -->
-                    <div id="friendlyConfigPanel" style="margin:16px 0 8px;">
-                        <div class="lobby-config-section">
-                            <div class="lobby-config-label">GAME MODE</div>
-                            <div class="lobby-ranked-sizes" id="friendlyModeChips">
-                                <button class="ranked-size-btn active" data-mode="arena" onclick="friendlySetMode('arena')">🏰 Arena</button>
-                                <button class="ranked-size-btn" data-mode="tdm" onclick="friendlySetMode('tdm')">💀 TDM</button>
-                                <button class="ranked-size-btn" data-mode="clash" onclick="friendlySetMode('clash')">🎴 Clash</button>
-                            </div>
-                        </div>
-                        <!-- THE MAP PICK (2026-10-07, mondo): the host picks the room's arena, or leaves it on Random
-                             (online.js _friendlyRefreshMaps fills the list from the room's arenas) -->
-                        <div class="lobby-config-section">
-                            <div class="lobby-config-label">MAP</div>
-                            <select id="friendlyMapSelect" onchange="friendlySetMap(this.value)" style="display:block;margin:4px auto 0;min-width:220px;padding:8px 12px;background:rgba(10,8,18,0.85);color:#c9a5ff;border:1px solid rgba(201,165,255,0.35);font-family:'DotGothic16',monospace;font-size:0.8rem;letter-spacing:0.08em;cursor:pointer"><option value="">Random</option></select>
-                        </div>
-                        <!-- THE ARENA SIZES (2026-10-17, mondo): the site's cut — 12×12 / 10×10 for a 4v4 squad, 11×11 / 9×9 for a 5v5 one
-                             (online.js _friendlyRefreshMaps; the squad desk's 4v4 / 5v5 switch sets the room's team size) -->
-                        <div class="lobby-config-section">
-                            <div class="lobby-config-label">BOARD SIZE</div>
-                            <select id="friendlyBoardSelect" onchange="friendlySetBoard(this.value)" style="display:block;margin:4px auto 0;min-width:220px;padding:8px 12px;background:rgba(10,8,18,0.85);color:#c9a5ff;border:1px solid rgba(201,165,255,0.35);font-family:'DotGothic16',monospace;font-size:0.8rem;letter-spacing:0.08em;cursor:pointer"><option value="0">Random</option></select>
-                        </div>
-                        <div class="lobby-config-section">
-                            <div class="lobby-config-label">ROUNDS</div>
-                            <div style="display:flex;align-items:center;justify-content:center;gap:10px;">
-                                <button class="ranked-size-btn" onclick="friendlyStepRounds(-5)" style="min-width:36px;padding:8px 10px;">−</button>
-                                <span id="friendlyRoundDisplay" style="font-family:'DotGothic16',monospace;font-size:1.1rem;color:#fff;min-width:40px;text-align:center;">20</span>
-                                <button class="ranked-size-btn" onclick="friendlyStepRounds(5)" style="min-width:36px;padding:8px 10px;">+</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="lobby-status waiting" id="lobbyHostStatus">Waiting for Player 2…</div>
-                    <div class="lobby-small">Keep this page open. The game starts once your friend connects.</div>
-                    <button class="lobby-back" onclick="lobbyBackToFriendlyMain()">← Cancel</button>
-                </div>
-
-                <!-- Friendly: Joining -->
-                <div id="lobbyJoining" style="display:none">
-                    <div class="lobby-player-badge p2">YOU WILL BE PLAYER 2 (RED)</div>
-                    <div class="lobby-kicker">Join Room</div>
-                    <div class="lobby-title">Enter Code</div>
-                    <div class="lobby-subtitle">Type the 5-letter code your friend shared.</div>
-                    <div class="lobby-join-row">
-                        <input id="lobbyJoinInput" type="text" maxlength="5" placeholder="ABCDE" autocomplete="off" spellcheck="false">
-                        <button class="primary-lobby" style="width:auto" onclick="lobbyJoinRoom()">Join</button>
-                    </div>
-                    <div class="lobby-status" id="lobbyJoinStatus"></div>
-                    <button class="lobby-back" onclick="lobbyBackToFriendlyMain()">← Back</button>
-                </div>
-
                 <!-- Connected (shared by both Quick Play and Friendly) -->
                 <div id="lobbyConnected" style="display:none">
                     <div class="lobby-kicker">Connected!</div>
@@ -1557,6 +1633,110 @@
                     <div class="lobby-subtitle"><span id="lobbyYouAre"></span><br>Entering the match…</div>
                     <div id="lobbyConfigSummary" style="display:none;margin:10px 0;padding:10px 16px;background:rgba(0,0,0,0.3);border:1px solid rgba(150,130,190,0.2);border-radius:0;font-family:'DotGothic16',monospace;font-size:0.85rem;color:#aaa;text-align:center;letter-spacing:0.03em;"></div>
                     <div class="lobby-status" style="color:var(--green)">✓ Connection established</div>
+                </div>
+            </div>
+
+            <!-- Quick Play: your squad + what you search for (ranked) -->
+            <div id="lobbyQuickPlay" class="lobby-room" style="display:none">
+                <div class="lr-frame lr-qp">
+                    <div class="lr-head lr-win">
+                        <div class="lr-titles"><div class="lobby-kicker">Online PvP · Ranked</div><div class="lobby-title">Quick Play</div></div>
+                        <div class="lr-elo"><span class="lr-k">Your rank</span><b id="lobbyQueueElo">ELO 1200</b><span class="lr-online"><i></i><span id="lobbyQueueOnline">Players online</span></span></div>
+                    </div>
+                    <div class="lq-win lr-win">
+                        <div class="lr-win-hd"><b>Your squad</b><span class="lr-k" id="lobbyQueueSquadN"></span></div>
+                        <div class="sq-strip-host" id="lobbyQueueSquad"></div>
+                        <div class="lq-alone" id="lobbyQueueIdle">Your squad is set. Press SEARCH and the match starts as soon as someone in your mode is found.</div>
+                        <div id="lobbyQueueSearching" style="display:none">
+                            <div class="lq-radar"><i></i><i></i><i></i><span class="lq-sweep"></span><span class="lq-core" id="lobbyQueueTimer">0:00</span></div>
+                            <div class="lobby-status waiting" id="lobbyQueueStatus">Searching for opponent…</div>
+                            <div class="lq-alone" id="lobbyQueueAlone" style="display:none"></div>
+                            <div class="lobby-actions" id="lobbyQueueAloneAct" style="display:none"><button class="secondary-lobby" onclick="lobbyQueueToFriendly()">Make a friendly room</button></div>
+                        </div>
+                    </div>
+                    <div class="lr-rules lr-win">
+                        <div class="lr-win-hd"><b>Search for</b><span class="lr-k" id="lobbyQueueRulesK">Pick a mode</span></div>
+                        <div class="lr-row"><span class="lr-k">Mode</span><div class="lr-v">
+                            <div class="lobby-ranked-sizes lr-chips" id="lobbyQueueModes">
+                                <button class="ranked-size-btn active" data-mode="arena" onclick="lobbySetQueueMode('arena')">🏰 Arena</button>
+                                <button class="ranked-size-btn" data-mode="tdm" onclick="lobbySetQueueMode('tdm')">💀 TDM</button>
+                                <button class="ranked-size-btn" data-mode="clash" onclick="lobbySetQueueMode('clash')">🎴 Clash</button>
+                            </div></div></div>
+                        <div class="lr-goal" id="lobbyQueueGoal"></div>
+                        <div class="lr-row"><span class="lr-k">Map</span><div class="lr-v">Drawn at random<small id="lobbyQueueMapNote"></small></div></div>
+                        <div class="lr-row"><span class="lr-k">Teams</span><div class="lr-v"><span id="lobbyQueueTeams">4v4</span><small>Your squad's size</small></div></div>
+                        <div class="lr-row"><span class="lr-k">Rounds</span><div class="lr-v" id="lobbyQueueRounds">20</div></div>
+                        <div class="lr-row"><span class="lr-k">Turn timer</span><div class="lr-v">60 s per turn<small>A unit that runs out of time ends its turn</small></div></div>
+                        <div class="lr-row"><span class="lr-k">Fog of war</span><div class="lr-v">On<small>You see only what your units see</small></div></div>
+                    </div>
+                    <div class="lr-foot lr-win">
+                        <button class="lobby-back" id="lobbyRankedBackBtn" onclick="lobbyBackToPlayHub()">‹ Back</button>
+                        <button class="lobby-back" id="lobbyQueueCancelBtn" style="display:none" onclick="lobbyLeaveQueue()">‹ Cancel search</button>
+                        <div class="lr-status" id="lobbyQueueFoot"></div>
+                        <div class="lobby-actions"><button class="primary-lobby lr-go" id="lobbyQueueStartBtn" onclick="lobbyJoinQueue()">Search</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Friendly: host a room or join one, on one screen -->
+            <div id="lobbyFriendlyMain" class="lobby-room" style="display:none">
+                <div class="lf-frame">
+                    <div class="lf-head"><div class="lobby-kicker">Online PvP</div><div class="lobby-title">Friendly Match</div></div>
+                    <div class="lf-win lf-host lr-win">
+                        <div class="lr-win-hd"><b>Host a room</b></div>
+                        <p>Make a room, pick the rules, then send your friend the code or the invite link.</p>
+                        <div class="lobby-actions"><button class="primary-lobby lr-go" id="lobbyCreateBtn" onclick="lobbyCreateRoom()">Create room</button></div>
+                        <div class="lobby-status" id="lobbyCreateStatus"></div>
+                    </div>
+                    <div class="lf-win lf-join lr-win">
+                        <div class="lr-win-hd"><b>Join a room</b></div>
+                        <p>Type the 5-letter code your friend sent you.</p>
+                        <label class="lf-code" id="lobbyJoinCode">
+                            <span></span><span></span><span></span><span></span><span></span>
+                            <input id="lobbyJoinInput" type="text" maxlength="5" autocomplete="off" spellcheck="false" autocapitalize="characters" aria-label="Room code">
+                        </label>
+                        <div class="lobby-actions"><button class="primary-lobby lr-go" id="lobbyJoinBtn" onclick="lobbyJoinRoom()">Join</button></div>
+                        <div class="lobby-status" id="lobbyJoinStatus"></div>
+                        <div class="lr-note">Got an invite link? Open it and you join straight away.</div>
+                    </div>
+                    <div class="lf-foot"><button class="lobby-back" onclick="lobbyBackToPlayHub()">‹ Back</button></div>
+                </div>
+            </div>
+
+            <!-- The Room: both seats, the match rules, READY (friendly) / the VS countdown (Quick Play) -->
+            <div id="lobbyHosting" class="lobby-room" style="display:none">
+                <div class="lr-frame" id="lrFrame">
+                    <div class="lr-head lr-win">
+                        <div class="lr-titles"><div class="lobby-kicker" id="lrKicker">Online PvP · Friendly match</div><div class="lobby-title" id="lrTitle">The Room</div></div>
+                        <div class="lr-code" id="lrCodeBox">
+                            <div class="lr-code-well"><span class="lr-k">Room code</span><b id="lobbyRoomCode">-----</b></div>
+                            <div class="lobby-actions lr-copy"><button class="secondary-lobby" id="lrCopyCode" onclick="lobbyCopyCode()">Copy code</button><button class="secondary-lobby" id="lrCopyLink" onclick="lobbyCopyInvite()">Copy invite link</button></div>
+                        </div>
+                    </div>
+                    <div class="lr-seats" id="lrSeats"></div>
+                    <div class="lr-rules lr-win" id="friendlyConfigPanel">
+                        <div class="lr-win-hd"><b>Match rules</b><span class="lr-k" id="lrRulesBy">You are the host</span></div>
+                        <div class="lr-row"><span class="lr-k">Mode</span><div class="lr-v">
+                            <div class="lobby-ranked-sizes lr-chips lr-host-only" id="friendlyModeChips">
+                                <button class="ranked-size-btn active" data-mode="arena" onclick="friendlySetMode('arena')">🏰 Arena</button>
+                                <button class="ranked-size-btn" data-mode="tdm" onclick="friendlySetMode('tdm')">💀 TDM</button>
+                                <button class="ranked-size-btn" data-mode="clash" onclick="friendlySetMode('clash')">🎴 Clash</button>
+                            </div><span class="lr-guest-only" id="lrModeV">Arena</span></div></div>
+                        <div class="lr-goal" id="lrGoal"></div>
+                        <!-- THE MAP PICK (2026-10-07) + THE ARENA SIZES (2026-10-17): the host picks the site and its board cut, or
+                             leaves either on Random (online.js _friendlyRefreshMaps fills both lists from the room's arenas) -->
+                        <div class="lr-row"><span class="lr-k">Map</span><div class="lr-v"><select id="friendlyMapSelect" class="lr-sel lr-host-only" onchange="friendlySetMap(this.value)"><option value="">Random</option></select><span class="lr-guest-only" id="lrMapV">Random</span></div></div>
+                        <div class="lr-row"><span class="lr-k">Board</span><div class="lr-v"><select id="friendlyBoardSelect" class="lr-sel lr-host-only" onchange="friendlySetBoard(this.value)"><option value="0">Random</option></select><span class="lr-guest-only" id="lrBoardV">Random</span></div></div>
+                        <div class="lr-row"><span class="lr-k">Teams</span><div class="lr-v"><span id="lrTeamsV">4v4</span><small id="lrTeamsNote">Set by the host's squad</small></div></div>
+                        <div class="lr-row"><span class="lr-k">Rounds</span><div class="lr-v"><span class="lr-step lr-host-only"><button class="ranked-size-btn" onclick="friendlyStepRounds(-5)" aria-label="Fewer rounds">−</button><b id="friendlyRoundDisplay">20</b><button class="ranked-size-btn" onclick="friendlyStepRounds(5)" aria-label="More rounds">+</button></span><span class="lr-guest-only" id="lrRoundsV">20</span><small id="lrRoundsNote"></small></div></div>
+                        <div class="lr-row"><span class="lr-k">Turn timer</span><div class="lr-v">60 s per turn<small>A unit that runs out of time ends its turn</small></div></div>
+                        <div class="lr-row"><span class="lr-k">Fog of war</span><div class="lr-v">On<small>You see only what your units see</small></div></div>
+                    </div>
+                    <div class="lr-foot lr-win">
+                        <button class="lobby-back" id="lrLeaveBtn" onclick="lobbyLeaveRoom()">‹ Leave room</button>
+                        <div class="lr-status" id="lobbyHostStatus">Waiting for P2 to join</div>
+                        <div class="lobby-actions" id="lrReadyWrap"><button class="primary-lobby lr-go" id="lrReadyBtn" onclick="lobbyToggleReady()">Ready</button></div>
+                    </div>
                 </div>
             </div>
         </div>

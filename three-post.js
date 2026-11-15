@@ -784,6 +784,7 @@ const ThreePost = (function () {
             'uRayCol':        { value: new THREE.Vector3(1.0, 0.94, 0.82) },
             'uRayThr':        { value: new THREE.Vector2(0.3, 1.0) },   // x: the luminance a pixel must pass to throw a shaft (the frame's own), y: the shaft's gain
             'tRaySrc':        { value: null },   // THE RAY SOURCE (2026-10-24): the frame's light sources at 1/8 size (_RaySrcShader)
+            'uRaySky':        { value: 0.0 },    // THE SKY'S RAYS (2026-11-14): 1 = only the sky throws rays (the slider's sun / moon rays), 0 = every light (a finisher beat)
             'uNightTint':     { value: new THREE.Vector3(0.68, 0.78, 1.08) },
             // ── spell grade (see spellGrade() above) ──
             'uSpotDim':       { value: 0.0 },
@@ -1105,7 +1106,7 @@ const ThreePost = (function () {
     var _retro = {
         enabled:        true,
         preset:         'dream',
-        pixelSize:      2.0,    // 1 = off (game is already pixel-art); >1 = chunkier blocks
+        pixelSize:      1.0,    // 1 = off (the default since 2026-11-12, mondo: "turn the pixelate off by default now"); >1 = chunkier blocks
         // WHAT the pixelation applies to. 'models' (default) = only the 3D GLB
         // models (units, Meshy props) get the chunky UV-snap; the terrain,
         // trees, turrets and stairs are already hand-pixelled sprite art, so
@@ -1302,9 +1303,10 @@ const ThreePost = (function () {
     // material.skinning to match the mesh type or the shader reads attributes the
     // geometry doesn't have.
     var PIX_LAYER_SKIN = 7, PIX_LAYER_STATIC = 8;
-    var PIX_SCAN_MS = 400;      // re-tag newly spawned models a few times a second
+    var PIX_SCAN_MS = 1500;     // a flag set after the add (every add re-scans at once, _pixHookAdd); was 400: a whole-scene walk 2.5x a second (2026-11-14)
     var _maskRT = null, _maskMatSkin = null, _maskMatStatic = null;
     var _maskW = 0, _maskH = 0, _maskScanAt = 0, _maskVec = null, _maskClearCol = null;
+    var _maskCamS = null;   // THE MASK'S OWN BUNDLES: the static pass's camera
     /* THE MASK SEES NEW MODELS AT ONCE (2026-11-05, mondo: "these crystals are not pixelating, or it looks like they are
        flickering on and off of being pixelated", the Singularity Arena on WebGPU): a mesh only reached the mask once the
        scan above tagged it, and the scan ran every PIX_SCAN_MS. The board's crystal clusters are rebuilt whenever the
@@ -1323,17 +1325,40 @@ const ThreePost = (function () {
         P._ew_pixAddHook = true;
     }
 
-    function _scanPixelMaskTargets() {
-        if (!_scene) return;
-        _scene.traverse(function (n) {
-            if (!n.isMesh || n._ew_pixelTagged) return;
+    /* THE UNIT MASK (2026-11-15, mondo's Disaster City: the lens's "extra" pass redrew every prop, 178 draws / 353K triangles and
+       ~6 ms of JS a frame, with Pixelate off): the only reader of the mask then is THE BOLD UNIT LINE ("bolder lines on units,
+       same thinness everywhere else"), yet its static pass drew every model flagged _ew_pixelate — every Meshy prop of the room,
+       which so wore the units' bold line too. The scan also tags the still meshes that RIDE A UNIT (under a bone, or under the
+       group that holds a body flagged _ew_modelSkin: a held weapon, a hat, a rigid part of the model) on PIX_LAYER_UNIT, and the
+       style's own mask draws that layer in place of every prop. The Pixelate "models" scope still draws them all.
+       Old mask back, live: window.EW_STYLE_MASK_PROPS = true. */
+    var PIX_LAYER_UNIT = 9;
+    function _scanPixelMaskTargets(sc) {
+        sc = sc || _scene;   // the walk's own scene (renderScene) when the bold unit line asks for its bodies
+        if (!sc) return;
+        var units = 0;
+        (function walk(n, inUnit) {
+            var ch = n.children, i;
+            if (n.isBone || n._ew_pixUnit) inUnit = true;
+            else if (!n.isScene && ch.length <= 24) {
+                for (i = 0; i < ch.length; i++) {
+                    var c = ch[i];
+                    if (c.isSkinnedMesh && c._ew_modelSkin && !c._ew_silhouette) {
+                        n._ew_pixUnit = true; inUnit = true;
+                        var gp = n.parent; if (gp && !gp.isScene && gp.children.length <= 24) gp._ew_pixUnit = true;   // the model's root: its rigid parts beside the armature
+                        break;
+                    }
+                }
+            }
             // Silhouette/x-ray twins share the model's geometry but are a UI
             // read-through, not the model itself — never mask them.
-            if (n._ew_silhouette) return;
-            if (!(n._ew_modelSkin || n._ew_pixelate)) return;
-            n._ew_pixelTagged = true;
-            n.layers.enable(n.isSkinnedMesh ? PIX_LAYER_SKIN : PIX_LAYER_STATIC);
-        });
+            if (n.isMesh && !n._ew_silhouette && (n._ew_modelSkin || n._ew_pixelate)) {
+                if (!n._ew_pixelTagged) { n._ew_pixelTagged = true; n.layers.enable(n.isSkinnedMesh ? PIX_LAYER_SKIN : PIX_LAYER_STATIC); }
+                if (inUnit && !n.isSkinnedMesh) { if (!n._ew_pixUnitTagged) { n._ew_pixUnitTagged = true; n.layers.enable(PIX_LAYER_UNIT); } units++; }
+            }
+            for (i = 0; i < ch.length; i++) walk(ch[i], inUnit);
+        })(sc, false);
+        sc._ew_pixUnitN = units;
     }
 
     // Renders the mask for this frame. Returns true when tMask is usable.
@@ -1344,13 +1369,14 @@ const ThreePost = (function () {
     // model anyway.
     /* panes (THE CLOSE-UP LOOK, renderPanes): [{ cam, x, y, w, h }] as shares of the target — each pane's models drawn into
        its own rect with its own camera, so the mask lines up with the split screen's picture */
-    function _renderPixelMask(cam, sc, panes) {
+    function _renderPixelMask(cam, sc, panes, unitOnly) {
         sc = sc || _scene;
+        if (unitOnly && typeof window !== 'undefined' && window.EW_STYLE_MASK_PROPS) unitOnly = false;
         if (!_renderer || !sc || !cam || typeof THREE === 'undefined') return false;
         try {
             var now = performance.now();
             _pixHookAdd();
-            if (_pixScanN !== _pixAddN || now - _maskScanAt > PIX_SCAN_MS) { _maskScanAt = now; _pixScanN = _pixAddN; _scanPixelMaskTargets(); }
+            if (_pixScanN !== _pixAddN || now - _maskScanAt > PIX_SCAN_MS) { _maskScanAt = now; _pixScanN = _pixAddN; _scanPixelMaskTargets(sc); }
 
             if (!_maskVec) _maskVec = new THREE.Vector2();
             _renderer.getDrawingBufferSize(_maskVec);
@@ -1409,9 +1435,47 @@ const ThreePost = (function () {
                     sc.overrideMaterial = _maskMatSkin;
                     _renderer.render(sc, mc);
 
-                    mc.layers.set(PIX_LAYER_STATIC);
+                    /* THE MASK'S OWN BUNDLES (2026-11-14, mondo's Disaster City: 1958 of the frame's 3748 draws were this pass — every
+                       static model mesh one draw, a side render drawing every bundled group the classic way): on the node renderer
+                       the static pass draws through a camera of its own (a bundle is kept per group, camera and target, so it never
+                       replays the skinned pass's recording), and the walk's culled chunks (the prop plots, the closed rooms, the
+                       instance cells, the fence plots: three-renderer.js _ewBunSetup) replay their own mask recording. Off:
+                       window.EW_MASK_NO_BUNDLES */
+                    var mcS = mc;
+                    if (!panes && _renderer.isWebGPURenderer && !(typeof window !== 'undefined' && window.EW_MASK_NO_BUNDLES)) {
+                        if (!_maskCamS || _maskCamS.type !== mc.type) { _maskCamS = mc.clone(false); _maskCamS.matrixAutoUpdate = false; _maskCamS.matrixWorldAutoUpdate = false; }
+                        mcS = _maskCamS;
+                        ['near', 'far', 'fov', 'aspect', 'zoom', 'left', 'right', 'top', 'bottom', 'coordinateSystem'].forEach(function (k) { if (mc[k] !== undefined) mcS[k] = mc[k]; });
+                        mcS.matrix.copy(mc.matrixWorld); mcS.matrixWorld.copy(mc.matrixWorld); mcS.matrixWorldInverse.copy(mc.matrixWorldInverse);
+                        mcS.projectionMatrix.copy(mc.projectionMatrix); mcS.projectionMatrixInverse.copy(mc.projectionMatrixInverse);
+                        _renderer._ew_maskBun = true;
+                    }
+                    /* THE UNIT MASK: the style alone reads the mask = the still parts that ride a unit, no prop (a chunk holds none:
+                       three-renderer.js skips them whole, _ew_maskUnit); none in the scene = no draw at all */
+                    if (unitOnly) {
+                        _renderer._ew_maskBun = false;
+                        if (sc._ew_pixUnitN > 0) {
+                            mc.layers.set(PIX_LAYER_UNIT);
+                            sc.overrideMaterial = _maskMatStatic;
+                            _renderer._ew_maskUnit = true;
+                            try { _renderer.render(sc, mc); } finally { _renderer._ew_maskUnit = false; }
+                        }
+                    } else {
+                    mcS.layers.set(PIX_LAYER_STATIC);
                     sc.overrideMaterial = _maskMatStatic;
-                    _renderer.render(sc, mc);
+                    try { _renderer.render(sc, mcS); } finally { _renderer._ew_maskBun = false; }
+                    }
+                    /* THE GRASS TAKES NO INK: the grass field once more (the one mesh, drawn alone), its own material writing each tuft's
+                       view depth (green + blue) in place of its colour (three-renderer.js _ggMaskU); the bodies' depth above hides a tuft behind one */
+                    var gmU = _styleGrassU();
+                    if (gmU) {
+                        try {
+                            gmU.value.x = 1;
+                            mc.layers.mask = ml;
+                            sc.overrideMaterial = null;
+                            _renderer.render(gmU.mesh, mc);   // the field alone (one mesh), not the scene
+                        } finally { gmU.value.x = 0; }
+                    }
                     mc.layers.mask = ml;
                 }
             } finally { if (panes) _maskRT.viewport.set(0, 0, w, h); }
@@ -2978,10 +3042,20 @@ const ThreePost = (function () {
         if (c.depthRenderTarget) c.depthRenderTarget.setSize(ds.x, ds.y);
         for (var i = 0; i < c.passes.length; i++) c.passes[i].setSize(ds.x, ds.y);
     }
+    /* THE ZERO STRENGTH ON THE CLASSIC CHAIN (2026-11-11, mondo tapped "Turn it off at 0"): this chain's N8AO floored its
+       intensity at 0.5 (see _ppSync), so the shipped AO strength 0 still drew a faint contact shading through 7 of the
+       frame's 15 renders (about 13 % of a fight frame on the software raster). At strength 0 the AO passes (N8AO, or the
+       classic AO + its multiply) now rest, as on the node chain; the slider brings them back the frame it moves above 0.
+       The row and the setting stay. Off: window.EW_AO_AT_ZERO = true (live; the same switch as the node chain's). */
+    function _ppAoLive() {
+        if (!(_ssaoPass && _ssaoPass.enabled)) return false;
+        if (typeof window !== 'undefined' && window.EW_AO_AT_ZERO) return true;
+        return _ssaoPass.aoMat.uniforms.uStrength.value > 0;
+    }
     /* pass A's effect list from the stand-ins; rebuilt (a new EffectPass in the same slot) only when the list changes */
     function _ppPassA(force) {
         var P = _pp, PP = P.lib, fx = P.fx;
-        var aa = _aaResolve(), aoClassic = !!(_ssaoPass && _ssaoPass.enabled) && !(P.n8 && _ssaoMode() === 'n8ao');
+        var aa = _aaResolve(), aoClassic = _ppAoLive() && !(P.n8 && _ssaoMode() === 'n8ao');
         var bloom = !!(_bloomPass && _bloomPass.enabled), tone = !!_hdr;
         var sig = aa + '|' + (aoClassic ? 1 : 0) + '|' + (bloom ? 1 : 0) + '|' + (tone ? 1 : 0);
         P.aoClassic = aoClassic;
@@ -3002,7 +3076,7 @@ const ThreePost = (function () {
     function _ppSync() {
         var P = _pp, fx = P.fx;
         // the AO: classic pass / N8AO, by the player's AO Quality row
-        var aoOn = !!(_ssaoPass && _ssaoPass.enabled), wantN8 = aoOn && _ssaoMode() === 'n8ao';
+        var aoOn = _ppAoLive(), wantN8 = aoOn && _ssaoMode() === 'n8ao';
         if (wantN8 && !P.n8) _ppN8Load();
         _ppPassA(false);
         P.aoPass.enabled = aoOn && P.aoClassic;
@@ -3107,6 +3181,8 @@ const ThreePost = (function () {
             }
             P.dofH = dof(1, 0); P.dofV = dof(0, 1);
             composer.addPass(P.dofH); composer.addPass(P.dofV);
+            // THE ENTROPY STYLE: the grade + the ink, under pass B
+            P.style = _ppStylePass(PP, composer, rp); composer.addPass(P.style); _stylePass = P.style; _styleApply();
             // pass B: the cinematic + the retro
             var cu = THREE.UniformsUtils.clone(_CinematicShader.uniforms), ru = THREE.UniformsUtils.clone(_RetroShader.uniforms);
             ru.uResolution = cu.uResolution; ru.uTime = cu.uTime;   // one uniform each: both passes always wrote the same values
@@ -3119,7 +3195,7 @@ const ThreePost = (function () {
             var _bRender = P.passB.render;
             P.passB.render = function (r, inp, out, d, s) {
                 P.lastIn = inp;
-                if (frameU.uCineOn.value > 0.5 && inp) _raySrcRender(r, inp.texture, inp.width, inp.height, cu);   // THE RAY SOURCE
+                if (frameU.uCineOn.value > 0.5 && inp) _raySrcRender(r, inp.texture, inp.width, inp.height, cu, composer.inputBuffer && composer.inputBuffer.depthTexture);   // THE RAY SOURCE (+ THE SKY'S RAYS: the scene's own depth)
                 return _bRender.call(this, r, inp, out, d, s);
             };
             composer.addPass(P.passB);
@@ -3146,7 +3222,7 @@ const ThreePost = (function () {
         } catch (e) {
             console.warn('[ThreePost] pmndrs postprocessing failed — falling back to the three.js chain', e);
             try { if (_pp && _pp.composer) _pp.composer.dispose(); } catch (e2) {}
-            _pp = null; _composer = null; _bloomPass = null; _cinematicPass = null; _retroPass = null; _fxaaPass = null; _smaaPass = null;
+            _pp = null; _composer = null; _bloomPass = null; _cinematicPass = null; _retroPass = null; _fxaaPass = null; _smaaPass = null; _stylePass = null;
             _dofPassH = null; _dofPassV = null; _toneMapPass = null; _ssaoPass = null; _ssaoAvail = false;
             renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;
             return false;
@@ -3206,6 +3282,9 @@ const ThreePost = (function () {
         cu.uResolution.value.set(w, h);
         P.U = { cu: cu, ru: ru, ao: aoU, dofH: dofHU, dofV: dofVU, tone: toneU };
         P.cineOn = T.uniform(0); P.retroOn = T.uniform(0);
+        // THE ENTROPY STYLE: its own uniforms (written each frame in _ngRender)
+        P.st = { mode: T.uniform(0), inkW: T.uniform(1), unitK: T.uniform(1), grass: T.uniform(0), ink: T.uniform(0.8), bands: T.uniform(0.7), amount: T.uniform(1),
+            p00: T.uniform(1).onRenderUpdate(function () { return P.cam ? (P.cam.projectionMatrix.elements[0] || 1) : 1; }) };
         P.bS = T.uniform(0); P.bR = T.uniform(0); P.bT = T.uniform(1);
         P.ph = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1); P.ph.needsUpdate = true;
         P.maskTex = T.texture(P.ph);
@@ -3247,7 +3326,7 @@ const ThreePost = (function () {
             P.direct = null; _paneDrop();
         }
         if (_composer === P) _composer = null;
-        _bloomPass = null; _cinematicPass = null; _retroPass = null; _fxaaPass = null; _smaaPass = null;
+        _bloomPass = null; _cinematicPass = null; _retroPass = null; _fxaaPass = null; _smaaPass = null; _stylePass = null;
         _dofPassH = null; _dofPassV = null; _toneMapPass = null; _ssaoPass = null; _ssaoAvail = false; _hdr = false;
         if (_renderer) _renderer.toneMapping = _filmic ? THREE.ACESFilmicToneMapping : THREE.LinearToneMapping;
     }
@@ -3348,12 +3427,14 @@ const ThreePost = (function () {
     /* THE RAY SOURCE on the node renderer (_RaySrcShader): the frame's input at 1/8 size, the cells too little lit to be a light
        left dark. Drawn only while the rays are on (_ngRender flips autoUpdate); its first draw is the frame twin's warm-up. */
     function _ngRaySrc(P, tex) {
-        var T = P.T, F = T.float, V2 = T.vec2, V3 = T.vec3, uRT = _ngR(P, P.U.cu.uRayThr, 'vec2'), LUM = V3(0.299, 0.587, 0.114);
+        var T = P.T, F = T.float, V2 = T.vec2, V3 = T.vec3, uRT = _ngR(P, P.U.cu.uRayThr, 'vec2'), uSky = _ngR(P, P.U.cu.uRaySky, 'float'), LUM = V3(0.299, 0.587, 0.114);
         var rt = T.rtt(T.Fn(function () {
             var u = T.uv(), tx = F(1).div(P.uDRes), acc = V3(0).toVar(), cov = F(0).toVar();
             for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) {
-                var s = tex.sample(u.add(V2(i * 2 - 3, j * 2 - 3).mul(tx))).rgb;
+                var q = u.add(V2(i * 2 - 3, j * 2 - 3).mul(tx));
+                var s = tex.sample(q).rgb;
                 var k = T.smoothstep(uRT.x, uRT.x.mul(1.8).add(0.04), T.dot(s, LUM));
+                k = k.mul(T.select(uSky.greaterThan(0.5), T.step(0.999999, P.depthTex.sample(q).r), F(1)));   // THE SKY'S RAYS: the sky only
                 acc.addAssign(s.mul(k)); cov.addAssign(k);
             }
             return T.vec4(acc.div(16).mul(T.smoothstep(0.25, 0.5, cov.div(16))), 1);
@@ -3537,8 +3618,9 @@ const ThreePost = (function () {
         if (ao !== 'off' && !(_ssaoPass.aoMat.uniforms.uStrength.value > 0) && !(typeof window !== 'undefined' && window.EW_AO_AT_ZERO)) ao = 'off';
         var bloom = !!(_bloomPass && _bloomPass.enabled && P.mods.bloom), dof = !!(_dofPassH && _dofPassH.enabled);
         var frame = !!((_cinematicPass && _cinematicPass.enabled) || (_retroPass && _retroPass.enabled) || _aeEnabled());
-        return { aa: aa, ao: ao, bloom: bloom, dof: dof, frame: frame, cam: ao === 'gtao' ? cam : null,
-            key: aa + '|' + ao + (ao === 'gtao' ? ':' + cam.uuid : '') + '|' + (bloom ? 'B' : '-') + (dof ? 'D' : '-') + (frame ? 'F' : '-') };
+        var style = _styleMode() > 0;   // THE ENTROPY STYLE: a part of the set, so Off costs no pass
+        return { aa: aa, ao: ao, bloom: bloom, dof: dof, style: style, frame: frame, cam: ao === 'gtao' ? cam : null,
+            key: aa + '|' + ao + (ao === 'gtao' ? ':' + cam.uuid : '') + '|' + (bloom ? 'B' : '-') + (dof ? 'D' : '-') + (style ? 'S' : '-') + (frame ? 'F' : '-') };
     }
     function _ngBuild(o) {
         var P = _ng, T = P.T, made = [], passes = 1;
@@ -3583,6 +3665,7 @@ const ThreePost = (function () {
             var dv = _ngDof(P, dh.node, P.U.dofV); made.push(dv.tex);
             ldr = dv.node; passes += 2;
         }
+        if (o.style) { ldr = _ngStyle(P, ldr, made); passes++; }   // THE ENTROPY STYLE: under the cinematic / retro frame
         var frameIn = null;
         if (o.frame) {
             frameIn = T.convertToTexture(ldr); if (frameIn !== ldr) { made.push(frameIn); passes++; }
@@ -3621,7 +3704,7 @@ const ThreePost = (function () {
             P.warm[o.key] = 1;
             var tk = o.key.slice(0, -1) + 'F', te = P.pipes[tk];
             if (!te) {
-                var to = { aa: o.aa, ao: o.ao, bloom: o.bloom, dof: o.dof, frame: true, cam: o.cam, key: tk };
+                var to = { aa: o.aa, ao: o.ao, bloom: o.bloom, dof: o.dof, style: o.style, frame: true, cam: o.cam, key: tk };
                 te = P.pipes[tk] = _ngBuild(to); console.log('[ThreePost] node post chain: warmed [' + tk + ']');
             }
             P.cineOn.value = 0; P.retroOn.value = 0;
@@ -3636,8 +3719,9 @@ const ThreePost = (function () {
         if (_bloomPass && _bloomPass.enabled) { P.bS.value = Math.max(0, _bloomPass.strength); P.bR.value = Math.max(0, Math.min(1, _bloomPass.radius)); P.bT.value = _bloomPass.threshold; }
         P.cineOn.value = (_cinematicPass && _cinematicPass.enabled) ? 1 : 0;
         P.retroOn.value = (_retroPass && _retroPass.enabled) ? 1 : 0;
+        P.st.mode.value = _styleMode(); P.st.inkW.value = _styleInkPx(); var _smt = _styleMaskTex(); P.st.unitK.value = _smt ? _styleUnitK() : 1; P.st.grass.value = (_smt && _styleGrassU()) ? 1 : 0; P.st.ink.value = +_style.ink || 0; P.st.bands.value = +_style.bands || 0; P.st.amount.value = (_style.amount === undefined) ? 1 : +_style.amount;
         if (e.raySrc) e.raySrc.autoUpdate = P.cineOn.value > 0.5 && P.U.cu.uRays.value > 0.001;   // THE RAY SOURCE: drawn only while the rays are on
-        var mt = P.U.ru.tMask.value; P.maskTex.value = mt || P.ph;
+        var mt = P.U.ru.tMask.value; P.maskTex.value = mt || _smt || P.ph;
         var ac = r.autoClear;
         try { e.pipe.render(); } finally { r.autoClear = ac; }
     }
@@ -3812,6 +3896,10 @@ const ThreePost = (function () {
         var renderPass = new THREE.RenderPass(scene, null);
         renderPass.clear = true;
         renderPass.clearAlpha = 0;
+        (function (rp) {   // THE SKY'S RAYS: the scene's sky as a mask, while the read buffer's depth is still the scene's
+            var r0 = rp.render;
+            rp.render = function (r, wb, rb) { var o = r0.apply(this, arguments); try { _skyMaskAfterScene(r, rb); } catch (e) { _skyMaskTex = null; } return o; };
+        })(renderPass);
         _composer.addPass(renderPass);
 
         // THE THIRD PASS 3.4: SSAO right after the scene, off the depth the RenderPass just wrote (no second scene render)
@@ -3820,6 +3908,19 @@ const ThreePost = (function () {
             if (_ssaoAvail && THREE.Pass && THREE.Pass.FullScreenQuad) { _ssaoPass = new _SsaoPass(); _ssaoPass.enabled = _ssaoWanted(); _composer.addPass(_ssaoPass); }
             else _ssaoAvail = false;
         } catch (e) { _ssaoAvail = false; _ssaoPass = null; console.warn('[ThreePost] SSAO unavailable', e); }
+        // THE ENTROPY STYLE: right after the scene (and the AO), while the read buffer's depth is still the scene's
+        try {
+            _stylePass = new THREE.ShaderPass(_StyleShader);
+            (function (sp) {
+                var r0 = sp.render;
+                sp.render = function (r, wb, rb, dt, mask) {
+                    _styleSync(sp.uniforms, rb.width, rb.height, _styleCam() || (_composer.passes[0] && _composer.passes[0].camera), _ssaoAvail ? (rb.depthTexture || null) : null);
+                    r0.call(sp, r, wb, rb, dt, mask);
+                };
+            })(_stylePass);
+            _styleApply();
+            _composer.addPass(_stylePass);
+        } catch (e) { _stylePass = null; console.warn('[ThreePost] the Entropy Style pass failed', e); }
 
         // Bloom — blooms the raw scene before AA/cinematic. Driven each frame by
         // _applyCurrent (env grade floored to the user strength) and gated by the
@@ -3876,7 +3977,7 @@ const ThreePost = (function () {
         (function (cp) {   // THE RAY SOURCE: the light sources of this pass's input, before it draws
             var cr = cp.render;
             cp.render = function (r, wb, rb) {
-                if (rb) _raySrcRender(r, rb.texture, rb.width, rb.height, cp.material.uniforms);
+                if (rb) _raySrcRender(r, rb.texture, rb.width, rb.height, cp.material.uniforms, _skyMaskTex);   // (THE SKY'S RAYS: the mask made right after the scene)
                 return cr.apply(this, arguments);
             };
         })(_cinematicPass);
@@ -3991,9 +4092,52 @@ const ThreePost = (function () {
             cam.updateMatrixWorld();
             _rbD.setFromMatrixPosition(cam.matrixWorld);
             _rbD.subVectors(_rb.p, _rbD);
+            if (U.uRaySky) U.uRaySky.value = 0;   // a finisher's light is its own (the column, the rose window): every light throws
             return _raysAim(U, cam, _rbD, _rb.light, b);
         }
-        return _raysAim(U, cam, _sunRayDir(), _sunLight, s);
+        var sk = _skyRayLight(ctx);
+        if (U.uRaySky) U.uRaySky.value = _raySkyOn();
+        return sk ? _raysAim(U, cam, sk.dir, sk.light, s) : _raysAim(U, cam, _sunRayDir(), _sunLight, s);
+    }
+    /* THE SKY'S RAYS (2026-11-14, mondo: "my unit rim light makes light rays but i think i just want the light rays to come from
+       above like the sun or the moon"): the slider's rays came off every bright pixel, so a rim-lit unit (THE UNIT RIM LIGHT),
+       a lamp, a lit wall all threw shafts. Now only the SKY throws them (uRaySky: the ray source keeps a pixel only where the
+       scene drew nothing, i.e. the dome; the 3D moon writes no depth for this), and they aim at the body the dome draws:
+       the sun by day, the moon by night, by the world clock where the room has one (ThreeRenderer.getSkyLightDir). The rim
+       light, the slider and its 0 = off are untouched; a finisher beat (rayBeat) keeps its own light. No sky on screen = no
+       shafts. Back to the old every-light rays: window.EW_RAYS_ANY_LIGHT = true (live). */
+    function _raySkyOn() { return (typeof window !== 'undefined' && window.EW_RAYS_ANY_LIGHT) ? 0 : 1; }
+    var _skyRayL = null;
+    function _skyRayLight(ctx) {
+        var o = null;
+        try { o = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getSkyLightDir) ? ThreeRenderer.getSkyLightDir(ctx === 'hq' ? 'hq' : 'battle') : null; } catch (e) { o = null; }
+        if (!o || !o.dir) return null;
+        if (!_skyRayL) _skyRayL = { dir: new THREE.Vector3(), light: { color: new THREE.Color(), intensity: 1 } };
+        _skyRayL.dir.copy(o.dir);
+        if (o.moon) { _skyRayL.light.color.setRGB(0.78, 0.86, 1.0); _skyRayL.light.intensity = 0.5; }
+        else { _skyRayL.light.color.setRGB(1.0, 0.94, 0.82); _skyRayL.light.intensity = 1; }
+        return _skyRayL;
+    }
+    /* the classic chain's sky: 1 where the scene drew nothing (depth still cleared), at half size, made right after the
+       RenderPass (its depth is gone by the frame pass). Only while sky rays are on; else none (the rays see every light). */
+    var _skyMaskC = null, _skyMaskTex = null;
+    function _skyMaskAfterScene(r, rb) {
+        var U = _cinematicPass && _cinematicPass.material && _cinematicPass.material.uniforms;
+        _skyMaskTex = null;
+        if (!U || !U.uRaySky || !(U.uRays && U.uRays.value > 0.001) || !(U.uRaySky.value > 0.5) || !rb || !rb.depthTexture) return;
+        var W = Math.max(1, rb.width >> 1), H = Math.max(1, rb.height >> 1), M = _skyMaskC;
+        if (!M) {
+            M = _skyMaskC = { scene: new THREE.Scene(), cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1),
+                mat: new THREE.ShaderMaterial({ uniforms: { tDepth: { value: null } }, vertexShader: _RaySrcShader.vertexShader,
+                    fragmentShader: 'uniform sampler2D tDepth; varying vec2 vUv; void main() { gl_FragColor = vec4(vec3(step(0.999999, texture2D(tDepth, vUv).r)), 1.0); }',
+                    depthTest: false, depthWrite: false }),
+                rt: new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, format: THREE.RGBAFormat, depthBuffer: false, stencilBuffer: false }) };
+            var q = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), M.mat); q.frustumCulled = false; M.scene.add(q);
+        } else if (M.rt.width !== W || M.rt.height !== H) M.rt.setSize(W, H);
+        M.mat.uniforms.tDepth.value = rb.depthTexture;
+        var prev = r.getRenderTarget();
+        r.setRenderTarget(M.rt); r.render(M.scene, M.cam); r.setRenderTarget(prev);
+        _skyMaskTex = M.rt.texture;
     }
     /* THE RAY SOURCE (2026-10-24, mondo: "There are light rays thats look like they come from every star in the sky, thats
        defnitely overkill"): the rays used to gather every full-size pixel past the bar, and at night the bar is the dark
@@ -4007,12 +4151,14 @@ const ThreePost = (function () {
     var _RaySrcShader = {
         vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
         fragmentShader: [
-            'uniform sampler2D tDiffuse; uniform vec2 uTexel; uniform vec2 uRayThr; varying vec2 vUv;',
+            'uniform sampler2D tDiffuse; uniform sampler2D tSky; uniform float uRaySky; uniform vec2 uTexel; uniform vec2 uRayThr; varying vec2 vUv;',
             'void main() {',
             '  vec3 acc = vec3(0.0); float cov = 0.0;',
             '  for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) {',
-            '    vec3 s = texture2D(tDiffuse, vUv + vec2(float(i) * 2.0 - 3.0, float(j) * 2.0 - 3.0) * uTexel).rgb;',
+            '    vec2 q = vUv + vec2(float(i) * 2.0 - 3.0, float(j) * 2.0 - 3.0) * uTexel;',
+            '    vec3 s = texture2D(tDiffuse, q).rgb;',
             '    float k = smoothstep(uRayThr.x, uRayThr.x * 1.8 + 0.04, dot(s, vec3(0.299, 0.587, 0.114)));',
+            '    if (uRaySky > 0.5) k *= step(0.999999, texture2D(tSky, q).r);   // THE SKY\'S RAYS: only where nothing was drawn (the sky)',
             '    acc += s * k; cov += k;',
             '  }',
             '  gl_FragColor = vec4(acc / 16.0 * smoothstep(0.25, 0.5, cov / 16.0), 1.0);',
@@ -4020,8 +4166,10 @@ const ThreePost = (function () {
         ].join('\n')
     };
     var _raySrc = null;
-    /* WebGL: the frame pass's input (inTex, w × h pixels) → the 1/8 source, into U.tRaySrc. Only while the rays are on. */
-    function _raySrcRender(r, inTex, w, h, U) {
+    /* WebGL: the frame pass's input (inTex, w × h pixels) → the 1/8 source, into U.tRaySrc. Only while the rays are on.
+       skyTex (THE SKY'S RAYS): the scene's depth (pmndrs) or _skyMaskC's mask (the classic chain) — 1 where nothing was drawn.
+       None = every light throws rays, as before. */
+    function _raySrcRender(r, inTex, w, h, U, skyTex) {
         if (!U || !U.tRaySrc || !(U.uRays && U.uRays.value > 0.001) || !inTex || !(w > 0 && h > 0)) return;
         var W = Math.max(1, Math.floor(w / RAY_SRC_DIV)), H = Math.max(1, Math.floor(h / RAY_SRC_DIV));
         var R = _raySrc;
@@ -4029,7 +4177,7 @@ const ThreePost = (function () {
             if (R) { try { R.rt.dispose(); } catch (e) {} }
             if (!R) {
                 R = { scene: new THREE.Scene(), cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1),
-                      mat: new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, uTexel: { value: new THREE.Vector2() }, uRayThr: { value: new THREE.Vector2(0.3, 1) } },
+                      mat: new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, tSky: { value: null }, uRaySky: { value: 0 }, uTexel: { value: new THREE.Vector2() }, uRayThr: { value: new THREE.Vector2(0.3, 1) } },
                           vertexShader: _RaySrcShader.vertexShader, fragmentShader: _RaySrcShader.fragmentShader, depthTest: false, depthWrite: false }) };
                 var q = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), R.mat); q.frustumCulled = false; R.scene.add(q);
             }
@@ -4038,6 +4186,8 @@ const ThreePost = (function () {
             _raySrc = R;
         } else if (R.rt.width !== W || R.rt.height !== H) R.rt.setSize(W, H);
         if (U.uRayThr) R.mat.uniforms.uRayThr.value.copy(U.uRayThr.value);
+        var sky = !!(skyTex && U.uRaySky && U.uRaySky.value > 0.5);
+        R.mat.uniforms.tSky.value = sky ? skyTex : null; R.mat.uniforms.uRaySky.value = sky ? 1 : 0;
         R.mat.uniforms.tDiffuse.value = inTex;
         R.mat.uniforms.uTexel.value.set(1 / w, 1 / h);
         var prev = r.getRenderTarget();
@@ -4170,7 +4320,9 @@ const ThreePost = (function () {
             var _maskOk = _wantMask ? _renderPixelMask(cam, null, (_paneMode && _paneMode.composite) ? _paneMode.panes : null) : false;
             _retroPass.material.uniforms['tMask'].value = _maskOk ? _maskRT.texture : null;
             _retroPass.material.uniforms['uMaskMode'].value = _maskOk ? 1.0 : 0.0;
+            if (_maskOk) _styleMaskRetro = true;   // the style reads the same mask: one draw for both
         }
+        _styleMaskFor(cam, null, (_paneMode && _paneMode.composite) ? _paneMode.panes : null);   // THE BOLD UNIT LINE
 
         if (!_ready || !_composer || !cam) {
 
@@ -4250,7 +4402,9 @@ const ThreePost = (function () {
                 _cinematicPass.material.uniforms['uNightGrade'].value = _rn2.grade;
                 var _bg2 = _brightGain() * _rn2.lift; _cinematicPass.material.uniforms['uGain'].value = _bg2;
                 var _kl = opts && opts.keyLight, _kd = (opts && opts.keyDir) || (_kl && _kl.position) || null;
-                var _ry2 = _raysAim(_cinematicPass.material.uniforms, cam, _kd, _kl, (opts && opts.keyDir !== undefined || _kl) ? _raysStrength('hq') : 0);
+                var _sk2 = _skyRayLight('hq');   // THE SKY'S RAYS: the dome's sun / moon (the room's key where it has no open sky)
+                if (_cinematicPass.material.uniforms.uRaySky) _cinematicPass.material.uniforms.uRaySky.value = _raySkyOn();
+                var _ry2 = _raysAim(_cinematicPass.material.uniforms, cam, _sk2 ? _sk2.dir : _kd, _sk2 ? _sk2.light : _kl, (opts && opts.keyDir !== undefined || _kl) ? _raysStrength('hq') : 0);
                 _cinematicPass.material.uniforms['uFilmic'].value = _filmic ? 1 : 0;
                 var _lc2 = _lkCin(); _cinematicPass.enabled = !!(_lc2.crt || _lc2.vignette || _lkLensChroma() > 0.01 || _mb2 > 0.001 || Math.abs(_bg2 - 1) > 0.002
                     || _rn2.grade > 0.001 || _ry2 > 0.001 || _filmic);
@@ -4261,6 +4415,7 @@ const ThreePost = (function () {
                 _retroPass.material.uniforms['tMask'].value = null;
                 _retroPass.material.uniforms['uMaskMode'].value = 0.0;
             }
+            _styleMaskFor(cam, scene, null);   // THE BOLD UNIT LINE: the walk's bodies
             if (_bloomPass && _bloomPass.enabled) {
                 /* THE POST PASS 7.2 (2026-09-21): in the building the bloom reads as LIGHT, not haze — the threshold rides the
                    look (`bloomThr`, default HQ_BLOOM_THRESHOLD: only the emissive surfaces — the neon, the torches, the ley
@@ -4396,6 +4551,320 @@ const ThreePost = (function () {
         }
     }
 
+    /* THE ENTROPY STYLE (2026-11-12, mondo: "some sort of shader(s) we can put over the whole game to help give it a unique
+       and consistent style ... blend all of these different assets and characters and maps into one"; he picked looks 1 + 2
+       of the sheet, "the lines look a little thick"). One screen pass under the CRT / retro passes, two halves:
+         THE GRADE  every asset pulled to one palette: shadows lean to deep indigo, lights to warm parchment, the saturation
+                    evened (a loud Meshy texture calmed, a grey pack prop lifted), a soft shoulder so nothing clips.
+         THE INK    light in five soft bands (hue kept) + a thin dark line where the DEPTH breaks (a silhouette, a ledge, a
+                    convex corner), drawn on the near side only so a body never grows. Depth, not colour: a speckled floor
+                    or a grass sheet gets no lines. Thin = about one screen pixel; Medium (1.6) is the default (the Ink Lines row).
+       A bright saturated pixel (a spell, a team outline, a zone wash: own cyan-blue / enemy pink-orange) keeps its colour
+       and takes no ink. No bloom, no fog, no texture touched; the HUD is DOM and never passes through here. Viewer-local.
+       Settings > Video > Entropy Style: Off / Grade / Grade + Ink. Stored ew_style. Off live: window.EW_NO_ENTROPY_STYLE. */
+    var _style = { mode: 'ink', inkWidth: 1.6, ink: 0.8, bands: 0.7, amount: 1, unitBold: 1.9 };   // Medium lines: mondo 11-12 "i like it with the lines on medium"
+    try {
+        var _styleSaved = (typeof localStorage !== 'undefined') ? JSON.parse(localStorage.getItem('ew_style') || 'null') : null;
+        if (_styleSaved && typeof _styleSaved === 'object') { for (var _sk in _style) { if (_styleSaved[_sk] !== undefined) _style[_sk] = _styleSaved[_sk]; } }
+    } catch (e) {}
+    var _stylePass = null;
+    function _styleMode() {
+        if (typeof window !== 'undefined' && window.EW_NO_ENTROPY_STYLE) return 0;
+        return _style.mode === 'ink' ? 2 : (_style.mode === 'grade' ? 1 : 0);
+    }
+    function _styleInkPx() {
+        var r = 1; try { r = (_renderer && _renderer.getPixelRatio) ? _renderer.getPixelRatio() : 1; } catch (e) {}
+        return Math.max(0.5, +_style.inkWidth || 1) * Math.max(1, r * 0.75);
+    }
+    /* THE BOLD UNIT LINE (2026-11-12, mondo: "maybe just bolder lines on units, same thinness everywhere else"): the ink
+       line of a unit's body is drawn `unitBold` times the map's width; scenery, props and terrain keep the Ink Lines
+       width. A unit = the model mask the Pixelate "models" scope always drew (_renderPixelMask: the bodies flagged
+       _ew_modelSkin, the held GLBs flagged _ew_pixelate), half size, one extra draw of the bodies a frame, only while
+       Grade + Ink is on. Off: Settings > Video > Unit Lines Same, or window.EW_NO_UNIT_INK = true (live). */
+    var _styleFrame = 0, _styleMaskAt = -1, _styleMaskRetro = false;
+    function _styleUnitK() {
+        if (typeof window !== 'undefined' && window.EW_NO_UNIT_INK) return 1;
+        var k = (_style.unitBold === undefined) ? 1.9 : +_style.unitBold;
+        return (k > 1.001 && _styleMode() > 1) ? Math.min(4, k) : 1;
+    }
+    /* THE GRASS TAKES NO INK (2026-11-12, mondo: "adding the ink shader makes the grass look kinda weird to me, like it ends up
+       being a shadowy blob. Can we exclude grass from the shader or tweak whatever is causing that"): the five light bands cut each
+       clump into a lit tip and a near-black foot, and the ink line drew the squares' seams (the depth under the grass: a tuft
+       writes none) across the field. The mask's green + blue now carry the grass field's own view depth (_renderPixelMask), and
+       a pixel whose scene depth lies at or behind its tuft takes the grade alone: no bands, no line. A wall, a prop or a body in
+       front of the grass is nearer than the tuft and keeps both. Old look back, live: window.EW_INK_ON_GRASS = true. */
+    function _styleGrassU() {
+        if (typeof window === 'undefined' || window.EW_INK_ON_GRASS || _styleMode() <= 1) return null;
+        var u = window._ewGgMask;
+        return (u && u.mesh && u.mesh.parent && u.mesh.visible !== false && u.value) ? u : null;
+    }
+    function _styleMaskFor(cam, sc, panes) {
+        _styleFrame++;
+        if ((_styleUnitK() <= 1 && !_styleGrassU()) || !cam) return;
+        /* the retro pass drew it this frame. (Its old sign was "_styleMaskAt is the last frame", which the style's own draw of
+           the last frame set as well: the mask was drawn once and then held, a still picture of the first frame, so the bold
+           line sat where the bodies had stood. Found 11-12 when the grass's mask never moved with the camera.) */
+        var byRetro = _styleMaskRetro; _styleMaskRetro = false;
+        if (byRetro && _maskRT) { _styleMaskAt = _styleFrame; return; }
+        if (_renderPixelMask(cam, sc || null, panes || null, true)) _styleMaskAt = _styleFrame;   // THE UNIT MASK: the units alone
+    }
+    function _styleMaskTex() { return (_styleMaskAt === _styleFrame && _maskRT && (_styleUnitK() > 1 || _styleGrassU())) ? _maskRT.texture : null; }
+    function _styleCam() { return (_ssaoPass && _ssaoPass.camera) || null; }
+    /* the classic chains' uniforms, written at the pass's own draw */
+    function _styleSync(u, w, h, cam, depthTex) {
+        var m = _styleMode();
+        if (m > 1 && (!depthTex || !cam)) m = 1;   // no depth to read: the grade alone
+        u.uMode.value = m; u.tDepth.value = depthTex || null;
+        u.uRes.value.set(Math.max(1, w), Math.max(1, h));
+        u.uInkW.value = _styleInkPx(); var _smt = _styleMaskTex(); u.tMask.value = _smt; u.uUnitK.value = _smt ? _styleUnitK() : 1; u.uGrass.value = (_smt && _styleGrassU()) ? 1 : 0; u.uInk.value = +_style.ink || 0; u.uBands.value = +_style.bands || 0; u.uAmount.value = (_style.amount === undefined) ? 1 : +_style.amount;
+        if (cam) { u.uNearFar.value.set(cam.near || 0.1, cam.far || 1000); u.uOrtho.value = cam.isOrthographicCamera ? 1 : 0; u.uP00.value = cam.projectionMatrix.elements[0] || 1; }
+    }
+    function _styleApply() {
+        var on = _styleMode() > 0;
+        if (_stylePass) _stylePass.enabled = on;
+    }
+    function setStyle(mode, persist) {
+        _style.mode = (mode === 'ink' || mode === 'grade') ? mode : 'off';
+        _styleApply();
+        if (persist !== false) { try { localStorage.setItem('ew_style', JSON.stringify(_style)); } catch (e) {} }
+    }
+    function setStyleParam(key, value, persist) {
+        if (!(key in _style) || key === 'mode') return;
+        var v = parseFloat(value); if (isNaN(v)) return;
+        _style[key] = v;
+        if (persist !== false) { try { localStorage.setItem('ew_style', JSON.stringify(_style)); } catch (e) {} }
+    }
+    function getStyle() { return { mode: _style.mode, unitBold: (_style.unitBold === undefined) ? 1.9 : +_style.unitBold, inkWidth: _style.inkWidth, ink: _style.ink, bands: _style.bands, amount: _style.amount, live: _styleMode() }; }
+    var _StyleShader = {
+        uniforms: {
+            'tDiffuse': { value: null }, 'tDepth': { value: null },
+            'uRes': { value: new THREE.Vector2(1, 1) }, 'uMode': { value: 0 }, 'uInkW': { value: 1 }, 'tMask': { value: null }, 'uUnitK': { value: 1 }, 'uGrass': { value: 0 }, 'uInk': { value: 0.8 }, 'uBands': { value: 0.7 },
+            'uAmount': { value: 1 }, 'uNearFar': { value: new THREE.Vector2(0.1, 1000) }, 'uOrtho': { value: 0 }, 'uP00': { value: 1 }
+        },
+        vertexShader: [
+            'varying vec2 vUv;',
+            'void main() {',
+            '  vUv = uv;',
+            '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);',
+            '}'
+        ].join('\n'),
+        fragmentShader: [
+            'uniform sampler2D tDiffuse;',
+            'uniform sampler2D tDepth;',
+            'uniform vec2 uRes;',
+            'uniform float uMode;',
+            'uniform float uInkW;',
+            'uniform sampler2D tMask;',
+            'uniform float uUnitK;',
+            'uniform float uGrass;',
+            'uniform float uInk;',
+            'uniform float uBands;',
+            'uniform float uAmount;',
+            'uniform vec2 uNearFar;',
+            'uniform float uOrtho;',
+            'uniform float uP00;',
+            'varying vec2 vUv;',
+            'float sLum(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }',
+            '// a spell, a team outline, a zone wash: strong + bright colour keeps itself',
+            'float sKeep(vec3 c) { float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)); float s = (mx - mn) / max(mx, 0.001); return smoothstep(0.55, 0.85, s) * smoothstep(0.6, 0.9, mx); }',
+            'vec3 sGrade(vec3 c) {',
+            '  float l = sLum(c);',
+            '  vec3 sh = vec3(0.10, 0.13, 0.26), hi = vec3(1.0, 0.93, 0.80);',
+            '  float mx = max(c.r, max(c.g, c.b)), mn = min(c.r, min(c.g, c.b)); float s = (mx - mn) / max(mx, 0.001);',
+            '  vec3 g = mix(vec3(l), c, mix(1.22, 0.86, smoothstep(0.25, 0.75, s)));',
+            '  g = mix(g, g * hi * 1.03, smoothstep(0.35, 0.95, l) * 0.55);',
+            '  g = mix(g, mix(sh, g, 0.72) + sh * 0.10, (1.0 - smoothstep(0.0, 0.45, l)) * 0.75);',
+            '  g = g / (1.0 + 0.12 * g * g);',
+            '  return pow(max(g, vec3(0.0)), vec3(0.96));',
+            '}',
+            'float sVz(vec2 q) { float d = texture2D(tDepth, q).r; float n = uNearFar.x, f = uNearFar.y; return uOrtho > 0.5 ? n + d * (f - n) : n * f / max(f - d * (f - n), 0.000001); }',
+            'float sQ(float z) { return uOrtho > 0.5 ? z : 1.0 / max(z, 0.0001); }',
+            '// THE GRASS TAKES NO INK: 1 where the mask drew a grass tuft (its view depth: log2(1 + z) / 20 in green + blue) no farther than the scene',
+            'float sGm(vec2 q, float sz) { vec4 mk = texture2D(tMask, q); float gt = mk.g + mk.b / 255.0; return (mk.r < 0.5 && gt > 0.0) ? step((exp2(gt * 20.0) - 1.0) * 0.99, sz) : 0.0; }',
+            '// THE WHOLE STEP: one depth break test, s whole texels out from the texel centre tc (see _ngStyle)',
+            'float sEdge(vec2 tc, float s, float zc, float qc) {',
+            '  vec2 d = s / uRes;',
+            '  float lap = sQ(sVz(tc + vec2(d.x, 0.0))) + sQ(sVz(tc - vec2(d.x, 0.0))) + sQ(sVz(tc + vec2(0.0, d.y))) + sQ(sVz(tc - vec2(0.0, d.y))) - 4.0 * qc;',
+            '  float dz = uOrtho > 0.5 ? lap : -lap * zc * zc;   // > 0: the neighbours lie farther, this pixel is the near side',
+            '  float wpp = (uOrtho > 0.5 ? 1.0 : zc) * 2.0 / (uP00 * uRes.x) * s;   // one line width in world units at this depth',
+            '  return smoothstep(0.9, 2.6, dz / max(wpp, 0.0000001));',
+            '}',
+            'void main() {',
+            '  vec4 s4 = texture2D(tDiffuse, vUv);',
+            '  if (uMode < 0.5) { gl_FragColor = s4; return; }',
+            '  vec3 c = clamp(s4.rgb, 0.0, 1.0); float k = sKeep(c); vec3 g = c; float edge = 0.0;',
+            '  if (uMode > 1.5) {',
+            '    float l = max(sLum(c), 0.001), lb = l * 5.0;',
+            '    float q = (floor(lb) + smoothstep(0.35, 0.65, fract(lb))) / 5.0;',
+            '    float gm = 0.0;   // THE GRASS TAKES NO INK: 1 where the scene lies at or behind the grass tuft the mask drew here',
+            '    if (uGrass > 0.5) { float gsz = sVz(vUv); vec2 gd = 2.5 / uRes;   // the mask is half size: its neighbours too, so the slit between two tufts is grass as well',
+            '      gm = max(sGm(vUv, gsz), max(max(sGm(vUv + vec2(gd.x, 0.0), gsz), sGm(vUv - vec2(gd.x, 0.0), gsz)), max(sGm(vUv + vec2(0.0, gd.y), gsz), sGm(vUv - vec2(0.0, gd.y), gsz)))); }',
+            '    g = c * (mix(l, q, uBands * (1.0 - gm)) / l);',
+            '    float iw = uInkW * (uUnitK > 1.001 ? mix(1.0, uUnitK, step(0.5, texture2D(tMask, vUv).r)) : 1.0);   // THE BOLD UNIT LINE',
+            '    vec2 px = iw / uRes;',
+            '    vec2 tc = (floor(vUv * uRes) + 0.5) / uRes;   // THE WHOLE STEP: every depth read on a texel centre',
+            '    float zc = max(sVz(tc), 0.0001), qc = sQ(zc);',
+            '    float sa = max(1.0, floor(iw)), sf = clamp(iw - sa, 0.0, 1.0);',
+            '    float ea = sEdge(tc, sa, zc, qc);',
+            '    edge = sf > 0.001 ? mix(ea, sEdge(tc, sa + 1.0, zc, qc), sf) : ea;',
+            '    // only where the eye sees the break too: a far shape lost in the fog, or two faces of one colour, take no line',
+            '    float cd = max(max(length(texture2D(tDiffuse, vUv + vec2(px.x, 0.0)).rgb - c), length(texture2D(tDiffuse, vUv - vec2(px.x, 0.0)).rgb - c)), max(length(texture2D(tDiffuse, vUv + vec2(0.0, px.y)).rgb - c), length(texture2D(tDiffuse, vUv - vec2(0.0, px.y)).rgb - c)));',
+            '    edge *= smoothstep(0.03, 0.10, cd) * (1.0 - gm);',
+            '  }',
+            '  g = mix(c, mix(sGrade(g), g, k * 0.8), uAmount);',
+            '  g = mix(g, vec3(0.07, 0.06, 0.13), edge * uInk * (1.0 - k));',
+            '  gl_FragColor = vec4(g, s4.a);',
+            '}'
+        ].join('\n')
+    };
+    /* the same pass on the node renderer (TSL Fn only: WebGPU and its WebGL 2 backend compile the one graph) */
+    /* THE WHOLE STEP (2026-11-12, mondo: "there are these black screen tears now" in the Main Hall): the ink line read the depth
+       a FRACTION of a texel out (Thin on a Retina screen = 1.5 texels, so each read fell on the seam between two texels). The depth
+       is read nearest, so on some rows the up read snapped one texel farther than the down read, the two no longer cancelled on a
+       flat floor, and the whole row took the ink wherever the floor's speckle let it: dashed black bars across the far floor, fixed
+       to the screen. Now every depth read sits on a texel centre, a whole number of texels out (half a texel of slack on any GPU),
+       and a width between two whole steps is the blend of the two tests, so Thin / Medium / Bold keep their own widths. All three
+       chains + the stage (the one GLSL: sEdge; here: edgeAt). */
+    function _ngStyle(P, src, made) {
+        var T = P.T, F = T.float, V2 = T.vec2, V3 = T.vec3, S = P.st, tex = T.convertToTexture(src);
+        if (made && tex !== src) made.push(tex);
+        var LUM = V3(0.2126, 0.7152, 0.0722);
+        var lum = function (c) { return T.dot(c, LUM); };
+        var satOf = function (c) { var mx = T.max(c.r, T.max(c.g, c.b)), mn = T.min(c.r, T.min(c.g, c.b)); return { mx: mx, s: mx.sub(mn).div(T.max(mx, 0.001)) }; };
+        var keep = function (c) { var o = satOf(c); return T.smoothstep(0.55, 0.85, o.s).mul(T.smoothstep(0.6, 0.9, o.mx)); };
+        var grade = function (c) {
+            var l = lum(c), sh = V3(0.10, 0.13, 0.26), hi = V3(1.0, 0.93, 0.80), o = satOf(c);
+            var g = T.mix(V3(l), c, T.mix(F(1.22), F(0.86), T.smoothstep(0.25, 0.75, o.s)));
+            g = T.mix(g, g.mul(hi).mul(1.03), T.smoothstep(0.35, 0.95, l).mul(0.55));
+            g = T.mix(g, T.mix(sh, g, 0.72).add(sh.mul(0.10)), F(1).sub(T.smoothstep(0.0, 0.45, l)).mul(0.75));
+            g = g.div(F(1).add(g.mul(g).mul(0.12)));
+            return T.pow(T.max(g, V3(0)), V3(0.96));
+        };
+        var ortho = P.uOrtho.greaterThan(0.5);
+        var vz = function (q) { var d = P.depthTex.sample(q).r; return T.select(ortho, P.uNear.add(d.mul(P.uFar.sub(P.uNear))), T.perspectiveDepthToViewZ(d, P.uNear, P.uFar).negate()); };
+        var qf = function (z) { return T.select(ortho, z, F(1).div(T.max(z, 0.0001))); };
+        return T.Fn(function () {
+            var u = T.uv(), s4 = tex.sample(u).toVar();
+            var c = T.clamp(s4.rgb, 0, 1).toVar(), k = keep(c).toVar(), g = c.toVar(), edge = F(0).toVar();
+            T.If(S.mode.greaterThan(1.5), function () {
+                var l = T.max(lum(c), 0.001), lb = l.mul(5);
+                var q = T.floor(lb).add(T.smoothstep(0.35, 0.65, T.fract(lb))).div(5);
+                // THE GRASS TAKES NO INK: 1 where the scene lies at or behind the grass tuft the mask drew here
+                var gsz = vz(u).toVar(), gd = V2(2.5).div(P.uDRes).toVar();   // the mask is half size: its neighbours too, so the slit between two tufts is grass as well
+                var gmf = function (q) { var mk = P.maskTex.sample(q), gt = mk.g.add(mk.b.div(255)); return T.select(gt.greaterThan(0).and(mk.r.lessThan(0.5)), T.step(T.exp2(gt.mul(20)).sub(1).mul(0.99), gsz), F(0)); };
+                var gm = T.select(S.grass.greaterThan(0.5), T.max(gmf(u), T.max(T.max(gmf(u.add(V2(gd.x, 0))), gmf(u.sub(V2(gd.x, 0)))), T.max(gmf(u.add(V2(0, gd.y))), gmf(u.sub(V2(0, gd.y)))))), F(0)).toVar();
+                g.assign(c.mul(T.mix(l, q, S.bands.mul(gm.oneMinus())).div(l)));
+                var iw = S.inkW.mul(T.select(S.unitK.greaterThan(1.001), T.mix(F(1), S.unitK, T.step(0.5, P.maskTex.sample(u).r)), F(1))).toVar();   // THE BOLD UNIT LINE
+                var px = V2(iw).div(P.uDRes).toVar();
+                /* THE WHOLE STEP (see the note above _ngStyle): the depth is read on texel centres, a whole number of texels apart */
+                var tc = T.floor(u.mul(P.uDRes)).add(0.5).div(P.uDRes).toVar();
+                var zc = T.max(vz(tc), 0.0001).toVar(), qc = qf(zc).toVar();
+                var sa = T.max(F(1), T.floor(iw)).toVar(), sf = T.clamp(iw.sub(sa), 0, 1).toVar();
+                var edgeAt = function (s) {
+                    var d = V2(s).div(P.uDRes).toVar();
+                    var lap = qf(vz(tc.add(V2(d.x, 0)))).add(qf(vz(tc.sub(V2(d.x, 0))))).add(qf(vz(tc.add(V2(0, d.y))))).add(qf(vz(tc.sub(V2(0, d.y))))).sub(qc.mul(4));
+                    var dz = T.select(ortho, lap, lap.negate().mul(zc).mul(zc));
+                    var wpp = T.select(ortho, F(1), zc).mul(2).div(S.p00.mul(P.uDRes.x)).mul(s);
+                    return T.smoothstep(0.9, 2.6, dz.div(T.max(wpp, 0.0000001)));
+                };
+                var eDepth = T.mix(edgeAt(sa), edgeAt(sa.add(1)), sf).toVar();
+                // only where the eye sees the break too: a far shape lost in the fog, or two faces of one colour, take no line
+                var cdf = function (o) { return T.length(T.clamp(tex.sample(u.add(o)).rgb, 0, 1).sub(c)); };
+                var cd = T.max(T.max(cdf(V2(px.x, 0)), cdf(V2(px.x.negate(), 0))), T.max(cdf(V2(0, px.y)), cdf(V2(0, px.y.negate()))));
+                edge.assign(eDepth.mul(T.smoothstep(0.03, 0.10, cd)).mul(gm.oneMinus()));
+            });
+            g.assign(T.mix(c, T.mix(grade(g), g, k.mul(0.8)), S.amount));
+            g.assign(T.mix(g, V3(0.07, 0.06, 0.13), edge.mul(S.ink).mul(F(1).sub(k))));
+            return T.vec4(g, s4.a);
+        })();
+    }
+    /* the pmndrs chain's pass. The scene's depth texture belongs to the composer's input buffer; when this pass's turn is
+       to draw INTO that buffer, sampling its depth would be a feedback loop, so it draws to a target of its own and a copy
+       lands the picture. */
+    function _ppStylePass(PP, composer, rp) {
+        var m = new THREE.ShaderMaterial({ uniforms: THREE.UniformsUtils.clone(_StyleShader.uniforms), vertexShader: _PP_VS, fragmentShader: _StyleShader.fragmentShader, depthTest: false, depthWrite: false });
+        var p = new PP.ShaderPass(m, 'tDiffuse'); p.material = m;
+        var cm = new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: null } }, vertexShader: _PP_VS, fragmentShader: 'uniform sampler2D tDiffuse; varying vec2 vUv; void main() { gl_FragColor = texture2D(tDiffuse, vUv); }', depthTest: false, depthWrite: false });
+        var cp = new PP.ShaderPass(cm, 'tDiffuse'); cp.material = cm;
+        var rt = null, r0 = p.render;
+        p.render = function (r, inp, out, d, st) {
+            var own = composer.inputBuffer, dt = (own && own.depthTexture) || null, cam = _styleCam() || rp.camera;
+            _styleSync(m.uniforms, inp.width, inp.height, cam, dt);
+            if (dt && out === own && m.uniforms.uMode.value > 1.5) {
+                if (!rt) {
+                    rt = new THREE.WebGLRenderTarget(inp.width, inp.height, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, type: inp.texture.type, depthBuffer: false, stencilBuffer: false });
+                    rt.texture.colorSpace = inp.texture.colorSpace;
+                } else if (rt.width !== inp.width || rt.height !== inp.height) rt.setSize(inp.width, inp.height);
+                r0.call(this, r, inp, rt, d, st);
+                cp.render(r, rt, out, d, st);
+            } else r0.call(this, r, inp, out, d, st);
+        };
+        p.ewDispose = function () { try { if (rt) rt.dispose(); m.dispose(); cm.dispose(); } catch (e) {} };
+        return p;
+    }
+
+    /* THE STYLE ON A STAGE (2026-11-12, mondo: "make sure the 2 new shaders (ink and the color grade) are on in the party
+       builder as well. The 3d models dont have it"). The party builder / creator / codex stage (three-renderer.js
+       EWCharViewer) is a WebGL renderer of its OWN, drawing straight to its own see-through canvas, so none of the board's
+       chain ever reached it. styleDraw(r, scene, cam) draws that renderer's frame through the same _StyleShader, following
+       the same settings (Entropy Style, Ink Lines, Unit Lines: the whole stage is a unit, so its line takes the unit width):
+       - the scene into a target of the canvas's size (4x MSAA + a depth texture). The target is flagged isXRRenderTarget:
+         the only thing three reads that flag for is "tone map + encode in the materials as if this were the canvas", so
+         the picture in it is, sample for sample, the one the canvas showed before;
+       - one quad to the canvas: the style on the un-premultiplied colour, drawn back premultiplied (the stage's canvas is
+         see-through: an empty pixel stays empty, the shadow blob stays a shadow, an additive glow keeps what it added).
+       Returns false (the caller draws its plain frame) when the style is Off or anything fails. */
+    var _stg = null;   // per renderer: { r, rt, mat, quad, scene, cam, bad }
+    function styleDraw(r, scene, cam) {
+        var mode = _styleMode();
+        if (!mode || !r || !scene || !cam || !THREE.WebGLRenderTarget || !THREE.DepthTexture) return false;
+        if (typeof window !== 'undefined' && window.EW_NO_STAGE_STYLE) return false;
+        if (_stg && _stg.r !== r) { try { _stg.rt.dispose(); _stg.rt.depthTexture.dispose(); _stg.mat.dispose(); } catch (e) {} _stg = null; }
+        if (_stg && _stg.bad) return false;
+        var prevRT = null, prevAuto = true;
+        try {
+            var size = r.getDrawingBufferSize(new THREE.Vector2()), w = Math.max(1, Math.round(size.x)), h = Math.max(1, Math.round(size.y));
+            if (!_stg) {
+                var rt = new THREE.WebGLRenderTarget(w, h, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, type: THREE.UnsignedByteType, depthBuffer: true, stencilBuffer: false, samples: 4 });
+                rt.isXRRenderTarget = true;                    // tone map + encode in the materials, as on the canvas
+                rt.texture.colorSpace = r.outputColorSpace || THREE.SRGBColorSpace;
+                rt.texture.internalFormat = 'RGBA8';           // the encoded bytes as they are (no sRGB decode on the read back)
+                rt.texture.generateMipmaps = false;
+                rt.depthTexture = new THREE.DepthTexture(w, h);
+                rt.depthTexture.type = THREE.UnsignedIntType;
+                var fs = _StyleShader.fragmentShader
+                    .replace("vec3 c = clamp(s4.rgb, 0.0, 1.0);", "float sA = clamp(s4.a, 0.0, 1.0); if (sA < 0.004) { gl_FragColor = s4; return; }\n  vec3 c = clamp(s4.rgb / sA, 0.0, 1.0); vec3 sAdd = max(s4.rgb - c * sA, 0.0);")
+                    .replace("gl_FragColor = vec4(g, s4.a);", "gl_FragColor = vec4(g * sA + sAdd, s4.a);");
+                var mat = new THREE.ShaderMaterial({ uniforms: THREE.UniformsUtils.clone(_StyleShader.uniforms),
+                    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+                    fragmentShader: fs, depthTest: false, depthWrite: false, toneMapped: false, transparent: false, blending: THREE.NoBlending });
+                var quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat); quad.frustumCulled = false;
+                var sc = new THREE.Scene(); sc.add(quad);
+                _stg = { r: r, rt: rt, mat: mat, quad: quad, scene: sc, cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), w: w, h: h, bad: false };
+            } else if (_stg.w !== w || _stg.h !== h) { _stg.rt.setSize(w, h); _stg.w = w; _stg.h = h; }
+            var S = _stg, u = S.mat.uniforms;
+            prevRT = r.getRenderTarget(); prevAuto = r.autoClear;
+            r.setRenderTarget(S.rt); r.autoClear = true;
+            r.render(scene, cam);
+            r.setRenderTarget(prevRT);
+            var pr = 1; try { pr = r.getPixelRatio(); } catch (e) {}
+            var uk = (mode > 1) ? _styleUnitK() : 1;
+            u.tDiffuse.value = S.rt.texture; u.tDepth.value = S.rt.depthTexture; u.tMask.value = null; u.uUnitK.value = 1;
+            u.uMode.value = mode; u.uRes.value.set(w, h);
+            u.uInkW.value = Math.max(0.5, +_style.inkWidth || 1) * Math.max(1, pr * 0.75) * uk;
+            u.uInk.value = +_style.ink || 0; u.uBands.value = +_style.bands || 0; u.uAmount.value = (_style.amount === undefined) ? 1 : +_style.amount;
+            u.uNearFar.value.set(cam.near || 0.1, cam.far || 1000); u.uOrtho.value = cam.isOrthographicCamera ? 1 : 0; u.uP00.value = cam.projectionMatrix.elements[0] || 1;
+            r.render(S.scene, S.cam);
+            r.autoClear = prevAuto;
+            return true;
+        } catch (e) {
+            try { r.setRenderTarget(prevRT); r.autoClear = prevAuto; } catch (e2) {}
+            if (_stg) _stg.bad = true; else _stg = { r: r, bad: true, rt: { dispose: function () {}, depthTexture: { dispose: function () {} } }, mat: { dispose: function () {} } };
+            console.warn('[ThreePost] the stage style failed; the stage draws plain', e);
+            return false;
+        }
+    }
+
     /* THE RENDER SCALE (2026-11-10, the frame rate plan 2; mondo picked "Plan 2: Render Scale setting"). The 3D picture is
        drawn at a share of the screen's own resolution and the browser stretches it to the window; the HUD, the menus and
        every piece of text are DOM and stay at full sharpness. A Retina screen draws 4 pixels for every one of a plain
@@ -4490,7 +4959,7 @@ const ThreePost = (function () {
         _maskScanAt = 0;
 
         _composer = null;
-        _bloomPass = null; _cinematicPass = null; _retroPass = null; _smaaPass = null;
+        _bloomPass = null; _cinematicPass = null; _retroPass = null; _smaaPass = null; _stylePass = null;
         _toneMapPass = null; if (_directRT) { _directRT.dispose(); _directRT = null; } _paneDrop(); _hdr = false;
         _fxaaPass = null;
         _dofPassH = null;
@@ -4657,6 +5126,7 @@ const ThreePost = (function () {
         render: render,
         renderScene: renderScene,
         renderDirect: renderDirect,
+        styleDraw: styleDraw,   // THE STYLE ON A STAGE: the Entropy Style on a renderer of its own (the party builder / creator stage)
         renderPanes: renderPanes,
         warmTarget: warmTarget,   // WEBGPU_PLAN W3: the target the room warm-up compiles into (the node chain's scene pass), else null
         isHdrBloom: isHdrBloom,
@@ -4676,6 +5146,9 @@ const ThreePost = (function () {
         setAA: setAA, getAA: getAA,
         setPixelRatio: setPixelRatio,
         setRenderScale: setRenderScale,
+        setStyle: setStyle,
+        setStyleParam: setStyleParam,
+        getStyle: getStyle,
         getRenderScale: getRenderScale,
         syncLighting: syncLighting,
         setShadowFrame: setShadowFrame,

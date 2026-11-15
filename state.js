@@ -72,6 +72,8 @@
             // 2026-07-23 yeti rework: frozen (hard CC with thaw-outs), blind
             // (attack accuracy loss from blizzards).
             'frozen','blind',
+            // 2026-11-12 astral projection build 1: sleep (hard CC, damage wakes it), projecting (the spirit of a sleeping body)
+            'sleep','projecting',
             // 2026-10-06: Guard's one-round recovery buff.
             'guardRegen',
             // 2026-10-09: Broken (every passive switched off while it lasts).
@@ -253,7 +255,7 @@
                 id: 'arena',
                 label: 'Arena',
                 icon: '🏰',
-                desc: 'Destroy the Cube, find all 5 hidden Keys, or wipe out the enemy. Three Nexus zones (center + both spawns; yours starts captured): 4 ticks flip one, a held zone heals you and burns the enemy, you respawn ONLY on a zone you hold, non-home zones are ×1.5 Cube damage. After 20 rounds the higher Arena score wins (a bounty kill scores double, more the longer the streak it ends); a tied score goes to the side holding more Keys, then Sudden Death.',
+                desc: 'Win by Wipeout, destroying the Enemy Cube, or finding all 5 Hidden Keys. Composite score determines the winner after 20 rounds.',
                 /* 2026-09-07 Arena rules pass: matches end ONLY on a real win
                    condition. The round cap is a "never literally forever"
                    backstop (AI training / balance runs want every objective to
@@ -406,15 +408,18 @@
            8-unit rosters, so it keeps the roomier full boards only. */
         (function _generateCompatibleMaps() {
             if (typeof EW_MAP_META === 'undefined') return;
-            const fulls = EW_MAP_META.filter(m => !m.isDelta).map(m => m.id);
+            /* THE BIG SITE BOARDS ARE OUT (2026-11-11, mondo, asked about the 35 old 16×16 to 24×24 voxel site boards: "yes those should go too"):
+               no mode offers them any more. A whole board that is its room's own cut (`arena`, the Fairy Forest 20×20) stays. The roster rows
+               and GAME_MODES entries stand: the site ids are what the HQ and the arenas read. */
+            const fulls = EW_MAP_META.filter(m => !m.isDelta && m.arena).map(m => m.id);
             const deltas = EW_MAP_META.filter(m => m.isDelta).map(m => m.id);
             const all = ['medium', 'large', 'xlarge'].concat(fulls, ['prebuilt_custommap'], deltas);
             Object.keys(MULTIPLAYER_MODES).forEach(k => { MULTIPLAYER_MODES[k].compatibleMaps = all.slice(); });
             MULTIPLAYER_MODES.tdm.compatibleMaps = ['normal'].concat(all);
-            MULTIPLAYER_MODES.gauntlet.compatibleMaps = ['medium', 'large', 'xlarge'].concat(fulls, ['prebuilt_custommap']);
+            MULTIPLAYER_MODES.gauntlet.compatibleMaps = all.slice();   // Gauntlet played only the big site boards: it deploys 4, so it now takes the 12×12 maps like the other modes
             /* Clash always plays on its fixed JRPG stage — no map picking. THE CLASH TEMPLE (2026-10-20): the stage is the Temple room's
                cut; the old voxel Temple stays pickable beside it in VS CPU (online deals only the stage — online.js). */
-            MULTIPLAYER_MODES.clash.compatibleMaps = ['clash_stage', 'clash_stage_voxel'];
+            MULTIPLAYER_MODES.clash.compatibleMaps = ['clash_stage'];   // the old voxel Temple left the game 2026-11-11 (mondo: "get rid of all the voxel maps")
             /* Mystery Dungeon never appears in the PvP map picker — its hub and
                generated floors are loaded directly by the MD runtime. */
             MULTIPLAYER_MODES.dungeon.compatibleMaps = [];
@@ -440,13 +445,6 @@
                 2: ['Vessel', 'Vessel', 'Vessel', 'Vessel'],
             },
         };
-        /* THE CLASH TEMPLE (2026-10-20): the old voxel Temple, kept under its own id (data.js hqClashStageRegister) */
-        GAME_MODES.clash_stage_voxel = Object.assign({}, GAME_MODES.clash_stage, {
-            id: 'clash_stage_voxel', label: 'Temple · voxel',
-            desc: 'The old 10×10 voxel temple plateau — two formation columns of 4 facing each other across the sanctum',
-            spawns: { 1: GAME_MODES.clash_stage.spawns[1].map(p => ({ x: p.x, y: p.y })), 2: GAME_MODES.clash_stage.spawns[2].map(p => ({ x: p.x, y: p.y })) },
-        });
-
         /* ── Mystery Dungeon board registrations ──────────────────────────────
            The Guild Hub is a real prebuilt map (built in data.js) that must NOT
            be in EW_MAP_META (no Δ variants, no picker card), so its GAME_MODES
@@ -1789,9 +1787,15 @@
                 displaces: true,
                 displaceTiles: 3,
                 duration: [3, 5],
-                desc: 'Hunts the nearest unit (2 tiles/rnd); wets and hurls whoever it catches north the round it forms, then east, south, west, turning each round. -10 DEF in the eye. Floods tiles with water.',
+                desc: 'Rains over the whole map, leaving everyone Wet. Its eye hunts the nearest unit (2 tiles/rnd) and hurls whoever it catches north the round it forms, then east, south, west, turning each round. -10 DEF in the eye. Floods tiles with water.',
                 dmgRange: [24, 43],
                 soaks: true,
+                /* 🌧️ THE HURRICANE'S RAIN (mondo 2026-11-11: "during a hurricane, there is rain on the screen, but I saw some
+                   grass tiles on fire ... Rain should always put out fire"): its rain falls on the whole map, as the
+                   Thunderstorm's does (weatherRainIsWide), so it is rain everywhere: ground fire out, no new ground fire,
+                   burning units doused, everyone Wet. Only the rain is map-wide: the eye, the fling, the -DEF and the
+                   flooded trail stay where the eye is (it is NOT `global`). */
+                rainWide: true,
                 seedTerrain: 'water',
                 statMod: {
                     def: -10
@@ -2021,9 +2025,15 @@
            forms a weather opposite to one up (spawnWeather, a dungeon floor's sky); a cast weather is the newer one and
            drives the opposite one off on the spot (battle.js summonWeather); tickWeather settles any pair left, the
            newer one staying. The weather that leaves takes its rules with it (its heal cut, its rain, its eye). */
+        /* 🌧 ONE WET WEATHER AT A TIME (mondo 2026-11-10, open rule 11 "B": "a new rain replaces the one up"): two
+           DIFFERENT wet weathers (Thunderstorm, Hurricane, Blood Rain, Blizzard) no longer share the sky either. They
+           ride the same three paths as the opposites: a cast one drives the wet one up off, the natural roll never forms
+           a second one, tickWeather settles a leftover pair (the newer stays). The SAME weather cast again still renews
+           the one up (battle.js summonWeather). Two dry weathers may still stand together. */
         function weathersOppose(a, b) {
             const da = WEATHER_REGISTRY[a], db = WEATHER_REGISTRY[b];
-            return !!(da && db && da.sky && db.sky && da.sky !== db.sky);
+            if (!(da && db && da.sky && db.sky)) return false;
+            return da.sky !== db.sky || (da.sky === 'wet' && a !== b);
         }
         function weatherOpposedUp(type) {
             return (state.activeWeather || []).filter(w => w && weathersOppose(w.type, type));
@@ -2494,14 +2504,21 @@
             return !!(w.tiles && w.tiles.some(t => t.x === x && t.y === y));
         }
         // Where its rain falls: the whole board for any global weather (a global homing storm's eye included).
+        /* does this weather's RAIN cover the whole board? every global weather, and a storm whose def says `rainWide`
+           (the Hurricane: a local eye under a map-wide rain) */
+        function weatherRainIsWide(w) {
+            const def = w && WEATHER_REGISTRY[w.type];
+            return !!(def && (def.global || w.global || def.rainWide));
+        }
         function weatherRainsOnTile(w, x, y) {
             if (!w) return false;
-            if (weatherDefIsGlobal(w)) return _weatherInBoard(x, y);
+            if (weatherRainIsWide(w)) return _weatherInBoard(x, y);
             return !!(w.tiles && w.tiles.some(t => t.x === x && t.y === y));
         }
         window.weatherDefIsGlobal = weatherDefIsGlobal;
         window.weatherOnTile = weatherOnTile;
         window.weatherRainsOnTile = weatherRainsOnTile;
+        window.weatherRainIsWide = weatherRainIsWide;
         window.allWeatherBoardTiles = allWeatherBoardTiles;
 
         /* ══ THE WEATHER'S TERRAIN (2026-10-15, mondo: "let's make the weather affect the terrain. I think it used to but then
@@ -2814,6 +2831,7 @@
                     for (const unit of state.units) {
                         if (unit.dead || !tileSet.has(posKey(unit.x, unit.y))) continue;
                         if (typeof shadowRealmKey === 'function' && shadowRealmKey(unit)) continue;   // 🌑 nor a quake's first blow
+                        if (typeof unitIsSpirit === 'function' && unitIsSpirit(unit)) continue;   // 👁 nor a spirit: nothing of the ground or the sky touches it
 
                         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
                         const eff = def.onSpawnEffect(unit);
@@ -2895,13 +2913,14 @@
             /* 🌑 THE REALM LINE (11-07, Blood Rain "restores" the pair in the Shadow Realm): the sky is the board's,
                so nobody in a realm (battle.js shadowRealmKey) gets its rain, its heal or its burn */
             const units = (player ? aliveUnitsFor(player) : state.units.filter(u => !u.dead))
-                .filter(u => !(typeof shadowRealmKey === 'function' && shadowRealmKey(u)));
+                .filter(u => !(typeof shadowRealmKey === 'function' && shadowRealmKey(u)))
+                .filter(u => !(typeof unitIsSpirit === 'function' && unitIsSpirit(u)));   // 👁 no weather on a spirit
             for (const weather of state.activeWeather) {
                 const def = WEATHER_REGISTRY[weather.type];
                 // Homing storms resolve all of their effects at end of round (processHomingWeather) —
                 // except a map-wide one's rain, which soaks every grounded unit each turn.
                 if (def.homing) {
-                    if (!def.soaks || !weatherDefIsGlobal(weather)) continue;
+                    if (!def.soaks || !weatherRainIsWide(weather)) continue;
                     for (const unit of units) {
                         if (unit.dead || unit._dying || unit.hp <= 0) continue;
                         if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
@@ -2986,6 +3005,7 @@
         function stormStrikeUnit(v, weather, def, at) {
             if (!v || v.dead || v._dying || v.hp <= 0 || !weather || !def) return false;
             if (typeof shadowRealmKey === 'function' && shadowRealmKey(v)) return false;   // 🌑 the storm is the board's
+            if (typeof unitIsSpirit === 'function' && unitIsSpirit(v)) return false;   // 👁 no storm strikes a spirit
             const caster = weather._casterUnitId ? unitFromId(weather._casterUnitId) : null;
             // 🌧️ Rain-bearing vortices (hurricane, thunderstorm)
             // drench whoever they sweep over — BEFORE the strike,
@@ -3104,6 +3124,7 @@
                 const candidates = state.units.filter(u => {
                     if (!u || u.dead || u._dying) return false;
                     if (typeof shadowRealmKey === 'function' && shadowRealmKey(u)) return false;   // 🌑 no eye hunts into the Shadow Realm
+                    if (typeof unitIsSpirit === 'function' && unitIsSpirit(u)) return false;   // 👁 nor a spirit
                     if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
                     if (caster && u.player === caster.player) return false;
                     return true;
@@ -3320,6 +3341,7 @@
             };
             if (!unit || unit.dead || !state.activeWeather) return mods;
             if (typeof shadowRealmKey === 'function' && shadowRealmKey(unit)) return mods;   // 🌑 no sky in the Shadow Realm
+            if (typeof unitIsSpirit === 'function' && unitIsSpirit(unit)) return mods;   // 👁 no weather on a spirit
             for (const w of state.activeWeather) {
                 if (!weatherOnTile(w, unit.x, unit.y)) continue;
                 const def = WEATHER_REGISTRY[w.type];
@@ -3379,9 +3401,10 @@
         function cpu3DRaceForSlot(defaultRace, taken) {
             if (typeof isRace3DReady !== 'function') return undefined;
             const free = r => !(Array.isArray(taken) && taken.includes(r));   // ONE OF EACH
-            if (defaultRace && isRace3DReady(defaultRace) && free(defaultRace)) return defaultRace;
+            const _demoOk = r => typeof demoModeOn !== 'function' || !demoModeOn() || demoRaceIn(r);   // THE DEMO: the CPU fields the demo roster
+            if (defaultRace && isRace3DReady(defaultRace) && free(defaultRace) && _demoOk(defaultRace)) return defaultRace;
             if (typeof AVAILABLE_RACES === 'undefined') return undefined;
-            const any3D = AVAILABLE_RACES.filter(r => isRace3DReady(r));
+            const any3D = ((typeof demoRacePool === 'function') ? demoRacePool(AVAILABLE_RACES) : AVAILABLE_RACES).filter(r => isRace3DReady(r));
             const anyFree = any3D.filter(free);
             if (anyFree.length) return anyFree[0];
             if (any3D.length) return any3D[0];
@@ -3416,6 +3439,20 @@
             });
             return out;
         }
+
+        /* THE DEMO (mondo 2026-11-10, data.js DEMO_RULES): while the Demo switch is on, a team may field only the demo
+           roster. teamDemoBarredRaces(races) → the races on it that are outside the 32 (first-seen order; [] with the switch
+           off). Ownership of an unlock is the seat's own business (isUnitUnlocked): a host can not read a guest's account. */
+        function teamDemoBarredRaces(races) {
+            if (typeof demoModeOn !== 'function' || !demoModeOn() || typeof demoRaceIn !== 'function') return [];
+            const out = [];
+            (races || []).forEach(r => {
+                const k = normalizeRaceKey(r && typeof r === 'object' ? r.race : r);
+                if (k && !out.includes(k) && !demoRaceIn(k)) out.push(k);
+            });
+            return out;
+        }
+        if (typeof window !== 'undefined') window.teamDemoBarredRaces = teamDemoBarredRaces;
 
         function makeDefaultPartyMeta() {
             const out = {
@@ -3515,7 +3552,8 @@
                 race,
                 types: [...(raceProfile.types || [])],
                 gender,
-                appearance: lookRace && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(identity.appearance) : null,
+                appearance: (identity.appearance && typeof identity.appearance.cast === 'string' && identity.appearance.cast) ? { cast: identity.appearance.cast }   // THE CAST ON THE BOARD (sprites.js getRace3DModel): a story character's own model
+                    : (lookRace && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(identity.appearance) : null),
                 zodiac: identity.zodiac || archetype.zodiac || 'aries',
                 sleepPreference: identity.sleepPreference || archetype.sleepPreference || 'none',
                 terrainPreference: getTerrainPreferenceForRace(race),
@@ -3532,6 +3570,7 @@
                 const ready3D = pool.filter(r => isRace3DReady(r));
                 if (ready3D.length) pool = ready3D;
             }
+            if (typeof demoRacePool === 'function') pool = demoRacePool(pool);   // THE DEMO: a random roll stays inside the demo roster
             if (ownedOnly && typeof isUnitUnlocked === 'function') {
                 const owned = pool.filter(r => isUnitUnlocked(r));
                 if (owned.length) pool = owned;
@@ -4417,7 +4456,8 @@
                     const rebuiltMeta = {
                         race: race,
                         gender: priorMeta.gender || archetype.gender || 'other',
-                        appearance: (typeof ewCreatorLookRace === 'function' ? ewCreatorLookRace(race) : race === 'door agent') && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(priorMeta.appearance) : null,   // HOMOSAPIEN OUT (2026-10-23): the DOOR Agent's creator look survives the repair too
+                        appearance: (priorMeta.appearance && typeof priorMeta.appearance.cast === 'string' && priorMeta.appearance.cast) ? { cast: priorMeta.appearance.cast }   // THE CAST ON THE BOARD: a story character's own model survives the repair
+                            : (typeof ewCreatorLookRace === 'function' ? ewCreatorLookRace(race) : race === 'door agent') && typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(priorMeta.appearance) : null,   // HOMOSAPIEN OUT (2026-10-23): the DOOR Agent's creator look survives the repair too
                         zodiac: priorMeta.zodiac || archetype.zodiac || 'aries',
                         sleepPreference: priorMeta.sleepPreference || archetype.sleepPreference || 'none',
                         terrainPreference: getTerrainPreferenceForRace(race),
@@ -4441,6 +4481,7 @@
                     if (priorMeta.partyId) rebuiltMeta.partyId = priorMeta.partyId;
                     if ((priorMeta.storyLevel | 0) > 0) { rebuiltMeta.storyLevel = priorMeta.storyLevel | 0; if (Number.isFinite(+priorMeta.storyXp)) rebuiltMeta.storyXp = +priorMeta.storyXp; }   // THE LEVELS (2026-09-21): a story-mode unit is built at its ledger's level (map.js createUnit)
                     ['hp', 'hpMax', 'mp', 'mpMax'].forEach(k => { if (priorMeta[k] != null && Number.isFinite(+priorMeta[k])) rebuiltMeta[k] = priorMeta[k]; });
+                    if ((priorMeta.ulv | 0) > 0) rebuiltMeta.ulv = priorMeta.ulv | 0;   // THE MASTERY LEVEL (2026-11-11): the online guest's cosmetic level rides to the unit (battle.js _mlStampUnit)
                     if (priorMeta._campaignLevel != null) rebuiltMeta._campaignLevel = priorMeta._campaignLevel;
                     if (priorMeta._campaignXp != null) rebuiltMeta._campaignXp = priorMeta._campaignXp;
                     if (priorMeta._campaignRosterId) rebuiltMeta._campaignRosterId = priorMeta._campaignRosterId;
@@ -4564,6 +4605,7 @@
                 const plan = plans[randInt(plans.length)];
                 let pool = AVAILABLE_RACES.filter(r => RACE_BASE_STATS[r]);
                 if (typeof isRace3DReady === 'function') { const r3 = pool.filter(r => isRace3DReady(r)); if (r3.length) pool = r3; }
+                if (typeof demoRacePool === 'function') pool = demoRacePool(pool);   // THE DEMO: the hard CPU drafts from the demo roster
                 if (pool.length < size) return null;
                 const mv = st => (typeof moveFromSpd === 'function') ? moveFromSpd(st.spd || 0) : 3;
                 const score = {

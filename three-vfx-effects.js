@@ -929,7 +929,10 @@ const ThreeVFXEffects = (function () {
         var count = 0;
         for (var k in _flameBursts) { if (k) count++; }
         if (count >= _FLAME_BURST_CAP) return;
-        e = _buildFlameVolume(((tx * 17.3 + ty * 11.9) % 89), opts.hScale || 1, opts.rScale || 1);
+        /* THE HIT SIDE part 4: a fire spell's burst on a hit with no area stays under 1.5 body heights (the volume is 1.4 squares × hScale) */
+        var hsH = opts.hScale || 1;
+        if (hsH > 1.07 && _hsFireNow(true)) hsH = 1.07;
+        e = _buildFlameVolume(((tx * 17.3 + ty * 11.9) % 89), hsH, opts.rScale || 1);
         var c = tilePx(tx, ty);
         var pad = _cfg().boardPadding || 2;
         /* +2: keeps the volume's bottom face off the tile top (z-fight) */
@@ -9690,6 +9693,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         opts = opts || {};
         var c = new THREE.Color(color != null ? color : 0x88bbff);
         var c2 = new THREE.Color(opts.hot != null ? opts.hot : 0xffffff);
+        /* THE HIT SIDE part 4 (THE TAME FIRE): a fire spell's shell keeps its reds, oranges and yellows — no white heart,
+           a capped gain, and half strength on top of its own tick (_hsTame), so three nested shells never sum to white */
+        var hsFire = _hsFireNow(false);
+        if (hsFire) { _hsFireCol(c); _hsFireCol(c2); }
         var mat = new THREE.ShaderMaterial({
             uniforms: {
                 uTime:   { value: 0 },
@@ -9719,6 +9726,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             side: THREE.DoubleSide,
             blending: THREE.AdditiveBlending,
         });
+        if (hsFire) {
+            if (mat.uniforms.uGain.value > _HS_FIRE_GAIN) mat.uniforms.uGain.value = _HS_FIRE_GAIN;
+            mat._hsFireK = _HS_FIRE_K;
+        }
         return mat;
     }
     function _sigEnergyTick(mat, elapsedMs, erode) {
@@ -9784,6 +9795,122 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return '#' + ('00000' + (color != null ? color : 0xffffff).toString(16)).slice(-6);
     }
 
+    /* ── THE HIT SIDE part 4: THE STEP BACK + THE TAME FIRE (2026-11-11, plan
+       https://claude.ai/artifact/W2nQT5ZYg5h3jCRPk7F7eT, mondo: "Build 1-4") ───────────────────────────────────────────
+       "Nothing covers the victim": at the hit the impact circles, shock rings and flashes sat on the body and its ring.
+         · THE STEP BACK: for 0.4 s after a hit lands on a square, the see-through signature meshes centred on that
+           square (circles, rings, glows, columns: every _sigRun group, after its own tick) and the flash / ring /
+           circle particles there (three-vfx.js _batchFlush asks _hsBackAt) draw at half strength, then ease back.
+         · THE TAME FIRE, for a FIRE spell's signature meshes (the riot context carries `fire`: the spell's element):
+           energy shells never stack to flat white — their near-white colours are pulled to yellow, their gain is
+           capped and they draw at half strength, so the stack reads red rim, orange body, yellow heart (and the body
+           behind shows through); a fire column on a hit with no area (one target, a line) stays under 1.5 body
+           heights (_hsFireH); and a fire mesh fades as it comes within two squares of the lens (_hsNearK), so a
+           column toward the camera never fills the screen.
+       Looks only, worked out on each seat from calls the guest already replays (fire / vfx3d-x / juiceHit).
+       Off: window.EW_NO_HIT_SIDE_D (or EW_NO_HIT_SIDE) = true, localStorage ew_hitside_d = 'off'. */
+    var _hsHits = [];              // { px, py (vfx px), t0 }: the squares a hit just landed on (real clock)
+    var _HS_BACK_MS = 400, _HS_BACK_EASE = 160, _HS_BACK_K = 0.5, _HS_FIRE_K = 0.5, _HS_FIRE_GAIN = 1.2;
+    var _hsBox = null, _hsCamV = null, _hsObjV = null;
+    function _hsOn() {
+        try { return typeof window !== 'undefined' && typeof window._ewHitSideOn === 'function' && window._ewHitSideOn('D'); } catch (e) { return false; }
+    }
+    function _hsNote(tx, ty) {
+        if (!_hsOn()) return;
+        var now = performance.now(), c = tilePx(tx, ty);
+        for (var i = _hsHits.length - 1; i >= 0; i--) {
+            var h = _hsHits[i];
+            if (now - h.t0 > _HS_BACK_MS + _HS_BACK_EASE || (Math.abs(h.px - c.x) < 1 && Math.abs(h.py - c.y) < 1)) _hsHits.splice(i, 1);
+        }
+        _hsHits.push({ px: c.x, py: c.y, t0: now });
+    }
+    /* the share of its strength a VFX at vfx px (px, py) keeps right now: half on a square hit in the last 0.4 s */
+    function _hsBackAt(px, py) {
+        if (!_hsHits.length) return 1;
+        var now = performance.now(), ts = _cfg().tileSize || 128, r2 = ts * ts * 0.36, k = 1;
+        for (var i = _hsHits.length - 1; i >= 0; i--) {
+            var h = _hsHits[i], el = now - h.t0;
+            if (el > _HS_BACK_MS + _HS_BACK_EASE) { _hsHits.splice(i, 1); continue; }
+            var dx = px - h.px, dy = py - h.py;
+            if (dx * dx + dy * dy > r2) continue;
+            var kk = el <= _HS_BACK_MS ? _HS_BACK_K : _HS_BACK_K + (1 - _HS_BACK_K) * (el - _HS_BACK_MS) / _HS_BACK_EASE;
+            if (kk < k) k = kk;
+        }
+        return k;
+    }
+    /* is a FIRE spell spawning right now (and the part on)? solo = its hit has no area (one target, a line) */
+    function _hsFireNow(solo) {
+        return !!(_rvCtx && _rvCtx.fire && (!solo || !_rvCtx.area) && _hsOn());
+    }
+    /* a fire column's height on a hit with no area: under 1.5 body heights (a body stands about a square tall) */
+    function _hsFireH(h, ts) {
+        return _hsFireNow(true) ? Math.min(h, ts * 1.5) : h;
+    }
+    /* a fire shell's colour: a near-white (the white-hot heart) is pulled to yellow, so a stack of shells never burns to white */
+    function _hsFireCol(c) {
+        var mx = Math.max(c.r, c.g, c.b);
+        if (!(mx > 0)) return;
+        if (c.g > mx * 0.84) c.g = mx * 0.84;
+        if (c.b > mx * 0.34) c.b = mx * 0.34;
+    }
+    /* how much of a mesh may show by how near the lens its box comes: all of it from two squares out, 15 % touching */
+    function _hsNearK(o, ts) {
+        try {
+            var cam = (!_VS.on && typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+            var geo = o.geometry;
+            if (!cam || !geo) return 1;
+            if (!geo.boundingBox) geo.computeBoundingBox();
+            if (!_hsBox) { _hsBox = new THREE.Box3(); _hsCamV = new THREE.Vector3(); }
+            _hsBox.copy(geo.boundingBox).applyMatrix4(o.matrixWorld);
+            cam.getWorldPosition(_hsCamV);
+            var d = _hsBox.distanceToPoint(_hsCamV), lo = ts * 0.35, hi = ts * 2;
+            if (d >= hi) return 1;
+            if (d <= lo) return 0.15;
+            var t = (d - lo) / (hi - lo);
+            return 0.15 + 0.85 * t * t * (3 - 2 * t);
+        } catch (e) { return 1; }
+    }
+    /* write a strength k over what the effect's own tick set (its opacity, or an energy / orb shell's uOpacity). A tick
+       that left the value alone this frame is recognised by our own last write, so the factor never compounds. */
+    function _hsApply(m, k) {
+        var u = (m.uniforms && m.uniforms.uOpacity) ? m.uniforms.uOpacity : null, cur = u ? u.value : m.opacity;
+        if (typeof cur !== 'number') return;
+        if (m._hsOut !== undefined && cur === m._hsOut) cur = m._hsIn;
+        if (k >= 0.999) {
+            if (m._hsOut !== undefined) { if (u) u.value = cur; else m.opacity = cur; m._hsOut = undefined; }
+            return;
+        }
+        m._hsIn = cur; m._hsOut = cur * k;
+        if (u) u.value = m._hsOut; else m.opacity = m._hsOut;
+    }
+    /* one signature group, after its tick: the step back on a hit square, a fire spell's shells at their tame strength
+       and fading near the lens */
+    function _hsTame(entry) {
+        var back = _hsHits.length > 0, fire = !!entry.hsFire;
+        if (!back && !fire && !entry.hsDirty) return;
+        var g = entry.group;
+        if (!g) return;
+        var ts = _cfg().tileSize || 128, pad = _cfg().boardPadding || 2, dirty = false;
+        if (!_hsObjV) _hsObjV = new THREE.Vector3();
+        g.updateWorldMatrix(true, true);
+        g.traverse(function (o) {
+            var mat = o.material;
+            if (!mat || (!o.isMesh && !o.isSprite)) return;
+            var k = 1;
+            if (back) { _hsObjV.setFromMatrixPosition(o.matrixWorld); k *= _hsBackAt(_hsObjV.x + pad, _hsObjV.z + pad); }
+            if (fire && o.isMesh) k *= _hsNearK(o, ts);
+            var mats = Array.isArray(mat) ? mat : [mat];
+            for (var i = 0; i < mats.length; i++) {
+                var m = mats[i];
+                if (!m || !m.transparent || m._ew_shared) continue;
+                var km = k * (m._hsFireK || 1);
+                _hsApply(m, km);
+                if (km < 0.999) dirty = true;
+            }
+        });
+        entry.hsDirty = dirty;
+    }
+
     /* self-terminating animation runner for signature groups. Caps the
        number of concurrently live signature effects so multi-hit spam can't
        flood the scene. */
@@ -9796,7 +9923,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_sigActive >= _SIG_MAX_ACTIVE) return null;
         _sigActive++;
         _vfxAdd(scene, group);
-        var entry = { done: false, group: group };
+        var entry = { done: false, group: group, hsFire: _hsFireNow(false), hsDirty: false };   // THE HIT SIDE part 4: a fire spell's group
         _sigEntries.push(entry);
         var t0 = performance.now();
         function finish() {
@@ -9810,7 +9937,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         function loop() {
             if (entry.done) return false;
-            var el = performance.now() - t0;
+            var el = performance.now() - t0 + (entry.skip || 0);   // entry.skip (ms) = a caller ran the effect forward (THE CUTSCENES shut the portal on the cut)
             if (el >= totalMs) { finish(); return false; }
             try { tick(el); } catch (e) {
                 /* don't die silently — a sig effect vanishing one frame in is
@@ -9818,6 +9945,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 try { console.warn('[SIG3D] tick error, killing effect:', e && e.message ? e.message : e); } catch (e2) {}
                 finish(); return false;
             }
+            try { _hsTame(entry); } catch (e3) {}   // THE HIT SIDE part 4: the step back on a hit square, the tame fire
             return true;
         }
         _fxSchedule(loop);
@@ -23584,6 +23712,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { _snStage(phase, spellId, params); } catch (e) { console.warn('[VFX] sonic stamp failed', spellId, e); }
         /* THE FIRE PASS: every fire-element cast / hit wears the same fire (the cast ring, the fire mark) */
         try { _fpStage(phase, spellId, params); } catch (e) { console.warn('[VFX] fire mark failed', spellId, e); }
+        /* THE NOISE PACKS: the element's noise wash on each square a damage spell hits */
+        try { _nzStage(phase, spellId, params); } catch (e) { console.warn('[VFX] noise wash failed', spellId, e); }
         /* THE FX-4 PASS: Merkaba forms on the windup and goes off on the burst */
         try { _f4Stage(phase, spellId, params); } catch (e) { console.warn('[VFX] FX-4 stage failed', spellId, e); }
         /* THE NEW PROPS (2026-10-28): mondo's shield / syringe / bible on the same beats */
@@ -24608,6 +24738,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceDimensionalFold'] = Object.assign({}, SPELL_MAP['raceDimensionalFold'], { teleport: 'raceDimensionalFold_teleport' });
     SPELL_MAP['raceSkinSwap'] = Object.assign({}, SPELL_MAP['raceSkinSwap'], { teleport: 'raceSkinSwap_teleport' });
     SPELL_MAP['raceSpiritWalk'] = Object.assign({}, SPELL_MAP['raceSpiritWalk'], { teleport: 'raceSpiritWalk_teleport' });
+    SPELL_MAP['raceAstralProjection'] = SPELL_MAP['raceSpiritWalk'];   /* build 4: the namesake steps out the same way */
 
     /* ── CURSE QUARTET (sharedHexOfToil keeps the dark impact, greened) ── */
     EFFECTS['raceCurseOfMisfortune_impact'] = {   /* misfortune: the mirror cracks over you */
@@ -25775,8 +25906,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var wp = _worldPos(tx, ty);
         var ts = wp.ts;
         var ms = o.ms || 1500;
-        var h = o.height || ts * 3.4;
+        var h0 = o.height || ts * 3.4;
+        var h = _hsFireH(h0, ts);   // THE HIT SIDE part 4: under 1.5 body heights on a hit with no area
         var r = o.radius || ts * 0.55;
+        if (h < h0) r *= Math.max(0.42, h / h0);   // … and the cut column keeps its shape (a wide bowl would sit on the squares beside it)
         var deep = o.deep != null ? o.deep : 0xd8380c, mid = o.mid != null ? o.mid : 0xff8a24, hot = o.hot != null ? o.hot : 0xffeec2;
         var group = new THREE.Group();
         group.position.set(wp.x, wp.y, wp.z);
@@ -26304,6 +26437,86 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             setLight: function (a) { light = _sigClamp01(a); _apply(); },
             setFade: function (f) { fade = _sigClamp01(f); _apply(); },
             setRise: function (k) { k = _sigClamp01(k); inner.scale.y = Math.max(0.02, k); },
+        };
+    }
+    /* THE AIR DOOR (2026-11-13, mondo: "I want the portal to form in the air, which a door emerges from, which swings open ...
+       the floating portal door can just be a prop that floats in the room during battle ... when you defeat the shadow
+       entities the portal closes"). A portal (two counter-turning rings and a glow, upright, facing +z) forms in the air
+       over the tile; the caller then calls emerge() (the D.O.O.R. door comes out of it), open() (the leaf swings, the
+       light pours) and, when it is over, close() (the leaf shuts, the door goes back in, the portal shrinks away). It
+       stands until closed or killed: a prop, nothing of the rules. o: { lift (tiles up), scale, yaw, instant (already open) }.
+       Returns { entry, emerge, open, close, kill, alive } or null. */
+    function _sigAirDoor3D(tx, ty, o) {
+        o = o || {};
+        if (_catOff('spells')) return null;
+        var rig = _sigDoorRig3D(tx, ty, { yaw: o.yaw, scale: o.scale, lift: o.lift != null ? o.lift : 0.5, noWedge: true });
+        var oh = rig.oh, R = oh * 0.82;
+        var portal = new THREE.Group(); portal.position.set(0, oh * 0.5, -0.03 * rig.ts); rig.group.add(portal);
+        var m1 = _sigMat(_DOOR_FX.teal, { map: _sigRingTex() }), m2 = _sigMat(_DOOR_FX.light, { map: _sigRingTex() }), m3 = _sigMat(_DOOR_FX.teal, { map: _sigGlowTex() });
+        var r1 = new THREE.Mesh(new THREE.PlaneGeometry(R * 2, R * 2), m1); r1.renderOrder = 146; portal.add(r1);
+        var r2 = new THREE.Mesh(new THREE.PlaneGeometry(R * 1.45, R * 1.45), m2); r2.position.z = 0.4; r2.renderOrder = 147; portal.add(r2);
+        var gl = new THREE.Mesh(new THREE.PlaneGeometry(R * 2.6, R * 2.6), m3); gl.position.z = -0.4; gl.renderOrder = 145; portal.add(gl);
+        var T = { emergeAt: o.instant ? -5000 : null, openAt: o.instant ? -5000 : null, closeAt: null, el: 0 };
+        /* THE MENACE (2026-11-13, mondo: "ominous smoke and energy emanating from it"): black smoke rolls out of the open
+           doorway and down, sparks of the portal's own light crawl round the frame, the rings turn faster and throb; it
+           builds over 3 s from menace(true) and stops with menace(false) or the close */
+        var M = { at: null, lastS: 0, lastE: 0 };
+        /* rev 3b: the light in the doorway dies to a black-violet void as the menace builds (the smoke reads against it,
+           not against a white glare) and the rings bruise from teal to violet */
+        var voidMat = new THREE.MeshBasicMaterial({ color: 0x07040d, transparent: true, opacity: 0, depthWrite: false });
+        var voidPl = new THREE.Mesh(new THREE.PlaneGeometry(rig.ow, oh), voidMat); voidPl.position.set(0, oh / 2, 0.02 * rig.ts); voidPl.renderOrder = 151; rig.inner.add(voidPl);
+        var _cTeal = new THREE.Color(_DOOR_FX.teal), _cLight = new THREE.Color(_DOOR_FX.light), _cBruise = new THREE.Color(0x7a3cff), _cDeep = new THREE.Color(0x3a1466);
+        var FB = { c: tilePx(tx, ty), bz: tileZ(tx, ty), ts: rig.ts }, liftPx = rig.group.position.y - _worldPos(tx, ty).y;
+        var FORM = o.instant ? 1 : 900, RISE = 700, OPEN = 450, SHUT = 300, BACK = 400, GONE = 500;
+        rig.setRise(0.02); rig.setOpen(0); rig.setLight(0); rig.setFade(0);
+        var entry = _sigRun(rig.group, 6 * 3600 * 1000, function (el) {
+            T.el = el;
+            var c = (T.closeAt != null) ? el - T.closeAt : -1;
+            var pk = _sigEaseOutBack(_sigClamp01(el / FORM));
+            if (c > SHUT + BACK) pk *= 1 - _sigEaseInCubic(_sigClamp01((c - SHUT - BACK) / GONE));
+            portal.scale.setScalar(Math.max(0.001, pk));
+            var mk = (M.at != null && T.closeAt == null) ? _sigClamp01((el - M.at) / 3000) : 0;
+            M.spin = (M.spin || 0) + (el - (M.prev != null ? M.prev : el)) * (1 + 3.5 * mk); M.prev = el;
+            r1.rotation.z = M.spin * 0.0011; r2.rotation.z = -M.spin * 0.0017;
+            var breathe = (0.86 + 0.14 * Math.sin(el * 0.004)) * (1 - 0.35 * mk * (0.5 + 0.5 * Math.sin(el * 0.021)));
+            if (mk > 0 && _canSpawn()) {
+                if (el - M.lastS > 70 - 30 * mk) {
+                    M.lastS = el;
+                    _goSpray(FB, 2, { sprite: 'smoke', lz: 6, ly: liftPx + oh * 0.45, r: rig.ow * 0.4, rz: oh * 0.4, v: 10, vy: 26 + 40 * mk, vz0: -34, vz1: -6, g: 0, drag: 0.5, s0: oh * 0.3, s1: oh * (0.8 + 0.5 * mk), op: 0.55 + 0.35 * mk, tint: 0x0b0a10, ml0: 1500, ml1: 2400 });
+                    _goSpray(FB, 1, { sprite: 'smoke-soft', lz: 4, ly: liftPx + oh * 0.2, r: rig.ow * 0.45, rz: oh * 0.15, v: 14, vy: 30 + 30 * mk, vz0: -30, vz1: -10, g: 0, drag: 0.4, s0: oh * 0.35, s1: oh * 1.1, op: 0.5 + 0.3 * mk, tint: 0x1a1024, ml0: 1800, ml1: 2800 });
+                }
+                if (el - M.lastE > 150 - 90 * mk) {
+                    M.lastE = el;
+                    _goSpray(FB, 1 + (mk > 0.6 ? 1 : 0), { sprite: 'lightning', lz: 3, ly: liftPx + oh * 0.5, r: rig.ow * 0.75, rz: oh * 0.55, v: 30, vz0: -20, vz1: 20, g: 0, drag: 2, s0: oh * 0.18, s0b: oh * 0.42, s1: oh * 0.1, op: 0.95, tint: (Math.random() < 0.5) ? _DOOR_FX.teal : 0xb48cff, ml0: 90, ml1: 190 });
+                }
+            }
+            m1.color.copy(_cTeal).lerp(_cBruise, mk); m2.color.copy(_cLight).lerp(_cBruise, 0.8 * mk); m3.color.copy(_cTeal).lerp(_cDeep, mk);
+            m1.opacity = 0.85 * Math.min(1, pk) * breathe; m2.opacity = 0.6 * Math.min(1, pk); m3.opacity = 0.5 * Math.min(1, pk) * breathe;
+            var rk = (T.emergeAt != null) ? _sigClamp01((el - T.emergeAt) / RISE) : 0;
+            var ok = (T.openAt != null) ? _sigClamp01((el - T.openAt) / OPEN) : 0;
+            var fade = Math.min(1, rk * 2), light = 0.25 * rk + 0.75 * _sigEaseOutCubic(ok);
+            if (ok >= 1) light = 1 - 0.1 * Math.sin(el * 0.02);
+            if (c >= 0) {
+                var sh = _sigEaseInCubic(_sigClamp01(c / SHUT));
+                ok = ok * (1 - sh); light = light * (1 - sh);
+                fade = fade * (1 - _sigClamp01((c - SHUT) / BACK));
+            }
+            rig.setRise(rk > 0 ? Math.max(0.02, _sigEaseOutBack(rk)) : 0.02);
+            rig.inner.position.z = -0.25 * rig.ts * (1 - _sigEaseOutCubic(rk));   // it comes forward out of the portal
+            rig.setOpen(_sigEaseOutCubic(ok)); rig.setLight(light * (1 - 0.85 * mk)); rig.setFade(fade);
+            voidMat.opacity = 0.92 * mk * fade * _sigClamp01(ok * 2);
+            if (c > SHUT + BACK + GONE && entry && entry.finish) entry.finish();
+        });
+        if (!entry) { _sigDisposeGroup(rig.group); return null; }
+        return {
+            entry: entry,
+            emerge: function () { if (T.emergeAt == null) T.emergeAt = T.el; },
+            open: function () { if (T.emergeAt == null) T.emergeAt = T.el - RISE; if (T.openAt == null) T.openAt = Math.max(T.el, T.emergeAt + RISE * 0.6); },
+            close: function () { if (T.closeAt == null) T.closeAt = T.el; },
+            menace: function (on) { M.at = on ? (M.at != null ? M.at : T.el) : null; },
+            kill: function () { try { if (entry.finish) entry.finish(); } catch (e) {} },
+            alive: function () { return !entry.done && !!rig.group.parent; },
+            closing: function () { return T.closeAt != null; }
         };
     }
     /* A door materialises: rises, opens with the light, holds, slams shut,
@@ -59493,6 +59706,144 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceInferno']      = { aoe: 'fpInferno_aoe' };
     /* ═════════ END THE FIRE PASS ═════════ */
 
+    /* ═════════════════════════════════════════════════════════════════════
+       THE NOISE PACKS (2026-11-12, mondo: "Uploaded 4 folders of noise and texture packs ... making tile effects
+       when spells hit", then of the examples "Yeah looks good, go ahead"). Screaming Brain Studios' CC0 packs (128 px,
+       seamless; R2 Assets/fx/noise/sbs/). THE WASH: on the hit of a damage spell, each square of the footprint wears a
+       splat cut from the pack's noise in the spell's element colour. It grows in from its brightest lines, turns slowly
+       and is eaten away from its rim and its dim parts (the cutoff climbs, so the pixels drop out in the noise's own
+       shapes). Flat on the ground under the element's own mark, inside the square, so body + number stay clear.
+       Off switch: window.EW_NO_NOISE_WASH. Looks only; every client draws it from the relayed stage beat.
+       ═════════════════════════════════════════════════════════════════════ */
+    var _NZ_BASE = 'https://cdn.entropywars.net/Assets/fx/noise/sbs/', _nzTexC = {};
+    function _nzOn() { try { return !(typeof window !== 'undefined' && window.EW_NO_NOISE_WASH); } catch (e) { return true; } }
+    function _nzTex(n) { return _nzTexC[n] || (_nzTexC[n] = _loadCachedTex(_NZ_BASE + n + '.png')); }
+    /* element -> [sheet, colour, second sheet, its colour, turn (rad / s), dark (a dark stain in place of light)] */
+    var _NZ = {
+        psychic:   ['swirl_13',       0xb44cff, 'spokes_01',      0x7a1ec8, 1.1],
+        ice:       ['vein_01',        0xbff2ff, 'voronoi_02',     0x4aa8ff, 0.0],
+        lightning: ['vein_08',        0xfff3a0, 'superperlin_03', 0x5a8cff, 0.0],
+        poison:    ['milky_05',       0x7dff3a, 'marble_04',      0x7a2ab0, 0.25],
+        water:     ['superperlin_03', 0xaee4ff, 'melt_05',        0x2f7fe0, 0.2],
+        fire:      ['turbulence_08',  0xff8a1a, 'marble_03',      0xc8300a, 0.0],
+        wind:      ['streak_14',      0xeafff6, 'gabor_02',       0x9fd8c8, 0.5],
+        earth:     ['vein_05',        0xe0a860, 'grainy_05',      0x6a4420, 0.0],
+        nature:    ['vein_14',        0xa8f06a, 'supernoise_08',  0x2f8a2a, 0.15],
+        sonic:     ['absn_009',       0xffe6f8, 'absn_012',       0xb050e0, 0.0],
+        metal:     ['techno_10',      0xeef4fa, 'techno_05',      0x7890a8, 0.0],
+        blood:     ['marble_03',      0xff3a4a, 'milky_08',       0x8a0a14, 0.2],
+        shadow:    ['manifold_06',    0x9a5cff, 'turbulence_06',  0x1c0830, -0.4]
+    };
+    /* add: the bright sheet (added light, reads on a dark floor) · else the stain (the flat colour cut to the noise's shapes, reads on a pale floor) */
+    function _nzMat(tex, color, add) {
+        var m = new THREE.MeshBasicMaterial({ alphaMap: tex, color: new THREE.Color(color), transparent: true, opacity: add ? 1 : 0.8, alphaTest: 0.99,
+            vertexColors: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+        if (add) { m.map = tex; m.blending = THREE.AdditiveBlending; }
+        return m;
+    }
+    function _nzWash(tiles, el, rank, o) {
+        o = o || {};
+        var R = _NZ[el]; if (!R || !_canSpawn()) return null;
+        var live = [];
+        for (var i = 0; i < tiles.length && live.length < 25; i++) { var tt = tiles[i]; if (tt && tt.x != null && _pzSeen(tt.x, tt.y)) live.push(tt); }
+        if (!live.length) return null;
+        var F = _nrvFrame(live[0].x, live[0].y), ts = F.ts;
+        /* a disc that is solid in the middle and thins to its rim (the vertex alpha): the cutoff eats it from the rim in, so
+           each square wears a splat in the noise's own shapes that never leaves the square, even while it turns */
+        var dg = new THREE.CircleGeometry(ts * 0.6, 28); dg.rotateX(-Math.PI / 2);
+        var vn = dg.attributes.position.count, vc = new Float32Array(vn * 4);
+        for (var vi = 0; vi < vn; vi++) { vc[vi * 4] = vc[vi * 4 + 1] = vc[vi * 4 + 2] = 1; vc[vi * 4 + 3] = vi ? 0.1 : 1.7; }
+        dg.setAttribute('color', new THREE.BufferAttribute(vc, 4));
+        var ma = _nzMat(_nzTex(R[0]), R[1], true), mb = _nzMat(_nzTex(R[2]), R[3], false), M = [];
+        for (var k = 0; k < live.length; k++) {
+            var off = _nvOff(F, live[k].x, live[k].y), d0 = Math.min(260, k * 24);
+            var a = _pzMesh(dg, ma, F.g, off.x, off.y - 2.0, off.z); a.renderOrder = 149;
+            var b = _pzMesh(dg, mb, F.g, off.x, off.y - 2.1, off.z); b.renderOrder = 148;
+            if (R[4]) { a.rotation.y = rn(0, 6.28); b.rotation.y = rn(0, 6.28); }
+            M.push({ a: a, b: b, d: d0 });
+        }
+        var life = o.life || (1500 + 260 * (rank || 0)), lastT = 0;
+        try { if (typeof window !== 'undefined' && window.EW_NZ_SLOW > 0) life *= window.EW_NZ_SLOW; } catch (e) {}   // console: stretch the wash's life (for a look at it)
+        var total = life + 280;
+        if (o.freeze != null) total = 600000;   /* a still for the mock-up shots: hold one point of the life */
+        return _sigRunOwned(F.g, total, function (t) {
+            if (o.freeze != null) t = o.freeze * life;
+            /* the cutoff: 1 = nothing shows, 0.12 = nearly the whole sheet */
+            var inK = _sigEaseOutCubic(_sigClamp01(t / 180)), outK = _sigClamp01((t - life * 0.42) / (life * 0.58));
+            var cutA = 1 - 0.86 * inK + 0.86 * outK * outK, cutB = 1 - 0.7 * inK + 0.7 * Math.min(1, outK * 1.5);
+            ma.alphaTest = Math.min(0.995, Math.max(0.12, cutA)); mb.alphaTest = Math.min(0.995, Math.max(0.28, cutB));
+            var dt = (t - lastT) / 1000; lastT = t;
+            if (R[4]) for (var q = 0; q < M.length; q++) { M[q].a.rotation.y += R[4] * dt; M[q].b.rotation.y -= R[4] * 0.7 * dt; }
+        });
+    }
+    var _nzFoot = {};
+    function _nzStage(phase, spellId, params) {
+        if (!_nzOn() || _suppressed() || _catOff('spells') || !params) return;
+        var d = _spellDefFor(spellId) || {}, el = d.vfxElement || d.element || null;
+        if (!el || !_NZ[el] || d.type !== 'damage') return;
+        var key = params.glowKey || ('c' + params.sx + ',' + params.sy);
+        if (phase === 'windup') { _nzFoot[key] = Array.isArray(params.tiles) && params.tiles.length ? params.tiles : null; return; }
+        if (phase !== 'burst' || params.tx == null) return;
+        var foot = _nzFoot[key]; delete _nzFoot[key];
+        var tiles = foot ? foot.slice() : [];
+        if (!tiles.some(function (t) { return t.x === params.tx && t.y === params.ty; })) tiles.unshift({ x: params.tx, y: params.ty });
+        if (d.aoeOriginSelf && params.sx != null) tiles = tiles.filter(function (t) { return !(t.x === params.sx && t.y === params.sy); });
+        var info = stageInfo(spellId);
+        _nzWash(tiles, el, _TIER_ORDER[info.weight] || 0);
+    }
+    try { if (typeof window !== 'undefined') window.EW_NZ_WASH = function (tiles, el, rank, o) { return _nzWash(tiles, el, rank, o); }; } catch (e) {}
+    /* THE MOVING GROUND (console only, EW_NZ_GROUND: a sheet laid over the squares to show the look; the real thing would be the square's own
+       top material). A colour sheet from the packs lies across `span` squares in world space (no per-square repeat), drifts
+       slowly, and a second noise sheet slides the other way on top, added in a tint. Lit by the room (Lambert) with a little
+       of its own glow, so shadows still fall on it. tiles [{x,y}], o: base · over · overCol · span · drift [u,v] · glow ·
+       overOp · drop (lower the sheet, a liquid's level) · inset · wob (the base breathes). Returns { stop }. */
+    function _nzSheet(name, srgb) {
+        var t = new THREE.TextureLoader().load(_NZ_BASE + name + '.png');
+        t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.RepeatWrapping; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
+        try { if (srgb && THREE.SRGBColorSpace) t.colorSpace = THREE.SRGBColorSpace; } catch (e) {}
+        return t;
+    }
+    function _nzGround(tiles, o) {
+        o = o || {};
+        var scene = _getVFXScene(); if (!scene || !tiles || !tiles.length) return null;
+        var F = _nrvFrame(tiles[0].x, tiles[0].y), ts = F.ts, span = o.span || 3, h = ts * 0.5 * (o.inset != null ? o.inset : 0.985);
+        var pos = [], uv = [], idx = [], nor = [];
+        for (var i = 0; i < tiles.length; i++) {
+            var t = tiles[i], off = _nvOff(F, t.x, t.y), y = off.y - 2.4 - (o.drop || 0), b = i * 4;
+            var u0 = (t.x - 0.5) / span, u1 = (t.x + 0.5) / span, v0 = (t.y - 0.5) / span, v1 = (t.y + 0.5) / span;
+            pos.push(off.x - h, y, off.z - h, off.x + h, y, off.z - h, off.x + h, y, off.z + h, off.x - h, y, off.z + h);
+            uv.push(u0, v0, u1, v0, u1, v1, u0, v1); nor.push(0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0);
+            idx.push(b, b + 2, b + 1, b, b + 3, b + 2);
+        }
+        var g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+        g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setIndex(idx);
+        var bt = _nzSheet(o.base || 'abst_018', true), ot = o.over ? _nzSheet(o.over, false) : null;
+        var bm = new THREE.MeshLambertMaterial({ map: bt, color: new THREE.Color(o.tint != null ? o.tint : 0xffffff), emissive: new THREE.Color(0xffffff), emissiveMap: bt, emissiveIntensity: o.glow != null ? o.glow : 0.3,
+            transparent: o.op != null && o.op < 1, opacity: o.op != null ? o.op : 1, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+        var base = new THREE.Mesh(g, bm); base.receiveShadow = true; base.renderOrder = 2; F.g.add(base);
+        var om = null;
+        if (ot) {
+            if (o.overSpan) ot.repeat.set(span / o.overSpan, span / o.overSpan);
+            om = new THREE.MeshBasicMaterial({ map: ot, color: new THREE.Color(o.overCol != null ? o.overCol : 0xffffff), transparent: true, opacity: o.overOp != null ? o.overOp : 0.35,
+                blending: THREE.AdditiveBlending, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+            var ov = new THREE.Mesh(g, om); ov.renderOrder = 3; F.g.add(ov);
+        }
+        _vfxAdd(scene, F.g);
+        var dr = o.drift || [0.012, 0.007], t0 = performance.now() - (o.t0 || 0) * 1000, live = true;
+        (function loop() {
+            if (!live) return;
+            var s = (performance.now() - t0) / 1000;
+            bt.offset.set(dr[0] * s + (o.wob ? o.wob * Math.sin(s * 0.5) : 0), dr[1] * s + (o.wob ? o.wob * Math.cos(s * 0.37) : 0));
+            if (ot) ot.offset.set(-dr[0] * 2.3 * s, dr[1] * 1.7 * s + 0.31);
+            requestAnimationFrame(loop);
+        })();
+        return { stop: function () { live = false; try { scene.remove(F.g); } catch (e) {} } };
+    }
+    try { if (typeof window !== 'undefined') window.EW_NZ_GROUND = function (tiles, o) { return _nzGround(tiles, o); }; } catch (e) {}
+    /* ═════════ END THE NOISE PACKS ═════════ */
+
+
 
     /* ═════════════════════════════════════════════════════════════════════
        THE POISON PASS (2026-10-25, mondo: "the nature spells look great now,
@@ -62973,8 +63324,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            This is how Player 2 gets the SAME stop: online.js relays this call (vfx3d-x, fog-gated on the victim's tile).
          · the victim blinks solid white for the freeze, shaking in place, then twice more (ThreeAnim.hitBlink).
          · the screen kick as time resumes, by weight (the shake language: light · normal · heavy · hard; a kill one up).
-       Looks only — no rule reads any of it. Off: window.EW_DISABLE_JUICE (battle.js never calls it then). */
-    function juiceHit(tx, ty, w, hsMs, kill, unitId) {
+       Looks only — no rule reads any of it. Off: window.EW_DISABLE_JUICE (battle.js never calls it then).
+       THE HIT SIDE (2026-11-11): srcId = the attacker's id (battle.js passes it, online.js relays it as it is). The
+       victim's ring flares in its side colour, the attacker's ring pings and an arrowhead points at it
+       (ThreeAnim.hitSide — three-renderer.js works the sides and the fog out on each seat), and the impact VFX on the
+       victim's square step back for a beat (_hsNote below). */
+    function juiceHit(tx, ty, w, hsMs, kill, unitId, srcId) {
         if (_VS.on) return;
         var A = (typeof window !== 'undefined') ? window.ThreeAnim : null;
         if (!A || !A.isActive || !A.isActive()) return;
@@ -62993,6 +63348,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             } catch (e) {}
         }
         if (unitId != null && A.hitBlink) A.hitBlink(unitId, hs, { weight: w, kill: !!kill });
+        if (unitId != null && A.hitSide) { try { A.hitSide(unitId, srcId != null ? srcId : null, { weight: w, kill: !!kill, holdMs: hs }); } catch (e) {} }
+        _hsNote(tx, ty);
         var kind = kill ? (w >= 2 ? 'hard' : 'heavy') : (['light', 'light', 'normal', 'heavy'][w] || 'light');
         _fxDelay(function () { _shake(kind); }, hs);
     }
@@ -63011,6 +63368,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var c = { w: si.weight || 'standard', light: (si.palette && si.palette.flash) || null, staged: !!staged };
         var A = _rvAreaFor(spellId, params, aoeRadius);
         if (A) c.area = A;
+        /* THE HIT SIDE part 4: a fire spell's signature meshes are tamed (_hsFireNow) */
+        var sd = _spellDefFor(spellId);
+        if (sd && (sd.element === 'fire' || sd.vfxElement === 'fire')) c.fire = true;
         return c;
     }
     /* phase D: the area a spell's hit covers, round the tile it lands on — { tx, ty, px, py (vfx px), reach (tiles from the
@@ -63072,6 +63432,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     return {
         _rvCtxNow: function () { return _rvCtx; },   // THE RIOT PASS: three-vfx.js spawn() reads the spawning spell
         _rvFloorAt: _rvFloorAt,
+        _hsBackAt: _hsBackAt,                        // THE HIT SIDE part 4: three-vfx.js asks how far a particle on a hit square steps back
+        _hsLive: function () { return _hsHits.length > 0; },
 
         warmNextSheet: _warmNextSheet,   // THE SHEET WARM: ThreeRenderer makes + uploads the cached spell sheets ahead of the first cast
 
@@ -63144,6 +63506,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* the DOOR agent's leaf (rev 2): warm the catalogue GLB the door
            recipes wear — the renderer calls it when a board door is built */
         warmDoor: _doorFxWarm,
+        /* THE QUESTS (2026-11-12): a quest's portal is the Department's own door (the agent's recipe: rises, opens with the
+           light, holds, shuts, fades). o = _sigDoorPortal3D's options. The look only. */
+        questPortal: function (tx, ty, o) { try { return _sigDoorPortal3D(tx, ty, o || {}); } catch (e) { return null; } },
+        /* THE CUTSCENES (2026-11-12): where a square stands in the board's world ({ x, y, z, ts }) for the director's camera */
+        questAirDoor: function (tx, ty, o) { try { return _sigAirDoor3D(tx, ty, o || {}); } catch (e) { console.warn('[SCENE] the air door did not build', e); return null; } },
+        tileWorld: function (tx, ty) { try { return _worldPos(tx, ty); } catch (e) { return null; } },
 
         /* Action tile glow for non-spell hits (attacks, items, detonations).
            Relayed host→guest by online.js's sibling wrapper (_VFXX_ANCHORS). */

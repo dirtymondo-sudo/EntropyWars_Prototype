@@ -1156,3 +1156,62 @@ square grid gameplay." Group 7 of /mnt/project-files/grid-fit/GROUPS_AND_BRIEF.m
   carnival's side tiers and the cabin's stern step (every rect prop at face 90 / 270).
 - Result (feet rule, covers that block exactly the squares their size calls for): 95 → 164 of 186 (the rest: 17 stairwell treads, the
   4 inner slot machines of two 4-machine banks, the chapel altar on the middle line). Tools: /mnt/project-files/grid-fit/group7/.
+
+## THE DOUBLE DOOR (2026-11-12) — the foyer's revolving door is a pair of swing doors
+mondo: "want to get rid of the revolving door, just make it a normal swing door or double door or something."
+- data.js catalogue `leaf_lobby_glass_double` = the authored pack leaf `DOOR WITH LARGE WINDOW.glb` (the one the reception
+  wears) with `double: true`: TWO leaves, one hinged on each jamb, meeting in the middle. The hall's door `foyer` (195°) and the
+  foyer's door `egress` wear it. `leaf_revolving` stays in the catalogue (Bay 5 · DIPLOMATIC still wears it).
+- three-renderer.js `_hqBuildDoors`: a `double` swing leaf gets `motion.pivot2` (the right leaf, the same model turned half
+  round so the handles meet; a turn, not a mirror). `_hqDoorMotionStep` swings `pivot2` the other way.
+- THE ROUND JOIN (`_hqRoundDoorTick`): a kept leaf with no spin but a `motion` opens for the walker within swingM, like any
+  joined door (the revolving leaf only span). No load card, as before.
+- `glass` in the key matters: HQ_CULL_SEE keeps the room beyond drawn behind a see-through leaf. Without it the portal rule
+  hid the hall behind the shut door, and the kept leaf (it belongs to the hall's part) with it: an empty black doorway.
+- The lines that named the revolving door (the two door descs, the doorman's line, the draft lesson three) say double doors.
+- Probe: `ThreeRenderer.hq.dev.hqDoors()` = the door records of the room stood in + the rooms beside it.
+- Headless proof: playtest_city.js closed the browser seconds after entering (every CDN response fulfilled at once). Serving
+  the routed responses ONE AT A TIME (a promise chain + 15 ms) fixed it; also `require('/opt/node-tools/node_modules/playwright')`.
+
+## ONE DOORWAY, ONE LIGHT — the foyer ⇄ the main hall read at one level (2026-11-12)
+mondo: "the foyer is too bright and then stepping into the lobby is dark by comparison".
+- Cause: the hemisphere / key / fill are the SCENE's. Standing in the foyer, the hall beyond the open doorway wore the foyer's
+  box rig (hemisphere 0.44 against the hall's own 0.78) and read dark; the foyer's white plaster sat 3 m from two saucer
+  pendants (0.8 each), the shell fluorescent, the desk + lava lamps and the camera's Key Light (the hall has none) and blew out.
+- three-renderer.js `_hqJoinedHall(room)`: a box room in `HQ_STAGE_RULES.round` wears the HALL's rig (`_hqIndoorLightVals`,
+  `_hqEnter`'s box branch, `_hqLightArm` kind 'hall') — the hall reads the same from both sides, nothing eases at the crossing.
+  `HQ_LIGHT_RULES.joinRig: false` = each room its own rig again.
+- `shell.lampK` (0..1, default 1, `_hqLampK`): a room's share of its own lamps (shell fluorescents, desk-lamp pools, every prop
+  light). The foyer: `lampK: 0.5, keyLamp: 0.3`. Any room may use it.
+- Proof (node renderer on WebGL 2, post on): /mnt/project-files/foyer-lobby-light/.
+
+## THE LIT ROOMS — the Key Light by how bright a room already is (2026-11-12)
+mondo, after the foyer: "whatever was making the foyer too bright, pretty much all the other rooms inside door hq have the same
+issue, like the cafeteria, my office".
+- Cause: the camera's Key Light (HQ_LIGHT_RULES.keyLamp, a point light a metre from the eye, made for DARK rooms) at full strength
+  in rooms their own lamps already light. Turning it to 0.3 took the cafeteria's frame mean 134 → 117, the office 125 → 101.
+- three-renderer.js `_hqKeyLitK(room)` (read by `_hqKeyRoomK` when the room has no `shell.keyLamp`): share = ramp from 1 at
+  `from` to `min` at `to` over (mood light × the mean luminance of wallColor and floorColor; `wall` for one the room does not name). data.js
+  `HQ_LIGHT_RULES.keyLampLit = { on, from: 0.45, to: 0.75, min: 0.3, wall: 0.8 }`. DOOR HQ box rooms only (no site, terrain, cave);
+  the walk only (a fight keeps the whole light unless the room names `shell.keyLamp`). Dark rooms (IT, the server room, the dungeon,
+  the corridors, the boiler) keep 1. A room that reads wrong: give it its own `shell.keyLamp`.
+- `window.EW_HQ_NO_LIT_KEY = true` = every room the whole Key Light again (live; the proof's "before").
+- Proof: /mnt/project-files/foyer-lobby-light/rooms/.
+
+## THE OPEN-AIR ROOM INDOORS (2026-11-12, mondo walking from the pool into Room 1618: "The garden is dark") — three-renderer.js `_hqStageAirCross`
+- Three OPEN rooms (a sky of their own) stand on the stage of an INDOOR zone (HQ_WORLD zone.sky null): `garden` (annex),
+  `pool` (executive), `site_prebuilt_derelict_deck` (derelict). The stage was written for zones all outdoors or all indoors.
+- The fault: a visit that began in a closed room (always, for the garden: it has no door of its own from outside) had no sky
+  record, so the crossing built no dome and no lamp masts: the lawn stood under a black void, and by the clock's night it had
+  no lamp but the moon's key. (`_hqClockArm` did snap the hemisphere + key to the hour, so by day the ground itself was lit; a
+  clock-LOCKED open room would have kept the light of the room you left.) A fast walker never saw it (a part not attached yet
+  is a plain load, `_hqStageLoad`, which builds the sky). The way back never undid it: the pool wore the garden's daylight
+  (0.78 + 0.6, blown white) or its night until the visit ended.
+- The fix: `_hqStageSkyUp` builds the sky once a visit, when an open neighbour is built beside you (`_hqStageBuildTick`) or at the
+  crossing; `_hqOpenRoomLamps` = the lamp masts (entry and neighbour step); `_hqStageAirCross` (in `_hqStageSwap`, before the
+  shadow arm) turns the key to the new room's rig, sets the hemisphere's ground half + the fill, and hands `_hqStageBlendStart` a
+  snapshot of what is lit now (`st.airA`), blended to the open room's hour (`_hqStageSkyVals`) or the closed room's entry light
+  (`_hqIndoorLightVals`). `H.sky.air` = the open room the sky belongs to: the dome is drawn in it and in the rooms joined to it
+  (`_hqStageAirShow`), wearing its hour (`_hqStageAirEnv`). A closed ⇄ closed door join blends as before whether a sky is up or not.
+- `_hqClockArm` during that blend sets only the sun's direction (the blend owns the strength). The rim light and the post's
+  night read 0 in an enclosed room even with a sky up.

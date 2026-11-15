@@ -1433,6 +1433,13 @@ unit is currently buffed or debuffed". ui.js renderSelectedUnitPanel (#unitHover
 - **Tiles** (three-renderer.js): `_hlFragmentShader` + its TSL twin read shared look uniforms (`_hlLookU`, uLk*; a cloned subfloor material re-shares them, `_hlShareLook`); the defaults reproduce the old frame exactly. Each material records `userData.ewHl = { src, kind }`; the kind comes from the hl type (`_hlKindOfType`), the overlay name (`_HL_OVERLAY_KIND`, weather = none) or the colour (`_HL_HEX_KIND`); `_hlLookSync()` (each frame, once per version) writes the uniforms and repaints every cached material + the scene (`_hlPaint`). The cast glow (`_glowMakeMat`) takes glowFoe / glowFriend through `_ew_glowBase`.
 - **Arrows**: `_buildArrowFromPoints` reads `_arrowLook()` (shaft, glow tube, hot core, head, dots, kind colour from `_ARROW_HEX_KIND`); `_arrowTick` runs pulse + dot speed + dot shapes; every board build is recorded (`_arrowBuilds`) and rebuilt on a version change, so a held hover redraws at once. The takeover hide (THE GAME HAS THE BOARD) still runs after them each frame.
 
+### THE TILES TOUCH (2026-11-11, mondo: "i cant make the tiles big enough that they touch at the edges. There is always a little gap no matter what i do with the tile highlight and edge settings")
+- **Cause**: every highlight plate is a MESH 0.92 of its square (`_makeHlTile(..., 0.92, ...)`, `_getSharedHlGeo`), and the UI Maker's Size (`tSize` → `uLkSize`) only drew the frame inside that mesh: past 1 it cropped the outline and the 8% gap stayed. His setup already had Size at the old max (1.08).
+- **Fix** (three-renderer.js THE TILES TOUCH: `HL_BASE_FRAC`, `HL_SIZE_MAX`, `_hlCover`, `_hlFit`, `_hlRefit`): Size past 1 grows the plate itself. cover = 0.92 + (Size - 1), so **1 = the game's 92%, 1.08 = the whole square (neighbours touch)**, up to 1.12 they overlap a little (the overlap blends twice: a brighter seam, no z-fight, the plates write no depth). Under 1 the shader shrinks the frame as before (`uLkSize = min(1, size)`).
+- A plate is BUILT at its cover (`_makeHlTile`, `_drapedTileMesh` for a highlight material, the cursor's sub-floor plates, the acting tile, the dock's preview board), so the drape samples the ground at the real footprint (slopes, steps, the skin line). A plate already on the board when the slider moves is scaled to the new cover by `_hlRefit` (from `_hlLookSync`) until its next rebuild. Wider frames (cursor 0.98, acting tile 0.96, glow 0.96) never shrink; markers under 0.9 of a square and textured decals keep their size.
+- Covers: move / jump / climb / blocked, attack reach, spell reach + footprint, heal, inspect, every `setOverlay` (previews, AoE, enemy range), the cursor + selected tile, the underfoot tile, the acting tile, the cast glow. Not the spawn / nexus zones (their own look, PR #1110).
+- hud.js: the Size slider goes to 1.12; tip "1.08 = the tiles touch".
+
 ### THE STRIKE ARROW: the red arrow in the Attack target menu (2026-10-18, mondo: "when i have attack selected and im hovering or selected on an enemy, i need to see the red attack preview arrow, im in the target menu from the attack button and i dont see arrows at all")
 - **Cause**: the only red arrow was the approach preview (`_attackApproachHoverPreview` → `_drawSpellApproachPreview`: blue walk + red strike), drawn only for a target OUT of reach. A target already in reach went through `updateAoePreview`'s non-spell branch, which cleared every arrow and returned; opening the menu on the default pick drew nothing; the target rows had no hover hook.
 - **Now** (ui.js `_drawAttackAimArrow` + `window._ewAttackAimArrow`): `updateAoePreview` in attack mode draws a red arc (0xff3333, arc 0.35, flowing dots, unit torso → target torso via `unitSurfaceY`) onto the hovered/picked tile. battle.js `setTool('attack')` calls `updateAoePreview` on the default pick so the arrow is there the moment the menu opens. hud.js `_hrlgTargetBlades` gives attack rows `hoverIn` (arrow onto that row's target) / `hoverOut` (arrow back onto `state.pendingTarget`). Confirm still clears it (`clearAoePreview`), and the PR #302 takeover hide still hides it while the attack plays out. Viewer-local like every preview (no relay). It takes the UI Maker arrow look like every board arrow.
@@ -2072,6 +2079,14 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
   0.5), HQ_SKATE_RULES maxV 14.5 / pushV 5.2 / cruiseV 12.5 / friction 0.997, HQ_AREA_ENCOUNTERS = his 26 AREA UNITS room tables.
   The affinity's hard-coded copies now read the table (battle.js calcElementAffinityMult = all-element hits, ui.js forecast, ai.js
   estDamage, POWER_TRAIT_RULES.affinityMult) and the ×1.5 / ×0.5 words print the table. Race Editor / Spell Library mods were empty.
+- MY THEME 3 = THE DEFAULT (2026-11-12, mondo: "bake this theme into the game. Make this the new default theme and the other one
+  as another option", Entropy_Wars_Setup_2026-11-12_0544.json, build 20261112-entropystyle-02-cors): `node bake-setup.js <file>` (no
+  --keys). UIM_SHIPPED = his whole store again: 3 themes (Red & Black copy, Entropy Wars Theme c_mvc8nxl9fo9g, My Theme 3
+  c_mw5p8wvy2q54), 183 ux settings, 28 layout pieces. SHIPPED-KEYS ew_hud_theme = c_mw5p8wvy2q54; the old default stays a row in the
+  Settings HUD Theme picker. A browser that took the old shipped theme and never changed it follows to My Theme 3; a browser that
+  picked its own theme keeps it (both checked). CAREFUL: bake-setup.js without --keys rewrites SHIPPED-KEYS to the 3 look keys only;
+  the 18 Settings values baked on 11-01 were put back by hand (unchanged). His file's newer Settings values (CRT, light rays, action
+  cam, retro, Entropy Style, grass ...) were NOT baked: he asked for the theme. Shots: /mnt/project-files/theme3-bake/.
 
 ## THE WAY BACK IN (2026-10-22, mondo: edge-tile hover from outside the highlights)
 mondo: "coming from outside the tile highlights to hover on a tile doesnt work ... for aoe spells its suposed to show the aoe
@@ -2532,3 +2547,251 @@ Plan + mockup: /mnt/project-files/tile-info-panel/ (PLAN.md). He approved "Build
 - Proof (2026-11-09, online friendly, 2 Chromium seats, Mount Shasta 10x10, real menu clicks): host Sedan To the Moon -> Gnome to
   C6 in the host's fog, and guest Gnome To the Moon -> Bigfoot to C6 in the guest's fog; each seat's own line shows, the same
   line untagged is judged hidden. Shots: /mnt/project-files/own-throw-log-fog-20261109/.
+
+## THE END SCREENS: result, forfeit, rematch, pause camera (2026-11-10, PvP demo pass item 6)
+- Readability (styles-cinematic.css "THE END SCREENS READ"): `.vic-subtitle` + `.vic-match-info` each sit on a dark square window;
+  `.vic-sheets` gets a dark backing under the theme's plate (his glass theme left Hazard Pay rows on the bare board); the kicker
+  has a shadow; online (`.result-overlay.vic-online`) the head starts under the room chip. Under 620 px tall the case stamp is
+  `zoom: 0.5` so it never lands on the head's lines.
+- Forfeit on the record: battle.js `_forfeitMark(by, how)` writes `state._forfeit = { by, how }` (how = quit | disconnect | timer),
+  cleared on every line that clears `_winCondition`. Set by `forfeitMatch`, online.js relay case 'forfeit' and
+  `triggerOnlineForfeitWin(forfeitPlayer, reason)`. Plain data, rides the snapshot to the guest; no rule reads it. The result screen
+  adds the fact `🏳 FORFEIT` and a subtitle that says who ("You forfeited the match." / "Your opponent forfeited the match." /
+  "... did not reconnect in time ..." / "... held the turn too long ..."). Never key it on `state.startTime`: each seat has its own.
+- F5 (11-05): a profile still named "Player" reads "You hold the field." / "You are defeated."; a named profile keeps its name.
+- Rematch line: battle.js `_vicRematchNote(text, tone)` = `#vicRematchNote` over the command bar (the bar is 26 px taller online).
+  online.js `_ewSetRematchBtn(text, disabled, note, tone)` writes it with every button state; tones call (green, pulses) / wait
+  (gold) / off (red). The waiting button now reads "✓ Rematch Requested"; the sentence is in the line.
+- Buttons: hud.js BTN_MENUS 'results' gained `#mainMenuBtn` as a BACK and `#nextMatchBtn` as a CONFIRM, so the shipped red / green
+  apply (stand-in `confirm-results`).
+- Offline result after an online one: the bar's words come back ("Find Next Match", Back to Party Builder shown); online.js main
+  menu teardown marks the session offline BEFORE the socket drops (its 'disconnect' wrote "Reconnecting…" on the bar) and removes
+  `#netStatusIndicator`; the 1 s status loop removes a chip with no session (PvP playtest F8).
+- "Unable to rejoin" window (`_recoveryFailure`): a square window with a red button, and `room-full` removes a stale one (a page
+  reloaded on a closed room kept it over its whole next match).
+- Narrow result (under 900 wide / 520 tall): no sideways scroll on the bar; a long label breaks inside its own button.
+- F4 (11-05) three-camera.js EWCine: `#ewCineHint` key line while the mouse flies the camera or a path plays (exempt from hudHide),
+  EXIT is red (`.ew-cine-btn.back`), Esc with the mouse still held frees it. DOM only: in no photo or video.
+- Proof (2 Chromium seats, friendly TDM, real clicks; 1280x720, 1280x540, 800x500): /mnt/project-files/end-screens-20261110/.
+  Not viewed: WebGPU, Firefox, a real 90 s closed tab from a second machine (the guest page was navigated away instead).
+
+## THE DEMO (2026-11-10, mondo: the PvP demo set; "everyone can start off with the same 16 and can unlock up to 32")
+data.js DEMO_RULES = { on, starters[16], unlocks[16], arenas[9 site ids] } + demoModeOn / setDemoMode / demoRaceIn / demoRaceFree /
+demoArenaIn / demoRacePool. An optional FILTER: nothing is removed from AVAILABLE_RACES, the spells or the maps.
+- The switch: Settings > Demo (out of battle), `?demo=1` / `?demo=0` (remembered in localStorage `ew_demo_mode`), or the shipped
+  default DEMO_RULES.on (false). `on: true` ships the whole game as the demo, and the server's Quick Play pool then follows
+  (it reads hqArenaPvpPool at boot).
+- Roster: isUnitOwned counts the 16 starters as owned; isUnitUnlocked = in the 32 AND owned, in every scope. The 16 unlocks are
+  bought the way units already are (the Shop: one must have fallen to you in a match, then ACCT_UNIT_PRICE or a free token). The
+  forge lists the 32 (party-builder.js rosterEntries), the Shop lists the 32 ('demo' lock reason for the rest), the CPU's picks
+  and random rolls stay inside the 32 (state.js cpu3DRaceForSlot, randomizeIdentity, the hard draft).
+- Arenas: match-select.js deals the demo sites' ARENA cards + the Training Room and the Holo Sim (never a site's own console, a
+  desk with pre.allow, or Clash's stage); hqArenaPvpPool deals the seven arena sites online. The Training Room and the Holo Sim are
+  8×8 VS CPU boards: an online room only deals 9–12 boards.
+- Online: the host's switch rides friendly-config (`demo`), the guest reads NET._roomDemo. A squad with a champ outside the
+  roster (or a locked unlock) does not lock in (_ewSquadAutoLock says which); the squad desk flags it "Not in the Demo"; the host's
+  party-config guard refuses it (state.js teamDemoBarredRaces).
+Proof (headless WebGL, VS CPU desk + forge with ?demo=1, and ?demo=0 unchanged): /mnt/project-files/demo-set-20261110/.
+Not run with two seats.
+
+## THE AIM SIDE (2026-11-11, mondo: Purify's 3×3 on his own unit drew red)
+- One answer for a cast's preview colour: data.js `spellAimSide(row)` → `harm` (red: deals damage, or lands something hostile
+  on an enemy) | `help` (green: heals / shields / buffs / cleanses / revives, no damage) | `neutral` (a move, a placement, a
+  scan). Damage wins; a heal kind stays help when its only damage is a rider (Divine Light); a blink or a placement is
+  neutral even when it carries a status or a later bite. All 894 rows classed (the old kind lists missed
+  cleanseArea, zoneHeal, aoeShield, transfer, cannibalize, manaRestoreAll, encore, guard, Rescue Line, the placements).
+- Readers: ui.js updateAoePreview (footprint, single tile, self cast) + the reach lattice class, battle.js
+  `_spellApproachAoeTiles` (move→cast), hud.js `_qaSide` / `_qaPlateHex` (quick-menu target plate, area, reach wash, arrow;
+  a non-bane item is a help). Colours are ui.js EW_PREVIEW `help` / `helpSoft` / `util` / `place`: hexes the UI Maker's
+  Arrows + tiles already names (heal, util, place), so his colour per situation still applies.
+- Kept as it was: a buff's single aim tile is the blue "Buff spell reach", body moves blue, forced moves purple.
+- Proof (WebGL2, VS CPU): /mnt/project-files/aim-side-colours-20261111/. Not looked at on WebGPU.
+
+## THE ONE BATTLE PANEL (2026-11-11, mondo: "redesign the layout of the unit info panel / tile info panel and actions list to be one cohesive panel ... AAA JRPG"; plan + mock-ups approved "build it")
+- Plan + mock-ups: /mnt/project-files/battle-panel-20261111/ (page https://claude.ai/artifact/SGAvR8qW2ywVjM9AKJkyYZ). His three
+  picks, taken as recommended: the right bay shows your own stats + square when nothing is picked, the AP icons sit in the panel,
+  the zoom cone is off in this layout.
+- hud.js only lays out what the classic Horologe already builds (ActionMenu's panels / blades / TileCard / TileTabs / the quick
+  card's vitals + stats, HorologeMenu's cursor, keys, wheel, pad, menu camera and AP pending). `HorologeMenu` returns the deck
+  branch when `_ewDeckCfg().on`: `div.hrlg-rig.ewd` (`.ewd-c` compact, `.ewd-sub` off the root, `.ewd-nofocus`) holding
+  `.ewd-bay.ewd-actor` (1 WHO), `.ewd-bay.ewd-cmd` (2 WHAT: plate, `.ewd-crumbs` with the red `.ewd-back`, the parent list or the
+  armed row, `.ewd-list`, `.ewd-mode`, the green `.ewd-confirm`), `.ewd-bay.ewd-focus.<card|unit|self>` (3 ON WHAT: `.ewd-tabs`
+  or a plate, `DeckUnitCard` or `TileCard`) and `DeckFoot` (4: the game's prompt / description mirrored, the live keys).
+- `_ewdFocusOf` picks the right bay: the quick menu's card, else the unit a turn-icon peek / ⓘ asks for, else the cursor row's
+  unit (target lists), else the unit on the picked square, else your own (UI Maker pick). Fog: a row / pick unit shows only when
+  `_shouldCameraFollowUnit` says it is seen.
+- DeckFoot mirrors `#battleSubtitleText` (a queued notice wins) or `#ew-spell-descbar` and both bars hide while it is up
+  (`html.ew-deck-on`); a long text steps its size down to `--ewd-say-min`, never clips. QuickPeek / TacticWatch draw the same
+  window off your turn (ghost bays keep the spots). ApPress `docked` = the AP icons inside the actor bay (module memory
+  `_apDockMem`, so a menu re-open does not re-deal them).
+- Size: `_ewDeckScale`: full layout from 1728 × 904 × HUD Size ≥ 0.86 (scaled up to 1.4), else the COMPACT layout sized for
+  1300 × 548 (bays 246 / 282 / 430, its own font sizes), never the full one shrunk.
+- Look: `_ewdCss()` (appended to `_hudHideCss`). Panel parts plain; the parts a theme skins as buttons (rows, tool rows, item
+  slots, tabs) and the docked AP icons under a four-id prefix with !important, so the theme's skins (two ids) and the UI Maker's
+  pieces (three ids) keep the classic layout and the panel keeps the approved look. Theme fonts / title zoom / caps still apply.
+- UI Maker: Layout > Battle panel (piece `deck`): Layout One panel / Classic (`dPanel`), Right side (`dFocus`), AP icons
+  (`dAp`), Zoom cone (`dCone`) → `window._ewDeck` + event `ew-deck`. Kill switch: `window.EW_CLASSIC_PANEL = true`.
+- Camera + world text: battle.js `_menuFreeArea` takes the panel as a bottom band (the biggest box its bays leave: full width
+  above it or the strip beside a tall list; the frame may rise like THE LOW PANEL), `_clearDropCover` and three-renderer.js
+  `_wmMenuRects` count its bays, footer and tabs. TurnColumn docks above the actor bay's YOUR TURN plate.
+- No cut-off: the breadcrumb wraps between menu names (`wbr`), a crowded target row drops its last chip (MOVE→CAST) to a
+  second line instead of squeezing the turns-away count, the list scrolls only past `--ewd-list-max`.
+- Viewer-local: nothing on state, nothing relayed.
+
+## NO HIT CHANCE ON THE ROOT ATTACK ROW (2026-11-11, mondo: "I dont want the attack accuracy on the main/ top action list, only when i actually click the attack button")
+- hud.js ActionMenu root `attackAction` no longer carries `acc` (the "89–90%" lowest–highest odds of every foe in reach).
+- Kept: each target row after ATTACK is picked (`acc` in the target list, THE HIT CHANCE) and a foe's own quick menu Attack
+  row (the click on that foe already picked the target). Same in Classic and the one battle panel (both draw these rows).
+
+## THE MASTERY LEVEL (2026-11-11, mondo: "a visible level for the units ... purely cosmetic ... tie the achievements into it")
+- Every unit (race) has a cosmetic Mastery level that only says how much its owner plays it. NO stat, rule or reward reads it.
+  Called Mastery and drawn as an "M 134" plate because the battle panel and story mode already show a fight level as "Lv".
+- Rules: data.js `UNIT_MASTERY_RULES` + `unitMasteryXp / unitMasteryFromXp / unitMasteryOf / unitMasteryBand / unitMasteryClean /
+  unitMasteryChipHtml`. XP = 100 a finished match + 50 a win + 10 a kill + 25 a deathless win + a bonus per tier reached on the
+  unit's own achievement lines (ACH_CHAMP_LINES: 100 / 250 / 750 / 2,000 / 5,000). A level costs 100 XP + 25 per level, 500 from
+  level 17 on, no cap. Bands (the trophy colours): Bronze 1, Silver 10, Gold 25, Diamond 50, Entropic 100.
+- Nothing is stored for the level: it is derived from `profile.progress.champs[race]` (games / wins / kills / deathless), which
+  already syncs to the account. `games` is new: `ACH_CHAMP_COUNTERS` (a per-unit counter with no trophy; mergeProgressBlobs keeps
+  it), counted in battle.js commitAchProgress for kind 'match' only. Old profiles: games is never read lower than wins.
+- Reads: profile.js `ProfileSystem.unitMastery(race)` / `unitMasteryLevel` / `unitMasteryMap` (cached on the profile's saved text).
+- In a fight a unit carries `ulv` (a number, battle.js `_mlStampUnit` in makeUnitsFromBuilds). Online: the guest's levels ride its
+  party meta (`ulv`, online.js _sendPartyConfig; the host cleans them in _applyRemotePartyConfig) and the host's snapshots carry
+  both squads. The Room's seats carry `lv` per face (online.js _lrMySeat, server.js lobbyCleanSeat). A CPU unit has none.
+- Shown: squad faces (map.js _sqFace: Team Room, squad desk, hub strip, the Room, Match Found), hud.js `_mlChipEl` beside the type
+  badges (unit info panel, own panel), the pause party list + post-match tables (ui.js / battle.js), the result screen's Unit
+  Mastery block (battle.js _achBuildEndOfMatchHtml, `window._lastMasteryRows`), the builder's wall tiles (played units only),
+  Profile > Achievements > Champions (plate, XP bar, sort by level). CSS: styles-base.css `.ml-chip`, styles-cinematic.css `.ml-row`.
+- His to overturn: the name + M plate, CPU matches counting like online, the numbers, story / dungeon giving kill XP only.
+- Proof (WebGL2, two seats): /mnt/project-files/unit-mastery-20261111/proof/. Plan: https://claude.ai/artifact/VsEJRAPQSuvSxMmQ3CTyfJ
+- THE SORT (same day, mondo: "let me sort by mastery in the party builder roster ... just a button for ascending/descending, we
+  dont need all those duplicate buttons"): party-builder.js SORT THE WALL lists each thing once (NAME, MASTERY, each stat) and one
+  `.pb-sort-dir` pill beside the sort pill flips the order. A new pick opens on its natural order (name A-Z, numbers high first).
+- THE HEADER FITS (same day): the wall's search box + the two sort pills moved from the title row to the TYPE filter row
+  (`.pb-wall-fspace` pushes them right); in the title row the search box was squeezed to "SEAR" at 1280 wide. Checked 1280 + 1024.
+
+## THE PANEL HOLDS STILL + ITS COLOURS (2026-11-11, mondo: "flickering issues when i hover over some buttons ... when i hover over the tabs the whole thing bounces up and down real fast. And is this new HUD compatible with the ui maker? I want to change it to all black")
+- The bounce: a hovered tab (TileTabs onMouseEnter -> showSpellTooltip -> #ew-spell-descbar) or row / tile button put its
+  description in the footer (DeckFoot mirrors the bar); a longer text grew the footer, the bottom-anchored panel rose off
+  the mouse, the bar hid, the panel dropped back under it: a loop. Fix: `.ewd-foot` has ONE height (`--ewd-say-max` +
+  padding: 56 px full, 48 px compact); its words step down to `--ewd-say-min` to fit and scroll (thin bar) only past that.
+  Proof: the mouse parked on each tab / root row, the command bay's top and the footer height never change (old footer put
+  back: the footer jumped 37 -> 66). Every ability's description fits at 1728 x 904 and 1280 x 540 (Bigfoot's six).
+- Rule for later: nothing in the panel may change height with the hovered row (hover IS the cursor), see PR #936.
+- Colours: UI Maker > Layout > Battle panel > Battle panel colours (`dLook`): Night blue (the shipped CSS, no variables),
+  All black (`DECK_BLACK`), My colours (dBgTop, dBgBot, dEdge, dPlate, dRow, dRowEdge, dSel1, dSel2; the rest derived).
+  `deckLook` writes `--ewdu-*` on <html>; `_ewdCss` reads every panel colour as `var(--ewdu-x, <shipped value>)`. The
+  theme's fonts still apply; the theme's button / panel skins stay off the panel (its own frames).
+
+
+## THE GUARD LINE (2026-11-11, mondo: "we dont need a whole novel")
+Guard's combat text is ONE line: `🛡 <unit> Guards and restores a little HP.` (ui.js doGuard). The old paragraph
+(+DEF/M DEF, +15% Counter, Overwatch…) and the two status lines ("Guard: X is guarding." / "is recovering.") are gone
+from the text box and the combat log; the rules did not change. battle.js applyStatusPayload reads `payload.quiet`
+(the caller writes its own line for that status).
+
+
+## THE SCORE POP (2026-11-12, mondo: "whenever a kill happens or arena points are scored, i want the arena scoreboard to do a +N animation ... like a 3 pointer"; mock-up approved "looks good")
+hud.js, the block before `function Scoreboard`. A **+N** stands ON the scoring side's score digits (his word: "over the
+team's score number, like in the same spot"): the digits step out, the +N holds, the digits come back rolling up.
+- No new rule: `_sbPopFeed` diffs the score the plate already draws (`_getModeInfo`), so kills, Cube damage, Keys, Nexus
+  rounds and bounties all pop, in every mode, and the guest makes its own from the synced state (nothing relayed).
+- THE PLATE WAITS: `_sbPopBlocked` holds while a letterbox is over the scoreboard (`.acam-chrome.active:not(.light)`,
+  `.ews-letterbox`, `.vs-letterbox-in`, or the plate hidden); everything scored under the bars is ONE +N per side, fired
+  `afterBarsMs` after they leave (never held past `maxWaitMs`).
+- THE SIZE: `SCORE_POP_RULES.tiers` (<10 tick, 10-24 pop, 25-49 bounce + plate flash, 50+ slam + ring). A kill-count
+  mode's +1 weighs as a kill (`killWeight`). P1's +N grows left, P2's right, in the side's scoreboard colour.
+- A score that drops (a Key carrier falls) just drops, no pop. Off switch `window.EW_NO_SCORE_POP`; probe
+  `window._ewScorePopState()`. Not seen yet: online guest, his Mac, the motion at full speed (stills only).
+
+- 11-12 later, mondo: "it's maybe a little too wavy": the bounce / double bounce / up-and-down are gone. Every size is ONE
+  overshoot and a settle (t4 lands from big); the digits' bump on the roll is smaller. Sizes, flash and ring unchanged.
+- 11-12 12:45 AM: "too wavy" was the GRASS, not the +N ("i meant the grass, sorry ... bring back"): the bounce / double
+  bounce motion of PR #1174 is back as it was.
+
+### THE MINIMAP STAYS UP IN THE COMMAND MENU (2026-11-12, mondo: "make the minimap not disappear while im navigating the combat menu")
+- Cause: the menu's own camera glides (range fit, target two-shot, glide back) set `body.ew-board-busy` + `ew-board-cam`
+  (three-renderer.js `_syncTakeoverHighlights`), and the minimap's Hide while = "the game has the board" took each glide
+  for the game's: it faded on every row.
+- Fix: `body.ew-deciding` (three-renderer.js `_playerDeciding`): the viewer's own unit's turn, nothing playing out, no
+  cinematic / close-up / centre banner / spell shot / end of round. styles-hud.css keeps `.ew-mmap` up while it is on
+  (the UI Maker's "Also while you pick a tile or a target" still hides it while aiming). The combat log is untouched.
+- Viewer-local (a body class), nothing relayed; the guest's own turn runs the same test.
+
+### THE PREVIEWS ON THE MINIMAP (2026-11-12, mondo: "I also want the minimap to kind of mirror the spell previews and have arrows and tile highlights and damage aoes etc, like a simplified mini version of the board"; mock-up OK'd "looks good, go ahead")
+- ONE SOURCE: three-renderer.js `_mmPreview` reads what the board shows this frame: every visible plate in `highlightGroup`
+  (the selection's reach from rebuildHighlights + every `setOverlay` layer), the board's arrows (`_arrowBuilds`, in the UI
+  Maker's arrow colours) and the hover cursor. So it cannot disagree with the board, it carries the tile colours
+  (spellAimSide: harm red, support green) and it is the viewer's own (the board never paints the other seat's aim; nothing relayed).
+- Reach (`_OVERLAY_STYLE` fill < 0.5, and the selection's reach) = a faint wash; hit / landing plates (fill >= 0.5) = solid
+  squares; a unit standing on a solid square gets a white ring; arrows flat from above; the cursor = a white square.
+- Left out (`_MM_PV_SKIP`): zones, weather, telegraphs, the action glow, the hovered enemy's range, the Inspect search map.
+- UI Maker > Layout > Minimap > Previews: gPvReach / gPvArea / gPvArrow / gPvCursor (on) + gPvOp (MMAP_DEF pv*).
+- Proof (WebGL2 headless): /mnt/project-files/minimap/previews-20261112/. Not seen: WebGPU, online guest, round / turned / near views.
+
+## TEAM SELECT: NO INWARD FLASH (2026-11-12)
+mondo: "the buttons on the left briefly show more inward before showing in the correct place". Cause: the entrance
+(`.sq-page.sq-enter .sq-dock`, sqCardIn) put a transform on the whole dock for ~0.66 s; a transformed box is the frame
+its `position: fixed` parts measure from, so the UI Maker screen-pinned button stack (sqact: pin l, pinM 32) stood 32 px
+inside the DOCK until the animation ended. Fix (styles-base.css): the dock no longer animates; `.sq-bar` flies in and
+`.sq-actions` only fades (sqFadeIn, no transform). RULE: never put a transform / filter animation on a box that holds a
+piece the UI Maker can pin to a screen side. Proof: /mnt/project-files/team-select-flash/.
+
+## THE PORTRAIT STUDIO: portraits cut from the unit's own model (2026-11-12, mondo: "how the game takes a screenshot of the player's created character model and uses that is the portrait, the angle and framing is all messed up" + "cut one from her model" for Agent Locke)
+- Before: a unit in a creator look (the player's officer) showed the generic Door Agent sprite's face in battle (turn icons,
+  YOUR TURN panel, plates, lists); Agent Locke (`appearance.cast`) the same. The only "photo" of the look was the mirror's
+  bust (`EWCharViewer.snapshot`, the ID card + the HQ party card), aimed at 86 % of the body's height: head against the top
+  edge, a hat cut off, mostly coat.
+- Now: three-renderer.js THE PORTRAIT STUDIO (`window.EWPortraits`). `url(unit[, 'bust'])` -> a data URL or null. A unit
+  qualifies when it wears a model of its own: a creator look on a look race (`normalizeCharacterAppearance` gives a look,
+  `getCharacterAppearanceModel` a def) or a story character's rig (`appearance.cast` -> `getCastModel`). The studio is a second
+  small WebGL renderer (128 px, the character viewer's lights + sRGB/ACES), one body at a time: clone the GLB, `_cvOwnBakes`,
+  the appearance rig, the idle; wait until dressed; 8 frames to settle; aim the camera off the Head bone (`_cvHeadPoint`) and
+  along where the FACE looks (the Head bone's turn since the bind pose, so a bowed idle head is met face on), PT_YAW to the
+  side; read the canvas (PNG, clear behind); a look also gets its 256 x 320 ID photo (`#bust`). The body is disposed after the
+  shot, the renderer 30 s after the last job. Cached per session by key (`cast:<id>` / `look:<race>|<gender>|<hash of the look>`).
+- A def's own aim: `portrait: { yaw, frame, expo }` (sprites.js DOOR_CAST_MODELS.locke: yaw -0.3, her hair covers the eye from
+  the other side). Meshy bakes shoot at exposure PT_BAKE_EXPO 0.62 (1.05 washed her face out).
+- Wiring: sprites.js `getUnitPortraitArtUrl` asks the studio first (so it counts as the unit's ART: the UI Maker's Portraits
+  choice face / sprite still wins); until the photo is in, the sprite's face stands in, then `EWFaces.bump` (hud.js) repaints.
+  map.js `_hqPausePortrait` + `_sqFace`, party-builder.js `PortraitSprite` pass the slot's `appearance`; profile.js
+  `doorCardPortrait` swaps a stored (badly framed) mirror photo for the studio's bust once it is in. `EWCharViewer.snapshot`
+  itself is aimed off the Head bone too (PT_BUST), so the mirror's new photos are right.
+- Viewer-local (nothing on a unit, nothing relayed; the guest photographs the host's look from the snapshot's `appearance`).
+  Off: `window.EW_NO_MODEL_PORTRAITS = true`. Proof: /mnt/project-files/portraits-20261112/.
+- STRAIGHT ON (same day, mondo: "why are the battle portraits at an angle when the id photo is straight on? ... The battle portraits
+  should be straight on, just like the sprite portraits"): PT_YAW 0, PT_POLAR 0, PT_PITCH 1 (the camera stands exactly where the
+  face looks); Locke's `portrait.yaw` is gone. RULE: a portrait is straight on, never a three-quarter view.
+- **THE LIVE PORTRAITS (2026-11-12, mondo "Do B"):** the player's own created character and Agent Locke idle, breathe and blink in
+  their portrait icon (turn order `PartyPortrait`, the YOUR TURN panel `HorologeHub`). three-renderer.js: a live subject stays in
+  the studio after its still (`S.live`), `_ptLiveTick` redraws it at `PT_LIVE_FPS` 12 into every attached HUD canvas
+  (`EWPortraits.attach(canvas, unit)`), at most `PT_LIVE_MAX` 2 bodies, dropped `PT_LIVE_LINGER` 8 s after the last canvas leaves.
+  Who is live: a cast def with `portrait: { live: true }` (sprites.js `locke`) and the viewer's own profile look (`_ptOwnKey`).
+  hud.js `LiveFace` (a canvas in the icon's SVG, the still under it until the first frame) + `useLiveGen` (the icons are memoised:
+  the switch fires `ew-live-portraits`). Settings > Video > Live Portraits On/Off (`ew_livePortraits`, default On; Off = stills);
+  console kill `window.EW_NO_LIVE_PORTRAITS`. Creator bodies blink (faceIdle); Locke's Meshy model has no eyelids, she only
+  sways and breathes until she is remade on a creator body (the remade-looks thread). Viewer-local, nothing relayed.
+
+## THE OFFICIAL DOOR LOGO (2026-11-12/13, mondo's DOOR folder)
+mondo: "Uploaded a folder called DOOR to the inbox ... the DOOR logo, color and black and white ... separated out into
+individual pieces, so you can animate the intro logo animation better ... the game is already putting the text, so thats why
+included the parts without the text ... there is a carpet in the foyer that needs to use these logo assets, not ai generated.
+Please replace any ai generated DOOR logos with these assets."
+- **His files, as he exported them:** R2 `Assets/ui/brand/door_logo/{color,blackandwhite}/{png,svg}/` = arc, cube, door,
+  door-text (the D.O.O.R wordmark), subtitle, and the whole logo (`colored_black_bg`, `blackandwhite`). The text SVGs need
+  the STIX Two Text font: use the PNGs for text. Never redraw / recolour them.
+- **THE MARK (no text):** `door_logo/door_mark_color.png` + `door_mark_mono.png` (1024 x 795, + .svg) = his whole-logo SVG
+  cropped to the arc + cube + door (viewBox 365.07 0 905.21 702.5; text + rules taken out, his paths untouched).
+  data.js `DOOR_TEXT.LOGO.mark / markMono / pieces`.
+- **Where the mark is now** (each had the 1920 x 1080 with-text PNG shrunk tiny beside the game's own text): the title
+  corner seal, the main menu seal, every `.door-hdr` header (codex, credits, shop, orientation), the HQ strip, the HQ loading
+  card, the HQ pause title, the forge head, the party builder `DoorSeal`, the onboarding card, the orientation tape's seal
+  slide, the hud.js UI Maker sample pages, the plate over every crossing door + HQ portal, the round dispatch desk.
+  The 3D planes are 1 : 0.776 now (the old square plane stretched a 16:9 image).
+- **THE FOYER FLOOR SEAL** (three-renderer.js `door_seal`): the navy disc, brass rings and rim text stay; the code-drawn
+  circle / square / door device + "D.O.O.R." + "CANON REALITY" lines are gone, his mark is drawn in the middle when it lands.
+- **THE INTRO** (index.html `#doorIdent`, styles-cinematic.css `.door-ident-seal`): the box is 905.21 x 870 of his sheet;
+  the cube lands with the colour split (0.3 s), his arc path is uncovered left foot to right foot by a mask stroke (0.75 s),
+  the door swings in from its hinge with an amber flare (1.4 s), his wordmark wipes open (1.7 s, shown white by `invert`),
+  the game's line types (2.0 s), PRESENTS (2.7 s). Still 4.3 s: audio.js identSting's tape stop sits on the squish at 3.15 s.
+- **Left as they were** (his own earlier with-text exports, used big or as a watermark / ink mask): `DOOR_TEXT.LOGO.onDark /
+  onLight / onMid / mono`, the CSS `--door-seal-*` (dossier watermarks, result stamps), the ID card crest.

@@ -980,6 +980,19 @@ function clashSpellOk(sp) {
 function sfx(key) { if (typeof window.playSfx === 'function') window.playSfx(key); }
 function getCodexLore(race, gender) { return (gender === 'female' && CODEX_LORE[race + ':female']) || CODEX_LORE[race] || window.RACE_PROFILES?.[race]?.lore || 'No intelligence available. File pending \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 review.'; }
 
+/* THE MASTERY LEVEL (mondo 2026-11-11, data.js UNIT_MASTERY_RULES): the cosmetic level plate on a unit's tile on the wall,
+   once the unit has been played (an unplayed unit's tile stays clean). `always` = draw level 1 too (the team's own slots). */
+function pbMasteryChip(race, always) {
+  try {
+    const PS = window.ProfileSystem;
+    if (!race || !PS || typeof PS.unitMastery !== 'function') return null;
+    const m = PS.unitMastery(race);
+    if (!m || (!always && !(m.xp > 0))) return null;
+    return h('span', { className: 'ml-chip pb-rtile-ml', style: { '--ml': m.color },
+      title: 'Mastery level ' + m.level + ' (' + m.band + '): ' + m.into.toLocaleString() + ' / ' + m.need.toLocaleString() + ' XP to the next. Shows how much you play this unit. No effect on the fight.' },
+      h('i', null, 'M'), String(m.level));
+  } catch (e) { return null; }
+}
 function Sprite({ race, gender, cls, size, glow, style: extraStyle }) {
   const url = getSpriteUrl(race, gender, cls);
   return h('div', { style: { width: size, height: size, backgroundImage: url ? `url('${url}')` : 'none', backgroundSize: 'contain', backgroundPosition: 'center bottom', backgroundRepeat: 'no-repeat', imageRendering: 'pixelated', filter: glow ? `drop-shadow(0 0 8px ${PB_ACCENT})` : undefined, ...extraStyle }});
@@ -987,9 +1000,9 @@ function Sprite({ race, gender, cls, size, glow, style: extraStyle }) {
 /* Party-rail slot art: the 128×128 character portrait when the vessel has
    one (sprites.js RACE_PORTRAITS), full-bleed like a champ-select card;
    falls back to the ordinary full-body Sprite otherwise. */
-function PortraitSprite({ race, gender, cls, glow, style: extraStyle }) {
+function PortraitSprite({ race, gender, cls, glow, appearance, style: extraStyle }) {
   const pUrl = (typeof window.getUnitPortraitUrl === 'function')
-    ? window.getUnitPortraitUrl({ race, gender }) : null;
+    ? window.getUnitPortraitUrl({ race, gender, appearance: appearance || null }) : null;   // appearance: a slot in a look of its own shows that model's face (three-renderer.js THE PORTRAIT STUDIO)
   if (!pUrl) return h(Sprite, { race, gender, cls, size: '90%', glow, style: { width: '90%', height: '90%', ...extraStyle } });
   return h('div', { style: {
     width: '100%', height: '100%',
@@ -1570,9 +1583,10 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     return u ? u[0].toUpperCase() + u.slice(1) : label;
   };
   // one pick per tab (a tab of several, like underwear or horns, toggles each); the pack's own one-per-category rule still applies
-  const shapeHeads = window.EW_SHAPE_HEADS || [];
-  const shapeEars = window.EW_SHAPE_EARS || [];   // THE SHAPED EARS (2026-11-03): cat ears, a reshape of the body's own ears
   const shapeHeadOn = (k) => (+appearance[k] || 0) > 0.004;
+  const pickOff = (id, on) => !on && !!(window.ewPickSwitchedOff && window.ewPickSwitchedOff(id));   // THE LIKENESS SWITCH (sprites.js): hidden unless turned on or worn
+  const shapeHeads = (window.EW_SHAPE_HEADS || []).filter(([k]) => !pickOff(k, shapeHeadOn(k)));
+  const shapeEars = window.EW_SHAPE_EARS || [];   // THE SHAPED EARS (2026-11-03): cat ears, a reshape of the body's own ears
   const toggleWear = (t, id) => {
     const on = worn.includes(id);
     const patch = { wear: on ? worn.filter(x => x !== id) : (shelfMany(t) ? worn : worn.filter(x => shelfOf(x) !== t)).concat([id]) };
@@ -1826,7 +1840,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   /* THE LOOKS tiles: one MakeHuman pick row (skin / eye colour / brows / lashes), "Body's own" first */
   const mhLookList = (cat) => [['own', "Body's own"]].concat(((window.EW_MH_LOOKS || {})[{ mhSkin: 'skins', mhEyes: 'eyes', mhBrows: 'brows', mhLashes: 'lashes' }[cat]] || []).map(r => [r[0], r[1]]));
   const mhTiles = (cat, head, list, key) => {
-    const rows = (list || mhLookList(cat)).filter(([id]) => keepPick(cat, id, (appearance[cat] || 'own') === id)), cam = cat === 'mhSkin' ? 'body' : 'face';   // (THE HIDDEN PICKS)
+    const rows = (list || mhLookList(cat)).filter(([id]) => keepPick(cat, id, (appearance[cat] || 'own') === id) && !pickOff(id, (appearance[cat] || 'own') === id)), cam = cat === 'mhSkin' ? 'body' : 'face';   // (THE HIDDEN PICKS)
     if (!window.EW_MH_LOOKS || !rows.length) return null;
     return h(React.Fragment, { key: key || cat },
       head ? h('div', { className: 'pb-creator-colorlabel' + (cat === 'mhSkin' ? ' pb-cc-shelf-sub' : ''), 'data-cc-cam-own': cam }, head) : null,
@@ -1840,7 +1854,15 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam-own': cam || 'face' }, label),
     ccChoice(key, [['own', 'Original colours']].concat(hairToo ? [['hair', 'Same as hair']] : [], [['pick', 'Pick a colour']])),
     appearance[key] === 'pick' ? ccColorRow(colorKey, label, swatches) : null);
-  const faceLooks = { eyes: ['mhEyes', 'eyeTint', 'mhLashes', 'lashTint'], brows: ['mhBrows', 'browTint'], mouth: ['lipTint'] };
+  /* THE MAKE-UP (2026-11-12, mondo: "make a way in the creator to add makeup too"): "<make-up>": None / Pick a colour, then the swatches + the custom picker */
+  const makeupTint = (key, label, colorKey, swatches) => h(React.Fragment, { key },
+    h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam-own': 'face' }, label),
+    ccChoice(key, [['own', 'None'], ['pick', 'Pick a colour']]),
+    appearance[key] === 'pick' ? ccColorRow(colorKey, label, swatches) : null);
+  const linerSwatches = ['#17110f', '#3a2418', '#4a3a36', '#1c2a4a', '#2f4a3a', '#5b3a8a', '#7a2e33', '#e8e2d8'];
+  const shadowSwatches = ['#6b4a55', '#8a6a5a', '#4a3a36', '#2a2428', '#7a5a8a', '#3a5a8a', '#3f7a6a', '#b8862f', '#c26a8a', '#a0413f', '#d8c8b8'];
+  const blushSwatches = ['#c9727c', '#d98a7a', '#c26a8a', '#b8605a', '#e0a08a', '#a0413f', '#b87a9a'];
+  const faceLooks = { eyes: ['mhEyes', 'eyeTint', 'mhLashes', 'lashTint', 'linerTint', 'shadowTint'], brows: ['mhBrows', 'browTint'], mouth: ['lipTint'], cheeks: ['blushTint'] };
   /* THE HIDDEN PICKS: the hider's bar (top of the creator): the marks on / off (off = the lists as players see them), the hidden list
      (each with SHOW, + SHOW ALL), and EXPORT HIDDEN LIST (the file bake-hidden.js bakes into sprites.js EW_CREATOR_HIDDEN).
      THE RENAMED PICKS (2026-11-03): + the RENAMED list (each with RENAME / ORIGINAL NAME, + ALL ORIGINAL NAMES), the export carries
@@ -1972,7 +1994,9 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                       [['human', 'Eye materials: human'], ['creature', 'Eye materials: non-human'], ['more', 'Eye materials: various']].map(([g, head]) =>
                         mhTiles('mhEyes', head, (window.EW_MH_EYE_PACK || []).filter(r => r[5] === g).map(r => [r[0], r[1]]), 'mhEyesMat_' + g)),
                       lookTint('eyeTint', 'Iris colour', 'eyeColor', eyeSwatches),
-                      mhTiles('mhLashes', 'Lashes'), lookTint('lashTint', 'Lash colour', 'lashColor', hairSwatches)) : null,
+                      mhTiles('mhLashes', 'Lashes'), lookTint('lashTint', 'Lash colour', 'lashColor', hairSwatches),
+                      makeupTint('linerTint', 'Eye liner', 'linerColor', linerSwatches), makeupTint('shadowTint', 'Eye shadow', 'shadowColor', shadowSwatches)) : null,
+                    g.id === 'cheeks' ? makeupTint('blushTint', 'Blush', 'blushColor', blushSwatches) : null,
                     g.id === 'brows' ? h(React.Fragment, null,
                       mhTiles('mhBrows', 'Brows'), lookTint('browTint', 'Brow colour', 'browColor', hairSwatches, true)) : null,
                     g.id === 'mouth' ? h(React.Fragment, null,
@@ -2201,7 +2225,7 @@ const DOOR = (typeof window !== 'undefined' && window.DOOR_TEXT) || null;
 function DoorSeal({ size }) {
   size = size || 30;
   if (!(DOOR && DOOR.LOGO && DOOR.LOGO.onDark)) return h(SigilMark);
-  return h('img', { src: DOOR.LOGO.onDark, alt: '', draggable: false, style: { width: size, height: size, objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.7))', userSelect: 'none' } });
+  return h('img', { src: DOOR.LOGO.mark || DOOR.LOGO.onDark, alt: '', draggable: false, style: { width: size, height: size, objectFit: 'contain', flexShrink: 0, filter: 'drop-shadow(0 0 8px rgba(0,0,0,0.7))', userSelect: 'none' } });
 }
 /* Officer on desk: callsign + story clearance (NOT the ELO rank) — the
    head line of the monitor, same words as the match-select terminal. */
@@ -3973,7 +3997,9 @@ function PartyBuilder(props) {
   };
 
   const rosterEntries = React.useMemo(() => {
-    const races = window.AVAILABLE_RACES || [], entries = [];
+    /* THE DEMO (2026-11-10, data.js DEMO_RULES): with the Demo switch on the roster lists the demo set only (the 16
+       starters open, the 16 unlocks locked until owned — isUnitUnlocked) */
+    const races = (typeof window.demoRacePool === 'function') ? window.demoRacePool(window.AVAILABLE_RACES || []) : (window.AVAILABLE_RACES || []), entries = [];
     for (const rk of races) {
       const p = window.RACE_PROFILES?.[rk]; if (!p) continue;
       const genders = typeof window.getAvailableGendersForRace === 'function' ? window.getAvailableGendersForRace(rk) : ['male'];
@@ -3995,12 +4021,16 @@ function PartyBuilder(props) {
     if (typeFilter) list = list.filter(e => e.types.includes(typeFilter));
     if (rosterSearch) { const q = rosterSearch.toLowerCase(); list = list.filter(e => e.label.toLowerCase().includes(q) || e.race.toLowerCase().includes(q)); }
     const getStatVal = (entry, key) => { const s = computeStats(entry.race, entry.cls), mapped = STAT_MAP[key]; return s[mapped] ?? s[key] ?? s[key.toLowerCase()] ?? 0; };
+    const _mlMap = (window.ProfileSystem && typeof window.ProfileSystem.unitMasteryMap === 'function') ? window.ProfileSystem.unitMasteryMap() : {};
+    const masteryXp = (race) => { const m = _mlMap[race] || _mlMap[String(race || '').toLowerCase()]; return m ? (m.xp || 0) : 0; };
     list = [...list].sort((a, b) => {
       // Owned (unlocked) vessels always come first, then favorites, then the chosen stat.
       const ao = isLockedEntry(a.race) ? 0 : 1, bo = isLockedEntry(b.race) ? 0 : 1;
       if (ao !== bo) return bo - ao;
       const af = isFav(a.race, a.gender) ? 1 : 0, bf = isFav(b.race, b.gender) ? 1 : 0;
       if (af !== bf) return bf - af;
+      /* THE MASTERY LEVEL (mondo 2026-11-11: "let me sort by mastery in the party builder roster"): by the unit's cosmetic XP, the name breaking ties */
+      if (sortKey === 'mastery') { const ax = masteryXp(a.race), bx = masteryXp(b.race); if (ax !== bx) return sortDir === 'desc' ? bx - ax : ax - bx; return String(a.label).localeCompare(String(b.label)); }
       if (STAT_KEYS.includes(sortKey)) { return sortDir === 'desc' ? getStatVal(b, sortKey) - getStatVal(a, sortKey) : getStatVal(a, sortKey) - getStatVal(b, sortKey); } const av = a[sortKey]||a.label, bv = b[sortKey]||b.label; return sortDir === 'desc' ? String(bv).localeCompare(String(av)) : String(av).localeCompare(String(bv)); });
     return list;
   }, [rosterEntries, typeFilter, rosterSearch, sortKey, sortDir, _, favRaces]);
@@ -4543,15 +4573,20 @@ function PartyBuilder(props) {
      glass), search is a pill input. filteredRoster / rosterEntries /
      pickRace / isLockedEntry / toggleFav are unchanged. Hover → the stage
      (rosterHoverIn). */
-  const sortLabelTxt = sortKey === 'label' ? ('NAME ' + (sortDir === 'asc' ? 'A–Z' : 'Z–A')) : (statLabel(sortKey) + (sortDir === 'desc' ? ' ↓' : ' ↑'));
+  /* THE SORT (mondo 2026-11-11: "there should just be a button for ascending/descending, we dont need all those duplicate
+     buttons"): the SORT window lists each thing ONCE (name, Mastery, each stat); one button beside it flips the order.
+     Picking a new thing opens on its natural order (a name A-Z, a number highest first). */
+  const sortName = sortKey === 'label' ? 'NAME' : sortKey === 'mastery' ? 'MASTERY' : statLabel(sortKey);
+  const sortDirTxt = sortKey === 'label' ? (sortDir === 'asc' ? 'A–Z' : 'Z–A') : (sortDir === 'desc' ? 'HIGH' : 'LOW');
+  const sortLabelTxt = sortName;
+  const pickSort = (k) => { if (k !== sortKey) { setSortKey(k); setSortDir(k === 'label' ? 'asc' : 'desc'); } setPbMenu(null); sfx('uiCursorMove'); };
+  const sortRow = (k, glyph, name, note) => h('button', { key: k, className: 'pb-menu-row' + (sortKey === k ? ' on' : ''), onClick: () => pickSort(k) }, h('i', null, glyph), name, h('small', null, note));
   const rosterMenu = pbMenu === 'sort'
-    ? h(PbWindow, { title: 'SORT THE WALL', sub: sortLabelTxt, onClose: () => setPbMenu(null), zone: true, width: 300 },
+    ? h(PbWindow, { title: 'SORT THE WALL', sub: sortName + ' · ' + sortDirTxt, onClose: () => setPbMenu(null), zone: true, width: 300 },
         h('div', { className: 'pb-menu-list' },
-          h('button', { key: 'la', className: 'pb-menu-row' + (sortKey === 'label' && sortDir === 'asc' ? ' on' : ''), onClick: () => { setSortKey('label'); setSortDir('asc'); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, 'A'), 'NAME', h('small', null, 'A – Z')),
-          h('button', { key: 'ld', className: 'pb-menu-row' + (sortKey === 'label' && sortDir === 'desc' ? ' on' : ''), onClick: () => { setSortKey('label'); setSortDir('desc'); setPbMenu(null); sfx('uiCursorMove'); } }, h('i', null, 'Z'), 'NAME', h('small', null, 'Z – A')),
-          ...STAT_KEYS.map(k => [['desc', '↓'], ['asc', '↑']].map(([d, arrow]) =>
-            h('button', { key: k + d, className: 'pb-menu-row' + (sortKey === k && sortDir === d ? ' on' : ''), onClick: () => { setSortKey(k); setSortDir(d); setPbMenu(null); sfx('uiCursorMove'); } },
-              h('i', null, arrow), statLabel(k), h('small', null, d === 'desc' ? 'HIGHEST FIRST' : 'LOWEST FIRST')))).flat()))
+          sortRow('label', 'A', 'NAME', ''),
+          sortRow('mastery', 'M', 'MASTERY', ''),
+          ...STAT_KEYS.map(k => sortRow(k, '#', statLabel(k), ''))))
     : null;
   const rosterPanel = h(React.Fragment, null,
     h('div', { className: 'pb-zone-head pb-wall-head' },
@@ -4559,8 +4594,6 @@ function PartyBuilder(props) {
       h('span', { className: 'pb-wall-count' }, filteredRoster.length, ' / ', rosterEntries.length),
       DOOR && h('span', { className:'door-hdr-sub pb-wall-sub' }, 'D.O.O.R. RECORDS · ENTITY REGISTRY'),
       h('div', { style: { flex: 1 } }),
-      h('input', { className: 'pb-pill-input', placeholder:'SEARCH…', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), 'aria-label': 'Search the wall' }),
-      h('button', { className: 'pb-pill-btn' + (pbMenu === 'sort' ? ' on' : ''), onClick: () => setPbMenu(pbMenu === 'sort' ? null : 'sort'), title: 'Sort the wall' }, '⇅ ', sortLabelTxt),
       null),
     h('div', { className: 'pb-wall-filters' },
       h('span', { className: 'pb-wall-flabel' }, 'TYPE'),
@@ -4570,7 +4603,15 @@ function PartyBuilder(props) {
         return h('button', { key: t, className: 'pb-type-disc' + (on ? ' on' : '') + (has ? '' : ' none'), style: { '--tc': c }, disabled: !has,
           onClick: () => setTypeFilter(on ? null : t), title: t.toUpperCase() + (has ? '' : ' — none on the wall') }, PB_TYPE_GLYPH[t] || t.slice(0, 2).toUpperCase());
       }),
-      (typeFilter || rosterSearch) ? h('button', { className: 'pb-pill-btn danger', onClick: () => { setTypeFilter(null); setRosterSearch(''); }, title: 'Clear every filter' }, '✕ CLEAR') : null),
+      (typeFilter || rosterSearch) ? h('button', { className: 'pb-pill-btn danger', onClick: () => { setTypeFilter(null); setRosterSearch(''); }, title: 'Clear every filter' }, '✕ CLEAR') : null,
+      /* THE HEADER FITS (2026-11-11): search + sort sit on the filter row, where there is room; in the title row they squeezed
+         the search box to "SEAR" at 1280 wide */
+      h('div', { className: 'pb-wall-fspace' }),
+      h('input', { className: 'pb-pill-input', placeholder:'SEARCH…', value:rosterSearch, onChange:e=>setRosterSearch(e.target.value), 'aria-label': 'Search the wall' }),
+      h('button', { className: 'pb-pill-btn' + (pbMenu === 'sort' ? ' on' : ''), onClick: () => setPbMenu(pbMenu === 'sort' ? null : 'sort'), title: 'Sort the wall by…' }, '⇅ ', sortLabelTxt),
+      h('button', { className: 'pb-pill-btn pb-sort-dir', onClick: () => { setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); sfx('uiCursorMove'); },
+        title: 'Flip the order (now ' + (sortDir === 'asc' ? 'ascending' : 'descending') + ')', 'aria-label': 'Sort order: ' + (sortDir === 'asc' ? 'ascending' : 'descending') },
+        ((sortKey === 'label') === (sortDir === 'asc')) ? '▼ ' : '▲ ', sortDirTxt)),
     h('div', { className: 'pb-roster', onMouseLeave: rosterHoverOut },
       filteredRoster.map((entry, ei) => {
         const isActive = entry.race===unitRace && entry.gender===(identity.gender||'male') && (entry.race!=='homosapien'||entry.cls===clsName);
@@ -4592,7 +4633,8 @@ function PartyBuilder(props) {
             locked ? h('div', { className: 'pb-rtile-lock' }, '🔒') : null,
             taken ? h('div', { className: 'pb-rtile-taken' }, 'ON TEAM') : null,
             !locked ? h('button', { className: 'pb-rtile-star' + (starred ? ' on' : ''), onClick:e=>{e.stopPropagation();toggleFav(entry.race,entry.gender);}, title: starred ? 'Unfavourite' : 'Favourite' }, starred ? '★' : '☆') : null,
-            h('div', { className: 'pb-rtile-types' }, ...(entry.types || []).slice(0, 3).map((t, ti) => h('i', { key: ti, style: { background: getTypeColor(t) }, title: String(t).toUpperCase() })))),
+            h('div', { className: 'pb-rtile-types' }, ...(entry.types || []).slice(0, 3).map((t, ti) => h('i', { key: ti, style: { background: getTypeColor(t) }, title: String(t).toUpperCase() }))),
+            pbMasteryChip(entry.race)),
           h('div', { className: 'pb-rtile-name' }, entry.label),
           h('div', { className: 'pb-rtile-job' }, pbRoleLabel(entry.race)));
       })),
@@ -4985,7 +5027,7 @@ function PartyBuilder(props) {
         return h('div', { key:i, onClick:()=>selectSlot(i), className:'pb-party-slot' + (isActive ? ' on' : '') + (confirmed ? ' filed' : '') + (dupe || gone ? ' dup' : ''), style:{ '--slot-fc': fCol }, title: nm + ' · ' + rl + ' · ' + pbRoleLabel(id.race) + (dupe ? ' — on this team twice: swap one out (one of each unit)' : '') },
           h('div', { className:'pb-party-ring' },
             gone ? h('span', { className:'pb-party-dup' }, 'REMOVED') : dupe ? h('span', { className:'pb-party-dup' }, 'TWICE') : null,
-            h('div', { className:'pb-party-portrait' }, h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive })),
+            h('div', { className:'pb-party-portrait' }, h(PortraitSprite, { race:id.race, gender:id.gender||'male', cls:cn, glow:isActive, appearance:id.appearance })),
             h('span', { className:'pb-party-no' }, numerals[i]),
             confirmed && (DOOR
               ? h('span', { className:'door-stamp door-stamp-sm admit pb-party-filed', title:'Locked in' }, 'FILED')
@@ -5050,6 +5092,8 @@ function PartyBuilder(props) {
   const slotOwnLook = window.normalizeCharacterAppearance?.(meta.appearance) || null;
   const slotOriginal = !!(slotOwnLook && slotOwnLook.model === 'original');
   const raceSavedLook = raceLookRace ? (window.getRaceCreatorLook(unitRace, identity.gender || 'male') || null) : null;
+  const raceRemadeLook = window.getRaceRemadeLook ? (window.getRaceRemadeLook(unitRace, identity.gender || 'male') || null) : null;   // THE REMADE LOOKS
+  const raceRemadeAlts = window.getRaceRemadeAlts ? (window.getRaceRemadeAlts(unitRace, identity.gender || 'male') || []) : [];   // THE REMADE ALTS (the white officer, the female officer)
   const appearance = slotOriginal ? null : (slotOwnLook || (lookIsDefault ? raceSavedLook : null));
   const unitRaceLabel = typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace;
   const wearsOriginal = slotOriginal || (!appearance && unitRace !== 'door agent');   // the slot stands in the race's own model
@@ -5110,6 +5154,8 @@ function PartyBuilder(props) {
               h('p', null, 'This slot wears the ' + unitRaceLabel + '\u2019s original ' + (refHasModel ? 'model' : 'sprite') + '. Make a custom look for it here; USE ORIGINAL MODEL in the creator puts the original back.'),
               h('div', { className: 'pb-creator-options' },
                 raceSavedLook ? h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, title: 'The saved creator look for the ' + unitRaceLabel + ' (' + (identity.gender || 'male') + ')', onClick: () => setSlotLook(raceSavedLook) }, 'USE THE SAVED ' + String(unitRaceLabel).toUpperCase() + ' LOOK') : null,
+                raceRemadeLook ? h('button', { className: 'ms-tty-btn' + (raceSavedLook ? '' : ' primary'), disabled: isWaitingOnline, title: 'The ' + unitRaceLabel + '\u2019s own clothes, remade as separate pieces on the new body: a face that talks and emotes', onClick: () => setSlotLook(raceRemadeLook) }, 'USE THE REMADE ' + String(unitRaceLabel).toUpperCase() + ' LOOK') : null,   // THE REMADE LOOKS (sprites.js RACE_REMADE_LOOKS)
+                raceRemadeAlts.map((alt) => h('button', { key: 'alt-' + alt.label, className: 'ms-tty-btn', disabled: isWaitingOnline, title: 'Another remade ' + unitRaceLabel + ' look: the ' + alt.label, onClick: () => setSlotLook(alt.look) }, 'USE THE REMADE ' + String(alt.label).toUpperCase() + ' LOOK')),   // THE REMADE ALTS (sprites.js RACE_REMADE_ALTS)
                 h('button', { className: 'ms-tty-btn' + (raceSavedLook ? '' : ' primary'), disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign({ body: mpfbDefaultBody, model: 'creator' }, window.mpfbFacePatch ? window.mpfbFacePatch(null, mpfbDefaultBody) : {})) }, 'CREATE APPEARANCE'),
                 h('button', { className: 'ms-tty-btn', disabled: isWaitingOnline, onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: mpfbDefaultBody, model: 'creator' })) }, '\u2684 RANDOM')),
               (unitRace !== 'door agent' && unitRace !== 'homosapien') ? h(AssignedLooks, { race: unitRace, raceLabel: unitRaceLabel, gender: identity.gender || 'male', appearance: null, disabled: isWaitingOnline, onNote: pbNote, onLoad: loadAssignedLook }) : null)
@@ -5130,6 +5176,7 @@ function PartyBuilder(props) {
                 raceSavedLook
                   ? h('button', { className: 'ms-tty-btn', title: 'Back to the saved ' + unitRaceLabel + ' look', onClick: () => setSlotLook(raceSavedLook) }, 'RESET TO SAVED LOOK')
                   : h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance(Object.assign({ body: mpfbDefaultBody }, window.mpfbFacePatch ? window.mpfbFacePatch(null, mpfbDefaultBody) : {}))) }, 'RESET'),   // + THE DEFAULT FACES
+                raceRemadeLook ? h('button', { className: 'ms-tty-btn', title: 'The ' + unitRaceLabel + '\u2019s own clothes, remade as separate pieces on the new body', onClick: () => setSlotLook(raceRemadeLook) }, 'REMADE LOOK') : null,   // THE REMADE LOOKS
                 h('button', { className: 'ms-tty-btn', onClick: () => {
                   if (isWaitingOnline) return;
                   st.teamLockedIn = false;
@@ -5143,7 +5190,8 @@ function PartyBuilder(props) {
                 (unitRace !== 'door agent' && unitRace !== 'homosapien') ? h(AssignedLooks, { race: unitRace, raceLabel: unitRaceLabel, gender: identity.gender || 'male', appearance, disabled: isWaitingOnline, onNote: pbNote, onLoad: loadAssignedLook }) : null) }),
             h('div', { className: 'pb-creator-options pb-creator-views' },
               h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
-              h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP')))));   // (THE WALK STYLE rev 2: PLAY WALK / STOP WALK sits on the Walk row, CreatorControls)
+              h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
+              window.EWFaceLab?.enabled() ? h('button', { className: 'ms-tty-btn', title: 'Experimental: the face shapes (mouth, eyes, expressions) on this body', onClick: () => window.EWFaceLab.toggle() }, 'FACE LAB') : null))));   // THE FACE LAB (three-renderer.js EW_FACE_LAB; Settings > Developer / ?facelab=1) + (THE WALK STYLE rev 2: PLAY WALK / STOP WALK sits on the Walk row, CreatorControls)
 
   const zoneContent = pbTab === 'roster' ? rosterPanel : pbTab === 'tech' ? techPanel : pbTab === 'gear' ? (creatorOpen ? creatorPanel : gearPanel) : dossierPanel;
   const body = h('div', { className: 'pb-body', 'data-tab': pbTab, 'data-panel': hasPanel ? '1' : '0' },
@@ -5211,7 +5259,7 @@ function PartyBuilder(props) {
                 h('span', { style:{ fontSize:9, color:EW.inkDim, letterSpacing:'0.1em', flexShrink:0 }}, slots.length, ' VESSELS')),
               h('div', { style:{ display:'flex', gap:5, flexWrap:'wrap' }},
                 slots.slice(0, 8).map((s, si) => h('div', { key:si, className:'pb-team-mini', title:(_grl(s.race, s.gender)||s.race)+' · '+pbRoleLabel(s.race) },
-                  h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls })))),
+                  h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls, appearance:s.appearance })))),
               pbGoneRaces(slots.map(s => s.race)).length ? h('div', { className:'pb-dup-note' }, 'REMOVED: ', pbGoneRaces(slots.map(s => s.race)).map(pbRaceName).join(', '), ' · out of the game, swap it out in the forge') : null,   // HOMOSAPIEN OUT
               h('div', { style:{ display:'flex', alignItems:'center', gap:6, marginTop:2 }},
                 h('span', { style:{ fontSize:8, color:EW.inkDim, letterSpacing:'0.08em', flex:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }},
@@ -5268,7 +5316,7 @@ function PartyBuilder(props) {
           const on = chosen.includes(i);
           const rl = typeof _grl === 'function' ? (_grl(s.race, s.gender) || s.race) : s.race;
           return h('div', { key:i, className:'pbx-pick-row', onClick:()=>toggleTeamPick(i), style:{ borderRadius:'var(--pb-r-sm)', cursor:'pointer', opacity: on ? 1 : 0.55, border: on ? '1px solid rgba(242,196,104,0.7)' : undefined } },
-            h('div', { className:'pb-team-mini', style:{ width:36, height:36 } }, h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls })),
+            h('div', { className:'pb-team-mini', style:{ width:36, height:36 } }, h(PortraitSprite, { race:s.race, gender:s.gender||'male', cls:s.cls, appearance:s.appearance })),
             h('div', { style:{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:2 }},
               h('div', { style:{ fontFamily:'Cormorant SC, serif', fontSize:13, letterSpacing:'0.1em', color:EW.ink }}, s.unitName || rl),
               h('div', { style:{ fontSize:9, color:EW.inkMute }}, rl, ' · ', pbRoleLabel(s.race))),
@@ -5460,6 +5508,7 @@ function OfficerCreator() {
       h('div', { className: 'pb-creator-options', style: { margin: 0 } },
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
+        window.EWFaceLab?.enabled() ? h('button', { className: 'ms-tty-btn', title: 'Experimental: the face shapes (mouth, eyes, expressions) on this body', onClick: () => window.EWFaceLab.toggle() }, 'FACE LAB') : null,   // THE FACE LAB
         h('button', { className: 'ms-tty-btn' + (mirrorWalking ? ' primary' : ''), onClick: () => {   // THE WALK STYLE: loops until pressed again
           const cv = window.EWCharViewer;
           if (cv?.isWalking?.()) { cv.stopPreview(); return; }

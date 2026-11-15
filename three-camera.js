@@ -92,6 +92,8 @@ const ThreeCamera = (function () {
            on the live lens (getCameraMode re-applies the preset every turn; it used to pop the walker's 52° to 45°
            mid-crane) */
         if (_seedFrom && _seedFrom.fov) { _seedFrom.fovTo = f; return; }
+        /* THE LENS COMES BACK ON THE CUT: while a restore waits for its cut, a preset's FOV becomes its destination */
+        if (_fovAtCut) { _fovAtCut.f = f; return; }
         if (threeCamera && Math.abs(threeCamera.fov - f) > 0.01) {
             threeCamera.fov = f;
             threeCamera.updateProjectionMatrix();
@@ -99,14 +101,64 @@ const ThreeCamera = (function () {
     }
     function getFOV() { return threeCamera ? threeCamera.fov : FOV; }
 
+    /* ══ THE LENS COMES BACK ON THE CUT (2026-11-10, spell camera rethink pass 3) ══
+       mondo: "spazzing out bc its trying to zoom in/out ... at the same time". A spell shot's lens trick (battle.js
+       cineDollyZoom: the Vertigo push of the control family, the executions' wide lens) gave the lens back with a
+       timer: 220 ms after the push the FOV jumped 34° → 45° in ONE frame while the shot still held the victim (a
+       visible pop out), and the frame guard, which had dollied back to keep the victim framed in the narrow lens, let
+       go and the eye slid 1.1 squares forward over 0.4 s (recorded: Cordyceps, Brainwash, Eyes Go Black, Into The
+       Sack). Now the release only NAMES the lens to come back to: the next cut (snapImmediate) puts it back on the
+       cut's own frame, so nobody sees it change; a shot that ends without a cut (a glide home) eases it back over
+       LENS_RESTORE_EASE_S along that glide; no cut within LENS_RESTORE_MAX_S eases it back too. Viewer-local camera
+       state (the guest runs the same shot on its relayed beats). Kill switch: window.EW_NO_LENS_AT_CUT = true (battle.js
+       releases at once, the old pop). Probe: ThreeCamera.fovAtCut(). */
+    const LENS_RESTORE_EASE_S = 0.45;
+    const LENS_RESTORE_MAX_S = 8;
+    let _fovAtCut = null;   // { f, at, ease: null | { t0, from } }
+    function setFOVAtCut(deg) {
+        if (deg == null) { _fovAtCut = null; return; }
+        const f = Math.max(10, Math.min(90, Number(deg) || FOV));
+        if (_seedFrom && _seedFrom.fov) { _seedFrom.fovTo = f; _fovAtCut = null; return; }
+        if (!threeCamera || Math.abs(threeCamera.fov - f) <= 0.01) { _fovAtCut = null; return; }
+        _fovAtCut = { f: f, at: performance.now() / 1000, ease: null };
+    }
+    function fovAtCut() { return _fovAtCut ? _fovAtCut.f : null; }
+    function _fovAtCutApply() {
+        const P = _fovAtCut;
+        _fovAtCut = null;
+        if (P && threeCamera && Math.abs(threeCamera.fov - P.f) > 0.01) { threeCamera.fov = P.f; threeCamera.updateProjectionMatrix(); }
+    }
+    /* per frame (sync): hold while the shot is live, ease back once it ended without a cut */
+    function _fovAtCutTick(cam, nowS) {
+        const P = _fovAtCut;
+        if (!P || !threeCamera) return;
+        if (_seedFrom && _seedFrom.fov) { _seedFrom.fovTo = P.f; _fovAtCut = null; return; }
+        if (typeof state === 'undefined' || !state || state.phase !== 'battle') { _fovAtCutApply(); return; }
+        const live = !!(cam && cam._cineShotId != null);
+        if (!P.ease && live && nowS - P.at < LENS_RESTORE_MAX_S) return;
+        if (!P.ease) P.ease = { t0: nowS, from: threeCamera.fov };
+        const u = Math.max(0, Math.min(1, (nowS - P.ease.t0) / LENS_RESTORE_EASE_S));
+        const k = u * u * (3 - 2 * u);
+        threeCamera.fov = P.ease.from + (P.f - P.ease.from) * k;
+        threeCamera.updateProjectionMatrix();
+        if (u >= 1) _fovAtCut = null;
+    }
+
     function markUserInput() {
         _smoothOverride = 10;
     }
 
-    function snapImmediate() {
+    function snapImmediate(o) {
         if (_seedUntil > performance.now() / 1000) return;   // the encounter's seed is easing — never cut it
         _initialized = false;
+        _snapFrame = _caFrameNo;   // THE CUT'S OWN FRAME
+        _fgCutNo++;        // THE GUARD HOLDS ITS FRAME: a cut starts a new beat…
+        if (o && o.guard && _fgHold) _fgHold.key = _fgHold.key.replace(/#\d+$/, '#' + _fgCutNo);   // …but THE GUARD'S CUT keeps the frame it cut to
+        /* THE SHOT GRAMMAR: the clear angle picks with this cut — not on THE GUARD'S CUT (o.guard), which is drawn on the
+           frame it is decided in (the clear angle already ran for it; a pick a frame later would be a second cut) */
+        if (!(o && o.guard)) { _caCutPend = true; _caSnapAt = performance.now() / 1000; _caCutFrame = _caFrameNo; }
         _fgCarry = null;   // THE GUARD'S HAND-OFF: a cut starts its frame clean
+        _fovAtCutApply();  // THE LENS COMES BACK ON THE CUT
     }
 
     function _damp(current, target, smoothTime, dt) {
@@ -556,7 +608,7 @@ const ThreeCamera = (function () {
        canvas for THE DEBRIEF's stage. center: dolly IN as well as out (the
        tightest D that fits) and put the bodies in the MIDDLE of the window
        instead of the least slide — a composition, not a correction. */
-    function _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW) {
+    function _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW, H) {
         const xa = W[0], xb = W[1], ya = W[2], yb = W[3];
         const n = pts.length;
         const X = new Array(n), Y = new Array(n), Z = new Array(n);
@@ -572,7 +624,9 @@ const ThreeCamera = (function () {
             const w = PW ? PW[i] : null;
             if (z < zMin || x < z * (w ? w[0] : xa) || x > z * (w ? w[1] : xb) || y < z * (w ? w[2] : ya) || y > z * (w ? w[3] : yb)) fits = false;
         }
-        if (fits && !center) return 0;
+        /* THE GUARD HOLDS ITS FRAME: H = the correction this beat already showed (null = none) */
+        if (center) H = null;
+        if (fits && !center && !(H && (H.D > 0 || H.sx || H.sy))) return 0;
         const box = function (D) {
             let xLo = -Infinity, xHi = Infinity, yLo = -Infinity, yHi = Infinity;
             for (let i = 0; i < n; i++) {
@@ -592,22 +646,34 @@ const ThreeCamera = (function () {
             if (xLo > xHi || yLo > yHi) return null;
             return [xLo, xHi, yLo, yHi];
         };
-        let lo = center ? (zMin - zLow) : Math.max(0, zMin - zLow), hi = tileSize * 60;
-        if (!box(hi)) return null;
-        if (box(lo)) hi = lo;
+        let D, b;
+        if (fits && !center) { D = 0; b = box(0); }
         else {
-            for (let k = 0; k < 22; k++) {
-                const mid = (lo + hi) / 2;
-                if (box(mid)) hi = mid; else lo = mid;
+            let lo = center ? (zMin - zLow) : Math.max(0, zMin - zLow), hi = tileSize * 60;
+            if (!box(hi)) return null;
+            if (box(lo)) hi = lo;
+            else {
+                for (let k = 0; k < 22; k++) {
+                    const mid = (lo + hi) / 2;
+                    if (box(mid)) hi = mid; else lo = mid;
+                }
             }
+            /* a breath of slack past the exact fit, so a body never sits ON the margin */
+            D = hi + tileSize * 0.2;
+            b = box(D);
+            if (!b) { D = hi; b = box(D); }
         }
-        /* a breath of slack past the exact fit, so a body never sits ON the margin */
-        let D = hi + tileSize * 0.2;
-        let b = box(D);
-        if (!b) { D = hi; b = box(D); }
-        if (!b) return null;
-        const sx = center ? (b[0] + b[1]) / 2 : Math.min(b[1], Math.max(b[0], 0));
-        const sy = center ? (b[2] + b[3]) / 2 : Math.min(b[3], Math.max(b[2], 0));
+        if (!b) return fits ? 0 : null;
+        /* THE GUARD HOLDS ITS FRAME: within a beat the correction only grows — the dolly back the beat already showed
+           stays (a wider box), and the slide stays where it was unless a body needs it moved */
+        let px = 0, py = 0;
+        if (H) {
+            if (H.D > D) { const bh = box(H.D); if (bh) { D = H.D; b = bh; } }
+            px = H.sx || 0; py = H.sy || 0;
+        }
+        const sx = center ? (b[0] + b[1]) / 2 : Math.min(b[1], Math.max(b[0], px));
+        const sy = center ? (b[2] + b[3]) / 2 : Math.min(b[3], Math.max(b[2], py));
+        if (!center && D === 0 && Math.abs(sx) < 1e-6 && Math.abs(sy) < 1e-6) return 0;
         return { sx: sx, sy: sy, D: D };
     }
     function _frameGuardSolve(cam, ex, ey, ez, lx, ly, lz, floorY) {
@@ -650,8 +716,12 @@ const ThreeCamera = (function () {
         if (!(dl > 1e-6)) return null;
         dx /= dl; dy /= dl; dz /= dl;
         let B = _fgBasis(dx, dy, dz, yawRad);
-        let res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW);
-        if (res === 0) { _frameGuardLast = { n: pts.length, framed: true }; return null; }
+        /* THE GUARD HOLDS ITS FRAME (2026-11-10): the correction this beat already showed (one shot rig on one subject,
+           aimed one way, since the last cut) */
+        const hKey = (center || (typeof window !== 'undefined' && window.EW_NO_GUARD_HOLD)) ? null : _fgBeatKey(cam);
+        const H = (hKey && _fgHold && _fgHold.key === hKey) ? _fgHold : null;
+        let res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW, H);
+        if (res === 0) { _fgHold = hKey ? { key: hKey, sx: 0, sy: 0, D: 0 } : null; _frameGuardLast = { n: pts.length, framed: true }; return null; }
         let reaimed = false;
         if (!res) {
             /* No answer along this gaze — a lens looking UP whose dolly back
@@ -668,11 +738,12 @@ const ThreeCamera = (function () {
             if (res === 0) res = { sx: 0, sy: 0, D: 0 };
             if (!res) { _frameGuardLast = { n: pts.length, framed: false, failed: true }; return null; }
         }
+        _fgHold = (hKey && !reaimed) ? { key: hKey, sx: res.sx, sy: res.sy, D: res.D } : null;
         const ox = res.sx * B.rx + res.sy * B.ux;
         const oy = res.sy * B.uy;
         const oz = res.sx * B.rz + res.sy * B.uz;
         const bx = ex + ox, by = ey + oy, bz = ez + oz;
-        _frameGuardLast = { n: pts.length, framed: false, slide: [res.sx, res.sy], dolly: res.D, reaimed: reaimed };
+        _frameGuardLast = { n: pts.length, framed: false, slide: [res.sx, res.sy], dolly: res.D, reaimed: reaimed, held: !!H };
         /* THE GUARD'S HAND-OFF: the correction the frame on screen carries (a re-aimed gaze is not carried: the bare
            rig's own gaze differs from it) */
         /* `last` = this frame's world offsets (eye, gaze), so a shot that hands STRAIGHT into a glide home (the key
@@ -682,6 +753,50 @@ const ThreeCamera = (function () {
         return [bx - dx * res.D, by - dy * res.D, bz - dz * res.D,
                 bx + dx * dl, by + dy * dl, bz + dz * dl];
     }
+    /* ══ THE GUARD HOLDS ITS FRAME + THE GUARD CUTS (2026-11-10, spell camera rethink pass 3) ══
+       mondo: "the camera spins around/pans when a cut would be better ... it will cut too early away from the spell
+       landing or the person taking damage". The guard re-solved its correction every frame from scratch, so the frame
+       slid on its own about a square, ~0.4 s at a time, whenever what it guarded changed mid-shot (recorded on ~50
+       spells): a body left its window and the correction let go (the eye slid forward again), a body was added or the
+       hit began and the correction grew (the eye slid back or across). Now:
+       · HOLD: within one beat (one rig on one subject aimed one way, since the last cut) the correction only grows —
+         a dolly back the beat showed stays, and the slide only moves when a body needs it to. A new beat or a cut starts
+         it clean. Kill switch: window.EW_NO_GUARD_HOLD = true.
+       · CUT: a correction that jumps more than GUARD_CUT_SQ squares inside GUARD_CUT_WIN_S (the hit landing while the
+         lens held the travel, a body coming into the shot) lands as a CUT on the same angle when the shot's grammar
+         allows one (battle.js camera._guardMayCut: half a second from the last cut and from the shot's end), instead
+         of a 2-3 square slide; a smaller one still eases in (a cut that small on the same angle is a jump cut, which
+         the grammar never makes). Kill switch: window.EW_NO_GUARD_CUT = true.
+       Viewer-local camera state (the guest's camera runs the same guard off its relayed shots). Probe:
+       ThreeCamera.frameGuardState() (held: the beat's correction kept), ThreeCamera.guardCutState(). */
+    const GUARD_CUT_SQ = 1.6;
+    const GUARD_CUT_WIN_S = 0.15;
+    let _fgCutNo = 0;       // ++ on every cut (snapImmediate)
+    let _snapFrame = -1;    // THE CUT'S OWN FRAME: the rAF frame (_caFrameNo) the last cut happened in
+    let _fgHold = null;     // { key, sx, sy, D }
+    let _fgSteps = [];      // the guard's eye offset over the last GUARD_CUT_WIN_S: { t, x, y, z, key }
+    let _fgCutLast = null;  // probe: { at, sq }
+    function _fgBeatKey(cam) {
+        const k = _fgCarryKey(cam);
+        return k == null ? null : k + '#' + _fgCutNo;
+    }
+    function _guardStepCheck(cam, ox, oy, oz, t) {
+        const key = (typeof window !== 'undefined' && window.EW_NO_GUARD_CUT) ? null : _fgBeatKey(cam);
+        if (!key) { _fgSteps.length = 0; return false; }
+        if (_fgSteps.length && _fgSteps[_fgSteps.length - 1].key !== key) _fgSteps.length = 0;
+        _fgSteps.push({ t: t, x: ox, y: oy, z: oz, key: key });
+        while (_fgSteps.length > 1 && t - _fgSteps[0].t > GUARD_CUT_WIN_S) _fgSteps.shift();
+        const a = _fgSteps[0];
+        const sq = Math.hypot(ox - a.x, oy - a.y, oz - a.z) / tileSize;
+        if (sq < GUARD_CUT_SQ) return false;
+        let ok = false;
+        try { ok = typeof cam._guardMayCut === 'function' && !!cam._guardMayCut(sq); } catch (e) { ok = false; }
+        _fgCutLast = { at: Math.round(t * 1000), sq: +sq.toFixed(2), cut: ok };
+        if (!ok) return false;
+        _fgSteps.length = 0;
+        return true;
+    }
+    function guardCutState() { return _fgCutLast; }
     /* THE GUARD'S HAND-OFF: the frame a carried correction belongs to — the cinematic rig on one subject, aimed where
        the controller is headed (its target zoom / pitch / heading: a new move on the same body is another frame) */
     function _fgCarryKey(cam) {
@@ -743,8 +858,17 @@ const ThreeCamera = (function () {
     const CA_CANDS = [0, 30, -30, 55, -55, 80, -80, 110, -110, 145, -145, 180];
     const CA_RECHECK_MS = 400;
     const CA_EASE_S = 0.22;
+    const CA_EASE_GRAMMAR_S = 0.55;   // THE SHOT GRAMMAR: a mid-beat turn (a body now blocked) is slow, never a whip
+    const CA_MIDBEAT_MAX = 30;        // …and small: mid-beat the lens drifts at most this far off the cut's angle (a pull
+                                      // that bunches the bodies up made it re-pick 160° round in the middle of the push-in)
     let _caSig = '', _caShot = null, _caDelta = 0, _caWant = 0, _caAt = 0, _caSnapAt = 0, _caCost = 0, _caLast = null, _caT = 0;
     let _caHold = null;   // THE STEADY CRANE: a finished shot's angle { key, from, t0 }
+    let _caCutPend = false, _caCutWant = 0, _caCutFrame = -1, _caFrameNo = 0;
+    /* the drawn-frame counter (a rAF tick ahead of the render loop): "same frame" = nothing drawn since the cut */
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        const _caTick = () => { _caFrameNo++; window.requestAnimationFrame(_caTick); };
+        window.requestAnimationFrame(_caTick);
+    }   // THE SHOT GRAMMAR: a cut the clear angle has not picked for yet (see _clearAngle)
     function _caReset() { _caSig = ''; _caShot = null; _caDelta = 0; _caWant = 0; _caAt = 0; _caCost = 0; _caHold = null; }
     /* the shot is over but its frame holds (the CPU's parked last beat, a press-turn hold): the lens keeps the angle it
        turned to (it used to swing back to the director's heading in one frame — a jump of up to 180° round the pivot),
@@ -843,15 +967,31 @@ const ThreeCamera = (function () {
         const ids = subs.map(s => s.id).join(',');
         const sig = cam._cineShotId + '|' + ids + '|' + Math.round(P.yaw * 57.3) + '|' + Math.round(P.tilt * 57.3)
             + '|' + Math.round(P.px / ts * 4) + '|' + Math.round(P.pz / ts * 4) + '|' + Math.round(P.dist / ts * 4);
-        const cut = !_initialized;
-        if (cut) _caSnapAt = nowS;
+        const _sgC = !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR);
+        /* THE SHOT GRAMMAR (2026-11-10): the angle is picked AT a cut and lands with it. A director's cut is consumed by
+           the sync its own camera._apply() runs, often before the rig has armed the frame guard (no bodies yet): the cut
+           stays pending and the first pick with bodies IN THE SAME FRAME (nothing drawn since the cut — battle.js
+           re-syncs when the guard is armed right after a cut) is the cut's pick. A pick in a later frame is a mid-beat
+           one: it used to land as a second cut a frame later (a flurry) or ease the lens round up to 135° just after the
+           cut; now it may only drift slowly, CA_MIDBEAT_MAX at most from the cut's own angle, for a blocked view. */
+        const sameFrame = _sgC && _caFrameNo === _caCutFrame;
+        const cut = !_initialized || (_sgC && _caCutPend && sameFrame);
+        _caCutPend = false;
+        if (!_initialized) _caSnapAt = nowS;
         const newShot = _caShot !== cam._cineShotId;
         const resig = sig !== _caSig;
+        /* a re-pick on the cut's heels (its bodies changed before anything was drawn) belongs to the cut too, but keeps the
+           cut's own pick unless that is clearly worse; EW_NO_SHOT_GRAMMAR = the old 0.15 s window */
+        const onHeels = !cut && resig && (_sgC ? sameFrame : nowS - _caSnapAt < 0.15);
+        const atCut = cut || onHeels;
         const recheck = (nowS - _caAt) * 1000 >= CA_RECHECK_MS;
         if (resig || recheck || newShot) {
             _caAt = nowS;
             if (!about) {
-                if (resig || newShot) _caWant = 0;   // a beat about something else; mid-beat (a flung body) the held angle stays
+                /* a beat about something else; mid-beat (a flung body) the held angle stays — under THE SHOT GRAMMAR a glide
+                   off the subjects keeps it too (it only goes back to the director's own heading on a cut) */
+                const _sgA = !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR);
+                if (newShot || (_sgA ? atCut : resig)) { _caWant = 0; if (_sgA) _caCutWant = 0; }
             } else {
                 const clear = ts * 0.45;
                 const sinT = Math.sin(P.tilt), cosT = Math.cos(P.tilt);
@@ -866,33 +1006,45 @@ const ThreeCamera = (function () {
                     return _caOccl(e[0], Math.max(e[1], P.floorY), e[2], P.px, P.py, P.pz, subs, bodies, clear, stopAt)
                         + Math.abs(d) / Math.PI * 1.2;
                 };
-                const held = resig || newShot ? 0 : _caWant;
+                /* THE SHOT GRAMMAR (2026-11-10, mondo: the camera "is spazzing out bc its trying to zoom in/out and spin/rotate/pan
+                   at the same time"): the angle is picked AT a cut (or a new shot) and kept through the beat — a drift, a
+                   push-in, a refit of the pivot or a new body in the hit used to re-pick from the director's own heading and
+                   swing the lens up to 55° on its own a moment after the cut. Mid-beat it only turns for a clearly better
+                   view of a body that is now blocked, and then slowly. EW_NO_SHOT_GRAMMAR = the old re-pick. */
+                const _sg = !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR);
+                const held = (_sg ? (cut || (newShot && !onHeels)) : (newShot || resig)) ? 0 : _caWant;
                 const heldCost = costOf(held, Infinity);
                 let best = held, bestCost = heldCost;
                 if (heldCost > 0.05 + Math.abs(held) / Math.PI * 1.2) {
                     for (const dd of CA_CANDS) {
                         const d = dd * DEG2RAD;
                         if (Math.abs(d - held) < 1e-3) continue;
+                        if (_sg && !atCut && Math.abs(d - (newShot ? 0 : _caCutWant)) > (CA_MIDBEAT_MAX + 1) * DEG2RAD) continue;
                         const c = costOf(d, bestCost);
                         if (c < bestCost - 1e-3) { best = d; bestCost = c; }
                     }
                 }
                 /* a recheck in the middle of a beat only turns a lens that is now blocked, and only for a clearly better one */
-                if (!resig && !newShot && !(bestCost < heldCost - 0.8)) best = held;
+                if (_sg ? !atCut : (!newShot && !resig)) { if (!(bestCost < heldCost - 0.8)) best = held; }
+                if (_sg && onHeels && !(bestCost < heldCost - 0.3)) best = held;   // the cut's own pick stays unless clearly worse
                 _caWant = best;
+                if (_sg && (atCut || newShot)) _caCutWant = atCut ? best : 0;   // mid-beat drift is bounded from the cut's own pick
                 _caCost = Math.min(bestCost, heldCost);
             }
-            _caLast = { want: Math.round(_caWant * 57.3), cost: +_caCost.toFixed(2), about: about, n: subs.length, sig: resig, shot: newShot, id: cam._cineShotId };   // id: whose pick this is (battle.js THE CLEAN OPEN)
+            _caLast = { want: Math.round(_caWant * 57.3), cost: +_caCost.toFixed(2), about: about, n: subs.length, sig: resig, shot: newShot, id: cam._cineShotId, cut: cut, heels: onHeels, dt: Math.round((nowS - _caSnapAt) * 1000) };   // id: whose pick this is (battle.js THE CLEAN OPEN)
             _caSig = sig;
         }
         /* a cut (or a re-pick right on a cut's heels) lands on the angle; anything else eases (a shot opens on a glide
            from the board, so its first beat eases in from the director's own yaw) */
         if (newShot && !cut && !_caHold) _caDelta = 0;   // (a held angle eases on into the next shot's)
         _caHold = null;
-        if (cut || (resig && nowS - _caSnapAt < 0.15)) _caDelta = _caWant;
-        else if (_caDelta !== _caWant) {
+        if (_sgC ? atCut : (cut || (resig && nowS - _caSnapAt < 0.15))) {
+            if (_sgC && _initialized && Math.abs(_caWant - _caDelta) > 0.005) _initialized = false;   // lands as part of the cut (not drawn yet)
+            _caDelta = _caWant;
+        } else if (_caDelta !== _caWant) {
             const dtS = _caT > 0 ? Math.min(_stepCap(), Math.max(0.001, nowS - _caT)) : 0.016;
-            _caDelta += (_caWant - _caDelta) * (1 - Math.exp(-dtS / CA_EASE_S));
+            const _ease = (typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR) ? CA_EASE_S : CA_EASE_GRAMMAR_S;
+            _caDelta += (_caWant - _caDelta) * (1 - Math.exp(-dtS / _ease));
             if (Math.abs(_caWant - _caDelta) < 0.002) _caDelta = _caWant;
         }
         _caT = nowS;
@@ -903,6 +1055,7 @@ const ThreeCamera = (function () {
 
     function sync(cam) {
         if (!threeCamera) return;
+        if (_fovAtCut) _fovAtCutTick(cam, performance.now() / 1000);   // THE LENS COMES BACK ON THE CUT (before the guard reads the lens)
 
         const ts = tileSize;
         const elevStep = ts * ELEV_STEP_RATIO;
@@ -1403,7 +1556,17 @@ const ThreeCamera = (function () {
                 const sx = -(Math.cos(yawRad) * a + ux * b), sy = -(uy * b), sz = -(-Math.sin(yawRad) * a + uz * b);
                 targetPosX += sx; targetPosY += sy; targetPosZ += sz;
                 targetLookX += sx; targetLookY += sy; targetLookZ += sz;
-                if (targetPosY < floorY) { const lift = floorY - targetPosY; targetPosY += lift; targetLookY += lift; }
+                /* the eye may not sink under the lens floor. THE PANEL LIFT (2026-11-12, mondo orbiting low round the
+                   Seraphim: "he sits too low in the frame and he's covered by the battle panel"): a slide UP the screen
+                   lowers the eye, and a low orbit already has it on the floor, so lifting eye AND aim back cancelled the
+                   slide exactly when the view was lowest. On a level / downward look the aim keeps its slid place and
+                   the eye alone stops at the floor: the lens tips down a little and the focal still stands where the
+                   slide put it. Kill switch: EW_NO_PANEL_LIFT. */
+                if (targetPosY < floorY) {
+                    const lift = floorY - targetPosY;
+                    targetPosY += lift;
+                    if (!(_mslY > 0 && dirY <= 1e-4) || (typeof window !== 'undefined' && window.EW_NO_PANEL_LIFT)) targetLookY += lift;
+                }
             }
         }
         /* ══ THE FRAME GUARD (2026-10-05) ══
@@ -1424,7 +1587,13 @@ const ThreeCamera = (function () {
                 targetLookX, targetLookY, targetLookZ, floorY);
             /* a frame the guard found already framed carries nothing on */
             if (!_fgOut && _frameGuardLast && _frameGuardLast.framed) { _fgCarry = null; _fgCarryLast = null; }
-        } else _frameGuardLast = null;
+            /* THE GUARD CUTS: a correction that jumps lands as a cut (the snap below draws this frame at once); a live guard
+               with no body to keep this frame (the travel) counts as no correction */
+            if (!(_frameGuardLast && _frameGuardLast.failed)) {
+                _guardStepCheck(cam, _fgOut ? _fgOut[0] - targetPosX : 0, _fgOut ? _fgOut[1] - targetPosY : 0,
+                    _fgOut ? _fgOut[2] - targetPosZ : 0, performance.now() / 1000);
+            } else _fgSteps.length = 0;
+        } else { _frameGuardLast = null; _fgSteps.length = 0; }
         /* THE GUARD'S HAND-OFF: no live guard this frame (the shot ended, or its guard ran out) — the frame it was
            showing carries on (see _fgCarryApply) */
         if (!_fgOut && !_frameGuardLast && _fgCarry) {
@@ -1459,6 +1628,10 @@ const ThreeCamera = (function () {
         if (!isFinite(targetPosX + targetPosY + targetPosZ + targetLookX + targetLookY + targetLookZ)) return;
         if (_initialized && !isFinite(_smoothPosX + _smoothPosY + _smoothPosZ + _smoothLookX + _smoothLookY + _smoothLookZ)) _initialized = false;
         const seeded = _seed ? _consumeSeed(now) : false;   // the seeded frame renders the seed itself
+        /* THE CUT'S OWN FRAME (2026-11-10): a cut is drawn on the next render, so every sync in the frame it happened in
+           belongs to it — a body the guard learned of right after the cut (a number popping in the same task, the guard
+           armed after the rig cut) re-snaps the cut's frame instead of sliding in once it is on screen */
+        if (_initialized && _snapFrame === _caFrameNo && !seeded && !_seedFrom && !(typeof window !== 'undefined' && window.EW_NO_SHOT_GRAMMAR)) _initialized = false;
         /* THE ARRIVAL: a swoop whose window elapsed between two frames LANDS here — the deferred lens written, the
            record dropped (it used to linger, and setFOV's guard would then defer every later preset for good) */
         if (_seedFrom && !seeded && !_seedHoldOn && now >= _seedUntil) {
@@ -1846,6 +2019,8 @@ const ThreeCamera = (function () {
         getBaseDist,
         setFOV,
         getFOV,
+        setFOVAtCut,
+        fovAtCut,
         getCamera,
         getFocalWorld,
         markUserInput,
@@ -1856,6 +2031,7 @@ const ThreeCamera = (function () {
         seedState,
         frameGuardState,
         guardCarryState,
+        guardCutState,
         steadyBoardState,
         steadyCraneState,
         boardLiftAt,
@@ -1964,6 +2140,10 @@ var EWCine = (function () {
         if (C.panel) return C.panel;
         var p = el('div', 'ew-cine-panel'); p.id = 'ewCinePanel';
         var rec = el('div', 'ew-cine-rec'); rec.id = 'ewCineRec'; document.body.appendChild(rec);
+        /* THE WAY OUT IS ALWAYS ON SCREEN (playtest 2026-11-05 F4: Pause > CAMERA hid the whole HUD and took the mouse with
+           no word on how to leave): one line of keys while the mouse flies the camera or a path plays. DOM only, so it is
+           in no still and no video (they read the canvas alone). */
+        var hint = el('div', 'ew-cine-hint'); hint.id = 'ewCineHint'; document.body.appendChild(hint);
         var row1 = el('div', 'ew-cine-row'), row2 = el('div', 'ew-cine-row');
         function btn(row, label, fn, id) { var b = el('button', 'ew-cine-btn', label); if (id) b.id = id; b.addEventListener('click', function (e) { e.preventDefault(); fn(); b.blur(); }); row.appendChild(b); return b; }
         function slider(row, label, min, max, step, get, set) {
@@ -1978,7 +2158,7 @@ var EWCine = (function () {
         btn(row1, 'RECORD', function () { recToggle(); }, 'ewCineRecBtn');
         var syncSpeed = slider(row1, 'SPEED', 1, 80, 1, function () { return C.speed; }, function (v) { C.speed = v; });
         var syncLens = slider(row1, 'LENS', 12, 90, 1, function () { return C.tFov; }, function (v) { C.tFov = v; });
-        btn(row1, 'EXIT', function () { exit(); });
+        btn(row1, 'EXIT', function () { exit(); }).classList.add('back');
         btn(row2, '+ KEY', function () { keyAdd(); }, 'ewCineKeyBtn');
         btn(row2, 'UNDO KEY', function () { keyUndo(); });
         btn(row2, 'PLAY', function () { play(null, {}); });
@@ -2001,6 +2181,12 @@ var EWCine = (function () {
         var kb = document.getElementById('ewCineKeyBtn'); if (kb) kb.textContent = '+ KEY (' + C.path.length + ')';
         var rb = document.getElementById('ewCineRecBtn'); if (rb) { rb.textContent = C.rec ? 'STOP REC' : 'RECORD'; rb.classList.toggle('hot', !!C.rec); }
         var r = document.getElementById('ewCineRec'); if (r) r.classList.toggle('on', !!(C.on && C.rec));
+        var h = document.getElementById('ewCineHint');
+        if (h) {
+            var hOn = C.on && (C.look || C.play);
+            h.classList.toggle('on', !!hOn);
+            if (hOn) h.innerHTML = C.play ? '<b>ESC</b> STOP THE PATH' : '<b>WASD</b> FLY · <b>MOUSE</b> LOOK · <b>ESC</b> FREE THE MOUSE + PANEL · <b>F8</b> EXIT';
+        }
     }
 
     /* ── THE HUD: every layer over the canvas fades out (opacity, never display: the canvas's box must not move) ── */
@@ -2011,7 +2197,7 @@ var EWCine = (function () {
             var sibs = e.parentElement.children;
             for (var i = 0; i < sibs.length; i++) {
                 var s = sibs[i];
-                if (s === e || s === C.panel || s.id === 'ewCineToast' || s.id === 'ewCineRec' || s.tagName === 'SCRIPT' || s.tagName === 'STYLE' || s.tagName === 'LINK') continue;
+                if (s === e || s === C.panel || s.id === 'ewScene' || s.id === 'ewCineToast' || s.id === 'ewCineRec' || s.id === 'ewCineHint' || s.tagName === 'SCRIPT' || s.tagName === 'STYLE' || s.tagName === 'LINK') continue;
                 C.hidden.push([s, s.style.opacity, s.style.pointerEvents]);
                 s.style.opacity = '0'; s.style.pointerEvents = 'none';
             }
@@ -2029,9 +2215,13 @@ var EWCine = (function () {
         if (C.on) return true;
         if (!opts.force && !available()) return false;
         C.on = true; C.inited = false; C.vel = { x: 0, y: 0, z: 0 }; C.keys = {}; C.play = null;
-        panelBuild(); hudHide();
+        /* THE SCRIPTED EYE (2026-11-12, the story's cutscenes: EWScene below): `script` = a director drives the eye
+           with pose(); no panel, no captured mouse, no keys of its own (the director owns skip), nothing kept or recorded */
+        C.script = !!opts.script; C.pose = null;
+        if (!C.script) panelBuild();
+        hudHide();
         document.body.classList.add('ew-cine');
-        lockSet(true);
+        if (!C.script) lockSet(true);
         panelSync();
         return true;
     }
@@ -2039,7 +2229,8 @@ var EWCine = (function () {
         if (!C.on) return;
         if (C.rec) recStop();
         C.on = false; C.play = null; C.keys = {};
-        lockSet(false);
+        if (!C.script) lockSet(false);
+        C.script = false; C.pose = null;
         hudShow();
         document.body.classList.remove('ew-cine');
         var cam = C.cam;
@@ -2077,7 +2268,8 @@ var EWCine = (function () {
             C.cam = cam; C.inited = true;
             if (C.panel && C.panel._sync) C.panel._sync();
         }
-        if (C.play) playTick(now);
+        if (C.script) { var P = C.pose; if (P) { C.x = P.x; C.y = P.y; C.z = P.z; C.yaw = C.tYaw = P.yaw; C.pitch = C.tPitch = P.pitch; C.fov = C.tFov = P.fov; } }
+        else if (C.play) playTick(now);
         else flyTick(dt);
         cam.position.set(C.x, C.y, C.z);
         cam.rotation.order = 'YXZ'; cam.rotation.set(C.pitch, C.yaw, 0);
@@ -2251,6 +2443,7 @@ var EWCine = (function () {
     function inPanel(t) { return !!(t && t.closest && t.closest('#ewCinePanel')); }
     function typing(t) { return !!(t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)); }
     function onKeyDown(e) {
+        if (C.on && C.script) return;   // THE SCRIPTED EYE: the director's own keys
         if (e.key === 'F8' && !e.ctrlKey && !e.metaKey && !e.altKey) {
             if (C.on) exit(); else if (!enter()) return;
             e.preventDefault(); e.stopImmediatePropagation(); return;
@@ -2264,7 +2457,9 @@ var EWCine = (function () {
         if (C.play) { if (k === 'escape' || k === 'enter') stop(); return; }
         if (MOVE[k]) { C.keys[k] = true; return; }
         if (e.repeat) return;
-        if (k === 'escape') { if (!locked() && performance.now() - C.freedAt > 400) exit(); return; }
+        /* a browser frees a locked mouse on Esc by itself and never sends the key; where the key does arrive with the
+           mouse still held (a kiosk / an embedded view), it frees the mouse here, so Esc is never a dead key */
+        if (k === 'escape') { if (locked()) lockSet(false); else if (performance.now() - C.freedAt > 400) exit(); return; }
         if (k === 'e') { lockSet(!locked()); return; }
         if (k === 'p') { C.want.photo = true; return; }
         if (k === 'm') { C.want.map = true; return; }
@@ -2274,13 +2469,13 @@ var EWCine = (function () {
         if (k === 'enter') { play(null, {}); return; }
     }
     function onKeyUp(e) {
-        if (!C.on) return;
+        if (!C.on || C.script) return;
         var k = (e.key || '').toLowerCase();
         C.keys[k] = false; if (k === 'shift') C.keys.shift = false;
         if (!typing(e.target)) e.stopImmediatePropagation();
     }
     function onMouse(e) {
-        if (!C.on || inPanel(e.target)) return;
+        if (!C.on || C.script || inPanel(e.target)) return;
         if (e.type === 'mousemove' || e.type === 'pointermove') {
             if (e.type === 'mousemove' && locked() && !C.play) {
                 var s = 0.0022 * (C.fov / 50);
@@ -2296,7 +2491,7 @@ var EWCine = (function () {
         if (e.cancelable) e.preventDefault();
     }
     function onLockChange() {
-        if (!C.on) return;
+        if (!C.on || C.script) return;
         var was = C.look;
         C.look = locked();
         if (was && !C.look) { C.freedAt = performance.now(); C.keys = {}; }
@@ -2313,6 +2508,13 @@ var EWCine = (function () {
         get on() { return C.on; },
         get playing() { return !!C.play; },
         get recording() { return !!C.rec; },
+        get script() { return !!(C.on && C.script); },
+        get unit() { return C.unit; },
+        /* THE SCRIPTED EYE: where the eye stands this frame, in WORLD units ({ x, y, z, yaw, pitch, fov }) */
+        canvas: function () { return canvasEl(); },
+        get unit() { return C.unit; },   // world units in a metre (a scene's `cam` shot is written in metres)
+        pose: function (p) { if (C.on && C.script && p) C.pose = { x: +p.x || 0, y: +p.y || 0, z: +p.z || 0, yaw: +p.yaw || 0, pitch: +p.pitch || 0, fov: +p.fov || 45 }; },
+        eye: function () { return { x: C.x, y: C.y, z: C.z, yaw: C.yaw, pitch: C.pitch, fov: C.fov, inited: !!C.inited }; },
         available: available,
         enter: enter, exit: exit,
         frame: frame, after: after,
@@ -2324,6 +2526,325 @@ var EWCine = (function () {
     };
 })();
 if (typeof window !== 'undefined') window.EWCine = EWCine;
+
+/* ══ THE CUTSCENES (2026-11-12, mondo: "cinematic, think like a director in terms of shots, framing, composition, using the
+   camera as a character, slow zoom ins, pans, dolleys ... should include subtitles, no voice audio yet").
+   EWScene plays one data row (data.js STORY_CUTSCENES) on whatever the shared canvas is drawing, with THE SCRIPTED EYE
+   (EWCine script mode). A row is a list of BEATS; a beat is ONE SHOT:
+     { dur, shot: { look, h, az, el, dist, fov, track, to: { ...the same, where the move ends } }, say: { who, text },
+       act: [{ at, do, ... }], slow: { scale, at, ms } }
+   THE SHOT is written against SUBJECTS, never against world numbers, so the same row fits any party and any room:
+     look = a ref the host resolves ('unit:<role>', 'tile:x,y', { mid: [ref, ref] }); h = how high on the subject the eye aims;
+     az = where the eye stands round it in degrees (0 = south of it looking north, 90 = east of it, 180 = north, 270 = west);
+     el = degrees above level; dist = how far back; fov = the lens. h, dist and over are in the host's unit (a battle host: BODIES, 1 = a standing body).
+     from = a second subject: az then counts from the line subject -> that subject, so "from the party's side" or "over her
+     shoulder" (`over` = how far behind that subject the eye stands) holds wherever the board put them.
+   THE GRAMMAR (the spell camera's, approved 2026-11-10): a beat OPENS WITH A CUT; a move changes one thing (`to` names
+   only what moves) and eases over the whole beat; nothing cuts away under a second.
+   THE HOST (ctx) is the scene's hands: point(ref) -> { x, y, z } in world units, unit = world units per square,
+   act(a) performs one action, slow(scale, ms), finish(skipped) leaves every body where the scene ends (a skipped scene
+   lands exactly where a watched one does).
+   THE WORDS: bottom centre, the speaker over the line, black with a white outline, two lines at most; a line holds for its
+   reading time and a click / SPACE / ENTER moves on sooner. HOLD ESC skips the scene. Viewer-local: nothing on `state`,
+   nothing relayed (story mode is VS-CPU; RULE #2 has nothing to mirror). Kill switch: window.EW_NO_CUTSCENES. ══ */
+var EWScene = (function () {
+    'use strict';
+    if (typeof window === 'undefined') return null;
+    var S = null;   // the scene that is playing
+    var READ_S = 0.06, READ_MIN = 1.6, READ_PAD = 0.9, HURRY_MIN = 0.35, SKIP_HOLD_MS = 900;
+    function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+    function readS(text) { return Math.max(READ_MIN, String(text || '').length * READ_S + READ_PAD); }
+    function beatDur(b) { if (b.dur > 0) return +b.dur; return b.say ? readS(b.say.text) : 2.5; }
+    function ease(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
+    function lerp(a, b, t) { return a + (b - a) * t; }
+    function resolve(ctx, ref) {
+        if (ref && typeof ref === 'object' && Array.isArray(ref.mid)) {
+            var n = 0, o = { x: 0, y: 0, z: 0 };
+            ref.mid.forEach(function (r) { var p = resolve(ctx, r); if (p) { o.x += p.x; o.y += p.y; o.z += p.z; n++; } });
+            return n ? { x: o.x / n, y: o.y / n, z: o.z / n } : null;
+        }
+        try { return ctx.point(ref) || null; } catch (e) { return null; }
+    }
+    /* one end of a shot -> the eye's pose in world units */
+    function poseOf(ctx, sh, P) {
+        var u = ctx.unit || 1;
+        var T = { x: P.x, y: P.y + (sh.h || 0) * u, z: P.z };
+        var az = (sh.az || 0) * Math.PI / 180, el = (sh.el || 0) * Math.PI / 180, d = (sh.dist || 3) * u;
+        /* `from` = another subject: az counts from the line subject -> that subject (0 = the eye on its side, looking back
+           past it at the subject); `over` puts the eye that far BEHIND it (the over-the-shoulder), else `dist` stands */
+        if (sh._F) { var fx = sh._F.x - P.x, fz = sh._F.z - P.z; if (fx || fz) { az += Math.atan2(fx, fz); if (sh.over != null) d = Math.hypot(fx, fz) + sh.over * u; } }
+        var ex = T.x + d * Math.sin(az) * Math.cos(el), ey = T.y + d * Math.sin(el), ez = T.z + d * Math.cos(az) * Math.cos(el);
+        var dx = T.x - ex, dy = T.y - ey, dz = T.z - ez;
+        return { x: ex, y: ey, z: ez, yaw: Math.atan2(-dx, -dz), pitch: Math.atan2(dy, Math.hypot(dx, dz)), fov: sh.fov || 40 };
+    }
+    /* THE CLEAR SCREEN: every page layer beside the canvas is held out of the picture while a scene plays (class
+       .ew-scene-hid); the game goes on building HUD under it, so the sweep runs again a few times a second */
+    function sweep() {
+        var c = window.EWCine && window.EWCine.canvas ? window.EWCine.canvas() : null; if (!c) return;
+        for (var e = c; e && e.parentElement && e !== document.body; e = e.parentElement) {
+            var sibs = e.parentElement.children;
+            for (var i = 0; i < sibs.length; i++) {
+                var s = sibs[i];
+                if (s === e || s.id === 'ewScene' || s.tagName === 'SCRIPT' || s.tagName === 'STYLE' || s.tagName === 'LINK' || s.classList.contains('ew-scene-hid')) continue;
+                s.classList.add('ew-scene-hid');
+            }
+        }
+    }
+    function unsweep() { var l = document.querySelectorAll('.ew-scene-hid'); for (var i = 0; i < l.length; i++) l[i].classList.remove('ew-scene-hid'); }
+    function mount() {
+        var el = document.getElementById('ewScene');
+        if (!el) { el = document.createElement('div'); el.id = 'ewScene'; document.body.appendChild(el); }
+        el.innerHTML = '<div class="ew-scene-bar top"></div><div class="ew-scene-bar bot"></div>'
+            + '<div class="ew-scene-sub" id="ewSceneSub"><span class="ew-scene-who" id="ewSceneWho"></span><span class="ew-scene-line" id="ewSceneLine"></span><div class="ew-scene-choice" id="ewSceneChoice"></div></div>'
+            + '<div class="ew-scene-skip" id="ewSceneSkip"><i id="ewSceneSkipFill"></i><span>HOLD ESC TO SKIP</span></div>'
+            + '<div class="ew-scene-fade" id="ewSceneFade"></div>'
+            + (devOn() ? '<div class="ew-scene-dev" id="ewSceneDev"><button type="button" data-dev="prev">\u25C2 PREV SHOT</button><button type="button" data-dev="next">NEXT SHOT \u25B8</button><button type="button" data-dev="note" class="note">N \u00B7 NOTE</button><span id="ewSceneDevAt"></span></div><div class="ew-scene-note" id="ewSceneNote"></div>' : '');
+        if (devOn()) freePointer();   // the bar's buttons need the pointer
+        void el.offsetWidth; el.classList.add('on');
+        return el;
+    }
+    /* ══ THE CUTSCENE EDITOR'S NOTES BAR (2026-11-15, mondo: "a cutscene editor so I can change the dialogue easily and give
+       notes"): with the editor's bar on (data.js sceneEdBarOn) a playing scene carries PREV SHOT / NEXT SHOT / N · NOTE and
+       the shot's number. N freezes the scene's clock on that frame and opens the note box: a tag, the note, and the line
+       itself (a changed line shows at once). Everything is filed by data.js (sceneEdNoteSet / sceneEdLineSet / sceneEdAddSet)
+       against the SHIPPED row's beat (`_src`), so the shot number is the one the export names. ══ */
+    /* the mouse for the bar and the note box. In the building a lock that just goes away is read as ESC (the pause menu), so
+       the release goes through the renderer (hq.sceneFreePointer); on a battle board the pointer is already free. */
+    function freePointer() { try { var TR = window.ThreeRenderer || (typeof ThreeRenderer !== 'undefined' ? ThreeRenderer : null); if (TR && TR.hq && TR.hq.sceneFreePointer) TR.hq.sceneFreePointer(); } catch (e) {} }
+    function devOn() { try { return typeof window.sceneEdBarOn === 'function' && window.sceneEdBarOn(); } catch (e) { return false; } }
+    function srcOf(i) { var b = S.row.beats[i]; return (b && b._src != null) ? b._src : i; }
+    function shotsOf() { try { var r = window.storyCutsceneShipped && window.storyCutsceneShipped(S.row.id); if (r) return r.beats.length; } catch (e) {} return S.row.beats.length; }
+    function devLabel() {
+        var el = document.getElementById('ewSceneDevAt'); if (!el || !S) return;
+        var b = S.row.beats[S.i];
+        el.textContent = String(S.row.title || S.row.id || 'SCENE').toUpperCase() + ' \u00B7 SHOT ' + (srcOf(S.i) + 1) + (b && b._add != null ? ' (NEW LINE)' : '') + ' OF ' + shotsOf() + (S.paused ? ' \u00B7 PAUSED' : '');
+    }
+    function lineNow() { var b = S.row.beats[S.i]; if (!b || !b.say) return null; return (S.said && S.said[S.i] != null) ? S.said[S.i] : b.say.text; }
+    function noteOpen() {
+        if (!S || S.warm || S.note || !S.row.id) return;
+        var box = document.getElementById('ewSceneNote'); if (!box) return;
+        var b = S.row.beats[S.i], line = lineNow(), tags = window.SCENE_ED_TAGS || ['CAMERA', 'ACTING', 'TIMING', 'DIALOGUE', 'OTHER'];
+        S.paused = true; S.pauseTick = performance.now(); S.note = { tag: tags[0] };
+        freePointer();
+        box.innerHTML = '<div class="ew-scene-note-hd">NOTE ON SHOT ' + (srcOf(S.i) + 1) + (line != null ? ' \u00B7 \u201C' + esc(line) + '\u201D' : '') + '</div>'
+            + '<div class="ew-scene-note-tags">' + tags.map(function (t, k) { return '<button type="button" data-tag="' + t + '" class="' + (k === 0 ? 'sel' : '') + '">' + t + '</button>'; }).join('') + '</div>'
+            + '<textarea id="ewSceneNoteText" rows="3" placeholder="What should change in this shot?"></textarea>'
+            + (line != null ? '<div class="ew-scene-note-hd two">THE LINE (CHANGE IT HERE, IT SHOWS AT ONCE)</div><textarea id="ewSceneNoteLine" rows="2"></textarea>' : '')
+            + '<div class="ew-scene-note-btns"><button type="button" data-note="cancel" class="back">\u25C2 CANCEL</button><button type="button" data-note="save" class="ok">SAVE AND RESUME \u25B8</button></div>';
+        var ln = document.getElementById('ewSceneNoteLine'); if (ln) ln.value = line;
+        box.classList.add('on'); devLabel();
+        var ta = document.getElementById('ewSceneNoteText'); if (ta) { try { ta.focus(); } catch (e) {} }
+    }
+    function noteClose(save) {
+        if (!S || !S.note) return;
+        var box = document.getElementById('ewSceneNote'), ta = document.getElementById('ewSceneNoteText'), ln = document.getElementById('ewSceneNoteLine');
+        if (save) {
+            var b = S.row.beats[S.i], id = S.row.id, src = srcOf(S.i);
+            try {
+                if (ta && ta.value.trim() && window.sceneEdNoteSet) window.sceneEdNoteSet(id, src, null, S.note.tag, ta.value.trim());
+                var was = lineNow();
+                if (ln && b.say && ln.value.trim() && ln.value !== was) {
+                    var txt = ln.value.replace(/\s*\n\s*/g, ' ');
+                    if (b._add != null) window.sceneEdAddSet(id, src, b._add, b.say.who, txt); else window.sceneEdLineSet(id, src, txt, false);
+                    S.said = S.said || {}; S.said[S.i] = txt; sayShow({ who: b.say.who, text: txt });
+                }
+            } catch (e) { console.warn('[SCENE] the note was not filed', e); }
+        }
+        if (box) { box.classList.remove('on'); box.innerHTML = ''; }
+        S.note = null; S.paused = false; devLabel();
+    }
+    function devStep(d) {
+        if (!S || S.warm || S.note) return;
+        var j = Math.max(0, Math.min(S.row.beats.length - 1, S.i + d)); if (j === S.i && d > 0) return;
+        S.now = performance.now(); var fd = document.getElementById('ewSceneFade'); if (fd) fd.classList.remove('on');
+        beatStart(j);
+    }
+    function devClick(e) {
+        var t = e.target && e.target.closest ? e.target : null; if (!t) return false;
+        if (!t.closest('#ewSceneDev') && !t.closest('#ewSceneNote')) return false;
+        if (e.type !== 'click') return true;
+        var bd = t.closest('[data-dev]'), bn = t.closest('[data-note]'), bt = t.closest('[data-tag]');
+        if (bd) { var k = bd.getAttribute('data-dev'); if (k === 'note') noteOpen(); else devStep(k === 'prev' ? -1 : 1); }
+        else if (bn) noteClose(bn.getAttribute('data-note') === 'save');
+        else if (bt && S.note) { S.note.tag = bt.getAttribute('data-tag'); var all = document.querySelectorAll('#ewSceneNote [data-tag]'); for (var i = 0; i < all.length; i++) all[i].classList.toggle('sel', all[i] === bt); }
+        return true;
+    }
+    function sayShow(say) {
+        var box = document.getElementById('ewSceneSub'); if (!box) return;
+        if (!say || !say.text) { box.classList.remove('on'); return; }
+        document.getElementById('ewSceneWho').textContent = say.who || '';
+        document.getElementById('ewSceneLine').textContent = say.text;
+        box.classList.add('on');
+    }
+    /* THE CHOICE BOX (2026-11-13, scene F: "she asks if you want your door open or closed. Player can choose open or closed in
+       a pop up dialogue box"): a beat with `choice: { options: [{ label, ... }] }` shows its options under the line and HOLDS
+       on its shot until one is picked (click, or LEFT / RIGHT then ENTER, or 1 / 2); the host's choose(choice, option) files
+       the pick. A skip never passes a choice that was not answered: it lands on that beat. */
+    function choiceShow(c, sel) {
+        var box = document.getElementById('ewSceneChoice'), sub = document.getElementById('ewSceneSub'); if (!box) return;
+        if (!c) { box.innerHTML = ''; if (sub) sub.classList.remove('pick'); return; }
+        box.innerHTML = c.options.map(function (o, i) { return '<button type="button" data-i="' + i + '" class="' + (i === sel ? 'sel' : '') + '">' + esc(o.label) + '</button>'; }).join('');
+        if (sub) sub.classList.add('pick');
+    }
+    function pick(i) {
+        if (!S || !S.choice) return;
+        var b = S.row.beats[S.i], o = b.choice && b.choice.options[i]; if (!o) return;
+        try { if (S.ctx.choose) S.ctx.choose(b.choice, o, i); } catch (e) { console.warn('[SCENE] the choice was not filed', e); }
+        S.picked[S.i] = true; S.choice = null; choiceShow(null);
+        S.now = performance.now(); S.dur = Math.max(0.05, (S.now - S.t0) / 1000);
+    }
+    function beatStart(i) {
+        var b = S.row.beats[i]; S.i = i; S.t0 = S.now; S.dur = beatDur(b); S.fired = {}; S.slowed = false; S.fadeDone = false;
+        S.choice = null; choiceShow(null);
+        if (b.choice && Array.isArray(b.choice.options) && b.choice.options.length && !S.picked[i]) { S.choice = { sel: 0, at: S.now }; }
+        var sh = b.shot || S.lastShot || { look: null };
+        S.lastShot = sh;
+        S.sh = sh; S.to = sh.to ? Object.assign({}, sh, sh.to, { to: null }) : null;
+        sh._F = sh.from != null ? resolve(S.ctx, sh.from) : null; if (S.to) S.to._F = sh._F;
+        S.P0 = sh.look != null ? resolve(S.ctx, sh.look) : null;
+        S.P1 = (S.to && S.to.look != null) ? resolve(S.ctx, S.to.look) : S.P0;
+        sayShow((b.say && S.said && S.said[i] != null) ? { who: b.say.who, text: S.said[i] } : b.say);
+        devLabel();
+        if (S.choice) choiceShow(b.choice, 0);
+        try { if (S.ctx.beat) S.ctx.beat(b, i); } catch (e) {}
+    }
+    function tick() {
+        if (!S) return;
+        S.raf = window.requestAnimationFrame(tick);
+        S.now = performance.now();
+        if (S.paused) { S.t0 += S.now - S.pauseTick; S.pauseTick = S.now; }   // THE NOTE BOX is open: the scene's clock stands still
+        /* THE WARM-UP (2026-11-13, mondo: "it was a little laggy, especially the first part"): a scene opens on black with
+           its first frame already being drawn under it, and only starts its clock once the frames run smooth (12 in a row
+           under 45 ms, 0.4 s at least, 3 s at most): the board's first hitches (shaders, models, the HUD) pass unseen */
+        if (S.warm) {
+            var wdt = S.now - (S.warmLast || S.now); S.warmLast = S.now;
+            S.warmOk = (wdt > 0 && wdt < 45) ? S.warmOk + 1 : 0;
+            var wel = S.now - S.warm;
+            if ((S.warmOk >= 12 && wel > 400) || wel > 3000) { S.warm = 0; var fd = document.getElementById('ewSceneFade'); if (fd) fd.classList.remove('on'); }
+            S.t0 = S.now;
+        }
+        var b = S.row.beats[S.i], T = (S.now - S.t0) / 1000;
+        /* the actions and the slow motion of this beat, each once */
+        if (!S.warm) (b.act || []).forEach(function (a, k) { if (!S.fired[k] && T >= (a.at || 0)) { S.fired[k] = true; try { S.ctx.act(a); } catch (e) { console.warn('[SCENE] action failed', a && a.do, e); } } });
+        /* `fade` = the second of the beat the picture goes to black (false = it comes back) */
+        if (!S.warm && b.fade != null && !S.fadeDone && (b.fade === false || T >= b.fade)) { S.fadeDone = true; var fde = document.getElementById('ewSceneFade'); if (fde) fde.classList.toggle('on', b.fade !== false); }
+        if (b.slow && !S.slowed && T >= (b.slow.at || 0)) { S.slowed = true; try { if (S.ctx.slow) S.ctx.slow(b.slow.scale || 0.25, b.slow.ms || 1200); } catch (e) {} }
+        /* the eye */
+        var sh = S.sh, k = ease(T / Math.max(0.01, S.dur));
+        var P = S.P0;
+        if (sh && sh.track && sh.look != null) { var p2 = resolve(S.ctx, sh.look); if (p2) P = S.P0 = p2; }
+        /* a shot may be a PLACED camera, `cam: [x, y, z, yawDeg, pitchDeg, fov]` in the room's metres (the HQ scenes: the
+           storyboard's own frames), moving to `to.cam` over the beat */
+        if (sh && sh.cam && window.EWCine && window.EWCine.script) {
+            var c0 = sh.cam, c1 = (sh.to && sh.to.cam) || c0, cu = window.EWCine.unit || 1, D2 = Math.PI / 180;
+            var cl = function (i) { return lerp(c0[i], (c1[i] != null) ? c1[i] : c0[i], k); };
+            window.EWCine.pose({ x: cl(0) * cu, y: cl(1) * cu, z: cl(2) * cu, yaw: cl(3) * D2, pitch: cl(4) * D2, fov: cl(5) || 40 });
+        } else if (P && window.EWCine && window.EWCine.script) {
+            var a0 = poseOf(S.ctx, sh, P), pose = a0;
+            if (S.to) {
+                var mixed = { _F: sh._F, over: (sh.over != null) ? lerp(sh.over, (S.to.over != null) ? S.to.over : sh.over, k) : null, h: lerp(sh.h || 0, S.to.h || 0, k), az: lerp(sh.az || 0, S.to.az || 0, k), el: lerp(sh.el || 0, S.to.el || 0, k), dist: lerp(sh.dist || 3, S.to.dist || 3, k), fov: lerp(sh.fov || 40, S.to.fov || 40, k) };
+                var Pm = S.P1 ? { x: lerp(P.x, S.P1.x, k), y: lerp(P.y, S.P1.y, k), z: lerp(P.z, S.P1.z, k) } : P;
+                pose = poseOf(S.ctx, mixed, Pm);
+            }
+            window.EWCine.pose(pose);
+        }
+        if (S.now - (S.sweptAt || 0) > 250) { S.sweptAt = S.now; sweep(); }
+        /* the skip */
+        if (S.skipAt) { var f = Math.min(1, (S.now - S.skipAt) / SKIP_HOLD_MS); var fill = document.getElementById('ewSceneSkipFill'); if (fill) fill.style.width = (f * 100) + '%';
+            if (f >= 1) {
+                /* a choice not yet answered is never skipped: the skip lands on its beat (every action on the way is done at once) */
+                var ci = -1; for (var j = S.i; j < S.row.beats.length; j++) { if (S.row.beats[j].choice && !S.picked[j]) { ci = j; break; } }
+                if (ci < 0) { end(true); return; }
+                S.skipAt = 0; if (fill) fill.style.width = '0'; var skE = document.getElementById('ewSceneSkip'); if (skE) skE.classList.remove('on');
+                if (ci > S.i) {
+                    for (var q = S.i; q < ci; q++) (S.row.beats[q].act || []).forEach(function (a, k2) { if (q === S.i && S.fired[k2]) return; try { S.ctx.act(a); } catch (e) {} });
+                    if (S.warm) { S.warm = 0; var fd2 = document.getElementById('ewSceneFade'); if (fd2) fd2.classList.remove('on'); }
+                    beatStart(ci); return;
+                }
+            } }
+        if (!S.warm && T >= S.dur && !S.choice && !S.paused) { if (S.i + 1 < S.row.beats.length) beatStart(S.i + 1); else end(false); }   // (a paused scene never cuts on: a slow frame could carry it past its time before the note box froze the clock)
+    }
+    function hurry() { if (!S || S.warm || S.choice) return; if ((S.now - S.t0) / 1000 < HURRY_MIN) return; var b = S.row.beats[S.i]; if (b.hold) return; S.dur = Math.min(S.dur, (S.now - S.t0) / 1000); }
+    function onKey(e) {
+        if (!S) return;
+        var k = (e.key || '').toLowerCase();
+        if (e.ctrlKey || e.metaKey || /^f\d+$/.test(k)) return;
+        /* THE NOTE BOX is being typed in: the keys are its own (ESC cancels, SHIFT+ENTER saves); nothing reaches the game */
+        if (S.note) { e.stopImmediatePropagation(); if (e.type === 'keydown' && k === 'escape') { e.preventDefault(); noteClose(false); } else if (e.type === 'keydown' && k === 'enter' && e.shiftKey) { e.preventDefault(); noteClose(true); } return; }
+        e.stopImmediatePropagation(); e.preventDefault();
+        if (e.type === 'keydown' && !e.repeat && !S.warm && document.getElementById('ewSceneDev')) {
+            if (k === 'n') { noteOpen(); return; }
+            if (!S.choice && (k === 'arrowleft' || k === 'arrowright')) { devStep(k === 'arrowleft' ? -1 : 1); return; }
+        }
+        if (e.type === 'keydown') {
+            if (S.choice && !S.warm) {
+                var n = S.row.beats[S.i].choice.options.length;
+                if (k === 'arrowleft' || k === 'arrowup' || k === 'a' || k === 'w') { S.choice.sel = (S.choice.sel + n - 1) % n; choiceShow(S.row.beats[S.i].choice, S.choice.sel); }
+                else if (k === 'arrowright' || k === 'arrowdown' || k === 'd' || k === 's' || k === 'tab') { S.choice.sel = (S.choice.sel + 1) % n; choiceShow(S.row.beats[S.i].choice, S.choice.sel); }
+                else if (!e.repeat && (k === ' ' || k === 'enter') && performance.now() - S.choice.at > 400) pick(S.choice.sel);
+                else if (/^[1-9]$/.test(k) && +k <= n) pick(+k - 1);
+                return;
+            }
+            if (k === 'escape') { if (!S.skipAt) { S.skipAt = performance.now(); var sk = document.getElementById('ewSceneSkip'); if (sk) sk.classList.add('on'); } return; }
+            if (!e.repeat && (k === ' ' || k === 'enter')) hurry();
+        } else if (k === 'escape') { S.skipAt = 0; var s2 = document.getElementById('ewSceneSkip'); if (s2) s2.classList.remove('on'); var fl = document.getElementById('ewSceneSkipFill'); if (fl) fl.style.width = '0'; }
+    }
+    function onClick(e) {
+        if (!S) return;
+        if (devClick(e)) { e.stopImmediatePropagation(); return; }   // the notes bar and the note box take their own clicks
+        if (S.note) { e.stopImmediatePropagation(); return; }
+        e.stopImmediatePropagation(); if (e.cancelable) e.preventDefault();
+        if (S.choice) { var cb = (e.type === 'click' && e.target && e.target.closest) ? e.target.closest('#ewSceneChoice button') : null; if (cb && !S.warm) pick(+cb.getAttribute('data-i')); return; }
+        if (e.type === 'mousedown' && e.button === 0) hurry();
+    }
+    function end(skipped) {
+        var s = S; if (!s) return; S = null;
+        if (s.raf) window.cancelAnimationFrame(s.raf);
+        try { if (s.ctx.finish) s.ctx.finish(!!skipped); } catch (e) { console.warn('[SCENE] finish failed', e); }
+        try { if (window.EWCine && window.EWCine.script) window.EWCine.exit(); } catch (e) {}
+        var el = document.getElementById('ewScene');
+        if (el) { el.classList.remove('on'); setTimeout(function () { if (!S && el.parentNode) el.parentNode.removeChild(el); }, 520); }
+        document.body.classList.remove('ew-scene');
+        unsweep();
+        try { if (s.onEnd) s.onEnd(!!skipped); } catch (e) { console.error('[SCENE] onEnd failed', e); }
+    }
+    function play(row, ctx, onEnd) {
+        if (S) return false;
+        if (window.EW_NO_CUTSCENES || !row || !Array.isArray(row.beats) || !row.beats.length || !ctx || !window.EWCine) return false;
+        if (!window.EWCine.enter({ force: true, script: true })) return false;
+        mount();
+        document.body.classList.add('ew-scene');
+        S = { row: row, ctx: ctx, onEnd: onEnd || null, i: 0, now: performance.now(), t0: 0, dur: 1, fired: {}, skipAt: 0, raf: 0, lastShot: null, picked: {}, choice: null };
+        if (row.warm !== false) { S.warm = performance.now(); S.warmOk = 0; var fd = document.getElementById('ewSceneFade'); if (fd) { fd.style.transition = 'none'; fd.classList.add('on'); void fd.offsetWidth; fd.style.transition = ''; } }
+        beatStart(0);
+        /* PLAY FROM HERE (the cutscene editor): the scene opens on that shot, every action before it done at once; a scene
+           of the same chain that plays before OR after it (the opening's drop-off before the ride, the foyer after it) is
+           skipped the way ESC skips it. It holds until EWScene.from(null) (map.js _sedRunEnd): a slow load never loses it. */
+        var F = startAt;
+        if (F && F.id === row.id && !F.done) {
+            F.done = true;   // it stays up: the scenes of the chain that follow it are skipped too (the editor asked for this one scene)
+            var j = -1; for (var q = 0; q < row.beats.length; q++) { var bq = row.beats[q]; if (((bq._src != null) ? bq._src : q) >= F.beat) { j = q; break; } }
+            if (j > 0) { for (var p = 0; p < j; p++) (row.beats[p].act || []).forEach(function (a) { try { ctx.act(a); } catch (e) {} }); beatStart(j); }
+        } else if (F && F.chain && F.chain.indexOf(row.id) >= 0) { S.skipAt = performance.now() - SKIP_HOLD_MS - 5; }
+        S.raf = window.requestAnimationFrame(tick);
+        return true;
+    }
+    var startAt = null;
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('keyup', onKey, true);
+    ['mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu', 'pointerdown', 'pointerup'].forEach(function (t) { window.addEventListener(t, onClick, true); });
+    return {
+        play: play,
+        stop: function () { end(true); },
+        next: function () { if (!S) return; S.now = performance.now(); if (S.i + 1 < S.row.beats.length) beatStart(S.i + 1); else end(false); },   // dev: step a beat
+        get on() { return !!S; },
+        pick: function (i) { pick(i | 0); },   // dev: answer the choice on screen
+        from: function (id, beat, chain) { startAt = id ? { id: id, beat: beat | 0, chain: chain || null, at: performance.now() } : null; },   // the editor's PLAY FROM HERE (the next play of that scene)
+        note: function () { noteOpen(); }, noteClose: function (save) { noteClose(!!save); }, step: function (d) { devStep(d < 0 ? -1 : 1); },
+        state: function () { return S ? { id: S.row.id || '', beat: S.i, shot: srcOf(S.i) + 1, of: S.row.beats.length, t: ((S.paused ? S.pauseTick : performance.now()) - S.t0) / 1000, dur: S.dur, choice: !!S.choice, paused: !!S.paused, note: !!S.note } : null; }
+    };
+})();
+if (typeof window !== 'undefined') window.EWScene = EWScene;
 
 /* ══ THE SHOT RECORDER (2026-10-18, mondo: "a tool that snapshots/records the current camera orientation for clicking on a
    unit and facing towards them. basically i want to frame the shot myself for different scenarios like being in the air

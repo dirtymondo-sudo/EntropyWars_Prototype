@@ -1334,6 +1334,16 @@ const EW_ANIM_LIB_URLS = [
   // data.js EW_CREDITS; Xsens capture, 60 fps), renamed to the CMU joint names (tools: mocap-100style.py) and cut into in-place
   // seamless loops by bake-mocap.py (clip list mocap-clips-100style.json). Clip names S100_<style>_<Idle|Walk>. CREATOR PICKS ONLY.
   'https://cdn.entropywars.net/Assets/characters/animations/MOC2_100STYLE.glb',
+  // lib 7 — MAL4_Sniper.glb (2026-11-11, THE MESHY ANIMATION PULL, mondo: "are you able to go on there and download more
+  // animations ... give different units more personality with their walks and idles and spells and attacks"): 53 idles, walks
+  // and runs pulled through Meshy's animation API on the male sniper's rig (one rigging task, action_ids in batches of 10)
+  // and packed by build-mal.py (the travelling loops made in-place). Clip names are Meshy's library keys. CREATOR PICKS ONLY
+  // (EW_IDLE_POSES + EW_WALK_STYLES): no race's own default plays them.
+  'https://cdn.entropywars.net/Assets/characters/animations/MAL4_Sniper.glb',
+  // lib 8 — MAL5_Sniper.glb (2026-11-11): the same pull's 74 combat clips (casts, weapon + unarmed attacks, hit reactions,
+  // deaths, blocks / dodges, taunts and cheers). Nothing plays them by default: they are in the spell editor's clip picker
+  // and free for a per-character `lib: {slot: {clip, lib: 8, ts}}`.
+  'https://cdn.entropywars.net/Assets/characters/animations/MAL5_Sniper.glb',
 ];
 
 // Game slot → library clip (+ which library file) + timeScale. Durations are
@@ -2133,7 +2143,7 @@ const RACE_MODELS_3D = {
     female: _mkUAL('mermaid/female', 'hot_mermaid_girl', {
       heightRatio: 0.95,
       basicAttackKind: 'magic',
-      lib: { idle: { clip: 'Swim_Idle_Loop', lib: 1 } },
+      lib: { idle: { clip: 'Swim_Idle_Loop', lib: 0 } },   // (2026-11-12: the clip is in UAL1 = lib 0; lib 1 has no swim clips, so she stood on the default idle)
     }),
   },
   // Anubis (Black Mage, caster) — "Anubis_Egyptian_dog_" (trailing _ is real:
@@ -3434,6 +3444,7 @@ const EW_MH_WEAR = [
   ["mhw_male_elegantsuit01", "Male elegantsuit01", "suits", 50],
   ["mhw_toigo_male_suit_3", "Male suit 3", "suits", 50],
   ["mhw_toigo_male_suit_tie_and_jacket", "Male suit tie and jacket", "suits", 50],
+  ["mhw_toigo_male_suit_black", "Male suit, black with black tie", "suits", 50],   // 2026-11-13: the pack suit above, its cloth + tie darkened (men in black)
   ["mhw_male_worksuit01", "Male worksuit01", "suits", 50],
   ["mhw_grinsegold_mars_suit", "Mars suit", "suits", 50],
   ["mhw_matcreator_mc-bodysuit-2021", "Mc-bodysuit-2021", "suits", 50],
@@ -3770,9 +3781,9 @@ const EW_WEAR_BANDS = ['ewb_cowboyhat', 'ewb_cowboyhat_worn', 'ewb_cowboyhat_wor
    them (wearGrip). Meshy models stay the units' defaults: these are creator picks only. */
 EW_MH_WEAR.push(['ewm_tricorn', 'Pirate tricorn', 'hats', 56], ['ewm_officercap', 'Officer cap', 'hats', 56],
   ['ewm_firehelmet', 'Firefighter helmet', 'hats', 56], ['ewm_footballhelmet', 'Football helmet', 'hats', 56],
-  ['ewm_astrohelmet', 'Astronaut helmet', 'hats', 56], ['ewm_royalcrown', 'Royal crown', 'hats', 56],
+  ['ewm_astrohelmet', 'Astronaut helmet', 'hats', 56], ['ewm_royalcrown', 'Royal crown', 'hats', 56], ['ewm_kingcrown', 'King\'s crown (large, on the brow)', 'hats', 56],
   ['ewm_icecrown', 'Ice crown', 'hats', 56], ['ewm_anunnakihat', 'Anunnaki headdress', 'hats', 56],
-  ['ewm_overlordhelm', 'Overlord helmet', 'hats', 56], ['ewm_mushroomcap', 'Mushroom cap', 'hats', 56], ['ewm_beret', 'Beret', 'hats', 56],
+  ['ewm_overlordhelm', 'Overlord helmet', 'hats', 56], ['ewm_mushroomcap', 'Mushroom cap', 'hats', 56], ['ewm_mushroomcap_big', 'Mushroom cap (large)', 'hats', 56], ['ewm_beret', 'Beret', 'hats', 56],
   ['ewm_strawhat', 'Floppy straw hat', 'hats', 56], ['ewm_brokenhalo', 'Broken halo', 'equipment', 60],
   ['ewm_greyalien', 'Grey alien head', 'heads', 58], ['ewm_jackalhead', 'Jackal head', 'heads', 58],
   ['ewm_goathead', 'Goat head', 'heads', 58], ['ewm_eaglehead', 'Eagle head', 'heads', 58], ['ewm_sharkhead', 'Shark head', 'heads', 58],
@@ -3803,6 +3814,85 @@ EW_MH_WEAR.push(['ewm_tricorn', 'Pirate tricorn', 'hats', 56], ['ewm_officercap'
   ['ewm_camera', 'Old camera with flash', 'equipment', 60], ['ewm_milkcookies', 'Milk and cookies', 'equipment', 60],
   ['ewm_cup', 'Drinking cup', 'equipment', 60], ['ewm_magicwand', 'Magic wand', 'equipment', 60],
   ['ewm_wizardstaff', 'Wizard staff', 'equipment', 60]);
+/* THE MESHY OUTFITS (2026-11-12, plan row 21d, bake-outfit.py; mondo: "i like route 2 better" + "Go"): a unit's own clothes, remade by
+   Meshy T2 as separate shells and dressed onto the MPFB body (so the head is the MPFB head: the 67 face shapes). One solid outfit
+   piece per unit (it hides the skin under it) + its hat. Worn by RACE_REMADE_LOOKS below; any creator look may pick them (Armour / Hats). */
+EW_MH_WEAR.push(['ewm_t2cowboy_hat', 'Cowboy hat (Meshy remake)', 'hats', 56], ['ewm_t2cowboy_outfit', 'Cowboy outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2knight_outfit', 'Knight armour + cape (Meshy remake)', 'equipment', 40],
+  ['ewm_t2wizard_hat', 'Wizard hat (Meshy remake)', 'hats', 56], ['ewm_t2wizard_outfit', 'Wizard robe + cloak (Meshy remake)', 'equipment', 40],
+  /* batch one of the demo starters (2026-11-12, meshy-remake-plan.md) */
+  ['ewm_t2zombie_outfit', 'Zombie rags (Meshy remake)', 'equipment', 40],
+  ['ewm_t2mummy_outfit', 'Mummy wraps (Meshy remake)', 'equipment', 40],
+  ['ewm_t2locke_outfit', 'Agent Locke suit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2angel_outfit', 'Angel dress (Meshy remake)', 'equipment', 40],
+  ['ewm_t2catgirl_hat', 'Catgirl ears (Meshy remake)', 'hats', 56], ['ewm_t2catgirl_outfit', 'Catgirl outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2robinhood_outfit', 'Robinhood hood + tunic (Meshy remake)', 'equipment', 40],
+  ['ewm_t2quarterback_hat', 'Quarterback helmet (Meshy remake)', 'hats', 56], ['ewm_t2quarterback_outfit', 'Quarterback kit (Meshy remake)', 'equipment', 40]);
+/* REMAKE BATCH 3 OF 3 (2026-11-13, docs/notes/meshy-remake-batches.md: politician .. wizard F) */
+EW_MH_WEAR.push(['ewm_t2politician_outfit', 'Politician suit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2priest_outfit', 'Priest cassock (Meshy remake)', 'equipment', 40],
+  ['ewm_t2nun_outfit', 'Nun habit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2professor_outfit', 'Professor suit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2ringmaster_outfit', 'Ringmaster tailcoat (Meshy remake)', 'equipment', 40],
+  ['ewm_t2santa_outfit', 'Santa suit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2scarecrow_hat', 'Scarecrow headgear (Meshy remake)', 'hats', 56],
+  ['ewm_t2scarecrow_outfit', 'Scarecrow rags (Meshy remake)', 'equipment', 40],
+  ['ewm_t2shaman_outfit', 'Shaman cloak (Meshy remake)', 'equipment', 40],
+  ['ewm_t2sheriff_outfit', 'Sheriff outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2sidekick_outfit', 'Sidekick suit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2spy_outfit', 'Spy dress (Meshy remake)', 'equipment', 40],
+  ['ewm_t2succubus_outfit', 'Succubus robe (Meshy remake)', 'equipment', 40],
+  ['ewm_t2superhero_outfit', 'Superhero suit + cape (Meshy remake)', 'equipment', 40],
+  ['ewm_t2superherof_outfit', 'Superheroine suit + cape (Meshy remake)', 'equipment', 40],
+  ['ewm_t2swordfighter_outfit', 'Swordfighter jacket (Meshy remake)', 'equipment', 40],
+  ['ewm_t2telepath_outfit', 'Telepath coat (Meshy remake)', 'equipment', 40],
+  ['ewm_t2timecop_hat', 'Time headgear (Meshy remake)', 'hats', 56],
+  ['ewm_t2timecop_outfit', 'Time Cop armour (Meshy remake)', 'equipment', 40],
+  ['ewm_t2valkraye_outfit', 'Valkraye armour (Meshy remake)', 'equipment', 40],
+  ['ewm_t2vampire_outfit', 'Vampire gown (Meshy remake)', 'equipment', 40],
+  ['ewm_t2witch_outfit', 'Witch coat (Meshy remake)', 'equipment', 40]);
+/* (end of remake batch 3) */
+/* T2 WEAR B1 >>> (meshy-remake-batches.md batch 1 of 3, 2026-11-13; written by the thread, edit by hand freely) */
+EW_MH_WEAR.push(['ewm_t2annunaki_outfit', 'Annunaki outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2clown_outfit', 'Clown outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2conspiracy_outfit', 'Conspiracy theorist outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2demoness_outfit', 'Demon outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2demonprincess_hat', 'Demon princess headpiece (Meshy remake)', 'hats', 56],
+  ['ewm_t2demonprincess_outfit', 'Demon princess outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2fairy_outfit', 'Fairy outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2fallenangel_outfit', 'Fallen angel outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2firefighter_outfit', 'Firefighter outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2fortunetellerf_outfit', 'Fortune teller (her) outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2gangster_outfit', 'Gangster outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2general_outfit', 'General outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2astronaut_outfit', 'Astronaut outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2bunnygirl_hat', 'Bunny girl headpiece (Meshy remake)', 'hats', 56],
+  ['ewm_t2astronaut_hat', 'Astronaut helmet (Meshy remake)', 'hats', 56],
+  ['ewm_t2bunnygirl_outfit', 'Bunny girl outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2cowgirl_outfit', 'Cowgirl outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2cultleader_outfit', 'Cult leader outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2ghostf_outfit', 'Ghost outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2giant_outfit', 'Giant outfit (Meshy remake)', 'equipment', 40]);
+/* <<< T2 WEAR B1 */
+/* T2 WEAR B2 >>> (meshy-remake-batches.md batch 2 of 3, 2026-11-13: glitch .. police officer) */
+EW_MH_WEAR.push(['ewm_t2hippie_outfit', 'Hippie outfit (Meshy remake)', 'equipment', 40], ['ewm_t2hippief_outfit', 'Hippie (F) outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2homosapien_hat', 'Homosapien headwear (Meshy remake)', 'hats', 56], ['ewm_t2homosapien_outfit', 'Homosapien outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2icequeen_outfit', 'Ice queen outfit (Meshy remake)', 'equipment', 40], ['ewm_t2kifighter_hat', 'Ki fighter headwear (Meshy remake)', 'hats', 56],
+  ['ewm_t2kifighter_outfit', 'Ki fighter outfit (Meshy remake)', 'equipment', 40], ['ewm_t2kingarthur_hat', 'King Arthur headwear (Meshy remake)', 'hats', 56],
+  ['ewm_t2kingarthur_outfit', 'King Arthur outfit (Meshy remake)', 'equipment', 40], ['ewm_t2luchador_outfit', 'Luchador outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2marksman_outfit', 'Marksman outfit (Meshy remake)', 'equipment', 40], ['ewm_t2marksmanf_hat', 'Marksman (F) headwear (Meshy remake)', 'hats', 56],
+  ['ewm_t2marksmanf_outfit', 'Marksman (F) outfit (Meshy remake)', 'equipment', 40], ['ewm_t2mime_hat', 'Mime headwear (Meshy remake)', 'hats', 56],
+  ['ewm_t2mime_outfit', 'Mime outfit (Meshy remake)', 'equipment', 40], ['ewm_t2mushroomgirl_hat', 'Mushroom girl headwear (Meshy remake)', 'hats', 56],
+  ['ewm_t2mushroomgirl_outfit', 'Mushroom girl outfit (Meshy remake)', 'equipment', 40], ['ewm_t2necromancer_outfit', 'Necromancer outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2nephilim_outfit', 'Nephilim outfit (Meshy remake)', 'equipment', 40], ['ewm_t2nordic_outfit', 'Nordic outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2overlord_hat', 'Overlord headwear (Meshy remake)', 'hats', 56], ['ewm_t2overlord_outfit', 'Overlord outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2pirate_hat', 'Pirate headwear (Meshy remake)', 'hats', 56], ['ewm_t2pirate_outfit', 'Pirate outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2piratef_hat', 'Pirate (F) headwear (Meshy remake)', 'hats', 56], ['ewm_t2piratef_outfit', 'Pirate (F) outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2policeofficer_outfit', 'Police officer outfit (Meshy remake)', 'equipment', 40],
+  ['ewm_t2policeofficerf_outfit', 'Police officer outfit, female (Meshy remake)', 'equipment', 40],
+  ['ewm_t2glitch_outfit', 'Glitch body (Meshy remake)', 'equipment', 40], ['ewm_t2orboflight_outfit', 'Orb of light body (Meshy remake)', 'equipment', 40]);
+EW_MH_WEAR.push(['ewm_t2halfdemonf_outfit', 'Halfdemon (F) dress (Meshy remake)', 'equipment', 40]);   // (2026-11-13, mondo: "not the right dress")
+/* <<< T2 WEAR B2 */
 /* THE BLENDER BASICS (2026-11-02, mondo: "get rid of any classic clothes and shoes ... make sure we have a replacement"): the
    classic coded pieces no pack has, built in cloud Blender like the rest of row 12 (bake-clothes.py COATS / TIGHT / NECKWEAR):
    Long-sleeve top + Henley (Top colour / fabric / print), Sweatpants (Bottoms'), Belt (Belt's), Tie + Bow tie (their own colour,
@@ -4025,6 +4115,14 @@ const EW_MH_LOOKS = {
    Retexture on the MPFB heavy body with the Wolf head (its own hm08 UVs, so any MPFB body wears it): A = the text prompt, B = matched to
    the Meshy werewolf's own look. mpfb/looks/skin_<id>.jpg like the pack skins; sources in project files meshy/retexture/werewolf/. */
 EW_MH_LOOKS.skins.push(['ew_werewolf_fur', 'Werewolf fur (Meshy)'], ['ew_werewolf_fur_dark', 'Werewolf fur, dark (Meshy)']);
+/* THE MORGAN SKIN (2026-11-11, THE CUSTOM SHAPES): Morgan's face re-projected onto the hm08 sheet over skin_young_caucasian_female,
+   mpfb/looks/skin_morgan.jpg like the pack skins; it pairs with the morganHead shaped head (EW_MPFB_FACE_SLIDERS "Face likeness"). */
+EW_MH_LOOKS.skins.push(['morgan', 'Morgan']);
+/* THE UNIT FACES (2026-11-12): the unit's own Meshy face on the hm08 sheet, pairs with the <race>Face shaped head (bake-face.py). */
+EW_MH_LOOKS.skins.push(['ew_face_cowboy', 'Cowboy face (Meshy)'], ['ew_face_knight', 'Knight face (Meshy)'], ['ew_face_wizard', 'Wizard face (Meshy)'], ['ew_face_zombie', 'Zombie face (Meshy)'], ['ew_face_robinhood', 'Robinhood face (Meshy)'], ['ew_face_catgirl', 'Catgirl face (Meshy)'], ['ew_face_mummy', 'Mummy face (Meshy)'], ['ew_face_locke', 'Agent Locke face (Meshy)'], ['ew_face_angel', 'Angel face (Meshy)']);
+/* REMAKE BATCH 3 OF 3 (2026-11-13, docs/notes/meshy-remake-batches.md: politician .. wizard F) */
+EW_MH_LOOKS.skins.push(['ew_face_politician', 'Politician face (Meshy)'], ['ew_face_popstar', 'Popstar face (Meshy)'], ['ew_face_priest', 'Priest face (Meshy)'], ['ew_face_nun', 'Nun face (Meshy)'], ['ew_face_professor', 'Professor face (Meshy)'], ['ew_face_ringmaster', 'Ringmaster face (Meshy)'], ['ew_face_santa', 'Santa face (Meshy)'], ['ew_face_shaman', 'Shaman face (Meshy)'], ['ew_face_sheriff', 'Sheriff face (Meshy)'], ['ew_face_spy', 'Spy face (Meshy)'], ['ew_face_succubus', 'Succubus face (Meshy)'], ['ew_face_superhero', 'Superhero face (Meshy)'], ['ew_face_superherof', 'Superheroine face (Meshy)'], ['ew_face_swordfighter', 'Swordfighter face (Meshy)'], ['ew_face_symbiote', 'Symbiote face (Meshy)'], ['ew_face_telepath', 'Telepath face (Meshy)'], ['ew_face_telepathf', 'Telepath face (Meshy)'], ['ew_face_timecop', 'Time face (Meshy)'], ['ew_face_valkraye', 'Valkraye face (Meshy)'], ['ew_face_vampire', 'Vampire face (Meshy)'], ['ew_face_witch', 'Witch face (Meshy)']);
+/* (end of remake batch 3) */
 /* THE EYE PACK (2026-11-03, mondo uploaded the MakeHuman Eye Texture Pack to R2 looks/eyes/eyetextures/: "please add them to the
    character creator"): [id, label, colour PNG, normal-map PNG]. On an MPFB body these are NOT drawn into the skin sheet (an iris
    there is ~6 texels, a cat eye's slit is lost): three-renderer.js THE EYE PACK fits MakeHuman's high-poly eye mesh over the
@@ -4308,13 +4406,19 @@ const EW_WEAR_SHELF_MOVE = {
   ewm_talisman: 'jewellery', ewm_hagstone: 'jewellery', ewm_egyptcollar: 'jewellery', ewm_airtank: 'back', ewm_astropack: 'back',
   ewm_backpack: 'back', ewm_jetpack: 'back', ewm_quiver: 'back', ewm_katana: 'back', ewm_dowsingrod: 'back', ewm_dorsalfin: 'creature',
   ewm_mothwings: 'wings', ewm_gunbelt: 'belts', ewm_toolbelt: 'belts', ewm_thighholster: 'belts', ewm_flaregun: 'belts',
-  ewm_spyglass: 'belts', ewm_wardtotem: 'belts', ewm_censer: 'belts', ewm_breastplate: 'armour', ewm_shoulderpads: 'armour',
+  ewm_spyglass: 'belts', ewm_wardtotem: 'belts', ewm_censer: 'belts', ewm_breastplate: 'armour', ewm_shoulderpads: 'armour', ewm_t2cowboy_outfit: 'armour', ewm_t2policeofficerf_outfit: 'armour', ewm_t2knight_outfit: 'armour', ewm_t2locke_outfit: 'armour', ewm_t2wizard_outfit: 'armour', ewm_t2zombie_outfit: 'armour', ewm_t2catgirl_outfit: 'armour', ewm_t2robinhood_outfit: 'armour', ewm_t2quarterback_outfit: 'armour', ewm_t2hippie_outfit: 'armour', ewm_t2hippief_outfit: 'armour', ewm_t2halfdemonf_outfit: 'armour', ewm_t2homosapien_outfit: 'armour', ewm_t2icequeen_outfit: 'armour', ewm_t2kifighter_outfit: 'armour', ewm_t2kingarthur_outfit: 'armour', ewm_t2luchador_outfit: 'armour', ewm_t2marksman_outfit: 'armour', ewm_t2marksmanf_outfit: 'armour', ewm_t2mime_outfit: 'armour', ewm_t2mushroomgirl_outfit: 'armour', ewm_t2necromancer_outfit: 'armour', ewm_t2nephilim_outfit: 'armour', ewm_t2nordic_outfit: 'armour', ewm_t2overlord_outfit: 'armour', ewm_t2pirate_outfit: 'armour', ewm_t2piratef_outfit: 'armour', ewm_t2policeofficer_outfit: 'armour', ewm_t2glitch_outfit: 'armour', ewm_t2orboflight_outfit: 'armour', ewm_t2mummy_outfit: 'armour', ewm_t2angel_outfit: 'armour',
   ewm_pauldrons: 'armour', ewm_gauntlets: 'armour', ewm_greaves: 'armour', ewm_armband: 'jewellery', ewm_elfears: 'creature',
   ewm_neckbolts: 'creature', ewm_hooves: 'creature', ewm_beastfeet: 'creature', ewm_beastfeet_fura: 'creature', ewm_beastfeet_furb: 'creature', ewm_trident: 'held', ewm_potionflask: 'held',
   ewm_scalpel: 'held', ewm_wrench: 'held', ewm_blowpipe: 'held', ewm_smartphone: 'held', ewm_handmirror: 'held', ewm_camera: 'held',
   ewm_milkcookies: 'held', ewm_cup: 'held', ewm_magicwand: 'held', ewm_wizardstaff: 'held',
   ewf_fur: 'fur', ewf_fur_werewolf: 'fur',   // THE FUR (category 'underwear' for the layering, its own tab)
 };
+/* REMAKE BATCH 3 OF 3 (2026-11-13, docs/notes/meshy-remake-batches.md: politician .. wizard F) */
+Object.assign(EW_WEAR_SHELF_MOVE, { ewm_t2politician_outfit: 'armour', ewm_t2priest_outfit: 'armour', ewm_t2nun_outfit: 'armour', ewm_t2professor_outfit: 'armour', ewm_t2ringmaster_outfit: 'armour', ewm_t2santa_outfit: 'armour', ewm_t2scarecrow_outfit: 'armour', ewm_t2shaman_outfit: 'armour', ewm_t2sheriff_outfit: 'armour', ewm_t2sidekick_outfit: 'armour', ewm_t2spy_outfit: 'armour', ewm_t2succubus_outfit: 'armour', ewm_t2superhero_outfit: 'armour', ewm_t2superherof_outfit: 'armour', ewm_t2swordfighter_outfit: 'armour', ewm_t2telepath_outfit: 'armour', ewm_t2timecop_outfit: 'armour', ewm_t2valkraye_outfit: 'armour', ewm_t2vampire_outfit: 'armour', ewm_t2witch_outfit: 'armour' });
+/* (end of remake batch 3) */
+/* T2 SHELF B1 >>> (meshy-remake-batches.md batch 1 of 3, 2026-11-13; written by the thread, edit by hand freely) */
+Object.assign(EW_WEAR_SHELF_MOVE, { ewm_t2annunaki_outfit: 'armour', ewm_t2clown_outfit: 'armour', ewm_t2conspiracy_outfit: 'armour', ewm_t2demoness_outfit: 'armour', ewm_t2demonprincess_outfit: 'armour', ewm_t2fairy_outfit: 'armour', ewm_t2fallenangel_outfit: 'armour', ewm_t2firefighter_outfit: 'armour', ewm_t2fortunetellerf_outfit: 'armour', ewm_t2gangster_outfit: 'armour', ewm_t2general_outfit: 'armour', ewm_t2astronaut_outfit: 'armour', ewm_t2bunnygirl_outfit: 'armour', ewm_t2cowgirl_outfit: 'armour', ewm_t2cultleader_outfit: 'armour', ewm_t2ghostf_outfit: 'armour', ewm_t2giant_outfit: 'armour' });
+/* <<< T2 SHELF B1 */
 function wearShelfOf(id) {
   const w = EW_MH_WEAR_BY_ID[id];
   if (!w) return null;
@@ -4832,6 +4936,10 @@ const EW_MH_SKIN_SAMPLE = [200, 150, 360, 300];
    under every picked colour. No other piece of any MPFB body falls inside these outlines. */
 const EW_MH_SKIN_KEEP = [[40,373,34,376,27,379,23,382,21,385,18,388,16,391,15,394,13,397,13,400,12,403,12,406,12,409,11,412,11,415,10,418,10,421,10,424,10,427,10,430,10,433,10,436,10,439,10,442,11,445,12,448,14,451,17,454,20,457,25,460,34,463,52,463,61,460,63,457,65,454,67,451,69,448,70,445,71,442,71,439,72,436,72,433,74,430,76,427,77,424,78,421,79,418,80,415,81,412,81,409,81,406,80,403,80,400,80,397,79,394,79,391,76,388,73,385,71,382,68,379,65,376,45,373],[121,373,102,376,99,379,96,382,94,385,91,388,88,391,88,394,87,397,87,400,87,403,86,406,86,409,86,412,87,415,88,418,89,421,90,424,91,427,93,430,94,433,95,436,96,439,96,442,97,445,98,448,100,451,102,454,104,457,106,460,115,463,133,463,142,460,147,457,150,454,153,451,155,448,156,445,157,442,157,439,157,436,157,433,157,430,157,427,157,424,157,421,156,418,156,415,156,412,155,409,155,406,155,403,154,400,153,397,151,394,150,391,148,388,146,385,144,382,140,379,133,376,126,373],[844,882,838,885,799,888,797,891,795,894,792,897,790,900,788,903,786,906,785,909,783,912,781,915,779,918,778,921,777,924,777,927,776,930,775,933,774,936,774,939,774,942,774,945,773,948,773,951,773,954,773,957,773,960,773,963,774,966,775,969,775,972,776,975,777,978,777,981,779,984,780,987,781,990,782,993,783,996,785,999,786,1002,788,1005,791,1008,793,1011,929,1011,931,1008,933,1005,935,1002,937,999,939,996,940,993,941,990,942,987,943,984,945,981,945,978,946,975,946,972,947,969,947,966,948,963,948,960,948,957,948,954,948,951,948,948,948,945,948,942,948,939,948,936,947,933,946,930,945,927,944,924,943,921,942,918,940,915,939,912,937,909,935,906,934,903,932,900,929,897,927,894,924,891,922,888,884,885,877,882]];
 const EW_MH_LIPS = { poly: [931,503,928,504.5,924,507.5,921,510.5,917,513.5,916,516.5,915,519.5,914,522.5,914,525.5,915,528.5,915,531.5,914,534.5,915,537.5,916,540.5,917,543.5,919,546.5,922,549.5,925,552.5,929,554.5,931,555,933,554.5,936,552.5,941,549.5,942,546.5,945,543.5,946,540.5,947,537.5,948,534.5,948,531.5,948,528.5,948,525.5,948,522.5,948,519.5,946,516.5,944,513.5,941,510.5,939,507.5,934,504.5], box: [906, 495, 52, 68], feather: 1.6 };
+/* THE MAKE-UP (2026-11-12): where eye liner (red), eye shadow (green) and blush (blue) sit on the hm08 sheet: one small mask picture
+   (mpfb/looks/makeup_mask.png, measured on the MPFB head by bake-makeup.py) and its box on the 1024 sheet; `a` = how strongly each
+   picked colour covers the skin at the mask's full value */
+const EW_MH_MAKEUP = { file: 'makeup_mask.png', box: [841, 419, 92, 220], a: { liner: 0.9, shadow: 0.6, blush: 0.4 } };
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
   chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0], bust: [-1, 1, 0],   // bust: 2026-11-01 (mondo)
@@ -4852,7 +4960,7 @@ const EW_MPFB_FACE_SLIDERS = [
   { id: 'mouth', label: 'Mouth', rows: [['mouthWidth', 'Width'], ['mouthHeight', 'Height'], ['upperLip', 'Upper lip'], ['lowerLip', 'Lower lip'], ['mouthCorners', 'Corners'], ['cupidsBow', "Cupid's bow"], ['mouthDepth', 'Depth']] },
   { id: 'jaw', label: 'Jaw + chin', rows: [['jaw', 'Jaw width'], ['jawAngle', 'Jaw angle'], ['chinLength', 'Chin length'], ['chinJut', 'Chin forward'], ['underbite', 'Underbite'], ['chinCleft', 'Chin cleft']] },
   { id: 'cheeks', label: 'Cheeks', rows: [['cheeks', 'Fullness'], ['cheekbones', 'Cheekbones'], ['cheekHeight', 'Height'], ['faceFat', 'Face fat']] },
-  { id: 'head', label: 'Head', rows: [['head', 'Width'], ['headHeight', 'Height'], ['headDepth', 'Depth'], ['foreheadHeight', 'Forehead height'], ['foreheadSlope', 'Forehead slope'], ['faceAge', 'Age']] },
+  { id: 'head', label: 'Head', rows: [['headSize', 'Size'], ['head', 'Width'], ['headHeight', 'Height'], ['headDepth', 'Depth'], ['foreheadHeight', 'Forehead height'], ['foreheadSlope', 'Forehead slope'], ['faceAge', 'Age']] },
   { id: 'ears', label: 'Ears + neck', rows: [['earSize', 'Ear size'], ['earOut', 'Ears out'], ['earPoint', 'Pointed ears'], ['earLobe', 'Lobes'], ['neckThick', 'Neck']] },
   /* THE ANIMAL HEADS (2026-11-03, plan rows 18 + 28, the werewolf pilot): MakeHuman community animal-pack targets in the same
      mpfb_shapes.glb (bake-mpfb.py ANIMAL_SHAPES; CC-BY, in the credits), 0..100: the head + face reshape into the animal's */
@@ -4864,8 +4972,46 @@ const EW_MPFB_FACE_SLIDERS = [
      feline ears (CC-BY, rounder, credited). The body's own ears grow up the sides of the head, so they take the skin, the skin colour
      and every slider. Shown on OUTFIT > Head > Ears as picks beside the Elf ears (+ a strength slider), not on the FACE tabs (inEars) */
   { id: 'animalEars', label: 'Animal ears', inEars: true, rows: [['catEars', 'Cat ears'], ['felineEars', 'Cat ears, round']] },
+  /* THE CUSTOM SHAPES (2026-11-11, mondo: Morgan's face on the MPFB head): a shape that is NOT a MakeHuman target, added to the same
+     mpfb_shapes.glb by bake-custom-shape.js (charactercreation/mpfb/custom_shapes/<key>.json; re-run it after bake-mpfb.py --shapes).
+     morganHead = a face likeness measured on mpfb_female, 0..1; it pairs with the "morgan" skin (EW_MH_LOOKS.skins). A shaped head
+     (inHeads), so it is an OUTFIT > Head pick with a strength slider and a face reset leaves it on. */
+  { id: 'likeness', label: 'Face likeness', inHeads: true, rows: [['morganHead', 'Morgan']] },
+  /* THE UNIT FACES (2026-11-12, mondo: "get the faces a little more accurate ... custom face/body textures"; docs/notes/meshy-remake-plan.md
+     section 6): a race's own Meshy head measured onto the MPFB head by face landmarks (bake-face.py): <race>Face = the head shape (a custom
+     shape like morganHead), and the skin "ew_face_<race>" = the unit's face painted onto the stock skin sheet, the rest toned to match.
+     The mesh is still the MPFB head, so the 67 face shapes (blink, talk) keep working. Pilot: the cowboy. */
+  { id: 'unitFace', label: 'Unit faces', inHeads: true, rows: [['cowboyFace', 'Cowboy'], ['knightFace', 'Knight'], ['wizardFace', 'Wizard'], ['zombieFace', 'Zombie'], ['robinhoodFace', 'Robinhood'], ['catgirlFace', 'Catgirl'], ['mummyFace', 'Mummy'], ['angelFace', 'Angel'], ['lockeFace', 'Agent Locke']/*B1*/, ['annunakiFace', 'Annunaki'], ['clownFace', 'Clown'], ['conspiracyFace', 'Conspiracy theorist'], ['demonprincessFace', 'Demon princess'], ['fairyFace', 'Fairy'], ['fallenangelFace', 'Fallen angel'], ['firefighterFace', 'Firefighter'], ['fortunetellerfFace', 'Fortune teller (her)'], ['gangsterFace', 'Gangster'], ['generalFace', 'General'], ['barbarellaFace', 'Barbarella'], ['bunnygirlFace', 'Bunny girl'], ['chefFace', 'Chef'], ['cowgirlFace', 'Cowgirl'], ['cultleaderFace', 'Cult leader'], ['ghostFace', 'Ghost'], ['giantFace', 'Giant']/*B1.*/] },
 ];
 EW_APPEARANCE_LIMITS.wolfHead = [0, 1, 0];   // (one-sided: the target has no minus end)
+EW_APPEARANCE_LIMITS.morganHead = [0, 1, 0];   // (one-sided, THE CUSTOM SHAPES)
+EW_APPEARANCE_LIMITS.cowboyFace = [0, 1, 0];   // (one-sided, THE UNIT FACES)
+EW_APPEARANCE_LIMITS.knightFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.wizardFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.zombieFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.robinhoodFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.catgirlFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.mummyFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.angelFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.lockeFace = [0, 1, 0];
+/* REMAKE BATCH 3 OF 3 (2026-11-13, docs/notes/meshy-remake-batches.md: politician .. wizard F) */
+EW_MPFB_FACE_SLIDERS.find(g => g.id === 'unitFace').rows.push(['politicianFace', 'Politician'], ['popstarFace', 'Popstar'], ['priestFace', 'Priest'], ['nunFace', 'Nun'], ['professorFace', 'Professor'], ['ringmasterFace', 'Ringmaster'], ['santaFace', 'Santa'], ['shamanFace', 'Shaman'], ['sheriffFace', 'Sheriff'], ['spyFace', 'Spy'], ['succubusFace', 'Succubus'], ['superheroFace', 'Superhero'], ['superherofFace', 'Superheroine'], ['swordfighterFace', 'Swordfighter'], ['symbioteFace', 'Symbiote'], ['telepathFace', 'Telepath'], ['telepathfFace', 'Telepath'], ['timecopFace', 'Time'], ['valkrayeFace', 'Valkraye'], ['vampireFace', 'Vampire'], ['witchFace', 'Witch']);
+for (const k of ['politicianFace', 'popstarFace', 'priestFace', 'nunFace', 'professorFace', 'ringmasterFace', 'santaFace', 'shamanFace', 'sheriffFace', 'spyFace', 'succubusFace', 'superheroFace', 'superherofFace', 'swordfighterFace', 'symbioteFace', 'telepathFace', 'telepathfFace', 'timecopFace', 'valkrayeFace', 'vampireFace', 'witchFace']) EW_APPEARANCE_LIMITS[k] = [0, 1, 0];
+/* (end of remake batch 3) */
+/* T2 FACES B1 >>> (meshy-remake-batches.md batch 1 of 3, 2026-11-13; written by the thread, edit by hand freely) */
+EW_MH_LOOKS.skins.push(['ew_face_annunaki', 'Annunaki face (Meshy)'], ['ew_face_clown', 'Clown face (Meshy)'], ['ew_face_conspiracy', 'Conspiracy theorist face (Meshy)'], ['ew_face_demonprincess', 'Demon princess face (Meshy)'], ['ew_face_fairy', 'Fairy face (Meshy)'], ['ew_face_fallenangel', 'Fallen angel face (Meshy)'], ['ew_face_firefighter', 'Firefighter face (Meshy)'], ['ew_face_fortunetellerf', 'Fortune teller (her) face (Meshy)'], ['ew_face_gangster', 'Gangster face (Meshy)'], ['ew_face_general', 'General face (Meshy)'], ['ew_face_barbarella', 'Barbarella face (Meshy)'], ['ew_face_bunnygirl', 'Bunny girl face (Meshy)'], ['ew_face_chef', 'Chef face (Meshy)'], ['ew_face_cowgirl', 'Cowgirl face (Meshy)'], ['ew_face_cultleader', 'Cult leader face (Meshy)'], ['ew_face_ghost', 'Ghost face (Meshy)'], ['ew_face_giant', 'Giant face (Meshy)']);
+EW_APPEARANCE_LIMITS.annunakiFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.clownFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.conspiracyFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.demonprincessFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.fairyFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.fallenangelFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.firefighterFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.fortunetellerfFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.gangsterFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.generalFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.barbarellaFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.bunnygirlFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.chefFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.cowgirlFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.cultleaderFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.ghostFace = [0, 1, 0]; EW_APPEARANCE_LIMITS.giantFace = [0, 1, 0];
+/* <<< T2 FACES B1 */
+/* T2 FACES B2 >>> (meshy-remake-batches.md batch 2 of 3, 2026-11-13) */
+EW_MH_LOOKS.skins.push(['ew_face_halfdemon', 'Halfdemon face (Meshy)'], ['ew_face_halfdemonf', 'Halfdemon (F) face (Meshy)'], ['ew_face_hippie', 'Hippie face (Meshy)'], ['ew_face_hippief', 'Hippie (F) face (Meshy)'], ['ew_face_homosapien', 'Homosapien face (Meshy)'], ['ew_face_icequeen', 'Ice queen face (Meshy)'], ['ew_face_kifighter', 'Ki fighter face (Meshy)'], ['ew_face_kingarthur', 'King Arthur face (Meshy)'], ['ew_face_luchador', 'Luchador face (Meshy)'], ['ew_face_madscientist', 'Mad scientist face (Meshy)'], ['ew_face_madscientistf', 'Mad scientist (F) face (Meshy)'], ['ew_face_marksman', 'Marksman face (Meshy)'], ['ew_face_marksmanf', 'Marksman (F) face (Meshy)'], ['ew_face_meninblack', 'Men in black face (Meshy)'], ['ew_face_mime', 'Mime face (Meshy)'], ['ew_face_mushroomgirl', 'Mushroom girl face (Meshy)'], ['ew_face_necromancer', 'Necromancer face (Meshy)'], ['ew_face_nephilim', 'Nephilim face (Meshy)'], ['ew_face_nordic', 'Nordic face (Meshy)'], ['ew_face_pirate', 'Pirate face (Meshy)'], ['ew_face_piratef', 'Pirate (F) face (Meshy)'], ['ew_face_policeofficer', 'Police officer face (Meshy)'], ['ew_face_orboflight', 'Orb of light face (Meshy)']);
+EW_MPFB_FACE_SLIDERS.find(g => g.id === 'unitFace').rows.push(['halfdemonFace', 'Halfdemon'], ['halfdemonfFace', 'Halfdemon (F)'], ['hippieFace', 'Hippie'], ['hippiefFace', 'Hippie (F)'], ['homosapienFace', 'Homosapien'], ['icequeenFace', 'Ice queen'], ['kifighterFace', 'Ki fighter'], ['kingarthurFace', 'King Arthur'], ['luchadorFace', 'Luchador'], ['madscientistFace', 'Mad scientist'], ['madscientistfFace', 'Mad scientist (F)'], ['marksmanFace', 'Marksman'], ['marksmanfFace', 'Marksman (F)'], ['meninblackFace', 'Men in black'], ['mimeFace', 'Mime'], ['mushroomgirlFace', 'Mushroom girl'], ['necromancerFace', 'Necromancer'], ['nephilimFace', 'Nephilim'], ['nordicFace', 'Nordic'], ['pirateFace', 'Pirate'], ['piratefFace', 'Pirate (F)'], ['policeofficerFace', 'Police officer'], ['orboflightFace', 'Orb of light']);
+for (const k of ['halfdemon', 'halfdemonf', 'hippie', 'hippief', 'homosapien', 'icequeen', 'kifighter', 'kingarthur', 'luchador', 'madscientist', 'madscientistf', 'marksman', 'marksmanf', 'meninblack', 'mime', 'mushroomgirl', 'necromancer', 'nephilim', 'nordic', 'pirate', 'piratef', 'policeofficer', 'orboflight']) EW_APPEARANCE_LIMITS[k + 'Face'] = [0, 1, 0];   // remake batch 2 of 3
+/* <<< T2 FACES B2 */
+/* THE LIKENESS SWITCH (2026-11-11, mondo: "hide behind a switch anyway, im really just testing something"): the face-likeness picks
+   (the morganHead shaped head + the "morgan" skin) are NOT shown in the creator unless this browser turned them on: open the game
+   once with ?likeness=1 in the address (remembered; ?likeness=0 turns it off again). The data stays valid either way, so a look
+   saved with the likeness still draws; a pick that is worn stays listed so it can be taken off. party-builder.js asks ewPickSwitchedOff. */
+const EW_LIKENESS_PICKS = { morganHead: 1, morgan: 1 };
+const EW_LIKENESS_ON = (function () {
+  try {
+    if (typeof location !== 'undefined') { const q = /[?&]likeness=([01])\b/.exec(location.search || ''); if (q) { try { localStorage.setItem('ew_likeness', q[1]); } catch (e) {} return q[1] === '1'; } }
+    return typeof localStorage !== 'undefined' && localStorage.getItem('ew_likeness') === '1';
+  } catch (e) { return false; }
+})();
+function ewPickSwitchedOff(id) { return !EW_LIKENESS_ON && EW_LIKENESS_PICKS[id] === 1; }
 EW_APPEARANCE_LIMITS.catEars = [0, 1, 0]; EW_APPEARANCE_LIMITS.felineEars = [0, 1, 0];
 /* THE SHAPED HEADS: the Creature heads that are a reshape of the body's own head (a MakeHuman target, 0..1), not a model worn over it.
    One head at a time with the model heads: a shaped head picked takes the model head off, and the other way round. [key, label] */
@@ -4991,7 +5137,24 @@ const EW_IDLE_POSES = [
   { id: 'S100_Neutral_Idle',      label: 'Neutral',         clip: 'S100_Neutral_Idle',        lib: 6, ts: 1.0 },
   { id: 'S100_ArmsBehindBack_Idle', label: 'Hands behind back', clip: 'S100_ArmsBehindBack_Idle', lib: 6, ts: 1.0 },
   { id: 'S100_ArmsFolded_Idle',   label: 'Arms crossed',    clip: 'S100_ArmsFolded_Idle',     lib: 6, ts: 1.0 },
-  { id: 'S100_Proud_Idle',        label: 'Proud',           clip: 'S100_Proud_Idle',          lib: 6, ts: 1.0 },
+  { id: 'S100_Proud_Idle',        label: 'Proud',           clip: 'S100_Proud_Idle',          lib: 6, ts: 1.0 },  /* THE MESHY ANIMATION PULL (2026-11-11): the standing idles from lib 7 (MAL4_Sniper.glb), each looked at on a frame sheet of
+     the whole clip; the ones that turn round, bend back, jump or cast stay in the file but are not offered here */
+  { id: 'MAL_Idle_3',                      label: 'Meshy calm',          clip: 'Idle_3',                          lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_4',                      label: 'Meshy still',         clip: 'Idle_4',                          lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_6',                      label: 'Meshy arms out',      clip: 'Idle_6',                          lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_7',                      label: 'Meshy idle 7',        clip: 'Idle_7',                          lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_9',                      label: 'Meshy idle 9',        clip: 'Idle_9',                          lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_12',                     label: 'Meshy idle 12',       clip: 'Idle_12',                         lib: 7, ts: 1.0 },
+  { id: 'MAL_Long_Breathe_and_Look_Around', label: 'Breathe, long',       clip: 'Long_Breathe_and_Look_Around',    lib: 7, ts: 1.0 },
+  { id: 'MAL_Short_Breathe_and_Look_Around', label: 'Breathe, short',      clip: 'Short_Breathe_and_Look_Around',   lib: 7, ts: 1.0 },
+  { id: 'MAL_Axe_Breathe_and_Look_Around', label: 'Hunched breathing',   clip: 'Axe_Breathe_and_Look_Around',     lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_8',                      label: 'Look around',         clip: 'Idle_8',                          lib: 7, ts: 1.0 },
+  { id: 'MAL_Alert',                       label: 'Alert',               clip: 'Alert',                           lib: 7, ts: 1.0 },
+  { id: 'MAL_Idle_02',                     label: 'Fight ready',         clip: 'Idle_02',                         lib: 7, ts: 1.0 },
+  { id: 'MAL_Combat_Stance',               label: 'Combat stance',       clip: 'Combat_Stance',                   lib: 7, ts: 1.0 },
+  { id: 'MAL_Confused_Scratch',            label: 'Head scratch',        clip: 'Confused_Scratch',                lib: 7, ts: 1.0 },
+  { id: 'MAL_Hand_on_Hip_Gesture',         label: 'Hand on hip',         clip: 'Hand_on_Hip_Gesture',             lib: 7, ts: 1.0 },
+  { id: 'MAL_Scheming_Hand_Rub',           label: 'Hand rub',            clip: 'Scheming_Hand_Rub',               lib: 7, ts: 1.0 },
 ];
 /* THE WALK STYLE (2026-11-05, mondo: "add the walk animations to the character creator just like the idle animations so i can see
    those too"): appearance.walk = a row id ('default' = the body's / race's own walk). Works like THE IDLE POSE: getCharacterAppearanceModel
@@ -5015,7 +5178,27 @@ const EW_WALK_STYLES = [
   // Walk_Formal_Loop (Quaternius), MAL1 Walking_Woman (the Meshy batch; MAL1 Walking is Default)
   { id: 'UAL_Walk_Loop',       label: 'UAL walk',    clip: 'Walk_Loop',           lib: 0, ts: 2.56 },
   { id: 'UAL_Walk_Formal',     label: 'UAL formal',  clip: 'Walk_Formal_Loop',    lib: 0, ts: 2.56 },
-  { id: 'MAL_Walking_Woman',   label: 'Meshy woman', clip: 'Walking_Woman',       lib: 2, ts: 1.92 },
+  { id: 'MAL_Walking_Woman',   label: 'Meshy woman', clip: 'Walking_Woman',       lib: 2, ts: 1.92 },  /* THE MESHY ANIMATION PULL (2026-11-11): the walks from lib 7 (MAL4_Sniper.glb). ts = the stride cycle build-mal.py measured
+     (the feet trading the lead) / 0.52 s, capped at 3.6 so a slow walk (Sneaky, Slow orc, Elderly) is not played frantic */
+  { id: 'MAL_Casual_Walk',                   label: 'Casual',            clip: 'Casual_Walk',                   lib: 7, ts: 2.69 },
+  { id: 'MAL_walking_2',                     label: 'Meshy walk 2',      clip: 'walking_2',                     lib: 7, ts: 2.24 },
+  { id: 'MAL_Quick_Walk',                    label: 'Quick',             clip: 'Quick_Walk',                    lib: 7, ts: 1.92 },
+  { id: 'MAL_Proud_Strut',                   label: 'Proud strut',       clip: 'Proud_Strut',                   lib: 7, ts: 2.85 },
+  { id: 'MAL_Confident_Strut',               label: 'Confident strut',   clip: 'Confident_Strut',               lib: 7, ts: 2.69 },
+  { id: 'MAL_Stylish_Walk',                  label: 'Stylish',           clip: 'Stylish_Walk',                  lib: 7, ts: 2.24 },
+  { id: 'MAL_Flirty_Strut',                  label: 'Flirty strut',      clip: 'Flirty_Strut',                  lib: 7, ts: 2.88 },
+  { id: 'MAL_Thoughtful_Walk',               label: 'Thoughtful',        clip: 'Thoughtful_Walk',               lib: 7, ts: 3.01 },
+  { id: 'MAL_Spear_Walk',                    label: 'Marching',          clip: 'Spear_Walk',                    lib: 7, ts: 2.12 },
+  { id: 'MAL_Walk_Fight_Forward',            label: 'Fighting advance',  clip: 'Walk_Fight_Forward',            lib: 7, ts: 3.27 },
+  { id: 'MAL_Cautious_Crouch_Walk_Forward',  label: 'Crouched',          clip: 'Cautious_Crouch_Walk_Forward',  lib: 7, ts: 2.18 },
+  { id: 'MAL_Sneaky_Walk',                   label: 'Sneaky',            clip: 'Sneaky_Walk',                   lib: 7, ts: 3.60 },
+  { id: 'MAL_Monster_Walk',                  label: 'Monster',           clip: 'Monster_Walk',                  lib: 7, ts: 2.60 },
+  { id: 'MAL_Slow_Orc_Walk',                 label: 'Slow orc',          clip: 'Slow_Orc_Walk',                 lib: 7, ts: 3.60 },
+  { id: 'MAL_Mummy_Stagger',                 label: 'Mummy',             clip: 'Mummy_Stagger',                 lib: 7, ts: 3.08 },
+  { id: 'MAL_Unsteady_Walk',                 label: 'Unsteady',          clip: 'Unsteady_Walk',                 lib: 7, ts: 1.86 },
+  { id: 'MAL_Injured_Walk',                  label: 'Injured',           clip: 'Injured_Walk',                  lib: 7, ts: 2.81 },
+  { id: 'MAL_Limping_Walk',                  label: 'Limping',           clip: 'Limping_Walk',                  lib: 7, ts: 3.37 },
+  { id: 'MAL_Elderly_Shaky_Walk',            label: 'Elderly',           clip: 'Elderly_Shaky_Walk',            lib: 7, ts: 3.60 },
 ];
 const EW_APPEARANCE_ENUMS = {
   idle: EW_IDLE_POSES.map(o => o.id),   // THE IDLE POSE ('default' first = the body's own idle)
@@ -5034,6 +5217,10 @@ const EW_APPEARANCE_ENUMS = {
   eyeTint: ['own', 'pick'],    // 'pick' = the irises in appearance.eyeColor (the classic eye colour's key)
   browTint: ['own', 'hair', 'pick'],   // the brows in their own colour / the hair colour / browColor
   lashTint: ['own', 'pick'],   // 'pick' = lashColor
+  /* THE MAKE-UP (2026-11-12, mondo: "make a way in the creator to add makeup too"): eye liner / eye shadow / blush on an MPFB body,
+     each off ('own' = the skin as it is) or painted in its picked colour (linerColor / shadowColor / blushColor) through
+     EW_MH_MAKEUP's mask (three-renderer.js paintMakeup) */
+  linerTint: ['own', 'pick'], shadowTint: ['own', 'pick'], blushTint: ['own', 'pick'],
   hairMat: ['own'].concat(EW_MH_HAIR_MATS.map(r => r[0])),   // THE HAIR MATERIALS (2026-11-03): a MakeHuman recolour of the worn system style
   hairAccent: ['own', 'tint'],   // THE SECOND HAIR COLOUR (2026-11-01): an `accent` hair's piece in its own colours / hairColor2
   mhChest: ['nipples', 'smooth'],   // THE CHEST (2026-11-01; 'band' gone with the underwear 2026-11-02)   // 2026-11-01: the base body (classic Meshy bases or an MPFB body)
@@ -5092,7 +5279,9 @@ const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: 
   outer2Color: '#5a4636', outer2Color2: '#c9a227',   // THE SECOND OUTER LAYER
   capeColor: '#7a1f1f', capeColor2: '#c9a227',   // THE BLENDER CAPES
   beardColor: '#27201c',   // THE FACIAL HAIR (beardTint 'pick')
-  browColor: '#2a1d14', lashColor: '#141010',   // THE LOOK COLOURS (browTint / lashTint 'pick')
+  browColor: '#2a1d14', lashColor: '#141010',
+  linerColor: '#17110f', shadowColor: '#6b4a55', blushColor: '#c9727c',   // THE MAKE-UP (linerTint / shadowTint / blushTint 'pick')
+    // THE LOOK COLOURS (browTint / lashTint 'pick')
   // 2026-11-01 THE SECOND HAIR COLOUR: a pack style's band / tie / beads (worn when hairAccent = 'tint')
   hairColor2: '#c0392b' };
 const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'none', bottoms: 'none', outer: 'none', feet: 'bsneakers',   // (2026-11-02 THE RETIRED CLASSIC CLOTHES: a bare look is dressed by retireClassicClothes)
@@ -5120,6 +5309,9 @@ const EW_APPEARANCE_LAYERS = [
 const _EW_APPEARANCE_LEGACY_HAIR = { crop: 'hair003', crest: 'hair000', bald: 'bald' };
 function normalizeCharacterAppearance(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  /* THE CAST ON THE BOARD (2026-11-12): `{ cast: '<DOOR_CAST_MODELS id>' }` is not a creator look — it names a story character's
+     own model (getRace3DModel reads it); every creator reader takes it as "no look" */
+  if (typeof value.cast === 'string' && value.cast) return null;
   if (value.version != null && value.version !== 1 && value.version !== 2) return null;
   // the rev 6 `jacket` TOP (a long sleeve with a collar) is the OUTER layer over a tee since rev 7
   if (value.outfit === 'jacket') value = Object.assign({}, value, { outfit: 'tee', outer: value.outer == null ? 'jacket' : value.outer });
@@ -5300,6 +5492,7 @@ function randomCharacterAppearance(rng) {
   const out = { version: 2 };
   for (const key of Object.keys(EW_APPEARANCE_LIMITS)) { const [lo, hi] = EW_APPEARANCE_LIMITS[key]; out[key] = Math.round((lo + (hi - lo) * (0.2 + 0.6 * r())) * 100) / 100; }
   for (const key of EW_MPFB_FACE_KEYS) out[key] = Math.round((r() * 2 - 1) * 35) / 100;   // THE FACE SLIDERS: a random face stays a face
+  out.headSize = 0;   // THE HEAD SIZE (2026-11-13): a random face keeps the body's own head size
   for (const key of EW_SHAPE_PICK_KEYS) out[key] = 0;   // (no random wolf head / cat ears: those are OUTFIT picks)
   for (const row of EW_MPFB_BODY_SLIDERS) out[row[0]] = Math.round((r() * 2 - 1) * 30) / 100;   // THE BODY DETAILS
   out.beltHeight = 0;   // THE BELT HEIGHT: a random look keeps the belt where it was baked
@@ -5319,7 +5512,7 @@ function randomCharacterAppearance(rng) {
   }
   out.body = 'classic';   // RANDOMIZE dresses the classic base (an MPFB body wears its own look)
   out.mhSkin = out.mhEyes = out.mhBrows = out.mhLashes = 'own';
-  out.lipTint = out.skinTint = out.eyeTint = out.browTint = out.lashTint = 'own';   // THE LIP COLOUR + THE LOOK COLOURS (an MPFB body's; the classic face paints its own)
+  out.lipTint = out.skinTint = out.eyeTint = out.browTint = out.lashTint = out.linerTint = out.shadowTint = out.blushTint = 'own';   // THE LIP COLOUR + THE LOOK COLOURS (an MPFB body's; the classic face paints its own)
   if (r() < 0.6) out.beard = 'none';
   if (r() < 0.7) out.neckwear = 'none';
   if (r() < 0.65) out.glasses = 'none';
@@ -5376,8 +5569,10 @@ function getMhLookLayers(a) {
   const hex = v => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v) ? v : null;   // THE LOOK COLOURS
   const tint = { skin: a.skinTint === 'pick' ? hex(a.skin) : null, eyes: a.eyeTint === 'pick' && !pack ? hex(a.eyeColor) : null,
     brows: a.browTint === 'hair' ? hex(a.hairColor) : a.browTint === 'pick' ? hex(a.browColor) : null, lashes: a.lashTint === 'pick' ? hex(a.lashColor) : null };
+  const mk = { liner: a.linerTint === 'pick' ? hex(a.linerColor) : null, shadow: a.shadowTint === 'pick' ? hex(a.shadowColor) : null, blush: a.blushTint === 'pick' ? hex(a.blushColor) : null };   // THE MAKE-UP
+  const madeUp = !!(mk.liner || mk.shadow || mk.blush);
   const tinted = Object.keys(tint).some(k => tint[k]);
-  if (!chest && !lips && !tinted && Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
+  if (!chest && !lips && !tinted && !madeUp && Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
   const id = k => (pick[k] && pick[k] !== 'own' ? pick[k] : kit[k]);
   const base = EW_CHARACTER_ASSET_BASE + '/mpfb/looks/';
   const out = [[base + 'skin_' + id('skin') + '.jpg', null]];
@@ -5386,6 +5581,7 @@ function getMhLookLayers(a) {
     if (row) { const l = [base + _EW_LOOK_ROWS[k][1] + row[0] + '.png', row.slice(2, 6)]; l.kind = k; out.push(l); }   // (kind: THE LOOK COLOURS)
   }
   if (EW_MH_LOOKS.fixed[body]) out.push([base + 'look_fixed_' + body + '.png', EW_MH_LOOKS.fixed[body], null]);   // [url, box, the rect left out (none since the underwear went)]
+  if (madeUp) { const l = [base + EW_MH_MAKEUP.file, EW_MH_MAKEUP.box]; l.kind = 'makeup'; out.push(l); out.makeup = Object.assign({ box: EW_MH_MAKEUP.box, a: EW_MH_MAKEUP.a }, mk); }   // THE MAKE-UP (three-renderer.js paintMakeup; the mask rides the layer list so it loads with them)
   if (chest === 'smooth') out.smooth = EW_MH_CHEST;
   if (lips) out.lips = Object.assign({ color: lips }, EW_MH_LIPS);   // THE LIP COLOUR (painted over the skin, three-renderer.js tintLips)
   if (tinted) { out.tint = tint; out.iris = EW_MH_IRIS; out.skinSample = EW_MH_SKIN_SAMPLE; out.skinKeep = EW_MH_SKIN_KEEP; }   // THE LOOK COLOURS (three-renderer.js tintSheet / tintLayer)
@@ -5532,6 +5728,149 @@ function getRaceCreatorLook(race, gender) {
   return c ? Object.assign({}, c, { wear: c.wear.slice() }) : null;
 }
 function hasRaceCreatorLook(race) { return !!RACE_CREATOR_LOOKS[race]; }
+/* THE REMADE LOOKS (2026-11-12, plan row 21d, mondo: "i like route 2 better" + "Go"): a unit's OWN Meshy clothes on the MPFB body
+   (THE MESHY OUTFITS above), with pack hair and the MPFB face, as a second saved look beside the race's Meshy model (still the
+   default) and beside its RACE_CREATOR_LOOKS look (the saved cowboy stays). The forge: USE THE REMADE <RACE> LOOK. The cowboy's
+   is his saved look's body + face with the remade clothes in place of the creator ones. */
+function _ewFaceSlidersZeroed() {   // every FACE-tab slider at 0 (eyes .. head; not the ears + neck, not the shaped heads / ears)
+  const o = {};
+  for (const g of EW_MPFB_FACE_SLIDERS) if (!g.inHeads && !g.inEars && g.id !== 'ears') for (const r of g.rows) o[r[0]] = 0;
+  return o;
+}
+const RACE_REMADE_LOOKS = {
+  'cowboy': { male: Object.assign({}, RACE_CREATOR_LOOKS['cowboy'].male, { "outer": "none", "wear": ["ewm_t2cowboy_hat", "ewm_t2cowboy_outfit"], "wearTint": {}, "wearFabric": {} },
+    /* THE UNIT FACES pilot: his own Meshy face (shape + skin); the saved look's eye sliders are zeroed, they were shaping a stock face */
+    { "cowboyFace": 1, "mhSkin": "ew_face_cowboy", "hairColor": "#4a3423",   /* (his beard is in the skin now: the beard piece is off, the hair takes the beard's brown) */
+      "eyeSize": 0, "eyeHeight": 0, "eyeSpacing": 0, "eyeTilt": 0, "eyeOpen": 0, "eyeDepth": 0, "eyelid": 0, "eyeBags": 0, "epicanthus": 0 }) },
+  'knight': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"knightFace":1,"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhSkin":"ew_face_knight","mhEyes":"mhm_spamrakuen_sr_anime_maid-san_red_eyes","eyeTint":"pick","eyeColor":"#3a2418","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#b87882","linerTint":"pick","linerColor":"#17110f","shadowTint":"pick","shadowColor":"#6b4a55","blushTint":"pick","blushColor":"#c9727c","hair":"mh_long01","hairColor":"#5c0f1e","browColor":"#3a1418","browTint":"pick","idle":"Idle_11","wear":["ewm_t2knight_outfit"] } },
+  'wizard': { male: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":0.95,"wizardFace":1,"mhSkin":"ew_face_wizard","mhEyes":"blue","mhBrows":"eyebrow001","hair":"hair004","hairColor":"#9a6a40","browColor":"#7a5230","browTint":"pick","idle":"Idle_11","wear":["ewm_t2wizard_hat","ewm_t2wizard_outfit"] } },
+  /* batch one of the demo starters (2026-11-12): zombie, catgirl (his saved look's body + face + hair, the remade clothes), robinhood, quarterback */
+  'zombie': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"zombieFace":1,"mhSkin":"ew_face_zombie","mhEyes":"brown","mhBrows":"own","mhLashes":"eyelashes02","hair":"hair001","hairColor":"#17181a","browColor":"#17181a","browTint":"pick","idle":"Idle_11","wear":["ewm_t2zombie_outfit"] } },
+  'mummy': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"mummyFace":1,"mhSkin":"ew_face_mummy","mhEyes":"brown","mhBrows":"own","mhLashes":"eyelashes02","hair":"mh_long01","hairColor":"#17181a","browColor":"#17181a","browTint":"pick","idle":"Idle_11","wear":["ewm_t2mummy_outfit"] } },
+  'angel': { female: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"feathered","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"angelFace":1,"mhSkin":"ew_face_angel","mhEyes":"brown","mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#c08a8a","mhBrows":"eyebrow010","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"hair":"mh_long01","hairColor":"#b08a55","browColor":"#7a5a35","browTint":"pick","idle":"Idle_11","wear":["ewm_t2angel_outfit"] } },
+  'catgirl': { female: Object.assign({}, RACE_CREATOR_LOOKS['catgirl'].female, { "outer2": "none", "feet": "none", "wear": ["ewm_t2catgirl_outfit", "ewm_crosspendant"], "wear2": "none", "wearTint": { "ewm_crosspendant": "#a0662e" }, "wearFabric": {} },   /* (the cross pendant + its tint = his saved look's own) */
+    /* her own Meshy face (mondo 11-12: "i want it anyway and for you to clean it up"): the saved look's face sliders are zeroed, they were
+       shaping a stock face (his cat ears, neck, eyes, lashes, lips and hair stay); her fringe hides the brows in the old model, so the look picks a pair */
+    _ewFaceSlidersZeroed(), { "catgirlFace": 1, "mhSkin": "ew_face_catgirl", "skinTint": "own", "mhBrows": "eyebrow006", "browTint": "pick", "browColor": "#17140f" }) },
+  'robinhood': { male: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"robinhoodFace":1,"mhSkin":"ew_face_robinhood","mhEyes":"brown","mhBrows":"own","hair":"bald","hairColor":"#5a3a22","browColor":"#4a3020","browTint":"pick","idle":"Idle_11","wear":["ewm_t2robinhood_outfit"] } },
+  'quarterback': { male: { "outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"mhSkin":"young_caucasian_male","mhEyes":"brown","mhBrows":"eyebrow001","hair":"bald","hairColor":"#2a1d14","browColor":"#2a1d14","browTint":"pick","idle":"Idle_11","wear":["ewm_t2quarterback_hat","ewm_t2quarterback_outfit"] } },
+  /* remake batch 2 of 3 (2026-11-13, meshy-remake-batches.md; mondo: creator pieces first, Meshy for what the creator lacks): the five with a
+     saved creator look (halfdemon M + F, mad scientist M + F, men in black) keep its clothes on the MPFB body and take the unit's own face */
+  'glitch': { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","mhSkin":"culturalibre_dr_manhattan","hair":"bald","mhEyes":"ice","wear":["ewm_t2glitch_outfit"],"height":0.98} },
+  'halfdemon': { male: Object.assign({}, RACE_CREATOR_LOOKS['halfdemon'].male, {"halfdemonFace":1,"mhSkin":"ew_face_halfdemon","mhBrows":"own","mhEyes":"brown","body":"mpfb_male","wear":["ewb_top_shirt","ewb_tie","mhw_punkduck_male_classic_jeans","ewb_belt","mhw_mindfront_shoes_oxford_male","mhw_culturalibre_minotaur_horns"],"height":1.05}),
+    female: Object.assign({}, RACE_CREATOR_LOOKS['halfdemon'].female, {"mhSkin":"toigo_light_skin_with_natural_makeup","mhBrows":"eyebrow010","mhEyes":"brown","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#b02a3a","browTint":"pick","browColor":"#2a1a30","body":"mpfb_female","idle":"Idle_11","height":0.98,"wear":["ewm_t2halfdemonf_outfit","mhw_culturalibre_minotaur_horns"],"wearTint":{"mhw_culturalibre_minotaur_horns":"#7a3a9a"},"bust":0.45,"waist":-0.3,"hips":0.25,"linerTint":"pick","linerColor":"#151012","shadowTint":"pick","shadowColor":"#3a2a30"}) },
+  'hippie': { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","hippieFace":1,"mhSkin":"ew_face_hippie","mhBrows":"own","mhEyes":"blue","hair":"mh_long01","hairColor":"#8a6840","wear":["ewm_t2hippie_outfit","mhw_elvs_gored_elephant_pants","mhw_mindfront_fishing_hat_01"],"wearTint":{"mhw_mindfront_fishing_hat_01":"#7a6a45","mhw_elvs_gored_elephant_pants":"#6a94c8"}},
+    female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","hippiefFace":1,"mhSkin":"ew_face_hippief","mhBrows":"eyebrow010","mhEyes":"blue","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#b87882","browTint":"pick","browColor":"#5a4030","hair":"mh_long01","hairColor":"#6a4a30","wear":["ewm_t2hippief_outfit"],"height":0.95} },
+  'homosapien': { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","homosapienFace":1,"mhSkin":"ew_face_homosapien","mhBrows":"own","mhEyes":"brown","hair":"mh_short02","hairColor":"#141210","wear":["ewm_t2homosapien_outfit"]} },
+  'ice queen': { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","icequeenFace":1,"mhSkin":"ew_face_icequeen","mhBrows":"eyebrow010","mhEyes":"ice","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#9aa8c8","browTint":"pick","browColor":"#b8c4d4","hair":"mh_long01","hairColor":"#dfe8f2","wear":["ewm_t2icequeen_outfit","ewm_icecrown"],"height":1.0} },
+  'ki fighter': { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","kifighterFace":1,"mhSkin":"ew_face_kifighter","mhBrows":"eyebrow010","mhEyes":"brown","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#b87882","browTint":"pick","browColor":"#17140f","hair":"mh_elvs_short_daisy_hair","hairColor":"#17140f","wear":["ewm_t2kifighter_outfit"],"height":0.93} },
+  'king arthur': { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"bcape_king","capeColor":"#6a1fa0","capeColor2":"#e8d27a","capeFabric":"silk","capePattern":"solid","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","kingarthurFace":1,"mhSkin":"ew_face_kingarthur","mhBrows":"own","mhEyes":"blue","hair":"hair004","hairColor":"#5a4028","wear":["ewm_t2kingarthur_outfit","ewm_kingcrown"],"height":1.05} },
+  'luchador': { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","luchadorFace":1,"mhSkin":"ew_face_luchador","mhBrows":"own","mhEyes":"brown","hair":"bald","wear":["ewm_t2luchador_outfit","ewb_luchador"],"height":1.03} },
+  'mad scientist': { male: Object.assign({}, RACE_CREATOR_LOOKS['mad scientist'].male, {"madscientistFace":1,"mhSkin":"ew_face_madscientist","mhBrows":"own","mhEyes":"grey","body":"mpfb_male","wear":["ewb_top_shirt","mhw_punkduck_male_classic_jeans","mhw_toigo_ankle_boots_male","ewb_belt"]}),
+    female: Object.assign({}, RACE_CREATOR_LOOKS['mad scientist'].female, {"madscientistfFace":1,"mhSkin":"ew_face_madscientistf","mhBrows":"eyebrow010","mhEyes":"brown","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#b87882","browTint":"pick","browColor":"#121012","body":"mpfb_female","height":0.93}) },
+  'marksman': { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","marksmanFace":1,"mhSkin":"ew_face_marksman","mhBrows":"own","mhEyes":"brown","hair":"mh_short02","hairColor":"#141210","wear":["ewm_t2marksman_outfit"],"height":1.02},
+    female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","marksmanfFace":0,"mhSkin":"toigo_light_skin_with_natural_makeup","mhBrows":"eyebrow010","mhEyes":"brown","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#b03a48","browTint":"pick","browColor":"#121012","hair":"mh_littleright_bobcut_hair","hairColor":"#121012","wear":["mhw_elvs_lara_tank1","mhw_cortu_cargo_pants","mhw_mindfront_shoes_biker_boots_female"],"wearTint":{"mhw_elvs_lara_tank1":"#151515","mhw_cortu_cargo_pants":"#5a5c50","mhw_mindfront_shoes_biker_boots_female":"#1a1a1a"},"height":0.96,"bust":0.35,"waist":-0.25,"hips":0.2,"linerTint":"pick","linerColor":"#151012","shadowTint":"pick","shadowColor":"#3a2a30"} },
+  'men in black': { male: Object.assign({}, RACE_CREATOR_LOOKS['men in black'].male, {"meninblackFace":1,"mhSkin":"ew_face_meninblack","mhBrows":"eyebrow001","mhEyes":"brown","body":"mpfb_male","idle":"Idle_11","height":1.02,"outer":"none","wear":["mhw_toigo_male_suit_black","mhw_mindfront_shoes_oxford_male","mhw_elvs_ladies_sunglass1"],"wearTint":{"mhw_mindfront_shoes_oxford_male":"#121212","mhw_elvs_ladies_sunglass1":"#0c0c0c"}}) },
+  'mime': { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","mimeFace":1,"mhSkin":"ew_face_mime","mhBrows":"eyebrow010","mhEyes":"brown","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#7a1f1f","browTint":"pick","browColor":"#3a2a20","hair":"mh_littleright_bobcut_hair","hairColor":"#8a6a4a","wear":["ewm_t2mime_outfit","ewm_beret"],"height":0.93} },
+  'mushroom girl': { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","mushroomgirlFace":1,"mhSkin":"ew_face_mushroomgirl","mhBrows":"eyebrow010","mhEyes":"brown","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#b87882","browTint":"pick","browColor":"#5a3420","hair":"mh_elvs_hazel_hair","hairColor":"#6a4028","wear":["ewm_t2mushroomgirl_outfit","mhw_grinsegold_female_pirate_boots","ewm_mushroomcap_big"],"wearTint":{"mhw_grinsegold_female_pirate_boots":"#4a2e1c"},"height":0.92} },
+  'necromancer': { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","necromancerFace":1,"mhSkin":"ew_face_necromancer","mhBrows":"eyebrow010","mhEyes":"brown","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#6a1a2a","browTint":"pick","browColor":"#0e0d10","hair":"mh_long01","hairColor":"#0e0d10","wear":["ewm_t2necromancer_outfit"],"height":0.95} },
+  'nephilim': { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"feathered","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","nephilimFace":1,"mhSkin":"ew_face_nephilim","mhBrows":"own","mhEyes":"brown","hair":"bald","wingsColor":"#4a2a5a","wear":["ewm_t2nephilim_outfit"],"height":1.15} },
+  'nordic': { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","nordicFace":1,"mhSkin":"ew_face_nordic","mhBrows":"own","mhEyes":"grey","hair":"mh_long01","hairColor":"#e8d9a0","wear":["ewm_t2nordic_outfit"],"height":1.08} },
+  'orb of light': { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","orboflightFace":1,"mhSkin":"ew_face_orboflight","mhBrows":"eyebrow010","mhEyes":"brown","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#f0b040","browTint":"pick","browColor":"#e0a030","skinTint":"pick","skin":"#f2b23a","hair":"mh_long01","hairColor":"#ffd060","wear":[],"height":0.9,"mhChest":"smooth"} },
+  'overlord': { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","mhSkin":"young_caucasian_male","hair":"bald","wear":["ewm_t2overlord_outfit","ewm_overlordhelm","mhw_toigo_gloves_short"],"wearTint":{"mhw_toigo_gloves_short":"#18181a"},"height":1.15} },
+  'pirate': { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","pirateFace":1,"mhSkin":"ew_face_pirate","mhBrows":"own","mhEyes":"brown","hair":"mh_long01","hairColor":"#1c1714","wear":["ewm_t2pirate_outfit","ewm_tricorn"],"height":1.02},
+    female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","piratefFace":1,"mhSkin":"ew_face_piratef","mhBrows":"eyebrow010","mhEyes":"brown","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#9a2a35","browTint":"pick","browColor":"#1c1714","hair":"mh_long01","hairColor":"#1c1714","wear":["ewm_t2piratef_outfit","mhw_punkduck_female_short_jeans","mhw_grinsegold_female_pirate_boots","ewm_t2piratef_hat"],"wearTint":{"mhw_grinsegold_female_pirate_boots":"#3a2a1e"},"height":0.95} },
+  'police officer': { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","policeofficerFace":1,"mhSkin":"ew_face_policeofficer","mhBrows":"own","mhEyes":"brown","hair":"mh_short01","hairColor":"#0e0d0c","wear":["ewm_t2policeofficer_outfit","ewm_policebadge"],"height":1.02} },
+};
+/* REMAKE BATCH 3 OF 3 (2026-11-13, docs/notes/meshy-remake-batches.md: politician .. wizard F) */
+for (const [race, gender, look] of [
+  ['politician', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"mhSkin":"ew_face_politician","mhEyes":"blue","mhBrows":"eyebrow001","hair":"mh_short01","hairColor":"#dcdcd6","browColor":"#b8b8b2","wear":["ewm_t2politician_outfit","mhw_frankyaye_glasses_library_male"],"politicianFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['popstar', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"mhSkin":"ew_face_popstar","mhEyes":"blue","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","hair":"mh_elvs_island_princess_hair","hairColor":"#e0c383","browColor":"#8a6a40","wear":["mhw_joepal_plain_bra","mhw_frankyaye_mini_skirt_01","mhw_toigo_stiletto_booties"],"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"wearTint":{"mhw_joepal_plain_bra":"#f4f4f2","mhw_frankyaye_mini_skirt_01":"#f4f4f2","mhw_toigo_stiletto_booties":"#f4f4f2"},"popstarFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['priest', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"mhSkin":"ew_face_priest","mhEyes":"brown","mhBrows":"eyebrow001","hair":"mh_short01","hairColor":"#2a1d14","browColor":"#2a1d14","wear":["ewm_t2priest_outfit","ewm_crosspendant"],"priestFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['priest', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.94,"mhSkin":"ew_face_nun","mhEyes":"brown","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","hair":"bald","hairColor":"#3a2418","browColor":"#3a2418","wear":["ewm_t2nun_outfit","mhw_punkduck_swim_cap"],"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"wearTint":{"mhw_punkduck_swim_cap":"#f2f2ee"},"nunFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['professor', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"mhSkin":"ew_face_professor","mhEyes":"brown","mhBrows":"eyebrow001","hair":"mh_elvs_maxwell_hair","hairColor":"#6e6e6a","browColor":"#4a4a48","wear":["ewm_t2professor_outfit","mhw_kwnet_at_optical_glasses"],"professorFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['ringmaster', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1.03,"mhSkin":"ew_face_ringmaster","mhEyes":"brown","mhBrows":"eyebrow001","hair":"hair000","hairColor":"#3a2a20","browColor":"#2a1d14","wear":["ewm_t2ringmaster_outfit"],"ringmasterFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['santa clause', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_heavy","height":1.08,"mhSkin":"ew_face_santa","mhEyes":"blue","mhBrows":"mindfront_eyebrows_05","hair":"hair003","hairColor":"#eeeeea","browColor":"#e0e0da","beardTint":"hair","wear":["ewm_t2santa_outfit","ewb_beard_full"],"headSize":0.8,"santaFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['scarecrow', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1.12,"mhSkin":"young_caucasian_male","mhEyes":"brown","mhBrows":"eyebrow001","hair":"mh_cortu_short_messy_hair","hairColor":"#c9a24a","browColor":"#8a6a30","wear":["ewm_t2scarecrow_hat","ewm_t2scarecrow_outfit"],"browTint":"pick","idle":"Idle_11"}],
+  ['shaman', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.94,"mhSkin":"ew_face_shaman","mhEyes":"green","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","hair":"mh_long01","hairColor":"#2a1c14","browColor":"#2a1c14","wear":["ewm_t2shaman_outfit"],"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"shamanFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['sheriff', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1.04,"mhSkin":"ew_face_sheriff","mhEyes":"brown","mhBrows":"eyebrow001","hair":"mh_short01","hairColor":"#6a6460","browColor":"#5a5450","beardTint":"hair","wear":["ewb_cowboyhat_worn","ewm_t2sheriff_outfit"],"sheriffFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['spy', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.95,"mhSkin":"ew_face_spy","mhEyes":"brown","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","hair":"mh_toigo_blunt_bob_with_bangs","hairColor":"#17181a","browColor":"#17181a","wear":["ewm_t2spy_outfit","mhw_punkduck_brazilian_bikini_bra"],"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"wearTint":{"mhw_punkduck_brazilian_bikini_bra":"#8e1c22"},"spyFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['succubus', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.98,"mhSkin":"ew_face_succubus","mhEyes":"brown","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","hair":"mh_long01","hairColor":"#17181a","browColor":"#17181a","wear":["ewm_t2succubus_outfit","mhw_jaldmic_demon_horns","mhw_culturalibre_cl_devil_tail"],"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"succubusFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['superhero', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1.05,"mhSkin":"ew_face_superhero","mhEyes":"blue","mhBrows":"eyebrow001","hair":"hair008","hairColor":"#121012","browColor":"#121012","wear":["ewm_t2superhero_outfit"],"superheroFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['superhero', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"bcape_hero","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.97,"mhSkin":"ew_face_superherof","mhEyes":"brown","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","hair":"mh_punkduck_alpha7_long","hairColor":"#7a3a20","browColor":"#5a2a18","wear":["ewm_t2superherof_outfit"],"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"capeColor":"#c8102e","capeFabric":"nylon","superherofFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['swordfighter', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.94,"mhSkin":"ew_face_swordfighter","mhEyes":"brown","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","hair":"mh_cortu_straight_bangs","hairColor":"#17181a","browColor":"#17181a","wear":["ewm_t2swordfighter_outfit"],"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"swordfighterFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['symbiote', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.98,"mhSkin":"ew_face_symbiote","mhEyes":"ice","mhBrows":"eyebrow010","hair":"mh_long01","hairColor":"#22232b","browColor":"#22232b","wear":[],"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"symbioteFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['telepath', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"mhSkin":"ew_face_telepath","mhEyes":"ice","mhBrows":"eyebrow001","hair":"bald","hairColor":"#f0f0ec","browColor":"#d8d8d2","wear":["ewm_t2telepath_outfit"],"telepathFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['telepath', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.95,"mhSkin":"ew_face_telepathf","mhEyes":"green","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","hair":"mh_punkduck_alpha7_long","hairColor":"#7a0f14","browColor":"#5a1414","wear":["mhw_punkduck_evening_gown"],"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"wearTint":{"mhw_punkduck_evening_gown":"#141416"},"telepathfFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['time cop', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1.02,"mhSkin":"ew_face_timecop","mhEyes":"brown","mhBrows":"eyebrow001","hair":"bald","hairColor":"#2a1d14","browColor":"#2a1d14","wear":["ewm_t2timecop_hat","ewm_t2timecop_outfit"],"timecopFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['valkraye', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"feathered","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.98,"mhSkin":"ew_face_valkraye","mhEyes":"brown","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","hair":"mh_elvs_braid_bun","hairColor":"#1f1a18","browColor":"#1f1a18","wear":["ewm_t2valkraye_outfit"],"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"valkrayeFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['vampire', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.97,"mhSkin":"ew_face_vampire","mhEyes":"grey","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","hair":"mh_long01","hairColor":"#0e0c0e","browColor":"#0e0c0e","wear":["ewm_t2vampire_outfit"],"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"vampireFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['wizard', 'female', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.94,"mhSkin":"ew_face_witch","mhEyes":"brown","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","hair":"mh_long01","hairColor":"#5a2a1c","browColor":"#4a2418","wear":["mhw_elvs_witchy_hallows_hat1","ewm_t2witch_outfit"],"jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"witchFace":1,"browTint":"pick","idle":"Idle_11"}],
+  ['sidekick', 'male', {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"mhSkin":"young_caucasian_male","mhEyes":"brown","mhBrows":"eyebrow001","hair":"mh_short02","hairColor":"#8a1a14","browColor":"#3a2a1c","wear":["ewm_t2sidekick_outfit","mhw_culturalibre_hero_mask_1"],"browTint":"pick","idle":"Idle_11"}],
+]) (RACE_REMADE_LOOKS[race] = RACE_REMADE_LOOKS[race] || {})[gender] = look;
+/* (end of remake batch 3) */
+/* T2 LOOKS B1 >>> (meshy-remake-batches.md batch 1 of 3, 2026-11-13; written by the thread, edit by hand freely) */
+Object.assign(RACE_REMADE_LOOKS['annunaki'] || (RACE_REMADE_LOOKS['annunaki'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"feathered","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"ew_face_annunaki","mhEyes":"blue","hair":"mh_long01","hairColor":"#17140f","browColor":"#17140f","browTint":"pick","wingsColor":"#6b5a48","wear":["ewm_anunnakihat","ewm_t2annunaki_outfit"],"annunakiFace":1,"mhBrows":"own"} });
+Object.assign(RACE_REMADE_LOOKS['clown'] || (RACE_REMADE_LOOKS['clown'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"ew_face_clown","mhEyes":"grey","hair":"bald","hairColor":"#555555","browColor":"#333333","browTint":"pick","wear":["ewm_t2clown_outfit"],"clownFace":1,"mhBrows":"own"} });
+Object.assign(RACE_REMADE_LOOKS['conspiracy theorist'] || (RACE_REMADE_LOOKS['conspiracy theorist'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"ew_face_conspiracy","mhEyes":"brown","hair":"mh_elvs_maxwell_hair","hairColor":"#8a6a48","browColor":"#6a4a30","browTint":"pick","wear":["ewm_t2conspiracy_outfit","mhw_punkduck_wireless_headset"],"conspiracyFace":1,"mhBrows":"own"} });
+Object.assign(RACE_REMADE_LOOKS['demon'] || (RACE_REMADE_LOOKS['demon'] = {}), { female: Object.assign({}, RACE_CREATOR_LOOKS['demon'].female, {"wear":["ewm_t2demoness_outfit","mhw_culturalibre_faun_horns","ewm_elfears"],"wear2":"none","wearTint":{},"wearFabric":{}}) });
+Object.assign(RACE_REMADE_LOOKS['demon princess'] || (RACE_REMADE_LOOKS['demon princess'] = {}), { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"idle":"Idle_11","mhSkin":"ew_face_demonprincess","mhEyes":"brown","hair":"mh_long01","hairColor":"#111114","browColor":"#111114","browTint":"pick","wear":["ewm_t2demonprincess_hat","ewm_t2demonprincess_outfit","mhw_toigo_gloves_long"],"demonprincessFace":1,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","wearTint":{"mhw_toigo_gloves_long":"#141416"}} });
+Object.assign(RACE_REMADE_LOOKS['fairy'] || (RACE_REMADE_LOOKS['fairy'] = {}), { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"idle":"Idle_11","mhSkin":"ew_face_fairy","mhEyes":"brown","hair":"mh_long01","hairColor":"#4a3020","browColor":"#3a2418","browTint":"pick","wear":["ewm_t2fairy_outfit","mhw_elvs_static_wings5_fairy_moth1"],"fairyFace":1,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04"} });
+Object.assign(RACE_REMADE_LOOKS['fallen angel'] || (RACE_REMADE_LOOKS['fallen angel'] = {}), { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"feathered","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"idle":"Idle_11","mhSkin":"ew_face_fallenangel","mhEyes":"brown","hair":"mh_long01","hairColor":"#111114","browColor":"#111114","browTint":"pick","wingsColor":"#1c1c22","wear":["ewm_t2fallenangel_outfit"],"fallenangelFace":1,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04"} });
+Object.assign(RACE_REMADE_LOOKS['firefighter'] || (RACE_REMADE_LOOKS['firefighter'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"ew_face_firefighter","mhEyes":"brown","hair":"mh_short01","hairColor":"#2a1d14","browColor":"#2a1d14","browTint":"pick","wear":["ewm_firehelmet","ewm_t2firefighter_outfit","ewm_airtank"],"firefighterFace":1,"mhBrows":"own"} });
+Object.assign(RACE_REMADE_LOOKS['fortune teller'] || (RACE_REMADE_LOOKS['fortune teller'] = {}), { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"idle":"Idle_11","mhSkin":"ew_face_fortunetellerf","mhEyes":"brown","hair":"mh_long01","hairColor":"#141416","browColor":"#141416","browTint":"pick","wear":["ewm_t2fortunetellerf_outfit"],"fortunetellerfFace":1,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04"} });
+Object.assign(RACE_REMADE_LOOKS['gangster'] || (RACE_REMADE_LOOKS['gangster'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"ew_face_gangster","mhEyes":"brown","hair":"bald","hairColor":"#111111","browColor":"#111111","browTint":"pick","wear":["ewm_t2gangster_outfit","ewb_dorag","ewm_crosspendant"],"gangsterFace":1,"mhBrows":"own","wearTint":{"ewm_crosspendant":"#d4af37","ewb_dorag":"#a01818"}} });
+Object.assign(RACE_REMADE_LOOKS['general'] || (RACE_REMADE_LOOKS['general'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"ew_face_general","mhEyes":"blue","hair":"mh_short04","hairColor":"#d8d8d4","browColor":"#c8c8c4","browTint":"pick","wear":["ewm_officercap","ewm_t2general_outfit"],"generalFace":1,"mhBrows":"own"} });
+Object.assign(RACE_REMADE_LOOKS['astronaut'] || (RACE_REMADE_LOOKS['astronaut'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"young_caucasian_male","mhEyes":"brown","browTint":"pick","hair":"bald","hairColor":"#2a1d14","browColor":"#2a1d14","wear":["ewm_t2astronaut_hat","ewm_t2astronaut_outfit","ewm_astropack"]} });
+Object.assign(RACE_REMADE_LOOKS['barbarella'] || (RACE_REMADE_LOOKS['barbarella'] = {}), { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"idle":"Idle_11","mhSkin":"ew_face_barbarella","mhEyes":"brown","browTint":"pick","hair":"mh_long01","hairColor":"#d8b46a","browColor":"#8a6a40","wear":["mhw_mindfront_f_one-piece_swimsuit_01","mhw_elvs_knee_high_heel_boots1","mhw_learning_mma_fighting_gloves","ewm_gunbelt"],"barbarellaFace":1,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","wearTint":{"mhw_mindfront_f_one-piece_swimsuit_01":"#f4f4f0","mhw_elvs_knee_high_heel_boots1":"#f4f4f0","mhw_learning_mma_fighting_gloves":"#18181a"}} });
+Object.assign(RACE_REMADE_LOOKS['bunny girl'] || (RACE_REMADE_LOOKS['bunny girl'] = {}), { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"idle":"Idle_11","mhSkin":"ew_face_bunnygirl","mhEyes":"brown","browTint":"pick","hair":"mh_long01","hairColor":"#c8c8d0","browColor":"#9a9aa2","wear":["ewm_t2bunnygirl_hat","mhw_punkduck_one_piece_bikini01","mhw_punkduck_female_short_jeans","mhw_mindfront_shoes_biker_boots_female"],"bunnygirlFace":1,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","wearTint":{"mhw_punkduck_one_piece_bikini01":"#141416","mhw_punkduck_female_short_jeans":"#141416","mhw_mindfront_shoes_biker_boots_female":"#141416"}} });
+Object.assign(RACE_REMADE_LOOKS['chef'] || (RACE_REMADE_LOOKS['chef'] = {}), { male: Object.assign({}, RACE_CREATOR_LOOKS['chef'].male, {"body":"mpfb_male","chefFace":1,"mhSkin":"ew_face_chef","mhBrows":"own","hair":"bald","hairColor":"#2a1d14","idle":"Idle_11"}) });
+Object.assign(RACE_REMADE_LOOKS['cowboy'] || (RACE_REMADE_LOOKS['cowboy'] = {}), { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"idle":"Idle_11","mhSkin":"ew_face_cowgirl","mhEyes":"brown","browTint":"pick","hair":"mh_punkduck_alpha7_long","hairColor":"#9a1f1f","browColor":"#6a2018","wear":["ewb_cowboyhat","ewm_t2cowgirl_outfit"],"cowgirlFace":1,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04"} });
+Object.assign(RACE_REMADE_LOOKS['cult leader'] || (RACE_REMADE_LOOKS['cult leader'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"ew_face_cultleader","mhEyes":"brown","browTint":"pick","hair":"mh_long01","hairColor":"#8a7050","browColor":"#6a5038","wear":["ewm_t2cultleader_outfit"],"cultleaderFace":1,"mhBrows":"own"} });
+Object.assign(RACE_REMADE_LOOKS['ghost'] || (RACE_REMADE_LOOKS['ghost'] = {}), { female: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":0.96,"idle":"Idle_11","mhSkin":"ew_face_ghost","mhEyes":"brown","browTint":"pick","hair":"mh_long01","hairColor":"#cfe8e4","browColor":"#9ab8b4","wear":["ewm_t2ghostf_outfit"],"ghostFace":1,"mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04"} });
+Object.assign(RACE_REMADE_LOOKS['giant'] || (RACE_REMADE_LOOKS['giant'] = {}), { male: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_male","height":1,"idle":"Idle_11","mhSkin":"ew_face_giant","mhEyes":"brown","browTint":"pick","hair":"mh_short04","hairColor":"#d8d8d4","browColor":"#c0c0bc","wear":["ewm_t2giant_outfit","ewb_beard_viking"],"giantFace":1,"mhBrows":"own"} });
+/* <<< T2 LOOKS B1 */
+const _ewRemadeLookCache = {};
+function getRaceRemadeLook(race, gender) {
+  if (typeof window !== 'undefined' && window.EW_DISABLE_RACE_LOOKS) return null;
+  const set = RACE_REMADE_LOOKS[race], g = gender === 'female' ? 'female' : 'male';
+  if (!set || !set[g]) return null;
+  const k = race + '|' + g, c = _ewRemadeLookCache[k] || (_ewRemadeLookCache[k] = normalizeCharacterAppearance(set[g]));
+  return c ? Object.assign({}, c, { wear: c.wear.slice() }) : null;
+}
+/* THE REMADE ALTS (2026-11-13, mondo: "let's add a white cop, and female cop too, for variation"): more remade looks for a race, each
+   its own button in the party builder (USE THE REMADE <LABEL> LOOK). A look names its own body, so a female alt works on a male-only race. */
+const RACE_REMADE_ALTS = {
+  'police officer': { male: [
+    { label: 'white officer', look: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_male","mhSkin":"young_caucasian_male","mhBrows":"own","mhEyes":"blue","hair":"mh_short02","hairColor":"#6a4a2a","wear":["ewm_t2policeofficer_outfit","ewm_policebadge"],"height":1.02} },
+    { label: 'female officer', look: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"idle":"Idle_11","body":"mpfb_female","mhSkin":"toigo_light_skin_with_natural_makeup","mhBrows":"eyebrow010","mhEyes":"brown","jaw":-0.4,"head":-0.2,"nose":-0.3,"noseWidth":-0.4,"eyeSize":0.15,"browRidge":-0.6,"mouthCorners":0.25,"mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#b03a48","browTint":"pick","browColor":"#121012","bust":0.35,"waist":-0.25,"hips":0.2,"linerTint":"pick","linerColor":"#151012","shadowTint":"pick","shadowColor":"#3a2a30","hair":"mh_long01","hairColor":"#2a1a10","wear":["ewm_t2policeofficerf_outfit","ewm_policebadge"],"height":0.97} },
+  ] },
+};
+const _ewRemadeAltCache = {};
+function getRaceRemadeAlts(race, gender) {
+  if (typeof window !== 'undefined' && window.EW_DISABLE_RACE_LOOKS) return [];
+  const set = RACE_REMADE_ALTS[race], g = gender === 'female' ? 'female' : 'male';
+  if (!set || !set[g]) return [];
+  const k = race + '|' + g, c = _ewRemadeAltCache[k] || (_ewRemadeAltCache[k] = set[g].map(a => ({ label: a.label, look: normalizeCharacterAppearance(a.look) })).filter(a => a.look));
+  return c.map(a => ({ label: a.label, look: Object.assign({}, a.look, { wear: a.look.wear.slice() }) }));
+}
+/* THE REMADE LOOKS SWITCH (2026-11-13, mondo: "a dev option in the settings to use all of these new race looks, saves to where i dont
+   have to retoggle it on reloading the page, but off by default for now"): Settings > Developer > Remade Race Looks. ON = a unit
+   with no look of its own wears its race's remade look (RACE_REMADE_LOOKS) wherever a unit is drawn (getCharacterAppearanceModel is
+   the one resolver: creator, board, HQ, team room, party builder, portraits); a race with no remade look keeps its Meshy model. A
+   slot's own saved look and USE ORIGINAL MODEL still win. Viewer-local (localStorage ew_remade_looks), looks only, never relayed. */
+const EW_REMADE_LOOKS_KEY = 'ew_remade_looks';
+let _ewRemadeLooksOn = null;
+function remadeLooksOn() {
+  if (_ewRemadeLooksOn === null) { try { _ewRemadeLooksOn = localStorage.getItem(EW_REMADE_LOOKS_KEY) === '1'; } catch (e) { _ewRemadeLooksOn = false; } }
+  return _ewRemadeLooksOn;
+}
+function setRemadeLooksOn(on) {
+  _ewRemadeLooksOn = !!on;
+  try { if (on) localStorage.setItem(EW_REMADE_LOOKS_KEY, '1'); else localStorage.removeItem(EW_REMADE_LOOKS_KEY); } catch (e) {}
+  try { window.dispatchEvent(new CustomEvent('ew-remade-looks', { detail: { on: !!on } })); } catch (e) {}
+  return !!on;
+}
 function raceLooksAreDefault() { return EW_RACE_LOOKS_ARE_DEFAULT || (typeof window !== 'undefined' && window.EW_RACE_LOOKS_ARE_DEFAULT === true); }
 /* the races whose creator look is their DEFAULT (the human base + the DOOR Agent; + the saved race looks only while
    EW_RACE_LOOKS_ARE_DEFAULT is on). THE MESHY DEFAULT: every race may WEAR a creator look (ewCreatorLookRace); only these
@@ -5542,7 +5881,8 @@ function getCharacterAppearanceModel(race, gender, appearance) {
   const own0 = ewCreatorLookRace(race) && normalizeCharacterAppearance(appearance);
   if (own0 && own0.model === 'original') return null;   // THE RACE LOOKS: this slot wears the race's own model
   /* THE MESHY DEFAULT: no look on the slot = the race's own (Meshy) model, unless the race's look is its default */
-  const a = own0 || ((EW_CREATOR_LOOK_RACES.includes(race) || raceLooksAreDefault()) && getRaceCreatorLook(race, gender));
+  const a = own0 || (remadeLooksOn() && getRaceRemadeLook(race, gender))   /* THE REMADE LOOKS SWITCH */
+    || ((EW_CREATOR_LOOK_RACES.includes(race) || raceLooksAreDefault()) && getRaceCreatorLook(race, gender));
   if (!a) return null;
   const mp = a.body && EW_MPFB_BASES[a.body];
   const def = mp ? Object.assign({}, mp, { heightRatio: mp.heightRatio * a.height })
@@ -5604,7 +5944,7 @@ if (typeof window !== 'undefined') {
   window.EW_CREATOR_NAMES = EW_CREATOR_NAMES; window.creatorName = creatorName; window.creatorRenamed = creatorRenamed; window.setCreatorName = setCreatorName;   // THE RENAMED PICKS
   window.creatorNamesList = creatorNamesList; window.creatorNamesReset = creatorNamesReset; window.creatorPickLabel = creatorPickLabel;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
-  window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_SHAPE_HEADS = EW_SHAPE_HEADS; window.EW_SHAPE_EARS = EW_SHAPE_EARS; window.EW_FACE_RESET_KEYS = EW_FACE_RESET_KEYS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
+  window.ewPickSwitchedOff = ewPickSwitchedOff; window.EW_MPFB_FACE_SLIDERS = EW_MPFB_FACE_SLIDERS; window.EW_SHAPE_HEADS = EW_SHAPE_HEADS; window.EW_SHAPE_EARS = EW_SHAPE_EARS; window.EW_FACE_RESET_KEYS = EW_FACE_RESET_KEYS; window.EW_MPFB_BODY_SLIDERS = EW_MPFB_BODY_SLIDERS; window.EW_MPFB_FACE_KEYS = EW_MPFB_FACE_KEYS;   // THE FACE SLIDERS
   window.EW_MPFB_DEFAULT_FACES = EW_MPFB_DEFAULT_FACES; window.mpfbFacePatch = mpfbFacePatch;   // THE DEFAULT FACES
   window.EW_MPFB_FACE_PRESETS = EW_MPFB_FACE_PRESETS;   // THE FACE PRESETS (bake-faces.js)
   window.EW_APPEARANCE_ENUMS = EW_APPEARANCE_ENUMS;
@@ -5634,17 +5974,57 @@ if (typeof window !== 'undefined') {
   window.EW_MH_EYE_PACK = EW_MH_EYE_PACK; window.getMhEyePack = getMhEyePack;   // THE EYE PACK
   window.EW_MH_HAIR_MATS = EW_MH_HAIR_MATS; window.getHairMaterial = getHairMaterial;   // THE HAIR MATERIALS
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhOwnLashLayer = getMhOwnLashLayer; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
-  window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS;   // THE CHEST + THE LIP COLOUR
+  window.EW_MH_CHEST = EW_MH_CHEST; window.EW_MH_LIPS = EW_MH_LIPS; window.EW_MH_MAKEUP = EW_MH_MAKEUP;   // THE CHEST + THE LIP COLOUR
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.wearKindOf = wearKindOf; window.wearFabricable = wearFabricable; window.EW_WEAR_BANDS = EW_WEAR_BANDS; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl; window.outerHasFronts = outerHasFronts; window.outerFrontWorn = outerFrontWorn; window.EW_OUTER_FRONT = EW_OUTER_FRONT; window.EW_BOOT_TOPS = EW_BOOT_TOPS; window.EW_PANT_HEMS = EW_PANT_HEMS; window.pantsBootsWorn = pantsBootsWorn;   // THE PANTS IN THE BOOTS   // THE PACK CLOTHES
   window.EW_WEAR_SHELVES = EW_WEAR_SHELVES; window.wearShelfOf = wearShelfOf; window.wearMadeFor = wearMadeFor; window.outerMadeFor = outerMadeFor; window.EW_OUTER_GROUPS = EW_OUTER_GROUPS;   // THE SHELVES
   window.EW_WEAR_SLOTS = EW_WEAR_SLOTS; window.EW_WEAR_GROUPS = EW_WEAR_GROUPS; window.wearGroupOf = wearGroupOf; window.wearSlotOf = wearSlotOf; window.wearSlotOfGroup = wearSlotOfGroup;   // THE BODY SLOTS
-  window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES; window.ewCreatorLookRace = ewCreatorLookRace; window.raceLooksAreDefault = raceLooksAreDefault;   // THE MESHY DEFAULT
-  window.RACE_CREATOR_LOOKS = RACE_CREATOR_LOOKS; window.getRaceCreatorLook = getRaceCreatorLook; window.hasRaceCreatorLook = hasRaceCreatorLook;   // THE RACE LOOKS
+  window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES; window.ewCreatorLookRace = ewCreatorLookRace; window.raceLooksAreDefault = raceLooksAreDefault; window.remadeLooksOn = remadeLooksOn; window.setRemadeLooksOn = setRemadeLooksOn;   // THE MESHY DEFAULT
+  window.RACE_CREATOR_LOOKS = RACE_CREATOR_LOOKS; window.getRaceCreatorLook = getRaceCreatorLook; window.RACE_REMADE_LOOKS = RACE_REMADE_LOOKS; window.getRaceRemadeLook = getRaceRemadeLook; window.RACE_REMADE_ALTS = RACE_REMADE_ALTS; window.getRaceRemadeAlts = getRaceRemadeAlts; window.hasRaceCreatorLook = hasRaceCreatorLook;   // THE RACE LOOKS
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
 }
 
+/* THE CAST LOOKS (2026-11-12, mondo: "Ship, and remake Locke to blink"): a story character remade on a creator body (her Meshy
+   T2 suit as a creator piece, her face from her old model: bake-outfit.py + bake-face.py, the route the remade units took). A
+   cast id listed here wears this look wherever its model is asked for (getCastModel: DOOR HQ, the portrait studio; getRace3DModel:
+   the board), so the rig has eyelids, a jaw and the creator's face moves. Console: window.EW_DISABLE_CAST_LOOKS = true = her old rig. */
+const CAST_CREATOR_LOOKS = {
+  locke: { gender: 'female', look: {"outfit":"none","bottoms":"none","outer":"none","outer2":"none","outfit2":"none","bottoms2":"none","feet":"none","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","beard":"none","model":"creator","version":2,"body":"mpfb_female","height":1.02,"jaw":-0.4,"head":-0.2,"nose":0,"noseWidth":0,"eyeSize":-0.2,"browRidge":-0.3,"mouthCorners":0,"mhSkin":"ew_face_locke","mhEyes":"mhm_spamrakuen_sr_anime_maid-san_red_eyes","eyeTint":"pick","eyeColor":"#5a6a72","mhBrows":"eyebrow010","mhLashes":"mindfront_eyelashes_04","lipTint":"pick","lipColor":"#9a6468","linerTint":"pick","linerColor":"#3a302e","shadowTint":"pick","shadowColor":"#5a4a50","blushTint":"pick","blushColor":"#c08080","hair":"mh_elvs_short_side_do","hairColor":"#e6e6ea","browColor":"#8a8a8e","browTint":"pick","idle":"Idle_11","wear":["ewm_t2locke_outfit"],"lockeFace":1,"mouthWidth":-0.2,"mouthHeight":-0.25} },
+  kit: { gender: 'female', race: 'catgirl' },   // Kit IS the Catgirl: her race's own look (see getCastLookModel)
+};
+const _castLookDefs = {};
+function getCastLookModel(id, race, gender) {
+  const row = CAST_CREATOR_LOOKS[id];
+  if (!row || (typeof window !== 'undefined' && window.EW_DISABLE_CAST_LOOKS)) return null;
+  /* KIT IS THE CATGIRL (mondo 2026-11-13: "we need to be using the catgirl model (saved race look or the remade race look,
+     whichever is there) for Kit. The Kit model is an old placeholder"): a row with `race` wears that race's own model, the
+     same one the unit wears on the board (getRace3DModel: the remade look, else the saved look, else its rig) */
+  if (row.race) {
+    const kr = id + '|race';
+    if (!_castLookDefs[kr]) { let d = null; try { d = getRace3DModel(row.race, row.gender) || null; } catch (e) { d = null; } if (d) _castLookDefs[kr] = d; }   // a miss is never kept (the board's sprite preference can say no once)
+    return _castLookDefs[kr] || null;
+  }
+  const r = race || 'homosapien', g = gender || row.gender, k = id + '|' + r + '|' + g;
+  if (!(k in _castLookDefs)) { let d = null; try { d = getCharacterAppearanceModel(r, g, row.look); } catch (e) { d = null; } _castLookDefs[k] = d || null; }
+  return _castLookDefs[k];
+}
+if (typeof window !== 'undefined') { window.CAST_CREATOR_LOOKS = CAST_CREATOR_LOOKS; window.getCastLookModel = getCastLookModel; }
+
+const _castUnitDefs = {};
 function getRace3DModel(race, gender, appearance) {
   if (typeof window !== 'undefined' && window.EW_DISABLE_3D_UNITS) return null;
+  /* THE CAST ON THE BOARD (mondo 2026-11-12: Agent Locke fights the first quest as HERSELF, "She already has her own model.
+     She walks around in the DOOR HQ"): a unit whose appearance is `{ cast: id }` wears that story character's own rig, with
+     what its race's model holds (the Door Agent's gun) and its basic attack */
+  if (appearance && typeof appearance.cast === 'string' && typeof DOOR_CAST_MODELS !== 'undefined' && DOOR_CAST_MODELS[appearance.cast] && !window.EW_DISABLE_CAST) {
+    const cl = getCastLookModel(appearance.cast, race, gender);   // THE CAST LOOKS: remade on a creator body (with the race's hold + basic attack)
+    if (cl) return cl;
+    const ck = race + '|' + appearance.cast;
+    if (!_castUnitDefs[ck]) {
+      const rs = RACE_MODELS_3D[race], own = rs && (rs[gender === 'female' ? 'female' : 'male'] || rs.male || rs.female);
+      _castUnitDefs[ck] = Object.assign({}, DOOR_CAST_MODELS[appearance.cast], (own && own.hold) ? { hold: own.hold } : {}, (own && own.basicAttackKind) ? { basicAttackKind: own.basicAttackKind } : {});
+    }
+    return _castUnitDefs[ck];
+  }
   const custom = getCharacterAppearanceModel(race, gender, appearance);
   if (custom) return custom;
   // Werewolf transformation: a human (Homosapien Freelancer male) by day,
@@ -5896,7 +6276,7 @@ const DOOR_CAST_MODELS = {
   // the recruit — the default HQ avatar since 2026-09-06 (map.js _hqAvatar)
   player:   _mkCast('Player',       { heightRatio: 1.0 }),
   // your superior; by-the-book, the book keeps changing
-  locke:    _mkCast('Agent_Locke',  { heightRatio: 0.96, female: true }),
+  locke:    _mkCast('Agent_Locke',  { heightRatio: 0.96, female: true, portrait: { live: true } }),   // portrait.live: a main character, her portrait moves (three-renderer.js THE LIVE PORTRAITS)
   // colleague / love interest; Ringer's daughter
   belle:    _mkCast('Agent_Belle',  { heightRatio: 0.94, female: true }),
   // cocky; Meshy named this export without _biped
@@ -5939,7 +6319,7 @@ const DOOR_CAST_MODELS = {
 };
 function getCastModel(id) {
   if (typeof window !== 'undefined' && (window.EW_DISABLE_3D_UNITS || window.EW_DISABLE_CAST)) return null;
-  return DOOR_CAST_MODELS[id] || null;
+  return getCastLookModel(id) || DOOR_CAST_MODELS[id] || null;   // THE CAST LOOKS: a remade cast member wears her creator look
 }
 if (typeof window !== 'undefined') {
   window.DOOR_CAST_MODELS = DOOR_CAST_MODELS;
@@ -6084,6 +6464,12 @@ const RACE_PORTRAITS = {
 
 function getUnitPortraitArtUrl(unit) {
   if (!unit || !unit.race) return null;
+  /* THE MODEL PORTRAITS (2026-11-12): a unit that wears a model of its own (a creator look, or a story character's rig,
+     `appearance.cast`: Agent Locke) shows that model's face, photographed off its Head bone (three-renderer.js THE PORTRAIT
+     STUDIO). null until the photo is in: the race's art / the sprite's face stands in, then the HUD repaints. */
+  if (unit.appearance && typeof window !== 'undefined' && window.EWPortraits) {
+    try { const own = window.EWPortraits.url(unit); if (own) return own; } catch (e) {}
+  }
   if (unit.race === 'chess piece') return chessPieceLook(unit._chessPiece);   // ♟ the glyph of the piece it is now
   const set = RACE_PORTRAITS[unit.race];
   if (!set) return null;
@@ -6939,6 +7325,96 @@ const URBAN_TEX_FAMILIES = {
 };
 const URBAN_TEXTURES = {};
 Object.keys(URBAN_TEX_FAMILIES).forEach(fam => URBAN_TEX_FAMILIES[fam].forEach(n => { URBAN_TEXTURES[n] = `${_TU}/${n}.png`; }));
+/* THE URBAN DECAY PACK, THE REST OF IT (2026-11-15, mondo: "Utilize this pack to the fullest throughout disaster city and add the textures to the
+   editor"): the 681 sheets of Strideh's Urban Decay Textures v1.4 the game did not have yet (roads, sidewalks, kerbs, bricks, carpets,
+   wood, concrete, metal, roofs, shutters, shipping containers, fences, vents, lights, decals), box-halved like the first 320 and on R2
+   beside them (Assets/world/terrain/urban/<Name>.png), worn as `urban:<Name>` like any urban sheet. Their OWN families, so no seeded pick
+   of an old family changes (a sheet whose family already existed sits in <Family>More). Credit: data.js EW_CREDITS. */
+const URBAN_DECAY_FAMILIES = {
+    BrickCinder: ['BrickCinder1a', 'BrickCinder1b', 'BrickCinder1c', 'BrickCinder2a', 'BrickCinder2b', 'BrickCinder2c', 'BrickCinder3a', 'BrickCinder3b', 'BrickCinder3c', 'BrickCinder4a', 'BrickCinder4b', 'BrickCinder4c', 'BrickCinder5a', 'BrickCinder5b', 'BrickCinder5c', 'BrickCinder6a', 'BrickCinder6b', 'BrickCinder6c'],
+    BrickClassic: ['BrickClassic1a', 'BrickClassic1b', 'BrickClassic1c', 'BrickClassic1d', 'BrickClassic2a', 'BrickClassic2b', 'BrickClassic2c', 'BrickClassic2d', 'BrickClassic3a', 'BrickClassic3b', 'BrickClassic3c', 'BrickClassic3d', 'BrickClassic4a', 'BrickClassic4b', 'BrickClassic4c', 'BrickClassic4d', 'BrickClassic5a', 'BrickClassic5b', 'BrickClassic5c', 'BrickClassic5d', 'BrickClassic6a', 'BrickClassic6b', 'BrickClassic6c', 'BrickClassic6d'],
+    BrickMasonry: ['BrickMasonry1a', 'BrickMasonry1b', 'BrickMasonry1c', 'BrickMasonry2a', 'BrickMasonry2b', 'BrickMasonry2c'],
+    BrickModern: ['BrickModern1a', 'BrickModern1b', 'BrickModern1c', 'BrickModern1d', 'BrickModern1e', 'BrickModern1f', 'BrickModern1g', 'BrickModern2a', 'BrickModern2b', 'BrickModern2c', 'BrickModern2d', 'BrickModern2e', 'BrickModern2f', 'BrickModern2g'],
+    BrickPainted: ['BrickPainted1a', 'BrickPainted1b', 'BrickPainted1c', 'BrickPainted1d', 'BrickPainted1e', 'BrickPainted1f', 'BrickPainted2a', 'BrickPainted2b', 'BrickPainted2c', 'BrickPainted2d', 'BrickPainted2e'],
+    BrickUrban: ['BrickUrban1a', 'BrickUrban1b', 'BrickUrban1c', 'BrickUrban1d', 'BrickUrban2a', 'BrickUrban2b', 'BrickUrban2c', 'BrickUrban2d', 'BrickUrban3a', 'BrickUrban3b', 'BrickUrban3c', 'BrickUrban3d', 'BrickUrban4a', 'BrickUrban4b', 'BrickUrban4c', 'BrickUrban4d'],
+    BrickWide: ['BrickWide1a', 'BrickWide1b', 'BrickWide1c', 'BrickWide1d', 'BrickWide2a', 'BrickWide2b', 'BrickWide2c', 'BrickWide2d', 'BrickWide3a', 'BrickWide3b', 'BrickWide3c', 'BrickWide3d'],
+    CarpetDiamond: ['CarpetDiamond1a', 'CarpetDiamond1b', 'CarpetDiamond1c', 'CarpetDiamond1d', 'CarpetDiamond1e', 'CarpetDiamond1f', 'CarpetDiamond2a', 'CarpetDiamond2b', 'CarpetDiamond2c', 'CarpetDiamond2d', 'CarpetDiamond2e', 'CarpetDiamond2f'],
+    CarpetPattern: ['CarpetPattern1a', 'CarpetPattern1b', 'CarpetPattern1c', 'CarpetPattern1d', 'CarpetPattern1e', 'CarpetPattern1f', 'CarpetPattern2a', 'CarpetPattern2b', 'CarpetPattern2c', 'CarpetPattern2d', 'CarpetPattern2e', 'CarpetPattern2f'],
+    CarpetPlain: ['CarpetPlain1a', 'CarpetPlain1b', 'CarpetPlain1c', 'CarpetPlain1d', 'CarpetPlain1e', 'CarpetPlain1f', 'CarpetPlain2a', 'CarpetPlain2b', 'CarpetPlain2c', 'CarpetPlain2d', 'CarpetPlain2e', 'CarpetPlain2f'],
+    ClothTattered: ['ClothTattered1a', 'ClothTattered1b', 'ClothTattered1c', 'ClothTattered1d', 'ClothTattered1e', 'ClothTattered1f', 'ClothTattered2a', 'ClothTattered2b', 'ClothTattered2c', 'ClothTattered2d', 'ClothTattered2e', 'ClothTattered2f'],
+    ConcreteCracked: ['ConcreteCracked1a', 'ConcreteCracked1b', 'ConcreteCracked2a', 'ConcreteCracked2b', 'ConcreteCracked3a', 'ConcreteCracked3b'],
+    ConcreteCurb: ['ConcreteCurb1', 'ConcreteCurb2', 'ConcreteCurb3', 'ConcreteCurb4'],
+    ConcreteGeneric: ['ConcreteGeneric1a', 'ConcreteGeneric1b', 'ConcreteGeneric1c', 'ConcreteGeneric2a', 'ConcreteGeneric2b', 'ConcreteGeneric2c', 'ConcreteGeneric3a', 'ConcreteGeneric3b', 'ConcreteGeneric3c'],
+    ConcreteHexagons: ['ConcreteHexagons1a', 'ConcreteHexagons1b', 'ConcreteHexagons2a', 'ConcreteHexagons2b'],
+    ConcreteMoulding: ['ConcreteMoulding1a', 'ConcreteMoulding1b', 'ConcreteMoulding1c', 'ConcreteMoulding2a', 'ConcreteMoulding2b', 'ConcreteMoulding2c'],
+    ConcretePanels: ['ConcretePanels1a', 'ConcretePanels1b', 'ConcretePanels1c', 'ConcretePanels2a', 'ConcretePanels2b', 'ConcretePanels2c', 'ConcretePanels3a', 'ConcretePanels3b', 'ConcretePanels3c', 'ConcretePanels4a', 'ConcretePanels4b', 'ConcretePanels4c'],
+    ConcretePrecast: ['ConcretePrecast1a', 'ConcretePrecast1b', 'ConcretePrecast1c', 'ConcretePrecast1d', 'ConcretePrecast2a', 'ConcretePrecast2b', 'ConcretePrecast2c', 'ConcretePrecast2d'],
+    ConcreteRoofBitumen: ['ConcreteRoofBitumen1a', 'ConcreteRoofBitumen1b', 'ConcreteRoofBitumen1c', 'ConcreteRoofBitumen1d', 'ConcreteRoofBitumen1e'],
+    ConcreteSidewalk: ['ConcreteSidewalk1a', 'ConcreteSidewalk1b', 'ConcreteSidewalk2a', 'ConcreteSidewalk2b', 'ConcreteSidewalk3a', 'ConcreteSidewalk3b', 'ConcreteSidewalk4a', 'ConcreteSidewalk4b'],
+    ConcreteSlab: ['ConcreteSlab1a', 'ConcreteSlab1b', 'ConcreteSlab2a', 'ConcreteSlab2b', 'ConcreteSlab3a', 'ConcreteSlab3b'],
+    ConcreteSteps: ['ConcreteSteps1', 'ConcreteSteps2', 'ConcreteSteps3'],
+    ConcreteStucco: ['ConcreteStucco1a', 'ConcreteStucco1b', 'ConcreteStucco1c', 'ConcreteStucco1d', 'ConcreteStucco1e', 'ConcreteStucco1f', 'ConcreteStucco1g', 'ConcreteStucco2a', 'ConcreteStucco2b', 'ConcreteStucco2c', 'ConcreteStucco2d', 'ConcreteStucco2e', 'ConcreteStucco2f', 'ConcreteStucco2g'],
+    ConcreteWarningStripe: ['ConcreteWarningStripe1', 'ConcreteWarningStripe2'],
+    ConcreteWoodFormed: ['ConcreteWoodFormed1a', 'ConcreteWoodFormed1b', 'ConcreteWoodFormed1c', 'ConcreteWoodFormed2a', 'ConcreteWoodFormed2b', 'ConcreteWoodFormed2c'],
+    DecalManholeCoverMore: ['DecalManholeCover1', 'DecalManholeCover2'],
+    DecalPlasterHole: ['DecalPlasterHole1', 'DecalPlasterHole2', 'DecalPlasterHole3'],
+    DecalStainLeaks: ['DecalStainLeaks1', 'DecalStainLeaks2', 'DecalStainLeaks3', 'DecalStainLeaks4', 'DecalStainLeaks5', 'DecalStainLeaks6'],
+    DecalStainOil: ['DecalStainOil1', 'DecalStainOil2'],
+    DoorPainted: ['DoorPainted1a', 'DoorPainted1b', 'DoorPainted1c', 'DoorPainted2a', 'DoorPainted2b', 'DoorPainted2c', 'DoorPainted3a', 'DoorPainted3b', 'DoorPainted3c', 'DoorPainted4a', 'DoorPainted4b', 'DoorPainted4c', 'DoorPainted5a', 'DoorPainted5b', 'DoorPainted5c'],
+    DoorStorefront: ['DoorStorefront1a', 'DoorStorefront1b', 'DoorStorefront1c', 'DoorStorefront1d', 'DoorStorefront2a', 'DoorStorefront2b', 'DoorStorefront2c', 'DoorStorefront2d'],
+    DoorWooden: ['DoorWooden1a', 'DoorWooden1b', 'DoorWooden1c', 'DoorWooden2a', 'DoorWooden2b', 'DoorWooden2c'],
+    GlassGeneric: ['GlassGeneric1a', 'GlassGeneric1b', 'GlassGeneric2a', 'GlassGeneric2b', 'GlassGeneric3a', 'GlassGeneric3b'],
+    GlassGenericBroken: ['GlassGenericBroken1', 'GlassGenericBroken2', 'GlassGenericBroken3', 'GlassGenericBroken4'],
+    GlassWindowTallMore: ['GlassWindowTall2b'],
+    GroundPebbles: ['GroundPebbles1a', 'GroundPebbles1b', 'GroundPebbles2a', 'GroundPebbles2b'],
+    LightInterior: ['LightInterior1a', 'LightInterior1a-Glow', 'LightInterior1b', 'LightInterior1b-Glow', 'LightInterior1c', 'LightInterior1c-Glow', 'LightInterior2a', 'LightInterior2a-Glow', 'LightInterior2b', 'LightInterior2b-Glow'],
+    MetalBeams: ['MetalBeams1a', 'MetalBeams1b', 'MetalBeams2a', 'MetalBeams2b', 'MetalBeams3a', 'MetalBeams3b', 'MetalBeams4a', 'MetalBeams4b'],
+    MetalConduit: ['MetalConduit1a', 'MetalConduit1b', 'MetalConduit2a', 'MetalConduit2b'],
+    MetalCorrugated: ['MetalCorrugated1a', 'MetalCorrugated1b', 'MetalCorrugated2a', 'MetalCorrugated2b', 'MetalCorrugated3a', 'MetalCorrugated3b', 'MetalCorrugated3c', 'MetalCorrugated3d', 'MetalCorrugated4a', 'MetalCorrugated4b', 'MetalCorrugated4c', 'MetalCorrugated4d'],
+    MetalDiamondPlate: ['MetalDiamondPlate1a', 'MetalDiamondPlate1b', 'MetalDiamondPlate1c', 'MetalDiamondPlate2a', 'MetalDiamondPlate2b', 'MetalDiamondPlate2c', 'MetalDiamondPlate3a', 'MetalDiamondPlate3b', 'MetalDiamondPlate3c', 'MetalDiamondPlate4a', 'MetalDiamondPlate4b', 'MetalDiamondPlate4c'],
+    MetalDrainStrip: ['MetalDrainStrip1', 'MetalDrainStrip2'],
+    MetalFenceChainlink: ['MetalFenceChainlink1', 'MetalFenceChainlink2', 'MetalFenceChainlink3', 'MetalFenceChainlink4'],
+    MetalFenceOld: ['MetalFenceOld1', 'MetalFenceOld2'],
+    MetalGeneric: ['MetalGeneric1a', 'MetalGeneric1b', 'MetalGeneric1c', 'MetalGeneric2a', 'MetalGeneric2b', 'MetalGeneric2c', 'MetalGeneric3a', 'MetalGeneric3b', 'MetalGeneric3c', 'MetalGeneric4a', 'MetalGeneric4b', 'MetalGeneric4c'],
+    MetalGenericPainted: ['MetalGenericPainted1a', 'MetalGenericPainted1b', 'MetalGenericPainted1c', 'MetalGenericPainted2a', 'MetalGenericPainted2b', 'MetalGenericPainted2c', 'MetalGenericPainted3a', 'MetalGenericPainted3b', 'MetalGenericPainted3c', 'MetalGenericPainted4a', 'MetalGenericPainted4b', 'MetalGenericPainted4c'],
+    MetalGratingGrid: ['MetalGratingGrid1a', 'MetalGratingGrid1b', 'MetalGratingGrid1c', 'MetalGratingGrid2a', 'MetalGratingGrid2b', 'MetalGratingGrid2c'],
+    MetalGratingMesh: ['MetalGratingMesh1a', 'MetalGratingMesh1b', 'MetalGratingMesh1c', 'MetalGratingMesh2a', 'MetalGratingMesh2b', 'MetalGratingMesh2c', 'MetalGratingMesh3a', 'MetalGratingMesh3b', 'MetalGratingMesh3c', 'MetalGratingMesh4a', 'MetalGratingMesh4b', 'MetalGratingMesh4c'],
+    MetalGratingPainted: ['MetalGratingPainted1a', 'MetalGratingPainted1b', 'MetalGratingPainted1c', 'MetalGratingPainted1d', 'MetalGratingPainted1e', 'MetalGratingPainted2a', 'MetalGratingPainted2b', 'MetalGratingPainted2c', 'MetalGratingPainted2d', 'MetalGratingPainted2e'],
+    MetalPanel: ['MetalPanel1a', 'MetalPanel1b', 'MetalPanel2a', 'MetalPanel2b', 'MetalPanel3a', 'MetalPanel3b', 'MetalPanel3c', 'MetalPanel4a', 'MetalPanel4b', 'MetalPanel4c'],
+    MetalPanelPainted: ['MetalPanelPainted1a', 'MetalPanelPainted1b', 'MetalPanelPainted1c', 'MetalPanelPainted1d', 'MetalPanelPainted1e', 'MetalPanelPainted2a', 'MetalPanelPainted2b', 'MetalPanelPainted2c', 'MetalPanelPainted2d', 'MetalPanelPainted2e'],
+    MetalPipeOld: ['MetalPipeOld1a', 'MetalPipeOld1b', 'MetalPipeOld1c', 'MetalPipeOld2a', 'MetalPipeOld2b', 'MetalPipeOld2c'],
+    MetalPipePainted: ['MetalPipePainted1a', 'MetalPipePainted1b', 'MetalPipePainted1c', 'MetalPipePainted2a', 'MetalPipePainted2b', 'MetalPipePainted2c', 'MetalPipePainted3a', 'MetalPipePainted3b', 'MetalPipePainted3c', 'MetalPipePainted4a', 'MetalPipePainted4b', 'MetalPipePainted4c', 'MetalPipePainted5a', 'MetalPipePainted5b', 'MetalPipePainted5c'],
+    MetalRoofTiles: ['MetalRoofTiles1a', 'MetalRoofTiles1b', 'MetalRoofTiles1c', 'MetalRoofTiles1d', 'MetalRoofTiles2a', 'MetalRoofTiles2b', 'MetalRoofTiles2c', 'MetalRoofTiles2d', 'MetalRoofTiles3a', 'MetalRoofTiles3b', 'MetalRoofTiles3c', 'MetalRoofTiles3d'],
+    MetalShippingContainer: ['MetalShippingContainer1a', 'MetalShippingContainer1b', 'MetalShippingContainer1c', 'MetalShippingContainer1d', 'MetalShippingContainer2a', 'MetalShippingContainer2b', 'MetalShippingContainer2c', 'MetalShippingContainer2d', 'MetalShippingContainer3a', 'MetalShippingContainer3b', 'MetalShippingContainer3c', 'MetalShippingContainer3d', 'MetalShippingContainer4a', 'MetalShippingContainer4b', 'MetalShippingContainer4c', 'MetalShippingContainer4d', 'MetalShippingContainer5a', 'MetalShippingContainer5b', 'MetalShippingContainer5c', 'MetalShippingContainer5d'],
+    MetalShutter: ['MetalShutter1a', 'MetalShutter1b', 'MetalShutter1c', 'MetalShutter1d', 'MetalShutter2a', 'MetalShutter2b', 'MetalShutter2c'],
+    MetalSteps: ['MetalSteps1', 'MetalSteps2', 'MetalSteps3', 'MetalSteps4'],
+    MetalWallRibbed: ['MetalWallRibbed1a', 'MetalWallRibbed1b', 'MetalWallRibbed1c', 'MetalWallRibbed2a', 'MetalWallRibbed2b', 'MetalWallRibbed2c', 'MetalWallRibbed3a', 'MetalWallRibbed3b', 'MetalWallRibbed3c', 'MetalWallRibbed4a', 'MetalWallRibbed4b', 'MetalWallRibbed4c'],
+    MetalWarningStripe: ['MetalWarningStripe1', 'MetalWarningStripe2'],
+    PlasterBoard: ['PlasterBoard1a', 'PlasterBoard1b', 'PlasterBoard1c', 'PlasterBoard1d', 'PlasterBoard1e', 'PlasterBoard2a', 'PlasterBoard2b', 'PlasterBoard2c', 'PlasterBoard2d', 'PlasterBoard2e'],
+    PlasterBoardSide: ['PlasterBoardSide1a', 'PlasterBoardSide1b', 'PlasterBoardSide2a', 'PlasterBoardSide2b'],
+    PlasterMasonry: ['PlasterMasonry1a', 'PlasterMasonry1b', 'PlasterMasonry1c', 'PlasterMasonry1d', 'PlasterMasonry1e', 'PlasterMasonry1f', 'PlasterMasonry1g', 'PlasterMasonry2a', 'PlasterMasonry2b', 'PlasterMasonry2c', 'PlasterMasonry2d', 'PlasterMasonry2e', 'PlasterMasonry2f', 'PlasterMasonry2g'],
+    PlasterMoulding: ['PlasterMoulding1a', 'PlasterMoulding1b', 'PlasterMoulding2a', 'PlasterMoulding2b'],
+    PlasterWallGeneric: ['PlasterWallGeneric1a', 'PlasterWallGeneric1b', 'PlasterWallGeneric1c', 'PlasterWallGeneric2a', 'PlasterWallGeneric2b', 'PlasterWallGeneric2c', 'PlasterWallGeneric3a', 'PlasterWallGeneric3b', 'PlasterWallGeneric4a', 'PlasterWallGeneric4b'],
+    RoadDouble: ['RoadDouble1a', 'RoadDouble1b', 'RoadDouble1c', 'RoadDouble1d', 'RoadDouble1e', 'RoadDouble2a', 'RoadDouble2b', 'RoadDouble2c', 'RoadDouble2d', 'RoadDouble2e'],
+    RoadGeneric: ['RoadGeneric1a', 'RoadGeneric1b', 'RoadGeneric1c'],
+    RoadSingle: ['RoadSingle1a', 'RoadSingle1b', 'RoadSingle1c', 'RoadSingle2a', 'RoadSingle2b', 'RoadSingle2c'],
+    RoadZone: ['RoadZone1a', 'RoadZone1b', 'RoadZone1c', 'RoadZone2a', 'RoadZone2b', 'RoadZone2c'],
+    RubberNonSlipMore: ['RubberNonSlip1c', 'RubberNonSlip2c', 'RubberNonSlip3c', 'RubberNonSlip4c', 'RubberNonSlip5c'],
+    SignSpeedAus: ['SignSpeedAus010', 'SignSpeedAus015', 'SignSpeedAus020', 'SignSpeedAus025', 'SignSpeedAus030', 'SignSpeedAus040', 'SignSpeedAus050', 'SignSpeedAus060', 'SignSpeedAus070', 'SignSpeedAus080', 'SignSpeedAus090', 'SignSpeedAus100', 'SignSpeedAus110', 'SignSpeedAus120'],
+    SignSpeedUsa: ['SignSpeedUsa010', 'SignSpeedUsa015', 'SignSpeedUsa020', 'SignSpeedUsa025', 'SignSpeedUsa030', 'SignSpeedUsa040', 'SignSpeedUsa050', 'SignSpeedUsa060', 'SignSpeedUsa070', 'SignSpeedUsa080', 'SignSpeedUsa090', 'SignSpeedUsa100', 'SignSpeedUsa110', 'SignSpeedUsa120'],
+    TileHexagons: ['TileHexagons1a', 'TileHexagons1b', 'TileHexagons1c', 'TileHexagons2a', 'TileHexagons2b', 'TileHexagons3a', 'TileHexagons3b'],
+    TileLinoleum: ['TileLinoleum1a', 'TileLinoleum1b', 'TileLinoleum1c', 'TileLinoleum2a', 'TileLinoleum2b', 'TileLinoleum2c'],
+    VentCover: ['VentCover1a', 'VentCover1b', 'VentCover2a', 'VentCover2b', 'VentCover3a', 'VentCover3b', 'VentCover4a', 'VentCover4b'],
+    VentWalls: ['VentWalls1a', 'VentWalls1b', 'VentWalls2a', 'VentWalls2b'],
+    WoodBeams: ['WoodBeams1a', 'WoodBeams1b', 'WoodBeams1c', 'WoodBeams1d', 'WoodBeams2a', 'WoodBeams2b', 'WoodBeams2c', 'WoodBeams2d'],
+    WoodCladding: ['WoodCladding1a', 'WoodCladding1b', 'WoodCladding2a', 'WoodCladding2b', 'WoodCladding3a', 'WoodCladding3b'],
+    WoodCrates: ['WoodCrates1a', 'WoodCrates1b', 'WoodCrates2a', 'WoodCrates2b'],
+    WoodFlooring: ['WoodFlooring1a', 'WoodFlooring1b', 'WoodFlooring1c', 'WoodFlooring1d', 'WoodFlooring2a', 'WoodFlooring2b', 'WoodFlooring2c', 'WoodFlooring2d'],
+    WoodGeneric: ['WoodGeneric1a', 'WoodGeneric1b', 'WoodGeneric1c', 'WoodGeneric2a', 'WoodGeneric2b', 'WoodGeneric2c'],
+    WoodPainted: ['WoodPainted1a', 'WoodPainted1b', 'WoodPainted1c', 'WoodPainted2a', 'WoodPainted2b', 'WoodPainted2c', 'WoodPainted3a', 'WoodPainted3b', 'WoodPainted3c', 'WoodPainted4a', 'WoodPainted4b', 'WoodPainted4c', 'WoodPainted5a', 'WoodPainted5b', 'WoodPainted5c'],
+    WoodPlywood: ['WoodPlywood1a', 'WoodPlywood1b', 'WoodPlywood1c', 'WoodPlywood2a', 'WoodPlywood2b', 'WoodPlywood2c'],
+};
+Object.keys(URBAN_DECAY_FAMILIES).forEach(fam => { URBAN_TEX_FAMILIES[fam] = URBAN_DECAY_FAMILIES[fam]; URBAN_DECAY_FAMILIES[fam].forEach(n => { URBAN_TEXTURES[n] = `${_TU}/${n}.png`; }); });
 /* THE METRO PACK (2026-10-04, mondo's upload): the PSX metro sheets on R2 Assets/world/packs/elbolilloduro_metro_psx/Textures/, worn as `urban:Metro<Name>`
    by a shell / a prop like any urban sheet (their own family, MetroPSX, which no random city pick names) */
 const _TMETRO = 'https://cdn.entropywars.net/Assets/world/packs/elbolilloduro_metro_psx/Textures';
@@ -6983,7 +7459,7 @@ function urbanTexGlow(name) {
     if (m2 && URBAN_TEXTURES[m2[1] + m2[2] + 'a-Glow']) return m2[1] + m2[2] + 'a-Glow';
     return null;
 }
-if (typeof window !== 'undefined') { window.URBAN_TEXTURES = URBAN_TEXTURES; window.URBAN_TEX_FAMILIES = URBAN_TEX_FAMILIES; window.urbanTexUrl = urbanTexUrl; window.urbanTexKey = urbanTexKey; window.urbanTexPick = urbanTexPick; window.urbanTexGlow = urbanTexGlow; window.LIQUID_SHEETS = LIQUID_SHEETS; }
+if (typeof window !== 'undefined') { window.URBAN_TEXTURES = URBAN_TEXTURES; window.URBAN_TEX_FAMILIES = URBAN_TEX_FAMILIES; window.urbanTexUrl = urbanTexUrl; window.urbanTexKey = urbanTexKey; window.urbanTexPick = urbanTexPick; window.urbanTexGlow = urbanTexGlow; window.LIQUID_SHEETS = LIQUID_SHEETS; window.URBAN_DECAY_FAMILIES = URBAN_DECAY_FAMILIES; }
 
 const TERRAIN_SIDE_SPRITES = {
 

@@ -38,6 +38,10 @@ async function waitFor(page, fn, ms, every = 400) {
     if (!i) { i = document.createElement('input'); i.id = 'lobbyJoinInput'; document.body.appendChild(i); }
     i.value = c; window.lobbyJoinRoom && window.lobbyJoinRoom();
   }, code);
+  /* THE ROOM (2026-11-11): both seats press READY, then the server counts 3 s */
+  await sleep(1500);
+  await host.evaluate(() => window.lobbyToggleReady && window.lobbyToggleReady());
+  await guest.evaluate(() => window.lobbyToggleReady && window.lobbyToggleReady());
   await waitFor(host, () => window._NET && window._NET.online === true, 20000);
   await waitFor(guest, () => window._NET && window._NET.online === true, 20000);
   await sleep(3000);

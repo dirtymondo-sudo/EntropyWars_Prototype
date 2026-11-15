@@ -1340,6 +1340,28 @@ coat are still literally in every after shot, every body"; "why is there a hole 
   MPFB female lab coat still shows a little of the jeans' seat in the Wide stance back view; the thin long coat shows a bit of the tee at
   the waist side (above the skirt, its own fit, same as before).
 
+## THE COAT IN THE WALK (2026-11-14, character-models-plan row 9 pass 4)
+mondo 11-13 on the remade halfdemon M (saved look's `bovercoat` on mpfb_male), walk frame of the look check: "this part is
+sticking out of his clothes" = the overcoat's skirt standing out like a bell at the hip.
+- **Cause (not the walk clip):** `hangTick` ran ONE step of at most 1/30 s per drawn frame and simulates the chains in WORLD
+  space. (1) On a slow frame rate (the look check's software GL, a weak PC, a stall) the coat ran in slow motion: the first
+  stride or a turn left it standing out for seconds. (2) A unit that SNAPS to a new facing (the viewer drag, a battle facing
+  change) left the skirt where it was; the chains then sat on their bend limits on one side = the bell.
+- **Fix (three-renderer.js `hangTick`, COAT_HANG `hitch` 0.25, `sub` 4, `turnRate` 240):** a frame longer than 1/30 s runs up
+  to `sub` steps; a frame longer than `hitch` s makes the coat hang fresh (weights + legs, no history); the part of a turn
+  faster than `turnRate` deg/s is carried: every chain bone's cur/prev is moved by the rig root's matrix delta (lerped by the
+  excess share), so a slow turn still swings the skirt and a snap does not tear it. `hangTick(part, dt, root)` takes the rig root.
+- **Measured (halfdemon M remade, lower-bone max deviation from the baked direction):** 15 deg before and after two 90 deg
+  snap turns (was pinned on maxBend). True stride at 60 fps, back view, ID colours: 0 trouser px through the coat.
+- **Tried, no gain, not shipped:** stiffness 12 / 30, follow 1, rad 0, a lever damping, a deeper static tuck (`gap` 0.025 up to
+  yA + 0.25 Hm: shirt px at the waist 30/14/29 -> 84/37/82, worse).
+- **Still open:** thin light lines across the BACK WAIST of the overcoat (idle + walk) are the tucked white SHIRT (and a little
+  waistband) level with the coat's inside, NOT the belt; about 14-30 px in a 600 x 650 crop. THE CLOTH COLLISION off makes it far
+  worse, so it wants a look at the coat's own waist fit (shirt stand-off max 22-25 mm vs the coat's min 17 mm, 6-10 cm above the
+  hip joints). The saved looks on the classic body show trouser specks at the seat (no fitting passes there, by rule).
+- **Probe lessons:** set the yaw BEFORE the sim (a yaw set after it is itself a snap turn); advance the mixer past the
+  idle->walk crossfade; step real 1/60 s frames (`DYN`), a paused mixer hides everything.
+
 ## THE TABS + THE BODY SLOTS (2026-11-03, character-models-plan row 12n)
 mondo: "In the character creator, can we have tabs instead of one long list where i have to scroll through everything. And I want the
 clothes+accessories organized by body part like a typical rpg; head, torso, left arm, right arm, legs, footwear, etc."
@@ -1805,3 +1827,168 @@ off); the skin sheet differs by at most 2/255 on most pixels (CPU vs GPU canvas 
 What is left on a first visit: one build per look not seen this session (the layers / hair / collision fits, ~0.3-1 s each here),
 and the session's first MPFB body (GLB parse, animation bake, shader compiles: the Meshy team's first visit pays the same kind).
 Probe (scratch only): Playwright + a `__tr` / `__clear` accessor patched into a served copy, longtask observer, CDP Profiler.
+
+## THE CUSTOM SHAPES - a face likeness as a head shape + a skin (2026-11-11, local delivery)
+
+**WHAT** - `morganHead` (OUTFIT > Head, group "Face likeness", 0..1) reshapes the MPFB head into Morgan's face, and the
+`morgan` skin (`looks/skin_morgan.jpg`, 1024 px, built on `skin_young_caucasian_female`) carries her face on the hm08 sheet.
+Pick both for the likeness; brows / lashes / eyes stay the usual layers on top (her own brows are in the skin).
+
+**HOW** - a custom shape is NOT a MakeHuman target: `charactercreation/mpfb/custom_shapes/<key>.json` holds sparse offsets
+(metres, glTF axes) per hm08 base index, and `node bake-custom-shape.js` adds / replaces them in `mpfb/mpfb_shapes.glb`
+(same POSITION + `_I` + `ewShapes` layout; a one-sided shape gets an empty other end). `sprites.js` needs only the slider row
+(`EW_MPFB_FACE_SLIDERS`, `inHeads`) + `EW_APPEARANCE_LIMITS`; `shapeBody` reads the GLB by key, no renderer change. The skin
+is pushed onto `EW_MH_LOOKS.skins` after the generated block, like the werewolf fur skins, so `bake-mpfb.py --looks` keeps it.
+
+**RE-RUN** `node bake-custom-shape.js` after `bake-mpfb.py --shapes` (that rebuilds the GLB from MakeHuman's targets and drops
+the custom ones).
+
+**STATE** - the shape was measured on `mpfb_female` (it applies to every MPFB body by base index; untested on the male bodies).
+
+**THE LIKENESS SWITCH (same day, the merge thread; mondo: "hide behind a switch anyway, im really just testing something")** -
+both picks are hidden unless the browser turned them on: open the game once with `?likeness=1` (remembered in localStorage
+`ew_likeness`; `?likeness=0` turns it off). sprites.js `EW_LIKENESS_PICKS` / `ewPickSwitchedOff(id)`; party-builder.js `pickOff`
+filters the shaped-head list and the skin tiles (a worn pick stays listed so it can be taken off). The enums / limits keep the
+keys, so a saved look with the likeness still draws anywhere. A new likeness = add its keys to `EW_LIKENESS_PICKS`.
+**THE MANIFEST** - `mpfb_shapes.glb` changes in place, so ASSET_MANIFEST.json must carry its new [bytes, sha1[:12]] (the branch
+missed it: the game would have kept fetching the old `?h=`); `skin_morgan.jpg` is listed too.
+**CHECKED** in the real creator (Chromium, WebGL2, MPFB female, OUTFIT > Head > Creature heads > Morgan, SKIN > Morgan): switch
+off = neither pick listed; on = both listed, head reshapes, skin draws, no page errors. Shots: project files custom-head-20261111/.
+Not checked: the male bodies, WebGPU.
+
+## THE FACE LAB (2026-11-11, thread "Build a face animation dev mode")
+mondo: "Can you make some sort of experimental dev mode where i can mess with the mouth and eye animations? And have buttons
+that like open their mouth and let them talk and roll their eyes and laugh and moan and cry and scream and stuff ... I just
+wanna see what the capabilities are".
+
+**WHAT THE HEADS HAVE** - all 10 MPFB GLBs (male / female, heavy / thin / short of each, classic MPFB male / female) carry 67
+morphs on the body mesh: the 52 ARKit face units + 15 Oculus visemes (bake-mpfb.py), and the mesh keeps MakeHuman's eyeballs,
+teeth and tongue. The game_engine rig has NO jaw or eye bones: the jaw opens and the eyes turn by shapes. The classic bases and
+every Meshy race model are one fused mesh with no morphs and no face bones (nothing to drive without Blender work). A Meshy
+creature head (hideHead) covers the MPFB face.
+
+**SWITCH** - Settings > Developer > Face Lab (map.js `_toggleFaceLab`), or `?facelab=1` (remembered in localStorage
+`ew_facelab`; `?facelab=0` off). While on, both creators (the forge's, Occam's mirror) show FACE LAB next to FACE CLOSE-UP.
+
+**HOW** - three-renderer.js `EW_FACE_LAB` (module level, `window.EWFaceLab`): the moves table (`MOVES`: poses + timed moves,
+each a function of time writing shape weights + a head turn), `phonemes()` (TALK: the SAY line letter by letter, th / ch / sh /
+ph / ng / oo / ee pairs, into visemes with jaw; ! and ? lift the brows), `sample(now)` (one per frame), and the PS1 window
+(`#ewFaceLab`, draggable, position in `ew_facelab_pos`). Rig side (`_createAppearanceRig`): each part keeps the body's own
+morph names (`fmAll`, `fmDict0`); `rig.faceLab(true)` rebuilds `part.faceMorph` with all 67 (`_ccFaceMorphFrom`) and the
+geometry pass writes them (shapeKey `+f`); `faceLab(false)` goes back to the idle face's 16. Only `EWCharViewer.faceLab` calls
+it, so board bodies never carry the extra ~12 MB. `faceLabTick` (in `tick()`, instead of `faceIdle` while the window is open):
+zero, idle face (eased out under a move except its blinks), + the raw sliders, + the move, clamp 0..1; the head turn goes on the
+Head bone after the clip (undone first if the clip did not set the bone). The pack beard / moustache (`w.facial`) gets the face
+shapes of the nearest skin vertex any shape moves (`faceWearMorph`), sharing the body's influences, so it opens with the jaw.
+The creator stage is its own WebGLRenderer (also under WebGPU mode), so this is WebGL either way.
+
+**CONSOLE** - `EWFaceLab.open()`, `.play('laugh')`, `.say('text')`, `.set('jawOpen', .5)`, `.pose({...})`, `.opt('hold', true)`,
+`.stop()`, `.close()`. COPY POSE puts the sliders on the clipboard as JSON (for baking an expression later).
+
+**CHECKED** in the real creator (Chromium, WebGL2, 1600x900 + 1280x720): MPFB male + MPFB female, every move button, TALK
+frames, roll eyes frames, full beard following vs not, close puts the body back to 16 shapes and the beard's morphs off, no
+page errors. Shots: project files face-lab-20261111/. Not checked: Occam's mirror (same button + stage), the classic MPFB bodies.
+
+
+
+## THE UNIT FACES (2026-11-12, mondo: "get the faces a little more accurate ... custom face/body textures"; meshy-remake-plan.md section 6)
+
+**WHAT** - a remade look can wear the unit's OWN Meshy face on the MPFB head: `<race>Face` (a custom head shape, OUTFIT > Head >
+"Unit faces", 0..1) + the skin `ew_face_<race>` (SKIN list, "<Race> face (Meshy)"). The mesh is still the MPFB head, so the 67 face
+shapes work (checked in the Face Lab: blink, talk, smile, frown). Pilot = the cowboy: `cowboyFace` + `ew_face_cowboy`, worn by
+`RACE_REMADE_LOOKS.cowboy.male` (its eye sliders zeroed, the beard piece off because the beard is in the skin, hair `#4a3423`).
+His saved look (`RACE_CREATOR_LOOKS.cowboy`) is untouched and the Meshy model is still the default.
+
+**HOW** - `bake-face.py` (repo root; its header has the steps and the install line). Source = the OLD fused unit GLB, not the T2 remake:
+the old head is far sharper (the T2 face is a blur). Landmarks: MediaPipe face landmarker on a flat face-on drawing of each head
+(`pitch=15` tips the cowboy's bowed head up so the brim clears his eyes), 373 of 478 landmarks kept, median 6 mm after alignment.
+Then `node bake-custom-shape.js`, the skin into `charactercreation/mpfb/looks/`, both in ASSET_MANIFEST.json ([bytes, sha1[:12]]) and
+`--put` to R2 (`Assets/characters/creator/mpfb/...`).
+
+**RULES LEARNED** (each was a fault on screen first)
+- Each eye ring moves as ONE (mean move): the unit's squint must not squash the MPFB eye opening or the eyeball.
+- Inner lips share one height: else the mouth opens. Teeth + tongue move as ONE piece with the lips (base index 13380-13605 tongue,
+  14598-14741 eyeballs, 14992-15127 teeth): riding the nearest skin, a beard's bulk on the chin (22 mm) pulled the tongue's tip out.
+- Depth counts 0.3 in the falloff and the field is read at the face's own depth: parts behind the face otherwise lag and come through.
+- Paint: nothing above the brow line (the hat band landed on the forehead), nothing behind the face outline (ears got hair smear),
+  nothing in the eye openings. The stock sheet is toned by the unit's skin (60th percentile of the painted face) and the unpainted
+  skin beside the paint takes the paint's tone (a brim shadow baked in the unit's face left a pale forehead band).
+- Tried and dropped: fading the paint out below the brows (the brows went with it and a step showed).
+
+**ROUND 2 (11-12, mondo: "the shadow/darkness above his eyes is too much. fix whatever else you think is off")** - three causes, all in bake-face.py now:
+- THE BRIM SHADOW: the hat's shadow baked in the unit's face. From the eyes up the paint's broad brightness (12 px blur) is lifted to
+  the lit skin of the cheeks and nose (up to x2.4); brows and creases keep their contrast. The edge tone then reads lit skin only (75th pct).
+- THE BROW'S DEPTH + THE FOREHEAD: this was most of the darkness and it was SHAPE, not paint. Under a brim the landmarks above the eyes
+  are poor in depth and the forehead's are dropped, so the brows were set back under an unmoved forehead and the game's light shaded
+  the hollow (it showed with no hat on too). From the eyes up every landmark takes the eyes' own depth move; dropped forehead
+  landmarks take the nearest brow-height move; points up the MPFB forehead carry it on in a long slope under the hat.
+- THE BEARD'S BULK: landmarks below the nose that are dark in the unit's drawing (103 of them) move the face 55% of the way: the chin
+  no longer grows by the beard's thickness (max offset 32 -> 27 mm).
+Told apart by: the flat `fit_check.jpg` (no light) showed an even face while the game showed the band; `edgek=0` changed nothing.
+Proof `/mnt/project-files/meshy-parts-20261112/cowboy_face_round2.jpg`.
+
+**THE KNIGHT + THE WIZARD (11-12, mondo "yes" to faces on the other two)** - `knightFace` + `ew_face_knight` (on mpfb_female), `wizardFace` +
+`ew_face_wizard`; both remade looks wear them (their hand-set face sliders removed; the knight's brows are in her skin, `mhBrows: own`).
+Commands (old unit GLBs = the race's own model on R2):
+- knight: `unit=knightf.glb body=mpfb_female stock=.../skin_young_caucasian_female.jpg key=knightFace skin=ew_face_knight cy=1.485 pitch=0 brow0=0.05 brow1=0.065 hairrgb=92,15,30 hairside=- hairdiff=22 eye0=0.004 eye1=0.011`
+- mummy (11-12 batch two): `unit=mummy.glb body=mpfb_female stock=.../skin_young_caucasian_female.jpg key=mummyFace skin=ew_face_mummy pitch=0 hairrgb=20,20,22 hairtol=110 hairgrow=9 eyekeep=0.007 darkk=0.9 darkx=0.028` (the first bake left black hair streaks on her temples).
+- angel (11-12 batch two, THE SOFT FACE: a photo-real young face fitted in full came out older and harsh): `unit=angel.glb body=mpfb_female stock=.../skin_young_caucasian_female2.jpg key=angelFace skin=ew_face_angel pitch=0 hairrgb=150,115,75 hairtol=45 beard=1 depth=0.25 wide=0 low=0.5 browfit=0 lipsrigid=1 lips=0` + the knight's look sliders.
+- wizard: `unit=wizard.glb stock=.../skin_young_caucasian_male.jpg key=wizardFace skin=ew_face_wizard cy=1.38 pitch=0 hairrgb=165,115,65 hairtol=55`
+- cowboy: `unit=cowboy.glb stock=.../skin_middleage_caucasian_male.jpg key=cowboyFace skin=ew_face_cowboy` (defaults: cy 1.5, pitch 15)
+New rules: HAIR OVER THE FACE (`hairrgb=`: a landmark or texel on hair takes its mirror from the other side of the face; `hairside=-|+`
+also mirrors any texel on that side that disagrees with its mirror, for the hair's soft edge and its shadow); no hat = paint the
+forehead (`brow0/brow1` up at the hairline); a wider eye margin (`eye0/eye1`) drops heavy painted eye make-up; the tongue 8 mm in.
+The tongue showing in the Face Lab talk pose (jawOpen 0.5 + mouthFunnel 0.3) is the STOCK heads' own, same with the shapes at 0.
+Proof `/mnt/project-files/meshy-parts-20261112/three_faces.jpg`. Known on the knight: painted brows are rough, thin hair-edge lines
+at the right cheek, a pale strip at the hairline.
+
+**BATCH 2 OF 3 (11-13)** - 23 more unit faces (`<key>Face` + `ew_face_<key>`; keys: halfdemon, halfdemonf, hippie, hippief, homosapien, icequeen,
+kifighter, kingarthur, luchador, madscientist, madscientistf, marksman, marksmanf, meninblack, mime, mushroomgirl, necromancer, nephilim, nordic,
+pirate, piratef, policeofficer, orboflight). `cy=` is found by the landmarker on the unit's front render (eyes' row in the picture x the file's
+1.7 m). Men: full fit, `pitch=0` (+ the `hairrgb` in meshy-remake-plan.md section 8). Women + men in black: THE SOFT FACE set
+(`depth=0.25 wide=0 low=0.5 browfit=0 lipsrigid=1 lips=0 beard=1`) + the knight's look sliders, creator brows / lashes / lip tint. No face: overlord
+(helmet), glitch. A stock skin far darker than the unit clips the tone gain (police officer on `young_african_male`: gain 2.5, he came out pale):
+pick a LIGHTER stock and let the gain bring it down. Not looked at in the Face Lab (blink / talk) for this batch.
+
+**BATCH ONE OF THE DEMO STARTERS (11-12)** - `zombieFace` + `ew_face_zombie`, `robinhoodFace` + `ew_face_robinhood` (both looks `mhBrows: own`).
+- zombie: `unit=zombie.glb body=mpfb_female stock=.../skin_young_caucasian_female.jpg key=zombieFace skin=ew_face_zombie pitch=0 brow0=0.05 brow1=0.065 hairrgb=25,28,32 hairside=- hairtol=45 eye0=0.004 eye1=0.011 tonepct=85`
+  (the pack zombie skins are green: a plain skin toned to her white face matches her Meshy body shells).
+- robinhood: `unit=robinhood.glb stock=.../skin_young_caucasian_male.jpg key=robinhoodFace skin=ew_face_robinhood hairrgb=50,95,45 hairtol=60` (green hood smear left at the temples, under the hood).
+- catgirl (11-12, mondo: "i want it anyway and for you to clean it up"): `catgirlFace` + `ew_face_catgirl`:
+  `unit=catgirl.glb body=mpfb_female stock=.../skin_young_caucasian_female.jpg key=catgirlFace skin=ew_face_catgirl pitch=0 hairrgb=20,20,22 hairtol=110 hairgrow=9 eyekeep=0.007 darkk=0.9 darkx=0.028`.
+  New in bake-face.py (off by default): THE HAIR'S EDGE `hairgrow=<px>` (the texels read as hair grow by that much and stay unpainted: the
+  fringe's grey edge and shadow; never within `eyekeep=` of the eye opening, so the eye make-up stays) and THE STRANDS `darkk= darkx=` (out at
+  the sides of the face a texel much darker than the skin round it stays unpainted: strands on the cheeks, the jaw's shadow line). Her remade
+  look zeroes the saved look's FACE sliders (`_ewFaceSlidersZeroed()`, sprites.js; ears + neck kept) and picks brows (the fringe hid hers).
+  Blink, talk, smile checked. Known: her painted eye make-up is faint, a soft line under the jaw.
+- (was) NOT DONE: quarterback (the landmarker finds no face behind the helmet's bars: stock face stays). Needs `apt-get install libgles2` beside libegl1 libgl1.
+
+**KNOWN** - with the mouth open the tongue sits high; the sideburn paint ends in a hard edge under the hair; sheet is 1024 px like the stock skins. Not checked: the other four male bodies, WebGPU, a battle.
+Proof: `/mnt/project-files/meshy-parts-20261112/cowboy_face_pilot.jpg`.
+
+**Round 3, THE SOFT FACE (2026-11-12, mondo on the knight: "like an ogre or an ugly instagram model ... The original one had prettier lashes and eyes and not a wide face or jawline").** What was wrong: a painted stylised unit is pretty in its DRAWING, not its low-poly relief. Fitted in full the game's light showed a flat nose, pushed-out lips, a frown pressed onto the lids and a cheek as wide as the hair made it look; her painted brows, eye liner and hair edges landed on the MPFB lids and cheeks as smudges and scratch lines; her dark painted upper lip read as an open mouth; and the "beard" rule fired on her dark lips. New opt-in bake-face.py params (cowboy + wizard do not pass them, their bake is unchanged): `depth=` (scale every landmark's depth move), `wide=` (scale the OUTWARD part of sideways moves; 0 = may narrow, never widen), `low=` (scale downward moves below the nose), `browfit=` (0 = brows / forehead take the eyes' move, no frown on the lids), `lipsrigid=1` (the whole mouth moves as one), `lips=<k>` (paint only the mouth oval, k = 0 paints nothing: the skin is then the stock sheet toned to the unit's skin), `beard=1` (rule off). The knight: `stock=skin_young_caucasian_female2.jpg beard=1 depth=0.25 wide=0 low=0.5 browfit=0 lipsrigid=1 lips=0` after the same unit / hair params as before (brow0/brow1/eye0/eye1 no longer needed). Her look (RACE_REMADE_LOOKS): jaw -0.4, head -0.2, nose -0.3, noseWidth -0.4, eyeSize 0.15, browRidge -0.6, mouthCorners 0.25, brows eyebrow010, lashes mindfront_eyelashes_04, lipTint pick #b87882, hair mh_long01 (hair001 left the whole face bare and scratchy). Lessons for the next stylised / female unit: judge in the GAME viewer, not fit_check (a plain stock female already looked harsh in the head close-up, which looks up from below); try the look with `<race>Face: 0` first to see what the fit itself adds; a creator brow + lash pick beats smeared painted ones; a lip tint over the stock lips beats a two-tone painted mouth. Not carried over: her big painted anime eyes and liner (the MPFB eyes are real eyeballs; no make-up layer in the creator). Proof /mnt/project-files/meshy-parts-20261112/knight_face_soft.jpg.
+
+**BATCH 1 OF 3 (11-13)** - 17 more unit faces (`<key>Face` + `ew_face_<key>`: annunaki, barbarella, bunnygirl, chef, clown, conspiracy, cowgirl, cultleader, demonprincess, fairy, fallenangel, firefighter, fortunetellerf, gangster, general, ghost, giant). New in bake-face.py: `cy=top<d>` (the head's middle = the top of the figure on its middle line less d m; 0.155 found the face on every unit, hats and horns included). Men: the full fit, `pitch=0`, `brow0=0.05 brow1=0.065` when there is no hat (NOT the gangster: it painted his bandana on the forehead). Women: THE SOFT FACE params of the angel + creator brows `eyebrow010` + lashes; their eye make-up and the anime faces (bunny girl, demon princess) do not carry. mpfb_shapes.glb is now 4.9 MB (each face about 75 KB): THE THREE REMAKE THREADS ALL REBAKE IT: after merging main run `node bake-custom-shape.js` again, never keep one side's GLB.
+## THE MAKE-UP (2026-11-12, mondo: "paint liner and eye shadow, and make a way in the creator to add makeup too")
+- **What:** on an MPFB body, FACE > EYES has **Eye liner** and **Eye shadow**, FACE > CHEEKS has **Blush**: each None / Pick a colour + swatches + the custom picker (party-builder.js makeupTint). Keys: `linerTint` / `shadowTint` / `blushTint` ('own' = none | 'pick') + `linerColor` / `shadowColor` / `blushColor` (sprites.js enums + EW_APPEARANCE_COLORS). Lips were already FACE > MOUTH > Lip colour.
+- **How:** one mask picture `mpfb/looks/makeup_mask.png` (92x220, red = liner + a short wing, green = shadow on the upper lid up to under the brow, blue = blush) and its box on the hm08 sheet = sprites.js `EW_MH_MAKEUP`. getMhLookLayers adds it to the layer list (kind 'makeup') + `out.makeup`; three-renderer.js `paintMakeup` lays the colours on the skin before the brows / lashes (shadow + blush keep the skin's shading, liner flat). The look-sheet key holds the three colours. Works on every skin and body: the sheet is the same.
+- **The mask is measured, not drawn:** `python3 bake-makeup.py model=<face_landmarker.task>` (repo tooling; loads bake-face.py's reader / rasteriser / landmark code) asks every face texel where it is against MediaPipe's eye rings + cheek points on mpfb_female. Rerun only to change the shapes; then update EW_MH_MAKEUP.box, the manifest row and `--put` the PNG.
+- **The knight** (RACE_REMADE_LOOKS) wears liner #17110f, shadow #6b4a55, blush #c9727c and the creator's anime eyes `mhm_spamrakuen_sr_anime_maid-san_red_eyes` tinted #3a2418 (mondo: "there are literally anime eyes available in the creator": Eye materials rows, ids `mhm_*anime*`). For the next stylised unit: use these, do not say the eyes cannot carry over.
+- Checked in the real creator (team builder > knight > GEAR > CHARACTER CREATOR > USE THE REMADE KNIGHT LOOK > FACE > EYES), WebGL2. Not checked: male bodies, online guest, WebGPU. Proof /mnt/project-files/meshy-parts-20261112/knight_makeup.jpg.
+
+## THE RESTING MOUTH (2026-11-12, mondo: "the mouth being pursed is a thing for all mpfb bodies, see if you can fix that for all of them")
+MakeHuman's neutral mouth is narrow, with full lips pushed forward and the corners turned down: every MPFB face pouted at rest.
+three-renderer.js `MOUTH_REST` (beside SHAPE_GAIN) = `{ mouthWidth: 0.25, lowerLip: -0.35, upperLip: -0.2, mouthCorners: 0.12,
+mouthDepth: -0.4 }` is ADDED to the look's own mouth sliders in shapeBody's MPFB branch (`mouthRest(key)`), so every MPFB body
+starts from a relaxed mouth and every look keeps what it changed. Nothing is stored in a look; classic bodies are untouched.
+Console: `window.EW_MOUTH_REST = false` = MakeHuman's mouth, or an object of offsets to try (a rig built after it shows it).
+First round (width 0.35, corners 0.3) read as a smile on the catgirl and the mummy; toned down. Not the cause: the idle face's
+breath (jawOpen 0.02-0.035). Still open: Agent Locke's fitted face (lockeFace) keeps a heavy lip line.
+Proof: /mnt/project-files/meshy-remake-batch1/resting_mouth_before_after.jpg (plain face, knight, cowboy, wizard, catgirl, mummy, robinhood, Locke).
+
+## THE REMADE LOOKS SWITCH (2026-11-13, mondo: "a dev option in the settings to use all of these new race looks, saves to where i dont have to retoggle it on reloading the page, but off by default for now")
+- Settings > Developer > **Remade Race Looks: ON / OFF** (map.js `_toggleRemadeLooks`, button `mmRemadeLooksBtn`). Off by default; kept in localStorage `ew_remade_looks` ('1' = on), so it stays after a reload. Nothing in IndexedDB is read or written.
+- sprites.js `remadeLooksOn()` / `setRemadeLooksOn(on)`. The hook is ONE line in `getCharacterAppearanceModel`, the resolver every drawn unit goes through (creator viewer, party builder, board, HQ, team room, preload): a unit with NO look of its own wears `getRaceRemadeLook(race, gender)`; a race with no remade look keeps its Meshy model; a slot's own saved look and USE ORIGINAL MODEL (`model: 'original'`) still win. Cast members (DOOR_CAST_MODELS, the cutscene cast) are not race units and are untouched.
+- three-renderer.js: `_computeUnitStructuralSerial` hashes the switch (flipping it mid-battle rebuilds the units); `_ptSpec` photographs the remade look for the battle portrait of a unit with no look of its own (`_ptRemade`).
+- Viewer-local, looks only: nothing relayed online (each player sees by their own switch). `?likeness=1` is a different switch (the face-likeness picks in the creator).
+- Seen on screen (creator viewer, sheriff / popstar / pirate: off, on, on after reload): /mnt/project-files/remade-looks-switch/remade_looks_switch_proof.jpg. NOT seen: a battle board with the models drawn (the cloud browser was still loading them); there only the resolver was checked (5 of 8 units switched to their remade look).

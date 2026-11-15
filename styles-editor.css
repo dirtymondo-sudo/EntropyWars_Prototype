@@ -1906,7 +1906,7 @@
         .ed-swfam { width: 100%; margin: 6px 0 0; }
         .ed-sw { width: 86px; padding: 3px; background: rgba(255,255,255,0.03); border: 1px solid rgba(140,160,200,0.18); border-radius: 3px; cursor: pointer; color: #cfd8e2; font: inherit; font-size: 10px; }
         .ed-sw img { display: block; width: 78px; height: 58px; object-fit: cover; background: #222; margin-bottom: 2px; }
-        .ed-sw span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ed-sw span { display: block; white-space: normal; overflow-wrap: break-word; line-height: 1.25; }   /* THE CALM LOOK (2026-11-11): names wrap, never cut off ("Deck plate (spaceship)", concrete_floor) */
         .ed-sw:hover { border-color: rgba(111,211,255,0.6); }
         .ed-sw.on { border-color: #ffd84a; }
         .ed-card:has(.ed-swatches) { width: min(880px, 94vw); }

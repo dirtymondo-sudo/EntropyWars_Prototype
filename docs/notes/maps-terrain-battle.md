@@ -469,6 +469,22 @@ it does nothing, so it just needs to not show up. Happens on walls and stuff".
 - Fix: battle.js `fieldCellRock(x, y)` (beside fieldCellFixed, same field lookup: the encounter's field, else the arena's) and
   map.js `unitCanTraverse` refuses it, so move / jump ranges, paths, the AI and previews all agree. Map geometry untouched.
 
+## THE BLUE DAY (2026-11-13, mondo: "the daytime sky ... looks too cloudy and washed out, like it looks very white. i want blue sunny skies with realistic fluffy clouds")
+- CAUSE: the board camera only sees the LOW sky. There the day dome was its pale horizon colour (0.58, 0.72, 0.92), under a soft fbm
+  haze sheet covering about half the sky at `clouds: 0.3` (drawn on az / el, so it smeared sideways), then washed 25-40% toward the
+  row's pale `tint`. Scene Fog is off, so the horizon haze band was not part of it.
+- NOW (three-renderer.js `_envDomeFS` "THE BLUE DAY" + the TSL twin in `reg(_envDomeFS(), 'sky dome')`, keep in step): zenith
+  (0.06, 0.25, 0.72), low sky (0.30, 0.56, 0.92), only a thin paler rim on the horizon itself. Clouds = cumulus on a flat layer
+  (`rd.xz / (h + 0.14) * 1.9`: puffs shrink and stack toward the horizon, no az seam), 3 fbm reads: crisp cover threshold
+  `0.60 − 0.20 × clouds − 0.14 × overcast`, lit side from the density step toward the sun (`cd − cd2`), blue-grey shade, darker cores.
+  `clouds` 0.3 = about a quarter of the sky; past ~0.55 (`ovc`) it still closes into the grey overcast (Antarctica, the haunted
+  grounds, a storm). The map tint washes a day sky far less (× 0.45 on the horizon, × 0.15 from 17° up, scaled by dayK), so the
+  desert rows are blue with a little warm at the rim. Night, dusk, the events, the painted skies and the fog band are untouched;
+  no data rows changed (a row's `clouds` is still the dial).
+- Headroom: the lit cloud tops stop at 0.98 and the sun glow was cut 0.55 → 0.40, since his Mac (WebGPU) renders brighter.
+- Bench used: a standalone WebGL page running the old and new `_envDomeFS` on a full-screen quad (fast to iterate), then the boards.
+  Proof: /mnt/project-files/blue-day-sky/.
+
 ## THE SKY SEAM (2026-10-14)
 mondo: "there is a seam in the sky that has been there since the very beginning ... right down the middle of the sky
 from the view of when the camera looks up at the zodiac signs." ROOT CAUSE: `_envDomeFS` (and its TSL twin, 'sky dome')
@@ -480,6 +496,18 @@ variance-normalised about the fbm mean 0.484 so the band keeps its contrast); th
 half turn so the wrap lands on a cell edge. The rest of the sky is unchanged. Checked with a standalone render of the
 shader (before/after) on WebGL and a WebGPU battle shot at the zodiac view. The zenith pinch (all azimuths meet at
 straight up) is untouched.
+
+## THE LIQUID STAYS ON ITS SQUARES (2026-11-11, mondo: "a regular line spell on flat terrain shouldnt make a whole 3x3 of
+liquid, just a 1x3 ... whatever the aoe of the spell is is what tiles the liquid should be")
+Replaces the spring halo of THE LIQUIDS LIKE MINECRAFT below. map.js `_recomputeLiquidFlow`: liquid lies on the squares a
+spell (or weather, a melt) put it on and never creeps over level ground. Kept: it runs down onto any strictly lower
+neighbour and on down every further drop; and it fills a HOLE (`_liquidInHole`: the level floor it lies on has higher
+ground or the board edge on every side, no lower square, at most LIQUID_HOLE_CAP 16 squares; walls and props are not a
+hole's side; a map's own settled pool never grows over its own floor). `liquidRunsOnto(sx,sy,nx,ny)` is the one rule the
+flow map and battle.js forecastSpellPlan share; doSpell's hit pass still pulls the first ring of runoff (now only a drop
+or a hole floor) into the hit. The flow record's `d` is always 1 (no thinning fan); `_LIQUID_SPREADS` only names the
+families that run. Ground fire has its own spread (flammable squares) and was not touched. Spell text fixed: Poison Swamp,
+Call of the Deep. Browser proof: /mnt/project-files/liquid-spread-20261111/.
 
 ## THE LIQUIDS LIKE MINECRAFT (2026-10-15, mondo: "How is there a cube of poison and its not spreading ... make sure spells
 are changing the terrain of the block on the ground, not placing a liquid block on top")
@@ -1541,6 +1569,26 @@ hole clean through the stone wall — debris everywhere!", then "🎱 Golem slam
   /mnt/project-files/playtest-mechanics-20261107/solid-wall-smash/ (before: Haymaker on a Yeti; after: Telekinetic Slam on a
   Juggernaut, column 0-8 intact, no crash line).
 
+## THE BATTLE MAP POLISH, second third (2026-11-10, mondo: "make improvements to all of the battle maps (12x12) ... AAA presentation and polish")
+Share of this thread: dumb, fairy_forest, giza, gobekli, haunted, heaven, hell, hollow_earth, lodge, lookingglass, mars, moon.
+Every board stays a cut of its own room; the room is edited, a `HQ_ARENA_RULES.within` pin holds every size on the spot, then
+`node bake-holes.js <room>` and `node bake-arenas.js prebuilt_<site> [--size 9|10|11]`.
+- THE HOUSE COLUMNS: keep board columns 4..7 clear and flat from end to end (and the middle 4x4). The 12 only needs rows 0, 1,
+  10, 11 there plus the 2x2 nexus, but the 9 / 10 / 11 cut the same spot half a square off and need their own house rows. Every
+  house tile must be level 0, so a board cannot have its spawns on the high ground round a pit.
+- Fair = the same from both ends: (x, y) -> (11-x, 11-y), or a top/bottom mirror.
+- Cover that the lattice reads: a `tree` on a square centre (r 1.3), `gen.solid` rows in a plan gen ({x, z, r: 1.72} one square,
+  {x0, z0, x1, z1, w: 3.4} a run of squares), a `plateau` (1.4..1.75 = level 1), a `ridge` through square centres. Props are
+  not read. Anything forced open erases a `gen.solid`: the plaza disc (plazaR), `gen.open`, a `path` (+ pathGrow), every prop
+  (1.2 m) and NPC spot. Scratch check: put a solid on all 144 squares and raster, the squares that stay rock can hold one.
+- A `dip` takes a POSITIVE h (the code subtracts it). The Moon / Mars "craters" with a negative h are mounds.
+- A plateau square under a `bridge` reads one level too high (Mars: keep stubs off the arch's row).
+- Fairy Forest: 18 trees on square centres (they stood inside walkable squares), two knolls, two fae paths, groves moved off.
+- The Lodge: 8 piers, two galleries (1.4), four bookcase blocks on a bare 144-square floor. plazaR 8.
+- Moon: board on the big crater (now a shallow real bowl), two rim ridges (1.6), six boulders.
+- Mars: board on the canyon floor under the arch between the mesas; two rock walls, two shelves, four stubs (1.6). plazaR 6.
+- D.U.M.B.: the maze between the hall and the bays opened into THE CONCOURSE, four concrete blocks, a 4-square avenue.
+- The Haunted House: the hedge that cut the board in two has a 4-square avenue; a second hedge line answers it south of the plot.
 ## THE FULL BLOCK — Build / dig step a whole square on big squares (2026-11-10, three-renderer.js)
 mondo: "Build only builds half a tile up now, and there are some maps where it looks like there are raised tiles but they are only
 half a tile up." Reproduced (Bohemian Grove Arena, WebGL2 headless): a Build block's top stood 0.496 square over its neighbour.
@@ -1556,6 +1604,39 @@ half a tile up." Reproduced (Bohemian Grove Arena, WebGL2 headless): a Build blo
   Bermuda 26, Moon 23 ...), level 2 ≈ 3 m = 0.86, level 3 ≈ 4-5 m. Making those full squares = doubling the terrain heights in each
   room (grow-room.js grew the plan only, "every height stayed") + THE TIER RULE at the square's scale so the levels stay the same.
   Asked mondo (thread "Fix Build raising tiles only half a step").
+
+## THE CRUISER — the Spaceship as a round hull on three levels (2026-11-11, replaces THE GUNSHIP's deck)
+mondo on PR #1144: "it still just looks like a floating rectangle" · "A ship is generally more clyndrical. I expect there to be ramps and
+stairs ... not confined to making it a rectangle" · "make sure i am able to walk on those boosters, thats what i mean by verticality ...
+i want to walk on the side/edge of the ship where it is lower" · "and the wings" · the docking arm "sticking off the side is kind of useless".
+He approved the second mock-up ("yeah that better, proceed"); he was angry a match was launched before approval: MOCK-UP, then WAIT.
+- data.js HQ_AREA_SPECS.prebuilt_derelict (same lattice, board cols 11..22 rows 8..19, bow north): hqDeckPlan 'o' = THE LOWER LEVEL 3.2 m,
+  '1' = THE FLIGHT DECK 6.7 m, '2' = 10.2 m, `proud: 0.45` (a one-square void now reads as void; 0.7 read it as deck). Board per row:
+  `o o . o 1 1 1 1 o . o o` ×3 (pod · gap · walkway · flight deck) · `. A B C 1 1 1 1 C B A .` (the stair row) · `o o o o 1 1 1 1 o o o o`
+  (wing) · `2 1 o o 1 N N 1 o o 1 2` ×2 (turret, step, wing, walkway, nexus) · mirrored.
+- HQ_ARENA_RULES.houseTile = { prebuilt_derelict: 1 } (new): the house tiles stand one level over the board's lowest ground.
+  bake-arenas.js judge (HOUSE = ht, apron / egress ≤ ht + 1) and data.js hqArenaUpgrade (zone tiles === hqArenaHouseTile(site)) read it.
+  Every other site is 0, as before.
+- The stairs: `ramp` x −15.4 → −7 (8.4 m), rows 3 and 8, both sides: from 1.4 m inside the foot square to the flight deck's edge, so the
+  square middles step 1.31 / 1.46 / 0.73 m (the walker's climbM 1.46) and the deck square stays flat.
+- three-renderer.js `_hqShipParts(hl, uvS)` (new, called by _hqBuildStarship when the hull row has any of them; room metres, bow north):
+  `tube` (the lofted round fuselage, `crown` steps its flat cut up over the keel, hoops, flank lines, stern face + bells + plumes),
+  `nacelles` (pods; `bell: false` = a gun pod), `wings` (a swept slab + fin), `cannons`, `canopies`, `masts`. The old keel / bells / pods /
+  canopy / guns rows still work for a hull that has them; this room no longer uses them.
+- Moved with it: the bay door is a FREE door on the nose deck (siteRooms.backDoors, x 8.75 z −36.75), the room spawn beside it; the
+  dock's props are on the outer wings and the boosters' after ends; dishes on the bridge and the engine block. Picks 12/11 @ 11,8, 10/9 @ 12,9.
+- Scratch tools + mock-ups: /mnt/project-files/spaceship-real-ship-20261111/ (tools/plan3.js draws the rows, mock.html the 3D mock-up).
+
+### THE HEADING (2026-11-12, mondo: "the spaceship is flying sideways now on the spaceship map")
+WHY: THE GUNSHIP / THE CRUISER turned the bow north (−z), but `prebuilt_derelict` env.motion still had `axis: 'x'` from the old east-west
+hull, so the wreckage and the dust streamed across her beam.
+- data.js: the site's motion is `axis: 'z', dir: -1`. `dir` now also applies to the linear streams (drift / sea / space / void): −1 = the
+  world streams toward +axis (default 1, every other map unchanged). The walk's sky reads the same row (hqAreaSky `voyage`).
+- three-renderer.js: `_motionPlace` + the motes in `_motionAnimate` and the walk's `_hqTickSky` floaters + motes take `dir`; new
+  `_motionStreakRot(cam)` turns a dust streak (a sprite stretched along the screen's horizontal) onto the z axis as the camera sees it,
+  on z voyages only. Not changed: the nebula flow (uSkyFlow is a slow turn of the dome, no axis).
+- Checked in a VS CPU match, WebGL2, his fog on: 81 of 82 moving bodies ran toward +z (the stern), none along x, streak angle = the
+  z axis on screen. Not looked at: the walk on the deck, online, WebGPU. Shots: /mnt/project-files/spaceship-heading-20261112/.
 
 ## THE FULL LEDGES — a room's own metres per level, ledges a whole square tall (2026-11-10, data.js)
 mondo after the Giza pilot shot: "looks good, go ahead and fix all of the maps that need it".
@@ -1582,7 +1663,573 @@ mondo after the Giza pilot shot: "looks good, go ahead and fix all of the maps t
   (floor 7.5). Both: boards cell-for-cell the original at 12 / 9 / 10 / 11, so the picks were NOT re-cut.
 - **Never re-cut the picks when the boards compare identical** (scratch `cmp.js <site…>` with DATA_BEFORE=<old data.js>): a re-bake can
   move the window (it moved Gobekli's 9×9). Re-cut only when cmp shows changed cells.
+- **Holo Sim** (`facility_holosim`, third PR): every `holo` block a cube (risers 3.5 m, pylons 7 m, terraces 3.5 / 7 / 10.5 / 14 m), gallery
+  + its racks and consoles 10.5 m, emitter orbs y 14, the hall 10.5 → 17.5 m. Board identical, own pick untouched.
+- **Second third, fourth PR** (after the polish PR #1085): Mars `cydonia`, Moon `mare`, Lodge `halls`, Haunted `grounds` (spec rows: `levelM: 3.5`
+  on the HQ_AREA_SPECS row), Fairy Forest `glade`, D.U.M.B. `motorpool` (literal rooms: in `terrain`). Mapped by the level a height read
+  on the old rule from floor 0 (1.2-2.95 m → 3.5, 2.95-4.7 → 7, 4.7+ → 10.5; under 1.2 m kept): plateaus, ramps h0/h1, bridges y, rails y,
+  walls y / lift, props + npcs y (an offset on a ledge kept: 3.96 → 7.76). Hills, far ridges, dips, the Lodge's sunk cellar, ghost walls
+  under real-size props (Lodge shelves 2.6 m) stay. Closed rooms got the same 3.5 m of ceiling: Lodge 5 → 8.5 m, motor pool 6 → 9.5 m.
+  Moon: the crater's two `ridge` rows 1.6 → 3.5 m and w 4.4 → 5.2 (a smoothstep ridge 3.5 m tall on 4.4 m is steeper than the walker's
+  limit and its straight squares fell out). Haunted: the stairs 0.8 → 3.5 and 0 → 3.5 start one square later (x0 −38.5, z0 −31.5) so
+  their lower square stays level 0. All six: boards cell-for-cell at 12 / 9 / 10 / 11, picks NOT re-cut.
+- **What a `levelM` room changes off the board**: walk slope limits ×2 mean some rock banks / rims that refused the walker now carry it
+  (Mars +20 squares, Moon +43, traps never more); a ramp's middle squares can read one level different (tierMin stays 1.2 m); a deck
+  3.5 m up has walkable floor under it (Lodge's minstrels' walk). scratch `rdiff.py` lists these; `lift.py` does the mapping.
+- **Last third, fifth PR** (after the polish PRs #1086 / #1089). Two new room flags beside `levelM` (spec rows pass them too):
+  - `ghostM: 1.75` — THE REAL-SIZE PROPS (`hqFieldGhostRules`): a square whose top is a GHOST block (a prop's stand-in: a sarsen 4.2 m,
+    a trilithon 6 m, a tree, a car) counts by the 1.75 m step, so prop cover keeps the level its real height always read while the
+    ground and drawn pieces count whole squares. hqFieldRaster marks the square `ghostTop`, hqFieldRasterTerrain reads `c.src.ghostTop`.
+    Agartha / Atlantis (first third) do not use it: their ghosts were authored at 3.5 m for level 1.
+  - `walkM: 1.75` — the room keeps the PLAIN walk rules (`hqTerrainRulesFor`): for natural rooms whose rock banks would open up under
+    the doubled slope limit. Pick per room whichever changes fewer squares (scratch `sw.sh`): Singularity, Shasta, Saturn use it;
+    Olympus, North Pole, Technoticlan, Flying Dutchman, Stonehenge do not.
+  - Raised (lift.py `--auto`, levels by the old rule, a stepped stack kept as a ladder 3.5 / 7 / 10.5): Stonehenge (bank, barrows),
+    Singularity (drawn obsidian 2.2 → 3.5, 4.2 → 7; terraces), Technoticlan (court walls + stand 3.5, altars 3.5, pyramid 3.5 / 7 / 10.5),
+    Shasta, Olympus (fire plinths 1.2 → 3.5, dais 7, loft 7), Saturn (shelves; 11×11's west ramp starts at z 25.5), North Pole (loft 7,
+    terraces 3.5; the 1 m deck stays), Flying Dutchman (decks 1.5 → 3.5, poop 7, bulwarks + gun ports + hatch crates follow; the six
+    deck stairs are 2.7 m long now so their lower square keeps level 0). All: boards identical at 12 / 9 / 10 / 11, picks not re-cut.
+  - Left as they are (board cover is real-size props / buildings only): Stadium (stand treads), Vatican, Strip (roofs are buildings),
+    Skinwalker (its 3.2 m mesa already reads level 2; no ramp keeps the 9 / 11 boards' squares at 7 m).
+- **A ramp's squares**: with tierMin fixed at 1.2 m a ramp to a 3.5 m ledge crosses level 1 earlier. When a board holds the ramp, start
+  the ramp later (shorter, steeper) until the compare is clean; never re-cut the pick for it.
 - **Nothing to raise**: Hollow Earth (its level squares are a 0.3 m deck and the real-size `riser_1` prop), Heaven, Lookingglass.
 - **Who switches what** (three map-polish threads were re-laying every board the same day): first third (agartha … downtown) does its
   own 12 in its re-lay; this thread takes the other 24 after each polish merge. Tools: /mnt/project-files/build-full-block/tools.
 
+
+## THE BATTLE MAP POLISH, first third (2026-11-10, mondo: "make improvements to all of the battle maps (12x12) ... replacing a terrain texture, redesigning the layout, making the map look more realistic, replacing or adding better props, removing props ... AAA presentation and polish")
+Three threads share the 35 site arenas by site id: this one has agartha, antarctica, area51, atlantis, babel, bermuda, bohemian_grove,
+camelot, cern, cyberpunk, derelict, downtown. Before / after shots: /mnt/project-files/battle-map-polish/first-third/.
+- **WHAT A BOARD'S MIDDLE CAN HOLD (read before laying any board out)**: all four sizes (12 / 11 / 10 / 9) are cut from the same
+  squares, and each size's house (spawn rows, egress rows, the nexus, and the APRON one square round the spawn rows) must fit. On the 12's
+  grid that leaves: columns 4..7 flat on rows 0..3 and 8..11 and on the nexus rows; columns 3 and 8 at most ONE level on rows 0..3 and
+  7..11 (an apron takes one level); two levels or more only on columns 0..2 and 9..11, or columns 3 / 8 on rows 4..6. A bake that prints
+  "KEEPS ITS OLD PICK" for a size means the layout broke that size's house: fix the layout, never ship the stale pick. Scratch tool
+  that prints the house of every size on the 12 grid: battle-map-polish/first-third/tools/cons.js.
+- **THE CLEAR BOARD**: a scatter row's `off: [x0, z0, x1, z1]` (data.js hqTerrainCompile) drops the pieces that would land in that
+  rectangle; every other piece of the row stays where it stood (the piece is dropped, not re-rolled). Use it for the board's rectangle:
+  a loose stone on a fight square reads as cover and blocks nothing.
+- **THE GREAT CRYSTALS**: `crystal_cluster` reads its row's `h` (three-renderer.js proc; 1.4 m without one). The 1.4 m gem was a speck
+  on a 3.5 m square.
+- **garden_ring**: its stones sat 6 mm over the floor and the floor showed through in patches from a battle camera; 3 cm now.
+- **HQ_AREA_SPECS rows take `levelM`** (hqAreaRoom passes it to the room's terrain).
+- **Agartha** (THE PLAZA, same window x -21..21, z -7..35): the old board had its 12 cover squares on the two edges and nothing in the
+  middle six columns; two 14 m garden rings (hedges units walked through), the fountain, two benches, a riser and two signs stood on
+  fight squares. Now, alike from both spawn rows and both flanks: a gate of two 5.5 m columns before each spawn row, four 4.5 m crystals
+  round the nexus, a 2 m crystal on each flank lane, a 2 x 2 marble dais on the west and east edges with a column at each end. The
+  fountain (and its rail) stands north of the board, the garden rings, benches, riser and signs south of it; nothing was deleted except
+  the four scattered pieces that had landed on the board. THE FULL LEDGES: levelM 3.5, every terrace of the room at 3.5 / 7 m (was 1.6 /
+  2.4 / 3.0 / 3.6 / 6.2), the adit passage door y 2.4 -> 3.5; walkable squares of the room unchanged, 0 traps. Not walked in exploration
+  on screen.
+- **Atlantis** (the temple's pool court, window x -35..7, z -7..35, pinned in HQ_ARENA_RULES.within): the old board had the oracle's
+  pool off centre and its cover on one side. The pool, oracle, rail arc and fish moved 3.5 m north (z 17.5 -> 14) so the pool sits on the
+  board's middle rows; now alike from both spawn rows: a 2 x 3 stone block beside each spawn row, a 5.5 m column on each corner of the
+  pool court, an angel statue (h 3.8) at each end of the west bench wall, braziers off the spawn lane. Two giant clams and the ocean
+  rocks tried first: the clam proc ignores `h`, the rocks drew black, so neither is used. THE FULL LEDGES: levelM 3.5, every 1.2 / 2.4
+  ledge 3.5, every 3.6 ledge 7, oracle plateau 8.4. Not walked in exploration on screen.
+- **Reach rule found on Antarctica**: the bake's reach treats every cover square as a wall, so a ring of cover seals a pocket and
+  the pocket counts as solid (tents at 3 x 4 / 3 x 7 + a container at 2 x 5..6 sealed nine squares a side; the 9 x 9 then failed
+  the cap). Leave a one-square way into every flank yard. The 9 x 9's egress rows land on rows 4 and 7 of cols 4..7: nothing there.
+- **Antarctica** (THE STATION YARD, same window): was two ridges, two containers and two 1.3 m pods. Now a camp, alike from both
+  spawn rows: a 3.5 m pressure ridge on each flank of each end (0..2 and 9..11 x 3 and 8), a container on each flank of the middle
+  (1 and 10 x 5..6), four `camping_tent` round the house (3 and 8 x 4 and 7), a sleeper pod h 2.6 before each spawn corner (3 and 8 x
+  2 and 9), a `dish` h 4.4 behind each container (0 x 5, 11 x 6), a flood mast off all four corners. THE FULL LEDGES: levelM 3.5;
+  deck / walkways / drill rig / east ridge 2.4 / 2.2 -> 3.5, mast plinth / hull / ice shelf 3.2 / 3.0 / 4.0 -> 7, ice wall 6 -> 10.5,
+  the collar door (links, antarctica_derelict) y 3 -> 7. Walkable squares of the room unchanged, 0 traps.
+- **Spaceship** (derelict, THE DECK, same window): the crate blocks drew black (`gunmetal`) and stood 1.25 m. hqDeckPlan now
+  `crateH: 3.5, crateKey: 'urban:MetalCorrugatedPainted1a', rise: 3.5` (bridge and engine housing 6.7 m, their flights, props, npc,
+  the hull's window band and stern light lifted with them), levelM 3.5. New cover: a torn `hullplate` h 4.5 beside each breach
+  (8 x 4, 8 x 7) and an `escapepod` at 0 x 5 and 0 x 6, on ghost blocks. Walkable squares unchanged.
+- **CERN** (THE DETECTOR HALL, pinned at (73.5, 0): window x 52.5..94.5, z -21..21): the old 12 x 12 was cut off-centre across the
+  hall's west wall, the catwalks hung over a spawn row, and the gantry, the long stair and the beam dump stood on one team's side.
+  Re-laid alike from both spawn rows: the catwalks one square wide on the walls (off the board), a flight up to them along the west
+  wall from each side of the middle (col 0), a 3 x 3 gantry in each east corner (8..10 x 1..3 and 8..10) with a two-square flight to
+  the middle (col 9), THE BEAM DUMP (7 m, 2 x 2: 2..3 x 5..6) west of the nexus, THE BEAM (the orb) east of it on the middle line, a
+  `meshy_tesla_coil` h 4 at 3 x 2 and 3 x 9, the skate pipe as one run 3.5 m up across each half, a bulb over each quarter. The
+  landing in the south-west corner is now the south catwalk's west end. levelM 3.5 (catwalks / gantries 3.2 -> 3.5; the control
+  room's 1.2 m floor left as it was).
+- **Tower of Babel** (THE OPEN TOWN's square, same window): the four brick cubes are four `babel_house_small` (the model is 3.54 m
+  tall at span 7, so its roof IS the level-1 top of a hidden 2 x 2 block), the two low stacks are a 2 x 2 stack of fired bricks
+  (3.5 m) on each flank of the middle, four date palms round the nexus (3 and 8 x 4 and 7), a brazier h 2.2 before each spawn corner
+  (3 and 8 x 2 and 9), the road straight up the middle (it wandered over one half) and its east branch south of the board, the room's
+  two scatter rows `off` the board. levelM 3.5 (the tiers were 3.5 m already). A `block` prop's rect does NOT make its squares
+  solid in the battle raster: a house needs its ghost block.
+- **Camelot** (THE OUTER WARD, pinned at (-14, 0): window x -35..7, z -21..21): the board is THE LISTS now. The 12 x 12 lay across
+  the ward's corner with the stand and the tilt on one half. Now the tilt rail runs down the middle line, a stand on each long side
+  (the south one is new, `front: [0, -1]`), the sword in the stone (h 2.8) on the knoll west of the nexus, a `camping_tent` and an
+  `armour_stand` on each half, a brazier before each spawn corner, all on ghost blocks; the horses stand west of the board; the
+  ward's paths go round the lists; the scatter rows `off` it. No levelM here (the wall walk and the towers get their 6 m from
+  hqCurtainWall / hqCastleTower, off the board).
+- **Bermuda Triangle** (THE ISLAND, same window): levelM 3.5 and the two rock plateaus 1.5 -> 3.5 m (a full ledge each, they were
+  half a square), a `ship_wreck` and a `fighter_jet` sunk in the lagoon off the two long sides (the Triangle's missing craft).
+- **Bohemian Grove** (pinned at (-10.5, -17.5): window x -31.5..10.5, z -38.5..3.5): the board lies between THE MOUND and THE LAKE.
+  It was cut across the stage with the owl's mound on one end. Now: the mound's second lobe fills cols 0..2 on both halves (a stair
+  up from the south, the old one from the north), the lake fills cols 9..11, a jetty out from each half (rows 4 and 7), the stage
+  moved one square north off the board, `gen.open` clears the redwoods off the squares, the creek ends before the board. levelM 3.5
+  (the tiers 2.2 / 2.4 / 2.6 / 3.4 -> 3.5, 6.4 -> 7).
+- **Area 51** (THE FLIGHTLINE, pinned at (0, 10.5): window x -21..21, z -10.5..31.5): the board is RUNWAY 33. The tower, the gantry
+  and the east apron stood on one team's half, the other half was bare dirt. The board moved south across the runway (the nexus on
+  its centre line); the tower's fire escape now climbs its west side and the apron is one square shallower, so both are backdrop.
+  On the middle line the recovered `saucer_lg` (2 x 2) east of the nexus and a `car_truck` west of it; on each half a
+  `military_tank` (west), a `car_truck` (east), a `school_bus` down the west edge, `meshy_sandbags` before each spawn corner (3 and
+  8 x 2 and 9); a cross of asphalt (gate road + taxiway); `gen.open` clears the berms; scatter `off`. levelM 3.5 (deck / gantry /
+  apron 3 -> 3.5, cab 6 -> 7, mast 8 -> 10.5).
+- **Cyberpunk City** (THE GRID, pinned at (0, 0): window x -21..21, z -21..21): the board is THE HOLO-PLAZA (it sat 10.5 m north:
+  one spawn row between buildings, the other on open street, the parked cars drew but blocked nothing). Centred on the projector's
+  mound the four city blocks are the corners, a half-turn twin of each other. The parked cars are cover on ghost blocks (1.6 m):
+  one in each cross-street parking lane (1..2 x 4 and 9..10 x 7, span 6.4), one beside each spawn row (8 x 0, 3 x 11; they stood ON
+  the rows), a `bus_shelter` on each side (3 x 1, 8 x 10). The street scatter rows keep `off` the boulevard's squares. THE SKYWAY
+  deck is still P2's north-east corner (cols 10..11, rows 1..3) and the south-west corner is a plain block: the one thing not
+  alike. No levelM (a generated city: the full ledges thread's call).
+  The loop's traffic still drives over the south spawn row (it drove over the north rows of the old window).
+- **Downtown** (THE COLLAPSE's lot, same window, pinned at (-24.5, -14)): the overpass landing, its stair and the wrecks were all on
+  one team's half. The landing is THE TERRACE now, x -15.75..-5.25, z -21..-7 (four rows alike about the middle line, cols 9..10
+  + half of 8 and 11), a stair up from each half (rows 4 and 7; both start at x -21 so cols 4..7 stay flat for the 9 x 9), the
+  lot's west block is a `bld` plateau on the middle line (3..4 x 5..6; `gen.open` bands took the two generated lots), the rubble
+  mound stays on the middle line, a wrecked or parked car on a 1.6 m ghost block before each spawn corner (3 and 8 x 2 and 9).
+  A `bld` plateau taller than 6 m is a walkable top above level 3: the bake passes it but the LAUNCH's fit (hqArenaUpgrade,
+  topMax) refuses the window and the fight never opens. Check every size headless before shooting:
+  `hqArenaUpgrade(hqArenaSizedId(site, S), { compile: true })` must return true (the thread's fit.js). No levelM.
+- Batch 2 (same thread): Giza got four date palms (`tree` kind 'palm', r 1.3) at (3,4) (8,7) (9,2) (2,9), heights untouched (the full
+  ledges thread owns them). Hollow Earth got the two old trees' twins at (0,3) (2,2); no pin there (its rock stack stands in the
+  house columns, so the 9 / 11 cut elsewhere), and `gen.solid` is no use in a `rooms` gen (it grows a rim, not a square).
+  Hell, Heaven, Göbekli Tepe: already the same from both ends, left alone. Looking-Glass: the pieces are HQ_LG_CHESS, his three
+  chess positions, left alone.
+
+## THE BOARD IS THE PLACE — nine arenas re-laid for PvP (2026-11-10, data.js + bake-arenas.js)
+mondo: "make improvements to all of the battle maps (12x12) ... replacing a terrain texture, redesigning the layout, making the map look
+more realistic, replacing or adding better props, removing props. Anything to make the maps look better or be better for PvP combat."
+This thread's share (the last third by site id): northpole, olympus, revenge, saturn, shasta, singularity, skinwalker, stadium,
+stonehenge, strip, technoticlan, vatican.
+- **The problem**: most of these 12 x 12s were a window the bake found in a room built for walking: cover on one team's side only, a
+  stair or a ramp in an end zone, props that drew on the board but blocked nothing, or a bare field.
+- **The pattern** (Olympus / Göbekli's): the board is one named place of the room, `HQ_ARENA_RULES.within[site]` pins the window on
+  it, and every piece of cover is laid on the 3.5 m squares so row r and row 11 - r hold the same thing. A prop that must block
+  stands on a hidden block: `{ k: 'wall', ..., ghost: true, rail: false }` (never drawn) + the prop row with `floor: true`.
+  Ghost heights in these rooms (1.75 m levels): 1.3-2.9 = level 1, 4.2 = level 2, 5-6 = level 3, never over 6 (a walkable top
+  above level 3 fails the walled fit). The spawn apron (cols 3..8, rows 0..1 and 10..11) and the house stay bare.
+- **bake-arenas.js**: a within row may name `sizes: [12, 10]` (the place holds only for those sizes; the others search the site as
+  ever) and `rs: { 12: 2.6 }` (a size's own radius). An odd size cannot sit centred on a board laid for the 12.
+- **gen.open** (rooms / city plans): `open: [{ x, z, r }]` discs or `{ x0, z0, x1, z1, w }` bands clear the plan's own trees and
+  banks off the board (Shasta, Skinwalker, Saturn, Singularity). A thin band (w 3.5) did not clear; one wide band or a disc does.
+- **Stonehenge** — THE CIRCLE IS THE BOARD: the brick-wall "sarsens" are 16 real `sarsen` stones on the ring, four `trilithon`
+  arms round the nexus, the great trilithon on the west side (h 6.0, the tape y 7.4), four bluestones. 12 + 10 inside the circle.
+- **Football Stadium** — THE PITCH IS THE BOARD: centred on the Δ logo; two ambulances, eight crates, four flood masts along the
+  sidelines (centre cover broke the smaller sizes). Every size.
+- **Vatican City** — THE NAVE IS THE BOARD: 16 pews in four blocks either side of the carpet, the eight nave columns as tall blocks,
+  the candle rings and the confessionals off the squares. Every size.
+- **The Strip** — THE PLAZA IS THE BOARD: the one fountain in the nexus is two basins either side, two parked cars, two bus
+  shelters, two carts, two palms. The plaza's `open` r 11 and the path w 21 stay (wider erased the storefront lots). 12 + 10.
+- **Technoticlan** — THE COURT IS THE BOARD: the ball court turned north-south (walls = columns 3 and 8, rows 3..8), a team in each
+  end zone, THE STAND the west column with a stair up each end off the board (the gallery and its stair stood on one side only),
+  idols, braziers on the walls' ends and by the altar, skull racks. The 12 pinned (rs), the others within 10 m.
+- **Mount Shasta** — THE MEADOW IS THE BOARD: the meadow cleared (gen.open band), the creek straight down column 1 with the plank
+  on the centre line, six pines, six boulders (`cave_stone` h 2.6), four logs, two snags. 12 + 10.
+- **Skinwalker Ranch** — THE CIRCLE IS THE BOARD: the big crop circle moved half a square to (-7, 7) and is the board; the mesa's
+  ramp moved to its west face (it stood on a spawn), the windbreak trees and a trailer moved off; dead trees, cows, a wreck, the
+  ranch truck, logs. 12 + 10.
+- **Saturn** — THE HEXAGON IS THE BOARD: x -21..21, z -38.5..3.5, a team under the north wall and one in the open south face. The
+  eye's bowl 1.6 → 0.6 m (a 1.6 m bowl under the nexus put both teams a level above it: no fit), the shelf's stair moved outside
+  the north-west wall, the slanted walls a one-level step across the four corners (ghost blocks fill the squares a wall only
+  clips), asteroids, crystals, the lander, the pod, the dish. The 12 only.
+- **Singularity** — THE ORBIT IS THE BOARD: the plaza on the drop's south lip; ten drawn obsidian blocks (the room's cliff sheet) in
+  four arcs round the nexus + a tall pair on each flank, crystals, two stones; the way down into the drop starts at the board's
+  north edge. 12 + 10.
+- **Proof**: scratch `shots.js` (a copy of playtest_maps.js: REPO = which checkout serves the scripts, POSES top/iso, loads at
+  320 x 200 until `_ewAssetLedger.pending()` is 0, then 1280 x 800). Before / after sheets: /mnt/project-files/battle-maps-last-third/.
+- **Left**: the odd sizes (9, 11) of Stonehenge, Strip, Shasta, Skinwalker, Saturn, Singularity are still found windows off the
+  board. No ledge heights changed (THE FULL LEDGES thread switches these rooms after this merge, ghost levels as listed above).
+
+## THE BOARD IS THE PLACE, part 2 — North Pole, Mount Olympus, Flying Dutchman (2026-11-10, data.js)
+The three maps of the last third that already had a laid board got cover only (same thread, same ask). Every size re-cut and fits.
+- **North Pole** — THE TREE LOT: the workshop's stair stood in the board's north-west corner (levels 1, 1, 2, 2) with nothing
+  opposite. The south-east corner now holds the same steps turned round: two big presents (`xmas_gift` h 1.3 / 1.4) and four
+  decorated trees (`xmas_tree` h 4.6) on ghost blocks 1.3 / 4.2. The bench moved off the squares.
+- **Mount Olympus** — THE FIRES AND THE WATCHERS: four braziers inside the colonnades at (3,4) (8,4) (3,7) (8,7) (ghost 1.3) and
+  four `angel_statue` outside them at (0,3) (0,8) (11,3) (11,8) (ghost 2.8).
+- **Flying Dutchman** — THE CARGO: four crate stacks (`psx_wooden_crate_1..4` h 1.7, ghost 1.7) at (2,4) (2,7) (9,4) (9,7); a chest
+  or a skull pile on each of the four hatch covers (decor, y 1.25).
+
+## THE CALM GROUND — a realistic, quieter Fairy Forest test arena (2026-11-11, data.js + three-renderer.js + bake-calm-terrain.py)
+mondo: "the terrain pixel sprites are a little busy and distract from the 3d models ... make an alternative Fairy Forest map to test
+it out ... grass like actual grass from a AAA RPG game and water and lava like actual water and lava ... more realistic, but also less
+busy". An ADDITIONAL map; his Fairy Forest board and his sheets are untouched. Plan + proof page: https://claude.ai/artifact/Ag2YjY586HDu2dZ4qzchtV
+- The Riot VFX style guide p.13-14 (value range by discipline: environment lowest, characters above, VFX across both, UI top), p.17
+  ("A visual focal point is created by contrast"), p.19 (the same stack for saturation), p.20 (VFX wider than the model).
+- MEASURED (WebGL2 shots, on-screen sRGB luma): his board is ALREADY under the units in value (grass 0.136, path 0.106, units ~0.41);
+  the busy part is saturation (grass 0.86) and pixel speckle. Calm: grass 0.162 / sat 0.46, path 0.117 / sat 0.42, fine detail
+  (luma spread after a 4 px blur) grass 0.035 -> 0.026, path 0.041 -> 0.019.
+- THE MAP: data.js HQ_LOOK_MAPS (`var`, read by hqSiteId before its line runs) = { prebuilt_fairy_forest_calm_delta: { of, look:
+  'calm', label } }; hqLookMapsRegister copies the source arena entry (PREBUILT_MAPS + MAP_LAYOUT_PRESETS + an EW_MAP_META row with
+  `look`) at load. hqSiteId maps it to its source site (same room, same survey, same arena pick); hqArenaPvpPool skips `m.look`
+  (VS CPU only, never Quick Play / online); hqArenaSizesOf returns [] for it. hqMapLook(id) -> 'calm'.
+- THE LOOK (three-renderer.js, by _hzTex): _calmOn() = hqMapLook(_arenaLatchId || EW_CALM_FORCE) === 'calm' (off:
+  window.EW_NO_CALM_LOOK). _CALM_SHEETS swaps grass_2 / dirt / dirt_2 / dirt_3 / rocks_5 / rock_wall_1 / lava for
+  Assets/world/terrain/calm/calm_*_1.png (1024 px, ONE SHEET PER SQUARE like his; the _1 is a version, a new bake = a new name).
+  _hqTerrainMat on a calm floor: white colour, near-zero specular, no emissive, its own three tints (_CALM.floorT / pathT / cliffT:
+  path a step under the grass and warm). _hqBuildTerrain: ragged path edge (_calmEdge) + a slow value drift in the AO channel
+  (_calmDrift, also on the outer ground). _calmFluidMat replaces _buildFluidTopMat for water / deep_water / lava on a calm board
+  (water: dark see-through Phong, 3-octave ripple normal, sky fresnel + faint sky noise; lava: calm_lava crust warped slowly, seams
+  glow with a pulse). The liquid caches key on '|calm'. Tunables live as window.EW_CALM.
+- THE SHEETS: `python3 -I bake-calm-terrain.py <out> [calm_grass,calm_dirt,...]` (numpy + PIL; periodic FFT noise + periodic Worley
+  so each tiles by construction; drawn blades / polygon stones; narrow value band). Upload with `node sync-zip.js --put`.
+- NOT CHECKED ON WEBGPU (the node look gets the same sheets + tints; the water there is its flat colour, the lava its sheet). The
+  Woods map look (dither 0.42, grain, green tint) still sits over the ground: the next lever if he wants more pop, untouched here.
+- 2026-11-11, part 2 (mondo: "Yeah that looks pretty good. Maybe we can try it on a couple more maps now?"): + Stonehenge Arena (Calm)
+  `prebuilt_stonehenge_calm_delta` (grass_2 / rock_wall_1 / dirt: the Fairy Forest set as it is) and Hell Arena (Calm)
+  `prebuilt_hell_calm_delta` (scorched floor + 44 lava tiles; rocks_3 / rocks_5 -> calm_rock). New sheet calm_scorched_1.png
+  (bake_scorched: dark ash bed, cracked crust plates, soot, cinders; no embers, the lava is the only bright thing). _CALM.tints keys
+  a floor's own three tints (scorched: neutral floor, grey path a step under); the grass set stays the default. Both VS CPU only.
+- 2026-11-11, part 3 THE MOLTEN LAVA (mondo on Hell (Calm), WebGPU: "the lava doesnt really look 'lava-y' and its all brown instead of
+  orange/red/fiery. And in the game the lava isnt even moving"). Cause: the calm lava's look lived only in its onBeforeCompile (WebGL),
+  so WebGPU drew the bare sheet, still, and v1's sheet was mostly dark crust. Now: calm_lava_2.png (bake_lava v2: orange-red melt with
+  crust rafts, red-hot rims, cooling-skin veins, a fifth of the cells open pools) slid in two copies on the fluid clock exactly like the
+  PR #782 lava (copy B turned, other scale, other way; it nudges copy A's lookup 0.035 and swells the glow); melt = red-dominant texels
+  (r - b), glowing from their own colour x _CALM.lavaGlow (1.0). WebGPU twin: _ewNodeCalmFluid (tag k 'calmfluid'). No procedural
+  blobs (his lava-lamp rule). The calm water on WebGPU is still its flat colour.
+- 2026-11-11, part 4 (mondo: "it's better but i feel like the dark parts are kind of distracting, can it just be the lava part, no
+  rocks" + "and yes do water too"): calm_lava_3.png = melt only (bake_lava v3: flow lines = 5 + 13 bands across the sheet bent by a
+  slow periodic warp, red -> orange -> yellow; no crust, no rafts, no blobs). Both copies now slide ALONG the lines (A 0.03/s,
+  B x0.37 at 0.045/s, not turned). WebGPU calm water: _ewNodeCalmWater (value-noise ripple normal -> normalNode via
+  cameraViewMatrix, colour drift, Schlick sky sheen + reflected sky noise, opacity firmed by the sheen), same maths as the GLSL.
+- 2026-11-11, part 5 (mondo: v3 "too cartoony looking, i swear thats not what the lava looked like before when the dark rocky parts
+  were still there. Why did you make a whole other thing"): he wanted v2 with the rocks lifted off, not a new design. calm_lava_4.png
+  (bake_lava v4) = v2's own melt (same seeds, streaked noise, mottle, cooling-skin veins, same ramp) over the whole sheet, rafts gone;
+  a slow heat field (seed + 7) lets it cool to deep red in places, never to crust. Motion back to v2's (copy B turned, other way,
+  nudge 0.035; rg centre 0.9/0.34 = v4's mean). calm_lava_3 (flow lines) is retired: he reads smooth bands as cartoony. Lesson: when
+  he asks to remove one part, remove only that part.
+- 2026-11-11, part 6 THE LAVA WITHOUT A GRID (mondo: "are you able to make it look not like a repeated pattern"): copy A repeats
+  every 2 squares, so the sheet's hot blobs sat in a grid. Now each copy is read twice at two of eight fixed offsets picked by a
+  slow world value noise (A cP*0.14, B cP*0.12+17.3), blended where the noise crosses from one offset to the next (leaning to the
+  brighter texel: Quilez's texture-variation trick), mip from the plain lookup's derivatives (textureGrad / TSL .grad) so no seams.
+  Same sheet, same scale (one sheet still covers the same squares); only which part lands where changes. GLSL _CALM_NOTILE_GLSL
+  (lava head only), TSL noTile in _ewNodeCalmFluid; the shared node value noise is _ewNodeCalmNoise. Checked WebGPU + WebGL.
+
+## THE CALM LOOK — the calm ground rolled out as the game's default (2026-11-11, batch 1; data.js + three-renderer.js + editor.js + bake-calm-terrain.py)
+mondo 11-11: "Now can we make "calm" versions of all the maps, basically replacing the old sprite terrain textures throughout the
+game? And make sure any new textures you add are available in the map editor, and keep the old ones there too". Plan approved
+("looks good to me") with two adds: "what about like a metal for the spaceship. And what about the textures that spells make
+terrain of". Thread "Roll out calm terrain across all maps"; files /mnt/project-files/calm-rollout-20261111/.
+- THE TABLE: data.js CALM_TERRAIN (after HQ_LOOK_MAPS). `sheets` = calm key → [file, rule twin, editor label]; `of` = his key →
+  calm key (a key left out keeps his pixel sheet until its batch); `place` + `sites` = a key that reads as something else on a
+  site (North Pole / Antarctica marble_light = calm_snow); `noTile` = the natural sheets read without a repeat. calmTerrainRegister
+  adds each calm key to TERRAIN_SPRITES (so every picker / _hzTex / _hqTex finds it); hqRuleKeyOf(k) gives a calm key's rule twin
+  and is used everywhere a room's floor / wall / path / cliff / onBoard square becomes a terrain id (box survey, terrain field,
+  cave, hqBattleMapBuild). MF_TID never sees a calm key.
+- THE SWAP (three-renderer.js THE CALM GROUND block): _calmOn() = on unless window.EW_NO_CALM_LOOK, hqMapLook(latch) === 'pixel'
+  or the room's shell.sheets === 'pixel'. _calmKeyOf(key) → calm key (a calm key is itself). The central resolvers carry it:
+  _ewSandUrl (the URL a key wears: _hzTex, _hqTex, getTerrainTexture = voxel boards, tileSwatch = the tile panel picture) and
+  _ewSandPart (the cache suffix '@calm_x', so _hzTex / _fieldStrataMats / box materials cache calm apart from pixel). getTexture
+  gives any '/terrain/calm/' sheet linear filtering + mips + anisotropy 8 (his pixel sheets keep nearest).
+- THE FIELD (_hqTerrainMat): calm roles use calm tints (_CALM.tints per floor set, the grass trio's floorT/pathT/cliffT only
+  where that trio plays those roles, white otherwise); his sheets keep _hqSheetLook. uNt = (floor, path, cliff) no-tile flags;
+  _CALM_NT_GLSL ntRead = the lava's trick for the ground: 8 offsets picked by a slow noise (uv*0.3), single read outside the
+  blend bands (20-80% of each step), blend leans to the brighter texel; derivatives from the plain uv. WebGPU twin in
+  _ewNodeTerrain (rd/tri with nt, payload ntF/ntP/ntC). Program key hqTerrainTri3.
+- THE LIQUIDS: _calmFluidMat (water + lava) now follows _calmOn, so calm water and lava are everywhere from batch 1; the other
+  liquids wait for batch 3.
+- BATCH 1 SHEETS (bake-calm-terrain.py, all code, 1024 px, one per square): marble, snow, ice, hedge, cobble, darkstone, planks,
+  shipwood, obsidian + the spaceship metals deckplate (aluminium / metal_3), gunmetal (gunmetal / gunmetal_2 / metal_2), rivets
+  (metal). Spell ground: ice / snow_wall → calm_ice, scorched, lava, mountain(_2/_top) / rock → calm_rock. Drafted for batch 2:
+  sand, beach sand, moon, castle blocks (not shipped). Value checks against his own sheets on the real boards: marble (his path
+  on Looking-Glass) baked a step UNDER his value (mean sRGB ~135, the first bake read white), deck plate a step under his
+  aluminium (~110), cobbles twice the size with quiet joints (the first bake read as a busy cell net).
+- PROOF: ?ew_gpu=webgl2 is the NODE renderer on a WebGL 2 backend (TSL twins); the classic GLSL path (onBeforeCompile ntRead) is
+  ?ew_gpu=webgl. Prove both plus ?ew_gpu=webgpu.
+- THE EDITOR: the texture picker's first family is CALM (labels like "Snow (plays as marble_light)"), his TERRAIN sheets stay below
+  as "TERRAIN (your pixel sheets)"; ROOM tab "ground look" = Calm / Pixel (shell.sheets 'pixel', Calm writes nothing). A field's
+  swatch shows the sheet the room draws (editor.js calmUrlOf); swatch names wrap (styles-editor.css .ed-sw span), never cut.
+- The three "(Calm)" test maps stay (now the same look as their originals).
+- Batches left: 2 = the other 27 arenas + ooze / poison / plague flesh / crystal / castle-wall spell ground; 3 = DOOR HQ indoor
+  sheets + the other liquids; 4 = the voxel boards + the 2D view.
+
+### THE PIXEL LAVA + WATER (2026-11-12, mondo: "keep all the new calm textures, but go back to the old lava and water")
+- data.js CALM_TERRAIN.pixelLiquids = { lava, water, deep_water }: these draw his sheets + his moving-liquid look (_buildFluidTopMat's
+  own path, WebGL + WebGPU _ewNodeFluid) on every board, room and spell ground, calm look or not. `lava` left CALM_TERRAIN.of, so
+  _hzTex / box sides / tile panel / editor swatch / voxel 2D grid read lava.png again. Nothing deleted: calm_lava stays in `sheets`
+  (the editor's CALM picker), _calmFluidMat stays and reads _hzTex('calm_lava'); window.EW_CALM_LIQUIDS = true (before a board
+  builds) brings the calm lava + water back. Untouched: the other calm liquids (_CALM.liquids: poison, bogs, ooze, oil, blood),
+  calm_spring (healing_spring), calm_obsidian_2 (the veins are baked in that sheet, not the lava sheet). Proof
+  /mnt/project-files/pixel-lava-water-20261112/.
+
+### BATCH 2 (2026-11-11): the other 27 arenas + the spell ground
+- 21 sheets (bake-calm-terrain.py, rerun = byte-identical): sand (desert) + beach sand, moon (moon / moon_2 / moon_3), mars
+  (mars / mars_2), cloud (cloud / cloud_2 / cloud_thick, puffs on puffs), storm (storm), gravel (dirt_4), roots (wasteland),
+  rocky grass (grass_rocky), dark moor grass (grass_dark_fantasy), cave floor (cave_floor), dark rock (cave_wall / rock_wall_2 /
+  rocks_1 / rocks_dark_fantasy), crystal (crystal), flesh (flesh / flesh_2 / flesh_3 / plague_flesh), concrete (concrete_floor /
+  urban_street), gilt (gold / gold_2 / gold_3); patterned, on the plain grid: flagstones (bricks_1, 4x4 slabs), castle brick
+  (bricks_2 / castle_wall), marble checks (checkerboard, his 6x6 count), damask (damask, half-drop), red carpet (carpet_4).
+  Four place sheets: Mars floor dust, violet moon dust (the Singularity), sandstone flags (Babel), mint marble (Agartha).
+- THE ROOM COLOUR: a calm sheet ignores shell.floorColor (batch 1), so where a room's colour MADE his sheet another ground, the
+  place table names that ground: Mars moon_2 (× tan) → calm_marsdust, the Singularity's moon_3 (× violet 0x5a4a78) → calm_moonviolet (first calm_cavefloor: same value but the violet was gone),
+  Babel's bricks_1 (× tan) → calm_sandstone, Agartha's marble_light (× mint 0xbfe8c8) → calm_marblemint. tools: the survey printed every arena's floorColor / tints next to its keys; the
+  rest only shade the same ground (grass greens, a cream checker) and keep the sheet's own colour.
+- VALUES moved on the real boards: castle brick up to his bricks_2 value (L 0.36, Walls of Camelot read near-black), damask up a
+  step (the lodge walls stand in shade), clouds up twice to L 0.82 (Heaven's cloud deck read as dust at L 0.62 and 0.70; his cloud_2 x the room's 0xeef0ff shows 187-199 on screen), beach sand down to
+  L 0.58 (blew out on Bermuda in daylight), Mars dust warmer and a step darker (read pale beige against his orange-brown floor:
+  sheet mean now 122/82/58), sandstone flags down to his bricks_1 x the room's 0xd8a878 (93/69/43; now 110/85/60). Lesson again: sample the floor on HIS board's screenshot and the calm one, same spot, before shipping.
+- THE TWO SANDS: _calmKeyOf turns desert → calm_sand_beach where _ewSandBeach() (Bermuda), so the beach keeps its pale sand.
+- THE CALM LIQUIDS: _CALM.liquids = [colour, opacity, glow] for poison, poison_bog, purple_bog, swamp (the black ooze), oil, blood
+  (the first poison green, 0x34561a, read as grass on Stonehenge: poison is now an acid green with a faint glow of its own);
+  _buildFluidTopMat sends them to _calmFluidMat on a calm board, so they move and glint like the calm water in their own colour
+  (WebGPU: _ewNodeCalmWater reads the material colour). His Liquid_* sheets stay for the pixel look and the editor.
+- LEFT AS THEY ARE: the urban:* pack (his own painted, already photo-like and muted: Cyberpunk, Strip, Downtown, D.U.M.B., CERN,
+  Area 51 path) and the DOOR HQ texture names (`concrete`, `training_floor`, `holo`…) = batch 3. fog_wall (the hazard) keeps fog.png.
+- Spell ground in this batch: Plaguefield (plague_flesh), Shield Wall (castle_wall), Sacred Geometry (crystal), Poison Swamp
+  (poison), Goo Shot / the Blob's trail (swamp).
+
+### BATCH 3 (2026-11-11): the rooms — DOOR HQ's rooms and the zone rooms
+- The survey (/mnt/project-files/calm-rollout-20261111/batch3/survey.md): his PIXEL sheets still worn in rooms with no calm twin.
+  NOT pixel sheets, left as they are: his 8 painted DOOR HQ tileables (concrete, drywall, carpet, stone, terrazzo, teal, oxblood,
+  ceiling — _hqTex reads DOOR_HQ.textures FIRST, so a room shell keeps them even where the same name has a calm twin), the
+  code-drawn holo / holo_red / training_floor, the urban:* pack.
+- 15 sheets (bake-calm-terrain.py batch 3 makers): dungeon stone (dungeon 1-4: the stone only, his carvings / grates / skulls are
+  the busy part), white tiles 4x4 + 8x8 (tilefloor, tilefloor_2), old plaster with a few patches broken to the brick (drywall,
+  drywall_2-5), old wallpaper (wallpaper), patchwork carpet muted + bright (carpet_2, carpet_3; six to a square, no two neighbours
+  alike), gold damask (damask_2; bake_damask takes its colours now, defaults = calm_damask_1 byte-identical), sewn leather (leather,
+  leather_2), tree canopy (forest, forest_2: the cloud heads in greens with the hedge's leaves), forest floor (dark_woods: roots going
+  to moss), purple grass (purple_grass: the calm grass, hue turned), old paving (road), ruins rubble (ruins), deep space (void).
+  Mapped to the existing ones: carpet -> red carpet, damask_3 -> damask, checkerboard_2/3 -> marble checks.
+- Left for batch 4 (the old voxel boards): tree (forest.png under the tree tiles), rubble, rocks_2/4, healing_spring, sanctuary,
+  nexus, igloo, the sky keys.
+- Value pass before shipping (his sheet's mean vs calm's): canopy lifted to a step under his lime (lit 0x7e9c46), gold damask
+  lifted (lo 0x4e2c1a / hi 0xa07a3c), deep space got his nebula back muted (blue / plum / rust wisps, 1400 stars), purple grass x1.18.
+  White tiles sit at L 0.66 against his 0.90 on purpose (the batch 1 lesson: light sheets blow out under the room lights).
+- Where they are worn (35 rooms): shell floor/wall/dado/trim/ceiling and terrain floor/path. e.g. bathroom/locker/kitchen/pool/
+  tank tiles; dungeon/ritual/sacrifice/oubliette/catacombs/Camelot dungeon stone; haunted rooms plaster + forest-floor trim;
+  H-Wing wallpaper/plaster/patchwork; Vatican library leather + damask + patchwork path; Looking Glass sea purple grass;
+  observatorium deep-space ceiling; Fairy Forest redwoods canopy floor.
+- THE RETRO PATCHWORK (11-11): carpet_4 (his symbol carpet: H-Wing lobby + floor, the Vatican basilica path) went to the plain
+  red carpet in batch 2, losing the H-Wing's colours; now -> calm_patchwork_retro (his teal / olive / mustard / rust / plum as
+  plain patches, five to a square, no symbols). calm_carpet stays in the editor and keeps carpet.
+- Purple grass got soft olive tufts (his green clumps, ~1 in 8 by quantile of a 7-16 cycle noise, shaded by the grass blades).
+- THE OBSIDIAN VEINS (11-11, the thread's card, recommended option while he decides): calm_obsidian -> calm_obsidian_2.png = the
+  same stones with faint lava in some joints (bake_obsidian_veins: the worley gap lit where a slow noise says so). The plain one
+  stays in the editor as "Obsidian, no veins" (calm_obsidian_plain -> calm_obsidian_1.png). Undo = point calm_obsidian back at _1.
+- Proof: room shots with /tmp hqproof (boot ?hq, then window._hqEnter({room, quiet:true, from:'walk'}); ThreeRenderer is a
+  script const, NOT window.ThreeRenderer — check it with typeof).
+
+### BATCH 4 (2026-11-11): the old voxel boards + the 2D view
+- Survey: 52 of his 156 TERRAIN_SPRITES keys had no calm twin. Left as they are: the liquids (water / deep_water drawn by the
+  calm water; poison, bogs, swamp, oil, blood = _CALM.liquids), holo / holo_red / training_floor (code-drawn), fog_wall,
+  barrier_passage, cloud_gap (black), and the editor-only material sheets no board wears (enamel_2, fur 1-3, tigerfur 1-2, skin,
+  rubber_2's twin aside, damask_4, floral 1-2, latticegarden, noise).
+- 5 new sheets (bake-calm-terrain.py batch 4 makers): rubble (rubble_1-3: broken concrete lumps, a few brick-brown, a few missing),
+  ice blocks (igloo), copper plate (copper: sixteen riveted plates, green patina out of the seams), rubber mat (rubber, rubber_2:
+  black non-slip bars), healing spring (healing_spring: clear teal, lily pads, a few small flowers).
+- Mapped onto existing calm sheets: rubble_4 / sky_ruin -> ruins, bridge -> planks, tree -> canopy (same forest.png as forest),
+  mushroom (rock.png) -> rock, rocks_2 / rocks_4 / chasm -> dark rock, urban_wall -> concrete, dirt_slope -> dirt,
+  diamond -> crystal, brokenglass -> ice, sanctuary (+ _church / _shop) -> flagstones, nexus (+ _cave / _sky) -> sandstone flags.
+- THE 2D VIEW: the old voxel editor (map.js, FILE menu of the editor) drew his pixel sheets on its flat grid and palette
+  (_meTerrainBg). It now shows the calm twin (the sheet the board draws) unless window.EW_NO_CALM_LOOK. The tile info card
+  already went through _ewSandUrl (calm first). His pixel sheets stay in the editor.js picker (TERRAIN family).
+
+## NO "ARENA" IN MAP NAMES (2026-11-11, mondo: "take 'arena' out of the name of all the maps")
+A battle map wears its site's name: "Stonehenge", sized cuts "Stonehenge 10×10", test looks "Stonehenge (Calm)". Display only, ids unchanged
+(`<site>_delta`, `<site>_<S>x<S>_delta`). Where: data.js hqArenaEntry + hqArenaRegisterAll (the sized name) + HQ_LOOK_MAPS labels; map.js MS_MAP_LIST
+size tag is "12×12" (was "12×12 ARENA"); editor library says "BATTLE MAP: <SITE>"; hud.js UI Maker sample screens. HQ_ARENA_RULES.label is no longer
+read for names. Left as they are (not names): the Arena game MODE, the "ARENA MAPS" filter chip, the story desk's ARENA / FULL SITE format toggle.
+A site with a FULL SITE board (16×16 +) shares its name with its 12×12 map in the VS CPU list (told apart by the size).
+
+## THE VOXEL BOARDS ARE OUT (2026-11-11, mondo: "I think we are good to get rid of all the voxel maps")
+- Gone from the game (no roster row, no GAME_MODES entry, no PREBUILT_MAPS copy): the five "<Site> Δ · voxel" boards (Hell, Göbekli
+  Tepe, The Flying Dutchman, The Looking-Glass, The Bermuda Triangle: HQ_ARENA_RULES.voxelKeep and its registration removed), the
+  three "<Map> · voxel" boards hqArenaRegisterOwn kept (Holo Sim, Training Room, Fairy Forest 20×20) and Clash's "Temple · voxel"
+  (data.js hqClashStageRegister, map.js MS_MAP_LIST, state.js compatibleMaps + GAME_MODES.clash_stage_voxel).
+- NOT touched: the voxel editor, the authored board data in data.js (each arena still reads its old board's tints and layout), and
+  the 35 big site boards (16×16 to 24×24, the list with ARENA MAPS switched off; Gauntlet plays only those). His call, asked.
+
+## THE BIG SITE BOARDS ARE OUT (2026-11-11, mondo, asked about the 35 old 16×16 to 24×24 site boards: "yes those should go too")
+- No list offers them: map.js MS_MAP_LIST and state.js compatibleMaps take a whole board only when it is its room's own cut
+  (`arena`: the Fairy Forest 20×20); Custom Map (the voxel editor's board) stays. battle.js _rerollMapForNextMatch never rerolls
+  onto one; ui.js's setup select leaves them out; map.js _TRAIN_MAP_POOL's five big boards became their 12×12 maps.
+- GAUNTLET played only those boards. It deploys 4, so it now takes every map the other modes take (the 12×12s); the labs'
+  Gauntlet rotation draws the same pool as the rest. No rule changed (roster 8, deploy 4).
+- The roster rows, GAME_MODES entries and board data STAND: the site ids are what the HQ, the arenas (tints, layouts) and
+  hqSiteId read. Only the offering is gone.
+
+## THE GUNSHIP — the Spaceship redone lengthwise (2026-11-11, mondo: "redesign the spaceship. It just looks nothing like a spaceship at all ... keeping the square grid in mind and designing the map for interesting and strategic PVP play" · "why not put the spawn zones at either end of the ship")
+- Why the 10-28 ship didn't read: the 12×12 board was a small window on the middle of a 120 m deck (all you saw was flat plate +
+  crate blocks), and the room's `observatory` look (teal grade) turned the void green.
+- data.js HQ_AREA_SPECS.prebuilt_derelict: a COMPACT GUNSHIP drawn with hqDeckPlan on the 3.5 m lattice (34 × 28, x0 −59.5, z0 −49;
+  the board = cols 11..22, rows 8..19 = x/z −21..21), BOW NORTH, STERN SOUTH, the two spawns at the ends. The board is mirrored
+  port/starboard AND bow/stern. Plan source: the rows in data.js (drawn by a scratch script, plan per square):
+  `. 1 1 o o o o o o 1 1 .` ×2 (spawn deck + sponsons) · `. 1 . . o o o o . . 1 .` ×2 (the wells + pylons) ·
+  `1 / / / o o o o \ \ \ 1` (companionway) · `2 2 1 D o N N o D 1 2 2` ×2 (wing guns, step, dishes, nexus) · mirrored.
+  - THE SPINE (cols 3..8) bow to stern: spawn decks at both ends, the nexus hatch (marks: amber frame + rings) amidships.
+  - THE SPONSONS (bow) / ENGINE HOUSINGS (stern), one level up beside each spawn, joined to THE GUN DECK (wing roots, one level up)
+    by THE PYLON (one square, one level up) past THE WELL (a 2×2 opening to space either side of each spawn's exit → a 4-wide neck).
+  - THE WING GUNS: a 2×2 casemate two levels up on each gun deck (contested high ground, same distance from both spawns); twin
+    barrels out of the outer face (three-renderer.js `guns`).
+  - THE COMPANIONWAYS: a steel flight (ramp, 3 squares) from the spine up onto each gun deck's corner, rows 4 and 7.
+  - Cover: two sensor dishes either side of the hatch (squares 3/8 × 5/6, ghost walls).
+  - Off the board: the bridge (L1, canopy + lit windows) + nose + the airlock collar (north wall x 0); the engine block (L1, reactor
+    stack L2, five bells on the aft face z 35); the wings swept back with a nacelle under each tip (`pods`); docked fighters, lander,
+    rover, the old props re-homed; the docking arm off the starboard wing to the bay door (south wall x 33.25).
+- RULES LEARNT (bake-arenas judge on this void room):
+  - A void square between two plates reads as DECK: hqDeckPlan's `proud` 0.7 m puts plate samples (sub 3, cover 5 of 9) inside a
+    1-square gap. Voids must be 2 squares across, or open to the board edge.
+  - A 2-level drop next to a deck square reads that square as rock (the L2 plate's proud edge); keep L2 inside L1.
+  - The judge's reach is THE WALKER's (HQ_FIELD_RULES.box.climbM 1.46 m), not the battle's climb: a 3.5 m ledge region nobody can
+    walk up counts as walls against the cap. A 3-square ramp (tops 0.58 / 1.75 / 2.92 m) is the shortest walkable flight. The
+    guns + step + dishes still count (out 48 = cap on the 12, 27 = cap on the 9): any extra void/ledge on the board needs a flight.
+- Look: new HQ_ROOM_LOOKS `gunship` (dream preset, tintAmount 0.1, bloom 0, nightMood 0.3) replaces `observatory` on this room.
+- three-renderer.js _hqBuildStarship: `bow: 'n'` turns the keel-frame parts (keel, bells, pods, windows, canopy) onto a north bow;
+  new `bells[].y / .len`, `pods[].len`, `canopy {x,z,w,l,h,y}`, `guns [{x,z,y,dir,len,r,gap,ax}]` (room metres).
+- Moved with it: HQ_ARENA_RULES.within x 0; siteRooms.backDoors bay x 33.25; the stage frame deck x 600 (door x 0); the tape on
+  the nose. Picks 12/11/10/9 re-baked (12 @ 11,8; 11 @ 11,8; 10/9 @ 12,9).
+
+## THE CALM TEST BOARDS ARE GONE (2026-11-11)
+mondo: "Can we get rid of the 'calm' maps? Arent all of the maps calm now? We dont need the duplicates". data.js HQ_LOOK_MAPS is
+EMPTY: Fairy Forest (Calm), Stonehenge (Calm) and Hell (Calm) (the PR #1112 / #1116 test boards, second cards of their own arenas)
+are no longer registered. THE CALM LOOK (CALM_TERRAIN, the default on every map), the ROOM tab Calm/Pixel switch,
+window.EW_NO_CALM_LOOK and his pixel sheets are untouched. The table + hqMapLook + the register stay for a later test look.
+
+## THE SEATS ARE OUT: Camelot + the Training Room (2026-11-12, mondo: "get rid of the seats on the camelot map and the training room, they dont really make sense or look right for those settings")
+- **Camelot** (`site_prebuilt_camelot_ward`): the two three-row stands beside the tilt (the six `tier` + `seat` wall rows at z ±7.875 /
+  ±9.625 / ±11.375) are removed. Nothing else on the board moved (tilt, sanded ground, knoll, pavilions, armour stands, braziers).
+  Rebaked at 12 / 11 / 10 / 9: the same windows (10,11 · 10,12 · 11,12 · 12,12), the stand squares are level 0 now.
+- **Training Room** (`training_hall`): the six bleacher rows on the west side, the walk behind them, their two end walls, the rail and
+  the yellow line at their foot are removed; the west side is open floor. The 8 × 8 pick did not change (the bleachers were off the board).
+- Before / after: /mnt/project-files/training-room-20261112/. The Training Room REDESIGN (same thread) waits on mondo's OK of a mock-up.
+
+## THE TEST CHAMBER: the Training Room redesign (2026-11-12, mondo picked the "psychic test chamber" mock-up)
+- `DOOR_HQ.rooms.training_hall` only (data.js). Shell: floor `urban:TileGeneric3a`, walls `aluminium`, dado `gunmetal`, ceiling
+  `urban:FibreCeilingTile1a`, look preset `teal`, no pipes. The pad: `board` feature with `urban:TileGeneric1a` in two tints, cyan seam
+  lines (marks with `y: 0.07` so they ride the pad), A-H / 1-8 `text` marks, the amber apron line, the old sign as floor paint.
+- Four `gunmetal` pylons (3.5 m, at ±19.25: off the 8 x 8) with a `floating_orb` on each. West: 4 `iso_tank` + `eeg_rack`, `dream_screen`s,
+  `door_xray`s. North: 3 `dream_screen`, 2 `monitor_stack`, 2 `retro_console`, 3 `egg_chair`, racks. East: `server_rack`s under the deck,
+  consoles + chairs + monitors + `star_projector` on it. South: low things only. Gym props (pads, banners, lockers, dummies, shutter…) are out.
+- RULE KEPT: the pad's keys are `urban:` sheets, so the board's tile type is what it was (a named key such as `aluminium` changes it).
+  `node bake-arenas.js --own prebuilt_training --dry-run`: ok, all level 0, pick unchanged. Existing catalogue props only, no new models.
+- Mock-up / proof shots (WebGL2): /mnt/project-files/training-room-20261112/mockup_test_chamber_*.jpg.
+- 11-12 follow-up (mondo: "The white is too bright, needs to be turned down"): the pad's two tints went from 0xffffff / 0x7f9ab0 to
+  0x8e9aa4 / 0x4e6070 (the room's lights were blowing the pale tile out to flat white on his Mac). Shot: test_chamber_dimmed_low.jpg.
+- 11-12 second follow-up (mondo: "Yes it is still way too bright"): the cause was the room's light, kept from the gym (`mood.ambient: 2.0`
+  over dark rubber mats) now falling on pale tile. `mood.ambient` 2.0 -> 1.0 and the pad tints -> 0x66707a / 0x36424e. Headless WebGL2
+  shots read much dimmer than his Mac (Firefox, WebGPU): do not judge a pale floor's brightness from them. Shot: test_chamber_dimmed2_low.jpg.
+- 11-12 third follow-up (mondo: "water still showing up as way too bright in the training room"): THE CAUSE OF ALL THREE was the camera's
+  KEY LIGHT (HQ_LIGHT_RULES.keyLamp.battleIntensity 1.5 × Settings, a point light 7 m over the square the camera looks at in every
+  ENCLOSED room). Measured in one headless fight: a 3 × 3 of spell water reads flat white (217, 225, 225) with it, blue (134, 185, 203)
+  without; moving the room's ceiling lamps changed nothing. New `shell.keyLamp` (0..1, three-renderer.js _hqKeyRoomK: the room's share
+  of the Key Light, walk + fight); `training_hall` sets 0. The same water in the Holo Sim stayed dark in the same test. Other enclosed
+  rooms with a pale thing under the camera can flare the same way: give that room a `keyLamp` share. Shot: water_key_light_before_after.jpg.
+
+## THE PARALLAX — far things pass slower (2026-11-12, mondo: "on the spaceship map and really any map with things moving in the background, you are using parallax like making things further away move slower; it kind of looks like everything is moving at the same speed")
+THE AUDIT: in a fight only two boards keep `env.motion` (data.js hqFieldLayout drops it for every box / cave / terrain field; the `voyage`
+rooms keep it): **Spaceship** (`prebuilt_derelict`, space) and **The Flying Dutchman** (`prebuilt_revenge`, sea). Every other board's
+background bobs / spins in place (the room's own floaters) and its dome clouds drift in the sky shader; nothing else travels. The wheel /
+rise / drift / void rows (Stonehenge, Area 51, Babel, Hell, Heaven, Looking-Glass) are dormant since the voxel boards went out; the code
+below covers them if they come back. What travelled, and at what pace BEFORE: the far roster 1.0× the speed (every body, whatever its
+distance), the motes 1.15×, the sea sheet + wakes 1.0×, the dome's nebula a slow flow.
+NOW (three-renderer.js MOTION block, `HZ_PARALLAX` + `_motionPar` / `_motionMotePar` / `_motionMoteDepth`): every streaming body carries
+`par` = (1 + k·d0) / (1 + k·d), floored at `far` 0.22, d = its lateral + vertical offset from the board's line over the ring radius — the
+factors are then spread over the whole range per roster (`_motionParNorm`): its nearest body runs the row's full `speed` (even where a hull keeps the roster far out) and its farthest 0.22× of it (`_motionPlace`: `dist * e.par`). The motes run
+`moteNear` 1.7× .. `moteFar` 0.8× across their band; a far mote is thinner (×0.55), dimmer (×0.5) and its streak is as short as it is slow.
+A `rise` streams its inner ring fastest; a `wheel` stays rigid (a turn has no parallax), only its sparks lead by radius. The walk's voyage
+(`_hqBuildSky` / `_hqTickSky`: `f.vPar`, the 36 dust streaks) got the same. Nothing was removed, moved or resized; the dome was already the
+slowest layer; the sea sheet and the wakes stay at the hull's pace. Readout: `ThreeRenderer.motion().parallax` (every body's factor).
+Kill-switch `window.EW_NO_PARALLAX` (set before the map builds). Online: built from the map's own seeded rng on both seats, nothing relayed.
+## THE GRASS FIELD (2026-11-12)
+mondo linked github.com/fromtheghost/ghibli-grass: "try implementing some more stylistic grass. AAA game like genshin impact". The repo
+has no licence, so nothing of it is used. His words on the first try (thin spiky blades, random yaw, yellow tips): "im imagining it
+being more thick and fluffy. The way it is now just looks gross." He then picked "Yes, build the pointed clumps".
+- three-renderer.js THE GRASS FIELD (`GGRASS`, `_ggBuild`, `_ggMat`, `_ggFace`, `_ggTick`, node twin `_ewNodeGGrass`). One merged mesh,
+  one draw call, built with the board's decorations (`rebuildTerrainDecorations`). A tuft = a 7-corner three-point clump
+  (`_GG_SHAPES.crown`) that turns to the camera in the vertex shader (`aGgS` along `_ggRightU`), 24 x 24 a square, 0.11-0.21 of a
+  square tall. NO DEPTH WRITE, render order 50, sorted far to near (counting sort, redone when the camera turns ~10 degrees): near
+  tops cover far feet (the fluff), and tile highlights / rings / zones / blood draw on top of the grass with no extra code.
+- Where: every board square whose sheet is a grass key (`_GRASS_TERRAIN_SET`), plus the room's own grass up to 5 squares past the
+  board in a terrain room whose floor is grass (paths, rock, water, walls, steep faces skipped through the room's terrain info).
+  Not on: a square with a thing on it (a tree is fine), a monument square, a field square that stays rock, a square whose ground
+  steps more than 0.35 of a square (tufts climbed Stonehenge's stones before that rule).
+- Colour: `GGRASS.sheets` = each grass sheet's average in SCREEN values (the materials read sheets that way; linear values came out
+  2-3x too dark in sunlight). Foot = rootK, belly = the ground's own, top = coolK / warmK patches. Lambert, normal up, takes shadows.
+- Motion: a rolling gust + flutter, crest brightens the tops. THE PRESS MAP (4 texels a square) lays tufts down under units.
+- Setting: Settings > Video > Grass High / Low / Off (`ThreeRenderer.setGrassField`, `ew_grassField`; Low = 15 x 15 wider tufts, 2
+  squares of meadow). Off for everything: `window.EW_NO_GRASS_FIELD`. Live tunables `EW_GGRASS` (+ `EW_GGRASS.flush()`); the last
+  build's numbers `window._ewGrassField`.
+- Cost: Fairy Forest High 100,638 tufts (Low 24,916), Stonehenge 152,077. The meadow past the board is kept between builds; a
+  rebuild after a dig took 155 ms on the sandbox (790 before). Frame time on the software-drawn sandbox showed no difference Off
+  vs High (56-79 ms either way), which says little about a real weak GPU: the overdraw is the thing to watch there.
+- Seen: node renderer on WebGL2 (Fairy Forest, Stonehenge, The Looking-Glass), real WebGPU (SwiftShader) and the classic WebGL
+  renderer (Fairy Forest). Fog of war was on in every run. Not seen: exploration rooms (none built: the field is battle-only),
+  voxel boards, purple grass, a two-seat online match, a real weak PC.
+- Shots: /mnt/project-files/ghibli-grass-20261112/ (final_*.jpg; fluffy_* = the mock-up he approved; pair_* = the rejected first try).
+
+### THE CALMER WIND (2026-11-12, mondo on the first live build: "it's maybe a little too wavy")
+Only the sway changed. `GGRASS.wind` 0.45 -> 0.24 (tip travel), `sheen` 0.30 -> 0.18, and two new rows both shaders read: `gust` 0.80 (was a fixed 1.25,
+how fast gusts roll) and `flutter` 0.05 (was 0.10). GLSL takes them as `uGgW`, the node twin as constants at build. Live retune: `EW_GGRASS.wind = …;
+EW_GGRASS.flush()`. Proof frames: `window.EW_DISABLE_GRASS_WIND = true; window.EW_GRASS_WIND_T = <seconds>` sets the stopped wind clock by hand.
+Before/after: /mnt/project-files/ghibli-grass-20261112/sway_before_after.gif (Stonehenge, WebGL2 node renderer). Not seen: real WebGPU, classic WebGL.
+
+## THE MOVING SHEETS: astral ground + six liquid looks from the noise packs (2026-11-12)
+mondo: "I could see there being a psychic or astral terrain made from these. Definitely use them in the astral realm or dreamy
+maps. Maybe you can use some of these for liquids", then of the examples "Yeah looks good, go ahead". Source: Screaming Brain
+Studios' CC0 packs (see spells-vfx.md THE NOISE PACKS).
+- Eight texture keys in data.js CALM_TERRAIN.sheets, each playing by its twin's rules (hqRuleKeyOf), so no new terrain and no
+  new rule: `nz_astral_a` / `nz_astral_b` (purple_grass), `nz_dreamwater` (water), `nz_spring` (healing_spring), `nz_poison`
+  (poison), `nz_purplebog` (purple_bog), `nz_magma` (lava), `nz_oil` (oil). The stills are on R2
+  `Assets/world/terrain/calm/nz_*.png` (the packs' own files, unedited); the editor's texture picker lists them under MOVING.
+- three-renderer.js THE MOVING SHEETS (`_NZ_MOVE`, `_nzMoveTex`): `_hzTex` and `getTerrainTexture` hand out ONE small canvas
+  per key in place of the file. A dozen times a second the colour sheet is drawn into it at a drifting offset and a tinted
+  noise sheet (`Assets/fx/noise/sbs/`) is added over it sliding the other way. Every surface wearing the key moves on every
+  renderer, with no shader. Off switch: `window.EW_NO_MOVING_SHEETS` (they stand still).
+- THE SEA OF POSSIBILITY (`site_prebuilt_lookingglass_sea`) wears `nz_astral_a` as its terrain floor (was purple_grass).
+- His pixel lava + water are untouched and stay what lava + water wear; the liquid looks are only there when picked by name.
+- Seen: the Sea of Possibility floor moving, node renderer on WebGL 2. Not seen: a liquid look painted in the editor (as a
+  board square or a hazard), real WebGPU, classic WebGL.
+
+## THE DULL LIQUIDS (2026-11-12, mondo, a Hollow Earth screenshot: "fix how bright and reflective these liquids are (i think this one is goo). Water and lava are fine")
+- Cause: THE CALM LIQUIDS (poison, poison_bog, purple_bog, swamp = the black goo, oil, blood) shared the calm water's material:
+  Phong specular 0xb4c4c8, shininess 140, the rippled normal at 0.05. Every light on the board (the sun + eight point lights on
+  Hollow Earth) threw a pin-sharp white glint off every ripple, so a pool was white speckle over its colour. Entropy Style on or
+  off made no difference to it.
+- Fix: three-renderer.js `_CALM.liquids` rows are now [colour, opacity, glow, highlight colour, shininess, ripple depth, sky sheen];
+  each liquid's highlight is a dim shade of itself, wide (shininess 30-40), the ripple shallow (0.012-0.016), the sky sheen 0.25-0.3.
+  `_calmFluidMat` passes ripple + sheen as uniforms `uCalmRip` / `uCalmSheen` (classic) and in the node tag (`_ewNodeCalmWater` D.rip /
+  D.sheen). Water (only under EW_CALM_LIQUIDS) keeps 0.05 / 1. Live tuning: `EW_CALM.liquids.<key>`, shows at the next board build.
+- Not touched: his pixel water + lava, healing_spring (a calm sheet, no shader), the six MOVING liquid looks (canvas sheets on plain
+  ground material, no highlight of their own).
+- Proof (node renderer, WebGL2): /mnt/project-files/dull-liquids-20261112/. Not seen: real WebGPU / his Mac, classic WebGL.
+
+## ONE TRAINING ROOM (2026-11-12, mondo: "unifying the training room look in the battle map with the one in the story mode. They need to be the same for the cutscene and battling in the training room to make sense"; his pick on the card: the test chamber, plus a Meshy cart with wheels)
+- Before: the walk's Training Room was `DOOR_HQ.rooms.training` (Room 64, 20 m, the old maroon pit, `fx: 'training'`); the lessons and the
+  quest fight played on the 8 x 8 cut of `rooms.training_hall` (the 63 m test chamber). Two rooms.
+- Now (data.js only): `rooms.training` is built right after the DOOR_HQ table as `Object.assign({}, rooms.training_hall, {...})` minus `site`:
+  the SAME shell, terrain, props and doors, plus what only a walked room has (roomNo 64, the RANGE console counter, the two agents, the
+  sparring spots, the lines, spawn 0,28). CHANGE THE LOOK IN `training_hall`; `training` follows at load. A room edited in the editor's
+  world doc is replaced whole, so an editor edit of one does not reach the other.
+- The id `training` is kept on purpose: the main hall door, the service stair, the quest (`done.room`, QUEST_FIGHTS.room), the facility
+  row, the lesson plaque and the cast spots (Knox, Ringer: moved under the east deck) all read it.
+- Moved into the hall from Room 64: the tanker desk + CRT + phone + papers (west wall, z 0), the lesson plaque, the three doors (main hall
+  south x 0, service stair west z -24.5, condemned crossing east z 24.5), the coffee corner, lockers + hook rail, cooler, folding chairs,
+  wet floor sign. The old pit stays in the file, unlinked, as `rooms.training_pit` (the renderer's `_hqBuildTrainingPit` still builds it);
+  the voxel board is still "Training Room · voxel" in VS CPU.
+- THE ORIENTATION CORNER (his words: "a little area where the player takes a seat and the TV gets rolled in"): three `school_desk` (face 0:
+  the prop carries its seat, the sitter faces south, back to the pad) at x -7.35 / -5.25 / -3.15, z 26; `decor_av_cart` (NEW Meshy model,
+  `Assets/world/props/meshy_decor/av_cart.glb`, 0.5 MB, catalogue h 1.1) at x -5.25, z 29.4 with `tube_tv` on top (y 1.1), `vhs_player`
+  on the middle shelf (y 0.67), a tape on the bottom shelf. The cutscene thread's shots (TV roll-in, the portal behind the seats) are
+  planned on these spots: keep the lane from the door to the cart clear and nothing taller than a seated head between the desks and the pad.
+- Rules untouched: the pad's `board` keys, the 8 x 8 pick (`node bake-arenas.js --own prebuilt_training --dry-run`: ok, all level 0).
+- Proof (headless WebGL2, reads darker than his Mac): /mnt/project-files/training-room-unify-20261112/.
+- THE LAWN ON THE PAD (found proving this): THE GRASS FIELD grew tufts over the test chamber's pad in battle (the board's squares keep the
+  grass tile TYPE as a rule), so the board looked like a lawn and the walked room did not. New `shell.grassField: false` (three-renderer.js
+  `_ggBuild`: the battle's room says no grass field on its board); `training_hall` sets it. No tile type changed.
+
+## THE SUNKEN AGORA — Atlantis's board moved onto the sea floor (2026-11-13, mondo: "redesign the atlantis map ... i dont see any fish or coral at all ... an epic underwater deep oceanic kingdom with greek inspired architecture ... merges science fiction technology and magic")
+- STATUS: shipped 2026-11-13 after mondo: "thats good for now" (shots: /mnt/project-files/atlantis-redesign/).
+- Was: a window of THE TEMPLE (the dry air pocket: grey floor, the oracle pool, no sea life). Now: a window of THE ABYSS, the drowned room
+  that already holds the ocean pack (x -24.5..17.5, z 21..63, pinned in HQ_ARENA_RULES.within). The temple room is untouched.
+- The rule that made it possible: data.js `hqFieldRoomOk` lets a DROWNED room through when its sea says `field: true`
+  (`sea: { y: 26, under: true, field: true }`): the sea floor is ground, the water over it is only the look. Side effect: an encounter in
+  the abyss now fights on the sea floor where you swim (it used the site's old board).
+- The board: a `board` feature (12 x 12 pale marble squares, 1.2 m over the sand), a 2 x 2 marble block in each corner, a 7 m column before
+  each spawn row, four lit crystal pylons round the nexus, a coral stand on each flank; alike from both spawn rows and both flanks.
+  THE PALACE north of it (podium 4.7 m, broad stair, dome, four 9 m columns, two obelisks, two statues, two coils), colonnades down both
+  flanks with jellies hung between the columns, coral / anemone / clam scatter round the stylobate, the kelp forest to the west.
+- Swimmers keep OFF the board (every circle's centre and radius clear the squares): nothing swims between the eye and a unit. The humpback,
+  one tuna, three fish and two jellies that crossed the squares were moved to its edges (moved, not removed).
+- three-renderer.js: a room drawn round a battle board lights the prop lamps NEAREST the board first (`_hq.lightAt`); the walk keeps row order.
+- Sizes 9 / 10 / 11 / 12 baked, tools fit.js true for all four. Not checked: WebGPU, his Mac, online guest, exploration swim over the agora.

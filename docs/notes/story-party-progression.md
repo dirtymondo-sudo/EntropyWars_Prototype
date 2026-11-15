@@ -742,3 +742,322 @@ This PR — THE CORE is now 8 tapes, the optional shelf renumbered 9-13:
 - battle.js `_achLivePoll` stays quiet in a lesson (an Inspect had popped "Cartographer +100" though nothing commits).
 - RULE (the plan's drift note): a PR that changes a function named in data.js TUTORIAL_MECHANICS re-reads that tape's
   steps in the same PR. No test, no tool.
+
+## THE QUESTS — the quest system + the first quest (2026-11-12, mondo)
+mondo: "Can we implement a quest system in the story mode? ... Our first quest i think should be walking to the training room to do
+the first couple tutorials, which turns into the Catgirl appearing from a portal that forms in the room as she is chased by two shadow
+beings, which you must defeat together." His spec docx (Entropy_Wars_Quest_System_Vertical_Slice_Spec) gave the system; its own first
+quest was ignored on his word. Reward (his pick on the card): THE CATGIRL JOINS YOU, and in story mode she is locked until then.
+R2 files: data.js, map.js, ui.js, battle.js, three-vfx-effects.js, styles-base.css.
+- **Data (data.js, after the tutorial block)**: `STORY_QUESTS` rows `{ id, v, title, summary, start, stages, reward }`; a stage is
+  `{ id, objective, done }` with `done` = `{ on: 'room', room }` | `{ on: 'lesson', lesson, filed? }` | `{ on: 'fight', fight }`.
+  `QUEST_FIGHTS` rows `{ quest, site, room, gm, label, guest, enemies, portal, seats }`. A new quest = a row (no code).
+- **Progress**: `profile.door.quests = { v, q: { <id>: { status, stage, done[], at, doneAt, reward } } }`. `questEvent(profile, ev)` is
+  the ONE writer (`ev.type` hq | room | lesson | fight + outcome). A stage moves only from its own stage; only a WIN of THAT fight
+  counts; the reward is stamped before it is paid. Reads: `questTracker`, `questJournal`, `questFightPending`, `questLockedUnits`.
+- **The lock**: `hqPartyUnlocked` drops a quest's `reward.unit` until that quest is complete (story party only; Online / Practice and
+  the account's ownership are untouched). `questGrantReward` enlists her (a full party leaves her ON CALL).
+- **The building (map.js "THE QUESTS")**: `_questEvent` (one profile transaction + the toasts), THE TRACKER `#hqQuest` (the plate
+  under the strip, click = the journal), THE JOURNAL = the pause menu's QUESTS command (`_hqPauseQuestsHtml`), the Range Console's
+  row (`data-quest-fight`, the retry), `_questFightGo` → `_hqEncounterStart` with `L.quest` (the guest spliced in after the first
+  shift, `party.questDeploy` = one seat more in `_msConfirm`; the run marker carries `quest`). `_hqEnter` fires the room event.
+  Dev: `Quests.state()`, `Quests.reset()`, `Quests.event(ev)`, `Quests.fight(id)`.
+- **The lesson turns into the fight (ui.js `_tutFinish` → `_tutQuestPortal`)**: the tape's event; when it makes a quest fight the
+  objective and the lesson came from the building, the Department's door stands up on the portal tile of the lesson's board
+  (`ThreeVFXEffects.questPortal` = `_sigDoorPortal3D`), a black card covers the cut, the lesson is torn down and the fight starts on
+  the same board (`window._questFightPending` keeps `_hqReturnOrMenu` from re-entering the building in between).
+- **The fight (battle.js `_questFightSeat` / `_questFightArrive`)**: the guest (the human seat's one body with no partyId) and the
+  enemies stand on the fight's `seats`, the door stands open on `portal`, they leap out of it, the camera opens on them. The commit
+  files the outcome (`questEvent`), `_hqEncounterResult.quest` carries the changes home for the toast.
+- **The first quest** `orientation` (title ORIENTATION until mondo names it): walk to Room 64 → Tape 1 (a tape already filed
+  counts) → Tape 2 (must be played: the portal opens at its end) → `orientation_portal`: the party + the Catgirl against two Shadow
+  Entities on `prebuilt_training`, TDM, story rules.
+- The lessons, their steps and TUTORIAL_MECHANICS are untouched. VS-CPU only (RULE #2 has nothing to relay).
+
+### THE FIRST QUEST HOLDS (2026-11-12, mondo: "I shouldnt have anyone at all in my roster except for me (door agent). The whole quest is about getting a first party member")
+- A quest row may carry `holds: { party, range }`; `questHolds(profile, key)` is true while that quest is not complete.
+- `party`: `hqPartyUnlocked` returns only what the doors sealed, so the first filing is the officer alone and the prune relieves
+  the starters from a party filed earlier. Online / Practice / ACCT_STARTER_UNITS untouched. After the quest the account's units
+  are on call in the pause menu as before; nobody but the reward joins by itself.
+- `range`: map.js `_hqConsoleTerminal` returns false for the Range Console (the tapes' panel shows, never the terminal with its
+  game modes and party builder) and `_hqTrainingHtml` leaves out SPARRING / PRACTICE.
+- THE FREE STARTERS STAY LOCKED (same day, mondo: "They should stay locked until later"): in `hqPartyUnlocked` a unit in
+  ACCT_STARTER_UNITS counts only once a finished quest rewarded it (`questRewardedUnits`) or a door sealed it. Bought units stay.
+  A later quest hands one over with `reward: { unit }`.
+
+### THE TUTORIAL GATE, EVERY BUTTON (2026-11-12, mondo: "if its telling me to move then everything besides move needs to be greyed out")
+- The step's `allow` list already blocked the actions and greyed the mapped rows (ui.js `_tutFilterBlades`); END TURN, BUILD,
+  the pushers and the unmapped rows (climb, tactics, escape) had stayed lit and a press did nothing.
+- Now: hud.js greys END TURN, BUILD and every pusher with LATER through `window._tutVerbOk` / `_tutToolOk`; climb counts as move;
+  battle.js `setActionMode` asks `_tutModeOk` (keyboard shortcuts). Land / Take Off pushers keep their own state (scripted steps).
+- Tape 1: `scope` allows only attack, `guard` only guard. Other tapes still allow MOVE beside the taught action where the unit
+  may need to step into range (not walked through; tighten per tape with a playthrough).
+- THE MIDDLE, THEN THE CORNER (2026-11-12, mondo): a read-and-continue panel (ack step, LESSON COMPLETE, LOST) gets `.center` (centre screen, z 99990, dimmed board, bigger text); action / watch steps and the quest portal card keep the corner. ui.js _tutRender, styles-base.css '#tutCoach.tut-coach.center'.
+- THE AIM TIP (2026-11-12, mondo): a lesson step may carry `aim: { <actionMode>: html }`; while that mode is armed the coach shows
+  it under the body and does not fade (ui.js _tutPoll, `#tutCoachAim`). Tape 1 MOVE: "Yellow tiles are ones you can attack from."
+- THE QUICK LISTS (2026-11-12, mondo): a clicked enemy / ally / square list keeps only the rows the step allows
+  (hud.js `_tutQuickRows` over the three `_compute*Actions`, ui.js `_tutQuickOk`; a row that walks first needs MOVE allowed too).
+- THE MOUSE COMES BACK (2026-11-12): ui.js `_tutFreeMouse` releases a pointer lock at a lesson's launch and (every poll) while it boots, is finished, or a panel waits for CONTINUE; the HQ walk's late lock had stayed on the shared canvas between Tape 1 and Tape 2 (not reproduced headlessly).
+- Tape 2 'press' step: aim tip on ATTACK (green, `aim: { attack: { t, c } }`: a tip may be a string or {t: html, c: colour}) says the green ! = super effective and basic attacks follow the type chart; the step's say now reads 'A green ! on a target row marks a weakness' (was 'means the refund is guaranteed', untrue on that step: the press is already spent).
+
+### THE FIRST FIGHT'S TEAM + THE ONE TARGET (2026-11-12, mondo)
+- "my team for the first fight should be me (door agent), agent locke (also door agent, level 25 or something, on auto), and
+  catgirl": QUEST_FIGHTS rows take `allies: [{ race, name, level, tactic, gender? }]` (data.js `questAllyMembers`). map.js
+  `_hqEncounterStart` seats them after the first shift, the portal guest after them; battle.js `_questFightAllies` /
+  `_questFightAuto` put each on its Tactic (matched by no partyId + race, like the guest). Nothing of theirs is written back.
+- "it gives me bigfoot and honda civic out of no where": a party filed before the starters were locked was pruned only on a NEW
+  filing. map.js `_hqPartyLaunch` now runs `hqPartyPrune` before every story fight.
+- "nothing stopping me from smiting dummy A ... no way to progress": a lesson step may name its target, `only: '<unit key>'`
+  (an attack goal's `target` counts too). ui.js `_tutTargetOk` (engine gate in battle.js attack + spell, nudges) and
+  `_tutTargetIs` (hud.js: the target list and the clicked-unit quick list show only that target). Set on Tape 1 `scope`,
+  Tape 2 `cast` / `press` / `resist`.
+
+### AGENT LOCKE IS HERSELF (2026-11-12, mondo: "i thought agent locke was a woman? ... She already has her own model. She walks around in the DOOR HQ")
+The first fight's ally (PR #1207) was a generic Door Agent with the race's default look: WRONG. Agent Locke is the story's own
+character (DOOR_STORY.md "Agent Locke", data.js DOOR_CAST.locke, sprites.js DOOR_CAST_MODELS.locke). Now the ally row is
+`{ race: 'door agent', gender: 'female', cast: 'locke', ... }`: `cast` rides as `meta.appearance = { cast }` (data.js
+questAllyMembers), state.js keeps it on the unit (it is NOT a creator look: normalizeCharacterAppearance returns null for it),
+and sprites.js getRace3DModel returns DOOR_CAST_MODELS[cast] plus the race row's `hold` (the gun) + `basicAttackKind`.
+state.js keeps it through the party repair too (rebuiltMeta). battle.js _questFightAuto sets it again as a backstop. Off switch: window.EW_DISABLE_CAST. Any quest ally can use `cast`.
+LESSON: a name mondo uses is an EXISTING character until DOOR_STORY.md / DOOR_MASTER.md / DOOR_CAST say otherwise. Search those first.
+
+### NEXT TAPE from the Range Console: the black board (2026-11-12, mondo)
+"the second tutorial shows an all black screen, HUD and everything still there and responsive but nothing showing on the board."
+Cause: NEXT TAPE / RESTART on a lesson started at the Range Console (`_tut.from === 'hq'`) tore the lesson down through
+backToMainMenu, whose way home (map.js `_hqReturnOrMenu`) re-entered the building (`_hqEnter`, from 'return'); the next lesson's
+match started in the same breath, under the building's load, and the building then owned the canvas: the board was never drawn.
+Seen on WebGPU (headless Chromium, SwiftShader): DOOR HQ > Room 64 > Tape 1 > NEXT TAPE = canvas 0,0,0 with the HUD up; the same
+two tapes from the main menu shelf draw fine. Not the Entropy Style (still black with the style Off) and not PR #1215 (his console's line
+numbers were the build before it). Fix: ui.js `_tutChain` sets `window._tutChainPending` round the teardown and `_hqReturnOrMenu`
+returns early on it (as `_questFightPending` does for the quest's fight); a lesson that cannot start falls back to `_hqReturnOrMenu`.
+Harness note: a real WebGPU canvas in headless Chromium here needs `--enable-unsafe-webgpu --use-webgpu-adapter=swiftshader
+--use-angle=swiftshader --use-vulkan=swiftshader --enable-features=Vulkan --disable-vulkan-surface` (without the Vulkan pair the
+swap chain's shared image cannot be made and the device is lost every second); one WebGPU browser at a time.
+
+### THE CUTSCENES — the director + C · THE AMBUSH (2026-11-12, mondo: "cinematic, think like a director in terms of shots, framing, composition, using the camera as a character ... should include subtitles, no voice audio yet")
+The plan of record (the 6 scenes A-F, his decisions, HIS lines word for word): the Claude Doc "Entropy Wars Quest System and First
+Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyboards he approved: project files
+`first-quest-cutscenes-20261112/storyboard_[B-F].jpg` (his two changes: B4 Locke on the far side of the TV cart; F the player alone until F4).
+- **In engine, never a film**: a scene plays on the live game with ROLES (`player` = the officer he made, `locke`, `guest`, `foe1/2`),
+  so the created character and the party are always in it.
+- **The rows**: data.js `STORY_CUTSCENES` (`storyCutscene(id)`). A row = BEATS; a beat = ONE SHOT that opens with a cut:
+  `dur` (a spoken beat holds its reading time when left out), `shot { look, from, az, el, h, dist, over, fov, track, to }`,
+  `say { who, text }`, `act [{ at, do, who, ... }]`, `slow { at, scale, ms }`, `hold` (a click cannot hurry it). Shots are written
+  against SUBJECTS (`unit:<role>`, `seat:<role>`, `portal`, `tile:x,y`, `{ mid: [..] }`), lengths in BODIES (1 = a standing body, 1.75 m: `ThreeRenderer.bodyUnit()`); `from` = a
+  second subject the angle counts from (`over` = that far behind it: the over-the-shoulder), so a row fits any party and layout.
+- **The director**: three-camera.js `EWScene.play(row, host, onEnd)` on THE SCRIPTED EYE (`EWCine.enter({ script: true })` +
+  `EWCine.pose()`: no panel, no mouse capture, no keys of its own). Overlay `#ewScene` (styles-cinematic.css): letterbox 12vh,
+  the words bottom centre (black, white outline, the speaker over the line), HOLD ESC TO SKIP. A line holds 0.06 s a character
+  (1.6 s least); click / SPACE / ENTER moves on. The grammar is the spell camera's (a beat cuts in, a move changes one thing).
+  The HOST is the scene's hands: `unit`, `point(ref)`, `act(a)`, `slow()`, `finish()`. Dev: `EWScene.state()`, `.next()`, `.stop()`.
+  Off: `window.EW_NO_CUTSCENES` (the old portal arrival plays).
+- **C · THE AMBUSH** (`orientation_ambush`, QUEST_FIGHTS.orientation_portal `scene`): plays on the fight's OWN board before its
+  first turn, in place of the dash-in / `_questFightArrive` / the arrival crane (battle.js `_questSceneRow/Hide/Host/Play`). Every
+  body is already on its seat in the engine; Kit and the two Shadow Entities are only hidden (`window._ewSceneHid`, the renderer's
+  unit sync) until the scene brings them out of the portal. Six shots: behind the recruit's head as the portal forms, Locke
+  ("That is not part of the training."), Kit bursts out low at the lens, the two shapes come through, Locke and the recruit
+  ("Unauthorized doorway. Recruit, on me. Orientation is over."), the pounce at quarter speed from behind Kit, then a HARD CUT
+  to the fight's frame. `finish()` (the end and a skip alike) unhides everybody, drops a leap still in the air
+  (`ThreeRenderer.cancelJumpTween`), the slow motion (`clearTimeWarp`) and shuts the portal (`_sigRun` `skip`), then
+  `encounterOpening(() => maybeAdvanceTurn())`. ui.js `_tutQuestPortal`: a fight with a scene skips the lesson-board portal (the
+  portal forms IN the scene) and the black cover lifts as the scene starts. Viewer-local, VS-CPU only: nothing relayed.
+- **Found on the way** (all on screen, headless): a match starts a few frames before its 3D board (the scene waits for
+  `ThreeAnim.isActive()`); the match start sweeps effects made in its first moments (the host watches the door and stands it up
+  again); the fog / the Shadow Realm hid the Shadow Entities (`window._ewSceneCast`: a scene's cast is drawn whatever the fog
+  says); the HUD is rebuilt under a scene (`.ew-scene-hid` sweep 4x a second); and THE CARRIED BODY: `_rigRescale` scaled by
+  `ts` alone, so the walker's body carried onto a 3.5 m-square board stood TWICE the size of Locke and Kit (rig `bodyK` now).
+- **Rev 2 (2026-11-13, PR after #1244, mondo: "a little laggy, especially the first part ... replay just the cutscene ... the
+  portal to form in the air, which a door emerges from, which swings open and catgirl jumps out, she does the injured/getting up
+  animation from battle, then the shadow entities pounce forward out of the door, and they spawn right in front of you ... the
+  floating portal door can just be a prop ... when you defeat the shadow entities the portal closes")**:
+  THE AIR DOOR = three-vfx-effects.js `_sigAirDoor3D` (`questAirDoor`: a portal of two turning rings in the air, `emerge()`,
+  `open()`, `close()`), sized to the bodies, owned by battle.js `_questDoor` (`_questDoorUp/Watch/Drop`): it stands for the whole
+  fight, is stood up again if swept, closes when no enemy stands, drops with the fight. Actions `portal` / `door` / `open`;
+  `out` leaps from the door's sill and `knock: true` = the board's knockdown + get-up (Kit). The Shadow Entities' seats are
+  (2,5) (3,5), one open square from the recruit and Locke; they come out of the door in the slow-motion beat and the cut
+  lands them there, facing the party. THE WARM-UP: a scene opens on black and starts its clock once 12 frames run under
+  45 ms (0.4 to 3 s). THE REPLAY: pause menu > QUESTS, a finished fight stage with a scene shows REPLAY (map.js
+  `data-quest-replay`, `_questFightGo(id, { replay: true })`, console `Quests.replay()`); the party's own Catgirl sits it out.
+- **Rev 3 (2026-11-13, mondo: "tension building shot, after kit falls out of the door. The camera needs to slowly zoom in on
+  the door, ominous smoke and energy emanating from it, then all of a sudden the shadow entities jump out, like a jump scare ...
+  The shadow entities are floating at different heights ... The portal+door should be floating higher")**: 7 beats. C5 THE
+  TENSION = a 5 s push-in on the door (dist 8.5 to 3.2 bodies), action `menace` (`off: true` ends it) = the air door's
+  `menace(on)`: the doorway light dies to a black-violet void, black smoke rolls out and down, sparks crawl the frame, the
+  rings bruise to violet and spin up over 3 s; the two `out` leaps fire in the beat's last 0.35 s (the jump scare), C6 lands
+  them in slow motion. Locke's closing line is his new one ("Alright rook, you're officially hired. Your first shift starts
+  now."). The height bug: a cut leap left the body in the air; three-renderer.js `cancelJumpTween` now LANDS the leap.
+  The sill = battle.js `QUEST_DOOR_SILL` (1.0 body off the floor).
+- **THE STAGES AFTER THE FIGHT (2026-11-13, build step 2, the part with no HUD)**: ORIENTATION has 6 stages now: after the
+  fight `desk` ("Escort the Catgirl to the front desk.", `done: { on: 'talk', who: 'rhonda' }`) and `office` ("Walk to your
+  office.", room `office`). New in data.js: stage end `talk` (map.js `_hqNpcPanelHtml` files `{ type: 'talk', who }` when a
+  cast member's panel opens), `reward.at` (the stage whose end pays the reward: Kit joins at the desk, not at the win;
+  questLockedUnits / questRewardedUnits read the `pr.reward` stamp), `holds.until`, and a cast spot's `after: { quest, stage }`
+  (Kit's chair at the counter is empty until `desk` is done). Scenes D / E / F will hang on these stages. The world flag is
+  the existing `hqStoryFlags` / `hqStoryFlagSet` (profile.door.hq.flags): `office_door` goes there with scene F.
+- **SCENE D, THE AFTERMATH (2026-11-13)**: data.js `STORY_CUTSCENES.orientation_aftermath` (8 beats: his 6 shots, the two long
+  speeches over two cards each; his lines word for word) + QUEST_FIGHTS `after` / `afterSeats`. battle.js `_questAfterPlay`:
+  finalizeMatch reads the run's quest BEFORE commitAchProgress files it away, and a WIN plays the scene on the same board
+  in place of the 50 ms wait before the result overlay. Roles by the ids taken at the fight's start (`er._roleIds`); the
+  three are stood on `afterSeats` (someone down is on their feet for it; the record is already written). Extra action
+  `walk` (who, path). A shot's `h` is the LOOK height in bodies and `el` the eye's elevation in degrees: an
+  over-the-shoulder wants h ~0.85 and el 6-7, not a high h. Headless stills only; Locke's walk-out unseen in motion.
+- **THE QUEST MARKER (2026-11-13, mondo on the mock-up: "quest marker looks good")**: a stage's `mark` = `{ room }` or
+  `{ cast, room }`. map.js `_questMarkTick` (rAF, `#hqQuestMark`, styles-base.css `.hq-qmark*`): in the mark's room the
+  target is the cast member, elsewhere the door of the room stood in that leads there (data.js `hqRouteNext`, a BFS
+  over the doors' `action.room`). three-renderer.js `hq.questMark({ cast | door })` projects it. In view = a gold diamond
+  over it with a black plate (NAME + metres); out of view = it slides to the screen edge with an arrow. The tracker's
+  bullet is the same diamond. Hidden under a panel and in a scene. `window.EW_NO_QUEST_MARK`. Never write
+  `window.fn = function () { return fn(); }` for a data.js global: the global IS window.fn (it recursed).
+- **SCENE E, RHONDA LETS HER STAY (2026-11-13), the first HQ scene**: data.js `STORY_CUTSCENES.orientation_desk`; the `desk`
+  stage carries `scene` + `sceneAt`. map.js `_questTalkScene` (from `_hqInteractTarget`): E on the cast member the stage
+  ends on stands the officer on `sceneAt` (teleport + the body's group set by hand: the walker's tick is still under
+  EWCine), plays the scene and files the talk at its END (a skip lands the same). Shots are PLACED CAMERAS, `cam: [x, y,
+  z, yawDeg, pitchDeg, fov]` in the room's metres, `to.cam` to move (three-camera.js; `EWCine.unit`): the storyboard's
+  own frames. Kit stands at the counter WHILE the stage is current (cast spot `during`), sits on her chair after it
+  (`after`). `hq.sceneCull(on)` = nobody culled by a bind-pose sphere while a scene plays. Dev: `Quests.talk('rhonda')`.
+  Headless: after a container restart the cast models took ~2 min to land; empty first shots were that, not the scene.
+- **EVERY SCENE REPLAYS (2026-11-13, mondo on E: "can i not replay it? we literally added a replay system so i can check these
+  things")**: the quest card (pause menu > QUESTS) lists one REPLAY button per cutscene of a finished stage, in play order
+  (map.js `_hqPauseQuestsHtml`, `.hq-qj-replays`). The fight's opening scene = `data-quest-replay` (scene + fight, as before).
+  Its `after` scene = `data-quest-only="after"` -> `_questFightGo(id, { replay, only: 'after' })` -> the run's `sceneOnly`
+  -> battle.js `_questAfterOnly`: the board comes up, the enemies are taken off it, the aftermath plays and its end goes
+  straight back to the room through `backToMainMenu` with a result stamped `sceneOnly` (no turn dealt, no finalizeMatch, no
+  commit, no XP, no toast). A stage's own scene (a talk, a room) = `data-quest-stage="quest/stage"` -> map.js
+  `_questStageReplay`: `window._ewSceneReplayStage = { quest, stage }` makes that stage count as current for the cast's
+  posts (data.js `_hqCastSpotReplay` in `_hqCastSpotDuring` / `After`: Kit stands at the counter, Locke at the office door),
+  the room is entered again (`_hqEnter` now takes `onReady`), the scene plays once its cast is in the room, nothing is
+  filed, and the room is entered once more at its end so everybody is back at today's post. Console: `Quests.replay(id,
+  'after')`, `Quests.replayStage('orientation', 'desk' | 'office')`.
+- **SCENE F, THE OFFICE (2026-11-13)**: data.js `STORY_CUTSCENES.orientation_office` (9 beats: the approved storyboard's
+  frames, his 5 lines word for word, the recruit ALONE until F4); the `office` stage carries `scene`. map.js: a stage that
+  ends on a ROOM and has a scene is not filed on entry (`_questRoomSceneDue`); `_questRoomSceneGo` plays it once the room
+  stands and its cast is in (`_questRoomScene` -> `_questHqScene`, the host E uses too) and the scene's END files the room
+  (the quest completes there). Locke has a post in the office `during` that stage (a `during` post now wins over the
+  everyday posts in `hqCastInRoom`); the scene hides her at F1, shows her at F4, takes her out under the fade.
+  New in the director (three-camera.js): THE CHOICE BOX (`choice: { options: [{ label, set, clear }] }`: the beat holds
+  on its shot until one is picked by click, LEFT / RIGHT + ENTER, or 1 / 2; host `choose` files the option's world flags;
+  a skip never passes an unanswered choice, it lands on that beat with every action on the way done), `fade` (the second
+  of a beat the picture goes to black), row `end` (where everybody is left: a skip lands the same), `EWScene.pick(i)`.
+  New HQ scene actions: `place` (who, x, z, face), `show`, `hide` = three-renderer.js `hq.scenePlace(who, o)`.
+  The pick is saved as `office_door_open` | `office_door_closed` (hqStoryFlags); nothing reads it yet (the door leaf
+  does not stand open). Dev: `Quests.roomScene()`.
+- **SCENE A, THE DROP-OFF (desert half, 2026-11-13)**: his OK on storyboard_A_desert.jpg + "when the door opens there can
+  be either darkness or light inside of it" (white light chosen). data.js `STORY_CUTSCENES.orientation_intro` (9 beats, no
+  lines) plays in its own scene room `intro_desert` (data.js, `sceneRoom: true, noWalkers: true`, sky `scenery: 'none'`, a
+  road strip at x -6, never saved as the last room: map.js `_HQ_SAVE_SKIP`). Sedaniel's post there carries
+  `live: '_ewIntroLive'` (hqCastInRoom: a spot that only exists while window[live] is truthy). map.js `_introDue()` (quest
+  row `intro`, stage `walk`, flag `intro_seen` unset) sends a story entry from the menu into the room first; `_introStart`
+  waits for Sedaniel + the officer's clips (`hq.sceneReady`), plays the scene, files `intro_seen`, enters the foyer.
+  Replay: quest card button REPLAY THE DROP-OFF (`_introReplay`, `Quests.intro()`), back to the room it was asked from.
+  Renderer: `hq.sceneDoor({x,z,face} | {open,ms} | {remove})` stands the main menu's free-standing door (`_introBuildDoor`,
+  seal + CROSSING sign on its local -Z = `face: 0` shows them to a camera south of it) with an unlit white sheet + lamp
+  in the doorway that come up with the swing; scene action `door`. `hide`/`show` of the player is held every frame
+  (`_scenePlayerOut`). `scenePlace` now cancels a running `sceneWalk` of the same body. `hq.dev.playerAnim()` = the
+  officer's clip. Off switch: `window.EW_NO_INTRO = true` (harnesses that enter story fresh need it). My picks: daylight;
+  a passenger-side travelling shot instead of the windscreen (Sedaniel's glass is solid). NOT BUILT: the elevator descent
+  + the lift doors on the foyer (needs his OK on frames first).
+- **THE DROP-OFF, HIS NOTES (2026-11-13)**: "I am already standing by the door before sedaniel drops me off" = the walker's
+  tick re-showed the body every frame; `_scenePlayerOut` is now read inside `_hqTickChars`, and `_introStart` hides the
+  officer while it waits. "He is also too small" = a unit's battle size; `place` takes `scale` (Sedaniel 1.45 = 1.4 m tall,
+  4.2 m long; held for the room's life). "shake my head no after he drives off" = `place` takes `clip` + `ms` (the officer
+  plays a rig clip once: `hqNo`, UAL2 Idle_No_Loop) in the close-up A8. `hq.sceneReady(who)` also wants the model's meshes.
+- **SCENE A, THE RIDE DOWN + THE FOYER (2026-11-13)**: his OK on storyboard_A_elevator.jpg + "just get rid of the front
+  door and make the lift the front door": the foyer's `street` door (south wall) is now `proc: 'elevator'`, label THE FRONT
+  LIFT, still sealed (id kept: the evacuate button lands at `foyer@street`). After the desert, map.js `_introStart` chains
+  `sceneIn('car', 'orientation_ride')` (the building's own car; act `shaft` = hq.sceneShaft(k), the shaft window's speed,
+  minus = the landings rise past = going down) and `sceneIn('foyer', 'orientation_arrive')` (act `door` with `id` =
+  hq.sceneDoor({ id, open }): a ROOM door held open, locked or not, its cross braces hidden while held; the recruit steps
+  out to (0, 0.9) and keeps the walk). No foyer (`_hqArrivalRoom()` not the foyer) = the ride, then the hall. A replay
+  plays all three and goes back to the room it was asked from.
+- **SCENE B, THE TV CART (2026-11-13)**: data.js `STORY_CUTSCENES.orientation_tv` (12 beats, his lines word for word,
+  the two long ones over two cards); it hangs on the `walk` stage (`scene`), so it plays the moment the recruit first
+  stands in Room 64, and the stage's `then: { lesson: 'first_steps' }` starts Tape 1 when the scene ends (map.js
+  `_questRoomScene` -> `_tutorialStartFromHq`; a replay never starts the tape). The recruit is sat at the desk in front
+  of the cart (`place` with `sit`), Locke wheels the AV cart in from the west (`props`: three-renderer.js
+  `hq.sceneProps({ keys, near, r, at, ms, light })` slides the room's own `decor_av_cart` + TV + VHS models from an
+  offset back home; `walk` = `hq.sceneWalk`) and stands on its FAR side (his storyboard note), the TV snaps on (a point
+  light on the tube) and the picture goes to black. Locke keeps a post by the cart through `walk`, `tape1`, `tape2`
+  (`during.stages`, `hqCastSpotStageIs`). Row `cast` = the only cast people drawn while the scene plays (`hq.sceneCast`).
+- **HIS NOTES ON E + F (2026-11-13)**: (1) NOBODY WALKS INTO A SCENE: `hq.sceneCast(ids)` is now held for the scene's length
+  (`_hq._sceneCastIds`, `_hqSceneCastApply` every frame after the rounds), so a walker or traveller that comes in by a door
+  mid-scene is out the same frame; scene E got `cast: ['rhonda', 'kit']`. The office is `noWalkers: true` (data.js room row:
+  hqRoomCrowdCap 0, hqRoomPopulation n 0, no traveller arrives); the janitor's own post there stays (story cast), the scene
+  hides him. (2) FACES: shot `eye: { who, dy }` = the camera's height is that body's head + dy (`hq.sceneHead`, the Head bone,
+  re-read every 400 ms while the scene plays); Kit's two close-ups and the keys shot use it. (3) THE KEYS: E6 is on the
+  recruit's face and plays the battle's key celebration in the room (act `key` -> `hq.sceneKey` -> keyPickupFx `opts.at`).
+  (4) KIT IS THE CATGIRL: sprites.js CAST_CREATOR_LOOKS.kit = `{ race: 'catgirl' }` (getCastLookModel returns the race's own
+  model: the remade look, else the saved look, else its rig); DOOR_CAST_MODELS.kit (the old placeholder) is only the fallback.
+  (5) THE RECRUIT WALKS OUT: a WON quest fight stands the officer back up on 1 HP (battle.js `reviveYou` ->
+  hqPartyAfterMatch), and while a quest marked `officerUp` (ORIENTATION) is unfinished hqPartyRecord keeps the officer up
+  and in slot 1, so a save where the fight already dropped him heals on the next read (no second Catgirl in scene E).
+- **HIS 14 NOV NOTES ON B, D, F (2026-11-14)**: B: the VHS deck + tape are cut to real size (training props `span` 0.34 /
+  0.19); "Welcome..." and "Under my watch..." frame the TV and Locke centred; "I'm Agent Locke..." cuts to a straight-on
+  close-up of her face (`eye`). The TV no longer loses its picture: act `screen` = three-renderer.js `hq.sceneScreen({ x, y, z,
+  w, h, face } | { off })`, a static plane on the tube's glass (rolling band, repainted every 45 ms; the old scene point
+  light is gone); row `end` turns it off. D: Locke faces the Catgirl on the line before, turns to the recruit on "You stood
+  your ground"; Kit: "Deportation? No! Please. You can't send me back." / "Those monsters... destroyed everything."; Locke:
+  "The rules are the rules." E: the keys shot no longer bobs: map.js `eyeFit` fits a shot's `eye` height once, before the
+  beat plays, never again while it is on screen. F: no floating door text in any scene (`hq.sceneCull(true)` hides every
+  `hq_plate`); new opening: a low shot of the recruit's legs walking in by the egress door, two slow pans over the desk,
+  bed and sink, the recruit walks forward to camera, Locke comes in behind him on "Your office. Hope you like it." (him in
+  front, the door and locks behind), then he turns to her for the rest.
+- **Not built yet**: A the intro (Sedaniel = DOOR_CAST.sedaniel, the roster Honda Civic; the foyer's entrance lift).
+
+## THE SAVE — the walk autosaves where you stand; CONTINUE lands there (2026-11-12, mondo)
+mondo: "there needs to be a save feature so that i am not always loading in the foyer every time".
+- **What was already saved**: the profile (`ew-profile-<slot>` in localStorage) holds the quests (`door.quests`), the party, the
+  bag, the levels, the rooms seen, the last DOOR used (`door.hq.lastDoor / lastRoom`, never read on arrival). Only the PLACE was lost:
+  Play always entered `_hqArrivalRoom()` (the foyer).
+- **The record**: `ew-hq-save-<slot>` = `{ v, room, x, z, y, face, t }` (room metres, goTo's free-spot form). Its own small key, not
+  the profile blob, because it is written every few seconds. map.js "THE SAVE": `_hqSaveWrite` files it when a room is READY
+  (onReady arms `_hqSaveArmed`), every 4 s while the feet moved (0.25 m / 8°), and on `visibilitychange` hidden / `pagehide`.
+  Never in the car, in the air, in the editor, under a load card, or off the walk (a fight, a screen).
+- **The room it names** is the renderer's own (`ThreeRenderer.hq.pos()` now also returns `room, face, air, edit, ready`): a stage
+  crossing rebases the metres, so the record is only filed when the renderer's part and map.js `_hqCurRoom` agree.
+- **CONTINUE**: `_goToPlayHub` passes `resume: true` when the story was already started; `_hqEnter` then takes the record's room and
+  hands the spot to `ThreeRenderer.hq.goTo` as `opts.at`. It is still a FRESH arrival for everything else (`returning` is computed
+  before the spot is set): the visit count, the punch clock, the variants' roll, the day's sheet. The menu's arrival warm warms the
+  saved room instead of the foyer. NEW GAME (story not started, or straight out of the intake) drops the slot's record: the foyer.
+- **A fight**: nothing is filed during one; a reload mid-fight continues in the room at the last filed spot.
+- Off: `?noresume` / `window.EW_HQ_NO_RESUME` (the record is still filed). Console: `_hqSaveState()`.
+- No new UI. Not built: a manual Save / Load page in the pause menu (needs his OK on a mock-up first).
+
+### THE CUTSCENE EDITOR (2026-11-15, mondo: "a cutscene editor so I can change the dialogue easily and give notes and export it all for you to work with and implement")
+His tool for the story cutscenes. Plan + mock-up approved 11-15 (project files `cutscene-editor/`).
+- **Where**: Settings > Developer > Open Cutscene Editor, and an EDIT button beside every REPLAY on the pause menu's QUESTS page
+  (`data-scene-ed="<scene id>"`). `window.EWSceneEd.open(sceneId)`.
+- **The record** (data.js `sceneEd*`): ONE localStorage key `ew_scene_editor_v1` (never IndexedDB), his device only:
+  `{ bar, scenes: { <id>: { lines: { <beat>: { was, text, cut } }, adds: { <beat>: { was, list: [{ who, text }] } }, notes: { <beat>: [{ tag, text }] }, note } } }`.
+  `was` = the shipped words an edit was made against; an edit whose `was` no longer matches the row is dropped on load, so a
+  baked export clears itself. Tags: `SCENE_ED_TAGS` (CAMERA, ACTING, TIMING, DIALOGUE, OTHER).
+- **The live layer**: `storyCutscene(id)` (what every host calls) returns the row WITH his words: a changed line, a cut line
+  (a beat that was only that line goes; one with actions keeps its time), a line added after a shot (it plays on that shot's
+  last frame, `_sceneEdEndShot`). The untouched row = `storyCutsceneShipped(id)`. Edited beats carry `_src` (the shipped beat)
+  and `_add`. Camera / acting / timing notes change nothing in the game.
+- **The page** (map.js `_sed*`, `#ewSceneEd`, styles-cinematic.css): scenes in play order (`sceneEdList()`: the quest's `intro` +
+  `introThen`, then each stage's fight `scene` / `after` / own `scene`), every shot with what it is (`sceneEdShotInfo`, read off
+  the numbers), the line as a text box, + NOTE, + ADD A LINE AFTER, CUT / RESTORE, SPLIT AT THE CURSOR, RESET LINE, a note for
+  the whole scene, CLEAR (two clicks). Typing never redraws the page. PLAY THIS SCENE / PLAY FROM HERE run the journal's own
+  replays (`_introReplay`, `_questStageReplay`, `_questFightGo`) and only work in the building on a finished part of the quest.
+- **In a playing scene** (three-camera.js EWScene, bar on = `sceneEdBarOn()`, first opened editor turns it on): `#ewSceneDev` =
+  PREV SHOT / NEXT SHOT (also the arrow keys) / N · NOTE and the shot number. N freezes the SCENE'S CLOCK (the camera and
+  the cues; bodies already walking finish their step) and opens the note box: tag, note, and the line (saved = on screen at
+  once). ESC cancels, SHIFT+ENTER saves. `EWScene.from(id, beat, chain)` = the next play of that scene opens on that shot (every
+  action before it done at once; an earlier scene of the same chain is skipped). Dev: `EWScene.note()`, `.step(d)`, `state().shot`.
+- **The export** (`sceneEdExport()` / `sceneEdExportText()`): `Entropy_Wars_Cutscene_Notes_<stamp>.json` + the same as text
+  (copied): per scene, per shot: shot number, what it is, the shipped line, the new words / cut / added lines, the notes, and
+  the shot's camera. **Bake**: `node bake-cutscenes.js <export.json> [--dry-run]` writes the changed lines into data.js word
+  for word and prints the cuts, the added lines and the notes as the to-do list (those are done by hand).
+- **PLAY FROM THE EDITOR, ANYWHERE (2026-11-15, same day; mondo: "obviously if I need a cutscene editor i need to be able to play the
+  cutscenes from it")**: PLAY no longer asks for story mode or a finished stage. map.js `_sedPlay`: from the menu the building is
+  entered first (`_hqEnter({ from: 'play', room: arrival })`: no opening, no resume), then the journal's own replay runs. While it
+  runs `window._ewSceneEdPlay` is up: `_questEvent` files nothing, no live room scene starts, `_introDue` is false (a profile
+  mid-quest is left where it was). A fight's opening scene plays ALONE (battle.js `sceneOnly: 'scene'` -> `_questSceneOnlyBack`).
+  The opening is a chain (road, car, foyer): `EWScene.from(id, beat, chain)` skips the chain's other scenes before AND after the
+  picked one; `window._ewIntroChain` is up from `_introStart` to its `done`. The watch (`_sedRun`, dev `EWSceneEd.run()`) brings the
+  editor back over the pause menu when the scene is over and the room stands; a building paused under it ends the run too.
+- **THE POINTER (a bug of the first delivery)**: in the building a pointer lock that just goes away IS the walker's ESC (the pause
+  menu, three-renderer.js `_hqOnLockChange`). The notes bar freed the mouse with a plain `exitPointerLock` and paused the building
+  under the scene. Free it only through `ThreeRenderer.hq.sceneFreePointer()` (inside the stale window, pauses nothing).
+- Harness: scratch `menu.js` (project files `cutscene-editor/tools/`): main menu -> Developer -> editor -> PLAY each scene. A cold
+  cloud browser needs ~10 min per room load; one browser at a time.

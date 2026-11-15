@@ -558,7 +558,7 @@
         // because movement, turn order and cooldown divisions all feed on it).
         function getEffectiveSpd(unit) {
             if (!unit) return 1;
-            const base = Math.max(1, (unit.spd || 1) + getStatStageDelta(unit, 'spd'));
+            const base = Math.max(1, (unit.spd || 1) + getStatStageDelta(unit, 'spd')) + ((unit.pollen | 0) > 0 && typeof getPollenSpdBonus === 'function' ? getPollenSpdBonus(unit) : 0);   // 🐝 HONEY
             // 🩸 Bloodcraze (werewolf passive, plan §5.2): +N SPD stages while
             // any VISIBLE enemy is at or under the HP threshold. Ruler-clamped
             // like every stage, so an S-speedster gains nothing.
@@ -837,7 +837,7 @@
             shadowRealm:  { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true },
             link:         { minRange: 1, offensive: true,  breaksStealth: true, noStrikeLeap: true, twoClick: true },
             transfer:     { minRange: 0, offensive: false, allyOnly: true, fogExempt: true, noStrikeLeap: true, twoClick: true },
-            cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true, enemyRemainsOnly: true },
+            cannibalize:  { minRange: 1, offensive: false, noStrikeLeap: true, corpseTarget: true, notOwnGrave: true },
             // CHAMP_REWORK_PLAN §5.3 (Phase 6, 2026-09-08):
             // steal — a grab: the hit lands, then the target's Keys / items
             //   change hands (stealKeys / stealItems; Hit a Lick — the pirate's
@@ -3313,9 +3313,10 @@
             return !!(unit && typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'plantedTrees'));
         }
         function getPlantedTreeBonus(unit) {
-            if (!_hasGreenThumb(unit)) return 0;
-            const n = Math.min(PLANTED_TREE_STAT_CAP, getOwnPlantedTreeCount(unit));
-            return n * PLANTED_TREE_STAT_PER;
+            const _honey = typeof getPollenPowerBonus === 'function' ? getPollenPowerBonus(unit) : 0;   // 🐝 HONEY rides every place the garden bonus is read
+            if (!_hasGreenThumb(unit)) return _honey;
+            const n = Math.min(PLANTED_TREE_STAT_CAP, getOwnPlantedTreeCount(unit) + (typeof getOwnPlantCount === 'function' ? getOwnPlantCount(unit) : 0));   // THE GARDEN: plants and trees
+            return n * PLANTED_TREE_STAT_PER + _honey;
         }
 
         // Bonus spell power for a grove-scaling spell (Trunk Throw): grows with
@@ -3597,7 +3598,7 @@
             if (!stand || !stand.length) return;
             let ignited = 0, lit = 0;
             for (const t of stand) {
-                if (igniteTile(t.x, t.y, 2, caster)) lit++;
+                if (igniteTile(t.x, t.y, 2, caster, true)) lit++;
                 const u = unitAt(t.x, t.y);
                 if (u && !u.dead && !u._dying) {
                     applyStatusEffects(u, [{ id: 'burn', duration: 2 }], `${spell.name} wildfire: `, caster);
@@ -3686,7 +3687,7 @@
             // sees ground it's allowed to burn on, then light the whole area
             for (const t of slick) {
                 if (_OIL_TERRAIN.has(getTerrainAt(t.x, t.y))) setTerrainAt(t.x, t.y, 'scorched');
-                igniteTile(t.x, t.y, 2, caster);
+                igniteTile(t.x, t.y, 2, caster, true);
             }
             for (const { u } of victims) {
                 const _burnBefore = unitHasStatus(u, 'burn');
@@ -3881,6 +3882,7 @@
                 let _wDoused = 0;
                 for (const tile of tiles) {
                     if (tile && isInside(tile.x, tile.y) && _tileIsBurning(tile.x, tile.y) && extinguishTile(tile.x, tile.y)) _wDoused++;
+                    if (tile && isInside(tile.x, tile.y) && typeof waterSeedsAt === 'function') waterSeedsAt(tile.x, tile.y);   // 💧🌱 THE GARDEN: a water spell waters the seeds it strikes
                 }
                 if (_wDoused) {
                     _balReactUse('douseTile', caster, null, null, _wDoused);
@@ -4250,7 +4252,7 @@
         function _droughtFeedsFire() {
             return (state.activeWeather || []).some(w => w && w.type === 'drought' && (w.remaining == null || w.remaining > 0));
         }
-        function igniteTile(x, y, rounds, byUnit) {
+        function igniteTile(x, y, rounds, byUnit, noCatch) {
             if (!isInside(x, y)) return false;
             if (_tileSmothersFire(x, y)) return false;
             /* 🌧️ the rain puts the ground fire out (mondo 2026-11-03): a tile the rain falls on does not catch — the fire
@@ -4275,6 +4277,25 @@
                 const _lighter = (byUnit && byUnit.id != null) ? (unitFromId(byUnit.id) || null) : null;
                 _reactFireBog(_lighter, _GROUND_FIRE_SPELL, x, y, _floodConnectedTiles(x, y, _isBogTile, 40), true);
             }
+            /* 🔥 THE FIRE CATCHES WHOEVER STANDS ON IT (mondo 2026-11-12: "this chess piece is clearly on a tile on fire but
+               it doesnt have the burning status effect"): a square lit under a unit sets it Burning at once, the way the
+               forest fire always did, on every way a square catches (a fire spell on grass, Wall of Fire, a gust or a
+               shove fanning the flames, the round's spread). Status only: the ignition deals no extra damage. */
+            if (!prev && !noCatch) _fireCatchesUnitAt(x, y, byUnit);
+            return true;
+        }
+        function _fireCatchesUnitAt(x, y, byUnit) {
+            if (state.phase !== 'battle') return false;
+            const u = unitAt(x, y);
+            if (!u || u.dead || u._dying) return false;
+            if (unitHasStatus(u, 'burn')) return false;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) return false;
+            if (typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(u)) return false;
+            if (typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'healedByElement') === 'fire') return false;
+            const _by = (byUnit && byUnit.id != null) ? (unitFromId(byUnit.id) || null) : null;
+            applyStatusEffects(u, [{ id: 'burn', duration: 2 }], 'Ground fire: ', _by);
+            if (!unitHasStatus(u, 'burn')) return false;   // immune / warded: nothing to call out
+            showFloatingTextForUnit(u, '🔥 BURNING!', 'damage', { durationMs: 1100 });
             return true;
         }
 
@@ -4393,6 +4414,7 @@
             }
             for (const s of spread) {
                 b[s.x + ',' + s.y] = Object.assign({ x: s.x, y: s.y, t: _dry ? 3 : 2, p: s.p }, s.u != null ? { u: s.u } : {});
+                _fireCatchesUnitAt(s.x, s.y, s.u != null ? { id: s.u } : null);   // the spread lights the square under a unit
             }
 
             if (scorchedUnits || burnedOut || spread.length) {
@@ -4840,7 +4862,47 @@
                 byUnit: (caster && !caster.dead) ? caster : null, label: `${def.icon} ${def.label}: `,
                 animate: false, noChain: true, perStepMs: 120
             });
-            if (v.dead || v._dying || (v.x === startX && v.y === startY)) return out;
+            if (v.dead || v._dying) return out;
+            if (v.x === startX && v.y === startY) {
+                /* 🌪 THE FLING THAT COMES BACK (mondo 2026-11-11: "this tornado moved to the same tile as my cowboy in between
+                   rounds, but it didnt fling him"): the storm DID throw it — one square, into the board's edge, and the
+                   rebound carried it straight back into the eye; or a body / a wall beside it stopped the throw at once.
+                   Either way the body ended where it began, and this used to return here with no line, no lift and no
+                   pop, so the storm read as having done nothing. Same slide, same rules: now it is logged and shown
+                   (the lift-spin-hurl to where it struck, then the slide's own steps back). No second landing chain:
+                   it never left for good. */
+                const _wentOut = res.moved > 0;
+                {
+                    const _fl0 = _logMark();
+                    addLog(_wentOut
+                        ? `${def.icon} The ${def.label} flings ${_ctName(v)} ${d.word}, and ${_ctName(v)} is thrown straight back into the eye at ${coordLabel(v.x, v.y)}!`
+                        : `${def.icon} The ${def.label} flings ${_ctName(v)} ${d.word}, but ${_ctName(v)} is stopped short and stays in the eye at ${coordLabel(v.x, v.y)}!`);
+                    if (_logMark().a > _fl0.a) _logHoist(_flMark, null);
+                }
+                out.moved = true;   // the round waits for it like any fling (state.js processHomingWeather)
+                const _steps = (res.steps || []).slice();
+                let _turn = -1;   // the last real step before the first bump: where the throw struck
+                for (let i = 0; i < _steps.length; i++) { if (_steps[i].bump) break; _turn = i; }
+                const _hit = _turn >= 0 ? _steps[_turn] : { x: startX, y: startY };
+                const _rest = _turn >= 0 ? _steps.slice(_turn + 1) : [];
+                const _hurlBack = () => {
+                    const fling = (typeof window.playVortexFlingFx === 'function')
+                        ? window.playVortexFlingFx(v, startX, startY, _hit.x, _hit.y, weather.type) : null;
+                    const arcMs = (fling && fling.usedArc) ? (fling.totalMs || 0) : 0;
+                    if (_rest.length && typeof animateDisplacementPath === 'function') {
+                        if (arcMs > 0) window.setTimeout(() => { if (!v.dead && !v._dying) animateDisplacementPath(v, _hit.x, _hit.y, _rest, 120, { knock: 'push' }); }, arcMs);
+                        else animateDisplacementPath(v, startX, startY, _steps, 120, { delayMs: 150, knock: 'push' });
+                    }
+                    return (arcMs || 150) + _rest.length * 120 + 200;
+                };
+                if (!_skipVisuals()) {
+                    if (_fDelay > 0) { window.setTimeout(_hurlBack, _fDelay); out.totalMs = _fDelay + 1300 + _rest.length * 120; }
+                    else out.totalMs = _hurlBack();
+                    if (_fDelay > 0) window.setTimeout(() => showFloatingTextForUnit(v, `${def.icon} FLUNG ${d.key}!`, 'debuff', { durationMs: 1000 }), _fDelay);
+                    else showFloatingTextForUnit(v, `${def.icon} FLUNG ${d.key}!`, 'debuff', { durationMs: 1000 });
+                }
+                return out;
+            }
             out.moved = true;
             {
                 const _fl0 = _logMark();
@@ -5094,6 +5156,13 @@
             if (!unit || unit.dead || unit._dying) return 0;
             if (unit._sealed || (unit.status && unit.status.captured > 0)) return 0;   // 🚪 in the void: nothing on the tile reaches it
             if (shadowRealmKey(unit)) return 0;   // 🌑 in the Shadow Realm: nothing on the board's tile reaches it either
+            if (unitIsSpirit(unit)) {   // 👁 a spirit touches nothing on the ground: no trap, pick-up, bomb or door
+                /* but every arrival still sets off Overwatch (a physical shot passes through it, a magic one lands) */
+                if (state.phase === 'battle' && opts.via !== 'move' && opts.via !== 'climb' && typeof checkOverwatchTriggers === 'function') {
+                    try { checkOverwatchTriggers(unit); } catch (e) { console.warn('[overwatch] spirit arrival', e); }
+                }
+                return 0;
+            }
             if (state.phase !== 'battle') return 0;
             const via = opts.via || 'displaced';
             const depth = _chainDepth;
@@ -5196,6 +5265,13 @@
                 return fired;
             } finally {
                 _chainDepth = depth;
+                /* 👁 EVERY ARRIVAL SETS OFF OVERWATCH (mondo 2026-11-10, open rule 6 "C"): a walk, jump and climb fire it
+                   themselves after their own slide (doMove / doJump / the climb); every other way a body ends up on a
+                   square — pushed, pulled, thrown, dashed, teleported, through a door — fires it here, where the body came
+                   to rest (a body the chain moved on is the next arrival's). One shot per Guard stance as before. */
+                if (via !== 'move' && via !== 'climb' && !moved() && typeof checkOverwatchTriggers === 'function') {
+                    try { checkOverwatchTriggers(unit); } catch (e) { console.warn('[overwatch] arrival', e); }
+                }
                 if (fired) {
                     _chainFired += fired;
                     _chainFloat(unit, depth);
@@ -9735,6 +9811,7 @@
                 }
             }
             delete unit.status[key];
+            if (key === 'projecting') astralLanded(unit);   // 👁 the spirit is a body again: its tile counts
             if (unit._mounted === key) delete unit._mounted;   // THE HORSES: Saddle Up's ride ends with its buff
             if (_realmPid) _realmClosePartner(unit, _realmPid);
             if (_bindPid) _bindClosePartner(unit, _bindPid);
@@ -10371,7 +10448,7 @@
             burn: 'burn|burning|burned|burnt', poison: 'poison|poisoned', bleed: 'bleeding|bleed', goo: 'gooed', haunted: 'haunted',
             corroded: 'corroded', feared: 'feared', possessed: 'possessed', infected: 'infected', stoneform: 'stoneform', voodoo: 'voodoo',
             tethered: 'roped', sparkling: 'sparkling', levitating: 'levitating', blessed: 'blessed', quickened: 'quickened',
-            silence: 'silence|silenced', stun: 'stun|stunned', root: 'rooted', stagger: 'stagger|staggered', marked: 'marked',
+            silence: 'silence|silenced', stun: 'stun|stunned', sleep: 'asleep|sleeping', projecting: 'projecting', root: 'rooted', stagger: 'stagger|staggered', marked: 'marked',
             jammed: 'jammed', drowning: 'drowning', wet: 'wet|soaked', protect: 'protect|protected', discord: 'discord', slow: 'slow|slowed',
             overclock: 'overclock|overclocked', regen: 'regen', indomitable: 'indomitable', guarding: 'guarding', statUp: 'empowered',
             statDown: 'weakened', shield: 'shield|shielded', invisible: 'invisible', charm: 'charm|charmed', taunt: 'provoked|taunted',
@@ -10793,6 +10870,7 @@
                the payload (partnerId / allyId) because the spell resolver is
                the only thing that knows both ends. */
             if (payload.id === 'feared' && sourceUnit) target._fearSourceId = sourceUnit.id;
+            if (payload.id === 'charm' && sourceUnit) target._charmSourceId = sourceUnit.id;   // 💋 the charmer it cannot raise a hand to (getCharmer)
             if (payload.id === 'tethered' && sourceUnit) target._tetherCasterId = sourceUnit.id;
             /* THE SPELL AUDIT Batch D: Barbed Rope's rope carries its own drag damage a tile (null = STATUS_DEFS' 20);
                Restless's Haunted jumps when its bearer dies (_restlessHauntJump). Plain unit fields — state-sync carries them. */
@@ -10808,9 +10886,16 @@
             if (typeof meta.onApply === 'function') {
                 try { meta.onApply(target, sourceUnit, { refreshed: _hadBefore, payload, sourceLabel }); } catch (e) { console.warn('[status] onApply', payload.id, e); }
             }
-            addLog(`${sourceLabel}${_ctName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
+            /* payload.quiet (mondo 11-11, Guard): the caller writes its own one line for this status */
+            if (!payload.quiet) addLog(`${sourceLabel}${_ctName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
             /* 🧗 stunned / frozen / put to sleep on the wall: the grip goes */
             if (target._climb && meta.blockAction && payload.id !== 'climbing') knockOffClimber(target, `— ${meta.colorText || meta.label.toLowerCase()}`);
+            /* 👁 THE RUDE AWAKENING (astral build 2): a status that stops a unit acting (Stun, Sleeping, Frozen...) or one on
+               STATUS_DEFS.projecting.snapOn (Silence) breaks the projection. The spirit snaps home to its body, Spirit Walk's too. */
+            if (payload.id !== 'projecting' && unitIsSpirit(target) && target._astralBodyId
+                && (meta.blockAction || ((STATUS_DEFS.projecting && STATUS_DEFS.projecting.snapOn) || []).includes(payload.id))) {
+                astralSnapHome(target, meta.colorText || meta.label.toLowerCase());
+            }
 
             if (!_skipVisuals()) {
                 const vfxStatusMap = { poison:1, burn:1, stun:1, slow:1, bleed:1, silence:1, discord:1 };
@@ -11352,7 +11437,8 @@
                 }
             }
 
-            if (state.plantedSeeds?.length) {
+            /* THE GARDEN fix (2026-11-12): the grown plants and aura trees act with NO seed left on the board too */
+            if (state.plantedSeeds?.length || (state.plantedTrees || []).some(t => t.aura || t.apple) || (state.turrets || []).some(t => t.plant && t.hp > 0)) {
                 for (let p = 1; p <= 2; p++) {
                     applySeedTileEffects_endOfRound(p, events);
                 }
@@ -11407,6 +11493,7 @@
                 for (const unit of state.units) {
                     if (unit.dead) continue;
                     if (shadowRealmKey(unit)) continue;   // 🌑 off the board in the Shadow Realm: no zone heals or burns it
+                    if (unitIsSpirit(unit)) continue;   // 👁 nor a spirit: it holds no zone and no zone touches it
                     /* NEXUS REWORK (2026-09-12): a NEXUS zone (the centre, and
                        in Arena the spawn zones too) heals the team that OWNS
                        it and burns the other one — a neutral zone does
@@ -11932,6 +12019,253 @@
             return false;
         }
 
+        /* ═══ THE GARDEN (2026-11-12, mondo: "You have to water them for them to sprout, this can be rain water, water
+           from a spell, etc"; plan + his answers: thread "Rework seeds into watered plant monsters") ═══
+           A seed NEVER sprouts dry. A water source marks it `watered` (a sprout shows); a watered seed grows at the next
+           round end. Healing / Poison / Leech seeds grow a PLANT — a rooted piece on the summon pipeline (state.turrets,
+           `plant: type`) with a real HP bar — in place of the old aura tree; a plain (Bumper Crop) seed still grows an
+           ordinary tree, and withers if it is still dry after SEED_PLAIN_DRY_ROUNDS round ends. */
+        const PLANT_CAP_PER_TYPE = 2;          // living plants of one type per planter (an upgrade may raise it: plantCapBonus)
+        const PLANT_HP_PCT = 0.35;             // a plant's max HP, as a share of its planter's max HP
+        const PLANT_HP_MIN = 60;
+        const PLANT_LASH_RANGE = 2;            // the thorn vine's reach (an upgrade may lengthen it: plantRangeBonus)
+        const PLANT_BURN_PCT = 0.25;           // a plant on a burning tile loses this share of its max HP each round end
+        const SEED_PLAIN_DRY_ROUNDS = 2;
+        const PLANT_SPELL_ID = { heal: 'healingSeed', poison: 'poisonSeed', leech: 'leechSeed' };
+        function _plantName(type) {
+            return type === 'poison' ? 'Gas Plant' : type === 'leech' ? 'Thorn Vine' : type === 'apple' ? 'Apple Tree' : 'Healing Flower';
+        }
+        function _seedLabel(seed) {
+            return seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : seed.type === 'leech' ? 'Leech Seed' : seed.type === 'apple' ? 'Apple Seed' : 'seed';
+        }
+        /* Is there water for a seed on (x, y) right now? Rain over it, water beside it or on it, or a Wet unit of the
+           planter's side dripping on it. (Blood Rain is not rain for a seed: his answer, 11-12.) */
+        function _seedWaterSourceAt(x, y, owner) {
+            if (_seedRainAt(x, y) || _seedBesideWater(x, y)) return true;
+            const t = getTerrainAt(x, y);
+            if (t === 'water' || t === 'healing_spring') return true;
+            const u = unitAt(x, y);
+            return !!(u && !_unitIsDown(u) && (owner == null || u.player === owner) && unitHasStatus(u, 'wet')
+                && !(typeof isUnitAirborne === 'function' && isUnitAirborne(u)));
+        }
+        function _waterSeed(seed, quiet) {
+            if (!seed || seed.watered) return false;
+            seed.watered = true;
+            state._seedTick = (state._seedTick || 0) + 1;
+            if (!quiet) {
+                addLog(`💧 The ${_seedLabel(seed)} at ${coordLabel(seed.x, seed.y)} is watered and sprouts — it grows at the end of the round.`);
+                if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextAtTile(seed.x, seed.y, '💧 SPROUT', 'heal', { durationMs: 1000 });
+            }
+            scheduleBoardRender();
+            return true;
+        }
+        /* Water every dry seed on (x, y) — a water spell's struck tile, the Watering Can. Returns how many sprouted. */
+        function waterSeedsAt(x, y, quiet) {
+            let n = 0;
+            for (const seed of (state.plantedSeeds || [])) if (seed.x === x && seed.y === y && _waterSeed(seed, quiet)) n++;
+            return n;
+        }
+        window.waterSeedsAt = waterSeedsAt;
+        function _livePlants() { return (state.turrets || []).filter(t => t.plant && t.hp > 0); }
+        function plantAt(x, y) { return (state.turrets || []).find(t => t.plant && t.hp > 0 && t.x === x && t.y === y) || null; }
+        window.plantAt = plantAt;
+        function getOwnPlantCount(unit) {
+            if (!unit) return 0;
+            return _livePlants().reduce((n, t) => n + (t.casterUnitId === unit.id ? 1 : 0), 0);
+        }
+        /* A plant dies of something other than a hit (fire, frost, the cap): out of state.turrets, a line in the log. */
+        function _removePlant(plant, why) {
+            if (!plant || !state.turrets) return false;
+            const i = state.turrets.indexOf(plant);
+            if (i < 0) return false;
+            plant.hp = 0;
+            state.turrets.splice(i, 1);
+            addLog(`🥀 The ${_plantName(plant.plant)} at ${coordLabel(plant.x, plant.y)} ${why || 'withers'}.`);
+            if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextAtTile(plant.x, plant.y, '🥀', 'damage', { durationMs: 900 });
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            _invalidateBoardGrid();
+            scheduleBoardRender();
+            return true;
+        }
+        function _plantUnderDrought(plant) {
+            return (state.activeWeather || []).some(w => w.type === 'drought'
+                && (typeof weatherOnTile === 'function' ? weatherOnTile(w, plant.x, plant.y) : (w.tiles || []).some(t => t.x === plant.x && t.y === plant.y)));
+        }
+        /* The seed's growth completed on (gx, gy): stand the plant up. */
+        function _standPlant(seed, gx, gy) {
+            if (!state.turrets) state.turrets = [];
+            const caster = unitFromId(seed.casterUnitId);
+            const cap = PLANT_CAP_PER_TYPE + ((caster && typeof unitPassiveValue === 'function' && (unitPassiveValue(caster, 'plantCapBonus') | 0)) || 0);
+            const mine = state.turrets.filter(t => t.plant === seed.type && t.hp > 0 && t.casterUnitId === seed.casterUnitId);
+            while (mine.length >= cap) _removePlant(mine.shift(), 'withers as a new one takes root');
+            const maxHp = Math.max(PLANT_HP_MIN, Math.round(((caster && caster.maxHp) || 0) * PLANT_HP_PCT));
+            const range = seed.type === 'leech'
+                ? PLANT_LASH_RANGE + ((caster && typeof unitPassiveValue === 'function' && (unitPassiveValue(caster, 'plantRangeBonus') | 0)) || 0) : 1;
+            const plant = {
+                id: `plant_${seed.type}_${state.round || 0}_${seed.casterUnitId}_${randInt(99999)}`,
+                x: gx, y: gy, owner: seed.owner, casterUnitId: seed.casterUnitId,
+                spellId: PLANT_SPELL_ID[seed.type] || null, spellName: _plantName(seed.type),
+                spellType: seed.spellType || null,
+                plant: seed.type, hp: maxHp, maxHp, dmg: 0, range,
+                pollen: seed.type === 'heal' ? 1 : 0,   // 🐝 THE POLLEN: a Healing Flower opens with one
+            };
+            state.turrets.push(plant);
+            if (getTerrainAt(gx, gy) !== 'grass' && getTerrainAt(gx, gy) !== 'water') setTerrainAt(gx, gy, 'grass');
+            _invalidateBoardGrid();
+            state._treeTick = (state._treeTick || 0) + 1;
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            addLog(`🌿 A ${_plantName(seed.type)} grows at ${coordLabel(gx, gy)}${caster ? ` — ${_ctName(caster)}'s garden` : ''}! It acts at the end of every round until it is cut down (${maxHp} HP).`);
+            if (state.phase === 'battle' && !_skipVisuals()) {
+                showFloatingTextAtTile(gx, gy, '🌿', 'heal', { durationMs: 1000 });
+                if (typeof window !== 'undefined' && window.VFX3D && window.VFX3D.hasMapping
+                    && window.VFX3D.hasMapping('overgrowth', 'impact')) {
+                    window.VFX3D.fire('impact', 'overgrowth', { tx: gx, ty: gy });
+                }
+            }
+            scheduleBoardRender();
+            return plant;
+        }
+        /* 🐝 THE POLLEN (2026-11-12, mondo: "Both" Pollinate + Honey, "maybe the pollen can boost her attack and speed too").
+           A Healing Flower holds ONE pollen and regrows it at each round end. A Bee Queen that ends a move beside a
+           flower (or stands beside one at round end) gathers it, any side's flower, up to POLLEN_MAX. HONEY: each pollen
+           she carries is +POLLEN_POWER_PER ATK and spell power and +POLLEN_SPD_PER SPD. POLLINATE (data.js, Royal Hive)
+           spends one. The count is a plain number on the unit (`unit.pollen`), so it rides the snapshot to the guest. */
+        const POLLEN_MAX = 3, POLLEN_POWER_PER = 8, POLLEN_SPD_PER = 8, POLLEN_MEND_PCT = 0.5;
+        function _gathersPollen(unit) { return !!unit && unit.race === 'bee queen'; }
+        function getPollen(unit) { return (unit && unit.pollen) | 0; }
+        function getPollenPowerBonus(unit) { return getPollen(unit) * POLLEN_POWER_PER; }
+        function getPollenSpdBonus(unit) { return getPollen(unit) * POLLEN_SPD_PER; }
+        function _gatherPollen(unit) {
+            if (!_gathersPollen(unit) || unit.dead || _unitIsDown(unit) || shadowRealmKey(unit)) return 0;
+            let got = 0;
+            for (const fl of _livePlants()) {
+                if (getPollen(unit) >= POLLEN_MAX) break;
+                if (fl.plant !== 'heal' || !(fl.pollen > 0)) continue;
+                if (Math.max(Math.abs(fl.x - unit.x), Math.abs(fl.y - unit.y)) > 1) continue;
+                fl.pollen = 0;
+                unit.pollen = getPollen(unit) + 1;
+                got++;
+            }
+            if (got) {
+                addLog(`🐝 ${_ctName(unit)} gathers pollen from the Healing Flower (${getPollen(unit)}/${POLLEN_MAX}): +${getPollenPowerBonus(unit)} ATK and spell power, +${getPollenSpdBonus(unit)} SPD while she carries it.`);
+                if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextForUnit(unit, `🐝 POLLEN ${getPollen(unit)}/${POLLEN_MAX}`, 'buff', { durationMs: 1100 });
+                if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+                markDirty('teams', 'selectedUnit', 'hud');
+                scheduleBoardRender();
+            }
+            return got;
+        }
+        /* Round end: every flower regrows its pollen, then each Bee Queen beside one takes it. */
+        function _pollenRoundEnd() {
+            let grew = false;
+            for (const fl of _livePlants()) if (fl.plant === 'heal' && !(fl.pollen > 0)) { fl.pollen = 1; grew = true; }
+            for (const u of (state.units || [])) if (_gathersPollen(u)) _gatherPollen(u);
+            if (grew) scheduleBoardRender();
+        }
+        /* POLLINATE's tile: an ungrown seed (it grows NOW, no water needed) or a hurt plant (mended). null = nothing to do. */
+        function _pollinateTargetAt(x, y) {
+            const seed = (state.plantedSeeds || []).find(sd => sd.x === x && sd.y === y && sd.type !== 'plain');
+            if (seed) return { seed };
+            const plant = plantAt(x, y);
+            if (plant && plant.hp < plant.maxHp) return { plant };
+            return null;
+        }
+        function _pollinate(unit, spell, x, y) {
+            const tg = _pollinateTargetAt(x, y);
+            if (!tg || getPollen(unit) <= 0) return false;
+            unit.pollen = getPollen(unit) - 1;
+            if (tg.seed) {
+                state.plantedSeeds = state.plantedSeeds.filter(sd => sd !== tg.seed);
+                addLog(`🐝 ${_ctName(unit)} pollinates the ${_seedLabel(tg.seed)} at ${coordLabel(x, y)} (${getPollen(unit)}/${POLLEN_MAX} pollen left).`);
+                _growSeedIntoTree(tg.seed, null);
+            } else {
+                const mend = Math.min(tg.plant.maxHp - tg.plant.hp, Math.round(tg.plant.maxHp * POLLEN_MEND_PCT));
+                tg.plant.hp += mend;
+                addLog(`🐝 ${_ctName(unit)} pollinates the ${_plantName(tg.plant.plant)} at ${coordLabel(x, y)}: +${mend} HP (${tg.plant.hp}/${tg.plant.maxHp}). ${getPollen(unit)}/${POLLEN_MAX} pollen left.`);
+                if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextAtTile(x, y, `+${mend}`, 'heal', { durationMs: 900 });
+            }
+            if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            markDirty('teams', 'selectedUnit', 'hud');
+            scheduleBoardRender();
+            return true;
+        }
+        if (typeof window !== 'undefined') { window.getPollen = getPollen; window.POLLEN_MAX = POLLEN_MAX; window._pollinateTargetAt = _pollinateTargetAt; }
+        /* 🍎 THE APPLE TREE (2026-11-12, mondo: "eventually both" flower + apple tree; the apple tree is a REAL tree).
+           An Apple Seed (data.js `appleSeed`, seedType 'apple') needs water like every seed and grows into an ordinary
+           tree object (blocks sight, can be chopped, counts for Green Thumb + Trunk Throw) whose state.plantedTrees row
+           carries `apple`. Every APPLE_EVERY_ROUNDS round ends it drops one apple on a free tile beside it (at most
+           APPLE_MAX_PER_TREE lying around a tree). ANY unit that ends a move on an apple while hurt eats it and heals
+           APPLE_HEAL_PCT of its max HP. Apples are plain rows in state.apples ({id,x,y}), so they ride the snapshot. */
+        const APPLE_EVERY_ROUNDS = 2, APPLE_MAX_PER_TREE = 2, APPLE_HEAL_PCT = 0.2;
+        function appleAt(x, y) { return (state.apples || []).find(a => a.x === x && a.y === y) || null; }
+        function _appleDropTile(tree) {
+            const spots = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [1, -1], [-1, -1]];
+            let lying = 0; const free = [];
+            for (const [dx, dy] of spots) {
+                const nx = tree.x + dx, ny = tree.y + dy;
+                if (!isInside(nx, ny)) continue;
+                if (appleAt(nx, ny)) { lying++; continue; }
+                if (getObjectAt(nx, ny) || !isTerrainPassable(nx, ny) || plantAt(nx, ny)) continue;
+                const t = getTerrainAt(nx, ny);
+                if (t === 'water' || t === 'lava' || (typeof _tileIsBurning === 'function' && _tileIsBurning(nx, ny))) continue;
+                free.push({ x: nx, y: ny });
+            }
+            if (lying >= APPLE_MAX_PER_TREE || !free.length) return null;
+            return free.find(f => !unitAt(f.x, f.y)) || free[0];
+        }
+        function _appleTreesRoundEnd() {
+            for (const tree of (state.plantedTrees || [])) {
+                if (!tree.apple) continue;
+                tree.appleAge = (tree.appleAge | 0) + 1;
+                if (tree.appleAge % APPLE_EVERY_ROUNDS) continue;
+                const at = _appleDropTile(tree);
+                if (!at) continue;
+                if (!state.apples) state.apples = [];
+                state.apples.push({ id: `apple_${state.round || 0}_${at.x}_${at.y}_${randInt(99999)}`, x: at.x, y: at.y });
+                addLog(`🍎 The Apple Tree at ${coordLabel(tree.x, tree.y)} drops an apple at ${coordLabel(at.x, at.y)}. Whoever walks onto it eats it.`);
+                if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextAtTile(at.x, at.y, '🍎', 'heal', { durationMs: 900 });
+                const under = unitAt(at.x, at.y);
+                if (under) _eatAppleAt(under);
+                scheduleBoardRender();
+            }
+        }
+        function _eatAppleAt(unit) {
+            if (!unit || unit.dead || _unitIsDown(unit) || !state.apples || !state.apples.length) return false;
+            if (shadowRealmKey(unit) || (typeof isUnitAirborne === 'function' && isUnitAirborne(unit))) return false;
+            const ap = appleAt(unit.x, unit.y);
+            if (!ap || unit.hp >= unit.maxHp) return false;
+            const healed = applyHealingToUnit(unit, Math.max(1, Math.round(unit.maxHp * APPLE_HEAL_PCT)), null);
+            if (!(healed > 0)) return false;
+            state.apples = state.apples.filter(a => a !== ap);
+            addLog(`🍎 ${_ctName(unit)} eats the apple at ${coordLabel(ap.x, ap.y)}: +${healed} HP.`);
+            if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextForUnit(unit, `+${healed}`, 'heal', { durationMs: 900 });
+            markDirty('teams', 'selectedUnit', 'hud');
+            scheduleBoardRender();
+            return true;
+        }
+        if (typeof window !== 'undefined') { window.appleAt = appleAt; }
+        /* The thorn vine's one target this round among `player`'s units: the nearest it has a clear line to. */
+        function _plantLashTarget(plant, player) {
+            let best = null, bestD = Infinity;
+            for (const u of aliveUnitsFor(player)) {
+                if (u.player === plant.owner || _unitIsDown(u)) continue;
+                if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
+                if (shadowRealmKey(u)) continue;
+                if (typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(u, plant.owner)) continue;
+                const d = Math.max(Math.abs(u.x - plant.x), Math.abs(u.y - plant.y));
+                if (d > (plant.range || PLANT_LASH_RANGE) || d >= bestD) continue;
+                if (typeof turretHasShotAt === 'function' && !turretHasShotAt(plant, u)) continue;
+                best = u; bestD = d;
+            }
+            return best;
+        }
+        function _plantFx(spellId, x, y) {
+            if (state.phase !== 'battle' || _skipVisuals()) return;
+            if (typeof window !== 'undefined' && window.VFX3D && window.VFX3D.hasMapping && window.VFX3D.hasMapping(spellId, 'impact')) {
+                window.VFX3D.fire('impact', spellId, { tx: x, ty: y });
+            }
+        }
+
         // What an ungrown seed does to the unit standing on its tile. Used by
         // (1) the end-of-round tick, (2) planting a seed on an occupied tile
         // (fires immediately), and (3) units stepping onto a seed mid-round.
@@ -12039,8 +12373,11 @@
         // tile can't machine-gun the effect. The end-of-round tick still fires
         // on top for units that stay put ("camping the seed").
         function checkSeedStepTrigger(unit) {
+            _eatAppleAt(unit);   // 🍎 THE APPLE TREE: ending a move on an apple
+            if (unit && unit.race === 'bee queen') _gatherPollen(unit);   // 🐝 THE POLLEN: ending a move beside a flower
             if (!state.plantedSeeds || !state.plantedSeeds.length || !unit || unit.dead) return;
             if (shadowRealmKey(unit)) return;   // 🌑 nor its seeds
+            if (unitIsSpirit(unit)) return;   // 👁 a spirit steps on nothing
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             const seedsHere = state.plantedSeeds.filter(s => s.x === unit.x && s.y === unit.y);
             for (const seed of seedsHere) {
@@ -12062,6 +12399,7 @@
 
         function _auraTreeName(type) {
             if (type === 'plain') return 'Tree';   // THE SPELL AUDIT Batch D: Bumper Crop's plain wood
+            if (type === 'apple') return 'Apple Tree';
             return type === 'poison' ? 'Toxin Tree' : type === 'leech' ? 'Leech Tree' : 'Healing Tree';
         }
 
@@ -12081,15 +12419,16 @@
                     if (!isTerrainPassable(x, y)) continue;
                     if (typeof doorAt === 'function' && doorAt(x, y)) continue;
                     if (getTerrainAt(x, y) !== 'grass') setTerrainAt(x, y, 'grass');
-                    state.plantedSeeds.push({ x, y, z: getHeightAt(x, y), type: 'plain', growRounds: 1,
-                        owner: unit.player, casterUnitId: unit.id, growth: 0 });
+                    const _rimSeed = { x, y, z: getHeightAt(x, y), type: 'plain', owner: unit.player, casterUnitId: unit.id, growth: 0 };
+                    if (_seedWaterSourceAt(x, y, unit.player)) _rimSeed.watered = true;   // THE GARDEN: Bumper Crop's seeds need water like the rest
+                    state.plantedSeeds.push(_rimSeed);
                     n++;
                 }
             }
             if (n) {
                 _invalidateBoardGrid();
                 scheduleBoardRender();
-                addLog(`🌱 ${_ctSp(spell.name)} sows ${n} seed${n !== 1 ? 's' : ''} around the edge — a wood by next round.`);
+                addLog(`🌱 ${_ctSp(spell.name)} sows ${n} seed${n !== 1 ? 's' : ''} around the edge — each one needs water to grow into a tree.`);
             }
             return n;
         }
@@ -12140,11 +12479,11 @@
                     if (!isInside(nx, ny) || unitAt(nx, ny) || !canOccupy(nx, ny)) continue;
                     occupant.x = nx; occupant.y = ny;
                     occupant.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(nx, ny, occupant.z ?? 999) : getHeightAt(nx, ny);
-                    addLog(`🌳 The sprouting ${_auraTreeName(seed.type)} pushes ${_ctName(occupant)} to ${coordLabel(nx, ny)}.`);
+                    addLog(`🌳 The sprouting ${seed.type === 'plain' ? 'Tree' : _plantName(seed.type)} pushes ${_ctName(occupant)} to ${coordLabel(nx, ny)}.`);
                     if (events) {
                         let evt = events.find(e => e.unit === occupant);
                         if (!evt) { evt = { unit: occupant, msgs: [], floats: [] }; events.push(evt); }
-                        evt.msgs.push(`<span class="dlg-heal">🌳 A ${_auraTreeName(seed.type)} sprouts under ${_ctName(occupant)} — shoved aside!</span>`);
+                        evt.msgs.push(`<span class="dlg-heal">🌳 A ${seed.type === 'plain' ? 'Tree' : _plantName(seed.type)} sprouts under ${_ctName(occupant)} — shoved aside!</span>`);
                     }
                     break;
                 }
@@ -12155,21 +12494,24 @@
             if (!_treeCanGrowAt(gx, gy)) {
                 const found = _nearestTreeGrowTile(gx, gy);
                 if (!found) {
-                    addLog(`🌱 The ${_auraTreeName(seed.type)} at ${coordLabel(gx, gy)} finds no room to grow and withers.`);
+                    addLog(`🌱 The ${seed.type === 'plain' ? 'Tree' : _plantName(seed.type)} at ${coordLabel(gx, gy)} finds no room to grow and withers.`);
                     return;
                 }
                 gx = found.x; gy = found.y;
             }
 
+            if (seed.type !== 'plain' && seed.type !== 'apple') { _standPlant(seed, gx, gy); return; }   // THE GARDEN: a plant, not a tree
             _ensureTreeState();
             if (getTerrainAt(gx, gy) !== 'grass') setTerrainAt(gx, gy, 'grass');
             setObjectAt(gx, gy, _auraTreeObjectFor(seed.type));
-            state.plantedTrees.push({ x: gx, y: gy, owner: seed.owner, casterUnitId: seed.casterUnitId, aura: seed.type === 'plain' ? null : seed.type });
+            state.plantedTrees.push(seed.type === 'apple'
+                ? { x: gx, y: gy, owner: seed.owner, casterUnitId: seed.casterUnitId, aura: null, apple: true, appleAge: 0 }   // 🍎 a real tree that drops apples
+                : { x: gx, y: gy, owner: seed.owner, casterUnitId: seed.casterUnitId, aura: seed.type === 'plain' ? null : seed.type });
             _invalidateBoardGrid();
             state._treeTick = (state._treeTick || 0) + 1;
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
             const caster = unitFromId(seed.casterUnitId);
-            addLog(`🌳 A ${_auraTreeName(seed.type)} grows at ${coordLabel(gx, gy)}${caster ? ` — ${_ctName(caster)}'s grove strengthens` : ''}!${seed.type === 'plain' ? '' : ' Its aura pulses every round until it is destroyed.'}`);
+            addLog(`🌳 ${seed.type === 'apple' ? 'An' : 'A'} ${_auraTreeName(seed.type)} grows at ${coordLabel(gx, gy)}${caster ? ` — ${_ctName(caster)}'s grove strengthens` : ''}!${seed.type === 'plain' ? '' : seed.type === 'apple' ? ` It drops a healing apple every ${APPLE_EVERY_ROUNDS} rounds until it is cut down.` : ' Its aura pulses every round until it is destroyed.'}`);
             if (state.phase === 'battle' && !_skipVisuals()) {
                 showFloatingTextAtTile(gx, gy, '🌳', 'heal', { durationMs: 1000 });
                 /* Reuse the Overgrowth signature grow-in (fired through the
@@ -12183,6 +12525,7 @@
         }
 
         // What a grown aura tree does to one unit inside its radius each round.
+        function _auraSrcName(tree) { return tree.plant ? _plantName(tree.aura) : _auraTreeName(tree.aura); }
         function applyAuraTreeEffectToUnit(tree, unit, events = null) {
             if (!tree || !tree.aura || _unitIsDown(unit)) return false;   // THE FALLEN TAKE NOTHING
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
@@ -12199,8 +12542,8 @@
                 const healAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * TREE_AURA_HEAL_PCT)) * (isRaining ? 2 : 1);
                 const healed = applyHealingToUnit(unit, healAmt, null);
                 if (healed > 0) {
-                    pushEvt(unit, `<span class="dlg-heal">🌳 Healing Tree ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${_ctName(unit)}</span>`, { text: `+${healed}`, type: 'heal' });
-                    addLog(`🌳 Healing Tree ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${_ctName(unit)}.`);
+                    pushEvt(unit, `<span class="dlg-heal">🌳 ${_auraSrcName(tree)} ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${_ctName(unit)}</span>`, { text: `+${healed}`, type: 'heal' });
+                    addLog(`🌳 ${_auraSrcName(tree)} ${isRaining ? 'blooms in the rain and ' : ''}restores ${healed} HP to ${_ctName(unit)}.`);
                 }
                 return healed > 0;
             }
@@ -12210,7 +12553,7 @@
                 const hpBefore = unit.hp;
                 const dmgAmt = Math.max(_lvlScaledMin(14, unit), Math.round(unit.maxHp * TREE_AURA_POISON_PCT));
                 if (caster && !caster.dead) unit._lastDamageSourceId = caster.id;
-                applyDamageToUnit(unit, dmgAmt, `🌳 Toxin Tree sickens ${unitDisplayName(unit)}: `, {
+                applyDamageToUnit(unit, dmgAmt, `🌳 ${_auraSrcName(tree)} sickens ${unitDisplayName(unit)}: `, {
                     ignoreArmor: true,
                     damageType: 'dot',
                     consumeMarked: false
@@ -12219,12 +12562,12 @@
                 if (caster && !caster.dead && dmg > 0) caster._trackDmgDealt = (caster._trackDmgDealt || 0) + dmg;
                 if (typeof _balAddSpellEffect === 'function') _balAddSpellEffect('poisonSeed', dmg, unit.dead ? 1 : 0);
                 if (!unit.dead) {
-                    applyStatusPayload(unit, { id: 'poison', duration: 2 }, '🌳 Toxin Tree: ', caster);
+                    applyStatusPayload(unit, { id: 'poison', duration: 2 }, `🌳 ${_auraSrcName(tree)}: `, caster);
                 }
                 if (unit.dead) {
-                    pushEvt(unit, `<span class="dlg-damage">🌳 Toxin Tree claims ${_ctName(unit)}</span>`, null);
+                    pushEvt(unit, `<span class="dlg-damage">🌳 ${_auraSrcName(tree)} claims ${_ctName(unit)}</span>`, null);
                 } else if (dmg > 0) {
-                    pushEvt(unit, `<span class="dlg-damage">🌳 Toxin Tree sickens ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
+                    pushEvt(unit, `<span class="dlg-damage">🌳 ${_auraSrcName(tree)} sickens ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                 }
                 return true;
             }
@@ -12234,7 +12577,7 @@
                 const hpBefore = unit.hp;
                 const drainAmt = Math.max(_lvlScaledMin(19, unit), Math.round(unit.maxHp * TREE_AURA_LEECH_PCT));
                 if (caster && !caster.dead) unit._lastDamageSourceId = caster.id;
-                applyDamageToUnit(unit, drainAmt, `🌳 Leech Tree saps ${unitDisplayName(unit)}: `, {
+                applyDamageToUnit(unit, drainAmt, `🌳 ${_auraSrcName(tree)} saps ${unitDisplayName(unit)}: `, {
                     ignoreArmor: true,
                     damageType: 'dot',
                     consumeMarked: false
@@ -12243,7 +12586,7 @@
                 if (caster && !caster.dead && dmg > 0) caster._trackDmgDealt = (caster._trackDmgDealt || 0) + dmg;
                 if (typeof _balAddSpellEffect === 'function') _balAddSpellEffect('leechSeed', dmg, unit.dead ? 1 : 0);
                 if (dmg > 0) {
-                    pushEvt(unit, `<span class="dlg-damage">🌳 Leech Tree saps ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
+                    pushEvt(unit, `<span class="dlg-damage">🌳 ${_auraSrcName(tree)} saps ${_ctName(unit)} for ${dmg}</span>`, { text: `-${dmg}`, type: 'damage' });
                 }
                 // Everything drained is channeled to the owner's weakest ally.
                 const ownerAllies = realmReachableFrom(aliveUnitsFor(tree.owner), null);   // 🌑 the tree is the board's
@@ -12251,8 +12594,8 @@
                     const target = ownerAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
                     const healed = applyHealingToUnit(target, dmg, null);
                     if (healed > 0) {
-                        pushEvt(target, `<span class="dlg-heal">🌳 Leech Tree channels ${healed} HP to ${_ctName(target)}</span>`, { text: `+${healed}`, type: 'heal' });
-                        addLog(`🌳 Leech Tree channels ${healed} HP to ${_ctName(target)}.`);
+                        pushEvt(target, `<span class="dlg-heal">🌳 ${_auraSrcName(tree)} channels ${healed} HP to ${_ctName(target)}</span>`, { text: `+${healed}`, type: 'heal' });
+                        addLog(`🌳 ${_auraSrcName(tree)} channels ${healed} HP to ${_ctName(target)}.`);
                     }
                 }
                 return true;
@@ -12268,7 +12611,7 @@
                 state.plantedSeeds = state.plantedSeeds.filter(seed => {
                     if (seed.type === 'poison') return true;
                     const t = getTerrainAt(seed.x, seed.y);
-                    return t === 'grass';
+                    return t === 'grass' || t === 'water' || t === 'healing_spring';   // THE GARDEN: shallow water waters a seed, it does not drown it
                 });
 
                 if (state.activeWeather && state.activeWeather.length > 0) {
@@ -12281,7 +12624,7 @@
                     if (droughtTiles.size > 0) {
                         state.plantedSeeds = state.plantedSeeds.filter(seed => {
                             if (droughtTiles.has(posKey(seed.x, seed.y))) {
-                                addLog(`☀ The Drought scorches a ${seed.type === 'heal' ? 'Healing ' : seed.type === 'poison' ? 'Poison ' : seed.type === 'leech' ? 'Leech ' : ''}Seed at ${coordLabel(seed.x, seed.y)}!`);
+                                addLog(`☀ The Drought scorches a ${seed.type === 'heal' ? 'Healing ' : seed.type === 'poison' ? 'Poison ' : seed.type === 'leech' ? 'Leech ' : seed.type === 'apple' ? 'Apple ' : ''}Seed at ${coordLabel(seed.x, seed.y)}!`);
                                 return false;
                             }
                             return true;
@@ -12289,19 +12632,43 @@
                     }
                 }
 
-                /* Growth tick: wet seeds (beside water, or rained on right now)
-                   sprout after 1 round; everything else takes 2. */
-                const sprouting = [];
+                /* Growth tick — THE GARDEN (2026-11-12): a seed that was watered before this round end grows now; a dry
+                   seed that finds water now (rain, water beside it, a Wet ally on it) sprouts and grows at the NEXT round
+                   end; a dry seed never grows. A plain (Bumper Crop) seed still dry after SEED_PLAIN_DRY_ROUNDS withers. */
+                const sprouting = [], withered = [];
                 for (const seed of state.plantedSeeds) {
-                    const wet = _seedRainAt(seed.x, seed.y) || _seedBesideWater(seed.x, seed.y);
-                    seed.growth = (seed.growth || 0) + 1;
-                    const _need = seed.growRounds > 0 ? seed.growRounds : (wet ? SEED_GROW_ROUNDS_WET : SEED_GROW_ROUNDS);   // Batch D: Bumper Crop's 1
-                    if (seed.growth >= _need) sprouting.push(seed);
+                    if (seed.watered) { sprouting.push(seed); continue; }
+                    if (_seedWaterSourceAt(seed.x, seed.y, seed.owner)) { _waterSeed(seed); continue; }
+                    seed.dryRounds = (seed.dryRounds || 0) + 1;
+                    if (seed.type === 'plain' && seed.dryRounds >= SEED_PLAIN_DRY_ROUNDS) withered.push(seed);
+                }
+                if (withered.length) {
+                    state.plantedSeeds = state.plantedSeeds.filter(s => !withered.includes(s));
+                    addLog(`🥀 ${withered.length} dry seed${withered.length !== 1 ? 's wither' : ' withers'} — no water reached ${withered.length !== 1 ? 'them' : 'it'}.`);
+                    state._seedTick = (state._seedTick || 0) + 1;
+                    scheduleBoardRender();
                 }
                 if (sprouting.length) {
                     state.plantedSeeds = state.plantedSeeds.filter(s => !sprouting.includes(s));
                     for (const seed of sprouting) _growSeedIntoTree(seed, events);
                 }
+            }
+            /* its own block (2026-11-12 fix): the plants burn and the pollen regrows with or without a seed on the board */
+            if (player === 1) {
+                /* 🔥 a plant on a burning tile loses a share of its HP each round end */
+                for (const plant of _livePlants()) {
+                    if (!(typeof _tileIsBurning === 'function' && _tileIsBurning(plant.x, plant.y))) continue;
+                    const burn = Math.max(1, Math.round(plant.maxHp * PLANT_BURN_PCT));
+                    plant.hp = Math.max(0, plant.hp - burn);
+                    if (plant.hp <= 0) _removePlant(plant, 'burns to ash');
+                    else {
+                        addLog(`🔥 The ${_plantName(plant.plant)} at ${coordLabel(plant.x, plant.y)} burns for ${burn} (${plant.hp}/${plant.maxHp} HP).`);
+                        if (state.phase === 'battle' && !_skipVisuals()) showFloatingTextAtTile(plant.x, plant.y, `-${burn}`, 'damage', { durationMs: 700 });
+                        scheduleBoardRender();
+                    }
+                }
+                _pollenRoundEnd();   // 🐝 THE POLLEN
+                _appleTreesRoundEnd();   // 🍎 THE APPLE TREE
             }
 
             /* Standing tick: ungrown seeds affect the unit camping their tile,
@@ -12310,10 +12677,31 @@
             /* Aura pulse: every grown aura tree affects this player's units
                inside its radius. */
             const auraTrees = (state.plantedTrees || []).filter(t => t.aura);
+            /* THE GARDEN: the grown plants act here too — the healing flower and the gas plant pulse over the tiles
+               around them (TREE_AURA_RADIUS), the thorn vine lashes ONE enemy, the nearest it has a clear line to.
+               A plant under Drought wilts and skips its round. */
+            const _plantsAct = _livePlants().filter(pl => {
+                if (!_plantUnderDrought(pl)) return true;
+                if (player === 1) addLog(`☀ The ${_plantName(pl.plant)} at ${coordLabel(pl.x, pl.y)} wilts in the Drought and does nothing this round.`);
+                return false;
+            });
+            for (const pl of _plantsAct) {
+                if (pl.plant === 'leech') {
+                    if (pl.owner === player) continue;
+                    const prey = _plantLashTarget(pl, player);
+                    if (!prey) continue;
+                    _plantFx('raceThornlash', prey.x, prey.y);
+                    applyAuraTreeEffectToUnit({ x: pl.x, y: pl.y, owner: pl.owner, casterUnitId: pl.casterUnitId, aura: 'leech', plant: true }, prey, events);
+                } else {
+                    auraTrees.push({ x: pl.x, y: pl.y, owner: pl.owner, casterUnitId: pl.casterUnitId, aura: pl.plant, plant: true });
+                    if (pl.plant === 'poison' && pl.owner !== player && aliveUnitsFor(player).some(u => Math.max(Math.abs(u.x - pl.x), Math.abs(u.y - pl.y)) <= TREE_AURA_RADIUS)) _plantFx('goSporeCloud', pl.x, pl.y);
+                }
+            }
             if (!_seedsLeft && !auraTrees.length) return;
             for (const unit of aliveUnitsFor(player)) {
                 if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) continue;
                 if (shadowRealmKey(unit)) continue;   // 🌑 no seed or tree aura reaches into the Shadow Realm
+                if (unitIsSpirit(unit)) continue;   // 👁 nor a spirit
                 if (_seedsLeft) {
                     const seedsHere = _seedsLeft.filter(s => s.x === unit.x && s.y === unit.y);
                     for (const seed of seedsHere) {
@@ -12932,8 +13320,9 @@
         let _moveHoverWalk = null;   // the hovered walk's { path, land } while its ghost is drawn (the walk's own "-N")
         /* Bundle the predictions for the ghost hologram. Returns null when
            there is nothing to warn about (no badge → no visual noise). */
-        function _moveGhostBadges(unit, x, y, z, walk) {
+        function _moveGhostBadges(unit, x, y, z, walk, tags) {
             const badges = {};
+            if (tags && tags.length) badges.tags = tags;   // THE CLIMB PREVIEW: word chips ("CLIMB" + "ENDS TURN")
             try {
                 const st = predictStealthAtTile(unit, x, y, z);
                 if (st) badges.eye = st.seen ? 'seen' : 'hidden';
@@ -12949,7 +13338,7 @@
                 predictTerrainStatusesAt(unit, x, y, z).forEach(id => { if (!zs.includes(id)) zs.push(id); });
                 if (zs.length) badges.st = zs;
             } catch (e) {}
-            return (badges.eye || badges.dmg || badges.st) ? badges : null;
+            return (badges.eye || badges.dmg || badges.st || badges.tags) ? badges : null;
         }
 
         /* ── Stealth reveal sweep: when an enemy ends up adjacent to an Invisible
@@ -13367,7 +13756,29 @@
         /* Drawn right now? A realm unit shows only on its pair's turns; on those turns everyone else is gone. */
         function isUnitOutOfRealmView(unit) {
             if (!unit) return false;
-            return shadowRealmKey(unit) !== realmViewKey();
+            if (shadowRealmKey(unit) === realmViewKey()) return false;
+            return !isUnitSeenAcrossRealm(unit);
+        }
+        /* 👁🌑 THE REALM WINDOW (astral build 3, mondo 2026-11-12: "units that are projecting can also see/interact with the
+           shadow realm"). A SPIRIT stands in both planes: it can hit, heal and status a realm pair and they can do the same
+           to it (unitCrossesRealm, read by isUnitRealmShieldedFrom). Its sleeping body does not. SEEING is wider
+           (unitSeesRealm): a spirit, and the races on data.js REALM_SIGHT_RACES (the Ghost, the Shadow Entity) who look
+           but cannot touch. On a seer's turn the realm pair is drawn on the normal board as dim shades, and on the pair's
+           own turns a spirit is drawn in their dark plane. Both screens read the same synced active unit (RULE #2). */
+        function unitCrossesRealm(u) { return unitIsSpirit(u); }
+        function unitSeesRealm(u) {
+            if (!u || u.dead || u._dying) return false;
+            if (unitIsSpirit(u)) return true;
+            return typeof REALM_SIGHT_RACES !== 'undefined' && REALM_SIGHT_RACES.includes(u.race);
+        }
+        /* drawn although it is NOT on the plane whose turn it is */
+        function isUnitSeenAcrossRealm(unit) {
+            if (!unit || state.phase !== 'battle' || state._blitzActiveUnitId == null) return false;
+            const vk = realmViewKey(), uk = shadowRealmKey(unit);
+            if (uk === vk) return false;
+            if (!vk && uk) return unitSeesRealm(unitFromId(state._blitzActiveUnitId));   // a seer's turn on the board
+            if (vk && !uk) return unitCrossesRealm(unit);                                // the pair's turn: the spirit is there too
+            return false;
         }
         function isUnitRealmShieldedFrom(unit, actor) {
             /* 🚪 EXITED (DOOR_RACE_DESIGN r3): off the board — nobody reaches it. */
@@ -13377,7 +13788,11 @@
             if (!unit) return false;
             if (!actor) return !!shadowRealmKey(unit);
             if (actor.id === unit.id) return false;
-            return shadowRealmKey(unit) !== shadowRealmKey(actor);
+            const _ku = shadowRealmKey(unit), _ka = shadowRealmKey(actor);
+            if (_ku === _ka) return false;
+            /* 👁 a spirit stands in both planes: it reaches a realm pair and the pair reaches it */
+            if ((_ku && !_ka && unitCrossesRealm(actor)) || (_ka && !_ku && unitCrossesRealm(unit))) return false;
+            return true;
         }
         /* The realm closes for BOTH when either end leaves it (its time runs out, a cleanse, a death): nobody is left
            alone in there. Called by clearStatus and defeatUnit. */
@@ -13464,6 +13879,8 @@
         window.shadowRealmKey = shadowRealmKey;
         window.realmViewKey = realmViewKey;
         window.isUnitOutOfRealmView = isUnitOutOfRealmView;
+        window.isUnitSeenAcrossRealm = isUnitSeenAcrossRealm;
+        window.unitSeesRealm = unitSeesRealm;
         /* 🌑 THE REALM LINE ON EVERY LIST (11-07, mondo: "units sent to the Shadow Realm can still be bitten and buffed"):
            the units of `list` the actor can reach — a null actor (a summon, a turret, a beacon, a tree) is the board,
            so nobody inside a realm. Every team aura, area list and board hunter filters through this, both ways. */
@@ -13473,6 +13890,237 @@
         window.isUnitRealmShieldedFrom = isUnitRealmShieldedFrom;
         window.realmReachableFrom = realmReachableFrom;
         window.closeShadowRealmFor = closeShadowRealmFor;
+
+        /* 👁 THE ASTRAL BODY (astral projection build 1, 2026-11-12, mondo: "astral projecting should work by leaving your
+           body where it is (whatever tile you cast the spell from) but then being able to float and move with your astral
+           body ... immune to physical attacks like the ghost passive but your real body can still take damage like normal
+           ... put the sleeping status effect on the physical body and the projecting status effect on the projection?
+           Treat them like 2 separate units, but one shared HP bar").
+           TWO PIECES. The SPIRIT is the unit itself (its id, its turn, its spells): it wears `projecting` and
+           _astralBodyId. The BODY is a second unit pushed into state.units on the cast tile: a plain copy of the unit
+           (same look), id '<player>-ab<n>', _astralOfId = the spirit's id, wearing `sleep` (never its turn: a status that
+           blocks move AND action skips the activation). Both are plain unit data, so state-sync carries them (RULE #2)
+           and only ids are stored, never objects.
+           ONE HP BAR. astralSyncHp folds every HP change of either piece into both (each piece remembers the shared
+           value it last saw, _astralHp; the two deltas since then are summed), so it holds for hits, heals and the
+           statuses that write hp themselves. A piece that dies takes the unit with it, on the BODY's tile (map.js
+           defeatUnit → astralOnDeath).
+           THE END. `projecting` comes off when the caster's NEXT turn ends (astralSpendActivation; its count is the
+           backstop), a cleanse or a death: astralEnd folds the body back into the unit. spell.astral.end 'follow' (Spirit
+           Walk) pulls the body to the spirit; anything else sends the spirit home to the body's tile. */
+        function unitIsSpirit(u) { return !!(u && u.status && u.status.projecting > 0); }
+        function unitIsAstralBody(u) { return !!(u && u._astralOfId); }
+        function astralBodyOf(u) {
+            if (!u || !u._astralBodyId) return null;
+            const b = unitFromId(u._astralBodyId);
+            return (b && b._astralOfId === u.id) ? b : null;
+        }
+        function astralSpiritOf(b) {
+            if (!b || !b._astralOfId) return null;
+            const sp = unitFromId(b._astralOfId);
+            return (sp && sp._astralBodyId === b.id) ? sp : null;
+        }
+        function astralSyncHp() {
+            if (!state._astralSeq || !state.units) return;
+            for (const u of state.units) {
+                if (!u || !u._astralBodyId || u.dead || u._dying) continue;
+                const b = astralBodyOf(u);
+                if (!b || b.dead || b._dying) continue;
+                const seen = Number.isFinite(u._astralHp) ? u._astralHp : u.hp;
+                const shared = Math.max(0, Math.min(u.maxHp, seen + ((u.hp || 0) - seen) + ((b.hp || 0) - seen)));
+                b.maxHp = u.maxHp;
+                u.hp = b.hp = u._astralHp = b._astralHp = shared;
+            }
+        }
+        /* carried Keys and flags ride the BODY while the spirit is out (no hands), and come home with it */
+        function _astralMoveCarried(fromId, toId) {
+            try {
+                for (const h of (state.hourglasses || [])) if (h && h.carriedBy === fromId) h.carriedBy = toId;
+                if (state.flags) for (const p of [1, 2]) { const f = state.flags[p]; if (f && f.carriedBy === fromId) f.carriedBy = toId; }
+            } catch (e) {}
+        }
+        function _astralDropBody(body) {
+            if (!body) return;
+            body.dead = true;
+            state.units = state.units.filter(x => x !== body && x.id !== body.id);
+            if (typeof window !== 'undefined' && window._ewHlCache) window._ewHlCache = { key: '', map: new Map(), zMap: new Map() };
+        }
+        function astralBegin(unit, spell) {
+            if (!unit || unit.dead || unit._dying || unitIsSpirit(unit) || unit._astralOfId || unit._astralBodyId) return null;
+            const cfg = (spell && spell.astral) || {};
+            let body = null;
+            try { body = JSON.parse(JSON.stringify(unit)); } catch (e) { return null; }
+            const n = (state._astralSeq = (state._astralSeq || 0) + 1);
+            body.id = unit.player + '-ab' + n;
+            body._astralOfId = unit.id;
+            body.status = {};
+            body.statStageMods = [];
+            body.ap = 0; body.movesThisTurn = 0;
+            for (const k of ['_stFresh', '_stHold', '_statusSrc', '_realmPartnerId', '_boundToId', '_voodooAllyId', '_fearSourceId', '_tetherCasterId',
+                '_spellsUsedThisTurn', '_possessAfter', '_possessAfterSrcId', '_mounted', '_astralBodyId']) delete body[k];
+            unit._astralBodyId = body.id;
+            unit._astralCord = Math.max(1, cfg.cord || 6) + (Number(unitPassiveValue(unit, 'astralCordBonus')) || 0);   // + Silver Cord
+            unit._astralEndMode = cfg.end === 'follow' ? 'follow' : 'return';
+            unit._astralRound = state.round;
+            unit._astralHp = body._astralHp = unit.hp;
+            state.units.push(body);
+            applyStatusPayload(body, { id: 'sleep', duration: 99 }, '', unit);
+            if (!(body.status.sleep > 0)) body.status.sleep = 99;   // the body sleeps whatever would shrug a Sleep off
+            _astralMoveCarried(unit.id, body.id);
+            applyStatusPayload(unit, { id: 'projecting', duration: 2 }, `${spell ? spell.name : 'Projection'}: `, unit);
+            if (!(unit.status && unit.status.projecting > 0)) {   // refused (an immunity): nothing was left behind
+                _astralMoveCarried(body.id, unit.id);
+                _astralDropBody(body);
+                for (const k of ['_astralBodyId', '_astralCord', '_astralEndMode', '_astralRound', '_astralHp']) delete unit[k];
+                return null;
+            }
+            if (typeof window !== 'undefined' && window._ewHlCache) window._ewHlCache = { key: '', map: new Map(), zMap: new Map() };
+            return body;
+        }
+        /* STATUS_DEFS.projecting.onRemove (data.js): the two pieces are one again. Runs while the key is still set. */
+        function astralEnd(unit) {
+            if (!unit || !unit._astralBodyId) return;
+            astralSyncHp();
+            const body = astralBodyOf(unit);
+            const mode = unit._astralEndMode;
+            for (const k of ['_astralBodyId', '_astralCord', '_astralEndMode', '_astralRound', '_astralHp', '_astralHitKey', '_astralHitPiece']) delete unit[k];
+            if (!body) return;
+            /* what the body picked up while it slept goes home with the unit */
+            if (!unit.status) unit.status = {};
+            for (const k of Object.keys(body.status || {})) {
+                if (k === 'sleep') continue;
+                const v = Number(body.status[k] || 0);
+                if (v > 0) unit.status[k] = Math.max(Number(unit.status[k] || 0), v);
+            }
+            for (const m of ['_statusSrc', '_stHold', '_stFresh']) {
+                if (body[m] && typeof body[m] === 'object') { unit[m] = Object.assign({}, body[m], unit[m] || {}); delete unit[m].sleep; }
+            }
+            for (const k of ['_boundToId', '_voodooAllyId', '_fearSourceId', '_tetherCasterId']) if (body[k] != null && unit[k] == null) unit[k] = body[k];
+            if (Array.isArray(body.statStageMods) && body.statStageMods.length) unit.statStageMods = (unit.statStageMods || []).concat(body.statStageMods);
+            if (body._lastDamageSourceId && !unit._lastDamageSourceId) unit._lastDamageSourceId = body._lastDamageSourceId;
+            _astralMoveCarried(body.id, unit.id);
+            const _fromX = unit.x, _fromY = unit.y, _bx = body.x, _by = body.y;
+            if (mode !== 'follow' && !unit.dead && !unit._dying) {
+                unit.x = body.x; unit.y = body.y; unit.z = body.z;
+                if (body.facing != null) unit.facing = body.facing;
+            }
+            _astralDropBody(body);
+            unit._astralLandOwed = { x: _fromX, y: _fromY, bx: _bx, by: _by, mode: mode, why: unit._astralSnapWhy || null };
+        }
+        /* clearStatus, once `projecting` is off: the unit is a body again, so the tile it stands on counts (a trap under
+           it, a pick-up, Overwatch on the arrival: mondo's "every arrival sets off Overwatch") */
+        function astralLanded(unit) {
+            const owed = unit && unit._astralLandOwed;
+            if (!owed) return;
+            delete unit._astralLandOwed;
+            if (unit.dead || unit._dying || state.phase !== 'battle') return;
+            if (owed.mode === 'follow') addLog(`👁 ${_ctName(unit)}'s body is pulled to its spirit.`);
+            else if (owed.why) { addLog(`👁 ${_ctName(unit)} is ${owed.why}: the spirit snaps back to its body!`); if (!_skipVisuals()) showFloatingTextForUnit(unit, '👁 SNAPPED BACK', 'debuff', { durationMs: 1200 }); }
+            else addLog(`👁 ${_ctName(unit)}'s spirit returns to its body.`);
+            try { if (owed.mode === 'follow') animateDisplacement(unit, owed.bx, owed.by, unit.x, unit.y, 260, {}); else animateDisplacement(unit, owed.x, owed.y, unit.x, unit.y, 260, {}); } catch (e) {}
+            try { resolveTileArrival(unit, { via: 'self' }); } catch (e) {}
+            scheduleBoardRender();
+        }
+        /* SPIRIT GUIDE (build 4): a spell row with `astralAlly: { cord, end }` walks an ALLY out of its body. The body sleeps
+           on its square and the spirit appears on the nearest open square beside it (two pieces never share one). */
+        function astralProjectAlly(caster, target, spell) {
+            if (!target || target.dead || target._dying || unitIsSpirit(target) || target._astralOfId || target._astralBodyId) return null;
+            let spot = null;
+            for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+                const x = target.x + dx, y = target.y + dy;
+                if (!isInside(x, y)) continue;
+                const z = nearestWalkableZ(x, y, target.z ?? 0);
+                if (canOccupy3D(x, y, z)) { spot = { x, y, z }; break; }
+            }
+            if (!spot) { addLog(`${_ctSp(spell.name)}: there is no room beside ${_ctName(target)} for its spirit.`); return null; }
+            const body = astralBegin(target, { name: spell.name, astral: spell.astralAlly || {} });
+            if (!body) return null;
+            const fx = target.x, fy = target.y;
+            target.x = spot.x; target.y = spot.y; target.z = spot.z;
+            try { animateDisplacement(target, fx, fy, target.x, target.y, 260, {}); } catch (e) {}
+            try { resolveTileArrival(target, { via: 'self' }); } catch (e) {}
+            scheduleBoardRender();
+            return body;
+        }
+        /* 👁 RETURN TO BODY (mondo 2026-11-12, decision card: "RETURN row in the command menu"): the spirit's own early way
+           home. Free (no AP, the turn goes on), on its own turn only. The spell's own ending applies: Spirit Walk pulls the
+           body to the spirit, everything else sends the spirit home. A passive with `astralReturnProtect` (Silver Cord)
+           hands the unit Protect for a round on the way in. online.js wraps it like doGuard (RULE #2). */
+        function canAstralReturn(unit) {
+            return !!(unit && !unit.dead && !unit._dying && unitIsSpirit(unit) && unit._astralBodyId && astralBodyOf(unit)
+                && state.phase === 'battle' && state._blitzActiveUnitId === unit.id
+                && !(typeof unitActionBlockKey === 'function' && unitActionBlockKey(unit)));
+        }
+        function doAstralReturn(unit) {
+            if (!canAstralReturn(unit)) { if (typeof playErrorSfx === 'function') playErrorSfx(); return false; }
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('astralReturn', unit)) return false;
+            try { pushUndoSnapshot(true); } catch (e) {}
+            const _prot = unitPassiveValue(unit, 'astralReturnProtect');
+            unit._astralSnapWhy = null;
+            unit._astralEarly = true;
+            clearStatus(unit, 'projecting');
+            delete unit._astralEarly;
+            if (_prot && !unit.dead && !unit._dying) applyStatusPayload(unit, { id: 'protect', duration: 1 }, 'Silver Cord: ', unit);
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+            scheduleBoardRender();
+            try { if (typeof refreshActionMenu === 'function') refreshActionMenu(); } catch (e) {}
+            return true;
+        }
+        /* THE RUDE AWAKENING: the projection breaks and the spirit goes HOME, whatever the spell's own ending was */
+        function astralSnapHome(unit, why) {
+            if (!unit || unit.dead || unit._dying || !unitIsSpirit(unit) || !unit._astralBodyId) return false;
+            unit._astralEndMode = 'return';
+            unit._astralSnapWhy = why || 'shaken';
+            clearStatus(unit, 'projecting');
+            delete unit._astralSnapWhy;
+            return true;
+        }
+        /* the caster's turn is over: a projection cast in an EARLIER round ends here ("until the caster's next turn ends") */
+        function astralSpendActivation(unit) {
+            if (!unit || unit.dead || unit._dying || !unitIsSpirit(unit) || !unit._astralBodyId) return;
+            if (unit._astralRound == null || unit._astralRound >= state.round) return;
+            clearStatus(unit, 'projecting');
+        }
+        /* map.js defeatUnit, first thing: a piece that dies is the unit dying, on the body's tile. Returns the unit the
+           death goes on with (the spirit when the body took the blow), or null when there is nothing more to do. */
+        function astralOnDeath(unit) {
+            if (!unit) return unit;
+            if (unit._astralOfId) {
+                const sp = astralSpiritOf(unit);
+                if (!sp || sp.dead || sp._dying) { _astralDropBody(unit); return null; }
+                return astralOnDeath(sp);
+            }
+            if (!unit._astralBodyId) return unit;
+            const body = astralBodyOf(unit);
+            for (const k of ['_astralBodyId', '_astralCord', '_astralEndMode', '_astralRound', '_astralHp', '_astralLandOwed']) delete unit[k];
+            if (unit.status) delete unit.status.projecting;
+            if (body) {
+                unit.x = body.x; unit.y = body.y; unit.z = body.z;
+                if (body._lastDamageSourceId) unit._lastDamageSourceId = body._lastDamageSourceId;
+                _astralMoveCarried(body.id, unit.id);
+                _astralDropBody(body);
+            }
+            return unit;
+        }
+        /* the cord: a spirit's move tiles stay within its cord of the body (Manhattan, like a teleport's reach) */
+        function astralCordFilter(unit, tiles) {
+            const b = astralBodyOf(unit);
+            if (!b || !Array.isArray(tiles)) return tiles;
+            const cord = Math.max(1, unit._astralCord || 6);
+            return tiles.filter(t => t && (Math.abs(t.x - b.x) + Math.abs(t.y - b.y)) <= cord);
+        }
+        window.unitIsSpirit = unitIsSpirit;
+        window.unitIsAstralBody = unitIsAstralBody;
+        window.astralBodyOf = astralBodyOf;
+        window.astralSpiritOf = astralSpiritOf;
+        window.astralSyncHp = astralSyncHp;
+        window.astralBegin = astralBegin;
+        window.astralEnd = astralEnd;
+        window.astralSnapHome = astralSnapHome;
+        window.doAstralReturn = doAstralReturn;
+        window.canAstralReturn = canAstralReturn;
+        window.astralProjectAlly = astralProjectAlly;
+        window.astralOnDeath = astralOnDeath;
 
         /* ⛓ / 🪆 Links (plan §5.5): after a hit resolves, echo a share of it
            down every link the victim is part of. Soul-Bound pairs echo
@@ -13586,9 +14234,12 @@
            eating it healed nothing at full HP and pushed that ally's respawn back 2 rounds). One rule for every corpse
            cast: unconsumed remains, and a kind wearing enemyRemainsOnly (Cannibalize, Carrion Feast) eats only an
            ENEMY's remains. Raise the Dead keeps both sides (its text: "an ally's gravestone or an enemy's pile of bones"). */
+        /* EITHER SIDE'S REMAINS (mondo 2026-11-10, open rule 1 "B": "an ally's remains can be eaten too"): Cannibalize and
+           Carrion Feast feed on an enemy's bones OR an ally's gravestone (same heal, same +corpseDelay on a body still
+           down). The one grave still barred is the feeder's own left grave (notOwnGrave). */
         function spellCorpseUsable(unit, spell, corpse) {
             if (!corpse || !corpse.dead || corpse._corpseConsumed) return false;
-            if (_kindMeta(spell).enemyRemainsOnly && (corpse._remainsOf === unit.id || !isEnemyUnit(corpse, unit))) return false;   // a left grave: its unit's own (FFA)
+            if (_kindMeta(spell).notOwnGrave && corpse._remainsOf === unit.id) return false;   // a left grave: its unit's own
             /* THE GRAVES STAY: a grave outlives its unit's respawn, so someone can be standing on it — Raise the Dead
                claws its zombie out of THAT square, so a body or a standing turret / summon / zombie on it blocks the raise */
             if (spell && spell.kind === 'raiseDead') {
@@ -14535,11 +15186,14 @@
             if (ms > 0) _juiceLastStopAt = now;
             return ms;
         }
-        function _juiceHitFx(target, w, hs, kill) {
+        function _juiceHitFx(target, w, hs, kill, source) {
             if (!_juiceOn() || !target) return;
             const V = (typeof window !== 'undefined') ? window.VFX3D : null;
             if (!V || typeof V.juiceHit !== 'function') return;
-            try { V.juiceHit(target.x, target.y, w, hs, kill ? 1 : 0, target.id); } catch (e) {}
+            /* THE HIT SIDE (2026-11-11): the attacker's ID rides along (never the unit) — its ring pings and an arrowhead
+               on the victim's ring points at it, on each seat that can see it (three-renderer.js hitSide) */
+            const srcId = (source && source.id != null && source.id !== target.id) ? source.id : null;
+            try { V.juiceHit(target.x, target.y, w, hs, kill ? 1 : 0, target.id, srcId); } catch (e) {}
         }
 
         function triggerHitstop(durationMs) {
@@ -14831,6 +15485,9 @@
             else if (wm < 0.999) o._hitWeak = -1;
             if (info.kill) o._hitKill = 1;
             if (info.weight >= 0 && info.weight <= 3) o._hitW = info.weight | 0;
+            /* THE HIT SIDE part 3 (2026-11-11): whose unit lost the HP — a plain player number, so each seat paints the
+               number's edge in ITS OWN view of that side (cyan-blue = your unit, pink-red = theirs) */
+            if (target.player != null) o._hitP = target.player;
             return o;
         }
 
@@ -14867,7 +15524,18 @@
                CRIT / BACKSTAB kind that lands with the number like every other word (_hitReadCritPop) */
             const FC = FL.crit || {};
             const critOn = !!opts._hitCrit && FL.stamp !== false, critText = critOn && FC.as === 'text';
+            /* THE HIT SIDE part 3: the victim's side from this seat, by the team ring's own rule and in its own colour
+               (three-renderer.js _isAllyPlayer / TEAM_RING_*); null = no edge (the part is off, or no renderer) */
+            let side = null;
+            try {
+                const W = (typeof window !== 'undefined') ? window : null;
+                if (W && opts._hitP != null && typeof W._ewHitSideOn === 'function' && W._ewHitSideOn('C')
+                    && typeof W._ewHitSideAlly === 'function' && typeof W._ewHitSideHex === 'function') {
+                    side = '#' + ('00000' + (W._ewHitSideHex(!!W._ewHitSideAlly(Number(opts._hitP))) >>> 0).toString(16)).slice(-6);
+                }
+            } catch (_e) { side = null; }
             return {
+                side,
                 color: (tintable && !own && FL.elem !== false) ? col : null,
                 glowColor: col || '#ff5a3a',
                 scale: own ? 1 : Math.min(maxScale * 1.35, (1 + f * (maxScale - 1)) * punch),
@@ -14887,6 +15555,44 @@
            re-painted and re-sized here without touching the renderer.
            The tween centres it with translate(-50%,-50%), so a bigger canvas
            (the swell, the stamp's margin) stays on its anchor. */
+        /* THE HIT SIDE part 3 (2026-11-11, plan https://claude.ai/artifact/W2nQT5ZYg5h3jCRPk7F7eT): the number keeps
+           its element colour; its dark EDGE takes the victim's side colour (cyan-blue = your unit lost the HP, pink-red
+           = theirs), so the number alone says who was hit. sil = the pop's solid ink (the digits and their outline; the
+           soft shadow and the halo fall under the alpha cut) painted flat in the side colour. The RIM is sil grown d px
+           (drawn under the number: a crisp edge outside its outline); the BAND is sil minus sil shrunk k px = the
+           outline's outer dark part (drawn over the number; the thin black line against the digits stays, so the
+           colour never touches the fill). lineW = the stock pop's outline width (three-renderer.js stamps
+           canvas._ewLineW; 0 = the Floating text look draws no line: the rim alone). */
+        function _hitReadSideEdge(snap, w, h, lineW, rgb) {
+            const sil = document.createElement('canvas'); sil.width = w; sil.height = h;
+            const sc = sil.getContext('2d');
+            const src = snap.getContext('2d').getImageData(0, 0, w, h).data, out = sc.createImageData(w, h), o = out.data;
+            for (let i = 0; i < src.length; i += 4) {
+                const a = src[i + 3];
+                if (a < 186) continue;
+                o[i] = rgb[0]; o[i + 1] = rgb[1]; o[i + 2] = rgb[2]; o[i + 3] = a >= 236 ? 255 : Math.round((a - 186) / 50 * 255);
+            }
+            sc.putImageData(out, 0, 0);
+            const d = Math.max(2, Math.round((lineW > 0 ? lineW : h * 0.04) * 0.6)), k = lineW > 0 ? Math.max(1, lineW * 0.62) : 0;
+            const rim = document.createElement('canvas'); rim.width = w + 2 * d; rim.height = h + 2 * d;
+            const rc = rim.getContext('2d');
+            for (let j = 0; j < 12; j++) { const an = j * Math.PI / 6; rc.drawImage(sil, d + Math.cos(an) * d, d + Math.sin(an) * d); }
+            rc.drawImage(sil, d, d);
+            let band = null;
+            if (k > 0) {
+                const er = document.createElement('canvas'); er.width = w; er.height = h;
+                const ec = er.getContext('2d');
+                ec.drawImage(sil, 0, 0);
+                ec.globalCompositeOperation = 'destination-in';
+                for (let j = 0; j < 8; j++) { const an = j * Math.PI / 4; ec.drawImage(sil, Math.cos(an) * k, Math.sin(an) * k); }
+                band = document.createElement('canvas'); band.width = w; band.height = h;
+                const bc = band.getContext('2d');
+                bc.drawImage(sil, 0, 0);
+                bc.globalCompositeOperation = 'destination-out';
+                bc.drawImage(er, 0, 0);
+            }
+            return { rim, band, d };
+        }
         function _hitReadDress3D(hr, c) {
             try {
                 if (!c || c.tagName !== 'CANVAS' || c._hitRead) return;
@@ -14923,7 +15629,11 @@
                 const gs = hr.glyph ? Math.round(h * 0.46) : 0;       // glyph box
                 // The ink's own margins inside the stock pop (three-renderer
                 // _buildFloatTextCanvas) — the layout stacks pops by them.
-                const mX = c._ewMarginX || 0, mT = c._ewMarginTop || 0, mB = c._ewMarginBot || 0;
+                /* THE HIT SIDE part 3: the edge in the victim's side colour (its rim is ink: the margins give it room) */
+                let E = null;
+                if (hr.side) { try { E = _hitReadSideEdge(snap, w, h, Number(c._ewLineW) || 0, _hitReadRgb(hr.side)); } catch (_e2) { E = null; } }
+                const eD = E ? E.d : 0;
+                const mX = Math.max(0, (c._ewMarginX || 0) - eD), mT = Math.max(0, (c._ewMarginTop || 0) - eD), mB = Math.max(0, (c._ewMarginBot || 0) - eD);
                 /* THE NUMBER IS THE HERO (mondo 2026-10-17): the CRIT stamp
                    sits on the number's top-right SHOULDER, clear of the
                    digits — it used to be stamped across the last digit.
@@ -14963,7 +15673,9 @@
                     ctx.drawImage(snap, padX, padY);
                     ctx.restore();
                 }
+                if (E) ctx.drawImage(E.rim, padX - E.d, padY - E.d);
                 ctx.drawImage(snap, padX, padY);
+                if (E && E.band) ctx.drawImage(E.band, padX, padY);
                 if (hr.glyph) _hitReadGlyph(ctx, hr, padX * 0.55, padY + h / 2, gs);
                 if (G) _hitReadStamp(ctx, padX + sCx, padY + sCy, sFs, S, G);
                 c.style.width = Math.round(W * hr.scale) + 'px';
@@ -15137,6 +15849,8 @@
             el.style.setProperty('--hr-scale', hr.scale.toFixed(3));
             if (hr.resist) el.classList.add('hr-resist');
             if (hr.kill) el.classList.add('hr-kill');
+            // THE HIT SIDE part 3 on the 2D board: a thin rim in the victim's side colour round the number
+            if (hr.side) el.style.filter = (hr.resist ? 'saturate(0.35) brightness(0.78) ' : '') + 'drop-shadow(0 0 1px ' + hr.side + ') drop-shadow(0 0 1px ' + hr.side + ')';
             if (hr.glyph) {
                 const g = document.createElement('span');
                 g.className = 'hr-glyph';
@@ -15189,9 +15903,14 @@
                     if (state.fogOfWar && state.activePlayer !== _viewer && !_isTileVisibleToViewer(x, y)) return;
                 }
             }
+            /* THE NUMBER WAITS FOR THE LENS (shot grammar): a buff / heal / shield / status number on a body the live
+               spell shot has not framed yet pops when the lens shows that body (or the shot ends) */
+            if (!opts._sgWaited && _shotGNumberWaits(x, y, textValue, kind, opts)) return;
             /* THE FRAME GUARD: a number on a unit during a live spell shot →
                that unit stays in frame for the rest of the shot. */
             if (_cineGuard) _cineGuardNoteHit(x, y, kind, opts);
+            /* THE SHOT GRAMMAR: the camera holds on that body while its number is read */
+            _shotGNoteRead(x, y, kind, opts);
 
             /* Record juice (plan §5.2 #1): a damage number that beats the
                VIEWER's own Biggest Hit board grows, glows and kicks the
@@ -15381,6 +16100,7 @@
             const actual = Math.min(rawAmount, Math.max(0, target.maxHp - target.hp));
             if (actual <= 0) return 0;
             target.hp = Math.min(target.maxHp, target.hp + actual);
+            astralSyncHp();   // 👁 one HP bar for a body and its spirit
             if (sourceUnit) sourceUnit._trackHealDone = (sourceUnit._trackHealDone || 0) + actual;
             if (_balanceSimMode && sourceUnit) _balEffect(sourceUnit, 'heal', actual, 0);
             target._trackHealReceived = (target._trackHealReceived || 0) + actual;
@@ -15494,6 +16214,10 @@
             if (!unit) return 0;
             const stunned = getActiveStatusKeys(unit).some(k => STATUS_DEFS[k]?.blockMove);
             if (stunned) return 0;
+            /* 🔬 MINIMIZED IS HARDER TO HIT (mondo 2026-11-10, open rule 8 "B", his pick on the card: "Dodge at the 25% cap"):
+               a shrunk unit dodges basic attacks at the game's own top dodge (data.js EVASION_CAP), whatever its MOV.
+               Hard CC above still drops it to zero; spells still always land; a back-arc swing still can't be dodged. */
+            if (unitHasStatus(unit, 'minimize')) return (typeof EVASION_CAP !== 'undefined') ? EVASION_CAP : 0.25;
             return evasionChanceFromStats(getEffectiveMove(unit) || 0);
         }
 
@@ -22845,6 +23569,7 @@
                 if (!_achProgressAvailable()) return;
                 if (state.winner === null || state.winner === undefined || state.winner === 0) {
                     window._lastAchTierUnlocks = []; // no contest — don't show a stale list
+                    window._lastMasteryRows = [];
                     window._lastAchDeltas = {};      // …nor stale "almost there" rows
                     window._lastRecordsBroken = [];
                     window._lastHqSiteFlag = null;   // …nor a stale HQ site tag on the stamp
@@ -22889,6 +23614,11 @@
                 /* Mastery snapshot BEFORE folding — newly-mastered champs
                    (post minus pre) earn a free unlock token (§4.7). */
                 const preMastered = _achCountMastered(prog);
+                /* THE MASTERY LEVEL (mondo 2026-11-11, data.js UNIT_MASTERY_RULES): each of my units' cosmetic XP before
+                   this match is folded in, so the result screen can show what the match added (viewer-local, never on state) */
+                const _mlMine = (state.units || []).filter(u => u.player === viewer && !u._mdNpc && u.race);
+                const _mlBefore = {};
+                try { if (typeof unitMasteryOf === 'function') for (const u of _mlMine) if (!_mlBefore[u.race]) _mlBefore[u.race] = unitMasteryOf(prog.champs[u.race]); } catch (e) {}
 
                 const folded = _achFoldMatchDeltas(viewer);
                 for (const m of Object.keys(folded.deltas)) add(m, folded.deltas[m]);
@@ -22898,6 +23628,8 @@
                     }
                 }
                 const mine = (state.units || []).filter(u => u.player === viewer && !u._mdNpc);
+                /* THE MASTERY LEVEL: a finished match counts once for every unit I fielded, win or lose */
+                if (kind === 'match') { const _mlSeen = {}; for (const u of mine) { if (u.race && !_mlSeen[u.race]) { _mlSeen[u.race] = 1; champAdd(u.race, 'games', 1); } } }
 
                 if (won) {
                     if (kind === 'match') {
@@ -23054,6 +23786,7 @@
                         const idx = (PS && typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null;
                         const p = (idx !== null && idx !== undefined && typeof PS.loadProfile === 'function') ? PS.loadProfile(idx) : null;
                         let partyRes = null;
+                        let _questRes = null;   // THE QUESTS: what this fight did to a quest (data.js questEvent's return)
                         if (p) {
                             hqEncounterRecord(p, { site: erun.site, room: erun.room, race: erun.race, id: erun.id || null, won, retreat: !won && _encRetreatOn, date: erun.date || ((typeof hqToday === 'function') ? hqToday() : null) });
                             /* THE CARRY-OVER (DOOR_GUN_PLAN §5.3, Phase 4): the room's doors go home with the hits the board left them (a
@@ -23094,7 +23827,9 @@
                                        the commit puts them in the bag on a win, the debrief's REWARDS sheet lists them */
                                     let drops = null;
                                     try { if (won && typeof hqEncounterDrops === 'function') drops = hqEncounterDrops(_encFallenEnemies(seat)); } catch (e) { drops = null; }
-                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, retreat: !won && _encRetreatOn, units: vit, xpPool, bag: bagHome, gauge: gaugeHome, drops });
+                                    /* THE RECRUIT WALKS OUT (mondo 2026-11-13): a WON quest fight puts the officer back on their feet (the story's scenes and the walk after it are theirs) */
+                                    let _qRevive = false; try { const _qr = _encRun(); _qRevive = !!(won && _qr && _qr.quest); } catch (e) { _qRevive = false; }
+                                    if (vit.length) partyRes = hqPartyAfterMatch(p, { won, retreat: !won && _encRetreatOn, units: vit, xpPool, bag: bagHome, gauge: gaugeHome, drops, reviveYou: _qRevive });
                                     /* 🚪 THE ONE-WAY DOOR (CAPTURE_PLAN.md §2.6): every native the party SEALED joins — the party, else the roster
                                        (the captured ledger: owned at once, never bought), else a bounty in gold */
                                     try {
@@ -23118,6 +23853,15 @@
                                     } catch (e) { console.warn('[HQ] the captures failed', e); }
                                 }
                             } catch (e) { console.warn('[HQ] the party record failed', e); }
+                            /* THE QUESTS (2026-11-12): a quest's own fight reports its outcome — only a WIN of THAT fight moves its stage
+                               (data.js questEvent, the one writer; the reward is paid there, once). After the party's commit, so a
+                               unit the quest hands over joins the party the fight left. */
+                            try {
+                                if (erun.quest && erun.quest.id && typeof questEvent === 'function') {
+                                    _questRes = questEvent(p, { type: 'fight', fight: erun.quest.id, outcome: won ? 'win' : ((!won && _encRetreatOn) ? 'escaped' : 'loss') });
+                                    (_questRes.changes || []).forEach(c => { if (c.kind === 'updated' && c.objective) addLog(`📜 QUEST UPDATED — ${c.title}. ${c.objective}`); if (c.kind === 'completed') addLog(`📜 QUEST COMPLETE — ${c.title}.${c.reward && c.reward.unit ? ' ' + String(c.reward.unit).toUpperCase() + (c.reward.joined ? ' joins THE PARTY.' : ' is ON CALL for the party.') : ''}`); });
+                                }
+                            } catch (e) { console.warn('[QUEST] the fight could not be filed', e); _questRes = null; }
                             PS.saveProfile(idx, p);
                         }
                         /* ESCAPE (EXPLORATION_BATTLES §6): who got out (by name), THE RETREAT, and the door the room was entered by (the way back) */
@@ -23144,7 +23888,8 @@
                             }
                         } catch (e) { _endRows = null; }
                         window._hqEncounterResult = { won, site: erun.site, room: erun.room, race: erun.race, label: erun.label || erun.race, walker: erun.walker || null, party: partyRes,   // D1: the swing spot rides home; THE PARTY: what the fight did to it
-                                                      retreat: _retreat, escaped: _escNames, escLoss: !won && !_retreat && _escNames.length > 0, entry: erun.entry || null, end: _endRows };
+                                                      retreat: _retreat, escaped: _escNames, escLoss: !won && !_retreat && _escNames.length > 0, entry: erun.entry || null, end: _endRows,
+                                                      quest: erun.quest ? { fight: erun.quest.id, changes: (_questRes && _questRes.changes) || [] } : null };
                         addLog(won ? `🚪 The encounter is over — ${erun.label || erun.race} is off the room.`
                             : _retreat ? `🏃 THE RETREAT — the party slipped out. ${erun.label || erun.race} still has the room.`
                             : _escNames.length ? `🏃 THE PARTY IS DOWN — ${_escNames.join(', ')} got out and leads the party now.`
@@ -23221,6 +23966,16 @@
                    the end-of-match screens read these to render unlock cards,
                    the "Records Broken" rows and the "Almost there" progress. */
                 window._lastAchTierUnlocks = newly;
+                /* THE MASTERY LEVEL: before -> after for each unit I fielded (the result screen's rows) */
+                try {
+                    const _mlRows = [], _mlDone = {};
+                    if (typeof unitMasteryOf === 'function') for (const u of _mlMine) {
+                        if (_mlDone[u.race]) continue; _mlDone[u.race] = 1;
+                        const a = _mlBefore[u.race] || unitMasteryOf(null), b = unitMasteryOf(prog.champs[u.race]);
+                        _mlRows.push({ race: u.race, gender: u.gender || 'male', name: unitDisplayName(u), before: a, after: b, gain: Math.max(0, b.xp - a.xp), bonus: Math.max(0, b.bonus - a.bonus) });
+                    }
+                    window._lastMasteryRows = _mlRows.filter(r => r.gain > 0);
+                } catch (e) { window._lastMasteryRows = []; }
                 window._lastAchDeltas = folded.deltas;
                 window._lastRecordsBroken = recordsBroken;
                 _achAnnounceUnlocks(newly);
@@ -23297,6 +24052,27 @@
                 const unlocks = window._lastAchTierUnlocks || [];
                 const deltas = window._lastAchDeltas || {};
                 let html = '';
+
+                /* THE MASTERY LEVEL (mondo 2026-11-11): what this match added to each of my units' cosmetic level. A row:
+                   the face, the name, the level plate (old -> new when it rose), the bar inside the new level and the XP
+                   earned ("+250 from achievements" when a tier of the unit's own lines was reached). Viewer-local. */
+                const mlRows = window._lastMasteryRows || [];
+                if (mlRows.length && typeof unitMasteryChipHtml === 'function') {
+                    html += '<div class="vic-achievements vic-mastery"><div class="vic-ach-title">Unit Mastery</div><div class="ml-row-list">';
+                    for (const r of mlRows.slice(0, 8)) {
+                        const up = r.after.level > r.before.level;
+                        const face = (typeof window._sqFaceHtml === 'function') ? window._sqFaceHtml({ race: r.race, gender: r.gender, lv: 0 }) : '';
+                        const startPct = up ? 0 : Math.round(r.before.pct * 100);
+                        html += `<div class="ml-row${up ? ' is-up' : ''}">${face}`
+                            + `<span class="ml-row-main"><span class="ml-row-name"><b>${escapeHtml(String(r.name || getRaceLabel(r.race, r.gender)))}</b>`
+                            + (up ? `${unitMasteryChipHtml(r.before.level, 'is-old')}<em>▶</em>` : '') + unitMasteryChipHtml(r.after.level)
+                            + (up ? '<u>LEVEL UP</u>' : '') + `</span>`
+                            + `<span class="ml-row-bar"><i style="left:0;width:${startPct}%"></i><i class="is-gain" style="left:${startPct}%;width:${Math.max(0, Math.round(r.after.pct * 100) - startPct)}%;background:${r.after.color}"></i></span></span>`
+                            + `<span class="ml-row-xp"><b>+${r.gain.toLocaleString()} XP</b><small>${r.bonus > 0 ? '+' + r.bonus.toLocaleString() + ' from achievements' : r.after.into.toLocaleString() + ' / ' + r.after.need.toLocaleString()}</small></span>`
+                            + `</div>`;
+                    }
+                    html += '</div><div class="ach-panel-link">Cosmetic only: shows how much you play each unit</div></div>';
+                }
 
                 if (unlocks.length) {
                     html += '<div class="vic-achievements"><div class="vic-ach-title">🏆 Achievements Unlocked</div><div class="ach-card-list">';
@@ -25552,7 +26328,7 @@
             const el = document.createElement('div');
             el.className = 'acam-chrome';
             el.innerHTML = `
-        <div class="acam-bar acam-bar-top"></div>
+        <div class="acam-bar acam-bar-top"><div class="acam-bar-name"></div></div>
         <div class="acam-bar acam-bar-bot"></div>
         <div class="acam-vignette"></div>
         <div class="acam-speedlines"></div>
@@ -25560,6 +26336,7 @@
         <div class="acam-title">
           <div class="acam-spell-name"></div>
           <div class="acam-dmg-row"><span class="acam-dmg-label">TOTAL DMG</span><span class="acam-dmg-num">0</span></div>
+          <div class="acam-ap-tally"></div>
         </div>`;
             (document.getElementById('game-viewport') || document.body).appendChild(el);
             _acChromeEl = el;
@@ -25595,6 +26372,24 @@
                 void nameEl.offsetWidth;
                 nameEl.classList.add('in');
             }
+            /* THE NAME RIDES THE BAR (mondo 2026-11-13: "move the Spell text to be inside the horizontal bars that come
+               down, which should allow the damage number to sit a little higher"): the heavy chrome writes the name in
+               its top letterbox bar (styles-cinematic.css .acam-bar-name hides the corner copy); it is shrunk to fit,
+               never cut. The light chrome has no bars and keeps the corner name. */
+            const barName = el.querySelector('.acam-bar-name');
+            if (barName) {
+                barName.textContent = opts.name || '';
+                barName.style.fontSize = '';
+                barName.classList.remove('in');
+                void barName.offsetWidth;
+                barName.classList.add('in');
+                if (opts.name && opts.heavy) requestAnimationFrame(() => {
+                    const room = (barName.parentElement ? barName.parentElement.clientWidth : 0) * 0.9;
+                    const w = barName.scrollWidth;
+                    if (room > 0 && w > room) barName.style.fontSize = (parseFloat(getComputedStyle(barName).fontSize) * room / w).toFixed(1) + 'px';
+                });
+            }
+            _acApTallyClear();
             const dmgRow = el.querySelector('.acam-dmg-row');
             const dmgNum = el.querySelector('.acam-dmg-num');
             if (dmgRow) dmgRow.classList.remove('show');
@@ -25682,6 +26477,126 @@
                 }, AC_TALLY_LINGER_MS);
             }
         }
+
+        /* THE AP TALLY (mondo 2026-11-13: "underneath the damage number, I want to show the floating text for things that
+           reward or take away AP ... stack on top of each other one by one with a sfx. Basically a tally of how much AP
+           you will or wont get back"): the lines that judge the press (battle.js THE PRESS SUM) stack under the corner
+           total one by one, each with its AP worth, then the sum lands on a last line. A draw only: the rules stay in
+           applyPressTurn. spec = { side: 'own' | 'enemy', rows: [{ label, mult, ap, ent, note }], total: { ap, ent, text } }.
+           Existing sounds only. */
+        const AC_AP_ROW_GAP_MS = 190, AC_AP_SUM_GAP_MS = 300, AC_AP_HOLD_MS = 1900, AC_AP_PRE_HOLD_MS = 2600;
+        let _acApTimers = [];
+        function _acApTallyClear() {
+            for (const t of _acApTimers) clearTimeout(t);
+            _acApTimers = [];
+            const box = _acChromeEl && _acChromeEl.querySelector('.acam-ap-tally');
+            if (box) { box.innerHTML = ''; box.className = 'acam-ap-tally'; delete box.dataset.owner; }
+            if (_acApSoloTimer) { clearTimeout(_acApSoloTimer); _acApSoloTimer = null; }
+            if (_acChromeEl) _acChromeEl.classList.remove('ap-solo');
+        }
+        function _acApVal(ap, ent, note) {
+            const bits = [];
+            if (ap > 0) bits.push(`<span class="acam-ap-v gain">+${ap} AP</span>`);
+            else if (ap < 0) bits.push(`<span class="acam-ap-v loss">\u2212${-ap} AP</span>`);
+            if (ent > 0) bits.push(`<span class="acam-ap-v vent">\u269B +${ent}</span>`);
+            if (!bits.length && note) bits.push(`<span class="acam-ap-v none">${note}</span>`);
+            return bits.join('');
+        }
+        const _acApSfx = (k, o) => { try { if (typeof playSfx === 'function') playSfx(k, Object.assign({ cooldownMs: 0 }, o || {})); } catch (_e) {} };
+        function _acApRowHtml(r) {
+            return `<span class="acam-ap-l">${r.label || ''}${r.mult ? ` <i>${r.mult}</i>` : ''}</span>`;
+        }
+        function _acApSide(d) {
+            if (d.side) return d.side;
+            return d.player === getViewerPlayer() ? 'own' : 'enemy';
+        }
+        /* the corner keeps its shot's chrome up while the tally reads (same hold the damage total buys); with no shot
+           chrome (Action Cam off, a counter) the tally shows alone in the same corner and clears itself */
+        function _acApHold(el, span) {
+            const st = _acChromeState;
+            if (st) {
+                const now = performance.now();
+                st.until = Math.max(st.until, now + span + 400);
+                st.holdUntil = Math.max(st.holdUntil || 0, now + span);
+                if (st.hideTimer) clearTimeout(st.hideTimer);
+                st.hideTimer = setTimeout(() => hideActionCamChrome(), span);
+            } else {
+                el.classList.add('ap-solo');
+                if (_acApSoloTimer) clearTimeout(_acApSoloTimer);
+                _acApSoloTimer = setTimeout(() => { _acApSoloTimer = null; _acApTallyClear(); }, span);
+            }
+        }
+        let _acApSoloTimer = null, _acApPreAt = 0, _acApPreN = 0;
+        /* a word lands with the hit: d = { player, unitId, k, label, mult }. online.js relays it to the guest. */
+        function _acApTallyPre(d) {
+            if (!d || _skipVisuals() || state.phase !== 'battle') return false;
+            const side = _acApSide(d);
+            /* fog: an enemy's line shows only when this seat may see that enemy (it names the matchup) */
+            if (side === 'enemy' && typeof _shouldCameraFollowUnit === 'function') {
+                const u = typeof unitFromId === 'function' ? unitFromId(d.unitId) : null;
+                if (!u || !_shouldCameraFollowUnit(u)) return false;
+            }
+            const el = _ensureActionCamChrome();
+            const box = el.querySelector('.acam-ap-tally');
+            if (!box) return false;
+            if (box.dataset.owner !== String(d.unitId) || box.classList.contains('done')) { _acApTallyClear(); box.dataset.owner = String(d.unitId); }
+            if (box.querySelector(`[data-k="${d.k}"]`)) return true;
+            box.classList.add('on', side);
+            const now = performance.now();
+            _acApPreN = (now - _acApPreAt < 120) ? _acApPreN + 1 : 0;   // several words off one hit still stack one by one
+            _acApPreAt = now;
+            const wait = _acApPreN * AC_AP_ROW_GAP_MS;
+            const row = document.createElement('div');
+            row.className = 'acam-ap-row pre';
+            row.dataset.k = d.k;
+            row.innerHTML = _acApRowHtml(d);
+            if (wait) row.style.animationDelay = wait + 'ms';
+            box.appendChild(row);
+            _acApTimers.push(setTimeout(() => _acApSfx('uiCursorMove', { volume: 0.55 }), wait));
+            _acApHold(el, wait + AC_AP_PRE_HOLD_MS);
+            return true;
+        }
+        window._acApTallyPre = _acApTallyPre;
+        function _acApTallyShow(spec) {
+            if (!spec || _skipVisuals()) return false;
+            const el = _ensureActionCamChrome();
+            const box = el.querySelector('.acam-ap-tally');
+            if (!box) return false;
+            const rows = (spec.rows || []).filter(Boolean);
+            const tot = spec.total || null;
+            if (!rows.length && !tot) return false;
+            /* the words that landed with the hit stay: their AP worth is stamped on them, one by one */
+            const keep = spec.unitId != null && box.dataset.owner === String(spec.unitId) && !box.classList.contains('done') && box.children.length;
+            if (!keep) { _acApTallyClear(); if (spec.unitId != null) box.dataset.owner = String(spec.unitId); }
+            box.classList.add('on', 'done', _acApSide(spec));
+            const span = rows.length * AC_AP_ROW_GAP_MS + AC_AP_SUM_GAP_MS + AC_AP_HOLD_MS;
+            _acApHold(el, span);
+            rows.forEach((r, i) => {
+                _acApTimers.push(setTimeout(() => {
+                    const kind = r.ap > 0 ? 'gain' : r.ap < 0 ? 'loss' : r.ent > 0 ? 'vent' : 'none';
+                    let d = r.k ? box.querySelector(`.acam-ap-row[data-k="${r.k}"]`) : null;
+                    const had = !!d;
+                    if (!d) { d = document.createElement('div'); if (r.k) d.dataset.k = r.k; }
+                    box.appendChild(d);   // the lines read in the tally's order: what pays first, what takes after
+                    d.style.animationDelay = '';
+                    d.className = 'acam-ap-row ' + kind + (had ? ' paid' : '');
+                    d.innerHTML = _acApRowHtml(r) + _acApVal(r.ap || 0, r.ent || 0, r.note);
+                    _acApSfx(kind === 'loss' ? 'uiBack' : 'uiCursorMove', { volume: 0.55 });
+                }, i * AC_AP_ROW_GAP_MS));
+            });
+            if (tot) _acApTimers.push(setTimeout(() => {
+                const d = document.createElement('div');
+                const ap = tot.ap || 0, ent = tot.ent || 0;
+                const kind = ap > 0 ? 'gain' : ap < 0 ? 'loss' : ent > 0 ? 'vent' : 'none';
+                d.className = 'acam-ap-sum ' + kind;
+                const pips = ap ? `<span class="acam-ap-pips">${'<b></b>'.repeat(Math.min(4, Math.abs(ap)))}</span>` : '';
+                d.innerHTML = `<span class="acam-ap-sl">${tot.text || (ap > 0 ? 'AP BACK' : ap < 0 ? 'AP LOST' : ent > 0 ? 'TO ENTROPY' : 'NO AP BACK')}</span>${pips}${_acApVal(ap, ent, '')}`;
+                box.appendChild(d);
+                if (kind === 'gain') _acApSfx('buff'); else if (kind === 'loss') _acApSfx('uiError'); else if (kind === 'vent') _acApSfx('manaRegen'); else _acApSfx('uiBack', { volume: 0.5 });
+            }, rows.length * AC_AP_ROW_GAP_MS + AC_AP_SUM_GAP_MS - AC_AP_ROW_GAP_MS));
+            return true;
+        }
+        window._acApTallyShow = _acApTallyShow;
 
         /* THE NUMBERS WIN (FX-WASH 2026-10-26, the spell VFX audit: hits read under the banner / TOTAL DMG panel / the
            letterbox): while the chrome is up, a floating number that lands under the corner title or a letterbox bar
@@ -25774,6 +26689,8 @@
            for the killing-blow finisher below. */
         function _acChromeFlash(kind) {
             if (!_acChromeEl || !_acChromeState) return;
+            /* THE SHOT GRAMMAR: the white cut frame only rides a cut that happened (a held / dropped / glided cut flashes nothing) */
+            if (kind === 'cut' && typeof _shotG !== 'undefined' && _shotG.noCutAt && performance.now() - _shotG.noCutAt < 2) return;
             const f = _acChromeEl.querySelector('.acam-flash');
             if (!f) return;
             f.classList.remove('pop', 'cut');
@@ -25993,7 +26910,19 @@
             const h = (typeof getHeightAt === 'function') ? getHeightAt(x, y) : 0;
             if (unit && !unit.dead && unit.z !== undefined && unit.z !== null) {
                 if (typeof canFly === 'function' && canFly(unit)
-                    && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return unit.z;
+                    && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) {
+                    /* THE FLYER'S PIVOT (mondo 2026-11-12, the Seraphim on Vatican City: "he sits too low in the frame ...
+                       and the camera orbits around him so it just looks and feel bad"): a flyer is DRAWN lower than its
+                       rule height (unitElevationZ's hover sink: up to 0.65 of a level), so a focal at the rule height
+                       stood over its head: the body rode under the middle of the screen and an orbit turned round empty
+                       air above it. The focal takes the drawn hover height. Kill switch: EW_NO_FLYER_PIVOT. */
+                    if (!window.EW_NO_FLYER_PIVOT) {
+                        const gZ = (typeof getFloorBelowZ === 'function') ? getFloorBelowZ(unit.x, unit.y, unit.z) : h;
+                        const clr = unit.z - gZ;
+                        if (clr > 0 && Number.isFinite(clr)) return gZ + Math.max(Math.min(clr, 1.35), clr - 0.65);   // = unitElevationZ
+                    }
+                    return unit.z;
+                }
                 if (state.boardColumns?.length && unit.z < h) return unit.z;
             }
             return h;
@@ -26557,8 +27486,17 @@
                it reads as the end of the shot); a smaller turn keeps its glide. Camera only, viewer-local. */
             _returnCut(o) {
                 if (!o || !Number.isFinite(o.yaw) || !Number.isFinite(this.yaw)) return false;
-                const d = ((((o.yaw - this.yaw) % 360) + 540) % 360) - 180;
-                if (Math.abs(d) <= RETURN_CUT_YAW_DEG) return false;
+                let d = ((((o.yaw - this.yaw) % 360) + 540) % 360) - 180;
+                /* THE SHOT GRAMMAR, pass 2: the lens is DRAWN turned by the clear angle's held offset, which eases out on
+                   a glide home — the turn the player sees runs from the drawn heading (recorded: a return the rig
+                   measured as 17° swung the lens 39° while it craned out 44° and zoomed out ×8) */
+                if (!window.EW_NO_SHOT_GRAMMAR) {
+                    try {
+                        const ca = (typeof ThreeCamera !== 'undefined' && ThreeCamera.clearAngleState) ? ThreeCamera.clearAngleState() : null;
+                        if (ca && Number.isFinite(ca.delta) && ca.delta) d = ((((o.yaw - (this.yaw + ca.delta)) % 360) + 540) % 360) - 180;
+                    } catch (e) {}
+                }
+                if (Math.abs(d) <= RETURN_CUT_YAW_DEG && !this._returnIsBusy(o, Math.abs(d))) return false;
                 this._stop();
                 this._poseGen = (this._poseGen | 0) + 1;   // THE HELD FRAME: the cut home leaves the shot's frame
                 if (Number.isFinite(o.x)) this.x = this._tx = o.x;
@@ -26572,6 +27510,36 @@
                 if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
                 this._apply();
                 return true;
+            },
+
+            /* THE SHOT GRAMMAR (2026-11-10, rule 11 "home: one cut back to the board"): a glide home that turns AND pans /
+               cranes / zooms at once (recorded: a zone shot's 650 ms return turning 35° while it tilted 50°, zoomed ×1.7
+               and panned 3 squares) is the "zoom in/out and spin/rotate/pan at the same time" mondo named — it cuts too.
+               A return that only cranes out over the same spot, or is already close, keeps its glide.
+               EW_NO_SHOT_GRAMMAR = the yaw-only rule. */
+            /* THE GUARD CUTS (2026-11-10, three-camera.js _guardStepCheck): the frame guard's correction jumped more than a
+               square (the hit landing while the lens held the travel, a body coming into the shot) — it lands as a CUT on
+               the same angle when the shot grammar allows one here (half a second from the last cut and from the shot's
+               end), and that counts as the shot's cut; otherwise it eases in. EW_NO_GUARD_CUT = always ease. */
+            _guardMayCut(sq) {
+                if (window.EW_NO_GUARD_CUT || this._cineShotId == null || !_shotGrammarLive()) return false;
+                const now = performance.now(), gap = actionMs(SHOT_GRAMMAR_MIN_CUT_MS);
+                if (_shotG.lastCutAt > 0 && now - _shotG.lastCutAt < gap) return false;
+                const endAt = _shotGEndAt();
+                if (endAt > 0 && now + gap > endAt) return false;
+                _shotG.lastCutAt = now; _shotG.cuts++;
+                _shotGLog('guard cut ' + (+sq || 0).toFixed(2) + ' sq');
+                if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate({ guard: true });
+                return true;
+            },
+
+            _returnIsBusy(o, turn) {
+                if (window.EW_NO_SHOT_GRAMMAR) return false;
+                const pan = (Number.isFinite(o.x) && Number.isFinite(o.y)) ? Math.hypot(o.x - this.x, o.y - this.y) : 0;
+                const tiltD = Number.isFinite(o.tilt) ? Math.abs(o.tilt - this.tilt) : 0;
+                const z0 = Math.max(0.05, this.zoom), z1 = Number.isFinite(o.zoom) ? Math.max(0.05, o.zoom) : z0;
+                const zr = Math.max(z1 / z0, z0 / z1);
+                return (turn > 25 && (pan > 1.2 || tiltD > 12 || zr > 1.3)) || (pan > 2 && (tiltD > 15 || zr > 1.5));
             },
 
             // Natural (un-overridden) focal height at a tile — the same value
@@ -27881,6 +28849,7 @@
            tighter than ±3 squares (TILE_PICK_MIN_HALF). Of the near-closest views it keeps the one nearest the screen's
            middle. The slide it picked rides the fit (camera._clearFit.slide) so the board rig lands exactly there.
            Viewer-local camera only; kill switch EW_NO_CLEAR_DROP (back to THE CLICKABLE PICK's strip). */
+        const PANEL_CENTRE_CX = 0.05;        // THE PANEL CENTRE: the drop pick's frame slides at most this far sideways (NDC) over the bottom panel
         const CLEAR_DROP_PAD_PX = 10;        // a square's middle stays this far from a panel's edge
         const CLEAR_DROP_EDGE = 0.94;        // the lit squares' corners stay inside this share of the half-screen
         const CLEAR_DROP_NEAR = 1.04;        // views within this of the closest count as equally close (the most centred wins)
@@ -27898,7 +28867,9 @@
             const rigs = document.getElementsByClassName('hrlg-rig');
             for (let ri = 0; ri < rigs.length; ri++) {
                 rigs[ri].querySelectorAll(':scope > .hrlg-side, :scope > .hrlg-hubwrap, .hrlg-panels > .hrlg-panel > *, '
-                    + '.hrlg-panels .hrlg-list > *, .hrlg-peek').forEach(push);
+                    + '.hrlg-panels .hrlg-list > *, .hrlg-peek, '
+                    // THE ONE BATTLE PANEL (hud.js _ewDeckCfg): its bays, its footer, the tabs over its right bay
+                    + ':scope.ewd > .ewd-bay:not(.ewd-ghost), :scope.ewd > .ewd-foot:not(.ewd-ghost), :scope.ewd .ewd-tabs').forEach(push);
             }
             document.querySelectorAll('.ew-scoreboard, .ew-matchmeta, .ew-tc-icon, #battleSubtitleBar.visible > *, .ew-descbar-inner, #ewMinimap')
                 .forEach(push);
@@ -27931,6 +28902,7 @@
                 // no sub menu up: the board rig takes no slide (window._ewMenuSlide), so the frame is solved centred
                 const fa = _menuFreeArea(true, !!(opts && opts.solid));   // the same cover the slide's refit watches
                 const slides = fa.menu;
+                const deckUp = !window.EW_NO_PANEL_CENTRE && !!document.querySelector('.hrlg-rig.ewd > .ewd-bay:not(.ewd-ghost)');   // THE PANEL CENTRE
                 const E = CLEAR_DROP_EDGE;
                 const hw = cv.width / 2, hh = cv.height / 2;
                 const mh = ((opts && Number.isFinite(opts.minHalf)) ? opts.minHalf : TILE_PICK_MIN_HALF) * ts;
@@ -28013,7 +28985,14 @@
                     };
                     const dMax = bd / 0.25;
                     const cxs = [], cys = [];
-                    if (slides) { for (let v = -0.3; v <= 0.801; v += 0.05) cxs.push(+v.toFixed(2)); for (let v = -0.25; v <= 0.351; v += 0.05) cys.push(+v.toFixed(2)); }
+                    /* THE PANEL CENTRE (mondo 2026-11-12, Infernal Hurl's landing pick on Hollow Earth: "now that the battle panel
+                       sits kinda more towards the bottom of the screen, can we fix this framing that is showing the board on the
+                       right side of the screen"): the slide search was made for menus down the LEFT side (up to 0.8 of the way
+                       right), so with THE ONE BATTLE PANEL along the bottom it still parked the landing squares in the strip
+                       beside the panel. With that panel up the squares stay in the middle of the screen (a hair either way)
+                       and rise over the panel instead. Kill switch: EW_NO_PANEL_CENTRE. */
+                    if (slides && deckUp) { for (let v = -PANEL_CENTRE_CX; v <= PANEL_CENTRE_CX + 0.001; v += 0.05) cxs.push(+v.toFixed(2)); for (let v = -0.1; v <= 0.551; v += 0.05) cys.push(+v.toFixed(2)); }
+                    else if (slides) { for (let v = -0.3; v <= 0.801; v += 0.05) cxs.push(+v.toFixed(2)); for (let v = -0.25; v <= 0.351; v += 0.05) cys.push(+v.toFixed(2)); }
                     else { cxs.push(0); cys.push(0); }
                     let best = null;
                     const found = [];
@@ -32213,6 +33192,12 @@
         const CLEAR_LOW_PANEL_MIN_H = 0.45; // THE LOW PANEL: the band above a short panel must be this share of the screen tall
         const CLEAR_LOW_PANEL_MAX_CY = 0.3; // and the frame rises at most this much (NDC) over it
         const CLEAR_FRAME_HOLD_MS = 450;    // a menu gone this briefly (unit hand-over) keeps the slide
+        const PANEL_LIFT_MAX = 0.3;         // THE PANEL LIFT: the frame rises at most this much (NDC) over the bottom panel
+        const PANEL_LIFT_SHARE = 0.5;       // share of the way to the middle of the band over the panel (mondo 2026-11-12: "a little lower, like somewhere in between")
+        const PANEL_CENTRE_MIN_BAND = 0.3;  // THE PANEL CENTRE: the band over the bottom panel frames the full width while it is this share of the screen tall
+        const PANEL_SUB_SHARE = 0.6;        // THE LOWER SUB FRAME: share of the way to the middle of the band over the panel a sub menu's frame rises
+        const PANEL_SUB_SPAN = 0.12;        // and the bays within this share of the width each side of the middle are the band's floor
+        const PANEL_LIFT_SPAN = 0.18;       // the panel's bays within this share of the width each side of the middle count
         const CLEAR_FRAME_REFIT_MS = 140;   // a changed cover must hold this long before a fit is solved again
         const _CLEAR_FULL = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false });
         const _CLEAR_ROOT = Object.freeze({ cx: 0, cy: 0, hw: 1, hh: 1, menu: false, cmd: true });   // the action menu alone
@@ -32254,8 +33239,20 @@
                 /* the smooth pass (2026-10-24): the command menus all live inside a .hrlg-rig, so the look runs over the rigs
                    only (a whole-document query of ~10,000 nodes cost ~2 ms on a slow machine, several times a second) */
                 const rigs = document.getElementsByClassName('hrlg-rig'), menuEls = [];
+                /* THE ONE BATTLE PANEL (hud.js _ewDeckCfg, mondo 2026-11-11): one window along the bottom, so its bays are
+                   not side bands; the free part is found from their boxes below (deckBoxes) */
+                const deckBoxes = [];
+                let deckSub = false;
                 for (let ri = 0; ri < rigs.length; ri++) {
                     const rg = rigs[ri];
+                    if (rg.classList.contains('ewd')) {
+                        rg.querySelectorAll(':scope > .ewd-bay:not(.ewd-ghost), :scope > .ewd-foot:not(.ewd-ghost), .ewd-tabs').forEach(el => {
+                            const r = boxOf(el);
+                            if (r) deckBoxes.push(r);
+                        });
+                        if (rg.classList.contains('ewd-sub')) deckSub = true;
+                        continue;
+                    }
                     if (rg.classList.contains('hrlg-peek')) menuEls.push(rg);
                     rg.querySelectorAll(':scope > .hrlg-side, :scope > .hrlg-hubwrap, .hrlg-panels > .hrlg-panel, '
                         + '.hrlg-panels > .hrlg-panel > *, .hrlg-panels .hrlg-list > *, .hrlg-peek').forEach(el => menuEls.push(el));
@@ -32273,14 +33270,38 @@
                     else x1 = Math.min(x1, r.left);
                     if (_cfSolid || !el.closest('.hrlg-panel.bg')) lowTop = Math.min(lowTop, r.top);
                 });
+                if (deckBoxes.length) menu = true;
                 if (!menu) return _cfArea;
                 // THE SUB MENU RULE: the action menu alone keeps the plain framing
-                let sub = false;
+                let sub = deckSub;
                 for (let ri = 0; ri < rigs.length && !sub; ri++) {
-                    if (rigs[ri].classList.contains('hrlg-peek')) continue;
+                    if (rigs[ri].classList.contains('hrlg-peek') || rigs[ri].classList.contains('ewd')) continue;
                     sub = [...rigs[ri].querySelectorAll('.hrlg-panels > .hrlg-panel:not(.root)')].some(el => boxOf(el));
                 }
-                if (!sub) return (_cfArea = _CLEAR_ROOT);
+                if (!sub) {
+                    _cfArea = _CLEAR_ROOT;
+                    /* THE PANEL LIFT (mondo 2026-11-12: "he sits too low in the frame and he's covered by the battle panel"):
+                       THE ONE BATTLE PANEL lies along the bottom of the screen, under the middle where the board rig puts
+                       its focal, so the unit whose turn it is stood half behind it. With the panel up and no sub menu
+                       open the frame keeps its plain width (THE SUB MENU RULE: no sideways slide) but RISES: `lift` (NDC)
+                       puts the focal in the middle of the band between the score bars and the panel's top under the
+                       middle of the screen. Read by _ewMenuSlide; an orbit still turns round the focal there.
+                       Kill switch: EW_NO_PANEL_LIFT. */
+                    if (deckBoxes.length && !window.EW_NO_PANEL_LIFT) {
+                        const bx0 = midX - cv.width * PANEL_LIFT_SPAN, bx1 = midX + cv.width * PANEL_LIFT_SPAN;
+                        let top = y1, t0 = y0;
+                        deckBoxes.forEach(r => { if ((r.top + r.bottom) / 2 >= midY && r.right > bx0 && r.left < bx1) top = Math.min(top, r.top); });
+                        if (top < y1) {
+                            document.querySelectorAll('.ew-scoreboard').forEach(el => {
+                                const r = boxOf(el);
+                                if (r && r.top < cv.top + cv.height * 0.2) t0 = Math.max(t0, r.bottom);
+                            });
+                            const lift = Math.min(PANEL_LIFT_MAX, PANEL_LIFT_SHARE * (midY - (t0 + top) / 2) / (cv.height / 2));
+                            if (lift > 0.02) _cfArea = { cx: 0, cy: 0, hw: 1, hh: 1, menu: false, cmd: true, lift };
+                        }
+                    }
+                    return _cfArea;
+                }
                 // the HUD strips: scoreboard / match line on top, the prompt + description bars below
                 document.querySelectorAll('.ew-scoreboard, .ew-matchmeta').forEach(el => {
                     const r = boxOf(el);
@@ -32298,7 +33319,26 @@
                    than the strip beside the menus, it is the free part: full width (no sideways slide), the frame raised
                    over the panel. Tall menus (Abilities, the attack list, a quick list) keep the strip beside them. */
                 let above = false;
-                if (Number.isFinite(lowTop)) {
+                /* THE ONE BATTLE PANEL's free part: the biggest box its bays leave open, the whole width above the panel or
+                   the strip beside its tallest bay (a long list), the footer under all of them; the frame may rise over it
+                   as over THE LOW PANEL. A panel the UI Maker moved to the top of the screen is a top band. */
+                if (deckBoxes.length) {
+                    const low = [];
+                    deckBoxes.forEach(r => { if ((r.top + r.bottom) / 2 < midY) y0 = Math.max(y0, r.bottom); else low.push(r); });
+                    if (low.length) {
+                        const topOver = (a, b) => { let t = y1; low.forEach(r => { if (r.right > a + 2 && r.left < b - 2) t = Math.min(t, r.top); }); return t; };
+                        let best = { a: -1, x0, x1, t: y1 };
+                        const tryBox = (a, b) => { const t = topOver(a, b), ar = (b - a) * (t - y0); if (b > a && ar > best.a + 1) best = { a: ar, x0: a, x1: b, t }; };
+                        tryBox(x0, x1);
+                        /* THE PANEL CENTRE: the strip beside a bay only when the band over the whole panel is too short to
+                           frame in (a very long list); else the whole width over it, so nothing is shoved sideways */
+                        if (window.EW_NO_PANEL_CENTRE || best.t - y0 < cv.height * PANEL_CENTRE_MIN_BAND)
+                            low.forEach(r => { if (r.right > x0 && r.right < x1) tryBox(r.right, x1); if (r.left > x0 && r.left < x1) tryBox(x0, r.left); });
+                        x0 = best.x0; x1 = best.x1; y1 = best.t;
+                    }
+                    above = true;
+                }
+                if (!deckBoxes.length && Number.isFinite(lowTop)) {
                     const ay1 = Math.min(y1, lowTop);
                     if (ay1 - y0 >= cv.height * CLEAR_LOW_PANEL_MIN_H
                         && (cv.right - cv.left) * (ay1 - y0) > (x1 - x0) * (y1 - y0)) {
@@ -32310,11 +33350,31 @@
                     if (x0 - cv.left > cv.right - x1) x0 = Math.max(cv.left, x1 - minW);
                     else x1 = Math.min(cv.right, x0 + minW);
                 }
+                /* THE LOWER SUB FRAME (mondo 2026-11-12, the attack list open in the Training Room: "everything is framed a
+                   little too high and the green super effective exclamation point icon is being cropped/covered up by the
+                   scoreboard"): with a sub menu open over THE ONE BATTLE PANEL the frame rose all the way to the middle of
+                   the band between the score bars and the panel's TALLEST bay, so a target up the screen from the framed
+                   pair had its plate and matchup icon under the score bars. The frame now rises PANEL_SUB_SHARE of the
+                   way to the middle of the band over the bays under the middle of the screen (where the bodies stand),
+                   and its height is what really is free round that point: never past the score bars, never under those
+                   bays. Kill switch: EW_NO_PANEL_SUB_LOWER. */
+                let deckCy = null, deckHh = null;
+                if (deckBoxes.length && above && !_cfSolid && !window.EW_NO_PANEL_SUB_LOWER) {
+                    const bx0 = midX - cv.width * PANEL_SUB_SPAN, bx1 = midX + cv.width * PANEL_SUB_SPAN;
+                    let yB = cv.bottom;
+                    deckBoxes.forEach(r => { if ((r.top + r.bottom) / 2 >= midY && r.right > bx0 && r.left < bx1) yB = Math.min(yB, r.top); });
+                    if (yB < cv.bottom && yB > y0 + cv.height * 0.3) {
+                        const hH = cv.height / 2;
+                        const topN = (midY - y0) / hH, botN = (midY - yB) / hH;
+                        deckCy = Math.max(0, Math.min(CLEAR_LOW_PANEL_MAX_CY, PANEL_SUB_SHARE * (midY - (y0 + yB) / 2) / hH));
+                        deckHh = Math.max(0.3, Math.min(0.6, Math.min(topN - deckCy, deckCy - botN) / MENU_CAM_MARGIN_V));
+                    }
+                }
                 if (y1 - y0 < cv.height * 0.6) { const c = (y0 + y1) / 2; y0 = c - cv.height * 0.3; y1 = c + cv.height * 0.3; }
                 _cfArea = {
                     cx: ((x0 + x1) / 2 - midX) / (cv.width / 2) * (_cfSolid ? 1 : CLEAR_FRAME_SHIFT),
-                    cy: Math.max(-0.2, Math.min(above ? CLEAR_LOW_PANEL_MAX_CY : 0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
-                    hw: (x1 - x0) / cv.width, hh: (y1 - y0) / cv.height, menu: true,
+                    cy: deckCy != null ? deckCy : Math.max(-0.2, Math.min(above ? CLEAR_LOW_PANEL_MAX_CY : 0.2, (midY - (y0 + y1) / 2) / (cv.height / 2))),
+                    hw: (x1 - x0) / cv.width, hh: deckHh != null ? deckHh : (y1 - y0) / cv.height, menu: true,
                     // THE NEAR FRAME: the free part's own edges and middle, in NDC
                     l: (x0 - midX) / (cv.width / 2), r: (x1 - midX) / (cv.width / 2),
                     mid: ((x0 + x1) / 2 - midX) / (cv.width / 2)
@@ -32336,6 +33396,7 @@
            held while the player pans or orbits by hand (the view never fights the drag). */
         const CLEAR_POI_MARGIN = 0.06;      // NDC (3% of the screen width) between the menu's edge and the bodies
         const _cfOut = { cx: 0, cy: 0 };
+        const _cfLiftOut = { cx: 0, cy: 0 };   // THE PANEL LIFT's slide (the action menu alone over the bottom panel)
         let _cfSlide = null;                // { key, cx } the latched near-frame slide
         function _clearSubjects() {
             const u = (typeof getSelectedUnit === 'function') ? getSelectedUnit() : null;
@@ -32526,6 +33587,7 @@
             if (fa.cmd && !state._actionExecuting) {
                 _cfHeld = null;
                 _clearFrameRefit(fa, now);
+                if (fa.lift) { _cfLiftOut.cy = fa.lift; return _cfLiftOut; }   // THE PANEL LIFT
                 return _CLEAR_FULL;
             }
             // no menu: the action a pick started plays on the board rig (the attack hold, a pan) → THE CENTRED CAST:
@@ -32543,6 +33605,8 @@
                 && (state._actionExecuting || now - _cfSeenAt < CLEAR_FRAME_HOLD_MS)) return _cfOut;
             _cfHeld = null;
             if (!state._actionExecuting) _castCentred = false;
+            // THE PANEL LIFT: the panel still on screen under an action on the board rig keeps the frame over it
+            if (fa.cmd && fa.lift && camera._cineShotId == null && !camera._cineTps) { _cfLiftOut.cy = fa.lift; return _cfLiftOut; }
             return _CLEAR_FULL;
         };
         /* camera._clearFit = { area, fit() } — the frame a fit last solved (the menu two-shot, the range fit). Any other
@@ -33209,6 +34273,14 @@
            (a long-standing descent-cam bug, fixed here for the new beats). */
         function _cineBeatMove(opts) {
             if (_cineDirectingSeq != null) _cineLazyClaim();   // SPELL DIRECTOR: a director's move claims the shot
+            /* THE SHOT GRAMMAR (2026-11-10): a glide that is really a cut cuts, a glide nobody will see land is not
+               started, a move off a body whose number is up waits for the read */
+            if (opts && !opts._sgPass && _shotGrammarLive()) {
+                if (_shotG.bundle && !opts._sgDeferred) { _shotG.bundle.items.push([_cineBeatMove, opts]); return; }
+                const v = _shotGrammarMove(opts);
+                if (v && typeof v === 'object') opts = { ...opts, ...v };   // pass 2: a drift clamped to SHOT_GRAMMAR_DRIFT_MAX
+                else if (v !== 'go') return;
+            }
             const _keep = boardCameraResetTimer;
             boardCameraResetTimer = null;
             camera.moveTo(opts);
@@ -33222,6 +34294,17 @@
            (the 2D _apply smoother and ThreeCamera's damped follow) to jump. */
         function _cineHardCut(opts) {
             if (_cineDirectingSeq != null) _cineLazyClaim();   // SPELL DIRECTOR: a director's cut claims the shot
+            /* THE SHOT GRAMMAR (2026-11-10): a cut that barely changes the frame glides, a cut off a body whose number
+               is up waits for the read, a cut nobody will see is dropped */
+            if (opts && !opts._sgPass && _shotGrammarLive()) {
+                if (_shotG.bundle && !opts._sgDeferred) { _shotG.noCutAt = performance.now(); _shotG.bundle.items.push([_cineHardCut, opts]); return; }
+                if (_shotGrammarCut(opts) !== 'go') return;
+            }
+            if (camera._cineShotId != null) { _shotG.lastCutAt = performance.now(); _shotG.cuts++; }
+            if (_shotGrammarLive()) {
+                _shotGAdvanceGuard();
+                if (!_shotG.cutThisTask) { _shotG.cutThisTask = true; Promise.resolve().then(() => { _shotG.cutThisTask = false; }); }
+            }
             camera._stop();
             camera.x = camera._tx = opts.x ?? camera._tx;
             camera.y = camera._ty = opts.y ?? camera._ty;
@@ -33234,6 +34317,260 @@
             if (typeof ThreeCamera !== 'undefined' && ThreeCamera.snapImmediate) ThreeCamera.snapImmediate();
             camera._apply();
         }
+
+        /* ═══ THE SHOT GRAMMAR (2026-11-10) ═══════════════════════════════════
+           mondo: "there are a lot of times when the camera spins around/pans when a cut would be better, or vice versa
+           ... zoom in/out and spin/rotate/pan at the same time but then it cuts to a different angle anyway ... it will
+           cut too early away from the spell landing or the person taking damage ... completely rethink these spell
+           animation camera shots". Every spell shot's moves and cuts — the three rigs, the family directors, the bespoke
+           sequences, the kit shots, the VFX retargets — go through _cineBeatMove / _cineHardCut, so the grammar lives
+           HERE, once, under all of them (memory spell-camera-grammar-20261110, docs/notes/spells-vfx.md "THE SHOT
+           GRAMMAR"):
+           · CUT OR MOVE, NEVER BOTH: a glide that turns more than SHOT_GRAMMAR_TURN and also zooms / pans / tilts, or
+             turns more than SHOT_GRAMMAR_TURN_ALONE on its own, or crash-zooms across the board, is a CUT to its end
+             frame. The shot's first beat is a cut unless the lens is already nearly there (no more swoop from the
+             board view round to the caster's face). A FOLLOW (a retarget riding a thrown / dashing body) stays a glide.
+           · NO JUMP CUTS: a cut that barely changes the frame is a short glide.
+           · NO MOVE A CUT THROWS AWAY: a glide that cannot land before the shot ends is not started; a cut that would
+             be on screen for less than SHOT_GRAMMAR_MIN_CUT_MS is dropped; cuts stand SHOT_GRAMMAR_MIN_CUT_MS apart.
+           · HOLD THE HIT: from a number popping on a body (not the caster's own), the camera stays on that body for
+             SHOT_GRAMMAR_READ_MS: a beat that looks elsewhere or pulls out wide waits for the read (with the beats
+             issued alongside it), then plays if the shot still has room (a newer beat replaces it); a beat that only
+             swings round / re-angles the body being read is dropped.
+           Kill switch: window.EW_NO_SHOT_GRAMMAR = true. Probe: window._shotGrammarState(). */
+        const SHOT_GRAMMAR_TURN = 40;
+        const SHOT_GRAMMAR_TURN_ALONE = 75;
+        const SHOT_GRAMMAR_READ_MS = 1000;
+        const SHOT_GRAMMAR_MIN_CUT_MS = 500;
+        /* THE SHOT GRAMMAR, pass 2 (2026-11-10, the after run of all 885 spells): a glide must land and HOLD its frame
+           this long before the shot ends (a god shot that landed 60-200 ms before the cut home was thrown away), and a
+           drift that is kept as a glide turns at most SHOT_GRAMMAR_DRIFT_MAX (the windup orbits turned 40-50° while they
+           zoomed, then a cut threw the arc away) */
+        const SHOT_GRAMMAR_LAND_HOLD_MS = 400;
+        const SHOT_GRAMMAR_DRIFT_MAX = 24;
+        const SHOT_GRAMMAR_NUMBER_WAIT_MS = 3000;
+        const _shotG = { seq: null, beats: 0, cuts: 0, lastCutAt: 0, noCutAt: 0, lock: null, gen: 0, bundle: null, log: [], cutThisTask: false };
+        function _shotGrammarLive() {
+            if (window.EW_NO_SHOT_GRAMMAR) return false;
+            if (camera._cineShotId == null || state.phase !== 'battle' || state.cameraDisabled || _skipVisuals()) return false;
+            if (_shotG.seq !== camera._cineShotId) {
+                _shotG.seq = camera._cineShotId; _shotG.beats = 0; _shotG.cuts = 0; _shotG.lastCutAt = 0;
+                _shotG.lock = null; _shotG.gen++; _shotG.bundle = null;
+            }
+            return true;
+        }
+        function _shotGLog(msg) {
+            const L = _shotG.log;
+            L.push(Math.round(performance.now()) + ' #' + _shotG.seq + ' ' + msg);
+            if (L.length > 60) L.splice(0, L.length - 60);
+        }
+        const _sgNorm = a => ((a % 360) + 540) % 360 - 180;
+        /* the frame a beat (isCut false: a moveTo — unnamed axes keep the glide's target) or a cut asks for, and how
+           far it is from the frame the lens shows now */
+        function _shotGFrame(o, isCut) {
+            const tgt = (k, live) => (camera[k] !== undefined && Number.isFinite(camera[k])) ? camera[k] : live;
+            const x = o.x ?? tgt('_tx', camera.x), y = o.y ?? tgt('_ty', camera.y);
+            const yaw = o.yaw ?? (isCut ? camera.yaw : tgt('_tyaw', camera.yaw));
+            const tilt = (o.tilt !== undefined) ? Math.min(CINE_SHOT_TILT_MAX, o.tilt) : (isCut ? camera.tilt : tgt('_tt', camera.tilt));
+            let zoom = isCut ? camera.zoom : tgt('_tz', camera.zoom);
+            if (o.zoom !== undefined && (isCut || o._allowZoomChange)) zoom = o.zoom;
+            const z0 = Math.max(0.05, camera.zoom), z1 = Math.max(0.05, zoom);
+            return { x, y, yaw, tilt, zoom,
+                turn: Math.abs(_sgNorm(yaw - camera.yaw)), tiltD: Math.abs(tilt - camera.tilt),
+                zr: Math.max(z1 / z0, z0 / z1), zoomOut: z1 < z0, pan: Math.hypot(x - camera.x, y - camera.y) };
+        }
+        function _shotGEndAt() {
+            const e = camera._cineShotEnd;
+            const shotEnd = (e && e.seq === camera._cineShotId) ? e.at : 0;
+            const hold = window.EW_NO_IMPACT_HOLD ? 0 : (camera._impactHoldUntil || 0);
+            return Math.max(shotEnd, hold);
+        }
+        /* a number popped on a body while a spell shot is live: the frame holds on it for the read (called from the
+           floating-number layer, which the guest runs off the host's relayed numbers — RULE #2) */
+        function _shotGNoteRead(x, y, kind, opts) {
+            if (!_shotGrammarLive()) return;
+            if (!((opts && opts._dmgAmt > 0) || _CINE_GUARD_HIT_KINDS.has(kind))) return;
+            const u = (typeof unitAt === 'function') ? unitAt(x, y) : null;
+            if (!u || u.id === camera._cineShotUnitId || !_cineActorVisible(u)) return;
+            const now = performance.now();
+            if (!_shotG.lock || now >= _shotG.lock.until) _shotG.lock = { ids: new Set(), until: 0 };
+            _shotG.lock.ids.add(u.id);
+            _shotG.lock.until = Math.max(_shotG.lock.until, now + actionMs(SHOT_GRAMMAR_READ_MS));
+            _cineHoldImpactFor(actionMs(SHOT_GRAMMAR_READ_MS));   // …and the way home waits for it too (every rig, not only the offensive)
+        }
+        /* THE NUMBER WAITS FOR THE LENS (2026-11-10, the after run of all 885 spells): a party buff, a shield or a
+           drain's heal popped its numbers at the cast on bodies the shot had not framed yet — the shot opens with a cut
+           on the caster and the party shot comes ~640 ms later, so "+2 ATK" on three allies played to an empty frame
+           (War Cry, Rally Command, Iron Bulwark, Shield Bash, the drains' heal on the caster while the lens is on the
+           victim...), and the frame guard and the read lock then chased those off-screen numbers (the lens backed off
+           the caster on its own, the party shot was held back 360 ms). A NON-DAMAGE number on a body outside the shot's
+           frame now waits until the lens shows that body (the party shot, the cut home) or SHOT_GRAMMAR_NUMBER_WAIT_MS
+           passes, and pops then (with its guard note and read). A damage number never waits:
+           the hit lands with it. Viewer-local: each seat waits on its own lens (the guest's numbers come in on the
+           floating-text relay and run this same layer — RULE #2). Kill switch: window.EW_NO_NUMBER_WAIT = true. */
+        const _SG_HIT_TEXT_KINDS = new Set(['damage', 'crit', 'overkill', 'dodge', 'miss', 'protect-block', 'block', 'record', 'record-near']);
+        const _sgWaitQ = [];
+        let _sgWaitTimer = 0;
+        function _shotGBodyInFrame(x, y, uid) {
+            try {
+                if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.worldToScreen || typeof ThreeCamera === 'undefined') return true;
+                const cam = ThreeCamera.getCamera && ThreeCamera.getCamera();
+                const cv = ThreeRenderer.getCanvas && ThreeRenderer.getCanvas();
+                if (!cam || !cv || !cv.clientWidth || !cv.clientHeight) return true;
+                cam.updateMatrixWorld();   // a cut this same tick has moved the lens but not drawn yet
+                const W = cv.clientWidth, H = cv.clientHeight;
+                let sx, sy;
+                /* the middle of the drawn body (its model's feet-to-top box), else a chest-high point over the tile */
+                const b = (uid != null && ThreeRenderer.unitScreenBox) ? ThreeRenderer.unitScreenBox(uid) : null;
+                if (b) { const r = cv.getBoundingClientRect(); sx = b.x - r.left; sy = b.y - r.top; }
+                else {
+                    const s = ThreeRenderer.worldToScreen(x, y, (CONFIG.tileSize || BASE_TILE) * 0.45);
+                    if (!s) return false;      // behind the lens
+                    sx = s.x; sy = s.y;
+                }
+                return sx >= W * 0.03 && sx <= W * 0.97 && sy >= H * 0.11 && sy <= H * 0.89;   // inside the letterbox
+            } catch (e) { return true; }
+        }
+        function _shotGNumberWaits(x, y, text, kind, opts) {
+            if (window.EW_NO_NUMBER_WAIT || !_shotGrammarLive()) return false;
+            if ((opts && opts._dmgAmt > 0) || _SG_HIT_TEXT_KINDS.has(kind)) return false;
+            const u = (typeof unitAt === 'function') ? unitAt(x, y) : null;
+            if (!u || u.dead || _shotGBodyInFrame(x, y, u.id)) return false;
+            _sgWaitQ.push({ x, y, text, kind, opts: { ...(opts || {}), _sgWaited: true }, seq: camera._cineShotId, uid: u.id,
+                until: performance.now() + actionMs(SHOT_GRAMMAR_NUMBER_WAIT_MS) });
+            _shotGLog('number on ' + u.id + ' waits for the lens');
+            if (!_sgWaitTimer) _sgWaitTimer = window.setTimeout(_shotGWaitTick, 50);
+            return true;
+        }
+        function _shotGWaitTick() {
+            _sgWaitTimer = 0;
+            const now = performance.now();
+            for (let i = 0; i < _sgWaitQ.length;) {
+                const q = _sgWaitQ[i];
+                const u = (state.units || []).find(v => v.id === q.uid);
+                if (u && !u.dead && Number.isFinite(u.x) && Number.isFinite(u.y)) { q.x = u.x; q.y = u.y; }   // it rides a body that moved
+                /* (it keeps waiting past the shot's end: the last frame can hold ~1 s before the cut home shows the body) */
+                const over = now >= q.until || state.phase !== 'battle' || window.EW_NO_NUMBER_WAIT;
+                if (over || _shotGBodyInFrame(q.x, q.y, u && !u.dead ? u.id : null)) {
+                    _sgWaitQ.splice(i, 1);
+                    try { if (state.phase === 'battle') _realShowFloatingTextAtTile(q.x, q.y, q.text, q.kind, q.opts); } catch (e) {}
+                    continue;
+                }
+                i++;
+            }
+            if (_sgWaitQ.length) _sgWaitTimer = window.setTimeout(_shotGWaitTick, 50);
+        }
+        /* would this frame leave a body whose number is still being read? */
+        function _shotGLeavesRead(f, isCut, o) {
+            const L = _shotG.lock;
+            if (!L || performance.now() >= L.until || (o && o._sgFollow)) return false;
+            let near = Infinity;
+            for (const id of L.ids) {
+                const u = (state.units || []).find(v => v.id === id);
+                if (u) near = Math.min(near, Math.hypot(f.x - u.x, f.y - u.y));
+            }
+            if (near === Infinity) return false;
+            if (near > 2.2) return 'away';                        // it looks somewhere else
+            if (f.zoomOut && f.zr > 1.3) return 'wide';           // it pulls out wide off the hit
+            if (isCut ? f.turn > 25 : f.turn > 30) return 'turn'; // it swings round / re-angles the hit
+            return false;
+        }
+        /* hold a beat (and the beats issued with it in this same turn) until `ms` from now; a newer beat replaces it */
+        function _shotGDefer(fn, o, ms, why) {
+            const gen = ++_shotG.gen, seq = camera._cineShotId;
+            const items = [[fn, o]];
+            _shotG.bundle = { gen, items };
+            Promise.resolve().then(() => { if (_shotG.bundle && _shotG.bundle.gen === gen) _shotG.bundle = null; });
+            _shotGLog(why + ' waits ' + Math.round(ms) + 'ms');
+            window.setTimeout(() => {
+                if (_shotG.gen !== gen || camera._cineShotId !== seq || !_shotGrammarLive()) return;
+                for (const [f, op] of items) f({ ...op, _sgDeferred: true });
+            }, Math.max(0, ms));
+        }
+        /* a beat's glide: 'go' (moveTo it), or handled here (cut / held / dropped) */
+        function _shotGrammarMove(o) {
+            const f = _shotGFrame(o, false);
+            const now = performance.now(), dur = Math.max(100, o.duration ?? 400);
+            const first = _shotG.beats === 0;
+            const reframes = f.turn >= 25 || f.zr >= 1.35 || f.pan >= 1.0 || f.tiltD >= 10;
+            const lv = _shotGLeavesRead(f, false, o);
+            /* a re-angle of the body being read is dropped (played after the read it shows nothing new); a look away or a
+               pull-out waits for the read */
+            if (lv === 'turn') { _shotGLog('re-angle of the hit dropped'); return 'dropped'; }
+            if (lv) { _shotGDefer(_cineBeatMove, o, _shotG.lock.until - now, 'move off the hit'); return 'held'; }
+            const endAt = _shotGEndAt();
+            /* (pass 2: it must land AND hold its frame SHOT_GRAMMAR_LAND_HOLD_MS before the shot ends — a pull-out that
+               lands 200 ms before the cut home only shows the cut throwing it away) */
+            if (!first && reframes && endAt > 0 && now + dur + actionMs(SHOT_GRAMMAR_LAND_HOLD_MS) > endAt) { _shotGLog('glide dropped: the shot ends first'); return 'dropped'; }
+            _shotG.beats++;
+            _shotG.gen++;
+            if (!o._sgFollow) {
+                const cutIt = (f.turn > SHOT_GRAMMAR_TURN && (f.zr > 1.3 || f.pan > 1.2 || f.tiltD > 12))
+                    || f.turn > SHOT_GRAMMAR_TURN_ALONE
+                    || (f.zr > 2.2 && (f.pan > 1.5 || f.tiltD > 12))
+                    || (first && (f.turn > 25 || f.zr > 1.6 || f.pan > 2.5));
+                if (cutIt) {
+                    _shotGLog('glide -> cut (turn ' + Math.round(f.turn) + ', zoom x' + f.zr.toFixed(2) + ', pan ' + f.pan.toFixed(1) + (first ? ', opening' : '') + ')');
+                    _cineHardCut({ x: f.x, y: f.y, zoom: f.zoom, tilt: f.tilt, yaw: f.yaw,
+                        elevZ: o.elevZ ?? -1, _sgPass: true });
+                    return 'cut';
+                }
+                /* a drift turns at most SHOT_GRAMMAR_DRIFT_MAX (pass 2): the glide keeps its way round, less far */
+                if (o.yaw !== undefined && f.turn > SHOT_GRAMMAR_DRIFT_MAX) {
+                    const dy = _sgNorm(f.yaw - camera.yaw);
+                    _shotGLog('drift ' + Math.round(f.turn) + '° -> ' + SHOT_GRAMMAR_DRIFT_MAX + '°');
+                    return { yaw: camera.yaw + Math.sign(dy) * SHOT_GRAMMAR_DRIFT_MAX };
+                }
+            }
+            return 'go';
+        }
+        /* the shot's opening frame is far from the lens (it would be a swoop): cut to it */
+        function _shotGOpenIsCut(pose) {
+            if (_shotG.beats > 0) return false;
+            const f = _shotGFrame({ ...pose, _allowZoomChange: true }, false);
+            return f.turn > 25 || f.zr > 1.6 || f.pan > 2.5 || f.tiltD > 15;
+        }
+        /* a hard cut: 'go', or handled here (glide / held / dropped) */
+        function _shotGrammarCut(o) {
+            const f = _shotGFrame(o, true);
+            const now = performance.now();
+            const lv = _shotGLeavesRead(f, true, o);
+            if (lv === 'turn') { _shotG.noCutAt = now; _shotGLog('re-angle cut of the hit dropped'); return 'dropped'; }
+            if (lv) { _shotG.noCutAt = now; _shotGDefer(_cineHardCut, o, _shotG.lock.until - now, 'cut off the hit'); return 'held'; }
+            const endAt = _shotGEndAt();
+            if (_shotG.beats > 0 && endAt > 0 && now + actionMs(SHOT_GRAMMAR_MIN_CUT_MS) > endAt) { _shotG.noCutAt = now; _shotGLog('cut dropped: the shot ends first'); return 'dropped'; }
+            /* cuts at least SHOT_GRAMMAR_MIN_CUT_MS apart: a cut on the last one's heels waits (a newer beat replaces it) */
+            const gap = actionMs(SHOT_GRAMMAR_MIN_CUT_MS);
+            /* (a cut in the same frame as the last one replaces it — nothing was drawn between them) */
+            if (_shotG.beats > 0 && _shotG.lastCutAt > 0 && now - _shotG.lastCutAt < gap && now - _shotG.lastCutAt > 4) {
+                _shotG.noCutAt = now; _shotGDefer(_cineHardCut, o, _shotG.lastCutAt + gap - now, 'cut too soon'); return 'held';
+            }
+            const first = _shotG.beats === 0;
+            _shotG.beats++;
+            _shotG.gen++;
+            if (!first && f.turn < 15 && f.tiltD < 8 && f.zr < 1.25 && f.pan < 0.9) {
+                _shotG.noCutAt = now;
+                _shotGLog('jump cut -> glide');
+                _cineBeatMove({ x: f.x, y: f.y, zoom: f.zoom, tilt: f.tilt, yaw: f.yaw, elevZ: o.elevZ ?? -1,
+                    duration: actionMs(300), easing: 'easeInOut', _allowZoomChange: true, _bypassCap: true,
+                    _fogAllowed: true, _sgPass: true });
+                return 'glide';
+            }
+            return 'go';
+        }
+        /* a director's cut a moment before the frame guard's own cast -> hit switch IS that switch: the guard moves on
+           with the cut, so the clear angle picks this cut's angle for the bodies the cut is about (the switch a frame
+           later re-picked the angle and snapped it — two cuts 16-110 ms apart) */
+        function _shotGAdvanceGuard() {
+            const G = _cineGuard;
+            if (!G || G.phase === 'all' || !_cineGuardLive(G)) return;
+            const now = performance.now(), soon = actionMs(250);
+            if (G.phase === 'cast' && G.castAt != null && G.castAt - now <= soon) G.phase = 'travel';
+            if (G.phase === 'travel' && G.hitAt != null && G.hitAt - now <= soon) G.phase = 'hit';
+        }
+        window._shotGrammarState = () => ({ off: !!window.EW_NO_SHOT_GRAMMAR, seq: _shotG.seq, beats: _shotG.beats, cuts: _shotG.cuts,
+            read: (_shotG.lock && performance.now() < _shotG.lock.until) ? { ids: [..._shotG.lock.ids], left: Math.round(_shotG.lock.until - performance.now()) } : null,
+            endIn: Math.round(_shotGEndAt() - performance.now()), log: _shotG.log.slice(-20) });
 
         /* ═══ THE FRAME GUARD (2026-10-05) ═══════════════════════════════════
            "The action camera completely misses the target" — a flyer framed at
@@ -33382,8 +34719,49 @@
             };
             const all = G.phase === 'all';
             if (G.phase === 'cast' || all || (G.phase === 'hit' && G.keepCaster)) add(G.casterId, true);
-            if (G.phase === 'hit' || all) { let first = true; G.hit.forEach(id => { add(id, false, first); first = false; }); }
+            if (G.phase === 'hit' || all) {
+                let first = true;
+                G.hit.forEach(id => {
+                    const pr = first && (!G.armed || G.armed.has(id));
+                    add(id, false, pr);
+                    if (pr) first = false;
+                    if (!window.EW_NO_GUARD_LANDING) _cineGuardLandingPts(G, id, pts);
+                });
+            }
             return pts.length ? pts : null;
+        }
+        /* THE LANDING IN THE HIT FRAME (2026-11-10, spell camera rethink pass 3): a knocked-back body used to be framed
+           where it stood, so ~600 ms after the hit cut the frame guard slid after it 1-2 squares as it flew (recorded:
+           Gale, Fire Hose, Tsunami, Sonic Breaker, Wing Gust, Body Check). A guarded victim that is going somewhere — the
+           cast's forecast landing, or a logical tile the drawn body has not reached yet (a chained knock) — keeps that
+           spot in frame too, so the hit's frame already holds the whole flight and the guard holds still while it plays.
+           Kill switch: window.EW_NO_GUARD_LANDING = true. */
+        function _cineGuardLandingPts(G, id, pts) {
+            const u = (state.units || []).find(x => x.id === id);
+            if (!u || u.dead || !_cineActorVisible(u)) return;
+            const ts = CONFIG.tileSize || BASE_TILE;
+            let ok = false;
+            try { ok = !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitWorldPos && ThreeRenderer.getUnitWorldPos(u.id, _cineGuardPos)); } catch (e) { ok = false; }
+            if (!ok) return;
+            const m = G.moves ? G.moves.get(id) : null;
+            /* the logic already moved it (the forecast's start tile is behind it): the truth is its tile; else the forecast */
+            let lx = u.x, ly = u.y;
+            if (m && u.x === m.fromX && u.y === m.fromY) { lx = m.x; ly = m.y; }
+            const wx = lx * ts + ts / 2, wz = ly * ts + ts / 2;
+            /* …and a body lifted off its ground (a lift-and-drop, a toss — not a flyer at its own height) keeps the ground it
+               comes down on in frame, so the frame holds the rise and the fall instead of riding them */
+            let gy = _cineGuardPos[1];
+            try {
+                const ez = (typeof unitElevationZ === 'function') ? unitElevationZ(u) : null;
+                if (Number.isFinite(ez) && _cineGuardPos[1] - ez > ts * 0.5) gy = ez;
+            } catch (e) {}
+            if (Math.hypot(wx - _cineGuardPos[0], wz - _cineGuardPos[2]) < ts * 0.5 && gy === _cineGuardPos[1]) return;
+            let h = ts * 0.95;
+            try { if (ThreeRenderer.getUnitVisualHeight) h = ThreeRenderer.getUnitVisualHeight(u.id) || h; } catch (e) {}
+            let _bk = 1;
+            try { if (ThreeRenderer.bodyScale) _bk = Math.min(1, +ThreeRenderer.bodyScale() || 1); } catch (e) {}
+            pts.push([wx, gy + h * 0.12, wz]);
+            pts.push([wx, gy + h + ts * 0.35 * _bk, wz, CINE_GUARD_HEAD_ROOM]);
         }
         /* o: { seq, cine (false = the tactical pan, keyed to the board camera
            sequence), caster, victimIds, castUntilMs (the caster is guarded
@@ -33400,15 +34778,29 @@
                 until: performance.now() + Math.max(0, o.totalMs || 0) + actionMs(150),
                 timers: []
             };
+            /* THE GUARD HOLDS ITS FRAME (2026-11-10): the body the shot is about is one the shot was armed with — a number
+               that pops mid-shot keeps its body in frame but never makes it the frame's subject (a party shield's first
+               ally number used to pull the self-cast hero shot two squares back to centre that ally) */
+            G.armed = new Set(G.hit);
+            /* THE LANDING IN THE HIT FRAME: the cast's forecast landings (a push, a pull, a hurl) */
+            const _cc = _cineCastCtx;
+            G.moves = (_cc && _cc.moves && _cc.moves.length && _cc.casterId === casterId && performance.now() - _cc.at < 6000)
+                ? new Map(_cc.moves.map(m => [m.id, m])) : null;
             G.api = { points: () => _cineGuardPoints(G), subjects: () => _cineGuardSubjects(G), bodies: _cineGuardBodies };
             if (!o.all) {
                 const castUntil = Math.max(0, o.castUntilMs || 0);
                 const hitFrom = Math.max(castUntil, o.hitFromMs ?? castUntil);
+                G.castAt = performance.now() + castUntil; G.hitAt = performance.now() + hitFrom;   // THE SHOT GRAMMAR (_shotGAdvanceGuard)
                 G.timers.push(setTimeout(() => { if (G.phase === 'cast') G.phase = 'travel'; }, castUntil));
                 G.timers.push(setTimeout(() => { G.phase = 'hit'; }, hitFrom));
             }
             _cineGuard = G;
             camera._frameGuard = G.api;
+            /* THE SHOT GRAMMAR: every rig arms the guard with its shot's length — the grammar's "will this be seen" clock */
+            if (G.cine && o.seq != null) camera._cineShotEnd = { seq: o.seq, at: performance.now() + Math.max(0, o.totalMs || 0) };
+            /* …and a rig that cut BEFORE arming it (the opening cut) re-syncs now, so the clear angle picks the cut's angle
+               for these bodies before the cut is drawn (three-camera.js: a pick a frame later would be a second cut) */
+            if (G.cine && _shotG.cutThisTask && camera._cineShotId === o.seq && _shotGrammarLive() && typeof camera._apply === 'function') camera._apply();
             return G;
         }
         /* A number popped on a unit during the live shot: that unit was hit,
@@ -33421,8 +34813,14 @@
             if (!((opts && opts._dmgAmt > 0) || _CINE_GUARD_HIT_KINDS.has(kind))) return;
             const u = (typeof unitAt === 'function') ? unitAt(x, y) : null;
             if (!u || u.id === G.casterId) return;
+            const fresh = !G.hit.has(u.id) || (G.phase !== 'all' && G.phase !== 'hit');
             G.hit.add(u.id);
             if (G.phase !== 'all') G.phase = 'hit';
+            /* THE CUT'S OWN FRAME (three-camera.js): a number in the same task as the shot's cut (nothing drawn since) re-syncs,
+               so the cut is drawn already framing this body instead of sliding to it a frame later */
+            if (fresh && G.cine && _shotG.cutThisTask && camera._cineShotId === G.seq && _shotGrammarLive() && typeof camera._apply === 'function') {
+                try { camera._apply(); } catch (e) {}
+            }
         }
         /* The bodies a shot is about: the relayed list when the host sent one
            (the guest frames exactly what the host does), else the shot's own
@@ -33834,8 +35232,10 @@
                         if (!(_cz > 0) || !Number.isFinite(_cy)) return;
                         if (Math.abs(((camera.yaw - _cy) % 360 + 540) % 360 - 180) > 2 || Math.abs(camera.zoom / _cz - 1) > 0.04) return;   // a beat is moving
                         if (Math.hypot((camera._tx ?? camera.x) - sx, (camera._ty ?? camera.y) - sy) > 1.2) return;   // not on the caster
+                        /* THE SHOT GRAMMAR (2026-11-10): a push-in only — the 12° orbit that rode with it made the hold a
+                           two-axis move the cut then threw away (EW_NO_SHOT_GRAMMAR keeps the orbit) */
                         _cineBeatMove({
-                            zoom: _cz * 1.16, yaw: _cy + _sideSign * 12,
+                            zoom: _cz * 1.16, ...(window.EW_NO_SHOT_GRAMMAR ? { yaw: _cy + _sideSign * 12 } : {}),
                             duration: Math.max(actionMs(300), cutMs - _dFrom - actionMs(40)), easing: 'linear',
                             _allowZoomChange: true, _bypassCap: true, _fogAllowed: fogAllowed || undefined
                         });
@@ -33971,6 +35371,7 @@
                 px = z > 0 ? window._getElevationPx(z) : 0;
             }
             _cineBeatMove({
+                _sgFollow: true,   // THE SHOT GRAMMAR: a retarget rides the action (a ricochet, a flung body): it glides, even off a hit
                 x: point.x, y: point.y,
                 elevZ: px + ts * CINE_FOCAL_RISE + (opts.elevPx || 0),
                 ...(opts.zoom !== undefined ? { zoom: opts.zoom, _allowZoomChange: true } : {}),
@@ -34221,16 +35622,26 @@
            the boom tweens the other, so the subject holds size and the WORLD
            stretches. Restores the renderer's own FOV on release. */
         let _cineFovBase = null;
+        let _cineDzGen = 0;   // a release (or a newer zoom) stops the running tween writing the lens
+        /* THE LENS COMES BACK ON THE CUT (three-camera.js): the lens to come back to — a restore still waiting for its cut
+           is it, not the narrowed lens on screen */
+        function _cineFovBaseNow(TC) {
+            const p = (TC.fovAtCut && !window.EW_NO_LENS_AT_CUT) ? TC.fovAtCut() : null;
+            return p != null ? p : TC.getFOV();
+        }
         function cineDollyZoom(fovDelta, ms, opts = {}) {
             const TC = (typeof ThreeCamera !== 'undefined') ? ThreeCamera : null;
             if (!TC || !TC.setFOV || !TC.getFOV) return;
-            if (_cineFovBase == null) _cineFovBase = TC.getFOV();
+            if (_cineFovBase == null) _cineFovBase = _cineFovBaseNow(TC);
+            if (TC.setFOVAtCut) TC.setFOVAtCut(null);   // this zoom owns the lens now; its own release names the way back
             const base = _cineFovBase;
+            const gen = ++_cineDzGen;
             const dur = Math.max(120, Number(ms) || 600);
             const t0 = performance.now();
             const zoom0 = camera._tz;
             const zoomMult = opts.zoomMult != null ? opts.zoomMult : 1;
             const step = () => {
+                if (gen !== _cineDzGen) return;
                 if (state.phase !== 'battle') { cineDollyZoomRelease(); return; }
                 const k = Math.min(1, (performance.now() - t0) / dur);
                 const e = k * k * (3 - 2 * k);
@@ -34241,14 +35652,23 @@
                     camera._apply();
                 }
                 if (k < 1) requestAnimationFrame(step);
-                else if (opts.hold !== true) window.setTimeout(cineDollyZoomRelease, opts.holdMs ?? 220);
+                else if (opts.hold !== true) window.setTimeout(() => { if (gen === _cineDzGen) cineDollyZoomRelease(); }, opts.holdMs ?? 220);
             };
             requestAnimationFrame(step);
         }
-        function cineDollyZoomRelease() {
+        /* THE LENS COMES BACK ON THE CUT (2026-11-10, three-camera.js): the release names the lens to come back to and
+           the next cut puts it back (a shot that ends on a glide eases it back along the glide) — it used to jump back in
+           one frame mid-hold, and the frame guard then slid the eye a square to re-frame the victim. opts.now = at once
+           (the sniper's first-person eye leaving, the battle over); EW_NO_LENS_AT_CUT = always at once. */
+        function cineDollyZoomRelease(opts) {
             const TC = (typeof ThreeCamera !== 'undefined') ? ThreeCamera : null;
+            _cineDzGen++;
             if (_cineFovBase != null && TC && TC.setFOV) {
-                try { TC.setFOV(_cineFovBase); } catch (e) {}
+                const now = !!(opts && opts.now) || state.phase !== 'battle' || window.EW_NO_LENS_AT_CUT || !TC.setFOVAtCut;
+                try {
+                    if (now) { if (TC.setFOVAtCut) TC.setFOVAtCut(null); TC.setFOV(_cineFovBase); }
+                    else TC.setFOVAtCut(_cineFovBase);
+                } catch (e) {}
             }
             _cineFovBase = null;
         }
@@ -35227,7 +36647,9 @@
             const TC = (typeof ThreeCamera !== 'undefined') ? ThreeCamera : null;
             if (!TC || !TC.setFOV || !TC.getFOV) return;
             if (_cineFovRaf) { cancelAnimationFrame(_cineFovRaf); _cineFovRaf = null; }
-            if (_cineFovBase == null) _cineFovBase = TC.getFOV();
+            if (_cineFovBase == null) _cineFovBase = _cineFovBaseNow(TC);
+            if (TC.setFOVAtCut) TC.setFOVAtCut(null);
+            const gen = ++_cineDzGen;   // a dolly zoom still running stops writing the lens (and a release stops this one)
             if (opts.fromFov != null) { try { TC.setFOV(opts.fromFov); } catch (err) {} }
             const from = TC.getFOV();
             const dur = Math.max(60, Number(ms) || 500);
@@ -35235,7 +36657,7 @@
             const inout = opts.ease === 'inout';
             const step = () => {
                 _cineFovRaf = null;
-                if (!_cineBeatOk(sequenceId)) return;
+                if (gen !== _cineDzGen || !_cineBeatOk(sequenceId)) return;
                 const k = Math.min(1, (performance.now() - t0) / dur);
                 const e = inout ? (k * k * (3 - 2 * k)) : (1 - Math.pow(1 - k, 3));
                 try { TC.setFOV(from + (toFov - from) * e); } catch (err) {}
@@ -35326,7 +36748,7 @@
                 window._ewFpHideUid = null;
             }
             if (_cineFovRaf) { cancelAnimationFrame(_cineFovRaf); _cineFovRaf = null; }
-            cineDollyZoomRelease();
+            cineDollyZoomRelease({ now: true });   // the scope's lens never outlives the first-person eye
         }
 
         /* ═══════════════════════════════════════════════════════════════════
@@ -35700,6 +37122,10 @@
             };
             if (window.EW_NO_OPEN_CUT) return glide();
             if (_cineYawGap(pose.yaw, camera.yaw) > RETURN_CUT_YAW_DEG) return _cineHardCut(pose);
+            /* THE SHOT GRAMMAR (rule 4, the shot opens with a cut): a self-cast's opening glide (a camera.moveTo, not a
+               _cineBeatMove) pushed in ×10 and pitched down 27° on its way to the hero angle — a swoop the grammar's beat
+               layer never saw. An opening that reframes is a cut here too. */
+            if (!viaBeat && _shotGrammarLive() && _shotGOpenIsCut(pose)) return _cineHardCut(pose);
             const lens0 = _cineLensYaw();
             glide();
             if (typeof ThreeCamera === 'undefined' || !ThreeCamera.clearAngleState) return;
@@ -35839,6 +37265,9 @@
         /* The kill confirm: a heavy / ultimate hit that killed gets the glam
            cam on the caster, inside the window. */
         function _spellDirKillConfirm(c) {
+            /* THE SHOT GRAMMAR (2026-11-10, rule 7): a kill keeps the close-up on the body (mondo: "after death close-up
+               glide, no cut") — the cut back to the caster's glam left the death half a second in */
+            if (!window.EW_NO_SHOT_GRAMMAR) return;
             if (c.weight !== 'heavy' && c.weight !== 'ultimate') return;
             const at = c.impact + Math.min(actionMs(460), Math.round(c.timings.targetHold * 0.45));
             c.at(at, () => {
@@ -38124,6 +39553,9 @@
                         for (const h of plan.hits) if (h && h.unit && h.unit.id !== unit.id && !h.support && !ids.includes(h.unit.id)) ids.push(h.unit.id);   // a body only healed keeps the support shot's own framing
                         for (const m of plan.moves) if (m && m.unit && m.unit.id !== unit.id && !ids.includes(m.unit.id)) ids.push(m.unit.id);
                         _cineCastCtx.hitIds = ids;
+                        /* THE LANDING IN THE HIT FRAME: where each pushed / pulled / thrown body ends up */
+                        _cineCastCtx.moves = plan.moves.filter(m => m && m.unit && m.unit.id !== unit.id && Number.isFinite(m.x) && Number.isFinite(m.y)
+                            && (m.x !== m.fromX || m.y !== m.fromY)).map(m => ({ id: m.unit.id, x: m.x, y: m.y, fromX: m.fromX, fromY: m.fromY }));
                     }
                 } catch (e) {}
             }
@@ -38910,6 +40342,14 @@
             // 2 → "×2", 1.5 → "×1.5", 1.3 → "×1.3", 0.75 → "×0.75".
             const _fmtMult = (m) => `×${(+m.toFixed(2))}`;
 
+            /* 👁 THE MIND IS OUT (astral build 2, mondo 2026-11-12: psychic abilities "deal bonus damage to units that are
+               projecting"): a psychic-element hit on a SPIRIT rides STATUS_DEFS.projecting.psychicMult in the one capped
+               product. The sleeping body is paid by the "vs Stunned" bonuses instead (Sleeping counts as Stunned). */
+            if (_affEl === 'psychic' && damageType !== 'dot' && finalDamage > 0 && unitIsSpirit(target)) {
+                const _apm = Number(STATUS_DEFS.projecting && STATUS_DEFS.projecting.psychicMult) || 1;
+                if (_apm !== 1) { _offMult *= _apm; _multCallout(target, `👁 MIND EXPOSED ${_fmtMult(_apm)}`, 1100); }
+            }
+
             /* THE ELEMENT SHARE (mondo 2026-10-17, data.js elemSplitFactor): a hit whose element is a COMBAT element
                splits — (1 − share) rides the type matchup, share rides the element affinity. _eShare 0 = no element
                part, 1 = all element (a source-less tick / hazard, the pre-split behaviour), between = the split. */
@@ -38975,8 +40415,9 @@
                     const _effMult = _stabMult ? _typeMult / _stabMult : _typeMult;
                     _hrTypeEff = _effMult; // THE HIT READ's weak / resisted verdict
                     // one word for a type-weak hit everywhere: the pop says what the preview, the green ! and the log say (mondo 2026-10-21)
-                    if (_effMult > 1.001) _multCallout(target, `${_fmtMult(_effMult)} SUPER EFFECTIVE!`);
-                    else if (_effMult < 0.999) _multCallout(target, `${_fmtMult(_effMult)} RESIST`);
+                    /* THE AP TALLY: a hit the press is judging files these words in the corner stack, not over the target */
+                    if (_effMult > 1.001) { if (!live || !_apTallyNote(sourceUnit, target, opts, 'type', _fmtMult(_effMult))) _multCallout(target, `${_fmtMult(_effMult)} SUPER EFFECTIVE!`); }
+                    else if (_effMult < 0.999) { if (!live || !_apTallyNote(sourceUnit, target, opts, 'typeRes', _fmtMult(_effMult))) _multCallout(target, `${_fmtMult(_effMult)} RESIST`); }
                 }
                 // 🩸 Bloodcraze (werewolf passive, plan §5.2): ×dmgMult vs a
                 // target at or under the HP threshold (measured pre-hit).
@@ -39063,7 +40504,8 @@
                     .filter(id => bonusStatusMatches(target, id))
                     .map(id => (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[id]?.label) || id)
                     .join(' + ') || String(_bvs.status);
-                if (live && damageType !== 'dot' && !_skipVisuals()) {
+                if (live && damageType !== 'dot' && !_skipVisuals()
+                    && !_apTallyNote(sourceUnit, target, opts, 'combo', `×${(+_bvsMult.toFixed(2))}`)) {   // THE AP TALLY
                     showFloatingTextForUnit(target, `⚗ ×${(+_bvsMult.toFixed(2))} COMBO!`, 'mult', { durationMs: 1100 });
                 }
                 if (live) addLog(`⚗ Combo! ${_ctName(target)} is ${_bvsName} — the hit lands ×${(+_bvsMult.toFixed(2))} harder.`);
@@ -39185,13 +40627,13 @@
                 const _affIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_affEl]) || '';
                 const _part = _splitHit ? ` (${Math.round(_eShare * 100)}% of the hit)` : '';
                 if (!live) { /* forecast: no callouts */ } else if (_affinity === 'weak') {
-                    _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} ${_affEl.toUpperCase()} WEAK!`, 1100);
+                    if (!_apTallyNote(sourceUnit, target, opts, 'elemWeak', _fmtMult(_affRes.mult), _affEl)) _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} ${_affEl.toUpperCase()} WEAK!`, 1100);
                     addLog(`${_affIcon} ${_ctName(target)} is weak to ${_affEl} — the ${_affEl} damage${_part} lands ×${(+_affRes.mult.toFixed(2))}!`);
                 } else if (_affinity === 'resist') {
-                    _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} RESIST`, 1000);
+                    if (!_apTallyNote(sourceUnit, target, opts, 'elemRes', _fmtMult(_affRes.mult), _affEl)) _multCallout(target, `${_affIcon} ${_fmtMult(_affRes.mult)} RESIST`, 1000);
                     addLog(`${_affIcon} ${_ctName(target)} resists ${_affEl} — the ${_affEl} damage${_part} lands ×${(+_affRes.mult.toFixed(2))}.`);
                 } else if (_affinity === 'immune') {
-                    _multCallout(target, `${_affIcon} IMMUNE`, 1000);
+                    if (!_apTallyNote(sourceUnit, target, opts, 'elemImmune', '', _affEl)) _multCallout(target, `${_affIcon} IMMUNE`, 1000);
                     addLog(`${_affIcon} ${_ctName(target)} is immune to ${_affEl} — the ${_affEl} damage${_part} does nothing.`);
                 }
             }
@@ -39581,6 +41023,17 @@
             // immuneDamageType makes hits of that damageType not exist for
             // the unit — basic attacks, physical abilities, opportunity
             // attacks, fall damage. DoT ticks ('dot') and magic still land.
+            /* 👁 ONE ACTION, ONE BLOW (astral build 2): a body and its spirit share one HP bar, so one action of one unit
+               (an area spell over both squares) is paid once, by the piece it reached first. A multi-hit cast keeps
+               landing on that same piece. Ticks and source-less damage never share a key. */
+            if (damage > 0 && opts.sourceUnit && (opts.damageType || 'physical') !== 'dot' && (target._astralBodyId || target._astralOfId)) {
+                const _apOwner = target._astralOfId ? astralSpiritOf(target) : target;
+                if (_apOwner && _apOwner._astralBodyId) {
+                    const _apKey = _protectAttackKey(opts.sourceUnit);
+                    if (_apOwner._astralHitKey === _apKey && _apOwner._astralHitPiece !== target.id) return false;
+                    _apOwner._astralHitKey = _apKey; _apOwner._astralHitPiece = target.id;
+                }
+            }
             const _immDT = (typeof unitPassiveValue === 'function') ? unitPassiveValue(target, 'immuneDamageType') : undefined;
             if (_immDT && (opts.damageType || 'physical') === _immDT && damage > 0) {
                 if (_pressDamageCollector && opts.sourceUnit && !opts.noPress
@@ -39659,6 +41112,7 @@
             let _balHitRec = null;   // Balance Lab: this hit's element / effects / statuses, for the kill credit below
             if (finalDamage > 0) {
                 target.hp -= finalDamage;
+                astralSyncHp();   // 👁 one HP bar for a body and its spirit
                 target._tookDamageThisRound = true;
                 target._trackDmgReceived = (target._trackDmgReceived || 0) + finalDamage;
 
@@ -39674,6 +41128,12 @@
                     _hitRiderFlush(_riders);
                 }
 
+                /* 💤 damage wakes a sleeper (mondo 2026-11-12); a projecting unit's body sleeps until its spirit is home */
+                if (target.status && target.status.sleep > 0 && !target._astralOfId && target.hp > 0 && STATUS_DEFS.sleep && STATUS_DEFS.sleep.wakeOnDamage) {
+                    clearStatus(target, 'sleep');
+                    if (target._stHold) delete target._stHold.sleep;
+                    addLog(`💤 ${_ctName(target)} wakes up!`);
+                }
                 /* Taking a hit blows your cover: blood spatter and the stagger of
                    impact give a hidden unit away. Any damage dealt by an enemy
                    strips Invisible — AoE sweeps, traps and turrets are the
@@ -39923,7 +41383,7 @@
                 /* the feel layer on both ends (kill confirm per weight, the
                    world flinch, the guest's own freeze) — relayed by online.js */
                 if (damageType !== 'dot' && !_skipVisuals() && !_bufferingRoundEvents) {
-                    _juiceHitFx(target, _juiceW, _impactFreezeMs, _lethalHit);
+                    _juiceHitFx(target, _juiceW, _impactFreezeMs, _lethalHit, sourceUnit);
                     /* THE IMPACT HOLD: a hit that lands while an action shot is live keeps the camera on it through
                        the flash and the number, however late the spell's own clock landed it */
                     if (camera._cineShotId != null || _cineImpactHoldLeft() > 0) {
@@ -39981,7 +41441,11 @@
                     /* THE GORE: the spray flies away from the attacker; a kill pumps
                        from the dying body's own neck (primitives only: the relay) */
                     const _bloodSrc = (sourceUnit && sourceUnit.id !== target.id) ? sourceUnit : null;
-                    _vfxBlood(target.x, target.y, _bloodTier, {
+                    /* THE BLOOD WHERE THE HIT LANDS (2026-11-10, mondo: Infernal Hurl's "blood splatter was on the tile
+                       they were originally on, not the tile they got thrown to"): a throw pays its damage on the impact
+                       frame, one line before the body's tile changes, so the caller names the landing (opts.bloodAt) */
+                    const _bloodAt = (opts.bloodAt && Number.isFinite(opts.bloodAt.x) && Number.isFinite(opts.bloodAt.y)) ? opts.bloodAt : target;
+                    _vfxBlood(_bloodAt.x, _bloodAt.y, _bloodTier, {
                         damage: finalDamage,
                         hpFrac: (target.maxHp > 0) ? Math.max(0, target.hp) / target.maxHp : 0,
                         fromX: _bloodSrc ? _bloodSrc.x : null,
@@ -39990,7 +41454,8 @@
                     });
                 } else if (target.hp <= 0) {
                     /* THE GORE: a bleed / burn / poison tick that kills still ends in the finisher's blood */
-                    _vfxBlood(target.x, target.y, 'killing_blow', { damage: finalDamage, hpFrac: 0, unitId: target.id });
+                    const _bloodAt2 = (opts.bloodAt && Number.isFinite(opts.bloodAt.x) && Number.isFinite(opts.bloodAt.y)) ? opts.bloodAt : target;
+                    _vfxBlood(_bloodAt2.x, _bloodAt2.y, 'killing_blow', { damage: finalDamage, hpFrac: 0, unitId: target.id });
                 }
                 if (sourceUnit && typeNote && !(_sink && _sink.hits > 1)) {
                     const dlg = [];
@@ -42130,7 +43595,7 @@
                         }
                     }
                 }
-                /* the spring's level-ground halo (doSpell pulls the first ring of fresh flow into the hit pass) */
+                /* the spring's runoff (doSpell pulls the first ring of fresh flow, down a drop or over a hole's floor, into the hit pass) */
                 const fam = (typeof liquidFamilyOf === 'function') ? liquidFamilyOf(tt) : null;
                 if (fam && !spell.elevationFlood && typeof _LIQUID_SPREADS !== 'undefined' && _LIQUID_SPREADS[fam]) {
                     for (const t of springs) {
@@ -42138,8 +43603,8 @@
                         for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
                             const nx = t.x + ddx, ny = t.y + ddy;
                             if (!isInside(nx, ny) || seen.has(nx + ',' + ny)) continue;
-                            if (typeof _liquidFlowCanEnter === 'function' && !_liquidFlowCanEnter(nx, ny)) continue;
-                            if (getBaseHeightAt(nx, ny) > sh) continue;
+                            /* (2026-11-11) no level halo any more: the liquid only runs down a drop or fills the hole it lies in (map.js liquidRunsOnto) */
+                            if (typeof liquidRunsOnto === 'function' ? !liquidRunsOnto(t.x, t.y, nx, ny) : getBaseHeightAt(nx, ny) >= sh) continue;
                             add(nx, ny);
                         }
                     }
@@ -42203,7 +43668,7 @@
             const shots = [];
             if (state.turrets && state.turrets.length) {
                 for (const turret of state.turrets) {
-                    if (turret.hp <= 0 || turret.auraDebuff) continue;   // 5G towers don't shoot
+                    if (turret.hp <= 0 || turret.auraDebuff || turret.plant) continue;   // 5G towers don't shoot; a plant acts with the seeds (applySeedTileEffects_endOfRound)
                     if (turret.zombie || turret.summon) {
                         // 🧟 Raised abomination: mindless — hunts the NEAREST unit,
                         // friend or foe. Shambles up to 2 tiles toward it, then
@@ -42508,6 +43973,7 @@
         };
         function _summonLook(key) { return SUMMON_LOOK[key] || { icon: '🧟', verb: 'strikes' }; }
         function _turretLogName(turret) {
+            if (turret.plant) return `🌿 The ${_plantName(turret.plant)}`;
             if (turret.summon) return `${_summonLook(turret.summon).icon} ${turret.spellName || 'The summon'}`;
             if (turret.zombie) return '🧟 The flesh abomination';
             return `🔧 ${turret.auraDebuff ? '5G Tower' : 'Siege Turret'}`;
@@ -42533,13 +43999,17 @@
                 });
             } else {
                 turret.hp = Math.max(0, turret.hp - dmg);
-                addLog(`🔧 Turret at ${coordLabel(x, y)} takes ${dmg} damage! (${turret.hp}/${turret.maxHp} HP)`);
+                addLog(turret.plant
+                    ? `${_turretLogName(turret)} at ${coordLabel(x, y)} takes ${dmg} damage! (${turret.hp}/${turret.maxHp} HP)`
+                    : `🔧 Turret at ${coordLabel(x, y)} takes ${dmg} damage! (${turret.hp}/${turret.maxHp} HP)`);
                 showFloatingTextAtTile(x, y, `-${dmg}`, 'damage', {
                     durationMs: 700
                 });
             }
             if (turret.hp <= 0) {
-                addLog(turret.summon
+                addLog(turret.plant
+                    ? `🥀 ${_turretLogName(turret)} at ${coordLabel(x, y)} is cut down!`
+                    : turret.summon
                     ? `${_turretLogName(turret)} at ${coordLabel(x, y)} goes down!`
                     : turret.zombie
                     ? `🧟 The flesh abomination at ${coordLabel(x, y)} collapses into carrion!`
@@ -42548,7 +44018,7 @@
                 if (attackerUnit && turret.owner !== attackerUnit.player) addEntropy(attackerUnit.player, ENTROPY_PTS.destructTurret, 'turret', attackerUnit);   // no pay for wrecking your own
                 // 🧱 Wrecked machinery is a metal mine (meat isn't) — the
                 // scrap scatters as debris cubes around the wreck.
-                if (!turret.zombie && !turret.summon) {
+                if (!turret.zombie && !turret.summon && !turret.plant) {
                     spawnMaterialDrops(x, y, [{ terrain: 'metal' }, { terrain: 'metal' }], { log: false });
                 }
                 scheduleBoardRender();
@@ -43722,6 +45192,7 @@
         function canUseItemNow(unit, itemKey) {
             if (!unit || unit.dead) return false;
             if (unitActionBlockKey(unit)) return false;   // "cannot act" (Stoneform, stun, frozen…) — no items either
+            if (unitIsSpirit(unit)) return false;   // 👁 no hands
             if ((unit.items?.[itemKey] || 0) <= 0) return false;
             if (_ewItemLike(itemKey, 'healPotion')) {
                 return state.units.some(t => !t.dead && t.player === unit.player && t.hp < t.maxHp);
@@ -44045,6 +45516,7 @@
 
         function getPathPickupEvent(unit, x, y) {
             if (shadowRealmKey(unit)) return null;   // 🌑 a walk in the Shadow Realm crosses nothing of the board's
+            if (unitIsSpirit(unit)) return null;   // 👁 a spirit's walk crosses nothing either (no hands)
 
             const _airborne = typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
             if (!_airborne) {
@@ -44280,10 +45752,11 @@
                    them for a revive); allies can still be looted deliberately via scan. */
                 const _corpse = state.units.find(u => u.dead && u.player !== unit.player && u.x === x && u.y === y);
                 if (_corpse && typeof lootCorpseItems === 'function') {
-                    const _got = lootCorpseItems(unit, _corpse);
+                    const _took = {};
+                    const _got = lootCorpseItems(unit, _corpse, _took);
                     if (_got > 0) {
-                        addLog(`🦴 ${_ctName(unit)} loots ${_got} item${_got === 1 ? '' : 's'} from the remains of ${_ctName(_corpse)}.`, unit.player);
-                        showFloatingTextForUnit(unit, `📦 Looted ${_got}`, 'pickup', { durationMs: 1200 });
+                        addLog(`🦴 ${_ctName(unit)} loots ${_lootListText(_took)} from the remains of ${_ctName(_corpse)}.`, unit.player);
+                        showFloatingTextForUnit(unit, `Looted ${_lootListText(_took, 2)}`, 'pickup', { durationMs: 1800 });
                         playSfx('uiConfirm');
                     }
                 }
@@ -44359,7 +45832,22 @@
             return 0;
         }
 
-        function lootCorpseItems(looter, corpse) {
+        /* THE LOOT NAMES (mondo 2026-11-11: "it never tells me what the item is ... It just says Looted 1 item, the
+           combat log too"): every loot line names what was taken, with the item's own icon. lootCorpseItems fills
+           `taken` ({itemKey: count}) when the caller passes one; _lootListText turns it into "🧪 Healing Potion ×1,
+           🔹 Mana Potion ×2" (max = how many kinds to spell out before "+N more"; the log passes none = all). */
+        function _lootListText(taken, max) {
+            const keys = Object.keys(taken || {}).filter(k => (taken[k] | 0) > 0);
+            const one = k => {
+                const r = (typeof ITEM_RULES !== 'undefined' && ITEM_RULES) ? ITEM_RULES[k] : null;
+                return `${r && r.icon ? r.icon + ' ' : ''}${(r && r.name) || k} ×${taken[k] | 0}`;
+            };
+            if (!max || keys.length <= max) return keys.map(one).join(', ');
+            return keys.slice(0, max).map(one).join(', ') + ` +${keys.length - max} more`;
+        }
+        if (typeof window !== 'undefined') window._lootListText = _lootListText;
+
+        function lootCorpseItems(looter, corpse, taken) {
             if (!looter || !corpse || !corpse.dead || corpse.id === looter.id) return 0;
             let looted = 0;
             const itemOrder = Object.keys(ITEM_RULES);
@@ -44371,6 +45859,7 @@
                     looter.items[itemKey] = (looter.items[itemKey] || 0) + 1;
                     corpse.items[itemKey] -= 1;
                     looted += 1;
+                    if (taken) taken[itemKey] = (taken[itemKey] || 0) + 1;
                 }
             }
             return looted;
@@ -44563,6 +46052,23 @@
         function checkBossSpawns() {}
         function handleBossKill() {}
 
+        /* THE MASTERY LEVEL (mondo 2026-11-11, data.js UNIT_MASTERY_RULES): a unit carries its owner's cosmetic level as
+           `ulv`, a plain number read by the panels only (never by a rule). My own units take it from my profile; online the
+           host stamps the guest's from the levels the guest sent with its party (online.js _sendPartyConfig, cleaned). It
+           rides the host's snapshots like any unit field, so both seats see both squads' levels (RULE #2). A CPU unit has none. */
+        function _mlStampUnit(unit, player, meta) {
+            try {
+                if (!unit || !unit.race) return;
+                if (state.devAutoSim || (typeof _balanceSimMode !== 'undefined' && _balanceSimMode) || (typeof _aiTrainingMode !== 'undefined' && _aiTrainingMode) || (typeof _strengthTestMode !== 'undefined' && _strengthTestMode)) return;
+                const mine = () => (window.ProfileSystem && typeof window.ProfileSystem.unitMasteryLevel === 'function') ? window.ProfileSystem.unitMasteryLevel(unit.race) : 0;
+                const net = window._NET;
+                let lv = 0;
+                if (net && net.online) lv = (player === (net.myPlayer || 1)) ? mine() : (typeof unitMasteryClean === 'function' ? unitMasteryClean(meta && meta.ulv) : 0);
+                else if (state.controllers && state.controllers[player] === CTRL.LOCAL && player === 1) lv = mine();
+                if (lv > 0) unit.ulv = lv;
+            } catch (e) {}
+        }
+
         function makeUnitsFromBuilds() {
             repairPartyBuilderState();
             const out = [];
@@ -44574,6 +46080,7 @@
                     const loadout = normalizeLoadoutForClass(state.loadouts[player]?.[idx] || emptyLoadout(), clsName, state.partyMeta?.[player]?.[idx]);
                     ensurePartyMeta();
                     const unit = createUnit(`${player}-${idx}`, player, spawn.x, spawn.y, template, loadout, state.partyMeta?.[player]?.[idx] || null);
+                    _mlStampUnit(unit, player, state.partyMeta?.[player]?.[idx] || null);
                     unit.name = sanitizeUnitName(state.partyNames?.[player]?.[idx], unit.name);   // THE NAMES (2026-09-30): no name typed = createUnit's race label
                     out.push(unit);
                 });
@@ -44716,7 +46223,7 @@
             state.boardTerrain = [];
             state.placed = false;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -45022,7 +46529,13 @@
                seat always gets it, whatever its fog: a player's own throw / push / pull / teleport is never hidden from
                them. Every other seat judges it as before (_logVisible here, online.js _gvLogShows for the guest). */
             const ac = (o && o.actor) ? ((typeof o.actor === 'object') ? (o.actor.player | 0) : (o.actor | 0)) : 0;
-            const entry = (vis === 1 || vis === 2 || hp || zn || sn || ac > 0) ? { m: msg } : msg;
+            /* o.mine (11-11): a line an online GUEST writes on its own screen for its own refused click (the pick was
+               never sent, so the host never logs it). The host's next snapshot replaces the guest's whole log, which
+               wiped these lines within a second or two; tagged `lg`, online.js _applyRemoteState puts them back where
+               they stood (lgN = the host lines above it). Solo and host: a plain line, nothing changes. */
+            const mineG = !!(o && o.mine && window._NET && window._NET.online && window._NET.role === 'guest');
+            const entry = (vis === 1 || vis === 2 || hp || zn || sn || ac > 0 || mineG) ? { m: msg } : msg;
+            if (mineG) { entry.lg = 1; entry.lgN = state.logEntries.filter(e => !(e && typeof e === 'object' && e.lg)).length; }
             if (vis === 1 || vis === 2) entry.v = vis;
             if (ac > 0) entry.a = ac;
             if (hp) entry.h = hp;
@@ -45331,7 +46844,7 @@
                 case 'revive':        return 'Select a fallen ally to revive with ' + nm + '.';
                 case 'raiseDead':     return nm + ': select a fallen unit\'s remains — an ally\'s gravestone or an enemy\'s bones — to raise a zombie.';
                 case 'summonUnit':    return nm + ': select an empty tile beside you to call it to.';
-                case 'cannibalize':   return nm + ': select a fallen enemy\'s remains within reach to feed on.';
+                case 'cannibalize':   return nm + ': select a fallen unit\'s remains within reach to feed on.';
                 case 'possess':       return nm + ': select an enemy to take control of.';
                 case 'door':          return nm + ': pick an empty tile within ' + (spell.range || 4) + ' — a door opens there and its twin opens beside you. Or click one of your doors to open / shut it (free).';
                 case 'doorBreach':    return nm + ': select an enemy you can see — you come through beside them and strike from behind.';
@@ -45540,7 +47053,7 @@
                         if (ptLabel && pt && (pt.x !== unit.x || pt.y !== unit.y)) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> lands on ' + ptLabel + ' — click to confirm.', 'or pick another tile · ESC cancel');
                         return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong>: select a lit tile to land on.', 'ESC cancel');
                     }
-                    if (isSpellSelfCast(spell)) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> is cast on ' + (ptLabel || esc(_ctName(unit))) + ' — press CONFIRM to cast.', 'ESC cancel');
+                    if (isSpellSelfCast(spell) && !(pt && (pt.x !== unit.x || pt.y !== unit.y) && _selfPoolSpell(spell))) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> is cast on ' + (ptLabel || esc(_ctName(unit))) + ' — press CONFIRM to cast.', 'ESC cancel');
                     // THE CONFIRM FIRST (hud.js _hrlgArmAoePlacement): a quick-menu AoE, aimed at the unit it was picked for
                     if (state._quickAoePlace === spell.name && state.actionMenuView === 'spells') {
                         const _qaU = state._quickAoeFrom != null ? (state.units || []).find(u => u.id === state._quickAoeFrom && !u.dead) : null;
@@ -46174,7 +47687,7 @@
         }
         window.spellMovesCaster = spellMovesCaster;
         /* the player-facing word for what pins the unit ('Rooted', 'Charmed', 'Roped', 'Frozen' …), null = free */
-        const _MOVE_BLOCK_WORDS = { root: 'Rooted', charm: 'Charmed', tethered: 'Roped', stun: 'Stunned', frozen: 'Frozen', stoneform: 'Stoneform', climbing: 'Climbing' };
+        const _MOVE_BLOCK_WORDS = { root: 'Rooted', charm: 'Charmed', tethered: 'Roped', stun: 'Stunned', sleep: 'Asleep', frozen: 'Frozen', stoneform: 'Stoneform', climbing: 'Climbing' };
         function moveBlockWord(unit) {
             if (!unit || !unit.status) return null;
             const k = getActiveStatusKeys(unit).find(s => STATUS_DEFS[s]?.blockMove);
@@ -46451,6 +47964,8 @@
             spellBlockReason(unit, spell) {
                 if (!unit || !spell) return null;
                 if (unitSpellsBlocked(unit)) return 'Silenced';
+                /* 👁 a spirit casts magic only (no body, no physical spells) and cannot project again while it is out */
+                if (unitIsSpirit(unit) && (spell.astral || spell.damageType === 'physical')) return 'Projecting';
                 // THE MOVE BLOCK ON SPELLS: a dash / teleport / escape / grapple reel / charge is movement
                 if (spellMovesCaster(spell)) { const _mbw = moveBlockWord(unit); if (_mbw) return _mbw; }
                 if (!unitMeetsSpellTierReq(unit, spell)) {
@@ -46895,6 +48410,18 @@
             return PRESS_OUTCOME.NORMAL;
         }
 
+        /* how many sources the hit that pays the press carries (the best non-blocked hit; resolvePressOutcome's pick) */
+        function _pressBestSources(ctx) {
+            const hits = Array.isArray(ctx) ? ctx : [ctx];
+            let bestR = -Infinity, n = 0;
+            for (const h of hits) {
+                if (!h || h.evaded) continue;
+                const i = _pressHitInfo(h);
+                if (!i.block && i.nSrc && i.r > bestR) { bestR = i.r; n = i.nSrc; }
+            }
+            return n;
+        }
+
         // Mutate unit.ap per the outcome AFTER the normal cost has been spent.
         // Refunds respect PRESS_MAX_BONUS_AP (via unit._pressGainedThisTurn) and
         // never push ap above getUnitMaxAP. Does NOT advance the turn — the
@@ -46903,6 +48430,7 @@
         function applyPressTurn(unit, outcome, opts = {}) {
             const result = { outcome, apDelta: 0, pressed: false, penalty: false };
             if (!unit) return result;
+            if (opts.hits) result.hits = opts.hits;   // THE AP TALLY reads the judged hits off the result
 
             /* Mystery Dungeon floors: NO press-turn system. One beat is one
                action for everyone — refunds are meaningless, penalties would
@@ -46925,8 +48453,13 @@
                 return result;
             }
 
+            /* EVERY EXTRA SOURCE PAYS ENTROPY (mondo 2026-11-13, his pick on the AP tally card: "Build it, extras pay
+               Entropy"): a hit presses once, and each source past the first on that hit (super effective type, element
+               weakness, status combo, crit) vents a press's worth of AP (PRESS_REFUND_AP) into the gauge. Was: only a
+               crit on top of another source did (WEAK_CRIT). opts.hits = the judged hits (the tally reads them too). */
+            const _extraSrc = (opts.hits ? Math.max(0, _pressBestSources(opts.hits) - 1) : (outcome === PRESS_OUTCOME.WEAK_CRIT ? 1 : 0));
             let want = 0;
-            if (outcome === PRESS_OUTCOME.WEAK_CRIT) want = PRESS_REFUND_AP + PRESS_CRIT_REFUND_AP;
+            if (outcome === PRESS_OUTCOME.WEAK_CRIT) want = PRESS_REFUND_AP;   // its second source is one of the extras
             else if (outcome === PRESS_OUTCOME.WEAK) want = PRESS_REFUND_AP;
             else if (outcome === PRESS_OUTCOME.CRIT) want = PRESS_CRIT_REFUND_AP;
             else if (outcome === PRESS_OUTCOME.HALF) want = 1;
@@ -46982,10 +48515,13 @@
                Banked refunds trickle a little charge too. Refunds forfeited to
                an earlier miss/resist (the penalty lockout above) do NOT vent —
                a sloppy turn shouldn't farm entropy off its own mistakes. */
-            const overflow = want - _refundIfPerfect;
+            const overflow = (want - _refundIfPerfect) + _extraSrc * PRESS_REFUND_AP;
             if (overflow > 0) {
+                const _g0 = getEntropyGauge(unit.player);
                 addEntropy(unit.player, overflow * ENTROPY_PTS.pressOverflowAP, 'pressOverflow', unit);
                 result.entropyOverflow = overflow;
+                result.extraSources = _extraSrc;
+                result.entropyGained = Math.max(0, getEntropyGauge(unit.player) - _g0);   // what the gauge took (it pins when full)
             }
             if (refund > 0) {
                 addEntropy(unit.player, refund * ENTROPY_PTS.pressRefund, 'pressRefund', null);
@@ -47008,10 +48544,128 @@
             return null;
         }
         window._pressDialogueLine = _pressDialogueLine;
+        /* THE AP TALLY's facts (mondo 2026-11-13). While a hit is being judged for the press, the words that say why AP
+           comes back or goes (SUPER EFFECTIVE, RESIST, an element WEAK / RESIST / IMMUNE, COMBO) are NOTED here with
+           their multiplier in place of popping over the target; _showPressFeedback turns the judged hits + the press
+           result into the corner tally (the draw: _acApTallyShow). kinds = what this action's press judges. */
+        let _apTallyOwner = null;   // { id, kinds, notes, until }
+        function _apTallyBegin(unit, kinds) {
+            _apTallyOwner = unit ? { id: unit.id, kinds: kinds || { type: 1, elem: 1, combo: 1 }, notes: {}, until: Date.now() + 9000 } : null;
+        }
+        /* true = the tally shows this word, do not pop it over the target */
+        function _apTallyNote(sourceUnit, target, opts, kind, mult, el) {
+            const o = _apTallyOwner;
+            if (!o || !sourceUnit || !target || sourceUnit.id !== o.id || Date.now() > o.until) return false;
+            if (window.EW_NO_AP_TALLY || (opts && opts.noPress) || target.player === sourceUnit.player) return false;
+            const group = kind === 'type' || kind === 'typeRes' ? 'type' : kind === 'combo' ? 'combo' : 'elem';
+            if (!o.kinds[group]) return false;
+            if (!o.notes[kind]) {
+                o.notes[kind] = { mult: mult || '', el: el || '' };
+                /* the word lands in the corner with the hit; its AP worth is stamped on when the press resolves */
+                const E = String(el || 'ELEMENT').toUpperCase();
+                const label = kind === 'type' ? 'SUPER EFFECTIVE' : kind === 'typeRes' ? 'RESISTED' : kind === 'combo' ? 'STATUS COMBO'
+                    : kind === 'elemWeak' ? E + ' WEAK' : kind === 'elemRes' ? E + ' RESISTED' : 'IMMUNE';
+                try { _acApTallyPre({ player: sourceUnit.player, unitId: sourceUnit.id, k: kind, label, mult: mult || '' }); } catch (_e) {}
+            }
+            return true;
+        }
+        const _AP_TALLY_ENT_PER_SRC = () => PRESS_REFUND_AP * ENTROPY_PTS.pressOverflowAP;
+        function _apTallyBuild(unit, res) {
+            if (!unit || !res || window.EW_NO_AP_TALLY) return null;
+            const notes = (_apTallyOwner && _apTallyOwner.id === unit.id && _apTallyOwner.notes) || {};
+            const hits = (res.hits ? (Array.isArray(res.hits) ? res.hits : [res.hits]) : []).filter(Boolean);
+            const nm = (k) => (notes[k] && notes[k].mult) || '';
+            const elName = (h, k) => String((h && h.el) || (notes[k] && notes[k].el) || 'ELEMENT').toUpperCase();
+            let best = null, bestI = null, bestR = -Infinity, anyMiss = false, blockHit = null, typeRes = false, elemResHit = null, elemWeakHit = null;
+            for (const h of hits) {
+                if (h.evaded) { anyMiss = true; continue; }
+                const i = _pressHitInfo(h);
+                if (i.block && !blockHit) blockHit = h;
+                if (i.typeRes) typeRes = true;
+                if (h.elemAff === 'resist' && !elemResHit) elemResHit = h;
+                if (h.elemAff === 'weak' && !elemWeakHit) elemWeakHit = h;
+                if (!i.block && i.nSrc && i.r > bestR) { bestR = i.r; best = h; bestI = i; }
+            }
+            const src = [];   // the sources on the hit that pays, in the order they are read
+            if (best) {
+                if (bestI.typeTier > 0) src.push({ k: 'type', label: 'SUPER EFFECTIVE', mult: nm('type') });
+                if (best.elemAff === 'weak') src.push({ k: 'elemWeak', label: elName(best, 'elemWeak') + ' WEAK', mult: nm('elemWeak'), elem: 1 });
+                if (best.combo) src.push({ k: 'combo', label: 'STATUS COMBO', mult: nm('combo') });
+                if (best.isCrit) src.push({ k: 'crit', label: 'CRITICAL HIT', mult: '' });
+            }
+            const ap = res.apDelta || 0;
+            let entLeft = res.entropyGained || 0;
+            const entTake = (n) => { const g = Math.min(n, entLeft); entLeft -= g; return g; };
+            const rows = [];
+            if (res.outcome === PRESS_OUTCOME.MISS) {
+                if (!src.length && !(ap < 0)) return null;   // a plain whiff that cost nothing: DODGE! over the target says it
+                for (const r of src) rows.push(Object.assign(r, { note: 'LOST' }));
+                rows.push({ label: res.countered ? 'COUNTERED' : (anyMiss ? 'DODGED' : 'NO EFFECT'), ap: ap < 0 ? ap : 0 });
+            } else if (blockHit) {
+                for (const r of src) rows.push(Object.assign(r, { note: 'BLOCKED' }));
+                rows.push({ k: 'elemImmune', label: blockHit.elemAff === 'absorb' ? 'ABSORBED' : 'IMMUNE', mult: nm('elemImmune'), note: 'NO REFUND' });
+                if (typeRes) rows.push({ k: 'typeRes', label: 'RESISTED', mult: nm('typeRes'), ap: ap < 0 ? ap : 0 });
+            } else if (src.length) {
+                const resN = (typeRes ? 1 : 0) + (elemResHit ? 1 : 0);
+                const expected = Math.max(0, PRESS_REFUND_AP - resN);
+                const perSrc = _AP_TALLY_ENT_PER_SRC();
+                const vented = !res.pressed && !res.pressDenied && (res.entropyOverflow || 0) > (res.extraSources || 0) * PRESS_REFUND_AP;
+                src.forEach((r, k) => {
+                    if (k === 0) {
+                        if (vented) { r.ent = entTake(Math.max(0, expected) * ENTROPY_PTS.pressOverflowAP); if (!r.ent) r.note = 'GAUGE FULL'; }
+                        else if (res.pressDenied && !res.pressed) r.note = 'NO PRESS';
+                        else r.ap = PRESS_REFUND_AP;
+                    } else { r.ent = entTake(perSrc); if (!r.ent) r.note = (res.pressDenied && !res.entropyOverflow) ? 'NO PRESS' : 'GAUGE FULL'; }
+                    rows.push(r);
+                });
+                const shown0 = rows[0] && rows[0].ap ? rows[0].ap : 0;
+                let run = shown0;
+                if (shown0) {
+                    if (typeRes) { rows.push({ k: 'typeRes', label: 'RESISTED', mult: nm('typeRes'), ap: -1 }); run -= 1; }
+                    if (elemResHit) { rows.push({ k: 'elemRes', label: elName(elemResHit, 'elemRes') + ' RESISTED', mult: nm('elemRes'), ap: -1 }); run -= 1; }
+                    /* an earlier miss / resist this turn cut the press short (applyPressTurn's cap) */
+                    if (ap < Math.max(0, run)) rows.push({ label: 'EARLIER FUMBLE', ap: ap - Math.max(0, run) });
+                } else {
+                    if (typeRes) rows.push({ k: 'typeRes', label: 'RESISTED', mult: nm('typeRes'), note: '\u2014' });
+                    if (elemResHit) rows.push({ k: 'elemRes', label: elName(elemResHit, 'elemRes') + ' RESISTED', mult: nm('elemRes'), note: '\u2014' });
+                }
+            } else if (typeRes || elemResHit) {
+                if (typeRes) rows.push({ k: 'typeRes', label: 'RESISTED', mult: nm('typeRes'), ap: ap < 0 ? ap : 0 });
+                if (elemResHit) rows.push({ k: 'elemRes', label: elName(elemResHit, 'elemRes') + ' RESISTED', mult: nm('elemRes') });
+            }
+            /* THE ELEMENT PAYS ENTROPY (_consumePressCollector): its gauge points ride the element line */
+            if (res.elemEntropy > 0) {
+                const er = rows.find(r => r.elem);
+                if (er) er.ent = (er.ent || 0) + res.elemEntropy;
+                else if (elemWeakHit) rows.push({ k: 'elemWeak', label: elName(elemWeakHit, 'elemWeak') + ' WEAK', mult: nm('elemWeak'), ent: res.elemEntropy });
+            }
+            if (!rows.length) return null;
+            const ent = rows.reduce((a, r) => a + (r.ent || 0), 0);
+            const total = { ap, ent };
+            if (!ap && !ent && res.pressDenied) total.text = 'NO PRESS';
+            return { player: unit.player, unitId: unit.id, rows, total };
+        }
+        window._apTallyBuild = _apTallyBuild;
         function _showPressFeedback(unit, res) {
             if (!unit || !res) return;
-            if (_skipVisuals()) return;
+            if (_skipVisuals()) { _apTallyOwner = null; return; }
             const _line = _pressDialogueLine(res);
+            /* THE AP TALLY: the corner stack says it all — the "+2 AP!" / ENTROPY! / WASTED! / NO PRESS pops over the
+               caster stay only where no tally shows (window.EW_NO_AP_TALLY, a bane throw with nothing to list) */
+            let _tallySpec = null;
+            try { _tallySpec = _apTallyBuild(unit, res); } catch (_e) { _tallySpec = null; }
+            _apTallyOwner = null;
+            if (_tallySpec) {
+                res._tally = _tallySpec;   // online.js relays it to the guest with the press line
+                const _mine = unit.player === getViewerPlayer();
+                /* fog: an enemy's tally shows only when this seat may see that enemy (it names the matchup) */
+                if (_mine || typeof _shouldCameraFollowUnit !== 'function' || _shouldCameraFollowUnit(unit)) {
+                    if (_acApTallyShow(Object.assign({ side: _mine ? 'own' : 'enemy' }, _tallySpec))) {
+                        if (_line) showBattleDialogue([_line], 1100);
+                        return;
+                    }
+                }
+            }
             if (res.pressed) {
                 const _apGain = Math.max(1, res.apDelta || 0);
                 showFloatingTextForUnit(unit, `+${_apGain} AP!`, 'revive', { durationMs: 1000, jitterY: -26 });
@@ -47045,6 +48699,7 @@
 
         function _armPressCollector(casterUnit) {
             _pressDamageCollector = { casterId: casterUnit.id, hits: [], elemWeakIds: [] };
+            _apTallyBegin(casterUnit);
         }
 
         function _collectPressHit(sourceUnit, target, opts) {
@@ -47077,7 +48732,7 @@
             // THE STATUS COMBO PRESS: the hit lands its bonusVsStatus multiplier (the same matcher the damage uses)
             const _bvs = opts && opts.bonusVsStatus;
             const combo = !!(_bvs && _bvs.status && bonusStatusMatches(target, _bvs.status));
-            return { effSummary: getTypeEffectSummary(atkTypes, target.types || []), elemAff, combo };
+            return { effSummary: getTypeEffectSummary(atkTypes, target.types || []), elemAff, combo, el: elemAff ? _el : null };
         }
 
         function _consumePressCollector(casterUnit, cost) {
@@ -47087,13 +48742,17 @@
                every enemy whose weakness the cast's element part landed on charges the team's gauge — whether the
                hit pressed or not (a super effective type already presses; a resisted type never does). Recorded by
                applyDamageToUnit when the hit actually lands (a Protected / immune body records nothing). */
+            let _elemEnt = 0;
             if (c && c.casterId === casterUnit.id && c.elemWeakIds && c.elemWeakIds.length) {
+                const _g0 = getEntropyGauge(casterUnit.player);
                 addEntropy(casterUnit.player, c.elemWeakIds.length * ENTROPY_PTS.elemWeak, 'elemWeak', casterUnit);
+                _elemEnt = Math.max(0, getEntropyGauge(casterUnit.player) - _g0);
             }
             if (!c || c.casterId !== casterUnit.id || c.hits.length === 0) {
                 return { outcome: PRESS_OUTCOME.NORMAL, apDelta: 0, pressed: false, penalty: false };
             }
-            const _pr = applyPressTurn(casterUnit, resolvePressOutcome(c.hits), { cost });
+            const _pr = applyPressTurn(casterUnit, resolvePressOutcome(c.hits), { cost, hits: c.hits });
+            if (_pr && _elemEnt) _pr.elemEntropy = _elemEnt;
             if (_balanceSimMode && _pr) {
                 if (_pr.pressed) _balEffect(casterUnit, 'press', Math.max(0, _pr.apDelta || 0), 0);
                 else if (_pr.penalty) _balEffect(casterUnit, 'pressMiss', Math.abs(_pr.apDelta || 0), 0);
@@ -48116,6 +49775,7 @@
             // cast through. Plain barrages keep the blanket pass (their radius is
             // the caster's problem, and casting into empty air is a player choice).
             if (kind === 'barrage' && spell.hitsWetOnly) return _selfNovaSeenVictims(unit, spell).length > 0;
+            if (spell.pollinate && getPollen(unit) <= 0) return false;   // 🐝 THE POLLEN: no pollen carried = the row reads NO TARGET
             // THE SEEN NOVA (playtest 2026-11-07 F): a nova that only touches enemies (Hey, Over Here!, Meow, Demonic
             // Roar…) reads NO TARGET when no enemy the caster's side can see stands in its reach.
             if (_selfNovaEnemyOnly(spell)) return _selfNovaSeenVictims(unit, spell).length > 0;
@@ -48519,8 +50179,42 @@
             if (_kindMeta(spell).twoClick && _twoClickPick(spell)) return true;
             return false;
         }
+        /* THE WALK-IN SELF CAST (mondo 2026-11-12: "Scatter shot wasnt moveing+casting for me"): a self-cast that only
+           hits the enemies in its own reach (a random-target row: Scatter Shot; an enemy-only nova: Meow, Demonic
+           Roar…) lit MOVE→CAST on the Abilities list (hasReachableTarget walks the caster and asks its pool), but its
+           pick only offered CONFIRM on the caster, which the cast then refused ("no enemy in range and in sight"). The
+           approach finder asked the aim gate, which says yes to every self-cast. These rows now follow the game's one
+           MOVE→CAST rule: with nobody in reach from here, the list names the enemies a step brings into reach, and the
+           pick walks to the farthest square that still has that enemy in the pool, then casts on the caster. */
+        function _selfPoolSpell(spell) {
+            if (!spell) return false;
+            if (spell.randomTargets && spell.kind === 'damage' && typeof spellRandomTargetsOf === 'function' && spellRandomTargetsOf(spell)) return true;
+            return _selfNovaEnemyOnly(spell);
+        }
+        function _selfPoolVictims(unit, spell) {
+            return (spell.randomTargets && spell.kind === 'damage') ? _randomTargetPool(unit, spell) : _selfNovaSeenVictims(unit, spell);
+        }
+        function _selfPoolHits(unit, spell, body) {
+            return !!body && !!unit && body.id !== unit.id && _selfPoolVictims(unit, spell).some(v => v.id === body.id);
+        }
+        /* a self-cast that never walks first: every self-cast but the pool rows above */
+        function _selfCastNoWalk(spell) { return isSpellSelfCast(spell) && !_selfPoolSpell(spell); }
+        /* the enemies a step brings into such a row's reach, while nobody is in reach from where the caster stands
+           (null otherwise: the row then keeps its plain CONFIRM on the caster) */
+        function _selfPoolWalkIn(unit, spell) {
+            if (!unit || !spell || !isSpellSelfCast(spell) || !_selfPoolSpell(spell)) return null;
+            if (hasSpellTargetInRange(unit, spell)) return null;
+            const rows = _getSpellApproachTargets(unit, spell);
+            return rows.length ? rows : null;
+        }
+        window._selfPoolSpell = _selfPoolSpell;
+        window._selfPoolHits = _selfPoolHits;
+        window._selfCastNoWalk = _selfCastNoWalk;
+        window._selfPoolWalkIn = _selfPoolWalkIn;
         function findSpellApproachTile(unit, spell, tx, ty, tz) {
             if (_spellNeverApproaches(unit, spell)) return null;
+            const _poolRow = isSpellSelfCast(spell) && _selfPoolSpell(spell);   // THE WALK-IN SELF CAST
+            if (isSpellSelfCast(spell) && !_poolRow) return null;
             const steps = _spellMoveBudget(unit, spell);
             const sx = unit.x, sy = unit.y, sz = unit.z;
             /* THE ONE AIM RULE (2026-10-16): aimed at a BODY, "in reach from the probe tile" is the cast's own
@@ -48532,7 +50226,10 @@
             /* a body of a shared column must be hit ITSELF from the probe tile — the column rule would hand an
                out-of-reach pick to the body beneath it (playtest 2026-10-21) */
             const _aimShared = !!(_aimBody && typeof unitsAtColumn === 'function' && unitsAtColumn(tx, ty).length > 1);
-            const _hitsTarget0 = _aimShared
+            if (_poolRow && (!_aimBody || _selfPoolHits(unit, spell, _aimBody))) return null;   // no body to bring in, or already in reach from here
+            const _hitsTarget0 = _poolRow
+                ? () => _selfPoolHits(unit, spell, _aimBody)
+                : _aimShared
                 ? () => !spellAimProblemOn(unit, spell, _aimBody)
                 : _aimBody
                 ? () => !spellAimProblem(unit, spell, tx, ty, _aimZ)
@@ -48856,7 +50553,7 @@
             if (!clickedUnit || clickedUnit.dead || clickedUnit.player === actingUnit.player) return false;
             const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
                 || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
-            if (!spell || isSpellSelfCast(spell)) return false;
+            if (!spell || _selfCastNoWalk(spell)) return false;
             if (unitSpellsBlocked(actingUnit)) return false;
             if (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(actingUnit, spell)) return false;
             if ((actingUnit.mp || 0) < getSpellMpCostFor(actingUnit, spell)) return false;
@@ -48906,6 +50603,7 @@
         // restoring its position in a finally block.
         function attackHasReachableTarget(unit, opts) {
             if (!unit) return false;
+            if (unitIsSpirit(unit)) return false;   // 👁 a spirit cannot basic attack
             if (_getAttackValidTargets(unit, opts).length > 0) return true; // in range now
             /* one walk step away: exactly the attack list's MOVE→ATK rows (fog-gated from where the unit stands), so a
                lit ATTACK never opens on an empty list (PvP playtest 2026-10-23) */
@@ -49143,7 +50841,7 @@
                 if (!clickedUnit || clickedUnit.dead || clickedUnit.player === actingUnit.player) return false;
                 const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
                     || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
-                if (!spell || isSpellSelfCast(spell)) return false;
+                if (!spell || _selfCastNoWalk(spell)) return false;
                 if (unitSpellsBlocked(actingUnit)) return false;
                 if (typeof unitMeetsSpellTierReq === 'function' && !unitMeetsSpellTierReq(actingUnit, spell)) return false;
                 if ((actingUnit.mp || 0) < getSpellMpCostFor(actingUnit, spell)) return false;
@@ -49192,7 +50890,7 @@
                 const row = rows.find(t => t.x === x && t.y === y && (!clickedUnit || !t.unit || t.unit.id === clickedUnit.id))
                     || rows.find(t => t.x === x && t.y === y);
                 if (row) { selectTargetFromMenu(x, y, row.unit ? row.unit.z : undefined); return true; }
-                addLog(_outOfReachLine(actingUnit, clickedUnit), actingUnit.player);
+                addLog(_outOfReachLine(actingUnit, clickedUnit), actingUnit.player, null, { mine: true });
                 playErrorSfx();
                 markDirty('board', 'hud');
                 renderIfDirty();
@@ -49210,7 +50908,7 @@
                     /* the solo click's fog gate first: a fogged tile is out of sight unless the kind casts into fog */
                     const _gFog = state.fogOfWar && !_kindMeta(spell).fogExempt && !computeVisibleTiles(state.activePlayer).has(posKey(x, y));
                     if (!_gFog && (_mtcReachesPick(actingUnit, spell, x, y, z) || findSpellApproachTile(actingUnit, spell, x, y, z))) return false;
-                    addLog(_gFog ? outOfSightMessage(actingUnit, x, y) : `${_ctSp(spell.name)}: that tile is out of range or line of sight.`, actingUnit.player);
+                    addLog(_gFog ? outOfSightMessage(actingUnit, x, y) : `${_ctSp(spell.name)}: that tile is out of range or line of sight.`, actingUnit.player, null, { mine: true });
                     playErrorSfx();
                     markDirty('board', 'hud');
                     renderIfDirty();
@@ -49226,7 +50924,7 @@
                 }
                 /* a unit spell aimed off its list (an empty tile, an enemy out of reach): refused like the solo click —
                    the guest's pick used to land on the tile ("→ Checkerboard I4") and its CONFIRM did nothing */
-                addLog(_outOfReachLine(actingUnit, cu), actingUnit.player);
+                addLog(_outOfReachLine(actingUnit, cu), actingUnit.player, null, { mine: true });
                 playErrorSfx();
                 markDirty('board', 'hud');
                 renderIfDirty();
@@ -49234,7 +50932,7 @@
             }
             if (mode === 'item' && actionModeNeedsTargetConfirm()
                 && !_itemTargetTeamOk(actingUnit, state.selectedTool, x, y, z)) {
-                addLog(ITEM_RULES[state.selectedTool]?.baneType ? 'Choose an enemy target.' : 'Choose a living friendly unit.', actingUnit.player);
+                addLog(ITEM_RULES[state.selectedTool]?.baneType ? 'Choose an enemy target.' : 'Choose a living friendly unit.', actingUnit.player, null, { mine: true });
                 playErrorSfx();
                 markDirty('board', 'hud');
                 renderIfDirty();
@@ -49259,7 +50957,7 @@
             } else if (state.actionMode === 'spell') {
                 const sp = (unit.spells || []).find(s => s.name === state.selectedTool)
                     || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
-                approach = !!sp && !isSpellSelfCast(sp) && !_mtcReachesPick(unit, sp, x, y, z) && !!findSpellApproachTile(unit, sp, x, y, z);
+                approach = !!sp && !_selfCastNoWalk(sp) && !_mtcReachesPick(unit, sp, x, y, z) && !!findSpellApproachTile(unit, sp, x, y, z);
             }
             if (!approach) return false;
             state._spellApproachKey = null;
@@ -49279,7 +50977,7 @@
             } else if (state.actionMode === 'spell') {
                 const sp = (unit.spells || []).find(s => s.name === state.selectedTool)
                     || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
-                if (!sp || isSpellSelfCast(sp) || _mtcReachesPick(unit, sp, x, y, z)) return null;
+                if (!sp || _selfCastNoWalk(sp) || _mtcReachesPick(unit, sp, x, y, z)) return null;
                 a = findSpellApproachTile(unit, sp, x, y, z);
             }
             if (!a) return null;
@@ -49297,6 +50995,23 @@
         /* the line a target-list click off the list gets (it read "Target is no longer valid." for an enemy that never
            was in reach — PvP playtest 2026-10-23) */
         function _outOfReachLine(actingUnit, clickedUnit) {
+            /* 💋 THE CHARM LINE ON A BOARD CLICK (11-11, two-seat check of rule 7 B): the charmer is off a charmed unit's
+               attack list and off its unit-aimed offensive casts, so a click on it was refused here as "out of reach"
+               (wrong reason) and the engine's own Charm line (doAttack / doSpell) never ran. Same words as the engine. */
+            {
+                const _orCharmer = (typeof getCharmer === 'function') ? getCharmer(actingUnit) : null;
+                if (_orCharmer && clickedUnit && !clickedUnit.dead && clickedUnit.id === _orCharmer.id
+                    && (!visionGatesTargeting(actingUnit) || isInVision(actingUnit, clickedUnit.x, clickedUnit.y))) {
+                    if (state.actionMode === 'attack') return `💋 ${_ctName(actingUnit)} is charmed and cannot attack ${_ctName(_orCharmer)}!`;
+                    if (state.actionMode === 'spell') {
+                        const _orSp = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
+                            || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                        const _orM = _orSp ? _kindMeta(_orSp) : null;
+                        if (_orM && _orM.offensive && !_orM.tileTargeted && !_orM.directional)
+                            return `💋 ${_ctName(actingUnit)} is charmed and cannot cast ${_ctSp(_orSp.name)} at ${_ctName(_orCharmer)}!`;
+                    }
+                }
+            }
             if (clickedUnit && !clickedUnit.dead && clickedUnit.id !== actingUnit.id && isEnemyUnit(actingUnit, clickedUnit)
                 && (!visionGatesTargeting(actingUnit) || isInVision(actingUnit, clickedUnit.x, clickedUnit.y)))   // never name a fogged body
                 return `${_ctName(clickedUnit)} is out of reach this turn.`;
@@ -49941,7 +51656,9 @@
         // computed as if the caster already stood on the approach tile (line
         // beams and self-origin blasts read the caster's position).
         function _spellApproachAoeTiles(spell, unit, castX, castY, tx, ty) {
-            const isHeal = !!spell && ['heal', 'healAll', 'zoneHeal', 'selfHeal', 'revive', 'cleanse', 'cleanseArea'].includes(spell.kind);
+            /* THE AIM SIDE (data.js spellAimSide, 2026-11-11): green = it helps and deals no damage, whatever its kind */
+            const isHeal = !!spell && (typeof spellAimSide === 'function' ? spellAimSide(spell) === 'help'
+                : ['heal', 'healAll', 'zoneHeal', 'selfHeal', 'revive', 'cleanse', 'cleanseArea'].includes(spell.kind));
             const _hit = (window.EW_PREVIEW && window.EW_PREVIEW.hit) || 0xff2a2a;
             const hi = isHeal ? 0x33ff33 : _hit, lo = isHeal ? 0x22cc22 : _hit;
             let fp = [];
@@ -50005,6 +51722,60 @@
             return out;
         }
 
+        /* THE REAL ROUTE (2026-11-11, THE ONE MOVE PREVIEW): the waypoints of the move a move-then-act row will really
+           make to `approach` (its via step first) — the walk's own path (findMovePath, what doMove walks), each hop /
+           vault leg arched over what it clears (jumpArcApex, an `apex` waypoint: the hologram plays it as a jump), a
+           JUMP approach as one arc. The approach previews used to draw a straight line from the unit to the tile,
+           through walls the walk goes round. yAt(x, y, z) = the waypoint's height (the caller's flyer rule). */
+        function moveRouteWps(unit, approach, yAt) {
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            const air = canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
+            const Y = (wx, wy, wz) => yAt ? yAt(wx, wy, wz)
+                : (typeof ThreeRenderer.surfaceYAt === 'function' ? ThreeRenderer.surfaceYAt(wx, wy, wz) : ThreeRenderer.tileTopY(wx, wy));
+            const wps = [{ x: sx, y: sy, yOverride: ThreeRenderer.unitSurfaceY(unit) }];
+            const ts0 = CONFIG.tileSize || BASE_TILE;
+            const apexWp = (a, b, always) => {
+                if (air) return null;
+                const az0 = a.z ?? 0, bz0 = b.z ?? 0;
+                let vault = false;
+                if (typeof wallStepInfo === 'function') { try { vault = wallStepInfo(a.x, a.y, b.x, b.y, az0, bz0, 99).v === 1; } catch (e) {} }
+                if (!always && Math.abs(bz0 - az0) <= MAX_CLIMB_HEIGHT && !vault) return null;
+                let apexY = Math.max(Y(a.x, a.y, a.z), Y(b.x, b.y, b.z));
+                if (typeof window.jumpArcApex === 'function' && typeof ThreeRenderer.elevY === 'function') {
+                    const H = window.jumpArcApex(a.x, a.y, az0, b.x, b.y, bz0, 99);
+                    if (H !== null && H !== undefined) apexY = Math.max(apexY, ThreeRenderer.elevY(H));
+                }
+                return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, yOverride: apexY + ts0 * 0.4, apex: true };
+            };
+            let node = { x: sx, y: sy, z: sz ?? 0 };
+            try {
+                for (const t of (approach.via ? [approach.via, approach] : [approach])) {
+                    const tz = t.z ?? unit.z ?? 0;
+                    const dest = { x: t.x, y: t.y, z: tz };
+                    if (t === approach && (approach._jump || approach._jumpVerb)) {
+                        const ap = apexWp(node, dest, true);
+                        if (ap) wps.push(ap);
+                        wps.push({ x: t.x, y: t.y, yOverride: Y(t.x, t.y, tz) });
+                    } else {
+                        let path = [];
+                        if (!t._takeoff && !t._viaSpell) { try { path = findMovePath(unit, t.x, t.y, tz) || []; } catch (e) { path = []; } }
+                        if (!path.length || path[path.length - 1].x !== t.x || path[path.length - 1].y !== t.y) path = [dest];
+                        let prev = node;
+                        for (const p of path) {
+                            const ap = apexWp(prev, p, false);
+                            if (ap) wps.push(ap);
+                            wps.push({ x: p.x, y: p.y, yOverride: Y(p.x, p.y, p.z ?? tz) });
+                            prev = p;
+                        }
+                    }
+                    node = dest;
+                    unit.x = t.x; unit.y = t.y; unit.z = tz;
+                }
+            } finally { unit.x = sx; unit.y = sy; unit.z = sz; }
+            return wps;
+        }
+        window.moveRouteWps = moveRouteWps;
+
         function _drawSpellApproachPreview(unit, approach, tx, ty) {
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
@@ -50052,7 +51823,17 @@
 
                 // Arrow palette: blue = your own movement (walk AND jump legs).
                 const routeColor = 0x3399ff;
-                if (approach.via) {
+                /* THE REAL ROUTE: the arrow follows the path the walk takes (round walls, arched over a hop) */
+                let _rw = null;
+                try { _rw = moveRouteWps(unit, approach, _airApp ? (wx, wy) => _yAt(wx, wy) : null); } catch (e) { _rw = null; }
+                if (_rw && _rw.length >= 2) {
+                    ThreeRenderer.drawPathArrow3D(_rw, routeColor);
+                    ThreeRenderer.setOverlay('spellApproachMove', [
+                        ...(approach.via ? [{ x: approach.via.x, y: approach.via.y, color: routeColor, opacity: 0.3 }] : []),
+                        ..._iceSlideMarks(land),
+                        { x: castX, y: castY, color: routeColor, opacity: 0.45 },
+                    ], routeColor, 0.45);
+                } else if (approach.via) {
                     const viaY = ThreeRenderer.tileTopY(approach.via.x, approach.via.y);
                     ThreeRenderer.drawPathArrow3D([
                         { x: unit.x, y: unit.y, yOverride: actingY },
@@ -50074,9 +51855,11 @@
                 const _slideWps = land ? _drawIceSlideLeg(land, (wx, wy) => _yAt(wx, wy)) : [];
                 {
                     /* the hologram walks the route (and glides the ice) and casts on arrival, on a loop */
-                    const _mw = [{ x: unit.x, y: unit.y, yOverride: actingY }];
-                    if (approach.via) _mw.push({ x: approach.via.x, y: approach.via.y, yOverride: ThreeRenderer.tileTopY(approach.via.x, approach.via.y) });
-                    _mw.push({ x: approach.x, y: approach.y, yOverride: destY });
+                    const _mw = (_rw && _rw.length >= 2) ? _rw.slice() : [{ x: unit.x, y: unit.y, yOverride: actingY }];
+                    if (!(_rw && _rw.length >= 2)) {
+                        if (approach.via) _mw.push({ x: approach.via.x, y: approach.via.y, yOverride: ThreeRenderer.tileTopY(approach.via.x, approach.via.y) });
+                        _mw.push({ x: approach.x, y: approach.y, yOverride: destY });
+                    }
                     _mw.push(..._slideWps);
                     ThreeRenderer.showGhostUnit(unit, castX, castY, castYpx, { tag: 'caster', color: ghostTint, opacity: 0.85,
                         motion: { wps: _mw, kind: _airApp ? 'fly' : 'walk', castSpell: _spell || null, faceTo: { x: tx, y: ty } } });
@@ -50097,7 +51880,7 @@
             if (!enemy || enemy.dead || enemy.player === unit.player) { _clearSpellApproachPreview(); return false; }
             const spell = (unit.spells || []).find(s => s.name === state.selectedTool)
                 || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
-            if (!spell || isSpellSelfCast(spell)) { _clearSpellApproachPreview(); return false; }
+            if (!spell || _selfCastNoWalk(spell)) { _clearSpellApproachPreview(); return false; }
             const k = x + ',' + y + '|' + state.selectedTool;
             if (state._spellApproachKey === k) return !!state._spellApproachTile;
             state._spellApproachKey = k;
@@ -50136,7 +51919,7 @@
 
         function _updateMoveHoverPreview(x, y) {
             const unit = getSelectedUnit();
-            if (!unit || (state.actionMode !== 'move' && state.actionMode !== 'jump')
+            if (!unit || (state.actionMode !== 'move' && state.actionMode !== 'jump' && state.actionMode !== 'climb')
                 || state._actionExecuting
                 || (typeof window._isWasdActive === 'function' && window._isWasdActive())) {
                 _clearMoveHoverPreview();
@@ -50154,6 +51937,18 @@
             state._moveHoverKey = k;
             try {
                 if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return;
+                const _m = state.actionMode;
+                /* the same order the click runs (clickTile): a walk, a jump, a climb, then the chase */
+                _drawMovePlan(unit, x, y, _hovZ, _m === 'move' ? { move: true, jump: true, climb: true, towards: true }
+                    : _m === 'jump' ? { jump: true } : { climb: true, climbAnyZ: true });
+            } catch (e) { /* preview is cosmetic — never let it break hover */ }
+        }
+
+        /* THE ONE MOVE PREVIEW (2026-11-11): the route arrow + the hologram performing it for a walk / a jump / a climb /
+           the chase to (x, y) on surface _hovZ. Drawn by the board hover above AND by the tile quick menu's Move here /
+           Jump here / Climb rows (window.previewMovePlan), so every way of asking shows the path the click will take. */
+        function _drawMovePlan(unit, x, y, _hovZ, want) {
+            {
                 if (!isInside(x, y)) return;
                 if (x === unit.x && y === unit.y) return;
                 const _occ = unitAt(x, y);
@@ -50261,7 +52056,7 @@
                 };
 
                 // 1) Reachable in one move → bending route arrow through the real path.
-                if (state.actionMode === 'move' && canUnitMove(unit)) {
+                if (want.move && canUnitMove(unit)) {
                     const matches = getMoveTiles(unit).filter(t => t.x === x && t.y === y);
                     const dest = matches.length ? _pickByZ(matches) : null;
                     if (dest) {
@@ -50320,7 +52115,7 @@
                 }
 
                 // 2) Standalone jump tile (shown in the move overlay too) → arcing leap arrow.
-                if (!_isAir && typeof getJumpTiles === 'function' && canUnitAct(unit)) {
+                if (want.jump && !_isAir && typeof getJumpTiles === 'function' && canUnitAct(unit)) {
                     const jm = getJumpTiles(unit).filter(t => t.x === x && t.y === y);
                     const jDest = jm.length ? _pickByZ(jm) : null;
                     if (jDest) {
@@ -50341,6 +52136,63 @@
                     }
                 }
 
+                /* 2b) 🧗 THE CLIMB PREVIEW (2026-11-11, mondo: "move/arrow previews need to show the climb animation too ...
+                   it wasnt showing the climb animation so I was confused when I clicked there and my unit walked there and
+                   started climbing and ended my turn"): a lit climb ledge (sandstone) used to fall through to the chase's
+                   plain walk arrow. Now the walk to the foot draws in blue, the face in sandstone, the hologram walks then
+                   CLIMBS (the board's own climb clip; 2 AP = up and over, 1 AP = it stops hanging on the wall), and the
+                   ghost wears "CLIMB / HANG" + "ENDS TURN". The pick is the click's own (_climbPick). */
+                if (want.climb && typeof getClimbTiles === 'function') {
+                    const _czK = (_hovZ !== undefined && _hovZ !== null) && !want.climbAnyZ;
+                    const c = getClimbTiles(unit).some(t => t.x === x && t.y === y && (!_czK || t.z === _hovZ))
+                        ? _climbPick(unit, x, y, _hovZ) : null;
+                    if (c) {
+                        const routeColor = 0x3399ff, climbColor = 0xd9a066;
+                        const wps = [{ x: unit.x, y: unit.y, yOverride: actingY }];
+                        let walk = null;
+                        if (c.viaMove) {
+                            const v = c.viaMove;
+                            const path = findMovePath(unit, v.x, v.y, v.z);
+                            const land = predictWalkLanding(unit, v.x, v.y, v.z, { path: path });
+                            _pushPathWps(wps, { x: unit.x, y: unit.y, z: unit.z ?? 0 }, walkRouteOf(path, land));
+                            if (wps.length >= 2) ThreeRenderer.drawPathArrow3D(wps, routeColor);
+                            walk = { path, land };
+                            if (land) {
+                                /* the walk to the foot slides off on ice (or a storm takes it): the climb never starts
+                                   (doClimb re-checks the foot) — show the walk it really is */
+                                wps.push(..._drawIceSlideLeg(land, _wpY));
+                                _moveHoverWalk = walk;
+                                try { _showDest(routeColor, null, v.z, { wps: wps, kind: 'walk' }, land); }
+                                finally { _moveHoverWalk = null; }
+                                return;
+                            }
+                        }
+                        const leg = climbPreviewLeg(c, _wpY);
+                        ThreeRenderer.drawPathArrow3D([wps[wps.length - 1]].concat(leg.wps), climbColor, { radius: (CONFIG.tileSize || BASE_TILE) * 0.04 });
+                        wps.push(...leg.wps);
+                        const marks = [];
+                        if (c.viaMove) marks.push({ x: c.viaMove.x, y: c.viaMove.y, z: c.viaMove.z, color: routeColor, opacity: 0.45 });
+                        marks.push({ x: c.x, y: c.y, z: c.z, color: climbColor, opacity: 0.6 });
+                        ThreeRenderer.setOverlay('moveHoverDest', marks, climbColor, 0.5);
+                        const tags = climbPreviewTags(c);
+                        const g = leg.ghost;
+                        /* the hazards of where the body ends up — read from that level, so a climb DOWN shows no fall */
+                        let badges = null;
+                        const _bz = unit.z;
+                        try { unit.z = g.z; badges = _moveGhostBadges(unit, g.x, g.y, g.z, walk, tags); }
+                        finally { unit.z = _bz; }
+                        if (c.viaMove && typeof predictFallDamage === 'function') {   // the walk to the foot still pays its own drop
+                            const _wf = predictFallDamage(unit, unit.z ?? 0, c.viaMove.z ?? 0, c.viaMove.x, c.viaMove.y) || 0;
+                            if (_wf > 0 && badges) badges.dmg = (badges.dmg || 0) + _wf;
+                        }
+                        ThreeRenderer.showGhostUnit(unit, g.x, g.y, _wpY(g.x, g.y, g.z), { tag: 'caster', color: ghostTint, opacity: 0.85,
+                            badges: badges, motion: { wps: wps, kind: 'walk', hang: leg.hang } });
+                        state._moveHoverActive = true;
+                        scheduleBoardRender();
+                        return;
+                    }
+                }
+
                 // (Two-action walk+walk previews were removed with the 2-AP
                 // double-move executor: Move shows the 1-AP ring only, and a
                 // second move is its own deliberate action.)
@@ -50349,7 +52201,7 @@
                 //    tile the unit WOULD stop at (closest reachable step toward the
                 //    hovered tile), with a dim marker on the unreachable goal so the
                 //    player sees where the click will actually take them.
-                if (state.actionMode === 'move' && canUnitMove(unit)
+                if (want.towards && canUnitMove(unit)
                     && typeof findMoveTowardsTile === 'function') {
                     const approach = findMoveTowardsTile(unit, x, y, _hovZ);
                     if (approach) {
@@ -50398,8 +52250,23 @@
                         return;
                     }
                 }
-            } catch (e) { /* preview is cosmetic — never let it break hover */ }
+            }
         }
+        /* The tile quick menu's rows ask for the same preview (hud.js): kind 'move' | 'jump' | 'climb' | 'takeoff'.
+           Cleared by hud.js _clearMoveArrowPreview (arrows, ghost, 'moveHoverDest'). */
+        window.previewMovePlan = function (unit, x, y, z, kind) {
+            try {
+                if (!unit || typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive()) return false;
+                _clearMoveHoverPreview();
+                ThreeRenderer.clearArrows3D();
+                ThreeRenderer.clearGhostUnit('caster');
+                ThreeRenderer.clearOverlay('moveHoverDest');
+                _drawMovePlan(unit, x, y, z, kind === 'jump' ? { jump: true } : kind === 'climb' ? { climb: true, climbAnyZ: true } : { move: true });
+                const drew = !!state._moveHoverActive;
+                state._moveHoverActive = false; state._moveHoverKey = null;   // the menu row owns it, not the board hover
+                return drew;
+            } catch (e) { return false; }
+        };
 
         // ── Hover attack-range preview (2026-07-19, user request) ──────────
         // Hovering any unit paints the tiles it can basic-attack from where it
@@ -52026,12 +53893,24 @@
             const careerStats = loadCareerStats();
             const _profileUsername = (window.ProfileSystem && window.ProfileSystem.getActiveProfile()) ? window.ProfileSystem.getActiveProfile().username : null;
             const streakHtml = !isNoContest && playerWon && careerStats.currentWinStreak >= 2 ? `<span class="vic-streak">🔥 ${careerStats.currentWinStreak} WIN STREAK</span>` : '';
-            const namePrefix = _profileUsername ? `<b class="vic-callsign">${escapeHtml(_profileUsername)}</b> ` : '';
+            /* THE NAME ON THE RESULT (playtest 2026-11-05 F5: "Player is defeated."): a profile nobody named yet is "You",
+               never the placeholder "Player"; a named profile keeps its call sign */
+            const _named = !!_profileUsername && String(_profileUsername).trim().toLowerCase() !== 'player';
+            const namePrefix = `<b class="vic-callsign">${_named ? escapeHtml(_profileUsername) : 'You'}</b> `;
+            const _vHold = _named ? 'holds the field.' : 'hold the field.', _vDown = _named ? 'is defeated' : 'are defeated';
+            /* a forfeit says so, and who (the pause menu's FORFEIT, a seat that never reconnected, a turn held too long) */
+            const _ff = (!isNoContest && !_encEsc) ? _forfeitOfThisMatch() : null;
+            const _ffMine = !!_ff && _ff.by === (ONLINE_RULES.active ? viewer : 1);
+            const _ffLine = !_ff ? '' : _ffMine
+                ? ({ disconnect: 'You were disconnected too long. The match is forfeit.', timer: 'You held the turn too long. The match is forfeit.' }[_ff.how] || 'You forfeited the match.')
+                : ({ disconnect: 'Your opponent did not reconnect in time. They forfeit the match.', timer: 'Your opponent held the turn too long. They forfeit the match.' }[_ff.how] || 'Your opponent forfeited the match.');
+            resultOverlay.classList.toggle('vic-online', !!ONLINE_RULES.active);
             vicSubtitle.innerHTML = isNoContest
                 ? `Match ${state.matchNumber} voided — the units could not engage.`
                 : (_encEsc && _encEsc.retreat) ? (namePrefix + 'slipped out of the fight. Nothing won, nothing lost · ' + escapeHtml(String((_encEsc.label || _encEsc.race || 'the native')).toUpperCase()) + ' STILL HAS THE ROOM')
-                : (_encEsc && _encEsc.escLoss) ? (namePrefix + 'is defeated · THE PARTY IS DOWN · ' + escapeHtml(_encEsc.escaped.join(', ').toUpperCase()) + ' GOT OUT')
-                : (namePrefix + (playerWon ? 'holds the field.' : 'is defeated.') + ((_encEsc && _encEsc.escaped && _encEsc.escaped.length) ? ' · ' + _encEsc.escaped.length + ' ESCAPED' : '') + ' ' + streakHtml);
+                : _ffLine ? (escapeHtml(_ffLine) + ' ' + streakHtml)
+                : (_encEsc && _encEsc.escLoss) ? (namePrefix + _vDown + ' · THE PARTY IS DOWN · ' + escapeHtml(_encEsc.escaped.join(', ').toUpperCase()) + ' GOT OUT')
+                : (namePrefix + (playerWon ? _vHold : _vDown + '.') + ((_encEsc && _encEsc.escaped && _encEsc.escaped.length) ? ' · ' + _encEsc.escaped.length + ' ESCAPED' : '') + ' ' + streakHtml);
 
             let particleHtml = '';
             if (playerWon && !use3d) {
@@ -52158,6 +54037,7 @@
                 facts.push(_winCondLabels[state._winCondition] + (_sc ? ` <b class="vic-fact-score"><span class="p1">${_sc[0]}</span> – <span class="p2">${_sc[1]}</span></b>` : ''));
             }
             if (state.suddenDeathActive && state._winCondition !== 'sudden_death') facts.push('⚡ SUDDEN DEATH');
+            if (_ff) facts.push('<b class="vic-fact-forfeit">🏳 FORFEIT</b>');
             vicMatchInfo.innerHTML = facts.map(f => `<span class="vic-fact">${f}</span>`).join('<span class="vic-fact-dot">·</span>');
 
             } catch (e) { _vicFail('the fact line', e); }
@@ -52244,12 +54124,21 @@
 
             } catch (e) { _vicFail('rewards + achievements', e); }
             try {
+            /* the bar's own buttons, as they stand now (the bar is rebuilt after an encounter, so never the boot-time handle) */
+            const _nmb = document.getElementById('nextMatchBtn') || nextMatchBtn, _sob = document.getElementById('startOverBtn');
             if (ONLINE_RULES.active) {
-                if (nextMatchBtn) nextMatchBtn.textContent = 'Request Rematch';
-                if (document.getElementById('startOverBtn')) document.getElementById('startOverBtn').style.display = 'none';
+                if (_nmb) _nmb.textContent = 'Request Rematch';
+                if (_sob) _sob.style.display = 'none';
+                _vicRematchNote('Both players must agree to a rematch. Same room, same round count.', '');
+            } else {
+                /* an offline result after an online one (end screens 2026-11-10: VS CPU after a room showed "RECONNECTING…"
+                   on the next-match button and no BACK TO PARTY BUILDER): the bar's offline words and buttons come back */
+                if (_nmb && !_nmb.classList.contains('enc-return')) _nmb.textContent = 'Find Next Match';
+                if (_sob) _sob.style.display = '';
+                _vicRematchNote('', '');
             }
 
-            nextMatchBtn.disabled = false;
+            if (_nmb) _nmb.disabled = false;
             if (exportLastMatchBtn) exportLastMatchBtn.disabled = !state.lastCompletedMatch;
             if (exportMatchHistoryBtn) exportMatchHistoryBtn.disabled = !state.matchHistory.length;
 
@@ -52609,7 +54498,7 @@
                 return `<tr class="${deadClass}">
                     <td><div class="unit-sprite-cell">
                         ${sprite ? `<div style="width:24px;height:24px;background-image:url('${sprite}');background-size:contain;background-position:center;background-repeat:no-repeat;image-rendering:pixelated"></div>` : ''}
-                        <span class="unit-name-text">${escapeHtml(unitDisplayName(u))}${(() => { const rl = u.race ? getRaceLabel(u.race, u.gender) : ''; const nm = unitDisplayName(u); const extra = [rl && rl !== nm ? rl : '', lvl > 1 ? 'Lv' + lvl : ''].filter(Boolean).join(' · '); return extra ? `<small>${escapeHtml(extra)}</small>` : ''; })()}</span>
+                        <span class="unit-name-text">${escapeHtml(unitDisplayName(u))}${(() => { const rl = u.race ? getRaceLabel(u.race, u.gender) : ''; const nm = unitDisplayName(u); const extra = [rl && rl !== nm ? rl : '', lvl > 1 ? 'Lv' + lvl : ''].filter(Boolean).join(' · '); return extra ? `<small>${escapeHtml(extra)}</small>` : ''; })()}${(typeof unitMasteryChipHtml === 'function') ? unitMasteryChipHtml(u.ulv) : ''}</span>
                     </div></td>
                     ${cell('_matchKills')}
                     ${cell('_matchDeaths')}
@@ -53125,7 +55014,9 @@
             tryNow(0);
         }
         function setUnitTactic(unitId, tactic) {
-            const u = state.units.find(x => x.id === unitId && !x.dead);
+            /* a fallen unit can be set back to MANUAL (never onto a Tactic): ALL MANUAL must not leave one that
+               respawns and goes on playing by itself (mondo 2026-11-11) */
+            const u = state.units.find(x => x.id === unitId && (!x.dead || !tactic));
             if (!u || state.phase !== 'battle' || state.winner) return false;
             if (state.controllers?.[u.player] === CTRL.AI) return false;
             const t = UNIT_TACTIC_IDS.indexOf(tactic) >= 0 ? tactic : null;
@@ -55183,7 +57074,7 @@
             hideResultOverlay();
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -55308,6 +57199,8 @@
             }
 
             const _viewer = getViewerPlayer();
+            let _aftF = null;   // THE CUTSCENES: the quest fight's `after` scene (read before the encounter run is filed away)
+            try { const _er = _encRun(); if (_er && _er.quest && _er.quest.after && state.winner === _viewer && !state.devAutoSim) _aftF = { F: _er.quest, ids: _er._roleIds || null }; } catch (e) { _aftF = null; }
             if (state.winner === _viewer) {
                 /* Ace says "win by elimination" — gate it on the actual win
                    condition instead of firing on every win. */
@@ -55356,7 +57249,7 @@
                 state.matchNumber += 1;
                 state.winner = null;
                 state._winLogged = false;
-                state._winCondition = null; state._winCause = null;
+                state._winCondition = null; state._winCause = null; state._forfeit = null;
                 state._endingReason = null;
                 state._stalemateRounds = 0;
                 state._lastActivityTotal = 0;
@@ -55365,14 +57258,18 @@
                 return;
             }
             _finalizing = false;
-            setTimeout(() => {
+            const _showRes = () => {
                 if (state.isCampaign) {
                     const campResult = finalizeCampaignBattle();
                     showCampaignResultOverlay(campResult);
                 } else {
                     showResultOverlay();
                 }
-            }, 50);
+            };
+            /* THE CUTSCENES: a quest fight that was WON plays its `after` scene on the board before the result comes up */
+            let _aftOn = false;
+            try { _aftOn = !!(_aftF && _questAfterPlay(_aftF.F, _aftF.ids, _showRes)); } catch (e) { console.error('[SCENE] the aftermath did not start', e); _aftOn = false; }
+            if (!_aftOn) setTimeout(_showRes, 50);
         }
 
         function prepareBattleStateFromCurrentBuilds() {
@@ -55543,7 +57440,7 @@
             }
             state.aiThinking = false;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -55760,6 +57657,7 @@
             const pool = [];
             for (const m of EW_MAP_META) {
                 if (!!m.isDelta !== wantDelta) continue;
+                if (!m.isDelta && !m.arena) continue;   // the old big site boards left the game 2026-11-11 (mondo): never rerolled onto
                 if (!GAME_MODES[m.id] || m.id === cur) continue;
                 /* THE ARENA SIZES (2026-10-17): a sized cut (9 / 10 / 11) rerolls to another cut of its size, and a 12 never to one */
                 if (curMeta && (m.sizeOf || curMeta.sizeOf) && ((m.w | 0) !== (curMeta.w | 0) || !m.sizeOf !== !curMeta.sizeOf)) continue;
@@ -55984,7 +57882,7 @@
             state.selectedTool = null;
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56019,7 +57917,7 @@
             state.pendingTarget = null;
             state.winner = null;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56057,6 +57955,28 @@
             }
         }
 
+        /* THE FORFEIT ON THE RECORD (end screens 2026-11-10: a forfeit's result screen read like any win or loss, "4 v 4
+           STANDING" and nothing else): who gave the match up and how (quit = the pause menu, disconnect = never came back,
+           timer = held the turn too long). Cleared wherever a match clears its win condition (startTime is each seat's
+           own, so no key could match across seats). Plain data (a seat number), it rides the host's snapshot to the
+           guest; the result screen prints it as a fact and a subtitle. No rule reads it. */
+        function _forfeitMark(by, how) { state._forfeit = { by: by, how: how || 'quit' }; }
+        function _forfeitOfThisMatch() { const f = state._forfeit; return (f && state.winner && (f.by === 1 || f.by === 2) && f.by !== state.winner) ? f : null; }
+        window._forfeitMark = _forfeitMark;
+        /* THE REMATCH LINE: one status line over the result screen's command bar (online: who asked, who is waiting, who
+           left, how long a dropped seat is held). online.js writes it wherever it sets the rematch button. */
+        function _vicRematchNote(text, tone) {
+            let n = document.getElementById('vicRematchNote');
+            if (!n) {
+                if (!resultOverlay || !text) return;
+                n = document.createElement('div'); n.id = 'vicRematchNote'; n.setAttribute('role', 'status');
+                resultOverlay.appendChild(n);
+            }
+            n.textContent = text || '';
+            n.className = 'vic-rematch-note' + (text ? ' on' : '') + (tone ? ' ' + tone : '');
+        }
+        window._vicRematchNote = _vicRematchNote;
+
         function forfeitMatch() {
             if (state.phase !== 'battle' || state.winner) return;
             clearAiSafetyTimer();
@@ -56064,6 +57984,7 @@
             const localP = getLocalPlayer();
             const enemyP = localP === 1 ? 2 : 1;
             state.winner = enemyP;
+            _forfeitMark(localP, 'quit');
             addLog(`Player ${localP} forfeits the match.`);
             checkWin();
         }
@@ -56147,7 +58068,7 @@
             }
             state.aiThinking = false;
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -56353,7 +58274,7 @@
                 2: null
             };
             state._winLogged = false;
-            state._winCondition = null; state._winCause = null;
+            state._winCondition = null; state._winCause = null; state._forfeit = null;
             state._endingReason = null;
             state._stalemateRounds = 0;
             state._lastActivityTotal = 0;
@@ -57987,7 +59908,9 @@
                 const foeSeat = (viewer === 1) ? 2 : 1;
                 const foe = _encLeadUnit(foeSeat, seats && seats[foeSeat]) || (state.units || []).find(u => u.player !== viewer && !u.dead) || null;
                 const eye = er.eyeSeeded || er.eye || null;
-                const fr = hqEncounterArrival(eye, { x: lead.x, y: lead.y }, foe ? { x: foe.x, y: foe.y } : null, { fallbackYaw: camera._restYaw, tilt: A.tilt, lead: A.lead });
+                /* THE QUESTS: a quest fight's arrival lands on its portal (most of the way from the lead to it), where the guest and the enemies come out */
+                const _qP = (er.quest && er.quest.portal) ? er.quest.portal : null;
+                const fr = hqEncounterArrival(eye, { x: lead.x, y: lead.y }, _qP ? { x: _qP.x, y: _qP.y } : (foe ? { x: foe.x, y: foe.y } : null), { fallbackYaw: camera._restYaw, tilt: A.tilt, lead: _qP ? 0.8 : A.lead });
                 if (!fr) return false;
                 const zoom = Math.max(0.15, Math.min(10.0, getTurnFramingZoom() * A.zoomMult));
                 camera._tpsHold = false;
@@ -58037,6 +59960,334 @@
            its seat in the engine; this is the 3D body's flight only. Story fights only (VS-CPU: nothing to relay).
            Kill-switch: window.EW_ENC_NO_DASH_IN. */
         const ENC_DASH_IN = { backTiles: 3, ms: 620, stepMs: 150 };
+        /* THE QUESTS (2026-11-12, mondo: "the Catgirl appearing from a portal that forms in the room as she is chased by two shadow
+           beings"): a quest's own fight (data.js QUEST_FIGHTS, the run marker's `quest`). _questFightSeat stands the guest and
+           the enemies on the fight's `seats` round the portal tile (a seat off the board, unstandable or taken keeps the
+           board's own spawn); _questFightArrive is the look only: the D.O.O.R. door stands open on the portal tile and each
+           of them leaps out of it onto its seat. Engine positions are final before the first frame. VS-CPU only (RULE #2). */
+        function _questGuestUnit() {
+            /* the guest is the one body of the human seat's line that is not a party member (no partyId) and wears the fight's guest race */
+            const er = _encRun(), F = er && er.quest, g = F && F.guest; if (!g) return null;
+            const metas = (state.partyMeta && state.partyMeta[1]) || [];
+            return (state.units || []).find(u => { if (!u || u.player !== 1 || u.dead) return false; const i = parseInt(String(u.id).split('-')[1], 10); const m = Number.isFinite(i) ? metas[i] : null; return !!(m && !m.partyId && m.race === g.race); }) || null;
+        }
+        /* the fight's ALLIES (data.js QUEST_FIGHTS.allies — Agent Locke): the human seat's bodies that are no party member and
+           carry the ally mark; each goes on its Tactic so the CPU's brain plays its turns (mondo: "on auto") */
+        function _questFightAllies() {
+            const er = _encRun(), F = er && er.quest, list = (F && Array.isArray(F.allies)) ? F.allies : [];
+            if (!list.length) return [];
+            const metas = (state.partyMeta && state.partyMeta[1]) || [];
+            const out = [], used = new Set();
+            /* matched like the guest: no partyId (the launch keeps that; other marks on the meta do not survive it) + the ally's race */
+            (state.units || []).forEach(u => {
+                if (!u || u.player !== 1) return;
+                const i = parseInt(String(u.id).split('-')[1], 10); const m = Number.isFinite(i) ? metas[i] : null;
+                if (!m || m.partyId) return;
+                const k = list.findIndex((a, j) => !used.has(j) && a.race === m.race);
+                if (k >= 0) { used.add(k); out.push({ u, m: { questTactic: list[k].tactic || null, cast: list[k].cast || null, gender: list[k].gender || null } }); }
+            });
+            return out;
+        }
+        function _questFightAuto() {
+            try { _questFightAllies().forEach(({ u, m }) => { const t = m.questTactic; if (t && (typeof UNIT_TACTIC_IDS === 'undefined' || UNIT_TACTIC_IDS.indexOf(t) >= 0) && !u.tactic) u.tactic = t; if (m.cast && !(u.appearance && u.appearance.cast === m.cast)) { u.appearance = { cast: m.cast }; if (m.gender) u.gender = m.gender; } }); } catch (e) { console.warn('[QUEST] the ally tactic failed', e); }
+        }
+        function _questFightBodies() {
+            const er = _encRun(), F = er && er.quest; if (!F) return null;
+            return { F, guest: _questGuestUnit(), foes: (state.units || []).filter(u => u && u.player === 2 && !u.dead && !u._benched) };
+        }
+        function _questFightSeat() {
+            _questFightAuto();
+            const B = _questFightBodies(); if (!B || !B.F.seats) return false;
+            const W = bw(), H = bh();
+            const put = (u, seat) => {
+                if (!u || !seat) return;
+                const x = seat.x | 0, y = seat.y | 0;
+                if (x < 0 || y < 0 || x >= W || y >= H) return;
+                if (typeof getWalkableSurfaces === 'function' && !getWalkableSurfaces(x, y).length) return;
+                if ((state.units || []).some(o => o && o !== u && !o.dead && o.x === x && o.y === y)) return;
+                const z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(x, y) : 0;
+                if (z === null || z === undefined || !isFinite(z)) return;
+                try { if (typeof unitCanTraverse === 'function' && !unitCanTraverse(u, x, y, z)) return; } catch (e) { return; }
+                u.x = x; u.y = y; u.z = z;
+            };
+            put(B.guest, B.F.seats.guest);
+            B.foes.forEach((u, i) => put(u, (B.F.seats.enemies || [])[i]));
+            /* she runs FROM them, they come AFTER her: the guest faces away from the portal, the enemies face her */
+            const P = B.F.portal;
+            try {
+                if (P && B.guest && typeof setUnitFacing === 'function') { const dx = Math.sign(B.guest.x - P.x), dy = Math.sign(B.guest.y - P.y); if (dx || dy) setUnitFacing(B.guest, Math.abs(dy) >= Math.abs(dx) ? 0 : dx, Math.abs(dy) >= Math.abs(dx) ? dy : 0); }
+                const _qLead = (state.units || []).find(u => u && u.player === 1 && !u.dead && u !== B.guest) || B.guest;   /* they have come for the party now: the enemies face it (2026-11-13) */
+                if (_qLead && typeof setUnitFacing === 'function') B.foes.forEach(u => { const dx = _qLead.x - u.x, dy = _qLead.y - u.y; if (dx || dy) setUnitFacing(u, Math.abs(dy) >= Math.abs(dx) ? 0 : Math.sign(dx), Math.abs(dy) >= Math.abs(dx) ? Math.sign(dy) : 0); });
+            } catch (e) {}
+            return true;
+        }
+        function _questFightArrive() {
+            _questFightAuto();
+            const B = _questFightBodies(); if (!B || !B.F.portal) return false;
+            const P = B.F.portal;
+            try { addLog(`🚪 A portal forms. ${B.guest ? unitDisplayName(B.guest) : 'Someone'} comes through it${B.foes.length ? ', and ' + B.foes.length + ' ' + (B.foes.length === 1 ? 'enemy comes' : 'enemies come') + ' after' : ''}.`); } catch (e) {}
+            if (state.cameraDisabled || _skipVisuals()) return false;
+            try {
+                const FX = window.ThreeVFXEffects;
+                if (FX && typeof FX.questPortal === 'function') FX.questPortal(P.x, P.y, { riseMs: 160, openMs: 160, holdMs: 3800, big: true, scale: 1.5 });   // open through the arrival's swoop (battle.js _encArrivalRules.swoopS)
+            } catch (e) { console.warn('[QUEST] the portal did not draw', e); }
+            try {
+                if (!(window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive())) return false;
+                const zP = (typeof nearestWalkableZ === 'function') ? (nearestWalkableZ(P.x, P.y) || 0) : 0;
+                const leap = (u, ms) => { if (u && !(u.x === P.x && u.y === P.y)) window.ThreeAnim.jumpArc(u, P.x, P.y, u.x, u.y, zP, u.z || 0, ms); };
+                leap(B.guest, 1500);   // the leaps end as the arrival's camera lands on the portal (_encArrivalFrame)
+                B.foes.forEach((u, i) => leap(u, 2000 + i * 320));
+            } catch (e) { console.warn('[QUEST] the arrival failed — they stand on their seats', e); }
+            return true;
+        }
+        /* ══ THE CUTSCENES (2026-11-12): a quest fight with a `scene` (data.js STORY_CUTSCENES) opens on that scene, played on
+           the fight's own board by three-camera.js EWScene, in place of the dash-in / the portal leaps / the arrival crane.
+           Every body is already on its seat in the engine: the guest and the enemies are only HIDDEN (window._ewSceneHid, the
+           renderer's unit sync) until the scene brings them through the portal, and finish() (the natural end and a skip
+           alike) unhides everybody, drops any leap still in the air and the slow motion, so the cut to the fight lands on
+           the same board either way. Viewer-local, story only (VS-CPU): nothing on `state`, nothing relayed. ══ */
+        /* THE AIR DOOR (2026-11-13, mondo: "the portal to form in the air, which a door emerges from, which swings open ... the
+           floating portal door can just be a prop that floats in the room during battle, not interactable, and then when you
+           defeat the shadow entities the portal closes"): three-vfx-effects.js questAirDoor over the fight's portal tile. One
+           per quest fight, viewer-local, nothing of the rules. `stage` 0 = the portal alone, 1 = the door is out, 2 = open; the
+           watch stands it up again at its stage if the match's start swept it away, closes it when no enemy is left
+           standing and drops it when the fight is gone. */
+        let _questDoor = null;
+        const QUEST_DOOR_SILL = 1.0;   // the door's sill, in bodies off the floor (mondo 2026-11-13: "the portal+door should be floating higher": it was 0.55)
+        function _questDoorDrop() { const D = _questDoor; _questDoor = null; if (!D) return; if (D.timer) clearInterval(D.timer); try { if (D.fx) D.fx.kill(); } catch (e) {} }
+        function _questDoorUp(P, open) {
+            const FX = window.ThreeVFXEffects; if (!FX || typeof FX.questAirDoor !== 'function' || !P) return null;
+            if (!_questDoor) {
+                _questDoor = { P: { x: P.x, y: P.y }, fx: null, stage: 0, closed: false, tries: 0, timer: null };
+                _questDoor.timer = setInterval(_questDoorWatch, 300);
+            }
+            const D = _questDoor;
+            if (open) D.stage = 2;
+            if (!D.closed && !(D.fx && D.fx.alive())) {
+                /* a door sized to the bodies (2.6 m), its sill a body's waist off the floor */
+                const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, ts = (typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128;
+                const body = (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? TR.bodyUnit() : ts;
+                D.fx = FX.questAirDoor(D.P.x, D.P.y, { scale: (1.5 * body) / (1.18 * ts), lift: (QUEST_DOOR_SILL * body) / (0.95 * ts), instant: D.stage >= 2 || D.tries > 0 });
+                if (D.fx) { D.tries++; if (D.stage >= 1) D.fx.emerge(); if (D.stage >= 2) D.fx.open(); if (D.menace && D.fx.menace) D.fx.menace(true); }
+            }
+            return D.fx;
+        }
+        function _questDoorWatch() {
+            const D = _questDoor; if (!D) return;
+            const er = _encRun();
+            if (!er || !er.quest || state.phase !== 'battle') { _questDoorDrop(); return; }
+            if (D.closed) { if (!(D.fx && D.fx.alive())) _questDoorDrop(); return; }
+            const foes = (state.units || []).some(u => u && u.player === 2 && !u.dead && !u._benched);
+            if (!foes) { D.closed = true; try { if (D.fx) D.fx.close(); } catch (e) {} return; }
+            if (!(D.fx && D.fx.alive())) _questDoorUp(D.P, false);
+        }
+        function _questSceneRow() {
+            const er = _encRun(), F = er && er.quest;
+            if (!F || !F.scene || window.EW_NO_CUTSCENES) return null;
+            /* why a scene that should play does not is said once, in the console (a silent fallback reads as a missing scene) */
+            const why = state.cameraDisabled ? 'the camera is disabled' : _skipVisuals() ? 'visuals are skipped' : state.devAutoSim ? 'auto-sim' :
+                (!window.EWScene || !window.EWCine) ? 'no director (three-camera.js)' : (typeof window.storyCutscene !== 'function' || !window.storyCutscene(F.scene)) ? 'no row ' + F.scene : '';
+            if (why) { if (er._sceneWhy !== why) { er._sceneWhy = why; console.warn('[SCENE] ' + F.scene + ' not played: ' + why); } return null; }
+            return window.storyCutscene(F.scene);
+        }
+        function _questSceneRoles() {
+            const B = _questFightBodies(); if (!B) return null;
+            const er = _encRun(), seats = er.field && er.field.seats && er.field.seats.lead;
+            const R = { player: _encLeadUnit(1, seats && seats[1]), guest: B.guest };
+            B.foes.forEach((u, i) => { R['foe' + (i + 1)] = u; });
+            (state.units || []).forEach(u => { if (u && u.player === 1 && !u.dead && u.appearance && u.appearance.cast && !R[u.appearance.cast]) R[u.appearance.cast] = u; });
+            return { B, R };
+        }
+        /* before the first frame is drawn: the ones who come through the portal are not in the room yet */
+        function _questSceneHide() {
+            const Q = _questSceneRoles(); if (!Q) return false;
+            const hid = {};
+            if (Q.B.guest) hid[Q.B.guest.id] = true;
+            Q.B.foes.forEach(u => { hid[u.id] = true; });
+            _questDoorDrop();   // a door left over from the last fight
+            window._ewSceneHid = hid;
+            const cast = {}; (state.units || []).forEach(u => { if (u && !u.dead && !u._benched) cast[u.id] = true; }); window._ewSceneCast = cast;
+            try { addLog(`🚪 A portal forms. ${Q.B.guest ? unitDisplayName(Q.B.guest) : 'Someone'} comes through it${Q.B.foes.length ? ', and ' + Q.B.foes.length + ' ' + (Q.B.foes.length === 1 ? 'enemy comes' : 'enemies come') + ' after' : ''}.`); } catch (e) {}
+            return true;
+        }
+        function _questSceneHost() {
+            const Q = _questSceneRoles(); if (!Q) return null;
+            const { B, R } = Q, P = B.F.portal || { x: 0, y: 0 };
+            const FX = window.ThreeVFXEffects, TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : window.ThreeRenderer, TA = window.ThreeAnim;
+            const tile = (x, y) => { const w = FX && FX.tileWorld ? FX.tileWorld(x, y) : null; return w ? { x: w.x, y: w.y, z: w.z } : null; };
+            const out3 = [0, 0, 0];
+            const point = (ref) => {
+                if (ref === 'portal') return tile(P.x, P.y);
+                const m = /^(unit|seat|tile):(.+)$/.exec(String(ref)); if (!m) return null;
+                if (m[1] === 'tile') { const c = m[2].split(','); return tile(+c[0], +c[1]); }
+                const u = R[m[2]]; if (!u) return null;
+                if (m[1] === 'unit' && TR && TR.getUnitWorldPos && TR.getUnitWorldPos(u.id, out3)) return { x: out3[0], y: out3[1], z: out3[2] };
+                return tile(u.x, u.y);   // its seat (a body not in the room yet is looked for where it will stand)
+            };
+            const cell = (ref) => { if (ref === 'portal') return { x: P.x, y: P.y }; const m = /^(?:unit|seat):(.+)$/.exec(String(ref)); const u = m && R[m[1]]; if (u) return { x: u.x, y: u.y }; const t = /^tile:(-?\d+),(-?\d+)$/.exec(String(ref)); return t ? { x: +t[1], y: +t[2] } : null; };
+            const zAt = (x, y) => (typeof nearestWalkableZ === 'function') ? (nearestWalkableZ(x, y) || 0) : 0;
+            const face = (u, to) => { const c = cell(to); if (!u || !c) return; const dx = c.x - u.x, dy = c.y - u.y; if (dx || dy) { setUnitFacing(u, Math.abs(dy) >= Math.abs(dx) ? 0 : Math.sign(dx), Math.abs(dy) >= Math.abs(dx) ? Math.sign(dy) : 0); render(); } };
+            const show = (u) => { if (u && window._ewSceneHid) delete window._ewSceneHid[u.id]; };
+            const w0 = tile(0, 0), w1 = tile(1, 0);
+            let over = false;
+            /* the door's sill, in board heights (a height = a square): a leap out of the door starts up there */
+            const sill = (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? (QUEST_DOOR_SILL * TR.bodyUnit()) / ((typeof CONFIG !== 'undefined' && CONFIG.tileSize) || 128) : 0.3;
+            return {
+                /* a scene's lengths are BODIES (a standing body = 1, 1.75 m), so a shot frames the cast the same on any board's squares */
+                unit: (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? TR.bodyUnit() : ((w0 && w1) ? (Math.abs(w1.x - w0.x) || 128) / 2 : 64),
+                point,
+                act(a) {
+                    const u = a.who ? R[a.who] : null;
+                    if (a.do === 'portal') _questDoorUp(P, false);
+                    else if (a.do === 'door') { const d = _questDoorUp(P, false); if (d) d.emerge(); if (_questDoor) _questDoor.stage = Math.max(_questDoor.stage, 1); }
+                    else if (a.do === 'menace') { const d = _questDoorUp(P, false); if (d && d.menace) d.menace(a.off ? false : true); if (_questDoor) _questDoor.menace = !a.off; }
+                    else if (a.do === 'open') { const d = _questDoorUp(P, false); if (d) d.open(); if (_questDoor) _questDoor.stage = 2; }
+                    /* out of the door: `knock` = she lands hard, goes over and gets up (the board's own knockdown + get-up) */
+                    else if (a.do === 'out') { if (!u) return; show(u); if (!(u.x === P.x && u.y === P.y)) TA.jumpArc(u, P.x, P.y, u.x, u.y, zAt(P.x, P.y) + sill, u.z || 0, a.ms || 1000, a.knock ? { knock: 'fling' } : undefined); }
+                    else if (a.do === 'face') face(u, a.to);
+                    else if (a.do === 'show') show(u);
+                    else if (a.do === 'pounce') {
+                        const c = cell(a.to); if (!u || !c) return;
+                        /* the square beside the prey on the hunter's side: the leap is cut before it lands */
+                        const sx = Math.sign(u.x - c.x), sy = Math.sign(u.y - c.y), tx = c.x + sx, ty = c.y + sy;
+                        if (tx === u.x && ty === u.y) return;
+                        TA.jumpArc(u, u.x, u.y, tx, ty, u.z || 0, zAt(tx, ty), a.ms || 760);
+                    }
+                },
+                slow(scale, ms) { if (TA && TA.slowMo) TA.slowMo(scale, ms); },
+                finish() {
+                    over = true; window._ewSceneHid = null; window._ewSceneCast = null;
+                    try { if (TR && TR.clearTimeWarp) TR.clearTimeWarp(); } catch (e) {}
+                    try { if (TR && TR.cancelJumpTween) [B.guest].concat(B.foes).forEach(u => { if (u) TR.cancelJumpTween(u.id); }); } catch (e) {}
+                    /* the door stays: open, floating over the portal tile for the whole fight (a skipped scene stands it up at once) */
+                    try { const d = _questDoorUp(P, true); if (_questDoor) _questDoor.menace = false; if (d && d.menace) d.menace(false); } catch (e) {}
+                    /* the fight opens the way _questFightSeat stood them: she with her back to the portal, they facing her */
+                    try { _questFightSeat(); render(); } catch (e) {}
+                }
+            };
+        }
+        function _questScenePlay(cb) {
+            const row = _questSceneRow(); if (!row) return false;
+            let done = false;
+            const end = () => { if (done) return; done = true; try { if (document && document.body) document.body.classList.remove('enc-arrival'); } catch (e) {} if (cb) cb(); };
+            /* the scene needs the 3D board (a match starts a few frames before its board is up): it waits for it, nobody
+               on screen who is not in the room yet and no turn begun; a board that never comes up starts the fight plain */
+            const t0 = performance.now();
+            const go = () => {
+                if (done) return;
+                const up = !!(window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive());
+                if (!up) { if (performance.now() - t0 < 15000) { setTimeout(go, 100); return; } console.warn('[SCENE] ' + row.id + ' not played: the 3D board never came up'); window._ewSceneHid = null; window._ewSceneCast = null; end(); return; }
+                const host = _questSceneHost();
+                let ok = false;
+                try { ok = !!host && window.EWScene.play(row, host, end); } catch (e) { console.error('[SCENE] the cutscene did not start', e); ok = false; }
+                if (!ok) { console.warn('[SCENE] ' + row.id + ' did not start'); try { if (host) host.finish(true); } catch (e) {} window._ewSceneHid = null; window._ewSceneCast = null; end(); }
+            };
+            go();
+            return true;
+        }
+        /* THE AFTERMATH (scene D, 2026-11-13): the fight is won and filed; the scene stands the three of them on the fight's
+           `afterSeats` (someone who went down is back on their feet for it: nothing here is written anywhere) and plays on
+           the same board. Roles by the ids taken at the fight's start. `walk` (who, path [[x,y]...]) = the board's own walk. */
+        function _questAfterPlay(F, ids, cb) {
+            if (!F || !F.after || !ids || window.EW_NO_CUTSCENES || state.cameraDisabled || _skipVisuals()) return false;
+            if (!window.EWScene || !window.EWCine || typeof window.storyCutscene !== 'function') return false;
+            const row = window.storyCutscene(F.after); if (!row) { console.warn('[SCENE] no row ' + F.after); return false; }
+            const FX = window.ThreeVFXEffects, TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : window.ThreeRenderer, TA = window.ThreeAnim;
+            if (!(TA && TA.isActive && TA.isActive())) return false;
+            const R = {}; Object.keys(ids).forEach(k => { const u = unitFromId(ids[k]); if (u && u.player === 1) R[k] = u; });
+            if (!R.player || !R.guest) return false;
+            const zAt = (x, y) => (typeof nearestWalkableZ === 'function') ? (nearestWalkableZ(x, y) || 0) : 0;
+            const seats = F.afterSeats || {};
+            const cast = {};
+            Object.keys(R).forEach(k => {
+                const u = R[k], st = seats[k]; cast[u.id] = true;
+                if (u.dead) { u.dead = false; u.hp = Math.max(1, u.hp || 0); }
+                if (st && typeof getWalkableSurfaces === 'function' && getWalkableSurfaces(st.x, st.y).length) {
+                    (state.units || []).forEach(o => { if (o && o !== u && !o.dead && o.x === st.x && o.y === st.y && !Object.keys(R).some(q => R[q] === o)) { o.x = -99; o.y = -99; } });
+                    u.x = st.x; u.y = st.y; u.z = zAt(st.x, st.y);
+                }
+                try { if (TR && TR.cancelJumpTween) TR.cancelJumpTween(u.id); } catch (e) {}
+            });
+            window._ewSceneHid = null; window._ewSceneCast = cast;
+            _questDoorDrop();
+            try { if (TR && TR.clearTimeWarp) TR.clearTimeWarp(); } catch (e) {}
+            const tile = (x, y) => { const w = FX && FX.tileWorld ? FX.tileWorld(x, y) : null; return w ? { x: w.x, y: w.y, z: w.z } : null; };
+            const out3 = [0, 0, 0];
+            const point = (ref) => {
+                const m = /^(unit|seat|tile):(.+)$/.exec(String(ref)); if (!m) return null;
+                if (m[1] === 'tile') { const c = m[2].split(','); return tile(+c[0], +c[1]); }
+                const u = R[m[2]]; if (!u) return null;
+                if (m[1] === 'unit' && TR && TR.getUnitWorldPos && TR.getUnitWorldPos(u.id, out3)) return { x: out3[0], y: out3[1], z: out3[2] };
+                return tile(u.x, u.y);
+            };
+            const cell = (ref) => { const m = /^(?:unit|seat):(.+)$/.exec(String(ref)); const u = m && R[m[1]]; if (u) return { x: u.x, y: u.y }; const t = /^tile:(-?\d+),(-?\d+)$/.exec(String(ref)); return t ? { x: +t[1], y: +t[2] } : null; };
+            const face = (u, to) => { const c = cell(to); if (!u || !c) return; const dx = c.x - u.x, dy = c.y - u.y; if (dx || dy) { setUnitFacing(u, Math.abs(dy) >= Math.abs(dx) ? 0 : Math.sign(dx), Math.abs(dy) >= Math.abs(dx) ? Math.sign(dy) : 0); render(); } };
+            try { render(); } catch (e) {}
+            const w0 = tile(0, 0), w1 = tile(1, 0);
+            let done = false;
+            const end = () => { if (done) return; done = true; window._ewSceneCast = null; if (cb) cb(); };
+            const host = {
+                unit: (TR && TR.bodyUnit && TR.bodyUnit() > 0) ? TR.bodyUnit() : ((w0 && w1) ? (Math.abs(w1.x - w0.x) || 128) / 2 : 64),
+                point,
+                act(a) {
+                    const u = a.who ? R[a.who] : null;
+                    if (a.do === 'face') face(u, a.to);
+                    else if (a.do === 'walk') {
+                        if (!u || !Array.isArray(a.path) || !a.path.length) return;
+                        const W = bw(), H = bh();
+                        const path = a.path.map(c => ({ x: c[0], y: c[1], z: zAt(c[0], c[1]) })).filter(c => c.x >= 0 && c.y >= 0 && c.x < W && c.y < H && (typeof getWalkableSurfaces !== 'function' || getWalkableSurfaces(c.x, c.y).length));
+                        if (!path.length) return;
+                        try { TA.walkPath(u, path); } catch (e) {}
+                        const last = path[path.length - 1]; u.x = last.x; u.y = last.y; u.z = last.z;
+                    }
+                },
+                slow(scale, ms) { if (TA && TA.slowMo) TA.slowMo(scale, ms); },
+                finish() { window._ewSceneCast = null; try { if (TR && TR.clearTimeWarp) TR.clearTimeWarp(); } catch (e) {} }
+            };
+            let ok = false;
+            try { ok = !!window.EWScene.play(row, host, end); } catch (e) { console.error('[SCENE] the aftermath did not start', e); ok = false; }
+            if (!ok) window._ewSceneCast = null;
+            return ok;
+        }
+        /* THE SCENE REPLAY (2026-11-13, mondo: "can i not replay it? we literally added a replay system so i can check these
+           things"): the journal's REPLAY of the aftermath alone. The fight's board is up with everybody seated; the enemies
+           are taken off it, the scene plays as it does after a win, and its end goes straight back to the room: no turn is
+           ever dealt, nothing is finalized, committed or filed (no result, no XP, no record). */
+        /* THE OPENING SCENE ALONE (2026-11-15, the cutscene editor's PLAY, mondo: "obviously if I need a cutscene editor i need to be
+           able to play the cutscenes from it"): the run's `sceneOnly: 'scene'` plays the fight's opening scene and goes straight
+           back to the room when it ends: no turn is dealt, nothing is finalized, committed or filed. */
+        function _questSceneOnlyBack() {
+            const er = _encRun(); if (!er) return false;
+            window._ewSceneHid = null; window._ewSceneCast = null;
+            try { _questDoorDrop(); } catch (e) {}
+            window._hqEncounterRun = null; _encMatch = null;
+            window._hqEncounterResult = { won: true, sceneOnly: true, site: er.site, room: er.room, race: er.race, label: er.label || er.race, walker: er.walker || null };
+            try { backToMainMenu(); } catch (e) { console.error('[SCENE] the scene could not go back to the room', e); }
+            return true;
+        }
+        function _questAfterOnly() {
+            const er = _encRun(), F = er && er.quest; if (!F || !F.after) return false;
+            const seat = getViewerPlayer();
+            state.units = (state.units || []).filter(u => u && u.player === seat);
+            _questDoorDrop();
+            try { render(); } catch (e) {}
+            const back = () => {
+                window._hqEncounterRun = null; _encMatch = null;
+                window._hqEncounterResult = { won: true, sceneOnly: true, site: er.site, room: er.room, race: er.race, label: er.label || er.race, walker: er.walker || null };
+                try { backToMainMenu(); } catch (e) { console.error('[SCENE] the replay could not go back to the room', e); }
+            };
+            /* the scene needs the 3D board (a match starts a few frames before it is up): wait for it, as the opening scene does */
+            const t0 = performance.now();
+            const go = () => {
+                const up = !!(window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive());
+                if (!up && performance.now() - t0 < 15000) { setTimeout(go, 100); return; }
+                let ok = false;
+                try { ok = !!_questAfterPlay(F, er._roleIds || null, back); } catch (e) { console.error('[SCENE] the aftermath replay did not start', e); ok = false; }
+                if (!ok) { console.warn('[SCENE] ' + F.after + ' not replayed'); back(); }
+            };
+            go();
+            return true;
+        }
         function _encPartyDashIn() {
             const er = _encRun();
             if (!er || window.EW_ENC_NO_DASH_IN || state.cameraDisabled || _skipVisuals()) return false;
@@ -58435,6 +60686,7 @@
 
             /* THE FIRST STRIKE (2026-09-22): in an encounter the officer's unit — the one that swung — opens round 1
                (set BEFORE the order is built below — state.js buildBlitzTurnOrder consumes it); a plain match never carries one */
+            try { if (_encRun() && _encRun().quest) _questFightSeat(); } catch (e) { console.warn('[QUEST] the seats failed', e); }   // THE QUESTS: before the order is built and the first frame is drawn
             window._ewEncounterFirstId = null;
             try {
                 const _erF = _encRun();
@@ -58457,7 +60709,14 @@
             addLog(`⚡ Round ${state.round}`);
             syncMusicToState();
 
-            if (_encRun()) _encPartyDashIn();   // THE DASH-IN: the party leaps in behind the lead as the crane lifts off
+            /* THE CUTSCENES: a quest fight with a scene opens on it (the portal and who comes through are the scene's) */
+            /* who is who in this quest fight, by id (the `after` scene reads it once the fight is over) */
+            try { const _er0 = _encRun(), _Q0 = (_er0 && _er0.quest) ? _questSceneRoles() : null; if (_Q0) { _er0._roleIds = {}; Object.keys(_Q0.R).forEach(k => { if (_Q0.R[k]) _er0._roleIds[k] = _Q0.R[k].id; }); } } catch (e) {}
+            /* THE SCENE REPLAY (2026-11-13): the journal asked for the fight's `after` scene alone (the run's `sceneOnly`) */
+            const _qOnly = !!(_encRun() && _encRun().sceneOnly === 'after' && _encRun().quest && _encRun().quest.after && !state.devAutoSim);
+            const _qScene = !_qOnly && !!(_encRun() && _questSceneRow() && _questSceneHide());
+            if (_encRun() && !_qScene && !_qOnly) _encPartyDashIn();   // THE DASH-IN: the party leaps in behind the lead as the crane lifts off
+            if (_encRun() && _encRun().quest && !_qScene && !_qOnly) _questFightArrive();   // THE QUESTS: the guest and the enemies come out of the portal
 
             invalidateLayoutCache();
             render();
@@ -58482,7 +60741,11 @@
                     if (typeof showCombatBanner === 'function') showCombatBanner('🏘 GUILD HUB', 'Walk to the cave entrance to begin the dungeon', 'neutral');
                     maybeAdvanceTurn();
                     setTimeout(_mdStartFreeRoam, 450);
-                } else if (_encRun() && _encArrivalRound(() => encounterOpening(() => maybeAdvanceTurn()))) {
+                } else if (_qOnly && _questAfterOnly()) {
+                    /* THE SCENE REPLAY: the aftermath alone, then straight back to the room */
+                } else if (_qScene && _questScenePlay(() => { if (_encRun() && _encRun().sceneOnly === 'scene' && _questSceneOnlyBack()) return; encounterOpening(() => maybeAdvanceTurn()); })) {
+                    /* THE CUTSCENES: the scene plays, then the hard cut to the fight's frame and the first activation */
+                } else if (_encRun() && ((_qScene && (window._ewSceneHid = null), (window._ewSceneCast = null)), _encArrivalRound(() => encounterOpening(() => maybeAdvanceTurn())))) {
                     /* THE ARRIVAL: no ROUND 1 card (a card is a cut) — the letterbox rides the crane and the HUD
                        fades in as it lands; the first activation waits for the landing (and THE OPENING — the door that struck
                        first lands its act on the native, DOOR_GUN_PLAN §5.3) */
@@ -60029,6 +62292,7 @@
                     _possessSettleSeats(null);   // THE HOME SIDE: its activation is over, the body goes home until the next one
                     if (_ctlUnit && !_ctlUnit.dead) _staggerSpendActivation(_ctlUnit);
                     if (_ctlUnit) _ctlUnit._turnRound = state.round;   // ONE ROUND = ONE TURN: its turn this round is spent (END TURN can leave AP)
+                    if (_ctlUnit) astralSpendActivation(_ctlUnit);   // 👁 a projection lasts until the caster's next turn ends
                 }
                 clearSpellPick();
 
@@ -60921,7 +63185,10 @@
                    the source, then the unit is done (human and CPU alike; the
                    status wears off with the round tick). */
                 if (unitHasStatus(nextUnit, 'feared') && STATUS_DEFS.feared?.fear) {
-                    _fearFleeMove(nextUnit);
+                    /* ONE FLEE ENDS THE FEAR (mondo 2026-11-10, open rule 10 "B": "Fear ends after the first flee, whatever
+                       its length"): the flight spends this activation as before, and the status comes off with it. A
+                       cornered unit that had nowhere to run did not flee: it stays Feared for its count. */
+                    if (_fearFleeMove(nextUnit) && !nextUnit.dead && !nextUnit._dying) clearStatus(nextUnit, 'feared');
                     nextUnit.ap = 0;
                     nextUnit.movesThisTurn = UNIT_MAX_MOVES;
                     scheduleBoardRender();
@@ -65128,7 +67395,26 @@
         }
 
         function queueComputerAction(actionFn, target = null, delay = 150) {
+            /* ♟ TAKE CONTROL (mondo 2026-11-11: "once they are on it's hard to stop bc they just go on auto"): a unit of
+               the player's that was on a Tactic when the AI queued this step and was set back to MANUAL before the step
+               began (the AUTO lamp / TAKE CONTROL, hud.js) does not take it: the step is dropped, nothing is spent, and
+               setUnitTactic's hand-back gives the player the turn. A step already under way still finishes. */
+            const _qUnit = state._blitzActiveUnitId ? state.units.find(u => u.id === state._blitzActiveUnitId) : null;
+            const _qTactic = !!(_qUnit && unitOnTactic(_qUnit));
             const safeAction = () => {
+                if (_qTactic && !_qUnit.dead && !_qUnit.tactic && state._blitzActiveUnitId === _qUnit.id
+                    && !state.winner && state.phase === 'battle') {
+                    state.aiThinking = false;
+                    state.actionMode = null;
+                    state.actionMenuView = 'root';
+                    state.comboPartner = null;
+                    state.selectedTool = null;
+                    state.pendingTarget = null;
+                    clearAiSafetyTimer();
+                    markDirty('board', 'hud', 'selectedUnit');
+                    renderIfDirty();
+                    return;
+                }
                 try {
                     actionFn();
                 } catch (err) {
@@ -65259,6 +67545,7 @@
             isAllyUnit, isEnemyUnit, _isFFA,
             /* Provoke reads for ai.js (the taunter unit; THE SPELL AUDIT Batch D's decoy straw) */
             getTauntTargeter: (u) => (typeof window.getTauntTargeter === 'function' ? window.getTauntTargeter(u) : null),
+            getCharmer: (u) => (typeof window.getCharmer === 'function' ? window.getCharmer(u) : null),   // 💋 rule 7 B
             getTauntDecoy: (u) => (typeof window.getTauntDecoy === 'function' ? window.getTauntDecoy(u) : null),
             unitAt, canFly, isUnitAirborne, airborneUnitAt, getMinFlyingZ, getMaxFlyingZ,
             isFlightCrippled, forceGroundUnit,
@@ -66063,9 +68350,10 @@
                 }
                 if (_landingPick) {
                     /* the board is the drum (above) */
-                } else if (spell && !isSpellTileTargeted(spell) && !isSpellSelfCast(spell)) {
+                } else if (spell && !isSpellTileTargeted(spell) && (!isSpellSelfCast(spell) || _selfPoolWalkIn(unit, spell))) {
 
-                    let targets = _getSpellValidTargets(unit, spell);
+                    /* THE WALK-IN SELF CAST: nobody in reach from here, so the list is the enemies a step brings in */
+                    let targets = isSpellSelfCast(spell) ? [] : _getSpellValidTargets(unit, spell);
                     // Quick-menu parity: fold in MOVE→CAST targets (reachable
                     // after the engine's approach step) so the drum, the cycle
                     // list and the pre-armed pick all match what the quick
@@ -66379,6 +68667,8 @@
             // this drum, unit-targeted offensive casts collapse to the
             // challenger alone — mirrors the doSpell gate exactly.
             if (isOffensive && !_skm.tileTargeted && !_skm.directional) {
+                const _drumCharmer = getCharmer(unit);   // 💋 never the charmer (rule 7 B)
+                if (_drumCharmer) for (let i = targets.length - 1; i >= 0; i--) { if (targets[i].unit && targets[i].unit.id === _drumCharmer.id) targets.splice(i, 1); }
                 const _drumTaunter = getTauntTargeter(unit);
                 if (_drumTaunter && targets.some(t => t.unit && t.unit.id === _drumTaunter.id)) {
                     return targets.filter(t => !t.unit || !isEnemyUnit(unit, t.unit) || t.unit.id === _drumTaunter.id);
@@ -66401,7 +68691,8 @@
            castable-now, so nothing shows twice. */
         function _getSpellApproachTargets(unit, spell, haveSet) {
             if (!unit || !spell) return [];
-            if (isSpellSelfCast(spell)) return [];
+            const _poolRow = isSpellSelfCast(spell) && _selfPoolSpell(spell);   // THE WALK-IN SELF CAST
+            if (isSpellSelfCast(spell) && !_poolRow) return [];
             if (_spellNeverApproaches(unit, spell)) return [];   // NO WALK FIRST: self blinks, a two-click cast mid-pick
             if (spell.kind === 'skyThrow' && skyThrowLandingPhase(unit)) return [];   // THE LANDING PICK: the body is already held
             if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return [];
@@ -66424,6 +68715,7 @@
                 }
                 if (!u.dead && spellTargetsCorpses(spell)) continue;
                 if (haveSet && u.id != null && haveSet.has(u.id)) continue;
+                if (_poolRow && (u.dead || u._dying || u.id === unit.id || !isEnemyUnit(u, unit))) continue;   // THE WALK-IN SELF CAST: enemies only
                 // Chivalry pledges to ANOTHER ally (doSpell refuses the caster) — the drum's own rule, here too
                 // (playtest 2026-11-07 A3: the Knight listed himself as a 0T MOVE→CAST row).
                 if (spell.kind === 'guard' && (u.id === unit.id || u._dying)) continue;
@@ -66467,6 +68759,8 @@
             // whenever the challenger is on offer (castable now OR via approach)
             // — mirrors the drum's and doSpell's gate.
             if (isOffensive && !_skm.tileTargeted && !_skm.directional) {
+                const _apCharmer = getCharmer(unit);   // 💋 never the charmer (rule 7 B)
+                if (_apCharmer) for (let i = out.length - 1; i >= 0; i--) { if (out[i].unit && out[i].unit.id === _apCharmer.id) out.splice(i, 1); }
                 const _taunter = getTauntTargeter(unit);
                 if (_taunter && (out.some(t => t.unit && t.unit.id === _taunter.id)
                     || (haveSet && haveSet.has(_taunter.id)))) {
@@ -66827,7 +69121,7 @@
                 return ob.spellName || 'Object';
             }
             const sd = (state.plantedSeeds || []).find(s => s.x === x && s.y === y);
-            if (sd) return sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+            if (sd) return sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : sd.type === 'apple' ? 'Apple Seed' : 'Leech Seed';
             if (typeof _tileHasTree === 'function' && _tileHasTree(x, y)) return 'Tree';
             if (doorAt(x, y)) return 'Door';
             if ((state.mirrors || []).some(m => m.x === x && m.y === y && m.hp > 0)) return 'Prism';
@@ -66840,6 +69134,7 @@
 
         function _getAttackValidTargets(unit, opts) {
             if (!unit) return [];
+            if (unitIsSpirit(unit)) return [];   // 👁 a spirit cannot basic attack
             /* combatOnly: skip pure scenery (trees / smashable terrain). Used by
                the Attack-button lighting so the button greys out when the only
                thing in reach is choppable — chopping stays available through the
@@ -66861,6 +69156,12 @@
             // 🗯 Provoke: while the challenger is attackable, they are the ONLY
             // enemy unit in the drum — mirrors the doAttack gate.
             {
+                const _atkDrumCharmer = getCharmer(unit);   // 💋 never the charmer (rule 7 B)
+                if (_atkDrumCharmer) {
+                    for (let i = targets.length - 1; i >= 0; i--) {
+                        if (targets[i].unit && targets[i].unit.id === _atkDrumCharmer.id) targets.splice(i, 1);
+                    }
+                }
                 const _atkDrumTaunter = getTauntTargeter(unit);
                 if (_atkDrumTaunter && targets.some(t => t.unit && t.unit.id === _atkDrumTaunter.id)) {
                     for (let i = targets.length - 1; i >= 0; i--) {
@@ -66933,7 +69234,7 @@
                         const d = Math.abs(s.x - unit.x) + Math.abs(s.y - unit.y);
                         if (d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, s.x, s.y, unitZ)) {
                             if (visionGatesTargeting(unit) && !isInVision(unit, s.x, s.y)) continue;
-                            const seedName = s.type === 'heal' ? 'Healing Seed' : s.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+                            const seedName = s.type === 'heal' ? 'Healing Seed' : s.type === 'poison' ? 'Poison Seed' : s.type === 'apple' ? 'Apple Seed' : 'Leech Seed';
                             targets.push({ x: s.x, y: s.y, dist: d, seed: s, seedName, kind: 'seed' });
                         }
                     }
@@ -67045,6 +69346,11 @@
             try { window.dispatchEvent(new Event('ew-state-change-now')); } catch (e) {}
         }
         function _mtcReachesPick(unit, spell, x, y, z) {
+            /* THE WALK-IN SELF CAST: the caster's own tile is the plain cast; an enemy is in reach when the pool holds it */
+            if (isSpellSelfCast(spell) && _selfPoolSpell(spell)) {
+                if (x === unit.x && y === unit.y) return true;
+                return _selfPoolHits(unit, spell, ((z !== undefined && z !== null) ? unitAt(x, y, z) : null) || unitAt(x, y));
+            }
             const body = (z !== undefined && z !== null) ? unitAt(x, y, z) : null;
             if (body && body.x === x && body.y === y && typeof unitsAtColumn === 'function' && unitsAtColumn(x, y).length > 1)
                 return !spellAimProblemOn(unit, spell, body);
@@ -67124,7 +69430,7 @@
                     const _mtcSp = (unit.spells || []).find(s => s.name === state.selectedTool)
                         || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
                     let _mtcApproach = null;
-                    if (_mtcSp && !isSpellSelfCast(_mtcSp)
+                    if (_mtcSp && !_selfCastNoWalk(_mtcSp)
                         && !unitSpellsBlocked(unit)
                         && (typeof unitMeetsSpellTierReq !== 'function' || unitMeetsSpellTierReq(unit, _mtcSp))
                         && (unit.mp || 0) >= getSpellMpCostFor(unit, _mtcSp)
@@ -67240,6 +69546,8 @@
                 addLog('No moving in a Clash formation battle.');
                 return;
             }
+            /* THE TUTORIAL: a mode the live step is not teaching cannot be armed (the keyboard's shortcuts; the rows are greyed) */
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutModeOk === 'function' && !window._tutModeOk(mode)) return;
             const unit = getSelectedUnit();
             if (!unit) {
                 addLog('Select one of your units first.');
@@ -67716,7 +70024,7 @@
 
             // Move/Jump mode: hovering a reachable tile previews the route
             // (path arrow + destination hologram) instead of a confirm target.
-            if (state.actionMode === 'move' || state.actionMode === 'jump') {
+            if (state.actionMode === 'move' || state.actionMode === 'jump' || state.actionMode === 'climb') {   // CLIMB: THE CLIMB PREVIEW
                 _updateMoveHoverPreview(x, y);
                 return false;
             }
@@ -68080,7 +70388,7 @@
         }
         function _aimRefused(actingUnit, line) {
             if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
-            addLog(line, actingUnit.player);
+            addLog(line, actingUnit.player, null, { mine: true });
             playErrorSfx();
             markDirty('board', 'hud');
             renderIfDirty();
@@ -68435,7 +70743,8 @@
                         validTargets = _getAttackValidTargets(actingUnit);
                     } else {
                         const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool) || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
-                        validTargets = spell ? _getSpellValidTargets(actingUnit, spell) : [];
+                        /* THE WALK-IN SELF CAST: the list is walk-in rows only, so a board click on one picks its row below */
+                        validTargets = (spell && !(isSpellSelfCast(spell) && _selfPoolSpell(spell))) ? _getSpellValidTargets(actingUnit, spell) : [];
                         _etcSpell = spell;
                     }
                     let isValidTarget = validTargets.some(t => t.x === x && t.y === y);
@@ -68502,6 +70811,8 @@
                     // THE SELF-CAST CONFIRM: an armed self-cast fires on the caster only — a click anywhere else
                     // says so and keeps it armed (the caster's tile or the green CONFIRM casts it).
                     if (isSpellSelfCast(spell) && spell.kind !== 'escape' && (x !== actingUnit.x || y !== actingUnit.y)) {   // THE ESCAPE PICK: an escape clicks its landing
+                        /* THE WALK-IN SELF CAST: a click on an enemy of the walk-in list picks that row (step, then cast) */
+                        if (_selfPoolWalkIn(actingUnit, spell) && _boardApproachPick(actingUnit, x, y, state._clickedZ, clickedUnit)) return;
                         addLog(`${_ctSp(spell.name)} is cast on ${_ctName(actingUnit)}: press CONFIRM.`, actingUnit.player);
                         playErrorSfx();
                         markDirty('board', 'hud');
@@ -69095,6 +71406,7 @@
         function checkWarpRuneTrigger(unit) {
             if (!state.warpRunes || !unit || unit.dead) return false;
             if (shadowRealmKey(unit)) return false;   // 🌑 nor its runes
+            if (unitIsSpirit(unit)) return false;   // 👁 a spirit sets off nothing on the ground
 
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const runeIdx = state.warpRunes.findIndex(r => r.x === unit.x && r.y === unit.y);
@@ -69139,6 +71451,7 @@
         function checkTrapTrigger(unit, opts) {
             if (!state.traps || !state.traps.length || !unit || unit.dead) return false;
             if (shadowRealmKey(unit)) return false;   // 🌑 the board's traps never reach into the Shadow Realm
+            if (unitIsSpirit(unit)) return false;   // 👁 a spirit sets off nothing on the ground
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const idx = state.traps.findIndex(t => t.x === unit.x && t.y === unit.y && t.owner !== unit.player);
             if (idx < 0) return false;
@@ -70328,8 +72641,10 @@
 
         /* ── Guard / Overwatch reaction shot ─────────────────────────────
            doGuard (ui.js) arms ONE reaction shot alongside the defensive
-           stance: the first ENEMY unit to finish a move or jump inside the
-           guardian's attack range — range + LOS + team vision checked, the
+           stance: the first ENEMY unit to END UP inside the guardian's attack
+           range, by any arrival (a walk, jump or climb here; a push, pull,
+           throw, dash, teleport or door through resolveTileArrival, mondo
+           2026-11-10 rule 6 C) — range + LOS + team vision checked, the
            same gates a real attack obeys — takes a snap shot at counter
            power (getCounterDamage: reduced, no crit, no dodge). One shot
            per stance; the stance's own round reset disarms it. Engine-side
@@ -70347,6 +72662,7 @@
                 if (!g._overwatchArmed) continue;
                 if (!unitHasStatus(g, 'guarding')) { g._overwatchArmed = false; continue; }
                 if (!isEnemyUnit(g, mover)) continue;
+                if (getCharmer(g)?.id === mover.id) continue;   // 💋 a charmed guard holds its shot for its charmer (rule 7 B)
                 if (isUnitRealmShieldedFrom(mover, g)) continue;   // 🌑 a watcher in the Shadow Realm sees no one out here
                 const d = combatDist(g.x, g.y, g.z ?? 0, mover.x, mover.y, mover.z ?? 0);
                 if (d < 1 || d > getEffectiveRange(g)) continue;
@@ -70966,6 +73282,20 @@
         }
         window.getTauntTargeter = getTauntTargeter;
 
+        /* ── 💋 Charm: no hand raised to the charmer (mondo 2026-11-10, open rule 7 "B") ──
+           A Charmed unit still cannot move and can still act, but it "cannot attack or cast at the charmer": returns the
+           living enemy that charmed `unit`, else null. The mirror of Provoke — doAttack / doSpell refuse a basic attack
+           and a unit-targeted offensive cast AT that unit, the target drums and the quick menu drop it, ai.js never
+           picks it. Tile / area / directional casts stay free (the same line Provoke draws). _charmSourceId is a unit
+           field stamped in applyStatusPayload, so state-sync carries it. */
+        function getCharmer(unit) {
+            if (!unit || !unit._charmSourceId || !unitHasStatus(unit, 'charm')) return null;
+            const c = state.units.find(u => u.id === unit._charmSourceId && !u.dead && !u._dying);
+            if (!c || !isEnemyUnit(unit, c)) return null;
+            return c;
+        }
+        window.getCharmer = getCharmer;
+
         /* ── Hex of Toil (2026-07-17): acting feeds the curse ─────────────────
            A `hexed` unit takes flat armor-ignoring chip damage every time it
            MOVES, JUMPS or CASTS. The forced choice (act and bleed, or hold
@@ -71343,6 +73673,47 @@
             if (z !== undefined && z !== null) { const e = all.find(c => c.z === z); if (e) return e; }
             return all.slice().sort((a, b) => (a.viaMove ? 1 : 0) - (b.viaMove ? 1 : 0)
                 || Math.abs(a.z - (z ?? unit.z ?? 0)) - Math.abs(b.z - (z ?? unit.z ?? 0)))[0];
+        }
+
+        /* 🧗 THE CLIMB PREVIEW (2026-11-11): the waypoints of a climb pick `c`, from its foot (up) / its top (down), for the
+           route arrow and the hologram (three-renderer THE ACTION PREVIEW MOTION reads the `climb` / `face` flags).
+           The numbers are the board's own (three-renderer CLIMB_VIS: 0.30 tile against the face, the hang 42% up a
+           stretch). c.instant (2 AP, one stretch) goes all the way; else it stops where the body will hang.
+           Returns { wps, hang, ghost: { x, y, z } } — ghost = the column the unit is in when the climb is over. */
+        function climbPreviewLeg(c, wpY) {
+            const IN = 0.30, HF = 0.42;
+            const up = c.dir !== 'down';
+            const topX = up ? c.x : c.fromX, topY_ = up ? c.y : c.fromY, topZ = up ? c.z : c.fromZ;
+            const footX = up ? c.fromX : c.x, footY_ = up ? c.fromY : c.y, footZ = up ? c.fromZ : c.z;
+            const dx = Math.sign(topX - footX), dy = Math.sign(topY_ - footY_);
+            const ex = footX + dx * IN, ey = footY_ + dy * IN;                 // on the face, in the foot column
+            const yTop = wpY(topX, topY_, topZ), yFoot = wpY(footX, footY_, footZ);
+            const grip = _climbHangH(c), stretch = Math.min(grip, c.cap || c.rise);
+            const yHang = yFoot + (yTop - yFoot) * Math.max(0, grip - stretch * (1 - HF)) / Math.max(1, c.rise);
+            const face = { x: topX, y: topY_ };
+            const wps = [];
+            if (up) {
+                wps.push({ x: ex, y: ey, yOverride: yFoot });
+                if (c.instant) {
+                    wps.push({ x: ex, y: ey, yOverride: yTop, climb: 'up', face: face });
+                    wps.push({ x: topX, y: topY_, yOverride: yTop, climb: 'mantle' });
+                } else wps.push({ x: ex, y: ey, yOverride: yHang, climb: 'up', face: face });
+            } else {
+                wps.push({ x: ex, y: ey, yOverride: yTop });
+                if (c.instant) {
+                    wps.push({ x: ex, y: ey, yOverride: yFoot, climb: 'down', face: face });
+                    wps.push({ x: footX, y: footY_, yOverride: yFoot });
+                } else wps.push({ x: ex, y: ey, yOverride: yHang, climb: 'down', face: face });
+            }
+            const onTop = up && c.instant;
+            return { wps, hang: !c.instant, ghost: onTop ? { x: topX, y: topY_, z: topZ } : { x: footX, y: footY_, z: footZ } };
+        }
+        /* the words on a climb's preview ghost: what it is, and that it ends the turn (spendAllAP in _startClimb) */
+        function climbPreviewTags(c) {
+            const tags = [{ t: c.instant ? (c.dir === 'down' ? 'CLIMB DOWN' : 'CLIMB') : 'HANG', c: '#d9a066' }];
+            if ((c.turns || 1) > 1) tags.push({ t: c.turns + ' TURNS', c: '#d9a066' });
+            tags.push({ t: 'ENDS TURN', c: '#ff8a5c' });
+            return tags;
         }
 
         function _endClimb(unit) {
@@ -72694,7 +75065,7 @@
                         state._timedTerrain = state._timedTerrain.filter(e => e !== tt);
                         state._terrainVersion = (state._terrainVersion || 0) + 1;
                     }
-                    if (typeof igniteTile === 'function') igniteTile(t.x, t.y, sp.terrainRounds || 2, owner || { player: door.owner });
+                    if (typeof igniteTile === 'function') igniteTile(t.x, t.y, sp.terrainRounds || 2, owner || { player: door.owner }, true);
                 }
                 if (!_skipVisuals()) window._doorGeom(door.spellId + ':act', door.x, door.y, { faceX: door.faceX, faceY: door.faceY, len: lane.length, delay: opts.delayMs || 0, owner: door.owner });
             }
@@ -72707,6 +75078,8 @@
                 _gunDoorStatus(u, 'burn', sp.burnRounds || 2, `${def.icon} ${def.name}: `);
                 hit.push(u);
             }
+            /* anyone else standing on the lit lane (the door's own side) catches like on any lit square */
+            if (!only && typeof _fireCatchesUnitAt === 'function') for (const t of lane) if (_tileIsBurning(t.x, t.y)) _fireCatchesUnitAt(t.x, t.y, null);
             if (!only) addLog(`${def.icon} The ${def.name} at ${coordLabel(door.x, door.y)} sets ${_gdPlural(lane.length, 'tile')} ablaze${hit.length ? ' and scorches ' + hit.map(u => _ctName(u)).join(', ') : ''}.`);
             return hit;
         }
@@ -73450,7 +75823,12 @@
                     return 0;
                 }
             }
-            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('attack', unit)) return 0;
+            if (unitIsSpirit(unit)) {   // 👁 no body, no fists
+                addLog(`${_ctName(unit)} is projecting: a spirit cannot basic attack.`, _clickSeat());
+                playErrorSfx();
+                return 0;
+            }
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && (!window._tutActionAllowed('attack', unit) || (typeof window._tutTargetOk === 'function' && !window._tutTargetOk(x, y)))) return 0;
             _imitObserve(unit, { type: 'attack', x, y });
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') {
                 const _tutTgt = unitAt(x, y);
@@ -73605,6 +75983,14 @@
                 if (_tdD >= 1 && _tdD <= getEffectiveRange(unit)
                     && !isRangeBlockedByTerrain(unit.x, unit.y, _atkDecoy.x, _atkDecoy.y, unit.z)) {
                     addLog(`🗯 ${_ctName(unit)} is provoked — only ${_ctSp(_atkDecoy.spellName || 'the decoy')} can be attacked!`, _clickSeat());
+                    playErrorSfx();
+                    return 0;
+                }
+            }
+            {   // 💋 Charm (rule 7 B): no basic attack at the charmer
+                const _atkCharmer = getCharmer(unit);
+                if (_atkCharmer && target && target.id === _atkCharmer.id) {
+                    addLog(`💋 ${_ctName(unit)} is charmed and cannot attack ${_ctName(_atkCharmer)}!`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -73862,7 +76248,7 @@
                 const seedIdx = state.plantedSeeds.findIndex(s => s.x === x && s.y === y && s.owner !== unit.player);
                 if (seedIdx >= 0) {
                     const seed = state.plantedSeeds[seedIdx];
-                    const seedName = seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : seed.type === 'plain' ? 'Bumper Crop' : 'Leech';
+                    const seedName = seed.type === 'heal' ? 'Healing' : seed.type === 'poison' ? 'Poison' : seed.type === 'plain' ? 'Bumper Crop' : seed.type === 'apple' ? 'Apple' : 'Leech';
                     pushUndoSnapshot(true);
                 setUnitFacing(unit, x - unit.x, y - unit.y);   // square up on the structure (Cube / turret / object / tree / column) like on a unit
                     if (_unitAttacksWithClip(unit)) triggerAttackAnim(unit, x, y);
@@ -73989,11 +76375,13 @@
             // into a Protected (invulnerable) target wastes the turn like a
             // whiff — extra AP drain instead of any chance at a refund.
             const _targetProtected = getActiveStatusKeys(target).some(k => STATUS_DEFS[k]?.invulnerable);
-            const _pressOutcome = _targetProtected ? PRESS_OUTCOME.MISS : resolvePressOutcome({
+            const _pressHit = _targetProtected ? { evaded: true } : {
                 evaded,
                 isCrit,
                 effSummary: getTypeEffectSummary(unit.types || [], target.types || [])
-            });
+            };
+            const _pressOutcome = _targetProtected ? PRESS_OUTCOME.MISS : resolvePressOutcome(_pressHit);
+            _apTallyBegin(unit, { type: 1 });   // THE AP TALLY: a basic attack's press reads the type matchup + the crit
 
             // getEffectiveAttackBonus is intentionally NOT added here: this damage
             // flows into applyDamageToUnit, which adds it for every enemy hit.
@@ -74259,7 +76647,7 @@
 
                 unit._trackBasicAttacks = (unit._trackBasicAttacks || 0) + 1;
                 spendAllAP(unit);   // attacking ends the turn — only a press hands AP back
-                const _pressRes = applyPressTurn(unit, _pressOutcome, { cost: AP_COST_ACTION });
+                const _pressRes = applyPressTurn(unit, _pressOutcome, { cost: AP_COST_ACTION, hits: [_pressHit] });
                 _showPressFeedback(unit, _pressRes);
                 state._actionExecuting = false;
                 state._tileActionTarget = null;
@@ -74289,7 +76677,7 @@
                 /* Clash: the melee gap-closer counts as a melee exchange — the
                    defender's riposte stays live (counters are a JRPG staple). */
                 const _wardIntercepted = !evaded && _wardPledged && !target._guardedBy;
-                if (!evaded && !_wardIntercepted && !target.dead && !target._dying && (d === 1 || _clashLeap) && _atkArc !== 'back' && rollCounter(target)) {
+                if (!evaded && !_wardIntercepted && !target.dead && !target._dying && (d === 1 || _clashLeap) && _atkArc !== 'back' && getCharmer(target)?.id !== unit.id /* 💋 no counter at the charmer (rule 7 B) */ && rollCounter(target)) {
                     const counterDmg = getCounterDamage(target);
                     target._matchCounters = (target._matchCounters || 0) + 1;
 
@@ -74299,6 +76687,7 @@
                     // same extra AP drain as a whiff, on top of the swing's own
                     // press result (a weak-hit refund gets eaten by the riposte).
                     const _counterPressRes = applyPressTurn(unit, PRESS_OUTCOME.MISS, { cost: AP_COST_ACTION });
+                    _counterPressRes.countered = true;   // THE AP TALLY's line
                     const _counterTarget = target;
                     const _counterAttacker = unit;
                     window.setTimeout(() => {
@@ -74521,6 +76910,7 @@
 
             let totalHourglasses = 0;
             let lootedNow = 0;
+            const _lootLines = [];
             const _searched = _searchedSet(unit.player);
             for (const tile of toReveal) {
                 const key = scanKey(tile.x, tile.y);
@@ -74543,9 +76933,14 @@
                 const deadUnit = state.units.find(u => u.dead && u.x === tile.x && u.y === tile.y);
                 if (deadUnit) {
                     const preLoot = lootedNow;
-                    lootedNow += lootCorpseItems(unit, deadUnit);
+                    const _took = {};
+                    lootedNow += lootCorpseItems(unit, deadUnit, _took);
                     if (lootedNow > preLoot) {
-                        showFloatingTextForUnit(unit, `📦 Looted ${lootedNow - preLoot} item${(lootedNow - preLoot) > 1 ? 's' : ''}`, 'pickup', { durationMs: 1200 });
+                        showFloatingTextForUnit(unit, `Looted ${_lootListText(_took, 2)}`, 'pickup', { durationMs: 1800 });
+                        _lootLines.push(`${_ctName(unit)} loots ${_lootListText(_took)} from the remains of ${_ctName(deadUnit)}.`);
+                    } else if (Object.keys(deadUnit.items || {}).some(k => (deadUnit.items[k] | 0) > 0)) {
+                        /* a body with items the searcher can't carry: say so, not "Nothing found here." */
+                        _lootLines.push(`🎒 ${_ctName(unit)} finds items on the remains of ${_ctName(deadUnit)} but can't carry any more.`);
                     }
                 }
 
@@ -74592,13 +76987,11 @@
                 addLog(`Inspection uncovers ${totalHourglasses} Key${totalHourglasses !== 1 ? 's' : ''}! Key Charge Lv.${unit.hourglassBuff}.`, unit.player);
             }
 
-            if (totalHourglasses === 0) {
+            if (totalHourglasses === 0 && !_lootLines.length) {
                 addLog(`Nothing found here.`, unit.player);
             }
 
-            if (lootedNow > 0) {
-                addLog(`${_ctName(unit)} loots ${lootedNow} item${lootedNow === 1 ? '' : 's'} from a nearby corpse.`, unit.player);
-            }
+            _lootLines.forEach(line => addLog(line, unit.player));
 
             if (!(opts && opts.noCam)) focusBoardCameraOnTiles([{
                 x,
@@ -74634,6 +77027,7 @@
         window._inspectFootprintAt = _inspectFootprintAt;
 
         function doInspect(unit, x, y) {
+            if (unitIsSpirit(unit)) { addLog(`${_ctName(unit)} is projecting: a spirit has no hands to search with.`, _clickSeat()); playErrorSfx(); return 0; }   // 👁 no hands
             /* SIMUL: inspect executes instantly — not plannable yet. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
@@ -75299,6 +77693,7 @@
         // The Build verb itself: one dig or one placement at (x,y). Returns a
         // completion delay (ms) on success, 0 on rejection (nothing spent).
         function doBuildAction(unit, x, y, tool) {
+            if (unitIsSpirit(unit)) { addLog(`${_ctName(unit)} is projecting: a spirit has no hands to build with.`, _clickSeat()); playErrorSfx(); return 0; }   // 👁 no hands
             /* SIMUL plan phase: queue the build instead of executing (the
                engine re-validates terrain at resolution). */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
@@ -76661,16 +79056,15 @@
                 const _comboAtkTypes = combo.spellType
                     ? [combo.spellType]
                     : [...(initiator.types || []), ...(partner.types || [])];
-                const _comboPressRes = applyPressTurn(
-                    initiator,
-                    resolvePressOutcome({
-                        evaded: false,
-                        isCrit: false,
-                        effSummary: getTypeEffectSummary(_comboAtkTypes, target.types || []),
-                        elemAff: (() => { const _cEl = getSpellElement(combo); return (_cEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _cEl) : null; })()
-                    }),
-                    { cost: COMBO_AP_COST_INITIATOR }
-                );
+                const _comboEl = getSpellElement(combo);
+                const _comboHit = {
+                    evaded: false,
+                    isCrit: false,
+                    effSummary: getTypeEffectSummary(_comboAtkTypes, target.types || []),
+                    elemAff: (_comboEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _comboEl) : null,
+                    el: _comboEl || null
+                };
+                const _comboPressRes = applyPressTurn(initiator, resolvePressOutcome(_comboHit), { cost: COMBO_AP_COST_INITIATOR, hits: [_comboHit] });
                 _showPressFeedback(initiator, _comboPressRes);
             }
 
@@ -76914,6 +79308,7 @@
         }
 
         function doItem(unit, x, y, z) {
+            if (unitIsSpirit(unit)) { addLog(`${_ctName(unit)} is projecting: a spirit has no hands to use items with.`, _clickSeat()); playErrorSfx(); return; }   // 👁 no hands
             /* SIMUL plan phase: queue the item use instead of executing. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
@@ -77421,7 +79816,8 @@
                     spendAP(unit, AP_COST_ACTION);
                     // Press Turn: a super-effective bane grants a free action,
                     // just like hitting a weakness with an attack or spell.
-                    const _banePressRes = applyPressTurn(unit, isBaneEffective ? PRESS_OUTCOME.WEAK : PRESS_OUTCOME.NORMAL, { cost: AP_COST_ACTION });
+                    const _banePressRes = applyPressTurn(unit, isBaneEffective ? PRESS_OUTCOME.WEAK : PRESS_OUTCOME.NORMAL,
+                        { cost: AP_COST_ACTION, hits: isBaneEffective ? [{ effSummary: { hasStrong: true, hasWeak: false } }] : null });
                     _showPressFeedback(unit, _banePressRes);
                     if (!unit._itemLog) unit._itemLog = {};
                     unit._itemLog[baneKey] = (unit._itemLog[baneKey] || 0) + 1;
@@ -78243,7 +80639,7 @@
                 return 0;
             }
 
-            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && !window._tutActionAllowed('spell', unit, spell.id)) return 0;
+            if (typeof window !== 'undefined' && window._tutActive && typeof window._tutActionAllowed === 'function' && (!window._tutActionAllowed('spell', unit, spell.id) || (typeof window._tutTargetOk === 'function' && !window._tutTargetOk(x, y)))) return 0;
             _imitObserve(unit, { type: 'spell', x, y, spellId: spell.id, spellName: spell.name });
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('spell', { uid: unit.id, x, y, spellId: spell.id });
 
@@ -78510,6 +80906,16 @@
             // castable-at (range + LOS + vision). Tile-targeted AoEs, lines and
             // support casts stay free — the taunt binds the blade, not the
             // battlefield.
+            {   // 💋 Charm (rule 7 B): no unit-targeted offensive cast at the charmer (tile / area / directional casts stay free)
+                const _spCharmer = getCharmer(unit);
+                const _spCm = _kindMeta(spell);
+                if (_spCharmer && _spCm.offensive && !_spCm.tileTargeted && !_spCm.directional
+                    && _spellClickTarget && _spellClickTarget.id === _spCharmer.id) {
+                    addLog(`💋 ${_ctName(unit)} is charmed and cannot cast ${_ctSp(spell.name)} at ${_ctName(_spCharmer)}!`, _clickSeat());
+                    playErrorSfx();
+                    return 0;
+                }
+            }
             {
                 const _spTaunter = getTauntTargeter(unit);
                 const _spMeta = _kindMeta(spell);
@@ -79240,6 +81646,7 @@
                     }
                     /* THE SPELL AUDIT FIX (2026-10-26): a buff row's `selfHealPct` (Awakening 30%, Ayahuasca Retreat 50%) —
                        a percent of the target's max HP, like the selfHeal kind (preScaled); the buff kind never read it. */
+                    if (spell.astralAlly && !_bt.dead) astralProjectAlly(unit, _bt, spell);   // 👁 Spirit Guide: the ally steps out of its body
                     if (spell.selfHealPct > 0 && !_bt.dead) {
                         const _bhGot = applyHealingToUnit(_bt, Math.floor(_bt.maxHp * spell.selfHealPct), unit, { preScaled: true });
                         if (_bhGot > 0) {
@@ -80292,6 +82699,14 @@
                     playErrorSfx();
                     return 0;
                 }
+                /* 🐝 POLLINATE is refused before any MP is spent: no pollen carried, or nothing on the tile to pollinate */
+                if (spell.pollinate && (getPollen(unit) <= 0 || !_pollinateTargetAt(x, y))) {
+                    addLog(getPollen(unit) <= 0
+                        ? `${_ctSp(spell.name)}: no pollen. End a move beside a Healing Flower to gather some.`
+                        : `${_ctSp(spell.name)}: pick a tile with a seed or a damaged plant.`, _clickSeat());
+                    playErrorSfx();
+                    return 0;
+                }
                 // Phase 4 migration: aoe uses shared AoE helpers
                 playSfx(spellLaunchSfx(spell));
                 const _aoeArea = getSpellAoeArea(spell, x, y);
@@ -80327,8 +82742,18 @@
                             pushFromCenter: spell.pushDistance ? (spell.aoeOriginSelf ? { x: unit.x, y: unit.y } : { x, y }) : null
                         });
                     if (spell.zoneTickDamage > 0) _pushDamageZone(unit, spell, x, y, spellPower);
-                    else if (hitCount === 0 && !(spell.aoeAllyHeal > 0)) addLog(`${_ctSp(spell.name)} hits no enemies in the area.`);
+                    else if (hitCount === 0 && !(spell.aoeAllyHeal > 0) && !spell.waterCan && !spell.pollinate) addLog(`${_ctSp(spell.name)} hits no enemies in the area.`);
                     if (spell.rimSeeds) _plantRimSeeds(unit, spell, x, y);   // THE SPELL AUDIT Batch D: Bumper Crop
+                    if (spell.pollinate) _pollinate(unit, spell, x, y);   // 🐝 THE POLLEN
+                    /* 💧 THE GARDEN — Watering Can (`waterCan`): the tile is watered (the seeds on it sprout and its ground
+                       fire goes out through the water reaction above) and whoever stands on it, friend or foe, is Wet */
+                    if (spell.waterCan) {
+                        for (const t of area) {
+                            const _wcU = unitAt(t.x, t.y);
+                            if (_wcU && !_unitIsDown(_wcU)) _soakUnit(_wcU, { douseLabel: spell.name, src: unit });
+                        }
+                        addLog(`💧 ${_ctName(unit)} waters ${coordLabel(x, y)}.`);
+                    }
                 }, timing.impactDelay);
             } else if (spell.kind === 'barrage') {
                 // Conditional barrages (hitsWetOnly — Poseidon's Wrath): reject
@@ -81512,7 +83937,7 @@
                    the remains consumed (no revive, no raising). */
                 const corpse = corpseRemainsAt(unit, spell, x, y);   // THE GRAVES STAY: a left grave feeds too
                 if (!corpse) {
-                    addLog("Target an enemy's remains — a fallen enemy's bones.", _clickSeat());
+                    addLog("Target a fallen unit's remains — an enemy's bones or an ally's gravestone.", _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -81615,6 +84040,9 @@
                 const _escLandZ = (_escSurfs.length > 1 && _escSurfs.indexOf(_escPick.z) >= 0) ? _escPick.z : null;
                 if (candidates.length) {
                     const _escFromX = unit.x, _escFromY = unit.y;
+                    /* 👁 THE ASTRAL BODY: an astral escape (Spirit Walk) leaves the body asleep on this tile and the
+                       unit that steps out is its spirit */
+                    if (spell.astral) astralBegin(unit, spell);
                     unit.x = candidates[0].x;
                     unit.y = candidates[0].y;
                     if (_escLandZ !== null) unit.z = _escLandZ;
@@ -82808,9 +85236,9 @@
                         if (current === t) { if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(tx, ty, t); return false; }   // ⏳ back to 3 rounds
                         if (setTerrainAt(tx, ty, t, pz) === false) return false;   // a solid monument stays dry
                         /* 🌊 Spell-conjured liquid is a SPRING (map.js liquid
-                           spread): overfull, so it overflows one tile onto
-                           level ground and runs downhill — a lone poison cube
-                           with no flow can't happen. Basin fills
+                           spread): it runs down any drop beside it and fills a
+                           hole it lies in (2026-11-11: no level halo any more,
+                           the liquid is the spell's own squares). Basin fills
                            (elevationFlood) and interior-floor paints are
                            settled pools instead and don't pass the flag. */
                         if (spring && typeof liquidFamilyOf === 'function' && liquidFamilyOf(t)) {
@@ -82961,8 +85389,8 @@
 
                     /* 🌊 Fresh liquid claims everything it SPREADS over, not
                        just the painted source tiles: pull the first ring of
-                       derived flow (the spring's level-ground halo and/or the
-                       runoff pouring off a ledge) into affectedTiles so the
+                       derived flow (the runoff pouring off a ledge, or over the
+                       floor of a hole) into affectedTiles so the
                        spell's damage/status pass covers the whole splash. Flow
                        is already recomputed lazily off the terrain bump above. */
                     if (typeof liquidFamilyOf === 'function' && typeof getLiquidFlowAt === 'function'
@@ -83056,6 +85484,8 @@
                             const _wtObj = (typeof getObjectAt === 'function') ? getObjectAt(at.x, at.y) : null;
                             if (_wtObj && _wtDead[_wtObj]) { setObjectAt(at.x, at.y, _wtDead[_wtObj]); _wtWithered++; }
                             if (typeof _removePlantedTreeAt === 'function' && _removePlantedTreeAt(at.x, at.y)) _wtWithered++;
+                            { const _wtPlant = (typeof plantAt === 'function') ? plantAt(at.x, at.y) : null;   // THE GARDEN: the cold kills a plant like a tree
+                              if (_wtPlant && _removePlant(_wtPlant, 'freezes and dies')) _wtWithered++; }
                             for (const _wtKey of ['plantedSeeds', 'traps', 'bombs', 'wards']) {
                                 const _wtArr = state[_wtKey];
                                 if (!Array.isArray(_wtArr)) continue;
@@ -83864,15 +86294,16 @@
             }
 
             else if (spell.kind === 'seedHeal') {
+                const _sType = spell.seedType || 'heal';   // 🍎 THE APPLE TREE: Apple Seed rides this branch (`seedType: 'apple'`)
                 const terrain = getTerrainAt(x, y);
                 if (terrain === 'mountain' || terrain === 'lava') {
-                    addLog(`Healing Seed cannot be planted on ${terrain} tiles.`, _clickSeat());
+                    addLog(`${spell.name} cannot be planted on ${terrain} tiles.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
                 if (!state.plantedSeeds) state.plantedSeeds = [];
-                if (state.plantedSeeds.some(s => s.x === x && s.y === y && s.type === 'heal')) {
-                    addLog('There is already a healing seed on that tile.', _clickSeat());
+                if (state.plantedSeeds.some(s => s.x === x && s.y === y && s.type === _sType)) {
+                    addLog(`There is already ${_sType === 'apple' ? 'an apple' : 'a healing'} seed on that tile.`, _clickSeat());
                     playErrorSfx();
                     return 0;
                 }
@@ -83912,14 +86343,15 @@
                         x,
                         y,
                         z,
-                        type: 'heal',
+                        type: _sType,
                         owner: unit.player,
                         casterUnitId: unit.id,
                         growth: 0
                     };
                     state.plantedSeeds.push(_newSeed);
-                    const _wetNow = _seedRainAt(x, y) || _seedBesideWater(x, y);
-                    addLog(`${_ctName(unit)} plants a Healing Seed at ${coordLabel(x, y)}. It will grow into a Healing Tree in ${_wetNow ? 1 : 2} round${_wetNow ? '' : 's'}${_wetNow ? ' (well watered!)' : ''} — unless it is destroyed first.`);
+                    const _wetNow = _seedWaterSourceAt(x, y, unit.player);
+                    if (_wetNow) _waterSeed(_newSeed, true);
+                    addLog(`${_ctName(unit)} plants ${_sType === 'apple' ? 'an Apple Seed' : 'a Healing Seed'} at ${coordLabel(x, y)}. ${_wetNow ? `It is watered: ${_sType === 'apple' ? 'an' : 'a'} ${_plantName(_sType)} grows at the end of the round` : `It needs water to sprout (rain, a water spell, water beside it) before it grows into ${_sType === 'apple' ? 'an' : 'a'} ${_plantName(_sType)}`} — unless it is destroyed first.`);
                     // Planting under an ally's feet works right away — no waiting
                     // a round for the first tick (rain still doubles the heal).
                     const _occupant = unitAt(x, y);
@@ -83980,8 +86412,9 @@
                         growth: 0
                     };
                     state.plantedSeeds.push(_newSeed);
-                    const _wetNowP = _seedRainAt(x, y) || _seedBesideWater(x, y);
-                    addLog(`${_ctName(unit)} plants a Poison Seed at ${coordLabel(x, y)}. It will grow into a Toxin Tree in ${_wetNowP ? 1 : 2} round${_wetNowP ? '' : 's'}${_wetNowP ? ' (well watered!)' : ''} — unless it is destroyed first.`);
+                    const _wetNowP = _seedWaterSourceAt(x, y, unit.player);
+                    if (_wetNowP) _waterSeed(_newSeed, true);
+                    addLog(`${_ctName(unit)} plants a Poison Seed at ${coordLabel(x, y)}. ${_wetNowP ? `It is watered: a ${_plantName('poison')} grows at the end of the round` : `It needs water to sprout (rain, a water spell, water beside it) before it grows into a ${_plantName('poison')}`} — unless it is destroyed first.`);
                     // Planting under an enemy's feet stings immediately — typed (THE PLANTED STING).
                     const _occupant = unitAt(x, y);
                     if (_occupant && applySeedEffectToUnit(_newSeed, _occupant, null, true)) {
@@ -84114,8 +86547,9 @@
                         growth: 0
                     };
                     state.plantedSeeds.push(_newSeed);
-                    const _wetNowL = _seedRainAt(x, y) || _seedBesideWater(x, y);
-                    addLog(`${_ctName(unit)} plants a Leech Seed at ${coordLabel(x, y)}. It will grow into a Leech Tree in ${_wetNowL ? 1 : 2} round${_wetNowL ? '' : 's'}${_wetNowL ? ' (well watered!)' : ''} — unless it is destroyed first.`);
+                    const _wetNowL = _seedWaterSourceAt(x, y, unit.player);
+                    if (_wetNowL) _waterSeed(_newSeed, true);
+                    addLog(`${_ctName(unit)} plants a Leech Seed at ${coordLabel(x, y)}. ${_wetNowL ? `It is watered: a ${_plantName('leech')} grows at the end of the round` : `It needs water to sprout (rain, a water spell, water beside it) before it grows into a ${_plantName('leech')}`} — unless it is destroyed first.`);
                     // Planting under someone's feet works immediately — drain an
                     // enemy or nourish an ally standing there right now.
                     const _occupant = unitAt(x, y);
@@ -85012,7 +87446,8 @@
                             const colBonus = spell.collisionBonus || 50;
                             applyDamageToUnit(throwTarget, totalDmg + colBonus, `${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true,   // THE HEIGHT PAID ONCE: the levels are in the raw
+                                bloodAt: { x, y }   // THE BLOOD WHERE THE HIT LANDS: the body is on the landing tile
                             });
                             applyDamageToUnit(collisionTarget, colBonus, `${spell.name} collision: `, {
                                 sourceUnit: unit, damageType: 'physical',
@@ -85058,7 +87493,8 @@
 
                             applyDamageToUnit(throwTarget, totalDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                                 sourceUnit: unit, damageType: spell.damageType || 'physical',
-                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true   // THE HEIGHT PAID ONCE: the levels are in the raw
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), noHeightBonus: true,   // THE HEIGHT PAID ONCE: the levels are in the raw
+                                bloodAt: { x, y }   // THE BLOOD WHERE THE HIT LANDS: the body is on the landing tile
                             });
                             applyStatusEffects(throwTarget, spell.statusEffects, `${spell.name}: `, unit);
                             /* 🧭 the throw's heading rides the landing: onto ice it glides on, onto a bomb it is thrown back */
@@ -86764,13 +89200,15 @@
 
             /* Mystery Dungeon: monsters never END a move on the stairs tile —
                a parked enemy made the exit unwalkable for the leader. */
+            const _cordTiles = unitIsSpirit(unit) ? astralCordFilter(unit, tiles) : tiles;   // 👁 the cord
             if (typeof _mdEnemyStairsBlocked === 'function') {
-                return tiles.filter(t => !_mdEnemyStairsBlocked(unit, t.x, t.y));
+                return _cordTiles.filter(t => !_mdEnemyStairsBlocked(unit, t.x, t.y));
             }
-            return tiles;
+            return _cordTiles;
         }
 
         function getAttackTiles(unit) {
+            if (unitIsSpirit(unit)) return [];   // 👁 no body, no fists: a spirit cannot basic attack
             const tiles = [];
             const tileSet = new Set();
             const unitZ = unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0);

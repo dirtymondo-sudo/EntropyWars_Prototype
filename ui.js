@@ -824,7 +824,10 @@
       if (activeRain.length === 0) {
         if (rb.isRain3DActive()) rb.stopRain3D();
       } else {
-        rb.startRain3D(activeRain.map(w => ({ type: w.type, tiles: w.tiles })));
+        // a map-wide rain (state.js weatherRainIsWide: a global storm, the Hurricane) falls on every tile
+        rb.startRain3D(activeRain.map(w => (typeof window.weatherRainIsWide === 'function' && window.weatherRainIsWide(w) && typeof window.allWeatherBoardTiles === 'function')
+          ? { type: w.type, tiles: window.allWeatherBoardTiles(), global: true }
+          : { type: w.type, tiles: w.tiles }));
       }
     }
 
@@ -3234,7 +3237,11 @@
                         // Range wash keyed to what the spell DOES: red for
                         // anything that hurts, green for ally-serving zones,
                         // purple only for genuinely neutral utility.
-                        const _rangeCls = _DMG_SPELL_KINDS[spell.kind] ? 'spell-range-dmg'
+                        /* THE AIM SIDE (data.js spellAimSide) first: Purify (kind cleanseArea, no payload fields) read
+                           'both' above and painted the neutral purple */
+                        const _gSide = _aimSide(spell);
+                        const _rangeCls = _gSide === 'help' ? 'heal-range'
+                          : (_DMG_SPELL_KINDS[spell.kind] && _gSide !== 'neutral') ? 'spell-range-dmg'
                           : (_gTT === 'ally') ? 'heal-range' : 'spell-range';
                         _hlCache.set(posKey(cx, cy), _rangeCls);
                       }
@@ -5150,7 +5157,7 @@
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('guard', { uid: unit.id });
             pushUndoSnapshot(true);
 
-            applyStatusEffects(unit, [{ id: 'guarding', duration: 1 }], 'Guard: ');
+            applyStatusEffects(unit, [{ id: 'guarding', duration: 1, quiet: true }], 'Guard: ');
             /* Guard's breather (data.js GUARD_RESTORE): a little HP + MP right
                now, and the guardRegen status adds to this round's recovery. */
             const _gr = (typeof GUARD_RESTORE !== 'undefined') ? GUARD_RESTORE : { hpPct: 0.05, mpPct: 0.05 };
@@ -5163,7 +5170,7 @@
                 markDirty('teams', 'selectedUnit', 'hud');
                 window.setTimeout(() => showFloatingTextForUnit(unit, `+${_grMp} MP`, 'buff', { durationMs: 900, jitterY: 32 }), 300);
             }
-            applyStatusEffects(unit, [{ id: 'guardRegen', duration: 1 }], 'Guard: ');
+            applyStatusEffects(unit, [{ id: 'guardRegen', duration: 1, quiet: true }], 'Guard: ');
 
             unit._guardCounterBonus = 0.15;
             /* Overwatch rides the Guard stance: one reaction shot at the first
@@ -5171,7 +5178,8 @@
                (checkOverwatchTriggers, battle.js). Disarmed by the same round
                reset that clears _guardCounterBonus. */
             unit._overwatchArmed = true;
-            addLog(`${_ctName(unit)} takes a defensive stance! (+DEF/M DEF, +15% Counter, a little HP/MP back and extra recovery this round — 👁 Overwatch: the first enemy to stop in attack range gets shot)`);
+            /* mondo 11-11: one short line, no paragraph (the rules are unchanged) */
+            addLog(`🛡 ${_ctName(unit)} Guards and restores a little HP.`);
             showFloatingTextForUnit(unit, '🛡 GUARD', 'buff', { durationMs: 1200 });
             playSfx('uiConfirm');
 
@@ -7446,7 +7454,7 @@
                 const state_ = u.dead ? 'KO' : where === 'bench' ? 'BENCH' : where === 'escaped' ? 'ESCAPED' : (state._blitzActiveUnitId === u.id ? 'ACTING' : '');
                 return `<div class="bp-unit${u.dead ? ' ko' : ''}${where !== 'field' ? ' off' : ''}">`
                     + `<span class="bp-face"${sprite ? ` style="background-image:url('${sprite}')"` : ''}>${state_ ? `<em>${state_}</em>` : ''}</span>`
-                    + `<span class="bp-id"><b>${_pauseEsc(nm)}</b><small>LV ${lvl} · ${_pauseEsc(String(race).toUpperCase())}</small>`
+                    + `<span class="bp-id"><b>${_pauseEsc(nm)}</b><small>LV ${lvl} · ${_pauseEsc(String(race).toUpperCase())}${(typeof unitMasteryChipHtml === 'function') ? unitMasteryChipHtml(u.ulv) : ''}</small>`
                     + `<span class="bp-vit"><em>HP</em>${bar('hp', hp, mhp)}<tt>${hp} / ${mhp}</tt></span>`
                     + (mmp > 0 ? `<span class="bp-vit"><em>MP</em>${bar('mp', mp, mmp)}<tt>${mp} / ${mmp}</tt></span>` : '')
                     + (chips ? `<span class="bp-chips">${chips}</span>` : '')
@@ -7621,7 +7629,7 @@
                         <div class="pm-unit-sprite" style="background-image:url('${sprite}')"></div>
                         <span class="pm-unit-name">${escapeHtml(unitDisplayName(u))}</span>
                     </div></td>
-                    <td class="pm-cls-cell">${escapeHtml((typeof getRaceLabel === 'function' ? getRaceLabel(u.race, u.gender) : (u.race || '')))}${lvl > 1 ? ` Lv${lvl}` : ''}</td>
+                    <td class="pm-cls-cell">${escapeHtml((typeof getRaceLabel === 'function' ? getRaceLabel(u.race, u.gender) : (u.race || '')))}${lvl > 1 ? ` Lv${lvl}` : ''}${(typeof unitMasteryChipHtml === 'function') ? unitMasteryChipHtml(u.ulv) : ''}</td>
                     ${cell('_matchKills')}
                     ${cell('_matchDeaths')}
                     ${cell('_matchAssists')}
@@ -7992,14 +8000,27 @@
             const aaMode = (typeof ThreePost!=='undefined'&&ThreePost.getAA) ? ThreePost.getAA() : (fxaaOn ? 'fxaa' : 'off');   // THE POST PASS 7.5: off / FXAA / SMAA
             /* THE RENDER SCALE (2026-11-10): one stored ratio, two rows. Fast = ratio 1 and Native = the screen's own, as they
                always were; a share in between lights neither of them, and the Render Scale row below shows which share is on. */
+            /* WEBGPU BY DEFAULT (2026-11-11): the Renderer row. Auto = WebGPU where it works, else the classic renderer (index.html
+               decides at load); a pick is stored and applies on reload, so the row offers the reload when the two differ. */
+            const gpuNow = (typeof window!=='undefined'&&window.EW_GPU_PICK) || 'auto';
+            const gpuPick = (typeof window!=='undefined'&&window.EW_GPU_PICK_NEXT) || (gpuNow==='webgl2' ? '' : gpuNow);
+            const gpuPending = !!(typeof window!=='undefined'&&window.EW_GPU_PICK_NEXT&&window.EW_GPU_PICK_NEXT!==gpuNow);
+            let gpuRuns = ''; try { gpuRuns = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.gpuStatus) ? String(ThreeRenderer.gpuStatus()).split(' (')[0].split(' [')[0] : ''; } catch (e) {}
+            const gpuHint = (gpuRuns ? `drawing with ${gpuRuns} now` : 'the renderer starts with the first 3D view') +
+                (gpuPending ? '; your pick applies when the page reloads' : gpuNow==='auto' ? '; Auto uses WebGPU where your browser and graphics card support it and WebGL where they do not' : gpuNow==='webgl2' ? '; a link picked the test renderer (WebGL 2 backend): pick one here to leave it' : '; picked by you: Auto chooses for this machine');
             const _rsInfo = (typeof ThreePost!=='undefined'&&ThreePost.getRenderScale) ? ThreePost.getRenderScale() : null;
             const rsNative = _rsInfo ? _rsInfo.native : Math.min((typeof window!=='undefined'&&window.devicePixelRatio)||1,2);
             const rsRatio = (typeof window!=='undefined'&&window._ewPixelRatio>0) ? window._ewPixelRatio : (_rsInfo ? _rsInfo.ratio : rsNative);
             const isFastPixel = rsRatio===1;
             const isNativePixel = !isFastPixel && Math.abs(rsRatio-rsNative)<0.011;
             const rsSteps = (_rsInfo&&_rsInfo.steps) || [0.5,0.67,0.75,0.85,1];
+            const ggLevel = (typeof ThreeRenderer!=='undefined'&&ThreeRenderer.getGrassField) ? ThreeRenderer.getGrassField() : 'high';   // THE GRASS FIELD
+            const lpOn = !!(window.EWPortraits && window.EWPortraits.liveSetting && window.EWPortraits.liveSetting());   // THE LIVE PORTRAITS
             const rsShare = rsRatio/rsNative;
             let rsOn = -1; rsSteps.forEach((k,i)=>{ if(Math.abs(rsShare-k)<0.011) rsOn=i; });
+            // THE ENTROPY STYLE (2026-11-12): the grade + ink pass's two rows
+            const esState = (typeof ThreePost !== 'undefined' && ThreePost.getStyle) ? ThreePost.getStyle() : { mode: 'off', inkWidth: 1 };
+            const esMode = esState.mode, esInk = +esState.inkWidth || 1, esUnit = (esState.unitBold === undefined) ? 1.9 : +esState.unitBold;
             const rsSize = (_rsInfo&&_rsInfo.w>0&&_rsInfo.h>0) ? `drawing ${_rsInfo.w} × ${_rsInfo.h}; ` : '';
             /* MAP LOOKS OFF (2026-10-24): every grade setting the player never touched reads OFF on screen (three-post.js _LOOK_CLEAN),
                so the sheet shows what is worn — a box reads the way the picture looks */
@@ -8085,6 +8106,12 @@
 
             return `
             ${opts.bare ? '' : '<div class="pm-settings-section">'}
+                ${inBattle ? '' : `<div class="pm-set-group">
+                    <div class="pm-set-group-title">Demo</div>
+                    <div class="pm-set-toggles">
+                        <label class="pm-toggle"><input type="checkbox" ${(typeof demoModeOn === 'function' && demoModeOn()) ? 'checked' : ''} onchange="if(typeof setDemoMode==='function')setDemoMode(this.checked);${RJ}"><span class="pm-toggle-label">Demo</span><span class="pm-toggle-hint">the demo set only: ${(typeof DEMO_RULES !== 'undefined') ? DEMO_RULES.starters.length : 16} starter champs, ${(typeof DEMO_RULES !== 'undefined') ? DEMO_RULES.unlocks.length : 16} more to unlock, ${(typeof DEMO_RULES !== 'undefined') ? DEMO_RULES.arenas.length : 9} arenas. Off = the whole game. Online, the host's switch decides for the room.</span></label>
+                    </div>
+                </div>`}
                 <div class="pm-set-group">
                     <div class="pm-set-group-title">Display</div>
                     ${inBattle ? `<div class="pm-set-toggles">
@@ -8204,6 +8231,16 @@
                         <label class="pm-toggle"><input type="checkbox" ${looksOn ? 'checked' : ''} onchange="if(window._setSceneLooks)window._setSceneLooks(this.checked);${RJ}"><span class="pm-toggle-label">Map Looks</span><span class="pm-toggle-hint">${!looksOn ? 'off: every area keeps your settings: your fog colour, night mood and bloom, no map grade, and any tint, dither, pixelate, grain, vignette or CRT you have not set yourself stays off' : lookNow ? 'wearing ' + lookNow + ' under your settings — a slider you move wins over it' : 'a map or a room may fill in any setting you have left at its default; a slider you move wins'}</span></label>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Renderer</span>
+                        <div class="pm-seg-group">
+                            ${[['auto','Auto'],['webgpu','WebGPU'],['webgl','WebGL']].map(o=>`<button class="pm-seg-btn${gpuPick===o[0] ? ' active' : ''}" onclick="if(window._ewSetGpuPick)window._ewSetGpuPick('${o[0]}');${RJ}">${o[1]}</button>`).join('')}
+                            ${gpuPending ? `<button class="pm-seg-btn" style="border-color:#4c4;color:#8f8" onclick="if(window._ewGpuReload)window._ewGpuReload()">Reload now</button>` : ''}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">${gpuHint}</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">Pixel Ratio</span>
                         <div class="pm-seg-group">
                             <button class="pm-seg-btn${isFastPixel ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setPixelRatio)ThreePost.setPixelRatio(1);${RJ}">Fast</button>
@@ -8218,6 +8255,45 @@
                     </div>
                     <div class="pm-set-row" style="margin-top:2px">
                         <span class="pm-toggle-hint">${rsSize}the 3D picture's share of your screen's own resolution: lower runs faster and softer, menus and text stay sharp</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Entropy Style</span>
+                        <div class="pm-seg-group">
+                            ${[['off','Off'],['grade','Grade'],['ink','Grade + Ink']].map(m=>`<button class="pm-seg-btn${esMode===m[0] ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setStyle)ThreePost.setStyle('${m[0]}');${RJ}">${m[1]}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px${esMode==='ink' ? '' : ';opacity:0.45'}">
+                        <span class="pm-setting-label">Ink Lines</span>
+                        <div class="pm-seg-group">
+                            ${[[1,'Thin'],[1.6,'Medium'],[2.4,'Bold']].map(m=>`<button class="pm-seg-btn${Math.abs(esInk-m[0])<0.05 ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setStyleParam)ThreePost.setStyleParam('inkWidth',${m[0]});${RJ}">${m[1]}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px${esMode==='ink' ? '' : ';opacity:0.45'}">
+                        <span class="pm-setting-label">Unit Lines</span>
+                        <div class="pm-seg-group">
+                            ${[[1,'Same'],[1.9,'Bold'],[2.6,'Bolder']].map(m=>`<button class="pm-seg-btn${Math.abs(esUnit-m[0])<0.05 ? ' active' : ''}" onclick="if(typeof ThreePost!=='undefined'&&ThreePost.setStyleParam)ThreePost.setStyleParam('unitBold',${m[0]});${RJ}">${m[1]}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">one palette and a thin ink line over the whole 3D picture, under the CRT; menus and text are never touched</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Grass</span>
+                        <div class="pm-seg-group">
+                            ${['high','low','off'].map(k=>`<button class="pm-seg-btn${ggLevel===k ? ' active' : ''}" onclick="if(typeof ThreeRenderer!=='undefined'&&ThreeRenderer.setGrassField)ThreeRenderer.setGrassField('${k}');${RJ}">${k.charAt(0).toUpperCase()+k.slice(1)}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">thick grass on grassy ground: Low draws under half as much, Off leaves the flat ground</span>
+                    </div>
+                    <div class="pm-set-row pm-setting-row" style="margin-top:8px">
+                        <span class="pm-setting-label">Live Portraits</span>
+                        <div class="pm-seg-group">
+                            ${[[true,'On'],[false,'Off']].map(m=>`<button class="pm-seg-btn${lpOn===m[0] ? ' active' : ''}" onclick="if(window.EWPortraits&&window.EWPortraits.setLive)window.EWPortraits.setLive(${m[0]});${RJ}">${m[1]}</button>`).join('')}
+                        </div>
+                    </div>
+                    <div class="pm-set-row" style="margin-top:2px">
+                        <span class="pm-toggle-hint">your own character and Agent Locke idle, breathe and blink in their portrait; Off shows a still picture</span>
                     </div>
                     <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                         <span class="pm-setting-label">FPS Cap</span>
@@ -8394,9 +8470,9 @@
         window._buildPolishSettingsHTML = function (RJ, inBattle) {
             if (typeof window.hqPolishAll !== 'function') return '';
             let rows = []; try { rows = window.hqPolishAll(); } catch (e) { rows = []; }
-            /* WEBGPU_PLAN W4: on the node renderer the quarks layer cannot draw (GLSL), and the AO row's second choice is GTAO */
+            /* WEBGPU_PLAN W4: on the node renderer the AO row's second choice is GTAO (the quarks row is back since 2026-11-11: three-vfx.js draws the layer there) */
             let nodeR = false; try { nodeR = !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isNodeRenderer && ThreeRenderer.isNodeRenderer()); } catch (e) {}
-            if (nodeR) rows = rows.filter(r => r.key !== 'quarksFx').map(r => r.key === 'ssaoMode' ? Object.assign({}, r, { levels: (r.levels || []).map(([v, lab]) => [v, lab === 'N8AO' ? 'GTAO' : lab]), hint: 'Classic = the game\'s own AO; GTAO = three\'s ground-truth AO, softer and wider, a little heavier' }) : r);
+            if (nodeR) rows = rows.map(r => r.key === 'ssaoMode' ? Object.assign({}, r, { levels: (r.levels || []).map(([v, lab]) => [v, lab === 'N8AO' ? 'GTAO' : lab]), hint: 'Classic = the game\'s own AO; GTAO = three\'s ground-truth AO, softer and wider, a little heavier' }) : r);
             if (!rows.length) return '';
             const esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
             const owned = rows.filter(r => r.owned).length;
@@ -9334,6 +9410,10 @@
            you: data.js hqUnitBuyable reads the union of door.hq.defeated + the synced blob) | null (buyable) */
         function _shopLockReason(race) {
             if (typeof isRace3DReady === 'function' && !isRace3DReady(race)) return 'model';
+            /* THE DEMO (2026-11-10, data.js DEMO_RULES): with the Demo switch on the Shop sells the demo roster's unlocks only —
+               a champ outside the 32 is not for sale ('demo'). A demo unlock is bought the way every unit is: once one fell
+               to you in a match (the defeated ledger below, PvP and VS CPU count), for the unit price or a free token. */
+            if (typeof demoModeOn === 'function' && demoModeOn() && !demoRaceIn(race)) return 'demo';
             if (typeof isUnitOwned === 'function' && isUnitOwned(race)) return null;
             if (typeof window.hqUnitBuyable === 'function') {
                 const p = (window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function') ? window.ProfileSystem.getActiveProfile() : null;
@@ -9373,7 +9453,7 @@
                 ? `<span class="shop-card-tag owned">✓ OWNED</span>`
                 : (_shopBuyable(race)
                     ? `<span class="shop-card-tag price">💰 ${price}</span>`
-                    : (_shopLockReason(race) === 'defeat' ? `<span class="shop-card-tag soon">🔒 DEFEAT ONE FIRST</span>` : `<span class="shop-card-tag soon">🔒 3D MODEL SOON</span>`));
+                    : (_shopLockReason(race) === 'defeat' ? `<span class="shop-card-tag soon">🔒 DEFEAT ONE FIRST</span>` : _shopLockReason(race) === 'demo' ? `<span class="shop-card-tag soon">🔒 NOT IN THE DEMO</span>` : `<span class="shop-card-tag soon">🔒 3D MODEL SOON</span>`));
             const featuredRibbon = opts.featured ? `<div class="shop-ribbon">FEATURED</div>` : '';
             return `<div class="shop-card${selected}${lockedCls}" onclick="window._shopSelect('${race.replace(/'/g, "\\'")}')">
                 ${featuredRibbon}
@@ -9450,7 +9530,7 @@
                 ? '<div class="cdx-hero-price owned">✓ OWNED</div>'
                 : (_shopBuyable(race)
                     ? `<div class="cdx-hero-price">💰 ${price}</div>`
-                    : (_shopLockReason(race) === 'defeat' ? '<div class="cdx-hero-price soon">🔒 DEFEAT ONE FIRST</div>' : '<div class="cdx-hero-price soon">🔒 COMING SOON</div>'));
+                    : (_shopLockReason(race) === 'defeat' ? '<div class="cdx-hero-price soon">🔒 DEFEAT ONE FIRST</div>' : _shopLockReason(race) === 'demo' ? '<div class="cdx-hero-price soon">🔒 NOT IN THE DEMO</div>' : '<div class="cdx-hero-price soon">🔒 COMING SOON</div>'));
             // Full preview-before-buy: the shop never hides what you are buying.
             return `
                 ${_codexHeroHtml(race, { priceTag })}
@@ -9462,6 +9542,7 @@
 
         function _shopFilteredRaces() {
             let races = AVAILABLE_RACES.filter(r => RACE_PROFILES[r]);
+            if (typeof demoModeOn === 'function' && demoModeOn()) races = races.filter(r => demoRaceIn(r));   // THE DEMO: the Shop lists the demo roster
             if (_shopFilterOwn === 'owned') races = races.filter(r => isUnitOwned(r));
             if (_shopFilterOwn === 'locked') races = races.filter(r => !isUnitOwned(r));
             if (_shopSearch.trim()) {
@@ -14321,7 +14402,7 @@
                 ov.style.cssText = 'position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(4,3,8,0.82);backdrop-filter:blur(2px)';
                 ov.innerHTML = `
                     <div style="max-width:440px;text-align:center;border:1px solid rgba(184,160,96,0.5);background:linear-gradient(180deg,#15110a,#0c0a06);border-radius:10px;padding:26px 28px;box-shadow:0 12px 60px rgba(0,0,0,0.7)">
-                        <img src="${(window.DOOR_TEXT && window.DOOR_TEXT.LOGO.onDark) || ''}" alt="" draggable="false" style="width:136px;height:auto;margin:0 auto 12px;display:block;filter:drop-shadow(0 0 12px rgba(0,0,0,.6))">
+                        <img src="${(window.DOOR_TEXT && (window.DOOR_TEXT.LOGO.mark || window.DOOR_TEXT.LOGO.onDark)) || ''}" alt="" draggable="false" style="width:136px;height:auto;margin:0 auto 12px;display:block;filter:drop-shadow(0 0 12px rgba(0,0,0,.6))">
                         <div style="font-family:Cormorant SC,serif;font-size:13px;letter-spacing:0.2em;color:#b8455a;margin-bottom:6px">${(window.DOOR_TEXT && window.DOOR_TEXT.ONBOARD.kicker) || 'CLEARANCE GRANTED'}</div>
                         <div style="font-family:Cormorant SC,serif;font-size:22px;color:#ffd86a;margin-bottom:10px">${(window.DOOR_TEXT && window.DOOR_TEXT.ONBOARD.title) || 'Choose Your First Vessel'}</div>
                         <div style="font-size:13px;color:#b8b0a0;line-height:1.5;margin-bottom:18px">${(window.DOOR_TEXT && window.DOOR_TEXT.ONBOARD.body) || 'Welcome, operative. The Division issues every new recruit one <b style="color:#9ad0ff">free declassification token</b> 🎟. Spend it on <i>any</i> vessel in the roster — even the rarest files.'}</div>
@@ -14922,7 +15003,11 @@
 
             const footprint = getSpellAoeFootprint(spell, x, y, unit);
             if (footprint.length > 0) {
-                const isHeal = ['heal', 'healAll'].includes(spell.kind);
+                /* THE AIM SIDE (data.js spellAimSide): green = heals / supports and deals no damage (Purify, Sanctuary,
+                   Iron Dome), purple = a neutral area (a weather, a room), red = it hurts */
+                const _side = _aimSide(spell);
+                const isHeal = _side === 'help';
+                const _softCol = _side === 'neutral' ? EW_PREVIEW.util : EW_PREVIEW.hit;
 
                 if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                     /* SPARED ALLIES (Keys vs Keys matchup: Spike the Ball painted the Quarterback's own team red): a footprint
@@ -14930,7 +15015,7 @@
                        wears a dim grey plate, not the crimson "will be hit" one. Friendly fire / a soaked ally the chain
                        reaches stays crimson. */
                     let _spared = null;
-                    if (!isHeal && typeof isAllyUnit === 'function') {
+                    if (_side === 'harm' && typeof isAllyUnit === 'function') {
                         const _allyTiles = footprint.filter(t => (state.units || []).some(u => !u.dead && u !== unit
                             && u.x === t.x && u.y === t.y && isAllyUnit(u, unit)));
                         const _plan = (_allyTiles.length && typeof forecastSpellPlan === 'function')
@@ -14949,12 +15034,12 @@
                         if (_spared && _spared.has(t.x + ',' + t.y)) return { x: t.x, y: t.y, color: 0x9aa0b4, opacity: 0.32, cursor: isCenter };
                         return {
                             x: t.x, y: t.y,
-                            color: isHeal ? (isCenter ? 0x33ff33 : 0x22cc22) : EW_PREVIEW.hit,
-                            opacity: isHeal ? (isCenter ? 0.55 : 0.38) : (isCenter ? 0.95 : 0.85),
+                            color: isHeal ? (isCenter ? EW_PREVIEW.help : EW_PREVIEW.helpSoft) : _softCol,
+                            opacity: (isHeal || _side === 'neutral') ? (isCenter ? 0.55 : 0.38) : (isCenter ? 0.95 : 0.85),
                             cursor: isCenter   // yellow corner brackets on the impact tile
                         };
                     });
-                    ThreeRenderer.setOverlay('aoe', overlayTiles, 0xff3333, 0.35);
+                    ThreeRenderer.setOverlay('aoe', overlayTiles, isHeal ? EW_PREVIEW.helpSoft : _softCol === EW_PREVIEW.hit ? 0xff3333 : _softCol, 0.35);
                     _aoePreview3dActive = true;
                 }
             } else {
@@ -14962,11 +15047,16 @@
                 if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                     const isHealKind = ['heal', 'selfHeal', 'seedHeal', 'revive', 'cleanse'].includes(spell.kind);
                     const isBuffKind = ['buff', 'shield', 'aoeShield', 'warCry'].includes(spell.kind);
+                    const _side1 = _aimSide(spell);
                     let singleColor = EW_PREVIEW.hit;
-                    if (isHealKind) singleColor = 0x33ff33;
+                    if (isHealKind) singleColor = EW_PREVIEW.help;
                     else if (isBuffKind) singleColor = 0x4488ff;
                     /* a cast that moves bodies and hurts nobody (teleport, swap, rally…) paints its aim as a move */
                     else if (!spellHasDamage(spell) && _BODY_MOVE_KINDS[spell.kind]) singleColor = EW_PREVIEW.self;
+                    /* THE AIM SIDE: any other cast that helps is green, a placement wears the place plate, a neutral
+                       cast the utility one; red is only what hurts */
+                    else if (_side1 === 'help') singleColor = EW_PREVIEW.help;
+                    else if (_side1 === 'neutral') singleColor = _PLACE_KINDS[spell.kind] || /^(summonUnit|deployObject|deployPair|raiseDead)$/.test(spell.kind) ? EW_PREVIEW.place : EW_PREVIEW.util;
                     /* …and an aim tile the cast can't land on reads as a dim grey
                        "no" plate instead of the same blue as a legal one. */
                     let _aimOpacity = singleColor === EW_PREVIEW.hit ? 0.9 : 0.5;
@@ -15143,6 +15233,10 @@
             }
             if (tiles.length === 0) tiles.push({ x: unit.x, y: unit.y });
 
+            /* THE AIM SIDE (data.js spellAimSide): a self cast that helps and deals no damage is green whatever its kind
+               (a self-centred cleanse, a rally), a neutral one purple; the kinds above keep their green */
+            const _selfSide = _aimSide(spell);
+            const _selfGreen = _selfSide === 'help' || (isHeal && _selfSide !== 'harm');
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                 const overlayTiles = tiles.map(t => {
                     const isCenter = (t.x === unit.x && t.y === unit.y) || _rndKeys.has(t.x + ',' + t.y);
@@ -15150,11 +15244,11 @@
                     if (kind === 'escape') return { x: t.x, y: t.y, color: EW_PREVIEW.self, opacity: 0.35 };
                     return {
                         x: t.x, y: t.y,
-                        color: isHeal ? (isCenter ? 0x33ff33 : 0x22cc22) : EW_PREVIEW.hit,
+                        color: _selfGreen ? (isCenter ? EW_PREVIEW.help : EW_PREVIEW.helpSoft) : _selfSide === 'neutral' ? EW_PREVIEW.util : EW_PREVIEW.hit,
                         opacity: isCenter ? 0.9 : (_rndRow ? 0.3 : 0.8)
                     };
                 });
-                ThreeRenderer.setOverlay('aoe', overlayTiles, 0xff3333, 0.35);
+                ThreeRenderer.setOverlay('aoe', overlayTiles, _selfGreen ? EW_PREVIEW.helpSoft : _selfSide === 'neutral' ? EW_PREVIEW.util : 0xff3333, 0.35);
                 _aoePreview3dActive = true;
                 return;
             }
@@ -16121,7 +16215,12 @@
              hit    → crimson solid plate with an inner frame (what WILL take damage; loud)
              self   → blue: the caster's own move (arrow, hologram, landing plate)
              forced → purple: any other body the cast moves (push, pull, throw, swap, rally) */
-        const EW_PREVIEW = { reach: 0xffa040, hit: 0xff2a2a, self: 0x3399ff, forced: 0xbb66ff };
+        /* 2026-11-11 (mondo: Purify's area on his own unit was red): help / helpSoft = the green plate of a cast that heals or
+           supports and deals no damage, util = a neutral cast's area, place = a placement's tile. Which one a cast wears is
+           data.js spellAimSide; each hex is one the UI Maker already colours (three-renderer _HL_HEX_KIND: heal, util, place). */
+        const EW_PREVIEW = { reach: 0xffa040, hit: 0xff2a2a, self: 0x3399ff, forced: 0xbb66ff,
+            help: 0x33ff33, helpSoft: 0x22cc22, util: 0xaa33ff, place: 0x44aaff };
+        const _aimSide = sp => (typeof spellAimSide === 'function') ? spellAimSide(sp) : 'harm';
         window.EW_PREVIEW = EW_PREVIEW;
 
         /* Every body a forecast plan moves: one arrow from where it stands to where it ENDS (a slide that rebounds,
@@ -17208,7 +17307,9 @@
         const gameModeSelectSetup = document.getElementById('gameModeSelectSetup');
         if (gameModeSelectSetup) {
 
-            gameModeSelectSetup.innerHTML = Object.values(GAME_MODES).map(m => `<option value="${m.id}"${m.id === activeGameMode ? ' selected' : ''}>${m.label} (${m.desc})</option>`).join('');
+            /* THE BIG SITE BOARDS ARE OUT (2026-11-11, mondo: "yes those should go too"): the old voxel site boards are not offered here either */
+            const _bigOut = new Set((typeof EW_MAP_META !== 'undefined' ? EW_MAP_META : []).filter(r => r && !r.isDelta && !r.arena).map(r => r.id));
+            gameModeSelectSetup.innerHTML = Object.values(GAME_MODES).filter(m => !_bigOut.has(m.id) || m.id === activeGameMode).map(m => `<option value="${m.id}"${m.id === activeGameMode ? ' selected' : ''}>${m.label} (${m.desc})</option>`).join('');
             gameModeSelectSetup.onchange = () => {
                 applyGameMode(gameModeSelectSetup.value);
                 repairPartyBuilderState();
@@ -17337,7 +17438,14 @@
                        from: 'menu', saved: null, poll: null, autoTimer: null, tileTimer: null, metAt: 0, stepMark: 0,
                        stepActiveId: null, nudgeAt: 0, bootPoll: null, cpuTimer: null };
         window._tutActive = false;
-        const _TUT_VERB_OF_BLADE = { move: 'move', jump: 'move', attack: 'attack', abil: 'spell', combo: 'combo', items: 'item', guard: 'guard', switch: 'switch', end: 'end' };
+        /* EVERY ROW ANSWERS TO THE STEP (mondo 2026-11-12: "The game shouldnt let me click stuff the tutorial isnt telling me to. So if
+           its telling me to move then everything besides move needs to be greyed out"): climb is a move; tactics and the two escapes
+           are no step's verb, so they are lit only on a free-play step (allow: 'all') */
+        const _TUT_VERB_OF_BLADE = { move: 'move', jump: 'move', climb: 'move', attack: 'attack', abil: 'spell', combo: 'combo', items: 'item', guard: 'guard', switch: 'switch', end: 'end',
+                                     tactics: 'tactics', escape: 'escape', teamEscape: 'escape' };
+        /* the tool buttons beside the list (BUILD + the pushers) and the arming modes, by the verb a step allows */
+        const _TUT_VERB_OF_TOOL = { build: 'build', entropyStrike: 'entropy', nexus: 'channel', prism: 'channel', inspect: 'inspect', detonate: 'spell' };
+        const _TUT_VERB_OF_MODE = { move: 'move', jump: 'move', climb: 'move', attack: 'attack', combo: 'combo', build: 'build', inspect: 'inspect' };
         const _TUT_HUD_SEL = { move: '.hrlg-blade[data-bid="move"]', jump: '.hrlg-blade[data-bid="jump"]', attack: '.hrlg-blade[data-bid="attack"]',
                                abil: '.hrlg-blade[data-bid="abil"]', combo: '.hrlg-blade[data-bid="combo"]', items: '.hrlg-blade[data-bid="items"]',
                                guard: '.hrlg-blade[data-bid="guard"]', end: '.hrlg-blade[data-bid="end"]', ap: '.ew-ap-press',
@@ -17383,6 +17491,7 @@
             if (!L) { console.warn('[Tutorial] no lesson', lessonId); return false; }
             if (_tut.booting || _tut.arenaWait) return false;
             if (state.phase === 'battle' && !_tut.active) { console.warn('[Tutorial] a match is live'); return false; }
+            _tutFreeMouse();
             /* THE OWN ARENAS (2026-10-20): a lesson board cut from a room (the Holo Sim) waits for that room's survey like
                _msConfirm's gate does, so the lesson opens IN the room and never on the bare board */
             const _ta = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(L.map) : null;
@@ -17663,6 +17772,68 @@
                 return out;
             });
         };
+        /* the same question without the nudge (the HUD asks it every draw): may the live step's player use `verb` */
+        window._tutVerbOk = function (verb) {
+            if (!_tut.active) return true;
+            if (_tut.finished || _tut.booting) return false;
+            const allow = _tutAllowList();
+            if (allow === null) return true;
+            return allow.includes(verb) || (verb === 'spell' && allow.some(a => a.startsWith('spell:')));
+        };
+        /* a tool button (hud.js: BUILD, a pusher): greyed with LATER unless the step allows its verb. Land / Take Off keep
+           their own state: those steps are scripted with an empty allow list and the pusher is the step itself */
+        window._tutToolOk = function (id) {
+            if (!_tut.active) return true;
+            if (id === 'fly' || id === 'land' || id === 'altitude') return !_tut.finished;
+            const verb = _TUT_VERB_OF_TOOL[id];
+            return verb ? window._tutVerbOk(verb) : (_tutAllowList() === null);
+        };
+        /* a quick menu's row (hud.js _computeEnemyActions / Ally / Tile: ids attack, attack:<obj>, combo, spell:<name>, item:<key>,
+           move, moveTowards, jump, climb, takeoff-move, inspect ...): kept only when the step allows its verb; a row that walks
+           first (moveTile) needs MOVE allowed as well */
+        window._tutQuickOk = function (a) {
+            if (!_tut.active) return true;
+            if (_tut.finished || _tut.booting) return false;
+            const allow = _tutAllowList();
+            if (allow === null) return true;
+            const id = String((a && a.id) || '');
+            let verb = null;
+            if (id === 'attack' || id.indexOf('attack:') === 0) verb = 'attack';
+            else if (id === 'combo') verb = 'combo';
+            else if (id.indexOf('spell:') === 0) verb = 'spell';
+            else if (id.indexOf('item:') === 0) verb = 'item';
+            else if (id === 'move' || id === 'moveTowards' || id === 'jump' || id === 'climb' || id === 'takeoff-move') verb = 'move';
+            else if (id === 'inspect') verb = 'inspect';
+            else if (id === 'channel' || id === 'nexus') verb = 'channel';
+            if (!verb) return false;
+            if (a.moveTile && verb !== 'move' && !allow.includes('move')) return false;
+            if (verb === 'spell') {
+                const sid = a.spell && a.spell.id;
+                if (allow.includes('spell')) return true;
+                return !!sid && allow.includes('spell:' + sid);
+            }
+            return allow.includes(verb);
+        };
+        /* THE ONE TARGET (mondo 2026-11-12: "when the tutorial asks me to smite dummy B, there's nothing stopping me from smiting
+           dummy A, but then i cant smite dummy B after that and there is no way to progress"): a step that names its target
+           (`only: '<unit key>'`, or an attack goal's own `target`) takes the attack / the cast on that unit's square and no other.
+           _tutTargetIs is the silent read (the HUD's target lists); _tutTargetOk nudges (the engine's gate). */
+        function _tutOnlyUnit() {
+            const st = _tut.step; if (!_tut.active || !st) return null;
+            const key = st.only || (st.goal && st.goal.type === 'attack' && st.goal.target) || null;
+            const t = key ? _tutUnit(key) : null;
+            return (t && !t.dead) ? t : null;
+        }
+        window._tutTargetIs = function (x, y) { const t = _tutOnlyUnit(); return !t || (t.x === x && t.y === y); };
+        window._tutTargetOk = function (x, y) { const ok = window._tutTargetIs(x, y); if (!ok) _tutNudge(); return ok; };
+        /* arming a mode from the keyboard (B, M, A ...) is the same gate as its row */
+        window._tutModeOk = function (mode) {
+            if (!_tut.active) return true;
+            const verb = _TUT_VERB_OF_MODE[mode];
+            if (!verb || window._tutVerbOk(verb)) return true;
+            _tutNudge();
+            return false;
+        };
         function _tutNudge() {
             const now = Date.now();
             if (now - _tut.nudgeAt < 900) return;
@@ -17774,12 +17945,28 @@
                 default: return false;
             }
         }
+        /* THE MOUSE COMES BACK (mondo 2026-11-12: "the mouse disappeared in between the first and 2nd lessons, i couldnt press continue
+           on the tutorial panel. Had to press escape"): the walking view's mouse capture, asked for on the click that started the
+           next tape, could land after the building was left and stay on the shared canvas. A lesson never needs the capture while
+           it boots or while a panel waits for a button, so it is given back there. */
+        function _tutFreeMouse() {
+            try { if (typeof document !== 'undefined' && document.pointerLockElement && document.exitPointerLock) document.exitPointerLock(); } catch (e) {}
+        }
         function _tutPoll() {
+            if (_tut.active && (_tut.finished || _tut.booting || (_tut.step && _tut.step.goal && _tut.step.goal.type === 'ack'))) _tutFreeMouse();
             if (!_tut.active || _tut.finished || _tut.booting) return;
             _tutApplyGlow();
             /* the coach fades while a target or tile is being picked (styles-base.css .tut-coach.aiming) */
             const _ce = document.getElementById('tutCoach');
-            if (_ce) _ce.classList.toggle('aiming', !!state.actionMode && !!(_tut.step && _tut.step.goal && _tut.step.goal.type !== 'ack'));
+            /* THE AIM TIP (mondo 2026-11-12: "After I press move for the first time, can it tell the player that yellow tiles are ones
+               they can attack from"): a step's `aim: { <mode>: text }` shows under the body while that mode is armed, and the coach
+               stays solid for it */
+            const _aimTip = (_tut.step && _tut.step.aim && state.actionMode) ? (_tut.step.aim[state.actionMode] || null) : null;
+            try {
+                const _at = document.getElementById('tutCoachAim');
+                if (_at) { const on = !!_aimTip; if (on && _at.getAttribute('data-k') !== state.actionMode) { const _tx = (typeof _aimTip === 'string') ? _aimTip : _aimTip.t, _tc = (typeof _aimTip === 'string') ? '' : (_aimTip.c || ''); _at.innerHTML = _tutT(_tx); _at.style.setProperty('--tip', _tc || '#ffcc33'); _at.setAttribute('data-k', state.actionMode); } _at.style.display = on ? '' : 'none'; if (!on) _at.removeAttribute('data-k'); }
+            } catch (e) {}
+            if (_ce) _ce.classList.toggle('aiming', !_aimTip && !!state.actionMode && !!(_tut.step && _tut.step.goal && _tut.step.goal.type !== 'ack'));
             if (state.phase !== 'battle') return;
             /* the real-CPU tapes end the way a match does (checkWin stands aside while a lesson runs) */
             if (_tut.lesson && _tut.lesson.cpuAi && !_tut.outcome && !state._actionExecuting) {
@@ -17863,7 +18050,7 @@
             _tutApplyGlow();
             try { if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache(); if (typeof markDirty === 'function') markDirty('actions'); if (typeof renderIfDirty === 'function') renderIfDirty(); } catch (e) {}
             const el = _tutMountCoach();
-            el.classList.add('done');
+            el.classList.add('done', 'center');
             el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · ' + L.title) + '</span></div>'
                 + '<div class="tut-coach-stamp">LOST</div>'
                 + '<div class="tut-coach-body">Player 2 wins: ' + escapeHtml(lost) + '. Nothing is filed. Run the tape again.</div>'
@@ -17928,11 +18115,31 @@
                 const act = b.getAttribute('data-tut');
                 if (act === 'continue') { try { playSfx('uiButtonConfirm'); } catch (x) {} _tutAdvance(); }
                 else if (act === 'leave') window._tutorialLeave();
-                else if (act === 'next') { const n = _tutNextLesson(); if (n) _tutTeardown(() => window._tutorialLaunch(n.id, { from: _tut.from })); }
+                else if (act === 'next') { const n = _tutNextLesson(); if (n) _tutChain(n.id); }
                 else if (act === 'list') window._tutorialLeave(true);
-                else if (act === 'restart') { const id = _tut.lesson && _tut.lesson.id; if (id) _tutTeardown(() => window._tutorialLaunch(id, { from: _tut.from })); }
+                else if (act === 'restart') { const id = _tut.lesson && _tut.lesson.id; if (id) _tutChain(id); }
             });
             return el;
+        }
+        /* ONE TAPE STRAIGHT INTO THE NEXT (2026-11-12, mondo: "the second tutorial shows an all black screen, HUD and everything
+           still there and responsive but nothing showing on the board"). NEXT TAPE / RESTART on a lesson started at the Range
+           Console tore the lesson down through backToMainMenu, whose way home (map.js _hqReturnOrMenu) RE-ENTERED THE
+           BUILDING, and the next lesson's match started in the same breath, under the building's load: the building then
+           owned the canvas and the lesson's board was never drawn (the HUD is DOM, so it stood over a black picture).
+           window._tutChainPending keeps the building from being re-entered in between (as window._questFightPending does
+           for the quest's fight); a lesson that cannot start falls back to the ordinary way home. */
+        function _tutChain(lessonId) {
+            const hq = _tut.from === 'hq';
+            if (hq) window._tutChainPending = lessonId;
+            _tutTeardown((from) => {
+                window._tutChainPending = null;
+                let ok = false;
+                try {
+                    if (hq) state.gameState = GS.MAIN_MENU;   // as the Range Console starts a tape (map.js data-tutorial)
+                    ok = !!window._tutorialLaunch(lessonId, { from: from });
+                } catch (e) { console.error('[Tutorial] the next tape did not start', e); ok = false; }
+                if (!ok && hq && typeof window._hqReturnOrMenu === 'function') window._hqReturnOrMenu();
+            });
         }
         function _tutNextLesson() {
             const L = _tut.lesson;
@@ -17948,22 +18155,28 @@
             const ack = st.goal && st.goal.type === 'ack';
             const isFinish = ack && st.goal.finish;
             el.classList.remove('met', 'nudge', 'done');
+            /* THE MIDDLE, THEN THE CORNER (mondo 2026-11-12: "put the tutorial text in the middle of the screen on top of everything, and it
+               can go the corner it's in now once the player has control and is pressing the actions"): a panel that is read and
+               continued sits centre screen over everything; a step the player acts (or watches) in sits in the corner */
+            el.classList.toggle('center', !!ack);
             el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · ' + L.title) + '</span>'
                 + '<button class="tut-coach-x" data-tut="leave" title="Leave the lesson">✕</button></div>'
                 + (st.title ? '<div class="tut-coach-title">' + escapeHtml(st.title) + '</div>' : '')
                 + '<div class="tut-coach-body">' + _tutT(st.say) + '</div>'
                 + (st.hint && !ack ? '<div class="tut-coach-hint">▶ ' + escapeHtml(_tutT(st.hint)) + '</div>' : '')
+                + (st.aim ? '<div class="tut-coach-aim" id="tutCoachAim" style="display:none"></div>' : '')
                 + (ack ? '<div class="tut-coach-actions"><button class="tut-btn tut-btn-primary" data-tut="continue">' + (isFinish ? 'LESSON COMPLETE ▸' : 'CONTINUE ▸') + '</button></div>' : '')
                 + '<div class="tut-coach-progress" title="step ' + n + ' of ' + total + '"><i style="width:' + Math.round(100 * n / total) + '%"></i></div>';
         }
-        function _tutRenderDone() {
+        function _tutRenderDone(qres) {
             const el = _tutMountCoach();
             const L = _tut.lesson;
             const next = _tutNextLesson();
-            el.classList.add('done');
+            el.classList.add('done', 'center');
             el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · FILED') + '</span></div>'
                 + '<div class="tut-coach-stamp">LESSON COMPLETE</div>'
                 + '<div class="tut-coach-body">' + escapeHtml(L.title) + ' is on your record. ' + (next ? 'Next on the shelf: <b>' + escapeHtml(next.title) + '</b>.' : 'That was the last tape on the shelf.') + '</div>'
+                + _tutQuestLine(qres)   // THE QUESTS: what the tape did to a quest
                 + '<div class="tut-coach-actions">'
                 + (next ? '<button class="tut-btn tut-btn-primary" data-tut="next">NEXT TAPE ▸</button>' : '')
                 + '<button class="tut-btn" data-tut="list">' + (_tut.from === 'hq' ? 'BACK TO ROOM 64' : 'THE SHELF') + '</button></div>';
@@ -17981,7 +18194,66 @@
             try { playSfx('levelUp'); } catch (e) {}
             try { if (typeof playDoorSfx === 'function') playDoorSfx('stamp', { volume: 0.7 }); } catch (e) {}
             try { if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache(); if (typeof markDirty === 'function') markDirty('actions'); if (typeof renderIfDirty === 'function') renderIfDirty(); } catch (e) {}
-            _tutRenderDone();
+            /* THE QUESTS (2026-11-12): the tape is an event a quest may be waiting on (data.js questEvent). When it makes a
+               quest's own fight the next objective and the lesson was started from the building, the lesson turns into it:
+               the portal forms on this board, then the fight starts on it (_tutQuestPortal) */
+            let _qres = null;
+            try { if (typeof window._questEvent === 'function') _qres = window._questEvent({ type: 'lesson', lesson: L.id }, { silent: true }); } catch (e) { _qres = null; }
+            try { if (_qres && _qres.fight && typeof window._hqIsHome === 'function' && window._hqIsHome() && _tutQuestPortal(_qres.fight, _qres)) return; } catch (e) { console.warn('[QUEST] the portal could not open', e); }
+            _tutRenderDone(_qres);
+        }
+        function _tutQuestLine(qres) {
+            const c = qres && Array.isArray(qres.changes) ? qres.changes.find(x => x.kind === 'updated' || x.kind === 'started') : null;
+            return c ? '<div class="tut-coach-hint">▶ QUEST · ' + escapeHtml(String(c.title || '')) + ': ' + escapeHtml(String(c.objective || '')) + '</div>' : '';
+        }
+        /* the lesson turns into the quest's fight: the Department's door stands up on the fight's portal tile of THIS board,
+           the camera goes to it, and after the beat the lesson is torn down and the fight starts on the same board (map.js
+           _questFightGo; window._questFightPending keeps the building from being re-entered in between). A fight that
+           cannot start falls back to the ordinary way home. */
+        function _tutQuestPortal(fightId, qres) {
+            const F = (typeof window.questFightDef === 'function') ? window.questFightDef(fightId) : null;
+            if (!F || typeof window._questFightGo !== 'function') return false;
+            const L = _tut.lesson;
+            const el = _tutMountCoach();
+            el.classList.remove('met', 'nudge', 'center'); el.classList.add('done');   // the corner: the portal is the thing to watch
+            el.innerHTML = '<div class="tut-coach-hd"><b>ORIENTATION</b><span>' + escapeHtml('TAPE ' + L.no + ' · FILED') + '</span></div>'
+                + '<div class="tut-coach-stamp">LESSON COMPLETE</div>'
+                + '<div class="tut-coach-body">A portal is forming on the pad.</div>' + _tutQuestLine(qres);
+            /* THE CUTSCENES: a fight that opens on a scene forms its portal THERE; the tape just cuts to black and into it */
+            const scened = !!(F.scene && !window.EW_NO_CUTSCENES && window.EWScene && typeof window.storyCutscene === 'function' && window.storyCutscene(F.scene));
+            if (scened) { const b = el.querySelector('.tut-coach-body'); if (b) b.textContent = ''; }
+            const here = !scened && !!(F.portal && L.map === F.site);
+            if (here) {
+                setTimeout(() => {
+                    if (!_tut.active) return;
+                    try { _tutCamera(F.portal.x, F.portal.y); } catch (e) {}
+                    try { if (window.ThreeVFXEffects && typeof window.ThreeVFXEffects.questPortal === 'function') window.ThreeVFXEffects.questPortal(F.portal.x, F.portal.y, { riseMs: 900, openMs: 600, holdMs: 2600, big: true, scale: 1.5 }); } catch (e) {}
+                    try { if (typeof showCombatBanner === 'function') showCombatBanner('🚪 A PORTAL FORMS', 'SOMETHING IS COMING THROUGH', 'pickup-enemy'); } catch (e) {}
+                }, 900);
+            }
+            setTimeout(() => {
+                if (!_tut.active) return;
+                window._questFightPending = fightId;
+                /* the cut from the lesson's board to the fight's: a plain black card covers the moment neither exists, and
+                   lifts on the fight's first round (or at once when the fight cannot start; 20 s is the safety net) */
+                let cover = null, coverPoll = null;
+                const lift = (now) => { if (coverPoll) { clearInterval(coverPoll); coverPoll = null; } const c = cover; cover = null; if (!c) return; if (now) { c.remove(); return; } c.style.opacity = '0'; setTimeout(() => { try { c.remove(); } catch (e) {} }, 420); };
+                try {
+                    cover = document.createElement('div'); cover.id = 'questCover';
+                    cover.style.cssText = 'position:fixed;inset:0;z-index:99990;background:#050508;display:flex;align-items:center;justify-content:center;opacity:1;transition:opacity 0.4s ease;pointer-events:none;font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:0.3em;color:#b8a060;';
+                    cover.textContent = scened ? '' : 'A PORTAL FORMS';
+                    document.body.appendChild(cover);
+                    setTimeout(() => lift(false), 20000);
+                } catch (e) { cover = null; }
+                _tutTeardown(() => {
+                    window._questFightPending = null;
+                    let ok = false;
+                    try { ok = !!window._questFightGo(fightId); } catch (e) { console.error('[QUEST] the fight did not start', e); ok = false; }
+                    if (!ok) { lift(true); if (typeof window._hqReturnOrMenu === 'function') window._hqReturnOrMenu(); return; }
+                    coverPoll = setInterval(() => { if ((state.phase === 'battle' && state.round >= 1 && state._blitzActiveUnitId) || (window.EWScene && window.EWScene.on)) lift(false); }, 120);
+                });
+            }, here ? 3600 : 1200);
+            return true;
         }
         function _tutStopMatchSide() {
             if (_tut.poll) { clearInterval(_tut.poll); _tut.poll = null; }
@@ -18042,7 +18314,7 @@
         let _tapeActive = false, _tapeBeat = -1, _tapeTimer = null, _tapeType = null, _tapeResolve = null, _tapeT0 = 0, _tapeClock = null;
         const _TAPE_ART = {
             leader: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="200" cy="150" r="96" class="tp-line"/><circle cx="200" cy="150" r="70" class="tp-line"/><line x1="200" y1="20" x2="200" y2="280" class="tp-line thin"/><line x1="40" y1="150" x2="360" y2="150" class="tp-line thin"/><text x="200" y="176" class="tp-big tp-count">3</text></svg>',
-            seal: () => '<div class="tape-seal"><img src="https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png" alt="" draggable="false"></div>',
+            seal: () => '<div class="tape-seal"><img src="https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png" alt="" draggable="false"></div>',
             corner: () => '<svg viewBox="0 0 400 300" class="tape-svg"><line x1="40" y1="80" x2="360" y2="80" class="tp-line dim draw d1"/><line x1="40" y1="120" x2="360" y2="120" class="tp-line dim draw d1"/><text x="200" y="60" class="tp-lbl dim fade d2">PARALLEL · NEVER MEET</text><line x1="120" y1="270" x2="120" y2="160" class="tp-line draw d3"/><line x1="120" y1="270" x2="300" y2="270" class="tp-line draw d3"/><path d="M120 250 h20 v20" class="tp-line draw d4"/><rect x="123" y="205" width="36" height="65" class="tp-door fade d5"/><text x="200" y="185" class="tp-lbl fade d5">ORTHOGONAL · A CORNER · A DOOR</text></svg>',
             round: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="180" cy="150" r="110" class="tp-line draw d1"/><circle cx="180" cy="150" r="34" class="tp-line dim draw d2"/><g class="fade d3"><rect x="292" y="118" width="64" height="64" class="tp-line warn"/><line x1="292" y1="150" x2="356" y2="150" class="tp-line warn thin"/><line x1="324" y1="118" x2="324" y2="182" class="tp-line warn thin"/><text x="324" y="206" class="tp-lbl warn">ROOM 64</text></g><text x="180" y="290" class="tp-lbl fade d2">THE DEPARTMENT · ROUND · NO CORNERS</text></svg>',
             globe: () => '<svg viewBox="0 0 400 300" class="tape-svg"><circle cx="200" cy="150" r="100" class="tp-line draw d1"/><ellipse cx="200" cy="150" rx="46" ry="100" class="tp-line dim draw d1"/><line x1="100" y1="150" x2="300" y2="150" class="tp-line dim draw d1"/><ellipse cx="200" cy="110" rx="90" ry="24" class="tp-line dim draw d2"/><ellipse cx="200" cy="190" rx="90" ry="24" class="tp-line dim draw d2"/><g class="tp-doors"><rect x="140" y="98" width="12" height="20" class="tp-door pop p1"/><rect x="236" y="130" width="12" height="20" class="tp-door pop p2"/><rect x="176" y="176" width="12" height="20" class="tp-door pop p3"/><rect x="262" y="88" width="12" height="20" class="tp-door pop p4"/><rect x="118" y="160" width="12" height="20" class="tp-door pop p5"/></g><text x="200" y="290" class="tp-lbl warn fade d4">THRESHOLD EVENTS · CANON REALITY</text></svg>',

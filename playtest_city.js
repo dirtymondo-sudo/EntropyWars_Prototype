@@ -19,7 +19,7 @@ const CT = { '.js': 'application/javascript', '.css': 'text/css' };
 const args = process.argv.slice(2).filter(a => !a.startsWith('--')), flags = process.argv.slice(2).filter(a => a.startsWith('--'));
 const flag = (k, d) => { const f = flags.find(x => x === '--' + k || x.startsWith('--' + k + '=')); if (!f) return d; const v = f.split('=')[1]; return v === undefined ? true : v; };
 const room = args[0] || 'site_prebuilt_downtown_streets'; const views = JSON.parse(args[1] || '[]'); const noGltf = !!flag('nogltf', false); const WAIT = Number(flag('wait', 22000));
-const EXE = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find(p => fs.existsSync(p));
+const EXE = ['/opt/pw-browsers/chromium-1194/chrome-linux/chrome', '/opt/pw-browsers/chromium'].find(p => fs.existsSync(p));
 const run = async () => {
   const proxy = process.env.HTTPS_PROXY || process.env.https_proxy || null;
   const browser = await chromium.launch({ headless: true, executablePath: EXE, proxy: proxy ? { server: proxy, bypass: 'localhost,127.0.0.1' } : undefined, args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage', '--ignore-certificate-errors'] });
@@ -30,6 +30,7 @@ const run = async () => {
     const url = route.request().url(); let u; try { u = new URL(url); } catch (e) { return route.continue(); }
     if (u.hostname === 'localhost' || u.hostname === '127.0.0.1') return route.continue();
     const base = path.basename(u.pathname), ext = path.extname(base).toLowerCase();
+    if (process.env.EW_ROUTE_LOG && new RegExp(process.env.EW_ROUTE_LOG).test(url)) console.log('ROUTE', Date.now() % 10000000, url.slice(0, 200));
     for (const [re, target] of NPM_MIRROR) { const m = re.exec(u.pathname); if (m) { const abs = path.join(REPO, 'node_modules', target.replace(/\$(\d)/g, (_, i) => m[Number(i)])); if (fs.existsSync(abs)) { cnt.mirror++; return route.fulfill({ status: 200, contentType: 'application/javascript', body: fs.readFileSync(abs) }); } } }
     if ((ext === '.js' || ext === '.css') && fs.existsSync(path.join(REPO, base))) { cnt.local++; return route.fulfill({ status: 200, contentType: CT[ext], body: fs.readFileSync(path.join(REPO, base)) }); }
     if (/\/terrain\/urban\//.test(u.pathname) && ext === '.png') { const b2 = decodeURIComponent(base); for (const c of [path.join(REPO, 'textures', b2), path.join(REPO, b2)]) if (fs.existsSync(c)) { cnt.urban++; return route.fulfill({ status: 200, contentType: 'image/png', body: fs.readFileSync(c) }); } }
@@ -50,7 +51,7 @@ const run = async () => {
   page.on('crash', () => { console.log('PAGE CRASHED — last logs:', JSON.stringify(logs.slice(-6))); });
   if (flag('flags', '')) await page.addInitScript((fl) => { fl.split(',').forEach(k => { if (k) window[k] = true; }); }, String(flag('flags', '')));
   page.on('pageerror', e => errs.push(String(e && e.message || e).slice(0, 240)));
-  page.on('console', m => { const t = m.text(); if (/\[HQ\]|failed|error/i.test(t) && !/tabletop .* has nothing under it/.test(t)) logs.push(t.slice(0, Number(flag('loglen', 240)))); });
+  page.on('console', m => { const t = m.text(); if (/\[HQ\]|failed|error|diner|warn/i.test(t) && !/tabletop .* has nothing under it/.test(t)) logs.push(t.slice(0, Number(flag('loglen', 240)))); });
   await page.goto('http://localhost:3000/?hq&nomenu3d', { waitUntil: 'commit', timeout: 60000 });
   const t0 = Date.now(); let ok = false;
   while (Date.now() - t0 < 120000) { try { const st = await page.evaluate(() => [document.readyState, typeof window._hqEnter, typeof ThreeRenderer !== 'undefined' && !!ThreeRenderer.hq]); if (st[1] === 'function' && st[2]) { ok = true; break; } } catch (e) {} await sleep(800); }
@@ -68,7 +69,7 @@ const run = async () => {
     await page.evaluate(() => { try { if (window._hqPauseDrop) window._hqPauseDrop(); const pz = document.getElementById('hqPause'); if (pz) pz.style.display = 'none'; } catch (e) {} });
     const f = path.join(OUT, room + '_' + (v.name || 'v') + '.png'); await page.screenshot({ path: f, timeout: 180000 }); console.log('SHOT', f, 'room=' + await page.evaluate(() => (window._hqCurRoom || (ThreeRenderer.hq.dev.room && ThreeRenderer.hq.dev.room()) || '?')));
   }
-  console.log('COUNTERS', JSON.stringify(cnt)); console.log('ERRORS', JSON.stringify(errs.slice(0, 8))); console.log('LOGS', JSON.stringify(logs.slice(0, 30)));
+  console.log('COUNTERS', JSON.stringify(cnt)); console.log('ERRORS', JSON.stringify(errs.slice(0, 8))); console.log('LOGS', JSON.stringify(logs.slice(0, 30))); console.log('PROBES', JSON.stringify(logs.filter(t => /PROBE|diner/i.test(t)).slice(0, 12)));
   await browser.close();
 };
 (async () => {

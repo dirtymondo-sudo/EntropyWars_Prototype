@@ -52,6 +52,13 @@ mondo's ruling (fork 4): his world starts FLAT AND EMPTY; the data.js rooms are 
   prefab's, so every tool works unchanged (`basePath()` = `['prefabs', id]`). `stepTouched` re-syncs every room placing a prefab.
   The survey worker gets `HQ_PREFABS` with each room (map.js).
 - **Texture picker** (`texPick`): TERRAIN_SPRITES, URBAN_TEX_FAMILIES (as `urban:<Name>`), DOOR_HQ.textures. Only existing sheets.
+  - **THE URBAN DECAY PACK, THE REST (2026-11-15, mondo's inbox upload `dirtymondo/inbox/Urban Decay/`, Strideh's Urban Decay Textures v1.4, 946 PNGs):**
+    the first 320 urban sheets were this pack box-halved (256 -> 128 px a sheet). The other 681 (roads, sidewalks, kerbs, bricks, carpets, wood,
+    concrete, metal, roofs, shutters, containers, fences, vents, lights, decals) are halved the same way, on R2 `Assets/world/terrain/urban/`, listed in
+    sprites.js `URBAN_DECAY_FAMILIES` (82 new families merged into URBAN_TEX_FAMILIES; a name whose family existed sits in `<Family>More` so no old
+    seeded pick changes). The picker's cap went 1200 -> 4000 rows. Search `road`, `carpet`, `wood`, `brick`. The roads are 512 px in the pack
+    (256 in game = two squares of 1.75 m a sheet). Licence: free + commercial with credit, no redistribution as assets (credit in data.js EW_CREDITS).
+    The originals: `/mnt/project-files/asset-packs/urban-decay/`.
 - **Probe:** the E1 sweep drives the palette with real mouse drags via `EWEditor.w2s(x, y, z)` and `EWEditor.cam({...})`.
 
 ## E2 — the palette and the door tool (2026-09-29, token 20260929-editor-03-cors)
@@ -1027,3 +1034,8 @@ Everything in the model list should be available in the map editor". Thread "Mak
   queued job), timeout 45 s, and editor.js thumbFill queues the tiles bottom-up so the LIFO pump draws the top tiles first.
 - styles-editor.css `.ed-tile span` wraps (two lines, no ellipsis); road labels shortened ("straight 9.6×4.2 m"). The 1-9 hotbar
   slots (`.ed-hs`) are 96 px wide, 46 px tall and wrap their names too (key hint + toast moved up to clear them).
+- THE CALM LOOK (2026-11-11, mondo: "make sure any new textures you add are available in the map editor, and keep the old ones
+  there too"): texSources lists data.js CALM_TERRAIN first as "CALM · the new realistic sheets" (each tile labelled with its name
+  and the pixel key whose rules it plays by: hqRuleKeyOf); his TERRAIN sheets stay as "TERRAIN (your pixel sheets)". The ROOM tab's
+  "ground look" select (shellHtml) writes shell.sheets = 'pixel' (that room keeps his 128 px sheets) or nothing (Calm, the default).
+  Notes: maps-terrain-battle.md "THE CALM LOOK".

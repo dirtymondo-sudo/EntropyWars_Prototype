@@ -651,6 +651,13 @@ three-vfx-effects.js flame / energy / orb, three-lightning.js MeshLine). Sprite 
 proxy (`_ewPointProxy`; WebGPU points are 1 px). A NEW ShaderMaterial needs a twin or it draws as a flat stand-in on
 WebGPU. Console: `ThreeRenderer.nodePrograms()`. Details: WEBGPU_PLAN.md §10 "W2".
 
+### THE WARMED TWIN (2026-11-12, the foyer's one `Material "ShaderMaterial" is not compatible` line)
+The line came from the room warm-up, not from a missing object: `_hqWarmRun`'s renderer.compile is compileAsync on the node
+renderer, and compileAsync calls `renderObject` straight, past the draw hook that swaps a ShaderMaterial for its twin. The
+foyer's dust motes (`atmos:dust`, a Points ShaderMaterial) were warmed raw: three logged the line once and the twin the real
+draw uses was never warmed (the motes always drew, through the hook). The `r.renderObject` wrap in `_ewGpuCompat` now gives an
+unswapped classic shader material the same twin / point proxy. Any future "is not compatible" line: log the object in that wrap.
+
 ### W1 — the material layer (2026-10-03, zip renderer/ENTROPY_WARS_W1_MATERIALS.zip)
 The node renderer draws the GLSL hooks' effects: the legacy light levels, the height fog, the room-box AO, the terrain
 sheets, the fluid tops (waves, caustics, glints), the three sways, the creator's vertex-colour glow, the backdrop's horizon
@@ -1048,6 +1055,16 @@ battles and exploring alike". Proven in a VS CPU arena: frame mean luma 40 at 0.
   pass's 24 taps read that little picture (`tRaySrc`) instead of the full frame. Drawn only while the rays are on (the node
   renderer's rtt flips `autoUpdate`). Checked: Göbekli Tepe night sky, rays 1, the rays' own contribution (rays 1 minus
   rays 0) before = streaks across the whole starry sky, after = only off the braziers and the zone glow; WebGPU rays draw.
+- **THE SKY'S RAYS** (2026-11-14, mondo: "my unit rim light makes light rays but i think i just want the light rays to come
+  from above like the sun or the moon"): the slider's Light Rays now come only from the SKY. The ray source (`_RaySrcShader`,
+  `_ngRaySrc`) keeps a tap only where the scene drew nothing (depth still cleared = the dome: `uRaySky`, depth >= 0.999999);
+  pmndrs reads `composer.inputBuffer.depthTexture`, the node chain `P.depthTex`, the classic chain a half-size mask made right
+  after its RenderPass (`_skyMaskAfterScene`, its depth is gone by the frame pass). The 3D moon (`_skyMoon`) writes no depth
+  so it counts as sky. The rays aim at the body the dome draws (`ThreeRenderer.getSkyLightDir(ctx)`: sun by day, moon by
+  night, the world clock's pair in a clocked room, un-yawed), sun warm / moon cool; the battle used to aim at the key light.
+  The rim light, the slider and 0 = off are untouched; a finisher `rayBeat` keeps every light (`uRaySky` 0). No sky on screen =
+  no shafts. Old rays live: `window.EW_RAYS_ANY_LIGHT = true`. Checked on Shasta, day + night, rays 1: before = streaks off
+  the lit tiles, the units and the board; after = shafts only falling out of the sky (pmndrs + the node chain on WebGL 2).
 - **THE NO-STALL READ** (`_aeMeasure`): the 16 × 16 frame read that feeds the rays' bar and the building's auto exposure
   used `readRenderTargetPixels` every 220 ms, which makes the CPU wait for the GPU to finish the frame. WebGL 2 now uses
   `readRenderTargetPixelsAsync` (a pixel buffer + fence), as the node renderer already did. Sandbox (llvmpipe), Light Rays
@@ -1609,3 +1626,626 @@ this is the largest single GPU lever in the game.
   1372 × 771 467 ms, 50 % 1024 × 576 336 ms. Every step clicked in the pause menu's Video tab; the walk redraws at the
   new size too. Screens: /mnt/project-files/perf-webgpu-20261109/render-scale/.
 - The F3 lens's Resolution row is still the session-only preview (it can also go ABOVE the cap, uncapped Native).
+
+## THE WEIGHTED SHEETS + THE LIGHT'S REACH (2026-11-10, the PvP demo's frame rate: mondo's friend on a weak Chrome PC)
+The friend's Chrome runs the DEFAULT renderer (the classic WebGLRenderer, `ew_gpu` unset), not the node renderer mondo
+plays on, so THE FRAME RATE PLAN 1's AO skip (node chain only) does nothing there. Measured first, on the Mount Shasta
+Arena 12x12, 4v4, classic renderer, 1280x720, software raster (llvmpipe; shares are true, milliseconds are the sandbox's):
+172 draws, 425K triangles, 15 renders a frame (scene 1, N8AO 7, SMAA 3, tilt-shift 2, ray source 1, frame 1).
+Hiding one thing at a time: the screen passes are about 20 % of the frame (N8AO alone about 13 %), the GROUND about 30 %,
+though it is 10 draws and 89K triangles: it fills the screen and its shader is the most expensive one in a fight.
+Both fixes change what a pixel COMPUTES, not what it shows; nothing is relayed, online is untouched.
+- **THE WEIGHTED SHEETS** (three-renderer.js `_hqTerrainMat`, the node look `_ewNodeTerrain`). The field read floor, cliff
+  and path on three world axes plus every painted sheet for every pixel: 9 to 17 reads at 8x anisotropic. A read whose
+  weight is under 0.0005 is skipped (flat ground: 1 read). The reads sit in branches, so they use textureGrad / `.grad()`
+  with derivatives taken outside the branch (same mip level; on WebGPU a plain sample inside a branch is not even legal).
+  Proof, ground alone, switch flipped live, frames otherwise bit-identical: classic 3,626 of 921,600 pixels differ, node
+  (webgl2 backend) 2,340, every one by ONE step of 255. Ground-only frame: 200 ms -> 165 ms (classic). The program key
+  is `hqTerrainTri2`. Off, live: `window.EW_TERRAIN_ALL_SAMPLES = true` (note: the off path keeps textureGrad, which
+  llvmpipe runs SLOWER than the old plain reads, 250 ms: compare against the numbers here, not against the switch).
+- **THE LIGHT'S REACH** (three-renderer.js `_ewLightReachPatch`, classic renderer only: a ShaderChunk patch of
+  `lights_fragment_begin`). A fight has 13 point lights: 5 dark spares at intensity 0 (`ew void key` + 3 unnamed at
+  y -99999, `ew key light`) and 8 unit lights reaching 320 units (2.5 squares). Every lit pixel of every Lambert / Phong
+  / Standard material ran fall-off + BRDF for all 13. A point light is now skipped when its colour is black or the pixel
+  is past its `distance` (decay > 0: exactly where the legacy fall-off returns 0); a spot light when three's own
+  `directLight.visible` is false. Proof: 6 of 921,600 pixels differ by one step. Ground-only draw: 148 ms -> 115 ms
+  (all point lights hidden: 108 ms). Off: localStorage `ew_lightsEveryPixel = '1'` (or `window.EW_LIGHTS_EVERY_PIXEL =
+  true` before the scripts) and reload: a chunk patch is read once.
+- Both together, the whole fight frame (draw to a forced 1-pixel readback, 20 frames x 3 runs): 395 ms -> 350 ms, 11 %.
+  A real GPU will not give the same share: nobody has timed one. Screens: /mnt/project-files/perf-pvp-demo-20261110/.
+- HOW TO A/B A CHUNK PATCH LIVE (harness only): three's program key for a built-in material does not hash the chunk
+  text, so after swapping `THREE.ShaderChunk.x` every lit material needs a new `customProgramCacheKey` AND
+  `needsUpdate`, or the old program is reused and the comparison measures nothing (it did, once).
+- HOW TO TIME A FRAME HERE: rAF intervals quantise to 16.7 ms and half the rAFs draw nothing; `gl.finish()` returns at
+  once in Chrome. Time from the frame's first `renderer.render` to a 1-pixel `readPixels` of the screen instead (+-5 %).
+- **THE ZERO STRENGTH ON THE CLASSIC CHAIN** (2026-11-11, mondo tapped "Turn it off at 0"; three-post.js `_ppAoLive`).
+  The pmndrs chain drew N8AO at intensity 0.5 even at AO strength 0 (`Math.max(0.5, strength * 2.5)`). At strength 0
+  its AO passes (N8AO, or the classic AO + multiply) now rest, as the node chain's do: 15 renders a frame -> 8, the fight
+  frame 376 ms -> 330 ms (12 %, software raster, switch flipped live). The picture loses a faint contact shading. N8AO is
+  not even downloaded until the slider goes above 0. Off, live: `window.EW_AO_AT_ZERO = true` (the node chain's switch).
+  Screens: /mnt/project-files/perf-pvp-demo-20261110/ao_off_at_zero_{old,new}.jpg.
+
+## THE BLACK BLOOD (2026-11-11, mondo on WebGPU: "black ink blot looking things that appear with the blood") — three-renderer.js
+- What they were: the blood's own floor marks (the stain each drop leaves, the kill spatter) and a few drops, drawn BLACK
+  on the node renderer only (WebGPU, and `?ew_gpu=webgl2`). Classic WebGL draws them red. Nothing was removed.
+- Cause: THE SHARED INSTANCING (`_ewInstShareSetup` / `_ewInstAttr`) gives a mesh on another mesh's build its own matrix and
+  colour buffers. three 0.186 keeps the instance colours in a PLAIN `InstancedBufferAttribute` (a copy of the first mesh's
+  `instanceColor`), not an interleaved stride-3 buffer, so the colour branch never matched: every three-vfx.js particle
+  batch and the four blood-glob meshes drew with the FIRST batch's colours (black past that batch's count, wrong tints
+  below it). So this was every batched particle's tint on WebGPU, not only blood.
+- Fix: `_ewInstAttr` hands a sharer its own plain colour attribute (`o._ew_icp`), `getAttributes` swaps it in,
+  `_ewInstSync` copies the version + update ranges each draw. Off as before: `window.EW_NO_INST_SHARE` / `?ew_instshare=0`.
+- Proof (node renderer on WebGL 2, Spell Lab, real fireBlood kill): /mnt/project-files/ink-blots-20261111/
+  black_blots_before_after.jpg; tools/blots.js (GPU=webgl2), marks.js (floor marks only), live.js (a kept-open lab that
+  runs cmd files). Not seen on real WebGPU (headless frames are black).
+## WEBGPU BY DEFAULT (2026-11-11)
+mondo: "make the default game webgpu ... I dont wanna have to type ?ew_gpu=webgpu anymore or tell friends to type that".
+index.html THE WEBGPU SWITCH: `window.EW_GPU_PICK` = auto (default) | webgpu | webgl2 | webgl, from `?ew_gpu=` (remembered in
+localStorage `ew_gpu`) or Settings > Video > Renderer (Auto / WebGPU / WebGL, `_ewSetGpuPick`, applies on reload; `_ewGpuReload`
+drops a `?ew_gpu=` left in the address and keeps the rest, e.g. `?join=CODE`). `EW_GPU_MODE` stays the mode that runs,
+`EW_GPU_WHY` the reason in words (F3 backend line, ?ewdiag=1, the row's hint).
+AUTO: no `navigator.gpu` -> classic at once. Else the node renderer loads and a probe asks for an adapter + a device: no
+adapter, a software adapter (`isFallbackAdapter`) or a refused device writes localStorage `ew_gpu_probe` = `no:<why>` and
+flips the mode to classic if the board renderer is not made yet (`window.EW_GPU_MADE`); the probe runs every load, so a
+browser update turns WebGPU on one load later. The node renderer failing after a passed probe (init() rejects -> one reload;
+three fell back to its own WebGL 2 backend; the device lost 3 times) writes `bad:<time>:<why>` through `window._ewGpuFailed`,
+kept a week, cleared by picking Auto in the row or by `?ew_gpu=auto`. A picked WebGPU / WebGL is never second-guessed.
+Proof (headless Chromium, WebGL only): six detection cases, a fight on the classic fallback, a fight where the device is
+refused after the probe (node renderer on WebGL 2 that load, classic the next), Render Scale 50 % / 100 % on both renderers,
+the row + Reload now with `?join=`. NOT seen: a real WebGPU frame (headless WebGPU is a software adapter, which Auto refuses).
+
+
+## THE LOST RIG (2026-11-11, mondo in Occam's Barbershop on the default WebGPU renderer: "pitch black") — three-renderer.js
+Root cause: THE ONE RIG (`_ewRigTick`, node renderer only) takes every room light off three's light list (layer mask 0) and
+draws them through one session-wide lamp group that moves into whichever scene renders. It decided "am I in this scene" from
+`group.parent` alone. A room with a reflector (the barbershop mirror, any `puddle` decal: sewers, tunnels, the Haunted cellar,
+every room with a drain / manhole / culvert / sea vent) draws the scene FIRST each frame with `scene.children` lent to a
+ClippingGroup (`_hqTickReflectors`, W4). The rig arriving from the last scene was pushed onto that one-render list, dropped
+when the real list came back, and never re-added (parent still the scene): the room's lights masked, no lamp drawing them.
+Everything lit went black; only unlit plates, glows and the spot rim showed. Classic WebGL has no rig, so it was fine; it
+surfaced for everyone when WebGPU became the default (PR #1124).
+Fix: the rig must be IN the scene's list (`scene._ew_lentKids` while lent, else `children`), not only parented; the
+reflector hands whatever joined during the mirrored draw back to the real list. Proof (headless, node renderer on WebGL 2):
+`/mnt/project-files/dark-rooms-20261111/` barbershop + Haunted cellar before / after. Harness gotcha: Chromium here DOES
+reach the CDN through the agent proxy, so `--host-resolver-rules` stand-ins are bypassed; serve the repo's scripts with a
+`context.route` on `cdn.entropywars.net/<file>.js` only.
+
+## THE BORROWED COUNT (2026-11-12, mondo's Camelot fight on WebGPU, Firefox)
+Console: `Buffer 'bindingBuffer2312…' has been destroyed` in a bundle, then `a draw failed and was skipped (hq:gaps:floor /
+MeshBasicMaterial: GPUQueue.writeBuffer: Argument 1 is not an object)` every frame. Cause (three 0.186.1 + THE LATE LOOK):
+a look's SHARED bind group (the `render` group: the camera's uniform buffer, one per node build, lent to every render object
+of that build) is use-counted in `Bindings._createBindings` / `_destroyBindings`, but `deleteForRender` counts DOWN for a
+render object whose bindings were never made. The late look's hold (`_ewLateSetup`: `O.get(...)` then `return` when the
+frame has built enough) leaves exactly such render objects; one disposed before it ever drew (spell quad, the rain that
+starts and stops, a culled prop) took the count of a group other meshes still drew with to 0, and three destroyed the buffer.
+Fix: three-renderer.js `_ewGpuSafeBindings` — (1) `deleteForRender` of a render object with `initialized !== true` only
+forgets it; (2) WebGPU `destroyUniformBuffer` is forgotten at once and destroyed at the next frame's first render
+(`_ew_freeLater`, like the vertex buffers). Proof: a 2-mesh page on the real three 0.186.1, headless Chromium WebGPU
+(SwiftShader): as shipped `render used 1` → `undefined, buffer GONE` + the same writeBuffer throw; with the fix `used 1,
+buffer alive`, no GPU error. NOT seen: the Camelot fight itself on real WebGPU / Firefox.
+Same PR: the key pickup's model URL (`_keyFxUrl`) used the DOOR folder + an encoded slash for the PSX pack key (404 since
+11-08) → `_hqModelUrl(cat)`; the mermaid's `Swim_Idle_Loop` pointed at lib 1 (UAL2, no swim clips) → lib 0.
+
+## THE ENTROPY STYLE (2026-11-12)
+mondo: "some sort of shader(s) we can put over the whole game to help give it a unique and consistent style ... blend all of
+these different assets and characters and maps into one consistent Entropy Wars visual style". Seven looks were shown on four
+scenes (/mnt/project-files/shader-style-20261112/); he picked 1 (the grade) + 2 (ink + cel), "the lines look a little thick".
+- three-post.js "THE ENTROPY STYLE": one screen pass UNDER the cinematic (CRT) / retro passes. THE GRADE = one palette pull
+  (indigo shadows, warm lights, evened saturation, soft shoulder). THE INK = five soft light bands + a thin dark line where the
+  DEPTH breaks, near side only, about one screen pixel (`_styleInkPx`), and only where the colour breaks too (a shape lost in
+  the fog takes no line). Depth, not colour: speckled floors and grass sheets take no lines.
+- A bright saturated pixel (spell, team outline, zone wash) keeps its colour and takes no ink (`sKeep` / `keep`).
+- Three chains: node renderer `_ngStyle` (TSL; a part of the pipeline set, key letter S, so Off costs no pass), pmndrs
+  `_ppStylePass` (draws to its own target when its turn is the buffer that owns the scene depth: no feedback loop), the legacy
+  composer (a ShaderPass right after the AO, where the read buffer's depth is still the scene's). One GLSL (`_StyleShader`).
+- Settings > Video: Entropy Style (Off / Grade / Grade + Ink, default Grade + Ink) and Ink Lines (Thin / Medium / Bold).
+  `ThreePost.setStyle / setStyleParam / getStyle`, stored `ew_style`. Off live: `window.EW_NO_ENTROPY_STYLE = true`.
+  Viewer-local (nothing relayed online). renderDirect panes are not styled.
+- Seen on screen: battle + DOOR HQ main hall on the node renderer's WebGL 2 backend, a battle on the classic WebGL chain,
+  the two rows. NOT seen: real WebGPU, a spell cast, the legacy composer, online guest, frame cost on a real GPU.
+- 11-12 follow-up (mondo: "i like it with the lines on medium. Can we also go ahead and turn the pixelate off by default now"): Ink Lines default Medium (inkWidth 1.6); Pixelate default OFF (index.html SHIPPED-KEYS ew_retro pixelSize 1 + the code default). A browser that still holds the old shipped ew_retro follows the bake; one that moved the Pixelate slider itself keeps its value.
+- THE BOLD UNIT LINE (11-12, mondo: "maybe just bolder lines on units, same thinness everywhere else"; he picked "Ship it on Bold"): a unit's
+  body takes an ink line `unitBold` (1.9) times the map's width; scenery, props and terrain keep the Ink Lines width. A unit = the model
+  mask the Pixelate "models" scope always drew (`_renderPixelMask`; bodies flagged `_ew_modelSkin`, held GLBs `_ew_pixelate`), half
+  size, one extra draw of the bodies a frame while Grade + Ink is on. `_styleMaskFor` asks for it in both render paths (the board
+  and the walk: `_scanPixelMaskTargets(sc)` now tags the walk's own scene); the retro pass's mask is reused when it drew one.
+  Settings > Video > Unit Lines: Same / Bold / Bolder. Off live: `window.EW_NO_UNIT_INK = true`. A line-weight-by-distance try was
+  built and dropped (barely visible on a board). Seen: node WebGL 2 (battle, DOOR HQ), classic WebGL (battle), the row.
+  NOT seen: real WebGPU, split-screen panes, a unit behind a wall (the mask has no occluders: the wall's edge there goes bold).
+- THE GRASS TAKES NO INK (11-12, mondo: "adding the ink shader makes the grass look kinda weird to me, like it ends up being a shadowy
+  blob. Can we exclude grass from the shader or tweak whatever is causing that"): two causes. The five light bands cut every clump
+  of THE GRASS FIELD into a lit tip and a near-black foot, and the ink line drew the squares' seams across the field (a tuft writes
+  no depth, so the pass saw the ground under it). Now the style's mask (`_renderPixelMask`) draws the grass mesh once more, alone,
+  with `_ggMaskU.value.x = 1` (three-renderer.js `_ggMat` / node twin `_ewNodeGGrass`): each tuft writes its view depth as
+  log2(1 + z) / 20 in green + blue (16 bits; red stays the units). The style pass (`sGm` / `gmf`, 5 taps: the mask is half size)
+  calls a pixel grass when the scene lies at or behind its tuft, and there it applies the grade only: no bands, no line. A tree, a
+  wall or a body in front of the grass is nearer than the tuft and keeps both. Costs one more draw of the field at half size while
+  Grade + Ink is on. Old look back, live: `window.EW_INK_ON_GRASS = true`. Do NOT encode the depth with the camera's near / far:
+  the mask's and the scene's did not agree.
+  THE MASK WAS FROZEN (same PR): `_styleMaskFor` took "the retro pass drew it this frame" from `_styleMaskAt === _styleFrame - 1`,
+  which its own draw of the last frame also set, so the mask was drawn once and held: the bold unit line sat on the first frame's
+  silhouettes. Now a flag (`_styleMaskRetro`) the retro pass sets. Seen: Training Room on the pmndrs chain and the node renderer's
+  WebGL 2 backend, Fairy Forest on node WebGL 2 (proof /mnt/project-files/grass-ink-20261112/). NOT seen: real WebGPU / his Mac,
+  the legacy composer, split-screen panes, rigged units standing in the grass (headless drew sprites).
+- THE WHOLE STEP (11-12, mondo: "there are these black screen tears now" in the Main Hall; two shots, dashed black bars across the far
+  floor, on the same screen rows in both): the ink's depth reads sat a FRACTION of a texel out (Thin on a Retina screen = 1.5 texels =
+  the seam between two texels). Depth is read nearest, so on some rows the up read snapped a texel farther than the down read, a flat
+  floor no longer cancelled, and the row took the ink wherever the speckle passed the colour gate. Seen here on real WebGPU (SwiftShader,
+  2x) with Ink Lines Thin; Medium (2.4 texels) was clean here but leaves only 0.1 texel of slack, which his GPU may not give. Now every
+  depth read is on a texel centre, a whole number of texels out, and a width between two whole steps blends the two tests (GLSL `sEdge`,
+  TSL `edgeAt`; 9 depth reads, was 5). Colour reads unchanged. Proof /mnt/project-files/hall-ink-tears/. NOT seen: his Mac.
+- THE STYLE ON A STAGE (11-12, mondo: "make sure the 2 new shaders (ink and the color grade) are on in the party builder as well.
+  The 3d models dont have it"): the party builder / creator / intake / codex stage (three-renderer.js EWCharViewer) is a WebGL
+  renderer of its OWN on a see-through canvas, so the board's chain never reached it. `ThreePost.styleDraw(r, scene, cam)` draws its
+  frame through the same `_StyleShader`, same settings (the whole stage is a unit: its line takes the Unit Lines width): the scene
+  into a 4x MSAA target + depth texture flagged `isXRRenderTarget` (three reads that flag only to tone map + encode in the materials
+  as on the canvas), then one quad that styles the un-premultiplied colour and writes it back premultiplied (empty pixels stay empty).
+  `_cvFrame` calls it and falls back to the plain draw when it returns false (style Off, or a failure). Off live:
+  `window.EW_NO_STAGE_STYLE = true`. Already styled (ThreePost.renderScene): DOOR HQ, the menu room, the team room. Left plain: the
+  ID-card photo (`snapshot`), the editor's 96 px prop thumbnails (cached pictures), the UI Maker dock's tile / float-text previews.
+  Seen: party builder, classic WebGL (headless). NOT seen: his Mac, the creator's face close-up, a spell preview on the stage.
+- THE CARD WAITS (11-12, mondo: "it always loads slow, what is the point of the loading screen before hand if it always loads slow,
+  it needs to wait until the game is loaded"): the HQ load card (THE LOAD GATE) dropped early three ways, measured in a browser on
+  the foyer. (1) A CLOCK: `HQ_GATE_CAP_MS` was 75 s from the entry, whatever was still arriving. (2) THE STALL ran from the moment
+  a file was ASKED for (`AL_STALL_MS` 60 s), so a model waiting its turn in the model queue was written off as dead and the gate
+  stopped waiting for it (18 hall models in the run). (3) Even on time, the card dropped the moment the last file landed, so all
+  the work AFTER a file lands happened in the open room: the hall beside the foyer built and warmed (568 materials, 134 sheets),
+  the instance pass and the static batch rebuilt the props (353 -> 1,439 meshes), the late looks drew piece by piece.
+  Now (three-renderer.js `_hqGateTick`): NO CLOCK WHILE IT MOVES (`_hqGateProgress`: the cap counts from the last progress — a
+  file landed, a part built a slice, a warm-up moved; `HQ_GATE_HARD_MS` 10 min is the one absolute limit; `_hqStageReady` the
+  same for a part, and it no longer warns "gave up" in the middle of a finished part's warm-up); the stall re-arms while
+  anything started or landed in the last 60 s (`AL_STALL_MAX_MS` 5 min); LANDED, THEN SETTLED: `H.landed` (every file in, the
+  round hall beside the foyer) lets `_hqInstTick` / `_hqLodTick` / `_hqBatchTick` run under the card (the batch's two waits are
+  `HQ_BATCH.cardWaitMs` 200 there; the warm-up and the batch take `HQ_CARD_SLICE_MS` 24 a frame while `!H.ready`), and
+  `_hqSettled` holds `H.ready` (the card's fade) until: `_alPending() === 0` (the population's rigs too), the instance pass
+  tried, the batches live once (`B.lived`; skipped on a door walk, `opts.walk` from map.js), THE WHOLE-SCENE WARM-UP done
+  (`_hqWarmWholeNew`: every material in the scene compiled against the frame's lights and every sheet uploaded, the part
+  warm-up's own steps through the shared `_hqWarmFake`), no shader building (`_hqShadersBusy`: a WebGL program not linked, a
+  node pipeline in flight, the warm's own compile promises), and `HQ_SETTLE_FRAMES` (8) drawn frames + `HQ_SETTLE_MS` in which
+  `_hqSettleSig` (geometries, sheets, programs on the card, the late look's held counts) did not change (a walk: 4 frames).
+  A room that never rests drops its card after `HQ_SETTLE_CAP_MS` 30 s and 300 frames, with a console line. Every room logs
+  `[HQ] <room> landed in N ms and settled in M ms more (...; the steps)`. The card's count (`hq.gate()`) now adds the room
+  beside it (THE ROUND JOIN) and reports `landed` / `settle`; map.js's note ends "· setting the room…" while it settles. The
+  way back from a fight (no card, `opts.arrive`) settles nothing. Off live: `window.EW_HQ_NO_SETTLE = true`.
+  Seen (cloud browser, classic WebGL on llvmpipe, about 1 frame a second, so the seconds are not his): before, the card
+  dropped 77 s after the entry, the hall stood 61 s later and the counters kept moving for about 10 s more; after, the card
+  dropped once the hall stood and the room had rested, and geometries / sheets / programs / meshes did not move again. A load
+  through a door (`_hqGoRoom`) lands and settles too. NOT seen: his Mac / real WebGPU (how many seconds the settle adds there),
+  a cold cache on a slow line, the editor's viewport, a terrain zone. Proof /mnt/project-files/loading-wait/.
+
+## THE WHOLE HALL LIT (2026-11-12, mondo in the Main Hall: "the walls further away are not lit until i walk closer") — three-renderer.js `_hqStagePick`
+- Cause: THE LAMPS budget (stage §5.2) lit the N point lights nearest the EYE over every room on the stage alike, N = max(lampsLive 12,
+  the current room's own). The hall has 13 lamps (centre, 4 desk, 4 floor ring, 4 gallery), the foyer 6: at the hall's entrance the
+  foyer's lamps behind you took six places, so the hall's far wall lamps were dark until you walked toward them (from the foyer's
+  doorway 5 of the hall's 13 were dark). Not the rig, not the hemisphere, not falloff.
+- Fix: (1) the room you stand in lights ALL its own lamps first; (2) the rooms beside it share the rest, nearest first, never fewer
+  than `HQ_STAGE_RULES.lampsNb` (4); (3) THE ROUND JOIN (hall + foyer) lights every lamp of both, up to `lampsRound` (32). Every
+  stage zone gets (1) + (2). Count: the hall + foyer draw 19 point lights (was 13 / 12); other zones at most own + 4.
+- Seen: cloud browser (node renderer on WebGL 2), standing in the foyer's doorway and at the hall's centre. NOT seen: his Mac / real
+  WebGPU, the frame cost of the six extra lamps there. Proof /mnt/project-files/main-hall-far-walls/.
+
+## THE STALE LIGHT LIST (2026-11-12, mondo: CONTINUE into the Main Hall, "after the load screen loads its just a black screen") — three-renderer.js
+- His console: `a draw failed and was skipped (Render Pipeline / RenderPipeline: can't access property "map", lightData is undefined)`,
+  stack NodeMaterialObserver.equals < needsRefresh < _renderBundle. Real WebGPU only (the render bundles are WebGPU-only).
+- **Cause**: three's observer keeps, per render object, one record per light that casts a shadow (or a spot with a sheet), taken at
+  the object's first draw; `equals` walks the frame's CURRENT list over it with no length check. A bundle REPLAY never asks
+  three for the render objects again, so a shadow light that joined the list after a non-static group was recorded read past the
+  record and threw. The throw skipped the WHOLE frame; `r._ew_lights` (what `_ewBunTick`'s lamp signature reads) is noted at the
+  frame's first real draw, which never came, so the tick never saw the lamps move and never re-recorded: black for good.
+  Not the save (PR #1219) itself; any arrival where the light list grows after the first recording could hit it.
+- **Fix**: (1) the `needsRefresh` wrapper (THE LATE SHEETS) catches the throw, takes the record again from the frame's lights,
+  returns FULL and flags the object's group (`_ew_bunFree`) to re-record next tick; count in `_ewBun.staleLights`.
+  (2) `_ewRigTick`: a rig that grew bumps `_ewBun.epoch`, so every group re-records in that same frame.
+- A throw anywhere in a frame's bundle replay blacks the frame: keep new replay-time hooks inside a try.
+
+## THE MATERIAL RUNS + THE SKINNED PICK (2026-11-13, mondo's Atlantis fight at 4.7 fps on the Mac)
+- **Report**: F3 readout, WebGPU: 3750 draws, "3415 room hq_piece (outside its bundle)", "Pick (raycasts) 164/s · 819 ms/s", CPU 209 ms.
+  It was the new Atlantis board (PR #1246), not the Training Room: its sea life is the trigger, any room with ocean pack swimmers had it.
+- **Cause 1 (draws)**: the ocean pack FBX files hand meshes whose triangles switch material back and forth (clownfish: 890 triangles,
+  185 runs, 3 materials). three draws each run as one draw. The bundles replay them (not counted), but the unit ink / pixel mask pass
+  (three-post.js, a side render: bundles off, room props wear `_ew_pixelate`) drew every run again classic: 2323 + 1179 draws a frame.
+  Fix: `_ewGroupRuns(root)` at load (`_loadMiscModel` incl. the `_ewRig.src` moving copy, `_loadUnitGLB`): index rewritten once so each
+  material is ONE run. Same triangles and materials. Off: `window.EW_NO_GROUP_RUNS` before the file loads.
+- **Cause 2 (picks)**: three's `SkinnedMesh.raycast` keeps the sphere of the first pose (a shark's: 57 m) and skins every triangle
+  corner per ray: 27-56 ms for one ray through a unit, 1-4 ms per fish. The hover pick (`screenToUnit`) asks every unit per mouse
+  move, the wall-fade rays every swimmer near their line. Fix in `_bvhInstall`: THE SKINNED PICK, (1) a box round each bone's
+  bind-pose vertex sphere as the bones stand now rejects a ray, (2) else the triangles are tested against skinned points computed in
+  one typed-array pass, kept while no bone moves. Same hits as three (198 rays over units + swimmers: 0 mismatches in distance, face,
+  point, uv, normal). Off: `window.EW_NO_SKIN_PICK`. Lens Pick line now shows "skinned N/s past their pose box, M/s tested".
+- **Measured** (sandbox, SwiftShader WebGPU, Atlantis 4v4): draws 3657 -> 316, outside-bundle 3499 -> 166; 198 skinned rays
+  1163 ms -> 22 ms; hover pick 8.2 -> 1.2 ms per mouse move. Proof: /mnt/project-files/perf-atlantis-20261113/.
+- Not done: the mask pass still walks the room classic (166 draws); 20 point lights untouched; real Mac FPS not measured here.
+
+## THE CHUNKS + THE ONE MATRIX WALK (2026-11-13, mondo in the 144-plot Disaster City on the Mac, WebGPU: 12 fps, "3.29M" triangles in 13 terrain draws; "we have the plots already, why not just make those the chunks or like a group of them")
+three-renderer.js + data.js HQ_ENGINE_RULES (`chunkM: 42, chunkMinSpanM: 200, chunkPadM: 15, fenceFarM: 120, instFarM: 260, instSmallM: 1.7, instSmallFarM: 100`).
+- **What the readout meant**: the six heaviest "hq_part terrain" draws (913K, 751K ...) were the STAIRS PACK fences. `_spBuildRailings`
+  made ONE mesh per fence kind and role for the whole room: twelve meshes, 4.27M triangles (non-indexed), in the shell's render bundle
+  (replayed unculled) and, wearing `_ew_pixelate`, drawn again by the model mask (the lens's "extra" pass). The instance pass cut its
+  copies per 64 m cell (989 batches, 4.4M triangles: a 5,201-triangle Meshy prop x 315, the lamps x 288 ...) but all of it sat in ONE
+  bundle, so no cell was ever culled. Measured headless: 10.6M triangles a frame from the spawn, 20,700 objects in the scene.
+- **THE CHUNKS** (`_hqChunkBig`: the live walk's own room, at least chunkMinSpanM across; never the battle's room, a scratch build, a
+  stage neighbour): a fence run goes to its PLOT's mesh (`_spFlush(..., grpOf)`), each plot a group under `H.chunks.root` (`hq_chunks`,
+  beside the shell group in the part's root); the instance pass's cells are groups (`I.cells`, `hq_inst_cell`), and a placed prop
+  whose whole sphere is under instSmallM (`_hqChunkSmall`: measured per placement, so a lamp's small parts stay with its pole) sits
+  in a cell of its own kind (`|s`). Every such group is its own bundle target (`_ewBunTargets`) and is listed in `H.ckList`.
+  `_hqChunkTick` (each frame, after the camera, before the draw; every renderer): a group whose sphere + chunkPadM is off the camera,
+  or further than its far (fences fenceFarM, cells instFarM, small cells instSmallFarM), reads `visible = false`: not in the picture,
+  the shadow map or the mask. `_ewBunTick` skips a group that is out (`_ew_ckOut`) without releasing it: its recording waits, no
+  re-record when it comes back. `_ewBunWalk` no longer hashes a piece THE STATIC BATCH holds (only that it is held).
+- **Nothing is removed**: `_hqChunkHome` (the hand-over to a fight, the crossing, the leave) puts every fence back in the shell group
+  and shows every group; the instance pass is dropped as before. Off live: `window.EW_HQ_NO_CHUNK_CULL = true` (all drawn).
+- **THE ONE MATRIX WALK**: the walk frame runs `scene.updateMatrixWorld()` once and holds `matrixWorldAutoUpdate` false for its
+  renders (mirrors, the mask's two, the shadow map, the picture: four walks of 20,700 objects a frame before). Off:
+  `window.EW_HQ_MW_EVERY_RENDER = true`.
+- **Lens**: new line `Chunks: fence plots a/b drawn · prop cells c/d drawn`.
+- **Not done**: the ground (256 tiles, 670K triangles) and the buildings stay in the shell bundle, drawn whole; the dense Meshy props
+  have no LOD files (`optimize-assets --lod` would give the LOD tick levels to draw); the fence pack pieces are ~500 triangles a metre.
+
+## THE FINDS FREEZE (2026-11-13, mondo: "story mode isnt loading anymore ... the loading screen just stayed forever and the browser slowed down")
+- **Cause.** Not the loading itself. The background finds warm (map.js `_hqScheduleFindsWarm` -> data.js `hqFindsWarm`) builds
+  every tape room's finds once the survey worker lands its floor plan. `hqFindSpot` walked the room in half-metre steps and each
+  step read every prop / wall / tree of the room, with the walker's reach flood on top, all on the page. On the new 504 m
+  Disaster City (PR #1258: a million steps, ~1600 props, ~1100 features) that was one task of 4.5 MINUTES in the cloud browser
+  (measured: one 269 800 ms frame gap in the foyer; the build before #1258 had gaps of 5-9 s from the older big rooms).
+  It hit a brand-new profile in the foyer too, because the survey warms every room in the background.
+- **Fix (data.js + map.js).** (1) THE FINDS OFF THE PAGE: `hqTerrainWorkerServe` places the room's finds on the record it just
+  compiled and posts them with it; the page takes them with `hqFindsAdopt(roomId, rows, gen)` (`hqFindsGen()` guards a
+  `hqFindsDrop()` in between). The finds warm then finds the room already built. (2) THE FIND GRID (`hqFindGrid`): rooms with
+  more than 48 blockers file them in 4 m cells, a step reads its own cell. (3) THE FAR POINTS FIRST (`hqFindOrder`): points
+  are read farthest-first in quarter-metre rings and the walk stops 1.25 m inside the first free one.
+- **Same results.** `hqBuildFinds` output for the 90 other find rooms is byte-identical before / after; the worker path gives
+  the same rows as the direct path. City finds in Node: over 10 min -> 6.9 s (what is left is the reach flood, now in the worker).
+- **Rule for big rooms.** Anything that walks a whole terrain room per point (finds, reach, nav) must run in the survey worker
+  or be budgeted across frames. No worker (EW_HQ_NO_SURVEY, file://) = the finds still build on the page after the room's own entry.
+
+## THE PROP CHUNKS + THE MASK'S OWN BUNDLES + THE STILL CHUNKS + THE LOD LEVELS (2026-11-14, Disaster City perf)
+mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (submit 100.8), 3748 draws, "2996 site props
+(outside its bundle)", extra pass 1958 draws / 4.05M tris, props 3165 calls / 4.55M tris, check 13.2 ms.
+- **THE PROP CHUNKS (three-renderer.js, after `_hqChunkStats`).** In a chunked room (`_hqChunkBig`) every prop placement under
+  `H.propGroup` moves into a chunk group (`_hqPropChunkSweep`, every 1.5 s or on a child-count change): props inside a closed
+  hollow building (`H.terrain.texb` hollow, inset `roomInsetM`) go in that building's room group (`'b|<bld>'`, drawn within
+  `roomFarM` 40 m, glass is opaque so they only show through open doorways); the rest go in the 42 m plot chunks
+  (`ci,cj`, `|s` for small ones = `instSmallFarM`, else `propFarM` 260). The chunk walk culls them like the shell fences.
+  Placements holding a light stay put. Instance cells key the same way (`b|` cells). `_hqPropChunkHome` puts everything back
+  (hand-over, leave). Static batch: merged meshes are hosted IN their chunk (`_hqBatchHost`), chunk visibility is not a "change".
+  Render bundles: one bundle per chunk group (`_ewBunTargets`). Off: `window.EW_HQ_NO_PROP_CHUNKS` (then re-enter).
+  Rules: data.js HQ_ENGINE_RULES `propFarM`, `roomFarM`, `roomInsetM`.
+- **THE MASK'S OWN BUNDLES (three-post.js static mask + three-renderer.js `_ewBunSetup`).** The model pixel mask (layer 8,
+  half res) drew every static prop classic, one by one (the lens "extra" pass). It now renders with its own camera clone
+  (`_maskCamS`) and `_renderer._ew_maskBun`, so chunk groups record their own mask bundles. Off: `window.EW_MASK_NO_BUNDLES`.
+- **THE STILL CHUNKS.** An out chunk (off camera / past its far) also gets `matrixWorldAutoUpdate = false`, so three's per-frame
+  matrix walk skips it (~35K objects in the city). Its matrices are refreshed as it leaves and on any frame something was added
+  to the scene (`_ewAddCount`, a counter on Object3D.add). Collision snaps compose local matrices (`_mcSnap`), so unaffected.
+  Off: `window.EW_HQ_CHUNK_MW_ALWAYS`.
+- **THE LOD LEVELS shipped.** The LOD path (`_lodUrls`, `_hqLodTick`) had never run: no `.lodN.glb` was in ASSET_MANIFEST.json.
+  Baked (meshopt simplify, same mesh names/order) and uploaded lod1/lod2 for the heaviest city repeats: city bench, traffic
+  cone, police barricade, folding chair, hydrant, utility box, potted plant, palm, cup, cardboard boxes, sandbags, popcorn cart,
+  ambulance, candle, piano, football, missile, conveyor (30 files, new-folder paths). Off: `window.EW_NO_LOD`.
+- **Sandbox numbers (spawn camera, same view).** Mask static 852 draws / 3.14M tris -> 50-169 / ~0.2M; extra pass 854 / 3.18M
+  -> 171 / 233K; props outside bundle 2475 -> 54; prop plots 32/240 drawn, rooms 0/88 drawn. The cloud shell draws classic
+  (sandbox artefact), so compare counts, not FPS. Left: the bundle check cost (the shell walks ~10K children a frame), pixel
+  ratio 2 on his Mac (Settings Render Scale exists; default untouched), one WebGPU "Texture with '' label" submit error.
+## THE SEAT GRID (2026-11-14, Disaster City: card held 5+ min, then ~1 FPS)
+- **Cause.** `_hqSeatTabletops` (THE TABLETOP SEAT) cast one ray per tabletop prop against the WHOLE prop group + shell
+  (`intersectObject(root, true)`, ~35,000 meshes in the city, ~9-25 ms a ray) and `_hqSeatLater` re-runs it after every model
+  that lands. One city load in the cloud browser: 17,332 seat rays, 193 s of main thread. The interiors passes added the tabletops.
+  The lens "Pick (raycasts) ~105/s · ~950 ms/s · 25K plain" on his Mac was this.
+- **Fix (three-renderer.js `_hqSeatGrid`).** Once per pass every mesh the whole walk would test (same roots, same layer test) is
+  filed in 4 m cells by its world sphere (spheres over 24 m go in a short always-tested list); each tabletop ray tests its own
+  cell + that list. Checked in the city: 900 rays, 0 differing hits, 22,986 ms -> 640 ms (+87 ms to build the grid).
+  Off: `window.EW_HQ_SEAT_WHOLE = true`.
+- The loading card's own big draw count (16,700 calls behind the card) is the settle warm-up drawing everything once on purpose.
+- PR #1377 (prop chunks, mask bundles, still chunks, LOD rows) was rolled back in PR #1379 while this was found; it comes back
+  after a clean city load.
+- 11-14 10:10: mondo's F3 after #1381 loaded fine (5.5 FPS, picks 0/s); the #1377 pass is back (re-land of the rollback).
+
+## THE LAMP'S REACH (2026-11-14, Disaster City shadows)
+- After PR #1382 his Mac lens showed shadow 824 of 894 draws. The cloud browser (city, spawn): one drawn frame = the scene,
+  two mask passes, the sun's map and the nearest lamp's six sides (the hero lamp, `_hqHeroGate`: a `lava_lamp` prop's point
+  light, reach 3.5 m). Each side walked the WHOLE scene (~120,000 `_projectObject` visits a frame) and drew the unculled
+  pieces past its far plane.
+- **Fix (`_ewBunSetup`, three-renderer.js).** A render wrapper flags a shadow pass through a perspective camera (`_ew_reach`:
+  camera position + far). Inside it a chunk (`_ew_ckSph`) past the reach is skipped whole, and a room's shell (`_ew_bunName`
+  "... shell", >256 children) walks only children filed in 8 m cells the reach touches (`_ew_reachIdx`, built once, rebuilt
+  when the child count changes; pieces over 32 m always walked). Measured: lamp-side visits 120K -> 18K a frame, lamp draws
+  -24% (only pieces past the far plane), screenshots on/off differ less than two frames of the same setting.
+  Off: `window.EW_SHADOW_REACH_OFF = true`.
+- Sandbox share of the draw step before this: sun map ~40%, lamp sides ~17%, masks ~6%. The sun map is next.
+- 11-14 ~11:00: #1383 turned the city black (every frame threw `can't access property "test" of undefined` in three's
+  `_projectObject`): the new render wrapper was `var ro = r.render` inside `_ewBunSetup`, which already had `var ro =
+  r._renderObjects` for the opaque-list hook; one var slot, so the hook called render(list). Rolled back (#1384), renamed
+  `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
+  `_ewBunSetup` gets a name grep-checked against the whole function.
+
+## THE FIGHT'S OWN LAMPS + THE KEPT KEEP THEIR OWN + THE SUN'S OWN CHUNKS (2026-11-15, the walk to battle switch in Disaster City)
+
+mondo after #1416 (fight 4.8 -> 50 FPS): "the transition from explore to battle was still terrible, takes forever and drops to 0 fps".
+His two F3s: walk "rig 12/17", fight "Lights point 72 · rig 63/69", session builds 583/360 -> 875/522.
+
+- Reproduced in the cloud browser with a STRIKE (`window._hqEncounterFire({ target: { kind: 'npc', id, race, x, z, y }, x, z, y, gesture: 'attack' })`;
+  `_hqMarkerFight('tdm')` is NOT his path: it fights the old streets board, rebuilt). Census of the fight's scene: 67 lit point
+  lights under `hq_field_lights`, distance 5 m: `_fieldGroundDress` hung one on EVERY desk_lamp / table_lamp prop of the room, and
+  the city is one room. The rig grew 12 -> 64 at the switch, so every material of the fight was built again with 64 lamps.
+- THE FIGHT'S OWN LAMPS: a desk / table lamp gets its light only inside THE BATTLE RADIUS (keepM from the board's rim), the nearest
+  first (on the board first, the middle before the rim), HQ_PROP_LIGHT_MAX at most. Off: `window.EW_FIELD_LAMPS_ALL`.
+- THE KEPT KEEP THEIR OWN (`_hqBuildRoomInBattle` take): the hand-over keeps 1,942 pieces and leaves 13,457; a piece left behind was
+  disposed on the spot (geometry + material) and the city's copies share both, so the kept pieces made their buffers, pipelines
+  and bindings again. Now only what no kept piece uses is disposed. Off: `window.EW_FIELD_DISPOSE_ALL`.
+- THE SUN'S OWN CHUNKS (the walk, his F3 "shadow: bundle replays 8.7" ms): in the sun's shadow render a chunk whose sphere is
+  outside the shadow camera's box is hidden for that render. Lens: "N left out of the sun shadow". Off: `window.EW_SHADOW_CHUNK_ALL`.
+- NOT done: the way back still rebuilds the whole city (the hand-over disposes what it leaves); a hand-back that parks the left
+  pieces would make the return instant.
+
+## THE LAMP'S REACH ON THE NODE RENDERER (2026-11-15, the fight on Disaster City: 4.8 FPS)
+
+mondo's battle F3 (Firefox, M1, WebGPU, 3456x1812): frame 210 ms, CPU 23.7 ms, "Lights point 72 · rig 63/70". The frame was the GPU's:
+the node renderer ran the whole light maths for all 64 rig point lamps on every pixel (the walk lights 12 to 14). THE LIGHT'S REACH
+(2026-11-10) skipped out-of-range lamps on the classic renderer only.
+
+- three-renderer.js `_ewNodeLights`, `EwPointLightNode.setup`: for a rig point lamp (no shadow) on a Lambert / Phong / Standard /
+  Physical material, the direct term is built inside `If(dot(lightColor, lightColor) > 0)`. lightColor = colour x the legacy ramp,
+  exactly 0 past `distance` and for a dark spare, so the skipped work added 0: same picture.
+- Only rig lamps: three sorts lights by id, the rig's sun lamps come first and build the shared terms (normalView, view direction)
+  outside any branch. Toon / gradientMap materials are left alone (their direct term samples a texture; WGSL refuses that in a branch).
+  `builder.material` is the game's CLASSIC material (type MeshPhongMaterial), not the node one: test the classic flags.
+- Switch (read at shader build, reload): localStorage `ew_lightsEveryPixel = '1'` or `window.EW_LIGHTS_EVERY_PIXEL = true` (the classic switch).
+- Cloud check (SwiftShader WebGPU, Main Hall): Phong, Lambert, Standard and Physical (clearcoat + sheen) compile with the branch, one
+  `if` per rig lamp in the WGSL, 0 frame errors. FPS is his Mac's to measure.
+- The rig is one per session and never shrinks, so after one 64-lamp fight every later scene carried 64 lamps a pixel too. With the
+  branch a dark spare costs one compare.
+- Still open in fights: shader builds 2.5/s mid-fight, 9 post passes at 6.3 M pixels, the props' 670K triangles.
+
+## THE ROLLING WATCH + THE UNIT MASK + THE MOVING SIDES (2026-11-15, the 60 FPS thread; mondo: "22 fps with lag and frame drops is a joke")
+His Mac (Firefox, WebGPU, 3456x1812): 21.9 FPS, frame 45.5 ms, CPU 31 ms; a second spot 20.8 FPS with "shadow 405 calls, 834K tris".
+- WHERE THE FRAME GOES: frame minus CPU is ~14 ms that no JS row owns. Firefox on macOS presents a WebGPU canvas by CPU READBACK
+  (Mozilla bug 1708023, open): 25 MB a frame at his canvas size. Asked him for three F3s (Chrome; Render Scale 67%; `?ew_gpu=webgl`).
+  His post chain reads "20 passes · A[smaa|off|BDSF]": B = bloom ON in his profile (11 of the 20; the shipped default is 0).
+- THE ROLLING WATCH (`_hqBatchCheck(R, B, rollMs)`, `HQ_BATCH.rollMs` 0.35): THE STATIC BATCH's watchdog read all ~8,200 merged pieces
+  in ONE frame every 500 ms (the lens's "tick: static batch 4.1" average = ~45 ms twice a second). A round is spread over the frames;
+  the next starts `checkMs` after the last ended. `visible` / `parent` writes still break a batch at once. Off (whole round in a frame):
+  `window.EW_HQ_BATCH_CHECK_WHOLE`. THE RESCAN ON CHANGE: the late-piece scan (a forced matrix walk + a key read of every piece, every
+  4 s for good) runs in a ready room only when something joined the scene (`_ewAddCount`) or every `rescanIdleMs` 30 s. Off:
+  `window.EW_HQ_BATCH_RESCAN_ALWAYS`.
+- THE UNIT MASK (three-post.js `_scanPixelMaskTargets`, `PIX_LAYER_UNIT` 9, `_renderPixelMask(..., unitOnly)`): with Pixelate off the
+  mask's only reader is THE BOLD UNIT LINE, yet its static pass drew every `_ew_pixelate` mesh = every Meshy prop (his lens "extra":
+  178 draws / 353K tris; props so wore the units' bold line, which his ask never wanted: "bolder lines on units, same thinness
+  everywhere else"). The scan tags the still meshes that ride a unit (under a bone, or under the group holding an `_ew_modelSkin`
+  body) on layer 9; the style's own mask draws layer 9, skips every chunk (`renderer._ew_maskUnit`, the `_projectObject` wrapper) and
+  draws nothing when the scene holds none. The skinned pass short-walks chunk groups too (was every child of every drawn chunk; off
+  `window.EW_MASK_CHUNK_FULL_WALK`). Pixelate "models" still draws every prop. LOOK CHANGE: props now take the map's ink width.
+  Old mask: `window.EW_STYLE_MASK_PROPS = true`. Main Hall, cloud browser: extra pass 6-8 draws (the bodies), 0 frame errors.
+- THE MOVING SIDES (`_hqHeroGate`, `_heroSideBits`, `_heroBodySides`, `_heroSidesHook`): a hero point lamp redrew all six cube sides
+  whenever one body in reach moved. Now only the sides whose 90-degree pyramid a moved body touches (now + where the map last drew
+  it); a body on bones asks every frame, a rigid mover (the lava lamp's wax: inside the lamp = every side) at THE SLOW PIECES' 10 Hz.
+  All six on a list change, a live material, the lamp moving, the refresh, and every `HERO_FULL_MS` 4 s. The gate hands the sides to
+  the draw (`L._ew_heroFaces`, read once); a wrapper on `THREE_GPU.PointShadowNode.prototype.renderShadow` leaves the other sides
+  uncleared and undrawn (WebGPU side order +X -X -Y +Y +Z -Z). `HERO_REFRESH_MS` 1000 -> 3000 (a held lamp in view redrew all six
+  once a second). Off: `window.EW_HERO_ALL_SIDES`. Counts: `heroShadow().sides / sidesDrawn / sidesSkipped`.
+  NOT EXERCISED in the cloud browser (its frames are seconds apart, so the wax is always due = all six): `_heroSideBits` was checked
+  against 20,000 random spheres (0 missed sides). Ask for his F3 beside a room lamp.
+- THE CLOUD BROWSER'S GPU: headless Chromium lost the WebGPU device at boot ("Could not find SharedImageBackingFactory ...
+  WebgpuSwapChainTexture", then "A valid external Instance reference no longer exists" and every createBuffer failing). Flags that
+  work: `--enable-unsafe-webgpu --use-webgpu-adapter=swiftshader --use-gl=angle --use-angle=swiftshader --enable-features=Vulkan
+  --use-vulkan=swiftshader --disable-vulkan-surface`. The picture is black there on main too: counts and errors only.
+- LEFT (structural): the shell as per-plot chunks (cull + own bundle; today one group of 10,000 pieces, 209 classic draws); merged
+  walls redrawn whole by a lamp's sides (a 96 m batch for a 3.5 m lamp); the pixel side (render scale by itself on Firefox + Mac).
+
+## THE DOORS REST + THE COPIES REST + THE ADD'S OWN GROUP (2026-11-15, mondo's F3 after THE LAMP'S TIGHT REACH)
+His readout: 20.3 FPS, CPU 39.2; matrix walk 6.5 · bundle check 6.1 · scene replays 4.9 · shadow replays 2.4; "refreshed 1809 of 12710",
+"check 7.47 ms/frame (67 quiet skipped, 21 still-checked)", "Re-recorded most: doors (values 14, tree 17, demoted)".
+- THE DOORS REST: the door group is a still-walk group in a chunked room (`_hqChunkTick` arms it, `st.hold = HQ_STILL_DOOR_HOLD_MS` 30 s).
+  `_hqDoorMotionStep` / the revolving door wake their door (`_hqStillWake(d.group)`), so a leaf that swings is drawn outside the
+  recording while it moves and 30 s after: one re-record a swing. Before, a swing changed the group's values every frame -> demoted
+  (three refreshes each of its pieces in every pass; retried after 30 s .. 8 min, demoted again). Two city doors carry a part that
+  never stops (a spinning way mark): those two are always out (12 meshes).
+- THE COPIES REST (`rpList` / `rpReplay`): a "dynamic" instanced batch asked for a full refresh every frame in every pass (three's
+  `hasDynamicInstancing`); it now rests after RP_REST quiet frames like node objects and is refreshed the frame its
+  instanceMatrix / instanceColor version or count moves (`ro._ew_rqI`, `_ew_rqV`). Off: `window.EW_BUN_INST_NO_REST`.
+- The still walk keeps each kept child's position / quaternion / scale objects in the group's arrays (`st.P/Q/SC`): no property
+  read off 11,000 children of many kinds each frame.
+- THE ADD'S OWN GROUP (`_ewBunTick`): the 7.47 ms average was the frames where the groups were NOT quiet: any Object3D.add anywhere
+  had every group checked, and a re-recorded group needed 40 still checks (2 s) to be quiet again. Now the add hook marks only the
+  bundle group the object lands under and the one it leaves (`_ew_bunDirty`), quiet comes after `BUN_QUIET` 8 checks, and a group
+  quiet for `BUN_QUIET_LONG` 90 checks takes every fourth frame. Old rule: `window.EW_BUN_ADD_ALL`.
+- The sandbox draws one frame every 5 s, so its ms rows and "quiet skipped" are not his; verify by counts (movers, outs, errors).
+- WHERE EACH FIX RUNS (mondo 11-15 "make sure all of these fixes apply everywhere ... story mode, battles, all of it"):
+  every HQ / story / site room (any `_hqFrame` scene): quiet replay, copies rest, quiet groups + the add's own group, movers /
+  changers out, the mask's short walk, the lamp's reach + tight reach + held lamp, quiet instance sync, scans on change, the
+  Frame JS lens. Battles in a room (the field bundles, `_ewBunFieldTargets`): quiet replay, copies rest, mask short walk, and
+  since this PR THE QUIET GROUPS (`field` in `_ewBunTick`; VS CPU on Mount Shasta: 531 groups, 353 skipped a frame, check
+  0.6 ms; off `window.EW_BUN_FIELD_CHECK_EVERY`). Big rooms only (>= chunkMinSpanM 200 m, today the city), on purpose: the
+  chunks and THE STILL WALK / STILL CHECK / DOORS REST — a small room's whole matrix walk is under 1 ms (3,500 objects, 0.6 ms
+  measured 11-09) and a still walk starts a hand-animated nested piece up to 0.5 s late, so there is nothing to win there.
+
+## THE LAMP'S TIGHT REACH + THE CHEAP SWEEP (2026-11-15, mondo's F3 at another spot of the city)
+
+His Mac after #1396, standing where a room's bedside lamp (the hero light, reach 3.5 m) is in view: 17.6 fps, CPU 51 ms; "shadow 564 calls,
+943K tris", "shadow: classic draws 7.3 + projection walk 4.4", "matrix walk 10.8" with 0 moving. The mask rows fell 14.5 -> 6.3 ms.
+- Reproduced in the cloud browser (teleport beside the lamp, `EW_HERO_SHADOW_UNSEEN = true`): 724 shadow draws, 3.5M tris a frame;
+  `heroShadow().why` = "a mover in reach". By kind: instance batches 2.4M tris (a 42 m cell's batch, every copy), shell meshes with a
+  sphere > 20 m 501K, static batches 99K. The reach cull tested bounding SPHERES.
+- THE LAMP'S TIGHT REACH: `_ewRchBoxOut` (world box vs the reach + 0.5 m, cached per object on its matrix checksum) and `_ewRchInstOut`
+  (any copy within reach; cached per lamp place + instanceMatrix.version) in the reach branch of the `_projectObject` wrapper (leaf meshes,
+  not skinned / morphing) and in `_hqHeroGate`'s "in reach" test. Off `window.EW_SHADOW_REACH_LOOSE`.
+- Cloud browser after: 3.5M -> 0.6M tris a lamp frame, instance batches 2.7M -> 2K, in reach 312 -> 74 pieces. What stays: the plot's own
+  merged walls + ground (their boxes hold the lamp).
+- Why it redrew EVERY frame: (1) the city's water sheet (`_ewNode.k === 'fluid'`, 645 x 505 m, 2.4 m under the lamp) was a "live material"
+  = "a mover in reach"; `_heroLiveMat` no longer counts fluid. (2) the lava lamp's own wax blobs (rigid meshes 1-8 cm from the light).
+  THE SLOW PIECES: when only rigid pieces drifted (no bones, no live material, no list change) the map redraws at most every
+  `HERO_RIGID_MS` 100 ms; `heroShadow().why` = "held (slow pieces)". Off `window.EW_HERO_RIGID_EVERY_FRAME`.
+- THE NEAR LIST: `_hqHeroGate` runs inside the frame's matrix walk (`scene._ew_afterWalk`), so its loop over all 31,000 casters showed as
+  "matrix walk" (10.8 vs 4.6 ms with the lamp in view; cloud browser 38 vs 17). `G.near` = the casters within reach + 6 m (+ every
+  instanced / skinned one), rebuilt every 500 ms / on a new list / lamp move; frames between read only it. Off `window.EW_HERO_NO_NEAR`.
+- THE CHEAP SWEEP: THE STILL WALK's twice-a-second sweep composed + multiplied every in-view subtree to look for a change; `_hqStillSum`
+  now sums each object's own position / quaternion / scale (its `matrix` when `matrixAutoUpdate` is false) and the sweep walks the
+  subtree's matrices only when that sum changed.
+
+## THE MASK'S SHORT WALK + THE QUIET SYNC (2026-11-15, from mondo's first Frame JS readout)
+
+His Mac after #1395: 20.2 fps (was 13.1), CPU 38 ms, frame 48.5 ms. Biggest rows: "mask: projection walk 8.2", "mask: setup + lights + sort
+6.3", matrix walk 4.6, scene bundle replays 4.2, bundle check 2.8.
+- THE MASK'S SHORT WALK (`_ewBunSetup`'s `_projectObject` wrapper, `maskFile`): three-post's model mask renders the scene twice (skinned
+  layer 7, static layer 8) as a side render, which draws bundle groups the classic way, so it walked the shell's 10,000 children twice. A
+  group with > 32 children (not a chunk, not a clipping group) keeps `_ew_mkIdx`: the children whose subtree holds a layer other than 0, a
+  light, a bundle group, a chunk, a clipping group or an LOD, with their layer union; a side render whose camera lacks layer 0 projects only
+  those meeting its layers. Re-filed on an add (once a second at most), a child-count change or every 10 s. Off `window.EW_MASK_FULL_WALK`.
+- THE QUIET SYNC (`_hqInstSync`, scene.onBeforeRender, so the frame's FIRST render pays it = the mask's "setup"): 12,000 instanced copies
+  walked to the scene for visibility + a matrix multiply each, every frame. A batch with no change for 30 syncs (`HQ_INST_REST`) syncs
+  every 4th frame; any change wakes it. Parent visibility once per parent a frame (`_hqInstShown`, stamp props `_ew_shS/_ew_shC/_ew_shV`).
+  Off `window.EW_HQ_INST_SYNC_EVERY`.
+
+## THE STILL CHECK + THE FRAME BREAKDOWN (2026-11-15, Disaster City, after THE OUTS ON A REPLAY FRAME)
+
+mondo's Mac (#1393): CPU 70 ms of which submit 40 with 99 draws, "check 8.85 ms/frame", and the lens could not say where the rest went.
+- THE STILL CHECK (`_ewBunTick`, `S.noM`): in a group THE STILL WALK owns (`g._ew_st`: the shell, fence + prop chunks) the pieces' matrices
+  are no longer hashed every frame (12 rounded numbers x 6,500 pieces): a piece's matrix changes only through that walk, which turns a mover
+  `_ew_bunOut` the same frame and back (a tree change = re-record) at rest. The group's own matrix is hashed. Off
+  `window.EW_BUN_HASH_MATRICES`. Lens bundles line: "check X ms/frame (N quiet skipped, M still-checked)".
+- THE FRAME BREAKDOWN (lens open only): `_lensIn/_lensOut` spans (exclusive time) + `_lensMark` checkpoints. `_hqFrame`'s ticks each get a
+  "tick: …" row, "matrix walk", "mirrors", "bundle check", "render: node + rig ticks"; inside the renders `_lensSpanHook` wraps three's
+  `_renderScene` (sets the pass: scene / shadow / mask / pane / mirror/extra / post), the top `_projectObject` ("projection walk"),
+  `_renderBundles`, `_renderObjects`, `_renderTransparents`, `_renderOutput`, backend `beginRender` / `finishRender` ("pass end + submit").
+  Printed as "Frame JS (ms/frame): …" (biggest first, + "rest of the frame" = CPU minus the spans). Never unwrapped (other hooks wrap over).
+- Cloud browser cannot time a frame (software GPU, ~0.2 fps): ask mondo for the F3 with the Frame JS lines and cut the biggest row next.
+
+## THE OUTS ON A REPLAY FRAME (2026-11-14, a bug shipped in #1391 / #1393, fixed the same day)
+
+three r186 `_projectObject` projects a BundleGroup's children ONLY when the bundle needs a new recording; on a replay frame it pushes the
+bundle and returns. So a piece that is out of the recording (`_ew_bunOut`: traffic cars, signals, movers, changers) was drawn on record
+frames only: with a still shell (0 re-records/s) the cars and signals were INVISIBLE. mondo's readout showed it: no `_ew_hqCar` /
+`_ew_hqSignal` draws in the scene pass. I had read "34 shell draws outside its bundle" in the cloud lens as proof; it was a record frame.
+- Fix: `_ewBunTick`'s walk collects the out pieces per group (`g._ew_bunOuts`); the `_projectObject` wrapper, when the group's recording
+  is current for this camera + context (`_ewBunCurrent`), projects them itself into the list the group was handed to (`_ewBunOutsDraw`).
+  A flag set / cleared by THE STILL WALK marks the group `_ew_bunDirty` so the quiet-group skip does not delay its walk.
+- Proof to use next time: wrap `onBeforeRender` of the out meshes and count per frame over replay frames (scratchpad outs.js).
+- Rule: before diverting anything out of a three code path, read whether three runs that path every frame.
+
+## THE CHANGERS OUT (2026-11-14, the regression after THE MOVERS OUT)
+
+mondo's Mac on #1391: 11.2 fps (was 14.9), "1.9 re-records/s (values 1.9)", shell 2,802 draws "outside its bundle", bundles holding 881
+meshes only. With the cars out the shell was a STILL recording for the first time, so any piece whose values change (a traffic signal's
+lens colour, a flickering glow) re-recorded all 4,400 pieces; ~2 a second never reaches the "5 in 2 s" that demotes a group, so it went on
+forever. Before #1391 the cars had demoted the shell and this never showed. Lesson: making a group static exposes every slow changer in it.
+- `_ewBunWalkTop` (walk rooms): each direct child's own value hash; a child that changed 3 times in 20 s goes `_ew_bunOut` for good
+  (`_ew_bunOutV`), unless a quarter of the group (or > 400) would go at once (the hour changing = left to demotion). Only once `_hq.ready`.
+- Traffic signals are `_ew_bunOut` from the build.
+- A slow churn demotes too: 8 value re-records in 20 s. A demoted group is retried as static after 30 s, doubling to 8 min.
+- Lens line "Re-recorded most: <group> (values, tree, rests) · changers moved out N". Cloud browser: 0 re-records/s after 4, 3 moved out,
+  draws 540 → 147.
+
+## THE MOVERS OUT + THE QUIET REPLAY + THE QUIET GROUPS (2026-11-14, Disaster City, after THE STILL WALK)
+
+mondo's Mac after THE STILL WALK: 14.9 fps (was 7.3), matrix walk 4.25 ms, but "Draw calls 95" with "submit 52.8 ms" and
+"check 7.60 ms/frame". The draw time was not draws.
+
+- What it was: three's `_renderBundle` replays a recording in one GPU call but still loops over EVERY render object in it, each pass
+  (picture, model mask, sun depth = 3.3 a frame), calling `_nodes.needsRefresh`; a material whose monitor says `hasNode` (the depth
+  pass's materials, the game's dressed ones) answers FULL every time = updateBefore + geometry + nodes + ALL bindings per object.
+  And the shell was not even a static recording: the 16 traffic cars are children of the shell group, their matrices move every
+  frame, so `_ewBunTick` re-recorded it 5 times then DEMOTED it (st.dyn: three checks every object's values every pass).
+- THE MOVERS OUT: `object._ew_bunOut === true` → the `_projectObject` wrapper hands it to the list the bundle group itself was handed
+  to (`this._ew_bunBase`): classic draw, culled, current matrices; `_ewBunWalk` hashes only "it is out". Set on traffic cars at build
+  (`_hqBuildTraffic`) and by THE STILL WALK on any direct child it finds moving (`_ew_bunOutA`, cleared when it rests 4 s).
+  Off: `window.EW_BUN_NO_OUT`. Cloud browser: shell "outside its bundle" 5,988 draws → 34 (the cars).
+- THE QUIET REPLAY (the `rb` wrapper in `_ewBunSetup`): for a STATIC group whose recording is current and has had one whole replay
+  by three since it was made (`bd._ewLoopV`): plain objects = only the first per monitor (one per shader; three hands that one the
+  shared camera/light buffers and answers NONE for the rest); `hasNode` objects = refreshed in full while their refresh writes a
+  non-shared buffer, rested after 20 frames with no write (every 20th frame, by place); a rested one that writes wakes all rested
+  ones of that recording the same frame. Skinned / morph / dynamic-instanced never rest. Measured: main pass asks 47 of 5,933 shell
+  objects. Moving the camera / the sun does not write object buffers (three computes model-view in the shader), checked.
+  Off: `window.EW_BUN_FULL_REFRESH`. Lens: "refreshed N of M a frame".
+- THE QUIET GROUPS (`_ewBunTick`): a recorded group unchanged for 40 checks is hashed every third frame; every group on a frame with
+  an `Object3D.add`, a freed resource, a missing pipeline or a lamp change. Off: `window.EW_BUN_CHECK_EVERY`.
+- Sandbox lesson: at 0.5 fps a group never reaches "5 changes in 2 s", so it re-records every frame instead of demoting; the shell
+  drew classic there for that reason (not the texture shrink). With the cars out the sandbox finally matches the Mac's shape.
+- three r186 facts worth keeping: `RenderObject.getMonitor()` is the node builder state's observer (shared per shader);
+  `createBindings()` reuses shared bind groups per builder state; `needsRefresh` returns SHARED once per render per monitor.
+
+## THE STILL WALK (2026-11-14, Disaster City, after THE UNSEEN LAMP)
+
+mondo: "Still really slow and laggy ... there have to be multiple huge performance saves that you are missing" (7.3 fps, CPU 129.5 ms of
+which submit 69.3: ~60 ms a frame was NOT the draw).
+
+- What it was: three's `scene.updateMatrixWorld()` (once a frame since THE ONE MATRIX WALK) composes + multiplies the matrix of EVERY
+  object, drawn or not, moved or not. The city has 59,082 objects; ~300 move (people, 16 cars, doors). Cloud Chrome: 21-45 ms a walk.
+- THE STILL CHUNKS (same day) did nothing for the walk: `matrixWorldAutoUpdate = false` on a group only skips that group's own
+  multiply, three recurses into the children regardless (36,145 objects under off-camera chunks were still walked). Lesson: read
+  three's method before trusting a flag.
+- The fix (`_hqStillArm / _hqStillUpdate / _hqStillSceneWalk`, three-renderer.js before `_hqChunkRules`): in a chunked room the shell
+  group and every chunk group (prop plots, rooms, fence plots) carry their own `updateMatrixWorld`, used ONLY inside `_hqFrame`'s one
+  walk (`_hqStWalk`); any other caller gets three's walk. Off-camera chunk: nothing. Drawn group: per direct child a 10-number compare
+  of position / quaternion / scale; changed = walked now and for 4 s after (HQ_STILL_HOLD_MS); a child that got an `add` under it
+  (the Object3D.add hook, `_hqStillAdded`) = walked that frame; the rest in slices, all of it every 500 ms (HQ_STILL_SWEEP_MS), a child
+  whose subtree checksum changed joins the movers (inner parts: wax, fans, sway pivots, bones). Group moved / chunk back on camera =
+  whole group twice (seeds the movers).
+- Known limit: an INNER part that starts moving with no add and no move of its placement starts up to 500 ms late the first time.
+  A mover that must not: `_hqStillWake(obj)` (also `ThreeRenderer.hq.dev.stillWake`).
+- `_hqBatchCheck` no longer force-walks the shell + prop groups every 500 ms in such a room (it was the whole city twice a second).
+- `_hqChunkTick`: an out chunk is re-walked only when something joined THAT chunk (was: any add anywhere, e.g. a gun flash).
+- Lens: new line `Matrix walk N ms/frame · still groups …`. Counts: `ThreeRenderer.hq.dev.still()`. Off: `window.EW_HQ_STILL_OFF`.
+
+## THE UNSEEN LAMP + THE SCANS ON CHANGE (2026-11-14, Disaster City, his 7.3 FPS readout)
+His Mac after THE LAMP'S REACH: CPU 129.5 ms (submit 69.3), shadow 776 of 1,056 draws / 3.22M tris, "0 re-records/s".
+A CDP CPU profile of the city in the cloud browser (harness `/profile` endpoint, `scratchpad prof_an.js`: self time folded
+onto the nearest game function) showed the 60 ms outside the draws was whole-scene walks (37,000 objects) on timers.
+- **THE UNSEEN LAMP (`_hqHeroGate`).** The 776 shadow draws were the hero lamp's six cube sides drawing the nearby instance
+  batches + merged batches classic (one batch spans a 42 m plot; the lamp reaches 3.5 m), every frame, with the lamp streets
+  away. A point lamp whose reach sphere (x1.15) is off the camera has its map held; it redraws the frame the sphere is back.
+  Off: `window.EW_HERO_SHADOW_UNSEEN = true`.
+- **The scans, now on change** (`_ewAddCount`: every Object3D.add counted; zero adds a frame standing still in the city):
+  the hero lamp's caster list (was a scene walk every 100 ms; now on an add, and every 2 s); a prop chunk's sphere
+  (`Box3.setFromObject` of the chunk every 4 s; now on an add / count change, and every 60 s); the LOD list (`_hqLodScan`
+  every 2 s; now on an add or a landed level `_lodLandN`, and every 30 s); CSS2DRenderer (three scene walks a frame; skipped
+  while the scene holds no label, `window.EW_CSS2D_ALWAYS`); THE MEMORY BUDGET over its cap with nothing free to drop
+  (`_mmLive` every 4 s; now waits 30 s); the pixel mask's timed scan 400 -> 1500 ms (adds still re-scan at once).
+- Left, in order: the shell is ONE group of 10,000 pieces (matrix walk, bundle check 7 ms, every pass) -> chunk it like the
+  props; the static batch's forced matrix walk every 500 ms; Firefox's cost per draw.
+
+## THE HELD KEEP THE CAMERA (2026-11-15, mondo: "trees and other props are moving when i move my camera ... its in door hq too")
+- **Cause**: THE COPIES REST (#1409) let instanced batches be HELD in the quiet replay (`rpReplay`). The frame's camera sits in
+  SHARED uniform buffers (one per set of shared values a shader reads); three writes each when the first object reading it is
+  refreshed in a render. The instanced shaders read a set of their own, so with every batch held nobody wrote it: instanced props
+  were drawn with the camera of up to 20 frames ago (glued to the view on a turn, then snapping home). Game-wide (HQ, city, sites).
+- **Fix**: `rpShared` — the first held object of each shared bind group gets its SHARED part refreshed in every render
+  (`updateSharedForRender`); the rest stay held. Off: `window.EW_BUN_HELD_NO_SHARED`. Count: `_ewBun.rpShared`.
+- **Proof** (cloud browser, WebGPU, main hall, camera turned 70 degrees, the FIRST drawn frame against the settled one):
+  fix off 1.8-2.3% of pixels differ (lamps, boxes, chairs at their old screen places); fix on 0.1%.
+  `/mnt/project-files/props-move-camera-20261115/`.
+- **How to test a camera-stale bug**: `teleport` `face` is in DEGREES. Rest 30 drawn frames, then in ONE eval teleport and
+  allow one drawn frame (harness `__ph.draw.mode='demand'; frames=2`), screenshot, draw 30 more, screenshot, diff. A test that
+  lets undrawn ticks pass, or a 1 degree turn, shows nothing.
+- **Rule**: anything that skips an object's refresh in a replayed bundle must still refresh the shared buffers it reads.
+
+## THE CRASH TRAIL (2026-11-15, mondo: "Crashed inside the door main hall/lobby", Firefox M1 WebGPU, no error in the console)
+Not reproduced, cause NOT found. What was ruled out by reading: the `[terrain] bridge ... headroom` lines in his log are the
+survey worker warming every room's floor plan from the main menu (map.js `_hqSurveyWarmAround`, started by the arrival
+warm); Disaster City's plan compiles in 12 s and is 13 MB, so it is not a memory spike. The 681 Urban Decay sheets
+(PR #1426) are names for the editor's picker, loaded lazily. His log had no `[HQ] entered` line, so that console was
+either from before the hall landed or from the load after the crash.
+What shipped (index.html only, THE FREEZE TRAIL grown): a session records how it ended (`clean` on pagehide, `frozen`
+when the picture stops 5 s+ while timers run), where it was (`ThreeRenderer.hq.room()`, the model memory, `gpuStatus()`),
+and the `[HQ]` / `[MENU]` / lab sweep console.log lines. A session that did not end cleanly is printed at the top of the
+next load's console as one `[CRASH TRAIL]` block (so his usual console paste carries it) and kept in localStorage
+`ew_freeze_trail_hist` (last 3; ?ewdiag=1 lists them). Read the block first on any future crash / freeze report.
+
+## THE HOLDERS (2026-11-15, the main hall crash, second pass)
+His F3 in DOOR HQ: `MEM 1726/700 MB` in the Foyer, `2047/700 MB` in the Main Hall (Firefox M1 WebGPU): three times the budget
+and climbing through the door, the best lead for the crash. THE MEMORY BUDGET can only drop what nothing drawn wears, and in the
+walk it never drops unit models, so "over the budget with nothing free to drop" was silent. three-renderer.js `_mmReport`: once
+per room, when over the budget with nothing to drop, one `[MEM]` console.warn block: the props / unit-model split, how much is
+worn by something drawn, the built stage parts, the 14 biggest props and 10 biggest unit models (LIVE / idle).
+`ThreeRenderer.hq.memTop()` gives the lines on demand. Read-only; nothing is dropped differently yet. NEXT: read his block, then
+cut what holds the memory (candidates: unit models never dropped in the walk, too many stage parts built, the menu scene kept).
+
+## THE UNDRAWN MAPS (2026-11-15, the main hall crash, third pass: MEM 2047/700 MB)
+Measured off the CDN files (no browser): the Main Hall + the Foyer place 69 distinct prop keys; 45 are Meshy `_texture.glb`
+files that each ship three 2048 x 2048 sheets (colour, normal, metal + roughness) = 64 MB a file by the readout's count
+(the security camera: nine sheets, 193 MB). Sum about 2.86 GB counted, of which only the colour sheet (a third) is ever drawn:
+`_hqPropMatPick` draws a prop as a Lambert on `sm.map` alone. The loader still decoded all three and the cache held them.
+Fix: three-renderer.js `_hqPropDropPbr(sm)` runs once per file material right after its room material is made: normalMap,
+roughnessMap, metalnessMap, aoMap are set null, disposed, and their ImageBitmap closed (unless a kept sheet reads the same
+source); the file material becomes matte. `_mmStale` makes `_mmRead` count the cache again. `hq.mem().undrawn` = sheets let go.
+Off: `window.EW_KEEP_PBR_MAPS = true`. NOT run in a browser (repo rule); whether this was THE crash is not proven, it is the
+memory his readout showed. The readers of a file material's normalMap are creator hair / wings (unit cache) and the gem / key
+picks (their own files), none of them a room prop. NEXT if the hall is still far over budget: the unit models (also three
+sheets each, also drawn as Lambert), and stripping the two sheets in the .opt.glb bake so they are never downloaded.

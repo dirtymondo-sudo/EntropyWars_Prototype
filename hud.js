@@ -1226,6 +1226,166 @@ function SbClock({ startTime, live }) {
   return String(Math.floor(elapsed / 60)).padStart(2, '0') + ':' + String(elapsed % 60).padStart(2, '0');
 }
 
+/* ══════════ THE SCORE POP (mondo 2026-11-12: "whenever a kill happens or arena points are scored, i want the arena
+   scoreboard to do a +N animation, like ... a 3 pointer ... the broadcast will do a +3 over the score ... the black bars
+   come down for spells and cover up the scoreboard so it will have to be after that ... same thing for cube damage and
+   finding keys ... the more points the bigger animation") ══════════
+   No new rule and no new number: the pop is the DIFFERENCE between two draws of the score the plate already shows
+   (_getModeInfo: kills, Cube damage, Keys, Nexus rounds, bounties, off window.ARENA_PTS), so every mode and every way of
+   scoring gets it, and the guest's HUD makes its own from the synced state (nothing relayed, viewer-local).
+   · THE PLATE WAITS: points scored while the spell shot's letterbox (or a finisher / VS card's) is over the scoreboard
+     are held; the digits keep the old score, everything scored under the bars adds into ONE +N per side, and it fires
+     SCORE_POP_RULES.afterBarsMs after the bars have left. Never held longer than maxWaitMs.
+   · THE SIZE: SCORE_POP_RULES.tiers by the points (a kill-count mode's +1 weighs as a kill): tick, pop, bounce, slam.
+   · THE COUNT: the +N stands ON its side's digits (same spot, the digits step out), holds, and the digits come back rolling up to the new score.
+   Off switch: window.EW_NO_SCORE_POP = true. */
+const SCORE_POP_RULES = {
+  /* [points from, name, glyph px, in ms, hold ms, roll ms] */
+  tiers: [[50, 't4', 38, 520, 900, 620], [25, 't3', 28, 440, 760, 520], [10, 't2', 20, 320, 620, 380], [0, 't1', 15, 220, 520, 240]],
+  mergeMs: 240,        // gains this close together are one +N
+  afterBarsMs: 560,    // the letterbox slides out in .45 s (styles-cinematic.css .acam-bar)
+  maxWaitMs: 12000,
+  outMs: 260,
+  killWeight: 25,      // a mode whose score counts kills / captures: +1 is sized like an Arena kill
+};
+const _sbPop = { key: null, real: { 1: 0, 2: 0 }, shown: { 1: 0, 2: 0 }, pend: { 1: 0, 2: 0 }, since: { 1: 0, 2: 0 },
+  roll: { 1: null, 2: null }, busy: { 1: 0, 2: 0 }, cover: { 1: 0, 2: 0 }, blockedAt: 0, raf: 0, weight: 1 };
+function _sbPopBlocked() {
+  if (document.querySelector('.acam-chrome.active:not(.light), .ews-letterbox, .vs-letterbox-in')) return true;
+  const sb = document.querySelector('.ew-scoreboard .ew-score-plate');
+  if (!sb || !sb.getClientRects().length) return true;
+  for (let el = sb; el && el !== document.body; el = el.parentElement) {
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || +cs.opacity < 0.5) return true;
+  }
+  return false;
+}
+/* the plate's draw: takes the true scores, returns the ones to show (the old score while its +N waits) */
+function _sbPopFeed(st, mode) {
+  const S = _sbPop, cur = { 1: +mode.p1Score, 2: +mode.p2Score };
+  if (!isFinite(cur[1]) || !isFinite(cur[2])) return [mode.p1Score, mode.p2Score];
+  const key = (st.startTime || 0) + ':' + mode.id;
+  const off = window.EW_NO_SCORE_POP || st.phase !== 'battle';
+  if (key !== S.key || off) {
+    S.key = key;
+    for (const p of [1, 2]) { S.real[p] = S.shown[p] = cur[p]; S.pend[p] = 0; S.since[p] = 0; S.roll[p] = null; S.cover[p] = 0; }
+    return [cur[1], cur[2]];
+  }
+  S.weight = mode.id === 'arena' || mode.scoreLabel === 'PTS' ? 1 : SCORE_POP_RULES.killWeight;
+  const now = performance.now();
+  for (const p of [1, 2]) {
+    const d = cur[p] - S.real[p];
+    if (!d) continue;
+    S.real[p] = cur[p];
+    if (d > 0) { S.pend[p] += d; if (!S.since[p]) S.since[p] = now; }
+    else {   // a loss (a Key carrier fell): no pop, the score just drops
+      const take = Math.min(S.pend[p], -d);
+      S.pend[p] -= take;
+      const rest = -d - take;
+      if (S.roll[p]) S.roll[p].to = Math.max(0, S.roll[p].to - rest); else S.shown[p] = Math.max(0, S.shown[p] - rest);
+    }
+  }
+  if ((S.pend[1] || S.pend[2]) && !S.raf) S.raf = requestAnimationFrame(_sbPopTick);
+  return [Math.round(S.shown[1]), Math.round(S.shown[2])];
+}
+function _sbPopTick() {
+  const S = _sbPop, R = SCORE_POP_RULES, now = performance.now();
+  S.raf = 0;
+  const blocked = _sbPopBlocked();
+  if (blocked) S.blockedAt = now;
+  for (const p of [1, 2]) {
+    if (S.pend[p] > 0 && now >= S.busy[p]) {
+      const late = now - S.since[p] > R.maxWaitMs;
+      if (late || (!blocked && now - S.blockedAt >= R.afterBarsMs && now - S.since[p] >= R.mergeMs)) _sbPopFire(p, late && blocked);
+    }
+    const r = S.roll[p];
+    if (r) {
+      const k = Math.min(1, (now - r.t0) / r.dur), e = 1 - Math.pow(1 - k, 3);
+      S.shown[p] = r.from + (r.to - r.from) * e;
+      const num = document.querySelector('.ew-scoreboard .ew-sb-num.p' + p);
+      if (num) num.textContent = Math.round(S.shown[p]);
+      if (k >= 1) { S.shown[p] = r.to; S.roll[p] = null; }
+    }
+  }
+  if (S.pend[1] || S.pend[2] || S.roll[1] || S.roll[2]) S.raf = requestAnimationFrame(_sbPopTick);
+}
+function _sbPopFire(p, silent) {
+  const S = _sbPop, R = SCORE_POP_RULES, n = S.pend[p];
+  S.pend[p] = 0; S.since[p] = 0;
+  const absorb = (dur) => {
+    const r = S.roll[p], now = performance.now();
+    S.roll[p] = { from: S.shown[p], to: (r ? r.to : S.shown[p]) + n, t0: now, dur: dur };
+    if (!S.raf) S.raf = requestAnimationFrame(_sbPopTick);
+  };
+  const plate = document.querySelector('.ew-scoreboard .ew-score-plate');
+  const host = plate && plate.querySelector('.ew-sb-pops');
+  const num = plate && plate.querySelector('.ew-sb-num.p' + p);
+  if (silent || !host || !num || typeof host.animate !== 'function') { absorb(1); return; }
+  const T = R.tiers.find(t => n * S.weight >= t[0]) || R.tiers[R.tiers.length - 1];
+  const tier = T[1], px = T[2], inMs = T[3], holdMs = T[4], rollMs = T[5];
+  const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* where: ON this side's digits, the same spot (mondo 2026-11-12: "pop up over the team's score number, like in the same spot"):
+     the digits step out while the +N stands in their place, and come back rolling up to the new score. P1's +N grows from the
+     digits' right edge, P2's from their left, so a big one never covers the other side's score. Offsets, so the UI Maker's
+     move / scale of the plate carries it. */
+  let nx = 0, y = num.offsetHeight / 2;
+  for (let el = num; el && el !== plate; el = el.offsetParent) { nx += el.offsetLeft; y += el.offsetTop; }
+  const el = document.createElement('div');
+  el.className = 'ew-sb-pop p' + p + ' ' + tier;
+  if (p === 1) el.style.right = (plate.clientWidth - nx - num.offsetWidth) + 'px'; else el.style.left = nx + 'px';
+  el.style.top = y + 'px';
+  el.style.transformOrigin = (p === 1 ? '100%' : '0%') + ' 50%';
+  el.style.fontSize = px + 'px';
+  el.style.fontFamily = getComputedStyle(num).fontFamily;
+  el.textContent = '+' + n;
+  host.appendChild(el);
+  S.cover[p] = (S.cover[p] || 0) + 1; num.style.opacity = '0';
+  const uncover = () => { S.cover[p] = Math.max(0, (S.cover[p] || 1) - 1); if (!S.cover[p]) { const nm = document.querySelector('.ew-scoreboard .ew-sb-num.p' + p); if (nm) nm.style.opacity = ''; } };
+  const x = nx + num.offsetWidth / 2;
+  const C = 'translateY(-50%) ';
+  const IN = calm ? [{ opacity: 0, transform: C + 'scale(1)' }, { opacity: 1, transform: C + 'scale(1)' }]
+    : tier === 't1' ? [{ opacity: 0, transform: C + 'scale(.6)' }, { opacity: 1, transform: C + 'scale(1)' }]
+    : tier === 't2' ? [{ opacity: 0, transform: C + 'scale(.4)' }, { opacity: 1, transform: C + 'scale(1.28)', offset: .6 }, { opacity: 1, transform: C + 'scale(1)' }]
+    : tier === 't3' ? [{ opacity: 0, transform: C + 'scale(.3)' }, { opacity: 1, transform: C + 'translateY(4px) scale(1.42)', offset: .38 },
+        { opacity: 1, transform: C + 'translateY(-3px) scale(.92)', offset: .62 }, { opacity: 1, transform: C + 'translateY(2px) scale(1.08)', offset: .82 }, { opacity: 1, transform: C + 'scale(1)' }]
+    : [{ opacity: 0, transform: C + 'scale(2.6)' }, { opacity: 1, transform: C + 'translateY(5px) scale(.82)', offset: .3 },
+        { opacity: 1, transform: C + 'translateY(-5px) scale(1.3)', offset: .5 }, { opacity: 1, transform: C + 'translateY(3px) scale(.94)', offset: .7 },
+        { opacity: 1, transform: C + 'translateY(-2px) scale(1.06)', offset: .86 }, { opacity: 1, transform: C + 'scale(1)' }];
+  S.busy[p] = performance.now() + inMs + holdMs + R.outMs + 60;   // the next +N on this side waits its turn
+  const big = tier === 't3' || tier === 't4';
+  if (big && !calm) {
+    plate.classList.remove('ew-sb-flash', 'p1', 'p2', 't3', 't4'); void plate.offsetWidth;
+    plate.classList.add('ew-sb-flash', 'p' + p, tier);
+    setTimeout(() => plate.classList.remove('ew-sb-flash', 'p' + p, tier), 900);
+    if (tier === 't4') {
+      const ring = document.createElement('div');
+      ring.className = 'ew-sb-pop-ring p' + p;
+      ring.style.left = x + 'px'; ring.style.top = y + 'px';
+      host.appendChild(ring);
+      const ra = ring.animate([{ opacity: .9, transform: 'translate(-50%,-50%) scale(.3)' }, { opacity: 0, transform: 'translate(-50%,-50%) scale(2.4)' }], { duration: 620, easing: 'cubic-bezier(.2,.7,.3,1)' });
+      ra.onfinish = ra.oncancel = () => ring.remove();
+    }
+  }
+  const a = el.animate(IN, { duration: inMs, easing: 'cubic-bezier(.3,.9,.4,1)', fill: 'forwards' });
+  a.onfinish = () => setTimeout(() => {
+    if (!el.isConnected) { uncover(); absorb(1); return; }
+    const o = el.animate(calm ? [{ opacity: 1 }, { opacity: 0 }]
+      : [{ opacity: 1, transform: C + 'scale(1)' }, { opacity: 0, transform: C + 'scale(.5)' }],
+      { duration: R.outMs, easing: 'cubic-bezier(.5,0,.9,.4)', fill: 'forwards' });
+    o.onfinish = o.oncancel = () => {
+      el.remove(); uncover();
+      absorb(rollMs);
+      const nm = document.querySelector('.ew-scoreboard .ew-sb-num.p' + p);
+      if (nm && !calm && typeof nm.animate === 'function') {
+        const k = tier === 't4' ? 1.7 : tier === 't3' ? 1.45 : tier === 't2' ? 1.25 : 1.12;
+        nm.animate([{ transform: 'scale(1)' }, { transform: 'scale(' + k + ')', offset: .3 }, { transform: 'scale(1)' }], { duration: Math.max(260, rollMs), easing: 'ease-out' });
+      }
+    };
+  }, holdMs);
+  a.oncancel = () => { el.remove(); uncover(); absorb(1); };
+}
+if (typeof window !== 'undefined') window._ewScorePopState = () => JSON.parse(JSON.stringify({ real: _sbPop.real, shown: _sbPop.shown, pend: _sbPop.pend, blocked: _sbPopBlocked() }));
+
 function Scoreboard({ st }) {
   if (!st) return null;
 
@@ -1319,7 +1479,7 @@ function Scoreboard({ st }) {
   }
 
   const mode = _getModeInfo(st);
-
+  const sbShown = _sbPopFeed(st, mode);   // THE SCORE POP: the old score while its +N waits for the letterbox
 
   const roundLimit = st.matchClock && st.matchClock.roundLimit ? st.matchClock.roundLimit : 0;
   /* the round counter steps past the limit to end the match: never show R21/20 once time is up */
@@ -1434,22 +1594,23 @@ function Scoreboard({ st }) {
           h('span', { className: 'ew-sb-num p1', style: {
             fontFamily: mono, fontSize: 22, fontWeight: 500, lineHeight: 1, letterSpacing: '0.08em',
             color: EW_T.ink, textShadow: '0 0 14px ' + EW.space + '66',
-            minWidth: 18, textAlign: 'right',
-          }}, mode.p1Score),
+            minWidth: 18, textAlign: 'right', display: 'inline-block', transformOrigin: '100% 60%',
+          }}, sbShown[0]),
           h('span', { className: 'ew-sb-dash', style: {
             fontFamily: mono, fontSize: 13, color: EW_T.inkDim, lineHeight: 1,
           }}, '–'),
           h('span', { className: 'ew-sb-num p2', style: {
             fontFamily: mono, fontSize: 22, fontWeight: 500, lineHeight: 1, letterSpacing: '0.08em',
             color: EW_T.ink, textShadow: '0 0 14px ' + EW.chaos + '66',
-            minWidth: 18, textAlign: 'left',
-          }}, mode.p2Score),
+            minWidth: 18, textAlign: 'left', display: 'inline-block', transformOrigin: '0% 60%',
+          }}, sbShown[1]),
         ),
 
         sbMid.length > 0 && sbLine('', sbMid),
         sbUnder.length > 0 && sbLine('ew-sb-under', sbUnder),
 
         sbLook.pips !== 'top' && pipsEl,
+        h('div', { key: 'pops', className: 'ew-sb-pops' }),   // THE SCORE POP's layer (filled by _sbPopFire, never by React)
       ),
 
       h(ScoreSide, { st, mode, player: 2, side: 'right', color: EW.chaos }),
@@ -1773,7 +1934,36 @@ function _ppArc(r, len, start, cls, extra) {
    reticle. Both meters fill from 6 o'clock clockwise; shield leads the HP fill in pale blue; the confirm-step
    forecast (getPendingDamagePreview) blinks the slice about to be lost or healed; a hit blinks the face white
    (RenderBus 'unit:damaged'); the acting unit wears a slow-turning halo. `foe` paints the HP ring enemy red. */
+/* THE LIVE PORTRAITS (2026-11-12): a main character's portrait as a small canvas the portrait studio redraws (the idle, the
+   blink, the breath: three-renderer.js EWPortraits.attach), inside the icon's own SVG so its clip, vignette and hit flash
+   still sit over it. `liveKey` = EWPortraits.liveKey(unit); the still shows through until the first live frame. */
+function LiveFace({ unit, liveKey, x, y, size }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const cv = ref.current;
+    if (!cv || !window.EWPortraits || typeof window.EWPortraits.attach !== 'function') return;
+    const off = window.EWPortraits.attach(cv, unit);
+    return () => { if (off) off(); };
+  }, [liveKey]);
+  return h('foreignObject', { x, y, width: size, height: size, className: 'ew-live-face', style: { pointerEvents: 'none' } },
+    h('canvas', { ref, width: 128, height: 128, style: { width: '100%', height: '100%', display: 'block' } }));
+}
+/* the Settings switch flipped: every icon that can go live redraws itself (they are memoised, a plain HUD redraw skips them) */
+function useLiveGen() {
+  const [g, setG] = useState(0);
+  useEffect(() => {
+    const on = () => setG(x => x + 1);
+    window.addEventListener('ew-live-portraits', on);
+    return () => window.removeEventListener('ew-live-portraits', on);
+  }, []);
+  return g;
+}
+function _liveKeyOf(unit) {
+  try { return (unit && !unit.dead && window.EWPortraits && typeof window.EWPortraits.liveKey === 'function') ? window.EWPortraits.liveKey(unit) : null; } catch (e) { return null; }
+}
+
 function PartyPortrait({ unit, size, active, finished, next, possessed, forecast, foe, ringColor }) {
+  useLiveGen();
   const hitRef = useRef(null);
   useEffect(() => {
     if (!window.RenderBus || !unit) return;
@@ -1822,6 +2012,7 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
     if (_mfc.gain > 0) mpGainPct = _ppClamp((_mfc.gain / maxMp) * 100, 0, 100 - mpPct);
   }
   const clipId = 'ppclip-' + String(unit.id).replace(/[^a-z0-9_-]/gi, '_');
+  const _ppLive = isFace ? _liveKeyOf(unit) : null;   // THE LIVE PORTRAITS
   const R_HP = 43, R_MP = 36.5, R_FACE = 30.5, R_HALO = 48;
 
   return h('div', {
@@ -1855,7 +2046,8 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
       h('circle', { cx: 50, cy: 50, r: R_FACE + 1.2, className: 'ew-pp-bezel' }),
       h('g', { clipPath: 'url(#' + clipId + ')' },
         h('circle', { cx: 50, cy: 50, r: R_FACE, className: 'ew-pp-disc' }),
-        src && h('image', {
+        _ppLive ? h(LiveFace, { unit, liveKey: _ppLive, x: 50 - R_FACE, y: 50 - R_FACE, size: R_FACE * 2 })
+        : src && h('image', {
           href: src, x: 50 - R_FACE, y: 50 - R_FACE, width: R_FACE * 2, height: R_FACE * 2,
           preserveAspectRatio: isFace ? 'xMidYMid slice' : 'xMidYMax meet',
           className: 'ew-pp-img',
@@ -1930,7 +2122,61 @@ function _tcPeek(unitId) {
 
 const TC_MAX = 46, TC_MIN = 26, TC_GAP = 6;
 
-function TurnIcon({ e, size, now, next, foe, forecast, inspecting }) {
+/* ♟ THE AUTO LAMP (mondo 2026-11-11: "Need there to be an easy way to take a unit off of auto tactics, I can turn them
+   on easily but once they are on it's hard to stop bc they just go on auto"): every unit of YOURS that is on a Tactic
+   (battle.js unitOnTactic) carries a lit AUTO lamp beside its turn-order icon, on every turn (yours, the enemy's, its
+   own). One click on the lamp sets it back to MANUAL (setUnitTactic(id, null): online.js sends a guest's click to the
+   host); if it is acting right now the AI finishes the step it is on and the rest of the turn is yours. */
+function _ewAutoUnits(st) {
+  if (!st || st.phase !== 'battle' || st.winner || typeof unitOnTactic !== 'function') return [];
+  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  if (st.autoPlayers && st.autoPlayers[viewer]) return [];
+  const home = typeof unitHomePlayer === 'function' ? unitHomePlayer : (u => u.player);
+  return (st.units || []).filter(u => u && !u.dead && !u._dying && u.player === viewer && home(u) === viewer && unitOnTactic(u));
+}
+/* every unit of the viewer's that carries a Tactic, the fallen ones too (they would respawn still on it): ALL MANUAL */
+function _ewTacticUnits(st) {
+  if (!st || st.phase !== 'battle' || st.winner) return [];
+  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  const home = typeof unitHomePlayer === 'function' ? unitHomePlayer : (u => u.player);
+  return (st.units || []).filter(u => u && u.tactic && home(u) === viewer && (u.dead || u.player === viewer));
+}
+function _ewTakeControl(ids, toRoot) {
+  let n = 0;
+  (ids || []).forEach(id => { if (typeof setUnitTactic === 'function' && setUnitTactic(id, null)) n++; });
+  /* from the lamp / TAKE CONTROL the hand-back lands on the command menu, not on a Tactics menu left open (a guest
+     keeps its own menu view: the host only sends the unit back) */
+  if (n && toRoot) { try { if (typeof state !== 'undefined' && state && state.actionMenuView === 'tactics') state.actionMenuView = 'root'; } catch (e) {} }
+  if (n && typeof playSfx === 'function') playSfx('uiButtonConfirm');
+  if (typeof markDirty === 'function') markDirty('hud');
+  if (typeof renderIfDirty === 'function') renderIfDirty();
+  return n;
+}
+window._ewAutoUnits = _ewAutoUnits;
+window._ewTakeControl = _ewTakeControl;
+
+function TurnIcon(props) {
+  const u = props.e.unit;
+  const icon = h(TurnIconBody, props);
+  if (props.foe || typeof unitOnTactic !== 'function' || !unitOnTactic(u)) return icon;
+  const viewer = typeof getViewerPlayer === 'function' ? getViewerPlayer() : 1;
+  const home = typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player;
+  if (u.player !== viewer || home !== viewer) return icon;
+  const name = (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls)) || '';
+  const tac = typeof _hrlgTacticLabel === 'function' ? _hrlgTacticLabel(u.tactic).toUpperCase() : 'AUTO';
+  return h('div', { className: 'ew-tc-row' },
+    icon,
+    h('button', {
+      type: 'button', className: 'ew-tc-auto' + (props.now ? ' now' : ''), 'data-uid': String(u.id),
+      title: name + ' is on AUTO (' + tac + '). Click to take control.',
+      onClick: (ev) => { ev.stopPropagation(); ev.preventDefault(); _ewTakeControl([u.id], true); },
+    },
+      h('span', { className: 'ew-tc-auto-lbl' }, 'AUTO'),
+      h('span', { className: 'ew-tc-auto-x' }, '✕'),
+    ),
+  );
+}
+function TurnIconBody({ e, size, now, next, foe, forecast, inspecting }) {
   const u = e.unit;
   const ac = getAllianceColor(u);
   const name = (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls)) || '';
@@ -2068,9 +2314,11 @@ function QuickCone() {
       const _tts = document.querySelector('.hrlg-panel.quick.on > .hrlg-ttabs');
       if (_tts) _ttabsPin(_tts);
       if (typeof state === 'undefined' || !state || (state._enemyActionTargetId == null && _tcPeekId == null)) { hide(svg); return; }
-      const head = document.querySelector('.hrlg-panel.quick.on > .hrlg-thead.qp');
+      let head = document.querySelector('.hrlg-panel.quick.on > .hrlg-thead.qp'), deckCard = false;
+      /* THE ONE BATTLE PANEL: its unit card in the right bay, when its zoom cone is on (UI Maker: Battle panel) */
+      if (!head && _ewDeckCfg().on && _ewDeckCfg().cone) { head = document.querySelector('.hrlg-rig.ewd .ewd-ucard[data-uid]:not(.self)'); deckCard = !!head; }
       if (!head) { hide(svg); return; }
-      _qpKeepClear(head, L);
+      if (!deckCard) _qpKeepClear(head, L);
       const uid = head.getAttribute('data-uid');
       let icon = null;
       for (const el of document.querySelectorAll('.ew-turn-col .ew-tc-icon[data-uid]')) { if (el.getAttribute('data-uid') === uid) { icon = el; break; } }
@@ -2078,7 +2326,7 @@ function QuickCone() {
       /* where it ends (UI Maker: Zoom cone > Ends at, mondo 2026-10-18: "Let me change where the zoom cone is attached or
          anchored to"): the portrait's / the card's / the name's near edge, or a corner point of the portrait / card */
       const to = L.to || 'port';
-      const port = head.querySelector('.hrlg-qp-port'), tab = head.querySelector(':scope > .hrlg-view-tab');
+      const port = head.querySelector(deckCard ? '.ewd-uport' : '.hrlg-qp-port'), tab = head.querySelector(deckCard ? '.ewd-uname' : ':scope > .hrlg-view-tab');
       const portOn = port && port.offsetWidth > 0 && getComputedStyle(port).display !== 'none';
       const tgt = (to === 'card' || to === 'corner') ? head : to === 'name' ? (tab || head) : (portOn ? port : head);
       const tr = tgt.getBoundingClientRect();
@@ -2418,10 +2666,14 @@ function TurnColumn({ st }) {
     const layer = el.offsetParent || el.parentElement; if (!layer) return;
     const lr = layer.getBoundingClientRect(); if (!lr.height) return;
     const s = parseFloat(getComputedStyle(el).getPropertyValue('--ew-ui-scale')) || 1;
-    const side = layer.querySelector('.hrlg-side');
+    /* THE ONE BATTLE PANEL: its left bay (the acting unit) is the plate the column docks on */
+    const side = layer.querySelector('.hrlg-rig.ewd > .ewd-actor:not(.ewd-ghost)') || layer.querySelector('.hrlg-side');
     const sr = side ? side.getBoundingClientRect() : null;
+    /* the panel's name plate ("YOUR TURN") stands on the bay's top edge: the column sits above the plate, not on it */
+    const plate = side && side.classList.contains('ewd-actor') ? side.querySelector(':scope > .ewd-plate') : null;
+    const ptop = plate ? plate.getBoundingClientRect().top : Infinity;
     let bottom, docked = false;
-    if (sr && sr.height > 0) { bottom = lr.bottom - sr.top + 8 * s; docked = true; }
+    if (sr && sr.height > 0) { bottom = lr.bottom - Math.min(sr.top, ptop) + 8 * s; docked = true; }
     else if (cmdRef.current && geoRef.current.docked && geoRef.current.bottom != null) { bottom = geoRef.current.bottom; docked = true; }
     else bottom = 14 + 66 * s;
     let avail = Math.max(120, (lr.height - bottom - 12) / s);
@@ -2871,7 +3123,8 @@ function VitalWave({ pct, hp, maxHp, mp, unitKey }) {
 // The watch itself. `api` is a plain object the parent owns; the hub fills
 // it with imperative hand controls (aim / rest / strike / wind) so blade
 // hover/click handlers can drive the hands without re-rendering the SVG.
-function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortraitClick, unitKey, burning, poisoned, hpPct, mpPct, low }) {
+function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortraitClick, unitKey, burning, poisoned, hpPct, mpPct, low, liveUnit }) {
+  useLiveGen();
   const minRef = useRef(null), hourRef = useRef(null), secRef = useRef(null);
   const ticksRef = useRef(null), chimeARef = useRef(null), chimeBRef = useRef(null);
   const hitRef = useRef(null);
@@ -3053,7 +3306,9 @@ function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortra
         // invisible hit target so the disc stays clickable even with no art
         // (the flash circles below are pointer-events:none)
         onPortraitClick && h('circle', { cx: 100, cy: 100, r: 56.5, fill: '#000', opacity: 0 }),
-        portraitUrl && h('image', {
+        (portraitUrl && liveUnit && portraitIsFace !== false && _liveKeyOf(liveUnit))
+          ? h(LiveFace, { unit: liveUnit, liveKey: _liveKeyOf(liveUnit), x: 44, y: 44, size: 112 })
+        : portraitUrl && h('image', {
           href: portraitUrl, x: 44, y: 44, width: 112, height: 112,
           // dedicated face art fills the disc edge to edge; a map-sprite
           // fallback fits whole so heads/feet don't get cropped away
@@ -3725,6 +3980,7 @@ const _HRLG_SB_COLORS = {
   extendedClips:'#c8a040',carForm:'#5090d0',mechaForm:'#8080d0',wolfForm:'#8a6ad4',
   siegeMode:'#a05a30',castFromDoors:'#e8c07a',
   // markers & pickups
+  sleep:'#8fa0e8',projecting:'#9fd8ff',
   shadowRealm:'#4b2a6b',exited:'#3d8bfd',captured:'#e0a030',sealed:'#b03060',
   hourglass:'#e0c060',scanner:'#40c0c0',heal:'#27ae60',mana:'#3a7bd5',damage:'#e74c3c'
 };
@@ -3787,6 +4043,9 @@ function _hrlgStatusChips(unit) {
   const hgBuff = unit.hourglassBuff || 0;
   const totalMov = _hrlgMovDelta(unit);
   if (hgBuff > 0) chips.push({ key: 'hg', label: 'KEY+' + hgBuff, kind: 'up', title: 'Key Charge: +' + hgBuff + ' ATK/DEF points' });
+  /* 🐝 THE POLLEN (battle.js): what the Bee Queen carries, and the Honey it gives her */
+  const pol = unit.pollen | 0;
+  if (pol > 0) chips.push({ key: 'pollen', label: 'POLLEN ' + pol + '/' + (window.POLLEN_MAX || 3), kind: 'up', title: 'Pollen: +' + pol * 8 + ' ATK, spell power and SPD. Pollinate spends one.' });
   if (totalMov) chips.push({
     key: 'mov', label: 'MOV' + (totalMov > 0 ? '+' : '') + totalMov, kind: totalMov > 0 ? 'up' : 'dn',
     title: 'Movement ' + (totalMov > 0 ? 'bonus' : 'penalty') + ' from active effects', stat: 'mov',
@@ -3841,6 +4100,18 @@ function _hrlgMpPreviewChip(u, cls) {
 // Rendered inside HorologeMenu (not baked into the title element) so the
 // hover re-render actually refreshes the slice. Viewer-local by
 // construction — the forecast globals never sync online.
+/* THE MASTERY LEVEL (mondo 2026-11-11, data.js UNIT_MASTERY_RULES): the unit's cosmetic level plate, beside its type
+   badges on every unit card (mine and the opponent's). `u.ulv` is stamped at the match's start (battle.js _mlStampUnit)
+   and rides the host's snapshots; a unit without one (a CPU's) draws nothing. An <em>, so the UI Maker's type-badge
+   part (`> span`) leaves it alone. */
+function _mlChipEl(u) {
+  const lv = (u && typeof unitMasteryClean === 'function') ? unitMasteryClean(u.ulv) : 0;
+  if (!lv) return null;
+  const band = unitMasteryBand(lv);
+  return h('em', { key: 'ml', className: 'ml-chip', style: { '--ml': band.color },
+    title: 'Mastery level ' + lv + ' (' + band.name + '). Shows how much this unit is played. No effect on the fight.' },
+    h('i', null, 'M'), String(lv));
+}
 function _hrlgQuickVitals(panelKey) {
   const m = /^(enemy|ally)\|(.+)$/.exec(panelKey || '');
   if (!m) return null;
@@ -3860,8 +4131,8 @@ function _hrlgQuickVitals(panelKey) {
   const healPct = heal > 0 ? Math.max(0, Math.min(100 - hpPct, (heal / u.maxHp) * 100)) : 0;
   return h('div', { key: 'qv', className: 'hrlg-qvitals' + (ally ? ' ally' : ' enemy') },
     /* the clicked unit's TYPE badge(s) — the matchup intel, first thing under the name (the user 2026-10-07) */
-    (u.types && u.types.length) ? h('div', { className: 'hrlg-qtypes' },
-      u.types.slice(0, 2).map(t => h(TypeChip, { key: t, name: t }))) : null,
+    ((u.types && u.types.length) || _mlChipEl(u)) ? h('div', { className: 'hrlg-qtypes' },
+      (u.types || []).slice(0, 2).map(t => h(TypeChip, { key: t, name: t })), _mlChipEl(u)) : null,
     h('div', { className: 'hrlg-qv-row' },
       h('span', { className: 'hrlg-qv-lbl' }, 'HP'),
       h('span', { className: 'hrlg-thp' },
@@ -4062,8 +4333,8 @@ function _hrlgQuickCard(key, title, qv) {
     title && h('div', { className: 'hrlg-view-tab' }, title.node || h('span', { className: 'hrlg-view-tab-text' }, title.text)),
     qv,
     /* the type badges' own spot (UI Maker: under / on the portrait) — the copy in the bars hides then */
-    qu && qu.types && qu.types.length ? h('div', { className: 'hrlg-qp-types' },
-      qu.types.slice(0, 2).map(t => h(TypeChip, { key: t, name: t }))) : null,
+    qu && ((qu.types && qu.types.length) || _mlChipEl(qu)) ? h('div', { className: 'hrlg-qp-types' },
+      (qu.types || []).slice(0, 2).map(t => h(TypeChip, { key: t, name: t })), _mlChipEl(qu)) : null,
     _hrlgQuickStats(key),
   );
 }
@@ -4245,12 +4516,192 @@ if (typeof window !== 'undefined' && !window._ewHrlgPtrOn) {
   window.addEventListener('pointermove', _keep, { capture: true, passive: true });
   window.addEventListener('wheel', _keep, { capture: true, passive: true });
 }
+
+/* ══ THE ONE BATTLE PANEL (mondo 2026-11-11: "How would you redesign the layout of the unit info panel/ tile info panel
+   and actions list to be one cohesive panel/layout instead of 2 separate panels? I want the player to have all relevant
+   info of the unit/tile available to them as well as the actions they can take ... AAA JRPG"; plan + mock-ups approved
+   "build it", /mnt/project-files/battle-panel-20261111/) ══
+   One window along the bottom left, read left to right: 1 WHO (the unit whose turn it is: the watch portrait, name, HP /
+   MP with the spend forecast, the AP icons, the tool rows, items, materials), 2 WHAT (the one command list: the root
+   verbs, or the open sub-list; red BACK on top, green CONFIRM at the bottom), 3 ON WHAT (the picked unit, square or
+   object: its card, its tabs, its small buttons; nothing picked = your own stats + square), 4 the footer (the game's
+   prompt or the description of the row under the cursor, and the keys that work right now). The menus, rows, cards and
+   buttons are the SAME ones the classic Horologe draws (ActionMenu builds them, HorologeMenu keeps the cursor, keys,
+   wheel, pad and menu camera); only the layout differs. UI Maker > Layout > Battle panel: One panel / Classic, and the
+   three picks (dFocus: the right side with nothing picked, dAp: AP icons in the panel, dCone: the zoom cone). Viewer-
+   local: nothing on state, nothing relayed. Kill switch (console): window.EW_CLASSIC_PANEL = true. */
+let _ewdLive = false;   // the panel is on screen (QuickPeek / ApPress / TacticWatch step aside for it)
+function _ewDeckCfg() {
+  const c = (typeof window !== 'undefined' && window._ewDeck) || {};
+  return { on: !(typeof window !== 'undefined' && window.EW_CLASSIC_PANEL) && c.on !== false,
+    focusSelf: c.focusSelf !== false, apIn: c.apIn !== false, cone: !!c.cone };
+}
+/* its size: the full layout from 1728 × 904 up (scaled with the window and the pause menu's HUD Size); a smaller or
+   shorter window gets the COMPACT layout (narrower bays, smaller words) sized for 1300 × 548, never the full one shrunk */
+function _ewDeckScale() {
+  const w = window.innerWidth || 1280, hh = window.innerHeight || 720;
+  const pref = typeof window._getUIScalePref === 'function' ? window._getUIScalePref() : 1;
+  const full = Math.min(w / 1728, hh / 904) * pref;
+  if (full >= 0.86 && !window.EW_MOBILE) return { s: Math.min(1.4, full), c: false };
+  return { s: Math.max(0.55, Math.min(1.25, Math.min(w / 1300, hh / 548) * pref)), c: true };
+}
+/* a menu's name in the breadcrumb / on the plate */
+const _EWD_NAMES = { root: 'COMMAND', spells: 'ABILITIES', items: 'ITEMS', switch: 'SWITCH', tacParty: 'TACTICS', tactics: 'TACTIC',
+  entropy: 'ENTROPY', finTargets: 'FINISHER', pings: 'PING', orient: 'ORIENTATION', atkTargets: 'ATTACK', combo: 'COMBO',
+  build: 'BUILD', tuneFreq: 'FREQUENCY', aim: 'AIM', itemTargets: 'TARGET', spTargets: 'TARGET' };
+function _ewdUnitById(id) {
+  return ((typeof state !== 'undefined' && state && state.units) || []).find(x => String(x.id) === String(id) && !x.dead) || null;
+}
+function _ewdUnitName(u) { return u ? String((typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls)) || '') : ''; }
+function _ewdPanelName(p) {
+  if (!p) return '';
+  const k = p.key || '';
+  if (k === 'root') return _EWD_NAMES.root;
+  const side = /^(enemy|ally)\|(.+)$/.exec(k);
+  if (side) return _ewdUnitName(_ewdUnitById(side[2])).toUpperCase() || 'UNIT';
+  if (/^tile\|/.test(k) && p.card) {
+    const C = p.card;
+    return ((typeof coordLabel === 'function' ? coordLabel(C.tx, C.ty) : C.tx + ',' + C.ty) + ' ' + String((C.eff && C.eff.label) || '')).trim().toUpperCase();
+  }
+  const t = p.title;
+  if (t && t.text) return String(t.text).toUpperCase();
+  const parts = k.split('|');
+  if ((parts[0] === 'aim' || parts[0] === 'spTargets') && parts.length > 1) return String(parts[parts.length - 1] || _EWD_NAMES[parts[0]]).toUpperCase();
+  return _EWD_NAMES[parts[0]] || String(parts[0] || '').toUpperCase();
+}
+/* what the right bay shows: a quick menu's own card (the clicked unit / square), else the unit a turn icon peek or the
+   ⓘ / I card asks for, else the unit the cursor row aims at (target lists), else the unit on the picked square, else
+   (UI Maker pick, on by default) the acting unit's own stats + square. Fog: a unit found from a row or a pick shows only
+   when the viewer can see it (the target lists and the board clicks only offer seen units already). */
+function _ewdFocusOf(activePanel, viewKey, selBlade, apUnit, focusSelf) {
+  const S = (typeof state !== 'undefined' && state) ? state : {};
+  if (activePanel && activePanel.card) return { kind: 'card', view: activePanel.card };
+  const seen = (u) => !!u && (!apUnit || u.player === apUnit.player || typeof _shouldCameraFollowUnit !== 'function' || _shouldCameraFollowUnit(u));
+  let fu = null;
+  const m = /^(enemy|ally)\|(.+)$/.exec(viewKey || '');
+  if (m) fu = _ewdUnitById(m[2]);
+  if (!fu && _tcPeekId != null) fu = _ewdUnitById(_tcPeekId);
+  if (!fu && S.showUnitInfo) fu = _ewdUnitById(S.focusedUnitId || S.selectedUnitId);
+  if (!fu && selBlade && selBlade.camTarget && selBlade.camTarget.uid != null) { const q = _ewdUnitById(selBlade.camTarget.uid); if (seen(q)) fu = q; }
+  if (!fu && S.pendingTarget && !S.pendingTarget.selfCast && typeof unitAt === 'function') {
+    const pt = S.pendingTarget;
+    let q = null;
+    try { q = (pt.z != null ? unitAt(pt.x, pt.y, pt.z) : null) || unitAt(pt.x, pt.y); } catch (e) { q = null; }
+    if (q && !q.dead && seen(q)) fu = q;
+  }
+  if (fu && (!apUnit || fu.id !== apUnit.id)) {
+    const ally = apUnit && !(typeof isEnemyUnit === 'function' ? isEnemyUnit(apUnit, fu) : fu.player !== apUnit.player);
+    return { kind: 'unit', ukey: (ally ? 'ally|' : 'enemy|') + fu.id, unit: fu };
+  }
+  if (apUnit && (focusSelf || fu)) {
+    let v = null;
+    try { v = _hrlgTileView(apUnit, apUnit.x, apUnit.y, apUnit.z, { key: 'self|' + apUnit.id, unit: apUnit }); } catch (e) { v = null; }
+    if (v) return { kind: 'self', view: v, unit: apUnit };
+  }
+  return null;
+}
+/* THE UNIT CARD in the right bay: the portrait, the name (shrinks to fit, never cut), type badges, where it stands and
+   how far, the HP / MP bars with the forecast (_hrlgQuickVitals), its status + buff rows, then the stats + element box
+   (_hrlgQuickStats). key 'self|<id>' = the acting unit's own card: no portrait or bars (the left bay holds them). */
+function DeckUnitCard({ ukey, actor, terrain, btns }) {
+  const ref = useRef(null);
+  const fit = () => { const el = ref.current; if (!el) return; const row = el.querySelector('.ewd-uhead'); if (row) ewFitLine(row, row.querySelector('.ewd-uname'), 9); };
+  React.useLayoutEffect(fit);
+  useEffect(() => { ewFitLineOnFonts(fit); return () => { if (window._ewFitFns) window._ewFitFns.delete(fit); }; }, []);
+  const m = /^(enemy|ally|self)\|(.+)$/.exec(ukey || '');
+  const u = m ? _ewdUnitById(m[2]) : null;
+  if (!u) return null;
+  const side = m[1], self = side === 'self';
+  const qk = (side === 'enemy' ? 'enemy|' : 'ally|') + u.id;
+  const qv = self ? null : _hrlgQuickVitals(qk);
+  const pd = self ? null : _hrlgPortraitData(u, actor || null);
+  const coord = typeof coordLabel === 'function' ? coordLabel(u.x, u.y) : u.x + ',' + u.y;
+  const dist = (!self && actor) ? Math.abs(actor.x - u.x) + Math.abs(actor.y - u.y) : null;
+  const where = self ? [coord, terrain ? String(terrain).toUpperCase() : null]
+    : [coord, dist == null ? null : dist === 0 ? 'HERE' : dist + ' AWAY'];
+  return h('div', { ref, className: 'ewd-ucard ' + side, 'data-uid': String(u.id) },
+    self ? null : h('div', { className: 'ewd-uport ' + side + (pd && !pd.isFace ? ' sprite' : '') },
+      pd ? h('div', { className: 'ewd-uimg', style: { backgroundImage: 'url("' + pd.url + '")' } }) : null),
+    h('div', { className: 'ewd-umain' },
+      h('div', { className: 'ewd-uhead' },
+        h('span', { className: 'hrlg-name ewd-uname' }, _ewdUnitName(u)),
+        (u.types || []).slice(0, 2).map(t => h(TypeChip, { key: t, name: t })), _mlChipEl(u),
+        h('span', { className: 'ewd-coord' }, where.filter(Boolean).join(' · '))),
+      qv),
+    h('div', { className: 'ewd-ulow' }, _hrlgQuickStats(qk)),
+    (btns && btns.length) ? h('div', { className: 'hrlg-tc-btns ewd-btns' }, btns) : null);
+}
+/* THE FOOTER: the line the game's text box says (the prompt, a notice, a fresh combat line) or, while a row with a
+   description is under the cursor, that description (the spell description bar's own words, icon, badges and costs);
+   a notice the engine queued (battleDialogueQueue: "MOVE — Rooted") always wins. Both bars stay the game's own (battle.js
+   _renderDialogueBox, hud.js _renderSpellDescBar): the footer mirrors whichever speaks and the two hide while the panel
+   is up (html.ew-deck-on). The keys on the right are the ones that work right now. */
+function DeckFoot({ keys }) {
+  const [say, setSay] = useState({ kind: '', html: '' });
+  const ref = useRef(null);
+  useEffect(() => {
+    const de = document.documentElement;
+    de.classList.add('ew-deck-on');
+    const pick = () => {
+      const q = (typeof state !== 'undefined' && state && state.battleDialogueQueue) || [];
+      const bar = document.getElementById('battleSubtitleBar'), sub = document.getElementById('battleSubtitleText');
+      const desc = document.getElementById('ew-spell-descbar');
+      const subOn = !!(bar && sub && bar.classList.contains('visible') && sub.innerHTML);
+      let kind = '', html = '';
+      if (q.length && subOn) { kind = 'say'; html = sub.innerHTML; }
+      else if (desc && desc.classList.contains('show') && desc.innerHTML) { kind = 'desc'; html = desc.innerHTML; }
+      else if (subOn) { kind = 'say'; html = sub.innerHTML; }
+      setSay(p => (p.kind === kind && p.html === html) ? p : { kind, html });
+    };
+    pick();
+    const mo = new MutationObserver(pick);
+    let seen = [];
+    const watch = () => {
+      const els = [document.getElementById('battleSubtitleBar'), document.getElementById('ew-spell-descbar')];
+      if (els[0] === seen[0] && els[1] === seen[1]) return;
+      mo.disconnect(); seen = els;
+      els.forEach(el => { if (el) mo.observe(el, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true, characterData: true }); });
+    };
+    watch();
+    const t = setInterval(() => { watch(); pick(); }, 250);   // a bar made later, a queued notice that came or went
+    return () => { mo.disconnect(); clearInterval(t); de.classList.remove('ew-deck-on'); };
+  }, []);
+  /* a long description steps its words down (never under the floor) before the footer grows: the panel holds still */
+  React.useLayoutEffect(() => {
+    const el = ref.current; if (!el) return;
+    el.style.removeProperty('font-size');
+    const cs = getComputedStyle(el);
+    const max = parseFloat(cs.getPropertyValue('--ewd-say-max')), lo = parseFloat(cs.getPropertyValue('--ewd-say-min')) || 10;
+    if (!(max > 0) || !(el.clientHeight > 0)) return;
+    let px = parseFloat(cs.fontSize) || 14;
+    for (let i = 0; i < 8 && el.scrollHeight > max + 1 && px > lo; i++) { px = Math.max(lo, px - 1); el.style.setProperty('font-size', px + 'px'); }
+  });
+  return h('div', { className: 'ewd-foot' },
+    h('div', { ref, className: 'ewd-say ' + (say.kind || 'none'), dangerouslySetInnerHTML: { __html: say.html || '' } }),
+    h('div', { className: 'ewd-keys' }, keys));
+}
+
 function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, portraitUrl, portraitIsFace, onPortraitClick, infoOpen, onInfo, unitKey, apUnit, burning, poisoned, statusChips, ap, maxAP, hp, maxHp, mp, maxMp, xp, mats, buildCharge, modeLabel, am, pushers, build, items, confirm, onItem, onAction, onEndTurn, onCancel }) {
   const clockApi = useRef({}).current;
   const rigRef = useRef(null);
   const listRef = useRef(null);
   const [fireId, setFireId] = useState(null);
   const inputDev = useInputDevice();
+  /* THE ONE BATTLE PANEL: its UI Maker switch (ew-deck) and its size (the window) redraw it; the others learn it is up */
+  const deckCfg = _ewDeckCfg();
+  const [, setDeckTick] = useState(0);
+  useEffect(() => {
+    const f = () => setDeckTick(n => n + 1);
+    window.addEventListener('ew-deck', f);
+    window.addEventListener('resize', f);
+    return () => { window.removeEventListener('ew-deck', f); window.removeEventListener('resize', f); };
+  }, []);
+  React.useLayoutEffect(() => {
+    if (_ewdLive === deckCfg.on) return;
+    _ewdLive = deckCfg.on;
+    window.dispatchEvent(new Event('ew-state-change'));
+  }, [deckCfg.on]);
+  useEffect(() => () => { if (_ewdLive) { _ewdLive = false; window.dispatchEvent(new Event('ew-state-change')); } }, []);
   // the UI Maker's hero split (the watch outside the panel) changes the column's markup: re-render on its word
   const [, setHeroTick] = useState(0);
   useEffect(() => {
@@ -4459,8 +4910,10 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     const next = selIdx + dir;
     if (next < 0 || next >= blades.length) {
       if (rigRef.current && rigRef.current.animate) {
+        /* the one battle panel is scaled by its transform: the bump keeps that scale */
+        const _rs = rigRef.current.classList.contains('ewd') ? 'scale(' + ((getComputedStyle(rigRef.current).getPropertyValue('--ewd-s') || '').trim() || 1) + ') ' : '';
         rigRef.current.animate(
-          [{ transform: 'translateY(0)' }, { transform: 'translateY(' + (dir > 0 ? 4 : -4) + 'px)' }, { transform: 'translateY(0)' }],
+          [{ transform: _rs + 'translateY(0)' }, { transform: _rs + 'translateY(' + (dir > 0 ? 4 : -4) + 'px)' }, { transform: _rs + 'translateY(0)' }],
           { duration: 130, easing: 'ease-out' });
       }
       return;
@@ -4517,7 +4970,10 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   /* THE TILE INFO PANEL's tabs: [ / ] (and the pad's D-pad ← / →, window._hrlgPad.tab) step them */
   const tabStepRef = useRef(null);
   const _actCard = activePanel ? activePanel.card : null;
-  tabStepRef.current = (d) => _hrlgStepTileTab(_actCard, d);
+  /* THE ONE BATTLE PANEL's right bay: what it shows (its tabs step with [ / ] too, your own square's included) */
+  const _deckF = deckCfg.on ? _ewdFocusOf(activePanel, viewKey, selBlade, apUnit, deckCfg.focusSelf) : null;
+  const _tabView = _actCard || (_deckF && _deckF.view) || null;
+  tabStepRef.current = (d) => _hrlgStepTileTab(_tabView, d);
   /* a new tab puts the cursor on its first button (the description bar then reads that tab's words); a tab with no
      buttons hands the cursor back to the list's default row */
   const _tabNow = _actCard ? _actCard.active : null;
@@ -4584,7 +5040,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     cycle: (d) => cycleRef.current(d),
     fire: () => { if (fireSelRef.current) fireSelRef.current(); },
     crown: () => { if (crownRef.current) crownRef.current(); },
-    tabs: _actCard && _actCard.tabs ? _actCard.tabs.length : 0,
+    tabs: _tabView && _tabView.tabs ? _tabView.tabs.length : 0,
     tab: (d) => !!(tabStepRef.current && tabStepRef.current(d)),
   };
   useEffect(() => () => { window._hrlgPad = null; }, []);
@@ -4598,16 +5054,18 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   // as full-size tool rows at the bottom of the identity column — no more
   // tiny overlapping bezel studs. Root view only; presence == opportunity.
   const toolRows = [];
-  if (view === 'root' && build) {
+  /* the one battle panel keeps them in view on every menu, locked (dimmed, no click) off the root menu */
+  const toolsLocked = view !== 'root';
+  if ((view === 'root' || deckCfg.on) && build) {
     toolRows.push(h('div', {
       key: 'build',
-      className: 'hrlg-push' + (build.available ? ' live' : ' off') + (build.active ? ' armed' : ''),
+      className: 'hrlg-push' + (build.available ? ' live' : ' off') + (build.active ? ' armed' : '') + (toolsLocked ? ' lock' : ''),
       style: { '--pc': '#f0d060', '--pc-soft': '#f0d06088', '--pc-faint': '#f0d06022' },
       title: build.available
         ? 'Build — dig / place blocks (' + (build.hint || 'B') + ')'
         : 'Build — ' + (build.sub || 'Unavailable'),
       onClick: () => {
-        if (!build.available && !build.active) return;
+        if (toolsLocked || (!build.available && !build.active)) return;
         if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
         if (clockApi.strike) clockApi.strike(-60);
         build.fire();
@@ -4618,7 +5076,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
       h('span', { className: 'hrlg-push-sub' }, build.available ? (build.hint || 'B') : (build.sub || '')),
     ));
   }
-  if (view === 'root') {
+  if (view === 'root' || deckCfg.on) {
     // Pushers may now be PERMANENT (Channel / Land / Take Off): they carry
     // `available:false` + a `sub` reason instead of vanishing, exactly like
     // the BUILD row above.
@@ -4628,14 +5086,14 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
         key: p.id,
         'data-pid': p.id,   // THE TUTORIAL's coach finds the pusher by id (⚛ / ⬡)
         className: 'hrlg-push' + (live ? ' live pulse' : ' off') + (p.active ? ' armed' : '')
-          + (p.id === 'entropyStrike' ? ' entropy' : ''),
+          + (p.id === 'entropyStrike' ? ' entropy' : '') + (toolsLocked ? ' lock' : ''),
         style: { '--pc': p.color, '--pc-soft': p.color + '88', '--pc-faint': p.color + '22' },
         title: live ? (p.title || p.label) : ((p.title || p.label) + ' — ' + (p.sub || 'Unavailable')),
         /* a pusher's own preview (DETONATE: every blast, its damage and where each body is thrown) */
-        onMouseEnter: (live && p.hoverIn) ? () => p.hoverIn() : undefined,
-        onMouseLeave: p.hoverOut ? () => p.hoverOut() : undefined,
+        onMouseEnter: (live && !toolsLocked && p.hoverIn) ? () => p.hoverIn() : undefined,
+        onMouseLeave: (p.hoverOut && !toolsLocked) ? () => p.hoverOut() : undefined,
         onClick: () => {
-          if (!live) return;
+          if (!live || toolsLocked) return;
           if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
           if (clockApi.strike) clockApi.strike(-60);
           p.fire();
@@ -4646,6 +5104,308 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
         h('span', { className: 'hrlg-push-sub' }, live ? (p.hint || '') : (p.sub || '')),
       ));
     });
+  }
+
+  /* the vitals, the item slots and the materials: one build, drawn by the classic column or the one battle panel */
+  const vitalsEl = maxHp > 0 && h('div', { className: 'hrlg-vitals' },
+    (() => {
+      const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
+      // canonical ally green — the Horologe always shows YOUR unit
+      return h('div', { className: 'hrlg-vrow hp' + (hpPct <= 30 ? ' low' : '') },
+        h('span', { className: 'hrlg-vlbl' }, 'HP'),
+        h('span', { className: 'hrlg-vbar' },
+          h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW } }),
+          unitKey != null && h('span', { className: 'ew-hp-trail', 'data-hp-trail': String(unitKey) }),   // THE DAMAGE TRAIL
+          /* the heartbeat trace rides on top of the bar */
+          h(VitalWave, { pct: hpPct, hp: hp, maxHp: maxHp, mp: mp, unitKey: unitKey }),
+        ),
+        h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(hp)) + '/' + maxHp),
+      );
+    })(),
+    maxMp > 0 && (() => {
+      const mpPct = Math.max(0, Math.min(100, (mp / maxMp) * 100));
+      // Projected MP spend: while the cursor sits on a castable ability
+      // row (hover IS selection) — or while a spell is armed and aiming —
+      // the cost blinks as a bright slice off the fill's leading edge,
+      // with a −N chip on the number. Same read as the HP damage forecast.
+      let mpSpend = 0;
+      if (selBlade && (selBlade.available || selBlade.check)
+          && typeof selBlade.mp === 'number' && selBlade.mp > 0) {
+        mpSpend = selBlade.mp;
+      } else if (am === 'spell' && typeof state !== 'undefined' && state.selectedTool
+          && typeof getSelectedUnit === 'function') {
+        const _su = getSelectedUnit();
+        const _sp = _su && [...(_su.spells || []), ...(_su._raceAbilities || [])]
+          .filter(Boolean).find(s => s.name === state.selectedTool);
+        if (_sp) mpSpend = (typeof getSpellMpCostFor === 'function')
+          ? getSpellMpCostFor(_su, _sp) : (_sp.cost || 0);
+      }
+      /* THE MANA FORECAST: a Mana Potion (or an ally's Free Energy) aimed at this unit grows its MP fill */
+      const _mfc = (typeof window._ewManaPreviewFor === 'function' && apUnit) ? window._ewManaPreviewFor(apUnit.id) : null;
+      const mpGain = (_mfc && _mfc.gain > 0) ? _mfc.gain : 0;
+      const spendPct = mpSpend > 0 ? Math.max(0, Math.min(mpPct, (mpSpend / maxMp) * 100)) : 0;
+      const gainPct = mpGain > 0 ? Math.max(0, Math.min(100 - mpPct, (mpGain / maxMp) * 100)) : 0;
+      return h('div', { className: 'hrlg-vrow mp' },
+        h('span', { className: 'hrlg-vlbl' }, 'MP'),
+        h('span', { className: 'hrlg-vbar mp' },
+          h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: MP_FILL, boxShadow: MP_GLOW } }),
+          spendPct > 0 && h('span', {
+            className: 'hrlg-vspend' + (mpSpend > mp ? ' short' : ''),
+            style: { left: (mpPct - spendPct) + '%', width: spendPct + '%' },
+          }),
+          gainPct > 0 && h('span', {
+            className: 'hrlg-vspend gain',
+            style: { left: mpPct + '%', width: gainPct + '%' },
+          }),
+        ),
+        h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp,
+          mpSpend > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' −' + mpSpend)
+            : mpGain > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' +' + mpGain) : null),
+      );
+    })(),
+    /* XP to next level — progression modes only (Mystery Dungeon /
+       Challenge / campaign); PvP passes xp:null and shows nothing */
+    xp && (() => {
+      const xpPct = Math.max(0, Math.min(100, xp.pct || 0));
+      return h('div', { className: 'hrlg-vrow mp xp' },
+        h('span', { className: 'hrlg-vlbl', style: { color: '#f2c468' } }, 'XP'),
+        h('span', { className: 'hrlg-vbar mp', style: { height: 7 } },
+          h('span', { className: 'hrlg-vfill', style: {
+            width: xpPct + '%',
+            background: 'linear-gradient(90deg, #b98a1e 0%, #f2c468 60%, #ffe9b0 100%)',
+            boxShadow: '0 0 6px rgba(242,196,104,0.45)',
+          } }),
+        ),
+        h('span', { className: 'hrlg-vnum', style: { fontSize: 10, color: '#f2c468' } },
+          xp.max ? 'MAX' : (Math.floor(xpPct) + '%')),
+      );
+    })(),
+    /* the numbers alone, for when the UI Maker swaps the bars for the watch ring (hidden otherwise) */
+    h('div', { className: 'hrlg-vnums', style: { display: 'none' } },
+      h('span', { className: 'hp' }, 'HP ', h('b', null, Math.max(0, Math.round(hp)) + '/' + maxHp)),
+      maxMp > 0 && h('span', { className: 'mp' }, 'MP ', h('b', null, Math.max(0, Math.round(mp)) + '/' + maxMp)),
+    ),
+  );
+  const itemsEl = items && h('div', { className: 'hrlg-items' },
+    [0, 1, 2].map(i => {
+      const it = items[i];
+      if (!it) return h('div', { key: 'empty' + i, className: 'hrlg-item-slot empty' },
+        h('span', { className: 'hrlg-item-glyph' }, '·'));
+      return h('div', {
+        key: it.key,
+        className: 'hrlg-item-slot' + (it.canUse ? '' : ' off') + (it.selected ? ' armed' : ''),
+        // healing potion slot reads green like every other heal control
+        style: ((typeof window._ewItemLike === 'function' ? window._ewItemLike(it.key, 'healPotion') : it.key === 'healPotion') && it.canUse)
+          ? { borderColor: '#57d97ecc', boxShadow: '0 0 9px #57d97e44' } : undefined,
+        title: it.name + ' ×' + it.count
+          + (it.desc ? ' — ' + it.desc : '')
+          + (it.canUse ? '' : ' (can’t use right now)'),
+        onClick: () => {
+          if (!it.canUse) return;
+          if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+          if (clockApi.strike) clockApi.strike(150);
+          onItem(it.key);
+        },
+      },
+        h('span', { className: 'hrlg-item-glyph' }, it.icon),
+        h('span', { className: 'hrlg-item-count' }, '×' + it.count),
+      );
+    }),
+  );
+  const matsEl = mats && h('div', {
+    className: 'hrlg-mats',
+    title: 'Team building materials — dig terrain, chop trees and wreck structures to bank more. Spent by the Build action and construction spells.',
+  },
+    h('span', { className: 'hrlg-mats-lbl' }, 'MAT'),
+    mats.map(m => h('span', { key: m.k, className: 'hrlg-mat' + (m.n > 0 ? '' : ' none') }, m.icon + ' ' + m.n)),
+    buildCharge > 0 ? h('span', { className: 'hrlg-mat free' }, '🧤 +' + buildCharge) : null,
+  );
+
+  /* ── THE ONE BATTLE PANEL (see _ewDeckCfg): the same rows, cards and buttons, laid out as one window ── */
+  if (deckCfg.on) {
+    const ds = _ewDeckScale();
+    const isPad = inputDev === 'pad' && !!window.EWPad;
+    const kbd = (k, dark) => h('span', { className: 'ewd-kbd' + (dark ? ' dark' : '') }, k);
+    const padB = (action) => h(PadBtn, { action });
+    /* one row of a list (or a card's small button): the classic blade, the classic handlers */
+    const mkB = (b, i, on, armed) => h(HorologeBlade, {
+      key: b.id, b: b, idx: i,
+      sel: on && i === selIdx,
+      active: !!armed || (b.id !== 'end' && b.id !== 'cancel' && (am === b.id || b.selected)),
+      muted: !on, fireId: on ? fireId : null, confirmBtn: null,
+      onFire: on ? fireBlade : (b2, e) => {
+        if (b2.id === 'end' || b2.id === 'cancel') return;
+        if (armed) { if (e && e.stopPropagation) e.stopPropagation(); pressBack(); return; }
+        if (!b2.available && !b2.forceLive) return;
+        if (e && e.stopPropagation) e.stopPropagation();
+        fireBlade(b2);
+      },
+      onHover: on ? hoverBlade : () => {},
+    });
+
+    /* ── 1 WHO: the unit whose turn it is ── */
+    let heroHide = {};
+    try { heroHide = (window.UIMaker && window.UIMaker.hero && window.UIMaker.hero().hide) || {}; } catch (e) { heroHide = {}; }
+    const actorEl = h('div', { key: 'actor', className: 'ewd-bay ewd-actor' },
+      h('span', { className: 'ewd-plate' }, 'YOUR TURN'),
+      h('div', { className: 'ewd-atop' },
+        h('div', { className: 'ewd-ring' },
+          h(HorologeHub, {
+            api: clockApi,
+            portraitUrl: portraitUrl, portraitIsFace: portraitIsFace,
+            portraitTitle: 'Center the camera on ' + unitName,
+            onPortraitClick: onPortraitClick,
+            unitKey: unitKey, burning: burning, poisoned: poisoned, liveUnit: apUnit,
+            hpPct: maxHp > 0 ? (hp / maxHp) * 100 : null, mpPct: maxMp > 0 ? (mp / maxMp) * 100 : null,
+            low: maxHp > 0 && hp / maxHp <= 0.3,
+          })),
+        h('div', { className: 'ewd-aid' },
+          h('div', { className: 'ewd-nm', ref: coreRef },
+            h('span', { className: 'ewd-rom' }, roman + ' ·'),
+            h('span', { className: 'hrlg-name ewd-name' }, unitName),
+            onInfo && h('span', {
+              className: 'ewd-info' + (infoOpen ? ' on' : ''),
+              title: infoOpen ? 'Your own card again (I)' : ('Info — ' + unitName + '’s card on the right (I)'),
+              onClick: (e) => { e.stopPropagation(); onInfo(); },
+            }, 'ⓘ', isPad ? null : kbd('I', true))),
+          h('div', { className: 'ewd-badges' },
+            (subLine && !heroHide.sub) ? h('span', { className: 'ewd-lv' }, subLine) : null,
+            (unitTypes || []).map(t => h(TypeChip, { key: t, name: t })), _mlChipEl(apUnit),
+            (statusChips || []).map(c => h('span', {
+              key: c.key, className: 'hrlg-schip' + (c.kind ? ' ' + c.kind : ''),
+              style: c.bg ? { background: c.bg } : undefined, title: c.title || undefined,
+            }, c.label))),
+          vitalsEl,
+          deckCfg.apIn ? h('div', { className: 'ewd-aprow' },
+            h('span', { className: 'ewd-aplbl' }, 'AP'),
+            h(ApPress, { st: typeof state !== 'undefined' ? state : null, docked: true })) : null)),
+      toolRows.length ? h('div', { className: 'ewd-tools' + (toolsLocked ? ' lock' : ''),
+        title: toolsLocked ? 'Back to the command list to use these' : undefined }, toolRows) : null,
+      (itemsEl || matsEl) ? h('div', { className: 'ewd-inv' },
+        itemsEl ? h('span', { className: 'ewd-invlbl' }, 'ITEMS') : null, itemsEl || null, matsEl || null) : null);
+
+    /* ── 2 WHAT: the one command list ── */
+    const _names = _panels.map(_ewdPanelName);
+    const _sideM = /^(enemy|ally|tile)\|/.exec(viewKey);
+    const plateTxt = !activePanel ? (modeLabel ? 'AIM' : 'COMMAND')
+      : viewKey === 'root' ? 'COMMAND'
+      : (_sideM && _sideM[1] === 'enemy') ? 'VS ' + _names[_names.length - 1]
+      : (_sideM && _sideM[1] === 'tile') ? 'ON ' + ((typeof coordLabel === 'function' && activePanel.card) ? coordLabel(activePanel.card.tx, activePanel.card.ty) : _names[_names.length - 1])
+      : _names[_names.length - 1];
+    const listRows = activePanel ? activePanel.blades.map((b, i) => (b && !b.tbtn) ? { b, i } : null).filter(Boolean) : [];
+    const selListPos = listRows.findIndex(r => r.i === selIdx);
+    const crumbs = backable ? h('div', { className: 'ewd-crumbs' },
+      h('div', {
+        className: 'ewd-back',
+        title: isPad ? 'Back (' + _hintKey('cancel', 'ESC') + ')' : 'Back to the previous menu (ESC or right-click)',
+        onClick: (e) => { e.stopPropagation(); pressBack(); },
+      }, h('span', { className: 'ewd-back-arrow' }, '◀'), 'BACK', isPad ? padB('cancel') : kbd('ESC', true)),
+      h('span', { className: 'ewd-crumb' },
+        (_names.length ? _names : ['COMMAND']).slice(-3).map((n, i, a) => h(React.Fragment, { key: i },
+          i ? h('span', { className: 'ewd-sep' }, '›') : null, i ? h('wbr') : null,
+          i === a.length - 1 ? h('b', null, n) : n))),
+      listRows.length > 1 ? h('span', { className: 'ewd-cnt' }, (selListPos >= 0 ? (selListPos + 1) + '/' : '') + listRows.length) : null) : null;
+    /* the menus this list came from: the one right above it stays in full when it is a list you pick from alongside
+       (the party beside its Tactics, the light beside Tune, the target list beside its orientation, the combo picker);
+       the others show only their armed row (the spell, the item), and the breadcrumb names the rest */
+    const _anc = _panels.slice(0, -1).filter(p => p.key !== 'root');
+    const ancEls = _anc.map((p, k) => {
+      const last = k === _anc.length - 1;
+      if (last && /^(tacParty|tuneFreq|aim\||combo|orient)/.test(p.key || '')) {
+        return h('div', { key: 'anc' + k, className: 'ewd-parent', title: 'Back to this menu', onClick: () => pressBack() },
+          p.blades.map((b, i) => (b && !b.tbtn) ? mkB(b, i, false) : null));
+      }
+      const armed = p.blades.map((b, i) => (b && !b.tbtn && b.id !== 'end' && b.id !== 'cancel' && (am === b.id || b.selected)) ? mkB(b, i, false, true) : null).filter(Boolean);
+      return armed.length ? h('div', { key: 'anc' + k, className: 'ewd-armed', title: 'Back to this menu' }, armed) : null;
+    });
+    const cmdEl = h('div', { key: 'cmd', className: 'ewd-bay ewd-cmd' + (viewKey === 'root' ? ' root' : '') },
+      h('span', { className: 'ewd-plate gold' }, plateTxt),
+      crumbs,
+      ancEls,
+      activePanel ? h('div', { className: 'ewd-list' + (activePanel.blades.some(b => b && b.check) ? ' has-pick' : ''), ref: listRef },
+        listRows.map(r => mkB(r.b, r.i, true))) : null,
+      (!activePanel && modeLabel) ? h('div', { className: 'ewd-mode' }, modeLabel) : null,
+      confirm ? h('div', {
+        className: 'ewd-confirm',
+        onClick: () => {
+          if (typeof playSfx === 'function') playSfx('uiConfirm');
+          if (clockApi.strike) clockApi.strike(90);
+          confirm.fire();
+        },
+      },
+        h('span', { className: 'ewd-cf-check' }, '✓'),
+        h('span', { className: 'ewd-cf-lbl' }, 'CONFIRM', confirm.label ? h('span', { className: 'ewd-cf-tgt' }, ' — ' + confirm.label) : null),
+        isPad ? padB('confirm') : kbd('ENTER')) : null);
+
+    /* ── 3 ON WHAT: the picked unit / square / object (or your own stats + square) ── */
+    let focusEl = null;
+    if (_deckF) {
+      const C = _deckF.view || null;
+      const tbtns = (_deckF.kind === 'card' && activePanel)
+        ? activePanel.blades.map((b, i) => (b && b.tbtn) ? mkB(b, i, true) : null).filter(Boolean) : [];
+      let body = null, plate = null;
+      if (_deckF.kind === 'unit') {
+        body = h(DeckUnitCard, { key: 'u' + _deckF.ukey, ukey: _deckF.ukey, actor: apUnit });
+        plate = /^enemy/.test(_deckF.ukey) ? 'ENEMY' : 'ALLY';
+      } else if (C && C.active === 'unit' && C.unit) {
+        const own = _deckF.kind === 'self';
+        body = h(DeckUnitCard, { key: 'u' + C.key, ukey: own ? 'self|' + C.unit.id : (C.uSide || 'ally') + '|' + C.unit.id, actor: apUnit,
+          terrain: own && C.eff ? C.eff.label : null, btns: tbtns });
+        plate = own ? 'YOU' : (C.uSide === 'enemy' ? 'ENEMY' : 'ALLY');
+      } else if (C) {
+        body = h(TileCard, { key: 't' + C.key + C.active, C, btns: tbtns });
+        plate = C.active === 'object' ? 'OBJECT' : 'TERRAIN';
+      }
+      const tabsOn = !!(C && C.tabs && C.tabs.length > 1);
+      if (body) focusEl = h('div', { key: 'focus', className: 'ewd-bay ewd-focus ' + _deckF.kind + (tabsOn ? ' tabbed' : '') },
+        tabsOn ? h('div', { className: 'ewd-tabs' },
+          h(TileTabs, { view: C }),
+          h('span', { className: 'ewd-tabkeys' }, isPad ? h(PadBtn, { text: '◀▶', kind: 'dpad' }) : [kbd('[', true), kbd(']', true)]))
+          : h('span', { className: 'ewd-plate' }, plate),
+        body);
+    }
+
+    /* ── 4 the footer's keys: the ones that work right now ── */
+    const keys = [];
+    const key = (cap, lbl) => keys.push(h('span', { key: keys.length, className: 'ewd-key' }, cap, lbl));
+    const tabsLive = !!(_tabView && _tabView.tabs && _tabView.tabs.length > 1);
+    if (isPad) {
+      if (view === 'aim') {
+        key(h(PadBtn, { text: 'LS', kind: 'stick' }), 'CURSOR');
+        if (confirm) key(padB('confirm'), 'CONFIRM');
+        key(padB('cancel'), 'BACK');
+      } else {
+        key(h(PadBtn, { text: '✚', kind: 'dpad' }), 'MENU');
+        key(padB('confirm'), 'SELECT');
+        if (tabsLive) key(h(PadBtn, { text: '◀▶', kind: 'dpad' }), 'TABS');
+        if (backable) key(padB('cancel'), 'BACK');
+      }
+      key(padB('endTurn'), 'END TURN');
+    } else {
+      if (view === 'aim') {
+        if (confirm) key(kbd('ENTER', true), 'CONFIRM');
+        key(kbd('ESC', true), 'BACK');
+      } else {
+        key(kbd('↑↓', true), 'MENU');
+        key(kbd('ENTER', true), 'SELECT');
+        if (tabsLive) key(kbd('[ ]', true), 'TABS');
+        if (view === 'root' && !backable) key(kbd('WASD', true), 'MOVE');
+        if (backable) key(kbd('ESC', true), 'BACK');
+      }
+      key(kbd('SPACE', true), 'END TURN');
+    }
+
+    return h('div', {
+      ref: rigRef,
+      className: 'hrlg-rig ewd' + (ds.c ? ' ewd-c' : '') + (view !== 'root' ? ' ewd-sub' : '') + (focusEl ? '' : ' ewd-nofocus'),
+      style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a', '--ewd-s': ds.s.toFixed(3) },
+      onMouseDown: (e) => { if (e.button === 2) _hrlgRightPress(e, () => { if (backable) pressBack(); }); },
+      onContextMenu: (e) => {
+        e.preventDefault(); e.stopPropagation();
+        if (_hrlgRc || performance.now() - _hrlgRcEndT < 600) return;
+        if (backable) pressBack();
+      },
+    }, actorEl, cmdEl, focusEl, h(DeckFoot, { key: 'foot', keys }));
   }
 
   return h('div', {
@@ -4675,7 +5435,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
           portraitUrl: portraitUrl, portraitIsFace: portraitIsFace,
           portraitTitle: 'Center the camera on ' + unitName,
           onPortraitClick: onPortraitClick,
-          unitKey: unitKey, burning: burning, poisoned: poisoned,
+          unitKey: unitKey, burning: burning, poisoned: poisoned, liveUnit: apUnit,
           hpPct: maxHp > 0 ? (hp / maxHp) * 100 : null, mpPct: maxMp > 0 ? (mp / maxMp) * 100 : null,
           low: maxHp > 0 && hp / maxHp <= 0.3,
         }),
@@ -4706,130 +5466,20 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
       subLine ? h('div', { className: 'hrlg-core-sub' }, subLine) : null,
       /* the unit's TYPE badge(s) — same canonical chips the target rows
          wear, so the player's own matchup profile reads at a glance */
-      (unitTypes && unitTypes.length) ? h('div', { className: 'hrlg-typerow' },
-        unitTypes.map(t => h(TypeChip, { key: t, name: t })),
+      ((unitTypes && unitTypes.length) || _mlChipEl(apUnit)) ? h('div', { className: 'hrlg-typerow' },
+        (unitTypes || []).map(t => h(TypeChip, { key: t, name: t })), _mlChipEl(apUnit),
       ) : null,
       /* HP/MP vitals directly under the portrait, then AP under those —
          the reading order the player actually wants. */
-      maxHp > 0 && h('div', { className: 'hrlg-vitals' },
-        (() => {
-          const hpPct = Math.max(0, Math.min(100, (hp / maxHp) * 100));
-          // canonical ally green — the Horologe always shows YOUR unit
-          return h('div', { className: 'hrlg-vrow hp' + (hpPct <= 30 ? ' low' : '') },
-            h('span', { className: 'hrlg-vlbl' }, 'HP'),
-            h('span', { className: 'hrlg-vbar' },
-              h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW } }),
-              unitKey != null && h('span', { className: 'ew-hp-trail', 'data-hp-trail': String(unitKey) }),   // THE DAMAGE TRAIL
-              /* the heartbeat trace rides on top of the bar */
-              h(VitalWave, { pct: hpPct, hp: hp, maxHp: maxHp, mp: mp, unitKey: unitKey }),
-            ),
-            h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(hp)) + '/' + maxHp),
-          );
-        })(),
-        maxMp > 0 && (() => {
-          const mpPct = Math.max(0, Math.min(100, (mp / maxMp) * 100));
-          // Projected MP spend: while the cursor sits on a castable ability
-          // row (hover IS selection) — or while a spell is armed and aiming —
-          // the cost blinks as a bright slice off the fill's leading edge,
-          // with a −N chip on the number. Same read as the HP damage forecast.
-          let mpSpend = 0;
-          if (selBlade && (selBlade.available || selBlade.check)
-              && typeof selBlade.mp === 'number' && selBlade.mp > 0) {
-            mpSpend = selBlade.mp;
-          } else if (am === 'spell' && typeof state !== 'undefined' && state.selectedTool
-              && typeof getSelectedUnit === 'function') {
-            const _su = getSelectedUnit();
-            const _sp = _su && [...(_su.spells || []), ...(_su._raceAbilities || [])]
-              .filter(Boolean).find(s => s.name === state.selectedTool);
-            if (_sp) mpSpend = (typeof getSpellMpCostFor === 'function')
-              ? getSpellMpCostFor(_su, _sp) : (_sp.cost || 0);
-          }
-          /* THE MANA FORECAST: a Mana Potion (or an ally's Free Energy) aimed at this unit grows its MP fill */
-          const _mfc = (typeof window._ewManaPreviewFor === 'function' && apUnit) ? window._ewManaPreviewFor(apUnit.id) : null;
-          const mpGain = (_mfc && _mfc.gain > 0) ? _mfc.gain : 0;
-          const spendPct = mpSpend > 0 ? Math.max(0, Math.min(mpPct, (mpSpend / maxMp) * 100)) : 0;
-          const gainPct = mpGain > 0 ? Math.max(0, Math.min(100 - mpPct, (mpGain / maxMp) * 100)) : 0;
-          return h('div', { className: 'hrlg-vrow mp' },
-            h('span', { className: 'hrlg-vlbl' }, 'MP'),
-            h('span', { className: 'hrlg-vbar mp' },
-              h('span', { className: 'hrlg-vfill', style: { width: mpPct + '%', background: MP_FILL, boxShadow: MP_GLOW } }),
-              spendPct > 0 && h('span', {
-                className: 'hrlg-vspend' + (mpSpend > mp ? ' short' : ''),
-                style: { left: (mpPct - spendPct) + '%', width: spendPct + '%' },
-              }),
-              gainPct > 0 && h('span', {
-                className: 'hrlg-vspend gain',
-                style: { left: mpPct + '%', width: gainPct + '%' },
-              }),
-            ),
-            h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp,
-              mpSpend > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' −' + mpSpend)
-                : mpGain > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' +' + mpGain) : null),
-          );
-        })(),
-        /* XP to next level — progression modes only (Mystery Dungeon /
-           Challenge / campaign); PvP passes xp:null and shows nothing */
-        xp && (() => {
-          const xpPct = Math.max(0, Math.min(100, xp.pct || 0));
-          return h('div', { className: 'hrlg-vrow mp xp' },
-            h('span', { className: 'hrlg-vlbl', style: { color: '#f2c468' } }, 'XP'),
-            h('span', { className: 'hrlg-vbar mp', style: { height: 7 } },
-              h('span', { className: 'hrlg-vfill', style: {
-                width: xpPct + '%',
-                background: 'linear-gradient(90deg, #b98a1e 0%, #f2c468 60%, #ffe9b0 100%)',
-                boxShadow: '0 0 6px rgba(242,196,104,0.45)',
-              } }),
-            ),
-            h('span', { className: 'hrlg-vnum', style: { fontSize: 10, color: '#f2c468' } },
-              xp.max ? 'MAX' : (Math.floor(xpPct) + '%')),
-          );
-        })(),
-        /* the numbers alone, for when the UI Maker swaps the bars for the watch ring (hidden otherwise) */
-        h('div', { className: 'hrlg-vnums', style: { display: 'none' } },
-          h('span', { className: 'hp' }, 'HP ', h('b', null, Math.max(0, Math.round(hp)) + '/' + maxHp)),
-          maxMp > 0 && h('span', { className: 'mp' }, 'MP ', h('b', null, Math.max(0, Math.round(mp)) + '/' + maxMp)),
-        ),
-      ),
+      vitalsEl,
       /* the AP slot stays empty: the AP row moved out to THE AP PRESS ICONS, top left (hud.js ApPress, mondo 2026-10-17) */
       null,
       /* 3 item slots — one-click item use straight from the column
          (the Items submenu still lists everything) */
-      items && h('div', { className: 'hrlg-items' },
-        [0, 1, 2].map(i => {
-          const it = items[i];
-          if (!it) return h('div', { key: 'empty' + i, className: 'hrlg-item-slot empty' },
-            h('span', { className: 'hrlg-item-glyph' }, '·'));
-          return h('div', {
-            key: it.key,
-            className: 'hrlg-item-slot' + (it.canUse ? '' : ' off') + (it.selected ? ' armed' : ''),
-            // healing potion slot reads green like every other heal control
-            style: ((typeof window._ewItemLike === 'function' ? window._ewItemLike(it.key, 'healPotion') : it.key === 'healPotion') && it.canUse)
-              ? { borderColor: '#57d97ecc', boxShadow: '0 0 9px #57d97e44' } : undefined,
-            title: it.name + ' ×' + it.count
-              + (it.desc ? ' — ' + it.desc : '')
-              + (it.canUse ? '' : ' (can’t use right now)'),
-            onClick: () => {
-              if (!it.canUse) return;
-              if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
-              if (clockApi.strike) clockApi.strike(150);
-              onItem(it.key);
-            },
-          },
-            h('span', { className: 'hrlg-item-glyph' }, it.icon),
-            h('span', { className: 'hrlg-item-count' }, '×' + it.count),
-          );
-        }),
-      ),
+      itemsEl,
       /* Team building-material bank — always in view so "can I afford to
          build?" never needs a menu dive. 🧤 marks a banked free build op. */
-      mats && h('div', {
-        className: 'hrlg-mats',
-        title: 'Team building materials — dig terrain, chop trees and wreck structures to bank more. Spent by the Build action and construction spells.',
-      },
-        h('span', { className: 'hrlg-mats-lbl' }, 'MAT'),
-        mats.map(m => h('span', { key: m.k, className: 'hrlg-mat' + (m.n > 0 ? '' : ' none') }, m.icon + ' ' + m.n)),
-        buildCharge > 0 ? h('span', { className: 'hrlg-mat free' }, '🧤 +' + buildCharge) : null,
-      ),
+      matsEl,
       toolRows,
     ),
     /* ── the CASCADING COMMAND PANELS — at most TWO on screen: the active
@@ -5194,7 +5844,7 @@ function spellTargetChip(sp) {
   }
   const k = sp.kind || '';
   if (k === 'cannibalize') {
-    return { label: '🦴 REMAINS', color: '#b8a2d8', title: "Select a fallen enemy's remains — their bones" };
+    return { label: '🦴 REMAINS', color: '#b8a2d8', title: "Select a fallen unit's remains — an enemy's bones or an ally's gravestone" };
   }
   if (k === 'raiseDead') {
     return { label: '🪦 REMAINS', color: '#b8a2d8', title: "Select a fallen unit's remains — ally gravestone or enemy bones" };
@@ -5839,6 +6489,13 @@ function _hrlgTacticPartyBlades(unit, st) {
       },
     };
   });
+  /* ALL MANUAL (mondo 2026-11-11): one row under the party takes every unit off its Tactic at once */
+  const _auto = _ewTacticUnits(st);
+  if (_auto.length) blades.push({
+    id: 'tp:allmanual', icon: _HRLG_TACTIC_ICON.manual, label: 'All manual', available: true,
+    meta: { text: _auto.length + ' AUTO', color: '#f2c468' },
+    fire: () => { _ewTakeControl(_auto.map(u => u.id)); },
+  });
   return { title: { icon: '♟', text: 'Tactics', count: party.length + '' }, blades };
 }
 function _hrlgTacticBlades(unit, st, forUnit) {
@@ -5970,6 +6627,8 @@ function _hrlgTargetBlades(unit, st, mode) {
   } else {
     spell = (unit.spells || []).find(s => s.name === st.selectedTool) || (unit._raceAbilities || []).find(s => s.name === st.selectedTool);
     targets = spell && typeof _getSpellValidTargets === 'function' ? _getSpellValidTargets(unit, spell) : [];
+    /* THE WALK-IN SELF CAST (battle.js _selfPoolWalkIn): a self-cast's list is only the enemies a step brings in */
+    if (spell && typeof isSpellSelfCast === 'function' && isSpellSelfCast(spell)) targets = [];
     // Quick-menu parity: the enemy/ally quick menus offer MOVE→CAST rows for
     // units the spell reaches only after an approach step — this drum MUST
     // list the same units (amber MOVE→CAST chip) or the two menus drift out
@@ -5982,6 +6641,8 @@ function _hrlgTargetBlades(unit, st, mode) {
     titleText = st.selectedTool || 'Spell'; titleIcon = '✦';
   }
   const isOffensive = mode === 'attack' || (spell && !['heal', 'shield', 'buff', 'scan'].includes(spell.kind));
+  /* THE TUTORIAL's one target: a step that names its target lists only that row (ui.js _tutTargetIs) */
+  if (typeof window !== 'undefined' && window._tutActive && typeof window._tutTargetIs === 'function') targets = targets.filter(t => window._tutTargetIs(t.x, t.y));
 
   const blades = targets.map((t, i) => {
     let label = '', hpVal = 0, hpMax = 0, tUnit = t.unit || null;
@@ -6598,25 +7259,14 @@ function ActionMenu({ st, hidden }) {
   // turn (move→attack) — only grey it when even that won't reach anything.
   const atkNow = !!apc.hasAttack;
   const atkReach = atkNow || (typeof attackHasReachableTarget === 'function' && attackHasReachableTarget(unit, { combatOnly: true }));
-  /* THE HIT CHANCE on the Attack verb: the odds on every enemy it can swing at from here (one number, or lowest–highest) */
-  let atkAcc = null;
-  if (atkNow && typeof _getAttackValidTargets === 'function') {
-    try {
-      const pcts = _getAttackValidTargets(unit)
-        .filter(t => t.unit && !t.unit.dead && (typeof isEnemyUnit !== 'function' || isEnemyUnit(unit, t.unit)))
-        .map(t => _hrlgHitPct(unit, t.unit)).filter(v => v != null);
-      if (pcts.length) {
-        const lo = Math.min(...pcts), hi = Math.max(...pcts);
-        atkAcc = (lo === hi ? hi : lo + '–' + hi) + '%';
-      }
-    } catch (e) { atkAcc = null; }
-  }
+  /* NO HIT CHANCE on the Attack verb (mondo 2026-11-11: "I dont want the attack accuracy on the main/ top action list, only
+     when i actually click the attack button"): the odds show on each target row after ATTACK is picked (THE HIT CHANCE in the
+     target list) and on a foe's own quick menu, never on this row */
   const attackAction = {
     id: 'attack', label: 'Attack', icon: '×', cost: 1,
     available: atkReach,
     note: !atkNow && atkReach ? 'MOVE→ATK' : null,
     sub: atkReach ? null : 'No target',
-    acc: atkAcc, accTitle: 'Chance to hit the enemies in reach',
   };
 
   // anyCastableSpellNow (battle.js) is the SAME probe chooseActionMenu gates
@@ -6778,11 +7428,19 @@ function ActionMenu({ st, hidden }) {
   // Mystery Dungeon lockstep: NO Move blade — walking IS the free verb
   // (WASD / arrows step, clicking a tile travels), so the ladder reads
   // Attack › Abilities › Combo › Items › Guard like a proper crawler.
+  /* 👁 RETURN TO BODY (mondo 2026-11-12): a projecting spirit cannot basic attack, so its dead ATTACK row gives its
+     place to the way home (battle.js doAstralReturn: free, the turn goes on) */
+  const _spiritRow = !!(unit.status && unit.status.projecting > 0 && unit._astralBodyId);
+  const returnAction = _spiritRow ? {
+    id: 'astralReturn', label: 'Return to body', icon: '👁', cost: 0,
+    available: typeof window.canAstralReturn === 'function' && window.canAstralReturn(unit),
+    sub: 'Ends projection',
+  } : null;
   const _mdLock = typeof window._mdLockstepActive === 'function' && window._mdLockstepActive();
   if (_mdLock) guardAction.sub = _guardOk ? 'Hold & brace' : guardAction.sub;
   const actions = ((typeof _isClashMode === 'function' && _isClashMode()) || _mdLock)
-    ? [attackAction, abilAction, comboAction, itemsAction, guardAction]
-    : [moveAction, ...(climbAction ? [climbAction] : []), attackAction, abilAction, comboAction, itemsAction, guardAction];
+    ? [returnAction || attackAction, abilAction, comboAction, itemsAction, guardAction]
+    : [moveAction, ...(climbAction ? [climbAction] : []), returnAction || attackAction, abilAction, comboAction, itemsAction, guardAction];
 
   // ♟ TACTICS (battle.js setUnitTactic): set this unit or a teammate on a Tactic so the CPU's brain plays its turns.
   // Not on Mystery Dungeon floors (their own tactic chips) or in the tutorial (unitOnTactic is off there).
@@ -6993,6 +7651,7 @@ function ActionMenu({ st, hidden }) {
       case 'combo': if (typeof setActionMode === 'function') setActionMode('combo'); break;
       case 'items': if (typeof chooseActionMenu === 'function') chooseActionMenu('items'); break;
       case 'guard': if (typeof doGuard === 'function' && typeof getSelectedUnit === 'function') doGuard(getSelectedUnit()); break;
+      case 'astralReturn': if (typeof doAstralReturn === 'function' && typeof getSelectedUnit === 'function') doAstralReturn(getSelectedUnit()); break;
       case 'switch': if (typeof chooseActionMenu === 'function') chooseActionMenu('switch'); break;
       case 'tactics': _hrlgTacticPickId = unit.id; if (typeof chooseActionMenu === 'function') chooseActionMenu('tactics'); break;
       case 'escape': if (typeof window.doEscape === 'function' && typeof getSelectedUnit === 'function') window.doEscape(getSelectedUnit()); break;
@@ -7033,7 +7692,17 @@ function ActionMenu({ st, hidden }) {
   // (this label used to live on the retired END TURN crown bar)
   const _endLabel = (typeof window._isSimulMode === 'function' && window._isSimulMode()
     && window.GAME?.state?._simulPhase === 'plan') ? 'COMMIT ORDER' : 'END TURN';
-  rootBlades.push({ id: 'end', label: _endLabel, icon: '■', available: true, danger: true, hint: _hintKey('endTurn', 'SPACE') });
+  /* THE TUTORIAL (mondo 2026-11-12): END TURN, BUILD and the tool buttons are greyed with LATER like every other row
+     unless the live step allows them (they had stayed lit, and a press did nothing) */
+  const _tutOn = typeof window !== 'undefined' && window._tutActive && typeof window._tutVerbOk === 'function';
+  const _tutEndOk = !_tutOn || window._tutVerbOk('end');
+  rootBlades.push(_tutEndOk
+    ? { id: 'end', label: _endLabel, icon: '■', available: true, danger: true, hint: _hintKey('endTurn', 'SPACE') }
+    : { id: 'end', label: _endLabel, icon: '■', available: false, sub: 'LATER', subBelow: true, tutOff: true });
+  if (_tutOn && typeof window._tutToolOk === 'function') {
+    if (!window._tutToolOk('build')) { buildBtn.available = false; buildBtn.active = false; buildBtn.sub = 'LATER'; }
+    pushers.forEach(p => { if (!window._tutToolOk(p.id)) { p.available = false; p.sub = 'LATER'; p.hoverIn = null; } });
+  }
   const rootPanel = { key: 'root', title: null, blades: rootBlades };
   const _mkPanel = (key, built, extra) => ({
     key, title: built.title || null,
@@ -7087,7 +7756,10 @@ function ActionMenu({ st, hidden }) {
       /* Far Sight / scrying aim at a TILE: the ally list it used to open read as "cast on Mothman" (Keys vs Keys) */
       'remoteView'];
     // THE SELF-CAST CONFIRM: a self-cast's only target is the caster — no list, just the green CONFIRM
-    const _aimSelf = !!(_aimSp && typeof isSpellSelfCast === 'function' && isSpellSelfCast(_aimSp));
+    /* THE WALK-IN SELF CAST (battle.js _selfPoolWalkIn): Scatter Shot / an enemy-only nova with nobody in reach lists
+       the enemies a step brings in, as MOVE→CAST rows */
+    const _aimSelf = !!(_aimSp && typeof isSpellSelfCast === 'function' && isSpellSelfCast(_aimSp))
+      && !(typeof _selfPoolWalkIn === 'function' && _selfPoolWalkIn(unit, _aimSp));
     // an AoE armed from a unit's quick menu places on the board only — no unit list over it (_hrlgArmAoePlacement)
     const _quickPlace = st._quickAoePlace === st.selectedTool;
     /* THE CHARGE ROWS (playtest 2026-11-07 B1: Runaway Train armed with no enemy row, "select a tile to dash to", and a
@@ -7254,7 +7926,7 @@ function ActionMenu({ st, hidden }) {
       if (_hrlgMtcLabelCache.k !== _mtcKey) {
         let v = '';
         try {
-          const _mtcA = (_cSp && !(typeof isSpellSelfCast === 'function' && isSpellSelfCast(_cSp)) && !_mtcReachesPick(unit, _cSp, _pt.x, _pt.y, _pt.z))
+          const _mtcA = (_cSp && !(typeof _selfCastNoWalk === 'function' ? _selfCastNoWalk(_cSp) : (typeof isSpellSelfCast === 'function' && isSpellSelfCast(_cSp))) && !_mtcReachesPick(unit, _cSp, _pt.x, _pt.y, _pt.z))
             ? findSpellApproachTile(unit, _cSp, _pt.x, _pt.y, _pt.z) : null;
           if (_mtcA) v = _mtVerb(_mtcA) + '→CAST · ';
         } catch (e) {}
@@ -7812,6 +8484,9 @@ function _computeEnemyActions(actingUnit, targetUnit) {
   // every other target — grey the row with the real reason instead of letting
   // the click (or the move-then-attack) bounce off the engine.
   let atkTauntLock = null;
+  /* 💋 Charm (mondo 2026-11-10, rule 7 B): the charmer cannot be attacked or cast at — the row greys with the reason */
+  const _qCharmer = (typeof getCharmer === 'function') ? getCharmer(actingUnit) : null;
+  const atkCharmLock = !!(_qCharmer && targetUnit && _qCharmer.id === targetUnit.id);
   if (typeof getTauntTargeter === 'function') {
     const _aT = getTauntTargeter(actingUnit);
     if (_aT && _aT.id !== targetUnit.id) {
@@ -7825,7 +8500,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       }
     }
   }
-  if (atkTauntLock) {
+  if (atkCharmLock) {
+    actions.push({
+      id: 'attack', label: 'Attack', icon: '⚔', apCost: G.AP_COST_ACTION || 1, moveTile: null, preview: null, typeNote: '',
+      available: false,
+      reason: '💋 Charmed — cannot attack ' + (typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : 'the charmer'),
+    });
+  } else if (atkTauntLock) {
     actions.push({
       id: 'attack',
       label: 'Attack',
@@ -7984,6 +8665,10 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     // to the challenger while the challenger is castable-at — doSpell rejects
     // any other enemy (after the approach move, too). Mirror its gate and drop
     // the row instead of letting the click bounce.
+    if (atkCharmLock && typeof _kindMeta === 'function') {   // 💋 no unit-targeted offensive cast at the charmer
+      const _cm = _kindMeta(sp);
+      if (_cm.offensive && !_cm.tileTargeted && !_cm.directional) continue;
+    }
     if (targetUnit && typeof getTauntTargeter === 'function' && typeof _kindMeta === 'function') {
       const _qTaunter = getTauntTargeter(actingUnit);
       if (_qTaunter && _qTaunter.id !== targetUnit.id) {
@@ -8073,7 +8758,13 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       });
     };
 
-    if (isBarrage) {
+    /* THE WALK-IN SELF CAST (battle.js): a random-target row (Scatter Shot) reaches this enemy only when its pool holds
+       it from where the caster stands; otherwise the row is a MOVE→CAST (findSpellApproachTile below) or greys */
+    const _poolRnd = !!(sp.randomTargets && typeof _selfPoolSpell === 'function' && typeof _selfPoolHits === 'function'
+      && typeof isSpellSelfCast === 'function' && isSpellSelfCast(sp) && _selfPoolSpell(sp));
+    if (_poolRnd) {
+      inSpellRange = !!targetUnit && _selfPoolHits(actingUnit, sp, targetUnit);
+    } else if (isBarrage) {
       // Barrage novae (Meow, Quake, Requiem…) center on the CASTER and auto-hit
       // every enemy inside their radius — aoeRadius for self-origin bursts, else
       // the spell's range. The clicked enemy is reachable only if it actually
@@ -8687,10 +9378,10 @@ function _predictTargetShove(spell, target, castX, castY) {
 function _actionPlanArrowColor(action) {
   if (!action) return 0xff3333;
   if (action.id === 'attack' || action.id === 'combo') return 0xff3333;
-  const k = action.spell ? action.spell.kind : null;
-  if (k && _QA_SUP_KINDS[k]) return 0x33dd66;   // heal / support → green
-  if (k && !_QA_DMG_KINDS[k]) return 0xeeeeee;  // neutral utility → white
-  return 0xff3333;                              // damage → red
+  const side = _qaSide(action);
+  if (side === 'help') return 0x33dd66;      // heal / support → green
+  if (side === 'neutral') return 0xeeeeee;   // neutral utility → white
+  return 0xff3333;                           // damage → red
 }
 
 function _clearMoveArrowPreview() {
@@ -8700,6 +9391,7 @@ function _clearMoveArrowPreview() {
   ThreeRenderer.clearArrows3D();
   ThreeRenderer.clearGhostUnit();
   ThreeRenderer.clearOverlay('movePreview');
+  ThreeRenderer.clearOverlay('moveHoverDest');   // THE ONE MOVE PREVIEW (battle.js previewMovePlan) marks its tiles here
   ThreeRenderer.clearOverlay('actionPlanTarget');
   ThreeRenderer.clearOverlay('actionPlanAoe');
   ThreeRenderer.clearOverlay('actionPlanShove');
@@ -8730,8 +9422,13 @@ function _showTileMoveTowardsPreview(actingUnit, action) {
         mts.map(t => ({ x: t.x, y: t.y, opacity: 0.22 })), towardsColor, 0.22);
     }
     const actingY = ThreeRenderer.unitSurfaceY(actingUnit);
-    const wps = [{ x: actingUnit.x, y: actingUnit.y, yOverride: actingY }];
-    if (typeof findMovePath === 'function') {
+    let wps = [{ x: actingUnit.x, y: actingUnit.y, yOverride: actingY }];
+    let _rw = null;
+    if (typeof window.moveRouteWps === 'function' && !(typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit))) {
+      try { _rw = window.moveRouteWps(actingUnit, approach, null); } catch (e) { _rw = null; }   // THE REAL ROUTE (via step + hop arcs)
+    }
+    if (_rw && _rw.length >= 2) wps = _rw;
+    else if (typeof findMovePath === 'function') {
       const path = findMovePath(actingUnit, approach.x, approach.y, approach.z) || [];
       for (const s of path) wps.push({ x: s.x, y: s.y, yOverride: ThreeRenderer.tileTopY(s.x, s.y) });
     }
@@ -8796,6 +9493,25 @@ const _QA_DMG_KINDS = { damage:1, aoe:1, barrage:1, multiHit:1, ricochet:1,
 const _QA_SUP_KINDS = { heal:1, healAll:1, selfHeal:1, seedHeal:1, revive:1,
   cleanse:1, shield:1, aoeShield:1, buff:1, guard:1, warCry:1, encore:1 };
 
+/* THE AIM SIDE (2026-11-11, mondo: Purify's area on his own unit was red): what a quick-menu row does, from the row
+   itself (data.js spellAimSide: damage wins, then heal / support, else neutral); the kind buckets above are the
+   fallback. An item that is not a bane is a help (a potion, a tonic). */
+function _qaSide(action) {
+  if (!action || action.id === 'attack' || action.id === 'combo') return 'harm';
+  const sp = action.spell;
+  if (sp) {
+    if (typeof spellAimSide === 'function') return spellAimSide(sp);
+    return _QA_SUP_KINDS[sp.kind] ? 'help' : _QA_DMG_KINDS[sp.kind] ? 'harm' : 'neutral';
+  }
+  if (action.itemKey) return (typeof ITEM_RULES !== 'undefined' && ITEM_RULES[action.itemKey] && ITEM_RULES[action.itemKey].baneType) ? 'harm' : 'help';
+  return 'harm';
+}
+/* the plate of a row's target / area: red = it hurts, green = it helps, purple = neutral (ui.js EW_PREVIEW) */
+function _qaPlateHex(action) {
+  const P = window.EW_PREVIEW || {}, side = _qaSide(action);
+  return side === 'help' ? (P.help || 0x33ff33) : side === 'neutral' ? (P.util || 0xaa33ff) : (P.hit || 0xff2a2a);
+}
+
 // Semi-transparent reach field for the hovered quick-menu blade, drawn from
 // the tile the action will actually be cast FROM (the move destination on a
 // move-then-cast). The solid target/AoE tiles stay the loud layer on top —
@@ -8812,7 +9528,8 @@ function _showQuickActionRange(actingUnit, castX, castY, action) {
     // strike arrow + swept footprint — a range field would just paint the map.
     if (sp.kind === 'line' || sp.kind === 'linePush') return;
     r = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(actingUnit, sp) : (sp.range || 0);
-    color = _QA_DMG_KINDS[sp.kind] ? ((window.EW_PREVIEW && window.EW_PREVIEW.reach) || 0xffa040) : _QA_SUP_KINDS[sp.kind] ? 0x33dd66 : 0xeeeeee;
+    const _rs = _qaSide(action);
+    color = _rs === 'harm' ? ((window.EW_PREVIEW && window.EW_PREVIEW.reach) || 0xffa040) : _rs === 'help' ? 0x33dd66 : 0xeeeeee;
   } else {
     return;
   }
@@ -8942,7 +9659,23 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     // One continuous bending walk-route arrow through any waypoint, plus tile
     // markers so the destination reads even head-on.
     const routeColor = 0x3399ff; // movement = blue (walk and jump legs alike)
-    if (mt.via) {
+    /* THE REAL ROUTE (battle.js moveRouteWps): the arrow + hologram follow the path the walk really takes */
+    let _rw = null;
+    if (!mt._viaSpell && typeof window.moveRouteWps === 'function') {
+      try {
+        const _rwAir = typeof canFly === 'function' && canFly(actingUnit) && typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit);
+        _rw = window.moveRouteWps(actingUnit, mt, _rwAir ? ((wx, wy) => destY - ThreeRenderer.tileTopY(mt.x, mt.y) + ThreeRenderer.tileTopY(wx, wy)) : null);
+        if (!_rw || _rw.length < 2) _rw = null;
+      } catch (e) { _rw = null; }
+    }
+    if (_rw) {
+      ThreeRenderer.drawPathArrow3D(_rw, routeColor);
+      ThreeRenderer.setOverlay('movePreview', [
+        ...(mt.via ? [{ x: mt.via.x, y: mt.via.y, color: routeColor, opacity: 0.3 }] : []),
+        ...(land && typeof _iceSlideMarks === 'function' ? _iceSlideMarks(land) : []),
+        { x: castX, y: castY, color: routeColor, opacity: 0.45 },
+      ], routeColor, 0.45);
+    } else if (mt.via) {
       const viaY = ThreeRenderer.tileTopY(mt.via.x, mt.via.y);
       ThreeRenderer.drawPathArrow3D([
         { x: actingUnit.x, y: actingUnit.y, yOverride: actingY },
@@ -8969,9 +9702,11 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
       ? _drawIceSlideLeg(land, (wx, wy) => destY - ThreeRenderer.tileTopY(mt.x, mt.y) + ThreeRenderer.tileTopY(wx, wy)) : [];
 
     // Hologram of the caster walking there and striking / casting, on a loop.
-    const _mw = [{ x: actingUnit.x, y: actingUnit.y, yOverride: actingY }];
-    if (mt.via) _mw.push({ x: mt.via.x, y: mt.via.y, yOverride: ThreeRenderer.tileTopY(mt.via.x, mt.via.y) });
-    _mw.push({ x: mt.x, y: mt.y, yOverride: destY });
+    const _mw = _rw ? _rw.slice() : [{ x: actingUnit.x, y: actingUnit.y, yOverride: actingY }];
+    if (!_rw) {
+      if (mt.via) _mw.push({ x: mt.via.x, y: mt.via.y, yOverride: ThreeRenderer.tileTopY(mt.via.x, mt.via.y) });
+      _mw.push({ x: mt.x, y: mt.y, yOverride: destY });
+    }
     _mw.push(..._slideWps);
     const _mAir = typeof canFly === 'function' && canFly(actingUnit) && typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit);
     ThreeRenderer.showGhostUnit(actingUnit, castX, castY, castYpx, { tag: 'caster', color: ghostTint, opacity: 0.85,
@@ -8987,9 +9722,11 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
   _showQuickActionRange(actingUnit, castX, castY, action);
 
   const _HIT = (window.EW_PREVIEW && window.EW_PREVIEW.hit) || 0xff2a2a;
+  /* THE AIM SIDE: the row's own plate (green for a heal / support that deals no damage, purple neutral, red a hit) */
+  const _PLATE = _qaPlateHex(action), _plateOp = _PLATE === _HIT ? 0.9 : 0.55;
   ThreeRenderer.setOverlay('actionPlanTarget', (ax !== tx || ay !== ty)
-    ? [{ x: tx, y: ty, color: _HIT, opacity: 0.9 }, { x: ax, y: ay, color: _HIT, opacity: 0.9, cursor: true }]
-    : [{ x: tx, y: ty, color: _HIT, opacity: 0.9, cursor: true }], _HIT, 0.9);
+    ? [{ x: tx, y: ty, color: _PLATE, opacity: _plateOp }, { x: ax, y: ay, color: _PLATE, opacity: _plateOp, cursor: true }]
+    : [{ x: tx, y: ty, color: _PLATE, opacity: _plateOp, cursor: true }], _PLATE, _plateOp);
 
   /* THE FORECAST (2026-10-01, combat clarity pass): the hovered cast, read by the engine from the tile it is
      cast FROM — the tiles it hits (crimson), every body it moves (arrow + hologram + landing plate) and the
@@ -9031,8 +9768,9 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     if (hasAoe) {
       const aoeTiles = (_plan && _plan.handled && _plan.tiles && _plan.tiles.length) ? _plan.tiles : getSpellAoeFootprint(sp, ax, ay, actingUnit);
       if (aoeTiles && aoeTiles.length > 0) {
-        const overlayTiles = aoeTiles.map(t => ({ x: t.x, y: t.y, color: _HIT, opacity: (t.x === ax && t.y === ay) ? 0.95 : 0.85 }));
-        ThreeRenderer.setOverlay('actionPlanAoe', overlayTiles, _HIT, 0.85);
+        const _soft = _PLATE !== _HIT;
+        const overlayTiles = aoeTiles.map(t => ({ x: t.x, y: t.y, color: _PLATE, opacity: (t.x === ax && t.y === ay) ? (_soft ? 0.55 : 0.95) : (_soft ? 0.4 : 0.85) }));
+        ThreeRenderer.setOverlay('actionPlanAoe', overlayTiles, _PLATE, _soft ? 0.4 : 0.85);
       }
     }
   }
@@ -9658,10 +10396,19 @@ function _hrlgSelfCastRow(blade, actingUnit, spell, key) {
 // costs, one-click move+strike combos, unavailability reasons. The view tab
 // carries the target's sprite / name / HP so you always know who you're
 // lining up against.
+/* THE TUTORIAL's quick menus (mondo 2026-11-12: "I can still click on an enemy and it brings up their quick action list where i
+   can select a spell, when tutorial wants me to attack, so clicking a spell does nothing ... those should be hidden/disabled,
+   only attack available"): a clicked unit's / square's list keeps only the rows the live step allows (ui.js _tutQuickOk) */
+function _tutQuickRows(actions, onUnit) {
+  if (typeof window === 'undefined' || !window._tutActive || typeof window._tutQuickOk !== 'function' || !Array.isArray(actions)) return actions;
+  /* a clicked unit that is not the step's one target keeps no attack / cast row (walking toward it stays) */
+  const wrong = !!(onUnit && typeof window._tutTargetIs === 'function' && !window._tutTargetIs(onUnit.x, onUnit.y));
+  return actions.filter(a => a && window._tutQuickOk(a) && !(wrong && !/^(move|moveTowards|jump|climb|takeoff-move)$/.test(String(a.id || ''))));
+}
 function _hrlgEnemyBlades(actingUnit, st) {
   const targetUnit = (st.units || []).find(u => u.id === st._enemyActionTargetId && !u.dead);
   if (!targetUnit) return { title: null, blades: [] };
-  const actions = _computeEnemyActions(actingUnit, targetUnit);
+  const actions = _tutQuickRows(_computeEnemyActions(actingUnit, targetUnit), targetUnit);   // THE TUTORIAL: only the rows the live step teaches
   const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
   const targetName = typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : (targetUnit.name || targetUnit.cls);
 
@@ -9947,7 +10694,7 @@ function _computeAllyActions(actingUnit, targetUnit) {
 function _hrlgAllyBlades(actingUnit, st) {
   const targetUnit = (st.units || []).find(u => u.id === st._enemyActionTargetId && !u.dead);
   if (!targetUnit) return { title: null, blades: [] };
-  const actions = _computeAllyActions(actingUnit, targetUnit);
+  const actions = _tutQuickRows(_computeAllyActions(actingUnit, targetUnit));   // THE TUTORIAL: only the rows the live step teaches
   const dist = Math.abs(actingUnit.x - targetUnit.x) + Math.abs(actingUnit.y - targetUnit.y);
   const targetName = typeof unitDisplayName === 'function' ? unitDisplayName(targetUnit) : (targetUnit.name || targetUnit.cls);
 
@@ -10068,7 +10815,12 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
     const enemy = actingUnit ? tr.owner !== actingUnit.player : false;
     const hits = !!tr.hitsToKill;
     let desc;
-    if (tr.summon) {
+    if (tr.plant) {   // THE GARDEN (2026-11-12): a grown plant
+      desc = (tr.plant === 'heal' ? 'A Healing Flower. At the end of every round it heals its allies within 1 tile (double in rain).'
+        : tr.plant === 'poison' ? 'A Gas Plant. At the end of every round its gas hurts and Poisons enemies within 1 tile.'
+        : 'A Thorn Vine. At the end of every round it lashes the nearest enemy it can see within ' + _plural(tr.range || 2, 'tile') + ' and sends the HP to its weakest ally.')
+        + ' Attacks and fire cut it down; Drought makes it wilt for the round.';
+    } else if (tr.summon) {
       desc = (tr.summon === 'hound' ? 'A loyal hound. ' : tr.summon === 'creation' ? 'A stitched-together creation. ' : '')
         + 'At the end of every round it moves ' + _plural(tr.move || 3, 'tile') + ' toward the nearest enemy and strikes for '
         + (tr.dmg || 0) + ' damage when adjacent.'
@@ -10090,15 +10842,16 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
     }
     /* the tile info card's picture + numbers (the same fields the words above read) */
     const _isAura = !!(sp && sp.auraDebuff) || /5g/i.test(name);
-    const sprite = (tr.summon || tr.zombie) ? null
+    const sprite = (tr.summon || tr.zombie || tr.plant) ? null
       : _isAura ? (typeof FIVEG_TOWER_SPRITE_URL !== 'undefined' ? _tileObjSprite(FIVEG_TOWER_SPRITE_URL) : null)
       : (typeof TURRET_SPRITE_URL !== 'undefined' ? _tileObjSprite(TURRET_SPRITE_URL) : null);
-    const stats = tr.summon ? [{ k: 'MOVE', v: tr.move || 3 }, { k: 'DMG', v: tr.dmg || 0 }]
+    const stats = tr.plant ? [{ k: 'RANGE', v: tr.range || 1 }, { k: 'ACTS', v: 'ROUND END' }]
+      : tr.summon ? [{ k: 'MOVE', v: tr.move || 3 }, { k: 'DMG', v: tr.dmg || 0 }]
       : tr.zombie ? [{ k: 'RANGE', v: tr.range || 1 }, { k: 'DMG', v: tr.dmg || 0 }]
       : _isAura ? [{ k: 'RANGE', v: tr.range || 4 }, { k: 'M DEF', v: '−' + ((sp && sp.auraDefReduction) || 8), tone: 'dn' }]
       : [{ k: 'RANGE', v: tr.range || 3 }, { k: 'DMG', v: tr.dmg || 0 }, { k: 'FIRES', v: 'ROUND END' }];
     return {
-      kind: 'turret', name, icon: /5g/i.test(name) ? '📡' : (tr.summon && typeof _summonLook === 'function') ? _summonLook(tr.summon).icon : (tr.zombie || tr.summon) ? '🧟' : '🔧', enemy,
+      kind: 'turret', name, icon: tr.plant ? '🌿' : /5g/i.test(name) ? '📡' : (tr.summon && typeof _summonLook === 'function') ? _summonLook(tr.summon).icon : (tr.zombie || tr.summon) ? '🧟' : '🔧', enemy,
       hp: Math.max(0, Math.round(tr.hp)), maxHp: tr.maxHp || tr.hp,
       hpLabel: _mkHpLabel(tr.hp, tr.maxHp, hits), desc, sprite, stats, spellId: tr.spellId || null,
     };
@@ -10173,12 +10926,18 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
   const sd = (s.plantedSeeds || []).find(q => q.x === tx && q.y === ty);
   if (sd) {
     const enemy = actingUnit ? sd.owner !== actingUnit.player : false;
-    const name = sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
-    const desc = sd.type === 'heal'
-      ? 'A planted seed growing into a Healing Tree that restores nearby units each round. One hit destroys it before it matures.'
-      : sd.type === 'poison'
-        ? 'A planted seed growing into a Toxin Tree that poisons nearby units each round. One hit destroys it before it matures.'
-        : 'A parasitic seed — it latches onto units that come near and drains their HP each round. One hit destroys it.';
+    /* THE GARDEN (2026-11-12): a seed needs water; the card says which state it is in and what it grows into */
+    const _sdBase = sd.type === 'heal' ? 'Healing Seed' : sd.type === 'poison' ? 'Poison Seed' : sd.type === 'leech' ? 'Leech Seed' : sd.type === 'apple' ? 'Apple Seed' : 'Seed';
+    const name = sd.watered ? _sdBase.replace(/Seed$/, 'Sprout') : _sdBase;
+    const _sdGrows = sd.type === 'heal' ? 'a Healing Flower that heals allies beside it each round'
+      : sd.type === 'poison' ? 'a Gas Plant that poisons enemies beside it each round'
+      : sd.type === 'leech' ? 'a Thorn Vine that lashes the nearest enemy within 2 tiles each round'
+      : sd.type === 'apple' ? 'an Apple Tree that drops a healing apple every 2 rounds'
+      : 'a tree';
+    const desc = (sd.watered
+      ? 'Watered: it grows into ' + _sdGrows + ' at the end of this round.'
+      : 'Dry: it needs water to sprout (rain, a water spell, water beside it), then grows into ' + _sdGrows + '.')
+      + ' One hit destroys it before it grows.';
     const _sdu = sd.type === 'heal' ? (typeof HEALING_SEED_SPRITE_URL !== 'undefined' ? HEALING_SEED_SPRITE_URL : null)
       : sd.type === 'poison' ? (typeof POISON_SEED_SPRITE_URL !== 'undefined' ? POISON_SEED_SPRITE_URL : null)
       : (typeof LEECH_SEED_SPRITE_URL !== 'undefined' ? LEECH_SEED_SPRITE_URL : null);
@@ -10316,7 +11075,7 @@ function _hrlgTileView(actingUnit, tx, ty, tz, opts) {
 
 /* the square's actions as blades: buttons carry tbtn + the tabs they ride (ttabs); rows are the rest */
 function _hrlgTileActionBlades(actingUnit, tx, ty, tz, view) {
-  const actions = _computeTileActions(actingUnit, tx, ty, tz);
+  const actions = _tutQuickRows(_computeTileActions(actingUnit, tx, ty, tz));   // THE TUTORIAL: only the rows the live step teaches
   const objInfo = view ? view.objInfo : _tileQuickObjectInfo(actingUnit, tx, ty);
   const objCard = view ? view.cards.object : (objInfo ? _objCardSpell(objInfo, tx, ty) : null);
   const tabCard = view ? (view.cards[view.active] || null) : null;
@@ -10399,7 +11158,7 @@ function _hrlgTileActionBlades(actingUnit, tx, ty, tz, view) {
       subBelow: tbtn && !a.available,   // a greyed button says why on a second line
       fire: () => {
         hideSpellTooltip();
-        if (a.id === 'moveTowards' || (a.id === 'move' && a._slideZ !== undefined)) _clearMoveArrowPreview();
+        if (a.id === 'moveTowards' || a._pvKind) _clearMoveArrowPreview();
         if (isApproach && typeof _clearSpellApproachPreview === 'function') _clearSpellApproachPreview();
         if (a.available && a.handler) {
           /* fired from a clicked unit's TERRAIN tab: that unit's quick menu closes like the tile menu does */
@@ -10411,7 +11170,13 @@ function _hrlgTileActionBlades(actingUnit, tx, ty, tz, view) {
         if (a.spell) showSpellTooltip(a.spell, e);
         else if (card) showSpellTooltip(card, e);
         if (a.id === 'moveTowards' && a.available) _showTileMoveTowardsPreview(actingUnit, a);
-        if (a.id === 'move' && a._slideZ !== undefined) _showTileMoveSlidePreview(actingUnit, tx, ty, a._slideZ);
+        /* THE ONE MOVE PREVIEW (2026-11-11): Move here / Take Off + Move / Jump here / Climb show the board hover's own
+           route + hologram (battle.js previewMovePlan) — the climb's face in sandstone, its ghost "ENDS TURN" */
+        if (a._pvKind && a.available) {
+          _clearMoveArrowPreview();
+          const drew = (typeof window.previewMovePlan === 'function') && window.previewMovePlan(actingUnit, tx, ty, a._pvZ, a._pvKind);
+          if (!drew && a.id === 'move' && a._slideZ !== undefined) _showTileMoveSlidePreview(actingUnit, tx, ty, a._slideZ);
+        }
         // THE TILE-MENU SPELL HOVER (2026-10-05, mondo: "if its an aoe it doesnt show its aoe preview when i hover
         // on it"): a spell row paints exactly what the armed cast on this tile would: footprint, hit plates,
         // forecast numbers, landings, ricochet hops (ui.js updateAoePreview with the row's spell).
@@ -10428,7 +11193,7 @@ function _hrlgTileActionBlades(actingUnit, tx, ty, tz, view) {
       },
       hoverOut: () => {
         hideSpellTooltip();
-        if (a.id === 'moveTowards' || (a.id === 'move' && a._slideZ !== undefined)) _clearMoveArrowPreview();
+        if (a.id === 'moveTowards' || a._pvKind) _clearMoveArrowPreview();
         if (isApproach && typeof _clearSpellApproachPreview === 'function') _clearSpellApproachPreview();
         if (a.spell && !isApproach && typeof clearAoePreview === 'function' && state.actionMode !== 'spell') clearAoePreview();
       },
@@ -10540,6 +11305,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
         actions.push({
           id: 'takeoff-move', label: 'Take Off + Move', icon: '🕊', category: 'movement',
           apCost: takeoffApCost, available: (unitAP >= takeoffApCost),
+          _pvKind: 'move', _pvZ: moveTile.z,
           reason: (unitAP >= takeoffApCost) ? '' : 'No AP',
           handler: (unitAP >= takeoffApCost) ? () => {
             state._tileActionTarget = null;
@@ -10556,7 +11322,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
           ? predictFallDamage(actingUnit, actingUnit.z ?? 0, moveTile.z ?? 0, tx, ty) : 0;
         actions.push({
           id: 'move', label: _mvDropDmg > 0 ? `Move here (−${_mvDropDmg} HP)` : 'Move here', icon: '⬆', category: 'movement',
-          apCost: 1, available: true,
+          apCost: 1, available: true, _pvKind: 'move', _pvZ: moveTile.z,
           // THE SLIDE FORECAST: an ice tile's row previews the slide on hover
           _slideZ: (_mtLand(actingUnit, moveTile) ? (moveTile.z ?? null) : undefined),
           handler: () => {
@@ -10606,7 +11372,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       actions.push({
         id: 'jump', label: _jpDropDmg > 0 ? `Jump here (−${_jpDropDmg} HP)` : 'Jump here',
         icon: '↷', category: 'movement',
-        apCost: 1, available: true,
+        apCost: 1, available: true, _pvKind: 'jump', _pvZ: jumpTile.z,
         handler: () => {
           state._tileActionTarget = null;
           if (typeof setActionMode === 'function') setActionMode('jump');
@@ -10632,7 +11398,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
           + (_clInst ? (climbTile.dir === 'down' ? ' · down now' : ' · top now') : ' · hang')
           + ((climbTile.turns || 1) > 1 ? ` · ${climbTile.turns} turns` : '') + (_clFall > 0 ? ` (fall −${_clFall} HP)` : ''),
         icon: '🧗', category: 'movement', endsTurn: true,
-        apCost: (climbTile.viaMove ? 1 : 0) + (_clInst ? 2 : 1), available: true,
+        apCost: (climbTile.viaMove ? 1 : 0) + (_clInst ? 2 : 1), available: true, _pvKind: 'climb', _pvZ: climbTile.z,
         handler: () => {
           state._tileActionTarget = null;
           if (typeof setActionMode === 'function') setActionMode('climb');
@@ -10981,7 +11747,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
     const seed = (state.plantedSeeds || []).find(s => s.x === tx && s.y === ty && s.owner !== actingUnit.player);
     if (seed) {
-      const seedName = seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : 'Leech Seed';
+      const seedName = seed.type === 'heal' ? 'Healing Seed' : seed.type === 'poison' ? 'Poison Seed' : seed.type === 'apple' ? 'Apple Seed' : 'Leech Seed';
       const canAtk = inRange && !losBlocked && _fogSees;
       actions.push(_objAtkRow('attack:seed', 'Attack ' + seedName, canAtk));
     }
@@ -11366,23 +12132,29 @@ const AP_PRESS_SVG = h('svg', { className: 'ew-ap-svg', viewBox: '0 0 40 40', 'a
   h('polygon', { className: 'ew-ap-r', points: '20,19.8 29.6,14.2 29.6,25.4 20,31' }),
   h('path', { className: 'ew-ap-edge', d: 'M20 8.6L29.6 14.2V25.4L20 31L10.4 25.4V14.2ZM10.4 14.2L20 19.8L29.6 14.2M20 19.8V31' }),
 );
-function ApPress({ st }) {
+/* THE ONE BATTLE PANEL docks the icons in its left bay (UI Maker: Battle panel > AP icons): that copy keeps its memory
+   here, so a menu that hides for an animation and comes back does not deal the turn's icons in again */
+const _apDockMem = { key: null, seen: 0, was: {}, born: {}, last: null };
+function ApPress({ st, docked }) {
   const [, bump] = useState(0);
   useEffect(() => {
     const f = () => bump(n => n + 1);
     window.addEventListener('ew-ap-pending', f);
-    return () => window.removeEventListener('ew-ap-pending', f);
+    window.addEventListener('ew-deck', f);
+    return () => { window.removeEventListener('ew-ap-pending', f); window.removeEventListener('ew-deck', f); };
   }, []);
-  const mem = useRef({ key: null, seen: 0, was: {}, born: {}, last: null });
+  const memLocal = useRef({ key: null, seen: 0, was: {}, born: {}, last: null });
+  const mem = docked ? { current: _apDockMem } : memLocal;
   /* the ENDS TURN words sit under the icons, or over them when the icons sit in the lower half of the screen (the UI
      Maker's AP press icons > ENDS TURN words can pin a side) */
   const elRef = useRef(null);
   useEffect(() => {
-    const el = elRef.current; if (!el || !el.classList.contains('ends')) return;
+    const el = elRef.current; if (docked || !el || !el.classList.contains('ends')) return;
     const r = el.getBoundingClientRect();
     el.classList.toggle('ends-above', r.top + r.height / 2 > (window.innerHeight || 1) / 2);
   });
   if (!st || st.phase !== 'battle') return null;
+  if (!docked) { const dc = _ewDeckCfg(); if (dc.on && dc.apIn) return null; }   // the one battle panel holds them
   /* Mystery Dungeon lockstep: no AP economy on screen (one beat is one action) */
   if (typeof window._mdLockstepActive === 'function' && window._mdLockstepActive()) return null;
   const M = mem.current;
@@ -11422,7 +12194,7 @@ function ApPress({ st }) {
   }
   if (!view) return null;
   return h('div', {
-    key: view.key, ref: elRef, className: 'ew-ap-press' + (live ? '' : ' off') + (live && view.ends ? ' ends' : ''),
+    key: view.key, ref: elRef, className: 'ew-ap-press' + (docked ? ' docked' : '') + (live ? '' : ' off') + (live && view.ends ? ' ends' : ''),
     role: 'img', 'aria-label': view.label,
   }, view.icons.map(c => h('span', { key: c.i, className: c.cls, style: { '--ap-d': c.delay + 'ms' } },
     h(React.Fragment, { key: c.pk }, AP_PRESS_SVG))),
@@ -11544,9 +12316,24 @@ function QuickPeek({ st }) {
   const home = typeof unitHomePlayer === 'function' ? unitHomePlayer(u) : u.player;
   const key = (home === viewer ? 'ally|' : 'enemy|') + u.id;
   const name = (typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls)) || '';
+  const fc = typeof getUnitAccentColor === 'function' ? getUnitAccentColor(u) : '#8fb4ff';
+  /* THE ONE BATTLE PANEL: on your turn its right bay shows this card itself; off your turn the card stands where that
+     bay stands (the other bays held as invisible spacers) */
+  const dc = _ewDeckCfg();
+  if (dc.on) {
+    if (_ewdLive) return null;
+    const ds = _ewDeckScale();
+    return h('div', { className: 'hrlg-rig ewd ewd-peek' + (ds.c ? ' ewd-c' : ''),
+      style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a', '--ewd-s': ds.s.toFixed(3) } },
+      h('div', { className: 'ewd-bay ewd-actor ewd-ghost' }),
+      h('div', { className: 'ewd-bay ewd-cmd ewd-ghost' }),
+      h('div', { className: 'ewd-bay ewd-focus unit' },
+        h('span', { className: 'ewd-plate' }, home === viewer ? 'ALLY' : 'ENEMY'),
+        h(DeckUnitCard, { ukey: key, actor: null })),
+      h('div', { className: 'ewd-foot ewd-ghost' }));
+  }
   const card = _hrlgQuickCard(key, { node: h('span', { className: 'hrlg-view-tab-text' }, name) });
   if (!card) return null;
-  const fc = typeof getUnitAccentColor === 'function' ? getUnitAccentColor(u) : '#8fb4ff';
   return h('div', { className: 'hrlg-rig hrlg-peek', style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a' } },
     h('div', { className: 'hrlg-side hrlg-ghost' }),
     h('div', { className: 'hrlg-panels' },
@@ -11560,6 +12347,10 @@ function QuickPeek({ st }) {
    It stays up through the AI's whole turn (the AI acts back to back, so a window that hid with each animation was
    never clickable); spell close-ups still fade it (body.ew-spell-shot). */
 function TacticWatch({ st }) {
+  /* its own slow tick: the window must leave the moment the Tactic unit's turn is over (nothing else redraws the HUD
+     at that handoff, and a TAKE CONTROL left standing over the next unit's turn would name the wrong unit) */
+  const [, _twTick] = useState(0);
+  useEffect(() => { const t = setInterval(() => _twTick(n => (n + 1) % 1000000), 200); return () => clearInterval(t); }, []);
   if (!st || st.phase !== 'battle' || st.winner) return null;
   const u = (st.units || []).find(x => x.id === st._blitzActiveUnitId && !x.dead && !x._dying);
   if (!u || typeof unitOnTactic !== 'function' || !unitOnTactic(u)) return null;
@@ -11568,10 +12359,38 @@ function TacticWatch({ st }) {
   if (u.player !== viewer || home !== viewer) return null;
   if (st.autoPlayers && st.autoPlayers[u.player]) return null;
   const built = _hrlgTacticBlades(u, st, u);
+  const autos = _ewTacticUnits(st);
   let why = null;
   try { why = typeof window.aiTacticReason === 'function' ? window.aiTacticReason(u) : null; } catch (e) { why = null; }
   const name = typeof unitDisplayName === 'function' ? unitDisplayName(u) : (u.name || u.cls);
   const fc = typeof getUnitAccentColor === 'function' ? getUnitAccentColor(u) : '#8fb4ff';
+  const twRow = (b, i) => h(HorologeBlade, {
+    key: b.id, b: b, idx: i, sel: false, active: !!b.selected, muted: false, fireId: null, confirmBtn: null,
+    onFire: (b2) => {
+      if (!b2.available) return;
+      if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
+      b2.fire();
+    },
+    onHover: () => {},
+  });
+  /* THE ONE BATTLE PANEL: the same window in the command bay's spot (the other bays held as invisible spacers) */
+  if (_ewDeckCfg().on) {
+    const ds = _ewDeckScale();
+    return h('div', { className: 'hrlg-rig ewd ewd-watch' + (ds.c ? ' ewd-c' : ''),
+      style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a', '--ewd-s': ds.s.toFixed(3) } },
+      h('div', { className: 'ewd-bay ewd-actor ewd-ghost' }),
+      h('div', { className: 'ewd-bay ewd-cmd' },
+        h('span', { className: 'ewd-plate gold' }, '♟ ' + String(name).toUpperCase() + ' · ' + _hrlgTacticLabel(u.tactic).toUpperCase()),
+        why ? h('div', { className: 'ewd-mode' }, String(why)) : null,
+        h('div', { className: 'ewd-confirm takectl', title: 'Set ' + name + ' back to MANUAL: the rest of this turn is yours',
+          onClick: () => { _ewTakeControl([u.id], true); } },
+          h('span', { className: 'ewd-cf-check' }, '✓'),
+          h('span', { className: 'ewd-cf-lbl' }, 'TAKE CONTROL', h('span', { className: 'ewd-cf-tgt' }, ' — ' + name))),
+        autos.length > 1 ? h('div', { className: 'ewd-allman', title: 'Set every unit of yours back to MANUAL',
+          onClick: () => { _ewTakeControl(autos.map(x => x.id), true); } }, 'ALL MANUAL · ' + autos.length + ' ON AUTO') : null,
+        h('div', { className: 'ewd-list' }, built.blades.map(twRow))),
+      h('div', { className: 'ewd-foot ewd-ghost' }));
+  }
   return h('div', { className: 'hrlg-rig hrlg-tacwatch', style: { '--hfc': fc, '--hfc-soft': fc + '55', '--hfc-faint': fc + '1a' } },
     h('div', { className: 'hrlg-side hrlg-ghost' }),
     h('div', { className: 'hrlg-panels' },
@@ -11583,17 +12402,23 @@ function TacticWatch({ st }) {
           ),
         ),
         why ? h('div', { className: 'hrlg-mode' }, String(why)) : null,
-        h('div', { className: 'hrlg-list' },
-          built.blades.map((b, i) => h(HorologeBlade, {
-            key: b.id, b: b, idx: i, sel: false, active: !!b.selected, muted: false, fireId: null, confirmBtn: null,
-            onFire: (b2) => {
-              if (!b2.available) return;
-              if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
-              b2.fire();
-            },
-            onHover: () => {},
-          })),
+        /* TAKE CONTROL (mondo 2026-11-11): the one big green button, beside the top of the list (never in it: the
+           seven rows keep their room), so stopping an AUTO unit is never a hunt for the MANUAL row while it plays;
+           ALL MANUAL under it when teammates are on a Tactic too */
+        h('div', { className: 'hrlg-tacwatch-btns' },
+          h('div', {
+            className: 'hrlg-confirm takectl', title: 'Set ' + name + ' back to MANUAL: the rest of this turn is yours',
+            onClick: () => { _ewTakeControl([u.id], true); },
+          },
+            h('span', { className: 'hrlg-confirm-check' }, '✓'),
+            h('span', { className: 'hrlg-confirm-lbl' }, 'TAKE CONTROL', h('span', { className: 'hrlg-confirm-tgt' }, ' — ' + name)),
+          ),
+          autos.length > 1 ? h('div', {
+            className: 'hrlg-allman', title: 'Set every unit of yours back to MANUAL',
+            onClick: () => { _ewTakeControl(autos.map(x => x.id), true); },
+          }, 'ALL MANUAL · ' + autos.length + ' ON AUTO') : null,
         ),
+        h('div', { className: 'hrlg-list' }, built.blades.map(twRow)),
       )));
 }
 
@@ -11813,6 +12638,489 @@ function _teardownHudJuice() {
 
 /* the battle HUD's stylesheet text, also copied into the UI Maker's screen stand-ins (which draw the battle HUD
    outside a battle, after _removeHudHideStyles took the live copy away) */
+/* THE ONE BATTLE PANEL's look (see _ewDeckCfg; the approved mock-ups, /mnt/project-files/battle-panel-20261111/): one
+   PS1 window of three bays and a footer, white 2px frames over near-black, black name plates on the frames, BACK red,
+   CONFIRM green, the selected row on the theme's purple-to-blue with gold words and the ▶ hand. D = the panel's own
+   parts (no !important, so a theme's fonts still win); X = the parts a theme skins as buttons (rows, tool rows, item
+   slots, tabs) and the docked AP icons: four ids beat the theme's skins (two) and the UI Maker's pieces (three), so the
+   classic layout keeps every skin and the panel keeps its one look. The COMPACT layout (.ewd-c, a window under the
+   full layout's 1728 × 904 at HUD Size 86 %) has its own sizes, never the full one shrunk. */
+function _ewdCss() {
+  const D = '.hrlg-rig.ewd';
+  const X = ':root:root:not(#ewd-a):not(#ewd-b):not(#ewd-c):not(#ewd-d) .hrlg-rig.ewd';
+  const XC = X + '.ewd-c';
+  const SEL = 'linear-gradient(100deg, var(--ewdu-sel1, #9b38ff) 0%, var(--ewdu-selm, #6a4dff) 45%, var(--ewdu-sel2, #3d7bff) 100%)';
+  /* the rows that read as picked: the cursor row (hover is the cursor), the ✓ target */
+  const selB = s => [`${s} .hrlg-blade.sel .hrlg-body`, `${s} .hrlg-blade:hover:not(.dead):not(.muted):not(.ghost) .hrlg-body`, `${s} .ewd-list.has-pick .hrlg-blade.pend .hrlg-body`].join(', ');
+  const selL = s => [`${s} .hrlg-blade.sel .hrlg-blabel`, `${s} .hrlg-blade:hover:not(.dead):not(.muted):not(.ghost) .hrlg-blabel`, `${s} .ewd-list.has-pick .hrlg-blade.pend .hrlg-blabel`].join(', ');
+  const tb = `${X} .ewd-focus .hrlg-tc-btns > .hrlg-blade`;
+  return `
+    /* ══════════ THE ONE BATTLE PANEL (hud.js _ewdCss) ══════════ */
+    html.ew-deck-on #battleSubtitleBar, html.ew-deck-on #ew-spell-descbar { display: none !important; }
+    ${D} {
+      position: absolute; left: 14px; bottom: 12px; top: auto; right: auto;
+      display: grid; grid-template-columns: auto auto auto; justify-content: start; align-items: end; gap: 0;
+      transform: scale(var(--ewd-s, 1)); transform-origin: 0 100%;
+      font-family: 'Press Start 2P', monospace; font-size: 9px; line-height: 1.25; color: #e8e4d8;
+      pointer-events: none; z-index: 12;
+      --ewd-say-max: 56px; --ewd-say-min: 10px; --ewd-list-max: calc(100vh / var(--ewd-s, 1) - 280px);
+    }
+    ${D} [class^="ewd-"], ${D} [class*=" ewd-"] { box-sizing: border-box; }
+    body.ew-spell-shot ${D}.ewd-peek, body.ew-spell-shot ${D}.ewd-watch { opacity: 0; pointer-events: none; }
+    ${D} .ewd-ghost { visibility: hidden !important; pointer-events: none !important; }
+    ${D}.ewd-peek .ewd-focus { pointer-events: auto; }
+    /* the bays: one frame each, the next one's left frame laid over the last one's right */
+    ${D} > .ewd-bay {
+      position: relative; align-self: end; pointer-events: auto; min-width: 0;
+      background: linear-gradient(180deg, var(--ewdu-bg1, rgba(22,24,42,0.96)) 0%, var(--ewdu-bg2, rgba(7,8,15,0.96)) 38%, var(--ewdu-bg3, rgba(4,4,9,0.97)) 100%);
+      border: 2px solid var(--ewdu-edge, #e8e4d8);
+      box-shadow: inset 0 0 0 2px #000, inset 0 0 0 3px rgba(232,228,216,0.22), 0 6px 18px rgba(0,0,0,0.55);
+    }
+    ${D} > .ewd-bay + .ewd-bay { margin-left: -2px; }
+    ${D} .ewd-plate {
+      position: absolute; top: -11px; left: 12px; z-index: 3; max-width: calc(100% - 24px);
+      background: var(--ewdu-plate, #000); padding: 2px 8px; border: 2px solid var(--ewdu-edge, #e8e4d8);
+      font-size: 9px; line-height: 1.2; letter-spacing: 0.12em; color: #e8e4d8; pointer-events: none;
+    }
+    ${D} .ewd-plate.gold { color: #ffd84a; }
+    ${D} .ewd-kbd {
+      display: inline-block; flex: none; font-family: 'Press Start 2P', monospace; font-size: 8px; line-height: 1; letter-spacing: 0;
+      color: #0b0b10; background: #d8d4c8; border-radius: 2px; padding: 3px 4px 2px; box-shadow: 0 2px 0 #6b6878; white-space: nowrap;
+    }
+    ${D} .ewd-kbd.dark { background: #2a2a38; color: #e8e4d8; box-shadow: 0 2px 0 #000; }
+    ${D} .ew-padbtn { flex: none; }
+
+    /* ── 1 WHO ── */
+    ${D} .ewd-actor { width: 336px; padding: 16px 12px 10px; display: flex; flex-direction: column; }
+    ${D} .ewd-atop { display: flex; gap: 12px; align-items: flex-start; }
+    ${D} .ewd-ring { position: relative; flex: none; width: 104px; height: 104px; display: grid; place-items: center; }
+    ${D} .ewd-ring .hrlg-hub { width: 104px; height: 104px; }
+    ${D} .ewd-aid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+    ${D} .ewd-nm { display: flex; align-items: baseline; gap: 6px; min-width: 0; overflow: hidden; padding-bottom: 2px; }
+    ${D} .ewd-rom { flex: none; font-size: 10px; color: #6fa8ff; }
+    ${D} .ewd-name {
+      flex: none; font-family: 'Ghiya Strokes Italic', Georgia, serif; font-size: 21px; line-height: 1; letter-spacing: 0;
+      color: #61f180; white-space: nowrap; text-shadow: 2px 2px 0 #000;
+    }
+    ${D} .ewd-info { margin-left: auto; flex: none; display: inline-flex; gap: 4px; align-items: center; font-size: 11px; color: #6fa8ff; cursor: pointer; pointer-events: auto; }
+    ${D} .ewd-info:hover { color: #fff; }
+    ${D} .ewd-info.on { color: #ffd84a; }
+    ${D} .ewd-badges { display: flex; flex-wrap: wrap; gap: 4px 5px; align-items: center; }
+    ${D} .ewd-badges:empty { display: none; }
+    ${D} .ewd-lv { font-size: 8px; color: #8f8aa8; white-space: nowrap; }
+    ${D} .ewd-badges .hrlg-schip { font-size: 7px; padding: 3px 4px 2px; letter-spacing: 0.02em; animation: none; }
+    ${D} .ewd-aid .hrlg-vitals { gap: 4px; }
+    ${D} .ewd-aid .hrlg-vrow { gap: 6px; }
+    ${D} .ewd-aid .hrlg-vrow.hp { margin: 0; }
+    ${D} .ewd-aid .hrlg-vlbl { width: 22px; font-size: 9px; letter-spacing: 0; color: #8f8aa8; }
+    ${D} .ewd-aid .hrlg-vbar, ${D} .ewd-aid .hrlg-vbar.mp { height: 10px; background: #15161f; border: 1px solid #000; box-shadow: 0 0 0 1px #3a3c52; }
+    ${D} .ewd-aid .hrlg-vnum, ${D} .ewd-aid .hrlg-vrow.mp .hrlg-vnum { min-width: 0; font-size: 9px; letter-spacing: 0; }
+    ${D} .ewd-aid .hrlg-wave { height: 22px; }
+    ${D} .ewd-aprow { display: flex; align-items: center; gap: 6px; min-height: 22px; }
+    ${D} .ewd-aplbl { flex: none; width: 22px; font-size: 9px; color: #8f8aa8; }
+    ${X} .ew-ap-press.docked {
+      position: relative !important; left: auto !important; top: auto !important; right: auto !important; bottom: auto !important;
+      transform: none !important; translate: none !important; scale: none !important; rotate: none !important; opacity: 1 !important;
+      z-index: auto !important; display: flex !important; flex-wrap: wrap; align-items: center; gap: 4px !important; pointer-events: none;
+    }
+    ${X} .ew-ap-press.docked.off { opacity: 0.45 !important; }
+    ${X} .ew-ap-press.docked .ew-ap-ico { width: 22px !important; height: 22px !important; }
+    ${X} .ew-ap-press.docked .ew-ap-ends {
+      position: static !important; transform: none !important; margin: 0 0 0 4px !important;
+      font-family: 'Press Start 2P', monospace; font-size: 7px !important; letter-spacing: 0.04em !important; padding: 3px 4px 2px !important;
+    }
+    ${D} .ewd-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 10px; }
+    ${D} .ewd-tools.lock { opacity: 0.42; filter: grayscale(0.7); }
+    ${D} .ewd-tools.lock .hrlg-push { cursor: default; }
+    ${X} .hrlg-push {
+      height: auto !important; min-height: 26px; padding: 3px 7px !important; gap: 6px !important; flex-wrap: wrap; row-gap: 2px;
+      background: var(--ewdu-tool, #0e0f19) !important; border: 1px solid var(--ewdu-tooledge, #3a3c52) !important; border-left: 4px solid var(--pc, #ffd84a) !important;
+      border-image: none !important; border-radius: 0 !important; box-shadow: none !important; clip-path: none !important;
+      transform: none !important; rotate: none !important; scale: none !important; animation: none !important; filter: none;
+    }
+    ${X} .hrlg-push:not(.entropy)::after, ${X} .hrlg-push::before { content: none !important; display: none !important; }
+    ${X} .hrlg-push > * { transform: none; }
+    ${X} .hrlg-push-glyph { width: 12px; text-align: center; font-size: 11px; }
+    ${X} .hrlg-push-lbl { font-size: 9px; font-weight: normal; letter-spacing: 0.02em; color: #e8e4d8; }
+    ${X} .hrlg-push-sub { margin-left: auto; font-size: 7px; letter-spacing: 0; color: #8f8aa8; white-space: normal; overflow: visible; text-overflow: clip; text-align: right; }
+    ${X} .hrlg-push.live:not(.entropy):not(.lock):hover { background: ${SEL} !important; border-color: #c9b8ff !important; border-left-color: var(--pc, #ffd84a) !important; }
+    ${X} .hrlg-push.live:not(.entropy):not(.lock):hover .hrlg-push-lbl { color: #ffd84a; }
+    ${X} .hrlg-push.armed { border-color: #ffd84a !important; border-left-color: var(--pc, #ffd84a) !important; box-shadow: 0 0 10px rgba(255,216,74,0.5) !important; }
+    ${X} .hrlg-push.off { opacity: 0.6; filter: grayscale(0.8); }
+    ${X} .hrlg-push.entropy { background: linear-gradient(180deg, #35244f 0%, #221537 55%, #170e26 100%) !important; border-color: #c9a5ff !important; border-left-color: #c9a5ff !important; animation: hrlgEntropyThrob 0.9s ease-in-out infinite !important; overflow: hidden; }
+    ${X} .hrlg-push.entropy .hrlg-push-lbl { font-size: 9px; letter-spacing: 0.06em; }
+    ${X} .hrlg-push.entropy .hrlg-push-sub { font-size: 7px; padding: 2px 4px 1px; }
+    ${D} .ewd-inv { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; font-size: 8px; color: #8f8aa8; }
+    ${D} .ewd-invlbl { flex: none; }
+    ${D} .ewd-inv .hrlg-items { gap: 4px; justify-content: flex-start; }
+    ${X} .ewd-inv .hrlg-item-slot {
+      width: 30px !important; height: 30px !important; background: var(--ewdu-tool, #0e0f19) !important; border: 1px solid var(--ewdu-tooledge, #3a3c52) !important;
+      border-image: none !important; border-radius: 0 !important; box-shadow: none !important; clip-path: none !important;
+      transform: none !important; rotate: none !important; scale: none !important;
+    }
+    ${X} .ewd-inv .hrlg-item-slot[style*="border-color"] { border-color: #57d97e !important; box-shadow: 0 0 6px rgba(87,217,126,0.35) !important; }
+    ${X} .ewd-inv .hrlg-item-slot:hover:not(.empty):not(.off) { border-color: #e8e4d8 !important; }
+    ${X} .ewd-inv .hrlg-item-slot.armed { border-color: #ffd84a !important; box-shadow: 0 0 8px rgba(255,216,74,0.6) !important; }
+    ${X} .ewd-inv .hrlg-item-slot > * { transform: none; }
+    ${D} .ewd-inv .hrlg-item-glyph { font-size: 15px; }
+    ${D} .ewd-inv .hrlg-item-count { right: 1px; bottom: 0; font-size: 7px; letter-spacing: 0; color: #fff; }
+    ${D} .ewd-inv .hrlg-mats { margin-left: auto; gap: 6px; font-size: 9px; letter-spacing: 0; }
+    ${D} .ewd-inv .hrlg-mats-lbl { font-size: 8px; letter-spacing: 0; color: #8f8aa8; }
+
+    /* ── 2 WHAT ── */
+    ${D} .ewd-cmd { width: 360px; padding: 18px 10px 10px; display: flex; flex-direction: column; }
+    ${D} .ewd-crumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: -4px 0 8px; min-height: 22px; }
+    ${D} .ewd-back {
+      flex: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; pointer-events: auto;
+      background: linear-gradient(#ff3b4c, #b8101f); color: #fff; padding: 5px 8px 4px; font-size: 9px; line-height: 1;
+      border: 2px solid #ffd0d4; box-shadow: 0 2px 0 #4a0008; text-shadow: 1px 1px 0 #4a0008;
+    }
+    ${D} .ewd-back:hover { filter: brightness(1.18); }
+    ${D} .ewd-back:active { transform: translateY(1px); box-shadow: 0 1px 0 #4a0008; }
+    ${D} .ewd-back-arrow { font-size: 8px; }
+    ${D} .ewd-crumb { flex: 1 1 0; min-width: 0; font-size: 9px; line-height: 1.5; color: #8f8aa8; overflow-wrap: anywhere; }
+    ${D} .ewd-crumb b { font-weight: normal; color: #e8e4d8; }
+    ${D} .ewd-sep { margin: 0 4px; color: #55526a; }
+    ${D} .ewd-cnt { flex: none; margin-left: auto; font-size: 8px; color: #8f8aa8; }
+    ${D} .ewd-parent, ${D} .ewd-armed {
+      display: flex; flex-direction: column; gap: 3px; margin: 0 0 6px; padding: 0 0 6px 16px;
+      border-bottom: 1px dashed #3a3c52; cursor: pointer; pointer-events: auto;
+    }
+    ${D} .ewd-parent .hrlg-blade:not(.active) { opacity: 0.5; }
+    ${D} .ewd-list {
+      display: flex; flex-direction: column; gap: 3px; padding: 2px 0 2px 16px;
+      max-height: var(--ewd-list-max); overflow-y: auto; overflow-x: hidden;
+      scrollbar-width: thin; scrollbar-color: #6a4dff rgba(255,255,255,0.05); overscroll-behavior: contain; pointer-events: auto;
+    }
+    ${D} .ewd-list::-webkit-scrollbar { width: 5px; }
+    ${D} .ewd-list::-webkit-scrollbar-thumb { background: #6a4dff; }
+    ${D} .ewd-mode {
+      margin: 0 0 6px; padding: 8px 10px; font-size: 9px; line-height: 1.5; letter-spacing: 0.04em; color: #e8e4d8;
+      background: var(--ewdu-row, #0c0d16); border: 1px solid var(--ewdu-rowedge, #262838); border-left: 5px solid #ffd84a;
+    }
+    ${D} .ewd-confirm {
+      display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 8px; margin-top: 6px; padding: 7px;
+      cursor: pointer; pointer-events: auto; text-align: center;
+      background: linear-gradient(#36e07a, #0f9a43); border: 2px solid #c9ffd9; color: #052b12; font-size: 11px; line-height: 1.25;
+      box-shadow: 0 2px 0 #03310f; animation: ewdCfPulse 1.2s ease-in-out infinite;
+    }
+    ${D} .ewd-confirm:hover { filter: brightness(1.12); }
+    ${D} .ewd-confirm:active { transform: translateY(1px); }
+    ${D} .ewd-cf-check { font-size: 12px; }
+    ${D} .ewd-cf-tgt { color: #0b3d1d; }
+    @keyframes ewdCfPulse {
+      0%, 100% { box-shadow: 0 2px 0 #03310f, 0 0 0 rgba(54,224,122,0); }
+      50%      { box-shadow: 0 2px 0 #03310f, 0 0 14px rgba(54,224,122,0.7); }
+    }
+    ${D} .ewd-allman {
+      margin-top: 5px; padding: 5px 8px; text-align: center; cursor: pointer; pointer-events: auto;
+      font-size: 8px; color: #ffd84a; background: var(--ewdu-row, #0c0d16); border: 1px solid #ffd84a;
+    }
+    ${D} .ewd-allman:hover { background: #1b1830; }
+    ${D}.ewd-watch .ewd-list { margin-top: 6px; }
+    /* the rows: one dark plate each, the job's colour down the left side */
+    ${X} .hrlg-blade { height: auto !important; min-height: 26px !important; }
+    ${X} .hrlg-blade.trow { min-height: 40px !important; }
+    ${X} .hrlg-blade.sel::after { content: none !important; display: none !important; }
+    ${X} .hrlg-blade .hrlg-body {
+      position: relative; height: auto !important; min-height: inherit; flex: 1; min-width: 0;
+      display: flex; align-items: center; gap: 8px !important; padding: 3px 8px 3px 9px !important;
+      background: var(--ewdu-row, #0c0d16) !important; border: 1px solid var(--ewdu-rowedge, #262838) !important; border-left: 5px solid var(--bc, var(--hfc, #3d7bff)) !important;
+      border-image: none !important; border-radius: 0 !important; box-shadow: none !important; clip-path: none !important;
+      transform: none !important; rotate: none !important; scale: none !important; filter: none !important; opacity: 1 !important;
+      isolation: auto !important; animation: none !important; font-size: 12px; color: #e8e4d8;
+    }
+    ${X} .hrlg-blade .hrlg-body::before { content: none !important; display: none !important; }
+    ${X} .hrlg-blade .hrlg-body > *:not(.hrlg-cursor):not(.hrlg-flash) { transform: none; }
+    ${X} .hrlg-blade .hrlg-body.danger { background: #1a070b !important; border-color: #6b1520 !important; border-left-color: #e2283a !important; }
+    ${X} .hrlg-blade[data-bid="end"], ${X} .hrlg-blade[data-bid="cancel"] { margin-top: 4px; }
+    ${X} .hrlg-glyph { width: 14px; font-size: 11px; }
+    ${X} .hrlg-blade.catc .hrlg-glyph { width: 16px; height: 16px; line-height: 16px; font-size: 10px; border-radius: 3px; }
+    ${X} .hrlg-blabel { font-family: inherit; font-size: 12px; font-weight: normal; letter-spacing: 0.02em; line-height: 1.25 !important; color: #e8e4d8; text-shadow: 1px 1px 0 #000; }
+    ${X} .hrlg-lblcol { gap: 3px; }
+    ${X} .hrlg-brow1, ${X} .hrlg-brow2 { flex-wrap: wrap; row-gap: 3px; overflow: visible; }
+    ${X} .hrlg-blade .hrlg-cursor {
+      position: absolute; left: -19px; top: 50%; margin: -6px 0 0 !important; font-size: 11px; line-height: 12px; color: #ffd84a !important;
+      text-shadow: 1px 1px 0 #000, 0 0 6px rgba(0,0,0,0.9) !important;
+    }
+    ${X} .hrlg-pw { font-size: 10px; }
+    ${X} .hrlg-acc { font-size: 9px; }
+    ${X} .hrlg-chip { font-size: 8px !important; letter-spacing: 0 !important; }
+    ${X} .hrlg-cfree { font-size: 7px; letter-spacing: 0; margin-right: 0; }
+    ${X} .hrlg-tag { font-size: 7px; letter-spacing: 0.02em; padding: 2px 4px 1px; }
+    ${X} .hrlg-endsturn, ${X} .hrlg-lblcol > .hrlg-endsturn { font-size: 7px; font-weight: normal; letter-spacing: 0.02em; padding: 2px 4px 1px; line-height: 1.2; }
+    ${X} .hrlg-meta { font-size: 8px; letter-spacing: 0; white-space: normal; overflow: visible; text-overflow: clip; }
+    ${X} .hrlg-subline { font-size: 7px; letter-spacing: 0.02em; line-height: 1.3; white-space: normal; overflow: visible; text-overflow: clip; }
+    ${X} .hrlg-note { font-size: 7px; font-weight: normal; letter-spacing: 0; padding: 2px 4px 1px; }
+    ${X} .hrlg-check { font-size: 7px; font-weight: normal; letter-spacing: 0; padding: 2px 4px 1px; }
+    ${X} .hrlg-tport { width: 30px; height: 30px; }
+    /* a target row with every chip (damage, turns away, MOVE→CAST) runs out of room: the last chip drops to a second
+       line on the right instead of squeezing the turn count to nothing */
+    ${X} .hrlg-blade.trow .hrlg-body { flex-wrap: wrap; row-gap: 3px; }
+    ${X} .hrlg-blade.trow .hrlg-meta { flex-shrink: 0; overflow: visible; }
+    ${X} .hrlg-blade.trow .hrlg-note { margin-left: auto; }
+    ${X} .hrlg-tcol .hrlg-blabel { font-size: 10px; }
+    ${X} .hrlg-thp-num, ${X} .hrlg-trow.mp .hrlg-thp-num { font-size: 8px; }
+    ${X} .hrlg-blade.tut .hrlg-body { box-shadow: 0 0 14px rgba(255,205,107,0.55) !important; }
+    ${X} .hrlg-blade.active .hrlg-body { border-color: #ffd84a !important; border-left-color: var(--bc, #ffd84a) !important; box-shadow: 0 0 10px rgba(255,216,74,0.35) !important; }
+    ${X} .hrlg-blade.dead .hrlg-body, ${X} .hrlg-blade.ghost .hrlg-body { background: var(--ewdu-dead, #0a0a12) !important; border-color: var(--ewdu-deadedge, #1f2030) !important; border-left: 5px solid #3a3848 !important; }
+    ${X} .hrlg-blade.dead .hrlg-blabel, ${X} .hrlg-blade.ghost .hrlg-blabel, ${X} .hrlg-blade.dead .hrlg-glyph, ${X} .hrlg-blade.ghost .hrlg-glyph { color: #5f5c70 !important; text-shadow: none !important; }
+    ${X} .hrlg-blade.dead.catc .hrlg-glyph, ${X} .hrlg-blade.ghost.catc .hrlg-glyph { background: #2a2838 !important; }
+    ${selB(X)} {
+      background: ${SEL} !important; border-color: #c9b8ff !important; border-left-color: var(--bc, #ffd84a) !important;
+      box-shadow: 0 0 14px rgba(124,77,255,0.55) !important; z-index: 2;
+    }
+    ${selL(X)} { color: #ffd84a !important; text-shadow: 1px 1px 0 #000 !important; }
+    ${X} .hrlg-blade.ghost.sel .hrlg-body, ${X} .hrlg-blade.dead.sel .hrlg-body { background: #1b1830 !important; border-color: #6a5a9a !important; border-left-color: #3a3848 !important; box-shadow: none !important; }
+    ${X} .hrlg-blade.ghost.sel .hrlg-blabel, ${X} .hrlg-blade.dead.sel .hrlg-blabel { color: #a8a2c0 !important; }
+    ${X} .hrlg-blade.pend .hrlg-body { border-color: #57d98a !important; border-left-color: #57d98a !important; box-shadow: 0 0 12px rgba(87,217,138,0.45) !important; }
+    ${X} .ewd-list.has-pick .hrlg-blade.pend .hrlg-body { border-color: #57d98a !important; box-shadow: 0 0 14px rgba(87,217,138,0.6) !important; }
+
+    /* ── 3 ON WHAT ── */
+    ${D} .ewd-focus { width: 580px; padding: 14px 12px 10px; display: flex; flex-direction: column; }
+    ${D} .ewd-tabs { position: absolute; left: 10px; right: 10px; bottom: calc(100% + 2px); z-index: 2; display: flex; align-items: flex-end; pointer-events: auto; }
+    ${D} .ewd-tabs .hrlg-ttabs { display: flex; flex-wrap: wrap-reverse; align-items: flex-end; gap: 0; min-width: 0; flex: 0 1 auto; }
+    ${X} .ewd-tabs .hrlg-ttab {
+      flex: 0 0 auto; min-width: 0; height: auto !important; margin: 0 -2px 0 0; padding: 6px 10px 5px !important; gap: 6px !important; overflow: visible;
+      background: var(--ewdu-tab, #0b0c15) !important; border: 2px solid var(--ewdu-tabedge, #5d5a66) !important; border-bottom: 0 !important; color: #8f8aa8 !important;
+      border-image: none !important; border-radius: 0 !important; box-shadow: none !important; clip-path: none !important;
+      transform: none !important; rotate: none !important; scale: none !important; animation: none !important;
+    }
+    ${X} .ewd-tabs .hrlg-ttab::before, ${X} .ewd-tabs .hrlg-ttab::after { content: none !important; display: none !important; }
+    ${X} .ewd-tabs .hrlg-ttab > * { transform: none; }
+    ${X} .ewd-tabs .hrlg-ttab:hover:not(.on) { color: #d8d2ec !important; border-color: #8a86a0 !important; }
+    ${X} .ewd-tabs .hrlg-ttab.on { position: relative; z-index: 2; margin-bottom: -2px; padding-bottom: 7px !important; background: var(--ewdu-tabon, rgb(22,24,42)) !important; border-color: var(--ewdu-edge, #e8e4d8) !important; color: #e8e4d8 !important; }
+    ${D} .ewd-tabs .hrlg-ttab-ic { width: 14px; height: 14px; font-size: 10px; }
+    ${D} .ewd-tabs .hrlg-ttab-tx { font-size: 9px; font-weight: normal; letter-spacing: 0.02em; overflow: visible; }
+    ${D} .ewd-tabs .hrlg-ttab-own { margin-left: 2px; font-size: 7px; font-weight: normal; letter-spacing: 0; padding: 2px 3px 1px; }
+    ${D} .ewd-tabkeys { flex: none; display: inline-flex; gap: 3px; align-items: center; margin: 0 0 5px 10px; }
+    /* the unit card: portrait | name, badges, where, HP / MP, statuses; the stats + elements under it; its buttons */
+    ${D} .ewd-ucard { display: grid; grid-template-columns: 100px minmax(0, 1fr); grid-template-areas: "port main" "low low" "btns btns"; gap: 0 12px; align-items: start; }
+    ${D} .ewd-ucard.self { grid-template-columns: minmax(0, 1fr); grid-template-areas: "main" "low" "btns"; }
+    ${D} .ewd-uport { grid-area: port; position: relative; width: 100px; height: 100px; overflow: hidden; background: #11121c; border: 2px solid #3a3c52; }
+    ${D} .ewd-uport.enemy { border-color: #b8303f; }
+    ${D} .ewd-uport.ally { border-color: #2a6fd6; }
+    ${D} .ewd-uimg { position: absolute; inset: 0; background: center / cover no-repeat; image-rendering: pixelated; pointer-events: none; }
+    ${D} .ewd-uport.sprite .ewd-uimg { background-size: auto 150%; background-position: center 14%; }
+    ${D} .ewd-umain { grid-area: main; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+    ${D} .ewd-uhead { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; }
+    ${D} .ewd-uname {
+      flex: none; max-width: 100%; font-family: 'Ghiya Strokes Italic', Georgia, serif; font-size: 21px; line-height: 1.05; letter-spacing: 0;
+      color: #61f180; white-space: nowrap; text-shadow: 2px 2px 0 #000; padding-bottom: 2px;
+    }
+    ${X} .ewd-ucard.enemy .ewd-uname { color: #ff5a6e !important; }
+    ${D} .ewd-coord { margin-left: auto; flex: none; font-size: 9px; color: #8f8aa8; white-space: nowrap; }
+    ${D} .ewd-umain .hrlg-qvitals { padding: 0; gap: 4px; }
+    ${D} .ewd-umain .hrlg-qtypes { display: none; }
+    ${D} .ewd-umain .hrlg-qv-lbl { width: 22px; font-size: 9px; font-weight: normal; letter-spacing: 0; color: #8f8aa8; }
+    ${D} .ewd-umain .hrlg-qv-lbl.mp { color: #8fb4e8; }
+    ${D} .ewd-umain .hrlg-thp, ${D} .ewd-umain .hrlg-thp.mp { height: 10px; }
+    ${D} .ewd-umain .hrlg-qv-num, ${D} .ewd-umain .hrlg-qv-num.mp { font-size: 9px; letter-spacing: 0; }
+    ${D} .ewd-umain .hrlg-qv-fc { font-size: 9px; font-weight: normal; letter-spacing: 0; }
+    ${D} .ewd-umain .hrlg-qp-status, ${D} .ewd-umain .hrlg-qp-buffs { gap: 4px; }
+    ${D} .ewd-umain .hrlg-schip { font-size: 7px; padding: 3px 4px 2px; letter-spacing: 0.02em; animation: none; }
+    ${D} .ewd-ulow { grid-area: low; display: flex; gap: 12px; margin-top: 10px; align-items: stretch; min-width: 0; }
+    ${D} .ewd-ulow .hrlg-qstats {
+      flex: 1 1 auto; min-width: 0; margin: 0; display: grid; grid-template-columns: repeat(3, auto); justify-content: space-between;
+      align-content: center; gap: 4px 10px; padding: 6px 8px; background: var(--ewdu-box, #0b0c15); border: 1px solid var(--ewdu-rowedge, #262838);
+    }
+    ${D} .ewd-ulow .hrlg-qstat { gap: 5px; line-height: 1.4; white-space: nowrap; }
+    ${D} .ewd-ulow .hrlg-qstat[data-qs="atk"] { order: 1; } ${D} .ewd-ulow .hrlg-qstat[data-qs="matk"] { order: 2; } ${D} .ewd-ulow .hrlg-qstat[data-qs="mov"] { order: 3; }
+    ${D} .ewd-ulow .hrlg-qstat[data-qs="def"] { order: 4; } ${D} .ewd-ulow .hrlg-qstat[data-qs="mdef"] { order: 5; } ${D} .ewd-ulow .hrlg-qstat[data-qs="rng"] { order: 6; }
+    ${D} .ewd-ulow .hrlg-qstat[data-qs="vis"] { order: 7; } ${D} .ewd-ulow .hrlg-qstat[data-qs="crt"] { order: 8; } ${D} .ewd-ulow .hrlg-qstat[data-qs="eva"] { order: 9; }
+    ${D} .ewd-ulow .hrlg-qstat-lbl { width: 46px; font-size: 9px; font-weight: normal; letter-spacing: 0; color: #8f8aa8; }
+    ${D} .ewd-ulow .hrlg-qstat-val { font-size: 9px; font-weight: normal; line-height: 1.4; }
+    ${D} .ewd-ulow .hrlg-qstat-bar { display: none !important; }
+    ${D} .ewd-ulow .hrlg-qstat-stg { font-size: 7px; font-weight: normal; padding: 2px 2px 1px; }
+    ${D} .ewd-ulow .ew-grade.sm { --gsz: 15px; margin: 0; }
+    ${D} .ewd-ulow .ew-grade.sm i { font-size: 8px; }
+    ${D} .ewd-ulow .hrlg-qelem {
+      flex: none; margin: 0; align-self: stretch; align-content: center; padding: 6px 8px; gap: 2px 0;
+      background: var(--ewdu-box, #0b0c15); border: 1px solid var(--ewdu-rowedge, #262838); border-radius: 0;
+    }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-row { grid-template-columns: repeat(6, 22px); gap: 0 4px; }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-cell { min-width: 22px; height: 18px; }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-rx { height: 13px; font-size: 11px; }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-rx.weak { font-size: 12px; }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-el .ew-elem-icon, ${D} .ewd-ulow .hrlg-qelem .ew-elem-el .ew-elicon { width: 16px; height: 16px; }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-el { font-size: 13px; }
+    ${D} .ewd-ulow .hrlg-qelem .ew-elem-rxs + .ew-elem-els { margin-top: 3px; }
+    /* the tile / object card: the picture | name, facts, stats, effects; its buttons under it */
+    ${D} .ewd-focus .hrlg-tcard {
+      position: relative; width: auto; margin: 0; pointer-events: auto; font-family: inherit; color: #e8e4d8;
+      display: grid; grid-template-columns: 100px minmax(0, 1fr); grid-template-areas: "pic main" "btns btns"; gap: 0 12px; align-items: start;
+    }
+    ${D} .ewd-focus .hrlg-tcard > .hrlg-tc-bg { display: none !important; }
+    ${D} .ewd-focus .hrlg-tc-pic { width: 100px; height: 100px; min-height: 100px; --tc-pic: 100px; border: 2px solid #3a3c52; }
+    ${D} .ewd-focus .hrlg-tc-glyph { font-size: 40px; }
+    ${D} .ewd-focus .hrlg-tc-main { gap: 6px; min-width: 0; }
+    ${D} .ewd-focus .hrlg-tcard .hrlg-tc-name { height: auto; min-height: 0; padding: 0; border-bottom: 0; flex-wrap: wrap; gap: 4px 6px; }
+    ${D} .ewd-focus .hrlg-view-tab-icon { font-size: 12px; }
+    ${D} .ewd-focus .hrlg-view-tab-text { font-family: 'Ghiya Strokes Italic', Georgia, serif; font-size: 21px; line-height: 1.05; letter-spacing: 0; text-transform: none; color: #e8e4d8; text-shadow: 2px 2px 0 #000; padding-bottom: 2px; }
+    ${D} .ewd-focus .hrlg-view-tab-count { font-size: 9px; letter-spacing: 0; color: #8f8aa8; }
+    ${D} .ewd-focus .hrlg-tc-own { font-size: 7px; font-weight: normal; letter-spacing: 0; padding: 2px 4px 1px; }
+    ${D} .ewd-focus .hrlg-tc-hp { padding: 0; }
+    ${D} .ewd-focus .hrlg-tc-hp .hrlg-qv-lbl { width: 22px; font-size: 9px; font-weight: normal; letter-spacing: 0; color: #8f8aa8; }
+    ${D} .ewd-focus .hrlg-tc-hp .hrlg-qv-num { font-size: 9px; }
+    ${D} .ewd-focus .hrlg-tc-facts { padding: 0; gap: 0 14px; font-size: 9px; font-weight: normal; line-height: 1.7; letter-spacing: 0; color: #c9c6d8; }
+    ${D} .ewd-focus .hrlg-tc-stats { padding: 0; gap: 4px 14px; }
+    ${D} .ewd-focus .hrlg-tc-st > b { font-size: 8px; font-weight: normal; letter-spacing: 0; }
+    ${D} .ewd-focus .hrlg-tc-st > i { font-size: 9px; font-weight: normal; }
+    ${D} .ewd-focus .hrlg-tc-fx { padding: 0; gap: 5px; }
+    ${D} .ewd-focus .hrlg-tc-chip { font-size: 8px; font-weight: normal; letter-spacing: 0; padding: 4px 6px 3px; }
+    ${D} .ewd-focus .hrlg-tc-btns { grid-area: btns; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding: 0 0 0 4px; border-top: 0; background: none; }
+    /* its small buttons: slanted PS1 keys */
+    ${tb} { flex: 0 0 auto; min-height: 0 !important; height: auto !important; animation: none; }
+    ${tb} > .hrlg-body { min-height: 0 !important; padding: 6px 9px 5px !important; gap: 6px !important; border: 2px solid #c9c6d8 !important; transform: skewX(-8deg) !important; font-size: 9px; }
+    ${tb} > .hrlg-body > *:not(.hrlg-flash) { transform: skewX(8deg); }
+    ${tb} .hrlg-cursor { display: none !important; }
+    ${tb} .hrlg-blabel { font-size: 9px; }
+    ${tb}.catc[data-bid^="ta:inspect:"]:not(.dead) > .hrlg-body { border-color: #ffc83c !important; }
+    ${tb}.sel > .hrlg-body, ${tb}:hover:not(.dead):not(.muted):not(.ghost) > .hrlg-body { background: ${SEL} !important; border-color: #e7dcff !important; box-shadow: 0 0 12px rgba(124,77,255,0.6) !important; }
+    ${tb}.dead > .hrlg-body, ${tb}.ghost > .hrlg-body { border-color: #3a3848 !important; }
+
+    /* ── 4 THE FOOTER ── */
+    ${D} > .ewd-foot {
+      grid-column: 1 / -1; position: relative; min-width: 0; margin-top: -2px; pointer-events: auto;
+      contain: inline-size;   /* its words never widen the panel: it takes the bays' width and wraps inside it */
+      display: flex; align-items: center; gap: 14px; padding: 7px 12px;
+      height: calc(var(--ewd-say-max) + 18px);   /* ONE HEIGHT whatever it says: a hovered row's longer description never lifts the bays (that bounced the panel under a still mouse) */
+      background: linear-gradient(180deg, var(--ewdu-foot1, rgba(14,15,28,0.97)), var(--ewdu-foot2, rgba(4,4,9,0.97)));
+      border: 2px solid var(--ewdu-edge, #e8e4d8); box-shadow: inset 0 0 0 2px #000, 0 6px 18px rgba(0,0,0,0.55);
+    }
+    ${D} .ewd-say { flex: 1 1 auto; min-width: 0; max-height: var(--ewd-say-max); overflow-y: auto; scrollbar-width: thin; font-size: 14px; line-height: 1.35; letter-spacing: 0.02em; color: #e8e4d8; text-shadow: 1px 1px 0 #000; }
+    ${X} .ewd-say, ${X} .ewd-say *:not(.ew-descbar-name):not(.ew-descbar-ico) { font-family: 'IBM Plex Mono', monospace !important; }
+    ${X} .ewd-say .ew-descbar-name { font-family: 'Press Start 2P', monospace !important; font-size: 11px; letter-spacing: 0; color: #fff; text-shadow: 1px 1px 0 #000; }
+    ${D} .ewd-say .ew-descbar-inner { min-height: 0; padding: 0; background: none; justify-content: flex-start; gap: 3px 10px; }
+    ${D} .ewd-say .ew-descbar-ico { width: 18px; height: 18px; font-size: 11px; border-radius: 3px; }
+    ${D} .ewd-say .ew-descbar-desc { max-width: none; flex: 1 1 260px; font-size: inherit; line-height: inherit; color: #e8e4d8; }
+    ${D} .ewd-say .ew-descbar-stats, ${D} .ewd-say .ew-descbar-status { font-size: 0.8em; white-space: normal; }
+    ${D} .ewd-say .ew-descbar-stats { color: #8f8aa8; }
+    ${D} .ewd-say .dlg-prompt { color: #e8e4d8; letter-spacing: 0.04em; }
+    ${D} .ewd-say .dlg-prompt strong { color: #f0d060; }
+    ${D} .ewd-say .dlg-prompt-cursor { display: inline-block; color: #f0d060; animation: dlgPromptBlink 1.1s ease-in-out infinite; }
+    ${D} .ewd-say .dlg-prompt-hint { display: inline-block; margin-left: 8px; font-size: 0.8em; color: #8d96ab; }
+    ${D} .ewd-say .dlg-effective { color: #55d38a; }
+    ${D} .ewd-say .dlg-resist { color: #c87070; }
+    ${D} .ewd-say .dlg-levelup { color: #ffe066; }
+    ${D} .ewd-say .dlg-spell-learn { color: #88ddff; }
+    ${D} .ewd-say .dlg-sec-job { color: #d4a0ff; }
+    ${D} .ewd-keys { flex: 0 1 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px 10px; font-size: 8px; color: #8f8aa8; }
+    ${D} .ewd-key { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+
+    /* ── COMPACT (a smaller or shorter window): the same panel, its own sizes ── */
+    ${D}.ewd-c { left: 8px; bottom: 6px; --ewd-say-max: 48px; --ewd-say-min: 8px; --ewd-list-max: calc(100vh / var(--ewd-s, 1) - 200px); }
+    ${D}.ewd-c .ewd-plate { top: -9px; padding: 1px 6px; font-size: 7px; }
+    ${D}.ewd-c .ewd-kbd { font-size: 7px; padding: 2px 3px 1px; }
+    ${D}.ewd-c .ewd-actor { width: 246px; padding: 11px 8px 7px; }
+    ${D}.ewd-c .ewd-atop { gap: 8px; }
+    ${D}.ewd-c .ewd-ring, ${D}.ewd-c .ewd-ring .hrlg-hub { width: 66px; height: 66px; }
+    ${D}.ewd-c .ewd-aid { gap: 3px; }
+    ${D}.ewd-c .ewd-rom { font-size: 7px; }
+    ${D}.ewd-c .ewd-name, ${D}.ewd-c .ewd-uname, ${D}.ewd-c .ewd-focus .hrlg-view-tab-text { font-size: 15px; }
+    ${D}.ewd-c .ewd-info { font-size: 9px; gap: 3px; }
+    ${D}.ewd-c .ewd-lv { font-size: 7px; }
+    ${D}.ewd-c .ewd-badges { gap: 3px; }
+    ${D}.ewd-c .ewd-badges .hrlg-schip, ${D}.ewd-c .ewd-umain .hrlg-schip { font-size: 6px; padding: 2px 3px 1px; }
+    ${D}.ewd-c .ewd-aid .hrlg-vlbl, ${D}.ewd-c .ewd-aplbl { width: 16px; font-size: 7px; }
+    ${D}.ewd-c .ewd-aid .hrlg-vbar, ${D}.ewd-c .ewd-aid .hrlg-vbar.mp { height: 7px; }
+    ${D}.ewd-c .ewd-aid .hrlg-vnum, ${D}.ewd-c .ewd-aid .hrlg-vrow.mp .hrlg-vnum { font-size: 7px; }
+    ${D}.ewd-c .ewd-aid .hrlg-wave { height: 16px; }
+    ${D}.ewd-c .ewd-aprow { gap: 4px; min-height: 16px; }
+    ${XC} .ew-ap-press.docked { gap: 3px !important; }
+    ${XC} .ew-ap-press.docked .ew-ap-ico { width: 16px !important; height: 16px !important; }
+    ${XC} .ew-ap-press.docked .ew-ap-ends { font-size: 6px !important; padding: 2px 3px 1px !important; }
+    ${D}.ewd-c .ewd-tools { gap: 3px; margin-top: 6px; }
+    ${XC} .hrlg-push { min-height: 19px; padding: 2px 5px !important; gap: 4px !important; border-left-width: 3px !important; }
+    ${XC} .hrlg-push-glyph { width: 10px; font-size: 9px; }
+    ${XC} .hrlg-push-lbl, ${XC} .hrlg-push.entropy .hrlg-push-lbl { font-size: 7px; }
+    ${XC} .hrlg-push-sub, ${XC} .hrlg-push.entropy .hrlg-push-sub { font-size: 6px; }
+    ${D}.ewd-c .ewd-inv { margin-top: 5px; gap: 3px 4px; font-size: 7px; }
+    ${XC} .ewd-inv .hrlg-item-slot { width: 21px !important; height: 21px !important; }
+    ${D}.ewd-c .ewd-inv .hrlg-item-glyph { font-size: 11px; }
+    ${D}.ewd-c .ewd-inv .hrlg-item-count { font-size: 6px; }
+    ${D}.ewd-c .ewd-inv .hrlg-mats { gap: 4px; font-size: 7px; }
+    ${D}.ewd-c .ewd-inv .hrlg-mats-lbl { font-size: 7px; }
+    ${D}.ewd-c .ewd-cmd { width: 282px; padding: 12px 7px 7px; }
+    ${D}.ewd-c .ewd-crumbs { margin: -3px 0 5px; min-height: 16px; gap: 3px 6px; }
+    ${D}.ewd-c .ewd-back { font-size: 7px; padding: 3px 5px 2px; gap: 4px; }
+    ${D}.ewd-c .ewd-back-arrow { font-size: 6px; }
+    ${D}.ewd-c .ewd-crumb { font-size: 7px; }
+    ${D}.ewd-c .ewd-cnt { font-size: 6px; }
+    ${D}.ewd-c .ewd-parent, ${D}.ewd-c .ewd-armed { gap: 2px; margin-bottom: 4px; padding: 0 0 4px 13px; }
+    ${D}.ewd-c .ewd-list { gap: 2px; padding-left: 13px; }
+    ${D}.ewd-c .ewd-mode { font-size: 7px; padding: 5px 7px; margin-bottom: 4px; border-left-width: 4px; }
+    ${D}.ewd-c .ewd-confirm { font-size: 8px; padding: 5px; margin-top: 4px; gap: 4px 6px; }
+    ${D}.ewd-c .ewd-cf-check { font-size: 9px; }
+    ${D}.ewd-c .ewd-allman { font-size: 6px; padding: 4px 6px; }
+    ${XC} .hrlg-blade { min-height: 19px !important; }
+    ${XC} .hrlg-blade.trow { min-height: 30px !important; }
+    ${XC} .hrlg-blade .hrlg-body { padding: 2px 6px 2px 7px !important; gap: 6px !important; border-left-width: 4px !important; font-size: 9px; }
+    ${XC} .hrlg-blade.dead .hrlg-body, ${XC} .hrlg-blade.ghost .hrlg-body { border-left-width: 4px !important; }
+    ${XC} .hrlg-blabel { font-size: 9px; }
+    ${XC} .hrlg-glyph { width: 10px; font-size: 8px; }
+    ${XC} .hrlg-blade.catc .hrlg-glyph { width: 12px; height: 12px; line-height: 12px; font-size: 8px; border-radius: 2px; }
+    ${XC} .hrlg-blade .hrlg-cursor { left: -15px; margin-top: -5px !important; font-size: 8px; line-height: 10px; }
+    ${XC} .hrlg-pw { font-size: 8px; }
+    ${XC} .hrlg-acc, ${XC} .hrlg-chip, ${XC} .hrlg-meta { font-size: 7px !important; }
+    /* a row's type / element / bonus badges carry their own inline sizes: scale them with the compact rows so a spell row
+       stays two lines instead of four */
+    ${XC} .hrlg-badges { zoom: 0.7; }
+    ${XC} .hrlg-cfree, ${XC} .hrlg-tag, ${XC} .hrlg-endsturn, ${XC} .hrlg-lblcol > .hrlg-endsturn, ${XC} .hrlg-subline, ${XC} .hrlg-note, ${XC} .hrlg-check { font-size: 6px; }
+    ${XC} .hrlg-tport { width: 22px; height: 22px; }
+    ${XC} .hrlg-tcol .hrlg-blabel { font-size: 8px; }
+    ${XC} .hrlg-thp-num, ${XC} .hrlg-trow.mp .hrlg-thp-num { font-size: 6px; }
+    ${XC} .hrlg-thp { height: 7px; }
+    ${D}.ewd-c .ewd-focus { width: 430px; padding: 10px 8px 7px; }
+    ${D}.ewd-c .ewd-tabs { left: 8px; right: 8px; }
+    ${XC} .ewd-tabs .hrlg-ttab { padding: 4px 7px 4px !important; gap: 4px !important; }
+    ${XC} .ewd-tabs .hrlg-ttab.on { padding-bottom: 6px !important; }
+    ${D}.ewd-c .ewd-tabs .hrlg-ttab-ic { width: 10px; height: 10px; font-size: 8px; }
+    ${D}.ewd-c .ewd-tabs .hrlg-ttab-tx { font-size: 7px; }
+    ${D}.ewd-c .ewd-tabs .hrlg-ttab-own { font-size: 6px; }
+    ${D}.ewd-c .ewd-tabkeys { margin: 0 0 4px 8px; }
+    ${D}.ewd-c .ewd-ucard, ${D}.ewd-c .ewd-focus .hrlg-tcard { grid-template-columns: 64px minmax(0, 1fr); gap: 0 8px; }
+    ${D}.ewd-c .ewd-ucard.self { grid-template-columns: minmax(0, 1fr); }
+    ${D}.ewd-c .ewd-uport, ${D}.ewd-c .ewd-focus .hrlg-tc-pic { width: 64px; height: 64px; min-height: 64px; --tc-pic: 64px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-glyph { font-size: 28px; }
+    ${D}.ewd-c .ewd-umain, ${D}.ewd-c .ewd-focus .hrlg-tc-main { gap: 4px; }
+    ${D}.ewd-c .ewd-coord, ${D}.ewd-c .ewd-focus .hrlg-view-tab-count { font-size: 7px; }
+    ${D}.ewd-c .ewd-umain .hrlg-qv-lbl, ${D}.ewd-c .ewd-focus .hrlg-tc-hp .hrlg-qv-lbl { width: 16px; font-size: 7px; }
+    ${D}.ewd-c .ewd-umain .hrlg-thp, ${D}.ewd-c .ewd-umain .hrlg-thp.mp { height: 7px; }
+    ${D}.ewd-c .ewd-umain .hrlg-qv-num, ${D}.ewd-c .ewd-umain .hrlg-qv-num.mp, ${D}.ewd-c .ewd-umain .hrlg-qv-fc, ${D}.ewd-c .ewd-focus .hrlg-tc-hp .hrlg-qv-num { font-size: 7px; }
+    ${D}.ewd-c .ewd-umain .hrlg-qp-status, ${D}.ewd-c .ewd-umain .hrlg-qp-buffs { gap: 3px; }
+    ${D}.ewd-c .ewd-ulow { gap: 6px; margin-top: 6px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qstats { gap: 2px 6px; padding: 4px 5px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qstat { gap: 3px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qstat-lbl { width: 36px; font-size: 7px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qstat-val { font-size: 7px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qstat-stg { font-size: 6px; }
+    ${D}.ewd-c .ewd-ulow .ew-grade.sm { --gsz: 11px; }
+    ${D}.ewd-c .ewd-ulow .ew-grade.sm i { font-size: 6px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem { padding: 4px 5px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-row { grid-template-columns: repeat(6, 15px); gap: 0 3px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-cell { min-width: 15px; height: 13px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-rx { height: 10px; font-size: 8px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-rx.weak { font-size: 9px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-el .ew-elem-icon, ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-el .ew-elicon { width: 11px; height: 11px; }
+    ${D}.ewd-c .ewd-ulow .hrlg-qelem .ew-elem-el { font-size: 9px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-facts { font-size: 7px; gap: 0 10px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-st > b { font-size: 6px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-st > i { font-size: 7px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-chip { font-size: 6px; padding: 3px 4px 2px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-chip > img { width: 10px; height: 10px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-own { font-size: 6px; }
+    ${D}.ewd-c .ewd-focus .hrlg-tc-btns { gap: 4px; margin-top: 6px; }
+    ${XC} .ewd-focus .hrlg-tc-btns > .hrlg-blade > .hrlg-body { padding: 4px 7px 3px !important; gap: 4px !important; font-size: 7px; }
+    ${XC} .ewd-focus .hrlg-tc-btns > .hrlg-blade .hrlg-blabel { font-size: 7px; }
+    ${D}.ewd-c > .ewd-foot { padding: 4px 8px; height: calc(var(--ewd-say-max) + 12px); gap: 10px; }
+    ${D}.ewd-c .ewd-say { font-size: 11px; }
+    ${XC} .ewd-say .ew-descbar-name { font-size: 8px; }
+    ${D}.ewd-c .ewd-say .ew-descbar-ico { width: 14px; height: 14px; font-size: 9px; }
+    ${D}.ewd-c .ewd-keys { font-size: 7px; gap: 4px 7px; }
+    ${D}.ewd-c .ewd-key { gap: 4px; }
+  `;
+}
 function _hudHideCss() {
   return `
     /* Hide old HUD elements replaced by React HUD */
@@ -13878,6 +15186,41 @@ function _hudHideCss() {
     @keyframes ewTcIn { 0% { opacity: 0; transform: translateY(-6px) scale(0.8); } 100% { opacity: 1; transform: none; } }
     .ew-tc-icon:hover { transform: scale(1.12); }
     .ew-tc-icon:active { transform: scale(0.96); }
+    /* ♟ THE AUTO LAMP (TurnIcon): a small lit window beside a unit that is on a Tactic; a click takes control */
+    .ew-tc-row { position: relative; display: flex; align-items: center; gap: 3px; flex: none; }
+    .ew-tc-auto {
+      flex: none; pointer-events: auto; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+      height: 15px; padding: 0 4px; margin: 0; white-space: nowrap;
+      font: 700 8px/1 'IBM Plex Mono', monospace; letter-spacing: 0.06em; color: #ffd98a;
+      background: linear-gradient(180deg, #2a1d06 0%, #140d02 100%);
+      border: 1px solid #f2c468; border-radius: 3px;
+      box-shadow: 0 0 8px rgba(242,196,104,0.45), inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 0 rgba(0,0,0,0.6);
+      transition: filter 0.12s ease, transform 0.12s ease;
+    }
+    .ew-tc-auto { animation: ewTcAutoLamp 1.4s ease-in-out infinite; }
+    .ew-tc-auto.now { animation-duration: 0.5s; }
+    @keyframes ewTcAutoLamp { 0%, 100% { box-shadow: 0 0 9px rgba(242,196,104,0.7), inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 0 rgba(0,0,0,0.6); } 50% { box-shadow: 0 0 2px rgba(242,196,104,0.2), inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 0 rgba(0,0,0,0.6); } }
+    .ew-tc-auto-x { color: #ff7a6a; font-size: 9px; font-weight: 700; }
+    .ew-tc-auto:hover { filter: brightness(1.35); transform: scale(1.08); border-color: #ff7a6a; }
+    .ew-tc-auto:hover .ew-tc-auto-lbl { color: #fff; }
+    .ew-tc-auto:active { transform: scale(0.95); }
+    /* ♟ the Tactic watch's TAKE CONTROL (the green CONFIRM look) + ALL MANUAL under it */
+    .hrlg-tacwatch-btns {
+      position: absolute; left: calc(100% + 10px); top: 34px; z-index: 6; pointer-events: none;
+      display: flex; flex-direction: column; align-items: flex-start; gap: 6px; width: max-content;
+    }
+    .hrlg-tacwatch-btns .hrlg-confirm.takectl { margin: 0; min-width: 0; width: max-content; pointer-events: auto; }
+    .hrlg-allman {
+      position: relative; margin: 0; height: 30px; flex: none; width: max-content;
+      box-sizing: border-box; display: flex; align-items: center; gap: 8px; padding: 0 14px 0 12px;
+      pointer-events: auto; cursor: pointer; z-index: 3; white-space: nowrap;
+      font: 700 11px/1 'IBM Plex Mono', monospace; letter-spacing: 0.1em; color: #ffd98a;
+      background: linear-gradient(100deg, #2a1d06 0%, #140d02 100%);
+      border: 1px solid #f2c468; border-left: 3px solid #f2c468; border-radius: 6px 15px 15px 6px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 2px 0 rgba(0,0,0,0.5);
+    }
+    .hrlg-allman:hover { filter: brightness(1.35); }
+    .hrlg-allman:active { transform: translateY(2px); }
     .ew-tc-icon.spent { opacity: 0.5; filter: saturate(0.4); }
     .ew-tc-icon.spent:hover { opacity: 0.9; filter: none; }
     .ew-tc-icon .ew-pp, .ew-tc-icon .ew-pp.active, .ew-tc-icon .ew-pp:hover { pointer-events: none; transform: none; }
@@ -14005,6 +15348,20 @@ function _hudHideCss() {
     .ew-party-reserve-bar { width: 22px; height: 3px; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
     .ew-party-reserve.seated { opacity: 0.72; }
     .ew-party-reserve-seat { position: absolute; top: -5px; right: -4px; font-size: 9px; line-height: 1; }
+    /* ══════════ THE SCORE POP (hud.js _sbPopFire, 2026-11-12): the +N on the score digits ══════════ */
+    .ew-sb-pops { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+    .ew-sb-pop { position: absolute; transform: translateY(-50%); line-height: 1; white-space: nowrap;
+      font-weight: 700; letter-spacing: 0.04em; color: #4fd8ff; will-change: transform, opacity;
+      text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 0 12px rgba(79,216,255,0.55); }
+    .ew-sb-pop.p2 { color: #ff4fa3; text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 0 12px rgba(255,79,163,0.55); }
+    .ew-sb-pop.t3, .ew-sb-pop.t4 { text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 0 0 18px currentColor; }
+    .ew-sb-pop-ring { position: absolute; width: 46px; height: 46px; border-radius: 50%; border: 2px solid #4fd8ff; box-shadow: 0 0 10px #4fd8ff; }
+    .ew-sb-pop-ring.p2 { border-color: #ff4fa3; box-shadow: 0 0 10px #ff4fa3; }
+    .ew-score-plate.ew-sb-flash.p1 { animation: ewSbFlash1 .8s ease-out; }
+    .ew-score-plate.ew-sb-flash.p2 { animation: ewSbFlash2 .8s ease-out; }
+    .ew-score-plate.ew-sb-flash.t4 { animation-duration: .9s; }
+    @keyframes ewSbFlash1 { 0% { box-shadow: 0 0 0 2px #4fd8ff, 0 0 22px 4px rgba(79,216,255,0.7); } 100% { box-shadow: 0 0 0 0 rgba(79,216,255,0), 0 0 0 0 rgba(79,216,255,0); } }
+    @keyframes ewSbFlash2 { 0% { box-shadow: 0 0 0 2px #ff4fa3, 0 0 22px 4px rgba(255,79,163,0.7); } 100% { box-shadow: 0 0 0 0 rgba(255,79,163,0), 0 0 0 0 rgba(255,79,163,0); } }
     /* ══════════ THE SCORE SIDES (hud.js ScoreSide, 2026-10-13) ══════════
        name row · tower bar · entropy gauge, one width per team; both meters fill from the centre plate outward */
     .ew-score-side { display: flex; flex-direction: column; gap: 5px; flex: none; }
@@ -14050,6 +15407,7 @@ function _hudHideCss() {
     /* THE TUTORIAL (ui.js): the coach's pointer on a blade (b.tut) and the LATER rows */
     .hrlg-blade.tut .hrlg-body { outline: 2px solid #ffcd6b; outline-offset: 1px; box-shadow: 0 0 14px rgba(255,205,107,0.55); animation: hrlgTutGlow 1.1s ease-in-out infinite; }
     @keyframes hrlgTutGlow { 0%, 100% { outline-color: #ffcd6b; } 50% { outline-color: rgba(255,205,107,0.25); } }
+    ${_ewdCss()}
   `;
 }
 function _injectHudHideStyles() {
@@ -15091,6 +16449,417 @@ const UIM_SHIPPED = {
     "selGrow": 1.08
    },
    "hint": "Black 8-bit windows: stepped corners, a thick white frame, big pixels, an arrow cursor."
+  },
+  {
+   "id": "c_mw5p8wvy2q54",
+   "label": "My Theme 3",
+   "v": 1,
+   "colors": {
+    "plateTop": "#000000",
+    "plateMid": "#000000",
+    "plateBot": "#000000",
+    "edge": "#ffffff",
+    "seam": "#000000",
+    "rim": "#000000",
+    "lip": "rgba(0,0,0,0)",
+    "headTop": "#000000",
+    "headBot": "#000000",
+    "headInk": "#ffffff",
+    "rowTop": "rgba(0,0,0,0)",
+    "rowBot": "rgba(0,0,0,0)",
+    "rowSelTop": "rgba(255,255,255,0.18)",
+    "rowSelBot": "rgba(255,255,255,0.18)",
+    "rowEdge": "rgba(255,255,255,0)",
+    "ink": "#ffffff",
+    "inkMute": "#bcbcbc",
+    "inkDim": "#7c7c7c",
+    "hair": "rgba(255,255,255,0.3)",
+    "deadBg": "#070708",
+    "deadEdge": "#202024",
+    "deadInk": "#5e5e68",
+    "sel": "#ffffff",
+    "accent": "#3cbcfc",
+    "good": "#58f898",
+    "bad": "#f83800"
+   },
+   "scan": false,
+   "skins": {
+    "panel": {
+     "on": true,
+     "slice": "",
+     "shape": "square",
+     "size": 0,
+     "fill": {
+      "kind": "solid",
+      "angle": 180,
+      "alpha": 1,
+      "c1": "#000000",
+      "c2": "#000000",
+      "c3": "#000000"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 0.5,
+      "c": "#ffffff"
+     },
+     "inner": {
+      "w": 0,
+      "c": "#000",
+      "gap": 0
+     },
+     "bevel": {
+      "w": 0,
+      "light": 0,
+      "dark": 0
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#ffffff",
+      "a": 0
+     },
+     "shadow": {
+      "y": 0,
+      "blur": 0,
+      "a": 0
+     },
+     "opacity": 0.79,
+     "pixel": 2
+    },
+    "head": {
+     "on": true,
+     "slice": "",
+     "shape": "square",
+     "size": 0,
+     "fill": {
+      "kind": "solid",
+      "angle": 180,
+      "alpha": 1,
+      "c1": "#000000",
+      "c2": "",
+      "c3": "#161618"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 1,
+      "c": "#faf9ff"
+     },
+     "inner": {
+      "w": 0,
+      "c": "#3a3a42",
+      "gap": 1
+     },
+     "bevel": {
+      "w": 2,
+      "light": 0.12,
+      "dark": 0.3
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#f0d060",
+      "a": 0.5
+     },
+     "shadow": {
+      "y": 1,
+      "blur": 2,
+      "a": 0.45
+     },
+     "opacity": 1,
+     "pixel": 1,
+     "dither": 1
+    },
+    "button": {
+     "on": true,
+     "slice": "",
+     "shape": "square",
+     "size": 16,
+     "fill": {
+      "kind": "solid",
+      "angle": 180,
+      "alpha": 0,
+      "c1": "#000000",
+      "c2": "",
+      "c3": "rgba(0,0,0,0)"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 0,
+      "c": "#ffffff"
+     },
+     "inner": {
+      "w": 0,
+      "c": "rgba(0,0,0,0)",
+      "gap": 0
+     },
+     "bevel": {
+      "w": 0,
+      "light": 0,
+      "dark": 0
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#ffffff",
+      "a": 0
+     },
+     "shadow": {
+      "y": 3,
+      "blur": 4,
+      "a": 0.23
+     },
+     "opacity": 1,
+     "pixel": 1,
+     "edge": {
+      "ends": 0,
+      "w": 7.5,
+      "gap": 0,
+      "a": 1,
+      "on": true
+     },
+     "dither": 0
+    },
+    "buttonSel": {
+     "on": true,
+     "slice": "",
+     "shape": "square",
+     "size": 16,
+     "fill": {
+      "kind": "solid",
+      "angle": 95,
+      "alpha": 0,
+      "c1": "#000000",
+      "c2": "",
+      "c3": "#63bdff"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 0,
+      "c": "#ffffff"
+     },
+     "inner": {
+      "w": 0,
+      "c": "#000",
+      "gap": 0
+     },
+     "bevel": {
+      "w": 0,
+      "light": 0,
+      "dark": 0
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#ffffff",
+      "a": 1
+     },
+     "shadow": {
+      "y": 0,
+      "blur": 0,
+      "a": 0
+     },
+     "opacity": 1,
+     "pixel": 1
+    },
+    "chip": {
+     "on": true,
+     "slice": "",
+     "shape": "pill",
+     "size": 14,
+     "fill": {
+      "kind": "solid",
+      "angle": 180,
+      "alpha": 1,
+      "c1": "#000000",
+      "c2": "",
+      "c3": "rgba(0,0,0,0)"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 2,
+      "c": "#feffff"
+     },
+     "inner": {
+      "w": 0,
+      "c": "#000",
+      "gap": 0
+     },
+     "bevel": {
+      "w": 0,
+      "light": 0,
+      "dark": 0
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#ffffff",
+      "a": 0
+     },
+     "shadow": {
+      "y": 0,
+      "blur": 0,
+      "a": 0
+     },
+     "opacity": 1,
+     "pixel": 2
+    },
+    "chipOn": {
+     "on": true,
+     "slice": "",
+     "shape": "pill",
+     "size": 14,
+     "fill": {
+      "kind": "solid",
+      "angle": 180,
+      "alpha": 1,
+      "c1": "#000000",
+      "c2": "",
+      "c3": "rgba(255,255,255,0.18)"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 2,
+      "c": "#ffffff"
+     },
+     "inner": {
+      "w": 0,
+      "c": "#000",
+      "gap": 0
+     },
+     "bevel": {
+      "w": 0,
+      "light": 0,
+      "dark": 0
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#ffffff",
+      "a": 0
+     },
+     "shadow": {
+      "y": 0,
+      "blur": 0,
+      "a": 0
+     },
+     "opacity": 1,
+     "pixel": 2
+    },
+    "hero": {
+     "on": false,
+     "slice": "",
+     "shape": "round",
+     "size": 10,
+     "fill": {
+      "kind": "gradient",
+      "angle": 180,
+      "alpha": 1,
+      "c1": "#1c1c1f",
+      "c2": "#0f0f11",
+      "c3": "#050506"
+     },
+     "material": {
+      "src": "",
+      "scale": 1,
+      "mix": 0.35,
+      "blend": "overlay"
+     },
+     "outline": {
+      "w": 1,
+      "c": "#8c8c96"
+     },
+     "inner": {
+      "w": 1,
+      "c": "#3a3a42",
+      "gap": 1
+     },
+     "bevel": {
+      "w": 2,
+      "light": 0.12,
+      "dark": 0.3
+     },
+     "gloss": 0,
+     "glow": {
+      "r": 0,
+      "c": "#f0d060",
+      "a": 0.5
+     },
+     "shadow": {
+      "y": 3,
+      "blur": 8,
+      "a": 0.45
+     },
+     "opacity": 1
+    }
+   },
+   "text": {
+    "font": "'Press Start 2P', monospace",
+    "titleFont": "'Indira K', Georgia, serif",
+    "caps": true,
+    "track": 0.03,
+    "effect": "none",
+    "selInk": "#ffd200",
+    "bigFirst": 1.5,
+    "bigRows": false,
+    "italic": false,
+    "effectColor": "",
+    "shadow2": "",
+    "s2x": 5,
+    "s2y": 4,
+    "outlineW": 1,
+    "titleInk": "#fbfcff",
+    "rowInk": "",
+    "firstInk": "",
+    "titlePlate": "",
+    "titleWeight": "600",
+    "titleSize": 1.2,
+    "rowSize": 0.95,
+    "glowR": 5
+   },
+   "drop": 0,
+   "motion": {
+    "open": "stretch",
+    "ms": 340,
+    "cursor": "▶",
+    "bob": true,
+    "rowTilt": 0.5,
+    "rowAlt": false,
+    "rowUpright": false,
+    "rowSlant": 0,
+    "selTilt": 0.5,
+    "selGrow": 1.08
+   },
+   "hint": "Black 8-bit windows: stepped corners, a thick white frame, big pixels, an arrow cursor."
   }
  ],
  "slices": [],
@@ -15098,7 +16867,8 @@ const UIM_SHIPPED = {
  "layout": {
   "meta": {
    "x": -32,
-   "y": 8
+   "y": 8,
+   "s": 1.1
   },
   "rig": {
    "x": -8,
@@ -15117,14 +16887,14 @@ const UIM_SHIPPED = {
    "o": 1
   },
   "cmds": {
-   "x": -24,
+   "x": -3,
    "y": -64,
    "s": 1.15,
    "o": 1,
    "t:label:track": 0.09,
    "w": 564,
-   "t:label:font": "'Ghiya Strokes Italic', Georgia, serif",
-   "t:label:fsz": 15,
+   "t:label:font": "'Press Start 2P', monospace",
+   "t:label:fsz": 12,
    "t:label:tfx": "hard2"
   },
   "turns": {
@@ -15177,19 +16947,22 @@ const UIM_SHIPPED = {
    "s": 1.1
   },
   "sqact": {
+   "y": -420,
    "s": 1.3,
    "z": "400",
    "zrel": true,
-   "shad": 60,
    "font": "'Indira K', Georgia, serif",
+   "edge": "#000000",
    "skin": "panel",
+   "bg": "#000000",
+   "edgeW": 0,
+   "shad": 22,
    "flow": "col",
    "gap": 10,
    "jal": "stretch",
    "pin": "l",
    "pinM": 32,
    "pinA": "start",
-   "y": 168,
    "pad": 14
   },
   "pkmvda49xuh6": {
@@ -15203,15 +16976,15 @@ const UIM_SHIPPED = {
    "x": -15,
    "y": -12,
    "s": 0.9,
-   "h": 398,
-   "w": 618,
+   "h": 392,
+   "w": 554,
    "track": 0.2,
    "t:badge:fsz": 10,
-   "t:label:fsz": 17,
+   "t:label:fsz": 13,
    "t:label:track": 0.11,
    "t:chip:fsz": 14,
    "t:ends:fsz": 8,
-   "t:label:font": "'Ghiya Strokes Italic', Georgia, serif",
+   "t:label:font": "'Press Start 2P', monospace",
    "t:glyph:fsz": 16,
    "t:cursor:fsz": 33,
    "t:cursor:tfx": "hard2",
@@ -15230,15 +17003,18 @@ const UIM_SHIPPED = {
    "y": -232
   },
   "fcard": {
-   "s": 0.95
+   "s": 0.95,
+   "hide": false
   },
   "sqbar": {
    "x": -32,
    "y": -56,
-   "w": 494,
-   "h": 178,
-   "s": 1.65
+   "w": 692,
+   "h": 152,
+   "s": 1.65,
+   "t:name:font": "'Indira K', Georgia, serif"
   },
+  "pkmvhyudb2kn": {},
   "mok": {
    "skin": "button",
    "skinT": "c_mvc8nxl9fo9g",
@@ -15254,6 +17030,7 @@ const UIM_SHIPPED = {
    "x": -16,
    "y": 556
   },
+  "pkmvp2yhan8s": {},
   "sqhead": {
    "w": 1270,
    "h": 112
@@ -15317,7 +17094,7 @@ const UIM_SHIPPED = {
     "y": 0
    }
   },
-  "w": 228,
+  "w": 236,
   "gap": 1,
   "pSize": 1.45,
   "haloW": 2.3,
@@ -15401,8 +17178,6 @@ const UIM_SHIPPED = {
   "rGap": false,
   "pBarH": 8,
   "pMpH": 6,
-  "pAllyCol": "#e8ffec",
-  "pFoeCol": "#f2fff2",
   "pAllyOp": 1,
   "pFoeOp": 1,
   "pLvl": false,
@@ -15491,8 +17266,8 @@ const UIM_SHIPPED = {
     "look": "clear"
    },
    "types": {
-    "x": -13,
-    "y": 20,
+    "x": -11,
+    "y": 68,
     "w": 169,
     "h": 124,
     "rad": -1,
@@ -15504,14 +17279,14 @@ const UIM_SHIPPED = {
    "hp": {
     "x": 322,
     "y": 119,
-    "w": 494,
-    "h": 49
+    "w": 462,
+    "h": 48
    },
    "mp": {
     "x": 322,
     "y": 130,
-    "w": 494,
-    "h": 75
+    "w": 462,
+    "h": 72
    },
    "stats": {
     "x": 178,
@@ -15644,22 +17419,14 @@ const UIM_SHIPPED = {
   "qGradeSize": 25,
   "qStatRowGap": 6,
   "qElemIcon": 37,
-  "wThick": 0.45,
   "wGlowW": 1.5,
-  "wCore": 1,
   "wHeadLen": 0.7,
-  "wDotSize": 0.6,
+  "wDotSize": 0.7,
   "wDotSpd": 0.75,
   "wHeadW": 1.45,
   "wGlow": 0,
   "wPulse": 2.5,
-  "wPulseSpd": 0.05,
-  "wDotShape": "streak",
-  "tEdge": 3,
-  "tHalo": 3.3,
-  "tPulse": 1.6,
-  "tSpeed": 2.55,
-  "tSize": 1.08,
+  "wPulseSpd": 0.45,
   "qListMin": 1000,
   "qBarGap": 40,
   "qBarH": 11,
@@ -15696,49 +17463,16 @@ const UIM_SHIPPED = {
   "znPulseSpd": 1.4,
   "zsPatAmt": 0,
   "znPatAmt": 0,
-  "fNumFont": "'Contra Italic', 'Arial Black', sans-serif",
-  "fLineCol": "#000000",
-  "fSpread": 0.1,
   "pNums": false,
-  "fSwell": 1.25,
-  "fGradX": -7,
-  "fGs2At": 100,
-  "fGs3Sh": -68,
-  "fGradWords": true,
-  "fSheen": 0,
-  "fWordFont": "'Aida Serif Oblique', Georgia, serif",
-  "fWordWeight": "700",
-  "fTrack": 0.5,
-  "fNumSize": 0.7,
-  "fLine": 0.6,
-  "fShadow": 2.35,
-  "fTilt": 3,
-  "fGap": -2,
-  "fWordSize": 0.9,
-  "fNumWeight": "700",
-  "fLay": "scatter",
-  "fBunch": 0.6,
-  "fGradOff": -42,
-  "fGradLen": 31,
-  "fkDamageSize": 1.15,
-  "fRise": 0.5,
-  "fGradStops": "2",
-  "fGs1Sh": 87,
-  "fGs2Sh": -1,
   "fkOverkillFont": "'Nosifer', cursive",
   "fkOverkillWeight": "900",
   "fkOverkillSize": 1.2,
   "fkComboFont": "'Indira K', Georgia, serif",
   "fkComboSize": 1.1,
   "fkStreakFont": "'Indira K', Georgia, serif",
-  "tHot": 0.35,
-  "tOpacity": 0.4,
-  "tFill": 1.05,
-  "tBright": 2.4,
-  "tLine": 0.75,
   "pW": 162,
   "bRows": "icon:side,name:top,type:top,riders:top,ups:top,power:bot,mp:bot,ap:bot,reason:bot,elem:top,press:top,shape:bot,note:bot,status:top,ends:bot",
-  "pFont": "'Ghiya Strokes Italic', Georgia, serif",
+  "pFont": "'Indira K', Georgia, serif",
   "pActiveCol": "#f0d060",
   "pTypeSize": 12,
   "mAt": 7,
@@ -15746,14 +17480,43 @@ const UIM_SHIPPED = {
   "mLvl": false,
   "mName": false,
   "kElemSize": 26,
-  "kStatWords": "full",
   "kMultLook": "box",
-  "kMultWords": "full",
   "kStatLook": "box",
   "kStatSize": 8,
   "kRideSize": 10,
   "kUpsSize": 8,
-  "eMenu": 1.4
+  "eMenu": 1.4,
+  "fNumFont": "'Press Start 2P', monospace",
+  "fWordFont": "'Indira K', Georgia, serif",
+  "fGlow": 0.2,
+  "fElem": false,
+  "fCrit": "text",
+  "fkDamageSize": 0.95,
+  "fNumSize": 0.95,
+  "fWordSize": 0.95,
+  "fMinNum": 0.5,
+  "fMaxNum": 9.5,
+  "fMinWord": 0.1,
+  "fSwell": 1.5,
+  "dLook": "black",
+  "pFoeCol": "#e88fb8",
+  "pAllyCol": "#8fd0e8",
+  "eBig": 28,
+  "wThick": 0.85,
+  "wBright": 1.4,
+  "wCore": 1,
+  "wDotShape": "streak",
+  "tLine": 0.7,
+  "tHalo": 0.35,
+  "tHot": 0.6,
+  "tFill": 0.75,
+  "tPulse": 0,
+  "tSize": 1.09,
+  "tOpacity": 0.4,
+  "tBright": 2.4,
+  "kMultWords": "vs",
+  "qStatLook": "number",
+  "dFocus": "empty"
  },
  "words": {
   "mcards": {
@@ -15797,7 +17560,13 @@ const UIM_SHIPPED = {
    "◎ ENEMY": ""
   },
   "sqbar": {
-   "4 VESSELS": ""
+   "4 VESSELS": "",
+   "NEW": "",
+   "8 VESSELS": ""
+  },
+  "deck": {
+   "I ·": "",
+   "I": ""
   }
  },
  "picks": [
@@ -15823,6 +17592,14 @@ const UIM_SHIPPED = {
    "label": "Deploy",
    "sel": "#sqActions .sq-cta",
    "selAll": "#sqActions .sq-cta",
+   "all": false
+  },
+  {
+   "id": "pkmwbvt4dbnu",
+   "surf": "match",
+   "label": "p",
+   "sel": ".ms-tty-body.ms-tty-full .ms-tty-col.ms-tty-modes .ms-tty-list .ms-tty-row:nth-child(1) p",
+   "selAll": ".ms-tty-body.ms-tty-full .ms-tty-col.ms-tty-modes .ms-tty-list .ms-tty-row p",
    "all": false
   }
  ],
@@ -16469,6 +18246,7 @@ function faceSweep() {
   });
 }
 window.EWFaces = {
+  bump: faceBump,   // a portrait made elsewhere got ready (three-renderer.js THE PORTRAIT STUDIO): the HUD's faces repaint
   url(u, art) {
     const key = faceKey(u), use = faceUse(key, art);
     if (use === 'art') return undefined;
@@ -17251,16 +19029,19 @@ const UIM_SURFACES = [
       ink: '.codex-container .ms-title-text, .door-hdr-text',
     },
     titles: '.codex-container .ms-title-text, .door-hdr-text' },
-  { id: 'lobby', label: 'Online lobby', hint: 'Quick Play, Friendly Match, room codes.', native: false, def: 'theme',
+  /* THE ROOM (PvP demo lobby, 2026-11-11): the Quick Play / Friendly / Room windows (.lr-win) keep the black PS1 window
+     mondo approved (styles-base.css; the theme's lobby panel skin draws no frame); the room code and the join boxes are
+     wells, the rules' lists are inputs, the window labels are muted text, the buttons and chips are the theme's */
+  { id: 'lobby', label: 'Online lobby', hint: 'Quick Play, Friendly Match, the Room (seats, rules, READY).', native: false, def: 'theme',
     scope: '#lobbyPage',
     roles: {
       panel: '#lobbyPage .mode-card.lobby-inner',
-      well: '#lobbyPage .lobby-code-display',
+      well: '#lobbyPage .lobby-code-display, #lobbyPage .lr-code-well, #lobbyPage .lf-code span',
       button: '#lobbyPage .lobby-actions button, #lobbyPage .lobby-back, #lobbyPage .lobby-join-row button',
       buttonSel: '#lobbyPage .lobby-actions button:hover, #lobbyPage .lobby-back:hover, #lobbyPage .lobby-join-row button:hover',
       chip: '#lobbyPage .ranked-size-btn', chipOn: '#lobbyPage .ranked-size-btn.active, #lobbyPage .ranked-size-btn:hover',
-      input: '#lobbyPage .lobby-join-row input, #friendlyMapSelect',
-      ink: '#lobbyPage .lobby-title', mute: '#lobbyPage .lobby-subtitle, #lobbyPage .lobby-kicker, #lobbyPage .lobby-config-label',
+      input: '#lobbyPage .lobby-join-row input, #friendlyMapSelect, #friendlyBoardSelect',
+      ink: '#lobbyPage .lobby-title', mute: '#lobbyPage .lobby-subtitle, #lobbyPage .lobby-kicker, #lobbyPage .lobby-config-label, #lobbyPage .lr-k, #lobbyPage .lr-goal, #lobbyPage .lr-v small',
     },
     titles: '#lobbyPage .lobby-title' },
   { id: 'dialog', label: 'Dialogs', hint: 'Pop-up questions, pickups, the party picker.', native: false, def: 'theme',
@@ -17301,15 +19082,15 @@ const UIM_SPECIMENS = {
     /* a combat pop-up held on screen (its own 1.6 s fade would empty the stand-in) */
     + "<div class=\"combat-banner\" style=\"animation:none;opacity:1;transform:translate(-50%,-50%)\"><div class=\"combat-banner-title\">⚔️ Opportunity Attack!</div><div class=\"combat-banner-sub\">Gangster punishes Homosapien's retreat</div></div>",
   results: "<div id=\"resultOverlay\" class=\"result-overlay victory\"><div class=\"vic-sky victory\"></div><div class=\"vic-rays\" style=\"animation: none; opacity: 1; transform: none;\"></div><div class=\"vic-particles\"><div class=\"vic-particle\" style=\"left:8.32%;top:65.94%;width:1.21px;height:1.21px;animation-delay:3.24s\"></div><div class=\"vic-particle\" style=\"left:95.01%;top:77.54%;width:1.08px;height:1.08px;animation-delay:2.52s\"></div><div class=\"vic-particle\" style=\"left:79.97%;top:20.31%;width:1.27px;height:1.27px;animation-delay:3.76s\"></div><div class=\"vic-particle\" style=\"left:23.58%;top:61.95%;width:2.53px;height:2.53px;animation-delay:2.73s\"></div><div class=\"vic-particle\" style=\"left:99.36%;top:77.31%;width:2.59px;height:2.59px;animation-delay:3.22s\"></div><div class=\"vic-particle\" style=\"left:8.58%;top:46.61%;width:2.64px;height:2.64px;animation-delay:2.84s\"></div><div class=\"vic-particle\" style=\"left:67.77%;top:73.64%;width:2.84px;height:2.84px;animation-delay:2.51s\"></div><div class=\"vic-particle\" style=\"left:81.97%;top:53.25%;width:1.98px;height:1.98px;animation-delay:0.37s\"></div></div><div class=\"vic-ground-wrap\"><div class=\"vic-ground victory\"></div></div><div class=\"vic-party\"><div class=\"vic-unit\" style=\"position:absolute;bottom:7%;left:36%;margin-left:calc(0px - 96px);z-index:10; animation: none; opacity: 1; transform: none;\"><div class=\"vic-unit-img\" style=\"width:192px;height:192px;background-image:url('https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated;\"></div><div class=\"vic-unit-shadow\" style=\"width:134.39px\"></div><div class=\"vic-unit-name p1\">Homosapien</div></div><div class=\"vic-unit\" style=\"position:absolute;bottom:13%;left:36%;margin-left:calc(-150px - 80px);z-index:8; animation: none; opacity: 1; transform: none;\"><div class=\"vic-unit-img\" style=\"width:160px;height:160px;background-image:url('https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated;\"></div><div class=\"vic-unit-shadow\" style=\"width:112px\"></div><div class=\"vic-unit-name p1\">Homosapien</div></div><div class=\"vic-unit\" style=\"position:absolute;bottom:15%;left:36%;margin-left:calc(150px - 73.5px);z-index:6; animation: none; opacity: 1; transform: none;\"><div class=\"vic-unit-img\" style=\"width:147px;height:147px;background-image:url('https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated;\"></div><div class=\"vic-unit-shadow\" style=\"width:102.89px\"></div><div class=\"vic-unit-name p1\">Homosapien</div></div><div class=\"vic-unit\" style=\"position:absolute;bottom:19%;left:36%;margin-left:calc(-260px - 64px);z-index:5; animation: none; opacity: 1; transform: none;\"><div class=\"vic-unit-img\" style=\"width:128px;height:128px;background-image:url('https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png');background-size:contain;background-position:center bottom;background-repeat:no-repeat;image-rendering:pixelated;\"></div><div class=\"vic-unit-shadow\" style=\"width:89.6px\"></div><div class=\"vic-unit-name p1\">Homosapien</div></div></div><div class=\"vic-vignette\"></div><div class=\"vic-scanlines\"></div><div class=\"vic-stage\"><div class=\"vic-title-wrap\"><div class=\"vic-kicker\" style=\"animation: none; opacity: 1; transform: none;\">MATCH 1 · ARENA</div><div class=\"vic-title victory\" data-text=\"Victory\" style=\"animation: none; opacity: 1; transform: none;\">Victory</div><div class=\"vic-glyphs\" aria-hidden=\"true\">☉ &nbsp;☿ &nbsp;♀ &nbsp;⊕ &nbsp;♂ &nbsp;♃ &nbsp;♄ &nbsp;☽</div><div class=\"vic-subtitle\" style=\"animation: none; opacity: 1; transform: none;\"><b class=\"vic-callsign\">Player</b> holds the field. </div><div class=\"vic-match-info\" style=\"animation: none; opacity: 1; transform: none;\"><span class=\"vic-fact\">ROUND 1</span><span class=\"vic-fact-dot\">·</span><span class=\"vic-fact\">20s</span><span class=\"vic-fact-dot\">·</span><span class=\"vic-fact\"><span class=\"p1\">4</span> v <span class=\"p2\">4</span> STANDING</span></div><div class=\"vic-field-report\"></div></div><div class=\"vic-stage-foot\"><div class=\"vic-mvp-tag ally\" style=\"animation: none; opacity: 1; transform: none;\"><div class=\"vic-mvp-port\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png')\"></div><div class=\"vic-mvp-col\"><div class=\"vic-mvp-label\">MATCH MVP</div><div class=\"vic-mvp-name\">Homosapien</div><div class=\"vic-mvp-stat\">0 K · 0 DMG · 0 HEAL</div></div></div><div class=\"door-result-stamp victory on\" aria-hidden=\"true\" style=\"animation: none; opacity: 0.94;\"><div class=\"drs-box\"><div class=\"drs-seal\"></div><div class=\"drs-word\">CASE CLOSED</div><div class=\"drs-meta\">CASE No. EW-6642<br>YEAR 2172 BC</div></div><div class=\"drs-tab\"><span>NEW DIRECTIVE</span></div><div class=\"drs-site\"></div></div></div></div><aside class=\"vic-debrief\" aria-label=\"Debrief\" style=\"animation: none; opacity: 1; transform: none;\"><div class=\"vic-debrief-head\"><span class=\"vic-debrief-title\">DEBRIEF</span><nav class=\"vic-tabs\" role=\"tablist\"><button type=\"button\" class=\"vic-tab on\" role=\"tab\" data-sheet=\"rewards\"><span class=\"vic-tab-glyph\">💰</span>REWARDS</button><button type=\"button\" class=\"vic-tab\" role=\"tab\" data-sheet=\"honours\"><span class=\"vic-tab-glyph\">☩</span>HONOURS</button><button type=\"button\" class=\"vic-tab\" role=\"tab\" data-sheet=\"performance\"><span class=\"vic-tab-glyph\">⚔</span>PERFORMANCE</button></nav></div><div class=\"vic-sheets\"><section class=\"vic-sheet on\" data-sheet=\"rewards\" role=\"tabpanel\"><div class=\"vic-gold-breakdown counted\" style=\"display: block;\"><div class=\"vic-card vic-pay-card\"><div class=\"vic-card-cap\">💰 HAZARD PAY</div><div class=\"vic-pay-total\">+<span>94</span></div><div class=\"vic-pay-ledger\"><div class=\"vic-pay-row \"><span>Match complete</span><b>+50</b></div><div class=\"vic-pay-row mult\"><span>Victory</span><b>×1.5</b></div><div class=\"vic-pay-row mult\" title=\"Won without losing a single unit\"><span>Deathless</span><b>×1.25</b></div></div><div class=\"vic-pay-wallet set\">Wallet: 💰 94</div></div></div><div class=\"vic-awards\"><div class=\"vic-card vic-career-ach\"><span class=\"vic-card-cap\">✦ CAREER</span><span class=\"vic-career-ach-count\"><b>0</b> / 14</span><div class=\"vic-career-ach-bar\"><div class=\"vic-career-ach-fill\" style=\"width:0%\"></div></div><span class=\"vic-career-note\">The full list: Profile → Achievements</span></div></div></section><section class=\"vic-sheet\" data-sheet=\"honours\" role=\"tabpanel\"></section><section class=\"vic-sheet\" data-sheet=\"performance\" role=\"tabpanel\"></section></div><div class=\"vic-debrief-hint\">◂ ▸ &nbsp;SHEETS</div></aside><div class=\"vic-bottom\" style=\"animation: none; opacity: 1; transform: none;\"><button class=\"primary\">Find Next Match</button><button disabled=\"\">Export Last Match</button><button disabled=\"\">Export Match History</button><button class=\"warn\">Back to Party Builder</button><button id=\"mainMenuBtn\">Main Menu</button></div></div>",
-  explore: "<div id=\"hqPage\" class=\"title-page hq-page active\"> <div class=\"hq-stage\"></div> <div class=\"hq-strip\"> <div class=\"hq-strip-l\"> <img src=\"https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png\" alt=\"\" draggable=\"false\"> <div><b>THE MAIN HALL</b><span>D.O.O.R. HEADQUARTERS · THE MAIN HALL</span></div> </div> <div class=\"hq-strip-r\"> <span class=\"hq-strip-stat hq-strip-form\">FORM 365 <b>1</b> / 3</span> <span class=\"hq-strip-stat hq-strip-tapes\">TAPES <b>12</b> / 100</span> <span class=\"ew-wallet\"><span class=\"ew-wallet-gold\" style=\"color:#ffd86a;font-weight:600\">💰 1,250</span></span> </div> </div> <div class=\"hq-prompt\"><b>▸ SUSPICIOUS ANGLE</b><span>THAT CORNER IS NOT SQUARE</span><i>[E] MEASURE IT</i></div> <div class=\"hq-pause on\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Pause menu\" style=\"inset:auto;left:50%;top:333px;width:1180px;height:760px;padding:0;transform:translate(-50%,-50%) scale(0.7)\"> <div class=\"hq-pause-scrim\"></div> <div class=\"hq-pause-frame\"> <div class=\"hq-pause-head\"><div class=\"hq-pause-title\"><img src=\"https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png\" alt=\"\" draggable=\"false\"><div><b>PAUSED</b><span>D.O.O.R. HEADQUARTERS · THE MAIN HALL</span></div></div><div class=\"hq-pause-vitals\"><span><b>UNFILED</b><i>L1 · DOORMAT</i></span><span><b>💰 1,250</b><i>HAZARD PAY</i></span><span><b>🗝 3</b><i>KEYS</i></span><span><b>2 / 12</b><i>STABILIZED</i></span><span><b>4</b><i>DAY STREAK</i></span></div></div> <div class=\"hq-pause-main\"> <nav class=\"hq-pause-nav\" role=\"menu\"> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>RESUME</b><span>BACK TO THE BUILDING</span></button> <button class=\"hq-pause-cmd sel cur\" role=\"menuitem\"><b>PARTY</b><span>TWO SHIFTS · FIELD MEDICINE</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>ITEMS</b><span>THE BAG · POTIONS · RESTOCK</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>OFFICER</b><span>YOUR FILE</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>SETTINGS</b><span>AUDIO · DISPLAY · CONTROLS</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>DIRECTORY</b><span>THE MAP · EVERY ROOM YOU HAVE REACHED</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>CAMERA</b><span>CINEMATIC · PHOTOS · VIDEO</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>DATA</b><span>LIVE TABLES · ITEMS (F9)</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>EDIT</b><span>THIS ROOM IN THE EDITOR</span></button> <button class=\"hq-pause-cmd danger\" role=\"menuitem\"><b>EXIT</b><span>TO THE MAIN MENU</span></button> </nav> <section class=\"hq-pause-body\" data-view=\"party\"> <div class=\"hq-panel-hd\"><b>THE PARTY</b><span>NO CARD ON FILE</span></div> <p class=\"hq-panel-desc\">The building files a party to a name. Sign in at Reception and the officer's party is opened — you on First Shift, whoever crossed with you last beside you.</p> <div class=\"hq-panel-actions\"><button class=\"hq-btn\">RECEPTION ▸ DIRECTORY</button></div> </section> </div> <div class=\"hq-pause-foot\"><span>↑ ↓ COMMAND</span><span>ENTER SELECT</span><span>← → MEMBER</span><span>BACKSPACE BACK</span><span>ESC / P RESUME</span></div> </div> </div> </div>",
+  explore: "<div id=\"hqPage\" class=\"title-page hq-page active\"> <div class=\"hq-stage\"></div> <div class=\"hq-strip\"> <div class=\"hq-strip-l\"> <img src=\"https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png\" alt=\"\" draggable=\"false\"> <div><b>THE MAIN HALL</b><span>D.O.O.R. HEADQUARTERS · THE MAIN HALL</span></div> </div> <div class=\"hq-strip-r\"> <span class=\"hq-strip-stat hq-strip-form\">FORM 365 <b>1</b> / 3</span> <span class=\"hq-strip-stat hq-strip-tapes\">TAPES <b>12</b> / 100</span> <span class=\"ew-wallet\"><span class=\"ew-wallet-gold\" style=\"color:#ffd86a;font-weight:600\">💰 1,250</span></span> </div> </div> <div class=\"hq-prompt\"><b>▸ SUSPICIOUS ANGLE</b><span>THAT CORNER IS NOT SQUARE</span><i>[E] MEASURE IT</i></div> <div class=\"hq-pause on\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Pause menu\" style=\"inset:auto;left:50%;top:333px;width:1180px;height:760px;padding:0;transform:translate(-50%,-50%) scale(0.7)\"> <div class=\"hq-pause-scrim\"></div> <div class=\"hq-pause-frame\"> <div class=\"hq-pause-head\"><div class=\"hq-pause-title\"><img src=\"https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png\" alt=\"\" draggable=\"false\"><div><b>PAUSED</b><span>D.O.O.R. HEADQUARTERS · THE MAIN HALL</span></div></div><div class=\"hq-pause-vitals\"><span><b>UNFILED</b><i>L1 · DOORMAT</i></span><span><b>💰 1,250</b><i>HAZARD PAY</i></span><span><b>🗝 3</b><i>KEYS</i></span><span><b>2 / 12</b><i>STABILIZED</i></span><span><b>4</b><i>DAY STREAK</i></span></div></div> <div class=\"hq-pause-main\"> <nav class=\"hq-pause-nav\" role=\"menu\"> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>RESUME</b><span>BACK TO THE BUILDING</span></button> <button class=\"hq-pause-cmd sel cur\" role=\"menuitem\"><b>PARTY</b><span>TWO SHIFTS · FIELD MEDICINE</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>ITEMS</b><span>THE BAG · POTIONS · RESTOCK</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>OFFICER</b><span>YOUR FILE</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>SETTINGS</b><span>AUDIO · DISPLAY · CONTROLS</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>DIRECTORY</b><span>THE MAP · EVERY ROOM YOU HAVE REACHED</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>CAMERA</b><span>CINEMATIC · PHOTOS · VIDEO</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>DATA</b><span>LIVE TABLES · ITEMS (F9)</span></button> <button class=\"hq-pause-cmd\" role=\"menuitem\"><b>EDIT</b><span>THIS ROOM IN THE EDITOR</span></button> <button class=\"hq-pause-cmd danger\" role=\"menuitem\"><b>EXIT</b><span>TO THE MAIN MENU</span></button> </nav> <section class=\"hq-pause-body\" data-view=\"party\"> <div class=\"hq-panel-hd\"><b>THE PARTY</b><span>NO CARD ON FILE</span></div> <p class=\"hq-panel-desc\">The building files a party to a name. Sign in at Reception and the officer's party is opened — you on First Shift, whoever crossed with you last beside you.</p> <div class=\"hq-panel-actions\"><button class=\"hq-btn\">RECEPTION ▸ DIRECTORY</button></div> </section> </div> <div class=\"hq-pause-foot\"><span>↑ ↓ COMMAND</span><span>ENTER SELECT</span><span>← → MEMBER</span><span>BACKSPACE BACK</span><span>ESC / P RESUME</span></div> </div> </div> </div>",
   pause: "<div class=\"pause-overlay active\" id=\"pauseOverlay\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Pause menu\"><div class=\"pause-card bp-frame\"><div class=\"hq-pause-head bp-head\"><div class=\"hq-pause-title\"><div><b>PAUSED</b><span>ARENA</span></div></div><div class=\"hq-pause-vitals\"><span><b>ROUND 1 / 20</b><i>ARENA</i></span><span><b>0:18</b><i>TIME</i></span><span><b>4 / 4</b><i>YOUR SIDE STANDING</i></span><span><b>0 — 0</b><i>KILLS</i></span></div></div><div class=\"hq-pause-main bp-main\"><nav class=\"hq-pause-nav bp-nav\" role=\"menu\"><button class=\"hq-pause-cmd\" data-pause-cmd=\"resume\" role=\"menuitem\"><b>RESUME</b><span>BACK TO THE FIGHT</span></button><button class=\"hq-pause-cmd sel cur\" data-pause-cmd=\"party\" role=\"menuitem\"><b>PARTY</b><span>HP · MP · STATUS</span></button><button class=\"hq-pause-cmd\" data-pause-cmd=\"match\" role=\"menuitem\"><b>MATCH</b><span>SCORE · STATS · AWARDS</span></button><button class=\"hq-pause-cmd\" data-pause-cmd=\"library\" role=\"menuitem\"><b>STATUSES</b><span>EVERY EFFECT IN THE GAME</span></button><button class=\"hq-pause-cmd\" data-pause-cmd=\"camera\" role=\"menuitem\"><b>CAMERA</b><span>CINEMATIC · PHOTOS · VIDEO</span></button><button class=\"hq-pause-cmd\" data-pause-cmd=\"data\" role=\"menuitem\"><b>DATA</b><span>LIVE TABLES · ITEMS (F9)</span></button><button class=\"hq-pause-cmd\" data-pause-cmd=\"settings\" role=\"menuitem\"><b>SETTINGS</b><span>AUDIO · VIDEO · CONTROLS</span></button><button class=\"hq-pause-cmd danger\" data-pause-cmd=\"forfeit\" role=\"menuitem\"><b>FORFEIT</b><span>COUNTS AS A LOSS</span></button></nav><section class=\"hq-pause-body bp-body\" data-view=\"party\"><div class=\"bp-hd\"><b>PARTY</b><span>4 OF 4 STANDING</span></div><div class=\"bp-party\"><div class=\"bp-unit\"><span class=\"bp-face\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png')\"><em>ACTING</em></span><span class=\"bp-id\"><b>Homosapien</b><small>LV 100 · HOMOSAPIEN</small><span class=\"bp-vit\"><em>HP</em><span class=\"bp-bar hp\"><i style=\"width:62.0%\"></i></span><tt>1097 / 1770</tt></span><span class=\"bp-vit\"><em>MP</em><span class=\"bp-bar mp\"><i style=\"width:45.0%\"></i></span><tt>108 / 240</tt></span><span class=\"bp-chips\"><i class=\"bp-chip good\" title=\"The Beast\">🐺 WLF</i><i class=\"bp-chip bad\" title=\"Burn\">🔥 BRN</i></span></span></div><div class=\"bp-unit\"><span class=\"bp-face\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png')\"></span><span class=\"bp-id\"><b>Homosapien</b><small>LV 100 · HOMOSAPIEN</small><span class=\"bp-vit\"><em>HP</em><span class=\"bp-bar hp\"><i style=\"width:100.0%\"></i></span><tt>1770 / 1770</tt></span><span class=\"bp-vit\"><em>MP</em><span class=\"bp-bar mp\"><i style=\"width:100.0%\"></i></span><tt>240 / 240</tt></span></span></div><div class=\"bp-unit\"><span class=\"bp-face\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png')\"></span><span class=\"bp-id\"><b>Homosapien</b><small>LV 100 · HOMOSAPIEN</small><span class=\"bp-vit\"><em>HP</em><span class=\"bp-bar hp\"><i style=\"width:100.0%\"></i></span><tt>1770 / 1770</tt></span><span class=\"bp-vit\"><em>MP</em><span class=\"bp-bar mp\"><i style=\"width:100.0%\"></i></span><tt>240 / 240</tt></span></span></div><div class=\"bp-unit\"><span class=\"bp-face\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png')\"></span><span class=\"bp-id\"><b>Homosapien</b><small>LV 100 · HOMOSAPIEN</small><span class=\"bp-vit\"><em>HP</em><span class=\"bp-bar hp\"><i style=\"width:100.0%\"></i></span><tt>1770 / 1770</tt></span><span class=\"bp-vit\"><em>MP</em><span class=\"bp-bar mp\"><i style=\"width:100.0%\"></i></span><tt>240 / 240</tt></span></span></div></div></section></div><div class=\"hq-pause-foot bp-foot\"><span>↑ ↓ COMMAND</span><span>ENTER SELECT</span><span>ESC / P RESUME</span></div></div></div>",
   squad: "<div id=\"squadDeskPage\" class=\"title-page void-menu sq-page active\"><div class=\"ls-grain\"></div><div class=\"ls-motes\"><div class=\"ls-mote\" style=\"left:7vw;width:3px;height:3px;--dx:3vw;animation-duration:12s;animation-delay:-3.5s\"></div><div class=\"ls-mote ls-mote-green\" style=\"left:19vw;width:2px;height:2px;--dx:-4vw;animation-duration:14.5s;animation-delay:-8.2s\"></div><div class=\"ls-mote\" style=\"left:33vw;width:4px;height:4px;--dx:2vw;animation-duration:9s;animation-delay:-1.8s\"></div><div class=\"ls-mote\" style=\"left:47vw;width:2.5px;height:2.5px;--dx:-5vw;animation-duration:13.5s;animation-delay:-6.4s\"></div><div class=\"ls-mote ls-mote-green\" style=\"left:61vw;width:3px;height:3px;--dx:4vw;animation-duration:11s;animation-delay:-9.7s\"></div><div class=\"ls-mote\" style=\"left:72vw;width:2px;height:2px;--dx:-2vw;animation-duration:15s;animation-delay:-4.1s\"></div><div class=\"ls-mote\" style=\"left:83vw;width:4px;height:4px;--dx:3vw;animation-duration:10s;animation-delay:-7.3s\"></div><div class=\"ls-mote\" style=\"left:94vw;width:3px;height:3px;--dx:-3vw;animation-duration:12.5s;animation-delay:-2.6s\"></div></div><div class=\"sq-shell\"><div class=\"sq-head\"><button class=\"sq-back\"><span>‹</span> Back</button><div class=\"sq-titles\"><div class=\"sq-kicker\">ONLINE PVP</div><div class=\"sq-title\">Select Your Team</div><div class=\"sq-sub\">Online matches are 4v4. Pick the team you queue with.</div></div><div class=\"sq-count\"><b>3</b> / 20 TEAMS</div></div><div class=\"sq-rule\"></div><div class=\"sq-body\"><div class=\"sq-stage\"></div><div class=\"sq-dock\"><div class=\"sq-drop is-open\"><div class=\"sq-drop-row is-focus\" style=\"--i:0\"><span class=\"sq-drop-faces\"><span class=\"sq-face is-sprite\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png')\"></i></span><span class=\"sq-face is-portrait\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/portraits/male/pirate.png')\"></i></span><span class=\"sq-face is-sprite\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/swordfighter/female/swordfighter_female.png')\"></i></span><span class=\"sq-face is-portrait\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/portraits/male/giant.png')\"></i></span></span><span class=\"sq-drop-name\">Fire Squad</span><span class=\"sq-drop-n\">4 VESSELS</span></div><div class=\"sq-drop-row\" style=\"--i:1\"><span class=\"sq-drop-faces\"><span class=\"sq-face is-portrait\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/portraits/male/bigfoot.png')\"></i></span><span class=\"sq-face is-sprite\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/nordic/male/nordic_male.png')\"></i></span><span class=\"sq-face is-portrait\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/portraits/male/grey.png')\"></i></span><span class=\"sq-face is-portrait\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/portraits/male/reptilian.png')\"></i></span><span class=\"sq-face is-sprite\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/martian/male/martian_male.png')\"></i></span><span class=\"sq-face is-portrait\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/portraits/female/fairy.png')\"></i></span></span><span class=\"sq-drop-name\">Tank Line</span><span class=\"sq-drop-n\">6 VESSELS</span></div><div class=\"sq-drop-row is-locked\" style=\"--i:2\"><span class=\"sq-drop-faces\"><span class=\"sq-face is-sprite\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/ai/female/ai_female.png')\"></i></span><span class=\"sq-face is-portrait\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/portraits/female/fairy.png')\"></i></span></span><span class=\"sq-drop-name\">Team</span><span class=\"sq-drop-n\">Needs 4</span></div></div><div class=\"sq-bar\"><button class=\"sq-arrow\"><span>‹</span></button><div class=\"sq-plate is-open\"><span class=\"sq-plate-sheen\"></span><div class=\"sq-plate-top\"><span class=\"sq-plate-name\">Fire Squad</span><span class=\"sq-plate-n\">4 VESSELS</span><span class=\"sq-plate-of\">1 / 3</span><span class=\"sq-plate-caret\">▾</span></div><div class=\"sq-plate-faces\"><span class=\"sq-plate-slot\" style=\"--j:0\"><span class=\"sq-face is-sprite\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png')\"></i></span><em>Homosapien</em></span><span class=\"sq-plate-slot\" style=\"--j:1\"><span class=\"sq-face is-portrait\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/portraits/male/pirate.png')\"></i></span><em>Pirate</em></span><span class=\"sq-plate-slot\" style=\"--j:2\"><span class=\"sq-face is-sprite\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/swordfighter/female/swordfighter_female.png')\"></i></span><em>Swordfighter</em></span><span class=\"sq-plate-slot\" style=\"--j:3\"><span class=\"sq-face is-portrait\"><i style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/portraits/male/giant.png')\"></i></span><em>Giant</em></span></div><div class=\"sq-plate-foot\"><span class=\"sq-card-date\">Last used 10/16/2026</span></div></div><button class=\"sq-arrow\"><span>›</span></button></div><div class=\"sq-actions\" id=\"sqActions\"><span class=\"sq-team-size\" role=\"group\"><button class=\"sq-ghost sq-size-btn is-on\" data-sq-team=\"4\">4v4</button><button class=\"sq-ghost sq-size-btn\" data-sq-team=\"5\">5v5</button></span><button class=\"sq-ghost\" data-sq-random>Random</button><button class=\"sq-ghost\" data-sq-edit=\"t1\">Edit</button><button class=\"sq-ghost\" data-sq-new>New Team</button><button class=\"sq-cta is-ready\" data-sq-go>Deploy</button></div></div></div><div class=\"sq-foot\"></div></div></div>",
-  match: "<div class=\"title-page active\" style=\"align-items:stretch;justify-content:stretch\"><div class=\"ms-crt ms-crt-page ms-crt-full\" style=\"flex:1;width:100%\"><div class=\"ms-crt-bezel\"><div class=\"ms-crt-glass\"><div class=\"ms-crt-shot\"></div><div class=\"ms-crt-screen\"><div class=\"ms-tty\"><div class=\"ms-tty-head\"><span>D.O.O.R.</span><span class=\"ms-tty-sep\">▸</span><b>FIELD ASSIGNMENT TERMINAL</b><span class=\"ms-tty-sep\">·</span><span>CUSTOMS &amp; ADMISSIONS</span><span class=\"ms-tty-sep\">·</span><span>TTY-1</span><span class=\"ms-tty-sep\">·</span><span>10804 BC</span><span class=\"ms-tty-officer\">Player<i>CLEARANCE L1 · DOORMAT</i></span><span class=\"ms-tty-sep\">·</span><span class=\"ms-tty-esc\">ESC · STEP AWAY</span></div><div class=\"ms-tty-body ms-tty-full\"><div class=\"ms-tty-col ms-tty-modes\"><div class=\"ms-tty-h\">GAME MODE</div><div class=\"ms-tty-list\"><div class=\"ms-tty-row sel\"><em>▸</em><b>🏰 Arena</b><p>Destroy the Cube, wipe out the enemy, or find all 5 hidden Keys. Three Nexus zones (the center + both spawns, yours starts captured) are the economy: 4 ticks flip one — step in, channel, or hold it — a zone you hold heals your team and burns the enemy, you RESPAWN only on a zone you hold (lose them all and your fallen stay down), and every non-home zone is ×1.5 Cube damage. Zones can be built on, dug and flooded. After 20 rounds the higher Arena score wins; a bounty kill scores double a normal kill, and more the longer the streak it ends. A tied score goes to the side holding more Keys, then Sudden Death.</p></div><div class=\"ms-tty-row\"><em>▸</em><b>💀 Team Deathmatch</b><p>Most kills in 12 rounds wins. Wipeout also wins instantly. Sudden Death if tied.</p></div><div class=\"ms-tty-row\"><em>▸</em><b>🎴 Clash<i>NEW</i></b><p>Classic JRPG battle — 4v4 on a fixed stage, no movement. Two parties face off across the field: attack, cast, use an item, or Guard, then the next unit steps up. Wipe out the enemy party to win.</p></div><div class=\"ms-tty-row\"><em>▸</em><b>♟️ Simul<i>EXPERIMENTAL</i></b><p>SIMULTANEOUS turns — both sides secretly order one unit (any unit, 2 AP), then the orders play out together: priority first, then speed. Displaced targets are re-acquired or the action whiffs. Most kills in 12 rounds wins.</p></div></div></div><div class=\"ms-tty-col\"><div class=\"ms-tty-band\"><div class=\"ms-tty-preview\" style=\"width: 228px; height: 228px;\"></div><div class=\"ms-tty-file\"><div class=\"ms-tty-kicker\"><b>SITE FILE</b><span>EW-7589</span><span class=\"ms-tty-no\">ROOM 14179</span><span class=\"ms-tty-fill\"></span><span>FIRST CROSSING · 315 AD</span></div><div class=\"ms-tty-title\"><h1>Mount Shasta Arena</h1><span class=\"door-stamp admit\">ACTIVE CROSSING</span></div><div class=\"ms-tty-sub\">· arena · 8×8 cut of the site’s own room</div><div class=\"ms-tty-meta\"><span><em>SIZE</em>12×12 ARENA</span><span><em>SPAWNS</em>4 per side</span></div><div class=\"ms-tty-kv\"><b>JURISDICTION</b>Customs &amp; Admissions · Siskiyou County, California</div><div><div class=\"door-file-h\">1.  EXECUTIVE SUMMARY</div><p class=\"ms-tty-p\">Dormant volcano, active legend. The mountain has been \"about to erupt\" since 1250 and the Lemurians beneath it have been \"about to make contact\" since 1931; both remain pending. Lenticular clouds park over the summit and get reported as saucers roughly weekly. The town below sells crystals to believers and geologists alike. Both keep buying.</p></div></div></div><div class=\"ms-tty-filters\"><div class=\"ms-tty-h\">SITES<span>38/132</span></div><div class=\"ms-tty-input\"><span>⌕</span><input placeholder=\"search sites\" spellcheck=\"false\" value=\"\"></div><button class=\"ms-tty-chip on\">ARENA MAPS</button><span class=\"ms-tty-note\" style=\"letter-spacing: 0.18em;\">SIZE</span><button class=\"ms-tty-chip\">4–8</button><button class=\"ms-tty-chip\">10–14</button><button class=\"ms-tty-chip\">16+</button></div><div class=\"ms-tty-cards\"><div class=\"ms-tty-card sel\"><div class=\"ms-tty-preview\" style=\"width: 64px; height: 64px;\"></div><div><b>Mount Shasta Arena</b><span><em>12×12 ARENA</em><span style=\"color: rgb(79, 192, 122); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">ACTIVE CROSSING</span></span><small>4 SPAWNS</small></div></div><div class=\"ms-tty-card\"><div class=\"ms-tty-preview\" style=\"width: 64px; height: 64px;\"></div><div><b>Stonehenge Arena</b><span><em>12×12 ARENA</em><span style=\"color: rgb(79, 192, 122); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">ACTIVE CROSSING</span></span><small>4 SPAWNS</small></div></div><div class=\"ms-tty-card\"><div class=\"ms-tty-preview\" style=\"width: 64px; height: 64px;\"></div><div><b>Pyramids of Giza Arena</b><span><em>12×12 ARENA</em><span style=\"color: rgb(79, 192, 122); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">DIPLOMATIC</span></span><small>4 SPAWNS</small></div></div><div class=\"ms-tty-card\"><div class=\"ms-tty-preview\" style=\"width: 64px; height: 64px;\"></div><div><b>Heaven Arena</b><span><em>12×12 ARENA</em><span style=\"color: rgb(79, 192, 122); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">DIPLOMATIC</span></span><small>4 SPAWNS</small></div></div><div class=\"ms-tty-card\"><div class=\"ms-tty-preview\" style=\"width: 64px; height: 64px;\"></div><div><b>Hell Δ</b><span><em>8×8 Δ</em><span style=\"color: rgb(224, 85, 74); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">DIPLOMATIC</span></span><small>4 SPAWNS</small></div></div><div class=\"ms-tty-card\"><div class=\"ms-tty-preview\" style=\"width: 64px; height: 64px;\"></div><div><b>Cyberpunk City Arena</b><span><em>12×12 ARENA</em><span style=\"color: rgb(79, 192, 122); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">ACTIVE CROSSING</span></span><small>4 SPAWNS</small></div></div></div></div><div class=\"ms-tty-col\"><div class=\"ms-tty-h\">CONFIGURATION</div><div class=\"ms-tty-form\"><div class=\"ms-tty-field\"><label>TEAM SIZE<i>MAX 16</i></label><div class=\"ms-tty-chips\"><button class=\"ms-tty-chip\">1v1</button><button class=\"ms-tty-chip\">2v2</button><button class=\"ms-tty-chip\">3v3</button><button class=\"ms-tty-chip on\">4v4</button><button class=\"ms-tty-chip\">5v5</button><button class=\"ms-tty-chip\">6v6</button><button class=\"ms-tty-chip\">7v7</button><button class=\"ms-tty-chip\">8v8</button><button class=\"ms-tty-chip\">9v9</button><button class=\"ms-tty-chip\">10v10</button><button class=\"ms-tty-chip\">11v11</button><button class=\"ms-tty-chip\">12v12</button><button class=\"ms-tty-chip\">13v13</button><button class=\"ms-tty-chip\">14v14</button><button class=\"ms-tty-chip\">15v15</button><button class=\"ms-tty-chip\">16v16</button></div></div><div class=\"ms-tty-field\"><label>BOARD SIZE</label><div class=\"ms-tty-ro\"><span>12×12 ARENA</span><em>FROM SITE</em></div></div><div class=\"ms-tty-field\"><label>RESERVES<i>ROSTER 8</i></label><div class=\"ms-tty-seg\"><div class=\"on\">Off</div><div class=\"\">⇄ Bench</div></div><div class=\"ms-tty-tempo\">Everyone you bring stands on the field. Fallen units respawn on the ladder.</div></div><div class=\"ms-tty-field\"><label>ROUNDS<i>MODE DEFAULT 20</i></label><div class=\"ms-tty-step\"><button>−</button><b>20<small>R</small></b><button>+</button></div></div><div class=\"ms-tty-field\"><label>WIN CONDITION</label><div class=\"ms-tty-ro\"><span>Tower/Elim</span><em>FROM MODE</em></div></div><div class=\"ms-tty-field\"><label>CPU TEMPO</label><div class=\"ms-tty-seg\"><div class=\"on\">Cinematic</div><div class=\"\">⚡ Training</div></div><div class=\"ms-tty-tempo\">CPU turns play out with full animations and action camera.</div></div><div class=\"ms-tty-assign\"><div class=\"ms-tty-kicker\"><b>FIELD ASSIGNMENT</b><span>CASE EW-7589</span></div><h2>Mount Shasta Arena<span>12×12 ARENA</span></h2><div class=\"ms-tty-line\">ARENA · 4v4 · 20R</div><div class=\"ms-tty-line\">SITE STATUS  <span style=\"color: rgb(79, 192, 122);\">ACTIVE CROSSING</span></div></div></div></div></div><div class=\"ms-tty-foot\"><button class=\"ms-tty-btn danger\">◂ BACK</button><div class=\"ms-tty-sum\"><small>CROSSING ON FILE</small><b>Arena <i>· on </i>Mount Shasta Arena</b><span><em class=\"gold\">12×12 ARENA</em> · <em>4v4</em> · <em>20 ROUNDS</em> · <em>TOWER/ELIM</em> · <em>VS CPU</em> · CASE EW-7589</span></div><div class=\"ms-tty-spacer\"></div><span class=\"ms-tty-prompt\">&gt; <b>file --any --mode arena --delta</b><span class=\"ms-tty-cursor\"></span></span><button class=\"ms-tty-btn\">🎲 RANDOM SITE</button><button class=\"ms-tty-btn\">RANDOMIZE</button><button class=\"ms-tty-btn primary\"><b>CONFIRM</b><i>↵</i></button></div></div></div><div class=\"ms-crt-scan\"></div><div class=\"ms-crt-glare\"></div></div><div class=\"ms-crt-label\">D.O.O.R. · FIELD ASSIGNMENT TERMINAL · TTY-1 · DO NOT UNPLUG</div><div class=\"ms-crt-brand\">ENTROPY DATA SYSTEMS</div><div class=\"ms-crt-led\"></div></div></div></div>",
-  forge: "<div class=\"ms-crt ms-crt-page ms-crt-forge pb-tarot\" style=\"--pb-fc: #5ab0ff;\"><div class=\"ms-crt-bezel\"><div class=\"ms-crt-glass\"><div class=\"ms-crt-screen\"><div class=\"ms-tty pb-tty\"><div class=\"ms-tty-head pb-head\"><img src=\"https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png\" alt=\"\" draggable=\"false\" style=\"width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(rgba(0, 0, 0, 0.7) 0px 0px 8px); user-select: none;\"><b>ENTROPY WARS</b><span class=\"ms-tty-sep\">·</span><span>SQUAD MANIFESTS</span><div class=\"pb-tabbar\"><button class=\"pb-tabcap\">◂ L1</button><div class=\"pb-tabs\"><button class=\"pb-tab on\"><i>1</i>ROSTER</button><button class=\"pb-tab\"><i>2</i>TECHNIQUES</button><button class=\"pb-tab\"><i>3</i>GEAR</button><button class=\"pb-tab\"><i>4</i>DOSSIER</button></div><button class=\"pb-tabcap\">R1 ▸</button></div><span class=\"pb-head-right\"><span>4 SLOTS · TEAM ARCHIVE</span><span class=\"ms-tty-sep\">·</span><span class=\"ms-tty-esc\">ESC · BACK</span></span></div><div class=\"pb-body\" data-tab=\"roster\" data-panel=\"0\"><div class=\"pb-zone pb-zone-tech pb-zone-roster\"><div class=\"pb-zone-head pb-wall-head\"><b>Codex of Vessels</b><span class=\"pb-wall-count\">139 / 139</span><span class=\"door-hdr-sub pb-wall-sub\">D.O.O.R. RECORDS · ENTITY REGISTRY</span><div style=\"flex: 1 1 0%;\"></div><input class=\"pb-pill-input\" placeholder=\"SEARCH…\" value=\"\"><button class=\"pb-pill-btn on\">⇅ HP ↓</button></div><div class=\"pb-wall-filters\"><span class=\"pb-wall-flabel\">TYPE</span><button class=\"pb-type-disc\" style=\"--tc: #a0a0c3;\">HU</button><button class=\"pb-type-disc\" style=\"--tc: #32aa50;\">AL</button><button class=\"pb-type-disc\" style=\"--tc: #dcaa1e;\">DV</button><button class=\"pb-type-disc\" style=\"--tc: #9632b4;\">UH</button><button class=\"pb-type-disc\" style=\"--tc: #28a0be;\">TK</button><button class=\"pb-type-disc\" style=\"--tc: #dc3c82;\">AN</button></div><div class=\"pb-roster\"></div><div class=\"pb-veil zone\"><div class=\"pb-window\" style=\"width: 300px;\"><div class=\"pb-window-head\"><b>SORT THE WALL</b><span>HP ↓</span><button class=\"pb-window-x\">✕ CLOSE</button></div><div class=\"pb-window-body\"><div class=\"pb-menu-list\"><button class=\"pb-menu-row on\"><i>↓</i>HP<small>HIGHEST FIRST</small></button><button class=\"pb-menu-row\"><i>↑</i>HP<small>LOWEST FIRST</small></button><button class=\"pb-menu-row\"><i>↓</i>MP<small>HIGHEST FIRST</small></button><button class=\"pb-menu-row\"><i>↑</i>MP<small>LOWEST FIRST</small></button><button class=\"pb-menu-row\"><i>↓</i>ATK<small>HIGHEST FIRST</small></button><button class=\"pb-menu-row\"><i>↑</i>ATK<small>LOWEST FIRST</small></button><button class=\"pb-menu-row\"><i>↓</i>DEF<small>HIGHEST FIRST</small></button><button class=\"pb-menu-row\"><i>↑</i>DEF<small>LOWEST FIRST</small></button><button class=\"pb-menu-row\"><i>↓</i>M DEF<small>HIGHEST FIRST</small></button><button class=\"pb-menu-row\"><i>↑</i>M DEF<small>LOWEST FIRST</small></button></div></div></div></div></div><div class=\"pb-stage\" style=\"--pb-cx: 50%;\"><div class=\"pb-stage-view\"><div class=\"pb-stage-glow\" style=\"background: radial-gradient(circle, rgba(90, 176, 255, 0.15), transparent 62%);\"></div><div class=\"pb-stage-floor\" style=\"background: radial-gradient(rgba(90, 176, 255, 0.4), transparent 70%);\"></div><div class=\"pb-hero3d\"><div class=\"pb-hero3d-fallback\"><div style=\"width: 100%; height: 97%; background-image: url(&quot;https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png&quot;); background-size: contain; background-position: center bottom; background-repeat: no-repeat; image-rendering: pixelated; filter: drop-shadow(rgb(90, 176, 255) 0px 0px 8px);\"></div></div></div></div><div class=\"pb-stage-card\"><div style=\"display: flex; align-items: baseline; gap: 8px; min-width: 0px;\"><span style=\"font-family: &quot;Cormorant SC&quot;, serif; font-size: 15px; font-weight: 600; color: rgb(241, 233, 207); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0px;\">Homosapien</span><span style=\"font-size: 8px; color: rgb(92, 92, 92); letter-spacing: 0.14em; flex-shrink: 0; text-transform: uppercase;\">MULTI-ROLE</span></div><div style=\"display: flex; align-items: center; gap: 4px; flex-wrap: wrap;\"><span style=\"display: inline-flex; align-items: center; font-family: DotGothic16, monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; line-height: 1.3; color: rgb(200, 200, 228); padding: 2px 8px; border: 1px solid rgba(160, 160, 195, 0.667); background: linear-gradient(rgba(160, 160, 195, 0.133), rgba(160, 160, 195, 0.133)), rgba(9, 11, 17, 0.82); text-shadow: rgba(0, 0, 0, 0.85) 0px 1px 2px; clip-path: polygon(4px 0px, 100% 0px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0px 100%, 0px 4px);\">human</span></div><div style=\"display: flex; flex-direction: column; gap: 2px;\"><div class=\"pb-stat compact\" style=\"--sc: #e3dcc6;\"><span class=\"pb-stat-label\" style=\"color: rgb(156, 156, 156);\">HP</span><span class=\"pb-grade-ring ew-grade grade-a\" style=\"--pct: 94;\"><i>A</i></span><span class=\"pb-stat-val\" style=\"color: rgb(242, 242, 242);\">1410</span><span class=\"pb-stat-bar\"><i style=\"width: 100%;\"></i></span><span class=\"pb-stat-delta\" style=\"color: rgb(255, 92, 92);\"></span></div><div class=\"pb-stat compact\" style=\"--sc: #e3dcc6;\"><span class=\"pb-stat-label\" style=\"color: rgb(156, 156, 156);\">ATK</span><span class=\"pb-grade-ring ew-grade grade-b\" style=\"--pct: 83;\"><i>B</i></span><span class=\"pb-stat-val\" style=\"color: rgb(242, 242, 242);\">83</span><span class=\"pb-stat-bar\"><i style=\"width: 75.4545%;\"></i></span><span class=\"pb-stat-delta\" style=\"color: rgb(255, 92, 92);\"></span></div><div class=\"pb-stat compact\" style=\"--sc: #e3dcc6;\"><span class=\"pb-stat-label\" style=\"color: rgb(156, 156, 156);\">DEF</span><span class=\"pb-grade-ring ew-grade grade-a\" style=\"--pct: 100;\"><i>A</i></span><span class=\"pb-stat-val\" style=\"color: rgb(242, 242, 242);\">158</span><span class=\"pb-stat-bar\"><i style=\"width: 100%;\"></i></span><span class=\"pb-stat-delta\" style=\"color: rgb(255, 92, 92);\"></span></div><div class=\"pb-stat compact\" style=\"--sc: #e3dcc6;\"><span class=\"pb-stat-label\" style=\"color: rgb(156, 156, 156);\">SPD</span><span class=\"pb-grade-ring ew-grade grade-b\" style=\"--pct: 100;\"><i>B</i></span><span class=\"pb-stat-val\" style=\"color: rgb(242, 242, 242);\">119</span><span class=\"pb-stat-bar\"><i style=\"width: 100%;\"></i></span><span class=\"pb-stat-delta\" style=\"color: rgb(255, 92, 92);\"></span></div></div></div></div><div class=\"pb-party\"><div class=\"pb-party-left\"><button class=\"ms-tty-btn danger\">◂ TEAMS</button></div><div class=\"pb-party-slots\"><div class=\"pb-party-slot on\" style=\"--slot-fc: #5ab0ff;\"><div class=\"pb-party-ring\"><div class=\"pb-party-portrait\"><div style=\"width: 90%; height: 90%; background-image: url(&quot;https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png&quot;); background-size: contain; background-position: center bottom; background-repeat: no-repeat; image-rendering: pixelated; filter: drop-shadow(rgb(90, 176, 255) 0px 0px 8px);\"></div></div><span class=\"pb-party-no\">I</span></div><div class=\"pb-party-name\">Homosapien</div><div class=\"pb-party-sub\">Homosapien · MULTI-ROLE</div></div><div class=\"pb-party-slot\" style=\"--slot-fc: #e168c8;\"><div class=\"pb-party-ring\"><div class=\"pb-party-portrait\"><div style=\"width: 100%; height: 100%; background-image: url(&quot;https://cdn.entropywars.net/Assets/characters/portraits/male/pirate.png&quot;); background-size: cover; background-position: center center; image-rendering: pixelated;\"></div></div><span class=\"pb-party-no\">II</span></div><div class=\"pb-party-name\">Pirate</div><div class=\"pb-party-sub\">Pirate · ASSAULT</div></div><div class=\"pb-party-slot\" style=\"--slot-fc: #f2c468;\"><div class=\"pb-party-ring\"><div class=\"pb-party-portrait\"><div style=\"width: 90%; height: 90%; background-image: url(&quot;https://cdn.entropywars.net/Assets/characters/races/swordfighter/female/swordfighter_female.png&quot;); background-size: contain; background-position: center bottom; background-repeat: no-repeat; image-rendering: pixelated;\"></div></div><span class=\"pb-party-no\">III</span></div><div class=\"pb-party-name\">Swordfighter</div><div class=\"pb-party-sub\">Swordfighter · ASSAULT</div></div><div class=\"pb-party-slot\" style=\"--slot-fc: #f2c468;\"><div class=\"pb-party-ring\"><div class=\"pb-party-portrait\"><div style=\"width: 100%; height: 100%; background-image: url(&quot;https://cdn.entropywars.net/Assets/characters/portraits/male/giant.png&quot;); background-size: cover; background-position: center center; image-rendering: pixelated;\"></div></div><span class=\"pb-party-no\">IV</span></div><div class=\"pb-party-name\">Giant</div><div class=\"pb-party-sub\">Giant · HEAVY ARMOR</div></div></div><div class=\"pb-party-right ms-tty-foot pb-foot\"><div class=\"pb-tools\"><button class=\"ms-tty-btn sm\">🎲 ONE</button><button class=\"ms-tty-btn sm\">🎲 ALL</button><button class=\"ms-tty-btn sm\">RESET</button><button class=\"ms-tty-btn sm\">− SLOT</button><button class=\"ms-tty-btn sm teal\">＋ SLOT</button></div><div class=\"pb-seal\"><input class=\"pb-foot-input\" placeholder=\"Squad name\" maxlength=\"30\" value=\"Fire Squad\"><button class=\"ms-tty-btn primary\"><b>💾 SAVE TEAM</b><i>↵</i></button></div></div></div></div></div></div><div class=\"ms-crt-scan\"></div><div class=\"ms-crt-glare\"></div></div><div class=\"ms-crt-label\">D.O.O.R. · RECORDS · FORGE-1 · DO NOT UNPLUG</div><div class=\"ms-crt-brand\">ENTROPY DATA SYSTEMS</div><div class=\"ms-crt-led\"></div></div></div>",
-  menu: "<div id=\"mainMenuPage\" class=\"title-page void-menu active\"> <div class=\"menu-stage\"></div> <div class=\"ls-grain\"></div> <div class=\"ls-motes\"> <div class=\"ls-mote\" style=\"left:3vw;width:3px;height:3px;--dx:4vw;animation-duration:11.5s;animation-delay:-2.2s\"></div> <div class=\"ls-mote ls-mote-green\" style=\"left:9vw;width:2px;height:2px;--dx:-3vw;animation-duration:14s;animation-delay:-7s\"></div> <div class=\"ls-mote\" style=\"left:15vw;width:4px;height:4px;--dx:2vw;animation-duration:9.5s;animation-delay:-4.4s\"></div> <div class=\"ls-mote\" style=\"left:22vw;width:2.5px;height:2.5px;--dx:-5vw;animation-duration:13s;animation-delay:-10s\"></div> <div class=\"ls-mote\" style=\"left:28vw;width:5px;height:5px;--dx:3vw;animation-duration:8s;animation-delay:-1.5s\"></div> <div class=\"ls-mote ls-mote-green\" style=\"left:34vw;width:3px;height:3px;--dx:5vw;animation-duration:12.5s;animation-delay:-8.8s\"></div> <div class=\"ls-mote\" style=\"left:41vw;width:2px;height:2px;--dx:-2vw;animation-duration:15s;animation-delay:-3.1s\"></div> <div class=\"ls-mote\" style=\"left:47vw;width:4px;height:4px;--dx:-4vw;animation-duration:10s;animation-delay:-6.2s\"></div> <div class=\"ls-mote\" style=\"left:53vw;width:3px;height:3px;--dx:6vw;animation-duration:12s;animation-delay:-11.5s\"></div> <div class=\"ls-mote ls-mote-green\" style=\"left:59vw;width:2px;height:2px;--dx:2vw;animation-duration:14.5s;animation-delay:-0.8s\"></div> <div class=\"ls-mote\" style=\"left:64vw;width:5px;height:5px;--dx:-3vw;animation-duration:8.5s;animation-delay:-5.5s\"></div> <div class=\"ls-mote\" style=\"left:70vw;width:3px;height:3px;--dx:4vw;animation-duration:11s;animation-delay:-9.4s\"></div> </div> <div class=\"mm-stack\"> <div class=\"mm-logo\">ENTROPY WARS</div> <div class=\"mm-sub\">As above, so below</div> <div class=\"mm-rule\"></div> <div class=\"mm-buttons\"> <button class=\"mm-btn mm-btn-multiplayer\"><span class=\"mm-label\">New Game</span><span class=\"mm-desc-text\">Story mode — report to D.O.O.R. headquarters</span></button> <button class=\"mm-btn mm-btn-online\"><span class=\"mm-label\">Online PvP</span><span class=\"mm-desc-text\">Quick Play or a Friendly Match, every vessel unlocked</span></button> <button class=\"mm-btn mm-btn-practice\"><span class=\"mm-label\">Play VS CPU</span><span class=\"mm-desc-text\">Arena or Team Deathmatch against the computer, every vessel unlocked</span></button> <button class=\"mm-btn mm-btn-teambuilder\"><span class=\"mm-label\">Party Builder</span><span class=\"mm-desc-text\">Forge &amp; archive squads before the war</span></button> <button class=\"mm-btn mm-btn-tutorial\"><span class=\"mm-label\">Tutorial</span><span class=\"mm-desc-text\">Orientation, Day 1 — the tape, then Room 64</span></button> <button class=\"mm-btn mm-btn-campaign\"><span class=\"mm-label\">Challenge</span><span class=\"mm-desc-text\">How many battles can you survive?</span></button> <button class=\"mm-btn mm-btn-dungeon\"><span class=\"mm-label\">Mystery Dungeon</span><span class=\"mm-desc-text\">Descend 10 floors — find the stairs, survive</span></button> <button class=\"mm-btn mm-btn-profile\"><span class=\"mm-label\">Profile</span><span class=\"mm-desc-text\">Stats, history &amp; achievements</span></button> <button class=\"mm-btn mm-btn-replay\"><span class=\"mm-label\">🎬 Replay</span><span class=\"mm-desc-text\">Rewatch your last match cinematically</span></button> <button class=\"mm-btn mm-btn-codex\"><span class=\"mm-label\">Codex</span><span class=\"mm-desc-text\">Classified subject dossiers</span></button> <button class=\"mm-btn mm-btn-shop\"><span class=\"mm-label\">Shop&nbsp;</span><span class=\"mm-desc-text\">Declassify &amp; unlock new vessels</span></button> <button class=\"mm-btn mm-btn-editor\"><span class=\"mm-label\">Editor</span><span class=\"mm-desc-text\">Build your world by hand</span></button> <button class=\"mm-btn mm-btn-leaderboard\"><span class=\"mm-label\">Leaderboard</span><span class=\"mm-desc-text\">Top ranked players worldwide</span></button> <button class=\"mm-btn mm-btn-community\"><span class=\"mm-label\">Community Maps</span><span class=\"mm-desc-text\">Browse, play &amp; share custom maps</span></button> <button class=\"mm-btn mm-btn-settings\"><span class=\"mm-label\">Settings</span><span class=\"mm-desc-text\">Audio, display, controls</span></button> </div> </div> <div class=\"door-menu-seal\" aria-hidden=\"true\"> <img src=\"https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png\" alt=\"\" draggable=\"false\"> <span>DEPT. OF ORTHOGONAL REALITIES</span> </div> <div class=\"mm-elo-display\"> <span class=\"mm-elo-tag\"><span style=\"font-weight:700;color:#e6e9f2\">Player</span> · 🥉 Bronze — 1000 Elo<span class=\"door-clearance-tag\">CLEARANCE L1 · DOORMAT</span></span> <span class=\"ew-wallet\" style=\"margin-left:14px;display:inline-block\" data-gold=\"0\"><span class=\"ew-wallet-gold\" style=\"color:#ffd86a;font-weight:600\">💰 0</span> <span class=\"ew-wallet-token\" title=\"Free unlock tokens\" style=\"color:#9ad0ff\">🎟 1</span></span> </div> </div>",
+  match: "<div class=\"title-page active\" style=\"align-items:stretch;justify-content:stretch\"><div class=\"ms-crt ms-crt-page ms-crt-full\" style=\"flex:1;width:100%\"><div class=\"ms-crt-bezel\"><div class=\"ms-crt-glass\"><div class=\"ms-crt-shot\"></div><div class=\"ms-crt-screen\"><div class=\"ms-tty\"><div class=\"ms-tty-head\"><span>D.O.O.R.</span><span class=\"ms-tty-sep\">▸</span><b>FIELD ASSIGNMENT TERMINAL</b><span class=\"ms-tty-sep\">·</span><span>CUSTOMS &amp; ADMISSIONS</span><span class=\"ms-tty-sep\">·</span><span>TTY-1</span><span class=\"ms-tty-sep\">·</span><span>10804 BC</span><span class=\"ms-tty-officer\">Player<i>CLEARANCE L1 · DOORMAT</i></span><span class=\"ms-tty-sep\">·</span><span class=\"ms-tty-esc\">ESC · STEP AWAY</span></div><div class=\"ms-tty-body ms-tty-full\"><div class=\"ms-tty-col ms-tty-modes\"><div class=\"ms-tty-h\">GAME MODE</div><div class=\"ms-tty-list\"><div class=\"ms-tty-row sel\"><em>▸</em><b>🏰 Arena</b><p>Win by Wipeout, destroying the Enemy Cube, or finding all 5 Hidden Keys. Composite score determines the winner after 20 rounds.</p></div><div class=\"ms-tty-row\"><em>▸</em><b>💀 Team Deathmatch</b><p>Most kills in 12 rounds wins. Wipeout also wins instantly. Sudden Death if tied.</p></div><div class=\"ms-tty-row\"><em>▸</em><b>🎴 Clash<i>NEW</i></b><p>Classic JRPG battle — 4v4 on a fixed stage, no movement. Two parties face off across the field: attack, cast, use an item, or Guard, then the next unit steps up. Wipe out the enemy party to win.</p></div><div class=\"ms-tty-row\"><em>▸</em><b>♟️ Simul<i>EXPERIMENTAL</i></b><p>SIMULTANEOUS turns — both sides secretly order one unit (any unit, 2 AP), then the orders play out together: priority first, then speed. Displaced targets are re-acquired or the action whiffs. Most kills in 12 rounds wins.</p></div></div></div><div class=\"ms-tty-col\"><div class=\"ms-tty-band\"><div class=\"ms-tty-preview\" style=\"width: 228px; height: 228px;\"></div><div class=\"ms-tty-file\"><div class=\"ms-tty-kicker\"><b>SITE FILE</b><span>EW-7589</span><span class=\"ms-tty-no\">ROOM 14179</span><span class=\"ms-tty-fill\"></span><span>FIRST CROSSING · 315 AD</span></div><div class=\"ms-tty-title\"><h1>Mount Shasta</h1><span class=\"door-stamp admit\">ACTIVE CROSSING</span></div><div class=\"ms-tty-sub\">· arena · 8×8 cut of the site’s own room</div><div class=\"ms-tty-meta\"><span><em>SIZE</em>12×12 ARENA</span><span><em>SPAWNS</em>4 per side</span></div><div class=\"ms-tty-kv\"><b>JURISDICTION</b>Customs &amp; Admissions · Siskiyou County, California</div><div><div class=\"door-file-h\">1.  EXECUTIVE SUMMARY</div><p class=\"ms-tty-p\">Dormant volcano, active legend. The mountain has been \"about to erupt\" since 1250 and the Lemurians beneath it have been \"about to make contact\" since 1931; both remain pending. Lenticular clouds park over the summit and get reported as saucers roughly weekly. The town below sells crystals to believers and geologists alike. Both keep buying.</p></div></div></div><div class=\"ms-tty-filters\"><div class=\"ms-tty-h\">SITES<span>38/132</span></div><div class=\"ms-tty-input\"><span>⌕</span><input placeholder=\"search sites\" spellcheck=\"false\" value=\"\"></div><button class=\"ms-tty-chip on\">ARENA MAPS</button><span class=\"ms-tty-note\" style=\"letter-spacing: 0.18em;\">SIZE</span><button class=\"ms-tty-chip\">4–8</button><button class=\"ms-tty-chip\">10–14</button><button class=\"ms-tty-chip\">16+</button></div><div class=\"ms-tty-cards\"><div class=\"ms-tty-card sel\"><div class=\"ms-tty-preview\" style=\"width: 64px; height: 64px;\"></div><div><b>Mount Shasta</b><span><em>12×12 ARENA</em><span style=\"color: rgb(79, 192, 122); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">ACTIVE CROSSING</span></span><small>4 SPAWNS</small></div></div><div class=\"ms-tty-card\"><div class=\"ms-tty-preview\" style=\"width: 64px; height: 64px;\"></div><div><b>Stonehenge</b><span><em>12×12 ARENA</em><span style=\"color: rgb(79, 192, 122); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">ACTIVE CROSSING</span></span><small>4 SPAWNS</small></div></div><div class=\"ms-tty-card\"><div class=\"ms-tty-preview\" style=\"width: 64px; height: 64px;\"></div><div><b>Pyramids of Giza</b><span><em>12×12 ARENA</em><span style=\"color: rgb(79, 192, 122); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">DIPLOMATIC</span></span><small>4 SPAWNS</small></div></div><div class=\"ms-tty-card\"><div class=\"ms-tty-preview\" style=\"width: 64px; height: 64px;\"></div><div><b>Heaven</b><span><em>12×12 ARENA</em><span style=\"color: rgb(79, 192, 122); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">DIPLOMATIC</span></span><small>4 SPAWNS</small></div></div><div class=\"ms-tty-card\"><div class=\"ms-tty-preview\" style=\"width: 64px; height: 64px;\"></div><div><b>Hell Δ</b><span><em>8×8 Δ</em><span style=\"color: rgb(224, 85, 74); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">DIPLOMATIC</span></span><small>4 SPAWNS</small></div></div><div class=\"ms-tty-card\"><div class=\"ms-tty-preview\" style=\"width: 64px; height: 64px;\"></div><div><b>Cyberpunk City</b><span><em>12×12 ARENA</em><span style=\"color: rgb(79, 192, 122); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;\">ACTIVE CROSSING</span></span><small>4 SPAWNS</small></div></div></div></div><div class=\"ms-tty-col\"><div class=\"ms-tty-h\">CONFIGURATION</div><div class=\"ms-tty-form\"><div class=\"ms-tty-field\"><label>TEAM SIZE<i>MAX 16</i></label><div class=\"ms-tty-chips\"><button class=\"ms-tty-chip\">1v1</button><button class=\"ms-tty-chip\">2v2</button><button class=\"ms-tty-chip\">3v3</button><button class=\"ms-tty-chip on\">4v4</button><button class=\"ms-tty-chip\">5v5</button><button class=\"ms-tty-chip\">6v6</button><button class=\"ms-tty-chip\">7v7</button><button class=\"ms-tty-chip\">8v8</button><button class=\"ms-tty-chip\">9v9</button><button class=\"ms-tty-chip\">10v10</button><button class=\"ms-tty-chip\">11v11</button><button class=\"ms-tty-chip\">12v12</button><button class=\"ms-tty-chip\">13v13</button><button class=\"ms-tty-chip\">14v14</button><button class=\"ms-tty-chip\">15v15</button><button class=\"ms-tty-chip\">16v16</button></div></div><div class=\"ms-tty-field\"><label>BOARD SIZE</label><div class=\"ms-tty-ro\"><span>12×12 ARENA</span><em>FROM SITE</em></div></div><div class=\"ms-tty-field\"><label>RESERVES<i>ROSTER 8</i></label><div class=\"ms-tty-seg\"><div class=\"on\">Off</div><div class=\"\">⇄ Bench</div></div><div class=\"ms-tty-tempo\">Everyone you bring stands on the field. Fallen units respawn on the ladder.</div></div><div class=\"ms-tty-field\"><label>ROUNDS<i>MODE DEFAULT 20</i></label><div class=\"ms-tty-step\"><button>−</button><b>20<small>R</small></b><button>+</button></div></div><div class=\"ms-tty-field\"><label>WIN CONDITION</label><div class=\"ms-tty-ro\"><span>Tower/Elim</span><em>FROM MODE</em></div></div><div class=\"ms-tty-field\"><label>CPU TEMPO</label><div class=\"ms-tty-seg\"><div class=\"on\">Cinematic</div><div class=\"\">⚡ Training</div></div><div class=\"ms-tty-tempo\">CPU turns play out with full animations and action camera.</div></div><div class=\"ms-tty-assign\"><div class=\"ms-tty-kicker\"><b>FIELD ASSIGNMENT</b><span>CASE EW-7589</span></div><h2>Mount Shasta<span>12×12 ARENA</span></h2><div class=\"ms-tty-line\">ARENA · 4v4 · 20R</div><div class=\"ms-tty-line\">SITE STATUS  <span style=\"color: rgb(79, 192, 122);\">ACTIVE CROSSING</span></div></div></div></div></div><div class=\"ms-tty-foot\"><button class=\"ms-tty-btn danger\">◂ BACK</button><div class=\"ms-tty-sum\"><small>CROSSING ON FILE</small><b>Arena <i>· on </i>Mount Shasta</b><span><em class=\"gold\">12×12 ARENA</em> · <em>4v4</em> · <em>20 ROUNDS</em> · <em>TOWER/ELIM</em> · <em>VS CPU</em> · CASE EW-7589</span></div><div class=\"ms-tty-spacer\"></div><span class=\"ms-tty-prompt\">&gt; <b>file --any --mode arena --delta</b><span class=\"ms-tty-cursor\"></span></span><button class=\"ms-tty-btn\">🎲 RANDOM SITE</button><button class=\"ms-tty-btn\">RANDOMIZE</button><button class=\"ms-tty-btn primary\"><b>CONFIRM</b><i>↵</i></button></div></div></div><div class=\"ms-crt-scan\"></div><div class=\"ms-crt-glare\"></div></div><div class=\"ms-crt-label\">D.O.O.R. · FIELD ASSIGNMENT TERMINAL · TTY-1 · DO NOT UNPLUG</div><div class=\"ms-crt-brand\">ENTROPY DATA SYSTEMS</div><div class=\"ms-crt-led\"></div></div></div></div>",
+  forge: "<div class=\"ms-crt ms-crt-page ms-crt-forge pb-tarot\" style=\"--pb-fc: #5ab0ff;\"><div class=\"ms-crt-bezel\"><div class=\"ms-crt-glass\"><div class=\"ms-crt-screen\"><div class=\"ms-tty pb-tty\"><div class=\"ms-tty-head pb-head\"><img src=\"https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png\" alt=\"\" draggable=\"false\" style=\"width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(rgba(0, 0, 0, 0.7) 0px 0px 8px); user-select: none;\"><b>ENTROPY WARS</b><span class=\"ms-tty-sep\">·</span><span>SQUAD MANIFESTS</span><div class=\"pb-tabbar\"><button class=\"pb-tabcap\">◂ L1</button><div class=\"pb-tabs\"><button class=\"pb-tab on\"><i>1</i>ROSTER</button><button class=\"pb-tab\"><i>2</i>TECHNIQUES</button><button class=\"pb-tab\"><i>3</i>GEAR</button><button class=\"pb-tab\"><i>4</i>DOSSIER</button></div><button class=\"pb-tabcap\">R1 ▸</button></div><span class=\"pb-head-right\"><span>4 SLOTS · TEAM ARCHIVE</span><span class=\"ms-tty-sep\">·</span><span class=\"ms-tty-esc\">ESC · BACK</span></span></div><div class=\"pb-body\" data-tab=\"roster\" data-panel=\"0\"><div class=\"pb-zone pb-zone-tech pb-zone-roster\"><div class=\"pb-zone-head pb-wall-head\"><b>Codex of Vessels</b><span class=\"pb-wall-count\">139 / 139</span><span class=\"door-hdr-sub pb-wall-sub\">D.O.O.R. RECORDS · ENTITY REGISTRY</span><div style=\"flex: 1 1 0%;\"></div><input class=\"pb-pill-input\" placeholder=\"SEARCH…\" value=\"\"><button class=\"pb-pill-btn on\">⇅ HP ↓</button></div><div class=\"pb-wall-filters\"><span class=\"pb-wall-flabel\">TYPE</span><button class=\"pb-type-disc\" style=\"--tc: #a0a0c3;\">HU</button><button class=\"pb-type-disc\" style=\"--tc: #32aa50;\">AL</button><button class=\"pb-type-disc\" style=\"--tc: #dcaa1e;\">DV</button><button class=\"pb-type-disc\" style=\"--tc: #9632b4;\">UH</button><button class=\"pb-type-disc\" style=\"--tc: #28a0be;\">TK</button><button class=\"pb-type-disc\" style=\"--tc: #dc3c82;\">AN</button></div><div class=\"pb-roster\"></div><div class=\"pb-veil zone\"><div class=\"pb-window\" style=\"width: 300px;\"><div class=\"pb-window-head\"><b>SORT THE WALL</b><span>HP ↓</span><button class=\"pb-window-x\">✕ CLOSE</button></div><div class=\"pb-window-body\"><div class=\"pb-menu-list\"><button class=\"pb-menu-row on\"><i>↓</i>HP<small>HIGHEST FIRST</small></button><button class=\"pb-menu-row\"><i>↑</i>HP<small>LOWEST FIRST</small></button><button class=\"pb-menu-row\"><i>↓</i>MP<small>HIGHEST FIRST</small></button><button class=\"pb-menu-row\"><i>↑</i>MP<small>LOWEST FIRST</small></button><button class=\"pb-menu-row\"><i>↓</i>ATK<small>HIGHEST FIRST</small></button><button class=\"pb-menu-row\"><i>↑</i>ATK<small>LOWEST FIRST</small></button><button class=\"pb-menu-row\"><i>↓</i>DEF<small>HIGHEST FIRST</small></button><button class=\"pb-menu-row\"><i>↑</i>DEF<small>LOWEST FIRST</small></button><button class=\"pb-menu-row\"><i>↓</i>M DEF<small>HIGHEST FIRST</small></button><button class=\"pb-menu-row\"><i>↑</i>M DEF<small>LOWEST FIRST</small></button></div></div></div></div></div><div class=\"pb-stage\" style=\"--pb-cx: 50%;\"><div class=\"pb-stage-view\"><div class=\"pb-stage-glow\" style=\"background: radial-gradient(circle, rgba(90, 176, 255, 0.15), transparent 62%);\"></div><div class=\"pb-stage-floor\" style=\"background: radial-gradient(rgba(90, 176, 255, 0.4), transparent 70%);\"></div><div class=\"pb-hero3d\"><div class=\"pb-hero3d-fallback\"><div style=\"width: 100%; height: 97%; background-image: url(&quot;https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png&quot;); background-size: contain; background-position: center bottom; background-repeat: no-repeat; image-rendering: pixelated; filter: drop-shadow(rgb(90, 176, 255) 0px 0px 8px);\"></div></div></div></div><div class=\"pb-stage-card\"><div style=\"display: flex; align-items: baseline; gap: 8px; min-width: 0px;\"><span style=\"font-family: &quot;Cormorant SC&quot;, serif; font-size: 15px; font-weight: 600; color: rgb(241, 233, 207); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0px;\">Homosapien</span><span style=\"font-size: 8px; color: rgb(92, 92, 92); letter-spacing: 0.14em; flex-shrink: 0; text-transform: uppercase;\">MULTI-ROLE</span></div><div style=\"display: flex; align-items: center; gap: 4px; flex-wrap: wrap;\"><span style=\"display: inline-flex; align-items: center; font-family: DotGothic16, monospace; font-size: 9px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; line-height: 1.3; color: rgb(200, 200, 228); padding: 2px 8px; border: 1px solid rgba(160, 160, 195, 0.667); background: linear-gradient(rgba(160, 160, 195, 0.133), rgba(160, 160, 195, 0.133)), rgba(9, 11, 17, 0.82); text-shadow: rgba(0, 0, 0, 0.85) 0px 1px 2px; clip-path: polygon(4px 0px, 100% 0px, 100% calc(100% - 4px), calc(100% - 4px) 100%, 0px 100%, 0px 4px);\">human</span></div><div style=\"display: flex; flex-direction: column; gap: 2px;\"><div class=\"pb-stat compact\" style=\"--sc: #e3dcc6;\"><span class=\"pb-stat-label\" style=\"color: rgb(156, 156, 156);\">HP</span><span class=\"pb-grade-ring ew-grade grade-a\" style=\"--pct: 94;\"><i>A</i></span><span class=\"pb-stat-val\" style=\"color: rgb(242, 242, 242);\">1410</span><span class=\"pb-stat-bar\"><i style=\"width: 100%;\"></i></span><span class=\"pb-stat-delta\" style=\"color: rgb(255, 92, 92);\"></span></div><div class=\"pb-stat compact\" style=\"--sc: #e3dcc6;\"><span class=\"pb-stat-label\" style=\"color: rgb(156, 156, 156);\">ATK</span><span class=\"pb-grade-ring ew-grade grade-b\" style=\"--pct: 83;\"><i>B</i></span><span class=\"pb-stat-val\" style=\"color: rgb(242, 242, 242);\">83</span><span class=\"pb-stat-bar\"><i style=\"width: 75.4545%;\"></i></span><span class=\"pb-stat-delta\" style=\"color: rgb(255, 92, 92);\"></span></div><div class=\"pb-stat compact\" style=\"--sc: #e3dcc6;\"><span class=\"pb-stat-label\" style=\"color: rgb(156, 156, 156);\">DEF</span><span class=\"pb-grade-ring ew-grade grade-a\" style=\"--pct: 100;\"><i>A</i></span><span class=\"pb-stat-val\" style=\"color: rgb(242, 242, 242);\">158</span><span class=\"pb-stat-bar\"><i style=\"width: 100%;\"></i></span><span class=\"pb-stat-delta\" style=\"color: rgb(255, 92, 92);\"></span></div><div class=\"pb-stat compact\" style=\"--sc: #e3dcc6;\"><span class=\"pb-stat-label\" style=\"color: rgb(156, 156, 156);\">SPD</span><span class=\"pb-grade-ring ew-grade grade-b\" style=\"--pct: 100;\"><i>B</i></span><span class=\"pb-stat-val\" style=\"color: rgb(242, 242, 242);\">119</span><span class=\"pb-stat-bar\"><i style=\"width: 100%;\"></i></span><span class=\"pb-stat-delta\" style=\"color: rgb(255, 92, 92);\"></span></div></div></div></div><div class=\"pb-party\"><div class=\"pb-party-left\"><button class=\"ms-tty-btn danger\">◂ TEAMS</button></div><div class=\"pb-party-slots\"><div class=\"pb-party-slot on\" style=\"--slot-fc: #5ab0ff;\"><div class=\"pb-party-ring\"><div class=\"pb-party-portrait\"><div style=\"width: 90%; height: 90%; background-image: url(&quot;https://cdn.entropywars.net/Assets/characters/races/homosapien/male/freelancer/homosapien_male_freelancer.png&quot;); background-size: contain; background-position: center bottom; background-repeat: no-repeat; image-rendering: pixelated; filter: drop-shadow(rgb(90, 176, 255) 0px 0px 8px);\"></div></div><span class=\"pb-party-no\">I</span></div><div class=\"pb-party-name\">Homosapien</div><div class=\"pb-party-sub\">Homosapien · MULTI-ROLE</div></div><div class=\"pb-party-slot\" style=\"--slot-fc: #e168c8;\"><div class=\"pb-party-ring\"><div class=\"pb-party-portrait\"><div style=\"width: 100%; height: 100%; background-image: url(&quot;https://cdn.entropywars.net/Assets/characters/portraits/male/pirate.png&quot;); background-size: cover; background-position: center center; image-rendering: pixelated;\"></div></div><span class=\"pb-party-no\">II</span></div><div class=\"pb-party-name\">Pirate</div><div class=\"pb-party-sub\">Pirate · ASSAULT</div></div><div class=\"pb-party-slot\" style=\"--slot-fc: #f2c468;\"><div class=\"pb-party-ring\"><div class=\"pb-party-portrait\"><div style=\"width: 90%; height: 90%; background-image: url(&quot;https://cdn.entropywars.net/Assets/characters/races/swordfighter/female/swordfighter_female.png&quot;); background-size: contain; background-position: center bottom; background-repeat: no-repeat; image-rendering: pixelated;\"></div></div><span class=\"pb-party-no\">III</span></div><div class=\"pb-party-name\">Swordfighter</div><div class=\"pb-party-sub\">Swordfighter · ASSAULT</div></div><div class=\"pb-party-slot\" style=\"--slot-fc: #f2c468;\"><div class=\"pb-party-ring\"><div class=\"pb-party-portrait\"><div style=\"width: 100%; height: 100%; background-image: url(&quot;https://cdn.entropywars.net/Assets/characters/portraits/male/giant.png&quot;); background-size: cover; background-position: center center; image-rendering: pixelated;\"></div></div><span class=\"pb-party-no\">IV</span></div><div class=\"pb-party-name\">Giant</div><div class=\"pb-party-sub\">Giant · HEAVY ARMOR</div></div></div><div class=\"pb-party-right ms-tty-foot pb-foot\"><div class=\"pb-tools\"><button class=\"ms-tty-btn sm\">🎲 ONE</button><button class=\"ms-tty-btn sm\">🎲 ALL</button><button class=\"ms-tty-btn sm\">RESET</button><button class=\"ms-tty-btn sm\">− SLOT</button><button class=\"ms-tty-btn sm teal\">＋ SLOT</button></div><div class=\"pb-seal\"><input class=\"pb-foot-input\" placeholder=\"Squad name\" maxlength=\"30\" value=\"Fire Squad\"><button class=\"ms-tty-btn primary\"><b>💾 SAVE TEAM</b><i>↵</i></button></div></div></div></div></div></div><div class=\"ms-crt-scan\"></div><div class=\"ms-crt-glare\"></div></div><div class=\"ms-crt-label\">D.O.O.R. · RECORDS · FORGE-1 · DO NOT UNPLUG</div><div class=\"ms-crt-brand\">ENTROPY DATA SYSTEMS</div><div class=\"ms-crt-led\"></div></div></div>",
+  menu: "<div id=\"mainMenuPage\" class=\"title-page void-menu active\"> <div class=\"menu-stage\"></div> <div class=\"ls-grain\"></div> <div class=\"ls-motes\"> <div class=\"ls-mote\" style=\"left:3vw;width:3px;height:3px;--dx:4vw;animation-duration:11.5s;animation-delay:-2.2s\"></div> <div class=\"ls-mote ls-mote-green\" style=\"left:9vw;width:2px;height:2px;--dx:-3vw;animation-duration:14s;animation-delay:-7s\"></div> <div class=\"ls-mote\" style=\"left:15vw;width:4px;height:4px;--dx:2vw;animation-duration:9.5s;animation-delay:-4.4s\"></div> <div class=\"ls-mote\" style=\"left:22vw;width:2.5px;height:2.5px;--dx:-5vw;animation-duration:13s;animation-delay:-10s\"></div> <div class=\"ls-mote\" style=\"left:28vw;width:5px;height:5px;--dx:3vw;animation-duration:8s;animation-delay:-1.5s\"></div> <div class=\"ls-mote ls-mote-green\" style=\"left:34vw;width:3px;height:3px;--dx:5vw;animation-duration:12.5s;animation-delay:-8.8s\"></div> <div class=\"ls-mote\" style=\"left:41vw;width:2px;height:2px;--dx:-2vw;animation-duration:15s;animation-delay:-3.1s\"></div> <div class=\"ls-mote\" style=\"left:47vw;width:4px;height:4px;--dx:-4vw;animation-duration:10s;animation-delay:-6.2s\"></div> <div class=\"ls-mote\" style=\"left:53vw;width:3px;height:3px;--dx:6vw;animation-duration:12s;animation-delay:-11.5s\"></div> <div class=\"ls-mote ls-mote-green\" style=\"left:59vw;width:2px;height:2px;--dx:2vw;animation-duration:14.5s;animation-delay:-0.8s\"></div> <div class=\"ls-mote\" style=\"left:64vw;width:5px;height:5px;--dx:-3vw;animation-duration:8.5s;animation-delay:-5.5s\"></div> <div class=\"ls-mote\" style=\"left:70vw;width:3px;height:3px;--dx:4vw;animation-duration:11s;animation-delay:-9.4s\"></div> </div> <div class=\"mm-stack\"> <div class=\"mm-logo\">ENTROPY WARS</div> <div class=\"mm-sub\">As above, so below</div> <div class=\"mm-rule\"></div> <div class=\"mm-buttons\"> <button class=\"mm-btn mm-btn-multiplayer\"><span class=\"mm-label\">New Game</span><span class=\"mm-desc-text\">Story mode — report to D.O.O.R. headquarters</span></button> <button class=\"mm-btn mm-btn-online\"><span class=\"mm-label\">Online PvP</span><span class=\"mm-desc-text\">Quick Play or a Friendly Match, every vessel unlocked</span></button> <button class=\"mm-btn mm-btn-practice\"><span class=\"mm-label\">Play VS CPU</span><span class=\"mm-desc-text\">Arena or Team Deathmatch against the computer, every vessel unlocked</span></button> <button class=\"mm-btn mm-btn-teambuilder\"><span class=\"mm-label\">Party Builder</span><span class=\"mm-desc-text\">Forge &amp; archive squads before the war</span></button> <button class=\"mm-btn mm-btn-tutorial\"><span class=\"mm-label\">Tutorial</span><span class=\"mm-desc-text\">Orientation, Day 1 — the tape, then Room 64</span></button> <button class=\"mm-btn mm-btn-campaign\"><span class=\"mm-label\">Challenge</span><span class=\"mm-desc-text\">How many battles can you survive?</span></button> <button class=\"mm-btn mm-btn-dungeon\"><span class=\"mm-label\">Mystery Dungeon</span><span class=\"mm-desc-text\">Descend 10 floors — find the stairs, survive</span></button> <button class=\"mm-btn mm-btn-profile\"><span class=\"mm-label\">Profile</span><span class=\"mm-desc-text\">Stats, history &amp; achievements</span></button> <button class=\"mm-btn mm-btn-replay\"><span class=\"mm-label\">🎬 Replay</span><span class=\"mm-desc-text\">Rewatch your last match cinematically</span></button> <button class=\"mm-btn mm-btn-codex\"><span class=\"mm-label\">Codex</span><span class=\"mm-desc-text\">Classified subject dossiers</span></button> <button class=\"mm-btn mm-btn-shop\"><span class=\"mm-label\">Shop&nbsp;</span><span class=\"mm-desc-text\">Declassify &amp; unlock new vessels</span></button> <button class=\"mm-btn mm-btn-editor\"><span class=\"mm-label\">Editor</span><span class=\"mm-desc-text\">Build your world by hand</span></button> <button class=\"mm-btn mm-btn-leaderboard\"><span class=\"mm-label\">Leaderboard</span><span class=\"mm-desc-text\">Top ranked players worldwide</span></button> <button class=\"mm-btn mm-btn-community\"><span class=\"mm-label\">Community Maps</span><span class=\"mm-desc-text\">Browse, play &amp; share custom maps</span></button> <button class=\"mm-btn mm-btn-settings\"><span class=\"mm-label\">Settings</span><span class=\"mm-desc-text\">Audio, display, controls</span></button> </div> </div> <div class=\"door-menu-seal\" aria-hidden=\"true\"> <img src=\"https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png\" alt=\"\" draggable=\"false\"> <span>DEPT. OF ORTHOGONAL REALITIES</span> </div> <div class=\"mm-elo-display\"> <span class=\"mm-elo-tag\"><span style=\"font-weight:700;color:#e6e9f2\">Player</span> · 🥉 Bronze — 1000 Elo<span class=\"door-clearance-tag\">CLEARANCE L1 · DOORMAT</span></span> <span class=\"ew-wallet\" style=\"margin-left:14px;display:inline-block\" data-gold=\"0\"><span class=\"ew-wallet-gold\" style=\"color:#ffd86a;font-weight:600\">💰 0</span> <span class=\"ew-wallet-token\" title=\"Free unlock tokens\" style=\"color:#9ad0ff\">🎟 1</span></span> </div> </div>",
   settings: "<div id=\"settingsPage\" class=\"title-page active\"> <div class=\"ms-container\"> <div class=\"ms-top-bar\"> <button class=\"ms-back-btn\">← Back</button> <div class=\"ms-title-text\">Settings</div> <div style=\"width:60px\"></div> </div> <div class=\"mm-settings-body\"> <div class=\"pm-settings-section\"> <div class=\"pm-set-group\"> <div class=\"pm-set-group-title\">Audio</div> <div class=\"pm-vol-section\" style=\"border:none;padding:0;background:none\"> <div class=\"pm-vol-row\"> <span class=\"pm-vol-label\">Music</span> <input type=\"range\" class=\"pm-vol-slider\" min=\"0\" max=\"100\" step=\"1\" value=\"68\"> <span class=\"pm-vol-val\">68%</span> </div> <div class=\"pm-vol-row\"> <span class=\"pm-vol-label\">SFX</span> <input type=\"range\" class=\"pm-vol-slider\" min=\"0\" max=\"100\" step=\"1\" value=\"90\"> <span class=\"pm-vol-val\">90%</span> </div> <div class=\"pm-vol-row\"> <span class=\"pm-vol-label\">Ambience</span> <input type=\"range\" class=\"pm-vol-slider\" min=\"0\" max=\"100\" step=\"1\" value=\"80\"> <span class=\"pm-vol-val\">80%</span> </div> </div> <div class=\"pm-set-row\" style=\"margin-top:10px;align-items:center;flex-wrap:wrap;gap:6px\"> <span class=\"pm-vol-label\" style=\"min-width:0\">♪ —</span> <button class=\"pm-set-btn\">⏮</button> <button class=\"pm-set-btn\">⏭ Next</button> <select class=\"pm-set-btn\" style=\"max-width:220px\"><option>FF7 Theme</option></select> </div> </div> <div class=\"pm-set-group\"> <div class=\"pm-set-group-title\">Display</div> <div class=\"pm-set-row pm-setting-row\" style=\"margin-top:8px\"> <span class=\"pm-setting-label\">HUD Size</span> <div class=\"pm-seg-group\"> <button class=\"pm-seg-btn\">XS</button><button class=\"pm-seg-btn\">Small</button><button class=\"pm-seg-btn active\">Normal</button><button class=\"pm-seg-btn\">Large</button><button class=\"pm-seg-btn\">Huge</button> </div> </div> <div class=\"pm-set-row\" style=\"margin-top:2px\"> <span class=\"pm-toggle-hint\">scales the action menu &amp; ability bar — auto-fits your screen, saved per device</span> </div> </div> <div class=\"pm-set-group\"> <div class=\"pm-set-group-title\">Graphics</div> <div class=\"pm-set-row pm-setting-row\" style=\"margin-top:10px\"> <span class=\"pm-setting-label\">Performance</span> <div class=\"pm-seg-group\"> <button class=\"pm-seg-btn active\">Auto</button><button class=\"pm-seg-btn\">Low</button><button class=\"pm-seg-btn\">High</button> </div> </div> <div class=\"pm-set-toggles\" style=\"margin-top:8px\"> <label class=\"pm-toggle\"><input type=\"checkbox\" checked=\"\"><span class=\"pm-toggle-label\">3D Unit Models</span><span class=\"pm-toggle-hint\">rigged characters — heavy on phones; off = pixel sprites</span></label> </div> <div class=\"pm-set-row pm-setting-row\" style=\"margin-top:8px\"> <span class=\"pm-setting-label\">Shadows</span> <div class=\"pm-seg-group\"> <button class=\"pm-seg-btn\">Off</button> <button class=\"pm-seg-btn\">Low</button> <button class=\"pm-seg-btn active\">High</button> </div> </div> <div class=\"pm-set-row pm-setting-row\" style=\"margin-top:8px\"> <span class=\"pm-setting-label\">Night Mood</span> <input type=\"range\" min=\"0\" max=\"100\" step=\"5\" value=\"65\" class=\"pm-vol-slider\"> <span class=\"pm-vol-val\">0.65</span> </div> </div> <div class=\"pm-set-group pm-collapsible\"> <button class=\"pm-collapse-header\"> <span class=\"pm-set-group-title\" style=\"margin-bottom:0\">CRT / Vignette</span> <span class=\"pm-collapse-summary\">off</span> <span class=\"pm-collapse-chev\">▾</span> </button> <div class=\"pm-collapse-body\" style=\"display:none\"> <div class=\"pm-set-toggles\" style=\"margin-top:10px\"> <label class=\"pm-toggle\"><input type=\"checkbox\"><span class=\"pm-toggle-label\">CRT Filter</span><span class=\"pm-toggle-hint\">scanlines + chroma</span></label> <label class=\"pm-toggle\"><input type=\"checkbox\"><span class=\"pm-toggle-label\">Vignette</span><span class=\"pm-toggle-hint\">dark corners</span></label> </div> <div class=\"pm-set-row pm-setting-row\" style=\"margin-top:8px\"> <span class=\"pm-setting-label\">Scanlines</span> <input type=\"range\" min=\"0\" max=\"100\" step=\"5\" value=\"23\" class=\"pm-vol-slider\"> <span class=\"pm-vol-val\">23%</span> </div> <div class=\"pm-set-row pm-setting-row\" style=\"margin-top:8px\"> <span class=\"pm-setting-label\">Chromatic</span> <input type=\"range\" min=\"0\" max=\"100\" step=\"5\" value=\"27\" class=\"pm-vol-slider\"> <span class=\"pm-vol-val\">27%</span> </div> <div class=\"pm-set-row pm-setting-row\" style=\"margin-top:8px\"> <span class=\"pm-setting-label\">Curvature</span> <input type=\"range\" min=\"0\" max=\"100\" step=\"5\" value=\"0\" class=\"pm-vol-slider\"> <span class=\"pm-vol-val\">0%</span> </div> <div class=\"pm-set-row pm-setting-row\" style=\"margin-top:8px\"> <span class=\"pm-setting-label\">Vignette Strength</span> <input type=\"range\" min=\"0\" max=\"100\" step=\"5\" value=\"45\" class=\"pm-vol-slider\"> <span class=\"pm-vol-val\">45%</span> </div> <div class=\"pm-set-row pm-setting-row\" style=\"margin-top:8px\"> <span class=\"pm-setting-label\">Vignette Size</span> <input type=\"range\" min=\"0\" max=\"100\" step=\"5\" value=\"44\" class=\"pm-vol-slider\"> <span class=\"pm-vol-val\">44%</span> </div> </div> </div> <div class=\"pm-set-group\"> <div class=\"pm-set-group-title\">CPU Difficulty</div> <div style=\"font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4\">Changes how well the computer <b>plays</b>, never its stats. <b>Easy</b> skips combos, team focus-fire and press-turn lines, and sometimes takes the second-best action. <b>Normal</b> is the full trained AI. <b>Hard</b> additionally hunts win conditions — Cubes, zones, Keys, flags — instead of just trading kills. Applies to VS CPU, Challenge and Mystery Dungeon (never to online opponents). Takes effect from the CPU's next turn.</div> <div class=\"pm-set-row\"><button class=\"pm-set-btn\">Easy</button><button class=\"pm-set-btn active\">Normal</button><button class=\"pm-set-btn\">Hard</button></div> </div> <div class=\"pm-set-group\"> <div class=\"pm-set-group-title\">Keyboard &amp; Mouse</div> <div class=\"pm-keybinds-grid\"> <div class=\"pm-keybind\"><span class=\"pm-keybind-action\">Confirm</span><kbd class=\"pm-kbd\">ENTER</kbd></div> <div class=\"pm-keybind\"><span class=\"pm-keybind-action\">Menu Drum</span><kbd class=\"pm-kbd\">↑ ↓ · WHEEL</kbd></div> <div class=\"pm-keybind\"><span class=\"pm-keybind-action\">Cancel / Back</span><kbd class=\"pm-kbd\">ESC · R-CLICK</kbd></div> <div class=\"pm-keybind\"><span class=\"pm-keybind-action\">End Turn (×2)</span><kbd class=\"pm-kbd\">SPACE</kbd></div> </div> </div> <div class=\"pm-set-group\"> <div class=\"pm-set-group-title\">Developer</div> <div class=\"pm-set-row\" style=\"margin-bottom:6px;align-items:center;gap:8px\"> <span class=\"pm-vol-label\">Mode</span> <select class=\"pm-nametag-select\" style=\"flex:1\"> <option value=\"arena\" selected=\"\">Arena</option> <option value=\"tdm\">Team Deathmatch</option> <option value=\"clash\">Clash (4v4, fixed stage)</option> <option value=\"gauntlet\">Gauntlet (roster 8)</option> <option value=\"simul\">Simul (experimental)</option> <option value=\"rotate\">Rotate modes (Balance Lab)</option> </select> </div> </div> </div> </div> </div> </div>",
-  shell: "<div id=\"codexPage\" class=\"title-page active\"> <div class=\"ms-container codex-container\"> <div class=\"ms-top-bar\"> <button class=\"ms-back-btn\">← Back</button> <div class=\"ms-title-text door-hdr\"><img src=\"https://cdn.entropywars.net/Assets/ui/brand/DOOR_Colored_Logo_ForBlackBG.png\" alt=\"\" draggable=\"false\"><span class=\"door-hdr-text\">CLASSIFIED DOSSIER INDEX<span class=\"door-hdr-sub\">D.O.O.R. RECORDS · ENTITY REGISTRY</span></span></div> <div style=\"width:60px\"></div> </div> <div class=\"codex-body\"> <div class=\"cdx-toolbar\"><div class=\"cdx-filter-group\"><span class=\"cdx-filter-label\">TYPE</span><button class=\"cdx-filter-btn active\">ALL</button><button class=\"cdx-filter-btn\">DIVINE</button><button class=\"cdx-filter-btn\">UNHOLY</button><button class=\"cdx-filter-btn\">ANOMALY</button><button class=\"cdx-filter-btn\">TECH</button><button class=\"cdx-filter-btn\">HUMAN</button><button class=\"cdx-filter-btn\">ALIEN</button></div><div class=\"cdx-meter\" title=\"5 of 124 vessels declassified\"> <span class=\"cdx-meter-label\">VESSELS DECLASSIFIED</span> <div class=\"cdx-meter-track\"><div class=\"cdx-meter-fill\" style=\"width:4%\"></div></div> <span class=\"cdx-meter-count\">5 / 124</span> </div></div> <div class=\"cdx-layout\"> <div class=\"cdx-list\"><div class=\"cdx-list-item cdx-list-locked\" data-race=\"astronaut\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/sprites/astronaut.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> <div class=\"cdx-list-item cdx-list-locked\" data-race=\"atlantean\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/atlantean/female/atlantean_female.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> <div class=\"cdx-list-item cdx-list-locked\" data-race=\"barbarella\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/barbarella/barbarella.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> <div class=\"cdx-list-item cdx-list-locked\" data-race=\"bee queen\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/sprites/beequeen.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> <div class=\"cdx-list-item selected\" data-race=\"bigfoot\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/bigfoot/male/bigfoot_male.png')\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\">Bigfoot</div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">ANOMALY</span> </div> <div class=\"cdx-list-class\">ASSAULT</div> </div> </div> <div class=\"cdx-list-item cdx-list-locked\" data-race=\"black goo\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/blackgoo/blackgoo.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> <div class=\"cdx-list-item cdx-list-locked\" data-race=\"bunny girl\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/catgirl/female/catgirl_female.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> <div class=\"cdx-list-item\" data-race=\"catgirl\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/catgirl/female/catgirl_female.png')\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\">Catgirl</div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">HUMAN / ANOMALY</span> </div> <div class=\"cdx-list-class\">BLACK OPS</div> </div> </div> <div class=\"cdx-list-item cdx-list-locked\" data-race=\"chosen one\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/maincharacters/morrigan.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> </div> <div class=\"cdx-detail\"> <div class=\"cdx-hero\" style=\"--cdx-fc-glow:rgba(90,136,152,0.26);--cdx-fc-ground:rgba(90,136,152,0.50);--cdx-fc-dim:rgba(90,136,152,0.10)\"> <div class=\"cdx-hero-stage\"> <div class=\"cdx-hero-glow\"></div> <div class=\"cdx-hero-ground\"></div> <div class=\"cdx-hero-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/bigfoot/male/bigfoot_male.png')\"></div> </div> <div class=\"cdx-hero-id\"> <div class=\"cdx-hero-topline\"> <div class=\"door-stamp door-stamp-sm\" title=\"Customs disposition\">UNDOCUMENTED</div> <div class=\"cdx-doc-id\">DOC# EW-6222 · POINT OF ENTRY: MOUNT SHASTA · ██/██/199█</div> <div class=\"cdx-classification\">TOP SECRET // ████████ // NOFORN</div> </div> <div class=\"cdx-subject-name\">BIGFOOT<span class=\"cdx-subject-role\">the bruiser</span></div> <div class=\"cdx-hero-chips\"><span class=\"type-badge type-anomaly\">ANOMALY</span> <span class=\"cdx-meta-tag\">Class: <b>ASSAULT</b></span></div> <div class=\"cdx-traits-row\"><span class=\"cdx-trait-tag\">🌲 FOREST ADAPTED</span></div> </div> </div> <div class=\"cdx-detail-scroll\"> <div class=\"cdx-dossier\"> <div class=\"cdx-section\"> <div class=\"cdx-section-header\">1. &nbsp;EXECUTIVE SUMMARY:</div> <div class=\"cdx-lore\">Large bipedal cryptid (est. 2.4m, 180kg). Primarily documented in Pacific Northwest regions. Exhibits extraordinary stealth capability despite massive frame. Thermal imaging consistently fails to detect subjects — possible IR-masking biological adaptation. Territorial but non-hostile unless provoked. Odor described as [REDACTED].</div> </div> <div class=\"cdx-section\"> <div class=\"cdx-section-header\">2. &nbsp;PHYSIOLOGICAL ASSESSMENT:</div> <div class=\"cdx-lore\" style=\"margin-bottom:6px\">OFFICIAL HEIGHT: 2.6 m &nbsp;·&nbsp; WEIGHT: 380 kg &nbsp;·&nbsp; CLASS: HEAVY <span style=\"opacity:.75\">(pushed 1 tile less; smashes through stone; falls ×1.25)</span></div> <div class=\"cdx-stats-grid\"> <div class=\"cdx-stat-row\"> <span class=\"cdx-stat-label\">HP</span> <span class=\"ew-grade grade-s\" style=\"--pct:100\"><i>S</i></span><span class=\"cdx-stat-val\">1690</span> <div class=\"cdx-stat-bar-track\"><div class=\"cdx-stat-bar-fill\" style=\"width:100%;background:#55bb70\"></div></div> </div> <div class=\"cdx-stat-row\"> <span class=\"cdx-stat-label\">MP</span> <span class=\"ew-grade grade-f\" style=\"--pct:36\"><i>F</i></span><span class=\"cdx-stat-val\">80</span> <div class=\"cdx-stat-bar-track\"><div class=\"cdx-stat-bar-fill\" style=\"width:30.18867924528302%;background:#5a8898\"></div></div> </div> <div class=\"cdx-stat-row\"> <span class=\"cdx-stat-label\">ATK</span> <span class=\"ew-grade grade-s\" style=\"--pct:100\"><i>S</i></span><span class=\"cdx-stat-val\">169</span> <div class=\"cdx-stat-bar-track\"><div class=\"cdx-stat-bar-fill\" style=\"width:100%;background:#e3dcc6\"></div></div> </div> </div> <div class=\"cdx-stat-total\">TOTAL STAT POINTS: 2398</div> </div> </div> </div> </div> </div> </div> </div> </div>",
-  lobby: "<div id=\"lobbyPage\" class=\"title-page active\"> <div class=\"mode-card lobby-inner\"> <div> <div class=\"lobby-player-badge p1\">YOU ARE PLAYER 1 (BLUE)</div> <div class=\"lobby-kicker\">Room Created</div> <div class=\"lobby-title\">Share This Code</div> <div class=\"lobby-subtitle\">Send this code to your friend.</div> <div class=\"lobby-code-display\">ABCDE</div> <div style=\"margin:16px 0 8px;\"> <div class=\"lobby-config-section\"> <div class=\"lobby-config-label\">GAME MODE</div> <div class=\"lobby-ranked-sizes\"> <button class=\"ranked-size-btn active\" data-mode=\"arena\">🏰 Arena</button> <button class=\"ranked-size-btn\" data-mode=\"tdm\">💀 TDM</button> <button class=\"ranked-size-btn\" data-mode=\"clash\">🎴 Clash</button> </div> </div> <div class=\"lobby-config-section\"> <div class=\"lobby-config-label\">MAP</div> <select id=\"friendlyMapSelect\" style=\"display:block;margin:4px auto 0;min-width:220px;padding:8px 12px;background:rgba(10,8,18,0.85);color:#c9a5ff;border:1px solid rgba(201,165,255,0.35);font-family:'DotGothic16',monospace;font-size:0.8rem;letter-spacing:0.08em;cursor:pointer\"><option value=\"\">Random</option></select> </div> <div class=\"lobby-config-section\"> <div class=\"lobby-config-label\">ROUNDS</div> <div style=\"display:flex;align-items:center;justify-content:center;gap:10px;\"> <button class=\"ranked-size-btn\" style=\"min-width:36px;padding:8px 10px;\">−</button> <span style=\"font-family:'DotGothic16',monospace;font-size:1.1rem;color:#fff;min-width:40px;text-align:center;\">15</span> <button class=\"ranked-size-btn\" style=\"min-width:36px;padding:8px 10px;\">+</button> </div> </div> </div> <div class=\"lobby-status waiting\">Waiting for Player 2…</div> <div class=\"lobby-small\">Keep this page open. The game starts once your friend connects.</div> <button class=\"lobby-back\">← Cancel</button> </div> </div> </div>",
+  shell: "<div id=\"codexPage\" class=\"title-page active\"> <div class=\"ms-container codex-container\"> <div class=\"ms-top-bar\"> <button class=\"ms-back-btn\">← Back</button> <div class=\"ms-title-text door-hdr\"><img src=\"https://cdn.entropywars.net/Assets/ui/brand/door_logo/door_mark_color.png\" alt=\"\" draggable=\"false\"><span class=\"door-hdr-text\">CLASSIFIED DOSSIER INDEX<span class=\"door-hdr-sub\">D.O.O.R. RECORDS · ENTITY REGISTRY</span></span></div> <div style=\"width:60px\"></div> </div> <div class=\"codex-body\"> <div class=\"cdx-toolbar\"><div class=\"cdx-filter-group\"><span class=\"cdx-filter-label\">TYPE</span><button class=\"cdx-filter-btn active\">ALL</button><button class=\"cdx-filter-btn\">DIVINE</button><button class=\"cdx-filter-btn\">UNHOLY</button><button class=\"cdx-filter-btn\">ANOMALY</button><button class=\"cdx-filter-btn\">TECH</button><button class=\"cdx-filter-btn\">HUMAN</button><button class=\"cdx-filter-btn\">ALIEN</button></div><div class=\"cdx-meter\" title=\"5 of 124 vessels declassified\"> <span class=\"cdx-meter-label\">VESSELS DECLASSIFIED</span> <div class=\"cdx-meter-track\"><div class=\"cdx-meter-fill\" style=\"width:4%\"></div></div> <span class=\"cdx-meter-count\">5 / 124</span> </div></div> <div class=\"cdx-layout\"> <div class=\"cdx-list\"><div class=\"cdx-list-item cdx-list-locked\" data-race=\"astronaut\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/sprites/astronaut.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> <div class=\"cdx-list-item cdx-list-locked\" data-race=\"atlantean\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/atlantean/female/atlantean_female.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> <div class=\"cdx-list-item cdx-list-locked\" data-race=\"barbarella\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/barbarella/barbarella.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> <div class=\"cdx-list-item cdx-list-locked\" data-race=\"bee queen\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/sprites/beequeen.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> <div class=\"cdx-list-item selected\" data-race=\"bigfoot\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/bigfoot/male/bigfoot_male.png')\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\">Bigfoot</div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">ANOMALY</span> </div> <div class=\"cdx-list-class\">ASSAULT</div> </div> </div> <div class=\"cdx-list-item cdx-list-locked\" data-race=\"black goo\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/blackgoo/blackgoo.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> <div class=\"cdx-list-item cdx-list-locked\" data-race=\"bunny girl\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/catgirl/female/catgirl_female.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> <div class=\"cdx-list-item\" data-race=\"catgirl\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/catgirl/female/catgirl_female.png')\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\">Catgirl</div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">HUMAN / ANOMALY</span> </div> <div class=\"cdx-list-class\">BLACK OPS</div> </div> </div> <div class=\"cdx-list-item cdx-list-locked\" data-race=\"chosen one\" style=\"opacity:0.78\"> <div class=\"cdx-list-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/maincharacters/morrigan.png');filter:brightness(0) opacity(0.45)\"></div> <div class=\"cdx-list-info\"> <div class=\"cdx-list-name\"><span style=\"letter-spacing:0.12em;color:#7a7060\">CLASSIFIED</span><span class=\"cdx-list-lock\">🔒</span></div> <div class=\"cdx-list-tags\"> <span class=\"cdx-list-type\">████</span> </div> <div class=\"cdx-list-class\">████████</div> </div> </div> </div> <div class=\"cdx-detail\"> <div class=\"cdx-hero\" style=\"--cdx-fc-glow:rgba(90,136,152,0.26);--cdx-fc-ground:rgba(90,136,152,0.50);--cdx-fc-dim:rgba(90,136,152,0.10)\"> <div class=\"cdx-hero-stage\"> <div class=\"cdx-hero-glow\"></div> <div class=\"cdx-hero-ground\"></div> <div class=\"cdx-hero-sprite\" style=\"background-image:url('https://cdn.entropywars.net/Assets/characters/races/bigfoot/male/bigfoot_male.png')\"></div> </div> <div class=\"cdx-hero-id\"> <div class=\"cdx-hero-topline\"> <div class=\"door-stamp door-stamp-sm\" title=\"Customs disposition\">UNDOCUMENTED</div> <div class=\"cdx-doc-id\">DOC# EW-6222 · POINT OF ENTRY: MOUNT SHASTA · ██/██/199█</div> <div class=\"cdx-classification\">TOP SECRET // ████████ // NOFORN</div> </div> <div class=\"cdx-subject-name\">BIGFOOT<span class=\"cdx-subject-role\">the bruiser</span></div> <div class=\"cdx-hero-chips\"><span class=\"type-badge type-anomaly\">ANOMALY</span> <span class=\"cdx-meta-tag\">Class: <b>ASSAULT</b></span></div> <div class=\"cdx-traits-row\"><span class=\"cdx-trait-tag\">🌲 FOREST ADAPTED</span></div> </div> </div> <div class=\"cdx-detail-scroll\"> <div class=\"cdx-dossier\"> <div class=\"cdx-section\"> <div class=\"cdx-section-header\">1. &nbsp;EXECUTIVE SUMMARY:</div> <div class=\"cdx-lore\">Large bipedal cryptid (est. 2.4m, 180kg). Primarily documented in Pacific Northwest regions. Exhibits extraordinary stealth capability despite massive frame. Thermal imaging consistently fails to detect subjects — possible IR-masking biological adaptation. Territorial but non-hostile unless provoked. Odor described as [REDACTED].</div> </div> <div class=\"cdx-section\"> <div class=\"cdx-section-header\">2. &nbsp;PHYSIOLOGICAL ASSESSMENT:</div> <div class=\"cdx-lore\" style=\"margin-bottom:6px\">OFFICIAL HEIGHT: 2.6 m &nbsp;·&nbsp; WEIGHT: 380 kg &nbsp;·&nbsp; CLASS: HEAVY <span style=\"opacity:.75\">(pushed 1 tile less; smashes through stone; falls ×1.25)</span></div> <div class=\"cdx-stats-grid\"> <div class=\"cdx-stat-row\"> <span class=\"cdx-stat-label\">HP</span> <span class=\"ew-grade grade-s\" style=\"--pct:100\"><i>S</i></span><span class=\"cdx-stat-val\">1690</span> <div class=\"cdx-stat-bar-track\"><div class=\"cdx-stat-bar-fill\" style=\"width:100%;background:#55bb70\"></div></div> </div> <div class=\"cdx-stat-row\"> <span class=\"cdx-stat-label\">MP</span> <span class=\"ew-grade grade-f\" style=\"--pct:36\"><i>F</i></span><span class=\"cdx-stat-val\">80</span> <div class=\"cdx-stat-bar-track\"><div class=\"cdx-stat-bar-fill\" style=\"width:30.18867924528302%;background:#5a8898\"></div></div> </div> <div class=\"cdx-stat-row\"> <span class=\"cdx-stat-label\">ATK</span> <span class=\"ew-grade grade-s\" style=\"--pct:100\"><i>S</i></span><span class=\"cdx-stat-val\">169</span> <div class=\"cdx-stat-bar-track\"><div class=\"cdx-stat-bar-fill\" style=\"width:100%;background:#e3dcc6\"></div></div> </div> </div> <div class=\"cdx-stat-total\">TOTAL STAT POINTS: 2398</div> </div> </div> </div> </div> </div> </div> </div> </div>",
+  lobby: "<div id=\"lobbyPage\" class=\"title-page active lr-on\"> <div class=\"mode-card lobby-inner\"></div> <div id=\"lobbyHosting\" class=\"lobby-room\" style=\"display:flex\"> <div class=\"lr-frame\" id=\"lrFrame\"> <div class=\"lr-head lr-win\"> <div class=\"lr-titles\"><div class=\"lobby-kicker\" id=\"lrKicker\">Online PvP · Friendly match</div><div class=\"lobby-title\" id=\"lrTitle\">The Room</div></div> <div class=\"lr-code\" id=\"lrCodeBox\"> <div class=\"lr-code-well\"><span class=\"lr-k\">Room code</span><b id=\"lobbyRoomCode\">ABCDE</b></div> <div class=\"lobby-actions lr-copy\"><button class=\"secondary-lobby\" id=\"lrCopyCode\">Copy code</button><button class=\"secondary-lobby\" id=\"lrCopyLink\">Copy invite link</button></div> </div> </div> <div class=\"lr-seats\" id=\"lrSeats\"><div class=\"lr-seat lr-win p1 is-me\"><span class=\"lr-tag\">P1 · Blue · <em>Host</em></span><span class=\"lr-lamp is-ready\"><i></i>Ready</span><div class=\"lr-name\">mondo<small>You</small></div><div class=\"lr-faces\"><span class=\"sq-face\"><i></i></span><span class=\"sq-face\"><i></i></span><span class=\"sq-face\"><i></i></span><span class=\"sq-face\"><i></i></span><span class=\"lr-team\"><b>Random Team</b>4 vessels</span></div></div><div class=\"lr-vs\">VS</div><div class=\"lr-seat lr-win p2\"><span class=\"lr-tag\">P2 · Red</span><span class=\"lr-lamp is-in\"><i></i>Not ready</span><div class=\"lr-name\">Rival_77</div><div class=\"lr-faces\"><span class=\"sq-face\"><i></i></span><span class=\"sq-face\"><i></i></span><span class=\"sq-face\"><i></i></span><span class=\"sq-face\"><i></i></span><span class=\"lr-team\"><b>Deep Ones</b>4 vessels</span></div></div></div> <div class=\"lr-rules lr-win\" id=\"friendlyConfigPanel\"> <div class=\"lr-win-hd\"><b>Match rules</b><span class=\"lr-k\" id=\"lrRulesBy\">You are the host</span></div> <div class=\"lr-row\"><span class=\"lr-k\">Mode</span><div class=\"lr-v\"> <div class=\"lobby-ranked-sizes lr-chips lr-host-only\" id=\"friendlyModeChips\"> <button class=\"ranked-size-btn active\" data-mode=\"arena\">🏰 Arena</button> <button class=\"ranked-size-btn\" data-mode=\"tdm\">💀 TDM</button> <button class=\"ranked-size-btn\" data-mode=\"clash\">🎴 Clash</button> </div><span class=\"lr-guest-only\" id=\"lrModeV\">Arena</span></div></div> <div class=\"lr-goal\" id=\"lrGoal\">Destroy their Cube, find all 5 Keys, or wipe them out. When the rounds run out, the Arena score wins.</div> <div class=\"lr-row\"><span class=\"lr-k\">Map</span><div class=\"lr-v\"><select id=\"friendlyMapSelect\" class=\"lr-sel lr-host-only\"><option value=\"\">Random</option></select><span class=\"lr-guest-only\" id=\"lrMapV\">Random</span></div></div> <div class=\"lr-row\"><span class=\"lr-k\">Board</span><div class=\"lr-v\"><select id=\"friendlyBoardSelect\" class=\"lr-sel lr-host-only\"><option value=\"0\">Random</option></select><span class=\"lr-guest-only\" id=\"lrBoardV\">Random</span></div></div> <div class=\"lr-row\"><span class=\"lr-k\">Teams</span><div class=\"lr-v\"><span id=\"lrTeamsV\">4v4</span><small id=\"lrTeamsNote\">Set by the host's squad</small></div></div> <div class=\"lr-row\"><span class=\"lr-k\">Rounds</span><div class=\"lr-v\"><span class=\"lr-step lr-host-only\"><button class=\"ranked-size-btn\" aria-label=\"Fewer rounds\">−</button><b id=\"friendlyRoundDisplay\">20</b><button class=\"ranked-size-btn\" aria-label=\"More rounds\">+</button></span><span class=\"lr-guest-only\" id=\"lrRoundsV\">20</span><small id=\"lrRoundsNote\"></small></div></div> <div class=\"lr-row\"><span class=\"lr-k\">Turn timer</span><div class=\"lr-v\">60 s per turn<small>A unit that runs out of time ends its turn</small></div></div> <div class=\"lr-row\"><span class=\"lr-k\">Fog of war</span><div class=\"lr-v\">On<small>You see only what your units see</small></div></div> </div> <div class=\"lr-foot lr-win\"> <button class=\"lobby-back\" id=\"lrLeaveBtn\">‹ Leave room</button> <div class=\"lr-status\" id=\"lobbyHostStatus\">Waiting for Rival_77 to press READY</div> <div class=\"lobby-actions\" id=\"lrReadyWrap\"><button class=\"primary-lobby lr-go\" id=\"lrReadyBtn\">Ready ✓</button></div> </div> </div> </div> </div>",
   dialog: "<div id=\"uiDialogOverlay\" class=\"ui-dialog-overlay\" aria-hidden=\"false\"> <div class=\"ui-dialog-card\"> <div class=\"md-party-dialog\"> <div class=\"ui-dialog-kicker\">🗝️ Agartha Depths — 10 floors, no respawns</div> <div class=\"ui-dialog-title\">Assemble Your Party</div> <div class=\"ui-dialog-subtitle\">Take up to 4 delvers (spells &amp; items auto-kit to each).<br>Companions fight on <b>⚔ AUTO</b> — tap their chip on the floor badge in battle to switch tactics.</div> <div class=\"md-party-list\"> <div class=\"md-party-row leader on\"> <span class=\"md-party-check\">👑</span> <span class=\"md-party-name\">Homosapien <small>(you)</small></span> </div> <div class=\"md-party-row on\"> <span class=\"md-party-check\">✓</span> <span class=\"md-party-name\">Nordic</span> </div> <div class=\"md-party-row on\"> <span class=\"md-party-check\">✓</span> <span class=\"md-party-name\">Grey</span> </div> <div class=\"md-party-row on\"> <span class=\"md-party-check\">✓</span> <span class=\"md-party-name\">Martian</span> </div> <div class=\"md-party-row\"> <span class=\"md-party-check\"></span> <span class=\"md-party-name\">Reptilian</span> </div> <div class=\"md-party-row\"> <span class=\"md-party-check\"></span> <span class=\"md-party-name\">Pirate</span> </div> </div> <div class=\"md-party-count\">4 / 4 delvers</div> <div class=\"pickup-choices\"> <button class=\"pickup-btn pickup-btn-take\"> <span class=\"pickup-btn-icon\">🗝</span> <span class=\"pickup-btn-text\"><strong>Enter the Dungeon</strong><small>Floor 1 awaits</small></span> </button> <button class=\"pickup-btn pickup-btn-leave\"> <span class=\"pickup-btn-icon\">➜</span> <span class=\"pickup-btn-text\"><strong>Not yet</strong><small>Stay in the Guild Hub</small></span> </button> </div> </div> </div> </div>",
   loading: "<div class=\"ls-overlay ls-active\"><div class=\"ls-grain\"></div><div class=\"ls-motes\"><div class=\"ls-mote ls-mote-green\" style=\"width: 3.5px; height: 3.5px; left: 76.77vw; --dx: 5.0vw; animation-duration: 14.26s; animation-delay: -4.82s;\"></div><div class=\"ls-mote\" style=\"width: 3.2px; height: 3.2px; left: 39.29vw; --dx: -0.9vw; animation-duration: 12.2s; animation-delay: -0.58s;\"></div><div class=\"ls-mote\" style=\"width: 5.5px; height: 5.5px; left: 54.45vw; --dx: -5.5vw; animation-duration: 10.72s; animation-delay: -5.41s;\"></div><div class=\"ls-mote\" style=\"width: 5.9px; height: 5.9px; left: 47.41vw; --dx: 5.4vw; animation-duration: 10.88s; animation-delay: -14.41s;\"></div><div class=\"ls-mote ls-mote-green\" style=\"width: 4.5px; height: 4.5px; left: 21.51vw; --dx: 4.2vw; animation-duration: 14.88s; animation-delay: -13.8s;\"></div><div class=\"ls-mote ls-mote-green\" style=\"width: 2px; height: 2px; left: 47.89vw; --dx: -3.3vw; animation-duration: 12.27s; animation-delay: -6.55s;\"></div><div class=\"ls-mote\" style=\"width: 4.1px; height: 4.1px; left: 50.55vw; --dx: 4.9vw; animation-duration: 10.59s; animation-delay: -11.14s;\"></div><div class=\"ls-mote\" style=\"width: 3.2px; height: 3.2px; left: 84.62vw; --dx: 5.8vw; animation-duration: 9.26s; animation-delay: -12.99s;\"></div></div><div class=\"ls-art-wrap\"><div class=\"ls-art-glow\"></div><img class=\"ls-art ls-art-on\" alt=\"\" draggable=\"false\" src=\"https://cdn.entropywars.net/Assets/loose_sprites/ls5.png\"></div><div class=\"ls-card\"><div class=\"ls-line ls-line-1\" style=\"animation: none; opacity: 1; transform: none;\">YEAR 2172 BC</div><div class=\"ls-canon\" style=\"animation: none; opacity: 1; transform: none;\">CANON DATE · SUBJECT TO REVISION</div><div class=\"ls-line ls-line-2\" style=\"animation: none; opacity: 1; transform: none;\">ARENA</div><div class=\"ls-title\" style=\"animation: none; opacity: 1; transform: none;\">PROVING GROUNDS</div><div class=\"ls-rule\" style=\"animation: none; width: min(36vw, 520px);\"></div><div class=\"ls-line ls-battle\" style=\"animation: none; opacity: 1; transform: none;\">BATTLE:1</div></div><div class=\"ls-hint\" style=\"animation: none; opacity: 1; transform: none;\"><div class=\"ls-hint-tag\">◈ FIELD MANUAL</div><div class=\"ls-hint-text\">Deep water drowns the unwary. Winged vessels are untroubled by such things.</div><div class=\"ls-hint-src\"></div></div><div class=\"ls-status\"><span class=\"ls-status-label\">NOW LOADING</span><span class=\"ls-status-count\">35 / 35</span></div><div class=\"ls-bar\"><div class=\"ls-bar-fill\" style=\"width: 100%;\"></div></div></div>",
   editor: "<div id=\"edRoot\" class=\"ed-root\"> <div class=\"ed-top\"><div class=\"ed-toprow\"><b class=\"ed-brand\">EDITOR</b><span class=\"ed-menus\"><button class=\"ed-btn ed-menubtn\">FILE</button><button class=\"ed-btn ed-menubtn\">EDIT</button><button class=\"ed-btn ed-menubtn\">ADD</button><button class=\"ed-btn ed-menubtn\">ROOM</button><button class=\"ed-btn ed-menubtn\">VIEW</button></span><span class=\"ed-sp\"></span><button class=\"ed-btn\">🎨 UI</button><button class=\"ed-btn\">🧮 DATA</button><button class=\"ed-btn ed-play\">▶ PLAY HERE</button><button class=\"ed-btn\">? HELP</button><button class=\"ed-btn\">✕</button></div><div class=\"ed-toprow ed-toprow2\"><span class=\"ed-tools\"><button class=\"ed-btn on\">MOVE</button><button class=\"ed-btn\">TURN</button><button class=\"ed-btn\">SIZE</button><label class=\"ed-lab\">SNAP <select><option>¼ square</option></select></label><label class=\"ed-lab\"><select><option>15°</option></select></label><button class=\"ed-btn\">HIDE ROOFS</button><label class=\"ed-lab\"><input type=\"checkbox\">LEVEL</label><input type=\"number\" value=\"-0.5\" style=\"width:52px\"><input type=\"number\" value=\"3.2\" style=\"width:52px\"><button class=\"ed-btn\">▼</button><button class=\"ed-btn\">▲</button><span class=\"ed-lab\">AUDIT</span><button class=\"ed-btn\">WALLS</button><button class=\"ed-btn\">POCKETS</button><button class=\"ed-btn\">FIGHT</button><button class=\"ed-btn\">SIGHT</button><button class=\"ed-btn\">FIELD</button></span></div></div> <div class=\"ed-left\"> <div><div class=\"ed-sec ed-pal\"><div class=\"ed-tabg\">THE FLOOR PLAN AND THE GROUND</div><div class=\"ed-tabs\"><button class=\"ed-tab\">LAYOUT</button><button class=\"ed-tab\">GROUND</button><button class=\"ed-tab\">SHAPES</button></div><div class=\"ed-tabg\">BUILD</div><div class=\"ed-tabs\"><button class=\"ed-tab on\">BUILD</button><button class=\"ed-tab\">MODULAR</button><button class=\"ed-tab\">KITS</button><button class=\"ed-tab\">TEXTURES</button></div><div class=\"ed-tabg\">PLACE THINGS</div><div class=\"ed-tabs\"><button class=\"ed-tab\">MODELS</button><button class=\"ed-tab\">PEOPLE</button><button class=\"ed-tab\">TREES</button><button class=\"ed-tab\">DOORS</button><button class=\"ed-tab\">LIGHTS</button><button class=\"ed-tab\">MARKERS</button></div><div class=\"ed-tabg\">THE ROOM</div><div class=\"ed-tabs\"><button class=\"ed-tab\">SKY</button><button class=\"ed-tab\">LEADS TO</button></div><div class=\"ed-palb\"><button class=\"ed-btn on\">SELECT</button><button class=\"ed-btn\">WALL</button><button class=\"ed-btn\">ROOM</button><button class=\"ed-btn\">FLOOR</button><button class=\"ed-btn\">STAIRS</button><button class=\"ed-btn\">RAMP</button><button class=\"ed-btn\">ESCALATOR</button><button class=\"ed-btn\">RAILING</button><button class=\"ed-btn\">CURVED RAILING</button><button class=\"ed-btn\">BUILDING</button><button class=\"ed-btn\">DOOR GAP</button><button class=\"ed-btn\">WINDOW</button><button class=\"ed-btn\">DOOR</button><button class=\"ed-btn\">PLATFORM</button><button class=\"ed-btn\">DECK</button></div></div></div> <div><div class=\"ed-sec\"><div class=\"ed-hd\">WORLD · World 1</div><button class=\"ed-row on\">Room 1 <i>START</i><span>w_room1 · 72×72 squares</span></button><button class=\"ed-row ed-add\">+ NEW ROOM</button><button class=\"ed-row ed-add\">+ NEW ZONE</button></div><div class=\"ed-sec\"><div class=\"ed-hd\">PREFABS · 0</div><button class=\"ed-row ed-add\">+ NEW PREFAB</button></div><div class=\"ed-sec\"><div class=\"ed-hd\">ROOM 1</div><button class=\"ed-row\">spawn<span>x 0 z 0</span></button></div></div> </div> <div class=\"ed-right\"> <div class=\"ed-hd\">THIS ROOM</div><div class=\"ed-note\">w_room1</div> <div class=\"ed-form\"><label class=\"ed-f\"><span>label</span><input type=\"text\" value=\"Room 1\"></label><label class=\"ed-f\"><span>sub</span><input type=\"text\" value=\"\"></label></div> <div class=\"ed-sub\">ZONE AND SITE</div><div class=\"ed-form\"><label class=\"ed-f\"><span>zone</span><select><option>no zone</option></select></label><label class=\"ed-f\"><span>site</span><select><option>none (no fights here)</option></select></label></div> <div class=\"ed-sub\">THE ROOM'S SHAPE AND LOOK</div><div class=\"ed-form\"><label class=\"ed-f\"><span>sky</span><select><option>Outdoors: open sky</option></select></label><label class=\"ed-f\"><span>edge</span><select><option>No walls</option></select></label><label class=\"ed-f\"><span>around the room</span><select><option>Endless ground</option></select></label><label class=\"ed-f\"><span>width (squares)</span><input type=\"number\" value=\"72\"></label><label class=\"ed-f\"><span>depth (squares)</span><input type=\"number\" value=\"72\"></label></div><details class=\"ed-unused\"><summary>NOT USED IN THIS ROOM (15)</summary></details> <div class=\"ed-sub\">THE GROUND</div><div class=\"ed-form\"><label class=\"ed-f\"><span>floor</span><input type=\"text\" value=\"grass_2\"><button class=\"ed-btn ed-texb\">…</button></label><label class=\"ed-f\"><span>cliff</span><input type=\"text\" value=\"rocks_5\"><button class=\"ed-btn ed-texb\">…</button></label><label class=\"ed-f\"><span>path</span><input type=\"text\" value=\"dirt\"><button class=\"ed-btn ed-texb\">…</button></label><label class=\"ed-f\"><span>base</span><input type=\"number\" value=\"0\"></label></div> <div class=\"ed-sub\">NOTES</div><div class=\"ed-form\"><label class=\"ed-f ed-fj\"><textarea rows=\"3\"></textarea></label></div> <div class=\"ed-acts\"><button class=\"ed-btn\">DUPLICATE ROOM</button><button class=\"ed-btn\">WORLD STARTS HERE</button><button class=\"ed-btn ed-danger\">DELETE ROOM</button></div> </div> <div class=\"ed-status\"><span><b>World 1</b></span><span>Room 1</span><span>x 2.00 z -1.14 ground 0 sq</span><span>eye 0.0, 6.9, 13.7 sq · 7 sq/s</span><span>READY</span><span>lights 0</span><span>0 undo</span><span>saved</span></div> <div class=\"ed-menu\" style=\"left:279px;top:34px\"><button class=\"ed-mi\">Grid  (G)</button><button class=\"ed-mi\">Frame the selection  (F)</button><button class=\"ed-mi\">To the spawn  (Home)</button><button class=\"ed-mi\">Reload the room</button><div class=\"ed-hr\"></div><button class=\"ed-mi\">The level band on / off  (L)</button><button class=\"ed-mi\">The level band up a floor  (Shift L)</button><button class=\"ed-mi\">The level band down a floor</button><div class=\"ed-hr\"></div><button class=\"ed-mi\">Audit: invisible walls</button><button class=\"ed-mi\">Audit: pockets (ground nobody reaches)</button><button class=\"ed-mi\">Audit: the fight field at the cursor</button><button class=\"ed-mi\">Audit: exits in sight of each other</button><button class=\"ed-mi\">Audit: the battle seats in each room</button></div> <div class=\"ed-hint\"><b>W A S D</b> fly · <b>SPACE</b> up · <b>SHIFT</b> down · <b>E</b> or a click on empty ground = mouse look · <b>RIGHT</b> click places · <b>H</b> all keys</div> </div>",
@@ -17332,7 +19113,10 @@ const UIM_PIECES = [
   { id: 'dock', group: 'Exploration', label: 'Party portraits', sel: '#hqPage .hq-dock', icons: 'dock', def: { l: 18, b: 12, w: 280, h: 100 } },
   { id: 'prompt', group: 'Exploration', label: 'Interact prompt', sel: '#hqPage .hq-prompt', def: { cx: 0, b: 72, w: 320, h: 44 } },
   { id: 'toast', group: 'Exploration', label: 'Pick-up toast', sel: '#hqPage .hq-toast', def: { cx: 0, b: 136, w: 280, h: 52 } },
-  { id: 'rig', group: 'Battle', label: 'Command menu', sel: '.hrlg-rig', noHide: true, tagRight: true, def: { l: 10, b: 80, w: 580, h: 400 } },
+  /* THE ONE BATTLE PANEL (2026-11-11): the whole window (its layout switch + picks ride its form); the Command menu piece
+     below is the classic Horologe and leaves the panel alone */
+  { id: 'deck', group: 'Battle', label: 'Battle panel', sel: '.hrlg-rig.ewd:not(.ewd-peek):not(.ewd-watch)', noHide: true, deck: true, origin: '0 100%', def: { l: 14, b: 12, w: 1272, h: 330 } },
+  { id: 'rig', group: 'Battle', label: 'Command menu', sel: '.hrlg-rig:not(.ewd)', noHide: true, tagRight: true, def: { l: 10, b: 80, w: 580, h: 400 } },
   { id: 'hero', group: 'Battle', label: 'Horologe hero section', sel: '.hrlg-side', noHide: true, hero: true, origin: '0 100%', def: { l: 10, b: 80, w: 216, h: 400 } },
   { id: 'cmds', group: 'Battle', label: 'Command panels', sel: '.hrlg-panels', noHide: true, origin: '0 100%', def: { l: 238, b: 80, w: 340, h: 300 } },
   { id: 'score', group: 'Battle', label: 'Scoreboard', sel: '.ew-scoreboard', score: true, def: { cx: 0, t: 10, w: 440, h: 64 } },
@@ -17961,6 +19745,8 @@ const UX_DEF = {
   gCam: 'off', gCamCol: '#ffffff', gCamOp: 0.85, gFog: false, gFogCol: '#8c96aa', gFogOp: 0.35,
   gGround: 'none', gSpawn: false, gNexus: false, gCube: false, gNeutral: '#f2c64a',
   gAuto: 'board', gAim: false,
+  /* gPv* = THE PREVIEWS ON THE MINIMAP (2026-11-12): the board's reach washes, hit squares, arrows and cursor, mirrored */
+  gPvReach: true, gPvArea: true, gPvArrow: true, gPvCursor: true, gPvOp: 1,
   /* f* = THE FLOATING TEXT (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage and
      stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look
      like with a model with a nameplate for scale"): the pops over the units. floatSignal turns the keys that differ from
@@ -18046,6 +19832,12 @@ const FLOAT_KINDS = [
 const fcKey = k => 'fc' + k.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
 const fkKey = (k, part) => 'fk' + fcKey(k).slice(2) + part;
 FLOAT_KINDS.forEach(([k]) => { UX_DEF[fcKey(k)] = ''; UX_DEF[fkKey(k, 'Font')] = ''; UX_DEF[fkKey(k, 'Weight')] = ''; UX_DEF[fkKey(k, 'Size')] = 1; });
+/* THE ONE BATTLE PANEL (hud.js _ewDeckCfg, 2026-11-11): the layout (one panel / the classic Horologe), what its right
+   side shows with nothing picked, where the AP icons sit, its zoom cone */
+Object.assign(UX_DEF, { dPanel: 'one', dFocus: 'self', dAp: 'panel', dCone: false,
+  /* its colours (mondo 2026-11-11: "is this new HUD compatible with the ui maker? I want to change it to all black") */
+  dLook: 'blue', dBgTop: 'rgba(22,24,42,0.96)', dBgBot: 'rgba(4,4,9,0.97)', dEdge: '#e8e4d8', dRow: '#0c0d16', dRowEdge: '#262838',
+  dSel1: '#9b38ff', dSel2: '#3d7bff', dPlate: '#000000' });
 function uxOf() { return Object.assign({}, UX_DEF, db.ux || {}); }
 /* pass 10's shared bar keys → the tower's and the entropy's own (a look saved before pass 11 keeps its bars) */
 const UX_SPLIT = { sSlant: ['sTowerSlant', 'sEntSlant'], sFade: ['sTowerFade', 'sEntFade'], sTicks: ['sTowerTicks', 'sEntTicks'],
@@ -18065,6 +19857,41 @@ function uxMigrate() {
   if (X.fLay === 'rows') X.fLay = 'side';
   /* 2026-10-21: the CRIT stamp box became "Show a crit as" (Stamp / Text / Nothing): a box left off = Nothing */
   if ('fStamp' in X) { if (X.fStamp === false && !('fCrit' in X)) X.fCrit = 'off'; delete X.fStamp; }
+}
+/* THE ONE BATTLE PANEL's switches (window._ewDeck, read by _ewDeckCfg); the HUD redraws on its word */
+function deckSignal() {
+  const X = uxOf();
+  const v = { on: X.dPanel !== 'classic', focusSelf: X.dFocus !== 'empty', apIn: X.dAp !== 'top', cone: !!X.dCone };
+  const o = window._ewDeck;
+  window._ewDeck = v;
+  deckLook(X);
+  if (o && o.on === v.on && o.focusSelf === v.focusSelf && o.apIn === v.apIn && o.cone === v.cone) return;
+  try { window.dispatchEvent(new Event('ew-deck')); } catch (e) {}
+  if (typeof markDirty === 'function') markDirty('hud');
+  if (typeof renderIfDirty === 'function') renderIfDirty();
+}
+/* THE PANEL'S COLOURS: Night blue = the panel's own CSS (no variables set); All black and My colours write the --ewdu-*
+   variables its CSS reads (hud.js _ewdCss), on the page root so the panel picks them up live */
+const DECK_BLACK = { bg1: 'rgba(0,0,0,0.96)', bg2: 'rgba(0,0,0,0.96)', bg3: 'rgba(0,0,0,0.97)', plate: '#000000',
+  tool: '#000000', tooledge: '#2c2c2c', row: '#000000', rowedge: '#2a2a2a', dead: '#000000', deadedge: '#1a1a1a',
+  tab: '#000000', tabedge: '#4a4a4a', tabon: '#000000', box: '#000000', foot1: 'rgba(0,0,0,0.97)', foot2: 'rgba(0,0,0,0.97)' };
+const DECK_VARS = ['bg1', 'bg2', 'bg3', 'edge', 'plate', 'tool', 'tooledge', 'row', 'rowedge', 'dead', 'deadedge', 'tab', 'tabedge', 'tabon', 'box', 'foot1', 'foot2', 'sel1', 'selm', 'sel2'];
+function deckLook(X) {
+  let v = {};
+  if (X.dLook === 'black') v = Object.assign({}, DECK_BLACK);
+  else if (X.dLook === 'own') {
+    const mix = (a, b) => { const p = parseCss(a) || { r: 0, g: 0, b: 0 }, q = parseCss(b) || p; return '#' + hex2((p.r + q.r) / 2) + hex2((p.g + q.g) / 2) + hex2((p.b + q.b) / 2); };
+    const top = X.dBgTop, bot = X.dBgBot, row = X.dRow, re = X.dRowEdge;
+    v = { bg1: top, bg2: bot, bg3: bot, edge: X.dEdge, plate: X.dPlate, tool: row, tooledge: shade(re, 0.12), row, rowedge: re,
+      dead: shade(row, -0.35), deadedge: shade(re, -0.3), tab: row, tabedge: shade(re, 0.2), tabon: top, box: row, foot1: top, foot2: bot,
+      sel1: X.dSel1, selm: mix(X.dSel1, X.dSel2), sel2: X.dSel2 };
+  }
+  const de = document.documentElement;
+  DECK_VARS.forEach(k => {
+    const val = v[k] ? String(v[k]) : '';
+    if (val) { if (de.style.getPropertyValue('--ewdu-' + k) !== val) de.style.setProperty('--ewdu-' + k, val); }
+    else if (de.style.getPropertyValue('--ewdu-' + k)) de.style.removeProperty('--ewdu-' + k);
+  });
 }
 /* the zoom cone's look (QuickCone reads window._ewQpCone every frame) */
 function qpSignal() {
@@ -18360,8 +20187,13 @@ const BTN_MENUS = [
   { id: 'squad', label: 'Squad desk', surf: 'squad',
     back: { sel: '#squadDeskPage .sq-back', icon: '> span', skin: 1, what: '‹ Back' },
     confirm: { sel: '#squadDeskPage .sq-cta[data-sq-go]', icon: '::before', skin: 1, what: 'DEPLOY' } },
-  { id: 'hub', label: 'Play hub', surf: 'menu', back: { sel: '#playHubPage .mm-btn-return', words: '.mm-label', skin: 1, what: 'Back (to the team pick)' } },
-  { id: 'lobby', label: 'Online lobby', surf: 'lobby', back: { sel: '#lobbyPage .lobby-back', skin: 1, what: '← Back / ← Cancel' } },
+  { id: 'hub', label: 'Play hub', surf: 'menu',
+    back: { sel: '#playHubPage .mm-btn-return, #playHubPage .lr-name-cancel', words: '.mm-label', skin: '#playHubPage .mm-btn-return', what: 'Back (to the team pick), and Cancel on your name' },
+    confirm: { sel: '#playHubPage .lr-name-save', what: 'Save on your name' } },
+  /* THE ROOM (PvP demo lobby, 2026-11-11): LEAVE ROOM / CANCEL SEARCH are BACK, READY / SEARCH / CREATE ROOM / JOIN are CONFIRM */
+  { id: 'lobby', label: 'Online lobby', surf: 'lobby',
+    back: { sel: '#lobbyPage .lobby-back', skin: 1, what: '‹ Back, ‹ Leave room, ‹ Cancel search' },
+    confirm: { sel: '#lobbyPage .lr-go', skin: 1, what: 'READY, SEARCH, CREATE ROOM, JOIN' } },
   { id: 'settings', label: 'Settings', surf: 'settings', back: { sel: '#settingsPage .ms-back-btn', skin: 1, what: '← Back' } },
   { id: 'codex', label: 'Codex', surf: 'shell', back: { sel: '#codexPage .ms-back-btn', skin: 1, what: '← Back' } },
   { id: 'shop', label: 'Shop', surf: 'shell',
@@ -18373,7 +20205,10 @@ const BTN_MENUS = [
   { id: 'hq', label: 'HQ pause menu', surf: 'explore', back: { sel: '#hqPage .hq-btn[data-cmd="party"], #hqPage .hq-panel-actions .hq-btn[data-party-act^="circuit:"], #hqPage .hq-circ-tools .hq-btn[data-party-act^="circuit:"]', skin: 1, what: '◂ PARTY / ◂ THE PARTY, and ◂ DONE on a vessel\'s spells' } },
   { id: 'profile', label: 'Profile + leaderboard', surf: '', back: { sel: 'button.ew-back:not(.ms-tty-btn)', what: '← Back on the profile, the leaderboard and the community maps' } },
   { id: 'pages', label: 'Other pages', surf: '', back: { sel: '#mdCharPage .ms-back-btn, #challengePickPage .ms-back-btn, #campaignCharCreatePage .ms-back-btn, #campaignMapPage .ms-back-btn, #mapEditorPage .ms-back-btn, #cshopOverlay .ms-back-btn, .cpb-back-btn, #backToLobbyBtn, #creditsPage .ms-back-btn, .me-hud-back', what: '← Back on the character, challenge and campaign pages, a challenge level\'s briefing, the campaign shop, the credits, the map editor (and its ← over the map) and the old team setup' } },
-  { id: 'results', label: 'Victory / defeat', surf: 'results', back: { sel: '#resultOverlay #startOverBtn, #resultOverlay .camp-btn.warn', skin: 1, what: 'Back to Party Builder / Back to Map' } },
+  /* end screens 2026-11-10: MAIN MENU is a BACK (red) and the next-match / rematch button a CONFIRM (green), like every menu */
+  { id: 'results', label: 'Victory / defeat', surf: 'results',
+    back: { sel: '#resultOverlay #startOverBtn, #resultOverlay #mainMenuBtn, #resultOverlay .camp-btn.warn', skin: 1, what: 'Back to Party Builder / Main Menu / Back to Map' },
+    confirm: { sel: '#resultOverlay #nextMatchBtn', skin: 1, what: 'Find Next Match / Request Rematch / Accept Rematch' } },
   { id: 'dialog', label: 'Pop-up questions', surf: 'dialog',
     back: { sel: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-leave, #uiDialogOverlay .trade-footer [data-trade-action="cancel"], .ew-banner-box .ew-banner-btn.secondary', words: '.pickup-btn-text strong', icon: '.pickup-btn-icon', skin: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-leave', what: 'Cancel on the "are you sure?" boxes, the save / load box and the trade' },
     confirm: { sel: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-take, #uiDialogOverlay .trade-footer [data-trade-action="confirm"], .ew-banner-box .ew-banner-btn.primary', words: '.pickup-btn-text strong', icon: '.pickup-btn-icon', skin: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-take', what: 'Confirm on the "are you sure?" boxes, Save on the save box, Confirm Trade' } },
@@ -18782,7 +20617,8 @@ const MAP_KEYS = { size: 'gSize', view: 'gView', span: 'gSpan', turn: 'gTurn', s
   gridOp: 'gGridOp', gridW: 'gGridW', every: 'gEvery', frame: 'gFrame', frameOp: 'gFrameOp', frameW: 'gFrameW', icon: 'gIcon',
   iconSize: 'gIconSize', ally: 'gAlly', foe: 'gFoe', line: 'gLine', lineW: 'gLineW', allies: 'gAllies', foes: 'gFoes', active: 'gActive',
   activeCol: 'gActiveCol', pulse: 'gPulse', cam: 'gCam', camCol: 'gCamCol', camOp: 'gCamOp', fog: 'gFog', fogCol: 'gFogCol', fogOp: 'gFogOp',
-  ground: 'gGround', spawn: 'gSpawn', nexus: 'gNexus', cube: 'gCube', neutral: 'gNeutral', auto: 'gAuto', aim: 'gAim' };
+  ground: 'gGround', spawn: 'gSpawn', nexus: 'gNexus', cube: 'gCube', neutral: 'gNeutral', auto: 'gAuto', aim: 'gAim',
+  pvReach: 'gPvReach', pvArea: 'gPvArea', pvArrow: 'gPvArrow', pvCursor: 'gPvCursor', pvOp: 'gPvOp' };
 function mapSignal() {
   const X = uxOf(), L = {};
   Object.keys(MAP_KEYS).forEach(k => { L[k] = X[MAP_KEYS[k]]; });
@@ -19169,7 +21005,7 @@ function aimDetail() {
   h += sec('tfill', 'Fill + light', xp(fRange('Fill', 'tFill', 0, 3, 0.05, +X.tFill, 'How solid the inside of a tile is (0 = the outline alone)')
     + fRange('Brightness', 'tBright', 0.2, 2.5, 0.05, +X.tBright) + fRange('Opacity', 'tOpacity', 0.05, 1.5, 0.05, +X.tOpacity)
     + fRange('Pulse', 'tPulse', 0, 8, 0.1, +X.tPulse, 'How much the tiles breathe (0 = steady)') + fRange('Pulse speed', 'tSpeed', 0, 6, 0.05, +X.tSpeed)));
-  h += sec('tshape', 'Shape', xp(fRange('Size', 'tSize', 0.4, 1.08, 0.01, +X.tSize, '1 = as the game; smaller leaves a gap between the tiles')
+  h += sec('tshape', 'Shape', xp(fRange('Size', 'tSize', 0.4, 1.12, 0.01, +X.tSize, '1 = as the game; 1.08 = the tiles touch; past it they overlap; smaller leaves a wider gap')
     + fRange('Rounded corners', 'tRound', 0, 0.5, 0.01, +X.tRound)));
   [['moves', 'Colours: moving'], ['act', 'Colours: attacks + spells'], ['other', 'Colours: other'], ['glow', 'Colours: spell glow on the ground']].forEach(([g, t]) => {
     h += sec('tc' + g, t, xp(AIM_TILE_KINDS.filter(x => x[3] === g).map(([k, l, d, , tip]) => fColorOpt(l, aimKey('tc', k), X[aimKey('tc', k)], d, false, tip)).join('')));
@@ -19538,6 +21374,12 @@ function mmapForm() {
     + (X.gFog ? fColor('Fog colour', 'gFogCol', X.gFogCol) + op('Fog opacity', 'gFogOp') : '')
     + xCheck('Spawn zones', 'gSpawn', X.gSpawn) + xCheck('Nexus zones', 'gNexus', X.gNexus, true) + xCheck('Cubes', 'gCube', X.gCube, true)
     + (X.gNexus || X.gCube ? fColor('Neutral colour', 'gNeutral', X.gNeutral) : '')));
+  h += sec('gprev', 'Previews', xp(xCheck('Reach: the squares a move, an attack or a spell can reach', 'gPvReach', X.gPvReach)
+    + xCheck('Area: the squares that will be hit, with a ring on the units in them', 'gPvArea', X.gPvArea)
+    + xCheck('Arrows: the walk path, shoves and pulls', 'gPvArrow', X.gPvArrow)
+    + xCheck('Cursor: the square you are on', 'gPvCursor', X.gPvCursor)
+    + op('Preview opacity', 'gPvOp'))
+    + '<div class="uim-note">On your own turn the minimap mirrors what the board shows while you aim, in your tile and arrow colours.</div>');
   h += sec('glook', 'Look', xp(fSeg('Shape', 'gShape', [['square', 'Square'], ['round', 'Round']], X.gShape)
     + fRange('Size (px)', 'gSize', 80, 480, 2, +X.gSize, 'Its longest side. The whole board keeps the board\'s shape')
     + fColor('Background', 'gBg', X.gBg) + op('Background opacity', 'gBgOp')
@@ -19713,6 +21555,23 @@ function qpStatSizes(X) {
     + fRange('Letter grade size', 'qGradeSize', 8, 60, 1, +X.qGradeSize, 'The whole grade circle and its letter')
     + fSeg('Buffs + debuffs', 'qBuffAt', [['stat', 'Beside their stat', 'A buff or debuff of a stat on the card shows next to that stat (the others stay in the Buffs + debuffs part)'], ['part', 'In their own part', 'Every buff and debuff in the Buffs + debuffs part'], ['both', 'Both']], X.qBuffAt)
     + fRange('Status + buff badge size', 'qChipSize', 6, 28, 1, +X.qChipSize);
+}
+/* THE ONE BATTLE PANEL's own settings (the Battle panel piece) */
+function deckForm() {
+  const X = uxOf();
+  return sec('dpanel', 'Battle panel', xp(fSeg('Layout', 'dPanel', [['one', 'One panel', 'Who is acting, what it can do and what it is aimed at, in one window along the bottom'], ['classic', 'Classic', 'The Horologe column, the command panels and the unit / tile card, as before']], X.dPanel)
+    + fSeg('Right side with nothing picked', 'dFocus', [['self', 'My stats + square', 'The acting unit\'s own stats, element box and the square it stands on'], ['empty', 'Nothing', 'The right side shows only when a unit, square or target is picked']], X.dFocus)
+    + fSeg('AP icons', 'dAp', [['panel', 'In the panel', 'Under the HP / MP bars'], ['top', 'Top left', 'Where the AP press icons piece puts them']], X.dAp))
+    + xCheck('Zoom cone (turn icon to the card)', 'dCone', X.dCone))
+    + sec('dlook', 'Battle panel colours', xp(fSeg('Colours', 'dLook', [['blue', 'Night blue', 'The panel as it shipped: dark blue windows, white frames'], ['black', 'All black', 'Black windows, black rows and tabs, the white frames and the purple-blue picked row kept'], ['own', 'My colours', 'Pick each colour below']], X.dLook)
+      + (X.dLook === 'own'
+        ? fColor('Window top', 'dBgTop', X.dBgTop, true) + fColor('Window bottom', 'dBgBot', X.dBgBot, true)
+          + fColor('Frames', 'dEdge', X.dEdge) + fColor('Name plates', 'dPlate', X.dPlate)
+          + fColor('Rows, tabs + boxes', 'dRow', X.dRow, true) + fColor('Row edges', 'dRowEdge', X.dRowEdge)
+          + fColor('Picked row (left)', 'dSel1', X.dSel1) + fColor('Picked row (right)', 'dSel2', X.dSel2)
+        : '')))
+    + '<div class="uim-note">One panel: the left part is the unit whose turn it is, the middle is the one command list (red BACK on top, green CONFIRM at the bottom), the right part is what you picked, with its tabs. The footer says what to do and the keys that work now. Classic brings back the old layout and every piece of it.</div>'
+    + xReset('d', 'Reset the battle panel');
 }
 function qpForm() {
   const X = uxOf(), wide = X.qShape === 'wide', port = wide && +X.qPort > 0, free = qpFree(X);
@@ -19925,6 +21784,12 @@ function heroCss() {
   if (H.face === 'portrait') css += `${S} .hrlg-hub svg > g:not([clip-path]):not(.hrlg-hring), ${S} .hrlg-hub svg > circle:nth-of-type(n+3):not(.hrlg-halo) { display: none !important; }\n`;
   else if (H.face === 'dial') css += `${S} .hrlg-hub svg image, ${S} .hrlg-hub svg circle[fill="url(#hrlgPortraitVig)"] { display: none !important; }\n`;
   css += clockCss(H, S + ' .hrlg-hub');
+  /* THE ONE BATTLE PANEL's watch wears the same clock (its size is the panel's own) */
+  const DR = ':root:root .ewd-ring .hrlg-hub';
+  if (!H.glow) css += `${DR} { filter: none !important; }\n`;
+  if (H.face === 'portrait') css += `${DR} svg > g:not([clip-path]):not(.hrlg-hring), ${DR} svg > circle:nth-of-type(n+3):not(.hrlg-halo) { display: none !important; }\n`;
+  else if (H.face === 'dial') css += `${DR} svg image, ${DR} svg circle[fill="url(#hrlgPortraitVig)"] { display: none !important; }\n`;
+  css += clockCss(H, DR);
   const hid = HERO_PARTS.filter(([k]) => H.hide[k]).map(([k, , sel]) => `${S} ${sel}, ${S} .hrlg-part-${k}`);
   if (hid.length) css += `${hid.join(', ')} { display: none !important; }\n`;
   /* THE PARTS: each part is its own box (see hud.js _hrlgSide), so it can slide, size and overlap its neighbour
@@ -20291,7 +22156,7 @@ function apply() {
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal(); miniSignal(); stampSignal(); mapSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); deckSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal(); miniSignal(); stampSignal(); mapSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
@@ -21742,6 +23607,7 @@ function pieceDetail() {
   if (P.clog) h += clogForm();
   if (P.mmap) h += mmapForm();
   if (P.qp) h += qpForm();
+  if (P.deck) h += deckForm();
   if (P.id === 'qlist') h += sec('qlfit', 'Fit its rows', xp(qlistFit(uxOf())));
   if (P.id === 'qlist' || P.id === 'cmds') h += btnRowsForm(uxOf()) + btnLookForm(uxOf());   // the one spell-button layout (THE BUTTON ROWS + THE BADGE LOOKS)
   if (P.id === 'hero' || P.id === 'cmds' || P.id === 'rig') h += horoLook(P);
@@ -22046,7 +23912,8 @@ const BTN_SAMPLE = (() => {
     'back-pages': page('mdCharPage', '', back),
     'back-hq': '<div class="uim-w" id="hqPage"><div class="uim-w hq-pp-nav"><button class="hq-btn hq-btn-sm" data-cmd="party">◂ PARTY</button></div></div>',
     'back-profile': '<button class="ew-back" style="background: rgba(255,255,255,0.06); border: 1px solid #3a3550; color: #8a849c; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-family: DotGothic16, monospace">← Back</button>',
-    'back-results': '<div class="uim-w" id="resultOverlay"><div class="uim-w vic-bottom" id="vicBottom"><button id="startOverBtn" class="warn">Back to Party Builder</button></div></div>',
+    'back-results': '<div class="uim-w" id="resultOverlay"><div class="uim-w vic-bottom" id="vicBottom"><button id="startOverBtn" class="warn">Back to Party Builder</button><button id="mainMenuBtn">Main Menu</button></div></div>',
+    'confirm-results': '<div class="uim-w" id="resultOverlay"><div class="uim-w vic-bottom" id="vicBottom"><button id="nextMatchBtn" class="primary">Request Rematch</button></div></div>',
     'back-dialog': dlg('pickup-btn-leave', '✕', 'Cancel'),
     'confirm-dialog': dlg('pickup-btn-take', '✓', 'Confirm'),
   };
