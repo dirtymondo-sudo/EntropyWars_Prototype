@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 909 |
+| Meshy AI | no | 910 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -2489,6 +2489,13 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | fire_extinguisher | `Assets/world/packs/elbolilloduro/ebd_6twelve_fire_extinguisher.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
 | garbage_bags | `Assets/world/packs/elbolilloduro/ebd_6twelve_garbage_bags.glb` | Asset pack | 6TWELVE · Elbolilloduro · CC0 (piece cut out in Blender) |
 
+### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Hero Plaza NEW YORK pass, mondo picked concept 2 on 2026-11-15; originals in project files disaster-city-hero-plaza/nyc/) — Meshy AI (2)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| hero_statue_crossed | `Assets/world/props/meshy/hero_statue_crossed.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Hero Plaza NEW YORK pass, mondo picked concept 2 on 2026-11-15; originals in project files disaster-city-hero-plaza/nyc/) |
+| hero_statue_landing | `Assets/world/props/meshy/hero_statue_landing.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Hero Plaza NEW YORK pass, mondo picked concept 2 on 2026-11-15; originals in project files disaster-city-hero-plaza/nyc/) |
+
 ### Molten Maps SciFi Asset Pack · Moltenbolt · CC0 — Asset pack (2)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2539,12 +2546,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | halloween_character_ghost | `Assets/world/packs/elbolilloduro_halloween/characters/Character_Ghost.glb` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-
-### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Hero Plaza NEW YORK pass, mondo picked concept 2 on 2026-11-15; originals in project files disaster-city-hero-plaza/nyc/) — Meshy AI (1)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| hero_statue_landing | `Assets/world/props/meshy/hero_statue_landing.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Hero Plaza NEW YORK pass, mondo picked concept 2 on 2026-11-15; originals in project files disaster-city-hero-plaza/nyc/) |
 
 ### Mine · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
 

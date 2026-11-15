@@ -2887,6 +2887,8 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - Street (z 63): 4 car_taxi on the kerb squares (centred on 2 squares along the street: x a multiple of 3.5, z 57.75 / 68.25), 2 hot_dog_stand
   centred on pavement squares, 3 newspaper_rack (decor, off centre), 3 orange/white steam chimneys in the road (arch, decor), a green
   sidewalk shed over the north pavement (x -59.5..-45.5).
+- 11-15 07:46 mondo "use the 3rd example ... as well": `hero_statue_crossed` (Meshy concept S3, arms crossed) on a granite pedestal (`pedestal`, NYC_OPEN) on the
+  plaza's south-west square (-36.75, -19.25; a blocker, centred), y 1.4, facing the fountain. R2 Assets/world/props/meshy/hero_statue_crossed.glb.
 
 ### HERO PLAZA, THE SECOND INSIDES PASS (2026-11-13 night, mondo 22:33: "do another interior pass ... make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere for the interiors")
 - **Where**: H.js `IN2[building id]`, run after the room's first-pass `IN[id]` on the same kit; new kit helpers `put` (a prop with `floor: true`
