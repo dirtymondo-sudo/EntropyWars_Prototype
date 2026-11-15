@@ -3290,6 +3290,11 @@ deep), Police (3 x 5: desk, cells with drawn bars), Time Bureau (3 x 4), Militar
   number_dispenser, now_serving_sign, brochure_rack, form_counter, ballot_box. Reused: high_bay_lamp, ships_bell, radio_console,
   evidence_board, map_table, marble_bust, wingback_chair, painting_portrait, crystal_chandelier, brass_orrery, banker_lamp. Originals,
   concepts, fronts sheet, plan sheet: project files disaster-city-civic/interiors2/.
+- **MONDO'S FRONTS-SHEET REVIEW (2026-11-15 16:09)**: brochure_rack ("messed up": clear acrylic came out white glitch), city_scale_model
+  (the glass case came out a solid box) and astronomical_clock (its concept bent the frame) regenerated: no clear glass / plastic in a Meshy
+  prompt, wall pieces get a straight-on elevation suffix (items.json `suf`). brochure_rack is grey steel now, city_scale_model open top on
+  a turned-leg table, the clock a flat square panel. Old versions kept in project files interiors2/meshy/v1/. "do we not already have
+  computers and monitors or tvs?" -> Records shows the existing `crt_terminal` in place of microfiche_reader (row kept, unplaced).
 
 ## DISASTER CITY, THE INTERIOR POLISH (2026-11-15, mondo: "rugs/carpets flickering, desks clipping through chairs, zombie floating in the air ... do another polish pass on disaster city"; 09:07 "chairs and a chandelier and stuff floating in the air ... a building by the recording studio")
 One pass over every walk-in (99 hollow texbuildings) of `site_prebuilt_downtown_streets`, whichever district wrote it. It lives in the BAKE, so a later district edit cannot bring a fault back:
@@ -3458,6 +3463,15 @@ on the real-cities plan (`/mnt/project-files/disaster-city-real-cities/plan.html
 - Not made: a Meshy searchlight and a Meshy studio water tower (concepts go to mondo first); the water tower is still the code-built one.
 - Proof: `/mnt/project-files/dc-entertainment/la_built.jpg` (offline render of the baked rows, not the running game).
 
+- **THE STARS ON THE GROUND (2026-11-15 16:13, mondo: "these stars are floating in the air when they should be on the ground on the
+  sidewalk")**: the star walk was six arch rows of eleven stars, each row at its first star's ground, so down the boulevard's hill stars
+  stood up to 1.9 m in the air. Now one row per star (`dc:E-stars-n-<col>` / `-s-<col>`, 64), centred on its walk square (the old zig-zag
+  hung odd stars 0.4 m over the kerb's bank), with `hug: true`: data.js THE HUGGING ROWS gives such a row `ground: hAt`, and
+  three-renderer.js _hqArchGeometry puts every vertex on the ground under it (+ the part's own y). Use `hug` for any flat inlay on a slope
+  (plaques, paving); not for tall pieces (a roof would shear). Checked offline: every star's tile top 0.05 m over the ground at all 25
+  sample points, never buried. Known, not fixed: the Cinema forecourt (`dc:E-forecourt`) crosses a level step, its north end's paving and
+  handprint slabs sit 1.7 m under the ground.
+
 ## DISASTER CITY, THE CITY MARKS (2026-11-15)
 mondo 11-15: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city branding/logo for certain
 buildings or props or banners"; he corrected shield B (bolt, not a crack) and the flag's star on the sheet, then "the rest looks good for now".
@@ -3539,9 +3553,21 @@ old textures too except for tilegeneric2a, the calm wood planks, the calm carpet
   PlasterWallGeneric1a, PlasterWallStucco1a -> PlasterWallGeneric3a; flat roof tops -> ConcreteRoofBitumen1a; pitched roofs (not Industrial) ->
   MetalRoofTiles1a (gain x1.28); Industrial shed walls 2.6 m+ -> MetalWallRibbed1a (gain x1.28); H striped concrete -> ConcretePrecast2a; I / S / R
   striped concrete parts -> ConcretePanels3a / ConcretePrecast1c / ConcreteGeneric2a.
-- **NOT BUILT YET**: crossings / arrows / box junctions from RoadDouble + RoadZone (need a ground decal row), kerb stones (ConcreteCurb), roller
-  shutters on closed shops, container sides, chain-link, vent covers, leak + oil stains, the new manholes, facade brick on the plaster buildings.
-- NOT SEEN ON SCREEN (RULE #1c). Checked offline on the baked room: none of the ruled-out sheets left, every `urban:` key exists.
+- **THE SECOND PASS (same day, mondo: "run it in the browser")**: the roller shutters (`GlassWindowResidentialShutter1`, a window's sheet) ->
+  `MetalShutter1a`; THE PAINTED BRICK: in R / H / U / I an outdoor wall mass or wall panel in `PlasterWallPainted1a` -> `BrickPainted1a` (white
+  brick, so the district's tint paints it; rows whose id ends `-in` are inside walls and stay); three-renderer.js `_hqRoadTexKey`: the manhole is
+  `urban:DecalManholeCover1`, and THE OIL STAINS (`urban:DecalStainOil1`, one merged mesh, every 23 m in a lane, turned four ways) where a room's
+  `gen.stains` asks (the bake writes it).
+- **What the city already had** (found when it ran): the generated streets already draw zebra crossings, stop bars, kerbs and manholes
+  (`_hqBuildRoadMarks`: "paint quads 1271 kerb 926 manholes 99"); the fences are the `wire_fence` model and the containers the `ind_container`
+  model, so the pack's chain-link and container sheets have no surface to go on there. 290 of the 357 buildings are `skin: false` (their
+  district drew the facade from tinted parts), so a facade swap is a per-part rule, not a style.
+- **THE ROAD PAINT (third pass, mondo's card 11-15 15:46 "Both": lighten the road + lane lines and crossings)**: the city had NO lane lines, crossings, stop lines or oil stains on screen although `_hqBuildRoadMarkings` built 1,271 paint quads. Cause: the 11-13 rewrite of `flat()` (THE MARKS RIDE THE GROUND) wound its quads clockwise seen from above, so every flat mark faced DOWN and was culled (probe: normal 0,-1,0; a double-sided material showed them all). Fixed in `flat()` (ccw), for every city room. The stains never built at all: the loop read `info.gen.stains`, but `info.gen` is the compile's own summary, not the room's gen; it reads `room.terrain.gen.stains` now (82 in the city). The asphalt: `floorTint` #8a8a8e -> #dcdce0 (RoadGeneric1a averages 65/255, the old tint took it to 35). Seen in the cloud browser: `/mnt/project-files/urban-decay-city/game_road_*.jpg`. A flat ground mark that does not draw = check its winding first.
+- **Still open**: a kerb strip sheet (ConcreteCurb needs its own UVs), arrows / box junctions (RoadDouble / RoadZone), leak stains under
+  roof lines, vent covers, the interior ceiling lights, a walk sheet per district (the palette is full at 8).
+- SEEN in the cloud browser (WebGL2 headless, `/mnt/project-files/urban-decay-city/`): see the shots there. HARNESS: a scratch copy of
+  playtest_city.js with `require('playwright')` + `executablePath: /opt/pw-browsers/chromium`; `--wait=330000`; a view needs `y` = the
+  compiled ground (`hqTerrainHeight(hqTerrainInfo(room), x, z)`), the city's ground is 0 to 25 m and a view at y 0 is under it.
 
 ## THE WOODS ON PLOTS — the pilot of the world plan (2026-11-15, mondo "Go ahead and pilot the woods" + "Okay" on the plot plan)
 - Plan of record: `/mnt/project-files/world-areas-plan/world-areas-proposal.md` (Revision 2) + the approved picture
@@ -3564,3 +3590,18 @@ old textures too except for tilegeneric2a, the calm wood planks, the calm carpet
 - **NOT DONE**: the HQ Stair top is not wired to HQ; the cave inside and Room 333 are not wired from the new room; no owl statue model exists
   (stone altar + braziers stand in); the old Woods rooms are untouched and still the story path. NOT SEEN ON SCREEN (RULE #1c). Checked offline:
   compiles, all 36 plots reached on foot from the spawn, 8 door pads, every catalogue key and race exists.
+
+## DISASTER CITY, THE HILL SIGN'S LETTERS + THE CITY'S MANHOLE (2026-11-15)
+mondo 11-15 16:08: "go for it. can you also change the disaster city hollywood sign font, i dont want it to be pixel".
+- three-renderer.js _hqBuildEdgeLand THE HILL SIGN: the 5 x 7 block glyph table is gone. Each letter is one standing plane cut from a real
+  typeface (`edges.sign.font`, default Anton), all letters on one canvas, one mesh for the letters + one for the legs. Same fields as
+  before (side, at, d, text, px, lean, drop); a letter is still 7 x px tall on the land's height under it. Built when the font arrives.
+- THE CITY'S MANHOLE: in a room whose label holds DISASTER CITY, `street_drain` covers and the road-marking covers wear
+  `_hqCityManholeTex` (iron disc, skyline, DISASTER CITY / SEWER), one canvas texture for all. Other cities keep the pack's cover.
+- Seen: both pieces of real code in a bare page (/mnt/project-files/city-sign-fonts/hill_sign_real_code.jpg on a stand-in slope,
+  manhole_real_code.jpg), not in the game (RULE #1c).
+- **THE SWAP (2026-11-15, mondo: "i think its still loading the old woods, or i cant tell a difference")**: the new room was only behind a
+  new trail, so the normal ways in still loaded the old Clearing. Now the two links that lead INTO the Woods end in the 36-plot room:
+  `woods_stair` (the HQ Stair hall; free door on the marble flight at x -17.5, z 55.5, y 12.06) and `woods_camelot` (west wall, z 3.5; the tool
+  throws if its spur moves). `DOOR_HQ.hubs.woods.room` = the new room; it wears the woods' day look. The old Clearing keeps its rooms and is
+  reached by the trail south from the Clearing plot (and still by Room 420's hollow tree). The Stair top and the way back from Camelot are wired now.

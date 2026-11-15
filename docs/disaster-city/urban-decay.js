@@ -34,6 +34,7 @@ const WOODFLOOR = { R: ['WoodFlooring1a', 'WoodFlooring1b'], E: ['WoodFlooring1a
 const WOODPART = { E: 'WoodGeneric1b', B: 'WoodGeneric1c' };
 const CARPET = { U: 'CarpetPattern1c', C: 'CarpetPlain1c', S: 'CarpetDiamond1c' };
 const CONC2 = { I: 'ConcretePanels3a', S: 'ConcretePrecast1c', R: 'ConcreteGeneric2a' };   // a building's striped concrete, where it was the yard sheet stood up
+const FACADE = { R: 1, H: 1, U: 1, I: 1 };
 const hash = s => { let h = 2166136261; s = String(s); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
 const pick = (list, seed) => list[hash(seed) % list.length];
 
@@ -59,6 +60,13 @@ function swap(key, d, role, seed, part) {
     if (key === 'urban:PlasterWallStucco1a' && role === 'keyIn') return U('PlasterWallGeneric3a');
     if (key === 'urban:TileGeneric5a' && role === 'floorIn') return U('TileLinoleum1c');
     if (key === 'urban:ConcreteUnderTiles1' && role === 'partTop') return U('ConcreteRoofBitumen1a');
+    if (key === 'urban:GlassWindowResidentialShutter1' && role === 'part') return U('MetalShutter1a');   // the roller shutters: a real shutter (the old sheet was a window's)
+    /* THE PAINTED BRICK (the second pass): in the brick cities (Southside = Detroit, Hero Plaza = New York, University = Yale, Industrial) a
+       building's big painted-plaster wall is painted BRICK: the pack's white brick, so the district's own tint paints it as before */
+    if (key === 'urban:PlasterWallPainted1a' && role === 'part' && part && FACADE[d] && !part.kind && !part.glow && !part.flat && part.size && !/-in$/.test(String(seed))) {
+        if ((!part.s || part.s === 'box') && part.size[1] >= 3 && Math.max(part.size[0], part.size[2]) >= 4 && Math.min(part.size[0], part.size[2]) >= 1) return U('BrickPainted1a');   // a wall mass
+        if (part.s === 'quad' && part.size[0] >= 3 && part.size[1] >= 2.5 && part.uv !== 'fit') return U('BrickPainted1a');                                                 // a wall panel
+    }
     if (key === 'urban:MetalCorrugatedPainted1a' && role === 'part' && part) {
         if (part.s === 'roof' && d !== 'I') return { key: U('MetalRoofTiles1a'), gain: 1.28 };                                   // a pitched roof: roof tiles (a shed's tin roof stays tin)
         if (d === 'I' && (!part.s || part.s === 'box') && part.size && part.size[1] >= 2.6) return { key: U('MetalWallRibbed1a'), gain: 1.28 };   // an Industrial shed's wall: ribbed cladding

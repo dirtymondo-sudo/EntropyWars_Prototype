@@ -1957,6 +1957,34 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE ONE PAINT (2026-11-15, the price of a mesh on mondo's Mac + colour out of the look)
+
+mondo's two walk F3s after THE SHELL CELLS price a replayed mesh on his Mac (Firefox, WebGPU): 6,712 meshes = 44.7 ms,
+5,601 = 39.4 ms, his 139-mesh lobby = 12.5 ms. So frame ~ 12.5 ms + 4.8 µs x meshes (the lens's "bundles ... meshes" count;
+each is replayed in the scene pass and, when it casts in the sun's box, again in the shadow pass). **60 FPS wants under ~900
+meshes in view.** Use this line to size any later cut.
+
+What the shell's 5,259 draws were (cloud census of the merged meshes, by which part of the look splits them): 4,075 pieces
+alone in their look and square; colour 650+ distinct values over ~300 textures (640 once every square is built). Texture
+transform, sampler and specular split nothing. `_ew_bunHs / _ew_bunHv / _ew_bunF` (the bundle recorder's notes on a material)
+were part of the look key and split a re-scan's batches: now left out of the key.
+
+THE ONE PAINT (three-renderer.js `_hqBatchVcOk`, `_hqBatchVcMat`, `_hqBatchMerge(cs, vc)`): in a big room's shell (`B.vc`,
+same rule as the shell cells) the colour is not part of a look. Pieces that differ only by colour merge; each point carries
+its piece's colour (times its own painted colour when the look reads one); the merged mesh wears a copy of the look with a
+white colour and `vertexColors` on (one copy per look per room, `B.vcMats`, freed in `_hqBatchDrop`). A lone piece keeps
+its own material and geometry (the stand-in). Off: `window.EW_HQ_NO_ONE_PAINT` before the room is entered.
+
+Cloud (SwiftShader, counts only, HEAD on e022511): shell 8,864 pieces -> 3,213 draws (was 5,259), 1,080 of them one-paint
+meshes holding 6,731 pieces, colours equal to 6e-8, replayed meshes at the start corner 5,594 -> 4,190, 0 frame errors.
+
+What still splits the shell (3,203 looks): the texture (636 pictures; with them unified 501 would be left), then emissive
+(lit windows, 2,524 without it). In view at the start corner: shell squares 2,612 meshes, instance cells 353, prop chunks 282.
+NEXT, in order of yield: one texture array per sheet size so looks differing only by picture merge (the big one); the sun
+map held between frames (shadow replays ~27% of replay time; a hero shadow at half rate shows, so needs a static/moving
+split); far squares as one fused mesh. Piece sizes (radius): 10% under 0.5 m, 25% under 1.2 m, half over 5 m, so a far
+limit for small pieces buys little.
+
 ## THE SHELL CELLS (2026-11-15, the city walk is the graphics card's: the count of pieces)
 
 mondo's tests after #1432: walk 20 FPS with CPU 20.8 ms (was 30); Render Scale at a quarter of the pixels = the SAME 21 FPS; his
@@ -2277,3 +2305,65 @@ Off: `window.EW_KEEP_PBR_MAPS = true`. NOT run in a browser (repo rule); whether
 memory his readout showed. The readers of a file material's normalMap are creator hair / wings (unit cache) and the gem / key
 picks (their own files), none of them a room prop. NEXT if the hall is still far over budget: the unit models (also three
 sheets each, also drawn as Lambert), and stripping the two sheets in the .opt.glb bake so they are never downloaded.
+
+## THE ROOM NEXT DOOR (2026-11-15, mondo: "the lighting isnt on at first and suddenly turns on as i walk through the door")
+- Seen: from the Foyer the Main Hall was dark with hard lit strips; one step through the door it was fully lit.
+- Cause: THE ROOM-BOX AO (`_hqAoHook` GLSL, `_ewNodeAo` node renderer). Its box is the room you STAND in (`_hqAoArm`,
+  re-armed at every `_hqStageSwap`), but the shader runs on everything drawn. A point outside the box read as hard
+  against both walls and the ceiling, so every joined room seen through a door was drawn at the clamp (0.3 of its
+  colour), bar the strips in line with the box's own walls. The crossing swapped the box and the room "turned on".
+  Not the lamps, the rig, the lamp budget, the key shadow, the look or the fog (all measured the same on both sides).
+- Fix: outside the box (past 0.15 of the reach, about 8 cm) the walls and ceiling shade nothing; the floor contact
+  term stays, as in a round room. No lights added, no memory touched. Applies to every box room on a stage.
+- Left as is: a box room's own corner shade only shows while you stand in it (small, near its walls).
+- Proof: /mnt/project-files/hall-light-pop/. Cloud repro: WebGPU harness, enter central_egress, wait for the foyer,
+  teleport {deg:195,r:22.5}, first person at {x:0,z:-3.05}, lookAt(4,-20,0).
+
+## THE WALK DROPS UNIT MODELS TOO (2026-11-15, the main hall crash, fourth pass)
+His [MEM] block after THE UNDRAWN MAPS: `1212 of 700 MB` in central_egress (was 2047): props 257 files 934 MB (worn 535, idle
+399), unit models 56 files 278 MB (worn 81). The menu already held 577 MB / 216 files before the building. The idle props go by
+the existing budget once 120 s idle (the block printed at the first tick, before that); the unit models were never dropped in
+the walk. `_mmTick` now lists `_unitGlbCache` too: not worn (geometry, material or colour sheet, `_mmWorn`), not named by a
+live rig / parked rig / roster / `H.chars`, idle `cacheIdleMs` -> `_mmRigEvict`. Never: the animation libraries, anything under
+`/characters/creator/`. Off: `window.EW_WALK_KEEP_UNITS`. The [MEM] line now says whether it is dropping. Not browser-run.
+STILL OVER after this: the 535 MB that IS drawn is 2048 x 2048 colour sheets on small props (camera_01 = 65 MB for three
+materials, each lava lamp part 21 MB). Getting under 700 needs smaller sheets on small props (a look decision, his) or a bigger
+budget. Spell props (Spear.fbx 22 MB, Christmas.dae 21 MB, halloween.fbx, top_fangs) are `_ewOneFile`, held by the weapon cache.
+
+## THE SMALL PROPS (2026-11-15, the main hall crash, fifth pass; mondo "sure")
+After THE UNDRAWN MAPS the hall still drew 535 MB of 2048 x 2048 colour sheets on small props. three-renderer.js
+`_hqSmallPropCap(url, root)` runs where a misc model lands (both landings): a DOOR_HQ.catalogue file whose largest placed
+size (max over its catalogue rows and every room prop row's `h` / `span` / `size`, turned into the model's longest side by
+its box) is up to 0.6 m gets its colour sheet drawn down to 512 px, up to 1.15 m to 1024 px (`_capModelTextures(root, cap,
+['map', 'emissiveMap', 'alphaMap'])`, new `only` argument). Bigger, a pack `node` piece, a row with a free `scale`, or no
+size: untouched. In the hall + foyer: 18 files to 512 (papers, mug, pen, stapler, folders, security camera, fan, nameplate,
+box, speakers, CRT, picture b, exit sign, hook rail), 11 to 1024 (pictures a/c, wet floor sign, folding / teal / office chair,
+mop bucket, boxes, coffee table, railing, plant, cabinet, long hook rail), desks and everything larger full (preview:
+scratch caps.js off the CDN files). R2 files untouched. Off: `window.EW_NO_SMALL_PROP_CAP`. `hq.mem().smallCapped`.
+Not browser-run. If he says a prop reads soft: raise its size class here, do not turn the cap off for all.
+
+## THE CITY AT 5.5 GB: THE LEAVE SWEEP + THE NEAREST SHEET READ WITH DERIVATIVES (2026-11-15)
+mondo: "crashed going into camelot from the woods clearing". The trail of the session before: Disaster City at `[MEM] 5716 of 700 MB`
+(props 680 files 5412 MB, 4725 MB of it worn), WGSL errors `no definition in scope for identifier: nodeUniform1_sampler`, one
+`execute_bundle` validation error naming `PointShadowDepthTexture`. Nothing here was run in a browser (RULE #1c).
+- WHY 5.5 GB (measured in Node off the CDN files: `DOOR_HQ.rooms.site_prebuilt_downtown_streets.props` -> catalogue -> GLB image
+  headers): 5411 prop rows, 505 keys, 431 files; about 240 Meshy files wear one 2048² colour sheet (21 MB counted each) = 5035 MB of
+  colour sheets. THE SMALL PROPS (0.6 m / 1.15 m) only brought that to 3723 MB: the city's props are furniture-sized.
+  `_hqSmallPropCap` 1024 class widened 1.15 m -> 2.5 m: 1819 MB (61 files at 512, 235 at 1024, 57 full: statues, machinery,
+  couches, the conference table, palm trees, the boxing ring). A soft-looking prop = raise its class, never switch the cap off.
+- WHY IT WAS NOT GIVEN BACK: `_mmTick` only runs while a room stands ready, waits 120 s idle and drops 6 files a 4 s sweep. Between
+  rooms nothing dropped, so the city's files were held while the Woods loaded and both while Camelot loaded.
+  · `_mmLeaveSweep()` at the end of `_hqLeave` (not on a hand-over to a battle, not on a dissolve): over the budget, every file
+    nothing drawn wears goes at once, oldest first, down to 85 %. Under the budget nothing is touched. Off `window.EW_NO_LEAVE_SWEEP`.
+  · `_mmTick` far over (sum > 1.5x budget): idle wait 15 s, 48 files a sweep, next look in 6 s.
+  · `_mmListRigs(H, live, list)` = the unit-model rows, shared by both.
+- THE SHADER ERROR: three 0.186.1 WGSL declares no `<name>_sampler` for a texture with min AND mag NearestFilter
+  (`isUnfilterable`), but `generateTextureGrad` / `generateTextureBias` still write `textureSampleGrad(tex, <name>_sampler, ...)`.
+  The ground materials read their sheets with `.grad(gx, gy)` (`_ewNodeTerrain`, the calm fluid), so a nearest ground sheet made a
+  shader that did not compile (that ground did not draw). `_ewGpuNearestGrad(r)` (beside `_ewGpuSafeBindings`) patches the node
+  builder's prototype once: an unfilterable sheet read with grad / bias goes through `generateTextureLod(..., '0')` (textureLoad,
+  what a nearest sheet with no mips is anyway). Counter `gpuStatus().nearestGrad`. Off `window.EW_NO_NEAREST_GRAD_FIX`.
+- THE BUNDLE ERROR, NOT FIXED: the trail cut the line at 240 chars ("Texture with 'PointShadowDepthTexture' lab"). Read: a render
+  bundle replayed a bind group whose point-shadow depth texture had been freed (`destroyTexture` is hooked -> `_ew_bunFree`, but the
+  group only re-records on the next tick, so a free after the tick replays once). Seen once at 445 s. index.html's trail now keeps
+  900 chars of a GPU / shader error and the whole `[MEM]` block (3200), so the next trail says the reason.
