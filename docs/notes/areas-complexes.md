@@ -3510,7 +3510,7 @@ buildings or props or banners"; he corrected shield B (bolt, not a crack) and th
 Second side (handoff prompt 3). mondo's answers 11-15: seated statue APPROVED, blossom tree APPROVED, "Owner side makes them" (this account
 has no Meshy key), extra picked: "Mayor's House = White House". All in `docs/disaster-city/districts/C.js`.
 - THE WHITE HOUSE (plot P07-00, building 1, the Mayor's House; same foot, same drawn door on its west front, still no inside): white stone,
-  a flat roof behind a balustrade, a two-storey four-column portico with a pediment over the door, two lamps on the walk, a flag on the
+  a flat roof behind a plain parapet, its stone lifted (`glow: 0.45`) so the shaded front still reads white, no shop awning on its door (a `plain` door part), a two-storey four-column portico with a pediment over the door, two lamps on the walk, a flag on the
   roof. Its west lawn (4 x 4 squares) has the black iron fence on its north and walk sides, the gate facing the portico. `iron()` is a
   file-level helper now (the plaza's lawns use the same one).
 - THE PIECES THAT WAIT (`HAVE` at the top of C.js): a key is placed only when data.js has a catalogue row `<key>: { file: ...`. Today
