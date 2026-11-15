@@ -2795,3 +2795,28 @@ Please replace any ai generated DOOR logos with these assets."
   the game's line types (2.0 s), PRESENTS (2.7 s). Still 4.3 s: audio.js identSting's tape stop sits on the squish at 3.15 s.
 - **Left as they were** (his own earlier with-text exports, used big or as a watermark / ink mask): `DOOR_TEXT.LOGO.onDark /
   onLight / onMid / mono`, the CSS `--door-seal-*` (dossier watermarks, result stamps), the ID card crest.
+
+## THE BACK: ESC, E AND RIGHT CLICK (2026-11-15, mondo: "pressing escape just opens the pause menu again forever and ever" + "e should exit the dialogue too" + "right click is supposed to be universal back button")
+- **ESC CLOSES, IT NEVER LOOPS** (three-renderer.js `_hqEscAt` / `_hqEscHeld`, `_hqTryLock`, `_hqOnLockChange`): the ESC that
+  closed the HQ pause menu unpaused the walk, and the unpause took the pointer lock ON that ESCAPE press. The browser throws a
+  lock out on ESC (Firefox on the key's release), and the lost lock read as "the walker pressed ESC" = the menu opened again.
+  Now no lock is asked for while ESC is down or for 700 ms after it (hover-look covers the walk; the next movement key or
+  click takes the lock), and a lock lost within 1.2 s of an ESC the page already acted on is never a second ESC.
+- **THE BACK** (map.js `window._hqBack`): the ONE answer for ESC, P and right click in the building. Newest thing open
+  closes: a window over the walk, the terminal, the pause menu, a panel / a dialogue box. The pause menu opens only when
+  nothing is open. A screen over the walk (ID card, trophies, leaderboard, creator, community maps: `_hqSuspended`) gets
+  `false` and the key passes on to it; before, ESC there opened the pause menu under the screen and let the walk go.
+- **E LEAVES WHAT E OPENED** (map.js `_hqPanelPlain`): a box whose only button is its close (`data-close`: a person's line,
+  a notice, a sheet on the wall) closes on E. A box with something to pick (a door's ways, a counter's action, the map)
+  keeps E out; THE TALK still turns its pages with E. The closing E / click is never a new talk: `ThreeRenderer.hq.interactHold(ms)`
+  + the walk's E ignores key repeat. Cutscenes (three-camera.js EWScene): E turns the line and answers a choice, like SPACE / ENTER.
+- **RIGHT CLICK = BACK, EVERYWHERE** (map.js, after `_hqBack`): a plain right click (under 6 px, under 0.7 s; a right-drag is the
+  camera's) is sent as an ESCAPE key press, so each screen's own ESC handler answers it. In the building it calls
+  `_hqBack({ step: true, open: false })`: the pause menu steps back one level (socket, circuit, armed item, member sheet) then
+  closes; it never OPENS the pause menu. It stands down where the right button has a job: the walk itself (door gun), a fight in
+  play (hud.js / state.js back one menu level; only its pause menu + dialogs are sent ESC), the editors (`body.ed-on`), the UI
+  Maker, a cutscene / the tape, a text box, a canvas preview, a paint grid (`[oncontextmenu]`, `[data-rmb]` opt a new element out).
+- **THE BACK BUTTON** (`window._ewBackKeyFallback`, window bubble): an ESCAPE nobody answered (no preventDefault) on a screen
+  whose BACK button is on top (`.ms-back-btn`, `.lobby-back`, `.sq-back`, `[data-back]`, or a button whose text starts with
+  BACK) presses that button. A new screen gets ESC + right click for free by having a BACK button; a handler that acts on
+  ESC must preventDefault or the button is pressed too.

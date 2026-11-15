@@ -19843,6 +19843,7 @@
             } catch (e) {}
         };
         window._ewWalkWindowsClose = function () { holds.slice().reverse().forEach(h => { try { h.close(); } catch (e) {} }); };   // a walk to another room closes every window over the walk
+        window._ewWalkWindowHas = function () { return holds.length > 0; };
         window._ewWalkWindowEsc = function () { const h = holds[holds.length - 1]; if (!h) return false; try { h.close(); } catch (e) {} return true; };
     })();
 

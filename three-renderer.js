@@ -82981,12 +82981,17 @@ const ThreeRenderer = (function () {
             if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
             var k = _hqKeyName(e);
             if (!k) return;
-            if (k === 'esc') { e.preventDefault(); e.stopPropagation(); if (H.opts.onEscape) H.opts.onEscape(); return; }
+            /* ESC CLOSES, IT NEVER LOOPS (mondo 11-15: "pressing escape just opens the pause menu again forever and ever"):
+               the press is stamped so the unpause it causes never takes the pointer lock (_hqTryLock) — a lock that lands on
+               an ESCAPE press is thrown out again by the browser on that same press (Firefox on the key's release), and the
+               lost lock read as a fresh ESC that opened the menu again. onEscape answers false when a screen over the walk
+               (the ID card, the trophies) owns the key: it is then left alone to reach that screen. */
+            if (k === 'esc') { _hqEscAt = performance.now(); _hqEscHeld = true; var escR = H.opts.onEscape ? H.opts.onEscape() : false; if (escR !== false) { e.preventDefault(); e.stopPropagation(); } return; }
             /* P = the same as ESC (Phase 8, 2026-09-14): with the pointer locked the
                browser eats ESC to release the cursor and the page never sees the
                key, so the settings could not be opened from the walk without a
                click on the strip — which the locked cursor could not make */
-            if (k === 'p') { e.preventDefault(); e.stopPropagation(); if (H.opts.onEscape) H.opts.onEscape(); return; }
+            if (k === 'p') { var pR = H.opts.onEscape ? H.opts.onEscape() : false; if (pR !== false) { e.preventDefault(); e.stopPropagation(); } return; }
             /* M = THE MAP (THE HQ HUD PASS, 2026-09-16): the directory from anywhere — before the pause
                gate so a second M closes the sheet it opened (map.js decides what is open) */
             if (k === 'm') { e.preventDefault(); e.stopPropagation(); if (!e.repeat && H.opts.onHotkey) H.opts.onHotkey('m'); return; }
@@ -82998,7 +83003,7 @@ const ThreeRenderer = (function () {
                 var nowL = performance.now();
                 if (!H._lockTryAt || nowL - H._lockTryAt > 1500) { H._lockTryAt = nowL; _hqTryLock(); }
             }
-            if (k === 'e') { e.preventDefault(); _hqInteract(); return; }
+            if (k === 'e') { e.preventDefault(); if (e.repeat || performance.now() < _hqInteractHoldUntil) return; _hqInteract(); return; }   // a held E (or the E that just closed a dialogue box, map.js) never talks again
             if (k === 'v') { e.preventDefault(); _hqToggleView(); return; }
             /* SKATEBOARDING (HQ plan 9.8): B drops the deck / picks it up */
             if (k === 'b') { e.preventDefault(); _hqRideToggle(); return; }
@@ -83141,6 +83146,10 @@ const ThreeRenderer = (function () {
                that request rode the click / the ENTER on a field. The editor takes the lock itself, only while the RIGHT button is
                held over the view (editor.js). */
             if (_hq && _hqEditing(_hq)) return;
+            /* ESC CLOSES, IT NEVER LOOPS: no lock on an ESCAPE press (the browser throws it out on the same press and that
+               read as a new ESC); hover-look covers the walk until the next movement key or click takes it */
+            if (_hqEscHeld && performance.now() - _hqEscAt < 5000) return;
+            if (performance.now() - _hqEscAt < 700) return;
             var p = canvas.requestPointerLock();
             if (p && typeof p.catch === 'function') p.catch(function () {});
         } catch (e) {}
@@ -83176,6 +83185,9 @@ const ThreeRenderer = (function () {
        (battle.js) owns its own locks: it is never live inside the 2.5 s
        stale window after a leave, and never while _hq exists. */
     var _hqLockStaleAt = 0;
+    var _hqEscAt = -1e9, _hqEscHeld = false;   // ESC CLOSES, IT NEVER LOOPS: the last ESCAPE the page saw, and whether it is still down
+    var _hqInteractHoldUntil = 0;              // E is deaf until then (the E / click that closed a dialogue box)
+    if (typeof window !== 'undefined') window.addEventListener('keyup', function (e) { if (e.key === 'Escape' || e.key === 'Esc') _hqEscHeld = false; }, true);
     var _hqHadLock = false;   // Phase 8: the lock was ours last time we looked
     var _hqRebuildAt = 0;     // 2026-09-14 rev 4: the last room-to-room rebuild (a door) — a lock loss inside its window is the swap's, never an ESC
     function _hqOnLockChange() {
@@ -83188,6 +83200,7 @@ const ThreeRenderer = (function () {
                    consumed it: treat it as ESC (the settings). A blur / alt-tab
                    lands here too, which is a pause as well. */
                 var esc = _hqHadLock && !!_hq && !_hq.paused && (performance.now() - _hqLockStaleAt > 2500);
+                if (esc && (_hqEscHeld || performance.now() - _hqEscAt < 1200)) esc = false;   // ESC CLOSES, IT NEVER LOOPS: the page already acted on that ESCAPE press
                 if (esc && _hqEditing(_hq)) esc = false;   // THE EDITOR (E0): its viewport never takes a lost lock for the walker's ESC
                 /* the swap between two rooms (2026-09-14 rev 4): the shared canvas is
                    re-parented / the old scene torn down and the browser may release
@@ -95019,6 +95032,8 @@ const ThreeRenderer = (function () {
         },
         /* the clock re-read NOW (map.js calls it when the hour is set by hand, so the room does not ease across half a day) */
         clockSnap: function () { var H = _hq; if (!H || !H.clock) return false; H.clock.at = 0; var V = _hqClockVals(H.room, H.clock.id, _hqClockHourNow()); if (!V) return false; H.clock.vals = V; H.clock.sunCur.copy(V.sunDome); H.clock.moonCur.copy(V.moonDome); H.clock.duskCur = V.dusk; if (!V.locked && !(H.stage && H.stage.blend)) _hqClockApply(H, V, true); _hqClockLamps(H, true); return true; },
+        /* E is deaf for `ms` (map.js: the key or click that closed a dialogue box is not a new talk) */
+        interactHold: function (ms) { _hqInteractHoldUntil = performance.now() + (ms || 300); },
         setPaused: function (on) {
             if (!_hq) return;
             _hq.paused = !!on;
