@@ -29,14 +29,14 @@ function mk(NU, NV, pre) {
        (leaf 'none' = the bare doorway), gaps [[from, to]] (a plain opening, whole squares), draw: false (walked only), walk: false (drawn only) */
     R.wall = (axis, at, a, b, o) => { o = o || {}; const h = o.h || 3.5, y0 = o.y0 || 0, base = o.base || 0;
         const seg = (s0, s1) => { if (s1 - s0 < 0.02) return; const m = (s0 + s1) / 2, L = (s1 - s0) * C, px = axis === 'u' ? X(m) : X(at), pz = axis === 'u' ? Z(at) : Z(m);
-            if (o.draw !== false) { const p = { s: 'box', p: [px, r2(base + y0), pz], size: axis === 'u' ? [r2(L), h, T] : [T, h, r2(L)], uv: [3.5, 1.75] }; if (o.key) p.key = o.key; if (o.tint != null) p.tint = o.tint; if (o.glass) { p.kind = 'glass'; p.uv = 7; } R.P.push(p); }
+            if (o.draw !== false) { const p = { s: 'box', p: [px, r2(base + y0), pz], size: axis === 'u' ? [r2(L), h, T] : [T, h, r2(L)], uv: [3.5, 1.75] }; if (o.key) p.key = o.key; if (o.tint != null) p.tint = o.tint; if (o.glass) { p.kind = 'glass'; p.uv = 7; } if (o.glow) p.glow = o.glow; R.P.push(p); }
             if (o.walk !== false) { const e = Math.min(0.15, L / 2 - 0.01), row = Object.assign({ k: 'wall' }, axis === 'u' ? { x0: r2(X(s0) + e), z0: pz, x1: r2(X(s1) - e), z1: pz } : { x0: px, z0: r2(Z(s0) + e), x1: px, z1: r2(Z(s1) - e) }, { t: T, ghost: true, rail: false });
                 row.h = h; row.y = r2(base + y0 + h); if (y0 > 0) row.y0 = r2(base + y0); R.F.push(row); } };   // `y` = its top, `y0` = an upper floor wall's own foot (absolute: a stair under the line never lifts it)
         const cuts = (o.doors || []).map(d => ({ a: d[0] - DW / 2 / C, b: d[0] + DW / 2 / C, d })).concat((o.gaps || []).map(g => ({ a: g[0], b: g[1] }))).sort((p, q) => p.a - q.a);
         let cur = a;
         cuts.forEach(c => { seg(cur, c.a); cur = c.b; if (!c.d) return;
             const m = c.d[0], px = axis === 'u' ? X(m) : X(at), pz = axis === 'u' ? Z(at) : Z(m), yb = r2(base + y0), fr = o.frame != null ? o.frame : 0x3a3d42;
-            if (h > DH + 0.05) { const p = { s: 'box', p: [px, r2(yb + DH), pz], size: axis === 'u' ? [DW, r2(h - DH), T] : [T, r2(h - DH), DW], uv: [3.5, 1.75], under: true }; if (o.key) p.key = o.key; if (o.tint != null) p.tint = o.tint; if (o.glass) { p.kind = 'glass'; p.uv = 7; } R.P.push(p); }
+            if (h > DH + 0.05) { const p = { s: 'box', p: [px, r2(yb + DH), pz], size: axis === 'u' ? [DW, r2(h - DH), T] : [T, r2(h - DH), DW], uv: [3.5, 1.75], under: true }; if (o.key) p.key = o.key; if (o.tint != null) p.tint = o.tint; if (o.glass) { p.kind = 'glass'; p.uv = 7; } if (o.glow) p.glow = o.glow; R.P.push(p); }
             [-1, 1].forEach(sd => R.P.push({ s: 'box', p: axis === 'u' ? [r2(px + sd * (DW / 2 + 0.06)), yb, pz] : [px, yb, r2(pz + sd * (DW / 2 + 0.06))], size: axis === 'u' ? [0.12, DH + 0.1, T + 0.08] : [T + 0.08, DH + 0.1, 0.12], tint: fr }));
             R.P.push({ s: 'box', p: [px, r2(yb + DH), pz], size: axis === 'u' ? [DW + 0.24, 0.12, T + 0.08] : [T + 0.08, 0.12, DW + 0.24], tint: fr });
             if (c.d[1] && c.d[1] !== 'none') { const r = { x: px, z: pz, rot: axis === 'u' ? 0 : 90, w: DW - 0.2, leaf: c.d[1] }; if (c.d[2]) r.double = true; if (yb > 0) r.y = yb; R.inner.push(r); }
@@ -164,7 +164,7 @@ const HG = mk(22, 14);
 
 /* ════ THE WHITE ROOMS (16 x 12) ════ */
 const WD = mk(16, 12);
-{ const R = WD, WH = 0xf2f2f4, wh = { key: PLAS, tint: WH, frame: 0xd0d2d6 }, gl = { glass: true, key: GLS, tint: 0xdfe8ee, frame: 0xd0d2d6 };
+{ const R = WD, WH = 0xffffff, wh = { key: PLAS, tint: WH, frame: 0xd0d2d6, glow: 0.45 }, gl = { glass: true, tint: 0xd8ecf2, frame: 0xd0d2d6, glow: 0.2 };   // (seen in the browser 11-15: unlit plaster read grey and the window sheet read as dark mullions; the walls are lit a little by themselves, the glass is plain)
   /* THE CELL ROW: eight padded cells down the west wall (3.5 x 7 m each), one standing open; the row's own hall beside them */
   R.wall('v', 2, 0, 8, Object.assign({ doors: [0, 1, 2, 3, 4, 5, 6, 7].map(i => [i + 0.5, i === 5 ? 'none' : 'leaf_cell']) }, wh));
   for (let v = 1; v < 8; v++) R.wall('u', v, 0, 2, wh);
