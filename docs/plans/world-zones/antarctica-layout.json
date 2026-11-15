@@ -1,0 +1,273 @@
+{
+"area": "Antarctica",
+"version": "plan-1",
+"squareMeters": 3.5,
+"plotCells": 12,
+"districts": {
+"A": "Antarctica Station"
+},
+"rooms": [
+{
+"room": "Antarctica",
+"cols": 4,
+"rows": 3,
+"plots": [
+{
+"id": "P00-00",
+"name": "The Ice Wall, west",
+"district": "Antarctica Station",
+"level": 6,
+"what": "the wall",
+"from": "The Station: THE ICE WALL",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-00",
+"name": "The Ice Wall",
+"district": "Antarctica Station",
+"level": 8,
+"what": "LANDMARK: the wall at the end of the world",
+"from": "The Station: THE ICE WALL",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-00",
+"name": "The Ice Wall, east",
+"district": "Antarctica Station",
+"level": 6,
+"what": "the wall",
+"from": "The Station: THE ICE WALL",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-00",
+"name": "The Polar Opening",
+"district": "Antarctica Station",
+"level": 2,
+"what": "a hole going down, warm air coming up",
+"from": "The Station: the way to Hollow Earth (hidden today)",
+"ports": [
+"S",
+"W"
+],
+"exit": [
+"The Cavern: Hollow Earth",
+"secret"
+]
+},
+{
+"id": "P00-01",
+"name": "The Drift",
+"district": "Antarctica Station",
+"level": 2,
+"what": "deep snow",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "The Crevasse",
+"district": "Antarctica Station",
+"level": 0,
+"what": "the crack in the ice",
+"from": "The Station: THE CREVASSE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Huts",
+"district": "Antarctica Station",
+"level": 1,
+"what": "the station huts (insides: new)",
+"from": "The Station: THE HUTS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"insides: the huts",
+"new"
+]
+},
+{
+"id": "P03-01",
+"name": "The Collar",
+"district": "Antarctica Station",
+"level": 1,
+"what": "the dock where the Spaceship sits",
+"from": "The Station: THE COLLAR",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": [
+"the Spaceship",
+"open"
+]
+},
+{
+"id": "P00-02",
+"name": "The Shelf Ice",
+"district": "Antarctica Station",
+"level": 0,
+"what": "flat ice to the sea",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-02",
+"name": "The Flag Line",
+"district": "Antarctica Station",
+"level": 1,
+"what": "a line of marker flags",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-02",
+"name": "The Station Yard",
+"district": "Antarctica Station",
+"level": 1,
+"what": "sledges, fuel drums, a mast",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The Front Door",
+"district": "Antarctica Station",
+"level": 1,
+"what": "a door standing in the snow",
+"from": "ZONES_PLAN: the foyer's front door opens here late in the story",
+"ports": [
+"N",
+"W"
+],
+"exit": [
+"DOOR HQ foyer (the late reveal)",
+"secret"
+]
+}
+],
+"cells": [
+"iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii",
+"iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii",
+"iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii",
+"iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii",
+"iiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiissssssssssss",
+"ssssssssssssiiiiiiiiiiiissssssssssssssssssssssss",
+"sssssssssssssssssssssssssssssssssssssssssxxxssss",
+"ssssssssssssssssssssssssssssssssssssssssxxxxxsss",
+"ssssssssssssssssssssssssssssssssssssssssxxxxxsss",
+"ssssssssssssssssssssssssssssssssssssssssxxxxxsss",
+"sssssssssssssssssssssssssssssssssssssssssxxxssss",
+"ssssssssssssssssssssssssssssssssssssssssssssssss",
+"kkkkkkkkkkkkssssssssssssssssssssssssssssssssssss",
+"kkkkkkkkkkkkssssssssssssssssssssssssssssssssssss",
+"kkkkkkkkkkkkssssssssssssssBBBsssssssssssssssssss",
+"kkkkkkkkkkkkssssssssssssssBBBssBBBssssssfffffsss",
+"kkkkkkkkkkkkssssssssssssssBBBssBBBsssssfffsfffss",
+"kkkkkkkkkkkkaaaaajjaaaaasssssssBBBsssssffsssffss",
+"kkkkkkkkkkkkaaaaajjaaaaasssssssssssssssfsssssfss",
+"kkkkkkkkkkkkssssssssssssssssBBBssssssssffsssffss",
+"kkkkkkkkkkkkssssssssssssssssBBBssssssssfffsfffss",
+"kkkkkkkkkkkkssssssssssssssssBBBsssssssssfffffsss",
+"kkkkkkkkkkkkssssssssssssssssssssssssssssssssssss",
+"kkkkkkkkkkkkssssssssssssssssssssssssssssssssssss",
+"iiiiiiiiiiiissssssssssssssssssssssssssssssssssss",
+"iiiiiiiiiiiissssssssssssssssssssssssssssssssssss",
+"iiiiiiiiiiiissssssssssssssssssssssssssssssssssss",
+"iiiiiiiiiiiisssssssssssssssoooooosssssssssssssss",
+"iiiiiiiiiiiisssssssssssssssoooooosssssssssssssss",
+"iiiiiiiiiiiisssssssssssssssoooooossssssssmmsssss",
+"iiiiiiiiiiiioooooooooooosssoooooosssssssssssssss",
+"iiiiiiiiiiiisssssssssssssssoooooosssssssssssssss",
+"iiiiiiiiiiiisssssssssssssssoooooosssssssssssssss",
+"iiiiiiiiiiiissssssssssssssssssssssssssssssssssss",
+"iiiiiiiiiiiissssssssssssssssssssssssssssssssssss",
+"iiiiiiiiiiiissssssssssssssssssssssssssssssssssss"
+]
+}
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "dirt path",
+"g": "grass",
+"w": "water",
+"b": "bridge / deck over water",
+"s": "snow",
+"r": "rock (cannot walk)",
+"x": "the opening",
+"f": "the dock",
+"c": "corn (cannot walk; the rows are the walls)",
+"d": "sand",
+"m": "the door",
+"l": "lava (cannot walk)",
+"h": "scorched rock",
+"k": "deep drift",
+"v": "open sky (a fall)",
+"u": "sea floor",
+"a": "the crevasse (cannot cross)",
+"B": "hut",
+"i": "ice (the wall is a cliff)",
+"o": "packed snow",
+"y": "crystal",
+"q": "the collider ring corridor",
+"e": "grey dust",
+"n": "red ground",
+"z": "the Sea of Possibility (cannot walk)",
+"j": "a plank over it",
+"G": "the ley line",
+"V": "nothing (cannot walk)",
+"D": "dunes",
+"R": "red carpet / hot floor",
+"T": "hedge / kelp (cannot walk)",
+"S": "light",
+"N": "open space (fly the ship, or float)",
+"Q": "an orbit (a guide line, not a wall)",
+"E": "Earth",
+"A": "asteroid"
+}
+}

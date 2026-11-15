@@ -1,0 +1,322 @@
+{
+"area": "The Sewers",
+"version": "plan-1",
+"squareMeters": 3.5,
+"plotCells": 12,
+"districts": {
+"W": "The Sewers",
+"O": "The Old Workings",
+"T": "The Running Tunnels"
+},
+"rooms": [
+{
+"room": "The Sewers",
+"cols": 8,
+"rows": 2,
+"plots": [
+{
+"id": "P00-00",
+"name": "The Pump Court Stair",
+"district": "The Sewers",
+"level": 1,
+"what": "down from the pumping station",
+"from": "Sewers: THE PUMPING STATION door (exists)",
+"ports": [
+"E",
+"S"
+],
+"exit": [
+"Disaster City: the Pump court",
+"open"
+]
+},
+{
+"id": "P01-00",
+"name": "The Culverts",
+"district": "The Sewers",
+"level": 0,
+"what": "brick tunnels, a walkway each side",
+"from": "Sewers: THE CULVERTS",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-00",
+"name": "The Junction",
+"district": "The Sewers",
+"level": 0,
+"what": "LANDMARK: where the big pipes meet",
+"from": "Sewers: THE JUNCTION",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-00",
+"name": "The Cistern",
+"district": "The Sewers",
+"level": 0,
+"what": "a round tank",
+"from": "Sewers: THE CISTERN",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": [
+"the Stadium",
+"secret"
+]
+},
+{
+"id": "P04-00",
+"name": "The Culverts, east",
+"district": "The Sewers",
+"level": 0,
+"what": "more tunnels",
+"from": "Sewers: THE CULVERTS",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-00",
+"name": "The Precinct Drain",
+"district": "The Sewers",
+"level": 0,
+"what": "the drain under the police station",
+"from": "Sewers: THE PRECINCT DRAIN",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": [
+"inside: the Holding Cells",
+"inside"
+]
+},
+{
+"id": "P06-00",
+"name": "The Outfall",
+"district": "The Sewers",
+"level": 0,
+"what": "where it all pours out",
+"from": "Sewers: THE OUTFALL",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-00",
+"name": "The Dock Gutter",
+"district": "The Sewers",
+"level": 0,
+"what": "a gutter up to the dock",
+"from": "Sewers: the dock gutter (exists)",
+"ports": [
+"S",
+"W"
+],
+"exit": [
+"Disaster City: the Dock",
+"open"
+]
+},
+{
+"id": "P00-01",
+"name": "The Storm Drain",
+"district": "The Sewers",
+"level": 0,
+"what": "the drain from the Woods",
+"from": "Sewers: the storm drain to Dead Man's Cave (exists)",
+"ports": [
+"E",
+"N"
+],
+"exit": [
+"The Woods: Dead Man's Cave",
+"secret"
+]
+},
+{
+"id": "P01-01",
+"name": "The Old Workings",
+"district": "The Old Workings",
+"level": 0,
+"what": "the mine under the precinct; the flood",
+"from": "Old Workings: THE FLOOD \u00b7 THE PUMP LEDGE",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Chimney",
+"district": "The Old Workings",
+"level": 0,
+"what": "a shaft straight down",
+"from": "Old Workings: THE CHIMNEY",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": [
+"The Cavern (the Oubliette)",
+"open"
+]
+},
+{
+"id": "P03-01",
+"name": "The Maintenance Hatch",
+"district": "The Running Tunnels",
+"level": 0,
+"what": "the hatch down to the track",
+"from": "Running Tunnels: THE MAINTENANCE HATCH",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-01",
+"name": "The Loop Line",
+"district": "The Running Tunnels",
+"level": 0,
+"what": "track that goes round",
+"from": "Running Tunnels: THE LOOP LINE",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-01",
+"name": "The Crossing",
+"district": "The Running Tunnels",
+"level": 0,
+"what": "two lines cross",
+"from": "Running Tunnels: THE CROSSING",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-01",
+"name": "The Depot",
+"district": "The Running Tunnels",
+"level": 0,
+"what": "parked trains",
+"from": "Running Tunnels: THE DEPOT",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-01",
+"name": "The Ghost Station",
+"district": "The Running Tunnels",
+"level": 0,
+"what": "a platform nobody stops at",
+"from": "Running Tunnels: THE GHOST STATION",
+"ports": [
+"N",
+"W"
+],
+"exit": [
+"the subway platform / DOOR HQ tunnel",
+"secret"
+]
+}
+],
+"cells": [
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxwwxxxxxxxxxxxxxxxx",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxoooxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxwwxxxxxxxxxxxxxxxx",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxoooooxxxxxxxxxoooxxxxxxxxxxxxxxxxxxxxfffffxxxxxxxxxwwoxxxxxxxxxxxxxxx",
+"xxxxxxxxxxxxxxxxoooxxxxxxxoooooooxxxxxxxoooooxxxxxxoooxxxxxxxxxxfffffxxxxxxxxowwooxxxxxxxxxxxxxx",
+"xxxxfffffxxxxxxoooooxxxxxoooooooooxxxxxoowwwooxxxxoooooooooooooofffffoxxxxxxoowwoooxxxxoooxxxxxx",
+"xxxxfffffxxxxxxoooooooooooooooooooxxxxoowwwwwooxxxoooooooooooooofffffoxxxxxxoowwoooxxxoooooxxxxx",
+"xxxxfffffoxxxxxooooooooooooooooooooooooowwwwwooxxxooooooxxxxxxxxfffffoxxxxxxoowwoooooooooooxxxxx",
+"xxxxfffffooooooooooxooxxxxoooooooooooooowwwwwoooooooooooxxxxxxxxxxooooxxxxxxxowwoooooooooooxxxxx",
+"xxxxfffffoooooooooxxooxxxxxooooooxxxxxxoowwwoooooooooxooxxxxxxxxxxoooooooooooowwoxxxxxxoooxxxxxx",
+"xxxxxxxxooxxxxxxxxxxooxxxxxxoooooxxxxxxxooooooxxxxxxxxooxxxxxxxxxxoooooooooooobboxxxxxxxooxxxxxx",
+"xxxxxxxxooxxxxxxxxxxooxxxxxxxxxooxxxxxxxxoooooxxxxxxxxooxxxxxxxxxxxxooxxxxxxxxwboxxxxxxxooxxxxxx",
+"xxxxxxxxooxxxxxxxxxxooxxxxxxxxxooxxxxxxxxxxxooxxxxxxxxooxxxxxxxxxxxxooxxxxxxxxwboxxxxxxxooxxxxxx",
+"xxxxxxxxooxxxxxxxxxxooxxxxxxxxxooxxxxxxxxxxxooxxxxxxxxooxxxxxxxxxxjxooxxxxxxxxxooxxxxxxxooxxxxxx",
+"xxxxxxxxooxxxxxxxxxxooxxxxxxxxxooxxxxxxxxxxxooxxxxxxxxooxxxxxxxxxxjxooxxxxxxxxxooxxxxxxxooxxxxxx",
+"xxxxoooxooxxxxxxxxxxooxxxxxxxxxooxxxxxxxxxxxooxxxxxxxxooxxxxxxxxxxjxooxxxxxfffffffffxxxxooxxxxxx",
+"xxxoooooooxxxxxxxxxxooxxxxxxxxoooxxxxxxxxxxxooxxxxxxxxooxxxxxxxxxxjoooxxxxxfffffffffxfffffffxxxx",
+"xxxoooooooxxxxxxxooooooooooooooooooooooofffffoxxxxxxxxooxxxxxxxxxojoooxxxxxfffffffffxfffffffxxxx",
+"xxxooooooooooooooooooooooooooooooooooooofffffoxxxxxxoooooooooooooojoooooooofffffffffofffffffxxxx",
+"xxxxooooooooooooooooooxxxxxxxoooooxxxxxxfffffoxxxxxooooooooooooooojoooooooofffffffffofffffffxxxx",
+"xxxxxxxxxxxxxxwwwwwwooxxxxxxxxoooxxxxxxxfffffoooooooooooxxxxxxxxoojooooxxxxfffffffffxfffffffxxxx",
+"xxxxxxxxxxxxxxwwwwwwooxxxxxxxxxxxxxxxxxxfffffooojjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj",
+"xxxxxxxxxxxxxxwwwwwwoxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxoooxxxxxxxxxxxjooxxxxxxfffffffffxfffffffxxxx",
+"xxxxxxxxxxxxxxxxxoooxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxjxxxxxxxxfffffffffxxxxxxxxxxxx",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxjxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+]
+}
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "dirt path",
+"g": "grass",
+"w": "water",
+"b": "bridge / deck over water",
+"s": "snow",
+"r": "rock (cannot walk)",
+"x": "solid rock / wall (cannot walk)",
+"f": "concrete room",
+"c": "corn (cannot walk; the rows are the walls)",
+"d": "sand",
+"m": "stone / marble paving",
+"l": "lava (cannot walk)",
+"h": "scorched rock",
+"k": "cloud you walk on",
+"v": "open sky (a fall)",
+"u": "sea floor",
+"a": "the drop into the dark",
+"B": "building",
+"i": "ice",
+"o": "sewer walkway",
+"y": "crystal",
+"q": "the collider ring corridor",
+"e": "grey dust",
+"n": "red ground",
+"z": "the Sea of Possibility (cannot walk)",
+"j": "rail track",
+"G": "the ley line",
+"V": "nothing (cannot walk)",
+"D": "dunes",
+"R": "red carpet / hot floor",
+"T": "hedge / kelp (cannot walk)",
+"S": "light"
+}
+}

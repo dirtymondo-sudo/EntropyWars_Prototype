@@ -1,0 +1,664 @@
+{
+"area": "The D.U.M.B.",
+"version": "plan-1",
+"squareMeters": 3.5,
+"plotCells": 12,
+"districts": {
+"R": "Research",
+"S": "Sub-Level 7",
+"C": "Command",
+"P": "Level P3"
+},
+"rooms": [
+{
+"room": "The D.U.M.B.",
+"cols": 6,
+"rows": 6,
+"plots": [
+{
+"id": "P00-00",
+"name": "The Ward",
+"district": "Research",
+"level": 2,
+"what": "cots, monitors, quiet please",
+"from": "Dream Research: THE WARD",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-00",
+"name": "The Range",
+"district": "Research",
+"level": 2,
+"what": "psychic training range",
+"from": "Dream Research: THE RANGE",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-00",
+"name": "The Screen",
+"district": "Research",
+"level": 2,
+"what": "the screen you can walk into",
+"from": "Dream Research: the way to the Astral Realm (exists)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": [
+"The Astral Realm",
+"secret"
+]
+},
+{
+"id": "P03-00",
+"name": "Test Chamber 1",
+"district": "Sub-Level 7",
+"level": 0,
+"what": "a sealed test room",
+"from": "Sub-Level 7: THE TEST CHAMBERS",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-00",
+"name": "Test Chamber 2",
+"district": "Sub-Level 7",
+"level": 0,
+"what": "a sealed test room",
+"from": "Sub-Level 7: THE TEST CHAMBERS",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-00",
+"name": "Level \u22126",
+"district": "Sub-Level 7",
+"level": 0,
+"what": "the blast door into the rock",
+"from": "The Cave: LEVEL \u22126, the base's sixth side",
+"ports": [
+"S",
+"W"
+],
+"exit": [
+"The Cavern",
+"open"
+]
+},
+{
+"id": "P00-01",
+"name": "The Vat Hall",
+"district": "Research",
+"level": 2,
+"what": "rows of vats",
+"from": "Clone Research: THE VAT HALL",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "The Gantry",
+"district": "Research",
+"level": 3,
+"what": "the walkway over the vats",
+"from": "Clone Research: THE GANTRY",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Service Corridor",
+"district": "Research",
+"level": 2,
+"what": "the back way between the labs",
+"from": "D.U.M.B.: THE SERVICE CORRIDOR (a draught today)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-01",
+"name": "The Hub",
+"district": "Sub-Level 7",
+"level": 0,
+"what": "LANDMARK: every department is off this hub",
+"from": "Sub-Level 7: EVERY DEPARTMENT IS OFF THIS HUB",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-01",
+"name": "Test Chamber 3",
+"district": "Sub-Level 7",
+"level": 0,
+"what": "a sealed test room",
+"from": "Sub-Level 7: THE TEST CHAMBERS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-01",
+"name": "Test Chamber 4",
+"district": "Sub-Level 7",
+"level": 0,
+"what": "a sealed test room",
+"from": "Sub-Level 7: THE TEST CHAMBERS",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "Disposal",
+"district": "Research",
+"level": 1,
+"what": "the chute",
+"from": "Clone Research: DISPOSAL",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-02",
+"name": "Batch 12",
+"district": "Research",
+"level": 2,
+"what": "the batch that is ready",
+"from": "Clone Research: BATCH 12",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-02",
+"name": "The Labs Stair",
+"district": "Research",
+"level": 2,
+"what": "stair between Research and Command",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The Stair Up",
+"district": "Sub-Level 7",
+"level": 1,
+"what": "up to Level P3",
+"from": "Sub-Level 7: THE STAIR UP",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-02",
+"name": "The Observation Deck",
+"district": "Sub-Level 7",
+"level": 1,
+"what": "glass over the chambers",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-02",
+"name": "The Holding Pens",
+"district": "Sub-Level 7",
+"level": 0,
+"what": "cells for what was tested",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-03",
+"name": "The Big Board",
+"district": "Command",
+"level": 1,
+"what": "LANDMARK: the wall map",
+"from": "War Room: THE BIG BOARD",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-03",
+"name": "The Round Table",
+"district": "Command",
+"level": 1,
+"what": "the table",
+"from": "War Room: THE ROUND TABLE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-03",
+"name": "The Gallery",
+"district": "Command",
+"level": 2,
+"what": "the gallery over the war room",
+"from": "War Room: the gallery",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "The Stair",
+"district": "Level P3",
+"level": 2,
+"what": "down to Sub-Level 7",
+"from": "Level P3: the stair",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-03",
+"name": "The Tram Stop",
+"district": "Level P3",
+"level": 2,
+"what": "the tram platform",
+"from": "Level P3: THE TRAM",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-03",
+"name": "The Tunnel",
+"district": "Level P3",
+"level": 2,
+"what": "the tunnel every base is on",
+"from": "Level P3: THE TUNNEL EVERY BASE IS ON",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": [
+"the tram: other bases",
+"new"
+]
+},
+{
+"id": "P00-04",
+"name": "The Great Room",
+"district": "Command",
+"level": 0,
+"what": "the billionaire's living room",
+"from": "Bunker: THE GREAT ROOM",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-04",
+"name": "The Private Lift",
+"district": "Command",
+"level": 0,
+"what": "the lift only one man uses",
+"from": "Bunker: THE PRIVATE LIFT",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-04",
+"name": "The Comms Room",
+"district": "Command",
+"level": 1,
+"what": "radios, a red phone",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-04",
+"name": "The Checkpoint",
+"district": "Level P3",
+"level": 2,
+"what": "barrier, guard booth",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-04",
+"name": "The Motor Pool",
+"district": "Level P3",
+"level": 2,
+"what": "LANDMARK: trucks, jeeps, fuel",
+"from": "Level P3: THE MOTOR POOL",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"DOOR HQ garage",
+"secret"
+]
+},
+{
+"id": "P05-04",
+"name": "The Fuel Bay",
+"district": "Level P3",
+"level": 2,
+"what": "tanks and pumps",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-05",
+"name": "The Pool",
+"district": "Command",
+"level": 0,
+"what": "a pool eighty metres under",
+"from": "Bunker: THE POOL",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-05",
+"name": "The Cellar",
+"district": "Command",
+"level": 0,
+"what": "wine and tinned food",
+"from": "Bunker: THE CELLAR",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-05",
+"name": "The Detector Hall",
+"district": "Command",
+"level": 1,
+"what": "the detector the ring runs through",
+"from": "CERN: THE DETECTOR HALL",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-05",
+"name": "The Loading Dock",
+"district": "Level P3",
+"level": 2,
+"what": "crates, a forklift lane",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-05",
+"name": "The Lift",
+"district": "Level P3",
+"level": 2,
+"what": "the floor lift up to Hangar 18",
+"from": "Area 51: Hangar 18's lift (exists)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": [
+"Area 51: Hangar 18 (the lift)",
+"open"
+]
+},
+{
+"id": "P05-05",
+"name": "The Ring Gate",
+"district": "Level P3",
+"level": 2,
+"what": "the door onto the collider ring",
+"from": "CERN: the door from the D.U.M.B. (exists)",
+"ports": [
+"N",
+"W"
+],
+"exit": [
+"CERN: the ring",
+"open"
+]
+}
+],
+"cells": [
+"qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq",
+"qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxq",
+"qxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxq",
+"qxxfffffffxxxxxfffffffxxxxxxxxxxxxxxxxxfffffffxxxxxfffffffxxxxxxxxxxxxxq",
+"qxxfffffffxxxxxfffffffxxxxxxfffffxxxxxxfffffffxxxxxfffffffxxxxxxfffffxxq",
+"qxxfffffffxxxxxffffffffffffffffffxxxxxxfffffffxxxxxfffffffxxxxxxfffffxxq",
+"qxxfffffffxxxxxffffffffffffffffffxxxxxxfffffffxxxxxfffffffffffffffffffxq",
+"qxxfffffffxxxxxfffffffxxxxxxffffffffffffffffffxxxxxfffffffffffffffffffxq",
+"qxxfffffffffffffffffffxxxxxxffffffffffffffffffffffffffffffxxxxxxffffffxq",
+"qxxfffffffffffffffffffxxxxxxxffxxxxxxxxfffffffffffffffffffxxxxxxxxxxffxq",
+"qxxxxffxxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxxxxxxffxq",
+"qxxxxffxxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxxxxxxffxq",
+"qxxxxffxxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxxxxxxffxq",
+"qxxxxffxxxxxxxxxxffxxxxxxxxxxffxxxxxxfffffffffffxxxxffxxxxxxxxxxxxxxffxq",
+"qxfffffffffxxxxxxffxxxxxxxxxxffxxxxxxfffffffffffxxxxffxxxxxxxxxxxxxxffxq",
+"qxfffffffffxxxxxxffxxxxxxxxxxffxxxxxxfffffffffffxxxfffffffxxxxxfffffffxq",
+"qxffffffffffffffffffffffffffffffffffffffffffffffxxxfffffffxxxxxfffffffxq",
+"qxffffffffffffffffffffffffffffffffffffffffffffffxxxfffffffffffffffffffxq",
+"qxfffffffffxxxxffffffxxxxxxxxfffxxxxxfffffffffffxxxfffffffffffffffffffxq",
+"qxfffffffffxxxxffffffxxxxxxxxfffxxxxxfffffffffffffffffffffxxxxxfffffffxq",
+"qxfffffffffxxxxffffffxxxxxxxxxffxxxxxfffffffffffffffffffffxxxxxfffffffxq",
+"qxfffffffffxxxxffxxxxxxxxxxxxxffxxxxxfffffffffffxxxfffffffxxxxxfffffffxq",
+"qxfffffffffxxxxffxxxxxxxxxxxxxffxxxxxfffffffffffxxxxxxffxxxxxxxxxxxffxxq",
+"qxxffxxxxxxxxxxffxxxxxxxxxxxxxffxxxxxfffffffffffxxxxxxffxxxxxxxxxxxffxxq",
+"qxxffxxxxxxxxxxffxxxxxxxxxxxxxffxxxxxxxffxxxxxxxxxxxxxffxxxxxxxxxxxffxxq",
+"qxxffxxxxxxxxxxffxxxxxxxxxxxxxffxxxxxxxffxxxxxxxxxxxxxffxxxxxxxxxxxffxxq",
+"qxxffxxxxxxxxxxffxxxxxxxxxxxxxffxxxxxxxffxxxxxxxxxxxxxffxxxxxxxxxxxffxxq",
+"qxxfffffffxxxxxfffffffxxxxxxxxffxxxxxxxffxxxxxxxxxxfffffffxxxxxfffffffxq",
+"qxxfffffffxxxxxfffffffxxxxxxfffffxxxxxxffffffxxxxxxfffffffffffffffffffxq",
+"qxxfffffffffffffffffffxxxxxxfffffxxxxxxffffffxxxxxxfffffffffffffffffffxq",
+"qxxfffffffffffffffffffxxxxxxfffffxxxxxxfffffffffffffffffffxxxxxfffffffxq",
+"qxxfffffffxxxxxfffffffxxxxxxfffffxxxxxxfffffffffffffffffffxxxxxfffffffxq",
+"qxxfffffffxxxxxfffffffffffffffffffffffffffffffxxxxxfffffffxxxxxfffffffxq",
+"qxxfffffffxxxxxffffffffffffffffffffffffffffxffxxxxxfffffffxxxxxfffffffxq",
+"qxxxffxxxxxxxxxffxxxxxxxxxxxxxxffxxxxxxxxxxxffxxxxxxffxxxxxxxxxxffxxxxxq",
+"qxxxffxxxxxxxxxffxxxxxxxxxxxxxxffxxxxxxxxxxxffxxxxxxffxxxxxxxxxxffxxxxxq",
+"qxxxffxxxxxxxxxffxxxxxxxxxxxxxxffxxxxxxxxxxxffxxxxxxffxxxxxxxxxxffxxxxxq",
+"qxxxffxxxxxxxxxffxxxxxxxxxxxxxxffxxxxxxxxxxxffxxxxxxffxxxxxxxxxxffxxxxxq",
+"qxfffffffffxxxxffxxxxxxxxxxxxxxffxxxxxxxxxxxffxxxxxxffxxxxxxxxxxffxxxxxq",
+"qxfffffffffxxxxfffffffxxxxxfffffffxxxxxxxxxxffxxxxxfffffffffffffffffxxxq",
+"qxfffffffffxxxxfffffffxxxxxfffffffxxxxxxfffffffffffffffffffffffffffffxxq",
+"qxfffffffffxxxxfffffffxxxxxfffffffxxxxxxffffffffffffffffffxxxxxxfffffxxq",
+"qxfffffffffxxxxfffffffffffffffffffxxxxxxffffffxxxxxfffffffxxxxxxffffffxq",
+"qxffffffffffffffffffffffffffffffffxxxxxxfffffxxxxxxfffffffxxxxxxffffffxq",
+"qxffffffffffffffffffffxxxxxffffffffffffffffffxxxxxxfffffffxxxxxxffffffxq",
+"qxfffffffffxxxxfffffffxxxxxfffffffffffffffffxxxxooooooooooooxxxxxxxxffxq",
+"qxfffffffffxxxxxxxffxxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxffxxxxxxxxxxxxxffxq",
+"qxxffxxxxxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxffxxxxxxxxxxxxxffxq",
+"qxxffxxxxxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxffxxxxxxxxxxxxxffxq",
+"qxxffxxxxxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxxffxxxxxfffffffffffxxxxxxxxffxq",
+"qxfffffffffxxxxxxxffxxxxxxxxxxffxxxxxxxxxxffxxxxxfffffffffffxxxxxxxxffxq",
+"qxffffffffffffffffffffffffffffffffxxxxxfffffffxxxfffffffffffxxxfffffffxq",
+"qxffffffffffffffffffffffffffffffffxxxxxfffffffffffffffffffffxxxfffffffxq",
+"qxfffffffffxxxxxfffffxxxxxxfffffffxxxxxfffffffffffffffffffffxxxfffffffxq",
+"qxfffffffffxxxxxfffffxxxxxxfffffffxxxxxfffffffxxxfffffffffffxxxfffffffxq",
+"qxfffffffffxxxxxfffffxxxxxxfffffffxxxxxfffffffxxxfffffffffffxxxfffffffxq",
+"qxfffffffffxxxxxfffffxxxxxxfffffffffffffffffffxxxfffffffffffffffffffffxq",
+"qxfffffffffxxxxxxffxxxxxxxxfffffffffffffffffffxxxfffffffffffffffffffffxq",
+"qxfffffffffxxxxxxffxxxxxxxxxxffxxxxxxxxxffxxxxxxxfffffffffffxxxxxxffxxxq",
+"qxxxxffxxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxffxxxxxxxfffffffffffxxxxxxffxxxq",
+"qxxxxffxxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxffxxxxxxxxxxxxxxffxxxxxxxxffxxxq",
+"qxxxxffxxxxxxxxxxffxxxxxxxxxxffxxxxxxxxxffxxxxxxxxxxxxxxffxxxxxxxxffxxxq",
+"qxxxxffxxxxxxxxxxffxxxxxxxfffffffffxxxxxffxxxxxxxxxxxxxxffxxxxxxxxffxxxq",
+"qxxfffffffffffffffffffxxxxfffffffffxxxxfffffffffffffffffffxxxxxxxxffxxxq",
+"qxxfwwwwffffffffffffffxxxxfffqqqffffffffffffffffffffffffffxxxxxxfffffxxq",
+"qxxfwwwwffxxxxxfffffffxxxxffqqqqqfffffffffffffxxxxxffffffffffffffffffxxq",
+"qxxfwwwwffxxxxxfffffffffffffqqqqqffxxxxfffffffxxxxxffffffffffffffffffxxq",
+"qxxfwwwwffxxxxxfffffffffffffqqqqqffxxxxfffffffxxxxxfffffffxxxxxxfffffxxq",
+"qxxfffffffxxxxxfffffffxxxxfffqqqfffxxxxfffffffxxxxxfffffffxxxxxxfffffxxq",
+"qxxfffffffxxxxxfffffffxxxxfffffffffxxxxfffffffxxxxxfffffffxxxxxxxxxxxxxq",
+"qxxxxxxxxxxxxxxxxxxxxxxxxxfffffffffxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxq",
+"qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
+]
+}
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "dirt path",
+"g": "grass",
+"w": "the pool",
+"b": "bridge / deck over water",
+"s": "snow",
+"r": "rock (cannot walk)",
+"x": "solid rock / wall (cannot walk)",
+"f": "floor (rooms and corridors)",
+"c": "corn (cannot walk; the rows are the walls)",
+"d": "sand",
+"m": "stone / marble paving",
+"l": "lava (cannot walk)",
+"h": "scorched rock",
+"k": "cloud you walk on",
+"v": "open sky (a fall)",
+"u": "sea floor",
+"a": "the drop into the dark",
+"B": "building",
+"i": "ice",
+"o": "tram track",
+"y": "crystal",
+"q": "the collider ring corridor",
+"e": "grey dust",
+"n": "red ground",
+"z": "the Sea of Possibility (cannot walk)",
+"j": "plank pier / deck",
+"G": "the ley line",
+"V": "nothing (cannot walk)",
+"D": "dunes",
+"R": "red carpet / hot floor",
+"T": "hedge / kelp (cannot walk)",
+"S": "light"
+}
+}

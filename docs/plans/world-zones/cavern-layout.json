@@ -1,0 +1,653 @@
+{
+"area": "The Cavern",
+"version": "plan-1",
+"squareMeters": 3.5,
+"plotCells": 12,
+"districts": {
+"K": "The Cavern",
+"H": "Hollow Earth",
+"A": "Agartha"
+},
+"rooms": [
+{
+"room": "The Cavern",
+"cols": 6,
+"rows": 6,
+"plots": [
+{
+"id": "P00-00",
+"name": "Level \u22126",
+"district": "The Cavern",
+"level": 4,
+"what": "the blast door of the base",
+"from": "The Cave: LEVEL \u22126 (Room 555)",
+"ports": [
+"E",
+"S"
+],
+"exit": [
+"The D.U.M.B.",
+"open"
+]
+},
+{
+"id": "P01-00",
+"name": "The Oubliette",
+"district": "The Cavern",
+"level": 3,
+"what": "the dead end, the cells",
+"from": "The Cave: THE OUBLIETTE",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": [
+"The Sewers (the Old Workings)",
+"open"
+]
+},
+{
+"id": "P02-00",
+"name": "The Upper Tier",
+"district": "The Cavern",
+"level": 6,
+"what": "the top of three tiers",
+"from": "The Cavern: THREE TIERS",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-00",
+"name": "The Flue",
+"district": "The Cavern",
+"level": 5,
+"what": "a crack you can climb",
+"from": "The Cave: the flue (hidden today)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-00",
+"name": "The Crawl",
+"district": "The Cavern",
+"level": 4,
+"what": "a crawl on hands and knees",
+"from": "The Cave: the crawl (hidden today)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-00",
+"name": "The Fissure",
+"district": "The Cavern",
+"level": 3,
+"what": "the hot side",
+"from": "The Cave: THE FISSURE (Room 666)",
+"ports": [
+"S",
+"W"
+],
+"exit": [
+"Hell (the fissure)",
+"open"
+]
+},
+{
+"id": "P00-01",
+"name": "The West Lane",
+"district": "The Cavern",
+"level": 4,
+"what": "a lane in the rock",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "The Mouth",
+"district": "The Cavern",
+"level": 3,
+"what": "out under the Inner Sun",
+"from": "The Cave: THE MOUTH (Room 180)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Crossroads",
+"district": "The Cavern",
+"level": 4,
+"what": "LANDMARK: six ways out",
+"from": "The Cavern: THE CROSSROADS",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": [
+"Leylines (the first mouth)",
+"open"
+]
+},
+{
+"id": "P03-01",
+"name": "The Lower Tier",
+"district": "The Cavern",
+"level": 3,
+"what": "the bottom tier",
+"from": "The Cavern: THREE TIERS",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-01",
+"name": "The Crystal Adit",
+"district": "The Cavern",
+"level": 3,
+"what": "the warm light",
+"from": "The Cave: THE CRYSTAL ADIT (Room 88)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-01",
+"name": "The Hot Side",
+"district": "The Cavern",
+"level": 2,
+"what": "the rock is warm to touch",
+"from": "The Cave: THE HOT SIDE",
+"ports": [
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "The Six Wells",
+"district": "Hollow Earth",
+"level": 2,
+"what": "six wells, six ropes",
+"from": "Hollow Earth: SIX ROPES",
+"ports": [
+"E",
+"S"
+],
+"exit": [
+"the wells: the Estate, Camelot, G\u00f6bekli Tepe",
+"secret"
+]
+},
+{
+"id": "P01-02",
+"name": "The Cave Mouth",
+"district": "Hollow Earth",
+"level": 2,
+"what": "where the cave opens on the country",
+"from": "Hollow Earth: the cave mouth",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-02",
+"name": "The Ridge",
+"district": "Hollow Earth",
+"level": 3,
+"what": "a ridge to look out from",
+"from": "new plot (label mine)",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The Upper Terraces",
+"district": "Agartha",
+"level": 4,
+"what": "the high steps of the city",
+"from": "Agartha: THE TERRACES",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P04-02",
+"name": "The Adit's End",
+"district": "Agartha",
+"level": 3,
+"what": "where the adit comes out",
+"from": "Agartha: the adit",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-02",
+"name": "The Lemuria Stair",
+"district": "Agartha",
+"level": 5,
+"what": "a stair up through the rock",
+"from": "Agartha: the way to Mount Shasta (hidden today)",
+"ports": [
+"S",
+"W"
+],
+"exit": [
+"The Woods: Mount Shasta",
+"secret"
+]
+},
+{
+"id": "P00-03",
+"name": "The Country, west",
+"district": "Hollow Earth",
+"level": 1,
+"what": "the country under the crust",
+"from": "Hollow Earth: THE COUNTRY UNDER THE CRUST",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-03",
+"name": "The Inner Sun",
+"district": "Hollow Earth",
+"level": 1,
+"what": "LANDMARK: the sun, hanging low",
+"from": "Hollow Earth: THE SUN",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-03",
+"name": "The Country, east",
+"district": "Hollow Earth",
+"level": 1,
+"what": "open ground, big tracks",
+"from": "Hollow Earth: THE COUNTRY UNDER THE CRUST",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "The Terraces",
+"district": "Agartha",
+"level": 3,
+"what": "houses cut in crystal",
+"from": "Agartha: THE TERRACES",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P04-03",
+"name": "The Spire",
+"district": "Agartha",
+"level": 6,
+"what": "LANDMARK: the spire",
+"from": "Agartha: THE SPIRE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-03",
+"name": "The Crystal Gardens",
+"district": "Agartha",
+"level": 3,
+"what": "beds of small crystal",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-04",
+"name": "The Crystal Forest, north",
+"district": "Hollow Earth",
+"level": 1,
+"what": "crystals as tall as trees",
+"from": "Hollow Earth: THE CRYSTAL FOREST",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-04",
+"name": "The Terrace",
+"district": "Hollow Earth",
+"level": 2,
+"what": "the sun's terrace",
+"from": "Hollow Earth: the terrace",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-04",
+"name": "The Grazing Ground",
+"district": "Hollow Earth",
+"level": 1,
+"what": "ferns, something large eating them",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-04",
+"name": "The Lake Shore",
+"district": "Agartha",
+"level": 1,
+"what": "steps down to the water",
+"from": "Agartha: THE LAKE",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P04-04",
+"name": "The Lake",
+"district": "Agartha",
+"level": 0,
+"what": "still water, lit from under",
+"from": "Agartha: THE LAKE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-04",
+"name": "The Lake, east",
+"district": "Agartha",
+"level": 0,
+"what": "water; a quay",
+"from": "Agartha: THE LAKE",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-05",
+"name": "The Crystal Forest",
+"district": "Hollow Earth",
+"level": 1,
+"what": "the thick of it",
+"from": "Hollow Earth: THE CRYSTAL FOREST",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-05",
+"name": "The Polar Opening",
+"district": "Hollow Earth",
+"level": 0,
+"what": "a cold wind from below",
+"from": "Hollow Earth: the way to Antarctica (hidden today)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": [
+"Antarctica",
+"secret"
+]
+},
+{
+"id": "P02-05",
+"name": "The Burrows",
+"district": "Hollow Earth",
+"level": 0,
+"what": "holes in a bank",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-05",
+"name": "The Lower Terraces",
+"district": "Agartha",
+"level": 2,
+"what": "the low steps",
+"from": "Agartha: THE TERRACES",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P04-05",
+"name": "The Lake, south",
+"district": "Agartha",
+"level": 0,
+"what": "water",
+"from": "Agartha: THE LAKE",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-05",
+"name": "The Portcullis",
+"district": "Agartha",
+"level": 2,
+"what": "an old gate in the wall",
+"from": "Agartha: the way to Technoticlan (hidden today)",
+"ports": [
+"N",
+"W"
+],
+"exit": [
+"Leylines: Technoticlan",
+"secret"
+]
+}
+],
+"cells": [
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxxoooxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxxoooooxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxhhhxxxxx",
+"xxxxxxxxxxxxxxxxxxxxxxxxxxoooooooxxxxxxxoooxxxxxxxxxxxxxxxxxxxxhhhhhxxxx",
+"xxxxxxxxxxxxxxxxoooooooooooooooooxxxxxxxooooxxxxxxxxoooxxxxxxxxhhhhhoxxx",
+"xxxooooooooooooooooooooooooooooooxxxxxxxoooooooooooooooxxxxxxxxhhhhhoxxx",
+"xxoooooooooooooooooxxxxxxxxooooooooooooooooooooooooooooooooooooohhhooxxx",
+"xxooooooooxxxxoooooxxxxxxxxxooooooooooooooooxxxxxxxoooooooooooooooxooxxx",
+"xxooooooooxxxxoooooxxxxxxxxxooxxxxxxxxxxxxooxxxxxxxooxxxxxxxxxxxxxxooxxx",
+"xxxoooxxooxxxxxoooxxxxxxxxxxooxxxxxxxxxxxxooxxxxxxxooxxxxxxxxxxxxxxooxxx",
+"xxxxxxxxooxxxxxooxxxxxxxxxxxooxxxxxxxxxxxxooxxxxxxxooxxxxxxxxxxxxxxooxxx",
+"xxxxxxxxooxxxxxooxxxxxxxxxxxooxxxxxxxxxxxxooxxxxxxxooxxxxxxxxxxxxxxooxxx",
+"xxxxxxxxooxxxxxooxxxxxxxxxxxooxxxxxxxxxxxxooxxxxxxxooxxxxxxxxxxxxxxooxxx",
+"xxxxxxxxooxxxxxooxxxxxxxxxxxooooxxxxxxxoooooxxxxxxxooxxxxxxxxxxxxxxooxxx",
+"xxxxxxxxooxxxxxooxxxxxxxxxxoooooooxxxxooooooxxxxxxxooxxxxxxxxxxxxxxooxxx",
+"xxxxxxxxooxxxxxoooooooooooooooooooooooooooooxxxxxxxoooooooooooooohhhoxxx",
+"xxxoooxxooxxxxxoooooooooooooooooooooooooooooxxxxxxxooooooooooooohhhhhxxx",
+"xxxoooooooxxxxxooooxxxxxxoooooooooooxoooooooxxxxxxxyyyxxxxxxxxxxhhhhhxxx",
+"xxxooooooxxxxxxoooooxxxxxoooooooooooxxoooooxxxxxxxyyyyyxxxxxxxxxhhhhhxxx",
+"xxxxooxxxxxxxxxoooooxxxxxoooooooooooxxxoooxxxxxxxxyyyyyxxxxxxxxxxhhhxxxx",
+"xxxxooooooooooooooooxxxxxxoooooooooxxxxxooooooooooyyyyyxxxxxxxxxxxxxxxxx",
+"xxxxoooooooooooooooxxxxxxxoooooooooxxxxxoooooooooooyyyxxxxxxxxxxxxxxxxxx",
+"xxxxxxxxxxxxxxxxxooxxxxxxxxoooooooxxxxxxxxxxxxxxxxxxooxxxxxxxxxxxxxxxxxx",
+"xxxxxxxxxxxxxxxxxooxxxxxxxxxxoooxxxxxxxxxxxxxxxxxxxxooxxxxxxxxxxxxxxxxxx",
+"xxxxxxxxxxxxggggggggggggggggggggggggmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxxxxxx",
+"xxxxxxxxxxxxggggggggggggggggggggggggmmmmmmmmmmmmmmmmmyyymmmmxxxxxxxxxxxx",
+"xxxxxxxxxxxxggggggggggggggggggggggggmmmmmmmmmmmmmmmmyyyyymmmxxxxxxxxxxxx",
+"xxxxoooxxxxxggggggggggggggggggggggggmmmmmmmmmmmmmmmmyyyyymmmxxxxxxxxxxxx",
+"xxxowwwoooooggggggggggggggrrrrrrrrggmmmmmmmmmmmmmmmmyyyyymmmooooommmxxxx",
+"xxoowwwoooooggggggggggggggrrrrrrrrggmmmmmmmmmmmmmmmmmyyymmmmoooommmmmxxx",
+"xxoowwwooxxxggggggggggggggrrrrrrrrggmmmmmmmmmmmmmmmmmmmmmmmmxxxxmmmmmxxx",
+"xxoooooooxxxggggggggggggggggggggggggmmmmmmmmmmmmmmmmmmmmmmmmxxxxmmmmmxxx",
+"xxxoooooxxxxggggggggggggggggggggggggmmmmmmmmmmmmmmmmmmmmmmmmxxxxxmmmoxxx",
+"xxxxoooxxxxxggggggggggggggggggggggggmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxooxxx",
+"xxxxxooxxxxxggggggggggggggggggggggggmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxooxxx",
+"xxxxxooxxxxxggggggggggggggggggggggggmmmmmmmmmmmmmmmmmmmmmmmmxxxxxxxooxxx",
+"ggggggggggggggggggggggggggggggggggggmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"ggggggggggggggggggggggggggggggggggggmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"ggggggggggggggggggggggggggggggggggggmmBBBmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"gggggggggggggggggSSSggggggggggggggggmmBBBmmmmmmmmmmmmmmmmmmmmmmyyymmmmmm",
+"ggggggggggggggggSSSSSgggggggggggggggmmBBBmmmmmmmmmmmmyyymmmmmmmyyymmmmmm",
+"gggggggggggggggSSSSSSSggggggggggggggmmmmmmmmmmmmmmmmyyyyymmmmmmyyymmmmmm",
+"gggggggggggggggSSSSSSSggggggggggggggmmmmmmmBBBmmmmmmyyyyymmmmmmmmmmyyymm",
+"gggggggggggggggSSSSSSSggggggggggggggmmmmmmmBBBmmmmmmyyyyymmmmmmmmmmyyymm",
+"ggggggggggggggggSSSSSgggggggggggggggmmmmmmmBBBmmmmmmmyyymmmmmmyyymmyyymm",
+"gggggggggggggggggSSSggggggggggggggggmmmmmmmmmmmmmmmmmmmmmmmmmmyyymmmmmmm",
+"ggggggggggggggggggggggggggggggggggggmmmmmmmmmmmmmmmmmmmmmmmmmmyyymmmmmmm",
+"ggggggggggggggggggggggggggggggggggggmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"yyyyyyyyyyyyooooooooooooggggggggggggmmmmmmmmmmmmwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyyyyyyyyyyooooooooooooggggggggggggmmmmmmmmmmmmwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyyyyyyyyyyooooooooooooggggggggggggmmmmmmmmmmmmwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyygggyyyyyooooooooooooggggggggggggmmmmmmmmmmmmwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyygggggyyyyooooooooooooggggggggggggmmmmmmmmmmmmwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyygggggyyyyooooooooooooggggggggggggmmmmmmmmmmmmwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyygggggyyyyooooooooooooggggggggggggmmmmmmwwwwwwwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyygggyyyyyooooooooooooggggggggggggmmmmmmwwwwwwwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyyyyyyyyyyooooooooooooggggggggggggmmmmmmwwwwwwwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyyyyyyyyyyooooooooooooggggggggggggmmmmmmwwwwwwwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyyyyyyyyyyooooooooooooggggggggggggmmmmmmwwwwwwwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyyyyyyyyyyooooooooooooggggggggggggmmmmmmwwwwwwwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyyyyyyyyyyssssssssssssggggggggggggmmmmmmwwwwwwwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyyyyyyyyyyssssssssssssggggggggggggmmmmmmwwwwwwwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyyyygggyyyssssssssssssggggggggggggmmmmmmwwwwwwwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyyygggggyyssssssssssssggxxxgggggggmmmmmmwwwwwwwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyygggggggyssssssssssssggxxxgggggggmmmmmmwwwwwwwwwwwwwwwwwwwwwwwwwwmmmm",
+"yyyygggggggyssssssssssssggxxxgggggggmmmmmmmmmmmmwwwwwwwwwwwwmmmmmmmmmmmm",
+"yyyygggggggyssssssssssssgggggggxxxggmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"yyyyygggggyyssssssssssssgggggggxxxggmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"yyyyyygggyyyssssssssssssggggxxxxxxggmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"yyyyyyyyyyyyssssssssssssggggxxxgggggmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"yyyyyyyyyyyyssssssssssssggggxxxgggggmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"yyyyyyyyyyyyssssssssssssggggggggggggmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+]
+}
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "dirt path",
+"g": "the country's grass",
+"w": "water",
+"b": "bridge / deck over water",
+"s": "frost",
+"r": "rock (cannot walk)",
+"x": "solid rock / wall (cannot walk)",
+"f": "concrete floor",
+"c": "corn (cannot walk; the rows are the walls)",
+"d": "sand",
+"m": "crystal city paving",
+"l": "lava (cannot walk)",
+"h": "hot rock",
+"k": "cloud you walk on",
+"v": "open sky (a fall)",
+"u": "sea floor",
+"a": "the drop into the dark",
+"B": "building",
+"i": "ice",
+"o": "cave floor",
+"y": "crystal (cannot walk where it is thick)",
+"q": "the collider ring corridor",
+"e": "grey dust",
+"n": "red ground",
+"z": "the Sea of Possibility (cannot walk)",
+"j": "plank pier / deck",
+"G": "the ley line",
+"V": "nothing (cannot walk)",
+"D": "dunes",
+"R": "red carpet / hot floor",
+"T": "hedge / kelp (cannot walk)",
+"S": "the Inner Sun"
+}
+}

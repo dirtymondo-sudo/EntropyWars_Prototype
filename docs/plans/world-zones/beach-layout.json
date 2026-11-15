@@ -1,0 +1,470 @@
+{
+"area": "The Beach",
+"version": "plan-1",
+"squareMeters": 3.5,
+"plotCells": 12,
+"districts": {
+"S": "The Shore (NEW)",
+"H": "The Harbour",
+"I": "The Island (the Bermuda Triangle)"
+},
+"rooms": [
+{
+"room": "The Beach",
+"cols": 6,
+"rows": 4,
+"plots": [
+{
+"id": "P00-00",
+"name": "The Boardwalk",
+"district": "The Shore (NEW)",
+"level": 1,
+"what": "the plank boardwalk on the sea wall, palms, benches",
+"from": "Bayside's beach strip (built 11-13): the boardwalk",
+"ports": [
+"E",
+"S"
+],
+"exit": [
+"Disaster City: Bayside (boardwalk)",
+"open"
+]
+},
+{
+"id": "P01-00",
+"name": "The Tide Pools",
+"district": "The Shore (NEW)",
+"level": 0,
+"what": "rock pools, starfish",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-00",
+"name": "The Quay",
+"district": "The Harbour",
+"level": 1,
+"what": "the stone quay, crates, nets",
+"from": "Harbour: THE QUAY",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-00",
+"name": "The Breakwater",
+"district": "The Harbour",
+"level": 1,
+"what": "the long rock arm",
+"from": "Harbour: THE BREAKWATER",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-00",
+"name": "The Lighthouse Rock",
+"district": "The Island (the Bermuda Triangle)",
+"level": 3,
+"what": "the lighthouse on its rock",
+"from": "Bermuda: the lighthouse rock",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-00",
+"name": "The Open Sea",
+"district": "The Island (the Bermuda Triangle)",
+"level": 0,
+"what": "no fixed position",
+"from": "Bermuda: NO FIXED POSITION",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-01",
+"name": "The Beach Huts",
+"district": "The Shore (NEW)",
+"level": 1,
+"what": "a row of huts (insides: new)",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": [
+"insides: the huts",
+"new"
+]
+},
+{
+"id": "P01-01",
+"name": "The Surf",
+"district": "The Shore (NEW)",
+"level": 0,
+"what": "the break; wade and swim",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Long Pier",
+"district": "The Harbour",
+"level": 1,
+"what": "the pier out to the ship",
+"from": "Harbour: THE LONG PIER",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-01",
+"name": "The Flying Dutchman",
+"district": "The Harbour",
+"level": 1,
+"what": "LANDMARK: the ship at the pier head; four decks inside",
+"from": "The Flying Dutchman: Main Deck, Gun Deck, Cabin, Hold",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+[
+"inside: the Flying Dutchman",
+"inside"
+],
+[
+"the hold hatch: Atlantis",
+"secret"
+]
+]
+},
+{
+"id": "P04-01",
+"name": "The Jetty",
+"district": "The Island (the Bermuda Triangle)",
+"level": 1,
+"what": "the island's jetty; the skiff lands here",
+"from": "Bermuda: THE JETTY",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-01",
+"name": "The Cay",
+"district": "The Island (the Bermuda Triangle)",
+"level": 2,
+"what": "LANDMARK: the cay and its dune",
+"from": "Bermuda: THE CAY",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "The Palms",
+"district": "The Shore (NEW)",
+"level": 1,
+"what": "palm grove, hammocks",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-02",
+"name": "The Lifeguard Hut",
+"district": "The Shore (NEW)",
+"level": 1,
+"what": "LANDMARK: the lifeguard hut, chairs, the volleyball net",
+"from": "Bayside's beach strip (built 11-13): the lifeguard hut",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-02",
+"name": "The Skiff",
+"district": "The Harbour",
+"level": 0,
+"what": "the skiff that crosses to the island",
+"from": "Harbour: THE SKIFF",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The Channel",
+"district": "The Harbour",
+"level": 0,
+"what": "the marked channel out",
+"from": "Harbour: THE CHANNEL",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-02",
+"name": "The Lagoon",
+"district": "The Island (the Bermuda Triangle)",
+"level": 0,
+"what": "still green water inside the reef",
+"from": "Bermuda Island: THE LAGOON",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"DOOR HQ pool",
+"secret"
+]
+},
+{
+"id": "P05-02",
+"name": "The Island Beach",
+"district": "The Island (the Bermuda Triangle)",
+"level": 1,
+"what": "white sand, wreckage",
+"from": "Bermuda Island: THE BEACH",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-03",
+"name": "The Dunes",
+"district": "The Shore (NEW)",
+"level": 2,
+"what": "high dunes, the sand runs on south",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-03",
+"name": "The Sandbar",
+"district": "The Shore (NEW)",
+"level": 0,
+"what": "a bar out into the bay at low water",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-03",
+"name": "The Harbour Mouth",
+"district": "The Harbour",
+"level": 0,
+"what": "open water, buoys",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "The Roads",
+"district": "The Harbour",
+"level": 0,
+"what": "open water where ships wait",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-03",
+"name": "The Reef",
+"district": "The Island (the Bermuda Triangle)",
+"level": 0,
+"what": "shallows, coral",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-03",
+"name": "The Maelstrom",
+"district": "The Island (the Bermuda Triangle)",
+"level": 0,
+"what": "the whirlpool: the way down",
+"from": "Bermuda: THE MAELSTROM",
+"ports": [
+"N",
+"W"
+],
+"exit": [
+"The Deep (the whirlpool)",
+"open"
+]
+}
+],
+"cells": [
+"dddddddddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddwwwdddooooooooowwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddddddddddwwwwwddooBBBoooowwwrrrrrrrrrrrrwwwwwrrrwwwwwwwwwwwwwwww",
+"jjjjjjjjdddddddddwwwwwddooBBBoooowwwrrrrrrrrrrrrwwwwrrrrrwwwwwwwwwwwwwww",
+"jjjjjjjjdddddddddwwwwwddooBBBoooowwwwwwwwwwwwwrrwwwrrBBrrrwwwwwwwwwwwwww",
+"jjjjjjjjddddddddddwwwdddooooooooowwwwwwwwwwwwwrrwwwrrBBrrrwwwwwwwwwwwwww",
+"ddddddddddddddddddddwwwdwwwwwwwwwwwwwwwwwwwwwwrrwwwrrrrrrrwwwwwwwwwwwwww",
+"ddddddddddddddddddddwwwdwwwwwwwwwwwwwwwwwwwwwwrrwwwwrrrrrwwwwwwwwwwwwwww",
+"ddddddddddddddddddddwwwdwwwwwwwwwwwwwwwwwwwwwwrrwwwwwrrrwwwwwwwwwwwwwwww",
+"ddddddddddddddddddddddddwwwwwwwwwwwwwwwwwwwwwwrrwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddddddddwwwwwwwwwwwwwwwwwwwwwwrrwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddddddddddd",
+"ddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddddddddddd",
+"ddBBdBBdBBddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddddDDDdddd",
+"ddBBdBBdBBddddddddwwwwwwwwwwjjwwwwwwwwwBBBBBBBwwwwwwwwwwddddddddDDDDDddd",
+"ddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwBBBBBBBwwwwwwwwwwdddddddDDDDDDDdd",
+"ddddddddddddddddddwwwwwwjjjjjjjjjjjjjjjBBBBBBBwwjjjjjjjjdddddddDDDDDDDdd",
+"ddddddddddddddddddwwwwwwjjjjjjjjjjjjjjjBBBBBBBwwjjjjjjjjdddddddDDDDDDDdd",
+"ddddddddddddddddddwwwwwwwwwwwwwwwwwwwwwBBBBBBBwwwwwwwwwwddddddddDDDDDddd",
+"ddddddddddddddddddwwwwwwwwwwwwwwwwwwwwwBBBBBBBwwwwwwwwwwddddddTTTDDDdddd",
+"ddddddddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwddddddTTTddddddd",
+"ddddddddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwddddddTTTddddddd",
+"ddddddddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddddddddddd",
+"dddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwdddddddddddddddddddddwww",
+"dddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwdddddddddddddddddddddwww",
+"ddTTTddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwddddwwwddddddddddddddwww",
+"ddTTTddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwdddwwwwwdddddddddddddwww",
+"ddTTTddTTTdddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwddwwwwwwwddddddddddddwww",
+"dddddddTTTdddddBBddwwwwwwwwwwBBwwwwwwwwwwwwwwwwwdwwwwwwwwwdddddddddddwww",
+"dddddddTTTdddddBBddwwwwwwwwwwBBwwwwwwwwwwwwwwwwwdwwwwwwwwwdddddddddddwww",
+"dddddddddddddddddddwwwwwwwwwwBBwwwwwwwwwwwwwwwwwdwwwwwwwwwdddddddddddwww",
+"dddTTTdddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwddwwwwwwwddddddddddddwww",
+"dddTTTdddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddwwwwwdddddddddddddwww",
+"dddTTTdddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwddddwwwddddddddddddddwww",
+"dddddddddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddddddddddddddddwww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwuuuwwwwwwwwwwaaaaawww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwuuuuuwwwwwwwwaawwwaaww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwuuuuuwwwwwwwaawwwwwaaw",
+"DDDDDDDDDDDDddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwuuuuuuuuwwwwawwaaawwaw",
+"DDDDDDDDDDDDddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwuuuuuuuuwwwawwaaawwaw",
+"DDDDDDDDDDDDddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwuuuuuwwwawwaaawwaw",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwuuuuuwwwaawwwwwaaw",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwuuuwwwwwaawwwaaww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwaaaaawww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"
+]
+}
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "dirt path",
+"g": "grass",
+"w": "water",
+"b": "bridge / deck over water",
+"s": "snow",
+"r": "rock (cannot walk)",
+"x": "solid rock / wall (cannot walk)",
+"f": "concrete floor",
+"c": "corn (cannot walk; the rows are the walls)",
+"d": "sand",
+"m": "stone / marble paving",
+"l": "lava (cannot walk)",
+"h": "scorched rock",
+"k": "cloud you walk on",
+"v": "open sky (a fall)",
+"u": "sea floor",
+"a": "the drop into the dark",
+"B": "building",
+"i": "ice",
+"o": "cobbles / worn stone",
+"y": "crystal",
+"q": "the collider ring corridor",
+"e": "grey dust",
+"n": "red ground",
+"z": "the Sea of Possibility (cannot walk)",
+"j": "plank pier / deck",
+"G": "the ley line",
+"V": "nothing (cannot walk)",
+"D": "dunes",
+"R": "red carpet / hot floor",
+"T": "hedge / kelp (cannot walk)",
+"S": "light",
+"N": "open space (fly the ship, or float)",
+"Q": "an orbit (a guide line, not a wall)",
+"E": "Earth",
+"A": "asteroid"
+}
+}

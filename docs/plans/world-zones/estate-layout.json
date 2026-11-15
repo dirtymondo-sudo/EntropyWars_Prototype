@@ -1,0 +1,667 @@
+{
+"area": "The Estate",
+"version": "plan-1",
+"squareMeters": 3.5,
+"plotCells": 12,
+"districts": {
+"C": "The Corn Fields",
+"R": "The Ranch (NEW)",
+"H": "The Haunted House + Graveyard",
+"L": "The Lake (NEW)"
+},
+"rooms": [
+{
+"room": "The Estate",
+"cols": 6,
+"rows": 6,
+"plots": [
+{
+"id": "P00-00",
+"name": "The Tall Corn",
+"district": "The Corn Fields",
+"level": 1,
+"what": "corn over your head, one track",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-00",
+"name": "The Woods Gate",
+"district": "The Corn Fields",
+"level": 1,
+"what": "the fence and gate from the Woods",
+"from": "ZONES_PLAN: the Woods lead to the Estate",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": [
+"The Woods (gate)",
+"open"
+]
+},
+{
+"id": "P02-00",
+"name": "The Scarecrow",
+"district": "The Corn Fields",
+"level": 1,
+"what": "a scarecrow on its pole over the rows",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-00",
+"name": "The Reeds",
+"district": "The Lake (NEW)",
+"level": 0,
+"what": "reeds, mud",
+"from": "NEW (his zone list: the Lake) (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-00",
+"name": "The North Shore",
+"district": "The Lake (NEW)",
+"level": 0,
+"what": "shingle beach",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-00",
+"name": "The Boathouse",
+"district": "The Lake (NEW)",
+"level": 0,
+"what": "boathouse and slip",
+"from": "NEW (label mine)",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-01",
+"name": "The Circles, west",
+"district": "The Corn Fields",
+"level": 1,
+"what": "a flattened crop circle",
+"from": "Corn Fields: THE CIRCLES ARE FRESH",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "The Circles",
+"district": "The Corn Fields",
+"level": 1,
+"what": "LANDMARK: the big crop circle",
+"from": "Corn Fields: THE CIRCLES ARE FRESH",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Farm Track",
+"district": "The Corn Fields",
+"level": 1,
+"what": "the track to the Ranch",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-01",
+"name": "The Dock",
+"district": "The Lake (NEW)",
+"level": 0,
+"what": "a long dock out over the water",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-01",
+"name": "The Lake",
+"district": "The Lake (NEW)",
+"level": 0,
+"what": "LANDMARK: open water; something big under it",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-01",
+"name": "The Lake, east",
+"district": "The Lake (NEW)",
+"level": 0,
+"what": "water, the far bank",
+"from": "NEW (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "The Rows, west",
+"district": "The Corn Fields",
+"level": 1,
+"what": "corn rows, crows",
+"from": "Corn Fields",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-02",
+"name": "The Hub",
+"district": "The Corn Fields",
+"level": 1,
+"what": "four tracks meet; the well",
+"from": "Corn Fields: THE HUB OF THE ESTATE + the well",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"the well (the Cavern)",
+"secret"
+]
+},
+{
+"id": "P02-02",
+"name": "The Rows, east",
+"district": "The Corn Fields",
+"level": 1,
+"what": "corn rows",
+"from": "Corn Fields",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The South Shore",
+"district": "The Lake (NEW)",
+"level": 0,
+"what": "picnic ground",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-02",
+"name": "The Lake, south",
+"district": "The Lake (NEW)",
+"level": 0,
+"what": "water, lily pads",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-02",
+"name": "The Marsh",
+"district": "The Lake (NEW)",
+"level": 0,
+"what": "wet ground, frogs",
+"from": "NEW (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-03",
+"name": "The Treehouse",
+"district": "The Haunted House + Graveyard",
+"level": 2,
+"what": "the treehouse in the pines",
+"from": "Grounds: THE TREEHOUSE",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-03",
+"name": "The Iron Gate",
+"district": "The Haunted House + Graveyard",
+"level": 2,
+"what": "the gate at the end of the corn",
+"from": "Grounds: the drive's gate",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-03",
+"name": "The Drive",
+"district": "The Haunted House + Graveyard",
+"level": 2,
+"what": "the drive curving up to the house",
+"from": "Grounds: THE DRIVE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "The Pasture",
+"district": "The Ranch (NEW)",
+"level": 1,
+"what": "open grass, cows",
+"from": "NEW (his zone list: the Ranch) (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-03",
+"name": "The Windmill",
+"district": "The Ranch (NEW)",
+"level": 2,
+"what": "LANDMARK: the windmill",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-03",
+"name": "The Hay Field",
+"district": "The Ranch (NEW)",
+"level": 1,
+"what": "bales",
+"from": "NEW (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-04",
+"name": "The Gazebo",
+"district": "The Haunted House + Graveyard",
+"level": 3,
+"what": "the gazebo on the lawn",
+"from": "Grounds: THE GAZEBO",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-04",
+"name": "The Haunted House",
+"district": "The Haunted House + Graveyard",
+"level": 4,
+"what": "LANDMARK: the house on its rise; five floors inside",
+"from": "Haunted House: Hall, Upstairs, Nursery, Attic, Cellar",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": [
+[
+"inside: the Haunted House",
+"inside"
+],
+[
+"wardrobe: Camelot \u00b7 fireplace: North Pole",
+"secret"
+]
+]
+},
+{
+"id": "P02-04",
+"name": "The Lawn",
+"district": "The Haunted House + Graveyard",
+"level": 3,
+"what": "dead lawn, fountain",
+"from": "Grounds",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-04",
+"name": "The Paddock",
+"district": "The Ranch (NEW)",
+"level": 1,
+"what": "fenced ring, horses",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-04",
+"name": "The Barn",
+"district": "The Ranch (NEW)",
+"level": 1,
+"what": "the barn (inside: new)",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"inside: the Barn",
+"new"
+]
+},
+{
+"id": "P05-04",
+"name": "The Farmhouse",
+"district": "The Ranch (NEW)",
+"level": 1,
+"what": "the farmhouse, porch (inside: new)",
+"from": "NEW (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": [
+"the Lodge (saloon door)",
+"secret"
+]
+},
+{
+"id": "P00-05",
+"name": "The Crypt",
+"district": "The Haunted House + Graveyard",
+"level": 2,
+"what": "the crypt",
+"from": "Grounds: THE CRYPT",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-05",
+"name": "The Family Plot",
+"district": "The Haunted House + Graveyard",
+"level": 2,
+"what": "the family graves",
+"from": "Grounds: THE FAMILY PLOT",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-05",
+"name": "The Graveyard",
+"district": "The Haunted House + Graveyard",
+"level": 2,
+"what": "rows of stones, open graves",
+"from": "his zone list: Haunted House / Graveyard",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-05",
+"name": "The Ranch Gate",
+"district": "The Ranch (NEW)",
+"level": 1,
+"what": "gate, cattle grid",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-05",
+"name": "The Yard",
+"district": "The Ranch (NEW)",
+"level": 1,
+"what": "chicken coop, trough",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-05",
+"name": "The Cow Field",
+"district": "The Ranch (NEW)",
+"level": 1,
+"what": "cows, a fence out to the desert road",
+"from": "NEW (label mine)",
+"ports": [
+"N",
+"W"
+],
+"exit": null
+}
+],
+"cells": [
+"ccccccccccccccccccccccccccccccccccccgggggggggggggggggggggggggggggggggggg",
+"ccccccccccccccccccccccccccccccccccccgggggggggggggggggggggggggggggggggggg",
+"ccccccccccccccccccgggcccccccccccccccgggggggggggggggggggggggggggggggggggg",
+"cccccccccccccccccgggggccccccccccccccgggggggggggggggggggggggggggggggggggg",
+"ccccccccccccccccgggggggppppppppcccccgggggggggggggggggggggggggggggggggggg",
+"ccccccccccccccccgggggggpppppgggcccccgggggggggggggggggggggggggggggggBBBBg",
+"cccccccpppppppppgggggggccccgggggccccggggggwwwwwwwwwwwwwwwwwwwwwwwwwBBBBg",
+"ccccccpppppppppppgggggcccccgggggppppggggggwwwwwwwwwwwwwwwwwwwwwwwwwBBBBg",
+"ccccccppccccccccccgggpcccccgggggppppggggggwwwwwwwwwwwwwwwwwwwwwwwwwBBBBg",
+"ccccccppccccccccccccppccccccgggcccccggggggwwwwwwwwwwwwwwwwwwwwwwwwwggggg",
+"ccccccppccccccccccccppccccccppccccccggggggwwwwwwwwwwwwwwwwwwwwwwwwwggggg",
+"ccccccppccccccccccccppccccccppccccccggggggwwwwwwwwwwwwwwwwwwwwwwwwwggggg",
+"ccccccppccccccccccccppccccccppccccccggggwwwwwwwwwwwwwwwwwwwwwwwwwwwwwggg",
+"ccccDDDpcccccccccDDDppccccccppccccccggggwwwwwwwwwwwwwwwwwwwwwwwwwwwwwggg",
+"cccDDDDDcccccccDDDDDDDccccccppccccccggggwwwwwwwwwwwwwwwwwwwwwwwwwwwwwggg",
+"ccDDDDDDDcccccDDDDDDDDDcccccppccccccggggwwwwwwwwwwwwwwwwwwwwwwwwwwwwwggg",
+"ccDDDDDDDcccccDDDDDDDDDpppppppppppppggggwwwwwwwwwwwwwwwwwwwwwwwwwwwwwggg",
+"ccDDDDDDDccccDDDDDDDDDDDppppppppppppjjjjjjjjjwwwwwwwwrrrwwwwwwwwwwwwwggg",
+"cccDDDDDpppppDDDDDDDDDDDccccccppccccjjjjjjjjjwwwwwwwwrrrwwwwwwwwwwwwwggg",
+"ccccDDDppppppDDDDDDDDDDDccccccppccccggggwwwwwwwwwwwwwrrrwwwwwwwwwwwwwggg",
+"cccccccppcccccDDDDDDDDDcccccccppccccggggwwwwwwwwwwwwwwwwwwwwwwwwwwwwwggg",
+"cccccccppcccccDDDDDDDDDcccccccppccccggggwwwwwwwwwwwwwwwwwwwwwwwwwwwwwggg",
+"cccccccppccccccDDDDDDDccccccccppccccggggwwwwwwwwwwwwwwwwwwwwwwwwwwwwwggg",
+"cccccccppccccccccDDDppccccccccppccccggggwwwwwwwwwwwwwwwwwwwwwwwwwwwwwggg",
+"cccccccppcccccccccccppccccccccppccccgggggwwwwwwwwwwwwwwwwwwwggwwwggggggg",
+"cccccccppcccccccccccppccccccccppccccgggggwwwwwwwwwwwwwwwwwwwgwwwwwgggggg",
+"cccccccppcccccccccppppccccccccppccccgggggwwwwwwwwwwwwwwwwwwwwwwwwwwggggg",
+"cccccccppccccccccpppppppppppppppccccgggggwwwwwwwwwwwwwwwwwwwwwwwwwwggggg",
+"cccccccppcccccccppppppppppppppppccccgggggwwwwwwwwwwwwwwwwwwwwwwwwwwggggg",
+"cccccccppcccccccpppppppcccccpppcccccggggggggggggwwwwwwwwwwwwgwwwwwgggggg",
+"cccccccppcccccccpppppppcccccppppppppggggggggggggggggggggggggggwwwggwwwgg",
+"ccccpppppccccccccpppppccccccppppppppggggggggggggggggggggggggggggggwwwwwg",
+"ccccpppppppppppppppppcccccccppccccccggggggggggggggggggggggggggggggwwwwwg",
+"ccccppppppppppppppppccccccccppccccccggggggggggggggggggggggggggggggwwwwwg",
+"ccccccppccccccccccppccccccccppccccccgggggggggggggggggggggggggggggggwwwgg",
+"ccccccppccccccccccppccccccccppccccccgggggggggggggggggggggggggggggggggggg",
+"ccccccppccccccccccppccccccccpoccccccggggggggggggggggggggggggDDDDDDDDDDDD",
+"ccccccppccccccccccppccccccccooccccccggggggggggggggggggggggggDDDDDDDDDDDD",
+"ccccccppccccccccccppccccccccooccccccggggggggggggggggooooogggDDDDDDDDDDDD",
+"ccccccppppppppppppppccccccccooccccccgggggggggggggggooogoooggDDDDDDDDDDDD",
+"cccccgggppppppppoooppppppooooooooooogggggggggggggggooBBgooggDDDDDDDDDDDD",
+"ccccgBBggccccccoooooppppoooooooooooogggggggggggggggogBBggoggDDDDDDDDDDDD",
+"ccccgBBggccccccoooooccccccccccooccccgggggggggggggggoogggooggDDDDDDDDDDDD",
+"ccccgggggccccccoooooccccccccccooccccgggggggggggggggooogoooggDDDDDDDDDDDD",
+"cccccgggccccccccooocccccccccccooccccggggggggggggggggooooogggDDDDDDDDDDDD",
+"ccccccccccccccccccccccccccccccooccccggggggggggggggggggggggggDDDDDDDDDDDD",
+"ccccccccccccccccccccccccccccccooccccggggggggggggggggggggggggDDDDDDDDDDDD",
+"ccccccccccccccccccccccccccccccooccccggggggggggggggggggggggggDDDDDDDDDDDD",
+"ccccccccccccggggggggggggccccccgggcccgggggggggggggggggggggggggggggggggggg",
+"ccccccccccccggggggggggggcccccgggggccgggggggggggggggggggggggggggggggggggg",
+"ccccccccccccggBBBBBBBBggccccgggggggcggggjjjjjggggggBBBBBBBgggggggggggggg",
+"ccccccccccccggBBBBBBBBggcccggggggggggggjjgggjjgggggBBBBBBBgggggBBBBBBggg",
+"cccgggccccccggBBBBBBBBggcccgggggggggggjjgggggjjggggBBBBBBBgggggBBBBBBggg",
+"ccgggmmmppppggBBBBBBBBggcccgggggggggggjgggggggjggggBBBBBBBgggggBBBBBBggg",
+"cggggmmmppppggBBBBBBBBggccccgggggggpggjgggggggjggggBBBBBBBgggggBBBBBBggg",
+"cggggmmmccccggBBBBBBBBggpppppgggggccggjgggggggjggggBBBBBBBgggggBBBBBBggg",
+"cgggggggccccgggggoogggggppppppgggcccggjjgggggjjggggggppggggggggjjjjjjggg",
+"ccgggggcccccgggggoogggggccccccppccccgggjjgggjjgggggggppggggggggggggggggg",
+"cccgggccccccgggggoogggggccccccppccccggggjjjjjggggggggppggggggggggggggggg",
+"cccppcccccccgggggoogggggccccccppccccgggggggggggggggggppggggggggggggggggg",
+"cccppccccccccccccppcccccccccccppccccggggggggggggppppppppppppgggggggggggg",
+"cccgggccccccccccpppcccccccccccppccccggggggggggggppppppppppppgggggggggggg",
+"ccgggggccccccccpppppcccccccpppppccccggggggggggggppppppppppppgggggggggggg",
+"cgggggggppppppppppppppppppppppppppppggggggggggggppppppppppppgggggggggggg",
+"cgggmmmmppppppppppppppppppppppppppppggggggggggggppppppppppppgggggggggggg",
+"cgggmmmmcccccpppppppppccpppppppppcccppppppppppppppppppppppppgggggggggggg",
+"ccggmmmmcccccpppppppppccppppppppppccppppppppppppppppppppppppgggggggggggg",
+"cccgggccccccccpppppppcccppppppppppccggggggggggggppppppppBBBpgggggggggggg",
+"cccccccccccccccpppppccccppppppppppccggggggggggggppppppppBBBpgggggggggggg",
+"ccccccccccccccccpppcccccpppppppppcccggggggggggggppppppppBBBpgggggggggggg",
+"ccccccccccccccccccccccccpppppppppcccggggggggggggppppppppppppgggggggggggg",
+"cccccccccccccccccccccccccpppppppccccggggggggggggppppppppppppgggggggggggg"
+]
+}
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "dirt path",
+"g": "grass",
+"w": "water",
+"b": "bridge / deck over water",
+"s": "snow",
+"r": "rock (cannot walk)",
+"x": "solid rock / wall (cannot walk)",
+"f": "concrete floor",
+"c": "corn (cannot walk; the rows are the walls)",
+"d": "sand",
+"m": "stone / marble paving",
+"l": "lava (cannot walk)",
+"h": "scorched rock",
+"k": "cloud you walk on",
+"v": "open sky (a fall)",
+"u": "sea floor",
+"a": "the drop into the dark",
+"B": "building",
+"i": "ice",
+"o": "cobbles / worn stone",
+"y": "crystal",
+"q": "the collider ring corridor",
+"e": "grey dust",
+"n": "red ground",
+"z": "the Sea of Possibility (cannot walk)",
+"j": "plank pier / deck",
+"G": "the ley line",
+"V": "nothing (cannot walk)",
+"D": "dunes",
+"R": "red carpet / hot floor",
+"T": "hedge / kelp (cannot walk)",
+"S": "light",
+"N": "open space (fly the ship, or float)",
+"Q": "an orbit (a guide line, not a wall)",
+"E": "Earth",
+"A": "asteroid"
+}
+}
