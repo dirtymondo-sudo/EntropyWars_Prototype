@@ -16,7 +16,7 @@ module.exports = { build: function (api) {
         DOORS = [U('DoorPaintedHalf1a'), U('DoorPaintedHalf3b'), U('DoorWoodenHalf1a'), U('DoorStorefrontHalf1a')],
         GT = U('GlassWindowTall1a-Glow'), GF = U('GlassWindowFactory2a-Glow'), GS = U('GlassWindowSquare3a-Glow'), GR = U('GlassWindowResidential1-Glow1');
     /* a tint over a sheet: the sheets are mid grey, so the colour is lifted (clamped) to read as itself; a plain colour is written as is */
-    const hex = s => parseInt(String(s).replace('#', ''), 16);
+    const hex = s => parseInt(String(s).replace('#', ''), 16); const STG = 2.2;
     const T = (s, key) => { const v = hex(s); if (!key) return v; const f = c => Math.min(255, Math.round(c * 1.7)); return (f(v >> 16 & 255) << 16) | (f(v >> 8 & 255) << 8) | f(v & 255); };
     const rows = [];
     const dropLate = id => { for (let i = lateRows.length - 1; i >= 0; i--) if (String(lateRows[i].id || '').indexOf('dc:' + id + '-s') === 0) lateRows.splice(i, 1); };
@@ -45,7 +45,11 @@ module.exports = { build: function (api) {
         const parts = [], rc = Math.cos(-rot * D2R), rs = Math.sin(-rot * D2R);
         const fw = (rot === 90 || rot === 270) ? hd : hw, fd = (rot === 90 || rot === 270) ? hw : hd;        // the front's half width, the half depth back from it
         const loc = (u, v) => [r3(u * rc + v * rs), r3(-u * rs + v * rc)];                                    // the building's turned frame (front = +v) -> metres east / south
-        const P = (s, x, y, z, key, tint, o2) => { const q = Object.assign({ s, p: [r3(x), r3(y), r3(z)] }, o2 || {}); if (key) q.key = key; if (tint != null) q.tint = T(tint, key); parts.push(q); return q; };
+        const P = (s, x, y, z, key, tint, o2) => { const q = Object.assign({ s, p: [r3(x), r3(y), r3(z)] }, o2 || {}); if (key) q.key = key; if (tint != null) q.tint = T(tint, key);
+            /* THE PAINTED STUCCO (LOS ANGELES, 11-15): the stucco sheet is mid grey, so a pastel over it read as mud. A stucco part takes the arch row's `gain` (Bayside's painted wall): its own colour, lifted past white */
+            if (tint != null && key === ST && !q.roof) { q.tint = hex(tint); q.gain = STG; }
+            else if (q.keyEnd === ST && tint != null) { const v = T(tint, key), f = c => Math.round(c / STG); q.tint = (f(v >> 16 & 255) << 16) | (f(v >> 8 & 255) << 8) | f(v & 255); q.gain = STG; }
+            parts.push(q); return q; };
         const b = {
             hw, hd, id, parts, door: loc(lx, fd), out: loc(0, 1), along: loc(1, 0), side: info.side,
             box: (x, z, w, d, y, h, key, tint, o2) => P('box', x, y, z, key, tint, Object.assign({ size: [r3(w), r3(h), r3(d)] }, o2)),
@@ -134,7 +138,7 @@ module.exports = { build: function (api) {
             vtxt: (side, u, y1, step, w, word, fg, pr, glow) => { [...word].forEach((ch, i) => b.txt(side, u - w / 2, u + w / 2, y1 - (i + 1) * step + step * 0.08, step * 0.84, ch, fg, pr, glow)); return b; },
         };
         { const dr = b.door; b.du = (b.fs === 'n' || b.fs === 's') ? dr[0] : dr[1]; }
-        fn(b); if (DETAIL[id]) DETAIL[id](b); if (ROOFS[id]) ROOFS[id](b); if (LETTERS[id]) LETTERS[id](b); if (INSIDE[id] && hollow) inside(b, INSIDE[id], { loc, cx, cz, fw, fd, row, lx, gy: lvOf(plotOf[info.plot]) * LEVELS.M });
+        fn(b); if (DETAIL[id]) DETAIL[id](b); if (ROOFS[id]) ROOFS[id](b); if (LETTERS[id]) LETTERS[id](b); if (LA[id]) LA[id](b); if (INSIDE[id] && hollow) inside(b, INSIDE[id], { loc, cx, cz, fw, fd, row, lx, gy: lvOf(plotOf[info.plot]) * LEVELS.M });
         { const ar = { k: 'arch', id: 'dc:' + id + ':arch', x: cx, z: cz, rot: 0, parts }; if (row.k === 'plateau') ar.y = 0;   /* over a roof-walk plateau the row would stand on its 7 m roof */ rows.push(ar); }
         return b;
     }
@@ -556,6 +560,36 @@ module.exports = { build: function (api) {
         if (S.screen) { const o = loc(0, -fd + 0.3), w = loc(0, 1), f = ((Math.round(-Math.atan2(w[0], w[1]) / D2R) % 360) + 360) % 360; parts.push({ s: 'quad', p: [o[0], 1.6, o[1]], ry: f, size: [r3(fw * 2 - 3), r3(Math.min(6, H - 2.4))], tint: 0xe8f4ff, glow: 0.9 }); parts.push({ s: 'quad', p: [loc(0, -fd + 0.28)[0], 1.4, loc(0, -fd + 0.28)[1]], ry: f, size: [r3(fw * 2 - 2.6), r3(Math.min(6, H - 2.4) + 0.4)], tint: 0x101014 }); }
         rows.push({ k: 'arch', id: 'dc:' + b.id + ':in', x: cx, z: cz, rot: 0, parts });
     }
+    /* ═══ LOS ANGELES, per building (mondo 11-15; the street half is at the foot of this file): arched openings in the stucco houses, big
+       painted numbers on the sound stages, the record tower, the band shell, the temple front and the tall blade of the Cinema ═══ */
+    const CLAY = '#b8502e';
+    const archw = (b, side, u, y, w, h, tint, o2) => { const rr = w / 2, n = 5; b.sbox(side, u, y, w, h - rr, 0.07, null, tint, o2);
+        for (let i = 0; i < n; i++) { const tm = (i + 0.5) / n; b.sbox(side, u, y + h - rr + i * rr / n, w * Math.sqrt(1 - tm * tm), rr / n + 0.01, 0.07, null, tint, o2); } };
+    const arcade = (b, side, n, y, w, h, tint, o2) => { const L = ((side === 'n' || side === 's') ? b.hw : b.hd) * 2 - 2.4, st = L / n; for (let i = 0; i < n; i++) archw(b, side, -L / 2 + (i + 0.5) * st, y, w, h, tint, o2); };
+    const stageNo = (b, word, top, sides) => { for (const sd of sides) { const hf = (sd === 'n' || sd === 's') ? b.hw : b.hd; b.txt(sd, hf - 3.6, hf - 0.9, top - 4.1, 3.4, word, '#4a3626', 0.13); } };
+    const LIT = { glow: 0.45 };
+    const LA = {
+        'P09-05-B1': b => arcade(b, 's', 5, 5.6, 2.3, 3.6, '#4a342a'),                                    // COMEDY THEATER: an arcade of lit arches on its back wall
+        'P11-06-B2': b => arcade(b, 's', 4, 7.0, 1.7, 2.6, '#3a2e28'),                                         // the apartments
+        'P11-04-B2': b => arcade(b, 'n', 4, 3.9, 1.6, 2.4, '#3a2e28'),                                         // the lofts
+        'P11-05-B1': b => stageNo(b, '1', 7, ['w', 's']),                                                      // FILM STUDIO = stage 1
+        'P10-05-B1': b => stageNo(b, '2', 7, ['n', 'e']),                                                      // the backstage dock = stage 2
+        'P10-06-B1': b => stageNo(b, '3', 7, ['w', 's']),                                                      // the stage workshop = stage 3
+        'P09-06-B3': b => stageNo(b, '4', 4.9, ['n', 'e']),                                                    // the prop store = stage 4
+        /* RECORDING STUDIO: the round lobby carries a stack of records, a red label on the top one, a needle spire */
+        'P11-04-B1': b => { const x = -b.hw, z = b.hd - 3.5;
+            for (let i = 0; i < 11; i++) { b.cyl(x, z, 4.3, 5.7 + i * 0.72, 0.4, null, i % 2 ? '#1c1c20' : '#101012', { seg: 28 }); b.cyl(x, z, 3.8, 6.1 + i * 0.72, 0.32, null, '#2c2c32', { seg: 20, cap: false }); }
+            const yt = 5.7 + 10 * 0.72 + 0.4; b.cyl(x, z, 1.5, yt, 0.06, null, '#d03030', { seg: 20, glow: 0.3 }); b.cyl(x, z, 3.0, yt, 0.02, null, '#26262c', { seg: 24 }); b.cyl(x, z, 0.14, yt, 0.5, null, '#d8d8d8', { seg: 8 });
+            b.cyl(x, z, 0.22, yt + 0.06, 7.5, TR, '#e8e8e8', { r2: 0.02, seg: 8 }); b.cyl(x, z, 0.3, yt + 7.4, 0.3, null, '#ff4040', { seg: 8, glow: 1 }); },
+        /* CONCERT HALL: the band shell, five white rings one inside the other, on the podium's roof over the entrance, open to the street */
+        'P10-04-B1': b => { const zc = -b.hd + 0.7;
+            for (let i = 0; i < 5; i++) b.dome(0, zc + i * 0.9, 12.6 - i * 1.75, 7, 9.6 - i * 1.3, ST, i % 2 ? '#d8d2c6' : '#ffffff', { rz: 6.4 - i * 1.2, arc: 180, a0: 0, seg: 28, rings: 8, ds: true, glow: 0.25 });
+            b.box(0, zc + 2.2, 15, 3.6, 7, 0.06, WOOD, '#8a6a48'); },
+        /* CINEMA: the temple front (red columns under the west marquee, a jade roof on the stepped top) and the word down the tall blade */
+        'P11-07-B1': b => { for (const z of [-7, -2.4, 2.4, 7]) { b.cyl(-b.hw - 2.2, z, 0.3, 0, 3.3, PL, '#b02020', { seg: 10 }); b.cyl(-b.hw - 2.2, z, 0.44, 0, 0.45, MB3, '#d8c8a8', { seg: 10 }); }
+            b.roof('hip', -b.hw + 2.6, 0, 5.2, b.hd * 2 * 0.4 + 1.6, 13.3, 2.2, CO, '#2f7a62', { ridge: 'z', over: 1.1 });
+            b.vtxt('w', 0, 20.2, 2.0, 1.3, 'CINEMA', '#fff6d0', 1.52, 1); },
+    };
     /* ═══ P08-04 CASINO: the Strip's casino. Dark marble, brass bands, a domed corner tower, a red drive-up canopy ═══ */
     B('P08-04-B1', { walk: true, st: 2 }, b => {
         b.walls(9.6, MB, '#4a3560'); b.trim(9.6, 0.6, GOLD, null); b.top(9.9, RF, '#6a6670', 0.2);
@@ -568,19 +602,19 @@ module.exports = { build: function (api) {
         b.canopy(7.5, 4.6, 3.9, 0.7, PL, '#c8202c', { glow: 0.35, posts: [GOLD, null] });
     });
     B('P08-04-B2', { st: 1 }, b => {                                                                          // the pawn + chip exchange
-        b.walls(4.2, BR2, '#b5653c'); b.roof('shed', 0, 0, b.hw * 2, b.hd * 2, 4.2, 1.6, CO3, '#2f5d50', { high: 'e', over: 0.5 });
+        b.walls(4.2, ST, '#f0b890'); b.roof('shed', 0, 0, b.hw * 2, b.hd * 2, 4.2, 1.6, CO, '#b8502e', { high: 'e', over: 0.5 });
         b.face('s', -b.hw + 1, b.hw - 1, 2.7, 0.9, null, '#7dff9a', NEON); b.canopy(b.hw * 2 - 1, 1.6, 2.5, 0.2, CO, '#e8c020', { at: 0 });
     });
     /* ═══ P09-04 COSTUME SHOPS: brick below, a white upper floor that overhangs, the roof walked (roof route) ═══ */
     B('P09-04-B1', {}, b => {
-        b.walls(3.5, BR1, '#a8523a'); b.box(0, 0, b.hw * 2 + 0.8, b.hd * 2 + 0.8, 3.5, 3.5, PL, '#f4ead6', { under: true, top: false });
+        b.walls(3.5, ST, '#f3e2c0'); b.box(0, 0, b.hw * 2 + 0.8, b.hd * 2 + 0.8, 3.5, 3.5, PL, '#f4ead6', { under: true, top: false });
         for (const s of ['n', 's']) b.box(0, (s === 'n' ? -1 : 1) * (b.hd + 0.3), b.hw * 2 + 0.8, 0.2, 7, 0.9, WOOD, '#5b3a22');
         for (const s of [-1, 1]) b.box(s * (b.hw + 0.3), 0, 0.2, b.hd * 2 + 0.8, 7, 0.9, WOOD, '#5b3a22');
         b.face('s', -b.hw + 1, b.hw - 1, 4.2, 2.2, GR, '#ffe6b0', { glow: 0.5, proud: 0.45 }); b.face('w', -b.hd + 1, b.hd - 1, 4.2, 2.2, GR, '#ffe6b0', { glow: 0.5, proud: 0.45 });
         b.roof('shed', 0, b.hd + 0.9, b.hw * 2, 1.4, 2.6, 0.7, PL, '#d0306a', { high: 'n', roof: false }); b.face('s', -b.hw + 1.5, b.hw - 1.5, 0.5, 2.0, GT, '#ffd0e8', GLOW);
     });
     B('P09-04-B2', { st: 1 }, b => {                                                                          // masks + wigs
-        b.walls(5.2, ST, '#7a4fb0'); b.roof('hip', 0, 0, b.hw * 2, b.hd * 2, 5.2, 2.8, CO, '#3a2a55', { over: 0.5 });
+        b.walls(5.2, ST, '#e8967a'); b.roof('hip', 0, 0, b.hw * 2, b.hd * 2, 5.2, 2.8, CO, '#b8502e', { over: 0.5 });
         b.face('n', -b.hw + 1, b.hw - 1, 0.6, 2.2, GS, '#e0c0ff', GLOW); b.face('n', -b.hw + 1, b.hw - 1, 3.3, 0.7, null, '#e0a0ff', NEON);
     });
     B('P09-04-B3', { st: 1 }, b => {                                                                          // the tailor's workshop: a saw-tooth roof
@@ -609,7 +643,7 @@ module.exports = { build: function (api) {
         b.face('s', b.door[0] + 2, b.hw - 1.5, 3.6, 0.9, null, '#ff4040', NEON);
     });
     B('P11-04-B2', {}, b => {                                                                                 // the artist lofts (the roof walked)
-        b.walls(7, BR1, '#8f4a3a'); b.trim(7, 0.9, BR1, '#6f3a2e', 0.02, { top: false });
+        b.walls(7, ST, '#f2c4a0'); b.trim(7, 0.9, BR1, '#6f3a2e', 0.02, { top: false });
         b.face('w', -b.hd + 1.5, b.hd - 1.5, 4.2, 2, GR, '#ffe6b0', GLOW); b.face('w', -b.hd + 4, b.hd - 1.5, 0.8, 2.2, GR, '#ffe6b0', GLOW);
         b.cyl(b.hw - 3, b.hd - 4, 1.3, 7, 3.4, WOOD, '#7a5a3a'); b.cyl(b.hw - 3, b.hd - 4, 1.5, 10.4, 1.2, CO3, '#555', { r2: 0 });
     });
@@ -618,7 +652,7 @@ module.exports = { build: function (api) {
         const L = b.hd * 2, z0 = -b.hd, w = b.hw * 2, s1 = L * 0.31, s2 = L * 0.30, s3 = L - s1 - s2;         // three houses north to south along the west front
         b.walls(3.5, PL, '#b02020');                                                                          // the shell (the ramen house's red, the door in it)
         /* the trattoria (north): terracotta, a red gable, a green awning, a chimney */
-        b.box(0, z0 + s1 / 2, w + 0.2, s1, 0, 5, ST, '#d98a58'); b.roof('gable', 0, z0 + s1 / 2, w, s1, 5, 2.4, CO, '#b03a28', { ridge: 'x', over: 0.5, keyEnd: ST, tintEnd: T('#d98a58', ST) });
+        b.box(0, z0 + s1 / 2, w + 0.2, s1, 0, 5, ST, '#d98a58'); b.roof('gable', 0, z0 + s1 / 2, w, s1, 5, 2.4, CO, '#b03a28', { ridge: 'x', over: 0.5, keyEnd: ST, tintEnd: hex('#d98a58') });
         b.cyl(b.hw - 1.5, z0 + 2, 0.45, 5, 4, BR1, '#a05a40', { seg: 8 }); b.roof('shed', -b.hw - 0.9, z0 + s1 / 2, 1.6, s1 - 2, 2.6, 0.7, PL, '#2a8a4a', { high: 'e', roof: false });
         b.face('w', z0 + 1.2, z0 + s1 - 1.2, 0.7, 1.9, GR, '#ffe6b0', { glow: 0.55, proud: 0.2 });
         /* the ramen house (middle): red, two tiers of deep dark eaves, a small hip on top */
@@ -642,9 +676,9 @@ module.exports = { build: function (api) {
     });
     /* ═══ P09-05 COMEDY THEATER: a brick vaudeville house, a stepped front, a barrel roof, the yellow marquee, the blade sign ═══ */
     B('P09-05-B1', { walk: true, st: 3 }, b => {
-        b.walls(10.7, BR1, '#b06a48'); b.top(10.62, RFC, '#8a8078', 0.1);
+        b.walls(10.7, ST, '#f4e4c2'); b.top(10.62, RFC, '#8a8078', 0.1);
         b.box(0, -b.hd + 0.3, b.hw * 2 + 0.1, 0.6, 10.5, 1.2, ST, '#f0e0c0'); b.box(0, -b.hd + 0.3, b.hw * 2 * 0.62, 0.6, 11.7, 1.2, ST, '#f0e0c0'); b.box(0, -b.hd + 0.3, b.hw * 2 * 0.26, 0.6, 12.9, 1.4, ST, '#f0e0c0');
-        b.roof('barrel', 0, 1.2, b.hw * 2 - 4, b.hd * 2 - 3.6, 10.5, 4.2, CO, '#5a2030', { ridge: 'z', seg: 12, keyEnd: BR1, tintEnd: T('#b06a48', BR1) });
+        b.roof('barrel', 0, 1.2, b.hw * 2 - 4, b.hd * 2 - 3.6, 10.5, 4.2, CO, '#b8502e', { ridge: 'z', seg: 12, keyEnd: ST, tintEnd: hex('#f4e4c2') });
         b.face('n', -b.hw + 1, b.hw - 1, 5.2, 3.4, GT, '#ffe0a0', GLOW);
         b.canopy(17, 3.4, 3.9, 0.9, PL, '#f0c020', { glow: 0.45 });
         b.box(b.hw + 0.5, -b.hd - 0.2, 0.9, 3.4, 4, 13, PL, '#d02848', { glow: 0.45 });
@@ -652,13 +686,13 @@ module.exports = { build: function (api) {
     });
     /* ═══ P10-05 BACKSTAGE YARD: the loading dock (its roof walked), yellow shutters; the performers' trailers ═══ */
     B('P10-05-B1', {}, b => {
-        b.walls(7, CO, '#7d8794'); b.trim(7, 0.9, CO3, '#555b66', 0.02, { top: false });
+        b.walls(7, CO, '#e9dcc0'); b.trim(7, 0.9, CO3, '#555b66', 0.02, { top: false });
         for (const s of [-1, 1]) b.face('s', s * 3.8 - 2.4, s * 3.8 + 2.4, 0, 3.6, CO3, '#c8a020');
         b.roof('shed', 0, b.hd + 1.5, b.hw * 2, 3, 4.0, 0.9, CO3, '#3c4048', { high: 'n', roof: false, under: true }); b.box(0, b.hd + 0.9, b.hw * 2, 1.8, 0, 1.0, CS, '#aaaaaa');
         b.face('s', -6, 6, 4.9, 0.8, null, '#ffd24a', { glow: 0.8 });
     });
     B('P10-05-B2', { st: 1 }, b => {                                                                          // the crew canteen behind the trailers: plain, low, striped awning
-        b.walls(3.8, PL, '#e8dcc0'); b.roof('gable', 0, 0, b.hw * 2, b.hd * 2, 3.8, 1.8, CO, '#7a8a5a', { ridge: 'x', over: 0.4, keyEnd: PL, tintEnd: T('#e8dcc0', PL) });
+        b.walls(3.8, PL, '#e8dcc0'); b.roof('gable', 0, 0, b.hw * 2, b.hd * 2, 3.8, 1.8, CO, '#b8502e', { ridge: 'x', over: 0.4, keyEnd: PL, tintEnd: T('#e8dcc0', PL) });
         b.face('n', -b.hw + 1.5, b.hw - 1.5, 0.8, 1.8, GR, '#ffe6b0', GLOW);
     });
     /* ═══ P11-05 FILM STUDIO: a cream sound stage under a great vault, the front office (its roof walked), the blue stage door, the water tower ═══ */
@@ -706,7 +740,7 @@ module.exports = { build: function (api) {
     });
     /* ═══ P10-06 STAGE WORKSHOP: the scenery shop. Brick, a saw-tooth glass roof, the paint tower, a chimney, the lumber lean-to ═══ */
     B('P10-06-B1', { walk: true, st: 2 }, b => {
-        b.walls(7, BR3, '#8a6a58'); const n = 4, sd = b.hd * 2 / n;
+        b.walls(7, ST, '#f0c8a4'); const n = 4, sd = b.hd * 2 / n;
         for (let i = 0; i < n; i++) b.roof('shed', 0, -b.hd + (i + 0.5) * sd, b.hw * 2, sd, 7, 2.6, CO3, '#59616c', { high: 's', keyEnd: GF, tintEnd: 0xd8f0ff });
         b.box(b.hw - 2.8, -b.hd + 2.8, 5.6, 5.6, 7, 8, BR3, '#7a5a4a'); b.roof('pyramid', b.hw - 2.8, -b.hd + 2.8, 5.6, 5.6, 15, 1.8, CO, '#3a4048', { over: 0.3 });
         b.cyl(-b.hw + 2.1, b.hd - 2.8, 0.7, 7, 8, BR2, '#6a4a3c', { r2: 0.5, seg: 10 });
@@ -727,12 +761,12 @@ module.exports = { build: function (api) {
         b.cyl(b.hw - 6, 0, 2.6, 7.2, 0.5, null, '#f0c020', { glow: 0.5 }); b.cyl(b.hw - 6, 0, 0.3, 6.3, 0.9, TR, '#444444', { seg: 6 });
     });
     B('P11-06-B2', { walk: true, st: 3 }, b => {   /* (11-14: walk-in; its ground floor is the Bunny girl's flat, INSIDE below) */                                                                          // the apartments (the repeating kind): brick, a gable, balconies
-        b.walls(10.5, BR2, '#9a5a44'); b.roof('gable', 0, 0, b.hw * 2, b.hd * 2, 10.5, 3, CO, '#3a3038', { ridge: 'z', over: 0.4, keyEnd: BR2, tintEnd: T('#9a5a44', BR2) });
+        b.walls(10.5, ST, '#f6e6c8'); b.roof('gable', 0, 0, b.hw * 2, b.hd * 2, 10.5, 3, CO, '#b8502e', { ridge: 'z', over: 0.4, keyEnd: ST, tintEnd: hex('#f6e6c8') });
         for (const y of [4.2, 7.7]) { b.face('w', -b.hd + 1.4, b.hd - 1.4, y, 2, GR, '#ffe6b0', GLOW); b.box(-b.hw - 0.7, 0, 1.4, b.hd * 2 - 2.4, y - 0.7, 0.15, TR, '#333333', { under: true }); }
     });
     /* ═══ P09-07 KITCHEN LANE: the bakery (a gable, two chimneys); the kebab kiosk ═══ */
     B('P09-07-B1', { walk: true, st: 1 }, b => {
-        b.walls(5, BR1, '#c08a5a'); b.roof('gable', 0, 0, b.hw * 2, b.hd * 2, 5, 2.6, CO, '#6a3a2a', { ridge: 'x', over: 0.4, keyEnd: BR1, tintEnd: T('#c08a5a', BR1) });
+        b.walls(5, ST, '#f4d8b0'); b.roof('gable', 0, 0, b.hw * 2, b.hd * 2, 5, 2.6, CO, '#b8502e', { ridge: 'x', over: 0.4, keyEnd: ST, tintEnd: hex('#f4d8b0') });
         for (const s of [-1, 1]) b.cyl(s * 5, -1, 0.5, 5, 5, BR3, '#5a4a44', { seg: 8 });
         b.face('s', -b.hw + 1.5, b.hw - 1.5, 0.6, 2, GR, '#ffe6b0', GLOW); b.roof('shed', 0, b.hd + 0.7, b.hw * 2 - 2, 1.4, 2.7, 0.6, PL, '#f0e0b0', { high: 'n', roof: false });
         b.canopy(3, 1.4, 2.6, 0.2, PL, '#f0e0b0');
@@ -743,8 +777,8 @@ module.exports = { build: function (api) {
     });
     /* ═══ P10-07 CREW STAIR: the long crew house with three dormers; the octagon ticket booth ═══ */
     B('P10-07-B1', { walk: true, st: 2 }, b => {
-        b.walls(7, BR2, '#7a6a8a'); b.roof('gable', 0, 0, b.hw * 2, b.hd * 2, 7, 2.8, CO, '#34303c', { ridge: 'x', over: 0.4, keyEnd: BR2, tintEnd: T('#7a6a8a', BR2) });
-        for (const x of [-9, 0, 9]) { b.box(x, -b.hd + 1.6, 3, 2.6, 7, 1.5, BR2, '#7a6a8a'); b.roof('gable', x, -b.hd + 1.6, 3, 3.2, 8.5, 1.3, CO, '#34303c', { ridge: 'z', keyEnd: GR, tintEnd: 0xffe6b0 }); }
+        b.walls(7, ST, '#f0b894'); b.roof('gable', 0, 0, b.hw * 2, b.hd * 2, 7, 2.8, CO, '#b8502e', { ridge: 'x', over: 0.4, keyEnd: ST, tintEnd: hex('#f0b894') });
+        for (const x of [-9, 0, 9]) { b.box(x, -b.hd + 1.6, 3, 2.6, 7, 1.5, BR2, '#7a6a8a'); b.roof('gable', x, -b.hd + 1.6, 3, 3.2, 8.5, 1.3, CO, '#b8502e', { ridge: 'z', keyEnd: GR, tintEnd: 0xffe6b0 }); }
         b.face('n', -b.hw + 1.5, b.door[0] - 1.6, 4.2, 2, GR, '#ffe6b0', GLOW); b.face('n', b.door[0] + 1.6, b.hw - 1.5, 4.2, 2, GR, '#ffe6b0', GLOW);
         b.canopy(4, 1.5, 2.6, 0.2, CO, '#ffd24a', { glow: 0.3 });
     });
@@ -758,7 +792,7 @@ module.exports = { build: function (api) {
     B('P11-07-B1', { walk: true, st: 3 }, b => {
         b.walls(10.7, ST, '#f0e2c4'); b.top(10.62, RFC, '#9a9488', 0.1);
         b.box(-b.hw + 0.45, 0, 0.9, b.hd * 2 * 0.7, 10.5, 1.4, ST, '#f0e2c4'); b.box(-b.hw + 0.45, 0, 0.9, b.hd * 2 * 0.4, 11.9, 1.4, ST, '#f0e2c4');
-        b.box(-b.hw - 0.75, 0, 1.5, 1.4, 3.6, 13.5, PL, '#1a8a9a', { glow: 0.5 });                             // the fin on the west front
+        b.box(-b.hw - 0.75, 0, 1.5, 1.4, 3.6, 17, PL, '#8a3ad0', { glow: 0.6 });                             // the fin on the west front
         b.box(-b.hw - 1.3, 0, 2.6, b.hd * 2, 3.3, 1.3, PL, '#fff6d0', { glow: 0.6, under: true }); b.box(0, b.hd + 1.3, b.hw * 2, 2.6, 3.3, 1.3, PL, '#fff6d0', { glow: 0.6, under: true });
         b.cyl(-b.hw, b.hd, 2.6, 3.3, 1.3, PL, '#fff6d0', { arc: 90, a0: 90, glow: 0.6, seg: 16 });
         b.box(-b.hw - 1.35, 0, 2.7, b.hd * 2 + 0.1, 3.1, 0.2, null, '#c02030'); b.box(0, b.hd + 1.35, b.hw * 2 + 0.1, 2.7, 3.1, 0.2, null, '#c02030'); b.cyl(-b.hw, b.hd, 2.7, 3.1, 0.2, null, '#c02030', { arc: 90, a0: 90, seg: 16 });
@@ -770,7 +804,7 @@ module.exports = { build: function (api) {
     const clearProps = (x0, z0, x1, z1) => { for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.x > x0 && q.x < x1 && q.z > z0 && q.z < z1) props.splice(i, 1); } for (let i = features.length - 1; i >= 0; i--) { const q = features[i]; if (q.k === 'tree' && q.x > x0 && q.x < x1 && q.z > z0 && q.z < z1) features.splice(i, 1); } };
     const ghost = (x, z, w, d, h) => features.push(w >= d ? { k: 'wall', x0: r3(x - w / 2 + d / 2), z0: r3(z), x1: r3(x + w / 2 - d / 2), z1: r3(z), h, t: r3(d), key: 'urban:ConcreteStriped2a', ghost: true, rail: false } : { k: 'wall', x0: r3(x), z0: r3(z - d / 2 + w / 2), x1: r3(x), z1: r3(z + d / 2 - w / 2), h, t: r3(w), key: 'urban:ConcreteStriped2a', ghost: true, rail: false });
     const parts_txt = (P, x, y, z, ry, w, h, words, fg) => { const q = P('quad', x, y, z, 'txt:' + words + '|' + fg + '||' + (Math.round(w / h * 100) / 100), null, { size: [w, h], ry, uv: 'fit', kind: 'over' }); q.tint = 0xffffff; return q; };
-    const free = (id, x, z, fn) => { const parts = []; const P = (s, px, y, pz, key, tint, o2) => { const q = Object.assign({ s, p: [r3(px), r3(y), r3(pz)] }, o2 || {}); if (key) q.key = key; if (tint != null) q.tint = T(tint, key); parts.push(q); return q; }; fn(P); rows.push({ k: 'arch', id: 'dc:E-' + id + ':arch', x: r3(x), z: r3(z), rot: 0, parts }); };
+    const free = (id, x, z, fn) => { const parts = []; const P = (s, px, y, pz, key, tint, o2) => { const q = Object.assign({ s, p: [r3(px), r3(y), r3(pz)] }, o2 || {}); if (key) q.key = key; if (tint != null) q.tint = T(tint, key); if (tint != null && key === ST && !q.roof) { q.tint = hex(tint); q.gain = STG; } parts.push(q); return q; }; fn(P); rows.push({ k: 'arch', id: 'dc:E-' + id + ':arch', x: r3(x), z: r3(z), rot: 0, parts }); };
     /* the VHS shop (the pack's whole building, real size 14.9 x 13.6 m, its entrance at +Z): on the yard south-west of the Costume shops, its
        entrance to the walk on its east (a prop's face turns it clockwise like a building's rot: 270 = the front to the east) */
     { const p = plot(9, 4), x = p.x(3), z = p.z(9.2); clearProps(x - 7, z - 7.6, x + 7, z + 7.6); props.push({ key: 'city_vhs_shop', x, z, face: 270 }); }
@@ -780,7 +814,7 @@ module.exports = { build: function (api) {
       EXTRA['E-chapel'] = { id: 'E-chapel', name: 'Wedding chapel', plot: 'P11-07', cx0: 11 * 12 + 1, cy0: 7 * 12 + 1, cw: 3, ch: 2, side: 'S' };
       features.push({ k: 'texbuilding', id: 'dc:E-chapel', seed: 77, x, z, w: 10.5, d: 7, rot: 0, storeys: 1 });
       B('E-chapel', { walk: true, st: 1, leaf: 'leaf_motel' }, b => {
-        b.walls(3.6, ST, '#fbf6ee'); b.plinth(0.5, MB3, '#e0c8d0'); b.roof('gable', 0, 0, b.hw * 2, b.hd * 2, 3.6, 2.6, CO, '#e88aa8', { ridge: 'x', over: 0.4, keyEnd: ST, tintEnd: T('#fbf6ee', ST) });
+        b.walls(3.6, ST, '#fbf6ee'); b.plinth(0.5, MB3, '#e0c8d0'); b.roof('gable', 0, 0, b.hw * 2, b.hd * 2, 3.6, 2.6, CO, '#e88aa8', { ridge: 'x', over: 0.4, keyEnd: ST, tintEnd: hex('#fbf6ee') });
         b.box(b.door[0], b.hd - 1.2, 2.4, 2.4, 4.6, 3.4, ST, '#fbf6ee'); b.roof('pyramid', b.door[0], b.hd - 1.2, 2.4, 2.4, 8.0, 3.2, CO, '#e88aa8', { over: 0.25 }); b.cyl(b.door[0], b.hd - 1.2, 0.18, 11.1, 1.4, GOLD, null, { r2: 0, seg: 6 });
         for (const sg of [-1, 1]) { const u = b.door[0] + sg * 3.1; b.face('s', u - 1.3, u + 1.3, 0.7, 1.9, GS, '#ffd0e0', { glow: 0.55 }); b.frames('s', u - 1.3, u + 1.3, 0.7, 1.9, 2, '#e88aa8'); }
         b.face('s', b.door[0] - 2.6, b.door[0] + 2.6, 2.75, 0.62, null, '#ff80b0', { glow: 1 }); b.txt('s', b.door[0] - 2.5, b.door[0] + 2.5, 2.78, 0.56, 'WEDDING CHAPEL', '#7a1038', 0.11);
@@ -805,6 +839,95 @@ module.exports = { build: function (api) {
       Q('cyl', 0, PL, '#f0c020', { r: 2.2, h: 3.2, seg: 12 }); Q('cyl', 1.1, GS, '#cfe8ff', { r: 2.25, h: 1.3, seg: 12, glow: 0.5, cap: false }); Q('cyl', 3.2, CO, '#222222', { r: 2.8, r2: 0, h: 1.6, seg: 12, roof: true });
       rows.push({ k: 'arch', id: 'dc:E-taxi-booth:arch', x: bx, z: bz, rot: 0, parts: q2 });
       features.push({ k: 'wall', x0: bx, z0: bz, x1: bx, z1: bz, h: 3.2, t: 3.6, key: 'urban:ConcreteStriped2a', ghost: true, rail: false }); }
+    /* ═══ LOS ANGELES (mondo 11-15 12:19 "I want each district to be based off of a major city ... entertainment or film could be LA"; his
+       "Build it as drawn" 12:32 on the real-cities plan, /mnt/project-files/disaster-city-real-cities/plan.html section d-e). Cream and peach
+       stucco and red clay roofs on the plain houses (the walls() + roof() tints above), arched openings, numbered painted sound stages, the
+       hill letters in the bay, the studio gate, the record tower, the band shell, the temple cinema forecourt with handprints and a star walk,
+       tall palms, and one lantern lane (the Tokyo corner). Nothing is taken away: every building keeps its name, use, doors and roof routes.
+       No new lights (glow only), plain trade words on every sign. ═══ */
+    {
+      const X = c => r3(84 + c * C), Z = r => r3(-84 + r * C), XC = c => X(c + 0.5), ZC = r => Z(r + 0.5);   // the district's own squares: column 0..47 west -> east, row 0..47 north -> south
+      const near = (x, z, d) => props.some(q => Math.abs(q.x - x) < d && Math.abs(q.z - z) < d && !(q.y >= 1));
+      const sq = (c, r) => { if (!api.free(96 + c, 48 + r) || near(XC(c), ZC(r), 1.7)) return false; api.take(96 + c, 48 + r); return true; };   // a free yard square for a thing that blocks (it stands on the square's middle)
+      /* ── THE HILL LETTERS stand on the MOUNTAINS now (mondo 11-15 12:55 "there is already the mountains on one of the edges of disaster city,
+         use that/make that the hollywood hills"; then 13:18 "just put the sign on the mountains in the north"): this file's `edges` export at its foot stands
+         the sign on the north range. The hill of domes that stood in the bay here is gone, and so is the east range of PR #1424. ── */
+      /* ── THE STAR WALK: a brass star (the gold terrain sheet) in a dark terrazzo square, in every square of the boulevard's two walks ── */
+      { const star = (P, x, z, R) => { P('box', x, 0.03, z, TG, '#6a3040', { size: [1.6, 0.02, 1.6], sides: false });
+          const o = [], n = []; for (let k = 0; k < 5; k++) { const a = (-90 + 72 * k) * D2R, a2 = (-54 + 72 * k) * D2R; o.push([r3(Math.cos(a) * R), r3(Math.sin(a) * R)]); n.push([r3(Math.cos(a2) * R * 0.4), r3(Math.sin(a2) * R * 0.4)]); }
+          P('poly', x, 0.052, z, GOLD, null, { pts: n, h: 0.012 }); for (let k = 0; k < 5; k++) P('poly', x, 0.052, z, GOLD, null, { pts: [o[k], n[k], n[(k + 4) % 5]], h: 0.012 }); };
+        for (const [id, row, c0, c1] of [['stars-n', 39, 9, 42], ['stars-s', 44, 9, 38]]) for (let c = c0; c < c1; c += 11) free(id + '-' + c, XC(c), ZC(row), P => { for (let k = 0; k < 11 && c + k <= c1; k++) star(P, k * C + ((k % 2) ? 0.5 : -0.5), (k % 2) ? -0.45 : 0.4, 0.6); }); }
+      /* ── THE PALMS: very tall, thin, in the yard squares beside the boulevard's walks and the cross street's (never on a walk: a palm blocks
+         its square). The bake's soil rule beds every one. ── */
+      { let n = 0; const palm = (c, r) => { if (!sq(c, r)) return; props.push({ key: 'palm_tree', x: XC(c), z: ZC(r), h: 11.5 + (n * 7 % 5) * 0.8 }); n++; };
+        for (let c = 9; c <= 40; c += 2) palm(c, 38); for (let c = 9; c <= 38; c += 2) palm(c, 45);
+        for (let r = 7; r <= 35; r += 3) palm(9, r); for (let r = 19; r <= 35; r += 3) palm(2, r); }
+      /* ── THE STUDIO GATE: the arched stucco gate over the walk to the Film studio's door (squares 41..42 of row 12), two piers a square each
+         (they block), clay caps, the name over the arch ── */
+      { const gxm = X(42), gz = ZC(12);
+        free('studio-gate', gxm, gz, P => {
+          for (const s of [-1, 1]) { P('box', s * 5.25, 0, 0, ST, '#f4e4c2', { size: [3.5, 6.4, 2.6] }); P('box', s * 5.25, 0, 0, MB3, '#d8c8a8', { size: [3.7, 0.7, 2.8] });
+            P('roof', s * 5.25, 6.4, 0, CO, CLAY, { form: 'pyramid', size: [3.5, 1.5, 2.6], over: 0.3, roof: true });
+            P('box', s * 5.25, 2.2, 1.33, null, '#ffd9a0', { size: [1.1, 1.5, 0.06], glow: 0.45 }); P('box', s * 5.25, 2.2, -1.33, null, '#ffd9a0', { size: [1.1, 1.5, 0.06], glow: 0.45 }); }
+          P('box', 0, 4.9, 0, ST, '#f4e4c2', { size: [7, 2.3, 1.6], under: true });
+          for (const s of [-1, 1]) for (const [w, y, h] of [[0.5, 3.6, 1.3], [1.0, 4.2, 0.7], [1.6, 4.6, 0.3]]) P('box', s * (3.5 - w / 2), y, 0, ST, '#f4e4c2', { size: [w, h, 1.6], under: true });   // the arch's stepped haunches
+          P('box', 0, 7.2, 0, ST, '#f4e4c2', { size: [4.6, 0.9, 1.6] }); P('box', 0, 8.1, 0, ST, '#f4e4c2', { size: [2.4, 0.7, 1.6] }); P('box', 0, 7.2, 0, CO, CLAY, { size: [7.4, 0.25, 2.0], under: true });
+          P('cyl', 0, 8.8, 0, null, '#f0c040', { r: 0.28, h: 0.56, seg: 10, glow: 0.7 });
+          for (const s of [1, -1]) parts_txt(P, 0, 5.55, s * 0.83, s > 0 ? 0 : 180, 5.6, 0.8, 'FILM STUDIO', '#8a2a1c');
+        });
+        for (const c of [40, 43]) { api.take(96 + c, 48 + 12); ghost(XC(c), gz, 3.5, 3.5, 6.4); } }
+      /* ── THE CINEMA'S FORECOURT (the walk west of the Cinema, squares 41..42 x rows 35..39): red paving, eight pale slabs with handprints,
+         the temple gate on the boulevard side (red columns, a jade roof), velvet ropes, the two film lights as searchlights (no beams), a popcorn cart ── */
+      { const fx = X(42), fz = Z(37.5);
+        free('forecourt', fx, fz, P => {
+          P('box', 0, 0.024, 0, CS, '#b8604a', { size: [6.8, 0.02, 17.2], sides: false }); P('box', 0, 0.02, 0, CS, '#f0e2c4', { size: [7, 0.016, 17.5], sides: false });
+          let k = 0; for (const sx of [-1, 1]) for (let i = 0; i < 4; i++) { const x = sx * 1.75 + (i % 2 ? 0.25 : -0.25), z = -5.6 + i * 3.6 + (sx > 0 ? 0.5 : -0.4); k++;
+            P('box', x, 0.046, z, CS, '#d9d2c4', { size: [1.7, 0.02, 1.5], sides: false });
+            for (const h of [-1, 1]) { const hx2 = x + h * 0.36, hz2 = z + 0.12; P('cyl', hx2, 0.068, hz2, null, '#6a6258', { r: 0.13, h: 0.012, seg: 8 });
+              for (let j = 0; j < 4; j++) P('box', hx2 - 0.105 + j * 0.07, 0.068, hz2 - 0.25 - (j === 1 || j === 2 ? 0.04 : 0), null, '#6a6258', { size: [0.045, 0.012, 0.17] });
+              P('box', hx2 - h * 0.17, 0.068, hz2 - 0.06, null, '#6a6258', { size: [0.12, 0.012, 0.05] }); } }
+          for (const s of [-1, 1]) { P('cyl', s * 3.3, 0, 8.55, PL, '#b02020', { r: 0.32, h: 6.2, seg: 12 }); P('cyl', s * 3.3, 0, 8.55, MB3, '#d8c8a8', { r: 0.48, h: 0.5, seg: 12 }); P('cyl', s * 3.3, 5.8, 8.55, null, '#f0c040', { r: 0.42, h: 0.4, seg: 12 }); }
+          P('box', 0, 6.2, 8.55, PL, '#b02020', { size: [7.6, 0.5, 0.7], under: true }); P('roof', 0, 6.7, 8.55, CO, '#2f7a62', { form: 'hip', size: [7.6, 1.5, 1.6], over: 0.9, roof: true });
+          P('roof', 0, 8.3, 8.55, CO, '#2f7a62', { form: 'hip', size: [4.6, 1.1, 1.2], over: 0.6, roof: true }); P('box', 0, 8.1, 8.55, PL, '#b02020', { size: [4.2, 0.3, 0.9] });
+          for (const s of [1, -1]) parts_txt(P, 0, 6.24, 8.55 + s * 0.37, s > 0 ? 0 : 180, 3.4, 0.42, 'CINEMA', '#fff6d0').glow = 0.8;
+        });
+        for (const [dx, dz] of [[-3.2, 4.6], [-3.2, 2.2], [-3.2, -0.2], [-3.2, -2.6], [3.15, 5.2], [3.15, 2.8]]) props.push({ key: 'rope_stanchion', x: r3(fx + dx), z: r3(fz + dz), face: 90 });
+        if (sq(40, 36)) props.push({ key: 'popcorn_cart', x: XC(40), z: ZC(36), face: 90 });
+        for (const [c, r] of [[40, 35], [39, 36]]) if (sq(c, r)) props.push({ key: 'studio_light', x: XC(c), z: ZC(r), face: 225 }); }
+      /* ── THE LANTERN LANE (the Tokyo corner): the walk of rows 29..30, the west stretch past the noodle bar to the Night market's road, the
+         east stretch to the Arcade's door (the Stage workshop stands between the two). Strings of paper lanterns across it, a red gate at each
+         end, blade signs, noodle stalls on the yard squares beside it. ── */
+      { const zl = Z(30), lane = (id, c0, c1, words, gates) => { const x0 = X(c0), L = (c1 - c0) * C;
+          free('lane-' + id, x0, zl, P => {
+            for (let x = 2.6; x < L - 1; x += 5.25) { for (const s of [-1, 1]) P('cyl', x, 0, s * 3.38, TR, '#3a2a22', { r: 0.07, h: 4.4, seg: 6 }); P('box', x, 4.3, 0, null, '#2a2220', { size: [0.04, 0.04, 6.8] }); }
+            for (const gxl of gates) { for (const s of [-1, 1]) { P('cyl', gxl, 0, s * 3.3, PL, '#c02820', { r: 0.26, h: 5.6, seg: 10 }); P('cyl', gxl, 0, s * 3.3, null, '#1a1614', { r: 0.34, h: 0.5, seg: 10 }); }
+              P('box', gxl, 4.6, 0, PL, '#c02820', { size: [0.4, 0.4, 7.4], under: true }); P('box', gxl, 5.5, 0, PL, '#c02820', { size: [0.5, 0.45, 8.6], under: true }); P('box', gxl, 5.95, 0, null, '#1a1614', { size: [0.8, 0.18, 9.2], under: true }); }
+            words.forEach((w, i) => { const x = 4.2 + i * ((L - 8) / Math.max(1, words.length - 1)), s = i % 2 ? 1 : -1, col = ['#ff4060', '#30e0ff', '#ffb020', '#ff60c0'][i % 4];
+              P('box', x, 2.5, s * 3.3, null, '#141018', { size: [0.16, 0.7 * w.length + 0.3, 0.9] }); P('cyl', x, 0, s * 3.3, TR, '#2a2a2a', { r: 0.06, h: 2.5, seg: 6 });
+              [...w].forEach((ch, j) => { for (const d of [1, -1]) { const q = parts_txt(P, x + d * 0.09, 2.5 + 0.7 * (w.length - 1 - j) + 0.2, s * 3.3, d > 0 ? 90 : 270, 0.62, 0.62, ch, col); q.glow = 1; } }); });
+          });
+          for (let x = 2.6, k = 0; x < L - 1; x += 5.25, k++) for (const dz of (k % 2 ? [-1.75, 1.75] : [-2.4, 0, 2.4])) props.push({ key: 'paper_lantern', x: r3(x0 + x), z: r3(zl + dz), y: 3.45 }); };
+        lane('w', 8, 19, ['NOODLES', 'RAMEN', 'SUSHI', 'TEA'], [0.6]); lane('e', 34, 43, ['ARCADE', 'GAMES', 'NOODLES'], [0.6]);
+        /* the noodle stalls: a counter, a red cloth roof, a lit sign; a yard square each (they block) */
+        [[12, 28, 0, 'NOODLES'], [13, 31, 180, 'RAMEN'], [10, 31, 180, 'DUMPLINGS'], [36, 31, 180, 'NOODLES'], [38, 28, 0, 'TEA']].forEach(([c, r, ry, w], i) => { if (!sq(c, r)) return; const s = ry ? -1 : 1;
+          free('yatai-' + i, XC(c), ZC(r), P => { P('box', 0, 0, s * 0.9, WOOD, '#8a5a34', { size: [3.0, 1.05, 0.8] }); P('box', 0, 0, -s * 0.5, WOOD, '#6a4428', { size: [3.0, 2.3, 1.6], faces: 'fblr' });
+            P('roof', 0, 2.3, 0, PL, '#c02820', { form: 'gable', size: [3.3, 0.8, 3.2], over: 0.15, ds: true });
+            for (const sx of [-1, 1]) P('cyl', sx * 1.5, 0, s * 1.45, WOOD, '#5b3a22', { r: 0.06, h: 2.3, seg: 6 });
+            P('box', 0, 1.75, s * 1.5, null, '#f4e8c8', { size: [3.0, 0.5, 0.05], glow: 0.7 }); parts_txt(P, 0, 1.79, s * 1.535, ry, 2.6, 0.42, w, '#b02020'); });
+          ghost(XC(c), ZC(r), 3.5, 3.5, 2.3); }); }
+      /* ── THE TOUR MAPS: a map board on two legs at the walk's edge (dressing: off the square's middle), three along the boulevard ── */
+      [[14, 39], [27, 39], [36, 44]].forEach(([c, r], i) => free('tourmap-' + i, XC(c) + 1.2, ZC(r) + (r === 39 ? -1.45 : 1.45), P => { const ry = r === 39 ? 0 : 180, s = r === 39 ? 1 : -1;
+        for (const sx of [-1, 1]) P('cyl', sx * 0.7, 0, 0, TR, '#2a4a3a', { r: 0.05, h: 2.1, seg: 6 }); P('box', 0, 0.9, 0, null, '#2a4a3a', { size: [1.6, 1.25, 0.08] });
+        P('box', 0, 1.0, s * 0.045, null, '#f0e6c8', { size: [1.44, 0.8, 0.012] }); parts_txt(P, 0, 1.84, s * 0.05, ry, 1.3, 0.24, 'TOUR MAP', '#fff6d0');
+        for (const [dx, dy, w, h, col] of [[-0.3, 1.2, 0.5, 0.3, '#9ac07a'], [0.3, 1.45, 0.4, 0.2, '#e8b080'], [0.1, 1.1, 0.7, 0.05, '#8a8a8a'], [-0.1, 1.5, 0.05, 0.25, '#8a8a8a'], [0.35, 1.15, 0.3, 0.25, '#7ab0d8']]) P('box', dx, dy, s * 0.054, null, col, { size: [w, h, 0.01] });
+        P('cyl', -0.42, 1.38, s * 0.06, null, '#d02020', { r: 0.05, h: 0.02, seg: 6 }); }));
+    }
     features.push(...rows);
     return { arch: rows.length };
-} };
+},
+/* THE HOLLYWOOD HILLS = the city's own NORTH mountains (mondo 11-15 13:18: "just put the sign on the mountains in the north and remove the one you
+   added": the range that ran down the east side behind this district, PR #1424, is gone; the east edge is the open bay again). The sign: 2.1 m
+   blocks = letters 14.7 m tall, 30 m up the north mountainside, over the city's east half (as near this district as the range reaches before it
+   falls into the bay), three letters leaning or slipped. (bake-disaster-city.js merges a district's `edges` into the room's; three-renderer.js
+   _hqBuildEdgeLand THE HILL SIGN builds it.) */
+edges: { sign: { side: 'n', at: 100, d: 30, text: 'DISASTER CITY', px: 2.1, lean: { 2: 0.1, 6: -0.08, 11: 0.12 }, drop: { 4: 2, 11: 1.4 } } } };

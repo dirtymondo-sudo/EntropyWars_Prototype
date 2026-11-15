@@ -2061,7 +2061,7 @@
             /* THE QUESTS (2026-11-12): the walk entered a room — a quest that starts in the building starts, a stage that
                wants this room is done; the toast waits for the load card */
             /* THE HQ SCENES: a stage that ends on this room and carries a scene (F, the office) plays it once the room stands; the scene's end files the room */
-            let _qRoomScene = false; try { _qRoomScene = !opts.edit && !window._ewSceneReplayStage && _questRoomSceneDue(roomId); } catch (e) { _qRoomScene = false; }
+            let _qRoomScene = false; try { _qRoomScene = !opts.edit && !window._ewSceneReplayStage && !window._ewSceneEdPlay && _questRoomSceneDue(roomId); } catch (e) { _qRoomScene = false; }
             try { if (!opts.edit && !_qRoomScene && typeof window._questEvent === 'function') window._questEvent({ type: 'room', room: roomId }, { delay: walking ? 900 : 2600 }); } catch (e) { console.warn('[QUEST] room event', e); }
             /* ROOM VARIANTS (HQ plan 5.1, 2026-09-11): a fresh arrival rolls the
                building's variants for this visit (Room 86 after hours = the
@@ -4611,6 +4611,7 @@
             o = o || {};
             if (typeof window.questEvent !== 'function') return null;
             if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return null;
+            if (window._ewSceneEdPlay) return null;   // THE CUTSCENE EDITOR is playing a scene: nothing it walks through is filed on the quest
             const res = _hqPartyTx(p => window.questEvent(p, ev));
             if (!res || !Array.isArray(res.changes)) return null;
             if (!o.silent) _questShow(res.changes, o.delay);
@@ -4671,7 +4672,7 @@
         const _INTRO_ROOM = 'intro_desert', _INTRO_SCENE = 'orientation_intro';
         function _introDue() {
             try {
-                if (window.EW_NO_CUTSCENES || window.EW_NO_INTRO || !_hqRoomExists(_INTRO_ROOM) || typeof window.storyCutscene !== 'function' || !window.storyCutscene(_INTRO_SCENE)) return false;
+                if (window._ewSceneEdPlay || window.EW_NO_CUTSCENES || window.EW_NO_INTRO || !_hqRoomExists(_INTRO_ROOM) || typeof window.storyCutscene !== 'function' || !window.storyCutscene(_INTRO_SCENE)) return false;
                 const p = _hqProfile(); if (!p) return false;
                 const t = (typeof window.questTracker === 'function') ? window.questTracker(p) : null;
                 if (!t || t.quest !== 'orientation' || t.stage !== 'walk') return false;
@@ -4681,8 +4682,9 @@
         function _introStart(replay, backRoom) {
             const TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
             /* the end: the flag, and the walk is the recruit's (a replay goes back to the room it was asked from) */
+            window._ewIntroChain = true;   // the whole opening (the road, the car, the foyer) is running: up until `done` (the cutscene editor's watch reads it)
             const done = (stay) => {
-                window._ewIntroLive = false;
+                window._ewIntroLive = false; window._ewIntroChain = false;
                 if (!replay) _questSceneFlag('intro_seen', true);
                 if (stay && !replay) return;
                 const to = (replay && backRoom && _hqRoomExists(backRoom)) ? backRoom : _hqArrivalRoom();
@@ -4718,7 +4720,7 @@
             try { TR.hq.scenePlace('player', { show: false }); } catch (e) {}   // (mondo 11-13: "I am already standing by the door before sedaniel drops me off")
             const t0 = performance.now();
             const go = () => {
-                if (state.gameState !== GS.HQ || _hqSuspended || _hqCurRoom !== _INTRO_ROOM) { window._ewIntroLive = false; return; }
+                if (state.gameState !== GS.HQ || _hqSuspended || _hqCurRoom !== _INTRO_ROOM) { window._ewIntroLive = false; window._ewIntroChain = false; return; }
                 let up = false; try { up = here() && TR.hq.sceneReady('player') && TR.hq.sceneReady('sedaniel'); } catch (e) { up = here(); }   // (the officer's clips too: no bind pose at the car)
                 if (!up && performance.now() - t0 < 20000) { setTimeout(go, 250); return; }
                 let ok = false;
@@ -4996,35 +4998,81 @@
            The scenes in play order on the left, every shot of the picked scene on the right: type in a line and it is changed
            (yellow, the shipped words under it, RESET), add a line after a shot, cut one, split one at the cursor; any number
            of tagged notes per shot and one for the whole scene; PLAY FROM HERE runs the journal's own replay from that shot
-           (in the building, on a part of the quest already finished). EXPORT FOR CLAUDE saves the file and copies the text.
+           (from anywhere, whatever the quest's progress: _sedPlay). EXPORT FOR CLAUDE saves the file and copies the text.
            All of it is data.js's record (sceneEd*: localStorage, his device only, viewer-local: RULE #2 has nothing to
            mirror); typing never redraws the page (the caret stays), only the buttons do. ══ */
         let _sedCur = null, _sedCaret = null, _sedMsg = '';
         const _sedEl = () => document.getElementById('ewSceneEd');
         function _sedInHq() { try { return state.gameState === GS.HQ; } catch (e) { return false; } }   // the pause menu over the building counts: PLAY closes it first
+        /* PLAY FROM THE EDITOR, ANYWHERE (2026-11-15, mondo: "obviously if I need a cutscene editor i need to be able to play the
+           cutscenes from it. Put the playing the scenes from the quests tab into the cutscene editor"): every scene plays from
+           the editor wherever it was opened and whatever the quest's progress. From the menu the building is entered first
+           (the arrival room, no opening, no save touched), then the journal's own replay runs: it loads the scene's room,
+           stands its cast and plays it. While it runs `window._ewSceneEdPlay` is up: no room scene of the live quest starts
+           and NO quest event is filed (a profile mid-quest is left exactly where it was). A fight's opening scene plays ALONE
+           (battle.js `sceneOnly: 'scene'`: no fight after it). When the scene is over and the building stands again, the
+           editor comes back up on that scene, over the pause menu. */
         function _sedCanPlay(sc) {   // '' = it can play now, else why not
-            if (!sc || !sc.play) return 'THIS SCENE HAS NO REPLAY YET';
-            if (!_sedInHq()) return 'TO PLAY A SCENE, OPEN THE EDITOR IN STORY MODE: PAUSE > QUESTS > EDIT';
-            if (!window.EWScene || window.EW_NO_CUTSCENES) return 'CUTSCENES ARE SWITCHED OFF';
-            let q = null;
-            try { const J = window.questJournal(_hqProfile()); q = J ? J.active.concat(J.completed).find(x => x.quest === sc.need.quest) : null; } catch (e) { q = null; }
-            if (!q) return 'THIS QUEST HAS NOT STARTED ON THIS PROFILE';
-            if (sc.need.stage) { const sd = q.stages.find(x => x.id === sc.need.stage); if (!sd || !sd.done) return 'FINISH THIS PART OF THE QUEST ONCE, THEN IT REPLAYS'; }
+            if (!sc || !sc.play) return 'THIS SCENE HAS NO WAY TO PLAY YET';
+            if (!window.EWScene || !window.EWCine || window.EW_NO_CUTSCENES) return 'CUTSCENES ARE SWITCHED OFF';
+            try { if (typeof window.isOnlineMatch === 'function' && window.isOnlineMatch()) return 'NOT DURING AN ONLINE MATCH'; } catch (e) {}
+            try { if ([GS.BATTLE, GS.LOBBY, GS.POST_MATCH].indexOf(state.gameState) >= 0) return 'LEAVE THE MATCH FIRST, THEN PLAY THE SCENE'; } catch (e) {}
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq) return 'THE BUILDING IS NOT LOADED YET, TRY AGAIN IN A MOMENT';
             return '';
         }
+        let _sedRun = null;
+        function _sedRunEnd(reopen) {
+            const r = _sedRun; _sedRun = null; window._ewSceneEdPlay = false;
+            try { window.EWScene.from(null); } catch (e) {}
+            if (r && r.timer) clearInterval(r.timer);
+            if (!r || !reopen) return;
+            try { if (state.gameState === GS.HQ) { window._hqOpenPause('quests'); _sedOpen(r.id); } } catch (e) { console.warn('[SCENE ED] the editor did not come back', e); }
+        }
         function _sedPlay(id, beat) {
-            const sc = window.sceneEdList().find(x => x.id === id); if (_sedCanPlay(sc)) { try { playSfx('uiError'); } catch (e) {} return false; }
+            const sc = window.sceneEdList().find(x => x.id === id); if (_sedCanPlay(sc) || _sedRun) { try { playSfx('uiError'); } catch (e) {} return false; }
+            const fail = (why) => {
+                console.warn('[SCENE ED] ' + id + ' did not start: ' + why);
+                try { window.EWScene.from(null); } catch (e) {}
+                _sedRunEnd(false);
+                try { playSfx('uiError'); _hqToast('<b>THE SCENE DID NOT START</b><span>' + _hqEsc(String(why).toUpperCase()) + '</span>', 4200); } catch (e) {}
+                if (state.gameState === GS.HQ) { try { window._hqOpenPause('quests'); } catch (e) {} }
+                _sedOpen(id); _sedSay('THE SCENE DID NOT START: ' + String(why).toUpperCase());
+            };
+            const go = () => {
+                if (!_sedRun || _sedRun.id !== id) return;
+                let ok = false;
+                try {
+                    if (sc.play.kind === 'intro') ok = _introReplay();
+                    else if (sc.play.kind === 'stage') ok = _questStageReplay(sc.play.quest, sc.play.stage);
+                    else ok = window._questFightGo(sc.play.fight, { replay: true, only: sc.play.only || 'scene' });
+                } catch (e) { console.warn('[SCENE ED] play', e); ok = false; }
+                if (!ok) fail('the building was busy, try again');
+            };
             try { window.EWScene.from(id, beat | 0, sc.play.chain || null); } catch (e) {}
             _sedClose();
             try { if (typeof window._hqClosePause === 'function') window._hqClosePause(); } catch (e) {}
+            window._ewSceneEdPlay = true;
+            const R = _sedRun = { id: id, t0: performance.now(), seen: false, lastOn: 0, timer: 0 };
+            /* the watch: the scene was on, it is over, the building stands again and nothing is loading -> the editor comes back */
+            R.timer = setInterval(() => {
+                if (_sedRun !== R) { clearInterval(R.timer); return; }
+                const now = performance.now(); let on = false; try { on = !!(window.EWScene && window.EWScene.on); } catch (e) {}
+                if (on) { R.seen = true; R.lastOn = now; return; }
+                const card = document.getElementById('hqLoad'), loading = !!(card && card.style.display !== 'none');
+                if (!R.seen) { if (loading || state.gameState === GS.BATTLE) R.t0 = now; else if (now - R.t0 > 90000) fail('it took too long to start'); return; }   // a load in progress never times out
+                if (loading || window._ewIntroLive || window._ewIntroChain || _questReplayBusy || _questTalkBusy) { R.lastOn = now; return; }
+                let stands = true; try { stands = !!ThreeRenderer.hq.sceneReady('player'); } catch (e) { stands = true; }   // the room the scene went back to is up (a quiet entry shows no load card)
+                if (state.gameState === GS.HQ && !stands && now - R.lastOn < 30000) return;
+                if (state.gameState === GS.HQ && !_hqSuspended && now - R.lastOn > 2500) _sedRunEnd(true);
+                else if (state.gameState === GS.HQ && _hqSuspended && now - R.lastOn > 4000) _sedRunEnd(true);   // something paused the building under it: the run is over, never left hanging
+                else if (state.gameState !== GS.HQ && state.gameState !== GS.BATTLE && now - R.lastOn > 4000) _sedRunEnd(false);   // he left for the menu
+            }, 400);
+            if (state.gameState === GS.HQ) { setTimeout(go, 60); return true; }
+            /* from the menu: into the building first (the arrival room; an explicit room = no opening, no resume) */
             let ok = false;
-            try {
-                if (sc.play.kind === 'intro') ok = _introReplay();
-                else if (sc.play.kind === 'stage') ok = _questStageReplay(sc.play.quest, sc.play.stage);
-                else ok = window._questFightGo(sc.play.fight, { replay: true, only: sc.play.only });
-            } catch (e) { console.warn('[SCENE ED] play', e); ok = false; }
-            if (!ok) { try { window.EWScene.from(null); playSfx('uiError'); _hqToast('<b>THE SCENE DID NOT START</b><span>TRY AGAIN IN A MOMENT</span>', 3200); } catch (e) {} }
-            return !!ok;
+            try { ok = !!window._hqEnter({ from: 'play', room: _hqArrivalRoom(), quiet: true, onReady: () => setTimeout(go, 700) }); } catch (e) { console.warn('[SCENE ED] the way in', e); ok = false; }
+            if (!ok) { fail('the building could not be entered'); return false; }
+            return true;
         }
         function _sedCountsText(c) { return c.lines + (c.lines === 1 ? ' LINE CHANGED' : ' LINES CHANGED') + ' · ' + c.notes + (c.notes === 1 ? ' NOTE' : ' NOTES'); }
         function _sedSceneSmall(id) { const c = window.sceneEdCounts(id); return (c.lines || c.notes) ? _sedCountsText(c) : ''; }
@@ -5071,7 +5119,7 @@
                 + list.map(x => { const sm = _sedSceneSmall(x.id); return `<button type="button" class="sed-sc${x.id === sc.id ? ' on' : ''}" data-sed="scene" data-id="${_hqEsc(x.id)}">${_hqEsc(String(x.title).toUpperCase())}<small data-small="${_hqEsc(x.id)}">${_hqEsc(sm)}</small></button>`; }).join('') + '</div>'
                 + `<div class="sed-ttl">NOTE FOR THE WHOLE SCENE</div><textarea class="note" data-snote="1" rows="4" spellcheck="true" placeholder="Anything about the scene as a whole">${_hqEsc((E && E.note) || '')}</textarea>`
                 + `<div class="sed-acts"><button type="button" class="sed-btn ok" data-sed="play" data-i="0"${why ? ' disabled' : ''}>▸ PLAY THIS SCENE</button></div>`
-                + (why ? `<div class="sed-mini">${_hqEsc(why)}</div>` : '')
+                + `<div class="sed-mini">${_hqEsc(why || (_sedInHq() ? 'IT PLAYS HERE AND THE EDITOR COMES BACK WHEN IT ENDS.' : 'IT LOADS THE BUILDING, PLAYS THE SCENE, THEN THE EDITOR COMES BACK.'))}</div>`
                 + `<div class="sed-acts"><button type="button" class="sed-chip" data-sed="clear" data-what="notes">CLEAR THIS SCENE'S NOTES</button><button type="button" class="sed-chip" data-sed="clear" data-what="lines">RESET THIS SCENE'S LINES</button></div></div>`;
             h += `<div class="sed-win sed-main" data-id="${_hqEsc(sc.id)}"><div class="sed-ttl">${_hqEsc(String(sc.title).toUpperCase())} · ${row.beats.length} SHOTS · ${nLines} LINES</div>`
                 + row.beats.map((b, i) => _sedRowHtml(sc.id, row, E, i, !why)).join('') + '</div>';
@@ -5185,12 +5233,14 @@
                 ['mousedown', 'mouseup', 'wheel', 'contextmenu', 'pointerdown', 'pointerup', 'dblclick'].forEach(t => el.addEventListener(t, ev => ev.stopPropagation()));
                 document.body.appendChild(el);
             }
-            try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.sceneFreePointer) ThreeRenderer.hq.sceneFreePointer(); } catch (e) {}   // (a plain exitPointerLock reads as ESC in the building)
             _sedMsg = ''; _sedRender();
             return true;
         }
         function _sedClose() { const el = _sedEl(); if (el && el.parentNode) el.parentNode.removeChild(el); return true; }
-        window.EWSceneEd = { open: _sedOpen, close: _sedClose, play: _sedPlay, get on() { return !!_sedEl(); } };
+        window.EWSceneEd = { open: _sedOpen, close: _sedClose, play: _sedPlay, get on() { return !!_sedEl(); },
+            /* dev: what an editor play is waiting on */
+            run: () => { const c = document.getElementById('hqLoad'); return _sedRun ? { id: _sedRun.id, seen: _sedRun.seen, scene: !!(window.EWScene && window.EWScene.on), loading: !!(c && c.style.display !== 'none'), intro: !!window._ewIntroLive, chain: !!window._ewIntroChain, replay: _questReplayBusy, talk: _questTalkBusy, suspended: _hqSuspended, gs: state.gameState, room: _hqCurRoom } : null; } };
         if (!window._sedWired) {
             window._sedWired = true;
             document.addEventListener('click', (e) => {
@@ -10414,7 +10464,7 @@
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._goToSpellLibrary()">Open Spell Library</button>
                         </div>
-                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Cutscene Editor — change any line of a story cutscene (it shows in the replay at once, on this device), write camera / acting / timing notes on any shot, then export it all for Claude to make live. To play a scene from it, open it in story mode: Pause &gt; QUESTS &gt; EDIT.</div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Cutscene Editor — change any line of a story cutscene (it shows in the replay at once, on this device), write camera / acting / timing notes on any shot, then export it all for Claude to make live. Every scene plays straight from it, here or in the building.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window.EWSceneEd && window.EWSceneEd.open()">Open Cutscene Editor</button>
                         </div>

@@ -48878,8 +48878,27 @@ const ThreeRenderer = (function () {
             var rearm = !quad && !shadowPass && ewDraw && this._renderObjectFunction === null;
             if (rearm) this._renderObjectFunction = ewDraw;
             if (!quad) depth++;
+            /* THE SUN'S OWN CHUNKS (2026-11-15, mondo's F3 walking Disaster City: "shadow: bundle replays 8.7" ms, the top line of
+               the frame): the sun's shadow replayed every chunk the CAMERA sees (out to 260 m) though its map covers the ground
+               round the walker. A chunk whose sphere is outside the shadow camera's box is hidden for that one render: nothing in
+               it can land in the map, so the shadow is the same. Every chunk again: window.EW_SHADOW_CHUNK_ALL. */
+            var sunHid = null;
+            if (shadowPass && cam && cam.isOrthographicCamera && _hq && _hq.ckList && _hq.ckList.length && _hq.scene === sc && !window.EW_SHADOW_CHUNK_ALL) {
+                try {
+                    var sfr = _ewSunFr || (_ewSunFr = new THREE.Frustum()), sm = _ewSunM || (_ewSunM = new THREE.Matrix4()), sL = _hq.ckList;
+                    cam.updateMatrixWorld(); cam.matrixWorldInverse.copy(cam.matrixWorld).invert();
+                    sm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+                    sfr.setFromProjectionMatrix(sm, cam.coordinateSystem);
+                    for (var si = 0; si < sL.length; si++) {
+                        var sg = sL[si];
+                        if (sg.visible && sg._ew_ckSph && !sfr.intersectsSphere(sg._ew_ckSph)) { sg.visible = false; (sunHid || (sunHid = [])).push(sg); }
+                    }
+                    _ewSunStat.seen = sL.length; _ewSunStat.hid = sunHid ? sunHid.length : 0;
+                } catch (eS) { }
+            }
             try { return rawRender.apply(this, arguments); }
             finally {
+                if (sunHid) for (var sj = 0; sj < sunHid.length; sj++) sunHid[sj].visible = true;
                 if (rearm) this._renderObjectFunction = null;
                 if (unb) for (var uj = 0; uj < unb.length; uj++) unb[uj].isBundleGroup = true;
                 if (!quad) depth--;
@@ -52150,7 +52169,7 @@ const ThreeRenderer = (function () {
         if (S.bvh) L.push('Pick (raycasts) ' + S.bvh.rays.toFixed(0) + '/s · ' + S.bvh.ms.toFixed(1) + ' ms/s · BVH ' + (S.bvh.on ? S.bvh.trees + ' trees (' + _lensFmtN(S.bvh.tris) + ' tris, ' + Math.round(S.bvh.buildMs) + ' ms to build)' + (S.bvh.slow ? ' · ' + S.bvh.slow + ' plain' : '') + (S.bvh.fails ? ' · ' + S.bvh.fails + ' failed' : '') : 'off') + ((S.bvh.skinOut || S.bvh.skinIn) ? ' · skinned ' + S.bvh.skinOut.toFixed(0) + '/s past their pose box, ' + S.bvh.skinIn.toFixed(0) + '/s tested' : ''));
         if (S.text) L.push('Text (HQ plates) ' + (S.text.cv ? 'canvas (node renderer)' : S.text.on ? 'troika' : (S.text.lib ? 'CSS2D (switched off)' : 'CSS2D (troika not loaded)')) + ' · ' + S.text.gpu + ' on the GPU · ' + S.text.css + ' CSS2D');
         try { var _fs = (typeof ThreeVFX !== 'undefined' && ThreeVFX.fxStats) ? ThreeVFX.fxStats() : null; if (_fs && (_fs.live || _fs.groups)) L.push('Particles ' + _fs.live + ' live · ' + _fs.draws + ' draws' + (_fs.batched ? ' (batched, ' + _fs.groups + ' kinds seen)' : ' (one per particle)') + (_fs.quarks && (_fs.quarks.on || _fs.quarks.made) ? ' · quarks layer ' + (_fs.quarks.on ? _fs.quarks.state : 'off') + ', ' + _fs.quarks.live + ' systems live' : '')); } catch (e) {}   // R7
-        if (S.chunks) L.push('Chunks' + (S.chunks.off ? ' (cull off)' : '') + ': fence plots ' + S.chunks.fencesDrawn + '/' + S.chunks.fences + ' drawn · prop cells ' + S.chunks.cellsDrawn + '/' + S.chunks.cells + ' drawn' + (S.chunks.props || S.chunks.rooms ? ' · prop plots ' + S.chunks.propsDrawn + '/' + S.chunks.props + ' · rooms ' + S.chunks.roomsDrawn + '/' + S.chunks.rooms : ''));
+        if (S.chunks) L.push('Chunks' + (S.chunks.off ? ' (cull off)' : '') + ': fence plots ' + S.chunks.fencesDrawn + '/' + S.chunks.fences + ' drawn · prop cells ' + S.chunks.cellsDrawn + '/' + S.chunks.cells + ' drawn' + (S.chunks.props || S.chunks.rooms ? ' · prop plots ' + S.chunks.propsDrawn + '/' + S.chunks.props + ' · rooms ' + S.chunks.roomsDrawn + '/' + S.chunks.rooms : '') + (S.chunks.sunHid ? ' · ' + S.chunks.sunHid + ' left out of the sun shadow' : ''));
         try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
             var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
             if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0));
@@ -72401,6 +72420,46 @@ const ThreeRenderer = (function () {
         marc:      { f: '"Marcellus SC"', w: 400, ls: 0.06 },         // the museum and the galleries
         rye:       { f: '"Rye"', w: 400, ls: 0.02 }                   // fight posters
     };
+    /* THE CITY MARKS (2026-11-15, mondo: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city
+       branding/logo for certain buildings or props or banners"; his OK on the branding sheet): drawn from plain shapes on the sign's own
+       canvas, no texture file. A seventh field on the key names the mark that stands left of the words
+       ('txt:WORDS|fg|bg|aspect|<v>|<font>|<mark>'); a lamp banner (field `v`) always carries the seal above its district's name.
+         seal   = the city seal (navy + gold, the skyline split by the bolt)      shield = the DC bolt shield (black + hazard yellow)
+         pd     = the D.C.P.D. badge (a gold shield, DC)                           fd     = the D.C.F.D. badge (a gold cross, DC)
+       The shapes are the approved sheet's own SVG paths, on a 100-unit radius. */
+    var _HQ_MARK_SKY = 'M-62 30 V6 h14 V-10 h12 V-30 h16 V-4 h8 V-44 h18 V-18 h10 V-2 h14 V12 h12 V30 Z';
+    var _HQ_MARK_BOLT = 'M6 -52 L-8 -12 L4 -12 L-10 34 L14 -20 L2 -20 L12 -52 Z';
+    var _HQ_MARK_SHIELD = 'M-78 -92 H78 V10 C78 60 40 88 0 100 C-40 88 -78 60 -78 10 Z';
+    var _HQ_MARK_CROSS = 'M-28 -92 H28 L20 -24 L92 -28 V28 L20 24 L28 92 H-28 L-20 24 L-92 28 V-28 L-20 -24 Z';
+    var _HQ_MARK_FONTS = { seal: ['600 20px "Oswald"'], shield: ['20px "Archivo Black"'], pd: ['20px "Archivo Black"'], fd: ['20px "Archivo Black"'] };
+    function _hqSignMark(g, id, cx, cy, r, bg) {
+        var k = r / 100, P = function (d) { return new Path2D(d); }, NAVY = '#14284a', GOLD = '#e8c860', INK = '#14161a', HAZ = '#f2c230';
+        var star = function (x, y, q) { g.beginPath(); for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, rr = (i % 2) ? q * 0.42 : q; g[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr); } g.closePath(); g.fill(); };
+        g.save(); g.translate(cx, cy); g.scale(k, k); g.textAlign = 'center'; g.textBaseline = 'alphabetic'; if ('letterSpacing' in g) g.letterSpacing = '0px';
+        if (id === 'seal') {
+            g.fillStyle = NAVY; g.beginPath(); g.arc(0, 0, 100, 0, Math.PI * 2); g.fill();
+            g.strokeStyle = GOLD; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 94, 0, Math.PI * 2); g.stroke();
+            g.fillStyle = GOLD; g.beginPath(); g.arc(0, 0, 66, 0, Math.PI * 2); g.fill();
+            g.save(); g.translate(0, 8); g.fillStyle = NAVY; g.fill(P(_HQ_MARK_SKY)); g.scale(0.95, 0.95); g.fillStyle = GOLD; g.fill(P(_HQ_MARK_BOLT)); g.restore();
+            g.fillStyle = GOLD;
+            if (r >= 44) {   // the ring's words, a letter at a time round the top (too small to read on a banner: the ring and stars alone)
+                var words = 'CITY OF DISASTER CITY', n = words.length, span = 2.5; g.font = '600 19px "Oswald", "Arial Narrow", Arial, sans-serif';
+                for (var i = 0; i < n; i++) { var a = -span / 2 + span * (i + 0.5) / n; g.save(); g.rotate(a); g.fillText(words.charAt(i), 0, -73); g.restore(); }
+            }
+            for (var j = -1; j <= 1; j++) { var b = j * 0.36; star(Math.sin(b) * 80, Math.cos(b) * 80, 8); }
+        } else if (id === 'shield') {
+            g.fillStyle = INK; g.strokeStyle = HAZ; g.lineWidth = 7; var sh = P(_HQ_MARK_SHIELD); g.fill(sh); g.stroke(sh);
+            g.fillStyle = HAZ; g.font = '74px "Archivo Black", "Arial Black", Arial, sans-serif'; g.fillText('D', -37, 24); g.fillText('C', 39, 24);
+            g.save(); g.translate(0, 6); g.scale(1.45, 1.45); var bo = P(_HQ_MARK_BOLT); g.lineJoin = 'round'; g.strokeStyle = INK; g.lineWidth = 5; g.stroke(bo); g.fillStyle = '#f4f1ea'; g.fill(bo); g.restore();
+        } else if (id === 'pd') {
+            g.fillStyle = bg || NAVY; g.strokeStyle = GOLD; g.lineWidth = 11; var ps = P(_HQ_MARK_SHIELD); g.fill(ps); g.stroke(ps);
+            g.fillStyle = GOLD; g.font = '62px "Archivo Black", "Arial Black", Arial, sans-serif'; g.fillText('DC', 0, 20);
+        } else if (id === 'fd') {
+            g.fillStyle = GOLD; g.fill(P(_HQ_MARK_CROSS)); g.fillStyle = bg || '#b3261e'; g.beginPath(); g.arc(0, 0, 36, 0, Math.PI * 2); g.fill();
+            g.fillStyle = GOLD; g.font = '40px "Archivo Black", "Arial Black", Arial, sans-serif'; g.fillText('DC', 0, 14);
+        }
+        g.restore();
+    }
     function _hqSignTitleCase(s) { return String(s).toLowerCase().replace(/(^|[^a-z0-9])([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); }); }
     var _hqArchSignCache = {};
     function _hqArchSignTex(key) {
@@ -72414,10 +72473,13 @@ const ThreeRenderer = (function () {
             bg2.fillStyle = bg || '#333333'; bg2.beginPath(); bg2.moveTo(8, 6); bg2.lineTo(bw - 8, 6); bg2.lineTo(bw - 8, bh - 2); bg2.lineTo(bw / 2, bh - 30); bg2.lineTo(8, bh - 2); bg2.closePath(); bg2.fill();
             bg2.fillStyle = 'rgba(255,255,255,0.16)'; bg2.fillRect(8, 14, bw - 16, 5); bg2.fillRect(8, bh - 58, bw - 16, 3);   // the cloth's two stitched bands
             bg2.fillStyle = '#23262e'; bg2.fillRect(0, 0, bw, 9);                                                              // the rod (the lamp post's own dark grey)
+            /* THE CITY MARKS: the seal hangs above the district's name (the name keeps the cloth below it) */
+            var bSeal = (bh >= 240) ? 34 : 0, bTop = bSeal ? (28 + bSeal * 2 + 6) : 24;
+            if (bSeal) _hqSignMark(bg2, 'seal', bw / 2, 28 + bSeal, bSeal, bg);
             var bpx = 78, bfont = function (v) { return '900 ' + v + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif'; }; bg2.font = bfont(bpx);
-            var btw = bg2.measureText(words).width || 1, room2 = bh - 30 - 34; bpx = Math.max(8, Math.floor(bpx * Math.min(1, room2 / btw)));
+            var btw = bg2.measureText(words).width || 1, room2 = bh - 30 - bTop - 10; bpx = Math.max(8, Math.floor(bpx * Math.min(1, room2 / btw)));
             bg2.font = bfont(bpx); bg2.textAlign = 'center'; bg2.textBaseline = 'middle'; bg2.fillStyle = fg;
-            bg2.save(); bg2.translate(bw / 2 + bpx * 0.04, 24 + room2 / 2); bg2.rotate(-Math.PI / 2); bg2.fillText(words, 0, 0); bg2.restore();
+            bg2.save(); bg2.translate(bw / 2 + bpx * 0.04, bTop + room2 / 2); bg2.rotate(-Math.PI / 2); bg2.fillText(words, 0, 0); bg2.restore();
             var bt = new THREE.CanvasTexture(bc); bt.anisotropy = 4;
             return (_hqArchSignCache[key] = bt);
         }
@@ -72429,21 +72491,25 @@ const ThreeRenderer = (function () {
         var paint = function (fam) {
             g.clearRect(0, 0, W, H); if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
             var px = 96, ls = (fam && F.ls && ('letterSpacing' in g)) ? F.ls : 0, txt = fam ? shown : words;
+            var mk = _HQ_MARK_FONTS[q[6]] ? q[6] : '', mr = mk ? H * 0.42 : 0, mgap = mk ? H * 0.2 : 0, room = W * 0.9 - (mk ? mr * 2 + mgap : 0);   // THE CITY MARKS: the mark stands left of the words, the pair centred on the board
             g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (px * ls) + 'px';
             var m = g.measureText(txt), tw = m.width || 1, th = ((m.actualBoundingBoxAscent || 0) + (m.actualBoundingBoxDescent || 0)) || px * 0.72;
-            px = Math.max(8, Math.floor(px * Math.min(1, (W * 0.9) / tw, fam ? (H * 0.8) / th : 1)));
+            px = Math.max(8, Math.floor(px * Math.min(1, room / tw, fam ? (H * 0.8) / th : 1)));
             g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (px * ls) + 'px';
             m = g.measureText(txt); g.fillStyle = fg;
             var up = m.actualBoundingBoxAscent, dn = m.actualBoundingBoxDescent;
-            g.fillText(txt, W / 2 + px * ls / 2, (up > 0 || dn > 0) ? H / 2 + (up - dn) / 2 : H / 2 + px * 0.36);
+            var tw2 = m.width || 1, left = (W - (mk ? mr * 2 + mgap : 0) - tw2) / 2, tcx = left + (mk ? mr * 2 + mgap : 0) + tw2 / 2;
+            g.fillText(txt, tcx + px * ls / 2, (up > 0 || dn > 0) ? H / 2 + (up - dn) / 2 : H / 2 + px * 0.36);
+            if (mk) _hqSignMark(g, mk, left + mr, H / 2, mr, bg);
         };
         var t = new THREE.CanvasTexture(c); t.anisotropy = 4;
         /* the typeface arrives from the font sheet index.html links; until it has, the sign stands in the old letters and is redrawn once */
-        var spec = F ? (F.w + ' 96px ' + F.f) : '', ready = false;
-        try { ready = !!(F && document.fonts && document.fonts.check(spec, shown)); } catch (e) { ready = false; }
+        var specs = (F ? [F.w + ' 96px ' + F.f] : []).concat(_HQ_MARK_FONTS[q[6]] || []), ready = !!F;
+        try { for (var si = 0; si < specs.length; si++) if (!(document.fonts && document.fonts.check(specs[si], shown + 'DC'))) ready = false; } catch (e) { ready = false; }
         paint(ready);
-        if (F && !ready && document.fonts && document.fonts.load) {
-            try { document.fonts.load(spec, shown).then(function (ff) { if (ff && ff.length) { paint(true); t.needsUpdate = true; } }, function () {}); } catch (e) {}
+        if (specs.length && !ready && document.fonts && document.fonts.load) {
+            try { Promise.all(specs.map(function (sp) { return document.fonts.load(sp, shown + 'DC').then(function (ff) { return ff && ff.length; }, function () { return false; }); }))
+                .then(function (ok) { if (F ? ok[0] : ok.some(Boolean)) { paint(!!F); t.needsUpdate = true; } }); } catch (e) {}
         }
         return (_hqArchSignCache[key] = t);
     }
@@ -72454,7 +72520,7 @@ const ThreeRenderer = (function () {
         paint:    { key: 'urban:PlasterWallPainted1a', avg: [0.525, 0.514, 0.494] },             // painted plaster / render: every light or coloured mass
         metal:    { key: 'calm_rivets',                avg: [0.424, 0.431, 0.443], shine: 26 },  // plate steel: the dark greys (frames, posts, rails, grilles)
         concrete: { key: 'calm_concrete',              avg: [0.365, 0.357, 0.345] },             // cast concrete: the mid greys (plinths, kerbs, slabs)
-        wood:     { key: 'calm_planks',                avg: [0.369, 0.298, 0.231] }              // boards: the browns (counters, shelves, benches, beams)
+        wood:     { key: 'urban:WoodGeneric1a',        avg: [0.396, 0.349, 0.290] }              // boards: the browns (counters, shelves, benches, beams). The Urban Decay pack's boards (mondo 11-15: no calm wood planks in the city)
     };
     function _hqArchSurface(tint) {
         var t = (tint == null) ? 0xffffff : (tint >>> 0), r = ((t >> 16) & 255) / 255, g = ((t >> 8) & 255) / 255, b = (t & 255) / 255;
@@ -73036,6 +73102,50 @@ const ThreeRenderer = (function () {
                 if (P.W.forest > 0.5) { if (c2 > thin * P.W.forest) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
                 else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
             }
+        }
+        /* THE HILL SIGN (2026-11-15, mondo: "the disaster city hollywood sign, there is already the mountains on one of the edges of disaster
+           city, use that/make that the hollywood hills"): `edges.sign = { side, at, d, text, px, lean: {i: k}, drop: {i: m} }` stands a word of
+           white block letters ON THE LAND, `d` metres past the edge of `side`, centred on `at` along it, every letter on the land's own height
+           under it, its face to the room. 5 x 7 blocks a letter, `px` metres a block; two legs behind each. ONE merged mesh, no light, no
+           fog (it stands in the far land's haze: its white is mixed toward the fog like the land's), so it costs the same far off as near. */
+        var SG = E.sign;
+        if (SG && SG.text) {
+            try {
+                var GL = { A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'], C: ['.####', '#....', '#....', '#....', '#....', '#....', '.####'], D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
+                    E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'], I: ['###', '.#.', '.#.', '.#.', '.#.', '.#.', '###'], R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
+                    S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'], T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'], Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
+                    O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'], L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'], H: ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+                    W: ['#...#', '#...#', '#...#', '#.#.#', '#.#.#', '##.##', '#...#'], N: ['#...#', '##..#', '#.#.#', '#..##', '#...#', '#...#', '#...#'] };
+                var spx = +SG.px || 2, sside = SG.side || 'e', sd0 = +SG.d || 30, sat = +SG.at || 0, gap = spx * 1.15, txt = String(SG.text).toUpperCase();
+                var total = 0; for (var si = 0; si < txt.length; si++) { var gq = GL[txt[si]]; total += (gq ? gq[0].length * spx : spx * 2.4) + gap; } total -= gap;
+                var vpos = [], vcol = [];
+                var horizS = (sside === 'n' || sside === 's'), outS = (sside === 'e' || sside === 's') ? 1 : -1, edgeS = sside === 'e' ? R.x1 : sside === 'w' ? R.x0 : sside === 's' ? R.z1 : R.z0;
+                var runS = (sside === 'e' || sside === 'n') ? 1 : -1;   // the word reads left to right for an eye inside the room: east side north -> south, north side west -> east
+                if (sside === 'n') runS = 1; if (sside === 's') runS = -1; if (sside === 'w') runS = -1;
+                var wpt = function (al, dd) { return horizS ? [al, edgeS + outS * dd] : [edgeS + outS * dd, al]; };
+                var boxS = function (al, dd, y, wAl, h, th, c) {   // a box: `wAl` along the side, `th` thick away from the room, on y .. y + h
+                    var a0 = al - wAl / 2, a1 = al + wAl / 2, p = [wpt(a0, dd), wpt(a1, dd), wpt(a1, dd + th), wpt(a0, dd + th)], y1 = y + h;
+                    var q = function (A, B, C2, D) { [A, B, C2, A, C2, D].forEach(function (v) { vpos.push(v[0] * U, v[1] * U, v[2] * U); vcol.push(c, c, c); }); };
+                    var lo = p.map(function (v) { return [v[0], y, v[1]]; }), hi = p.map(function (v) { return [v[0], y1, v[1]]; });
+                    q(lo[0], lo[1], hi[1], hi[0]); q(lo[1], lo[2], hi[2], hi[1]); q(lo[2], lo[3], hi[3], hi[2]); q(lo[3], lo[0], hi[0], hi[3]); q(hi[0], hi[1], hi[2], hi[3]);
+                };
+                var cur = -total / 2;
+                for (var li = 0; li < txt.length; li++) {
+                    var g = GL[txt[li]]; if (!g) { cur += spx * 2.4 + gap; continue; }
+                    var lw = g[0].length * spx, alC = sat + runS * (cur + lw / 2), wp = wpt(alC, sd0), land = F.at(wp[0], wp[1]).y;
+                    var yb = land + spx * 0.6 - ((SG.drop && +SG.drop[li]) || 0), ln = (SG.lean && +SG.lean[li]) || 0;
+                    for (var rr2 = 0; rr2 < g.length; rr2++) {
+                        var line = g[g.length - 1 - rr2], c0 = 0;
+                        while (c0 < line.length) { if (line[c0] !== '#') { c0++; continue; } var c1 = c0; while (c1 < line.length && line[c1] === '#') c1++;
+                            boxS(sat + runS * (cur + (c0 + c1) / 2 * spx + ln * rr2 * spx), sd0, yb + rr2 * spx, (c1 - c0) * spx, spx + 0.02, spx * 0.3, rr2 % 2 ? 0.95 : 1); c0 = c1; }
+                    }
+                    [0.5, g[0].length - 0.5].forEach(function (k) { var al2 = sat + runS * (cur + k * spx), w2 = wpt(al2, sd0 + spx * 0.9), l2 = F.at(w2[0], w2[1]).y; boxS(al2, sd0 + spx * 0.8, Math.min(l2, yb) - 1, spx * 0.22, Math.max(2, yb + g.length * spx * 0.7 - Math.min(l2, yb) + 1), spx * 0.22, 0.3); });
+                    cur += lw + gap;
+                }
+                var sgeo = new THREE.BufferGeometry(); sgeo.setAttribute('position', new THREE.Float32BufferAttribute(vpos, 3)); sgeo.setAttribute('color', new THREE.Float32BufferAttribute(vcol, 3)); sgeo.computeVertexNormals();
+                var smat = new THREE.MeshLambertMaterial({ color: new THREE.Color(0xffffff).lerp(fogC, 0.1), vertexColors: true, fog: false, side: THREE.DoubleSide }); smat._ew_hqEdgeLand = true;
+                var smesh = new THREE.Mesh(sgeo, smat); smesh.name = 'hq_edge_sign'; G.add(smesh);
+            } catch (e) { console.warn('[HQ] the hill sign failed', e); }
         }
         if (_hq) {
             _hq.edgeLand = { fn: F, pieces: pieces.length, trees: planted };
@@ -88913,6 +89023,7 @@ const ThreeRenderer = (function () {
         _hqStillDisarm(H.shellGroup); _hqStillDisarm(H.doorGroup);
         H.ckList = null; H.ckDrawn = 0;
     }
+    var _ewSunFr = null, _ewSunM = null, _ewSunStat = { seen: 0, hid: 0 };   // THE SUN'S OWN CHUNKS
     function _hqChunkStats(H) {
         var L = H && H.ckList; if (!L || !L.length) return null;
         var f = 0, fd = 0, c = 0, cd = 0, p = 0, pd = 0, b = 0, bd = 0;
@@ -88922,7 +89033,7 @@ const ThreeRenderer = (function () {
             else if (g._ew_pChunk) { if (g._ew_pcBld) { b++; if (!g._ew_ckOut) bd++; } else { p++; if (!g._ew_ckOut) pd++; } }
             else { c++; if (!g._ew_ckOut) cd++; }
         }
-        return { fences: f, fencesDrawn: fd, cells: c, cellsDrawn: cd, props: p, propsDrawn: pd, rooms: b, roomsDrawn: bd, off: typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL };
+        return { fences: f, fencesDrawn: fd, cells: c, cellsDrawn: cd, props: p, propsDrawn: pd, rooms: b, roomsDrawn: bd, sunHid: _ewSunStat.hid, off: typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL };
     }
     /* ══ THE PROP CHUNKS + THE CLOSED ROOMS (2026-11-14, mondo in Disaster City after the interior passes, WebGPU on the Mac: 6.8 fps,
        3748 draws, "2996 site props (outside its bundle)") ══
@@ -89811,8 +89922,23 @@ const ThreeRenderer = (function () {
                     fl.position.set((Lt.x || 0) * U, ((S.h || 3) - 0.35) * U, (Lt.z || 0) * U); lg.add(fl);
                 });
             }
+            /* THE FIGHT'S OWN LAMPS (2026-11-15, mondo on Disaster City: "the transition from explore to battle was still terrible, takes
+               forever and drops to 0 fps"): every desk and table lamp of the ROOM got a point light here, and the city is one room with
+               67 of them, 500 m across. The fight lit 63 lamps where the walk lit 12, so the light rig grew at the switch and every
+               shader of the fight was built again with 64 lamps (about 290 builds on his Mac), for lamps hundreds of metres from the
+               board that light nothing in view. Now a lamp gets its light only when its prop is drawn at all (THE BATTLE RADIUS, keepM
+               from the board's rim), the nearest first, HQ_PROP_LIGHT_MAX at most. Every lamp again: window.EW_FIELD_LAMPS_ALL. */
+            var dlHR = _hqHandoverRules(), dlAll = !!W.EW_FIELD_LAMPS_ALL || !dlHR.radius;
+            var dlx0 = R.T.x0, dlx1 = R.T.x0 + R.T.W * R.T.C, dlz0 = R.T.z0, dlz1 = R.T.z0 + R.T.H * R.T.C, deskL = [];
             (room.props || []).forEach(function (pp) {
                 if (pp.key !== 'desk_lamp' && pp.key !== 'table_lamp') return;
+                var px = pp.x || 0, pz = pp.z || 0, ddx = Math.max(dlx0 - px, px - dlx1, 0), ddz = Math.max(dlz0 - pz, pz - dlz1, 0), dd = Math.sqrt(ddx * ddx + ddz * ddz);
+                if (!dlAll && dd > dlHR.keepM) return;
+                deskL.push({ pp: pp, d: dd, c: Math.hypot(px - (dlx0 + dlx1) / 2, pz - (dlz0 + dlz1) / 2) });
+            });
+            if (!dlAll) { deskL.sort(function (a, b) { return (a.d - b.d) || (a.c - b.c); }); if (deskL.length > lampMax) deskL.length = lampMax; }   // on the board first, the middle before the rim
+            deskL.forEach(function (e) {
+                var pp = e.pp;
                 var wl = new THREE.PointLight(0xffd9a0, 0.5, 5 * s, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); lg.add(wl);
             });
             _facilityNearGroup.add(lg);
@@ -91846,7 +91972,7 @@ const ThreeRenderer = (function () {
                 var out = !!(c.isCSS2DObject || c._ew_text || (c._ew_hqPart && drop[c._ew_hqPart]) || c._ew_hqMarker);
                 if (!out && !trueGround && isProp && !c._ew_hqWall && _hqBattleRoomCoverAt(R, c.position.x / U, c.position.z / U)) out = true;   // the column stands for it
                 if (!out) { var far = farOf(c); if (far) { out = true; if (far === 2) culledScenery++; else culledProps++; } }
-                if (out) { dropped++; try { _disposeR(c); } catch (e) {} return; }
+                if (out) { dropped++; if (heldOut) heldOut.push(c); else { try { _disposeR(c); } catch (e) {} } return; }
                 var plates = []; c.traverse(function (o) { if (o.isCSS2DObject || (o.name === 'hq_plate' && o._ew_text)) plates.push(o); });   // R6: the GPU plates too
                 plates.forEach(function (o) { if (o.parent) o.parent.remove(o); });
                 if (trueGround && c._ew_hqPart === 'ceil') { var ch = holder('hq_ceil'); ch.add(c); g.add(ch); _fieldCeilRegister(c, R, ts); kept++; return; }
@@ -91855,7 +91981,31 @@ const ThreeRenderer = (function () {
                 kept++;
             });
         };
+        /* THE KEPT KEEP THEIR OWN (2026-11-15, the city's hand-over: 1,942 pieces kept, 13,457 left behind): a piece left behind was
+           disposed on the spot, geometry and material — and the city's props are copies that SHARE both (one lamp post model, one
+           kerb material), so the pieces that stayed lost their GPU buffers, their pipelines and their bindings and made them all
+           again in the fight's first frames. Now the pieces left behind wait until the kept ones are known, and only what no kept
+           piece uses is disposed. As before: window.EW_FIELD_DISPOSE_ALL. */
+        var heldOut = (typeof window !== 'undefined' && window.EW_FIELD_DISPOSE_ALL) ? null : [];
         take(H.shellGroup, false); take(H.doorGroup, false); take(H.propGroup, true);
+        if (heldOut && heldOut.length) {
+            var keepRes = new Set();
+            g.traverse(function (o) {
+                if (o.geometry) keepRes.add(o.geometry);
+                if (o.material) { if (Array.isArray(o.material)) { for (var ki = 0; ki < o.material.length; ki++) keepRes.add(o.material[ki]); } else keepRes.add(o.material); }
+            });
+            var dispKeep = function (obj) {
+                if (obj.isCSS2DObject && obj.element && obj.element.parentNode) obj.element.parentNode.removeChild(obj.element);
+                if (obj.geometry && !obj.geometry._ew_shared && !keepRes.has(obj.geometry)) obj.geometry.dispose();
+                if (obj.material) {
+                    var dm = Array.isArray(obj.material) ? obj.material : [obj.material];
+                    for (var di = 0; di < dm.length; di++) if (dm[di] && !dm[di]._ew_shared && !keepRes.has(dm[di])) dm[di].dispose();
+                }
+                if (obj.children) for (var dc = obj.children.length - 1; dc >= 0; dc--) dispKeep(obj.children[dc]);
+            };
+            for (var ho = 0; ho < heldOut.length; ho++) { try { dispKeep(heldOut[ho]); } catch (e) {} }
+            heldOut.length = 0;
+        }
         g.traverse(function (o) {
             if (o.isMesh && !trueGround) { o.castShadow = false; o.receiveShadow = false; }
             if (!o.material) return;
@@ -94946,6 +95096,10 @@ const ThreeRenderer = (function () {
         },
         /* the car's shaft window streams at k times its speed (minus = the landings rise past: the car going down); 1 = back */
         sceneShaft: function (k) { if (!_hq) return false; _hq._shaftK = (+k || 0); return true; },
+        /* THE CUTSCENE EDITOR (2026-11-15): its notes bar and note box need the mouse while a scene plays. A lock that simply goes
+           away reads as the walker's ESC (the pause menu, _hqOnLockChange), which paused the building under the scene; a release
+           inside the stale window is ours and pauses nothing. */
+        sceneFreePointer: function () { if (!_hq) return false; _hqLockStaleAt = performance.now(); try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {} return true; },
         sceneReady: function (who) {
             if (!_hq || !who) return false;
             var ch = null;
