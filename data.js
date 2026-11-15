@@ -76733,6 +76733,7 @@ const PD_RULES = {
     turnMs: 1600, slideMs: 2200,
     chamberM: 7.0,          // the middle of a plot (squares 4-7): |x|, |z| < 7 m of its centre (pdWhere's `chamber`)
     wide: { inMs: 550, holdMs: 700, outMs: 650, tilt: 0.24, pad: 1.16 },   // THE WIDE VIEW: every move is shown from above the whole board (the eye rises, the plot moves, the eye comes back)
+    seamPad: 1.5,           // see pdSync
     hour: 13,               // the hour an open look stands at (its sky is locked there)
     lamps: 11,              // the point lights of a whole closed level, its props' own lights counted (the stage lights 12 at most: every lamp stays lit, nothing switches on as you walk)
     ambient: 1.5, lampK: 1.6,             // a closed look's room light is never under this (a plot has one or two lamps, not a room's dozen: the room light carries it)
@@ -77423,7 +77424,7 @@ function pdRoomDef(id, plotId) {
         else if (m.k === 'prop') prop(m.key, x, z, m, m.show);
         else if (m.k === 'act') {
             counter(m, x, z, { proc: 'pd_act', pdAct: m });
-            if (m.stand) { draw.push({ k: 'box', id: 'std_' + (m.id || draw.length), x, z, y: m.y3 || 0, w: 0.7, d: 0.7, h: 1.0, tex: S0.trim || wallTex, tu: 0.5, tv: 0.6, block: true, show: m.show || null }); prop(m.key, x, z, Object.assign({}, m, { y3: (m.y3 || 0) + 1.0 }), m.show); }
+            if (m.stand) { draw.push({ k: 'box', id: 'std_' + (m.id || draw.length), x, z, y: m.y3 || 0, w: 0.7, d: 0.7, h: 1.0, tex: S0.trim || wallTex, tu: 0.5, tv: 0.6, block: true, show: m.show || null }); prop(m.key, x, z, Object.assign({}, m, { y3: (m.y3 || 0) + 1.0 - (((DOOR_HQ.catalogue || {})[m.key] || {}).mount || 0) }), m.show); }   // (a wall piece hangs `mount` above its row's y)
             else prop(m.key, x, z, m, m.show);
         }
         else if (m.k === 'take') {
@@ -77488,7 +77489,9 @@ function pdInstall() {
    port's 7 m span). The world index and the stage's caches are dropped so the stage's own readers see it. */
 function pdSync(id) {
     const V = pdLevel(id), Z = V && HQ_WORLD.zones[V.zone]; if (!Z) return false;
-    const S = pdState(id), parts = {}, half = PD_RULES.sq;
+    /* the joined span is the 7 m doorway + the stage's own margin each side (it keeps a walker `pad` metres inside a span's ends:
+       without it the outer metre of every doorway was a wall you could not see; the plot's own walls end the doorway) */
+    const S = pdState(id), parts = {}, half = PD_RULES.sq + PD_RULES.seamPad;
     Object.keys(V.L.plots || {}).forEach(pid => {
         const F = pdFrame(S, pid);
         /* a plot that stands in no slot (a variant waiting to be swapped in) is parked far under the board, never joined */

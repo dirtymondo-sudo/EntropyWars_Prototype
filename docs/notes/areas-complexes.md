@@ -3096,3 +3096,41 @@ angel statue prop that appears stop to stop (no walk cycle, no golem body yet). 
 blocks, no rolling, no 1.75 m height steps. (4) Missing Channel has no drawn water, the pipe lights instead. (5) Rubble plots are
 plain paved blocks with a wreck. (6) The 3 x 3 model is the panel's drawing, the in-world table is a map table prop. (7) The plots
 have no decor pass and the closed looks are dim. (8) The world clock runs, so an open look can be at night.
+
+### PLOT DUNGEONS, THE SECOND PASS (2026-11-15, mondo: "there need to be buttons or levers or gears ... we dont even need this console thing")
+His complaints after the first four: text lists of moves in a console, one console moving everything, collision on the skateboard,
+lights switching on as you walk, no wide view when a plot moves. What changed (this supersedes the panel, the dial / console / model
+marks and limits 6-8 above):
+- **NO PANEL, NO LISTS.** The `dial` / `console` / `model` marks and map.js's board panel are gone. A move is a LEVER you pull:
+  the `lever` mark `{ k: 'lever', x, y, plot?, by | track | dir, y3?, no? }`. ONE lever = ONE move of ONE plot (its own unless
+  `plot` names another): `by: 1 | -1` a quarter turn left | right, `track: ['C3', 'B3', 'B2']` a slide along those slots (one slot
+  a pull, back at the ends; every slot of a track must be in the level's `vacant`), `dir` a slide that way. data.js `pdDoAct`
+  runs it (`A.move`), so a lever is an `act` like a valve. Its lamp and the strips at its plot's doors wear the plot's colour
+  (`pdTint`, PD_RULES.tints). A button or a bell is an `act` with `stand: true` (a drawn stand under a wall piece).
+- **YOU RIDE.** `pdMoveBlocked` no longer asks you to stand in the middle or to step off a sliding plot: the plot under your feet
+  is the frame you stand in. Only `ride: false` plots refuse (their levers stand on other plots). Levers are spread so you walk
+  (or ride) to each: see each level's comment in data.js.
+- **THE WIDE VIEW** (PD_RULES.wide; three-renderer.js `_hqPdWideCam`): on every move the eye rises over the whole board, the plot
+  moves, the eye waits and comes back. It is fixed to the BOARD (placed through the current part's frame of that frame), so a
+  plot you ride is seen turning. Ceilings and fog are put away while it is up. A second pull while it is up keeps it up.
+- **THE BOARD ROLLS ACROSS PLOTS.** `_hqStageCross` returned while riding, so a skater rolled into the next plot with the last
+  plot's collision (walls you pass through, walls you cannot see). In a pd room the crossing now runs on the board too
+  (`H.ride.hd` turns with the frame in `_hqStageSwap`).
+- **THE SEAM IS THE WHOLE DOORWAY.** The stage keeps a walker `pad` metres inside a joined span's ends, so the outer metre of
+  every 7 m doorway was a wall you could not see. `pdSync` now writes the span `PD_RULES.seamPad` wider each side.
+  RULE: a plot's edge is crossed through squares 5-6 only; `bake-dungeons.js` fails a walked edge square outside them
+  (a piece that is never walked says `edgeOk: true`).
+- **LIGHT.** The stage lights 12 point lights at most (the nearest), which is why a side lit up as you came near. A closed level
+  now has PD_RULES.lamps in all, its props' own lights counted (`pdPropLights`), so every lamp is always lit; the room light
+  carries the rest (PD_RULES.ambient 1.5, lampK 1.6). An open look is locked at PD_RULES.hour (13:00); the forest look takes
+  the city's day sky (`skyFrom`).
+- **COLLISION.** An `o` square is one cover piece on its centre with the piece's own blocker (a piece without one gets a box of
+  its own size): no more 7 m box round a small prop. Machine boxes are `block: true` on whole squares. A deck under the sky gets
+  railings where it ends at a drop. A lever / an act on a deck is found by HEIGHT (`pdY`), not by the room's floor level.
+- **The boards** were re-laid for it (street = two ferry plots, channel = ride one piece + call the other, door = ride the
+  stairwell, connect = walk the four turning floors, rail = a lever at each stage, worlds = marbles at the start + the junction's
+  levers further on, escort = the bell at the start + the hub's lever further on). `node bake-dungeons.js` searches levers only.
+- **Proven in the browser 11-15** (shots in /mnt/project-files/dungeons/proof2/): all ten start to exit on foot, with stretches
+  on the skateboard across seams (crypt, street, channel, connect, rail, root).
+- Still stand-in: fights, the Procession's guardian, flat Three Little Worlds, no drawn water, no decor pass. There is no UNDO /
+  RESET in the world: START OVER on the level list (or `PD.reset()`).
