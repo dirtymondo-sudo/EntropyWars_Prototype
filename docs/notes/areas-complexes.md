@@ -2605,6 +2605,21 @@ Every Civic arch row carries `y: 0` (the tool adds the building's base level). S
   wardrobe), the front room with the door's column clear. The Politician sleeps in the HOTEL after all (P08-00-B1 is a walk-in since THE
   INSIDES): a walled room two squares by two in the lobby's front corner, `psx_bed_2`. The Halfdemon: the Penthouse stair lobby's end column
   behind a wall, `royal_bed`. The residents' code finds any /bed|cot/ prop inside the home's footprint.
+- **LONDON (mondo 11-15: each district after a real city; the real-cities plan `/mnt/project-files/disaster-city-real-cities/plan.html`, his
+  "Build it as drawn" 12:32 UTC: Financial = London).** F.js: the Goblin Bank in Portland cream, its side walls windowless (blind panels),
+  bronze vault leaves (gunmetal sheet, bronze tint: never the gold key tinted) with studs, a deep stone arch round them; the bank offices'
+  stone core became a GOTHIC CLOCK TOWER (`clockTower`: shaft, ribs, lancet panels, a clock stage with four lit drawn faces = two `fan`
+  half-discs each, the second with a negative `h`, hands as boxes, a louvred belfry, pinnacles, a slate spire, a gilt finial; no sound);
+  the executive court's slab became a CURVED GLASS TOWER (dark glass cylinders swelling then rounded to a point, a MetalTruss1a `over`
+  shell = the diamond grid; at most 6 m round: it stands 6 m from the city's east edge; the glass lobby and its walk are unchanged; the
+  helipad, boardroom box and lift core went with the slab); the club's door black with a brass number (`txt:12`); every shop green
+  (0x1e4a38) with a shallow bay window and gilt letters (F-detail `letters` with the gold key); the taxi court's shelter black iron with
+  cresting and brackets, its four cabs `car_pack_7` in `paint: 'black'`; a brass plate and a black lamp bracket at every walk-in door
+  (`brassAndLamp` in `frontWithDoor`); black area railings along the terraces. `districts/F-london.js` stands the street: five red PHONE
+  BOXES from parts (blockers: on the middle of a free yard square beside a path, never before a door, a ghost wall each), a red pillar
+  POST BOX and three iron bollards with each (decor), stone urns at three walk-in doors, three cafe umbrellas over tables on the worker
+  cafe's north terrace (its back row; the row in front and the way in stay open). WAITS: the red double-deck bus on Bus Line 1 needs a
+  Meshy concept OK from mondo.
 - **THE INSIDES, SECOND PASS (2026-11-14, mondo 11-13 22:33: "after a district's first interior pass, do another interior pass ... make a list of
   models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere").**
   `districts/F-atmos.js` (required by F-inside.js; `atmos(T, g, I)` runs after `INS[id]`, its parts go into the same `dc:<id>:in` row).
