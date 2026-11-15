@@ -3177,3 +3177,35 @@ deep), Police (3 x 5: desk, cells with drawn bars), Time Bureau (3 x 4), Militar
   number_dispenser, now_serving_sign, brochure_rack, form_counter, ballot_box. Reused: high_bay_lamp, ships_bell, radio_console,
   evidence_board, map_table, marble_bust, wingback_chair, painting_portrait, crystal_chandelier, brass_orrery, banker_lamp. Originals,
   concepts, fronts sheet, plan sheet: project files disaster-city-civic/interiors2/.
+
+## DISASTER CITY, THE LANDMARKS — the old Downtown's pieces in the 144 plots (2026-11-15, mondo's OK 08:15 "Build it as drawn")
+mondo 11-15: "add a canal, like a little mini venice or san antonoio board walk, leading out to the ocean" · "add a parking deck and overpass" ·
+the Collapse "still fits among the other plots" · "Add whatever makes sense in a plot or district". The Grand Prix (the old ring road's lap
+race) is NOT built: he wants it as a SIDEQUEST after the orientation slice. All of it is `docs/disaster-city/districts/L.js` (file L: no district
+of its own; the bake loads it with the district files, after Bayside and Hero Plaza). Rerun `node bake-disaster-city.js`.
+- **THE CANAL** (Bayside, the row-11 plots' north yard, squares cy 133-134): two `plateau` rows with `sink: true, absY: true, h: -2.6`. The room's
+  one sea (`terrain.sea`, -1.45) stands in any ground sunk under it, INSIDE the plots too, so the canal is the bay's own water (no `stream`
+  row, no second water sheet). West avenue's kerb (cx 105) → the bay road (a CULVERT: its six squares stay solid, a dark arch in a stone face
+  either end) → under the boardwalk → through the sand and the shelf's bar to the deep (cx 154). North bank = a plank walk (cy 132, paint
+  `wood_planks`), south bank = the south road's kerb walk. Four footbridges + the boardwalk's bridge are `bridge` rows at y 0.3, thick 0.2
+  (a `deck` row is written into the ground = a DAM across the water; a slab at y 0 leaves a swimmer 1.7 m, under the 1.95 m headroom, so it
+  is a wall to him; 0.3 m is a step the walker and the residents take). A water stair at the west end and the beach are the ways out.
+  Moved, never dropped: the yard's palms and cordon pieces onto the banks, its two parked cars onto the deck, the sunbeds three squares up the
+  sand, Bayside's fourth beach ramp one square south (B.js RAMPS), the tool's infill shop on the mouth cut to one square, the plot fences that
+  crossed the yard cut back to the plot line, Bayside's sea-wall rail stopped either side of the mouth.
+- **THE PARKING DECK + THE OVERPASS** (Medical staging's south band, cx 126-131 · cy 141-142): a `plateau` at 3.5 m, a car `ramp` up its north
+  side from cx 123, `guard` rails, four cars on the roof, an `arch` row for its look (dark bays, PARKING). The overpass = one `bridge` row at
+  3.5 m from the roof over the south road and the canal to a one-square landing on the north walk, a stair east along the walk.
+  LESSONS: a one-square tier's rim reads low on the 0.875 m field, so the bridge runs to the landing's MIDDLE; a pack stair's side walls
+  block a bridge lane they cross, so the stair's top stops at the landing's edge. The ambulance and the tent stand west of the ramp.
+- **THE COLLAPSE** (Hero Plaza, Memorial walk P05-06, the west half; the memorial is untouched): a `hill` (the rubble mound) with stones, blocks,
+  two fallen pillars, two wrecks, three barrel fires, the tape, in the north-west quarter; THE TERRACE (3 x 2 squares at 3.5 m, a stair on its
+  north side) in the south-west quarter. NOT DONE YET: the Downtown fight boards are still cut from the old room
+  (`site_prebuilt_downtown_oldstreets`, HQ_ARENA_RULES within / picks); repointing the 12 x 12 to this plot = a bake-arenas.js run.
+- **THE SET PIECES**: fortune tent + high striker (Night market), subway cart (Rail service), flood masts at the canal's two ends, rowboats on
+  the water (a prop `y` under 1 is a lift over the ground: bed -2.6 + 0.98 = afloat).
+- **CHECKED OFFLINE ONLY** (no browser run: RULE #1c): `hqTerrainInfo` + `hqTerrainHeight` / `hqTerrainFluidAt` / `hqTerrainFeet` walked along
+  every new route in node (kerb → ramp → roof → overpass → landing → stair; the footbridges; the swim from the water stair along the canal;
+  the mouth to the bay and up the sand; the Collapse's stair and mound), the prop check clean (nothing left out, nothing new reported).
+  NOT SEEN ON SCREEN: the water's look in the canal, the culvert faces, the deck's bays and sign, the bridges' piers.
+- Maps: project files `disaster-city-old-pieces/` (plan_*.jpg = the approved plan, built_*.jpg = the baked rows drawn top-down).
