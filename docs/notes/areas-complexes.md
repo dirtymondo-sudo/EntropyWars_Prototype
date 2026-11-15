@@ -4354,3 +4354,30 @@ hangar and the ward were still the old BSP rooms and the pyramid had no inside. 
     kills it. What works: `--pre=` a filter that keeps only the props near the views (and drops the scatters and trees), then the flag.
     Not seen this way: the flamingos up close, the island's and the Reef's pieces, anything under the water (the sea is opaque from above).
 
+## THE DESERT'S INSIDES, THE LOOK PASS + THE TURNING TOMB DOOR (2026-11-15, second side)
+
+mondo: "yes, continue, and you can playtest to screenshot" (yes = the King's Chamber holds the door to the Turning Tomb).
+
+- **A DOOR INTO A DUNGEON (map.js, any room can use it):** a door whose action is `{ pd: '<level>', back: { room, at } }` enters that plot dungeon
+  (`window._pdDoor`); the panel's button is GO THROUGH, E walks straight in. Leaving the dungeon (`_pdLeave`) or solving it (2.6 s after the SOLVED
+  line) comes back through that door (`window._pdBack`), never to the main menu. Dungeons entered from Settings behave as before.
+  The pyramid's door: `turning`, the King's Chamber's south wall, level `tomb1`. Not walked in the browser (the door and its label were seen).
+- **SEEN IN THE BROWSER (playtest_city.js) and changed:**
+  - Hangar 18: the game draws `saucer_rig` as the 6 m landing-gear saucer, under 3 m tall, so the first build's 1.75 m test pit hid it. The pit is
+    gone; the saucer stands on the floor in its tape ring and the 3.5 m catwalk crosses over it. NOT confirmed on screen after the change (the
+    hangar probe crashed six times in a row).
+  - The carrier row for the leaves took its foot from the ground under the room's middle (the pit; in the pyramid, the mass): it carries `y: 0` now.
+  - The White Rooms: unlit plaster read grey and the window sheet read as dark mullions. The walls are lit a little by themselves (`glow`), the
+    glass is a plain pale pane (it reads opaque from most angles).
+  - The pyramid: ambient 0.8, thinner fog, roof slabs lit a little, both slopes 0.6 m wider than their passages (a black strip showed beside the
+    Gallery). Chambers, Gallery, Pit, the Cut, the entrance passage, the ladder and the Turning Tomb door all read.
+- **OPEN FINDING, NOT MINE TO CLOSE BLIND: NO DOOR LEAF DRAWS IN THE PROBE.** Every doorway shows its frame and no leaf. The room's 22 `hq_city_door`
+  groups exist and hold no mesh. The Desert's saloon (the first delivery's own city door) shows the same: 9 groups, no mesh, an open doorway.
+  So it is the shared city-door code (`_hqBuildTexDoors`) or the probe, not these rooms. The leaf files are fetched (they are in the probe's cache).
+  Check on a real machine: does the saloon's front door show a leaf?
+- **PROBE TRAPS LEARNED:** (1) the first one or two views of a run in the pyramid come out black (the room has not settled); put a throwaway view
+  first. (2) `ThreeRenderer.hq.dev.hqScene()` is the room's scene (`scene()` is the battle's). (3) The local server reads the checkout's freshness
+  once: when main moves 60 minutes on, it serves STALE CHECKOUT until you merge main AND restart it; the probe then says "page never ready".
+  (4) The ward crashed the headless browser every time while the telepath stood in it and never without him (the old ward had him too): shoot
+  that room with him taken out, ship it with him in. (5) The browser also dies at random; three tries a run is not always enough.
+
