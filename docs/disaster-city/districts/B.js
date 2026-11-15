@@ -898,7 +898,7 @@ const SECOND = {
         R.prop('sunglasses_spinner', cx(1) - 1.2, D / 2 - 0.75, 0);
         R.prop('beach_life_ring', 0.6, D / 2 - 0.42, 0, { y: 1.75 }); R.prop('beach_life_ring', W / 2 - 0.42, cz(3) - 1.3, 270, { y: 1.6 });
         [0, 0.29, 0.58].forEach(y => R.prop('beach_swim_ring', W / 2 - 0.92, cz(3) + 1.0, 0, { y }));
-        R.prop('beach_air_mattress_blue', W / 2 - 0.85, cz(2) + 1.1, 0); R.prop('beach_air_mattress_pink', W / 2 - 0.85, cz(2) + 1.1, 0, { y: 0.18 });
+        R.prop('beach_air_mattress_blue', W / 2 - 0.85, cz(2) + 1.1, 0); R.prop('beach_air_mattress_pink', W / 2 - 0.85, cz(2) + 1.1, 0, { y: 0.25 });
         R.prop('beach_cooler', cx(1) + 1.2, back + 0.4, 0);
         P.push(cyl(cx(1) - 1.2, 0, back + 0.55, 0.42, 0.55, A(trim(T.STEEL), { seg: 10, cap: false })));                                       // the bin of beach balls
         [[-0.12, -0.1], [0.14, 0.08], [-0.05, 0.16]].forEach((o, i) => R.prop('beach_ball', cx(1) - 1.2 + o[0], back + 0.55 + o[1], i * 40, { y: 0.25 + i * 0.12 }));

@@ -459,7 +459,7 @@ module.exports.build = function (api) {
         if (R.gallery) {   // the library's gallery: a walk one square wide over the back row of shelves, the stair in its own square
             const zb = oz - D / 2 + cd / 2, a = toWorld(ox - W / 2, zb), b = toWorld(ox + W / 2, zb); features.push({ k: 'bridge', id: ctx.id + '-gal', x0: a[0], z0: a[1], x1: b[0], z1: b[1], w: r3(cd), y: 3.5, plain: true, key: 'calm_planks' });
             const sx = ox + W / 2 - cw / 2, s0 = toWorld(sx, oz - D / 2 + 2 * cd), s1 = toWorld(sx, oz - D / 2 + cd); features.push({ k: 'ramp', id: ctx.id + '-galstair', x0: s0[0], z0: s0[1], x1: s1[0], z1: s1[1], w: r3(cw - 0.3), h0: 0, h1: 3.5, stairs: true });
-            box(ox, 3.5, zb + cd / 2 - 0.05, W - cw, 1.0, 0.08, ['calm_gunmetal', 0xb0b8c8]); for (let ci = 0; ci < nc; ci++) { const x = ox - W / 2 + (ci + 0.5) * cw; [-0.85, 0.85].forEach(q => prop('library_shelf_full', x + q, zb - cd / 2 + 0.55, 0, 0, true)); }
+            box(ox, 3.5, zb + cd / 2 - 0.05, W - cw, 1.0, 0.08, ['calm_gunmetal', 0xb0b8c8]); for (let ci = 0; ci < nc; ci++) { const x = ox - W / 2 + (ci + 0.5) * cw; [-0.85, 0.85].forEach(q => prop('library_shelf_full', ox + (x + q - ox) * (W / 2 - 1.17) / (W / 2 - cw / 2 + 0.85), zb - cd / 2 + 0.55, 0, 0, true)); }   /* the row drawn in a touch: its end shelves stood 22 cm in the side walls */
         }
         /* ── THE ATMOSPHERE (the second pass, mondo 11-13 22:33: "do another interior pass ... Focus on aesthetic, vibe, atmosphere for the
            interiors"). Each room: its own paint over the bare inside sheet (a wall coat, a dado, a skirting, a crown and a LIT ceiling: the

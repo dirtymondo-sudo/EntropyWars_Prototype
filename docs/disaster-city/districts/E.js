@@ -517,7 +517,7 @@ module.exports = { build: function (api) {
             const dd = Math.abs(r - (nR - 1) / 2) + Math.abs(c - (nC - 1) / 2); if (dd < bd) { bd = dd; best = r + ',' + c; } } if (S.hangOne && best) hangAt.add(best); }
         /* a catalogue prop ON THE ROOM'S FLOOR (`floor: true`: never on the ghost block over its square, nor the roof slab: three-renderer.js THE FLOOR UNDER IT);
            `o.y` = its height over the floor (a table top, a stage, a ceiling hang), written as the absolute height (the plot's level + y) */
-        const putProp = (key, wx, wz, face, o) => { const q = { key, x: r3(wx), z: r3(wz), face: ((Math.round(face) % 360) + 360) % 360, floor: true }; if (o && o.y != null) q.y = r3(gy + o.y); props.push(q); return q; };
+        const putProp = (key, wx, wz, face, o) => { const q = { key, x: r3(wx), z: r3(wz), face: ((Math.round(face) % 360) + 360) % 360, floor: true }; if (o && o.y != null) q.y = r3(o.y); props.push(q); return q; };   // (2026-11-15, THE INTERIOR POLISH: no `gy` here. The tool adds the ground under a prop's `y` itself (THE LEVELS), so every raised piece of the district stood one whole ground height too high: the concert hall's orchestra 12 m over its stage, above the roof)
         if (Math.abs(nC * C - fw * 2) > 0.1 || Math.abs(nR * C - fd * 2) > 0.1) { console.error('entertainment: the inside plan of', b.id, 'is', nC + 'x' + nR, 'squares, the shell', (fw * 2 / C) + 'x' + (fd * 2 / C)); return; }
         row.keyIn = S.keyIn; row.floorIn = S.floorIn; const parts = [], at = (c, r) => (r < 0 || r >= nR || c < 0 || c >= nC) ? '#' : g[r][c];
         const dc = Math.floor((lx + fw) / C); if (at(dc, nR - 1) !== '.') console.error('entertainment: the doorway square of', b.id, 'is not a walkway');

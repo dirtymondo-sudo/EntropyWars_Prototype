@@ -94627,6 +94627,17 @@ const ThreeRenderer = (function () {
                 _hq.cam.init = false; _hq.dirty = true;
                 return true;
             },
+            /* THE RESIDENTS, as a probe reads them (2026-11-15, the interior polish: "zombie floating in the air instead of sleeping on its bed"):
+               where each is by the clock, whether it has a body, whether it lies in its bed and on which clip */
+            residents: function (race) {
+                var S = _hq && _hq.res; if (!S) return null; var h = _hqClockHourNow();
+                return S.list.filter(function (s) { return !race || s.r.race === race; }).map(function (s) {
+                    var at = null; try { at = s.tl ? hqResidentAt(s.tl, h - s.lag) : null; } catch (e) {}
+                    var ch = s.ch, e = ch && ch.entry, run = []; try { Object.keys((e && e.actions) || {}).forEach(function (k) { var a = e.actions[k]; if (a && a.isRunning && a.isRunning() && a.getEffectiveWeight() > 0.01) run.push(k); }); } catch (e2) {}
+                    return { race: s.r.race, gender: s.gender, home: s.r.home, timeline: !!s.tl, want: !!s.want, loading: !!s.loading, body: !!ch, away: !!(ch && ch.away), asleep: !!(ch && ch._resSleep),
+                        at: at ? { x: at.x, z: at.z, vis: !!at.vis, sleep: !!at.sleep, top: at.top, k: at.k } : null, y: ch ? [ch.y, ch.visY] : null, hasSleepClip: !!(e && e.actions && e.actions.hqSleep), running: run, is3d: !!(e && e.is3d !== false && e.mixer) };
+                });
+            },
             /* aim the camera at a world point (metres) from where the walker stands */
             lookAt: function (x, z, pitch) {
                 if (!_hq || !_hq.player) return false;
