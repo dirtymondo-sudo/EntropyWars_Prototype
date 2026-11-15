@@ -83302,6 +83302,11 @@ const ThreeRenderer = (function () {
             ch.x = at.x; ch.z = at.z; ch.moving = !!at.moving;
             if (at.sleep) {   // THE BEDS: on the bed (its floor = the floor it walked in on), feet to the bed's foot
                 if (!ch._resSleep) { ch._resSleep = true; ch.yaw = ch.targetYaw = _hqHeadingYaw(at.face || 0); }
+                /* THE BED'S FLOOR (2026-11-15, mondo: "zombie floating in the air instead of sleeping on its bed"): a body given to a resident already
+                   in bed (the Zombie sleeps by day, so the officer always finds it asleep) took its height from the walker's feet AT the bed, and a bed
+                   stands on its own block or by a wall: the feet there are the block's / wall's top, 1 to 3 m up (39 of the city's 55 beds). The bed
+                   stands on the room's ground, so that is the sleeper's floor. */
+                if (_hq.terrain && typeof hqTerrainHeight === 'function') { var bedG = hqTerrainHeight(_hq.terrain, ch.x, ch.z); if (bedG !== null && isFinite(bedG)) ch.y = bedG; }
                 ch.visY = ch.y + (at.top || 0.5);
                 ch.entry.group.position.set(ch.x * U, ch.visY * U, ch.z * U);
                 if (ch._resBlk) { ch._resBlk.y = ch.y; ch._resBlk.top = ch.y + 2.6; }
