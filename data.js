@@ -29033,6 +29033,9 @@ function hqWoodsShell(o) {
         look: HQ_ROOM_LOOKS.woods,
     };
     Object.keys(o).forEach(k => { S[k] = o[k]; });
+    /* THE WOODS ON PLOTS (2026-11-15, mondo: "what is this big castle wall thing ... clipping into the bridges and I can walk through it"): the Camelot horizon landmark was placed
+       for the old 60 m rooms (dist 0.88 of the sky's radius); in the 252 m room it stood INSIDE the map. `noLandmarks` drops the sky's landmarks. */
+    if (o.noLandmarks) sky.landmarks = [];
     return S;
 }
 /* ── THE RANCH'S SHELL (the woods split, 2026-09-18) ─────────────────────
@@ -40787,7 +40790,7 @@ const DOOR_HQ = {
             label: 'THE WOODS',
             sub: 'FOUR DISTRICTS · 36 PLOTS',
             kind: 'box', site: 'prebuilt_fairy_forest', part: 'plots',
-            shell: hqWoodsShell({ w: 252, d: 252, plate: { x: -17.5, z: 71.75, y: 4.2 }, forest: { depth: 7, spacing: 3.5, rows: 2, start: 1.6, canopy: { to: 54 } }, atmos: {kind:'spores',zones:[{x0:-126,z0:-126,x1:-84,z1:-84,kind:'snow',n:150},{x0:-126,z0:-126,x1:0,z1:0,kind:'spores',color:13168784,n:300},{x0:0,z0:-126,x1:126,z1:0,kind:'motes',color:13150463,n:320},{x0:-126,z0:0,x1:0,z1:126,kind:'fireflies',n:260},{x0:0,z0:0,x1:126,z1:126,kind:'ash',color:9081988,speed:0.5,n:240}]} }),
+            shell: hqWoodsShell({ w: 252, d: 252, plate: { x: -17.5, z: 71.75, y: 4.2 }, forest: { depth: 7, spacing: 3.5, rows: 2, start: 1.6, canopy: { to: 54 } }, noLandmarks: true, atmos: {kind:'spores',zones:[{x0:-126,z0:-126,x1:-84,z1:-84,kind:'snow',n:150},{x0:-126,z0:-126,x1:0,z1:0,kind:'spores',color:13168784,n:300},{x0:0,z0:-126,x1:126,z1:0,kind:'motes',color:13150463,n:320},{x0:-126,z0:0,x1:0,z1:126,kind:'fireflies',n:260},{x0:0,z0:0,x1:126,z1:126,kind:'ash',color:9081988,speed:0.5,n:240}]} }),
             parti: 'Four districts of nine plots, every plot a twelve by twelve board: clearings joined by dirt paths through forest you cannot enter, climbing from the fence line to the snow.',
             typology: 'grid',
             plots: { cell: 3.5, plot: 42, n: 6, names: [['P00-00','The Snowline','T',8],['P01-00','The Shelf','T',7],['P02-00','The Falls','T',6],['P00-01','The Old Trees, north','T',5],['P01-01','The Meadow','T',5],['P02-01','The Creek, upper','T',4],['P00-02','The Old Trees, south','T',3],['P01-02','The Trail','T',3],['P02-02','The Creek, lower','T',2],['P03-00','The Mound','G',5],['P04-00','The Lake, west shore','G',4],['P05-00','The Lake, east shore','G',4],['P03-01','The Tents','G',4],['P04-01','The Stage','G',4],['P05-01','The Owl','G',4],['P03-02','The Fire','G',3],['P04-02','The Stones','G',3],['P05-02','The Dead Tree','G',3],['P00-03','The Trail West','C',2],['P01-03','The Old Tree','C',2],['P02-03','The Crossroads','C',2],['P00-04','Deep woods, west','C',1],['P01-04','The Campfire','C',1],['P02-04','The Stair','C',2],['P00-05','Deep woods, south','C',1],['P01-05','The Fence Line','C',0],['P02-05','Deep woods, east','C',1],['P03-03','The Culvert','M',1],['P04-03','The Channel, upper','M',1],['P05-03','The Storm Drain','M',0],['P03-04','The Cave Mouth','M',0],['P04-04','The Channel, lower','M',0],['P05-04','The Outfall','M',0],['P03-05','The Gully','M',0],['P04-05','The Pool','M',0],['P05-05','The Tunnel Way','M',0]] },
@@ -41181,9 +41184,9 @@ const DOOR_HQ = {
                 {id:'forest',wall:'s',x:-38.5,way:'hollowtree',label:'THE FAIRY FOREST',sub:'THE HOLLOW TREE · BACK · ROOM 420',action:{room:'site_prebuilt_fairy_forest',at:'woods'},desc:'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.'},
                 {id:'estate',wall:'s',x:-63,way:'trail',label:'THE ESTATE · THE CORN FIELDS',sub:'THE FENCE LINE · THE GATE',action:{room:'site_prebuilt_skinwalker_estate',at:'woods'},desc:'A fence, and a gate in it. The corn starts on the other side.'},
                 {id:'shasta',wall:'n',x:-122.5,way:'trail',label:'MOUNT SHASTA · THE TRAILHEAD',sub:'THE SNOWLINE · THE TRAIL UP',action:{room:'site_prebuilt_shasta_mountains',at:'woods'},desc:'The trail keeps climbing after the trees give up. There is snow on it from here.'},
-                {id:'lemuria',wall:'n',x:-70,way:'trail',secret:true,label:'AGARTHA · THE CRYSTAL CITY',sub:'LEMURIA · THE ADIT UNDER THE MOUNTAIN',action:{room:'site_prebuilt_agartha_crystalcity',at:'link_shasta_lemuria'},desc:'A draught out of the rock shelf, warmer than the snow above it.'},
-                {id:'lodge',wall:'e',z:-108.5,way:'trail',secret:true,label:'THE LODGE · THE HALLS',sub:'THE MEMBERS’ TUNNEL · UNDER THE LAWN',action:{room:'site_prebuilt_lodge_halls',at:'link_grove_lodge'},desc:'A tunnel under the lake shore that nobody admits to.'},
-                {id:'lookingglass',wall:'e',z:-17.5,way:'trail',secret:true,label:'THE LOOKING-GLASS · THE GARDEN',sub:'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE',action:{room:'site_prebuilt_camelot_kingdom',at:'deadtree'},desc:'Past the dead tree the ground is the wrong colour.'},
+                {id:'lemuria',wall:'n',x:-70,way:'tunnel',secret:true,label:'AGARTHA · THE CRYSTAL CITY',sub:'LEMURIA · THE ADIT UNDER THE MOUNTAIN',action:{room:'site_prebuilt_agartha_crystalcity',at:'link_shasta_lemuria'},desc:'A draught out of the rock shelf, warmer than the snow above it.'},
+                {id:'lodge',wall:'e',z:-108.5,way:'tunnel',secret:true,label:'THE LODGE · THE HALLS',sub:'THE MEMBERS’ TUNNEL · UNDER THE LAWN',action:{room:'site_prebuilt_lodge_halls',at:'link_grove_lodge'},desc:'A tunnel under the lake shore that nobody admits to.'},
+                {id:'lookingglass',wall:'e',z:-17.5,way:'hollowtree',secret:true,label:'THE LOOKING-GLASS · THE GARDEN',sub:'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE',action:{room:'site_prebuilt_camelot_kingdom',at:'deadtree'},desc:'Past the dead tree the ground is the wrong colour.'},
             ],
             counters: [],
             props: [
