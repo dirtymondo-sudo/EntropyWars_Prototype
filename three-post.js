@@ -1325,18 +1325,40 @@ const ThreePost = (function () {
         P._ew_pixAddHook = true;
     }
 
+    /* THE UNIT MASK (2026-11-15, mondo's Disaster City: the lens's "extra" pass redrew every prop, 178 draws / 353K triangles and
+       ~6 ms of JS a frame, with Pixelate off): the only reader of the mask then is THE BOLD UNIT LINE ("bolder lines on units,
+       same thinness everywhere else"), yet its static pass drew every model flagged _ew_pixelate — every Meshy prop of the room,
+       which so wore the units' bold line too. The scan also tags the still meshes that RIDE A UNIT (under a bone, or under the
+       group that holds a body flagged _ew_modelSkin: a held weapon, a hat, a rigid part of the model) on PIX_LAYER_UNIT, and the
+       style's own mask draws that layer in place of every prop. The Pixelate "models" scope still draws them all.
+       Old mask back, live: window.EW_STYLE_MASK_PROPS = true. */
+    var PIX_LAYER_UNIT = 9;
     function _scanPixelMaskTargets(sc) {
         sc = sc || _scene;   // the walk's own scene (renderScene) when the bold unit line asks for its bodies
         if (!sc) return;
-        sc.traverse(function (n) {
-            if (!n.isMesh || n._ew_pixelTagged) return;
+        var units = 0;
+        (function walk(n, inUnit) {
+            var ch = n.children, i;
+            if (n.isBone || n._ew_pixUnit) inUnit = true;
+            else if (!n.isScene && ch.length <= 24) {
+                for (i = 0; i < ch.length; i++) {
+                    var c = ch[i];
+                    if (c.isSkinnedMesh && c._ew_modelSkin && !c._ew_silhouette) {
+                        n._ew_pixUnit = true; inUnit = true;
+                        var gp = n.parent; if (gp && !gp.isScene && gp.children.length <= 24) gp._ew_pixUnit = true;   // the model's root: its rigid parts beside the armature
+                        break;
+                    }
+                }
+            }
             // Silhouette/x-ray twins share the model's geometry but are a UI
             // read-through, not the model itself — never mask them.
-            if (n._ew_silhouette) return;
-            if (!(n._ew_modelSkin || n._ew_pixelate)) return;
-            n._ew_pixelTagged = true;
-            n.layers.enable(n.isSkinnedMesh ? PIX_LAYER_SKIN : PIX_LAYER_STATIC);
-        });
+            if (n.isMesh && !n._ew_silhouette && (n._ew_modelSkin || n._ew_pixelate)) {
+                if (!n._ew_pixelTagged) { n._ew_pixelTagged = true; n.layers.enable(n.isSkinnedMesh ? PIX_LAYER_SKIN : PIX_LAYER_STATIC); }
+                if (inUnit && !n.isSkinnedMesh) { if (!n._ew_pixUnitTagged) { n._ew_pixUnitTagged = true; n.layers.enable(PIX_LAYER_UNIT); } units++; }
+            }
+            for (i = 0; i < ch.length; i++) walk(ch[i], inUnit);
+        })(sc, false);
+        sc._ew_pixUnitN = units;
     }
 
     // Renders the mask for this frame. Returns true when tMask is usable.
@@ -1347,8 +1369,9 @@ const ThreePost = (function () {
     // model anyway.
     /* panes (THE CLOSE-UP LOOK, renderPanes): [{ cam, x, y, w, h }] as shares of the target — each pane's models drawn into
        its own rect with its own camera, so the mask lines up with the split screen's picture */
-    function _renderPixelMask(cam, sc, panes) {
+    function _renderPixelMask(cam, sc, panes, unitOnly) {
         sc = sc || _scene;
+        if (unitOnly && typeof window !== 'undefined' && window.EW_STYLE_MASK_PROPS) unitOnly = false;
         if (!_renderer || !sc || !cam || typeof THREE === 'undefined') return false;
         try {
             var now = performance.now();
@@ -1427,9 +1450,21 @@ const ThreePost = (function () {
                         mcS.projectionMatrix.copy(mc.projectionMatrix); mcS.projectionMatrixInverse.copy(mc.projectionMatrixInverse);
                         _renderer._ew_maskBun = true;
                     }
+                    /* THE UNIT MASK: the style alone reads the mask = the still parts that ride a unit, no prop (a chunk holds none:
+                       three-renderer.js skips them whole, _ew_maskUnit); none in the scene = no draw at all */
+                    if (unitOnly) {
+                        _renderer._ew_maskBun = false;
+                        if (sc._ew_pixUnitN > 0) {
+                            mc.layers.set(PIX_LAYER_UNIT);
+                            sc.overrideMaterial = _maskMatStatic;
+                            _renderer._ew_maskUnit = true;
+                            try { _renderer.render(sc, mc); } finally { _renderer._ew_maskUnit = false; }
+                        }
+                    } else {
                     mcS.layers.set(PIX_LAYER_STATIC);
                     sc.overrideMaterial = _maskMatStatic;
                     try { _renderer.render(sc, mcS); } finally { _renderer._ew_maskBun = false; }
+                    }
                     /* THE GRASS TAKES NO INK: the grass field once more (the one mesh, drawn alone), its own material writing each tuft's
                        view depth (green + blue) in place of its colour (three-renderer.js _ggMaskU); the bodies' depth above hides a tuft behind one */
                     var gmU = _styleGrassU();
@@ -4571,7 +4606,7 @@ const ThreePost = (function () {
            line sat where the bodies had stood. Found 11-12 when the grass's mask never moved with the camera.) */
         var byRetro = _styleMaskRetro; _styleMaskRetro = false;
         if (byRetro && _maskRT) { _styleMaskAt = _styleFrame; return; }
-        if (_renderPixelMask(cam, sc || null, panes || null)) _styleMaskAt = _styleFrame;
+        if (_renderPixelMask(cam, sc || null, panes || null, true)) _styleMaskAt = _styleFrame;   // THE UNIT MASK: the units alone
     }
     function _styleMaskTex() { return (_styleMaskAt === _styleFrame && _maskRT && (_styleUnitK() > 1 || _styleGrassU())) ? _maskRT.texture : null; }
     function _styleCam() { return (_ssaoPass && _ssaoPass.camera) || null; }
