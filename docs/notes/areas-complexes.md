@@ -3220,3 +3220,14 @@ of its own; the bake loads it with the district files, after Bayside and Hero Pl
 - RULE: two `sink` rectangles that share an edge must OVERLAP, never just touch. Check offline: sample hqTerrainHeight over the whole
   field and list samples more than 1 m above both neighbours; after the fix only stairs / ramps (roof flights, the overpass stair, the
   parking deck ramp) are left.
+
+## DISASTER CITY, THE TREES STAND IN SOIL (2026-11-15, mondo: "trees are only put on grass or dirt or in a pot ... trees coming out of concrete dont make sense. Get rid of these trees")
+THE RULE lives in `bake-disaster-city.js` "THE TREES STAND IN SOIL", the LAST pass of the bake (after every district file, the tree move
+and the prop pass): an outdoor tree (`tree` feature, `palm_tree` prop) stands on a square whose ground sheet is soil (`SOIL` = `grass_2`,
+`desert`). A tree on any other sheet gets a SOIL BED: its whole 3.5 m square is repainted (grass; sand under a Bayside palm). Bayside's
+broadleaf rows on the cordon's concrete (the ones in his screenshot; the district's own tree list is empty) are REMOVED. A palm inside a
+building's walls ('I' square: the hotel lobby, the Private garden's own beds) is the district's indoor planting, left alone. The bake
+THROWS if a tree is still on paving, so a district thread that adds a tree anywhere just rebakes and gets a bed. Tally in the bake's
+print (`soil`): 11-15 = 31 removed (Cordon plaza 8, Mall concourse 8, Street market 7, Security office 5, East shops 3), 127 broadleaf
+beds, 38 palm beds; 399 trees left. No new art, no renderer change (the bed is the ground paint). Unseen in game (RULE #1c). Offer not
+built: a kerb stone / tree grate round a bed standing alone in a plaza.
