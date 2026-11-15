@@ -3580,3 +3580,13 @@ old textures too except for tilegeneric2a, the calm wood planks, the calm carpet
 - **NOT DONE**: the HQ Stair top is not wired to HQ; the cave inside and Room 333 are not wired from the new room; no owl statue model exists
   (stone altar + braziers stand in); the old Woods rooms are untouched and still the story path. NOT SEEN ON SCREEN (RULE #1c). Checked offline:
   compiles, all 36 plots reached on foot from the spawn, 8 door pads, every catalogue key and race exists.
+
+## DISASTER CITY, THE HILL SIGN'S LETTERS + THE CITY'S MANHOLE (2026-11-15)
+mondo 11-15 16:08: "go for it. can you also change the disaster city hollywood sign font, i dont want it to be pixel".
+- three-renderer.js _hqBuildEdgeLand THE HILL SIGN: the 5 x 7 block glyph table is gone. Each letter is one standing plane cut from a real
+  typeface (`edges.sign.font`, default Anton), all letters on one canvas, one mesh for the letters + one for the legs. Same fields as
+  before (side, at, d, text, px, lean, drop); a letter is still 7 x px tall on the land's height under it. Built when the font arrives.
+- THE CITY'S MANHOLE: in a room whose label holds DISASTER CITY, `street_drain` covers and the road-marking covers wear
+  `_hqCityManholeTex` (iron disc, skyline, DISASTER CITY / SEWER), one canvas texture for all. Other cities keep the pack's cover.
+- Seen: both pieces of real code in a bare page (/mnt/project-files/city-sign-fonts/hill_sign_real_code.jpg on a stand-in slope,
+  manhole_real_code.jpg), not in the game (RULE #1c).
