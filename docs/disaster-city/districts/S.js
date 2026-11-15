@@ -68,7 +68,7 @@ exports.apply = (ctx) => {
        arch row: cornices and copings, sills and lintels, door surrounds and steps, wall lamps, gutters and downpipes, lettered signs
        (three-renderer.js THE LETTERING), roof plant (AC units, vents, hatches, tanks), flags. Nothing at ground level stands out past 0.8 m. ═══ */
     const X = {};
-    const STEEL = 0x4a5058, DARKM = 0x2a2e34, CREAM = 0xf2ead8, LAMP = 0xffe2a0;
+    const LIMEST = 0xf2e6cc, STEEL = 0x4a5058, DARKM = 0x2a2e34, CREAM = 0xf2ead8, LAMP = 0xffe2a0;
     /* a point on a face: u = along it (left to right as you look at it), out = off the wall */
     const on = (face, w, d, u, out) => face === 'f' ? [u, d / 2 + out] : face === 'b' ? [-u, -d / 2 - out] : face === 'r' ? [w / 2 + out, -u] : [-w / 2 - out, u];
     const RY = { f: 0, b: 180, r: -90, l: 90 }, STEP = { f: [1, 0], b: [-1, 0], r: [0, -1], l: [0, 1] };
@@ -113,8 +113,10 @@ exports.apply = (ctx) => {
        roof plant behind the parapet */
     X['P04-08-B1'] = () => { const w = 28, d = 24.5, o = [];
         o.push(signAt(0, 8.72, 16.58, 0, 13, 1.05, 'MUSEUM OF THE CITY', '#3a3428', ''));
-        o.push({ s: 'box', p: [0, 0, 16.9], size: [21.5, 0.2, 0.9], key: MARBLE }, { s: 'box', p: [0, 0.2, 16.6], size: [21.5, 0.2, 0.5], key: MARBLE }, { s: 'box', p: [0, 0.36, 14.3], size: [20.6, 0.06, 4.1], key: MARBLE_D, uv: 1.75 });
-        o.push({ s: 'box', p: [-9.9, 8.3, 16.62], size: [0.3, 0.28, 0.16], key: WHITE, n: 34, step: [0.6, 0, 0] });
+        /* THE CHICAGO PASS (2026-11-15): the wide stairs, four limestone steps the width of the portico's middle, between the lions' plinths */
+        [0, 1, 2, 3].forEach(i => o.push({ s: 'box', p: [0, 0, 17.2 - i * 0.3], size: [20.9, 0.105 * (i + 1), 0.3], key: MARBLE, uv: 1.75 }));
+        o.push({ s: 'box', p: [0, 0.36, 14.3], size: [27.6, 0.06, 4.1], key: MARBLE_D, uv: 1.75 }, { s: 'box', p: [-10.55, 0, 15.95], size: [0.3, 0.75, 2.6], key: WHITE, tint: 0xfff0d6, n: 2, step: [21.1, 0, 0] });
+        o.push({ s: 'box', p: [-13.5, 8.3, 16.62], size: [0.3, 0.28, 0.16], key: WHITE, n: 46, step: [0.6, 0, 0] });
         o.push({ s: 'cyl', p: [0, 10.6, 16.72], r: 0.8, h: 0.08, seg: 16, tint: 0x8fd6b8 });
         ['l', 'r'].forEach(fc => { o.push(bx(fc, w, d, -10.25, 1.1, 0.7, 9.4, 0.22, { key: WHITE, tint: 0xf4e6c8, n: 7, st: 3.42 }), trim(fc, w, d, 2.6, 1.75, 5.6, 6, { key: WHITE }), bx(fc, w, d, -8.775, 8.36, 0.5, 0.5, 0.2, { key: WHITE, n: 6, st: 3.51 })); });
         o.push(bx('b', w, d, -12, 1.1, 0.7, 9.4, 0.22, { key: WHITE, tint: 0xf4e6c8, n: 9, st: 3 }), pipe('b', w, d, -13.4, 10.5), pipe('b', w, d, 13.4, 10.5), wallAC('b', w, d, -6, 3.2), wallAC('b', w, d, 6, 3.2));
@@ -125,7 +127,9 @@ exports.apply = (ctx) => {
         o.push({ s: 'box', p: [0, 12.3, 0], size: [0.3, 2.3, 0.3], key: WHITE, ring: { n: 12, r: 6.4, a0: 15 } });
         o.push({ s: 'cyl', p: [0, 19.7, 0], r: 1.3, h: 0.2, seg: 12, key: WHITE }, { s: 'cyl', p: [0, 22.9, 0], r: 0.05, h: 1.6, seg: 5, tint: 0xdddddd });
         o.push(surround('f', w, d, -2.625, 1.75, 2.3, WHITE, 0xffffff), lamp('f', w, d, -4.6, 2.4), lamp('f', w, d, -0.65, 2.4));
-        o.push({ s: 'box', p: [-10.9, 0, 15.4], size: [1.1, 1.1, 1.1], key: WHITE, n: 2, step: [21.8, 0, 0] }, { s: 'dome', p: [-10.9, 1.1, 15.4], r: 0.5, h: 0.7, seg: 8, rings: 3, tint: 0x8fd6b8, n: 2, step: [21.8, 0, 0] });
+        o.push({ s: 'box', p: [-10.5, 0.42, 13.4], size: [1.1, 1.1, 1.1], key: WHITE, n: 2, step: [21, 0, 0] }, { s: 'dome', p: [-10.5, 1.52, 13.4], r: 0.5, h: 0.7, seg: 8, rings: 3, tint: 0x8fd6b8, n: 2, step: [21, 0, 0] });
+        /* the lions' plinths: a limestone block on each square either side of the stairs (the square is the plinth's: a blocker, centred), a moulded cap */
+        o.push({ s: 'box', p: [-12.25, 0, 17.5], size: [3.0, 1.1, 2.5], key: WHITE, tint: 0xfff0d6, n: 2, step: [24.5, 0, 0] }, { s: 'box', p: [-12.25, 1.0, 17.5], size: [3.2, 0.12, 2.7], key: WHITE, n: 2, step: [24.5, 0, 0] }, { s: 'box', p: [-12.25, 0, 17.5], size: [3.2, 0.2, 2.7], key: MARBLE_D, n: 2, step: [24.5, 0, 0] });
         o.push(acRow(-10.5, 12.3, -9, 3, 1.9, 0), acRow(7, 12.3, -9, 2, 1.9, 0), hatch(10.5, 12.3, 8), mat(0, 12.3, -9, 26, 1.2), mat(10.5, 12.3, 0, 1.2, 17), vent(-10.5, 12.3, 8), vent(-9.2, 12.3, 8), duct(9.5, 12.3, -4.5, 6, true));
         return o; };
     /* THE GALLERY: the name on the glass box's fascia, black mullions and a sill on it, a steel coping, a lit door reveal, a cube on a plinth by
@@ -164,15 +168,17 @@ exports.apply = (ctx) => {
        walls' pilasters, downpipes; plant in the back corners of the roof terrace (off the roof walk's line) */
     X['P06-08-B1'] = () => { const w = 28.1, d = 28.1, RED = 0xe2473a, o = [];
         o.push(signAt(0, 3.45, 16.74, 0, 10.6, 1.0, 'WRESTLING TONIGHT', '#2a1410', '', 0));
-        o.push(signAt(0, 4.5, 16.74, 0, 7, 0.62, 'THE BIG TOP ARENA', '#8a1c14', ''));
+        o.push(signAt(0, 4.45, 16.74, 0, 7, 0.72, 'LUCHA LIBRE', '#c81e1e', '#f6efe0', 0.4));
+        /* the arena house's bulb marquee over the roof terrace: a dark board, LUCHA LIBRE in lit letters, a row of bulbs over and under it */
+        o.push({ s: 'box', p: [0, 7.6, 6.3], size: [8.6, 2.2, 0.3], tint: 0x1a1210 }, signAt(0, 7.85, 6.47, 0, 7.8, 1.5, 'LUCHA LIBRE', '#ffe7a0', '', 0.9),
+            { s: 'box', p: [-4.0, 7.62, 6.48], size: [0.16, 0.16, 0.1], tint: LAMP, glow: 1, n: 21, step: [0.4, 0, 0] }, { s: 'box', p: [-4.0, 9.56, 6.48], size: [0.16, 0.16, 0.1], tint: LAMP, glow: 1, n: 21, step: [0.4, 0, 0] });
         o.push({ s: 'box', p: [-5.6, 3.02, 16.76], size: [0.16, 0.16, 0.1], tint: LAMP, glow: 1, n: 29, step: [0.4, 0, 0] }, { s: 'box', p: [-5.6, 5.36, 16.76], size: [0.16, 0.16, 0.1], tint: LAMP, glow: 1, n: 29, step: [0.4, 0, 0] });
         o.push({ s: 'box', p: [-6.1, 2.98, 15.4], size: [0.12, 0.1, 2.7], tint: LAMP, glow: 0.8, n: 2, step: [12.2, 0, 0] });
         [-9.2, -6.4, 6.4, 9.2].forEach((u, i) => o.push(bx('f', w, d, u, 0.9, 1.7, 2.3, 0.12, { key: GOLD, glow: 0.3, out: 0.5 }), bx('f', w, d, u, 1.02, 1.46, 2.06, 0.04, { tint: [0x2f5fd0, 0xd23a2a, 0x2f8f4a, 0xe8a020][i], out: 0.62 })));
         o.push({ s: 'box', p: [0, 0, 17.0], size: [11, 0.18, 0.7], key: MARBLE }, { s: 'quad', flat: true, p: [0, 0.03, 15.4], size: [11.6, 2.6], key: U('RubberNonSlip2a'), uv: 1.75, kind: 'over' });
         ['f', 'b', 'l', 'r'].forEach(fc => o.push(bx(fc, w, d, -13.6, 5.86, 0.34, 0.34, 0.2, { key: WHITE, tint: 0xfff6e0, n: 46, st: 0.6045, out: 0.2 })));
-        ['l', 'r', 'b'].forEach(fc => o.push(bx(fc, w, d, -12.4, 0, 1.3, 7, 0.5, { key: GOLD, glow: 0.3, n: 8, st: 3.543 }), bx(fc, w, d, -10.63, 4.3, 0.4, 0.5, 0.3, { tint: LAMP, glow: 0.8, n: 7, st: 3.543 })));
+        ['l', 'r', 'b'].forEach(fc => o.push(bx(fc, w, d, -12.4, 0, 1.3, 7, 0.5, { key: WHITE, tint: LIMEST, n: 8, st: 3.543 }), bx(fc, w, d, -10.63, 4.3, 0.4, 0.5, 0.3, { tint: LAMP, glow: 0.8, n: 7, st: 3.543 })));
         o.push(flag(-13, 12.4, 13, 2.6, RED), flag(13, 12.4, 13, 2.6, RED));
-        o.push({ s: 'box', p: [0, 7.02, 0], size: [0.3, 4, 0.3], key: GOLD, glow: 0.3, ring: { n: 16, r: 9.08 } }, { s: 'cyl', p: [0, 7.0, 0], r: 9.5, h: 0.4, seg: 32, key: GOLD, glow: 0.3 });
         o.push(pipe('b', w, d, -13.6, 6.2), pipe('b', w, d, 13.6, 6.2));
         o.push(acRow(-11.6, 7.02, -12.2, 2, 2, 0), acRow(9.6, 7.02, -12.2, 2, 2, 0), hatch(-12, 7.02, -8.6), vent(12.2, 7.02, -9.4), vent(12.2, 7.02, -8.2));
         return o; };
@@ -200,8 +206,9 @@ exports.apply = (ctx) => {
     /* THE STADIUM: the scoreboard's lettering, the name over the press box and on the back walls, aisles and a front rail on each stand,
        pilasters and gate signs on the back walls, pennants along the tops, dugouts on the sidelines, lamp heads on the masts, AC on the press box */
     X['stadium'] = () => { const o = [];
-        o.push(signAt(-39.72, 9.3, 0, -90, 11.6, 1.2, 'HOME  14      VISITORS  10', '#ffb020', '#14161a', 0.9), signAt(-39.72, 7.2, 0, -90, 11.6, 1.0, 'QTR 3     08:42', '#ffe2a0', '#14161a', 0.9));
-        o.push({ s: 'box', p: [-40.25, 11.5, 0], size: [1.2, 0.3, 14.4], tint: 0x444a52 }, signAt(-40.77, 8.2, 0, 90, 10, 1.6, 'CITY STADIUM', '#f4f4f4', '#1b1e24'));
+        o.push(signAt(-39.6, 12.0, 0, -90, 16.4, 2.8, 'HOME 14   VIS 10', '#ffb020', '#101215', 0.9), signAt(-39.6, 9.9, 0, -90, 11.6, 1.5, 'QTR 3     08:42', '#ffe2a0', '#101215', 0.9));
+        o.push({ s: 'quad', p: [-39.6, 8.75, -4.3], ry: -90, size: [8, 0.7], tint: 0x2a4ab0, glow: 0.4 }, { s: 'quad', p: [-39.6, 8.75, 4.3], ry: -90, size: [8, 0.7], tint: 0xb02a2a, glow: 0.4 });
+        o.push({ s: 'box', p: [-40.25, 16, 0], size: [1.4, 0.3, 18.4], tint: 0x444a52 }, signAt(-40.9, 11.2, 0, 90, 14, 2.2, 'CITY STADIUM', '#f4f4f4', '#1b1e24'));
         [-1, 1].forEach(dir => {
             /* the section boards on the back wall over the top row (the aisles are the stand's own: THE STANDS) */
             [-30.6, -17.5, 0, 17.5, 30.6].forEach((x, i) => { if (dir > 0 && i === 2) return; o.push(signAt(x, 7.4, dir * 33.76, dir > 0 ? 180 : 0, 2.6, 0.7, 'SEC ' + (dir > 0 ? 101 + i : 201 + i), '#f4f4f4', '#1b1e24')); });
@@ -210,9 +217,12 @@ exports.apply = (ctx) => {
                 o.push({ s: 'box', p: [c, 2.0, dir * 21.05], size: [L, 0.08, 0.08], tint: 0xdddddd }, { s: 'box', p: [q[0] + 0.04, 1.1, dir * 21.05], size: [0.08, 0.9, 0.08], tint: 0xdddddd, n, step: [(L - 0.08) / (n - 1), 0, 0] });
                 o.push({ s: 'box', p: [c, 0, dir * 20.97], size: [L, 1.1, 0.06], key: PAVE, uv: 1.75 }); });
             o.push({ s: 'box', p: [0, 0, dir * 35.06], size: [70.2, 1.1, 0.12], key: CONC });
-            o.push({ s: 'box', p: [-35, 0, dir * 35.1], size: [1.0, 9.6, 0.3], key: T_RED, tint: 0xb07a68, n: 11, step: [7, 0, 0] });
-            o.push({ s: 'cyl', p: [-31.5, 10.2, dir * 34.4], r: 0.06, h: 2.2, seg: 5, tint: 0xdddddd, n: 10, step: [7, 0, 0] });
-            for (let i = 0; i < 10; i++) o.push({ s: 'quad', p: [-31.5 + i * 7 + 0.55, 11.6, dir * 34.4], size: [1.1, 0.7], tint: i % 2 ? 0x3b62c4 : 0xf4f4f4, ds: true });
+            o.push({ s: 'box', p: [-35, 0, dir * 35.1], size: [1.0, 9.6, 0.3], key: WHITE, tint: 0xfff4dc, n: 11, step: [7, 0, 0] });
+            /* the team pennants fly over the colonnade's cornice (the north roof carries its own over the fascia) */
+            if (dir > 0) { o.push({ s: 'cyl', p: [-31.5, 17.0, dir * 34.4], r: 0.06, h: 2.2, seg: 5, tint: 0xdddddd, n: 10, step: [7, 0, 0] });
+              for (let i = 0; i < 10; i++) o.push({ s: 'quad', p: [-31.5 + i * 7 + 0.55, 18.4, dir * 34.4], size: [1.1, 0.7], tint: i % 2 ? 0x3b62c4 : 0xb02a2a, ds: true }); }
+            else { o.push({ s: 'cyl', p: [-31.5, 16.2, -25.1], r: 0.06, h: 2.2, seg: 5, tint: 0xdddddd, n: 10, step: [7, 0, 0] });
+              for (let i = 0; i < 10; i++) o.push({ s: 'quad', p: [-31.5 + i * 7 + 0.55, 17.6, -25.1], size: [1.1, 0.7], tint: i % 2 ? 0xb02a2a : 0x3b62c4, ds: true }); }
             o.push(signAt(dir > 0 ? 0 : 0, 6.6, dir * 35.27, dir > 0 ? 0 : 180, 16, 1.4, 'CITY STADIUM', '#f4f4f4', '#3b62c4'));
             [-21, 21].forEach((x, i) => o.push(signAt(x, 3.0, dir * 35.27, dir > 0 ? 0 : 180, 4.2, 0.6, dir > 0 ? (i ? 'GATE B' : 'GATE A') : (i ? 'GATE C' : 'GATE D'), '#1b1e24', '#f2ead8')));
             /* a dugout on the sideline: a low roof on posts over the bench, on the lines between squares */
@@ -220,7 +230,7 @@ exports.apply = (ctx) => {
         });
         o.push(signAt(0, 9.95, 30.35, 180, 9, 0.6, 'PRESS', '#f4f4f4', ''), acRow(-8, 10.8, 32.6, 3, 2, 0), { s: 'cyl', p: [8, 10.8, 32.6], r: 0.05, h: 3, seg: 5, tint: 0xdddddd }, { s: 'dome', p: [5, 10.8, 32.6], r: 0.7, h: 0.5, seg: 10, rings: 3, tint: 0xdddddd });
         o.push(signAt(-12.25, 2.85, 35.27, 0, 6, 0.6, 'LOCKER ROOMS', '#1b1e24', '#f2ead8'), lamp('f', 70, 70.06, -12.25, 3.6), lamp('f', 70, 70.06, 12.25, 3.6));
-        o.push({ s: 'box', p: [0, 10.3, -25.1], size: [70, 0.5, 0.2], tint: 0x27408a }, { s: 'box', p: [-33, 10.2, -30], size: [0.3, 0.3, 10], key: TRUSS, uv: [0.6, 1.1], n: 7, step: [11, 0, 0] });
+        o.push({ s: 'box', p: [0, 14.9, -25.1], size: [70, 0.5, 0.2], tint: 0x27408a }, { s: 'box', p: [-33, 14.8, -30], size: [0.3, 0.3, 10], key: TRUSS, uv: [0.6, 1.1], n: 7, step: [11, 0, 0] });
         [[-40.25, -26.25], [40.25, -26.25], [-40.25, 26.25], [40.25, 26.25]].forEach(q => o.push({ s: 'box', p: [q[0], 16.3, q[1]], size: [1.6, 0.12, 1.6], tint: STEEL }, { s: 'box', p: [q[0], 0, q[1]], size: [1.1, 0.5, 1.1], key: CONC }, { s: 'box', p: [q[0] - 1.35, 17.25, q[1] + 0.27], size: [0.7, 0.5, 0.06], tint: 0xffffff, glow: 1, n: 4, step: [0.9, 0, 0] }, { s: 'box', p: [q[0] - 1.35, 18.0, q[1] + 0.27], size: [0.7, 0.5, 0.06], tint: 0xffffff, glow: 1, n: 4, step: [0.9, 0, 0] }));
         return o; };
     /* THE ARENA LOADING DOCK: dock numbers over the roller doors, steel door frames and rubber bumpers, the name board, cage lamps, a wall
@@ -335,11 +345,12 @@ exports.apply = (ctx) => {
         { s: 'box', p: [0, 0, 0], size: [28.3, 1.1, 24.8], faces: 'blr', top: false, key: MARBLE, uv: 1.75 },
         slab(29.4, 25.9, 10.5, 0.7, WHITE, 0xffffff, ROOFC),
         { s: 'box', p: [0, 11.2, 0], size: [28, 1.1, 24.5], key: WHITE, tint: LIME, keyTop: ROOFC, uv: 3.5 },
-        { s: 'cyl', p: [-8.75, 0.4, 15.4], r: 0.6, r2: 0.52, h: 7.8, seg: 12, key: WHITE, n: 6, step: [3.5, 0, 0], uv: [1.75, 7.8] },
-        { s: 'box', p: [-8.75, 0, 15.4], size: [1.6, 0.4, 1.6], key: WHITE, n: 6, step: [3.5, 0, 0] },
-        { s: 'box', p: [-8.75, 8.2, 15.4], size: [1.6, 0.4, 1.6], key: WHITE, n: 6, step: [3.5, 0, 0], under: true },
-        { s: 'box', p: [0, 8.6, 14.4], size: [20.6, 1.3, 4.3], under: true, key: WHITE },
-        { s: 'roof', form: 'gable', ry: 90, p: [0, 9.9, 14.4], size: [4.3, 2.9, 20.6], over: 0.3, key: GREENP, tint: VERD, keyEnd: WHITE, tintEnd: LIME },
+        /* THE CHICAGO PASS: the long columned front, eight columns the building's width (the old six and one more at each end) */
+        { s: 'cyl', p: [-12.25, 0.4, 15.4], r: 0.6, r2: 0.52, h: 7.8, seg: 12, key: WHITE, n: 8, step: [3.5, 0, 0], uv: [1.75, 7.8] },
+        { s: 'box', p: [-12.25, 0, 15.4], size: [1.6, 0.4, 1.6], key: WHITE, n: 8, step: [3.5, 0, 0] },
+        { s: 'box', p: [-12.25, 8.2, 15.4], size: [1.6, 0.4, 1.6], key: WHITE, n: 8, step: [3.5, 0, 0], under: true },
+        { s: 'box', p: [0, 8.6, 14.4], size: [27.6, 1.3, 4.3], under: true, key: WHITE },
+        { s: 'roof', form: 'gable', ry: 90, p: [0, 9.9, 14.4], size: [4.3, 2.9, 27.6], over: 0.3, key: GREENP, tint: VERD, keyEnd: WHITE, tintEnd: LIME },
         { s: 'cyl', p: [0, 12.3, 0], r: 6.3, h: 2.4, seg: 24, key: WHITE, tint: LIME, keyTop: ROOFC },
         { s: 'quad', p: [0, 12.6, 0], size: [1.2, 1.8], key: G_TALL, uv: 'fit', ring: { n: 12, r: 6.34 } },
         { s: 'dome', p: [0, 14.7, 0], r: 6.0, h: 5.4, seg: 24, rings: 8, key: GREENP, tint: VERD, uv: 3 },
@@ -348,7 +359,11 @@ exports.apply = (ctx) => {
         panels('r', 28, 24.5, 2.6, 1.75, 5.6, 6, G_TALL), panels('l', 28, 24.5, 2.6, 1.75, 5.6, 6, G_TALL),
         { s: 'quad', p: [-12.25, 2.6, 12.28], size: [1.75, 5.6], key: G_TALL, uv: 'fit', n: 2, step: [24.5, 0, 0] },
         { s: 'quad', p: [-5.25, 2.4, 15.4], size: [1.5, 5.2], tint: 0xa02626, ds: true, n: 2, step: [10.5, 0, 0] },
-      ]); }
+      ]);
+      /* THE CHICAGO PASS (2026-11-15, the real-cities plan, mondo's "Build it as drawn"): a bronze lion on each side of the stairs, on its
+         plinth (the plinth's square is a blocker, centred on it), looking out over the forecourt. The lion is the zoo's own PSX lion cast in
+         bronze and held still (data.js lion_statue, three-renderer.js THE STATUES). */
+      [-12.25, 12.25].forEach((dx, i) => { const x = f.x + dx, z = f.z + 17.5; block('lion' + i, x, z, 3.0, 2.5, 1); take(cellOf(x), cellOf(z)); props.push({ key: 'lion_statue', x: r3(x), z: r3(z), y: 1.12, face: 0 }); }); }
 
     /* ── P05-08 · GALLERY COURT ── */
     /* THE GALLERY: a white modern cube, a dark glass box pushed out over the door, a red fin wall, a slab canopy. Roof walked (the roof route). */
@@ -362,6 +377,26 @@ exports.apply = (ctx) => {
         panels('f', 17.6, 14.1, 0.2, 1.75, 2.6, 3, G_TALL3, { span: 5.2, c: -3.4 }),
         panels('l', 17.6, 14.1, 4.2, 6, 1.4, 1, G_SQ3, { uv: [1.75, 1.4] }), panels('r', 17.6, 14.1, 0.6, 1.75, 5.2, 3, G_TALL3, { span: 7 }),
       ]); }
+    /* THE CHICAGO PASS (2026-11-15) · THE BEAN: the park's mirror-steel bean on a stone plaza (Gallery court's open yard, 4 × 4 squares). A
+       long squashed drop in the mirror-steel sheet (the Metro pack's brushed metal, worn as glass: the shine, no reflections pass), four squares
+       by two; its two ends come down to the ground (the end squares are blockers, centred), its middle two squares arch 2.5 m over the plaza:
+       you walk under it, under the dimple in its belly. A steel pipe rail on the plaza's north edge, a bike rack, benches looking at it. */
+    { const bx0 = -31.5, bz0 = 94.5, MIR = { key: U('MetroMetal'), tint: 0xe8eef6, kind: 'glass', glow: 0.18 };
+      B('bean', bx0, bz0, 0, [
+        { s: 'box', p: [0, 0, 0], size: [14, 0.06, 14], key: 'bricks_1', tint: 0xf4efe6, uv: 1.75, sides: false },
+        { s: 'box', p: [0, 0, 6.85], size: [14, 0.16, 0.3], key: MARBLE, n: 2, step: [0, 0, -13.7] }, { s: 'box', p: [-6.85, 0, 0], size: [0.3, 0.16, 14], key: MARBLE, n: 2, step: [13.7, 0, 0] },
+        Object.assign({ s: 'dome', p: [0, 3.0, 0], r: 7.0, rz: 3.3, h: 2.3, seg: 36, rings: 8 }, MIR),
+        Object.assign({ s: 'dome', p: [0, 3.0, 0], r: 7.0, rz: 3.3, h: -0.5, seg: 36, rings: 4, ds: true }, MIR),
+        Object.assign({ s: 'dome', p: [-5.25, 1.55, 0], r: 1.75, rz: 3.15, h: 1.55, seg: 20, rings: 6, n: 2, step: [10.5, 0, 0] }, MIR),
+        Object.assign({ s: 'dome', p: [-5.25, 1.55, 0], r: 1.75, rz: 3.15, h: -1.55, seg: 20, rings: 6, ds: true, n: 2, step: [10.5, 0, 0] }, MIR),
+        Object.assign({ s: 'dome', p: [0, 2.48, 0], r: 2.2, rz: 1.3, h: 0.45, seg: 20, rings: 4, ds: true }, MIR),
+        { s: 'box', p: [0, 1.0, -6.6], size: [14, 0.06, 0.06], tint: STEEL, n: 2, step: [0, -0.45, 0] }, { s: 'box', p: [-7, 0, -6.6], size: [0.07, 1.06, 0.07], tint: STEEL, n: 9, step: [1.75, 0, 0] },
+        { s: 'box', p: [4.6, 0, 5.3], size: [0.06, 0.8, 0.06], tint: STEEL, n: 5, step: [0.45, 0, 0] }, { s: 'box', p: [4.6, 0, 4.7], size: [0.06, 0.8, 0.06], tint: STEEL, n: 5, step: [0.45, 0, 0] },
+        { s: 'box', p: [4.6, 0.8, 5.0], size: [0.06, 0.06, 0.66], tint: STEEL, n: 5, step: [0.45, 0, 0] },
+      ]);
+      block('bean-w', bx0 - 5.25, bz0, 3.5, 7, 1); block('bean-e', bx0 + 5.25, bz0, 3.5, 7, 1);
+      [-5.25, -1.75, 1.75, 5.25].forEach(dx => [-1.75, 1.75].forEach(dz => take(cellOf(bx0 + dx), cellOf(bz0 + dz))));
+      props.push({ key: 'park_bench', x: r3(bx0 - 3.9), z: r3(bz0 + 5.9), face: 180 }, { key: 'park_bench', x: r3(bx0 + 0.4), z: r3(bz0 + 5.9), face: 180 }); }
     /* THE ART SUPPLY SHOP: painted ochre brick, a striped awning over the shop glass, a steep gable roof in blue metal. Solid. */
     { const f = solid('P05-08-B2', 2);
       B('P05-08-B2', f.x, f.z, f.rot, [
@@ -385,22 +420,29 @@ exports.apply = (ctx) => {
 
     /* ── P06-08 · THE WRESTLING HALL, the district's landmark: a red and gold square hall whose roof terrace (walked, the roof route) carries a
        striped big-top drum and dome; flag towers on the two front corners (the roof bridges land on the back ones); a lit marquee over the doors ── */
-    { const f = tier('P06-08-B1'), RED = 0xe2473a, stripes = [];
-      for (let i = 0; i < 16; i++) stripes.push({ s: 'cyl', p: [0, 7.02, 0], r: 9, h: 4, seg: 32, arc: 22.5, a0: i * 22.5, cap: false, key: i % 2 ? WHITE : REDP, tint: i % 2 ? 0xfff6e0 : RED });
-      for (let i = 0; i < 16; i++) stripes.push({ s: 'dome', p: [0, 11.02, 0], r: 9.4, h: 4.2, seg: 2, rings: 6, arc: 22.5, a0: i * 22.5, key: i % 2 ? REDP : WHITE, tint: i % 2 ? RED : 0xfff6e0 });
+    /* THE CHICAGO PASS (2026-11-15): the hall in red brick with limestone bands and pilasters; the striped big top on the roof terrace is now
+       the arena house, a brick hall on the same footprint as the tier inside it (12.25 m square, 10.5 m: the roof walk keeps its way round it)
+       under a copper-green barrel roof, a fan window in its front gable and a bulb marquee: LUCHA LIBRE */
+    { const f = tier('P06-08-B1'), RED = 0xe2473a, BRICK = { key: 'bricks_3', tint: 0xe08a6c, gain: 1.6, uv: 1.75 }, VERDC = 0xa8e0c8;
+      const stripes = [
+        Object.assign({ s: 'box', p: [0, 7.02, 0], size: [12.3, 3.5, 12.3], top: false }, BRICK),
+        { s: 'box', p: [0, 10.3, 0], size: [12.7, 0.3, 12.7], key: WHITE, tint: LIMEST, top: false, under: true },
+        { s: 'roof', form: 'barrel', ry: 90, p: [0, 10.6, 0], size: [12.3, 3.4, 12.3], over: 0.35, key: M_GREEN, tint: VERDC, keyEnd: 'bricks_3', tintEnd: 0xff9c7c, uv: 3.5, seg: 14 },
+        { s: 'quad', p: [0, 10.65, 6.6], size: [5.2, 2.2], key: G_FAC1, uv: [2.6, 2.2] },
+        { s: 'box', p: [-5.6, 7.02, 6.2], size: [0.7, 3.5, 0.3], key: WHITE, tint: LIMEST, n: 2, step: [11.2, 0, 0] },
+      ];
       B('P06-08-B1', f.x, f.z, 180, [
-        { s: 'box', p: [0, 0, 0], size: [28.1, 7, 28.1], top: false, key: REDP, tint: RED, uv: 3.5 },
+        Object.assign({ s: 'box', p: [0, 0, 0], size: [28.1, 7, 28.1], top: false }, BRICK),
         { s: 'box', p: [0, 0, 0], size: [28.4, 1.2, 28.4], top: false, key: MARBLE_D, uv: 1.75 },
-        { s: 'box', p: [0, 6.2, 0], size: [28.5, 0.8, 28.5], top: false, key: GOLD, glow: 0.3 },
-        { s: 'box', p: [-12.4, 0, 14.2], size: [1.3, 7, 0.5], key: GOLD, glow: 0.3, n: 8, step: [3.543, 0, 0] },
+        { s: 'box', p: [0, 6.2, 0], size: [28.5, 0.8, 28.5], top: false, key: WHITE, tint: LIMEST },
+        { s: 'box', p: [-12.4, 0, 14.2], size: [1.3, 7, 0.5], key: WHITE, tint: LIMEST, n: 8, step: [3.543, 0, 0] },
         { s: 'box', p: [0, 3.0, 15.4], size: [12, 2.6, 2.6], under: true, key: DARK, tint: 0x444444 },
         { s: 'quad', p: [0, 3.3, 16.72], size: [11.4, 2.0], key: GOLD, glow: 0.7, uv: [2, 2] },
         { s: 'box', p: [-5.25, 0, 16.3], size: [0.5, 3, 0.5], key: DARK, n: 2, step: [10.5, 0, 0] },
         panels('f', 28, 28.1, 0.1, 1.75, 2.6, 4, DOORS, { span: 6.2, kind: 'over' }),
         stripes,
-        { s: 'cyl', p: [0, 11.0, 0], r: 9.6, h: 0.35, seg: 32, key: GOLD, glow: 0.3 },
-        { s: 'cyl', p: [0, 15.1, 0], r: 0.9, h: 1.2, seg: 10, key: GOLD, glow: 0.3 }, { s: 'cyl', p: [0, 16.3, 0], r: 0.12, h: 3, seg: 6, tint: 0xdddddd }, { s: 'quad', p: [0.8, 17.9, 0], size: [1.6, 1.1], tint: RED, ds: true },
-        { s: 'box', p: [-13, 7, 13], size: [2.2, 3, 2.2], key: REDP, tint: RED, n: 2, step: [26, 0, 0] },
+        { s: 'cyl', p: [0, 14.0, 0], r: 0.12, h: 3, seg: 6, tint: 0xdddddd }, { s: 'quad', p: [0.8, 15.6, 0], size: [1.6, 1.1], tint: RED, ds: true },
+        Object.assign({ s: 'box', p: [-13, 7, 13], size: [2.2, 3, 2.2], n: 2, step: [26, 0, 0] }, BRICK),
         { s: 'roof', form: 'pyramid', p: [-13, 10, 13], size: [2.2, 2.4, 2.2], over: 0.3, key: GOLD, glow: 0.3, n: 2, step: [26, 0, 0] },
       ]);
       /* the drum stands on the walked roof: a tier inside it, so nobody walks through the big top */
@@ -460,18 +502,25 @@ exports.apply = (ctx) => {
           lateRows.push({ k: 'wall', id: 'dc:S-row-' + (dir < 0 ? 'n' : 's') + k, x0: SX - 35, z0: r3(zc), x1: SX + 35, z1: r3(zc), y: r3(rowTop(k)), t: TREAD, key: 'concrete_floor', tier: true, rail: false,
               quad: [[SX - 35, za], [SX + 35, za], [SX + 35, zb], [SX - 35, zb]], front: [0, -dir], seat: dir < 0 ? 0x2a4ab0 : 0xb02a2a, gaps: AISLES.map(a => [a + 35 - 0.6, a + 35 + 0.6]) });
           o.push({ s: 'box', p: [AISLES[0], rowTop(k), dir * (Z0 + (k - 0.25) * TREAD)], size: [1.2, RISE / 2, TREAD / 2], key: RUB_Y, uv: 1.2, n: 4, step: [17.5, 0, 0] }); }
-        o.push({ s: 'box', p: [0, 0, dir * 34.4], size: [70, 9.6, 1.2], key: T_RED, tint: 0xd9a08c, uv: 3.5 });
-        o.push({ s: 'box', p: [0, 9.6, dir * 34.4], size: [70.4, 0.6, 1.6], key: BLUEP, tint: 0x3b62c4 });
+        /* THE CHICAGO PASS (2026-11-15): the back wall in limestone, and over it a row of columns the stand's length carrying a stone
+           entablature (the north one carries the stand's roof) */
+        o.push({ s: 'box', p: [0, 0, dir * 34.4], size: [70, 9.6, 1.2], key: WHITE, tint: LIMEST, uv: 3.5 });
+        o.push({ s: 'box', p: [0, 9.6, dir * 34.4], size: [70.4, 0.6, 1.6], key: WHITE, tint: 0xfff4dc });
+        o.push({ s: 'box', p: [-33.25, 10.2, dir * 34.4], size: [1.0, 0.3, 1.0], key: WHITE, tint: LIMEST, n: 20, step: [3.5, 0, 0] },
+            { s: 'cyl', p: [-33.25, 10.5, dir * 34.4], r: 0.42, r2: 0.36, h: 4.8, seg: 10, key: WHITE, tint: LIMEST, uv: [1.75, 4.8], n: 20, step: [3.5, 0, 0] },
+            { s: 'box', p: [-33.25, 15.3, dir * 34.4], size: [1.0, 0.3, 1.0], key: WHITE, tint: LIMEST, n: 20, step: [3.5, 0, 0], under: true },
+            { s: 'box', p: [0, 15.6, dir * 34.4], size: [71, 1.1, 1.8], key: WHITE, tint: LIMEST, under: true },
+            { s: 'box', p: [0, 16.7, dir * 34.4], size: [71.6, 0.3, 2.2], key: WHITE, tint: 0xfff4dc, under: true });
         o.push({ s: 'quad', p: [dir > 0 ? -28 : 28, 5.2, dir * 35.03], ry: dir > 0 ? 0 : 180, size: [1.6, 1.8], key: G_RES, uv: 'fit', n: 9, step: [dir > 0 ? 7 : -7, 0, 0] });
         return o; };
       P.push(stand(-1), stand(1));
       /* the south stand: the locker rooms' doors on the concourse, the press box on top */
       P.push({ s: 'quad', p: [-12.25, 0.05, 35.03], size: [3.5, 2.6], key: DOORS, uv: [1.75, 2.6], kind: 'over', n: 2, step: [24.5, 0, 0] });
       P.push({ s: 'box', p: [0, 7.6, 32.4], size: [22, 3.2, 4], key: WHITE, keyTop: ROOFC, under: true }, { s: 'quad', p: [0, 8.3, 30.37], ry: 180, size: [21, 1.8], key: G_SQ3, uv: [1.75, 1.8] });
-      /* the north stand's roof on its truss posts */
-      P.push({ s: 'roof', form: 'shed', p: [0, 10.4, -30], size: [70, 2.2, 10], key: M_BLUE, under: true, ds: true, uv: 3.5 }, { s: 'box', p: [-33, 0, -35.3], size: [0.6, 10.6, 0.6], key: TRUSS, uv: [0.6, 2.2], n: 7, step: [11, 0, 0] });
-      /* the scoreboard */
-      P.push({ s: 'box', p: [-40.25, 0, -5.25], size: [0.7, 9, 0.7], tint: 0x444a52, n: 2, step: [0, 0, 10.5] }, { s: 'box', p: [-40.25, 6, 0], size: [1, 5.5, 14], tint: 0x1b1e24 }, { s: 'quad', p: [-39.73, 6.6, 0], ry: -90, size: [12.6, 4.2], tint: 0xffb020, glow: 0.5 });
+      /* the north stand's roof on its truss posts (THE CHICAGO PASS: raised onto the colonnade's entablature) */
+      P.push({ s: 'roof', form: 'shed', p: [0, 15.0, -30], size: [70, 2.2, 10], key: M_BLUE, under: true, ds: true, uv: 3.5 }, { s: 'box', p: [-33, 0, -35.3], size: [0.6, 17.2, 0.6], key: TRUSS, uv: [0.6, 2.2], n: 7, step: [11, 0, 0] });
+      /* the scoreboard (THE CHICAGO PASS: the big board, 18 m by 8 on its two posts, over the west end zone) */
+      P.push({ s: 'box', p: [-40.25, 0, -5.25], size: [0.7, 8.2, 0.7], tint: 0x444a52, n: 2, step: [0, 0, 10.5] }, { s: 'box', p: [-40.25, 8, 0], size: [1.2, 8, 18], tint: 0x1b1e24 }, { s: 'quad', p: [-39.64, 8.4, 0], ry: -90, size: [17.2, 7.2], tint: 0x101215 });
       /* THE FLOOD MASTS (same day): the old stadium's mast at the city's 17 m: a plinth, a tapered steel pole, a service deck, a braced
          frame turned to the centre spot with two rows of four lamp heads and their lit lenses */
       const mast = (x, z) => { const L = Math.hypot(x, z), ry = Math.atan2(x / L, -z / L) * 180 / Math.PI, pc = Math.cos(-ry * Math.PI / 180), ps = Math.sin(-ry * Math.PI / 180), ST = 0x3a3e44;
@@ -562,6 +611,26 @@ exports.apply = (ctx) => {
         { s: 'box', p: [4, 9.9, 6.3], size: [20.5, 0.8, 0.8], key: TRUSS, uv: [1.6, 0.8] },
         { s: 'box', p: [-3, 9.1, 6.3], size: [0.7, 0.8, 0.7], tint: 0x222222, n: 5, step: [3.5, 0, 0] },
       ]); }
+    /* THE CHICAGO PASS (2026-11-15) · THE FOUNTAIN: a tiered stone fountain in the middle of the event square (2 × 2 squares, a blocker centred
+       on them): a round basin of marble with water in it, a pedestal and two bowls each holding its own water, eight jets round the basin and
+       one from the top. The water glows a little (a liquid sheet); no light is added. */
+    { const fx = 52.5, fz = 178.5, W = { key: U('Liquid_Blue_02'), tint: 0xffffff, glow: 0.25 }, JET = { tint: 0xe2f4ff, glow: 0.7 };
+      B('fountain', fx, fz, 0, [
+        { s: 'cyl', p: [0, 0, 0], r: 3.2, ri: 2.85, h: 0.65, seg: 32, key: MARBLE, uv: 1.2 }, { s: 'cyl', p: [0, 0.65, 0], r: 3.35, ri: 2.75, h: 0.1, seg: 32, key: MARBLE_D, uv: 1.2 },
+        Object.assign({ s: 'cyl', p: [0, 0, 0], r: 2.85, h: 0.48, seg: 32, uv: 1.75 }, W),
+        { s: 'cyl', p: [0, 0.48, 0], r: 0.6, r2: 0.42, h: 1.1, seg: 14, key: MARBLE, uv: 1.2 },
+        { s: 'cyl', p: [0, 1.58, 0], r: 0.7, r2: 1.8, h: 0.42, seg: 24, key: MARBLE, uv: 1.2 }, Object.assign({ s: 'cyl', p: [0, 1.9, 0], r: 1.68, h: 0.08, seg: 24, uv: 1.75 }, W),
+        { s: 'cyl', p: [0, 1.98, 0], r: 0.34, r2: 0.26, h: 0.8, seg: 12, key: MARBLE, uv: 1.2 },
+        { s: 'cyl', p: [0, 2.78, 0], r: 0.4, r2: 0.95, h: 0.3, seg: 18, key: MARBLE, uv: 1.2 }, Object.assign({ s: 'cyl', p: [0, 3.0, 0], r: 0.86, h: 0.06, seg: 18, uv: 1.75 }, W),
+        { s: 'cyl', p: [0, 3.06, 0], r: 0.14, r2: 0.08, h: 0.45, seg: 8, key: MARBLE },
+        Object.assign({ s: 'cyl', p: [0, 3.5, 0], r: 0.07, r2: 0.03, h: 1.5, seg: 6 }, JET), Object.assign({ s: 'dome', p: [0, 4.95, 0], r: 0.38, h: 0.3, seg: 10, rings: 3, ds: true }, JET),
+        Object.assign({ s: 'cyl', p: [0, 0.48, 0], r: 0.05, r2: 0.025, h: 1.1, seg: 6, ring: { n: 8, r: 2.35 } }, JET),
+        Object.assign({ s: 'dome', p: [0, 1.55, 0], r: 0.22, h: 0.16, seg: 8, rings: 2, ds: true, ring: { n: 8, r: 2.35 } }, JET),
+      ]);
+      /* the fountain stands in the sunk court (levels.js 'Event square: the sunk court'): its collision is four ghost walls round its two by two
+         squares, not a building row (a building's squares would keep the court from sinking under it) */
+      [[-3.35, -3.35, 3.35, -3.35], [3.35, -3.35, 3.35, 3.35], [3.35, 3.35, -3.35, 3.35], [-3.35, 3.35, -3.35, -3.35]].forEach((q, i) => lateRows.push({ k: 'wall', id: 'dc:S-fountain-' + i, x0: r3(fx + q[0]), z0: r3(fz + q[1]), x1: r3(fx + q[2]), z1: r3(fz + q[3]), y: 1.2, t: 0.3, ghost: true, rail: false }));
+      [-1.75, 1.75].forEach(dx => [-1.75, 1.75].forEach(dz => take(cellOf(fx + dx), cellOf(fz + dz)))); }
     /* THE STAGE DOOR HOUSE: a narrow brick townhouse, a steep gable facing the square, a round attic window, a blue door. Solid. */
     { const f = walkin('P07-10-B2', 2, 2);   // THE JUGGERNAUT'S HOME: a walk-in, the door where the blue door was painted
       B('P07-10-B2', f.x, f.z, f.rot, [
@@ -573,6 +642,28 @@ exports.apply = (ctx) => {
         panels('l', 17.5, 17.5, 4.6, 1.5, 1.9, 4, G_RES), panels('r', 17.5, 17.5, 4.6, 1.5, 1.9, 4, G_RES),
       ]); }
 
+    /* THE CHICAGO PASS (2026-11-15) · THE ELEVATED LINE: a train line on a riveted steel trestle along the district's north edge (the border
+       squares of the four top plots, z 84..87.5), scenery now (a train can ride it later; the car is a Meshy piece made only with mondo's OK).
+       One deck height for the whole run (13.3 m over the room's zero); one arch row a plot (each lifted by its plot's level), so the whole line
+       is a few draws: a bent of two dark steel legs and a cap beam every 7 m, two lattice girders, the deck with its ballast and rails, a guard
+       rail each side. */
+    { const DECK = 13.3, BR = { key: U('MetroMetal'), tint: 0x7a5440 }, LAT = { key: TRUSS, tint: 0x8a5a44 };
+      ['P04-08', 'P05-08', 'P06-08', 'P07-08'].forEach(id => { const p = ctx.plotOf[id], x0 = -ctx.HALF + p.x * 42, z0 = 85.75, yd = DECK - ctx.lvOf(p) * 1.75;
+        B('trestle-' + id, x0 + 21, z0, 0, [
+          Object.assign({ s: 'box', p: [-19.25, 0, -1.15], size: [0.5, yd - 1.6, 0.5], n: 6, step: [7, 0, 0] }, BR),
+          Object.assign({ s: 'box', p: [-19.25, 0, 1.15], size: [0.5, yd - 1.6, 0.5], n: 6, step: [7, 0, 0] }, BR),
+          Object.assign({ s: 'box', p: [-19.25, 0, 0], size: [0.9, 0.5, 3.0], n: 6, step: [7, 0, 0] }, { key: CONC }),
+          Object.assign({ s: 'box', p: [-19.25, yd - 1.9, 0], size: [0.6, 0.5, 3.6], n: 6, step: [7, 0, 0], under: true }, BR),
+          Object.assign({ s: 'box', p: [-19.25, (yd - 1.6) * 0.45, 0], size: [0.24, 0.24, 2.3], n: 6, step: [7, 0, 0], under: true }, BR),
+          Object.assign({ s: 'box', p: [0, yd - 1.4, -1.35], size: [42, 1.4, 0.3], uv: [1.4, 1.4], under: true }, LAT),
+          Object.assign({ s: 'box', p: [0, yd - 1.4, 1.35], size: [42, 1.4, 0.3], uv: [1.4, 1.4], under: true }, LAT),
+          Object.assign({ s: 'box', p: [0, yd - 0.3, 0], size: [42, 0.3, 3.4], keyTop: U('MetroRails'), uv: 3.4, under: true }, BR),
+          Object.assign({ s: 'box', p: [0, yd + 0.95, -1.62], size: [42, 0.08, 0.08], n: 2, step: [0, 0, 3.24] }, BR),
+          Object.assign({ s: 'box', p: [-20.9, yd, -1.62], size: [0.08, 0.95, 0.08], n: 25, step: [1.75, 0, 0] }, BR),
+          Object.assign({ s: 'box', p: [-20.9, yd, 1.62], size: [0.08, 0.95, 0.08], n: 25, step: [1.75, 0, 0] }, BR),
+        ]);
+        /* each bent's legs stand in the middle of their square (a lamp-like post pair: a slim blocker centred on the square, the walk passes either side) */
+        for (let k = 0; k < 6; k++) block('trestle-' + id + '-' + k, x0 + 1.75 + k * 7, z0, 0.6, 2.9, 1); }); }
     /* ── P04-11 · THE STADIUM GATE (the plan's park gate): stone gate piers with green caps and an arched head over the path to the stadium,
        iron railings either side. The piers stand on their squares' middles. ── */
     { const gx0 = -63, gz0 = gc(133);
