@@ -419,12 +419,16 @@ escapeAt.forEach(id => {
     const hit = tries.find(t => free(t[1], t[2], '.#') && !nearBridge(gc(t[1]), gc(t[2]))) || tries.find(t => free(t[1], t[2], '.#P') && !nearBridge(gc(t[1]), gc(t[2]))) || tries.find(t => free(t[1], t[2], '.#P'));
     if (!hit) { console.warn('no fire escape spot for', id); return; }
     const side = hit[0], xc = gc(hit[1]), zc = gc(hit[2]); take(hit[1], hit[2]);
-    /* THE STEEL LANDING (2026-11-13, mondo: no raised terrain lump beside a ladder): the halfway landing is a `landing` row, a steel
-       platform the walker stands on (data.js hqTerrainLandings), the ladders as before: the yard to the landing, the landing to the roof */
-    if (side === 'E') features.push({ k: 'landing', x: r3(E + 0.85), z: zc, w: 1.7, d: 2.6, h: h2, back: 270 }, { k: 'climb', x: r3(E + 1.7), z: r3(zc + 0.6), face: 270, look: 'fireescape' }, { k: 'climb', x: r3(E), z: r3(zc - 0.6), face: 270, look: 'fireescape' });
-    if (side === 'W') features.push({ k: 'landing', x: r3(W - 0.85), z: zc, w: 1.7, d: 2.6, h: h2, back: 90 }, { k: 'climb', x: r3(W - 1.7), z: r3(zc - 0.6), face: 90, look: 'fireescape' }, { k: 'climb', x: r3(W), z: r3(zc + 0.6), face: 90, look: 'fireescape' });
-    if (side === 'S') features.push({ k: 'landing', x: xc, z: r3(Sz + 0.85), w: 2.6, d: 1.7, h: h2, back: 0 }, { k: 'climb', x: r3(xc - 0.6), z: r3(Sz + 1.7), face: 0, look: 'fireescape' }, { k: 'climb', x: r3(xc + 0.6), z: r3(Sz), face: 0, look: 'fireescape' });
-    if (side === 'N') features.push({ k: 'landing', x: xc, z: r3(Nz - 0.85), w: 2.6, d: 1.7, h: h2, back: 180 }, { k: 'climb', x: r3(xc + 0.6), z: r3(Nz - 1.7), face: 180, look: 'fireescape' }, { k: 'climb', x: r3(xc - 0.6), z: r3(Nz), face: 180, look: 'fireescape' });
+    /* THE STEEL LANDING (2026-11-13, mondo: no raised terrain lump beside a ladder): the landing is a `landing` row, a steel platform the
+       walker stands on (data.js hqTerrainLandings).
+       THE FLUSH LANDING (2026-11-15, mondo: "They dont reach up all the way ... I should just be able to walk off the platform and on to
+       the roof"): the platform was HALF WAY up (a second ladder went on to the roof). It is `flush` now: level with the roof behind it,
+       ONE ladder from the yard up to it, and the walker steps straight off its back onto the roof (no second ladder: it would rise 0 m).
+       `h` is only what a landing with no roof behind it keeps (its building became a walk-in). */
+    if (side === 'E') features.push({ k: 'landing', x: r3(E + 0.85), z: zc, w: 1.7, d: 2.6, h: h2, back: 270, flush: true }, { k: 'climb', x: r3(E + 1.7), z: r3(zc + 0.6), face: 270, look: 'fireescape' });
+    if (side === 'W') features.push({ k: 'landing', x: r3(W - 0.85), z: zc, w: 1.7, d: 2.6, h: h2, back: 90, flush: true }, { k: 'climb', x: r3(W - 1.7), z: r3(zc - 0.6), face: 90, look: 'fireescape' });
+    if (side === 'S') features.push({ k: 'landing', x: xc, z: r3(Sz + 0.85), w: 2.6, d: 1.7, h: h2, back: 0, flush: true }, { k: 'climb', x: r3(xc - 0.6), z: r3(Sz + 1.7), face: 0, look: 'fireescape' });
+    if (side === 'N') features.push({ k: 'landing', x: xc, z: r3(Nz - 0.85), w: 2.6, d: 1.7, h: h2, back: 180, flush: true }, { k: 'climb', x: r3(xc + 0.6), z: r3(Nz - 1.7), face: 180, look: 'fireescape' });
     count.escapes++;
 });
 
