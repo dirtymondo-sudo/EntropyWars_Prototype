@@ -262,7 +262,12 @@
                 console[k] = function () {
                     try {
                         var s = Array.prototype.map.call(arguments, function (a) { return (a && a.message) ? a.message : String(a); }).join(' ');
-                        s = k + ' ' + s.slice(0, 240);
+                        /* (2026-11-15) the [MEM] block keeps its file list and a GPU validation error keeps its reason: at 240 the
+                           city's trail lost both ("Texture with 'PointShadowDepthTexture' lab", cut) */
+                        if (s.indexOf('[MEM]') === 0) s = s.slice(0, 3200);
+                        else if (/Validation|WebGPU|WGSL|shader/i.test(s)) s = s.replace(/\s+/g, ' ').slice(0, 900);
+                        else s = s.slice(0, 240);
+                        s = k + ' ' + s;
                         var L = T.logs[T.logs.length - 1];
                         if (L && L.slice(L.indexOf(' ') + 1) === s) return o.apply(console, arguments);   // (a repeat of the line before)
                         push(T.logs, stamp() + ' ' + s, 30);
