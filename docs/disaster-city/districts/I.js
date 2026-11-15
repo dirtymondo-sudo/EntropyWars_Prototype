@@ -400,6 +400,27 @@ exports.build = function (ctx) {
        doorway = a one-square gap. `decor(K)` = the off-centre dressing. Built pieces with no model (turbines, pumps, counters, plinths) are parts of the room's one
        arch row `ind:<id>:in`. A prop's `hd`: 180 looks at the front wall (the door side), 0 at the back. */
     const TEAL2 = 0x2f6f6a, SUB = U('TileSubway1a');
+    /* HOUSTON (2026-11-15, mondo picked "Build it as drawn" on the real-cities plan, /mnt/project-files/disaster-city-real-cities/plan.html d-i): the
+       district reads as an oil-and-rocket port. White-painted tanks, rusted sheet sheds on concrete aprons, the Aerospace lab clean white with a
+       space-agency blue stripe. HOU_LOOK retints a building's own parts (same sheets, other tints / the brown sheet for rust) and adds its apron. */
+    const TW = 0xeeeae2, RUSTC = 0xd08a5c, SAB = 0x2b5ca8, FLARE = 0xff7a1a;
+    const RUSTED = { 'P01-08-B1': 1, 'P01-08-B3': 1, 'P01-10-B1': 1, 'P02-11-B3': 1 }, APRON = { 'P01-08-B1': 1, 'P01-08-B3': 1, 'P01-10-B1': 1, 'P02-11-B3': 1, 'P02-10-B1': 1, 'P01-10-B3': 1 };
+    const HOU_LOOK = (id, parts, c) => {
+        parts.forEach(q => {
+            if (RUSTED[id] && /^urban:MetalCorrugatedPainted[234]a$/.test(q.key || '')) { q.key = U('MetalCorrugatedPainted3a'); q.tint = RUSTC; }
+            if (RUSTED[id] && /^urban:MetalCorrugatedPainted[234]a$/.test(q.keyEnd || '')) { q.keyEnd = U('MetalCorrugatedPainted3a'); q.tintEnd = RUSTC; }
+            if (id === 'P01-11-B1' && q.tint === T.teal) q.tint = TW;   // the water works' two tanks + their pipe
+            if (id === 'P03-11-B1' && q.s === 'cyl' && q.tint === T.red) q.tint = TW;   // the rail yard's water tower on legs
+            if (id === 'P03-09-B1' && q.tint === T.dblue) { q.tint = SAB; if (q.size && q.p[1] === 3.3) { q.p[1] = r3(q.p[1] - 0.15); q.size[1] = 0.8; } }   // the blue stripe
+        });
+        if (APRON[id] && c) parts.push(box(0, 0, c.fd / 2 + 1.75, c.fw + 1, 0.06, 3.3, CONC, 0xc4beb0, { sides: false }), box(0, 0.061, c.fd / 2 + 3.3, c.fw + 1, 0.01, 0.2, null, T.yellow, { sides: false, kind: 'over' }));
+        if (id === 'P03-10-B1' && c) {   // the hangar's open end: its two leaves run back along the end wall, the track over them, the apron's yellow lead-in line
+            const X = c.fw / 2;
+            parts.push(box(X + 0.35, 0, -c.fd / 2 + 1.2, 0.22, 6.4, 2.4, TIN, T.silver), box(X + 0.35, 0, c.fd / 2 - 1.2, 0.22, 6.4, 2.4, TIN, T.silver),
+                box(X + 0.3, 6.4, 0, 0.5, 0.35, c.fd, PLAIN, T.dark), box(X + 0.12, 0, 0, 0.08, 0.12, 11.2, PLAIN, T.yellow, { kind: 'over' }),
+                box(X + 7, 0.02, 0, 12, 0.04, 0.3, null, T.yellow, { sides: false, kind: 'over' }));
+        }
+    };
     const KIT = {
         truck(K, x, z, gw, gd) { K.part(box(x, 0, z, gw - 0.3, 0.1, gd - 0.5, U('MetalCorrugatedPainted1c'), 0xaab0b6), box(x, 0.1, z, gw - 0.1, 0.02, gd - 0.3, null, T.yellow, { sides: false, kind: 'over' })); K.P('car_truck', x, z, gw > gd ? 90 : 0); },
         veh(K, x, z, gw, gd, o) { K.part(box(x, 0, z, 2.9, 0.08, gd - 0.6, U('MetalCorrugatedPainted1c'), 0x9aa0a6)); K.P(o, x, z, 0); },
@@ -821,6 +842,7 @@ exports.build = function (ctx) {
             (DS.extra ? DS.extra(C0) : []).forEach((X, n) => { const wp = world(X[0], X[1]); out.push({ k: 'texbuilding', id: old.id + '-x' + (n + 1), x: wp[0], z: wp[1], w: r3(X[2]), d: r3(X[3]), rot, storeys: X[4] || 2, style: 'factory', seed: 9500 + n, skin: false }); });
         }
         const wp = world(c.ox, c.oz), parts = DS.parts(c, C0).concat(MORE[b.id] ? MORE[b.id](c, C0) : [], ROOFS[b.id] ? ROOFS[b.id](c, C0) : []).filter(q => q && q.size ? q.size.every(v => v > 0) : !!q);
+        HOU_LOOK(b.id, parts, c);
         out.push({ k: 'arch', id: 'ind:' + b.id, x: wp[0], y: 0, z: wp[1], rot, parts });   // y: 0 = stand on the ground, never on a roof-route plateau's 7 m top
         count2.arch++; count2.parts += parts.length;
         if (row && DS.inside) inside(b, c, world, rot, row);
@@ -854,7 +876,7 @@ exports.build = function (ctx) {
     };
     let boxes = 0;
     const dk = plotOf['P00-11'], dx0 = dk.x * N, dy0 = dk.y * N;
-    [[6, 7, 3, 90], [6, 8, 2, 90], [8, 7, 2, 90], [8, 8, 3, 90], [6, 10, 2, 90], [8, 10, 1, 90], [1, 1, 2, 0], [2, 1, 1, 0], [1, 3, 1, 0]].forEach(q => { boxes += stackAt(dx0 + q[0], dy0 + q[1], q[2], q[3]); });
+    [[6, 7, 3, 90], [6, 8, 2, 90], [8, 7, 2, 90], [8, 8, 3, 90], [6, 10, 2, 90], [8, 10, 1, 90], [10, 7, 2, 0], [11, 7, 1, 0], [10, 9, 1, 0]].forEach(q => { boxes += stackAt(dx0 + q[0], dy0 + q[1], q[2], q[3]); });
     const cc = plotOf['P00-09'], cx0 = cc.x * N, cy0 = cc.y * N;
     [[1, 1, 2, 90], [1, 2, 1, 90]].forEach(q => { boxes += stackAt(cx0 + q[0], cy0 + q[1], q[2], q[3]); });
     const one = (plot, lx, ly, key, face) => { const p = plotOf[plot], cx = p.x * N + lx, cy = p.y * N + ly; if (!okCell(cx, cy)) return 0; drop(cx, cy); take(cx, cy); props.push({ key, x: gc(cx), z: gc(cy), face: face || 0 }); return 1; };
@@ -870,6 +892,105 @@ exports.build = function (ctx) {
         if (ctx.lamps) { const hw = (ew ? fd : fw) / 2 + 0.3, hd = (ew ? fw : fd) / 2 + 0.3, cx = b.x - (C / 2) * Math.sin(q), cz = b.z + (C / 2) * Math.cos(q);
             for (let i = ctx.lamps.length - 1; i >= 0; i--) { const l = ctx.lamps[i]; if (Math.abs(l.x - cx) < hw && Math.abs(l.z - cz) < hd) { ctx.lamps.splice(i, 1); count2.lampOut = (count2.lampOut || 0) + 1; } } }
         props.push({ key: 'fighter_jet', x: r3(b.x + lx * Math.cos(q) - (lz + C / 2) * Math.sin(q)), z: r3(b.z + lx * Math.sin(q) + (lz + C / 2) * Math.cos(q)), face: ew ? 90 : 0, span: 14 }); count2.jet = 1;   /* nose along the hangar (it stood across it, 2.6 m of wing through each wall) */ })();
+    /* HOUSTON, THE LANDMARKS (2026-11-15, the real-cities plan d-i): each stands on whole free squares of its yard, one invisible solid block per
+       square (the crane legs' kind of row), its look one arch row from parts. A landmark whose squares are not all free stays out with a console line. */
+    const hou = { rows: 0, blocks: 0, out: [] };
+    const claim = (plot, lx, ly, w, d, h, tag) => {
+        const p = plotOf[plot], cx0 = p.x * N + lx, cy0 = p.y * N + ly, cells = [];
+        for (let a = 0; a < w; a++) for (let e = 0; e < d; e++) cells.push([cx0 + a, cy0 + e]);
+        if (!cells.every(q => okCell(q[0], q[1]))) { hou.out.push(tag); return null; }
+        cells.forEach((q, n) => { drop(q[0], q[1]); take(q[0], q[1]); if (h > 0) { out.push({ k: 'texbuilding', id: 'dc:ind-hou-' + tag + '-' + n, x: gc(q[0]), z: gc(q[1]), w: C, d: C, rot: 0, storeys: h, style: 'factory', seed: 9700 + hou.blocks, skin: false }); hou.blocks++; } });
+        return [gx(cx0 + w / 2), gx(cy0 + d / 2)];
+    };
+    const land = (tag, at, parts) => { if (!at) return; out.push({ k: 'arch', id: 'ind:hou-' + tag, x: r3(at[0]), y: 0, z: r3(at[1]), rot: 0, parts }); hou.rows++; count2.arch++; };
+    const deco = (plot, lx, ly, key, face, ox, oz, y) => { const p = plotOf[plot], cx = p.x * N + lx, cy = p.y * N + ly; if (!okCell(cx, cy)) return 0; props.push(Object.assign({ key, x: r3(gc(cx) + (ox || 0)), z: r3(gc(cy) + (oz || 0)), face: face || 0 }, y ? { y } : {})); return 1; };
+    const solid = (plot, lx, ly, key, face) => { const p = plotOf[plot], cx = p.x * N + lx, cy = p.y * N + ly; if (!okCell(cx, cy)) return 0; drop(cx, cy); take(cx, cy); props.push({ key, x: gc(cx), z: gc(cy), face: face || 0 }); return 1; };
+    const plat = (x, y, z, r, ri) => cyl(x, y, z, r, 0.12, GRILL, 0xffffff, { ri, seg: 14 });
+    const hrail = (x, y, z, r) => cyl(x, y, z, r, 1, TRUSS, T.yellow, { ri: r - 0.05, seg: 14, kind: 'over', ds: true, top: false, cap: false });
+    const ball = (x, z, r, y) => [dome(x, y, z, r, r, PLAIN, TW, { seg: 18, rings: 7 }), dome(x, y, z, r, -r, PLAIN, TW, { seg: 18, rings: 7, ds: true }), cyl(x, y - 0.15, z, r + 0.05, 0.3, PLAIN, 0xd8d4cc, { seg: 18 }),
+        ...[[1, 1], [1, -1], [-1, 1], [-1, -1]].map(q => cyl(x + q[0] * r * 0.62, 0, z + q[1] * r * 0.62, 0.22, y, PLAIN, T.steel, { seg: 6 })), ...[[1, 1], [1, -1], [-1, 1], [-1, -1]].map(q => box(x + q[0] * r * 0.62, 0, z + q[1] * r * 0.62, 0.9, 0.3, 0.9, CONC, 0xbdb6a6)),
+        truss(x + r * 0.62, 0.3, z, 0.08, y - 0.3, 0.6, T.dark)];
+    const tank = (x, z, r, h) => [cyl(x, 0, z, r + 0.4, 0.35, CONC, 0xbdb6a6, { seg: 20 }), cyl(x, 0.35, z, r, h, TIN, TW, { seg: 20, cap: false }), dome(x, 0.35 + h, z, r, 0.9, PLAIN, 0xe4e0d6, { seg: 20, rings: 3 }),
+        cyl(x, 0.35 + h * 0.5, z, r + 0.03, 0.25, PLAIN, 0xd9d4ca, { seg: 20 }), hrail(x, 0.35 + h + 0.2, z, r * 0.9), truss(x + r + 0.05, 0.35, z, 0.08, h, 0.6, T.dark)];
+
+    /* TRANSFORMER YARD (P02-09, the free 5 x 5 by the Power station): three distillation columns + the flare stack on four squares, an overhead pipe rack */
+    (function () {
+        const at = claim('P02-09', 0, 0, 5, 5, 0, 'ref'); if (!at) return;
+        const P = (lx, ly) => [(lx - 2) * C, (ly - 2) * C], o = [];
+        [[1, 1, 22, 1.25], [3, 1, 16, 1.05], [1, 3, 12, 1.35]].forEach((q, n) => { const xz = P(q[0], q[1]), x = xz[0], z = xz[1];
+            o.push(box(x, 0, z, 3.2, 0.45, 3.2, CONC, 0xbdb6a6), cyl(x, 0.45, z, q[3], q[2], PLAIN, TW, { seg: 14 }), cyl(x, 0.45 + q[2], z, q[3], 0.6, PLAIN, 0xcfcac0, { r2: 0.3, seg: 14 }));
+            for (let y = 4; y < q[2]; y += 4) o.push(plat(x, y, z, q[3] + 0.7, q[3]), hrail(x, y + 0.12, z, q[3] + 0.7));
+            o.push(truss(x + q[3] + 0.35, 0.45, z, 0.6, q[2] - 0.45, 0.08, T.dark), cyl(x - q[3] - 0.25, 0.45, z, 0.18, q[2] - 1, PLAIN, T.steel, { seg: 6 }));
+            if (n === 0) for (let y = 6; y < 20; y += 5) o.push(cyl(x, y, z, q[3] + 0.04, 0.3, PLAIN, 0xc7c0b2, { seg: 14 }));
+            claim('P02-09', q[0], q[1], 1, 1, 4, 'col' + n); });
+        /* the flare stack: red and white bands, the flame a glow (no light) */
+        const f = P(3, 3); claim('P02-09', 3, 3, 1, 1, 4, 'flare');
+        o.push(box(f[0], 0, f[1], 3, 0.5, 3, CONC, 0xbdb6a6));
+        for (let i = 0; i < 8; i++) o.push(cyl(f[0], 0.5 + i * 4, f[1], 0.75 - i * 0.03, 4, PLAIN, i % 2 ? 0xf0f0f0 : 0xc0392b, { r2: 0.72 - i * 0.03, seg: 10, cap: i === 7 }));
+        o.push(cyl(f[0], 32.5, f[1], 0.55, 2.6, null, FLARE, { r2: 0.05, seg: 8, glow: 1 }), cyl(f[0], 32.5, f[1], 0.3, 1.7, null, 0xffd23a, { r2: 0.03, seg: 8, glow: 1 }),
+            box(f[0], 0.5, f[1] - 0.8, 0.6, 31.5, 0.08, TRUSS, T.dark, { kind: 'over', ds: true }), box(f[0], 30, f[1], 0.2, 0.2, 0.2, null, 0xff3020, { glow: 1 }));
+        /* the pipe rack: legs on the squares the columns stand on, two levels of pipes over the walk, running on north to the Power station */
+        const RY = [5.2, 6.4];
+        o.push(truss(0, 4.8, P(0, 2)[1], 5 * C, 0.4, 0.4, T.dark), truss(0, 4.8, P(0, 2)[1] + 1.6, 5 * C, 0.4, 0.4, T.dark));
+        RY.forEach((y, k) => o.push(box(0, y, P(0, 2)[1] + 0.5, 5 * C, 0.36, 0.36, PLAIN, k ? T.yellow : T.steel), box(0, y, P(0, 2)[1] + 1.1, 5 * C, 0.36, 0.36, PLAIN, k ? 0x8a4a2a : TW)));
+        o.push(box(P(2, 0)[0], 5.2, -2.5 * C - 1, 0.5, 0.36, 2 + 2, PLAIN, T.steel), haz(P(0, 4)[0], 0.4, 2.5 * C - 0.1, 3, 1.2));
+        land('refinery', at, o);
+    })();
+    /* CONTAINER COURT (P00-09): two ball tanks on legs down its east strip, two round white tanks in its south corner */
+    [[10, 2], [10, 5]].forEach((q, n) => { const at = claim('P00-09', q[0], q[1], 2, 2, 3, 'ball' + n); land('ball' + n, at, ball(0, 0, 3.1, 4.6)); });
+    [[7, 9, 6.5], [9, 9, 8]].forEach((q, n) => { const at = claim('P00-09', q[0], q[1], 2, 2, 3, 'tank' + n); land('tank' + n, at, tank(0, 0, 3.15, q[2])); });
+    /* DOCK EDGE (P00-11): a red-hulled tanker in dry berth along the west wall, on keel blocks (the dock has no water: it sits on the slip) */
+    (function () {
+        const at = claim('P00-11', 0, 0, 2, 7, 3, 'tanker'); if (!at) return;
+        const L = 7 * C / 2 - 0.4, Wd = 3.05, o = [], hull = [[-Wd, L], [Wd, L], [Wd, -L + 5], [Wd * 0.55, -L + 1.6], [0, -L], [-Wd * 0.55, -L + 1.6], [-Wd, -L + 5]];
+        o.push(box(0, 0, 0, 7.2, 0.08, 7 * C, CONC, 0xb3ad9f, { sides: false }), box(0, 0, -L + 9, 2.2, 0.85, 1, PLAIN, 0x6a5a48, { n: 5, step: [0, 0, 4.2] }));
+        o.push(Object.assign({ s: 'poly', p: [0, 0.85, 0], pts: hull.map(q => [r3(q[0] * 0.86), r3(q[1] * 0.98)]), h: 1.1, key: PLAIN, tint: 0x8c2b22, top: false }),
+            Object.assign({ s: 'poly', p: [0, 1.95, 0], pts: hull, h: 2.2, key: PLAIN, tint: 0xa8322b, top: false }),
+            Object.assign({ s: 'poly', p: [0, 4.15, 0], pts: hull, h: 1.6, key: PLAIN, tint: 0x22262a, keyTop: PLAIN, tintTop: 0x6d4f45 }),
+            box(0, 4.15, 0, 6.12, 0.18, 2 * L - 6, PLAIN, 0xf0f0f0, { sides: true, top: false, kind: 'over' }));
+        /* the deck: the pipe run fore and aft, the manifold, the bridge house aft (white), its funnel with a blue band */
+        o.push(box(0, 5.75, -2, 0.5, 0.5, 2 * L - 10, PLAIN, 0x8a6a3a), box(1, 5.75, -2, 0.3, 0.3, 2 * L - 10, PLAIN, T.yellow), box(0, 5.75, -3, 5, 0.9, 0.6, PLAIN, T.steel),
+            box(0, 5.75, L - 3.4, 5.6, 2.6, 5, PLAIN, 0xf2f0ea), box(0, 8.35, L - 3.6, 5.2, 2.6, 4.2, PLAIN, 0xf2f0ea), box(0, 9.3, L - 5.75, 5.4, 0.9, 0.08, U('GlassWindowSquare1a'), 0xffffff, { faces: 'f', top: false }),
+            box(0, 10.95, L - 3.6, 6.4, 0.18, 4.6, PLAIN, T.dark), cyl(0, 11.1, L - 2.4, 0.9, 3.2, PLAIN, T.dark, { seg: 10 }), cyl(0, 13.0, L - 2.4, 0.92, 0.6, PLAIN, SAB, { seg: 10 }),
+            box(0, 5.75, -L + 3.3, 2.6, 0.9, 1.6, PLAIN, 0xf2f0ea), box(0, 13.5, L - 3.6, 0.12, 2.4, 0.12, PLAIN, T.dark), box(-Wd - 0.02, 2.4, 0, 0.04, 0.5, 2 * L - 8, PLAIN, 0xf2f0ea, { kind: 'over' }));
+        land('tanker', at, o);
+    })();
+    /* PUMP COURT (P02-11, the strip west of the valve house): three oil pump jacks in a row, built from parts (they stand still: no part turns) */
+    [0, 2, 4].forEach((ly, n) => { const at = claim('P02-11', 0, ly, 2, 1, 2, 'pump' + n); if (!at) return;
+        const R = 0xb5352a, D = T.dark;
+        land('pump' + n, at, [box(0, 0, 0, 6.6, 0.3, 2.2, CONC, 0xb8b0a0), box(0.6, 0.3, 0.5, 0.28, 3.5, 0.28, PLAIN, D), box(0.6, 0.3, -0.5, 0.28, 3.5, 0.28, PLAIN, D), box(0.6, 3.6, 0, 0.6, 0.35, 1.3, PLAIN, D),
+            box(1.6, 0.3, 0, 0.22, 2.9, 0.22, PLAIN, D), box(0.4, 3.95, 0, 6, 0.42, 0.42, PLAIN, R), box(3.35, 2.7, 0, 0.55, 1.95, 0.7, PLAIN, R), box(3.6, 3.0, 0, 0.12, 1.4, 0.7, PLAIN, R),
+            cyl(3.75, 0.3, 0, 0.32, 0.9, PLAIN, D, { seg: 8 }), cyl(3.75, 1.2, 0, 0.05, 1.5, PLAIN, 0xcfcfcf, { seg: 4 }), cyl(3.75, 0.6, 0, 0.45, 0.14, PLAIN, R, { seg: 8 }),
+            box(-2.3, 0.3, 0, 1.3, 1.2, 1.1, PLAIN, D), box(-2.3, 0.9, 0.7, 1.9, 0.38, 0.14, PLAIN, R), box(-2.3, 0.9, -0.7, 1.9, 0.38, 0.14, PLAIN, R),
+            box(-2.9, 0.5, 0.8, 0.9, 1.0, 0.24, PLAIN, D), box(-2.9, 0.5, -0.8, 0.9, 1.0, 0.24, PLAIN, D), box(-2.0, 1.2, 0.72, 0.12, 2.8, 0.12, PLAIN, R), box(-2.0, 1.2, -0.72, 0.12, 2.8, 0.12, PLAIN, R),
+            box(-2.0, 3.95, 0, 0.5, 0.42, 1.6, PLAIN, R), box(-3.2, 0.3, 0, 0.8, 0.75, 0.8, PLAIN, SAB), haz(-3.2, 0.4, 1.12, 1)]);
+        deco('P02-11', 0, ly + 1, 'psx_metal_barrel_mp_' + n, 0, 0.9, -0.3); });
+    /* THE ROCKET (P02-10, the strip behind the Maintenance depot, the long free run nearest the Aerospace lab): a three-stage rocket lying on yellow cradles,
+       built from parts (a lying round body = an upper and a lower half drum), its engine bells on a stand at the tail */
+    (function () {
+        const p = plotOf['P02-10'], dc = props.findIndex(q => q.key === 'dumpster' && Math.abs(q.x - gc(p.x * N + 6)) < 1 && Math.abs(q.z - gc(p.y * N + 9)) < 1);
+        if (dc >= 0 && okCell(p.x * N + 11, p.y * N + 9)) { props[dc].x = gc(p.x * N + 11); }   // the dumpster on that strip moves to its end square
+        const at = claim('P02-10', 2, 9, 8, 1, 2, 'rocket'); if (!at) return;
+        const Y = 2.15, o = [], drum = (x0, x1, r, tint, key) => [roof('barrel', (x0 + x1) / 2, Y, 0, x1 - x0, r, 2 * r, key || PLAIN, tint, { roof: false, seg: 12, keyEnd: PLAIN, tintEnd: tint }),
+            roof('barrel', (x0 + x1) / 2, Y, 0, x1 - x0, -r, 2 * r, key || PLAIN, tint, { roof: false, seg: 12, keyEnd: PLAIN, tintEnd: tint, ds: true })];
+        const X0 = -13.6;
+        o.push(...drum(X0, X0 + 10, 1.62, 0xf2f2f0), ...drum(X0 + 3, X0 + 4, 1.64, 0x1c1c1e), ...drum(X0 + 7.2, X0 + 8.2, 1.64, 0x1c1c1e),
+            ...drum(X0 + 10, X0 + 11.2, 1.62, 0xd8d8d4), ...drum(X0 + 11.2, X0 + 18, 1.62, 0xf2f2f0), ...drum(X0 + 15, X0 + 15.6, 1.64, 0x1c1c1e),
+            ...drum(X0 + 18, X0 + 19.2, 1.4, 0xd8d8d4), ...drum(X0 + 19.2, X0 + 22.6, 1.1, 0xf2f2f0), ...drum(X0 + 22.6, X0 + 23.6, 0.95, 0x1c1c1e),
+            ...drum(X0 + 23.6, X0 + 24.4, 0.75, 0xe8e8e4), ...drum(X0 + 24.4, X0 + 25.1, 0.5, 0xe8e8e4), ...drum(X0 + 25.1, X0 + 25.6, 0.26, 0xe8e8e4),
+            box(X0 + 26.4, Y - 0.06, 0, 1.6, 0.12, 0.12, PLAIN, T.red), ...drum(X0 + 12.4, X0 + 13.0, 1.64, SAB));
+        [X0 + 2, X0 + 8.6, X0 + 14.6, X0 + 20.6].forEach((x, k) => o.push(box(x, 0, 0, 0.9, Y - (k === 3 ? 1.1 : 1.55) + 0.05, 3, PLAIN, T.yellow), box(x, 0, 0, 1.4, 0.2, 3.3, CONC, 0x9a9a9a)));
+        o.push(box(X0 - 0.5, 0, 0, 1.2, 0.4, 3, CONC, 0x9a9a9a));
+        land('rocket', at, o);
+        props.push({ key: 'rocket_engine', x: r3(at[0] + X0 - 0.6), z: r3(at[1]), face: 270, y: 0.4 });
+    })();
+    /* the street: forklifts and the taco stand (solid, on whole squares), tyre stacks, drums and wrapped pallets off centre (decoration) */
+    const st = { solid: 0, deco: 0 };
+    st.solid += solid('P01-10', 0, 9, 'forklift', 90) + solid('P00-11', 3, 5, 'forklift', 0) + solid('P01-08', 7, 1, 'city_taco_stand', 180) + solid('P01-08', 4, 4, 'wrapped_pallet', 0) + solid('P01-10', 3, 10, 'wrapped_pallet', 0);
+    [['P01-10', 1, 7, 'tire_stack', 0, 0.9, -0.8], ['P01-10', 1, 7, 'tire_stack', 30, 0.2, 0.9], ['P02-10', 11, 10, 'tire_stack', 0, -0.8, 0.6], ['P00-11', 4, 6, 'tire_stack', 0, 1, -0.8],
+     ['P02-09', 5, 0, 'psx_metal_barrel_mp_1', 0, 1.2, -1], ['P02-09', 0, 5, 'psx_metal_barrel_mp_2', 0, -1.1, 1.05], ['P00-09', 9, 11, 'psx_metal_barrel_mp_0', 0, 1, 1], ['P00-09', 9, 11, 'psx_metal_barrel_mp_3', 0, 0.2, 1.15],
+     ['P00-11', 4, 5, 'gas_cylinder_rack', 90, -1.2, 0.9], ['P01-08', 9, 1, 'city_bin', 0, 1.1, 1.1]].forEach(q => { st.deco += deco(...q); });
+    count2.houston = Object.assign({ rows: hou.rows, blocks: hou.blocks, out: hou.out.join(',') || 'none' }, st);
     lateRows.push(...out);
     console.log('industrial', JSON.stringify(count2));
 };
