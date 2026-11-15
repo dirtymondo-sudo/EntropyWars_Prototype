@@ -72401,6 +72401,46 @@ const ThreeRenderer = (function () {
         marc:      { f: '"Marcellus SC"', w: 400, ls: 0.06 },         // the museum and the galleries
         rye:       { f: '"Rye"', w: 400, ls: 0.02 }                   // fight posters
     };
+    /* THE CITY MARKS (2026-11-15, mondo: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city
+       branding/logo for certain buildings or props or banners"; his OK on the branding sheet): drawn from plain shapes on the sign's own
+       canvas, no texture file. A seventh field on the key names the mark that stands left of the words
+       ('txt:WORDS|fg|bg|aspect|<v>|<font>|<mark>'); a lamp banner (field `v`) always carries the seal above its district's name.
+         seal   = the city seal (navy + gold, the skyline split by the bolt)      shield = the DC bolt shield (black + hazard yellow)
+         pd     = the D.C.P.D. badge (a gold shield, DC)                           fd     = the D.C.F.D. badge (a gold cross, DC)
+       The shapes are the approved sheet's own SVG paths, on a 100-unit radius. */
+    var _HQ_MARK_SKY = 'M-62 30 V6 h14 V-10 h12 V-30 h16 V-4 h8 V-44 h18 V-18 h10 V-2 h14 V12 h12 V30 Z';
+    var _HQ_MARK_BOLT = 'M6 -52 L-8 -12 L4 -12 L-10 34 L14 -20 L2 -20 L12 -52 Z';
+    var _HQ_MARK_SHIELD = 'M-78 -92 H78 V10 C78 60 40 88 0 100 C-40 88 -78 60 -78 10 Z';
+    var _HQ_MARK_CROSS = 'M-28 -92 H28 L20 -24 L92 -28 V28 L20 24 L28 92 H-28 L-20 24 L-92 28 V-28 L-20 -24 Z';
+    var _HQ_MARK_FONTS = { seal: ['600 20px "Oswald"'], shield: ['20px "Archivo Black"'], pd: ['20px "Archivo Black"'], fd: ['20px "Archivo Black"'] };
+    function _hqSignMark(g, id, cx, cy, r, bg) {
+        var k = r / 100, P = function (d) { return new Path2D(d); }, NAVY = '#14284a', GOLD = '#e8c860', INK = '#14161a', HAZ = '#f2c230';
+        var star = function (x, y, q) { g.beginPath(); for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, rr = (i % 2) ? q * 0.42 : q; g[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr); } g.closePath(); g.fill(); };
+        g.save(); g.translate(cx, cy); g.scale(k, k); g.textAlign = 'center'; g.textBaseline = 'alphabetic'; if ('letterSpacing' in g) g.letterSpacing = '0px';
+        if (id === 'seal') {
+            g.fillStyle = NAVY; g.beginPath(); g.arc(0, 0, 100, 0, Math.PI * 2); g.fill();
+            g.strokeStyle = GOLD; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 94, 0, Math.PI * 2); g.stroke();
+            g.fillStyle = GOLD; g.beginPath(); g.arc(0, 0, 66, 0, Math.PI * 2); g.fill();
+            g.save(); g.translate(0, 8); g.fillStyle = NAVY; g.fill(P(_HQ_MARK_SKY)); g.scale(0.95, 0.95); g.fillStyle = GOLD; g.fill(P(_HQ_MARK_BOLT)); g.restore();
+            g.fillStyle = GOLD;
+            if (r >= 44) {   // the ring's words, a letter at a time round the top (too small to read on a banner: the ring and stars alone)
+                var words = 'CITY OF DISASTER CITY', n = words.length, span = 2.5; g.font = '600 19px "Oswald", "Arial Narrow", Arial, sans-serif';
+                for (var i = 0; i < n; i++) { var a = -span / 2 + span * (i + 0.5) / n; g.save(); g.rotate(a); g.fillText(words.charAt(i), 0, -73); g.restore(); }
+            }
+            for (var j = -1; j <= 1; j++) { var b = j * 0.36; star(Math.sin(b) * 80, Math.cos(b) * 80, 8); }
+        } else if (id === 'shield') {
+            g.fillStyle = INK; g.strokeStyle = HAZ; g.lineWidth = 7; var sh = P(_HQ_MARK_SHIELD); g.fill(sh); g.stroke(sh);
+            g.fillStyle = HAZ; g.font = '74px "Archivo Black", "Arial Black", Arial, sans-serif'; g.fillText('D', -37, 24); g.fillText('C', 39, 24);
+            g.save(); g.translate(0, 6); g.scale(1.45, 1.45); var bo = P(_HQ_MARK_BOLT); g.lineJoin = 'round'; g.strokeStyle = INK; g.lineWidth = 5; g.stroke(bo); g.fillStyle = '#f4f1ea'; g.fill(bo); g.restore();
+        } else if (id === 'pd') {
+            g.fillStyle = bg || NAVY; g.strokeStyle = GOLD; g.lineWidth = 11; var ps = P(_HQ_MARK_SHIELD); g.fill(ps); g.stroke(ps);
+            g.fillStyle = GOLD; g.font = '62px "Archivo Black", "Arial Black", Arial, sans-serif'; g.fillText('DC', 0, 20);
+        } else if (id === 'fd') {
+            g.fillStyle = GOLD; g.fill(P(_HQ_MARK_CROSS)); g.fillStyle = bg || '#b3261e'; g.beginPath(); g.arc(0, 0, 36, 0, Math.PI * 2); g.fill();
+            g.fillStyle = GOLD; g.font = '40px "Archivo Black", "Arial Black", Arial, sans-serif'; g.fillText('DC', 0, 14);
+        }
+        g.restore();
+    }
     function _hqSignTitleCase(s) { return String(s).toLowerCase().replace(/(^|[^a-z0-9])([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); }); }
     var _hqArchSignCache = {};
     function _hqArchSignTex(key) {
@@ -72414,10 +72454,13 @@ const ThreeRenderer = (function () {
             bg2.fillStyle = bg || '#333333'; bg2.beginPath(); bg2.moveTo(8, 6); bg2.lineTo(bw - 8, 6); bg2.lineTo(bw - 8, bh - 2); bg2.lineTo(bw / 2, bh - 30); bg2.lineTo(8, bh - 2); bg2.closePath(); bg2.fill();
             bg2.fillStyle = 'rgba(255,255,255,0.16)'; bg2.fillRect(8, 14, bw - 16, 5); bg2.fillRect(8, bh - 58, bw - 16, 3);   // the cloth's two stitched bands
             bg2.fillStyle = '#23262e'; bg2.fillRect(0, 0, bw, 9);                                                              // the rod (the lamp post's own dark grey)
+            /* THE CITY MARKS: the seal hangs above the district's name (the name keeps the cloth below it) */
+            var bSeal = (bh >= 240) ? 34 : 0, bTop = bSeal ? (28 + bSeal * 2 + 6) : 24;
+            if (bSeal) _hqSignMark(bg2, 'seal', bw / 2, 28 + bSeal, bSeal, bg);
             var bpx = 78, bfont = function (v) { return '900 ' + v + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif'; }; bg2.font = bfont(bpx);
-            var btw = bg2.measureText(words).width || 1, room2 = bh - 30 - 34; bpx = Math.max(8, Math.floor(bpx * Math.min(1, room2 / btw)));
+            var btw = bg2.measureText(words).width || 1, room2 = bh - 30 - bTop - 10; bpx = Math.max(8, Math.floor(bpx * Math.min(1, room2 / btw)));
             bg2.font = bfont(bpx); bg2.textAlign = 'center'; bg2.textBaseline = 'middle'; bg2.fillStyle = fg;
-            bg2.save(); bg2.translate(bw / 2 + bpx * 0.04, 24 + room2 / 2); bg2.rotate(-Math.PI / 2); bg2.fillText(words, 0, 0); bg2.restore();
+            bg2.save(); bg2.translate(bw / 2 + bpx * 0.04, bTop + room2 / 2); bg2.rotate(-Math.PI / 2); bg2.fillText(words, 0, 0); bg2.restore();
             var bt = new THREE.CanvasTexture(bc); bt.anisotropy = 4;
             return (_hqArchSignCache[key] = bt);
         }
@@ -72429,21 +72472,25 @@ const ThreeRenderer = (function () {
         var paint = function (fam) {
             g.clearRect(0, 0, W, H); if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
             var px = 96, ls = (fam && F.ls && ('letterSpacing' in g)) ? F.ls : 0, txt = fam ? shown : words;
+            var mk = _HQ_MARK_FONTS[q[6]] ? q[6] : '', mr = mk ? H * 0.42 : 0, mgap = mk ? H * 0.2 : 0, room = W * 0.9 - (mk ? mr * 2 + mgap : 0);   // THE CITY MARKS: the mark stands left of the words, the pair centred on the board
             g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (px * ls) + 'px';
             var m = g.measureText(txt), tw = m.width || 1, th = ((m.actualBoundingBoxAscent || 0) + (m.actualBoundingBoxDescent || 0)) || px * 0.72;
-            px = Math.max(8, Math.floor(px * Math.min(1, (W * 0.9) / tw, fam ? (H * 0.8) / th : 1)));
+            px = Math.max(8, Math.floor(px * Math.min(1, room / tw, fam ? (H * 0.8) / th : 1)));
             g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (px * ls) + 'px';
             m = g.measureText(txt); g.fillStyle = fg;
             var up = m.actualBoundingBoxAscent, dn = m.actualBoundingBoxDescent;
-            g.fillText(txt, W / 2 + px * ls / 2, (up > 0 || dn > 0) ? H / 2 + (up - dn) / 2 : H / 2 + px * 0.36);
+            var tw2 = m.width || 1, left = (W - (mk ? mr * 2 + mgap : 0) - tw2) / 2, tcx = left + (mk ? mr * 2 + mgap : 0) + tw2 / 2;
+            g.fillText(txt, tcx + px * ls / 2, (up > 0 || dn > 0) ? H / 2 + (up - dn) / 2 : H / 2 + px * 0.36);
+            if (mk) _hqSignMark(g, mk, left + mr, H / 2, mr, bg);
         };
         var t = new THREE.CanvasTexture(c); t.anisotropy = 4;
         /* the typeface arrives from the font sheet index.html links; until it has, the sign stands in the old letters and is redrawn once */
-        var spec = F ? (F.w + ' 96px ' + F.f) : '', ready = false;
-        try { ready = !!(F && document.fonts && document.fonts.check(spec, shown)); } catch (e) { ready = false; }
+        var specs = (F ? [F.w + ' 96px ' + F.f] : []).concat(_HQ_MARK_FONTS[q[6]] || []), ready = !!F;
+        try { for (var si = 0; si < specs.length; si++) if (!(document.fonts && document.fonts.check(specs[si], shown + 'DC'))) ready = false; } catch (e) { ready = false; }
         paint(ready);
-        if (F && !ready && document.fonts && document.fonts.load) {
-            try { document.fonts.load(spec, shown).then(function (ff) { if (ff && ff.length) { paint(true); t.needsUpdate = true; } }, function () {}); } catch (e) {}
+        if (specs.length && !ready && document.fonts && document.fonts.load) {
+            try { Promise.all(specs.map(function (sp) { return document.fonts.load(sp, shown + 'DC').then(function (ff) { return ff && ff.length; }, function () { return false; }); }))
+                .then(function (ok) { if (F ? ok[0] : ok.some(Boolean)) { paint(!!F); t.needsUpdate = true; } }); } catch (e) {}
         }
         return (_hqArchSignCache[key] = t);
     }

@@ -3372,3 +3372,37 @@ on the real-cities plan (`/mnt/project-files/disaster-city-real-cities/plan.html
   on strings, a red gate at each west end, blade signs, four noodle stalls on yard squares (ghost blocks). Three TOUR MAP boards.
 - Not made: a Meshy searchlight and a Meshy studio water tower (concepts go to mondo first); the water tower is still the code-built one.
 - Proof: `/mnt/project-files/dc-entertainment/la_built.jpg` (offline render of the baked rows, not the running game).
+
+## DISASTER CITY, THE CITY MARKS (2026-11-15)
+mondo 11-15: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city branding/logo for certain
+buildings or props or banners"; he corrected shield B (bolt, not a crack) and the flag's star on the sheet, then "the rest looks good for now".
+- Marks, drawn on the sign's own canvas from the sheet's SVG paths (three-renderer.js `_hqSignMark`, no texture file): `seal` (navy + gold
+  city seal), `shield` (the DC bolt shield), `pd` (D.C.P.D. badge), `fd` (D.C.F.D. badge). A seventh key field names the mark left of the
+  words: `txt:WORDS|fg|bg|aspect|<v>|<font>|<mark>`. A lamp banner (field `v`) always carries the seal above its district's name.
+- Set at the bake by docs/disaster-city/sign-fonts.js `BRAND` (Civic): POLICE boards read D.C.P.D. (pd), FIRE STATION boards read D.C.F.D.
+  (fd), the boards of City Hall, Courthouse, Council annex, Permit offices and Civil records take the seal. The department names are his;
+  add no other department without his word.
+- NOT built yet: the shield on the bus / stops / bins / barriers, manhole covers, the flag (mark C; sheet
+  /mnt/project-files/city-sign-fonts/branding_mockup_v3.jpg + branding_mockup.html hold its shapes). Seen: the real function in a bare page
+  (branding_built_real_sign_code.jpg), not in the game (RULE #1c).
+
+**Civic Center = WASHINGTON DC (2026-11-15, mondo 12:19 "each district based off of a major city. Civic could be Washington DC"; his pick
+"Build it as drawn" 12:32 on the real-cities plan, /mnt/project-files/disaster-city-real-cities/plan.html section d-c):** all in C.js.
+- Materials: the public buildings are white marble / pale limestone (Police, Dispatch, Military, Library, the Council chamber, the Permit
+  rotunda retinted; the Library's brick sheet is now `marble_light`), roofs + domes copper green (`VERD`); the Fire Station keeps red brick.
+- City Hall: the drum is a ring of 20 columns under a taller copper dome, a lantern, a statue on top (three plain parts, 43.9 m); two
+  stair treads + a row of concrete bollards in front (drawn only, off the door's line).
+- Civic plaza: a white obelisk (29 m, 2 x 2 squares, north-east lawn) and the reflecting pool (3 x 2 squares, north-west lawn) either
+  side of the walk, flag rows down the walk, a black iron fence with stone posts on the lawns' outer sides. The tool's fountain lost its
+  square to the pool, so C.js stands the same fountain in the pool (`DRESS`); the angel statue keeps its square beside the obelisk.
+  The plot is crossed by the avenue (rows 4-7 are road), so the pool is 10.5 m long, not a long mall.
+- Courthouse: eight columns (`CCOL`, symmetric about the door at x 11.4, each with its ghost), a bronze door frame, a pediment panel.
+- Military offices: the walk-in block keeps its square foot (room + door); from 7 m up the building is a pentagon round it (cyl `seg: 5`,
+  `ry: 180`: toArch now passes a cyl's `ry`), three window bands, the courtyard lawn cut in its roof. A true five-sided ground plan would
+  need a new shell + room (the collision shell is a rectangle).
+- Records garden: the glasshouse's crown is the round domed memorial ringed by 12 columns (the plot has no free ground: path ring only).
+  No statue yet. Public library: limestone, arched ground-storey windows on three sides, a copper dome, a `lion` each side of the portal.
+- THE STREET (`DRESS` = [px, py, key, x, z, face, squares it needs, opts], `BARS` = unseen low walls on barrier squares): four black cars
+  on whole squares in the Service court's south-west yard, the lions, four newspaper racks, the pool's fountain.
+- NOT DONE (need mondo's OK on a Meshy concept first): the seated statue, the pink blossom trees. No lawn paint (the ground palette is
+  shared). No far version of the obelisk (it is three parts).
