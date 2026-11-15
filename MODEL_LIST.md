@@ -2190,6 +2190,21 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | city_taco_stand | `Assets/world/packs/elbolilloduro/ebd_tacos_city_taco_stand.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
 | city_vhs_shop | `Assets/world/packs/elbolilloduro/ebd_vhsshop_city_vhs_shop.glb` | Asset pack | Pizzeria PSX / Gas Station / DINER / BurgerPiz / 6twelve / Tacos / Laundry / VHS Shop / House / Quequis House · Elbolilloduro · CC0 (the scene's whole building cut out in Blender by bake-pack-pieces.py city_*; Disaster City, docs/disaster-city/pack-claims.md) |
 
+### Farm / zoo animals (mondo's upload) — Asset pack (author not recorded yet) (10)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| butterfly | `Assets/world/animals/butterfly.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| cat | `Assets/world/animals/cat.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| chicken | `Assets/world/animals/chichen.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| cow | `Assets/world/animals/Cow.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| dog | `Assets/world/animals/dog.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| giraffe | `Assets/world/animals/girafe.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| ladybug | `Assets/world/animals/ladybug.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| lion | `Assets/world/animals/PSX_lion.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| lion_statue | `Assets/world/animals/PSX_lion.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+| wolf | `Assets/world/animals/Wolf1.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
+
 ### Buildings · Elbolilloduro · CC0 (one shop block cut out in Blender; HQ_PACK_BUILDINGS) — Asset pack (10)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2219,20 +2234,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | leaf_window_large | `Assets/world/hq/models/DOOR WITH LARGE WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
 | leaf_window_medium | `Assets/world/hq/models/DOOR WITH MEDIUM WINDOW.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
 | leaf_wooden | `Assets/world/hq/models/Wooden Door.glb` | Asset pack (author not recorded yet) | Door leaves (mondo's upload, author not recorded) |
-
-### Farm / zoo animals (mondo's upload) — Asset pack (author not recorded yet) (9)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| butterfly | `Assets/world/animals/butterfly.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| cat | `Assets/world/animals/cat.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| chicken | `Assets/world/animals/chichen.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| cow | `Assets/world/animals/Cow.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| dog | `Assets/world/animals/dog.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| giraffe | `Assets/world/animals/girafe.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| ladybug | `Assets/world/animals/ladybug.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| lion | `Assets/world/animals/PSX_lion.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
-| wolf | `Assets/world/animals/Wolf1.glb` | Asset pack (author not recorded yet) | Farm / zoo animals (mondo's upload) |
 
 ### PS1/PSX Industrial Pack #1 · domi236 (itch.io) · CC0 (each piece cut out in Blender by bake-pack-pieces.py ind_*; DOOR_HQ.catalogue ind_*, Disaster City) — Asset pack (9)
 

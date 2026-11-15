@@ -37079,7 +37079,8 @@ const ThreeRenderer = (function () {
         group.userData.animal = ctl;
         ctl.size = { w: ex * s, h: ey * s, l: ez * s };
         /* the step: in the first mesh's draw (a frame's second pass — the pixel mask, an outline — adds no time) */
-        var last = 0, hook = meshes[0];
+        var last = 0, hook = o.still ? null : meshes[0];   // THE STATUES: a still body takes its idle's first pose and never ticks
+        if (o.still) { ctl.still = true; ctl.play(o.clip || 'idle'); try { if (ctl.mixer) ctl.mixer.update(0); } catch (_st) {} }
         if (hook) hook.onBeforeRender = function () {
             var now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
             var dt = last ? (now - last) / 1000 : 0; last = now;
@@ -38038,7 +38039,7 @@ const ThreeRenderer = (function () {
             if (!root || !root._ew_bbox) return;
             if (root._ew_animalKey) {   // THE ANIMALS: a rigged animal, its own clips playing (a static clone would share one skeleton)
                 /* THE HORSES: the coats share one file (one root) — the row's own url names its coat, never the root's last key */
-                var an = _animalBuild(_animalKeyOfUrl(url) || root._ew_animalKey, target, { fit: opts.fit === 'span' ? 'span' : 'height', matPick: opts.matPick });
+                var an = _animalBuild(_animalKeyOfUrl(url) || root._ew_animalKey, target, { fit: opts.fit === 'span' ? 'span' : 'height', matPick: opts.matPick, still: opts.still });
                 if (!an) return;
                 /* THE EAGLE: a row's `swim` circles it about its spot on the room's tickers (the eagle soars there, gliding) */
                 g.add(tickers && opts.swim ? _oceanSwimRing(an.group, opts.swim, opts.nose, tickers) : an.group);
@@ -66537,6 +66538,25 @@ const ThreeRenderer = (function () {
         _hqPropMatCache.set(sm.uuid, lm);
         return lm;
     }
+    /* THE STATUES (2026-11-15, the Chicago pass — the museum's bronze lions): a catalogue row's / a prop row's `statue: 0xRRGGBB`
+       casts the model in that metal: the room's own lit Lambert's sheet kept (the fur / the folds still read) under the metal's
+       colour, a little shine. One material per (sheet, colour), shared. An animal under it holds still (`still`). */
+    var _hqStatueCache = new Map();
+    function _hqStatuePick(hex) {
+        var col = (typeof hex === 'number') ? hex : 0xa0763c;
+        return function (node, sm) {
+            var base = _hqPropMatPick(node, sm);
+            if (!base) return null;
+            var k = base.uuid + '|' + col, m = _hqStatueCache.get(k);
+            if (m) return m;
+            m = new THREE.MeshPhongMaterial({ map: base.map || null, color: col, specular: 0x6a5030, shininess: 38,
+                transparent: base.transparent, opacity: base.opacity, side: base.side });
+            m.emissive = new THREE.Color(col).multiplyScalar(0.12);
+            m._ew_shared = true;
+            _hqStatueCache.set(k, m);
+            return m;
+        };
+    }
     /* THE 2026-09-22 BATCH — GLB-FIRST OVER A STAND-IN: the one helper for a proc / a way rig that stands for a catalogue file. Reads the
        row by KEY (`file` + `base`, the `h` / `span` target unless `o.h` says, `fit` by which the row carries — `o.fit` overrides), hangs
        the instance through the misc loader with the room's material pick, and on landing HIDES the stand-in pieces in `o.hide` (the
@@ -79455,7 +79475,8 @@ const ThreeRenderer = (function () {
             var instO = {
                 anim: (p.anim != null) ? p.anim : cat.anim, nose: cat.turn || 0,
                 swim: swimM ? { r: (swimM.r || 2) * U * fs, v: (swimM.v || 1) * U * fs, bob: (swimM.bob || 0) * U, dir: swimM.dir || ((Math.round(((p.x || 0) + (p.z || 0)) * 4) & 1) ? -1 : 1) } : null,
-                fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
+                fit: fitSpan ? 'span' : 'height', matPick: (cat.statue != null || p.statue != null) ? _hqStatuePick(p.statue != null ? p.statue : cat.statue) : _hqPropMatPick,
+                still: !!(cat.statue != null || p.statue != null),   // THE STATUES (2026-11-15, Chicago): a cast animal holds its pose
                 onDone: function (g, s, bb) {
                     /* `lay`: the model is authored on edge (rugs) — turn its
                        thinnest axis upright and re-seat it on the floor */

@@ -2278,6 +2278,29 @@ mondo's OK 17:20 ("Yes, build it") on the plan with THE STADIUM (his 17:17: "is 
   a living room across the front three rows of squares (sofa, table), a wall with a swinging door, the bedroom across the back two (one
   `psx_bed_4_*` on a corner square, a wardrobe on the other corner, a bedside table, a rug), a 3.1 m ceiling. The residents' code finds the bed.
 
+- THE CHICAGO PASS (2026-11-15, the real-cities plan /mnt/project-files/disaster-city-real-cities/plan.html section d-s + mock_s.jpg; mondo
+  picked "Build it as drawn"): Sports + Culture is Chicago. Nothing deleted; every building keeps its name, use, doors and roof routes.
+  - MUSEUM: eight columns the full front (was six), the entablature + pediment 27.6 m wide, four wide limestone steps between two plinths;
+    a BRONZE LION on each plinth (prop `lion_statue`, the plinth square a blocker `dc:S-lion0/1`, prop y 1.12). The urns moved under the portico.
+  - THE STATUES (three-renderer.js, new): a catalogue or prop row's `statue: 0xRRGGBB` casts the model in that metal (`_hqStatuePick`: the
+    room's Lambert sheet under a Phong in the metal's colour, shared per sheet + colour) and an animal under it holds still (`still`: its
+    idle's first pose, no tick hook). data.js `lion_statue` = PSX_lion.glb cast in bronze 0x9a6f3a. Any model can be a statue this way.
+  - STADIUM: both back walls limestone; a 20-column colonnade + entablature over each (y 10.2..17); the north stand's shed roof raised onto it
+    (15.0, posts 17.2); pennants moved over the cornice / the roof's fascia; the scoreboard is 18 × 8 m (HOME 14 VIS 10, QTR 3 08:42).
+  - THE BEAN (arch:S:bean, Gallery court's open yard, centre -31.5, 94.5): a stone plaza (TileGeneric2a) 4 × 4 squares; the bean in the smooth white plaster sheet
+    tinted steel and worn as `kind: 'glass'` (shine, no reflections). NO `glow` ON A SHINY PART: a glow (emissive + the sheet as emissiveMap) drew the bean BLACK in the cloud check; without it the Phong reads as polished steel, 4 × 2 squares: the two end squares are blockers (dc:S-bean-w/e), the middle two arch
+    2.5 m over the plaza (walk under it). Domes with a negative `h` are its underside (ds: true). Pipe rail, bike rack, two benches.
+  - THE FOUNTAIN (arch:S:fountain, 52.5, 178.5, in levels.js "the sunk court"): marble basin + two bowls with water (urban:Liquid_Blue_02,
+    glow), nine jets (glow, no light). Its collision is four GHOST WALLS round its 2 × 2 squares: a building row there (block()) kept the
+    court from sinking under it (THE LEVELS warned "piece on a building").
+  - WRESTLING HALL: red brick (the gym's TileSubway3a brick, tinted) with limestone bands and pilasters; the striped big top is now the ARENA HOUSE, a
+    brick box on the dc:S-drum tier's own 12.25 m footprint under a copper-green barrel roof, a fan window and a bulb marquee LUCHA LIBRE;
+    the street marquee reads LUCHA LIBRE over WRESTLING TONIGHT. The gilt stays only on the marquee board and the tower caps.
+  - THE ELEVATED LINE (arch:S:trestle-<plot>, the border squares z 84..87.5 of P04..P07-08): one row a plot, deck at 13.3 m absolute
+    (yd = 13.3 - lvOf * 1.75), riveted steel (urban:MetroMetal, brown) bents every 7 m on square middles (slim blockers dc:S-trestle-*), two
+    lattice girders (TRUSS), the deck topped with urban:MetroRails, guard rails. Scenery; the train car (Meshy) waits on mondo's OK of a concept.
+  - Lamp banners: the district banner already hangs on every other lamp (the district looks); no extra lamp flags were added.
+
 ## DISASTER CITY, CIVIC CENTER — the 28 buildings of district C (2026-11-13, mondo's OK 17:11)
 
 District C = plots x 4..7, y 0..3 of `site_prebuilt_downtown_streets`. Everything lives in ONE file:
