@@ -2189,8 +2189,7 @@
                     onSit: (typeof _hqSitEvent === 'function') ? _hqSitEvent : null,
                     /* ESC: close the panel, else Settings (plan D6 — an overlay,
                        not a place); EXIT on the strip is how you leave */
-                    onEscape: () => { if (window._ewWalkWindowEsc && window._ewWalkWindowEsc()) return;   /* a window over the walk (ui.js: THE AREA UNITS, THE DATA PANEL) closes first */
-                        if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
+                    onEscape: () => window._hqBack(),   /* THE BACK (below _hqClosePanel): the newest thing open closes; the pause menu opens only when nothing is */
                     /* Q: answer a BELL call from anywhere in the building (plan D2) */
                     onHotkey: (k) => {
                         if (k === 'q') _hqOpenCounter('dispatch');
@@ -8406,7 +8405,7 @@
                 if (T.choices.length && !T.choiceSet) return;
                 _hqTalkEnd(); return;
             } else T.i++;
-            body.innerHTML = _hqTalkHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>';
+            body.innerHTML = _hqTalkHtml() + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>';
             try { playSfx('uiButtonConfirm'); } catch (e) {}
         }
         function _hqTalkEnd() {
@@ -8419,7 +8418,31 @@
             if (performance.now() - _hqTalk.at < 250) return;   // the E that opened the talk is not its first NEXT
             const T = _hqTalk, last = T.i >= T.pages.length - 1, picking = last && T.choices.length && !T.choiceSet;
             if (picking && /^[1-4]$/.test(e.key)) { e.preventDefault(); e.stopPropagation(); _hqTalkStep(+e.key - 1); return; }
-            if (!picking && (e.key === 'Enter' || e.key === ' ' || e.key === 'e' || e.key === 'E')) { e.preventDefault(); e.stopPropagation(); _hqTalkStep(null); }
+            if (!picking && (e.key === 'Enter' || e.key === ' ' || e.key === 'e' || e.key === 'E')) { e.preventDefault(); e.stopPropagation(); _hqTalkStep(null); if (!_hqPanelTarget) _hqInteractHold(); }
+        }, true);
+        /* E LEAVES WHAT E OPENED (mondo 11-15: "i press e to talk to them but then i have to click with the mouse to exit. e should
+           exit the dialogue too"): a box whose only button is its close (a person's line, a notice, a sheet on the wall) closes on
+           E — the key that opened it. A box with something to choose (a door's ways, a counter's action, the map) keeps E out
+           of it: ESC and RIGHT CLICK close those. The E that closes is never a new talk (_hqInteractHold). */
+        let _hqPanelAt = 0;
+        function _hqInteractHold() { try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.interactHold) ThreeRenderer.hq.interactHold(350); } catch (e) {} }
+        function _hqPanelPlain() {
+            if (!_hqPanelTarget || _hqPanelIsMap(_hqPanelTarget)) return false;
+            if (_hqTalk && _hqTalk.t === _hqPanelTarget) return false;   // THE TALK turns its own pages
+            const body = _hqEl('hqPanelBody'); if (!body) return false;
+            return !Array.from(body.querySelectorAll('button, input, select, textarea, a[href]')).some(b => !b.hasAttribute('data-close'));
+        }
+        document.addEventListener('keydown', (e) => {
+            if (!_hqPanelTarget || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.key !== 'e' && e.key !== 'E') return;
+            const tg = e.target;
+            if (tg && (tg.tagName === 'INPUT' || tg.tagName === 'TEXTAREA' || tg.tagName === 'SELECT' || tg.isContentEditable)) return;
+            if (_hqPause || _hqTerm || !_hqPanelPlain()) return;
+            if (performance.now() - _hqPanelAt < 250) return;   // the E that opened the box is not the E that closes it
+            e.preventDefault(); e.stopPropagation();
+            try { playSfx('uiButtonConfirm'); } catch (err) {}
+            window._hqClosePanel();
+            _hqInteractHold();
         }, true);
         function _hqNpcPanelHtml(t) {
             const room = _hqRoom();
@@ -8550,7 +8573,9 @@
             else if (t.kind === 'counter') html = _hqCounterPanelHtml(t);
             else if (t.kind === 'notice') html = _hqNoticePanelHtml(t);
             else html = _hqNpcPanelHtml(t);
-            body.innerHTML = html + '<p class="hq-panel-foot">ESC · CLOSE</p>';
+            body.innerHTML = html + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>';
+            _hqPanelAt = performance.now();
+            if (_hqPanelPlain()) { const ft = body.querySelector('.hq-panel-foot'); if (ft) ft.textContent = 'E · ESC · RIGHT CLICK · CLOSE'; }
             /* THE MAP is a FULL-SCREEN sheet (the user's rule, 2026-09-16): the
                stage fills the screen, the card + the register ride a side column
                (styles-base.css .hq-panel-map); every other target keeps the card */
@@ -8581,6 +8606,113 @@
             if (o && o.keepPaused) return;
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) { ThreeRenderer.hq.setPaused(false); _hqSetPrompt(ThreeRenderer.hq.target()); } } catch (e) {}
         };
+        /* ══ THE BACK (mondo 11-15: "pressing escape just opens the pause menu again forever and ever, it needs to close the menu
+           if it is open" + "right click is supposed to be universal back button") ══════════════════════════════════════════
+           ONE answer for ESC, P and RIGHT CLICK in the building: the newest thing open closes (a window over the walk, the
+           terminal, the pause menu, a panel / a dialogue box); the pause menu opens only when NOTHING is open. A screen over
+           the walk (the ID card, the trophies, the creator) owns the key: false = "not mine", and the key goes on to it —
+           before, ESC there opened the pause menu under the screen and let the walk go.
+           o.step (RIGHT CLICK): the pause menu steps back one level (a socket, a circuit, an armed item, a member's sheet)
+           before it closes. o.open === false (RIGHT CLICK): never opens the pause menu. */
+        window._hqBack = function (o) {
+            o = o || {};
+            if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.hq || !ThreeRenderer.hq.active()) return false;
+            if (window._ewWalkWindowEsc && window._ewWalkWindowEsc()) return true;   // ui.js: THE AREA UNITS, THE DATA PANEL
+            if (_hqTerm) { window._hqTerminalClose(); return true; }
+            if (_hqPause) {
+                const P = _hqPause;
+                if (o.step && (P.socket || P.circuit || P.arm || P.member != null)) {
+                    if (P.socket) { P.socket = null; P.sockQ = ''; } else if (P.circuit) P.circuit = null; else if (P.arm) P.arm = null; else P.member = null;
+                    try { playSfx('uiButtonConfirm'); } catch (e) {}
+                    _hqPauseRender(); return true;
+                }
+                window._hqClosePause(); return true;
+            }
+            if (_hqPanelTarget) { window._hqClosePanel(); _hqInteractHold(); return true; }
+            if (_hqSuspended) return false;   // a screen over the walk: the key is its own
+            if (o.open === false) return false;
+            return window._hqOpenPause() !== false;
+        };
+        window._hqBackHasTarget = function () { return !!((window._ewWalkWindowHas && window._ewWalkWindowHas()) || _hqTerm || _hqPause || _hqPanelTarget); };
+        /* ── RIGHT CLICK = BACK, EVERYWHERE (mondo 11-15) ──────────────────────────────────────────────────────────────────
+           A plain right click (no drag: a right-drag is the camera's) is the same as ESC wherever ESC backs out of something:
+           the building's menus and dialogue boxes (_hqBack), a battle's pause menu and its dialogs, every menu page. It is
+           sent as an ESCAPE key press, so each screen's own ESC handler answers it and the two can never disagree. It stands
+           down where the right button already has a job: the walk itself (the door gun), a fight in play (hud.js / state.js:
+           BACK one menu level), the editors, the UI Maker, a cutscene, a text box, a 3D preview, a paint grid.
+           THE BACK BUTTON: a screen that has a BACK button on top but no ESC of its own (the ID card, the trophies) is left
+           through that button, for ESC and right click alike (_ewBackKeyFallback). */
+        (function () {
+            let down = null;
+            const textBox = t => !!(t && t.nodeType === 1 && (t.isContentEditable || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || (t.tagName === 'INPUT' && !/^(button|checkbox|radio|range|submit|color|file)$/i.test(t.type || 'text'))));
+            const SKIP = 'canvas, #uimRoot, .uim-arr, .uim-dock, .slb2-grid, .me-cell, #ewSceneEd, #edRoot, [oncontextmenu], [data-rmb]';
+            function busy(t) {
+                if (textBox(t) || (t && t.closest && t.closest(SKIP))) return true;
+                if (document.body.classList.contains('ew-scene') || window._doorTapeActive) return true;        // a cutscene / the tape: ESC is its skip, never a habit click
+                if (window.EWCine && window.EWCine.on) return true;                                              // the cinematic camera
+                if (state.phase === 'editor' || (document.body.classList.contains('ed-on'))) return true;
+                if (document.getElementById('uimRoot') || document.documentElement.classList.contains('uim-live') || document.documentElement.classList.contains('uim-arranging')) return true;   // the UI Maker: right click is its own
+                if (document.pointerLockElement) return true;
+                return false;
+            }
+            function escKey() {
+                const tg = (document.activeElement && document.activeElement !== document.body && document.contains(document.activeElement)) ? document.activeElement : document.body;
+                ['keydown', 'keyup'].forEach(ty => { try { tg.dispatchEvent(new KeyboardEvent(ty, { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true, cancelable: true, composed: true })); } catch (e) {} });
+            }
+            function inFight() { return state.phase === 'battle' && !state.titleScreenVisible && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive(); }
+            window.addEventListener('mousedown', e => { down = (e.button === 2) ? { x: e.clientX, y: e.clientY, t: e.target, at: performance.now() } : null; }, true);
+            window.addEventListener('mouseup', e => {
+                if (e.button !== 2) return;
+                const d = down; down = null;
+                if (!d || Math.abs(e.clientX - d.x) + Math.abs(e.clientY - d.y) > 6 || performance.now() - d.at > 700) return;   // a drag / a hold: the camera's
+                let hqUp = false;
+                try { hqUp = typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active() && state.gameState === GS.HQ; } catch (er) {}
+                if (hqUp) {
+                    const pvw = d.t && d.t.closest && d.t.closest('#hqPause canvas, #hqPanel canvas, #ewSceneEd, [oncontextmenu], [data-rmb]');
+                    if (textBox(d.t) || pvw || (window.EWCine && window.EWCine.on) || document.body.classList.contains('ew-scene')) return;
+                    if (document.body.classList.contains('ed-on')) return;
+                    if (window._hqBackHasTarget()) { window._hqBack({ step: true, open: false }); return; }
+                    if (!_hqSuspended) return;   // the walk itself: the right button is the door gun's
+                    if (busy(d.t)) return;
+                    escKey(); return;            // a screen over the walk
+                }
+                if (busy(d.t)) return;
+                if (inFight()) {
+                    /* a fight in play backs one menu level itself (hud.js, state.js); only its pause menu and its dialogs are ours */
+                    const po = document.querySelector('.pause-overlay, #pauseOverlay');
+                    const paused = !!(po && po.getClientRects().length && getComputedStyle(po).display !== 'none' && getComputedStyle(po).visibility !== 'hidden');
+                    if (!paused && !state.uiDialog) return;
+                }
+                escKey();
+            }, true);
+            /* THE BACK BUTTON: an ESCAPE nobody answered, on a screen whose BACK button is on top, presses that button */
+            function backButton() {
+                const els = Array.from(document.querySelectorAll('.ms-back-btn, .lobby-back, .sq-back, [data-back], button, [role="button"]'));
+                for (const b of els) {
+                    if (b.disabled || !b.getClientRects().length) continue;
+                    const named = b.matches('.ms-back-btn, .lobby-back, .sq-back, [data-back]');
+                    if (!named && !/^[\s←‹◂◀<\-]*back\b/i.test((b.textContent || '').trim())) continue;
+                    const r = b.getBoundingClientRect(); if (r.width < 4 || r.height < 4) continue;
+                    const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+                    if (top && (top === b || b.contains(top))) return b;
+                }
+                return null;
+            }
+            window._ewBackKeyFallback = function (e) {
+                if (e.key !== 'Escape' || e.defaultPrevented || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+                if (textBox(e.target) || state.uiDialog) return;
+                if (document.body.classList.contains('ew-scene') || window._doorTapeActive || (window.EWCine && window.EWCine.on)) return;
+                if (state.phase === 'editor' || (document.body.classList.contains('ed-on')) || document.getElementById('uimRoot')) return;
+                if (inFight()) return;
+                let hqUp = false;
+                try { hqUp = typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active() && state.gameState === GS.HQ; } catch (er) {}
+                if (hqUp && !_hqSuspended) return;
+                const b = backButton(); if (!b) return;
+                e.preventDefault();
+                b.click();
+            };
+            window.addEventListener('keydown', window._ewBackKeyFallback, false);   // bubble, on the window: after every screen's own ESC
+        })();
         /* wrap a modal's unmount once so closing it resumes the building */
         function _hqWrapUnmount(name) {
             const f = window[name];
