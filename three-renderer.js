@@ -52135,7 +52135,7 @@ const ThreeRenderer = (function () {
             R._renderScene = function (sc, cam) {
                 if (!_lens || !_lens.cur) return rs.apply(this, arguments);
                 var pk = _lensPassK;
-                _lensPassK = (sc && sc.isQuadMesh) ? 'post' : (sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial) ? 'shadow'
+                _lensPassK = (sc && sc.isQuadMesh) ? 'post' : (sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial) ? ((cam && cam.isPerspectiveCamera) ? 'lamp shadow' : 'sun shadow')   /* THE SHADOW SPLIT: the sun's map and a lamp's cube sides are two rows */
                     : this._ew_sideRender ? 'mask' : this._ew_paneRender ? 'pane' : (sc && _lensIsMain(sc) && cam !== _lensMainCam(sc)) ? 'mirror/extra' : (sc && _lensIsMain(sc)) ? 'scene' : 'other render';
                 var sp = _lensIn(_lensPassK + ': setup + lights + sort');
                 try { return rs.apply(this, arguments); } finally { _lensOut(sp); _lensPassK = pk; }
@@ -52145,7 +52145,9 @@ const ThreeRenderer = (function () {
         if (typeof po === 'function') {
             W.push([R, '_projectObject', po]);
             R._projectObject = function () {
-                if (pd > 0 || !_lens || !_lens.cur) return po.apply(this, arguments);
+                var Fv = _lens && _lens.cur;
+                if (Fv) { var Cv = Fv.cnt || (Fv.cnt = {}); Cv[_lensPassK] = (Cv[_lensPassK] | 0) + 1; }   // THE SHADOW SPLIT: objects the walk visits, per pass
+                if (pd > 0 || !Fv) return po.apply(this, arguments);
                 pd++; var sp = _lensIn(_lensPassK + ': projection walk');
                 try { return po.apply(this, arguments); } finally { pd--; _lensOut(sp); }
             };
@@ -52176,6 +52178,8 @@ const ThreeRenderer = (function () {
                         L2.inShadow--;
                         var sdc = sri.drawCalls - sc0, sdt = sri.triangles - st0;
                         F.calls += sdc; F.tris += sdt; F.pass.shadow[0] += sdc; F.pass.shadow[1] += sdt;
+                        var Cs = F.cnt || (F.cnt = {}), sk2 = (cam && cam.isPerspectiveCamera) ? 'lamp' : 'sun';   // THE SHADOW SPLIT
+                        Cs[sk2 + ' renders'] = (Cs[sk2 + ' renders'] | 0) + 1; Cs[sk2 + ' calls'] = (Cs[sk2 + ' calls'] | 0) + sdc; Cs[sk2 + ' tris'] = (Cs[sk2 + ' tris'] | 0) + sdt;
                     }
                 }
                 var main = _lensIsMain(sc), prev = L2.pass;
@@ -52327,6 +52331,7 @@ const ThreeRenderer = (function () {
         A.n++; A.cpu += F.cpu; A.submit += F.submit; A.anim += F.anim; A.renders += F.renders; A.shadowRuns += F.shadowRuns; A.calls += F.calls; A.tris += F.tris;
         A.meshes += F.meshes; A.skinned += F.skinned; A.inst += F.inst; A.instances += F.instances;
         if (F.parts) { var AP = A.parts || (A.parts = {}); for (var pk in F.parts) AP[pk] = (AP[pk] || 0) + F.parts[pk]; }
+        if (F.cnt) { var AC = A.cnt || (A.cnt = {}); for (var ck in F.cnt) AC[ck] = (AC[ck] || 0) + F.cnt[ck]; }
         _LENS_PASSES.forEach(function (p) { A.pass[p][0] += F.pass[p][0]; A.pass[p][1] += F.pass[p][1]; });
         _LENS_KINDS.forEach(function (k) { A.kind[k][0] += F.kind[k][0]; A.kind[k][1] += F.kind[k][1]; });
         if (F.detail) { try { L.roots = _lensRoots(F.detail); } catch (e) { L.roots = null; } }
@@ -52363,6 +52368,7 @@ const ThreeRenderer = (function () {
         _LENS_PASSES.forEach(function (p) { S.pass[p] = [avg(A.pass[p][0]), avg(A.pass[p][1])]; });
         _LENS_KINDS.forEach(function (k) { S.kind[k] = [avg(A.kind[k][0]), avg(A.kind[k][1])]; });
         if (A.parts) { S.parts = []; var psum = 0; for (var pk2 in A.parts) { var pv = avg(A.parts[pk2]); psum += pv; S.parts.push([pk2, pv]); } S.parts.sort(function (a, b) { return b[1] - a[1]; }); S.partsOther = Math.max(0, S.cpuMs - psum); }
+        if (A.cnt) { S.cnt = {}; for (var ck2 in A.cnt) S.cnt[ck2] = avg(A.cnt[ck2]); }
         L.worstHist.push(A.worst); if (L.worstHist.length > 4) L.worstHist.shift();
         S.worst2s = Math.max.apply(null, L.worstHist);
         var inf = renderer ? renderer.info : null;
@@ -52412,6 +52418,12 @@ const ThreeRenderer = (function () {
             L.push('Frame JS (ms/frame): ' + pl.slice(0, 9).join(' · '));
             if (pl.length > 9) L.push('  ' + pl.slice(9).join(' · '));
         }
+        if (S.cnt) {   // THE SHADOW SPLIT (2026-11-15): which shadow costs — the sun's map or a lamp's cube sides — and how many objects each pass's walk visits
+            var cN = function (k) { return S.cnt[k] || 0; }, cF = function (v) { return v >= 100 ? _lensFmtN(v) : (Math.round(v * 10) / 10); };
+            L.push('Shadow split (a frame): sun ' + cF(cN('sun renders')) + ' renders, ' + cF(cN('sun calls')) + ' calls, ' + cF(cN('sun tris')) + ' tris · lamp ' + cF(cN('lamp renders')) + ' side renders, ' + cF(cN('lamp calls')) + ' calls, ' + cF(cN('lamp tris')) + ' tris');
+            var wv = []; ['scene', 'sun shadow', 'lamp shadow', 'mask', 'mirror/extra', 'pane', 'other render'].forEach(function (k) { if (cN(k) >= 0.5) wv.push(k + ' ' + cF(cN(k))); });
+            if (wv.length) L.push('Walk visits (objects a frame): ' + wv.join(' · '));
+        }
         L.push('Draw calls ' + Math.round(S.calls) + '  Triangles ' + _lensFmtN(S.tris) + '  renders ' + S.renders.toFixed(1));
         L.push('  pass      calls     tris');
         _LENS_PASSES.forEach(function (p) { L.push('  ' + pad(p, 9) + pad(Math.round(S.pass[p][0]), 10) + _lensFmtN(S.pass[p][1]) + (p === 'shadow' ? '   (' + S.shadowRuns.toFixed(1) + ' depth renders / frame)' : '')); });
@@ -52421,6 +52433,7 @@ const ThreeRenderer = (function () {
         L.push('Scene meshes ' + (c.meshes || 0) + ' · skinned ' + (c.skinned || 0) + ' · rigs animating ' + (c.rigs || 0));
         L.push('Lights point ' + (c.point || 0) + (S.lampN != null && S.lampN >= 0 ? ' (stage lamp budget ' + S.lampN + ')' : '') + ' · spot ' + (c.spot || 0) + ' · dir ' + (c.dir || 0) + ' · hemi ' + (c.hemi || 0) + (c.rigN ? ' · rig ' + (c.rig || 0) + '/' + c.rigN : ''));
         L.push('Shadow casters ' + ((c.casters && c.casters.length) ? c.casters.length + ': ' + c.casters.join(', ') : '0'));
+        try { var hl = _hq && _hq.heroLit, hs = (typeof _heroStat !== 'undefined') ? _heroStat : null; if (hl && hl.isLight && hs) L.push('Hero lamp: ' + (hs.why || 'drawn') + ' · frames held ' + hs.held + ' / drawn ' + hs.drawn + ' · in reach ' + hs.inReach + ' of ' + hs.casters + ' casters · moving ' + hs.moving + ' · sides drawn ' + hs.sidesDrawn + ' / skipped ' + hs.sidesSkipped + ' (session)'); } catch (eH) {}   // THE SHADOW SPLIT
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
         if (S.keep) L.push('Shader builds ' + S.keep.rateB.toFixed(1) + '/s · new pipelines ' + S.keep.rateP.toFixed(1) + '/s (session ' + S.keep.builds + ' / ' + S.keep.pipes + ') · kept ' + S.keep.kept + (S.keep.off ? ' (keep off)' : '') + (S.keep.inst ? ' · shared instancing ' + S.keep.inst : '') + (S.keep.rig ? ' · one rig: ' + S.keep.rig.moves + ' scene moves, ' + S.keep.rig.grows + ' grows' : '') + ' · sheets warmed ' + _ewSheet.n);
         if (S.keep && renderer && renderer._ew_sc) { var SC = _ewScStats(); L.push('Shader cache ' + SC.recipes + ' recipes · warmed ' + SC.warmed + (SC.left ? ' (' + SC.left + ' to go)' : '') + ' in ' + SC.warmMs + ' ms' + (SC.failed ? ' · ' + SC.failed + ' failed' : '') + ' · new this session ' + SC.proven + ' proven' + (SC.refused ? ' · not kept: ' + SC.refused : '')); }
