@@ -1957,6 +1957,56 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE DOORS REST + THE COPIES REST + THE ADD'S OWN GROUP (2026-11-15, mondo's F3 after THE LAMP'S TIGHT REACH)
+His readout: 20.3 FPS, CPU 39.2; matrix walk 6.5 · bundle check 6.1 · scene replays 4.9 · shadow replays 2.4; "refreshed 1809 of 12710",
+"check 7.47 ms/frame (67 quiet skipped, 21 still-checked)", "Re-recorded most: doors (values 14, tree 17, demoted)".
+- THE DOORS REST: the door group is a still-walk group in a chunked room (`_hqChunkTick` arms it, `st.hold = HQ_STILL_DOOR_HOLD_MS` 30 s).
+  `_hqDoorMotionStep` / the revolving door wake their door (`_hqStillWake(d.group)`), so a leaf that swings is drawn outside the
+  recording while it moves and 30 s after: one re-record a swing. Before, a swing changed the group's values every frame -> demoted
+  (three refreshes each of its pieces in every pass; retried after 30 s .. 8 min, demoted again). Two city doors carry a part that
+  never stops (a spinning way mark): those two are always out (12 meshes).
+- THE COPIES REST (`rpList` / `rpReplay`): a "dynamic" instanced batch asked for a full refresh every frame in every pass (three's
+  `hasDynamicInstancing`); it now rests after RP_REST quiet frames like node objects and is refreshed the frame its
+  instanceMatrix / instanceColor version or count moves (`ro._ew_rqI`, `_ew_rqV`). Off: `window.EW_BUN_INST_NO_REST`.
+- The still walk keeps each kept child's position / quaternion / scale objects in the group's arrays (`st.P/Q/SC`): no property
+  read off 11,000 children of many kinds each frame.
+- THE ADD'S OWN GROUP (`_ewBunTick`): the 7.47 ms average was the frames where the groups were NOT quiet: any Object3D.add anywhere
+  had every group checked, and a re-recorded group needed 40 still checks (2 s) to be quiet again. Now the add hook marks only the
+  bundle group the object lands under and the one it leaves (`_ew_bunDirty`), quiet comes after `BUN_QUIET` 8 checks, and a group
+  quiet for `BUN_QUIET_LONG` 90 checks takes every fourth frame. Old rule: `window.EW_BUN_ADD_ALL`.
+- The sandbox draws one frame every 5 s, so its ms rows and "quiet skipped" are not his; verify by counts (movers, outs, errors).
+- WHERE EACH FIX RUNS (mondo 11-15 "make sure all of these fixes apply everywhere ... story mode, battles, all of it"):
+  every HQ / story / site room (any `_hqFrame` scene): quiet replay, copies rest, quiet groups + the add's own group, movers /
+  changers out, the mask's short walk, the lamp's reach + tight reach + held lamp, quiet instance sync, scans on change, the
+  Frame JS lens. Battles in a room (the field bundles, `_ewBunFieldTargets`): quiet replay, copies rest, mask short walk, and
+  since this PR THE QUIET GROUPS (`field` in `_ewBunTick`; VS CPU on Mount Shasta: 531 groups, 353 skipped a frame, check
+  0.6 ms; off `window.EW_BUN_FIELD_CHECK_EVERY`). Big rooms only (>= chunkMinSpanM 200 m, today the city), on purpose: the
+  chunks and THE STILL WALK / STILL CHECK / DOORS REST — a small room's whole matrix walk is under 1 ms (3,500 objects, 0.6 ms
+  measured 11-09) and a still walk starts a hand-animated nested piece up to 0.5 s late, so there is nothing to win there.
+
+## THE LAMP'S TIGHT REACH + THE CHEAP SWEEP (2026-11-15, mondo's F3 at another spot of the city)
+
+His Mac after #1396, standing where a room's bedside lamp (the hero light, reach 3.5 m) is in view: 17.6 fps, CPU 51 ms; "shadow 564 calls,
+943K tris", "shadow: classic draws 7.3 + projection walk 4.4", "matrix walk 10.8" with 0 moving. The mask rows fell 14.5 -> 6.3 ms.
+- Reproduced in the cloud browser (teleport beside the lamp, `EW_HERO_SHADOW_UNSEEN = true`): 724 shadow draws, 3.5M tris a frame;
+  `heroShadow().why` = "a mover in reach". By kind: instance batches 2.4M tris (a 42 m cell's batch, every copy), shell meshes with a
+  sphere > 20 m 501K, static batches 99K. The reach cull tested bounding SPHERES.
+- THE LAMP'S TIGHT REACH: `_ewRchBoxOut` (world box vs the reach + 0.5 m, cached per object on its matrix checksum) and `_ewRchInstOut`
+  (any copy within reach; cached per lamp place + instanceMatrix.version) in the reach branch of the `_projectObject` wrapper (leaf meshes,
+  not skinned / morphing) and in `_hqHeroGate`'s "in reach" test. Off `window.EW_SHADOW_REACH_LOOSE`.
+- Cloud browser after: 3.5M -> 0.6M tris a lamp frame, instance batches 2.7M -> 2K, in reach 312 -> 74 pieces. What stays: the plot's own
+  merged walls + ground (their boxes hold the lamp).
+- Why it redrew EVERY frame: (1) the city's water sheet (`_ewNode.k === 'fluid'`, 645 x 505 m, 2.4 m under the lamp) was a "live material"
+  = "a mover in reach"; `_heroLiveMat` no longer counts fluid. (2) the lava lamp's own wax blobs (rigid meshes 1-8 cm from the light).
+  THE SLOW PIECES: when only rigid pieces drifted (no bones, no live material, no list change) the map redraws at most every
+  `HERO_RIGID_MS` 100 ms; `heroShadow().why` = "held (slow pieces)". Off `window.EW_HERO_RIGID_EVERY_FRAME`.
+- THE NEAR LIST: `_hqHeroGate` runs inside the frame's matrix walk (`scene._ew_afterWalk`), so its loop over all 31,000 casters showed as
+  "matrix walk" (10.8 vs 4.6 ms with the lamp in view; cloud browser 38 vs 17). `G.near` = the casters within reach + 6 m (+ every
+  instanced / skinned one), rebuilt every 500 ms / on a new list / lamp move; frames between read only it. Off `window.EW_HERO_NO_NEAR`.
+- THE CHEAP SWEEP: THE STILL WALK's twice-a-second sweep composed + multiplied every in-view subtree to look for a change; `_hqStillSum`
+  now sums each object's own position / quaternion / scale (its `matrix` when `matrixAutoUpdate` is false) and the sweep walks the
+  subtree's matrices only when that sum changed.
+
 ## THE MASK'S SHORT WALK + THE QUIET SYNC (2026-11-15, from mondo's first Frame JS readout)
 
 His Mac after #1395: 20.2 fps (was 13.1), CPU 38 ms, frame 48.5 ms. Biggest rows: "mask: projection walk 8.2", "mask: setup + lights + sort

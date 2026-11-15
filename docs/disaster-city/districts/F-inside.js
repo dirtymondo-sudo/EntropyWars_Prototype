@@ -69,7 +69,7 @@ module.exports = function (K, A) {
         const e = n - 1;
         I.put('psx_dinner_table_1', c(e, 2)[0], c(e, 2)[1], 'f'); I.put('psx_chair_mp_1', c(e, 2)[0] - 1.25, c(e, 2)[1] + 0.9, 'r');
         I.put('psx_sofa_3', c(e, 3)[0], c(e, 3)[1], 'l'); I.put('rug_office', c(e - 1, 3)[0] + 0.9, c(e - 1, 3)[1] + 0.8, 'f'); I.put('globe_lamp', g.rw - 0.5, c(e, 3)[1] + 1.75, 'f');
-        I.counter(c(e, 4)[0], c(e, 4)[1], 3.3, false, { tint: 0xe8e0d0, key: U('PlasterWallPainted1a'), topTint: 0x40444a, top: null }); I.put('mini_fridge', c(e, 4)[0] - 1.2, g.fw - 0.45, 'b', { y: 1.13 });
+        I.counter(c(e, 4)[0], c(e, 4)[1], 3.3, false, { tint: 0xe8e0d0, key: U('PlasterWallPainted1a'), topTint: 0x40444a, top: null }); I.put('mini_fridge', c(e, 4)[0] - 1.2, c(e, 4)[1], 'b', { y: 1.13 });   /* on the counter (it hung in the air beside it) */
         if (n > 3) { I.put('library_shelf_full', c(e - 2, 2)[0], zp + 0.75, 'f'); I.put('psx_armchair_1', c(e - 1, 4)[0] + 0.9, c(e - 1, 4)[1] + 0.8, 'b'); }
         I.put('office_plant', g.lw + 0.5, zp + 0.5, 'f');
         I.ceilLamp(c(1, 0)[0], c(0, 0)[1] + 1.75, H); I.ceilLamp(c(Math.min(e, 1), 3)[0], c(0, 3)[1], H, n > 3 ? 2 : 1, [7, 0, 0]);

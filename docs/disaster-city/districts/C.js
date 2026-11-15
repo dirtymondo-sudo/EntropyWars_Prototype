@@ -436,7 +436,7 @@ function runInside(I, room) {
                 if (wd != null) { if (dx > 1.3 && cE) x = R[2] - g - wd / 2 - 0.02; else if (dx < -1.3 && cW) x = R[0] + g + wd / 2 + 0.02; if (dz > 1.3 && rS) z = R[3] - g - wd / 2 - 0.02; else if (dz < -1.3 && rN) z = R[1] + g + wd / 2 + 0.02; }
                 else if (bd != null) { const hd = ((face || 0) % 360 + 360) % 360;
                     if (hd === 180 && rN && !o.dz) z = R[1] + g + bd / 2 + 0.03; else if (hd === 0 && rS && !o.dz) z = R[3] - g - bd / 2 - 0.03; else if (hd === 90 && cW && !o.dx) x = R[0] + g + bd / 2 + 0.03; else if (hd === 270 && cE && !o.dx) x = R[2] - g - bd / 2 - 0.03; } }
-            const q = { key, x: r3(x), z: r3(z), face: face || 0, floor: true }; if (o.h) q.h = o.h; if (o.span) q.span = o.span; if (o.y != null) { q.y = r3(o.y); q.mount = 0; } out.props.push(q); },
+            const q = { key, x: r3(x), z: r3(z), face: face || 0, floor: true }; if (o.h) q.h = o.h; if (o.span) q.span = o.span; if (o.r) q.r = o.r; if (o.y != null) { q.y = r3(o.y); q.mount = 0; } out.props.push(q); },
         bar: (col, row, nc, nr) => { nc = nc || 1; nr = nr || 1; const m = mid(col, row, nc, nr), hw = nc * C / 2 - 0.45, t = nr * C - 0.9; out.ghosts.push([m[0] - hw, m[1], m[0] + hw, m[1], 1.1, t]); },
         wallI: (c0, r0, c1, r1, h) => { const a = [x0 + c0 * C, z0 + r0 * C], b = [x0 + c1 * C, z0 + r1 * C], t = 0.1; h = h || 3.2;
             box(Math.min(a[0], b[0]) - t, Math.min(a[1], b[1]) - t, Math.max(a[0], b[0]) + t, Math.max(a[1], b[1]) + t, 0, h, 'u_PlasterWallPainted1a', 0xd8d4c8, { top: 1 });
@@ -473,12 +473,13 @@ const deskSet = (A, col, row, face, chair) => { A.put('tanker_desk', col, row, f
 
 inside('4,0,0', 7, 7, A => {
     A.line('u_PlasterWallPainted1a', 0xe6dcc8, 'u_ConcreteStriped1c', 0xb8b8b4, 0x8a2a22);                                                      // FIRE STATION, 8 x 8
-    [0, 1].forEach(r => { A.put('fire_truck', 0, r, FE, { nc: 3 }); A.bar(0, r, 3, 1); });
+    [0, 1].forEach(r => { A.put('fire_truck', 0, r, FE, { nc: 3, span: 7.4 });   /* 7.4 m long = 3.3 m wide: the two stood 55 cm in each other and in the wall */ A.bar(0, r, 3, 1); });
     [4, 5, 6].forEach(c => { row3(A, 'locker', c, 0, FS); A.bar(c, 0); }); A.put('locker_bench', 5, 0, FS, { dz: -0.3, dx: -1.2 }); A.put('locker_bench', 5, 0, FS, { dz: -0.3, dx: 1.2 });
     { const m = A.mid(4, 3); cyl(m[0], m[1], 0.09, 0, 7, ALU, 0xe8d8a0, { seg: 8 }); cyl(m[0], m[1], 0.7, 0, 0.12, null, 0x8a2a22, { seg: 14 }); A.bar(4, 3); }   // the fire pole on its pad
     deskSet(A, 6, 3, FW, 'cafeteria_chair'); A.put('tube_map', 7, 3, FW, { dx: 1.68 });
     [[0, 6], [1, 6], [0, 7], [1, 7]].forEach(c => { A.put('dorm_bed', c[0], c[1], FS); A.bar(c[0], c[1]); });
-    [[4, 6], [5, 7]].forEach(c => { A.put('round_table', c[0], c[1], 0, { h: 0.78 }); [[-1.2, -0.9], [1.2, 0.9], [-1.1, 1.0]].forEach(d => A.put('cafeteria_chair', c[0], c[1], FS, { dx: d[0], dz: d[1] })); A.bar(c[0], c[1]); });
+    /* (THE INTERIOR POLISH 2026-11-15: `round_table` is Camelot's Round Table with its own twelve chairs; at h 0.78 it was 3.2 m across, in both squares at once, the mess chairs inside it. The tulip table, 1.5 m across) */
+    [[4, 6], [5, 7]].forEach(c => { A.put('tulip_table', c[0], c[1], 0, { r: 0.75 }); [[-0.84, -0.63], [0.84, 0.63], [-0.78, 0.7]].forEach(d => A.put('cafeteria_chair', c[0], c[1], FS, { dx: d[0], dz: d[1] })); A.bar(c[0], c[1]); });
     A.put('steel_table', 7, 6, FW); A.put('mini_fridge', 7, 6, FW, { dx: 1.3, dz: -1.25 }); A.put('water_cooler', 7, 6, FW, { dx: 1.3, dz: 1.2 });
     A.put('kitchen_range', 7, 7, FW); A.put('sink', 7, 7, FW, { dx: 1.3, dz: 1.2 }); A.bar(7, 6, 1, 2);
     [3, 4].forEach(r => A.put('wall_shelf', 0, r, FE, { dx: -1.6 })); A.put('fire_extinguisher', 0, 2, FE, { dx: -1.6, dz: 1.2 }); A.put('fire_extinguisher', 3, 0, FS, { dz: -1.6, dx: 1.2 });
