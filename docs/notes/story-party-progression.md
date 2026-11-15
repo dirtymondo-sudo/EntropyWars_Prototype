@@ -1070,5 +1070,12 @@ His tool for the story cutscenes. Plan + mock-up approved 11-15 (project files `
   (phases enter -> ready -> scene -> back), a load never times out, a paused building is woken once, and a run that cannot reach its scene
   puts the editor back with "THE SCENE DID NOT PLAY: <why>" in its top line. After the scene he is put back in the room he was in (never
   the desert or the car). LESSON: prove a tool on a FINISHED-quest profile and with the button pressed TWICE; scratch harness `menu2.js`.
+- **THE COVER (2026-11-15, fourth pass; mondo: "trying to the drop off cutscene from the editor, why does it let me move around and move my
+  camera and stuff")**: on his Mac the desert stood in two seconds and the run then waited the FULL cast timeout with the room uncovered
+  (it asked `hq.sceneReady('sedaniel')`, which wants an idle clip a car never has; the cloud never showed it because its load card was
+  still up). Now `_sedCover`: one black window ("PLAYING <SCENE>", what it waits on, red CANCEL (ESC)) from the press until the scene is
+  on screen and again until the editor is back; the cast check is "his model is in the room" (8 s cap); a scene torn down without its
+  end is ended after 3 s; CANCEL or a failure in a scene room walks him back first; each phase logs `[SCENE ED] <id>: <phase>`.
+  LESSON: the cloud's long load card hides every wait a fast machine shows. Look for what stands between the card and the scene.
 - Harness: scratch `menu.js` (project files `cutscene-editor/tools/`): main menu -> Developer -> editor -> PLAY each scene. A cold
   cloud browser needs ~10 min per room load; one browser at a time.
