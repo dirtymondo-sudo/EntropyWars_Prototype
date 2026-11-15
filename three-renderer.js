@@ -47057,6 +47057,9 @@ const ThreeRenderer = (function () {
             }
             var R = this._ew_reach;
             if (R && object.visible !== false) {
+                if (object.isMesh === true && object.children.length === 0 && !object.isSkinnedMesh && !object.morphTargetInfluences && !_ewRchLoose()) {   // THE LAMP'S TIGHT REACH
+                    if (object.isInstancedMesh ? _ewRchInstOut(object, R.x, R.y, R.z, R.far) : _ewRchBoxOut(object, R.x, R.y, R.z, R.far)) return;
+                }
                 var csp = object._ew_ckSph;
                 if (csp && object._ew_ckFar != null && reachOut(R, csp)) return;   // a chunk past the lamp's reach
                 if (object.children.length > 256 && !object.isClippingGroup && object._ew_bunName && / shell$/.test(object._ew_bunName) && object.layers.test(camera.layers)) {   // a room's shell: still pieces only
@@ -87033,15 +87036,54 @@ const ThreeRenderer = (function () {
        The fight never holds (renderFrame clears the hold).
        Off: window.EW_HERO_SHADOW_EVERY_FRAME = true (live). ThreeRenderer.hq.dev.heroShadow() = the counts. */
     var _heroFr = null, _heroFrM = null, _heroFrS = null;
-    var HERO_STILL_MS = 1500, HERO_REFRESH_MS = 1000, HERO_LIST_MS = 100, HERO_TEXEL = 0.25, HERO_FLESH_M = 0.35;
+    var HERO_STILL_MS = 1500, HERO_REFRESH_MS = 1000, HERO_LIST_MS = 100, HERO_TEXEL = 0.25, HERO_FLESH_M = 0.35, HERO_RIGID_MS = 100, HERO_NEAR_MS = 500, HERO_NEAR_M = 6;
     var _heroF64 = new Float64Array(1), _heroU32 = new Uint32Array(_heroF64.buffer);
     var _heroStat = { frames: 0, held: 0, drawn: 0, moving: 0, changed: 0, drift: 0, inReach: 0, casters: 0, why: '' };
     var _heroBodies = [];
     function _heroMix(h, f) { _heroF64[0] = f; h = Math.imul(h ^ _heroU32[0], 16777619); return Math.imul(h ^ _heroU32[1], 16777619); }
+    /* THE LAMP'S TIGHT REACH (2026-11-15, mondo's F3 in Disaster City: "shadow 564 calls, 943K tris" beside a bedside lamp that
+       reaches 3.5 m): a lamp's six sides drew every piece whose bounding SPHERE touched its reach — a plot-wide merged wall (a
+       sphere of 30 m), a 42 m cell's instanced batch (every copy of it) — 724 draws and 3.5M triangles in the cloud browser for
+       a room with two beds. A caster farther than the lamp's far plane throws nothing into its map, so:
+         · a mesh is drawn in a reach render only when its world BOX comes within the reach (+ REACH_PAD for a swaying piece);
+         · an instanced batch only when one of its copies does (worked out once per lamp place / batch version).
+       The lamp's hold check (_hqHeroGate) counts a piece "in reach" by the same box. Off: window.EW_SHADOW_REACH_LOOSE. */
+    var _RCH_PAD_M = 0.5;
+    function _ewRchSum(e) { return e[12] + e[13] * 1.618 + e[14] * 2.414 + e[0] * 3.3 + e[5] * 5.7 + e[10] * 7.1 + e[1] * 11.3 + e[2] * 13.7 + e[6] * 17.9 + e[4] * 19.3 + e[8] * 23.1 + e[9] * 29.9; }
+    function _ewRchBoxOut(o, x, y, z, far) {
+        var g = o.geometry; if (!g) return false;
+        if (!g.boundingBox) { try { g.computeBoundingBox(); } catch (e) { return false; } }
+        var bb = g.boundingBox; if (!bb || bb.isEmpty()) return false;
+        var k = _ewRchSum(o.matrixWorld.elements), C = o._ew_rchBB;
+        if (!C || C.k !== k || C.g !== g || C.bb !== bb) C = o._ew_rchBB = { k: k, g: g, bb: bb, b: new THREE.Box3().copy(bb).applyMatrix4(o.matrixWorld) };
+        var b = C.b, lim = far + _RCH_PAD_M * _hqUnits();
+        var dx = Math.max(b.min.x - x, 0, x - b.max.x), dy = Math.max(b.min.y - y, 0, y - b.max.y), dz = Math.max(b.min.z - z, 0, z - b.max.z);
+        return dx * dx + dy * dy + dz * dz > lim * lim;
+    }
+    function _ewRchInstOut(o, x, y, z, far) {
+        var g = o.geometry, im = o.instanceMatrix; if (!g || !im) return false;
+        var ver = im.version | 0, k = _ewRchSum(o.matrixWorld.elements), C = o._ew_rchI;
+        if (C && C.x === x && C.y === y && C.z === z && C.far === far && C.v === ver && C.n === o.count && C.k === k) return C.out;
+        if (!g.boundingSphere) { try { g.computeBoundingSphere(); } catch (e) { return false; } }
+        var bs = g.boundingSphere; if (!bs) return false;
+        var a = im.array, W = o.matrixWorld.elements, c = bs.center, out = true, pad = _RCH_PAD_M * _hqUnits();
+        var ws = Math.sqrt(Math.max(W[0] * W[0] + W[1] * W[1] + W[2] * W[2], W[4] * W[4] + W[5] * W[5] + W[6] * W[6], W[8] * W[8] + W[9] * W[9] + W[10] * W[10]));
+        for (var i = 0, n = o.count; i < n; i++) {
+            var j = i * 16, s2 = Math.max(a[j] * a[j] + a[j + 1] * a[j + 1] + a[j + 2] * a[j + 2], a[j + 4] * a[j + 4] + a[j + 5] * a[j + 5] + a[j + 6] * a[j + 6], a[j + 8] * a[j + 8] + a[j + 9] * a[j + 9] + a[j + 10] * a[j + 10]);
+            if (!(s2 > 0)) continue;   // a copy handed back / hidden (a zero matrix)
+            var px = a[j] * c.x + a[j + 4] * c.y + a[j + 8] * c.z + a[j + 12], py = a[j + 1] * c.x + a[j + 5] * c.y + a[j + 9] * c.z + a[j + 13], pz = a[j + 2] * c.x + a[j + 6] * c.y + a[j + 10] * c.z + a[j + 14];
+            var wx = W[0] * px + W[4] * py + W[8] * pz + W[12] - x, wy = W[1] * px + W[5] * py + W[9] * pz + W[13] - y, wz = W[2] * px + W[6] * py + W[10] * pz + W[14] - z;
+            var lim = far + bs.radius * Math.sqrt(s2) * ws + pad;
+            if (wx * wx + wy * wy + wz * wz <= lim * lim) { out = false; break; }
+        }
+        o._ew_rchI = { x: x, y: y, z: z, far: far, v: ver, n: o.count, k: k, out: out };
+        return out;
+    }
+    function _ewRchLoose() { return typeof window !== 'undefined' && !!window.EW_SHADOW_REACH_LOOSE; }
     function _heroLiveMat(m) {
         if (Array.isArray(m)) { for (var i = 0; i < m.length; i++) if (_heroLiveMat(m[i])) return true; return false; }
         if (!m) return false;
-        return !!(m.isShaderMaterial || m._ew_wind || m.positionNode || (m._ewNode && m._ewNode.k !== 'terrain'));
+        return !!(m.isShaderMaterial || m._ew_wind || m.positionNode || (m._ewNode && m._ewNode.k !== 'terrain' && m._ewNode.k !== 'fluid'));   // a water sheet's ripples move no lamp shadow anyone can see (2026-11-15: the city's water table, 2.4 m under a bedside lamp, kept its map redrawing every frame)
     }
     /* has this matrix carried what hangs on it (within `extW` world units of its origin) past `tol` since `snap[j..]`? */
     function _heroMatMoved(e, snap, j, tol, extW) {
@@ -87137,7 +87179,24 @@ const ThreeRenderer = (function () {
         var mapW = L.shadow.mapSize.width || 512, nearW = (L.shadow.camera && L.shadow.camera.near) || 0, U = _hqUnits();
         /* one texel of a 90-degree side, `d` from the light, is never narrower than 2 d / (sqrt 3 x the side's width) */
         var texelPer = 2 / (1.7320508 * mapW), fleshW = HERO_FLESH_M * U;
-        var h = 2166136261 | 0, moving = false, drift = false, n = 0, list2 = G.list, bodies = _heroBodies; bodies.length = 0;
+        /* THE NEAR LIST (2026-11-15, Disaster City: 31,000 casters each measured against the lamp every frame, inside the frame's
+           matrix walk — half of mondo's "matrix walk 10.8 ms" with the lamp in view): twice a second (and when the list or the
+           lamp's place changes) the casters whose sphere comes within the reach + HERO_NEAR_M are kept (and every instanced /
+           skinned one, which stand wherever their matrices put them); the frames between read only those */
+        if (!G.near || G.nearOf !== G.list || now - G.nearAt > HERO_NEAR_MS || G.nx !== lx || G.ny !== ly || G.nz !== lz || G.nr !== reach) {
+            var nearL = [], padN = HERO_NEAR_M * U, fullL = G.list;
+            for (var ni = 0; ni < fullL.length; ni++) {
+                var no = fullL[ni], ng = no.geometry, nb = ng && ng.boundingSphere;
+                if (!nb) continue;
+                if (no.isInstancedMesh || no.isSkinnedMesh) { nearL.push(no); continue; }
+                var ne = no.matrixWorld.elements, nc = nb.center;
+                var nx = ne[0] * nc.x + ne[4] * nc.y + ne[8] * nc.z + ne[12] - lx, ny = ne[1] * nc.x + ne[5] * nc.y + ne[9] * nc.z + ne[13] - ly, nz = ne[2] * nc.x + ne[6] * nc.y + ne[10] * nc.z + ne[14] - lz;
+                var nlim = reach + padN + nb.radius * Math.sqrt(Math.max(ne[0] * ne[0] + ne[1] * ne[1] + ne[2] * ne[2], ne[4] * ne[4] + ne[5] * ne[5] + ne[6] * ne[6], ne[8] * ne[8] + ne[9] * ne[9] + ne[10] * ne[10]));
+                if (nx * nx + ny * ny + nz * nz <= nlim * nlim) nearL.push(no);
+            }
+            G.near = nearL; G.nearOf = G.list; G.nearAt = now; G.nx = lx; G.ny = ly; G.nz = lz; G.nr = reach;
+        }
+        var h = 2166136261 | 0, moving = false, drift = false, driftSk = false, n = 0, list2 = window.EW_HERO_NO_NEAR ? G.list : G.near, bodies = _heroBodies; bodies.length = 0;
         h = _heroMix(h, lx); h = _heroMix(h, ly); h = _heroMix(h, lz); h = _heroMix(h, reach); h = _heroMix(h, mapW);
         for (var i = 0; i < list2.length; i++) {
             var o = list2[i], g2 = o.geometry, bs = g2 && g2.boundingSphere;
@@ -87149,6 +87208,7 @@ const ThreeRenderer = (function () {
             if (o.isInstancedMesh || o.isSkinnedMesh) rad = 1e9;   // the copies stand wherever their own matrices put them; a body wherever its bones do
             var dx = wx - lx, dy = wy - ly, dz = wz - lz, lim = reach + rad;
             if (rad < 1e8 && dx * dx + dy * dy + dz * dz > lim * lim) continue;
+            if (!o.isSkinnedMesh && !o.morphTargetInfluences && !_ewRchLoose() && (o.isInstancedMesh ? _ewRchInstOut(o, lx, ly, lz, reach) : (rad > reach * 0.25 && _ewRchBoxOut(o, lx, ly, lz, reach)))) continue;   // THE LAMP'S TIGHT REACH: its sphere touches, the piece does not
             var shown = true, q = o;
             for (; q && q !== H.scene; q = q.parent) if (!q.visible) { shown = false; break; }
             if (!shown || !q) continue;
@@ -87163,7 +87223,7 @@ const ThreeRenderer = (function () {
                 if (o.morphTargetInfluences) for (var mi = 0; mi < o.morphTargetInfluences.length; mi++) h = _heroMix(h, o.morphTargetInfluences[mi]);
                 if (_heroLiveMat(o.material)) { moving = true; continue; }
                 bodies.push(o);
-                if (!drift && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(nearD, nearW, 0.05 * U), fleshW)) drift = true;
+                if (!driftSk && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(nearD, nearW, 0.05 * U), fleshW)) { drift = true; driftSk = true; }
                 continue;
             }
             n++;
@@ -87181,6 +87241,11 @@ const ThreeRenderer = (function () {
         var changed = h !== G.sig;
         if (changed) { G.sig = h; G.since = now; }
         var hold = !moving && !drift && !changed && (now - G.since) >= HERO_STILL_MS && (now - G.drawnAt) < HERO_REFRESH_MS;
+        /* THE SLOW PIECES (2026-11-15, Disaster City: a bedside lava lamp's wax blobs, the only movers in its reach, redrew its
+           six sides every frame): when the only thing that moved is a rigid piece (no body on bones, no live material, no piece
+           joined or left) the map redraws at most every HERO_RIGID_MS (10 a second). Off: window.EW_HERO_RIGID_EVERY_FRAME. */
+        var slow = !hold && drift && !driftSk && !moving && !changed && (now - G.since) >= HERO_STILL_MS && (now - G.drawnAt) < HERO_RIGID_MS && !window.EW_HERO_RIGID_EVERY_FRAME;
+        if (slow) hold = true;
         /* the map draws this frame (the walk's pulse is up): this is where each body stands in it */
         var pulse = !renderer || !renderer.shadowMap || renderer.shadowMap.autoUpdate !== false || !!renderer.shadowMap.needsUpdate;
         if (!hold && pulse) { G.drawnAt = now; for (var bi = 0; bi < bodies.length; bi++) _heroBodyKeep(bodies[bi]); }
@@ -87192,7 +87257,7 @@ const ThreeRenderer = (function () {
         ST.frames++; if (hold) ST.held++; else ST.drawn++;
         if (moving) ST.moving++; if (changed) ST.changed++; if (drift) ST.drift++;
         ST.inReach = n; ST.casters = list2.length;
-        ST.why = hold ? 'held' : (moving ? 'a mover in reach' : (changed ? 'a piece changed' : (drift ? 'a body moved' : ((now - G.since) < HERO_STILL_MS ? 'settling' : 'refresh'))));
+        ST.why = slow ? 'held (slow pieces)' : hold ? 'held' : (moving ? 'a mover in reach' : (changed ? 'a piece changed' : (drift ? 'a body moved' : ((now - G.since) < HERO_STILL_MS ? 'settling' : 'refresh'))));
     }
     function _hqHeroAfterWalk() {
         var H = _hq; if (!H || !H.heroLit || !H.heroLit.isLight) return;
@@ -88247,8 +88312,13 @@ const ThreeRenderer = (function () {
             if (st) { if (top) st.wake.add(top); return; }
         }
     }
+    /* a subtree's checksum over each object's OWN pose (its position, turn and size; its own matrix when it keeps that by hand):
+       what a mover changes. Read without composing a matrix, so the sweep costs a tenth of walking the subtree (2026-11-15,
+       mondo's F3: "matrix walk 10.8 ms" with nothing moving — the sweep composed and multiplied every in-view subtree twice
+       a second to look for a change) */
     function _hqStillSum(o) {
-        var e = o.matrixWorld.elements, s = e[12] + e[13] * 1.618 + e[14] * 2.414 + e[0] * 3.3 + e[5] * 5.7 + e[10] * 7.1 + e[1] * 11.3 + e[2] * 13.7 + e[6] * 17.9, ch = o.children;
+        var p = o.position, q = o.quaternion, sc = o.scale, s = p.x + p.y * 1.618 + p.z * 2.414 + q._x * 3.3 + q._y * 5.7 + q._z * 7.1 + q._w * 11.3 + sc.x * 13.7 + sc.y * 17.9 + sc.z * 19.3, ch = o.children;
+        if (o.matrixAutoUpdate === false) { var e = o.matrix.elements; s += e[12] * 23.1 + e[13] * 29.9 + e[14] * 31.7 + e[0] * 37.3 + e[5] * 41.9 + e[10] * 43.1 + e[1] * 47.7 + e[2] * 53.3 + e[6] * 59.9; }
         for (var i = 0, n = ch.length; i < n; i++) s += _hqStillSum(ch[i]);
         return s;
     }
@@ -88312,8 +88382,8 @@ const ThreeRenderer = (function () {
                 S.movers++; continue;
             }
             if ((i >= i0 && i < i1) || i + n < i1) {   // this frame's slice of the rest
-                c.updateMatrixWorld(true); s = _hqStillSum(c);
-                if (s !== SM[i]) { mv.add(c); AT[i] = now; SM[i] = s; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; this._ew_bunDirty = true; } }
+                s = _hqStillSum(c);
+                if (s !== SM[i]) { c.updateMatrixWorld(true); mv.add(c); AT[i] = now; SM[i] = s; if (c._ew_bunOut === undefined) { c._ew_bunOut = true; c._ew_bunOutA = true; this._ew_bunDirty = true; } }
                 S.swept++;
             }
         }
