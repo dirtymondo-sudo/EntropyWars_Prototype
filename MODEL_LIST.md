@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 918 |
+| Meshy AI | no | 919 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -2601,6 +2601,12 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | spell_top_fangs | `Assets/world/animals/top_fangs.glb` | Asset pack (author not recorded yet) | Top fangs (mondo's upload) |
+
+### Meshy AI, made by Claude through the Meshy API (text-to-3d preview 01a1df63, refine 01a1e0d0; the Tomb of the University district, mondo OK on the concept 2026-11-15 20:04) — Meshy AI (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| tomb_plaque | `Assets/world/props/meshy/tomb_plaque.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (text-to-3d preview 01a1df63, refine 01a1e0d0; the Tomb of the University district, mondo OK on the concept 2026-11-15 20:04) |
 
 ### The Meshy decor (three-renderer.js _HQ_DECOR_GLB) — worn by the procs in §8 (81)
 
