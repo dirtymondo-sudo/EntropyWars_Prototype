@@ -75922,8 +75922,8 @@ var CALM_TERRAIN = {   // var: the renderer and the survey worker read it, possi
         /* THE URBAN DECAY WOOD (2026-11-15, mondo: "can we replace the calm wood texture with the wood planks from the urban decay texture
            pack, like we did in disaster city"): wood_planks / bridge and wood wear the pack's boards everywhere now (a full URL here = a
            sheet outside `base`, read as pixels like every urban sheet: calmSheetUrl). The two calm sheets stay in the editor's picker. */
-        calm_planks:    ['https://cdn.entropywars.net/Assets/world/terrain/urban/WoodGeneric1a.png', 'wood_planks', 'Wood planks (Urban Decay)'],
-        calm_shipwood:  ['https://cdn.entropywars.net/Assets/world/terrain/urban/WoodGeneric2a.png', 'wood', 'Dark wood (Urban Decay)'],
+        calm_planks:    ['https://cdn.entropywars.net/Assets/world/terrain/urban/WoodFlooring1a.png', 'wood_planks', 'Wood planks (Urban Decay)'],
+        calm_shipwood:  ['https://cdn.entropywars.net/Assets/world/terrain/urban/WoodFlooring2a.png', 'wood', 'Dark wood planks (Urban Decay)'],
         calm_planks_old:   ['calm_planks_1.png', 'wood_planks', 'Deck planks (the old calm sheet)'],
         calm_shipwood_old: ['calm_shipwood_1.png', 'wood', 'Ship wood (the old calm sheet)'],
         calm_obsidian:  ['calm_obsidian_2.png', 'obsidian', 'Obsidian (lava veins)'],   // 11-11: faint lava in the joints (calm_obsidian_1 = no veins)
