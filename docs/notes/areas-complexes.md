@@ -3942,6 +3942,18 @@ Continue / map land in the new rooms); their literals stay as PvP board sources 
 - The big room compiles in ~23 s in node (Woods / Camelot ~10 s; cost is hqTerrain ramps + bridges per node). Watch the load on his Mac.
 - The world plan's Ice Wall and the Deep-to-Area-51 way are still open with him.
 
+## THE HOLLYWOOD HILLS — PLAN ONLY, waits mondo's OK (2026-11-15)
+
+mondo 11-15: "The disaster city version of the Hollywood sign needs to be part of the mountains, not just a weenie on the edge of the map. Beach needs
+to extend to the entertainment district, cliffs at that end of the beach. Basically just include the fake weenie mountains as part of this actual mountain
+plan, and rearrange them to whatever makes sense."
+- Plan picture: `docs/plans/world-zones/hollywood_hills_plot_plan.png` (a drawing, nothing built). A sixth Mountains district, 10 x 3 plots, its own room
+  east of Mount Olympus over Financial + Entertainment: the sign on four plots, the ridge behind it, the city's mountain road landing under the sign (not at
+  the Lodge Yard), a Lodge-road door west, a trail to Olympus' Goat Track, sea cliffs at the east end; the city's beach strip runs north along Entertainment
+  to those cliffs, with a cliff stair up.
+- Open with him: the three walk-in buildings (plain labels), whether the Ski Lodge moves, what stands on the new beach, who lives there.
+- Building it touches bake-mountains.js, bake-disaster-city.js (move.js way P08-04 N, EDGES, B.js / E.js room + edges) and links.downtown_mountains.
+
 ## THE ESTATE ON PLOTS — the fifth area of the world plan, first delivery (2026-11-15)
 
 mondo 11-15, on plot plan 2 (`docs/plans/world-zones/estate_plot_plan.png`): "okay, those are all good" = the Estate is the next zone, the plan as

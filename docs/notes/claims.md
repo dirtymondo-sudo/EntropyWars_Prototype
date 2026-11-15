@@ -18,7 +18,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | Camelot Kingdom | owner | 2026-11-15 | castle redesign 2 waits mondo's OK |
 | The Desert | owner | 2026-11-15 | interiors build stopped partway |
 | The Woods | owner | 2026-11-15 | trees wait mondo's reaction |
-| The Mountains | owner | 2026-11-15 | built, waits mondo's look |
+| The Mountains (+ the Hollywood Hills district, the city's north edge sign and the beach strip north of Bayside) | second | 2026-11-15 | Hills plan drawn (`docs/plans/world-zones/hollywood_hills_plot_plan.png`), waits mondo's OK; nothing built |
 | Disaster City (all districts, heights, residents, traffic) | owner | 2026-11-13 | several districts wait mondo's answers |
 | DOOR HQ (rooms, elevator, Main Hall) | owner | 2026-11-15 | elevator redesign waits mondo's OK |
 | First quest cutscenes + cutscene editor | owner | 2026-11-13 | notes fixes, ride down and foyer in progress |
