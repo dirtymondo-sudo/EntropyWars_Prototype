@@ -2849,6 +2849,27 @@ wear it as a `txt:` sign sheet (part type `sign` in toArch). A building with no 
 - **The prop check** lists every inside prop as "building" under district_reported: expected (a district's own props are reported, never moved).
 - Headless proof: camera INSIDE a room = teleport to a spot in the room's frame turned by `rot`, `y` = the plot's level x 1.75, `fp: true`.
   Shots /mnt/project-files/disaster-city-hero-plaza/inside_*.jpg.
+### HERO PLAZA, NEW YORK (2026-11-15, mondo's real-cities ask "Hero could NYC"; "Build it as drawn" 12:32 on plan.html section H)
+- Brief: /mnt/project-files/disaster-city-real-cities/plan.html (d-h) + mock_h.jpg. Code: H.js block "NEW YORK" (before build): `NYC[bid]` = a third
+  parts list per building (after B + DET), `NYC_TINT[bid]` = colour swaps on that building's outside parts (tint/tintEnd/tintTop), `NYC_OPEN`
+  (pushed into OPEN), `NYC_PROPS` (street props). Nothing deleted: every building keeps its name, use, door and roof route.
+- News office: its three setback tiers + pyramid + mast became a WEDGE tower (`nycWedge`, five-point convex `poly`, prow to the plaza SE, dark
+  glass G_TALL with limestone spandrels per storey, copper cornice) with a copper globe on its roof; the 28 m base, its door, roof route and
+  interior are as before. A news ticker (txt, glow) round the base's S + E faces.
+- Plaza corner: billboard stack on the Training hall roof edge facing the plaza (HERO / COFFEE / NEWS / HERO · NEWS · COFFEE) + ticker
+  "CITY UNDER ATTACK · HEROES RESPOND" under its cornice; HERO board on the Workshop store gable; NEWS board + ticker on the Press court roof.
+  Lit with `glow` only (no lights). Plain `txt:` keys: the sign-fonts thread owns the font field.
+- Tan brick: Training hall, Apartment stair, Apartments A (+ two black iron fire escapes, `fireEscape`). Brownstone: Townhouse row (slate
+  roofs, high stoops, newels, area railings, a wooden water tower `waterTower`); a second water tower on the Apartment stair.
+- Superhero Tower + its new lobby unchanged; warm glow strips under each setback band and the ring, a red beacon dome on the spire.
+- Transit court: two street stair heads (subway0/1 at x 3.5 / 38.5, z 17.5): green rails round a dark well, green glowing globes, a tiled
+  TRANSIT sign.
+- Memorial walk: a two-tier star-shaped stone base (`star`, convex polys) under the statue; the angel became `hero_statue_landing` (Meshy
+  image-to-3d of concept S2, mondo's pick 12:43; catalogue entry in data.js, R2 Assets/world/props/meshy/hero_statue_landing.glb, y 1.0 on the base).
+- Street (z 63): 4 car_taxi on the kerb squares (centred on 2 squares along the street: x a multiple of 3.5, z 57.75 / 68.25), 2 hot_dog_stand
+  centred on pavement squares, 3 newspaper_rack (decor, off centre), 3 orange/white steam chimneys in the road (arch, decor), a green
+  sidewalk shed over the north pavement (x -59.5..-45.5).
+
 ### HERO PLAZA, THE SECOND INSIDES PASS (2026-11-13 night, mondo 22:33: "do another interior pass ... make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere for the interiors")
 - **Where**: H.js `IN2[building id]`, run after the room's first-pass `IN[id]` on the same kit; new kit helpers `put` (a prop with `floor: true`
   and an optional `y`: 0.76 a desk top, 0.86 a cafe table, 0.95 a back counter, 1.13 a bar top), `wall(key, side, u, y)` (b / f / l / r, 0.45 m
