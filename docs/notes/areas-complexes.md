@@ -4047,3 +4047,61 @@ Then: "disaster city is the most complete area so far" (the standard the Estate 
 - **THE LEAFY ONES AGAIN (same day, mondo: "the ones that are not the winter tree still look really rough, please fix")**: the sprayed leafy crowns are gone. A leafy
   tree is now made exactly like the fir: ten tiers of slices of its own picture from the stem to the real outline (bake-trees.py `fir(..., leafy=True)`), about 300 leaf
   triangles. Same three file names, new bytes; ASSET_MANIFEST.json carries the new shas (the `?h=` fetch). Lesson: slices of the whole picture read natural, loose sprays do not.
+
+## THE BEACH ON PLOTS — the sixth area of the world plan, first delivery (2026-11-15)
+
+mondo 11-15, on the plot plans (`docs/plans/world-zones/beach_plot_plan_*.png`): plan 1 "shouldnt the long pier connect to the beach, not the
+dutchman" (plan 2: the pier starts on the sand); "where is the bermuda triangle in the plan? that needs to be its own district. its okay to make
+the sea bigger. Its supposed to be like an ocean from a final fantasy overworld map, big enough to sail and explore" (plan 3: 14 x 10 plots, The
+Ocean + The Bermuda Triangle as districts). His answers on plan 3: the size "fine for now, might be a little too big now"; the Triangle "fine";
+"add a remote island with a volcano and unconnected tribe (eventually will make models for)" (plan 4 = plan 3 + the Volcano Island); the plain
+plot labels "fine for now"; the Beach Huts "walk ins"; the old rooms "fine for now, but the plan is to eventually cut those pvp maps from these
+new areas".
+
+- **THE ROOM** `site_prebuilt_bermuda_beach` (site `prebuilt_bermuda`, part `beach`, "THE BEACH"): 14 x 10 plots of 12 x 12 squares (588 x 420 m),
+  written by `node bake-beach.js [--dry-run]` from `docs/areas/beach/layout.json` (plan 4) between `BEACH140-BEGIN / BEACH140-END` in data.js.
+  Never hand-edit between the markers. `BEACH_DUMP=1` prints the walked map. The layout is made by `docs/plans/world-zones/make-beach.py` (from
+  plan 2's squares) and drawn by `draw-beach.py`.
+- **FOUR DISTRICTS:** THE SHORE (14 plots, the west coast off Bayside: the Boardwalk, the Tide Pools, the Beach Huts, the Surf, the Palms, the
+  Lifeguard Hut, the Dunes, the Sandbar, the headland sands north and south), THE HARBOUR (8: the Quay and its shed, the Breakwater and the
+  harbour light, the Long Pier from the sand to the ship, the Flying Dutchman, the skiff jetty, the Channel's buoys), THE OCEAN (93: open water,
+  the Volcano Island far north with the tribe's village, two unnamed islets, the ocean pack's animals), THE BERMUDA TRIANGLE (25: a right
+  triangle with sides 6, 8, 10 plots; DOOR_MASTER "it's a right triangle", Room 345. West point = the Lighthouse Rock, right angle = the island
+  (the Jetty, the Cay, the Lagoon, the Island Beach), north point = the Maelstrom; inside = the Reef, the Wreck Islet, the Sandbar).
+- **A SEA ROOM, AND THE HEIGHTS ARE THE MAP:** `terrain.sea { y: 0 }`, no `gen` (the old Bermuda sea room's way: the whole field is walked, waded,
+  swum or sailed; the skiff and the swimmer are the game's own, HQ_SEA_RULES). Everything is `terrain.slope.cells`: sand rises 0.3 m a square from
+  the waterline up to its plot's cap (level 0 = 0.6 m, 1 = 1.2 m, 2 = 2.0 m), the sea floor falls 0.7 m a square from the sand (two squares of
+  wade, then a swim, 3.5 m deep in open water), dunes to 3.6 m. HARD squares keep four equal corners and so stand as a step: the piers 0.6, the
+  quay 0.9, the Breakwater 1.6, the Lighthouse Rock 3.4, the Dutchman's deck 2.6, the volcano's cone (4.2 m a square, to 16 m: never climbed).
+  A step over 0.62 m is the wall. Paint: planks, cobbles, `rocks_5`, `obsidian` (the cone), `lava` (the crater).
+- **THE BUILDINGS (5 walk-in, the Estate's helper: a hollow `texbuilding` + an `arch` look):** the three Beach Huts (blue, yellow, red; a surf
+  hut, a sleeping hut, a float hut), the Lifeguard Hut (white, red roof, its door to the sea), the Quay Shed (tarred, tin roof, barn doors).
+  DRAWN (arch rows): THE FLYING DUTCHMAN (her deck is a hard block of squares; the hull, forecastle, poop, three masts, yards, furled sails and
+  bowsprit are drawn over it) and the tribe's three open shelters. Props: two lighthouses (the game's own, the beam turns), the old wreck, two
+  skiffs (the skiff jetty; the island's Jetty), buoys (the Channel, the Maelstrom's ring), 51 palms.
+- **THE WAYS:** door `quay` on the west wall at the Boardwalk -> Disaster City's `harbour` door (the old Harbour's door id, kept; the city's
+  door still names the retired Harbour and `DOOR_HQ.retired` lands the walker on the spawn, which is on the Boardwalk inside this door; the city
+  is the owner side's on claims.md, so its tool was not touched); link `beach_dutchman` (NEW, way `trail`: the gangway at the Long Pier's end <->
+  the Dutchman's Main Deck, beside her cabin door); link `bermuda_abyss` (the Maelstrom, down to The Deep); link `weir_bermuda` (Room 8's weir ->
+  the tide pool by the Lagoon); Room 345's cabin door = `bay`, free on the Island Beach (`siteRooms.entry.prebuilt_bermuda`). The tool checks the
+  five data.js rows that hold a place in this room and refuses to bake when one has drifted.
+- **WHO LIVES HERE (10, homes = `DOOR_TEXT.POINT_OF_ENTRY` + the plan's visitors):** Shore = mermaid (Tide Pools), starfish (Sandbar), siren; Harbour =
+  pirate (Quay), homosapien (Long Pier); Triangle = siren (Wreck Islet), pirate (the island), jellyfish (Lagoon), sharkman (Island Beach), deep sea
+  fish (Reef). Lines are read from the old literals. THE TRIBE HAS NO PEOPLE YET (mondo: models come later): only their shelters, fire, drum, spears.
+- **RETIRED (`DOOR_HQ.retired`):** `site_prebuilt_downtown_harbour`, `site_prebuilt_bermuda_sea` -> the new room. Both literals stay (the tool
+  reads the people's lines from them). KEPT: the Dutchman's four decks (her insides) and `site_prebuilt_bermuda_island` (the PvP board; mondo:
+  to be cut from the new areas later). Hub `beach` (THE BEACH) added, claimed by id. `HQ_AREA_MARKERS`, the day look, the tape (still on the
+  Lighthouse Rock) and an `HQ_AREA_ENCOUNTERS` row (a copy of the old open sea's) added.
+- **CHECKED OFFLINE ONLY** (no browser run, RULE #1c): data.js parses; the room compiles in ~5 s in node (`hqTerrainInfo`: no NaN, heights
+  -9..16 m); on the compiled heights the walk from the city door to the huts, along the Long Pier to the gangway, up the north arm to the Quay,
+  out the skiff jetty, from the island's Jetty onto the Cay and from the Volcano Island's landing to the village has no step over 0.14 m; the
+  Dutchman's deck is not climbed from the pier; every prop key and unit exists; all four links and the bay door resolve.
+- **NOT DONE / SHORT OF DISASTER CITY:**
+  - NOT SEEN ON SCREEN: everything. Above all the Dutchman's drawn hull, how the hard steps (pier sides, quay wall, cone) are textured, whether
+    the gangway way reads as a way aboard, the door on the open west edge, the frame rate of a 588 x 420 m sea room.
+  - The west edge is open sea past the room, not the city's sea wall (no `terrain.edges`); the room wears the old sea shell.
+  - The Dutchman is not redesigned (the world plan wants her rebuilt inside and out). The hold hatch to Atlantis is her old link, untouched.
+  - Art the game does not have (nothing was generated): the tribe's people and proper huts, a volcano model, a volleyball net, beach towels.
+  - Not carried over from the old rooms, because the plan does not draw them: the Harbour's wharves, gantry, slipway and water steps; the old
+    cay's Lookout and stair. The undersea coral and fish of the old dive route are only partly placed (the Reef, the Maelstrom).
+  - No residents with routines, no fights set up in the room, no Deep-to-Area-51 way (still mondo's open question).
