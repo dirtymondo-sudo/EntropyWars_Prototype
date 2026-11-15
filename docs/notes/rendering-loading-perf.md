@@ -2227,3 +2227,12 @@ when the picture stops 5 s+ while timers run), where it was (`ThreeRenderer.hq.r
 and the `[HQ]` / `[MENU]` / lab sweep console.log lines. A session that did not end cleanly is printed at the top of the
 next load's console as one `[CRASH TRAIL]` block (so his usual console paste carries it) and kept in localStorage
 `ew_freeze_trail_hist` (last 3; ?ewdiag=1 lists them). Read the block first on any future crash / freeze report.
+
+## THE HOLDERS (2026-11-15, the main hall crash, second pass)
+His F3 in DOOR HQ: `MEM 1726/700 MB` in the Foyer, `2047/700 MB` in the Main Hall (Firefox M1 WebGPU): three times the budget
+and climbing through the door, the best lead for the crash. THE MEMORY BUDGET can only drop what nothing drawn wears, and in the
+walk it never drops unit models, so "over the budget with nothing free to drop" was silent. three-renderer.js `_mmReport`: once
+per room, when over the budget with nothing to drop, one `[MEM]` console.warn block: the props / unit-model split, how much is
+worn by something drawn, the built stage parts, the 14 biggest props and 10 biggest unit models (LIVE / idle).
+`ThreeRenderer.hq.memTop()` gives the lines on demand. Read-only; nothing is dropped differently yet. NEXT: read his block, then
+cut what holds the memory (candidates: unit models never dropped in the walk, too many stage parts built, the menu scene kept).

@@ -37861,6 +37861,47 @@ const ThreeRenderer = (function () {
         return { misc: { n: n, mb: +(mb / 1048576).toFixed(1) }, rigs: { n: rn, mb: +(rb / 1048576).toFixed(1) }, budget: _mmBudgetMB(),
                  evicted: _mmEvicted, freedMB: +(_mmFreed / 1048576).toFixed(1), off: _mmOff() };
     }
+    /* THE HOLDERS (2026-11-15, mondo: "Crashed inside the door main hall/lobby"; his readout: MEM 1726/700 MB in the Foyer, 2047/700
+       in the Main Hall, Firefox M1 WebGPU). The readout said how much, never WHAT: nothing could be checked from a console paste.
+       Once per room, when the sum is over the budget, one console.warn names the split (props / unit models), the built stage parts
+       and the biggest files of each cache with whether something drawn wears them (LIVE) or they only sit in the cache (idle).
+       Read-only: it drops nothing. ThreeRenderer.hq.memTop() gives the same lines on demand. */
+    var _mmToldRooms = {};
+    function _mmTopLines(H, R, list, live) {
+        var mbs = function (b) { return (b / 1048576).toFixed(0); }, short = function (u) { u = String(u); return u.length > 70 ? '…' + u.slice(-69) : u; };
+        var parts = 0, built = 0;
+        if (H && H.stage && H.stage.parts) for (var id in H.stage.parts) { parts++; var P = H.stage.parts[id]; if (P && (P.built || (P.P && P.P.partRoot))) built++; }
+        var liveN = 0, liveB = 0, idleB = 0;
+        list.forEach(function (r) { if (r.live) { liveN++; liveB += r.bytes; } else idleB += r.bytes; });
+        var top = list.slice().sort(function (a, b) { return b.bytes - a.bytes; }).slice(0, 14);
+        var rigs = [];
+        for (var r in _unitGlbCache) {
+            var ue = _unitGlbCache[r]; if (!ue || !ue.root) continue;
+            var hit = false; ue.root.traverse(function (o) { if (!hit && o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) hit = true; });
+            rigs.push({ url: r, bytes: ue._ew_mmBytes || 0, live: hit });
+        }
+        var rLive = 0; rigs.forEach(function (x) { if (x.live) rLive += x.bytes; });
+        rigs.sort(function (a, b) { return b.bytes - a.bytes; });
+        var L = ['room ' + ((H && H.opts && H.opts.room) || '?') + ' · props ' + R.misc.n + ' files ' + R.misc.mb + ' MB (worn by something drawn: ' + liveN + ' files ' + mbs(liveB) + ' MB, idle ' + mbs(idleB) + ' MB) · unit models ' + R.rigs.n + ' files ' + R.rigs.mb + ' MB (worn ' + mbs(rLive) + ' MB) · budget ' + R.budget + ' MB · stage parts ' + built + ' built of ' + parts + ' · dropped so far ' + R.evicted];
+        top.forEach(function (t) { L.push('prop ' + mbs(t.bytes) + ' MB ' + (t.live ? 'LIVE' : 'idle') + ' ' + short(t.url)); });
+        rigs.slice(0, 10).forEach(function (t) { L.push('unit ' + mbs(t.bytes) + ' MB ' + (t.live ? 'LIVE' : 'idle') + ' ' + short(t.url)); });
+        return L;
+    }
+    function _mmList(live) {
+        var list = [];
+        for (var u in _miscModelCache) {
+            var e = _miscModelCache[u], isLive = false; if (e._ewPiece) continue;
+            if (e.root) e.root.traverse(function (o) { if (!isLive && o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) isLive = true; });
+            list.push({ url: u, bytes: e.bytes || 0, live: isLive });
+        }
+        return list;
+    }
+    function _mmReport(H, R, list, live) {
+        var room = (H && H.opts && H.opts.room) || '?';
+        if (_mmToldRooms[room]) return;
+        _mmToldRooms[room] = 1;
+        console.warn('[MEM] ' + Math.round(R.misc.mb + R.rigs.mb) + ' of ' + R.budget + ' MB and nothing idle to drop. Paste this block to Claude:\n  ' + _mmTopLines(H, R, list, live).join('\n  '));
+    }
     function _mmTick(H, now) {
         if (now - _mmAt < MM_EVERY_MS) return;
         _mmAt = now;
@@ -37876,6 +37917,7 @@ const ThreeRenderer = (function () {
         }
         var go = _mmPick(list, t, idle, tot - cap * MM_FLOOR, MM_MAX);
         if (!go.length) _mmAt = now + 26000;   // over the budget with nothing free to drop (it is all on the stage): the whole-scene read waits 30 s
+        try { _mmReport(H, R, list, live); } catch (x) {}
         go.forEach(_mmEvict);
         if (go.length) { _objectsDirty = true; try { console.log('[ThreeRenderer] THE MEMORY BUDGET: ' + go.length + ' idle model(s) dropped (' + (_mmFreed / 1048576).toFixed(1) + ' MB so far)'); } catch (x) {} }
     }
@@ -94855,6 +94897,7 @@ const ThreeRenderer = (function () {
            { misc: { n, mb }, rigs: { n, mb }, budget, evicted, freedMB, off } */
         cull: function () { return _hq ? _hqCullStats(_hq) : null; },
         mem: function () { return _mmRead(); },
+        memTop: function () { try { var R = _mmRead(), live = _mmLive(_hq); return _mmTopLines(_hq, R, _mmList(live), live); } catch (e) { return ['unreadable: ' + (e && e.message)]; } },
         /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): the room's place on the clock — { hour, room, locked, day, dusk, lamp, sunAz,
            sunEl, moonEl, key: { x, y, z, i } } | null (an unclocked room). The hour itself is map.js's (window.hqClockSet(h) moves it) */
         clock: function () {
