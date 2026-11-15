@@ -72597,6 +72597,31 @@ const ThreeRenderer = (function () {
         }
         g.restore();
     }
+    /* THE CITY'S MANHOLE COVER (2026-11-15, THE CITY MARKS, mondo's OK on the branding sheet + "go for it"): in a Disaster City room the
+       street covers are the city's own casting, drawn once on a canvas: an iron disc, two raised rings, the skyline, DISASTER CITY round
+       the top and SEWER round the foot. Other cities keep the pack's cover. One texture for every cover, as before. */
+    var _hqCityManholeT = null;
+    function _hqCityManholeTex() {
+        if (_hqCityManholeT) return _hqCityManholeT;
+        var S = 256, c = document.createElement('canvas'); c.width = S; c.height = S; var g = c.getContext('2d'), t = new THREE.CanvasTexture(c); t.anisotropy = 4;
+        var paint = function () {
+            var IRON = '#54575c', DARK = '#2e3034', k = (S / 2 - 4) / 100;
+            g.clearRect(0, 0, S, S); g.save(); g.translate(S / 2, S / 2); g.scale(k, k);
+            g.fillStyle = DARK; g.beginPath(); g.arc(0, 0, 100, 0, Math.PI * 2); g.fill();
+            g.fillStyle = IRON; g.beginPath(); g.arc(0, 0, 94, 0, Math.PI * 2); g.fill();
+            g.strokeStyle = DARK; g.lineWidth = 5; g.beginPath(); g.arc(0, 0, 86, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.arc(0, 0, 50, 0, Math.PI * 2); g.stroke();
+            g.lineWidth = 3; for (var i = 0; i < 24; i++) { var a = i * Math.PI / 12; if (Math.abs(Math.sin(a)) > 0.93) continue; g.beginPath(); g.moveTo(Math.cos(a) * 52, Math.sin(a) * 52); g.lineTo(Math.cos(a) * 58, Math.sin(a) * 58); g.stroke(); }   // the grip ribs, clear of the words
+            g.save(); g.scale(0.55, 0.55); g.translate(0, 6); g.fillStyle = DARK; g.fill(new Path2D(_HQ_MARK_SKY)); g.restore();
+            g.fillStyle = DARK; g.textAlign = 'center'; g.textBaseline = 'alphabetic'; if ('letterSpacing' in g) g.letterSpacing = '0px';
+            var ring = function (words, px, span, top) { g.font = '700 ' + px + 'px "Oswald", "Arial Narrow", Arial, sans-serif'; var n = words.length;
+                for (var j = 0; j < n; j++) { var b = -span / 2 + span * (j + 0.5) / n; g.save(); if (top) { g.rotate(b); g.fillText(words.charAt(j), 0, -62); } else { g.rotate(-b); g.fillText(words.charAt(j), 0, 62 + px * 0.72); } g.restore(); } };
+            ring('DISASTER CITY', 19, 2.3, true); ring('SEWER', 16, 0.95, false);
+            g.restore();
+        };
+        paint();
+        try { if (document.fonts && document.fonts.load && !document.fonts.check('700 20px "Oswald"', 'DISASTER')) document.fonts.load('700 20px "Oswald"', 'DISASTER CITY SEWER').then(function (ff) { if (ff && ff.length) { paint(); t.needsUpdate = true; } }, function () {}); } catch (e) {}
+        return (_hqCityManholeT = t);
+    }
     function _hqSignTitleCase(s) { return String(s).toLowerCase().replace(/(^|[^a-z0-9])([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); }); }
     var _hqArchSignCache = {};
     function _hqArchSignTex(key) {
@@ -73241,47 +73266,75 @@ const ThreeRenderer = (function () {
             }
         }
         /* THE HILL SIGN (2026-11-15, mondo: "the disaster city hollywood sign, there is already the mountains on one of the edges of disaster
-           city, use that/make that the hollywood hills"): `edges.sign = { side, at, d, text, px, lean: {i: k}, drop: {i: m} }` stands a word of
-           white block letters ON THE LAND, `d` metres past the edge of `side`, centred on `at` along it, every letter on the land's own height
-           under it, its face to the room. 5 x 7 blocks a letter, `px` metres a block; two legs behind each. ONE merged mesh, no light, no
+           city, use that/make that the hollywood hills"): `edges.sign = { side, at, d, text, px, font, lean: {i: k}, drop: {i: m} }` stands a word of
+           white letters ON THE LAND, `d` metres past the edge of `side`, centred on `at` along it, every letter on the land's own height
+           under it, its face to the room. A letter is 7 x `px` metres tall (see THE HILL SIGN'S LETTERS); two legs behind each. No light, no
            fog (it stands in the far land's haze: its white is mixed toward the fog like the land's), so it costs the same far off as near. */
         var SG = E.sign;
         if (SG && SG.text) {
             try {
-                var GL = { A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'], C: ['.####', '#....', '#....', '#....', '#....', '#....', '.####'], D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
-                    E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'], I: ['###', '.#.', '.#.', '.#.', '.#.', '.#.', '###'], R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
-                    S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'], T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'], Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
-                    O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'], L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'], H: ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
-                    W: ['#...#', '#...#', '#...#', '#.#.#', '#.#.#', '##.##', '#...#'], N: ['#...#', '##..#', '#.#.#', '#..##', '#...#', '#...#', '#...#'] };
-                var spx = +SG.px || 2, sside = SG.side || 'e', sd0 = +SG.d || 30, sat = +SG.at || 0, gap = spx * 1.15, txt = String(SG.text).toUpperCase();
-                var total = 0; for (var si = 0; si < txt.length; si++) { var gq = GL[txt[si]]; total += (gq ? gq[0].length * spx : spx * 2.4) + gap; } total -= gap;
-                var vpos = [], vcol = [];
+                /* THE HILL SIGN'S LETTERS (2026-11-15, mondo: "change the disaster city hollywood sign font, i dont want it to be pixel"): the
+                   5 x 7 block letters are gone. Each letter is one standing plane, cut from a real typeface (`sign.font`, default Anton, a tall
+                   heavy sign gothic from the font sheet index.html links), all on ONE canvas and in ONE merged mesh; a letter is still 7 x `px`
+                   tall, stands on the land's own height under it, keeps its `lean` and `drop`, and its two legs behind. Built once the font
+                   file has arrived (or at once in the fallback face if it never does). */
+                var spx = +SG.px || 2, sside = SG.side || 'e', sd0 = +SG.d || 30, sat = +SG.at || 0, txt = String(SG.text).toUpperCase(), LH = spx * 7;
+                var sFam = SG.font || '"Anton"', sFont = function (v) { return v + 'px ' + sFam + ', Impact, "Arial Narrow", "Arial Black", sans-serif'; };
                 var horizS = (sside === 'n' || sside === 's'), outS = (sside === 'e' || sside === 's') ? 1 : -1, edgeS = sside === 'e' ? R.x1 : sside === 'w' ? R.x0 : sside === 's' ? R.z1 : R.z0;
                 var runS = (sside === 'e' || sside === 'n') ? 1 : -1;   // the word reads left to right for an eye inside the room: east side north -> south, north side west -> east
                 if (sside === 'n') runS = 1; if (sside === 's') runS = -1; if (sside === 'w') runS = -1;
                 var wpt = function (al, dd) { return horizS ? [al, edgeS + outS * dd] : [edgeS + outS * dd, al]; };
-                var boxS = function (al, dd, y, wAl, h, th, c) {   // a box: `wAl` along the side, `th` thick away from the room, on y .. y + h
-                    var a0 = al - wAl / 2, a1 = al + wAl / 2, p = [wpt(a0, dd), wpt(a1, dd), wpt(a1, dd + th), wpt(a0, dd + th)], y1 = y + h;
-                    var q = function (A, B, C2, D) { [A, B, C2, A, C2, D].forEach(function (v) { vpos.push(v[0] * U, v[1] * U, v[2] * U); vcol.push(c, c, c); }); };
-                    var lo = p.map(function (v) { return [v[0], y, v[1]]; }), hi = p.map(function (v) { return [v[0], y1, v[1]]; });
-                    q(lo[0], lo[1], hi[1], hi[0]); q(lo[1], lo[2], hi[2], hi[1]); q(lo[2], lo[3], hi[3], hi[2]); q(lo[3], lo[0], hi[0], hi[3]); q(hi[0], hi[1], hi[2], hi[3]);
+                var signLand = F, signFog = fogC, signG = G;
+                var buildSign = function () {
+                    try {
+                        var CH = 256, PAD = 10, cv = document.createElement('canvas'), cx2 = cv.getContext('2d');
+                        cx2.font = sFont(200); var mH = cx2.measureText('H'), capK = (mH.actualBoundingBoxAscent || 144) / 200, fpx = Math.round((CH - PAD * 2) / capK);
+                        cx2.font = sFont(fpx);
+                        var cells = [], cw = PAD;
+                        for (var si = 0; si < txt.length; si++) {
+                            var ch = txt.charAt(si); if (ch === ' ') { cells.push(null); continue; }
+                            var mm = cx2.measureText(ch), l = mm.actualBoundingBoxLeft || 0, r = mm.actualBoundingBoxRight || mm.width, w = Math.max(8, Math.ceil(l + r));
+                            cells.push({ ch: ch, x: cw, w: w, l: l }); cw += w + PAD * 2;
+                        }
+                        cv.width = Math.min(4096, Math.max(64, cw)); cv.height = CH; cx2 = cv.getContext('2d'); cx2.clearRect(0, 0, cv.width, CH);
+                        cx2.font = sFont(fpx); cx2.textAlign = 'left'; cx2.textBaseline = 'alphabetic'; cx2.fillStyle = '#ffffff';
+                        cells.forEach(function (c) { if (c) cx2.fillText(c.ch, c.x + c.l, CH - PAD); });
+                        cx2.globalCompositeOperation = 'source-atop'; cx2.fillStyle = 'rgba(0,0,0,0.07)';   // the sheet-metal panels: faint seams down each letter
+                        for (var bx = 0; bx < cv.width; bx += 22) cx2.fillRect(bx, 0, 2, CH);
+                        cx2.globalCompositeOperation = 'source-over';
+                        var m2px = LH / (CH - PAD * 2), gap = spx * 0.9, total = 0;
+                        cells.forEach(function (c) { total += (c ? c.w * m2px : spx * 2.4) + gap; }); total -= gap;
+                        var vpos = [], vuv = [], lpos = [], lcol = [];
+                        var boxS = function (al, dd, y, wAl, h, th, c) {   // a leg: `wAl` along the side, `th` thick away from the room, on y .. y + h
+                            var a0 = al - wAl / 2, a1 = al + wAl / 2, p = [wpt(a0, dd), wpt(a1, dd), wpt(a1, dd + th), wpt(a0, dd + th)], y1 = y + h;
+                            var q = function (A, B, C2, D) { [A, B, C2, A, C2, D].forEach(function (v) { lpos.push(v[0] * U, v[1] * U, v[2] * U); lcol.push(c, c, c); }); };
+                            var lo = p.map(function (v) { return [v[0], y, v[1]]; }), hi = p.map(function (v) { return [v[0], y1, v[1]]; });
+                            q(lo[0], lo[1], hi[1], hi[0]); q(lo[1], lo[2], hi[2], hi[1]); q(lo[2], lo[3], hi[3], hi[2]); q(lo[3], lo[0], hi[0], hi[3]); q(hi[0], hi[1], hi[2], hi[3]);
+                        };
+                        var cur = -total / 2;
+                        for (var li = 0; li < cells.length; li++) {
+                            var c = cells[li]; if (!c) { cur += spx * 2.4 + gap; continue; }
+                            var lw = c.w * m2px, a0 = sat + runS * cur, a1 = sat + runS * (cur + lw), wp = wpt((a0 + a1) / 2, sd0), land = signLand.at(wp[0], wp[1]).y;
+                            var yb = land + spx * 0.6 - ((SG.drop && +SG.drop[li]) || 0), sh = ((SG.lean && +SG.lean[li]) || 0) * LH * runS;
+                            var A = wpt(a0, sd0), B = wpt(a1, sd0), C2 = wpt(a1 + sh, sd0), D = wpt(a0 + sh, sd0);
+                            var u0 = (c.x - 1) / cv.width, u1 = (c.x + c.w + 1) / cv.width, v0 = (PAD) / CH, v1 = (CH - PAD) / CH;
+                            var P = [[A[0], yb, A[1], u0, v0], [B[0], yb, B[1], u1, v0], [C2[0], yb + LH, C2[1], u1, v1], [D[0], yb + LH, D[1], u0, v1]];
+                            [0, 1, 2, 0, 2, 3].forEach(function (k) { vpos.push(P[k][0] * U, P[k][1] * U, P[k][2] * U); vuv.push(P[k][3], P[k][4]); });
+                            [0.18, 0.82].forEach(function (k) { var al2 = sat + runS * (cur + k * lw), w2 = wpt(al2, sd0 + spx * 0.9), l2 = signLand.at(w2[0], w2[1]).y; boxS(al2, sd0 + spx * 0.5, Math.min(l2, yb) - 1, spx * 0.22, Math.max(2, yb + LH * 0.7 - Math.min(l2, yb) + 1), spx * 0.22, 0.3); });
+                            cur += lw + gap;
+                        }
+                        var stex = new THREE.CanvasTexture(cv); stex.anisotropy = 4;
+                        var sgeo = new THREE.BufferGeometry(); sgeo.setAttribute('position', new THREE.Float32BufferAttribute(vpos, 3)); sgeo.setAttribute('uv', new THREE.Float32BufferAttribute(vuv, 2)); sgeo.computeVertexNormals();
+                        var smat = new THREE.MeshLambertMaterial({ color: new THREE.Color(0xffffff).lerp(signFog, 0.1), map: stex, alphaTest: 0.5, fog: false, side: THREE.DoubleSide }); smat._ew_hqEdgeLand = true;
+                        var smesh = new THREE.Mesh(sgeo, smat); smesh.name = 'hq_edge_sign'; signG.add(smesh);
+                        var lgeo = new THREE.BufferGeometry(); lgeo.setAttribute('position', new THREE.Float32BufferAttribute(lpos, 3)); lgeo.setAttribute('color', new THREE.Float32BufferAttribute(lcol, 3)); lgeo.computeVertexNormals();
+                        var lmat = new THREE.MeshLambertMaterial({ color: new THREE.Color(0xffffff).lerp(signFog, 0.1), vertexColors: true, fog: false, side: THREE.DoubleSide }); lmat._ew_hqEdgeLand = true;
+                        var lmesh = new THREE.Mesh(lgeo, lmat); lmesh.name = 'hq_edge_sign_legs'; signG.add(lmesh);
+                    } catch (e2) { console.warn('[HQ] the hill sign failed', e2); }
                 };
-                var cur = -total / 2;
-                for (var li = 0; li < txt.length; li++) {
-                    var g = GL[txt[li]]; if (!g) { cur += spx * 2.4 + gap; continue; }
-                    var lw = g[0].length * spx, alC = sat + runS * (cur + lw / 2), wp = wpt(alC, sd0), land = F.at(wp[0], wp[1]).y;
-                    var yb = land + spx * 0.6 - ((SG.drop && +SG.drop[li]) || 0), ln = (SG.lean && +SG.lean[li]) || 0;
-                    for (var rr2 = 0; rr2 < g.length; rr2++) {
-                        var line = g[g.length - 1 - rr2], c0 = 0;
-                        while (c0 < line.length) { if (line[c0] !== '#') { c0++; continue; } var c1 = c0; while (c1 < line.length && line[c1] === '#') c1++;
-                            boxS(sat + runS * (cur + (c0 + c1) / 2 * spx + ln * rr2 * spx), sd0, yb + rr2 * spx, (c1 - c0) * spx, spx + 0.02, spx * 0.3, rr2 % 2 ? 0.95 : 1); c0 = c1; }
-                    }
-                    [0.5, g[0].length - 0.5].forEach(function (k) { var al2 = sat + runS * (cur + k * spx), w2 = wpt(al2, sd0 + spx * 0.9), l2 = F.at(w2[0], w2[1]).y; boxS(al2, sd0 + spx * 0.8, Math.min(l2, yb) - 1, spx * 0.22, Math.max(2, yb + g.length * spx * 0.7 - Math.min(l2, yb) + 1), spx * 0.22, 0.3); });
-                    cur += lw + gap;
-                }
-                var sgeo = new THREE.BufferGeometry(); sgeo.setAttribute('position', new THREE.Float32BufferAttribute(vpos, 3)); sgeo.setAttribute('color', new THREE.Float32BufferAttribute(vcol, 3)); sgeo.computeVertexNormals();
-                var smat = new THREE.MeshLambertMaterial({ color: new THREE.Color(0xffffff).lerp(fogC, 0.1), vertexColors: true, fog: false, side: THREE.DoubleSide }); smat._ew_hqEdgeLand = true;
-                var smesh = new THREE.Mesh(sgeo, smat); smesh.name = 'hq_edge_sign'; G.add(smesh);
+                var sReady = false; try { sReady = !!(document.fonts && document.fonts.check(sFont(96), txt)); } catch (e3) { sReady = false; }
+                if (sReady || !(document.fonts && document.fonts.load)) buildSign();
+                else document.fonts.load('96px ' + sFam, txt).then(buildSign, buildSign);
             } catch (e) { console.warn('[HQ] the hill sign failed', e); }
         }
         if (_hq) {
@@ -73779,7 +73832,7 @@ const ThreeRenderer = (function () {
         var paint = new THREE.MeshLambertMaterial({ color: neon ? 0xd8dce8 : 0xe8e6da, transparent: true, opacity: neon ? 0.82 : 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
         paint.emissive = new THREE.Color(neon ? 0x30343c : 0x2a2924);
         var kerbTex = _hzTex(_hqRoadTexKey('kerb')), kerbMat = new THREE.MeshPhongMaterial({ map: kerbTex || null, color: neon ? 0x9a9ab0 : 0xc8c6c0, shininess: 4, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }); kerbMat.emissive = new THREE.Color(0x1a1a1a);
-        var mhTex = _hzTex(_hqRoadTexKey('manhole')), mhMat = new THREE.MeshLambertMaterial({ map: mhTex || null, transparent: true, alphaTest: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff });
+        var mhTex = (room && /DISASTER CITY/.test(String(room.label || ''))) ? _hqCityManholeTex() : _hzTex(_hqRoadTexKey('manhole')), mhMat = new THREE.MeshLambertMaterial({ map: mhTex || null, transparent: true, alphaTest: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff });
         mk(Bk, kerbMat, 2); mk(Bw, paint, 3); if (mhTex) mk(Bm, mhMat, 3);
         if (Bs.n) { var stTex = _hzTex(_hqRoadTexKey('stain')); if (stTex) mk(Bs, new THREE.MeshLambertMaterial({ map: stTex, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff }), 2); }   // under the paint and the manholes
         /* the posts: a plate on a pole, a blocker under it */
@@ -88236,14 +88289,20 @@ const ThreeRenderer = (function () {
         return (y == null) ? 0 : y;
     }
     /* THE MANHOLE + THE SAFETY SIGNS (2026-10-05): the urban pack's sheets as world pieces */
-    var _hqManholeMat = null;
+    var _hqManholeMat = null, _hqManholeCityMat = null, _hqMarksCity = false;
     function _hqManholeDisc(U, r) {
         if (typeof _hzTex !== 'function') return null;
         if (!_hqManholeMat) {
             var tex = _hzTex('urban:DecalManholeCover'); if (!tex) return null;
             _hqManholeMat = new THREE.MeshLambertMaterial({ map: tex, transparent: true, alphaTest: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff });
         }
-        var m = new THREE.Mesh(new THREE.PlaneGeometry(r * 2 * U, r * 2 * U), _hqManholeMat);
+        /* THE CITY MARKS (2026-11-15): in a Disaster City room the cover is the city's own casting (_hqCityManholeTex) */
+        var mhMat = _hqManholeMat;
+        if (_hqMarksCity && typeof _hqCityManholeTex === 'function') {
+            if (!_hqManholeCityMat) _hqManholeCityMat = new THREE.MeshLambertMaterial({ map: _hqCityManholeTex(), transparent: true, alphaTest: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff });
+            mhMat = _hqManholeCityMat;
+        }
+        var m = new THREE.Mesh(new THREE.PlaneGeometry(r * 2 * U, r * 2 * U), mhMat);
         m.rotation.x = -Math.PI / 2; m.position.y = 0.012 * U; m.renderOrder = 2; m.receiveShadow = true; m.castShadow = false;
         return m;
     }
@@ -94532,6 +94591,7 @@ const ThreeRenderer = (function () {
         _hq.w = w; _hq.h = h;
         /* build */
         _hq.gallery = _hqGalleryFrame(room);   /* THE GALLERY (9.2 stage 2): the frame before anything reads a surface */
+        _hqMarksCity = !!(room && /DISASTER CITY/.test(String(room.label || '')));   // THE CITY MARKS: the room being built is one of Disaster City's (its manhole covers are the city's own casting)
         try { if (room.kind === 'box') _hqBuildBoxShell(room); else if (room.kind === 'bay') _hqBuildBayShell(room); else _hqBuildShell(room); } catch (e) { console.error('[HQ] shell build failed', e); }
         if (_hq.gallery) { try { _hqBuildGallery(room); } catch (e) { console.error('[HQ] gallery failed', e); } }
         /* room-specific geometry: the Training Room's pit (HQ plan 6.1a) */
