@@ -3209,3 +3209,14 @@ of its own; the bake loads it with the district files, after Bayside and Hero Pl
   the mouth to the bay and up the sand; the Collapse's stair and mound), the prop check clean (nothing left out, nothing new reported).
   NOT SEEN ON SCREEN: the water's look in the canal, the culvert faces, the deck's bays and sign, the bridges' piers.
 - Maps: project files `disaster-city-old-pieces/` (plan_*.jpg = the approved plan, built_*.jpg = the baked rows drawn top-down).
+
+## DISASTER CITY, THE MOLE'S RIM (2026-11-15, mondo: "theres still this wall or raised curve by the light house")
+- What it was: a rim of ground 5.25 m high and one height sample (0.875 m) thick along z = 84, x 252 to 311: the whole north side of
+  the breakwater. NOT a kerb stone (PR #1336), not the sea wall, not the canal (PR #1402).
+- Why: districts/B.js `beach()` cuts the beach strip flat to level 0 from z = Z0 south, and the bay north of Bayside deep from z = Z0
+  north. A `sink` plateau cuts only strictly inside its rectangle (data.js hqTerrainCompile: `din <= 0` skips), so on the shared line
+  z = Z0 neither one cut and the city's level there (P11-07, level 3) stayed standing. The height grid has a sample row exactly on 84.
+- Fix: the level-0 cut starts half a metre north of Z0, so the two overlap. One row of the bake changed.
+- RULE: two `sink` rectangles that share an edge must OVERLAP, never just touch. Check offline: sample hqTerrainHeight over the whole
+  field and list samples more than 1 m above both neighbours; after the fix only stairs / ramps (roof flights, the overpass stair, the
+  parking deck ramp) are left.
