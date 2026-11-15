@@ -37,6 +37,43 @@ function fakeDoor(P, x, y, z, ry, key, tint, w, h) {
 function frontWithDoor(P, T, y0, h, key, tint, o) {
     P.push(quad(0, y0, T.D / 2 + 0.05, T.W + 0.1, h, 0, key, tint, Object.assign({ hole: [T.lx, T.cw, 2.2] }, o || {})));
     P.push(box(T.lx - T.cw / 2 - 0.16, y0, T.D / 2 + 0.12, 0.3, 2.5, 0.3, STONE, 0xd8d0c0), box(T.lx + T.cw / 2 + 0.16, y0, T.D / 2 + 0.12, 0.3, 2.5, 0.3, STONE, 0xd8d0c0), box(T.lx, y0 + 2.22, T.D / 2 + 0.12, T.cw + 0.92, 0.3, 0.3, STONE, 0xd8d0c0));
+    brassAndLamp(P, T.lx, T.cw, y0, T.D / 2 + 0.12);
+}
+/* LONDON (mondo 11-15, the real-cities plan "Build it as drawn"): a brass plate beside every door, a black iron lamp bracket over it */
+const IRONK = 0x1c1e22;
+function brassAndLamp(P, x, cw, y0, z) {
+    P.push(box(x + cw / 2 + 0.62, y0 + 1.15, z + 0.02, 0.36, 0.48, 0.04, 'gold', WHITE, { gain: 1.5 }));
+    P.push(box(x - cw / 2 - 0.75, y0 + 2.85, z + 0.25, 0.06, 0.06, 0.5, null, IRONK), box(x - cw / 2 - 0.75, y0 + 2.42, z + 0.5, 0.26, 0.36, 0.26, null, 0xffe0a0, { glow: 0.9 }), box(x - cw / 2 - 0.75, y0 + 2.78, z + 0.5, 0.34, 0.08, 0.34, null, IRONK));
+}
+/* LONDON: the gothic clock tower at the bank offices' end: a stone shaft (the slab's end bay below its roof), ribs and lancet panels, a
+   clock stage with four lit drawn faces, a louvred belfry, corner pinnacles, a slate spire, a gilt finial (no sound: no new SFX) */
+const PORT = 0xeee6d2;
+function clockTower(P, x, D) {
+    const sh = 7, top = 44;
+    P.push(box(x, 0, 0, sh, 31.5, D + 1.6, STONE, PORT, { uv: 3.5 }), box(x, 31.5, 0, sh, top - 31.5, sh, STONE, PORT, { uv: 3.5 }));
+    for (const s of [-1, 1]) P.push(box(x + s * (sh / 2 + 0.15), 7, 0, 0.3, top - 7, 0.9, STONE, 0xe2d8c2, { top: false }), box(x, 31.5, s * (sh / 2 + 0.15), 0.9, top - 31.5, 0.3, STONE, 0xe2d8c2, { top: false }));
+    for (const f of [[0, 1, 0], [0, -1, 180], [1, 0, 270], [-1, 0, 90]]) { const o = sh / 2 + 0.03;
+        P.push(quad(x + f[0] * o + (f[2] % 180 ? 0 : -1.4), 33, f[1] * o + (f[2] % 180 ? -1.4 : 0), 0.9, 9, f[2], STONE, 0x8a8478, { n: 3, step: f[2] % 180 ? [0, 0, 1.4] : [1.4, 0, 0] })); }
+    const cs = 8, cy = top + 3.2;
+    P.push(box(x, top, 0, cs, 6.4, cs, STONE, PORT, { uv: 3.2 }), box(x, top - 0.3, 0, cs + 0.5, 0.3, cs + 0.5, STONE, 0xe2d8c2, { under: true }), box(x, top + 6.4, 0, cs + 0.5, 0.35, cs + 0.5, STONE, 0xe2d8c2, { under: true }));
+    for (const f of [[0, 1, 0], [0, -1, 180], [1, 0, 270], [-1, 0, 90]]) { const o = cs / 2, px = x + f[0] * o, pz = f[1] * o, along = f[2] % 180 !== 0;
+        P.push(fan(px, cy, pz, 2.75, f[2], 'gold', WHITE, { gain: 1.5 }), fan(px, cy, pz, 2.75, f[2] + 180, 'gold', WHITE, { gain: 1.5, h: -2.75 }));
+        /* the lower halves: a fan with a negative h is mirrored (its faces turn inward), so it is also turned half round to face out */
+        const e = 0.05, fx = px + f[0] * e, fz = pz + f[1] * e;
+        P.push(fan(fx, cy, fz, 2.45, f[2], null, 0xfff4d8, { glow: 0.85 }), fan(fx, cy, fz, 2.45, f[2] + 180, null, 0xfff4d8, { glow: 0.85, h: -2.45 }));
+        const hx = px + f[0] * 0.12, hz = pz + f[1] * 0.12;
+        P.push(box(hx, cy - 0.08, hz, along ? 0.06 : 0.16, 1.9, along ? 0.16 : 0.06, null, 0x141414), box(hx + (along ? 0 : 0.6), cy - 0.08, hz + (along ? 0.6 : 0), along ? 0.06 : 1.3, 0.16, along ? 1.3 : 0.06, null, 0x141414)); }
+    P.push(box(x, top + 6.75, 0, sh, 3.6, sh, STONE, PORT));
+    for (const f of [[0, 1, 0], [0, -1, 180], [1, 0, 270], [-1, 0, 90]]) P.push(quad(x + f[0] * (sh / 2 + 0.03), top + 7.2, f[1] * (sh / 2 + 0.03), 4.6, 2.6, f[2], U('MetalSubwayGrill1a'), 0x3a3a36, { uv: [1.2, 1.2] }));
+    const sp = top + 10.35;
+    P.push(box(x, sp, 0, sh + 0.6, 0.4, sh + 0.6, STONE, 0xe2d8c2, { under: true }), roof('hip', x, sp + 0.4, 0, sh - 0.4, 10, sh - 0.4, ALU, 0x3a4644));
+    for (const c of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) P.push(cyl(x + c[0] * (sh / 2 - 0.1), sp + 0.4, c[1] * (sh / 2 - 0.1), 0.42, 3.4, STONE, PORT, { seg: 8, r2: 0.03 }));
+    P.push(cyl(x, sp + 10.4, 0, 0.12, 2.2, 'gold', WHITE, { seg: 6, gain: 1.5 }), dome(x, sp + 11.2, 0, 0.3, 0.3, 'gold', WHITE, { gain: 1.5, roof: false }));
+}
+/* a low black area railing along a front, `x0`..`x1` at plane `z` */
+function areaRail(P, x0, x1, z) {
+    const L = x1 - x0; if (L < 0.6) return; const n = Math.max(2, Math.round(L / 0.22)), st = (L - 0.04) / (n - 1);
+    P.push(box((x0 + x1) / 2, 0.92, z, L, 0.06, 0.06, null, IRONK), box((x0 + x1) / 2, 0.12, z, L, 0.05, 0.05, null, IRONK), box(x0 + 0.02, 0.12, z, 0.025, 0.95, 0.025, null, IRONK, { n, step: [st, 0, 0] }));
 }
 
 /* THE SECOND LAYERS (the polish pass, mondo 11-13 20:15): F-detail.js adds each building's trims, signs, roof plant and second sheets */
@@ -114,6 +151,8 @@ module.exports = {
                 if (own) P.push(box(T.lx - T.cw / 2 - 0.16, 0, D / 2 + 0.2, 0.3, 2.5, 0.3, STONE, 0xd8d0c0), box(T.lx + T.cw / 2 + 0.16, 0, D / 2 + 0.2, 0.3, 2.5, 0.3, STONE, 0xd8d0c0), box(T.lx, 2.22, D / 2 + 0.2, T.cw + 0.92, 0.3, 0.3, STONE, 0xd8d0c0));
                 else { P.push(box(x - hw * 0.22, 0, D / 2 + 0.75, 2.2, 0.35, 1.3, STONE, 0xbdb6a8)); fakeDoor(P, x - hw * 0.22, 0.35, D / 2 + 0.11, 0, DW, dc, 1.8, 2.6); }
                 P.push(quad(x + hw * 0.2, 1.4, D / 2 + 0.11, Math.min(1.8, hw * 0.34), 2.0, 0, GR, WHITE, { uv: [1.8, 2.0] }));
+                { const g0 = own ? T.lx - T.cw / 2 - 1.0 : x - hw * 0.22 - 1.2, g1 = own ? T.lx + T.cw / 2 + 1.0 : x - hw * 0.22 + 1.2; areaRail(P, Math.max(x - hw / 2 + 0.2, -T.W / 2 + 0.2), g0, D / 2 + 0.45); areaRail(P, g1, x + hw / 2 - 0.2, D / 2 + 0.45); }
+                if (!own) P.push(box(x - hw * 0.22 + 1.25, 1.15, D / 2 + 0.13, 0.3, 0.4, 0.04, 'gold', WHITE, { gain: 1.5 }));
             }
             emit(T, P);
         };
@@ -122,6 +161,9 @@ module.exports = {
             const T = frame(id, { face: o.face, st: 2 }); if (!T) return; T.kind = 'shop'; T.o = o; const P = [], W = T.W, D = T.D, H = T.H || 7;
             P.push(box(0, 0, 0, W + 0.1, H - (T.H ? 0.02 : 0), D + 0.1, o.wall, o.tint, { top: !T.H }));
             P.push(quad(0.9, 0.5, D / 2 + 0.11, W - 4.2, 2.7, 0, GT, 0xdfeee8, { uv: [3.5, 2.7] }), box(0, 0, D / 2 + 0.1, W + 0.2, 0.5, 0.25, STONE, 0x8a8478));
+            /* LONDON: a shallow bay window in front of the shop glass on a green panelled riser, a green frame (o.trim) */
+            P.push(box(0.9, 0.55, D / 2 + 0.42, W - 4.8, 2.5, 0.55, GT, 0xdfeee8, { uv: [1.75, 2.5], top: false, faces: 'flr' }), box(0.9, 0, D / 2 + 0.42, W - 4.6, 0.55, 0.6, null, o.trim), box(0.9, 3.05, D / 2 + 0.42, W - 4.6, 0.2, 0.62, null, o.trim));
+            P.push(box(0.9 - (W - 4.8) / 2, 0.55, D / 2 + 0.7, 0.07, 2.5, 0.07, null, o.trim, { n: 5, step: [(W - 4.8) / 4, 0, 0] }));
             fakeDoor(P, -W / 2 + 1.6, 0, D / 2 + 0.11, 0, DS, WHITE, 2.0, 2.6);
             P.push(box(0, 3.25, D / 2 + 0.2, W - 0.4, 0.8, 0.3, null, o.trim));
             P.push(roof('shed', 0, 3.3, D / 2 + 1.1, W - 0.4, 0.8, 1.8, null, o.trim, { under: true, roof: false }));
@@ -187,16 +229,16 @@ module.exports = {
             fakeDoor(P, 3.5, 0, D / 2 + 0.12, 0, DP, 0xb0b8c0, 2.0, 2.6);
             emit(T, P);
         })();
-        shop('P09-00-B2', { face: 'N', wall: BR1, tint: 0xc8a890, trim: 0x2f5a48, sign: 'BOOKS' });
+        shop('P09-00-B2', { face: 'N', wall: BR1, tint: 0xc8a890, trim: 0x1e4a38, sign: 'BOOKS' });
         workshop('P09-00-B3', { face: 'E', tint: 0x6a80a0 });
 
         /* ═══ 3. THE GOBLIN BANK — the district's landmark: a marble temple, a great arch behind a six-column portico, a verdigris dome ═══ */
         (() => {
             const T = frame('P10-00-B1', { hollow: true, st: 4, w: 26.3, d: 23, dz: -2.5, leaf: 'leaf_lobby_glass_double' }); if (!T) return;
-            const P = [], W = T.W, D = T.D, JADE = 0xe6eedc, TRIM = 0xd2dcc8, F = D / 2, lx = T.lx;
+            const P = [], W = T.W, D = T.D, JADE = 0xeee6d2, TRIM = 0xdcd2bc, BRONZE = 0xc08850, F = D / 2, lx = T.lx;   // LONDON: Portland stone
             P.push(box(0, 0, 0, W + 0.1, 15, D + 0.1, STONE, JADE, { top: false, uv: 3.5, faces: 'blr' })); frontWithDoor(P, T, 0, 15, STONE, JADE, { uv: 3.5 });
             P.push(box(W / 2 + 0.25, 0, -9.9, 0.5, 15, 1.1, STONE, TRIM, { n: 7, step: [0, 0, 3.3], top: false }), box(-W / 2 - 0.25, 0, -9.9, 0.5, 15, 1.1, STONE, TRIM, { n: 7, step: [0, 0, 3.3], top: false }));
-            P.push(quad(W / 2 + 0.12, 3.5, -8.25, 1.5, 7, 270, GR, 0xbfd0c0, { uv: [1.5, 3.5], n: 6, step: [0, 0, 3.3] }), quad(-W / 2 - 0.12, 3.5, -8.25, 1.5, 7, 90, GR, 0xbfd0c0, { uv: [1.5, 3.5], n: 6, step: [0, 0, 3.3] }));
+            P.push(box(W / 2 + 0.1, 3.5, -8.25, 0.12, 7, 1.5, STONE, 0xd4cab2, { n: 6, step: [0, 0, 3.3], top: false }), box(-W / 2 - 0.1, 3.5, -8.25, 0.12, 7, 1.5, STONE, 0xd4cab2, { n: 6, step: [0, 0, 3.3], top: false }));   // LONDON: the windowless curtain wall, blind panels
             P.push(box(0, 15, 0, W + 1.4, 0.9, D + 1.4, STONE, TRIM, { under: true }), box(0, 15.9, 0, 21, 3.2, 19, STONE, JADE, { uv: 3.5 }));
             P.push(cyl(0, 19.1, 0, 8.2, 3.6, STONE, 0xdce4d0, { seg: 32, cap: false }), quad(0, 19.7, 0, 1.4, 2.2, 0, GR, 0xbfd0c0, { uv: [1.4, 2.2], ring: { n: 16, r: 8.26 } }));
             P.push(cyl(0, 22.7, 0, 8.6, 0.5, ALU, VERDI, { seg: 32 }), dome(0, 23.2, 0, 8.1, 8.1, ALU, VERDI, { seg: 32, rings: 8 }));
@@ -207,8 +249,11 @@ module.exports = {
             P.push(box(lx, 12.4, F + 2.6, 21.6, 1.7, 5, STONE, JADE, { under: true }), box(lx, 14.1, F + 2.6, 22.6, 0.4, 5.6, STONE, TRIM, { under: true }));
             P.push(roof('gable', lx, 14.5, F + 2.6, 5.4, 3.6, 22.6, STONE, JADE, { ry: 90, keyEnd: STONE, tintEnd: JADE }));
             /* the great arch round the doorway */
-            P.push(quad(lx - 1.9, 0, F + 0.1, 1.9, 5.4, 0, GT, 0x8a7a40, { uv: [1.9, 5.4] }), quad(lx + 1.9, 0, F + 0.1, 1.9, 5.4, 0, GT, 0x8a7a40, { uv: [1.9, 5.4] }), quad(lx, 2.5, F + 0.1, 1.9, 2.9, 0, GT, 0x8a7a40, { uv: [1.9, 2.9] }));
-            P.push(fan(lx, 5.4, F + 0.16, 3.25, 0, 'gold', WHITE), fan(lx, 5.4, F + 0.2, 2.8, 0, GT, 0x8a7a40, { kind: 'glass' }));
+            P.push(quad(lx - 1.9, 0, F + 0.1, 1.9, 5.4, 0, GUN, BRONZE, { uv: [1.9, 5.4] }), quad(lx + 1.9, 0, F + 0.1, 1.9, 5.4, 0, GUN, BRONZE, { uv: [1.9, 5.4] }), quad(lx, 2.5, F + 0.1, 1.9, 2.9, 0, GUN, BRONZE, { uv: [1.9, 2.9] }));
+            P.push(fan(lx, 5.4, F + 0.16, 3.25, 0, 'gold', WHITE), fan(lx, 5.4, F + 0.2, 2.8, 0, GUN, BRONZE));
+            /* LONDON: the bronze vault leaves' studs, and the arch made deep: stone reveals and a soffit 1.8 m out */
+            for (const s of [-1, 1]) P.push(box(lx + s * 1.9 - 0.7, 0.5, F + 0.14, 0.12, 0.12, 0.06, null, 0x5a3a1c, { n: 4, step: [0, 1.2, 0] }), box(lx + s * 1.9 + 0.7, 0.5, F + 0.14, 0.12, 0.12, 0.06, null, 0x5a3a1c, { n: 4, step: [0, 1.2, 0] }));
+            P.push(box(lx - 3.75, 0, F + 1.0, 0.9, 9.2, 1.9, STONE, TRIM), box(lx + 3.75, 0, F + 1.0, 0.9, 9.2, 1.9, STONE, TRIM), box(lx, 9.2, F + 1.0, 8.4, 0.8, 1.9, STONE, TRIM, { under: true }));
             P.push(box(lx - 3.05, 0, F + 0.25, 0.5, 5.4, 0.5, 'gold', WHITE), box(lx + 3.05, 0, F + 0.25, 0.5, 5.4, 0.5, 'gold', WHITE), box(lx, 8.5, F + 0.25, 0.9, 0.9, 0.5, 'gold', WHITE));
             /* the two lion blocks */
             for (const x of [-12, 12]) P.push(box(lx + x, 0, F + 3.2, 2.2, 1.6, 3.4, CONC2, 0xd0ccc0));
@@ -219,14 +264,17 @@ module.exports = {
         /* ═══ 4. THE EXECUTIVE COURT — a blue glass slab on stilts over a glass lobby, a boardroom box hung out over the court, a helipad;
                the bankers' terrace beside it ═══ */
         (() => {
-            const T = frame('P11-00-B1', { st: 1, w: 16, d: 6.5, dz: -1.0 }); if (!T) return; const P = [], W = 28, D = 13, BLUE = 0xa8d0f0, cz = 1.0;   // the slab's own middle: the row was moved back onto the lobby
-            P.push(cyl(-12.6, 0, cz + D / 2 - 0.8, 0.45, 5.25, CONC, 0xc8c8c8, { seg: 12, cap: false, n: 8, step: [3.6, 0, 0] }), cyl(-12.6, 0, cz - D / 2 + 0.8, 0.45, 5.25, CONC, 0xc8c8c8, { seg: 12, cap: false, n: 8, step: [3.6, 0, 0] }));
+            const T = frame('P11-00-B1', { st: 1, w: 16, d: 6.5, dz: -1.0 }); if (!T) return; const P = [], GL = 0xa8c4d4, cz = 0.5;   // (0, cz) = the tower's axis (it stands at the city's east edge: 6 m round at most)
+            /* LONDON (the real-cities plan): the curved glass tower, round in plan, swelling then rounded to a point, its dark glass under a
+               diamond grid of steel. The glass lobby stays the walked ground floor; ten columns ring it under the tower's first floor. */
+            P.push(cyl(0, 0, cz, 0.38, 5.25, CONC, 0xc8c8c8, { seg: 10, cap: false, ring: { n: 8, r: 4.9, a0: 22.5 } }));
             P.push(box(0, 0, 0, T.W + 0.1, 5.25, T.D + 0.1, GT4, 0xd8e8f0, { uv: [3.5, 5.25], top: false, keyBase: GT4 })); fakeDoor(P, 0, 0, T.D / 2 + 0.12, 0, DS, WHITE, 2.8, 2.8);
-            P.push(box(0, 5.25, cz, W, 17.5, D, GS1, BLUE, { uv: 3.5, under: true, keyTop: U('ConcreteUnderTiles1') }));
-            P.push(box(0, 5.1, cz, W + 0.7, 0.3, D + 0.7, ALU, 0xe8eef2, { n: 6, step: [0, 3.5, 0], under: true }));
-            P.push(box(-W / 2 + 1.6, 0, cz, 3.2, 26.5, D + 0.2, STONE, 0xd0d4d8, { uv: 3.5 }));                                     // the stone lift core
-            P.push(box(4, 15.9, cz + D / 2 + 2.6, 9, 3.4, 5.4, GT4, 0x6a8098, { uv: [3.5, 3.4], top: false }), box(4, 15.6, cz + D / 2 + 2.6, 9.5, 0.3, 5.8, ALU, 0xe8eef2, { under: true }), box(4, 19.3, cz + D / 2 + 2.6, 9.5, 0.3, 5.8, ALU, 0xe8eef2));
-            P.push(cyl(3, 22.75, cz, 4.2, 0.25, CONC, 0x80848a, { seg: 28 }), box(3, 23.02, cz, 0.5, 0.02, 3.2, null, 0xffe26a, { n: 2, step: [1.6, 0, 0] }), box(3.8, 23.02, cz, 1.6, 0.02, 0.5, null, 0xffe26a));
+            const prof = [[5.25, 5.3], [11, 5.8], [18, 5.95], [25, 5.85], [32, 5.3], [38, 4.4], [43, 3.0], [46.5, 1.6]], TRUSS = U('MetalTruss1a');
+            for (let k = 0; k < prof.length - 1; k++) { const a = prof[k], b = prof[k + 1];
+                P.push(cyl(0, a[0], cz, a[1], b[0] - a[0], GT4, GL, { seg: 20, r2: b[1], cap: false, uv: [3.5, 3.5] }), cyl(0, a[0], cz, a[1] + 0.08, b[0] - a[0], TRUSS, 0x2a3844, { seg: 20, r2: b[1] + 0.08, cap: false, kind: 'over', ds: true, uv: [4.2, 4.2] })); }
+            P.push(dome(0, 46.5, cz, 1.7, 1.5, GT4, GL, { seg: 16, rings: 4, roof: false }), cyl(0, 47.9, cz, 0.08, 2.2, null, 0xd0d0d0, { seg: 6 }), box(0, 50.1, cz, 0.3, 0.3, 0.3, null, 0xff3030, { glow: 1 }));
+            P.push(box(0, 5.0, cz, 7.5, 0.25, 7.5, ALU, 0xe8eef2, { under: true }), box(0, 5.0, cz, 7.5, 0.25, 7.5, ALU, 0xe8eef2, { under: true, ry: 45 }));   // the soffit under the first floor (an octagon)
+            P.push(cyl(0, 5.25, cz, 5.36, 0.3, ALU, 0xe8eef2, { seg: 20, cap: false }));
             emit(T, P);
             prop(T, 'fountain', 0, 25, 0); prop(T, 'planter', -7, 9.5); prop(T, 'planter', 7, 9.5);
         })();
@@ -245,7 +293,8 @@ module.exports = {
             P.push(cyl(bx, 0, F, 2.7, 6.0, GR, 0xf0e4c4, { seg: 20, uv: [1.4, 3.0], cap: false, arc: 180, a0: 0 }), cyl(bx, 0, F, 2.85, 1.0, STONE, 0xcfc6b4, { seg: 20, arc: 180, a0: 0 }), cyl(bx, 6.0, F, 2.95, 0.35, STONE, 0xe2dac8, { seg: 20, arc: 180, a0: 0 }));
             P.push(dome(bx, 6.35, F, 2.75, 1.2, ALU, VERDI, { arc: 180, a0: 0, roof: false }));
             const dx = -W / 4 - 1;
-            fakeDoor(P, dx, 0, F + 0.12, 0, DW, 0x6a5040, 2.2, 2.7);
+            fakeDoor(P, dx, 0, F + 0.12, 0, DW, 0x2a2a2e, 2.2, 2.7);   // LONDON: one black door with a brass number
+            P.push(quad(dx, 2.78, F + 0.14, 0.5, 0.42, 0, 'txt:12|#e0c070||1.2', WHITE, { uv: 'fit', kind: 'over' }), box(dx, 1.3, F + 0.16, 0.16, 0.16, 0.05, 'gold', WHITE, { gain: 1.5 }), box(dx + 0.75, 1.15, F + 0.14, 0.32, 0.44, 0.04, 'gold', WHITE, { gain: 1.5 }));
             P.push(roof('shed', dx, 2.95, F + 1.35, 3.6, 1.0, 2.6, null, 0x1f4a38, { under: true, roof: false }));
             P.push(cyl(dx - 1.7, 0, F + 2.5, 0.06, 3.0, null, 0xd8b060, { seg: 6 }), cyl(dx + 1.7, 0, F + 2.5, 0.06, 3.0, null, 0xd8b060, { seg: 6 }));
             P.push(box(dx - 1.6, 2.1, F + 0.3, 0.3, 0.45, 0.3, null, 0xffe8a0, { glow: 0.9 }), box(dx + 1.6, 2.1, F + 0.3, 0.3, 0.45, 0.3, null, 0xffe8a0, { glow: 0.9 }));
@@ -289,8 +338,8 @@ module.exports = {
             P.push(box(0, 7, 0, W + 0.1, 24.5, D + 1.2, GS2, TEAL, { uv: 3.5, under: true, keyTop: U('ConcreteUnderTiles1') }));
             P.push(box(0, 6.86, 0, W + 0.9, 0.28, D + 2.0, ALU, 0xeef2f4, { n: 8, step: [0, 3.5, 0], under: true }));
             P.push(box(-W / 2 + 4.2, 7, F + 0.75, 0.14, 24.5, 0.3, ALU, 0xeef2f4, { n: Math.floor((W - 5) / 1.75), step: [1.75, 0, 0], top: false }));
-            P.push(box(-W / 2 + 2.4, 0, 0, 4.8, 35, D + 1.8, CONC2, 0xe0d4c0));
-            P.push(box(5, 31.5, 0, 10, 3, 6, CORR2, 0x9aa4ac), cyl(-W / 2 + 2.4, 35, 0, 0.14, 10, null, 0xd0d0d0, { seg: 6 }), box(-W / 2 + 2.4, 45, 0, 0.4, 0.4, 0.4, null, 0xff3030, { glow: 1 }));
+            P.push(box(5, 31.5, 0, 10, 3, 6, CORR2, 0x9aa4ac));
+            clockTower(P, -W / 2 + 3.4, D);
             emit(T, P);
         })();
         terrace('P10-01-B2', 3, [0xd09880, 0xb8b0a0, 0xc08870]);
@@ -317,18 +366,19 @@ module.exports = {
         (() => {
             const T = frame('P08-02-B1', { hollow: true, st: 1, w: 6.2, d: 5.6, door: 2, leaf: 'leaf_office' }); if (!T) return;
             /* the row is now the dispatch office at the rank's south end; the canopy and the back wall are drawn round it */
-            const full = 31.5, deep = 10.5, P = [], YEL = 0xf2c230, ox = full / 2 - 3.4, F = T.D / 2;                       // the rank runs to -x of the office
+            const full = 31.5, deep = 10.5, P = [], YEL = 0x2e3236, ox = full / 2 - 3.4, F = T.D / 2;   // LONDON: the fascia is black iron (was the yellow checker)                       // the rank runs to -x of the office
             const mv = local(T, -ox, -1.0); T.row.x = mv[0]; T.row.z = mv[1]; T.x = mv[0]; T.z = mv[1];
             P.push(box(0, 0, 0, T.W + 0.1, 4.2, T.D + 0.1, U('PlasterWallPainted1a'), 0xf8f4e8, { top: false, faces: 'blr' })); frontWithDoor(P, T, 0, 4.2, U('PlasterWallPainted1a'), 0xf8f4e8);
             P.push(cyl(T.W / 2, 0, F - 0.4, 2.3, 4.2, GT, 0xe0f0f0, { seg: 18, uv: [2.5, 4.2], cap: false }), cyl(T.W / 2, 4.2, F - 0.4, 2.5, 0.3, ALU, 0xf0f0f0, { seg: 18 }), box(0, 4.2, 0, T.W + 0.3, 0.3, T.D + 0.3, ALU, 0xf0f0f0));
             const cx = ox, cz = 2.4;                                                                                           // the canopy's middle, in the office's frame
             P.push(box(cx, 0, -deep / 2 + 1.5, full, 6, 1.0, BR1, 0xd0c0a8));                                                 // the back wall
-            P.push(box(cx, 5.4, cz, full + 1, 0.5, deep + 3.4, ALU, 0xf4f4f4, { under: true }));
-            P.push(box(cx, 4.7, cz + deep / 2 + 1.7, full + 1, 1.2, 0.2, U('TileMarble1a'), YEL, { uv: 1.2 }), box(cx + full / 2 + 0.5, 4.7, cz, 0.2, 1.2, deep + 3.4, U('TileMarble1a'), YEL, { uv: 1.2 }), box(cx - full / 2 - 0.5, 4.7, cz, 0.2, 1.2, deep + 3.4, U('TileMarble1a'), YEL, { uv: 1.2 }));
+            P.push(box(cx, 5.4, cz, full + 1, 0.5, deep + 3.4, GUN, 0x3a3e44, { under: true }), box(cx - full / 2 + 0.5, 5.9, cz + deep / 2 + 1.7, 0.08, 0.35, 0.08, null, IRONK, { n: 33, step: [(full) / 32, 0, 0] }));   // LONDON: an iron shelter, its cresting
+            P.push(box(cx, 4.7, cz + deep / 2 + 1.7, full + 1, 1.2, 0.2, GUN, YEL), box(cx + full / 2 + 0.5, 4.7, cz, 0.2, 1.2, deep + 3.4, GUN, YEL), box(cx - full / 2 - 0.5, 4.7, cz, 0.2, 1.2, deep + 3.4, GUN, YEL));
+            for (let k = 0; k < 4; k++) { const bx = cx - 9.9 + k * 6.6; P.push(box(bx - 0.55, 4.2, 1.4, 1.1, 0.12, 0.12, null, IRONK), box(bx + 0.55, 4.2, 1.4, 1.1, 0.12, 0.12, null, IRONK), box(bx, 4.2, 1.95, 0.12, 0.12, 1.1, null, IRONK)); }
             P.push(cyl(cx - 9.9, 0, 1.4, 0.2, 5.4, null, 0x30343a, { seg: 8, cap: false, n: 4, step: [6.6, 0, 0] }));
             emit(T, P);
             { const A = local(T, cx - full / 2, -deep / 2 + 1.5), B = local(T, cx + full / 2, -deep / 2 + 1.5); lateRows.push({ k: 'wall', x0: A[0], z0: A[1], x1: B[0], z1: B[1], t: 1.0, h: 6, ghost: true, rail: false }); }
-            for (let c = 0; c < 4; c++) prop(T, 'car_taxi', cx - 9 + c * 5.4 + 2.7, 2.6, 0);
+            for (let c = 0; c < 4; c++) prop(T, 'car_pack_7', cx - 9 + c * 5.4 + 2.7, 2.6, 0, { paint: 'black' });   // LONDON: a rank of black cabs
         })();
         (() => {
             const T = frame('P08-02-B2', { hollow: true, st: 1, w: 21, d: 7, leaf: 'leaf_lobby_glass_double' }); if (!T) return; const P = [], W = T.W, D = T.D, F = D / 2;
@@ -339,7 +389,7 @@ module.exports = {
         })();
 
         /* ═══ 10. THE TAILOR SHOPS — the pack's shop block at its real size (the shared rule), the atelier, the cloth store ═══ */
-        shop('P09-02-B2', { wall: U('PlasterWallPainted1d'), tint: 0xf0e4c8, trim: 0x7a2030, sign: 'TAILOR' });
+        shop('P09-02-B2', { wall: U('PlasterWallPainted1d'), tint: 0xf0e4c8, trim: 0x1e4a38, sign: 'TAILOR' });   // LONDON: bank green
         workshop('P09-02-B3', { tint: 0xb88a6a, teeth: 3 });
 
         /* ═══ 11. THE INTELLIGENCE OFFICE — no sign: black glass tiers that grow as they rise over a recessed dark stone foot, a radome
@@ -415,7 +465,7 @@ module.exports = {
             P.push(box(T.lx, 2.9, F + 1.2, 5, 0.3, 2.4, ALU, 0xf4f4f4, { under: true }));
             emit(T, P);
         })();
-        shop('P10-03-B2', { wall: BR1, tint: 0xc8b8a8, trim: 0x1e3a5a, sign: 'FLORIST' });
+        shop('P10-03-B2', { wall: BR1, tint: 0xc8b8a8, trim: 0x1e4a38, sign: 'FLORIST' });
         workshop('P10-03-B3', { tint: 0x8a9a7a, teeth: 2 });
 
         /* ═══ 16. THE PRIVATE GARDEN — a walled garden behind an arched iron gate, and in it a white palm house: glass vault wings and a
@@ -450,6 +500,7 @@ module.exports = {
         /* ── the back lots on the district's closed edges ── */
         const mine = f => f.x >= api.gx(96) - 0.01 && f.z <= api.gx(48) + 0.01;
         all().filter(f => f.k === 'texbuilding' && /^dc:in\d+/.test(f.id || '') && mine(f)).forEach((f, i) => backlot(f, i));
+        require('./F-london.js')(api, { box, cyl, dome, roof, quad, STONE, GUN, U, local, prop, rowOf, frame: null });
         console.log('[financial] arch rows', made);
     },
 };
