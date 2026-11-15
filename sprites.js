@@ -7325,6 +7325,96 @@ const URBAN_TEX_FAMILIES = {
 };
 const URBAN_TEXTURES = {};
 Object.keys(URBAN_TEX_FAMILIES).forEach(fam => URBAN_TEX_FAMILIES[fam].forEach(n => { URBAN_TEXTURES[n] = `${_TU}/${n}.png`; }));
+/* THE URBAN DECAY PACK, THE REST OF IT (2026-11-15, mondo: "Utilize this pack to the fullest throughout disaster city and add the textures to the
+   editor"): the 681 sheets of Strideh's Urban Decay Textures v1.4 the game did not have yet (roads, sidewalks, kerbs, bricks, carpets,
+   wood, concrete, metal, roofs, shutters, shipping containers, fences, vents, lights, decals), box-halved like the first 320 and on R2
+   beside them (Assets/world/terrain/urban/<Name>.png), worn as `urban:<Name>` like any urban sheet. Their OWN families, so no seeded pick
+   of an old family changes (a sheet whose family already existed sits in <Family>More). Credit: data.js EW_CREDITS. */
+const URBAN_DECAY_FAMILIES = {
+    BrickCinder: ['BrickCinder1a', 'BrickCinder1b', 'BrickCinder1c', 'BrickCinder2a', 'BrickCinder2b', 'BrickCinder2c', 'BrickCinder3a', 'BrickCinder3b', 'BrickCinder3c', 'BrickCinder4a', 'BrickCinder4b', 'BrickCinder4c', 'BrickCinder5a', 'BrickCinder5b', 'BrickCinder5c', 'BrickCinder6a', 'BrickCinder6b', 'BrickCinder6c'],
+    BrickClassic: ['BrickClassic1a', 'BrickClassic1b', 'BrickClassic1c', 'BrickClassic1d', 'BrickClassic2a', 'BrickClassic2b', 'BrickClassic2c', 'BrickClassic2d', 'BrickClassic3a', 'BrickClassic3b', 'BrickClassic3c', 'BrickClassic3d', 'BrickClassic4a', 'BrickClassic4b', 'BrickClassic4c', 'BrickClassic4d', 'BrickClassic5a', 'BrickClassic5b', 'BrickClassic5c', 'BrickClassic5d', 'BrickClassic6a', 'BrickClassic6b', 'BrickClassic6c', 'BrickClassic6d'],
+    BrickMasonry: ['BrickMasonry1a', 'BrickMasonry1b', 'BrickMasonry1c', 'BrickMasonry2a', 'BrickMasonry2b', 'BrickMasonry2c'],
+    BrickModern: ['BrickModern1a', 'BrickModern1b', 'BrickModern1c', 'BrickModern1d', 'BrickModern1e', 'BrickModern1f', 'BrickModern1g', 'BrickModern2a', 'BrickModern2b', 'BrickModern2c', 'BrickModern2d', 'BrickModern2e', 'BrickModern2f', 'BrickModern2g'],
+    BrickPainted: ['BrickPainted1a', 'BrickPainted1b', 'BrickPainted1c', 'BrickPainted1d', 'BrickPainted1e', 'BrickPainted1f', 'BrickPainted2a', 'BrickPainted2b', 'BrickPainted2c', 'BrickPainted2d', 'BrickPainted2e'],
+    BrickUrban: ['BrickUrban1a', 'BrickUrban1b', 'BrickUrban1c', 'BrickUrban1d', 'BrickUrban2a', 'BrickUrban2b', 'BrickUrban2c', 'BrickUrban2d', 'BrickUrban3a', 'BrickUrban3b', 'BrickUrban3c', 'BrickUrban3d', 'BrickUrban4a', 'BrickUrban4b', 'BrickUrban4c', 'BrickUrban4d'],
+    BrickWide: ['BrickWide1a', 'BrickWide1b', 'BrickWide1c', 'BrickWide1d', 'BrickWide2a', 'BrickWide2b', 'BrickWide2c', 'BrickWide2d', 'BrickWide3a', 'BrickWide3b', 'BrickWide3c', 'BrickWide3d'],
+    CarpetDiamond: ['CarpetDiamond1a', 'CarpetDiamond1b', 'CarpetDiamond1c', 'CarpetDiamond1d', 'CarpetDiamond1e', 'CarpetDiamond1f', 'CarpetDiamond2a', 'CarpetDiamond2b', 'CarpetDiamond2c', 'CarpetDiamond2d', 'CarpetDiamond2e', 'CarpetDiamond2f'],
+    CarpetPattern: ['CarpetPattern1a', 'CarpetPattern1b', 'CarpetPattern1c', 'CarpetPattern1d', 'CarpetPattern1e', 'CarpetPattern1f', 'CarpetPattern2a', 'CarpetPattern2b', 'CarpetPattern2c', 'CarpetPattern2d', 'CarpetPattern2e', 'CarpetPattern2f'],
+    CarpetPlain: ['CarpetPlain1a', 'CarpetPlain1b', 'CarpetPlain1c', 'CarpetPlain1d', 'CarpetPlain1e', 'CarpetPlain1f', 'CarpetPlain2a', 'CarpetPlain2b', 'CarpetPlain2c', 'CarpetPlain2d', 'CarpetPlain2e', 'CarpetPlain2f'],
+    ClothTattered: ['ClothTattered1a', 'ClothTattered1b', 'ClothTattered1c', 'ClothTattered1d', 'ClothTattered1e', 'ClothTattered1f', 'ClothTattered2a', 'ClothTattered2b', 'ClothTattered2c', 'ClothTattered2d', 'ClothTattered2e', 'ClothTattered2f'],
+    ConcreteCracked: ['ConcreteCracked1a', 'ConcreteCracked1b', 'ConcreteCracked2a', 'ConcreteCracked2b', 'ConcreteCracked3a', 'ConcreteCracked3b'],
+    ConcreteCurb: ['ConcreteCurb1', 'ConcreteCurb2', 'ConcreteCurb3', 'ConcreteCurb4'],
+    ConcreteGeneric: ['ConcreteGeneric1a', 'ConcreteGeneric1b', 'ConcreteGeneric1c', 'ConcreteGeneric2a', 'ConcreteGeneric2b', 'ConcreteGeneric2c', 'ConcreteGeneric3a', 'ConcreteGeneric3b', 'ConcreteGeneric3c'],
+    ConcreteHexagons: ['ConcreteHexagons1a', 'ConcreteHexagons1b', 'ConcreteHexagons2a', 'ConcreteHexagons2b'],
+    ConcreteMoulding: ['ConcreteMoulding1a', 'ConcreteMoulding1b', 'ConcreteMoulding1c', 'ConcreteMoulding2a', 'ConcreteMoulding2b', 'ConcreteMoulding2c'],
+    ConcretePanels: ['ConcretePanels1a', 'ConcretePanels1b', 'ConcretePanels1c', 'ConcretePanels2a', 'ConcretePanels2b', 'ConcretePanels2c', 'ConcretePanels3a', 'ConcretePanels3b', 'ConcretePanels3c', 'ConcretePanels4a', 'ConcretePanels4b', 'ConcretePanels4c'],
+    ConcretePrecast: ['ConcretePrecast1a', 'ConcretePrecast1b', 'ConcretePrecast1c', 'ConcretePrecast1d', 'ConcretePrecast2a', 'ConcretePrecast2b', 'ConcretePrecast2c', 'ConcretePrecast2d'],
+    ConcreteRoofBitumen: ['ConcreteRoofBitumen1a', 'ConcreteRoofBitumen1b', 'ConcreteRoofBitumen1c', 'ConcreteRoofBitumen1d', 'ConcreteRoofBitumen1e'],
+    ConcreteSidewalk: ['ConcreteSidewalk1a', 'ConcreteSidewalk1b', 'ConcreteSidewalk2a', 'ConcreteSidewalk2b', 'ConcreteSidewalk3a', 'ConcreteSidewalk3b', 'ConcreteSidewalk4a', 'ConcreteSidewalk4b'],
+    ConcreteSlab: ['ConcreteSlab1a', 'ConcreteSlab1b', 'ConcreteSlab2a', 'ConcreteSlab2b', 'ConcreteSlab3a', 'ConcreteSlab3b'],
+    ConcreteSteps: ['ConcreteSteps1', 'ConcreteSteps2', 'ConcreteSteps3'],
+    ConcreteStucco: ['ConcreteStucco1a', 'ConcreteStucco1b', 'ConcreteStucco1c', 'ConcreteStucco1d', 'ConcreteStucco1e', 'ConcreteStucco1f', 'ConcreteStucco1g', 'ConcreteStucco2a', 'ConcreteStucco2b', 'ConcreteStucco2c', 'ConcreteStucco2d', 'ConcreteStucco2e', 'ConcreteStucco2f', 'ConcreteStucco2g'],
+    ConcreteWarningStripe: ['ConcreteWarningStripe1', 'ConcreteWarningStripe2'],
+    ConcreteWoodFormed: ['ConcreteWoodFormed1a', 'ConcreteWoodFormed1b', 'ConcreteWoodFormed1c', 'ConcreteWoodFormed2a', 'ConcreteWoodFormed2b', 'ConcreteWoodFormed2c'],
+    DecalManholeCoverMore: ['DecalManholeCover1', 'DecalManholeCover2'],
+    DecalPlasterHole: ['DecalPlasterHole1', 'DecalPlasterHole2', 'DecalPlasterHole3'],
+    DecalStainLeaks: ['DecalStainLeaks1', 'DecalStainLeaks2', 'DecalStainLeaks3', 'DecalStainLeaks4', 'DecalStainLeaks5', 'DecalStainLeaks6'],
+    DecalStainOil: ['DecalStainOil1', 'DecalStainOil2'],
+    DoorPainted: ['DoorPainted1a', 'DoorPainted1b', 'DoorPainted1c', 'DoorPainted2a', 'DoorPainted2b', 'DoorPainted2c', 'DoorPainted3a', 'DoorPainted3b', 'DoorPainted3c', 'DoorPainted4a', 'DoorPainted4b', 'DoorPainted4c', 'DoorPainted5a', 'DoorPainted5b', 'DoorPainted5c'],
+    DoorStorefront: ['DoorStorefront1a', 'DoorStorefront1b', 'DoorStorefront1c', 'DoorStorefront1d', 'DoorStorefront2a', 'DoorStorefront2b', 'DoorStorefront2c', 'DoorStorefront2d'],
+    DoorWooden: ['DoorWooden1a', 'DoorWooden1b', 'DoorWooden1c', 'DoorWooden2a', 'DoorWooden2b', 'DoorWooden2c'],
+    GlassGeneric: ['GlassGeneric1a', 'GlassGeneric1b', 'GlassGeneric2a', 'GlassGeneric2b', 'GlassGeneric3a', 'GlassGeneric3b'],
+    GlassGenericBroken: ['GlassGenericBroken1', 'GlassGenericBroken2', 'GlassGenericBroken3', 'GlassGenericBroken4'],
+    GlassWindowTallMore: ['GlassWindowTall2b'],
+    GroundPebbles: ['GroundPebbles1a', 'GroundPebbles1b', 'GroundPebbles2a', 'GroundPebbles2b'],
+    LightInterior: ['LightInterior1a', 'LightInterior1a-Glow', 'LightInterior1b', 'LightInterior1b-Glow', 'LightInterior1c', 'LightInterior1c-Glow', 'LightInterior2a', 'LightInterior2a-Glow', 'LightInterior2b', 'LightInterior2b-Glow'],
+    MetalBeams: ['MetalBeams1a', 'MetalBeams1b', 'MetalBeams2a', 'MetalBeams2b', 'MetalBeams3a', 'MetalBeams3b', 'MetalBeams4a', 'MetalBeams4b'],
+    MetalConduit: ['MetalConduit1a', 'MetalConduit1b', 'MetalConduit2a', 'MetalConduit2b'],
+    MetalCorrugated: ['MetalCorrugated1a', 'MetalCorrugated1b', 'MetalCorrugated2a', 'MetalCorrugated2b', 'MetalCorrugated3a', 'MetalCorrugated3b', 'MetalCorrugated3c', 'MetalCorrugated3d', 'MetalCorrugated4a', 'MetalCorrugated4b', 'MetalCorrugated4c', 'MetalCorrugated4d'],
+    MetalDiamondPlate: ['MetalDiamondPlate1a', 'MetalDiamondPlate1b', 'MetalDiamondPlate1c', 'MetalDiamondPlate2a', 'MetalDiamondPlate2b', 'MetalDiamondPlate2c', 'MetalDiamondPlate3a', 'MetalDiamondPlate3b', 'MetalDiamondPlate3c', 'MetalDiamondPlate4a', 'MetalDiamondPlate4b', 'MetalDiamondPlate4c'],
+    MetalDrainStrip: ['MetalDrainStrip1', 'MetalDrainStrip2'],
+    MetalFenceChainlink: ['MetalFenceChainlink1', 'MetalFenceChainlink2', 'MetalFenceChainlink3', 'MetalFenceChainlink4'],
+    MetalFenceOld: ['MetalFenceOld1', 'MetalFenceOld2'],
+    MetalGeneric: ['MetalGeneric1a', 'MetalGeneric1b', 'MetalGeneric1c', 'MetalGeneric2a', 'MetalGeneric2b', 'MetalGeneric2c', 'MetalGeneric3a', 'MetalGeneric3b', 'MetalGeneric3c', 'MetalGeneric4a', 'MetalGeneric4b', 'MetalGeneric4c'],
+    MetalGenericPainted: ['MetalGenericPainted1a', 'MetalGenericPainted1b', 'MetalGenericPainted1c', 'MetalGenericPainted2a', 'MetalGenericPainted2b', 'MetalGenericPainted2c', 'MetalGenericPainted3a', 'MetalGenericPainted3b', 'MetalGenericPainted3c', 'MetalGenericPainted4a', 'MetalGenericPainted4b', 'MetalGenericPainted4c'],
+    MetalGratingGrid: ['MetalGratingGrid1a', 'MetalGratingGrid1b', 'MetalGratingGrid1c', 'MetalGratingGrid2a', 'MetalGratingGrid2b', 'MetalGratingGrid2c'],
+    MetalGratingMesh: ['MetalGratingMesh1a', 'MetalGratingMesh1b', 'MetalGratingMesh1c', 'MetalGratingMesh2a', 'MetalGratingMesh2b', 'MetalGratingMesh2c', 'MetalGratingMesh3a', 'MetalGratingMesh3b', 'MetalGratingMesh3c', 'MetalGratingMesh4a', 'MetalGratingMesh4b', 'MetalGratingMesh4c'],
+    MetalGratingPainted: ['MetalGratingPainted1a', 'MetalGratingPainted1b', 'MetalGratingPainted1c', 'MetalGratingPainted1d', 'MetalGratingPainted1e', 'MetalGratingPainted2a', 'MetalGratingPainted2b', 'MetalGratingPainted2c', 'MetalGratingPainted2d', 'MetalGratingPainted2e'],
+    MetalPanel: ['MetalPanel1a', 'MetalPanel1b', 'MetalPanel2a', 'MetalPanel2b', 'MetalPanel3a', 'MetalPanel3b', 'MetalPanel3c', 'MetalPanel4a', 'MetalPanel4b', 'MetalPanel4c'],
+    MetalPanelPainted: ['MetalPanelPainted1a', 'MetalPanelPainted1b', 'MetalPanelPainted1c', 'MetalPanelPainted1d', 'MetalPanelPainted1e', 'MetalPanelPainted2a', 'MetalPanelPainted2b', 'MetalPanelPainted2c', 'MetalPanelPainted2d', 'MetalPanelPainted2e'],
+    MetalPipeOld: ['MetalPipeOld1a', 'MetalPipeOld1b', 'MetalPipeOld1c', 'MetalPipeOld2a', 'MetalPipeOld2b', 'MetalPipeOld2c'],
+    MetalPipePainted: ['MetalPipePainted1a', 'MetalPipePainted1b', 'MetalPipePainted1c', 'MetalPipePainted2a', 'MetalPipePainted2b', 'MetalPipePainted2c', 'MetalPipePainted3a', 'MetalPipePainted3b', 'MetalPipePainted3c', 'MetalPipePainted4a', 'MetalPipePainted4b', 'MetalPipePainted4c', 'MetalPipePainted5a', 'MetalPipePainted5b', 'MetalPipePainted5c'],
+    MetalRoofTiles: ['MetalRoofTiles1a', 'MetalRoofTiles1b', 'MetalRoofTiles1c', 'MetalRoofTiles1d', 'MetalRoofTiles2a', 'MetalRoofTiles2b', 'MetalRoofTiles2c', 'MetalRoofTiles2d', 'MetalRoofTiles3a', 'MetalRoofTiles3b', 'MetalRoofTiles3c', 'MetalRoofTiles3d'],
+    MetalShippingContainer: ['MetalShippingContainer1a', 'MetalShippingContainer1b', 'MetalShippingContainer1c', 'MetalShippingContainer1d', 'MetalShippingContainer2a', 'MetalShippingContainer2b', 'MetalShippingContainer2c', 'MetalShippingContainer2d', 'MetalShippingContainer3a', 'MetalShippingContainer3b', 'MetalShippingContainer3c', 'MetalShippingContainer3d', 'MetalShippingContainer4a', 'MetalShippingContainer4b', 'MetalShippingContainer4c', 'MetalShippingContainer4d', 'MetalShippingContainer5a', 'MetalShippingContainer5b', 'MetalShippingContainer5c', 'MetalShippingContainer5d'],
+    MetalShutter: ['MetalShutter1a', 'MetalShutter1b', 'MetalShutter1c', 'MetalShutter1d', 'MetalShutter2a', 'MetalShutter2b', 'MetalShutter2c'],
+    MetalSteps: ['MetalSteps1', 'MetalSteps2', 'MetalSteps3', 'MetalSteps4'],
+    MetalWallRibbed: ['MetalWallRibbed1a', 'MetalWallRibbed1b', 'MetalWallRibbed1c', 'MetalWallRibbed2a', 'MetalWallRibbed2b', 'MetalWallRibbed2c', 'MetalWallRibbed3a', 'MetalWallRibbed3b', 'MetalWallRibbed3c', 'MetalWallRibbed4a', 'MetalWallRibbed4b', 'MetalWallRibbed4c'],
+    MetalWarningStripe: ['MetalWarningStripe1', 'MetalWarningStripe2'],
+    PlasterBoard: ['PlasterBoard1a', 'PlasterBoard1b', 'PlasterBoard1c', 'PlasterBoard1d', 'PlasterBoard1e', 'PlasterBoard2a', 'PlasterBoard2b', 'PlasterBoard2c', 'PlasterBoard2d', 'PlasterBoard2e'],
+    PlasterBoardSide: ['PlasterBoardSide1a', 'PlasterBoardSide1b', 'PlasterBoardSide2a', 'PlasterBoardSide2b'],
+    PlasterMasonry: ['PlasterMasonry1a', 'PlasterMasonry1b', 'PlasterMasonry1c', 'PlasterMasonry1d', 'PlasterMasonry1e', 'PlasterMasonry1f', 'PlasterMasonry1g', 'PlasterMasonry2a', 'PlasterMasonry2b', 'PlasterMasonry2c', 'PlasterMasonry2d', 'PlasterMasonry2e', 'PlasterMasonry2f', 'PlasterMasonry2g'],
+    PlasterMoulding: ['PlasterMoulding1a', 'PlasterMoulding1b', 'PlasterMoulding2a', 'PlasterMoulding2b'],
+    PlasterWallGeneric: ['PlasterWallGeneric1a', 'PlasterWallGeneric1b', 'PlasterWallGeneric1c', 'PlasterWallGeneric2a', 'PlasterWallGeneric2b', 'PlasterWallGeneric2c', 'PlasterWallGeneric3a', 'PlasterWallGeneric3b', 'PlasterWallGeneric4a', 'PlasterWallGeneric4b'],
+    RoadDouble: ['RoadDouble1a', 'RoadDouble1b', 'RoadDouble1c', 'RoadDouble1d', 'RoadDouble1e', 'RoadDouble2a', 'RoadDouble2b', 'RoadDouble2c', 'RoadDouble2d', 'RoadDouble2e'],
+    RoadGeneric: ['RoadGeneric1a', 'RoadGeneric1b', 'RoadGeneric1c'],
+    RoadSingle: ['RoadSingle1a', 'RoadSingle1b', 'RoadSingle1c', 'RoadSingle2a', 'RoadSingle2b', 'RoadSingle2c'],
+    RoadZone: ['RoadZone1a', 'RoadZone1b', 'RoadZone1c', 'RoadZone2a', 'RoadZone2b', 'RoadZone2c'],
+    RubberNonSlipMore: ['RubberNonSlip1c', 'RubberNonSlip2c', 'RubberNonSlip3c', 'RubberNonSlip4c', 'RubberNonSlip5c'],
+    SignSpeedAus: ['SignSpeedAus010', 'SignSpeedAus015', 'SignSpeedAus020', 'SignSpeedAus025', 'SignSpeedAus030', 'SignSpeedAus040', 'SignSpeedAus050', 'SignSpeedAus060', 'SignSpeedAus070', 'SignSpeedAus080', 'SignSpeedAus090', 'SignSpeedAus100', 'SignSpeedAus110', 'SignSpeedAus120'],
+    SignSpeedUsa: ['SignSpeedUsa010', 'SignSpeedUsa015', 'SignSpeedUsa020', 'SignSpeedUsa025', 'SignSpeedUsa030', 'SignSpeedUsa040', 'SignSpeedUsa050', 'SignSpeedUsa060', 'SignSpeedUsa070', 'SignSpeedUsa080', 'SignSpeedUsa090', 'SignSpeedUsa100', 'SignSpeedUsa110', 'SignSpeedUsa120'],
+    TileHexagons: ['TileHexagons1a', 'TileHexagons1b', 'TileHexagons1c', 'TileHexagons2a', 'TileHexagons2b', 'TileHexagons3a', 'TileHexagons3b'],
+    TileLinoleum: ['TileLinoleum1a', 'TileLinoleum1b', 'TileLinoleum1c', 'TileLinoleum2a', 'TileLinoleum2b', 'TileLinoleum2c'],
+    VentCover: ['VentCover1a', 'VentCover1b', 'VentCover2a', 'VentCover2b', 'VentCover3a', 'VentCover3b', 'VentCover4a', 'VentCover4b'],
+    VentWalls: ['VentWalls1a', 'VentWalls1b', 'VentWalls2a', 'VentWalls2b'],
+    WoodBeams: ['WoodBeams1a', 'WoodBeams1b', 'WoodBeams1c', 'WoodBeams1d', 'WoodBeams2a', 'WoodBeams2b', 'WoodBeams2c', 'WoodBeams2d'],
+    WoodCladding: ['WoodCladding1a', 'WoodCladding1b', 'WoodCladding2a', 'WoodCladding2b', 'WoodCladding3a', 'WoodCladding3b'],
+    WoodCrates: ['WoodCrates1a', 'WoodCrates1b', 'WoodCrates2a', 'WoodCrates2b'],
+    WoodFlooring: ['WoodFlooring1a', 'WoodFlooring1b', 'WoodFlooring1c', 'WoodFlooring1d', 'WoodFlooring2a', 'WoodFlooring2b', 'WoodFlooring2c', 'WoodFlooring2d'],
+    WoodGeneric: ['WoodGeneric1a', 'WoodGeneric1b', 'WoodGeneric1c', 'WoodGeneric2a', 'WoodGeneric2b', 'WoodGeneric2c'],
+    WoodPainted: ['WoodPainted1a', 'WoodPainted1b', 'WoodPainted1c', 'WoodPainted2a', 'WoodPainted2b', 'WoodPainted2c', 'WoodPainted3a', 'WoodPainted3b', 'WoodPainted3c', 'WoodPainted4a', 'WoodPainted4b', 'WoodPainted4c', 'WoodPainted5a', 'WoodPainted5b', 'WoodPainted5c'],
+    WoodPlywood: ['WoodPlywood1a', 'WoodPlywood1b', 'WoodPlywood1c', 'WoodPlywood2a', 'WoodPlywood2b', 'WoodPlywood2c'],
+};
+Object.keys(URBAN_DECAY_FAMILIES).forEach(fam => { URBAN_TEX_FAMILIES[fam] = URBAN_DECAY_FAMILIES[fam]; URBAN_DECAY_FAMILIES[fam].forEach(n => { URBAN_TEXTURES[n] = `${_TU}/${n}.png`; }); });
 /* THE METRO PACK (2026-10-04, mondo's upload): the PSX metro sheets on R2 Assets/world/packs/elbolilloduro_metro_psx/Textures/, worn as `urban:Metro<Name>`
    by a shell / a prop like any urban sheet (their own family, MetroPSX, which no random city pick names) */
 const _TMETRO = 'https://cdn.entropywars.net/Assets/world/packs/elbolilloduro_metro_psx/Textures';
@@ -7369,7 +7459,7 @@ function urbanTexGlow(name) {
     if (m2 && URBAN_TEXTURES[m2[1] + m2[2] + 'a-Glow']) return m2[1] + m2[2] + 'a-Glow';
     return null;
 }
-if (typeof window !== 'undefined') { window.URBAN_TEXTURES = URBAN_TEXTURES; window.URBAN_TEX_FAMILIES = URBAN_TEX_FAMILIES; window.urbanTexUrl = urbanTexUrl; window.urbanTexKey = urbanTexKey; window.urbanTexPick = urbanTexPick; window.urbanTexGlow = urbanTexGlow; window.LIQUID_SHEETS = LIQUID_SHEETS; }
+if (typeof window !== 'undefined') { window.URBAN_TEXTURES = URBAN_TEXTURES; window.URBAN_TEX_FAMILIES = URBAN_TEX_FAMILIES; window.urbanTexUrl = urbanTexUrl; window.urbanTexKey = urbanTexKey; window.urbanTexPick = urbanTexPick; window.urbanTexGlow = urbanTexGlow; window.LIQUID_SHEETS = LIQUID_SHEETS; window.URBAN_DECAY_FAMILIES = URBAN_DECAY_FAMILIES; }
 
 const TERRAIN_SIDE_SPRITES = {
 

@@ -80,16 +80,21 @@ plot(6, 0, () => { const M = 0xfff8ea;
         box(11.5, 31.5, 30.5, 34.4, 0, 0.1, STONE, 0xe9e4da);                                                                                        // the portico's paving (the stair of the mock-up is level ground here)
         for (let i = 0; i < 6; i++) { const x = 13 + i * 3.2; cyl(x, 33.1, 0.62, 0.5, 12.1, STONE, M, { seg: 14 }); box(x - 0.8, 32.3, x + 0.8, 33.9, 0.1, 0.5, STONE); box(x - 0.8, 32.3, x + 0.8, 33.9, 12.1, 12.5, STONE); }
         box(11.8, 31.4, 30.2, 34, 12.5, 13.9, STONE, M, { under: 1 }); roof('gable', 11.5, 31.3, 30.5, 34.2, 13.9, 3.3, STONE, M, { axis: 'z' });
-        cyl(21, 19, 7, 15.6, 21.6, STONE, M, { seg: 28 }); ring(16, 21, 19, 7.75, 0.32, 15.6, 20.7, STONE, M); cyl(21, 19, 8.3, 20.7, 21.3, STONE, null, { seg: 28 }); cyl(21, 19, 6.5, 21.3, 22.8, STONE, M, { seg: 28 });
-        dome(21, 19, 6.5, 22.8, 7.6, ALU, VERD); cyl(21, 19, 1.3, 30.1, 32.4, STONE, M, { seg: 12 }); dome(21, 19, 1.5, 32.4, 1.7, ALU, VERD); cone(21, 19, 0.28, 34, 2.6, 'gold', null, { seg: 8 });
+        /* WASHINGTON DC (mondo 11-15): the taller dome on a ring of columns, a statue on top */
+        cyl(21, 19, 8.6, 15.6, 16.4, STONE, null, { seg: 28 }); cyl(21, 19, 7, 16.4, 24.6, STONE, M, { seg: 28 }); ring(20, 21, 19, 7.8, 0.36, 16.4, 23.6, STONE, M); cyl(21, 19, 8.4, 23.6, 24.3, STONE, null, { seg: 28 });
+        cyl(21, 19, 6.7, 24.3, 27.2, STONE, M, { seg: 28 }); cyl(21, 19, 6.76, 24.9, 26.6, 'u_GlassWindowTall1a', 0xdfe8f0, { seg: 28 }); cyl(21, 19, 7.1, 27.2, 27.6, STONE, null, { seg: 28 });
+        dome(21, 19, 6.7, 27.6, 9.4, ALU, VERD); cyl(21, 19, 1.5, 36.6, 39.4, STONE, M, { seg: 12 }); ring(8, 21, 19, 1.75, 0.13, 36.9, 39.4, STONE, M); cyl(21, 19, 2.0, 39.4, 39.7, STONE, null, { seg: 12 }); dome(21, 19, 1.6, 39.7, 1.5, ALU, VERD);
+        cyl(21, 19, 0.42, 41.1, 41.7, STONE, null, { seg: 8 }); cyl(21, 19, 0.3, 41.7, 43.5, null, 0x5f9f86, { seg: 8, r2: 0.2 }); dome(21, 19, 0.24, 43.45, 0.42, null, 0x5f9f86);   // the statue (a robed figure, far overhead)
+        box(10.5, 34.4, 31.5, 34.75, 0, 0.07, STONE, 0xe9e4da); box(9.5, 34.75, 32.5, 35.0, 0, 0.04, STONE, 0xe2ddd2);                                  // the wide stair's treads (level ground: THE LEVELS)
+        for (let x = 11; x <= 31; x += 2) if (Math.abs(x - 21.9) > 1.6) { cyl(x, 35.25, 0.2, 0, 0.85, 'u_ConcreteStriped1a', 0xd8d4cc, { seg: 8 }); dome(x, 35.25, 0.2, 0.85, 0.12, 'u_ConcreteStriped1a', 0xd8d4cc); }   // the security bollards
         flag(10, 37, 10, 0x2a56b0); flag(32, 37, 10, 0xb03a2a); }); });
 
 plot(7, 0, () => {
     B(0, { fit: [10.5, 7.6, 24, 17.5, 10.5, 7, 24.5, 17.5], solids: [{ r: [10.5, 7.6, 24, 17.5], st: 2, door: { side: 'S', at: 19.2 } }, { r: [25.8, 8.4, 33.4, 16.1], st: 2 }] }, () => {              // COUNCIL ANNEX: a glass bar + the round chamber
         box(10.5, 7.6, 24, 17.5, 0, 10.5, 'u_GlassWindowSquare2a', 0xb8f0e4, { top: 1 });
         [3.5, 7].forEach(y => box(10.2, 7.3, 24.3, 17.8, y - 0.12, y + 0.12, STONE)); box(9.2, 6.3, 25.2, 18.6, 10.5, 10.95, STONE, null, { under: 1 });
-        cyl(29.6, 12.25, 5.5, 0, 9, 'u_PlasterWallPainted1a', 0xf0c498, { seg: 28 });
-        ring(14, 29.6, 12.25, 6.15, 0.17, 0, 10.4, STONE, null); cyl(29.6, 12.25, 5.0, 9, 10.4, 'u_GlassWindowSquare1a', 0xdff4ff, { seg: 28 }); cyl(29.6, 12.25, 6.7, 10.4, 10.8, STONE, null, { seg: 28 }); dome(29.6, 12.25, 5.3, 10.8, 1.9, ALU, 0xd89058); });
+        cyl(29.6, 12.25, 5.5, 0, 9, 'u_PlasterWallPainted1a', 0xf4efe4, { seg: 28 });
+        ring(14, 29.6, 12.25, 6.15, 0.17, 0, 10.4, STONE, null); cyl(29.6, 12.25, 5.0, 9, 10.4, 'u_GlassWindowSquare1a', 0xdff4ff, { seg: 28 }); cyl(29.6, 12.25, 6.7, 10.4, 10.8, STONE, null, { seg: 28 }); dome(29.6, 12.25, 5.3, 10.8, 1.9, ALU, VERD); });
     B(1, { st: 2 }, () => {                                                                                                                          // THE MAYOR'S HOUSE
         box(24.5, 21, 42, 42, 0, 7.4, 'bricks_2', 0xffc8a0, { win: WR }); roof('gable', 24.5, 21, 42, 42, 7.4, 4.4, ALU, SLATE, { axis: 'z', over: 0.5 });
         box(27, 24, 28.2, 25.2, 7.4, 12.8, 'bricks_2', 0xd8987c); box(37.8, 36, 39, 37.2, 7.4, 12.8, 'bricks_2', 0xd8987c);
@@ -97,7 +102,7 @@ plot(7, 0, () => {
         door(24.5, 29.75, 'W'); }); });
 
 /* ───────── row 1: the avenue ───────── */
-plot(4, 1, () => { const G = 0xd8e6f4;
+plot(4, 1, () => { const G = 0xeeeae0;
     B(0, { solids: [{ r: [7, 3.5, 17.5, 10.5], st: 2 }, { r: [4.2, 4.4, 7, 9.6], st: 2 }] }, () => {                                                // DISPATCH: a round-nosed bunker + the radio mast
         box(7, 3.5, 17.5, 10.5, 0, 7, 'u_ConcreteStriped1c', G); cyl(7, 7, 3.5, 0, 7, 'u_ConcreteStriped1c', G, { seg: 24 });
         box(6.95, 3.42, 17.58, 10.58, 4.3, 5.7, 'u_GlassWindowSquare1a', 0xb8e4ff); cyl(7, 7, 3.58, 4.3, 5.7, 'u_GlassWindowSquare1a', 0xb8e4ff, { seg: 24 });
@@ -118,14 +123,26 @@ plot(5, 1, () => {
         box(33, 4.5, 38, 9, 0, 3, 'u_ConcreteStriped1c', 0xf0c088); roof('shed', 32.4, 4, 38.5, 10.6, 3, 0.9, 'u_MetalCorrugatedPainted2a', 0xffffff, { high: 'N' }); }); });
 
 plot(6, 1, () => {
-    B(null, { ghost: [[6.8, 35, 14.2, 35, 0.6], [25.4, 33.25, 27.1, 33.25, 3]], cells: [[2, 9], [3, 9], [2, 10], [3, 10], [7, 9]] }, () => {         // CIVIC PLAZA: the bandstand + the plaza clock
+    B(null, { ghost: [[6.8, 35, 14.2, 35, 0.6], [25.4, 33.25, 27.1, 33.25, 3]], cells: [[2, 9], [3, 9], [2, 10], [3, 10], [7, 9], [1, 1], [2, 1], [3, 1], [1, 2], [2, 2], [3, 2], [9, 1], [10, 1], [9, 2], [10, 2]] }, () => {         // CIVIC PLAZA: the bandstand + the plaza clock
         cyl(10.5, 35, 3.7, 0, 0.3, STONE, null, { seg: 16 }); ring(8, 10.5, 35, 3.1, 0.18, 0.3, 3.8, STONE); cyl(10.5, 35, 3.8, 3.8, 4.15, STONE, null, { seg: 16 }); dome(10.5, 35, 3.6, 4.15, 1.9, ALU, VERD); cone(10.5, 35, 0.15, 6.05, 1.2, 'gold', null, { seg: 6 });
+        /* DC: the white obelisk (2 x 2 squares, the north-east lawn) at the end of the reflecting pool (3 x 2 squares, the north-west lawn),
+           the walk between them; flag rows down the walk; a black iron fence with stone posts round the lawns' outer sides */
+        box(31.5, 3.5, 38.5, 10.5, 0, 0.35, STONE, 0xe9e4da); box(32.8, 4.8, 37.2, 9.2, 0.35, 0.7, STONE, 0xf1ece0);
+        cyl(35, 7, 2.05, 0.7, 27, STONE, 0xfffaf0, { seg: 4, r2: 1.35, ry: 45 }); cone(35, 7, 1.35, 27, 2.3, STONE, 0xfffaf0, { seg: 4, ry: 45 });
+        box(4.05, 4.05, 13.45, 9.95, 0, 0.3, null, 0x2c5878, { glow: 0.18 }); box(3.5, 3.5, 14, 4.05, 0, 0.45, STONE, 0xf1ece0); box(3.5, 9.95, 14, 10.5, 0, 0.45, STONE, 0xf1ece0); box(3.5, 4.05, 4.05, 9.95, 0, 0.45, STONE, 0xf1ece0); box(13.45, 4.05, 14, 9.95, 0, 0.45, STONE, 0xf1ece0);
+        [4.4, 7, 9.6].forEach((z, i) => { flag(16.9, z, 9, i % 2 ? 0xb03a2a : 0x2a56b0); flag(25.1, z, 9, i % 2 ? 0x2a56b0 : 0xb03a2a); });
+        const iron = (x0, z0, x1, z1) => { const ns = x0 === x1; box(x0 - (ns ? 0.03 : 0), z0 - (ns ? 0 : 0.03), x1 + (ns ? 0.03 : 0), z1 + (ns ? 0 : 0.03), 1.0, 1.06, null, 0x15171a); box(x0 - (ns ? 0.03 : 0), z0 - (ns ? 0 : 0.03), x1 + (ns ? 0.03 : 0), z1 + (ns ? 0 : 0.03), 0.18, 0.24, null, 0x15171a);
+            const L = ns ? z1 - z0 : x1 - x0; for (let d = 0; d <= L + 0.01; d += 0.25) { const x = ns ? x0 : x0 + d, z = ns ? z0 + d : z0; if (Math.abs(d / 3.5 - Math.round(d / 3.5)) < 0.01) { box(x - 0.2, z - 0.2, x + 0.2, z + 0.2, 0, 1.25, STONE, 0xe4ddd0); } else if (Math.round(d * 4) % 2 === 0) cyl(x, z, 0.022, 0.1, 1.2, null, 0x15171a, { seg: 4 }); }
+            bld.ghost.push([x0, z0, x1, z1, 1.25]); };
+        iron(3.5, 3.5, 17.5, 3.5); iron(3.5, 3.5, 3.5, 10.5); iron(24.5, 3.5, 38.5, 3.5); iron(38.5, 3.5, 38.5, 10.5);
         box(25.35, 32.35, 27.15, 34.15, 0, 6.5, STONE, 0xf1ece0); face(26.25, 34.2, 0.7, 5.35, 'S'); face(26.25, 32.3, 0.7, 5.35, 'N'); roof('pyr', 25.05, 32.05, 27.45, 34.45, 6.5, 1.4, ALU, VERD); }); });
 
-plot(7, 1, () => { const CR = 0xfff4dc;
-    B(0, { solids: [{ r: [3.5, 3.5, 17.5, 10.5], st: 3, door: { side: 'S', at: 11.4 } }], ghost: [0, 1, 2, 3, 4, 5].map(i => [4.1 + i * 2.4, 11.3, 4.9 + i * 2.4, 11.3, 4]), cells: [[1, 3], [2, 3], [3, 3], [4, 3]] }, () => {   // COURTHOUSE: a temple (the room two squares deep: the interiors)
+plot(7, 1, () => { const CR = 0xfff4dc, CCOL = [5.45, 7.05, 8.65, 10.25, 12.55, 14.15, 15.75, 17.35];   // symmetric about the door (11.4)
+    B(0, { solids: [{ r: [3.5, 3.5, 17.5, 10.5], st: 3, door: { side: 'S', at: 11.4 } }], ghost: CCOL.map(x => [x - 0.4, 11.3, x + 0.4, 11.3, 4]), cells: [[1, 3], [2, 3], [3, 3], [4, 3]] }, () => {   // COURTHOUSE: a temple (the room two squares deep: the interiors)
         box(3.5, 3.5, 17.5, 10.5, 0, 11.5, STONE, CR, { win: WR, winY0: 3.5 }); box(3.5, 10.5, 17.5, 12.2, 0, 0.1, STONE, 0xe4ddd0);
-        for (let i = 0; i < 6; i++) cyl(4.5 + i * 2.4, 11.3, 0.5, 0.1, 10, STONE, CR, { seg: 12 });
+        CCOL.forEach(x => { cyl(x, 11.3, 0.4, 0.4, 9.6, STONE, CR, { seg: 12 }); box(x - 0.55, 10.75, x + 0.55, 11.85, 0.1, 0.4, STONE); box(x - 0.55, 10.75, x + 0.55, 11.85, 9.6, 10, STONE); });   // DC: the eight-column temple front
+        [10.42, 12.38].forEach(x => box(x - 0.14, 10.5, x + 0.14, 10.62, 0, 3.0, null, 0x7a5a30)); box(10.28, 10.5, 12.52, 10.62, 2.72, 3.1, null, 0x7a5a30); box(10.0, 10.5, 12.8, 10.6, 3.1, 3.35, null, 0x5e4424);   // the bronze door frame
+        box(8.2, 10.42, 14.6, 10.5, 12.9, 14.6, null, 0xe6dfd0);                                                                                       // the pediment's carved panel
         box(3.5, 10.5, 17.5, 12.0, 10, 11.5, STONE, CR, { under: 1 }); box(3.2, 3.2, 17.8, 12.3, 11.5, 12.7, STONE, CR); roof('gable', 3.0, 3.0, 18.0, 12.5, 12.7, 3.1, STONE, CR, { axis: 'z' }); });
     B(1, { solids: [{ r: [24.5, 3.5, 38.5, 10], st: 1 }] }, () => {                                                                                   // COURT CAFE: a roof terrace
         box(24.5, 3.5, 38.5, 10, 0, 3.8, 'bricks_3', 0xffb090); box(26, 9.95, 30.4, 10.06, 0.8, 3.0, 'u_GlassWindowResidential1a'); box(32.6, 9.95, 37, 10.06, 0.8, 3.0, 'u_GlassWindowResidential1a'); roof('shed', 24.5, 10, 38.5, 11.7, 2.8, 0.8, 'u_MetalCorrugatedPainted1a', 0xb0d0ff, { high: 'N' });
@@ -133,7 +150,7 @@ plot(7, 1, () => { const CR = 0xfff4dc;
         [28, 34].forEach(x => { cyl(x, 6.6, 0.06, 4.05, 6.4, ALU, null, { seg: 6 }); cone(x, 6.6, 1.6, 6.2, 0.8, null, 0xd94f4f, { seg: 8 }); }); door(31.5, 10, 'S'); }); });
 
 /* ───────── row 2 ───────── */
-plot(4, 2, () => { const PB = 0xb4c4f0;
+plot(4, 2, () => { const PB = 0xf2eee4;   // DC: pale limestone
     B(0, { fit: [3.5, 7, 14, 26, 3.5, 7, 14, 24.5], solids: [{ r: [3.5, 7, 14, 26], st: 3, door: { side: 'E', at: 16 } }, { r: [3.5, 26, 14, 31.5], st: 1 }], cells: [[4, 2], [4, 6]] }, () => {   // POLICE
         box(3.5, 7, 14, 26, 0, 10.6, 'bricks_1', PB, { win: WR2 }); box(3.3, 6.8, 14.2, 26.2, 10.6, 11.0, STONE); box(3.6, 7.1, 13.9, 25.9, 11.0, 11.7, 'bricks_1', PB, { top: 1 });
         box(14, 13, 15.2, 15.4, 0, 12.4, STONE, 0xe8e4da); box(14, 17.6, 15.2, 20, 0, 12.4, STONE, 0xe8e4da); box(14, 15.4, 15.2, 17.6, 2.9, 12.4, STONE, 0xe8e4da, { under: 1 });   // the stepped stone entrance bay: two piers + the head
@@ -164,7 +181,7 @@ plot(6, 2, () => { const SG = 0xfff6e4, GL = 'u_GlassWindowSquare1b';
         for (let i = 0; i <= 8; i++) { const p = 7 + i * 3.5; box(p - 0.5, 6.85, p + 0.5, 7.4, 0, 6, STONE, SG); box(p - 0.5, 34.6, p + 0.5, 35.15, 0, 6, STONE, SG); box(6.85, p - 0.5, 7.4, p + 0.5, 0, 6, STONE, SG); box(34.6, p - 0.5, 35.15, p + 0.5, 0, 6, STONE, SG); }
         [[7, 7, 35, 7.35], [7, 34.65, 35, 35], [7, 7, 7.35, 35], [34.65, 7, 35, 35]].forEach(b => box(b[0], b[1], b[2], b[3], 7, 7.9, STONE));
         box(13, 13, 29, 29, 7.05, 10, GL, 0xe0fff4, { top: 0 }); vault(12.6, 15.5, 29.4, 26.5, 10, 5.5, GL, 0xe0fff4, { axis: 'x' }); vault(15.5, 12.6, 26.5, 29.4, 10, 5.5, GL, 0xe0fff4, { axis: 'z' });
-        cyl(21, 21, 4.3, 14.6, 16.3, STONE, null, { seg: 20 }); dome(21, 21, 4.2, 16.3, 3.5, GL, 0xe0fff4); cone(21, 21, 0.2, 19.8, 1.6, 'gold', null, { seg: 6 });
+        cyl(21, 21, 4.6, 14.6, 15.2, STONE, null, { seg: 20 }); ring(12, 21, 21, 4.1, 0.24, 15.2, 18.6, STONE, SG); cyl(21, 21, 2.6, 15.2, 18.6, STONE, SG, { seg: 16 }); cyl(21, 21, 4.6, 18.6, 19.2, STONE, null, { seg: 20 }); dome(21, 21, 4.2, 19.2, 3.4, ALU, VERD); cone(21, 21, 0.2, 22.6, 1.4, 'gold', null, { seg: 6 });   // DC: the round domed memorial ringed by columns
         [[10, 10], [32, 10], [10, 32], [32, 32]].forEach(c => { cyl(c[0], c[1], 1.1, 7.05, 7.9, STONE); cyl(c[0], c[1], 0.18, 7.9, 9.6, 'u_ConcreteStriped1a', 0xa07050, { seg: 6 }); dome(c[0], c[1], 1.5, 9.4, 2.2, null, 0x4f8a45); });
         door(21, 7, 'N'); door(35, 21, 'E'); }); });
 
@@ -192,21 +209,31 @@ plot(4, 3, () => {
         cyl(31.5, 8.75, 4, 0, 3.6, 'u_GlassWindowSquare1a', 0xe0f2ff, { seg: 20 }); cyl(31.5, 8.75, 5.2, 3.6, 3.95, STONE, null, { seg: 20 }); dome(31.5, 8.75, 2.4, 3.95, 1.0, ALU, VERD);
         box(4, 25.5, 38, 38, 4.7, 5.05, STONE, null, { under: 1 }); [[5.25, 26.25], [36.75, 26.25], [5.25, 36.75], [36.75, 36.75]].forEach(c => { cyl(c[0], c[1], 0.35, 0, 3.7, 'u_ConcreteStriped1a', 0xffffff, { seg: 10 }); cone(c[0], c[1], 2.3, 3.7, 1.0, 'u_ConcreteStriped1a', 0xffffff, { inv: true, seg: 16 }); }); }); });
 
-plot(5, 3, () => { const LB = 0xf09070, OC = 0xfff8ec;
+plot(5, 3, () => { const LB = 0xf3eee2, OC = 0xfff8ec;
     B(0, { ghost: [[14.3, 14.3, 27.7, 14.3, 13.5], [14.3, 27.7, 27.7, 27.7, 13.5], [14.3, 14.3, 14.3, 27.7, 13.5], [27.7, 14.3, 27.7, 27.7, 13.5], [35, 15, 36.6, 15, 8], [35, 27, 36.6, 27, 8]], cells: [[10, 4], [10, 7]] }, () => {   // PUBLIC LIBRARY (a roof-route tier)
-        box(7, 7, 35, 35, 0, 7, 'bricks_2', LB, { win: WR, top: 0 }); box(6.9, 6.9, 35.1, 35.1, 0, 0.9, STONE, null, { top: 0 }); box(6.6, 6.6, 35.4, 35.4, 6.4, 7, STONE, null, { top: 0 });
+        box(7, 7, 35, 35, 0, 7, STONE, LB, { win: WR, top: 0 }); box(6.9, 6.9, 35.1, 35.1, 0, 0.9, STONE, null, { top: 0 }); box(6.6, 6.6, 35.4, 35.4, 6.4, 7, STONE, null, { top: 0 });
         [[6.8, 6.8, 35.2, 7.15], [6.8, 34.85, 35.2, 35.2], [6.8, 6.8, 7.15, 35.2], [34.85, 6.8, 35.2, 35.2]].forEach(b => box(b[0], b[1], b[2], b[3], 7, 7.9, STONE));
         box(35, 15, 36.6, 27, 0, 8.4, STONE, 0xefe9dc); roof('gable', 35, 15, 36.6, 27, 8.4, 1.6, STONE, 0xefe9dc, { axis: 'x' });                    // the stone portal: three arches
         [17.5, 21, 24.5].forEach(zc => { box(36.5, zc - 1.1, 36.68, zc + 1.1, 0, 3.2, null, DARK); vault(36.5, zc - 1.1, 36.68, zc + 1.1, 3.2, 1.1, null, DARK, { axis: 'x' }); });
         cyl(21, 21, 9.5, 7.05, 13.5, STONE, OC, { seg: 8 }); cyl(21, 21, 9.56, 8.6, 12.3, 'u_GlassWindowTall1a', 0xf0fff0, { seg: 8 }); ring(8, 21, 21, 9.75, 0.75, 7.05, 13.5, STONE, OC);   // the eight-sided reading room
-        cyl(21, 21, 10.3, 13.5, 14.1, STONE, null, { seg: 8 }); cone(21, 21, 10.3, 14.1, 5.2, ALU, SLATE, { seg: 8 }); cyl(21, 21, 2.1, 18, 20.2, 'u_GlassWindowSquare1a', 0xe0f2ff, { seg: 8 }); cone(21, 21, 2.5, 20.2, 1.7, ALU, VERD, { seg: 8 }); }); });
+        cyl(21, 21, 10.3, 13.5, 14.1, STONE, null, { seg: 8 }); dome(21, 21, 9.9, 14.1, 6.4, ALU, VERD); cyl(21, 21, 2.1, 20.2, 22.4, 'u_GlassWindowSquare1a', 0xe0f2ff, { seg: 8 }); cone(21, 21, 2.5, 22.4, 1.7, ALU, VERD, { seg: 8 });   // DC: the copper dome
+        for (let a = 9.6; a < 33; a += 4.56) {                                                                                                         // the arched windows of the ground storey
+            box(a - 0.95, 35.0, a + 0.95, 35.09, 1.1, 3.6, null, DARK); vault(a - 0.95, 35.0, a + 0.95, 35.09, 3.6, 0.95, null, DARK, { axis: 'z' });
+            box(a - 0.95, 6.91, a + 0.95, 7.0, 1.1, 3.6, null, DARK); vault(a - 0.95, 6.91, a + 0.95, 7.0, 3.6, 0.95, null, DARK, { axis: 'z' });
+            box(6.91, a - 0.95, 7.0, a + 0.95, 1.1, 3.6, null, DARK); vault(6.91, a - 0.95, 7.0, a + 0.95, 3.6, 0.95, null, DARK, { axis: 'x' }); }
+        }); });   // the lions each side of the steps: DRESS
 
-plot(6, 3, () => { const OL = 0xb4c080, CS = 'u_PlasterWallPainted1a';
+plot(6, 3, () => { const OL = 0xe9e3d2, CS = 'u_PlasterWallPainted1a';
     B(0, { solids: [{ r: [17.5, 28, 31.5, 42], st: 3, door: { side: 'N', at: 24.75 } }], ghost: [[13.2, 25.3, 15.4, 25.3, 2.6], [13.2, 27.5, 15.4, 27.5, 2.6]], cells: [[3, 7], [4, 7], [2, 9], [3, 9], [2, 10], [3, 10]] }, () => {   // MILITARY OFFICES: a blockhouse
         box(17.5, 28, 31.5, 42, 0, 14, CS, OL);
         for (let k = 0; k < 4; k++) for (let x = 18.6; x < 31; x += 2.3) { if (k === 0 && x > 22.5 && x < 26.5) continue; box(x, 27.9, x + 0.6, 28, 1.9 + k * 3.2, 3.6 + k * 3.2, null, DARK); }
         for (let x = 17.5; x < 31; x += 2.05) { box(x, 28, x + 1.15, 28.6, 14, 15, CS, OL); box(x, 41.4, x + 1.15, 42, 14, 15, CS, OL); } for (let z = 29.6; z < 41; z += 2.05) { box(17.5, z, 18.1, z + 1.15, 14, 15, CS, OL); box(30.9, z, 31.5, z + 1.15, 14, 15, CS, OL); }
-        cyl(27, 36, 1.7, 14, 15.4, ALU, 0xaab0a0); dome(27, 36, 2.5, 15.4, 2.9, STONE, 0xffffff); cyl(21, 32, 0.1, 14, 23, ALU, null, { seg: 6 }); cone(21.6, 32, 1.0, 19, 0.6, ALU, null, { inv: true });
+        cyl(29.5, 37.5, 1.2, 16.7, 17.6, ALU, 0xaab0a0); dome(29.5, 37.5, 1.8, 17.6, 2.1, STONE, 0xffffff); cyl(19.5, 32.5, 0.1, 16.7, 25, ALU, null, { seg: 6 }); cone(20.1, 32.5, 1.0, 21, 0.6, ALU, null, { inv: true });
+        /* DC: the five-sided plan. The walk-in block keeps its square foot (the room, the door); from the second storey up the building is a
+           pentagon round it, a point over the door, with the courtyard cut in its roof */
+        cyl(24.5, 35, 9.4, 7, 7.4, STONE, null, { seg: 5, ry: 180 }); cyl(24.5, 35, 9.1, 7.4, 16.2, STONE, OL, { seg: 5, ry: 180 });
+        [8.6, 11.6, 14.6].forEach(y => cyl(24.5, 35, 9.14, y, y + 1.5, 'u_GlassWindowSquare2a', 0x6a7684, { seg: 5, ry: 180 }));
+        cyl(24.5, 35, 9.4, 16.2, 16.7, STONE, null, { seg: 5, ry: 180 }); cyl(24.5, 35, 5.4, 16.7, 16.78, null, 0x4f7a45, { seg: 5, ry: 180 }); cyl(24.5, 35, 5.7, 16.7, 16.74, STONE, null, { seg: 5, ry: 180 });   // the courtyard lawn in its kerb
         box(13.2, 25.3, 15.4, 27.5, 0, 2.6, CS, OL); box(12.9, 25, 15.7, 27.8, 2.6, 2.85, CS, 0x98a468, { under: 1 }); box(15.4, 26.3, 20.5, 26.5, 0.9, 1.1, null, 0xd9382e); flag(15, 30.5, 11, 0x3a6b3a); });
     B(1, {}, () => {                                                                                                                                  // ARMY SURPLUS (a roof-route tier)
         box(0, 0, 14, 17.5, 0, 7, 'u_MetalCorrugatedPainted4a', 0xf0f0c8, { top: 0 }); box(4.5, 17.45, 7.6, 17.56, 0.5, 3.0, 'u_GlassWindowResidential1a'); box(9.9, 17.45, 13, 17.56, 0.5, 3.0, 'u_GlassWindowResidential1a'); roof('shed', 3.5, 17.5, 14, 19.2, 2.9, 0.9, 'u_MetalCorrugatedPainted4a', 0xffffff, { high: 'N' });
@@ -220,7 +247,7 @@ plot(7, 3, () => { const PC = 'u_ConcreteStriped1e', PT = 0xfff8e8;
         box(9, 11, 33, 23, 8.4, 29.4, 'u_GlassWindowSquare4a', 0xc8f4f8, { under: 1, top: 1 }); box(8.3, 10.7, 9, 23.3, 8.4, 30.2, STONE); box(33, 10.7, 33.7, 23.3, 8.4, 30.2, STONE);
         for (let k = 0; k <= 6; k++) box(9, 10.1, 33, 23.9, 8.4 + k * 3.5 - 0.12, 8.4 + k * 3.5 + 0.12, STONE, null, { under: 1 });
         box(17, 14, 25, 20, 29.5, 32.4, PC, PT); cyl(29, 17, 1.6, 29.9, 33, 'u_ConcreteStriped1a', 0xe0b080, { seg: 14 }); cone(29, 17, 1.8, 33, 1.1, ALU, SLATE, { seg: 14 });
-        cyl(13.5, 29.5, 5.2, 4.9, 10, 'u_PlasterWallPainted1a', 0xf09068, { seg: 28 }); cyl(13.5, 29.5, 5.7, 10, 10.35, STONE, null, { seg: 28 }); dome(13.5, 29.5, 4.6, 10.35, 1.4, ALU, VERD);
+        cyl(13.5, 29.5, 5.2, 4.9, 10, 'u_PlasterWallPainted1a', 0xf4efe4, { seg: 28 }); cyl(13.5, 29.5, 5.7, 10, 10.35, STONE, null, { seg: 28 }); dome(13.5, 29.5, 4.6, 10.35, 1.4, ALU, VERD);
         for (let i = 0; i < 3; i++) { const x0 = 15.9 + i * 3.4; roof('gable', x0, 3.6, x0 + 3.4, 7, 3.3, 1.1, STONE, null, { axis: 'z' }); } [15.9, 26.1].forEach(x => cyl(x, 3.8, 0.14, 0, 3.3, ALU, null, { seg: 8 })); }); });
 
 /* ══ the parts as the game's `arch` parts (three-renderer.js _hqArchGeometry: box / cyl / dome / roof / quad) ══ */
@@ -256,6 +283,7 @@ function toArch(p, D) {   // D = the walk-in doorway of this building, or null: 
     } else if (p.t === 'cyl') {
         const q = Object.assign({ s: 'cyl', p: [r3(p.x), r3(p.y0), r3(p.z)], r: p.r, h: r3(p.y1 - p.y0), seg: o.seg || 20 }, base);
         if (o.cone) { if (o.inv) { q.r = 0.03; q.r2 = p.r; } else q.r2 = 0; } else if (o.r2 != null) q.r2 = o.r2;
+        if (o.ry) q.ry = o.ry;
         out.push(clean(q));
     } else if (p.t === 'dome') out.push(clean(Object.assign({ s: 'dome', p: [r3(p.x), r3(p.y0), r3(p.z)], r: p.r, h: p.h, seg: 20 }, base)));
     else if (p.t === 'roof') {
@@ -405,7 +433,7 @@ function detail(Bd, D, walked, seed, name) {
 function hollow(list, S0) {
     const r = S0.r, Hc = S0.st * C, cav = [r[0] + 1, r[1] + 1, r[2] - 1, r[3] - 1], G = [r[0] - 0.4, r[1] - 0.4, r[2] + 0.4, r[3] + 0.4], out = [];
     list.forEach(p => {
-        if (p.t === 'cyl') { if (p.x > cav[0] && p.x < cav[2] && p.z > cav[1] && p.z < cav[3] && p.y0 < Hc - 0.3) { if (p.y1 <= Hc + 0.6) return; p = Object.assign({}, p, { y0: Hc }); } out.push(p); return; }
+        if (p.t === 'cyl') { if (p.r < 3 && p.x > cav[0] && p.x < cav[2] && p.z > cav[1] && p.z < cav[3] && p.y0 < Hc - 0.3) { if (p.y1 <= Hc + 0.6) return; p = Object.assign({}, p, { y0: Hc }); } out.push(p); return; }
         if (p.t !== 'box' || p.y0 >= Hc - 0.3) { out.push(p); return; }
         const cuts = p.x0 < cav[2] && p.x1 > cav[0] && p.z0 < cav[3] && p.z1 > cav[1]; if (!cuts) { out.push(p); return; }
         const within = p.x0 >= G[0] && p.x1 <= G[2] && p.z0 >= G[1] && p.z1 <= G[3], thin = Math.min(p.x1 - p.x0, p.z1 - p.z0) < 0.8;
@@ -767,6 +795,15 @@ const SECOND = {
     },
 };
 
+/* WASHINGTON DC, THE STREET (mondo 11-15): catalogue props on plot squares. [px, py, key, x, z, face, cells it needs free, opts];
+   bars = [px, py, x0, z, x1, z, top, thickness]: the unseen low wall filling a barrier's squares (the pool, the obelisk's plinth) */
+const DRESS = [
+    [5, 1, 'car_cadillac', 7, 33.25, 90, [[1, 9], [2, 9]]], [5, 1, 'car_cadillac', 14, 33.25, 90, [[3, 9], [4, 9]]], [5, 1, 'car_suv', 7, 36.75, 90, [[1, 10], [2, 10]]], [5, 1, 'car_cadillac', 14, 36.75, 90, [[3, 10], [4, 10]]],
+    [5, 3, 'lion', 37.6, 14.1, 90, null, { h: 1.5 }], [5, 3, 'lion', 37.6, 27.9, 90, null, { h: 1.5 }],
+    [6, 1, 'fountain', 8.75, 7, 0, null],   // the plaza's fountain stands in the pool (the tool's own gave its square to the pool)
+    [6, 1, 'newspaper_rack', 16.6, 11.6, 90, null], [6, 1, 'newspaper_rack', 16.6, 12.5, 90, null], [6, 0, 'newspaper_rack', 9.2, 36.2, 180, null], [7, 1, 'newspaper_rack', 18.6, 11.9, 270, null],
+];
+const BARS = [[6, 1, 3.95, 7, 13.55, 7, 0.6, 6.1], [6, 1, 31.95, 7, 38.05, 7, 3, 6.1]];
 /* ══ apply(ctx): called by bake-disaster-city.js after its building loop. ctx = { PLAN, features, props, bInfo, gx, take, roofB, ROOF_H } ══ */
 function apply(ctx) {
     const { PLAN, features, gx, take, roofB } = ctx, n = { arch: 0, parts: 0, hollow: 0, solids: 0, ghosts: 0 };
@@ -807,6 +844,13 @@ function apply(ctx) {
             (Bd.cells || []).forEach(c => take(P.px * N + c[0], P.py * N + c[1]));
         });
     });
+    /* WASHINGTON DC, THE STREET: the cars need their squares free (a taken square = the car is left out and logged) */
+    DRESS.forEach(d => { const X0 = gx(d[0] * N), Z0 = gx(d[1] * N), cs = d[6];
+        if (cs && !cs.every(c => ctx.free(d[0] * N + c[0], d[1] * N + c[1], '.'))) { n.dressSkipped = (n.dressSkipped || 0) + 1; return; }
+        (cs || []).forEach(c => take(d[0] * N + c[0], d[1] * N + c[1]));
+        ctx.props.push(Object.assign({ key: d[2], x: ctx.r3(X0 + d[3]), z: ctx.r3(Z0 + d[4]), face: d[5] }, d[7] || {})); n.dress = (n.dress || 0) + 1; });
+    BARS.forEach(b => { const X0 = gx(b[0] * N), Z0 = gx(b[1] * N); features.push({ k: 'wall', x0: ctx.r3(X0 + b[2]), z0: ctx.r3(Z0 + b[3]), x1: ctx.r3(X0 + b[4]), z1: ctx.r3(Z0 + b[5]), t: b[7], y: b[6], ghost: true, rail: false }); n.ghosts++; });
+    if (process.env.CIVIC_DEBUG) console.log('civic', JSON.stringify(n));
     return n;
 }
 module.exports = { apply, PLOTS, toArch };

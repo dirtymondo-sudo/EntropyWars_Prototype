@@ -2181,6 +2181,7 @@ his OK on the plan and mock-up ("looks good", "yes add sea wall and water", 17:1
   use the urban pack's; the arch row's `ring` turns parts the mirrored way (fine for a column, wrong for a rail: `ringRails` writes
   each with its own `ry`); a probe camera's `y` is ABSOLUTE, so on the raised north row add the plot's level or it is underground.
 - **THE INTERIORS (2026-11-13, mondo 21:04; his OK on plan 2, 21:24)**: `interiors()` in docs/disaster-city/districts/B.js. Seven rooms: the hotel lobby, the cinema (foyer + one hall behind a partition), the loading dock, the surf shop, boat repair, the harbour master (these three were solid: now `hollow` with a `door` square in DESIGN, their arch box `faces: 'blr'` + a `doorFront`), the market's tills. HIS GRID RULE (21:14 + 21:17): the squares are the 3.5 m battle squares; a blocker is built over WHOLE squares, centred, and every one of its squares is shut with a ghost wall (`R.shut`); decor hugs walls / corners off the squares' middles; a walk is whole empty squares. A room's frame = its building's (x along the front, +z out of the door; square (c, r), r from the back wall); `R.prop(key, lx, lz, hd)` turns a prop by the building's `rot` (hd 180 = looks at the door). The inside's walls / floor are the texbuilding row's `keyIn` / `floorIn`; its ceiling is `storeys x 3.5 - 0.32` (the hotel's row is 2 storeys now: the lobby; the tower above is the arch row). A prop set on a counter takes `y >= 1` (the bake adds the ground under it only from 1 m). The market's stalls moved onto squares 0, 2, 4 of its back row. Stays a front: ice cream, food hall, security, booth (the roof walk), apartments, juice bar, florist.
+- **MIAMI (2026-11-15, mondo 12:19 "bayside could be Miami"; his "Build it as drawn" on the real-cities plan)**: a third layer in B.js, `DECO` (corner pylons, racing stripes, eyebrows, sign fin, porthole) + `MIAMI.<name>` wrapped over the buildings after POLISH, and `miamiStreet()`. Hotel: a three-step white front over the doors, a hot pink neon fin, portholes; cinema: bulbs round both rims of the marquee, stripes down the flanks; ice cream / apartments / food hall: a sign fin (proud of the front, so the walked roofs stay clear); the lookout's posts candy striped; the mall arch pink + mint; `B.tower(tint, flag)` three painted lifeguard towers on the sand (with the red station: a row of four); `B.yacht(L)` three white yachts at the mole (the row's `y` = SEA_Y minus the plot's level, since the bake adds the level); the promenade's short palm props became tall `k: 'tree', kind: 'palm'` rows (h 7 to 9), each on a square painted sand; a palm court at the mall arch; flamingos at the hotel doors; lobster traps at the pier. Lessons: a white part on the plaster sheet reads grey (use a plain `trim`), a pastel on `wood_planks` reads muddy (use the stucco sheet). Not done: pastel convertibles (the traffic is shared), the pale speckled sidewalk (the ground palette is the city's).
 - **THE INTERIORS, SECOND PASS (2026-11-13, mondo 22:33: "do another interior pass ... make a list of models needed/wanted but not in the
   bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere")**: `SECOND[<room id>]` in B.js runs after each
   first-pass room. NEW MODELS (data.js catalogue "THE BAYSIDE INTERIOR PIECES", any district may use them): 15 Meshy (concept by text-to-image,
@@ -2473,6 +2474,8 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
     above their ceilings (give the height as `mount`); the gym mirror stood inside the wall facing out (a quad's ry 90 faces −x, 270 faces +x);
     `R.put` keeps every prop 0.4 m off the outer walls (in front of the coat); a room's ceiling is the texbuilding's `h` − 0.32 (R.H read
     the storeys: the ceiling lamps, hung at R.H − 0.2, sat above the real ceilings).
+
+- **SOUTHSIDE = DETROIT** (2026-11-15; mondo 12:19 "each district based off of a major city ... southside could be dallas or detroit", his "Build it as drawn" 12:32 on the real-cities plan, project files disaster-city-real-cities/plan.html section d-r + mock_r.jpg). All in R.js, nothing deleted, every name / use / door / roof route kept. THE PALETTE is central in `arch()`: `detroit(o)` turns every big wall sheet of a building row into brick (five reds/browns `DW`, per building), roofs into dark slate `DR`, ribbed metal into `DRIB`, pale plaster trim into limestone 0xd8cdb8; a part with `det: false` keeps its own look (murals, the depot's stone, steel). `a.wins` boards one window in a run, `a.floors` shuts a third of the ground rows with a corrugated shutter, `dress()` paints a faded advert (plain `txt:` key, letters only) on a side wall, awnings fade. LANDMARKS: Church = brick gothic, tower 27 m (was 19) under a slate spire; Community gate (P03-02-B1) = the front of a train depot (pale hall, three arched windows made of a quad + a thin barrel roof part turned 90, the middle one the shut gate, panes knocked out, a seven-floor office block behind with every other floor's glass dark; the 8 m collision block unchanged); Boxing gym = a steel frame over the door + a BOXING sign; the giant bronze FIST is a new Meshy model that waits mondo's OK on its concept (project files disaster-city-southside/fist/fist_concept.jpg; set `GYM_FIST` to its catalogue key and it hangs itself); Repair shops = brick car works, ENGINES REBUILT ghost sign, a rusted car body (`car_pack_6`) on a deck over the sawtooth roof; back-lot cottages = brick porch houses, the first burnt out (soot, bare joists, dark openings, overgrown); Street court = a 14 x 10.5 m brick party wall on the plot's west edge with a three-storey mural, a hoop, a painted half court (arch row `dc:P03-03-mural`, ghost wall). `mural(a, face, …)` = flat colour shapes (kind 0 sun + hills, 1 skyline at sunset); the walk-up flats' west wall carries the second. THE STREET (last block of R.js): rails wood/spear/ranch -> `wire_fence`; 16 old cars on two whole squares each (every third on cinder blocks), 9 burn barrels (glow parts, no light), power poles on whole squares with stepped sagging wires (arch rows `dc:R-wire-*`), a hot dog stand at the avenue corner, cans / bags off centre against walls, 60 weed clumps. Headless shots: project files disaster-city-southside/detroit_1..3.jpg.
 
 ## DISASTER CITY, THE BIG WINDOWS (2026-11-13, the shared-pieces thread)
 mondo (screenshot of two city blocks): "The buildings that use these repeated window textures from the urban pack, the windows are too small, need
@@ -2939,6 +2942,17 @@ glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the 
   `walls` are partitions on the lines between squares with one-square doorways; `decor` is off centre / on the walls. One arch row per room `ind:<id>:in`; props are
   `floor:true`; `keyIn` / `floorIn` / `tintIn` set per room. The doorway square is asserted to be a walkway (else the room is left out with a console line). To change a room:
   edit its `IN` row, `node bake-disaster-city.js`. Plans: /mnt/project-files/disaster-city-industrial/interiors_plan_1..3.jpg.
+- **INDUSTRIAL AS HOUSTON (2026-11-15, mondo chose "Build it as drawn" on the real-cities plan, /mnt/project-files/disaster-city-real-cities/plan.html d-i):**
+  I.js `HOU_LOOK` (in the building loop) retints a building's own parts: the Warehouse, Welding shop, Cargo sheds and Boat repair wear the brown sheet
+  (`MetalCorrugatedPainted3a`) as rust, the Water works tanks and the Rail service water tower go tank white, the Aerospace lab's stripe goes space-agency
+  blue; sheds + the Maintenance depot + Forklift repair get a concrete apron; the Hangar's open end gets its two leaves, track and lead-in line.
+  THE LANDMARKS block (end of build): `claim(plot, lx, ly, w, d, storeys, tag)` takes whole free squares and puts one invisible texbuilding per square
+  (the crane legs' kind); `land()` = one `ind:hou-<tag>` arch row. Refinery (3 columns + red/white flare stack, the flame a glow part, a pipe rack) on
+  the Transformer yard's free 5 x 5 (P02-09); two ball tanks + two round white tanks in the Container court (P00-09); a red-hulled tanker in dry berth
+  on keel blocks along the Dock edge's west wall (P00-11; no water there; three container stacks moved to the dock's east squares); three pump jacks
+  by the Pump court (P02-11, still: no part turns); a three-stage rocket lying on cradles behind the Maintenance depot (P02-10 row 9, the long free
+  run nearest the Aerospace lab; a lying round body = two half drums, the lower one `size[1] < 0` + `ds`), rocket_engine at its tail. Street: forklifts,
+  the taco stand, wrapped pallets (solid, on squares), tyre stacks / drums / a gas rack off centre. All from parts or catalogue models; no new lights.
 - **THE INDUSTRIAL INSIDES, SECOND PASS (2026-11-14, mondo 11-13 22:33: "after a district's first interior pass, do another interior pass ... make a
   list of models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere").** I.js
   `SECOND[id](Q)` runs after each room's first pass; `kit2()` gives `Q`: `paint` (a dado coat 0.345 m in, the front one with the doorway cut, a
@@ -3358,3 +3372,81 @@ mondo 11-15: "do a font pass on all of the buildings that have text"; his OK on 
 - NOT changed: Financial's box-built 3D letters (F-detail.js `letters()`), the lamp-post district banners (field `v`), text painted on pack
   models. Seen: the real function on the real baked keys in a bare page (/mnt/project-files/city-sign-fonts/built_real_sign_code.jpg), not
   in the game (RULE #1c).
+
+## DISASTER CITY, THE ENTERTAINMENT DISTRICT — LOS ANGELES (2026-11-15)
+mondo 11-15 12:19: "I want each district to be based off of a major city ... entertainment or film could be LA"; he picked "Build it as drawn"
+on the real-cities plan (`/mnt/project-files/disaster-city-real-cities/plan.html` section d-e). All of it is in `docs/disaster-city/districts/E.js`.
+- **THE PAINTED STUCCO**: the stucco sheet is mid grey, so every pastel over it read as mud (the old ×1.7 lift clamps a pastel to white).
+  `P()` now gives every stucco part (`key === ST`, not a roof) its own colour and the arch row's `gain` (`STG` 2.2, Bayside's painted wall);
+  a roof with stucco gable ends takes the gain too and its own tint divided by it. `free()`'s P does the same.
+- **The palette**: cream / peach / salmon stucco and clay roofs (`CLAY`, the corrugated sheet tinted) on the pawn shop, costume shops, masks,
+  lofts, Comedy theater, canteen, Stage workshop, apartments, bakery, crew house; the backstage dock is a cream painted shed. The casino,
+  the arcade, the noodle bar, the cabaret, the drive-in keep their own looks (every building unique).
+- **`LA[id]`** (called after LETTERS in `B`): `arcade()` / `archw()` = arched openings from six thin boxes; `stageNo()` = big painted numbers
+  (Film studio 1, backstage dock 2, Stage workshop 3, prop store 4); the Recording studio's record stack + needle spire on its round lobby;
+  the Concert hall's band shell (five nested half domes, `arc: 180`, on the podium roof over the entrance, open north to its walk);
+  the Cinema's red columns, jade roof, purple blade 17 m with CINEMA down it.
+- **The street block** (foot of the file, squares as district columns/rows 0..47): THE HILL LETTERS = a dry headland of domes in the bay off the
+  east edge at x 300 (the city's east is the coast, there is no hill: the hill is built), DISASTER CITY in 5×7 block letters, three leaning or
+  slipped; one merged arch row, no light, no model. THE STAR WALK = a gold-sheet star in a terrazzo square in every square of the boulevard's two
+  walks. PALMS 11.5-15 m on free yard squares beside the walks (never on a walk: they block; the bake's soil rule beds them). THE STUDIO GATE on
+  row 12 over the walk to the Film studio's door (piers on squares 40 and 43, ghost blocks). THE CINEMA FORECOURT (squares 41..42 × rows 35..39):
+  red paving, eight handprint slabs, the temple gate, rope_stanchion ×6, studio_light ×2 as the searchlights, a popcorn cart. THE LANTERN LANE =
+  the walk of rows 29..30 in two stretches (noodle bar side, Arcade side; the Stage workshop stands between): paper_lantern props hung at y 3.45
+  on strings, a red gate at each west end, blade signs, four noodle stalls on yard squares (ghost blocks). Three TOUR MAP boards.
+- Not made: a Meshy searchlight and a Meshy studio water tower (concepts go to mondo first); the water tower is still the code-built one.
+- Proof: `/mnt/project-files/dc-entertainment/la_built.jpg` (offline render of the baked rows, not the running game).
+
+## DISASTER CITY, THE CITY MARKS (2026-11-15)
+mondo 11-15: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city branding/logo for certain
+buildings or props or banners"; he corrected shield B (bolt, not a crack) and the flag's star on the sheet, then "the rest looks good for now".
+- Marks, drawn on the sign's own canvas from the sheet's SVG paths (three-renderer.js `_hqSignMark`, no texture file): `seal` (navy + gold
+  city seal), `shield` (the DC bolt shield), `pd` (D.C.P.D. badge), `fd` (D.C.F.D. badge). A seventh key field names the mark left of the
+  words: `txt:WORDS|fg|bg|aspect|<v>|<font>|<mark>`. A lamp banner (field `v`) always carries the seal above its district's name.
+- Set at the bake by docs/disaster-city/sign-fonts.js `BRAND` (Civic): POLICE boards read D.C.P.D. (pd), FIRE STATION boards read D.C.F.D.
+  (fd), the boards of City Hall, Courthouse, Council annex, Permit offices and Civil records take the seal. The department names are his;
+  add no other department without his word.
+- NOT built yet: the shield on the bus / stops / bins / barriers, manhole covers, the flag (mark C; sheet
+  /mnt/project-files/city-sign-fonts/branding_mockup_v3.jpg + branding_mockup.html hold its shapes). Seen: the real function in a bare page
+  (branding_built_real_sign_code.jpg), not in the game (RULE #1c).
+
+**Civic Center = WASHINGTON DC (2026-11-15, mondo 12:19 "each district based off of a major city. Civic could be Washington DC"; his pick
+"Build it as drawn" 12:32 on the real-cities plan, /mnt/project-files/disaster-city-real-cities/plan.html section d-c):** all in C.js.
+- Materials: the public buildings are white marble / pale limestone (Police, Dispatch, Military, Library, the Council chamber, the Permit
+  rotunda retinted; the Library's brick sheet is now `marble_light`), roofs + domes copper green (`VERD`); the Fire Station keeps red brick.
+- City Hall: the drum is a ring of 20 columns under a taller copper dome, a lantern, a statue on top (three plain parts, 43.9 m); two
+  stair treads + a row of concrete bollards in front (drawn only, off the door's line).
+- Civic plaza: a white obelisk (29 m, 2 x 2 squares, north-east lawn) and the reflecting pool (3 x 2 squares, north-west lawn) either
+  side of the walk, flag rows down the walk, a black iron fence with stone posts on the lawns' outer sides. The tool's fountain lost its
+  square to the pool, so C.js stands the same fountain in the pool (`DRESS`); the angel statue keeps its square beside the obelisk.
+  The plot is crossed by the avenue (rows 4-7 are road), so the pool is 10.5 m long, not a long mall.
+- Courthouse: eight columns (`CCOL`, symmetric about the door at x 11.4, each with its ghost), a bronze door frame, a pediment panel.
+- Military offices: the walk-in block keeps its square foot (room + door); from 7 m up the building is a pentagon round it (cyl `seg: 5`,
+  `ry: 180`: toArch now passes a cyl's `ry`), three window bands, the courtyard lawn cut in its roof. A true five-sided ground plan would
+  need a new shell + room (the collision shell is a rectangle).
+- Records garden: the glasshouse's crown is the round domed memorial ringed by 12 columns (the plot has no free ground: path ring only).
+  No statue yet. Public library: limestone, arched ground-storey windows on three sides, a copper dome, a `lion` each side of the portal.
+- THE STREET (`DRESS` = [px, py, key, x, z, face, squares it needs, opts], `BARS` = unseen low walls on barrier squares): four black cars
+  on whole squares in the Service court's south-west yard, the lions, four newspaper racks, the pool's fountain.
+- NOT DONE (need mondo's OK on a Meshy concept first): the seated statue, the pink blossom trees. No lawn paint (the ground palette is
+  shared). No far version of the obelisk (it is three parts).
+
+## DISASTER CITY, THE HOLLYWOOD HILLS — the sign on the mountains (2026-11-15)
+mondo 11-15 12:55: "the disaster city hollywood sign, there is already the mountains on one of the edges of disaster city, use that/make that
+the hollywood hills. move whatever you have to." The mountains were the NORTH edge, with Financial between them and Entertainment; his pick
+12:57 "Run the mountains down the east". The hill of domes in the bay (PR #1422) is gone.
+- `docs/disaster-city/districts/E.js` exports `edges` (a new district export; bake-disaster-city.js lays a side's row over the room's EDGES and
+  takes any other key whole): `e.cap = { kind: 'mountain', at: 'n', off: 336, len: 70 }` = the east side is the mountain range from the north
+  corner to z +84 (Entertainment's south end), a 70 m fade to the open bay past it (Bayside keeps its horizon south of about z 150). The range
+  stands across the 70 m bay strip from the city (the land starts at x 322).
+- `edges.sign = { side, at, d, text, px, lean, drop }`: three-renderer.js `_hqBuildEdgeLand` THE HILL SIGN stands a word of 5×7 block letters on
+  the land `d` m past that side's edge, each letter on the land's own height (`F.at`), two legs behind each, its face to the room. One merged
+  mesh, Lambert, no fog (it stands in the far land's haze), no light. Letters known: A C D E H I L N O R S T W Y. The city's: 2.1 m blocks
+  (14.7 m letters), 30 m up the east mountainside (land about y 32..36 there), centred on z 0.
+- Proof: `/mnt/project-files/dc-entertainment/la_hills.jpg` (offline: the land's own arithmetic + the sign code, stand-in colours; not the game).
+
+## DISASTER CITY, THE HILL SIGN — on the NORTH mountains (2026-11-15, replaces the east range)
+mondo 11-15 13:18 on the east range of PR #1424: "that looks terrible. you just put a random mountain in the ocean ... just put the sign on the
+mountains in the north and remove the one you added". The east edge is the open bay again (E.js exports no `e.cap`); `edges.sign` is
+`{ side: 'n', at: 100, d: 30, ... }`: on the north range over the city's east half, land about y 55..59 there. The `edges` district export and
+the renderer's THE HILL SIGN stay as written above. LESSON: never add land he did not ask for; "use the mountains" meant the ones that exist.
