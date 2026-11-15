@@ -47498,7 +47498,10 @@ const ThreeRenderer = (function () {
         var out = [];
         function add(g, nm) { if (g && g.isObject3D && out.indexOf(g) < 0) { out.push(g); g._ew_bunName = nm; } }
         var here = (H.opts && H.opts.room) || 'room';
-        add(H.shellGroup, here + ' shell'); add(H.doorGroup, here + ' doors');
+        add(H.shellGroup, here + ' shell');
+        var dck = 0, dg = H.doorGroup;
+        if (dg && H.ckList && !_hqDoorChunksOff()) for (var di = 0; di < dg.children.length; di++) if (dg.children[di]._ew_dChunk) { add(dg.children[di], here + ' doors'); dck++; }   // THE DOOR CHUNKS: each door a recording of its own
+        if (!dck) add(H.doorGroup, here + ' doors');
         if (H.pChunks) { for (var pk in H.pChunks) add(H.pChunks[pk], here + (H.pChunks[pk]._ew_pcBld ? ' rooms' : ' props')); }   // THE PROP CHUNKS: each a bundle of its own (the prop group itself draws classic: its lamps and passing flashes)
         else add(H.propGroup, here + ' props');
         if (H.chunks) for (var ck in H.chunks.cells) add(H.chunks.cells[ck], here + ' fences');   // THE CHUNKS: a plot's fences, a bundle of their own
@@ -49203,7 +49206,7 @@ const ThreeRenderer = (function () {
                     for (var si = 0; si < sL.length; si++) {
                         var sg = sL[si];
                         if (sg.visible && sg._ew_ckSph && !sfr.intersectsSphere(sg._ew_ckSph)) { sg.visible = false; (sunHid || (sunHid = [])).push(sg); }
-                        else if (!sg.visible && sg._ew_sCell && sg._ew_ckOut && sg._ew_ckSph && sfr.intersectsSphere(sg._ew_ckSph)) { sg.visible = true; (sunShown || (sunShown = [])).push(sg); }   // THE SHELL CELLS: a tower behind the camera still shades the street
+                        else if (!sg.visible && (sg._ew_sCell || sg._ew_dChunk) && sg._ew_ckOut && sg._ew_ckSph && sfr.intersectsSphere(sg._ew_ckSph)) { sg.visible = true; (sunShown || (sunShown = [])).push(sg); }   // THE SHELL CELLS: a tower behind the camera still shades the street
                     }
                     _ewSunStat.seen = sL.length; _ewSunStat.hid = sunHid ? sunHid.length : 0;
                 } catch (eS) { }
@@ -52497,7 +52500,7 @@ const ThreeRenderer = (function () {
         if (S.bvh) L.push('Pick (raycasts) ' + S.bvh.rays.toFixed(0) + '/s · ' + S.bvh.ms.toFixed(1) + ' ms/s · BVH ' + (S.bvh.on ? S.bvh.trees + ' trees (' + _lensFmtN(S.bvh.tris) + ' tris, ' + Math.round(S.bvh.buildMs) + ' ms to build)' + (S.bvh.slow ? ' · ' + S.bvh.slow + ' plain' : '') + (S.bvh.fails ? ' · ' + S.bvh.fails + ' failed' : '') : 'off') + ((S.bvh.skinOut || S.bvh.skinIn) ? ' · skinned ' + S.bvh.skinOut.toFixed(0) + '/s past their pose box, ' + S.bvh.skinIn.toFixed(0) + '/s tested' : ''));
         if (S.text) L.push('Text (HQ plates) ' + (S.text.cv ? 'canvas (node renderer)' : S.text.on ? 'troika' : (S.text.lib ? 'CSS2D (switched off)' : 'CSS2D (troika not loaded)')) + ' · ' + S.text.gpu + ' on the GPU · ' + S.text.css + ' CSS2D');
         try { var _fs = (typeof ThreeVFX !== 'undefined' && ThreeVFX.fxStats) ? ThreeVFX.fxStats() : null; if (_fs && (_fs.live || _fs.groups)) L.push('Particles ' + _fs.live + ' live · ' + _fs.draws + ' draws' + (_fs.batched ? ' (batched, ' + _fs.groups + ' kinds seen)' : ' (one per particle)') + (_fs.quarks && (_fs.quarks.on || _fs.quarks.made) ? ' · quarks layer ' + (_fs.quarks.on ? _fs.quarks.state : 'off') + ', ' + _fs.quarks.live + ' systems live' : '')); } catch (e) {}   // R7
-        if (S.chunks) L.push('Chunks' + (S.chunks.off ? ' (cull off)' : '') + ': fence plots ' + S.chunks.fencesDrawn + '/' + S.chunks.fences + ' drawn · prop cells ' + S.chunks.cellsDrawn + '/' + S.chunks.cells + ' drawn' + (S.chunks.props || S.chunks.rooms ? ' · prop plots ' + S.chunks.propsDrawn + '/' + S.chunks.props + ' · rooms ' + S.chunks.roomsDrawn + '/' + S.chunks.rooms : '') + (S.chunks.shell ? ' · ground + building squares ' + S.chunks.shellDrawn + '/' + S.chunks.shell : '') + (S.chunks.sunHid ? ' · ' + S.chunks.sunHid + ' left out of the sun shadow' : ''));
+        if (S.chunks) L.push('Chunks' + (S.chunks.off ? ' (cull off)' : '') + ': fence plots ' + S.chunks.fencesDrawn + '/' + S.chunks.fences + ' drawn · prop cells ' + S.chunks.cellsDrawn + '/' + S.chunks.cells + ' drawn' + (S.chunks.props || S.chunks.rooms ? ' · prop plots ' + S.chunks.propsDrawn + '/' + S.chunks.props + ' · rooms ' + S.chunks.roomsDrawn + '/' + S.chunks.rooms : '') + (S.chunks.shell ? ' · ground + building squares ' + S.chunks.shellDrawn + '/' + S.chunks.shell : '') + (S.chunks.doors ? ' · doors ' + S.chunks.doorsDrawn + '/' + S.chunks.doors : '') + (S.chunks.sunHid ? ' · ' + S.chunks.sunHid + ' left out of the sun shadow' : ''));
         /* THE REPLAYED MESHES, BY KIND (2026-11-15: the frame on mondo's Mac follows the count of replayed meshes — 3 ms of JS
            cut moved the frame 0.6 ms — and nothing said what the 3,230 are). Lens open only, read when the text is made. */
         try {
@@ -81553,6 +81556,7 @@ const ThreeRenderer = (function () {
         if (flat) plateObj.position.set(0, oh / 2 * U, 0.45 * U);
         else plateObj.position.set(0, Math.min(HQ_PLATE_EYE, oh - 0.3) * U, (pm.gpu ? 0.12 : 0.3) * U);
         grp.add(plateObj);
+        grp._ew_noDChunk = true;   // THE DOOR CHUNKS: a door-gun door shows and hides itself
         H.doorGroup.add(grp);
         var door = { id: 'portal:' + slot, label: label, sub: subTxt, wall: 'free', x: spec.x, z: spec.z, face: spec.face, surf: surf, portal: slot, verb: 'STEP THROUGH', action: { portal: slot }, leaf: leafKey };
         var level = (S && S.wallH) ? _hqLevelOf(S, y0) : 0;   // THE THIRD RING (2026-09-16)
@@ -89726,7 +89730,7 @@ const ThreeRenderer = (function () {
     function _hqChunkSphere(g) {
         var box = _hqCkBox || (_hqCkBox = new THREE.Box3()), v = _hqCkV || (_hqCkV = new THREE.Vector3()), n = 0, ch = g.children;
         box.makeEmpty();
-        if (g._ew_pChunk) { box.setFromObject(g); return box.isEmpty() ? null : box.getBoundingSphere(new THREE.Sphere()); }   // THE PROP CHUNKS: placements are groups (their models inside)
+        if (g._ew_pChunk || g._ew_dChunk) { box.setFromObject(g); return box.isEmpty() ? null : box.getBoundingSphere(new THREE.Sphere()); }   // THE PROP CHUNKS: placements are groups (their models inside)
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i], r = 0;
             if (c._ew_ckRec) { v.copy(c._ew_ckRec.C); r = c._ew_ckRec.R; }
@@ -89743,6 +89747,23 @@ const ThreeRenderer = (function () {
         if (!n) return null;
         return box.getBoundingSphere(new THREE.Sphere());
     }
+    /* THE DOOR CHUNKS (2026-11-15, mondo's F3 in Disaster City: "doors 223 (1 groups)" of 2,188 replayed meshes): every door
+       of the city hung in ONE recorded group, replayed wherever the camera looks and again for the sun. In a big room each
+       door (a direct child group of the door group: its frame, leaves and plate) is now a chunk and a recording of its own,
+       where it hangs: nothing is moved. A door off the camera is left out (no far limit: a door down the street stays);
+       one behind the camera inside the sun's box is still drawn for the sun. A door-gun door is never one (it shows and
+       hides itself). Off: window.EW_HQ_NO_DOOR_CHUNKS before the room. */
+    function _hqDoorChunksOff() { return typeof window !== 'undefined' && !!(window.EW_HQ_NO_DOOR_CHUNKS || window.EW_HQ_NO_CHUNK_CULL); }
+    function _hqDoorChunks(H) {
+        var G = H.doorGroup; if (!G || !_hqChunkBig(H) || _hqDoorChunksOff()) return;
+        var ch = G.children; if (H._dckN === ch.length && H._dckG === G) return;
+        H._dckN = ch.length; H._dckG = G;
+        for (var i = 0; i < ch.length; i++) {
+            var c = ch[i];
+            if (c._ew_dChunk || c._ew_noDChunk || c._ew_ckFar != null || !c.children.length || c.isMesh || c.isLight || c.visible === false) continue;
+            c._ew_dChunk = true; _hqChunkReg(H, c, 1e12);
+        }
+    }
     /* per frame, before the draw: which chunk groups the camera draws */
     function _hqChunkTick(H, now) {
         var L = H.ckList; if (!L || !L.length) return;
@@ -89752,6 +89773,7 @@ const ThreeRenderer = (function () {
            it moves and for HQ_STILL_DOOR_HOLD_MS after, so a swing is one re-record, not one a frame and the group drawn
            piece by piece in every pass for the next minutes. */
         if (H.doorGroup && !H.doorGroup._ew_st && _hqChunkBig(H)) { _hqStillArm(H.doorGroup); H.doorGroup._ew_st.hold = HQ_STILL_DOOR_HOLD_MS; }
+        _hqDoorChunks(H);
         var cam = H.camera, off = (typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL) || !cam;
         var RU = _hqChunkRules(), pad = RU.pad * _hqUnits(), drawn = 0;
         if (!off) {
@@ -89800,20 +89822,23 @@ const ThreeRenderer = (function () {
         }
         (H.ckList || []).forEach(function (g) { g.visible = true; g._ew_ckOut = false; g.matrixWorldAutoUpdate = true; _hqStillDisarm(g); });
         _hqStillDisarm(H.shellGroup); _hqStillDisarm(H.doorGroup);
+        if (H.doorGroup) { var dch = H.doorGroup.children; for (var di = 0; di < dch.length; di++) if (dch[di]._ew_dChunk) { dch[di]._ew_dChunk = false; dch[di]._ew_ckFar = null; dch[di]._ew_ckSph = null; dch[di]._ew_ckOut = false; dch[di].visible = true; dch[di].matrixWorldAutoUpdate = true; } }   // THE DOOR CHUNKS: plain doors again
+        H._dckN = -1;
         H.ckList = null; H.ckDrawn = 0;
     }
     var _ewSunFr = null, _ewSunM = null, _ewSunStat = { seen: 0, hid: 0 };   // THE SUN'S OWN CHUNKS
     function _hqChunkStats(H) {
         var L = H && H.ckList; if (!L || !L.length) return null;
-        var f = 0, fd = 0, c = 0, cd = 0, p = 0, pd = 0, b = 0, bd = 0, sc = 0, scd = 0;
+        var f = 0, fd = 0, c = 0, cd = 0, p = 0, pd = 0, b = 0, bd = 0, sc = 0, scd = 0, dn = 0, dd = 0;
         for (var i = 0; i < L.length; i++) {
             var g = L[i];
             if (g._ew_sCell) { sc++; if (!g._ew_ckOut) scd++; }
+            else if (g._ew_dChunk) { dn++; if (!g._ew_ckOut) dd++; }
             else if (g._ew_chunk != null) { f++; if (!g._ew_ckOut) fd++; }
             else if (g._ew_pChunk) { if (g._ew_pcBld) { b++; if (!g._ew_ckOut) bd++; } else { p++; if (!g._ew_ckOut) pd++; } }
             else { c++; if (!g._ew_ckOut) cd++; }
         }
-        return { fences: f, fencesDrawn: fd, cells: c, cellsDrawn: cd, props: p, propsDrawn: pd, rooms: b, roomsDrawn: bd, shell: sc, shellDrawn: scd, sunHid: _ewSunStat.hid, off: typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL };
+        return { fences: f, fencesDrawn: fd, cells: c, cellsDrawn: cd, props: p, propsDrawn: pd, rooms: b, roomsDrawn: bd, shell: sc, shellDrawn: scd, doors: dn, doorsDrawn: dd, sunHid: _ewSunStat.hid, off: typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL };
     }
     /* ══ THE PROP CHUNKS + THE CLOSED ROOMS (2026-11-14, mondo in Disaster City after the interior passes, WebGPU on the Mac: 6.8 fps,
        3748 draws, "2996 site props (outside its bundle)") ══
