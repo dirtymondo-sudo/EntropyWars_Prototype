@@ -3759,6 +3759,9 @@ the castle should be in the center of the map and relatively symmetrical. higher
   well and the wardrobe (no building's inside is reached by that solver in this room, the live Inn included: the doorways are narrower than
   its lattice; the Keep's doorway line reads clear ground and no wall). Drawings of the baked rows: `docs/plans/camelot/castle2_built_rows_front.png`
   and `castle2_built_rows_plan.png`.
+- **THE NEXT FOUR, PLAN POSTED, WAITS MONDO'S OK (nothing built)**: `docs/plans/camelot/camelot_castle2_next_plan.png` (draw-castle2-next.py):
+  the Keep room (floors 2-3, Battlements, Spire room), Merlin's Undercroft under the whole hill, the Castle in the Sky as the palace's twin,
+  five kinds of village house. Do not build any of the four before his yes on it.
 - **Not done**: the Keep's upper floors, Merlin's Undercroft and the Castle in the Sky are still the old rooms; the village houses' richer
   outsides; nothing but the tilt's rail stops a walk through the drawn cloth; the Throne Hall has no columns (a drawn column has no weight).
 
