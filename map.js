@@ -5137,7 +5137,7 @@
                 const card = document.getElementById('hqLoad'), loading = !!(card && card.style.display !== 'none');
                 if (on) { R.seen = true; R.lastOn = now; R.load0 = 0; if (R.phase !== 'back') { R.phase = 'scene'; _sedCover(null); say('scene on screen'); } return; }
                 if (gs !== GS.HQ && gs !== GS.BATTLE) { if (now - R.at > 6000 && R.phase !== 'enter') _sedRunEnd(false); else if (now - R.t0 > 180000) _sedRunEnd(false); return; }   // he left for the menu
-                if (loading || gs === GS.BATTLE) { if (!R.load0) R.load0 = now; if (now - R.load0 < 240000) { R.at = now; return; } }   // a load in progress does not time out (4 minutes of one unbroken load card is a stuck card: the phases below go on)
+                if (loading || gs === GS.BATTLE) { if (!R.load0) R.load0 = now; if (now - R.load0 < 900000) { R.at = now; return; } }   // a load in progress does not time out (15 minutes of one unbroken load card is a stuck card: the phases below go on; CANCEL is on the cover meanwhile)
                 else R.load0 = 0;
                 cover(R.phase === 'enter' ? 'LOADING THE ROOM…' : (R.phase === 'ready' ? 'WAITING FOR THE CAST…' : ((R.phase === 'back' || R.seen) ? 'BACK TO THE EDITOR…' : 'STARTING THE SCENE…')));
                 say(R.phase);
