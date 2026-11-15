@@ -2305,3 +2305,14 @@ Off: `window.EW_KEEP_PBR_MAPS = true`. NOT run in a browser (repo rule); whether
 memory his readout showed. The readers of a file material's normalMap are creator hair / wings (unit cache) and the gem / key
 picks (their own files), none of them a room prop. NEXT if the hall is still far over budget: the unit models (also three
 sheets each, also drawn as Lambert), and stripping the two sheets in the .opt.glb bake so they are never downloaded.
+
+## THE WALK DROPS UNIT MODELS TOO (2026-11-15, the main hall crash, fourth pass)
+His [MEM] block after THE UNDRAWN MAPS: `1212 of 700 MB` in central_egress (was 2047): props 257 files 934 MB (worn 535, idle
+399), unit models 56 files 278 MB (worn 81). The menu already held 577 MB / 216 files before the building. The idle props go by
+the existing budget once 120 s idle (the block printed at the first tick, before that); the unit models were never dropped in
+the walk. `_mmTick` now lists `_unitGlbCache` too: not worn (geometry, material or colour sheet, `_mmWorn`), not named by a
+live rig / parked rig / roster / `H.chars`, idle `cacheIdleMs` -> `_mmRigEvict`. Never: the animation libraries, anything under
+`/characters/creator/`. Off: `window.EW_WALK_KEEP_UNITS`. The [MEM] line now says whether it is dropping. Not browser-run.
+STILL OVER after this: the 535 MB that IS drawn is 2048 x 2048 colour sheets on small props (camera_01 = 65 MB for three
+materials, each lava lamp part 21 MB). Getting under 700 needs smaller sheets on small props (a look decision, his) or a bigger
+budget. Spell props (Spear.fbx 22 MB, Christmas.dae 21 MB, halloween.fbx, top_fangs) are `_ewOneFile`, held by the weapon cache.

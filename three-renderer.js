@@ -37897,11 +37897,24 @@ const ThreeRenderer = (function () {
         }
         return list;
     }
-    function _mmReport(H, R, list, live) {
+    /* what the drawn things wear: material uuids and their colour sheets' uuids (a unit's copy shares these with its file) */
+    function _mmWorn(H) {
+        var w = {}, roots = [];
+        if (H && H.scene) roots.push(H.scene);
+        if (H && H.stage) for (var id in H.stage.parts) { var P = H.stage.parts[id].P; if (P && P.partRoot) roots.push(P.partRoot); }
+        if (scene) roots.push(scene);
+        if (_menu && _menu.scene) roots.push(_menu.scene);
+        roots.forEach(function (R0) { R0.traverse(function (o) {
+            var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+            for (var i = 0; i < ms.length; i++) { var m = ms[i]; if (!m) continue; w[m.uuid] = 1; if (m.map) w[m.map.uuid] = 1; }
+        }); });
+        return w;
+    }
+    function _mmReport(H, R, list, live, dropping) {
         var room = (H && H.opts && H.opts.room) || '?';
         if (_mmToldRooms[room]) return;
         _mmToldRooms[room] = 1;
-        console.warn('[MEM] ' + Math.round(R.misc.mb + R.rigs.mb) + ' of ' + R.budget + ' MB and nothing idle to drop. Paste this block to Claude:\n  ' + _mmTopLines(H, R, list, live).join('\n  '));
+        console.warn('[MEM] ' + Math.round(R.misc.mb + R.rigs.mb) + ' of ' + R.budget + ' MB' + (dropping ? ', dropping ' + dropping + ' idle file(s) now' : ' and nothing idle long enough to drop yet') + '. Paste this block to Claude:\n  ' + _mmTopLines(H, R, list, live).join('\n  '));
     }
     function _mmTick(H, now) {
         if (now - _mmAt < MM_EVERY_MS) return;
@@ -37916,10 +37929,37 @@ const ThreeRenderer = (function () {
             if (e.root) e.root.traverse(function (o) { if (!isLive && o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) isLive = true; });
             list.push({ url: u, at: e.at || 0, bytes: e.bytes || 0, loading: !!e.loading, failed: !!e.failed, one: !!e._ewOneFile, x: !!(e.xcbs && e.xcbs.length), live: isLive });
         }
+        /* THE WALK DROPS UNIT MODELS TOO (2026-11-15, mondo's [MEM] block in the Main Hall: "unit models 56 files 278.3 MB (worn
+           81 MB)": a unicorn, a lion, a police officer, a cult member nobody in the building wears, loaded by the menu and the
+           warm-up and never given back, because only the labs dropped unit models). The same rule as the props: a unit model no
+           drawn thing wears (its geometry, its material or its colour sheet), that no live rig, parked rig or battle roster
+           names, unused for the idle time, goes, the oldest first. Never dropped: the animation libraries, the creator's own
+           files (bodies, clothes, hair: every character is built from them), a file still loading or failed. A dropped model
+           loads again from the disk store when something asks for it. Off: window.EW_WALK_KEEP_UNITS = true. */
+        var miscList = list.slice(), rigN = 0;
+        if (!(typeof window !== 'undefined' && window.EW_WALK_KEEP_UNITS)) {
+            var keep = {}, worn = _mmWorn(H);
+            _unitModelRigs.forEach(function (rig) { if (rig && rig.url) keep[rig.url] = 1; });
+            _rigCarry.forEach(function (c) { if (c.rig && c.rig.url) keep[c.rig.url] = 1; });
+            _libUrlsAll().forEach(function (u2) { keep[u2] = 1; });
+            _mmRosterUrls(keep);
+            ((H && H.chars) || []).forEach(function (ch) { var d = ch && ch.def; if (d && d.model) keep[d.model] = 1; });
+            for (var r in _unitGlbCache) {
+                var ue = _unitGlbCache[r]; if (!ue) continue;
+                var hit = false;
+                if (ue.root) ue.root.traverse(function (o) {
+                    if (hit) return;
+                    if (o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) { hit = true; return; }
+                    var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+                    for (var mi = 0; mi < ms.length; mi++) { var m = ms[mi]; if (m && (worn[m.uuid] || (m.map && worn[m.map.uuid]))) { hit = true; return; } }
+                });
+                list.push({ url: 'r|' + r, at: ue.at || 0, bytes: ue._ew_mmBytes || 0, loading: !!ue.loading, failed: !!ue.failed, one: !!keep[r] || r.indexOf('/characters/creator/') >= 0, x: false, live: hit });
+            }
+        }
         var go = _mmPick(list, t, idle, tot - cap * MM_FLOOR, MM_MAX);
         if (!go.length) _mmAt = now + 26000;   // over the budget with nothing free to drop (it is all on the stage): the whole-scene read waits 30 s
-        try { _mmReport(H, R, list, live); } catch (x) {}
-        go.forEach(_mmEvict);
+        try { _mmReport(H, R, miscList, live, go.length); } catch (x) {}
+        go.forEach(function (k) { if (k.slice(0, 2) === 'r|') { _mmRigEvict(k.slice(2)); rigN++; } else _mmEvict(k); });
         if (go.length) { _objectsDirty = true; try { console.log('[ThreeRenderer] THE MEMORY BUDGET: ' + go.length + ' idle model(s) dropped (' + (_mmFreed / 1048576).toFixed(1) + ' MB so far)'); } catch (x) {} }
     }
     /* ══ THE LAB SWEEP (2026-10-30, mondo: "the balance lab and ai training is always freezing and crashing ... I want to run it
