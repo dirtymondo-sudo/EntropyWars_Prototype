@@ -1,0 +1,12 @@
+---
+name: meshy-remake-review-rules-20261113
+description: 11-13 mondo's review of remake batch 2 (pinned comments): no weapons in outfits, women must stay attractive, match the original garment, add white + female cop; per-unit notes
+metadata:
+  type: feedback
+---
+Thread (thread in the owner project), follows [[meshy-remake-batch2of3-20261113]]. Applies to every remake batch.
+
+- HIS REVIEW 11-13 16:53-17:01Z (pinned comments on batch2_overview.jpg), RULES TO KEEP: (1) NO WEAPONS IN AN OUTFIT ("dont give her a sword, we already have a sword in the game, characters will hold those weapons, dont make them part of the outfit") -> bake-outfit.py env `DROPAT='x,y,z,r;..'` + `SHELLS=1` lists shells. (2) Female units must keep the original's SEX APPEAL + a pretty face (halfdemon F "should be one of the hottest characters in the game"; marksman F "no sex appeal compared to the original, fix her face and make her hotter"): the soft unit-face fit reads plain/old. (3) Match the ORIGINAL's garment (halfdemon F = off-shoulder slit gown, not her saved evening gown; marksman F shirt tucked; homosapien ONE strap). (4) He wants a WHITE cop + a FEMALE cop added for variation. (5) "men in black should be one of the easiest, literally a man in a suit with sunglasses". Per-unit notes: halfdemon M tie (shirt through it: the creator ewb_tie's own fault, also on his saved classic-body look), hippie M trousers, ki fighter feminine hair, king arthur crown too big + purple bits by chest strap, necromancer legs/crotch, mushroom girl neckline, mime shoulders, pirate M sword guard by hat, pirate F chin piece + bits between legs, overlord floating gauntlet fingertips, orb of light floaty strip/shoulders/legs (plan: gold creator body, no Meshy suit).
+- LESSON: second Meshy runs are a coin toss (homosapien better, king arthur + necromancer worse); pack garments (mhw_* suits, dresses, cargo pants) are in sprites.js as ["mhw_..", label, shelf, n] rows: try them before T2 for plain clothes.
+
+- HEADS (his 11-13 19:31Z, angry after four rounds on King Arthur: "how are you not seeing this ... his crown and his head and his hair is fucked up and he looks bald"): judge every head in a CLOSE-UP beside the original's head before shipping; a hat must be the original's size and sit where the original's sits (new `ewm_kingcrown` = royal crown x1.22, 35 mm lower); check the look without the hat to tell a hat-rule fault from a hairstyle fault. Do not report a head as fixed from the full-body row. Round 6 PR #1309.

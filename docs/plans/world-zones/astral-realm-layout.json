@@ -1,0 +1,647 @@
+{
+"area": "The Astral Realm",
+"version": "plan-1",
+"squareMeters": 3.5,
+"plotCells": 12,
+"districts": {
+"L": "The Library of Unthought Things",
+"S": "The Sea of Possibility",
+"N": "The Nightmare"
+},
+"rooms": [
+{
+"room": "The Astral Realm",
+"cols": 6,
+"rows": 6,
+"plots": [
+{
+"id": "P00-00",
+"name": "The Card Catalogue",
+"district": "The Library of Unthought Things",
+"level": 1,
+"what": "drawers of ideas nobody has had",
+"from": "Library: THE CARD CATALOGUE",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-00",
+"name": "The Library Frame",
+"district": "The Library of Unthought Things",
+"level": 1,
+"what": "the frame from the Waiting Room",
+"from": "Library: THE FRAME \u00b7 INTO THE STACKS",
+"ports": [
+"S",
+"W"
+],
+"exit": [
+"from the Waiting Room",
+"inside"
+]
+},
+{
+"id": "P02-00",
+"name": "The Frame",
+"district": "The Sea of Possibility",
+"level": 1,
+"what": "the frame with nothing in it; the Waiting Room is behind it",
+"from": "Astral Realm: THE WAITING ROOM",
+"ports": [
+"E",
+"S"
+],
+"exit": [
+"inside: the Waiting Room",
+"inside"
+]
+},
+{
+"id": "P03-00",
+"name": "The Mirror",
+"district": "The Sea of Possibility",
+"level": 1,
+"what": "the other side of the looking glass",
+"from": "The Looking-Glass: the mirror (exists)",
+"ports": [
+"S",
+"W"
+],
+"exit": [
+"Camelot: the Looking-Glass Garden",
+"open"
+]
+},
+{
+"id": "P04-00",
+"name": "The Closet",
+"district": "The Nightmare",
+"level": 1,
+"what": "a closet with no back wall",
+"from": "Nightmare: THE CLOSET \u00b7 NO BACK WALL",
+"ports": [
+"E",
+"S"
+],
+"exit": [
+"from the Waiting Room",
+"inside"
+]
+},
+{
+"id": "P05-00",
+"name": "The Hallway",
+"district": "The Nightmare",
+"level": 1,
+"what": "a hallway that gets longer",
+"from": "new plot (label mine)",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-01",
+"name": "The Reading Room",
+"district": "The Library of Unthought Things",
+"level": 1,
+"what": "lamps, long tables",
+"from": "Library: THE READING ROOM",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "The Stacks, north",
+"district": "The Library of Unthought Things",
+"level": 1,
+"what": "shelves to the ceiling",
+"from": "Library: THE STACKS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Near Shore",
+"district": "The Sea of Possibility",
+"level": 1,
+"what": "the first island",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-01",
+"name": "The Thought-Forms",
+"district": "The Sea of Possibility",
+"level": 1,
+"what": "LANDMARK: ideas with bodies",
+"from": "Sea of Possibility: THE HOME OF THOUGHT-FORMS",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-01",
+"name": "The Bad Nights",
+"district": "The Nightmare",
+"level": 1,
+"what": "every bad night, one after another",
+"from": "Nightmare: THE BAD NIGHTS",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P05-01",
+"name": "The Bad Nights, east",
+"district": "The Nightmare",
+"level": 1,
+"what": "more",
+"from": "Nightmare: THE BAD NIGHTS",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "The Stacks, west",
+"district": "The Library of Unthought Things",
+"level": 1,
+"what": "shelves",
+"from": "Library: THE STACKS",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-02",
+"name": "The Stacks",
+"district": "The Library of Unthought Things",
+"level": 1,
+"what": "LANDMARK: the tallest shelves",
+"from": "Library: THE STACKS",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-02",
+"name": "The Open Sea, west",
+"district": "The Sea of Possibility",
+"level": 1,
+"what": "islands far apart",
+"from": "Sea of Possibility",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The Open Sea, east",
+"district": "The Sea of Possibility",
+"level": 1,
+"what": "islands far apart",
+"from": "Sea of Possibility",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-02",
+"name": "The Bed",
+"district": "The Nightmare",
+"level": 1,
+"what": "LANDMARK: the bed",
+"from": "Nightmare: THE BED",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P05-02",
+"name": "The Thing Under It",
+"district": "The Nightmare",
+"level": 1,
+"what": "under the bed",
+"from": "Nightmare: THE THING UNDER IT",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-03",
+"name": "The Stacks, deep",
+"district": "The Library of Unthought Things",
+"level": 1,
+"what": "where the light gives out",
+"from": "Library: THE STACKS",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-03",
+"name": "The Unwritten Shelf",
+"district": "The Library of Unthought Things",
+"level": 1,
+"what": "books with blank pages",
+"from": "Library: NOT YET WRITTEN",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-03",
+"name": "The Islands",
+"district": "The Sea of Possibility",
+"level": 1,
+"what": "a chain of small islands",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "The Thought-Forms, south",
+"district": "The Sea of Possibility",
+"level": 1,
+"what": "more of them",
+"from": "Sea of Possibility: THE HOME OF THOUGHT-FORMS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-03",
+"name": "The Stairs Down",
+"district": "The Nightmare",
+"level": 1,
+"what": "stairs with one too many steps",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-03",
+"name": "The Maw",
+"district": "The Nightmare",
+"level": 1,
+"what": "the mouth",
+"from": "Nightmare: THE MAW",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-04",
+"name": "The Stacks, south",
+"district": "The Library of Unthought Things",
+"level": 1,
+"what": "shelves",
+"from": "Library: THE STACKS",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-04",
+"name": "The Ladders",
+"district": "The Library of Unthought Things",
+"level": 1,
+"what": "rolling ladders",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-04",
+"name": "The Screen",
+"district": "The Sea of Possibility",
+"level": 1,
+"what": "a screen standing on an island",
+"from": "Astral Realm: the screens from the Dream Lab and the D.U.M.B. (exist)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": [
+"DOOR HQ Dream Lab \u00b7 the D.U.M.B.",
+"secret"
+]
+},
+{
+"id": "P03-04",
+"name": "The Still Water",
+"district": "The Sea of Possibility",
+"level": 1,
+"what": "nothing moves",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-04",
+"name": "The Dark",
+"district": "The Nightmare",
+"level": 1,
+"what": "no light",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P05-04",
+"name": "The Attic Screen",
+"district": "The Nightmare",
+"level": 1,
+"what": "a screen showing an attic",
+"from": "Nightmare: the way from the Haunted House's attic (exists)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": [
+"The Estate: the Haunted House attic",
+"secret"
+]
+},
+{
+"id": "P00-05",
+"name": "The Returns",
+"district": "The Library of Unthought Things",
+"level": 1,
+"what": "a slot in the wall",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-05",
+"name": "The Last Shelf",
+"district": "The Library of Unthought Things",
+"level": 1,
+"what": "the end of the library",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-05",
+"name": "The Far Shore",
+"district": "The Sea of Possibility",
+"level": 1,
+"what": "the last island",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P03-05",
+"name": "The Edge",
+"district": "The Sea of Possibility",
+"level": 1,
+"what": "where the sea stops",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-05",
+"name": "The Long Fall",
+"district": "The Nightmare",
+"level": 1,
+"what": "falling, but you can walk on it",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P05-05",
+"name": "The Waking Edge",
+"district": "The Nightmare",
+"level": 1,
+"what": "where you nearly wake up",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"W"
+],
+"exit": null
+}
+],
+"cells": [
+"BBBBBBBBBBBBBBBBBBBBBBBBzzzzzzzzzzzzzzzzzzzzzzzzVVVVVVVVVVVVVVVVVVVVVVVV",
+"BBBBBBBBBBBBBBBBBBBBBBBBzzzzzzzzzzzzzzzzzzzzzzzzVVVVVVVVVVVVVVVVVVVVVVVV",
+"BBBjjjjjjjjjBBBBBBBBBBBBzzzzzzzzzzzzzzzzkkkzzzzzVVVVVVVVVVVVVVVVVVVVVVVV",
+"BBBjjjjjjjjjBBBjjjjjBBBBzzzzzzzzzzzzzzzkkkkkzzzzVVVVVVRRRVVVVVVRRRVVVVVV",
+"BBBjjjjjjjjjjjjjjjjjBBBBzzzzzkkkzzzzzzzkkkkkkkzzVVVVVRRRRRVVVVVRRRVVVVVV",
+"BBBjjjjjjjjjjjjjjjjjBBBBzzzzkkkkkkkkkkkkkkkkkkzzVVVVVRRRRRVVVVVRRRVVVVVV",
+"BBBjjjjjjjjjBBBjjjjjBBBBzzzkkkkkkkkkkkkkkkkzkkzzVVVVVRRRRRhhhhhhhhVVVVVV",
+"BBBjjjjjjjjjBBBjjjjjBBBBzzzkkkkkkkzzzzzzzzzzkkzzVVVVVVRRRhhhhhhhhhVVVVVV",
+"BBBjjjjjjjjjBBBBBBjjBBBBzzzkkkkkkkzzzzzzzzzzkkzzVVVVVVVVhhVVVVVVhhVVVVVV",
+"BBBjjjjjjjjjBBBBBBjjBBBBzzzzkkkkkzzzzzzzzzzzkkzzVVVVVVVVhhVVVVVVhhVVVVVV",
+"BBBjjjjjjjjjBBBBBBjjBBBBzzzzzkkkzzzzzzzzzzzzkkzzVVVVVVVVhhVVVVVVhhVVVVVV",
+"BBBBjjBBBBBBBBBBBBjjBBBBzzzzzzkkzzzzzzzzzzzzkkzzVVVVVVVVhhVVVVVVhhVVVVVV",
+"BBBBjjBBBBBBBBBBBBjjBBBBzzzkkkkkzzzzzzzzkkkzkkzzVVVVRRRVhhVVVVVVhhVVVVVV",
+"BBjjjjjjjjjjBBBBBBjjBBBBzzkkkkkkzzzzzzkkkkkkkkzzVVVRRRRRhhVVVVVVhhVVVVVV",
+"BBjjjjjjjjjjBBBBBBjjBBBBzkkkkkkkzzzzzkkkkkkkkkzzVVRRRRRRRhVVVVVVhhVVVVVV",
+"BBjjjjjjjjjjBBBBBBjjBBBBkkkkkkkkkzzzzkkkkkkkkkzzVRRRRRRRRRhhhhhhhhhhhVVV",
+"BBjjjjjjjjjjBBBBBBjjBBBBkkkkkkkkkzzzkkkkkkkkkkkzVRRRRRRRRRhhhhhhhhRRRVVV",
+"BBjjjjjjjjjjjjjjjjjjBBBBkkkkkkkkkkkkkkkkkkkkkkkzVRRRRRRRRRVVVVVVhRRRRRVV",
+"BBjjjjjjjjjjjjjjjjjjjjjjjkkkkkkkkkkkkkkkkkkkkkkzVVRRRRRRRVVVVVVVRRRRRRRV",
+"BBjjjjjjjjjjBBBBBjjjjjjjkkkkkkkkkzzzzkkkkkkkkkzzVVVRRRRRVVVVVVVVRRRRRRRV",
+"BBjjjjjjjjjjBBBBBjjjjjBBzzzkkkzkkzzzzkkkkkkkkkzzVVVVRRRVVVVVVVVVRRRRRRRV",
+"BBjjjjjjjjjjBBBBBBBBjjBBzzzzzzzkkzzzzzkkkkkkkzzzVVVVhhVVVVVVVVVVVRRRRRVV",
+"BBjjjjjjjjjjBBBBBBBBjjBBzzzzzzzkkzzzzzzzkkkkzzzzVVVVhhVVVVVVVVVVVVRRRVVV",
+"BBjjjjjjjjjjBBBBBBBBjjBBzzzzzzzkkzzzzzzzzzkkzzzzVVVVhhVVVVVVVVVVVVVhhVVV",
+"BBBBBBBBjjBBBBBBBBBBjjBBzzzzzzzkkzzzzzzzzzkkzzzzVVVVhhVVVVVVVVVVVVVhhVVV",
+"BBBBBBBBjjBBBBBBBBBBjjBBzzzzzzzkkzzzzzzzzzkkzzzzVVVVhhVVVVVVVVVVVVVhhVVV",
+"BBBBBBBBjjBBBBBBBBBBjjBBzzzzzzzkkzzzzzzzzzkkzzzzVVVVhhRRRVVVVVVRRRVhhVVV",
+"BBBBBBBBjjBBBBBBBBBBjjBBzzzzzzzkkzzzzzzzzkkkzzzzVVVVhRRRRRVVVVRRRRRhhVVV",
+"BBBjjjBBjjBBBjjjjjjjjjBBzzzkkkzkkzzzzzzzkkkkkzzzVVVVRRRRRRRVVVRRRRRhhVVV",
+"BBBjjjjjjjBBBjjjjjjjjjBBzzkkkkkkkkkkkkkkkkkkkkzzVVVRRRRRRRRRVVRRRRRhVVVV",
+"BBBjjjjjjBBBBjjjjjjjjjBBzzkkkkkkkkkkkkkkkkkkkkzzVVVRRRRRRRRRVVVRRRVVVVVV",
+"BBBBjjjjBBBBBjjjjjjjjjBBzzkkkkkkzzzzzzzzzkkkkkzzVVVRRRRRRRRRhhhhhhVVVVVV",
+"BBBBjjjjjjjjjjjjjjjjjBBBzzzkkkkkzzzzzzzzzzzzkkzzVVVVRRRRRRRhhhhhhhVVVVVV",
+"BBBBjjjjjjjjjjjjjjjjBBBBzzzzzzkkzzzzzzzzzzzzkkzzVVVVVRRRRRVVVVVVhhVVVVVV",
+"BBBBBBjjBBBBBjjjjjjjBBBBzzzzzzkkzzzzzzzzzzzzkkzzVVVVVVRRRVVVVVVVhhVVVVVV",
+"BBBBBBjjBBBBBBBBBBjjBBBBzzzzzzkkzzzzzzzzzzzzkkzzVVVVVVVhhVVVVVVVhhVVVVVV",
+"BBBBBBjjBBBBBBBBBBjjBBBBzzzzzzkkzzzzzzzzzzkkkkzzVVVVVVVhhVVVVVVVhhVVVVVV",
+"BBBBBBjjBBBBBBBBBBjjBBBBzzzzzzkkzzzzzzzzzkkkkkzzVVVVVVVhhVVVVVVVRRRVVVVV",
+"BBBBBBjjBBBBBBBBBBjjBBBBzzzkkkkkzzzzzzzzkkkkkkkzVVVVVVVhhVVVVVVRRRRRVVVV",
+"BBBBBjjjjjjjjjjjjjjjjBBBzzkkkkkkkkkkkkkkkkkkkkkkVVVVVVVhhVVVVVRRRRRRRVVV",
+"BBBBjjjjjjjjjjjjjjjjjBBBzkkkkkkkkkkkkkkkkkkkkkkkVVVVVVVhhVVVVRRRRRRRRRVV",
+"BBBBjjjjjjBBBBBBjjjjjBBBzkkkkkkkzzzzzzzkkkkkkkkkVVVVVVRRRVVVVRRRRRRRRRVV",
+"BBBBjjjjjjBBBBBBjjjjjBBBzkkkkkkkzzzzzzzzkkkkkkkzVVVVVhRRRhhhhRRRRRRRRRVV",
+"BBBBBBBBjjBBBBBBjjjjjBBBzzkkkkkzzzzzzzzzkkkkkkkkkhhhhhRRRhhhhhRRRRRRRVVV",
+"BBBBBBBBjjBBBBBBBjjBBBBBzzzkkkzzzzzzzzzzkkkkkkkkhhhhhhhhVVVVVVVRRRRRVVVV",
+"BBBBBBBBjjBBBBBBBjjBBBBBzzzzkkzzzzzzzzzzkkzzzzzzVVVVVhhVVVVVVVVhRRRVVVVV",
+"BBBBBBBBjjBBBBBBBjjBBBBBzzzzkkzzzzzzzzzzkkzzzzzzVVVVVhhVVVVVVVVhhVVVVVVV",
+"BBBBBBBBjjBBBBBBBjjBBBBBzzzzkkzzzzzzzzzzkkzzzzzzVVVVVhhVVVVVVVVhhVVVVVVV",
+"BBBBBBBBjjBBBBBBBjjBBBBBzzzzkkzzzzzzzzzzkkzzzzzzVVVVVhhVVVVVVVVhhVVVVVVV",
+"BBBBBBBBjjBBBBBBBjjBBBBBzzzzkkzzzzzzzzzzkkkzzzzzVVVVVhhVVVVVVVVhhVVVVVVV",
+"BBBBBBBBjjBBBBjjjjjBBBBBzzzzkkzzzzzzzzzkkkkkzzzzVVVRRRhVVVVVVVVhhVVVVVVV",
+"BBBBBjjjjjBBBBjjjjjBBBBBzzzzkkzzzzzzzzkkkkkkkzzzVVRRRRRVVVVVVVVRRRVVVVVV",
+"BBBBjjjjjjBBBBjjjjjjjjBBzzzzkkkkkkkkkkkkkkkkkzzzVVRRRRRhhhhhhhRRRRRVVVVV",
+"BBBBjjjjjBBBBBjjjjjjjjBBzzzzkkkkkkkkkkkkkkkkkzzzVVRRRRRhhhhhhhRRRRRhhhVV",
+"BBBBjjjjBBBBBBjjjjjBjjBBzzzzkkkkkzzzzzzkkkkkzzzzVVVRRRhhVVVVVVRRRRRhhhVV",
+"BBBBjjjjjjjjjjjjjjBBjjBBzzzkkkkkkzzzzzzzkkkzzzzzVVVVVVhhVVVVVVVRRRVVhhVV",
+"BBBBjjjjjjjjjjjjjBBBjjBBzzzkkkkkkzzzzzzzkkzzzzzzVVVVVVhhVVVVVVVVVVVVhhVV",
+"BBBBjjBBBBBBBBBBBBBBjjBBzzzkkkkkzzzzzzzzkkzzzzzzVVVVVVhhVVVVVVVVVVVVhhVV",
+"BBBBjjBBBBBBBBBBBBBBjjBBzzzkkzzzzzzzzzzzkkzzzzzzVVVVVVhhVVVVVVVVVVVVhhVV",
+"BBBBjjBBBBBBBBBBBBBBjjBBzzzkkzzzzzzzzzzzkkzzzzzzVVVVVVhhVVVVVVVVVVVVhhVV",
+"BBBBjjBBBBBBBBBBBBBBjjBBzzzkkzzzzzzzzzzzkkzzzzzzVVVVVVhhVVVVVVVVVVVVhhVV",
+"BBBBjjBBBBBBBBBBBBBBjjBBzzzkkzzzzzzzzzzzkkzzzzzzVVVVVVhhVVVVVVVVVVRRRhVV",
+"BBBBjjBBBBBBBBBjjjjjjjBBzzzkkzzzzzzzzzzzkkzzzzzzVVVVVVRRRVVVVVVVVRRRRRVV",
+"BBBBjjBBBBBBBBBjjjjjjjBBzzzkkzzzzzzzzzzzkkzzzzzzVVVVVRRRRRVVVVVVRRRRRRRV",
+"BBBBjjjjjjjjjjjjjjjjjjBBzzzkkkkkkkkkkkkkkkzzzzzzVVVVVRRRRRVVVVVVRRRRRRRV",
+"BBBBjjjjjjjjjjjjjjjjjBBBzzkkkkkkkkkkkkkkkkzzzzzzVVVVVRRRRRVVVVVVRRRRRRRV",
+"BBBBjjjjjjBBBBBjjjjjBBBBzkkkkkkkzzzzzzkkkkkzzzzzVVVVVVRRRVVVVVVVVRRRRRVV",
+"BBBBjjjjjjBBBBBBBBBBBBBBzkkkkkkkzzzzzzkkkkkzzzzzVVVVVVVhhVVVVVVVVVRRRVVV",
+"BBBBBjjjjjBBBBBBBBBBBBBBzkkkkkkkzzzzzzkkkkkzzzzzVVVVVVVhhhhhhhhhhhhhhVVV",
+"BBBBBBBBBBBBBBBBBBBBBBBBzzkkkkkzzzzzzzzkkkzzzzzzVVVVVVVhhhhhhhhhhhhhVVVV",
+"BBBBBBBBBBBBBBBBBBBBBBBBzzzkkkzzzzzzzzzzzzzzzzzzVVVVVVVVVVVVVVVVVVVVVVVV",
+"BBBBBBBBBBBBBBBBBBBBBBBBzzzzzzzzzzzzzzzzzzzzzzzzVVVVVVVVVVVVVVVVVVVVVVVV"
+]
+}
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "dirt path",
+"g": "grass",
+"w": "water",
+"b": "bridge / deck over water",
+"s": "snow",
+"r": "rock (cannot walk)",
+"x": "solid rock / wall (cannot walk)",
+"f": "concrete floor",
+"c": "corn (cannot walk; the rows are the walls)",
+"d": "sand",
+"m": "stone / marble paving",
+"l": "lava (cannot walk)",
+"h": "nightmare path",
+"k": "island / cloud path",
+"v": "open sky (a fall)",
+"u": "sea floor",
+"a": "the drop into the dark",
+"B": "bookshelves (cannot walk)",
+"i": "ice",
+"o": "cobbles / worn stone",
+"y": "crystal",
+"q": "the collider ring corridor",
+"e": "grey dust",
+"n": "red ground",
+"z": "the Sea of Possibility (cannot walk)",
+"j": "library floor",
+"G": "the ley line",
+"V": "the dark (cannot walk)",
+"D": "dunes",
+"R": "nightmare floor",
+"T": "hedge / kelp (cannot walk)",
+"S": "light",
+"N": "open space (fly the ship, or float)",
+"Q": "an orbit (a guide line, not a wall)",
+"E": "Earth",
+"A": "asteroid"
+}
+}

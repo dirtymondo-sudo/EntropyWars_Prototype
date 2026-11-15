@@ -1,0 +1,916 @@
+{
+"area": "Heaven + Hell + Vatican",
+"version": "plan-1",
+"squareMeters": 3.5,
+"plotCells": 12,
+"districts": {
+"L": "Hell",
+"V": "The Vatican",
+"H": "Heaven",
+"O": "Mount Olympus (the top of Heaven)"
+},
+"rooms": [
+{
+"room": "HELL  (below)",
+"cols": 4,
+"rows": 4,
+"plots": [
+{
+"id": "P00-00",
+"name": "The Fissure's End",
+"district": "Hell",
+"level": 6,
+"what": "where the tunnel from the Cavern comes out",
+"from": "The Cave: THE FISSURE (exists)",
+"ports": [
+"E",
+"S"
+],
+"exit": [
+"The Cavern (the fissure)",
+"open"
+]
+},
+{
+"id": "P01-00",
+"name": "The Rim, north",
+"district": "Hell",
+"level": 6,
+"what": "the lip of the pit",
+"from": "The Pit: THE RIM",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-00",
+"name": "The High Platforms",
+"district": "Hell",
+"level": 8,
+"what": "platforms over the lava",
+"from": "The Walkways: HIGH PLATFORMS",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-00",
+"name": "The Warm Wall",
+"district": "Hell",
+"level": 6,
+"what": "the other side of the Vatican's warm wall",
+"from": "The Pit: THE WARM WALL, THE OTHER SIDE",
+"ports": [
+"S",
+"W"
+],
+"exit": [
+"up: the Vatican's catacombs",
+"secret"
+]
+},
+{
+"id": "P00-01",
+"name": "The Rim, west",
+"district": "Hell",
+"level": 6,
+"what": "the lip of the pit",
+"from": "The Pit: THE RIM",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "The Descent",
+"district": "Hell",
+"level": 4,
+"what": "the way down into the bowl",
+"from": "The Pit: THE DESCENT",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Walkways",
+"district": "Hell",
+"level": 8,
+"what": "walkways from platform to platform",
+"from": "The Walkways: WALKWAYS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-01",
+"name": "The Lava Below",
+"district": "Hell",
+"level": 2,
+"what": "a ledge just over the lava",
+"from": "The Walkways: THE LAVA BELOW",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "The Alcove",
+"district": "Hell",
+"level": 5,
+"what": "a hollow in the rim",
+"from": "The Pit: the alcove",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-02",
+"name": "The Bowl",
+"district": "Hell",
+"level": 1,
+"what": "the floor of the pit",
+"from": "The Pit: THE BOWL",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"DOOR HQ Room 666",
+"open"
+]
+},
+{
+"id": "P02-02",
+"name": "The Plinth",
+"district": "Hell",
+"level": 2,
+"what": "LANDMARK: the plinth",
+"from": "The Pit: THE PLINTH",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The Walkways, east",
+"district": "Hell",
+"level": 8,
+"what": "the far walkways",
+"from": "The Walkways: WALKWAYS",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-03",
+"name": "The Ash Flats",
+"district": "Hell",
+"level": 5,
+"what": "grey ash, bones",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-03",
+"name": "The Rim, south",
+"district": "Hell",
+"level": 6,
+"what": "the lip of the pit",
+"from": "The Pit: THE RIM",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-03",
+"name": "The Lava Lake",
+"district": "Hell",
+"level": 1,
+"what": "a shore on the lake of fire",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "The Far Shore",
+"district": "Hell",
+"level": 3,
+"what": "the last rock before nothing",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"W"
+],
+"exit": null
+}
+],
+"cells": [
+"llllllllllllllllllllllllllllllllllllllllllllllll",
+"llllllllllllllllllllllllllllllllllllllllllllllll",
+"lllllllllllllllllllllllllllllllllllllllhhhllllll",
+"lllllllllllllllllhhhhhhhhhhhhhhlllllllhhhhhlllll",
+"llllllhhhlllllllhhhhhhhhhhhhooolllllllhhhhhhllll",
+"lllllhhhhhhhhhhhhhhhhhlllllooooohhhhhhhhhhhhllll",
+"lllllhhhhhhhhhhhhhhhhhlllllooooohhhhhhhhhhhhllll",
+"lllllhhhhhlllllhhhhhhhlllllooooollllllllllhhllll",
+"llllllhhhlllllllhhhhhhlllllhooolllllllllllhhllll",
+"lllllllhhllllllllhhhhhlllllhhlllllllllllllhhllll",
+"lllllllhhlllllllllllhhlllllhhlllllllllllllhhllll",
+"lllllllhhlllllllllllhhlllllhhlllllllllllllhhllll",
+"lllllllhhlllllllllllhhlllllhhlllllllllllllhhllll",
+"lllllllhhlllllllllllhhlllllhhlllllllllllllhhllll",
+"lllllllhhlllllllllllhhlllllhhlllllllllllhhhhllll",
+"lllllllhhllllllllllhhhhhhhhhhhhhlllllllhhhhhllll",
+"llllhhhhhlllllllllhhhhhhhhhhhhhhhhhhhhhhhhhhhlll",
+"lllhhhhhhhhhhhhhhhhhhhlllllhhlhhhhhhhhhhhhhhhlll",
+"llhhhhhhhhhhhhhhhhhhhhlllllhhooollllllllhhhhhlll",
+"llhhhhhhhllllllllhhhhhlllllhhooolllllllllllhhlll",
+"llhhhhhhhlllllllllhhhllllllhhooolllllllllllhhlll",
+"lllhhhhhhlllllllllhhlllllllhhllllllllllllllhhlll",
+"llllhhhhhlllllllllhhlllllllhhllllllllllllllhhlll",
+"lllllllhhlllllllllhhlllllllhhllllllllllllllhhlll",
+"lllllllhhlllllllllhhlllllllhhllllllllllllllhhlll",
+"lllllllhhllllllllhhhlllllllhhhhhlllllllllllhhlll",
+"lllllllhhllllllhhhhhhhlllllhhhhhhllllllllllhhlll",
+"llllhhhhhlllllhhhhhhhhhllllhhhhhhhhhhhhhhhlhhlll",
+"lllhhhhhhhhhhhhhhhhhhhhllllhhhhhhhhhhhhhhhlhhlll",
+"lllhhhhhhhhhhhhhhhhhhhhhlllhhmmhhhlllllooolhhlll",
+"lllhhhhhlllllhhhhhhhhhhhllllhmmhhllllllooohhhlll",
+"llllhhhllllllhhhhhhhhhhhhhhhhhhhlllllllooohhllll",
+"llllhhllllllllhhhhhhhhhhhhhhhhhllllllllhhlllllll",
+"llllhhllllllllhhhhhhhhhllllllhhllllllllhhlllllll",
+"llllhhlllllllllhhhhhhhlllllllhhllllllllhhlllllll",
+"llllhhlllllllllllhhhlllllllllhhllllllllhhlllllll",
+"llllhheeellllllllhhllllllllllhhllllllllhhlllllll",
+"llllheeeeelllllllhhllllllllllhhllllllllhhlllllll",
+"lllleeeeeeellllllhhhhllllllllhhllllllllhhlllllll",
+"llleeeeeeeeelllllhhhhhlllllllhhllllllllhhlllllll",
+"llleeeeeeeeellllhhhhhhhhhhhhhhhhhllllllhhhllllll",
+"llleeeeeeeeehhhhhhhhhhhhhhhhhhhhhhllllhhhhhlllll",
+"lllleeeeeeehhhhhhhhhhhhllllllhhhhhlllhhhhhhhllll",
+"llllleeeeelllllllhhhhhlllllllhhhhhlllhhhhhhhllll",
+"lllllleeelllllllllhhhlllllllllhhhhhhhhhhhhhhllll",
+"lllllllllllllllllllllllllllllllhhhhhhhhhhhhlllll",
+"lllllllllllllllllllllllllllllllllllllllhhhllllll",
+"llllllllllllllllllllllllllllllllllllllllllllllll"
+]
+},
+{
+"room": "THE VATICAN  (the ground)",
+"cols": 4,
+"rows": 4,
+"plots": [
+{
+"id": "P00-00",
+"name": "The Archive",
+"district": "The Vatican",
+"level": 1,
+"what": "the Secret Archive (inside)",
+"from": "Vatican: THE ARCHIVE (the stacks, the gallery, the dome stair)",
+"ports": [
+"E",
+"S"
+],
+"exit": [
+"inside: the Archive",
+"inside"
+]
+},
+{
+"id": "P01-00",
+"name": "The Basilica, west",
+"district": "The Vatican",
+"level": 2,
+"what": "LANDMARK: the basilica and its dome (inside)",
+"from": "Vatican: THE BASILICA (nave, chancel, triforium, crypt door)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": [
+"inside: the Basilica",
+"inside"
+]
+},
+{
+"id": "P02-00",
+"name": "The Basilica, east",
+"district": "The Vatican",
+"level": 2,
+"what": "the dome; the observatory on top of it",
+"from": "Vatican: THE BASILICA + THE OBSERVATORY",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": [
+"up: Heaven (the telescope)",
+"open"
+]
+},
+{
+"id": "P03-00",
+"name": "The Gardens",
+"district": "The Vatican",
+"level": 1,
+"what": "clipped hedges, a fountain",
+"from": "new plot (label mine)",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-01",
+"name": "The Terrace",
+"district": "The Vatican",
+"level": 2,
+"what": "the raised terrace",
+"from": "Cortile: THE TERRACE",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "The Courtyard",
+"district": "The Vatican",
+"level": 1,
+"what": "the courtyard",
+"from": "Cortile: THE COURTYARD",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"DOOR HQ (the painting)",
+"secret"
+]
+},
+{
+"id": "P02-01",
+"name": "The Fountain",
+"district": "The Vatican",
+"level": 1,
+"what": "the fountain",
+"from": "Cortile: THE FOUNTAIN",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-01",
+"name": "The Cloister",
+"district": "The Vatican",
+"level": 1,
+"what": "a covered walk round a square",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "The Cistern",
+"district": "The Vatican",
+"level": 0,
+"what": "the cistern; a rope down",
+"from": "Cortile: THE CISTERN DOWN",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": [
+"down: the Catacombs, then Hell",
+"inside"
+]
+},
+{
+"id": "P01-02",
+"name": "The Colonnade, west",
+"district": "The Vatican",
+"level": 1,
+"what": "a curve of columns",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-02",
+"name": "The Square",
+"district": "The Vatican",
+"level": 1,
+"what": "the open square",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The Colonnade, east",
+"district": "The Vatican",
+"level": 1,
+"what": "the other curve",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-03",
+"name": "The Wall, west",
+"district": "The Vatican",
+"level": 1,
+"what": "the high wall",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-03",
+"name": "The Gate",
+"district": "The Vatican",
+"level": 1,
+"what": "a gate in the wall",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": [
+"Disaster City (a new gate, only if you want one)",
+"new"
+]
+},
+{
+"id": "P02-03",
+"name": "The Square, south",
+"district": "The Vatican",
+"level": 1,
+"what": "paving to the wall",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "The Wall, east",
+"district": "The Vatican",
+"level": 1,
+"what": "the high wall",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"W"
+],
+"exit": null
+}
+],
+"cells": [
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmgggggggggggg",
+"mmmmmmmmmmmmmBBBBBBBBBBBBBBBBBBBBBmmgggggggggggg",
+"mBBBBBBBBBBmmBBBBBBBBBBBBBBBBBBBBBmmggTTTggTTTgg",
+"mBBBBBBBBBBmmBBBBBBBBBBBBBBBBBBBBBmmggTTTggTTTgg",
+"mBBBBBBBBBBmmBBBBBBBBGGGBGGGBBBBBBmmggTTTggTTTgg",
+"mBBBBBBBBBBmmBBBBBBBGGGGGGGGGBBBBBmmgggggggggggg",
+"mBBBBBBBBBBmmBBBBBBBGGGGGGGGGBBBBBmmgggggggggggg",
+"mBBBBBBBBBBmmBBBBBBBGGGGGGGGGBBBBBmmggTTTggTTTgg",
+"mBBBBBBBBBBmmBBBBBBBBGGGBGGGBBBBBBmmggTTTggTTTgg",
+"mBBBBBBBBBBmmBBBBBBBBBBBBBBBBBBBBBmmggTTTggTTTgg",
+"mmmmmmmmmmmmmBBBBBBBBBBBBBBBBBBBBBmmgggggggggggg",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmgggggggggggg",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"moooooooooommmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"moooooooooommmmmmmmmmmmmmmmmmmmmmmmmmmoooooooomm",
+"moooooooooommmmmmmmmmmmmmmmmmmmmmmmmmmoooooooomm",
+"moooooooooommmmmmmmmmmmmmmmmmwwwmmmmmmooggggoomm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmwwwwwmmmmmooggggoomm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmwwwwwmmmmmooggggoomm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmwwwwwmmmmmooggggoomm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmwwwmmmmmmoooooooomm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmoooooooomm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"mmmmmmmmmmmmmmmmmmmmooooooommmmmmooooooommmmmmmm",
+"mmmmmmmmmmmmmmmmmmmooommmooommmmooommmooommmmmmm",
+"mmmmmmmmmmmmmmmmmmoommmmmmmoommoommmmmmmoommmmmm",
+"mmmmmmmmmmmmmmmmmoommmmmmmmmoooommmmmmmmmoommmmm",
+"mmmmmxxxmmmmmmmmmoommmmmmmmmoooommmmmmmmmoommmmm",
+"mmmmxxxxxmmmmmmmmommmmmmmmmmmrommmmmmmmmmmommmmm",
+"mmmmxxxxxmmmmmmmmommmmmmmmmmmrommmmmmmmmmmommmmm",
+"mmmmxxxxxmmmmmmmmommmmmmmmmmmoommmmmmmmmmmommmmm",
+"mmmmmxxxmmmmmmmmmoommmmmmmmmoooommmmmmmmmoommmmm",
+"mmmmmmmmmmmmmmmmmoommmmmmmmmoooommmmmmmmmoommmmm",
+"mmmmmmmmmmmmmmmmmmoommmmmmmoommoommmmmmmoommmmmm",
+"mmmmmmmmmmmmmmmmmmmooommmooommmmooommmooommmmmmm",
+"mmmmmmmmmmmmmmmmmmmmooooooommmmmmooooooommmmmmmm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm",
+"BBBBBBBBBBBBBBBBBmmmBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+"BBBBBBBBBBBBBBBBBmmmBBBBBBBBBBBBBBBBBBBBBBBBBBBB",
+"mmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmmm"
+]
+},
+{
+"room": "HEAVEN  (above)",
+"cols": 4,
+"rows": 4,
+"plots": [
+{
+"id": "P00-00",
+"name": "The Forge",
+"district": "Mount Olympus (the top of Heaven)",
+"level": 16,
+"what": "the forge",
+"from": "Olympus: THE FORGE",
+"ports": [
+"E"
+],
+"exit": null
+},
+{
+"id": "P01-00",
+"name": "The Court",
+"district": "Mount Olympus (the top of Heaven)",
+"level": 16,
+"what": "the court of the gods",
+"from": "Olympus: THE COURT",
+"ports": [
+"E",
+"W"
+],
+"exit": [
+"the Lodge (the painting)",
+"secret"
+]
+},
+{
+"id": "P02-00",
+"name": "The Throne",
+"district": "Mount Olympus (the top of Heaven)",
+"level": 17,
+"what": "LANDMARK: the throne",
+"from": "Olympus: THE THRONE",
+"ports": [
+"E",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-00",
+"name": "The Spire",
+"district": "Mount Olympus (the top of Heaven)",
+"level": 18,
+"what": "the spire",
+"from": "Olympus: THE SPIRE",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-01",
+"name": "The Terraces",
+"district": "Heaven",
+"level": 12,
+"what": "terraces of cloud",
+"from": "Cloud Fields: THE TERRACES",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "The Sun",
+"district": "Heaven",
+"level": 13,
+"what": "the sun, close enough to touch",
+"from": "Cloud Fields: THE SUN",
+"ports": [
+"E",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Cloud Fields",
+"district": "Heaven",
+"level": 12,
+"what": "open cloud",
+"from": "Cloud Fields",
+"ports": [
+"E",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-01",
+"name": "The Grand Stair",
+"district": "Heaven",
+"level": 14,
+"what": "the stair up to the summit",
+"from": "Cloud Fields: THE GRAND STAIR",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "The Gate",
+"district": "Heaven",
+"level": 10,
+"what": "LANDMARK: the gate at the top",
+"from": "Stairway: THE GATE AT THE TOP",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-02",
+"name": "The Fourth Flight",
+"district": "Heaven",
+"level": 8,
+"what": "the last floating flight",
+"from": "Stairway: FOUR FLOATING FLIGHTS",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-02",
+"name": "The Third Flight",
+"district": "Heaven",
+"level": 6,
+"what": "the third flight",
+"from": "Stairway: FOUR FLOATING FLIGHTS",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The Cloud Paths",
+"district": "Heaven",
+"level": 10,
+"what": "paths of cloud",
+"from": "Cloud Fields: THE CLOUD PATHS",
+"ports": [
+"N"
+],
+"exit": [
+"Camelot: the Castle in the Sky",
+"secret"
+]
+},
+{
+"id": "P00-03",
+"name": "The Stair in the Sky",
+"district": "Heaven",
+"level": 0,
+"what": "where the telescope sets you down",
+"from": "Observatory: THE STAIR IN THE SKY",
+"ports": [
+"E"
+],
+"exit": [
+"down: the Vatican (the Observatory)",
+"open"
+]
+},
+{
+"id": "P01-03",
+"name": "The First Flight",
+"district": "Heaven",
+"level": 2,
+"what": "the first flight",
+"from": "Stairway: FOUR FLOATING FLIGHTS",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-03",
+"name": "The Second Flight",
+"district": "Heaven",
+"level": 4,
+"what": "the second flight",
+"from": "Stairway: FOUR FLOATING FLIGHTS",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "The Fall",
+"district": "Heaven",
+"level": 4,
+"what": "the edge; it is a long way",
+"from": "Stairway: THE FALL",
+"ports": [
+"W"
+],
+"exit": null
+}
+],
+"cells": [
+"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv",
+"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv",
+"vvvvvvvvvvvvvvvvmmmvvvvvvvvvvvvvvvvvvvvvvvvvvvvv",
+"vvvvmmmvvvvvvvvmmmmmvvvvvvvmmmkkkkkkkkkkkkkkkvvv",
+"vvvmmmmmvvvvvvmmmmmmmvvvvvmmmGGkkkkkkkkkkkkkkvvv",
+"vvmmmhhmmvvvvmmmmmmmmmvvvmmmmGGmvvvvvvvvvvmmmvvv",
+"vvmmmhhmmkkkkmmmmmmmmmvvmmmmmmmmmvvvvvvvvmmmmmvv",
+"vvmmmmmmmkkkkmmmmmmmmmkkmmmmmmmmmvvvvvvvvmmmmmvv",
+"vvvmmmmmvvvvvvmmmmmmmkkkmmmmmmmmmvvvvvvvvmmmmmvv",
+"vvvvmmmvvvvvvvvmmmmmvvvvvmmmmmmmvvvvvvvvvvmmmvvv",
+"vvvvvvvvvvvvvvvvmmmvvvvvvvmmmmmvvvvvvvvvvvvkkvvv",
+"vvvvvvvvvvvvvvvvvvvvvvvvvvvmmmvvvvvvvvvvvvvkkvvv",
+"vvvvvvvvvvvvvvvvvvkkkvvvvvvvvvkkkvvvvvvvvvvkkvvv",
+"vvvvvvvvvvvvvvvvvkkkkkvvvvvvkkkkkkkvvvvvvvvkkvvv",
+"vvvvvvvvvvvvvvvvkkkkkkkvvvvkkkkkkkkkvvvvvvvkkvvv",
+"vvvvvkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkvvvvvvvkkvvv",
+"vvvvkkkkkkkkkkkkkSSSkkkkkkkkkkkkkkkkkkkkkkkkkvvv",
+"vvvkkkkkvvvvvvvkSSSSSkkkvvkkkkkkkkkkkkkkmmmkkvvv",
+"vvkkkkkkkvvvvvvvSSSSSkkvvvkkkkkkkkkkvvvmmmmmkvvv",
+"vvkkkkkkkvvvvvvvSSSSSkvvvvvkkkkkkkkkvvvmmmmmkvvv",
+"vvkkkkkkkvvvvvvvvSSSkvvvvvvkkkkkkkkkvvvmmmmmkvvv",
+"vvvkkkkkkvvvvvvvvvvvvvvvvvvvkkkkkkkvvvvvmmmkkvvv",
+"vvvvkkkkkvvvvvvvvvvvvvvvvvvvvvkkkvvvvvvvvvvkkvvv",
+"vvvvvvvkkvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvkkvvv",
+"vvvvvvvkkvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvkkvvv",
+"vvvvvvvkkvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvkkvvv",
+"vvvvvkkkkvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvkkvvv",
+"vvvvkkkkkvvvvvvvvmmmvvvvvvvvvvmmmvvvvvvvvvvkkvvv",
+"vvvkkkkkkkvvvvvvkmmmvvvvvvvvvvmmmvvvvvvvvkkkkvvv",
+"vvvGGkkGGkvvvvvvkmmmvvvvvvvvvvmmmvvvvvvvvkkkkvvv",
+"vvvGGkkGGkvvvvvvkkkkvvvvvvvvvvkkkvvvvvvvvkkkvvvv",
+"vvvvkkkkkvvvvvvvkkkkkkkkkkkkkkkkkvvvvvvvvvvvvvvv",
+"vvvvvkkkkkkkkkkkkkkkkkkkkkkkkkkkvvvvvvvvvvvvvvvv",
+"vvvvvvkkkkkkkkkkkkkvvvvvvvvvvvkkvvvvvvvvvvvvvvvv",
+"vvvvvvvvvvvvvvvvkkvvvvvvvvvvvvkkvvvvvvvvvvvvvvvv",
+"vvvvvvvvvvvvvvvvkkvvvvvvvvvvvvkkvvvvvvvvvvvvvvvv",
+"vvvvvvvvvvvvvvvvkkvvvvvvvvvvvvkkvvvvvvvvvvvvvvvv",
+"vvvvvvvvvvvvvvvvkkvvvvvvvvvvvvkkvvvvvvvvvvvvvvvv",
+"vvvvvvvvvvvvvvvvkkvvvvvvvvvvvvkkvvvvvvvvvvvvvvvv",
+"vvvvvvvvvvvvvvvvkkvvvvvvvvvvvvkkvvvvvvvvvvvvvvvv",
+"vvvvmmmvvvvvvvvvkmmmvvvvvvvvvvkkvvvvvvvvvvkkkvvv",
+"vvvmmmmmvvvvvvvvkmmmvvvvvvvvmmmkvvvvvvvvvkkkkkvv",
+"vvvmmmmmkkkkkkkkkmmmkkkkkkkkmmmkvvvvvvvvvkkkkkvv",
+"vvvmmmmmkkkkkkkkkkkkkkkkkkkkmmmkkkkkkkkkkkkkkkvv",
+"vvvvmmmvvvvvvvvvvvvvvvvvvvvvvkkkkkkkkkkkkkkkkvvv",
+"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv",
+"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv",
+"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv"
+]
+}
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "dirt path",
+"g": "grass",
+"w": "water",
+"b": "bridge / deck over water",
+"s": "snow",
+"r": "the obelisk",
+"x": "the cistern shaft",
+"f": "concrete floor",
+"c": "corn (cannot walk; the rows are the walls)",
+"d": "sand",
+"m": "marble",
+"l": "lava (cannot walk)",
+"h": "scorched rock",
+"k": "cloud you walk on",
+"v": "open sky (a fall)",
+"u": "sea floor",
+"a": "the drop into the dark",
+"B": "building / wall",
+"i": "ice",
+"o": "walkway / colonnade",
+"y": "crystal",
+"q": "the collider ring corridor",
+"e": "ash",
+"n": "red ground",
+"z": "the Sea of Possibility (cannot walk)",
+"j": "plank pier / deck",
+"G": "gold",
+"V": "nothing (cannot walk)",
+"D": "dunes",
+"R": "red carpet / hot floor",
+"T": "hedge",
+"S": "the sun",
+"N": "open space (fly the ship, or float)",
+"Q": "an orbit (a guide line, not a wall)",
+"E": "Earth",
+"A": "asteroid"
+}
+}

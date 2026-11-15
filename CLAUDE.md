@@ -5,6 +5,14 @@ socket.io) is only matchmaking/relay; ALL gameplay logic is client-side in
 `index.html` + ~35 scripts loaded from a Cloudflare R2 bucket (custom domain
 `cdn.entropywars.net`, brotli + long-cache edge) and CDNs.
 
+## NEW HERE? (a second developer / another Claude account, 2026-11-15)
+Read `docs/notes/onboarding.md` (access you need, how to work beside the owner's threads, what does not travel to
+another account) and `docs/notes/owner-rules.md` (mondo's standing rules: what he wants and never wants; they bind
+every account). The owner project's memory as of 11-15 is frozen in `docs/project-memory/` (`INDEX.md` first). New
+lasting facts go in the matching docs/notes file in the same PR, never only in one account's memory.
+**TWO ACCOUNTS, ONE BOARD:** before starting on an area or system, read `docs/notes/claims.md` (who has what). Never
+work an area the other side holds; take or free a row in your own PR; leave notes for the other side at its bottom.
+
 ## NOTES INDEX — feature history lives in docs/notes/
 
 **Do not append feature notes here. Put new notes in the matching docs/notes file and keep this file under 20 KB.**
@@ -13,6 +21,8 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 
 | File | Covers | Read when |
 |---|---|---|
+| `docs/notes/owner-rules.md` | MONDO'S RULES: hard rules, world, visuals, combat, UI/input, camera, story, how to work with him. | Before ANY design decision; when unsure what he wants. |
+| `docs/notes/onboarding.md` | Second developer / other account: access, set-up, parallel work, where state lives. | First session on a new account. |
 | `docs/notes/door-docs.md` | Map of the DOOR design docs (DOOR_MASTER, HQ build plan, Phase 9 brief). | Before ANY DOOR / story / hub / HQ work. |
 | `docs/notes/hq-building-rooms.md` | HQ rooms, floors, wings, gallery, seams, directory map, floor plans. | HQ room / floor / link work. |
 | `docs/notes/areas-complexes.md` | Explorable areas, complexes, terrain rooms, Area Content Plan D1-D5, population. | Area / complex / site work. |
@@ -131,6 +141,7 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
 - `bake-woods.js` (2026-11-15): writes The Woods on plots (`site_prebuilt_fairy_forest_plots`) from `docs/areas/woods/layout.json`. Notes: areas-complexes.md "THE WOODS ON PLOTS".
 - `bake-camelot.js` (2026-11-15): writes Camelot Kingdom on plots (`site_prebuilt_camelot_kingdom`, from `docs/areas/camelot/layout.json`; plan 3 = castle, village, town wall, moat, woods). A rebuilt area's old rooms go in data.js `DOOR_HQ.retired` in the same PR. Notes: areas-complexes.md "CAMELOT KINGDOM ON PLOTS".
 - `bake-desert.js` (2026-11-15): writes The Desert on plots (`site_prebuilt_area51_desert`, from `docs/areas/desert/layout.json`). Notes: areas-complexes.md "THE DESERT ON PLOTS".
+- `bake-mountains.js` (2026-11-15): writes The Mountains + the North Pole village on plots (`site_prebuilt_shasta_mountains`, `site_prebuilt_northpole_plots`, from `docs/areas/mountains/layout.json`). Notes: areas-complexes.md "THE MOUNTAINS ON PLOTS".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
   the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes

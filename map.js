@@ -5066,8 +5066,28 @@
             orientation_arrive: { room: _HQ_FOYER,   at: { x: 0, z: 5.0, face: 0 } },
         };
         let _sedRun = null;
+        /* THE COVER (2026-11-15, mondo: "why does it let me move around and move my camera and stuff. its supposed to load the
+           god damn cut scene"): on a fast machine the room stood in two seconds and he walked it free while the run waited for
+           the scene's bodies (Sedaniel's model, up to 15 s). From the press of PLAY until the scene is on screen, and again from
+           its end until the editor is back, one black window covers the room: what is loading, and a red CANCEL. */
+        function _sedCover(title, line) {
+            let el = document.getElementById('sedCover');
+            if (!title) { if (el) el.remove(); return; }
+            if (!el) {
+                el = document.createElement('div'); el.id = 'sedCover';
+                el.innerHTML = '<div class="sed-cover-box"><div class="sed-cover-h">CUTSCENE EDITOR</div><div class="sed-cover-t" id="sedCoverT"></div><div class="sed-cover-l" id="sedCoverL"></div><button class="sed-cover-x" id="sedCoverX">CANCEL (ESC)</button></div>';
+                document.body.appendChild(el);
+                el.querySelector('#sedCoverX').addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); try { playSfx('uiButtonBack'); } catch (err) {} _sedRunEnd(true); });
+                if (!window._sedCoverKey) { window._sedCoverKey = true; window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.getElementById('sedCover') && _sedRun) { e.preventDefault(); e.stopImmediatePropagation(); _sedRunEnd(true); } }, true); }   // ESC = CANCEL (the pointer may be held by the walk)
+                ['mousedown', 'mouseup', 'click', 'wheel', 'contextmenu'].forEach(ev => el.addEventListener(ev, (e) => { e.stopPropagation(); }));
+            }
+            const t = el.querySelector('#sedCoverT'), l = el.querySelector('#sedCoverL');
+            if (t && t.textContent !== title) t.textContent = title;
+            if (l && l.textContent !== (line || '')) l.textContent = line || '';
+        }
         function _sedRunEnd(reopen, why) {
             const r = _sedRun; _sedRun = null; window._ewSceneEdPlay = false;
+            _sedCover(null);
             try { window.EWScene.from(null); } catch (e) {}
             if (!r) return;
             if (r.timer) clearInterval(r.timer);
@@ -5075,7 +5095,9 @@
             if (why) { console.warn('[SCENE ED] ' + r.id + ': ' + why); try { playSfx('uiError'); } catch (e) {} }
             if (!reopen) return;
             try {
-                if (state.gameState === GS.HQ) { if (!_hqSuspended) window._hqOpenPause('quests'); }
+                /* a run ended early (CANCEL, a failure) never leaves him in a scene room */
+                if (state.gameState === GS.HQ && (_hqCurRoom === _INTRO_ROOM || _hqCurRoom === 'car') && r.back) { try { window._hqEnter({ room: r.back, quiet: true, from: 'walk' }); } catch (e) {} }
+                else if (state.gameState === GS.HQ) { if (!_hqSuspended) window._hqOpenPause('quests'); }
                 _sedOpen(r.id);
                 if (why) _sedSay('THE SCENE DID NOT PLAY: ' + String(why).toUpperCase());
             } catch (e) { console.warn('[SCENE ED] the editor did not come back', e); }
@@ -5088,6 +5110,9 @@
             const TR = ThreeRenderer, O = _SED_OPENING[id] || null, inHq = state.gameState === GS.HQ;
             const safe = (r) => (r && _hqRoomExists(r) && r !== _INTRO_ROOM && r !== 'car' && r !== 'intro_shaft') ? r : _hqArrivalRoom();
             const R = _sedRun = { id: id, phase: 'enter', t0: performance.now(), at: performance.now(), seen: false, lastOn: 0, timer: 0, live: !!(O && O.live), back: safe(inHq ? _hqCurRoom : null), entered: false, started: false };
+            R.title = String((sc && sc.title) || id).toUpperCase(); R.load0 = 0;
+            const cover = (line) => { if (mine()) _sedCover('PLAYING ' + R.title, line); };
+            const say = (ph) => { if (R.said !== ph) { R.said = ph; console.log('[SCENE ED] ' + id + ': ' + ph); } };
             window._ewSceneEdPlay = true;
             if (!inHq) window._ewSceneEdNoSave = true;   // walked in from the menu for a scene: CONTINUE stays where it was (cleared when he leaves the building)
             try { window.EWScene.from(id, beat | 0, null); } catch (e) {}
@@ -5095,6 +5120,7 @@
             try { if (inHq && typeof window._hqClosePause === 'function') window._hqClosePause(); } catch (e) {}
             try { window._hqClosePanel(); } catch (e) {}
             const mine = () => _sedRun === R;
+            cover('LOADING THE ROOM…');
             const fail = (why) => { if (mine()) _sedRunEnd(true, why); };
             const enter = (room, from, then) => {
                 let ok = false;
@@ -5110,7 +5136,7 @@
                 try {
                     if (O) {
                         if (O.hide) { try { TR.hq.scenePlace('player', { show: false }); } catch (e) {} }
-                        const fin = () => { if (!mine()) return; if (R.live) { window._ewIntroLive = false; } R.phase = 'back'; R.at = performance.now(); R.entered = false;
+                        const fin = R.fin = () => { if (!mine() || R.phase === 'back') return; if (R.live) { window._ewIntroLive = false; } R.phase = 'back'; R.at = performance.now(); R.entered = false; cover('BACK TO THE EDITOR…'); say('scene over, going back');
                             setTimeout(() => { if (mine() && state.gameState === GS.HQ) enter(R.back, 'walk', () => { R.entered = true; R.at = performance.now(); }); }, 80); };
                         ok = _questHqScene({ scene: id, sceneAt: O.at }, { onEnd: fin }, fin);
                     } else if (sc.play.kind === 'stage') ok = _questStageReplay(sc.play.quest, sc.play.stage);
@@ -5125,17 +5151,20 @@
                 const now = performance.now(), gs = state.gameState;
                 let on = false; try { on = !!(window.EWScene && window.EWScene.on); } catch (e) {}
                 const card = document.getElementById('hqLoad'), loading = !!(card && card.style.display !== 'none');
-                if (on) { R.seen = true; R.lastOn = now; if (R.phase !== 'back') R.phase = 'scene'; return; }
+                if (on) { R.seen = true; R.lastOn = now; R.load0 = 0; if (R.phase !== 'back') { R.phase = 'scene'; _sedCover(null); say('scene on screen'); } return; }
                 if (gs !== GS.HQ && gs !== GS.BATTLE) { if (now - R.at > 6000 && R.phase !== 'enter') _sedRunEnd(false); else if (now - R.t0 > 180000) _sedRunEnd(false); return; }   // he left for the menu
-                if (loading || gs === GS.BATTLE) { R.at = now; return; }   // a load in progress never times out
+                if (loading || gs === GS.BATTLE) { if (!R.load0) R.load0 = now; if (now - R.load0 < 900000) { R.at = now; return; } }   // a load in progress does not time out (15 minutes of one unbroken load card is a stuck card: the phases below go on; CANCEL is on the cover meanwhile)
+                else R.load0 = 0;
+                cover(R.phase === 'enter' ? 'LOADING THE ROOM…' : (R.phase === 'ready' ? 'WAITING FOR THE CAST…' : ((R.phase === 'back' || R.seen) ? 'BACK TO THE EDITOR…' : 'STARTING THE SCENE…')));
+                say(R.phase);
                 if (R.phase === 'enter') { if (now - R.at > 45000) fail('the building did not finish loading'); return; }
                 if (R.phase === 'ready') {
                     if (_hqSuspended && !R.woke) { R.woke = true; try { window._hqResume(); } catch (e) {} return; }   // a window left the building paused: wake it once
                     if (_hqSuspended) { if (now - R.at > 1500) fail('the building is paused (close the notice or the pause menu, then press PLAY again)'); return; }
                     if (_questTalkBusy || _questReplayBusy) { if (now - R.at > 8000) fail('another scene is still running'); return; }
                     let up = true;
-                    try { up = !!TR.hq.sceneReady('player'); if (up && O && O.cast) { const s3 = TR.hq.dev.hqScene(); up = !!(s3 && s3.getObjectByName('hq_hq-cast-' + O.cast)) && !!TR.hq.sceneReady(O.cast); } } catch (e) { up = true; }
-                    if (up || now - R.at > 15000) start();
+                    try { up = !!TR.hq.sceneReady('player'); if (up && O && O.cast) { const s3 = TR.hq.dev.hqScene(); const g3 = s3 && s3.getObjectByName('hq_hq-cast-' + O.cast); let m3 = false; if (g3) g3.traverse(o => { if (o.isMesh) m3 = true; }); up = m3; }   /* (his model in the room; hq.sceneReady asks for an idle clip, which a car never has: that was a full timeout on every play) */ } catch (e) { up = true; }
+                    if (up || now - R.at > 8000) { if (!up) console.warn('[SCENE ED] ' + id + ': started without waiting longer for the cast'); start(); }
                     return;
                 }
                 if (R.phase === 'scene') {
@@ -5143,7 +5172,7 @@
                     if (window._ewIntroLive && !R.live) { R.at = now; return; }
                     if (_questReplayBusy || _questTalkBusy) { R.at = now; return; }
                     if (!R.seen) { if (now - R.at > 30000) fail('the scene never started'); return; }
-                    if (O) return;   // its own `fin` moves it on
+                    if (O) { if (now - R.lastOn > 3000 && R.fin) { console.warn('[SCENE ED] ' + id + ': the scene went down without its end'); _questTalkBusy = false; R.fin(); } return; }   // its own `fin` moves it on (a scene torn down without its end is ended here)
                     let stands = true; try { stands = !!TR.hq.sceneReady('player'); } catch (e) { stands = true; }
                     if (gs === GS.HQ && (stands || now - R.lastOn > 30000) && now - R.lastOn > 2500) _sedRunEnd(true);
                     return;
@@ -5305,7 +5334,7 @@
         function _sedOpen(sceneId) {
             if (typeof window.sceneEdList !== 'function') return false;
             if (window.EWScene && window.EWScene.on) return false;
-            if (_sedRun && _sedRun.id) { const r0 = _sedRun; _sedRun = null; if (r0.timer) clearInterval(r0.timer); window._ewSceneEdPlay = false; if (r0.live) { window._ewIntroLive = false; window._ewIntroChain = false; } try { window.EWScene.from(null); } catch (e) {} }   // the editor is up again: whatever run was pending is over, PLAY is free
+            if (_sedRun && _sedRun.id) { const r0 = _sedRun; _sedRun = null; _sedCover(null); if (r0.timer) clearInterval(r0.timer); window._ewSceneEdPlay = false; if (r0.live) { window._ewIntroLive = false; window._ewIntroChain = false; } try { window.EWScene.from(null); } catch (e) {} }   // the editor is up again: whatever run was pending is over, PLAY is free
             if (window.sceneEdStore().bar == null) window.sceneEdBarSet(true);   // the first time the editor opens, the notes bar comes on
             if (sceneId && window.storyCutsceneShipped(sceneId)) _sedCur = sceneId;
             let el = _sedEl();

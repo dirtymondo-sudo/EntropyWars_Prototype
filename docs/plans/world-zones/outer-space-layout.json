@@ -1,0 +1,2340 @@
+{
+"area": "Outer Space",
+"version": "plan-1",
+"squareMeters": 3.5,
+"plotCells": 12,
+"districts": {
+"X": "Open space: the Sun, Earth, the belt",
+"M": "The Moon",
+"R": "Mars",
+"T": "Saturn",
+"S": "The Singularity"
+},
+"rooms": [
+{
+"room": "The Solar System",
+"cols": 12,
+"rows": 12,
+"plots": [
+{
+"id": "P00-00",
+"name": "The Accretion Rim, north-west",
+"district": "The Singularity",
+"level": 2,
+"what": "the bright rim",
+"from": "The Horizon: THE ACCRETION RIM",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-00",
+"name": "The Accretion Rim, north",
+"district": "The Singularity",
+"level": 2,
+"what": "the bright rim",
+"from": "The Horizon: THE ACCRETION RIM",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-00",
+"name": "The Accretion Rim, north-east",
+"district": "The Singularity",
+"level": 2,
+"what": "the bright rim",
+"from": "The Horizon: THE ACCRETION RIM",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-00",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-00",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-00",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-00",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-00",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-00",
+"name": "The Asteroid Belt",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "drifting rock; steer round it or land on a big one",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-00",
+"name": "The Storm Walls, west",
+"district": "Saturn",
+"level": 2,
+"what": "a wall of storm",
+"from": "The Hexagon: THE STORM WALLS",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-00",
+"name": "The Storm Walls",
+"district": "Saturn",
+"level": 2,
+"what": "a wall of storm",
+"from": "The Hexagon: THE STORM WALLS",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-00",
+"name": "The Storm Walls, east",
+"district": "Saturn",
+"level": 2,
+"what": "a wall of storm",
+"from": "The Hexagon: THE STORM WALLS",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-01",
+"name": "The Accretion Rim, west",
+"district": "The Singularity",
+"level": 2,
+"what": "the bright rim",
+"from": "The Horizon: THE ACCRETION RIM",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "Zero Volume",
+"district": "The Singularity",
+"level": 0,
+"what": "LANDMARK: the hole",
+"from": "The Horizon: ZERO VOLUME",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Drop",
+"district": "The Singularity",
+"level": 1,
+"what": "the way in; nothing comes back up",
+"from": "The Horizon: THE DROP",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-01",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-01",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-01",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-01",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-01",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-01",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-01",
+"name": "The Plateau, west",
+"district": "Saturn",
+"level": 1,
+"what": "the six-sided plateau",
+"from": "The Hexagon: THE PLATEAU",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-01",
+"name": "The Eye",
+"district": "Saturn",
+"level": 0,
+"what": "LANDMARK: the eye of the storm",
+"from": "The Hexagon: THE EYE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-01",
+"name": "The Ring Shard",
+"district": "Saturn",
+"level": 2,
+"what": "a piece of the ring, fallen",
+"from": "The Hexagon: THE RING SHARD",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "The Frame",
+"district": "The Singularity",
+"level": 2,
+"what": "the frame from Saturn",
+"from": "The Horizon: the frame (exists)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-02",
+"name": "The Accretion Rim, south",
+"district": "The Singularity",
+"level": 2,
+"what": "the bright rim",
+"from": "The Horizon: THE ACCRETION RIM",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-02",
+"name": "The Screen",
+"district": "The Singularity",
+"level": 2,
+"what": "a screen hanging in the dark",
+"from": "The Horizon: the way to DOOR HQ's Observatorium (exists)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"DOOR HQ",
+"secret"
+]
+},
+{
+"id": "P03-02",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-02",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-02",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-02",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-02",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-02",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-02",
+"name": "The Landing",
+"district": "Saturn",
+"level": 1,
+"what": "where the ship docks",
+"from": "The Hexagon: the dock",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"dock: the Landing",
+"open"
+]
+},
+{
+"id": "P10-02",
+"name": "The Plateau",
+"district": "Saturn",
+"level": 1,
+"what": "the plateau",
+"from": "The Hexagon: THE PLATEAU",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-02",
+"name": "The Frame",
+"district": "Saturn",
+"level": 1,
+"what": "a door frame standing alone",
+"from": "The Hexagon: the frame to the Singularity (exists)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": [
+"the frame to the Singularity",
+"secret"
+]
+},
+{
+"id": "P00-03",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-03",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-03",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-03",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-03",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-03",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-03",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-03",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-03",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-03",
+"name": "The Asteroid Belt",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "drifting rock; steer round it or land on a big one",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-03",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-04",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-04",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-04",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-04",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-04",
+"name": "The Sun",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "LANDMARK: the Sun; you cannot land, it burns",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-04",
+"name": "The Sun",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "LANDMARK: the Sun; you cannot land, it burns",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-04",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-04",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-04",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-04",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-04",
+"name": "The Asteroid Belt",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "drifting rock; steer round it or land on a big one",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-04",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-05",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-05",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-05",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-05",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-05",
+"name": "The Sun",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "LANDMARK: the Sun; you cannot land, it burns",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-05",
+"name": "The Sun",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "LANDMARK: the Sun; you cannot land, it burns",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-05",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-05",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-05",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-05",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-05",
+"name": "The Asteroid Belt",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "drifting rock; steer round it or land on a big one",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-05",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-06",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-06",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-06",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-06",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-06",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-06",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-06",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-06",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-06",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-06",
+"name": "The Rim, north",
+"district": "The Moon",
+"level": 3,
+"what": "the crater wall",
+"from": "The Mare: THE RIM",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-06",
+"name": "The Terrace",
+"district": "The Moon",
+"level": 2,
+"what": "a shelf inside the wall",
+"from": "The Mare: THE TERRACE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-06",
+"name": "The Far Side",
+"district": "The Moon",
+"level": 2,
+"what": "the side nobody sees; a hatch",
+"from": "The Mare: the hatch to Mars (hidden today)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": [
+"the hatch to Mars",
+"secret"
+]
+},
+{
+"id": "P00-07",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-07",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-07",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-07",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-07",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-07",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-07",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-07",
+"name": "Earth",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "home, seen from outside; you cannot land",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-07",
+"name": "Earth",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "home, seen from outside; you cannot land",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-07",
+"name": "The Rim, west",
+"district": "The Moon",
+"level": 3,
+"what": "the crater wall",
+"from": "The Mare: THE RIM",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-07",
+"name": "The Crater",
+"district": "The Moon",
+"level": 0,
+"what": "LANDMARK: the crater",
+"from": "The Mare: THE CRATER",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-07",
+"name": "The Lander",
+"district": "The Moon",
+"level": 1,
+"what": "the lander; the ship docks here",
+"from": "The Mare: THE LANDER",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": [
+"dock: the Lander",
+"open"
+]
+},
+{
+"id": "P00-08",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-08",
+"name": "The Face",
+"district": "Mars",
+"level": 3,
+"what": "LANDMARK: the Face",
+"from": "Cydonia: THE FACE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-08",
+"name": "The Mesas",
+"district": "Mars",
+"level": 4,
+"what": "flat-topped rock",
+"from": "Cydonia: THE MESAS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-08",
+"name": "The Pyramid",
+"district": "Mars",
+"level": 5,
+"what": "the five-sided pyramid",
+"from": "Cydonia: THE PYRAMID",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-08",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-08",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-08",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-08",
+"name": "Earth",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "home, seen from outside; you cannot land",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-08",
+"name": "Earth",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "home, seen from outside; you cannot land",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-08",
+"name": "The Mare",
+"district": "The Moon",
+"level": 1,
+"what": "the flat grey sea",
+"from": "The Mare",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-08",
+"name": "The Rim, south",
+"district": "The Moon",
+"level": 3,
+"what": "the crater wall",
+"from": "The Mare: THE RIM",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-08",
+"name": "The Tracks",
+"district": "The Moon",
+"level": 1,
+"what": "boot prints and wheel ruts",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-09",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-09",
+"name": "The Canyon, west",
+"district": "Mars",
+"level": 0,
+"what": "the canyon",
+"from": "Cydonia: THE CANYON",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-09",
+"name": "The Canyon",
+"district": "Mars",
+"level": 0,
+"what": "the canyon floor",
+"from": "Cydonia: THE CANYON",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-09",
+"name": "The Mesas, south",
+"district": "Mars",
+"level": 4,
+"what": "more mesas",
+"from": "Cydonia: THE MESAS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-09",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-09",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-09",
+"name": "Low Orbit",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "where the Spaceship comes up from the ground",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"the ground: Hangar 18 / Antarctica",
+"open"
+]
+},
+{
+"id": "P07-09",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-09",
+"name": "The Asteroid Belt",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "drifting rock; steer round it or land on a big one",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-09",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-09",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-09",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-10",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-10",
+"name": "The Rover Bay",
+"district": "Mars",
+"level": 1,
+"what": "the rover bay; the ship docks here",
+"from": "Cydonia: the rover bay",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"dock: the Rover Bay",
+"open"
+]
+},
+{
+"id": "P02-10",
+"name": "The Canyon Mouth",
+"district": "Mars",
+"level": 1,
+"what": "where the canyon opens",
+"from": "Cydonia: THE CANYON",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-10",
+"name": "The Dunes",
+"district": "Mars",
+"level": 1,
+"what": "red dunes",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-10",
+"name": "The Asteroid Belt",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "drifting rock; steer round it or land on a big one",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-10",
+"name": "The Asteroid Belt",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "drifting rock; steer round it or land on a big one",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-10",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-10",
+"name": "The Asteroid Belt",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "drifting rock; steer round it or land on a big one",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-10",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-10",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-10",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-10",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-11",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-11",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-11",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-11",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-11",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-11",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-11",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-11",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-11",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-11",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-11",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-11",
+"name": "Open space",
+"district": "Open space: the Sun, Earth, the belt",
+"level": 0,
+"what": "nothing; fly or float",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"W"
+],
+"exit": null
+}
+],
+"cells": [
+"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
+"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
+"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNAAANNNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNQNNNNNNAAANNNVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNAAANNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVV",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVV",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVV",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNAAANNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVV",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNAAANNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVV",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNAAANNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVV",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVV",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVV",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVGGGGGGGGGGGGGGVVVGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGyyGGGGGGG",
+"VVVGGGGGGGGGGGGGVVVVVGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNQNQNQNQNQNQNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGyyGGGGGGG",
+"VVVGGGGGGGGGGGGVVVVVVVGGGGGGGGGGGVVVNNNNNNNNNNNNQNQNQNNNNNNNNNNNNNQNQNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGyyGGGGGGG",
+"VVVGGGGGGGGGGGVVVVVVVVVGzzzzzGGGGVVVNNNNNNNNNQNQNNNNNNNNNNNNNNNNNNNNNNNQNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGVVVGGGGGGGyyGGGGGGG",
+"VVVGGGGGGGGGGGVVVVVVVVVGzzzzzGGGGVVVNNNNNNQNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGVVVGGGGGGGyyGGGGGGG",
+"VVVGGGGGGGGGGGVVVVVVVVVGGGGGGGGGGVVVNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGVVVGGGGGGGyyGGGGGGG",
+"VVVGGGGGGGGGGGGVVVVVVVGGGGGGGGGGGVVVNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGyyGGGGGGG",
+"VVVGGGGGGGGGGGGGVVVVVGGGGGGGGGGGGVVVNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGyyGGGGGGG",
+"VVVGGGGGGGGGGGGGGVVVGGGGGGGGGGGGGVVVQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVGGmmGGGGGGGGGGGGGGGGGGGGGmmGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNGGGGffffGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGmmGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNGGGGffffGGGGGGGGGGGGGGGGGGGGGmmGGGGG",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNGGGGffffGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNGGGGffffGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGVVVNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVNNNNNNNNNNNNNNNNNNNQNQNQNQNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVNNNNNNNNNNNNNNQNQNQNNNNNNNNNQNQNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG",
+"NNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNQNQNNNNNNNNNNNNNNNNNNNNNQNQNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNAAANNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNQAAAANNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNAAAANNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQAAANNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNAAANNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNAAAANNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNAAAANNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNAAANNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNAAANNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNAAAANNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNAAAANNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNAAANNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNSSSSSSSSSSSSSSSSSSSSSSSSNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNrrrrrrrrrrrreeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNrrrrrrrrrrrreeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNNrrrrrrrrrrrreeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNeeeeeeeeeeeeeeooooooooeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNeeeeeeeeeeeeeeooooooooeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNeeeeeeeeeeeeeeooooooooeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNeeeeeeeeeeeeeeooooooooeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNQNQNNNNNNNNNNNNNNNNNNNNNQNQNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNQNQNNNNNNNNNQNQNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNrrreeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNQNQNQNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNrrreeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNrrreeeeeeeeeeeeeexxxeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNEEEEEEEEEEEEEEEEEENNNrrreeeeeeeeeeeeexxxxxeeeeeeeeeeeeeee",
+"QNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNEEEEEEEEEEEEEEEEEENNNrrreeeeeeeeeeeexxxxxxxeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNEEEEEEEEEEEEEEEEEENNNrrreeeeeeeeeeexxxxxxxxxeeeeeeBBBeeee",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNEEEEEEEEEEEEEEEEEENNNrrreeeeeeeeeeexxxxxxxxxeeeeeeBBBeeee",
+"NQNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNEEEEEEEEEEEEEEEEEENNNrrreeeeeeeeeeexxxxxxxxxeeeeeeBBBeeee",
+"NNQNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNEEEEEEEEEEEEEEEEEENNNrrreeeeeeeeeeeexxxxxxxeeeeeeeeeeeeee",
+"NNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNEEEEEEEEEEEEEEEEEENNNrrreeeeeeeeeeeeexxxxxeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQEEEEEEEEEEEEEEEEEENNNrrreeeeeeeeeeeeeexxxeeeeeeeeeeeeeeee",
+"NNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNEEEEEEEEEEEEEEEEEENNNrrreeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNQNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNEEEEEEEEEEEEEEEEEENNNeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNQNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNEEEEEEEEEEEEEEEEEENNNeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNQNNNNNnnnnnrrrnnnnnnrrrrnnnnnnnnnnnDDDnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNEEEEEEEEEEEEEEEEEENNNeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNQNNNNnnnnrrrrrnnnnnrrrrnnnnnnnnnnDDDDDnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNEEEEEEEEEEEEEEEEEENNNeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNQNNNnnnxxxrxxxnnnnrrrrnnnnnnnnnDDBBBDDnnNNNNNNNNNNNNNNNNNNNNNNNNNNQNQNNNNNNNNNNEEEEEEEEEEEEEEEEEENNNeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNnnrxxxrxxxrnnnrrrrnnnnnnnnDDBBBBBDDnNNNNNNNNNNNNNNNNNNNNNNNQNQNNNNNNNNNNNNNEEEEEEEEEEEEEEEEEENNNeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNNnnrxxxrxxxrnnnnnnnnrrrrnnnDDBBBBBDDnQNQNQNNNNNNNNNNNNNQNQNQNNNNNNNNNNNNNNNNEEEEEEEEEEEEEEEEEENNNeeeeeeeeeeeeeeeeeeeeeeeeoooooooooooo",
+"NNNNNNNNNNNNnnrrrrrrrrrnnnnnnnnrrrrnnnDDBBBBBDDnNNNNNQNQNQNQNQNQNQNNNNNNNNNNNNNNNNNNNNNEEEEEEEEEEEEEEEEEENNNeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNQNnnnrrrrrrrnnnnnnnnnrrrrnnnnDDBBBDDnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNEEEEEEEEEEEEEEEEEENNNeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+"NNNNNNNNNNNQnnnnrrrrrnnnnnnnnnnrrrrnnnnnDDDDDnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQeeeeeeeeeeeerrrrrrrrrrrreeeeeeeeeeee",
+"NNNNNNNNNNNNnnnnnrrrnnnnnnnnnnnnnnnnnnnnnDDDnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNeeeeeeeeeeeerrrrrrrrrrrreeeeeeeeeeee",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNeeeeeeeeeeeerrrrrrrrrrrreeeeeeeeeeee",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnnnnrrrrrnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnnnnrrrrrnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNhhhhhhhhhhhhhhhhhhhhhhhhhhhrrrrrnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNhhhhhhhhhhhhhhhhhhhhhhhhhhhrrrrrnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNffNNNNNNNNNNNNNNNNNNQNNNNAAANNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNhhhhhhhhhhhhhhhhhhhhhhhhhhhrrrrrnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNffNNNNNNNNNNNNNNNNNQNNNNNAAAANNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNhhhhhhhhhhhhhhhhhhhhhhhhhhhnnnnnnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNQNNNNNNAAAANNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNAAANNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnhhhhnnnnDDDDDDDDDDDDNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnhhhhnnnnDDDDDDDDDDDDNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnhhhhnnnnDDDDDDDDDDDDNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNQNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnhhhhnnnnDDDDDDDDDDDDNNNNNNNNNNNNNNNNNNNNNNNNNQNQNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnBBBBnnnnnnnnhhhhnnnnDDDDDDDDDDDDQNQNNNNNNNNNNNNNNNNNQNQNQNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnBBBBnnnnnnnnhhhhnnnnDDDDDDDDDDDDNNNQNQNAAANQNQNQAAAQNNNNNNNNNNNNNNNNNNNNNNAAANNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnBBBBnnnnnnnnnnnnnnnnDDDDDDDDDDDDNNNNAAAAAANNNNNAAAANNNNNNNNNNNNNNNNNNNNNNNAAAANNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnBBBBnnnnnnnnnnnnnnnnDDDDDDDDDDDDNNNNAAAAAANNNNNAAAANNNNNNNNNNNNNNNNNNNNNNNAAAANNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnDDDDDDDDDDDDNNNNAAANNNNNNNNAAANNNNNNNNNNNNNNNNNNNNNNNNNAAANNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnDDDDDDDDDDDDNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnDDDDDDDDDDDDNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNnnnnnnnnnnnnnnnnnnnnnnnnDDDDDDDDDDDDNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+"NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"
+]
+}
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "dirt path",
+"g": "grass",
+"w": "water",
+"b": "bridge / deck over water",
+"s": "snow",
+"r": "rock (cannot walk)",
+"x": "the crater pit",
+"f": "landing pad / dock",
+"c": "corn (cannot walk; the rows are the walls)",
+"d": "sand",
+"m": "a frame",
+"l": "lava (cannot walk)",
+"h": "canyon floor",
+"k": "cloud you walk on",
+"v": "open sky (a fall)",
+"u": "sea floor",
+"a": "the drop into the dark",
+"B": "building, lander",
+"i": "ice",
+"o": "ledge, tracks",
+"y": "ring ice",
+"q": "the collider ring corridor",
+"e": "grey dust",
+"n": "red ground",
+"z": "the drop",
+"j": "plank pier / deck",
+"G": "storm cloud you walk on / the bright rim",
+"V": "nothing (cannot walk)",
+"D": "dunes / the pyramid's steps",
+"R": "red carpet / hot floor",
+"T": "hedge / kelp (cannot walk)",
+"S": "the Sun (cannot enter)",
+"N": "open space (fly the ship, or float)",
+"Q": "an orbit (a guide line, not a wall)",
+"E": "Earth",
+"A": "asteroid"
+}
+}

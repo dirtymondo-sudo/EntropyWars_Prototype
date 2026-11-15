@@ -3057,7 +3057,7 @@ All in `docs/disaster-city/districts/U.js`; nothing removed, every building keep
 - **The looks**: the old campus's BRICK / STONE are now the coursed `calm_castle` sheet warmed with a tint + `gain` (sandstone), MARB = `calm_flagstone` (granite trim), SLATE = `calm_darkstone` (grey slate), BROWN = `calm_sandstone` darkened (brownstone), IVY = `calm_hedge`. `look()` reads a 4th element = the part's `gain`.
 - **`lancet()`**: a pointed window = the sheet's strip + a thin gable plate of the same glass over it (the library's great window with a granite mullion + transom, its side windows, the clock tower's).
 - **The carillon tower** (Lecture hall): a 7 m square shaft to 24 m on the front corner no roof route touches (`routeFree`), slit windows, an open belfry with three copper bells, an open crown (eight piers, ring, stone spirelet, four pinnacles), top about 43 m; one ghost block. No bell sound (no SFX generation).
-- **THE TOMB** (Research annex, kind `secret`): windowless brownstone, pilasters, stepped flat roof, iron panel + pediment over the security doors; the `skull` prop (h 0.85) over them and `psx_padlock_1` on the frame (a prop `y` >= 1 in a district file is a height over the plot's ground: the tool adds the plot's level). Out of `SCI` (no hazard plates), in `OLD`. A carved skull-and-bones plaque (Meshy) waits for mondo's OK on a concept.
+- **THE TOMB** (Research annex, kind `secret`): windowless brownstone, pilasters, stepped flat roof, iron panel + pediment over the security doors; the `skull` prop (h 0.85) over them and `psx_padlock_1` on the frame (a prop `y` >= 1 in a district file is a height over the plot's ground: the tool adds the plot's level). Out of `SCI` (no hazard plates), in `OLD`. The carved skull-and-bones plaque = catalogue `tomb_plaque` (`Assets/world/props/meshy/tomb_plaque.glb`, Meshy text-to-3d, mondo's OK on the concept 11-15 20:04; originals in project files university-district/meshy/), hung at y 2.8 over the doors in place of the loose skull.
 - **Dorm**: dormers on every roof slope (instanced box + slate cap + window), two pinnacles and a pointed hood at the archway, an iron bike rack in the passage (no bike model on R2 in the catalogue).
 - **`OLD` kinds** get ivy on their SOUTH wall (the face looking down +z whatever the row's rot), a `stone_urn` each side of the first door, and (dorm, lecture, library, cafe) a drawn notice board with flyers.
 - **Street**: every U tree 1.3x taller, the Campus green's 1.7x (old elms); a rowboat on trestles by the bandstand stands in for the rowing shell; bake-disaster-city.js `BENCH.U` = `iron_garden_bench`, `LOOKS.U.bg` = college blue `#1d3a6e`; the name boards' maroon is the same blue.
@@ -3808,7 +3808,7 @@ mondo: "start a thread to start on the desert" · "put the circus in the desert 
   four tiers to 14 m, the North Stair; Khafre 35 m (stair west); Menkaure 21 m (stair north); the Sphinx is plateaus + skin, not climbed.
 - **MOVED IN, NOT REMADE:** the old flight line's tower rows are copied whole from the old room by the tool; the old rooms' people keep their own
   lines (the tool reads `say` from the old literals, so the old literals must stay). The carnival's pieces, people and lines are the Circus.
-- **THE WAYS:** link `downtown_desert` (Disaster City south park gate, free door x -64.75 z 241.5 -> the highway's north end, wall n x -161);
+- **THE WAYS:** link `downtown_desert` (Disaster City's own highway way out after the district move: `docs/disaster-city/move.js` ways P03-03 S is `open: true`, so the city tool leaves the fence and barricades off and prints the place; free door x -105 z 247.6 -> the highway's north end, wall n x -161);
   `gobekli_giza` b end -> the Desert's east wall z 73.5 (Robbers' Tunnel); Room 444's bay door = `siteRooms.entry.prebuilt_giza` -> the Tomb Door in
   the Great Pyramid's west face; Hangar 18's `flightline` door -> `hangar`; the White Rooms' `yard` / `stormdrain` -> `ward` / `stormdrain`;
   the tunnel platform's `carnival` door -> `tunnel` (by the ticket booth); the Mandela Room's `mirrors` -> `mirrors`. Room 51 still lands in Hangar 18.
@@ -3867,3 +3867,77 @@ Plan picture + the built map: /mnt/project-files/disaster-city-relayout/.
   bay door, the tape.
 - Checked offline only (load-data.js: 44 residents place, terrain feet + sea at the quay / beach / districts, a flood over the squares
   reaches all 144 plots). NOT seen in game.
+
+## DISASTER CITY, THE ROADS JOIN AGAIN (2026-11-15)
+
+mondo 11-15 19:04, after the district move left four street nets: "delete some buildings ... get rid of the most useless ones to connect
+the roads again. why ... would i want roads and a traffic system and cars if you arent gonna connect the roads". ONE street net now.
+
+- THE GYM LANE (Southside's Boxing gym plot P03-00): the west avenue met the gym head on. The row house east of the gym (P03-00-B2, a
+  walk-in home) is TAKEN OUT (move.js `gone`), the avenue bends two squares east past the gym (two squares wide, cx 43-44, cy 96-100)
+  and back. The gym stays. Its three residents live in the Southside apartments (P00-01-B2) now.
+- THE PERMIT LANE: the university avenue runs two squares into the Permit offices' plot and turns east along its south edge (two squares
+  wide, cy 46-47) to the foot of the financial avenue. No building removed (the lane took the Permit offices' south walk).
+- Both lanes are flat: levels.js puts the gym's plot on 6, the Permit offices and the Faculty homes on 10.
+- Bayside's streets (the old police line) carry cars: 29 police cars / barricades / trucks that stood in a lane are parked at the kerb.
+- Tool: move.js `gone` (a building taken out; thrown like the others so no other building's dice move, then its row is dropped; a district
+  file asks `ctx.gone[id]`), seam ops `rect` + `port`, `streets` (a lane's middle line for the road markings), a fence the home dice put
+  on a plot line is cut where a street crosses it, `clearLanes` (nothing on the ground stands within 3.2 m of a traffic line).
+- THE TRAFFIC: west avenue line (Vatican gate, Civic street, Financial avenue, Permit lane, avenue, gym lane, south street), the cross
+  street the whole city wide, the east ring round Bayside both ways, gate-to-gate run, the port's trucks out along the cross street.
+  20 vehicles, 5 signals (16 arms), bus line 1 west side, line 2 cross street + east ring (two buses).
+- Not done, offered: a 2-lane link from the south street east into the port (it would close a second loop; the dry-berth tanker is in
+  the way), a straight avenue past the gym (needs the gym gone).
+- Checked offline: every route sampled on carriageway squares (only the pavement bands at junctions are not), no prop in a lane,
+  44 residents place, nothing steep or closed. NOT seen in game.
+
+- **THE MESHY PIECES (second delivery, 2026-11-15, mondo 19:01 "okay go ahead"):** `saguaro_cactus`, `prickly_pear`, `covered_wagon`, `water_tower_west`,
+  `hitching_rail` (concept -> image-to-3D meshy-t2.5, base y 0, metallic 0, `.opt.glb` beside each on R2 `Assets/world/props/meshy/`, manifest rows,
+  MODEL_LIST; originals + `run.py` / `prep.mjs` in project files `desert-plots/meshy/`). Catalogue rows "THE DESERT'S PIECES". bake-desert.js places
+  9 hitching rails along Main Street, 2 wagons at the Wagon Camp, the water tower by the windmill and 80 cacti (46 saguaro, 34 prickly pear) seeded
+  on the plan's open sand only (never the base, the circus, Main Street or beside another piece). Not seen on screen.
+  CACTI REMADE (mondo 11-15 19:20, pin on the model sheet: "can you try to get them without the mound"): both cacti made again from a prompt that asks
+  for the plant only, cut flat at the foot; same keys and R2 paths, replaced in place (the manifest's new sha fetches them). The first versions are in
+  project files `desert-plots/meshy/v1/`. The prickly pear still has a few pale slivers between pads (Meshy's bake).
+
+- **NO PRICKLY PEAR FOR NOW (mondo 11-15 19:30: "just dont use the prickly pear cactus for now").** bake-desert.js `PEARS = 0`: the Desert plants 60 saguaros and no prickly pear. The model, its R2 file and its catalogue row stay (the editor can still place it); set `PEARS` to plant it again.
+
+## THE MOUNTAINS ON PLOTS — the mountain zone, first delivery (2026-11-15)
+
+mondo 11-15 18:17: "there should be a mountain zone with 3 main trails/peaks you can end up. Mt shasta - woods mountain trail, snowy mountain trail that
+leads to north pole village, mountains and woods separate camelot from the north pole. and another mountain trail that leads to mount olympus. And there
+should be a ski loft and ski slopes, for skateboarding." Plan OK'd 19:37 ("okay that's good"; world layout 3, /mnt/project-files/world-zones-plan/).
+
+**Tool + source:** `node bake-mountains.js [--dry-run]` writes TWO rooms into data.js between `MOUNTAINS-BEGIN` / `MOUNTAINS-END` from
+`docs/areas/mountains/layout.json` (16x8 plan, 72 plots, 12x12 squares of 3.5 m a plot). `MTN_DUMP=mtn|pole` prints the walked map.
+- `site_prebuilt_northpole_plots` (plan columns 0-3, 16 plots): the North Pole village. Walk-in Workshop (the old hearth door to the Haunted Hall is
+  inside it), 16 `xmas_house` cottages, the Pole, the village tree, Santa Clause / gnome / yeti with their old lines, the frozen lake (a grind rail).
+- `site_prebuilt_shasta_mountains` (plan columns 4-15, 56 plots): Snowy Pass (Pass Gate, High Pass cairn, rope bridge over the crevasse), the Ski
+  Lodge + slopes (walk-in Lodge, Rental Hut, Warming Hut, Top Station; five runs on the slope sheet so the board rolls them: Bunny Hill, Blue Run,
+  Black Run through the trees, the Big Jump kicker, the Slalom gates, plus the Half-Pipe banks), Mount Shasta (Summit crater + cloud, Helen Lake camp,
+  steam vents with the Lemuria adit, Bunny Flat, Panther Meadows, the spring, the Trailhead), Mount Olympus (Temple walk-in, twelve thrones, Colonnade,
+  Stadium, Amphitheatre, terraces, olive grove, Grand Stair).
+- Ground: `terrain.slope` heights from the plot levels (3.5 m a level, blended), rock = MASS that rises away from the walked ground (cap 26 squares),
+  drifts and cloud = MASS, crevasse sunk. Edges are mountains all round. The tool flood-fills from the spawn with the walker's climb limit: all plots
+  reached, 0 steep steps (it throws otherwise).
+- The plan had three gaps the tool cuts open (written in the tool): a hub override on P06-02, an extra port P05-00 S for the ridge, a two-wide Grand Stair
+  and the Colonnade walk carried through the Cloud Line.
+
+**Ways (all two-way):** Pass Gate <-> North Pole (doors `pass`); the Woods Snowline P00-00 north door `shasta` <-> the Trailhead door `woods`
+(bake-woods.js); links `northpole_camelot` (Camelot's north-gate sleigh road, now the new village's south wall x 45.5), `northpole_haunted`,
+`shasta_lemuria`, `heaven_olympus` (the Grand Stair, north wall), `lodge_olympus`, NEW `vatican_olympus` (Vatican courtyard north wall <-> the Pilgrim
+Stair) and NEW `downtown_mountains` (Disaster City's mountain road: `docs/disaster-city/move.js` ways P08-04 N is `open` now, free door x 105 z -247.6
+<-> the Lodge Yard's south road). HQ bay doors: Shasta at Bunny Flat, Olympus at the Amphitheatre (`bay_olympus`), North Pole on the village's south wall.
+Hub `mountains` groups the three sites on the map.
+
+**Old rooms:** `site_prebuilt_shasta_slopes`, `site_prebuilt_olympus_summit`, `site_prebuilt_northpole_village` are in `DOOR_HQ.retired` (saves /
+Continue / map land in the new rooms); their literals stay as PvP board sources (HQ_ARENA_RULES.picks), no door leads to them.
+
+**Not done / to know:**
+- NOT SEEN ON SCREEN (no browser run; compiled headless only: no NaN, heights -1.6..38.5 m, every door resolves both ways).
+- The chairlift is towers + gondola chairs + a door pair (`lift_bottom` / `lift_top`, same room); nothing rides the cable.
+- The Woods' Upper Shelf has no door up (the plan drew two joins; only the Snowline trail is cut).
+- No encounter tables (HQ_AREA_ENCOUNTERS has none for the old rooms either; those are mondo's baked tables). No Ice Queen placed.
+- No Meshy pieces, nothing new on R2: buildings are texbuilding + arch rows, the rest catalogue props.
+- The big room compiles in ~23 s in node (Woods / Camelot ~10 s; cost is hqTerrain ramps + bridges per node). Watch the load on his Mac.
+- The world plan's Ice Wall and the Deep-to-Area-51 way are still open with him.

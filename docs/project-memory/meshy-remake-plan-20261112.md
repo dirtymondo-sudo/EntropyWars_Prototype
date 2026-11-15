@@ -1,0 +1,19 @@
+---
+name: meshy-remake-plan-20261112
+description: 11-12 PR #1159: docs/notes/meshy-remake-plan.md = THE plan for remaking the rest of the Meshy roster (clothes on MPFB body + accurate faces); read before any remake work
+metadata:
+  type: project
+  modified: 2026-11-12T04:03:01.072Z
+---
+mondo 11-12 04:00Z (thread in the owner project): "make a plan doc for future sessions to continue this process for the rest of the roster that needs it ... make the models more realistic and iron out the kinks of the meshy models and improve them, and each one will probably need visual verification like these 3 did. Also I want to get the faces a little more accurate, don't know if you can make custom face/body textures".
+
+Plan = repo `docs/notes/meshy-remake-plan.md` (copy /mnt/project-files/meshy-parts-20261112/MESHY_REMAKE_PLAN.md), tracker row 21e. Holds: per-unit recipe, THE LOOK CHECK (4 sides + walk, WebGL2), kinks solved + open (K1 softer textures, K2 no sway, K3 wizard elbows unconfirmed, K4 no battle check, K5 robe triangle, K6 other genders), FACE pilot (custom head shape + custom skin per unit from its own Meshy head = the PR #1134 Morgan mechanism; automatic version UNPROVEN, cowboy first), roster groups (A ~80 people-in-clothes models, B 17 creatures wait on row 18, C keep own), batches of 3-4 with his look between, 15 credits/model.
+
+FACE PILOT DONE 11-12 PR #1164 (mondo 04:04Z "yeah lets do face pilot and cowboy and demo starters is good"): repo `bake-face.py` = OLD unit GLB head (never the T2 remake, its face is a blur) -> MediaPipe landmarks (pip install mediapipe; apt libegl1 libgl1; face_landmarker.task) -> custom shape `cowboyFace` + skin `ew_face_cowboy` on the remade cowboy look (beard piece off, beard is in the skin). Blink/talk/smile/frown checked. Rules + known faults: character-creator.md "THE UNIT FACES" (eye rings + lips move as one; teeth/tongue rigid with lips; no paint above brows / behind face outline). Known: lighter forehead, heavy brow shadow, beard bulk on chin, tongue high. Proof /mnt/project-files/meshy-parts-20261112/cowboy_face_pilot.jpg. Probe look.js has FACE='name:{pose};...' (Face Lab poses).
+ROUND 2 PR #1166 (his 04:46Z "shadow/darkness above his eyes is too much"): the band was mostly SHAPE (brows set back under an unmoved forehead; flat fit_check showed no band) + the brim shadow baked in the paint + beard bulk on the chin; all three now rules in bake-face.py. Proof cowboy_face_round2.jpg.
+His 05:10Z "okay thats better" + 05:13Z "yes" to faces on knight, wizard AND the demo starters batch. KNIGHT + WIZARD FACES PR #1168 (knightFace/wizardFace, ew_face_knight/wizard; hairrgb/hairside mirror rule for hair over the face; per-unit commands in character-creator.md THE UNIT FACES). Tongue showing in Face Lab talk pose = stock heads' own. Proof three_faces.jpg.
+KNIGHT SOFT FACE PR #1176 (his 05:46Z: fitted knight "like an ogre or an ugly instagram model", old Meshy face prettier, "not a wide face or jawline"): a painted stylised/female face is NOT fitted in full. bake-face.py opt-in params depth/wide/low/browfit/lipsrigid/lips (round 3 in THE UNIT FACES), clean stock skin toned to her, creator brows + lashes + lip tint + long hair mh_long01. Judge in the game viewer beside the old model, never fit_check alone. Her painted anime eyes/liner cannot carry over (no make-up layer). Proof knight_face_soft.jpg. WAITING on his look.
+FIRST BATCH = demo starters in group A (his word): zombie F, catgirl F, robinhood M, djinn M, mummy F, angel F, quarterback M. Own thread requested from the coordinator (clothes + faces).
+
+**Why:** he wants any future session to continue without re-deriving the process.
+**How to apply:** new remake/face thread briefs say "read docs/notes/meshy-remake-plan.md, update its status table in the same PR".  Related [[meshy-separate-parts-20261112]] [[custom-head-likeness-20261111]] [[character-models-plan-doc]]
