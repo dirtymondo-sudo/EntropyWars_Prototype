@@ -33166,7 +33166,15 @@ const DOOR_HQ = {
                 mood: { light: 0xfff0d0 },
                 plate: { x: 0, z: -1.15, y: 2.2 },
             },
-            doors: [],   // the panel IS the door: every floor's lobby lands here, every button leaves
+            /* THE WAY OUT (2026-11-15, mondo: "once i walk into it i am stuck unless i pick a different floor"): the car's own
+               doors, back onto the floor it was boarded from. map.js _hqGoRoom points `action` at that floor's `elevator`
+               door on the way in (the mezzanine until then); the panel's YOU ARE HERE row steps out the same way. */
+            doors: [
+                { id: 'out', wall: 's', x: -0.1, leaf: null, proc: 'elevator',
+                  label: 'THE DOORS', sub: 'STEP OUT · THIS FLOOR',
+                  action: { room: 'central_egress', at: 'elevator' },
+                  desc: 'The doors you came in through. They open on the floor the car is standing at.' },
+            ],
             counters: [
                 { id: 'panel', x: 0.85, z: 0.95, face: 0, plateY: 1.6, radius: 1.6, verb: 'PRESS',
                   label: 'THE FLOOR PANEL', sub: 'B · G · M · 2 · 3 · 4 · PH', action: {},
