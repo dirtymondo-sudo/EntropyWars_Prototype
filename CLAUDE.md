@@ -144,6 +144,7 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
 - `bake-desert.js` (2026-11-15): writes The Desert on plots (`site_prebuilt_area51_desert`, from `docs/areas/desert/layout.json`). Notes: areas-complexes.md "THE DESERT ON PLOTS".
 - `bake-mountains.js` (2026-11-15): writes The Mountains + the North Pole village on plots (`site_prebuilt_shasta_mountains`, `site_prebuilt_northpole_plots`, from `docs/areas/mountains/layout.json`) + the Hollywood Hills (`site_prebuilt_shasta_hills`, layout `rooms[1]`). Notes: areas-complexes.md "THE MOUNTAINS ON PLOTS" + "THE HOLLYWOOD HILLS + THE SWAP".
 - `bake-estate.js` (2026-11-15): writes The Estate on plots (`site_prebuilt_skinwalker_estate`, from `docs/areas/estate/layout.json`; the corn is the wall). Notes: areas-complexes.md "THE ESTATE ON PLOTS".
+- `bake-beach.js` (2026-11-15): writes The Beach on plots (`site_prebuilt_bermuda_beach`, a sea room, from `docs/areas/beach/layout.json`; the heights are the map). Notes: areas-complexes.md "THE BEACH ON PLOTS".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
   the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes
