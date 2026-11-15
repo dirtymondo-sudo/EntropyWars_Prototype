@@ -3349,6 +3349,30 @@ mondo 11-15: "do a font pass on all of the buildings that have text"; his OK on 
   models. Seen: the real function on the real baked keys in a bare page (/mnt/project-files/city-sign-fonts/built_real_sign_code.jpg), not
   in the game (RULE #1c).
 
+## DISASTER CITY, THE ENTERTAINMENT DISTRICT — LOS ANGELES (2026-11-15)
+mondo 11-15 12:19: "I want each district to be based off of a major city ... entertainment or film could be LA"; he picked "Build it as drawn"
+on the real-cities plan (`/mnt/project-files/disaster-city-real-cities/plan.html` section d-e). All of it is in `docs/disaster-city/districts/E.js`.
+- **THE PAINTED STUCCO**: the stucco sheet is mid grey, so every pastel over it read as mud (the old ×1.7 lift clamps a pastel to white).
+  `P()` now gives every stucco part (`key === ST`, not a roof) its own colour and the arch row's `gain` (`STG` 2.2, Bayside's painted wall);
+  a roof with stucco gable ends takes the gain too and its own tint divided by it. `free()`'s P does the same.
+- **The palette**: cream / peach / salmon stucco and clay roofs (`CLAY`, the corrugated sheet tinted) on the pawn shop, costume shops, masks,
+  lofts, Comedy theater, canteen, Stage workshop, apartments, bakery, crew house; the backstage dock is a cream painted shed. The casino,
+  the arcade, the noodle bar, the cabaret, the drive-in keep their own looks (every building unique).
+- **`LA[id]`** (called after LETTERS in `B`): `arcade()` / `archw()` = arched openings from six thin boxes; `stageNo()` = big painted numbers
+  (Film studio 1, backstage dock 2, Stage workshop 3, prop store 4); the Recording studio's record stack + needle spire on its round lobby;
+  the Concert hall's band shell (five nested half domes, `arc: 180`, on the podium roof over the entrance, open north to its walk);
+  the Cinema's red columns, jade roof, purple blade 17 m with CINEMA down it.
+- **The street block** (foot of the file, squares as district columns/rows 0..47): THE HILL LETTERS = a dry headland of domes in the bay off the
+  east edge at x 300 (the city's east is the coast, there is no hill: the hill is built), DISASTER CITY in 5×7 block letters, three leaning or
+  slipped; one merged arch row, no light, no model. THE STAR WALK = a gold-sheet star in a terrazzo square in every square of the boulevard's two
+  walks. PALMS 11.5-15 m on free yard squares beside the walks (never on a walk: they block; the bake's soil rule beds them). THE STUDIO GATE on
+  row 12 over the walk to the Film studio's door (piers on squares 40 and 43, ghost blocks). THE CINEMA FORECOURT (squares 41..42 × rows 35..39):
+  red paving, eight handprint slabs, the temple gate, rope_stanchion ×6, studio_light ×2 as the searchlights, a popcorn cart. THE LANTERN LANE =
+  the walk of rows 29..30 in two stretches (noodle bar side, Arcade side; the Stage workshop stands between): paper_lantern props hung at y 3.45
+  on strings, a red gate at each west end, blade signs, four noodle stalls on yard squares (ghost blocks). Three TOUR MAP boards.
+- Not made: a Meshy searchlight and a Meshy studio water tower (concepts go to mondo first); the water tower is still the code-built one.
+- Proof: `/mnt/project-files/dc-entertainment/la_built.jpg` (offline render of the baked rows, not the running game).
+
 ## DISASTER CITY, THE CITY MARKS (2026-11-15)
 mondo 11-15: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city branding/logo for certain
 buildings or props or banners"; he corrected shield B (bolt, not a crack) and the flag's star on the sheet, then "the rest looks good for now".
