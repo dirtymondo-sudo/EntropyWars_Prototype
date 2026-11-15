@@ -4923,7 +4923,8 @@
                 try {
                     const def = (typeof window.questDef === 'function') ? window.questDef(q.quest || q.id) : null;
                     const sc = (id) => (id && typeof window.storyCutscene === 'function') ? window.storyCutscene(id) : null;
-                    const btn = (attrs, row, tip) => `<button class="hq-btn" ${attrs} title="${_hqEsc(tip)}">REPLAY ▸ ${_hqEsc(String(row.title || 'THE CUTSCENE').toUpperCase())}</button>`;
+                    const btn = (attrs, row, tip) => `<button class="hq-btn" ${attrs} title="${_hqEsc(tip)}">REPLAY ▸ ${_hqEsc(String(row.title || 'THE CUTSCENE').toUpperCase())}</button>`
+                        + `<button class="hq-btn" data-scene-ed="${_hqEsc(row.id || '')}" title="Change this cutscene's lines and write notes on its shots (the cutscene editor)">EDIT</button>`;   // THE CUTSCENE EDITOR (2026-11-15)
                     let bs = '';
                     if (def && def.intro && sc(def.intro)) bs += btn('data-quest-intro="1"', sc(def.intro), 'Play the opening again');   // scene A: seen before the first stage
                     ((def && def.stages) || []).forEach(st => {
@@ -4989,6 +4990,216 @@
             intro: () => _introReplay(),   // dev: scene A, the opening
             replayStage: (quest, stage) => _questStageReplay(quest || 'orientation', stage || 'desk'),   // a stage's own scene (E at Rhonda's desk)
         };
+        /* ══ THE CUTSCENE EDITOR — THE PAGE (2026-11-15, mondo: "a cutscene editor so I can change the dialogue easily and give
+           notes and export it all for you to work with and implement"). `window.EWSceneEd.open(sceneId)` puts one full-screen
+           window over whatever is up (Settings > Developer > Open Cutscene Editor; the QUESTS page's EDIT beside every REPLAY).
+           The scenes in play order on the left, every shot of the picked scene on the right: type in a line and it is changed
+           (yellow, the shipped words under it, RESET), add a line after a shot, cut one, split one at the cursor; any number
+           of tagged notes per shot and one for the whole scene; PLAY FROM HERE runs the journal's own replay from that shot
+           (in the building, on a part of the quest already finished). EXPORT FOR CLAUDE saves the file and copies the text.
+           All of it is data.js's record (sceneEd*: localStorage, his device only, viewer-local: RULE #2 has nothing to
+           mirror); typing never redraws the page (the caret stays), only the buttons do. ══ */
+        let _sedCur = null, _sedCaret = null, _sedMsg = '';
+        const _sedEl = () => document.getElementById('ewSceneEd');
+        function _sedInHq() { try { return state.gameState === GS.HQ; } catch (e) { return false; } }   // the pause menu over the building counts: PLAY closes it first
+        function _sedCanPlay(sc) {   // '' = it can play now, else why not
+            if (!sc || !sc.play) return 'THIS SCENE HAS NO REPLAY YET';
+            if (!_sedInHq()) return 'TO PLAY A SCENE, OPEN THE EDITOR IN STORY MODE: PAUSE > QUESTS > EDIT';
+            if (!window.EWScene || window.EW_NO_CUTSCENES) return 'CUTSCENES ARE SWITCHED OFF';
+            let q = null;
+            try { const J = window.questJournal(_hqProfile()); q = J ? J.active.concat(J.completed).find(x => x.quest === sc.need.quest) : null; } catch (e) { q = null; }
+            if (!q) return 'THIS QUEST HAS NOT STARTED ON THIS PROFILE';
+            if (sc.need.stage) { const sd = q.stages.find(x => x.id === sc.need.stage); if (!sd || !sd.done) return 'FINISH THIS PART OF THE QUEST ONCE, THEN IT REPLAYS'; }
+            return '';
+        }
+        function _sedPlay(id, beat) {
+            const sc = window.sceneEdList().find(x => x.id === id); if (_sedCanPlay(sc)) { try { playSfx('uiError'); } catch (e) {} return false; }
+            try { window.EWScene.from(id, beat | 0, sc.play.chain || null); } catch (e) {}
+            _sedClose();
+            try { if (typeof window._hqClosePause === 'function') window._hqClosePause(); } catch (e) {}
+            let ok = false;
+            try {
+                if (sc.play.kind === 'intro') ok = _introReplay();
+                else if (sc.play.kind === 'stage') ok = _questStageReplay(sc.play.quest, sc.play.stage);
+                else ok = window._questFightGo(sc.play.fight, { replay: true, only: sc.play.only });
+            } catch (e) { console.warn('[SCENE ED] play', e); ok = false; }
+            if (!ok) { try { window.EWScene.from(null); playSfx('uiError'); _hqToast('<b>THE SCENE DID NOT START</b><span>TRY AGAIN IN A MOMENT</span>', 3200); } catch (e) {} }
+            return !!ok;
+        }
+        function _sedCountsText(c) { return c.lines + (c.lines === 1 ? ' LINE CHANGED' : ' LINES CHANGED') + ' · ' + c.notes + (c.notes === 1 ? ' NOTE' : ' NOTES'); }
+        function _sedSceneSmall(id) { const c = window.sceneEdCounts(id); return (c.lines || c.notes) ? _sedCountsText(c) : ''; }
+        function _sedRowHtml(id, row, E, i, canPlay) {
+            const b = row.beats[i], L = E && E.lines[i], A = E && E.adds[i], N = (E && E.notes[i]) || [], tags = window.SCENE_ED_TAGS;
+            const has = !!(L || A || N.length), cut = !!(L && L.cut);
+            let prevWho = ''; for (let k = i; k >= 0 && !prevWho; k--) if (row.beats[k].say && row.beats[k].say.who) prevWho = row.beats[k].say.who;
+            let h = `<div class="sed-row${has ? ' has' : ''}" data-row="${i}"><div class="sed-hd"><span>SHOT ${i + 1} · ${_hqEsc(window.sceneEdShotInfo(b))}</span><div class="sed-acts">`
+                + `<button type="button" class="sed-chip" data-sed="note" data-i="${i}">+ NOTE</button>`
+                + `<button type="button" class="sed-chip" data-sed="play" data-i="${i}"${canPlay ? '' : ' disabled'}>▸ PLAY FROM HERE</button>`
+                + (L ? `<button type="button" class="sed-chip" data-sed="reset" data-i="${i}">↺ RESET LINE</button>` : '') + '</div></div>';
+            if (b.say) {
+                h += `<div class="sed-who">${_hqEsc(b.say.who || '')}</div><textarea rows="1" spellcheck="true" class="${L && !cut ? 'ch' : ''}${cut ? ' cut' : ''}" data-line="${i}"${cut ? ' readonly' : ''}>${_hqEsc(L && !cut ? L.text : b.say.text)}</textarea>`
+                    + `<div class="sed-was" data-was="${i}"${L ? '' : ' style="display:none"'}>${cut ? 'THIS LINE IS CUT' : 'WAS: ' + _hqEsc(b.say.text)}</div>`;
+            }
+            ((A && A.list) || []).forEach((a, n) => {
+                h += `<div class="sed-add"><div class="sed-ttl">NEW LINE AFTER SHOT ${i + 1} · IT PLAYS ON THIS SHOT'S LAST FRAME</div>`
+                    + `<input type="text" data-addwho="${i}:${n}" value="${_hqEsc(a.who || prevWho)}" placeholder="WHO SAYS IT">`
+                    + `<textarea rows="1" spellcheck="true" data-add="${i}:${n}" placeholder="The new line">${_hqEsc(a.text || '')}</textarea>`
+                    + `<button type="button" class="sed-chip" data-sed="adddel" data-i="${i}" data-n="${n}">✕ REMOVE</button></div>`;
+            });
+            N.forEach((nt, n) => {
+                h += `<div class="sed-note"><div class="sed-acts">` + tags.map(t => `<button type="button" class="sed-chip${nt.tag === t ? ' sel' : ''}" data-sed="tag" data-i="${i}" data-n="${n}" data-tag="${t}">${t}</button>`).join('') + '</div>'
+                    + `<textarea rows="1" spellcheck="true" class="note" data-note="${i}:${n}" placeholder="What should change in this shot?">${_hqEsc(nt.text || '')}</textarea>`
+                    + `<button type="button" class="sed-chip" data-sed="notedel" data-i="${i}" data-n="${n}">✕ REMOVE</button></div>`;
+            });
+            h += `<div class="sed-acts sed-foot"><button type="button" class="sed-chip" data-sed="add" data-i="${i}">+ ADD A LINE AFTER</button>`;
+            if (b.say && !b.choice) h += `<button type="button" class="sed-chip" data-sed="cut" data-i="${i}">${cut ? 'RESTORE THIS LINE' : 'CUT THIS LINE'}</button>` + (cut ? '' : `<button type="button" class="sed-chip" data-sed="split" data-i="${i}">SPLIT AT THE CURSOR</button>`);
+            return h + '</div></div>';
+        }
+        function _sedFit(root) { (root || _sedEl()).querySelectorAll('textarea').forEach(ta => { if (ta.closest('.sed-out') || ta.hasAttribute('data-snote')) return; ta.style.height = 'auto'; ta.style.height = (ta.scrollHeight + 2) + 'px'; }); }
+        function _sedTopText() { return _sedMsg || (_sedCountsText(window.sceneEdCounts()) + ' · SAVED ON THIS DEVICE'); }
+        function _sedRender(focusSel) {
+            const el = _sedEl(); if (!el) return;
+            const list = window.sceneEdList(); if (!list.length) { el.innerHTML = '<div class="sed-win sed-top"><button type="button" class="sed-btn back" data-sed="back">◂ BACK</button><h1>CUTSCENE EDITOR</h1><span class="sed-mini">NO CUTSCENES ON FILE</span></div>'; return; }
+            if (!_sedCur || !list.some(x => x.id === _sedCur)) _sedCur = list[0].id;
+            const sc = list.find(x => x.id === _sedCur), row = window.storyCutsceneShipped(sc.id), E = window.sceneEdScene(sc.id, false), why = _sedCanPlay(sc);
+            const main0 = el.querySelector('.sed-main'), keep = (main0 && main0.getAttribute('data-id') === sc.id) ? main0.scrollTop : 0;
+            const nLines = row.beats.filter(b => b.say).length;
+            let h = `<div class="sed-win sed-top"><button type="button" class="sed-btn back" data-sed="back">◂ BACK</button><h1>CUTSCENE EDITOR</h1><div class="sed-top-r"><span class="sed-mini" id="sedTop">${_hqEsc(_sedTopText())}</span>`
+                + `<button type="button" class="sed-btn${window.sceneEdBarOn() ? ' on' : ''}" data-sed="bar" title="PREV SHOT, NEXT SHOT and N · NOTE on screen while a scene plays">NOTES BAR IN SCENES: ${window.sceneEdBarOn() ? 'ON' : 'OFF'}</button>`
+                + `<button type="button" class="sed-btn ok" data-sed="export">EXPORT FOR CLAUDE</button></div></div>`;
+            h += '<div class="sed-win sed-side"><div class="sed-ttl">SCENES, IN THE ORDER THEY PLAY</div><div>'
+                + list.map(x => { const sm = _sedSceneSmall(x.id); return `<button type="button" class="sed-sc${x.id === sc.id ? ' on' : ''}" data-sed="scene" data-id="${_hqEsc(x.id)}">${_hqEsc(String(x.title).toUpperCase())}<small data-small="${_hqEsc(x.id)}">${_hqEsc(sm)}</small></button>`; }).join('') + '</div>'
+                + `<div class="sed-ttl">NOTE FOR THE WHOLE SCENE</div><textarea class="note" data-snote="1" rows="4" spellcheck="true" placeholder="Anything about the scene as a whole">${_hqEsc((E && E.note) || '')}</textarea>`
+                + `<div class="sed-acts"><button type="button" class="sed-btn ok" data-sed="play" data-i="0"${why ? ' disabled' : ''}>▸ PLAY THIS SCENE</button></div>`
+                + (why ? `<div class="sed-mini">${_hqEsc(why)}</div>` : '')
+                + `<div class="sed-acts"><button type="button" class="sed-chip" data-sed="clear" data-what="notes">CLEAR THIS SCENE'S NOTES</button><button type="button" class="sed-chip" data-sed="clear" data-what="lines">RESET THIS SCENE'S LINES</button></div></div>`;
+            h += `<div class="sed-win sed-main" data-id="${_hqEsc(sc.id)}"><div class="sed-ttl">${_hqEsc(String(sc.title).toUpperCase())} · ${row.beats.length} SHOTS · ${nLines} LINES</div>`
+                + row.beats.map((b, i) => _sedRowHtml(sc.id, row, E, i, !why)).join('') + '</div>';
+            el.innerHTML = h;
+            _sedFit(el);
+            const main = el.querySelector('.sed-main'); if (main) main.scrollTop = keep;
+            if (focusSel) { const f = el.querySelector(focusSel); if (f) { try { f.focus(); const v = f.value || ''; f.setSelectionRange(v.length, v.length); } catch (e) {} } }
+        }
+        function _sedTouch(i) {   // typing: the counts and the row's frame follow, the page is not redrawn
+            const el = _sedEl(); if (!el) return;
+            const top = el.querySelector('#sedTop'); _sedMsg = ''; if (top) top.textContent = _sedTopText();
+            const sm = el.querySelector('[data-small="' + _sedCur + '"]'); if (sm) sm.textContent = _sedSceneSmall(_sedCur);
+            if (i == null) return;
+            const E = window.sceneEdScene(_sedCur, false), r = el.querySelector('[data-row="' + i + '"]');
+            if (r) r.classList.toggle('has', !!(E && (E.lines[i] || E.adds[i] || (E.notes[i] || []).length)));
+        }
+        function _sedSay(msg) { _sedMsg = msg; const top = _sedEl() && _sedEl().querySelector('#sedTop'); if (top) top.textContent = msg; }
+        function _sedExport() {
+            const el = _sedEl(); if (!el) return;
+            const X = window.sceneEdExport(), txt = window.sceneEdExportText(X);
+            const d = new Date(), p2 = n => String(n).padStart(2, '0');
+            const name = 'Entropy_Wars_Cutscene_Notes_' + d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '-' + p2(d.getHours()) + p2(d.getMinutes()) + '.json';
+            let saved = false, copied = false;
+            if (X.scenes.length) {
+                try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(X, null, 1)], { type: 'application/json' })); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { try { URL.revokeObjectURL(a.href); a.remove(); } catch (e) {} }, 1500); saved = true; } catch (e) { saved = false; }
+            }
+            const box = document.createElement('div'); box.className = 'sed-out';
+            box.innerHTML = `<div class="sed-win"><div class="sed-ttl">EXPORT FOR CLAUDE</div><div class="sed-mini" id="sedOutMsg"></div><textarea readonly></textarea>`
+                + `<div class="sed-acts" style="justify-content:space-between"><button type="button" class="sed-btn back" data-sed="outback">◂ BACK</button><button type="button" class="sed-btn ok" data-sed="copy">COPY THE TEXT</button></div></div>`;
+            box.querySelector('textarea').value = txt;
+            el.appendChild(box);
+            const msg = () => { const m = box.querySelector('#sedOutMsg'); if (m) m.textContent = !X.scenes.length ? 'NOTHING TO EXPORT YET: CHANGE A LINE OR WRITE A NOTE FIRST.' : ((saved ? 'SAVED ' + name + ' TO YOUR DOWNLOADS. ' : 'THE FILE DID NOT SAVE. ') + (copied ? 'THE TEXT BELOW IS COPIED. ' : '') + 'DROP THE FILE, OR PASTE THE TEXT, IN A THREAD.'); };
+            msg();
+            try { if (X.scenes.length && navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => { copied = true; msg(); }, () => {}); } catch (e) {}
+        }
+        function _sedOnClick(e) {
+            const b = e.target && e.target.closest ? e.target.closest('[data-sed]') : null; if (!b || b.disabled) return;
+            const k = b.getAttribute('data-sed'), i = +b.getAttribute('data-i'), n = +b.getAttribute('data-n'), id = _sedCur;
+            const row = window.storyCutsceneShipped(id);
+            _sedMsg = '';
+            try { playSfx('uiButtonClick'); } catch (err) {}
+            if (k === 'back') return _sedClose();
+            if (k === 'outback') { const o = _sedEl().querySelector('.sed-out'); if (o) o.remove(); return; }
+            if (k === 'copy') { const ta = _sedEl().querySelector('.sed-out textarea'); try { ta.focus(); ta.select(); if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(ta.value); else document.execCommand('copy'); b.textContent = 'COPIED'; } catch (err) {} return; }
+            if (k === 'export') return _sedExport();
+            if (k === 'bar') { window.sceneEdBarSet(!window.sceneEdBarOn()); return _sedRender(); }
+            if (k === 'scene') { _sedCur = b.getAttribute('data-id'); _sedCaret = null; return _sedRender(); }
+            if (k === 'play') return _sedPlay(id, i || 0);
+            if (k === 'clear') {   // two clicks: the first one arms it
+                if (b.getAttribute('data-armed') !== '1') { b.setAttribute('data-armed', '1'); b.textContent = 'CLICK AGAIN TO CONFIRM'; b.classList.add('sel'); return; }
+                window.sceneEdClear(id, b.getAttribute('data-what')); return _sedRender();
+            }
+            if (k === 'note') { const m = window.sceneEdNoteSet(id, i, null, 'CAMERA', ''); return _sedRender('[data-note="' + i + ':' + m + '"]'); }
+            if (k === 'notedel') { window.sceneEdNoteSet(id, i, n, null, null); return _sedRender(); }
+            if (k === 'tag') { const E = window.sceneEdScene(id, false), nt = E && E.notes[i] && E.notes[i][n]; if (nt) window.sceneEdNoteSet(id, i, n, b.getAttribute('data-tag'), nt.text); return _sedRender(); }
+            if (k === 'reset') { window.sceneEdLineSet(id, i, null, false); return _sedRender(); }
+            if (k === 'cut') { const E = window.sceneEdScene(id, false), L = E && E.lines[i]; if (L && L.cut) window.sceneEdLineSet(id, i, null, false); else window.sceneEdLineSet(id, i, L ? L.text : null, true); return _sedRender(); }
+            if (k === 'add') { let who = ''; for (let q = i; q >= 0 && !who; q--) if (row.beats[q].say && row.beats[q].say.who) who = row.beats[q].say.who; const m = window.sceneEdAddSet(id, i, null, who, ''); return _sedRender('[data-add="' + i + ':' + m + '"]'); }
+            if (k === 'adddel') { window.sceneEdAddSet(id, i, n, null, null); return _sedRender(); }
+            if (k === 'split') {
+                const ta = _sedEl().querySelector('[data-line="' + i + '"]'), txt = ta ? ta.value : '', pos = (_sedCaret && _sedCaret.i === i) ? _sedCaret.pos : -1;
+                const a = txt.slice(0, Math.max(0, pos)).trim(), c = txt.slice(Math.max(0, pos)).trim();
+                if (pos <= 0 || !a || !c) { _sedSay('CLICK IN THE LINE WHERE IT SHOULD SPLIT, THEN PRESS SPLIT AT THE CURSOR'); return; }
+                window.sceneEdLineSet(id, i, a, false);
+                window.sceneEdAddSet(id, i, null, row.beats[i].say.who, c);
+                const E = window.sceneEdScene(id, false), A = E && E.adds[i]; if (A && A.list.length > 1) { A.list.unshift(A.list.pop()); window.sceneEdAddSet(id, i, 0, A.list[0].who, A.list[0].text); }   // straight after its first half
+                return _sedRender('[data-add="' + i + ':0"]');
+            }
+        }
+        function _sedOnInput(e) {
+            const t = e.target; if (!t || !t.getAttribute) return;
+            const id = _sedCur;
+            if (t.hasAttribute('data-snote')) { window.sceneEdNoteSet(id, 'scene', 0, null, t.value); return _sedTouch(null); }
+            if (t.hasAttribute('data-line')) {
+                const i = +t.getAttribute('data-line'), row = window.storyCutsceneShipped(id);
+                window.sceneEdLineSet(id, i, t.value, false);
+                const ch = t.value.replace(/\s*\n\s*/g, ' ') !== row.beats[i].say.text && !!t.value.trim();
+                t.classList.toggle('ch', ch);
+                const was = _sedEl().querySelector('[data-was="' + i + '"]'); if (was) { was.style.display = ch ? '' : 'none'; was.textContent = 'WAS: ' + row.beats[i].say.text; }
+                _sedCaret = { i: i, pos: t.selectionStart };
+                _sedFit(t.parentNode); return _sedTouch(i);
+            }
+            const two = (a) => (t.getAttribute(a) || '').split(':').map(Number);
+            if (t.hasAttribute('data-note')) { const [i, n] = two('data-note'); const E = window.sceneEdScene(id, false), nt = E && E.notes[i] && E.notes[i][n]; window.sceneEdNoteSet(id, i, n, nt ? nt.tag : 'CAMERA', t.value); _sedFit(t.parentNode); return _sedTouch(i); }
+            if (t.hasAttribute('data-add') || t.hasAttribute('data-addwho')) {
+                const [i, n] = two(t.hasAttribute('data-add') ? 'data-add' : 'data-addwho'), box = t.closest('.sed-add');
+                window.sceneEdAddSet(id, i, n, box.querySelector('[data-addwho]').value, box.querySelector('[data-add]').value);
+                _sedFit(box); return _sedTouch(i);
+            }
+        }
+        function _sedCaretNote(e) { const t = e.target; if (t && t.hasAttribute && t.hasAttribute('data-line')) _sedCaret = { i: +t.getAttribute('data-line'), pos: t.selectionStart }; }
+        function _sedOnKey(e) {
+            e.stopPropagation();   // the pause menu and the building never see the typing
+            if (e.type !== 'keydown') return;
+            _sedCaretNote(e);
+            if (e.key === 'Enter' && !e.shiftKey && e.target && e.target.tagName === 'TEXTAREA' && !e.target.hasAttribute('data-snote') && !e.target.hasAttribute('data-note')) e.preventDefault();   // a line is one card: no line breaks
+            if (e.key === 'Escape') { e.preventDefault(); const o = _sedEl().querySelector('.sed-out'); if (o) o.remove(); else _sedClose(); }
+        }
+        function _sedOpen(sceneId) {
+            if (typeof window.sceneEdList !== 'function') return false;
+            if (window.EWScene && window.EWScene.on) return false;
+            if (window.sceneEdStore().bar == null) window.sceneEdBarSet(true);   // the first time the editor opens, the notes bar comes on
+            if (sceneId && window.storyCutsceneShipped(sceneId)) _sedCur = sceneId;
+            let el = _sedEl();
+            if (!el) {
+                el = document.createElement('div'); el.id = 'ewSceneEd'; el.setAttribute('role', 'dialog'); el.setAttribute('aria-label', 'Cutscene editor');
+                el.addEventListener('click', _sedOnClick);
+                el.addEventListener('input', _sedOnInput);
+                ['keydown', 'keyup', 'keypress'].forEach(t => el.addEventListener(t, _sedOnKey));
+                ['mouseup', 'keyup', 'focusout'].forEach(t => el.addEventListener(t, _sedCaretNote));
+                ['mousedown', 'mouseup', 'wheel', 'contextmenu', 'pointerdown', 'pointerup', 'dblclick'].forEach(t => el.addEventListener(t, ev => ev.stopPropagation()));
+                document.body.appendChild(el);
+            }
+            try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+            _sedMsg = ''; _sedRender();
+            return true;
+        }
+        function _sedClose() { const el = _sedEl(); if (el && el.parentNode) el.parentNode.removeChild(el); return true; }
+        window.EWSceneEd = { open: _sedOpen, close: _sedClose, play: _sedPlay, get on() { return !!_sedEl(); } };
+        if (!window._sedWired) {
+            window._sedWired = true;
+            document.addEventListener('click', (e) => {
+                const b = e.target && e.target.closest ? e.target.closest('[data-scene-ed]') : null; if (!b) return;
+                e.preventDefault(); e.stopPropagation();
+                try { playSfx('uiButtonConfirm'); } catch (err) {}
+                _sedOpen(b.getAttribute('data-scene-ed') || null);
+            }, true);
+        }
         /* ══ THE DOOR GUN — THE PORTABLE THRESHOLD (HQ plan 9.5, 2026-09-15 rev 13) ══
            Two doors the officer places (renderer `_hqPortalAim` / `_hqPortalBuild`);
            the PAIR is one profile record (data.js `hqPortalRecord`), filed here in
@@ -10202,6 +10413,10 @@
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Spell Library — browse, edit, add, delete and reassign every spell/ability, preview animations in the Spell Lab, then export your changes as JSON for Claude to make live.${(typeof window.EWSpellMods !== 'undefined' && (() => { const c = window.EWSpellMods.counts(); const n = c.modified + c.added + c.deleted + c.learnsets + c.raceAbilities; return n ? ` <span style="color:#ffd86a">●</span> ${n} pending change group${n === 1 ? '' : 's'}${window.EWSpellMods.doc.enabled ? '' : ' (DISABLED)'}` : ''; })()) || ''}</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._goToSpellLibrary()">Open Spell Library</button>
+                        </div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Cutscene Editor — change any line of a story cutscene (it shows in the replay at once, on this device), write camera / acting / timing notes on any shot, then export it all for Claude to make live. To play a scene from it, open it in story mode: Pause &gt; QUESTS &gt; EDIT.</div>
+                        <div class="pm-set-row" style="margin-bottom:14px">
+                            <button class="pm-set-btn" onclick="window.EWSceneEd && window.EWSceneEd.open()">Open Cutscene Editor</button>
                         </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Plot Dungeons — the puzzle dungeon test build: ten dungeons made of plots that turn and slide. Progress saves per dungeon, apart from the story.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
