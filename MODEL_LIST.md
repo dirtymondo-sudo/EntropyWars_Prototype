@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 939 |
+| Asset pack | yes | 981 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -1792,6 +1792,49 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | xmas_wreath | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_wreath` | Asset pack | Christmas pack · Elbolilloduro |
 | xmas_wreath_2 | `Assets/world/packs/elbolilloduro_christmas/models/Christmas.dae#Christmas_wreath_01` | Asset pack | Christmas pack · Elbolilloduro |
 
+### Halloween pack · Elbolilloduro · CC0 — Asset pack (38)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| halloween_character_ghost | `Assets/world/packs/elbolilloduro_halloween/characters/Character_Ghost.glb` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_candles | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Candle_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_candles_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Candle_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_crop | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Farmland_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_crop_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Farmland_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_crop_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Farmland_04` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_farmland | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Farmland` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_fence | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_fence_iron | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence_Metal` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_fence_iron_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence_Metal_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_gate_leaf | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence_Metal_04` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_gate_leaf_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Fence_Metal_05` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_grave | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_06` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_grave_low | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_08` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_grave_slab | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_07` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_pumpkin | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Pumpkin` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_pumpkin_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Pumpkin_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_pumpkin_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Pumpkin_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_pumpkin_4 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Pumpkin_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_scarecrow | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Scarecrow` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_scarecrow_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Scarecrow_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_shovel | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Shovel` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_stone | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_stone_1 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_stone_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_stone_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_stone_4 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_04` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_stone_5 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Stone_05` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_straw | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Straw` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_straw_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Straw_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_tree | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_tree_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_tree_3 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree_02` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_tree_4 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree_03` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_tree_5 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Tree_04` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_wall | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Wall` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_wall_2 | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Wall_01` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+| hw_web | `Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx#Spiderweb` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
+
 ### Meshy AI, made by Claude through the Meshy API for the Disaster City interiors, Entertainment district second pass (mondo 2026-11-13: "make a list of models needed/wanted but not in the bucket or game, and make meshy versions of them"; concepts project files dc-entertainment/pass2/) — Meshy AI (27)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -2559,12 +2602,6 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | --- | --- | --- | --- |
 | elephant | `Assets/world/animals/elephant/elephant-3d.fbx` | Asset pack (author not recorded yet) | Elephant (mondo's upload, FBX) |
 
-### Halloween pack · Elbolilloduro · CC0 — Asset pack (1)
-
-| catalogue key | file (R2 bucket path) | made by | source |
-| --- | --- | --- | --- |
-| halloween_character_ghost | `Assets/world/packs/elbolilloduro_halloween/characters/Character_Ghost.glb` | Asset pack | Halloween pack · Elbolilloduro · CC0 |
-
 ### Mine · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
 
 | catalogue key | file (R2 bucket path) | made by | source |
@@ -3085,6 +3122,11 @@ These rows draw mondo's car pack (GGBot low-poly cars, Assets/vehicles/, `_CAR_P
 | tree_5 | `Assets/world/nature/retrotreepack/GLB/dead_tree_rt_2.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | tree_50 | `Assets/world/nature/OBJ/Tree_6.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
 | tree_51 | `Assets/world/nature/OBJ/Tree_9.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
+| tree_52 | `Assets/world/nature/retrotreepack/GLB/tree_rt_4_full.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_53 | `Assets/world/nature/retrotreepack/GLB/tree_rt_2_1_full.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_54 | `Assets/world/nature/retrotreepack/GLB/tree_rt_2_full.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_55 | `Assets/world/nature/retrotreepack/GLB/tree_rt_3_full.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
+| tree_56 | `Assets/world/nature/retrotreepack/GLB/tree_rt_1_full.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | tree_6 | `Assets/world/nature/retrotreepack/GLB/dead_tree_rt_1.glb` | Asset pack | Retro Tree Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | tree_7 | `Assets/world/nature/OBJ/Tree_2.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |
 | tree_8 | `Assets/world/nature/OBJ/Tree_4.obj` | Asset pack | LowPoly nature · Quaternius · CC0 |

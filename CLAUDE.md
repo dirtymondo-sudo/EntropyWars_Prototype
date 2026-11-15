@@ -139,10 +139,13 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
   lines into data.js STORY_CUTSCENES word for word; prints the cuts, added lines and notes to do by hand. Notes: story-party-progression.md "THE CUTSCENE EDITOR".
 - `bake-dungeons.js` (2026-11-14): checks the plot dungeons (data.js PD_DUNGEONS). Notes: areas-complexes.md "PLOT DUNGEONS, THE BUILD".
 - `bake-woods.js` (2026-11-15): writes The Woods on plots (`site_prebuilt_fairy_forest_plots`) from `docs/areas/woods/layout.json`. Notes: areas-complexes.md "THE WOODS ON PLOTS".
-- `bake-camelot.js` (2026-11-15): writes Camelot Kingdom on plots (`site_prebuilt_camelot_kingdom`, from `docs/areas/camelot/layout.json`; plan 3 = castle, village, town wall, moat, woods). A rebuilt area's old rooms go in data.js `DOOR_HQ.retired` in the same PR. Notes: areas-complexes.md "CAMELOT KINGDOM ON PLOTS".
+- `bake-trees.py` (2026-11-15): `python3 bake-trees.py <pack GLB folder> <out>` bakes THE FULL TREES (a Retro Tree Pack trunk + a real crown of small leaf sheets from its own leaf picture; `rt:<name>_full`, tree_52-56). Notes: areas-complexes.md "THE FULL TREES".
+- `bake-camelot.js` (2026-11-15): writes Camelot Kingdom on plots (`site_prebuilt_camelot_kingdom`, from `docs/areas/camelot/layout.json`; plan 3 = castle, village, town wall, moat, woods; the castle = redesign 2, one palace on a two-step hill, its squares in the layout's `castle`). A rebuilt area's old rooms go in data.js `DOOR_HQ.retired` in the same PR. Notes: areas-complexes.md "CAMELOT KINGDOM ON PLOTS" + "CAMELOT CASTLE, REDESIGN 2".
 - `bake-desert.js` (2026-11-15): writes The Desert on plots (`site_prebuilt_area51_desert`, from `docs/areas/desert/layout.json`). Notes: areas-complexes.md "THE DESERT ON PLOTS".
-- `bake-mountains.js` (2026-11-15): writes The Mountains + the North Pole village on plots (`site_prebuilt_shasta_mountains`, `site_prebuilt_northpole_plots`, from `docs/areas/mountains/layout.json`). Notes: areas-complexes.md "THE MOUNTAINS ON PLOTS".
+- `bake-desert-insides.js` (2026-11-15): writes Hangar 18, the White Rooms and the inside of the Great Pyramid on whole squares (plan `docs/plans/desert/insides_plan.png`). Notes: areas-complexes.md "THE DESERT'S INSIDES".
+- `bake-mountains.js` (2026-11-15): writes The Mountains + the North Pole village on plots (`site_prebuilt_shasta_mountains`, `site_prebuilt_northpole_plots`, from `docs/areas/mountains/layout.json`) + the Hollywood Hills (`site_prebuilt_shasta_hills`, layout `rooms[1]`). Notes: areas-complexes.md "THE MOUNTAINS ON PLOTS" + "THE HOLLYWOOD HILLS + THE SWAP".
 - `bake-estate.js` (2026-11-15): writes The Estate on plots (`site_prebuilt_skinwalker_estate`, from `docs/areas/estate/layout.json`; the corn is the wall). Notes: areas-complexes.md "THE ESTATE ON PLOTS".
+- `bake-beach.js` (2026-11-15): writes The Beach on plots (`site_prebuilt_bermuda_beach`, a sea room, from `docs/areas/beach/layout.json`; the heights are the map). Notes: areas-complexes.md "THE BEACH ON PLOTS".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
   the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes
@@ -170,13 +173,13 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
   rate-limited (`httpRateLimit`). Production checklist: set
   `EW_ALLOWED_ORIGINS` on Render so arbitrary sites can't open sockets.
 
-### RULE #1c — DO NOT PLAYTEST UNLESS EXPLICITLY ASKED
-Playtesting (Playwright runs, browser automation, driving the game) burns a LOT
-of the user's tokens and they are fully capable of testing themselves. After
-making changes: syntax-check the edited JS (`node --check <file>`), merge and
-write the sync zip — that's it. Only run the playtest harness / any browser automation
-when the user explicitly requests it (e.g. "playtest <mode>") or when a change
-is genuinely impossible to validate any other way AND the user has agreed.
+### RULE #1c — BROWSER RUNS: YES FOR ANYTHING VISUAL, NOT FOR THE REST (mondo 11-15, replaces "do not playtest unless asked")
+mondo 11-15: "you are allowed to playtest and screenshot for anything visual". A change you can only judge by looking at it
+(a room, a building, props, terrain, a model, VFX, camera, UI, HUD) gets a browser run and screenshots without asking first:
+look at the pictures yourself, fix what is wrong, and show him the proof picture with the `[EW BUILD]` HEAD (RULE #1d).
+A change that is not visual (rules, data, numbers, tooling, docs) still gets only `node --check <file>`: browser runs burn a
+lot of his tokens, so no full "play a match" playtest unless he asks for one ("playtest <mode>"). Keep runs few and aimed:
+one probe run with several views beats many runs. Probe tips: PLAYTEST_NOTES.md "THE CITY PROBE".
 
 ### RULE #1d — THE FRESH CHECK: NEVER BUILD OR TEST ON AN OLD COPY (mondo 11-15)
 A cloud container's clone is shallow and its local `origin/main` ref can be DAYS old. On 11-15 a thread ran

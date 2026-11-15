@@ -8,6 +8,8 @@
    TWO rooms into data.js between MOUNTAINS-BEGIN / MOUNTAINS-END:
      site_prebuilt_shasta_mountains   THE MOUNTAINS: plan columns 4-15 (12 x 8 plots, 504 x 336 m; 56 plots are built, the rest is the range's rock)
      site_prebuilt_northpole_plots    THE NORTH POLE: plan columns 0-3 (4 x 4 plots, 168 m), behind the Pass Gate
+     site_prebuilt_shasta_hills       THE HOLLYWOOD HILLS (2026-11-15, plan 2, layout rooms[1]): 13 x 3 plots above Disaster City: the sign, the ridge, the sea cliffs
+   PLAN 2 also SWAPPED Mount Shasta and Mount Olympus (range order: Pole, Pass, Lodge, OLYMPUS, SHASTA, Hills): Olympus is plan columns 10-12, Shasta 13-15, its trail 13-14.
    and the ends of the links / bay doors that lead into them. `node bake-mountains.js` writes; `--dry-run` prints the counts.
    Never hand-edit between the markers: edit this tool or the layout and rerun. Notes: docs/notes/areas-complexes.md "THE MOUNTAINS ON PLOTS".
    HOW A ROOM IS MADE (the Woods' way): terrain.gen { kind: 'plan', look: 'trees' }; every walked square is a `space` row, everything else
@@ -25,8 +27,8 @@ const D = require('./load-data.js').loadGameData();
 const OLDR = id => JSON.parse(vm.runInContext('JSON.stringify((r => r ? { n: r.npcSpots || [], l: r.lines || [] } : { n: [], l: [] })(DOOR_HQ.rooms.' + id + '))', D));
 const O_POLE = OLDR('site_prebuilt_northpole_village'), O_SHASTA = OLDR('site_prebuilt_shasta_slopes'), O_OLYMPUS = OLDR('site_prebuilt_olympus_summit');
 const sayOf = (R, race) => (R.n.find(n => n.race === race) || {}).say;
-const MTN = 'site_prebuilt_shasta_mountains', POLE = 'site_prebuilt_northpole_plots';
-const MASS = { r: 1, k: 1, a: 1, t: 1 };
+const MTN = 'site_prebuilt_shasta_mountains', POLE = 'site_prebuilt_northpole_plots', HILLS = 'site_prebuilt_shasta_hills';
+const MASS = { r: 1, k: 1, a: 1, t: 1, z: 1 };   // z = the sea (the Hills' east end): sunk to the room's `seaBed`, under terrain.sea
 const smooth = t => { t = t < 0 ? 0 : t > 1 ? 1 : t; return t * t * (3 - 2 * t); };
 const hash = (x, y, s) => { let n = (x * 374761393 + y * 668265263 + s * 1274126177) | 0; n = Math.imul(n ^ (n >>> 13), 1274126177); return ((n ^ (n >>> 16)) >>> 0) / 4294967296; };
 const vnoise = (x, y, s) => { const ix = Math.floor(x), iy = Math.floor(y), tx = smooth(x - ix), ty = smooth(y - iy);
@@ -39,8 +41,9 @@ const ROT = { S: 0, W: 90, N: 180, E: 270 };
 function makeRoom(o) {
     const W = o.pw * N, H = o.ph * N, HW = W * C / 2, HD = H * C / 2;
     const gx = c => r2(-HW + c * C), gz = r => r2(-HD + r * C), mx = c => r2(-HW + (c + 0.5) * C), mz = r => r2(-HD + (r + 0.5) * C);
-    const cell = []; for (let r = 0; r < H; r++) cell.push(ALL[o.py0 * N + r].slice(o.px0 * N, o.px0 * N + W).split(''));
-    const plots = PLAN.rooms[0].plots.filter(p => { const x = +p.id.slice(1, 3), y = +p.id.slice(4, 6); return x >= o.px0 && x < o.px0 + o.pw && y >= o.py0 && y < o.py0 + o.ph; })
+    const SRC = PLAN.rooms[o.room || 0];
+    const cell = []; for (let r = 0; r < H; r++) cell.push(SRC.cells[o.py0 * N + r].slice(o.px0 * N, o.px0 * N + W).split(''));
+    const plots = SRC.plots.filter(p => { const x = +p.id.slice(1, 3), y = +p.id.slice(4, 6); return x >= o.px0 && x < o.px0 + o.pw && y >= o.py0 && y < o.py0 + o.ph; })
         .map(p => Object.assign({}, p, { lx: +p.id.slice(1, 3) - o.px0, ly: +p.id.slice(4, 6) - o.py0 }));
     const byId = {}, byXY = {}; plots.forEach(p => { byId[p.id] = p; byXY[p.lx + ':' + p.ly] = p; });
     const F = [], props = [], doors = [], npc = [], marks = [], ARCH = [], flats = [], count = {}, taken = new Set();
@@ -93,6 +96,7 @@ function makeRoom(o) {
         const A = { P,
             box: (x, y, z, w, h, d, key, tint, q) => add({ s: 'box', p: [r2(x), r2(y), r2(z)], size: [r2(w), r2(h), r2(d)] }, key, tint, q),
             cyl: (x, y, z, r, h, key, tint, q) => add({ s: 'cyl', p: [r2(x), r2(y), r2(z)], r, h }, key, tint, q),
+            dome: (x, y, z, r, h, key, tint, q) => add({ s: 'dome', p: [r2(x), r2(y), r2(z)], r, h }, key, tint, q),
             quad: (x, y, z, w, h, key, tint, q) => add({ s: 'quad', p: [r2(x), r2(y), r2(z)], size: [r2(w), r2(h)] }, key, tint, q),
             /* a roof is drawn from outside only: one timber sheet facing down under it (Camelot's "gaps in the roofs") */
             roof: (form, x, y, z, w, h, d, key, tint, q) => { add({ s: 'box', p: [x, y, z], size: [(q && q.ry) ? d : w, 0.02, (q && q.ry) ? w : d], sides: false, top: false, under: true, roof: true }, WD2, 0x4a3626);
@@ -129,15 +133,23 @@ function makeRoom(o) {
             for (let i = 0; i < q.length; i += 2) { const x = q[i], y = q[i + 1], v = d[y * W + x]; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (inR(X, Y) && d[Y * W + X] < 0) { d[Y * W + X] = v + 1; q.push(X, Y); } } }
             return d; };
         const dR = distOf('r'), dK = distOf('k');
+        /* THE SEA CLIFFS (the on-screen check, 2026-11-15: the Coast Overlook looked at a wall of rock): rock near the sea does not climb, it falls.
+           dZ = how far a square is from the nearest sea square; within `seaFall` squares the rock's rise is scaled down to nothing at the water */
+        const dZ = (() => { if (o.seaBed == null) return null; const d = new Int16Array(W * H).fill(-1), q = [];
+            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (cell[y][x] === 'z') { d[y * W + x] = 0; q.push(x, y); }
+            for (let i = 0; i < q.length; i += 2) { const x = q[i], y = q[i + 1], v = d[y * W + x]; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (inR(X, Y) && d[Y * W + X] < 0) { d[Y * W + X] = v + 1; q.push(X, Y); } } }
+            return d; })();
         const Hc = new Float64Array((W + 1) * (H + 1));
         for (let cy = 0; cy <= H; cy++) for (let cx = 0; cx <= W; cx++) {
-            let h = base(cx, cy), all = { r: 1, k: 1, a: 1 }, dmin = 1e9, kmin = 1e9;
+            let h = base(cx, cy), all = { r: 1, k: 1, a: 1, z: 1 }, dmin = 1e9, kmin = 1e9, anyZ = 0;
             for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) { const x = cx + dx, y = cy + dy; if (!inR(x, y)) continue; const ch = cell[y][x];
-                if (ch !== 'r') all.r = 0; else dmin = Math.min(dmin, dR[y * W + x]); if (ch !== 'k') all.k = 0; else kmin = Math.min(kmin, dK[y * W + x]); if (ch !== 'a') all.a = 0; }
+                if (ch !== 'r') all.r = 0; else dmin = Math.min(dmin, dR[y * W + x]); if (ch !== 'k') all.k = 0; else kmin = Math.min(kmin, dK[y * W + x]); if (ch !== 'a') all.a = 0; if (ch !== 'z') all.z = 0; else anyZ = 1; }
             if (all.r && dmin < 1e9) { const n = vnoise(cx / 5, cy / 5, o.seed) * 0.6 + vnoise(cx / 1.7, cy / 1.7, o.seed + 7) * 0.4;   // THE ROCK: steep at the trail's edge, then climbing to a broken crest
-                h += Math.min(o.rockCap || 26, 3.1 * Math.min(dmin, 2) + 1.7 * Math.max(0, dmin - 2)) * (0.7 + 0.6 * n); }
+                const sf = dZ ? Math.min(1, Math.max(0, (dZ[Math.min(H - 1, cy) * W + Math.min(W - 1, cx)] - 1) / (o.seaFall || 10))) : 1;
+                h += sf * Math.min(o.rockCap || 26, 3.1 * Math.min(dmin, 2) + 1.7 * Math.max(0, dmin - 2)) * (0.7 + 0.6 * n); }
             else if (all.k && kmin < 1e9) h += Math.min(2.4, 1.0 * kmin) * (0.7 + 0.6 * vnoise(cx / 2.5, cy / 2.5, o.seed + 3));            // THE DEEP DRIFT / THE CLOUD BANK: a soft swell
-            else if (all.a) h -= 9;                                                                                                         // THE CREVASSE: a slot cut down between its two rows
+            else if (all.a) h -= 9;
+            if (all.z) h = o.seaBed; else if (anyZ && all.r === 0) h = Math.min(h, o.seaShore != null ? o.seaShore : h);   // THE SEA: its bed; a beach meets it at the shore line (a rock square beside it keeps its height: a cliff)                                                                                                         // THE CREVASSE: a slot cut down between its two rows
             Hc[cy * (W + 1) + cx] = h;
         }
         /* a building stands on level ground: its squares take the height at the middle of its front */
@@ -182,7 +194,7 @@ function finish(R, e) {
     const seen = new Uint8Array(W * H), st = [e.spawn]; if (!open(e.spawn[0], e.spawn[1])) throw new Error(o.id + ': the spawn is not open'); seen[e.spawn[1] * W + e.spawn[0]] = 1; let steep = 0;
     while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (!open(X, Y) || seen[Y * W + X]) continue;
         if (Math.abs(hC(X, Y) - hC(x, y)) / C > 0.85) { steep++; continue; } seen[Y * W + X] = 1; st.push([X, Y]); } }
-    const cold = R.plots.filter(p => { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(p.ly * N + ly) * W + p.lx * N + lx]) return false; return true; }).map(p => p.id);
+    const cold = R.plots.filter(p => { if ((e.noWalk || []).indexOf(p.id) >= 0) return false; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(p.ly * N + ly) * W + p.lx * N + lx]) return false; return true; }).map(p => p.id);
     if (process.env.MTN_DUMP === o.tag) console.log(cell.map((r, y) => r.map((ch, x) => open(x, y) && !seen[y * W + x] ? '!' : MASS[ch] ? (ch === 't' ? '.' : ' ') : ch).join('')).join('\n'));
     if (cold.length) throw new Error(o.id + ': plots not reached on foot: ' + cold.join(' '));
     let op = 0, un = 0, hi = 0; for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (open(x, y)) { op++; if (!seen[y * W + x]) un++; hi = Math.max(hi, hC(x, y)); }
@@ -197,8 +209,9 @@ function finish(R, e) {
     L.push("            typology: 'grid',");
     L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + o.pw + ", nz: " + o.ph + ", names: " + J(R.plots.map(p => [p.id, p.name, p.district, p.level])) + " },");
     L.push("            terrain: {");
-    L.push("                res: 1.75, floor: '" + e.floor + "', cliff: 'rocks_5', path: 'dirt_2',   // half a square a node (the Desert's and the kingdom's grain: a room this size at 0.875 stands up four times slower)");
+    L.push("                res: 1.75, floor: '" + e.floor + "', cliff: '" + (e.cliff || 'rocks_5') + "', path: 'dirt_2',   // half a square a node (the Desert's and the kingdom's grain: a room this size at 0.875 stands up four times slower)");
     L.push("                noise: { amp: 0.1, scale: 8 },");
+    if (e.sea) L.push("                sea: " + J(e.sea) + ",");
     L.push("                backdrop: false, edges: " + J(e.edges) + ",");
     L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gz(0) + ", nx: " + W + ", nz: " + H + ", d: '" + slope.toString('base64') + "' } },");
     L.push("                paint: { pal: " + J(e.pal) + ", t: 'u8', res: " + C + ", x0: " + mx(0) + ", z0: " + mz(0) + ", nx: " + W + ", nz: " + H + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
@@ -281,17 +294,20 @@ const NP = makeRoom({ id: POLE, tag: 'pole', px0: 0, py0: 0, pw: 4, ph: 4, base:
 /* ════════════════════════════════════════════════ THE MOUNTAINS (plan columns 4-15) ════════════════════════════════════════════════ */
 const SKI = { 3: 1, 4: 1, 5: 1 };   // the slopes' columns: one even grade from the Top Station to the Lodge (no flat shelves on a run)
 const M = makeRoom({ id: MTN, tag: 'mtn', px0: 4, py0: 0, pw: 12, ph: 8, base: 8, seed: 72, rockCap: 26,
-    hubs: { 'P06-02': [6, 3] }, extraPorts: [['P05-00', 'S']],   // the Ridge is climbed from the High Pass (the plan drew it joined to nothing)
-    carves: [7, 8, 9].map(ly => ['P15-01', 7, ly, 'm']).concat([['P15-01', 7, 10, 'm']], [2, 3, 4, 5, 6].flatMap(lx => [['P15-01', lx, 5, 'm'], ['P15-01', lx, 6, 'm']])),   // THE CLOUD LINE: the stair is two squares wide all the way, and the Colonnade's walk goes on through the cloud to it
+    hubs: { 'P06-02': [6, 3] }, extraPorts: [['P05-00', 'S'], ['P12-03', 'E']],   // …and (THE SWAP, plan 2) the Goat Track walks on east to Bunny Flat: Olympus and Shasta meet there   // the Ridge is climbed from the High Pass (the plan drew it joined to nothing)
+    carves: [7, 8, 9].map(ly => ['P12-01', 7, ly, 'm']).concat([['P12-01', 7, 10, 'm']], [2, 3, 4, 5, 6].flatMap(lx => [['P12-01', lx, 5, 'm'], ['P12-01', lx, 6, 'm']])),   // THE CLOUD LINE: the stair is two squares wide all the way, and the Colonnade's walk goes on through the cloud to it
     hubs2: 0,   // the Rope Bridge's trails leave from the snow north of the crevasse (never along the slot)
     deadLevel: (i, j) => j >= 4 ? [9, 9, 8, 8][j - 4] : 8, zflat: i => SKI[i] ? 0 : 1 / 3,
     trail: p => p.district === 'Mount Olympus' ? 'm' : (p.district === 'Mount Shasta' && p.level <= 11) ? 'p' : 'o' });
 { const R = M, { put, dec, tree, native, building, look, S, door, mx, mz, gx, gz, props, feat, cell } = R;
   /* ── THE WAYS ── */
   door('pass', 'P04-01', 'w', Object.assign({ way: 'trail', action: { room: POLE, at: 'pass' } }, DOORWORDS('THE NORTH POLE · THE VILLAGE', 'THE PASS GATE · DOWN INTO THE VALLEY', 'A gate of two poles and a crossbar. Past it the trail drops into a white valley with lit windows in it.')));
-  door('woods', 'P10-07', 's', Object.assign({ way: 'trail', action: { room: 'site_prebuilt_fairy_forest_plots', at: 'shasta' } }, DOORWORDS('THE WOODS · THE SNOWLINE', 'THE TRAILHEAD · DOWN INTO THE TREES', 'The trail goes down out of the pines into older trees. It is warmer down there, and nothing else about it is better.')));
-  { const p = R.byId['P15-00']; for (let ly = 0; ly <= 7; ly++) for (const lx of [7, 8]) cell[p.ly * N + ly][p.lx * N + lx] = 'm'; }   // THE GRAND STAIR goes on up through the cloud to the room's north wall
-  const WAY = { heaven: R.spur('P15-00', 'n', 'm'), vatican: R.spur('P14-03', 's', 'm'), road: R.spur('P09-03', 's') };
+  door('woods', 'P13-07', 's', Object.assign({ way: 'trail', action: { room: 'site_prebuilt_fairy_forest_plots', at: 'shasta' } }, DOORWORDS('THE WOODS · THE SNOWLINE', 'THE TRAILHEAD · DOWN INTO THE TREES', 'The trail goes down out of the pines into older trees. It is warmer down there, and nothing else about it is better.')));
+  { const p = R.byId['P12-00']; for (let ly = 0; ly <= 7; ly++) for (const lx of [7, 8]) cell[p.ly * N + ly][p.lx * N + lx] = 'm'; }   // THE GRAND STAIR goes on up through the cloud to the room's north wall
+  const WAY = { heaven: R.spur('P12-00', 'n', 'm'), vatican: R.spur('P11-03', 's', 'm') };
+  /* THE HOLLYWOOD HILLS (plan 2): Shasta's east side walks on into the Hills (the city's mountain road lands there now, not at the Lodge Yard) */
+  door('hills', 'P15-02', 'e', Object.assign({ way: 'road', action: { room: HILLS, at: 'shasta' } }, DOORWORDS('THE HOLLYWOOD HILLS', 'THE SHASTA ROAD · EAST TO THE SIGN', 'The snow stops at a cattle grid. Past it the road is dry, the brush is brown, and a row of very large letters stands with its back to you.')));
+  door('saddle', 'P15-00', 'e', Object.assign({ way: 'trail', action: { room: HILLS, at: 'ridge' } }, DOORWORDS('THE HOLLYWOOD HILLS', 'THE SADDLE · THE RIDGE BEHIND THE LETTERS', 'The ridge trail leaves the ice and follows the crest east. On a clear day you can see the whole city from it, and the back of its name.')));
 
   /* ── THE BUILDINGS ── */
   const LOG = 0x7a5a40, DARK = 0x3a2a20, SNOW = 0xf4f8ff, STONE = 0x9a9aa0;
@@ -328,7 +344,7 @@ const M = makeRoom({ id: MTN, tag: 'mtn', px0: 4, py0: 0, pw: 12, ph: 8, base: 8
   TOP.put('locker_bench', -4.5, -5.5, { face: 0 }); TOP.put('locker_bench', 4.5, -5.5, { face: 0 }); TOP.put('notice_board', 0, -6.85, { y: 1.5, face: 180 }); TOP.put('railway_lantern', 5.6, 5.2);
   /* THE TEMPLE on the peak (walked into): marble, a portico of six columns, a pediment */
   const MARB = 0xf2efe6, TERRA = 0xb86a4a;
-  const TEMPLE = building('temple', 'P14-00', [3, 3, 9, 7, 'S'], 7, { leaf: 'leaf_frame_only', leafDouble: true, keyIn: 'marble_light', floorIn: 'marble_light' }, (a, w, d, dr) => {
+  const TEMPLE = building('temple', 'P11-00', [3, 3, 9, 7, 'S'], 7, { leaf: 'leaf_frame_only', leafDouble: true, keyIn: 'marble_light', floorIn: 'marble_light' }, (a, w, d, dr) => {
       a.shell(w, 7, d, 'marble_light', MARB, dr); a.box(0, 0, 1.75, w + 3.2, 0.3, d + 6.4, 'marble_light', 0xdcd8cc, { top: true });                       // the stylobate, a step proud
       for (let i = 0; i < 6; i++) { const x = -w / 2 - 0.6 + i * (w + 1.2) / 5; a.cyl(x, 0.3, d / 2 + 3.2, 0.55, 6.7, 'marble_light', MARB, { seg: 12 }); a.box(x, 6.7, d / 2 + 3.2, 1.5, 0.3, 1.5, 'marble_light', MARB); }
       for (const s of [-1, 1]) for (let i = 0; i < 4; i++) a.cyl(s * (w / 2 + 1.0), 0.3, -d / 2 + 0.6 + i * (d + 1.4) / 3.6, 0.5, 6.7, 'marble_light', MARB, { seg: 12 });
@@ -337,7 +353,7 @@ const M = makeRoom({ id: MTN, tag: 'mtn', px0: 4, py0: 0, pw: 12, ph: 8, base: 8
   TEMPLE.put('stone_altar', 0, -3.6); TEMPLE.put('brazier', -4, -3.6); TEMPLE.put('brazier', 4, -3.6); TEMPLE.put('angel_statue', -8, -4.5, { face: 150 }); TEMPLE.put('angel_statue', 8, -4.5, { face: 210 });
   TEMPLE.put('instrument_harp', -7.5, 3.5, { face: 120 }); TEMPLE.put('greek_amphora', 7.6, 4.2); TEMPLE.put('greek_amphora', 8.6, 3.0, { face: 80 }); TEMPLE.put('lectern', 0, 0.5, { face: 180 });
   R.painting = { x: TEMPLE.at(-6, -TEMPLE.fd / 2 + 0.25)[0], z: TEMPLE.at(-6, -TEMPLE.fd / 2 + 0.25)[1], face: TEMPLE.face(180) };   // the link `lodge_olympus` (a painting on the cella's back wall)
-  native('P14-00', 'seraphim', 5, 8, 180, sayOf(O_OLYMPUS, 'seraphim'));
+  native('P11-00', 'seraphim', 5, 8, 180, sayOf(O_OLYMPUS, 'seraphim'));
 
   /* ── THE SNOWY PASS ── */
   { const q = S('P04-01', 2, 4); look('passgate', gx(q[0]), gz(q[1] + 1), a => { for (const s of [-1, 1]) a.cyl(0, 0, s * 4.2, 0.28, 5.2, WD2, DARK, { seg: 8 }); a.box(0, 4.6, 0, 0.4, 0.4, 9.6, WD2, DARK); a.box(0, 5.1, 0, 0.5, 0.25, 11, WD2, 0x8a2a20); }); }
@@ -376,44 +392,122 @@ const M = makeRoom({ id: MTN, tag: 'mtn', px0: 4, py0: 0, pw: 12, ph: 8, base: 8
   put('P07-03', 'xmas_snowman', 2, 9); put('P08-03', 'campfire', 5, 10); put('P08-03', 'park_bench', 3, 10, { face: 0 }); put('P08-03', 'park_bench', 7, 10, { face: 0 }); put('P07-02', 'signpost', 9, 9, { face: 90 });
 
   /* ── MOUNT SHASTA ── */
-  put('P11-00', 'cave_stone', 5, 5); dec('P11-00', 'cave_stone', 6, 7); put('P11-00', 'signpost', 7, 8, { face: 180 }); props.push({ key: 'white_cloud', x: mx(S('P11-00', 5, 5)[0]), z: mz(S('P11-00', 5, 5)[1]), y: 16, h: 7 });   // THE SUMMIT: the crater, the cloud parked over it
-  dec('P10-00', 'cave_stone', 5, 4); dec('P12-00', 'ocean_rock_5', 6, 5); dec('P10-01', 'cave_stone', 5, 5); dec('P10-01', 'cave_stone', 4, 6);
-  put('P11-01', 'camping_tent', 3, 4, { face: 140 }); put('P11-01', 'camping_tent', 8, 4, { face: 220 }); put('P11-01', 'campfire', 5, 3); dec('P11-01', 'sea_chest', 6, 2); native('P11-01', 'yeti', 7, 9, 300, sayOf(O_SHASTA, 'yeti'));
-  { const q = S('P12-01', 5, 6); feat({ k: 'pool', x: mx(q[0]), z: mz(q[1]), r: 3.6, rz: 3.0, y: -0.2, depth: 0.5, key: 'water', bank: 0.8 }); R.taken.add(q[0] + ':' + q[1]);   // THE STEAM VENTS: the warm pool
-    const d = S('P12-01', 8, 6); R.lemuria = { x: mx(d[0]), z: mz(d[1]), face: 270 }; R.taken.add(d[0] + ':' + d[1]); }
-  native('P12-01', 'nordic', 3, 5, 90, sayOf(O_SHASTA, 'nordic')); dec('P12-01', 'cave_stone', 4, 8); dec('P12-01', 'cave_stone', 6, 9);
-  dec('P10-02', 'ocean_rock_6', 5, 6); dec('P10-02', 'ocean_rock_7', 4, 7); put('P11-02', 'signpost', 5, 4, { face: 0 }); dec('P12-02', 'cave_stone', 3, 5); dec('P12-02', 'ocean_rock_8', 4, 6);
-  put('P10-03', 'campfire', 4, 6); put('P10-03', 'camping_tent', 2, 5, { face: 120 }); put('P10-03', 'camping_tent', 6, 7, { face: 240 }); put('P10-03', 'park_bench', 4, 8, { face: 0 }); put('P10-03', 'signpost', 6, 4, { face: 180 });
-  native('P10-03', 'bigfoot', 2, 7, 60, sayOf(O_SHASTA, 'bigfoot')); dec('P10-03', 'fallen_log', 5, 9);
-  dec('P11-03', 'candle_ring', 5, 6); dec('P11-03', 'instrument_drum', 6, 6); dec('P11-03', 'instrument_tambourine', 4, 7); dec('P11-03', 'instrument_guitar_lying', 6, 8); native('P11-03', 'shaman', 5, 5, 180); native('P11-03', 'ki fighter', 8, 7, 270);
-  dec('P12-03', 'cave_stone', 4, 6); dec('P12-03', 'dead_snag', 5, 7);
-  { const q = S('P10-03', 8, 6); R.bayShasta = { x: mx(q[0]), z: mz(q[1]), face: 270 }; R.taken.add(q[0] + ':' + q[1]); }   // Room 14179's cabin door stands on Bunny Flat
+  put('P14-00', 'cave_stone', 5, 5); dec('P14-00', 'cave_stone', 6, 7); put('P14-00', 'signpost', 7, 8, { face: 180 }); props.push({ key: 'white_cloud', x: mx(S('P14-00', 5, 5)[0]), z: mz(S('P14-00', 5, 5)[1]), y: 16, h: 7 });   // THE SUMMIT: the crater, the cloud parked over it
+  dec('P13-00', 'cave_stone', 5, 4); dec('P15-00', 'ocean_rock_5', 6, 5); dec('P13-01', 'cave_stone', 5, 5); dec('P13-01', 'cave_stone', 4, 6);
+  put('P14-01', 'camping_tent', 3, 4, { face: 140 }); put('P14-01', 'camping_tent', 8, 4, { face: 220 }); put('P14-01', 'campfire', 5, 3); dec('P14-01', 'sea_chest', 6, 2); native('P14-01', 'yeti', 7, 9, 300, sayOf(O_SHASTA, 'yeti'));
+  { const q = S('P15-01', 5, 6); feat({ k: 'pool', x: mx(q[0]), z: mz(q[1]), r: 3.6, rz: 3.0, y: -0.2, depth: 0.5, key: 'water', bank: 0.8 }); R.taken.add(q[0] + ':' + q[1]);   // THE STEAM VENTS: the warm pool
+    const d = S('P15-01', 8, 6); R.lemuria = { x: mx(d[0]), z: mz(d[1]), face: 270 }; R.taken.add(d[0] + ':' + d[1]); }
+  native('P15-01', 'nordic', 3, 5, 90, sayOf(O_SHASTA, 'nordic')); dec('P15-01', 'cave_stone', 4, 8); dec('P15-01', 'cave_stone', 6, 9);
+  dec('P13-02', 'ocean_rock_6', 5, 6); dec('P13-02', 'ocean_rock_7', 4, 7); put('P14-02', 'signpost', 5, 4, { face: 0 }); dec('P15-02', 'cave_stone', 3, 5); dec('P15-02', 'ocean_rock_8', 4, 6);
+  put('P13-03', 'campfire', 4, 6); put('P13-03', 'camping_tent', 2, 5, { face: 120 }); put('P13-03', 'camping_tent', 6, 7, { face: 240 }); put('P13-03', 'park_bench', 4, 8, { face: 0 }); put('P13-03', 'signpost', 6, 4, { face: 180 });
+  native('P13-03', 'bigfoot', 2, 7, 60, sayOf(O_SHASTA, 'bigfoot')); dec('P13-03', 'fallen_log', 5, 9);
+  dec('P14-03', 'candle_ring', 5, 6); dec('P14-03', 'instrument_drum', 6, 6); dec('P14-03', 'instrument_tambourine', 4, 7); dec('P14-03', 'instrument_guitar_lying', 6, 8); native('P14-03', 'shaman', 5, 5, 180); native('P14-03', 'ki fighter', 8, 7, 270);
+  dec('P15-03', 'cave_stone', 4, 6); dec('P15-03', 'dead_snag', 5, 7);
+  { const q = S('P13-03', 8, 6); R.bayShasta = { x: mx(q[0]), z: mz(q[1]), face: 270 }; R.taken.add(q[0] + ':' + q[1]); }   // Room 14179's cabin door stands on Bunny Flat
   /* the trail down to the Woods */
-  dec('P10-04', 'fallen_log', 7, 5); dec('P10-04', 'stump', 6, 6); { const q = S('P11-04', 6, 6); feat({ k: 'pool', x: mx(q[0]), z: mz(q[1]), r: 5.0, rz: 5.0, y: -0.25, depth: 0.8, key: 'water', bank: 1.0 }); }   // THE SPRING
-  { const a = S('P11-04', 6, 9), b = S('P11-04', 6, 11); feat({ k: 'deck', x0: mx(a[0]), z0: r2(gz(a[1]) - 1.75), x1: mx(a[0]), z1: r2(gz(b[1] + 1) + 1.75), w: 3.5, y: 0.3 }); }
-  put('P11-05', 'park_bench', 6, 8, { face: 90 }); put('P11-05', 'lesson_sign', 4, 7, { face: 180 }); dec('P10-05', 'cave_stone', 6, 4);
-  for (const d of [[6, 5], [8, 5], [5, 6], [9, 7], [7, 8]]) put('P11-06', 'cave_stone', d[0], d[1]); dec('P10-06', 'fallen_log', 6, 3);
-  put('P10-07', 'signpost', 5, 5, { face: 180 }); put('P10-07', 'campfire', 7, 4); dec('P11-07', 'cave_stone', 7, 4); dec('P11-07', 'sea_chest', 8, 3);
+  dec('P13-04', 'fallen_log', 7, 5); dec('P13-04', 'stump', 6, 6); { const q = S('P14-04', 6, 6); feat({ k: 'pool', x: mx(q[0]), z: mz(q[1]), r: 5.0, rz: 5.0, y: -0.25, depth: 0.8, key: 'water', bank: 1.0 }); }   // THE SPRING
+  { const a = S('P14-04', 6, 9), b = S('P14-04', 6, 11); feat({ k: 'deck', x0: mx(a[0]), z0: r2(gz(a[1]) - 1.75), x1: mx(a[0]), z1: r2(gz(b[1] + 1) + 1.75), w: 3.5, y: 0.3 }); }
+  put('P14-05', 'park_bench', 6, 8, { face: 90 }); put('P14-05', 'lesson_sign', 4, 7, { face: 180 }); dec('P13-05', 'cave_stone', 6, 4);
+  for (const d of [[6, 5], [8, 5], [5, 6], [9, 7], [7, 8]]) put('P14-06', 'cave_stone', d[0], d[1]); dec('P13-06', 'fallen_log', 6, 3);
+  put('P13-07', 'signpost', 5, 5, { face: 180 }); put('P13-07', 'campfire', 7, 4); dec('P14-07', 'cave_stone', 7, 4); dec('P14-07', 'sea_chest', 8, 3);
 
   /* ── MOUNT OLYMPUS ── */
-  { const c = S('P13-00', 5, 4), ring = [[0, -3], [2, -2], [3, 0], [2, 2], [0, 3], [-2, 2], [-3, 0], [-2, -2]];   // THE TWELVE THRONES (eight seats fit the court's ring; four more on its north row)
-    ring.forEach(d => { const sx = c[0] + d[0], sy = c[1] + d[1]; put('P13-00', 'royal_throne', sx - R.byId['P13-00'].lx * N, sy - R.byId['P13-00'].ly * N, { face: Math.round(Math.atan2(-d[0], d[1]) * 180 / Math.PI + 360) % 360 }); });
-    for (const lx of [3, 4, 6, 7]) put('P13-00', 'royal_throne', lx, 0 + (lx === 3 || lx === 7 ? 3 : 2), { face: 180 }); put('P13-00', 'brazier', 5, 4); }
-  native('P13-02', 'angel', 5, 4, 90, sayOf(O_OLYMPUS, 'angel'));
-  for (const lx of [1, 11]) for (const ly of [0, 9]) put('P13-01', 'greek_column', lx, ly, {});   // THE STADIUM: the track, its four turning posts, the lanes
-  { const p = R.byId['P13-01']; for (let i = 1; i < 5; i++) R.marks.push({ k: 'line', x0: gx(p.lx * N + 2), z0: r2(gz(p.ly * N) + i * 7), x1: gx(p.lx * N + 11), z1: r2(gz(p.ly * N) + i * 7), w: 0.14, color: 0xf4f0e4 }); }
-  native('P13-01', 'cyclops', 3, 2, 120, sayOf(O_OLYMPUS, 'cyclops')); native('P13-01', 'minotaur', 9, 7, 300);
-  for (const ly of [3, 4, 7, 8, 9]) for (const lx of [3, 9]) put('P14-01', 'greek_column', lx, ly, {});   // THE COLONNADE: two rows of columns
-  put('P14-01', 'fountain', 6, 6); put('P13-02', 'angel_statue', 3, 3, { face: 180 }); put('P13-02', 'brazier', 6, 5);
-  put('P14-02', 'lectern', 5, 6, { face: 0 }); dec('P14-02', 'instrument_harp', 3, 5); dec('P14-02', 'instrument_drum', 7, 5); native('P14-02', 'chosen one', 6, 8, 0);
-  put('P15-02', 'fountain', 4, 5); dec('P15-02', 'greek_amphora', 2, 4); dec('P15-02', 'stone_urn', 6, 4); native('P15-02', 'orb of light', 3, 7, 200);
-  for (const d of [[3, 3], [6, 4], [4, 6], [7, 7], [3, 8]]) tree('P13-03', 'tree_2', 4.2, d[0], d[1], 0.6); dec('P13-03', 'stone_urn', 5, 5);   // THE OLIVE GROVE
-  put('P14-03', 'lion_statue', 3, 6, { face: 180 }); put('P14-03', 'lion_statue', 6, 6, { face: 180 }); put('P14-03', 'brazier', 2, 8); dec('P15-03', 'cave_stone', 6, 5);
-  { const q = S('P14-02', 8, 4); R.bayOlympus = { x: mx(q[0]), z: mz(q[1]), face: 270 }; R.taken.add(q[0] + ':' + q[1]); }   // the Diplomatic bay's door stands at the Amphitheatre
+  { const c = S('P10-00', 5, 4), ring = [[0, -3], [2, -2], [3, 0], [2, 2], [0, 3], [-2, 2], [-3, 0], [-2, -2]];   // THE TWELVE THRONES (eight seats fit the court's ring; four more on its north row)
+    ring.forEach(d => { const sx = c[0] + d[0], sy = c[1] + d[1]; put('P10-00', 'royal_throne', sx - R.byId['P10-00'].lx * N, sy - R.byId['P10-00'].ly * N, { face: Math.round(Math.atan2(-d[0], d[1]) * 180 / Math.PI + 360) % 360 }); });
+    for (const lx of [3, 4, 6, 7]) put('P10-00', 'royal_throne', lx, 0 + (lx === 3 || lx === 7 ? 3 : 2), { face: 180 }); put('P10-00', 'brazier', 5, 4); }
+  native('P10-02', 'angel', 5, 4, 90, sayOf(O_OLYMPUS, 'angel'));
+  for (const lx of [1, 11]) for (const ly of [0, 9]) put('P10-01', 'greek_column', lx, ly, {});   // THE STADIUM: the track, its four turning posts, the lanes
+  { const p = R.byId['P10-01']; for (let i = 1; i < 5; i++) R.marks.push({ k: 'line', x0: gx(p.lx * N + 2), z0: r2(gz(p.ly * N) + i * 7), x1: gx(p.lx * N + 11), z1: r2(gz(p.ly * N) + i * 7), w: 0.14, color: 0xf4f0e4 }); }
+  native('P10-01', 'cyclops', 3, 2, 120, sayOf(O_OLYMPUS, 'cyclops')); native('P10-01', 'minotaur', 9, 7, 300);
+  for (const ly of [3, 4, 7, 8, 9]) for (const lx of [3, 9]) put('P11-01', 'greek_column', lx, ly, {});   // THE COLONNADE: two rows of columns
+  put('P11-01', 'fountain', 6, 6); put('P10-02', 'angel_statue', 3, 3, { face: 180 }); put('P10-02', 'brazier', 6, 5);
+  put('P11-02', 'lectern', 5, 6, { face: 0 }); dec('P11-02', 'instrument_harp', 3, 5); dec('P11-02', 'instrument_drum', 7, 5); native('P11-02', 'chosen one', 6, 8, 0);
+  put('P12-02', 'fountain', 4, 5); dec('P12-02', 'greek_amphora', 2, 4); dec('P12-02', 'stone_urn', 6, 4); native('P12-02', 'orb of light', 3, 7, 200);
+  for (const d of [[3, 3], [6, 4], [4, 6], [7, 7], [3, 8]]) tree('P10-03', 'tree_2', 4.2, d[0], d[1], 0.6); dec('P10-03', 'stone_urn', 5, 5);   // THE OLIVE GROVE
+  put('P11-03', 'lion_statue', 3, 6, { face: 180 }); put('P11-03', 'lion_statue', 6, 6, { face: 180 }); put('P11-03', 'brazier', 2, 8); dec('P12-03', 'cave_stone', 6, 5);
+  { const q = S('P11-02', 8, 4); R.bayOlympus = { x: mx(q[0]), z: mz(q[1]), face: 270 }; R.taken.add(q[0] + ':' + q[1]); }   // the Diplomatic bay's door stands at the Amphitheatre
   R.out = WAY;
 }
 
-/* ══ the two rooms ══ */
+
+/* ════════════════════════════════════════════════ THE HOLLYWOOD HILLS (plan room 2, 13 x 3 plots) ════════════════════════════════════════════════
+   mondo 11-15: "The disaster city version of the Hollywood sign needs to be part of the mountains, not just a weenie on the edge of the map ...
+   include the fake weenie mountains as part of this actual mountain plan"; his OK on plan 2 ("build it"). The dry east end of the range, straight
+   above Disaster City: the ridge (row 0), the letters DISASTER CITY on their slope (row 1), the canyon foot over the city (row 2), and sea cliffs
+   at the east end over the north end of the city's beach. Base level 2: the Cove's sand is at 0 m, the sea at -0.6. */
+const HL = makeRoom({ id: HILLS, tag: 'hills', room: 1, px0: 0, py0: 0, pw: 13, ph: 3, base: 2, seed: 39, rockCap: 16, seaBed: -4.2, seaShore: -1.4, deadLevel: () => 10, trail: () => 'p',
+    carves: [7, 8, 9, 10, 11].flatMap(lx => [['H07-02', lx, 8, 'Y'], ['H07-02', lx, 9, 'Y']])
+        .concat([1, 2, 3].flatMap(ly => [['H10-00', 4, ly, 'f'], ['H10-00', 7, ly, 'f']]), [2, 3].flatMap(ly => [['H05-00', 5, ly, 'f'], ['H05-00', 6, ly, 'f']])) });   // (the tank's and the mast's pads are concrete, not rooms)   // the canyon road runs on east through the spur (the drawing stopped it at the rock)
+{ const R = HL, { put, dec, tree, building, look, S, door, mx, mz, gx, gz, props, feat } = R;
+  /* ── THE WAYS ── */
+  door('shasta', 'H00-01', 'w', Object.assign({ way: 'road', action: { room: MTN, at: 'hills' } }, DOORWORDS('MOUNT SHASTA', 'THE SHASTA ROAD · WEST INTO THE SNOW', 'The road climbs west out of the brush. Somewhere past the cattle grid it stops being dry.')));
+  door('ridge', 'H00-00', 'w', Object.assign({ way: 'trail', action: { room: MTN, at: 'saddle' } }, DOORWORDS('MOUNT SHASTA', 'THE SADDLE · THE GLACIER SIDE', 'The crest trail runs west onto the ice. The volcano is closer than it has any right to be.')));
+  R.out = { road: R.spur('H07-02', 's', 'Y'), cove: R.spur('H12-02', 's', 'D') };
+  const flat = (id, lx0, ly0, lx1, ly1) => { const a = S(id, lx0, ly0); R.flats.push([a[0], a[1], a[0] + lx1 - lx0, a[1] + ly1 - ly0, 'S']); };   // level ground (the reservoir, a car park)
+
+  /* ── THE SIGN: twelve letters, each a standing plane cut from the typeface (the city's own sign's font), two legs behind it; you walk under and behind them ── */
+  { const WORD = 'DISASTERCITY', LW = 9.4, LH = 13.6, STEEL = U('MetalWallRibbed1a');
+    ['H06-01', 'H07-01', 'H08-01', 'H09-01'].forEach((id, pi) => [2, 6, 10].forEach((lx, li) => { const ch = WORD[pi * 3 + li], q = S(id, lx, 5), n = pi * 3 + li, lift = [0, 0, 0, 0, 0, 0, 0, 0, -1.2, 0, 0, -2.2][n], tilt = [0, 0, 5, 0, 0, 0, -4, 0, 0, 0, 0, 7][n];
+        look('sign' + n, gx(q[0]), gz(q[1]), a => { a.quad(0, 1.2 + lift, 0, LW, LH, 'txt:' + ch + '|#f6f4ec||' + r2(LW / LH) + '||anton', null, Object.assign({ uv: 'fit', kind: 'over', ds: true }, tilt ? { rz: tilt } : {}));
+            for (const sx of [-1, 1]) { a.box(sx * 2.6, 0, -0.9, 0.36, 10.5 + lift, 0.36, STEEL, 0x8a8e94); a.box(sx * 2.6, 6 + lift, -0.45, 0.2, 0.2, 0.9, STEEL, 0x8a8e94); }
+            a.box(0, 3.2 + lift, -0.9, 5.6, 0.2, 0.2, STEEL, 0x8a8e94); });
+        for (const d of [-1, 0]) R.taken.add((q[0] + d) + ':' + q[1]); })); }
+
+  /* ── THE BUILDINGS (plain labels of the plan: mondo "fine for now") ── */
+  const STUCCO = U('PlasterWallStucco1a'), WHITE = 0xf2efe6, DARKW = 0x3a2a20, DGLASS = 0x20303a;
+  /* THE OBSERVATORY: white, a copper dome on a drum, two small domes on its wings */
+  const OBS = building('observatory', 'H10-01', [3, 3, 9, 7, 'S'], 6, { leafDouble: true, keyIn: 'marble_light', floorIn: 'marble_light' }, (a, w, d, dr) => {
+      a.shell(w, 6, d, 'marble_light', WHITE, dr); a.box(0, 6, 0, w + 0.8, 0.5, d + 0.8, 'marble_light', 0xe6e2d6, { roof: true, under: true });
+      a.cyl(0, 6.5, 0, 4.6, 2.2, 'marble_light', WHITE, { seg: 20, roof: true }); a.dome(0, 8.7, 0, 4.8, 4.2, U('MetalWallRibbed1a'), 0x5a8a78, { roof: true });
+      for (const sx of [-1, 1]) { a.cyl(sx * (w / 2 - 2.6), 6.5, 0, 2.0, 1.2, 'marble_light', WHITE, { seg: 14, roof: true }); a.dome(sx * (w / 2 - 2.6), 7.7, 0, 2.1, 1.9, U('MetalWallRibbed1a'), 0x5a8a78, { roof: true }); }
+      for (let x = -w / 2 + 0.3; x <= w / 2 - 0.2; x += (w - 0.6) / 6) { if (Math.abs(x - dr.lx) < 1.2) continue; a.box(x, 0, d / 2 + 0.12, 0.6, 6, 0.24, 'marble_light', 0xe6e2d6); }
+      a.sign('OBSERVATORY', 0, 4.4, d / 2 + 0.3, 9, 1.0, '#2a2a30', '', 'anton', { kind: 'over' }); });
+  OBS.put('brass_telescope', 0, -1.5); OBS.put('brass_orrery', -6.5, -3.5); OBS.put('telescope', 6.5, -3.5, { face: 200 }); OBS.put('globe_lamp', -8.5, 4.5); OBS.put('lectern', 3, 3.5, { face: 180 }); OBS.put('iron_garden_bench', -4, 5.2, { face: 0 });
+  /* THE HILL HOUSE: one storey, a flat roof that sails out over a wall of dark glass */
+  const HOUSE = building('hillhouse', 'H04-02', [7, 3, 11, 5, 'S'], 3.5, { keyIn: STUCCO, floorIn: FLR }, (a, w, d, dr) => {
+      a.shell(w, 3.5, d, STUCCO, WHITE, dr); a.box(0, 3.5, 0.9, w + 2.6, 0.3, d + 3.4, WD2, DARKW, { roof: true, under: true });
+      for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) { if (Math.abs(x - dr.lx) < 1.7) continue; a.box(x, 0.3, d / 2 + 0.06, 2.9, 2.9, 0.08, GLS, DGLASS, { glow: 0.15 }); }
+      a.box(-w / 2 - 0.6, 0, 0.9, 0.4, 3.5, d + 2.2, 'rocks_5', 0x9a9088); });
+  HOUSE.put('psx_sofa_3', -3.5, -2.2, { face: 0 }); HOUSE.put('psx_tv_table_1', -3.5, 1.6, { face: 180 }); HOUSE.put('tube_tv', -3.5, 1.6, { y: 0.6, face: 180 }); HOUSE.put('psx_bed_1', 4.6, -1.6, { face: 0 }); HOUSE.put('retro_radio', 6.2, 1.8, { y: 0 });
+  /* THE STILT HOUSE: timber, a deck out over the drop */
+  const STILT = building('stilthouse', 'H09-02', [3, 3, 9, 8, 'S'], 3.5, { keyIn: WD, floorIn: FLR }, (a, w, d, dr) => {
+      a.shell(w, 3.5, d, WD, 0xb8946a, dr, [3.5, 1.75]); a.box(0, 3.5, 0.6, w + 1.6, 0.3, d + 2.4, WD2, DARKW, { roof: true, under: true });
+      for (let x = -w / 2 + 1.75; x < w / 2; x += 3.5) { if (Math.abs(x - dr.lx) < 1.7) continue; a.box(x, 0.6, d / 2 + 0.06, 2.6, 2.4, 0.08, GLS, DGLASS, { glow: 0.15 }); }
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * (w / 2 - 0.3), -6, sz * (d / 2 - 0.3), 0.4, 6, 0.4, WD2, DARKW); });
+  STILT.put('curved_sofa', -5, -4.5, { face: 0 }); STILT.put('coffee_table', -5, -2.2); STILT.put('decor_piano', 6, -5.5, { face: 300 }); STILT.put('couples_bed', 6.5, 4.5, { face: 270 }); STILT.put('rug_round', -5, -2.2, { y: 0.17 }); STILT.put('retro_radio', -9, 6);
+
+  /* ── THE RIDGE (row 0) ── */
+  put('H00-00', 'signpost', 4, 4, { face: 90 }); dec('H00-00', 'cave_stone', 7, 7); dec('H01-00', 'fallen_log', 2, 8); dec('H01-00', 'dead_snag', 9, 9);
+  dec('H02-00', 'dead_snag', 3, 9); dec('H02-00', 'stump', 4, 8); dec('H02-00', 'dead_snag', 8, 9); put('H03-00', 'ocean_rock_4', 3, 8); put('H03-00', 'ocean_rock_6', 8, 9);
+  put('H04-00', 'telescope', 6, 2, { face: 180 }); put('H04-00', 'park_bench', 7, 3, { face: 180 });
+  { const q = S('H05-00', 6, 3); look('mast', gx(q[0]), gz(q[1]), a => { const ST = U('MetalWallRibbed1a');   // THE RADIO MAST: a red and white lattice with a light on top
+        for (let i = 0; i < 6; i++) a.box(0, i * 5, 0, 0.9 - i * 0.1, 5, 0.9 - i * 0.1, ST, i % 2 ? 0xf0f0f0 : 0xc83030); for (const y of [9, 19, 27]) a.box(0, y, 0, 3.2, 0.14, 0.14, ST, 0x8a8e94);
+        a.box(0, 30, 0, 0.3, 0.3, 0.3, null, 0xff3020, { glow: 1 }); a.box(0, 0, 0, 3.4, 0.5, 3.4, 'rocks_5', 0x9a9aa0); });
+    for (const d of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) R.taken.add((q[0] + d[0]) + ':' + (q[1] + d[1])); }
+  put('H06-00', 'park_bench', 5, 7, { face: 180 }); dec('H07-00', 'cave_stone', 8, 8); put('H08-00', 'signpost', 5, 3, { face: 180 }); dec('H08-00', 'eagle', 7, 2, { y: 0.02 }); dec('H09-00', 'cave_stone', 4, 8);
+  put('H10-00', 'water_tower_west', 4, 2); put('H11-00', 'telescope', 8, 4, { face: 180 }); put('H11-00', 'park_bench', 7, 7, { face: 180 });
+
+  /* ── THE LETTERS' SLOPE (row 1) ── */
+  put('H00-01', 'signpost', 2, 4, { face: 90 });
+  /* THE RESERVOIR + THE DAM: level water behind a concrete wall walk */
+  flat('H01-01', 2, 0, 5, 4); { const a = S('H01-01', 2, 0); feat({ k: 'pool', x: gx(a[0] + 1.5), z: gz(a[1] + 2), r: 5.0, rz: 6.6, y: -0.3, depth: 1.2, key: 'water', bank: 0.6 }); }
+  { const a = S('H01-01', 7, 0); R.flats.push([a[0], a[1], a[0] + 10, a[1] + 4, 'S']); feat({ k: 'pool', x: gx(a[0] + 4), z: gz(a[1] + 2), r: 13.6, rz: 6.6, y: -0.3, depth: 1.6, key: 'water', bank: 0.6 });
+    const d = S('H02-01', 5, 0); feat({ k: 'rail', x0: r2(gx(d[0]) + 0.2), z0: gz(d[1]), x1: r2(gx(d[0]) + 0.2), z1: gz(d[1] + 4), model: 'pipe' }); }
+  put('H04-01', 'car_truck', 7, 3, { face: 90 }); dec('H04-01', 'traffic_cone', 3, 3); dec('H04-01', 'traffic_cone', 4, 4); put('H05-01', 'horse_brown', 5, 10, { face: 90 }); put('H05-01', 'horse', 8, 10, { face: 250 });
+  put('H10-01', 'telescope', 8, 8, { face: 180 }); put('H10-01', 'city_bench', 3, 8, { face: 180 });
+  flat('H11-01', 6, 6, 11, 11); put('H11-01', 'telescope', 9, 7, { face: 180 }); put('H11-01', 'city_bench', 8, 9, { face: 180 }); put('H11-01', 'car_cadillac', 7, 7, { face: 90 });
+
+  /* ── THE CANYON FOOT (row 2) ── */
+  dec('H00-02', 'cave_stone', 7, 3); dec('H01-02', 'stump', 8, 8); dec('H03-02', 'traffic_cone', 3, 9);
+  put('H04-02', 'mailbox_bank', 6, 7); put('H04-02', 'car_suv', 2, 7, { face: 90 }); tree('H04-02', 'palm', 9, 6, 2); tree('H04-02', 'palm', 8, 11, 8);
+  dec('H05-02', 'traffic_cone', 9, 7);
+  flat('H06-02', 2, 3, 10, 8); put('H06-02', 'car_pack_1', 3, 4); put('H06-02', 'car_pack_3', 5, 4); put('H06-02', 'car_taxi', 8, 4); put('H06-02', 'signpost', 4, 2, { face: 180 }); put('H06-02', 'trash_bin', 9, 2);
+  put('H07-02', 'signpost', 4, 10, { face: 180 }); tree('H09-02', 'palm', 9, 1, 4); tree('H09-02', 'palm', 9, 10, 4); put('H09-02', 'pool_umbrella', 10, 7); put('H09-02', 'pool_lounger', 10, 8, { face: 180 });
+  put('H10-02', 'signpost', 4, 7, { face: 0 }); put('H11-02', 'signpost', 7, 7, { face: 90 });
+  put('H12-02', 'rowboat', 1, 9, { face: 70 }); put('H12-02', 'pool_umbrella', 2, 8); tree('H12-02', 'palm', 8, 0, 8); dec('H12-02', 'ocean_rock', 3, 10);
+}
+
+/* ══ the three rooms ══ */
 const SNOWPINES = ['xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3', 'xmas_pine'];
 const SKY_DAY = "{ night: 0, world: { kind: 'plain' }, tint: 0x9fc4e8, tintAmt: 0.3, stars: 0.5, nebula: 0.6, day: 1, clouds: 0.35, fog: { color: 0xbfd8ea, amount: 0.45, top: 0.05, band: 0.5, density: 0.006 }, scenery: 'none' }";
 const mSpawn = M.S('P09-03', 5, 6), pSpawn = NP.S('P02-01', 5, 8);
@@ -439,8 +533,21 @@ const pBlock = finish(NP, { label: 'THE NORTH POLE', sub: 'THE VILLAGE · THE WO
     trees: { snow: { kinds: SNOWPINES, treeH: [5.5, 8] } }, treeDefault: 'snow', maxTrees: 1400, treeKey: () => 'snow',
     edges: { reach: 440, n: { kind: 'mountain' }, w: { kind: 'mountain' }, e: { kind: 'mountain' }, s: { kind: 'mountain' } },
     lines: O_POLE.l, spawn: pSpawn, face: 0 });
+const hSpawn = HL.S('H07-02', 5, 9);
+const hBlock = finish(HL, { label: 'THE HOLLYWOOD HILLS', sub: 'THE SIGN · THE RIDGE · THE OBSERVATORY · THE SEA CLIFFS', site: 'prebuilt_shasta', part: 'hills',
+    shell: "hqAncientShell({ w: " + (2 * HL.HW) + ", d: " + (2 * HL.HD) + ", h: 20, wallH: 20, floor: 'grass_rocky', apron: 'grass_rocky', skirt: 'rocks_5', apronColor: 0xffffff, floorColor: 0xffffff, plate: { x: " + HL.mx(hSpawn[0]) + ", z: " + HL.mz(hSpawn[1]) + ", y: 5.0 },\n" +
+           "                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d8, ambient: 0.62 },\n" +
+           "                                    sky: { night: 0, world: { kind: 'plain' }, tint: 0xa8c4e4, tintAmt: 0.3, stars: 0.5, nebula: 0.6, day: 1, clouds: 0.12, fog: { color: 0xd8c8b0, amount: 0.4, top: 0.05, band: 0.5, density: 0.005 }, scenery: 'none' },\n                                    look: HQ_ROOM_LOOKS.mountain })",
+    parti: 'The dry end of the range on thirty-nine plots above the city: a ridge trail, twelve letters standing on their slope with a walk under them and a walk behind, a canyon road up from the streets, and cliffs where the hills fall into the bay.',
+    floor: 'grass_rocky', cliff: 'rocks_5', pal: ['rocks_5', 'dirt_2', 'urban:ConcreteRoofBitumen1a', 'urban:ConcreteSlab2a', 'marble_light', 'desert', 'obsidian', 'grass_2'],
+    paintOf: ch => ch === 'r' ? 1 : ch === 'p' ? 2 : ch === 'Y' ? 3 : (ch === 'f' || ch === 'B') ? 4 : ch === 'm' ? 5 : (ch === 'D' || ch === 'z' || ch === 'w') ? 6 : ch === 'h' ? 7 : ch === 't' ? 8 : 0,
+    trees: { oak: { kinds: ['tree_2', 'tree_4', 'tree_2', 'tree'], treeH: [4.5, 7.5] } }, treeDefault: 'oak', maxTrees: 500, treeKey: () => 'oak',
+    sea: process.env.HILLS_NO_SEA ? null : { y: -0.6, key: 'water' },
+    edges: { reach: 440, n: { kind: 'mountain' }, w: { kind: 'mountain' }, e: { kind: 'coast' }, s: { kind: 'desert', cap: { kind: 'coast', at: 'e', off: 42, len: 30 } } },
+    noWalk: ['H12-00', 'H12-01'],   // the sea cliffs: rock and water, nobody stands there
+    lines: [], spawn: hSpawn, face: 180 });
 const block = ["        /* MOUNTAINS-BEGIN — THE MOUNTAINS ON PLOTS (2026-11-15): written by `node bake-mountains.js` from docs/areas/mountains/layout.json. Never hand-edit between the markers; edit the tool or the layout and rerun. */"]
-    .concat(mBlock, pBlock, ["        /* MOUNTAINS-END */"]).join('\n') + '\n';
+    .concat(mBlock, pBlock, hBlock, ["        /* MOUNTAINS-END */"]).join('\n') + '\n';
 /* the ends this tool owns: the links that lead into the two rooms, and the three bay doors of DOOR HQ */
 const LINKS = {
     northpole_camelot: ['a', "{ site: 'prebuilt_northpole', part: 'plots', wall: 's', x: " + NP.out.SLEIGH + ", sub: 'THE SLEIGH ROAD · TO CAMELOT' }"],
@@ -449,14 +556,15 @@ const LINKS = {
     heaven_olympus: ['b', "{ site: 'prebuilt_shasta', part: 'mountains', wall: 'n', x: " + M.out.heaven + ", sub: 'THE GRAND STAIR · UP INTO HEAVEN' }"],
     lodge_olympus: ['b', "{ site: 'prebuilt_shasta', part: 'mountains', wall: 'free', x: " + M.painting.x + ", z: " + M.painting.z + ", face: " + M.painting.face + " }"],
     vatican_olympus: ['b', "{ site: 'prebuilt_shasta', part: 'mountains', wall: 's', x: " + M.out.vatican + ", sub: 'THE PILGRIM STAIR · DOWN TO THE VATICAN' }"],
-    downtown_mountains: ['b', "{ site: 'prebuilt_shasta', part: 'mountains', wall: 's', x: " + M.out.road + ", sub: 'THE MOUNTAIN ROAD · DOWN TO DISASTER CITY' }"],
+    downtown_mountains: ['b', "{ site: 'prebuilt_shasta', part: 'hills', wall: 's', x: " + HL.out.road + ", sub: 'THE CANYON ROAD · DOWN TO DISASTER CITY' }"],   // (plan 2: the city's mountain road lands under the sign now)
+    downtown_cove: ['b', "{ site: 'prebuilt_shasta', part: 'hills', wall: 's', x: " + HL.out.cove + ", sub: 'THE COVE · SOUTH ALONG THE BEACH' }"],
 };
 const ENTRY = {
     prebuilt_shasta: "{ room: '" + MTN + "', door: { id: 'bay', wall: 'free', x: " + M.bayShasta.x + ", z: " + M.bayShasta.z + ", face: " + M.bayShasta.face + " } }",
     prebuilt_olympus: "{ room: '" + MTN + "', door: { id: 'bay_olympus', wall: 'free', x: " + M.bayOlympus.x + ", z: " + M.bayOlympus.z + ", face: " + M.bayOlympus.face + " } }",
     prebuilt_northpole: "{ room: '" + POLE + "', door: { id: 'bay', wall: 's', x: " + NP.out.BAY + " } }",
 };
-console.log('ways ' + JSON.stringify({ pole: NP.out, mountains: M.out, woodsDoor: M.doors.find(d => d.id === 'woods').x }));
+console.log('ways ' + JSON.stringify({ pole: NP.out, mountains: M.out, hills: HL.out, woodsDoor: M.doors.find(d => d.id === 'woods').x }));
 if (DRY) process.exit(0);
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
 const END = '        /* MOUNTAINS-END */\n', b0 = src.indexOf('        /* MOUNTAINS-BEGIN'), b1 = src.indexOf(END);
@@ -468,4 +576,4 @@ Object.keys(LINKS).forEach(id => { const [side, lit] = LINKS[id], i = src.indexO
 Object.keys(ENTRY).forEach(site => { const m = new RegExp('\\n( +)' + site + ': +\\{ room: [^\\n]*').exec(src); if (!m) throw new Error('no siteRooms.entry row for ' + site);
     src = src.slice(0, m.index) + '\n' + m[1] + site + ': ' + ENTRY[site] + ',   // THE MOUNTAINS ON PLOTS: written by bake-mountains.js' + src.slice(m.index + m[0].length); });
 fs.writeFileSync(file, src);
-console.log('data.js: ' + MTN + ' + ' + POLE + ' written (' + block.length + ' bytes)');
+console.log('data.js: ' + MTN + ' + ' + POLE + ' + ' + HILLS + ' written (' + block.length + ' bytes)');

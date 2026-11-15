@@ -45633,6 +45633,38 @@ const ThreeRenderer = (function () {
             if (c.children.length) _ewRigWalk(c, R, mask);
         }
     }
+    /* THE KEPT LIGHT LIST (2026-11-15, mondo's F3 walking Disaster City: "render: node + rig ticks 3.0" ms of a 27 ms frame):
+       the rig read the scene's lights by walking EVERY visible object of the scene each frame (the city: ~40,000) to find
+       its ~30 lights. The scene's lights (every one, shown or not, in the walk's own order) are now listed once and listed
+       again only when something was added to any scene (Object3D.add's counter; nothing in the game adds a child another
+       way), and once a second all the same. Each frame reads that list: a light counts when it and every parent up to the
+       scene are shown, exactly what the walk reached, and is treated exactly as the walk treated it. A light taken out of
+       the scene fails the parent test. The walk every frame again: window.EW_RIG_WALK_EVERY = true. */
+    function _ewRigListAll(o, R, out) {
+        var ch = o.children;
+        for (var i = 0; i < ch.length; i++) { var c = ch[i]; if (c === R.group) continue; if (c.isLight) out.push(c); if (c.children.length) _ewRigListAll(c, R, out); }
+    }
+    function _ewRigRead(sc, R, mask) {
+        if ((typeof window !== 'undefined' && window.EW_RIG_WALK_EVERY) || typeof _ewAddCount !== 'function') { _ewRigWalk(sc, R, mask); return; }
+        var C = sc._ew_rigList, an = _ewAddCount(), now = performance.now(), kids = sc._ew_lentKids || sc.children;   // a mirror render lends the scene's children to its clipping group: the same list, the same lights
+        if (!C || C.an !== an || C.kids !== kids || C.n !== kids.length || now - C.at > 1000) {
+            C = sc._ew_rigList = { an: an, kids: kids, n: kids.length, at: now, list: [] };
+            _ewRigListAll(sc, R, C.list);
+        }
+        var L = C.list;
+        for (var i = 0; i < L.length; i++) {
+            var c = L[i], up = c;
+            while (up && up !== sc && up.visible !== false) up = up.parent;
+            if (up !== sc) continue;   // hidden, under a hidden parent, or no longer in this scene: the walk never reached it
+            var k = _ewRigKind(c);
+            if (!k) { if (c._ew_rigMask != null) { c.layers.mask = c._ew_rigMask; c._ew_rigMask = null; } }
+            else {
+                if (c.layers.mask !== 0 || c._ew_rigMask == null) { c._ew_rigMask = c.layers.mask; c.layers.mask = 0; }
+                var S = R.src[k];
+                if ((c._ew_rigMask & mask) !== 0 && S.length < _EW_RIG_KMAX[k]) S.push(c);
+            }
+        }
+    }
     function _ewRigRelease(sc) {
         sc.traverse(function (c) { if (c._ew_rigMask != null) { c.layers.mask = c._ew_rigMask; c._ew_rigMask = null; } });
         if (_ewRigG && _ewRigG.group.parent === sc) sc.remove(_ewRigG.group);
@@ -45693,7 +45725,7 @@ const ThreeRenderer = (function () {
         sc.userData.ewRigOn = true;
         var k, i;
         for (i = 0; i < _EW_RIG_KINDS.length; i++) R.src[_EW_RIG_KINDS[i]].length = 0;
-        _ewRigWalk(sc, R, cam.layers.mask);
+        _ewRigRead(sc, R, cam.layers.mask);   // THE KEPT LIGHT LIST (was a walk of the whole scene every frame)
         /* the point lamps grow in steps of 4, the rest one at a time — never shrink (a scene's shaders build once) */
         var grew = false;
         for (i = 0; i < _EW_RIG_KINDS.length; i++) {
@@ -70510,6 +70542,22 @@ const ThreeRenderer = (function () {
        merged mesh per material and never fade (_ew_occSkip), each mast's rig is its own piece that fades when it stands between the eye
        and a unit. `hull` keys: draft (m of hull under the sea's sheet; 3.8), bow (m the beakhead runs past the deck's east edge; 9.5),
        stern (m the transom stands past its west edge; 0.05). */
+    /* THE MOORED SHIP (2026-11-15, mondo on the Beach's hand-drawn Dutchman: "we literally have a dutchman ship from the dutchman pvp map. why not
+       just use that exact ship??"): `terrain.moored = [{ kind: 'galleon', room: <a room whose terrain.float.hull is a galleon>, x, z }]` draws THAT
+       room's own ship in this room: the same builder, on that room's own compiled field (its rim heights, its mast trees, its hull numbers), in a
+       group moved to (x, z) with its waterline on this room's sea. Bow east, as she is built. No wake (she is not under way). The decks
+       themselves are this room's ground (the tool writes her deck heights into the squares she stands on). */
+    function _hqBuildMoored(room, info, G, TM, rng, ms) {
+        if (!ms || ms.kind !== 'galleon' || !ms.room || typeof DOOR_HQ === 'undefined') return;
+        var sr = DOOR_HQ.rooms[ms.room], si = (sr && sr.terrain && typeof hqTerrainInfo === 'function') ? hqTerrainInfo(ms.room) : null;
+        var fl = sr ? _hqFieldFloats(ms.room, sr) : null;
+        if (!si || !fl || !fl.hull || fl.hull.kind !== 'galleon') return;
+        var U = _hqUnits(), sg = new THREE.Group(); sg.name = 'hqMoored:' + ms.room;
+        var seaOf = function (r, d) { var s = r && r.terrain && r.terrain.sea; return (s && typeof s.y === 'number') ? s.y : d; };
+        sg.position.set((+ms.x || 0) * U, (seaOf(room, 0) - seaOf(sr, -4.2)) * U, (+ms.z || 0) * U);
+        _hqBuildGalleon(sr, si, sg, TM, rng, Object.assign({}, fl.hull, { moored: true }));
+        G.add(sg);
+    }
     var _HQ_SHIP_TREES = { mast: 1, capstan: 1, helm: 1 };   // terrain trees the ship draws itself (three-renderer.js treeOne plants no foliage for them)
     var _hqSailTexCache = {};
     function _hqSailTex(seed) {
@@ -70850,11 +70898,13 @@ const ThreeRenderer = (function () {
             wakeTex.push({ tex: tx, per: 3.5 * U });
         };
         var hbW = hb0 * TUM, wakeL = stemX - sternX + 14;
+        if (!hl.moored) {   // THE MOORED SHIP (2026-11-15): the wake and the bow spray are the voyage's
         foam((stemX + sternX) / 2 - 7, zc - hbW - 1.3, wakeL, 2.8, 0.55, 1); foam((stemX + sternX) / 2 - 7, zc + hbW + 1.3, wakeL, 2.8, 0.55, 2);
         foam(sternX - 16, zc, 34, hbW * 1.7, 0.32, 3);
         for (var sp = 0; sp < 6; sp++) { var sps = _hzGlowSprite((1.6 + rng() * 1.6) * U, 0xe8f6ff, 0.5, 0.3, 0.2, 3 + rng() * 4); sps.position.set((stemX - 0.6 - rng() * 2.4) * U, Y(seaY + 0.3 + rng() * 0.9), (zc + (rng() - 0.5) * 3.2) * U); sps._ew_occSkip = true; hull.add(sps); }
         _hq.galleonWake = wakeTex;
         if (typeof _motionScroll !== 'undefined') wakeTex.forEach(function (w) { _motionScroll.push({ tex: w.tex, per: w.per, sign: 1 }); });
+        }
         /* ── one mesh per material ── */
         add(hull, _hqHullMerge(hullSkin), hullMat);
         add(hull, _hqHullMerge(bottom), bottomMat);
@@ -71938,6 +71988,7 @@ const ThreeRenderer = (function () {
            runs on past the shell to HQ_OUTER_M, matched to the field's own edge, rolling, swelling into low rises and
            then falling away under the fog (the sky's fog colour: scene.fog is the room's, _hqEnter). The treeline
            stands on it (_hqTerrainGround reads _hq.outer). Built in the field's own material. */
+        if (room.terrain && Array.isArray(room.terrain.moored)) room.terrain.moored.forEach(function (ms) { try { _hqBuildMoored(room, info, G, TM, rng, ms); } catch (e) { console.warn('[HQ] the moored ship failed', e); } });   // THE MOORED SHIP (2026-11-15): another room's ship drawn at its berth (the Dutchman at the Beach's Long Pier)
         var floatG = _hqFieldFloats(roomId, room);   // THE EDITOR (E3): a FLOATING ground (terrain.float, or a zone part with float) — no outer ground, a rock underside
         if (floatG && floatG.hull && floatG.hull.kind === 'galleon') { try { _hqBuildGalleon(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the galleon failed', e); } }   // THE GALLEON (2026-10-20): a sailing ship round the plate (the Flying Dutchman)
         else if (floatG && floatG.hull && floatG.hull.kind === 'starship') { try { _hqBuildStarship(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the starship failed', e); } }   // THE STARSHIP (2026-10-28): the ship under its own outline (the Spaceship's deck)
@@ -72550,6 +72601,7 @@ const ThreeRenderer = (function () {
         var neonRoom = !!(info.gen && info.gen.neon), batch = _hqTexBatch(G, U, neonRoom), n = 0;   // a neon plan's buildings glow like its lots
         info.texb.forEach(function (f) {
             if (typeof hqTexbPack === 'function' && hqTexbPack(f)) return;   // THE PACK BUILDINGS: _hqBuildTexPacks
+            if (f.doorsOnly) return;   // THE DESERT'S INSIDES (2026-11-15): a row that only carries a room's swinging leaves (_hqBuildTexDoors)
             var prism = typeof hqTexbPrism === 'function' && hqTexbPrism(f);   // THE PRISM BUILDINGS: their walls by _hqBuildTexPrisms (they need the kit), their roof + parapet here (THE PRISM ROOFS, 2026-10-30)
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -73060,7 +73112,7 @@ const ThreeRenderer = (function () {
         if (!_hq || (typeof window !== 'undefined' && window.EW_NO_CITY_DOORS) || typeof hqTexbDoor !== 'function') return 0;
         var cat0 = _hqData().catalogue || {}, list = _hq.cityDoors || (_hq.cityDoors = []), n = 0;
         info.texb.forEach(function (f) {
-            if (!f.hollow || f.leaf === 'none' || (typeof hqTexbPack === 'function' && hqTexbPack(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
+            if ((!f.hollow && !f.doorsOnly) || f.leaf === 'none' || (typeof hqTexbPack === 'function' && hqTexbPack(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
             var cat = cat0[f.leaf] || cat0[HQ_CITY_DOOR.leaf]; if (!cat || !cat.file) return;
             if (cat.open && cat.open !== 'swing') cat = cat0[HQ_CITY_DOOR.leaf];
             /* one doorway's leaves: (wx, wz) = its middle in the room's metres, q = the wall's turn, ow / oh = the opening */
@@ -73090,13 +73142,14 @@ const ThreeRenderer = (function () {
             try {
                 var w = Math.max(2, f.w || 8), d = Math.max(2, f.d || 8), hol = hqTexbDoor({ w: w, door: f.door }), q = -((f.rot || 0) * Math.PI / 180), c = Math.cos(q), s = Math.sin(q);
                 var lz = (d - 0.12) / 2 - 0.12, base = f.base || 0;
-                hang(cat, f.x + hol.lx * c + lz * s, f.z - hol.lx * s + lz * c, q, hol.cw - 0.04, hol.doorH, !!cat.double || !!f.leafDouble, base, f.id);
+                /* THE DESERT'S INSIDES (2026-11-15): a `doorsOnly` row has no front doorway of its own; an inner leaf's `y` = its sill over the row's foot (an upper floor's door) */
+                if (!f.doorsOnly) hang(cat, f.x + hol.lx * c + lz * s, f.z - hol.lx * s + lz * c, q, hol.cw - 0.04, hol.doorH, !!cat.double || !!f.leafDouble, base, f.id);
                 /* THE INNER DOORS (2026-11-13, the interiors pass): the row's `inner: [{ x, z, rot, w, leaf, double }]` hangs more swinging
                    leaves inside it, in the building's own frame (x along the front from its middle, z toward the front, rot 0 = in a wall
                    that runs along the front, 90 = across it). Drawn only: the district's own walls leave the gap. */
                 (f.inner || []).forEach(function (r, i) {
                     var ci = cat0[r.leaf] || cat0['leaf_office']; if (!ci || !ci.file || (ci.open && ci.open !== 'swing')) ci = cat;
-                    hang(ci, f.x + (r.x || 0) * c + (r.z || 0) * s, f.z - (r.x || 0) * s + (r.z || 0) * c, q - (r.rot || 0) * Math.PI / 180, (r.w || 1.75) - 0.04, r.h || hol.doorH, r.double != null ? !!r.double : !!ci.double, base, (f.id || '') + ':in' + i);
+                    hang(ci, f.x + (r.x || 0) * c + (r.z || 0) * s, f.z - (r.x || 0) * s + (r.z || 0) * c, q - (r.rot || 0) * Math.PI / 180, (r.w || 1.75) - 0.04, r.h || hol.doorH, r.double != null ? !!r.double : !!ci.double, base + (r.y || 0), (f.id || '') + ':in' + i);
                 });
             } catch (e) { console.warn('[HQ] a city door failed', f.id, e); }
         });
@@ -93991,24 +94044,39 @@ const ThreeRenderer = (function () {
     function _hqStackPrep(R, B, now) {
         if (_hqStackOff() || B.grp === 'propGroup' || !_hq || R[B.grp] !== _hq.shellGroup || !_hqChunkBig(_hq)) return true;
         try {
-            var groups = {}, seen = new Set(), K = _hqStk.skipped;
+            var groups = {}, seen = new Set(), K = _hqStk.skipped, uses = new Map();
             for (var i = 0; i < B.cands.length; i++) {
-                var t = _hqStackTex(B.cands[i].m); if (!t || seen.has(t.image)) continue;
+                var t = _hqStackTex(B.cands[i].m); if (!t) continue;
+                uses.set(t.image, (uses.get(t.image) | 0) + 1);
+                if (seen.has(t.image)) continue;
                 seen.add(t.image);
                 var e0 = _hqStk.byImg.get(t.image); if (e0 && !e0.arr._ew_dead && e0.ver === t.version) continue;
                 var k = _hqStackKey(t); (groups[k] || (groups[k] = [])).push(t);
             }
-            for (var k2 in groups) {
-                var G = groups[k2], t0 = G[0], w = t0.image.width, h = t0.image.height, n = G.length, sz = w * h * 4;
-                if (n < 2) { K.alone = (K.alone | 0) + 1; continue; }
-                if (sz * n > 100663296) { K.tooBig = (K.tooBig | 0) + n; continue; }
+            /* THE SPLIT STACK (2026-11-15, mondo's F3: "sheet stacks 3 (125 sheets)" — the city's 1024 px sheets, 25 of them by then =
+               105 MB, were one bucket over the 96 MB limit and the whole bucket was left out: 2,300 pieces kept a look per sheet).
+               A bucket over the limit is cut into the fewest stacks that each fit, the most worn sheets together in the first, so
+               the pieces still merge within each. A stack is a look, so nothing else changes. All stacks together stay under
+               320 MB. The whole bucket left out, as before: window.EW_HQ_STACK_NO_SPLIT before the room. */
+            var parts = [], LIM = 100663296, noSplit = (typeof window !== 'undefined' && !!window.EW_HQ_STACK_NO_SPLIT);
+            for (var kg in groups) {
+                var G0 = groups[kg], sz0 = G0[0].image.width * G0[0].image.height * 4, per = Math.floor(LIM / sz0);
+                if (G0.length < 2) { K.alone = (K.alone | 0) + 1; continue; }
+                if (sz0 * G0.length <= LIM) { parts.push([kg, G0]); continue; }
+                if (noSplit || per < 2) { K.tooBig = (K.tooBig | 0) + G0.length; continue; }
+                G0.sort(function (a, b) { return (uses.get(b.image) | 0) - (uses.get(a.image) | 0); });
+                for (var left = G0.length, at = 0, np = Math.ceil(G0.length / per); np > 0; np--) { var take = Math.ceil(left / np); if (take >= 2) parts.push([kg, G0.slice(at, at + take)]); else K.alone = (K.alone | 0) + take; at += take; left -= take; }
+            }
+            for (var pi = 0; pi < parts.length; pi++) {
+                var k2 = parts[pi][0], G = parts[pi][1], t0 = G[0], w = t0.image.width, h = t0.image.height, n = G.length, sz = w * h * 4;
+                if ((_hqStk.bytes | 0) + sz * n > 335544320) { K.tooBig = (K.tooBig | 0) + n; continue; }
                 var arr = new THREE.DataArrayTexture(new Uint8Array(sz * n), w, h, n);
                 arr.format = THREE.RGBAFormat; arr.type = THREE.UnsignedByteType; arr.wrapS = t0.wrapS; arr.wrapT = t0.wrapT; arr.magFilter = t0.magFilter; arr.minFilter = t0.minFilter;
                 arr.anisotropy = t0.anisotropy; arr.colorSpace = t0.colorSpace; arr.flipY = false; arr.premultiplyAlpha = t0.premultiplyAlpha; arr.generateMipmaps = t0.generateMipmaps;
                 arr.name = 'ew sheet stack ' + w + 'x' + h + ' x' + n; arr._ew_stack = true; arr._ew_srcs = G.slice(); arr.needsUpdate = true;
                 if (!_hqStackFill(arr)) { arr._ew_dead = true; try { arr.dispose(); } catch (eD) {} K.refused = (K.refused | 0) + n; continue; }
                 for (var j = 0; j < n; j++) _hqStk.byImg.set(G[j].image, { arr: arr, layer: j, key: k2, ver: G[j].version });
-                _hqStk.arrays.push(arr); _hqStk.sheets += n;
+                _hqStk.arrays.push(arr); _hqStk.sheets += n; _hqStk.bytes = (_hqStk.bytes | 0) + sz * n;
             }
         } catch (e) { console.warn('[HQ batch] the sheet stack failed, the sheets stay their own', e); }
         return true;

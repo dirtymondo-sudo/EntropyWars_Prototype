@@ -342,6 +342,19 @@ doors.push({ id: 'tunnel', wall: 'free', x: gc(13), z: gc(29), face: 180, leaf: 
 doors.push({ id: 'mirrors', wall: 'free', x: r2(gx(44) - 0.45), z: gx(28), face: 270, leaf: 'leaf_frame_only', label: 'THE MANDELA ROOM', sub: 'ROOM * · IT IS DIFFERENT IN THERE', action: { room: 'mandela', at: 'mirrors' },
     desc: 'The hall of mirrors. It is not a hall and there are no mirrors; it is a room, and it is never the room it was.' });
 
+/* THE DESERT'S INSIDES (2026-11-15, bake-desert-insides.js): the three ways into the Great Pyramid's inside. The entrance in the north face beside
+   the North Stair, the slab beside the Tomb Door in the west face (Room 444's own door stays where it is), the Robbers' Cut (hidden) further north. */
+{ const fx = r2(gx(73) - 0.45), nz = r2(gx(73) - 0.45);
+  doors.push({ id: 'pyramid', wall: 'free', x: gc(87), z: nz, face: 0, leaf: 'leaf_frame_only', label: 'THE GREAT PYRAMID', sub: 'THE NORTH FACE · THE WAY IN', action: { room: 'site_prebuilt_giza_pyramid', at: 'north' },
+      desc: 'A square mouth in the north face, beside the stair, two courses up from the sand. The air that comes out of it is older than the stair.' });
+  doors.push({ id: 'tombside', wall: 'free', x: fx, z: gc(81), face: 270, leaf: 'leaf_frame_only', label: 'THE GREAT PYRAMID', sub: 'THE WEST FACE · BEHIND THE TOMB DOOR', action: { room: 'site_prebuilt_giza_pyramid', at: 'tomb' },
+      desc: 'A casing stone that turns on its middle, a few steps south of the Tomb Door.' });
+  doors.push({ id: 'cut', wall: 'free', x: fx, z: gc(75), face: 270, secret: true, leaf: 'leaf_frame_only', label: 'A DRAUGHT', sub: 'THE ROBBERS’ CUT · A ROUGH WAY IN', action: { room: 'site_prebuilt_giza_pyramid', at: 'cut' },
+      desc: 'A hole hacked through the casing stones at the height of a crouch. The chisel marks all point inward.', draft: true });
+  /* no cactus within two squares of these three (the cacti were seeded before the doors; only one standing in a doorway's way is taken out) */
+  const near = p => doors.slice(-3).some(d => Math.hypot(p.x - d.x, p.z - d.z) < 7.5); let cut = 0;
+  for (let i = props.length - 1; i >= 0; i--) if (props[i].key === 'saguaro_cactus' && near(props[i])) { props.splice(i, 1); cut++; }
+  count.cactiCut = cut; }
 /* ── checks: every prop key and unit exists ── */
 const CAT = vm.runInContext('DOOR_HQ.catalogue', D), RACES = vm.runInContext('AVAILABLE_RACES', D);
 props.forEach(p => { if (!CAT[p.key]) throw new Error('not in the catalogue: ' + p.key); });

@@ -876,7 +876,7 @@ lines.push("                /* THE NATURAL EDGES: no ring of backdrop buildings;
    the city's old edge); the bay lies past the city's east edge, so the mountains and the desert fall into it over the strip's width */
 /* THE DISTRICT MOVE (2026-11-15): Industrial is the south-east block now, a port with water on two sides: the bay lies south of its four plots
    too (the world map: 'the bay' under columns 8 to 11), so the south side is coast for the strip + those four plots, then desert. */
-if (ROOM.east) { const sw = ROOM.east * C; EDGES.w.inset = r3(sw - 0.1); EDGES.n.cap = { kind: 'coast', at: 'e', off: r3(sw), len: 60 }; EDGES.s.cap = { kind: 'coast', at: 'e', off: r3(sw + 4 * PL - 14), len: 30 }; }
+if (ROOM.east) { const sw = ROOM.east * C; EDGES.w.inset = r3(sw - 0.1); EDGES.n.cap = { kind: 'coast', at: 'e', off: 0, len: 36 };   /* THE NORTH BEACH (2026-11-15): the range runs on across the beach strip and falls into the bay past the sand: the cliffs at the beach's north end (was off: the strip's width, the hills stopped at the city's corner) */ EDGES.s.cap = { kind: 'coast', at: 'e', off: r3(sw + 4 * PL - 14), len: 30 }; }
 /* a district's own say in the land past the edge (2026-11-15, Entertainment's Hollywood hills): a district file may export `edges`; a side's row
    is laid over the room's (its `cap`), any other key (`sign`) is taken whole */
 for (const m of DISTRICTS) if (m.edges) for (const k of Object.keys(m.edges)) EDGES[k] = ('nsew'.indexOf(k) >= 0 && EDGES[k]) ? Object.assign({}, EDGES[k], m.edges[k]) : m.edges[k];
