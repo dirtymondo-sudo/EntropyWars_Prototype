@@ -717,7 +717,10 @@ if (ROOM.east) { const sw = ROOM.east * C; EDGES.w.inset = r3(sw - 0.1); EDGES.n
    is laid over the room's (its `cap`), any other key (`sign`) is taken whole */
 for (const m of DISTRICTS) if (m.edges) for (const k of Object.keys(m.edges)) EDGES[k] = ('nsew'.indexOf(k) >= 0 && EDGES[k]) ? Object.assign({}, EDGES[k], m.edges[k]) : m.edges[k];
 lines.push("                backdrop: false, edges: " + J(EDGES) + ",");
-lines.push("                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
+/* THE URBAN DECAY PASS (docs/disaster-city/urban-decay.js): the road is the pack's asphalt, the walk its paving slabs, the banks board-marked concrete */
+const UD = process.env.DC_NO_UD ? null : require(path.join(REPO, 'docs/disaster-city/urban-decay.js'));
+lines.push(UD ? "                floor: '" + UD.GROUND.floor + "', cliff: '" + UD.GROUND.cliff + "', path: '" + UD.GROUND.path + "', floorTint: '#8a8a8e',"
+              : "                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
 const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)
 lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0, streets: " + J(streets) + ",");
@@ -905,7 +908,7 @@ count.levels = lvCount;
       .filter(q => { const sh = sheetAt(cellOfM(q[0]), cellOfM(q[1])); return sh != null && SOIL.indexOf(sh) < 0; });
   if (bad.length) throw new Error('THE TREES STAND IN SOIL: ' + bad.length + ' tree(s) on paving: ' + JSON.stringify(bad.slice(0, 8)));
   count.soil = tally;
-  lines[paintLine] = "                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + NXP + ", nz: 144, d: '" + Buffer.from(paint).toString('base64') + "' },"; }
+  lines[paintLine] = "                paint: { pal: " + J(UD ? UD.pal(PAL) : PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + NXP + ", nz: 144, d: '" + Buffer.from(paint).toString('base64') + "' },"; }
 /* ── THE INTERIOR POLISH (docs/disaster-city/interior-polish.js; mondo 11-15: "rugs/carpets flickering ... do another polish pass on disaster
    city"): last of all, over every walk-in building whichever district wrote it: props beside a wall off the roof (`floor: true`), no two drawn
    faces on one plane, rugs onto the floor sheet, props onto the raised floor they stand in. It moves rows, it never drops one. ── */
@@ -915,7 +918,11 @@ lines[lvLine] = "                slope: { cells: { res: " + C + ", x0: " + gx(0)
    'txt:' sign gets its typeface by its district and what it says, as a sixth field on its key. A district file keeps writing the plain key. */
 { const SIGN_FONTS = require(path.join(REPO, 'docs/disaster-city/sign-fonts.js')), cl = v => Math.max(0, Math.min(N * 12 - 1, Math.floor((v + HALF) / C)));
   const dOf = f => { const m = /P\d\d-\d\d/.exec(String(f.id || '')), p = (m && plotOf[m[0]]) || (typeof f.x === 'number' && typeof f.z === 'number' ? plotAtCell(cl(f.x), cl(f.z)) : null); return p ? p.d : ''; };
-  const sf = SIGN_FONTS.apply(features, dOf), sp = SIGN_FONTS.apply(props, dOf); count.signFonts = sf.signs + sp.signs; }
+  const sf = SIGN_FONTS.apply(features, dOf), sp = SIGN_FONTS.apply(props, dOf); count.signFonts = sf.signs + sp.signs;
+  /* THE URBAN DECAY PASS: every sheet key the districts wrote, renamed to the pack's sheet (see the file's head); then the check: none of the sheets mondo ruled out is left */
+  if (UD) { count.urbanDecay = UD({ features, props, dOf });
+    const left = []; features.forEach(f => { ['key', 'keyIn', 'floorIn'].forEach(k => { if (UD.banned.indexOf(f[k]) >= 0) left.push(f[k]); }); (f.parts || []).forEach(p => ['key', 'keyTop', 'keyEnd', 'keyBase'].forEach(k => { if (UD.banned.indexOf(p[k]) >= 0) left.push(p[k]); })); });
+    if (left.length) throw new Error('THE URBAN DECAY PASS: ' + left.length + ' ruled-out sheet(s) left: ' + JSON.stringify(left.slice(0, 6))); } }
 features.forEach(f => lines.push("                    " + J(f) + ","));
 lines.push("                ],");
 lines.push("                /* the cars: the ring (west avenue, the north street, the east avenue, the cross street), never the response streets round the mall */");
