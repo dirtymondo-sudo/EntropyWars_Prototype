@@ -3872,3 +3872,6 @@ Plan picture + the built map: /mnt/project-files/disaster-city-relayout/.
   MODEL_LIST; originals + `run.py` / `prep.mjs` in project files `desert-plots/meshy/`). Catalogue rows "THE DESERT'S PIECES". bake-desert.js places
   9 hitching rails along Main Street, 2 wagons at the Wagon Camp, the water tower by the windmill and 80 cacti (46 saguaro, 34 prickly pear) seeded
   on the plan's open sand only (never the base, the circus, Main Street or beside another piece). Not seen on screen.
+  CACTI REMADE (mondo 11-15 19:20, pin on the model sheet: "can you try to get them without the mound"): both cacti made again from a prompt that asks
+  for the plant only, cut flat at the foot; same keys and R2 paths, replaced in place (the manifest's new sha fetches them). The first versions are in
+  project files `desert-plots/meshy/v1/`. The prickly pear still has a few pale slivers between pads (Meshy's bake).
