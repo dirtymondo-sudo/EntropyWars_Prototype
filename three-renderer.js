@@ -37856,10 +37856,11 @@ const ThreeRenderer = (function () {
     /* the sums: { misc: { n, mb }, rigs: { n, mb }, budget, evicted, freedMB, off } */
     function _mmRead() {
         var seen = {}, mb = 0, n = 0, rb = 0, rn = 0;
+        if (_mmStale) { _mmStale = false; for (var u0 in _miscModelCache) _miscModelCache[u0].bytes = null; }   // THE UNDRAWN MAPS: sheets were let go, count again
         for (var u in _miscModelCache) { var e = _miscModelCache[u]; if (!e.root || e._ewPiece) continue; if (e.bytes == null) e.bytes = _mmBytes(e.root, {}); mb += e.bytes; n++; }
         for (var r in _unitGlbCache) { var ue = _unitGlbCache[r]; if (!ue || !ue.root) continue; if (ue._ew_mmBytes == null) ue._ew_mmBytes = _mmBytes(ue.root, seen); rb += ue._ew_mmBytes; rn++; }
         return { misc: { n: n, mb: +(mb / 1048576).toFixed(1) }, rigs: { n: rn, mb: +(rb / 1048576).toFixed(1) }, budget: _mmBudgetMB(),
-                 evicted: _mmEvicted, freedMB: +(_mmFreed / 1048576).toFixed(1), off: _mmOff() };
+                 evicted: _mmEvicted, freedMB: +(_mmFreed / 1048576).toFixed(1), off: _mmOff(), undrawn: _hqPbrDropped };
     }
     /* THE HOLDERS (2026-11-15, mondo: "Crashed inside the door main hall/lobby"; his readout: MEM 1726/700 MB in the Foyer, 2047/700
        in the Main Hall, Firefox M1 WebGPU). The readout said how much, never WHAT: nothing could be checked from a console paste.
@@ -66578,7 +66579,39 @@ const ThreeRenderer = (function () {
         lm.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: a prop's foot darkens over the floor, its back toward a wall
         lm._ew_shared = true;
         _hqPropMatCache.set(sm.uuid, lm);
+        _hqPropDropPbr(sm);
         return lm;
+    }
+    /* THE UNDRAWN MAPS (2026-11-15, mondo: "Crashed inside the door main hall/lobby", his readout MEM 2047/700 MB there).
+       Every Meshy prop file ships THREE 2048 x 2048 sheets (colour, normal, metal + roughness) and the loader decodes all
+       three: 64 MB a file by the readout's count, on a stapler as on a couch. The room draws a prop as a matte Lambert on
+       its COLOUR sheet alone (above), so the other two were decoded, held for the whole visit and never drawn once: the
+       Main Hall + the Foyer hold 45 such files, about 1.9 GB of sheets nothing shows (measured off the files on the CDN).
+       Once a prop's file material has its room material, the sheets that material does not wear (normal, roughness,
+       metalness, ao) are let go: the reference dropped, the GPU copy (if any) disposed, the decoded picture left to the
+       collector. The colour, emissive and alpha sheets are never touched, so the picture is the same. The file material
+       itself becomes matte (metalness 0, roughness 1), which is how the room drew it anyway. The memory readout is counted
+       again after. Off: window.EW_KEEP_PBR_MAPS = true before the room loads. Count: ThreeRenderer.hq.mem().undrawn. */
+    var _hqPbrDropped = 0, _mmStale = false;
+    function _hqPropDropPbr(sm) {
+        if (!sm || !sm.isMeshStandardMaterial) return;
+        if (typeof window !== 'undefined' && window.EW_KEEP_PBR_MAPS) return;
+        var keep = [sm.map, sm.emissiveMap, sm.alphaMap], gone = [];
+        ['roughnessMap', 'metalnessMap', 'aoMap', 'normalMap'].forEach(function (k) {
+            var t = sm[k]; if (!t || !t.isTexture) return;
+            if (keep.indexOf(t) >= 0) return;   // one sheet worn twice: the drawn use keeps it
+            sm[k] = null;
+            if (gone.indexOf(t) < 0) gone.push(t);
+        });
+        if (!gone.length) return;
+        var keptSrc = keep.map(function (t) { return t && t.source; });
+        gone.forEach(function (t) {
+            try { t.dispose(); } catch (e) {}
+            /* the decoded picture is handed back now (a browser collects a bitmap late), unless a kept sheet reads the same picture */
+            try { var src = t.source, im = src && src.data; if (im && keptSrc.indexOf(src) < 0 && typeof im.close === 'function') { im.close(); t._ew_undrawn = true; } } catch (e) {}
+        });
+        sm.metalness = 0; sm.roughness = 1; sm.needsUpdate = true;
+        _hqPbrDropped += gone.length; _mmStale = true;
     }
     /* THE STATUES (2026-11-15, the Chicago pass — the museum's bronze lions): a catalogue row's / a prop row's `statue: 0xRRGGBB`
        casts the model in that metal: the room's own lit Lambert's sheet kept (the fur / the folds still read) under the metal's
