@@ -73599,7 +73599,7 @@ const ThreeRenderer = (function () {
                 var c = [at(cuts[ci], -1), at(cuts[ci + 1], -1), at(cuts[ci + 1], 1), at(cuts[ci], 1)];
                 var p = c.map(function (q) { return [q[0], hAt(q[0], q[1]) + lift, q[1]]; });
                 if (cuts.length > 2 && Math.max(Math.abs(p[1][1] - p[0][1]), Math.abs(p[2][1] - p[3][1])) > 0.3 * (cuts[ci + 1] - cuts[ci]) + 0.02) continue;   // a step in the ground (a retaining wall's line): the line breaks there, never a strip up the step
-                quad(B, [p[0], p[3], p[2], p[1]], [[0, 0], [s, 0], [s, s], [0, s]]);
+                quad(B, [p[0], p[1], p[2], p[3]], [[0, 0], [0, s], [s, s], [s, 0]]);   // ccw seen from above (2026-11-15: the 11-13 rewrite wound these the other way, so the paint faced DOWN and was culled: no lane lines, no crossings)
             }
         };
         var dir = function (a, b) { var dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1; return { x: dx / L, z: dz / L, L: L }; };
@@ -73705,7 +73705,7 @@ const ThreeRenderer = (function () {
                     flat(Bm, hx, hz, d.x, d.z, R.manholeR * 2, R.manholeR * 2, 0); manholes++;
                 }
                 /* THE OIL STAINS (2026-11-15, the Urban Decay pack; a room asks with gen.stains): a dark patch in a lane now and then, turned four ways, clear of the mouths and the manholes' rhythm */
-                if (info.gen && info.gen.stains) for (var s6 = 11 + (si * 7) % 13; s6 < L - 4; s6 += 23) {
+                if (room && room.terrain && room.terrain.gen && room.terrain.gen.stains) for (var s6 = 11 + (si * 7) % 13; s6 < L - 4; s6 += 23) {
                     var lane6 = ((stains % 2) ? -1 : 1) * Math.min(w * 0.24, 2.4), ox6 = pts[k][0] + d.x * s6 + (-d.z) * lane6, oz6 = pts[k][1] + d.z * s6 + d.x * lane6;
                     if (inOther(ox6, oz6, si, 1.4) || inPad(ox6, oz6, 2.8)) continue;
                     var q6 = stains % 4, sz6 = 2.1 + (stains % 3) * 0.5;
@@ -73734,7 +73734,7 @@ const ThreeRenderer = (function () {
             if (!B.n) return null;
             var g = new THREE.BufferGeometry();
             g.setAttribute('position', new THREE.Float32BufferAttribute(B.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(B.uv, 2)); g.setIndex(B.idx); g.computeVertexNormals();
-            var m = new THREE.Mesh(g, mat); m.renderOrder = order || 2; m._ew_hqRoadMark = true; G.add(m); (window.__ewRM = window.__ewRM || []).push(m); return m;
+            var m = new THREE.Mesh(g, mat); m.renderOrder = order || 2; m._ew_hqRoadMark = true; G.add(m); return m;
         };
         var paint = new THREE.MeshLambertMaterial({ color: neon ? 0xd8dce8 : 0xe8e6da, transparent: true, opacity: neon ? 0.82 : 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
         paint.emissive = new THREE.Color(neon ? 0x30343c : 0x2a2924);
@@ -73762,7 +73762,7 @@ const ThreeRenderer = (function () {
             var yaw = Math.atan2(-de.dx, -de.dz);
             placePlate('SignProhibited1a', de.x - de.dx * 1.2 + (-de.dz) * (de.w / 2 + 0.5), de.z - de.dz * 1.2 + de.dx * (de.w / 2 + 0.5), yaw, R.signH, 0.7);
         });
-        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] road markings', 'paint quads', Bw.n / 4, 'kerb', Bk.n / 4, 'manholes', manholes, 'signs', madeSigns.length, 'dead ends', deadEnds.length);
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] road markings', 'paint quads', Bw.n / 4, 'kerb', Bk.n / 4, 'manholes', manholes, 'stains', stains, 'signs', madeSigns.length, 'dead ends', deadEnds.length);
     }
     /* THE STREET LAMPS: on the kerb of every street of the plan, alternating sides every `every` metres, clear of the doors' lanes */
     function _hqBuildStreetLamps(room, info, G, TM, rng) {
