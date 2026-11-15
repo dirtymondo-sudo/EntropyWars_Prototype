@@ -47092,7 +47092,8 @@ const ThreeRenderer = (function () {
                a layer, a light, a bundle group or a clipping group, with the layers they hold; the mask walks only those whose
                layers meet its camera's. Filed again when something joined the scene (at most once a second), the child count
                changed, or every 10 s. Off: window.EW_MASK_FULL_WALK. */
-            if (this._ew_sideRender && !this._ew_paneRender && (camera.layers.mask & 1) === 0 && object._ew_ckFar == null && object.children.length > 32 && object.visible !== false && (object.isGroup || object.type === 'Object3D') && !object.isClippingGroup && !window.EW_MASK_FULL_WALK) {
+            if (this._ew_maskUnit === true && object._ew_ckFar != null) return;   // THE UNIT MASK (three-post.js): a chunk holds props, fences, copies — never a unit's part
+            if (this._ew_sideRender && !this._ew_paneRender && (camera.layers.mask & 1) === 0 && (object._ew_ckFar == null || (!this._ew_maskBun && !window.EW_MASK_CHUNK_FULL_WALK)) && object.children.length > 32 && object.visible !== false && (object.isGroup || object.type === 'Object3D') && !object.isClippingGroup && !window.EW_MASK_FULL_WALK) {
                 var MI = maskFile(object);
                 if (MI) {
                     var cm = camera.layers.mask, mgo = object.isGroup ? object.renderOrder : groupOrder, ML = MI.list, MM = MI.ms;
@@ -87227,9 +87228,9 @@ const ThreeRenderer = (function () {
        The fight never holds (renderFrame clears the hold).
        Off: window.EW_HERO_SHADOW_EVERY_FRAME = true (live). ThreeRenderer.hq.dev.heroShadow() = the counts. */
     var _heroFr = null, _heroFrM = null, _heroFrS = null;
-    var HERO_STILL_MS = 1500, HERO_REFRESH_MS = 1000, HERO_LIST_MS = 100, HERO_TEXEL = 0.25, HERO_FLESH_M = 0.35, HERO_RIGID_MS = 100, HERO_NEAR_MS = 500, HERO_NEAR_M = 6;
+    var HERO_STILL_MS = 1500, HERO_REFRESH_MS = 3000, HERO_LIST_MS = 100, HERO_TEXEL = 0.25, HERO_FLESH_M = 0.35, HERO_RIGID_MS = 100, HERO_NEAR_MS = 500, HERO_NEAR_M = 6;
     var _heroF64 = new Float64Array(1), _heroU32 = new Uint32Array(_heroF64.buffer);
-    var _heroStat = { frames: 0, held: 0, drawn: 0, moving: 0, changed: 0, drift: 0, inReach: 0, casters: 0, why: '' };
+    var _heroStat = { frames: 0, held: 0, drawn: 0, moving: 0, changed: 0, drift: 0, inReach: 0, casters: 0, why: '', sides: 63, sidesDrawn: 0, sidesSkipped: 0 };
     var _heroBodies = [];
     function _heroMix(h, f) { _heroF64[0] = f; h = Math.imul(h ^ _heroU32[0], 16777619); return Math.imul(h ^ _heroU32[1], 16777619); }
     /* THE LAMP'S TIGHT REACH (2026-11-15, mondo's F3 in Disaster City: "shadow 564 calls, 943K tris" beside a bedside lamp that
@@ -87318,8 +87319,76 @@ const ThreeRenderer = (function () {
         o._ew_heroSk = sk;
         for (var i = 0, j = 0; i < bones.length; i++, j += 12) _heroMatKeep(bones[i].matrixWorld.elements, snap, j);
     }
+    /* THE MOVING SIDES (2026-11-15, mondo's F3 in a Disaster City room: "shadow 405 calls, 834K tris", "shadow: projection walk 6.5 ·
+       classic draws 5.9" — a bedside lamp's six cube sides redrawn every frame because one body beside it breathes): a side of the
+       lamp's cube whose 90-degree pyramid holds no caster that moved shows exactly what it showed, so only the sides a moved body
+       touches (where it stands now AND where the map last drew it) are redrawn; the others keep their picture. Every side still
+       redraws when the list of casters changed, a live material is in reach, the lamp moved, on the refresh, and at least every
+       HERO_FULL_MS. The gate hands the sides to the frame's draw (L._ew_heroFaces, read once by the PointShadowNode wrapper).
+       Off: window.EW_HERO_ALL_SIDES = true. Counts: ThreeRenderer.hq.dev.heroShadow().sides. */
+    var HERO_FULL_MS = 4000, HERO_SIDE_PAD_M = 0.3;
+    var _heroMoved = [], _heroMovedR = [];
+    /* the cube sides (bit 0 +X, 1 -X, 2 +Y, 3 -Y, 4 +Z, 5 -Z) whose pyramid a sphere `r` wide at (x, y, z) from the lamp touches */
+    function _heroSideBits(x, y, z, r) {
+        if (!(r >= 0) || x !== x || y !== y || z !== z) return 63;
+        var k = r * 1.4143, ax = x < 0 ? -x : x, ay = y < 0 ? -y : y, az = z < 0 ? -z : z, m = 0;
+        if (x + k >= ay && x + k >= az && x + r > 0) m |= 1;
+        if (k - x >= ay && k - x >= az && r - x > 0) m |= 2;
+        if (y + k >= ax && y + k >= az && y + r > 0) m |= 4;
+        if (k - y >= ax && k - y >= az && r - y > 0) m |= 8;
+        if (z + k >= ax && z + k >= ay && z + r > 0) m |= 16;
+        if (k - z >= ax && k - z >= ay && r - z > 0) m |= 32;
+        return m;
+    }
+    /* the sides a moved body touches: now, and where its last drawn picture stands (its snapshot) */
+    function _heroBodySides(o, lx, ly, lz, rad, pad) {
+        var snap = o._ew_heroSnap, m = 0;
+        if (o.isSkinnedMesh) {
+            var bones = o.skeleton && o.skeleton.bones;
+            if (!bones || !snap || snap.length !== bones.length * 12) return 63;
+            for (var i = 0, j = 0; i < bones.length && m !== 63; i++, j += 12) {
+                var be = bones[i].matrixWorld.elements;
+                m |= _heroSideBits(be[12] - lx, be[13] - ly, be[14] - lz, rad + pad);
+                m |= _heroSideBits(snap[j + 9] - lx, snap[j + 10] - ly, snap[j + 11] - lz, rad + pad);
+            }
+            return m;
+        }
+        var g = o.geometry, bs = g && g.boundingSphere;
+        if (!bs || !snap || snap.length !== 12) return 63;
+        var e = o.matrixWorld.elements, c = bs.center;
+        m |= _heroSideBits(e[0] * c.x + e[4] * c.y + e[8] * c.z + e[12] - lx, e[1] * c.x + e[5] * c.y + e[9] * c.z + e[13] - ly, e[2] * c.x + e[6] * c.y + e[10] * c.z + e[14] - lz, rad + pad);
+        m |= _heroSideBits(snap[0] * c.x + snap[3] * c.y + snap[6] * c.z + snap[9] - lx, snap[1] * c.x + snap[4] * c.y + snap[7] * c.z + snap[10] - ly, snap[2] * c.x + snap[5] * c.y + snap[8] * c.z + snap[11] - lz, rad + pad);
+        return m;
+    }
+    function _heroSidesOff() { return typeof window !== 'undefined' && !!window.EW_HERO_ALL_SIDES; }
+    /* three's PointShadowNode draws its six sides in one loop (set the side, clear it, render): inside that loop a side the gate
+       did not ask for is neither cleared nor rendered */
+    function _heroSidesHook() {
+        var G = (typeof window !== 'undefined') ? window.THREE_GPU : null, C = G && G.PointShadowNode, P = C && C.prototype;
+        if (!P || P._ew_sidesHook || typeof P.renderShadow !== 'function') return;
+        var rs0 = P.renderShadow;
+        P.renderShadow = function (frame) {
+            var L = this.light, want = L ? L._ew_heroFaces : null, R = frame && frame.renderer;
+            if (L) L._ew_heroFaces = null;   // read once: a draw the gate did not prepare redraws every side
+            if (want == null || want === 63 || !R || _heroSidesOff() || R.coordinateSystem !== THREE.WebGPUCoordinateSystem) return rs0.apply(this, arguments);
+            /* three's side order on WebGPU: +X, -X, -Y, +Y, +Z, -Z */
+            var bitOf = [1, 2, 8, 4, 16, 32], face = -1, sm = this.shadowMap;
+            var srt = R.setRenderTarget, clr = R.clear, rnd = R.render, ownS = Object.prototype.hasOwnProperty.call(R, 'setRenderTarget'), ownC = Object.prototype.hasOwnProperty.call(R, 'clear'), ownR = Object.prototype.hasOwnProperty.call(R, 'render');
+            R.setRenderTarget = function (t, f) { face = (t === sm) ? (f | 0) : -1; return srt.apply(this, arguments); };
+            R.clear = function () { if (face >= 0 && !(want & bitOf[face])) return; return clr.apply(this, arguments); };
+            R.render = function () { if (face >= 0 && !(want & bitOf[face])) { _heroStat.sidesSkipped++; return; } if (face >= 0) _heroStat.sidesDrawn++; return rnd.apply(this, arguments); };
+            try { return rs0.apply(this, arguments); }
+            finally {
+                if (ownS) R.setRenderTarget = srt; else delete R.setRenderTarget;
+                if (ownC) R.clear = clr; else delete R.clear;
+                if (ownR) R.render = rnd; else delete R.render;
+            }
+        };
+        P._ew_sidesHook = true;
+    }
     function _hqHeroRelease(L) {
         if (!L) return;
+        L._ew_heroFaces = null;
         if (L._ew_heroHold) L._ew_heroHold = false;
         if (L.shadow && L.shadow.autoUpdate === false && L._ew_heroAuto) { L.shadow.autoUpdate = true; L._ew_heroAuto = false; }
     }
@@ -87344,7 +87413,7 @@ const ThreeRenderer = (function () {
             _heroFrS.center.set(le0[12], le0[13], le0[14]); _heroFrS.radius = L.distance * 1.15;
             if (!_heroFr.intersectsSphere(_heroFrS)) {
                 G.drawnAt = -1e9;   // back in view: the map draws that frame
-                L._ew_heroHold = true;
+                L._ew_heroHold = true; L._ew_heroFaces = null; G.fullAt = -1e9;
                 if (L.shadow.autoUpdate !== false) { L.shadow.autoUpdate = false; L._ew_heroAuto = true; }
                 L.shadow.needsUpdate = false;
                 ST.frames++; ST.held++; ST.why = 'off the camera';
@@ -87388,6 +87457,7 @@ const ThreeRenderer = (function () {
             G.near = nearL; G.nearOf = G.list; G.nearAt = now; G.nx = lx; G.ny = ly; G.nz = lz; G.nr = reach;
         }
         var h = 2166136261 | 0, moving = false, drift = false, driftSk = false, n = 0, list2 = window.EW_HERO_NO_NEAR ? G.list : G.near, bodies = _heroBodies; bodies.length = 0;
+        var sidesOn = !!L.isPointLight && !_heroSidesOff(), sides = 0, sidesR = 0, moved = _heroMoved, movedR = _heroMovedR, sidePad = HERO_SIDE_PAD_M * U; moved.length = 0; movedR.length = 0;   // THE MOVING SIDES
         h = _heroMix(h, lx); h = _heroMix(h, ly); h = _heroMix(h, lz); h = _heroMix(h, reach); h = _heroMix(h, mapW);
         for (var i = 0; i < list2.length; i++) {
             var o = list2[i], g2 = o.geometry, bs = g2 && g2.boundingSphere;
@@ -87414,7 +87484,7 @@ const ThreeRenderer = (function () {
                 if (o.morphTargetInfluences) for (var mi = 0; mi < o.morphTargetInfluences.length; mi++) h = _heroMix(h, o.morphTargetInfluences[mi]);
                 if (_heroLiveMat(o.material)) { moving = true; continue; }
                 bodies.push(o);
-                if (!driftSk && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(nearD, nearW, 0.05 * U), fleshW)) { drift = true; driftSk = true; }
+                if ((sidesOn || !driftSk) && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(nearD, nearW, 0.05 * U), fleshW)) { drift = true; driftSk = true; if (sidesOn) { sides |= _heroBodySides(o, lx, ly, lz, fleshW, sidePad); moved.push(o); } }
                 continue;
             }
             n++;
@@ -87423,7 +87493,7 @@ const ThreeRenderer = (function () {
             if (o.morphTargetInfluences) for (var mj = 0; mj < o.morphTargetInfluences.length; mj++) h = _heroMix(h, o.morphTargetInfluences[mj]);
             if (rad < 1e8) {
                 bodies.push(o);
-                if (!drift && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(Math.sqrt(dx * dx + dy * dy + dz * dz) - rad, nearW, 0.05 * U), rad + Math.sqrt((wx - e[12]) * (wx - e[12]) + (wy - e[13]) * (wy - e[13]) + (wz - e[14]) * (wz - e[14])))) drift = true;
+                if ((sidesOn || !drift) && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(Math.sqrt(dx * dx + dy * dy + dz * dz) - rad, nearW, 0.05 * U), rad + Math.sqrt((wx - e[12]) * (wx - e[12]) + (wy - e[13]) * (wy - e[13]) + (wz - e[14]) * (wz - e[14])))) { drift = true; if (sidesOn) { sidesR |= _heroBodySides(o, lx, ly, lz, rad, sidePad); movedR.push(o); } }   // a rigid piece: its sides at the slow pieces' pace (below)
                 continue;
             }
             for (var k = 0; k < 16; k++) h = _heroMix(h, e[k]);   // an instanced list: its own matrix exactly
@@ -87439,8 +87509,23 @@ const ThreeRenderer = (function () {
         if (slow) hold = true;
         /* the map draws this frame (the walk's pulse is up): this is where each body stands in it */
         var pulse = !renderer || !renderer.shadowMap || renderer.shadowMap.autoUpdate !== false || !!renderer.shadowMap.needsUpdate;
-        if (!hold && pulse) { G.drawnAt = now; for (var bi = 0; bi < bodies.length; bi++) _heroBodyKeep(bodies[bi]); }
-        bodies.length = 0;
+        /* THE MOVING SIDES: only a body's drift asked, and every side was drawn not long ago = the sides the moved bodies touch */
+        /* a rigid mover (a lava lamp's wax, a swinging door) asks for its sides at THE SLOW PIECES' pace, a body on bones every frame:
+           beside a lava lamp the wax (inside the lamp: every side) redraws ten times a second, the breathing body's sides each frame */
+        var rigidDue = sidesR !== 0 && ((now - (G.rigidAt || -1e9)) >= HERO_RIGID_MS || !!window.EW_HERO_RIGID_EVERY_FRAME);
+        if (rigidDue) sides |= sidesR;
+        var part = sidesOn && !hold && drift && !moving && !changed && (now - G.since) >= HERO_STILL_MS && (now - (G.fullAt || -1e9)) < HERO_FULL_MS && sides !== 63 && sides !== 0;
+        if (!hold && pulse) {
+            G.drawnAt = now;
+            if (part) {   // the others' pictures are the ones the map still holds
+                for (var bm = 0; bm < moved.length; bm++) _heroBodyKeep(moved[bm]);
+                if (rigidDue) { G.rigidAt = now; for (var br = 0; br < movedR.length; br++) _heroBodyKeep(movedR[br]); }
+            } else { G.fullAt = now; G.rigidAt = now; for (var bi = 0; bi < bodies.length; bi++) _heroBodyKeep(bodies[bi]); }
+        }
+        L._ew_heroFaces = hold ? null : (part ? sides : 63);
+        ST.sides = part ? sides : 63;
+        if (sidesOn) _heroSidesHook();
+        bodies.length = 0; moved.length = 0; movedR.length = 0;
         L._ew_heroHold = hold;
         /* the classic WebGL renderer reads the light's own switch: off + no pulse of its own = this light's map is skipped */
         if (hold) { if (L.shadow.autoUpdate !== false) { L.shadow.autoUpdate = false; L._ew_heroAuto = true; } L.shadow.needsUpdate = false; }
@@ -92701,7 +92786,7 @@ const ThreeRenderer = (function () {
        taken: props, doors, people (only the shell group), instanced / skinned / morphing / patched-shader / point / line
        pieces, a piece with children, a see-through piece that is not a cut-out, the terrain tiles, the outer ground, the
        sea, the traffic. The hand-over and the leave hand every piece back first. Off: window.EW_HQ_NO_BATCH. */
-    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, sliceMs: 3, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000 };
+    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, rollMs: 0.35, sliceMs: 3, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000, rescanIdleMs: 30000 };
     /* THE PERF PASS 2 (2026-10-01, mondo's Downtown readout: 1,232 scene draws, 315 shell pieces alone in their look and 370
        procedural props each its own draw): the merge squares are HQ_BATCH.cellM (was the terrain's 32 m tile — most looks
        had one piece per square; 96 m took Downtown's shell 1,526 → 444 to 1,841 → 289 draws), a second batch runs on each
@@ -92943,18 +93028,38 @@ const ThreeRenderer = (function () {
         }
     }
     /* the watchdog: every piece of every live batch as it was */
-    function _hqBatchCheck(R, B) {
-        var root = R[B.grp]; if (!root) return;
-        /* THE STILL WALK: a chunked room's groups keep their own matrices current (a moved piece at once, a moved inner part within
-           its sweep) — the forced walk of the whole city twice a second is three's own only where nothing else walks */
-        if (!_hqStillOff() && (root._ew_st || (R.pChunks && root === R.propGroup && R.ckList && R.ckList.length))) root.updateWorldMatrix(true, false);
-        else root.updateMatrixWorld(true);
+    /* THE ROLLING WATCH (2026-11-15, mondo in Disaster City: "22 fps with lag and frame drops", worst frame 115 ms): the watchdog
+       read all 8,200 merged pieces of the city in ONE frame, twice a second (a material snapshot string + a matrix product per
+       piece: ~45 ms on his Mac, the lens's "tick: static batch 4.1 ms" average) = a dropped frame every half second. A round is
+       now spread over the frames, HQ_BATCH.rollMs of each; the next round starts HQ_BATCH.checkMs after the last one ended. A
+       write to `visible` or `parent` still breaks its batch at once. Returns true when the round is over.
+       Off (the whole round in one frame): window.EW_HQ_BATCH_CHECK_WHOLE = true. */
+    function _hqBatchCheck(R, B, rollMs) {
+        var root = R[B.grp]; if (!root) { B.ck = null; return true; }
+        var roll = rollMs > 0;
+        if (!roll) B.ck = null;
+        if (!B.ck) {
+            /* THE STILL WALK: a chunked room's groups keep their own matrices current (a moved piece at once, a moved inner part within
+               its sweep) — the forced walk of the whole city twice a second is three's own only where nothing else walks */
+            if (!_hqStillOff() && (root._ew_st || (R.pChunks && root === R.propGroup && R.ckList && R.ckList.length))) root.updateWorldMatrix(true, false);
+            else root.updateMatrixWorld(true);
+            B.ck = { list: B.batches.slice(), i: 0, j: 0 };
+        }
         var inv = _hqBatchM || (_hqBatchM = new THREE.Matrix4()), tmp = _hqBatchM2 || (_hqBatchM2 = new THREE.Matrix4());
         inv.copy(root.matrixWorld).invert();
-        B.batches.slice().forEach(function (rec) {
-            if (rec.mesh.parent !== (rec.host || root)) { _hqBatchBreak(rec, 'lost'); return; }
-            for (var i = 0; i < rec.cs.length; i++) if (!_hqBatchStill(rec.cs[i], root, inv, tmp)) { _hqBatchBreak(rec, 'changed'); return; }
-        });
+        var K = B.ck, list = K.list, i = K.i, j = K.j, n = 0, end = roll ? _alNow() + rollMs : 0;
+        for (; i < list.length; i++, j = 0) {
+            var rec = list[i];
+            if (!rec.live) continue;
+            if (j === 0 && rec.mesh.parent !== (rec.host || root)) { _hqBatchBreak(rec, 'lost'); continue; }
+            var cs = rec.cs;
+            for (; j < cs.length; j++) {
+                if (!_hqBatchStill(cs[j], root, inv, tmp)) { _hqBatchBreak(rec, 'changed'); break; }
+                if (roll && (++n & 15) === 0 && _alNow() >= end) { K.i = i; K.j = j + 1; return false; }
+            }
+        }
+        B.ck = null;
+        return true;
     }
     /* every frame of the walk (after the room is ready): the current part and the drawn neighbours, HQ_BATCH.sliceMs in all */
     function _hqBatchTick(H, now) {
@@ -92969,8 +93074,17 @@ const ThreeRenderer = (function () {
             for (var bi = 0; bi < BB.length; bi++) {
             var B = BB[bi]; if (!B) continue;
             if (B.phase === 'off') continue;
-            if (B.batches.length && now - B.checkAt >= HQ_BATCH.checkMs) { B.checkAt = now; try { _hqBatchCheck(R, B); } catch (e) { console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
-            if (B.phase === 'live') { if (now - B.at < HQ_BATCH.rescanMs) continue; B.phase = 'scan'; B.it = _hqBatchScan(R, B); }   // THE PERF PASS 2: the late pieces
+            if (B.batches.length && (B.ck || now - B.checkAt >= HQ_BATCH.checkMs)) { try { if (_hqBatchCheck(R, B, (typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_WHOLE) ? 0 : HQ_BATCH.rollMs)) B.checkAt = now; } catch (e) { B.ck = null; console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
+            if (B.phase === 'live') {
+                if (now - B.at < HQ_BATCH.rescanMs) continue;
+                /* THE RESCAN ON CHANGE (2026-11-15): the late-piece scan force-walked the matrices of the whole group and read every
+                   piece's keys every 4 s for good (the city: 40,000 objects). Once the room is ready it runs when something joined
+                   the scene since the last scan (every Object3D.add is counted), else every HQ_BATCH.rescanIdleMs (a sheet that
+                   landed late). Off: window.EW_HQ_BATCH_RESCAN_ALWAYS = true. */
+                var _bAn = _ewAddCount();
+                if (H.ready && B.lived && B.scanAn === _bAn && now - B.at < HQ_BATCH.rescanIdleMs && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_RESCAN_ALWAYS)) continue;
+                B.scanAn = _bAn; B.phase = 'scan'; B.it = _hqBatchScan(R, B);   // THE PERF PASS 2: the late pieces
+            }
             if (B.phase === 'wait') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
             if (B.phase === 'watch') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
             if (_alNow() >= end) return;
