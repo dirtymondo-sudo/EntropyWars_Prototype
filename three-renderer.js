@@ -35148,7 +35148,7 @@ const ThreeRenderer = (function () {
         motionBlur: { on: true, fromV: 8, fullV: 16, fallV: 7, max: 0.55, taps: 8 },
         reflect: { on: true, scale: 0.35, everyN: 1, max: 1, puddleGain: 0.62, mirrorGain: 0.9 },
         nightFill: { color: 0xa8bad8, amount: 0.5, moonFloor: 0.75, keyLight: 0.6 },
-        keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7 } };
+        keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7, battleCeilGap: 0.35, walkUp: 2.8 } };
     /* THE POLISH SETTINGS (2026-09-21): the player's rows (data.js HQ_POLISH_PREFS, localStorage ew_polish) are read BEFORE
        every EW_* kill-switch — _polishOff(key, flag) = the player turned it off, or the dev flag is set; _polishLevel(key) = a
        level / slider row's number (1 = the shipped count). A row the catalogue does not know reads as ON. */
@@ -89916,9 +89916,10 @@ const ThreeRenderer = (function () {
                 var bxf = new THREE.DirectionalLight(LR.fillColor, (LR.fill || 0) * amb); bxf.position.set(-0.55, 0.45, -0.4).multiplyScalar(1000); lg.add(bxf);
                 var lightsAt = (S.lights && S.lights.length) ? S.lights : [S.light || { x: 0, z: 0 }];
                 var plC = (S.mood && S.mood.light != null) ? S.mood.light : 0xe6eeff;
+                var lmKf = _hqLampK(room);   // THE FIGHT IS AS BRIGHT AS THE WALK (2026-11-15): the room's own lamp share (shell.lampK), as _hqBoxRoomLamps hangs them
                 lightsAt.slice(0, lampMax).forEach(function (Lt) {
                     /* a PointLight's distance is world units the parent's scale never touches: metres × the battle's px per metre */
-                    var fl = new THREE.PointLight(plC, lightsAt.length > 1 ? 0.5 : 0.55, (lightsAt.length > 1 ? 12 : 9) * s, 2);
+                    var fl = new THREE.PointLight(plC, (lightsAt.length > 1 ? 0.5 : 0.55) * lmKf, (lightsAt.length > 1 ? 12 : 9) * s, 2);
                     fl.position.set((Lt.x || 0) * U, ((S.h || 3) - 0.35) * U, (Lt.z || 0) * U); lg.add(fl);
                 });
             }
@@ -89939,7 +89940,7 @@ const ThreeRenderer = (function () {
             if (!dlAll) { deskL.sort(function (a, b) { return (a.d - b.d) || (a.c - b.c); }); if (deskL.length > lampMax) deskL.length = lampMax; }   // on the board first, the middle before the rim
             deskL.forEach(function (e) {
                 var pp = e.pp;
-                var wl = new THREE.PointLight(0xffd9a0, 0.5, 5 * s, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); lg.add(wl);
+                var wl = new THREE.PointLight(0xffd9a0, 0.5 * (open ? 1 : _hqLampK(room)), 5 * s, 2); wl.position.set((pp.x || 0) * U, ((pp.y || 0) + 0.5) * U, (pp.z || 0) * U); lg.add(wl);
             });
             _facilityNearGroup.add(lg);
             if (typeof ThreePost !== 'undefined' && ThreePost.setFieldLight) ThreePost.setFieldLight(field);
@@ -89948,6 +89949,17 @@ const ThreeRenderer = (function () {
         try {
             if (st.keyLamp && st.keyLamp.parent) st.keyLamp.parent.remove(st.keyLamp);
             st.keyLamp = null; st.keyFloorY = floorY; st.keyOpen = !_hqEnclosed(room); st.keyNight = (field && field.night) || 0; st.keyWhite = _hqWhiteIn(room);
+            /* THE FIGHT IS AS BRIGHT AS THE WALK (2026-11-15, mondo in Disaster City's metro: "the battle got brighter than the exploration
+               mode"): the fight's Key Light hung battleUp (7 m) over the floor at battleIntensity (1.5) in EVERY closed room. Under a 4 m
+               ceiling (the platform, an office, a corridor) that is 3 m ABOVE the roof: with no shadow it lit the whole floor from over
+               the ceiling at about 1.15, where the walk's lamp (1.0, at the walker's head) gives its floor about 0.8 and only round the
+               walker. Now, in a closed room with a ceiling lower than that, the lamp hangs just under the ceiling (battleCeilGap) and
+               its strength is set so the floor under it gets what the walk's floor gets (walkUp = how high the walk's lamp stands),
+               rising to the old strength as the ceiling reaches battleUp. A hall 7.35 m or taller, a cave, a terrain room and an
+               outdoor fight are untouched. Every closed room, every fight, host and guest (it is drawn, never relayed).
+               Off: window.EW_FIELD_KEY_HIGH = true. */
+            st.keyCeil = null;
+            if (!st.keyOpen && !R.terrain && !R.cave && !W.EW_FIELD_KEY_HIGH) { var kcH = (room.kind === 'bay') ? +S.wallH : +S.h; if (isFinite(kcH) && kcH > 0) st.keyCeil = kcH; }
             st.keyRoomK = (room && room.shell && room.shell.keyLamp != null) ? _hqKeyRoomK(room) : 1;   /* THE LIT ROOMS are the walk's: a fight keeps the whole Key Light unless the room names its own */   // THE ROOM'S OWN KEY LIGHT (2026-11-12)
             if ((!st.keyOpen || open) && _horizonGroup) {   // THE NIGHT FILL: an outdoor fight carries it too, lit by the night only
                 var KL = _keyLampRules();
@@ -90210,8 +90222,21 @@ const ThreeRenderer = (function () {
         cam.getWorldDirection(_fklDir);
         var t = (_fklDir.y < -0.05) ? (fy - cam.position.y) / _fklDir.y : 12 * s;
         t = Math.max(0, Math.min(40 * s, t));
-        L.position.set(cam.position.x + _fklDir.x * t, fy + (K.battleUp || 7) * s, cam.position.z + _fklDir.z * t);
-        var want = ((K.battleIntensity != null) ? K.battleIntensity : (K.intensity || 0)) * _keyLampGain();
+        var kUp = K.battleUp || 7, kI = (K.battleIntensity != null) ? K.battleIntensity : (K.intensity || 0);
+        /* THE FIGHT IS AS BRIGHT AS THE WALK: under a low ceiling the lamp hangs inside the room, its floor lit as the walk's is */
+        if (st.keyCeil != null) {
+            var kTop = Math.max(1, st.keyCeil - ((K.battleCeilGap != null) ? +K.battleCeilGap : 0.35));
+            if (kTop < kUp) {
+                var kDec = (K.decay != null) ? +K.decay : 1, kRb = K.battleReach || 30, kRw = K.reach || 16, kWu = (K.walkUp != null) ? +K.walkUp : 2.8;
+                var kFall = function (h, r) { return Math.pow(Math.max(0.05, 1 - h / r), kDec); };
+                var kWalk = (K.intensity || 0) * kFall(kWu, kRw), kOld = kI * kFall(kUp, kRb);   // what the floor under the lamp gets: on the walk, in a tall room's fight
+                var kT = (kUp > kWu) ? Math.max(0, Math.min(1, (kTop - kWu) / (kUp - kWu))) : 1;
+                kI = Math.min(kI, (kWalk + (kOld - kWalk) * kT) / kFall(kTop, kRb));
+                kUp = kTop;
+            }
+        }
+        L.position.set(cam.position.x + _fklDir.x * t, fy + kUp * s, cam.position.z + _fklDir.z * t);
+        var want = kI * _keyLampGain();
         if (!st.keyOpen && st.keyWhite > 0) want *= st.keyWhite;   // THE WHITE ROOMS: a white-floored closed room's Key Light × whiteDay
         if (!st.keyOpen && st.keyRoomK != null) want *= st.keyRoomK;   // THE ROOM'S OWN KEY LIGHT
         if (st.keyOpen) { var nk = _fieldCycle ? 1 - _fieldCycleRigAt(_fieldCycle).t : st.keyNight; want *= Math.max(0, Math.min(1, nk)) * ((_hqLightRules().nightFill || {}).keyLight || 0); }   // THE NIGHT FILL

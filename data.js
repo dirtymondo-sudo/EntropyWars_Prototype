@@ -75598,7 +75598,7 @@ const HQ_LIGHT_RULES = {
        near-black blue + 22% white), the moon key never drops below `moonFloor` of the night (a low moon used to leave no key at all), and
        the Key Light rides along outdoors at `keyLight` of its strength × the night (0 by day). The walk and the fight alike. */
     nightFill: { color: 0xa8bad8, amount: 0.5, moonFloor: 0.75, keyLight: 0.6 },
-    keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7 },
+    keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7, battleCeilGap: 0.35, walkUp: 2.8 },   // THE FIGHT IS AS BRIGHT AS THE WALK (2026-11-15): under a ceiling lower than battleUp the fight's lamp hangs battleCeilGap m under it, its floor lit as the walk's (walkUp = the walk's lamp over the floor)
 };
 /* THE POLISH SETTINGS (2026-09-21 — the user: "add settings in the pause menu to let me customize stuff"): the ONE catalogue of
    the polish the player owns. Every row is a setting on the shared video sheet (ui.js _buildVideoSettingsHTML → the battle's
