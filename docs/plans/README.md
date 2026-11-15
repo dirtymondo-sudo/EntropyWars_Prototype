@@ -41,3 +41,15 @@ read them. PROPOSALS are not approved until the owner says so; check the matchin
 | `other/PVP_PLAYTEST_REPORT.md` | The 11-09 PvP playtest report. |
 | `other/TILE_INFO_PANEL_PLAN.md` | The tile info panel. |
 | `other/SPACESHIP_REDESIGN_HANDOFF.md` | The spaceship redesign hand-off. |
+
+## Camelot Kingdom (added 2026-11-15, evening)
+| File | What it is |
+|---|---|
+| `camelot/camelot_plot_plan_3.png`, `camelot-layout-3.json` | Plan 3, approved and built (castle, village, town wall, moat, woods ring). Built source: `../areas/camelot/layout.json` + `bake-camelot.js`. |
+| `camelot/camelot_castle_redesign_2.png`, `draw-castle2.py` | Castle redesign 2 (one palace on a two-step hill, centred). A MOCK-UP waiting for the owner's OK; not built. |
+| `../notes/areas-complexes.md` "CAMELOT KINGDOM ON PLOTS" | The build log. Still old: Keep upper floors, Undercroft, Sky Castle. |
+
+## The Mountains and The Woods
+Both are built. Mountains: `../areas/mountains/layout.json` + `bake-mountains.js`, notes "THE MOUNTAINS ON PLOTS".
+Woods: `../areas/woods/layout.json` + `bake-woods.js`, notes "THE WOODS ON PLOTS". What is left on each is listed at the
+end of its notes section and in `../project-memory/` (`mountains-plots-20261115.md`, `woods-*`, `camelot-kingdom-plots-20261115.md`).

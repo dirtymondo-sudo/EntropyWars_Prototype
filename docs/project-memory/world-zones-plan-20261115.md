@@ -1,6 +1,6 @@
 ---
 name: world-zones-plan-20261115
-description: Plot layout PROPOSALS for the 11 zones not yet planned + the whole-world layout map (mondo 11-15); posted, NOT built, waits his OK and 7 answers
+description: Plot layout PROPOSALS for the 11 zones not yet planned + the whole-world layout map (mondo 11-15); layout 3 + Mountains plan APPROVED 11-15 19:37, nothing built here
 metadata:
   type: project
 ---
@@ -23,5 +23,7 @@ LAYOUT 3 (mondo 11-15 18:17, posted, waits his OK): he wants a MOUNTAIN ZONE wit
 11-15 18:36: NEW Camelot (thread in the owner project) (replaces the old one) posted Camelot plan 3 (/mnt/project-files/camelot-kingdom/plan3/): North Pole OUT of the kingdom room, sleigh road leaves by a north gate to site_prebuilt_northpole_village until the Mountains exist. My map still draws a hidden postern path; switch it to their north-gate sleigh road on the next redraw. Tell that thread if mondo changes where the North Pole road or Woods trail meet Camelot.
 
 11-15 19:01: Disaster City district move BUILT + live (PR #1482, mondo "Build it as drawn"): C F E / U H B / R S I. Closed gates as built: Vatican gate west side row 1; mountain road north side column 8; Desert highway south side column 3 (Desert plan has its highway on column 0: needs a bend, Desert thread / mondo). Sea: beach rows 4-7, deep water rows 0-3, harbour quay rows 8-11. Sewer doors moved with plots (gutter, Church strip, Canal walk now in Southside SW; Pump court + drowned manhole in Industrial SE cols 8-11 row 11; metro stair unchanged). World map highway moved to column 3. STILL TODO: re-point the Sewers plan picture (zones_b.py) to these, and the Cavern exits.
+
+11-15 19:37 mondo: "okay that's good" = LAYOUT 3 + THE MOUNTAINS PLAN APPROVED (incl. North Pole lifted out of Camelot). Asked the coordinator for a Mountains build thread; told the new Camelot thread. Other zone plans are placed on the OK'd map but he has not picked the next to build. Still open: Ice Wall, Deep to Area 51 way.
 
 **How to apply:** do not build any of these zones until he OKs that zone's plan; a build thread starts from the zone's layout json and the Woods method (bake-woods.js).
