@@ -1340,6 +1340,28 @@ coat are still literally in every after shot, every body"; "why is there a hole 
   MPFB female lab coat still shows a little of the jeans' seat in the Wide stance back view; the thin long coat shows a bit of the tee at
   the waist side (above the skirt, its own fit, same as before).
 
+## THE COAT IN THE WALK (2026-11-14, character-models-plan row 9 pass 4)
+mondo 11-13 on the remade halfdemon M (saved look's `bovercoat` on mpfb_male), walk frame of the look check: "this part is
+sticking out of his clothes" = the overcoat's skirt standing out like a bell at the hip.
+- **Cause (not the walk clip):** `hangTick` ran ONE step of at most 1/30 s per drawn frame and simulates the chains in WORLD
+  space. (1) On a slow frame rate (the look check's software GL, a weak PC, a stall) the coat ran in slow motion: the first
+  stride or a turn left it standing out for seconds. (2) A unit that SNAPS to a new facing (the viewer drag, a battle facing
+  change) left the skirt where it was; the chains then sat on their bend limits on one side = the bell.
+- **Fix (three-renderer.js `hangTick`, COAT_HANG `hitch` 0.25, `sub` 4, `turnRate` 240):** a frame longer than 1/30 s runs up
+  to `sub` steps; a frame longer than `hitch` s makes the coat hang fresh (weights + legs, no history); the part of a turn
+  faster than `turnRate` deg/s is carried: every chain bone's cur/prev is moved by the rig root's matrix delta (lerped by the
+  excess share), so a slow turn still swings the skirt and a snap does not tear it. `hangTick(part, dt, root)` takes the rig root.
+- **Measured (halfdemon M remade, lower-bone max deviation from the baked direction):** 15 deg before and after two 90 deg
+  snap turns (was pinned on maxBend). True stride at 60 fps, back view, ID colours: 0 trouser px through the coat.
+- **Tried, no gain, not shipped:** stiffness 12 / 30, follow 1, rad 0, a lever damping, a deeper static tuck (`gap` 0.025 up to
+  yA + 0.25 Hm: shirt px at the waist 30/14/29 -> 84/37/82, worse).
+- **Still open:** thin light lines across the BACK WAIST of the overcoat (idle + walk) are the tucked white SHIRT (and a little
+  waistband) level with the coat's inside, NOT the belt; about 14-30 px in a 600 x 650 crop. THE CLOTH COLLISION off makes it far
+  worse, so it wants a look at the coat's own waist fit (shirt stand-off max 22-25 mm vs the coat's min 17 mm, 6-10 cm above the
+  hip joints). The saved looks on the classic body show trouser specks at the seat (no fitting passes there, by rule).
+- **Probe lessons:** set the yaw BEFORE the sim (a yaw set after it is itself a snap turn); advance the mixer past the
+  idle->walk crossfade; step real 1/60 s frames (`DYN`), a paused mixer hides everything.
+
 ## THE TABS + THE BODY SLOTS (2026-11-03, character-models-plan row 12n)
 mondo: "In the character creator, can we have tabs instead of one long list where i have to scroll through everything. And I want the
 clothes+accessories organized by body part like a typical rpg; head, torso, left arm, right arm, legs, footwear, etc."
