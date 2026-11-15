@@ -52478,7 +52478,7 @@ const ThreeRenderer = (function () {
         L.push('Scene meshes ' + (c.meshes || 0) + ' · skinned ' + (c.skinned || 0) + ' · rigs animating ' + (c.rigs || 0));
         L.push('Lights point ' + (c.point || 0) + (S.lampN != null && S.lampN >= 0 ? ' (stage lamp budget ' + S.lampN + ')' : '') + ' · spot ' + (c.spot || 0) + ' · dir ' + (c.dir || 0) + ' · hemi ' + (c.hemi || 0) + (c.rigN ? ' · rig ' + (c.rig || 0) + '/' + c.rigN : ''));
         L.push('Shadow casters ' + ((c.casters && c.casters.length) ? c.casters.length + ': ' + c.casters.join(', ') : '0'));
-        try { var hl = _hq && _hq.heroLit, hs = (typeof _heroStat !== 'undefined') ? _heroStat : null; if (hl && hl.isLight && hs) L.push('Hero lamp: ' + (hs.why || 'drawn') + ' · frames held ' + hs.held + ' / drawn ' + hs.drawn + ' · in reach ' + hs.inReach + ' of ' + hs.casters + ' casters · moving ' + hs.moving + ' · sides drawn ' + hs.sidesDrawn + ' / skipped ' + hs.sidesSkipped + ' (session)'); } catch (eH) {}   // THE SHADOW SPLIT
+        try { var hl = _hq && _hq.heroLit, hs = (typeof _heroStat !== 'undefined') ? _heroStat : null; if (hl && hl.isLight && hs) L.push('Hero lamp: ' + (hs.why || 'drawn') + ' · frames held ' + hs.held + ' / drawn ' + hs.drawn + ' · in reach ' + hs.inReach + ' of ' + hs.casters + ' casters · moving ' + hs.moving + ' · sides drawn ' + hs.sidesDrawn + ' / skipped ' + hs.sidesSkipped + ' (session)' + _lensLampWhere(hl)); } catch (eH) {}   // THE SHADOW SPLIT
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
         if (S.keep) L.push('Shader builds ' + S.keep.rateB.toFixed(1) + '/s · new pipelines ' + S.keep.rateP.toFixed(1) + '/s (session ' + S.keep.builds + ' / ' + S.keep.pipes + ') · kept ' + S.keep.kept + (S.keep.off ? ' (keep off)' : '') + (S.keep.inst ? ' · shared instancing ' + S.keep.inst : '') + (S.keep.rig ? ' · one rig: ' + S.keep.rig.moves + ' scene moves, ' + S.keep.rig.grows + ' grows' : '') + ' · sheets warmed ' + _ewSheet.n);
         if (S.keep && renderer && renderer._ew_sc) { var SC = _ewScStats(); L.push('Shader cache ' + SC.recipes + ' recipes · warmed ' + SC.warmed + (SC.left ? ' (' + SC.left + ' to go)' : '') + ' in ' + SC.warmMs + ' ms' + (SC.failed ? ' · ' + SC.failed + ' failed' : '') + ' · new this session ' + SC.proven + ' proven' + (SC.refused ? ' · not kept: ' + SC.refused : '')); }
@@ -52588,6 +52588,18 @@ const ThreeRenderer = (function () {
         var el = renderer.domElement, w = el ? el.clientWidth : 0, h = el ? el.clientHeight : 0;
         if (w > 0 && h > 0) { renderer.setSize(w, h); if (ThreePost && ThreePost.resize) ThreePost.resize(w, h); }
     }
+    /* where the hero lamp stands from the camera, in words a walker can follow (mondo 11-15: "where is the point lamp. how tf am I supposed to know where it is") */
+    function _lensLampWhere(hl) {
+        try {
+            var cam = _hq && _hq.camera; if (!cam || !hl || !hl.getWorldPosition) return '';
+            var lp = hl.getWorldPosition(new THREE.Vector3()), cp = cam.getWorldPosition(new THREE.Vector3()), fw = cam.getWorldDirection(new THREE.Vector3());
+            var dx = lp.x - cp.x, dz = lp.z - cp.z, dist = Math.sqrt(dx * dx + dz * dz) / _hqUnits(), fl = Math.sqrt(fw.x * fw.x + fw.z * fw.z) || 1;
+            var ang = Math.atan2(fw.x * dz - fw.z * dx, fw.x * dx + fw.z * dz) * 180 / Math.PI;   // 0 = straight ahead, + = to the right
+            var a = Math.abs(ang), dir = a < 25 ? 'straight ahead' : a < 70 ? 'ahead to the ' + (ang > 0 ? 'right' : 'left') : a < 110 ? 'to your ' + (ang > 0 ? 'right' : 'left') : a < 155 ? 'behind to the ' + (ang > 0 ? 'right' : 'left') : 'behind you';
+            var dy = (lp.y - cp.y) / _hqUnits();
+            return ' · it stands ' + Math.round(dist) + ' m ' + dir + (Math.abs(dy) > 4 ? (dy > 0 ? ', ' + Math.round(dy) + ' m up' : ', ' + Math.round(-dy) + ' m down') : '');
+        } catch (e) { return ''; }
+    }
     function _lensCopy() {
         var txt = _lensText(_lens && _lens.last);
         var done = function () { var b = _lens && _lens.el && _lens.el.querySelector('[data-lens="copy"]'); if (b) { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1200); } };
@@ -52638,6 +52650,7 @@ const ThreeRenderer = (function () {
         window.addEventListener('keydown', function (e) {
             if (e.key !== 'F3' || e.ctrlKey || e.altKey || e.metaKey) return;
             e.preventDefault(); e.stopPropagation();
+            if (e.shiftKey) { if (!_lens) _lensOpen(); else _lensCopy(); return; }   // SHIFT+F3 copies the readout from the keyboard: no pause, no mouse (mondo 11-15: "I can only copy the f3 data when I am paused")
             _lensToggle();
         }, true);
         var _lensBoot = function () {
