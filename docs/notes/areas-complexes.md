@@ -4044,3 +4044,6 @@ Then: "disaster city is the most complete area so far" (the standard the Estate 
 - **Rejected on the way** (his words): solid low-poly clumps "too chunky and low poly"; domed spray balls "the silhouette of the leaves isn't right, especially for the
   winter tree". Mock-up scripts: `/mnt/project-files/world-areas-plan/woods/draw-trees-leaves.py`.
 - Not seen in game (no browser run). Cost to watch: the Woods draws about 2,000 thicket trees, so roughly a million more triangles than before (instanced).
+- **THE LEAFY ONES AGAIN (same day, mondo: "the ones that are not the winter tree still look really rough, please fix")**: the sprayed leafy crowns are gone. A leafy
+  tree is now made exactly like the fir: ten tiers of slices of its own picture from the stem to the real outline (bake-trees.py `fir(..., leafy=True)`), about 300 leaf
+  triangles. Same three file names, new bytes; ASSET_MANIFEST.json carries the new shas (the `?h=` fetch). Lesson: slices of the whole picture read natural, loose sprays do not.
