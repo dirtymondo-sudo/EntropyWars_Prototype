@@ -3759,6 +3759,14 @@ the castle should be in the center of the map and relatively symmetrical. higher
   well and the wardrobe (no building's inside is reached by that solver in this room, the live Inn included: the doorways are narrower than
   its lattice; the Keep's doorway line reads clear ground and no wall). Drawings of the baked rows: `docs/plans/camelot/castle2_built_rows_front.png`
   and `castle2_built_rows_plan.png`.
+- **ONE STACKED BUILDING, PLAN POSTED, WAITS MONDO'S OK (nothing built)**: mondo on the next-four picture: "can we make the 3 rooms stacked like
+  part of the same building, but the castle can be its own loading screen" + "real architecture/floor plan". Floor plans:
+  `docs/plans/camelot/camelot_castle_stacked_plan.png` (draw-castle-stacked.py): ONE new room CAMELOT CASTLE behind the palace's portal (the
+  loading screen): Undercroft -7 m, floor 0 (Throne Hall 14 m high, Kitchen wing, Barracks wing), floor 1 +7 (gallery, Chapel Royal, Knights'
+  Hall), floor 2 +14 (Long Gallery, Solar, Presence Chamber, Queen's Chamber), floor 3 +21 (Great Library, Merlin's Study, War Room),
+  Battlements +28, Spire Room +44, the Castle in the Sky +88. The kingdom's palace would turn solid and its walked-into Throne Hall / wings
+  move inside. Engine fact to respect: floor over floor is the BRIDGE LAYER (`bridge` slabs; "NOT built: a door ON a bridge, props on a
+  bridge, the full second floor"), so build one stair + two floors first and check them. This replaces items 1-3 of the picture below.
 - **THE NEXT FOUR, PLAN POSTED, WAITS MONDO'S OK (nothing built)**: `docs/plans/camelot/camelot_castle2_next_plan.png` (draw-castle2-next.py):
   the Keep room (floors 2-3, Battlements, Spire room), Merlin's Undercroft under the whole hill, the Castle in the Sky as the palace's twin,
   five kinds of village house. Do not build any of the four before his yes on it.
