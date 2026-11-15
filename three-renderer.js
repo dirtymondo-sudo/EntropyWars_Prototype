@@ -94730,6 +94730,10 @@ const ThreeRenderer = (function () {
         },
         /* the car's shaft window streams at k times its speed (minus = the landings rise past: the car going down); 1 = back */
         sceneShaft: function (k) { if (!_hq) return false; _hq._shaftK = (+k || 0); return true; },
+        /* THE CUTSCENE EDITOR (2026-11-15): its notes bar and note box need the mouse while a scene plays. A lock that simply goes
+           away reads as the walker's ESC (the pause menu, _hqOnLockChange), which paused the building under the scene; a release
+           inside the stale window is ours and pauses nothing. */
+        sceneFreePointer: function () { if (!_hq) return false; _hqLockStaleAt = performance.now(); try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {} return true; },
         sceneReady: function (who) {
             if (!_hq || !who) return false;
             var ch = null;
