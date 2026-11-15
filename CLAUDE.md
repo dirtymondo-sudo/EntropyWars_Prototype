@@ -172,13 +172,13 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
   rate-limited (`httpRateLimit`). Production checklist: set
   `EW_ALLOWED_ORIGINS` on Render so arbitrary sites can't open sockets.
 
-### RULE #1c — DO NOT PLAYTEST UNLESS EXPLICITLY ASKED
-Playtesting (Playwright runs, browser automation, driving the game) burns a LOT
-of the user's tokens and they are fully capable of testing themselves. After
-making changes: syntax-check the edited JS (`node --check <file>`), merge and
-write the sync zip — that's it. Only run the playtest harness / any browser automation
-when the user explicitly requests it (e.g. "playtest <mode>") or when a change
-is genuinely impossible to validate any other way AND the user has agreed.
+### RULE #1c — BROWSER RUNS: YES FOR ANYTHING VISUAL, NOT FOR THE REST (mondo 11-15, replaces "do not playtest unless asked")
+mondo 11-15: "you are allowed to playtest and screenshot for anything visual". A change you can only judge by looking at it
+(a room, a building, props, terrain, a model, VFX, camera, UI, HUD) gets a browser run and screenshots without asking first:
+look at the pictures yourself, fix what is wrong, and show him the proof picture with the `[EW BUILD]` HEAD (RULE #1d).
+A change that is not visual (rules, data, numbers, tooling, docs) still gets only `node --check <file>`: browser runs burn a
+lot of his tokens, so no full "play a match" playtest unless he asks for one ("playtest <mode>"). Keep runs few and aimed:
+one probe run with several views beats many runs. Probe tips: PLAYTEST_NOTES.md "THE CITY PROBE".
 
 ### RULE #1d — THE FRESH CHECK: NEVER BUILD OR TEST ON AN OLD COPY (mondo 11-15)
 A cloud container's clone is shallow and its local `origin/main` ref can be DAYS old. On 11-15 a thread ran

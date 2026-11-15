@@ -4067,15 +4067,39 @@ Then: "disaster city is the most complete area so far" (the standard the Estate 
   lake's rock and the treehouse top are not walked: the rock is not climbed, the treehouse is the ladder's); every prop key and unit exists; every
   door and link resolves both ways. The Woods' block and tool are unchanged.
 - **NOT DONE / SHORT OF DISASTER CITY:**
-  - NOT SEEN ON SCREEN: which way pieces face, the house's proportions, the windmill's size, the Loch Ness Monster standing in 1 m of water.
+  - Seen on screen in the look pass below, except: the Lake's units (the Loch Ness Monster in 1 m of water), the walk-in insides, night.
   - No residents with routines: `HQ_CITY_RESIDENTS` is built for the city room only; the Estate's people stand on spots.
   - No natural edges (`terrain.edges`): the room wears the old ranch shell (its ring of dead trees and night sky).
-  - Art the game does not have (nothing was generated): corn stalks (the bank stands in), hay bales (the Hay Field is bare grass with the ranch
-    truck), headstones (standing stones and crosses, as the old Grounds), a trough. A Meshy list needs mondo's OK.
+  - Art the game does not have (nothing was generated): corn stalks (the leaf-sheet bank stands in) and a trough. No Meshy yet (mondo 11-15).
   - The house's five floors are the old rooms, not redesigned. The Barn and the Farmhouse have no upstairs.
   - Not carried over, because plan 2 does not draw them: the old fields' mesa, butte and stock pond; the old Grounds' coach house, terrace,
     footbridge pond, balcony bridges. The three trailers moved to the Ranch (Pasture, Ranch Gate).
   - No encounter table (`HQ_AREA_ENCOUNTERS` had none for the old rooms; those are mondo's baked tables).
+
+## THE ESTATE, THE LOOK PASS — seen in the browser, the Halloween pack as props (2026-11-15)
+
+mondo: "keep working on the visuals first. let's not use meshy yet ... you are allowed to playtest and screenshot for anything visual, please
+update that rule" (CLAUDE.md RULE #1c + owner-rules.md rewritten: browser runs without asking for anything visual, not for the rest).
+
+- **THE HALLOWEEN PACK IS A PROP KIT NOW** (data.js `HQ_CATALOGUE_HALLOWEEN`, 37 rows `hw_*`, `base: 'halloween'` + `node`): his 10-29 upload
+  (`Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx`, one FBX the renderer already cut pieces from for the spells) had no catalogue
+  row. Now: six headstones, three graves, a wooden picket panel, two iron fence panels, two iron gate leaves, two brick wall panels, two scarecrows on
+  poles, two straw bales, a tilled bed + three crops, five bare trees, four pumpkins, two candle clumps, a shovel, a cobweb. `h` = each piece's real
+  height, read from the file's geometry (centimetres), so every piece stands at true size. Nothing uploaded, nothing generated. MODEL_LIST.md rerun.
+  Still in his packs and not used yet (bucket `dirtymondo`, `project-files/asset-packs/`): the BlenderVoyage PSX graveyard pack (three more tombstones,
+  two iron gates, a railing, a dirt grave, dead bushes, two jack-o'-lanterns) needs cutting up and an upload; the bus-stop pack has a `Wheat` sheaf.
+- **IN THE ESTATE (bake-estate.js):** headstones and graves in the Family Plot and the Graveyard (were standing stones), a shovel, pumpkins, candles;
+  the iron fence along the foot of the house's lawn; real iron leaves on the Iron Gate (its piers moved inside the track); bare pack trees round the
+  house; THE SCARECROW on its pole with a pumpkin patch; straw bales in rows over the Hay Field, a stack by the truck and by the barn, bales in the
+  barn; a kitchen garden east of the farmhouse; a picket fence before the farmhouse porch.
+- **THE CORN** wears the `leaves_3` sheet (was `grass_rocky`: it read as a turf bank) and stands 2.4 m: it reads as a dense hedge, not as corn stalks.
+  The shell's `wallColor` does not tint it (seen: no change).
+- **FIXED FROM THE PICTURES:** the farmhouse's boards were brown (a tint multiplies the wood sheet): `gain: 2.2` makes them white; the barn has its two
+  sliding doors and a rail; the crypt's roof shows its pediment to the front; the house's boards are a shade lighter.
+- **SEEN (playtest_city.js, the cloud browser, `--wait=150000 --flags=EW_NO_MODEL_QUEUE`, views with their own `y`):** the Woods gate, the Scarecrow,
+  the corn tracks, the Circles, the Iron Gate, the house's front, both graveyards, the crypt, the barn (out and in), the farmhouse, the Hay Field, the
+  Windmill, the Lake from the dock. Probe tips are in PLAYTEST_NOTES.md "THE CITY PROBE".
+
 
 
 ### THE FULL TREES (2026-11-15, mondo: "im not liking how these trees have the 2d cutouts for the leaves ... use the trunks and branches from the current trees ... make better leaves ... texture them with the current tree leaves ... just try to make them natural looking"; he picked row 2 of `woods_tree_leaves_3.jpg`)

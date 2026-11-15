@@ -18,7 +18,8 @@ If a rule here and mondo's newest word disagree, his newest word wins. Then fix 
 - **Rebuilt areas replace their old rooms** (11-15). When a plot-built area ships, retire or delete its old rooms in the
   same change (data.js `DOOR_HQ.retired`) and point saves, map and doors at the new one.
 - **No tests.** No test files, no CI. Proof is a real browser picture of the real game, and every setting is proven on
-  screen. Browser runs cost a lot: only when mondo asks for one (CLAUDE.md RULE #1c).
+  screen. Browser runs and screenshots are allowed without asking for anything visual (mondo 11-15); no browser run for
+  non-visual changes, and a full match playtest only when he asks (CLAUDE.md RULE #1c).
 - **Never rebake or repaint his textures.** Never use AI-made logos: the official DOOR logo is his files in
   `Assets/ui/brand/door_logo/`.
 - **Art sources.** Reuse what is on R2 first (MODEL_LIST.md, `node list-models.js --r2`, packs first). Never generate or
