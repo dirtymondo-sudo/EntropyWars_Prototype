@@ -31749,7 +31749,7 @@ const DOOR_HQ = {
                 { id: 'woods',          deg: 255, level: 0, leaf: 'leaf_bulkhead',                  label: 'THE STAIRCASE TO THE WOODS', sub: 'THE STAIR · UP INTO THE WOODS', action: { room: 'woodstair', at: 'egress' }, desc: 'A tall hall with one stair in it. The stair climbs into the dark and comes out in the Woods.' },
                 { id: 'bay_terrestrial',deg: 270, level: 0, leaf: 'leaf_suburban_house',            label: 'BAY 1 · TERRESTRIAL',    sub: 'BATTLE MAPS',            action: { sector: 'terrestrial' } },
                 /* ── mezzanine (support / executive access) ── */
-                { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'B · G · M · 2 · 3 · 4 · PH',     action: { room: 'car', at: 'panel' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'The car. It stops at B, G, M, 2, 3, 4 and PH now; the PH button still wants KEYHOLDER clearance and twelve Keys (DOOR_HQ.elevator.stops).' },
+                { id: 'elevator',       deg: 0,   level: 1, leaf: null, proc: 'elevator',          label: 'ELEVATOR',                sub: 'B · G · M · 2 · 3 · 4 · PH',     action: { room: 'car', at: 'out' }, floors: ['B', 'G', 'M', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '14', 'PH'], desc: 'The car. It stops at B, G, M, 2, 3, 4 and PH now; the PH button still wants KEYHOLDER clearance and twelve Keys (DOOR_HQ.elevator.stops).' },
                 { id: 'bay_ancient',    deg: 45,  level: 1, leaf: 'leaf_portcullis',   wide: true,  label: 'BAY 2 · ANCIENT',         sub: 'BATTLE MAPS',            action: { sector: 'ancient' } },
                 { id: 'engineering',    deg: 90,  level: 2, leaf: 'leaf_glass_exec',                label: 'ARCANE ENGINEERING',      sub: 'MAP EDITOR',     action: { fn: '_goToMapEditor' },   desc: 'Research offices. The Map Editor, and the fourth door that wasn’t there yesterday — IT, four doors down. The Spell Library moved in with them.' },
                 /* ROOM 1337 · IT (plan 7.4, 2026-09-13): the user's Hacker Room as a
@@ -33531,7 +33531,7 @@ const DOOR_HQ = {
                 /* the car: the way down — the egress's elevator from the other side (proc leaf, both halves pocket) */
                 { id: 'elevator', wall: 's', x: 0, leaf: null, proc: 'elevator',
                   label: 'ELEVATOR', sub: 'THE CAR · DOWN',
-                  action: { room: 'car', at: 'panel' },
+                  action: { room: 'car', at: 'out' },
                   desc: 'The car. Five of its buttons work now. The other eleven light up when pressed and the car does not move; the office calls this a feature.' },
                 { id: 'corner', wall: 'e', z: -0.6, leaf: 'leaf_glass_exec',
                   label: 'THE CORNER OFFICE', sub: 'YOUR OFFICE · STORY',
@@ -34531,38 +34531,41 @@ const DOOR_HQ = {
             sub: 'PRESS A FLOOR',
             kind: 'box',
             shell: {
-                w: 2.6, d: 2.4, h: 2.6,
-                wallH: 2.6, dadoH: 0.9,
+                /* THE BIG CAR (2026-11-15, mondo: "the elevator needs to be bigger ... the camera has no room to show the normal view"):
+                   2 × 2 squares (7 m), so the 3.6 m walk camera fits behind the walker anywhere in the car */
+                w: 7.0, d: 7.0, h: 3.0,
+                wallH: 3.0, dadoH: 0.9,
                 /* 2026-09-16: the `metal_3` grate is gone from the car (the user: "don't use that metal texture on it") — brushed aluminium walls over a darker aluminium dado, like the Spaceship's deck */
                 floor: 'aluminium', wall: 'aluminium', dado: 'aluminium', trim: 'teal', ceiling: 'aluminium',
                 floorColor: 0x8e969e, wallColor: 0xc4c9ce, dadoColor: 0x7a8188, ceilColor: 0xd4d8dc,
                 pipes: false,
                 light: { x: 0, z: 0 },
                 mood: { light: 0xfff0d0 },
-                plate: { x: 0, z: -1.15, y: 2.2 },
+                plate: { x: 0, z: -3.4, y: 2.5 },
             },
             /* THE WAY OUT (2026-11-15, mondo: "once i walk into it i am stuck unless i pick a different floor"): the car's own
                doors, back onto the floor it was boarded from. map.js _hqGoRoom points `action` at that floor's `elevator`
                door on the way in (the mezzanine until then); the panel's YOU ARE HERE row steps out the same way. */
             doors: [
-                { id: 'out', wall: 's', x: -0.1, leaf: null, proc: 'elevator',
+                { id: 'out', wall: 's', x: 0, leaf: null, proc: 'elevator',
                   label: 'THE DOORS', sub: 'STEP OUT · THIS FLOOR',
                   action: { room: 'central_egress', at: 'elevator' },
                   desc: 'The doors you came in through. They open on the floor the car is standing at.' },
             ],
             counters: [
-                { id: 'panel', x: 0.85, z: 0.95, face: 0, plateY: 1.6, radius: 1.6, verb: 'PRESS',
+                { id: 'panel', x: 1.9, z: 3.0, face: 0, plateY: 1.6, radius: 1.6, verb: 'PRESS',
                   label: 'THE FLOOR PANEL', sub: 'B · G · M · 2 · 3 · 4 · PH', action: {},
                   desc: 'Sixteen buttons. Seven of them do something now; the other nine light up when pressed and the car stays where it is. The one for PH wants Keys.' },
             ],
             props: [
-                { key: 'car_panel',      wall: 's', x: 0.85, mount: 0.9 },
+                { key: 'car_panel',      wall: 's', x: 1.9, mount: 0.9 },
                 { key: 'shaft_window',   wall: 'n', x: 0, mount: 0.75 },
                 { key: 'hook_rail_long', wall: 'e', z: 0, mount: 0.95, rot: 0 },        // the handrail
                 { key: 'hook_rail_long', wall: 'w', z: 0, mount: 0.95, rot: 0 },
-                { key: 'security_camera', wall: 's', x: -0.95, mount: 2.3 },
-                { key: 'nameplate',      wall: 's', x: -0.7, mount: 1.55 },             // the inspection certificate; the date is wrong
-                { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 90 },
+                { key: 'security_camera', wall: 's', x: -2.9, mount: 2.6 },
+                { key: 'nameplate',      wall: 's', x: -1.9, mount: 1.55 },             // the inspection certificate; the date is wrong
+                { key: 'fluorescent',    x: 0, z: -1.6, ceil: true, face: 90 },
+                { key: 'fluorescent',    x: 0, z: 1.6, ceil: true, face: 90 },
             ],
             agents: [],
             npcSpots: [],
@@ -34571,7 +34574,7 @@ const DOOR_HQ = {
                 '“Which floor?” “All of them.” “That is not how the car works.” “That is not how I work either.”',
                 '“Do not look out of the window between floors.” “Why?” “There are landings that are not on the panel.”',
             ],
-            spawn: { x: 0, z: 0.1, face: 180 },
+            spawn: { x: 0, z: 0.6, face: 180 },
         },
         /* ── G · THE GARAGE (Room P1) — THE ROUND GARAGE, REBUILT (2026-09-26; the user: "it needs to have way more open space.
            There is barely any room to skate because of the cars. It's supposed to be round but it's all jagged and I get stuck in
@@ -34834,7 +34837,7 @@ const DOOR_HQ = {
             doors: [
                 { id: 'elevator', wall: 'e', z: 3.5, leaf: null, proc: 'elevator',
                   label: 'ELEVATOR', sub: 'THE CAR',
-                  action: { room: 'car', at: 'panel' },
+                  action: { room: 'car', at: 'out' },
                   desc: 'The car. It came down here; it will go anywhere on the panel.' },
                 /* Phase 8 stage 2 (2026-09-15): THE TUNNEL's service hatch — a maintenance door down to the platform (beside the elevator, under the deck) */
                 { id: 'tunnel', wall: 'e', z: -3.5, leaf: null, secret: true,   // ZONES_PLAN Z1: the platform is found later (a DRAUGHT)
@@ -35003,7 +35006,7 @@ const DOOR_HQ = {
             doors: [
                 { id: 'elevator', wall: 's', x: 0, leaf: null, proc: 'elevator',
                   label: 'ELEVATOR', sub: 'THE CAR',
-                  action: { room: 'car', at: 'panel' },
+                  action: { room: 'car', at: 'out' },
                   desc: 'The car.' },
                 { id: 'stairs', wall: 'w', z: -1.2, leaf: 'leaf_closet_alt',
                   label: 'SERVICE STAIR', sub: 'UP TO ROOM 64 · TRAINING',
@@ -35838,7 +35841,7 @@ const DOOR_HQ = {
             doors: [
                 { id: 'elevator', wall: 's', x: 0, leaf: null, proc: 'elevator',
                   label: 'ELEVATOR', sub: 'THE CAR',
-                  action: { room: 'car', at: 'panel' },
+                  action: { room: 'car', at: 'out' },
                   desc: 'The car.' },
                 { id: 'garden', wall: 'n', x: 0, leaf: 'leaf_wired_double', wide: true,
                   label: 'THE GARDEN', sub: 'ROOM 1618 · OPEN AIR',
@@ -36179,7 +36182,7 @@ const DOOR_HQ = {
                   desc: 'The panel you came in by, from this side. It is the only way out that is a way out.' },
                 { id: 'elevator', wall: 'e', z: 0, leaf: null, proc: 'elevator', floors: ['13'],
                   label: 'ELEVATOR', sub: 'DOWN ONLY',
-                  action: { room: 'car', at: 'panel' },
+                  action: { room: 'car', at: 'out' },
                   desc: 'The lift. The call button is lit and has been lit since you came in. The car comes when you press it, and the car has no button for this floor, so whatever goes down does not come back up this way.' },
             ],
             counters: [
@@ -36517,7 +36520,7 @@ const DOOR_HQ = {
             doors: [
                 { id: 'elevator', wall: 's', x: 0, leaf: null, proc: 'elevator',
                   label: 'ELEVATOR', sub: 'THE CAR',
-                  action: { room: 'car', at: 'panel' },
+                  action: { room: 'car', at: 'out' },
                   desc: 'The car.' },
                 { id: 'warehouse', wall: 'n', x: 0, leaf: 'leaf_wired_double', wide: true,
                   label: 'THE WAREHOUSE', sub: 'ROOM 1000 · THE FLOOR',
@@ -37349,7 +37352,7 @@ const DOOR_HQ = {
             doors: [
                 { id: 'elevator', wall: 's', x: 0, leaf: null, proc: 'elevator',
                   label: 'ELEVATOR', sub: 'THE CAR',
-                  action: { room: 'car', at: 'panel' },
+                  action: { room: 'car', at: 'out' },
                   desc: 'The car.' },
                 { id: 'dreamlab', wall: 'n', x: 0, leaf: 'leaf_hospital',
                   label: 'THE DREAM LAB', sub: 'ROOM REM · SLEEP STUDY',
@@ -56192,7 +56195,7 @@ const DOOR_HQ = {
             doors: [
                 { id: 'elevator', wall: 'e', z: 0, leaf: null, proc: 'elevator',
                   label: 'ELEVATOR', sub: 'THE CAR · H IS ON NO BUTTON',
-                  action: { room: 'car', at: 'panel' },
+                  action: { room: 'car', at: 'out' },
                   desc: 'The car comes when it is called from here. It does not stop here from anywhere else; there is no H on the panel. Nobody has asked why the door exists.' },
                 { id: 'corridor', wall: 'n', x: 0, leaf: 'leaf_coffee',
                   label: 'H-WING', sub: 'THE CORRIDOR · STRAIGHT ON',
