@@ -60,7 +60,7 @@ function sheet() {
         /* a roof is drawn from outside only: one timber sheet facing down under it */
         roof: (form, x, y, z, w, h, d, key, tint, o) => { add({ s: 'box', p: [x, y, z], size: [w, 0.02, d], sides: false, top: false, under: true, roof: true, ry: (o && o.ry) || 0 }, WD2, 0x4a3626);
             return add({ s: 'roof', form, p: [x, y, z], size: [w, h, d], roof: true }, key, tint, o); },
-        shell(w, h, d, key, tint, door, uv) { const e = 0.05, Wd = w + 2 * e, Dp = d + 2 * e, x = uv ? { uv } : null;
+        shell(w, h, d, key, tint, door, uv, ex) { const e = 0.05, Wd = w + 2 * e, Dp = d + 2 * e, x = Object.assign(uv ? { uv } : {}, ex || {});
             add({ s: 'box', p: [0, 0, 0], size: [Wd, h, Dp], top: false, faces: 'blr' }, key, tint, x);
             add({ s: 'quad', p: [0, 0, r2(Dp / 2)], size: [Wd, h], ry: 0, hole: [r2(door.lx), r2(door.cw), 2.2] }, key, tint, x); },
         frame(door, d, key, tint) { A.box(door.lx - door.cw / 2 - 0.1, 0, d / 2 + 0.1, 0.2, 2.4, 0.2, key, tint); A.box(door.lx + door.cw / 2 + 0.1, 0, d / 2 + 0.1, 0.2, 2.4, 0.2, key, tint); A.box(door.lx, 2.25, d / 2 + 0.1, door.cw + 0.5, 0.2, 0.2, key, tint); },
@@ -90,7 +90,7 @@ const windows = (a, w, d, y, hh, skipX, tint, glow) => { for (let x = -w / 2 + 1
    Cellar), so out here it is a solid house and its front door leads into the Hall. Dark clapboard, a mansard, a tower over the door, two gabled bays,
    a porch across the front, brick chimneys; three windows lit, the rest dark. */
 const HOUSE = building('house', [14, 50, 22, 56, 'S'], 10.5, SOLID, (a, w, d) => {
-    const WALL = 0x5a5560, TRIM = 0x26222a, ROOF = 0x2c2830, LIT = 0xf0c868, DARK = 0x2a3040, f = d / 2;
+    const WALL = 0x8a8494, TRIM = 0x26222a, ROOF = 0x2c2830, LIT = 0xf0c868, DARK = 0x2a3040, f = d / 2;
     a.box(0, 0, 0, w + 0.1, 7, d + 0.1, WD, WALL, { top: false, uv: [3.5, 1.75] });
     a.roof('hip', 0, 7, 0, w + 1.4, 3.4, d + 1.4, SHG, ROOF);
     a.box(0, 0, f - 2.7, 5.6, 12.6, 5.6, WD, WALL, { top: false, uv: [3.5, 1.75] }); a.roof('pyramid', 0, 12.6, f - 2.7, 6.6, 5.2, 6.6, SHG, ROOF);   // the tower over the door (flush with the front: nothing drawn stands where you walk)
@@ -116,7 +116,9 @@ const BARN = building('barn', [51, 50, 58, 56, 'S'], 5.25, { leaf: 'leaf_barn', 
     a.box(0, 5.0, d / 2 + 0.08, w + 0.3, 0.25, 0.2, WD2, WHITE);
     a.roof('gable', 0, 5.25, 0, d + 0.8, 4.6, w + 0.8, COR, ROOF, { ry: 90, keyEnd: WD, tintEnd: RED });
     a.frame(door, d, WD2, WHITE);
-    a.box(door.lx, 3.1, d / 2 + 0.07, 2.2, 1.7, 0.08, WD2, 0x4a2a22); a.box(door.lx, 3.0, d / 2 + 0.12, 2.6, 0.14, 0.14, WD2, WHITE); a.box(door.lx, 4.8, d / 2 + 0.12, 2.6, 0.14, 0.14, WD2, WHITE);   // the hayloft door
+    for (const sd of [-1, 1]) { a.box(door.lx + sd * 2.15, 0, d / 2 + 0.07, 2.3, 2.9, 0.08, WD2, 0x6a2a22); a.box(door.lx + sd * 2.15, 1.4, d / 2 + 0.12, 2.3, 0.14, 0.06, WD2, WHITE); a.box(door.lx + sd * 3.3, 0, d / 2 + 0.12, 0.14, 2.9, 0.06, WD2, WHITE); }   // the two big sliding doors, run back either side of the doorway
+    a.box(door.lx, 2.9, d / 2 + 0.12, 7.0, 0.16, 0.1, WD2, WHITE);
+    a.box(door.lx, 3.4, d / 2 + 0.07, 2.2, 1.4, 0.08, WD2, 0x4a2a22); a.box(door.lx, 3.3, d / 2 + 0.12, 2.6, 0.14, 0.14, WD2, WHITE); a.box(door.lx, 4.8, d / 2 + 0.12, 2.6, 0.14, 0.14, WD2, WHITE);   // the hayloft door
     for (const x of [-8.75, 8.75]) { a.box(x, 1.2, d / 2 + 0.06, 1.2, 1.2, 0.08, SHUT, 0xb0a898, { uv: 'fit', faces: 'f', top: false }); a.box(x, 1.06, d / 2 + 0.12, 1.6, 0.14, 0.16, WD2, WHITE); }
 });
 put(BARN, 'horse_brown', -8.6, -6.4, { face: 180 }); put(BARN, 'cow', 8.6, -6.4, { face: 180 }); put(BARN, 'cow', 8.6, -1.2, { face: 270 });
@@ -126,7 +128,7 @@ put(BARN, 'railway_lantern', 2.4, 8.2); put(BARN, 'psx_cobweb_1', -11.4, -9.6, {
 /* THE FARMHOUSE (walk-in): white boards, a green roof, a brick chimney, the porch on the plan's plank row */
 const FARM = building('farmhouse', [63, 51, 69, 56, 'S'], 3.5, { leaf: 'leaf_white_wood' }, (a, w, d, door) => {
     const WHITE = 0xe6e0d0, GREEN = 0x4a6048, TRIM = 0x3a4a3a;
-    a.shell(w, 3.5, d, WD, WHITE, door, [3.5, 1.75]);
+    a.shell(w, 3.5, d, WD, WHITE, door, [3.5, 1.75], { gain: 2.2 });
     a.box(0, 0, 0, w - 0.1, 0.16, d - 0.1, FLR, 0x8c7a62, { uv: [1.75, 1.75] });
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) a.box(sx * w / 2, 0, sz * d / 2, 0.3, 3.5, 0.3, WD2, TRIM);
     a.roof('gable', 0, 3.5, 0, w + 1.0, 3.2, d + 1.0, SHG, GREEN, { keyEnd: WD, tintEnd: WHITE });
@@ -155,7 +157,7 @@ put(BOAT, 'rowboat', -2.6, -2.4, { face: 90 }); put(BOAT, 'sea_chest', 4.6, -5.0
 const CRYPT = building('crypt', [4, 64, 8, 67, 'E'], 4.2, { leaf: 'leaf_cell', keyIn: 'castle_wall', floorIn: 'marble' }, (a, w, d, door) => {
     const STONE = 0xb4b0a8, DARK = 0x7a7670;
     a.shell(w, 4.2, d, 'castle_wall', STONE, door, [3.5, 1.75]);
-    a.roof('gable', 0, 4.2, 0, w + 0.8, 1.9, d + 0.8, 'castle_wall', DARK, { keyEnd: 'castle_wall', tintEnd: STONE });
+    a.roof('gable', 0, 4.2, 0, d + 0.8, 1.9, w + 0.8, 'castle_wall', DARK, { ry: 90, keyEnd: 'castle_wall', tintEnd: STONE });
     a.box(0, 0, d / 2 + 0.9, w + 0.6, 0.2, 1.8, 'marble', 0xc8c4bc);
     for (const x of [-3.6, 3.6]) { a.cyl(x, 0.2, d / 2 + 1.2, 0.36, 3.8, 'marble', 0xd0ccc4); a.box(x, 4.0, d / 2 + 1.2, 0.9, 0.2, 0.9, 'marble', 0xc0bcb4); }
     a.box(0, 4.2, d / 2 + 0.9, w + 0.8, 0.5, 1.9, 'castle_wall', DARK, { roof: true });
@@ -177,9 +179,9 @@ look('gazebo', gx(6.5), gx(54.5), 0, a => { a.cyl(0, 0, 0, 5.2, 0.12, 'marble', 
     a.cyl(0, 3.12, 0, 5.4, 0.22, WD2, 0xe2ded2, { roof: true }); a.cyl(0, 3.34, 0, 5.6, 2.6, SHG, 0x4a5a50, { r2: 0, seg: 8, roof: true }); a.cyl(0, 5.94, 0, 0.12, 0.9, WD2, 0x2a2622, { roof: true }); });
 for (let y = 53; y < 56; y++) for (let x = 5; x < 8; x++) taken.add(x + ':' + y);
 /* THE IRON GATE: two brick piers and the iron arch over the track where the corn ends */
-look('irongate', gx(19), gx(38), 0, a => { for (const s of [-1, 1]) { a.box(s * 3.9, 0, 0, 0.9, 3.4, 0.9, BRK, 0x6a5650); a.box(s * 3.9, 3.4, 0, 1.1, 0.25, 1.1, 'marble', 0xb0aca4); a.box(s * 3.9, 3.65, 0, 0.4, 0.5, 0.4, 'marble', 0xb0aca4);
-        a.box(s * 2.5, 0, 0.9 * 1, 0.08, 2.6, 0.08, null, 0x1c1c20, { n: 7, step: [0, 0, 0.3] }); a.box(s * 2.5, 2.5, 1.8, 0.1, 0.1, 2.0, null, 0x1c1c20); }      // each leaf stands open, back against its pier
-    a.box(0, 3.5, 0, 7.0, 0.12, 0.12, null, 0x1c1c20); a.box(0, 3.9, 0, 5.0, 0.1, 0.1, null, 0x1c1c20); a.box(-2.5, 3.5, 0, 0.08, 0.45, 0.08, null, 0x1c1c20, { n: 11, step: [0.5, 0, 0] }); });
+look('irongate', gx(19), gx(38), 0, a => { for (const s of [-1, 1]) { a.box(s * 3.0, 0, 0, 0.9, 3.4, 0.9, BRK, 0x6a5650); a.box(s * 3.0, 3.4, 0, 1.1, 0.25, 1.1, 'marble', 0xb0aca4); a.box(s * 3.0, 3.65, 0, 0.4, 0.5, 0.4, 'marble', 0xb0aca4); }
+    a.box(0, 3.5, 0, 5.4, 0.12, 0.12, null, 0x1c1c20); a.box(0, 3.9, 0, 4.0, 0.1, 0.1, null, 0x1c1c20); a.box(-2.0, 3.5, 0, 0.08, 0.45, 0.08, null, 0x1c1c20, { n: 9, step: [0.5, 0, 0] }); });
+props.push({ key: 'hw_gate_leaf', x: r2(gx(19) - 2.75), z: r2(gx(38) + 2.1), face: 90 }, { key: 'hw_gate_leaf_2', x: r2(gx(19) + 2.75), z: r2(gx(38) + 2.1), face: 90 });   // the two iron leaves (the Halloween pack's), standing open along the track
 /* THE TREEHOUSE: the old room's block you climb (a ladder up its south face), boarded round, a hut on top, the old oak beside it */
 feat({ k: 'plateau', x: gx(6), z: gx(42), w: 7, d: 7, h: 5.25, edge: 0.3 }); feat({ k: 'climb', x: gx(6), z: r2(gx(43) - 0.3), face: 0, look: 'ladder' });
 look('treehouse', gx(6), gx(42), 0, a => { a.box(0, 0, 0, 7.1, 5.25, 7.1, WD, 0x6a5a48, { top: false, uv: [3.5, 1.75] }); a.box(0, 5.25, 0, 7.4, 0.14, 7.4, FLR, 0x7a6a55);
@@ -227,6 +229,7 @@ feat({ k: 'dip', x: gx(18.5), z: gx(18.5), r: 17, h: 0.12 }); feat({ k: 'dip', x
 dec('floor_stain', 5, 16, { y: 0.01 }); dec('crow', 3, 14); dec('crow', 7, 18); dec('crow', 20, 14); dec('grasshopper', 16, 20); dec('grasshopper_brown', 21, 22);
 P('cave_torch', 13, 17); P('cave_torch', 4, 13); P('signpost', 14, 30, { face: 200 }); P('cave_torch', 15, 28); dec('wooden_bucket', 15, 30); dec('cardboard_boxes', 14, 28);
 dec('crow', 28, 6); dec('meshy_burlap_sack', 30, 9); dec('fallen_log', 18, 6); dec('butterfly', 20, 4); dec('ladybug', 17, 7); dec('caterpillar', 21, 6);
+P('hw_scarecrow', 30, 6, { face: 180 }); dec('hw_pumpkin', 28, 8); dec('hw_pumpkin_4', 31, 8); dec('hw_pumpkin_3', 30, 9); dec('hw_pumpkin_2', 28, 9);   // THE SCARECROW on its pole, its pumpkin patch
 native('scarecrow', 29, 7, 180, sayOf(O_FIELDS, 'scarecrow', 0)); native('scarecrow', 2, 15, 60, sayOf(O_FIELDS, 'scarecrow', 2)); native('scarecrow', 22, 15, 200);
 native('skinwalker', 16, 21, 180); native('mothman', 19, 5, 200);
 /* ── THE LAKE ── */
@@ -239,16 +242,19 @@ npc.push({ x: gc(54), z: gc(23), face: 0, race: 'loch ness monster' });         
 /* ── THE HAUNTED HOUSE + GRAVEYARD ── */
 tree(4, 41, 'tree_4', 12, 1.2); tree(8, 42, 'pine', 6.5); tree(5, 44, 'pine', 6); dec('fallen_log', 7, 43); P('cave_torch', 5, 40);
 P('cave_torch', 15, 41); P('cave_torch', 19, 43); P('stone_urn', 13, 58); P('stone_urn', 22, 58); P('cave_torch', 15, 57); P('cave_torch', 20, 57); P('planter', 14, 57); P('planter', 21, 57);
-tree(12, 49, 'tree_5', 7); tree(23, 49, 'tree_6', 7); tree(13, 53, 'tree_5', 6.5); tree(23, 59, 'tree_6', 6); P('hollow_dead_tree', 12, 59, { face: 120 });
-P('fountain', 30, 52); P('iron_garden_bench', 28, 50, { face: 180 }); P('iron_garden_bench', 32, 54, { face: 0 }); tree(34, 51, 'tree_5', 7); tree(28, 54, 'tree_6', 6.5); P('brazier', 29, 55); dec('crow', 31, 50);
+P('hw_tree', 12, 49, { face: 40 }); P('hw_tree_2', 23, 49, { face: 200 }); tree(13, 53, 'tree_5', 6.5); tree(23, 59, 'tree_6', 6); P('hollow_dead_tree', 12, 59, { face: 120 });
+P('fountain', 30, 52); P('iron_garden_bench', 28, 50, { face: 180 }); P('iron_garden_bench', 32, 54, { face: 0 }); P('hw_tree_3', 34, 51, { face: 120 }); tree(28, 54, 'tree_6', 6.5); P('brazier', 29, 55); dec('crow', 31, 50);
 P('park_bench', 2, 54, { face: 90 }); tree(1, 56, 'tree_5', 6.5); tree(3, 52, 'tree_6', 6); P('cave_torch', 4, 57);
-P('skull_pile', 1, 64); P('cave_torch', 3, 63); tree(2, 66, 'tree_5', 7); dec('candle', 3, 65); P('angel_statue', 2, 62, { face: 90 });
-/* the family graves and the graveyard's rows: the old Grounds' standing stones and crosses (the game has no headstone model) */
-{ const ST = ['menhir', 'cross', 'wooden_cross', 'menhir', 'cross'], row = (xs, y) => xs.forEach((x, i) => P(ST[(x + y + i) % ST.length], x, y, { face: 180 }));
+P('skull_pile', 1, 64); P('cave_torch', 3, 63); P('hw_tree_4', 2, 66, { face: 300 }); dec('candle', 3, 65); P('angel_statue', 2, 62, { face: 90 });
+/* the family graves and the graveyard's rows: the Halloween pack's headstones and graves (mondo's pack; data.js HQ_CATALOGUE_HALLOWEEN) */
+{ const ST = ['hw_stone', 'hw_stone_2', 'hw_stone_3', 'hw_stone_1', 'hw_grave', 'hw_stone_4', 'hw_stone_5', 'hw_grave_low'], row = (xs, y) => xs.forEach((x, i) => P(ST[(x * 3 + y + i) % ST.length], x, y, { face: 180 }));
   row([14, 16, 18, 20], 67); row([15, 17, 19], 68); row([15, 19], 62); P('angel_statue', 17, 69, { face: 0 }); P('hollow_dead_tree', 13, 65, { face: 40 }); dec('candle', 17, 68); dec('crow', 16, 61);
   row([25, 27, 29, 31], 67); row([25, 27, 29, 31], 69); row([27, 29, 31], 62); row([26, 28, 30], 71);
   P('trap_coffin_open', 33, 68, { y: -0.3, face: 20 }); dec('trap_coffin_lid', 32, 68); P('trap_coffin_wood', 24, 70, { y: -0.3, face: 300 }); P('skull_pile', 28, 62); P('stocks', 25, 70, { face: 180 });
-  P('cave_torch', 24, 67); P('cave_torch', 33, 67); dec('crow', 28, 68); dec('crow', 32, 70); dec('skull', 30, 70); dec('psx_cobweb_1', 27, 67, { y: 0.9 }); }
+  P('cave_torch', 24, 67); P('cave_torch', 33, 67); dec('crow', 28, 68); dec('crow', 32, 70); dec('skull', 30, 70); dec('hw_shovel', 32, 68, { y: 0.02 }); dec('hw_pumpkin', 26, 66); dec('hw_pumpkin_2', 31, 68); dec('hw_pumpkin_3', 29, 70); dec('hw_candles', 28, 66); dec('hw_candles_2', 16, 68);
+  P('wooden_cross', 24, 68, { h: 1.7, face: 180 }); P('wooden_cross', 21, 65, { h: 1.5, face: 180 }); }
+for (const x of [12, 13, 14, 15, 16, 19, 20, 21, 22, 23]) props.push({ key: 'hw_fence_iron', x: gc(x), z: r2(gx(60) - 0.25), face: 0 });   // the iron fence along the foot of the house's lawn, the walk's gap in its middle
+dec('hw_pumpkin', 16, 56); dec('hw_pumpkin_4', 19, 56); dec('hw_pumpkin_2', 15, 58); dec('hw_web', 20, 56, { y: 1.6, face: 0 });
 native('ghost', 28, 52, 30, sayOf(O_GROUNDS, 'ghost')); native('ghoul', 14, 66, 160, sayOf(O_GROUNDS, 'ghoul')); native('vampire', 13, 57, 180); native('werewolf', 7, 44, 90); native('eagleman', 3, 55, 90);
 native('undead', 26, 68, 200); native('jack o lantern', 30, 68, 180); native('zombie', 32, 70, 300); native('necromancer', 2, 63, 90);
 props.push({ key: 'abandoned_house', x: -168, z: 60, face: 0 }, { key: 'abandoned_house', x: -60, z: 168, face: 90 });       // the houses past the corn (the old Grounds' rim houses), outside the room
@@ -270,6 +276,17 @@ for (const y0 of [61, 69]) for (let y = y0; y < y0 + 2; y++) for (let x = 39; x 
 P('psx_metal_barrel_mp_2', 55, 70); dec('wooden_bucket', 55, 67); P('cave_torch', 48, 66);
 rail(60, 60, 64, 60); rail(67, 60, 72, 60); rail(60, 60, 60, 65); rail(60, 67, 60, 72);                                            // THE COW FIELD's fence, a gap on each side
 [[63, 63, 270], [66, 66, 300], [69, 62, 0], [64, 69, 90]].forEach(q => P('cow', q[0], q[1], { face: q[2] })); dec('grasshopper', 67, 64); tree(70, 70, 'tree_2', 8); tree(61, 70, 'tree', 7);
+{ /* THE HAY FIELD: straw bales in rows (the Halloween pack's), a stack by the truck, a scarecrow over them */
+  for (let y = 37; y <= 46; y += 3) for (let x = 61; x <= 70; x += 3) { if (taken.has(x + ':' + y) || (x === 64 && y === 40)) continue; P(rnd() < 0.5 ? 'hw_straw' : 'hw_straw_2', x, y, { face: rnd() < 0.7 ? 0 : 90 }); }
+  props.push({ key: 'hw_straw', x: gc(67), z: gc(41), face: 0 }, { key: 'hw_straw', x: r2(gc(67) + 1.5), z: gc(41), face: 0 }, { key: 'hw_straw_2', x: r2(gc(67) + 0.7), z: gc(41), y: 0.86, face: 0 }); taken.add('67:41');
+  P('hw_scarecrow_2', 66, 38, { face: 180 });
+  P('hw_straw', 58, 57, { face: 90 }); P('hw_straw_2', 58, 58, { face: 0 }); props.push({ key: 'hw_straw', x: gc(58), z: gc(57), y: 0.86, face: 90 });
+  put(BARN, 'hw_straw', 9.6, -3.4, { face: 0 }); put(BARN, 'hw_straw', 9.6, -4.6, { face: 0 }); put(BARN, 'hw_straw_2', 9.6, -4.0, { face: 0, y: 0.86 }); put(BARN, 'hw_straw', -4.6, -8.6, { face: 90 });
+  /* THE KITCHEN GARDEN east of the farmhouse: two tilled beds, their crops, pumpkins */
+  for (const x of [70, 71]) { props.push({ key: 'hw_farmland', x: gc(x), z: gx(53), face: 0, y: 0.02 }); for (let i = 0; i < 4; i++) props.push({ key: ['hw_crop', 'hw_crop_2', 'hw_crop_3'][(x + i) % 3], x: r2(gc(x) + (i % 2 ? 0.4 : -0.4)), z: r2(gx(53) - 1.4 + i * 0.95), y: 0.2 }); }
+  for (let y = 51; y < 55; y++) for (const x of [70, 71]) taken.add(x + ':' + y); dec('hw_pumpkin_4', 70, 55); dec('hw_pumpkin', 71, 50); dec('hw_pumpkin_2', 69, 56);
+  /* the picket fence before the farmhouse porch, a gap at the door */
+  const dx = FARM.at(FARM.door.lx, 0)[0]; for (let x = gx(62) + 0.83; x < gx(69); x += 1.66) { if (Math.abs(x - dx) < 1.8) continue; props.push({ key: 'hw_fence', x: r2(x), z: gx(58), face: 0 }); } }
 native('cowboy', 40, 64, 340); native('goatman', 44, 42, 200);
 
 if (errs.length) throw new Error('misplaced:\n  ' + errs.join('\n  '));
@@ -335,17 +352,17 @@ L.push("        " + ROOM + ": {");
 L.push("            label: 'THE ESTATE',");
 L.push("            sub: 'FOUR DISTRICTS · 36 PLOTS',");
 L.push("            kind: 'box', site: 'prebuilt_skinwalker', part: 'estate',");
-L.push("            shell: hqRanchShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: 4.4 } }),");
+L.push("            shell: hqRanchShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + SPM.x + ", z: " + SPM.z + ", y: 4.4 }, wall: 'leaves_3', wallColor: 0xd8c878 }),");
 L.push("            parti: 'Four districts of nine plots, every plot a twelve by twelve board: tracks cut through corn you cannot see over, a lake, a ranch, and a house on its rise with the graveyard below it.',");
 L.push("            typology: 'grid',");
 L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + G + ", names: " + J(PLAN.plots.map(p => [p.id, p.name, p.d, p.level])) + " },");
 L.push("            terrain: {");
-L.push("                res: 0.875, floor: 'grass_2', cliff: 'grass_rocky', path: 'dirt_2',");
+L.push("                res: 0.875, floor: 'grass_2', cliff: 'leaves_3', path: 'dirt_2',");
 L.push("                noise: { amp: 0.1, scale: 8 },");
 L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gx(0) + ", nx: " + W + ", nz: " + W + ", d: '" + slope.toString('base64') + "' } },");
 L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + W + ", nz: " + W + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
 L.push("                /* THE CORN IS THE WALL: every square that is not a `space` is the standing corn, a bank over the walker's head (the old Corn Fields' own) */");
-L.push("                gen: { kind: 'plan', look: 'rock', wallH: 2.2, edge: 0.3, jitter: 0, topNoise: 0.25, rim: 0, forceGrow: 0 },");
+L.push("                gen: { kind: 'plan', look: 'rock', wallH: 2.4, edge: 0.3, jitter: 0, topNoise: 0.25, rim: 0, forceGrow: 0 },");
 L.push("                features: [");
 spaces.concat(F, ARCH).forEach(f => L.push("                    " + J(f) + ","));
 L.push("                ],");
