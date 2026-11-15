@@ -25,17 +25,47 @@ const r3 = v => Math.round(v * 1000) / 1000;
 const gx = c => r3(-HALF + c * C);                                 // a cell LINE (0..144) in room metres
 const gc = c => r3(-HALF + (c + 0.5) * C);                         // a cell CENTRE
 const plotOf = {}; PLAN.plots.forEach(p => { plotOf[p.id] = p; });
+/* ── THE DISTRICT MOVE (2026-11-15, docs/disaster-city/move.js; mondo's layout: C F E / U H B / R S I). Every district's 4 x 4 block is set
+   down whole in its new place: a plot keeps its id (an id is a name: 'P00-03' is the Canal walk wherever it stands) and gets a new x / y.
+   `wx` / `wy` = the plot's place in the city, always; `x` / `y` are the same EXCEPT while a district file's hook runs, when they are the
+   plot's place in that district's HOME frame (inFrame below). `pid(x, y)` = the id of the plot standing AT x, y in the city. ── */
+const MOVE = require(path.join(REPO, 'docs/disaster-city/move.js'));
+const DELTA = {}; PLAN.districts.forEach(d => { DELTA[d.id] = [4 * (MOVE.to[d.id][0] - d.gx), 4 * (MOVE.to[d.id][1] - d.gy)]; });   // plots a district moved by
+const AT = {};
+PLAN.plots.forEach(p => { p.hx = p.x; p.hy = p.y; p.x = p.wx = p.hx + DELTA[p.d][0]; p.y = p.wy = p.hy + DELTA[p.d][1]; AT[p.wx + ',' + p.wy] = p; });
+PLAN.roofEdges.forEach(e => { const dl = DELTA[plotOf[e.pa].d]; e.from = [e.from[0] + dl[0] * 12, e.from[1] + dl[1] * 12]; e.to = [e.to[0] + dl[0] * 12, e.to[1] + dl[1] * 12]; });
 /* THE DISTRICT FILES (2026-11-13, the one hook for the nine district threads): docs/disaster-city/districts/<LETTER>.js (R C F U H E I S B),
    one per district, so no district's code lands in this tool. A file may export any of: tailor(PLAN, plotOf) = here, before the plan is read;
    apply(ctx) = after the buildings + their door steps exist, before the street furniture (take() cells there to keep them clear);
    build(ctx) = after every row exists. ctx = { PLAN, plotOf, features, props, bInfo, lateRows, gx, gc, r3, take, free, cellAt, setCell,
    roofB, ROOF_H, C, N, HALF }. A district edits its own rows by id ('dc:' + building id) and pushes its own rows (arch rows to lateRows). */
-const DISTRICTS = (() => { const dir = path.join(REPO, 'docs/disaster-city/districts'); return !fs.existsSync(dir) ? [] : fs.readdirSync(dir).filter(f => /^[A-Z]\.js$/.test(f)).sort().map(f => require(path.join(dir, f))); })();
+const DISTRICTS = (() => { const dir = path.join(REPO, 'docs/disaster-city/districts'); return !fs.existsSync(dir) ? [] : fs.readdirSync(dir).filter(f => /^[A-Z]\.js$/.test(f)).sort().map(f => { const m = require(path.join(dir, f)); m._dcFile = f[0]; return m; }); })();
 const PROPS = require(path.join(REPO, 'docs/disaster-city/props.js'));   // THE PROP PASS: the kerb's road signs, the set dressing, the prop check
 const dcOwn = new Set();                                                 // the props a district file stood (checked and reported, never moved)
 let dcCtx = null;
-const dcRun = stage => { const before = new Set(dcCtx.props); DISTRICTS.forEach(m => { if (typeof m[stage] === 'function') m[stage](dcCtx); }); dcCtx.props.forEach(q => { if (!before.has(q)) dcOwn.add(q); }); };
-DISTRICTS.forEach(m => { if (typeof m.tailor === 'function') m.tailor(PLAN, plotOf); });
+/* THE HOME FRAME (THE DISTRICT MOVE): a district file is written in the squares and metres of the block it was built on. While its hook
+   runs, the whole city is handed to it shifted by the district's move, so its own block lies at home: every row's and prop's place, every
+   plot's x / y, every square it asks about (take / free / cellAt / setCell / paintCell) and the levels grid. After the hook everything,
+   the rows it added too, is shifted back. A district that did not move (U, H, S) runs untouched. */
+const frameOf = m => { const k = (MOVE.frame && MOVE.frame[m._dcFile]) || m._dcFile; return DELTA[k] || [0, 0]; };
+const shiftRow = (q, mx, mz) => { if (!q || typeof q !== 'object') return;
+    for (const k of ['x', 'x0', 'x1']) if (typeof q[k] === 'number') q[k] = Math.round((q[k] + mx) * 1000) / 1000;
+    for (const k of ['z', 'z0', 'z1']) if (typeof q[k] === 'number') q[k] = Math.round((q[k] + mz) * 1000) / 1000;
+    for (const k of ['quad', 'pts']) if (Array.isArray(q[k])) q[k].forEach(v => { if (Array.isArray(v)) { v[0] = Math.round((v[0] + mx) * 1000) / 1000; v[1] = Math.round((v[1] + mz) * 1000) / 1000; } }); };
+const shiftCity = (px, py) => { if (!dcCtx) return; const mx = px * 42, mz = py * 42, seen = new Set();
+    [dcCtx.features, dcCtx.props, dcCtx.lateRows, dcCtx.npcSpots, dcCtx.lamps, dcCtx.JOIN && Object.values(dcCtx.JOIN)].forEach(a => (a || []).forEach(q => { if (seen.has(q)) return; seen.add(q); shiftRow(q, mx, mz); }));
+    dcCtx.bInfo.forEach(b => { shiftRow(b, mx, mz); b.cx0 += px * 12; b.cy0 += py * 12; }); };
+const inFrame = (m, fn) => { const dl = frameOf(m); if (!dl[0] && !dl[1]) return fn();
+    const cx = dl[0] * 12, cy = dl[1] * 12, keep = {};
+    shiftCity(-dl[0], -dl[1]); PLAN.plots.forEach(p => { p.x = p.wx - dl[0]; p.y = p.wy - dl[1]; });
+    if (dcCtx) { const c = dcCtx; ['take', 'free', 'cellAt', 'setCell', 'paintCell', 'LEVELS'].forEach(k => { keep[k] = c[k]; });
+        c.take = (x, y) => keep.take(x + cx, y + cy); c.free = (x, y, ok) => keep.free(x + cx, y + cy, ok); c.cellAt = (x, y) => keep.cellAt(x + cx, y + cy);
+        c.setCell = (x, y, ch) => keep.setCell(x + cx, y + cy, ch); c.paintCell = (x, y, key) => keep.paintCell(x + cx, y + cy, key);
+        const g = keep.LEVELS.grid, cl = v => Math.max(0, Math.min(11, v));
+        c.LEVELS = Object.assign({}, keep.LEVELS, { grid: g.map((r, y) => r.map((_, x) => g[cl(y + dl[1])][cl(x + dl[0])])) }); }
+    try { return fn(); } finally { if (dcCtx) Object.assign(dcCtx, keep); PLAN.plots.forEach(p => { p.x = p.wx; p.y = p.wy; }); shiftCity(dl[0], dl[1]); } };
+const dcRun = stage => { const before = new Set(dcCtx.props); DISTRICTS.forEach(m => { if (typeof m[stage] === 'function') inFrame(m, () => m[stage](dcCtx)); }); dcCtx.props.forEach(q => { if (!before.has(q)) dcOwn.add(q); }); };
+DISTRICTS.forEach(m => { if (typeof m.tailor === 'function') inFrame(m, () => m.tailor(PLAN, plotOf)); });
 /* THE ROOM PAST THE PLOTS (2026-11-13, Bayside's beach: mondo "bayside needs to have the actual bayside in it too (the beach), with sand and a
    pier"): a district file may export `room = { east: <cells>, sea: { y, key, field } }`. `east` grows the room that many cells past the
    east edge of the plot grid; the engine's field is centred, so the shell grows the same on the west (closed behind a ghost wall on the
@@ -56,7 +86,7 @@ PLAN.plots.forEach(p => {
     }
     p.cells = g.map(r => r.join(''));
 });
-const pid = (x, y) => 'P' + String(x).padStart(2, '0') + '-' + String(y).padStart(2, '0');
+const pid = (x, y) => { const p = AT[x + ',' + y]; return p ? p.id : ''; };   // THE DISTRICT MOVE: the id of the plot standing AT x, y (an id names a plot, not a place)
 const cellAt = (cx, cy) => { if (cx < 0 || cy < 0 || cx >= 144 || cy >= 144) return '#'; const p = plotOf[pid(Math.floor(cx / N), Math.floor(cy / N))]; return p.cells[cy % N][cx % N]; };
 let seed = 144; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
 const pick = a => a[Math.floor(rnd() * a.length)];
@@ -67,7 +97,7 @@ const pick = a => a[Math.floor(rnd() * a.length)];
    2. some of the band on a side the plan does NOT connect is built on (THE INFILL);
    3. the rest gets a BOUNDARY picked per district and per run (THE BOUNDARIES: fences from the structural pack's railings, hedges, short walls,
       rows of planters / police barricades / dumpsters / trees), never one wall everywhere (mondo 11-13 14:09: "there can still be walls ... get creative"). ── */
-const conn = new Set(); PLAN.groundEdges.forEach(e => { conn.add(e.a + '|' + e.b); conn.add(e.b + '|' + e.a); });
+const conn0 = new Set(); PLAN.groundEdges.forEach(e => { conn0.add(e.a + '|' + e.b); conn0.add(e.b + '|' + e.a); });   // the plan's own connections (the home layout, before THE DISTRICT MOVE)
 const SIDE = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] };
 const sideOpen = (p, s) => conn.has(p.id + '|' + pid(p.x + SIDE[s][0], p.y + SIDE[s][1]));
 PLAN.plots.forEach(p => {
@@ -83,7 +113,37 @@ PLAN.plots.forEach(p => {
     });
     p.cells = g.map(r => r.join(''));
 });
-const setCell = (cx, cy, ch) => { const p = plotOf[pid(Math.floor(cx / N), Math.floor(cy / N))], r = p.cells[cy % N].split(''); r[cx % N] = ch; p.cells[cy % N] = r.join(''); };
+/* THE DISTRICT MOVE: the squares as the plan had them before the seams are cut (`cellsH`, kept in step with every later setCell): the
+   tool's dice for the back-lot buildings and the boundaries are thrown on THESE, on the home layout, exactly as before the move, so every
+   fence, hedge and back-lot building inside a district stands as it was built (THE INFILL, THE BOUNDARIES). */
+PLAN.plots.forEach(p => { p.cellsH = p.cells.slice(); });
+/* ── THE DISTRICT MOVE, THE SEAMS (move.js `seams`): the plan's gaps were cut for the old neighbours. Where two districts now meet, a gap that
+   faces a wall is opened on the other side (a walk), a street that faces a walk ends in a paved head (roadEnd), a street that faces a street's
+   end is run on (road), and a gap nothing can face is closed. No building's square is ever cut: the tool throws if a seam would. ── */
+{ const SD = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, OPP = { N: 'S', S: 'N', W: 'E', E: 'W' };
+  const sq = (s, a, t) => s === 'N' ? [a, t] : s === 'S' ? [a, 11 - t] : s === 'W' ? [t, a] : [11 - t, a];   // a square of a plot: `a` along the side, `t` squares in from it
+  const get = (p, c) => p.cells[c[1]][c[0]], set = (p, c, ch) => { const r = p.cells[c[1]].split(''); r[c[0]] = ch; p.cells[c[1]] = r.join(''); };
+  const cut = (p, c, ch, why) => { const was = get(p, c); if (was === 'I' || was === 'D') throw new Error('THE DISTRICT MOVE: a seam would cut a building: ' + p.id + ' ' + p.name + ' ' + why + ' at ' + c); set(p, c, ch); };
+  (MOVE.seams || []).forEach(sm => { const p = plotOf[sm.plot], s = sm.side;
+      if (sm.op === 'walk') { (sm.at || [5, 6]).forEach(a => { for (let t = 0; t < (sm.len || 11); t++) { const c = sq(s, a, t), ch = get(p, c); if (ch === 'P' || ch === 'R') break; cut(p, c, 'P', 'walk'); } }); p.ports[s] = 'walk'; }
+      else if (sm.op === 'roadEnd') { for (let t = 0; t < 3; t++) for (let a = 4; a <= 7; a++) { const c = sq(s, a, t); if (get(p, c) === 'R') set(p, c, 'P'); } p.ports[s] = 'walk'; }
+      else if (sm.op === 'road') { for (let t = 0; t < 11; t++) { if ([4, 5, 6, 7].every(a => get(p, sq(s, a, t)) === 'R')) break;
+              [4, 5, 6, 7].forEach(a => cut(p, sq(s, a, t), 'R', 'road')); [3, 8].forEach(a => { const c = sq(s, a, t); if (get(p, c) !== 'R' && get(p, c) !== 'P') cut(p, c, 'P', 'kerb'); }); } p.ports[s] = 'road'; }
+      else if (sm.op === 'close') { for (let a = 0; a < 12; a++) { const c = sq(s, a, 0); if (get(p, c) !== '#' && get(p, c) !== 'I' && get(p, c) !== 'D') set(p, c, '#'); } p.ports[s] = ''; }
+      else throw new Error('THE DISTRICT MOVE: unknown seam op ' + sm.op); });
+  /* the plan's ground connections, again: one per pair of facing gaps (a road only where both sides are a street); the old row is kept where the pair still meets (its gate) */
+  const old = {}; PLAN.groundEdges.forEach(e => { old[e.a + '|' + e.b] = e; old[e.b + '|' + e.a] = e; });
+  const way = {}; (MOVE.ways || []).forEach(w => { way[w.plot + w.side] = w; });
+  const out = []; let nNew = 0, nOld = 0;
+  PLAN.plots.forEach(p => ['N', 'E', 'S', 'W'].forEach(s => { const q = AT[(p.wx + SD[s][0]) + ',' + (p.wy + SD[s][1])], a = p.ports[s];
+      if (!q) { if (a && !way[p.id + s]) throw new Error('THE DISTRICT MOVE: a gap on the city\'s outer line that is no way out: ' + p.id + ' ' + p.name + ' ' + s); if (!a && way[p.id + s]) throw new Error('THE DISTRICT MOVE: no gap for the way out at ' + p.id + ' ' + s); return; }
+      const b = q.ports[OPP[s]]; if (!a !== !b) throw new Error('THE DISTRICT MOVE: a gap faces a closed side: ' + p.id + ' ' + p.name + ' ' + s + ' (' + (a || 'closed') + ') | ' + q.id + ' ' + q.name + ' (' + (b || 'closed') + ')');
+      if (!a || (s !== 'E' && s !== 'S')) return;
+      const type = (a === 'road' && b === 'road') ? 'road' : 'walk'; if (type === 'walk') { p.ports[s] = 'walk'; q.ports[OPP[s]] = 'walk'; }
+      const e = old[p.id + '|' + q.id]; if (e) { e.type = type; out.push(e); nOld++; } else { out.push({ id: 'EM' + (nNew++), a: p.id, b: q.id, type, gate: null }); } }));
+  PLAN.groundEdges = out; console.log('THE DISTRICT MOVE: ground connections kept ' + nOld + ', new ' + nNew); }
+const conn = new Set(); PLAN.groundEdges.forEach(e => { conn.add(e.a + '|' + e.b); conn.add(e.b + '|' + e.a); });   // the connections as the city stands now
+const setCell = (cx, cy, ch) => { const p = plotOf[pid(Math.floor(cx / N), Math.floor(cy / N))]; for (const key of ['cells', 'cellsH']) { const r = p[key][cy % N].split(''); r[cx % N] = ch; p[key][cy % N] = r.join(''); } };
 const inCity = (cx, cy) => cx >= 0 && cy >= 0 && cx < 144 && cy < 144;
 
 /* ── THE DISTRICTS: the look per district (the urban pack's sheets; MODEL_LIST) ── */
@@ -188,42 +248,72 @@ const INFILL = { R: ['building_2', 'building_4', 'building_8', 'building_9'], C:
     E: ['shop', 'building_7', 'building_10', 'building_3'], I: ['building_3', 'building_10'], S: ['building_3', 'building_6'], B: ['shop', 'building_7', 'building_5'] };
 const usedBand = new Set();
 let edgeCut = 0;
+/* THE DISTRICT MOVE, THE DICE AS THEY FELL (2026-11-15): the back-lot buildings and the boundaries are thrown with the tool's one stream of
+   dice, line by line across the city, so setting the blocks down in new places would have re-thrown every one of them (and every district
+   file that dressed a back lot or kept a square clear of a fence would have missed). So each of the two passes runs TWICE:
+   1. on the HOME layout, on the squares as the plan had them (`cellsH`), with the dice as they fell before the move: a line that stands the
+      same in the city (inside a district, between University / Hero Plaza / Sports + Culture, an outer side that is still outer) is WRITTEN,
+      shifted to where its block stands now; a line the move broke up is thrown and thrown away;
+   2. on the city as it stands, with a second stream of dice, only for the lines the move made (where two districts now meet, a new outer side).
+   move-seeds.json = the dice before each boundary line and after the last (taken from the tool as it was before the move). */
+const HOMEAT = {}; PLAN.plots.forEach(p => { HOMEAT[p.hx + ',' + p.hy] = p; });
+const SEEDS = JSON.parse(fs.readFileSync(path.join(REPO, 'docs/disaster-city/move-seeds.json'), 'utf8'));
+const sameMove = (a, b) => DELTA[a.d][0] === DELTA[b.d][0] && DELTA[a.d][1] === DELTA[b.d][1];
+const segKept = (PA, PB, h) => (PA && PB) ? sameMove(PA, PB) : PA ? !AT[(PA.wx + (h ? 0 : 1)) + ',' + (PA.wy + (h ? 1 : 0))] : !AT[(PB.wx - (h ? 0 : 1)) + ',' + (PB.wy - (h ? 1 : 0))];            // a home line: does it stand the same in the city?
+const segNew = (PA, PB, h) => (PA && PB) ? !sameMove(PA, PB) : PA ? !!HOMEAT[(PA.hx + (h ? 0 : 1)) + ',' + (PA.hy + (h ? 1 : 0))] : !!HOMEAT[(PB.hx - (h ? 0 : 1)) + ',' + (PB.hy - (h ? 1 : 0))];   // a line of the city: did the move make it?
+const viewOf = sh => { const map = sh ? HOMEAT : AT, key = sh ? 'cellsH' : 'cells', at = (x, y) => map[x + ',' + y];
+    const wr = (p, lx, ly, ch, k2) => { const r = p[k2][ly].split(''); r[lx] = ch; p[k2][ly] = r.join(''); };
+    return { sh, at, used: new Set(), conn: sh ? conn0 : conn, len: features.length, n: 0, i: 0,
+        cell: (cx, cy) => at(Math.floor(cx / N), Math.floor(cy / N))[key][cy % N][cx % N],
+        set: (cx, cy, ch, live) => { const p = at(Math.floor(cx / N), Math.floor(cy / N)); if (sh) { wr(p, cx % N, cy % N, ch, 'cellsH'); if (live) wr(p, cx % N, cy % N, ch, 'cells'); } else wr(p, cx % N, cy % N, ch, 'cells'); },
+        wc: (cx, cy) => { if (!sh) return [cx, cy]; const p = at(Math.floor(cx / N), Math.floor(cy / N)); return [cx + DELTA[p.d][0] * 12, cy + DELTA[p.d][1] * 12]; },   // a square of this view, in the city
+        out: (row, p) => { if (sh) shiftRow(row, DELTA[p.d][0] * 42, DELTA[p.d][1] * 42); return row; },
+        live: sh ? segKept : () => true, skip: sh ? () => false : (PA, PB, h) => !segNew(PA, PB, h) }; };
+let seed2 = 20261115;
+const withDice2 = fn => { const keep = seed; seed = seed2; try { fn(); } finally { seed2 = seed; seed = keep; } };
+function infillPass(V) {
 for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) {
     const line = L * N; let run = null;
     const flush = () => {
         if (!run) return; const r = run; run = null;
         const cells = []; for (let c = r.a; c <= r.b; c++) { if (r.pat & 1) cells.push(horizontal ? [c, line - 1] : [line - 1, c]); if (r.pat & 2) cells.push(horizontal ? [c, line] : [line, c]); }
         const lenI = r.b - r.a + 1; if (r.open || lenI < 2 || rnd() > (r.outer ? 0.55 : 0.4)) return;
-        cells.forEach(q => usedBand.add(q[0] + ',' + q[1]));
-        const home = cells[0], p = plotOf[pid(Math.floor(home[0] / N), Math.floor(home[1] / N))], dd = D[p.d];
+        cells.forEach(q => V.used.add(q[0] + ',' + q[1]));
+        const home = cells[0], p = V.at(Math.floor(home[0] / N), Math.floor(home[1] / N)), dd = D[p.d];
         const lo = (r.pat & 1) ? line - 1 : line, hi = (r.pat & 2) ? line + 1 : line, deep = hi - lo, len = r.b - r.a + 1;
         const x0 = horizontal ? r.a : lo, x1 = horizontal ? r.b + 1 : hi, z0 = horizontal ? lo : r.a, z1 = horizontal ? hi : r.b + 1;
         const front = r.pat === 1 ? 'a' : r.pat === 2 ? 'b' : (rnd() < 0.5 ? 'a' : 'b');
         const rot = horizontal ? (front === 'a' ? 180 : 0) : (front === 'a' ? 90 : 270);
-        const row = { k: 'texbuilding', id: 'dc:in' + count.infill, x: r3((gx(x0) + gx(x1)) / 2), z: r3((gx(z0) + gx(z1)) / 2), w: r3((horizontal ? x1 - x0 : z1 - z0) * C), d: r3((horizontal ? z1 - z0 : x1 - x0) * C), rot, storeys: deep === 1 ? pick([1, 1, 2]) : pick([1, 2, 2, 3]), seed: features.length };
+        const row = { k: 'texbuilding', id: V.sh ? 'dc:in' + count.infill : 'dc:inM' + V.n, x: r3((gx(x0) + gx(x1)) / 2), z: r3((gx(z0) + gx(z1)) / 2), w: r3((horizontal ? x1 - x0 : z1 - z0) * C), d: r3((horizontal ? z1 - z0 : x1 - x0) * C), rot, storeys: deep === 1 ? pick([1, 1, 2]) : pick([1, 2, 2, 3]), seed: V.sh ? V.len : 9500 + V.n };
         if (len <= 3 && rnd() < 0.55) row.key = pick(INFILL[p.d]); else row.style = pick(dd.styles);
         /* THE NATURAL EDGES (2026-11-13, mondo: "having these fake buildings as barriers doesnt feel right"): no filler building on the
            city's OUTER line (the land past it is the view: mountains, forest, desert, the bay). The draw is still made and the id still
            counted, so no other building's seed, id or look moves; the band stays '#', so THE BOUNDARIES give it the side's own edge stop.
            Bayside's east line is the beach's (the Bayside thread's). */
-        if (r.outer && !(p.d === 'B' && !horizontal && L === N)) { count.infill++; edgeCut++; count.edgeCut = edgeCut; return; }
-        row.seed += edgeCut;
-        features.push(row); count.infill++;
-        cells.forEach(q => setCell(q[0], q[1], 'I'));
+        if (r.outer && !(p.d === 'B' && !horizontal && L === N)) { if (V.sh) { count.infill++; edgeCut++; count.edgeCut = edgeCut; } return; }
+        if (V.sh) { row.seed += edgeCut; V.len++; count.infill++; } else { V.n++; count.infillNew = V.n; }
+        cells.forEach(q => V.set(q[0], q[1], 'I', r.live));
+        if (r.live) features.push(V.out(row, p));
     };
     for (let c = 0; c <= 144; c++) {
-        let pat = 0, open = false, outer = (L === 0 || L === N);
+        let pat = 0, open = false, live = false, outer = (L === 0 || L === N);
         if (c < 144) {
-            const k = Math.floor(c / N), PA = plotOf[horizontal ? pid(k, L - 1) : pid(L - 1, k)], PB = plotOf[horizontal ? pid(k, L) : pid(L, k)]; open = !!(PA && PB && conn.has(PA.id + '|' + PB.id));
+            const k = Math.floor(c / N), PA = horizontal ? V.at(k, L - 1) : V.at(L - 1, k), PB = horizontal ? V.at(k, L) : V.at(L, k); open = !!(PA && PB && V.conn.has(PA.id + '|' + PB.id)); live = V.live(PA, PB, horizontal);
             const A = horizontal ? [c, line - 1] : [line - 1, c], B = horizontal ? [c, line] : [line, c];
-            if (inCity(A[0], A[1]) && cellAt(A[0], A[1]) === '#' && !usedBand.has(A[0] + ',' + A[1])) pat |= 1;
-            if (inCity(B[0], B[1]) && cellAt(B[0], B[1]) === '#' && !usedBand.has(B[0] + ',' + B[1])) pat |= 2;
+            if (inCity(A[0], A[1]) && V.cell(A[0], A[1]) === '#' && !V.used.has(A[0] + ',' + A[1])) pat |= 1;
+            if (inCity(B[0], B[1]) && V.cell(B[0], B[1]) === '#' && !V.used.has(B[0] + ',' + B[1])) pat |= 2;
+            if (V.skip(PA, PB, horizontal) || (!V.sh && PA && PB && !(HOMEAT[(PA.hx + (horizontal ? 0 : 1)) + ',' + (PA.hy + (horizontal ? 1 : 0))] && HOMEAT[(PB.hx - (horizontal ? 0 : 1)) + ',' + (PB.hy - (horizontal ? 1 : 0))]))) pat = 0;   // (no new back lot on a side that was the city's outer line at home: a district's own pieces stand there, the dry-berth tanker)
         }
         if (run && (pat !== run.pat || c - run.a >= run.max || c % N === 0)) flush();
-        if (pat && !run) run = { a: c, b: c, pat, open, outer, max: 2 + Math.floor(rnd() * 4) }; else if (run) run.b = c;
+        if (pat && !run) run = { a: c, b: c, pat, open, outer, live, max: 2 + Math.floor(rnd() * 4) }; else if (run) run.b = c;
     }
     flush();
 }
+}
+if (seed !== SEEDS.infill0) console.warn('THE DISTRICT MOVE: the dice before the back-lot buildings are not the ones recorded (a change before THE INFILL re-threw them)');
+infillPass(viewOf(true));
+if (seed !== SEEDS.infill1 || count.infill !== SEEDS.infillN) console.warn('THE DISTRICT MOVE: the back-lot buildings were not thrown as recorded', count.infill, SEEDS.infillN);
+withDice2(() => infillPass(viewOf(false)));
 
 /* ── THE ROOF ROUTES: a bridge per crossing, a fire escape at each end of every district's route ── */
 const bById = {}; bInfo.forEach(b => { bById[b.id] = b; });
@@ -254,7 +344,7 @@ const paintCell = (cx, cy, key) => { let i = PAL.indexOf(key); if (i < 0) { if (
    into the upper plot's; where one level is crossed on a walk two squares wide, one square is the stair and the other a smooth ramp three
    squares long (a bank to skate). Their squares are taken, so nothing is dressed onto a flight. ── */
 const LEVELS = require(path.join(REPO, 'docs/disaster-city/levels.js')), LVM = LEVELS.M;
-const lvOf = p => LEVELS.grid[p.y][p.x];
+const lvOf = p => LEVELS.grid[p.wy][p.wx];   // (the plot's place in the city, whatever frame a district file is in)
 const plotAtCell = (cx, cy) => plotOf[pid(Math.floor(cx / N), Math.floor(cy / N))];
 const roadFollow = (cx, cy) => {   // a carriageway square, or the pavement square beside one (the kerb walk): they ride the street's slope
     if (!inCity(cx, cy)) return false; const ch = cellAt(cx, cy); if (ch === 'R') return true; if (ch !== 'P') return false;
@@ -345,15 +435,21 @@ const BENCH = { R: 'park_bench', U: 'iron_garden_bench', S: 'park_bench', C: 'ci
 const EDGES = { reach: 440, n: { kind: 'mountain' }, w: { kind: 'forest', cap: { kind: 'mountain', at: 'n', len: 170 } }, s: { kind: 'desert' }, e: { kind: 'coast' } };
 const EDGE_STOP = { n: ['trees', 'wall:1.2'], w: ['trees', 'trees'], s: ['rail:guard', 'rail:cable_fence'], e: ['rail:parapet', 'rail:pipe'] };
 const edgeN = {};
+function boundaryPass(V) {
 for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) for (let k = 0; k < N; k++) {
-    const line = L * N, PA = plotOf[horizontal ? pid(k, L - 1) : pid(L - 1, k)], PB = plotOf[horizontal ? pid(k, L) : pid(L, k)];
-    const joined = !!(PA && PB && conn.has(PA.id + '|' + PB.id)), home = (PA && PB) ? (rnd() < 0.5 ? PA : PB) : (PA || PB), dd = D[home.d];
-    const list = (joined ? LOW : HIGH)[home.d]; let first = pick(list), second = pick(list); if (second === first) second = list[(list.indexOf(first) + 1) % list.length];
+    if (V.sh) seed = SEEDS.seg[V.i++];
+    const line = L * N, PA = horizontal ? V.at(k, L - 1) : V.at(L - 1, k), PB = horizontal ? V.at(k, L) : V.at(L, k);
+    if (V.skip(PA, PB, horizontal)) continue;
+    const live = V.live(PA, PB, horizontal), T = q => { if (live) { const w = V.wc(q[0], q[1]); take(w[0], w[1]); } }, OCC = q => { if (!live) return false; const w = V.wc(q[0], q[1]); return occ.has(w[0] + ',' + w[1]); };
+    const F = row => { if (live) features.push(V.out(row, PA || PB)); }, PR = (...rows) => { if (live) rows.forEach(r => props.push(V.out(r, PA || PB))); };
+    const joined = !!(PA && PB && V.conn.has(PA.id + '|' + PB.id)), home = (PA && PB) ? (rnd() < 0.5 ? PA : PB) : (PA || PB), dd = D[home.d];
+    const list = V.sh ? (joined ? LOW : HIGH)[home.d] : (joined ? LOW : HIGH)[home.d].filter(q => /^(rail|wall|hedge)/.test(q));   // (a line the move made: a fence, a wall or a hedge ON the line only, nothing stood on the band's squares, where a district's own pieces may stand)
+    let first = pick(list), second = pick(list); if (second === first) second = list[(list.indexOf(first) + 1) % list.length];
     /* THE NATURAL EDGES: the city's outer line wears its side's own edge stop (EDGE_STOP), never a district's yard wall: you see the land
        past it. Bayside's own outer lines stay the district's (the beach is the Bayside thread's). */
     if (!(PA && PB) && home.d !== 'B') { const es = EDGE_STOP[horizontal ? (L === 0 ? 'n' : 's') : (L === 0 ? 'w' : 'e')]; first = es[0]; second = es[1]; }
     const A = c => horizontal ? [c, line - 1] : [line - 1, c], B = c => horizontal ? [c, line] : [line, c];
-    const band = q => inCity(q[0], q[1]) && cellAt(q[0], q[1]) === '#';
+    const band = q => inCity(q[0], q[1]) && V.cell(q[0], q[1]) === '#';
     const runs = []; let run = null;
     for (let c = k * N; c <= k * N + N; c++) {
         const need = c < k * N + N && (band(A(c)) || band(B(c)));
@@ -366,31 +462,49 @@ for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) for (let k 
         const lz = gx(line), a0 = gx(r.a), a1 = gx(r.b + 1);
         const seg = horizontal ? { x0: a0, z0: lz, x1: a1, z1: lz } : { x0: lz, z0: a0, x1: lz, z1: a1 };
         const onLine = kind === 'rail' || kind === 'wall' || kind === 'hedge';
-        if (kind === 'rail') features.push(Object.assign({ k: 'rail' }, seg, { model: arg }));
-        if (kind === 'wall') features.push(Object.assign({ k: 'wall' }, seg, { h: Number(arg), t: 0.3, key: dd.wall, tint: '#ffffff' }));
-        if (kind === 'hedge') features.push(Object.assign({ k: 'wall' }, seg, { h: Number(arg), t: 0.9, key: 'leaves_3', tint: '#ffffff' }));
+        if (kind === 'rail') F(Object.assign({ k: 'rail' }, seg, { model: arg }));
+        if (kind === 'wall') F(Object.assign({ k: 'wall' }, seg, { h: Number(arg), t: 0.3, key: dd.wall, tint: '#ffffff' }));
+        if (kind === 'hedge') F(Object.assign({ k: 'wall' }, seg, { h: Number(arg), t: 0.9, key: 'leaves_3', tint: '#ffffff' }));
         for (let c = r.a; c <= r.b; c++) {
             const qa = A(c), qb = B(c), ba = band(qa), bb = band(qb), q = ba ? qa : qb, sideA = ba;
-            if (ba) setCell(qa[0], qa[1], '.'); if (bb) setCell(qb[0], qb[1], '.');
+            if (ba) V.set(qa[0], qa[1], '.', live); if (bb) V.set(qb[0], qb[1], '.', live);
             const i = c - r.a, cxm = gc(q[0]), czm = gc(q[1]);
             /* toward the line from the square's middle, and the way a thing against the line faces (into its own plot) */
             const tl = sideA ? 1 : -1, inFace = horizontal ? (sideA ? 0 : 180) : (sideA ? 270 : 90), off = (kind === 'hedge' ? 0.2 : 0.29) * C * tl;   // THE PROP PASS: a bench's back a hand's width clear of the fence (0.36 touched it; a hedge is 0.9 m thick)
             if (onLine) {
-                if (i % 4 === 1 && BENCH[home.d] && kind !== 'hedge' ? true : (i % 4 === 1 && BENCH[home.d] && rnd() < 0.5)) { take(q[0], q[1]); props.push({ key: BENCH[home.d], x: r3(cxm + (horizontal ? 0 : off)), z: r3(czm + (horizontal ? off : 0)), face: inFace }); }
-                else if (i % 4 === 3 && dd.trees.length && rnd() < dd.treeP * 1.6) { take(q[0], q[1]); features.push({ k: 'tree', x: cxm, z: czm, kind: pick(dd.trees), h: r3(3.4 + rnd() * 0.8) }); count.trees++; }
-                else if (i % 4 === 3 && BIN[home.d] && rnd() < 0.5) { take(q[0], q[1]); props.push({ key: BIN[home.d], x: r3(cxm + (horizontal ? 0.3 * C : off)), z: r3(czm + (horizontal ? off : 0.3 * C)), face: inFace }); }
+                if (!V.sh) continue;
+                if (i % 4 === 1 && BENCH[home.d] && kind !== 'hedge' ? true : (i % 4 === 1 && BENCH[home.d] && rnd() < 0.5)) { T(q); PR({ key: BENCH[home.d], x: r3(cxm + (horizontal ? 0 : off)), z: r3(czm + (horizontal ? off : 0)), face: inFace }); }
+                else if (i % 4 === 3 && dd.trees.length && rnd() < dd.treeP * 1.6) { T(q); F({ k: 'tree', x: cxm, z: czm, kind: pick(dd.trees), h: r3(3.4 + rnd() * 0.8) }); count.trees++; }
+                else if (i % 4 === 3 && BIN[home.d] && rnd() < 0.5) { T(q); PR({ key: BIN[home.d], x: r3(cxm + (horizontal ? 0.3 * C : off)), z: r3(czm + (horizontal ? off : 0.3 * C)), face: inFace }); }
                 continue;
             }
-            if (occ.has(q[0] + ',' + q[1])) continue; take(q[0], q[1]);
+            if (OCC(q)) continue; T(q);
             const along = horizontal ? 0 : 90;
-            if (kind === 'planters') props.push({ key: 'planter', x: cxm, z: czm, face: along });
-            if (kind === 'trees') { features.push({ k: 'tree', x: cxm, z: czm, kind: pick(dd.trees.length ? dd.trees : ['palm_tree_none']) === 'palm_tree_none' ? 'tree_3' : pick(dd.trees.length ? dd.trees : ['tree_3']), h: r3(3.4 + ((q[0] * 7 + q[1] * 3) % 5) * 0.2) }); count.trees++; }
-            if (kind === 'barricades') { if (i % 2 === 0) props.push({ key: 'item_police_barricade', x: cxm, z: czm, face: along });
-                else { const e = 0.5 * C * tl; props.push({ key: 'traffic_cone', x: r3(cxm + (horizontal ? -0.25 * C : e)), z: r3(czm + (horizontal ? e : -0.25 * C)) }, { key: 'traffic_cone', x: r3(cxm + (horizontal ? 0.25 * C : e)), z: r3(czm + (horizontal ? e : 0.25 * C)) }); } }
-            if (kind === 'dumpsters') props.push(i % 2 === 0 ? { key: 'dumpster', x: cxm, z: czm, face: inFace } : { key: home.d === 'I' ? 'traffic_barrel' : 'psx_wooden_crate_1', x: cxm, z: czm, face: along });
+            if (kind === 'planters') PR({ key: 'planter', x: cxm, z: czm, face: along });
+            if (kind === 'trees') { F({ k: 'tree', x: cxm, z: czm, kind: pick(dd.trees.length ? dd.trees : ['palm_tree_none']) === 'palm_tree_none' ? 'tree_3' : pick(dd.trees.length ? dd.trees : ['tree_3']), h: r3(3.4 + ((q[0] * 7 + q[1] * 3) % 5) * 0.2) }); count.trees++; }
+            if (kind === 'barricades') { if (i % 2 === 0) PR({ key: 'item_police_barricade', x: cxm, z: czm, face: along });
+                else { const e = 0.5 * C * tl; PR({ key: 'traffic_cone', x: r3(cxm + (horizontal ? -0.25 * C : e)), z: r3(czm + (horizontal ? e : -0.25 * C)) }, { key: 'traffic_cone', x: r3(cxm + (horizontal ? 0.25 * C : e)), z: r3(czm + (horizontal ? e : 0.25 * C)) }); } }
+            if (kind === 'dumpsters') PR(i % 2 === 0 ? { key: 'dumpster', x: cxm, z: czm, face: inFace } : { key: home.d === 'I' ? 'traffic_barrel' : 'psx_wooden_crate_1', x: cxm, z: czm, face: along });
         }
     });
 }
+}
+boundaryPass(viewOf(true)); seed = SEEDS.end;
+withDice2(() => boundaryPass(viewOf(false)));
+/* THE DISTRICT MOVE · THE WAYS OUT (move.js `ways`): three streets now end on the city's outer line, each the start of a road to another
+   zone that is not built yet (the Vatican, the Desert highway, the mountain road). Each is CLOSED: a fence across the opening on the line
+   (iron for the Vatican's gate, a guard rail on the two roads), a ghost wall behind it, and on a road a row of police barricades, one centred
+   on each road square just inside. The day the zone is built, its thread takes the row out and puts a door here. The two quay ways are open. */
+(MOVE.ways || []).forEach(w => { if (w.quay) return; const p = plotOf[w.plot], hz = w.side === 'N' || w.side === 'S', line = hz ? (w.side === 'N' ? p.wy * N : (p.wy + 1) * N) : (w.side === 'W' ? p.wx * N : (p.wx + 1) * N);
+    const inC = (w.side === 'N' || w.side === 'W') ? line : line - 1, base = (hz ? p.wx : p.wy) * N, open = [];
+    for (let c = base; c < base + N; c++) { const ch = hz ? cellAt(c, inC) : cellAt(inC, c); if (ch === 'P' || ch === 'R') open.push([c, ch]); }
+    if (!open.length) throw new Error('THE DISTRICT MOVE: the way out at ' + w.plot + ' ' + w.side + ' has no open square on the line');
+    const a0 = gx(open[0][0]), a1 = gx(open[open.length - 1][0] + 1), lz = gx(line), off = (w.side === 'N' || w.side === 'W') ? 0.35 : -0.35;
+    const seg = hz ? { x0: a0, z0: r3(lz + off), x1: a1, z1: r3(lz + off) } : { x0: r3(lz + off), z0: a0, x1: r3(lz + off), z1: a1 };
+    features.push(Object.assign({ k: 'rail', id: 'dc:way:' + w.plot + w.side }, seg, { model: w.look === 'iron' ? 'bars' : 'guard' }));
+    features.push(Object.assign({ k: 'wall', id: 'dc:way:' + w.plot + w.side + ':ghost' }, seg, { h: 6, t: 0.3, key: 'urban:ConcreteStriped2a', ghost: true, rail: false }));
+    if (w.look === 'road') open.forEach(q => { if (q[1] !== 'R') return; const m = gc(q[0]), n = gc(inC); props.push({ key: 'item_police_barricade', x: hz ? m : n, z: hz ? n : m, face: hz ? 0 : 90 }); });
+    count.ways = (count.ways || 0) + 1; });
 count.edges = edgeN;
 
 /* ── THE FIRE ESCAPES: the plan's inside stairs, outside — a landing half way up and two ladders, at both ends of every roof route ── */
@@ -466,8 +580,8 @@ at('Arrival court', p => { put(p, 'car_cop', 4.7, 2.5, 20, { road: true }); put(
 at('Cordon plaza', p => { [[1.5, 4.5], [3.5, 4.5], [8.5, 4.5], [10.5, 4.5], [1.5, 7.5], [3.5, 7.5], [8.5, 7.5], [10.5, 7.5]].forEach(q => put(p, 'item_police_barricade', q[0], q[1], 0));
     put(p, 'car_cop', 2.5, 2.5, 120); put(p, 'car_cop', 9.5, 2.5, 240); put(p, 'car_ambulance', 2.5, 9.5, 0); put(p, 'traffic_cone', 4.5, 8.5); put(p, 'traffic_cone', 7.5, 8.5); });
 at('Medical staging', p => { put(p, 'car_ambulance', 2.5, 5.0, 90, { road: true }); put(p, 'car_ambulance', 5.5, 7.0, 270, { road: true }); put(p, 'fire_truck', 9.0, 5.0, 90, { road: true, span: [[1, 0]] }); put(p, 'car_ambulance', 3.5, 9.8, 60); put(p, 'carnival_tent', 7.5, 10.0, 0, { quiet: true }); put(p, 'car_cop', 2.5, 1.6, 100); });
-at('Loading / parking', p => { put(p, 'car_truck', 2.5, 9.7, 90); put(p, 'car_suv', 5.5, 9.7, 80); put(p, 'car_cadillac', 8.5, 9.7, 100); put(p, 'car_cop', 3.5, 5.0, 95, { road: true }); put(p, 'car_cop', 8.5, 7.0, 275, { road: true }); put(p, 'car_taxi', 2.5, 1.6, 0); });
-at('Boardwalk exit', p => { put(p, 'car_cop', 2.5, 5.0, 85, { road: true }); put(p, 'palm_tree', 9.5, 3.5); put(p, 'palm_tree', 9.5, 6.5); put(p, 'palm_tree', 5.5, 9.8); put(p, 'city_bench', 8.5, 9.8, 0); put(p, 'rowboat', 2.5, 10.2, 70); });
+at('Loading / parking', p => { put(p, 'car_truck', 2.5, 9.7, 90); put(p, 'car_suv', 4.3, 9.7, 80); put(p, 'car_cadillac', 8.5, 9.7, 100); put(p, 'car_cop', 3.5, 5.0, 95, { road: true }); put(p, 'car_cop', 8.5, 7.0, 275, { road: true }); put(p, 'car_taxi', 2.5, 1.6, 0); });
+at('Boardwalk exit', p => { put(p, 'car_cop', 2.5, 5.0, 85, { road: true }); put(p, 'palm_tree', 9.5, 3.5); put(p, 'palm_tree', 9.5, 6.5); put(p, 'palm_tree', 1.5, 9.5); put(p, 'city_bench', 8.5, 9.8, 0); put(p, 'rowboat', 2.5, 10.2, 70); });
 at('Marina lookout', p => { put(p, 'lighthouse', 9.8, 5.9, 0, { span: [[0, 1], [0, -1]] }); put(p, 'palm_tree', 9.5, 2.5); put(p, 'palm_tree', 9.5, 9.5); put(p, 'city_bench', 1.5, 2.5, 90); put(p, 'rowboat', 1.6, 9.5, 20); });
 at('Street market', p => { put(p, 'hot_dog_stand', 1.5, 2.5, 90, { quiet: true }); put(p, 'pool_umbrella', 9.5, 1.5, 0, { quiet: true }); put(p, 'round_table', 10.5, 2.5, 0, { quiet: true }); put(p, 'cardboard_boxes', 1.5, 9.5, 30, { quiet: true }); });
 /* the response streets round the mall: a cop car or two on every plot of them (the plan: "multiple blocks of police vehicles") */
@@ -488,7 +602,7 @@ at('Taxi court', p => { put(p, 'car_taxi', 1.6, 1.5, 0, { quiet: true }); put(p,
 [['Park west', 0], ['Park east', 1], ['Campus green', 2]].forEach(a => at(a[0], p => { [[1.5, 1.5], [3.5, 3.5], [8.5, 1.5], [10.5, 3.5], [1.5, 8.5], [3.5, 10.5], [10.5, 10.5], [8.5, 8.5]].forEach((q, i) => tree(p, q[0], q[1], ['tree_3', 'tree', 'tree_2', 'tree_4'][(i + a[1]) % 4], 3.6 + (i % 3) * 0.4));
     put(p, 'park_bench', 4.5, 2.5, 90, { quiet: true }); put(p, 'park_bench', 7.5, 8.5, 270, { quiet: true }); if (a[1] === 1) put(p, 'fountain', 9.0, 5.0, 0, { quiet: true }); }));
 at('Practice court', p => { put(p, 'field_goal_post', 2.5, 1.5, 180); put(p, 'field_goal_post', 2.5, 10.5, 0); put(p, 'field_goal_post', 8.5, 1.5, 180); put(p, 'field_goal_post', 8.5, 10.5, 0); put(p, 'park_bench', 1.5, 5.5, 90); put(p, 'park_bench', 10.5, 5.5, 270); });
-at('Street court', p => { put(p, 'quarter_pipe', 1.5, 2.5, 90); put(p, 'quarter_pipe', 1.5, 8.5, 90); put(p, 'city_bench', 10.5, 2.5, 270); put(p, 'vending_machine', 10.5, 8.5, 270); });
+at('Street court', p => { put(p, 'quarter_pipe', 1.5, 2.5, 90); put(p, 'quarter_pipe', 1.5, 8.5, 90); put(p, 'city_bench', 10.5, 2.5, 270); put(p, 'vending_machine', 10.5, 9.5, 270); });
 at('Event square', p => { put(p, 'ticket_booth', 1.5, 1.5, 180, { quiet: true }); put(p, 'popcorn_cart', 10.5, 1.5, 180, { quiet: true }); });
 at('Vendor stalls', p => { put(p, 'hot_dog_stand', 1.5, 1.5, 180, { quiet: true }); put(p, 'popcorn_cart', 10.5, 1.5, 180, { quiet: true }); put(p, 'pool_umbrella', 1.5, 10.5, 0, { quiet: true }); });
 at('Park gate', p => { tree(p, 1.5, 10.2, 'tree_3', 3.8); tree(p, 4.5, 10.2, 'tree', 3.6); tree(p, 7.5, 10.2, 'tree_3', 3.8); tree(p, 10.5, 10.2, 'tree_2', 3.6); put(p, 'park_bench', 2.5, 1.6, 180); put(p, 'park_bench', 9.5, 1.6, 180); });
@@ -563,8 +677,11 @@ PLAN.plots.forEach(p => {
    with none gets one where three kerb squares in a row are free, nearest the plot's middle, without moving a lamp, a hydrant or a bin. Each stop: the point on the road's middle where the bus
    waits, a stop sign pole on the kerb two squares along from the shelter and one on the kerb across the road (poles at the square's road
    edge, never on a square's middle). The ninth stop is the line's end at the police line (THE TRAFFIC below turns the bus round there). */
-const BUS_LINE = ['P03-02', 'P04-01', 'P08-02', 'P08-05', 'P06-07', 'P03-05', 'P03-09', 'P04-11'];
-const BUS_END = { x: 7.4, y: 11, back: 12 };   // the turn-round on the south street, in plot squares; the bus waits `back` m after it
+/* THE DISTRICT MOVE (2026-11-15): the move cut the street net in four (see THE TRAFFIC), so the stops are by plot NAME (its id), on whichever
+   line drives through it: Civic, Financial (line 3) · University, Hero Plaza (line 1) · Entertainment (line 2) · Southside, Sports + Culture (line 4).
+   Bayside's stop is line 1's end at the police line. Industrial has no bus (its one street is the port's). */
+const BUS_LINE = ['P05-01', 'P08-02', 'P03-05', 'P06-07', 'P08-05', 'P03-02', 'P05-11'];
+const BUS_END = { x: 7.4, y: 7, back: 12 };   // the turn-round at the cross street's east end (the police line), in plots; the bus waits `back` m after it
 const busStops = []; count.busNew = 0;
 const cellOf = v => Math.floor((v + HALF) / C);
 const shFace = sd => sd[0] > 0 ? 90 : sd[0] < 0 ? 270 : sd[1] > 0 ? 180 : 0;
@@ -619,7 +736,7 @@ for (let cy = 0; cy < 144; cy++) for (let cx = 0; cx < 144; cx++) {
     const key = a === 2 ? (plus ? 'fire_hydrant' : 'signpost') : a === 8 ? 'metro_bin' : null; if (!key) continue;
     kerbN++; if (key === 'fire_hydrant') count.hydrants++;
     take(cx, cy);
-    if (key === 'signpost') { const sg = PROPS.kerbSign(sd, cx, cy, ['P03-00', 'P00-07'].includes(plotAtCell(cx, cy).id)); props.push({ key: sg.key, x: r3(gc(cx) + sd[0] * 0.4 * C), z: r3(gc(cy) + sd[1] * 0.4 * C), face: sg.face, h: sg.h }); count.signs = (count.signs || 0) + 1; }
+    if (key === 'signpost') { const sg = PROPS.kerbSign(sd, cx, cy, ['P03-00', 'P00-07', 'P03-04', 'P08-03', 'P07-11'].includes(plotAtCell(cx, cy).id)); props.push({ key: sg.key, x: r3(gc(cx) + sd[0] * 0.4 * C), z: r3(gc(cy) + sd[1] * 0.4 * C), face: sg.face, h: sg.h }); count.signs = (count.signs || 0) + 1; }
     else props.push({ key, x: r3(gc(cx) + sd[0] * (key === 'metro_bin' ? 0.36 : 0.4) * C), z: r3(gc(cy) + sd[1] * (key === 'metro_bin' ? 0.36 : 0.4) * C), face: sd[0] > 0 ? 90 : sd[0] < 0 ? 270 : sd[1] > 0 ? 180 : 0 });
 }
 /* a plot with no street (a plaza, a park, a court): a lamp where four open squares meet, at the plot's quarter points, head to the middle */
@@ -675,19 +792,30 @@ Object.keys(roadAdj).sort().forEach(a => {
    THE SIGNALS: lights at the three big junctions (a mast for every arm), and the T at the police staging blinking red.
    three-renderer.js _hqBuildSignals / _hqBuildBusStops / _hqBuildTraffic read the three rows. ── */
 const ctr = (x, y) => pc({ x, y });
-const ring = [ctr(3, 1), ctr(8, 1), ctr(8, 7), ctr(3, 7)];
+/* THE DISTRICT MOVE (2026-11-15): the blocks were set down whole, so the old ring (west avenue, north street, east avenue, cross street) is
+   gone: no street of one district meets a street of the next where a building stands in the way, and no building was moved. Four street
+   nets now, joined on foot (the paved heads and the stairs of move.js `seams`), each with its own cars and its own bus:
+   - THE CROSS STREET (the campus gate to the police line) and THE UNIVERSITY AVENUE up from it: cars both ways, BUS LINE 1
+   - THE STRIP (Entertainment: the mountain road's gate down the avenue to the taxi rank, east along the strip): cars, taxis, BUS LINE 2
+   - THE CIVIC STREET (the Vatican gate east) and THE FINANCIAL AVENUE down from it: cars, BUS LINE 3
+   - THE SOUTHSIDE AVENUE (the boxing gym down to the highway gate) and THE SOUTH STREET east under Sports + Culture: cars, BUS LINE 4
+   - THE PORT (Industrial's one street, the coast road's foot to the quay): two trucks
+   None enters Bayside's police streets. Eighteen vehicles (sixteen before the move). */
 const busEnd = ctr(BUS_END.x, BUS_END.y);
 const TRAFFIC = [
-    { pts: ring, loop: true, n: 3, speed: 4.2, lane: 3.5, kinds: ['suv', 'taxi', 'cadillac'] },
-    { pts: ring.slice().reverse(), loop: true, n: 3, speed: 4.2, lane: 3.5, kinds: ['taxi', 'copcar', 'suv'] },
-    { pts: [ctr(3, 0.2), ctr(3, 7), ctr(0, 7), ctr(3, 7)], loop: true, n: 4, speed: 4.0, lane: 3.5, kinds: ['cadillac', 'suv', 'taxi', 'suv'] },
-    { pts: [ctr(0, 7), ctr(3, 7), ctr(3, 11), ctr(6.6, 11), ctr(3, 11), ctr(3, 7)], loop: true, n: 2, speed: 3.6, lane: 3.5, kinds: ['truck', 'truck'] },
-    { pts: [ctr(8.62, 7), ctr(11, 7)], loop: true, n: 2, speed: 3.8, lane: 3.5, kinds: ['taxi', 'taxi'] },
-    { pts: [busEnd, ctr(3, 11), ctr(3, 7), ctr(3, 1), ctr(8, 1), ctr(8, 7), ctr(3, 7), ctr(3, 11)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
-    { pts: [busEnd, ctr(3, 11), ctr(3, 7), ctr(8, 7), ctr(8, 1), ctr(3, 1), ctr(3, 7), ctr(3, 11)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
+    { pts: [ctr(0.3, 7), ctr(7.3, 7)], loop: true, n: 3, speed: 4.2, lane: 3.5, kinds: ['suv', 'taxi', 'cadillac'] },
+    { pts: [ctr(3, 3.85), ctr(3, 7), ctr(0.3, 7), ctr(3, 7)], loop: true, n: 2, speed: 4.0, lane: 3.5, kinds: ['cadillac', 'suv'] },
+    { pts: [ctr(8, -0.3), ctr(8, 3), ctr(10.7, 3), ctr(8, 3)], loop: true, n: 3, speed: 4.0, lane: 3.5, kinds: ['taxi', 'suv', 'taxi'] },
+    { pts: [ctr(-0.3, 1), ctr(4, 1), ctr(4, 3.2), ctr(4, 1)], loop: true, n: 2, speed: 4.0, lane: 3.5, kinds: ['copcar', 'cadillac'] },
+    { pts: [ctr(3, 8.2), ctr(3, 11), ctr(7.2, 11), ctr(3, 11)], loop: true, n: 2, speed: 3.8, lane: 3.5, kinds: ['suv', 'cadillac'] },
+    { pts: [ctr(11, 7.8), ctr(11, 10.6)], loop: true, n: 2, speed: 3.4, lane: 3.5, kinds: ['truck', 'truck'] },
+    { pts: [busEnd, ctr(3, 7), ctr(3, 3.85), ctr(3, 7), ctr(0.3, 7)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
+    { pts: [ctr(8, -0.3), ctr(8, 3), ctr(10.7, 3)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
+    { pts: [ctr(-0.3, 1), ctr(4, 1), ctr(4, 3.2)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
+    { pts: [ctr(3, 8.2), ctr(3, 11), ctr(7.2, 11)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
 ];
 const sigAt = (x, y, arms, o) => { const c = ctr(x, y); return Object.assign({ x: c[0], z: c[1], arms }, o || {}); };
-const SIGNALS = [sigAt(3, 1, 'NES', { off: 0 }), sigAt(3, 7, 'NESW', { off: 11 }), sigAt(8, 7, 'NESW', { off: 24 }), sigAt(8, 11, 'NEW', { flash: true })];
+const SIGNALS = [sigAt(3, 7, 'NEW', { off: 0 }), sigAt(8, 3, 'NES', { off: 11 }), sigAt(3, 11, 'NES', { off: 24 }), sigAt(8, 7, 'NEW', { flash: true })];   // the university junction, the taxi rank, the highway junction; the T at the police staging blinks
 /* every mast stands on a walk square at its junction's corner */
 SIGNALS.forEach(g => g.arms.split('').forEach(a => { const k = { S: [1, 1], W: [-1, 1], N: [-1, -1], E: [1, -1] }[a], ch = cellAt(cellOf(g.x + k[0] * 7.9), cellOf(g.z + k[1] * 7.9));
     if (ch !== 'P') console.warn('signal mast off the walk', g.x, g.z, a, ch); }));
@@ -712,7 +840,9 @@ if (ROOM.east) lines.push("                backdropInset: { w: " + r3(ROOM.east 
 lines.push("                /* THE NATURAL EDGES: no ring of backdrop buildings; the land past each side in place of the concrete outer ground (three-renderer.js _hqBuildEdgeLand) */");
 /* the grown room (Bayside's beach, ROOM.east): the west strip the centred shell adds is under the forest (the land starts behind the ghost wall on
    the city's old edge); the bay lies past the city's east edge, so the mountains and the desert fall into it over the strip's width */
-if (ROOM.east) { const sw = ROOM.east * C; EDGES.w.inset = r3(sw - 0.1); EDGES.n.cap = { kind: 'coast', at: 'e', off: r3(sw), len: 60 }; EDGES.s.cap = { kind: 'coast', at: 'e', off: 25, len: 40 }; }
+/* THE DISTRICT MOVE (2026-11-15): Industrial is the south-east block now, a port with water on two sides: the bay lies south of its four plots
+   too (the world map: 'the bay' under columns 8 to 11), so the south side is coast for the strip + those four plots, then desert. */
+if (ROOM.east) { const sw = ROOM.east * C; EDGES.w.inset = r3(sw - 0.1); EDGES.n.cap = { kind: 'coast', at: 'e', off: r3(sw), len: 60 }; EDGES.s.cap = { kind: 'coast', at: 'e', off: r3(sw + 4 * PL - 14), len: 30 }; }
 /* a district's own say in the land past the edge (2026-11-15, Entertainment's Hollywood hills): a district file may export `edges`; a side's row
    is laid over the room's (its `cap`), any other key (`sign`) is taken whole */
 for (const m of DISTRICTS) if (m.edges) for (const k of Object.keys(m.edges)) EDGES[k] = ('nsew'.indexOf(k) >= 0 && EDGES[k]) ? Object.assign({}, EDGES[k], m.edges[k]) : m.edges[k];
@@ -1001,6 +1131,9 @@ const blockEnd = src.indexOf('        /* DC144-END */');
     if (out === seg) console.warn('JOIN link end not found:', id); src = src.slice(0, i) + out + src.slice(i + 900);
 });
 sub(/(prebuilt_downtown:  \{ room: 'site_prebuilt_downtown_streets',  door: \{ id: 'bay', )[^}]*\}/, "$1wall: 'free', x: " + JOIN.bay.x + ", z: " + JOIN.bay.z + ", face: " + JOIN.bay.face + " }", 'entry');
+/* THE DISTRICT MOVE: the residents' table (HQ_CITY_RESIDENTS, outside the markers) reads a district's block and the beach's box */
+sub(/(\n    districts: )\{[^}]*\}(,   \/\/ a district's first plot)/, "$1{ " + Object.keys(MOVE.to).map(k => k + ': [' + MOVE.to[k][0] + ', ' + MOVE.to[k][1] + ']').join(', ') + " }$2", 'residents districts');
+sub(/(\n    beach: )\[[-\d., ]+\]/, "$1[256, " + (96 + DELTA.B[1] * 42) + ", 304, " + (246 + DELTA.B[1] * 42) + "]", 'residents beach');
 const hero = pc(plotNamed('Hero plaza'));
 sub(/site_prebuilt_downtown_streets: \{ x: [-\d.]+, z: [-\d.]+ \},(   \/\/ DISASTER CITY: the plaza)/, "site_prebuilt_downtown_streets: { x: " + hero[0] + ", z: " + r3(hero[1] + 1.75) + " },$1", 'marker');
 sub(/city: \{ room: 'site_prebuilt_downtown_streets', x: [-\d.]+, z: [-\d.]+, face: \d+ \}/, "city: { room: 'site_prebuilt_downtown_streets', x: " + r3(hero[0] - 3.5) + ", z: " + r3(hero[1] + 1.75) + ", face: 90 }", 'hub');
