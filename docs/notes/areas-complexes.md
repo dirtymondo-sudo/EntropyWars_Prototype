@@ -3682,3 +3682,34 @@ woods in between them" · 16:53 "okay" on plan 2.
   height and colour (gold key -> gilt `#e0c070`); a blade sign (`o.down`, the HOTEL blade) is one quad a letter with the face set in the key. Fewer triangles.
 - sign-fonts.js Financial rows: ARCHIVE / VAULT / ARCADE = Marcellus SC, TAXI / GARAGE = Oswald, the rest Playfair Display.
 - Not seen in the running game (no playtest asked); checked by the bake's sign list only.
+
+
+## CAMELOT KINGDOM ON PLOTS, THE KINGDOM ROOM — second delivery (2026-11-15)
+
+mondo's OK on plan 2 ("okay", 16:53 UTC) after his order: "i want camelot castle in the middle and for it to be surrounded by the other
+districts ... the north pole to the north of the castle would be good as a rival kingdom, or put more woods in between them."
+
+- **The room**: `site_prebuilt_camelot_kingdom` (data.js, between `CAMELOT-KINGDOM-BEGIN / END`, written by `node bake-camelot.js`; never
+  hand-edit). 8 x 8 plots of 12 x 12 squares = 336 m. The squares are `docs/areas/camelot/layout.json` `cells` (the approved plan's own map,
+  copied from project files camelot-kingdom/camelot-layout-2.json). Method = the Woods' (`gen.kind: 'plan', look: 'trees'`, open squares
+  are `space` rows, the rest is solid).
+- **The castle** is the same build as the first delivery, placed by `buildCastle(DZ)` (DZ = 21 m: its north-west square is the kingdom's
+  (24, 36); x is unchanged). The tool still writes the castle's own room `site_prebuilt_camelot_castle` (kept, no way in opens on it now).
+- **Districts**: THE NORTH POLE (rows 0-1 + the snowy pine belt, one level = 1.75 m up, graded over rows 20-24): the pole, the Workshop
+  (walk-in), nine cottages (`xmas_house`), the frozen lake (`ice_1` paint, walked on), santa clause / gnome / yeti with the old village's
+  lines. THE TOWN (new): Chapel, Smithy, Inn (walk-in), 29 houses (solid `texbuilding` + an `arch` look: plaster, stone foot, timber frame,
+  gable), market, the green. THE FAIRY FOREST: pond + deck, spring, knolls (`hill`), the ring of toadstools, toadstool groves.
+  THE LOOKING-GLASS GARDEN: hedges (solid from the plan, drawn as `arch` boxes a plot, `leaves_3`), the old garden's chessboard and
+  position (`board` + its chess trees moved), tea table, statues, the mirror, the old natives with their own lines.
+- **THE TREE ZONES (engine, data.js `_hqTPlanFinish`)**: `gen.zones = [{ x0, z0, x1, z1, kinds?, treeH?, none? }]`; the first zone a trunk
+  stands in picks its kinds; `none` plants nothing (the hedges). Used here for snowy pines, `fae_cap` toadstool trees, and the garden.
+- **Ways in, all on the kingdom now**: `hubs.kingdom.room`, `siteRooms.entry.prebuilt_camelot` (door `bay`, s, x -24.5 = the Town Gate),
+  links `woods_camelot` (e, z 3.5), `northpole_camelot` (n, x 7: goes on to the old village room), `haunted_camelot` (free, the wardrobe
+  in a nook of the snowy pines), `well_camelot` (free, the bailey). Room doors: `keep`, `postern` (the old Keep and Undercroft, their
+  return doors repointed), `mirror` (the Astral waiting room), `oldgarden` (the old garden, as it was), `deadtree` (secret, the Woods'
+  `lookingglass` door, repointed in bake-woods.js). The tool prints the link ends (`ends {...}`): move the data.js rows if a path moves.
+- **Why `res: 1.75`**: the castle's rows are dear a lattice node; at the Woods' 0.875 the room took 32 s to compile in node, at 1.75 it
+  takes 8 s (the Woods 10 s, Disaster City 8 s).
+- **Not done / open**: never seen on screen (no browser run: RULE #1c). The Keep's upper floors, the Undercroft and the Sky Castle are
+  still the old rooms. No anvil, market stall, archery target or lamp post exists on R2 (tents, crates and sacks stand in). The old
+  Fairy Forest glade has no door of its own, so nothing links to it. Town plot names are plain descriptions.
