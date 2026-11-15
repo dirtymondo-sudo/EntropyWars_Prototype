@@ -94,11 +94,9 @@ const HG = mk(22, 14);
   R.wall('v', 13, 10, 14, Object.assign({ doors: [[12.5, 'leaf_frosted_single']] }, wh)); R.wall('v', 18, 10, 14, Object.assign({ doors: [[12.5, 'leaf_hospital']] }, wh));
   /* the low rooms' roofs (3.5 m): the hall goes on up to the trusses over them */
   [[0, 0, 4, 4], [0, 4, 4, 7], [0, 7, 4, 10], [18, 0, 22, 4], [18, 4, 22, 7], [18, 7, 22, 10], [0, 10, 22, 14]].forEach(q => R.ceil(q[0], q[1], q[2], q[3], 3.5, CONC, 0xb0b4b8));
-  /* THE SAUCER on its rig, in the test pit (1.75 m down, railed all round, the tape ring on the floor round it): the catwalk crosses over it */
-  R.F.push({ k: 'plateau', x: R.X(11), z: R.Z(5), w: 14, d: 14, h: -1.75, sink: true, edge: 0.15 });
-  [['u', 3, 9, 13], ['u', 7, 9, 13], ['v', 9, 3, 7], ['v', 13, 3, 7]].forEach(q => { R.F.push(Object.assign({ k: 'rail', model: 'balusters_b' }, q[0] === 'u' ? { x0: R.X(q[2]), z0: R.Z(q[1]), x1: R.X(q[3]), z1: R.Z(q[1]) } : { x0: R.X(q[1]), z0: R.Z(q[2]), x1: R.X(q[1]), z1: R.Z(q[3]) })); });
-  for (let u = 9; u < 13; u++) for (let v = 3; v < 7; v++) R.block[u + ',' + v] = 'the pit';
-  R.props.push({ key: 'saucer_rig', x: R.X(11), z: R.Z(5), y: -1.75, face: 0 });
+  /* THE SAUCER on its rig, the tape ring on the floor round it. The game draws `saucer_rig` as the landing-gear saucer, 6 m across and
+     under 3 m tall, so it stands on the floor and the 3.5 m catwalk crosses over it (seen in the browser 11-15: a pit hid it). */
+  R.props.push({ key: 'saucer_rig', x: R.X(11), z: R.Z(5), face: 0 }); for (let u = 10; u < 12; u++) for (let v = 4; v < 6; v++) R.block[u + ',' + v] = 'saucer_rig';
   [[8.5, 2.5, 0], [13.5, 2.5, 0], [8.5, 7.5, 0], [13.5, 7.5, 0], [8.5, 5, 90], [13.5, 5, 90], [11, 2.5, 0], [11, 7.5, 0]].forEach(q => R.dec('warning_tape', q[0], q[1], q[2], { y: 0.01 }));
   /* THE UPPER FLOOR (3.5 m): the catwalk over the saucer, the mezzanine along the south side, the control room in glass at its east end */
   R.deck(10, 1, 12, 8.2, 3.5, GRILL); R.deck(10, 8, 18, 10, 3.5, GRILL);                                                    // (the catwalk runs 0.7 m on over the mezzanine: two slabs that only touch leave a seam the walker falls through)
@@ -312,7 +310,10 @@ const PY = mk(14, 14);
         desc: 'A slab that turns on its middle. It lets out on the west face, a few steps from the Tomb Door.' },
       { id: 'cut', wall: 'w', z: R.Z(2.5), secret: true, leaf: 'leaf_frame_only', label: 'A DRAUGHT', sub: 'THE ROBBERS’ CUT · OUT THROUGH THE WEST FACE', action: { room: 'site_prebuilt_area51_desert', at: 'cut' },
         desc: 'A rough hole hacked through the casing stones. Whoever cut it did not come for the view.', draft: true });
-  R.must.push('6,0', '7,0', '0,8', '0,2');
+  /* THE TURNING TOMB (mondo 11-15: yes): the King's Chamber holds the door to the puzzle dungeon (data.js PD_DUNGEONS.tomb, level `tomb1`); leaving or solving it comes back here (map.js _pdDoor) */
+  R.doors.push({ id: 'turning', wall: 's', x: R.X(7.5), leaf: 'leaf_portcullis', label: 'THE TURNING TOMB', sub: 'THE KING’S CHAMBER · THE DOOR BEHIND THE SARCOPHAGUS', action: { pd: 'tomb1', back: { room: 'site_prebuilt_giza_pyramid', at: 'turning' } },
+      desc: 'A door in the south wall of the King’s Chamber, behind the sarcophagus.' });
+  R.must.push('6,0', '7,0', '0,8', '0,2', '7,13');
   R.spawn = { x: R.X(7), z: R.Z(1.2), face: 180 };
   R.lines = [];
   R.stops = [[7, 1, L1], [3, 2.5, L1], [3, 5.5, L1], [1.5, 8.5, L1], [7, 10, 0], [11, 12.5, L2], [7.5, 13.4, L2]];
@@ -323,7 +324,7 @@ check('the hangar', HG); check('the white rooms', WD); check('the pyramid', PY);
 /* ── the rooms' text ── */
 function emit(id, R, head, terrainHead) {
     const M = [], F = R.F.concat([{ k: 'arch', id: 'des:' + id + ':in', x: 0, z: 0, parts: R.P }]);
-    if (R.inner.length) F.push({ k: 'texbuilding', id: 'des:' + id + ':doors', x: 0, z: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: 'leaf_office', inner: R.inner });
+    if (R.inner.length) F.push({ k: 'texbuilding', id: 'des:' + id + ':doors', x: 0, z: 0, y: 0, w: 2, d: 2, rot: 0, storeys: 1, skin: false, doorsOnly: true, leaf: 'leaf_office', inner: R.inner });
     M.push('        ' + id + ': {'); head.forEach(l => M.push('            ' + l));
     M.push('            terrain: {'); terrainHead.forEach(l => M.push('                ' + l));
     M.push('                features: ['); F.forEach(f => M.push('                    ' + J(f) + ',')); M.push('                ],'); M.push('            },');
@@ -342,7 +343,7 @@ emit('site_prebuilt_area51_hangar', HG, [
     "                       floor: 'urban:ConcreteStriped1b', wall: 'urban:MetalCorrugatedPainted1a', dado: 'urban:MetalCorrugatedPainted1c', ceiling: 'urban:MetalSubwayGrill1a',",
     "                       floorColor: 0xb0b4b8, wallColor: 0xa8b0b8, dadoColor: 0x7a848c, ceilColor: 0x6a7078,",
     "                       mood: { lamp: 0xeaf4ff, glow: 0xbfe0ff, strip: 0xffffff, light: 0xe8f0ff, ambient: 0.55 }, fog: { color: 0x0c1018, density: 0.008 }, look: HQ_ROOM_LOOKS.hangar }),",
-    "parti: 'One hall fourteen metres high with the saucer in a pit under a catwalk; shops, bays and offices round it on whole squares, a glass control room up on the mezzanine.',",
+    "parti: 'One hall fourteen metres high with the saucer on its rig under a catwalk; shops, bays and offices round it on whole squares, a glass control room up on the mezzanine.',",
 ], ["res: 0.4375, floor: 'urban:ConcreteStriped1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric3a',", "noise: { amp: 0, scale: 5 }, crag: false,"]).forEach(l => OUT.push(l));
 emit('site_prebuilt_area51_ward', WD, [
     "label: 'AREA 51 · THE WHITE ROOMS',", "sub: 'PSYCHIATRIC · THE CELL ROW · THE DAYROOM · THE OBSERVATION FLOOR · FOR THE ONES WHO SAW IT',", "kind: 'box', site: 'prebuilt_area51', part: 'ward',",

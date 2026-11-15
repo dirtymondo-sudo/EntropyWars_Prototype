@@ -2546,7 +2546,17 @@
             return window._hqEnter({ room, at: { x: sp.x, z: sp.z, y: 0, face: sp.face || 0 }, quiet: true, from: 'pd' });
         };
         window._pdForget = function () { _pd = null; };
+        /* A DOOR INTO A DUNGEON (2026-11-15, mondo's yes to the King's Chamber door): a room door whose action is `{ pd: '<level>', back: { room, at } }`
+           enters that level; leaving it, or solving it, comes back through that door (window._pdBack) and never drops to the main menu. */
+        window._pdDoor = function (act) {
+            if (!act || !act.pd || typeof pdLevel !== 'function' || !pdLevel(act.pd)) return false;
+            window._pdBack = (act.back && act.back.room) ? { room: act.back.room, at: act.back.at || null } : null;
+            try { window._hqClosePanel(); } catch (e) {}
+            return window._pdEnter(act.pd);
+        };
+        function _pdGoBack() { const b = window._pdBack; if (!b || !DOOR_HQ.rooms[b.room]) return false; window._pdBack = null; _pd = null; try { window._hqGoRoom(b.room, b.at); } catch (e) { console.warn('[PD] back', e); return false; } return true; }
         window._pdLeave = function () {
+            if (_pdGoBack()) return;
             _pd = null;
             try { window._hqExitToMenu(); } catch (e) { console.warn('[PD] leave', e); }
         };
@@ -2663,6 +2673,7 @@
             const R = DOOR_HQ.rooms[p.room], E = R && R.pd === _pd.id && R.pdExit; if (!E) return;
             const S = pdState(_pd.id); if (S.solved || Math.hypot(p.x - E.x, p.z - E.z) > E.r) return;
             S.solved = true; _pdSave(); _pdSolvedSay();
+            if (window._pdBack) setTimeout(() => { if (_pd && window._pdBack) _pdGoBack(); }, 2600);   // entered by a room's door: back through it once the SOLVED line has been read
         };
         function _pdPanelAct(act) {
             if (act.indexOf('enter:') === 0) { window._pdEnter(act.slice(6)); return; }
@@ -6634,6 +6645,7 @@
                 html += '<div class="hq-panel-actions">';
                 if (act.fn) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(act.fn)}">ENTER ▸ ${_hqEsc(_HQ_FN_LABELS[act.fn] || act.fn)}</button>`;
                 else if (act.room && _hqRoomExists(act.room)) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-room="${_hqEsc(act.room)}" data-at="${_hqEsc(act.at || '')}">${locked ? _hqGateLabel(d, cl, profile) : 'GO THROUGH' + (PL.known ? ' ▸ ' + _hqEsc(PL.label) : '')}</button>`;
+                else if (act.pd) html += `<button class="hq-btn hq-btn-primary" ${locked ? 'disabled' : ''} data-pdgo="${_hqEsc(act.pd)}" data-pdroom="${_hqEsc((act.back && act.back.room) || '')}" data-pdat="${_hqEsc((act.back && act.back.at) || '')}">GO THROUGH${PL.known ? ' ▸ ' + _hqEsc(PL.label) : ''}</button>`;   // A DOOR INTO A DUNGEON
                 else if (act.room) html += `<button class="hq-btn hq-btn-primary" disabled>${locked ? _hqGateLabel(d, cl, profile) : 'INTERIOR NOT YET BUILT'}</button>`;
                 [d.alt, d.alt2].forEach(a => {
                     if (a && a.fn) html += `<button class="hq-btn" ${locked ? 'disabled' : ''} data-fn="${_hqEsc(a.fn)}">${_hqEsc(a.label)}</button>`;
@@ -8629,6 +8641,7 @@
                 if (_hqRoomExists(bayId)) return { room: bayId, at: act.at || _hqBayEntry(act.sector) };   // a ring door lands at the far cap (plan 5.4a)
             }
             if (act.fn && typeof window[act.fn] === 'function') return { fn: act.fn };
+            if (act.pd && typeof pdLevel === 'function' && pdLevel(act.pd)) return { pd: act.pd, back: act.back || null };   // A DOOR INTO A DUNGEON
             return null;
         }
         /* E: direct doors go through, a console lights its screen (THE
@@ -8872,6 +8885,7 @@
                 window._hqGoRoom(roomId, at);
                 return;
             }
+            if (act.pd) { const srcP = t || _hqPanelTarget; if (srcP && srcP.kind === 'door') { _hqLastDoor = srcP.id; _hqRecordVisit(srcP.id); } window._pdDoor(act); return; }   // A DOOR INTO A DUNGEON
             if (!act.fn || typeof window[act.fn] !== 'function') return;
             const src = t || _hqPanelTarget;
             if (src && src.kind === 'door') { _hqLastDoor = src.id; _hqRecordVisit(src.id); }
@@ -8948,6 +8962,8 @@
             if (e.target.closest('[data-party-rest]')) { window._hqClosePanel(); window._hqPartyRest(); return; }   // THE COT (THE PARTY) + THE HEALING ZONES
             const mf = e.target.closest('[data-marker-fight]');
             if (mf) { if (!mf.disabled) window._hqMarkerFight(mf.getAttribute('data-marker-fight')); return; }   // THE MARKER (2026-09-20)
+            const pdBtn = e.target.closest('[data-pdgo]');
+            if (pdBtn && !pdBtn.disabled) { window._hqDoAction({ pd: pdBtn.getAttribute('data-pdgo'), back: { room: pdBtn.getAttribute('data-pdroom'), at: pdBtn.getAttribute('data-pdat') || null } }); return; }
             const roomBtn = e.target.closest('[data-room]');
             if (roomBtn && !roomBtn.disabled) { window._hqDoAction({ room: roomBtn.getAttribute('data-room'), at: roomBtn.getAttribute('data-at') || null }); return; }
             const cross = e.target.closest('[data-cross],[data-deep],[data-codered]');
