@@ -19,7 +19,8 @@
      road     run this plot's street on to this side (the plan's street profile, squares 3 to 8)
      roadEnd  this plot's street stops short of this side: its last three squares are paved, and the side is a walk crossing
      close    close this side's gap (nothing faces it any more)
-   No building is moved or removed by any of them. */
+     rect     squares of the plot made carriageway or pavement (a lane that is not the plan's street profile); port = set a side's gap by hand
+   No building is moved or removed by a seam (the tool throws); `gone` takes a building out by name. */
 'use strict';
 module.exports = {
     to: { C: [0, 0], F: [1, 0], E: [2, 0], U: [0, 1], H: [1, 1], B: [2, 1], R: [0, 2], S: [1, 2], I: [2, 2] },
@@ -29,11 +30,22 @@ module.exports = {
         { op: 'walk', plot: 'P11-01', side: 'E' },                                              // Vault annex: a gate to the Restaurant court
         { op: 'roadEnd', plot: 'P08-07', side: 'W' }, { op: 'walk', plot: 'P11-03', side: 'E' },   // the strip ends at the Taxi rank; the Private garden's gate
         /* Civic | University, Financial | Hero Plaza */
-        { op: 'roadEnd', plot: 'P03-04', side: 'N' }, { op: 'walk', plot: 'P07-03', side: 'S' },   // the university avenue ends under the Permit offices
-        { op: 'roadEnd', plot: 'P08-03', side: 'S' }, { op: 'walk', plot: 'P04-04', side: 'N' },   // the financial avenue ends over the News office
+        /* THE ROADS JOIN AGAIN (mondo 11-15): THE PERMIT LANE. The university avenue runs on north two squares into the Permit offices' plot
+           and turns east along its south edge (two squares wide, squares cy 46-47) into the foot of the financial avenue. No building is
+           removed: the lane takes the Permit offices' south walk. levels.js puts the Permit offices and the Faculty homes on the lane's level (10). */
+        { op: 'rect', plot: 'P07-03', x0: 4, y0: 10, x1: 11, y1: 11, ch: 'R' }, { op: 'rect', plot: 'P07-03', x0: 3, y0: 10, x1: 3, y1: 11, ch: 'P' },
+        { op: 'rect', plot: 'P08-03', x0: 0, y0: 10, x1: 3, y1: 11, ch: 'R' }, { op: 'rect', plot: 'P08-03', x0: 0, y0: 9, x1: 2, y1: 9, ch: 'P' },
+        { op: 'port', plot: 'P07-03', side: 'S', port: 'walk' }, { op: 'port', plot: 'P07-03', side: 'E', port: 'walk' }, { op: 'port', plot: 'P08-03', side: 'W', port: 'walk' },
+        { op: 'rect', plot: 'P08-03', x0: 9, y0: 11, x1: 10, y1: 11, ch: 'P' }, { op: 'walk', plot: 'P04-04', side: 'N', at: [9, 10] },   // the News office's walk up to the avenue's foot (east of the carriageway)
         /* University | Southside */
         { op: 'walk', plot: 'P01-00', side: 'N', at: [6] },                                     // the Townhouse court's alley up to the Clinic
-        { op: 'roadEnd', plot: 'P03-07', side: 'S' }, { op: 'walk', plot: 'P03-00', side: 'N', at: [7] },   // the alley beside the Boxing gym (its buildings stand where a street would run)
+        /* THE ROADS JOIN AGAIN: THE GYM LANE. The west avenue meets the Boxing gym head on. The row house east of the gym is taken out
+           (`gone`), and the avenue bends two squares east past the gym (two squares wide, cx 43-44, cy 96-100) and back. The gym stays.
+           levels.js puts the gym's plot on the cross street's level (6). */
+        { op: 'rect', plot: 'P03-07', x0: 8, y0: 9, x1: 8, y1: 11, ch: 'R' }, { op: 'rect', plot: 'P03-07', x0: 9, y0: 9, x1: 9, y1: 11, ch: 'P' },
+        { op: 'rect', plot: 'P03-00', x0: 7, y0: 0, x1: 8, y1: 4, ch: 'R' }, { op: 'rect', plot: 'P03-00', x0: 9, y0: 0, x1: 9, y1: 7, ch: 'P' },
+        { op: 'rect', plot: 'P03-00', x0: 6, y0: 5, x1: 8, y1: 5, ch: 'R' }, { op: 'rect', plot: 'P03-00', x0: 5, y0: 6, x1: 8, y1: 6, ch: 'R' }, { op: 'rect', plot: 'P03-00', x0: 8, y0: 7, x1: 8, y1: 7, ch: 'R' },
+        { op: 'port', plot: 'P03-00', side: 'N', port: 'walk' },
         /* Bayside | Industrial */
         { op: 'walk', plot: 'P09-11', side: 'S' },                                              // Loading / parking down to the Warehouse
         { op: 'road', plot: 'P11-11', side: 'S' },                                              // the coast road: the Boardwalk exit on to the Machine shop
@@ -48,6 +60,13 @@ module.exports = {
     ],
     /* THE WAYS OUT (the world map, /mnt/project-files/world-zones-plan/): a street that reaches the city's outer line. Each is a closed gate
        until its zone is built. `east` ones open onto the harbour quay (the room's east strip). */
+    /* THE ROADS JOIN AGAIN (mondo 11-15: "delete some buildings ... get rid of the most useless ones to connect the roads again") */
+    gone: [{ id: 'P03-00-B2', why: 'the row house east of the Boxing gym: the west avenue runs where it stood' }],
+    /* the two lanes' middle lines for the road markings and the lamps (square lines; w in squares) */
+    streets: [
+        { pts: [[42, 54], [42, 47]], w: 4 }, { pts: [[42, 47], [54, 47]], w: 2 }, { pts: [[54, 42], [54, 47]], w: 4 },
+        { pts: [[42, 90], [42, 93]], w: 4 }, { pts: [[42, 93], [44, 96]], w: 2 }, { pts: [[44, 96], [44, 101]], w: 2 }, { pts: [[44, 101], [42, 104]], w: 2 },
+    ],
     ways: [
         { plot: 'P04-01', side: 'W', name: 'THE VATICAN GATE', look: 'iron' },
         { plot: 'P03-03', side: 'S', name: 'THE HIGHWAY', look: 'road', open: true },   // THE DESERT ON PLOTS (2026-11-15): the Desert is built; the door is links.downtown_desert

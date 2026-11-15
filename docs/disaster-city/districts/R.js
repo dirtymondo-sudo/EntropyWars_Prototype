@@ -379,6 +379,7 @@ function build(ctx) {
         a.done();
     })();
     (() => {   // B2 the row house: tan clapboard, a brown gable to the street, a porch
+        if (ctx.gone && ctx.gone['P03-00-B2']) return;   // THE ROADS JOIN AGAIN (mondo 11-15): taken out, the west avenue runs where it stood (move.js `gone`)
         const fr = frameOf('P03-00-B2'), row = solid('P03-00-B2', fr, 6.4, { walkin: true, leaf: 'leaf_shabby_wood', keyIn: K.plaster, floorIn: 'wood_planks' });   // THE BEDROOMS (11-14): a walk-in home
         const a = arch(fr, 'P03-00-B2'), W = fr.W, D = fr.D, TN = 0xf0d8a8, BN = 0x8c7468, dr = doorOf(row);
         a.shell(W, 6.4, D, K.board, TN, dr);
@@ -732,6 +733,7 @@ function build(ctx) {
        bags, the weights, the lift, the tyres, the mat, the posts, the counters) is a part of the room's own `arch` row `dc:<id>-in`. */
     const SQ = 3.5;
     const inside = (id, gx, gy, fn) => {
+        if (ctx.gone && ctx.gone[id]) return;   // a building taken out for a street (move.js `gone`)
         const row = rowOf(id), fr = frame(row.x, row.z, row.rot || 0, row.w, row.d), W = row.w, D = row.d, a = arch(fr, id + '-in');
         const R = { fr, W, D, a, H: Math.max(2.5, (row.h > 0 ? row.h : Math.max(1, row.storeys || 1) * 3.5) - 0.32) };   // the ceiling where the texbuilding draws it (its `h`, else its storeys)
         R.lx = X => X - W / 2; R.lz = Y => Y - D / 2;
