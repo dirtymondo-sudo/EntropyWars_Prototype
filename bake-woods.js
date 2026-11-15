@@ -48,7 +48,8 @@ door('lemuria', 'P01-00', 'n', { way: 'trail', secret: true, label: 'AGARTHA · 
     desc: 'A draught out of the rock shelf, warmer than the snow above it.' });
 door('lodge', 'P05-00', 'e', { way: 'trail', secret: true, label: 'THE LODGE · THE HALLS', sub: 'THE MEMBERS’ TUNNEL · UNDER THE LAWN', action: { room: 'site_prebuilt_lodge_halls', at: 'link_grove_lodge' },
     desc: 'A tunnel under the lake shore that nobody admits to.' });
-door('lookingglass', 'P05-02', 'e', { way: 'trail', secret: true, label: 'THE LOOKING-GLASS · THE GARDEN', sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE', action: { room: 'site_prebuilt_lookingglass_garden', at: 'link_deadtree_lookingglass' },
+door('lookingglass', 'P05-02', 'e', { way: 'trail', secret: true, label: 'THE LOOKING-GLASS · THE GARDEN', sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE', action: { room: 'site_prebuilt_camelot_kingdom', at: 'deadtree' },   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the garden is a district of the kingdom room now (was the old garden room)
+   
     desc: 'Past the dead tree the ground is the wrong colour.' });
 door('sewers', 'P05-05', 'e', { way: 'trail', secret: true, label: 'THE TUNNEL', sub: 'THE DRAIN · INTO THE TUNNEL', action: { room: 'tunnel', at: 'link_woods_sewer' },
     desc: 'The channel goes on into the dark, and the dark has a platform in it.' });
