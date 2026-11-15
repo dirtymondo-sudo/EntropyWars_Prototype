@@ -227,7 +227,7 @@ native('P03-02', 'cult leader', -1, -1, 90); native('P03-01', 'fortune teller', 
 native('P04-05', 'swamp monster', -1, 1, 60); native('P04-05', 'mothman', 1, -1, 300);   // THE HORROR PASS: the thing in the Pool, and the one above it
 
 /* trees in the forest mass that give a district its own wood: redwoods through the Redwood Trail, pines up the mountain, dead trees round the cave */
-{ const want = { T: ['tree_3', 12, 0.10], G: ['tree_2', 8, 0.03], C: ['tree', 7.5, 0.03], M: ['dead_tree', 6, 0.0] };
+{ const want = { T: ['tree_3', 14, 0.12], G: ['tree_2', 8, 0.03], C: ['tree', 7.5, 0.03], M: ['tree_6', 7, 0.05] };   // the cave's bare trees (was `dead_tree`, no such kind: nothing was planted)
   for (let cy = 1; cy < W - 1; cy++) for (let cx = 1; cx < W - 1; cx++) { if (cell[cy][cx] !== 't') continue; const p = P(Math.floor(cx / N), Math.floor(cy / N)), wd = want[p.district];
       let deep = true; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (cell[cy + dy][cx + dx] !== 't') deep = false;
       if (!deep || rnd() > wd[2]) continue; const mountain = p.level >= 6;
@@ -323,6 +323,59 @@ hdec('P05-04', 'psx_fish_skeleton_mp_1', 0, 0, { y: 0.02 }); hput('P05-04', 'psx
 hput('P05-05', 'trap_sarcophagus_box', 0, 0, { face: 90 }); hdec('P05-05', 'skull', 1, 1);
 count.horror = props.length - h0;
 
+/* ── THE LIFE PASS (2026-11-15, mondo: "make the woods come alive and look good ... look at the nature spells for inspiration ... same with the fairy
+   forest"; his OK on the four looks + "yes lets do per district particles"). Each district is its own wood:
+   THE CLEARING = the friendly woods (birch, heal flowers, butterflies, bees, rabbits; fireflies in the air);
+   THE REDWOOD TRAIL = ancient and overgrown (giants, thorn vine at the trunks, mushrooms on the logs, boulders; green spores, snow on the Snowline);
+   THE RITUAL GROUND = the fairy forest gone wrong (a glowing toadstool ring at the Stones, giant caps on the lake shore, crystals, moths, frogs; violet motes);
+   DEAD MAN'S CAVE = rot and thorns (bare trees, bramble, gas plants, spore caps, crows, frogs at the Pool; ash).
+   The plants are the nature spells' own (the garden's thorn vine / gas plant / heal flower models, data.js catalogue woods_*). Small things only: nothing
+   blocks a path, the new glows carry `noLight` (the room's ten real lights are spoken for). No apple tree (a Meshy tree). ── */
+const l0 = props.length, f0 = features.length;
+const softAt = (cx, cy) => cx >= 0 && cy >= 0 && cx < W && cy < W && /[gsr]/.test(cell[cy][cx]);
+function life(id, key, o) {   // a small thing somewhere on the plot's open ground, off the middle of its square; shares squares (never claims one)
+    const f = freeSquares(id); if (!f.length) return null; const fr = f.filter(q => !taken.has(q[0] + ':' + q[1])), q = (fr.length ? fr : f)[Math.floor(rnd() * (fr.length ? fr.length : f.length))];
+    const a = rnd() * 6.2832, d = 0.7 + rnd() * 0.8; props.push(Object.assign({ key, x: r2(gc(q[0]) + Math.cos(a) * d), z: r2(gc(q[1]) + Math.sin(a) * d), face: Math.round(rnd() * 360) }, o || {})); return q; }
+const fly = (id, key, y) => life(id, key, { floor: true, y: r2(y * (0.8 + rnd() * 0.5)) });
+const sow = (key, n, sq, r, o) => features.push(Object.assign({ k: 'scatter', key, n, seed: 100 + features.length, x: gx(sq[0]), z: gx(sq[1]), r }, o || {}));   // a scatter over a disc (squares → m)
+const DIST = d => PLAN.plots.filter(p => p.district === d).map(p => p.id);
+/* THE CLEARING */
+sow('woods_healflower', 34, [18, 54], 60, { h: 0.7, r0: 0.3 }); sow('fern', 20, [18, 54], 60);
+DIST('C').forEach((id, i) => { fly(id, ['butterfly', 'monarch', 'blue_morpho', 'swallowtail'][i % 4], 1.2); fly(id, ['swallowtail', 'butterfly', 'monarch', 'blue_morpho'][i % 4], 1.6); fly(id, i % 2 ? 'bee' : 'bumblebee', 0.8); life(id, i % 3 ? 'ladybug' : 'grasshopper'); });
+['P01-03', 'P02-03', 'P01-04', 'P02-04', 'P01-05'].forEach(id => { life(id, 'rabbit'); life(id, 'woods_healflower', { h: 0.9 }); life(id, 'woods_healflower', { h: 0.75 }); });
+/* THE REDWOOD TRAIL (the Snowline keeps its bare ground) */
+sow('woods_thornvine', 16, [22, 22], 38, { h: 1.5, r0: 0.5 }); sow('woods_thornvine', 6, [7, 27], 24, { h: 1.7, r0: 0.5 }); sow('mushroom2', 16, [22, 22], 38, { h: 0.45, r0: 0.25 }); sow('mushroom2', 6, [7, 27], 24, { h: 0.5, r0: 0.25 });
+sow('ocean_rock_5', 12, [20, 20], 40, { h: 0.7 }); sow('ocean_rock_6', 10, [20, 22], 40, { h: 0.9 }); sow('fern', 40, [20, 24], 42); sow('fallen_log', 8, [20, 24], 42, { r0: 1.9 }); sow('stump', 8, [20, 24], 42);
+features.filter(f => f.k === 'tree' && f.h >= 11 && f.r >= 1 && f.x < 0 && f.z < 0).forEach(t => { for (let i = 0; i < 3; i++) { const a = rnd() * 6.2832, d = t.r + 0.9;   // thorn vine at the feet of the giants
+        const x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d; if (softAt(Math.floor((x + HALF) / C), Math.floor((z + HALF) / C))) props.push({ key: 'woods_thornvine', x: r2(x), z: r2(z), h: 2.3, face: Math.round(rnd() * 360) }); } });
+['P00-01', 'P00-02', 'P01-02', 'P02-01', 'P02-02', 'P01-01'].forEach((id, i) => { fly(id, i % 2 ? 'luna_moth' : 'hawk_moth', 1.5); life(id, i % 2 ? 'crow' : 'grasshopper'); });
+fly('P00-02', 'eagle', 9); fly('P02-00', 'eagle', 8); life('P02-00', 'meshy_frog'); life('P02-00', 'meshy_frog'); life('P02-01', 'meshy_frog');
+/* THE RITUAL GROUND */
+{ const q = centre('P04-02'), cx0 = gc(q[0]), cz0 = gc(q[1]);   // THE FAE RING round the Stones (the Fae Ring spell's ring, the Camelot fairy forest's toadstools): violet caps, 10.5 m out, none on a path
+  for (let i = 0; i < 14; i++) { const a = i / 14 * 6.2832, x = cx0 + Math.cos(a) * 10.5, z = cz0 + Math.sin(a) * 10.5; if (softAt(Math.floor((x + HALF) / C), Math.floor((z + HALF) / C))) props.push({ key: 'fae_toadstool', x: r2(x), z: r2(z), face: Math.round(90 - a * 57.3), noLight: true }); } }
+[['P04-00', -3, 3], ['P04-00', 2, 4], ['P05-00', -2, 3], ['P05-00', 3, 2], ['P03-00', 3, 3]].forEach(d => hput(d[0], 'fae_mushroom', d[1], d[2], { noLight: true, face: Math.round(rnd() * 360) }));   // the giant caps on the lake shore
+[['P03-01', 3, -2], ['P04-01', 4, 3], ['P05-02', 2, 2], ['P05-01', 3, 3], ['P03-02', -3, -2]].forEach(d => hput(d[0], 'crystal_cluster', d[1], d[2], { noLight: true }));
+DIST('G').forEach((id, i) => { life(id, 'woods_glowcap'); life(id, 'woods_glowcap', { h: 0.5 }); life(id, 'woods_glowcap', { h: 0.9 }); fly(id, i % 2 ? 'luna_moth' : 'hawk_moth', 1.4); });
+['P04-00', 'P04-00', 'P05-00', 'P05-00', 'P05-00', 'P04-00'].forEach(id => life(id, 'meshy_frog'));
+sow('mushroom2', 14, [54, 18], 58, { h: 0.4, r0: 0.25 }); sow('fern', 20, [54, 18], 58);
+/* DEAD MAN'S CAVE */
+sow('woods_thornvine', 26, [54, 54], 58, { h: 1.3, r0: 0.5 }); sow('woods_gasplant', 14, [54, 54], 58, { h: 1.1, r0: 0.4 }); sow('mushroom2', 12, [54, 54], 58, { h: 0.38, r0: 0.25 }); sow('stump', 12, [54, 54], 58);
+[['P03-03', 2, 2], ['P04-03', -2, 2], ['P05-03', 2, -2], ['P04-04', -2, -2], ['P05-04', 2, 2], ['P04-05', 3, 2], ['P05-05', -2, 2]].forEach(d => { const q = hput(d[0], 'dead_snag', d[1], d[2], { face: Math.round(rnd() * 360) });
+    if (q && rnd() < 0.6) props.push({ key: 'crow', x: gc(q[0]), z: gc(q[1]), y: 4.5, face: Math.round(rnd() * 360) }); });
+DIST('M').forEach((id, i) => { life(id, 'woods_gasplant', { h: 1.3 }); if (i % 2) life(id, 'crow'); });
+['P04-05', 'P04-05', 'P04-05', 'P05-04', 'P04-04'].forEach(id => life(id, 'meshy_frog'));
+count.life = props.length - l0; count.lifeScatter = features.length - f0;
+/* the forest mass by district (data.js THE TREE ZONES) and the air by district (three-renderer.js THE AIR BY DISTRICT); the mountain plots first */
+const zoneOf = (x0, y0, x1, y1) => ({ x0: gx(x0 * N), z0: gx(y0 * N), x1: gx(x1 * N), z1: gx(y1 * N) });
+const TREE_ZONES = [Object.assign(zoneOf(0, 0, 3, 1), { kinds: ['tree_56', 'tree_55', 'tree_56', 'tree_5'], treeH: [6, 9] }),
+    Object.assign(zoneOf(0, 0, 3, 3), { kinds: ['tree_52', 'tree_52', 'tree_55', 'tree_52', 'tree_53'], treeH: [8.5, 13] }),          // the Redwood Trail: giants
+    Object.assign(zoneOf(3, 0, 6, 3), { kinds: ['tree_55', 'tree_55', 'tree_56', 'tree_6', 'tree_55'], treeH: [6.5, 9.5] }),           // the Ritual Ground: dark spruce, a bare one among them
+    Object.assign(zoneOf(0, 3, 3, 6), { kinds: ['tree_53', 'tree_54', 'tree_53', 'tree_52', 'tree_54'], treeH: [5.5, 8.5] }),          // the Clearing: birch
+    Object.assign(zoneOf(3, 3, 6, 6), { kinds: ['tree_5', 'tree_6', 'tree_5', 'tree_6', 'tree_55'], treeH: [6, 8.5] })];               // Dead Man's Cave: bare
+const ATMOS = { kind: 'spores', zones: [Object.assign(zoneOf(0, 0, 1, 1), { kind: 'snow', n: 150 }),
+    Object.assign(zoneOf(0, 0, 3, 3), { kind: 'spores', color: 0xc8f090, n: 300 }), Object.assign(zoneOf(3, 0, 6, 3), { kind: 'motes', color: 0xc8a8ff, n: 320 }),
+    Object.assign(zoneOf(0, 3, 3, 6), { kind: 'fireflies', n: 260 }), Object.assign(zoneOf(3, 3, 6, 6), { kind: 'ash', color: 0x8a9484, speed: 0.5, n: 240 })] };
+
 /* ── checks: every prop key is in the catalogue, nothing stands on a tree square, every plot is reached on foot from the Stair ── */
 const D = require('./load-data.js').loadGameData(), vm = require('vm'), CAT = vm.runInContext('DOOR_HQ.catalogue', D), RACES = vm.runInContext('AVAILABLE_RACES', D);
 props.forEach(p => { if (!CAT[p.key]) throw new Error('not in the catalogue: ' + p.key); });
@@ -344,7 +397,7 @@ L.push("        site_prebuilt_fairy_forest_plots: {");
 L.push("            label: 'THE WOODS',");
 L.push("            sub: 'FOUR DISTRICTS · 36 PLOTS',");
 L.push("            kind: 'box', site: 'prebuilt_fairy_forest', part: 'plots',");
-L.push("            shell: hqWoodsShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + gx(sp[0]) + ", z: " + gc(sp[1] + 2) + ", y: 4.2 }, forest: { depth: 7, spacing: 3.5, rows: 2, start: 1.6, canopy: { to: 54 } } }),");
+L.push("            shell: hqWoodsShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + gx(sp[0]) + ", z: " + gc(sp[1] + 2) + ", y: 4.2 }, forest: { depth: 7, spacing: 3.5, rows: 2, start: 1.6, canopy: { to: 54 } }, atmos: " + J(ATMOS) + " }),");
 L.push("            parti: 'Four districts of nine plots, every plot a twelve by twelve board: clearings joined by dirt paths through forest you cannot enter, climbing from the fence line to the snow.',");
 L.push("            typology: 'grid',");
 L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + G + ", names: " + J(PLAN.plots.map(p => [p.id, p.name, p.district, p.level])) + " },");
@@ -353,7 +406,7 @@ L.push("                res: 0.875, floor: 'grass_2', cliff: 'rock_wall_1', path
 L.push("                noise: { amp: 0.12, scale: 8 },");
 L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gx(0) + ", nx: " + W + ", nz: " + W + ", d: '" + slope.toString('base64') + "' } },");
 L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + W + ", nz: " + W + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
-L.push("                gen: { kind: 'plan', look: 'trees', seed: 36, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: 2400, treeH: [5.5, 8.5], kinds: ['tree_53', 'tree_55', 'tree_52', 'tree_53', 'tree_5', 'tree_55'] },");
+L.push("                gen: { kind: 'plan', look: 'trees', seed: 36, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: 2400, treeH: [5.5, 8.5], kinds: ['tree_53', 'tree_55', 'tree_52', 'tree_53', 'tree_5', 'tree_55'], zones: " + J(TREE_ZONES) + " },");
 L.push("                features: [");
 features.forEach(f => L.push("                    " + J(f) + ","));
 L.push("                ],");

@@ -88560,6 +88560,29 @@ const ThreeRenderer = (function () {
         var roomId = H.opts.room || 'central_egress';
         var a = null; try { a = hqRoomAtmos(roomId, room); } catch (e) { a = null; }
         if (!a) return null;
+        /* THE AIR BY DISTRICT (2026-11-15, the Woods' life pass, mondo: "yes lets do per district particles"): `shell.atmos.zones =
+           [{ x0, z0, x1, z1, kind, color?, n?, speed?, wind? }]` (metres). Each zone is its own Points of its own kind, its particles
+           born inside its box and wandering round their own spots (never wrapped through the room); the first zone listed wins where
+           two overlap only in that a later one should not cover it. H.atmos.obj is then the group that holds them. */
+        if (Array.isArray(a.zones) && a.zones.length) {
+            var grp = new THREE.Group(); grp.name = 'atmos:zones'; grp._ew_hqPart = 'fx'; var tot = 0, kinds = [];
+            a.zones.forEach(function (z) {
+                if (!z || !(z.x1 > z.x0) || !(z.z1 > z.z0)) return;
+                var one = null; try { one = _hqBuildAtmosOne(room, Object.assign({}, a, { zones: null, n: null, color: null, speed: null, wind: null }, z), z); } catch (e) { one = null; }
+                if (one) { grp.add(one.obj); tot += one.n; kinds.push(one.kind); }
+            });
+            if (!grp.children.length) return null;
+            H.propGroup.add(grp);
+            H.atmos = { kind: kinds.join('+'), n: tot, obj: grp, uni: null, zones: grp.children.length };
+            return H.atmos;
+        }
+        var made = _hqBuildAtmosOne(room, a, null); if (!made) return null;
+        H.propGroup.add(made.obj);
+        H.atmos = made;
+        return H.atmos;
+    }
+    function _hqBuildAtmosOne(room, a, zone) {
+        var H = _hq, W = (typeof window !== 'undefined') ? window : {}, roomId = H.opts.room || 'central_egress';
         var K = HQ_ATMOS_KINDS[a.kind]; if (!K) return null;
         var LR = _hqLightRules(), AR = LR.atmos || {}, U = _hqUnits(), S = room.shell || {}, D = _hqData();
         /* embers rise off the warm lights; a room without one breathes dust instead */
@@ -88590,15 +88613,16 @@ const ThreeRenderer = (function () {
         var y0 = (K.y0 != null) ? K.y0 : 0.15;
         var roomH = isBox ? (S.h || 9) : ((S.wallH || 6) + (S.upperWallH || 0));
         var Hh = Math.min(roomH - 0.2, K.hMax || 6); if (a.kind === 'rain' || a.kind === 'snow' || a.kind === 'ash') Hh = Math.min(roomH, K.hMax);
-        var wrap = isBox && flat && a.kind !== 'embers' && a.kind !== 'fireflies';
-        var rng = _mulberry32(0xA7A0 + roomId.length * 131 + n);
+        var wrap = !zone && isBox && flat && a.kind !== 'embers' && a.kind !== 'fireflies';
+        var rng = _mulberry32(0xA7A0 + roomId.length * 131 + n + (zone ? Math.round(zone.x0 * 7 + zone.z0 * 13) : 0));
         var line = !!K.streak, per = line ? 2 : 1;
         var pos = new Float32Array(n * per * 3), seed = new Float32Array(n * per * 3), end = line ? new Float32Array(n * per) : null;
         for (var i = 0; i < n; i++) {
             var px, py, pz;
             if (a.kind === 'embers') { var em = emitters[i % emitters.length]; px = em[0] + (rng() - 0.5) * 0.3 * U; pz = em[2] + (rng() - 0.5) * 0.3 * U; py = em[1] + rng() * Hh * U; }
             else {
-                if (isBox) { px = (rng() * 2 - 1) * hx * U; pz = (rng() * 2 - 1) * hz * U; }
+                if (zone) { px = (zone.x0 + rng() * (zone.x1 - zone.x0)) * U; pz = (zone.z0 + rng() * (zone.z1 - zone.z0)) * U; }
+                else if (isBox) { px = (rng() * 2 - 1) * hx * U; pz = (rng() * 2 - 1) * hz * U; }
                 else { var ar = rng() * 6.2832, rr = Math.sqrt(rng()) * hx * U; px = Math.cos(ar) * rr; pz = Math.sin(ar) * rr; }
                 var gy = 0; if (!flat) { try { var gt = _hqCaveTop(px / U, pz / U); if (gt != null && isFinite(gt)) gy = gt; } catch (e) {} }
                 py = (gy + y0) * U + rng() * Hh * U;
@@ -88619,10 +88643,8 @@ const ThreeRenderer = (function () {
         var mat = new THREE.ShaderMaterial({ uniforms: uni, vertexShader: sh.vs, fragmentShader: sh.fs, transparent: true, depthWrite: false, depthTest: true, fog: false, blending: K.add ? THREE.AdditiveBlending : THREE.NormalBlending });
         var obj = line ? new THREE.LineSegments(geo, mat) : new THREE.Points(geo, mat);
         obj.frustumCulled = false; obj.renderOrder = 4; obj.name = 'atmos:' + a.kind; obj._ew_hqPart = 'fx';
-        H.propGroup.add(obj);
-        H.atmos = { kind: a.kind, n: n, obj: obj, uni: uni };
         H.tickers.push(function (dt, now) { uni.uTime.value = now * 0.001; });
-        return H.atmos;
+        return { kind: a.kind, n: n, obj: obj, uni: uni };
     }
     /* ── THE PROP PASS 5.3 — THE RIPPLES (PREMIUM_POLISH_PLAN, 2026-09-21) ──
        Rings on the water at the feet of a walker WADING (the feet under a sheet — a moat, a pool, a stream, the shallows) and
