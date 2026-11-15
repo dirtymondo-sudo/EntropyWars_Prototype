@@ -1125,3 +1125,12 @@ mondo, Disaster City's metro platform: "i was started a battle in the subway/met
   strength as the ceiling reaches battleUp. Rooms 7.35 m or taller are untouched. HQ_LIGHT_RULES.keyLamp. Off: `window.EW_FIELD_KEY_HIGH = true`.
 - Also: the fight's fluorescents and desk lamps now take the room's `shell.lampK` as the walk's do (_hqBoxRoomLamps).
 - No lights added (the 60 FPS lamp cull is untouched). Drawn locally, so host and guest alike. Worked out from the light numbers; not run in a browser.
+
+## THE RING STAYS ON ITS OWN FLOOR (2026-11-15, mondo: "why is this white square outline being drawn higher than it is supposed to be")
+A unit in a pit / a crater / at a wall's foot on a true-ground field wore its white acting tile + team ring half a square up in the
+air: `_fieldDrapeRing` laid the flat plane at the HIGHEST ground under the footprint (rev 2), so a corner on top of the wall lifted
+everything to the cap (measured 0.57 square over the feet, Fairy Forest 12x12, a 1-level dig). Now (three-renderer.js
+`_fieldDrapeRing`, `RING_FLAT_REACH` 0.3 / `RING_SHEER_RISE` 3.0 / `RING_DRAPE_SEGS` 8): the plane is the ground within 0.3 square of
+the feet; every vertex is walked out from the unit's spot along the sampler, a bank that comes up through the plane carries that
+vertex with it (never buried), a sheer step ends the walk (a wall never lifts the ring). The reticle + the white tile are 8x8 grids
+again (flat on flat ground). Off a field nothing changed (flat at the unit group). Proof: /mnt/project-files/tile-outline-floor/.
