@@ -416,11 +416,12 @@ exports.build = function (ctx) {
         boiler(K, x, z, gw, gd, o, hd) { const n = Math.max(1, Math.round(gw / C)); for (let k = 0; k < n; k++) K.P('boiler', x - gw / 2 + (k + 0.5) * C, z, hd); K.part(box(x, 2.5, z, gw - 0.6, 0.5, 0.5, PLAIN, T.steel), cyl(x - gw / 2 + 0.8, 2.3, z, 0.25, K.H - 2.3, PLAIN, T.steel, { seg: 8 })); },
         panel(K, x, z, gw, gd, o, hd) { const n = Math.max(1, Math.round(gw / 1.75)); for (let k = 0; k < n; k++) K.P('retro_control_panel', x - gw / 2 + (k + 0.5) * gw / n, z, hd); },
         tesla(K, x, z) { K.P('meshy_tesla_coil', x, z, 0); K.part(box(x, 0, z, 2.6, 0.2, 2.6, CONC, 0x8d8d8d), truss(x, 0.2, z + 1.3, 2.6, 2.6, 0.05, T.yellow), truss(x, 0.2, z - 1.3, 2.6, 2.6, 0.05, T.yellow), truss(x + 1.3, 0.2, z, 0.05, 2.6, 2.6, T.yellow), truss(x - 1.3, 0.2, z, 0.05, 2.6, 2.6, T.yellow), haz(x, 1, z + 1.34)); },
-        bench(K, x, z, gw, gd, o, hd) { const n = Math.max(1, Math.round(gw / 1.75)); for (let k = 0; k < n; k++) { const dx = x - gw / 2 + (k + 0.5) * gw / n; K.P('steel_table', dx, z, hd); if (k % 3 === 0) K.P('desk_lamp', dx, z, hd, 0.78); if (k % 3 === 1) K.P('clipboard_flat', dx, z, hd, 0.78); } K.part(box(x, 1.5, z + (hd === 180 ? -1 : 1) * 1.55, gw - 0.6, 0.9, 0.08, GRILL, 0xffffff)); },
+        bench(K, x, z, gw, gd, o, hd) { const n = Math.max(1, Math.round(gw / 1.75)); for (let k = 0; k < n; k++) { const dx = x - gw / 2 + (k + 0.5) * gw / n; K.P('steel_table', dx, z, hd); if (k % 3 === 0) K.P('desk_lamp', dx, z, hd, 0.78); if (k % 3 === 1) K.P('clipboard_flat', dx, z, hd, 0.78); } K.part(box(x, 1.5, z + (hd === 180 ? -1 : 1) * 1.33, gw - 0.6, 0.9, 0.08, GRILL, 0xffffff));   /* (the tool board: 1.33, was 1.55 = behind the room's wall and its lining, never seen. THE INTERIOR POLISH 2026-11-15) */ },
         conv(K, x, z, gw, gd) { K.P('conveyor', x, z, 0); K.P('psx_wooden_crate_1', x - 1.5, z, 0, 0.9); K.P('psx_wooden_crate_1', x + 0.8, z, 20, 0.9); },
         counter(K, x, z, gw, gd, o) { K.part(box(x, 0, z, gw - 0.2, 1.05, 0.9, U('TileGeneric2a'), 0xd8d2c4), box(x, 1.05, z, gw, 0.08, 1.1, PLAIN, T.dark)); K.P('crt_terminal', x - gw / 4, z, 0, 1.13); K.P('clipboard_flat', x + gw / 4, z, 0, 1.13); },
         bigdesk(K, x, z, gw, gd, o, hd) { const s = hd === 180 ? 1 : -1; K.P('exec_desk', x, z, hd); K.P('exec_chair', x, z - s * 1.05, hd); K.P('desk_lamp', x + 0.8, z, hd, 0.78); K.P('rotary_phone', x - 0.7, z, hd, 0.78); },
-        table(K, x, z) { K.P('round_table', x, z, 0); [[0, 1.25, 180], [0, -1.25, 0], [1.25, 0, 270], [-1.25, 0, 90]].forEach(q => K.P('cafeteria_chair', x + q[0], z + q[1], q[2])); },
+        /* (THE INTERIOR POLISH 2026-11-15: `round_table` is Camelot's Round Table, 5.2 m across with its own twelve chairs: the canteen's four chairs stood inside it. A canteen table is the tulip table, 1.5 m across, the chairs drawn up to it) */
+        table(K, x, z) { K.P('tulip_table', x, z, 0, 0, { r: 0.75 }); [[0, 1.05, 180], [0, -1.05, 0], [1.05, 0, 270], [-1.05, 0, 90]].forEach(q => K.P('cafeteria_chair', x + q[0], z + q[1], q[2])); },
         vend(K, x, z, gw, gd, o, hd) { K.P('vending_machine', x - 0.9, z, hd); K.P('water_cooler', x + 0.3, z, hd); K.P('mini_fridge', x + 1.1, z, hd); K.P('coffee_maker', x + 1.1, z, hd, 0.85); },
         seat(K, x, z, gw, gd, o, hd) { K.P('metro_bench', x - 0.6, z, hd); K.P('metro_bench', x + 0.9, z + 0.9, (hd + 90) % 360); },
         rocket(K, x, z) { K.part(box(x, 0, z, 2.6, 0.5, 2.6, CONC, 0x9a9a9a), truss(x - 0.9, 0.5, z, 0.25, 3.4, 0.25, T.yellow), truss(x + 0.9, 0.5, z, 0.25, 3.4, 0.25, T.yellow), box(x, 3.7, z, 2.2, 0.2, 0.3, PLAIN, T.yellow)); K.P('missile', x, z, 0, 0.5); },
@@ -429,7 +430,7 @@ exports.build = function (ctx) {
         radio(K, x, z, gw, gd, o, hd) { K.P('monitor_stack', x - 0.6, z, hd); K.P('steel_table', x + 0.9, z, hd); K.P('retro_radio', x + 0.9, z, hd, 0.78); },
         chart(K, x, z) { K.P('conference_table', x, z, 0); K.P('globe_lamp', x + 0.9, z, 0, 0.78); },
         chairs(K, x, z, gw, gd, o, hd) { for (let k = 0; k < 6; k++) K.P('folding_chair', x - 0.9 + (k % 3) * 0.9, z - 0.5 + Math.floor(k / 3) * 1, hd); },
-        missile(K, x, z) { K.part(box(x, 0, z, 1.6, 0.9, 2.6, U('MetalCorrugatedPainted1c'), 0x8f9aa5), box(x, 0.9, z, 0.3, 0.2, 2.8, PLAIN, T.yellow)); K.P('missile', x, z, 0, 1.1); },
+        missile(K, x, z) { K.part(box(x, 0, z, 1.6, 0.9, 2.6, U('MetalCorrugatedPainted1c'), 0x8f9aa5), box(x, 0.9, z, 0.3, 0.2, 2.8, PLAIN, T.yellow)); K.P('missile', x, z, 90, 1.1, { span: 3.3 }); },   /* along its cradle (it lay across it, into the next one and the wall) */
         /* a turbine set (the second pass, 2026-11-14): the Meshy steam_turbine (7 m, its own plinth) on the first pass's concrete bed, the steam
            riser to the roof, a yellow rail round it. The first pass drew the set from shapes (drums, flanges) because no model existed. */
         turbine(K, x, z, gw, gd) { const long = gd > gw, L = (long ? gd : gw) - 1, Wd = (long ? gw : gd) - 1.4, at = (t, y, w, h, d, key, tint, o) => long ? box(x, y, z + t, d, h, w, key, tint, o) : box(x + t, y, z, w, h, d, key, tint, o);
@@ -868,7 +869,7 @@ exports.build = function (ctx) {
         /* the walk square the deeper hangar took: the street lamp that stood on it goes */
         if (ctx.lamps) { const hw = (ew ? fd : fw) / 2 + 0.3, hd = (ew ? fw : fd) / 2 + 0.3, cx = b.x - (C / 2) * Math.sin(q), cz = b.z + (C / 2) * Math.cos(q);
             for (let i = ctx.lamps.length - 1; i >= 0; i--) { const l = ctx.lamps[i]; if (Math.abs(l.x - cx) < hw && Math.abs(l.z - cz) < hd) { ctx.lamps.splice(i, 1); count2.lampOut = (count2.lampOut || 0) + 1; } } }
-        props.push({ key: 'fighter_jet', x: r3(b.x + lx * Math.cos(q) - (lz + C / 2) * Math.sin(q)), z: r3(b.z + lx * Math.sin(q) + (lz + C / 2) * Math.cos(q)), face: ew ? 0 : 90 }); count2.jet = 1; })();
+        props.push({ key: 'fighter_jet', x: r3(b.x + lx * Math.cos(q) - (lz + C / 2) * Math.sin(q)), z: r3(b.z + lx * Math.sin(q) + (lz + C / 2) * Math.cos(q)), face: ew ? 90 : 0, span: 14 }); count2.jet = 1;   /* nose along the hangar (it stood across it, 2.6 m of wing through each wall) */ })();
     lateRows.push(...out);
     console.log('industrial', JSON.stringify(count2));
 };

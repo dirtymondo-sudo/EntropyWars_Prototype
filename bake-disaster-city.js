@@ -887,6 +887,10 @@ count.levels = lvCount;
   if (bad.length) throw new Error('THE TREES STAND IN SOIL: ' + bad.length + ' tree(s) on paving: ' + JSON.stringify(bad.slice(0, 8)));
   count.soil = tally;
   lines[paintLine] = "                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + NXP + ", nz: 144, d: '" + Buffer.from(paint).toString('base64') + "' },"; }
+/* ── THE INTERIOR POLISH (docs/disaster-city/interior-polish.js; mondo 11-15: "rugs/carpets flickering ... do another polish pass on disaster
+   city"): last of all, over every walk-in building whichever district wrote it: props beside a wall off the roof (`floor: true`), no two drawn
+   faces on one plane, rugs onto the floor sheet, props onto the raised floor they stand in. It moves rows, it never drops one. ── */
+if (!process.env.DC_NO_POLISH) count.interiorPolish = require(path.join(REPO, 'docs/disaster-city/interior-polish.js'))({ features, props, at: LV.at, REPO });   // DC_NO_POLISH=1: the room as the district files wrote it
 lines[lvLine] = "                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gx(0) + ", nx: 144, nz: 144, f: '" + LV.f64 + "', d: '" + LV.b64 + "' } },";
 features.forEach(f => lines.push("                    " + J(f) + ","));
 lines.push("                ],");
