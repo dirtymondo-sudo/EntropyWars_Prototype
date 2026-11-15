@@ -1957,6 +1957,34 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE SHELL CELLS (2026-11-15, the city walk is the graphics card's: the count of pieces)
+
+mondo's tests after #1432: walk 20 FPS with CPU 20.8 ms (was 30); Render Scale at a quarter of the pixels = the SAME 21 FPS; his
+lobby (139 replayed meshes) = 80 FPS. So the walk's frame is not our JS and not pixels: it is what the GPU process is fed, ~7,000
+meshes replayed in the scene pass and again for the sun ("refreshed N of 12,591"). Every walk F3 of the day sat at 20-22 FPS
+whatever the CPU did, for that reason. LESSON: when frame minus CPU does not move with the CPU or the pixels, count the replayed
+meshes (the lens "bundles N groups, M meshes"), not the draw calls line (it leaves the bundles out).
+
+- The city's ground, roads and buildings merge into ~1,100 batches per 96 m square and look, and all of them hung in the shell
+  group: one recording for the whole 504 m city, never culled, drawn whole again for the sun.
+- `_hqShellCell` (three-renderer.js, by `_hqBatchHost`): in a big room (`_hqChunkBig`) a shell batch hangs in its square's group
+  `hq_shell_cell` under `H.chunks.root` (`_ew_chunk = 'shell:i,j'`, `_ew_sCell`, far 1e12 = frustum only, so a skyline stays).
+  `_hqChunkTick` culls it like a fence plot; `_hqChunkHome` puts its meshes back before the hand-over's `_hqBatchDropAll`.
+- A LONE piece (alone in its look + square: thousands in the city) gets a STAND-IN: a mesh on the piece's OWN geometry and
+  material, the piece's shell-relative matrix decomposed onto it, hung in the square; the piece hides behind the batch's
+  `visible` getter like any merged piece (`rec.single`: the break never disposes the shared geometry). minN is 1 for the shell of
+  a big room only.
+- THE SUN'S OWN CHUNKS also SHOWS a shell square that is off camera but inside the sun's box for the sun's render, so a tower
+  behind the camera still shades the street.
+- Lens: "ground + building squares a/b". Off (before entering the room): `window.EW_HQ_NO_SHELL_CELLS`, stand-ins only:
+  `window.EW_HQ_NO_SHELL_SINGLES`.
+- Cloud check (SwiftShader, the start corner, the batch stuck at 'scan' there as always): 38 squares, 26 drawn, bundles 8,306 ->
+  5,594 meshes, 4,075 stand-ins all exactly on their pieces (worst matrix difference 1e-16), a strike still hands over (0 squares
+  left in the fight), 0 frame errors. The log's 5 "Async render pipeline creation failed" lines (a missing sampler binding, one
+  on an unlit SpriteMaterial) are the cloud browser's shrunk textures, not this.
+- NEXT if his F3 is still short of 60: squares at 48 m, small far pieces of a square on a distance limit, the sun's map held
+  between frames, Chrome's readout (Dawn replays bundles far cheaper than Firefox's wgpu).
+
 ## THE FIGHT'S OWN LAMPS + THE KEPT KEEP THEIR OWN + THE SUN'S OWN CHUNKS (2026-11-15, the walk to battle switch in Disaster City)
 
 mondo after #1416 (fight 4.8 -> 50 FPS): "the transition from explore to battle was still terrible, takes forever and drops to 0 fps".

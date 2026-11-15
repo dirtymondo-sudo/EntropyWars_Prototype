@@ -3553,3 +3553,25 @@ old textures too except for tilegeneric2a, the calm wood planks, the calm carpet
 - SEEN in the cloud browser (WebGL2 headless, `/mnt/project-files/urban-decay-city/`): see the shots there. HARNESS: a scratch copy of
   playtest_city.js with `require('playwright')` + `executablePath: /opt/pw-browsers/chromium`; `--wait=330000`; a view needs `y` = the
   compiled ground (`hqTerrainHeight(hqTerrainInfo(room), x, z)`), the city's ground is 0 to 25 m and a view at y 0 is under it.
+
+## THE WOODS ON PLOTS — the pilot of the world plan (2026-11-15, mondo "Go ahead and pilot the woods" + "Okay" on the plot plan)
+- Plan of record: `/mnt/project-files/world-areas-plan/world-areas-proposal.md` (Revision 2) + the approved picture
+  `world-areas-plan/woods/woods_plot_plan.png`. Every area but DOOR HQ becomes plot-built like Disaster City; The Woods is the first.
+- **The room**: `site_prebuilt_fairy_forest_plots` ("THE WOODS", 6x6 plots of 12x12 3.5 m squares = 252 x 252 m), written by
+  `node bake-woods.js` between `WOODS36-BEGIN/END` in data.js from `docs/areas/woods/layout.json` (plots: name, district, level, ports; `cells`
+  = 72 strings, legend t trees, p path, g grass, w water, b bridge, s snow, r rock). Never hand-edit the block; edit the layout or the tool, rerun.
+- **Districts** (3x3 plots each): Redwood Trail NW (shelves climbing to the Snowline, level 8 = 14 m), Ritual Ground NE (lake, stage, owl mound,
+  stones, fire, dead tree), The Clearing SW (crossroads, Old Tree, the HQ Stair as a landmark, fence line), Dead Man's Cave SE (culvert, channel,
+  storm drain). One creek runs Falls -> Lake -> culvert -> channel -> outfall.
+- **How it is built**: `terrain.gen {kind:'plan', look:'trees'}`; open ground = greedy `space` rects (233), the rest is forest mass (thicket trees);
+  heights = `terrain.slope.cells` (plot level x 1.75 m, flat over the middle 4 squares of a plot, graded over the 8 between); paint = ice sheet on
+  the Snowline (the game has NO snow sheet), rocks_5 on rock, dirt_2 on paths; creek = `stream` rows + three pools, decks on bridge squares.
+- **Ways**: IN = new north trail `plots` on today's Clearing (`site_prebuilt_fairy_forest_clearing`), arrives at the Clearing plot's south door.
+  OUT (8 doors, each arrives at an existing door of the old room): Clearing, Camelot ward, Estate fields, Downtown storm drain, and secret
+  Lemuria, Lodge, Looking-Glass garden, Sewers tunnel. Return doors from those rooms still lead to the OLD woods rooms (nothing of his removed).
+- **Natives** (13, none on a path): tree person, hippie, werewolf, shaman, bigfoot, ki fighter, yeti, krampus, cult leader, fortune teller,
+  goatman, swamp monster, mothman.
+- **Engine speed-ups, same results** (the room compiled in 67 s headless, now ~12 s): `hqFluidGridDin` box early-out; `_hqTRectIn` unrotated fast path.
+- **NOT DONE**: the HQ Stair top is not wired to HQ; the cave inside and Room 333 are not wired from the new room; no owl statue model exists
+  (stone altar + braziers stand in); the old Woods rooms are untouched and still the story path. NOT SEEN ON SCREEN (RULE #1c). Checked offline:
+  compiles, all 36 plots reached on foot from the spawn, 8 door pads, every catalogue key and race exists.

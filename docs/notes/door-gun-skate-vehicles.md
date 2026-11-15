@@ -166,6 +166,23 @@ knock). UNSEEN LIVE (RULE #1c): the clips at 60 fps (the slide's run-in, the
 get-up's speed — `bailFall` / `bailMs` are the edits), the jog stride's read
 against the deck, the fit on the CAST rigs (the probe posed the creator base).
 
+## SKATEBOARDING — THE WAY ROUND + THE THIN BODY (invisible walls on the board only) — 2026-11-15
+mondo: "things will block my movement when skateboarding, but then when i get off and walk i can walk past them just fine. Why are
+there invisible walls for skateboarding only? Make these lamp collision boxes thinner" (the Main Hall's globe lamps).
+**Cause**: the board and the feet read the SAME colliders (`_hqSurface`). Two things made a wall of them on the board only:
+(1) the response: a walker brushing a collider's edge slides round it; the board STOPPED DEAD on any touch (`_hqRideWall`, 15% of the
+speed a frame). `_hqRideObstacleSlide` (the glance) skips every blocker with a mesh collider (`b.mc`), which is most props now.
+(2) the reach: `_mcFeet` asked the model's spans over the whole body disc (0.34 m) from a step up to the head (1.75 m), so the globe
+lamp's globe (r 0.2 m at 1.5 to 1.9 m, measured off the GLB) on its 1 cm pole was solid about 0.5 m out from the pole, down to the floor.
+**Fix** (three-renderer.js; nothing on `state`, nothing relayed; every room, every prop):
+- THE THIN BODY: `HQ_MC.shoulder` 1.3 / `headR` 0.14, `_mcBodySolid(b, x, z, lo, feet)`: full disc up to the shoulders, only the
+  head's width above them. `_mcFeet` (walker, rider, the people's nav) and `_hqAirClearOfBlockers` (jumps, ollies) use it. A span that
+  reaches under the shoulders (wall, counter, car) is unchanged. Cost: shoulders may brush a part that starts over 1.3 m.
+- THE WAY ROUND (in `_hqTickRide` after `_hqRideObstacleSlide`): a ground step that made under 30% of its way tries the same step
+  turned 0.3 / 0.6 / 0.9 / 1.2 rad to either side (the keys' side first); the first free one is taken, the heading turns onto it, the
+  speed keeps its cosine. Square-on finds none and still stops; a door ahead (`_hqFindTarget`) keeps the press-in; not on a profiled ramp.
+UNSEEN LIVE (RULE #1c).
+
 ## SKATEBOARDING — THE WAY OUT OF A COLLIDER (stuck in a fence after a grind) — 2026-11-15
 mondo: "got stuck clipped inside this fence after i was grinding on it, i cant move" (Disaster City, a curved-top bars fence by the water).
 **Cause**: a blocking railing is a GRIND (its top, sloped y0 → y1 with the ground) plus a WALL to the walker (data.js hqTerrainCompile
