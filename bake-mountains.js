@@ -133,13 +133,20 @@ function makeRoom(o) {
             for (let i = 0; i < q.length; i += 2) { const x = q[i], y = q[i + 1], v = d[y * W + x]; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (inR(X, Y) && d[Y * W + X] < 0) { d[Y * W + X] = v + 1; q.push(X, Y); } } }
             return d; };
         const dR = distOf('r'), dK = distOf('k');
+        /* THE SEA CLIFFS (the on-screen check, 2026-11-15: the Coast Overlook looked at a wall of rock): rock near the sea does not climb, it falls.
+           dZ = how far a square is from the nearest sea square; within `seaFall` squares the rock's rise is scaled down to nothing at the water */
+        const dZ = (() => { if (o.seaBed == null) return null; const d = new Int16Array(W * H).fill(-1), q = [];
+            for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (cell[y][x] === 'z') { d[y * W + x] = 0; q.push(x, y); }
+            for (let i = 0; i < q.length; i += 2) { const x = q[i], y = q[i + 1], v = d[y * W + x]; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (inR(X, Y) && d[Y * W + X] < 0) { d[Y * W + X] = v + 1; q.push(X, Y); } } }
+            return d; })();
         const Hc = new Float64Array((W + 1) * (H + 1));
         for (let cy = 0; cy <= H; cy++) for (let cx = 0; cx <= W; cx++) {
             let h = base(cx, cy), all = { r: 1, k: 1, a: 1, z: 1 }, dmin = 1e9, kmin = 1e9, anyZ = 0;
             for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) { const x = cx + dx, y = cy + dy; if (!inR(x, y)) continue; const ch = cell[y][x];
                 if (ch !== 'r') all.r = 0; else dmin = Math.min(dmin, dR[y * W + x]); if (ch !== 'k') all.k = 0; else kmin = Math.min(kmin, dK[y * W + x]); if (ch !== 'a') all.a = 0; if (ch !== 'z') all.z = 0; else anyZ = 1; }
             if (all.r && dmin < 1e9) { const n = vnoise(cx / 5, cy / 5, o.seed) * 0.6 + vnoise(cx / 1.7, cy / 1.7, o.seed + 7) * 0.4;   // THE ROCK: steep at the trail's edge, then climbing to a broken crest
-                h += Math.min(o.rockCap || 26, 3.1 * Math.min(dmin, 2) + 1.7 * Math.max(0, dmin - 2)) * (0.7 + 0.6 * n); }
+                const sf = dZ ? Math.min(1, Math.max(0, (dZ[Math.min(H - 1, cy) * W + Math.min(W - 1, cx)] - 1) / (o.seaFall || 10))) : 1;
+                h += sf * Math.min(o.rockCap || 26, 3.1 * Math.min(dmin, 2) + 1.7 * Math.max(0, dmin - 2)) * (0.7 + 0.6 * n); }
             else if (all.k && kmin < 1e9) h += Math.min(2.4, 1.0 * kmin) * (0.7 + 0.6 * vnoise(cx / 2.5, cy / 2.5, o.seed + 3));            // THE DEEP DRIFT / THE CLOUD BANK: a soft swell
             else if (all.a) h -= 9;
             if (all.z) h = o.seaBed; else if (anyZ && all.r === 0) h = Math.min(h, o.seaShore != null ? o.seaShore : h);   // THE SEA: its bed; a beach meets it at the shore line (a rock square beside it keeps its height: a cliff)                                                                                                         // THE CREVASSE: a slot cut down between its two rows
@@ -449,12 +456,12 @@ const HL = makeRoom({ id: HILLS, tag: 'hills', room: 1, px0: 0, py0: 0, pw: 13, 
   /* ── THE BUILDINGS (plain labels of the plan: mondo "fine for now") ── */
   const STUCCO = U('PlasterWallStucco1a'), WHITE = 0xf2efe6, DARKW = 0x3a2a20, DGLASS = 0x20303a;
   /* THE OBSERVATORY: white, a copper dome on a drum, two small domes on its wings */
-  const OBS = building('observatory', 'H10-01', [3, 3, 9, 7, 'S'], 6, { leafDouble: true, keyIn: STUCCO, floorIn: 'marble_light' }, (a, w, d, dr) => {
-      a.shell(w, 6, d, STUCCO, WHITE, dr); a.box(0, 6, 0, w + 0.8, 0.5, d + 0.8, 'marble_light', 0xe6e2d6, { roof: true, under: true });
-      a.cyl(0, 6.5, 0, 4.6, 2.2, STUCCO, WHITE, { seg: 20, roof: true }); a.dome(0, 8.7, 0, 4.8, 4.2, U('MetalWallRibbed1a'), 0x5a8a78, { roof: true });
-      for (const sx of [-1, 1]) { a.cyl(sx * (w / 2 - 2.6), 6.5, 0, 2.0, 1.2, STUCCO, WHITE, { seg: 14, roof: true }); a.dome(sx * (w / 2 - 2.6), 7.7, 0, 2.1, 1.9, U('MetalWallRibbed1a'), 0x5a8a78, { roof: true }); }
+  const OBS = building('observatory', 'H10-01', [3, 3, 9, 7, 'S'], 6, { leafDouble: true, keyIn: 'marble_light', floorIn: 'marble_light' }, (a, w, d, dr) => {
+      a.shell(w, 6, d, 'marble_light', WHITE, dr); a.box(0, 6, 0, w + 0.8, 0.5, d + 0.8, 'marble_light', 0xe6e2d6, { roof: true, under: true });
+      a.cyl(0, 6.5, 0, 4.6, 2.2, 'marble_light', WHITE, { seg: 20, roof: true }); a.dome(0, 8.7, 0, 4.8, 4.2, U('MetalWallRibbed1a'), 0x5a8a78, { roof: true });
+      for (const sx of [-1, 1]) { a.cyl(sx * (w / 2 - 2.6), 6.5, 0, 2.0, 1.2, 'marble_light', WHITE, { seg: 14, roof: true }); a.dome(sx * (w / 2 - 2.6), 7.7, 0, 2.1, 1.9, U('MetalWallRibbed1a'), 0x5a8a78, { roof: true }); }
       for (let x = -w / 2 + 0.3; x <= w / 2 - 0.2; x += (w - 0.6) / 6) { if (Math.abs(x - dr.lx) < 1.2) continue; a.box(x, 0, d / 2 + 0.12, 0.6, 6, 0.24, 'marble_light', 0xe6e2d6); }
-      a.sign('OBSERVATORY', 0, 4.4, d / 2 + 0.16, 9, 1.0, '#2a2a30', '#e6e2d6', 'anton'); });
+      a.sign('OBSERVATORY', 0, 4.4, d / 2 + 0.3, 9, 1.0, '#2a2a30', '', 'anton', { kind: 'over' }); });
   OBS.put('brass_telescope', 0, -1.5); OBS.put('brass_orrery', -6.5, -3.5); OBS.put('telescope', 6.5, -3.5, { face: 200 }); OBS.put('globe_lamp', -8.5, 4.5); OBS.put('lectern', 3, 3.5, { face: 180 }); OBS.put('iron_garden_bench', -4, 5.2, { face: 0 });
   /* THE HILL HOUSE: one storey, a flat roof that sails out over a wall of dark glass */
   const HOUSE = building('hillhouse', 'H04-02', [7, 3, 11, 5, 'S'], 3.5, { keyIn: STUCCO, floorIn: FLR }, (a, w, d, dr) => {
@@ -535,7 +542,7 @@ const hBlock = finish(HL, { label: 'THE HOLLYWOOD HILLS', sub: 'THE SIGN · THE 
     floor: 'grass_rocky', cliff: 'rocks_5', pal: ['rocks_5', 'dirt_2', 'urban:ConcreteRoofBitumen1a', 'urban:ConcreteSlab2a', 'marble_light', 'desert', 'obsidian', 'grass_2'],
     paintOf: ch => ch === 'r' ? 1 : ch === 'p' ? 2 : ch === 'Y' ? 3 : (ch === 'f' || ch === 'B') ? 4 : ch === 'm' ? 5 : (ch === 'D' || ch === 'z' || ch === 'w') ? 6 : ch === 'h' ? 7 : ch === 't' ? 8 : 0,
     trees: { oak: { kinds: ['tree_2', 'tree_4', 'tree_2', 'tree'], treeH: [4.5, 7.5] } }, treeDefault: 'oak', maxTrees: 500, treeKey: () => 'oak',
-    sea: { y: -0.6, key: 'water' },
+    sea: process.env.HILLS_NO_SEA ? null : { y: -0.6, key: 'water' },
     edges: { reach: 440, n: { kind: 'mountain' }, w: { kind: 'mountain' }, e: { kind: 'coast' }, s: { kind: 'desert', cap: { kind: 'coast', at: 'e', off: 42, len: 30 } } },
     noWalk: ['H12-00', 'H12-01'],   // the sea cliffs: rock and water, nobody stands there
     lines: [], spawn: hSpawn, face: 180 });
