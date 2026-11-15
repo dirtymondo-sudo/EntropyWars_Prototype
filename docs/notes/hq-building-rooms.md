@@ -1221,3 +1221,14 @@ issue, like the cafeteria, my office".
   (`_hqStageAirShow`), wearing its hour (`_hqStageAirEnv`). A closed ⇄ closed door join blends as before whether a sky is up or not.
 - `_hqClockArm` during that blend sets only the sun's direction (the blend owns the strength). The rim light and the post's
   night read 0 in an enclosed room even with a sky up.
+
+## THE SEEN UNDERSIDE (2026-11-15, mondo: "the 3rd floor/2nd deck's floor does not show ... it only shows when i am walking in it")
+- Seen (cloud browser, WebGPU, from the mezzanine by the gallery's flight, looking up): the gallery's slab was nothing at all;
+  its rail, a floor lamp and a plant stood in the air against the dome.
+- Cause: three-renderer.js `_hqSectorMesh(..., down)` made an underside by `g.scale(1, -1, 1)` on a flat sheet. Every point
+  lies in the mirror's own plane, so only the normals turned; the triangles still faced UP and were culled from below (the top
+  faces up too, so from under a slab neither sheet drew). Six sheets in the hall: the mezzanine's underside, the gallery's two,
+  its soffit lip, both stair landings. Not the batch, the portals, the room-box AO or the memory passes.
+- Fix: the mirror also turns each triangle. Applies to every round room's deck and landing (the only caller of `down`).
+- Audit used (read-only, in the page): for every FrontSide mesh compare the triangle's own facing with its normals; after the
+  fix the hall has none that disagree.

@@ -309,6 +309,23 @@ native('anubis', 76, 54, 200, sayOf(O_GIZA, 'anubis')); native('annunaki', 86, 7
 native('conspiracy theorist', 91, 70, 40, sayOf(O_GIZA, 'conspiracy theorist')); native('mummy', 69, 80, 270); native('djinn', 55, 84, 0);
 { const i = props.findIndex(p => p.skip); if (i >= 0) props.splice(i, 1); }
 
+/* ── THE MESHY PIECES (mondo 11-15 19:01 "okay go ahead": the packs have no cactus, covered wagon, water tower or hitching rail) ── */
+[[62, 22], [68, 22], [74, 22], [86, 22], [92, 22], [50, 22], [51, 25], [74, 25], [79, 25]].forEach(q => P('hitching_rail', q[0], q[1], { face: 0 }));       // along Main Street, clear of every door
+Pm('covered_wagon', gx(62), gc(42), { face: 0 }); Pm('covered_wagon', gx(71), gc(47), { face: 180 });                                                   // THE WAGON CAMP
+Pm('water_tower_west', gx(74), gx(9), {});                                                                                                               // by the windmill, on 2 x 2 squares
+{ /* cacti: only on the plan's open sand, never in the base or the circus, one to a square, none beside another piece */
+  const taken = new Set(); props.forEach(p => { const x = Math.floor((p.x + HALF) / C), y = Math.floor((p.z + HALF) / C); for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) taken.add((x + i) + ',' + (y + j)); });
+  npc.forEach(n => taken.add(Math.floor((n.x + HALF) / C) + ',' + Math.floor((n.z + HALF) / C)));
+  doors.forEach(d => { if (d.wall === 'free') { const x = Math.floor((d.x + HALF) / C), y = Math.floor((d.z + HALF) / C); for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) taken.add((x + i) + ',' + (y + j)); } });
+  const sand = (x, y) => x > 0 && y > 0 && x < W - 1 && y < W - 1 && PLAN.cells[y][x] === '.' && cell[y][x] === '.' && !inBase(x, y) && !(x >= 12 && x < 48 && y < 36) && !(y >= 22 && y <= 25 && x >= 48)
+      && [[1, 0], [-1, 0], [0, 1], [0, -1]].every(q => '.uo'.includes(PLAN.cells[y + q[1]][x + q[0]]) && cell[y + q[1]][x + q[0]] !== 'B');
+  let nS = 0, nP = 0, tries = 0;
+  while ((nS < 46 || nP < 34) && tries++ < 20000) { const x = Math.floor(rnd() * W), y = Math.floor(rnd() * W); if (!sand(x, y) || taken.has(x + ',' + y)) continue;
+      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) taken.add((x + i) + ',' + (y + j));
+      if (nS < 46 && (nP >= 34 || rnd() < 0.58)) { P('saguaro_cactus', x, y, { face: Math.round(rnd() * 360), h: r2(3.8 + rnd() * 2.6) }); nS++; }
+      else { P('prickly_pear', x, y, { face: Math.round(rnd() * 360), h: r2(1.1 + rnd() * 0.8) }); nP++; } }
+  count.cacti = nS + nP; }
+
 /* scattered off the grid: stones, skulls, the odd bone pile (nothing on a road) */
 feat({ k: 'scatter', key: 'cave_stone', n: 60, seed: 5 }); feat({ k: 'scatter', key: 'skull', n: 14, seed: 6 }); feat({ k: 'scatter', key: 'dead_snag', n: 10, seed: 7 });
 

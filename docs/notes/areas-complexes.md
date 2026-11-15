@@ -3808,7 +3808,7 @@ mondo: "start a thread to start on the desert" · "put the circus in the desert 
   four tiers to 14 m, the North Stair; Khafre 35 m (stair west); Menkaure 21 m (stair north); the Sphinx is plateaus + skin, not climbed.
 - **MOVED IN, NOT REMADE:** the old flight line's tower rows are copied whole from the old room by the tool; the old rooms' people keep their own
   lines (the tool reads `say` from the old literals, so the old literals must stay). The carnival's pieces, people and lines are the Circus.
-- **THE WAYS:** link `downtown_desert` (Disaster City south park gate, free door x -64.75 z 241.5 -> the highway's north end, wall n x -161);
+- **THE WAYS:** link `downtown_desert` (Disaster City's own highway way out after the district move: `docs/disaster-city/move.js` ways P03-03 S is `open: true`, so the city tool leaves the fence and barricades off and prints the place; free door x -105 z 247.6 -> the highway's north end, wall n x -161);
   `gobekli_giza` b end -> the Desert's east wall z 73.5 (Robbers' Tunnel); Room 444's bay door = `siteRooms.entry.prebuilt_giza` -> the Tomb Door in
   the Great Pyramid's west face; Hangar 18's `flightline` door -> `hangar`; the White Rooms' `yard` / `stormdrain` -> `ward` / `stormdrain`;
   the tunnel platform's `carnival` door -> `tunnel` (by the ticket booth); the Mandela Room's `mirrors` -> `mirrors`. Room 51 still lands in Hangar 18.
@@ -3867,3 +3867,35 @@ Plan picture + the built map: /mnt/project-files/disaster-city-relayout/.
   bay door, the tape.
 - Checked offline only (load-data.js: 44 residents place, terrain feet + sea at the quay / beach / districts, a flood over the squares
   reaches all 144 plots). NOT seen in game.
+
+## DISASTER CITY, THE ROADS JOIN AGAIN (2026-11-15)
+
+mondo 11-15 19:04, after the district move left four street nets: "delete some buildings ... get rid of the most useless ones to connect
+the roads again. why ... would i want roads and a traffic system and cars if you arent gonna connect the roads". ONE street net now.
+
+- THE GYM LANE (Southside's Boxing gym plot P03-00): the west avenue met the gym head on. The row house east of the gym (P03-00-B2, a
+  walk-in home) is TAKEN OUT (move.js `gone`), the avenue bends two squares east past the gym (two squares wide, cx 43-44, cy 96-100)
+  and back. The gym stays. Its three residents live in the Southside apartments (P00-01-B2) now.
+- THE PERMIT LANE: the university avenue runs two squares into the Permit offices' plot and turns east along its south edge (two squares
+  wide, cy 46-47) to the foot of the financial avenue. No building removed (the lane took the Permit offices' south walk).
+- Both lanes are flat: levels.js puts the gym's plot on 6, the Permit offices and the Faculty homes on 10.
+- Bayside's streets (the old police line) carry cars: 29 police cars / barricades / trucks that stood in a lane are parked at the kerb.
+- Tool: move.js `gone` (a building taken out; thrown like the others so no other building's dice move, then its row is dropped; a district
+  file asks `ctx.gone[id]`), seam ops `rect` + `port`, `streets` (a lane's middle line for the road markings), a fence the home dice put
+  on a plot line is cut where a street crosses it, `clearLanes` (nothing on the ground stands within 3.2 m of a traffic line).
+- THE TRAFFIC: west avenue line (Vatican gate, Civic street, Financial avenue, Permit lane, avenue, gym lane, south street), the cross
+  street the whole city wide, the east ring round Bayside both ways, gate-to-gate run, the port's trucks out along the cross street.
+  20 vehicles, 5 signals (16 arms), bus line 1 west side, line 2 cross street + east ring (two buses).
+- Not done, offered: a 2-lane link from the south street east into the port (it would close a second loop; the dry-berth tanker is in
+  the way), a straight avenue past the gym (needs the gym gone).
+- Checked offline: every route sampled on carriageway squares (only the pavement bands at junctions are not), no prop in a lane,
+  44 residents place, nothing steep or closed. NOT seen in game.
+
+- **THE MESHY PIECES (second delivery, 2026-11-15, mondo 19:01 "okay go ahead"):** `saguaro_cactus`, `prickly_pear`, `covered_wagon`, `water_tower_west`,
+  `hitching_rail` (concept -> image-to-3D meshy-t2.5, base y 0, metallic 0, `.opt.glb` beside each on R2 `Assets/world/props/meshy/`, manifest rows,
+  MODEL_LIST; originals + `run.py` / `prep.mjs` in project files `desert-plots/meshy/`). Catalogue rows "THE DESERT'S PIECES". bake-desert.js places
+  9 hitching rails along Main Street, 2 wagons at the Wagon Camp, the water tower by the windmill and 80 cacti (46 saguaro, 34 prickly pear) seeded
+  on the plan's open sand only (never the base, the circus, Main Street or beside another piece). Not seen on screen.
+  CACTI REMADE (mondo 11-15 19:20, pin on the model sheet: "can you try to get them without the mound"): both cacti made again from a prompt that asks
+  for the plant only, cut flat at the foot; same keys and R2 paths, replaced in place (the manifest's new sha fetches them). The first versions are in
+  project files `desert-plots/meshy/v1/`. The prickly pear still has a few pale slivers between pads (Meshy's bake).

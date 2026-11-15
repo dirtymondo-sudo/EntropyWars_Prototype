@@ -1,0 +1,19 @@
+---
+name: disaster-city-bayside-20261113
+description: Bayside district (Disaster City): buildings PR #1284, beach #1308, exterior polish #1335, interiors #1344, interior pass 2 #1349 all LIVE (11-13); the interior grid rule; waiting for mondo's look
+metadata:
+  type: project
+  modified: 2026-11-13T21:18:09.152Z
+---
+Thread (thread in the owner project) "Design Bayside district buildings" (one of ten district threads from mondo's 11-13 16:41 ask).
+
+- LIVE: 22 buildings (PR #1284), beach (#1308), exterior polish (#1335), interiors (#1344: hotel lobby, cinema, dock, surf shop, boat repair, harbour master; fronts only: ice cream, food hall, security, booth, juice bar, florist), interior pass 2 (#1349), bedrooms (#1364), Miami (#1423). Thread open for his look.
+- INTERIOR GRID RULE (mondo 11-13 21:14 + 21:17, "goes for all interiors"): the cell = the 3.5 m battle square. A barrier is centred and fills whole squares (never between two); a walkway is whole empty squares; cosmetic decor sits off centre, free of the grid. In B.js: `interiors()`, `R.shut` (ghost wall per blocked square), `R.prop(..)` with `floor: true` (else a prop lands on the roof slab), `R.liner` (wall paint, dado, lit ceiling: the bare inside sheet is grey and its ceiling black).
+- INTERIOR PASS 2 (thread in the owner project), PR #1349, data.js 587a471f): B.js `SECOND[id]`; 15 Meshy pieces (R2 world/props/meshy/: surfboards, rack, wetsuit_rail, spinner, luggage_cart, cinema_seat_row, forklift, wrapped_pallet, outboard, lobster_traps, net, ship_wheel, ships_bell) + elegantcrow Beach Props Pack (beach_*). Pipeline script: project files meshy/bayside/run.py. City Meshy claims list: meshy/interior-claims.md. Headless proof: cinema seats, forklift, cart, life ring seen; surf shop models never loaded headless (props queue) -> needs his look.
+- THE THREAD HAS HIT ITS 24 ATTACHED-FILES LIMIT: link files by path in the message text instead of attaching.
+- Code: `docs/disaster-city/districts/B.js` = Bayside's district hook of `node bake-disaster-city.js` (tailor / apply / build; `beach()`; `POLISH.<name>`; `room = { east, sea, backdropOpen }`). Edit it and rerun the bake, never the data.js DC144 block (on a merge conflict take main's data.js + index.html + prop-check.txt, rebake, re-bump the token). Notes: docs/notes/areas-complexes.md "DISASTER CITY, BAYSIDE".
+- Lessons: pastel walls need the arch row's `gain` (2.3). Sign letters = the shared key `txt:WORDS|ink|bg|aspect` (PR #1327; B.js parts with `text` are converted by `lettered()`). `urban:Metro*` sheets draw black on arch rows. The arch `ring` mirrors parts (use `ringRails`). Dark urban glass is approved by mondo for modern towers. The city has ground LEVELS (docs/disaster-city/levels.js; Bayside north row 3,2,2,1, P08-09 1, rest 0); beach rows are `absY`.
+- Headless proof recipe: `npm install` + `npm i --no-save three@0.128.0`, `npm start`, scratch copy of playtest_city.js; views `fp: true`, `y` = ABSOLUTE camera height (add the plot's level), NEGATIVE pitch looks down, the camera `y` is the FEET height (eye about 1.75 m above it), first view of a run is a throwaway, `--wait=150000`; 20+ views take over 10 minutes (run in the background).
+- Headless loads pack GLB props very slowly (nearest first): stand next to one with `settle: 90000`. Boat, container, lockers, `city_*` pack buildings never seen loaded: mondo asked to check.
+- BEDROOMS (PR #1364): staff apartments walk-in with 3 singles; hotel guest room with a couples bed (SECOND['P08-08-B1']).
+- MIAMI (11-15, real-cities (thread in the owner project); PR #1423 LIVE): B.js `DECO` + `MIAMI.<name>` + `miamiStreet()` (hotel stepped front + neon fin + portholes, cinema bulbs, sign fins, candy lookout, 3 lifeguard towers, 3 yachts, tall `k:'tree' kind:'palm'` rows in sand beds, flamingos). Not done: pastel convertibles (shared traffic), speckled sidewalk (city palette). White on the plaster sheet reads grey: use plain `trim`.

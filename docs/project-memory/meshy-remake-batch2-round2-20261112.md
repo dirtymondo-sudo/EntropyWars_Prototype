@@ -1,0 +1,17 @@
+---
+name: meshy-remake-batch2-round2-20261112
+description: 11-12 PR #1206: mummy bandage ends + angel neckline fixed (mondo "definitely need work"); new bake-outfit.py rules + --repaint; lessons on floating strips, painted hair, straps under skin
+metadata:
+  type: project
+  modified: 2026-11-12T12:42:23.862Z
+---
+Thread (thread in the owner project), follows [[meshy-remake-batch2-20261112]]. mondo 11-12 11:43Z: "go ahead and fix those issues. Using the creator angel wings is fine. But the mummy bandages and the angel neckline definitely need work".
+
+- SHIPPED PR #1206 (~12:45Z), live: ewm_t2mummy_outfit.glb 16a7e2ce, ewm_t2angel_outfit.glb 8493eedb. Other seven remade units rebaked, unchanged.
+- MUMMY causes: floating bits = tips of hanging bandage strips whose middle tore (top weighted to arm, tip to hips). Fix: a small shell under `--bodysuit` is rigid on the one bone its top is on; bits cut off by torn faces go; tan flecks on hair = suit lumps through the creator hair (suit back laid on the body under `--longhair`).
+- ANGEL causes: ragged neckline + bodice hole = painted hair locks CUT out (LOCKZ 0.25). Fix `--repaint`: painted hair/skin faces take nearest plain cloth colour by moving UVs (no texture touched). "Skin patch on skirt" = separate bare-leg shell under the skirt, now left out. Straps looked toothed because the shoulder skin rose through them (arm weights had been taken off): cloth near skin now copies the skin's weights and sits 10 mm out. Angel command: `REPWARM=0.08 LOCKT=0.3 SKIN_T=0.3 ... --longhair --nowings --barearms --neckline --repaint`.
+- LESSON: `neck.py ... loose` colours by connected island, not by object; a "separate bit" may be an island of the big shell or a whole second shell (print shell sizes + median colour before guessing).
+- Left + told him: a few teeth on the angel's back panel behind her right arm; mummy suit collar edge angular; nothing seen in a battle. Djinn still waits on his word (skip or retry chest covered). Creator Feathered wings on the angel = his OK.
+- Proof: /mnt/project-files/meshy-remake-batch1/ mummy_fix_look_check.jpg, angel_fix_look_check.jpg, angel_neckline_before_after.jpg.
+- ROUND 3 PR #1210 (~13:35Z; mondo 12:45Z "keep improving them, and yes skip djinn for now"): DJINN SKIPPED on his word. Angel teeth behind her right arm = WEIGHTS not cloth (back panel took arm-skin weights); fixed by nearest NOT-arm skin weights within 8 cm. Angel file 7317c075. Tried + dropped on mummy: straight collar bisect (spike), `skinTint: pick` (flat-colours the whole skin incl. face). Left: small notches on angel strap outer edges; mummy collar unevenness is paint tone, not shape. LESSON: spikes that are absent in cloth space but present in the baked GLB are weight seams.
+- ROUND 4 PR #1212 (~14:55Z; mondo 13:39Z after his playtest: "I ended up using one of the goddess dresses in the creator for the angel. Robinhood has his shoulders and ear skin sticking out. Catgirl has a weird piece of floating skin under her crotch"). ANGEL: he prefers a creator goddess dress over the T2 dress (do not keep polishing the T2 dress unless he asks). ROBINHOOD `ARMSKIN=0.35 --barearms`: arms were a separate painted shell; now the body's arms show, ears hidden under hood; file 98efcaed. CATGIRL `SKINISLE=200 --neckline`: file 00eb9a79. Left: few teeth where cape edge crosses robinhood's right shoulder. LESSON: brown/dark jagged patches on shown skin near a cloth edge = holes in the BODY (hidden skin vertices), check the outfit GLB alone first.
