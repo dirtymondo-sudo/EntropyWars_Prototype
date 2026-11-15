@@ -3463,6 +3463,15 @@ on the real-cities plan (`/mnt/project-files/disaster-city-real-cities/plan.html
 - Not made: a Meshy searchlight and a Meshy studio water tower (concepts go to mondo first); the water tower is still the code-built one.
 - Proof: `/mnt/project-files/dc-entertainment/la_built.jpg` (offline render of the baked rows, not the running game).
 
+- **THE STARS ON THE GROUND (2026-11-15 16:13, mondo: "these stars are floating in the air when they should be on the ground on the
+  sidewalk")**: the star walk was six arch rows of eleven stars, each row at its first star's ground, so down the boulevard's hill stars
+  stood up to 1.9 m in the air. Now one row per star (`dc:E-stars-n-<col>` / `-s-<col>`, 64), centred on its walk square (the old zig-zag
+  hung odd stars 0.4 m over the kerb's bank), with `hug: true`: data.js THE HUGGING ROWS gives such a row `ground: hAt`, and
+  three-renderer.js _hqArchGeometry puts every vertex on the ground under it (+ the part's own y). Use `hug` for any flat inlay on a slope
+  (plaques, paving); not for tall pieces (a roof would shear). Checked offline: every star's tile top 0.05 m over the ground at all 25
+  sample points, never buried. Known, not fixed: the Cinema forecourt (`dc:E-forecourt`) crosses a level step, its north end's paving and
+  handprint slabs sit 1.7 m under the ground.
+
 ## DISASTER CITY, THE CITY MARKS (2026-11-15)
 mondo 11-15: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city branding/logo for certain
 buildings or props or banners"; he corrected shield B (bolt, not a crack) and the flag's star on the sheet, then "the rest looks good for now".
