@@ -90,11 +90,13 @@ const LINK_ENDS = { streets_drain: ['b', spur('P05-03', 'e'), 'THE CULVERT · UP
 /* THE MOUNTAINS ON PLOTS (2026-11-15): the Snowline's trail goes on up: Mount Shasta's Trailhead (bake-mountains.js room, its `woods` door) */
 door('shasta', 'P00-00', 'n', { way: 'trail', label: 'MOUNT SHASTA · THE TRAILHEAD', sub: 'THE SNOWLINE · THE TRAIL UP', action: { room: 'site_prebuilt_shasta_mountains', at: 'woods' },
     desc: 'The trail keeps climbing after the trees give up. There is snow on it from here.' });
-door('lemuria', 'P01-00', 'n', { way: 'trail', secret: true, label: 'AGARTHA · THE CRYSTAL CITY', sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN', action: { room: 'site_prebuilt_agartha_crystalcity', at: 'link_shasta_lemuria' },
+/* NO UNEXPLAINED DEAD ENDS (2026-11-15, mondo): a secret TRAIL gets no waymark post, so its path just stopped at the trees. The three secret ways show what they are now:
+   the adit and the members' tunnel are tunnel mouths, the looking-glass way is a hollow tree. Still draughts (on no plate, on the map once found). */
+door('lemuria', 'P01-00', 'n', { way: 'tunnel', secret: true, label: 'AGARTHA · THE CRYSTAL CITY', sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN', action: { room: 'site_prebuilt_agartha_crystalcity', at: 'link_shasta_lemuria' },
     desc: 'A draught out of the rock shelf, warmer than the snow above it.' });
-door('lodge', 'P05-00', 'e', { way: 'trail', secret: true, label: 'THE LODGE · THE HALLS', sub: 'THE MEMBERS’ TUNNEL · UNDER THE LAWN', action: { room: 'site_prebuilt_lodge_halls', at: 'link_grove_lodge' },
+door('lodge', 'P05-00', 'e', { way: 'tunnel', secret: true, label: 'THE LODGE · THE HALLS', sub: 'THE MEMBERS’ TUNNEL · UNDER THE LAWN', action: { room: 'site_prebuilt_lodge_halls', at: 'link_grove_lodge' },
     desc: 'A tunnel under the lake shore that nobody admits to.' });
-door('lookingglass', 'P05-02', 'e', { way: 'trail', secret: true, label: 'THE LOOKING-GLASS · THE GARDEN', sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE', action: { room: 'site_prebuilt_camelot_kingdom', at: 'deadtree' },   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the garden is a district of the kingdom room now (was the old garden room)
+door('lookingglass', 'P05-02', 'e', { way: 'hollowtree', secret: true, label: 'THE LOOKING-GLASS · THE GARDEN', sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE', action: { room: 'site_prebuilt_camelot_kingdom', at: 'deadtree' },   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the garden is a district of the kingdom room now (was the old garden room)
    
     desc: 'Past the dead tree the ground is the wrong colour.' });
 LINK_ENDS.woods_sewer = ['a', spur('P05-05', 'e'), 'THE DRAIN · INTO THE TUNNEL'];
@@ -344,10 +346,8 @@ sow('woods_healflower', 34, [18, 54], 60, { h: 0.7, r0: 0.3 }); sow('fern', 20, 
 DIST('C').forEach((id, i) => { fly(id, ['butterfly', 'monarch', 'blue_morpho', 'swallowtail'][i % 4], 1.2); fly(id, ['swallowtail', 'butterfly', 'monarch', 'blue_morpho'][i % 4], 1.6); fly(id, i % 2 ? 'bee' : 'bumblebee', 0.8); life(id, i % 3 ? 'ladybug' : 'grasshopper'); });
 ['P01-03', 'P02-03', 'P01-04', 'P02-04', 'P01-05'].forEach(id => { life(id, 'rabbit'); life(id, 'woods_healflower', { h: 0.9 }); life(id, 'woods_healflower', { h: 0.75 }); });
 /* THE REDWOOD TRAIL (the Snowline keeps its bare ground) */
-sow('woods_thornvine', 16, [22, 22], 38, { h: 1.5, r0: 0.5 }); sow('woods_thornvine', 6, [7, 27], 24, { h: 1.7, r0: 0.5 }); sow('mushroom2', 16, [22, 22], 38, { h: 0.45, r0: 0.25 }); sow('mushroom2', 6, [7, 27], 24, { h: 0.5, r0: 0.25 });
-sow('ocean_rock_5', 12, [20, 20], 40, { h: 0.7 }); sow('ocean_rock_6', 10, [20, 22], 40, { h: 0.9 }); sow('fern', 40, [20, 24], 42); sow('fallen_log', 8, [20, 24], 42, { r0: 1.9 }); sow('stump', 8, [20, 24], 42);
-features.filter(f => f.k === 'tree' && f.h >= 11 && f.r >= 1 && f.x < 0 && f.z < 0).forEach(t => { for (let i = 0; i < 3; i++) { const a = rnd() * 6.2832, d = t.r + 0.9;   // thorn vine at the feet of the giants
-        const x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d; if (softAt(Math.floor((x + HALF) / C), Math.floor((z + HALF) / C))) props.push({ key: 'woods_thornvine', x: r2(x), z: r2(z), h: 2.3, face: Math.round(rnd() * 360) }); } });
+sow('mushroom2', 16, [22, 22], 38, { h: 0.45, r0: 0.25 }); sow('mushroom2', 6, [7, 27], 24, { h: 0.5, r0: 0.25 });
+sow('cave_stone', 14, [20, 21], 40, { r0: 0.5 });   /* seen in the probe (11-15): the ocean pack's rocks draw as black blocks here, and the thorn vine model is a toothed man-eater on a mound, wrong for this wood: it lives in Dead Man's Cave only */ sow('fern', 40, [20, 24], 42); sow('fallen_log', 8, [20, 24], 42, { r0: 1.9 }); sow('stump', 8, [20, 24], 42);
 ['P00-01', 'P00-02', 'P01-02', 'P02-01', 'P02-02', 'P01-01'].forEach((id, i) => { fly(id, i % 2 ? 'luna_moth' : 'hawk_moth', 1.5); life(id, i % 2 ? 'crow' : 'grasshopper'); });
 fly('P00-02', 'eagle', 9); fly('P02-00', 'eagle', 8); life('P02-00', 'meshy_frog'); life('P02-00', 'meshy_frog'); life('P02-01', 'meshy_frog');
 /* THE RITUAL GROUND */
@@ -397,7 +397,7 @@ L.push("        site_prebuilt_fairy_forest_plots: {");
 L.push("            label: 'THE WOODS',");
 L.push("            sub: 'FOUR DISTRICTS · 36 PLOTS',");
 L.push("            kind: 'box', site: 'prebuilt_fairy_forest', part: 'plots',");
-L.push("            shell: hqWoodsShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + gx(sp[0]) + ", z: " + gc(sp[1] + 2) + ", y: 4.2 }, forest: { depth: 7, spacing: 3.5, rows: 2, start: 1.6, canopy: { to: 54 } }, atmos: " + J(ATMOS) + " }),");
+L.push("            shell: hqWoodsShell({ w: " + (2 * HALF) + ", d: " + (2 * HALF) + ", plate: { x: " + gx(sp[0]) + ", z: " + gc(sp[1] + 2) + ", y: 4.2 }, forest: { depth: 7, spacing: 3.5, rows: 2, start: 1.6, canopy: { to: 54 } }, noLandmarks: true, atmos: " + J(ATMOS) + " }),");
 L.push("            parti: 'Four districts of nine plots, every plot a twelve by twelve board: clearings joined by dirt paths through forest you cannot enter, climbing from the fence line to the snow.',");
 L.push("            typology: 'grid',");
 L.push("            plots: { cell: " + C + ", plot: " + PL + ", n: " + G + ", names: " + J(PLAN.plots.map(p => [p.id, p.name, p.district, p.level])) + " },");
