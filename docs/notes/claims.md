@@ -15,7 +15,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | Area / system | Side | Since | State |
 |---|---|---|---|
 | The Estate (plot build, prompt 5 of docs/plans/HANDOFF_PROMPTS.md) | second | 2026-11-15 | built + look pass merged (seen in the browser); corn waits for the Meshy key. Two pack prop kits anyone may place: `hw_*` (Halloween pack), `psxg_*` (PSX graveyard pack) |
-| Camelot Kingdom | owner | 2026-11-15 | castle redesign 2 BUILT (not seen on screen); the next four (Keep floors, Undercroft, Sky Castle, house kinds) = plan posted, waits mondo's OK |
+| Camelot Kingdom | owner | 2026-11-15 | castle redesign 2 BUILT (not seen on screen); the castle as ONE stacked room (floor plans posted) and the house kinds wait mondo's OK |
 | The Desert | free | 2026-11-15 | second side built the three insides of the approved plan (Hangar 18, White Rooms, inside the Great Pyramid; bake-desert-insides.js); not seen on screen, waits mondo's look; the King's Chamber > Turning Tomb door waits his answer |
 | The Woods | owner | 2026-11-15 | nothing waiting: mondo kept the full trees; the cabin has no game role yet (his answer) |
 | The Mountains (+ the Hollywood Hills room, the city's north beach strip in B.js beach() and EDGES.n.cap) | second | 2026-11-15 | plan 2 built: Hills room, Shasta/Olympus swap, north beach; not seen on screen, waits mondo's look |
