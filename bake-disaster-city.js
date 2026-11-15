@@ -719,7 +719,7 @@ for (const m of DISTRICTS) if (m.edges) for (const k of Object.keys(m.edges)) ED
 lines.push("                backdrop: false, edges: " + J(EDGES) + ",");
 /* THE URBAN DECAY PASS (docs/disaster-city/urban-decay.js): the road is the pack's asphalt, the walk its paving slabs, the banks board-marked concrete */
 const UD = process.env.DC_NO_UD ? null : require(path.join(REPO, 'docs/disaster-city/urban-decay.js'));
-lines.push(UD ? "                floor: '" + UD.GROUND.floor + "', cliff: '" + UD.GROUND.cliff + "', path: '" + UD.GROUND.path + "', floorTint: '#8a8a8e',"
+lines.push(UD ? "                floor: '" + UD.GROUND.floor + "', cliff: '" + UD.GROUND.cliff + "', path: '" + UD.GROUND.path + "', floorTint: '#dcdce0',"
               : "                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
 const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)
