@@ -850,9 +850,8 @@ module.exports = { build: function (api) {
       const near = (x, z, d) => props.some(q => Math.abs(q.x - x) < d && Math.abs(q.z - z) < d && !(q.y >= 1));
       const sq = (c, r) => { if (!api.free(96 + c, 48 + r) || near(XC(c), ZC(r), 1.7)) return false; api.take(96 + c, 48 + r); return true; };   // a free yard square for a thing that blocks (it stands on the square's middle)
       /* ── THE HILL LETTERS stand on the MOUNTAINS now (mondo 11-15 12:55 "there is already the mountains on one of the edges of disaster city,
-         use that/make that the hollywood hills"; his pick 12:57 "Run the mountains down the east"): this file's `edges` export at its foot runs
-         the north range down the east side behind Financial and this district, and the land builder stands the sign on it. The hill of domes
-         that stood in the bay here is gone. ── */
+         use that/make that the hollywood hills"; then 13:18 "just put the sign on the mountains in the north"): this file's `edges` export at its foot stands
+         the sign on the north range. The hill of domes that stood in the bay here is gone, and so is the east range of PR #1424. ── */
       /* ── THE STAR WALK: a brass star (the gold terrain sheet) in a dark terrazzo square, in every square of the boulevard's two walks ── */
       { const star = (P, x, z, R) => { P('box', x, 0.03, z, TG, '#6a3040', { size: [1.6, 0.02, 1.6], sides: false });
           const o = [], n = []; for (let k = 0; k < 5; k++) { const a = (-90 + 72 * k) * D2R, a2 = (-54 + 72 * k) * D2R; o.push([r3(Math.cos(a) * R), r3(Math.sin(a) * R)]); n.push([r3(Math.cos(a2) * R * 0.4), r3(Math.sin(a2) * R * 0.4)]); }
@@ -926,9 +925,9 @@ module.exports = { build: function (api) {
     features.push(...rows);
     return { arch: rows.length };
 },
-/* THE HOLLYWOOD HILLS: the city's east edge is the bay; from the north corner down to this district's south end (z +84) it is the mountain range
-   now (a 70 m fade to open water past it, so Bayside keeps its horizon), across the bay strip from the city. The sign: 2.1 m blocks = letters
-   14.7 m tall, 30 m up the mountainside, centred on the district, three letters leaning or slipped. (bake-disaster-city.js merges a district's
-   `edges` into the room's; three-renderer.js _hqBuildEdgeLand THE HILL SIGN builds it.) */
-edges: { e: { cap: { kind: 'mountain', at: 'n', off: 336, len: 70 } },
-         sign: { side: 'e', at: 0, d: 30, text: 'DISASTER CITY', px: 2.1, lean: { 2: 0.1, 6: -0.08, 11: 0.12 }, drop: { 4: 2, 11: 1.4 } } } };
+/* THE HOLLYWOOD HILLS = the city's own NORTH mountains (mondo 11-15 13:18: "just put the sign on the mountains in the north and remove the one you
+   added": the range that ran down the east side behind this district, PR #1424, is gone; the east edge is the open bay again). The sign: 2.1 m
+   blocks = letters 14.7 m tall, 30 m up the north mountainside, over the city's east half (as near this district as the range reaches before it
+   falls into the bay), three letters leaning or slipped. (bake-disaster-city.js merges a district's `edges` into the room's; three-renderer.js
+   _hqBuildEdgeLand THE HILL SIGN builds it.) */
+edges: { sign: { side: 'n', at: 100, d: 30, text: 'DISASTER CITY', px: 2.1, lean: { 2: 0.1, 6: -0.08, 11: 0.12 }, drop: { 4: 2, 11: 1.4 } } } };

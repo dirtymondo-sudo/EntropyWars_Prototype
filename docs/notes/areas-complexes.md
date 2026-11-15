@@ -2475,6 +2475,8 @@ Thread "Design Southside district buildings". Plots P00-00 .. P03-03 (the city's
     `R.put` keeps every prop 0.4 m off the outer walls (in front of the coat); a room's ceiling is the texbuilding's `h` − 0.32 (R.H read
     the storeys: the ceiling lamps, hung at R.H − 0.2, sat above the real ceilings).
 
+- **SOUTHSIDE = DETROIT** (2026-11-15; mondo 12:19 "each district based off of a major city ... southside could be dallas or detroit", his "Build it as drawn" 12:32 on the real-cities plan, project files disaster-city-real-cities/plan.html section d-r + mock_r.jpg). All in R.js, nothing deleted, every name / use / door / roof route kept. THE PALETTE is central in `arch()`: `detroit(o)` turns every big wall sheet of a building row into brick (five reds/browns `DW`, per building), roofs into dark slate `DR`, ribbed metal into `DRIB`, pale plaster trim into limestone 0xd8cdb8; a part with `det: false` keeps its own look (murals, the depot's stone, steel). `a.wins` boards one window in a run, `a.floors` shuts a third of the ground rows with a corrugated shutter, `dress()` paints a faded advert (plain `txt:` key, letters only) on a side wall, awnings fade. LANDMARKS: Church = brick gothic, tower 27 m (was 19) under a slate spire; Community gate (P03-02-B1) = the front of a train depot (pale hall, three arched windows made of a quad + a thin barrel roof part turned 90, the middle one the shut gate, panes knocked out, a seven-floor office block behind with every other floor's glass dark; the 8 m collision block unchanged); Boxing gym = a steel frame over the door + a BOXING sign; the giant bronze FIST is a new Meshy model that waits mondo's OK on its concept (project files disaster-city-southside/fist/fist_concept.jpg; set `GYM_FIST` to its catalogue key and it hangs itself); Repair shops = brick car works, ENGINES REBUILT ghost sign, a rusted car body (`car_pack_6`) on a deck over the sawtooth roof; back-lot cottages = brick porch houses, the first burnt out (soot, bare joists, dark openings, overgrown); Street court = a 14 x 10.5 m brick party wall on the plot's west edge with a three-storey mural, a hoop, a painted half court (arch row `dc:P03-03-mural`, ghost wall). `mural(a, face, …)` = flat colour shapes (kind 0 sun + hills, 1 skyline at sunset); the walk-up flats' west wall carries the second. THE STREET (last block of R.js): rails wood/spear/ranch -> `wire_fence`; 16 old cars on two whole squares each (every third on cinder blocks), 9 burn barrels (glow parts, no light), power poles on whole squares with stepped sagging wires (arch rows `dc:R-wire-*`), a hot dog stand at the avenue corner, cans / bags off centre against walls, 60 weed clumps. Headless shots: project files disaster-city-southside/detroit_1..3.jpg.
+
 ## DISASTER CITY, THE BIG WINDOWS (2026-11-13, the shared-pieces thread)
 mondo (screenshot of two city blocks): "The buildings that use these repeated window textures from the urban pack, the windows are too small, need
 to be scaled up, and remember the bottom row of these buildings should be different/not windows". Both ways a city building is drawn put a window
@@ -3004,6 +3006,16 @@ glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the 
   under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. The street lamp on that square is taken off (`ctx.lamps`, the tool now writes its lamps line after the district build). Seen in the
   cloud browser from inside (as a 28 m long test build). INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.
 
+### THE UNIVERSITY AS NEW HAVEN (2026-11-15, mondo 12:19 "I want each district to be based off of a major city ... education could be harvard or yale, (whichever one has the skull and bones society)"; his "Build it as drawn" on the real-cities plan 12:32)
+All in `docs/disaster-city/districts/U.js`; nothing removed, every building keeps its name, use, doors and roof routes.
+- **The looks**: the old campus's BRICK / STONE are now the coursed `calm_castle` sheet warmed with a tint + `gain` (sandstone), MARB = `calm_flagstone` (granite trim), SLATE = `calm_darkstone` (grey slate), BROWN = `calm_sandstone` darkened (brownstone), IVY = `calm_hedge`. `look()` reads a 4th element = the part's `gain`.
+- **`lancet()`**: a pointed window = the sheet's strip + a thin gable plate of the same glass over it (the library's great window with a granite mullion + transom, its side windows, the clock tower's).
+- **The carillon tower** (Lecture hall): a 7 m square shaft to 24 m on the front corner no roof route touches (`routeFree`), slit windows, an open belfry with three copper bells, an open crown (eight piers, ring, stone spirelet, four pinnacles), top about 43 m; one ghost block. No bell sound (no SFX generation).
+- **THE TOMB** (Research annex, kind `secret`): windowless brownstone, pilasters, stepped flat roof, iron panel + pediment over the security doors; the `skull` prop (h 0.85) over them and `psx_padlock_1` on the frame (a prop `y` >= 1 in a district file is a height over the plot's ground: the tool adds the plot's level). Out of `SCI` (no hazard plates), in `OLD`. A carved skull-and-bones plaque (Meshy) waits for mondo's OK on a concept.
+- **Dorm**: dormers on every roof slope (instanced box + slate cap + window), two pinnacles and a pointed hood at the archway, an iron bike rack in the passage (no bike model on R2 in the catalogue).
+- **`OLD` kinds** get ivy on their SOUTH wall (the face looking down +z whatever the row's rot), a `stone_urn` each side of the first door, and (dorm, lecture, library, cafe) a drawn notice board with flyers.
+- **Street**: every U tree 1.3x taller, the Campus green's 1.7x (old elms); a rowboat on trestles by the bandstand stands in for the rowing shell; bake-disaster-city.js `BENCH.U` = `iron_garden_bench`, `LOOKS.U.bg` = college blue `#1d3a6e`; the name boards' maroon is the same blue.
+
 ## DISASTER CITY, THE ENTERTAINMENT DISTRICT — the insides (2026-11-13 night)
 mondo 21:04 "after the district threads do their exterior polish, let's go ahead and do the interiors"; his grid rule 21:14 + 21:17 (a
 blocker snaps to the battle squares and fills whole ones, a walkway is a whole square wide, decoration sits off centre); his "okay" on the
@@ -3447,3 +3459,40 @@ the hollywood hills. move whatever you have to." The mountains were the NORTH ed
   mesh, Lambert, no fog (it stands in the far land's haze), no light. Letters known: A C D E H I L N O R S T W Y. The city's: 2.1 m blocks
   (14.7 m letters), 30 m up the east mountainside (land about y 32..36 there), centred on z 0.
 - Proof: `/mnt/project-files/dc-entertainment/la_hills.jpg` (offline: the land's own arithmetic + the sign code, stand-in colours; not the game).
+
+## DISASTER CITY, THE HILL SIGN — on the NORTH mountains (2026-11-15, replaces the east range)
+mondo 11-15 13:18 on the east range of PR #1424: "that looks terrible. you just put a random mountain in the ocean ... just put the sign on the
+mountains in the north and remove the one you added". The east edge is the open bay again (E.js exports no `e.cap`); `edges.sign` is
+`{ side: 'n', at: 100, d: 30, ... }`: on the north range over the city's east half, land about y 55..59 there. The `edges` district export and
+the renderer's THE HILL SIGN stay as written above. LESSON: never add land he did not ask for; "use the mountains" meant the ones that exist.
+
+## DISASTER CITY, THE URBAN DECAY PASS (2026-11-15)
+mondo: "Utilize this pack to the fullest throughout disaster city ... The roads and wood and carpet and pretty much everything in this pack is
+better textures"; his OK on the plan sheet (`/mnt/project-files/urban-decay-city/plan_now_vs_new.jpg`): "looks good, and you can still use the
+old textures too except for tilegeneric2a, the calm wood planks, the calm carpet, and the road". The pack = Strideh's Urban Decay Textures v1.4
+(sprites.js URBAN_DECAY_FAMILIES, editor.md "THE URBAN DECAY PACK").
+- **Where**: `docs/disaster-city/urban-decay.js`, run by `node bake-disaster-city.js` after the sign fonts (the last pass over the features). It
+  only RENAMES sheet keys (and lifts `gain` where the new sheet is darker); district files keep writing the keys they know. `DC_NO_UD=1` = off.
+- **RULED OUT in the city** (the bake throws if one is left): `urban:TileGeneric2a`, `calm_planks`, `wood_planks` (the calm look draws it as
+  calm_planks), `calm_carpet`, the plaster sheet as the road.
+- **THE STACKING RULE** (his pins: "this one isnt stackable (strip across it)"): a wall that repeats upward wears a PLAIN sheet (the `a` of a
+  family). Base-band / plinth / pipe variants = a ground storey only; `*Moulding*` = one cornice band; `MetalShippingContainer*` = one container
+  side; `ConcreteCurb*` = one kerb strip. A roof sheet (`MetalRoofTiles*`) goes on roofs only.
+- **The ground**: road `urban:RoadGeneric1a` (same value as the old tinted plaster, floorTint kept), walk + path `ConcreteSidewalk1a`, yards
+  `ConcreteSlab2a`, pale plazas `ConcreteHexagons1a`, dark plazas `ConcreteHexagons2b`, walk-on roofs `ConcreteRoofBitumen1a`, boardwalks
+  `WoodGeneric1a`, the steep banks (cliff) `ConcreteWoodFormed1a`. The palette is FULL at 8 (the renderer reads 8), so the walk is one sheet
+  city-wide: a sheet per district needs more palette slots in both renderers first.
+- **The 765 retaining blocks / yard walls** by district: R BrickUrban3a, C ConcretePrecast1c, F BrickMasonry1a, U BrickWide2a, H ConcreteWoodFormed1a,
+  E ConcreteGeneric3a, I BrickCinder1a, S ConcretePanels3a, B ConcreteGeneric1a.
+- **Brick**: `bricks_1` / `bricks_3` drew as the calm grey stones under each district's tint; they are grey pack brick of the same value now
+  (BrickUrban3a / 4a, BrickMasonry1a / 2a, BrickCinder4a), so the tints still colour them. LESSON: never put a red brick sheet under a tint.
+- **Wood**: every `wood_planks` / `calm_planks` part -> `WoodGeneric1a` (E 1b, B 1c); building floors -> `WoodFlooring1a..1d` by district, seeded
+  by the building id; roof crossings `WoodGeneric2a`. three-renderer.js HQ_ARCH_SURFACE.wood (the bare brown parts) = `urban:WoodGeneric1a` too.
+- **Carpet**: `calm_carpet` -> U CarpetPattern1c, C CarpetPlain1c, S CarpetDiamond1c (the reds, as before).
+- **Others**: `TileGeneric2a` parts -> TileLinoleum1a; shop floors `TileGeneric5a` -> TileLinoleum1c; inside walls PlasterWallPainted1a ->
+  PlasterWallGeneric1a, PlasterWallStucco1a -> PlasterWallGeneric3a; flat roof tops -> ConcreteRoofBitumen1a; pitched roofs (not Industrial) ->
+  MetalRoofTiles1a (gain x1.28); Industrial shed walls 2.6 m+ -> MetalWallRibbed1a (gain x1.28); H striped concrete -> ConcretePrecast2a; I / S / R
+  striped concrete parts -> ConcretePanels3a / ConcretePrecast1c / ConcreteGeneric2a.
+- **NOT BUILT YET**: crossings / arrows / box junctions from RoadDouble + RoadZone (need a ground decal row), kerb stones (ConcreteCurb), roller
+  shutters on closed shops, container sides, chain-link, vent covers, leak + oil stains, the new manholes, facade brick on the plaster buildings.
+- NOT SEEN ON SCREEN (RULE #1c). Checked offline on the baked room: none of the ruled-out sheets left, every `urban:` key exists.
