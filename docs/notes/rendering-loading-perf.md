@@ -2236,3 +2236,16 @@ per room, when over the budget with nothing to drop, one `[MEM]` console.warn bl
 worn by something drawn, the built stage parts, the 14 biggest props and 10 biggest unit models (LIVE / idle).
 `ThreeRenderer.hq.memTop()` gives the lines on demand. Read-only; nothing is dropped differently yet. NEXT: read his block, then
 cut what holds the memory (candidates: unit models never dropped in the walk, too many stage parts built, the menu scene kept).
+
+## THE UNDRAWN MAPS (2026-11-15, the main hall crash, third pass: MEM 2047/700 MB)
+Measured off the CDN files (no browser): the Main Hall + the Foyer place 69 distinct prop keys; 45 are Meshy `_texture.glb`
+files that each ship three 2048 x 2048 sheets (colour, normal, metal + roughness) = 64 MB a file by the readout's count
+(the security camera: nine sheets, 193 MB). Sum about 2.86 GB counted, of which only the colour sheet (a third) is ever drawn:
+`_hqPropMatPick` draws a prop as a Lambert on `sm.map` alone. The loader still decoded all three and the cache held them.
+Fix: three-renderer.js `_hqPropDropPbr(sm)` runs once per file material right after its room material is made: normalMap,
+roughnessMap, metalnessMap, aoMap are set null, disposed, and their ImageBitmap closed (unless a kept sheet reads the same
+source); the file material becomes matte. `_mmStale` makes `_mmRead` count the cache again. `hq.mem().undrawn` = sheets let go.
+Off: `window.EW_KEEP_PBR_MAPS = true`. NOT run in a browser (repo rule); whether this was THE crash is not proven, it is the
+memory his readout showed. The readers of a file material's normalMap are creator hair / wings (unit cache) and the gem / key
+picks (their own files), none of them a room prop. NEXT if the hall is still far over budget: the unit models (also three
+sheets each, also drawn as Lambert), and stripping the two sheets in the .opt.glb bake so they are never downloaded.
