@@ -10788,6 +10788,11 @@ legs), the mall's mezzanine (`{"x":-3,"z":-2,"face":90}` — the escalator over 
 route reads HIT BY A CAR in the first second — that is how the first probe found the streets' spawn in the ring
 road's west leg (moved to the tower's side street, x −50).
 
+## THE PROBE'S HEIGHT (2026-11-15, the Hollywood Hills): pass `y` in a view
+`ThreeRenderer.hq.dev.teleport` sets the walker to level 0 + `o.y`. In a plot room whose ground is not at 0 m (the Hills: 14 to 31 m) a view without `y`
+puts the camera UNDER the land: you photograph the sea sheet or the shell floor from below and it reads as "the room is flooded / flat". Get the ground
+first, headless: `hqTerrainCompile(DOOR_HQ.rooms[id], id).hFn(x, z)` (load-data.js sandbox), and pass `"y": <that + 0.05>`. `face` 0 looks north, 90 east.
+
 ## THE CITY PROBE — playtest_city.js: the HQ with THE REAL SHEETS (2026-09-17, THE URBAN PACK)
 **Tips learned on the Estate (2026-11-15):** (1) a view on sloped or raised ground needs its own `"y"` (metres over the room's
 level 0): without it the camera stands at y 0, under the ground, and the picture is sky colour below the horizon. (2) Props stream
