@@ -898,7 +898,7 @@ const SECOND = {
         R.prop('sunglasses_spinner', cx(1) - 1.2, D / 2 - 0.75, 0);
         R.prop('beach_life_ring', 0.6, D / 2 - 0.42, 0, { y: 1.75 }); R.prop('beach_life_ring', W / 2 - 0.42, cz(3) - 1.3, 270, { y: 1.6 });
         [0, 0.29, 0.58].forEach(y => R.prop('beach_swim_ring', W / 2 - 0.92, cz(3) + 1.0, 0, { y }));
-        R.prop('beach_air_mattress_blue', W / 2 - 0.85, cz(2) + 1.1, 0); R.prop('beach_air_mattress_pink', W / 2 - 0.85, cz(2) + 1.1, 0, { y: 0.18 });
+        R.prop('beach_air_mattress_blue', W / 2 - 0.85, cz(2) + 1.1, 0); R.prop('beach_air_mattress_pink', W / 2 - 0.85, cz(2) + 1.1, 0, { y: 0.25 });
         R.prop('beach_cooler', cx(1) + 1.2, back + 0.4, 0);
         P.push(cyl(cx(1) - 1.2, 0, back + 0.55, 0.42, 0.55, A(trim(T.STEEL), { seg: 10, cap: false })));                                       // the bin of beach balls
         [[-0.12, -0.1], [0.14, 0.08], [-0.05, 0.16]].forEach((o, i) => R.prop('beach_ball', cx(1) - 1.2 + o[0], back + 0.55 + o[1], i * 40, { y: 0.25 + i * 0.12 }));
@@ -1113,7 +1113,7 @@ function beach(ctx, push, ghost) {
     /* the water: north of Bayside (under the quay wall), the shelf, the deep, east of the mole's arm, east of the grill deck */
     /* THE LEVELS: the ground east of the city would carry the edge plot's level out to sea (the Marina plot stands a level up), so the whole
        beach strip is first cut flat to level 0; the Marina's way out comes down a ramp across the boardwalk's width */
-    rect(X0 + 0.4, Z0, XE + 2, Z1 + 2, 0, { sink: true, edge: 0.3 });
+    rect(X0 + 0.4, Z0 - 0.5, XE + 2, Z1 + 2, 0, { sink: true, edge: 0.3 });   // (2026-11-15: half a metre past Z0, so this cut and the bay's cut north of it overlap: where the two met on z = Z0 exactly neither one cut, and a rim of the city's level, 5 m high, stood the whole length of the mole's north side)
     { const lv = (ctx.lvOf && ctx.plotOf['P11-08']) ? ctx.lvOf(ctx.plotOf['P11-08']) * ctx.LEVELS.M : 0;
       if (lv > 0) lateRows.push({ k: 'ramp', x0: r3(X0 + 0.2), z0: gx(8 * N + 6), x1: r3(XB - 0.4), z1: gx(8 * N + 6), w: 7, h0: lv, h1: 0, edge: 0.2, absY: true }); }
     rect(X0 + 0.6, -ctx.HALF - 2, XE + 2, Z0, DEEP, { sink: true, edge: 0.4 });   // (THE NATURAL EDGES, 2026-11-13: to past the field's north edge, so no rim of the city's level stands across the north end of the bay)
@@ -1125,7 +1125,7 @@ function beach(ctx, push, ghost) {
     rect(gx(159), ZN - 0.5, gx(161), gx(104), 0, { edge: 0.4 });
     lateRows.push({ k: 'plateau', x: gx(160), z: gx(105), r: 6.2, h: 0, edge: 0.4, absY: true });
     /* the ramps down to the sand, off the boardwalk at each way out of the city */
-    const RAMPS = [gx(8 * N + 6), gx(9 * N + 10), gx(10 * N + 10), gx(11 * N + 2.5)];
+    const RAMPS = [gx(8 * N + 6), gx(9 * N + 10), gx(10 * N + 10), gx(11 * N + 3.5)];   // (the fourth one square south, 2026-11-15: THE CANAL's mouth runs through the sand on squares 133-134, districts/L.js)
     RAMPS.forEach(z => lateRows.push({ k: 'ramp', x0: XB - 0.2, z0: r3(z), x1: r3(XB + 7), z1: r3(z), w: 3.5, h0: 0, h1: SHELF, edge: 0.2, absY: true }));
     /* the pier (the mall's axis: rows 5-6 of the row-10 plots), its head, the bait hut's bit of deck */
     const ZP = gx(10 * N + 6), XH0 = gx(157), XH1 = gx(163);

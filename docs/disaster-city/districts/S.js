@@ -136,7 +136,7 @@ exports.apply = (ctx) => {
         o.push(bx('l', w, d, 0, 6.86, 14.3, 0.16, 0.12, { tint: STEEL }), bx('r', w, d, 0, 6.86, 14.3, 0.16, 0.12, { tint: STEEL }), bx('b', w, d, 0, 6.86, 17.8, 0.16, 0.12, { tint: STEEL }), bx('f', w, d, -4.9, 6.86, 7.9, 0.16, 0.12, { tint: STEEL }));
         o.push(bx('f', w, d, -3.4, 2.82, 7.4, 0.08, 0.3, { tint: LAMP, glow: 0.8 }), pipe('b', w, d, -8.2, 6.9, STEEL), pipe('b', w, d, 8.2, 6.9, STEEL), wallAC('b', w, d, 3, 2.6), wallAC('b', w, d, 4.4, 2.6));
         o.push({ s: 'box', p: [7.6, 0, 7.75], size: [1.0, 0.7, 1.0], key: MARBLE_D }, { s: 'box', p: [7.6, 0.7, 7.75], size: [0.7, 0.7, 0.7], tint: 0xff6a4a });
-        o.push(ac(1.6, 6.92, 7.2, 0.8), ac(4.8, 6.92, 7.2, 0.8));
+        o.push(ac(1.6, 6.92, 7.2, 0.8), ac(5.7, 6.92, 7.2, 0.8));   // (the second unit stood in the fire escape's mouth onto this roof: moved 0.9 m along the edge, 2026-11-15)
         return o; };
     /* THE ART SUPPLY SHOP: a painted name board over the awning, a brick plinth, sills and lintels, a shop door, gutters and downpipes, a
        chimney cap and pots, a brush-and-palette hanging sign, a ridge vent */
