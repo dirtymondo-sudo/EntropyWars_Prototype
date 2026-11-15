@@ -5,9 +5,9 @@ src, out = sys.argv[1], sys.argv[2]
 L = json.load(open(src)); R = L['rooms'][0]; cells = R['cells']
 S = 12; PC = L['plotCells']; W = len(cells[0]); H = len(cells); ox, oy = 60, 96
 COL = {'w': (62,120,184), 'r': (104,104,108), 'd': (222,190,134), 'u': (70,134,134), 'a': (16,40,70), 'B': (124,66,50),
-       'o': (136,132,126), 'j': (170,134,96), 'D': (196,164,104), 'T': (30,92,60)}
+       'o': (136,132,126), 'h': (66,58,56), 'l': (240,110,30), 'j': (170,134,96), 'D': (196,164,104), 'T': (30,92,60)}
 NAME = {'w': 'water', 'r': 'rock (cannot walk)', 'd': 'sand', 'u': 'sea floor', 'a': 'the drop into the dark', 'B': 'building',
-        'o': 'cobbles / worn stone', 'j': 'plank pier / deck', 'D': 'dunes', 'T': 'hedge / kelp (cannot walk)'}
+        'o': 'cobbles / worn stone', 'h': 'scorched rock (cannot walk)', 'l': 'lava (cannot walk)', 'j': 'plank pier / deck', 'D': 'dunes', 'T': 'hedge / kelp (cannot walk)'}
 def font(n, b=False):
     try: return ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans%s.ttf' % ('-Bold' if b else ''), n)
     except Exception: return ImageFont.load_default()
@@ -57,7 +57,7 @@ import collections; CNT = collections.Counter(p['district'] for p in R['plots'])
 for i, v in enumerate(L['districts'].values()): line('%s  (%d plots)' % (v, CNT[v]), (236,180,70) if i == 0 else [(150,140,200), (120,200,255), (255,80,80)][i-1] if i < 4 else None)
 if L.get('triangle'): line('the Triangle itself (a right triangle)', (255,230,60))
 head('GROUND')
-for k in 'wrduaBojDT': line(NAME[k], COL[k])
+for k in 'wrduaBojDThl': line(NAME[k], COL[k])
 head('WAYS')
 for k, s in (('open','way in or out, open'), ('secret','hidden, found later (exists today)'), ('inside','door to an inside that exists'), ('new','new: not in the game today')):
     d.ellipse([x, y, x+14, y+14], fill=WAY[k]); d.text((x+24, y), s, font=font(12), fill=(215,215,215)); y += 21

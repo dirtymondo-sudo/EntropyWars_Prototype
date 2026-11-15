@@ -3723,6 +3723,48 @@ districts ... the north pole to the north of the castle would be good as a rival
   still the old rooms. No anvil, market stall, archery target or lamp post exists on R2 (tents, crates and sacks stand in). The old
   Fairy Forest glade has no door of its own, so nothing links to it. Town plot names are plain descriptions.
 
+## CAMELOT CASTLE, REDESIGN 2 — one palace on a hill (2026-11-15)
+mondo on the built plan 3: "this whole section i outlined needs to be the castle, like an epic fantasy dragon quest or final fantasy or medieval
+castle. Disney world cinderella's palace. Hogwarts ... the way it is now is stupid because it like a walled off region inside a walled off region.
+the castle should be in the center of the map and relatively symmetrical. higher elevation compared to the village". His OK on the mock-up
+`docs/plans/camelot/camelot_castle_redesign_2.png` ("Approved, build it"); the east lower-court building = "Armoury".
+- **Same room** `site_prebuilt_camelot_kingdom`, same tool (`node bake-camelot.js`, `buildCastle()`). This SUPERSEDES the castle of the
+  "THE CASTLE" and "PLAN 3" sections: no inner curtain wall, no cross wall, no gatehouse, no Great Hall building, no corner towers of its own.
+  The town wall, the moat and the woods are untouched.
+- **The squares** are `docs/areas/camelot/layout.json` `castle` (kingdom squares; `Q` in `cells` = the castle's own ground, the tool stops if the
+  two disagree): hill 28-68 x 32-58, upper court 31-65 x 34-52, Keep 41-55 x 37-49, wings 33-41 / 55-63 x 39-47, Stables 29-36 and Armoury
+  60-67 x 53-57, Grand Stair 45-51 x 58-61, court stair 46-50 x 52-55, back stair 47-49 x 28-34. West and east are mirror images about square 48.
+- **THE HILL** = two `plateau` rows (lower court +3.5 m, upper court +7 m) and three `ramp` rows with `stairs: true`. NEVER `slope.cells`
+  (hqCastleTower decks go NaN on a sloped room). **A stair here must rise no more than 1 in 3**: the room's lattice is 1.75 m and the
+  solver's climb is 0.62 m a node, so 3.5 m needs three squares (a 1-in-2 stair has good heights and `hqTerrainReach` still never climbs it).
+  Each flight's head runs 0.4 m into the step it climbs. `rail` rows (`model: 'parapet'`, `y` = the step's height) close every edge but the stairs.
+- **THE PALACE**: THE KEEP (hollow texbuilding 49 x 42 m, its ground floor = THE THRONE HALL with a 14 m ceiling; drawn 28 m to the battlements,
+  blue hip roof, portal between two turrets under a great lit window, a tower on each corner) with THE GREAT SPIRE out of its roof (top 79 m over
+  the village); THE WEST WING (the Kitchen) and THE EAST WING (the Barracks), 28 x 28 m, one tower on each outer corner (the rear ones taller).
+  Eight cone towers + two door turrets + the spire: `sheet().tower()`. A tower is drawn only; what it weighs is a solid square texbuilding
+  inside its round (`solid()`), the same for the hill's six drums (four corners, two beside the Grand Stair; their flat tops are walked onto).
+- **The lower court**: THE STABLES (west, front east) and THE ARMOURY (east, front west) from one `lodge()`; THE LISTS = two tilts (a default
+  `rail` row + drawn cloth + a sand mark); the Sword in the Stone on the middle line between the two stairs; the well (east of the court stair).
+- **The ways**: door `keep` (the Great Stair) in the Throne Hall's back wall, door `postern` (Merlin's Undercroft) in the foot of the hill west
+  of the Grand Stair; hand rows moved in data.js: `haunted_camelot.b` (the wardrobe, on the upper court before the West Wing's front),
+  `well_camelot.a`. The tool prints both (`ends`).
+- **The village round it**: 43 houses (two went for the Market); THE MARKET is rows 58-61 either side of the Grand Stair; the green's animals
+  moved north of the hill; the north road ends at the back stair's foot (row 28).
+- **Where it stands**: dead centre east-west; its middle is 3 squares (10 m) north of the room's centre line (the hill's middle is square 45,
+  the Keep's 43), because the south street, the Chapel, the Inn and the Smithy stay where plan 3 put them.
+- **A prop's `y` of 1 or more is a height from the ROOM's floor**, so on the hill a hung piece carries the step's height (the chandeliers:
+  `y: T2 + 11.4`); no `mount` banners inside (drawn ones only).
+- **NOT SEEN ON SCREEN** (RULE #1c). Checked offline: data.js parses; the room compiles in node (6.4 s), no NaN in walls / bridges / arch /
+  rails; heights 0 / 3.5 / 7 where planned; `hqTerrainReach` from the portcullis reaches the Market, both courts, all four sides of the hill, the
+  well and the wardrobe (no building's inside is reached by that solver in this room, the live Inn included: the doorways are narrower than
+  its lattice; the Keep's doorway line reads clear ground and no wall). Drawings of the baked rows: `docs/plans/camelot/castle2_built_rows_front.png`
+  and `castle2_built_rows_plan.png`.
+- **THE NEXT FOUR, PLAN POSTED, WAITS MONDO'S OK (nothing built)**: `docs/plans/camelot/camelot_castle2_next_plan.png` (draw-castle2-next.py):
+  the Keep room (floors 2-3, Battlements, Spire room), Merlin's Undercroft under the whole hill, the Castle in the Sky as the palace's twin,
+  five kinds of village house. Do not build any of the four before his yes on it.
+- **Not done**: the Keep's upper floors, Merlin's Undercroft and the Castle in the Sky are still the old rooms; the village houses' richer
+  outsides; nothing but the tilt's rail stops a walk through the drawn cloth; the Throne Hall has no columns (a drawn column has no weight).
+
 ## CAMELOT KINGDOM, PLAN 3 — castle, village, wall, moat, woods (2026-11-15)
 mondo: "the village is supposed to be inside the castle walls too. so castle in the middle. village. walls surrounding all that. moat
 surrounding all that. then woods surrounding all that" · "okay that looks better" on the plan picture (project files
@@ -3785,6 +3827,10 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
 - **THE CABIN FLOOR**: the ground rolls a few cm under the cabin and came up through the hollow building's own thin floor. The arch row now has a real board slab, 16 cm
   proud of the ground, wall to wall, and the porch boards sit at the same height. A one-square alley joins the plot's path to the porch.
 - Not seen in game (no browser run). `WOODS_DUMP=1 node bake-woods.js --dry-run` prints the square map.
+- **MONDO'S ANSWERS (2026-11-15, late)**: the full trees: "Good, keep them" (the tree work is closed; do not change the Woods' trees unasked). The cabin's purpose: "Nothing yet": it stays a
+  furnished walk-in with no game role; do not tie a rest spot, a shop, a story beat or an NPC to it until he says what it is for.
+- **THE ESTATE DOOR** (same day): the `estate` door (P01-05, south) now targets the Estate's plot room, `{ room: 'site_prebuilt_skinwalker_estate', at: 'woods' }` (was the retired
+  `site_prebuilt_skinwalker_fields` at `bay`). The door did not move, so bake-estate.js needed no rerun.
 
 ## THE DESERT ON PLOTS — the third area of the world plan, first delivery (2026-11-15)
 
@@ -4021,15 +4067,39 @@ Then: "disaster city is the most complete area so far" (the standard the Estate 
   lake's rock and the treehouse top are not walked: the rock is not climbed, the treehouse is the ladder's); every prop key and unit exists; every
   door and link resolves both ways. The Woods' block and tool are unchanged.
 - **NOT DONE / SHORT OF DISASTER CITY:**
-  - NOT SEEN ON SCREEN: which way pieces face, the house's proportions, the windmill's size, the Loch Ness Monster standing in 1 m of water.
+  - Seen on screen in the look pass below, except: the Lake's units (the Loch Ness Monster in 1 m of water), the walk-in insides, night.
   - No residents with routines: `HQ_CITY_RESIDENTS` is built for the city room only; the Estate's people stand on spots.
   - No natural edges (`terrain.edges`): the room wears the old ranch shell (its ring of dead trees and night sky).
-  - Art the game does not have (nothing was generated): corn stalks (the bank stands in), hay bales (the Hay Field is bare grass with the ranch
-    truck), headstones (standing stones and crosses, as the old Grounds), a trough. A Meshy list needs mondo's OK.
+  - Art the game does not have (nothing was generated): corn stalks (the leaf-sheet bank stands in) and a trough. No Meshy yet (mondo 11-15).
   - The house's five floors are the old rooms, not redesigned. The Barn and the Farmhouse have no upstairs.
   - Not carried over, because plan 2 does not draw them: the old fields' mesa, butte and stock pond; the old Grounds' coach house, terrace,
     footbridge pond, balcony bridges. The three trailers moved to the Ranch (Pasture, Ranch Gate).
   - No encounter table (`HQ_AREA_ENCOUNTERS` had none for the old rooms; those are mondo's baked tables).
+
+## THE ESTATE, THE LOOK PASS — seen in the browser, the Halloween pack as props (2026-11-15)
+
+mondo: "keep working on the visuals first. let's not use meshy yet ... you are allowed to playtest and screenshot for anything visual, please
+update that rule" (CLAUDE.md RULE #1c + owner-rules.md rewritten: browser runs without asking for anything visual, not for the rest).
+
+- **THE HALLOWEEN PACK IS A PROP KIT NOW** (data.js `HQ_CATALOGUE_HALLOWEEN`, 37 rows `hw_*`, `base: 'halloween'` + `node`): his 10-29 upload
+  (`Assets/world/packs/elbolilloduro_halloween/models/halloween.fbx`, one FBX the renderer already cut pieces from for the spells) had no catalogue
+  row. Now: six headstones, three graves, a wooden picket panel, two iron fence panels, two iron gate leaves, two brick wall panels, two scarecrows on
+  poles, two straw bales, a tilled bed + three crops, five bare trees, four pumpkins, two candle clumps, a shovel, a cobweb. `h` = each piece's real
+  height, read from the file's geometry (centimetres), so every piece stands at true size. Nothing uploaded, nothing generated. MODEL_LIST.md rerun.
+  Still in his packs and not used yet (bucket `dirtymondo`, `project-files/asset-packs/`): the BlenderVoyage PSX graveyard pack (three more tombstones,
+  two iron gates, a railing, a dirt grave, dead bushes, two jack-o'-lanterns) needs cutting up and an upload; the bus-stop pack has a `Wheat` sheaf.
+- **IN THE ESTATE (bake-estate.js):** headstones and graves in the Family Plot and the Graveyard (were standing stones), a shovel, pumpkins, candles;
+  the iron fence along the foot of the house's lawn; real iron leaves on the Iron Gate (its piers moved inside the track); bare pack trees round the
+  house; THE SCARECROW on its pole with a pumpkin patch; straw bales in rows over the Hay Field, a stack by the truck and by the barn, bales in the
+  barn; a kitchen garden east of the farmhouse; a picket fence before the farmhouse porch.
+- **THE CORN** wears the `leaves_3` sheet (was `grass_rocky`: it read as a turf bank) and stands 2.4 m: it reads as a dense hedge, not as corn stalks.
+  The shell's `wallColor` does not tint it (seen: no change).
+- **FIXED FROM THE PICTURES:** the farmhouse's boards were brown (a tint multiplies the wood sheet): `gain: 2.2` makes them white; the barn has its two
+  sliding doors and a rail; the crypt's roof shows its pediment to the front; the house's boards are a shade lighter.
+- **SEEN (playtest_city.js, the cloud browser, `--wait=150000 --flags=EW_NO_MODEL_QUEUE`, views with their own `y`):** the Woods gate, the Scarecrow,
+  the corn tracks, the Circles, the Iron Gate, the house's front, both graveyards, the crypt, the barn (out and in), the farmhouse, the Hay Field, the
+  Windmill, the Lake from the dock. Probe tips are in PLAYTEST_NOTES.md "THE CITY PROBE".
+
 
 
 ### THE FULL TREES (2026-11-15, mondo: "im not liking how these trees have the 2d cutouts for the leaves ... use the trunks and branches from the current trees ... make better leaves ... texture them with the current tree leaves ... just try to make them natural looking"; he picked row 2 of `woods_tree_leaves_3.jpg`)
@@ -4047,6 +4117,67 @@ Then: "disaster city is the most complete area so far" (the standard the Estate 
 - **THE LEAFY ONES AGAIN (same day, mondo: "the ones that are not the winter tree still look really rough, please fix")**: the sprayed leafy crowns are gone. A leafy
   tree is now made exactly like the fir: ten tiers of slices of its own picture from the stem to the real outline (bake-trees.py `fir(..., leafy=True)`), about 300 leaf
   triangles. Same three file names, new bytes; ASSET_MANIFEST.json carries the new shas (the `?h=` fetch). Lesson: slices of the whole picture read natural, loose sprays do not.
+- **THE OAK AGAIN (same day, mondo: "the one on the very left looks bad, the rest are good")**: the oak's picture is wider than tall, so whole stem-to-outline slices
+  were great flat boards. bake-trees.py form `oak`: twelve tiers, more boughs a tier standing steep, each slice cut into an inner and an outer sheet with their own
+  tilt and turn, the crown pulled in to 82 % and started 10 % higher so the trunk shows. About 470 leaf triangles. The other four trees are byte-identical.
+
+## THE BEACH ON PLOTS — the sixth area of the world plan, first delivery (2026-11-15)
+
+mondo 11-15, on the plot plans (`docs/plans/world-zones/beach_plot_plan_*.png`): plan 1 "shouldnt the long pier connect to the beach, not the
+dutchman" (plan 2: the pier starts on the sand); "where is the bermuda triangle in the plan? that needs to be its own district. its okay to make
+the sea bigger. Its supposed to be like an ocean from a final fantasy overworld map, big enough to sail and explore" (plan 3: 14 x 10 plots, The
+Ocean + The Bermuda Triangle as districts). His answers on plan 3: the size "fine for now, might be a little too big now"; the Triangle "fine";
+"add a remote island with a volcano and unconnected tribe (eventually will make models for)" (plan 4 = plan 3 + the Volcano Island); the plain
+plot labels "fine for now"; the Beach Huts "walk ins"; the old rooms "fine for now, but the plan is to eventually cut those pvp maps from these
+new areas".
+
+- **THE ROOM** `site_prebuilt_bermuda_beach` (site `prebuilt_bermuda`, part `beach`, "THE BEACH"): 14 x 10 plots of 12 x 12 squares (588 x 420 m),
+  written by `node bake-beach.js [--dry-run]` from `docs/areas/beach/layout.json` (plan 4) between `BEACH140-BEGIN / BEACH140-END` in data.js.
+  Never hand-edit between the markers. `BEACH_DUMP=1` prints the walked map. The layout is made by `docs/plans/world-zones/make-beach.py` (from
+  plan 2's squares) and drawn by `draw-beach.py`.
+- **FOUR DISTRICTS:** THE SHORE (14 plots, the west coast off Bayside: the Boardwalk, the Tide Pools, the Beach Huts, the Surf, the Palms, the
+  Lifeguard Hut, the Dunes, the Sandbar, the headland sands north and south), THE HARBOUR (8: the Quay and its shed, the Breakwater and the
+  harbour light, the Long Pier from the sand to the ship, the Flying Dutchman, the skiff jetty, the Channel's buoys), THE OCEAN (93: open water,
+  the Volcano Island far north with the tribe's village, two unnamed islets, the ocean pack's animals), THE BERMUDA TRIANGLE (25: a right
+  triangle with sides 6, 8, 10 plots; DOOR_MASTER "it's a right triangle", Room 345. West point = the Lighthouse Rock, right angle = the island
+  (the Jetty, the Cay, the Lagoon, the Island Beach), north point = the Maelstrom; inside = the Reef, the Wreck Islet, the Sandbar).
+- **A SEA ROOM, AND THE HEIGHTS ARE THE MAP:** `terrain.sea { y: 0 }`, no `gen` (the old Bermuda sea room's way: the whole field is walked, waded,
+  swum or sailed; the skiff and the swimmer are the game's own, HQ_SEA_RULES). Everything is `terrain.slope.cells`: sand rises 0.3 m a square from
+  the waterline up to its plot's cap (level 0 = 0.6 m, 1 = 1.2 m, 2 = 2.0 m), the sea floor falls 0.7 m a square from the sand (two squares of
+  wade, then a swim, 3.5 m deep in open water), dunes to 3.6 m. HARD squares keep four equal corners and so stand as a step: the piers 0.6, the
+  quay 0.9, the Breakwater 1.6, the Lighthouse Rock 3.4, the Dutchman's deck 2.6, the volcano's cone (4.2 m a square, to 16 m: never climbed).
+  A step over 0.62 m is the wall. Paint: planks, cobbles, `rocks_5`, `obsidian` (the cone), `lava` (the crater).
+- **THE BUILDINGS (5 walk-in, the Estate's helper: a hollow `texbuilding` + an `arch` look):** the three Beach Huts (blue, yellow, red; a surf
+  hut, a sleeping hut, a float hut), the Lifeguard Hut (white, red roof, its door to the sea), the Quay Shed (tarred, tin roof, barn doors).
+  DRAWN (arch rows): THE FLYING DUTCHMAN (her deck is a hard block of squares; the hull, forecastle, poop, three masts, yards, furled sails and
+  bowsprit are drawn over it) and the tribe's three open shelters. Props: two lighthouses (the game's own, the beam turns), the old wreck, two
+  skiffs (the skiff jetty; the island's Jetty), buoys (the Channel, the Maelstrom's ring), 51 palms.
+- **THE WAYS:** door `quay` on the west wall at the Boardwalk -> Disaster City's `harbour` door (the old Harbour's door id, kept; the city's
+  door still names the retired Harbour and `DOOR_HQ.retired` lands the walker on the spawn, which is on the Boardwalk inside this door; the city
+  is the owner side's on claims.md, so its tool was not touched); link `beach_dutchman` (NEW, way `trail`: the gangway at the Long Pier's end <->
+  the Dutchman's Main Deck, beside her cabin door); link `bermuda_abyss` (the Maelstrom, down to The Deep); link `weir_bermuda` (Room 8's weir ->
+  the tide pool by the Lagoon); Room 345's cabin door = `bay`, free on the Island Beach (`siteRooms.entry.prebuilt_bermuda`). The tool checks the
+  five data.js rows that hold a place in this room and refuses to bake when one has drifted.
+- **WHO LIVES HERE (10, homes = `DOOR_TEXT.POINT_OF_ENTRY` + the plan's visitors):** Shore = mermaid (Tide Pools), starfish (Sandbar), siren; Harbour =
+  pirate (Quay), homosapien (Long Pier); Triangle = siren (Wreck Islet), pirate (the island), jellyfish (Lagoon), sharkman (Island Beach), deep sea
+  fish (Reef). Lines are read from the old literals. THE TRIBE HAS NO PEOPLE YET (mondo: models come later): only their shelters, fire, drum, spears.
+- **RETIRED (`DOOR_HQ.retired`):** `site_prebuilt_downtown_harbour`, `site_prebuilt_bermuda_sea` -> the new room. Both literals stay (the tool
+  reads the people's lines from them). KEPT: the Dutchman's four decks (her insides) and `site_prebuilt_bermuda_island` (the PvP board; mondo:
+  to be cut from the new areas later). Hub `beach` (THE BEACH) added, claimed by id. `HQ_AREA_MARKERS`, the day look, the tape (still on the
+  Lighthouse Rock) and an `HQ_AREA_ENCOUNTERS` row (a copy of the old open sea's) added.
+- **CHECKED OFFLINE ONLY** (no browser run, RULE #1c): data.js parses; the room compiles in ~5 s in node (`hqTerrainInfo`: no NaN, heights
+  -9..16 m); on the compiled heights the walk from the city door to the huts, along the Long Pier to the gangway, up the north arm to the Quay,
+  out the skiff jetty, from the island's Jetty onto the Cay and from the Volcano Island's landing to the village has no step over 0.14 m; the
+  Dutchman's deck is not climbed from the pier; every prop key and unit exists; all four links and the bay door resolve.
+- **NOT DONE / SHORT OF DISASTER CITY:**
+  - NOT SEEN ON SCREEN: everything. Above all the Dutchman's drawn hull, how the hard steps (pier sides, quay wall, cone) are textured, whether
+    the gangway way reads as a way aboard, the door on the open west edge, the frame rate of a 588 x 420 m sea room.
+  - The west edge is open sea past the room, not the city's sea wall (no `terrain.edges`); the room wears the old sea shell.
+  - The Dutchman is not redesigned (the world plan wants her rebuilt inside and out). The hold hatch to Atlantis is her old link, untouched.
+  - Art the game does not have (nothing was generated): the tribe's people and proper huts, a volcano model, a volleyball net, beach towels.
+  - Not carried over from the old rooms, because the plan does not draw them: the Harbour's wharves, gantry, slipway and water steps; the old
+    cay's Lookout and stair. The undersea coral and fish of the old dive route are only partly placed (the Reef, the Maelstrom).
+  - No residents with routines, no fights set up in the room, no Deep-to-Area-51 way (still mondo's open question).
 
 ## THE DESERT'S INSIDES — Hangar 18, the White Rooms, inside the Great Pyramid (2026-11-15, second side)
 
