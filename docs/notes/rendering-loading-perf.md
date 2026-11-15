@@ -1957,6 +1957,25 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE LAMP'S REACH ON THE NODE RENDERER (2026-11-15, the fight on Disaster City: 4.8 FPS)
+
+mondo's battle F3 (Firefox, M1, WebGPU, 3456x1812): frame 210 ms, CPU 23.7 ms, "Lights point 72 · rig 63/70". The frame was the GPU's:
+the node renderer ran the whole light maths for all 64 rig point lamps on every pixel (the walk lights 12 to 14). THE LIGHT'S REACH
+(2026-11-10) skipped out-of-range lamps on the classic renderer only.
+
+- three-renderer.js `_ewNodeLights`, `EwPointLightNode.setup`: for a rig point lamp (no shadow) on a Lambert / Phong / Standard /
+  Physical material, the direct term is built inside `If(dot(lightColor, lightColor) > 0)`. lightColor = colour x the legacy ramp,
+  exactly 0 past `distance` and for a dark spare, so the skipped work added 0: same picture.
+- Only rig lamps: three sorts lights by id, the rig's sun lamps come first and build the shared terms (normalView, view direction)
+  outside any branch. Toon / gradientMap materials are left alone (their direct term samples a texture; WGSL refuses that in a branch).
+  `builder.material` is the game's CLASSIC material (type MeshPhongMaterial), not the node one: test the classic flags.
+- Switch (read at shader build, reload): localStorage `ew_lightsEveryPixel = '1'` or `window.EW_LIGHTS_EVERY_PIXEL = true` (the classic switch).
+- Cloud check (SwiftShader WebGPU, Main Hall): Phong, Lambert, Standard and Physical (clearcoat + sheen) compile with the branch, one
+  `if` per rig lamp in the WGSL, 0 frame errors. FPS is his Mac's to measure.
+- The rig is one per session and never shrinks, so after one 64-lamp fight every later scene carried 64 lamps a pixel too. With the
+  branch a dark spare costs one compare.
+- Still open in fights: shader builds 2.5/s mid-fight, 9 post passes at 6.3 M pixels, the props' 670K triangles.
+
 ## THE ROLLING WATCH + THE UNIT MASK + THE MOVING SIDES (2026-11-15, the 60 FPS thread; mondo: "22 fps with lag and frame drops is a joke")
 His Mac (Firefox, WebGPU, 3456x1812): 21.9 FPS, frame 45.5 ms, CPU 31 ms; a second spot 20.8 FPS with "shadow 405 calls, 834K tris".
 - WHERE THE FRAME GOES: frame minus CPU is ~14 ms that no JS row owns. Firefox on macOS presents a WebGPU canvas by CPU READBACK

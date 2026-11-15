@@ -46121,7 +46121,7 @@ const ThreeRenderer = (function () {
             K.rateB = (K.builds - K.b0) / dt; K.rateP = (K.pipes - K.p0) / dt;
             K.at = now; K.b0 = K.builds; K.p0 = K.pipes;
         }
-        return { builds: K.builds, pipes: K.pipes, rateB: K.rateB, rateP: K.rateP, kept: K.kept.b.length + '/' + K.kept.p.length + '/' + K.kept.g.length, off: _ewKeepOff(), inst: K.inst, rig: _ewRigG ? { moves: _ewRigG.moves, grows: _ewRigG.grows, lamps: _ewRigG.group.children.length } : null };
+        return { builds: K.builds, pipes: K.pipes, rateB: K.rateB, rateP: K.rateP, kept: K.kept.b.length + '/' + K.kept.p.length + '/' + K.kept.g.length, off: _ewKeepOff(), inst: K.inst, reach: K.reach || 0, rig: _ewRigG ? { moves: _ewRigG.moves, grows: _ewRigG.grows, lamps: _ewRigG.group.children.length } : null };
     }
     /* ══ THE NODE LAYER (WEBGPU_PLAN W1, 2026-10-03) ══════════════════════════════════════════════════════════════════════
        The node renderer ignores ShaderChunk patches and onBeforeCompile, so on its path each classic effect is rebuilt
@@ -46147,11 +46147,39 @@ const ThreeRenderer = (function () {
         class EwAmbientLightNode extends G.AmbientLightNode { update(f) { super.update(f); this.color.multiplyScalar(PI); } }
         class EwDirectionalLightNode extends G.DirectionalLightNode { update(f) { super.update(f); this.color.multiplyScalar(PI); } }
         class EwHemisphereLightNode extends G.HemisphereLightNode { update(f) { super.update(f); this.color.multiplyScalar(PI); this.groundColorNode.value.multiplyScalar(PI); } }
+        /* THE LAMP'S REACH ON THE NODE RENDERER (2026-11-15, mondo's F3 in a fight on Disaster City: "4.8 FPS", frame 210 ms with
+           the CPU at 24 ms, "Lights point 72 · rig 63/70"). The node renderer ran the whole light maths (Lambert / Blinn-Phong /
+           the PBR lobes) for EVERY rig lamp on EVERY pixel: 64 lamps on 6.3 million pixels, though a street lamp reaches 20 m and a
+           pixel sits inside one or two of them. THE LIGHT'S REACH did this for the classic renderer only. Now a rig point lamp's
+           light maths runs for a pixel only when its colour after the fall-off is not black: past its `distance` the ramp is
+           exactly 0, and a dark spare is 0 everywhere, so what is skipped added exactly 0 and the picture is the same. Only the
+           rig's lamps (the sun lamps before them in the light list build the shared terms outside the branch) and only the plain
+           lit materials (Lambert / Phong / Standard / Physical: their direct term is maths alone; a toon ramp samples a texture,
+           which WGSL refuses inside a branch). Read at shader build: every lamp on every pixel again with localStorage
+           ew_lightsEveryPixel = '1' or window.EW_LIGHTS_EVERY_PIXEL = true before the game's scripts (the classic switch), reload. */
+        var everyPx = false;
+        try { everyPx = (typeof window !== 'undefined' && window.EW_LIGHTS_EVERY_PIXEL === true) || (typeof localStorage !== 'undefined' && localStorage.getItem('ew_lightsEveryPixel') === '1'); } catch (e0) {}
+        var reachOk = function (self, builder) {
+            if (everyPx || !T.If || !self.light || !self.light._ew_rigLamp || self.light.castShadow || self.shadowNode) return false;
+            var m = builder && builder.material;
+            if (!m || m.isMeshToonMaterial || m.isMeshToonNodeMaterial || m.gradientMap) return false;   // builder.material is the game's classic material (three dresses it as a node material per build)
+            if (!(m.isMeshStandardMaterial || m.isMeshPhysicalMaterial || m.isMeshPhongMaterial || m.isMeshLambertMaterial || m.isMeshStandardNodeMaterial || m.isMeshPhysicalNodeMaterial || m.isMeshPhongNodeMaterial || m.isMeshLambertNodeMaterial)) return false;
+            return !!(builder.lightsNode && builder.lightsNode.setupDirectLight);
+        };
         class EwPointLightNode extends G.PointLightNode {
             update(f) { super.update(f); this.color.multiplyScalar(PI); }
             setupDirect(builder) {
                 var lv = this.getLightVector(builder);
                 return { lightDirection: lv.normalize(), lightColor: this.colorNode.mul(ramp(lv.length(), this.cutoffDistanceNode, this.decayExponentNode)) };
+            }
+            setup(builder) {
+                if (!reachOk(this, builder)) return super.setup(builder);
+                this.colorNode = this.baseColorNode || this.colorNode;
+                var d = this.setupDirect(builder), self = this, lc = d.lightColor.toVar();
+                _ewKeep.reach = (_ewKeep.reach || 0) + 1;
+                T.If(T.dot(lc, lc).greaterThan(0), function () {
+                    builder.lightsNode.setupDirectLight(builder, self, { lightDirection: d.lightDirection, lightColor: lc });
+                });
             }
         }
         class EwSpotLightNode extends G.SpotLightNode {
