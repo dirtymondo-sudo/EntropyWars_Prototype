@@ -680,14 +680,14 @@ const SECOND = {
         K.hang('notice_board', 'S', sq(2, 7)[0], 1.2, 0.06); K.P('chalkboard', X(3) + 0.13 + 0.05, sq(3, 6)[1], 90, { y: 1.0 });
         K.sign('N', X(5) + C / 2, 3.2, 6.2, 0.8, 'FIRE STATION', '#ffffff', '#a82a20', 0.15);
     },
-    /* CIVIL RECORDS: a small sage-green records office. Oak wainscot, a lit panel ceiling, the card catalogue by the counter, a microfiche
-       reader on it, a runner from the door, RECORDS over the shelf. */
+    /* CIVIL RECORDS: a small sage-green records office. Oak wainscot, a lit panel ceiling, the card catalogue by the counter, an old CRT
+       terminal on it, a runner from the door, RECORDS over the shelf. */
     '5,0,0': (A, K) => { const { X, Z, sq } = K;
         K.liner({ wains: ['calm_planks', 0xb08050, 1.1], rail: [null, 0x4a3020], skirt: [null, 0x2a2018], crown: [null, 0xf0eee4] });
         [[0, 1], [1, 0], [1, 2]].forEach(c => { const m = sq(c[0], c[1]); K.panel(m[0], m[1], 1.2, 0.6); });
         K.rug(sq(0, 1)[0], (Z(1) + Z(3)) / 2, 1.6, 2 * C - 0.5, 'calm_carpet', 0x2e5a44);
         K.P('card_catalog', K.r[2] - 0.17 - 0.3, sq(1, 1)[1] + 1.15, 270);
-        K.P('microfiche_reader', sq(1, 1)[0], sq(1, 1)[1] - 0.35, 90, { y: 0.76 });
+        K.P('crt_terminal', sq(1, 1)[0], sq(1, 1)[1] - 0.35, 90, { y: 0.76 });
         K.sign('E', sq(1, 1)[1], 2.45, 2.2, 0.42, 'RECORDS', '#f0e6c8', '#2e4a3a', 0.1);
     },
     /* CITY HALL: a marble civic hall. Green marble dado under a gilt rail, cream marble walls, marble pilasters with gilt capitals, a coffered
@@ -709,7 +709,7 @@ const SECOND = {
         K.hang('city_seal', 'N', sq(4, 0)[0], 2.0, 0.1); K.hang('painting_portrait', 'N', sq(3, 0)[0], 1.3, 0.1); K.hang('painting_portrait', 'N', sq(5, 0)[0], 1.3, 0.1);
         [-0.8, 0.8].forEach(d => K.P('wingback_chair', sq(4, 0)[0] + d, sq(4, 0)[1] + 1.3, 0)); K.P('banker_lamp', sq(4, 0)[0] + 0.7, sq(4, 0)[1] - 0.1, 0, { y: 0.76 });
         K.P('marble_bust', sq(2, 3)[0] + 1.15, sq(2, 3)[1] - 1.15, 180); K.P('marble_bust', sq(5, 3)[0] - 1.15, sq(5, 3)[1] - 1.15, 180);
-        K.P('city_scale_model', sq(1, 5)[0], sq(1, 5)[1], 90); A.bar(1, 5);                                                                                // the city under glass
+        K.P('city_scale_model', sq(1, 5)[0], sq(1, 5)[1], 90); A.bar(1, 5);                                                                                // the city scale model
         K.P('ballot_box', sq(3, 4)[0] - 1.25, sq(3, 4)[1] + 1.2, 180);
         K.hang('directory_board', 'S', D.at + 2.6, 0.9, 0.06);
     },
@@ -787,7 +787,7 @@ const SECOND = {
         [1, 2, 3, 4, 5].forEach((c, i) => { const x = sq(c, 4)[0], z = Z(5) - 0.12; K.P('now_serving_sign', x, z - 0.09, 0, { y: 2.35 });
             K.Q({ s: 'quad', p: [r3(x), 1.8, r3(z - 0.02)], ry: 180, size: [0.5, 0.42], key: 'txt:' + (i + 1) + '|#ffffff|#2f6a6e|1.19', uv: 'fit', kind: 'wall', glow: 0.2 }); });
         K.P('number_dispenser', sq(5, 1)[0] - 1.3, sq(5, 1)[1] - 1.3, 180);
-        [1, 2].forEach(c => K.hang('brochure_rack', 'N', sq(c, 0)[0], 1.0, 0.13));
+        [1, 2].forEach(c => K.hang('brochure_rack', 'N', sq(c, 0)[0], 1.0, 0.08));
         K.P('form_counter', K.r[0] + 0.17 + 0.35, sq(0, 4)[1], 90); A.bar(0, 4); K.P('form_counter', K.r[2] - 0.17 - 0.35, sq(7, 3)[1], 270); A.bar(7, 3);
         K.P('photocopier', sq(1, 6)[0], sq(1, 6)[1], 90); A.bar(1, 6);
         K.P('banker_lamp', sq(7, 7)[0] - 0.7, sq(7, 7)[1] + 0.1, 180, { y: 0.76 });
