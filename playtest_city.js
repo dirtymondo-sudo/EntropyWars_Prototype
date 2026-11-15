@@ -51,13 +51,14 @@ const run = async () => {
   page.on('crash', () => { console.log('PAGE CRASHED — last logs:', JSON.stringify(logs.slice(-6))); });
   if (flag('flags', '')) await page.addInitScript((fl) => { fl.split(',').forEach(k => { if (k) window[k] = true; }); }, String(flag('flags', '')));
   page.on('pageerror', e => errs.push(String(e && e.message || e).slice(0, 240)));
-  page.on('console', m => { const t = m.text(); if (/\[HQ\]|failed|error|diner|warn/i.test(t) && !/tabletop .* has nothing under it/.test(t)) logs.push(t.slice(0, Number(flag('loglen', 240)))); });
+  page.on('console', m => { const t = m.text(); if (process.env.EW_LIVE_LOG && /\[HQ\]/.test(t)) console.log('LIVE', t.slice(0, 200)); if (/\[HQ\]|failed|error|diner|warn/i.test(t) && !/tabletop .* has nothing under it/.test(t)) logs.push(t.slice(0, Number(flag('loglen', 240)))); });
   await page.goto('http://localhost:3000/?hq&nomenu3d', { waitUntil: 'commit', timeout: 60000 });
   const t0 = Date.now(); let ok = false;
   while (Date.now() - t0 < 120000) { try { const st = await page.evaluate(() => [document.readyState, typeof window._hqEnter, typeof ThreeRenderer !== 'undefined' && !!ThreeRenderer.hq]); if (st[1] === 'function' && st[2]) { ok = true; break; } } catch (e) {} await sleep(800); }
   if (!ok) { console.log('page never ready', errs.slice(0, 5)); await browser.close(); process.exit(1); }
   await page.evaluate((noGltf) => { window.EW_HQ_NO_POST = !!window.EW_CITY_POST ? false : true; window.EW_HQ_DEBUG = true; window.EW_DISABLE_CAST = true; window.EW_HQ_VARIANT = 'none'; if (noGltf) { THREE.GLTFLoader = undefined; } }, noGltf);
   if (flag('post', false)) await page.evaluate(() => { window.EW_HQ_NO_POST = false; });
+  if (flag('pre', false)) await page.evaluate((js) => { try { eval(js); } catch (e) { console.log('[HQ] PROBE pre failed ' + e.message); } }, String(flag('pre', '')));   // --pre=<js>: run in the page before the room is entered (2026-11-15: switch a part of a room off to find what breaks)
   await page.evaluate((room) => { window._hqEnter({ from: 'play', room }); }, room);
   await sleep(WAIT);
   await page.evaluate(() => { for (const id of ['hqLoad', 'hqPrompt', 'hqStrip', 'hqToast']) { const h = document.getElementById(id); if (h) h.style.display = 'none'; } });

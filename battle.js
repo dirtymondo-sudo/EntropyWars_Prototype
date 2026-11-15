@@ -60238,7 +60238,12 @@
                         const path = a.path.map(c => ({ x: c[0], y: c[1], z: zAt(c[0], c[1]) })).filter(c => c.x >= 0 && c.y >= 0 && c.x < W && c.y < H && (typeof getWalkableSurfaces !== 'function' || getWalkableSurfaces(c.x, c.y).length));
                         if (!path.length) return;
                         try { TA.walkPath(u, path, null, a.mps > 0 ? { mps: a.mps } : null); } catch (e) {}   // `mps` = a slow walk at that pace (mondo 11-15)
-                        const last = path[path.length - 1]; u.x = last.x; u.y = last.y; u.z = last.z;
+                        /* the body keeps the heading it walked on when it stops (the walk-off: Locke turned back to face the recruit the
+                           moment she arrived, because her facing was still the one the line before gave her) */
+                        const prev = path.length > 1 ? path[path.length - 2] : { x: u.x, y: u.y };
+                        const last = path[path.length - 1], fdx = Math.sign(last.x - prev.x), fdy = Math.sign(last.y - prev.y);
+                        u.x = last.x; u.y = last.y; u.z = last.z;
+                        try { if (fdx || fdy) setUnitFacing(u, Math.abs(fdy) >= Math.abs(fdx) ? 0 : fdx, Math.abs(fdy) >= Math.abs(fdx) ? fdy : 0); } catch (e) {}
                     }
                 },
                 slow(scale, ms) { if (TA && TA.slowMo) TA.slowMo(scale, ms); },

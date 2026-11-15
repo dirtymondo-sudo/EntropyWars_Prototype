@@ -29256,7 +29256,7 @@ const ThreeRenderer = (function () {
             if (tw) {
                 // Same segment math as _updateWalkTweens.
                 var gt = Math.max(0, Math.min((now - tw.startTime) / tw.totalMs, 1));
-                var traveled = _easeInOut(gt) * tw.segs;
+                var traveled = (tw.walkTs ? gt : _easeInOut(gt)) * tw.segs;
                 var stepIdx = Math.min(Math.floor(traveled), tw.segs - 1);
                 var from = tw.path[stepIdx], to = tw.path[stepIdx + 1];
                 var ddx = to.x - from.x, ddy = to.y - from.y;
@@ -29529,7 +29529,9 @@ const ThreeRenderer = (function () {
             // Clamped at 0 so a tween armed with a FUTURE startTime (the intro
             // cinematic staggers each team's march) holds at the path start.
             var gt = Math.max(0, Math.min((now - tw.startTime) / tw.totalMs, 1));
-            var traveled = _easeInOut(gt) * tw.segs;
+            /* a PACED walk (opts.mps, a cutscene) keeps ONE speed, the one its clip was matched to: the cubic ease ran the body at
+               three times that pace mid-way and near zero at both ends, so the feet slid (mondo 11-15: walks never slide) */
+            var traveled = (tw.walkTs ? gt : _easeInOut(gt)) * tw.segs;
             var stepIdx = Math.min(Math.floor(traveled), tw.segs - 1);
             var ease = traveled - stepIdx; // linear within the current segment
 
@@ -47126,8 +47128,10 @@ const ThreeRenderer = (function () {
         var base = nm.setupDiffuseColor;   // the other dresses' (they set it on the instance first)
         nm.setupDiffuseColor = function (builder) {
             base.call(this, builder);
-            var wp = T.positionWorld, out = null;
-            for (var j = 0; j < P.length; j++) { var c = wp.dot(P[j].xyz).add(P[j].w).lessThan(0); out = out ? out.or(c) : c; }
+            /* `clipIntersection` (THE CUT BESIDE, 2026-11-15): cut only where EVERY plane cuts, as the classic renderer does. It was
+               always the union here, so on WebGPU the cut took the whole hall above the line, not just its corner over the foyer. */
+            var wp = T.positionWorld, out = null, inter = !!m.clipIntersection;
+            for (var j = 0; j < P.length; j++) { var c = wp.dot(P[j].xyz).add(P[j].w).lessThan(0); out = out ? (inter ? out.and(c) : out.or(c)) : c; }
             if (out) T.Discard(out);
         };
     }
@@ -52474,7 +52478,7 @@ const ThreeRenderer = (function () {
         L.push('Scene meshes ' + (c.meshes || 0) + ' · skinned ' + (c.skinned || 0) + ' · rigs animating ' + (c.rigs || 0));
         L.push('Lights point ' + (c.point || 0) + (S.lampN != null && S.lampN >= 0 ? ' (stage lamp budget ' + S.lampN + ')' : '') + ' · spot ' + (c.spot || 0) + ' · dir ' + (c.dir || 0) + ' · hemi ' + (c.hemi || 0) + (c.rigN ? ' · rig ' + (c.rig || 0) + '/' + c.rigN : ''));
         L.push('Shadow casters ' + ((c.casters && c.casters.length) ? c.casters.length + ': ' + c.casters.join(', ') : '0'));
-        try { var hl = _hq && _hq.heroLit, hs = (typeof _heroStat !== 'undefined') ? _heroStat : null; if (hl && hl.isLight && hs) L.push('Hero lamp: ' + (hs.why || 'drawn') + ' · frames held ' + hs.held + ' / drawn ' + hs.drawn + ' · in reach ' + hs.inReach + ' of ' + hs.casters + ' casters · moving ' + hs.moving + ' · sides drawn ' + hs.sidesDrawn + ' / skipped ' + hs.sidesSkipped + ' (session)'); } catch (eH) {}   // THE SHADOW SPLIT
+        try { var hl = _hq && _hq.heroLit, hs = (typeof _heroStat !== 'undefined') ? _heroStat : null; if (hl && hl.isLight && hs) L.push('Hero lamp: ' + (hs.why || 'drawn') + ' · frames held ' + hs.held + ' / drawn ' + hs.drawn + ' · in reach ' + hs.inReach + ' of ' + hs.casters + ' casters · moving ' + hs.moving + ' · sides drawn ' + hs.sidesDrawn + ' / skipped ' + hs.sidesSkipped + ' (session)' + _lensLampWhere(hl)); } catch (eH) {}   // THE SHADOW SPLIT
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
         if (S.keep) L.push('Shader builds ' + S.keep.rateB.toFixed(1) + '/s · new pipelines ' + S.keep.rateP.toFixed(1) + '/s (session ' + S.keep.builds + ' / ' + S.keep.pipes + ') · kept ' + S.keep.kept + (S.keep.off ? ' (keep off)' : '') + (S.keep.inst ? ' · shared instancing ' + S.keep.inst : '') + (S.keep.rig ? ' · one rig: ' + S.keep.rig.moves + ' scene moves, ' + S.keep.rig.grows + ' grows' : '') + ' · sheets warmed ' + _ewSheet.n);
         if (S.keep && renderer && renderer._ew_sc) { var SC = _ewScStats(); L.push('Shader cache ' + SC.recipes + ' recipes · warmed ' + SC.warmed + (SC.left ? ' (' + SC.left + ' to go)' : '') + ' in ' + SC.warmMs + ' ms' + (SC.failed ? ' · ' + SC.failed + ' failed' : '') + ' · new this session ' + SC.proven + ' proven' + (SC.refused ? ' · not kept: ' + SC.refused : '')); }
@@ -52584,6 +52588,18 @@ const ThreeRenderer = (function () {
         var el = renderer.domElement, w = el ? el.clientWidth : 0, h = el ? el.clientHeight : 0;
         if (w > 0 && h > 0) { renderer.setSize(w, h); if (ThreePost && ThreePost.resize) ThreePost.resize(w, h); }
     }
+    /* where the hero lamp stands from the camera, in words a walker can follow (mondo 11-15: "where is the point lamp. how tf am I supposed to know where it is") */
+    function _lensLampWhere(hl) {
+        try {
+            var cam = _hq && _hq.camera; if (!cam || !hl || !hl.getWorldPosition) return '';
+            var lp = hl.getWorldPosition(new THREE.Vector3()), cp = cam.getWorldPosition(new THREE.Vector3()), fw = cam.getWorldDirection(new THREE.Vector3());
+            var dx = lp.x - cp.x, dz = lp.z - cp.z, dist = Math.sqrt(dx * dx + dz * dz) / _hqUnits(), fl = Math.sqrt(fw.x * fw.x + fw.z * fw.z) || 1;
+            var ang = Math.atan2(fw.x * dz - fw.z * dx, fw.x * dx + fw.z * dz) * 180 / Math.PI;   // 0 = straight ahead, + = to the right
+            var a = Math.abs(ang), dir = a < 25 ? 'straight ahead' : a < 70 ? 'ahead to the ' + (ang > 0 ? 'right' : 'left') : a < 110 ? 'to your ' + (ang > 0 ? 'right' : 'left') : a < 155 ? 'behind to the ' + (ang > 0 ? 'right' : 'left') : 'behind you';
+            var dy = (lp.y - cp.y) / _hqUnits();
+            return ' · it stands ' + Math.round(dist) + ' m ' + dir + (Math.abs(dy) > 4 ? (dy > 0 ? ', ' + Math.round(dy) + ' m up' : ', ' + Math.round(-dy) + ' m down') : '');
+        } catch (e) { return ''; }
+    }
     function _lensCopy() {
         var txt = _lensText(_lens && _lens.last);
         var done = function () { var b = _lens && _lens.el && _lens.el.querySelector('[data-lens="copy"]'); if (b) { b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy'; }, 1200); } };
@@ -52634,6 +52650,7 @@ const ThreeRenderer = (function () {
         window.addEventListener('keydown', function (e) {
             if (e.key !== 'F3' || e.ctrlKey || e.altKey || e.metaKey) return;
             e.preventDefault(); e.stopPropagation();
+            if (e.shiftKey) { if (!_lens) _lensOpen(); else _lensCopy(); return; }   // SHIFT+F3 copies the readout from the keyboard: no pause, no mouse (mondo 11-15: "I can only copy the f3 data when I am paused")
             _lensToggle();
         }, true);
         var _lensBoot = function () {
@@ -67915,6 +67932,10 @@ const ThreeRenderer = (function () {
                     /* THE PASSAGES (2026-10-01): a tunnel / a stair past the wall is an opening its own width and height, at its own floor */
                     var dP = _hqPassageSpec(d);
                     if (dP && !dP.inside) { var pY = _hqDoorFloorY(room, d); return { at: (ws[0] === 'e' || ws[0] === 'w') ? (d.z || 0) : (d.x || 0), half: dP.w / 2 + 0.03, bot: pY > 0.05 ? pY : 0, top: pY + dP.h + 0.03 }; }
+                    /* THE CAB (2026-11-15): a sealed lift with a car behind it (the foyer's front lift) has its doorway cut through the wall too.
+                       The slab stood whole between the car and the leaves, so the camera in the lift saw the back of the wall and never
+                       the doors parting. The door's own black back plate fills the hole whenever the car is not up. */
+                    if (d.proc === 'elevator' && d.sealed) return { at: (ws[0] === 'e' || ws[0] === 'w') ? (d.z || 0) : (d.x || 0), half: (d.wide ? 2.2 : 1.1) / 2 + 0.03, top: (d.wide ? 2.45 : 2.25) + 0.03 };
                     var dj = _hqDoorJoinOf(d); if (!dj) return null;
                     return { at: (ws[0] === 'e' || ws[0] === 'w') ? (d.z || 0) : (d.x || 0), half: dj.ow / 2 + 0.03, top: dj.oh + 0.03 };
                 }).filter(Boolean);
@@ -70567,8 +70588,8 @@ const ThreeRenderer = (function () {
     /* THE MOORED SHIP (2026-11-15, mondo on the Beach's hand-drawn Dutchman: "we literally have a dutchman ship from the dutchman pvp map. why not
        just use that exact ship??"): `terrain.moored = [{ kind: 'galleon', room: <a room whose terrain.float.hull is a galleon>, x, z }]` draws THAT
        room's own ship in this room: the same builder, on that room's own compiled field (its rim heights, its mast trees, its hull numbers), in a
-       group moved to (x, z) with its waterline on this room's sea. Bow east, as she is built. No wake (she is not under way). The decks
-       themselves are this room's ground (the tool writes her deck heights into the squares she stands on). */
+       group moved to (x, z) with its waterline on this room's sea. Bow east, as she is built. No wake (she is not under way). Her decks
+       are drawn here too (one planked sheet); this room's own ground under her is only a block that keeps walkers and boats out. */
     function _hqBuildMoored(room, info, G, TM, rng, ms) {
         if (!ms || ms.kind !== 'galleon' || !ms.room || typeof DOOR_HQ === 'undefined') return;
         var sr = DOOR_HQ.rooms[ms.room], si = (sr && sr.terrain && typeof hqTerrainInfo === 'function') ? hqTerrainInfo(ms.room) : null;
@@ -70578,6 +70599,18 @@ const ThreeRenderer = (function () {
         var seaOf = function (r, d) { var s = r && r.terrain && r.terrain.sea; return (s && typeof s.y === 'number') ? s.y : d; };
         sg.position.set((+ms.x || 0) * U, (seaOf(room, 0) - seaOf(sr, -4.2)) * U, (+ms.z || 0) * U);
         _hqBuildGalleon(sr, si, sg, TM, rng, Object.assign({}, fl.hull, { moored: true }));
+        /* HER DECKS: in her own room the decks are that room's ground; here they are one planked sheet over her own compiled heights (a metre a
+           node), so the waist, the castles and the poop stand inside the hull as they do aboard */
+        var st = Math.max(1, Math.round(1 / si.res)), dnx = Math.floor((si.nx - 1) / st) + 1, dnz = Math.floor((si.nz - 1) / st) + 1;
+        var pos = new Float32Array(dnx * dnz * 3), uv = new Float32Array(dnx * dnz * 2), idx = [], k = 0, i, j;
+        for (j = 0; j < dnz; j++) for (i = 0; i < dnx; i++, k++) {
+            var px = si.x0 + i * st * si.res, pz = si.z0 + j * st * si.res, ph = si.H[(j * st) * si.nx + i * st];
+            pos[k * 3] = px * U; pos[k * 3 + 1] = ph * U + 0.3; pos[k * 3 + 2] = pz * U; uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
+        }
+        for (j = 0; j < dnz - 1; j++) for (i = 0; i < dnx - 1; i++) { var a0 = j * dnx + i, b0 = a0 + 1, c0 = a0 + dnx, d0 = c0 + 1; idx.push(a0, c0, b0, b0, c0, d0); }
+        var dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); dg.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); dg.setIndex(idx); dg.computeVertexNormals();
+        var dm = new THREE.MeshPhongMaterial({ map: _hzTex('wood_planks') || null, color: 0xb9885a, shininess: 4, side: THREE.DoubleSide }); dm.emissive = new THREE.Color(0x2a1e12);
+        var deckMesh = new THREE.Mesh(dg, dm); deckMesh.renderOrder = 1; deckMesh._ew_occSkip = true; deckMesh._ew_hqPart = 'underside'; deckMesh.name = 'hqMoored:decks'; sg.add(deckMesh);
         G.add(sg);
     }
     var _HQ_SHIP_TREES = { mast: 1, capstan: 1, helm: 1 };   // terrain trees the ship draws itself (three-renderer.js treeOne plants no foliage for them)
@@ -79543,6 +79576,7 @@ const ThreeRenderer = (function () {
                     cab.add(cS1, cS2, cBk, cFl, cCl, cPn, cRl, cRr);
                     cab.visible = false; cab._ew_noInstance = true; cab.traverse(function (o) { o._ew_noInstance = true; });
                     grp.add(cab); motion.cab = cab; motion.backPlate = back;
+                    motion.cage.push(ind);   // the amber bar rode on the leaves' face: with the leaves pocketed it hung in the open doorway, in the middle of the lift's own shot
                 }
                 renderer.localClippingEnabled = true;
             } else if (leafKey) {
@@ -87667,6 +87701,7 @@ const ThreeRenderer = (function () {
         if (d.openT === want && d.openApplied === want) return;
         if (_hqStArmedN > 0 && d.group) _hqStillWake(d.group);   // THE DOORS REST: its matrices are walked from this frame
         var speed = (mo.mode === 'swing') ? 1.9 : (mo.mode === 'way') ? 1.5 : 2.4;
+        if (mo.mode === 'elevator' && (d.sceneOpen || d.sceneCab)) speed = 0.8;   // a scene's lift parts over 1.25 s (0.4 s was a flick the lift shot could miss)
         d.openT = want ? Math.min(1, d.openT + dt * speed) : Math.max(0, d.openT - dt * speed);
         var k = d.openT < 0.5 ? 2 * d.openT * d.openT : 1 - Math.pow(-2 * d.openT + 2, 2) / 2;   // ease in-out
         if (mo.mode === 'swing') { mo.pivot.rotation.y = mo.dir * mo.angle * k; if (mo.pivot2) mo.pivot2.rotation.y = -mo.dir * mo.angle * k; }   // THE DOUBLE DOOR: the second leaf swings the other way
@@ -88560,6 +88595,29 @@ const ThreeRenderer = (function () {
         var roomId = H.opts.room || 'central_egress';
         var a = null; try { a = hqRoomAtmos(roomId, room); } catch (e) { a = null; }
         if (!a) return null;
+        /* THE AIR BY DISTRICT (2026-11-15, the Woods' life pass, mondo: "yes lets do per district particles"): `shell.atmos.zones =
+           [{ x0, z0, x1, z1, kind, color?, n?, speed?, wind? }]` (metres). Each zone is its own Points of its own kind, its particles
+           born inside its box and wandering round their own spots (never wrapped through the room); the first zone listed wins where
+           two overlap only in that a later one should not cover it. H.atmos.obj is then the group that holds them. */
+        if (Array.isArray(a.zones) && a.zones.length) {
+            var grp = new THREE.Group(); grp.name = 'atmos:zones'; grp._ew_hqPart = 'fx'; var tot = 0, kinds = [];
+            a.zones.forEach(function (z) {
+                if (!z || !(z.x1 > z.x0) || !(z.z1 > z.z0)) return;
+                var one = null; try { one = _hqBuildAtmosOne(room, Object.assign({}, a, { zones: null, n: null, color: null, speed: null, wind: null }, z), z); } catch (e) { one = null; }
+                if (one) { grp.add(one.obj); tot += one.n; kinds.push(one.kind); }
+            });
+            if (!grp.children.length) return null;
+            H.propGroup.add(grp);
+            H.atmos = { kind: kinds.join('+'), n: tot, obj: grp, uni: null, zones: grp.children.length };
+            return H.atmos;
+        }
+        var made = _hqBuildAtmosOne(room, a, null); if (!made) return null;
+        H.propGroup.add(made.obj);
+        H.atmos = made;
+        return H.atmos;
+    }
+    function _hqBuildAtmosOne(room, a, zone) {
+        var H = _hq, W = (typeof window !== 'undefined') ? window : {}, roomId = H.opts.room || 'central_egress';
         var K = HQ_ATMOS_KINDS[a.kind]; if (!K) return null;
         var LR = _hqLightRules(), AR = LR.atmos || {}, U = _hqUnits(), S = room.shell || {}, D = _hqData();
         /* embers rise off the warm lights; a room without one breathes dust instead */
@@ -88590,15 +88648,16 @@ const ThreeRenderer = (function () {
         var y0 = (K.y0 != null) ? K.y0 : 0.15;
         var roomH = isBox ? (S.h || 9) : ((S.wallH || 6) + (S.upperWallH || 0));
         var Hh = Math.min(roomH - 0.2, K.hMax || 6); if (a.kind === 'rain' || a.kind === 'snow' || a.kind === 'ash') Hh = Math.min(roomH, K.hMax);
-        var wrap = isBox && flat && a.kind !== 'embers' && a.kind !== 'fireflies';
-        var rng = _mulberry32(0xA7A0 + roomId.length * 131 + n);
+        var wrap = !zone && isBox && flat && a.kind !== 'embers' && a.kind !== 'fireflies';
+        var rng = _mulberry32(0xA7A0 + roomId.length * 131 + n + (zone ? Math.round(zone.x0 * 7 + zone.z0 * 13) : 0));
         var line = !!K.streak, per = line ? 2 : 1;
         var pos = new Float32Array(n * per * 3), seed = new Float32Array(n * per * 3), end = line ? new Float32Array(n * per) : null;
         for (var i = 0; i < n; i++) {
             var px, py, pz;
             if (a.kind === 'embers') { var em = emitters[i % emitters.length]; px = em[0] + (rng() - 0.5) * 0.3 * U; pz = em[2] + (rng() - 0.5) * 0.3 * U; py = em[1] + rng() * Hh * U; }
             else {
-                if (isBox) { px = (rng() * 2 - 1) * hx * U; pz = (rng() * 2 - 1) * hz * U; }
+                if (zone) { px = (zone.x0 + rng() * (zone.x1 - zone.x0)) * U; pz = (zone.z0 + rng() * (zone.z1 - zone.z0)) * U; }
+                else if (isBox) { px = (rng() * 2 - 1) * hx * U; pz = (rng() * 2 - 1) * hz * U; }
                 else { var ar = rng() * 6.2832, rr = Math.sqrt(rng()) * hx * U; px = Math.cos(ar) * rr; pz = Math.sin(ar) * rr; }
                 var gy = 0; if (!flat) { try { var gt = _hqCaveTop(px / U, pz / U); if (gt != null && isFinite(gt)) gy = gt; } catch (e) {} }
                 py = (gy + y0) * U + rng() * Hh * U;
@@ -88619,10 +88678,8 @@ const ThreeRenderer = (function () {
         var mat = new THREE.ShaderMaterial({ uniforms: uni, vertexShader: sh.vs, fragmentShader: sh.fs, transparent: true, depthWrite: false, depthTest: true, fog: false, blending: K.add ? THREE.AdditiveBlending : THREE.NormalBlending });
         var obj = line ? new THREE.LineSegments(geo, mat) : new THREE.Points(geo, mat);
         obj.frustumCulled = false; obj.renderOrder = 4; obj.name = 'atmos:' + a.kind; obj._ew_hqPart = 'fx';
-        H.propGroup.add(obj);
-        H.atmos = { kind: a.kind, n: n, obj: obj, uni: uni };
         H.tickers.push(function (dt, now) { uni.uTime.value = now * 0.001; });
-        return H.atmos;
+        return { kind: a.kind, n: n, obj: obj, uni: uni };
     }
     /* ── THE PROP PASS 5.3 — THE RIPPLES (PREMIUM_POLISH_PLAN, 2026-09-21) ──
        Rings on the water at the feet of a walker WADING (the feet under a sheet — a moat, a pool, a stream, the shallows) and
@@ -94870,54 +94927,92 @@ const ThreeRenderer = (function () {
         if (d === R.d) return;
         R.d = d; R.root.position.y = d * _hqUnits(); R.root.updateMatrixWorld(true); H.dirty = true;
     }
-    /* THE CUT BESIDE (2026-11-15, the bigger foyer): the main hall's upper gallery runs past the tangent its ground floor keeps, so
-       a box room joined to it that stands taller than 4 m (the foyer's 7 m atrium) had the gallery's floor, rails, doors, lamps and
-       Agent Forrest standing in its air. While you are IN such a room (shell.clipBeside { wall, above }), everything of the rooms
-       beside it that lies on its side of that wall AND above `above` metres is cut away (a per-mesh material copy, two clip planes,
-       intersection); stepping out puts every original back. From inside the room the cut part is behind its own wall anyway. */
+    /* THE CUT BESIDE (2026-11-15, the bigger foyer): the main hall's mezzanine and gallery run 2.8 m past the tangent its ground
+       floor keeps, so a box room joined to it that stands taller than the mezzanine (the foyer's 7 m atrium) shares that air with
+       them. A room with shell.clipBeside { wall, above, reach } settles it from both sides, by clip planes on per-mesh material
+       copies (an intersection of two planes; every original goes back when the picture changes):
+         IN that room: everything of the rooms beside it on its side of that wall AND above `above` metres is cut (the slab's
+           underside at 3.8 m, the drum, the gallery, its doors, lamps and people). Only pieces that reach into that corner are
+           touched, so the rest of the hall keeps its batches.
+         BESIDE it (in the hall): the room's own part above `above` within `reach` metres of that wall is cut (its wall top, logo
+           band and ceiling stood across the mezzanine's walkway); past `reach` it is behind the hall's upper drum.
+       The record is the module's, never the part's: a part's keys travel with it over a stage crossing (_hqStageSwap) and the
+       planes are world planes, so the first build left the hall cut, in the wrong place, after the walk from the foyer into it. */
     var _HQ_CLIP_WALL_N = { n: [0, 0, -1], s: [0, 0, 1], e: [1, 0, 0], w: [-1, 0, 0] };
-    function _hqTickClipBeside() {
-        var H = _hq; if (!H || !H.scene) return;
-        H._cbTick = ((H._cbTick || 0) + 1) % 20;
-        var st = H.stage, cur = (st && st.id) || (H.opts && H.opts.room), D = _hqData(), room = D && D.rooms && D.rooms[cur];
-        var cb = room && room.shell && room.shell.clipBeside, sh = room && room.shell;
-        var key = cb ? cur : null;
-        if (H._cbKey && H._cbKey !== key) {   // stepped out: every original back
-            H.scene.traverse(function (o) {
-                if (!o.material) return;
-                if (o._ew_cbOrig) { o.material = o._ew_cbOrig; o._ew_cbOrig = null; }
-                else if (o.material._ew_cb) { o.material.clippingPlanes = null; o.material.needsUpdate = true; }   // a batch built from a copy
-            });
-            H._cbKey = null; H.dirty = true;
+    var _hqCb = { H: null, key: '', objs: [], mats: [], jobs: [], tick: 0 };
+    function _hqCbRestore() {
+        var C = _hqCb;
+        for (var i = 0; i < C.objs.length; i++) { var o = C.objs[i]; if (o && o._ew_cbOrig) { o.material = o._ew_cbOrig; o._ew_cbOrig = null; } }
+        for (var j = 0; j < C.mats.length; j++) { var m = C.mats[j]; if (m && m.clippingPlanes) { m.clippingPlanes = null; m.needsUpdate = true; } }   // a batch may still draw with a copy for a moment
+        C.objs = []; C.mats = []; C.jobs = []; C.key = '';
+        if (C.H) C.H.dirty = true;
+    }
+    function _hqCbCopy(m, planes) {
+        var c = m.clone(); c._ew_cb = true; c.clippingPlanes = planes; c.clipIntersection = true;
+        if (Object.prototype.hasOwnProperty.call(m, 'onBeforeCompile')) c.onBeforeCompile = m.onBeforeCompile;   // clone() drops a patched shader's hook
+        if (Object.prototype.hasOwnProperty.call(m, 'customProgramCacheKey')) c.customProgramCacheKey = m.customProgramCacheKey;
+        if (m._ewNode) c._ewNode = m._ewNode;   // the node renderer's dress reads these off the classic material (_ewNodeDress)
+        if (m.ewCol) c.ewCol = m.ewCol;
+        _hqCb.mats.push(c);
+        return c;
+    }
+    /* may this piece reach the cut corner? (a plain mesh: its box against both planes; anything else is always taken) */
+    var _hqCbV = null;
+    function _hqCbReaches(o, planes) {
+        if (!o.isMesh || o.isSkinnedMesh || o.isInstancedMesh || !o.geometry) return true;
+        var g = o.geometry; if (!g.boundingBox) { try { g.computeBoundingBox(); } catch (e) { return true; } }
+        var bb = g.boundingBox; if (!bb || !isFinite(bb.min.x) || !isFinite(bb.max.x)) return true;
+        var v = _hqCbV || (_hqCbV = new THREE.Vector3()), in0 = false, in1 = false;
+        for (var i = 0; i < 8 && !(in0 && in1); i++) {
+            v.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z).applyMatrix4(o.matrixWorld);
+            if (planes[0].distanceToPoint(v) < 0) in0 = true;
+            if (planes[1].distanceToPoint(v) < 0) in1 = true;
         }
-        if (!key || (H._cbKey === key && H._cbTick !== 0)) return;
-        var roots = [], own = null;
-        if (cur === (H.opts && H.opts.room)) own = H.partRoot; else if (st && st.parts[cur]) own = st.parts[cur].P.partRoot;
-        if (!own) return;
-        if (own !== H.partRoot && H.partRoot) roots.push(H.partRoot);
-        if (st) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P && E.P.partRoot && E.P.partRoot !== own) roots.push(E.P.partRoot); }
-        if (!roots.length) return;
-        var U = _hqUnits(), wn = _HQ_CLIP_WALL_N[cb.wall || 'n'] || _HQ_CLIP_WALL_N.n;
-        var half = (wn[2] !== 0) ? (sh.d || 0) / 2 : (sh.w || 0) / 2;
-        own.updateMatrixWorld(true);
-        var M = own.matrixWorld, NM = new THREE.Matrix3().getNormalMatrix(M);
-        if (!H._cbPlanes) H._cbPlanes = [new THREE.Plane(), new THREE.Plane()];
-        var pW = new THREE.Vector3(wn[0] * half * U, 0, wn[2] * half * U).applyMatrix4(M), nW = new THREE.Vector3(wn[0], 0, wn[2]).applyMatrix3(NM).normalize();
-        H._cbPlanes[0].setFromNormalAndCoplanarPoint(nW, pW);   // kept: beyond the wall
-        var pY = new THREE.Vector3(0, (cb.above || 4) * U, 0).applyMatrix4(M), nY = new THREE.Vector3(0, -1, 0).applyMatrix3(NM).normalize();
-        H._cbPlanes[1].setFromNormalAndCoplanarPoint(nY, pY);   // kept: below `above`
-        var planes = H._cbPlanes;
-        roots.forEach(function (R) {
-            R.traverse(function (o) {
+        return in0 && in1;
+    }
+    function _hqTickClipBeside() {
+        var H = _hq, C = _hqCb;
+        if (!H || !H.scene || !H.partRoot) { if (C.key) _hqCbRestore(); C.H = null; return; }
+        if (C.H !== H) { _hqCbRestore(); C.H = H; }
+        var st = H.stage, cur = (st && st.id) || (H.opts && H.opts.room) || '', room = H.room, sh = room && room.shell;
+        /* who is cut: [{ id, root, cb, shell, own }] */
+        var want = [], nbs = [];
+        if (st) for (var id in st.parts) { var E = st.parts[id]; if (E && E.attached && E.P && E.P.partRoot && E.P.partRoot !== H.partRoot) nbs.push({ id: id, E: E }); }
+        if (sh && sh.clipBeside) nbs.forEach(function (n) { want.push({ id: n.id, root: n.E.P.partRoot, frame: H.partRoot, cb: sh.clipBeside, shell: sh, own: false }); });
+        nbs.forEach(function (n) { var r2 = n.E.P.room, s2 = r2 && r2.shell; if (s2 && s2.clipBeside && s2.clipBeside.reach > 0) want.push({ id: n.id, root: n.E.P.partRoot, frame: n.E.P.partRoot, cb: s2.clipBeside, shell: s2, own: true }); });
+        var key = want.length ? cur + '>' + want.map(function (w) { return w.id + (w.own ? '*' : ''); }).join(',') : '';
+        if (key !== C.key) {
+            _hqCbRestore();
+            C.key = key; C.tick = 0;
+            C.jobs = want.map(function (w) { w.planes = [new THREE.Plane(), new THREE.Plane()]; return w; });
+        }
+        if (!C.key) return;
+        if (C.tick++ % 20 !== 0) return;
+        var U = _hqUnits();
+        C.jobs.forEach(function (J) {
+            var wn = _HQ_CLIP_WALL_N[J.cb.wall || 'n'] || _HQ_CLIP_WALL_N.n;
+            var half = (wn[2] !== 0) ? (J.shell.d || 0) / 2 : (J.shell.w || 0) / 2;
+            J.frame.updateMatrixWorld(true);
+            var M = J.frame.matrixWorld, NM = new THREE.Matrix3().getNormalMatrix(M);
+            /* planes[0] keeps what is past the line: beyond the wall (in the room), or further in than `reach` metres from it (beside the room) */
+            var at = J.own ? (half - J.cb.reach) : half, sgn = J.own ? -1 : 1;
+            var pW = new THREE.Vector3(wn[0] * at * U, 0, wn[2] * at * U).applyMatrix4(M), nW = new THREE.Vector3(wn[0] * sgn, 0, wn[2] * sgn).applyMatrix3(NM).normalize();
+            J.planes[0].setFromNormalAndCoplanarPoint(nW, pW);
+            var pY = new THREE.Vector3(0, (J.cb.above || 4) * U, 0).applyMatrix4(M), nY = new THREE.Vector3(0, -1, 0).applyMatrix3(NM).normalize();
+            J.planes[1].setFromNormalAndCoplanarPoint(nY, pY);   // kept: below `above`
+            var planes = J.planes;
+            J.root.updateMatrixWorld(false);
+            J.root.traverse(function (o) {
                 if (!o.material || o._ew_cbOrig) return;
-                if (o.material._ew_cb) { if (!o.material.clippingPlanes) { o.material.clippingPlanes = planes; o.material.clipIntersection = true; o.material.needsUpdate = true; } return; }
-                var cp = function (m) { var c = m.clone(); c._ew_cb = true; c.clippingPlanes = planes; c.clipIntersection = true; return c; };
+                if (o.material._ew_cb) return;   // a batch built from a copy: it carries the planes already
+                if (!_hqCbReaches(o, planes)) return;
                 o._ew_cbOrig = o.material;
-                o.material = Array.isArray(o.material) ? o.material.map(cp) : cp(o.material);
+                o.material = Array.isArray(o.material) ? o.material.map(function (m) { return _hqCbCopy(m, planes); }) : _hqCbCopy(o.material, planes);
+                C.objs.push(o);
             });
         });
         if (renderer) renderer.localClippingEnabled = true;
-        H._cbKey = key; H.dirty = true;
+        H.dirty = true;
     }
     function _hqPdBuild(room) {
         if (!room || !room.pd || !room.pdDraw) return;
