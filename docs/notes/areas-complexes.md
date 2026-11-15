@@ -3290,6 +3290,11 @@ deep), Police (3 x 5: desk, cells with drawn bars), Time Bureau (3 x 4), Militar
   number_dispenser, now_serving_sign, brochure_rack, form_counter, ballot_box. Reused: high_bay_lamp, ships_bell, radio_console,
   evidence_board, map_table, marble_bust, wingback_chair, painting_portrait, crystal_chandelier, brass_orrery, banker_lamp. Originals,
   concepts, fronts sheet, plan sheet: project files disaster-city-civic/interiors2/.
+- **MONDO'S FRONTS-SHEET REVIEW (2026-11-15 16:09)**: brochure_rack ("messed up": clear acrylic came out white glitch), city_scale_model
+  (the glass case came out a solid box) and astronomical_clock (its concept bent the frame) regenerated: no clear glass / plastic in a Meshy
+  prompt, wall pieces get a straight-on elevation suffix (items.json `suf`). brochure_rack is grey steel now, city_scale_model open top on
+  a turned-leg table, the clock a flat square panel. Old versions kept in project files interiors2/meshy/v1/. "do we not already have
+  computers and monitors or tvs?" -> Records shows the existing `crt_terminal` in place of microfiche_reader (row kept, unplaced).
 
 ## DISASTER CITY, THE INTERIOR POLISH (2026-11-15, mondo: "rugs/carpets flickering, desks clipping through chairs, zombie floating in the air ... do another polish pass on disaster city"; 09:07 "chairs and a chandelier and stuff floating in the air ... a building by the recording studio")
 One pass over every walk-in (99 hollow texbuildings) of `site_prebuilt_downtown_streets`, whichever district wrote it. It lives in the BAKE, so a later district edit cannot bring a fault back:
