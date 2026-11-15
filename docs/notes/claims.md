@@ -22,7 +22,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | The Beach (`site_prebuilt_bermuda_beach`, bake-beach.js; plan 4: the Shore, the Harbour, the Ocean, the Bermuda Triangle) | second | 2026-11-15 | first delivery merged; not seen on screen, waits mondo's look |
 | Disaster City (all districts, heights, residents, traffic) | owner | 2026-11-13 | several districts wait mondo's answers |
 | DOOR HQ (rooms, elevator, Main Hall) | owner | 2026-11-15 | elevator redesign waits mondo's OK |
-| First quest cutscenes + cutscene editor | owner | 2026-11-13 | notes fixes, ride down and foyer in progress |
+| First quest cutscenes + cutscene editor | owner | 2026-11-13 | shipped PR #1518 (15 notes, shaft ride, bigger foyer); unproven: the lift-door opening shot, the walk into the foyer from the hall, Locke's walk-off; mondo may hand it to the second side (prompt 1 of docs/plans/HANDOFF_PROMPTS.md) |
 | Disaster City frame rate (the Main Hall crash stays with the owner side) | second | 2026-11-15 | handed over by mondo's prompt; 36.9 FPS at 3,264 meshes after THE SPLIT STACK (#1508); THE KEPT LIGHT LIST waits his F3; notes rendering-loading-perf.md, newest section first from "THE KEPT LIGHT LIST" |
 | Everything else | free | | ask mondo which side takes it |
 
