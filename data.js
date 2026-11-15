@@ -28241,6 +28241,7 @@ const STORY_QUESTS = [
         id: 'orientation', v: 1,
         title: 'ORIENTATION',   // mondo's to name
         intro: 'orientation_intro',   // scene A, the opening: played before the first stage (map.js _introGo), replayed from the quest card
+        introThen: ['orientation_ride', 'orientation_arrive'],   // the rest of the opening, in order (map.js _introStart chains them; THE CUTSCENE EDITOR lists them)
         officerUp: true,   // mondo 2026-11-13: the recruit is always on their feet for this quest's scenes and walks (revived after the fight)
         summary: 'Walk to the Training Room and finish the first two tapes.',
         start: 'hq',
@@ -28557,7 +28558,212 @@ STORY_CUTSCENES.orientation_office = {
         { dur: 2.4, hold: true, fade: 0.4, shot: { cam: [0.5, 1.45, 0.7, 64, -2, 40] }, act: [{ at: 1.5, do: 'hide', who: 'locke' }] },
     ],
 };
-function storyCutscene(id) { return (id && STORY_CUTSCENES[id]) ? STORY_CUTSCENES[id] : null; }
+function storyCutsceneShipped(id) { return (id && STORY_CUTSCENES[id]) ? STORY_CUTSCENES[id] : null; }
+/* ══ THE CUTSCENE EDITOR (2026-11-15, mondo: "a cutscene editor so I can change the dialogue easily and give notes and export
+   it all for you to work with and implement"). HIS edits live in ONE small localStorage record (never IndexedDB), on his
+   device only; nothing on `state`, nothing relayed (story scenes are VS-CPU: RULE #2 has nothing to mirror).
+     record = { v, bar, scenes: { <scene id>: { lines: { <beat>: { was, text, cut } }, adds: { <beat>: { was, list: [{ who, text }] } },
+                                               notes: { <beat>: [{ tag, text }] }, note } } }
+   `was` = the shipped words the edit was made against: an edit whose `was` no longer matches the row is stale (the line was
+   baked or rewritten) and is dropped, so a baked export clears itself.
+   THE LIVE LAYER: storyCutscene(id) hands every host the row WITH his words (a changed line, a cut line, a line added after
+   a shot on that shot's last frame); the shipped row is storyCutsceneShipped(id). A beat of the edited row carries `_src`
+   (its beat in the shipped row) and `_add` (which added line). Camera / acting / timing notes change nothing: they are for
+   the export (`sceneEdExport`, baked by bake-cutscenes.js). The page = map.js EWSceneEd; the notes bar in a playing scene
+   = three-camera.js EWScene. ══ */
+const SCENE_ED_KEY = 'ew_scene_editor_v1';
+const SCENE_ED_TAGS = ['CAMERA', 'ACTING', 'TIMING', 'DIALOGUE', 'OTHER'];
+let _sceneEd = null, _sceneEdRev = 0; const _sceneEdRows = {};
+function sceneEdStore() {
+    if (_sceneEd) return _sceneEd;
+    let o = null;
+    try { if (typeof localStorage !== 'undefined') { const raw = localStorage.getItem(SCENE_ED_KEY); if (raw) o = JSON.parse(raw); } } catch (e) { o = null; }
+    if (!o || typeof o !== 'object' || !o.scenes || typeof o.scenes !== 'object') o = { v: 1, scenes: {} };
+    _sceneEd = o;
+    /* the stale edits go (a line that was baked or rewritten since) */
+    Object.keys(o.scenes).forEach(id => {
+        const row = storyCutsceneShipped(id), E = o.scenes[id];
+        if (!row || !E || typeof E !== 'object') { delete o.scenes[id]; return; }
+        E.lines = E.lines || {}; E.adds = E.adds || {}; E.notes = E.notes || {};
+        Object.keys(E.lines).forEach(i => { const b = row.beats[i], L = E.lines[i]; if (!b || !b.say || !L || b.say.text !== L.was || (!L.cut && L.text === L.was)) delete E.lines[i]; });
+        Object.keys(E.adds).forEach(i => { const b = row.beats[i], A = E.adds[i]; if (!b || !A || !Array.isArray(A.list) || !A.list.length || ((b.say && b.say.text) || '') !== (A.was || '')) delete E.adds[i]; });
+        Object.keys(E.notes).forEach(i => { if (!row.beats[i] || !Array.isArray(E.notes[i]) || !E.notes[i].length) delete E.notes[i]; });
+    });
+    return o;
+}
+function sceneEdSave() {
+    _sceneEdRev++;
+    try { if (typeof localStorage !== 'undefined') localStorage.setItem(SCENE_ED_KEY, JSON.stringify(sceneEdStore())); return true; } catch (e) { console.warn('[SCENE ED] not saved', e); return false; }
+}
+function sceneEdScene(id, make) {
+    const S = sceneEdStore(); let E = S.scenes[id];
+    if (!E && make && storyCutsceneShipped(id)) E = S.scenes[id] = { lines: {}, adds: {}, notes: {}, note: '' };
+    return E || null;
+}
+function sceneEdBarOn() { return sceneEdStore().bar === true; }
+function sceneEdBarSet(on) { sceneEdStore().bar = !!on; sceneEdSave(); }
+/* a line: `text` back to the shipped words (and not cut) drops the edit */
+function sceneEdLineSet(id, i, text, cut) {
+    const row = storyCutsceneShipped(id), b = row && row.beats[i]; if (!b || !b.say) return false;
+    const E = sceneEdScene(id, true), was = b.say.text;
+    text = String(text == null ? was : text).replace(/\s*\n\s*/g, ' ');
+    if (b.choice) cut = false;   // the question of a choice is never cut
+    if (!cut && (text === was || !text.trim())) delete E.lines[i]; else E.lines[i] = { was: was, text: text.trim() ? text : was, cut: !!cut };
+    return sceneEdSave();
+}
+function sceneEdAddSet(id, i, n, who, text) {   // n past the list = a new line after beat i; text null = remove line n
+    const row = storyCutsceneShipped(id), b = row && row.beats[i]; if (!b) return -1;
+    const E = sceneEdScene(id, true);
+    let A = E.adds[i]; if (!A) A = E.adds[i] = { was: (b.say && b.say.text) || '', list: [] };
+    if (text == null) { A.list.splice(n, 1); } else {
+        const o = { who: String(who || '').trim().toUpperCase(), text: String(text).replace(/\s*\n\s*/g, ' ') };
+        if (n == null || n >= A.list.length) { A.list.push(o); n = A.list.length - 1; } else A.list[n] = o;
+    }
+    if (!A.list.length) delete E.adds[i];
+    sceneEdSave(); return n;
+}
+function sceneEdNoteSet(id, i, n, tag, text) {   // i = a beat, or 'scene' for the whole scene; n past the list = a new note; text null = remove
+    if (!storyCutsceneShipped(id)) return -1;
+    const E = sceneEdScene(id, true);
+    if (i === 'scene') { E.note = String(text || ''); sceneEdSave(); return 0; }
+    let L = E.notes[i]; if (!L) L = E.notes[i] = [];
+    if (text == null) L.splice(n, 1); else {
+        const o = { tag: SCENE_ED_TAGS.indexOf(tag) >= 0 ? tag : 'OTHER', text: String(text) };
+        if (n == null || n >= L.length) { L.push(o); n = L.length - 1; } else L[n] = o;
+    }
+    if (!L.length) delete E.notes[i];
+    sceneEdSave(); return n;
+}
+function sceneEdCounts(id) {
+    const out = { lines: 0, notes: 0 };
+    const S = sceneEdStore();
+    (id ? [id] : Object.keys(S.scenes)).forEach(k => {
+        const E = S.scenes[k]; if (!E) return;
+        out.lines += Object.keys(E.lines).length; Object.keys(E.adds).forEach(i => { out.lines += E.adds[i].list.filter(a => a.text && a.text.trim()).length; });
+        Object.keys(E.notes).forEach(i => { out.notes += E.notes[i].filter(n => n.text && n.text.trim()).length; });
+        if (E.note && E.note.trim()) out.notes++;
+    });
+    return out;
+}
+function sceneEdClear(id, what) {   // what: 'notes' | 'lines' | 'all'
+    const E = sceneEdScene(id, false); if (!E) return false;
+    if (what === 'notes' || what === 'all') { E.notes = {}; E.note = ''; }
+    if (what === 'lines' || what === 'all') { E.lines = {}; E.adds = {}; }
+    return sceneEdSave();
+}
+/* what a shot is, read off its numbers (the row carries no description): the lens, the move, what happens in it */
+function sceneEdShotInfo(b) {
+    const sh = (b && b.shot) || null, bits = [];
+    if (b && b.dur > 0) bits.push((+b.dur).toFixed(1) + ' s');
+    if (sh) {
+        const fov = Array.isArray(sh.cam) ? sh.cam[5] : sh.fov;
+        bits.push(fov >= 42 ? 'WIDE' : fov >= 30 ? 'MEDIUM' : fov > 0 ? 'CLOSE' : 'SHOT');
+        bits.push(sh.to ? 'THE CAMERA MOVES' : 'STILL CAMERA');
+        if (sh.eye && sh.eye.who) bits.push('ON ' + String(sh.eye.who).toUpperCase() + "'S FACE");
+    } else bits.push('SAME CAMERA AS THE SHOT BEFORE');
+    const acts = [];
+    ((b && b.act) || []).forEach(a => { if (!a || !a.do || a.do === 'place' || a.do === 'face') return; const t = String(a.do).toUpperCase() + (a.who ? ' ' + String(a.who).toUpperCase() : ''); if (acts.indexOf(t) < 0) acts.push(t); });
+    if (acts.length) bits.push(acts.slice(0, 4).join(', '));
+    if (b && b.choice) bits.push('THE CHOICE BOX');
+    if (b && b.fade != null && b.fade !== false) bits.push('FADES TO BLACK');
+    return bits.join(' · ');
+}
+function _sceneEdEndShot(sh) {   // the last frame of a shot, held still (an added line plays on it)
+    if (!sh) return null;
+    const o = {}; Object.keys(sh).forEach(k => { if (k !== 'to' && k.charAt(0) !== '_') o[k] = sh[k]; });
+    if (sh.to) Object.keys(sh.to).forEach(k => { o[k] = sh.to[k]; });
+    return o;
+}
+function storyCutscene(id) {
+    const row = storyCutsceneShipped(id); if (!row) return null;
+    const E = sceneEdStore().scenes[id];
+    if (!E || (!Object.keys(E.lines).length && !Object.keys(E.adds).length)) return row;
+    const c = _sceneEdRows[id]; if (c && c.rev === _sceneEdRev) return c.row;
+    const beats = []; let carry = null;   // the shot of a dropped beat, for a next beat that has none of its own
+    row.beats.forEach((b, i) => {
+        let nb = Object.assign({}, b, { _src: i });
+        if (carry && !nb.shot) nb.shot = carry;
+        carry = null;
+        const L = E.lines[i];
+        if (L && b.say && b.say.text === L.was) {
+            if (L.cut) {
+                delete nb.say;
+                const plain = !(b.act && b.act.length) && !b.choice && b.fade == null && !b.slow && !(b.dur > 0);
+                if (plain && i + 1 < row.beats.length) { carry = nb.shot || null; nb = null; }   // only a line: the beat goes
+                else if (!(b.dur > 0)) nb.dur = Math.max(1.2, (b.act || []).reduce((m, a) => Math.max(m, (a.at || 0) + (a.ms || 0) / 1000), 0) + 0.4);
+            } else nb.say = { who: b.say.who, text: L.text };
+        }
+        if (nb) beats.push(nb);
+        const A = E.adds[i];
+        if (A && ((b.say && b.say.text) || '') === (A.was || '')) A.list.forEach((a, n) => {
+            if (!a || !a.text || !a.text.trim()) return;
+            const ab = { _src: i, _add: n, say: { who: a.who || (b.say && b.say.who) || '', text: a.text } };
+            const es = _sceneEdEndShot(b.shot); if (es) ab.shot = es;
+            beats.push(ab);
+        });
+    });
+    const out = Object.assign({}, row, { beats: beats });
+    _sceneEdRows[id] = { rev: _sceneEdRev, row: out };
+    return out;
+}
+/* THE SCENES IN THE ORDER THEY PLAY, and how each one replays (map.js: the journal's own replays) */
+function sceneEdList() {
+    const out = [], seen = {};
+    const put = (id, play, need) => { const r = storyCutsceneShipped(id); if (!r || seen[id]) return; seen[id] = true; out.push({ id: id, title: r.title || id, play: play, need: need || null }); };
+    STORY_QUESTS.forEach(def => {
+        const chain = def.intro ? [def.intro].concat(def.introThen || []) : [];
+        chain.forEach(id => put(id, { kind: 'intro', chain: chain }, { quest: def.id, stage: null }));
+        (def.stages || []).forEach(st => {
+            const F = (st.done && st.done.on === 'fight') ? QUEST_FIGHTS[st.done.fight] : null, need = { quest: def.id, stage: st.id };
+            if (F && F.scene) put(F.scene, { kind: 'fight', fight: st.done.fight, only: null }, need);
+            if (F && F.after) put(F.after, { kind: 'fight', fight: st.done.fight, only: 'after' }, need);
+            if (st.scene) put(st.scene, { kind: 'stage', quest: def.id, stage: st.id }, need);
+        });
+    });
+    Object.keys(STORY_CUTSCENES).forEach(id => put(id, null, null));
+    return out;
+}
+/* THE EXPORT: every changed line (old and new words), every added / cut line, every note with its scene, its shot number
+   and that shot's camera, so the frame he means is exact. `sceneEdExportText` = the same, to read. */
+function sceneEdExport() {
+    const S = sceneEdStore(), scenes = [];
+    sceneEdList().forEach(sc => {
+        const E = S.scenes[sc.id], row = storyCutsceneShipped(sc.id); if (!E || !row) return;
+        const shots = [];
+        row.beats.forEach((b, i) => {
+            const L = E.lines[i], A = E.adds[i], N = (E.notes[i] || []).filter(n => n.text && n.text.trim());
+            if (!L && !A && !N.length) return;
+            const o = { shot: i + 1, beat: i, is: sceneEdShotInfo(b), shipped: b.say ? { who: b.say.who, text: b.say.text } : null, camera: b.shot ? JSON.parse(JSON.stringify(_sceneEdEndShot(Object.assign({}, b.shot, { to: null })))) : null };
+            if (b.shot && b.shot.to) o.cameraTo = JSON.parse(JSON.stringify(b.shot.to));
+            if (L && L.cut) o.cut = true; else if (L) o.line = { was: L.was, now: L.text };
+            if (A) o.add = A.list.filter(a => a.text && a.text.trim()).map(a => ({ who: a.who || (b.say && b.say.who) || '', text: a.text }));
+            if (N.length) o.notes = N.map(n => ({ tag: n.tag, text: n.text.trim() }));
+            shots.push(o);
+        });
+        const note = (E.note || '').trim();
+        if (shots.length || note) scenes.push({ id: sc.id, title: row.title || sc.id, shotsInScene: row.beats.length, note: note || null, shots: shots });
+    });
+    return { kind: 'entropy_wars_cutscene_notes', v: 1, exported: new Date().toISOString(), counts: sceneEdCounts(), scenes: scenes };
+}
+function sceneEdExportText(X) {
+    X = X || sceneEdExport();
+    const out = ['# ENTROPY WARS · CUTSCENE NOTES', 'Exported ' + X.exported + ' · ' + X.counts.lines + ' line change(s) · ' + X.counts.notes + ' note(s)', ''];
+    if (!X.scenes.length) out.push('Nothing changed and no notes.');
+    X.scenes.forEach(sc => {
+        out.push('## ' + sc.title + '  (' + sc.id + ', ' + sc.shotsInScene + ' shots)');
+        if (sc.note) out.push('WHOLE SCENE: ' + sc.note);
+        sc.shots.forEach(s => {
+            out.push('', '### SHOT ' + s.shot + ' · ' + s.is);
+            if (s.shipped) out.push('Line now in the game: ' + s.shipped.who + ': "' + s.shipped.text + '"');
+            if (s.line) out.push('CHANGE THE LINE TO: "' + s.line.now + '"');
+            if (s.cut) out.push('CUT THIS LINE.');
+            (s.add || []).forEach(a => out.push('ADD A LINE AFTER IT: ' + a.who + ': "' + a.text + '"'));
+            (s.notes || []).forEach(n => out.push('NOTE [' + n.tag + ']: ' + n.text));
+        });
+        out.push('');
+    });
+    return out.join('\n');
+}
 function questDef(id) { return STORY_QUESTS.find(q => q.id === id) || null; }
 function questFightDef(id) { return (id && QUEST_FIGHTS[id]) ? Object.assign({ id }, QUEST_FIGHTS[id]) : null; }
 function questRecord(profile, make) {
@@ -28741,6 +28947,9 @@ function questAllyMembers(F) {
 }
 if (typeof window !== 'undefined') {
     window.STORY_QUESTS = STORY_QUESTS; window.QUEST_FIGHTS = QUEST_FIGHTS; window.STORY_CUTSCENES = STORY_CUTSCENES; window.storyCutscene = storyCutscene;
+    window.storyCutsceneShipped = storyCutsceneShipped; window.SCENE_ED_TAGS = SCENE_ED_TAGS; window.sceneEdStore = sceneEdStore; window.sceneEdScene = sceneEdScene; window.sceneEdBarOn = sceneEdBarOn; window.sceneEdBarSet = sceneEdBarSet;
+    window.sceneEdLineSet = sceneEdLineSet; window.sceneEdAddSet = sceneEdAddSet; window.sceneEdNoteSet = sceneEdNoteSet; window.sceneEdCounts = sceneEdCounts; window.sceneEdClear = sceneEdClear;
+    window.sceneEdShotInfo = sceneEdShotInfo; window.sceneEdList = sceneEdList; window.sceneEdExport = sceneEdExport; window.sceneEdExportText = sceneEdExportText;
     window.questDef = questDef; window.questFightDef = questFightDef; window.questProgress = questProgress;
     window.questEvent = questEvent; window.questLockedUnits = questLockedUnits; window.questTracker = questTracker;
     window.questJournal = questJournal; window.questFightPending = questFightPending; window.questFightLaunch = questFightLaunch;

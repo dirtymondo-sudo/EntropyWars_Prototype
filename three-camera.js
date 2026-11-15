@@ -2597,9 +2597,74 @@ var EWScene = (function () {
         el.innerHTML = '<div class="ew-scene-bar top"></div><div class="ew-scene-bar bot"></div>'
             + '<div class="ew-scene-sub" id="ewSceneSub"><span class="ew-scene-who" id="ewSceneWho"></span><span class="ew-scene-line" id="ewSceneLine"></span><div class="ew-scene-choice" id="ewSceneChoice"></div></div>'
             + '<div class="ew-scene-skip" id="ewSceneSkip"><i id="ewSceneSkipFill"></i><span>HOLD ESC TO SKIP</span></div>'
-            + '<div class="ew-scene-fade" id="ewSceneFade"></div>';
+            + '<div class="ew-scene-fade" id="ewSceneFade"></div>'
+            + (devOn() ? '<div class="ew-scene-dev" id="ewSceneDev"><button type="button" data-dev="prev">\u25C2 PREV SHOT</button><button type="button" data-dev="next">NEXT SHOT \u25B8</button><button type="button" data-dev="note" class="note">N \u00B7 NOTE</button><span id="ewSceneDevAt"></span></div><div class="ew-scene-note" id="ewSceneNote"></div>' : '');
+        if (devOn()) { try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {} }   // the bar's buttons need the pointer
         void el.offsetWidth; el.classList.add('on');
         return el;
+    }
+    /* ══ THE CUTSCENE EDITOR'S NOTES BAR (2026-11-15, mondo: "a cutscene editor so I can change the dialogue easily and give
+       notes"): with the editor's bar on (data.js sceneEdBarOn) a playing scene carries PREV SHOT / NEXT SHOT / N · NOTE and
+       the shot's number. N freezes the scene's clock on that frame and opens the note box: a tag, the note, and the line
+       itself (a changed line shows at once). Everything is filed by data.js (sceneEdNoteSet / sceneEdLineSet / sceneEdAddSet)
+       against the SHIPPED row's beat (`_src`), so the shot number is the one the export names. ══ */
+    function devOn() { try { return typeof window.sceneEdBarOn === 'function' && window.sceneEdBarOn(); } catch (e) { return false; } }
+    function srcOf(i) { var b = S.row.beats[i]; return (b && b._src != null) ? b._src : i; }
+    function shotsOf() { try { var r = window.storyCutsceneShipped && window.storyCutsceneShipped(S.row.id); if (r) return r.beats.length; } catch (e) {} return S.row.beats.length; }
+    function devLabel() {
+        var el = document.getElementById('ewSceneDevAt'); if (!el || !S) return;
+        var b = S.row.beats[S.i];
+        el.textContent = String(S.row.title || S.row.id || 'SCENE').toUpperCase() + ' \u00B7 SHOT ' + (srcOf(S.i) + 1) + (b && b._add != null ? ' (NEW LINE)' : '') + ' OF ' + shotsOf() + (S.paused ? ' \u00B7 PAUSED' : '');
+    }
+    function lineNow() { var b = S.row.beats[S.i]; if (!b || !b.say) return null; return (S.said && S.said[S.i] != null) ? S.said[S.i] : b.say.text; }
+    function noteOpen() {
+        if (!S || S.warm || S.note || !S.row.id) return;
+        var box = document.getElementById('ewSceneNote'); if (!box) return;
+        var b = S.row.beats[S.i], line = lineNow(), tags = window.SCENE_ED_TAGS || ['CAMERA', 'ACTING', 'TIMING', 'DIALOGUE', 'OTHER'];
+        S.paused = true; S.pauseTick = performance.now(); S.note = { tag: tags[0] };
+        try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+        box.innerHTML = '<div class="ew-scene-note-hd">NOTE ON SHOT ' + (srcOf(S.i) + 1) + (line != null ? ' \u00B7 \u201C' + esc(line) + '\u201D' : '') + '</div>'
+            + '<div class="ew-scene-note-tags">' + tags.map(function (t, k) { return '<button type="button" data-tag="' + t + '" class="' + (k === 0 ? 'sel' : '') + '">' + t + '</button>'; }).join('') + '</div>'
+            + '<textarea id="ewSceneNoteText" rows="3" placeholder="What should change in this shot?"></textarea>'
+            + (line != null ? '<div class="ew-scene-note-hd two">THE LINE (CHANGE IT HERE, IT SHOWS AT ONCE)</div><textarea id="ewSceneNoteLine" rows="2"></textarea>' : '')
+            + '<div class="ew-scene-note-btns"><button type="button" data-note="cancel" class="back">\u25C2 CANCEL</button><button type="button" data-note="save" class="ok">SAVE AND RESUME \u25B8</button></div>';
+        var ln = document.getElementById('ewSceneNoteLine'); if (ln) ln.value = line;
+        box.classList.add('on'); devLabel();
+        var ta = document.getElementById('ewSceneNoteText'); if (ta) { try { ta.focus(); } catch (e) {} }
+    }
+    function noteClose(save) {
+        if (!S || !S.note) return;
+        var box = document.getElementById('ewSceneNote'), ta = document.getElementById('ewSceneNoteText'), ln = document.getElementById('ewSceneNoteLine');
+        if (save) {
+            var b = S.row.beats[S.i], id = S.row.id, src = srcOf(S.i);
+            try {
+                if (ta && ta.value.trim() && window.sceneEdNoteSet) window.sceneEdNoteSet(id, src, null, S.note.tag, ta.value.trim());
+                var was = lineNow();
+                if (ln && b.say && ln.value.trim() && ln.value !== was) {
+                    var txt = ln.value.replace(/\s*\n\s*/g, ' ');
+                    if (b._add != null) window.sceneEdAddSet(id, src, b._add, b.say.who, txt); else window.sceneEdLineSet(id, src, txt, false);
+                    S.said = S.said || {}; S.said[S.i] = txt; sayShow({ who: b.say.who, text: txt });
+                }
+            } catch (e) { console.warn('[SCENE] the note was not filed', e); }
+        }
+        if (box) { box.classList.remove('on'); box.innerHTML = ''; }
+        S.note = null; S.paused = false; devLabel();
+    }
+    function devStep(d) {
+        if (!S || S.warm || S.note) return;
+        var j = Math.max(0, Math.min(S.row.beats.length - 1, S.i + d)); if (j === S.i && d > 0) return;
+        S.now = performance.now(); var fd = document.getElementById('ewSceneFade'); if (fd) fd.classList.remove('on');
+        beatStart(j);
+    }
+    function devClick(e) {
+        var t = e.target && e.target.closest ? e.target : null; if (!t) return false;
+        if (!t.closest('#ewSceneDev') && !t.closest('#ewSceneNote')) return false;
+        if (e.type !== 'click') return true;
+        var bd = t.closest('[data-dev]'), bn = t.closest('[data-note]'), bt = t.closest('[data-tag]');
+        if (bd) { var k = bd.getAttribute('data-dev'); if (k === 'note') noteOpen(); else devStep(k === 'prev' ? -1 : 1); }
+        else if (bn) noteClose(bn.getAttribute('data-note') === 'save');
+        else if (bt && S.note) { S.note.tag = bt.getAttribute('data-tag'); var all = document.querySelectorAll('#ewSceneNote [data-tag]'); for (var i = 0; i < all.length; i++) all[i].classList.toggle('sel', all[i] === bt); }
+        return true;
     }
     function sayShow(say) {
         var box = document.getElementById('ewSceneSub'); if (!box) return;
@@ -2635,7 +2700,8 @@ var EWScene = (function () {
         sh._F = sh.from != null ? resolve(S.ctx, sh.from) : null; if (S.to) S.to._F = sh._F;
         S.P0 = sh.look != null ? resolve(S.ctx, sh.look) : null;
         S.P1 = (S.to && S.to.look != null) ? resolve(S.ctx, S.to.look) : S.P0;
-        sayShow(b.say);
+        sayShow((b.say && S.said && S.said[i] != null) ? { who: b.say.who, text: S.said[i] } : b.say);
+        devLabel();
         if (S.choice) choiceShow(b.choice, 0);
         try { if (S.ctx.beat) S.ctx.beat(b, i); } catch (e) {}
     }
@@ -2643,6 +2709,7 @@ var EWScene = (function () {
         if (!S) return;
         S.raf = window.requestAnimationFrame(tick);
         S.now = performance.now();
+        if (S.paused) { S.t0 += S.now - S.pauseTick; S.pauseTick = S.now; }   // THE NOTE BOX is open: the scene's clock stands still
         /* THE WARM-UP (2026-11-13, mondo: "it was a little laggy, especially the first part"): a scene opens on black with
            its first frame already being drawn under it, and only starts its clock once the frames run smooth (12 in a row
            under 45 ms, 0.4 s at least, 3 s at most): the board's first hitches (shaders, models, the HUD) pass unseen */
@@ -2692,14 +2759,20 @@ var EWScene = (function () {
                     beatStart(ci); return;
                 }
             } }
-        if (!S.warm && T >= S.dur && !S.choice) { if (S.i + 1 < S.row.beats.length) beatStart(S.i + 1); else end(false); }
+        if (!S.warm && T >= S.dur && !S.choice && !S.paused) { if (S.i + 1 < S.row.beats.length) beatStart(S.i + 1); else end(false); }   // (a paused scene never cuts on: a slow frame could carry it past its time before the note box froze the clock)
     }
     function hurry() { if (!S || S.warm || S.choice) return; if ((S.now - S.t0) / 1000 < HURRY_MIN) return; var b = S.row.beats[S.i]; if (b.hold) return; S.dur = Math.min(S.dur, (S.now - S.t0) / 1000); }
     function onKey(e) {
         if (!S) return;
         var k = (e.key || '').toLowerCase();
         if (e.ctrlKey || e.metaKey || /^f\d+$/.test(k)) return;
+        /* THE NOTE BOX is being typed in: the keys are its own (ESC cancels, SHIFT+ENTER saves); nothing reaches the game */
+        if (S.note) { e.stopImmediatePropagation(); if (e.type === 'keydown' && k === 'escape') { e.preventDefault(); noteClose(false); } else if (e.type === 'keydown' && k === 'enter' && e.shiftKey) { e.preventDefault(); noteClose(true); } return; }
         e.stopImmediatePropagation(); e.preventDefault();
+        if (e.type === 'keydown' && !e.repeat && !S.warm && document.getElementById('ewSceneDev')) {
+            if (k === 'n') { noteOpen(); return; }
+            if (!S.choice && (k === 'arrowleft' || k === 'arrowright')) { devStep(k === 'arrowleft' ? -1 : 1); return; }
+        }
         if (e.type === 'keydown') {
             if (S.choice && !S.warm) {
                 var n = S.row.beats[S.i].choice.options.length;
@@ -2714,7 +2787,10 @@ var EWScene = (function () {
         } else if (k === 'escape') { S.skipAt = 0; var s2 = document.getElementById('ewSceneSkip'); if (s2) s2.classList.remove('on'); var fl = document.getElementById('ewSceneSkipFill'); if (fl) fl.style.width = '0'; }
     }
     function onClick(e) {
-        if (!S) return; e.stopImmediatePropagation(); if (e.cancelable) e.preventDefault();
+        if (!S) return;
+        if (devClick(e)) { e.stopImmediatePropagation(); return; }   // the notes bar and the note box take their own clicks
+        if (S.note) { e.stopImmediatePropagation(); return; }
+        e.stopImmediatePropagation(); if (e.cancelable) e.preventDefault();
         if (S.choice) { var cb = (e.type === 'click' && e.target && e.target.closest) ? e.target.closest('#ewSceneChoice button') : null; if (cb && !S.warm) pick(+cb.getAttribute('data-i')); return; }
         if (e.type === 'mousedown' && e.button === 0) hurry();
     }
@@ -2738,9 +2814,19 @@ var EWScene = (function () {
         S = { row: row, ctx: ctx, onEnd: onEnd || null, i: 0, now: performance.now(), t0: 0, dur: 1, fired: {}, skipAt: 0, raf: 0, lastShot: null, picked: {}, choice: null };
         if (row.warm !== false) { S.warm = performance.now(); S.warmOk = 0; var fd = document.getElementById('ewSceneFade'); if (fd) { fd.style.transition = 'none'; fd.classList.add('on'); void fd.offsetWidth; fd.style.transition = ''; } }
         beatStart(0);
+        /* PLAY FROM HERE (the cutscene editor): the scene opens on that shot, every action before it done at once; a scene
+           of the same chain that plays before it (the opening's drop-off before the ride) is skipped the way ESC skips it */
+        var F = startAt;
+        if (F && performance.now() - F.at > 120000) F = startAt = null;
+        if (F && F.id === row.id) {
+            startAt = null;
+            var j = -1; for (var q = 0; q < row.beats.length; q++) { var bq = row.beats[q]; if (((bq._src != null) ? bq._src : q) >= F.beat) { j = q; break; } }
+            if (j > 0) { for (var p = 0; p < j; p++) (row.beats[p].act || []).forEach(function (a) { try { ctx.act(a); } catch (e) {} }); beatStart(j); }
+        } else if (F && F.chain && F.chain.indexOf(row.id) >= 0) { S.skipAt = performance.now() - SKIP_HOLD_MS - 5; }
         S.raf = window.requestAnimationFrame(tick);
         return true;
     }
+    var startAt = null;
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('keyup', onKey, true);
     ['mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu', 'pointerdown', 'pointerup'].forEach(function (t) { window.addEventListener(t, onClick, true); });
@@ -2750,7 +2836,9 @@ var EWScene = (function () {
         next: function () { if (!S) return; S.now = performance.now(); if (S.i + 1 < S.row.beats.length) beatStart(S.i + 1); else end(false); },   // dev: step a beat
         get on() { return !!S; },
         pick: function (i) { pick(i | 0); },   // dev: answer the choice on screen
-        state: function () { return S ? { id: S.row.id || '', beat: S.i, of: S.row.beats.length, t: (performance.now() - S.t0) / 1000, dur: S.dur, choice: !!S.choice } : null; }
+        from: function (id, beat, chain) { startAt = id ? { id: id, beat: beat | 0, chain: chain || null, at: performance.now() } : null; },   // the editor's PLAY FROM HERE (the next play of that scene)
+        note: function () { noteOpen(); }, noteClose: function (save) { noteClose(!!save); }, step: function (d) { devStep(d < 0 ? -1 : 1); },
+        state: function () { return S ? { id: S.row.id || '', beat: S.i, shot: srcOf(S.i) + 1, of: S.row.beats.length, t: ((S.paused ? S.pauseTick : performance.now()) - S.t0) / 1000, dur: S.dur, choice: !!S.choice, paused: !!S.paused, note: !!S.note } : null; }
     };
 })();
 if (typeof window !== 'undefined') window.EWScene = EWScene;

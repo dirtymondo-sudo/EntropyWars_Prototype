@@ -1021,3 +1021,30 @@ mondo: "there needs to be a save feature so that i am not always loading in the 
 - **A fight**: nothing is filed during one; a reload mid-fight continues in the room at the last filed spot.
 - Off: `?noresume` / `window.EW_HQ_NO_RESUME` (the record is still filed). Console: `_hqSaveState()`.
 - No new UI. Not built: a manual Save / Load page in the pause menu (needs his OK on a mock-up first).
+
+### THE CUTSCENE EDITOR (2026-11-15, mondo: "a cutscene editor so I can change the dialogue easily and give notes and export it all for you to work with and implement")
+His tool for the story cutscenes. Plan + mock-up approved 11-15 (project files `cutscene-editor/`).
+- **Where**: Settings > Developer > Open Cutscene Editor, and an EDIT button beside every REPLAY on the pause menu's QUESTS page
+  (`data-scene-ed="<scene id>"`). `window.EWSceneEd.open(sceneId)`.
+- **The record** (data.js `sceneEd*`): ONE localStorage key `ew_scene_editor_v1` (never IndexedDB), his device only:
+  `{ bar, scenes: { <id>: { lines: { <beat>: { was, text, cut } }, adds: { <beat>: { was, list: [{ who, text }] } }, notes: { <beat>: [{ tag, text }] }, note } } }`.
+  `was` = the shipped words an edit was made against; an edit whose `was` no longer matches the row is dropped on load, so a
+  baked export clears itself. Tags: `SCENE_ED_TAGS` (CAMERA, ACTING, TIMING, DIALOGUE, OTHER).
+- **The live layer**: `storyCutscene(id)` (what every host calls) returns the row WITH his words: a changed line, a cut line
+  (a beat that was only that line goes; one with actions keeps its time), a line added after a shot (it plays on that shot's
+  last frame, `_sceneEdEndShot`). The untouched row = `storyCutsceneShipped(id)`. Edited beats carry `_src` (the shipped beat)
+  and `_add`. Camera / acting / timing notes change nothing in the game.
+- **The page** (map.js `_sed*`, `#ewSceneEd`, styles-cinematic.css): scenes in play order (`sceneEdList()`: the quest's `intro` +
+  `introThen`, then each stage's fight `scene` / `after` / own `scene`), every shot with what it is (`sceneEdShotInfo`, read off
+  the numbers), the line as a text box, + NOTE, + ADD A LINE AFTER, CUT / RESTORE, SPLIT AT THE CURSOR, RESET LINE, a note for
+  the whole scene, CLEAR (two clicks). Typing never redraws the page. PLAY THIS SCENE / PLAY FROM HERE run the journal's own
+  replays (`_introReplay`, `_questStageReplay`, `_questFightGo`) and only work in the building on a finished part of the quest.
+- **In a playing scene** (three-camera.js EWScene, bar on = `sceneEdBarOn()`, first opened editor turns it on): `#ewSceneDev` =
+  PREV SHOT / NEXT SHOT (also the arrow keys) / N · NOTE and the shot number. N freezes the SCENE'S CLOCK (the camera and
+  the cues; bodies already walking finish their step) and opens the note box: tag, note, and the line (saved = on screen at
+  once). ESC cancels, SHIFT+ENTER saves. `EWScene.from(id, beat, chain)` = the next play of that scene opens on that shot (every
+  action before it done at once; an earlier scene of the same chain is skipped). Dev: `EWScene.note()`, `.step(d)`, `state().shot`.
+- **The export** (`sceneEdExport()` / `sceneEdExportText()`): `Entropy_Wars_Cutscene_Notes_<stamp>.json` + the same as text
+  (copied): per scene, per shot: shot number, what it is, the shipped line, the new words / cut / added lines, the notes, and
+  the shot's camera. **Bake**: `node bake-cutscenes.js <export.json> [--dry-run]` writes the changed lines into data.js word
+  for word and prints the cuts, the added lines and the notes as the to-do list (those are done by hand).
