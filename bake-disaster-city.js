@@ -117,6 +117,12 @@ PLAN.plots.forEach(p => {
    tool's dice for the back-lot buildings and the boundaries are thrown on THESE, on the home layout, exactly as before the move, so every
    fence, hedge and back-lot building inside a district stands as it was built (THE INFILL, THE BOUNDARIES). */
 PLAN.plots.forEach(p => { p.cellsH = p.cells.slice(); });
+/* THE ROADS JOIN AGAIN (2026-11-15, mondo: "delete some buildings ... get rid of the most useless ones to connect the roads again"): move.js
+   `gone` = a plan building taken out so a street can run where it stood. Its squares are open ground again (in the city as it stands; the
+   home dice still see it, so no fence or back lot round it is re-rolled). A district file asks `ctx.gone[id]` before it dresses a building. */
+const GONE = {}; (MOVE.gone || []).forEach(g => { const p = plotOf[g.id.slice(0, 6)], b = p && p.buildings.find(q => q.id === g.id); if (!b) throw new Error('THE ROADS: no building ' + g.id + ' to take out');
+    const rows = p.cells.map(r => r.split('')); for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) rows[y][x] = '#'; p.cells = rows.map(r => r.join(''));
+    GONE[g.id] = true; });
 /* ── THE DISTRICT MOVE, THE SEAMS (move.js `seams`): the plan's gaps were cut for the old neighbours. Where two districts now meet, a gap that
    faces a wall is opened on the other side (a walk), a street that faces a walk ends in a paved head (roadEnd), a street that faces a street's
    end is run on (road), and a gap nothing can face is closed. No building's square is ever cut: the tool throws if a seam would. ── */
@@ -129,6 +135,8 @@ PLAN.plots.forEach(p => { p.cellsH = p.cells.slice(); });
       else if (sm.op === 'roadEnd') { for (let t = 0; t < 3; t++) for (let a = 4; a <= 7; a++) { const c = sq(s, a, t); if (get(p, c) === 'R') set(p, c, 'P'); } p.ports[s] = 'walk'; }
       else if (sm.op === 'road') { for (let t = 0; t < 11; t++) { if ([4, 5, 6, 7].every(a => get(p, sq(s, a, t)) === 'R')) break;
               [4, 5, 6, 7].forEach(a => cut(p, sq(s, a, t), 'R', 'road')); [3, 8].forEach(a => { const c = sq(s, a, t); if (get(p, c) !== 'R' && get(p, c) !== 'P') cut(p, c, 'P', 'kerb'); }); } p.ports[s] = 'road'; }
+      else if (sm.op === 'rect') { for (let y = sm.y0; y <= sm.y1; y++) for (let x = sm.x0; x <= sm.x1; x++) cut(p, [x, y], sm.ch, 'rect'); }   // THE ROADS JOIN AGAIN: squares of the plot (x0..x1, y0..y1) made carriageway 'R' or pavement 'P'
+      else if (sm.op === 'port') { p.ports[s] = sm.port; }
       else if (sm.op === 'close') { for (let a = 0; a < 12; a++) { const c = sq(s, a, 0); if (get(p, c) !== '#' && get(p, c) !== 'I' && get(p, c) !== 'D') set(p, c, '#'); } p.ports[s] = ''; }
       else throw new Error('THE DISTRICT MOVE: unknown seam op ' + sm.op); });
   /* the plan's ground connections, again: one per pair of facing gaps (a road only where both sides are a street); the old row is kept where the pair still meets (its gate) */
@@ -240,6 +248,11 @@ PLAN.plots.forEach(p => {
         bInfo.push(info);
     });
 });
+/* THE ROADS JOIN AGAIN: a building taken out (move.js `gone`) was thrown above like the others, so every other building keeps its dice and
+   its seed; now its row is an empty place-holder (dropped when the rows are written), and the plan forgets it */
+Object.keys(GONE).forEach(id => { const i = features.findIndex(f => f.id === 'dc:' + id); if (i >= 0) { features[i] = { k: 'gone', id: 'dc:gone:' + id }; count.texb--; }
+    const j = bInfo.findIndex(q => q.id === id); if (j >= 0) bInfo.splice(j, 1);
+    const p = plotOf[id.slice(0, 6)]; p.buildings = p.buildings.filter(q => q.id !== id); roofB.delete(id); });
 
 /* ── THE INFILL: the band left on a side the plan does not connect (and round the city's edge) is built on — back-lot buildings a square
    or two deep, each its own length, height and front; a park plot's band is planted instead (the trees go in with the dressing) ── */
@@ -265,7 +278,7 @@ const viewOf = sh => { const map = sh ? HOMEAT : AT, key = sh ? 'cellsH' : 'cell
     const wr = (p, lx, ly, ch, k2) => { const r = p[k2][ly].split(''); r[lx] = ch; p[k2][ly] = r.join(''); };
     return { sh, at, used: new Set(), conn: sh ? conn0 : conn, len: features.length, n: 0, i: 0,
         cell: (cx, cy) => at(Math.floor(cx / N), Math.floor(cy / N))[key][cy % N][cx % N],
-        set: (cx, cy, ch, live) => { const p = at(Math.floor(cx / N), Math.floor(cy / N)); if (sh) { wr(p, cx % N, cy % N, ch, 'cellsH'); if (live) wr(p, cx % N, cy % N, ch, 'cells'); } else wr(p, cx % N, cy % N, ch, 'cells'); },
+        set: (cx, cy, ch, live) => { const p = at(Math.floor(cx / N), Math.floor(cy / N)); if (sh) { wr(p, cx % N, cy % N, ch, 'cellsH'); if (live && 'RP'.indexOf(p.cells[cy % N][cx % N]) < 0) wr(p, cx % N, cy % N, ch, 'cells'); }   /* (a square a seam made street stays street) */ else wr(p, cx % N, cy % N, ch, 'cells'); },
         wc: (cx, cy) => { if (!sh) return [cx, cy]; const p = at(Math.floor(cx / N), Math.floor(cy / N)); return [cx + DELTA[p.d][0] * 12, cy + DELTA[p.d][1] * 12]; },   // a square of this view, in the city
         out: (row, p) => { if (sh) shiftRow(row, DELTA[p.d][0] * 42, DELTA[p.d][1] * 42); return row; },
         live: sh ? segKept : () => true, skip: sh ? () => false : (PA, PB, h) => !segNew(PA, PB, h) }; };
@@ -353,7 +366,7 @@ const roadFollow = (cx, cy) => {   // a carriageway square, or the pavement squa
     return false;
 };
 const npcSpots = [];   // THE PEOPLE a district stands in the city (ctx.npcSpots: { x, z, face, race, say }), written to the room's npcSpots
-dcCtx = { marks: [], PLAN, plotOf, features, props, bInfo, lateRows, npcSpots, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf, ROOM, paintCell };
+dcCtx = { gone: GONE, marks: [], PLAN, plotOf, features, props, bInfo, lateRows, npcSpots, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf, ROOM, paintCell };
 dcRun('apply');
 
 /* ── THE DOORS (mondo 11-13 14:10, the decision card: "Replace today's streets with it"): this room IS `site_prebuilt_downtown_streets` now, so every
@@ -491,6 +504,17 @@ for (let L = 0; L <= N; L++) for (const horizontal of [true, false]) for (let k 
 }
 boundaryPass(viewOf(true)); seed = SEEDS.end;
 withDice2(() => boundaryPass(viewOf(false)));
+/* THE ROADS JOIN AGAIN: a fence the home dice stood on a plot line is cut where a street now crosses that line (carriageway on both sides) */
+{ let cutN = 0; const isR = (cx, cy) => inCity(cx, cy) && cellAt(cx, cy) === 'R';
+  for (let i = features.length - 1; i >= 0; i--) { const f = features[i]; if ((f.k !== 'rail' && f.k !== 'wall') || f.ghost || f.x0 == null) continue;
+    const vert = f.x0 === f.x1, hor = f.z0 === f.z1; if (vert === hor) continue;
+    const line = Math.round(((vert ? f.x0 : f.z0) + HALF) / C); if (Math.abs(gx(line) - (vert ? f.x0 : f.z0)) > 0.01) continue;
+    const a = Math.round((Math.min(vert ? f.z0 : f.x0, vert ? f.z1 : f.x1) + HALF) / C), b = Math.round((Math.max(vert ? f.z0 : f.x0, vert ? f.z1 : f.x1) + HALF) / C);
+    const keep = []; let run = null, hit = false;
+    for (let c = a; c < b; c++) { const road = vert ? (isR(line - 1, c) && isR(line, c)) : (isR(c, line - 1) && isR(c, line)); if (road) { hit = true; if (run) { keep.push(run); run = null; } } else { if (!run) run = [c, c + 1]; else run[1] = c + 1; } }
+    if (run) keep.push(run); if (!hit) continue;
+    features.splice(i, 1, ...keep.map(r => Object.assign({}, f, vert ? { z0: gx(r[0]), z1: gx(r[1]) } : { x0: gx(r[0]), x1: gx(r[1]) }))); cutN++; }
+  count.fenceCut = cutN; }
 /* THE DISTRICT MOVE · THE WAYS OUT (move.js `ways`): three streets now end on the city's outer line, each the start of a road to another
    zone that is not built yet (the Vatican, the Desert highway, the mountain road). Each is CLOSED: a fence across the opening on the line
    (iron for the Vatican's gate, a guard rail on the two roads), a ghost wall behind it, and on a road a row of police barricades, one centred
@@ -781,6 +805,8 @@ Object.keys(roadAdj).sort().forEach(a => {
         streets.push({ pts: [pc(s), pc(e)], w: 4 * C });
     });
 });
+/* THE ROADS JOIN AGAIN: the links that are not a straight run through plot centres (move.js `streets`: square lines, a width in squares) */
+(MOVE.streets || []).forEach(q => streets.push({ pts: q.pts.map(c => [gx(c[0]), gx(c[1])]), w: q.w * C }));
 
 /* ── THE TRAFFIC (THE CITY TRAFFIC, mondo 11-13: "traffic lights and intersections planned out for actual traffic and car routes"; his OK on
    the plan 17:33). Sixteen vehicles; every route keeps to the right (lane 3.5 m off the road's middle) and none enters the police streets
@@ -794,30 +820,36 @@ Object.keys(roadAdj).sort().forEach(a => {
    THE SIGNALS: lights at the three big junctions (a mast for every arm), and the T at the police staging blinking red.
    three-renderer.js _hqBuildSignals / _hqBuildBusStops / _hqBuildTraffic read the three rows. ── */
 const ctr = (x, y) => pc({ x, y });
-/* THE DISTRICT MOVE (2026-11-15): the blocks were set down whole, so the old ring (west avenue, north street, east avenue, cross street) is
-   gone: no street of one district meets a street of the next where a building stands in the way, and no building was moved. Four street
-   nets now, joined on foot (the paved heads and the stairs of move.js `seams`), each with its own cars and its own bus:
-   - THE CROSS STREET (the campus gate to the police line) and THE UNIVERSITY AVENUE up from it: cars both ways, BUS LINE 1
-   - THE STRIP (Entertainment: the mountain road's gate down the avenue to the taxi rank, east along the strip): cars, taxis, BUS LINE 2
-   - THE CIVIC STREET (the Vatican gate east) and THE FINANCIAL AVENUE down from it: cars, BUS LINE 3
-   - THE SOUTHSIDE AVENUE (the boxing gym down to the highway gate) and THE SOUTH STREET east under Sports + Culture: cars, BUS LINE 4
-   - THE PORT (Industrial's one street, the coast road's foot to the quay): two trucks
-   None enters Bayside's police streets. Eighteen vehicles (sixteen before the move). */
+/* THE ROADS JOIN AGAIN (2026-11-15, mondo: "why ... would i want roads and a traffic system and cars if you arent gonna connect the roads"):
+   ONE street net again. The district move had left four; two links were cut (move.js: the lane under the Permit offices, the lane past the
+   Boxing gym) and Bayside's streets carry cars now. The streets, by square line (L = gx):
+     THE WEST AVENUE    x L42: the Permit lane (z L47) south over the cross street, the gym lane (x L44, z L96..L101), on to the south street
+     THE CIVIC STREET   z L18: the Vatican gate east to the Financial avenue (x L54), which runs south to the Permit lane
+     THE CROSS STREET   z L90: the campus gate to the coast road, the whole city wide
+     THE SOUTH STREET   z L138: the west avenue (the highway leaves south from here) east under Sports + Culture
+     THE EAST RING      the cross street, the coast road (x L138), the strip (z L42), the Entertainment avenue (x L102): round Bayside
+     THE COAST ROAD     x L138 on south through the port
+   Twenty vehicles. Bus line 1 = the west side (Sports + Culture, Southside, University, Financial, Civic); line 2 = the cross street and
+   the east ring (Hero Plaza, Bayside, Entertainment). */
 const busEnd = ctr(BUS_END.x, BUS_END.y);
+const L = (a, b) => [gx(a), gx(b)];
+const GYM = [L(42, 91.5), L(44, 96), L(44, 101), L(42, 104.5)];   // the gym lane's bend, north to south
+const WEST = [L(4, 18), L(54, 18), L(54, 47), L(42, 47), L(42, 90)].concat(GYM, [L(42, 138), L(92, 138)]);   // the Vatican gate ... the south street's east end
+const back = pts => pts.concat(pts.slice(1, -1).reverse());   // there and back along the same streets (the car turns round at each end)
+const RING = [L(102, 90), L(138, 90), L(138, 42), L(102, 42)];
 const TRAFFIC = [
-    { pts: [ctr(0.3, 7), ctr(7.3, 7)], loop: true, n: 3, speed: 4.2, lane: 3.5, kinds: ['suv', 'taxi', 'cadillac'] },
-    { pts: [ctr(3, 3.85), ctr(3, 7), ctr(0.3, 7), ctr(3, 7)], loop: true, n: 2, speed: 4.0, lane: 3.5, kinds: ['cadillac', 'suv'] },
-    { pts: [ctr(8, -0.3), ctr(8, 3), ctr(10.7, 3), ctr(8, 3)], loop: true, n: 3, speed: 4.0, lane: 3.5, kinds: ['taxi', 'suv', 'taxi'] },
-    { pts: [ctr(-0.3, 1), ctr(4, 1), ctr(4, 3.2), ctr(4, 1)], loop: true, n: 2, speed: 4.0, lane: 3.5, kinds: ['copcar', 'cadillac'] },
-    { pts: [ctr(3, 8.2), ctr(3, 11), ctr(7.2, 11), ctr(3, 11)], loop: true, n: 2, speed: 3.8, lane: 3.5, kinds: ['suv', 'cadillac'] },
-    { pts: [ctr(11, 7.8), ctr(11, 10.6)], loop: true, n: 2, speed: 3.4, lane: 3.5, kinds: ['truck', 'truck'] },
-    { pts: [busEnd, ctr(3, 7), ctr(3, 3.85), ctr(3, 7), ctr(0.3, 7)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
-    { pts: [ctr(8, -0.3), ctr(8, 3), ctr(10.7, 3)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
-    { pts: [ctr(-0.3, 1), ctr(4, 1), ctr(4, 3.2)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
-    { pts: [ctr(3, 8.2), ctr(3, 11), ctr(7.2, 11)], loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
+    { pts: back(WEST), loop: true, n: 4, speed: 4.0, lane: 3.5, kinds: ['suv', 'cadillac', 'copcar', 'suv'] },
+    { pts: back([L(6, 90), L(138, 90)]), loop: true, n: 3, speed: 4.2, lane: 3.5, kinds: ['suv', 'taxi', 'cadillac'] },
+    { pts: RING, loop: true, n: 3, speed: 4.0, lane: 3.5, kinds: ['taxi', 'suv', 'taxi'] },
+    { pts: RING.slice().reverse(), loop: true, n: 3, speed: 4.0, lane: 3.5, kinds: ['cadillac', 'taxi', 'suv'] },
+    { pts: back([L(102, 3), L(102, 90), L(42, 90)].concat(GYM, [L(42, 138)])), loop: true, n: 2, speed: 4.0, lane: 3.5, kinds: ['cadillac', 'suv'] },   // the mountain road's gate to the highway's
+    { pts: back([L(138, 133), L(138, 90), L(6, 90)]), loop: true, n: 2, speed: 3.4, lane: 3.5, kinds: ['truck', 'truck'] },   // the port's trucks, out along the cross street
+    { pts: back(WEST.slice().reverse()), loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
+    { pts: back([L(6, 90), L(102, 90), L(102, 42), L(138, 42)]), loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
+    { pts: back([L(138, 42), L(102, 42), L(102, 90), L(6, 90)]), loop: true, n: 1, speed: 3.8, lane: 3.5, kinds: ['citybus'], bus: true },
 ];
 const sigAt = (x, y, arms, o) => { const c = ctr(x, y); return Object.assign({ x: c[0], z: c[1], arms }, o || {}); };
-const SIGNALS = [sigAt(3, 7, 'NEW', { off: 0 }), sigAt(8, 3, 'NES', { off: 11 }), sigAt(3, 11, 'NES', { off: 24 }), sigAt(8, 7, 'NEW', { flash: true })];   // the university junction, the taxi rank, the highway junction; the T at the police staging blinks
+const SIGNALS = [sigAt(3, 7, 'NESW', { off: 0 }), sigAt(8, 7, 'NEW', { off: 11 }), sigAt(8, 3, 'NES', { off: 24 }), sigAt(3, 11, 'NES', { off: 6 }), sigAt(11, 7, 'NSW', { flash: true })];   // the avenue's crossing, the Bayside gate, the taxi rank, the highway junction; the coast road's T blinks
 /* every mast stands on a walk square at its junction's corner */
 SIGNALS.forEach(g => g.arms.split('').forEach(a => { const k = { S: [1, 1], W: [-1, 1], N: [-1, -1], E: [1, -1] }[a], ch = cellAt(cellOf(g.x + k[0] * 7.9), cellOf(g.z + k[1] * 7.9));
     if (ch !== 'P') console.warn('signal mast off the walk', g.x, g.z, a, ch); }));
@@ -863,6 +895,14 @@ const marksLine = lines.length; lines.push("");   // THE PAINT (2026-11-15): a d
 lines.push("                features: [");
 dcCtx.lamps = lamps;
 dcRun('build');
+/* THE ROADS JOIN AGAIN: Bayside's streets carry the city's cars now (they were the police line, no traffic). A vehicle or a barricade that
+   stood in a driving lane there is drawn in to the kerb square on its own side, parked along the street. Nothing is removed. */
+{ const LANES = [[gx(102), gx(48), gx(102), gx(90)], [gx(96), gx(90), gx(144), gx(90)], [gx(138), gx(48), gx(138), gx(96)]]; let n = 0;
+  props.forEach(q => { if (!/^(car_|fire_truck|item_police_barricade|school_bus)/.test(q.key) || q.y) return;
+      for (const s of LANES) { const vert = s[0] === s[2], u = vert ? q.z : q.x, v = vert ? q.x : q.z, c = vert ? s[0] : s[1];
+          if (u < Math.min(vert ? s[1] : s[0], vert ? s[3] : s[2]) || u > Math.max(vert ? s[1] : s[0], vert ? s[3] : s[2]) || Math.abs(v - c) >= 4.4) continue;
+          const side = v >= c ? 1 : -1, nv = r3(c + side * 5.25); if (vert) { q.x = nv; q.face = side > 0 ? 0 : 180; } else { q.z = nv; q.face = side > 0 ? 270 : 90; } n++; break; } });
+  count.kerbed = n; }
 if (dcCtx.marks.length) lines[marksLine] = "                marks: [" + dcCtx.marks.map(c => "..." + c).join(", ") + "],";
 /* A TREE NEVER LEANS INTO A ROOM (2026-11-13, Southside: street trees seen inside the boxing gym): a tree within 2.5 m of a walk-in building's
    walls (its crown is wider than the gap and shows indoors) MOVES to the nearest free yard square that is 2.5 m clear of every walk-in wall.
@@ -1055,7 +1095,7 @@ lines[lvLine] = "                slope: { cells: { res: " + C + ", x0: " + gx(0)
   if (UD) { count.urbanDecay = UD({ features, props, dOf });
     const left = []; features.forEach(f => { ['key', 'keyIn', 'floorIn'].forEach(k => { if (UD.banned.indexOf(f[k]) >= 0) left.push(f[k]); }); (f.parts || []).forEach(p => ['key', 'keyTop', 'keyEnd', 'keyBase'].forEach(k => { if (UD.banned.indexOf(p[k]) >= 0) left.push(p[k]); })); });
     if (left.length) throw new Error('THE URBAN DECAY PASS: ' + left.length + ' ruled-out sheet(s) left: ' + JSON.stringify(left.slice(0, 6))); } }
-features.forEach(f => lines.push("                    " + J(f) + ","));
+features.forEach(f => { if (f.k !== 'gone') lines.push("                    " + J(f) + ","); });
 lines.push("                ],");
 lines.push("                /* the cars: the ring (west avenue, the north street, the east avenue, the cross street), never the response streets round the mall */");
 lines.push("                traffic: " + J(TRAFFIC) + ",");
@@ -1083,6 +1123,15 @@ lines.push("                  desc: 'A pumping station at the end of an alley, i
 lines.push("            ],");
 lines.push("            counters: [],");
 lines.push("            props: [");
+/* THE ROADS JOIN AGAIN: nothing stands in a driving lane. A piece on the ground within 3.2 m of a traffic line's middle (a bin or a shelter
+   on a pavement band that crosses a street, a car parked askew) is drawn out sideways to the kerb walk, 7.9 m from the middle. Never dropped. */
+const clearLanes = () => { let n = 0; props.forEach(q => { if (q.y || q.floor || /drain|manhole|street_signal|bus_stop_sign/.test(q.key)) return;
+    for (const t of TRAFFIC) for (let k = 0; k + 1 < t.pts.length; k++) { const a = t.pts[k], b = t.pts[k + 1], dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1, u = Math.max(0, Math.min(1, ((q.x - a[0]) * dx + (q.z - a[1]) * dz) / L / L));
+        const ox = q.x - a[0] - dx * u, oz = q.z - a[1] - dz * u, dd = Math.hypot(ox, oz); if (dd >= 3.2) continue;
+        const nx = -dz / L, nz = dx / L, sgn = (ox * nx + oz * nz) >= 0 ? 1 : -1, cross = (ox * nx + oz * nz);
+        q.x = r3(q.x + nx * (sgn * 7.9 - cross)); q.z = r3(q.z + nz * (sgn * 7.9 - cross)); n++; return; } });
+  count.laneCleared = (count.laneCleared || 0) + n; };
+clearLanes();
 const propsLine = lines.length, propsN = props.length;
 props.forEach(f => lines.push("                " + J(f) + ","));
 lines.push("            ],");
@@ -1104,6 +1153,7 @@ if (!process.env.DC_NO_EXT) {
         fs.writeFileSync(tmp, cur.slice(0, e0) + block + cur.slice(e1 + '        /* DC144-END */\n'.length));
         let sb = null; try { sb = require(path.join(REPO, 'load-data.js')).loadGameData({ quiet: true, file: tmp }); } finally { try { fs.unlinkSync(tmp); } catch (e) {} }
         count.exteriorPolish = require(path.join(REPO, 'docs/disaster-city/exterior-polish.js'))({ sb, props, ctx: dcCtx, dropped: dcCtx.dropped || [] });
+        clearLanes();   // (the polish put a left-out piece back: not into a lane)
         lines.splice(propsLine, propsN, ...props.map(f => "                " + J(f) + ","));
         block = lines.join('\n') + '\n';
     }
