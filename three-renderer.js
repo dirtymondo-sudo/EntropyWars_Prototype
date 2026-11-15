@@ -82362,7 +82362,7 @@ const ThreeRenderer = (function () {
        a span inside the body's disc that rises past a step and starts under the head is a wall; a jump lands on a span top; the
        airborne body never enters a span. Built a few ms a frame off a queue, cached per model + fit (every copy of a model shares
        one), the catalogue footprint standing in until it lands. Catalogue `mesh: false` keeps a prop on its footprint. ═════════ */
-    var HQ_MC = { cell: 0.25, maxCells: 90000, step: 0.15, gap: 0.3, head: 1.75, budgetMs: 5, maxTris: 400000, minSpan: 0.8, minH: 0.3 };
+    var HQ_MC = { cell: 0.25, maxCells: 90000, step: 0.15, gap: 0.3, head: 1.75, shoulder: 1.3, headR: 0.14, budgetMs: 5, maxTris: 400000, minSpan: 0.8, minH: 0.3 };
     var _mcCache = {}, _mcJobs = [], _mcTimer = 0, _mcL = { x: 0, z: 0 };
     /* a material a body can stand on / bump into: never a glow, a beam, a see-through sheet, a sprite */
     function _mcSolidMat(m) {
@@ -82537,6 +82537,17 @@ const ThreeRenderer = (function () {
         }
         return false;
     }
+    /* THE THIN BODY (2026-11-15, mondo: "make these lamp collision boxes thinner" — the Main Hall's globe lamps): the body is its full
+       disc up to the shoulders and a HEAD above them. A part of a model that starts over the shoulders (a lamp's globe on its thin
+       pole, a sign's board on its post, a parasol) used to be a wall as wide as itself PLUS the whole body disc down to the floor:
+       half a metre of nothing round a 2 cm pole. Over `shoulder` only the head's own width (`headR`) is solid, so such a prop blocks
+       like its pole. A span that reaches under the shoulders (a wall, a counter, a car) is the full disc as before. On foot, on the
+       board and in the air alike: `lo` = the lowest solid height asked, `feet` = the feet. */
+    function _mcBodySolid(b, x, z, lo, feet) {
+        var sh = feet + HQ_MC.shoulder;
+        if (lo < sh) { if (_mcSolid(b, x, z, lo, sh, HQ_BODY_R)) return true; lo = sh; }
+        return _mcSolid(b, x, z, lo, feet + HQ_MC.head, HQ_MC.headR);
+    }
     /* the highest span top under the body's centre at or under `under` (room metres) whose column leaves the head clear — null for none */
     function _mcTopUnder(b, x, z, under, over) {
         var M = b.mc, L = _mcLoc(b, x, z), lx = L.x, lz = L.z, P = HQ_BLK_STAND_PAD;
@@ -82559,7 +82570,7 @@ const ThreeRenderer = (function () {
         var M = b.mc, R = HQ_BODY_R; if (!_mcNear(b, x, z, R)) return y;
         var ref = (curY != null) ? curY : y;
         var t = _mcTopUnder(b, x, z, ref + HQ_STEP_TOL, y + 0.02), ny = (t !== null && t > y) ? t : y;
-        if (_mcSolid(b, x, z, Math.max(ny, ref) + HQ_STEP_TOL, ny + HQ_MC.head, R)) return null;   // (from up on it, what is under a step of the feet is walked off, never a wall)
+        if (_mcBodySolid(b, x, z, Math.max(ny, ref) + HQ_STEP_TOL, ny)) return null;   // (from up on it, what is under a step of the feet is walked off, never a wall)
         return ny;
     }
     function _hqBlkTop(b) { return (b.top != null) ? b.top : 1e9; }
@@ -82594,7 +82605,7 @@ const ThreeRenderer = (function () {
         var hits = _hqBlockersUnder(x, z);
         for (var i = 0; i < hits.length; i++) {
             var b = hits[i];
-            if (b.mc) { if (_mcSolid(b, x, z, y + 0.05, y + HQ_MC.head, HQ_BODY_R)) return false; continue; }   // THE REAL COLLISION: only the model's own spans
+            if (b.mc) { if (_mcBodySolid(b, x, z, y + 0.05, y)) return false; continue; }   // THE REAL COLLISION: only the model's own spans
             if (b.y != null && b.y > y + 1.2) continue;
             if (y < _hqBlkTop(b) - 0.05) return false;
         }
@@ -84658,6 +84669,34 @@ const ThreeRenderer = (function () {
             /* Keep the free tangential component after a brush. Head-on contact
                stops without a bail; round NPCs allow a gentle shoulder slide. */
             _hqRideObstacleSlide(pl, R, ox, oz, mx, mz, dt, S);
+            /* THE WAY ROUND (2026-11-15, mondo: "things will block my movement when skateboarding, but then when i get off and walk i
+               can walk past them just fine. Why are there invisible walls for skateboarding only?"): the board reads the SAME colliders
+               as the feet, but a walker brushing a prop's edge slides round it without a thought, while the board, which rolls on one
+               line, STOPPED DEAD on any touch (the wall scrub: 15% of the speed a frame) — at a collider's invisible edge, half a metre
+               from a lamp's pole, that is a wall. The slide above knows only the old disc footprints and people; every model with a
+               mesh collider (the lamps, most props) had none. A step that made no way now tries the same step turned a little to
+               either side (the keys' side first, up to ~70°); the first that is free is taken, the roll turns onto it and keeps the
+               share of its speed that points that way. A square-on hit finds no such step and still stops; a door ahead keeps its
+               press-in. Any collider, any room. */
+            if (!prof && !skipB && !pl.air && Math.abs(R.v) > 0.5) {
+                var stW = Math.hypot(mx, mz) * dt;
+                if (stW > 0.0005 && Math.hypot(pl.x - ox, pl.z - oz) < stW * 0.3) {
+                    var dW = _hqFindTarget();
+                    if (!(dW && dW.kind === 'door')) {
+                        var baseW = Math.atan2(mx, mz), s0W = wDelta < 0 ? -1 : 1, doneW = false;
+                        for (var aW = 0.3; aW < 1.25 && !doneW; aW += 0.3) {
+                            for (var qW = 0; qW < 2 && !doneW; qW++) {
+                                var sgW = qW ? -s0W : s0W, anW = baseW + sgW * aW;
+                                var xW = ox + Math.sin(anW) * stW, zW = oz + Math.cos(anW) * stW, yW = _hqSurface(xW, zW, pl.y, false);
+                                if (yW === null) continue;
+                                pl.x = xW; pl.z = zW; _hqRideSetY(pl, R, yW, S);
+                                _hqRideTurn(R, R.hd + sgW * aW); R.v *= Math.cos(aW);
+                                doneW = true;
+                            }
+                        }
+                    }
+                }
+            }
             var sgM = R.v < 0 ? -1 : 1, wantM = Math.abs(R.v) * cTm * dt, movedM = sgM * ((pl.x - ox) * Math.sin(R.hd) + (pl.z - oz) * Math.cos(R.hd));   // rev 8: the wanted step is the tangent's horizontal share (a climb is not a wall)
             var doorT = (wantM > 0.002 && movedM < wantM * 0.3) ? _hqFindTarget() : null;
             _hqRideSlide(R, S, sgM, wantM, pl.x - ox, pl.z - oz, !!(doorT && doorT.kind === 'door'));   // rev 3: a wall / a prop is a stop, never a bail
