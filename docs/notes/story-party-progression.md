@@ -1059,5 +1059,16 @@ His tool for the story cutscenes. Plan + mock-up approved 11-15 (project files `
 - **THE POINTER (a bug of the first delivery)**: in the building a pointer lock that just goes away IS the walker's ESC (the pause
   menu, three-renderer.js `_hqOnLockChange`). The notes bar freed the mouse with a plain `exitPointerLock` and paused the building
   under the scene. Free it only through `ThreeRenderer.hq.sceneFreePointer()` (inside the stale window, pauses nothing).
+- **THE RUN, REWRITTEN (2026-11-15, third pass; mondo on his Mac: "I picked the foyer ... it showed it for like half a second then loaded
+  me in the desert ... trying to play a different cutscene ... the buton isnt doing anything")**. What was wrong: the foyer scene ran the
+  WHOLE opening chain and skipped its way there, so anything that paused the building on the way dropped it in the desert without a word;
+  and a run that never reached its scene held `_sedRun` for 90 s while PLAY refused every press. Now (map.js `_sedPlay`):
+  the opening's three scenes each play ALONE in their own room (`_SED_OPENING`: desert / car / foyer, the marks of `_introStart`, straight
+  into `_questHqScene`; no chain, no `EWScene.from` skipping); the way in is no arrival (`_ewSceneEdPlay` guards in `_hqEnter`: no variants
+  roll, no visit record, no Code Red, no promotion, no earned doors) and never moves his CONTINUE spot (`_hqSaveWrite` guard +
+  `_ewSceneEdNoSave` until `_hqLeave`); a new PLAY, or the editor opening, ENDS whatever run was up; one 250 ms `tick` owns the run
+  (phases enter -> ready -> scene -> back), a load never times out, a paused building is woken once, and a run that cannot reach its scene
+  puts the editor back with "THE SCENE DID NOT PLAY: <why>" in its top line. After the scene he is put back in the room he was in (never
+  the desert or the car). LESSON: prove a tool on a FINISHED-quest profile and with the button pressed TWICE; scratch harness `menu2.js`.
 - Harness: scratch `menu.js` (project files `cutscene-editor/tools/`): main menu -> Developer -> editor -> PLAY each scene. A cold
   cloud browser needs ~10 min per room load; one browser at a time.
