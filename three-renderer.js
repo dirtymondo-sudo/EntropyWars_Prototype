@@ -73734,7 +73734,7 @@ const ThreeRenderer = (function () {
             if (!B.n) return null;
             var g = new THREE.BufferGeometry();
             g.setAttribute('position', new THREE.Float32BufferAttribute(B.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(B.uv, 2)); g.setIndex(B.idx); g.computeVertexNormals();
-            var m = new THREE.Mesh(g, mat); m.renderOrder = order || 2; m._ew_hqRoadMark = true; G.add(m); return m;
+            var m = new THREE.Mesh(g, mat); m.renderOrder = order || 2; m._ew_hqRoadMark = true; G.add(m); (window.__ewRM = window.__ewRM || []).push(m); return m;
         };
         var paint = new THREE.MeshLambertMaterial({ color: neon ? 0xd8dce8 : 0xe8e6da, transparent: true, opacity: neon ? 0.82 : 0.9, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
         paint.emissive = new THREE.Color(neon ? 0x30343c : 0x2a2924);
