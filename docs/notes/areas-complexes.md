@@ -3331,3 +3331,20 @@ Plan sheet `/mnt/project-files/disaster-city-exterior/district_looks_plan.jpg`, 
   boxes, C newspaper rack, F stone urn, U iron bench, H globe lamp, E popcorn cart, I drums / tyres, S hot dog stand / cone, B lobster traps /
   cone (89 pieces, all models the city already wore). They go through the prop check and the exterior polish like any prop.
 - NOT SEEN ON SCREEN (RULE #1c). Checked offline: 89 of 89 pieces on walk squares, none on a wall top or a step.
+
+## DISASTER CITY, THE SIGN FONTS (2026-11-15)
+mondo 11-15: "do a font pass on all of the buildings that have text"; his OK on the mock-up sheets the same day ("Okay looks better").
+- Before: all 373 `txt:` signs of the city room were drawn by three-renderer.js `_hqArchSignTex` in Arial Black.
+- Now: the key carries a sixth field, `txt:WORDS|fg|bg|aspect|<v>|<font id>`. `docs/disaster-city/sign-fonts.js` gives every sign its id at the
+  end of `node bake-disaster-city.js` (district rows first, then the citywide wayfinding list, then the district default). District files keep
+  writing the plain key; a key that already has a font id is kept. The renderer's `HQ_SIGN_FONTS` maps id -> family, weight, letter spacing,
+  Title Case (the script). The words are fitted to 90% of the board's width and 80% of its height on the measured glyphs. A sign is drawn
+  in the old letters until its font file arrives (`document.fonts.load`), then redrawn once: no per-frame cost.
+- Faces (Google Fonts, OFL; the third font sheet in index.html holds the ones the UI sheets lacked): Oswald (citywide), Cinzel + Bebas Neue
+  (Civic, Washington DC), Playfair Display + Archivo Black + Bangers + Limelight (Hero Plaza, New York), Playfair Display (Financial, London),
+  Alfa Slab One + Staatliches (Southside, Detroit), Bungee + Limelight + Pacifico (Entertainment, Los Angeles), Monoton + Righteous + Pacifico
+  (Bayside, Miami), IM Fell English SC + Graduate (University, Yale), Graduate + DotGothic16 + Marcellus SC + Rye + Alfa Slab One (Sports +
+  Culture), Saira Stencil One (Industrial).
+- NOT changed: Financial's box-built 3D letters (F-detail.js `letters()`), the lamp-post district banners (field `v`), text painted on pack
+  models. Seen: the real function on the real baked keys in a bare page (/mnt/project-files/city-sign-fonts/built_real_sign_code.jpg), not
+  in the game (RULE #1c).

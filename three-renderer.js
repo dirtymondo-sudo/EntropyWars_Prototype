@@ -72373,9 +72373,35 @@ const ThreeRenderer = (function () {
         return G;
     }
     /* THE LETTERING (2026-11-13, mondo's polish pass: "go one or two more layers deep with the detail"; every district's signs were blank
-       panels): an arch part whose `key` is 'txt:WORDS|fg|bg|aspect' is a sign. The words are drawn once on a canvas of that aspect (width /
+       panels): an arch part whose `key` is 'txt:WORDS|fg|bg|aspect' (+ '|v|font', see THE SIGN FONTS) is a sign. The words are drawn once on a canvas of that aspect (width /
        height of the quad that wears it, uv 'fit'), bold capitals fitted to the panel, in `fg` (a CSS colour) on `bg` (empty = no board: the
        letters alone, on a `kind: 'over'` part). The part's `tint` stays white unless the letters are to be dimmed; `glow` lights the sign. */
+    /* THE SIGN FONTS (2026-11-15, mondo: "do a font pass on all of the buildings that have text"): a sixth field on the key names the
+       typeface, 'txt:WORDS|fg|bg|aspect|<v>|<font id>'. The ids are given by docs/disaster-city/sign-fonts.js at the city bake (by district
+       and by what the sign says); the families are Google Fonts (Open Font License) linked in index.html. f = the CSS family, w = weight,
+       ls = letter spacing (of the letter height), tc = a script, drawn in Title Case. No id / an unknown id = the old Arial Black. */
+    var HQ_SIGN_FONTS = {
+        way:       { f: '"Oswald"', w: 600, ls: 0.04 },               // citywide: exits, gates, sections, room names, warning plates
+        cinzel:    { f: '"Cinzel"', w: 700, ls: 0.06 },               // Civic: carved capitals on the institutions
+        bebas:     { f: '"Bebas Neue"', w: 400, ls: 0.04 },           // Civic: shop awnings
+        archivo:   { f: '"Archivo Black"', w: 400, ls: 0 },           // Hero Plaza: transit-style boards
+        bangers:   { f: '"Bangers"', w: 400, ls: 0.04 },              // Hero Plaza: the hero trade
+        playfair:  { f: '"Playfair Display"', w: 900, ls: 0.05 },     // Hero Plaza news office, Financial
+        monoton:   { f: '"Monoton"', w: 400, ls: 0 },                 // Bayside: neon
+        righteous: { f: '"Righteous"', w: 400, ls: 0.03 },            // Bayside: deco capitals
+        pacifico:  { f: '"Pacifico"', w: 400, ls: 0, tc: true },      // Bayside beach trade, Entertainment food
+        bungee:    { f: '"Bungee"', w: 400, ls: 0 },                  // Entertainment: marquees
+        limelight: { f: '"Limelight"', w: 400, ls: 0.03 },            // Entertainment: studio, casino; Hero Plaza coffee
+        alfa:      { f: '"Alfa Slab One"', w: 400, ls: 0.02 },        // Southside; market stalls
+        staat:     { f: '"Staatliches"', w: 400, ls: 0.05 },          // Southside: block lettering
+        fell:      { f: '"IM Fell English SC"', w: 400, ls: 0.04 },   // University: the halls
+        grad:      { f: '"Graduate"', w: 400, ls: 0.03 },             // University shops, the stadium and the gym
+        stencil:   { f: '"Saira Stencil One"', w: 400, ls: 0.03 },    // Industrial: painted on the sheds
+        dot:       { f: '"DotGothic16"', w: 400, ls: 0.06 },          // the scoreboard
+        marc:      { f: '"Marcellus SC"', w: 400, ls: 0.06 },         // the museum and the galleries
+        rye:       { f: '"Rye"', w: 400, ls: 0.02 }                   // fight posters
+    };
+    function _hqSignTitleCase(s) { return String(s).toLowerCase().replace(/(^|[^a-z0-9])([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); }); }
     var _hqArchSignCache = {};
     function _hqArchSignTex(key) {
         if (_hqArchSignCache[key]) return _hqArchSignCache[key];
@@ -72396,13 +72422,29 @@ const ThreeRenderer = (function () {
             return (_hqArchSignCache[key] = bt);
         }
         var H = 128, W = Math.max(32, Math.min(2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;
-        var g = c.getContext('2d'); g.clearRect(0, 0, W, H);
-        if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
-        var px = 96; g.font = '900 ' + px + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif';
-        var tw = g.measureText(words).width || 1, sc = Math.min(1, (W * 0.9) / tw); px = Math.max(8, Math.floor(px * sc));
-        g.font = '900 ' + px + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = fg;
-        g.fillText(words, W / 2, H / 2 + px * 0.04);
+        var g = c.getContext('2d'), F = HQ_SIGN_FONTS[q[5]] || null, shown = (F && F.tc) ? _hqSignTitleCase(words) : words;
+        var fontOf = function (v, fam) { return (fam ? F.w : 900) + ' ' + v + 'px ' + (fam ? F.f + ', ' : '') + '"Arial Black", "Helvetica Neue", Arial, sans-serif'; };
+        /* the words fitted inside the board: 90% of its width and (a typeface of its own only) 80% of its height, measured on the glyphs
+           themselves, so a script's tails and a tall display face never touch the board's edge (mondo: text cut-off is high priority) */
+        var paint = function (fam) {
+            g.clearRect(0, 0, W, H); if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
+            var px = 96, ls = (fam && F.ls && ('letterSpacing' in g)) ? F.ls : 0, txt = fam ? shown : words;
+            g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (px * ls) + 'px';
+            var m = g.measureText(txt), tw = m.width || 1, th = ((m.actualBoundingBoxAscent || 0) + (m.actualBoundingBoxDescent || 0)) || px * 0.72;
+            px = Math.max(8, Math.floor(px * Math.min(1, (W * 0.9) / tw, fam ? (H * 0.8) / th : 1)));
+            g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (px * ls) + 'px';
+            m = g.measureText(txt); g.fillStyle = fg;
+            var up = m.actualBoundingBoxAscent, dn = m.actualBoundingBoxDescent;
+            g.fillText(txt, W / 2 + px * ls / 2, (up > 0 || dn > 0) ? H / 2 + (up - dn) / 2 : H / 2 + px * 0.36);
+        };
         var t = new THREE.CanvasTexture(c); t.anisotropy = 4;
+        /* the typeface arrives from the font sheet index.html links; until it has, the sign stands in the old letters and is redrawn once */
+        var spec = F ? (F.w + ' 96px ' + F.f) : '', ready = false;
+        try { ready = !!(F && document.fonts && document.fonts.check(spec, shown)); } catch (e) { ready = false; }
+        paint(ready);
+        if (F && !ready && document.fonts && document.fonts.load) {
+            try { document.fonts.load(spec, shown).then(function (ff) { if (ff && ff.length) { paint(true); t.needsUpdate = true; } }, function () {}); } catch (e) {}
+        }
         return (_hqArchSignCache[key] = t);
     }
     /* THE BARE PARTS' SURFACES (see _hqBuildArchRows matOf): what a sheetless part is made of, read from its colour. `avg` = the
