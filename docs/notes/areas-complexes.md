@@ -3719,3 +3719,12 @@ mondo: "i literally just go to the map/directory and go to camelot kingdon and i
 has stood in; a rebuilt area's anchor (`DOOR_HQ.hubs[..].room`) is a new room no save knows, so GO fell back to the first old room.
 map.js `_hqMapAnchorCharted`: an area's anchor counts as stood in once any room of that area has been (not the facility hub). This
 covers every later rebuilt area too (the Woods on plots had the same fault).
+
+### THE OLD CAMELOT IS GONE (2026-11-15)
+mondo: "stop fucking around and just delete the old fucking camelot. we are making new maps. no reason why the old one should still be
+loading at all." Deleted from data.js: `site_prebuilt_camelot_hall` (the old Great Hall) and `site_prebuilt_camelot_castle` (the castle's
+own first room; bake-camelot.js writes only the kingdom now), with the Keep's and the Undercroft's doors into the old hall.
+`site_prebuilt_camelot_ward` has `doors: []`, is on no map, and stands ONLY as the room the Camelot fight board is cut from
+(HQ_ARENA_RULES.picks; same as `site_prebuilt_downtown_oldstreets`). `DOOR_HQ.retired` (old room -> new room) is read by map.js
+`_hqEnter` + `_hqGoRoom` (`_hqRetiredTo`): a save's CONTINUE, the map, a return from a match all land in the kingdom. RULE FOR THE NEXT
+REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in the same PR; do not leave the old rooms walkable.

@@ -579,7 +579,7 @@ const ENDS = { bay: { wall: 's', x: BAYX }, woods_camelot: { wall: 'e', z: WAYS.
 console.log('ends ' + JSON.stringify(ENDS));
 if (DRY) process.exit(0);
 const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8');
-src = splice(src, castleBlock, 'CAMELOT-CASTLE', '        site_prebuilt_camelot_ward: {');
-src = splice(src, kingdomBlock, 'CAMELOT-KINGDOM', '        /* CAMELOT-CASTLE-BEGIN');
+/* the castle's own first room is DELETED (2026-11-15, mondo: "just delete the old fucking camelot"): only the kingdom is written */
+src = splice(src, kingdomBlock, 'CAMELOT-KINGDOM', '        site_prebuilt_camelot_ward: {');
 fs.writeFileSync(file, src);
-console.log('data.js: site_prebuilt_camelot_castle (' + castleBlock.length + ' bytes) + site_prebuilt_camelot_kingdom (' + kingdomBlock.length + ' bytes) written');
+console.log('data.js: site_prebuilt_camelot_kingdom (' + kingdomBlock.length + ' bytes) written');

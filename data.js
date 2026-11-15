@@ -31034,6 +31034,11 @@ const DOOR_HQ = {
        every facility room — a room with no site). hqHubOf(roomId) is the ONE
        read; hqMapGraph marks the anchor `hub` and every member `hubOf`;
        map.js draws the ring, the tint and the name. Adding a hub = one row. */
+    /* THE RETIRED ROOMS (2026-11-15, mondo: "just delete the old fucking camelot. we are making new maps. no reason why the old one should
+       still be loading at all"): a room an area's rebuild replaced -> the room that stands for it now. The old Great Hall and the castle's
+       own first room are deleted; the old Outer Ward is door-less (it stands only as the Camelot fight board's source). Anything that
+       still asks for one of them (a save's CONTINUE, the map, an old link) is sent to the new room: map.js _hqEnter / _hqGoRoom. */
+    retired: { site_prebuilt_camelot_ward: 'site_prebuilt_camelot_kingdom', site_prebuilt_camelot_hall: 'site_prebuilt_camelot_kingdom', site_prebuilt_camelot_castle: 'site_prebuilt_camelot_kingdom' },
     hubs: {
         hq:      { label: 'D.O.O.R. HEADQUARTERS', room: 'central_egress', facility: true, color: '#f0e6c8' },
         cavern:  { label: 'THE CAVERN', room: 'site_prebuilt_hollow_earth_gallery', sites: ['prebuilt_hollow_earth'], color: '#c8a2e0' },
@@ -52252,148 +52257,6 @@ const DOOR_HQ = {
             spawn: { x: -24.5, z: 159.25, face: 0 },
         },
         /* CAMELOT-KINGDOM-END */
-        /* CAMELOT-CASTLE-BEGIN — CAMELOT CASTLE, REDESIGNED (2026-11-15): written by `node bake-camelot.js`. Never hand-edit between the markers; edit the tool and rerun. */
-        site_prebuilt_camelot_castle: {
-            label: 'CAMELOT · THE CASTLE',
-            sub: 'THE MOAT · THE GATEHOUSE · TWO WARDS · THE KEEP · THE GREAT HALL · THE WALL-WALK',
-            kind: 'box', site: 'prebuilt_camelot', part: 'castle',
-            shell: hqCastleShell({ w: 168, d: 126, plate: { x: -17.5, z: 56, y: 4.4 } }),
-            parti: 'A castle on an island in its own moat: one drawbridge, a twin-drum gatehouse, an outer ward for the lists and an inner ward for the hall and the keep, and a wall you can walk the whole round of.',
-            typology: 'hub',
-            terrain: {
-                floor: 'grass_2', cliff: 'castle_wall', path: 'cobblestone',
-                noise: { amp: 0, scale: 8 },
-                features: [
-                    /* THE MOAT: all the way round; THE DRAWBRIDGE is the one open way over, the postern's footbridge the hidden one */
-                    {k:'stream',pts:[[-78.75,-56.35],[-78.75,35],[78.75,35],[78.75,-56.35]],w:7.55,y:-0.3,depth:2,key:'deep_water',bank:0.6},
-                    {k:'stream',pts:[[-78.75,-56.35],[78.75,-56.35]],w:6.3,y:-0.3,depth:2,key:'deep_water',bank:0.6},
-                    {k:'bridge',x0:-17.5,z0:40.6,x1:-17.5,z1:29.05,w:7,y:0.3,thick:0.3,key:'wood',id:'drawbridge'},
-                    {k:'bridge',x0:60.38,z0:-60.37,x1:60.38,z1:-51.8,w:3.5,y:0.3,thick:0.3,key:'wood',id:'postern_bridge'},
-                    /* THE CURTAIN WALL: south (four runs between the towers, the bastions and the gatehouse), west, east, north */
-                    ...hqCurtainWall({id:'south_1',x0:-63.4,z0:22.75,x1:-42.75,z1:22.75,t:3.5,top:7,out:1,key:'castle_wall',pull0:1.2,towers:[{x:-68.25,z:22.75,r:5.25},{x:-40.25,z:22.75,r:3.5}]}),
-                    ...hqCurtainWall({id:'south_2',x0:-37.75,z0:22.75,x1:-27,z1:22.75,t:3.5,top:7,out:1,key:'castle_wall',towers:[{x:-40.25,z:22.75,r:3.5},{x:-24.5,z:22.75,r:3.5}]}),
-                    ...hqCurtainWall({id:'south_3',x0:-8,z0:22.75,x1:23.75,z1:22.75,t:3.5,top:7,out:1,key:'castle_wall',towers:[{x:-10.5,z:22.75,r:3.5},{x:26.25,z:22.75,r:3.5}]}),
-                    ...hqCurtainWall({id:'south_4',x0:28.75,z0:22.75,x1:63.4,z1:22.75,t:3.5,top:7,out:1,key:'castle_wall',pull1:1.2,towers:[{x:26.25,z:22.75,r:3.5},{x:68.25,z:22.75,r:5.25}]}),
-                    ...hqCurtainWall({id:'west_s',x0:-68.25,z0:17.9,x1:-68.25,z1:-13.25,t:3.5,top:7,out:-1,key:'castle_wall',pull0:1.2,towers:[{x:-68.25,z:22.75,r:5.25},{x:-68.25,z:-15.75,r:3.5}]}),
-                    ...hqCurtainWall({id:'west_n',x0:-68.25,z0:-18.25,x1:-68.25,z1:-45.9,t:3.5,top:7,out:-1,key:'castle_wall',pull1:1.2,towers:[{x:-68.25,z:-15.75,r:3.5},{x:-68.25,z:-50.75,r:5.25}]}),
-                    ...hqCurtainWall({id:'east_s',x0:68.25,z0:17.9,x1:68.25,z1:-13.25,t:3.5,top:7,out:1,key:'castle_wall',pull0:1.2,towers:[{x:68.25,z:22.75,r:5.25},{x:68.25,z:-15.75,r:3.5}]}),
-                    ...hqCurtainWall({id:'east_n',x0:68.25,z0:-18.25,x1:68.25,z1:-45.9,t:3.5,top:7,out:1,key:'castle_wall',pull1:1.2,towers:[{x:68.25,z:-15.75,r:3.5},{x:68.25,z:-50.75,r:5.25}]}),
-                    ...hqCurtainWall({id:'north',x0:-63.4,z0:-50.75,x1:57.75,z1:-50.75,t:3.5,top:7,out:-1,key:'castle_wall',pull0:1.2,towers:[{x:-68.25,z:-50.75,r:5.25}]}),
-                    /* THE CROSS WALL between the two wards: two gates, the rampart stairs land on its ends */
-                    ...hqCurtainWall({id:'cross_w0',x0:-65.75,z0:-15.75,x1:-61.25,z1:-15.75,t:3.5,top:7,out:1,key:'castle_wall',battlement:false}),
-                    ...hqCurtainWall({id:'cross_w1',x0:-61.25,z0:-15.75,x1:-42,z1:-15.75,t:3.5,top:7,out:1,key:'castle_wall'}),
-                    ...hqCurtainWall({id:'cross_m',x0:-35,z0:-15.75,x1:-21,z1:-15.75,t:3.5,top:7,out:1,key:'castle_wall'}),
-                    ...hqCurtainWall({id:'cross_e1',x0:-14,z0:-15.75,x1:61.25,z1:-15.75,t:3.5,top:7,out:1,key:'castle_wall'}),
-                    ...hqCurtainWall({id:'cross_e0',x0:61.25,z0:-15.75,x1:65.75,z1:-15.75,t:3.5,top:7,out:1,key:'castle_wall',battlement:false}),
-                    {k:'bridge',x0:-22.75,z0:22.75,x1:-12.25,z1:22.75,w:3.5,y:7,thick:2.2,plain:true,rails:false,key:'castle_wall',id:'gatehouse'},
-                    {k:'bridge',x0:-20.1,z0:24.3,x1:-14.9,z1:24.3,w:0.5,y:8.8,thick:4,plain:true,rails:false,key:'castle_wall',id:'gatehouse_front'},
-                    {k:'bridge',x0:-22.75,z0:-15.75,x1:-12.25,z1:-15.75,w:3.5,y:7,thick:2.2,plain:true,rails:false,key:'castle_wall',id:'inner_gate'},
-                    {k:'bridge',x0:-20.1,z0:-14.2,x1:-14.9,z1:-14.2,w:0.5,y:8.8,thick:4,plain:true,rails:false,key:'castle_wall',id:'inner_gate_front'},
-                    {k:'bridge',x0:-43.75,z0:-15.75,x1:-33.25,z1:-15.75,w:3.5,y:7,thick:2.2,plain:true,rails:false,key:'castle_wall',id:'keep_gate'},
-                    {k:'bridge',x0:-41.1,z0:-14.2,x1:-35.9,z1:-14.2,w:0.5,y:8.8,thick:4,plain:true,rails:false,key:'castle_wall',id:'keep_gate_front'},
-                    {k:'bridge',x0:56,z0:-50.75,x1:64.05,z1:-50.75,w:3.5,y:7,thick:2.4,plain:true,rails:false,key:'castle_wall',id:'postern_walk'},
-                    {k:'bridge',x0:57.4,z0:-52.25,x1:63.35,z1:-52.25,w:0.5,y:8.8,thick:4.2,plain:true,rails:false,key:'castle_wall',id:'postern_front'},
-                    /* THE TOWERS */
-                    ...hqCastleTower({id:'tower_sw',x:-68.25,z:22.75,r:5.25,top:7,span:250,key:'castle_wall',floor:'wood_planks',door:[30,66],joins:[[69,111],[339,381]],a0:75}),
-                    ...hqCastleTower({id:'tower_se',x:68.25,z:22.75,r:5.25,top:7,span:250,key:'castle_wall',floor:'wood_planks',door:[300,334],joins:[[249,291],[339,381]],a0:346}),
-                    ...hqCastleTower({id:'tower_nw',x:-68.25,z:-50.75,r:5.25,top:7,span:250,key:'castle_wall',floor:'wood_planks',door:[120,154],joins:[[69,111],[159,201]],a0:166}),
-                    ...hqCastleTower({id:'tower_ne',x:68.25,z:-50.75,r:5.25,top:7,span:250,key:'castle_wall',floor:'wood_planks',door:[210,244],joins:[[159,201],[249,291]],a0:256}),
-                    ...hqRoundBlock({id:'drum_w',x:-68.25,z:-15.75,r:3.5,y:7,key:'castle_wall'}),
-                    ...hqCastleCrown({id:'drum_w_crown',x:-68.25,z:-15.75,r:3.5,top:7,skip:[[328,392],[148,212],[58,122]],key:'castle_wall'}),
-                    ...hqRoundBlock({id:'drum_e',x:68.25,z:-15.75,r:3.5,y:7,key:'castle_wall'}),
-                    ...hqCastleCrown({id:'drum_e_crown',x:68.25,z:-15.75,r:3.5,top:7,skip:[[328,392],[148,212],[238,302]],key:'castle_wall'}),
-                    ...hqRoundBlock({id:'drum_s1',x:-40.25,z:22.75,r:3.5,y:7,key:'castle_wall'}),
-                    ...hqCastleCrown({id:'drum_s1_crown',x:-40.25,z:22.75,r:3.5,top:7,skip:[[238,302],[58,122]],key:'castle_wall'}),
-                    ...hqRoundBlock({id:'drum_s2',x:26.25,z:22.75,r:3.5,y:7,key:'castle_wall'}),
-                    ...hqCastleCrown({id:'drum_s2_crown',x:26.25,z:22.75,r:3.5,top:7,skip:[[238,302],[58,122]],key:'castle_wall'}),
-                    ...hqRoundBlock({id:'drum_gw',x:-24.5,z:22.75,r:3.5,y:7,key:'castle_wall'}),
-                    ...hqCastleCrown({id:'drum_gw_crown',x:-24.5,z:22.75,r:3.5,top:7,skip:[[238,302],[58,122]],key:'castle_wall'}),
-                    ...hqRoundBlock({id:'drum_ge',x:-10.5,z:22.75,r:3.5,y:7,key:'castle_wall'}),
-                    ...hqCastleCrown({id:'drum_ge_crown',x:-10.5,z:22.75,r:3.5,top:7,skip:[[238,302],[58,122]],key:'castle_wall'}),
-                    /* THE RAMPART STAIRS + THE PARAPETS */
-                    {k:'ramp',x0:-64.75,z0:7,x1:-64.75,z1:-14,w:3.5,h0:0,h1:7,stairs:true,model:'stone',edge:0.2},
-                    {k:'ramp',x0:64.75,z0:7,x1:64.75,z1:-14,w:3.5,h0:0,h1:7,stairs:true,model:'stone',edge:0.2},
-                    {k:'rail',x0:-62.9,z0:21.15,x1:-43.85,z1:21.15,y:7,model:'parapet'},
-                    {k:'rail',x0:-36.65,z0:21.15,x1:-28.1,z1:21.15,y:7,model:'parapet'},
-                    {k:'rail',x0:-6.9,z0:21.15,x1:22.65,z1:21.15,y:7,model:'parapet'},
-                    {k:'rail',x0:29.85,z0:21.15,x1:62.9,z1:21.15,y:7,model:'parapet'},
-                    {k:'rail',x0:-66.65,z0:17.4,x1:-66.65,z1:7.7,y:7,model:'parapet'},
-                    {k:'rail',x0:-66.65,z0:-19.35,x1:-66.65,z1:-45.4,y:7,model:'parapet'},
-                    {k:'rail',x0:66.65,z0:17.4,x1:66.65,z1:7.7,y:7,model:'parapet'},
-                    {k:'rail',x0:66.65,z0:-19.35,x1:66.65,z1:-45.4,y:7,model:'parapet'},
-                    {k:'rail',x0:-60.9,z0:-17.35,x1:-44.1,z1:-17.35,y:7,model:'parapet'},
-                    {k:'rail',x0:-32.9,z0:-17.35,x1:-23.1,z1:-17.35,y:7,model:'parapet'},
-                    {k:'rail',x0:-11.9,z0:-17.35,x1:60.9,z1:-17.35,y:7,model:'parapet'},
-                    /* THE GROUND: the Crown's Road in through both gates, the lanes, the tilt, the knoll */
-                    {k:'path',pts:[[-17.5,63],[-17.5,40.6]],w:7},
-                    {k:'path',pts:[[-17.5,29.05],[-17.5,-24.5]],w:7},
-                    {k:'path',pts:[[-59.5,-7],[63,-7]],w:3.5},
-                    {k:'path',pts:[[-38.5,-17.5],[-38.5,-23.8]],w:3.5},
-                    {k:'path',pts:[[-17.5,-24.5],[12.25,-24.5],[12.25,-27.3]],w:3.5},
-                    {k:'path',pts:[[-17.5,-24.5],[-38.5,-22.75]],w:3.5},
-                    {k:'path',pts:[[12.25,-24.5],[60.38,-24.5],[60.38,-51.1]],w:2.6},
-                    {k:'path',pts:[[60.38,-60.9],[60.38,-63]],w:2.6},
-                    {k:'path',pts:[[-77,50.75],[77,50.75]],w:3.5},
-                    {k:'path',pts:[[-61.25,50.75],[-61.25,56]],w:2.6},
-                    {k:'hill',x:-33.25,z:5.25,r:4.2,h:0.8},
-                    {k:'wall',x0:1.75,z0:8.75,x1:33.25,z1:8.75,h:1.2,t:0.25,key:'wood'},
-                    {k:'tree',x:-22.75,z:-45.15,kind:'tree_2',h:4.6,r:0.5},
-                    {k:'tree',x:-17.5,z:-45.15,kind:'tree_4',h:4.9,r:0.5},
-                    {k:'tree',x:-12.25,z:-45.15,kind:'tree_2',h:5.2,r:0.5},
-                    {k:'tree',x:-22.75,z:-38.85,kind:'tree_4',h:4.6,r:0.5},
-                    {k:'tree',x:-17.5,z:-38.85,kind:'tree_2',h:4.9,r:0.5},
-                    {k:'tree',x:-12.25,z:-38.85,kind:'tree_4',h:5.2,r:0.5},
-                    {k:'tree',x:-20.3,z:-32.55,kind:'tree_2',h:4.6,r:0.5},
-                    {k:'tree',x:-14.7,z:-32.55,kind:'tree_4',h:4.9,r:0.5},
-                    /* THE BUILDINGS */
-                    {k:'texbuilding',id:'cam:keep',seed:1,x:-43.75,z:-36.75,w:31.5,d:24.5,rot:0,storeys:2,h:7,skin:false,hollow:true,leaf:'leaf_shabby_wood',leafDouble:true,keyIn:'castle_wall',floorIn:'cobblestone'},
-                    {k:'texbuilding',id:'cam:hall',seed:1,x:12.25,z:-38.5,w:45.5,d:21,rot:0,storeys:3,h:10.5,skin:false,hollow:true,leaf:'leaf_shabby_wood',leafDouble:true,keyIn:'castle_wall',floorIn:'cobblestone'},
-                    {k:'texbuilding',id:'cam:kitchen',seed:1,x:45.5,z:-38.5,w:21,d:21,rot:0,storeys:2,h:7,skin:false,hollow:true,leaf:'leaf_shabby_wood',leafDouble:false,keyIn:'castle_wall',floorIn:'cobblestone'},
-                    {k:'texbuilding',id:'cam:barracks',seed:1,x:50.75,z:8.75,w:17.5,d:17.5,rot:90,storeys:2,h:7,skin:false,hollow:true,leaf:'leaf_shabby_wood',leafDouble:false,keyIn:'castle_wall',floorIn:'cobblestone'},
-                    {k:'texbuilding',id:'cam:stables',seed:1,x:-50.75,z:8.75,w:17.5,d:17.5,rot:270,storeys:1,h:5.25,skin:false,hollow:true,leaf:'leaf_stable',leafDouble:false,keyIn:'wood_planks',floorIn:'dirt_2'},
-                    {k:'arch',id:'cam:keep:look',x:-43.75,z:-36.75,rot:0,parts:[{s:'box',p:[0,0,0],size:[31.6,7,24.6],top:false,faces:'blr',key:'castle_wall',tint:11446950},{s:'quad',p:[0,0,12.3],size:[31.6,7],ry:0,hole:[-0.8716666666666679,1.7433333333333332,2.2],key:'castle_wall',tint:11446950},{s:'box',p:[0,7,0],size:[31.6,17,24.6],key:'castle_wall',tint:11446950,top:false,under:true},{s:'box',p:[0,6.6,0],size:[32.2,0.5,25.2],key:'castle_wall',tint:13814976,under:true},{s:'box',p:[0,23.4,0],size:[32.4,0.6,25.4],key:'castle_wall',tint:13814976,under:true},{s:'box',p:[0,24,0],size:[32,0.3,25],key:'castle_wall',tint:9210504,roof:true},{s:'box',p:[-15.45,24,-12.25],size:[1.1,1,0.5],n:16,step:[2,0,0],key:'castle_wall',tint:11446950},{s:'box',p:[-15.75,24,-11.95],size:[0.5,1,1.1],n:12,step:[0,0,2.0833333333333335],key:'castle_wall',tint:11446950},{s:'box',p:[-15.45,24,12.25],size:[1.1,1,0.5],n:16,step:[2,0,0],key:'castle_wall',tint:11446950},{s:'box',p:[15.75,24,-11.95],size:[0.5,1,1.1],n:12,step:[0,0,2.0833333333333335],key:'castle_wall',tint:11446950},{s:'cyl',p:[15.35,0,11.85],r:2.5,h:28,key:'castle_wall',tint:12894392,seg:14},{s:'cyl',p:[15.35,27.2,11.85],r:2.85,h:0.8,key:'castle_wall',tint:13814976,seg:14},{s:'cyl',p:[15.35,28,11.85],r:3.1,h:5.5,key:'urban:MetalRoofTiles1a',tint:5926038,seg:14,r2:0,roof:true},{s:'cyl',p:[15.35,0,-11.85],r:2.5,h:28,key:'castle_wall',tint:12894392,seg:14},{s:'cyl',p:[15.35,27.2,-11.85],r:2.85,h:0.8,key:'castle_wall',tint:13814976,seg:14},{s:'cyl',p:[15.35,28,-11.85],r:3.1,h:5.5,key:'urban:MetalRoofTiles1a',tint:5926038,seg:14,r2:0,roof:true},{s:'cyl',p:[-15.35,0,11.85],r:2.5,h:28,key:'castle_wall',tint:12894392,seg:14},{s:'cyl',p:[-15.35,27.2,11.85],r:2.85,h:0.8,key:'castle_wall',tint:13814976,seg:14},{s:'cyl',p:[-15.35,28,11.85],r:3.1,h:5.5,key:'urban:MetalRoofTiles1a',tint:5926038,seg:14,r2:0,roof:true},{s:'cyl',p:[-15.35,0,-11.85],r:2.5,h:28,key:'castle_wall',tint:12894392,seg:14},{s:'cyl',p:[-15.35,27.2,-11.85],r:2.85,h:0.8,key:'castle_wall',tint:13814976,seg:14},{s:'cyl',p:[-15.35,28,-11.85],r:3.1,h:5.5,key:'urban:MetalRoofTiles1a',tint:5926038,seg:14,r2:0,roof:true},{s:'box',p:[4,24.3,-3],size:[5,5,5],key:'castle_wall',tint:12894392,roof:true},{s:'box',p:[-1.95,29.3,-2.25],size:[1.1,1,0.5],n:2,step:[2.5,0,0],key:'castle_wall',tint:12894392},{s:'box',p:[-2.25,29.3,-1.95],size:[0.5,1,1.1],n:2,step:[0,0,2.5],key:'castle_wall',tint:12894392},{s:'box',p:[-1.95,29.3,2.25],size:[1.1,1,0.5],n:2,step:[2.5,0,0],key:'castle_wall',tint:12894392},{s:'box',p:[2.25,29.3,-1.95],size:[0.5,1,1.1],n:2,step:[0,0,2.5],key:'castle_wall',tint:12894392},{s:'cyl',p:[4,29.3,-3],r:0.12,h:6,tint:4208688,seg:6,roof:true},{s:'box',p:[5.2,33.3,-3],size:[2.4,1.6,0.06],tint:11545654,ds:true,roof:true},{s:'box',p:[-10.4,9.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-5.2,9.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-15.83,9.5,-5.2],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[15.83,9.5,-5.2],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[0,9.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-15.83,9.5,0],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[15.83,9.5,0],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[5.2,9.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-15.83,9.5,5.2],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[15.83,9.5,5.2],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[10.4,9.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-10.4,14.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-5.2,14.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-15.83,14.5,-5.2],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[15.83,14.5,-5.2],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[0,14.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-15.83,14.5,0],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[15.83,14.5,0],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[5.2,14.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-15.83,14.5,5.2],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[15.83,14.5,5.2],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[10.4,14.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-10.4,19.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-5.2,19.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-15.83,19.5,-5.2],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[15.83,19.5,-5.2],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[0,19.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-15.83,19.5,0],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[15.83,19.5,0],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[5.2,19.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-15.83,19.5,5.2],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[15.83,19.5,5.2],size:[0.12,2.6,1.3],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[10.4,19.5,12.33],size:[1.3,2.6,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-0.8716666666666679,2.6,12.75],size:[4.4,0.5,1.2],key:'castle_wall',tint:13814976,under:true},{s:'box',p:[-3.471666666666668,0,12.55],size:[0.8,5.4,0.7],key:'castle_wall',tint:13814976},{s:'box',p:[1.7283333333333322,0,12.55],size:[0.8,5.4,0.7],key:'castle_wall',tint:13814976},{s:'box',p:[-5.471666666666668,2.4,12.35],size:[1.5,4,0.08],tint:11545654},{s:'box',p:[3.7283333333333317,2.4,12.35],size:[1.5,4,0.08],tint:11545654}]},
-                    {k:'arch',id:'cam:hall:look',x:12.25,z:-38.5,rot:0,parts:[{s:'box',p:[0,0,0],size:[45.6,10.5,21.1],top:false,faces:'blr',key:'castle_wall',tint:12894392},{s:'quad',p:[0,0,10.55],size:[45.6,10.5],ry:0,hole:[-0.8726923076923079,1.7453846153846155,2.2],key:'castle_wall',tint:12894392},{s:'box',p:[0,0,0],size:[46,1,21.5],key:'castle_wall',tint:11446950,top:true,faces:'blr'},{s:'roof',form:'gable',p:[0,10.5,0],size:[47.1,6.5,22.6],roof:true,key:'urban:MetalRoofTiles1a',tint:11029052,keyEnd:'castle_wall',tintEnd:12894392},{s:'box',p:[0,10.2,0],size:[46.3,0.45,21.8],key:'castle_wall',tint:13814976,under:true,top:false},{s:'box',p:[-21,0,11.05],size:[1.1,8.6,1.1],key:'castle_wall',tint:11446950},{s:'box',p:[-21,0,-10.5],size:[1.1,8.6,0.6],key:'castle_wall',tint:11446950},{s:'box',p:[-17.5,2.6,10.58],size:[1.9,6.2,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.5},{s:'box',p:[-17.5,8.8,10.7],size:[2.3,0.4,0.4],key:'castle_wall',tint:13814976},{s:'box',p:[-14,0,11.05],size:[1.1,8.6,1.1],key:'castle_wall',tint:11446950},{s:'box',p:[-14,0,-10.5],size:[1.1,8.6,0.6],key:'castle_wall',tint:11446950},{s:'box',p:[-10.5,2.6,10.58],size:[1.9,6.2,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.5},{s:'box',p:[-10.5,8.8,10.7],size:[2.3,0.4,0.4],key:'castle_wall',tint:13814976},{s:'box',p:[-7,0,11.05],size:[1.1,8.6,1.1],key:'castle_wall',tint:11446950},{s:'box',p:[-7,0,-10.5],size:[1.1,8.6,0.6],key:'castle_wall',tint:11446950},{s:'box',p:[-3.5,2.6,10.58],size:[1.9,6.2,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.5},{s:'box',p:[-3.5,8.8,10.7],size:[2.3,0.4,0.4],key:'castle_wall',tint:13814976},{s:'box',p:[0,0,-10.5],size:[1.1,8.6,0.6],key:'castle_wall',tint:11446950},{s:'box',p:[3.5,2.6,10.58],size:[1.9,6.2,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.5},{s:'box',p:[3.5,8.8,10.7],size:[2.3,0.4,0.4],key:'castle_wall',tint:13814976},{s:'box',p:[7,0,11.05],size:[1.1,8.6,1.1],key:'castle_wall',tint:11446950},{s:'box',p:[7,0,-10.5],size:[1.1,8.6,0.6],key:'castle_wall',tint:11446950},{s:'box',p:[10.5,2.6,10.58],size:[1.9,6.2,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.5},{s:'box',p:[10.5,8.8,10.7],size:[2.3,0.4,0.4],key:'castle_wall',tint:13814976},{s:'box',p:[14,0,11.05],size:[1.1,8.6,1.1],key:'castle_wall',tint:11446950},{s:'box',p:[14,0,-10.5],size:[1.1,8.6,0.6],key:'castle_wall',tint:11446950},{s:'box',p:[17.5,2.6,10.58],size:[1.9,6.2,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.5},{s:'box',p:[17.5,8.8,10.7],size:[2.3,0.4,0.4],key:'castle_wall',tint:13814976},{s:'box',p:[21,0,11.05],size:[1.1,8.6,1.1],key:'castle_wall',tint:11446950},{s:'box',p:[21,0,-10.5],size:[1.1,8.6,0.6],key:'castle_wall',tint:11446950},{s:'box',p:[-0.8726923076923079,2.4,11.2],size:[5.2,0.5,1.6],key:'castle_wall',tint:13814976,under:true},{s:'box',p:[-3.1726923076923077,0,11.4],size:[0.6,2.4,0.6],key:'castle_wall',tint:13814976},{s:'box',p:[1.427307692307692,0,11.4],size:[0.6,2.4,0.6],key:'castle_wall',tint:13814976},{s:'box',p:[-22.83,3.6,0],size:[0.12,5.2,4.2],key:'urban:GlassWindowTall1a',tint:14198984,glow:0.6},{s:'box',p:[-22.95,8.8,0],size:[0.4,0.4,4.8],key:'castle_wall',tint:13814976},{s:'box',p:[0,16.4,0],size:[2.2,2.6,2.2],key:'castle_wall',tint:12894392,roof:true},{s:'roof',form:'pyramid',p:[0,19,0],size:[2.8,3.2,2.8],roof:true,key:'urban:MetalRoofTiles1a',tint:5926038},{s:'box',p:[-12.25,10.5,-9.3],size:[1.6,8.5,1.6],key:'castle_wall',tint:11446950,roof:true},{s:'box',p:[8.75,10.5,-9.3],size:[1.6,8.5,1.6],key:'castle_wall',tint:11446950,roof:true},{s:'box',p:[-5.272692307692308,3,10.6],size:[1.4,4.6,0.08],tint:11545654},{s:'box',p:[3.5273076923076925,3,10.6],size:[1.4,4.6,0.08],tint:11545654}]},
-                    {k:'arch',id:'cam:kitchen:look',x:45.5,z:-38.5,rot:0,parts:[{s:'box',p:[0,0,0],size:[21.1,7,21.1],top:false,faces:'blr',key:'castle_wall',tint:13814976},{s:'quad',p:[0,0,10.55],size:[21.1,7],ry:0,hole:[-0.8699999999999992,1.74,2.2],key:'castle_wall',tint:13814976},{s:'roof',form:'gable',p:[0,7,0],size:[22.2,4,22.2],roof:true,key:'urban:MetalRoofTiles1a',tint:11029052,ry:90,keyEnd:'castle_wall',tintEnd:13814976},{s:'box',p:[8.5,7,-8.5],size:[2.6,9,2.6],key:'castle_wall',tint:11446950,roof:true},{s:'box',p:[8.5,16,-8.5],size:[3.1,0.5,3.1],key:'castle_wall',tint:13814976,roof:true},{s:'box',p:[-6.5,2.2,10.58],size:[1.6,2.4,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[6.5,2.2,10.58],size:[1.6,2.4,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35}]},
-                    {k:'arch',id:'cam:barracks:look',x:50.75,z:8.75,rot:90,parts:[{s:'box',p:[0,0,0],size:[17.6,7,17.6],top:false,faces:'blr',key:'castle_wall',tint:12894392},{s:'quad',p:[0,0,8.8],size:[17.6,7],ry:0,hole:[-0.8689999999999998,1.738,2.2],key:'castle_wall',tint:12894392},{s:'roof',form:'hip',p:[0,7,0],size:[18.9,4.2,18.9],roof:true,key:'urban:MetalRoofTiles1a',tint:5926038},{s:'box',p:[0,6.7,0],size:[18.1,0.4,18.1],key:'castle_wall',tint:13814976,under:true,top:false},{s:'box',p:[-7,1.6,8.83],size:[1.1,1.5,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-7,4.6,8.83],size:[1.1,1.5,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-3.5,1.6,8.83],size:[1.1,1.5,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-3.5,4.6,8.83],size:[1.1,1.5,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[3.5,1.6,8.83],size:[1.1,1.5,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[3.5,4.6,8.83],size:[1.1,1.5,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[7,1.6,8.83],size:[1.1,1.5,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[7,4.6,8.83],size:[1.1,1.5,0.12],key:'urban:GlassWindowTall1a',tint:11060460,glow:0.35},{s:'box',p:[-3.069,2.6,8.85],size:[1.2,3.4,0.08],tint:11545654},{s:'box',p:[1.3310000000000004,2.6,8.85],size:[1.2,3.4,0.08],tint:11545654}]},
-                    {k:'arch',id:'cam:stables:look',x:-50.75,z:8.75,rot:270,parts:[{s:'box',p:[0,0,0],size:[17.6,5.25,17.6],top:false,faces:'blr',key:'wood_planks',tint:12096616},{s:'quad',p:[0,0,8.8],size:[17.6,5.25],ry:0,hole:[-0.8689999999999998,1.738,2.2],key:'wood_planks',tint:12096616},{s:'box',p:[0,0,0],size:[17.9,1.1,17.9],key:'castle_wall',tint:11446950,faces:'blr'},{s:'roof',form:'gable',p:[0,5.25,0],size:[19.1,3.6,19.1],roof:true,key:'wood',tint:8018492,keyEnd:'wood_planks',tintEnd:12096616},{s:'box',p:[-7,2,8.83],size:[1.6,1.4,0.12],tint:3154972},{s:'box',p:[7,2,8.83],size:[1.6,1.4,0.12],tint:3154972}]},
-                    {k:'arch',id:'cam:roofs',x:0,z:0,rot:0,parts:[{s:'cyl',p:[-68.25,8.2,22.75],r:0.24,h:3.4,key:'wood',tint:6965808,seg:8,cap:false,ring:{n:8,r:4.85,a0:22.5}},{s:'cyl',p:[-68.25,11.6,22.75],r:6.1,h:0.4,key:'wood',tint:6965808,seg:16,roof:true},{s:'cyl',p:[-68.25,12,22.75],r:6.3,h:7,key:'urban:MetalRoofTiles1a',tint:5926038,seg:16,r2:0,roof:true},{s:'cyl',p:[-68.25,19,22.75],r:0.1,h:3.4,tint:4208688,seg:6,roof:true},{s:'box',p:[-67.15,21,22.75],size:[2.2,1.3,0.06],tint:11545654,ds:true,roof:true},{s:'cyl',p:[68.25,8.2,22.75],r:0.24,h:3.4,key:'wood',tint:6965808,seg:8,cap:false,ring:{n:8,r:4.85,a0:22.5}},{s:'cyl',p:[68.25,11.6,22.75],r:6.1,h:0.4,key:'wood',tint:6965808,seg:16,roof:true},{s:'cyl',p:[68.25,12,22.75],r:6.3,h:7,key:'urban:MetalRoofTiles1a',tint:5926038,seg:16,r2:0,roof:true},{s:'cyl',p:[68.25,19,22.75],r:0.1,h:3.4,tint:4208688,seg:6,roof:true},{s:'box',p:[69.35,21,22.75],size:[2.2,1.3,0.06],tint:11545654,ds:true,roof:true},{s:'cyl',p:[-68.25,8.2,-50.75],r:0.24,h:3.4,key:'wood',tint:6965808,seg:8,cap:false,ring:{n:8,r:4.85,a0:22.5}},{s:'cyl',p:[-68.25,11.6,-50.75],r:6.1,h:0.4,key:'wood',tint:6965808,seg:16,roof:true},{s:'cyl',p:[-68.25,12,-50.75],r:6.3,h:7,key:'urban:MetalRoofTiles1a',tint:5926038,seg:16,r2:0,roof:true},{s:'cyl',p:[-68.25,19,-50.75],r:0.1,h:3.4,tint:4208688,seg:6,roof:true},{s:'box',p:[-67.15,21,-50.75],size:[2.2,1.3,0.06],tint:11545654,ds:true,roof:true},{s:'cyl',p:[68.25,8.2,-50.75],r:0.24,h:3.4,key:'wood',tint:6965808,seg:8,cap:false,ring:{n:8,r:4.85,a0:22.5}},{s:'cyl',p:[68.25,11.6,-50.75],r:6.1,h:0.4,key:'wood',tint:6965808,seg:16,roof:true},{s:'cyl',p:[68.25,12,-50.75],r:6.3,h:7,key:'urban:MetalRoofTiles1a',tint:5926038,seg:16,r2:0,roof:true},{s:'cyl',p:[68.25,19,-50.75],r:0.1,h:3.4,tint:4208688,seg:6,roof:true},{s:'box',p:[69.35,21,-50.75],size:[2.2,1.3,0.06],tint:11545654,ds:true,roof:true},{s:'cyl',p:[-24.5,8.1,22.75],r:0.22,h:3,key:'wood',tint:6965808,seg:8,cap:false,ring:{n:6,r:3}},{s:'cyl',p:[-24.5,11.1,22.75],r:4.2,h:6,key:'urban:MetalRoofTiles1a',tint:5926038,seg:14,r2:0,roof:true},{s:'cyl',p:[-10.5,8.1,22.75],r:0.22,h:3,key:'wood',tint:6965808,seg:8,cap:false,ring:{n:6,r:3}},{s:'cyl',p:[-10.5,11.1,22.75],r:4.2,h:6,key:'urban:MetalRoofTiles1a',tint:5926038,seg:14,r2:0,roof:true},{s:'roof',form:'gable',p:[-17.5,11.6,22.75],size:[7.4,3,4.6],roof:true,key:'urban:MetalRoofTiles1a',tint:11029052,keyEnd:'wood_planks',tintEnd:12096616},{s:'box',p:[-20.8,9.6,22.75],size:[0.3,2,4.4],key:'wood',tint:6965808},{s:'box',p:[-14.2,9.6,22.75],size:[0.3,2,4.4],key:'wood',tint:6965808},{s:'box',p:[-20.8,4.2,23.95],size:[0.14,2.8,0.14],tint:2763824,n:12,step:[0.6,0,0]},{s:'box',p:[-17.5,4.2,23.95],size:[6.9,0.2,0.18],tint:2763824},{s:'box',p:[-22.8,2.4,26.31],size:[1.3,3.8,0.08],tint:11545654},{s:'box',p:[-22.8,4.4,26.35],size:[0.5,0.5,0.06],tint:14200912},{s:'box',p:[-12.2,2.4,26.31],size:[1.3,3.8,0.08],tint:11545654},{s:'box',p:[-12.2,4.4,26.35],size:[0.5,0.5,0.06],tint:14200912}]},
-                ],
-                marks: [{k:'rect',x:17.5,z:8.75,w:38.5,d:10.5,color:13152392,a:0.85}],
-            },
-            doors: [
-                {id:'keep',wall:'free',x:-34.75,z:-47.65,face:180,leaf:'leaf_shabby_wood',label:'THE KEEP',sub:'THE GREAT STAIR · THE SOLAR · THE BATTLEMENTS',action:{room:'site_prebuilt_camelot_keep',at:'ward'},desc:'The stair door at the back of the guardroom. The stair behind it goes up to the battlements and does not stop there.'},
-                {id:'postern',wall:'free',x:-61.25,z:57.4,face:0,leaf:'leaf_shabby_wood',label:'MERLIN’S UNDERCROFT',sub:'THE SALLY PORT · UNDER THE MOAT',action:{room:'site_prebuilt_camelot_dungeon',at:'postern'},desc:'A low door in the bank outside the moat. It goes under the water, which the besiegers should have found suspicious.'},
-            ],
-            counters: [],
-            props: [
-                {key:'armour_stand',x:-55.75,z:-45.75,face:0}, {key:'armour_stand',x:-51.75,z:-45.75,face:0}, {key:'armour_stand',x:-31.75,z:-45.75,face:0}, {key:'dojo_weapon_rack',x:-57.25,z:-36.75,face:90},
-                {key:'dojo_weapon_rack',x:-30.25,z:-36.75,face:270}, {key:'map_table',x:-37.75,z:-33.75}, {key:'brazier',x:-48.75,z:-28.75}, {key:'brazier',x:-38.75,z:-28.75},
-                {key:'sea_chest',x:-54.75,z:-30.75,face:90}, {key:'banner',x:-47.75,z:-48.55,face:0,mount:3.6}, {key:'banner',x:-39.75,z:-48.55,face:0,mount:3.6}, {key:'round_table',x:12.25,z:-38.5},
-                {key:'royal_throne',x:-7.25,z:-38.5,face:90}, {key:'holy_carpet',x:-2.75,z:-38.5,face:90}, {key:'brazier',x:-4.75,z:-46}, {key:'armour_stand',x:1.25,z:-47.12,face:0},
-                {key:'armour_stand',x:23.25,z:-47.12,face:0}, {key:'brazier',x:-4.75,z:-31}, {key:'armour_stand',x:1.25,z:-29.87,face:180}, {key:'armour_stand',x:23.25,z:-29.87,face:180},
-                {key:'banner',x:-1.75,z:-48.6,face:0,mount:5}, {key:'banner',x:5.25,z:-48.6,face:0,mount:5}, {key:'banner',x:19.25,z:-48.6,face:0,mount:5}, {key:'banner',x:26.25,z:-48.6,face:0,mount:5},
-                {key:'crystal_chandelier',x:12.25,z:-38.5,floor:true,y:8.6}, {key:'crystal_chandelier',x:0.25,z:-38.5,floor:true,y:8.6}, {key:'crystal_chandelier',x:24.25,z:-38.5,floor:true,y:8.6}, {key:'psx_table_large_2',x:26.25,z:-43.5,face:90},
-                {key:'church_pew',x:26.25,z:-41.9,face:180}, {key:'church_pew',x:26.25,z:-45.1,face:0}, {key:'psx_table_large_2',x:26.25,z:-33.5,face:90}, {key:'church_pew',x:26.25,z:-31.9,face:180},
-                {key:'church_pew',x:26.25,z:-35.1,face:0}, {key:'cauldron',x:51.5,z:-45.5}, {key:'stock_pots',x:47.5,z:-47.5,face:0}, {key:'psx_table_large_3',x:42.5,z:-38.5},
-                {key:'bread_rack',x:37,z:-44.5,face:90}, {key:'meshy_burlap_sack',x:52.5,z:-34.5}, {key:'meshy_burlap_sack',x:53.5,z:-35.9,face:40}, {key:'psx_wooden_crate_2',x:53,z:-31.5},
-                {key:'brazier',x:45.5,z:-47}, {key:'dorm_bed',x:56.25,z:2.75,face:180}, {key:'dorm_bed',x:56.25,z:14.75,face:0}, {key:'dorm_bed',x:52.25,z:2.75,face:180},
-                {key:'dorm_bed',x:52.25,z:14.75,face:0}, {key:'dorm_bed',x:48.25,z:2.75,face:180}, {key:'dorm_bed',x:48.25,z:14.75,face:0}, {key:'armour_stand',x:58.25,z:5.75,face:90},
-                {key:'armour_stand',x:58.25,z:11.75,face:90}, {key:'dojo_weapon_rack',x:58.35,z:8.75,face:90}, {key:'sea_chest',x:44.25,z:2.25,face:180}, {key:'brazier',x:50.75,z:8.75},
-                {key:'horse',x:-55.25,z:13.75,face:90}, {key:'horse_brown',x:-55.25,z:8.75,face:90}, {key:'horse_black',x:-55.25,z:3.75,face:90}, {key:'meshy_burlap_sack',x:-46.75,z:15.25},
-                {key:'psx_wooden_crate_3',x:-45.75,z:2.25}, {key:'sword_stone',x:-33.25,z:5.25,face:90,h:2.8,floor:true}, {key:'brazier',x:-22.75,z:18.2}, {key:'brazier',x:-12.25,z:18.2},
-                {key:'brazier',x:-22.75,z:-11.9}, {key:'brazier',x:-12.25,z:-11.9}, {key:'brazier',x:-22.75,z:43.75}, {key:'brazier',x:-12.25,z:43.75},
-                {key:'stocks',x:-5.25,z:15.75,face:270}, {key:'camping_tent',x:-1.75,z:1.75,face:180}, {key:'camping_tent',x:36.75,z:15.75,face:0}, {key:'armour_stand',x:5.25,z:1.75,face:180},
-                {key:'armour_stand',x:29.75,z:15.75,face:0}, {key:'fountain',x:19.25,z:-21.35}, {key:'iron_garden_bench',x:26.25,z:-19.6,face:270}, {key:'planter',x:8.75,z:-19.25},
-                {key:'planter',x:29.75,z:-25.9}, {key:'planter',x:-5.25,z:-19.25}, {key:'lion_statue',x:-23.8,z:-25.9,face:180}, {key:'lion_statue',x:-11.2,z:-25.9,face:180},
-                {key:'signpost',x:-8.75,z:54.25}, {key:'cave_torch',x:-68.25,z:50.75}, {key:'campfire',x:-54.25,z:54.25}, {key:'signpost',x:68.25,z:47.25},
-            ],
-            agents: [],
-            npcSpots: [{x:-8.4,z:30.1,face:180,race:'knight',say:['“Halt.” “I have a form.” “Everyone has a form. Halt anyway; it is the custom.”','“The drawbridge is down.” “Is that safe?” “It is down for you. It is not down for everyone.”']},{x:-26.25,z:12.25,face:300,race:'swordfighter',say:['“Go on. Pull it.” “What happens?” “Nothing has happened yet. That is the interesting part.”','“Whoso pulleth out this sword — the rest is worn off. We assume it ends well.”']},{x:36.75,z:-19.25,face:240,race:'robinhood',say:['“The orchard is the Crown’s.” “Whose Crown?” “Lapsed. Help yourself.”','“I can see the sky castle from the east wall. Nobody else can see it from anywhere. Continuity has a form for that too.”']},{x:-3.75,z:-36,face:90,race:'king arthur',say:['“The lists are open.” “Who is jousting?” “Whoever arrives. The tilt keeps the rest honest.”','“The mountain is ours to the snowline.” “And past it?” “Past it the landlords are older.”']},{x:47.75,z:10.75,face:270,race:'knight'}],
-            onlineSpots: [],
-            lines: ['“The moat is the record. The drawbridge is the amendment.” “And the wall?” “The wall is the appendix nobody reads.”','“Which side of the portcullis is inside?” “Both. HINGE technology. No privileged side.”','“The castle in the sky.” “Where?” “North-north-east, over the wall, a third of the way up.” “I don’t see it.” “Then you are not on the wall.”','“The sword is still in the stone.” “Who does it belong to?” “The stone, at present.”','“The postern goes to the mountain.” “Which mountain?” “The one that is always behind the keep.”'],
-            spawn: { x: -17.5, z: 56, face: 0 },
-        },
-        /* CAMELOT-CASTLE-END */
         site_prebuilt_camelot_ward: {
             label: 'CAMELOT · THE OUTER WARD',
             sub: 'THE DRAWBRIDGE · THE GATEHOUSE · THE BAILEY · THE WALL-WALK · NO PRIVILEGED SIDE',
@@ -52528,21 +52391,7 @@ const DOOR_HQ = {
                     { k: 'line', x0: -40.25, z0: -5.25, x1: -40.25, z1: 5.25, w: 0.14, color: 0xf0ece0 }, { k: 'line', x0: -14, z0: -5.25, x1: -14, z1: 5.25, w: 0.14, color: 0xf0ece0 },
                 ],
             },
-            doors: [
-                /* THE NORTH SIDE of the court is the hall's and the keep's own front: both doors are DOOR JOINS (the rooms stand beside the ward) */
-                { id: 'hall', wall: 'n', x: 0, leaf: 'leaf_shabby_wood',
-                  label: 'THE GREAT HALL', sub: 'THE HALL DOOR · THE ROUND TABLE',
-                  action: { room: 'site_prebuilt_camelot_hall', at: 'ward' },
-                  desc: 'The hall door at the end of the avenue. Oak, iron, a knocker shaped like a hand. The hand is warm.' },
-                { id: 'keep', wall: 'n', x: -35.2, leaf: 'leaf_shabby_wood',
-                  label: 'THE KEEP', sub: 'THE KEEP DOOR · THE GREAT STAIR',
-                  action: { room: 'site_prebuilt_camelot_keep', at: 'ward' },
-                  desc: 'The keep’s own door, smaller than the hall’s and thicker. The stair behind it goes up to the battlements and does not stop there.' },
-                { id: 'postern', wall: 'w', z: -30, leaf: 'leaf_shabby_wood',
-                  label: 'MERLIN’S UNDERCROFT', sub: 'THE SALLY PORT · UNDER THE WALL',
-                  action: { room: 'site_prebuilt_camelot_dungeon', at: 'postern' },
-                  desc: 'A low door in the trees outside the moat, where a wall should be and is not. It goes under the moat, which the besiegers should have found suspicious.' },
-            ],
+            doors: [],   // RETIRED (2026-11-15, mondo: "just delete the old fucking camelot ... no reason why the old one should still be loading at all"): no door leads in or out; the room stands only as the room the Camelot fight board is cut from (HQ_ARENA_RULES.picks), like the old streets under Disaster City. DOOR_HQ.retired sends anything that asks for it to the kingdom.
             counters: [],
             props: [
                 /* THE GATEHOUSE: the braziers inside the gate, the stocks, the sign on the approach */
@@ -52586,113 +52435,6 @@ const DOOR_HQ = {
             spawn: { x: 0, z: 50, face: 0 },
         },
         /* ── THE GREAT HALL — the round table, the dais and the throne, the minstrels' gallery, the loft ── */
-        site_prebuilt_camelot_hall: {
-            label: 'CAMELOT · THE GREAT HALL',
-            sub: 'THE ROUND TABLE · THE DAIS · THE MINSTRELS’ GALLERY · TWELVE CHAIRS, THIRTEEN SHADOWS',
-            kind: 'box', site: 'prebuilt_camelot', part: 'hall',
-            shell: {
-                w: 26, d: 52, h: 12,
-                wallH: 12, dadoH: 1.1,
-                floor: 'cobblestone', wall: 'castle_wall', dado: 'bricks_2', trim: 'wood', ceiling: 'dark_woods', ceilTile: 1.75,
-                floorColor: 0xa8a098, wallColor: 0xa4a4ac, dadoColor: 0x8a7e72, ceilColor: 0x6a4e38,
-                pipes: false, strips: false, lights: [],
-                mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xffd8a8, ambient: 0.34 },
-                fog: { color: 0x0e0906, density: 0.014 },   /* the smoke under the beams */
-                plate: { x: 0, z: -24.4, y: 7.4 },
-                look: HQ_ROOM_LOOKS.greathall,
-            },
-            /* THE FIELD (26 × 52 m, no plan — family B): the way in from the ward on the south
-               wall; THE ROUND TABLE at the centre; THE DAIS (0.9 m) across the north end with
-               the throne under the rose window and two braziers; THE MINSTRELS' GALLERY (3.5 m)
-               along the east wall up its stair from the south end, the rail on its lip; THE
-               LOFT over the gallery's north end (8 m — the tape, the door gun's from the
-               gallery); the trestle bench along the west wall (the rider's ledge); the keep's
-               stable door and the Lodge's saloon door on the west wall. */
-            terrain: {
-                res: 0.4375,   // THE GRID FIT (2026-10-26): sampled every quarter square, so a tier's edge on a square line never smears into the square beside it
-                floor: 'cobblestone', cliff: 'castle_wall', path: 'wood',
-                noise: { amp: 0, scale: 5 }, crag: false,
-                features: [
-                    { k: 'plateau', x: 0, z: -22.75, w: 21, d: 7, h: 0.9, edge: 0.2 },                                          // THE DAIS
-                    { k: 'ramp', x0: 0, z0: -14, x1: 0, z1: -19.95, w: 3.5, h0: 0, h1: 0.9, stairs: true, edge: 0.2 },       // its three steps (end 0.7 m inside)
-                    { k: 'plateau', x: 10.875, z: 1.75, w: 4.25, d: 31.5, h: 3.5, edge: 0.2 },                                         // THE MINSTRELS' GALLERY (x 8..13, z −14..18)
-                    { k: 'ramp', x0: 10.5, z0: 26.25, x1: 10.5, z1: 16.8, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'wood', edge: 0.2 },  // its stair from the south end (L ≥ 2.2 × h)
-                    { k: 'rail', x0: 8.7944, z0: -10.95, x1: 8.7944, z1: -6.65 }, { k: 'rail', x0: 9.005, z0: -4.4516, x1: 9.005, z1: 16.9094 },   // the gallery's rail (the grind), open where the walks come in
-                    /* THE WEST GALLERY (3.5) along the west wall, up a timber stair from the keep's door; THE WALK across the hall to the
-                       east gallery (two spans with a 2.8 m gap in the middle, a pipe rail laid over it) and a second, whole, to the gallery's
-                       north end past the loft */
-                    { k: 'plateau', x: -10.875, z: -11.375, w: 4.25, d: 12.25, h: 3.5, edge: 0.2 },
-                    { k: 'ramp', x0: -12.25, z0: 3.5, x1: -12.25, z1: -5.95, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'wood', rails: 'l', edge: 0.2 },
-                    { k: 'bridge', x0: -9.45, z0: -6.125, x1: -1.75, z1: -6.125, w: 1.75, y: 3.5, rails: false, key: 'wood' },
-                    { k: 'bridge', x0: 1.75, z0: -6.125, x1: 9.45, z1: -6.125, w: 1.75, y: 3.5, rails: false, key: 'wood' },
-                    { k: 'rail', x0: -2.4, z0: -5.6, x1: 2.4, z1: -5.6, y: 3.5, model: 'pipe', block: false },
-                    { k: 'bridge', x0: -9.45, z0: -13.125, x1: 9.45, z1: -13.125, w: 1.75, y: 3.5, rails: false, key: 'wood' },
-                    { k: 'rail', x0: -8.6053, z0: -13.9602, x1: 8.6053, z1: -13.9602, y: 3.5, model: 'balusters_b' },
-                    { k: 'rail', x0: -8.6603, z0: -6.9602, x1: -1.8487, z1: -6.9602, y: 3.5, model: 'balusters_b' }, { k: 'rail', x0: 1.8555, z0: -6.9602, x1: 8.6062, z1: -6.9602, y: 3.5, model: 'balusters_b' },
-                    { k: 'rail', x0: -8.8917, z0: -17.304, x1: -8.8917, z1: -14.364, y: 3.5, model: 'balusters_b' }, { k: 'rail', x0: -8.8917, z0: -11.816, x1: -8.8917, z1: -7.602, y: 3.5, model: 'balusters_b' },
-                    { k: 'rail', x0: -12.8111, z0: -17.353, x1: -9.0333, z1: -17.353, y: 3.5, model: 'balusters_b' },
-                    /* skate rails on the floor: by the runner, round the table's west side */
-                    { k: 'rail', x0: 5, z0: 20, x1: 5, z1: 10, model: 'pipe', block: false },
-                    { k: 'rail', arc: { x: 0, z: 4, r: 4.8, a0: 170, a1: 290 }, model: 'pipe', block: false },
-                    { k: 'plateau', x: 10.75, z: -8.75, w: 4, d: 3.5, h: 8.0, edge: 0.2 },                                     // THE LOFT (the tape — the door gun's, from the gallery)
-                    { k: 'wall', x0: -10.5, z0: 10.5, x1: -10.5, z1: 22.75, h: 0.5, t: 0.6, key: 'wood' },                            // the trestle bench along the west wall, south of the two doors (the rider's ledge)
-                    { k: 'path', pts: [[0, 25.5], [0, -14.5]], w: 2.6 },                                                     // the runner
-                    { k: 'path', pts: [[0, -19.2], [0, -23]], w: 2.0 },
-                    { k: 'path', pts: [[-12.5, 6], [-4, 4]], w: 1.6 },                                                       // to the keep's door
-                    { k: 'path', pts: [[-12.5, -8], [-4, -6]], w: 1.6 },                                                     // to the Lodge's
-                ],
-            },
-            doors: [
-                { id: 'ward', wall: 's', x: 0, leaf: 'leaf_shabby_wood',
-                  label: 'THE OUTER WARD', sub: 'THE HALL DOOR · BACK TO THE BAILEY',
-                  action: { room: 'site_prebuilt_camelot_ward', at: 'hall' },
-                  desc: 'The hall door from inside, barred with a beam nobody lifts. It opens anyway; the beam is heraldic.' },
-                { id: 'keep', wall: 'w', z: 6, leaf: 'leaf_stable',
-                  label: 'THE KEEP', sub: 'THE STABLE DOOR · THROUGH TO THE KEEP',
-                  action: { room: 'site_prebuilt_camelot_keep', at: 'hall' },
-                  desc: 'A stable door in a hall wall, the top half open. Through it the keep’s guardroom and the smell of horses there are none of.' },
-                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE PRIEST HOLE — a panel behind the dais down into the undercroft (R4) */
-                { id: 'priesthole', wall: 'e', z: -18, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE PRIEST HOLE · BEHIND THE DAIS · DOWN TO THE UNDERCROFT',
-                  action: { room: 'site_prebuilt_camelot_dungeon', at: 'priesthole' },
-                  desc: 'A panel behind the dais that gives when leaned on. The stair behind it is a priest’s width and goes down to Merlin’s.', draft: true },
-            ],
-            counters: [],
-            props: [
-                /* THE ROUND TABLE: no head, one candle ring, twelve chairs and the shadow count */
-                { key: 'round_table',    x: -0.875, z: 4.375, face: 0 },
-                { key: 'candle_ring',    x: 0, z: 4, y: 0.82 },
-                /* THE DAIS: the throne under the rose window, the braziers, the tapestries */
-                { key: 'royal_throne',   x: -0.875, z: -23.625, face: 180 },
-                { key: 'brazier',        x: -6.125, z: -23.625 }, { key: 'brazier', x: 6.125, z: -23.625 },
-                { key: 'stained_glass',  wall: 'n', x: 0, mount: 6.6 },
-                { key: 'holy_tapestry',  wall: 'n', x: -8, mount: 4.2 }, { key: 'holy_tapestry', wall: 'n', x: 8, mount: 4.2 },
-                /* THE WALLS: the torches, the banners, the armour by the dais */
-                { key: 'wall_torch',     wall: 'e', z: -6, mount: 2.2 }, { key: 'wall_torch', wall: 'e', z: 10, mount: 2.2 },
-                { key: 'wall_torch',     wall: 'w', z: -2, mount: 2.2 }, { key: 'wall_torch', wall: 'w', z: 14, mount: 2.2 },
-                { key: 'banner',         wall: 'e', z: 2 }, { key: 'banner', wall: 'e', z: 18 }, { key: 'banner', wall: 'w', z: -14 }, { key: 'banner', wall: 'w', z: 20 },
-                { key: 'armour_stand',   x: -11.374, z: -16.625, face: 90 }, { key: 'armour_stand', x: 11.375, z: -16.625, face: 270 },
-                /* THE GALLERY: the rail, the lectern, the chest under the stair */
-                { key: 'railing_1m',     x: 11.375, z: 9.625, face: 270 },
-                { key: 'lectern',        x: 11.375, z: -4.376, face: 270 },
-                { key: 'sea_chest',      x: -7.875, z: 23.625, face: 60 },
-                { key: 'instrument_harp', x: 4.2, z: -21.8, face: 180 }, { key: 'instrument_drum', x: -9.8, z: 14.5, face: 90 }, { key: 'instrument_violin_lying', x: -6.4, z: 22.8, rot: 35 }, { key: 'instrument_violin_bow', x: -5.8, z: 23.4, rot: 60 }, { key: 'instrument_whistle', x: 0.9, z: 3.2, y: 0.82, rot: 20 },   // THE INSTRUMENTS (2026-10-27): the minstrels: the harp by the throne, the drum, a fiddle by the chest, a whistle on the Round Table
-            ],
-            agents: [],
-            npcSpots: [
-                { x: 1.6, z: 7.6, face: 340, race: 'king arthur', say: ['“There is no head of this table.” “Then where do you sit?” “Wherever the head is not. It moves.”', '“Twelve chairs.” “I count twelve.” “Count the shadows.”'] },
-                { x: -3.4, z: 1.2, face: 60, race: 'knight', say: ['“The gallery is for the minstrels.” “There are no minstrels.” “Then it is for whoever is up there.”', '“The loft over the gallery has no stair.” “Then how is anything up there?” “Ask the Quartermaster for the gun.”'] },
-                { x: 10.5, z: 8, face: 270, race: 'robinhood', say: ['“Good view of the table from here.” “Of the chairs?” “Of the shadows.”'] },
-            ],
-            onlineSpots: [],
-            lines: [
-                '“Twelve chairs. Thirteen shadows.” “Whose is the thirteenth?” “Yours, when you sit. Nobody sits.”',
-                '“The throne faces the door.” “So the king sees who comes in.” “So the door sees the king.”',
-                '“The Lodge keeps the chairs and denies the table.” “Which is worse?” “Which is the Lodge.”',
-                '“The window shows a rose.” “At night?” “The window is lit from the far side. There is no far side.”',
-                '“Pull the sword and this chair is yours.” “Which chair?” “Whichever one is empty when you sit.”',
-            ],
-            spawn: { x: 0, z: 21, face: 0 },
-        },
         /* ── THE KEEP — the guardroom, the great stair, the solar, the battlements, the tower top ── */
         site_prebuilt_camelot_keep: {
             label: 'CAMELOT · THE KEEP',
@@ -52757,10 +52499,6 @@ const DOOR_HQ = {
                   label: 'THE OUTER WARD', sub: 'THE KEEP DOOR · BACK TO THE BAILEY',
                   action: { room: 'site_prebuilt_camelot_kingdom', at: 'keep' },   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the castle stands in the kingdom room now     // CAMELOT CASTLE, REDESIGNED (2026-11-15): out into the new castle's guardroom (was the old ward)
                   desc: 'The keep door from the guardroom side, with the bar across it and the bar’s bracket empty.' },
-                { id: 'hall', wall: 'e', z: 2, leaf: 'leaf_stable',
-                  label: 'THE GREAT HALL', sub: 'THE STABLE DOOR · THROUGH TO THE HALL',
-                  action: { room: 'site_prebuilt_camelot_hall', at: 'keep' },
-                  desc: 'The stable door from the keep side. Through the open top half: the round table, and the light off the rose window on it.' },
                 { id: 'dungeon', wall: 'w', z: -4, leaf: 'leaf_cell',
                   label: 'MERLIN’S UNDERCROFT', sub: 'THE DUNGEON STAIR · DOWN',
                   action: { room: 'site_prebuilt_camelot_dungeon', at: 'keep' },
@@ -52896,10 +52634,6 @@ const DOOR_HQ = {
                   label: 'THE OUTER WARD', sub: 'THE SALLY PORT · OUT UNDER THE MOAT',
                   action: { room: 'site_prebuilt_camelot_kingdom', at: 'postern' },   // CAMELOT KINGDOM ON PLOTS (2026-11-15)     // CAMELOT CASTLE, REDESIGNED (2026-11-15)
                   desc: 'A low wet door at the end of the passage. It comes out in the trees outside the moat, dry, which is the trick of it.' },
-                /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE PRIEST HOLE's foot (R4) */
-                { id: 'priesthole', wall: 'n', x: 20, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE PRIEST HOLE · THE STAIR UP BEHIND THE DAIS',
-                  action: { room: 'site_prebuilt_camelot_hall', at: 'priesthole' },
-                  desc: 'A stair a priest’s width in the north wall, going up. It comes out behind the dais, behind a panel that nobody leans on.', draft: true },
             ],
             counters: [],
             props: [
@@ -59086,7 +58820,6 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                          dayLook: {
                              site_prebuilt_camelot_ward: { fog: 0xb6c2d0, tint: 0xa8c0e0, clouds: 0.35 },
                              site_prebuilt_camelot_kingdom: { fog: 0xb6c2d0, tint: 0xa8c0e0, clouds: 0.35 },   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the castle's own day over the whole kingdom
-                             site_prebuilt_camelot_castle: { fog: 0xb6c2d0, tint: 0xa8c0e0, clouds: 0.35 },   // CAMELOT CASTLE, REDESIGNED (2026-11-15): the ward's own day
                              site_prebuilt_area51_flightline: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },
                              site_prebuilt_area51_gate: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },   // the gate wears the flight line's desert day
                              /* the woods' places (one shell): a sunlit green haze under the canopy */
@@ -60387,7 +60120,6 @@ const HQ_AREA_MARKERS = {
     site_prebuilt_heaven_gate: { x: 0, z: 0 },   // THE CLOUD FIELDS: the sun (THE NEW HEAVEN, 2026-11-03)
     site_prebuilt_camelot_ward: { x: 8, z: 54 },
     site_prebuilt_camelot_kingdom: { x: -24.5, z: 157.5 },   // CAMELOT KINGDOM ON PLOTS (2026-11-15): inside the Town Gate, the road up to the drawbridge ahead
-    site_prebuilt_camelot_castle: { x: -17.5, z: 56 },   // CAMELOT CASTLE, REDESIGNED (2026-11-15): at the foot of the Crown's Road, the drawbridge ahead   // CAMELOT: inside the portcullis (G6: the ward is the entry)
     site_prebuilt_skinwalker_fields: { x: -8, z: 12 },   // THE CORN FIELDS: by the circle
     site_prebuilt_bermuda_sea: { x: -1, z: 28 },   // THE OPEN SEA: on the cay
     site_prebuilt_atlantis_temple: { x: 0, z: 0 },   // THE TEMPLE: the dais
@@ -64763,7 +64495,6 @@ DOOR_HQ.lightShafts = {
         { x: -28, z: 8, top: 9.6, h: 11.5, w: 3.2, tilt: 40, dir: 90, color: 0xfff0d2, intensity: 0.3 },
         { x: -28, z: 28, top: 9.6, h: 11.5, w: 3.2, tilt: 40, dir: 90, color: 0xfff0d2, intensity: 0.3 },
     ],
-    site_prebuilt_camelot_hall: [ { x: 0, z: -23, top: 9.2, h: 10, w: 3.6, tilt: 42, dir: 180, color: 0xffe8c8, intensity: 0.34 } ],   // the north window over the dais
     site_prebuilt_atlantis_temple: [   // the two west windows and the two east
         { x: -28, z: -12, top: 9.5, h: 10.5, w: 2.8, tilt: 36, dir: 90, color: 0xbfe8e0, intensity: 0.3 }, { x: -28, z: 12, top: 9.5, h: 10.5, w: 2.8, tilt: 36, dir: 90, color: 0xbfe8e0, intensity: 0.3 },
         { x: 28, z: -16, top: 9.5, h: 10.5, w: 2.8, tilt: 36, dir: 270, color: 0xbfe8e0, intensity: 0.26 }, { x: 28, z: 16, top: 9.5, h: 10.5, w: 2.8, tilt: 36, dir: 270, color: 0xbfe8e0, intensity: 0.26 },
@@ -69211,7 +68942,6 @@ const HQ_TAPE_SHEET = {
     /* CAMELOT CASTLE (2026-09-18 — complex candidate #2): one per part — five re-homed (Atlantis's, the Dutchman's, the Spaceship's and the
        Looking-Glass's second — the hundred stays a hundred; the castle keeps THE ROUND TABLE on its board) */
     site_prebuilt_camelot_ward:    [['THE DRAWBRIDGE, DUSK', 'The drawbridge comes down for nobody. Something crosses it anyway; the planks bow under it in order.', 'evidence']],   // + the board's own (THE AREAS, 2026-09-18); the second went to THE ASTRAL REALM (2026-09-19)
-    site_prebuilt_camelot_hall:    [['THE THIRTEENTH CHAIR', 'Twelve chairs at the table, and the camera counts thirteen shadows. In the last frame one of them stands up.', 'evidence']],
     site_prebuilt_camelot_keep:    [['THE WATCH', 'A sentry on the battlements looks up all night. In the last minute something in the sky looks back, and it has windows.', 'facility']],
     site_prebuilt_camelot_dungeon: [['MERLIN, BACKWARDS', 'An old man in the undercroft, speaking. Played in reverse he is saying your callsign, and a date that has not happened.', 'parents']],
     site_prebuilt_camelot_sky:     [['THE CASTLE IN THE SKY', 'A castle over the clouds, filmed from below. Then from above. There was nowhere to film it from above.', 'evidence']],
@@ -69666,7 +69396,6 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_hollow_earth_innersun: { tape: { x: 0, z: -12.25 } },   // AREA CONTENT D3 (2026-09-19): the sun moved south with its terrace
     site_prebuilt_derelict_deck: { tape: { x: -1.75, z: -43.75 } },   // THE SHIP (2026-10-28): on the bridge's roof (the nacelle went with the old deck) · THE GUNSHIP (2026-11-11): on the nose, by the airlock's collar
     site_prebuilt_revenge_deck: { tape: { x: -54.25, z: 3.5 } },   // THE NEW MAP (2026-10-20): by THE HELM on the poop (the maintop went with the old deck)
-    site_prebuilt_camelot_hall:    { tape: { x: 10.5, z: -9.0 } },
     site_prebuilt_camelot_keep:    { tape: { x: 15.4, z: -19.0 } },
     site_prebuilt_camelot_dungeon: { tape: { x: -28.0, z: -20.0 } },
     site_prebuilt_camelot_sky:     { tape: { x: 14.0, z: -16.0 } },
@@ -71784,7 +71513,6 @@ const HQ_AREA_ENCOUNTERS = {
     ] },
 };
 HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_kingdom = HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_ward;   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the kingdom meets the ward's own units too
-HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_castle = HQ_AREA_ENCOUNTERS.site_prebuilt_camelot_ward;   // CAMELOT CASTLE, REDESIGNED (2026-11-15): the new castle meets the ward's own units (mondo's baked table, one copy)
 function hqRoomEncTable(roomId, skip) {
     if (skip) return null;   // the game's own people (THE AREA UNITS window's "game default" read)
     const room = (DOOR_HQ.rooms || {})[roomId];

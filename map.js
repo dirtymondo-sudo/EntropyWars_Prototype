@@ -1611,6 +1611,8 @@
         function _hqEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
         function _hqRoom() { return (typeof DOOR_HQ !== 'undefined') ? (DOOR_HQ.rooms[_hqCurRoom] || DOOR_HQ.rooms.central_egress) : null; }
         function _hqRoomExists(id) { return !!(typeof DOOR_HQ !== 'undefined' && id && DOOR_HQ.rooms[id]); }
+        /* the room that stands for a retired one now (data.js DOOR_HQ.retired), or null */
+        function _hqRetiredTo(id) { try { const R = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.retired) || null, to = R && id && R[id]; return (to && DOOR_HQ.rooms[to]) ? to : null; } catch (e) { return null; } }
         /* THE FOURIER FOYER (HQ plan 7.4, 2026-09-15): a fresh arrival from Play
            stands in the vestibule and walks in through the revolving door —
            the loading card's "verifying your corners…" as a place. Off with
@@ -2055,6 +2057,9 @@
                     roomId = ent.room; opts.at = ent.at;
                 }
             } catch (e) { console.warn('[HQ] site entry failed', e); }
+            /* THE RETIRED ROOMS (2026-11-15, data.js DOOR_HQ.retired): a room a rebuilt area replaced is never entered again, whatever asked
+               for it (CONTINUE's room on file, the map, a return from a match): the room that stands for it now, at its own spawn */
+            { const _rt = _hqRetiredTo(roomId); if (_rt) { if (_hqLastRoom === roomId) _hqLastRoom = _rt; roomId = _rt; opts.at = null; _resume = null; } }
             if (!_hqRoomExists(roomId)) roomId = 'central_egress';
             if (_resume && roomId === _resume.room) opts.at = { x: _resume.x, z: _resume.z, y: _resume.y, face: _resume.face };   // THE SAVE: where the officer stood
             _hqCurRoom = roomId;
@@ -2443,6 +2448,7 @@
         window._hqCurRoomId = function () { try { const ed = window.EWEditor, es = (ed && ed.state) ? ed.state() : null; if (es && es.open && !es.playing) return null;   // the editor's viewport is not the walk
             return (state.gameState === GS.HQ && !_hqSuspended && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ? _hqCurRoom : null; } catch (e) { return null; } };
         window._hqGoRoom = function (roomId, at) {
+            { const _rt = _hqRetiredTo(roomId); if (_rt) { roomId = _rt; at = null; } }   // THE RETIRED ROOMS (data.js DOOR_HQ.retired)
             /* `site_<mapId>` is an alias since the board rooms went (2026-09-27): it walks into the site's entry part */
             if (!_hqRoomExists(roomId)) { try { const ent = (typeof window.hqSiteEntry === 'function') ? window.hqSiteEntry(roomId, at) : null; if (ent && ent.room) { roomId = ent.room; at = ent.at; } } catch (e) {} }
             if (!_hqRoomExists(roomId)) { console.warn('[HQ] no such room', roomId); return false; }
@@ -6618,7 +6624,7 @@
         /* FAST TRAVEL (ZONES_PLAN Z3, §10 fork 3's default): GO takes you only to a room you have STOOD IN (charted) — an
            uncharted question mark is walked to, never travelled to */
         function _hqMapCharted(id) {
-            if (!id || !_hqRoomExists(id)) return false;
+            if (!id || !_hqRoomExists(id) || _hqRetiredTo(id)) return false;   // a retired room is never a place to GO
             if (id === _hqCurRoom || window.EW_HQ_MAP_ALL) return true;
             try { if (typeof window.hqRoomSeen !== 'function') return true; if (window.hqRoomSeen(_hqProfile(), id)) return true; } catch (e) { return false; }
             return _hqMapAnchorCharted(id);
