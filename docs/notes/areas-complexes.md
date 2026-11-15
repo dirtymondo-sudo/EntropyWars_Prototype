@@ -4211,7 +4211,11 @@ update that rule" (CLAUDE.md RULE #1c + owner-rules.md rewritten: browser runs w
   - Cost: oak 460 wood + 648 leaf triangles, birch 288 + 396, fir 36 + 872, pine 36 + 600 (leaf counts are both windings). Files 155-190 KB (were 0.2-1.6 MB).
   - Seen in the game (playtest_city.js on `site_prebuilt_fairy_forest_plots`, birch / oak / fir quarters, from a path and looking up). Lessons: the first trunks were
     twice too fat at Woods heights (a 13 m oak) and the first greens washed out pale in the game's light: keep the picture's values low (sunlit 0.56, mid 0.41, shade 0.27).
-  - Asked next by mondo (not done here): these trees everywhere but the palms; alien / exotic trees from the noise / abstract texture packs.
+  - **EVERYWHERE (same day, mondo: "much better, can you use these trees everywhere, I guess except for the palm trees")**: data.js HQ_TREE_KINDS `tree`, `tree_2`,
+    `tree_3`, `tree_4`, `pine` (and three-renderer.js `_FOLIAGE_MODEL_FOR_KEY`, + `tree_pine`, + the canopy's fallback) draw the painted `_full` files: every room and
+    every battle map that placed a pack tree. Unchanged: bare trees (tree_5 / tree_6), the sapling (pine_2), palms, Christmas pines, the old OBJ kinds (tree_7-51, no
+    room places them). NOT seen in the browser outside the Woods; cost to watch: a card tree was ~100 triangles, a painted one 700-1,100 (Disaster City's frame rate).
+  - Still open (mondo asked): alien / exotic trees, "maybe use something from the noise or abstract texture packs".
 
 ## THE BEACH ON PLOTS — the sixth area of the world plan, first delivery (2026-11-15)
 

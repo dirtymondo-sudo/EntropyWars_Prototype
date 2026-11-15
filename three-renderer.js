@@ -7703,15 +7703,15 @@ const ThreeRenderer = (function () {
        them now. data.js HQ_TREE_KINDS carries the same names (it wins for every key it lists). */
     var _FOLIAGE_RT_BASE = _R2_FOLIAGE + 'retrotreepack/GLB/';
     var _FOLIAGE_MODEL_FOR_KEY = {
-        tree:   'rt:tree_rt_2_1',
-        tree_2: 'rt:tree_rt_3',
-        tree_3: 'rt:tree_rt_4',
-        tree_4: 'rt:tree_rt_2',
+        tree:   'rt:tree_rt_2_1_full',
+        tree_2: 'rt:tree_rt_3_full',
+        tree_3: 'rt:tree_rt_4_full',
+        tree_4: 'rt:tree_rt_2_full',
         tree_5: 'rt:dead_tree_rt_2',
         tree_6: 'rt:dead_tree_rt_1',
-        pine:   'rt:tree_rt_1',
+        pine:   'rt:tree_rt_1_full',
         pine_2: 'rt:small_tree_rt_1',
-        tree_pine: 'rt:tree_rt_1',          // the map editor's board keys for the same two (tree_ so the board's /^tree/ rules count them)
+        tree_pine: 'rt:tree_rt_1_full',          // the map editor's board keys for the same two (tree_ so the board's /^tree/ rules count them)
         tree_sapling: 'rt:small_tree_rt_1'
     };
     /* THE ISLAND (2026-10-20): a name `kit:<file>` is a GLB in the D.O.O.R. kit folder (DOOR_HQ.assets.models — the palm) */
@@ -69260,7 +69260,7 @@ const ThreeRenderer = (function () {
         var byName = {}, names = [];
         spots.forEach(function (sp) {
             var nm = _FOLIAGE_MODEL_FOR_KEY[sp.kind];
-            if (!_foliageIsGlb(nm)) nm = _foliageDead(sp.kind) ? 'rt:dead_tree_rt_1' : 'rt:tree_rt_3';
+            if (!_foliageIsGlb(nm)) nm = _foliageDead(sp.kind) ? 'rt:dead_tree_rt_1' : 'rt:tree_rt_3_full';
             if (!byName[nm]) { byName[nm] = []; names.push(nm); }
             byName[nm].push(sp);
         });
