@@ -1,0 +1,833 @@
+{
+"area": "The Woods",
+"version": "plan-1",
+"squareMeters": 3.5,
+"plotCells": 12,
+"areaPlots": 6,
+"areaMeters": 252.0,
+"districts": {
+"T": "The Redwood Trail",
+"G": "The Ritual Ground",
+"C": "The Clearing",
+"M": "Dead Man's Cave"
+},
+"plots": [
+{
+"id": "P00-00",
+"name": "The Snowline",
+"district": "T",
+"level": 8,
+"what": "snow, bare rock, the highest shelf",
+"from": "Mount Shasta: THE SNOWLINE",
+"ports": [
+"E"
+],
+"exit": null
+},
+{
+"id": "P01-00",
+"name": "The Shelf",
+"district": "T",
+"level": 7,
+"what": "rock shelf, the adit to Lemuria (hidden)",
+"from": "Mount Shasta: THE SHELF + the Lemuria adit",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": [
+"Lemuria adit to Agartha",
+"secret"
+]
+},
+{
+"id": "P02-00",
+"name": "The Falls",
+"district": "T",
+"level": 6,
+"what": "waterfall into a pool; the creek starts here",
+"from": "Mount Shasta: THE FALLS",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-01",
+"name": "The Old Trees, north",
+"district": "T",
+"level": 5,
+"what": "the biggest redwoods; LANDMARK: the giant redwood",
+"from": "Redwood Trail: THE OLD TREES",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "The Meadow",
+"district": "T",
+"level": 5,
+"what": "open grass, campfire, drum circle",
+"from": "Mount Shasta: THE MEADOW",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Creek, upper",
+"district": "T",
+"level": 4,
+"what": "creek, plank deck crossing",
+"from": "Redwood Trail: THE CREEK",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "The Old Trees, south",
+"district": "T",
+"level": 3,
+"what": "redwoods, fallen logs",
+"from": "Redwood Trail: THE OLD TREES",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-02",
+"name": "The Trail",
+"district": "T",
+"level": 3,
+"what": "the trail itself, candle ring",
+"from": "Redwood Trail",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-02",
+"name": "The Creek, lower",
+"district": "T",
+"level": 2,
+"what": "creek bends east to the culvert",
+"from": "Redwood Trail: THE CREEK",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-00",
+"name": "The Mound",
+"district": "G",
+"level": 5,
+"what": "grass mound, wooden cross",
+"from": "Bohemian Grove: THE MOUND",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-00",
+"name": "The Lake, west shore",
+"district": "G",
+"level": 4,
+"what": "lake, bridge",
+"from": "Bohemian Grove: THE LAKE",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-00",
+"name": "The Lake, east shore",
+"district": "G",
+"level": 4,
+"what": "lake; the members' tunnel to the Lodge (hidden)",
+"from": "Bohemian Grove: THE LAKE + the tunnel",
+"ports": [
+"S",
+"W"
+],
+"exit": [
+"The Lodge tunnel",
+"secret"
+]
+},
+{
+"id": "P03-01",
+"name": "The Tents",
+"district": "G",
+"level": 4,
+"what": "three camping tents, chests",
+"from": "Bohemian Grove: the camp",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P04-01",
+"name": "The Stage",
+"district": "G",
+"level": 4,
+"what": "stage, lectern, speakers, folding chairs",
+"from": "Bohemian Grove: THE STAGE",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-01",
+"name": "The Owl",
+"district": "G",
+"level": 4,
+"what": "LANDMARK: the owl, braziers, altar",
+"from": "Bohemian Grove: THE OWL",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The Fire",
+"district": "G",
+"level": 3,
+"what": "the fire, torches",
+"from": "Ritual Ground: THE FIRE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-02",
+"name": "The Stones",
+"district": "G",
+"level": 3,
+"what": "six standing stones, ritual circle; the way to Room 333 (hidden)",
+"from": "Ritual Ground: THE STONES",
+"ports": [
+"E",
+"W"
+],
+"exit": [
+"Room 333",
+"secret"
+]
+},
+{
+"id": "P05-02",
+"name": "The Dead Tree",
+"district": "G",
+"level": 3,
+"what": "the dead tree whose hole looks onto the Looking-Glass",
+"from": "Ritual Ground: the dead tree",
+"ports": [
+"N",
+"W"
+],
+"exit": [
+"The Looking-Glass",
+"secret"
+]
+},
+{
+"id": "P00-03",
+"name": "The Trail West",
+"district": "C",
+"level": 2,
+"what": "the trail out to Camelot",
+"from": "Clearing: THE TRAIL WEST TO CAMELOT",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": [
+"Camelot Kingdom (trail)",
+"open"
+]
+},
+{
+"id": "P01-03",
+"name": "The Old Tree",
+"district": "C",
+"level": 2,
+"what": "LANDMARK: the Old Tree",
+"from": "Clearing: THE OLD TREE",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-03",
+"name": "The Crossroads",
+"district": "C",
+"level": 2,
+"what": "seven paths meet, signpost",
+"from": "Clearing: THE CROSSROADS",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-04",
+"name": "Deep woods, west",
+"district": "C",
+"level": 1,
+"what": "thick trees, wolf",
+"from": "new forest plot",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-04",
+"name": "The Campfire",
+"district": "C",
+"level": 1,
+"what": "campfire, boxes",
+"from": "Clearing: the campfire",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-04",
+"name": "The Stair",
+"district": "C",
+"level": 2,
+"what": "the staircase from DOOR HQ, standing in the trees",
+"from": "Clearing: THE STAIR",
+"ports": [
+"N",
+"S"
+],
+"exit": [
+"DOOR HQ (the stair)",
+"open"
+]
+},
+{
+"id": "P00-05",
+"name": "Deep woods, south",
+"district": "C",
+"level": 1,
+"what": "thick trees, anthill, moths",
+"from": "new forest plot",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-05",
+"name": "The Fence Line",
+"district": "C",
+"level": 0,
+"what": "a fence and a gate: the way to the Estate",
+"from": "new (ZONES_PLAN: \"a gate, a fence line\")",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": [
+"The Estate (gate)",
+"open"
+]
+},
+{
+"id": "P02-05",
+"name": "Deep woods, east",
+"district": "C",
+"level": 1,
+"what": "thick trees, rabbits, crows",
+"from": "new forest plot",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "The Culvert",
+"district": "M",
+"level": 1,
+"what": "the creek goes under the path",
+"from": "Redwood/Dead Man's: the culvert",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-03",
+"name": "The Channel, upper",
+"district": "M",
+"level": 1,
+"what": "brick channel, graffiti",
+"from": "Dead Man's Cave: THE CHANNEL",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-03",
+"name": "The Storm Drain",
+"district": "M",
+"level": 0,
+"what": "the drain mouth; the gutter up to Disaster City",
+"from": "Dead Man's Cave: THE STORM DRAIN",
+"ports": [
+"S",
+"W"
+],
+"exit": [
+"Disaster City (gutter)",
+"open"
+]
+},
+{
+"id": "P03-04",
+"name": "The Cave Mouth",
+"district": "M",
+"level": 0,
+"what": "LANDMARK: the cave mouth in a rock face; door to the cave inside",
+"from": "Dead Man's Cave (inside kept as it is)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": [
+"inside: the cave",
+"inside"
+]
+},
+{
+"id": "P04-04",
+"name": "The Channel, lower",
+"district": "M",
+"level": 0,
+"what": "channel, pipes, drain grates",
+"from": "Dead Man's Cave: THE CHANNEL",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-04",
+"name": "The Outfall",
+"district": "M",
+"level": 0,
+"what": "the channel leaves east",
+"from": "Dead Man's Cave",
+"ports": [
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-05",
+"name": "The Gully",
+"district": "M",
+"level": 0,
+"what": "low wet ground",
+"from": "new forest plot",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-05",
+"name": "The Pool",
+"district": "M",
+"level": 0,
+"what": "still pool",
+"from": "Dead Man's Cave: the pool",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-05",
+"name": "The Tunnel Way",
+"district": "M",
+"level": 0,
+"what": "the way down to the Sewers and the HQ tunnel (hidden)",
+"from": "Dead Man's Cave: THE WAY TO THE TUNNEL",
+"ports": [
+"W"
+],
+"exit": [
+"The Sewers / HQ tunnel",
+"secret"
+]
+}
+],
+"edges": [
+[
+"P02-04",
+"P02-03"
+],
+[
+"P02-03",
+"P01-03"
+],
+[
+"P02-03",
+"P02-02"
+],
+[
+"P02-03",
+"P03-03"
+],
+[
+"P01-03",
+"P00-03"
+],
+[
+"P01-03",
+"P01-04"
+],
+[
+"P01-04",
+"P00-04"
+],
+[
+"P00-04",
+"P00-03"
+],
+[
+"P01-04",
+"P01-05"
+],
+[
+"P01-05",
+"P02-05"
+],
+[
+"P02-05",
+"P02-04"
+],
+[
+"P00-04",
+"P00-05"
+],
+[
+"P00-05",
+"P01-05"
+],
+[
+"P02-02",
+"P02-01"
+],
+[
+"P02-01",
+"P02-00"
+],
+[
+"P02-02",
+"P01-02"
+],
+[
+"P01-02",
+"P00-02"
+],
+[
+"P00-02",
+"P00-03"
+],
+[
+"P00-02",
+"P00-01"
+],
+[
+"P00-01",
+"P01-01"
+],
+[
+"P01-01",
+"P02-01"
+],
+[
+"P01-01",
+"P01-00"
+],
+[
+"P01-00",
+"P00-00"
+],
+[
+"P01-00",
+"P02-00"
+],
+[
+"P01-02",
+"P01-01"
+],
+[
+"P02-00",
+"P03-00"
+],
+[
+"P02-02",
+"P03-02"
+],
+[
+"P03-02",
+"P04-02"
+],
+[
+"P04-02",
+"P05-02"
+],
+[
+"P03-02",
+"P03-01"
+],
+[
+"P03-01",
+"P04-01"
+],
+[
+"P04-01",
+"P04-00"
+],
+[
+"P04-00",
+"P05-00"
+],
+[
+"P05-00",
+"P05-01"
+],
+[
+"P05-01",
+"P04-01"
+],
+[
+"P03-01",
+"P03-00"
+],
+[
+"P03-00",
+"P04-00"
+],
+[
+"P05-01",
+"P05-02"
+],
+[
+"P03-03",
+"P03-04"
+],
+[
+"P03-03",
+"P04-03"
+],
+[
+"P04-03",
+"P05-03"
+],
+[
+"P04-03",
+"P04-04"
+],
+[
+"P03-04",
+"P04-04"
+],
+[
+"P04-04",
+"P05-04"
+],
+[
+"P05-04",
+"P05-03"
+],
+[
+"P04-04",
+"P04-05"
+],
+[
+"P04-05",
+"P05-05"
+],
+[
+"P03-04",
+"P03-05"
+],
+[
+"P03-05",
+"P04-05"
+],
+[
+"P03-05",
+"P02-05"
+],
+[
+"P03-02",
+"P03-03"
+]
+],
+"cells": [
+"ssssssstsssstttgggttrtrttttttttttttttttttttttttttttttttttttttttttttttttt",
+"ssstssstststttgggggrtrtttttttttwwwttttttttttttttttttttttwwwttttttttttttt",
+"tssssssssssstgggggggrrttttttttwwwwwttttttttttttttttttttwwwwwtwwwtttttttt",
+"ssssssssssppgggggggggtttttttttwwwwwtttttttgggtttttttttwwwwwwwwwwwttttttt",
+"ssssssssssppgggggggggtrrttttppwwwwwppppppgggggtttttttwwwwwwwwwwwwwtttttt",
+"ssssssssssssgggggggggrtrtttppppwwwppppppgggggggttttttwwwwwwwwwwwwwtttttt",
+"sssssssssssttgggggggtttttttpppttwwtttttpgggggggttttttwwwwwwwwwwwwwtttttt",
+"ssssssssssssrtgggggpppppppppppttwwtttttpgggggggpppppppwwwwwwwwwwwttttttt",
+"ssssssssssssrttgggppppppppppptttwwtttttppgggggpppppppppwwwwwtwwwpttttttt",
+"ssssssssssstrtrrtrpptttrtttpptttwwtttttpptgggttttttttttpwwwttttppttttttt",
+"sssssssssssstrttrrpptrtrtttppttttwwttttppttttttttttttttppttttttppttttttt",
+"tssssssstssstrttttpprrtrtttppttttwwttttppttttttttttttttppttttttppttttttt",
+"ttttttttttttttttttpptttttttppttttwwttttppttttttttttttttppttttttppttttttt",
+"ttttttttttttttttttpptttttttppttttwwttttppttttttttttttgggpttttttppttttttt",
+"tttttttttttttttttgggtttttttppttttwwttttpptgggtttttttgggggttttttppttttttt",
+"tttttttppppppppgggggggtttttppttttwwttttppgggggtttttgggggggtttttppttttttt",
+"tttttttpppppppgggggggggttttpptttwwtttttpgggggggtttgggggggggpppppppgggttt",
+"ttttttgggtttttgggggggggttttpptttwwtttttpgggggggtttgggggggggppppppgggggtt",
+"tttttgggggtttgggggggggggtttpppppwwtttttpgggggggtttgggggggggttttpgggggggt",
+"ttttpgggggtttgggggggggggppppppppwwtttttppgggggpppppgggggggtttttpgggggggt",
+"ttttpgggggtttgggggggggggppppppppwwtttttpptgggpppppppgggggttttttpgggggggt",
+"ttttppgggtttttgggggggggttttppttwwttttttppttttttttttttgggttttttttpgggggtt",
+"ttttppttttttttgggggggggttttppttwwttttttpptttttttttttttttttttttttppgggttt",
+"ttttpptttttttttgggggggtttttppttwwttttttpptttttttttttttttttttttttpptttttt",
+"ttttpptttttttttppgggtttttttpptttwwtttttpptttttttttttttttttttttttpptttttt",
+"ttttpptttttttttppttttttttttpptttwwtttttgggttttttttttttttttttttttpptttttt",
+"ttttpptttttttttppttttttttttpptttwwttttgggggttttttttttgggttttttttpptttttt",
+"ttttpptttttttttppttttttttttpptttwwtttgggggggttttttttgggggtttttttpptttttt",
+"ttttpptttttttttppttttttttttpptttwwtttgggggggpttttttgggggggttttttpptttttt",
+"tttppppptttttttppppttttttttppttttwwttgggggggptttttgggggggggtttttpgggtttt",
+"tttppppppppppppppppppppppppppppptwwtttgggggpptttttgggggggggtttttgggggttt",
+"tttpptppppppppppppppppppppppppppttwwtttgggtpptttttgggggggggpppppgggggttt",
+"tttpptttttttttttttttttttttttppppppwbpppppppppppppppgggggggppppppgggggttt",
+"tttpptttttttttttttttttttttttpppppppwbpppppppppppppppgggggttttttttgggtttt",
+"tttpptttttttttttttttttttttttttpptttwwttttttppttttttttgggtttttttttttttttt",
+"tttpptttttttttttttttttttttttttppttttwwtttttppttttttttttttttttttttttttttt",
+"tttpptttttttttttttttttttttttttgggtttwwtttttppttttttttttttttttttttttttttt",
+"tttppttttttttttttttttttttttttgggggtttwwttttppttttttttttttttttttttttttttt",
+"tttpptttttttttttttttttttttttgggggggttwwttttppttttttttttttttttttttttttttt",
+"tttppttppppppppgggtttttttttgggggggggttwwwttppttttttttttttttttttttttttttt",
+"tttpppppppppppgggggppppppppgggggggggttttwwwpptttttttttpppppppppppppttttt",
+"tttppppptttttgggggggpppppppgggggggggttttppwwbtttttttttpppppppppppppttttt",
+"tttppttttttttgggggggttttttttgggggggtttttppppwwwbpppppppppttttttttppttttt",
+"tttppttttttttgggggggtttttttttgggggttttttpppppppwwbpppppppttttttttppttttt",
+"tttpptttttttttgggggttttttttttpgggppppppppppttttttwwwtttppttttttttppttttt",
+"tttppttttttttttgggtttttttttttppppppppppppppttttttttwwwtppttttttttppttttt",
+"tttppttttttttttppttttttttttttppttttttttttpptttttttttwwtppttttttttppttttt",
+"tttppttttttttttppttttttttttttppttttttttttpptttttttttwwtppttttttttppttttt",
+"tttppttttttttttppttttttttttttppttttttttttppttttttttttwwppttttttttppttttt",
+"tttppttttttttttppttttttttttttpptttttttttrrrrtttttttttwwppttttttttppttttt",
+"tttppttttttttttppttttttttttttppttttttttrtpptrttttttttwwppttttttttppttttt",
+"tttppttttttttttpptgggttttttttpgggttttttttpppppppppppppwbpttttttttppttttt",
+"tttppttttttttttppgggggtttttttgggggtttttttpgggpppppppppwbpttttttttppttttt",
+"tttppttttttttttpgggggggtttttgggggggttttttgggggttttttppwwwwtttttttppttttt",
+"tttppppppttttttpgggggggttttpgggggggtttttgggggggtttttpppppwwwwwtttppwwwww",
+"tttpppppppppppppgggggggttttpgggggggtttttgggggggtttttpppppppppwwwwwwbpttt",
+"ttttpppppppppppppgggggtttttppgggggttttttgggggggtttttpppppppppppppppptttt",
+"tttttttppttttttttpgggttttttpptgggtttttttpgggggtttttttttppttttttttttttttt",
+"tttttttppttttttttppttttttttpptttttttttttppgggttttttttttppttttttttttttttt",
+"tttttttppttttttttppttttttttpptttttttttttpptttttttttttttppttttttttttttttt",
+"tttttttppttttttttppttttttttpptttttttttttpptttttttttttttppttttttttttttttt",
+"tttttttppttttttttppttttttttpptttttttttttpptttttttttttttppttttttttttttttt",
+"tttttttppttttttttgggtttttttpptttttttttttpptttttttttttttppttttttttttttttt",
+"tttttttpptttttttgggggttttttpptttttttttttpppppppppppppppppttttttttttttttt",
+"ttttpppppppppppgggggggtttttpptttttttttttpppppppppppppwwwpttttttttttttttt",
+"ttttpppppppppppgggggggtttttpptttttttttttppppttttttttwwwwwttttttttttttttt",
+"ttttpptppttttttgggggggtttttpptttttttttttppppttttttttwwwwwttttttttttppttt",
+"ttttppppptttttttgggggpppppppppppppppppppppppttttttttwwwwwttttttttttppttt",
+"ttttpppptttttttttgggpppppppppppppppppppppppttttttttttwwwpppppppppppppttt",
+"tttttttttttttttttttttttttttttttttttttttttttttttttttttttppppppppppppptttt",
+"tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+"tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt"
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "path",
+"g": "grass clearing",
+"w": "water",
+"b": "bridge / deck over water",
+"s": "snow",
+"r": "rock"
+}
+}
