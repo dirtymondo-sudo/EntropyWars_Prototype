@@ -275,18 +275,18 @@ P('rowboat', 15, OY + 13, { face: 70 }); P('meshy_rowboat', 14, OY + 37, { face:
 P('pool_umbrella', 10, OY + 33); dec('pool_lounger', 11, OY + 33, { face: 90 }); P('pool_umbrella', 6, 28); dec('pool_lounger', 7, 28, { face: 90 }); dec('beach_ball', 5, 27); dec('beach_swim_ring', 8, 30);
 [[1, OY + 44, 'psxg_rock_1'], [2, 21, 'psxg_rock_2'], [3, 94, 'psxg_rock_3'], [16, OY + 2, 'psxg_rock_4'], [23, OY + 9, 'ocean_rock_3'], [13, OY + 44, 'ocean_rock_5']].forEach(q => dec(q[2], q[0], q[1]));
 swimmer('ocean_seal', 23, OY + 46, {}); swimmer('ocean_seal', 26, OY + 44, {}); swimmer('ocean_turtle', 22, OY + 16, { swim: { r: 3, v: 0.6, bob: 0.1 } });
-feat({ k: 'scatter', key: 'anemone', n: 10, x: mx(19), z: mz(OY + 6), r: 9, seed: 61, sea: true }); feat({ k: 'scatter', key: 'ocean_seaweed_2', n: 8, x: mx(21), z: mz(OY + 30), r: 10, seed: 62, sea: true });
+feat({ k: 'scatter', key: 'anemone', n: 10, x: mx(19), z: mz(OY + 6), r: 9, seed: 61, sea: true });   // (no weed in the shallows: seen on screen, its tops break the surface as black spikes)
 /* the Harbour: freight on the quay (a container, a pallet, the forklift, a cable drum, sandbags: the quay floods), a gun on the quay's corner,
    the shed's outboard and wheel, lamps and rings down the pier's new length, a lobster on the boards, rocks at the mole's foot */
 props.push({ key: 'ind_container', x: mx(32), z: gz(OY + 4), face: 0 }); taken.add('32:' + (OY + 3)); taken.add('32:' + (OY + 4));
 P('wrapped_pallet', 30, OY + 3); P('forklift', 29, OY + 2, { face: 90 }); dec('cable_drum', 25, OY + 4); dec('meshy_sandbags', 24, OY + 5); dec('meshy_sandbags', 25, OY + 5); dec('meshy_sandbags', 24, OY + 3);
 P('ship_cannon', 26, OY + 2, { face: 90 }); put(SHED, 'outboard_motor', -3.6, 3.6, { face: 0 }); put(SHED, 'ship_wheel', 4.9, 0, { y: 1.7, face: 270 }); put(SHED, 'ships_bell', -4.9, -2.0, { y: 1.9, face: 90 });
 [42, 47, 55].forEach(x => P('ship_lantern', x, 53)); [40, 45, 50, 54].forEach(x => dec('dockring', x, 54)); dec('ocean_lobster', 44, 53, { anim: false }); dec('psx_wooden_crate_2', 49, 53); dec('sea_chest', 56, 54); dec('lobster_traps', 41, 53);
-feat({ k: 'scatter', key: 'ocean_rock_8', n: 10, x: mx(42), z: mz(OY + 4), r: 22, seed: 63, sea: true }); feat({ k: 'scatter', key: 'kelp', n: 16, x: mx(40), z: mz(OY + 12), r: 14, seed: 64, sea: true });
-/* the Ocean: three more tiny palm islands (the game's own `palmisle` model, standing in the sea), kelp beds and black smokers off the volcano,
+feat({ k: 'scatter', key: 'ocean_rock_8', n: 10, x: mx(42), z: mz(OY + 4), r: 22, seed: 63, sea: true });   // (no kelp: 4.5 m tall in 3.5 m of water)
+/* the Ocean: three more tiny palm islands (the game's own `palmisle` model, standing in the sea), black smokers off the volcano,
    a second pod of dolphins, rays and tuna on the long crossings */
 [[78, 44], [128, 100 + 12], [150, 84 - 12 + 0]].forEach(q => { spot(q[0], q[1], 'palmisle', 'sea', true); props.push({ key: 'palmisle', x: mx(q[0]), z: mz(q[1]), y: -0.6, face: Math.round(rnd() * 360) }); });
-[[124, 10], [126, 14], [122, 18], [127, 8]].forEach(q => under('sea_vent', q[0], q[1], -3.5)); feat({ k: 'scatter', key: 'kelp', n: 20, x: mx(92), z: mz(14), r: 16, seed: 65, sea: true });
+[[124, 10], [126, 14], [122, 18], [127, 8]].forEach(q => under('sea_vent', q[0], q[1], -3.5));
 [[72, 16, 'ocean_dolphin'], [74, 18, 'ocean_dolphin'], [76, 15, 'ocean_dolphin'], [110, 30, 'ocean_stingray'], [88, 96, 'ocean_tuna'], [140, 24, 'ocean_manta'], [46, 96, 'ocean_seal'], [164, 96, 'ocean_turtle'], [20, 108, 'ocean_stingray']]
     .forEach(q => swimmer(q[2], q[0], q[1], { swim: { r: 5 + (q[0] % 4), v: 1.2 + (q[1] % 5) * 0.25, bob: 0.25 } }));
 /* the Bermuda Triangle: the kraken's arms out of the water round the Maelstrom (the game's two tentacle models), an eel and a squid down its
