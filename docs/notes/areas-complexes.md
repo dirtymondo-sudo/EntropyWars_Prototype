@@ -3785,3 +3785,39 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
 - **THE CABIN FLOOR**: the ground rolls a few cm under the cabin and came up through the hollow building's own thin floor. The arch row now has a real board slab, 16 cm
   proud of the ground, wall to wall, and the porch boards sit at the same height. A one-square alley joins the plot's path to the porch.
 - Not seen in game (no browser run). `WOODS_DUMP=1 node bake-woods.js --dry-run` prints the square map.
+
+## THE DESERT ON PLOTS — the third area of the world plan, first delivery (2026-11-15)
+
+mondo: "start a thread to start on the desert" · "put the circus in the desert (move it from where it is now) ... i meant district not plot" ·
+"put the spot from the intro cut scene/main menu background somewhere" · "okay looks good" (plot plan v2, 18:33 UTC).
+
+- **THE ROOM** `site_prebuilt_area51_desert` (site `prebuilt_area51`, part `desert`): 8 x 8 plots of 12 x 12 squares (336 m a side), written by
+  `node bake-desert.js` from `docs/areas/desert/layout.json` between `DESERT64-BEGIN / DESERT64-END` in data.js. Never hand-edit between the markers.
+  Plan pictures + the script that draws the layout: `/mnt/project-files/desert-plots/` (`draw-plan.py`, `desert_plot_plan.png`).
+- **OPEN GROUND, NO `gen`:** the sand is walked anywhere. The only walls are the rock (`m` squares = 5.25 m plateaus, their inner squares 8.75 m),
+  the chain-link fence round the base (`wall` rows traced from the `f` squares), ranch rails (corral, animal pens), the buildings and the pyramids.
+  The ground is one `terrain.paint` sheet a square (7 sheets: asphalt, dirt, slab, stone, dry lake, planks, the base's dirt). The room is FLAT
+  (no slope levels); the edges are `terrain.edges` (desert north + east, mountains west + south).
+- **FIVE DISTRICTS:** THE ROAD (7 plots: City Limit, Gas Station, The Door, Junction, Trailers, Bus Stop, Crossroads), THE CIRCUS (9), WESTERN TOWN (16),
+  AREA 51 (16), GIZA (16). Plot names in layout.json. Differences from the approved picture: the highway runs on square columns 1-2 (not 4-5) so the
+  chain's gas station store (28 m) fits east of it; the circus's way in is the dirt track through The Door plot.
+- **BUILDINGS (bake-camelot.js's helper, id prefix `des:`):** hollow `texbuilding` + an `arch` look. Walk-in: Livery Stable, Saloon (balcony), Bank,
+  Hotel, Sheriff's jail, General Store, Church (steeple), the Big Top, the gate's guard post. Shut (the door leads to another room): Hangar 18,
+  the White Rooms wing, the Hall of Mirrors. `western()` in the tool draws one western front (false front, porch, `rye` sign).
+- **THE PYRAMIDS:** a tier = a `plateau` + a `bricks_1` box skin in one `arch` row (`des:giza:look`); stairs = built `ramp` rows. Great Pyramid 77 m,
+  four tiers to 14 m, the North Stair; Khafre 35 m (stair west); Menkaure 21 m (stair north); the Sphinx is plateaus + skin, not climbed.
+- **MOVED IN, NOT REMADE:** the old flight line's tower rows are copied whole from the old room by the tool; the old rooms' people keep their own
+  lines (the tool reads `say` from the old literals, so the old literals must stay). The carnival's pieces, people and lines are the Circus.
+- **THE WAYS:** link `downtown_desert` (Disaster City south park gate, free door x -64.75 z 241.5 -> the highway's north end, wall n x -161);
+  `gobekli_giza` b end -> the Desert's east wall z 73.5 (Robbers' Tunnel); Room 444's bay door = `siteRooms.entry.prebuilt_giza` -> the Tomb Door in
+  the Great Pyramid's west face; Hangar 18's `flightline` door -> `hangar`; the White Rooms' `yard` / `stormdrain` -> `ward` / `stormdrain`;
+  the tunnel platform's `carnival` door -> `tunnel` (by the ticket booth); the Mandela Room's `mirrors` -> `mirrors`. Room 51 still lands in Hangar 18.
+- **RETIRED (`DOOR_HQ.retired`):** `site_prebuilt_area51_gate`, `site_prebuilt_area51_flightline`, `site_prebuilt_giza_plateau`, `carnival` -> the
+  new room (Continue, the map's GO, match returns). The flight line + plateau literals stay as the PvP boards' sources (HQ_ARENA_RULES.picks);
+  the carnival literal stays with `doors: []` (out of the fourth floor's stage zone) because the tool reads its lines.
+- **TABLES:** hub `desert` (Giza left the Leylines hub), `HQ_AREA_MARKERS`, `HQ_WORLD_CLOCK.dayLook`, `HQ_AREA_ENCOUNTERS` (= the plateau's table).
+- **CHECKED OFFLINE ONLY** (no browser run): data.js parses, the room compiles (`hqTerrainInfo`), a flood fill on real heights reaches all 64 plots,
+  the links / bay door / old doors resolve, every prop key and unit exists. NOT seen on screen: which way the gas station store / canopy / trailers
+  face, sign sizes, the big top's cone, prop scale (`h` on the wheel, carousel, dish), the Disaster City gate's exact spot.
+- **NOT DONE:** the redesigned insides (Hangar 18, the White Rooms, a Great Pyramid inside, more town insides); no Meshy pieces (cactus, covered wagon,
+  water tower, hitching rail are not in the packs); the two Dig trenches have no ramp (a 1 m step); fights use the old plateau's table everywhere.
