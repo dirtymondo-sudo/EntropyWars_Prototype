@@ -117,7 +117,7 @@ module.exports = function (K, A) {
         'P10-01-B1': (T, g, I) => {
             look(T, U('PlasterWallPainted1a'), U('TileGeneric5a')); const H = 6.68, c = g.c, x = (c(4, 0)[0] + c(5, 0)[0]) / 2;
             I.counter(x, c(4, 0)[1], 6.4, false, { key: STONE, tint: 0xd8d8d0, topTint: 0x30343a }); I.put('desk_lamp', x - 2.4, c(4, 0)[1], 'f', { y: 1.13 }); I.put('office_chair', x, c(4, 0)[1] - 1.0, 'f');
-            I.Q.push(box(x, 2.1, g.bw + 0.06, 5.2, 1.3, 0.05, null, 0x1e3a5a), box(x - 1.6, 2.4, g.bw + 0.1, 0.7, 0.7, 0.05, null, 0xf4f4f0, { n: 3, step: [1.6, 0, 0] }), box(x - 1.6, 2.72, g.bw + 0.13, 0.05, 0.3, 0.03, null, IRON, { n: 3, step: [1.6, 0, 0] }), box(x - 1.48, 2.72, g.bw + 0.13, 0.24, 0.05, 0.03, null, IRON, { n: 3, step: [1.6, 0, 0] }));
+            for (const k of [-1, 0, 1]) I.put('wall_clock', x + k * 1.6, g.bw + 0.05, 'f', { y: 2.6, mount: 0 });   // the time-zone clocks over reception: the pack wall clock (model list), not drawn boxes (mondo 11-15)
             I.lift(g.lw + 0.03, c(0, 0)[1], 270); I.lift(g.lw + 0.03, c(0, 1)[1], 270);
             I.put('exec_desk', c(2, 0)[0], c(2, 0)[1], 'f'); I.put('exec_chair', c(2, 0)[0], c(2, 0)[1] - 1.0, 'f');
             I.put('ebd_metro_turnstile', c(1, 2)[0], c(1, 2)[1], 'r'); I.Q.push(box(c(1, 2)[0], 0, c(1, 2)[1] - 1.1, 0.5, 1.0, 0.5, ALU, 0xd0d4d8), box(c(1, 2)[0], 0, c(1, 2)[1] + 1.1, 0.5, 1.0, 0.5, ALU, 0xd0d4d8)); I.solid(c(1, 2)[0], c(1, 2)[1] - 1.4, c(1, 2)[0], c(1, 2)[1] + 1.4, 0.6, 1.0);

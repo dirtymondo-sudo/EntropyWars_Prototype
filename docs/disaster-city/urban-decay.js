@@ -22,7 +22,7 @@ const PAL = {
     'urban:TileGeneric2a': U('ConcreteHexagons1a'),        // the pale plazas: hex pavers
     'urban:TileGeneric3a': U('ConcreteHexagons2b'),        // the dark plazas: dark hex pavers
     'urban:ConcreteUnderTiles1': U('ConcreteRoofBitumen1a'), // the roofs you walk on: tar
-    'wood_planks': U('WoodGeneric1a'), 'calm_planks': U('WoodGeneric1a'),   // boardwalks and decks
+    'wood_planks': U('WoodFlooring1a'), 'calm_planks': U('WoodFlooring1a'),   // boardwalks and decks: real boards (mondo 11-15: "thats wood generic like tree bark, not wood planks": never a WoodGeneric sheet for planks)
 };
 /* the 765 retaining blocks + yard walls, by district (each about the old sheet's value, each a plain stackable sheet) */
 const WALL = { R: 'BrickUrban3a', C: 'ConcretePrecast1c', F: 'BrickMasonry1a', U: 'BrickWide2a', H: 'ConcreteWoodFormed1a', E: 'ConcreteGeneric3a', I: 'BrickCinder1a', S: 'ConcretePanels3a', B: 'ConcreteGeneric1a' };
@@ -31,7 +31,7 @@ const BRICK1 = { R: 'BrickUrban3a', E: 'BrickUrban3a', C: 'BrickMasonry1a', F: '
 const BRICK3 = { H: 'BrickUrban4a', I: 'BrickCinder4a', E: 'BrickUrban3a', C: 'BrickMasonry2a', F: 'BrickMasonry2a' };
 const WOODFLOOR = { R: ['WoodFlooring1a', 'WoodFlooring1b'], E: ['WoodFlooring1a', 'WoodFlooring1b'], H: ['WoodFlooring1c', 'WoodFlooring1d'], U: ['WoodFlooring1c', 'WoodFlooring1d'],
                     C: ['WoodFlooring1c', 'WoodFlooring1a'], F: ['WoodFlooring1d', 'WoodFlooring1c'], I: ['WoodFlooring1b'], S: ['WoodFlooring1a'], B: ['WoodFlooring1b', 'WoodFlooring1a'] };
-const WOODPART = { E: 'WoodGeneric1b', B: 'WoodGeneric1c' };
+const WOODPART = { E: 'WoodFlooring1b', B: 'WoodFlooring1a' };
 const CARPET = { U: 'CarpetPattern1c', C: 'CarpetPlain1c', S: 'CarpetDiamond1c' };
 const CONC2 = { I: 'ConcretePanels3a', S: 'ConcretePrecast1c', R: 'ConcreteGeneric2a' };   // a building's striped concrete, where it was the yard sheet stood up
 const FACADE = { R: 1, H: 1, U: 1, I: 1 };
@@ -42,8 +42,8 @@ const pick = (list, seed) => list[hash(seed) % list.length];
 function swap(key, d, role, seed, part) {
     if (key === 'wood_planks' || key === 'calm_planks') {
         if (role === 'floorIn') return U(pick(WOODFLOOR[d] || ['WoodFlooring1a'], seed));
-        if (role === 'bridge') return U('WoodGeneric2a');
-        return U(WOODPART[d] || 'WoodGeneric1a');
+        if (role === 'bridge') return U('WoodFlooring2a');
+        return U(WOODPART[d] || 'WoodFlooring1a');
     }
     if (key === 'urban:ConcreteUnderTiles1a') return U('ConcreteUnderTiles1');   // a sheet name that never existed (36 parts drew no sheet)
     if (key === 'calm_carpet') return U(CARPET[d] || 'CarpetPattern1c');
