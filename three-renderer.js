@@ -70567,8 +70567,8 @@ const ThreeRenderer = (function () {
     /* THE MOORED SHIP (2026-11-15, mondo on the Beach's hand-drawn Dutchman: "we literally have a dutchman ship from the dutchman pvp map. why not
        just use that exact ship??"): `terrain.moored = [{ kind: 'galleon', room: <a room whose terrain.float.hull is a galleon>, x, z }]` draws THAT
        room's own ship in this room: the same builder, on that room's own compiled field (its rim heights, its mast trees, its hull numbers), in a
-       group moved to (x, z) with its waterline on this room's sea. Bow east, as she is built. No wake (she is not under way). The decks
-       themselves are this room's ground (the tool writes her deck heights into the squares she stands on). */
+       group moved to (x, z) with its waterline on this room's sea. Bow east, as she is built. No wake (she is not under way). Her decks
+       are drawn here too (one planked sheet); this room's own ground under her is only a block that keeps walkers and boats out. */
     function _hqBuildMoored(room, info, G, TM, rng, ms) {
         if (!ms || ms.kind !== 'galleon' || !ms.room || typeof DOOR_HQ === 'undefined') return;
         var sr = DOOR_HQ.rooms[ms.room], si = (sr && sr.terrain && typeof hqTerrainInfo === 'function') ? hqTerrainInfo(ms.room) : null;
@@ -70578,6 +70578,18 @@ const ThreeRenderer = (function () {
         var seaOf = function (r, d) { var s = r && r.terrain && r.terrain.sea; return (s && typeof s.y === 'number') ? s.y : d; };
         sg.position.set((+ms.x || 0) * U, (seaOf(room, 0) - seaOf(sr, -4.2)) * U, (+ms.z || 0) * U);
         _hqBuildGalleon(sr, si, sg, TM, rng, Object.assign({}, fl.hull, { moored: true }));
+        /* HER DECKS: in her own room the decks are that room's ground; here they are one planked sheet over her own compiled heights (a metre a
+           node), so the waist, the castles and the poop stand inside the hull as they do aboard */
+        var st = Math.max(1, Math.round(1 / si.res)), dnx = Math.floor((si.nx - 1) / st) + 1, dnz = Math.floor((si.nz - 1) / st) + 1;
+        var pos = new Float32Array(dnx * dnz * 3), uv = new Float32Array(dnx * dnz * 2), idx = [], k = 0, i, j;
+        for (j = 0; j < dnz; j++) for (i = 0; i < dnx; i++, k++) {
+            var px = si.x0 + i * st * si.res, pz = si.z0 + j * st * si.res, ph = si.H[(j * st) * si.nx + i * st];
+            pos[k * 3] = px * U; pos[k * 3 + 1] = ph * U + 0.3; pos[k * 3 + 2] = pz * U; uv[k * 2] = px * U / TM; uv[k * 2 + 1] = pz * U / TM;
+        }
+        for (j = 0; j < dnz - 1; j++) for (i = 0; i < dnx - 1; i++) { var a0 = j * dnx + i, b0 = a0 + 1, c0 = a0 + dnx, d0 = c0 + 1; idx.push(a0, c0, b0, b0, c0, d0); }
+        var dg = new THREE.BufferGeometry(); dg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); dg.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); dg.setIndex(idx); dg.computeVertexNormals();
+        var dm = new THREE.MeshPhongMaterial({ map: _hzTex('wood_planks') || null, color: 0xb9885a, shininess: 4, side: THREE.DoubleSide }); dm.emissive = new THREE.Color(0x2a1e12);
+        var deckMesh = new THREE.Mesh(dg, dm); deckMesh.renderOrder = 1; deckMesh._ew_occSkip = true; deckMesh._ew_hqPart = 'underside'; deckMesh.name = 'hqMoored:decks'; sg.add(deckMesh);
         G.add(sg);
     }
     var _HQ_SHIP_TREES = { mast: 1, capstan: 1, helm: 1 };   // terrain trees the ship draws itself (three-renderer.js treeOne plants no foliage for them)

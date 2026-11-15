@@ -40,8 +40,8 @@ const setRect = (x0, y0, x1, y1, ch) => { for (let y = y0; y < y1; y++) for (let
 /* ── what the tool does to the plan's squares ──
    THE FLYING DUTCHMAN (mondo 11-15: "we literally have a dutchman ship from the dutchman pvp map. why not just use that exact ship??"): she IS
    that ship, at her own size. Her main deck room (`site_prebuilt_revenge_deck`, 34 x 14 squares) is read here: the squares she stands on ('X')
-   carry her deck's own heights (waist, quarterdeck, forecastle, poop) over this room's sea, and `terrain.moored` has the renderer draw her own
-   hull, masts, sails and rigging round them (three-renderer.js _hqBuildMoored: the Dutchman map's own galleon builder). Bow east, her stern at
+   are a flat block hidden inside her hull (it keeps the walker, the swimmer and the skiff out), and `terrain.moored` has the renderer draw her own
+   hull, decks, masts, sails and rigging there (three-renderer.js _hqBuildMoored: the Dutchman map's own galleon builder). Bow east, her stern at
    the Long Pier's end. The plan's 7 x 6 block was only her berth's mark. */
 const SHIP_ROOM = 'site_prebuilt_revenge_deck', SHIP_W = 34, SHIP_D = 14, SHIP = [39, 49, 39 + SHIP_W, 49 + SHIP_D];
 setRect(39, 51, 46, 57, 'w'); setRect(SHIP[0], SHIP[1], SHIP[2], SHIP[3], 'X');
@@ -50,7 +50,8 @@ const SHIP_H = JSON.parse(vm.runInContext(`(() => { const r = DOOR_HQ.rooms.${SH
     if (!r || !i || !(r.terrain.float && r.terrain.float.hull && r.terrain.float.hull.kind === 'galleon') || Math.round(r.shell.w / ${C}) !== ${SHIP_W} || Math.round(r.shell.d / ${C}) !== ${SHIP_D}) return 'null';
     for (let y = 0; y < ${SHIP_D}; y++) for (let x = 0; x < ${SHIP_W}; x++) o.push(Math.round((hqTerrainHeight(i, (x + 0.5 - ${SHIP_W} / 2) * ${C}, (y + 0.5 - ${SHIP_D} / 2) * ${C}) - r.terrain.sea.y) * 100) / 100);
     return JSON.stringify(o); })()`, D));
-if (!SHIP_H) throw new Error('the Dutchman\'s main deck room is not the 34 x 14 galleon this tool berths');
+const SHIP_BLOCK = SHIP_H ? r2(Math.min.apply(null, SHIP_H) - 0.8) : 0;   // a flat block hidden inside her hull (her decks are drawn by the renderer): it keeps the walker, the swimmer and the skiff out
+if (!SHIP_H || SHIP_BLOCK < 2) throw new Error('the Dutchman\'s main deck room is not the 34 x 14 galleon this tool berths');
 setRect(29, 65, 31, 68, 'w');                               // THE SKIFF: the plan's block is the boat herself (a prop afloat at the jetty's end)
 /* every plan `B` that stands on sand / quay / rock is named here; the squares become its ground again and the building is built by a row below */
 const B_HUTS = [[2, 50], [5, 50], [8, 50]], B_GUARD = [15, 65], B_SHED = [26, 39], B_LIGHT = [65, 101], B_WRECK = [99, 89], B_TRIBE = [[113, 15], [115, 17], [112, 18]];
@@ -84,7 +85,7 @@ for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const ch = cell[y][x],
     else if (BEACH.includes(ch)) h = Math.min(CAP[p.level] || 0.6, 0.3 + 0.3 * (dWet[k] - 1));
     else if (ch === 'J') h = PIER;
     else if (ch === 'o') h = QUAY;
-    else if (ch === 'X') h = SHIP_H[(y - SHIP[1]) * SHIP_W + (x - SHIP[0])];                                      // her deck's own height over the sea
+    else if (ch === 'X') h = SHIP_BLOCK;                                                                         // the block inside her hull, under her lowest deck
     else if (ch === 'r') h = p.d === 'T' ? 3.4 : p.d === 'H' ? 1.6 : 2.4 + 0.5 * Math.sin(x * 1.3 + y * 0.8);  // the Lighthouse Rock, the Breakwater, the headlands
     else if (ch === 'h') h = 2.5 + 4.2 * (dNotCone[k] - 1) + 0.6 * Math.sin(x * 1.7) * Math.cos(y * 1.1);        // the cone: too steep to climb
     else if (ch === 'l') h = 2.5 + 4.2 * 3.2;                                                                   // the crater's lava, under the rim
