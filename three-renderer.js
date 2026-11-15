@@ -88067,10 +88067,7 @@ const ThreeRenderer = (function () {
         var LR = _hqLightRules(), SH = LR.shadows || {};
         var W = (typeof window !== 'undefined') ? window : {};
         var q = (typeof ThreePost !== 'undefined' && ThreePost.getShadowQuality) ? ThreePost.getShadowQuality() : 'high';
-        /* A HOUSE UNDER THE SKY (2026-11-15, Camelot Castle's stacked floors): `shell.sunShadow: false` = the room's key light casts no shadow.
-           A building of floors over floors in an OPEN room (its roof walk needs the sky) stood in the shadow of its own slabs: every room
-           under one was black but for the hemisphere, and its furniture read as black blocks. */
-        if (SH.on === false || q === 'off' || _polishOff('shadows', 'EW_HQ_NO_SHADOWS') || W.EW_PERF_LOW || (room && room.shell && room.shell.sunShadow === false)) { L.castShadow = false; return; }
+        if (SH.on === false || q === 'off' || _polishOff('shadows', 'EW_HQ_NO_SHADOWS') || W.EW_PERF_LOW) { L.castShadow = false; return; }
         var U = _hqUnits(), S = room.shell || {};
         var hx, hz, top;
         if (room.kind === 'box') { hx = (S.w || 10) / 2; hz = (S.d || 10) / 2; top = S.open ? Math.max(S.h || 9, 10) : (S.h || 3.4); }
@@ -88122,6 +88119,11 @@ const ThreeRenderer = (function () {
             if (o._ew_hqSea) o.receiveShadow = false;   // (2026-10-20) the sea's sheet runs far past the shadow map: its edge drew a pale box round the Dutchman
         });
         [H.propGroup, H.doorGroup, H.charGroup].forEach(function (G) { if (G) G.traverse(function (o) { if (o.isMesh) _flagMeshShadows(o); }); });
+        /* A HOUSE UNDER THE SKY (2026-11-15, Camelot Castle's stacked floors): `shell.sunShadow: false` = nothing of the room's own build casts.
+           A building of floors over floors in an OPEN room (its roof walk needs the sky) stood in the shadow of its own slabs: every room
+           under one was black but for the hemisphere, and its furniture read as black blocks. The key keeps its map (the materials are
+           compiled for one: switching the light's own shadow off blanked the room), props and people still cast. */
+        if (room && room.shell && room.shell.sunShadow === false) H.shellGroup.traverse(function (o) { if (o.isMesh) o.castShadow = false; });
     }
     /* the walk's scene tells ONE waiting reader when its world matrices are this frame's (THE STILL TORCH reads its
        casters where they stand now, not where the last frame left them): three's own walk, untouched, then the reader */
