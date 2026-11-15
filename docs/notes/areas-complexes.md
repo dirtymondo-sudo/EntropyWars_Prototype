@@ -3723,6 +3723,12 @@ districts ... the north pole to the north of the castle would be good as a rival
   still the old rooms. No anvil, market stall, archery target or lamp post exists on R2 (tents, crates and sacks stand in). The old
   Fairy Forest glade has no door of its own, so nothing links to it. Town plot names are plain descriptions.
 
+### THE ROOFS' UNDERSIDES (2026-11-15)
+mondo: "There are gaps in the village buildings roofs." An `arch` roof part is drawn from outside only and had no underside, so from the
+street you looked up past the eaves, through the roof, at the sky. bake-camelot.js `sheet().roof` now writes one timber sheet facing down
+under every roof (houses, Chapel, Smithy, Inn, Workshop, the castle's buildings). Checked with an offline drawing of the baked rows from
+street height (project files camelot-kingdom/roof_underside_before_after.png), not in a browser.
+
 ### The map's GO after an area is rebuilt (2026-11-15)
 mondo: "i literally just go to the map/directory and go to camelot kingdon and its still the old one." The map travels only to rooms a save
 has stood in; a rebuilt area's anchor (`DOOR_HQ.hubs[..].room`) is a new room no save knows, so GO fell back to the first old room.
