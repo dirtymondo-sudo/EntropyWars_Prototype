@@ -1,0 +1,1196 @@
+{
+"area": "The Mountains",
+"version": "plan-1",
+"squareMeters": 3.5,
+"plotCells": 12,
+"districts": {
+"N": "The North Pole village",
+"P": "The Snowy Pass",
+"K": "The Ski Lodge + slopes",
+"S": "Mount Shasta",
+"O": "Mount Olympus"
+},
+"rooms": [
+{
+"room": "The Mountains",
+"cols": 16,
+"rows": 8,
+"plots": [
+{
+"id": "P00-00",
+"name": "The Drift",
+"district": "The North Pole village",
+"level": 10,
+"what": "the great drift",
+"from": "North Pole: THE DRIFT",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-00",
+"name": "The Pole",
+"district": "The North Pole village",
+"level": 10,
+"what": "LANDMARK: the pole and its cairn",
+"from": "North Pole: THE POLE",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-00",
+"name": "The Workshop",
+"district": "The North Pole village",
+"level": 10,
+"what": "the workshop (walk-in)",
+"from": "North Pole: the workshop",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": [
+"inside: the Workshop",
+"inside"
+]
+},
+{
+"id": "P03-00",
+"name": "The Village, north",
+"district": "The North Pole village",
+"level": 10,
+"what": "cottages, lamps",
+"from": "North Pole: THE VILLAGE",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-00",
+"name": "The Ridge, west",
+"district": "The Snowy Pass",
+"level": 18,
+"what": "bare rock and cornice",
+"from": "new plot (label mine)",
+"ports": [
+"E"
+],
+"exit": null
+},
+{
+"id": "P05-00",
+"name": "The Ridge",
+"district": "The Snowy Pass",
+"level": 19,
+"what": "the top of the range; you look down on both sides",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-00",
+"name": "The Ridge, east",
+"district": "The Snowy Pass",
+"level": 18,
+"what": "bare rock",
+"from": "new plot (label mine)",
+"ports": [
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-00",
+"name": "The Black Run, top",
+"district": "The Ski Lodge + slopes",
+"level": 18,
+"what": "the steep one starts here",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P08-00",
+"name": "The Top Station",
+"district": "The Ski Lodge + slopes",
+"level": 18,
+"what": "LANDMARK: the top of the chairlift; every run starts here",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": [
+"the chairlift down",
+"new"
+]
+},
+{
+"id": "P09-00",
+"name": "The Half-Pipe",
+"district": "The Ski Lodge + slopes",
+"level": 17,
+"what": "a half-pipe cut in the snow",
+"from": "new plot (label mine)",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-00",
+"name": "Shastina",
+"district": "Mount Shasta",
+"level": 18,
+"what": "the second, smaller cone",
+"from": "new plot (real place on Mount Shasta)",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P11-00",
+"name": "The Summit",
+"district": "Mount Shasta",
+"level": 22,
+"what": "LANDMARK: the crater, with a cloud shaped like a saucer parked on it",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P12-00",
+"name": "The Glacier",
+"district": "Mount Shasta",
+"level": 18,
+"what": "blue ice",
+"from": "new plot (label mine)",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P13-00",
+"name": "The Twelve Thrones",
+"district": "Mount Olympus",
+"level": 24,
+"what": "twelve empty thrones in a ring",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P14-00",
+"name": "The Temple",
+"district": "Mount Olympus",
+"level": 24,
+"what": "LANDMARK: the temple on the peak, above the cloud",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P15-00",
+"name": "The Grand Stair",
+"district": "Mount Olympus",
+"level": 24,
+"what": "the stair goes on up into Heaven",
+"from": "new plot (label mine)",
+"ports": [
+"S",
+"W"
+],
+"exit": [
+"Heaven: the Grand Stair",
+"new"
+]
+},
+{
+"id": "P00-01",
+"name": "The Drift, south",
+"district": "The North Pole village",
+"level": 10,
+"what": "the foot of the drift",
+"from": "North Pole: THE DRIFT",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "The Village, west",
+"district": "The North Pole village",
+"level": 10,
+"what": "cottages",
+"from": "North Pole: THE VILLAGE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Village",
+"district": "The North Pole village",
+"level": 10,
+"what": "the village square",
+"from": "North Pole: THE VILLAGE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-01",
+"name": "The Village, east",
+"district": "The North Pole village",
+"level": 10,
+"what": "cottages; the gate to the pass",
+"from": "North Pole: THE VILLAGE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-01",
+"name": "The Pass Gate",
+"district": "The Snowy Pass",
+"level": 12,
+"what": "a cairn and a gate; the North Pole is below",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-01",
+"name": "The High Pass",
+"district": "The Snowy Pass",
+"level": 15,
+"what": "LANDMARK: the saddle between the peaks",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-01",
+"name": "The Switchbacks",
+"district": "The Snowy Pass",
+"level": 14,
+"what": "the trail folds back on itself",
+"from": "new plot (label mine)",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-01",
+"name": "The Black Run",
+"district": "The Ski Lodge + slopes",
+"level": 15,
+"what": "steep, narrow, trees both sides",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P08-01",
+"name": "The Big Jump",
+"district": "The Ski Lodge + slopes",
+"level": 14,
+"what": "a kicker ramp and a landing",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-01",
+"name": "The Slalom",
+"district": "The Ski Lodge + slopes",
+"level": 14,
+"what": "gates to weave through",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-01",
+"name": "The Red Banks",
+"district": "Mount Shasta",
+"level": 17,
+"what": "a wall of red rock",
+"from": "new plot (real place on Mount Shasta)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P11-01",
+"name": "Helen Lake",
+"district": "Mount Shasta",
+"level": 15,
+"what": "a frozen tarn; tents",
+"from": "new plot (real place on Mount Shasta)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P12-01",
+"name": "The Steam Vents",
+"district": "Mount Shasta",
+"level": 16,
+"what": "it is a volcano: hot rock, steam, a warm pool",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": [
+"the Lemuria adit: Agartha",
+"secret"
+]
+},
+{
+"id": "P13-01",
+"name": "The Stadium",
+"district": "Mount Olympus",
+"level": 20,
+"what": "a running track and stone seats: the first games",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P14-01",
+"name": "The Colonnade",
+"district": "Mount Olympus",
+"level": 20,
+"what": "two rows of columns",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P15-01",
+"name": "The Cloud Line",
+"district": "Mount Olympus",
+"level": 21,
+"what": "the trail goes into the cloud",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "The Frozen Lake, north",
+"district": "The North Pole village",
+"level": 9,
+"what": "ice you walk on",
+"from": "North Pole: the frozen lake",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-02",
+"name": "The Frozen Lake, east",
+"district": "The North Pole village",
+"level": 9,
+"what": "ice, the far shore",
+"from": "North Pole: the frozen lake",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-02",
+"name": "The Sleigh Road",
+"district": "The North Pole village",
+"level": 9,
+"what": "the road out of the village",
+"from": "North Pole: the sleigh road",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The Sleigh Road, east",
+"district": "The North Pole village",
+"level": 9,
+"what": "the road climbs to the pass",
+"from": "North Pole: the sleigh road",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-02",
+"name": "The Sleigh Bend",
+"district": "The Snowy Pass",
+"level": 11,
+"what": "sleigh tracks in the snow",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P05-02",
+"name": "The Frozen Tarn",
+"district": "The Snowy Pass",
+"level": 13,
+"what": "a small frozen lake",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-02",
+"name": "The Rope Bridge",
+"district": "The Snowy Pass",
+"level": 13,
+"what": "a crevasse with one way over",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-02",
+"name": "The Run-Out",
+"district": "The Ski Lodge + slopes",
+"level": 11,
+"what": "the black run flattens out",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-02",
+"name": "The Chairlift",
+"district": "The Ski Lodge + slopes",
+"level": 11,
+"what": "the lift line back up; rails and boxes under it",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P09-02",
+"name": "The Bunny Slope",
+"district": "The Ski Lodge + slopes",
+"level": 11,
+"what": "the gentle one",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-02",
+"name": "Avalanche Gulch",
+"district": "Mount Shasta",
+"level": 13,
+"what": "the long snow chute",
+"from": "new plot (real place on Mount Shasta)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-02",
+"name": "The Fork",
+"district": "Mount Shasta",
+"level": 12,
+"what": "the three trails split here: Shasta up, the Pass west, Olympus east",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P12-02",
+"name": "The Scree",
+"district": "Mount Shasta",
+"level": 13,
+"what": "loose rock, the way east",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P13-02",
+"name": "The Sacred Way",
+"district": "Mount Olympus",
+"level": 15,
+"what": "the paved way in from the Fork",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P14-02",
+"name": "The Amphitheatre",
+"district": "Mount Olympus",
+"level": 16,
+"what": "a stone theatre cut into the slope",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P15-02",
+"name": "The Terraces",
+"district": "Mount Olympus",
+"level": 16,
+"what": "vines on stone terraces",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-03",
+"name": "The Frozen Lake, south",
+"district": "The North Pole village",
+"level": 9,
+"what": "ice, the shore",
+"from": "North Pole: the frozen lake",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P01-03",
+"name": "The Snowline, west",
+"district": "The North Pole village",
+"level": 9,
+"what": "snowy pines: the woods between the kingdoms",
+"from": "Camelot plan: the woods between",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-03",
+"name": "The Snowline",
+"district": "The North Pole village",
+"level": 9,
+"what": "snowy pines",
+"from": "Camelot plan: the woods between",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "The Snowline, east",
+"district": "The North Pole village",
+"level": 9,
+"what": "the hidden path down to the castle postern",
+"from": "Camelot plan: the path up from the postern",
+"ports": [
+"N",
+"W"
+],
+"exit": [
+"Camelot: the castle postern",
+"secret"
+]
+},
+{
+"id": "P04-03",
+"name": "The Tree Line, west",
+"district": "The Snowy Pass",
+"level": 10,
+"what": "the last snowy pines",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P05-03",
+"name": "The Tree Line",
+"district": "The Snowy Pass",
+"level": 10,
+"what": "the last snowy pines",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-03",
+"name": "The Warming Hut",
+"district": "The Snowy Pass",
+"level": 11,
+"what": "one hut, one stove (walk-in)",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"W"
+],
+"exit": [
+"inside: the hut",
+"new"
+]
+},
+{
+"id": "P07-03",
+"name": "The Rental Hut",
+"district": "The Ski Lodge + slopes",
+"level": 8,
+"what": "boards on a rack",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P08-03",
+"name": "The Ski Lodge",
+"district": "The Ski Lodge + slopes",
+"level": 8,
+"what": "the lodge: fire, bar, bunks (walk-in)",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": [
+"inside: the Ski Lodge",
+"new"
+]
+},
+{
+"id": "P09-03",
+"name": "The Lodge Yard",
+"district": "The Ski Lodge + slopes",
+"level": 8,
+"what": "where the trails meet the lodge",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": [
+"the mountain road: Disaster City",
+"new"
+]
+},
+{
+"id": "P10-03",
+"name": "Bunny Flat",
+"district": "Mount Shasta",
+"level": 10,
+"what": "the trailhead camp",
+"from": "new plot (real place on Mount Shasta)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P11-03",
+"name": "Panther Meadows",
+"district": "Mount Shasta",
+"level": 10,
+"what": "alpine meadow, a spring",
+"from": "new plot (real place on Mount Shasta)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P12-03",
+"name": "The Old Lava",
+"district": "Mount Shasta",
+"level": 10,
+"what": "black rock",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P13-03",
+"name": "The Olive Grove",
+"district": "Mount Olympus",
+"level": 11,
+"what": "old olive trees",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P14-03",
+"name": "The Pilgrim Stair",
+"district": "Mount Olympus",
+"level": 10,
+"what": "the stair up from behind the Vatican",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": [
+"The Vatican",
+"new"
+]
+},
+{
+"id": "P15-03",
+"name": "The Goat Track",
+"district": "Mount Olympus",
+"level": 11,
+"what": "a narrow track along the cliff",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-04",
+"name": "The Last Trees",
+"district": "Mount Shasta",
+"level": 9,
+"what": "the forest gives out",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P11-04",
+"name": "The Spring",
+"district": "Mount Shasta",
+"level": 9,
+"what": "the creek starts here and runs down to the Falls in the Woods",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-05",
+"name": "The Switchback, upper",
+"district": "Mount Shasta",
+"level": 9,
+"what": "the trail folds",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P11-05",
+"name": "The Lookout",
+"district": "Mount Shasta",
+"level": 9,
+"what": "you can see the whole city from here",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-06",
+"name": "The Switchback, lower",
+"district": "Mount Shasta",
+"level": 8,
+"what": "the trail folds",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": null
+},
+{
+"id": "P11-06",
+"name": "The Boulder Field",
+"district": "Mount Shasta",
+"level": 8,
+"what": "big rocks among the trees",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P10-07",
+"name": "The Trailhead",
+"district": "Mount Shasta",
+"level": 8,
+"what": "a signpost; the Snowline in the Woods is just below",
+"from": "new plot (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": [
+"The Woods: the Snowline",
+"open"
+]
+},
+{
+"id": "P11-07",
+"name": "The Upper Shelf",
+"district": "Mount Shasta",
+"level": 8,
+"what": "rock shelf above the Woods",
+"from": "new plot (label mine)",
+"ports": [
+"N",
+"W"
+],
+"exit": [
+"The Woods: the Shelf",
+"open"
+]
+}
+],
+"cells": [
+"ttttttttttttkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrssssiiiissssssssssssssssssssssssssssrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrmmmrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"ttttttttttttkkkkkkkkkkkkkkkkkkssskkkkkkssskkkkkkrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrssssiiiissssssssssssssssssiiixxiiissrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrmmmmmrrrrrrrrrrrrrrrrrrrrrkkkrrr",
+"ttttttttttttkkkkkkkkkkkkkkkkkssssskkkkBBssskkkkkrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrssssiiiissssssssssssssssssiiixxiiissrrrrrrrrrrrrrrrrrrrrrrrrrrrrrriiirrrrrrmmmmmmmrrrmmmmmmmmmrrrrrrrkkkkkrr",
+"ttttttttttttkkkkkkssskkkkkkBBBBBBsskksBBssssBBkkrrrrrrrrrrrrrrrrooooooooooooooooorrrssssiiiissssssssBBBBssssssiiixxiiissrrrrsssrrrrrrrrrrrrrrrrrrrrrriiiiirrrrmmmmmmmmmmmmmmmmmmmmrrrrrrkkkkkkkr",
+"ttttttttttttkkkkkssssskkkkkBBBBBBsskssssssssBBkkrrrrsssrrrrrrrrroooooooooooooosssrrrssssiiiissssssssBBBBssssssiiixxiiissrrrsssssoooooooooosssrrrrrrriiiiiiirrrmmmmmmmmmmmmmmmmmmmmrrrrrrkkkkkkkr",
+"ttttssstttttkkkkssssssskkkkBBBBBBsskssssssssskkkrrrrsssrrrrrrrrsssrrrrrrrrrrrrsssrrrssssiiiissssssssBBBBssssssiiixxiiissrrrsssssooooooooosssssooooooiiiiiiirrrmmmmmmmmmrrmmmmmmmmmrrrrrrkkkkkkkr",
+"tttsssssttttkkkkssssssskkkkBBBBBBskkssssssssskkkrrrrsssooooooosssssrrrrrrrrrrrsssrrrssssiiiissssssssBBBBssssssiiixxiiissrrrsssssoorrrrrrsssssssoooooiiiiiiirrrrmmmmmmmrrrmmmmmmmmmmmmmmmmkkkkkrr",
+"tttsssssooookkkkssssssskkkkBBBBBBkkkkssssssskkkkrrrrrooooooooosssssrrrrrrrrrrrrrrrrrssssiiiisssssssssjjsssssssiiixxiiissrrrrsssroorrrrrrsssssssrrrrooiiiiirrrrrrmmmmmmrrrmmmmmmmmmmmmmmmmmkkkrrr",
+"tttsssssooookkkkkssssskkkkkkkkkkkkkkkksBBsskBBkkrrrrrrrrrrrrrrsssssrrrrrrrrrrrrrrrrrssssiiiisssssssssjjsssssssiiixxiiissrrrrrrrroorrrrrrsssssssrrrrooriiirrrrrrrrmmmmmrrrmmmmmmmmmrrrrrrrrrmmrrr",
+"tttossstttttkkkkkkssskkkkkkkkkkkkkkkkkkBBskkBBkkrrrrrrrrrrrrrrrsssrrrrrrrrrrrrrrrrrrssssiiiisssssssssjjsssssssiiixxiiissrrrrrrrroorrrrrrrsssssrrrrroorrrrrrrrrrrrrrrmmrrrmmmmmmmmmrrrrrrrrrmmrrr",
+"tttootttttttkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrssssiiiisssssssssjjsssssssiiixxiiissrrrrrrrroorrrrrrrosssrrrrrroorrrrrrrrrrrrrrrmmrrrmmmmmmmmmrrrrrrrrrmmrrr",
+"tttootttttttkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrssssiiiisssssssssjjsssssssssssssssssrrrrrrrroorrrrrrroorrrrrrrroorrrrrrrrrrrrrrrmmrrrrrrrrmmrrrrrrrrrrrmmrrr",
+"tttootttttttkkkkkssskkkkkkssssssskkkkkkkkkkkkkkkrrrrrrrrrrrrrrrrsssrrrrrrrrrrrrrrrrrssssiiiissssssssiiiisssssssiiiiiisssrrrrrrrroorrrrrrroorrrrrrrroorrrrrrrrdddddddddddrrrrrrmmrrrrrrrrrrrmmrrr",
+"tttootttttttkkkkssssskkkkssssssssskkkkkkkssskkkkrrrrrrrrrrrrrrrsssssrrrrrrrrrrrrrrrrssssiiiissssssssiiiisssssssijiiiisssrrrrrrrroorrrrrrriiirrrrrrroorrrrrrrrdddddddddddrrrrrrmmrrrrrrrrrrrmmrrr",
+"tttootttttttkkBBsssssskkksBBsssssskkkkBBssssskkkrrrrrsssrrrrrrsssssssrrrrrrsssrrrrrrssssiiiissssssssiiiisssssssiiiiiisssrrrrrrrroorrrrrriiiiirrrrrroorrrrrrrrdddddddddddrrrrrrmmrrrrrrrrrrrmmrrr",
+"tttoosssttttkkBBssssBBskssBBssssBBskkkBBssssBBkkrrrrsssssrrrrsssssssssrrrrsssssrrrrrssssiiiissssssssiiiisssssssiiiijisssrrrrhhhroorrrrriiiiiiirrrrrohhhrrrrrrdddddddddddrrrmmmmmmmrrrrrrrrrmmrrr",
+"tttossssstttkkssssssBBskssssssssBBskkkssssssBBskooosssssssrrrsssssssssrrrrsssssrrrrrssssiiiissssssssiiiisssssssiiiiiisssrrrhhhhhoorrrriiiiiiiiirrrrhhhhhrrrrrdddddddddddrrrmmmmmmmrrrrrkkkrmmrrr",
+"tttossssstttkkssssssssskssssssssssskkkssssssssskooosssssssrrrsssssssssrrrrsssssrrrrrssssiiiissssssssjjjjsssssssijiiiisssrrrhhhhhooooooiiiiiiiiirrrhhhhhhhrrrrdddddddddddmmmmmmmmmmmmmmkkkkkmmrrr",
+"tttossssstttkkkssssssskkkssssssssskkkkssssssssskrrrsssssssrrrrsssssssrrrrrrsssorrrrrssssiiiissssssssjjjjsssssssiiiiiisssrrrhhhhhooooooiiiiiiiiirrrhhhhhhhrrrrdddddddddddmmmmmmmmmmmmmkkkkkkkmrrr",
+"tttttsssotttkkkkssssskkkkssssssssskkkkkssssssskkrrrrsssssoooooosssssrrrrrrrrooorrrrrssssiiiisssssssssssssssssssiiiijisssrrrrhhhrrrrrrrriiiiiiioooohhhhhhhrrrrdddddddddddrrrmmmmmmmrrrkkkkkkkmrrr",
+"ttttttooooookkkBBsssBBkkkksBBsssBBkkkkkBBsssBBkkrrrrrsssoooooooosssoooooooooooorrrrrssssiiiisssssssiiiiiissssssiiiiiisssrrrroorrrrrrrrroiiiiioooooohhhhhrrrrrdddddddddddrrrmmmmmmmrrrkkkkkkkrrrr",
+"ttttttooooookkkBBkkkBBkkkkkBBsskBBkkkkkBBsssBBkkrrrrrrrroorrrrrrroooooooooooooorrrrrssssiiiisssssssiiiiiissssssijiiiisssrrrroorrrrrrrrrooiiirrrrrrrrhhhrrrrrrdddddddddddrrrmmmmmmmrrrrkkkkkrrrrr",
+"tttttttootttkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrrrrrroorrrrrrrroorrrrrrrrroorrrrrssssiiiisssssssiiiiiissssssiiiiiisssrrrroorrrrrrrrroorrrrrrrrrrrroorrrrrrrrrmmrrrrrrrrrrrrrmmrrrrrrkkkmrrrrr",
+"tttttttootttkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrrrrrroorrrrrrrroorrrrrrrrroorrrrrssssiiiisssssssiiiiiissssssiiiiiisssrrrroorrrrrrrrroorrrrrrrrrrrroorrrrrrrrrmmrrrrrrrrrrrrrmmrrrrrrrrmmrrrrr",
+"kkkkkkiiikkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrrrrrroorrrrrrrroorrrrrrrrroorrrrrsssiiiiiissssssssjjsssssssiiiiiiiissrrrroorrrrrrrrroorsssrrrrrrrroorrrrrrrrrmmrrrrrrrrrrrrrmmrrrrrrrrmmrrrrr",
+"kkkkiiiiiiikkkkkiiikkkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrrrrrroorrrrrrrroorrrrrrrrroorrrrrsssiiiiiissssssssjjsssssssiiiiiiiissrrrroorrrrrrrrroosssssrrrrrrroorrrrrrrrrmmrrrrrrrrrrrrrmmrrrrrrrrmmrrrrr",
+"kkkiiiiiiiiikkkiiiiikkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrrrrrroorrrrrrrriiirrrrrrrroorrrrrsssiiiiiissssssssjjsssssssiiiiiiiissrrrroorrrrrrrrrosssssssrrrrrroorrrrrrrrmmmrrrrrrrrrrrrrmmrrrrrrrrmmrrrrr",
+"kkkiiiiiiiiikkiiiiiiikkkkkkkkkkkkkkkkkkkkkkkkkkkrrrrrrrroorrrrrrriiiiirrrrrrrsssrrrrsssiiiiiisssssiisjjsiissssiiiiiiiissrrrroorrrrrrrrrsssssssssooosssooooooommmmmmrrrrrrrrmmmrmmrrrrrrrrmmrrrrr",
+"kkiiiiiiiiiikiiiiiiiiikkkkkkssskkkkkkkkkkkkkkkkkrrrrooooooooooooiiiiiiirrrrrsssssrrrsssiiiiiisssssiisjjsiissssiiiiiiiissrrrroosssrrrrrrsssssssssoosssssooooommmmmmmmmmmmmmmmmmmmmmmmmmmgggmrrrrr",
+"kkiiiiiiiiiikiiiiiiiiikkkkkssssskkkkkkkkkssskkkkrrrsssoooooooooiiiiiiiiiaaaaajjaaaaasssiiiiiisssssiisjjsiissssiiiiiiiissrrrrosssssrrrrrsssssssssrrsssssooorrrrmmmmmmmmmmmmmmmmmmmmmmmmgggggrrrrr",
+"kkiiiiiiiiiikiiiiiiiiikkkkkssssskkkkkkkkssssskkkrrsssssroorrrrriiiiiiiiiaaaaajjaaaaasssiiiiiisssssiisjjsiissssiiiiiiiissrrrrosssssoooooosssssssrrrsssssooorrrrrmmmrrrrrrmmmmmmmmmrrrrgggggggrrrr",
+"kkkiiiiiiiiikkiiiiiiikkkkkkssssskkkkkkkkssssskkkrrsssssooorrrrriiiiiiiiiooooosssrrrrsssiiiiiisssssiisjjsiissssiiiiiiiissooooosssssooooooosssssrrrrrsssrroorrrrrmmrrrrrrrmmmmmmmmmmrrrgggggggmmrr",
+"kkkiiiiiiiiikkkiiiiikkkkkkkkssskkkkkkkkkssssskkkrrsssssoorrrrrrriiiiiiirrrrrrroorrrrsssiiiiiisssssiisjjsiissssiiiiiiiissoooooosssrrrrrrrrrsssorrrrrrrrrroorrrrrmmrrrrrrrmmmmmmmmmmrrrgggggggmmrr",
+"kkkkiiiiiiikkkkkiiikkkkkkkkkkkkkkkkkkkkkkssskkkkrrrsssrrrrrrrrrrriiiiirrrrrrrroorrrrsssssssssssssssssjjsssssssssssssssssrrrrrroorrrrrrrrrrrroorrrrrrrrrroorrrrrmmrrrrrrrrmmmmmmmmmrrrrgggggrmmrr",
+"kkkkkkiiikkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrroorrrrrrrrrrrriiiorrrrrrrroorrrrsssssssssssssssssjjsssssssssssssssssrrrrrroorrrrrrrrrrrroorrrrrrrrrroorrrrrmmrrrrrrrrrmmmmmrmmrrrrrgggrrmmrr",
+"kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkrrrroorrrrrrrrrrrrrroorrrrrrrroorrrrsssssssssssssssssjjsssssssssssssssssrrrrrroorrrrrrrrrrrroorrrrrrrrrroorrrrrmmrrrrrrrrrrmmmrrmmrrrrrrrrrrmmrr",
+"ttttttoottttttttootttttttttoottttttttttttttootttttttoottttttttttttttoottttttttoottttssssssssssssssssssssssssssssssssssssttttttopttttttttttttopttttttttttoptttttmptttttttrrrrrrrrmprrrrrrrrrrmprr",
+"ttttttoottttttttootttttttttoottttttttttttttootttttttoottttttttttttttoottttttttoottttssssssssssssssssssssssssssssssssssssttttttpptttttttttgggppttttttttttpptttttpptttttttrrrrrrrrpprrrrrrrrrrpprr",
+"tttiiioottttttttootttttttttoottttttttttttttootttttttoottttttttttttttoottttttsssottttssssssssssssssBBBBBBBBssssssssssssssttttttpptttttttgggggggttttttttttpptttttpptttttttrrrrrrrrpprrrrrrrrgggprr",
+"ttiiiiiottttttttossstttttttoottttttttttttttootttttttoottttttttttttsssotttttsBBBBttttssssssssssssssBBBBBBBBsssssssssssssstttgggppppppppgggggggggtttttttttpptttttpgggppppppppppppppppppppppgggggrr",
+"tiiiiiiittttttttsssssoooooooootttttttttttttootttttttootttttttttttsssssttttssBBBBstttssssBBBBssssssBBBBBBBBssssssssssssssppgggggpppppppgggggggggttttthhhtpptttttgggggpppppppmmmpppppppppppgggggrr",
+"iiiiiiiiitttttttsssssoooooosssttttttttttttsssttttttsssooooooooooosssssttttssBBBBstttssssBBBBssssssBBBBBBBBsssssssssssssspgggggggtttttgggggggggggttthhhhhppttttgggggggtttrrmmmmmrpprrrrrrrgggggrr",
+"iiiiiiiiiooooooossssstttttsssssttttttttttsssssttttsssssoooooooooosssssttttssssssstttssssBBBBssssssBBBBBBBBssssssssssssssgggggggggttttgggggggggggttthhhhhppttttgggggggtttrmmmmmmmpprrrrrrrrgggrrr",
+"iiiiiiiiioooooooosssttttttsssssttttttttttsssssttttssssstttttttttttsssttttttsssssttttssssssssssssssBBBBBBBBssssssssssssssgggggggggttttgggggggggggppphhhhhptttttgggggggtttrmmmmmmmpprrrrrrrrrrrrrr",
+"tiiiiiiittttttttttttttttttsssssoooooooooosssssttttsssssttttttttttttooooooooossstttttssssssssssssssssssssssssssssssssssssgggggggggtttttgggggggggppppphhhttttttttgggggttttrmmmmmmmprrrrrrrrrrrrrrr",
+"ttiiiiittttttttttttttttttttsssoooooooooooosssttttttssstttttttttttttooooooooooottttttsssssssssssssssssssssssssssssssssssstgggggggttttttgggggggggtttttttttttttttttgggtttttrrmmmmmrrrrrrrrrrrrrrrrr",
+"tttiiittttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttssssssssssssssssssssssssssssssssssssttgggggttttttttgggggggttttttttttttttttttttttttttrrrmmmrrrrrrrrrrrrrrrrrr",
+"ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttsssssssssssssssssssssssssssssssssssstttgggtttttttttttgggttttttttttttttttttttttttttttrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttppttttttttttttpptttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttppttttttttttttpptttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttpptttttttttttgggtttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttppttppppppppgggggttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttpptgggpppppgggggggtttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttppgggggttttgggwwwgtttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttppgggggttttgggwwwgtttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttppgggggtttttggwwwttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttttpgggtttttttggwpttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttttpptttttttttttbpttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttttpptttttttttttbpttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttttpptttttttttttbpttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttttpptttttttttttppttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttttpptttttttttttppttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttttgggttttttttttppttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttgggggtttttttttppttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttgggggttttttgggppttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttgggggpppppgggggpttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttttgggpppppgggggggttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttttpptttttgggggggptttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttttpptttttgggggggptttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttttppttttttgggggpptttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttttpptttttttgggtpptttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttttpptttttttttttpptttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttttpptttttttttttpptttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttttpptttttttttttpptttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttttgggttttttttttpptttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttttgggggtttttttttpptttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttpgggggppppppppppptttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttpgggggppppppppgggtttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttppgggttttttttgggggttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttpptttttttttttgggggttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttpptttttttttttgggggttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttppttttttttttttgggpttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttppttttttttttttttppttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttppttttttttttttttppttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttppttttttttttttttppttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttppttttttttttttttppttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttppgggtttttttttttppttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttpgggggppppppppgggpttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttgggggggppppppgggggttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttgggggggttttttgggggttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttgggggggttttttgggggttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrtttttgggggttttttttgggtttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttttgggtttttttttttttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttttttttttttttttttttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttttttttttttttttttttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr",
+"rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrttttttttttttttttttttttttrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr"
+]
+}
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "dirt path",
+"g": "grass",
+"w": "water",
+"b": "bridge / deck over water",
+"s": "snow",
+"r": "rock (cannot walk)",
+"x": "the half-pipe floor",
+"f": "concrete floor",
+"c": "corn (cannot walk; the rows are the walls)",
+"d": "the running track",
+"m": "marble paving",
+"l": "lava (cannot walk)",
+"h": "volcanic rock",
+"k": "deep drift (cannot walk) / cloud on Olympus",
+"v": "open sky (a fall)",
+"u": "sea floor",
+"a": "the crevasse (cannot cross)",
+"B": "building",
+"i": "ice / a groomed run you skate down",
+"o": "packed snow trail",
+"y": "crystal",
+"q": "the collider ring corridor",
+"e": "grey dust",
+"n": "red ground",
+"z": "the Sea of Possibility (cannot walk)",
+"j": "plank, lift line, ramp, slalom gate",
+"G": "the ley line",
+"V": "nothing (cannot walk)",
+"D": "dunes",
+"R": "red carpet / hot floor",
+"T": "hedge / kelp (cannot walk)",
+"S": "light",
+"N": "open space (fly the ship, or float)",
+"Q": "an orbit (a guide line, not a wall)",
+"E": "Earth",
+"A": "asteroid"
+}
+}
