@@ -6620,7 +6620,25 @@
         function _hqMapCharted(id) {
             if (!id || !_hqRoomExists(id)) return false;
             if (id === _hqCurRoom || window.EW_HQ_MAP_ALL) return true;
-            try { return typeof window.hqRoomSeen === 'function' ? !!window.hqRoomSeen(_hqProfile(), id) : true; } catch (e) { return false; }
+            try { if (typeof window.hqRoomSeen !== 'function') return true; if (window.hqRoomSeen(_hqProfile(), id)) return true; } catch (e) { return false; }
+            return _hqMapAnchorCharted(id);
+        }
+        /* A REBUILT AREA KEEPS ITS PLACE ON THE MAP (2026-11-15, mondo: "i literally just go to the map/directory and go to camelot kingdom
+           and its still the old one"): an area's ANCHOR room (DOOR_HQ.hubs[..].room) counts as stood in once ANY room of that area has been.
+           A rebuilt area's new anchor is a room no save has stood in, so GO fell back to the first old room of it the save knew. The
+           facility's own hub is left alone (its rooms are charted one by one). Cached two seconds: the map asks per node per draw. */
+        let _hqAnchorMemo = { t: 0, m: {} };
+        function _hqMapAnchorCharted(id) {
+            try {
+                const H = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.hubs) || {}; let hid = null;
+                for (const k in H) if (H[k] && H[k].room === id && !H[k].facility && k !== 'hq') { hid = k; break; }
+                if (!hid || typeof window.hqHubOf !== 'function') return false;
+                const now = Date.now(); if (now - _hqAnchorMemo.t > 2000) _hqAnchorMemo = { t: now, m: {} };
+                if (hid in _hqAnchorMemo.m) return _hqAnchorMemo.m[hid];
+                const rec = (typeof window.hqRoomsSeenRecord === 'function') ? (window.hqRoomsSeenRecord(_hqProfile()) || {}) : {};
+                let hit = false; for (const r in rec) { if (!rec[r] || !_hqRoomExists(r)) continue; const h = window.hqHubOf(r); if (h && h.id === hid) { hit = true; break; } }
+                return (_hqAnchorMemo.m[hid] = hit);
+            } catch (e) { return false; }
         }
         /* a site is charted when any room of it has been stood in (the GO lands on its entry) */
         function _hqMapChartedSite(site) {
