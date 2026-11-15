@@ -5,10 +5,10 @@ from the current trees ... make better leaves ... texture them with the current 
 THE FULL TREES: a Retro Tree Pack tree (two crossed cards wearing one picture of the whole crown) is baked again as a tree with a real
 crown. The trunk and the bark are the file's own, untouched. The two cards go; in their place stand many small leaf sheets that wear
 pieces of THE SAME PICTURE (the file's own leaf material and texture, nothing new is drawn):
-  a LEAFY tree  : round each bough a small crossed core (a dense piece of the picture) and eighteen ragged sprays, each turned so
-                  the picture's solid side is inward and its own leaf edge is the outside: the outline is leaves, not a ball.
-  a FIR / PINE  : sixteen tiers of bough sheets; each bough is a slice of the picture at its own height, from the stem out to the
-                  picture's real outline, so the tree keeps the fir's own silhouette from every side.
+  EVERY tree    : tiers of bough sheets; each bough is a slice of the picture at its own height, from the stem out to the picture's
+                  real outline, tilted so it reads from the side and from above. The crown is the picture's own crown from every side.
+                  A fir / pine has sixteen thin tiers; a LEAFY tree ten taller ones that start where the picture's crown starts.
+                  (The first leafy crowns were sprays round each bough: mondo "still look really rough". Gone.)
 Each sheet keeps its own normal (they lie every way, so the crown shades like leaves). 500-600 triangles a tree.
 
   pip install bpy numpy
@@ -76,39 +76,31 @@ def kmeans(pts, k, seed):
         cs = [sum(q, Vector()) / len(q) if q else cs[i] for i, q in enumerate(g)]
     return cs
 
-def leafy(L, vs, H, seed, wide):
-    P = L.P; rnd = random.Random(seed); s = P['s']; up = [v for v in vs if v.z > H * 0.38]; tv = max(vs, key=lambda v: v.z)
-    cs = kmeans(up, 8, seed) + [tv]; mid = sum(cs, Vector()) / len(cs); x, y = sum(v.x for v in vs if v.z < H * 0.1) / max(1, sum(1 for v in vs if v.z < H * 0.1)), sum(v.y for v in vs if v.z < H * 0.1) / max(1, sum(1 for v in vs if v.z < H * 0.1))
-    if max((c - mid).length for c in cs) < H * 0.16:      # a bare pole: boughs of its own, an uneven crown round the upper stem
-        cs = [mid + Vector((math.cos(a) * rr, math.sin(a) * rr, zz)) for a, rr, zz in [(i * 2.4 + rnd.random(), H * (0.1 + 0.14 * rnd.random()) * wide, H * rnd.uniform(-0.16, 0.2)) for i in range(8)]] + [tv]
-        mid = sum(cs, Vector()) / len(cs)
-    for c in cs:
-        out = Vector((c.x - x, c.y - y, 0)); c2 = c + out * 0.25 + Vector((0, 0, H * 0.02)); R = H * (0.13 + 0.05 * rnd.random())
-        for j in range(3):            # the core: three crossed dense sheets, so the crown is never see-through
-            dx, dy, _, _ = P['dense'][rnd.randrange(len(P['dense']))]; a = j * math.pi / 3 + rnd.random() * 0.5; t = Vector((math.cos(a), math.sin(a), 0))
-            L.sheet(c2, t * R * 0.7, Vector((0, 0, -1)) * R * 0.55, dx, dy, dx + P['ds'], dy + P['ds'], mid)
-        for j in range(18):           # the leaves: ragged sprays, each turned so the picture's solid side is inward and its own leaf edge
-            far = j >= 10             # is the outside; ten fill the bough's body, eight reach out past it and make the outline
-            d = Vector((rnd.gauss(0, 1), rnd.gauss(0, 1), rnd.gauss(0, 0.55) + (0.0 if far else 0.2))).normalized(); d = (d + (c2 - mid).normalized() * (0.7 if far else 0.4)).normalized()
-            fx, fy, gx, gy = P['fringe'][rnd.randrange(len(P['fringe']))]; fs = P['fs']; e1 = -d; e2 = perp(e1, rnd); sz = R * ((1.0 if far else 0.8) + 0.5 * rnd.random())
-            L.sheet(c2 + Vector((d.x * 1.25, d.y * 1.25, d.z * 0.75)) * R * (0.95 if far else 0.45 + 0.3 * rnd.random()), (e1 * gx - e2 * gy) * sz / 2, (e1 * gy + e2 * gx) * sz / 2, fx, fy, fx + fs, fy + fs, mid)
-
-def fir(L, vs, H, seed):
-    P = L.P; rnd = random.Random(seed); y0, y1, cxp = P['y0'], P['y1'], P['cx']; ph = y1 - y0; ppm = ph / (H * 0.97); foot = 0.1; n = 16
+def fir(L, vs, H, seed, leafy=False):
+    """every bough is a slice of the tree's own picture at its own height, from the stem out to the picture's real outline. A LEAFY tree is
+    made the same way (mondo 11-15: the sprayed crowns "still look really rough"): fewer, taller tiers that start where the picture's crown
+    starts, the slices standing steeper, so from every side the crown is the picture's own crown and its outline is the picture's outline."""
+    P = L.P; rnd = random.Random(seed); y0, y1, cxp = P['y0'], P['y1'], P['cx']; ph = y1 - y0; ppm = ph / (H * 0.97)
     low = [v for v in vs if v.z < H * 0.1]; x = sum(v.x for v in low) / len(low); y = sum(v.y for v in low) / len(low)
+    if leafy:      # the crown starts at the first row (from the ground up) that is much wider than the stem
+        stem = max(4, sorted(P['xr'][r] - P['xl'][r] for r in range(int(y1 - ph * 0.08), y1))[0]); foot = 0.12
+        for r in range(y1, y0, -1):
+            if P['xr'][r] - P['xl'][r] > stem * 5 + ph * 0.05: foot = (y1 - r) / ph; break
+        foot = min(0.6, foot + 0.04); n = 10; bh = 0.12; nbs = (8, 8, 6); tilt = (0.15, 0.75)
+    else: foot = 0.1; n = 16; bh = 0.085; nbs = (9, 7, 5); tilt = (0.5, 0.95)
     hw = int(ph * 0.07)                 # the heart: the picture's own middle strip, crossed three ways up the stem (the pack's stem stops low)
     for j in range(3):
-        a = j * math.pi / 3 + 0.3; t = Vector((math.cos(a), math.sin(a), 0)); zt = H * 0.985; zb = H * foot * 0.6
-        L.sheet(Vector((x, y, (zt + zb) / 2)), t * (hw / ppm), Vector((0, 0, -1)) * ((zt - zb) / 2), cxp - hw, y0, cxp + hw, int(y1 - ph * foot * 0.6), Vector((x, y, (zt + zb) / 2)))
+        a = j * math.pi / 3 + 0.3; t = Vector((math.cos(a), math.sin(a), 0)); zt = H * 0.985; zb = H * foot * (1.0 if leafy else 0.6)
+        L.sheet(Vector((x, y, (zt + zb) / 2)), t * (hw / ppm), Vector((0, 0, -1)) * ((zt - zb) / 2), cxp - hw, y0, cxp + hw, int(y1 - zb * ppm), Vector((x, y, (zt + zb) / 2)))
     for i in range(n):
-        f = i / (n - 1); band = ph * (0.085 - 0.03 * f); yc = y1 - ph * (foot + (0.985 - foot) * f); v0 = int(max(y0, yc - band)); v1 = int(min(y1, yc + band))
+        f = i / (n - 1); band = ph * (bh - 0.03 * f); yc = y1 - ph * (foot + (0.985 - foot) * f); v0 = int(max(y0, yc - band)); v1 = int(min(y1 - ph * foot * 0.7, yc + band))
         if v1 - v0 < 4: continue
-        nb = 9 if f < 0.5 else 7 if f < 0.8 else 5; a0 = rnd.random() * 6; zc = (y1 - (v0 + v1) / 2) / ppm + H * 0.02; mid = Vector((x, y, zc - H * 0.05))
+        nb = nbs[0] if f < 0.5 else nbs[1] if f < 0.8 else nbs[2]; a0 = rnd.random() * 6; zc = (y1 - (v0 + v1) / 2) / ppm + H * 0.02; mid = Vector((x, y, zc - H * 0.05))
         for j in range(nb):
             right = rnd.random() < 0.5; xe = (max(P['xr'][r] for r in range(v0, v1)) + 4) if right else (min(P['xl'][r] for r in range(v0, v1)) - 4)
             Ln = abs(xe - cxp) / ppm * (0.92 + 0.16 * rnd.random())
             if Ln < H * 0.01: continue
-            a = a0 + j * 2 * math.pi / nb + rnd.uniform(-0.15, 0.15); r = Vector((math.cos(a), math.sin(a), 0)); tg = Vector((-math.sin(a), math.cos(a), 0)); tl = rnd.choice((-1, 1)) * rnd.uniform(0.5, 0.95)
+            a = a0 + j * 2 * math.pi / nb + rnd.uniform(-0.15, 0.15); r = Vector((math.cos(a), math.sin(a), 0)); tg = Vector((-math.sin(a), math.cos(a), 0)); tl = rnd.choice((-1, 1)) * rnd.uniform(*tilt)
             upv = Vector((0, 0, 1)) * math.cos(tl) + tg * math.sin(tl); hh = (v1 - v0) / ppm / 2 * 1.15
             L.sheet(Vector((x, y, zc)) + r * Ln / 2, r * Ln / 2, -upv * hh, cxp, v0, xe, v1, mid, nx=2)
 
@@ -123,7 +115,7 @@ def bake(src, dst, form, seed, wide):
     vs = [o.matrix_world @ v.co for v in o.data.vertices]
     L = Leaves(P)
     if form == 'fir': fir(L, vs, H, seed)
-    else: leafy(L, vs, H, seed, wide)
+    else: fir(L, vs, H, seed, leafy=True)
     me = bpy.data.meshes.new('leaves'); me.from_pydata([tuple(v) for v in L.v], [], L.f); uv = me.uv_layers.new(name='UVMap')
     for p in me.polygons:
         for l in p.loop_indices: uv.data[l].uv = L.uv[me.loops[l].vertex_index]
