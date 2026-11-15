@@ -93247,13 +93247,13 @@ const ThreeRenderer = (function () {
         return [_hqBatchId(t.image), t.repeat.x, t.repeat.y, t.offset.x, t.offset.y, t.center.x, t.center.y, t.rotation, t.wrapS, t.wrapT, t.magFilter, t.minFilter, t.anisotropy, _ewTexCSKey(t), t.flipY, t.format, t.type, t.premultiplyAlpha, t.generateMipmaps, t.matrixAutoUpdate].join(',');
     }
     /* the look: two materials with one key draw the same */
-    function _hqBatchMatKey(m) {
-        var a = [m.type, _hqBatchId(m.onBeforeCompile), m.customProgramCacheKey ? m.customProgramCacheKey() : '', m.color ? m.color.getHex() : '', m.emissive ? m.emissive.getHex() : '', m.emissiveIntensity,
+    function _hqBatchMatKey(m, vc) {
+        var a = [m.type, _hqBatchId(m.onBeforeCompile), m.customProgramCacheKey ? m.customProgramCacheKey() : '', vc ? 'vc' : (m.color ? m.color.getHex() : ''), m.emissive ? m.emissive.getHex() : '', m.emissiveIntensity,
                  m.specular ? m.specular.getHex() : '', m.shininess, m.roughness, m.metalness, m.opacity, m.transparent, m.alphaTest, m.side, m.shadowSide, m.depthWrite, m.depthTest, m.depthFunc, m.blending,
                  m.fog, m.vertexColors, m.flatShading, m.toneMapped, m.dithering, m.polygonOffset, m.polygonOffsetFactor, m.polygonOffsetUnits, m.colorWrite, m.premultipliedAlpha, m.reflectivity, m.combine,
                  m.lightMapIntensity, m.aoMapIntensity, m.normalScale ? m.normalScale.x + '/' + m.normalScale.y : '', m.bumpScale, m.skinning, m.morphTargets];
         for (var i = 0; i < _HQ_BATCH_MAPS.length; i++) a.push(_hqBatchTexKey(m[_HQ_BATCH_MAPS[i]]));
-        for (var k in m) if (k.indexOf('_ew_') === 0) { var v = m[k]; a.push(k + '=' + ((v !== null && typeof v === 'object') ? _hqBatchId(v) : v)); }
+        for (var k in m) if (k.indexOf('_ew_') === 0 && k.indexOf('_ew_bun') !== 0) { var v = m[k]; a.push(k + '=' + ((v !== null && typeof v === 'object') ? _hqBatchId(v) : v)); }   // `_ew_bun*` = the recorder's own notes, never a look
         if (m.defines) for (var d in m.defines) a.push('#' + d + '=' + m.defines[d]);
         return a.join('|');
     }
@@ -93325,18 +93325,28 @@ const ThreeRenderer = (function () {
     }
     /* the merge: one geometry in the shell group's space, positions and normals through each piece's matrix, the winding
        turned for a mirrored piece; always indexed */
-    function _hqBatchMerge(cs) {
+    function _hqBatchMerge(cs, vc) {
         var g0 = cs[0].g, names = Object.keys(g0.attributes), nV = 0, nI = 0;
+        var vcOwn = !!g0.attributes.color, vcArr = null, vcSz = vcOwn ? g0.attributes.color.itemSize : 3;   // THE ONE PAINT
         cs.forEach(function (c) { var n = c.g.attributes.position.count; nV += n; nI += c.g.index ? c.g.index.count : n; });
         var geo = new THREE.BufferGeometry(), arrs = {};
-        names.forEach(function (nm) { var a = g0.attributes[nm]; arrs[nm] = new a.array.constructor(nV * a.itemSize); });
+        names.forEach(function (nm) { var a = g0.attributes[nm]; arrs[nm] = (vc && nm === 'color') ? null : new a.array.constructor(nV * a.itemSize); });
+        if (vc) vcArr = new Float32Array(nV * vcSz);
         var idx = nV > 65535 ? new Uint32Array(nI) : new Uint16Array(nI);
         var N3 = _hqBatchN3 || (_hqBatchN3 = new THREE.Matrix3()), v = _hqBatchV || (_hqBatchV = new THREE.Vector3());
         var vo = 0, io = 0;
         cs.forEach(function (c) {
             var g = c.g, n = g.attributes.position.count, M = c.M, flip = M.determinant() < 0;
             N3.getNormalMatrix(M);
+            if (vc) {   // THE ONE PAINT: the piece's own colour on each of its points (times its painted points when its look reads them)
+                var mc = c.m.color, ca = (vcOwn && c.m.vertexColors) ? g.attributes.color : null, cb = vo * vcSz;
+                for (var ci = 0; ci < n; ci++) {
+                    vcArr[cb + ci * vcSz] = mc.r * (ca ? ca.getX(ci) : 1); vcArr[cb + ci * vcSz + 1] = mc.g * (ca ? ca.getY(ci) : 1); vcArr[cb + ci * vcSz + 2] = mc.b * (ca ? ca.getZ(ci) : 1);
+                    if (vcSz === 4) vcArr[cb + ci * 4 + 3] = ca ? ca.getW(ci) : 1;
+                }
+            }
             names.forEach(function (nm) {
+                if (vc && nm === 'color') return;
                 var a = g.attributes[nm], src = a.array, dst = arrs[nm], sz = a.itemSize, base = vo * sz;
                 if (nm === 'position') { for (var i = 0; i < n; i++) { v.fromBufferAttribute(a, i).applyMatrix4(M); dst[base + i * 3] = v.x; dst[base + i * 3 + 1] = v.y; dst[base + i * 3 + 2] = v.z; } }
                 else if (nm === 'normal') { for (var i2 = 0; i2 < n; i2++) { v.fromBufferAttribute(a, i2).applyMatrix3(N3).normalize(); dst[base + i2 * 3] = v.x; dst[base + i2 * 3 + 1] = v.y; dst[base + i2 * 3 + 2] = v.z; } }
@@ -93351,7 +93361,8 @@ const ThreeRenderer = (function () {
             }
             vo += n;
         });
-        names.forEach(function (nm) { var a = g0.attributes[nm]; geo.setAttribute(nm, new THREE.BufferAttribute(arrs[nm], a.itemSize, a.normalized)); });
+        names.forEach(function (nm) { if (vc && nm === 'color') return; var a = g0.attributes[nm]; geo.setAttribute(nm, new THREE.BufferAttribute(arrs[nm], a.itemSize, a.normalized)); });
+        if (vc) geo.setAttribute('color', new THREE.BufferAttribute(vcArr, vcSz));
         geo.setIndex(new THREE.BufferAttribute(io < idx.length ? idx.subarray(0, io) : idx, 1));
         geo.computeBoundingSphere(); geo.computeBoundingBox();
         return geo;
@@ -93382,8 +93393,9 @@ const ThreeRenderer = (function () {
         /* THE SHELL CELLS, a piece alone in its look and square: no merge — a stand-in mesh on the piece's OWN geometry (nothing
            copied), placed where the piece stands, hung in the square's group so it is culled with the square. Only when the
            square's group exists and the piece's place splits cleanly into position / turn / scale. */
-        var geo = single ? c0.g : _hqBatchMerge(cs);
-        var mesh = new THREE.Mesh(geo, c0.m);
+        var vcm = (!single && B.vc && _hqBatchVcOk(c0.m)) ? _hqBatchVcMat(B, c0.m) : null;   // THE ONE PAINT
+        var geo = single ? c0.g : _hqBatchMerge(cs, !!vcm);
+        var mesh = new THREE.Mesh(geo, vcm || c0.m);
         if (single) {
             c0.M.decompose(mesh.position, mesh.quaternion, mesh.scale); mesh.updateMatrix();
             if (!_hqBatchSame(mesh.matrix, c0.M)) return null;
@@ -93410,6 +93422,25 @@ const ThreeRenderer = (function () {
         });
         B.batches.push(rec); B.stats.batches++; B.stats.pieces += cs.length; B.stats.verts += geo.attributes.position.count;
         return rec;
+    }
+    /* THE ONE PAINT (2026-11-15, mondo in Disaster City after THE SHELL CELLS: 25 FPS, and his two readouts price a replayed mesh:
+       6,712 meshes = 44.7 ms, 5,601 = 39.4 ms, his 139-mesh lobby 12.5 ms, so ~4.8 µs a mesh and 60 FPS wants under ~900).
+       Of the shell's 5,259 draws 4,075 were pieces alone in their look and square, and what set most of them apart was the paint:
+       one plaster sheet under 650 colours. In a big room's shell the colour is no longer part of a look: pieces that differ only
+       by colour merge, each point carries its piece's colour (times its own painted colour where the look reads one), and the
+       merged mesh wears a copy of the look with a white colour that reads the points' (`vertexColors`). colour x sheet is the
+       same product, so the picture is the same. One copy per look for the whole room (B.vcMats), freed with the batch.
+       Off: window.EW_HQ_NO_ONE_PAINT (before the room is entered). */
+    function _hqBatchVcOk(m) { return !!(m && m.color && m.color.isColor && (m.isMeshPhongMaterial || m.isMeshLambertMaterial || m.isMeshStandardMaterial || m.isMeshBasicMaterial) && !m.gradientMap); }
+    function _hqBatchVcMat(B, m) {
+        var k = _hqBatchMatKey(m, true), L = B.vcMats || (B.vcMats = {}), c = L[k];
+        if (c) return c;
+        c = m.clone(); c.color.setRGB(1, 1, 1); c.vertexColors = true; c.name = (m.name || '') + ' (one paint)';
+        if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile) c.onBeforeCompile = m.onBeforeCompile;
+        if (m.customProgramCacheKey !== THREE.Material.prototype.customProgramCacheKey) c.customProgramCacheKey = m.customProgramCacheKey;
+        for (var p in m) if (p.indexOf('_ew_') === 0 && p.indexOf('_ew_bun') !== 0 && Object.prototype.hasOwnProperty.call(m, p)) c[p] = m[p];
+        c._ew_onePaint = true;
+        return (L[k] = c);
     }
     /* THE SHELL CELLS (2026-11-15, mondo in Disaster City: 20 FPS with our code at 21 ms and a quarter of the pixels changing
        nothing; his lobby, 139 replayed meshes, runs at 80). The frame is the graphics card's, and what it is fed is the count of
@@ -93461,12 +93492,13 @@ const ThreeRenderer = (function () {
         root.updateMatrixWorld(true);
         var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), tmp = new THREE.Matrix4(), groups = {}, keys = [], n = 0;
         var U = _hqUnits(), T = (HQ_BATCH.cellM || ((typeof HQ_ENGINE_RULES !== 'undefined') && HQ_ENGINE_RULES.tileM) || 32) * U, sph = new THREE.Vector3(), mk = {};
+        B.vc = !!(_hq && root === _hq.shellGroup && _hqChunkBig(_hq) && !(typeof window !== 'undefined' && (window.EW_HQ_NO_SHELL_CELLS || window.EW_HQ_NO_ONE_PAINT)));   // THE ONE PAINT
         for (var i = 0; i < B.cands.length; i++) {
             var c = B.cands[i];
             if (_hqBatchStill(c, root, inv, tmp) && _hqBatchPieceOk(c.o)) {
                 if (!c.g.boundingSphere) c.g.computeBoundingSphere();
                 sph.copy(c.g.boundingSphere.center).applyMatrix4(c.M);
-                var mkey = mk[c.m.uuid] || (mk[c.m.uuid] = _hqBatchMatKey(c.m));
+                var mkey = mk[c.m.uuid] || (mk[c.m.uuid] = _hqBatchMatKey(c.m, B.vc && _hqBatchVcOk(c.m)));
                 var key = mkey + '#' + c.sig + '#' + c.o.castShadow + c.o.receiveShadow + '#' + c.o.renderOrder + '#' + c.o.layers.mask + '#' + Math.floor(sph.x / T) + ':' + Math.floor(sph.z / T) + '#' + _hqBatchHost(c.o, root).id;   // THE PROP CHUNKS: one chunk per batch
                 if (!groups[key]) { groups[key] = []; keys.push(key); }
                 groups[key].push(c);
@@ -93578,6 +93610,7 @@ const ThreeRenderer = (function () {
         [R.batch, R.batchP].forEach(function (B) {
             if (!B) return;
             B.batches.slice().forEach(function (rec) { _hqBatchBreak(rec, null); });
+            if (B.vcMats) { for (var vk in B.vcMats) { try { B.vcMats[vk].dispose(); } catch (e) {} } B.vcMats = null; }   // THE ONE PAINT
             B.phase = 'off'; B.it = null; B.cands = [];
         });
     }
