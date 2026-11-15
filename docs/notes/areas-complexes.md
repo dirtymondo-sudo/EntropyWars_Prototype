@@ -3759,6 +3759,14 @@ the castle should be in the center of the map and relatively symmetrical. higher
   well and the wardrobe (no building's inside is reached by that solver in this room, the live Inn included: the doorways are narrower than
   its lattice; the Keep's doorway line reads clear ground and no wall). Drawings of the baked rows: `docs/plans/camelot/castle2_built_rows_front.png`
   and `castle2_built_rows_plan.png`.
+- **ONE STACKED BUILDING, PLAN POSTED, WAITS MONDO'S OK (nothing built)**: mondo on the next-four picture: "can we make the 3 rooms stacked like
+  part of the same building, but the castle can be its own loading screen" + "real architecture/floor plan". Floor plans:
+  `docs/plans/camelot/camelot_castle_stacked_plan.png` (draw-castle-stacked.py): ONE new room CAMELOT CASTLE behind the palace's portal (the
+  loading screen): Undercroft -7 m, floor 0 (Throne Hall 14 m high, Kitchen wing, Barracks wing), floor 1 +7 (gallery, Chapel Royal, Knights'
+  Hall), floor 2 +14 (Long Gallery, Solar, Presence Chamber, Queen's Chamber), floor 3 +21 (Great Library, Merlin's Study, War Room),
+  Battlements +28, Spire Room +44, the Castle in the Sky +88. The kingdom's palace would turn solid and its walked-into Throne Hall / wings
+  move inside. Engine fact to respect: floor over floor is the BRIDGE LAYER (`bridge` slabs; "NOT built: a door ON a bridge, props on a
+  bridge, the full second floor"), so build one stair + two floors first and check them. This replaces items 1-3 of the picture below.
 - **THE NEXT FOUR, PLAN POSTED, WAITS MONDO'S OK (nothing built)**: `docs/plans/camelot/camelot_castle2_next_plan.png` (draw-castle2-next.py):
   the Keep room (floors 2-3, Battlements, Spire room), Merlin's Undercroft under the whole hill, the Castle in the Sky as the palace's twin,
   five kinds of village house. Do not build any of the four before his yes on it.
@@ -4091,8 +4099,15 @@ update that rule" (CLAUDE.md RULE #1c + owner-rules.md rewritten: browser runs w
   row. Now: six headstones, three graves, a wooden picket panel, two iron fence panels, two iron gate leaves, two brick wall panels, two scarecrows on
   poles, two straw bales, a tilled bed + three crops, five bare trees, four pumpkins, two candle clumps, a shovel, a cobweb. `h` = each piece's real
   height, read from the file's geometry (centimetres), so every piece stands at true size. Nothing uploaded, nothing generated. MODEL_LIST.md rerun.
-  Still in his packs and not used yet (bucket `dirtymondo`, `project-files/asset-packs/`): the BlenderVoyage PSX graveyard pack (three more tombstones,
-  two iron gates, a railing, a dirt grave, dead bushes, two jack-o'-lanterns) needs cutting up and an upload; the bus-stop pack has a `Wheat` sheaf.
+  Still in his packs and not used yet (bucket `dirtymondo`, `project-files/asset-packs/`): the bus-stop pack has a `Wheat` sheaf.
+- **THE PSX GRAVEYARD PACK IS A PROP KIT TOO** (mondo 11-15 "yes do that please"; data.js `HQ_CATALOGUE_GRAVEYARD`, 24 rows `psxg_*`, `base: 'asset'`):
+  BlenderVoyage's pack is one GLB; a scratch splitter (plain Python, no Blender: it copies a node's meshes, materials and pictures byte for byte into a
+  new GLB, keeps the node's turn and scale, drops its place in the pack's layout) cut 24 pieces, uploaded to R2
+  `Assets/world/packs/blendervoyage_graveyard/psxg_<piece>.glb` with `node sync-zip.js --put`: three tombstones, a dirt grave mound, a coffin, two iron
+  gate leaves, an iron railing + corner, a low stone wall + pillar + corner, two carved jack-o'-lanterns, two dead bushes, two dead trees, four
+  rocks, two stepping stones. list-models.js has its SOURCES row (its licence is the pack page's: not checked by Claude). In the Estate: the pack's
+  tombstones mixed into both graveyards' rows, a fresh mound before every other stone, pillars and small iron leaves where each walk enters, dead
+  trees, bushes, rocks, jack-o'-lanterns in the graveyards and on the house's porch. Corn still waits for the Meshy key (mondo 11-15).
 - **IN THE ESTATE (bake-estate.js):** headstones and graves in the Family Plot and the Graveyard (were standing stones), a shovel, pumpkins, candles;
   the iron fence along the foot of the house's lawn; real iron leaves on the Iron Gate (its piers moved inside the track); bare pack trees round the
   house; THE SCARECROW on its pole with a pumpkin patch; straw bales in rows over the Hay Field, a stack by the truck and by the barn, bales in the
