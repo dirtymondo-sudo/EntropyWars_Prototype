@@ -1,0 +1,1417 @@
+{
+"area": "Camelot Kingdom",
+"version": "plan-2",
+"squareMeters": 3.5,
+"plotCells": 12,
+"plotsX": 8,
+"plotsY": 8,
+"districts": {
+"K": "The Castle",
+"T": "The Town",
+"F": "The Fairy Forest",
+"L": "The Looking-Glass Garden",
+"N": "The North Pole"
+},
+"plots": [
+{
+"id": "P00-00",
+"name": "Deep snow, west",
+"district": "N",
+"level": 6,
+"what": "snowed-in pines",
+"from": "NEW snow plot",
+"ports": [
+"E",
+"S"
+],
+"exits": null
+},
+{
+"id": "P01-00",
+"name": "The Drift",
+"district": "N",
+"level": 6,
+"what": "the great drift",
+"from": "North Pole: THE DRIFT",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P02-00",
+"name": "The Pole",
+"district": "N",
+"level": 6,
+"what": "LANDMARK: the pole and its cairn",
+"from": "North Pole: THE POLE",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P03-00",
+"name": "The Workshop",
+"district": "N",
+"level": 6,
+"what": "the workshop (walk-in)",
+"from": "North Pole: the workshop",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exits": [
+[
+"inside: the Workshop",
+"inside"
+]
+]
+},
+{
+"id": "P04-00",
+"name": "The Village, north",
+"district": "N",
+"level": 6,
+"what": "cottages, lamps",
+"from": "North Pole: THE VILLAGE",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P05-00",
+"name": "The Frozen Lake, north",
+"district": "N",
+"level": 5,
+"what": "ice you walk on",
+"from": "North Pole: the frozen lake",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P06-00",
+"name": "The Frozen Lake, east",
+"district": "N",
+"level": 5,
+"what": "ice, the far shore",
+"from": "North Pole: the frozen lake",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P07-00",
+"name": "Deep snow, east",
+"district": "N",
+"level": 6,
+"what": "snowed-in pines",
+"from": "NEW snow plot",
+"ports": [
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P00-01",
+"name": "Snowy pines, west",
+"district": "N",
+"level": 5,
+"what": "pines",
+"from": "NEW snow plot",
+"ports": [
+"E",
+"N"
+],
+"exits": null
+},
+{
+"id": "P01-01",
+"name": "The Drift, south",
+"district": "N",
+"level": 5,
+"what": "the drift's foot",
+"from": "North Pole: THE DRIFT",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exits": null
+},
+{
+"id": "P02-01",
+"name": "The Village, west",
+"district": "N",
+"level": 5,
+"what": "cottages",
+"from": "North Pole: THE VILLAGE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P03-01",
+"name": "The Village",
+"district": "N",
+"level": 5,
+"what": "the village square",
+"from": "North Pole: THE VILLAGE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P04-01",
+"name": "The Village, east",
+"district": "N",
+"level": 5,
+"what": "cottages",
+"from": "North Pole: THE VILLAGE",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P05-01",
+"name": "The Frozen Lake, south",
+"district": "N",
+"level": 5,
+"what": "ice, the shore",
+"from": "North Pole: the frozen lake",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P06-01",
+"name": "Snowy pines",
+"district": "N",
+"level": 5,
+"what": "pines",
+"from": "NEW snow plot",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exits": null
+},
+{
+"id": "P07-01",
+"name": "Snowy pines, east",
+"district": "N",
+"level": 5,
+"what": "pines",
+"from": "NEW snow plot",
+"ports": [
+"N",
+"W"
+],
+"exits": null
+},
+{
+"id": "P02-02",
+"name": "The Snowline, west",
+"district": "N",
+"level": 5,
+"what": "the woods between the kingdoms",
+"from": "NEW: the woods between",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exits": null
+},
+{
+"id": "P03-02",
+"name": "The Sleigh Road",
+"district": "N",
+"level": 5,
+"what": "the road between the two kingdoms",
+"from": "the sleigh road (its name)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exits": null
+},
+{
+"id": "P04-02",
+"name": "The Snowline",
+"district": "N",
+"level": 5,
+"what": "the woods between the kingdoms",
+"from": "NEW: the woods between",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exits": null
+},
+{
+"id": "P05-02",
+"name": "The Snowline, east",
+"district": "N",
+"level": 5,
+"what": "the path up from the postern",
+"from": "NEW: the woods between",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exits": null
+},
+{
+"id": "P02-03",
+"name": "The Keep",
+"district": "K",
+"level": 4,
+"what": "the Keep, four floors; the Castle in the Sky above it",
+"from": "Camelot: THE KEEP + the Sky Castle, redesigned",
+"ports": [],
+"exits": [
+[
+"inside: the Keep's floors, the Sky Castle",
+"inside"
+]
+]
+},
+{
+"id": "P03-03",
+"name": "The Orchard",
+"district": "K",
+"level": 4,
+"what": "the inner ward: orchard, gardens",
+"from": "Outer Ward: the orchard, the gardens",
+"ports": [],
+"exits": null
+},
+{
+"id": "P04-03",
+"name": "The Great Hall",
+"district": "K",
+"level": 4,
+"what": "the Great Hall (walk-in): Round Table, dais, gallery",
+"from": "Camelot: THE GREAT HALL, redesigned",
+"ports": [],
+"exits": null
+},
+{
+"id": "P05-03",
+"name": "The Kitchen",
+"district": "K",
+"level": 4,
+"what": "the kitchen; the postern in the north wall (hidden)",
+"from": "NEW + THE POSTERN",
+"ports": [],
+"exits": [
+[
+"the postern",
+"secret"
+]
+]
+},
+{
+"id": "P02-04",
+"name": "The Stables",
+"district": "K",
+"level": 4,
+"what": "stables; the wardrobe on the west wall (hidden)",
+"from": "NEW + the wardrobe",
+"ports": [],
+"exits": [
+[
+"The Estate (the wardrobe)",
+"secret"
+]
+]
+},
+{
+"id": "P03-04",
+"name": "The Bailey",
+"district": "K",
+"level": 4,
+"what": "LANDMARK: the Sword in the Stone; the well; the gatehouse",
+"from": "Outer Ward: THE BAILEY, THE GATEHOUSE",
+"ports": [],
+"exits": null
+},
+{
+"id": "P04-04",
+"name": "The Lists",
+"district": "K",
+"level": 4,
+"what": "the tilt: the jousting ground",
+"from": "Outer Ward: the lists",
+"ports": [],
+"exits": null
+},
+{
+"id": "P05-04",
+"name": "The Barracks",
+"district": "K",
+"level": 4,
+"what": "the Knights' barracks",
+"from": "NEW",
+"ports": [],
+"exits": null
+},
+{
+"id": "P02-05",
+"name": "The Sally Port",
+"district": "K",
+"level": 2,
+"what": "the low door under the moat: MERLIN'S UNDERCROFT",
+"from": "the sally port + the Undercroft, redesigned",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exits": [
+[
+"inside: Merlin's Undercroft",
+"inside"
+]
+]
+},
+{
+"id": "P03-05",
+"name": "The Drawbridge",
+"district": "K",
+"level": 2,
+"what": "the drawbridge: the one open way over the moat",
+"from": "Outer Ward: THE DRAWBRIDGE",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P04-05",
+"name": "The Moat",
+"district": "K",
+"level": 2,
+"what": "the moat and the track round it",
+"from": "Outer Ward: THE MOAT",
+"ports": [
+"E",
+"W"
+],
+"exits": null
+},
+{
+"id": "P05-05",
+"name": "The East Bank",
+"district": "K",
+"level": 2,
+"what": "the track round the moat",
+"from": "Outer Ward: the track",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P02-06",
+"name": "The Chapel",
+"district": "T",
+"level": 1,
+"what": "a stone chapel (walk-in), a small graveyard",
+"from": "NEW",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exits": [
+[
+"inside: the Chapel",
+"inside"
+]
+]
+},
+{
+"id": "P03-06",
+"name": "The Crown's Road",
+"district": "T",
+"level": 1,
+"what": "the cobbled road up to the drawbridge",
+"from": "the old Crown's Road (its name)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P04-06",
+"name": "The Market",
+"district": "T",
+"level": 1,
+"what": "LANDMARK: the market square: stalls, the stocks",
+"from": "NEW",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P05-06",
+"name": "The Smithy",
+"district": "T",
+"level": 1,
+"what": "forge (walk-in), anvil, armour stands",
+"from": "NEW",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exits": [
+[
+"inside: the Smithy",
+"inside"
+]
+]
+},
+{
+"id": "P02-07",
+"name": "Houses, west",
+"district": "T",
+"level": 0,
+"what": "timber houses, gardens",
+"from": "NEW",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exits": null
+},
+{
+"id": "P03-07",
+"name": "The Town Gate",
+"district": "T",
+"level": 0,
+"what": "the portcullis: the door from DOOR HQ (Room i)",
+"from": "the portcullis, today on the ward",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exits": [
+[
+"DOOR HQ (Room i, the portcullis)",
+"open"
+]
+]
+},
+{
+"id": "P04-07",
+"name": "The Inn",
+"district": "T",
+"level": 0,
+"what": "the inn (walk-in)",
+"from": "NEW",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exits": [
+[
+"inside: the Inn",
+"inside"
+]
+]
+},
+{
+"id": "P05-07",
+"name": "The Green",
+"district": "T",
+"level": 0,
+"what": "archery targets, houses",
+"from": "NEW",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exits": null
+},
+{
+"id": "P00-02",
+"name": "The Hedges, north",
+"district": "L",
+"level": 3,
+"what": "hedge walks under the snowline",
+"from": "Looking-Glass Garden: the hedges",
+"ports": [
+"E",
+"S"
+],
+"exits": null
+},
+{
+"id": "P01-02",
+"name": "The Lawn",
+"district": "L",
+"level": 3,
+"what": "lawn, flamingos",
+"from": "Looking-Glass Garden",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P00-03",
+"name": "The Caterpillar",
+"district": "L",
+"level": 2,
+"what": "the caterpillar on its mushroom",
+"from": "Looking-Glass Garden",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exits": null
+},
+{
+"id": "P01-03",
+"name": "The Hedges, east",
+"district": "L",
+"level": 2,
+"what": "hedge walks, the pocket watch",
+"from": "Looking-Glass Garden: the hedges",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P00-04",
+"name": "The Chessboard",
+"district": "L",
+"level": 2,
+"what": "LANDMARK: the chessboard, pieces taller than you",
+"from": "Looking-Glass Garden: the chessboard",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exits": null
+},
+{
+"id": "P01-04",
+"name": "The Tea Party",
+"district": "L",
+"level": 2,
+"what": "the table set for four",
+"from": "Looking-Glass Garden: THE TEA PARTY",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P00-05",
+"name": "The Marble Court",
+"district": "L",
+"level": 2,
+"what": "marble paving, chess statues",
+"from": "Looking-Glass Garden: the marble",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exits": null
+},
+{
+"id": "P01-05",
+"name": "The Mirror",
+"district": "L",
+"level": 2,
+"what": "the mirror: the way to the Astral Realm; the Looking-Glass door from DOOR HQ",
+"from": "Looking-Glass Garden: the mirror",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exits": [
+[
+"The Astral Realm (the mirror) + DOOR HQ",
+"open"
+]
+]
+},
+{
+"id": "P00-06",
+"name": "The Hedges, west",
+"district": "L",
+"level": 1,
+"what": "hedge walks",
+"from": "Looking-Glass Garden: the hedges",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exits": null
+},
+{
+"id": "P01-06",
+"name": "The Hedge Gate",
+"district": "L",
+"level": 1,
+"what": "the gate in the hedge, from the town",
+"from": "Looking-Glass Garden: the hedges",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P00-07",
+"name": "The Hedges, south",
+"district": "L",
+"level": 1,
+"what": "hedge walks",
+"from": "Looking-Glass Garden: the hedges",
+"ports": [
+"E",
+"N"
+],
+"exits": null
+},
+{
+"id": "P01-07",
+"name": "The Dead Tree's Hole",
+"district": "L",
+"level": 0,
+"what": "where the hole in the Woods' dead tree comes out (hidden)",
+"from": "the dead tree link from The Woods",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exits": [
+[
+"The Woods (the dead tree)",
+"secret"
+]
+]
+},
+{
+"id": "P06-02",
+"name": "The Knolls, north",
+"district": "F",
+"level": 4,
+"what": "grassy knolls, rock, the first snow",
+"from": "Fairy Forest: THE KNOLLS",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P07-02",
+"name": "Deep forest, north",
+"district": "F",
+"level": 4,
+"what": "thick trees, glowing mushrooms",
+"from": "NEW forest plot",
+"ports": [
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P06-03",
+"name": "The Toadstools",
+"district": "F",
+"level": 3,
+"what": "toadstools as tall as houses",
+"from": "Fairy Forest",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exits": null
+},
+{
+"id": "P07-03",
+"name": "The Pond",
+"district": "F",
+"level": 3,
+"what": "still pond, butterflies",
+"from": "NEW forest plot",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P06-04",
+"name": "The Ring",
+"district": "F",
+"level": 2,
+"what": "LANDMARK: the fairy ring",
+"from": "Fairy Forest: THE RING",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exits": null
+},
+{
+"id": "P07-04",
+"name": "The Woods Trail",
+"district": "F",
+"level": 2,
+"what": "the trail in from The Woods",
+"from": "the trail link from The Woods",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exits": [
+[
+"The Woods (trail)",
+"open"
+]
+]
+},
+{
+"id": "P06-05",
+"name": "The Spring",
+"district": "F",
+"level": 2,
+"what": "the spring's pool",
+"from": "Outer Ward: the spring's pool",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P07-05",
+"name": "The Paths",
+"district": "F",
+"level": 2,
+"what": "the paths cross here",
+"from": "Fairy Forest: THE PATHS",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P06-06",
+"name": "The Mushroom Grove",
+"district": "F",
+"level": 1,
+"what": "mushrooms, ferns, moths",
+"from": "Fairy Forest",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P07-06",
+"name": "The Glade",
+"district": "F",
+"level": 1,
+"what": "open glade",
+"from": "Fairy Forest: the glade",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exits": null
+},
+{
+"id": "P06-07",
+"name": "The Knolls, south",
+"district": "F",
+"level": 1,
+"what": "knolls",
+"from": "Fairy Forest: THE KNOLLS",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exits": null
+},
+{
+"id": "P07-07",
+"name": "Deep forest, south",
+"district": "F",
+"level": 0,
+"what": "thick trees",
+"from": "NEW forest plot",
+"ports": [
+"N",
+"W"
+],
+"exits": null
+}
+],
+"edges": [
+[
+"P00-00",
+"P01-00"
+],
+[
+"P00-00",
+"P00-01"
+],
+[
+"P01-00",
+"P02-00"
+],
+[
+"P01-00",
+"P01-01"
+],
+[
+"P02-00",
+"P03-00"
+],
+[
+"P02-00",
+"P02-01"
+],
+[
+"P03-00",
+"P04-00"
+],
+[
+"P03-00",
+"P03-01"
+],
+[
+"P04-00",
+"P05-00"
+],
+[
+"P04-00",
+"P04-01"
+],
+[
+"P05-00",
+"P06-00"
+],
+[
+"P05-00",
+"P05-01"
+],
+[
+"P06-00",
+"P07-00"
+],
+[
+"P06-00",
+"P06-01"
+],
+[
+"P07-00",
+"P07-01"
+],
+[
+"P00-01",
+"P01-01"
+],
+[
+"P01-01",
+"P02-01"
+],
+[
+"P02-01",
+"P03-01"
+],
+[
+"P02-01",
+"P02-02"
+],
+[
+"P03-01",
+"P04-01"
+],
+[
+"P03-01",
+"P03-02"
+],
+[
+"P04-01",
+"P05-01"
+],
+[
+"P04-01",
+"P04-02"
+],
+[
+"P05-01",
+"P06-01"
+],
+[
+"P05-01",
+"P05-02"
+],
+[
+"P06-01",
+"P07-01"
+],
+[
+"P02-02",
+"P03-02"
+],
+[
+"P03-02",
+"P04-02"
+],
+[
+"P04-02",
+"P05-02"
+],
+[
+"P02-06",
+"P03-06"
+],
+[
+"P02-06",
+"P02-07"
+],
+[
+"P03-06",
+"P04-06"
+],
+[
+"P03-06",
+"P03-07"
+],
+[
+"P04-06",
+"P05-06"
+],
+[
+"P04-06",
+"P04-07"
+],
+[
+"P05-06",
+"P05-07"
+],
+[
+"P02-07",
+"P03-07"
+],
+[
+"P03-07",
+"P04-07"
+],
+[
+"P04-07",
+"P05-07"
+],
+[
+"P00-02",
+"P01-02"
+],
+[
+"P00-02",
+"P00-03"
+],
+[
+"P01-02",
+"P01-03"
+],
+[
+"P00-03",
+"P01-03"
+],
+[
+"P00-03",
+"P00-04"
+],
+[
+"P01-03",
+"P01-04"
+],
+[
+"P00-04",
+"P01-04"
+],
+[
+"P00-04",
+"P00-05"
+],
+[
+"P01-04",
+"P01-05"
+],
+[
+"P00-05",
+"P01-05"
+],
+[
+"P00-05",
+"P00-06"
+],
+[
+"P01-05",
+"P01-06"
+],
+[
+"P00-06",
+"P01-06"
+],
+[
+"P00-06",
+"P00-07"
+],
+[
+"P01-06",
+"P01-07"
+],
+[
+"P00-07",
+"P01-07"
+],
+[
+"P06-02",
+"P07-02"
+],
+[
+"P06-02",
+"P06-03"
+],
+[
+"P07-02",
+"P07-03"
+],
+[
+"P06-03",
+"P07-03"
+],
+[
+"P06-03",
+"P06-04"
+],
+[
+"P07-03",
+"P07-04"
+],
+[
+"P06-04",
+"P07-04"
+],
+[
+"P06-04",
+"P06-05"
+],
+[
+"P07-04",
+"P07-05"
+],
+[
+"P06-05",
+"P07-05"
+],
+[
+"P06-05",
+"P06-06"
+],
+[
+"P07-05",
+"P07-06"
+],
+[
+"P06-06",
+"P07-06"
+],
+[
+"P06-06",
+"P06-07"
+],
+[
+"P07-06",
+"P07-07"
+],
+[
+"P06-07",
+"P07-07"
+],
+[
+"P02-05",
+"P03-05"
+],
+[
+"P03-05",
+"P04-05"
+],
+[
+"P04-05",
+"P05-05"
+],
+[
+"P03-05",
+"P03-06"
+],
+[
+"P02-05",
+"P02-06"
+],
+[
+"P05-05",
+"P05-06"
+],
+[
+"P01-05",
+"P02-05"
+],
+[
+"P05-05",
+"P06-05"
+],
+[
+"P01-06",
+"P02-06"
+],
+[
+"P01-07",
+"P02-07"
+],
+[
+"P05-06",
+"P06-06"
+],
+[
+"P05-07",
+"P06-07"
+],
+[
+"P01-02",
+"P02-02"
+],
+[
+"P05-02",
+"P06-02"
+],
+[
+"P03-04",
+"P03-05"
+],
+[
+"P05-03",
+"P05-02"
+]
+],
+"cells": [
+"TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+"TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTssssTTTssTTTsssssTssssTTTTTTTTTIIITTTTTIIITTTTTTTTTTTTTTTTT",
+"TTTTTTTTTTTTTTTTTsssTTTTTTTTsssTTTTTTsssBBBssssTTsBBBBsssTsTTTTTTTIIIIIIITIIIIIIITTTTTTTTTTTTTTT",
+"TTTTsssTTTTTTTTTsssssTTTTTTsssssTTTTTTssBBBssTsTTsBBBBssTTsTTTTTTIIIIIIIIIIIIIIIIITTTTTTTsssTTTT",
+"TTTsssssTTTTTTTsssiiiiiiiiiiiiissTTTTTssBBBssssTTTBBBBsssTsTTTTTIIIIIIIIIIIIIIIIIITTTTTTsssssTTT",
+"TTTsiiisTTTTTTssssiiiiiiiiiiiiisssTTTssssiiisssTTssssiiiiiiiiiiiIIIIIIIIIIIIIIIIIIIiiiiiiiissTTT",
+"TTTsiiiiiiiiiiiiiiiisssTTssssOiiisTTTssssiiiiiiiiiiiiiiiiiiiiiiIIIIIIIIIIIIIIIIIIIIiiiiiiiissTTT",
+"TTTTiiiiiiiiiiiiiiiisssTTssssiiiiiiiiiiiiiiiiiiiiiiiiiiisTTTTTTIIIIIIIIIIIIIIIIIIIITTTTTiissTTTT",
+"TTTTiiTTTTTTTTTsssiissTTTTsssiiiiiiiiiiiiiissssTTTssssiisssTTTTIIIIIIIIIIIIIIIIIIITTTTTTiiTTTTTT",
+"TTTTiiTTTTTTTTTTssiisTTTTTTssssiiTTTTsTsTiissTsTTsTTTsiiBBBTTTTTIIIIIIIIIIIIIIIIIITTTTTTiiTTTTTT",
+"TTTTiiTTTTTTTTTTTsiiTTTTTTTTsssiiTTTTsssTiisTssTTsssssiiBBBTTTTTIIIIIIIIIIIIIIIIITTTTTTTiiTTTTTT",
+"TTTTiiTTTTTTTTTTTTiiTTTTTTTTTTTiiTTTTTTTTiiTTTTTTTTTTTiiTTTTTTTTiIIIIIIIIITTIIIiiTTTTTTTiiTTTTTT",
+"TTTTiiTTTTTTTTTTTTiiTTTTTTTTTTTiiTTTTTTTTiiTTTTTTTTTTTiiTTTTTTTTiIIIIIIIITTTTTTiiTTTTTTTiiTTTTTT",
+"TTTTiiTTTTTTTTTTTTiiTTTTTTssssTiiTsTTsTssiisTssTTssTssiisssTTTTTIIIIIIIIITTTTTTiiTTTTTTTiiTTTTTT",
+"TTTTiiTTTTTTTTTTTTiiTTTTTssTBBBiiTsTTTsssiisssTTTsBBBsiisTsTTTTTIIIIIIIIITTTTTTiiTTTTTTTiiTTTTTT",
+"TTTTiiTTTTTTTTTTTsiiTTTTTsTsBBBiiTTTTBBBsiissTTTTsBBBsiiBBBTTTTTIIIIIIIIITTTTTTiiTTTTTTTiiTTTTTT",
+"TTTTiiiiiiiiiiiiiiiiiiiiiiiiiiiiiTsTTBBBsiiiiiiiiiiiiiiiBBBTTTTTiIIIIIIITTTTTTTiiTTTTTTTiiTTTTTT",
+"TTTTiiiiiiiiiiiiiiiiiiiiiiiiiiiiissTTBBBsiiiiiiiiiiiiiiissTTTTTTiiIIIIIiiiiiiiiiiTTTTTTTiiiTTTTT",
+"TTTTiiiTTTTTTTTsssiissTTTsBBBiiiissTTBBBsiiiissTTTBBiiiiiiiiiiiiiiiIIIiiiiiiiiiiiiiiiiiiiiiTTTTT",
+"TTTTiiTTTTTTTTTsssisssTTTsBBBiiiiiiiiiiiiiiiissTTsBBiiiiiiiiiiiiiiiTTTTTTTTTTiiiiiiiiiiiiiTTTTTT",
+"TTTTTTTTTTTTTTTTsssssTTTTTsssiiiiiiiiiiiiisiisTTTTBBiiBBBssTTTTTiiTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+"TTTTTTTTTTTTTTTTTsssTTTTTssssssiissTTssTsssiisTTTssTiiBBBTsTTTTTiiTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+"TTTTTTTTTTTTTTTTTTTTTTTTTTsTsssiisTTTsssTssiiTsTTssTiisssssTTTTTiiTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+"TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTiiTTTTTTTTTTiiTTTTTTTiiTTTTTTTTTTiiTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT",
+"hhhhhhhhhhhhhhhhhhhhhhhhTTTTTTTiiTTTTTTTTTTiiTTTTTTTiiTTTTTTTTTTiiTTTTTTttttrtrttttrtttttttttttt",
+"hhhhhhhhhhhhhhhhhhhhhhhhTTTTTTTiiTTTTTTTTTTiiTTTTTTTiiTTTTTTTTTTiiTTTTTTtttrrttttrrrtttttMtttttt",
+"hhhhhhhhhhhhhhhhhggghhhhTTTTTTTiiTTTTTTTTTTiiTTTTTTTiiTTTTTTTTTTiiTTTTTTtttttgggrtrttttttttttttt",
+"hhhhhhhhhhhhhhhhggggghhhTTTTTTTiiTTTTTTTTTTiiTTTTTTTiiTTTTTTTTTTiiTTTTTTttttgggggrtttttttttttttt",
+"hhhhhggghhhhhhhggggggghhTTTTTTTiiTTTTTTTTssiiTTTTTTTiiTTTTTTTTTTiiTTTTTTrttgggggggrttttttttttttt",
+"hhhhggmmmmmmmmmmmmmmggghTTTTTiiiiiiiiiiiiiiiiiiiiiiiiiiTTTTTTTTTiiiiiiiipppppppppppppppppppMtttt",
+"hhhhggmmmmmmmmmmmmmmggghTTTTTiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiipppppppppppppppppppttttt",
+"hhhhggmmghhhhhgggmmmmmmmiiiiiiiiTTTTTTTTTTTTTTTTTTTTTiiiiiiiiiiiiiiTTTTTrtttggppgttrtttttppttttt",
+"hhhhhgmmhhhhhhhggmmmmmmmiiiiiiTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTiiTTTTTrrtttgpprrtttttttppttttt",
+"hhhhhhmmhhhhhhhhgmmgghhhTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTiiTTTTTtrtttrpprtrttttttppMtttt",
+"hhhhhhmmhhhhhhhhhmmghhhhTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTiiTTTTTttttttpptttttttttppttttt",
+"hhhhhhmmhhhhhhhhhmmhhhhhTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTiiTTTTTttrtttpptrrttttttppttttt",
+"hhhhhhmmhhhhhhhhhmmhhhhhwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwbwwwwwwttttttpptttttttttppttttt",
+"hhhhhhmmhhhhhhhhhmmhhhhhwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwbwwwwwwttttttpptttttttttppttttt",
+"hhhhhhmmhhhhhhhhhmmhhhhhwwwggggggggggggggggggggggggggggggggggggggggggwwwttMtggpptttttttttppttttt",
+"hhhhggmmhhhhhhhhhmmhhhhhwwwgKKkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkGKKgwwwtttMggpptttttttttpbwwttt",
+"hhhggmmmmmmmmmmmmmmhhhhhwwwgKKgBBBBBBBBBgggggBBBBBBBBBBBBBBBBBBBgcKKgwwwttgggppppppppppppbbbwwtt",
+"hhgggmmmmmmmmmmmmmmghhhhwwwgkggBBBBBBBBBgggggBBBBBBBBBBBBBBBBBBBgcgkgwwwttggpppppppppppppbbbwwtt",
+"hhggmmmmghhhhhhgmmmghhhhwwwgkggBBBBBBBBBgggggBBBBBBBBBBBBBBBBBBBgcgkgwwwttggpppMgMttttttgbbbbwtt",
+"hhggmmmgghhhhhhgmmgghhhhwwwgkggBBBBBBBBBgggggBBBBBBBBBBBBBBBBBBBgcgkgwwwtttgppggttttttttgpbbbttt",
+"hhhgmmgghhhhhhhhmmghhhhhwwwgkggBBBBBBBBBgggggBBBBBBBBBBBBBBBBBBBgcgkgwwwtMttppgttttttttttggppttt",
+"hhhhmmghhhhhhhhhmmhhhhhhwwwgkggBBBBBBBBBgggggBBBBBBBBBBBBBBBBBBBgcgkgwwwttttppttMtMttttttttppttt",
+"hhhhmmhhhhhhhhhhmmhhhhhhwwwgkggBBBBBBBBBgggggggggggccggggggggggggcgkgwwwtttMpptttttttttttttppttt",
+"hhhhmmhhhhhhhhhhmmhhhhhhwwwgkgggggggccgggogogogogogccggggggggggggcgkgwwwttttpptttttttttttttppttt",
+"hhhhmmhhhhhhhhhhmmhhhhhhwwwgkgggggggccgggogogogogogccggggggggggggcgkgwwwttttpptttttttttttttppttt",
+"hhhhmmhhhhhhhhhhmmhhhhhhwwwgKKkkkkkcccckkcccckkkkkkkkkkkkkkkkkkkkcKKgwwwttttppggtttttttttttppttt",
+"hhXxXxXxXxhhhhhhmmhhhhhhwwwgKKggggggggggggccgggggggggggggggggggggcKKgwwwttttppgggttttttttttppttt",
+"hhxXxXxXxXhhhhhhmmghhhhhwwwgkgccccccccccccccccccccccccccccccccccccckgwwwtttgppggggttttttgggppttt",
+"hhXxXxXxXxhhhhhgmmgghhhhwwwgkgccccccccccccccccccccccccccccccccccccckgwwwttggppgggggttttggggppttt",
+"hhxXxXxXxXhhhhggmmggghhhwwwgkgggggggggggggccgggggggggggggggggggggggkgwwwttggpppppppppppppppppttt",
+"hhXxXxXxXxhhhhggmmmmghhhwwwgkgBBBBBgggggggccggggggggggggggggBBBBBBgkgwwwttggpppppppppppppppptttt",
+"hhxXxXxXxXmmmmmmmmmmghhhwwwgkgBBBBBgggSgggccggggggggggggggggBBBBBBgkgwwwtttgggppggttttttgppttttt",
+"hhXxXxXxXxmmmmmmmmmmhhhhwwwgkgBBBBBgggggggccggggffffffffffggBBBBBBgkgwwwttttggppgttttttttppttttt",
+"hhxXxXxXxXhhhhhhggmmhhhhwwwgkgBBBBBgggggggccggggggggggggggggBBBBBBgkgwwwtttttgpptttttttttppttttt",
+"hhhhmmhhhhhhhhhhhhmmhhhhwwwgkgBBBBBgggggggccggggggggggggggggBBBBBBgkgwwwttttttpptttttttttppttttt",
+"hhhhmmhhhhhhhhhhhhmmhhhhwwwgKKggggggKKggKKccgKKggggggggKKgggggggggKKgwwwttttttpptttttttttppttttt",
+"hhhhmmhhhhhhhhhhhhmmhhhhwwwgKKkkkkkkKKkkKKGGkKKkkkkkkkkKKkkkkkkkkkKKgwwwttttttpptttttttttppttttt",
+"hhhhmmhhhhhhhhhhhmmmhhhhwwwgggggggggggggggccgggggggggggggggggggggggggwwwttttttpptttttttttppttttt",
+"hhhhmmmhhhhhhhhhmmmmmhhhwwwgggggggggggggggccgggggggggggggggggggggggggwwwttttttpptttttttttppttttt",
+"hhhmmmmmhhhhhhhmmmmmmmhhwwwwwwwwwwwwwwwwwwbbwwwwwwwwwwwwwwwwwwwwwwwwwwwwttttgwbbttttttttgppttttt",
+"hhmmmmmmmhhhhhmmmmmmmmmhwwwwwwwwwwwwwwwwwwbbwwwwwwwwwwwwwwwwwwwwwwwwwwwwtttggbbbpppppppppppgtttt",
+"hmmmmmmmmmhhhhmmmmmmmmmhwwwwwwwwwwwwwwwwwwbbwwwwwwwwwwwwwwwwwwwwwwwwwwwwtttggbbbpppppppppppgtttt",
+"hmmmmmmmmmmmmmmmmmmmmmmhggggggggggggggggggccggggggggggggggggggggggggggggtttggppppttttttggppgtttt",
+"hmmmmmmmmmmmmmmmmmmmmmhhggggggggggggggggggccggggggggggggggggggggggggggggttttgpppptttttttgppttttt",
+"hhmmmmmmmhhhhhhhmmmmmmmmccccccccccccccccccccccccccccccccccccccccccccccccpppppppppttttttttppttttt",
+"hhhmmmmmhhhhhhhhmmmmmmmmccccccccccccccccccccccccccccccccccccccccccccccccpppppptppttttttttppttttt",
+"hhhhmmmmhhhhhhhhmmhhhhhhggggccgggggggggggcccgggggggggggggggggggggccgggggtttttttppttttttttppttttt",
+"hhhhhhmmhhhhhhhhmmhhhhhhggggccgggggggggggcccgggggggggggggggggggggccgggggtttttttppttttttttppttttt",
+"hhhhhhmmhhhhhhhhmmhhhhhhggggccgggggggggggccggggggggggggggggggggggccgggggtttttttppttttttttppttttt",
+"hhhhhhmmhhhhhhhhmmhhhhhhggBBccgggggggBBBgccggggggBBBBggggggggggggccgBBBgtttttttppttttttttppttttt",
+"hhhhhhmmhhhhhhhhmmhhhhhhggBBccgggggggBBBgccggBBggBBBBgggBBBggggggccgBBBgtttttttppttttttttppgtttt",
+"hhhhhhmmhhhhhhhhmmghhhhhggBBccgBBBgggggggccggBBggBBBBcccBBBggBBBBccgggggttttggMpptttttttgppggttt",
+"hhhhggmmhhhhhhhgmmmmmmmmcccccccBBBgggBBBgccggBBgggggcccccggggBBBBcccccccpppppppppttttttggppgggtt",
+"hhhgggmmhhhhhhhgmmmmmmmmcccccccBBBgggBBBccccgggggggcccccccgggBBBBcccccccppppppppptttttgggppggggt",
+"hhhggmmmmmmmmmmmmmmmhhhhggggccccccccccccccccccccccccccccccgggBBBBccccgggttggppppptttttggppppgggt",
+"hhhggmmmmmmmmmmmmmmmhhhhggggcccccccccccccccccccccccccccccccccccccccccgggttggppppppppppppppppgggt",
+"hhhhggmmhhhhhhhhhhmmhhhhgBBgBBccBBggggggccgggggggBBBcccccccccccccccccBBgtMtgpppppppppppppppgggtt",
+"hhhhhhmmhhhhhhhhhhmmhhhhgBBgBBccBBggggggccgBBBgggBBBgcccBBBggggBBBgccBBgttttppgttMttttttppgggttt",
+"hhhhhhmmhhhhhhhhhhmmhhhhgBBgBBccBBggggggccgBBBgggggggccgBBBggggBBBgccBBgttttppttMtttttttppggtttt",
+"hhhhhhmmhhhhhhhhhhmmhhhhggggggccggggggggccgggggggggggccggggggggggggccgggttttppttttttttttpptttttt",
+"hhhhhhmmhhhhhhhhhhmmhhhhggggggccggggggggccgggggggggggccggggggggggggccgggttrtpptrrtttttttpptttttt",
+"hhhhhhmmhhhhhhhhhhmmhhhhggggggccggggggggccgggggggBBggccBBBBggggggggccgggtrtrpptrttttttttpptttttt",
+"hhhhhhmmhhhhhhhhhhmmhhhhggggBBccgBBggBBBccggBBBggBBggccBBBBgggBBBBgccgggttrrppgtrrtrttttpptttttt",
+"hhhhhgmmhhhhhhhhhgmmhhhhgBBgBBccgBBggBBBccggBBBggBBggccBBBBgggBBBBgccgggtrtgppggtrttttttpptttttt",
+"hhhhggmmghhhhhhhggmmghhhgBBgBBccgBBggBBBccgggggggggggccgggggggBBBBgccgggttggppgggtttttttpptttttt",
+"hhhhggmmghhhhhhhggmmghhhgBBgggccgggggBBBcccccccccccccccccccccccccccccgggttggpppggtttttttpptttttt",
+"hhhhggmmghhhhhhhggmmmmmmccccccccggggggggccccccccccccccccccccccccccccggggttggpppggtttttttpppttttt",
+"hhhhhgmmmmmmmmmmmmmmmmmmccccccccccccccccccccgBBggggBBBBBgBBggggBBBccccccpppppppppppppppppppttttt",
+"hhhhhhmmmmmmmmmmmmmhhhhhgBBBggcccccccccccccggBBggggBBBBBgBBggggBBBccccccpppppppppppppppppptttttt",
+"hhhhhhhhhhhhhhhhhhhhhhhhgBBBgggBBBgggggggggggBBggggBBBBBgBBgggggggggBBBgrttrtrrttttrtttttttttttt",
+"hhhhhhhhhhhhhhhhhhhhhhhhgBBBgggBBBgggggggggggggggggBBBBBggggggggggggBBBgtrrttrtrrttttttttttttttt",
+"hhhhhhhhhhhhhhhhhhhhhhhhggggggggggggggggggggggggggggggggggggggggggggggggttttttrtttrttttttttttttt"
+],
+"legend": {
+"t": "forest trees (cannot walk)",
+"T": "snowy pines (cannot walk)",
+"h": "hedge (cannot walk)",
+"p": "dirt path",
+"i": "trodden snow path",
+"s": "snow",
+"I": "ice, walked on",
+"c": "cobbles",
+"m": "marble",
+"g": "grass",
+"w": "water",
+"b": "bridge",
+"k": "curtain wall (wall-walk on top)",
+"K": "tower",
+"G": "gate through the wall",
+"B": "building",
+"f": "the tilt rail",
+"o": "orchard tree",
+"S": "the Sword in the Stone",
+"x": "chessboard dark",
+"X": "chessboard light",
+"M": "giant toadstool",
+"r": "rock",
+"O": "the pole"
+}
+}

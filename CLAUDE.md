@@ -128,6 +128,7 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
   lines into data.js STORY_CUTSCENES word for word; prints the cuts, added lines and notes to do by hand. Notes: story-party-progression.md "THE CUTSCENE EDITOR".
 - `bake-dungeons.js` (2026-11-14): checks the plot dungeons (data.js PD_DUNGEONS). Notes: areas-complexes.md "PLOT DUNGEONS, THE BUILD".
 - `bake-woods.js` (2026-11-15): writes The Woods on plots (`site_prebuilt_fairy_forest_plots`) from `docs/areas/woods/layout.json`. Notes: areas-complexes.md "THE WOODS ON PLOTS".
+- `bake-camelot.js` (2026-11-15): writes Camelot Kingdom on plots (`site_prebuilt_camelot_kingdom`, from `docs/areas/camelot/layout.json`). A rebuilt area's old rooms go in data.js `DOOR_HQ.retired` in the same PR. Notes: areas-complexes.md "CAMELOT KINGDOM ON PLOTS".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
   the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes

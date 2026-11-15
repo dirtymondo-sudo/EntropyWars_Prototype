@@ -1611,6 +1611,8 @@
         function _hqEsc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
         function _hqRoom() { return (typeof DOOR_HQ !== 'undefined') ? (DOOR_HQ.rooms[_hqCurRoom] || DOOR_HQ.rooms.central_egress) : null; }
         function _hqRoomExists(id) { return !!(typeof DOOR_HQ !== 'undefined' && id && DOOR_HQ.rooms[id]); }
+        /* the room that stands for a retired one now (data.js DOOR_HQ.retired), or null */
+        function _hqRetiredTo(id) { try { const R = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.retired) || null, to = R && id && R[id]; return (to && DOOR_HQ.rooms[to]) ? to : null; } catch (e) { return null; } }
         /* THE FOURIER FOYER (HQ plan 7.4, 2026-09-15): a fresh arrival from Play
            stands in the vestibule and walks in through the revolving door —
            the loading card's "verifying your corners…" as a place. Off with
@@ -2056,6 +2058,9 @@
                     roomId = ent.room; opts.at = ent.at;
                 }
             } catch (e) { console.warn('[HQ] site entry failed', e); }
+            /* THE RETIRED ROOMS (2026-11-15, data.js DOOR_HQ.retired): a room a rebuilt area replaced is never entered again, whatever asked
+               for it (CONTINUE's room on file, the map, a return from a match): the room that stands for it now, at its own spawn */
+            { const _rt = _hqRetiredTo(roomId); if (_rt) { if (_hqLastRoom === roomId) _hqLastRoom = _rt; roomId = _rt; opts.at = null; _resume = null; } }
             if (!_hqRoomExists(roomId)) roomId = 'central_egress';
             if (_resume && roomId === _resume.room) opts.at = { x: _resume.x, z: _resume.z, y: _resume.y, face: _resume.face };   // THE SAVE: where the officer stood
             _hqCurRoom = roomId;
@@ -2445,6 +2450,7 @@
         window._hqCurRoomId = function () { try { const ed = window.EWEditor, es = (ed && ed.state) ? ed.state() : null; if (es && es.open && !es.playing) return null;   // the editor's viewport is not the walk
             return (state.gameState === GS.HQ && !_hqSuspended && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ? _hqCurRoom : null; } catch (e) { return null; } };
         window._hqGoRoom = function (roomId, at) {
+            { const _rt = _hqRetiredTo(roomId); if (_rt) { roomId = _rt; at = null; } }   // THE RETIRED ROOMS (data.js DOOR_HQ.retired)
             /* `site_<mapId>` is an alias since the board rooms went (2026-09-27): it walks into the site's entry part */
             if (!_hqRoomExists(roomId)) { try { const ent = (typeof window.hqSiteEntry === 'function') ? window.hqSiteEntry(roomId, at) : null; if (ent && ent.room) { roomId = ent.room; at = ent.at; } } catch (e) {} }
             if (!_hqRoomExists(roomId)) { console.warn('[HQ] no such room', roomId); return false; }
@@ -6675,9 +6681,27 @@
         /* FAST TRAVEL (ZONES_PLAN Z3, §10 fork 3's default): GO takes you only to a room you have STOOD IN (charted) — an
            uncharted question mark is walked to, never travelled to */
         function _hqMapCharted(id) {
-            if (!id || !_hqRoomExists(id)) return false;
+            if (!id || !_hqRoomExists(id) || _hqRetiredTo(id)) return false;   // a retired room is never a place to GO
             if (id === _hqCurRoom || window.EW_HQ_MAP_ALL) return true;
-            try { return typeof window.hqRoomSeen === 'function' ? !!window.hqRoomSeen(_hqProfile(), id) : true; } catch (e) { return false; }
+            try { if (typeof window.hqRoomSeen !== 'function') return true; if (window.hqRoomSeen(_hqProfile(), id)) return true; } catch (e) { return false; }
+            return _hqMapAnchorCharted(id);
+        }
+        /* A REBUILT AREA KEEPS ITS PLACE ON THE MAP (2026-11-15, mondo: "i literally just go to the map/directory and go to camelot kingdom
+           and its still the old one"): an area's ANCHOR room (DOOR_HQ.hubs[..].room) counts as stood in once ANY room of that area has been.
+           A rebuilt area's new anchor is a room no save has stood in, so GO fell back to the first old room of it the save knew. The
+           facility's own hub is left alone (its rooms are charted one by one). Cached two seconds: the map asks per node per draw. */
+        let _hqAnchorMemo = { t: 0, m: {} };
+        function _hqMapAnchorCharted(id) {
+            try {
+                const H = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.hubs) || {}; let hid = null;
+                for (const k in H) if (H[k] && H[k].room === id && !H[k].facility && k !== 'hq') { hid = k; break; }
+                if (!hid || typeof window.hqHubOf !== 'function') return false;
+                const now = Date.now(); if (now - _hqAnchorMemo.t > 2000) _hqAnchorMemo = { t: now, m: {} };
+                if (hid in _hqAnchorMemo.m) return _hqAnchorMemo.m[hid];
+                const rec = (typeof window.hqRoomsSeenRecord === 'function') ? (window.hqRoomsSeenRecord(_hqProfile()) || {}) : {};
+                let hit = false; for (const r in rec) { if (!rec[r] || !_hqRoomExists(r)) continue; const h = window.hqHubOf(r); if (h && h.id === hid) { hit = true; break; } }
+                return (_hqAnchorMemo.m[hid] = hit);
+            } catch (e) { return false; }
         }
         /* a site is charted when any room of it has been stood in (the GO lands on its entry) */
         function _hqMapChartedSite(site) {

@@ -20,7 +20,7 @@ const WAY = /^(EXIT|\d+|[A-Z]|GATE [A-Z]|SEC \d+|BAY [A-Z]|STAGE \d+|SOUTH GATE|
 const DISTRICT = {
     C: { rows: [[/^(FIRE STATION|CIVIL RECORDS|CITY HALL|COUNCIL ANNEX|COURTHOUSE|POLICE|TIME BUREAU|MILITARY OFFICES|PERMIT OFFICES)$/, 'cinzel']], base: 'bebas' },
     H: { rows: [[/^NEWS$/, 'playfair'], [/^(HERO WORKSHOP|TRAINING HALL)$/, 'bangers'], [/^(COFFEE|SNACKS)$/, 'limelight'], [/^(DISPATCH|DELIVERIES)$/, 'archivo']], base: 'archivo' },
-    F: { rows: [], base: 'playfair' },
+    F: { rows: [[/^(ARCHIVE|VAULT|ARCADE)$/, 'marc'], [/^(TAXI|GARAGE)$/, 'way']], base: 'playfair' },
     R: { rows: [[/^(BOXING|HOT MEALS)$/, 'staat']], base: 'alfa' },
     E: { rows: [[one, 'bungee'],
                 [/^(CASINO|FILM STUDIO|CABARET|WEDDING CHAPEL|COSTUMES|MASKS \+ WIGS|TAILOR|RECORDING STUDIO|PROP STORE|SCENERY WORKSHOP)$/, 'limelight'],
