@@ -2940,6 +2940,17 @@ glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the 
   `walls` are partitions on the lines between squares with one-square doorways; `decor` is off centre / on the walls. One arch row per room `ind:<id>:in`; props are
   `floor:true`; `keyIn` / `floorIn` / `tintIn` set per room. The doorway square is asserted to be a walkway (else the room is left out with a console line). To change a room:
   edit its `IN` row, `node bake-disaster-city.js`. Plans: /mnt/project-files/disaster-city-industrial/interiors_plan_1..3.jpg.
+- **INDUSTRIAL AS HOUSTON (2026-11-15, mondo chose "Build it as drawn" on the real-cities plan, /mnt/project-files/disaster-city-real-cities/plan.html d-i):**
+  I.js `HOU_LOOK` (in the building loop) retints a building's own parts: the Warehouse, Welding shop, Cargo sheds and Boat repair wear the brown sheet
+  (`MetalCorrugatedPainted3a`) as rust, the Water works tanks and the Rail service water tower go tank white, the Aerospace lab's stripe goes space-agency
+  blue; sheds + the Maintenance depot + Forklift repair get a concrete apron; the Hangar's open end gets its two leaves, track and lead-in line.
+  THE LANDMARKS block (end of build): `claim(plot, lx, ly, w, d, storeys, tag)` takes whole free squares and puts one invisible texbuilding per square
+  (the crane legs' kind); `land()` = one `ind:hou-<tag>` arch row. Refinery (3 columns + red/white flare stack, the flame a glow part, a pipe rack) on
+  the Transformer yard's free 5 x 5 (P02-09); two ball tanks + two round white tanks in the Container court (P00-09); a red-hulled tanker in dry berth
+  on keel blocks along the Dock edge's west wall (P00-11; no water there; three container stacks moved to the dock's east squares); three pump jacks
+  by the Pump court (P02-11, still: no part turns); a three-stage rocket lying on cradles behind the Maintenance depot (P02-10 row 9, the long free
+  run nearest the Aerospace lab; a lying round body = two half drums, the lower one `size[1] < 0` + `ds`), rocket_engine at its tail. Street: forklifts,
+  the taco stand, wrapped pallets (solid, on squares), tyre stacks / drums / a gas rack off centre. All from parts or catalogue models; no new lights.
 - **THE INDUSTRIAL INSIDES, SECOND PASS (2026-11-14, mondo 11-13 22:33: "after a district's first interior pass, do another interior pass ... make a
   list of models needed/wanted but not in the bucket or game, and make meshy versions of them ... Focus on aesthetic, vibe, atmosphere").** I.js
   `SECOND[id](Q)` runs after each room's first pass; `kit2()` gives `Q`: `paint` (a dado coat 0.345 m in, the front one with the doorway cut, a
