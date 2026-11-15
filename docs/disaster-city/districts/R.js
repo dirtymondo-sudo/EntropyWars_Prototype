@@ -56,7 +56,30 @@ function build(ctx) {
            frieze, the corner piers and the wall decals to go with the main block's sheet */
         let hsh = 0; for (let i = 0; i < id.length; i++) hsh = (hsh * 31 + id.charCodeAt(i)) >>> 0;
         const TR = [{ key: 'urban:PlasterWallPainted2a', tint: 0xf0e8d8 }, { key: 'urban:TileMarble1a', tint: 0xe8e4dc }, { key: K.stone, tint: 0xe4dccc }, { key: K.wood, tint: 0xb89878 }, { key: 'urban:PlasterWallStucco2a', tint: 0xf4ecdc }][hsh % 5];
-        const add = (o) => { P.push(tidy(o)); return a; };
+        /* SOUTHSIDE = DETROIT (mondo 11-15 12:19 "I want each district to be based off of a major city ... southside could be dallas or detroit", his
+           pick "Build it as drawn" 12:32 on the real-cities plan: Detroit). THE PALETTE: every building's walls go to dark red / soot brown BRICK
+           (one tint per authored tint, so a row of three houses stays three), its roofs to dark slate, its pale plaster trim to limestone, its ribbed
+           metal to grey or rust. A part with `det: false` keeps what it was authored with (a mural, a sign, the depot's stone). The church and the
+           insides are authored by hand. */
+        const city = /^(P\d\d-\d\d-B\d+o?|in\d+|P\d\d-\d\d-(boathouse|carwash))$/.test(id) && id !== 'P00-00-B1';
+        const DW = [0xc47060, 0xa86454, 0xb87868, 0x98705f, 0xcc7c62], DR = [0x4a4850, 0x565050, 0x40444c], DRIB = [0x9aa0a4, 0xb08060, 0x848c90];
+        const tk = t => (((t || 0) ^ ((t || 0) >> 9)) >>> 0), wallT = t => DW[(hsh + tk(t)) % DW.length], lum = c => ((c >> 16 & 255) * 0.3 + (c >> 8 & 255) * 0.59 + (c & 255) * 0.11);
+        const wk = k => k === K.plaster || k === K.stucco || k === K.board || k === K.brick || k === K.brick2;
+        const detroit = o => {
+            if (!city || o.det === false) { delete o.det; return o; }
+            const big = o.s === 'box' ? (o.size[1] >= 2.2 && Math.max(o.size[0], o.size[2]) >= 2.2 && o.size[0] * o.size[2] >= 1.2) : o.s === 'quad' ? (o.size[1] >= 2.4 && o.size[0] >= 3) : o.s === 'cyl' ? (o.h >= 2.2 && o.r >= 1) : false;
+            if (o.s === 'roof' || o.roof) {
+                if (!o.under && !o.glow && (o.key === K.rib || o.key === K.plaster)) o.tint = DR[(hsh + tk(o.tint)) % DR.length];
+                if (wk(o.keyEnd)) { o.tintEnd = wallT(o.tintEnd); o.keyEnd = o.keyEnd === K.brick2 ? K.brick2 : K.brick; }
+                return o;
+            }
+            if (o.glow) return o;
+            if (o.key === K.brick || o.key === K.brick2 || (wk(o.key) && big)) { o.tint = wallT(o.tint); o.key = o.key === K.brick2 ? K.brick2 : K.brick; }
+            else if (o.key === K.rib && big) o.tint = DRIB[(hsh + tk(o.tint)) % DRIB.length];
+            else if ((o.key === K.plaster || o.key === K.stucco) && typeof o.tint === 'number' && lum(o.tint) > 170) o.tint = 0xd8cdb8;
+            return o;
+        };
+        const add = (o) => { P.push(tidy(detroit(o))); return a; };
         a.box = (x, y, z, w, h, d, key, tint, o) => add(Object.assign({ s: 'box', p: [x, y, z], size: [w, h, d], key, tint }, o));
         /* THE POLISH PASS, THE ROOFS (mondo 11-13 20:18: "roofs and ac units"): a pitched roof of a real size gets a ridge cap and two cowled vents
            on its slope; a barrel roof a row of ridge ventilators (`bare: true` = none) */
@@ -87,6 +110,11 @@ function build(ctx) {
             fs.split('').forEach(f => {
                 const L = (f === 'f' || f === 'b') ? w : d, n = o.n || Math.max(1, Math.floor(L / (o.pitch || 2.9))), pitch = (L - 2 * (o.margin || 0)) / n, s = spot(f, cx, cz, w, d, -(L - 2 * (o.margin || 0)) / 2 + pitch / 2, o.off || 0.06);
                 add({ s: 'quad', p: [s.p[0], y, s.p[1]], size: [o.ww || 1.7, o.wh || 1.8], ry: s.ry, key: o.key === undefined ? K.winR : o.key, tint: o.tint, glow: o.glow, uv: o.uv || 'fit', kind: o.kind, n, step: [s.st[0] * pitch, 0, s.st[1] * pitch] });
+                /* DETROIT: "some windows boarded": one window of a run in three wears planks */
+                if (city && n >= 2 && [K.winR, K.winT, K.winF].indexOf(o.key === undefined ? K.winR : o.key) >= 0 && ((hsh >> 2) + Math.round(y) + f.charCodeAt(0)) % 3 === 0) {
+                    const j = (hsh + Math.round(y * 3)) % n, sb = spot(f, cx, cz, w, d, -(L - 2 * (o.margin || 0)) / 2 + pitch / 2 + pitch * j, (o.off || 0.06) + 0.05);
+                    add({ s: 'quad', p: [sb.p[0], y, sb.p[1]], size: [(o.ww || 1.7) + 0.08, (o.wh || 1.8) + 0.06], ry: s.ry, key: K.wood, tint: 0x9a8468, uv: 'fit', det: false });
+                }
                 /* THE POLISH PASS (mondo 11-13 20:15: "one or two more layers deep with the detail"): a glazed opening gets a stone sill and a lintel
                    proud of the wall; an upper window on a back or side wall now and then carries a wall unit */
                 const key = o.key === undefined ? K.winR : o.key, ww = o.ww || 1.7, wh = o.wh || 1.8, st = [s.st[0] * pitch, 0, s.st[1] * pitch], along0 = -(L - 2 * (o.margin || 0)) / 2 + pitch / 2;
@@ -108,7 +136,7 @@ function build(ctx) {
         a.floors = (fs, cx, cz, w, d, n, o) => {
             o = o || {};
             for (let k = 0; k < n; k++) {
-                if (k === 0 && o.ground !== 'same') { a.wins(fs, cx, cz, w, d, 0.45, Object.assign({}, o, { key: o.gkey || K.winS, ww: o.gww || 2.4, wh: 2.1, n: o.n ? Math.max(1, Math.round(o.n / 2)) : undefined, pitch: (o.pitch || 2.9) * 2 })); continue; }
+                if (k === 0 && o.ground !== 'same') { a.wins(fs, cx, cz, w, d, 0.45, Object.assign({}, o, (city && (hsh >> 4) % 3 === 0) ? { tint: 0x8e9498 } : {}, { key: (city && (hsh >> 4) % 3 === 0) ? K.metal : (o.gkey || K.winS), ww: o.gww || 2.4, wh: 2.1, n: o.n ? Math.max(1, Math.round(o.n / 2)) : undefined, pitch: (o.pitch || 2.9) * 2 })); continue; }
                 const yk = (o.y0 == null ? 1.0 : o.y0) + k * (o.per || 3.2), bk = [cx, cz, w, d, yk].join();
                 if (o.band !== false && !bands.has(bk)) { bands.add(bk); a.box(cx, yk - 0.5, cz, w + 0.22, 0.18, d + 0.22, TR.key, typeof o.trim === 'number' ? o.trim : TR.tint, { top: false }); }   // a string course under each upper floor's sills
                 a.wins(fs, cx, cz, w, d, yk, o);
@@ -125,7 +153,8 @@ function build(ctx) {
             const s = spot(f, cx, cz, w, d, along, (o && o.off) || 0.07); return add(Object.assign({ s: 'quad', p: [s.p[0], y, s.p[1]], size: [pw, ph], ry: s.ry, key, tint, uv: key ? 'fit' : undefined }, o, { off: undefined }));
         };
         /* a canvas awning off a face: the high edge on the wall */
-        a.awning = (f, cx, cz, w, d, along, y, len, deep, tint, o) => { const s = spot(f, cx, cz, w, d, along, deep / 2); return add(Object.assign({ s: 'roof', form: 'shed', p: [s.p[0], y, s.p[1]], size: [len, 0.75, deep], ry: s.ry, key: K.plaster, tint, ds: true, under: true }, o)); };
+        a.awning = (f, cx, cz, w, d, along, y, len, deep, tint, o) => { if (city && typeof tint === 'number') tint = ((((tint >> 16 & 255) * 0.6 + 0x8a * 0.4) | 0) << 16) | ((((tint >> 8 & 255) * 0.6 + 0x80 * 0.4) | 0) << 8) | (((tint & 255) * 0.6 + 0x78 * 0.4) | 0);   // DETROIT: sun-faded canvas
+            const s = spot(f, cx, cz, w, d, along, deep / 2); return add(Object.assign({ s: 'roof', form: 'shed', p: [s.p[0], y, s.p[1]], size: [len, 0.75, deep], ry: s.ry, key: K.plaster, tint, ds: true, under: true }, o)); };
         /* a parapet round a flat roof */
         a.parapet = (cx, y, cz, w, d, h, key, tint) => { const t = 0.3; a.box(cx, y, cz + d / 2 - t / 2, w, h, t, key, tint); a.box(cx, y, cz - d / 2 + t / 2, w, h, t, key, tint); a.box(cx - w / 2 + t / 2, y, cz, t, h, d - 2 * t, key, tint); return a.box(cx + w / 2 - t / 2, y, cz, t, h, d - 2 * t, key, tint); };
         /* the four walls of a walk-in building, the doorway cut where the texbuilding cuts it (data.js hqTexbDoor) */
@@ -153,6 +182,12 @@ function build(ctx) {
             else if (fc.indexOf('l') >= 0) {
                 add({ s: 'quad', p: [x - w / 2 - 0.09, 0.55, z - d * 0.2], size: [0.8, 0.55], ry: 90, key: 'urban:MetalSubwayGrill1a', uv: 'fit' });
                 add({ s: 'box', p: [x - w / 2 - 0.12, 1.0, z + d * 0.22], size: [0.2, 0.7, 0.5], key: K.metal, tint: 0x9aa0a6 });
+            }
+            /* DETROIT: "faded painted adverts on side walls": a brick building of two storeys or more wears an old trade's words between its floors */
+            if (city && kind === 'brick' && h >= 5.5 && d >= 9 && (hsh >> 5) % 2 === 0) {
+                const side = (fc.indexOf('l') >= 0 && (hsh >> 6) % 2) ? 'l' : fc.indexOf('r') >= 0 ? 'r' : fc.indexOf('l') >= 0 ? 'l' : null;
+                if (side) { const words = ['COAL AND ICE', 'HARDWARE', 'DRY GOODS', 'FURNITURE', 'TOOL AND DIE', 'PAINTS', 'STORAGE', 'PIANOS'][(hsh >> 7) % 8], sh = 1.05, sw = Math.min(d - 1.5, sh * words.length * 0.62);
+                    add({ s: 'quad', p: [x + (side === 'l' ? -1 : 1) * (w / 2 + 0.1), 3.0, z], size: [sw, sh], ry: side === 'l' ? 90 : 270, key: 'txt:' + words + '|#cdbf9f||' + (Math.round(sw / sh * 100) / 100), uv: 'fit', tint: 0xffffff, kind: 'over', det: false }); }
             }
             [[-1, 1, 'f', 'l'], [1, -1, 'b', 'r']].forEach(c => {
                 if (fc.indexOf(c[2]) < 0 && fc.indexOf(c[3]) < 0) return;
@@ -182,6 +217,7 @@ function build(ctx) {
         a.wins('f', (v[0] + v[1]) / 2, 0, L, D, 0.45, { n: Math.max(1, Math.round(L / 6)), ww: 2.4, wh: 2.1, key: K.winS, margin: 0.3 }); });
     const doorOf = (row) => { const L = Math.max(2, row.w) - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols; let col = Math.floor((cols - 1) / 2); if (row.door >= 1) col = Math.min(cols - 1, Math.round(row.door) - 1); return { lx: -L / 2 + (col + 0.5) * cw, cw }; };
 
+    const GYM_FIST = null;   // the bronze fist's catalogue key, once the model is made (see the gym)
     /* ── the collision rows ── */
     /* the tool's row keeps the footprint, draws nothing: h = the eaves; a walk-in one is hollow with a swing leaf */
     const solid = (id, fr, h, o) => {
@@ -205,32 +241,51 @@ function build(ctx) {
     const plotY = (px, py) => (ctx.LEVELS ? ctx.LEVELS.grid[py][px] * ctx.LEVELS.M : 0);
     const sq = n => (n - 6) * 3.5;   // a plot-local square LINE (0..12) in the plot frame
 
+    /* DETROIT, THE MURALS ("big bright murals on blank gables"; drawn panels: flat colour shapes a hand's width off the wall, no sheet, no light).
+       `face` = the wall of the box (cx, cz, w, d) it is painted on, mw x mh from y0 up; kind 0 = a sun over two hills, 1 = a skyline at sunset */
+    const mural = (a, face, cx, cz, w, d, mw, mh, y0, kind) => {
+        const n = face === 'l' ? [-1, 0] : face === 'r' ? [1, 0] : face === 'f' ? [0, 1] : [0, -1], t = [Math.abs(n[1]), Math.abs(n[0])];
+        const ry = { f: 0, b: 180, l: 90, r: 270 }[face], tri = (face === 'l' || face === 'r') ? 0 : 90, ox = cx + n[0] * (w / 2 + 0.09), oz = cz + n[1] * (d / 2 + 0.09);
+        const at = (u, layer) => [ox + t[0] * u + n[0] * 0.025 * layer, oz + t[1] * u + n[1] * 0.025 * layer];
+        const rect = (u, v, rw, rh, tint, layer) => { const q = at(u, layer); a.quad(q[0], y0 + v, q[1], rw, rh, ry, null, tint, { det: false }); };
+        const hill = (u, v, base, th, tint, layer) => { const q = at(u, layer); a.roof('gable', q[0], y0 + v, q[1], 0.06, th, base, null, tint, { ry: tri, keyEnd: null, tintEnd: tint, det: false, bare: true }); };
+        const disc = (u, vc, r, tint, layer) => { for (let i = -3; i <= 3; i++) { const hw = Math.sqrt(Math.max(0, r * r - Math.pow(i * r / 3.5, 2))); rect(u, vc + (i - 0.5) * r / 3.5, hw * 2, r / 3.5 + 0.01, tint, layer); } };
+        if (kind === 0) {
+            rect(0, 0, mw, mh, 0x3f8f8c, 0); disc(mw * 0.08, mh * 0.66, mw * 0.17, 0xf2c21c, 1);
+            hill(-mw * 0.14, mh * 0.06, mw * 0.68, mh * 0.44, 0xb5503c, 2); hill(mw * 0.24, mh * 0.06, mw * 0.5, mh * 0.3, 0xd8743c, 3); rect(0, 0, mw, mh * 0.07, 0x2c4a4a, 4);
+        } else {
+            [0x7c4a80, 0xc85870, 0xe87850, 0xf0a040].forEach((c, i) => rect(0, mh * (1 - (i + 1) / 4), mw, mh / 4 + 0.01, c, 0));
+            disc(-mw * 0.18, mh * 0.42, mw * 0.13, 0xffe9a8, 1);
+            [0.5, 0.78, 0.36, 0.62, 0.9, 0.44, 0.7].forEach((hh, i) => rect(-mw / 2 + mw * (i + 0.5) / 7, 0, mw / 7 - 0.12, mh * 0.5 * hh, i % 2 ? 0x1c2440 : 0x283458, 2));
+        }
+    };
+
     /* ════════ P00-00 THE CHURCH (landmark): stone nave, slate gable, aisles + buttresses, apse under a half dome, bell tower ════════ */
     (() => {
         const old = rowOf('P00-00-B1'), lot = frame(old.x, old.z, 270, 24.5, 28);       // the plan's east door is the front now (the nave runs back from it)
         const fr = lot.sub(3, 2, 18.5, 20), row = solid('P00-00-B1', fr, 6.5, { walkin: true, leaf: 'leaf_shabby_wood', leafDouble: true, keyIn: K.stucco, floorIn: 'wood_planks' });
-        const a = arch(fr, 'P00-00-B1'), ST = 0xe6dcc4, SL = 0x6f7f96, CU = 0x6fb09c, dr = doorOf(row);
-        a.shell(18.5, 6.5, 20, K.stone, ST, dr);
-        a.roof('shed', -7.65, 6.5, 0, 20, 1.8, 3.2, K.rib, SL, { ry: 90, keyEnd: K.stone, tintEnd: ST, over: 0.3 });   // the aisles' roofs
-        a.roof('shed', 7.65, 6.5, 0, 20, 1.8, 3.2, K.rib, SL, { ry: 270, keyEnd: K.stone, tintEnd: ST, over: 0.3 });
-        a.box(0, 6.5, 0, 12.1, 4.2, 20, K.stone, ST, { top: false });                                                  // the clerestory
-        a.roof('gable', 0, 10.7, 0, 20, 6.6, 12.1, K.rib, SL, { ry: 90, keyEnd: K.stone, tintEnd: ST, over: 0.5, bare: true });   // the nave's roof
+        const a = arch(fr, 'P00-00-B1'), ST = 0xb86452, SL = 0x4a4852, CU = 0x6fb09c, dr = doorOf(row), TH = 27;   // DETROIT: brick gothic (was pale stone), the bell tower 8 m taller
+        a.shell(18.5, 6.5, 20, K.brick, ST, dr);
+        a.roof('shed', -7.65, 6.5, 0, 20, 1.8, 3.2, K.rib, SL, { ry: 90, keyEnd: K.brick, tintEnd: ST, over: 0.3 });   // the aisles' roofs
+        a.roof('shed', 7.65, 6.5, 0, 20, 1.8, 3.2, K.rib, SL, { ry: 270, keyEnd: K.brick, tintEnd: ST, over: 0.3 });
+        a.box(0, 6.5, 0, 12.1, 4.2, 20, K.brick, ST, { top: false });                                                  // the clerestory
+        a.roof('gable', 0, 10.7, 0, 20, 6.6, 12.1, K.rib, SL, { ry: 90, keyEnd: K.brick, tintEnd: ST, over: 0.5, bare: true });   // the nave's roof
         a.wins('lr', 0, 0, 12.1, 20, 7.6, { n: 5, ww: 1.1, wh: 2.2, key: K.winT, tint: 0xc9a8ff, glow: 0.35 });
         a.wins('lr', 0, 0, 18.5, 20, 1.3, { n: 5, ww: 1.1, wh: 3.4, key: K.winT, tint: 0xc9a8ff, glow: 0.25, off: 0.12 });
         a.box(-9.75, 0, -8, 0.9, 6.2, 0.8, K.stone, 0xcfc4aa, { n: 5, step: [0, 0, 4] });                              // the buttresses
         a.box(9.75, 0, -8, 0.9, 6.2, 0.8, K.stone, 0xcfc4aa, { n: 5, step: [0, 0, 4] });
         a.quad(0, 7.4, 10.08, 3.2, 3.2, 0, K.winS, 0xff9ad0, { glow: 0.5, uv: 'fit' });                                // the rose window
-        a.cyl(0, 0, -10, 6, 7, K.stone, ST, { arc: 180, a0: 180, cap: false, seg: 20 });                               // the apse
+        a.cyl(0, 0, -10, 6, 7, K.brick, ST, { arc: 180, a0: 180, cap: false, seg: 20 });                               // the apse
         a.dome(0, 7, -10, 6.2, 4.2, K.plaster, CU, { arc: 180, a0: 180, ds: true, seg: 20 });
         a.wins('b', 0, -13, 6, 6, 1.6, { n: 1, ww: 1.2, wh: 3.4, key: K.winT, tint: 0xc9a8ff, glow: 0.25, off: 3.05 });
-        a.box(-12.25, 0, 7, 6, 19, 6, K.stone, ST);                                                                    // the bell tower
-        a.box(-12.25, 19, 7, 6.8, 0.6, 6.8, K.stone, 0xf2ead8, { under: true });
-        a.wins('fblr', -12.25, 7, 6, 6, 13.6, { n: 1, ww: 2.2, wh: 3.8, key: null, tint: 0x15171c });                  // the belfry's openings
-        a.roof('pyramid', -12.25, 19.6, 7, 6.8, 9.5, 6.8, K.plaster, CU);
-        a.box(-12.25, 28.9, 7, 0.14, 2.2, 0.14, null, 0xd8c9a0); a.box(-12.25, 30.1, 7, 1.2, 0.14, 0.14, null, 0xd8c9a0);   // the cross
+        a.box(-12.25, 0, 7, 6, TH, 6, K.brick, ST); a.box(-12.25, 9, 7, 6.3, 0.4, 6.3, K.stone, 0xd8cdb8, { n: 2, step: [0, 9, 0] });                                                                    // the bell tower
+        a.box(-12.25, TH, 7, 6.8, 0.6, 6.8, K.stone, 0xd8cdb8, { under: true });
+        a.wins('fblr', -12.25, 7, 6, 6, TH - 5.4, { n: 1, ww: 2.2, wh: 3.8, key: null, tint: 0x15171c });                  // the belfry's openings
+        a.roof('pyramid', -12.25, TH + 0.6, 7, 6.8, 11, 6.8, K.rib, SL);
+        a.box(-12.25, TH + 11.4, 7, 0.14, 2.2, 0.14, null, 0xd8c9a0); a.box(-12.25, TH + 12.6, 7, 1.2, 0.14, 0.14, null, 0xd8c9a0);   // the cross
         a.box(dr.lx, 0, 11.4, 5, 0.3, 2.6, K.stone, 0xcfc4aa);                                                          // the step
         a.done();
-        ghost(fr, -12.25, 7, 6, 6, 19); ghost(fr, 0, -11.5, 12, 3.5, 7);
+        ghost(fr, -12.25, 7, 6, 6, TH); ghost(fr, 0, -11.5, 12, 3.5, 7);
     })();
 
     /* ════════ P01-00 TOWNHOUSE COURT ════════ */
@@ -311,6 +366,16 @@ function build(ctx) {
         a.wins('f', dr.lx > 0 ? -W * 0.2 : W * 0.2, 0, W * 0.6, D, 0.8, { n: 3, ww: 2.0, wh: 2.0, key: K.winF });
         a.quad(0, 7.0, D / 2 + 0.08, 4.2, 2.4, 0, K.winF, 0xffe890, { glow: 0.5, uv: 'fit' });                          // the lit lunette
         a.wins('lr', 0, 0, W, D, 4.0, { n: 5, ww: 1.8, wh: 1.4, key: K.winF });
+        /* DETROIT: the steel frame over the door that carries the giant bronze fist (the fist = a new Meshy model, hung after mondo's OK on its
+           concept: `GYM_FIST`), tight to the wall so the door's square stays clear; the trade's word on the sign band */
+        { const IR = 0x30343a, fx = dr.lx, hwF = W * 0.25 + 0.7;
+            a.box(-hwF, 0, D / 2 + 0.45, 0.36, 12.6, 0.36, K.metal, IR, { n: 2, step: [hwF * 2, 0, 0], det: false });
+            a.box(-hwF, 12.25, D / 2 + 1.15, 0.3, 0.35, 1.75, K.metal, IR, { n: 2, step: [hwF * 2, 0, 0], det: false });
+            a.box(0, 12.25, D / 2 + 1.85, hwF * 2 + 0.4, 0.4, 0.4, K.metal, IR, { det: false });
+            a.box(0, 9.4, D / 2 + 0.45, hwF * 2, 0.2, 0.2, K.metal, IR, { det: false });
+            if (GYM_FIST) { a.box(fx - 0.5, 10.75, D / 2 + 1.85, 0.07, 1.5, 0.07, null, 0x80848a, { n: 2, step: [1.0, 0, 0], det: false }); propAt(fr, GYM_FIST, fx, D / 2 + 1.85, fr.face, { y: 7.4 }); }
+            a.panel('f', 0, 0, W, D, 0, 3.7, W * 0.5, 1.4, 'txt:BOXING|#f0c040|#1c1c22|' + (Math.round(W * 0.5 / 1.4 * 100) / 100), 0xffffff, { off: 0.12, det: false });
+        }
         a.done();
     })();
     (() => {   // B2 the row house: tan clapboard, a brown gable to the street, a porch
@@ -407,7 +472,8 @@ function build(ctx) {
         const fr = frameOf('P02-01-B2'); roofWalk('P02-01-B2');
         const a = arch(fr, 'P02-01-B2'), W = fr.W, D = fr.D, OC = 0xf0c880;
         a.box(0, 0, 0, W + 0.1, ROOF_H, D + 0.1, K.plaster, OC, { top: false });
-        a.floors('fblr', 0, 0, W, D, 2, { n: 5 }); a.panel('f', 0, 0, W, D, -W * 0.3, 0, 1.2, 2.2, K.doorW, 0xc8a070);
+        a.floors('fbr', 0, 0, W, D, 2, { n: 5 }); a.panel('f', 0, 0, W, D, -W * 0.3, 0, 1.2, 2.2, K.doorW, 0xc8a070);
+        mural(a, 'l', 0, 0, W, D, Math.min(D - 1.2, 12), ROOF_H - 1.2, 0.7, 1);                                          // DETROIT: its blank west wall is a mural
         a.box(0, 3.45, 0, W + 0.3, 0.25, D + 0.3, K.plaster, 0xb88848, { top: false });
         a.parapet(0, ROOF_H, 0, W, D, 0.9, K.plaster, 0xc09050);
         a.box(-W / 2 + 2.5, ROOF_H, -D / 2 + 2, 2.6, 0.6, 1.2, 'leaves_3', 0xffffff, { n: 3, step: [4, 0, 0] });        // the planters
@@ -486,13 +552,15 @@ function build(ctx) {
         const lot = frameOf('P02-02-B1'), W = lot.W, D = lot.D, gd = D - 6;
         const fr = lot.sub(0, 3, W, gd), row = solid('P02-02-B1', fr, 6.0, { walkin: true, leaf: 'leaf_security', keyIn: K.rib, floorIn: K.conc });
         const a = arch(fr, 'P02-02-B1'), GY = 0xe0e6ea, RD = 0xf04c3c, dr = doorOf(row), n = 4, tw = W / n;
-        a.shell(W, 6.0, gd, K.rib, GY, dr);
+        a.shell(W, 6.0, gd, K.brick, 0xd98a70, dr);                                                                     // DETROIT: an old car works, in brick
         for (let i = 0; i < n; i++) {   // the saw teeth: a ribbed slope and a glazed upright each, running front to back
             const cx = -W / 2 + tw * (i + 0.5);
             a.roof('shed', cx, 6.0, 0, gd, 2.6, tw, K.rib, 0x7c8894, { ry: 270, keyEnd: K.winF, tintEnd: 0xffffff });
         }
         [-1, 1].forEach(s => { if (Math.abs(dr.lx - s * W * 0.3) < 3) return; a.panel('f', 0, 0, W, gd, s * W * 0.3, 0, 5.2, 4.2, K.metal, s < 0 ? 0xf4f4f4 : 0x3c3e42); });   // the roll-up doors
-        a.panel('f', 0, 0, W, gd, 0, 4.5, W - 1, 1.3, null, RD, { glow: 0.35, off: 0.1 });
+        a.panel('f', 0, 0, W, gd, 0, 4.55, W * 0.62, 1.15, 'txt:ENGINES REBUILT|#d8c8a8||' + (Math.round(W * 0.62 / 1.15 * 100) / 100), 0xffffff, { off: 0.1, kind: 'over', det: false });   // the ghost sign
+        a.box(-W * 0.28, 8.62, gd / 2 - 3.2, 3.0, 0.14, 5.6, K.metal, 0x40444a, { det: false }); a.box(-W * 0.28 - 1.3, 6.0, gd / 2 - 3.2, 0.16, 2.62, 5.4, K.metal, 0x40444a, { n: 2, step: [2.6, 0, 0], det: false });   // a deck over the teeth
+        propAt(fr, 'car_pack_6', -W * 0.28, gd / 2 - 3.2, fr.face, { y: 8.78 });                                         // the car body on the roof
         a.wins('lr', 0, 0, W, gd, 1.6, { n: 4, key: K.winF, ww: 2.4, wh: 1.8 });
         a.done();
         const b = arch(lot, 'P02-02-B1o');                                                                              // the front yard: the pylon, the tyres
@@ -503,19 +571,30 @@ function build(ctx) {
     })();
 
     /* ════════ P03-02 THE COMMUNITY GATE + a news kiosk ════════ */
-    (() => {   // B1 the gatehouse: twin brick towers under hipped roofs, a gated arch between them, a clock turret
+    (() => {   // B1 the gatehouse = DETROIT: the front of a grand old train depot. A limestone hall, three huge arched windows (the middle one the shut
+        //    gate), a tall buff-brick office block behind it with half its glass gone. The collision stays the 8 m block.
         const fr = frameOf('P03-02-B1'); solid('P03-02-B1', fr, 8);
-        const a = arch(fr, 'P03-02-B1'), W = fr.W, D = fr.D, BR = 0xe08868, SL = 0x6c7c8c, tw = (W - 8) / 2;
-        [-1, 1].forEach(s => {
-            const cx = s * (4 + tw / 2);
-            a.box(cx, 0, 0, tw, 8, D + 0.1, K.brick, BR, { top: false }); a.roof('hip', cx, 8, 0, tw, 3.2, D, K.rib, SL, { over: 0.5 });
-            a.floors('fb', cx, 0, tw, D, 2, { n: 3, per: 3.5 }); a.floors(s < 0 ? 'l' : 'r', cx, 0, tw, D, 2, { n: 2, per: 3.5 });
+        const a = arch(fr, 'P03-02-B1'), W = fr.W, D = fr.D, LS = 0xd8cdb8, LS2 = 0xe6decd, GL = 0x56606a, DKG = 0x1e2024, hw = W - 6, hh = 11, N = { det: false };
+        a.box(0, 0, 0, hw, hh, D + 0.1, K.plaster, 0xe4dac4, { top: false, det: false });
+        a.box(0, hh, 0, hw + 1.2, 0.9, D + 1.2, K.stone, LS2, { under: true, det: false }); a.box(0, hh + 0.9, 0, hw + 0.2, 1.3, D + 0.2, K.plaster, 0xe4dac4, N);
+        [-1, 1].forEach(sd => { a.box(sd * (hw / 2 + 1.5), 0, 0, 3.05, 7, D - 1.4, K.plaster, 0xdcd2bc, N); a.box(sd * (hw / 2 + 1.5), 7, 0, 3.4, 0.5, D - 1.0, K.stone, LS2, { under: true, det: false }); });
+        [1, -1].forEach(fs => {
+            const z = fs * (D / 2 + 0.09), ry = fs > 0 ? 0 : 180;
+            [-1, 0, 1].forEach(i => { const x = i * hw / 3, t = i === 0 ? DKG : GL;
+                a.quad(x, 1.0, z, 5.2, 5.4, ry, null, t, N); a.roof('barrel', x, 6.4, z, 0.14, 2.6, 5.2, null, t, { ry: 90, seg: 12, keyEnd: null, tintEnd: t, det: false, bare: true });
+                if (i !== 0) { a.box(x - 0.87, 1.0, z + fs * 0.05, 0.14, 7.4, 0.1, K.stone, LS2, { n: 2, step: [1.74, 0, 0], det: false }); a.box(x, 2.8, z + fs * 0.05, 5.2, 0.14, 0.1, K.stone, LS2, { n: 3, step: [0, 1.8, 0], det: false });
+                    a.quad(x + (i * 1.74), 4.75, z + fs * 0.03, 1.5, 1.6, ry, null, DKG, N); a.quad(x - (i * 1.74), 1.1, z + fs * 0.03, 1.5, 1.6, ry, null, DKG, N); }   // panes knocked out
+            });
+            a.box(-hw / 6, 0, z + fs * 0.25, 1.0, hh, 0.6, K.stone, LS2, { n: 2, step: [hw / 3, 0, 0], det: false }); a.box(-hw / 2 + 0.5, 0, z + fs * 0.25, 1.0, hh, 0.6, K.stone, LS2, { n: 2, step: [hw - 1.0, 0, 0], det: false });
         });
-        a.box(0, 5.4, 0, 8.1, 2.6, D + 0.1, K.brick, BR, { top: false, faces: 'fb', under: true });                     // the bridge over the gate
-        a.roof('barrel', 0, 2.6, 0, D - 0.4, 2.8, 7.2, null, 0x4c2c24, { ry: 90, seg: 10, ds: true, keyEnd: null, tintEnd: 0x2c1c18 });   // the arch
-        a.panel('f', 0, 0, W, D, 0, 0, 6.4, 3.6, K.wood, 0x7c5038, { off: -0.6 }); a.panel('b', 0, 0, W, D, 0, 0, 6.4, 3.6, K.wood, 0x7c5038, { off: -0.6 });   // the gates, shut
-        a.box(0, 8, 0, 4.4, 4.4, 4.4, K.brick, BR, { top: false }); a.roof('pyramid', 0, 12.4, 0, 5.0, 3.8, 5.0, K.rib, SL);
-        a.panel('f', 0, 0, 4.4, 4.4, 0, 9.2, 2.2, 2.2, null, 0xfff8e8, { glow: 0.5 }); a.panel('b', 0, 0, 4.4, 4.4, 0, 9.2, 2.2, 2.2, null, 0xfff8e8, { glow: 0.5 });
+        a.panel('f', 0, 0, hw, D, 0, 1.0, 5.0, 3.6, K.wood, 0x5c4030, { off: 0.14, det: false }); a.panel('b', 0, 0, hw, D, 0, 1.0, 5.0, 3.6, K.wood, 0x5c4030, { off: 0.14, det: false });   // the gates, shut
+        a.box(0, 0, D / 2 + 1.3, hw - 2, 1.0, 2.4, K.stone, 0xc4baa6, N);                                                // the steps
+        a.panel('f', 0, 0, hw, D, 0, hh + 1.1, 9.5, 0.9, 'txt:COMMUNITY GATE|#3c362e||10.56', 0xffffff, { off: 0.2, kind: 'over', det: false });
+        /* the office block: nine floors, every other floor's glass gone */
+        const ow = hw - 8, od = D * 0.62, oz = -D * 0.16, oy = hh + 2.2, per = 3.0, fl = 7, BF = 0xcbbd9f;
+        a.box(0, oy, oz, ow, fl * per + 0.6, od, K.brick, BF, N); a.box(0, oy + fl * per + 0.6, oz, ow + 0.8, 0.7, od + 0.8, K.stone, LS2, { under: true, det: false });
+        for (let k = 0; k < fl; k++) { const gone = k % 2 === 1, o = gone ? { n: 8, ww: 1.3, wh: 1.7, key: null, tint: 0x141518, trim: false } : { n: 8, ww: 1.3, wh: 1.7, key: K.winR, trim: false };
+            a.wins('fb', 0, oz, ow, od, oy + 0.8 + k * per, o); a.wins('lr', 0, oz, ow, od, oy + 0.8 + k * per, Object.assign({}, o, { n: 2 })); }
         a.done();
     })();
     (() => {   // B2 the news kiosk: a green octagon under a gold cone, a little store shed behind
@@ -581,6 +660,19 @@ function build(ctx) {
         a.done(); ghost(fr, -2.95, 0, 0.5, 13, 4.2); ghost(fr, 2.95, 0, 0.5, 13, 4.2); claim(fr.rect(0, 0, 7.4, 14, 0));
     })();
 
+    /* DETROIT, THE STREET COURT: the party wall of a house long gone along the plot's west edge, a three-storey mural on it, a hoop, a painted
+       half court at its foot (between the skate ramps, which stay). The ranch fence it replaces is cleared. */
+    (() => {
+        const fr = frame(-125.7, -115.5, 270, 14, 0.5), a = arch(fr, 'P03-03-mural'), BR = 0xb86452;
+        a.box(0, 0, 0, 14, 10.5, 0.5, K.brick, BR); a.box(0, 10.5, 0, 14.3, 0.25, 0.8, K.stone, 0xd8cdb8); a.box(-6.6, 0, 0.3, 0.8, 10.5, 0.3, K.brick, 0xa85848, { n: 2, step: [13.2, 0, 0] });
+        mural(a, 'f', 0, 0, 14, 0.5, 12, 9, 1.0, 0);
+        a.box(0, 2.95, 0.5, 1.8, 1.05, 0.06, null, 0xf0f0ea); a.box(0, 3.15, 0.54, 0.6, 0.45, 0.02, null, 0xd04030); a.cyl(0, 3.12, 0.82, 0.24, 0.04, null, 0xe0602c, { ri: 0.2, seg: 10 }); a.box(0, 3.0, 0.4, 0.12, 0.12, 0.3, null, 0x30343a);   // the hoop
+        a.box(0, 0, 4.6, 11, 0.05, 8.2, K.conc, 0x66707c);                                                              // the half court, its lines
+        a.box(0, 0, 8.66, 11, 0.06, 0.08, null, 0xf0f0ea); a.box(-5.46, 0, 4.6, 0.08, 0.06, 8.2, null, 0xf0f0ea, { n: 2, step: [10.92, 0, 0] }); a.box(-1.8, 0, 3.2, 0.08, 0.06, 5.2, null, 0xf0f0ea, { n: 2, step: [3.6, 0, 0] }); a.box(0, 0, 5.8, 3.68, 0.06, 0.08, null, 0xf0f0ea);
+        out.push({ k: 'arch', id: 'dc:P03-03-mural', x: fr.x, z: fr.z, y: 0, rot: fr.rot, parts: a.P });
+        ghost(fr, 0, 0, 14, 0.5, 10.5); claim({ x0: -126.3, x1: -125.3, z0: -122.6, z1: -108.4 });
+    })();
+
     /* ── THE CLEARING: what the tool stood where a new, larger building now stands (a fence run, a tree, a bench, a back-lot infill, a lamp) ── */
     const inC = (x, z) => claims.some(c => x > c.x0 && x < c.x1 && z > c.z0 && z < c.z1);
     for (let i = features.length - 1; i >= 0; i--) {
@@ -609,10 +701,24 @@ function build(ctx) {
             a.box(0, 0, 0, W + 0.06, h, D + 0.06, K.brick, [0xe09078, 0xc8a890, 0xd8b0a0][i % 3], { top: false });
             a.roof('shed', 0, h, 0, W, 1.2, D, K.rib, 0x808890, { keyEnd: K.brick, tintEnd: [0xe09078, 0xc8a890, 0xd8b0a0][i % 3], over: 0.3 });
             a.floors('f', 0, 0, W, D, tall ? 2 : 1, { pitch: 3.5, per: 3.0 }); a.panel('f', 0, 0, W, D, -W / 2 + 1.2, 0, 1.1, 2.2, K.doorP, 0xffffff);
-        } else {
-            a.box(0, 0, 0, W + 0.06, h, D + 0.06, K.board, hue, { top: false });
-            a.roof('gable', 0, h, 0, W, Math.min(2.4, D * 0.5), D, K.rib, [0x9c6858, 0x607080, 0x6c7c5c][i % 3], { keyEnd: K.board, tintEnd: hue, over: 0.35 });
-            a.floors('f', 0, 0, W, D, tall ? 2 : 1, { pitch: 3.5, per: 3.0 }); a.panel('f', 0, 0, W, D, W / 2 - 1.2, 0, 1.1, 2.2, K.doorW, 0xffffff);
+        } else {   // DETROIT: a brick house with a deep porch; the first of them burnt out and overgrown
+            const burnt = !made.burnt; if (burnt) made.burnt = 1;
+            const SO = 0x5c4c46, RF = [0x9c6858, 0x607080, 0x6c7c5c][i % 3];
+            if (burnt) {
+                a.box(0, 0, 0, W + 0.06, h, D + 0.06, K.brick, SO, { top: false, det: false });
+                a.box(-W / 2 + 0.5, h, 0, 0.14, 0.16, D + 0.3, K.wood, 0x2a2420, { n: Math.max(2, Math.floor((W - 1) / 1.3) + 1), step: [1.3, 0, 0], det: false }); a.box(0, h + 0.16, 0, W, 0.16, 0.16, K.wood, 0x2a2420, { det: false });   // the bare joists
+                a.wins('f', 0, 0, W, D, 0.9, { pitch: 3.5, key: null, tint: 0x101012, trim: false }); a.panel('f', 0, 0, W, D, W / 2 - 1.2, 0, 1.1, 2.2, null, 0x101012, { plain: true });
+                a.quad(0, 2.4, D / 2 + 0.09, W * 0.7, h - 2.5, 0, null, 0x241c1a, { det: false, kind: 'over' });                 // the soot over the openings
+                a.box(-W / 2 - 0.06, 0, D * 0.12, 0.14, h * 0.85, D * 0.55, 'leaves_3', 0xffffff, { det: false }); a.box(-W * 0.22, 0, D / 2 + 0.1, W * 0.42, h * 0.62, 0.14, 'leaves_3', 0xffffff, { det: false });   // overgrown
+                a.box(W * 0.3, 0, D / 2 + 1.4, 1.6, 0.5, 1.2, 'leaves_3', 0xffffff, { det: false });
+            } else {
+                a.box(0, 0, 0, W + 0.06, h, D + 0.06, K.board, hue, { top: false });
+                a.roof('gable', 0, h, 0, W, Math.min(2.4, D * 0.5), D, K.rib, RF, { keyEnd: K.board, tintEnd: hue, over: 0.35 });
+                a.floors('f', 0, 0, W, D, tall ? 2 : 1, { pitch: 3.5, per: 3.0 }); a.panel('f', 0, 0, W, D, W / 2 - 1.2, 0, 1.1, 2.2, K.doorW, 0xffffff);
+            }
+            a.box(0, 0, D / 2 + 0.9, W - 0.6, 0.14, 1.8, K.wood, burnt ? 0x3a302a : 0x8c7458);                             // the porch: a deck, two posts, a roof
+            a.box(-W / 2 + 0.6, 0.14, D / 2 + 1.6, 0.18, 2.5, 0.18, null, burnt ? 0x3a302a : 0xd8cdb8, { n: 2, step: [W - 1.2, 0, 0] });
+            if (!burnt) a.roof('shed', 0, 2.64, D / 2 + 0.95, W - 0.3, 0.5, 2.0, K.rib, RF, { ds: true });
         }
         a.done(); made.backlots = (made.backlots || 0) + 1;
     });
@@ -938,6 +1044,68 @@ function build(ctx) {
         R.cell('psx_armchair_1', 0, 3, 'e'); R.block(0, 3, 1, 1, 1.1, 1.1, 1.0); R.put('retro_radio', 0.6, 16.9, 'n'); R.put('potted_plant', 0.6, 9.9, 's'); R.put('rug_round', 3.8, 8.8, 's');
         R.lamp(R.cx(1), 5.25, 0.35, 1.6, 0xfff0d0); R.lamp(8.75, 8.75, 1.6, 0.35, 0xfff0d0); R.lamp(R.cx(1), 14.0, 0.35, 1.6, 0xfff0d0);
     });
+
+    /* ════════ DETROIT, THE STREET (mondo 11-15 12:19, the real-cities plan d-r): old cars (some on blocks), burn barrels, chain-link, power poles
+       with sagging wires, hydrants, trash cans, a corner hot dog stand, weeds. Rule of the squares: what blocks (a car, a pole, the stand) stands
+       centred on whole squares (a car fills two); what only dresses (a can, bags, weeds, a hydrant) sits off centre. No light: the barrel fires glow. */
+    (() => {
+        const S0 = 0, S1 = 48, cellAt = ctx.cellAt, gcc = ctx.gc, LV = (cx, cy) => (ctx.LEVELS ? ctx.LEVELS.grid[Math.floor(cy / 12)][Math.floor(cx / 12)] * ctx.LEVELS.M : 0);
+        const near = (x, z, r) => props.some(p => Math.abs(p.x - x) < r && Math.abs(p.z - z) < r) || features.some(f => {
+            if (f.k === 'arch' || f.k === 'texbuilding' || f.k === 'plateau' || f.k === 'rail' || (f.k === 'wall' && f.ghost && f.h >= 7.9)) return false;
+            if (f.x0 != null) { for (let t = 0; t <= 6; t++) if (Math.abs(f.x0 + (f.x1 - f.x0) * t / 6 - x) < r + (f.w || 0) / 2 && Math.abs(f.z0 + (f.z1 - f.z0) * t / 6 - z) < r + (f.w || 0) / 2) return true; return false; }
+            return f.x != null && Math.abs(f.x - x) < r + (f.w || 0) / 2 && Math.abs(f.z - z) < r + (f.d || 0) / 2; });
+        const open = (cx, cy, ok) => cx >= S0 && cy >= S0 && cx < S1 && cy < S1 && ctx.free(cx, cy, ok || '.') && !inC(gcc(cx), gcc(cy)) && !near(gcc(cx), gcc(cy), 1.7);
+        const hs = (cx, cy, k) => { let h = (cx * 73856093) ^ (cy * 19349663) ^ (k * 83492791); h = (h ^ (h >>> 13)) * 1274126177; return ((h ^ (h >>> 16)) >>> 0); };
+        const n = { cars: 0, blocks: 0, barrels: 0, cans: 0, bags: 0, weeds: 0, poles: 0, hyd: 0 };
+        /* the fences: chain-link */
+        features.forEach(f => { if (f.k === 'rail' && f.x0 < -84 && f.z0 < -84 && f.x1 <= -84 && f.z1 <= -84 && /^(wood_fence|spear|ranch)$/.test(f.model || '')) { f.model = 'wire_fence'; made.chain = (made.chain || 0) + 1; } });
+        /* the hot dog stand on the corner of the avenue and the cross street */
+        if (open(45, 15, 'P')) { prop('hot_dog_stand', gcc(45), gcc(15), 180); ctx.take(45, 15); }
+        /* the power poles down the avenue's west kerb and behind the long walk, wires between */
+        const wires = (A, B) => {
+            const dx = B.x - A.x, dz = B.z - A.z, L = Math.hypot(dx, dz), N = 8, dy = B.g - A.g, alongX = Math.abs(dx) > Math.abs(dz), P = [];
+            for (let i = 0; i < N; i++) { const t = (i + 0.5) / N, sag = 1.5 * 4 * t * (1 - t);
+                [-0.9, 0.9].forEach(o => P.push({ s: 'box', p: [r3(dx * t + (alongX ? 0 : o)), r3(9.9 + dy * t - sag), r3(dz * t + (alongX ? o : 0))], size: alongX ? [r3(L / N + 0.05), 0.05, 0.05] : [0.05, 0.05, r3(L / N + 0.05)], tint: 0x16181c })); }
+            out.push({ k: 'arch', id: 'dc:R-wire-' + n.poles + '-' + Math.round(A.x) + '_' + Math.round(A.z), x: A.x, z: A.z, y: 0, rot: 0, parts: P });
+        };
+        const line = (cells, face) => { let last = null; cells.forEach(c => { if (!open(c[0], c[1], '.P')) { return; } const q = { x: gcc(c[0]), z: gcc(c[1]), g: LV(c[0], c[1]) };
+            prop('power_pole', q.x, q.z, face); ctx.take(c[0], c[1]); n.poles++; if (last && Math.hypot(q.x - last.x, q.z - last.z) < 40) wires(last, q); last = q; }); };
+        line([2, 9, 16, 23, 30, 37, 44].map(cy => [39, cy]), 90);
+        line([7, 14, 21, 28, 35].map(cx => [cx, 43]), 0);
+        /* the old cars: two squares each, nose to tail in a yard; every third on blocks */
+        const CARS = ['car_pack_1', 'car_pack_6', 'car_pack_3', 'car_pack_5', 'car_pack_6', 'car_pack_2', 'car_pack_8', 'car_pack_4'];
+        for (let cy = S0; cy < S1 - 1; cy++) for (let cx = S0; cx < S1 - 1; cx++) {
+            if (hs(cx, cy, 1) % 11 !== 0 || n.cars >= 16) continue;
+            const ew = hs(cx, cy, 2) % 2 === 0, bx = cx + (ew ? 1 : 0), by = cy + (ew ? 0 : 1);
+            const tight = (qx, qy) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(d => 'ID'.indexOf(cellAt(qx + d[0], qy + d[1])) >= 0) || features.some(f => f.k === 'rail' && Math.abs((f.x0 + f.x1) / 2 - gcc(qx)) < Math.abs(f.x1 - f.x0) / 2 + 1.2 && Math.abs((f.z0 + f.z1) / 2 - gcc(qy)) < Math.abs(f.z1 - f.z0) / 2 + 1.2);
+            if (!open(cx, cy) || !open(bx, by) || LV(cx, cy) !== LV(bx, by) || tight(cx, cy) || tight(bx, by)) continue;
+            const x = (gcc(cx) + gcc(bx)) / 2, z = (gcc(cy) + gcc(by)) / 2, up = n.cars % 3 === 1, key = CARS[n.cars % CARS.length];
+            prop(key, x, z, (ew ? 90 : 0) + (hs(cx, cy, 3) % 2) * 180, up ? { y: 0.32 } : {}); ctx.take(cx, cy); ctx.take(bx, by); n.cars++;
+            if (up) { [[-0.75, -1.35], [0.75, -1.35], [-0.75, 1.35], [0.75, 1.35]].forEach(o => prop('cinder_block', x + (ew ? o[1] : o[0]), z + (ew ? o[0] : o[1]), 0, { floor: true })); n.blocks++; }
+        }
+        /* the burn barrels (a glow, no light), the cans, the bags, the weeds, a few more hydrants on the kerbs */
+        for (let cy = S0; cy < S1; cy++) for (let cx = S0; cx < S1; cx++) {
+            const h = hs(cx, cy, 5), ch = cellAt(cx, cy), x = gcc(cx), z = gcc(cy), ox = ((h >>> 4) % 5 - 2) * 0.42, oz = ((h >>> 8) % 5 - 2) * 0.42;
+            const by = (c) => [[1, 0], [-1, 0], [0, 1], [0, -1]].find(d => cellAt(cx + d[0], cy + d[1]) === c);
+            if (ch === '.' && h % 41 === 0 && n.barrels < 9 && open(cx, cy)) {
+                const bx = x + (ox > 0 ? 1.05 : -1.05), bz = z + (oz > 0 ? 1.05 : -1.05);
+                prop('psx_metal_barrel_mp_' + (h >>> 3) % 4, bx, bz, 0, { floor: true });
+                out.push({ k: 'arch', id: 'dc:R-fire-' + cx + '_' + cy, x: r3(bx), z: r3(bz), y: 0, rot: 0, parts: [
+                    { s: 'cyl', p: [0, 0.86, 0], r: 0.24, h: 0.1, tint: 0xff7a1c, glow: 1.0, seg: 8 }, { s: 'dome', p: [0, 0.92, 0], r: 0.2, h: 0.55, tint: 0xff9a24, glow: 1.0 }, { s: 'dome', p: [0.05, 0.95, -0.04], r: 0.11, h: 0.8, tint: 0xffd060, glow: 1.0 }] });
+                n.barrels++; continue; }
+            if (ch === '.' && h % 9 === 1 && n.weeds < 60 && ctx.free(cx, cy, '.') && !inC(x, z) && !near(x + ox, z + oz, 0.9)) {
+                const w = 0.9 + (h >>> 12) % 3 * 0.4;
+                out.push({ k: 'arch', id: 'dc:R-weed-' + cx + '_' + cy, x: r3(x + ox), z: r3(z + oz), y: 0, rot: (h >>> 6) % 4 * 45, parts: [
+                    { s: 'box', p: [0, 0, 0], size: [w, 0.28 + (h >>> 10) % 3 * 0.08, w * 0.7], key: 'leaves_3', tint: 0xc8d8a0 }, { s: 'box', p: [w * 0.15, 0.2, -w * 0.1], size: [w * 0.45, 0.4 + (h >>> 14) % 3 * 0.12, w * 0.4], key: 'leaves_3', tint: 0xb4c890 }] });
+                n.weeds++; continue; }
+            if (ch === 'P' && by('I') && h % 13 === 2 && n.cans + n.bags < 26 && ctx.free(cx, cy, 'P') && !inC(x, z)) {
+                const d = by('I'), px = x + d[0] * 1.0 + (d[0] ? 0 : ox), pz = z + d[1] * 1.0 + (d[1] ? 0 : oz);
+                if (!near(px, pz, 0.9)) { if (h % 3) { prop('metal_trash_can', px, pz, (h >>> 5) % 4 * 90, { floor: true }); n.cans++; } else { prop('garbage_bags', px, pz, (h >>> 5) % 4 * 90, { floor: true }); n.bags++; } }
+                continue; }
+            if (ch === 'P' && by('R') && h % 37 === 3 && n.hyd < 5 && ctx.free(cx, cy, 'P')) { const d = by('R'), px = x + d[0] * 1.3, pz = z + d[1] * 1.3 + (d[0] ? 0.9 : 0); if (!near(px, pz, 2.5)) { prop('fire_hydrant', px, pz, d[0] > 0 ? 90 : d[0] < 0 ? 270 : d[1] > 0 ? 180 : 0, { floor: true }); n.hyd++; } }
+        }
+        made.street = n;
+    })();
 
     out.forEach(r => lateRows.push(r));
     console.log('SOUTHSIDE', JSON.stringify(made));

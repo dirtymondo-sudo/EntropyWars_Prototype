@@ -2599,7 +2599,7 @@ var EWScene = (function () {
             + '<div class="ew-scene-skip" id="ewSceneSkip"><i id="ewSceneSkipFill"></i><span>HOLD ESC TO SKIP</span></div>'
             + '<div class="ew-scene-fade" id="ewSceneFade"></div>'
             + (devOn() ? '<div class="ew-scene-dev" id="ewSceneDev"><button type="button" data-dev="prev">\u25C2 PREV SHOT</button><button type="button" data-dev="next">NEXT SHOT \u25B8</button><button type="button" data-dev="note" class="note">N \u00B7 NOTE</button><span id="ewSceneDevAt"></span></div><div class="ew-scene-note" id="ewSceneNote"></div>' : '');
-        if (devOn()) { try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {} }   // the bar's buttons need the pointer
+        if (devOn()) freePointer();   // the bar's buttons need the pointer
         void el.offsetWidth; el.classList.add('on');
         return el;
     }
@@ -2608,6 +2608,9 @@ var EWScene = (function () {
        the shot's number. N freezes the scene's clock on that frame and opens the note box: a tag, the note, and the line
        itself (a changed line shows at once). Everything is filed by data.js (sceneEdNoteSet / sceneEdLineSet / sceneEdAddSet)
        against the SHIPPED row's beat (`_src`), so the shot number is the one the export names. ══ */
+    /* the mouse for the bar and the note box. In the building a lock that just goes away is read as ESC (the pause menu), so
+       the release goes through the renderer (hq.sceneFreePointer); on a battle board the pointer is already free. */
+    function freePointer() { try { var TR = window.ThreeRenderer || (typeof ThreeRenderer !== 'undefined' ? ThreeRenderer : null); if (TR && TR.hq && TR.hq.sceneFreePointer) TR.hq.sceneFreePointer(); } catch (e) {} }
     function devOn() { try { return typeof window.sceneEdBarOn === 'function' && window.sceneEdBarOn(); } catch (e) { return false; } }
     function srcOf(i) { var b = S.row.beats[i]; return (b && b._src != null) ? b._src : i; }
     function shotsOf() { try { var r = window.storyCutsceneShipped && window.storyCutsceneShipped(S.row.id); if (r) return r.beats.length; } catch (e) {} return S.row.beats.length; }
@@ -2622,7 +2625,7 @@ var EWScene = (function () {
         var box = document.getElementById('ewSceneNote'); if (!box) return;
         var b = S.row.beats[S.i], line = lineNow(), tags = window.SCENE_ED_TAGS || ['CAMERA', 'ACTING', 'TIMING', 'DIALOGUE', 'OTHER'];
         S.paused = true; S.pauseTick = performance.now(); S.note = { tag: tags[0] };
-        try { if (document.pointerLockElement) document.exitPointerLock(); } catch (e) {}
+        freePointer();
         box.innerHTML = '<div class="ew-scene-note-hd">NOTE ON SHOT ' + (srcOf(S.i) + 1) + (line != null ? ' \u00B7 \u201C' + esc(line) + '\u201D' : '') + '</div>'
             + '<div class="ew-scene-note-tags">' + tags.map(function (t, k) { return '<button type="button" data-tag="' + t + '" class="' + (k === 0 ? 'sel' : '') + '">' + t + '</button>'; }).join('') + '</div>'
             + '<textarea id="ewSceneNoteText" rows="3" placeholder="What should change in this shot?"></textarea>'
@@ -2815,11 +2818,11 @@ var EWScene = (function () {
         if (row.warm !== false) { S.warm = performance.now(); S.warmOk = 0; var fd = document.getElementById('ewSceneFade'); if (fd) { fd.style.transition = 'none'; fd.classList.add('on'); void fd.offsetWidth; fd.style.transition = ''; } }
         beatStart(0);
         /* PLAY FROM HERE (the cutscene editor): the scene opens on that shot, every action before it done at once; a scene
-           of the same chain that plays before it (the opening's drop-off before the ride) is skipped the way ESC skips it */
+           of the same chain that plays before OR after it (the opening's drop-off before the ride, the foyer after it) is
+           skipped the way ESC skips it. It holds until EWScene.from(null) (map.js _sedRunEnd): a slow load never loses it. */
         var F = startAt;
-        if (F && performance.now() - F.at > 120000) F = startAt = null;
-        if (F && F.id === row.id) {
-            startAt = null;
+        if (F && F.id === row.id && !F.done) {
+            F.done = true;   // it stays up: the scenes of the chain that follow it are skipped too (the editor asked for this one scene)
             var j = -1; for (var q = 0; q < row.beats.length; q++) { var bq = row.beats[q]; if (((bq._src != null) ? bq._src : q) >= F.beat) { j = q; break; } }
             if (j > 0) { for (var p = 0; p < j; p++) (row.beats[p].act || []).forEach(function (a) { try { ctx.act(a); } catch (e) {} }); beatStart(j); }
         } else if (F && F.chain && F.chain.indexOf(row.id) >= 0) { S.skipAt = performance.now() - SKIP_HOLD_MS - 5; }
