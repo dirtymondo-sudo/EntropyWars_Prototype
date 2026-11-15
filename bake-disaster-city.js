@@ -337,7 +337,7 @@ const LOW = { R: ['rail:ranch', 'rail:spear', 'hedge:1.2', 'wall:1.2', 'planters
 const HIGH = { R: ['rail:wood_fence', 'wall:2.1', 'hedge:1.9', 'rail:spear', 'trees'], C: ['rail:spear', 'wall:2.1', 'rail:panel_fence', 'hedge:1.8'], F: ['rail:spear', 'wall:2.6', 'rail:panel_fence', 'planters'],
     U: ['hedge:1.9', 'rail:spear', 'wall:1.9', 'trees'], H: ['rail:spear', 'wall:2.1', 'hedge:1.8'], E: ['rail:wood_fence', 'wall:2.6', 'rail:wire_fence', 'dumpsters'],
     I: ['rail:wire_fence', 'wall:2.2', 'rail:panel_fence', 'rail:cable_fence', 'dumpsters'], S: ['rail:wire_fence', 'wall:1.9', 'rail:spear', 'hedge:1.8'], B: ['rail:wire_fence', 'wall:2.1', 'barricades', 'rail:spear'] };
-const BENCH = { R: 'park_bench', U: 'park_bench', S: 'park_bench', C: 'city_bench', H: 'city_bench', F: 'city_bench', B: 'city_bench' }, BIN = { C: 'city_bin', H: 'city_bin', B: 'city_bin', E: 'city_bin', S: 'city_bin', R: 'city_bin' };
+const BENCH = { R: 'park_bench', U: 'iron_garden_bench', S: 'park_bench', C: 'city_bench', H: 'city_bench', F: 'city_bench', B: 'city_bench' }, BIN = { C: 'city_bin', H: 'city_bin', B: 'city_bin', E: 'city_bin', S: 'city_bin', R: 'city_bin' };
 /* THE NATURAL EDGES (2026-11-13): what the land past each side is (three-renderer.js _hqBuildEdgeLand reads `terrain.edges`), and what
    stands on the city's outer line in front of it. North = the high side: steep mountains (they turn the north-west corner and run a way
    down the west side, and end in a headland over the bay in the north-east); west = tall forest on the hillside; south = flat desert;
@@ -741,7 +741,7 @@ if (dcCtx.marks.length) lines[marksLine] = "                marks: [" + dcCtx.ma
    lamp of a district carries the banner (`b: 1`). The kerb's own piece per district: props.js KERB_LOOK. */
 const LOOKS = {
     R: { lamp: '#ffb060', name: 'SOUTHSIDE', bg: '#b5533c', ink: '#ffffff' },        C: { lamp: '#fff0d2', name: 'CIVIC CENTER', bg: '#2c4a7c', ink: '#ffffff' },
-    F: { lamp: '#d2e4ff', name: 'FINANCIAL', bg: '#1f6e58', ink: '#ffffff' },        U: { lamp: '#ffe2ae', name: 'UNIVERSITY', bg: '#7a2a3c', ink: '#ffffff' },
+    F: { lamp: '#d2e4ff', name: 'FINANCIAL', bg: '#1f6e58', ink: '#ffffff' },        U: { lamp: '#ffe2ae', name: 'UNIVERSITY', bg: '#1d3a6e', ink: '#ffffff' },
     H: { lamp: '#fff0b8', name: 'HERO PLAZA', bg: '#c22a2a', ink: '#ffffff' },       E: { lamp: '#ff7ad8', name: 'ENTERTAINMENT', bg: '#7a3cc8', ink: '#ffffff' },
     I: { lamp: '#ff9a3c', name: 'INDUSTRIAL', bg: '#e0b020', ink: '#1c1a14' },       S: { lamp: '#f2faff', name: 'SPORTS + CULTURE', bg: '#2a8c4a', ink: '#ffffff' },
     B: { lamp: '#8ce8dc', name: 'BAYSIDE', bg: '#1a8c9c', ink: '#ffffff' },

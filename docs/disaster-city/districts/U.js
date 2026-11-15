@@ -8,24 +8,29 @@
    +z, x runs to the right along the front, w = the front's width, d = the depth.
 
    THE TWO HALVES: the OLD CAMPUS (west: red brick, pale stone, blue slate) and the SCIENCE SIDE (east: white panel, glass, concrete, metal).
-   Three landmarks stand over the rest: the observatory's green dome, the library's clock tower, the boiler stack. */
+   Three landmarks stand over the rest: the observatory's green dome, the library's clock tower, the boiler stack.
+   NEW HAVEN (2026-11-15): the old campus is the old gothic college of the real-cities plan — sandstone, granite, slate, pointed windows,
+   ivy; the Lecture hall's carillon tower is the tallest thing here; the research annex is THE TOMB. */
 'use strict';
 const T = 1.75, C = 3.5;
 /* ── the looks: [sheet, tint, the sheet's size in metres (none = one square)] — only sheets that stay themselves: an `urban:` sheet or a calm sheet by its own
    name (an `hq:` sheet drew BLACK on an arch part in the game) (a battle sheet's key is swapped for a dark calm sheet in the game: slate on it went black) ── */
-const BRICK = ['urban:TileSubway3a', 0xffffff, C], BRICKD = ['urban:TileSubway4a', 0xe0d0c8, C], BUFF = ['urban:TileSubway1a', 0xffffff, C], STONE = ['calm_marble', 0xfff2d8], LIME = ['urban:PlasterWallStucco1a', 0xf2e8d2], WHITE = ['urban:PlasterWallPainted1a', 0xffffff],
-    SLATE = ['calm_tiles_small', 0x8498d0], SLATEG = ['calm_tiles_small', 0x90b8a0], VERD = ['calm_snow', 0x58c8a8], LEAD = ['calm_deckplate', 0xffffff], ALU = ['calm_tiles', 0xdfe6ee], CONC = ['urban:ConcreteStriped2a', 0xffffff], CONCD = ['urban:ConcreteStriped1a', 0xd8d0c4],
+/* NEW HAVEN (mondo 11-15, the real-cities plan he approved: University = the old gothic college): the old campus is weathered SANDSTONE (the
+   coursed castle stone, warmed) with GRANITE trim and grey SLATE roofs; BROWN = the Tomb's brownstone; IVY = the hedge leaf on the south walls */
+const BRICK = ['calm_castle', 0xffe6c0, null, 1.5], BRICKD = ['calm_castle', 0xe0c8a4, null, 1.2], BUFF = ['urban:TileSubway1a', 0xffffff, C], STONE = ['calm_castle', 0xfff0d6, null, 1.65], LIME = ['urban:PlasterWallStucco1a', 0xe6d8b8],
+    BROWN = ['calm_sandstone', 0xb47a68], BROWND = ['calm_sandstone', 0x8a5a4c], IVY = ['calm_hedge', 0xd8f4c8, null, 1.15], WHITE = ['urban:PlasterWallPainted1a', 0xffffff],
+    SLATE = ['calm_darkstone', 0xd0d4e0, null, 1.2], SLATEG = ['calm_darkstone', 0xc0d0c0, null, 1.2], VERD = ['calm_snow', 0x58c8a8], LEAD = ['calm_deckplate', 0xffffff], ALU = ['calm_tiles', 0xdfe6ee], CONC = ['urban:ConcreteStriped2a', 0xffffff], CONCD = ['urban:ConcreteStriped1a', 0xd8d0c4],
     GUN = ['calm_gunmetal', 0xffffff], BLACK = ['calm_gunmetal', 0xa0a8b8], CORR = ['urban:MetalCorrugatedPainted1a', 0xffffff], CORRG = ['urban:MetalCorrugatedPainted4c', 0xffffff], CORRR = ['urban:MetalCorrugatedPainted2a', 0xffffff],
     TILEW = ['calm_tiles', 0xffffff], TILEC = ['calm_tiles', 0xffeec8], TILEB = ['calm_tiles', 0xa8d0f0], TILEN = ['calm_tiles', 0x4a6cb0], TEAL = ['calm_tiles', 0x3a7a78], MINT = ['calm_tiles', 0x68d0b0],
     GL = ['urban:GlassWindowSquare1a', 0xcfe4ee], GLT = ['urban:GlassWindowTall1a', 0xd4ecf0], GLB = ['urban:GlassWindowTall3a', 0xffffff], GLD = ['urban:GlassWindowFactory1a', 0x9098b0], GLR = ['urban:GlassWindowResidential1a', 0xdfe8f0], GLK = ['urban:GlassWindowSquare3a', 0xd8f4f0],
-    WOOD = ['calm_planks', 0xffffff], WOODG = ['calm_planks', 0xa8e0b8], MARB = ['calm_marble', 0xffffff], AWN = ['urban:TileSubway1a', 0xffffff], CREAM = ['urban:PlasterWallPainted1a', 0xf6e6b8], SAGE = ['urban:PlasterWallPainted1a', 0xa8c4a0], BLUE = ['urban:PlasterWallPainted1a', 0x98b0cc],
+    WOOD = ['calm_planks', 0xffffff], WOODG = ['calm_planks', 0xa8e0b8], MARB = ['calm_flagstone', 0xf6f2ea, null, 1.55], AWN = ['urban:TileSubway1a', 0xffffff], CREAM = ['urban:PlasterWallPainted1a', 0xf6e6b8], SAGE = ['urban:PlasterWallPainted1a', 0xa8c4a0], BLUE = ['urban:PlasterWallPainted1a', 0x98b0cc],
     RES = ['urban:DecalWindowsResidential1a', 0xffffff], FAC = ['urban:DecalWindowsFactory1a', 0xffffff], DOORW = ['urban:DoorWoodenHalf1a', 0xffffff], DOORS = ['urban:DoorStorefrontHalf1a', 0xffffff], DOORP = ['urban:DoorPaintedHalf2a', 0xffffff], TRUSS = ['urban:MetalTruss1a', 0xffffff];
 const r3 = v => Math.round(v * 1000) / 1000;
 
 module.exports.build = function (api) {
     const { PLAN, features, props, bInfo } = api;
     let P = null, ctx = null;   // the parts of the building being drawn; its frame
-    const look = (L, o) => { const q = Object.assign({}, o || {}); if (L[0]) q.key = L[0]; if (L[1] != null && L[1] !== 0xffffff) q.tint = L[1]; if (L[2] && q.uv == null) q.uv = L[2]; return q; };
+    const look = (L, o) => { const q = Object.assign({}, o || {}); if (L[0]) q.key = L[0]; if (L[1] != null && L[1] !== 0xffffff) q.tint = L[1]; if (L[2] && q.uv == null) q.uv = L[2]; if (L[3] && q.gain == null) q.gain = L[3]; return q; };
     const part = (s, p, L, o) => { const q = Object.assign({ s, p: p.map(r3) }, look(L, o)); P.push(q); return q; };
     /* ── the shapes (the mock-up's helpers, written as parts) ── */
     const box = (x, y, z, w, h, d, L, o) => part('box', [x, y, z], L, Object.assign({ size: [r3(w), r3(h), r3(d)] }, o || {}));
@@ -52,6 +57,11 @@ module.exports.build = function (api) {
     const door = (f, cx, off, L, w) => panel(f, cx, 0, w || 1.9, 2.3, off + 0.03, L || DOORW, { uv: [r3((w || 1.9) / 2), 2.3], kind: 'wall' });
     const rows = (f, cx, len, off, n, L, y0) => { const m = decal(L) ? WD / 2 : T; for (let s = (decal(L) && n > 1) ? 1 : 0; s < n; s++) win(f, cx, (y0 == null ? 1.0 : y0) + s * C, Math.max(m, Math.floor(len / m) * m), T, off, L); };
     const allRows = (w, d, n, L, y0) => { rows('f', 0, w - T, d / 2, n, L, y0); rows('b', 0, w - T, d / 2, n, L, y0); rows('l', 0, d - T, w / 2, n, L, y0); rows('r', 0, d - T, w / 2, n, L, y0); };
+    /* a POINTED window: the sheet's strip + a pointed head over it (a thin gable plate of the same glass), hh the head's rise */
+    const lancet = (f, c, y, wd, h, off, L, hh) => { win(f, c, y, wd, h, off, L); hh = hh || wd * 0.7; const o = off + 0.07;
+        if (f === 'f') gable(c, y + h, o, wd, 0.12, hh, 'z', L, L, 0); else if (f === 'b') gable(c, y + h, -o, wd, 0.12, hh, 'z', L, L, 0); else gable(f === 'r' ? o : -o, y + h, c, 0.12, wd, hh, 'x', L, L, 0); };
+    /* no roof-route point (a bridge end, a stair, a ladder landing) within r metres of a spot in the building's frame */
+    const routeFree = (lx, lz, r) => { const [wx, wz] = toWorld(lx, lz); return !features.some(f => /^(bridge|ramp|landing|climb|deck)$/.test(f.k) && [[f.x, f.z], [f.x0, f.z0], [f.x1, f.z1]].some(q => q[0] != null && q[1] != null && Math.hypot(q[0] - wx, q[1] - wz) < r)); };
     const parapet = (w, d, y, L, h) => { h = h || 0.9; box(0, y, d / 2 - 0.15, w, h, 0.3, L); box(0, y, -d / 2 + 0.15, w, h, 0.3, L); box(w / 2 - 0.15, y, 0, 0.3, h, d - 0.6, L); box(-w / 2 + 0.15, y, 0, 0.3, h, d - 0.6, L); };
     /* a cornice round a roof's edge: four strips OUTSIDE the footprint (a walked roof keeps its own slab clear) */
     const cornice = (w, d, y, L, o, h) => { o = o || 0.35; h = h || 0.35; box(0, y, d / 2 + o / 2, w + 2 * o, h, o, L, { under: true }); box(0, y, -d / 2 - o / 2, w + 2 * o, h, o, L, { under: true }); box(w / 2 + o / 2, y, 0, o, h, d, L, { under: true }); box(-w / 2 - o / 2, y, 0, o, h, d, L, { under: true }); };
@@ -92,6 +102,17 @@ module.exports.build = function (api) {
         [-1, 1].forEach(s => { const cx = s * (w / 2 - t / 2), len = d - 2 * t; box(cx, 0, 0, t, H, len, BRICK, { top: false, faces: 'lr' }); rows(s < 0 ? 'l' : 'r', 0, len - T, w / 2, 3, RES); rows(s < 0 ? 'r' : 'l', 0, len - T, -(w / 2 - t), 3, RES);
             gable(cx, H, 0, t, len + 0.5, 3.6, 'z', SLATE, BRICK); solid(cx, 0, t, len, H);
             box(s * (w / 2 - 1.2), H, d / 2 - 2, 1.1, 5, 1.1, BRICKD); box(s * (w / 2 - 1.2), H, -d / 2 + 2, 1.1, 5, 1.1, BRICKD); });
+        /* NEW HAVEN: the closed quad's DORMERS (a slate-capped box + its window, a run a roof slope), the CARVED GATE (two pinnacles and a
+           pointed granite hood over the archway) and the BIKE RACK under the arch (iron hoops along the passage wall) */
+        const dormers = (f, x, z, n, st) => { const fb = f === 'f' || f === 'b', sg = (f === 'f' || f === 'r') ? 1 : -1, step = fb ? [r3(st), 0, 0] : [0, 0, r3(st)];
+            P.push(Object.assign({ s: 'box', p: [r3(x), H + 0.5, r3(z)], size: fb ? [1.5, 1.9, 1.9] : [1.9, 1.9, 1.5], n, step }, look(BRICK)), Object.assign({ s: 'box', p: [r3(x), H + 2.4, r3(z)], size: fb ? [1.9, 0.18, 2.3] : [2.3, 0.18, 1.9], n, step, under: true }, look(SLATE)));
+            panel(f, fb ? x : z, H + 1.1, 0.9, 1.0, sg * (fb ? z : x) + 0.95, GLR, { n, step }); };
+        const z0 = d / 2 - t / 2; [-1, 1].forEach(s => { const cx = s * (gap / 2 + fl / 2); dormers('f', cx - fl / 4, z0 + 2.3, 2, fl / 2); const sx = s * (w / 2 - t / 2), len = d - 2 * t; dormers(s < 0 ? 'l' : 'r', sx + s * 2.3, -len * 3 / 8, 4, len / 4); });
+        dormers('b', -w * 0.4, bz - 2.3, 5, w / 5);
+        [-1, 1].forEach(s => { box(s * (gap / 2 + 0.55), 0, d / 2 + 0.3, 0.9, H + 1.5, 0.7, STONE); pyramid(s * (gap / 2 + 0.55), H + 1.5, d / 2 + 0.3, 1.2, 2.0, STONE); });
+        gable(0, 4.7, d / 2 + 0.28, gap + 0.2, 0.3, 1.2, 'z', MARB, MARB, 0);
+        { const rx = -gap / 2 + 0.35, rz = d / 2 - t + 1.2, RK = ['calm_gunmetal', 0x9098a8], n = Math.max(2, Math.floor((t - 2.4) / 1.1) + 1);
+          [0, 0.7].forEach(a => P.push(Object.assign({ s: 'box', p: [r3(rx + a), 0, r3(rz)], size: [0.06, 0.85, 0.06], n, step: [0, 0, 1.1] }, look(RK)))); P.push(Object.assign({ s: 'box', p: [r3(rx + 0.35), 0.85, r3(rz)], size: [0.76, 0.06, 0.06], n, step: [0, 0, 1.1] }, look(RK))); }
     };
     B.lecture = (w, d) => {   // roof route: a brick hall, a six-column porch + pediment, a lead vault over the auditorium
         box(0, 0, 0, w, 7, d, BRICK, { top: false }); box(0, 0, 0, w + 0.4, 1.0, d + 0.4, LIME); allRows(w, d, 1, GLT, 1.6); win('l', 0, 3.35, d - C, T, w / 2, GLT); win('r', 0, 3.35, d - C, T, w / 2, GLT);
@@ -101,21 +122,34 @@ module.exports.build = function (api) {
         box(0, 6.25, d / 2 + pd / 2, pw + 0.4, 0.9, pd + 0.2, MARB, { under: true }); gable(0, 7.15, d / 2 + pd / 2, pw + 0.4, pd + 0.2, 2.6, 'z', LEAD, MARB, 0.15);
         [-2.6, 0, 2.6].forEach(x => door('f', x, d / 2, DOORW, 2.2));
         box(0, 7, -1.5, 15, 1.4, 14, BRICK, { top: false }); vault(0, 8.4, -1.5, 14, 15, 3.4, 'z', LEAD, BRICK); tier(0, -1.5, 15, 14, 9.6);
+        /* NEW HAVEN: THE CARILLON TOWER, the district's tallest thing — a square sandstone shaft on a front corner of the hall (the corner no
+           roof route touches), slit windows up it, an open belfry with the bells hung in it, and an open stone CROWN: eight slender piers
+           under a ring and a stone spirelet, a pinnacle on each corner. It blocks (one ghost block). About 60 parts would be a lot: 34. */
+        const tw = 7, cs = [[-1, 1], [1, 1], [-1, -1], [1, -1]].map(([a, b]) => [a * (w / 2 - tw / 2 + 1.2), b * (d / 2 - tw / 2 + 0.6)]), cn = cs.find(q => routeFree(q[0], q[1], 8)) || cs[0], tx = cn[0], tz = cn[1];
+        if (!routeFree(tx, tz, 8)) console.warn('university: the carillon tower stands near a roof route');
+        box(tx, 0, tz, tw, 24, tw, BRICK, { top: false }); box(tx, 0, tz, tw + 0.5, 1.2, tw + 0.5, MARB);
+        P.push(Object.assign({ s: 'box', p: [r3(tx), 8, r3(tz)], size: [tw + 0.3, 0.3, tw + 0.3], n: 3, step: [0, 8, 0], under: true }, look(MARB)));
+        [['f', tx, tz + tw / 2], ['b', tx, -(tz - tw / 2)], ['r', tz, tx + tw / 2], ['l', tz, -(tx - tw / 2)]].forEach(([f, c, off]) => { panel(f, c, 9.5, 0.9, 2.4, off + 0.02, GLD, { n: 3, step: [0, 4.6, 0], uv: 'fit' }); });
+        [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, b]) => { box(tx + a * (tw / 2 - 0.8), 24.3, tz + b * (tw / 2 - 0.8), 1.6, 7, 1.6, BRICK, { top: false }); box(tx + a * (tw / 2 - 0.5), 31.9, tz + b * (tw / 2 - 0.5), 1.0, 5.2, 1.0, STONE); pyramid(tx + a * (tw / 2 - 0.5), 37.1, tz + b * (tw / 2 - 0.5), 1.3, 2.8, STONE); });
+        box(tx, 24, tz, tw + 0.5, 0.3, tw + 0.5, MARB, { under: true }); box(tx, 31.3, tz, tw + 0.5, 0.6, tw + 0.5, MARB, { under: true });
+        [[-1.2, 0.6, 1.0], [1.1, 0.5, 0.85], [0, -1.0, 1.15]].forEach(([a, b, k]) => { cyl(tx + a, 27.2, tz + b, 0.95 * k, 1.3 * k, ['calm_copper', 0xffffff], 12, 0.42 * k); cyl(tx + a, 27.2 + 1.3 * k, tz + b, 0.05, 31.3 - 27.2 - 1.3 * k, ['calm_gunmetal', 0x9098a8], 4, null, { cap: false }); });
+        P.push(Object.assign({ s: 'cyl', p: [r3(tx), 31.9, r3(tz)], r: 0.26, h: 5.4, seg: 6, cap: false, ring: { n: 8, r: 2.3, a0: 22.5 } }, look(STONE))); cyl(tx, 37.3, tz, 2.7, 0.45, MARB, 8); cyl(tx, 37.75, tz, 2.0, 5.2, STONE, 8, 0, { roof: true });
+        block(tx, tz, tw, tw, 40);
     };
     B.library = (w, d, row) => {   // collegiate gothic: steep slate gables, a gabled front with one tall window, buttresses, a clock tower. WALK-IN (the nave)
         const H = 10.5, nd = 14, nz = d / 2 - nd / 2, rd = d - nd, rz = nz - nd / 2 - rd / 2, D = doorAt(w, 0);
         Object.assign(row, { hollow: true, door: D.door, leaf: 'leaf_lobby_glass_double', storeys: 3, d: nd }); [row.x, row.z] = toWorld(0, nz);
         P.push(Object.assign({ s: 'quad', p: [0, 0, r3(nz + nd / 2)], size: [w, H], hole: [D.lx, D.cw, 2.2] }, look(STONE))); box(0, 0, nz, w, H, nd, STONE, { faces: 'blr', top: false });
         gable(0, H, nz, w, nd, 7, 'x', SLATE, STONE, 0.3); gable(0, H, nz + nd / 4, 8.75, nd / 2 + 0.1, 5.2, 'z', SLATE, STONE, 0.25);
-        win('f', 0, 3.4, 3.5, 6.6, nz + nd / 2, GLT); box(0, 2.3, nz + nd / 2 + 0.2, 4.4, 0.5, 0.4, MARB); [-1, 1].forEach(s => { box(s * 4.4, 0, nz + nd / 2 + 0.45, 0.9, H + 2.5, 0.9, STONE); pyramid(s * 4.4, H + 2.5, nz + nd / 2 + 0.45, 1.3, 2.2, SLATE); box(s * 2.4, 0, nz + nd / 2 + 0.2, 0.5, 2.3, 0.4, MARB); });
-        [-8.4, 8.4].forEach(x => win('f', x, 2.2, 5.25, 6.2, nz + nd / 2, GLT)); win('b', -w / 4 - 1.75, 2.2, w / 2 - 5.25, 6.2, -(nz - nd / 2), GLT); win('b', w / 4 + 1.75, 2.2, w / 2 - 5.25, 6.2, -(nz - nd / 2), GLT);
+        lancet('f', 0, 3.0, 5.25, 6.6, nz + nd / 2, GLT, 3.6); box(0, 3.0, nz + nd / 2 + 0.14, 0.22, 9.4, 0.16, MARB); box(0, 6.4, nz + nd / 2 + 0.14, 5.25, 0.2, 0.16, MARB); box(0, 2.5, nz + nd / 2 + 0.2, 5.9, 0.5, 0.4, MARB);   /* NEW HAVEN: the cathedral front's ONE GREAT POINTED WINDOW, a granite mullion and transom in it */ [-1, 1].forEach(s => { box(s * 4.4, 0, nz + nd / 2 + 0.45, 0.9, H + 2.5, 0.9, STONE); pyramid(s * 4.4, H + 2.5, nz + nd / 2 + 0.45, 1.3, 2.2, SLATE); box(s * 2.95, 0, nz + nd / 2 + 0.2, 0.5, 2.5, 0.4, MARB); });
+        [-8.4, 8.4].forEach(x => lancet('f', x, 2.2, 5.25, 5.4, nz + nd / 2, GLT, 2.4)); win('b', -w / 4 - 1.75, 2.2, w / 2 - 5.25, 6.2, -(nz - nd / 2), GLT); win('b', w / 4 + 1.75, 2.2, w / 2 - 5.25, 6.2, -(nz - nd / 2), GLT);
         for (let i = 0; i < 6; i++) { const x = -w / 2 + 0.5 + i * (w - 1) / 5; if (Math.abs(x) < 5.5 || x > w / 2 - 7) continue; box(x, 0, nz + nd / 2 + 0.5, 0.9, 7.5, 1.0, STONE); box(x, 7.5, nz + nd / 2 + 0.3, 0.9, 1.6, 0.6, MARB); }
         const rw = 14; box(0, 0, rz, rw, H - 1.5, rd, STONE, { top: false, faces: 'blr' }); gable(0, H - 1.5, rz, rw, rd + 0.6, 5.4, 'z', SLATE, STONE, 0.3); solid(0, rz, rw, rd, H - 1.5);
         [-1, 1].forEach(s => win(s < 0 ? 'l' : 'r', rz, 2.2, Math.floor((rd - 3.5) / T) * T, 5.2, rw / 2, GLT));
         const tx = w / 2 - 3.2, tz = nz + nd / 2 - 2.2, ts = 6.4; box(tx, 0, tz, ts, 22, ts, STONE, { top: false }); box(tx, 22, tz, ts + 0.6, 0.5, ts + 0.6, MARB, { under: true }); pyramid(tx, 22.5, tz, ts + 0.5, 6.5, SLATE);
         [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => { const [p, ry] = FACE[f](cx, off + 0.06); P.push(Object.assign({ s: 'cyl', p: [p[0], 18.6, p[2]], r: 2.1, h: 0.12, seg: 20, ry: ry }, look(['calm_snow', 0xfff8e0]))); });
         /* the clock faces: a pale disc on its edge is not a part shape, so each face is a square stone-framed panel + two hands */
-        [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => { panel(f, cx, 16.5, 4.2, 4.2, off + 0.02, ['calm_snow', 0xfff8e0]); panel(f, cx, 18.6, 0.22, 1.7, off + 0.06, [null, 0x202020]); panel(f, cx + 0.55, 18.5, 1.3, 0.22, off + 0.06, [null, 0x202020]); win(f, cx, 11.5, T, 3.5, off, GLT); });
+        [['f', tx, tz + ts / 2], ['r', tz, tx + ts / 2]].forEach(([f, cx, off]) => { panel(f, cx, 16.5, 4.2, 4.2, off + 0.02, ['calm_snow', 0xfff8e0]); panel(f, cx, 18.6, 0.22, 1.7, off + 0.06, [null, 0x202020]); panel(f, cx + 0.55, 18.5, 1.3, 0.22, off + 0.06, [null, 0x202020]); lancet(f, cx, 11.5, T, 3.5, off, GLT); });
         P.splice(P.findIndex(q => q.s === 'cyl' && q.h === 0.12), 2);   // (the lying discs are dropped: the panels are the faces)
     };
     B.cafe = (w, d, row) => {   // a brick house under a hipped slate roof, a glass conservatory, a striped awning, a round corner bay under a cone. WALK-IN
@@ -137,6 +171,7 @@ module.exports.build = function (api) {
         box(0, 5.2, 0, aw - 4.8, 4.3, d, STONE, { top: false, under: true, faces: 'fb' }); box(0, 4.8, 0, aw - 4.4, 0.5, d + 0.3, MARB, { under: true }); box(0, 9.5, 0, aw + 0.4, 0.5, d + 0.4, MARB, { under: true });
         P.push(Object.assign({ s: 'box', p: [r3(-aw / 2 + 0.6), 10, r3(d / 2 - 0.3)], size: [0.8, 0.9, 0.6], n: 6, step: [1.5, 0, 0] }, look(STONE))); win('f', 0, 6.4, T, T, d / 2, GLT);
         [-1, 1].forEach(s => box(s * 2.0, 0, d / 2 + 0.9, 0.1, 3.6, 1.8, ['urban:MetalTruss1a', 0x404040], { kind: 'over', ds: true }));
+        gable(0, 5.3, d / 2 + 0.2, aw - 4.4, 0.3, 1.0, 'z', MARB, MARB, 0);   // NEW HAVEN: a pointed granite hood over the arch
     };
     B.faculty = (w, d, row) => {   // a terrace of gabled houses, each its own colour, bay window, stoop and chimney
         /* THE BEDROOMS (mondo 11-14 02:21 "District threads add them": the Professor, the Mad scientist and the Reptilian sleep here): the
@@ -219,12 +254,14 @@ module.exports.build = function (api) {
         [0, 5.8, 11.6].forEach((x, i) => { const cx = -w / 2 + t + 5 + x, cz = d / 2 - 4; cyl(cx, 0.6, cz, 2.4, 6.4 - i * 0.8, ALU, 18, null, { cap: false }); dome(cx, 7 - i * 0.8, cz, 2.4, ALU, 0.35, 18); box(cx, 0, cz, 5.2, 0.6, 5.2, CONCD); block(cx, cz, 4.8, 4.8, 6); });
         box(4, 3.2, d / 2 - 7.4, w - t - 3, 0.5, 0.5, ['calm_snow', 0xf0c040], { under: true }); box(4, 3.9, d / 2 - 7.4, w - t - 3, 0.3, 0.3, ['calm_snow', 0xd04838]); P.push(Object.assign({ s: 'box', p: [-6, 0, r3(d / 2 - 7.4)], size: [0.3, 3.2, 0.3], n: 4, step: [6, 0, 0] }, look(GUN)));
     };
-    B.secret = (w, d, row) => {   // the research annex: a windowless black slab under a gunmetal barrel roof, slit windows, dishes and a mast. WALK-IN
-        const D = doorAt(w, 0); Object.assign(row, { hollow: true, door: D.door, leaf: 'leaf_security', storeys: 1 });
-        front(w, 3.5, d, BLACK, D); shell(w, 3.5, d, BLACK); vault(0, 3.5, 0, w, d + 0.5, 3.6, 'x', GUN, BLACK);
-        P.push(Object.assign({ s: 'quad', p: [r3(-w / 2 + 2.6), 2.2, r3(d / 2 + 0.05)], size: [0.5, 1.0], n: Math.floor((w - 5) / C) + 1, step: [C, 0, 0], glow: 0.6, kind: 'glass' }, look(['urban:GlassWindowFactory1a', 0x70f0c0])));
-        box(D.lx - 1.6, 0, d / 2 + 0.3, 0.5, 3.0, 0.6, GUN); box(D.lx + 1.6, 0, d / 2 + 0.3, 0.5, 3.0, 0.6, GUN); box(D.lx, 2.9, d / 2 + 0.5, 4.2, 0.4, 1.0, GUN, { under: true });
-        [-w / 2 + 4, w / 2 - 6].forEach(x => { cyl(x, 6.6, 0, 0.14, 2.4, ALU, 8); cyl(x, 9.0, 0, 0.3, 0.7, ALU, 16, 1.7); }); cyl(w / 2 - 2, 6, 0, 0.1, 9, ALU, 6); box(w / 2 - 2, 15, 0, 0.3, 0.3, 0.3, [null, 0xff3020], { glow: 1 });
+    B.secret = (w, d, row) => {   // THE TOMB (NEW HAVEN: the research annex is the secret society's hall — it keeps its name, its inside and its use): a windowless brownstone block, heavy pilasters and a stepped flat roof, iron doors under a pediment, a skull over them, a padlock on the frame. WALK-IN
+        const D = doorAt(w, 0), H = 6.4; Object.assign(row, { hollow: true, door: D.door, leaf: 'leaf_security', storeys: 1 });
+        front(w, H, d, BROWN, D); shell(w, H, d, BROWN); box(0, H, 0, w + 0.9, 0.7, d + 0.9, BROWND, { under: true }); box(0, H + 0.7, 0, w - 1.2, 0.5, d - 1.2, BROWND);
+        [-1, 1].forEach(s => { box(s * (w / 2 - 0.6), 0, d / 2 + 0.15, 1.2, H, 0.4, BROWND); box(s * (w / 4), 0, d / 2 + 0.12, 0.9, H, 0.3, BROWND); box(D.lx + s * (D.cw / 2 + 0.75), 0, d / 2 + 0.22, 0.8, 4.6, 0.5, BROWND); });
+        box(D.lx, 4.6, d / 2 + 0.25, D.cw + 3.2, 0.7, 0.6, BROWND, { under: true }); gable(D.lx, 5.3, d / 2 + 0.25, D.cw + 3.2, 0.6, 1.0, 'z', BROWND, BROWND, 0);
+        panel('f', D.lx, 2.25, D.cw + 0.1, 2.3, d / 2 + 0.02, ['calm_gunmetal', 0x70788a]); box(D.lx, 3.0, d / 2 + 0.1, 1.5, 1.2, 0.16, ['calm_flagstone', 0xd8d4cc]);   // the iron panel over the doors, the skull's stone
+        { const sk = toWorld(D.lx, d / 2 + 0.34), pl = toWorld(D.lx + D.cw / 2 + 0.2, d / 2 + 0.5);
+          props.push({ key: 'skull', x: sk[0], z: sk[1], face: ctx.rot, h: 0.85, y: 3.15 }, { key: 'psx_padlock_1', x: pl[0], z: pl[1], face: ctx.rot, h: 0.34, y: 1.15 }); }
     };
     B.museum = (w, d, row) => {   // the science museum: a glass hall under one long barrel roof, a faceted planetarium globe at its end. WALK-IN
         const D = doorAt(w, -4); Object.assign(row, { hollow: true, door: D.door, leaf: 'leaf_lobby_glass_double', storeys: 2 });
@@ -275,15 +312,16 @@ module.exports.build = function (api) {
        foundation is already there and is good"): the second layer every building gets from its own parts, written once — a stone plinth, a
        string course a storey, corner stones on brick and stone, a sill and a head on every window strip, a step and a lamp at every door,
        downpipes with hoppers on the back corners, a hanging sign at the shops, plant on the flat roofs. Drawn only (arch parts). ── */
-    const MASON = /TileSubway|calm_marble|calm_castle/, WALLK = /TileSubway|calm_marble|calm_castle|Plaster|calm_tiles$|ConcreteStriped|calm_planks/;
+    const MASON = /TileSubway|calm_marble|calm_castle|calm_sandstone/, WALLK = /TileSubway|calm_marble|calm_castle|calm_sandstone|Plaster|calm_tiles$|ConcreteStriped|calm_planks/;
     const TRIM = ['calm_marble', 0xfffaf0], TRIMD = ['calm_marble', 0xc4bcb0], PIPE = ['calm_gunmetal', 0xc0c8d8], IRON = ['calm_gunmetal', 0x9098a8];
-    const SIGNS = { bookshop: 0x3c8a5c, store: 0xe8443c, cafe: 0xf0a830, workshop: 0x3c7cd8, clinic: 0x3ab878, newsstand: 0xe8c040, foodstand: 0xe85a30, museum: 0x4a6cd0, library: 0x8a2c2c };
+    const SIGNS = { bookshop: 0x3c8a5c, store: 0xe8443c, cafe: 0xf0a830, workshop: 0x3c7cd8, clinic: 0x3ab878, newsstand: 0xe8c040, foodstand: 0xe85a30, museum: 0x4a6cd0, library: 0x1d3a6e };
     const FLAT = { clinic: 5.6, store: 3.9 };
-    const LABEL = { library: ['LIBRARY', '#f4ecd8', '#5a1e1e'], lecture: ['LECTURE HALL', '#f4ecd8', '#5a1e1e'], dorm: ['DORMITORY', '#f4ecd8', '#5a1e1e'], cafe: ['CAFE', '#3a2a10', '#f0b040'], bookshop: ['BOOKS', '#f4ecd8', '#2c6a4a'],
+    const LABEL = { library: ['LIBRARY', '#f4ecd8', '#1d3a6e'], lecture: ['LECTURE HALL', '#f4ecd8', '#1d3a6e'], dorm: ['DORMITORY', '#f4ecd8', '#1d3a6e'], cafe: ['CAFE', '#3a2a10', '#f0b040'], bookshop: ['BOOKS', '#f4ecd8', '#2c6a4a'],
         workshop: ['BIKE REPAIR', '#ffffff', '#2c5cb0'], observatory: ['OBSERVATORY', '#e8f4ee', '#24584a'], lab: ['RESEARCH LAB', '#ffffff', '#2a3a4a'], annex: ['LAB ANNEX', '#ffffff', '#2a3a4a'], psych: ['PSYCHOLOGY', '#ffffff', '#2a6a68'],
         museum: ['SCIENCE MUSEUM', '#ffffff', '#3a5cc0'], clinic: ['CLINIC', '#ffffff', '#2a9a64'], store: ['CORNER STORE', '#ffffff', '#c83a32'], newsstand: ['NEWS', '#2a2410', '#e8c040'], foodstand: ['HOT FOOD', '#ffffff', '#d84a28'],
         secret: ['AUTHORISED STAFF ONLY', '#f0d040', '#202428'], gatehouse: ['SECURITY', '#ffffff', '#202428'] };
-    const SCI = { lab: 1, annex: 1, court: 1, secret: 1, observatory: 1, psych: 1 };
+    const SCI = { lab: 1, annex: 1, court: 1, observatory: 1, psych: 1 };
+    const OLD = { dorm: 1, lecture: 1, library: 1, cafe: 1, gate: 1, faculty: 1, bookshop: 1, observatory: 1, secret: 1 };   // NEW HAVEN: the old-college buildings (ivy, urns, notice boards)
     const polish = (kind, walkedRoof) => {
         const base = P.slice(), NRM = ry => { const q = (ry || 0) * Math.PI / 180; return [-Math.sin(q), Math.cos(q)]; }, sq = v => Math.abs(Math.round(v)) % 2 === 1 ? Math.abs(Math.round(v)) : 0;
         const doors = base.filter(q => q.s === 'quad' && /^urban:Door/.test(q.key || '')), holes = base.filter(q => q.s === 'quad' && q.hole);
@@ -320,6 +358,12 @@ module.exports.build = function (api) {
             if (i === 0 && SIGNS[kind]) { const sx = D.x - tx * (D.w / 2 + 0.7) + nx * 0.62, sz = D.z - tz * (D.w / 2 + 0.7) + nz * 0.62;
                 part('box', [sx, 3.62, sz], IRON, Object.assign({ size: [0.06, 0.06, 1.2] }, o)); part('box', [sx, 2.8, sz], ['calm_snow', SIGNS[kind]], Object.assign({ size: [0.1, 0.8, 1.0], under: true }, o));
                 part('box', [sx, 2.95, sz], ['calm_snow', 0xfff4dc], Object.assign({ size: [0.13, 0.5, 0.7] }, o)); }
+            /* NEW HAVEN: a stone urn each side of an old-college building's first door (dressing, off the squares' middles), and a notice
+               board thick with flyers on the wall beside it at the halls the students use */
+            if (i === 0 && OLD[kind] && kind !== 'secret') [-1, 1].forEach(sd => { const u = toWorld(D.x + sd * tx * (D.w / 2 + 1.25) + nx * 0.75, D.z + sd * tz * (D.w / 2 + 1.25) + nz * 0.75); props.push({ key: 'stone_urn', x: u[0], z: u[1], face: (ctx.rot + D.ry) % 360 }); });
+            if (i === 0 && { dorm: 1, lecture: 1, library: 1, cafe: 1 }[kind]) { const bx = D.x + tx * (D.w / 2 + 2.3), bz2 = D.z + tz * (D.w / 2 + 2.3), at = (a, y, k) => [bx + tx * a + nx * k, y, bz2 + tz * a + nz * k];
+                part('box', at(0, 1.05, 0.06), ['calm_planks', 0x6a4a30], Object.assign({ size: [1.7, 1.2, 0.08] }, o)); part('quad', at(0, 1.12, 0.11), ['calm_carpet', 0xc8a070], Object.assign({ size: [1.56, 1.06], kind: 'wall' }, o));
+                [[-0.5, 1.6, 0.3, 0.42, 0xfff4d0], [-0.1, 1.5, 0.36, 0.5, 0xf0d040], [0.42, 1.62, 0.3, 0.4, 0x9ac8f0], [-0.45, 1.2, 0.34, 0.3, 0xf09a8a], [0.05, 1.18, 0.26, 0.26, 0xffffff], [0.45, 1.2, 0.3, 0.34, 0xb8e0a0]].forEach(([a, y, fw, fh, col]) => part('quad', at(a, y, 0.125), [null, col], Object.assign({ size: [fw, fh], kind: 'wall' }, o))); }
         });
         /* ROOFS + AC UNITS (mondo 20:18): wall units under the back and side windows of the lived-in buildings, plant on every flat roof —
            condensers on a pad, a vent stack, a roof hatch; on a walked roof (the roof route) they stand along the back edge and block */
@@ -343,6 +387,12 @@ module.exports.build = function (api) {
         };
         if (walkedRoof) plant(0, 7, 0, walkedRoof[0], walkedRoof[1], true);
         else if (FLAT[kind] && shellBox) plant(shellBox.p[0], FLAT[kind], shellBox.p[2], shellBox.size[0], shellBox.size[2], false);
+        /* NEW HAVEN: IVY on the SOUTH wall of every old-college building (the face that looks down the room's +z, whatever way the building
+           is turned): three ragged leaf patches climbing from each end of the wall; on a wall with a door only the corner ones */
+        if (OLD[kind] && shellBox) { const [x, , z] = shellBox.p, [w, h, d] = shellBox.size, sf = ['f', 'r', 'b', 'l'][Math.round((((ctx.rot % 360) + 360) % 360) / 90) % 4], fb = sf === 'f' || sf === 'b';
+            const half = fb ? w / 2 : d / 2, mid = fb ? x : z, off = sf === 'f' ? z + d / 2 : sf === 'b' ? -(z - d / 2) : sf === 'r' ? x + w / 2 : -(x - w / 2), hasDoor = !!doorFace[FRY[sf]];
+            [[0.15, 2.9, Math.min(h - 0.3, 6.4)], [2.8, 1.8, Math.min(h - 0.3, 4.2)], [4.4, 1.2, 2.3]].forEach(([a, pw, ph], i) => [-1, 1].forEach(sd => { if ((hasDoor && i) || (sd > 0 && i === 2) || a + pw > half - 1) return;
+                panel(sf, mid + sd * (half - a - pw / 2), 0.05, pw, ph, off + 0.09 + i * 0.01, IVY, { kind: 'wall', ds: true }); })); }
         /* TEXTURES + DECALS (mondo 20:19: "different textures or decals for different parts of the building"): a louvre grille low on the back
            wall, a rubber mat on every door step, and on the science side a hazard plate by the door + a caution plate on the back wall */
         if (shellBox) { const [x, , z] = shellBox.p, [w, , d] = shellBox.size;
@@ -610,5 +660,11 @@ module.exports.build = function (api) {
     });
     /* the campus green's bandstand, on the grass south-west of the cross walks */
     { const p = PLAN.plots.find(q => q.name === 'Campus green'); if (p) { const x = r3(api.gx(p.x * 12 + 2.5)), z = r3(api.gx(p.y * 12 + 8.5)); ctx = { id: 'dc:green', x, z, rot: 0 }; P = []; B.bandstand(); features.push({ k: 'arch', id: 'dcu:bandstand', x, z, rot: 0, parts: P }); count.arch++; count.parts += P.length; } }
+    /* NEW HAVEN: OLD ELMS — the district's street and green trees grow tall (the green's the tallest); a ROWING SHELL on trestles by the bandstand
+       (the rowboat on hand stands in for it: dressing, on the grass, blocks nothing) */
+    { const g = PLAN.plots.find(q => q.name === 'Campus green'), HALF = api.HALF, N = api.N, CC = api.C; let elms = 0;
+      features.forEach(f => { if (f.k !== 'tree' || !(f.x >= -252 && f.x < -84 && f.z >= -84 && f.z < 84)) return; const on = g && Math.floor((f.x + HALF) / (N * CC)) === g.x && Math.floor((f.z + HALF) / (N * CC)) === g.y; f.h = r3((f.h || 3.6) * (on ? 1.7 : 1.3)); elms++; });
+      count.elms = elms;
+      if (g) { const x = r3(api.gx(g.x * 12 + 4.9)), z = r3(api.gx(g.y * 12 + 8.5)); features.push({ k: 'arch', id: 'dcu:shell', x, z, rot: 0, parts: [-1, 1].map(s => Object.assign({ s: 'box', p: [0, 0, s * 0.9], size: [1.1, 0.72, 0.12] }, look(WOOD))) }); props.push({ key: 'meshy_rowboat', x, z, face: 0, y: 0.74 }); count.arch++; } }
     console.log('university:', JSON.stringify(count));
 };

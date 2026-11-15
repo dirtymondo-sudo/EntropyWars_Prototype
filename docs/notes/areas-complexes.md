@@ -2977,6 +2977,16 @@ glass / `part` plaster, a ghost wall each, a one-square gap = the doorway), the 
   under the vault (`st: 2`). The F22 (`fighter_jet`, measured 15.5 x 10.6 x 5 m; the catalogue rect is padded) stands inside on five squares by three, the row behind the front wall the walkway. The street lamp on that square is taken off (`ctx.lamps`, the tool now writes its lamps line after the district build). Seen in the
   cloud browser from inside (as a 28 m long test build). INTERIORS of the other ten walk-ins: plan on the 3.5 m squares in /mnt/project-files/disaster-city-industrial/interiors_plans.py, waits his OK.
 
+### THE UNIVERSITY AS NEW HAVEN (2026-11-15, mondo 12:19 "I want each district to be based off of a major city ... education could be harvard or yale, (whichever one has the skull and bones society)"; his "Build it as drawn" on the real-cities plan 12:32)
+All in `docs/disaster-city/districts/U.js`; nothing removed, every building keeps its name, use, doors and roof routes.
+- **The looks**: the old campus's BRICK / STONE are now the coursed `calm_castle` sheet warmed with a tint + `gain` (sandstone), MARB = `calm_flagstone` (granite trim), SLATE = `calm_darkstone` (grey slate), BROWN = `calm_sandstone` darkened (brownstone), IVY = `calm_hedge`. `look()` reads a 4th element = the part's `gain`.
+- **`lancet()`**: a pointed window = the sheet's strip + a thin gable plate of the same glass over it (the library's great window with a granite mullion + transom, its side windows, the clock tower's).
+- **The carillon tower** (Lecture hall): a 7 m square shaft to 24 m on the front corner no roof route touches (`routeFree`), slit windows, an open belfry with three copper bells, an open crown (eight piers, ring, stone spirelet, four pinnacles), top about 43 m; one ghost block. No bell sound (no SFX generation).
+- **THE TOMB** (Research annex, kind `secret`): windowless brownstone, pilasters, stepped flat roof, iron panel + pediment over the security doors; the `skull` prop (h 0.85) over them and `psx_padlock_1` on the frame (a prop `y` >= 1 in a district file is a height over the plot's ground: the tool adds the plot's level). Out of `SCI` (no hazard plates), in `OLD`. A carved skull-and-bones plaque (Meshy) waits for mondo's OK on a concept.
+- **Dorm**: dormers on every roof slope (instanced box + slate cap + window), two pinnacles and a pointed hood at the archway, an iron bike rack in the passage (no bike model on R2 in the catalogue).
+- **`OLD` kinds** get ivy on their SOUTH wall (the face looking down +z whatever the row's rot), a `stone_urn` each side of the first door, and (dorm, lecture, library, cafe) a drawn notice board with flyers.
+- **Street**: every U tree 1.3x taller, the Campus green's 1.7x (old elms); a rowboat on trestles by the bandstand stands in for the rowing shell; bake-disaster-city.js `BENCH.U` = `iron_garden_bench`, `LOOKS.U.bg` = college blue `#1d3a6e`; the name boards' maroon is the same blue.
+
 ## DISASTER CITY, THE ENTERTAINMENT DISTRICT — the insides (2026-11-13 night)
 mondo 21:04 "after the district threads do their exterior polish, let's go ahead and do the interiors"; his grid rule 21:14 + 21:17 (a
 blocker snaps to the battle squares and fills whole ones, a walkway is a whole square wide, decoration sits off centre); his "okay" on the
