@@ -4304,4 +4304,22 @@ hangar and the ward were still the old BSP rooms and the pyramid had no inside. 
   (`HQ_AREA_MARKERS` is where a site's fight is entered), now on the Island Beach by the cabin door. Probe lessons: `--flags=EW_NO_MODEL_QUEUE`
   killed the browser three times in this room (every model at once); without it and `--wait=70000` it runs. New probe options: `--pre=<js>`
   (run before the room is entered) and `EW_LIVE_LOG=1`. STILL TRUE: the pier meets her flat stern head-on; the huts' colours read muted.
+- **ALONGSIDE, THE PAINT, THE DRESSING (same day, mondo: "berth her along the side of the pier, brighten the huts, and see what other aquatic or
+  oceanic or beach related models you can add to dress the area"):**
+  - ALONGSIDE: she lies south of the Long Pier, port side to it (squares 35-68 x 56-69, one square of water between for her hull's swell); the
+    pier runs on east past the plan's end to square 56, and the gangway (link `beach_dutchman`) is on the pier's south edge at her waist; its
+    deck end moved to her port waist between the two guns (x 0, z -23.6). The Channel's buoys moved west of her stern.
+  - THE PAINT: a colour over the brown board sheet read as mud. Bayside's way (districts/B.js): walls take `gain` 2.3, roofs are the painted
+    corrugated sheet at gain 2.0, trim is plain paint. Huts = aqua / lemon / coral, each with its own roof colour and a striped fascia.
+  - THE DRESSING (catalogue models only): Shore = flamingos, a sandbox, the snack cart and a telescope on the Boardwalk, two rowboats, more
+    umbrellas and loungers, seals; Harbour = a container, pallet, forklift, cable drum, sandbags, a gun, the shed's outboard / wheel / bell, lamps
+    and rings and traps down the pier; Ocean = black smokers off the volcano, more dolphins, rays, tuna; Triangle = an eel and squid in the
+    Maelstrom's hole, an octopus under the wreck, clams, tube coral and reef fish on the Reef, a gun, telescope, boat and umbrella on the island.
+  - SEEN ON SCREEN AND FIXED: weed, kelp and anemones in shallow water break the surface as black spikes or stand on the sand (removed; the old
+    sea room's note said the same); the ocean pack's rocks on dry sand are black pillars (removed from the shore); `ship_lantern` hangs in the air
+    when stood on a floor (all seven are `railway_lantern` now); whales given a `hover` flew over the sea (now `y -2.6, hover 0`: backs at the
+    surface). TRIED, NOT SHIPPED: `palmisle` and the two kraken `tentacle` models did not show at any height in deep water.
+  - PROBE LESSON: in a room this big the software browser never requests the props before the shot, and `EW_NO_MODEL_QUEUE` on the whole room
+    kills it. What works: `--pre=` a filter that keeps only the props near the views (and drops the scatters and trees), then the flag.
+    Not seen this way: the flamingos up close, the island's and the Reef's pieces, anything under the water (the sea is opaque from above).
 
