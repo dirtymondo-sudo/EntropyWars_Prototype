@@ -3908,6 +3908,9 @@ mondo 11-15 18:17: "there should be a mountain zone with 3 main trails/peaks you
 leads to north pole village, mountains and woods separate camelot from the north pole. and another mountain trail that leads to mount olympus. And there
 should be a ski loft and ski slopes, for skateboarding." Plan OK'd 19:37 ("okay that's good"; world layout 3, /mnt/project-files/world-zones-plan/).
 
+(11-15 later: plan 2 SWAPPED Shasta and Olympus and added a third room, the Hollywood Hills; see "THE HOLLYWOOD HILLS + THE SWAP" below. Plot ids and
+columns in this section are the first delivery's.)
+
 **Tool + source:** `node bake-mountains.js [--dry-run]` writes TWO rooms into data.js between `MOUNTAINS-BEGIN` / `MOUNTAINS-END` from
 `docs/areas/mountains/layout.json` (16x8 plan, 72 plots, 12x12 squares of 3.5 m a plot). `MTN_DUMP=mtn|pole` prints the walked map.
 - `site_prebuilt_northpole_plots` (plan columns 0-3, 16 plots): the North Pole village. Walk-in Workshop (the old hearth door to the Haunted Hall is
@@ -3942,23 +3945,37 @@ Continue / map land in the new rooms); their literals stay as PvP board sources 
 - The big room compiles in ~23 s in node (Woods / Camelot ~10 s; cost is hqTerrain ramps + bridges per node). Watch the load on his Mac.
 - The world plan's Ice Wall and the Deep-to-Area-51 way are still open with him.
 
-## THE HOLLYWOOD HILLS — PLAN ONLY, waits mondo's OK (2026-11-15)
+## THE HOLLYWOOD HILLS + THE SWAP + THE NORTH BEACH — built (2026-11-15, second side)
 
 mondo 11-15: "The disaster city version of the Hollywood sign needs to be part of the mountains, not just a weenie on the edge of the map. Beach needs
 to extend to the entertainment district, cliffs at that end of the beach. Basically just include the fake weenie mountains as part of this actual mountain
-plan, and rearrange them to whatever makes sense."
-- Plan picture: `docs/plans/world-zones/hollywood_hills_plot_plan.png` (a drawing, nothing built). A sixth Mountains district, 10 x 3 plots, its own room
-  east of Mount Olympus over Financial + Entertainment: the sign on four plots, the ridge behind it, the city's mountain road landing under the sign (not at
-  the Lodge Yard), a Lodge-road door west, a trail to Olympus' Goat Track, sea cliffs at the east end; the city's beach strip runs north along Entertainment
-  to those cliffs, with a cliff stair up.
-- PLAN 2 (his answers the same day: buildings "fine for now"; "why is there a gap between the hills and mt Olympus ... we might need to move the Vatican
-  and mt Olympus around, it would make more sense to have mt Shasta right there"; "yes extend the beach up north, but there would be cliffs at the north
-  edge which is the hills"; residents "don't worry about it yet"). The picture is redrawn: Hills 13 x 3 = 39 plots over the city's whole width, no gap;
-  range order North Pole, Pass, Lodge, OLYMPUS, SHASTA, Hills (Shasta and Olympus swap columns; the Vatican's plan moves west under Olympus; the Shasta
-  trail's door still opens at the Woods' Snowline); Hills west end walks on to Shasta (no Lodge-road door); the Beach zone plan gains 24 plots north along
-  Entertainment with the cliffs as its north edge. To settle when built: the city's closed VATICAN GATE would face the Shasta trail. Waits his OK to build.
-- Open with him: the three walk-in buildings (plain labels), whether the Ski Lodge moves, what stands on the new beach, who lives there.
-- Building it touches bake-mountains.js, bake-disaster-city.js (move.js way P08-04 N, EDGES, B.js / E.js room + edges) and links.downtown_mountains.
+plan, and rearrange them to whatever makes sense." On plan 1: buildings "fine for now"; "why is there a gap between the hills and mt Olympus ... we might
+need to move the Vatican and mt Olympus around, it would make more sense to have mt Shasta right there"; "yes extend the beach up north, but there would
+be cliffs at the north edge which is the hills"; residents "don't worry about it yet". Plan 2 (`docs/plans/world-zones/hollywood_hills_plot_plan.png`): "build it".
+
+- **THE HILLS** = room `site_prebuilt_shasta_hills` (site `prebuilt_shasta`, part `hills`; a link end finds a room as `site_<site>_<part>`, so the id is
+  fixed by that). 13 x 3 plots (`docs/areas/mountains/layout.json` `rooms[1]`, plot ids `H00-00`..`H12-02`), written by `node bake-mountains.js`.
+  Row 0 the ridge, row 1 the letters' slope, row 2 the canyon foot; the east column is sea cliffs (`z` squares = the sea: mass sunk to `seaBed` under
+  `terrain.sea` y -0.6; rock beside it keeps its height). `MTN_DUMP=hills` prints the walked map.
+- **THE SIGN**: twelve letters DISASTER CITY on plots H06-01..H09-01, each one `arch` plane cut from the typeface (`txt:<letter>|…||anton`, `ds`), two
+  steel legs behind; no collision, you walk under them. The ridge trail (row 0) runs behind. The city still shows its own sign on its north edge land
+  (E.js `edges.sign`): that is the far view of the same hill.
+- **Walk-in buildings** (plain labels, his "fine for now"): the Observatory (H10-01), the Hill House (H04-02), the Stilt House (H09-02). Also the radio mast,
+  the water tank, the reservoir + dam (two `pool` rows on levelled ground), a car park, three lookouts with telescopes. Nobody lives there yet (his word).
+- **THE SWAP**: in the Mountains room Olympus is plan columns 10-12 and Shasta 13-15 (trail 13-14); plot ids moved with them (the Trailhead is `P13-07`,
+  the Temple `P11-00`). New join: the Goat Track walks east to Bunny Flat (`extraPorts`); the Bunny Slope meets the Sacred Way by the plan's own ports.
+- **Ways**: Mountains `hills` (the Scree, east wall) <-> Hills `shasta`; Mountains `saddle` (the Glacier) <-> Hills `ridge`; link `downtown_mountains`
+  b end = the Hills' Canyon Road (south wall, H07-02; the Lodge Yard's road to the city is gone, the Lodge is reached over the range); NEW link
+  `downtown_cove`: the city boardwalk's north end (free door x 255.5 z -247.6) <-> the Hills' Cove (south wall, H12-02).
+- **THE NORTH BEACH** (the city): `docs/disaster-city/districts/B.js` beach(): boardwalk, sea wall, sand shelf and four ramps run on north of the mole along
+  Entertainment's four rows to the city's north line (was open water under a quay wall). `bake-disaster-city.js` EDGES.n.cap is `{ coast, at e, off 0,
+  len 36 }`: the north range runs across the beach strip and falls into the bay past the sand = the cliffs at the beach's north end.
+- **Not done / to know**: NOT SEEN ON SCREEN (headless: all three rooms compile, no NaN, every plot walked, both links live, heights sampled).
+  Entertainment stands 8.75 m over the boardwalk there (a tall sea wall) and has no way down of its own: you reach the north beach along the boardwalk
+  from Bayside or from the Cove. From the Hills you do not see the city below (the south edge is plain dry land: rooms are separate). The Shasta trail's
+  door still opens at the Woods' Snowline (the Woods are not changed). The city's closed VATICAN GATE is untouched (ask mondo when the Vatican is built).
+  The Vatican's and the Beach zone's plans (`docs/plans/world-zones/`) are not redrawn: Vatican = under Olympus, one step west; Beach = 24 more plots north
+  along Entertainment, the cliffs its north edge. No encounter tables, no residents.
 
 ## THE ESTATE ON PLOTS — the fifth area of the world plan, first delivery (2026-11-15)
 
