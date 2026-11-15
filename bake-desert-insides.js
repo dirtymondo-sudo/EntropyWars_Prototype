@@ -319,8 +319,6 @@ const PY = mk(14, 14);
   R.stops = [[7, 1, L1], [3, 2.5, L1], [3, 5.5, L1], [1.5, 8.5, L1], [7, 10, 0], [11, 12.5, L2], [7.5, 13.4, L2]];
   R.hidden = [[3, 13, L3]];
 }
-{ const T_ = process.env.INS_TEST || ''; if (/noarch/.test(T_)) WD.P.length = 0; if (/nobridge/.test(T_)) WD.F = WD.F.filter(f => f.k !== 'bridge'); if (/noramp/.test(T_)) WD.F = WD.F.filter(f => f.k !== 'ramp'); if (/nowall/.test(T_)) WD.F = WD.F.filter(f => f.k !== 'wall'); if (/nohung/.test(T_)) WD.F = WD.F.filter(f => !(f.k === 'wall' && f.y0 != null)); if (/nonpc/.test(T_)) WD.npc.length = 0; if (/notele/.test(T_)) WD.npc = WD.npc.filter(n => n.race !== 'telepath'); }
-if (process.env.INS_TEST === 'noprops') WD.props.length = 0; if (process.env.INS_TEST === 'nopad') WD.props = WD.props.filter(p => p.key !== 'wall_padding'); if (/noleaf/.test(process.env.INS_TEST || '')) WD.inner.length = 0;
 check('the hangar', HG); check('the white rooms', WD); check('the pyramid', PY);
 
 /* ── the rooms' text ── */
@@ -400,7 +398,7 @@ try {
         bad += miss.length + padMiss.length;
     });
 } finally { fs.unlinkSync(tmp); }
-if (bad && !process.env.INS_TEST) { console.error('the walk check failed (' + bad + ')'); process.exit(1); }
+if (bad) { console.error('the walk check failed (' + bad + ')'); process.exit(1); }
 if (DRY) process.exit(0);
 fs.writeFileSync(file, src);
 console.log('data.js: the three insides written (' + block.length + ' bytes)');

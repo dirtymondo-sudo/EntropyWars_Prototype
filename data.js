@@ -53804,7 +53804,7 @@ const DOOR_HQ = {
                 {key:'bare_bulb',x:21,z:17.15,ceil:true,y:3.3},
             ],
             agents: [],
-            npcSpots: [{x:-22.75,z:-1.75,face:90,race:'grey',say:['“…” “How long have you been here?” “…” “Since before it was here.”']},{x:-22.75,z:-12.25,face:90,race:'grey',say:['“…” “Room 5150.” “…” “That is the other building.” “…” “It is every building.”']},{x:5.25,z:1.75,face:200,race:'men in black',say:['“Visiting hours.” “When are they?” “Over.”','“Quiet please.” “I did not say anything.” “They heard you think it. Everyone in here does.”']}],
+            npcSpots: [{x:-22.75,z:-1.75,face:90,race:'grey',say:['“…” “How long have you been here?” “…” “Since before it was here.”']},{x:-22.75,z:-12.25,face:90,race:'grey',say:['“…” “Room 5150.” “…” “That is the other building.” “…” “It is every building.”']},{x:-15.75,z:15.75,face:90,race:'telepath',say:['“They saw it.” “Saw what?” “What you are about to. Sit down.”','“The white is a choice.” “Whose?” “Not theirs.”']},{x:5.25,z:1.75,face:200,race:'men in black',say:['“Visiting hours.” “When are they?” “Over.”','“Quiet please.” “I did not say anything.” “They heard you think it. Everyone in here does.”']}],
             onlineSpots: [],
             lines: ['“The deck is for observation.” “Of what?” “Of whoever is on the deck.”','“Everything is white.” “Why?” “So nothing shows.” “Something shows.” “Yes.”'],
             spawn: {x:10.5,z:-15.75,face:180},
