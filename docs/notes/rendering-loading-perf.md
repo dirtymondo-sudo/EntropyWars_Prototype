@@ -2181,3 +2181,18 @@ onto the nearest game function) showed the 60 ms outside the draws was whole-sce
   (`_mmLive` every 4 s; now waits 30 s); the pixel mask's timed scan 400 -> 1500 ms (adds still re-scan at once).
 - Left, in order: the shell is ONE group of 10,000 pieces (matrix walk, bundle check 7 ms, every pass) -> chunk it like the
   props; the static batch's forced matrix walk every 500 ms; Firefox's cost per draw.
+
+## THE HELD KEEP THE CAMERA (2026-11-15, mondo: "trees and other props are moving when i move my camera ... its in door hq too")
+- **Cause**: THE COPIES REST (#1409) let instanced batches be HELD in the quiet replay (`rpReplay`). The frame's camera sits in
+  SHARED uniform buffers (one per set of shared values a shader reads); three writes each when the first object reading it is
+  refreshed in a render. The instanced shaders read a set of their own, so with every batch held nobody wrote it: instanced props
+  were drawn with the camera of up to 20 frames ago (glued to the view on a turn, then snapping home). Game-wide (HQ, city, sites).
+- **Fix**: `rpShared` — the first held object of each shared bind group gets its SHARED part refreshed in every render
+  (`updateSharedForRender`); the rest stay held. Off: `window.EW_BUN_HELD_NO_SHARED`. Count: `_ewBun.rpShared`.
+- **Proof** (cloud browser, WebGPU, main hall, camera turned 70 degrees, the FIRST drawn frame against the settled one):
+  fix off 1.8-2.3% of pixels differ (lamps, boxes, chairs at their old screen places); fix on 0.1%.
+  `/mnt/project-files/props-move-camera-20261115/`.
+- **How to test a camera-stale bug**: `teleport` `face` is in DEGREES. Rest 30 drawn frames, then in ONE eval teleport and
+  allow one drawn frame (harness `__ph.draw.mode='demand'; frames=2`), screenshot, draw 30 more, screenshot, diff. A test that
+  lets undrawn ticks pass, or a 1 degree turn, shows nothing.
+- **Rule**: anything that skips an object's refresh in a replayed bundle must still refresh the shared buffers it reads.

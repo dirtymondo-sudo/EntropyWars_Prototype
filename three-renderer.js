@@ -46960,6 +46960,25 @@ const ThreeRenderer = (function () {
             if (t === 2 || t === 'full') { N.updateBefore(ro); R._geometries.updateForRender(ro); N.updateForRender(ro); R._bindings.updateForRender(ro); N.updateAfter(ro); }
             else if (t === 1 || t === 'shared') { N.updateBefore(ro); N.updateForRender(ro); R._bindings.updateSharedForRender(ro); N.updateAfter(ro); }
         };
+        var rpShared = function (R, held) {
+            var N = R._nodes, rid = N.nodeFrame ? N.nodeFrame.renderId : (_ewBun.frame | 0), i, k, ro, sb, need;
+            for (i = 0; i < held.length; i++) {
+                ro = held[i]; sb = ro._ew_rqS;
+                if (sb === undefined) {   // this object's shared bind groups, found once
+                    sb = null;
+                    var bg = ro.getBindings();
+                    for (k = 0; k < bg.length; k++) { var b0 = bg[k].bindings && bg[k].bindings[0], gn = b0 && b0.groupNode; if (gn && gn.shared === true) (sb || (sb = [])).push(bg[k]); }
+                    ro._ew_rqS = sb;
+                }
+                if (!sb) continue;
+                need = false;
+                for (k = 0; k < sb.length; k++) if (sb[k]._ew_rid !== rid) { need = true; break; }
+                if (!need) continue;
+                N.updateBefore(ro); N.updateForRender(ro); R._bindings.updateSharedForRender(ro); N.updateAfter(ro);
+                for (k = 0; k < sb.length; k++) sb[k]._ew_rid = rid;
+                _ewBun.rpShared = (_ewBun.rpShared | 0) + 1;
+            }
+        };
         var rpList = function (R, bd) {
             var ros = bd.renderObjects, reps = [], dyn = [], seen = new Set();
             for (var i = 0; i < ros.length; i++) {
@@ -46995,6 +47014,16 @@ const ThreeRenderer = (function () {
             /* a rested object wrote on its turn: what changed may be the same for all of them (the pass's camera in an object's
                own buffer) — every rested one is refreshed this frame, and rests again only after REST quiet frames */
             if (woke && held) { for (i = 0; i < held.length; i++) { held[i]._ew_rq = 0; rpStep(R, held[i]); asked++; } _ewBun.rpWoke = (_ewBun.rpWoke | 0) + 1; }
+            /* THE HELD KEEP THE CAMERA (2026-11-15, mondo: "trees and other props are moving when i move my camera ... its in door hq
+               too"): the frame's camera (and lamps, fog) sit in SHARED buffers, one per set of shared values a shader reads, and three
+               writes each when the first object that reads it is refreshed in a render. A held object is not refreshed, and the
+               instanced shaders read a set of their own: since THE COPIES REST held the batches too, on most frames nobody wrote
+               that buffer, so every instanced prop (trees, lamps, chairs, boxes) was drawn with the camera of up to REST frames
+               ago: glued to the view while it turned, then snapping home (measured in the main hall: the first frame after a
+               70 degree turn drew the lamps, boxes and chairs where they stood on screen before it). Now the first held object
+               of each shared buffer has its SHARED part refreshed in every render (what three does for a still object); the
+               rest stay held. Off: window.EW_BUN_HELD_NO_SHARED. Count: _ewBun.rpShared. */
+            else if (held && !(typeof window !== 'undefined' && window.EW_BUN_HELD_NO_SHARED)) rpShared(R, held);
             _ewBun.rpAsked = (_ewBun.rpAsked | 0) + asked; _ewBun.rpAll = (_ewBun.rpAll | 0) + bd.renderObjects.length;
         };
         var rb = r._renderBundle;
