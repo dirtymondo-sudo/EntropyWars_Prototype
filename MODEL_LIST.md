@@ -19,7 +19,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 
 | made by | human-made? | count |
 | --- | --- | --- |
-| Asset pack | yes | 981 |
+| Asset pack | yes | 1005 |
 | Asset pack (author not recorded yet) | yes | 170 |
 | MakeHuman community asset | yes | 546 |
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
@@ -1262,7 +1262,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | psx_wooden_crate_6 | `Assets/world/packs/pizzadoggy_psx_mega_pack/large_props/wooden_crate_6.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 | vent_grille | `Assets/world/packs/pizzadoggy_psx_mega_pack/electronics_and_misc/vent_1.glb` | Asset pack | PSX Mega Pack · Pizza Doggy · Pizza Doggy licence, NOT CC0 (no AI use of the assets, no redistributing them as standalone files) |
 
-### Meshy AI (mondo) — Meshy AI (295)
+### Meshy AI (mondo) — Meshy AI (296)
 
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
@@ -1560,6 +1560,7 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | white_cloud | `Assets/world/props/meshy/Meshy_AI_white_cloud_0917035538_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | wooden_bucket | `Assets/world/props/meshy/Meshy_AI_wooden_bucket_0922011434_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | wooden_cross | `Assets/world/props/meshy/Meshy_AI_wooden_cross_0917035711_texture.glb` | Meshy AI | Meshy AI (mondo) |
+| woods_glowcap | `Assets/world/props/meshy/Meshy_AI_mushroom_realistic_0727202046_texture.glb` | Meshy AI | Meshy AI (mondo) |
 | yellow_pole | `Assets/world/props/meshy/Meshy_AI_a_yellow_pole_0922010159_texture.glb` | Meshy AI | Meshy AI (mondo) |
 
 ### Roads · Elbolilloduro · CC0 (every piece of the pack cut into its own GLB in Blender by bake-roads.py; data.js HQ_CATALOGUE_ROADS, editor group Roads) — Asset pack (106)
@@ -1954,6 +1955,35 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | decor_wall_torch_bracket | `Assets/world/props/meshy_decor/wall_torch_bracket.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | decor_windpump_tower | `Assets/world/props/meshy_decor/windpump_tower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
 | decor_windpump_wheel | `Assets/world/props/meshy_decor/windpump_wheel.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concepts approved by mondo, 2026-11-03) |
+
+### PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) — Asset pack (24)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| psxg_coffin | `Assets/world/packs/blendervoyage_graveyard/psxg_coffin.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_dead_bush_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_dead_bush_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_dead_bush_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_dead_bush_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_dead_tree_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_dead_tree_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_dead_tree_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_dead_tree_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_dirt_grave | `Assets/world/packs/blendervoyage_graveyard/psxg_dirt_grave.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_iron_gate_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_iron_gate_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_iron_gate_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_iron_gate_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_jack_o_lantern_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_jack_o_lantern_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_jack_o_lantern_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_jack_o_lantern_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_railing | `Assets/world/packs/blendervoyage_graveyard/psxg_railing.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_railing_corner | `Assets/world/packs/blendervoyage_graveyard/psxg_railing_corner.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_rock_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_rock_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_rock_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_rock_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_rock_3 | `Assets/world/packs/blendervoyage_graveyard/psxg_rock_3.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_rock_4 | `Assets/world/packs/blendervoyage_graveyard/psxg_rock_4.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_stepping_stone_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_stepping_stone_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_stepping_stone_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_stepping_stone_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_tombstone_1 | `Assets/world/packs/blendervoyage_graveyard/psxg_tombstone_1.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_tombstone_2 | `Assets/world/packs/blendervoyage_graveyard/psxg_tombstone_2.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_tombstone_3 | `Assets/world/packs/blendervoyage_graveyard/psxg_tombstone_3.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_wall | `Assets/world/packs/blendervoyage_graveyard/psxg_wall.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_wall_corner | `Assets/world/packs/blendervoyage_graveyard/psxg_wall_corner.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
+| psxg_wall_pillar | `Assets/world/packs/blendervoyage_graveyard/psxg_wall_pillar.glb` | Asset pack | PSX Halloween Graveyard (free version) · BlenderVoyage · the pack page's licence (each piece cut out of the pack's one GLB, unchanged) |
 
 ### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; Disaster City Financial interiors, mondo 2026-11-13 22:33; originals in project files disaster-city-financial/meshy/) — Meshy AI (22)
 
@@ -2479,6 +2509,14 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | spell_one_angel_wing | `Assets/characters/gear/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
 | spell_one_bat_wing | `Assets/characters/gear/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
 | spell_one_dragon_wing | `Assets/characters/gear/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb` | Meshy AI | Meshy AI (single wing, mirrored in code) |
+
+### Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) — Meshy AI (3)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| woods_gasplant | `Assets/world/props/meshy/ew_plant_gasplant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| woods_healflower | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
+| woods_thornvine | `Assets/world/props/meshy/ew_plant_thornvine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) |
 
 ### Pizzeria PSX · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (2)
 
@@ -3151,9 +3189,6 @@ Found by scanning the scripts for literal model URLs that no table above lists (
 | name | file (R2 bucket path) | made by | source | script |
 | --- | --- | --- | --- | --- |
 | ew_plant_apple | `Assets/world/props/meshy/ew_plant_apple.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) | three-renderer.js |
-| ew_plant_gasplant | `Assets/world/props/meshy/ew_plant_gasplant.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) | three-renderer.js |
-| ew_plant_healflower | `Assets/world/props/meshy/ew_plant_healflower.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) | three-renderer.js |
-| ew_plant_thornvine | `Assets/world/props/meshy/ew_plant_thornvine.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (THE GARDEN: the plants the seeds grow into + the apple of the apple tree; plant concepts approved by mondo 2026-11-12) | three-renderer.js |
 | eyeball | `Assets/world/props/meshy/eyeball/eyeball.obj` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
 | Pyramid | `Assets/world/props/meshy/Pyramid/Pyramid.glb` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |
 | Street Lamp | `Assets/world/props/meshy/streetlamp/Street Lamp.obj` | Asset pack (author not recorded yet) | Authored OBJ / GLB (mondo's upload, author not recorded) | three-renderer.js |

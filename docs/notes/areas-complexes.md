@@ -3503,8 +3503,33 @@ buildings or props or banners"; he corrected shield B (bolt, not a crack) and th
   No statue yet. Public library: limestone, arched ground-storey windows on three sides, a copper dome, a `lion` each side of the portal.
 - THE STREET (`DRESS` = [px, py, key, x, z, face, squares it needs, opts], `BARS` = unseen low walls on barrier squares): four black cars
   on whole squares in the Service court's south-west yard, the lions, four newspaper racks, the pool's fountain.
-- NOT DONE (need mondo's OK on a Meshy concept first): the seated statue, the pink blossom trees. No lawn paint (the ground palette is
+- The seated statue + the pink blossom trees: approved 11-15, placed and waiting for their models (see "CIVIC CENTER, DC PASS 2" below). No lawn paint (the ground palette is
   shared). No far version of the obelisk (it is three parts).
+
+## DISASTER CITY, CIVIC CENTER, DC PASS 2 — the White House + the two pieces that wait for their model (2026-11-15)
+Second side (handoff prompt 3). mondo's answers 11-15: seated statue APPROVED, blossom tree APPROVED, "Owner side makes them" (this account
+has no Meshy key), extra picked: "Mayor's House = White House". All in `docs/disaster-city/districts/C.js`.
+- THE WHITE HOUSE (plot P07-00, building 1, the Mayor's House; same foot, same drawn door on its west front, still no inside): white stone,
+  a flat roof behind a plain parapet, its stone lifted (`glow: 0.45`) so the shaded front still reads white, no shop awning on its door (a `plain` door part), a two-storey four-column portico with a pediment over the door, two lamps on the walk, a flag on the
+  roof. Its west lawn (4 x 4 squares) has the black iron fence on its north and walk sides, the gate facing the portico. `iron()` is a
+  file-level helper now (the plaza's lawns use the same one).
+- THE PIECES THAT WAIT (`HAVE` at the top of C.js): a key is placed only when data.js has a catalogue row `<key>: { file: ...`. Today
+  neither row exists, so the bake places nothing and the city is as before. `CIVIC_HAVE=1 node bake-disaster-city.js --dry-run` shows the
+  placed counts without the rows (dress 27 = 11 + 1 statue + 15 trees, none left out).
+  - `seated_statue` (concept `docs/plans/disaster-city/civic-dc/dc_concept_statue.png`): stands in an open four-column stone temple on the
+    Civic plaza's south-east lawn (plot P06-01, squares 9..10, 10), facing north up the walk at the obelisk. The temple is drawn only when
+    the row exists. NOT in the roof memorial of the Records garden (15 m up, nobody would see it).
+  - `blossom_tree` (concept `dc_concept_tree.png`): 15 trees, each on its own free lawn square: City Hall's front (2), the plaza's
+    south-west lawn round the bandstand (4) + one by the obelisk, the White House lawn's corners (4), the Courthouse plot's south lawns (4).
+- FOR THE OWNER SIDE (it has the Meshy key): make both from the concept pictures (concept -> image-to-3D meshy-t2.5, base y 0, metallic 0,
+  `.opt.glb` beside each, like the Desert's pieces), upload to R2 `Assets/world/props/meshy/`, add the manifest rows + MODEL_LIST, add
+  these two catalogue rows beside THE CIVIC INTERIOR PIECES in data.js, then rerun `node bake-disaster-city.js`:
+  `seated_statue: { file: 'world/props/meshy/seated_statue.glb', base: 'asset', h: 3.4, foot: 1.2, block: true, group: 'Meshy props' },`
+  `blossom_tree:  { file: 'world/props/meshy/blossom_tree.glb', base: 'asset', h: 5.5, foot: 0.35, block: true, group: 'Meshy props' },`
+  The statue's front must be +Z. The tree: no loose falling petals in the prompt (they become floating slivers).
+- THE HARBOUR DOOR: the city's `harbour` door (Bayside's boardwalk) targets `{ room: 'site_prebuilt_bermuda_beach', at: 'quay' }` now
+  (bake-disaster-city.js; asked by the Beach's holder on the board).
+- `CIVIC_DEBUG=cells` prints the free squares of the plaza plots at the moment C.js runs (`.` free, `x` taken, letters = the plan).
 
 ## DISASTER CITY, THE HOLLYWOOD HILLS — the sign on the mountains (2026-11-15)
 mondo 11-15 12:55: "the disaster city hollywood sign, there is already the mountains on one of the edges of disaster city, use that/make that
@@ -3759,6 +3784,14 @@ the castle should be in the center of the map and relatively symmetrical. higher
   well and the wardrobe (no building's inside is reached by that solver in this room, the live Inn included: the doorways are narrower than
   its lattice; the Keep's doorway line reads clear ground and no wall). Drawings of the baked rows: `docs/plans/camelot/castle2_built_rows_front.png`
   and `castle2_built_rows_plan.png`.
+- **ONE STACKED BUILDING, PLAN POSTED, WAITS MONDO'S OK (nothing built)**: mondo on the next-four picture: "can we make the 3 rooms stacked like
+  part of the same building, but the castle can be its own loading screen" + "real architecture/floor plan". Floor plans:
+  `docs/plans/camelot/camelot_castle_stacked_plan.png` (draw-castle-stacked.py): ONE new room CAMELOT CASTLE behind the palace's portal (the
+  loading screen): Undercroft -7 m, floor 0 (Throne Hall 14 m high, Kitchen wing, Barracks wing), floor 1 +7 (gallery, Chapel Royal, Knights'
+  Hall), floor 2 +14 (Long Gallery, Solar, Presence Chamber, Queen's Chamber), floor 3 +21 (Great Library, Merlin's Study, War Room),
+  Battlements +28, Spire Room +44, the Castle in the Sky +88. The kingdom's palace would turn solid and its walked-into Throne Hall / wings
+  move inside. Engine fact to respect: floor over floor is the BRIDGE LAYER (`bridge` slabs; "NOT built: a door ON a bridge, props on a
+  bridge, the full second floor"), so build one stair + two floors first and check them. This replaces items 1-3 of the picture below.
 - **THE NEXT FOUR, PLAN POSTED, WAITS MONDO'S OK (nothing built)**: `docs/plans/camelot/camelot_castle2_next_plan.png` (draw-castle2-next.py):
   the Keep room (floors 2-3, Battlements, Spire room), Merlin's Undercroft under the whole hill, the Castle in the Sky as the palace's twin,
   five kinds of village house. Do not build any of the four before his yes on it.
@@ -3831,6 +3864,35 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
   furnished walk-in with no game role; do not tie a rest spot, a shop, a story beat or an NPC to it until he says what it is for.
 - **THE ESTATE DOOR** (same day): the `estate` door (P01-05, south) now targets the Estate's plot room, `{ room: 'site_prebuilt_skinwalker_estate', at: 'woods' }` (was the retired
   `site_prebuilt_skinwalker_fields` at `bay`). The door did not move, so bake-estate.js needed no rerun.
+
+### THE WOODS: THE LIFE PASS (2026-11-15, mondo: "make the woods come alive and look good ... look at the nature spells for inspiration ... same with the fairy forest"; his "sounds good" on the four looks, "yes lets do per district particles")
+- **The four looks** (bake-woods.js THE LIFE PASS block, before the checks): THE CLEARING = the friendly woods (birch mass; heal flowers, butterflies, bees, ladybugs,
+  rabbits; fireflies). THE REDWOOD TRAIL = ancient and overgrown (taller giants, 8.5 to 13 m mass; thorn vine at the giants' feet and about, small mushrooms, boulders,
+  more ferns / logs / stumps, moths, two eagles, frogs at the Falls; pale green spores; snow falls on the Snowline plot). THE RITUAL GROUND = the fairy forest gone wrong
+  (dark spruce mass with bare trees; a 14-cap `fae_toadstool` ring 10.5 m round the Stones, five giant `fae_mushroom` caps on the lake shore and the Mound, five
+  `crystal_cluster`, small glowing `woods_glowcap`, moths, frogs at the lake; violet motes). DEAD MAN'S CAVE = rot and thorns (bare mass; thorn vine, gas plants, small
+  spore caps, dead snags with crows, frogs at the Pool; ash).
+- **The spell plants as decor**: data.js catalogue `woods_thornvine` / `woods_gasplant` / `woods_healflower` are the garden's own models (the Thornlash / Spore / Rejuvenation
+  family's plants, three-renderer.js `_PLANT_MODEL_URLS`), about 8,000 triangles each, so the counts are kept low (48 / 23 / 44). `woods_glowcap` = the toadstool model
+  small, a glow and no light. NO apple tree (it is a Meshy tree; his rule).
+- **Helpers**: `life(plot, key, o)` = a small thing off the middle of a random open square (shares squares, claims none); `fly()` = the same in the air; `sow(key, n,
+  [square], r)` = a `scatter` row over a disc. Every new glow is `noLight` (the room's ten real lights are the torches and fires).
+- **THE FOREST MASS BY DISTRICT**: `terrain.gen.zones` (data.js THE TREE ZONES, Camelot's), five boxes, the three mountain plots first. Also fixed: Dead Man's Cave had NO
+  feature trees (its kind `dead_tree` does not exist); it plants `tree_6` now.
+- **THE AIR BY DISTRICT** (three-renderer.js `_hqBuildAtmos` / `_hqBuildAtmosOne`): `shell.atmos.zones = [{ x0, z0, x1, z1, kind, color?, n?, speed?, wind? }]` (metres),
+  one Points per zone, particles born in the box and wandering round their own spots. Any room can use it. `H.atmos.obj` is then a group. Viewer-local, nothing relayed.
+- Checked headless: the room compiles, every scatter piece lands on open ground (none in the forest mass), the mass kinds differ by district. NOT seen in game (no browser run).
+- **SEEN IN THE PROBE, FIXED (same day)**: (1) the garden's "thorn vine" model is a toothed man-eater plant on a dirt mound, wrong beside the Meadow's campfire: it lives
+  in Dead Man's Cave only now. (2) the ocean pack's rocks (`ocean_rock_5/6`) draw as BLACK blocks in this room: the Redwood Trail's boulders are `cave_stone`.
+- **THE CASTLE IN THE MAP (mondo: "what is this big castle wall thing ... clipping into the bridges and I can walk through it")**: `HQ_WOODS_LANDMARKS`' Camelot horizon
+  model sits at dist 0.88 of the sky's radius, right for the old 60 m rooms, INSIDE the 252 m room. `hqWoodsShell({ noLandmarks: true })` drops the sky's landmarks (the bake passes it).
+  Lesson: a horizon landmark on a shell made for small rooms must be checked when the room grows.
+- **NO UNEXPLAINED DEAD ENDS (mondo: "get rid of any trails that lead to nowhere, no unexplained dead ends")**: a `secret` TRAIL door gets no waymark post, so its path just
+  stopped at the trees. The three secret ways show what they are: `lemuria` and `lodge` are `way: 'tunnel'` mouths, `lookingglass` is a `hollowtree`. Still `secret`.
+  Checked: no other path square on the map is a tip that ends at nothing (every edge trail is a door or a link).
+- **Probe tip**: in this room a third-person view (`dist`) puts the camera inside the forest mass's crowns on most plots: use `"fp": true` standing on open ground.
+- **ASKED FOR, NOT BUILT (mondo, same message): a pass that adds WATERFALLS and LIGHT SHAFTS to rooms** ("might need its own thread"). Today rooms have only `pool` /
+  `stream` / `deck` water, and `_hqLightShaft` returns null (the `light_shaft` prop and `DOOR_HQ.lightShafts` rows draw nothing). The Falls plot and the canopy want them first.
 
 ## THE DESERT ON PLOTS — the third area of the world plan, first delivery (2026-11-15)
 
@@ -4091,8 +4153,15 @@ update that rule" (CLAUDE.md RULE #1c + owner-rules.md rewritten: browser runs w
   row. Now: six headstones, three graves, a wooden picket panel, two iron fence panels, two iron gate leaves, two brick wall panels, two scarecrows on
   poles, two straw bales, a tilled bed + three crops, five bare trees, four pumpkins, two candle clumps, a shovel, a cobweb. `h` = each piece's real
   height, read from the file's geometry (centimetres), so every piece stands at true size. Nothing uploaded, nothing generated. MODEL_LIST.md rerun.
-  Still in his packs and not used yet (bucket `dirtymondo`, `project-files/asset-packs/`): the BlenderVoyage PSX graveyard pack (three more tombstones,
-  two iron gates, a railing, a dirt grave, dead bushes, two jack-o'-lanterns) needs cutting up and an upload; the bus-stop pack has a `Wheat` sheaf.
+  Still in his packs and not used yet (bucket `dirtymondo`, `project-files/asset-packs/`): the bus-stop pack has a `Wheat` sheaf.
+- **THE PSX GRAVEYARD PACK IS A PROP KIT TOO** (mondo 11-15 "yes do that please"; data.js `HQ_CATALOGUE_GRAVEYARD`, 24 rows `psxg_*`, `base: 'asset'`):
+  BlenderVoyage's pack is one GLB; a scratch splitter (plain Python, no Blender: it copies a node's meshes, materials and pictures byte for byte into a
+  new GLB, keeps the node's turn and scale, drops its place in the pack's layout) cut 24 pieces, uploaded to R2
+  `Assets/world/packs/blendervoyage_graveyard/psxg_<piece>.glb` with `node sync-zip.js --put`: three tombstones, a dirt grave mound, a coffin, two iron
+  gate leaves, an iron railing + corner, a low stone wall + pillar + corner, two carved jack-o'-lanterns, two dead bushes, two dead trees, four
+  rocks, two stepping stones. list-models.js has its SOURCES row (its licence is the pack page's: not checked by Claude). In the Estate: the pack's
+  tombstones mixed into both graveyards' rows, a fresh mound before every other stone, pillars and small iron leaves where each walk enters, dead
+  trees, bushes, rocks, jack-o'-lanterns in the graveyards and on the house's porch. Corn still waits for the Meshy key (mondo 11-15).
 - **IN THE ESTATE (bake-estate.js):** headstones and graves in the Family Plot and the Graveyard (were standing stones), a shovel, pumpkins, candles;
   the iron fence along the foot of the house's lawn; real iron leaves on the Iron Gate (its piers moved inside the track); bare pack trees round the
   house; THE SCARECROW on its pole with a pumpkin patch; straw bales in rows over the Hay Field, a stack by the truck and by the barn, bales in the
@@ -4235,5 +4304,31 @@ hangar and the ward were still the old BSP rooms and the pyramid had no inside. 
   lanterns, helm, capstan) inside a group moved to her berth, her waterline on this room's sea; `hull.moored` skips the wake and the bow spray
   (the deck room itself is unchanged). She is her real size: 119 x 49 m (34 x 14 squares) plus the beakhead, bow east, her stern at the Long
   Pier's end, so she runs out of the Harbour into the Ocean's plots. bake-beach.js reads her deck heights from that room (it refuses to bake if
-  the room is no longer the 34 x 14 galleon) and writes them into the squares she stands on, so this room's ground is her decks. Boarding is
-  still the gangway link to her Main Deck room. Any room can berth a galleon room this way.
+  the room is no longer the 34 x 14 galleon). Boarding is still the gangway link to her Main Deck room. Any room can berth a galleon room this way.
+- **SEEN ON SCREEN (same day, mondo: "yes please"; playtest_city.js, 13 views, HEAD 5c2f4fb + this change):** the real ship stands at the pier
+  (stern gallery, her name, masts, sails, rigging); the shore, the huts, the Quay shed, the Volcano Island and the Triangle's island all draw.
+  Two things the pictures showed and this change fixed: (1) her castle breaks were grey rock (this room's ground steps wearing the cliff sheet),
+  so the ground under her is now one flat block hidden inside the hull (0.8 m under her lowest deck; it only keeps walkers and boats out) and
+  `_hqBuildMoored` draws her decks itself as one planked sheet over her own compiled heights; (2) Room 345's fight marker stood on the Boardwalk
+  (`HQ_AREA_MARKERS` is where a site's fight is entered), now on the Island Beach by the cabin door. Probe lessons: `--flags=EW_NO_MODEL_QUEUE`
+  killed the browser three times in this room (every model at once); without it and `--wait=70000` it runs. New probe options: `--pre=<js>`
+  (run before the room is entered) and `EW_LIVE_LOG=1`. STILL TRUE: the pier meets her flat stern head-on; the huts' colours read muted.
+- **ALONGSIDE, THE PAINT, THE DRESSING (same day, mondo: "berth her along the side of the pier, brighten the huts, and see what other aquatic or
+  oceanic or beach related models you can add to dress the area"):**
+  - ALONGSIDE: she lies south of the Long Pier, port side to it (squares 35-68 x 56-69, one square of water between for her hull's swell); the
+    pier runs on east past the plan's end to square 56, and the gangway (link `beach_dutchman`) is on the pier's south edge at her waist; its
+    deck end moved to her port waist between the two guns (x 0, z -23.6). The Channel's buoys moved west of her stern.
+  - THE PAINT: a colour over the brown board sheet read as mud. Bayside's way (districts/B.js): walls take `gain` 2.3, roofs are the painted
+    corrugated sheet at gain 2.0, trim is plain paint. Huts = aqua / lemon / coral, each with its own roof colour and a striped fascia.
+  - THE DRESSING (catalogue models only): Shore = flamingos, a sandbox, the snack cart and a telescope on the Boardwalk, two rowboats, more
+    umbrellas and loungers, seals; Harbour = a container, pallet, forklift, cable drum, sandbags, a gun, the shed's outboard / wheel / bell, lamps
+    and rings and traps down the pier; Ocean = black smokers off the volcano, more dolphins, rays, tuna; Triangle = an eel and squid in the
+    Maelstrom's hole, an octopus under the wreck, clams, tube coral and reef fish on the Reef, a gun, telescope, boat and umbrella on the island.
+  - SEEN ON SCREEN AND FIXED: weed, kelp and anemones in shallow water break the surface as black spikes or stand on the sand (removed; the old
+    sea room's note said the same); the ocean pack's rocks on dry sand are black pillars (removed from the shore); `ship_lantern` hangs in the air
+    when stood on a floor (all seven are `railway_lantern` now); whales given a `hover` flew over the sea (now `y -2.6, hover 0`: backs at the
+    surface). TRIED, NOT SHIPPED: `palmisle` and the two kraken `tentacle` models did not show at any height in deep water.
+  - PROBE LESSON: in a room this big the software browser never requests the props before the shot, and `EW_NO_MODEL_QUEUE` on the whole room
+    kills it. What works: `--pre=` a filter that keeps only the props near the views (and drops the scatters and trees), then the flag.
+    Not seen this way: the flamingos up close, the island's and the Reef's pieces, anything under the water (the sea is opaque from above).
+
