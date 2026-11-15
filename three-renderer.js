@@ -36528,7 +36528,7 @@ const ThreeRenderer = (function () {
         if (c === 'calm_sand' && key === 'desert' && C.sheets.calm_sand_beach && _ewSandBeach()) c = 'calm_sand_beach';   // THE TWO SANDS: a beach's desert
         return c;
     }
-    function _calmSheet(key) { var c = _calmKeyOf(key), C = c ? _calmTable() : null; return C ? C.base + C.sheets[c][0] : null; }
+    function _calmSheet(key) { var c = _calmKeyOf(key), C = c ? _calmTable() : null; return C ? ((typeof calmSheetUrl === 'function') ? calmSheetUrl(c) : C.base + C.sheets[c][0]) : null; }
     function _calmNoTile(key) { var c = _calmKeyOf(key), C = c ? _calmTable() : null; return !!(C && C.noTile && C.noTile[c]); }
     /* the value drift (× the field's AO): two octaves over metres, ±drift */
     function _calmDrift(x, z) {
@@ -36605,7 +36605,7 @@ const ThreeRenderer = (function () {
         tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true;
         try { tex.anisotropy = Math.min(8, (renderer && renderer.capabilities && renderer.capabilities.getMaxAnisotropy) ? (renderer.capabilities.getMaxAnisotropy() || 1) : 1); } catch (e) {}
         E = _nzMoveLive[key] = { tex: tex, g: g, n: N, row: R, base: null, over: null, drawn: false };
-        _nzMoveImg(C.base + C.sheets[key][0], function (im) { E.base = im; E.drawn = false; });
+        _nzMoveImg(((typeof calmSheetUrl === 'function') ? calmSheetUrl(key) : C.base + C.sheets[key][0]), function (im) { E.base = im; E.drawn = false; });
         _nzMoveImg('https://cdn.entropywars.net/Assets/fx/noise/sbs/' + R[0] + '.png', function (im) {
             /* the noise, tinted once */
             var oc = document.createElement('canvas'); oc.width = oc.height = N; var og = oc.getContext('2d');
