@@ -45624,6 +45624,38 @@ const ThreeRenderer = (function () {
             if (c.children.length) _ewRigWalk(c, R, mask);
         }
     }
+    /* THE KEPT LIGHT LIST (2026-11-15, mondo's F3 walking Disaster City: "render: node + rig ticks 3.0" ms of a 27 ms frame):
+       the rig read the scene's lights by walking EVERY visible object of the scene each frame (the city: ~40,000) to find
+       its ~30 lights. The scene's lights (every one, shown or not, in the walk's own order) are now listed once and listed
+       again only when something was added to any scene (Object3D.add's counter; nothing in the game adds a child another
+       way), and once a second all the same. Each frame reads that list: a light counts when it and every parent up to the
+       scene are shown, exactly what the walk reached, and is treated exactly as the walk treated it. A light taken out of
+       the scene fails the parent test. The walk every frame again: window.EW_RIG_WALK_EVERY = true. */
+    function _ewRigListAll(o, R, out) {
+        var ch = o.children;
+        for (var i = 0; i < ch.length; i++) { var c = ch[i]; if (c === R.group) continue; if (c.isLight) out.push(c); if (c.children.length) _ewRigListAll(c, R, out); }
+    }
+    function _ewRigRead(sc, R, mask) {
+        if ((typeof window !== 'undefined' && window.EW_RIG_WALK_EVERY) || typeof _ewAddCount !== 'function') { _ewRigWalk(sc, R, mask); return; }
+        var C = sc._ew_rigList, an = _ewAddCount(), now = performance.now(), kids = sc._ew_lentKids || sc.children;   // a mirror render lends the scene's children to its clipping group: the same list, the same lights
+        if (!C || C.an !== an || C.kids !== kids || C.n !== kids.length || now - C.at > 1000) {
+            C = sc._ew_rigList = { an: an, kids: kids, n: kids.length, at: now, list: [] };
+            _ewRigListAll(sc, R, C.list);
+        }
+        var L = C.list;
+        for (var i = 0; i < L.length; i++) {
+            var c = L[i], up = c;
+            while (up && up !== sc && up.visible !== false) up = up.parent;
+            if (up !== sc) continue;   // hidden, under a hidden parent, or no longer in this scene: the walk never reached it
+            var k = _ewRigKind(c);
+            if (!k) { if (c._ew_rigMask != null) { c.layers.mask = c._ew_rigMask; c._ew_rigMask = null; } }
+            else {
+                if (c.layers.mask !== 0 || c._ew_rigMask == null) { c._ew_rigMask = c.layers.mask; c.layers.mask = 0; }
+                var S = R.src[k];
+                if ((c._ew_rigMask & mask) !== 0 && S.length < _EW_RIG_KMAX[k]) S.push(c);
+            }
+        }
+    }
     function _ewRigRelease(sc) {
         sc.traverse(function (c) { if (c._ew_rigMask != null) { c.layers.mask = c._ew_rigMask; c._ew_rigMask = null; } });
         if (_ewRigG && _ewRigG.group.parent === sc) sc.remove(_ewRigG.group);
@@ -45684,7 +45716,7 @@ const ThreeRenderer = (function () {
         sc.userData.ewRigOn = true;
         var k, i;
         for (i = 0; i < _EW_RIG_KINDS.length; i++) R.src[_EW_RIG_KINDS[i]].length = 0;
-        _ewRigWalk(sc, R, cam.layers.mask);
+        _ewRigRead(sc, R, cam.layers.mask);   // THE KEPT LIGHT LIST (was a walk of the whole scene every frame)
         /* the point lamps grow in steps of 4, the rest one at a time — never shrink (a scene's shaders build once) */
         var grew = false;
         for (i = 0; i < _EW_RIG_KINDS.length; i++) {
