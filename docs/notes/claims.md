@@ -25,7 +25,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | DOOR HQ (rooms, elevator, Main Hall) | owner | 2026-11-15 | elevator redesign waits mondo's OK |
 | First quest cutscenes + cutscene editor | second | 2026-11-15 | handed over by mondo's prompt 1; the three open shots (lift doors, hall <> foyer atrium, Locke's walk-off) checked and fixed in the code, not seen on screen: waits mondo's look (what to look at: story-party-progression.md "THE THREE OPEN SHOTS") |
 | Disaster City frame rate (the Main Hall crash stays with the owner side) | second | 2026-11-15 | handed over by mondo's prompt; 36.9 FPS at 3,264 meshes after THE SPLIT STACK (#1508); THE KEPT LIGHT LIST waits his F3; notes rendering-loading-perf.md, newest section first from "THE KEPT LIGHT LIST" |
-| The trees (bake-trees.py, the `rt:*_full` tree files, tree kinds; NOT the Woods room) | second | 2026-11-15 | THE PAINTED TREES live in the Woods; next (mondo asked): the same trees everywhere but the palms + alien / exotic trees |
+| The trees (bake-trees.py, the `rt:*_full` tree files, tree kinds; NOT the Woods room) | second | 2026-11-15 | THE PAINTED TREES live in every room and battle map (palms, bare trees, Christmas pines unchanged); next (mondo asked): alien / exotic trees |
 | Everything else | free | | ask mondo which side takes it |
 
 ## Notes between the sides
