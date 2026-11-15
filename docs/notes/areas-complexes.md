@@ -3348,3 +3348,16 @@ mondo 11-15: "do a font pass on all of the buildings that have text"; his OK on 
 - NOT changed: Financial's box-built 3D letters (F-detail.js `letters()`), the lamp-post district banners (field `v`), text painted on pack
   models. Seen: the real function on the real baked keys in a bare page (/mnt/project-files/city-sign-fonts/built_real_sign_code.jpg), not
   in the game (RULE #1c).
+
+## DISASTER CITY, THE CITY MARKS (2026-11-15)
+mondo 11-15: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city branding/logo for certain
+buildings or props or banners"; he corrected shield B (bolt, not a crack) and the flag's star on the sheet, then "the rest looks good for now".
+- Marks, drawn on the sign's own canvas from the sheet's SVG paths (three-renderer.js `_hqSignMark`, no texture file): `seal` (navy + gold
+  city seal), `shield` (the DC bolt shield), `pd` (D.C.P.D. badge), `fd` (D.C.F.D. badge). A seventh key field names the mark left of the
+  words: `txt:WORDS|fg|bg|aspect|<v>|<font>|<mark>`. A lamp banner (field `v`) always carries the seal above its district's name.
+- Set at the bake by docs/disaster-city/sign-fonts.js `BRAND` (Civic): POLICE boards read D.C.P.D. (pd), FIRE STATION boards read D.C.F.D.
+  (fd), the boards of City Hall, Courthouse, Council annex, Permit offices and Civil records take the seal. The department names are his;
+  add no other department without his word.
+- NOT built yet: the shield on the bus / stops / bins / barriers, manhole covers, the flag (mark C; sheet
+  /mnt/project-files/city-sign-fonts/branding_mockup_v3.jpg + branding_mockup.html hold its shapes). Seen: the real function in a bare page
+  (branding_built_real_sign_code.jpg), not in the game (RULE #1c).
