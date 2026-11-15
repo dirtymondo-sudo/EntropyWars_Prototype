@@ -3723,6 +3723,39 @@ districts ... the north pole to the north of the castle would be good as a rival
   still the old rooms. No anvil, market stall, archery target or lamp post exists on R2 (tents, crates and sacks stand in). The old
   Fairy Forest glade has no door of its own, so nothing links to it. Town plot names are plain descriptions.
 
+## CAMELOT KINGDOM, PLAN 3 — castle, village, wall, moat, woods (2026-11-15)
+mondo: "the village is supposed to be inside the castle walls too. so castle in the middle. village. walls surrounding all that. moat
+surrounding all that. then woods surrounding all that" · "okay that looks better" on the plan picture (project files
+camelot-kingdom/plan3/camelot_plot_plan_3.png; draw-plan3.py there writes the picture AND `docs/areas/camelot/layout.json`).
+- **Same room id** `site_prebuilt_camelot_kingdom` (Continue, the map, `DOOR_HQ.retired` all still land in it), still 8 x 8 plots, rewritten
+  by `node bake-camelot.js`. This SUPERSEDES the "KINGDOM ROOM" section below wherever they differ.
+- **From the middle out** (kingdom squares 0..96): THE CASTLE = `buildCastle(0, true)` at squares (24, 30): the same build with `TOWN` set
+  (no moat of its own, no bridges, nothing on its old south bank; the Undercroft's door stands at the foot of its south wall, the wardrobe
+  against the stables' north wall). THE VILLAGE: a street loop (x 22-23 / 72-73, y 26-27 / 62-63), the Market at the castle gate, Chapel,
+  Inn, Smithy (walked into), 45 houses (their doors face the nearest street: `frontOf` looks three squares out). THE TOWN WALL on
+  x 18.5 / 77.5, y 21.5 / 73.5: `townSide()` = hqCurtainWall runs split at every drum + a deck, front, ridge roof and two cones a gate;
+  four hollow corner towers (the castle's own door / join tables); four gates (south 42-44, north 47-49, east and west y 47-49).
+  THE MOAT: two `stream` rows on the ring x 15.5 / 80.5, y 18.5 / 76.5, a bridge at each gate (`drawbridge` south). THE WOODS:
+  north the snowy pines + the sleigh road (the north wall, x 0), east the Fairy Forest (pond, ring, spring, knolls; the Woods trail on
+  the east wall, z 0), west the Looking-Glass Garden (hedges, chessboard, marble court, mirror, tea party), south the forest and the
+  road from DOOR HQ (the portcullis on the south wall, x -17.5). A track runs round the moat's outer bank.
+- **The North Pole is OUT of this room** (the world-layout thread moves it over the mountains; mondo 18:17 "mountains and woods separate
+  camelot from the north pole"): no pole, workshop, cottages or lake here. `northpole_camelot` still ends on the north wall and goes to
+  `site_prebuilt_northpole_village`, untouched.
+- **The town wall is 7 m like the castle's**: at 5.25 m the corner towers' decks left no headroom over their own spiral.
+- **No `slope` any more** (the room is flat). The old room's slope made every hollow tower's deck `y` NaN (an arc bridge on a sloped
+  room): mondo's crash trail showed "computeBoundingSphere(): Computed radius is NaN" on entering the kingdom. Do not put `slope.cells`
+  back on a room with hqCastleTower rows without fixing that first.
+- **The dressing is by square** (`put` / `dec` / `tree` / `native` (key, x, y)): the tool stops and lists every piece that stands on a
+  square that is not free ground or is taken twice.
+- **Known**: the four moat bridges print the same "leaves under 1.95 m of headroom" line the old drawbridge did (the bank under a bridge;
+  nothing walks there). Compile in node 11.6 s (was 8 s). Hand rows moved in data.js: `siteRooms.entry.prebuilt_camelot` (x -17.5), links
+  `woods_camelot.b` (z 0), `northpole_camelot.b` (x 0), `haunted_camelot.b`, `well_camelot.a`, the map anchor row.
+- **NOT SEEN ON SCREEN** (RULE #1c). Checked offline: data.js parses, the room compiles, no NaN in any compiled row or arch mesh, every
+  link end resolves, every plot is walked to from the portcullis, a top-down drawing of the compiled rows
+  (camelot-kingdom/plan3/kingdom_plan3_built_rows_topdown.png) matches the plan.
+- **Still old rooms**: the Keep's upper floors, Merlin's Undercroft, the Castle in the Sky.
+
 ### THE ROOFS' UNDERSIDES (2026-11-15)
 mondo: "There are gaps in the village buildings roofs." An `arch` roof part is drawn from outside only and had no underside, so from the
 street you looked up past the eaves, through the roof, at the sky. bake-camelot.js `sheet().roof` now writes one timber sheet facing down
@@ -3752,3 +3785,85 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
 - **THE CABIN FLOOR**: the ground rolls a few cm under the cabin and came up through the hollow building's own thin floor. The arch row now has a real board slab, 16 cm
   proud of the ground, wall to wall, and the porch boards sit at the same height. A one-square alley joins the plot's path to the porch.
 - Not seen in game (no browser run). `WOODS_DUMP=1 node bake-woods.js --dry-run` prints the square map.
+
+## THE DESERT ON PLOTS — the third area of the world plan, first delivery (2026-11-15)
+
+mondo: "start a thread to start on the desert" · "put the circus in the desert (move it from where it is now) ... i meant district not plot" ·
+"put the spot from the intro cut scene/main menu background somewhere" · "okay looks good" (plot plan v2, 18:33 UTC).
+
+- **THE ROOM** `site_prebuilt_area51_desert` (site `prebuilt_area51`, part `desert`): 8 x 8 plots of 12 x 12 squares (336 m a side), written by
+  `node bake-desert.js` from `docs/areas/desert/layout.json` between `DESERT64-BEGIN / DESERT64-END` in data.js. Never hand-edit between the markers.
+  Plan pictures + the script that draws the layout: `/mnt/project-files/desert-plots/` (`draw-plan.py`, `desert_plot_plan.png`).
+- **OPEN GROUND, NO `gen`:** the sand is walked anywhere. The only walls are the rock (`m` squares = 5.25 m plateaus, their inner squares 8.75 m),
+  the chain-link fence round the base (`wall` rows traced from the `f` squares), ranch rails (corral, animal pens), the buildings and the pyramids.
+  The ground is one `terrain.paint` sheet a square (7 sheets: asphalt, dirt, slab, stone, dry lake, planks, the base's dirt). The room is FLAT
+  (no slope levels); the edges are `terrain.edges` (desert north + east, mountains west + south).
+- **FIVE DISTRICTS:** THE ROAD (7 plots: City Limit, Gas Station, The Door, Junction, Trailers, Bus Stop, Crossroads), THE CIRCUS (9), WESTERN TOWN (16),
+  AREA 51 (16), GIZA (16). Plot names in layout.json. Differences from the approved picture: the highway runs on square columns 1-2 (not 4-5) so the
+  chain's gas station store (28 m) fits east of it; the circus's way in is the dirt track through The Door plot.
+- **BUILDINGS (bake-camelot.js's helper, id prefix `des:`):** hollow `texbuilding` + an `arch` look. Walk-in: Livery Stable, Saloon (balcony), Bank,
+  Hotel, Sheriff's jail, General Store, Church (steeple), the Big Top, the gate's guard post. Shut (the door leads to another room): Hangar 18,
+  the White Rooms wing, the Hall of Mirrors. `western()` in the tool draws one western front (false front, porch, `rye` sign).
+- **THE PYRAMIDS:** a tier = a `plateau` + a `bricks_1` box skin in one `arch` row (`des:giza:look`); stairs = built `ramp` rows. Great Pyramid 77 m,
+  four tiers to 14 m, the North Stair; Khafre 35 m (stair west); Menkaure 21 m (stair north); the Sphinx is plateaus + skin, not climbed.
+- **MOVED IN, NOT REMADE:** the old flight line's tower rows are copied whole from the old room by the tool; the old rooms' people keep their own
+  lines (the tool reads `say` from the old literals, so the old literals must stay). The carnival's pieces, people and lines are the Circus.
+- **THE WAYS:** link `downtown_desert` (Disaster City south park gate, free door x -64.75 z 241.5 -> the highway's north end, wall n x -161);
+  `gobekli_giza` b end -> the Desert's east wall z 73.5 (Robbers' Tunnel); Room 444's bay door = `siteRooms.entry.prebuilt_giza` -> the Tomb Door in
+  the Great Pyramid's west face; Hangar 18's `flightline` door -> `hangar`; the White Rooms' `yard` / `stormdrain` -> `ward` / `stormdrain`;
+  the tunnel platform's `carnival` door -> `tunnel` (by the ticket booth); the Mandela Room's `mirrors` -> `mirrors`. Room 51 still lands in Hangar 18.
+- **RETIRED (`DOOR_HQ.retired`):** `site_prebuilt_area51_gate`, `site_prebuilt_area51_flightline`, `site_prebuilt_giza_plateau`, `carnival` -> the
+  new room (Continue, the map's GO, match returns). The flight line + plateau literals stay as the PvP boards' sources (HQ_ARENA_RULES.picks);
+  the carnival literal stays with `doors: []` (out of the fourth floor's stage zone) because the tool reads its lines.
+- **TABLES:** hub `desert` (Giza left the Leylines hub), `HQ_AREA_MARKERS`, `HQ_WORLD_CLOCK.dayLook`, `HQ_AREA_ENCOUNTERS` (= the plateau's table).
+- **CHECKED OFFLINE ONLY** (no browser run): data.js parses, the room compiles (`hqTerrainInfo`), a flood fill on real heights reaches all 64 plots,
+  the links / bay door / old doors resolve, every prop key and unit exists. NOT seen on screen: which way the gas station store / canopy / trailers
+  face, sign sizes, the big top's cone, prop scale (`h` on the wheel, carousel, dish), the Disaster City gate's exact spot.
+- **NOT DONE:** the redesigned insides (Hangar 18, the White Rooms, a Great Pyramid inside, more town insides); no Meshy pieces (cactus, covered wagon,
+  water tower, hitching rail are not in the packs); the two Dig trenches have no ramp (a 1 m step); fights use the old plateau's table everywhere.
+
+## DISASTER CITY, THE DISTRICT MOVE (2026-11-15)
+
+mondo 11-15: "the districts along the coast should be industrial, bayside, and entertainment, so move financial somewhere else ... if you
+swap civic center and southside then it could be kinda connected to the civic center too. Also southside should actually be in the south"
+and "redoing the heights for disaster city will have to be its own thread". His OK on the drawn plan 18:25 ("Build it as drawn").
+Plan picture + the built map: /mnt/project-files/disaster-city-relayout/.
+
+- THE BLOCKS (4x4 plots each, moved whole, nothing turned, no building removed). Built: `R C F / U H E / I S B`. Now: `C F E / U H B / R S I`
+  (R Southside, C Civic, F Financial, U University, H Hero Plaza, E Entertainment, I Industrial, S Sports + Culture, B Bayside). University,
+  Hero Plaza and Sports + Culture did not move. Room id, every building, inside and name kept. PvP Downtown untouched (the old board).
+- A PLOT ID IS A NAME, NOT A PLACE. `P08-04` is still the Casino; it stands at city column 8, row 0 now. `docs/disaster-city/move.js` `to`
+  says where each district stands. In the tool a plot has `hx, hy` (where it was built), `wx, wy` (where it stands); `pid(x, y)` = the id of
+  the plot standing AT x, y. Old notes that say "plot Pxx-yy covers x -252 + 42 x" are true for the HOME place only.
+- THE HOME FRAME: while a district file's hook runs (`docs/disaster-city/districts/<LETTER>.js`), the tool shifts the whole city so that
+  district's block lies where it was built, and shifts it back after. So a district file keeps writing its old squares and plot ids and
+  needed no edit. `L.js` (the landmarks) runs in Bayside's frame (move.js `frame`). A NEW hook file with no `frame` entry runs in the city's
+  real squares (`Q.js`, the quay). District threads: change nothing, just rebake.
+- THE SEAMS (move.js `seams`): where two districts meet now, 12 of the 24 crossings already lined up; the others are openings cut into the
+  facing plot's unbuilt squares (walk / road / roadEnd / close). The tool throws when a seam would cut a building or a gap faces a closed side.
+  Closed, not opened: Sports clinic | Container court (a building faces it). One-square alleys: Townhouse court, Boxing gym.
+- THE DICE: the back-lot infill and the plot-line fences are rolled twice. First on the city as it was built, with the dice frozen in
+  `docs/disaster-city/move-seeds.json`, writing only the lines the move kept (so every old back lot and fence is the same one). Then on the
+  city as it stands, a second stream, only for the lines the move made (a fence, wall or hedge on the line, no new back lot on a side that
+  was the city's edge). If the bake warns that the infill count differs from the seeds file, a district changed the back lots: look, then
+  re-record.
+- THE HEIGHTS (`docs/disaster-city/levels.js`, the grid is by city place now): high north-west (City Hall 14) down to the sea in the east
+  and south-east. University, Hero Plaza, Sports + Culture, Bayside, Entertainment keep their own numbers; Civic = old + 2; Southside =
+  old - 7; Financial and Industrial are new (Industrial a flat port, 0 to 2, its east column 0). 108 flights, 36 ramps, nothing steep,
+  nothing closed.
+- THE SEA: Bayside's beach, pier, lighthouse and canal moved with it (rows 4 to 7). North of it deep water under Entertainment's east side.
+  South of it THE HARBOUR QUAY (`districts/Q.js`): concrete, three squares wide, down Industrial's whole east side, containers, three cranes,
+  deep water off it; it meets the boardwalk's grill deck. The bay also lies south of Industrial (`terrain.edges.s.cap` coast, 224 m + 30 m blend).
+- THE WAYS OUT (move.js `ways`), each CLOSED with a fence + ghost wall (+ barricades on a road) until its zone is built: THE VATICAN GATE
+  (Civic, Dispatch, west, row 1) · THE MOUNTAIN ROAD (Entertainment, Casino, north, column 8) · THE HIGHWAY (Southside, Street court, south,
+  column 3). The world plan wants the highway at column 0 or 1; Southside's only street leaves at column 3, so the Desert's road has to
+  bend to it or a new street is cut (open question, told to mondo). The two quay ways are open.
+- THE TRAFFIC: the old ring is gone (no building was moved to keep it). Lines now: the cross street + University avenue (bus 1, ends at the
+  police line), Entertainment's avenue + strip (bus 2), Civic street + Financial avenue (bus 3), Southside avenue + the south street (bus 4),
+  two trucks on the port street. 18 vehicles, 12 signal arms, 8 bus stops. No car enters Bayside's police streets.
+- THE RESIDENTS (data.js HQ_CITY_RESIDENTS, outside the markers): `districts` = where a block stands (the tool writes it and `beach`),
+  `homes` = where it was built, `hqCityPlotAt(hx, hy)` turns a `p:Pxx-yy` place into the square it stands on; `fronts` were shifted once.
+- The doors that travelled with their plots (JOIN rows, written by the tool): stadium, taxi garage, strip, storm drain, drowned manhole,
+  bay door, the tape.
+- Checked offline only (load-data.js: 44 residents place, terrain feet + sea at the quay / beach / districts, a flood over the squares
+  reaches all 144 plots). NOT seen in game.

@@ -123,12 +123,14 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
 - `bake-beards.py` (2026-11-02): `python3 -I bake-beards.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks [--only full]` joins a pack beard + moustache
   into one Facial hair pick (`ewb_beard_<key>.glb`). Notes: character-creator.md "THE JOINED BEARDS".
 - `bake-disaster-city.js` (2026-11-13): writes the 144-plot Disaster City room (`site_prebuilt_downtown_streets`; the old streets = `…_oldstreets`) into data.js from
-  `docs/disaster-city/city-layout.json`. Notes: areas-complexes.md "DISASTER CITY, THE 144 PLOTS".
+  `docs/disaster-city/city-layout.json`. Notes: areas-complexes.md "DISASTER CITY, THE 144 PLOTS". THE DISTRICT MOVE (11-15): districts stand per `docs/disaster-city/move.js`;
+  a plot id is a NAME (its built place), not where it stands; district files still write in their home squares. Notes: same file, "THE DISTRICT MOVE".
 - `bake-cutscenes.js` (2026-11-15): `node bake-cutscenes.js <Entropy_Wars_Cutscene_Notes_….json> [--dry-run]` bakes mondo's CUTSCENE EDITOR export: changed
   lines into data.js STORY_CUTSCENES word for word; prints the cuts, added lines and notes to do by hand. Notes: story-party-progression.md "THE CUTSCENE EDITOR".
 - `bake-dungeons.js` (2026-11-14): checks the plot dungeons (data.js PD_DUNGEONS). Notes: areas-complexes.md "PLOT DUNGEONS, THE BUILD".
 - `bake-woods.js` (2026-11-15): writes The Woods on plots (`site_prebuilt_fairy_forest_plots`) from `docs/areas/woods/layout.json`. Notes: areas-complexes.md "THE WOODS ON PLOTS".
-- `bake-camelot.js` (2026-11-15): writes Camelot Kingdom on plots (`site_prebuilt_camelot_kingdom`, from `docs/areas/camelot/layout.json`). A rebuilt area's old rooms go in data.js `DOOR_HQ.retired` in the same PR. Notes: areas-complexes.md "CAMELOT KINGDOM ON PLOTS".
+- `bake-camelot.js` (2026-11-15): writes Camelot Kingdom on plots (`site_prebuilt_camelot_kingdom`, from `docs/areas/camelot/layout.json`; plan 3 = castle, village, town wall, moat, woods). A rebuilt area's old rooms go in data.js `DOOR_HQ.retired` in the same PR. Notes: areas-complexes.md "CAMELOT KINGDOM ON PLOTS".
+- `bake-desert.js` (2026-11-15): writes The Desert on plots (`site_prebuilt_area51_desert`, from `docs/areas/desert/layout.json`). Notes: areas-complexes.md "THE DESERT ON PLOTS".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
   the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes
