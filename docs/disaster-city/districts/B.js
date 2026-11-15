@@ -1113,7 +1113,7 @@ function beach(ctx, push, ghost) {
     /* the water: north of Bayside (under the quay wall), the shelf, the deep, east of the mole's arm, east of the grill deck */
     /* THE LEVELS: the ground east of the city would carry the edge plot's level out to sea (the Marina plot stands a level up), so the whole
        beach strip is first cut flat to level 0; the Marina's way out comes down a ramp across the boardwalk's width */
-    rect(X0 + 0.4, Z0, XE + 2, Z1 + 2, 0, { sink: true, edge: 0.3 });
+    rect(X0 + 0.4, Z0 - 0.5, XE + 2, Z1 + 2, 0, { sink: true, edge: 0.3 });   // (2026-11-15: half a metre past Z0, so this cut and the bay's cut north of it overlap: where the two met on z = Z0 exactly neither one cut, and a rim of the city's level, 5 m high, stood the whole length of the mole's north side)
     { const lv = (ctx.lvOf && ctx.plotOf['P11-08']) ? ctx.lvOf(ctx.plotOf['P11-08']) * ctx.LEVELS.M : 0;
       if (lv > 0) lateRows.push({ k: 'ramp', x0: r3(X0 + 0.2), z0: gx(8 * N + 6), x1: r3(XB - 0.4), z1: gx(8 * N + 6), w: 7, h0: lv, h1: 0, edge: 0.2, absY: true }); }
     rect(X0 + 0.6, -ctx.HALF - 2, XE + 2, Z0, DEEP, { sink: true, edge: 0.4 });   // (THE NATURAL EDGES, 2026-11-13: to past the field's north edge, so no rim of the city's level stands across the north end of the bay)
