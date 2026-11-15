@@ -3941,3 +3941,76 @@ Continue / map land in the new rooms); their literals stay as PvP board sources 
 - No Meshy pieces, nothing new on R2: buildings are texbuilding + arch rows, the rest catalogue props.
 - The big room compiles in ~23 s in node (Woods / Camelot ~10 s; cost is hqTerrain ramps + bridges per node). Watch the load on his Mac.
 - The world plan's Ice Wall and the Deep-to-Area-51 way are still open with him.
+
+## THE HOLLYWOOD HILLS — PLAN ONLY, waits mondo's OK (2026-11-15)
+
+mondo 11-15: "The disaster city version of the Hollywood sign needs to be part of the mountains, not just a weenie on the edge of the map. Beach needs
+to extend to the entertainment district, cliffs at that end of the beach. Basically just include the fake weenie mountains as part of this actual mountain
+plan, and rearrange them to whatever makes sense."
+- Plan picture: `docs/plans/world-zones/hollywood_hills_plot_plan.png` (a drawing, nothing built). A sixth Mountains district, 10 x 3 plots, its own room
+  east of Mount Olympus over Financial + Entertainment: the sign on four plots, the ridge behind it, the city's mountain road landing under the sign (not at
+  the Lodge Yard), a Lodge-road door west, a trail to Olympus' Goat Track, sea cliffs at the east end; the city's beach strip runs north along Entertainment
+  to those cliffs, with a cliff stair up.
+- PLAN 2 (his answers the same day: buildings "fine for now"; "why is there a gap between the hills and mt Olympus ... we might need to move the Vatican
+  and mt Olympus around, it would make more sense to have mt Shasta right there"; "yes extend the beach up north, but there would be cliffs at the north
+  edge which is the hills"; residents "don't worry about it yet"). The picture is redrawn: Hills 13 x 3 = 39 plots over the city's whole width, no gap;
+  range order North Pole, Pass, Lodge, OLYMPUS, SHASTA, Hills (Shasta and Olympus swap columns; the Vatican's plan moves west under Olympus; the Shasta
+  trail's door still opens at the Woods' Snowline); Hills west end walks on to Shasta (no Lodge-road door); the Beach zone plan gains 24 plots north along
+  Entertainment with the cliffs as its north edge. To settle when built: the city's closed VATICAN GATE would face the Shasta trail. Waits his OK to build.
+- Open with him: the three walk-in buildings (plain labels), whether the Ski Lodge moves, what stands on the new beach, who lives there.
+- Building it touches bake-mountains.js, bake-disaster-city.js (move.js way P08-04 N, EDGES, B.js / E.js room + edges) and links.downtown_mountains.
+
+## THE ESTATE ON PLOTS — the fifth area of the world plan, first delivery (2026-11-15)
+
+mondo 11-15, on plot plan 2 (`docs/plans/world-zones/estate_plot_plan.png`): "okay, those are all good" = the Estate is the next zone, the plan as
+drawn, the 21 plain plot labels kept, the Barn and the Farmhouse walk-in with plain furnishing, the Loch Ness Monster placed at the Lake.
+Then: "disaster city is the most complete area so far" (the standard the Estate is held to; see NOT DONE for what is still short of it).
+
+- **THE ROOM** `site_prebuilt_skinwalker_estate` (site `prebuilt_skinwalker`, part `estate`, "THE ESTATE"): 6 x 6 plots of 12 x 12 squares
+  (252 m a side), written by `node bake-estate.js [--dry-run]` from `docs/areas/estate/layout.json` between `ESTATE36-BEGIN / ESTATE36-END` in
+  data.js. Never hand-edit between the markers. `ESTATE_DUMP=1` prints the walked map. The layout file is the approved plan's own json (`rooms[0]`).
+- **FOUR DISTRICTS of nine plots:** THE CORN FIELDS (NW, level 1), THE LAKE (NE, level 0), THE HAUNTED HOUSE + GRAVEYARD (SW, levels 2-4, the house on
+  its rise at 7 m), THE RANCH (SE, level 1, the Windmill 2).
+- **THE CORN IS THE WALL:** `terrain.gen { kind: 'plan', look: 'rock', wallH: 2.2 }`. Every square the plan draws as corn is a 2.2 m bank in the
+  `grass_rocky` sheet (the old Corn Fields' own "standing corn": the game has no corn model); every other square is a `space` (87 greedy rects).
+  Heights = `terrain.slope.cells` by the Woods' rule (plot level x 1.75 m, flat over a plot's middle four squares, graded over the eight between),
+  and the ground is levelled under and one square round every building, eased back over four squares. Paint: dirt tracks, cobbles (the drive, the
+  windmill's ring), planks (the dock, the porch), marble (the gazebo), `dirt_4` (the crop circles), `grass_rocky` (the Hay Field),
+  `grass_dark_fantasy` (the house's whole district).
+- **BUILDINGS (the Desert's helper, id prefix `est:`; hollow `texbuilding` + an `arch` look, a swinging leaf in every doorway):** walk-in = THE BARN
+  (red boards, tin roof, barn doors; a horse, two cows, sacks, crates), THE FARMHOUSE (white boards, green roof, porch, chimney; table, bed, armchair,
+  the cat), THE BOATHOUSE (a rowboat inside, the slip down to the water), THE CRYPT (stone, two columns, a barred gate; the old crypt's sarcophagus
+  and demon). Solid = THE HAUNTED HOUSE (dark boards, mansard, tower, two gabled bays, porch; its front door `house` leads into the Hall, whose
+  `front` door comes back out) and the Yard's hen house. Drawn only = THE GAZEBO, THE IRON GATE. THE TREEHOUSE = the old room's block (5.25 m,
+  a ladder up its south face) boarded round with a hut on top. THE WINDMILL = `decor_windpump_tower` + `decor_windpump_wheel`.
+- **THE WATER:** the Lake is one pool (98 x 82 m, 1 m deep, a rock in its middle), the long dock, two Marsh pools.
+- **THE WAYS:** north wall door `woods` -> the Woods' `estate` door (the Fence Line plot). Coming back, the Woods' own door still names the old Corn
+  Fields; `DOOR_HQ.retired` sends it here and lands the walker on the spawn, which stands just inside this gate (the Woods are the owner side's
+  on docs/notes/claims.md, so bake-woods.js was not touched: a note for that side is on the board); Room 512's stable door = `bay` on the Yard's
+  south wall (`siteRooms.entry.prebuilt_skinwalker`); Room 13's door = `bay13`, free-standing on the Iron Gate's round
+  (`siteRooms.entry.prebuilt_haunted`); link `well_skinwalker` (the well at the Hub, down to the Cavern's mouth); link `ranch_lodge` (the saloon
+  door by the Farmhouse porch); the wardrobe to Camelot and the hearth to the North Pole are inside the house, untouched. The tool checks the four
+  data.js rows that hold a place in this room and refuses to bake when one has drifted.
+- **WHO LIVES HERE (17, homes = `DOOR_TEXT.POINT_OF_ENTRY` + the plan's visitors):** Corn = 3 scarecrows, skinwalker, mothman; Lake = loch ness monster
+  (in the water south of the rock); House + Graveyard = ghost, vampire, werewolf, eagleman, ghoul, undead, jack o lantern, zombie, necromancer;
+  Ranch = cowboy, goatman. Lines are read from the old literals (two scarecrows, the ghost, the ghoul). Left without a line because the old line
+  names a place that is gone: the cowboy (the three gates), one scarecrow (the mesa), the vampire (the terrace). Animals: cows, horses, chickens,
+  dog, cat, crows, frogs, insects.
+- **RETIRED (`DOOR_HQ.retired`):** `site_prebuilt_skinwalker_fields`, `site_prebuilt_haunted_grounds` -> the new room (Continue, the map's GO, match
+  returns). Both literals stay: they are the PvP boards' sources (HQ_ARENA_RULES.picks) and the tool reads the people's lines from them. No door
+  leads to them. Hub `ranch` (THE ESTATE) now lists both sites; `HQ_AREA_MARKERS` + `HQ_WORLD_CLOCK.dayLook` rows added.
+- **CHECKED OFFLINE ONLY** (no browser run, RULE #1c): data.js parses; the room compiles in ~7 s in node (`hqTerrainInfo`: no NaN, heights
+  -1.8..9.0 m, 0 sealed, 0 rescue ramps); a walk on the real compiled heights from the spawn reaches every plot, every door and every unit (only the
+  lake's rock and the treehouse top are not walked: the rock is not climbed, the treehouse is the ladder's); every prop key and unit exists; every
+  door and link resolves both ways. The Woods' block and tool are unchanged.
+- **NOT DONE / SHORT OF DISASTER CITY:**
+  - NOT SEEN ON SCREEN: which way pieces face, the house's proportions, the windmill's size, the Loch Ness Monster standing in 1 m of water.
+  - No residents with routines: `HQ_CITY_RESIDENTS` is built for the city room only; the Estate's people stand on spots.
+  - No natural edges (`terrain.edges`): the room wears the old ranch shell (its ring of dead trees and night sky).
+  - Art the game does not have (nothing was generated): corn stalks (the bank stands in), hay bales (the Hay Field is bare grass with the ranch
+    truck), headstones (standing stones and crosses, as the old Grounds), a trough. A Meshy list needs mondo's OK.
+  - The house's five floors are the old rooms, not redesigned. The Barn and the Farmhouse have no upstairs.
+  - Not carried over, because plan 2 does not draw them: the old fields' mesa, butte and stock pond; the old Grounds' coach house, terrace,
+    footbridge pond, balcony bridges. The three trailers moved to the Ranch (Pasture, Ranch Gate).
+  - No encounter table (`HQ_AREA_ENCOUNTERS` had none for the old rooms; those are mondo's baked tables).
+

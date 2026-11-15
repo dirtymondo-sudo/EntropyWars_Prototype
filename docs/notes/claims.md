@@ -14,11 +14,11 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 
 | Area / system | Side | Since | State |
 |---|---|---|---|
-| The Estate (plot build, prompt 5 of docs/plans/HANDOFF_PROMPTS.md) | second | 2026-11-15 | started as a trial |
+| The Estate (plot build, prompt 5 of docs/plans/HANDOFF_PROMPTS.md) | second | 2026-11-15 | first delivery merged (`site_prebuilt_skinwalker_estate`, bake-estate.js); not seen on screen, waits mondo's look |
 | Camelot Kingdom | owner | 2026-11-15 | castle redesign 2 waits mondo's OK |
 | The Desert | owner | 2026-11-15 | interiors build stopped partway |
 | The Woods | owner | 2026-11-15 | trees wait mondo's reaction |
-| The Mountains | owner | 2026-11-15 | built, waits mondo's look |
+| The Mountains (+ the Hollywood Hills district, the city's north edge sign and the beach strip north of Bayside) | second | 2026-11-15 | Hills plan drawn (`docs/plans/world-zones/hollywood_hills_plot_plan.png`), waits mondo's OK; nothing built |
 | Disaster City (all districts, heights, residents, traffic) | owner | 2026-11-13 | several districts wait mondo's answers |
 | DOOR HQ (rooms, elevator, Main Hall) | owner | 2026-11-15 | elevator redesign waits mondo's OK |
 | First quest cutscenes + cutscene editor | owner | 2026-11-13 | notes fixes, ride down and foyer in progress |
@@ -29,3 +29,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 - 2026-11-15 (owner): the owner side was mostly paused on 11-15 (usage limit). Rows above stay with the owner side
   until mondo hands one over; when he does, he pastes its prompt from docs/plans/HANDOFF_PROMPTS.md and the second side
   changes the row here.
+- 2026-11-15 (second, to the Woods' holder): the Estate is one plot room now, `site_prebuilt_skinwalker_estate`. The Woods' `estate` door
+  (bake-woods.js) still targets the retired `site_prebuilt_skinwalker_fields` at `bay`; it works (the retired table lands the walker on the
+  Estate's spawn, just inside its north gate). When you next bake the Woods, point it at `{ room: 'site_prebuilt_skinwalker_estate', at: 'woods' }`.
+  I did not touch the Woods' tool or block.
