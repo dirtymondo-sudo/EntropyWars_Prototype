@@ -3671,3 +3671,9 @@ woods in between them" · 16:53 "okay" on plan 2.
   - NOT DONE: no meat hooks or hung lanterns (ceiling pieces, nothing to hang them from outdoors); no new lights (the level's lamp cap) and the
     day look is unchanged, so the dark comes from the night clock only; faces of the cabin / bus / board are unchecked. NOT SEEN ON SCREEN.
 >>>>>>> origin/main
+
+## DISASTER CITY, FINANCIAL'S BOX LETTERS ARE DRAWN SIGNS NOW (2026-11-15, mondo "the blocky 3d letters should become normal lettering")
+- docs/disaster-city/districts/F-detail.js `letters()` no longer builds 5 x 7 box glyphs: each word is ONE `txt:` quad (letters only, `kind:'over'`), same spot,
+  height and colour (gold key -> gilt `#e0c070`); a blade sign (`o.down`, the HOTEL blade) is one quad a letter with the face set in the key. Fewer triangles.
+- sign-fonts.js Financial rows: ARCHIVE / VAULT / ARCADE = Marcellus SC, TAXI / GARAGE = Oswald, the rest Playfair Display.
+- Not seen in the running game (no playtest asked); checked by the bake's sign list only.
