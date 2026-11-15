@@ -2215,3 +2215,15 @@ onto the nearest game function) showed the 60 ms outside the draws was whole-sce
   allow one drawn frame (harness `__ph.draw.mode='demand'; frames=2`), screenshot, draw 30 more, screenshot, diff. A test that
   lets undrawn ticks pass, or a 1 degree turn, shows nothing.
 - **Rule**: anything that skips an object's refresh in a replayed bundle must still refresh the shared buffers it reads.
+
+## THE CRASH TRAIL (2026-11-15, mondo: "Crashed inside the door main hall/lobby", Firefox M1 WebGPU, no error in the console)
+Not reproduced, cause NOT found. What was ruled out by reading: the `[terrain] bridge ... headroom` lines in his log are the
+survey worker warming every room's floor plan from the main menu (map.js `_hqSurveyWarmAround`, started by the arrival
+warm); Disaster City's plan compiles in 12 s and is 13 MB, so it is not a memory spike. The 681 Urban Decay sheets
+(PR #1426) are names for the editor's picker, loaded lazily. His log had no `[HQ] entered` line, so that console was
+either from before the hall landed or from the load after the crash.
+What shipped (index.html only, THE FREEZE TRAIL grown): a session records how it ended (`clean` on pagehide, `frozen`
+when the picture stops 5 s+ while timers run), where it was (`ThreeRenderer.hq.room()`, the model memory, `gpuStatus()`),
+and the `[HQ]` / `[MENU]` / lab sweep console.log lines. A session that did not end cleanly is printed at the top of the
+next load's console as one `[CRASH TRAIL]` block (so his usual console paste carries it) and kept in localStorage
+`ew_freeze_trail_hist` (last 3; ?ewdiag=1 lists them). Read the block first on any future crash / freeze report.
