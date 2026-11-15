@@ -3867,3 +3867,8 @@ Plan picture + the built map: /mnt/project-files/disaster-city-relayout/.
   bay door, the tape.
 - Checked offline only (load-data.js: 44 residents place, terrain feet + sea at the quay / beach / districts, a flood over the squares
   reaches all 144 plots). NOT seen in game.
+- **THE MESHY PIECES (second delivery, 2026-11-15, mondo 19:01 "okay go ahead"):** `saguaro_cactus`, `prickly_pear`, `covered_wagon`, `water_tower_west`,
+  `hitching_rail` (concept -> image-to-3D meshy-t2.5, base y 0, metallic 0, `.opt.glb` beside each on R2 `Assets/world/props/meshy/`, manifest rows,
+  MODEL_LIST; originals + `run.py` / `prep.mjs` in project files `desert-plots/meshy/`). Catalogue rows "THE DESERT'S PIECES". bake-desert.js places
+  9 hitching rails along Main Street, 2 wagons at the Wagon Camp, the water tower by the windmill and 80 cacti (46 saguaro, 34 prickly pear) seeded
+  on the plan's open sand only (never the base, the circus, Main Street or beside another piece). Not seen on screen.
