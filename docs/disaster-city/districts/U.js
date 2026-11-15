@@ -16,9 +16,9 @@ const T = 1.75, C = 3.5;
 /* ── the looks: [sheet, tint, the sheet's size in metres (none = one square)] — only sheets that stay themselves: an `urban:` sheet or a calm sheet by its own
    name (an `hq:` sheet drew BLACK on an arch part in the game) (a battle sheet's key is swapped for a dark calm sheet in the game: slate on it went black) ── */
 /* NEW HAVEN (mondo 11-15, the real-cities plan he approved: University = the old gothic college): the old campus is weathered SANDSTONE (the
-   coursed castle stone, warmed) with GRANITE trim and grey SLATE roofs; BROWN = the Tomb's brownstone; IVY = the hedge leaf on the south walls */
+   coursed castle stone, warmed) with GRANITE trim and grey SLATE roofs; BROWN = the Tomb's brownstone (the same stone, tinted: the calm sandstone sheet drew BLACK on an arch part); IVY = the hedge leaf on the south walls */
 const BRICK = ['calm_castle', 0xffe6c0, null, 1.5], BRICKD = ['calm_castle', 0xe0c8a4, null, 1.2], BUFF = ['urban:TileSubway1a', 0xffffff, C], STONE = ['calm_castle', 0xfff0d6, null, 1.65], LIME = ['urban:PlasterWallStucco1a', 0xe6d8b8],
-    BROWN = ['calm_sandstone', 0xb47a68], BROWND = ['calm_sandstone', 0x8a5a4c], IVY = ['calm_hedge', 0xd8f4c8, null, 1.15], WHITE = ['urban:PlasterWallPainted1a', 0xffffff],
+    BROWN = ['calm_castle', 0xc07a60, null, 1.45], BROWND = ['calm_castle', 0x9a5c48, null, 1.3], IVY = ['calm_hedge', 0xd8f4c8, null, 1.15], WHITE = ['urban:PlasterWallPainted1a', 0xffffff],
     SLATE = ['calm_darkstone', 0xd0d4e0, null, 1.2], SLATEG = ['calm_darkstone', 0xc0d0c0, null, 1.2], VERD = ['calm_snow', 0x58c8a8], LEAD = ['calm_deckplate', 0xffffff], ALU = ['calm_tiles', 0xdfe6ee], CONC = ['urban:ConcreteStriped2a', 0xffffff], CONCD = ['urban:ConcreteStriped1a', 0xd8d0c4],
     GUN = ['calm_gunmetal', 0xffffff], BLACK = ['calm_gunmetal', 0xa0a8b8], CORR = ['urban:MetalCorrugatedPainted1a', 0xffffff], CORRG = ['urban:MetalCorrugatedPainted4c', 0xffffff], CORRR = ['urban:MetalCorrugatedPainted2a', 0xffffff],
     TILEW = ['calm_tiles', 0xffffff], TILEC = ['calm_tiles', 0xffeec8], TILEB = ['calm_tiles', 0xa8d0f0], TILEN = ['calm_tiles', 0x4a6cb0], TEAL = ['calm_tiles', 0x3a7a78], MINT = ['calm_tiles', 0x68d0b0],
@@ -319,7 +319,7 @@ module.exports.build = function (api) {
     const LABEL = { library: ['LIBRARY', '#f4ecd8', '#1d3a6e'], lecture: ['LECTURE HALL', '#f4ecd8', '#1d3a6e'], dorm: ['DORMITORY', '#f4ecd8', '#1d3a6e'], cafe: ['CAFE', '#3a2a10', '#f0b040'], bookshop: ['BOOKS', '#f4ecd8', '#2c6a4a'],
         workshop: ['BIKE REPAIR', '#ffffff', '#2c5cb0'], observatory: ['OBSERVATORY', '#e8f4ee', '#24584a'], lab: ['RESEARCH LAB', '#ffffff', '#2a3a4a'], annex: ['LAB ANNEX', '#ffffff', '#2a3a4a'], psych: ['PSYCHOLOGY', '#ffffff', '#2a6a68'],
         museum: ['SCIENCE MUSEUM', '#ffffff', '#3a5cc0'], clinic: ['CLINIC', '#ffffff', '#2a9a64'], store: ['CORNER STORE', '#ffffff', '#c83a32'], newsstand: ['NEWS', '#2a2410', '#e8c040'], foodstand: ['HOT FOOD', '#ffffff', '#d84a28'],
-        secret: ['AUTHORISED STAFF ONLY', '#f0d040', '#202428'], gatehouse: ['SECURITY', '#ffffff', '#202428'] };
+        /* (the Tomb carries no name board: a secret society's hall says nothing; its old AUTHORISED STAFF ONLY board went with the black slab) */ gatehouse: ['SECURITY', '#ffffff', '#202428'] };
     const SCI = { lab: 1, annex: 1, court: 1, observatory: 1, psych: 1 };
     const OLD = { dorm: 1, lecture: 1, library: 1, cafe: 1, gate: 1, faculty: 1, bookshop: 1, observatory: 1, secret: 1 };   // NEW HAVEN: the old-college buildings (ivy, urns, notice boards)
     const polish = (kind, walkedRoof) => {
