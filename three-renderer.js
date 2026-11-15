@@ -72541,6 +72541,7 @@ const ThreeRenderer = (function () {
         var neonRoom = !!(info.gen && info.gen.neon), batch = _hqTexBatch(G, U, neonRoom), n = 0;   // a neon plan's buildings glow like its lots
         info.texb.forEach(function (f) {
             if (typeof hqTexbPack === 'function' && hqTexbPack(f)) return;   // THE PACK BUILDINGS: _hqBuildTexPacks
+            if (f.doorsOnly) return;   // THE DESERT'S INSIDES (2026-11-15): a row that only carries a room's swinging leaves (_hqBuildTexDoors)
             var prism = typeof hqTexbPrism === 'function' && hqTexbPrism(f);   // THE PRISM BUILDINGS: their walls by _hqBuildTexPrisms (they need the kit), their roof + parapet here (THE PRISM ROOFS, 2026-10-30)
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -73051,7 +73052,7 @@ const ThreeRenderer = (function () {
         if (!_hq || (typeof window !== 'undefined' && window.EW_NO_CITY_DOORS) || typeof hqTexbDoor !== 'function') return 0;
         var cat0 = _hqData().catalogue || {}, list = _hq.cityDoors || (_hq.cityDoors = []), n = 0;
         info.texb.forEach(function (f) {
-            if (!f.hollow || f.leaf === 'none' || (typeof hqTexbPack === 'function' && hqTexbPack(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
+            if ((!f.hollow && !f.doorsOnly) || f.leaf === 'none' || (typeof hqTexbPack === 'function' && hqTexbPack(f)) || (typeof hqTexbPrism === 'function' && hqTexbPrism(f))) return;
             var cat = cat0[f.leaf] || cat0[HQ_CITY_DOOR.leaf]; if (!cat || !cat.file) return;
             if (cat.open && cat.open !== 'swing') cat = cat0[HQ_CITY_DOOR.leaf];
             /* one doorway's leaves: (wx, wz) = its middle in the room's metres, q = the wall's turn, ow / oh = the opening */
@@ -73081,13 +73082,14 @@ const ThreeRenderer = (function () {
             try {
                 var w = Math.max(2, f.w || 8), d = Math.max(2, f.d || 8), hol = hqTexbDoor({ w: w, door: f.door }), q = -((f.rot || 0) * Math.PI / 180), c = Math.cos(q), s = Math.sin(q);
                 var lz = (d - 0.12) / 2 - 0.12, base = f.base || 0;
-                hang(cat, f.x + hol.lx * c + lz * s, f.z - hol.lx * s + lz * c, q, hol.cw - 0.04, hol.doorH, !!cat.double || !!f.leafDouble, base, f.id);
+                /* THE DESERT'S INSIDES (2026-11-15): a `doorsOnly` row has no front doorway of its own; an inner leaf's `y` = its sill over the row's foot (an upper floor's door) */
+                if (!f.doorsOnly) hang(cat, f.x + hol.lx * c + lz * s, f.z - hol.lx * s + lz * c, q, hol.cw - 0.04, hol.doorH, !!cat.double || !!f.leafDouble, base, f.id);
                 /* THE INNER DOORS (2026-11-13, the interiors pass): the row's `inner: [{ x, z, rot, w, leaf, double }]` hangs more swinging
                    leaves inside it, in the building's own frame (x along the front from its middle, z toward the front, rot 0 = in a wall
                    that runs along the front, 90 = across it). Drawn only: the district's own walls leave the gap. */
                 (f.inner || []).forEach(function (r, i) {
                     var ci = cat0[r.leaf] || cat0['leaf_office']; if (!ci || !ci.file || (ci.open && ci.open !== 'swing')) ci = cat;
-                    hang(ci, f.x + (r.x || 0) * c + (r.z || 0) * s, f.z - (r.x || 0) * s + (r.z || 0) * c, q - (r.rot || 0) * Math.PI / 180, (r.w || 1.75) - 0.04, r.h || hol.doorH, r.double != null ? !!r.double : !!ci.double, base, (f.id || '') + ':in' + i);
+                    hang(ci, f.x + (r.x || 0) * c + (r.z || 0) * s, f.z - (r.x || 0) * s + (r.z || 0) * c, q - (r.rot || 0) * Math.PI / 180, (r.w || 1.75) - 0.04, r.h || hol.doorH, r.double != null ? !!r.double : !!ci.double, base + (r.y || 0), (f.id || '') + ':in' + i);
                 });
             } catch (e) { console.warn('[HQ] a city door failed', f.id, e); }
         });
