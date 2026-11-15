@@ -10788,6 +10788,11 @@ legs), the mall's mezzanine (`{"x":-3,"z":-2,"face":90}` — the escalator over 
 route reads HIT BY A CAR in the first second — that is how the first probe found the streets' spawn in the ring
 road's west leg (moved to the tower's side street, x −50).
 
+## THE PROBE'S HEIGHT (2026-11-15, the Hollywood Hills): pass `y` in a view
+`ThreeRenderer.hq.dev.teleport` sets the walker to level 0 + `o.y`. In a plot room whose ground is not at 0 m (the Hills: 14 to 31 m) a view without `y`
+puts the camera UNDER the land: you photograph the sea sheet or the shell floor from below and it reads as "the room is flooded / flat". Get the ground
+first, headless: `hqTerrainCompile(DOOR_HQ.rooms[id], id).hFn(x, z)` (load-data.js sandbox), and pass `"y": <that + 0.05>`. `face` 0 looks north, 90 east.
+
 ## THE CITY PROBE — playtest_city.js: the HQ with THE REAL SHEETS (2026-09-17, THE URBAN PACK)
 `node playtest_city.js <room> '[{"name":"v","x":0,"z":0,"face":0,"pitch":-0.2,"fp":true,"dist":4}]' [--wait=45000] [--flags=EW_HQ_NO_TEX_BUILDINGS,...] [--loglen=900] [--nogltf]`
 → `shots/city/<room>_<name>.png`. Unlike playtest_hq_offline.js (stand-ins) every R2 sheet / GLB / OBJ loads for real:

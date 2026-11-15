@@ -3970,7 +3970,12 @@ be cliffs at the north edge which is the hills"; residents "don't worry about it
 - **THE NORTH BEACH** (the city): `docs/disaster-city/districts/B.js` beach(): boardwalk, sea wall, sand shelf and four ramps run on north of the mole along
   Entertainment's four rows to the city's north line (was open water under a quay wall). `bake-disaster-city.js` EDGES.n.cap is `{ coast, at e, off 0,
   len 36 }`: the north range runs across the beach strip and falls into the bay past the sand = the cliffs at the beach's north end.
-- **Not done / to know**: NOT SEEN ON SCREEN (headless: all three rooms compile, no NaN, every plot walked, both links live, heights sampled).
+- **SEEN ON SCREEN** (mondo "where are the screenshots", real game via playtest_city.js, HEAD a2ed991 + this fix): the sign from the Canyon Road, under and
+  behind the letters, the Observatory, the reservoir, the Cove, the north beach to the cliffs (its door loads the Hills), the Lodge after the swap, the Goat
+  Track into Bunny Flat. Two fixes came out of it: rock within `seaFall` (10) squares of the sea no longer climbs (the Coast Overlook faced a wall of rock);
+  the Observatory wears `marble_light` (the stucco sheet read brown). PROBE LESSON: `dev.teleport` puts the walker at height 0; in a room whose ground is not
+  at 0 pass `y` = the ground there (hqTerrainCompile(room).hFn(x, z)), or the camera sits under the land and photographs the sea sheet from below.
+- **Not done / to know**:
   Entertainment stands 8.75 m over the boardwalk there (a tall sea wall) and has no way down of its own: you reach the north beach along the boardwalk
   from Bayside or from the Cove. From the Hills you do not see the city below (the south edge is plain dry land: rooms are separate). The Shasta trail's
   door still opens at the Woods' Snowline (the Woods are not changed). The city's closed VATICAN GATE is untouched (ask mondo when the Vatican is built).
