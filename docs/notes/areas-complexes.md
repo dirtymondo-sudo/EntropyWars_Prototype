@@ -3463,6 +3463,15 @@ on the real-cities plan (`/mnt/project-files/disaster-city-real-cities/plan.html
 - Not made: a Meshy searchlight and a Meshy studio water tower (concepts go to mondo first); the water tower is still the code-built one.
 - Proof: `/mnt/project-files/dc-entertainment/la_built.jpg` (offline render of the baked rows, not the running game).
 
+- **THE STARS ON THE GROUND (2026-11-15 16:13, mondo: "these stars are floating in the air when they should be on the ground on the
+  sidewalk")**: the star walk was six arch rows of eleven stars, each row at its first star's ground, so down the boulevard's hill stars
+  stood up to 1.9 m in the air. Now one row per star (`dc:E-stars-n-<col>` / `-s-<col>`, 64), centred on its walk square (the old zig-zag
+  hung odd stars 0.4 m over the kerb's bank), with `hug: true`: data.js THE HUGGING ROWS gives such a row `ground: hAt`, and
+  three-renderer.js _hqArchGeometry puts every vertex on the ground under it (+ the part's own y). Use `hug` for any flat inlay on a slope
+  (plaques, paving); not for tall pieces (a roof would shear). Checked offline: every star's tile top 0.05 m over the ground at all 25
+  sample points, never buried. Known, not fixed: the Cinema forecourt (`dc:E-forecourt`) crosses a level step, its north end's paving and
+  handprint slabs sit 1.7 m under the ground.
+
 ## DISASTER CITY, THE CITY MARKS (2026-11-15)
 mondo 11-15: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city branding/logo for certain
 buildings or props or banners"; he corrected shield B (bolt, not a crack) and the flag's star on the sheet, then "the rest looks good for now".
@@ -3596,3 +3605,111 @@ mondo 11-15 16:08: "go for it. can you also change the disaster city hollywood s
   `woods_stair` (the HQ Stair hall; free door on the marble flight at x -17.5, z 55.5, y 12.06) and `woods_camelot` (west wall, z 3.5; the tool
   throws if its spur moves). `DOOR_HQ.hubs.woods.room` = the new room; it wears the woods' day look. The old Clearing keeps its rooms and is
   reached by the trail south from the Clearing plot (and still by Room 420's hollow tree). The Stair top and the way back from Camelot are wired now.
+
+## DISASTER CITY, THE CITY MARKS ON THE STREET (2026-11-15, mondo "go for it" + "playtest city marks")
+The bolt shield (mark B) now sits on the city's own street furniture, and the city flag (mark C) flies in Civic. All placed with the game on screen.
+- three-renderer.js `_hqBuildCityMarks` (called after `_hqBuildBusStops`, only in rooms whose label holds DISASTER CITY): one shield plate per face listed in
+  `HQ_CITY_PROP_MARKS[<prop key>] = { h, s, out, at:[headings] }` (metres: plate centre height, size, distance out from the prop's centre) for `city_bin`,
+  `metro_bin`, `item_police_barricade`, and one each way on every bus stop sign's pole (`HQ_CITY_STOP_MARK`). All plates of a 42 m cell are ONE merged mesh
+  `hq_city_marks` in a signal chunk (drawn to 70 m), one shared material, front side only. A new prop gets the shield with one table row. Off: `window.EW_HQ_NO_CITY_MARKS`.
+  Tuning probe: `ThreeRenderer.hq.dev.cityMarks({ city_bin: {...} }, stopRow)` rebuilds the plates live.
+- THE BUS: `_hqCityBusMarks` (from `_hqBuildTraffic`, kind `citybus`) adds the shield + DISASTER CITY TRANSIT (Oswald) on both sides, `HQ_CITY_BUS_MARK`.
+  Seen in the game: in the vehicle group the NOSE is -x and the sides are +-z; the door side (-z) stands 4 cm further out; the free navy panel between the
+  wheels (and between the doors) is 3.3 m long, so the pair is 3.1 m. The words read shield-first on both sides.
+- THE FLAG: arch key `mark:flag` (any `mark:<id>` key goes through `_hqArchSignTex`) draws the flag sheet; C.js `flag()` hangs two quads (one a side) on each
+  Civic flag pole. The old plain cloth box stays behind them.
+- THE MANHOLE reads darker (IRON / DARK in `_hqCityManholeTex`). THE HILL SIGN: a letter stands on the highest land under its width and 2.5 m in front,
+  so no foot sinks into the slope.
+- LESSON (headless): a prop's GLB can take minutes to arrive after a teleport; until then only its blob shadow is there. Wait and look again before judging a plate.
+## CAMELOT KINGDOM ON PLOTS, THE CASTLE — the second area of the world plan, first delivery (2026-11-15)
+mondo 11-15: "start ... another thread for the next most important zone" (Camelot Kingdom: the Woods' trail ends there) · 16:39 "i would want the
+old rooms to be redesigned too. Like camelot castle should be designed with the same level of architecture as the most complex buildings in
+disaster city ... exterior and interior" · 16:44 on the castle mock-up "okay that looks good for a start. ... i want camelot castle in the middle
+and for it to be surrounded by the other districts ... the north pole to the north of the castle would be good as a rival kingdom, or put more
+woods in between them" · 16:53 "okay" on plan 2.
+- **The approved plan**: project files `camelot-kingdom/camelot_plot_plan_2.png` + `camelot-layout-2.json` (draw-plan2.py) and
+  `camelot_castle_redesign.png` (draw-castle.py). 8 x 8 plots: THE CASTLE in the middle (cols 2-5, rows 3-5), THE NORTH POLE north (rows 0-1
+  + a four-plot snowy pine belt, "the woods between"; it leaves the polar area, Antarctica stands alone there), THE TOWN south (8 plots, new),
+  THE FAIRY FOREST east (12), THE LOOKING-GLASS GARDEN west (12). Plan 1 (`camelot_plot_plan.png`, castle in the north-west) is superseded.
+- **Built now, the castle only**: room `site_prebuilt_camelot_castle` ("CAMELOT · THE CASTLE", 4 x 3 plots = 168 x 126 m), written by
+  `node bake-camelot.js` between `CAMELOT-CASTLE-BEGIN/END` in data.js (before the old ward). Never hand-edit the block. Squares in the tool are
+  (sx 0..48, sy 0..36); `X()`/`Z()` turn them into metres. When the 64-plot kingdom room is built the castle moves into it (an origin shift).
+- **What stands**: THE MOAT all the way round (two `stream` rows; the north arm is narrower so a strip of bank is left at the room's edge), THE
+  DRAWBRIDGE (two squares wide) and the postern's footbridge; THE CURTAIN WALL at 7 m (hqCurtainWall runs split at every drum), four hollow corner
+  towers (hqCastleTower, the NW one's arcs worked out from the other three: door [120, 154], joins 90 + 180, a0 166), six solid drums
+  (two bastions on the south wall, one each on the west and east walls, the gatehouse's two) with crowns, decks over the three gates and the
+  postern, THE CROSS WALL (two wards) whose two ends carry no battlement because the two RAMPART STAIRS land there; five buildings.
+- **A building** = one hollow `texbuilding` (`skin: false`: ghost walls, doorway, city door leaf, inside, roof slab) + one `k: 'arch'` row
+  (`cam:<id>:look`) from the tool's `building(id, sx0, sy0, sx1, sy1, side, h, row, parts)`. `storeys` = floor(h / 3.5): the COLLISION roof is
+  storeys x 3.5, `h` is only the drawn height. THE KEEP (ground floor walked into, 24 m of drawn stone over it, four turrets with cones, flag),
+  THE GREAT HALL (buttresses, arched lights, gable, bell turret, rose light), THE KITCHEN, THE BARRACKS, THE STABLES. One more arch row
+  `cam:roofs` (room frame) = the cone roofs on posts over the corner towers and the gate drums, the gate's ridge, the raised portcullis, banners.
+- **The ways** (the rebuilt room takes the normal ways in): `hubs.kingdom.room`, `siteRooms.entry.prebuilt_camelot` (door `bay`, south wall,
+  x -17.5: the foot of the Crown's Road), links `woods_camelot.b` (east wall, the track outside the moat), `haunted_camelot.b` (west wall),
+  `well_camelot.a` (free, the outer ward), `northpole_camelot.b` (north wall, over the postern's footbridge). Room doors: `keep` (free, the back of
+  the guardroom → the old Keep room's `ward` door, which now returns here) and `postern` (free, the south bank → Merlin's Undercroft, same).
+  HQ_AREA_ENCOUNTERS: the castle reads the ward's table (one copy). The look row copies the ward's day.
+- **Kept**: every old room. THE OUTER WARD stays the site's battle board (HQ_ARENA_RULES) and keeps its tape; nothing walks into it now but
+  the old Great Hall's door. The old Great Hall is reached from the Keep's stable door and still holds the Lodge's door.
+- **NOT DONE**: the Keep's upper floors, Merlin's Undercroft and the Castle in the Sky are still the old rooms (their redesign is next); the
+  castle is flat (the plan's levels come with the kingdom room); no town, forest, garden or North Pole yet; the ward's tape was not moved.
+- **NOT SEEN ON SCREEN** (RULE #1c). Checked offline: data.js parses, the room compiles (1 109 wall rows, 5 buildings, 6 arch rows), every
+  link end resolves (hqLinkDoors), every catalogue key and race exists, a top-down drawing of the compiled rows matched the plan.
+- **THE HORROR PASS (2026-11-15, mondo: "What can we do to give more of a horror element to the woods", "okay", then "yes you can do the yellow
+  and pink too" on the plan picture world-areas-plan/woods/woods_horror_plan.png)**: one block at the end of bake-woods.js's dressing. Rule: it gets
+  worse the farther you walk from the Stair. Clearing = someone was just here (abandoned camp, flashlight, tape, camera, bear traps + trip wires in
+  the three Deep Woods plots, the missing-persons board on the Camelot trail); Redwood Trail = being watched (voodoo dolls hung at 1-2 m, effigies,
+  ward totems, crosses on the Shelf, skull piles + a cage at the Snowline); Ritual Ground = the cult (the OWL STATUE on its mound with the altar at
+  its feet, an effigy on a bier, a mask on every stage chair, cauldrons, candle rings as models, a dug-up coffin on the Mound); Dead Man's Cave =
+  where things get dumped (the Gully's new yard: a trailer home 5 x 2 squares, the school bus 3 x 1, the DERELICT CABIN 2 x 2; coffins sunk in the
+  channel, skull pile at the cave mouth, sarcophagus on the Tunnel Way). 107 props; `hdec` / `hput` skip a piece when a plot's clearing is full.
+  - NEW MODELS (3 Meshy, concept -> image-to-3d meshy-t2.5, base y 0, metallic 0, .opt.glb beside each, manifest rows, MODEL_LIST):
+    `woods_cabin`, `owl_statue`, `missing_board` (R2 `Assets/world/props/meshy/`; originals in project files world-areas-plan/woods/meshy/).
+  - NEW UNITS here (his OK): scarecrow (Fence Line), skinwalker (the Shelf), ghoul + flesheater (Cave Mouth). Swamp monster + mothman moved to the Pool.
+  - NOT DONE: no meat hooks or hung lanterns (ceiling pieces, nothing to hang them from outdoors); no new lights (the level's lamp cap) and the
+    day look is unchanged, so the dark comes from the night clock only; faces of the cabin / bus / board are unchecked. NOT SEEN ON SCREEN.
+- **THE CABIN, WALK-IN (2026-11-15, mondo: "would rather you architect a wooden cabin like the building's in disaster city so i can actually walk
+  inside of it and it be useful to the game")**: the Meshy `woods_cabin` prop left the Gully (the model stays in the catalogue for the editor). In its
+  place bake-woods.js builds the city's way: a hollow `texbuilding` `woods:cabin` (skin off, `leaf_shabby_wood` swinging in the doorway, wood walls +
+  floorboards inside) + an arch row `woods:cabin:arch`: log walls with corner logs, sill and top plate, a mossy gable roof, boarded windows, a porch
+  (boards, four posts, lean-to roof) on the square row before the door, a stone chimney up the back with its hearth inside, a table built from parts.
+  3 x 2 squares (10.5 x 7 m) at the Gully's east pocket, front WEST to the path (rot 90). Inside: cot, sea chest, rocking chair, radio, rug, cauldron
+  in the hearth, skull + candle + tape on the table, saw, sack, bucket, bear trap, cobwebs. Checked offline: the doorway's gap in the front wall
+  (z 105.0-106.7 at x 31.65), ground walkable from the path to the inside. Nothing happens in it yet (no quest, find or fight is tied to it). NOT SEEN ON SCREEN.
+
+## DISASTER CITY, FINANCIAL'S BOX LETTERS ARE DRAWN SIGNS NOW (2026-11-15, mondo "the blocky 3d letters should become normal lettering")
+- docs/disaster-city/districts/F-detail.js `letters()` no longer builds 5 x 7 box glyphs: each word is ONE `txt:` quad (letters only, `kind:'over'`), same spot,
+  height and colour (gold key -> gilt `#e0c070`); a blade sign (`o.down`, the HOTEL blade) is one quad a letter with the face set in the key. Fewer triangles.
+- sign-fonts.js Financial rows: ARCHIVE / VAULT / ARCADE = Marcellus SC, TAXI / GARAGE = Oswald, the rest Playfair Display.
+- Not seen in the running game (no playtest asked); checked by the bake's sign list only.
+
+
+## CAMELOT KINGDOM ON PLOTS, THE KINGDOM ROOM — second delivery (2026-11-15)
+
+mondo's OK on plan 2 ("okay", 16:53 UTC) after his order: "i want camelot castle in the middle and for it to be surrounded by the other
+districts ... the north pole to the north of the castle would be good as a rival kingdom, or put more woods in between them."
+
+- **The room**: `site_prebuilt_camelot_kingdom` (data.js, between `CAMELOT-KINGDOM-BEGIN / END`, written by `node bake-camelot.js`; never
+  hand-edit). 8 x 8 plots of 12 x 12 squares = 336 m. The squares are `docs/areas/camelot/layout.json` `cells` (the approved plan's own map,
+  copied from project files camelot-kingdom/camelot-layout-2.json). Method = the Woods' (`gen.kind: 'plan', look: 'trees'`, open squares
+  are `space` rows, the rest is solid).
+- **The castle** is the same build as the first delivery, placed by `buildCastle(DZ)` (DZ = 21 m: its north-west square is the kingdom's
+  (24, 36); x is unchanged). The tool still writes the castle's own room `site_prebuilt_camelot_castle` (kept, no way in opens on it now).
+- **Districts**: THE NORTH POLE (rows 0-1 + the snowy pine belt, one level = 1.75 m up, graded over rows 20-24): the pole, the Workshop
+  (walk-in), nine cottages (`xmas_house`), the frozen lake (`ice_1` paint, walked on), santa clause / gnome / yeti with the old village's
+  lines. THE TOWN (new): Chapel, Smithy, Inn (walk-in), 29 houses (solid `texbuilding` + an `arch` look: plaster, stone foot, timber frame,
+  gable), market, the green. THE FAIRY FOREST: pond + deck, spring, knolls (`hill`), the ring of toadstools, toadstool groves.
+  THE LOOKING-GLASS GARDEN: hedges (solid from the plan, drawn as `arch` boxes a plot, `leaves_3`), the old garden's chessboard and
+  position (`board` + its chess trees moved), tea table, statues, the mirror, the old natives with their own lines.
+- **THE TREE ZONES (engine, data.js `_hqTPlanFinish`)**: `gen.zones = [{ x0, z0, x1, z1, kinds?, treeH?, none? }]`; the first zone a trunk
+  stands in picks its kinds; `none` plants nothing (the hedges). Used here for snowy pines, `fae_cap` toadstool trees, and the garden.
+- **Ways in, all on the kingdom now**: `hubs.kingdom.room`, `siteRooms.entry.prebuilt_camelot` (door `bay`, s, x -24.5 = the Town Gate),
+  links `woods_camelot` (e, z 3.5), `northpole_camelot` (n, x 7: goes on to the old village room), `haunted_camelot` (free, the wardrobe
+  in a nook of the snowy pines), `well_camelot` (free, the bailey). Room doors: `keep`, `postern` (the old Keep and Undercroft, their
+  return doors repointed), `mirror` (the Astral waiting room), `oldgarden` (the old garden, as it was), `deadtree` (secret, the Woods'
+  `lookingglass` door, repointed in bake-woods.js). The tool prints the link ends (`ends {...}`): move the data.js rows if a path moves.
+- **Why `res: 1.75`**: the castle's rows are dear a lattice node; at the Woods' 0.875 the room took 32 s to compile in node, at 1.75 it
+  takes 8 s (the Woods 10 s, Disaster City 8 s).
+- **Not done / open**: never seen on screen (no browser run: RULE #1c). The Keep's upper floors, the Undercroft and the Sky Castle are
+  still the old rooms. No anvil, market stall, archery target or lamp post exists on R2 (tents, crates and sacks stand in). The old
+  Fairy Forest glade has no door of its own, so nothing links to it. Town plot names are plain descriptions.

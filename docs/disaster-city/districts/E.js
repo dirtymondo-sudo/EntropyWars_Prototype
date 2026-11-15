@@ -856,7 +856,14 @@ module.exports = { build: function (api) {
       { const star = (P, x, z, R) => { P('box', x, 0.03, z, TG, '#6a3040', { size: [1.6, 0.02, 1.6], sides: false });
           const o = [], n = []; for (let k = 0; k < 5; k++) { const a = (-90 + 72 * k) * D2R, a2 = (-54 + 72 * k) * D2R; o.push([r3(Math.cos(a) * R), r3(Math.sin(a) * R)]); n.push([r3(Math.cos(a2) * R * 0.4), r3(Math.sin(a2) * R * 0.4)]); }
           P('poly', x, 0.052, z, GOLD, null, { pts: n, h: 0.012 }); for (let k = 0; k < 5; k++) P('poly', x, 0.052, z, GOLD, null, { pts: [o[k], n[k], n[(k + 4) % 5]], h: 0.012 }); };
-        for (const [id, row, c0, c1] of [['stars-n', 39, 9, 42], ['stars-s', 44, 9, 38]]) for (let c = c0; c < c1; c += 11) free(id + '-' + c, XC(c), ZC(row), P => { for (let k = 0; k < 11 && c + k <= c1; k++) star(P, k * C + ((k % 2) ? 0.5 : -0.5), (k % 2) ? -0.45 : 0.4, 0.6); }); }
+        /* ON THE GROUND (mondo 11-15 16:13, the Wedding Chapel walk: "these stars are floating in the air when they should be on the ground"): the walks
+           ride the street's slope and cross plots on other levels, so ELEVEN stars on one row stood at the first star's height (up to 1.9 m in the air
+           down the hill). Now each star is its own row (the bake stands it on the ground under its middle) and `hug` lays every corner of it on the
+           ground under that corner (data.js THE HUGGING ROWS), so a star on a sloped square lies on the slope.
+           Each star sits on the middle of its own walk square, in one even line like the real walk: the old zig-zag hung the odd stars 0.4 m past
+           the walk's edge over the kerb's bank, where the ground falls away under them. */
+        for (const [id, row, c0, c1] of [['stars-n', 39, 9, 42], ['stars-s', 44, 9, 38]]) for (let c = c0; c <= c1; c++) {
+          free(id + '-' + c, XC(c), ZC(row), P => star(P, 0, 0, 0.6)); rows[rows.length - 1].hug = true; } }
       /* ── THE PALMS: very tall, thin, in the yard squares beside the boulevard's walks and the cross street's (never on a walk: a palm blocks
          its square). The bake's soil rule beds every one. ── */
       { let n = 0; const palm = (c, r) => { if (!sq(c, r)) return; props.push({ key: 'palm_tree', x: XC(c), z: ZC(r), h: 11.5 + (n * 7 % 5) * 0.8 }); n++; };
