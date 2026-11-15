@@ -16,6 +16,10 @@
 const C = 3.5, N = 12;
 const WR = 'u_DecalWindowsResidential1a', WR2 = 'u_DecalWindowsResidential2a';
 const STONE = 'marble_light', ALU = 'aluminium', DARK = 0x20252c, VERD = 0x8fe0c4, SLATE = 0xa8b3c4, GOLD = 0xf0c858;
+/* THE PIECES THAT WAIT FOR THEIR MODEL (mondo's OK on both concepts 11-15; docs/plans/disaster-city/civic-dc/): a key here is placed only once
+   data.js has its catalogue row, so the city can be baked before the GLB exists. Rows + recipe: areas-complexes.md "CIVIC CENTER, DC PASS 2". */
+const HAVE = (() => { let src = ''; try { src = require('fs').readFileSync(require('path').join(__dirname, '../../../data.js'), 'utf8'); } catch (e) {}
+    const h = {}; ['seated_statue', 'blossom_tree'].forEach(k => { h[k] = !!process.env.CIVIC_HAVE || new RegExp('^\\s+' + k + ':\\s*\\{\\s*file:', 'm').test(src); }); return h; })();
 const PLOTS = [];
 let cur = null, bld = null;
 const plot = (px, py, fn) => { cur = { px, py, b: [] }; PLOTS.push(cur); fn(); };
@@ -41,6 +45,10 @@ const ring = (n, cx, cz, R, r, y0, y1, key, tint) => { for (let i = 0; i < n; i+
    keeps its box; its two faces wear the renderer's 'mark:flag' sheet (three-renderer.js _hqArchSignTex). `tint` is kept for the cloth's edge. */
 const flag = (x, z, h, tint) => { cyl(x, z, 0.09, 0, h, ALU, 0xdddddd, { seg: 6 }); box(x + 0.1, z - 0.03, x + 2.3, z + 0.03, h - 1.6, h - 0.2, null, tint);
     push({ t: 'flagq', x: x + 1.2, y: h - 1.6, z: z + 0.045, ry: 0 }); push({ t: 'flagq', x: x + 1.2, y: h - 1.6, z: z - 0.045, ry: 180 }); };
+/* a black iron fence with a stone post every square, and its unseen wall (the plaza's lawns, the White House lawn) */
+const iron = (x0, z0, x1, z1) => { const ns = x0 === x1; box(x0 - (ns ? 0.03 : 0), z0 - (ns ? 0 : 0.03), x1 + (ns ? 0.03 : 0), z1 + (ns ? 0 : 0.03), 1.0, 1.06, null, 0x15171a); box(x0 - (ns ? 0.03 : 0), z0 - (ns ? 0 : 0.03), x1 + (ns ? 0.03 : 0), z1 + (ns ? 0 : 0.03), 0.18, 0.24, null, 0x15171a);
+    const L = ns ? z1 - z0 : x1 - x0; for (let d = 0; d <= L + 0.01; d += 0.25) { const x = ns ? x0 : x0 + d, z = ns ? z0 + d : z0; if (Math.abs(d / 3.5 - Math.round(d / 3.5)) < 0.01) { box(x - 0.2, z - 0.2, x + 0.2, z + 0.2, 0, 1.25, STONE, 0xe4ddd0); } else if (Math.round(d * 4) % 2 === 0) cyl(x, z, 0.022, 0.1, 1.2, null, 0x15171a, { seg: 4 }); }
+    bld.ghost.push([x0, z0, x1, z1, 1.25]); };
 const face = (x, z, r, y, side) => { const t = 0.12; if (side === 'W' || side === 'E') box(x - t, z - r, x + t, z + r, y - r, y + r, null, 0xfdfbf2); else box(x - r, z - t, x + r, z + t, y - r, y + r, null, 0xfdfbf2); };   // a clock's face (a square dial)
 
 /* ───────── row 0 ───────── */
@@ -98,11 +106,18 @@ plot(7, 0, () => {
         [3.5, 7].forEach(y => box(10.2, 7.3, 24.3, 17.8, y - 0.12, y + 0.12, STONE)); box(9.2, 6.3, 25.2, 18.6, 10.5, 10.95, STONE, null, { under: 1 });
         cyl(29.6, 12.25, 5.5, 0, 9, 'u_PlasterWallPainted1a', 0xf4efe4, { seg: 28 });
         ring(14, 29.6, 12.25, 6.15, 0.17, 0, 10.4, STONE, null); cyl(29.6, 12.25, 5.0, 9, 10.4, 'u_GlassWindowSquare1a', 0xdff4ff, { seg: 28 }); cyl(29.6, 12.25, 6.7, 10.4, 10.8, STONE, null, { seg: 28 }); dome(29.6, 12.25, 5.3, 10.8, 1.9, ALU, VERD); });
-    B(1, { st: 2 }, () => {                                                                                                                          // THE MAYOR'S HOUSE
-        box(24.5, 21, 42, 42, 0, 7.4, 'bricks_2', 0xffc8a0, { win: WR }); roof('gable', 24.5, 21, 42, 42, 7.4, 4.4, ALU, SLATE, { axis: 'z', over: 0.5 });
-        box(27, 24, 28.2, 25.2, 7.4, 12.8, 'bricks_2', 0xd8987c); box(37.8, 36, 39, 37.2, 7.4, 12.8, 'bricks_2', 0xd8987c);
-        box(22.3, 27.5, 24.5, 32, 0, 0.12, STONE); cyl(22.7, 27.9, 0.22, 0.12, 3.4, STONE, null, { seg: 10 }); cyl(22.7, 31.6, 0.22, 0.12, 3.4, STONE, null, { seg: 10 }); box(22.1, 27.3, 24.5, 32.2, 3.4, 3.8, STONE); roof('gable', 22.1, 27.3, 24.5, 32.2, 3.8, 1.2, STONE, null, { axis: 'x' });
-        door(24.5, 29.75, 'W'); }); });
+    B(1, { st: 2, ghost: [] }, () => { const W = 0xffffff, WZ = [27.75, 28.75, 30.75, 31.75], L = { glow: 0.45 }, LT = { glow: 0.45, top: 1 };                    // THE MAYOR'S HOUSE = THE WHITE HOUSE (mondo 11-15): white (lifted a little so its shaded front still reads white), a flat roof behind a parapet, a tall four-column portico to the west lawn
+        box(24.5, 21, 42, 42, 0, 7.6, STONE, W, { win: WR, glow: 0.45 }); box(24.3, 20.8, 42, 42, 7.6, 7.95, STONE, W, L);
+        [[24.3, 20.8, 42, 21.05], [24.3, 41.75, 42, 42], [24.3, 20.8, 24.55, 42], [41.75, 20.8, 42, 42]].forEach(b => box(b[0], b[1], b[2], b[3], 7.95, 8.6, STONE, W, LT));                                  // the parapet
+        for (let z = 21; z <= 42; z += 3.5) box(24.2, z - 0.25, 24.6, z + 0.25, 7.95, 8.85, STONE, W, LT); for (let x = 28; x <= 42; x += 3.5) { box(x - 0.25, 20.7, x + 0.25, 21.1, 7.95, 8.85, STONE, W, LT); box(x - 0.25, 41.7, x + 0.25, 42, 7.95, 8.85, STONE, W, LT); }
+        box(27, 24, 28.2, 25.2, 7.6, 9.6, STONE, W, L); box(37.8, 36, 39, 37.2, 7.6, 9.6, STONE, W, L);
+        box(22.1, 27.3, 24.5, 32.2, 0, 0.3, STONE, 0xf1ece0); WZ.forEach(z => { cyl(22.6, z, 0.34, 0.3, 0.55, STONE, W, { seg: 12, glow: 0.45 }); cyl(22.6, z, 0.26, 0.55, 6.6, STONE, W, { seg: 12, glow: 0.45 }); cyl(22.6, z, 0.36, 6.6, 6.9, STONE, W, { seg: 12, glow: 0.45 }); });
+        box(22.1, 27.3, 24.5, 32.2, 6.9, 7.6, STONE, W, L); box(21.95, 27.15, 24.5, 32.35, 7.6, 7.8, STONE, W, L); roof('gable', 22.1, 27.3, 24.5, 32.2, 7.8, 1.5, STONE, W, { axis: 'x', glow: 0.45 });
+        box(24.38, 28.6, 24.5, 30.9, 0, 3.3, STONE, 0xf1ece0, L); box(24.34, 28.4, 24.5, 31.1, 3.3, 3.6, STONE, W, L);                                        // the door's stone frame + its head
+        [27.0, 32.5].forEach(z => { cyl(21.6, z, 0.07, 0, 2.6, null, 0x15171a, { seg: 6 }); dome(21.6, z, 0.26, 2.6, 0.42, null, 0xfff0c0, { glow: 1 }); });      // the two lamps of the walk
+        flag(33.25, 31.5, 13.2, 0xb03a2a);
+        iron(3.5, 24.5, 17.5, 24.5); iron(17.5, 24.5, 17.5, 28); iron(17.5, 31.5, 17.5, 38.5);                                                                 // the lawn's fence: the walk side + the north side, the gate facing the portico
+        push({ t: 'door', x: 24.5, z: 29.75, face: 'W', plain: true }); }); });
 
 /* ───────── row 1: the avenue ───────── */
 plot(4, 1, () => { const G = 0xeeeae0;
@@ -134,10 +149,11 @@ plot(6, 1, () => {
         cyl(35, 7, 2.05, 0.7, 27, STONE, 0xfffaf0, { seg: 4, r2: 1.35, ry: 45 }); cone(35, 7, 1.35, 27, 2.3, STONE, 0xfffaf0, { seg: 4, ry: 45 });
         box(4.05, 4.05, 13.45, 9.95, 0, 0.3, null, 0x2c5878, { glow: 0.18 }); box(3.5, 3.5, 14, 4.05, 0, 0.45, STONE, 0xf1ece0); box(3.5, 9.95, 14, 10.5, 0, 0.45, STONE, 0xf1ece0); box(3.5, 4.05, 4.05, 9.95, 0, 0.45, STONE, 0xf1ece0); box(13.45, 4.05, 14, 9.95, 0, 0.45, STONE, 0xf1ece0);
         [4.4, 7, 9.6].forEach((z, i) => { flag(16.9, z, 9, i % 2 ? 0xb03a2a : 0x2a56b0); flag(25.1, z, 9, i % 2 ? 0x2a56b0 : 0xb03a2a); });
-        const iron = (x0, z0, x1, z1) => { const ns = x0 === x1; box(x0 - (ns ? 0.03 : 0), z0 - (ns ? 0 : 0.03), x1 + (ns ? 0.03 : 0), z1 + (ns ? 0 : 0.03), 1.0, 1.06, null, 0x15171a); box(x0 - (ns ? 0.03 : 0), z0 - (ns ? 0 : 0.03), x1 + (ns ? 0.03 : 0), z1 + (ns ? 0 : 0.03), 0.18, 0.24, null, 0x15171a);
-            const L = ns ? z1 - z0 : x1 - x0; for (let d = 0; d <= L + 0.01; d += 0.25) { const x = ns ? x0 : x0 + d, z = ns ? z0 + d : z0; if (Math.abs(d / 3.5 - Math.round(d / 3.5)) < 0.01) { box(x - 0.2, z - 0.2, x + 0.2, z + 0.2, 0, 1.25, STONE, 0xe4ddd0); } else if (Math.round(d * 4) % 2 === 0) cyl(x, z, 0.022, 0.1, 1.2, null, 0x15171a, { seg: 4 }); }
-            bld.ghost.push([x0, z0, x1, z1, 1.25]); };
         iron(3.5, 3.5, 17.5, 3.5); iron(3.5, 3.5, 3.5, 10.5); iron(24.5, 3.5, 38.5, 3.5); iron(38.5, 3.5, 38.5, 10.5);
+        if (HAVE.seated_statue) {   /* DC: the seated statue in its open temple on the south-east lawn, looking north up the walk at the obelisk */
+            const T = 0xf6f1e6; box(31.3, 34.8, 38.7, 38.5, 0, 0.3, STONE, T); box(31.5, 38.1, 38.5, 38.5, 0.3, 4.9, STONE, T); box(31.5, 35.6, 31.9, 38.1, 0.3, 4.9, STONE, T); box(38.1, 35.6, 38.5, 38.1, 0.3, 4.9, STONE, T);
+            [31.9, 33.1, 36.9, 38.1].forEach(x => cyl(x, 35.2, 0.24, 0.3, 4.9, STONE, 0xffffff, { seg: 12 })); box(31.3, 34.8, 38.7, 38.5, 4.9, 5.5, STONE, T, { under: 1 }); box(31.1, 34.6, 38.9, 38.5, 5.5, 5.75, STONE, 0xffffff);
+            bld.ghost.push([31.5, 38.3, 38.5, 38.3, 4.9], [31.7, 35.6, 31.7, 38.3, 4.9], [38.3, 35.6, 38.3, 38.3, 4.9]); bld.cells.push([9, 10], [10, 10]); }
         box(25.35, 32.35, 27.15, 34.15, 0, 6.5, STONE, 0xf1ece0); face(26.25, 34.2, 0.7, 5.35, 'S'); face(26.25, 32.3, 0.7, 5.35, 'N'); roof('pyr', 25.05, 32.05, 27.45, 34.45, 6.5, 1.4, ALU, VERD); }); });
 
 plot(7, 1, () => { const CR = 0xfff4dc, CCOL = [5.45, 7.05, 8.65, 10.25, 12.55, 14.15, 15.75, 17.35];   // symmetric about the door (11.4)
@@ -410,7 +426,7 @@ function detail(Bd, D, walked, seed, name) {
         seg(-hw - 0.75, hw + 0.75, 0, 1.1, 2.87, 3.05, null, 0x30343a); seg(-hw - 0.6, hw + 0.6, 0.02, 0.1, 3.05, 3.6, null, 0x23262b); if (name) { const A = P(0, 0.11); add({ t: 'sign', x: A[0], z: A[1], y: 3.11, face: D.side, w: 2 * hw + 1.1, h: 0.44, text: name, fg: '#e8c860', bg: '#23262b' }); } else seg(-hw - 0.45, hw + 0.45, 0.1, 0.13, 3.15, 3.5, 'gold', null);   // the canopy, the name board, its gilt plate
     }
     /* a drawn shop door: an awning + valance, a sign board, a blade sign */
-    src.filter(q => q.t === 'door').forEach((d, i) => {
+    src.filter(q => q.t === 'door' && !q.plain).forEach((d, i) => {   // (a `plain` door: a house, no shop front)
         const v = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] }[d.face], ns = d.face === 'S' || d.face === 'N', col = AWN[(seed + i * 3) % AWN.length];
         const P = (a, t) => ns ? [d.x + a, d.z + v[1] * t] : [d.x + v[0] * t, d.z + a];
         const seg = (a0, a1, t0, t1, y0, y1, key, tint, o) => { const A = P(a0, t0), Bq = P(a1, t1); bx(A[0], A[1], Bq[0], Bq[1], y0, y1, key, tint, o); };
@@ -808,6 +824,10 @@ const DRESS = [
     [6, 1, 'fountain', 8.75, 7, 0, null],   // the plaza's fountain stands in the pool (the tool's own gave its square to the pool)
     [6, 1, 'newspaper_rack', 16.6, 11.6, 90, null], [6, 1, 'newspaper_rack', 16.6, 12.5, 90, null], [6, 0, 'newspaper_rack', 9.2, 36.2, 180, null], [7, 1, 'newspaper_rack', 18.6, 11.9, 270, null],
 ];
+/* the pieces that wait for their model: the seated statue in its temple, the pink blossom trees on the lawns (a tree needs its square free) */
+if (HAVE.seated_statue) DRESS.push([6, 1, 'seated_statue', 35, 36.9, 0, null, { h: 3.4 }]);
+if (HAVE.blossom_tree) [[6, 0, 2, 9], [6, 0, 9, 9], [6, 1, 1, 9], [6, 1, 1, 10], [6, 1, 4, 9], [6, 1, 4, 10], [6, 1, 8, 2], [7, 0, 1, 7], [7, 0, 4, 7], [7, 0, 1, 10], [7, 0, 4, 10], [7, 1, 1, 9], [7, 1, 4, 10], [7, 1, 7, 10], [7, 1, 10, 9]]
+    .forEach((t, i) => DRESS.push([t[0], t[1], 'blossom_tree', t[2] * C + 1.75, t[3] * C + 1.75, (i * 97) % 360, [[t[2], t[3]]], { h: 5 + (i * 7 % 5) * 0.3 }]));
 const BARS = [[6, 1, 3.95, 7, 13.55, 7, 0.6, 6.1], [6, 1, 31.95, 7, 38.05, 7, 3, 6.1]];
 /* ══ apply(ctx): called by bake-disaster-city.js after its building loop. ctx = { PLAN, features, props, bInfo, gx, take, roofB, ROOF_H } ══ */
 function apply(ctx) {
@@ -855,6 +875,7 @@ function apply(ctx) {
         (cs || []).forEach(c => take(d[0] * N + c[0], d[1] * N + c[1]));
         ctx.props.push(Object.assign({ key: d[2], x: ctx.r3(X0 + d[3]), z: ctx.r3(Z0 + d[4]), face: d[5] }, d[7] || {})); n.dress = (n.dress || 0) + 1; });
     BARS.forEach(b => { const X0 = gx(b[0] * N), Z0 = gx(b[1] * N); features.push({ k: 'wall', x0: ctx.r3(X0 + b[2]), z0: ctx.r3(Z0 + b[3]), x1: ctx.r3(X0 + b[4]), z1: ctx.r3(Z0 + b[5]), t: b[7], y: b[6], ghost: true, rail: false }); n.ghosts++; });
+    if (process.env.CIVIC_DEBUG === 'cells') [[6, 0], [7, 0], [6, 1], [6, 2], [5, 1], [7, 1]].forEach(q => { console.log('P', q.join(',')); for (let y = 0; y < N; y++) { let r = ''; for (let x = 0; x < N; x++) r += ctx.free(q[0] * N + x, q[1] * N + y, '.') ? '.' : ctx.free(q[0] * N + x, q[1] * N + y, '.#PRWB=~abcdefghijklmnopqrstuvwxyz0123456789') ? ctx.cellAt(q[0] * N + x, q[1] * N + y) : (ctx.cellAt(q[0] * N + x, q[1] * N + y) === '.' ? 'x' : ctx.cellAt(q[0] * N + x, q[1] * N + y).toUpperCase()); console.log(r); } });
     if (process.env.CIVIC_DEBUG) console.log('civic', JSON.stringify(n));
     return n;
 }
