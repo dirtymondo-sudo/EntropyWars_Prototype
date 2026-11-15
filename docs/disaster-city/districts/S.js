@@ -203,7 +203,8 @@ exports.apply = (ctx) => {
         o.push(signAt(-39.72, 9.3, 0, -90, 11.6, 1.2, 'HOME  14      VISITORS  10', '#ffb020', '#14161a', 0.9), signAt(-39.72, 7.2, 0, -90, 11.6, 1.0, 'QTR 3     08:42', '#ffe2a0', '#14161a', 0.9));
         o.push({ s: 'box', p: [-40.25, 11.5, 0], size: [1.2, 0.3, 14.4], tint: 0x444a52 }, signAt(-40.77, 8.2, 0, 90, 10, 1.6, 'CITY STADIUM', '#f4f4f4', '#1b1e24'));
         [-1, 1].forEach(dir => {
-            for (let k = 0; k < 8; k++) o.push({ s: 'box', p: [-23.3, 1.2 + k * 0.85, dir * (21.8 + k * 1.6)], size: [1.2, 0.03, 1.6], key: RUB_Y, uv: 1.2, n: 3, step: [23.3, 0, 0] });
+            /* the section boards on the back wall over the top row (the aisles are the stand's own: THE STANDS) */
+            [-30.6, -17.5, 0, 17.5, 30.6].forEach((x, i) => { if (dir > 0 && i === 2) return; o.push(signAt(x, 7.9, dir * 33.76, dir > 0 ? 180 : 0, 2.6, 0.7, 'SEC ' + (dir > 0 ? 101 + i : 201 + i), '#f4f4f4', '#1b1e24')); });
             o.push({ s: 'box', p: [0, 2.1, dir * 21.05], size: [70, 0.08, 0.08], tint: 0xdddddd }, { s: 'box', p: [-34.9, 1.2, dir * 21.05], size: [0.08, 0.9, 0.08], tint: 0xdddddd, n: 21, step: [3.49, 0, 0] });
             o.push({ s: 'box', p: [0, 0, dir * 35.06], size: [70.2, 1.1, 0.12], key: CONC }, { s: 'box', p: [0, 0, dir * 21.0], size: [70, 1.2, 0.06], key: PAVE, uv: 1.75 });
             o.push({ s: 'box', p: [-35, 0, dir * 35.1], size: [1.0, 9.6, 0.3], key: T_RED, tint: 0xb07a68, n: 11, step: [7, 0, 0] });
@@ -429,13 +430,25 @@ exports.apply = (ctx) => {
        side (the locker rooms' doors under the south stand, a press box on top; a roof over the north stand), the scoreboard at the west end,
        four flood masts, a goal post on each end line, the team benches on the sidelines. The grass is the ground's own sheet; the lines, the
        stripes and the end zones lie on it. ── */
-    { const P = [], SX = -42, SZ = 168, lay = (x, z, w, d, tint, y) => ({ s: 'quad', flat: true, p: [x, y || 0.02, z], size: [w, d], tint, kind: 'over' });
-      for (let i = 0; i < 5; i++) P.push(lay(-28.35 + i * 12.6, 0, 6.3, 35, 0x447c34));
-      P.push(lay(-35, 0, 7, 35, 0x2a50b8), lay(35, 0, 7, 35, 0xb8322a));
-      for (let i = 0; i < 11; i++) P.push(lay(-31.5 + i * 6.3, 0, 0.2, 35, 0xffffff, 0.035));
-      P.push(lay(0, -17.5, 77.2, 0.22, 0xffffff, 0.035), lay(0, 17.5, 77.2, 0.22, 0xffffff, 0.035), lay(-38.5, 0, 0.22, 35, 0xffffff, 0.035), lay(38.5, 0, 0.22, 35, 0xffffff, 0.035));
+    { const P = [], SX = -42, SZ = 168;
+      /* THE CHALK (2026-11-15, mondo: "it looks worse than the stadium battle map ... it needs to look just as good if not better"): the old
+         stadium's own paint (data.js hqGridironMarks: the border, a yard line every five, the hashes every yard, the numbers, the two worded
+         end zones, the midfield ring and its mark) laid at the city's size and turned east-west, over mown bands. It is the room's
+         `terrain.marks` now (it follows the ground and sinks with a crater), no longer flat quads in the building's row. */
+      ctx.marks.push("hqGridironMarks({ yard: 0.62, at: { x: " + SX + ", z: " + SZ + ", rot: 90 }, stripes: 0x9be070, stripeA: 0.3, logo: 'Δ', logoColor: 0xffd34a, logoSize: 2.8, endZones: [{ color: 0xb02a2a, text: 'ENTROPY' }, { color: 0x2a4ab0, text: 'WARS' }] })");
+      /* THE STANDS (same day): the old bowl's stand, straight: a fascia, FOURTEEN ROWS a step apart (rise 0.42, tread 0.875: two rows to a
+         square) with a seat every 0.55 m (the engine's own instanced seats: three-renderer.js _hqBuildTierSeats; navy north, crimson south, as
+         the bowl's east and west), four aisles on square middles (yellow half steps, the seats stop either side), a landing under the back wall.
+         The rows are tier WALL rows of the room (merged into one mesh a sheet); the stands stay solid for the walker (the blocks below). */
+      const ROWS = 14, RISE = 0.42, TREAD = 0.875, FOOT = 0.68, Z0 = 21.3, AISLES = [-26.25, -8.75, 8.75, 26.25];
+      const rowTop = k => FOOT + k * RISE;   // over the ground (a wall row's `y` is lifted by the room's slope at the compile, as an arch row's by this tool)
       const stand = (dir) => { const o = [];
-        for (let k = 0; k < 8; k++) o.push({ s: 'box', p: [0, 0, dir * (21.8 + k * 1.6)], size: [70, 1.2 + k * 0.85, 1.6], key: CONC, keyTop: k % 2 ? BLUEP : WHITE, tintTop: k % 2 ? 0x4a78e0 : 0xf4f4f4, uv: 3.5 });
+        o.push({ s: 'box', p: [0, 0, dir * 21.15], size: [70, 1.1, 0.3], key: CONC, uv: 3.5 });
+        for (let k = ROWS; k >= 1; k--) { const zc = SZ + dir * (Z0 + (k - 0.5) * TREAD), za = r3(zc - TREAD / 2), zb = r3(zc + TREAD / 2);
+          lateRows.push({ k: 'wall', id: 'dc:S-row-' + (dir < 0 ? 'n' : 's') + k, x0: SX - 35, z0: r3(zc), x1: SX + 35, z1: r3(zc), y: r3(rowTop(k)), t: TREAD, key: 'concrete_floor', tier: true, rail: false,
+              quad: [[SX - 35, za], [SX + 35, za], [SX + 35, zb], [SX - 35, zb]], front: [0, -dir], seat: dir < 0 ? 0x2a4ab0 : 0xb02a2a, gaps: AISLES.map(a => [a + 35 - 0.6, a + 35 + 0.6]) });
+          o.push({ s: 'box', p: [AISLES[0], rowTop(k), dir * (Z0 + (k - 0.25) * TREAD)], size: [1.2, RISE / 2, TREAD / 2], key: RUB_Y, uv: 1.2, n: 4, step: [17.5, 0, 0] }); }
+        o.push({ s: 'box', p: [0, 0, dir * 33.675], size: [70, rowTop(ROWS + 1), 0.25], key: CONC, uv: 3.5 });
         o.push({ s: 'box', p: [0, 0, dir * 34.4], size: [70, 9.6, 1.2], key: T_RED, tint: 0xd9a08c, uv: 3.5 });
         o.push({ s: 'box', p: [0, 9.6, dir * 34.4], size: [70.4, 0.6, 1.6], key: BLUEP, tint: 0x3b62c4 });
         o.push({ s: 'quad', p: [dir > 0 ? -28 : 28, 5.2, dir * 35.03], ry: dir > 0 ? 0 : 180, size: [1.6, 1.8], key: G_RES, uv: 'fit', n: 9, step: [dir > 0 ? 7 : -7, 0, 0] });
@@ -448,7 +461,17 @@ exports.apply = (ctx) => {
       P.push({ s: 'roof', form: 'shed', p: [0, 10.4, -30], size: [70, 2.2, 10], key: M_BLUE, under: true, ds: true, uv: 3.5 }, { s: 'box', p: [-33, 0, -35.3], size: [0.6, 10.6, 0.6], key: TRUSS, uv: [0.6, 2.2], n: 7, step: [11, 0, 0] });
       /* the scoreboard */
       P.push({ s: 'box', p: [-40.25, 0, -5.25], size: [0.7, 9, 0.7], tint: 0x444a52, n: 2, step: [0, 0, 10.5] }, { s: 'box', p: [-40.25, 6, 0], size: [1, 5.5, 14], tint: 0x1b1e24 }, { s: 'quad', p: [-39.73, 6.6, 0], ry: -90, size: [12.6, 4.2], tint: 0xffb020, glow: 0.5 });
-      const mast = (x, z) => [{ s: 'cyl', p: [x, 0, z], r: 0.3, h: 17, seg: 8, tint: 0x666c74 }, { s: 'box', p: [x, 17, z], size: [3.6, 1.8, 0.5], tint: 0xf4f2e0, glow: 0.6 }];
+      /* THE FLOOD MASTS (same day): the old stadium's mast at the city's 17 m: a plinth, a tapered steel pole, a service deck, a braced
+         frame turned to the centre spot with two rows of four lamp heads and their lit lenses */
+      const mast = (x, z) => { const L = Math.hypot(x, z), ry = Math.atan2(x / L, -z / L) * 180 / Math.PI, pc = Math.cos(-ry * Math.PI / 180), ps = Math.sin(-ry * Math.PI / 180), ST = 0x3a3e44;
+        const at = (dx, y, dz) => [r3(x + dx * pc + dz * ps), y, r3(z - dx * ps + dz * pc)], o = [];
+        o.push({ s: 'box', p: [x, 0, z], size: [1.5, 0.7, 1.5], key: CONC, uv: 1.75 }, { s: 'cyl', p: [x, 0.7, z], r: 0.36, r2: 0.2, h: 15.3, seg: 10, tint: ST });
+        o.push({ s: 'cyl', p: [x, 13.6, z], r: 1.0, h: 0.1, seg: 12, tint: ST }, { s: 'cyl', p: [x, 13.7, z], r: 1.0, ri: 0.94, h: 0.9, seg: 12, cap: false, ds: true, key: GRILL, uv: 0.9, kind: 'over' });
+        o.push({ s: 'box', p: at(0, 15.3, 0), ry, size: [4.6, 0.16, 0.16], tint: ST }, { s: 'box', p: at(0, 16.55, 0), ry, size: [4.6, 0.16, 0.16], tint: ST }, { s: 'box', p: at(0, 17.8, 0), ry, size: [4.6, 0.16, 0.16], tint: ST });
+        o.push({ s: 'box', p: at(-2.22, 15.3, 0), ry, size: [0.16, 2.66, 0.16], tint: ST, n: 2, step: [r3(4.44 * pc), 0, r3(-4.44 * ps)] });
+        [15.5, 16.75].forEach(y => { o.push({ s: 'box', p: at(-1.65, y, 0.22), ry, size: [0.86, 0.86, 0.4], tint: 0x2a2e34, n: 4, step: [r3(1.1 * pc), 0, r3(-1.1 * ps)] });
+            o.push({ s: 'quad', p: at(-1.65, y + 0.08, 0.43), ry, size: [0.7, 0.7], tint: 0xeaf4ff, glow: 1, n: 4, step: [r3(1.1 * pc), 0, r3(-1.1 * ps)] }); });
+        return o; };
       P.push(mast(-40.25, -26.25), mast(40.25, -26.25), mast(-40.25, 26.25), mast(40.25, 26.25));
       B('stadium', SX, SZ, 0, P);
       block('stand-n', SX, SZ - 28, 70, 14, 3); block('stand-s', SX, SZ + 28, 70, 14, 3);

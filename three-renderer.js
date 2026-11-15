@@ -70778,6 +70778,9 @@ const ThreeRenderer = (function () {
             var im = new THREE.InstancedMesh(seatGeo, mat, list.length);
             list.forEach(function (it, k) { q.setFromAxisAngle(up, it[3]); p3.set(it[0] * U, it[1] * U + 0.3, it[2] * U); m4.compose(p3, q, sc); im.setMatrixAt(k, m4); });
             im.instanceMatrix.needsUpdate = true; im.castShadow = false; im.receiveShadow = true; im.renderOrder = 1; im.frustumCulled = false; im._ew_hqSeats = true;
+            /* THE SEATS OUT OF VIEW (2026-11-15, Disaster City's stadium: thousands of seats in a 500 m city): a colour's seats carry their own
+               bounding sphere (every instance in it), so a stand behind the camera is not drawn; without one they stay always drawn as before */
+            try { if (typeof im.computeBoundingSphere === 'function') { im.computeBoundingSphere(); if (im.boundingSphere && im.boundingSphere.radius > 0) im.frustumCulled = true; } } catch (e) { im.frustumCulled = false; }
             G.add(im); made += list.length;
         });
         return made;
