@@ -1957,6 +1957,20 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE MASK'S SHORT WALK + THE QUIET SYNC (2026-11-15, from mondo's first Frame JS readout)
+
+His Mac after #1395: 20.2 fps (was 13.1), CPU 38 ms, frame 48.5 ms. Biggest rows: "mask: projection walk 8.2", "mask: setup + lights + sort
+6.3", matrix walk 4.6, scene bundle replays 4.2, bundle check 2.8.
+- THE MASK'S SHORT WALK (`_ewBunSetup`'s `_projectObject` wrapper, `maskFile`): three-post's model mask renders the scene twice (skinned
+  layer 7, static layer 8) as a side render, which draws bundle groups the classic way, so it walked the shell's 10,000 children twice. A
+  group with > 32 children (not a chunk, not a clipping group) keeps `_ew_mkIdx`: the children whose subtree holds a layer other than 0, a
+  light, a bundle group, a chunk, a clipping group or an LOD, with their layer union; a side render whose camera lacks layer 0 projects only
+  those meeting its layers. Re-filed on an add (once a second at most), a child-count change or every 10 s. Off `window.EW_MASK_FULL_WALK`.
+- THE QUIET SYNC (`_hqInstSync`, scene.onBeforeRender, so the frame's FIRST render pays it = the mask's "setup"): 12,000 instanced copies
+  walked to the scene for visibility + a matrix multiply each, every frame. A batch with no change for 30 syncs (`HQ_INST_REST`) syncs
+  every 4th frame; any change wakes it. Parent visibility once per parent a frame (`_hqInstShown`, stamp props `_ew_shS/_ew_shC/_ew_shV`).
+  Off `window.EW_HQ_INST_SYNC_EVERY`.
+
 ## THE STILL CHECK + THE FRAME BREAKDOWN (2026-11-15, Disaster City, after THE OUTS ON A REPLAY FRAME)
 
 mondo's Mac (#1393): CPU 70 ms of which submit 40 with 99 draws, "check 8.85 ms/frame", and the lens could not say where the rest went.

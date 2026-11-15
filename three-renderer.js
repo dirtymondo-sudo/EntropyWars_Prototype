@@ -47033,6 +47033,17 @@ const ThreeRenderer = (function () {
             }
             return (g._ew_reachIdx = { n: ch.length, at: now, cells: C, big: big, cell: CELL });
         }
+        function maskFile(g) {
+            var I = g._ew_mkIdx, now = performance.now(), an = _ewAddCount();
+            if (I && I.n === g.children.length && now - I.at < 10000 && (I.an === an || now - I.at < 1000)) return I;
+            var ch = g.children, list = [], ms = [];
+            for (var i = 0; i < ch.length; i++) {
+                var m = 0;
+                ch[i].traverse(function (o) { m |= o.layers.mask; if (o.isLight || o.isBundleGroup || o._ew_ckFar != null || o.isClippingGroup || o.isLOD) m = -1; });
+                if ((m & ~1) !== 0) { list.push(ch[i]); ms.push(m); }   // layer 0 alone: the mask's cameras never see it (the short walk runs only for a camera without layer 0)
+            }
+            return (g._ew_mkIdx = { n: ch.length, at: now, an: an, list: list, ms: ms });
+        }
         r._projectObject = function (object, camera, groupOrder, renderList, clippingContext) {
             /* THE MOVERS OUT (2026-11-14, Disaster City): a piece that moves inside a recorded group (a traffic car in the shell, a
                kicked can, a lamp's wax: `_ew_bunOut`, set where it is built or by THE STILL WALK while it moves) is handed to the
@@ -47060,6 +47071,21 @@ const ThreeRenderer = (function () {
                         for (var q2 = 0; q2 < I.big.length; q2++) if (I.big[q2].parent === object) this._projectObject(I.big[q2], camera, go, renderList, clippingContext);
                         return;
                     }
+                }
+            }
+            /* THE MASK'S SHORT WALK (2026-11-15, mondo's F3 in Disaster City: "mask: projection walk 8.2 ms"): the model mask's
+               two renders (the skinned layer, the static layer) walked every one of the shell's 10,000 pieces for the few that
+               are on their layers. A big group (over 32 children) keeps a file of the children whose subtree holds anything on
+               a layer, a light, a bundle group or a clipping group, with the layers they hold; the mask walks only those whose
+               layers meet its camera's. Filed again when something joined the scene (at most once a second), the child count
+               changed, or every 10 s. Off: window.EW_MASK_FULL_WALK. */
+            if (this._ew_sideRender && !this._ew_paneRender && (camera.layers.mask & 1) === 0 && object._ew_ckFar == null && object.children.length > 32 && object.visible !== false && (object.isGroup || object.type === 'Object3D') && !object.isClippingGroup && !window.EW_MASK_FULL_WALK) {
+                var MI = maskFile(object);
+                if (MI) {
+                    var cm = camera.layers.mask, mgo = object.isGroup ? object.renderOrder : groupOrder, ML = MI.list, MM = MI.ms;
+                    for (var mq = 0; mq < ML.length; mq++) if ((MM[mq] & cm) !== 0 && ML[mq].parent === object) this._projectObject(ML[mq], camera, mgo, renderList, clippingContext);
+                    _ewBun.maskShort = (_ewBun.maskShort | 0) + (object.children.length - ML.length);
+                    return;
                 }
             }
             if (object.isBundleGroup === true) {
@@ -88052,9 +88078,14 @@ const ThreeRenderer = (function () {
         var I = H.inst; if (!I || (!H.field && _hq !== H)) return;   // H.field: THE PERF PASS's battle record (_fieldInst*)
         if (!force && I.stamp === _hqInstStamp) return;
         I.stamp = _hqInstStamp;
-        var M = _hqInstM, Z = _hqInstZero.elements, sc = H.scene;
+        var M = _hqInstM, Z = _hqInstZero.elements, sc = H.scene, ST = _hqInstStamp, rest = !force && !_hqInstSyncEvery();
         for (var r = 0; r < I.recs.length; r++) {
             var rec = I.recs[r], c = rec.copies, im = rec.im, arr = im.instanceMatrix.array, cache = rec.cache, dirty = false, refit = false;
+            /* THE QUIET SYNC (2026-11-15, mondo's F3 in Disaster City: the mask pass's "setup" 6.3 ms = this sync, 12,000 copies each
+               walked to the scene for its visibility and multiplied every frame): a batch none of whose copies changed for
+               HQ_INST_REST frames is synced every 4th frame (its turn by its place); a change wakes it to every frame again. The
+               parents' visibility is worked out once per parent a frame (_hqInstShown). Off: window.EW_HQ_INST_SYNC_EVERY. */
+            if (rest && (rec.qN | 0) >= HQ_INST_REST && ((ST + r) & 3) !== 0) continue;
             if (rec.fitStamp === _hqInstStamp) refit = null;   // one refit a frame per batch
             for (var i = 0; i < c.length; i++) {
                 var o = c[i], off = i * 16, e = null;
@@ -88071,9 +88102,7 @@ const ThreeRenderer = (function () {
                     rec.rel[i] = swapped ? 2 : 1; o._ew_instHidden = false; o._ew_noInstance = true; if (swapped) o.visible = true;
                     e = Z; I.copies--;
                 } else {
-                    var shown = true, q = o.parent;
-                    for (; q; q = q.parent) { if (!q.visible) { shown = false; break; } if (q === sc) break; }
-                    if (!shown || q !== sc) e = Z;
+                    if (!_hqInstShown(o.parent, sc, ST)) e = Z;
                     else {
                         var we = o.matrixWorld.elements;
                         /* a copy that left its batch's sphere refits the batch (a seated mug never does; a carried one might) */
@@ -88084,9 +88113,20 @@ const ThreeRenderer = (function () {
                 }
                 for (var j = 0; j < 16; j++) if (cache[off + j] !== e[j]) { for (var j2 = 0; j2 < 16; j2++) { cache[off + j2] = e[j2]; arr[off + j2] = e[j2]; } dirty = true; break; }
             }
-            if (refit) { _hqInstFit(rec); rec.fitStamp = _hqInstStamp; r--; continue; }   // the frame moved: rewrite every copy against it (the cache was cleared)
-            if (dirty) im.instanceMatrix.needsUpdate = true;
+            if (refit) { _hqInstFit(rec); rec.fitStamp = _hqInstStamp; rec.qN = 0; r--; continue; }   // the frame moved: rewrite every copy against it (the cache was cleared)
+            if (dirty) { im.instanceMatrix.needsUpdate = true; rec.qN = 0; } else rec.qN = (rec.qN | 0) + 1;
         }
+    }
+    var HQ_INST_REST = 30;
+    function _hqInstSyncEvery() { return typeof window !== 'undefined' && !!window.EW_HQ_INST_SYNC_EVERY; }
+    /* a copy's parent chain drawn (every one visible, up to the scene): once per parent a frame */
+    function _hqInstShown(q, sc, st) {
+        if (!q) return false;
+        if (q === sc) return q.visible !== false;
+        if (q._ew_shS === st && q._ew_shC === sc) return q._ew_shV;
+        var v = q.visible !== false && _hqInstShown(q.parent, sc, st);
+        q._ew_shS = st; q._ew_shC = sc; q._ew_shV = v;
+        return v;
     }
     /* the walk's tick: build once the room is ready, re-run when later files add copies (bounded) */
     function _hqInstTick(H, now) {
