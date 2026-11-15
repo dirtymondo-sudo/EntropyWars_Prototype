@@ -1001,6 +1001,33 @@ Quest Cutscene Plan" (https://claude.ai/artifact/Dsf1QbZQmTCroHe7XZLvG8). Storyb
   `hq_plate`); new opening: a low shot of the recruit's legs walking in by the egress door, two slow pans over the desk,
   bed and sink, the recruit walks forward to camera, Locke comes in behind him on "Your office. Hope you like it." (him in
   front, the door and locks behind), then he turns to her for the rest.
+- **HIS 15 NOV EDITOR NOTES (2026-11-15, export Entropy_Wars_Cutscene_Notes_20261115-1300.json)**: the standing camera
+  rules he gave are in team memory `cutscene-camera-rules` (a cut changes the angle >= 30 degrees, walks never slide, turns
+  are smooth, a push centres on its object, a line said walking away is shot from the listener). What changed:
+  A1 `shot.sky: true` = map.js `skyFit`: the first frame aims at ThreeRenderer.getSkyLightDir('hq') (sun by day, moon by
+  night), then tilts down to the car. THE HOLLOW-CORE DOOR IS DELETED (his "delete this door and replace it from
+  everywhere"): catalogue row gone, CLEARANCE L2 DOORSTOP + `_doorLeafFor` + the capture door + `hq.sceneDoor` default + the
+  menu's Giza/Antarctica biomes wear `leaf_wooden`; the R2 GLB stays (never delete R2 files). A7 = `place ... turn: 1100`
+  (three-renderer.js `_hqTickSceneMoves` eases a heading over ms; a scene walk also eases into its heading and turns to its
+  `face` over 450 ms). A8 head shake: the player def merges `hqNo` from `_CAST_POSES` (the idle "no"). A9: the opening door
+  goes BLACK (sceneDoor glow 0x000000, no light). B: the push into the tube ends square on the glass, VHS low shot.
+  D8: Locke walks off slowly (`mps: 1.15`) saying "The rules are the rules.", shot over Kit's shoulder (`from: 'unit:guest'`,
+  `track`). Walk pace: HQ scene walks and board `walk` acts with `mps` scale the walk clip to the real speed
+  (`HQ_SCENE_WALK_MPS` 1.4 = clip speed 1.0; board `startWalkTween(unit, path, done, { mps })`). F: slower walk-in, a close
+  desk pan, a CUT to the cot, no cut under 30 degrees (scratch audit over STORY_CUTSCENES).
+- **THE SHAFT + THE BIGGER FOYER (2026-11-15, his OK on plan_15nov_ride.jpg + plan_15nov_foyer.jpg, project files
+  first-quest-cutscenes-20261112/)**: THE RIDE DOWN no longer plays in the HQ's own car: scene room `intro_shaft` (data.js,
+  `sceneRoom`, a 7 x 7 m diamond-plate deck = the open cage, rails on three sides, yellow posts, the desert sky) with a `drop`
+  row: three-renderer.js `_hqDropBuild` builds the shaft (rock walls 160 m long from 14 m up) and a GLIMPSE window per slice
+  (`at` m down; its zone's own floor / wall sheets, catalogue props built straight from the catalogue, `lit` boxes for strips,
+  lines and water, one point light). The rig rides UP past the still cage: act `drop` = `hq.sceneDrop({ from, to, ms, ease })`,
+  ticked by `_hqTickDrop`; `hq.sceneDropAt()` reads the depth. The five glimpses are his zones by name: THE SEWERS, THE
+  D.U.M.B., THE CAVERN, ATLANTIS, LEYLINES (where the car brakes). Six shots R1-R6, 17.6 s. THE FOYER is 17.5 x 10.5 m with a
+  7 m ceiling (every prop kept and moved out with its wall, two more saucers, a second plant by the doors; the healing zone by
+  the bench); new proc `door_logo_wall` = a 9 x 3 m black sign band over the double doors (their panel is 3.7 m) carrying
+  HIS full lockup for dark backgrounds (`DOOR_TEXT.LOGO.onDark`, never redrawn), the seal is 5.2 m (`door_seal` row `size`).
+  THE ARRIVAL is four shots: from inside the front lift the doors part on the logo wall, a crane up from the seal, the big
+  close pan down the lockup, over the shoulder. The arrival mark is now (0, 5.0).
 - **Not built yet**: A the intro (Sedaniel = DOOR_CAST.sedaniel, the roster Honda Civic; the foyer's entrance lift).
 
 ## THE SAVE — the walk autosaves where you stand; CONTINUE lands there (2026-11-12, mondo)

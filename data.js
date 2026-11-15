@@ -26970,7 +26970,7 @@ const DOOR_TEXT = {
         /* DOOR_MASTER C-1 (decided 2026-09-03): the rank ladder is the door
            you get. L1–L6 = the six office doors on the reference sheet. */
         { level: 1, title: 'DOORMAT',     door: 'leaf_closet_warped' },
-        { level: 2, title: 'DOORSTOP',    door: 'leaf_hollow_core' },
+        { level: 2, title: 'DOORSTOP',    door: 'leaf_wooden' },   // was leaf_hollow_core: DELETED (mondo 11-15, it had an artifact)
         { level: 3, title: 'KNOCKER',     door: 'leaf_office' },
         { level: 4, title: 'KEYHOLDER',   door: 'leaf_security' },
         { level: 5, title: 'GATEKEEPER',  door: 'leaf_frosted_single' },
@@ -28359,10 +28359,11 @@ STORY_CUTSCENES.orientation_aftermath = {
           say: { who: 'KIT', text: "Deportation? No! Please. You can't send me back." } },   // (mondo 11-14, his new line)
         { shot: { look: 'unit:guest', from: 'unit:player', az: -12, h: 0.86, el: -1, dist: 1.35, fov: 26, to: { dist: 1.05 } },
           say: { who: 'KIT', text: 'Those monsters... destroyed everything.' } },
-        /* D6 · wide: Locke's last word, and she walks out of frame; the two stay */
-        { dur: 4.6, shot: { look: { mid: ['unit:guest', 'unit:player'] }, az: -66, h: 0.95, el: 6, dist: 8.5, fov: 40 },
+        /* D6 · from Kit's side, over her shoulder: Locke says her last word as she walks away, slow and cold (mondo 11-15: "she needs to
+           be delivering the rules are rules line as she walks away coldly ... from kits POV"); `mps` = her pace, the clip matched */
+        { dur: 6.8, shot: { look: 'unit:locke', from: 'unit:guest', over: 1.1, az: 0, h: 0.95, el: 5, fov: 36, track: true },
           say: { who: 'AGENT LOCKE', text: 'The rules are the rules. Front desk.' },
-          act: [{ at: 1.6, do: 'walk', who: 'locke', path: [[4, 5], [4, 6], [4, 7]] }] },
+          act: [{ at: 0.2, do: 'walk', who: 'locke', path: [[5, 4], [6, 4]], mps: 1.15 }] },
     ],
 };
 /* E · RHONDA LETS HER STAY (the plan doc's shot list + mondo's lines, word for word). An HQ scene: every shot is a placed
@@ -28388,7 +28389,7 @@ STORY_CUTSCENES.orientation_desk = {
         { dur: 2.4, shot: { cam: [0.0, 1.4, 4.9, 180, 0, 28], eye: { who: 'kit', dy: -0.04 }, to: { cam: [0.0, 1.4, 5.1, 180, 0, 28] } } },
         /* E6 · the office keys: on the recruit's FACE (mondo 2026-11-13: "the camera is focused on my crotch, it needs to show my
            face"), the key rising and turning beside it (the battle's own key celebration, three-renderer.js keyPickupFx) */
-        { shot: { cam: [1.1, 1.6, 4.75, 180, 0, 30], eye: { who: 'player', dy: -0.03 } }, say: { who: 'RHONDA', text: 'These are the keys to your office. First door past the mop bucket.' },
+        { shot: { cam: [2.2, 1.6, 5.2, 140, 0, 30], eye: { who: 'player', dy: -0.03 } }, say: { who: 'RHONDA', text: 'These are the keys to your office. First door past the mop bucket.' },   // (mondo 11-15: three-quarter, 40 degrees round from Kit's close-up before it)
           act: [{ at: 0.5, do: 'key', x: 1.62, y: 1.0, z: 6.2, size: 0.38 }] },
     ],
 };
@@ -28401,8 +28402,9 @@ STORY_CUTSCENES.orientation_intro = {
     id: 'orientation_intro', title: 'THE DROP-OFF',
     cast: ['sedaniel'],
     beats: [
-        /* A1 · the sun, then a slow tilt down to the road */
-        { dur: 5.2, shot: { cam: [-6, 1.6, 64, 0, 58, 40], to: { cam: [-6, 1.6, 64, 0, 3, 40] } },
+        /* A1 · the sun, then a slow tilt down to the road (`sky`: the first frame looks straight at the sun, or the moon at night;
+           mondo 11-15: "where is the sun/moon? it just starts on an empty sky") */
+        { dur: 5.2, shot: { sky: true, cam: [-6, 1.6, 64, 0, 58, 40], to: { cam: [-6, 1.6, 64, 0, 3, 40] } },
           act: [{ at: 0, do: 'door', x: 0, z: -44, face: 0 }, { at: 0, do: 'hide', who: 'player' },
                 { at: 0, do: 'place', who: 'sedaniel', x: -6, z: 58, face: 0, scale: 1.45 }, { at: 0.1, do: 'walk', who: 'sedaniel', x: -6, z: 30, ms: 5000, face: 0 }] },
         /* A2 · bird's eye: one sedan on one road in an empty desert, the camera travelling with it */
@@ -28422,48 +28424,71 @@ STORY_CUTSCENES.orientation_intro = {
           act: [{ at: 0, do: 'place', who: 'sedaniel', x: -6, z: -41, face: 0 }, { at: 0, do: 'place', who: 'player', x: -3.4, z: -41, face: 270 }, { at: 0, do: 'show', who: 'player' }] },
         /* A7 · he drives off; the recruit is left small in the frame */
         { dur: 4.6, shot: { cam: [-0.6, 1.3, -33.5, 28, 0, 45], to: { cam: [-0.6, 1.3, -33.5, 16, 0, 45] } },
-          act: [{ at: 0.2, do: 'walk', who: 'sedaniel', x: -6, z: -140, ms: 6500, face: 0 }, { at: 0.9, do: 'place', who: 'player', x: -3.4, z: -41, face: 0 }] },
+          act: [{ at: 0.2, do: 'walk', who: 'sedaniel', x: -6, z: -140, ms: 6500, face: 0 }, { at: 0.9, do: 'place', who: 'player', face: 0, turn: 1100 }] },   // (mondo 11-15: a smooth turn, never a snap)
         /* A8 · the one close-up: the scoff */
         { dur: 3.4, shot: { cam: [-3.1, 1.5, -43.3, 172, 0, 26], eye: { who: 'player', dy: -0.04 } },
           act: [{ at: 0, do: 'hide', who: 'sedaniel' }, { at: 0.3, do: 'place', who: 'player', clip: 'hqNo', ms: 2600 }] },   // (mondo 11-13: "i shake my head no after he drives off")
-        /* A9 · from behind: the door opens, light fills it, the recruit steps through; the picture goes with them */
+        /* A9 · from behind: the door opens onto darkness (mondo 11-15: "darkness instead of light"), the recruit steps through; the picture goes with them */
         { dur: 5.0, hold: true, fade: 4.1, shot: { cam: [0.55, 1.55, -39.4, 5, -2, 36], to: { cam: [0.4, 1.5, -40.6, 4, -2, 36] } },
           act: [{ at: 0, do: 'place', who: 'player', x: 0, z: -41.6, face: 0 }, { at: 0.7, do: 'door', open: 1, ms: 1300 },
                 { at: 2.4, do: 'walk', who: 'player', x: 0, z: -44.9, ms: 1700, face: 0 }] },
     ],
     end: [{ do: 'door', remove: true }, { do: 'show', who: 'player' }],
 };
-/* A (2) · THE RIDE DOWN + THE ARRIVAL (mondo's OK 2026-11-13 on storyboard_A_elevator.jpg; "make the lift the front door"):
-   played by map.js _introStart after the desert. The ride is the building's own car (room `car`): the shaft window streams
-   the landings UP past the glass (act `shaft`: k = speed, minus = going down). The arrival is the foyer: the front lift's
-   leaves part (act `door` with `id`), the recruit steps out, and the walk is theirs. */
+/* A (2) · THE RIDE DOWN + THE ARRIVAL (mondo's OK 2026-11-13 on storyboard_A_elevator.jpg; "make the lift the front door"; both
+   REBUILT 2026-11-15 on his OK of plan_15nov_ride.jpg + plan_15nov_foyer.jpg): played by map.js _introStart after the desert. The
+   ride is the open cage down THE SHAFT (scene room `intro_shaft`, act `drop`); the arrival is the bigger foyer: the front lift's
+   leaves part (act `door` with `id`) on the DOOR logo wall, the recruit steps out, and the walk is theirs. */
 STORY_CUTSCENES.orientation_ride = {
     id: 'orientation_ride', title: 'THE RIDE DOWN',
-    end: [{ do: 'shaft', k: 1 }],
+    /* REBUILT 2026-11-15 (mondo: "its supposed to be an elevator shaft going down underground and get glimpses of different places
+       areas as it speeds down"; his OK on plan_15nov_ride.jpg): the open cage in the scene room `intro_shaft`, the shaft riding up
+       past it (act `drop`: `to` = metres down, eased over ms). A glimpse's window floor is at its `at` depth, so it goes by the
+       cage at about that depth: THE SEWERS 28, THE D.U.M.B. 53, THE CAVERN 78, ATLANTIS 103, LEYLINES 128.6 (where the car stops).
+       Every cut turns the camera 30 degrees or more (his rule). */
+    end: [{ do: 'drop', from: 0, to: 0, ms: 0 }],
     beats: [
-        /* 10 · behind the recruit: the shaft goes by */
-        { dur: 5.6, shot: { cam: [0.5, 1.62, 1.1, 14, -3, 55], to: { cam: [0.4, 1.62, 0.85, 12, -3, 55] } },
-          act: [{ at: 0, do: 'shaft', k: -2.2 }, { at: 0, do: 'place', who: 'player', x: -0.15, z: 0.2, face: 0 }] },
-        /* 11 · the window: the floors slide past */
-        { dur: 5.6, shot: { cam: [0.1, 1.45, 0.75, 0, 0, 45], to: { cam: [0.1, 1.45, 0.45, 0, 0, 45] } },
-          act: [{ at: 0, do: 'place', who: 'player', x: -0.95, z: 0.5, face: 0 }] },
-        /* 12 · the recruit's face in the window's light; the picture goes */
-        { dur: 5.4, hold: true, fade: 4.4, shot: { cam: [1.15, 1.5, -0.45, 72, 0, 50], eye: { who: 'player', dy: -0.04 } },
-          act: [{ at: 0, do: 'place', who: 'player', x: 0, z: -0.1, face: 0 }] },
+        /* 10 · R1 · inside the cage, behind the recruit, looking up: the square of desert sky shrinks overhead */
+        { dur: 3.4, shot: { cam: [0.3, 1.2, 2.4, 0, 42, 60], to: { cam: [0.3, 1.2, 2.2, 0, 50, 60] } },
+          act: [{ at: 0, do: 'place', who: 'player', x: 0, z: 0.6, face: 0 }, { at: 0, do: 'drop', from: 0, to: 15, ms: 3400, ease: 'in' }] },
+        /* 11 · R2 · side on at the cage's edge: the rock streaks up, THE SEWERS go by */
+        { dur: 2.8, shot: { cam: [2.9, 1.5, 0.9, 62, 4, 55], to: { cam: [2.9, 1.5, 0.7, 60, 4, 55] } },
+          act: [{ at: 0, do: 'drop', from: 15, to: 40, ms: 2800 }] },
+        /* 12 · R3 · the recruit's face, a band of strip light sweeping over it: THE D.U.M.B. */
+        { dur: 2.8, shot: { cam: [0.25, 1.6, -1.2, 180, -2, 40], to: { cam: [0.25, 1.6, -1.05, 180, -2, 38] }, eye: { who: 'player', dy: -0.04 } },
+          act: [{ at: 0, do: 'drop', from: 40, to: 65, ms: 2800 }] },
+        /* 13 · R4 · low and wide from the deck's corner, up past the recruit: THE CAVERN's crystals go by overhead */
+        { dur: 2.8, shot: { cam: [-2.6, 0.3, 2.8, 320, 22, 64], to: { cam: [-2.5, 0.3, 2.7, 322, 24, 64] } },
+          act: [{ at: 0, do: 'drop', from: 65, to: 90, ms: 2800 }] },
+        /* 14 · R5 · over the shoulder at the open side: blue water light on the recruit, ATLANTIS */
+        { dur: 2.8, shot: { cam: [-0.45, 1.75, 1.9, 8, 0, 48], to: { cam: [-0.42, 1.75, 1.75, 8, 0, 48] } },
+          act: [{ at: 0, do: 'drop', from: 90, to: 115, ms: 2800 }] },
+        /* 15 · R6 · the recruit in profile: the car brakes at LEYLINES, the light from below, the picture goes */
+        { dur: 3.6, hold: true, fade: 2.8, shot: { cam: [1.6, 1.55, 0.5, 80, -2, 40], eye: { who: 'player', dy: -0.04 } },
+          act: [{ at: 0, do: 'drop', from: 115, to: 128, ms: 3000, ease: 'out' }] },
     ],
 };
 STORY_CUTSCENES.orientation_arrive = {
     id: 'orientation_arrive', title: 'THE FOYER',
+    /* REBUILT 2026-11-15 for the bigger foyer (mondo: "need a big closeup pan on a big DOOR logo or signage, like this is the god
+       damn introduction to DOOR HQ, it needs to be an important moment"; his OK on plan_15nov_foyer.jpg): the lift opens on the
+       logo wall, a crane up from the seal, the big close pan down his lockup, then over the recruit's shoulder. Every cut 30+ deg. */
     end: [{ do: 'door', id: 'street', open: false }, { do: 'show', who: 'player' }],
     beats: [
-        /* 13 · wide on the foyer: the front lift opens, the recruit steps out */
-        { dur: 4.6, shot: { cam: [-3, 2.2, -1.8, 212, -10, 50] },
-          act: [{ at: 0, do: 'hide', who: 'player' }, { at: 0.6, do: 'door', id: 'street', open: true },
-                { at: 1.4, do: 'place', who: 'player', x: 0, z: 2.75, face: 0 }, { at: 1.4, do: 'show', who: 'player' },
-                { at: 1.5, do: 'walk', who: 'player', x: 0, z: 1.5, ms: 1900, face: 0 }] },
-        /* 14 · from the lift, over the shoulder: the foyer is the recruit's */
-        { dur: 3.2, hold: true, shot: { cam: [0.45, 1.65, 2.7, 8, -3, 55], to: { cam: [0.45, 1.65, 2.5, 8, -3, 55] } },
-          act: [{ at: 0, do: 'place', who: 'player', x: 0, z: 1.5, face: 0 }, { at: 0.1, do: 'walk', who: 'player', x: 0, z: 0.9, ms: 1200, face: 0 }] },
+        /* 16 · inside the front lift: the doors part, the logo wall framed in the opening; the recruit walks out into it */
+        { dur: 4.6, shot: { cam: [0, 1.2, 7.6, 0, 12, 50], to: { cam: [0, 1.25, 7.3, 0, 12, 50] } },
+          act: [{ at: 0, do: 'hide', who: 'player' }, { at: 0.8, do: 'door', id: 'street', open: true },
+                { at: 2.6, do: 'place', who: 'player', x: 0, z: 5.0, face: 0 }, { at: 2.6, do: 'show', who: 'player' },
+                { at: 2.7, do: 'walk', who: 'player', x: 0, z: 3.2, ms: 1400, face: 0 }] },
+        /* 17 · low by the seal: a slow crane up from the floor to the wall as the recruit crosses it */
+        { dur: 4.4, shot: { cam: [-3.2, 0.8, 2.4, 307, -35, 50], to: { cam: [-3.2, 3.6, 2.4, 337, 14, 50] } },
+          act: [{ at: 0, do: 'place', who: 'player', x: 0, z: 3.2, face: 0 }, { at: 0.6, do: 'walk', who: 'player', x: 0, z: 1.2, ms: 1600, face: 0 }] },
+        /* 18 · THE BIG CLOSE PAN: up on the cube, down past D.O.O.R to the department's name */
+        { dur: 5.0, shot: { cam: [2.2, 5.4, -1.6, 38, 16, 34], to: { cam: [2.0, 5.0, -1.8, 22, -12, 34] } },
+          act: [{ at: 0, do: 'place', who: 'player', x: 0, z: 1.2, face: 0 }] },
+        /* 19 · back over the recruit's shoulder, small under the logo: the walk is theirs */
+        { dur: 3.6, hold: true, shot: { cam: [0.7, 1.9, 3.4, 345, 12, 55], to: { cam: [0.9, 2.2, 4.4, 345, 12, 55] } },
+          act: [{ at: 0, do: 'place', who: 'player', x: 0, z: 1.2, face: 0 }] },
     ],
 };
 /* B · THE TV CART (the approved storyboard's frames + mondo's lines, word for word; his change: B4 Locke on the far side
@@ -28485,28 +28510,29 @@ STORY_CUTSCENES.orientation_tv = {
         { shot: { cam: [-2.3, 1.2, 26.7, 90, 0, 35] }, say: { who: 'AGENT LOCKE', text: "You're late. Take a seat." },
           act: [{ at: 0, do: 'place', who: 'player', x: -5.25, z: 26.4, face: 180 }, { at: 1.1, do: 'place', who: 'player', sit: true }] },
         /* B3 · the TV cart rolls in: low, at wheel height; the cart comes in from the right of frame, Locke's legs behind it */
-        { dur: 4.6, hold: true, shot: { cam: [-5.0, 0.3, 27.4, 180, 8, 42] },
+        { dur: 4.6, hold: true, shot: { cam: [-7.5, 0.3, 27.6, 228, 8, 42] },   // (mondo 11-15: a cut turns the camera 30 degrees or more; this one was on the next shot's line)
           act: [{ at: 0.3, do: 'props', keys: ['decor_av_cart', 'tube_tv', 'vhs_player', 'vhs_tape'], near: [-5.25, 29.4], at: [0, 0], ms: 3600 },
                 { at: 0.3, do: 'walk', who: 'locke', x: -6.35, z: 29.3, ms: 3600, face: 0 }] },
         /* B4 · Locke and the TV: over the recruit's shoulder, Locke on the far side of the cart */
         { shot: { cam: [-5.9, 1.5, 25.2, 181, -3, 34], to: { cam: [-5.9, 1.5, 25.35, 181, -3, 34] } }, say: { who: 'AGENT LOCKE', text: 'Welcome to the Department of Orthogonal Realities, or D.O.O.R.' } },   // (mondo 11-14: the TV and Locke in the middle, not off to the side)
         /* medium on Locke beside the set, a slow push in */
-        { shot: { cam: [-5.3, 1.5, 27.5, 151, -1, 28], to: { cam: [-5.4, 1.5, 27.7, 151, -1, 28] } },
+        { shot: { cam: [-5.15, 1.5, 27.4, 146, -1, 28], to: { cam: [-5.25, 1.5, 27.6, 146, -1, 28] } },
           say: { who: 'AGENT LOCKE', text: 'Here at D.O.O.R. we are responsible for investigating and maintaining doorways between realities.' } },
         /* the recruit at the desk, taking it */
         { shot: { cam: [-5.8, 1.2, 28.4, -15, 0, 30] }, say: { who: 'AGENT LOCKE', text: 'Due to recent events, the agency lowered its recruitment standards,' } },
-        { shot: { cam: [-5.4, 1.5, 27.7, 151, -1, 28], to: { cam: [-5.5, 1.5, 27.9, 151, -1, 28] } },
+        { shot: { cam: [-5.2, 1.5, 27.6, 145, -1, 28], to: { cam: [-5.3, 1.5, 27.8, 145, -1, 28] } },
           say: { who: 'AGENT LOCKE', text: 'which is why our hiring department reached out to you.' } },
         /* (mondo 11-14: "need to cut to a closeup of her face straight in saying this") */
         { shot: { cam: [-6.35, 1.6, 28.35, 180, 0, 26], eye: { who: 'locke', dy: -0.04 } }, say: { who: 'AGENT LOCKE', text: "I'm Agent Locke, your direct superior." } },
-        /* back over the shoulder for the rule */
-        { shot: { cam: [-5.9, 1.5, 25.35, 181, -3, 34], to: { cam: [-5.9, 1.5, 25.55, 181, -3, 34] } },
+        /* the rule: Locke and the TV centred, a three-quarter two-shot that keeps pushing in, one unbroken move over three lines (mondo
+           11-15: "if youre gonna cut the angle needs to change by at least 30 degrees": the close-up before is straight on) */
+        { shot: { cam: [-3.7, 1.5, 25.7, 148, -3, 34], to: { cam: [-4.0, 1.5, 26.2, 148, -3, 32] } },
           say: { who: 'AGENT LOCKE', text: 'Under my watch you will do things by the book, down to the letter.' } },
-        { shot: { cam: [-5.55, 1.52, 28.0, 151, -1, 24] }, say: { who: 'AGENT LOCKE', text: 'Even when the book changes unexpectedly.' } },
-        { shot: { cam: [-5.55, 1.52, 28.0, 151, -1, 24], to: { cam: [-5.65, 1.52, 28.2, 151, -1, 24] } },
+        { shot: { cam: [-4.0, 1.5, 26.2, 148, -3, 32], to: { cam: [-4.3, 1.5, 26.7, 148, -2, 30] } }, say: { who: 'AGENT LOCKE', text: 'Even when the book changes unexpectedly.' } },
+        { shot: { cam: [-4.3, 1.5, 26.7, 148, -2, 30], to: { cam: [-4.6, 1.5, 27.2, 148, -2, 28] } },
           say: { who: 'AGENT LOCKE', text: "You can trust me, I'm an open door." } },
         /* B5 · the TV snaps on: a slow push in until the screen fills the frame, then black */
-        { dur: 4.2, hold: true, fade: 3.5, shot: { cam: [-5.25, 1.14, 27.6, 180, 0, 26], to: { cam: [-5.25, 1.12, 28.6, 180, 0, 26] } },
+        { dur: 4.2, hold: true, fade: 3.5, shot: { cam: [-5.16, 1.31, 27.6, 180, 0, 26], to: { cam: [-5.16, 1.31, 28.55, 180, 0, 26] } },   // (mondo 11-15: dead centre on the screen)
           say: { who: 'AGENT LOCKE', text: 'Now pay attention. Watch closely.' },
           act: [{ at: 1.2, do: 'screen', x: -5.16, y: 1.31, z: 29.12, w: 0.4, h: 0.3, face: 0 }] },   // (mondo 11-14: the set switches on to STATIC; the old lamp on the set is gone)
     ],
@@ -28524,27 +28550,31 @@ STORY_CUTSCENES.orientation_office = {
         /* (mondo 11-14: "a low angle of the players feet/legs walking in, then slow pans across the desk or the bed and sink, then he
            walks forward and that when Locke comes in ... Player in foreground, door and locks in background as she walks in and
            delivers that line", and after it "player needs to turn around") */
-        /* F1 · low on the floor: the recruit's feet and legs come in through the door */
+        /* F1 · low on the floor: the recruit's feet and legs come in through the door (mondo 11-15: "needs to be a slower walk"; the
+           walk clip now keeps pace with the body, hq.sceneWalk) */
         { dur: 3.4, shot: { cam: [0.4, 0.2, 1.2, 57, 7, 46] },
-          act: [{ at: 0, do: 'hide', who: 'locke' }, { at: 0, do: 'door', id: 'egress', open: true }, { at: 0, do: 'place', who: 'player', x: -2.55, z: -0.5, face: 90 },
-                { at: 0.3, do: 'walk', who: 'player', x: -1.45, z: -0.5, ms: 2700, face: 90 }] },
-        /* F2 · the slow pan: the sink and the mop, along the wall to the desk */
-        { dur: 5.2, shot: { cam: [-0.4, 1.3, 0.95, 22, -12, 50], to: { cam: [-0.2, 1.3, 0.95, -38, -12, 50] } },
-          act: [{ at: 0, do: 'place', who: 'player', x: -1.45, z: -0.5, face: 0 }] },
-        /* the pan goes on: the desk round to the cot */
-        { dur: 4.4, shot: { cam: [-0.2, 1.25, 0.6, -45, -14, 50], to: { cam: [-0.2, 1.2, 0.5, -112, -12, 50] } } },
+          act: [{ at: 0, do: 'hide', who: 'locke' }, { at: 0, do: 'door', id: 'egress', open: true }, { at: 0, do: 'place', who: 'player', x: -2.75, z: -0.5, face: 90 },
+                { at: 0.3, do: 'walk', who: 'player', x: -1.35, z: -0.5, ms: 2400, face: 90 }] },
+        /* F2 · close over the desk, a slow pan along it: the CRT, the paperwork, the phone, the lamp (mondo 11-15: "much closer up pan
+           on the desk") */
+        { dur: 5.2, shot: { cam: [0.95, 1.2, -0.85, -6, -20, 40], to: { cam: [1.3, 1.2, -0.95, -56, -18, 40] } },
+          act: [{ at: 0, do: 'place', who: 'player', x: -1.35, z: -0.5, face: 0 }] },
+        /* F2b · a CUT to the cot and its dinner tray, held still (mondo 11-15: "cut to the bed, dont pan") */
+        { dur: 3.0, shot: { cam: [-0.25, 1.45, -0.2, -136, -21, 42] } },
         /* F3 · the recruit walks into the room, toward us; the doorway behind him */
-        { dur: 2.4, shot: { cam: [2.35, 1.55, 0.25, 84, -3, 40] },
-          act: [{ at: 0, do: 'place', who: 'player', x: -1.45, z: -0.5, face: 90 }, { at: 0.1, do: 'walk', who: 'player', x: 0.35, z: -0.3, ms: 2100, face: 90 }] },
+        { dur: 2.6, shot: { cam: [2.35, 1.55, 0.25, 84, -3, 40] },
+          act: [{ at: 0, do: 'place', who: 'player', x: -1.35, z: -0.5, face: 90 }, { at: 0.1, do: 'walk', who: 'player', x: 0.35, z: -0.3, ms: 2300, face: 90 }] },
         /* Locke comes in behind him and says it: the recruit in the foreground, the door behind */
         { shot: { cam: [2.35, 1.55, 0.25, 84, -3, 40] }, say: { who: 'AGENT LOCKE', text: 'Your office. Hope you like it.' },
           act: [{ at: 0, do: 'place', who: 'player', x: 0.35, z: -0.3, face: 90 }, { at: 0, do: 'place', who: 'locke', x: -3.05, z: -0.5, face: 90 }, { at: 0, do: 'show', who: 'locke' },
                 { at: 0.05, do: 'walk', who: 'locke', x: -1.75, z: -0.5, ms: 1900, face: 90 }] },
-        /* F4 · he turns round: over his shoulder at her */
-        { shot: { cam: [1.15, 1.62, 0.0, 82, -3, 34] },
-          act: [{ at: 0, do: 'place', who: 'locke', x: -1.75, z: -0.5, face: 90 }, { at: 0, do: 'place', who: 'player', x: 0.35, z: -0.3, face: 270 }],
+        /* F4 · he turns round to her in the same frame (mondo 11-15: a cut must change the angle by 30 degrees or more, so no cut here) */
+        { shot: { cam: [2.35, 1.55, 0.25, 84, -3, 40] },
+          act: [{ at: 0, do: 'place', who: 'locke', x: -1.75, z: -0.5, face: 90 }, { at: 0, do: 'place', who: 'player', face: 270, turn: 900 }],
           say: { who: 'AGENT LOCKE', text: 'Due to recent budget cuts, this is the best we could do on short notice.' } },
-        { shot: { cam: [1.0, 1.62, 0.05, 80, -3, 34] },
+        /* a three-quarter single on her from the desk side (39 degrees round from the last frame; from the south the open door's
+           leaf stood between the lens and her) */
+        { shot: { cam: [0.0, 1.58, -1.65, 123, -3, 32] },
           say: { who: 'AGENT LOCKE', text: 'Being a door agent is not for the faint of heart.' } },
         /* F5 · the parents hint: close on her, a slow push in over two cards */
         { shot: { cam: [-0.75, 1.6, -0.42, 88, -2, 24], to: { cam: [-0.88, 1.6, -0.42, 88, -2, 24] } },
@@ -28552,10 +28582,10 @@ STORY_CUTSCENES.orientation_office = {
         { shot: { cam: [-0.88, 1.6, -0.42, 88, -2, 24], to: { cam: [-1.0, 1.6, -0.42, 88, -2, 24] } },
           say: { who: 'AGENT LOCKE', text: '...Get some rest. Your first real day on the job begins tomorrow.' } },
         /* F6-F7 · the question from the doorway: medium, the shot holds on the choice */
-        { shot: { cam: [0.5, 1.45, 0.7, 64, -2, 40] }, say: { who: 'AGENT LOCKE', text: 'Door opened or closed?' },
+        { shot: { cam: [0.3, 1.45, 1.6, 50, -2, 40] }, say: { who: 'AGENT LOCKE', text: 'Door opened or closed?' },
           choice: { options: [{ label: 'OPEN', set: 'office_door_open', clear: 'office_door_closed' }, { label: 'CLOSED', set: 'office_door_closed', clear: 'office_door_open' }] } },
         /* F8 · she leaves: fade to black */
-        { dur: 2.4, hold: true, fade: 0.4, shot: { cam: [0.5, 1.45, 0.7, 64, -2, 40] }, act: [{ at: 1.5, do: 'hide', who: 'locke' }] },
+        { dur: 2.4, hold: true, fade: 0.4, shot: { cam: [0.3, 1.45, 1.6, 50, -2, 40] }, act: [{ at: 1.5, do: 'hide', who: 'locke' }] },
     ],
 };
 function storyCutsceneShipped(id) { return (id && STORY_CUTSCENES[id]) ? STORY_CUTSCENES[id] : null; }
@@ -30402,6 +30432,7 @@ const DOOR_HQ = {
         graffiti_wall:  { proc: 'graffiti_wall', h: 1.6, foot: 0 },
         /* THE FOURIER FOYER (2026-09-15): the seal inlaid in the terrazzo (a canvas decal — the rings, the D.O.O.R. wordmark, the Customs & Admissions slogan round the rim), the mat inside the front door, the umbrella stand beside it */
         door_seal:       { proc: 'door_seal',       h: 0.01, foot: 0 },
+        door_logo_wall:  { proc: 'door_logo_wall',  h: 3.0,  foot: 0,    wall: true, mount: 3.8, depth: 0.2 },   // THE BIGGER FOYER (2026-11-15): his DOOR lockup on a black sign band
         doormat:         { proc: 'doormat',         h: 0.02, foot: 0 },
         umbrella_stand:  { proc: 'umbrella_stand',  h: 0.78, foot: 0.24, block: true },
         stone_altar:     { proc: 'stone_altar',     h: 0.95, foot: 1.0, rect: { hw: 1.05, hd: 0.5 }, block: true },
@@ -30586,7 +30617,8 @@ const DOOR_HQ = {
                      doorhq.test.js fails if any other door wears one. */
         /* the rank ladder, worst → best (DOORMAT … THE DOORMAN) */
         leaf_closet_warped:  { file: 'Meshy_AI_warped_janitor_s_closet_door_0903105738_texture.glb', leaf: true, aspect: 0.604, open: 'swing', hinge: 'left',  frame: true, rank: 1 },
-        leaf_hollow_core:    { file: 'Meshy_AI_cheap_hollow_core_door_0903105753_texture.glb',       leaf: true, aspect: 0.545, open: 'swing', hinge: 'left',  yaw: 90,     rank: 2 },
+        /* leaf_hollow_core DELETED 2026-11-15 (mondo: "it has an artifact on it. delete this door and replace it from
+           everywhere in the game"). L2 DOORSTOP + every fallback wear leaf_wooden now. */
         leaf_office:         { file: 'Meshy_AI_an_office_door_0903105857_texture.glb',               leaf: true, aspect: 0.490, open: 'swing', hinge: 'left',  frame: true, rank: 3 },
         leaf_security:       { file: 'Meshy_AI_security_door_0903110317_texture.glb',                leaf: true, aspect: 0.686, open: 'swing', hinge: 'left',  frame: true, rank: 4 },
         leaf_frosted_single: { file: 'Meshy_AI_a_single_leaf_frosted_0904014832_texture.glb',        leaf: true, aspect: 0.480, open: 'swing', hinge: 'right',              rank: 5 },
@@ -30865,8 +30897,8 @@ const DOOR_HQ = {
        door — nothing inside is canon until the user writes it). The EXIT at
        the end of the west leg was the Backrooms crossing, DELETED 2026-09-30
        (mondo: no Backrooms; H-Wing is the backrooms). The wing's
-       plain door is `leaf_coffee` (never `leaf_hollow_core`: that is the L2 rank
-       leaf, exclusive); HOME's front door is `leaf_suburban_house`. */
+       plain door is `leaf_coffee` (the old L2 rank leaf `leaf_hollow_core` was
+       deleted 11-15); HOME's front door is `leaf_suburban_house`. */
     hwing: {
         rooms: ['hwing_lobby', 'hwing_floor', 'hwing_home'],
         entries: [{ room: 'deadend', door: 'hwing' }],   // 2026-09-26 (the user): no door from the garage — the wing is hard to find and hard to reach
@@ -32041,8 +32073,11 @@ const DOOR_HQ = {
             sub: 'THE FRONT DOOR',
             kind: 'box',
             shell: {
-                w: 10, d: 6, h: 4.0,
-                wallH: 4.0, dadoH: 1.05,
+                /* THE BIGGER FOYER (2026-11-15, mondo: "need to redesign the foyer to make it a little bigger and more impressive"; his OK on
+                   plan_15nov_foyer.jpg): 5 x 3 squares (17.5 x 10.5 m), a 7 m atrium, the DOOR logo wall over the double doors; every
+                   prop kept, moved out with its wall. The north wall stays tangent to the hall (THE ROUND JOIN), so it never cuts in. */
+                w: 17.5, d: 10.5, h: 7.0,
+                wallH: 7.0, dadoH: 1.05,
                 /* THE RETRO-FUTURIST PASS (2026-09-21): a 1960s terminal's vestibule — white plaster, a cream terrazzo, the corners
                    filleted (`round`), the walls meeting the ceiling in a cove, a saucer pendant either side of the seal */
                 round: 1.6, cove: 0.5,
@@ -32055,7 +32090,7 @@ const DOOR_HQ = {
                    the foyer wears the hall's rig (HQ_LIGHT_RULES.joinRig), so its own lamps and the Key Light give half / a third here:
                    white plaster 3 m from every lamp needs far less than the hall's stone 20 m off */
                 lampK: 0.5, keyLamp: 0.3,
-                plate: { x: 2.2, z: -2.95, y: 3.4 },
+                plate: { x: 6.2, z: -5.2, y: 3.4 },
                 look: HQ_ROOM_LOOKS.retro,
             },
             doors: [
@@ -32077,56 +32112,61 @@ const DOOR_HQ = {
             ],
             counters: [
                 /* CORNER INSPECTION → the by-id panel (map.js): your corners, counted and verified */
-                { id: 'inspection', x: 3.3, z: 0, face: 270, plateY: 1.85, radius: 1.9, verb: 'PRESENT',
+                { id: 'inspection', x: 7.05, z: 0, face: 270, plateY: 1.85, radius: 1.9, verb: 'PRESENT',
                   label: 'CORNER INSPECTION', sub: 'YOUR CORNERS · VERIFIED', action: {},
                   desc: 'The inspection desk. Every entity entering the building has its corners counted and its angles verified against the standard. The standard is ninety. It has always been ninety.' },
             ],
             props: [
                 /* ── the floor: the seal, the mat, the lane to the revolving door ── */
-                { key: 'door_seal',      x: 0, z: 0 },
-                { key: 'doormat',        x: 0, z: 2.35 },
-                { key: 'railing_1m',     x: -1.25, z: -2.1, face: 0 },
-                { key: 'railing_1m',     x: 1.25,  z: -2.1, face: 0 },
-                { key: 'railing_1m',     x: -1.25, z: -1.3, face: 0 },
-                { key: 'railing_1m',     x: 1.25,  z: -1.3, face: 0 },
+                { key: 'door_seal',      x: 0, z: 0, size: 5.2 },                         // bigger in the bigger room
+                { key: 'doormat',        x: 0, z: 4.45 },
+                { key: 'railing_1m',     x: -1.25, z: -4.4, face: 0 },
+                { key: 'railing_1m',     x: 1.25,  z: -4.4, face: 0 },
+                { key: 'railing_1m',     x: -1.25, z: -3.6, face: 0 },
+                { key: 'railing_1m',     x: 1.25,  z: -3.6, face: 0 },
+                /* ── THE DOOR LOGO WALL: his lockup on a black sign band over the double doors (the panel round them is 3.7 m) ── */
+                { key: 'door_logo_wall', wall: 'n', x: 0, mount: 3.8 },
                 /* ── the east wall: CORNER INSPECTION — the desk, the screen, the log ── */
                 { key: 'tanker_desk',    wall: 'e', z: 0 },
-                { key: 'crt_terminal',   x: 4.55, z: -0.45, y: 0.76, face: 270 },
-                { key: 'clipboard_flat', x: 4.6,  z: 0.35,  y: 0.76, face: 260 },    // THE CORNER LOG: four, ninety, four, ninety
-                { key: 'pen',            x: 4.45, z: 0.6,   y: 0.76, face: 300 },
-                { key: 'desk_lamp',      x: 4.55, z: -0.62, y: 0.76, face: 250 },      // on the desk (it stood 0.2 m past its end)
-                { key: 'coffee_mug',     x: 4.35, z: 0.62,  y: 0.76, face: 140 },
-                { key: 'computer_chair_grey', x: 4.05, z: 0, face: 90 },              // the inspector's, facing the desk
-                { key: 'wall_clock',     wall: 'n', x: -2.4, mount: 2.9 },              // off the fillet (THE RETRO-FUTURIST PASS): over the notices side of the revolving door
-                { key: 'security_camera', wall: 'e', z: 1.0, mount: 3.3 },
-                { key: 'lava_lamp',      x: 4.35, z: 0.15,  y: 0.76, face: 250 },             // THE RETRO-FUTURIST PASS: on the inspector's desk, the wax counting corners
+                { key: 'crt_terminal',   x: 8.3,  z: -0.45, y: 0.76, face: 270 },
+                { key: 'clipboard_flat', x: 8.35, z: 0.35,  y: 0.76, face: 260 },    // THE CORNER LOG: four, ninety, four, ninety
+                { key: 'pen',            x: 8.2,  z: 0.6,   y: 0.76, face: 300 },
+                { key: 'desk_lamp',      x: 8.3,  z: -0.62, y: 0.76, face: 250 },      // on the desk (it stood 0.2 m past its end)
+                { key: 'coffee_mug',     x: 8.1,  z: 0.62,  y: 0.76, face: 140 },
+                { key: 'computer_chair_grey', x: 7.8, z: 0, face: 90 },              // the inspector's, facing the desk
+                { key: 'wall_clock',     wall: 'n', x: -6.2, mount: 2.9 },              // off the fillet (THE RETRO-FUTURIST PASS): over the notices side of the revolving door
+                { key: 'security_camera', wall: 'e', z: 1.0, mount: 4.4 },
+                { key: 'lava_lamp',      x: 8.1,  z: 0.15,  y: 0.76, face: 250 },             // THE RETRO-FUTURIST PASS: on the inspector's desk, the wax counting corners
                 /* ── the south wall: the front door, the mat, the stand, the sign over it ── */
                 { key: 'exit_sign',      wall: 's', x: 0, mount: 3.0 },
-                { key: 'umbrella_stand', x: 1.5,  z: 2.55, face: 0 },
-                { key: 'trash_bin',      x: -4.2, z: 2.2,  face: 250 },
-                { key: 'wet_floor_sign', x: -2.6, z: 1.7,  face: 140 },
-                { key: 'potted_plant',   x: 4.2,  z: 2.2,  face: 200 },
+                { key: 'umbrella_stand', x: 2.2,  z: 4.6,  face: 0 },
+                { key: 'trash_bin',      x: -7.9, z: 4.5,  face: 250 },
+                { key: 'wet_floor_sign', x: -4.5, z: 3.4,  face: 140 },
+                { key: 'potted_plant',   x: 7.9,  z: 4.5,  face: 200 },
                 /* ── the west wall: the bench, the hooks, the notices ── */
-                { key: 'park_bench',     x: -4.375, z: -0.375, face: 90, rect: false },   // the visitors' bench, facing the seal
-                { key: 'hook_rail',      wall: 's', x: -2.6 },
-                { key: 'notice_board',   wall: 'w', z: -0.7 },
-                { key: 'lesson_plaque',  wall: 'w', z: 0.95, lesson: 'rooms' },                                 // D8 (3): a door in one room, its twin in the next — the foyer ↔ the hall, safe at both ends
-                { key: 'potted_plant',   x: -4.2, z: -2.2, face: 30 },
+                { key: 'park_bench',     x: -7.0, z: 0, face: 90, rect: false },   // the visitors' bench, facing the seal
+                { key: 'hook_rail',      wall: 's', x: -4.5 },
+                { key: 'notice_board',   wall: 'w', z: -1.75 },
+                { key: 'lesson_plaque',  wall: 'w', z: 1.75, lesson: 'rooms' },                                 // D8 (3): a door in one room, its twin in the next — the foyer ↔ the hall, safe at both ends
+                { key: 'potted_plant',   x: -3.0, z: -4.4, face: 30 },                         // either side of the doors
+                { key: 'potted_plant',   x: 3.0,  z: -4.4, face: 330 },
                 /* ── the north wall: the plate, the camera over the revolving door ── */
-                { key: 'nameplate',      wall: 'n', x: 2.4, mount: 1.6 },
-                { key: 'security_camera', wall: 'n', x: -2.9, mount: 3.4 },
-                { key: 'saucer_pendant', x: -2.5, z: 0, ceil: true },                             // THE RETRO-FUTURIST PASS: the saucers, lit from under
-                { key: 'saucer_pendant', x: 2.5,  z: 0, ceil: true },
+                { key: 'nameplate',      wall: 'n', x: 6.2, mount: 1.6 },
+                { key: 'security_camera', wall: 'n', x: -7.6, mount: 4.6 },
+                { key: 'saucer_pendant', x: -5.25, z: -1.75, ceil: true },                        // THE RETRO-FUTURIST PASS: the saucers, lit from under (four in the bigger room)
+                { key: 'saucer_pendant', x: 5.25,  z: -1.75, ceil: true },
+                { key: 'saucer_pendant', x: -5.25, z: 1.75, ceil: true },
+                { key: 'saucer_pendant', x: 5.25,  z: 1.75, ceil: true },
                 { key: 'fluorescent',    x: 0,    z: 0, ceil: true, face: 0 },                  // the lobby's own strip stays, between them
             ],
             agents: [
-                { x: 4.05, z: 0, face: 90, pose: 'hqSit', gender: 'male', label: 'THE INSPECTOR', reach: 1.9,
+                { x: 7.8, z: 0, face: 90, pose: 'hqSit', gender: 'male', label: 'THE INSPECTOR', reach: 1.9,
                   line: '“Four corners. Ninety degrees. Proceed. — No, I don’t need to look. Everyone who has ever stood there has had four.”' },
-                { x: -1.7, z: 2.3, face: 0, pose: 'hqArms', gender: 'female', label: 'THE DOORMAN', reach: 1.7,
+                { x: -2.8, z: 4.0, face: 0, pose: 'hqArms', gender: 'female', label: 'THE DOORMAN', reach: 1.7,
                   line: '“The doors swing one way. If you come out where you went in, you turned round. It happens more than you would think.”' },
             ],
             npcSpots: [
-                { x: -4.375, z: -0.375, face: 90 },   // on the bench, waiting to be inspected
+                { x: -7.0, z: 0, face: 90 },   // on the bench, waiting to be inspected
             ],
             onlineSpots: [],
             lines: [
@@ -32135,7 +32175,7 @@ const DOOR_HQ = {
                 '“The seal says EVERY ENTITY IS FILED.” “It does.” “Where?” “Under the seal.”',
                 '“You went round twice.” “How can you tell?” “You came in facing the street.”',
             ],
-            spawn: { x: 0, z: 1.9, face: 0 },     // just inside the front door, facing the revolving door and the hall
+            spawn: { x: 0, z: 4.0, face: 0 },     // just inside the front door, facing the revolving door and the hall
         },
         /* ── YOUR OFFICE: the janitor's closet (HQ plan 2.7, ref
            janitor_closet_v1) — the first interior, and the first `kind:
@@ -34488,7 +34528,7 @@ const DOOR_HQ = {
                 { key: 'decor_av_cart',  x: -5.25, z: 29.4, face: 0 },
                 { key: 'tube_tv',        x: -5.25, z: 29.4, y: 1.1, face: 0 },
                 { key: 'vhs_player',     x: -5.25, z: 29.4, y: 0.67, face: 0, span: 0.34 },   // (mondo 11-14: "VHS too big": a real deck, a real tape)
-                { key: 'vhs_tape',       x: -5.1, z: 29.35, y: 0.135, face: 20, span: 0.19 },
+                { key: 'vhs_tape',       x: -5.25, z: 29.38, y: 0.76, face: 20, span: 0.19 },   // (mondo 11-15: "the vhs isnt sitting on the cart": it lay under the bottom rail; now on top of the deck, seated by THE TABLETOP SEAT)
                 { key: 'school_desk',    x: -7.35, z: 26.0, face: 0 }, { key: 'school_desk', x: -5.25, z: 26.0, face: 0 }, { key: 'school_desk', x: -3.15, z: 26.0, face: 0 },
                 /* ROOM 64'S THINGS, MOVED IN: the range console's desk on the west wall, the forty-four-minute corner, the lockers, the cooler, the sign */
                 { key: 'tanker_desk',    wall: 'w', z: 0 },
@@ -36832,6 +36872,72 @@ const DOOR_HQ = {
             },
             doors: [], counters: [], props: [], agents: [], lines: [],
             spawn: { x: -3.6, z: -41, face: 270 },
+        },
+        /* THE SHAFT (scene A's ride down, rebuilt 2026-11-15; mondo: "its supposed to be an elevator shaft going down underground and
+           get glimpses of different places areas as it speeds down", his OK on plan_15nov_ride.jpg): a SCENE ROOM like the road.
+           The open cage is the floor (a diamond-plate deck, rails on three sides, the posts at the corners, the north side open);
+           the shaft is `drop` (three-renderer.js _hqDropBuild): rock walls to the desert sky 14 m up, and a window at each
+           GLIMPSE as it goes by, each a slice of HIS zone, dressed in that zone's own floor and wall sheets and props: THE SEWERS,
+           THE D.U.M.B., THE CAVERN, ATLANTIS, LEYLINES. STORY_CUTSCENES.orientation_ride rides it (act `drop`). */
+        intro_shaft: {
+            label: 'THE SHAFT',
+            sub: 'THE WAY DOWN',
+            kind: 'box', sceneRoom: true, noWalkers: true, quiet: true,
+            shell: hqAncientShell({ w: 7, d: 7, h: 20, wallH: 20, floor: 'urban:MetalDiamondPlate1a', apron: 'urban:MetalDiamondPlate1a', floorColor: 0xffffff, apronColor: 0xffffff, plate: { x: 0, z: -3.4, y: 3.0 },
+                                    mood: { lamp: 0xffb060, glow: 0xff9a40, strip: 0xffd8a0, light: 0xfff0d0, ambient: 0.42 },
+                                    sky: { night: 0, tint: 0xd9b46a, tintAmt: 0.35, stars: 0.5, nebula: 0.4, day: 1, clouds: 0.05, fog: { color: 0x2a2620, amount: 0.3, top: 0.05, band: 0.45, density: 0.004 }, scenery: 'none' },   // the road's sky, 14 m up
+                                    look: HQ_ROOM_LOOKS.plateau }),
+            terrain: { res: 1, levelM: 3.5, floor: 'urban:MetalDiamondPlate1a', cliff: 'rock_wall_2', noise: { amp: 0, scale: 20 }, crag: false, outer: false, features: [] },
+            drop: {
+                w: 7, top: 14, len: 160, rock: 'rock_wall_2', rockColor: 0x8a8278,
+                /* a glimpse: its window's floor `at` m down the shaft, `h` tall; the slice `w` wide and `d` deep behind it; props and
+                   lit pieces in the slice's own metres (x across, z from the slice's middle, minus = deeper; y up from its floor) */
+                slices: [
+                    { id: 'sewers', label: 'THE SEWERS', at: 28.1, floor: 'urban:ConcreteStriped2c', floorColor: 0x9a9c98, wall: 'bricks_2', wallColor: 0x8a847a, ceil: 'urban:MetalSubwayGrill2a',
+                      light: { color: 0xcfe8c0, intensity: 1.8, dist: 12 },
+                      lit: [{ box: [0, 0.03, 0.6, 12, 0.06, 1.4], color: 0x355e55, water: true }],   // the water running
+                      props: [{ key: 'pipe_run', x: -3, y: 3.4, z: -2.6, face: 180, span: 3 }, { key: 'pipe_run', x: 3, y: 3.8, z: -2.6, face: 180, span: 3 },
+                              { key: 'bare_bulb', x: -2, y: 4.3, z: 0 }, { key: 'bare_bulb', x: 2.5, y: 4.3, z: -1 },
+                              { key: 'graffiti_wall', x: 0.5, z: -2.85, face: 180 }, { key: 'wet_floor_sign', x: 1.8, z: 1.6, face: 200 },
+                              { key: 'traffic_barrel', x: -4.2, z: -1.6, face: 30 }] },
+                    { id: 'dumb', label: 'THE D.U.M.B.', at: 53.1, floor: 'urban:RubberNonSlip1a', floorColor: 0xb4b8bc, wall: 'urban:ConcreteStriped1c', wallColor: 0xb8bcc0, ceil: 'urban:MetalSubwayGrill1a',
+                      light: { color: 0xdfe8ff, intensity: 1.8, dist: 12 },
+                      lit: [{ box: [-2.5, 4.42, 0, 0.25, 0.06, 5.6], color: 0xeaf2ff }, { box: [0, 4.42, 0, 0.25, 0.06, 5.6], color: 0xeaf2ff }, { box: [2.5, 4.42, 0, 0.25, 0.06, 5.6], color: 0xeaf2ff }],   // the strip lights
+                      props: [{ key: 'steel_table', x: 1.5, z: -0.6, face: 180 }, { key: 'crt_terminal', x: 1.5, y: 0.76, z: -0.8, face: 180 },
+                              { key: 'monitor_stack', x: -3, z: -2.6, face: 180 }, { key: 'radiation_sign', x: 3.6, y: 1.7, z: -2.95, face: 180 },
+                              { key: 'security_camera', x: -5, y: 3.6, z: -2.9, face: 180 }, { key: 'warning_tape', x: 0, z: 1.6, face: 90 },
+                              { key: 'computer_chair_grey', x: 1.5, z: 0.4, face: 0 }] },
+                    { id: 'cavern', label: 'THE CAVERN', at: 78.1, floor: 'cave_floor', floorColor: 0x6a6258, wall: 'cave_wall', wallColor: 0x6e675e,
+                      light: { color: 0xb890ff, intensity: 1.6, dist: 12 },
+                      props: [{ key: 'crystal_cluster', x: -3, z: -1.5, h: 2.2 }, { key: 'crystal_cluster', x: 3.2, z: -0.8 }, { key: 'crystal_cluster', x: 0.5, z: -2.4, h: 1.0 },
+                              { key: 'cave_torch', x: -1.5, z: 0.8 }, { key: 'menhir', x: 4.6, z: -2, face: 160 }] },
+                    { id: 'atlantis', label: 'ATLANTIS', at: 103.1, floor: 'marble_light', floorColor: 0xb8c8c8, wall: 'marble_light', wallColor: 0x9ab0b4, back: 0x0b3f5c,   // the back is the sea
+                      light: { color: 0x7fe0ea, intensity: 2.0, dist: 12 },
+                      props: [{ key: 'greek_column', x: -4.5, z: -2.2 }, { key: 'greek_column', x: 4.5, z: -2.2 },
+                              { key: 'ocean_clownfish', x: -1, y: 2.2, z: -1.5, face: 90 }, { key: 'ocean_dory', x: 1.2, y: 2.8, z: -2, face: 270 },
+                              { key: 'ocean_turtle', x: 2.5, y: 1.6, z: -1, face: 270 }, { key: 'ocean_moon_jelly', x: -2.6, y: 3, z: -2.2 },
+                              { key: 'ocean_coral', x: -0.5, z: -2.3 }, { key: 'ocean_coral', x: 1.8, z: -2.6, h: 0.8 }] },
+                    { id: 'ley', label: 'LEYLINES', at: 128.6, floor: 'bricks_1', floorColor: 0xc89c62, wall: 'rock_wall_1', wallColor: 0x4a4038,
+                      light: { color: 0xffb347, intensity: 1.8, dist: 12, y: 0.6 },   // the light from below as the car brakes
+                      lit: [{ box: [-1.2, 0.02, 0, 0.12, 0.02, 6], color: 0xffb347 }, { box: [1.2, 0.02, 0, 0.12, 0.02, 6], color: 0xffb347 }, { box: [0, 0.02, 0, 12, 0.02, 0.12], color: 0xffb347 },
+                            { box: [0, 1.0, -2.97, 12, 0.08, 0.02], color: 0xffb347 }, { box: [0, 3.2, -2.97, 12, 0.08, 0.02], color: 0xffb347 },
+                            { box: [-3, 2.25, -2.97, 0.08, 4.5, 0.02], color: 0xffb347 }, { box: [3, 2.25, -2.97, 0.08, 4.5, 0.02], color: 0xffb347 }],   // the lines in the black rock
+                      props: [{ key: 'brazier', x: -3.5, z: -1.6 }, { key: 'brazier', x: 3.5, z: -1.6 }, { key: 'menhir', x: -5, z: -2.4, face: 170 },
+                              { key: 'menhir', x: 5, z: -2.2, face: 190 }, { key: 'skull_pile', x: 1.6, z: -2.6 }] },
+                ],
+            },
+            doors: [], counters: [], agents: [], lines: [],
+            props: [
+                /* the cage: rails on three sides (the north side is open onto the shaft), a post at each corner */
+                { key: 'railing_1m', x: -3.1, z: -2.5, face: 0 }, { key: 'railing_1m', x: -3.1, z: -1.5, face: 0 }, { key: 'railing_1m', x: -3.1, z: -0.5, face: 0 },
+                { key: 'railing_1m', x: -3.1, z: 0.5, face: 0 },  { key: 'railing_1m', x: -3.1, z: 1.5, face: 0 },  { key: 'railing_1m', x: -3.1, z: 2.5, face: 0 },
+                { key: 'railing_1m', x: 3.1, z: -2.5, face: 0 },  { key: 'railing_1m', x: 3.1, z: -1.5, face: 0 },  { key: 'railing_1m', x: 3.1, z: -0.5, face: 0 },
+                { key: 'railing_1m', x: 3.1, z: 0.5, face: 0 },   { key: 'railing_1m', x: 3.1, z: 1.5, face: 0 },   { key: 'railing_1m', x: 3.1, z: 2.5, face: 0 },
+                { key: 'railing_1m', x: -2.5, z: 3.1, face: 90 }, { key: 'railing_1m', x: -1.5, z: 3.1, face: 90 }, { key: 'railing_1m', x: -0.5, z: 3.1, face: 90 },
+                { key: 'railing_1m', x: 0.5, z: 3.1, face: 90 },  { key: 'railing_1m', x: 1.5, z: 3.1, face: 90 },  { key: 'railing_1m', x: 2.5, z: 3.1, face: 90 },
+                { key: 'yellow_pole', x: -3.2, z: -3.2 }, { key: 'yellow_pole', x: 3.2, z: -3.2 }, { key: 'yellow_pole', x: -3.2, z: 3.2 }, { key: 'yellow_pole', x: 3.2, z: 3.2 },
+            ],
+            spawn: { x: 0, z: 0.6, face: 0 },
         },
         doorgarden: {
             label: 'THE DOOR GARDEN',
@@ -62172,7 +62278,7 @@ const HQ_HEAL_ZONE = {
     beside: 2.8,   // metres off a marker
     ahead: 2.2,    // metres in front of a spawn
     rooms: {   // a hub whose anchor's rule lands badly: the room + the spot by hand (measured on the compiled field — reachable, dry, flat)
-        hq:   { room: 'foyer', x: -3.3, z: 0, face: 90 },                              // the hall is polar: the foyer, mirroring the inspection desk
+        hq:   { room: 'foyer', x: -4.4, z: 2.2, face: 90 },                            // the hall is polar: the foyer, by the bench (the bigger foyer, 2026-11-15)
         city: { room: 'site_prebuilt_downtown_streets', x: -24.5, z: -19.25, face: 90 },   // west of the plaza's marker — east of it is the fountain's water
         deep: { room: 'site_prebuilt_atlantis_abyss', x: 0, z: -40.5, face: 0 },        // at the foot of the station's slope (2.2 m ahead of the spawn was a 0.75 grade)
     },
