@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 910 |
+| Meshy AI | no | 913 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -2403,6 +2403,14 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | horse | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
 | horse_black | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
 | horse_brown | `Assets/world/animals/horses/Horse_glb.glb` | Asset pack (author not recorded yet) | Horse pack (mondo's upload) |
+
+### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Woods' horror pass, mondo's OK 2026-11-15 — Meshy AI (3)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| missing_board | `Assets/world/props/meshy/missing_board.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Woods' horror pass, mondo's OK 2026-11-15 |
+| owl_statue | `Assets/world/props/meshy/owl_statue.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Woods' horror pass, mondo's OK 2026-11-15 |
+| woods_cabin | `Assets/world/props/meshy/woods_cabin.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3D) for the Woods' horror pass, mondo's OK 2026-11-15 |
 
 ### PS1 Playground · Cursedlake · from mondo's asset-packs folder (each piece cut out in Blender by bake-pack-pieces.py play_*; DOOR_HQ.catalogue play_*, Disaster City) — Asset pack (3)
 
