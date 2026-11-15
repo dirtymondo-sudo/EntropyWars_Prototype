@@ -1957,6 +1957,29 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE LAMP'S TIGHT REACH + THE CHEAP SWEEP (2026-11-15, mondo's F3 at another spot of the city)
+
+His Mac after #1396, standing where a room's bedside lamp (the hero light, reach 3.5 m) is in view: 17.6 fps, CPU 51 ms; "shadow 564 calls,
+943K tris", "shadow: classic draws 7.3 + projection walk 4.4", "matrix walk 10.8" with 0 moving. The mask rows fell 14.5 -> 6.3 ms.
+- Reproduced in the cloud browser (teleport beside the lamp, `EW_HERO_SHADOW_UNSEEN = true`): 724 shadow draws, 3.5M tris a frame;
+  `heroShadow().why` = "a mover in reach". By kind: instance batches 2.4M tris (a 42 m cell's batch, every copy), shell meshes with a
+  sphere > 20 m 501K, static batches 99K. The reach cull tested bounding SPHERES.
+- THE LAMP'S TIGHT REACH: `_ewRchBoxOut` (world box vs the reach + 0.5 m, cached per object on its matrix checksum) and `_ewRchInstOut`
+  (any copy within reach; cached per lamp place + instanceMatrix.version) in the reach branch of the `_projectObject` wrapper (leaf meshes,
+  not skinned / morphing) and in `_hqHeroGate`'s "in reach" test. Off `window.EW_SHADOW_REACH_LOOSE`.
+- Cloud browser after: 3.5M -> 0.6M tris a lamp frame, instance batches 2.7M -> 2K, in reach 312 -> 74 pieces. What stays: the plot's own
+  merged walls + ground (their boxes hold the lamp).
+- Why it redrew EVERY frame: (1) the city's water sheet (`_ewNode.k === 'fluid'`, 645 x 505 m, 2.4 m under the lamp) was a "live material"
+  = "a mover in reach"; `_heroLiveMat` no longer counts fluid. (2) the lava lamp's own wax blobs (rigid meshes 1-8 cm from the light).
+  THE SLOW PIECES: when only rigid pieces drifted (no bones, no live material, no list change) the map redraws at most every
+  `HERO_RIGID_MS` 100 ms; `heroShadow().why` = "held (slow pieces)". Off `window.EW_HERO_RIGID_EVERY_FRAME`.
+- THE NEAR LIST: `_hqHeroGate` runs inside the frame's matrix walk (`scene._ew_afterWalk`), so its loop over all 31,000 casters showed as
+  "matrix walk" (10.8 vs 4.6 ms with the lamp in view; cloud browser 38 vs 17). `G.near` = the casters within reach + 6 m (+ every
+  instanced / skinned one), rebuilt every 500 ms / on a new list / lamp move; frames between read only it. Off `window.EW_HERO_NO_NEAR`.
+- THE CHEAP SWEEP: THE STILL WALK's twice-a-second sweep composed + multiplied every in-view subtree to look for a change; `_hqStillSum`
+  now sums each object's own position / quaternion / scale (its `matrix` when `matrixAutoUpdate` is false) and the sweep walks the
+  subtree's matrices only when that sum changed.
+
 ## THE MASK'S SHORT WALK + THE QUIET SYNC (2026-11-15, from mondo's first Frame JS readout)
 
 His Mac after #1395: 20.2 fps (was 13.1), CPU 38 ms, frame 48.5 ms. Biggest rows: "mask: projection walk 8.2", "mask: setup + lights + sort
