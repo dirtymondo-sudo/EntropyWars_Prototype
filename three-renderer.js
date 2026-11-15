@@ -66448,7 +66448,15 @@ const ThreeRenderer = (function () {
         /* face down by mirroring Y (flips the winding + normals) — rotating
            +90° instead mirrors the sector through X, which put stair-landing
            undersides at the wrong angle */
-        if (down) g.scale(1, -1, 1);
+        if (down) {
+            g.scale(1, -1, 1);
+            /* THE SEEN UNDERSIDE (2026-11-15, mondo: "the 3rd floor/2nd deck's floor does not show ... it only shows when i am
+               walking in it"): a flat sheet mirrored through its own plane keeps every point where it was, so the mirror turned
+               the normals and NOT the winding: the underside still faced up, was culled from below, and a slab seen from the
+               deck under it was nothing at all (its top faces up too). Turn the triangles so the sheet really faces down. */
+            var ix = g.index;
+            if (ix) { for (var t = 0; t + 2 < ix.count; t += 3) { var i1 = ix.getX(t + 1); ix.setX(t + 1, ix.getX(t + 2)); ix.setX(t + 2, i1); } ix.needsUpdate = true; }
+        }
         var m = new THREE.Mesh(g, mat);
         m.position.y = y * U;
         return m;
