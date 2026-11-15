@@ -3203,3 +3203,56 @@ deep), Police (3 x 5: desk, cells with drawn bars), Time Bureau (3 x 4), Militar
   plinth under their lantern (ghost blockers keep the old sizes); Three Little Worlds' machines are stone (`bricks_3`).
 - THE WORKS LOOK (Traveling Door, Two to Open): the stained drywall is gone, the walls are `urban:MetalCorrugatedPainted3a`.
 - Still stand-in: the fights, the Procession's guardian, no drawn water in Missing Channel, Three Little Worlds is flat.
+## DISASTER CITY, THE LANDMARKS — the old Downtown's pieces in the 144 plots (2026-11-15, mondo's OK 08:15 "Build it as drawn")
+mondo 11-15: "add a canal, like a little mini venice or san antonoio board walk, leading out to the ocean" · "add a parking deck and overpass" ·
+the Collapse "still fits among the other plots" · "Add whatever makes sense in a plot or district". The Grand Prix (the old ring road's lap
+race) is NOT built: he wants it as a SIDEQUEST after the orientation slice. All of it is `docs/disaster-city/districts/L.js` (file L: no district
+of its own; the bake loads it with the district files, after Bayside and Hero Plaza). Rerun `node bake-disaster-city.js`.
+- **THE CANAL** (Bayside, the row-11 plots' north yard, squares cy 133-134): two `plateau` rows with `sink: true, absY: true, h: -2.6`. The room's
+  one sea (`terrain.sea`, -1.45) stands in any ground sunk under it, INSIDE the plots too, so the canal is the bay's own water (no `stream`
+  row, no second water sheet). West avenue's kerb (cx 105) → the bay road (a CULVERT: its six squares stay solid, a dark arch in a stone face
+  either end) → under the boardwalk → through the sand and the shelf's bar to the deep (cx 154). North bank = a plank walk (cy 132, paint
+  `wood_planks`), south bank = the south road's kerb walk. Four footbridges + the boardwalk's bridge are `bridge` rows at y 0.3, thick 0.2
+  (a `deck` row is written into the ground = a DAM across the water; a slab at y 0 leaves a swimmer 1.7 m, under the 1.95 m headroom, so it
+  is a wall to him; 0.3 m is a step the walker and the residents take). A water stair at the west end and the beach are the ways out.
+  Moved, never dropped: the yard's palms and cordon pieces onto the banks, its two parked cars onto the deck, the sunbeds three squares up the
+  sand, Bayside's fourth beach ramp one square south (B.js RAMPS), the tool's infill shop on the mouth cut to one square, the plot fences that
+  crossed the yard cut back to the plot line, Bayside's sea-wall rail stopped either side of the mouth.
+- **THE PARKING DECK + THE OVERPASS** (Medical staging's south band, cx 126-131 · cy 141-142): a `plateau` at 3.5 m, a car `ramp` up its north
+  side from cx 123, `guard` rails, four cars on the roof, an `arch` row for its look (dark bays, PARKING). The overpass = one `bridge` row at
+  3.5 m from the roof over the south road and the canal to a one-square landing on the north walk, a stair east along the walk.
+  LESSONS: a one-square tier's rim reads low on the 0.875 m field, so the bridge runs to the landing's MIDDLE; a pack stair's side walls
+  block a bridge lane they cross, so the stair's top stops at the landing's edge. The ambulance and the tent stand west of the ramp.
+- **THE COLLAPSE** (Hero Plaza, Memorial walk P05-06, the west half; the memorial is untouched): a `hill` (the rubble mound) with stones, blocks,
+  two fallen pillars, two wrecks, three barrel fires, the tape, in the north-west quarter; THE TERRACE (3 x 2 squares at 3.5 m, a stair on its
+  north side) in the south-west quarter. NOT DONE YET: the Downtown fight boards are still cut from the old room
+  (`site_prebuilt_downtown_oldstreets`, HQ_ARENA_RULES within / picks); repointing the 12 x 12 to this plot = a bake-arenas.js run.
+- **THE SET PIECES**: fortune tent + high striker (Night market), subway cart (Rail service), flood masts at the canal's two ends, rowboats on
+  the water (a prop `y` under 1 is a lift over the ground: bed -2.6 + 0.98 = afloat).
+- **CHECKED OFFLINE ONLY** (no browser run: RULE #1c): `hqTerrainInfo` + `hqTerrainHeight` / `hqTerrainFluidAt` / `hqTerrainFeet` walked along
+  every new route in node (kerb → ramp → roof → overpass → landing → stair; the footbridges; the swim from the water stair along the canal;
+  the mouth to the bay and up the sand; the Collapse's stair and mound), the prop check clean (nothing left out, nothing new reported).
+  NOT SEEN ON SCREEN: the water's look in the canal, the culvert faces, the deck's bays and sign, the bridges' piers.
+- Maps: project files `disaster-city-old-pieces/` (plan_*.jpg = the approved plan, built_*.jpg = the baked rows drawn top-down).
+
+## DISASTER CITY, THE MOLE'S RIM (2026-11-15, mondo: "theres still this wall or raised curve by the light house")
+- What it was: a rim of ground 5.25 m high and one height sample (0.875 m) thick along z = 84, x 252 to 311: the whole north side of
+  the breakwater. NOT a kerb stone (PR #1336), not the sea wall, not the canal (PR #1402).
+- Why: districts/B.js `beach()` cuts the beach strip flat to level 0 from z = Z0 south, and the bay north of Bayside deep from z = Z0
+  north. A `sink` plateau cuts only strictly inside its rectangle (data.js hqTerrainCompile: `din <= 0` skips), so on the shared line
+  z = Z0 neither one cut and the city's level there (P11-07, level 3) stayed standing. The height grid has a sample row exactly on 84.
+- Fix: the level-0 cut starts half a metre north of Z0, so the two overlap. One row of the bake changed.
+- RULE: two `sink` rectangles that share an edge must OVERLAP, never just touch. Check offline: sample hqTerrainHeight over the whole
+  field and list samples more than 1 m above both neighbours; after the fix only stairs / ramps (roof flights, the overpass stair, the
+  parking deck ramp) are left.
+
+## DISASTER CITY, THE TREES STAND IN SOIL (2026-11-15, mondo: "trees are only put on grass or dirt or in a pot ... trees coming out of concrete dont make sense. Get rid of these trees")
+THE RULE lives in `bake-disaster-city.js` "THE TREES STAND IN SOIL", the LAST pass of the bake (after every district file, the tree move
+and the prop pass): an outdoor tree (`tree` feature, `palm_tree` prop) stands on a square whose ground sheet is soil (`SOIL` = `grass_2`,
+`desert`). A tree on any other sheet gets a SOIL BED: its whole 3.5 m square is repainted (grass; sand under a Bayside palm). Bayside's
+broadleaf rows on the cordon's concrete (the ones in his screenshot; the district's own tree list is empty) are REMOVED. A palm inside a
+building's walls ('I' square: the hotel lobby, the Private garden's own beds) is the district's indoor planting, left alone. The bake
+THROWS if a tree is still on paving, so a district thread that adds a tree anywhere just rebakes and gets a bed. Tally in the bake's
+print (`soil`): 11-15 = 31 removed (Cordon plaza 8, Mall concourse 8, Street market 7, Security office 5, East shops 3), 127 broadleaf
+beds, 38 palm beds; 399 trees left. No new art, no renderer change (the bed is the ground paint). Unseen in game (RULE #1c). Offer not
+built: a kerb stone / tree grate round a bed standing alone in a plaza.
