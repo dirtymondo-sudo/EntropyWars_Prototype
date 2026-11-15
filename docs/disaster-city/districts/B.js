@@ -261,12 +261,12 @@ B.booth = (W, D) => {
 B.arch = (half) => {
     const p = [];
     [-1, 1].forEach(s => {
-        p.push(box(s * half, 0, 0, 2.4, 8.2, 2.4, wallM(T.CORAL)), box(s * half, 0, 0, 2.7, 0.9, 2.7, wallM(T.CREAM, K.plaster)), box(s * half, 8.2, 0, 2.9, 0.35, 2.9, trim()));
-        p.push(dome(s * half, 8.55, 0, 1.25, 1.5, A(wallM(T.AQUA, K.plaster), { seg: 14 })), cyl(s * half, 10.0, 0, 0.1, 1.6, A(trim(), { r2: 0.01, seg: 6 })));
+        p.push(box(s * half, 0, 0, 2.4, 8.2, 2.4, wallM(T.PINK)), box(s * half, 0, 0, 2.7, 0.9, 2.7, wallM(T.CREAM, K.plaster)), box(s * half, 8.2, 0, 2.9, 0.35, 2.9, trim()));
+        p.push(dome(s * half, 8.55, 0, 1.25, 1.5, A(wallM(T.MINT, K.plaster), { seg: 14 })), cyl(s * half, 10.0, 0, 0.1, 1.6, A(trim(), { r2: 0.01, seg: 6 })));
     });
     p.push(box(0, 5.6, 0, 2 * half - 2.4, 1.7, 1.3, A(trim(T.CREAM), { under: true, glow: 0.25 })));
     p.push(box(0, 5.95, 0, 2 * half - 4.4, 1.0, 1.42, A(trim(T.HOT), { glow: 0.55 })));                                                       // the name band
-    p.push(roof('barrel', 0, 7.3, 0, 1.3, 1.5, 2 * half - 2.4, A(wallM(T.AQUA, K.plaster), { ry: 90, seg: 12 })));
+    p.push(roof('barrel', 0, 7.3, 0, 1.3, 1.5, 2 * half - 2.4, A(wallM(T.MINT, K.plaster), { ry: 90, seg: 12 })));
     return p;
 };
 
@@ -747,6 +747,89 @@ Object.keys(POLISH).forEach(name => { const base = B[name]; B[name] = (...a) => 
 const WEST = { 'P10-08-B1': { x: 2, y: 5, ox: 1, oy: 5, side: 'W' }, 'P10-10-B1': { x: 2, y: 5, ox: 1, oy: 5, side: 'W' } };
 /* the ways out onto the boardwalk: pavement through the yard and the edge band of the four east plots (plot cells x, rows y0..y1) */
 const WAYS = { 'P11-08': [9, 11, 5, 6], 'P11-09': [9, 11, 9, 10], 'P11-10': [9, 11, 9, 10], 'P11-11': [9, 11, 3, 6] };
+/* ── MIAMI (2026-11-15, mondo 12:19: "I want each district to be based off of a major city ... bayside could be Miami"; his "Build it as drawn"
+   on the real-cities plan, 12:32; /mnt/project-files/disaster-city-real-cities/plan.html, section d-b) ──
+   A third layer over the buildings as they stand (nothing is taken away; every building keeps its name, use, doors and roof routes): the
+   deco kit (white rounded corner pylons, window eyebrows, racing stripes, a tall sign fin with a lit stripe), the hotel's three-step front
+   with portholes, the cinema's bulbs, the lookout's candy stripes. The fins stand proud of the fronts, so a walked roof stays clear. No new
+   lights: `glow` only. The lifeguard towers, the yachts, the palms and the flamingos are in miamiStreet(). */
+const DECO = {
+    /* a white pylon rounding a front corner */
+    corner: (p, W, D, H, sides) => (sides || [-1, 1]).forEach(s => p.push(cyl(s * (W / 2 - 0.45), 0, D / 2 - 0.45, 0.8, H, A(trim(0xf8f6f0), { seg: 12 })))),
+    /* three racing stripes across the front, under the parapet (or at `y`) */
+    stripes: (p, W, D, y, tint, w) => p.push(A(box(0, y, D / 2 + E + 0.04, w || (W - 1.8), 0.1, 0.06, trim(tint)), { n: 3, step: [0, 0.22, 0] })),
+    /* an eyebrow over a window row */
+    brow: (p, W, D, y, w) => p.push(box(0, y, D / 2 + 0.36, w || (W - 2.4), 0.12, 0.62, A(trim(), { under: true }))),
+    /* the sign fin: a white blade from `y0` to `y1`, a lit stripe down its edge, a cap */
+    fin: (p, x, D, y0, y1, tint) => p.push(box(x, y0, D / 2 + 0.75, 0.4, y1 - y0, 1.4, trim()), box(x, y0 + 0.4, D / 2 + 1.47, 0.46, y1 - y0 - 0.8, 0.12, { tint, glow: 0.7 }), box(x, y1, D / 2 + 0.75, 0.7, 0.16, 1.7, trim(tint))),
+    /* a porthole on a front at depth z: a white ring and dark glass, built from three boxes each (the arch parts turn about y only) */
+    port: (p, x, y, z, r) => { [[2, 1.1], [1.1, 2], [1.6, 1.6]].forEach(k => p.push(box(x, y - r * k[1] / 2, z, r * k[0], r * k[1], 0.06, trim()), box(x, y - r * k[1] * 0.39, z + 0.04, r * k[0] * 0.78, r * k[1] * 0.78, 0.05, { tint: 0x35506e, glow: 0.25 }))); },
+};
+const MIAMI = {
+    /* the Waterfront hotel: a three-step white front over the doors, the neon fin up its middle, portholes down both shoulders, a rounded left corner */
+    hotel: (p, W, D, lx) => { const H = 31.5, z = D / 2;
+        p.push(box(lx, 3.6, z + 0.3, 10.5, H - 1.6, 0.6, trim(0xf8f6f0)), box(lx, 3.6, z + 0.75, 7.0, H + 1.2, 0.9, trim(0xf8f6f0)), box(lx, 3.6, z + 1.3, 3.6, H + 4.0, 1.1, trim(0xf8f6f0)));
+        p.push(box(lx, H + 2.0, z + 0.3, 11.0, 0.2, 0.9, trim(T.MINT)), box(lx, H + 4.8, z + 0.75, 7.5, 0.2, 1.2, trim(T.MINT)), box(lx, H + 7.6, z + 1.3, 4.1, 0.2, 1.4, trim(T.MINT)));
+        p.push(box(lx, 5.0, z + 1.95, 0.9, H + 5.0, 0.22, { tint: T.HOT, glow: 0.75 }), box(lx, H + 10.0, z + 1.9, 1.3, 0.2, 0.5, trim()));          // the neon fin
+        for (let f = 1; f < 9; f++) [-1, 1].forEach(s => DECO.port(p, lx + s * 2.65, 3.5 * f + 1.9, z + 1.22, 0.42));
+        for (let f = 1; f < 9; f += 2) [-1, 1].forEach(s => p.push(A(box(lx + s * 4.5, 3.5 * f + 1.3, z + 0.62, 1.4, 0.09, 0.05, trim(T.MINT)), { n: 3, step: [0, 0.2, 0] })));
+        DECO.corner(p, W, D, H, [-1]);
+    },
+    /* the cinema: bulbs round the marquee (top and bottom rims), racing stripes down both flanks */
+    cinema: (p, W, D, lx) => { const fz = D / 2, bulb = { tint: 0xfff2b0, glow: 1 };
+        p.push(A(dome(lx, 4.38, fz, 0.16, 0.16, A({ seg: 6 }, bulb)), { ring: { n: 19, r: 5.5, a0: 0, arc: 180 } }), A(box(lx, 2.76, fz, 0.18, 0.16, 0.18, bulb), { ring: { n: 19, r: 5.5, a0: 0, arc: 180 } }));
+        ['l', 'r'].forEach(s => [0, 1, 2].forEach(i => p.push(pane(s, W, D, 0, 6.2 + i * 0.3, D - 2, 0.12, trim(T.HOT), 0.04))));
+        DECO.corner(p, W, D, 8, [-1, 1]);
+    },
+    icecream: (p, W, D) => { DECO.fin(p, -W / 2 + 1.3, D, 3.4, 11.0, T.MINT); DECO.corner(p, W, D, 6.98, [-1]); },
+    apartments: (p, W, D, lx) => { [3.3, 6.8].forEach(y => DECO.brow(p, W, D, y)); DECO.stripes(p, W, D, 9.75, T.HOT); DECO.fin(p, W / 2 - 1.5, D, 2.9, 13.6, T.HOT); DECO.corner(p, W, D, 10.5); },
+    foodhall: (p, W, D, lx) => { DECO.fin(p, lx + (lx > 0 ? -3.2 : 3.2), D, 3.2, 10.6, T.AQUA); },
+    boatshop: (p, W, D, lx) => { p.push(...awning(lx, 2.75, D / 2 + 0.9, 3.4, 1.8, T.AQUA)); },
+    /* the Marina lookout: candy stripes up every post, a red and white fascia */
+    lookout: (p) => { [0.35, 1.15, 1.95, 2.75].forEach(y => p.push(cyl(0, y, 0, 0.215, 0.4, A(trim(T.RED), { seg: 8, cap: false, ring: { n: 8, r: 2.9 } }))));
+        p.push(A(box(0, 3.42, 0, 0.5, 0.26, 0.06, trim(T.RED)), { ring: { n: 16, r: 3.27 } })); },
+};
+Object.keys(MIAMI).forEach(name => { const base = B[name]; B[name] = (...a) => { const p = base(...a); try { MIAMI[name](p, ...a); } catch (e) { console.warn('[bayside] miami failed', name, e); } return p; }; });
+
+/* a painted lifeguard tower (the beach's row: each its own colour): a plank hut on stilts, a white pyramid roof, a shutter, a rail, steps, a flag */
+B.tower = (tint, flag) => {
+    const p = [], y0 = 1.5;
+    [[-1.2, -1.2], [1.2, -1.2], [-1.2, 1.2], [1.2, 1.2]].forEach(c => p.push(cyl(c[0], 0, c[1], 0.1, y0, A(trim(), { seg: 6, cap: false }))));
+    p.push(box(0, y0, 0, 3.3, 0.14, 3.3, A(mat(K.planks, T.WHITE, 2.0), { under: true })), box(0, y0 + 0.14, -0.3, 2.4, 2.0, 2.1, A(wallM(tint), { top: false })));
+    p.push(roof('pyramid', 0, y0 + 2.14, -0.3, 2.4, 1.1, 2.1, A(wallM(T.WHITE, K.corr), { over: 0.55 })), ...band(2.4, 2.1, y0 + 1.94, 0.2, 0.06, trim()).map(q => A(q, { p: [q.p[0], q.p[1], q.p[2] - 0.3] })));
+    p.push(box(0, y0 + 0.8, 0.77, 1.5, 0.85, 0.05, { tint: 0x35506e, glow: 0.2 }), box(0, y0 + 1.65, 1.0, 1.7, 0.06, 0.5, A(trim(), { under: true })));                 // the shutter, propped open
+    p.push(A(box(0, y0 + 0.55, 1.6, 3.3, 0.06, 0.06, trim()), { n: 2, step: [0, 0.45, 0] }), box(-1.62, y0 + 0.14, 1.6, 0.07, 0.95, 0.07, trim()), box(1.62, y0 + 0.14, 1.6, 0.07, 0.95, 0.07, trim()));
+    p.push(A(box(-2.0, 1.0, 0.9, 0.7, 0.1, 1.1, mat(K.planks, T.WHITE, 2.0)), { n: 3, step: [-0.55, -0.42, 0] }));                                           // three steps down to the sand
+    p.push(cyl(1.0, y0 + 2.5, -1.1, 0.04, 2.6, A(trim(), { seg: 6 })), box(1.5, y0 + 4.5, -1.1, 0.95, 0.55, 0.04, A(trim(flag), { ds: true })));
+    return p;
+};
+/* a white motor yacht, its waterline at the row's y: a pointed hull, a navy boot stripe, a cabin with a band of dark glass, a flybridge, a mast */
+B.yacht = (L) => {
+    const p = [], hull = [[-1.7, -L / 2], [1.7, -L / 2], [1.8, L / 5], [0, L / 2], [-1.8, L / 5]];
+    p.push({ s: 'poly', p: [0, -0.7, 0], pts: hull, h: 1.9, tint: T.WHITE }, { s: 'poly', p: [0, 0.1, 0], pts: hull.map(q => [q[0] * 1.02, q[1] * 1.01]), h: 0.16, tint: T.NAVY, top: false });
+    p.push(box(0, 1.2, -L / 9, 2.5, 1.1, L * 0.42, trim()), box(0, 1.6, -L / 9, 2.56, 0.42, L * 0.38, { tint: 0x24384e, glow: 0.15, top: false }), box(0, 2.3, -L / 9, 2.7, 0.1, L * 0.46, A(trim(), { under: true })));
+    p.push(box(0, 2.4, -L / 6, 1.8, 0.55, L * 0.2, trim()), cyl(0, 2.95, -L / 6, 0.04, 1.9, A(trim(T.STEEL), { seg: 6 })), box(0.3, 4.4, -L / 6, 0.55, 0.32, 0.03, A(trim(T.HOT), { ds: true })));
+    p.push(A(box(-1.55, 1.2, L / 4, 0.04, 0.5, 0.04, trim(T.STEEL)), { n: 2, step: [3.1, 0, 0] }), box(0, 1.68, L / 3.4, 2.2, 0.04, 0.04, trim(T.STEEL)));     // the bow rail
+    return p;
+};
+/* THE MIAMI STREET: the lifeguard towers, the yachts at the mole, tall palms in sand beds (the promenade, the palm court at the mall arch),
+   flamingos by the hotel's doors, lobster traps on the boardwalk */
+function miamiStreet(ctx, push, ghost) {
+    const { lateRows, features, props, take, free, gc, gx, r3, N, paintCell } = ctx, out = { towers: 0, yachts: 0, palms: 0 };
+    [[112, T.AQUA, T.HOT], [118.5, T.LEMON, T.RED], [107, T.PINK, T.AQUA]].forEach((t, i) => { const x = gc(150), z = gx(t[0]); push('bay-tower' + (i + 1), x, z, 270, B.tower(t[1], t[2])); ghost(x, z, 3.0, 3.4); out.towers++; });
+    /* the yachts: afloat (the sea's own level, whatever level the plot beside it stands at) */
+    const lv = (ctx.lvOf && ctx.plotOf['P11-08']) ? ctx.lvOf(ctx.plotOf['P11-08']) * ctx.LEVELS.M : 0;
+    [[157.4, 100.2, 0, 12], [157.4, 103.6, 180, 10], [162.8, 101.5, 0, 13]].forEach((y, i) => { push('bay-yacht' + (i + 1), gx(y[0]), gx(y[1]), y[2], B.yacht(y[3])); lateRows[lateRows.length - 1].y = r3(SEA_Y - lv); out.yachts++; });
+    /* tall palms, each in its own sand bed, on the middle of its square (a tree blocks) */
+    const palm = (cx, cy, h) => { paintCell(cx, cy, 'desert'); take(cx, cy); features.push({ k: 'tree', x: gc(cx), z: gc(cy), kind: 'palm', h }); out.palms++; };
+    for (let i = props.length - 1; i >= 0; i--) { const q = props[i]; if (q.key === 'palm_tree' && Math.abs(q.x - (gx(144) + 0.9)) < 0.05) { const cy = Math.round((q.z + ctx.HALF) / ctx.C); props.splice(i, 1); palm(144, cy, r3(7.2 + (cy % 4) * 0.5)); } }   // (the promenade's short palms grow tall)
+    [[9, 3], [11, 3], [9, 8], [11, 8], [8, 5], [8, 6]].forEach((c, i) => { const cx = 8 * N + c[0], cy = 10 * N + c[1]; if (free(cx, cy, '.')) palm(cx, cy, 7.4 + (i % 3) * 0.6); });   // the palm court at the mall arch
+    /* flamingos either side of the hotel's doors, lobster traps where the pier leaves the boardwalk (decor: off the squares' middles) */
+    [[96.2, 107.9, 200], [97.0, 108.8, 250], [96.4, 100.3, 300], [97.2, 99.5, 160]].forEach(f => props.push({ key: 'flamingo', x: f[0], z: f[1], face: f[2] }));
+    props.push({ key: 'lobster_traps', x: r3(gx(145) + 0.6), z: r3(gx(10 * N + 6) - 4.6), face: 90 }, { key: 'lobster_traps', x: r3(gx(145) + 0.7), z: r3(gx(10 * N + 6) + 4.7), face: 60 });
+    console.warn('[bayside miami]', JSON.stringify(out));
+}
+
 function tailor(PLAN) {
     PLAN.plots.forEach(p => p.buildings.forEach(b => { const w = WEST[b.id]; if (w && !(b.doors[0] && b.doors[0].side === 'W')) b.doors.unshift(Object.assign({}, w)); }));
     PLAN.plots.forEach(p => { const w = WAYS[p.id]; if (!w) return; p.cells = p.cells.map((r, y) => (y < w[2] || y > w[3]) ? r : r.split('').map((ch, x) => (x >= w[0] && x <= w[1]) ? 'P' : ch).join('')); });
@@ -797,6 +880,7 @@ function apply(ctx) {
       const hm = { k: 'texbuilding', id: 'dc:bay-harbourmaster', x: r3(x), z: r3(z), w: W, d: D, rot: 180, storeys: 1, seed: 7711, skin: false, hollow: true, door: 2 }; lateRows.push(hm); byId[hm.id] = hm; push('bay-harbourmaster', x, z, 180, B.harbour(W, D, doorLx(W, 2))); }
     beach(ctx, push, ghost);
     interiors(ctx, byId, push);
+    miamiStreet(ctx, push, ghost);
     console.warn('[bayside]', JSON.stringify(out));
 }
 /* ── THE INTERIORS (2026-11-13, mondo 21:04 "let's go ahead and do the interiors"; his OK on plan 2, 21:24) ──
