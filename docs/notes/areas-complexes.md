@@ -3177,3 +3177,29 @@ deep), Police (3 x 5: desk, cells with drawn bars), Time Bureau (3 x 4), Militar
   number_dispenser, now_serving_sign, brochure_rack, form_counter, ballot_box. Reused: high_bay_lamp, ships_bell, radio_console,
   evidence_board, map_table, marble_bust, wingback_chair, painting_portrait, crystal_chandelier, brass_orrery, banker_lamp. Originals,
   concepts, fronts sheet, plan sheet: project files disaster-city-civic/interiors2/.
+
+### PLOT DUNGEONS, THE THIRD PASS (2026-11-15, mondo: "what is up with that lever? It looks nothing like a lever and there are 10 of them in a row ... Make a new lever. Do another pass on all the dungeons, visually and aesthetically")
+- THE LEVER: `pd_lever` (catalogue, R2 `Assets/world/props/meshy/pd_lever.glb`, Meshy concept -> image-to-3d, originals + concept in project
+  files `dungeons/meshy/`): ONE iron floor lever (pedestal, notched quadrant, red-gripped arm), 1.6 m. The Meshy mesh was split offline
+  into two nodes (`pd_lever_base`, `pd_lever_arm`; the arm's origin is the hub) so the arm can swing: three-renderer.js `_hqPdPull`
+  (`hq.pd.pull(counterId)`, the lever prop row carries `pd: { lever: <counter id> }`) throws it about z to the other end of the quadrant
+  (0 <-> -0.84 rad, 0.42 s); map.js `_pdAct` throws the arm, waits 460 ms (`_pd.pulling`), then starts the move. `hq.pd.levers()` = dev read
+  of the arms. The lever stands on a dark plate in a lit frame of the moved plot's colour (the post + cube lamp is gone); its blocker is
+  0.9 m. `signal_lever_frame` (the twelve-lever frame) is no longer used by a dungeon (it stays in the Industrial rail room).
+- THE DRESSING (data.js `PD_DRESS` + `pdDress`, called by `pdRoomDef`): every look dresses its plots by itself from the cells, seeded by
+  level + plot (the same plot always wears the same things; a new level is dressed the day it is written). Per look: `hang` (wall pieces on
+  the wall beside a floor square), `big` (a whole-square blocker centred on a wall square of a room 3+ deep, never in a doorway lane
+  (squares 5-6), never beside a stair, never two touching, even by a corner; each gets a 2.9 m ghost blocker `big<x>_<y>`), `stand` (small
+  floor decor against a wall), `corner`, `litter`, `tops` (an open look's blocks: the street's trees and planters), `field` (a plot with no
+  door at all, a machine's own ground, is strewn all over). Rows are [key, weight, { h | span, y, in, rot }]. Dressing never stands within
+  1.6 squares of a mark or on a trace, never on the plot's edge. Dressing props wear `noBlock`, `noLight`, `mesh: false`, `scatter`
+  (new row flags `noBlock` / `noLight` in three-renderer.js `_hqPlaceProps`): decor never blocks and never takes one of the level's 11
+  lights (a torch keeps its glow). A plot row may wear `dress: false` or its own table. `node bake-dungeons.js` fails a level when a big
+  piece cuts a plot's floor in two.
+- THE WIDE VIEW reads now: a closed look's solid mass wears a dark cap over its top (draw rows `top<i>`, grown over the walls' own
+  thickness) and dark skirts on the plot's outer sides (`skirt_<side><i>`), so from above only the rooms are lit.
+- THE DRAWN PIECES: a `lamp` mark is a signal lantern (foot, post, caged head, cap); a `stand` / `take` stands on a pedestal (foot, shaft
+  in the look's trim, cap); Two to Open's battery is the `steam_turbine` on a lit plinth and its locks are two `retro_control_panel`s on a
+  plinth under their lantern (ghost blockers keep the old sizes); Three Little Worlds' machines are stone (`bricks_3`).
+- THE WORKS LOOK (Traveling Door, Two to Open): the stained drywall is gone, the walls are `urban:MetalCorrugatedPainted3a`.
+- Still stand-in: the fights, the Procession's guardian, no drawn water in Missing Channel, Three Little Worlds is flat.

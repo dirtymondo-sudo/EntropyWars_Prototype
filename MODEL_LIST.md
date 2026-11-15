@@ -25,7 +25,7 @@ Where each model STANDS (which map, room, spell) is MODEL_INDEX.md; this file is
 | MakeHuman parts, baked by Claude in Blender | yes (parts) | 20 |
 | mondo's own model | yes | 1 |
 | mondo's own model, texture by Meshy AI (Retexture on his UVs) | yes (mesh) | 2 |
-| Meshy AI | no | 907 |
+| Meshy AI | no | 908 |
 | Meshy AI, reworked by Claude | no | 9 |
 | Claude in Blender | no | 105 |
 | Claude in code (three.js, no file) | no | 77 |
@@ -2551,6 +2551,12 @@ The pendants (OUTFIT > Neck > Pendants: cross, talisman, hagstone) each wear a C
 | catalogue key | file (R2 bucket path) | made by | source |
 | --- | --- | --- | --- |
 | meshy_wings | `Assets/world/props/meshy/wings.glb` | Asset pack (author not recorded yet) | Angel wings pair (mondo's upload, maker not recorded): retired 2026-10-27 for the single Meshy wings |
+
+### Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; the plot dungeons, mondo 2026-11-15: "Make a new lever"; originals in project files dungeons/meshy/) — Meshy AI (1)
+
+| catalogue key | file (R2 bucket path) | made by | source |
+| --- | --- | --- | --- |
+| pd_lever | `Assets/world/props/meshy/pd_lever.glb` | Meshy AI | Meshy AI, made by Claude through the Meshy API (concept -> image-to-3d; the plot dungeons, mondo 2026-11-15: "Make a new lever"; originals in project files dungeons/meshy/) |
 
 ### Houses on the water · Elbolilloduro · CC0 (piece cut out in Blender) — Asset pack (1)
 
