@@ -1,0 +1,488 @@
+{
+"area": "The Deep",
+"version": "plan-1",
+"squareMeters": 3.5,
+"plotCells": 12,
+"districts": {
+"A": "Atlantis",
+"T": "The Trench"
+},
+"rooms": [
+{
+"room": "The Deep",
+"cols": 9,
+"rows": 3,
+"plots": [
+{
+"id": "P00-00",
+"name": "The Dunes",
+"district": "Atlantis",
+"level": 8,
+"what": "rippled sand, the light from above",
+"from": "Abyss: the sea floor dunes",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P01-00",
+"name": "The Sea Floor",
+"district": "Atlantis",
+"level": 8,
+"what": "open floor, fish schools",
+"from": "Abyss: THE SEA FLOOR",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-00",
+"name": "The Drowned Road, north",
+"district": "Atlantis",
+"level": 8,
+"what": "paving under the silt",
+"from": "Abyss: THE DROWNED ROAD",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-00",
+"name": "The Columns",
+"district": "Atlantis",
+"level": 8,
+"what": "a fallen colonnade",
+"from": "Abyss: the sunken agora (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-00",
+"name": "The Temple Steps",
+"district": "Atlantis",
+"level": 9,
+"what": "the stair up to the vault door",
+"from": "Temple of the Deep: the vault door",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-00",
+"name": "The Kelp",
+"district": "Atlantis",
+"level": 8,
+"what": "kelp forest: the walls here",
+"from": "NEW (label mine)",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-00",
+"name": "The Shelf",
+"district": "The Trench",
+"level": 4,
+"what": "a ledge on the trench wall",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"S"
+],
+"exit": null
+},
+{
+"id": "P07-00",
+"name": "The Vents",
+"district": "The Trench",
+"level": 2,
+"what": "smokers, warm water",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-00",
+"name": "The Dark",
+"district": "The Trench",
+"level": 0,
+"what": "no light at all",
+"from": "NEW (label mine)",
+"ports": [
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-01",
+"name": "The Wreck",
+"district": "Atlantis",
+"level": 8,
+"what": "the wreck on its side",
+"from": "Abyss: THE WRECK",
+"ports": [
+"E",
+"N",
+"S"
+],
+"exit": [
+"the Flying Dutchman's hold",
+"secret"
+]
+},
+{
+"id": "P01-01",
+"name": "The Drowned Road",
+"district": "Atlantis",
+"level": 8,
+"what": "the road into the city",
+"from": "Abyss: THE DROWNED ROAD",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "The Agora",
+"district": "Atlantis",
+"level": 8,
+"what": "LANDMARK: the sunken square",
+"from": "Abyss: the sunken agora (rebuilt 11-13)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-01",
+"name": "The Agora, east",
+"district": "Atlantis",
+"level": 8,
+"what": "stalls, statues",
+"from": "Abyss: the sunken agora",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-01",
+"name": "The Temple of the Deep",
+"district": "Atlantis",
+"level": 10,
+"what": "the dome; dry inside",
+"from": "Atlantis: THE TEMPLE OF THE DEEP (the air pocket, the dais, the oracle)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"inside: the Temple of the Deep",
+"inside"
+]
+},
+{
+"id": "P05-01",
+"name": "The Drowned Stair",
+"district": "Atlantis",
+"level": 8,
+"what": "a stair that goes up into the temple",
+"from": "Abyss: the drowned stair (hidden today)",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": [
+"the drowned stair",
+"secret"
+]
+},
+{
+"id": "P06-01",
+"name": "The Trench",
+"district": "The Trench",
+"level": 3,
+"what": "LANDMARK: the drop",
+"from": "Abyss: THE TRENCH",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P07-01",
+"name": "The Trench, deep",
+"district": "The Trench",
+"level": 1,
+"what": "the narrow part",
+"from": "Abyss: THE TRENCH",
+"ports": [
+"E",
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-01",
+"name": "The Bottom",
+"district": "The Trench",
+"level": 0,
+"what": "the lowest plot in the world",
+"from": "NEW (label mine)",
+"ports": [
+"N",
+"S",
+"W"
+],
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "The Upwelling",
+"district": "Atlantis",
+"level": 8,
+"what": "where the whirlpool sets you down",
+"from": "Abyss: THE UPWELLING",
+"ports": [
+"E",
+"N"
+],
+"exit": [
+"The Beach (up the whirlpool)",
+"open"
+]
+},
+{
+"id": "P01-02",
+"name": "The Sea Floor, south",
+"district": "Atlantis",
+"level": 8,
+"what": "open floor",
+"from": "Abyss: THE SEA FLOOR",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P02-02",
+"name": "The Drowned Houses",
+"district": "Atlantis",
+"level": 8,
+"what": "roofless houses",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "The Drowned Road, south",
+"district": "Atlantis",
+"level": 8,
+"what": "the road out toward the edge",
+"from": "Abyss: THE DROWNED ROAD",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P04-02",
+"name": "The Statues",
+"district": "Atlantis",
+"level": 8,
+"what": "a row of toppled kings",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P05-02",
+"name": "The Edge",
+"district": "Atlantis",
+"level": 6,
+"what": "the floor falls away",
+"from": "Abyss: THE TRENCH (its lip)",
+"ports": [
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P06-02",
+"name": "The Slope",
+"district": "The Trench",
+"level": 4,
+"what": "the way down the trench wall",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N"
+],
+"exit": null
+},
+{
+"id": "P07-02",
+"name": "The Bones",
+"district": "The Trench",
+"level": 1,
+"what": "a whale fall",
+"from": "NEW (label mine)",
+"ports": [
+"E",
+"N",
+"W"
+],
+"exit": null
+},
+{
+"id": "P08-02",
+"name": "The Far Wall",
+"district": "The Trench",
+"level": 0,
+"what": "the end of the trench; a sealed hatch",
+"from": "his zone list: The Deep leads to Area 51",
+"ports": [
+"N",
+"W"
+],
+"exit": [
+"Area 51 (your zone list; no door today)",
+"new"
+]
+}
+],
+"cells": [
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuummuuuuuuuuuuuuuuuuuuuuuuuuuuuuuTTTTTTTTTTTTaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuummuuuuuuuuuuuuuuuuuuuuuuuuuuuuuTTTTTTTTTTTTaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuummuuuuuuuuuuuuuuuuuuuuuuuuuuuuuTTTTTTTTTTTTaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuummuuuuuumuumuumuumuuuuuuuuuuuuuTTTTTTTTTTTTrrrrrrrrraaauuuuuuuuuuuuuuuuuuuuuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuummuuuuuumuumuumuumuuuuuuuuuuuuuuuuuuuuuuTTTrrrrrrrrraaauuuuuhhhuuuuuuuuuuuuuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuummuuuuuumuumuumuumuuuuuuuuuuuuuuuuuuuuuuTTTrrrrrrrrraaaaaaahhhhhaaaaaaaauuuuuaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuummuuuuuumuumuumuumuuuummmmmmuuuTTTTTuuuuuTTrrrrrrrrraaaaaahhhhhhhaaaaaaauuuuuaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuummuuuuuumuumuumuumuuuummmmmmuuuTTTTTuuuuuTTrrrrrrrrraaaaaahhhhhhhaaaaaaauuuuuaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuummuuuuuumuumuumuumuuuummmmmmuuuTTTTTuuuuuTTrrrrrrrrraaaaaahhhhhhhaaaaaaaauuuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuummuuuuuuuuuuuuuuuuuuuummmmmmuuuTTTTTuuuuTTTaaaaaaaaaaaaaaaahhhhhaaaaaaaaaauuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuummuuuuuuuuuuuuuuuuuuuummmmmmuuuTTTTTuuTTTTTaaaaaaaaaaaaaaaaahhhuaaaaaaaaaauuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuummuuuuuuuuuuuuuuuuuuuummmmmmuuuTTTTTuuTTTTTaaaaaaaaaaaaaaaaaaauuaaaaaaaaaauuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuummmmmmmmmmmmmmmmmmmmmmmmuuuuuuuuuuuuuuuuuuuuuuuuaaauuaaaaaaaaaaaaaauuaaaaaaaaaauuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuummmmmmmmmmmmmmmmmmmmmmmmuuuuuuuuuuuuuuuuuuuuuuuuaaauuaaaaaaaaaaaaaauuaaaaaaaauuuuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuummmmmmmmmmmmmmmmmmmmBBBmuuuuuBBBuuuuuuuuuuuuuuuuaaauuauuuaaaaaaaauuuuaaaaaaauuuuuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuummmmmmmmmmmmmmmmmmmmBBBmuuuuBBBBBuuuuuuuuuuuuuuuaaauuuuuuuuuuuuuuuuuuaaaaaauuuuuuuaa",
+"uuuBBBBBBBuuuuuuuuuuuuuummmmmuuummmmmmmmmmmmBBBmuuuBBBBBBBuuuummmuuuuuuuaaauuuuuuuuuuuuuuuuuuaaaaauuuuuuuuua",
+"uuuBBBBBBBuummmmmmmmmmmmmmmmuuuuummmmmmmmmmmmmmmuuBBBBBBBBBuuummmuuuuuuuuuuuuuuuuuuaaaaauuuuuaaaaauuuuuuuuua",
+"uuuBBBBBBBuummmmmmmmmmmmmmmmuuuuummmmmmmmmmmmmmmuuBBBBBBBBBuuummmuuuuuuuuuuuuuuuuuuaaaaaauuuuuuuuuuuuuuuuuua",
+"uuuBBBBBBBuuuuuuuuuuuuuummmmuuuuummmmmmmmmmmBBBmuuBBBBBBBBBuuummmuuuuuuuaaaauuuuuuaaaaaaauuuuuuuuuuuuuuuuuaa",
+"uuuuuuuuuuuuuuuuuuuuuuuummmmmuuummmmmmmmmmmmBBBmuuuBBBBBBBuuuummmuuuuuuuaaaauuuuuaaaaaaaauuaaaaaaaaauuuuuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuummmmmmmmmmmmmmmmmmmmBBBmuuuuBBBBBuuuuuuuuuuuuuuuaaaauuaaaaaaaaaaauuaaaaaaaaaauuuuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuummmmmmmmmmmmmmmmmmmmmmmmuuuuuBBBuuuuuuuuuuuuuuuuaaaauuaaaaaaaaaaauuaaaaaaaaaaaauuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuummmmmmmmmmmmmmmmmmmmmmmmuuuuuuuuuuuuuuuuuuuuuuuuaaaauuaaaaaaaaaaauuaaaaaaaaaaaauuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuaaaaaaauuaaaaaaaaaaauuaaaaaaaaaaaauuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuaaaaaaauuaaaaaaaaaaauuaaaaaaaaaaaauuaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuBBBuuBBBBuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuaaaaaaauuuuaaaaaaaaauuaaaaaaaaaauuuuaaa",
+"uuuuwwwwwuuuuuuuuuuuuuuuuBBBuuBBBBuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuaaaaaaauuuuuaaaaaaammmaaaaaaaaauuuuuaaa",
+"uuuwwwuwwwuuuuuuuuuuuuuuuBBBuuBBBBuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuaaaaaaauuuuuaaaaaammmmmuuuuuuuuuuuuuaaa",
+"uuuwwuuuwwuuuuuuuuuuuuuuuuuuuuuuuuuummmmmmmmmmmmuumuumuumuuuuuuuuuuuuaaaaaaauuuuuuuuuummmmmmmuuuuuuuuuuuuaaa",
+"uuuwuuuuuwuuuuuuuuuuuuuuuuuuuuuuuuuummmmmmmmmmmmuumuumuumuuuuuuuuuuuuaaaaaaaauuuuuuuuummmmmmmaaaaaaaauuuaaaa",
+"uuuwwuuuwwuuuuuuuuuuuuuuuuuBBBBuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuaaaaaaaaaaaaaaaaammmmmmmaaaaaaaaaaaaaaa",
+"uuuwwwuwwwuuuuuuuuuuuuuuuuuBBBBuuuuuuuuuuuuuuuuummmmmmmmmmmmuuuuuuuuuaaaaaaaaaaaaaaaaaammmmmaaaaaaaaaaaaaaaa",
+"uuuuwwwwwuuuuuuuuuuuuuuuuuuBBBBuuuuuuuuuuuuuuuuummmmmmmmmmmmuuuuuuuuuaaaaaaaaaaaaaaaaaaammmaaaaaaaaaaaaaaaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+"uuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+]
+}
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "dirt path",
+"g": "grass",
+"w": "water",
+"b": "bridge / deck over water",
+"s": "snow",
+"r": "rock ledge",
+"x": "solid rock / wall (cannot walk)",
+"f": "concrete floor",
+"c": "corn (cannot walk; the rows are the walls)",
+"d": "sand",
+"m": "drowned paving, statues",
+"l": "lava (cannot walk)",
+"h": "warm vent rock",
+"k": "cloud you walk on",
+"v": "open sky (a fall)",
+"u": "sea floor",
+"a": "the drop / black water (cannot cross)",
+"B": "building",
+"i": "ice",
+"o": "cobbles / worn stone",
+"y": "crystal",
+"q": "the collider ring corridor",
+"e": "grey dust",
+"n": "red ground",
+"z": "the Sea of Possibility (cannot walk)",
+"j": "plank pier / deck",
+"G": "the ley line",
+"V": "nothing (cannot walk)",
+"D": "dunes",
+"R": "red carpet / hot floor",
+"T": "hedge / kelp (cannot walk)",
+"S": "light",
+"N": "open space (fly the ship, or float)",
+"Q": "an orbit (a guide line, not a wall)",
+"E": "Earth",
+"A": "asteroid"
+}
+}
