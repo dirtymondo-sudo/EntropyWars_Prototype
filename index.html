@@ -188,10 +188,14 @@
             };
             try {
                 var P0 = prev ? JSON.parse(prev) : null;
-                if (P0 && (!P0.clean || P0.frozen)) {
-                    hist.push(P0); while (hist.length > 3) hist.shift();
+                /* ALWAYS printed (mondo 11-15: his hall crash left the page alive, so the reload was a clean pagehide and the
+                   block never showed): the last session's trail is the first console line of every load; every session is kept
+                   (the last 4), so one extra reload no longer loses the crash */
+                if (P0) {
+                    hist.push(P0); while (hist.length > 4) hist.shift();
                     try { localStorage.setItem(HKEY, JSON.stringify(hist)); } catch (e) {}
-                    console.warn('[CRASH TRAIL] the session before this one did not end cleanly. Paste this block to Claude:\n  ' + diag.trailLines(P0).join('\n  '));
+                    var bad = !P0.clean || P0.frozen;
+                    console.warn('[CRASH TRAIL] the session before this one' + (bad ? ' did NOT end cleanly' : ' (the page was still alive when it was closed or reloaded)') + '. Paste this block to Claude:\n  ' + diag.trailLines(P0).join('\n  '));
                 }
             } catch (e) {}
             try { if (localStorage.getItem('ew_no_freeze_trail') === '1') return; } catch (e) { return; }
@@ -323,7 +327,7 @@
             } catch (e) { lines.push('PREVIOUS SESSION: unreadable (' + e.message + ')'); }
             try {
                 var HH = diag.trailHist || [];
-                for (var hi = HH.length - 1; hi >= 0; hi--) { lines.push(''); lines.push('UNCLEAN SESSION ' + (HH.length - hi) + ' of ' + HH.length + ' (newest first):'); lines = lines.concat(diag.trailLines(HH[hi]).map(function (x) { return '  ' + x; })); }
+                for (var hi = HH.length - 1; hi >= 0; hi--) { lines.push(''); lines.push('EARLIER SESSION ' + (HH.length - hi) + ' of ' + HH.length + ' (newest first):'); lines = lines.concat(diag.trailLines(HH[hi]).map(function (x) { return '  ' + x; })); }
             } catch (e) {}
             var report = lines.join('\n');
             var old = document.getElementById('ew-diag-overlay');
