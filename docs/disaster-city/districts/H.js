@@ -979,6 +979,8 @@ function star(a, y, R, h, key, tint) { const r = R * 0.42, P = (ang, d) => [Math
 const NYC_OPEN = [
     /* the star base under the Memorial walk's statue (the statue stands on it, its foot 1 m up) */
     { id: 'star', x: -10.5, z: 20.65, parts() { const a = sheet(); star(a, 0, 3.4, 0.55, U('ConcreteUnderTiles1'), 0xd8d2c6); star(a, 0.55, 2.5, 0.45, MARBLE, 0xe8e2d4); return a.P; } },
+    /* a granite pedestal on the plaza's south-west square for the second hero (arms crossed; mondo 11-15 07:46 "use the 3rd example ... as well") */
+    { id: 'pedestal', x: -36.75, z: -19.25, parts() { const a = sheet(); a.box(0, 0, 0, 3.3, 0.6, 3.3, U('ConcreteUnderTiles1'), 0xd8d2c6); a.box(0, 0.6, 0, 2.5, 0.8, 2.5, MARBLE, 0xe8e2d4); a.box(0, 1.3, 0, 2.7, 0.1, 2.7, MARBLE, 0xf2ecde); return a.P; } },
     /* the street stairs down beside the Transit court: rails round a dark well, green globes on the posts, a tiled sign */
     ...[3.5, 38.5].map((x, i) => ({ id: 'subway' + i, x, z: 17.5, parts() { const a = sheet(), GG = 0x2f6a4a;
         a.box(0, 0, 0, 3.0, 0.04, 6.4, null, 0x0c0c0e); for (let k = 0; k < 4; k++) a.box(0, 0.04, 3.0 - k * 0.32, 2.9, 0.02, 0.3, TILE, 0x9a9488);
@@ -1001,6 +1003,7 @@ const NYC_OPEN = [
 ];
 OPEN.push(...NYC_OPEN);
 const NYC_PROPS = [
+    { key: 'hero_statue_crossed', x: -36.75, z: -19.25, face: 45, y: 1.4 },
     { key: 'car_taxi', x: -59.5, z: 57.75, face: 90 }, { key: 'car_taxi', x: -3.5, z: 68.25, face: 270 }, { key: 'car_taxi', x: 38.5, z: 57.75, face: 90 }, { key: 'car_taxi', x: 63, z: 68.25, face: 270 },
     { key: 'hot_dog_stand', x: -26.25, z: 54.25, face: 180 }, { key: 'hot_dog_stand', x: 40.25, z: 71.75, face: 0 },
     { key: 'newspaper_rack', x: -13.6, z: 54.7, face: 180 }, { key: 'newspaper_rack', x: 24.9, z: 71.1, face: 0 }, { key: 'newspaper_rack', x: -36.4, z: 71.2, face: 0 },
