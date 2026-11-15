@@ -77059,8 +77059,14 @@ function hqOutTray(profile) {
    `rot` counts quarter turns to the LEFT (north goes to the west), the stage's own sense (rotation.y = rot · π / 2). */
 const PD_RULES = {
     sq: 3.5, n: 12, plotM: 42, upperM: 7.0, portSq: [5, 6],
-    turnMs: 1500, slideMs: 2000,
-    chamberM: 7.0,          // a rider stands inside the turning plot's 4 × 4 chamber (squares 4-7): |x|, |z| < 7 m of its centre
+    turnMs: 1600, slideMs: 2200,
+    chamberM: 7.0,          // the middle of a plot (squares 4-7): |x|, |z| < 7 m of its centre (pdWhere's `chamber`)
+    wide: { inMs: 550, holdMs: 700, outMs: 650, tilt: 0.24, pad: 1.16 },   // THE WIDE VIEW: every move is shown from above the whole board (the eye rises, the plot moves, the eye comes back)
+    seamPad: 1.5,           // see pdSync
+    hour: 13,               // the hour an open look stands at (its sky is locked there)
+    lamps: 11,              // the point lights of a whole closed level, its props' own lights counted (the stage lights 12 at most: every lamp stays lit, nothing switches on as you walk)
+    ambient: 1.5, lampK: 1.6,             // a closed look's room light is never under this (a plot has one or two lamps, not a room's dozen: the room light carries it)
+    tints: [0xffc23a, 0x3ad0ff, 0xff5ad0, 0x7dff6a, 0xff7a3a, 0xb48cff],   // a moving plot's colour: its lever's lamp and the strips at its ports wear it
     saveKey: 'ew-pd-save-v1',
 };
 const PD_SIDES = ['n', 'e', 's', 'w'];
@@ -77073,7 +77079,7 @@ const PD_LOOKS = {
               floor: 'urban:TileGeneric1a', cliff: 'urban:ConcreteStriped2a', path: 'urban_street' },
     works:  { from: 'works', gen: { look: 'walls', wallKey: 'drywall' }, h: 5.25, floor: 'concrete_floor', cliff: 'drywall', path: 'concrete_floor',
               shell: { pipes: false, strips: false, mood: { light: 0xf4f0e8, ambient: 0.8 } } },
-    forest: { from: 'site_prebuilt_fairy_forest_glade', gen: { look: 'trees', kinds: ['tree_3', 'tree', 'tree_2'], treeGap: 2.5, depth: 3 }, open: true, stairs: false },
+    forest: { from: 'site_prebuilt_fairy_forest_glade', skyFrom: 'site_prebuilt_downtown_streets', gen: { look: 'trees', kinds: ['tree_3', 'tree', 'tree_2'], treeGap: 2.5, depth: 3 }, open: true, stairs: false },
     hwing:  { from: 'hwing_floor', gen: { look: 'walls', wallKey: 'wallpaper' }, h: 3.5 },
     sewer:  { from: 'site_prebuilt_downtown_sewers', gen: { look: 'walls', wallKey: 'bricks_2' }, h: 5.5 },
     spike:  { from: 'hwing_floor', gen: { look: 'walls', wallKey: 'wallpaper' }, h: 3.5 },
@@ -77082,6 +77088,13 @@ const PD_LOOKS = {
 const PD_PIECES = {
     mass: { role: 'MASS', cells: ['############', '############', '############', '############', '############', '############', '############', '############', '############', '############', '############', '############'] },
 };
+const _PD_ROW = (ch) => ch.repeat(12);
+/* a walled floor with a door in the middle of each side (a floor you walk across; a turning floor keeps all four doors joined) */
+PD_PIECES.plate = { cells: ['#####..#####', '#..........#', '#..........#', '#..........#', '#..........#', '............', '............', '#..........#', '#..........#', '#..........#', '#..........#', '#####..#####'] };
+/* a walk along the south of the board (rows 5-7, behind a rail on row 5's north line) that looks over it */
+PD_PIECES.gallery = { edgeOk: true, cells: [0, 1, 2, 3, 4, 5, 6].map(() => _PD_ROW('.')).concat(['#..........#'], [8, 9, 10, 11].map(() => _PD_ROW('#'))) };   // (row 7 stops short of the sides: a plot's edge is walked through its 7 m door only)
+/* bare ground nobody walks (a machine stands on it) */
+PD_PIECES.open = { edgeOk: true, cells: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map(() => _PD_ROW('.')) };
 PD_PIECES.rubble = { role: 'RUBBLE', ports: { ground: '' }, cells: ['############', '############', '############', '############', '####....####', '####....####', '####....####', '####....####', '############', '############', '############', '############'],
     marks: [{ k: 'prop', key: 'crashed_car_2', x: 5.5, y: 6, rot: 30 }, { k: 'prop', key: 'traffic_barrel', x: 7.2, y: 4.8 }, { k: 'prop', key: 'item_police_barricade', x: 6.8, y: 7.2, rot: 70 }] };
 const PD_DUNGEONS = {
@@ -77094,34 +77107,34 @@ const PD_DUNGEONS = {
                 '#####..#####', '#####..#####', '#####..#####', '#####..#####', '###......###', '###......###',
                 '###......###', '###......###', '###......###', '###......###', '############', '############'],
                 marks: [{ k: 'spawn', x: 6, y: 8, face: 0 }] },
-            rotor: { role: 'ROTOR', turn: true, ride: true, cells: [
+            rotor: { role: 'ROTOR', turn: true, cells: [
                 '############', '############', '############', '############', '####....####', '........####',
                 '........####', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
-                marks: [{ k: 'dial', x: 7.5, y: 7.5 }] },
+                marks: [{ k: 'lever', id: 'l', x: 4.5, y: 4.5, by: 1 }, { k: 'lever', id: 'r', x: 7.5, y: 4.5, by: -1 }] },
             west: { role: 'WEST END', cells: [
-                '############', '############', '############', '############', '####........', '####........',
-                '####........', '####........', '############', '############', '############', '############'] },
+                '############', '############', '############', '############', '####.......#', '####........',
+                '####........', '####.......#', '############', '############', '############', '############'] },
             east: { role: 'EAST END', cells: [
-                '############', '############', '############', '############', '........####', '........####',
-                '........####', '........####', '############', '############', '############', '############'] },
+                '############', '############', '############', '############', '#.......####', '........####',
+                '........####', '#.......####', '############', '############', '############', '############'] },
         },
         board: { B1: 'west', B2: 'rotor', B3: 'east', C2: 'start' },
         entry: 'start', goal: { link: ['rotor', 'east'] },
     }] },
-    /* 5.1 ROTATE · the rotor's two arms point at what they join; two quarter turns */
+    /* 5.1 ROTATE · you ride the rotor: its two levers stand in its own chamber (left one turns it left, right one right) */
     crypt: { label: 'THE TURNING CRYPT', verb: 'ROTATE', look: 'crypt', levels: [{
         title: 'THE TURNING CRYPT',
         plots: {
             entry: { role: 'ENTRY', cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '###......###', '###......###', '###......###', '###......###', '###......###', '###......###', '#####..#####', '#####..#####'],
-                marks: [{ k: 'spawn', x: 6, y: 10, face: 0 }, { k: 'model', x: 4, y: 7.5 }, { k: 'prop', key: 'candle_ring', x: 8.4, y: 4.6 }] },
-            rotor: { role: 'ROTOR', turn: true, ride: true, cells: ['############', '############', '############', '############', '####....####', '........####', '........####', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
-                marks: [{ k: 'dial', x: 7.5, y: 7.5 }] },
+                marks: [{ k: 'spawn', x: 6, y: 10, face: 0 }, { k: 'prop', key: 'candle_ring', x: 8.4, y: 4.6 }] },
+            rotor: { role: 'ROTOR', turn: true, cells: ['############', '############', '############', '############', '####....####', '........####', '........####', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
+                marks: [{ k: 'lever', id: 'l', x: 4.5, y: 4.5, by: 1 }, { k: 'lever', id: 'r', x: 7.5, y: 4.5, by: -1 }] },
             memorial: { role: 'MEMORIAL', cells: ['############', '############', '############', '####....####', '####....####', '####........', '####........', '####....####', '####....####', '############', '############', '############'],
-                marks: [{ k: 'prop', key: 'angel_statue', x: 4.6, y: 6, rot: 90 }, { k: 'prop', key: 'candle_ring', x: 5.4, y: 3.6 }, { k: 'prop', key: 'candle_ring', x: 5.4, y: 8.4 },
+                marks: [{ k: 'prop', key: 'angel_statue', x: 4.5, y: 6, rot: 90 }, { k: 'prop', key: 'candle_ring', x: 5.4, y: 3.6 }, { k: 'prop', key: 'candle_ring', x: 5.4, y: 8.4 },
                     { k: 'act', id: 'carving', x: 5.4, y: 6, label: 'THE CARVING', verb: 'LOOK', say: 'A WHEEL WITH TWO ARMS. EACH ARM POINTS AT A DOOR.' }] },
-            keycrypt: { role: 'KEY CRYPT', cover: 'sarcophagus', cells: ['############', '############', '##........##', '##........##', '##.oo..oo.##', '..........##', '..........##', '##.oo..oo.##', '##........##', '##........##', '############', '############'],
+            keycrypt: { role: 'KEY CRYPT', cover: 'sarcophagus', cells: ['############', '############', '##........##', '##........##', '##.o....o.##', '..........##', '..........##', '##.o....o.##', '##........##', '##........##', '############', '############'],
                 marks: [{ k: 'fight', id: 'crypt', x: 3, y: 6, label: 'UNDEAD ×2 + NECROMANCER', enemies: [{ race: 'undead', x: 3.5, y: 4.5 }, { race: 'undead', x: 3.5, y: 7.5 }, { race: 'necromancer', x: 8.5, y: 6 }] },
-                    { k: 'take', item: 'key', x: 9.5, y: 6, needs: { fight: 'crypt' }, no: 'DEFEAT THE GUARDS FIRST' }] },
+                    { k: 'take', item: 'key', x: 9.5, y: 6.5, needs: { fight: 'crypt' }, no: 'DEFEAT THE GUARDS FIRST' }] },
             exit: { role: 'EXIT', cells: ['############', '############', '###......###', '###......###', '###......###', '###......###', '###......###', '###......###', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
                 marks: [{ k: 'gate', id: 'exit', side: 's', inset: 2, needs: { has: 'key' }, no: 'LOCKED. IT WANTS A KEY.' }, { k: 'prop', key: 'light_shaft', x: 6, y: 4 }, { k: 'prop', key: 'candle_ring', x: 6, y: 4 }, { k: 'exit', x: 6, y: 4 }] },
         },
@@ -77133,10 +77146,10 @@ const PD_DUNGEONS = {
         title: 'THE TURNING TOMB',
         plots: {
             foyer: { role: 'FOYER', cover: 'sarcophagus', cells: ['#####..#####', '#####..#####', '##........##', '##........##', '##........##', '##.o....o.##', '##........##', '##........##', '##........##', '##........##', '#####..#####', '#####..#####'],
-                marks: [{ k: 'spawn', x: 6, y: 10, face: 0 }, { k: 'model', x: 4, y: 8.5 },
+                marks: [{ k: 'spawn', x: 6, y: 10, face: 0 },
                     { k: 'fight', id: 'foyer', x: 6, y: 6, label: 'SKELETON ×2', enemies: [{ race: 'skeleton', x: 3.5, y: 4.5 }, { race: 'skeleton', x: 8.5, y: 4.5 }] }] },
-            hub: { role: 'HUB', turn: true, ride: true, turnWhen: { fight: 'foyer' }, cells: ['############', '############', '############', '############', '####....####', '####........', '####........', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
-                marks: [{ k: 'dial', x: 7.5, y: 7.5 }] },
+            hub: { role: 'HUB', turn: true, turnWhen: { fight: 'foyer' }, cells: ['############', '############', '############', '############', '####....####', '####........', '####........', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
+                marks: [{ k: 'lever', id: 'l', x: 4.5, y: 4.5, by: 1, no: 'DEFEAT THE GUARDS FIRST' }, { k: 'lever', id: 'r', x: 7.5, y: 4.5, by: -1, no: 'DEFEAT THE GUARDS FIRST' }] },
             keycrypt: { role: 'KEY CRYPT', cells: ['############', '############', '##........##', '##........##', '##........##', '##..........', '##..........', '##........##', '##........##', '##........##', '############', '############'],
                 marks: [{ k: 'take', item: 'key', x: 5.5, y: 5.5 }, { k: 'prop', key: 'candle_ring', x: 3, y: 3 }, { k: 'prop', key: 'candle_ring', x: 3, y: 9 }] },
             exithall: { role: 'EXIT HALL', cells: ['############', '############', '############', '##........##', '##........##', '............', '............', '##........##', '##........##', '############', '############', '############'],
@@ -77145,138 +77158,150 @@ const PD_DUNGEONS = {
         board: { B1: 'keycrypt', B2: 'hub', B3: 'exithall', C2: 'foyer' },
         entry: 'foyer', goal: [{ var: 'gate_exit' }, { link: ['hub', 'exithall'] }],
     }] },
-    /* 5.2 SLIDE · a street cut in pieces: slide the plots next to the gap until the middle row is one street (4 slides) */
+    /* 5.2 SLIDE · a street cut in pieces. Each loose piece carries its own lever: ride the first one down, walk onto the second,
+       ride it across, and the street reaches the refuge */
     street: { label: 'THE MISSING STREET', verb: 'SLIDE', look: 'city', levels: [{
         title: 'THE MISSING STREET',
         plots: {
             overlook: { role: 'OVERLOOK', cells: ['############', '############', '######.....#', '######.....#', '######.....#', '######......', '######......', '######.....#', '######.....#', '######.....#', '############', '############'],
-                marks: [{ k: 'spawn', x: 8, y: 8, face: 90 }, { k: 'console', x: 8, y: 3.5 }, { k: 'prop', key: 'traffic_cone', x: 10.6, y: 4.4 }] },
-            st1: { role: 'STREET', slide: true, cells: ['############', '############', '############', '############', '############', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'prop', key: 'traffic_barrel', x: 3.5, y: 4.6 }] },
-            st2: { role: 'STREET', slide: true, cells: ['############', '############', '############', '############', '############', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'prop', key: 'traffic_cone', x: 8.5, y: 7.4 }] },
-            st3: { role: 'STREET', slide: true, cells: ['############', '############', '############', '############', '############', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'prop', key: 'item_police_barricade', x: 6, y: 4.5 }] },
-            rb1: { role: 'RUBBLE', slide: true, use: 'rubble' }, rb2: { role: 'RUBBLE', slide: true, use: 'rubble' }, rb3: { role: 'RUBBLE', slide: true, use: 'rubble' },
-            rb4: { role: 'RUBBLE', slide: true, use: 'rubble' }, rb5: { role: 'RUBBLE', slide: true, use: 'rubble' },
+                marks: [{ k: 'spawn', x: 8, y: 8, face: 90 }, { k: 'prop', key: 'traffic_cone', x: 10.6, y: 4.4 }] },
+            p: { role: 'STREET', slide: true, cells: ['############', '############', '############', '############', '#####..#####', '............', '............', '#####..#####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'],
+                marks: [{ k: 'lever', x: 5.5, y: 4.5, track: ['B1', 'C1'] }, { k: 'prop', key: 'traffic_barrel', x: 6.6, y: 4.3 }] },
+            q: { role: 'STREET', slide: true, cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '#####..#####', '........####', '........####', '############', '############', '############', '############', '############'],
+                marks: [{ k: 'lever', x: 7.5, y: 5.5, rot: 90, track: ['C2', 'C3'] }, { k: 'prop', key: 'traffic_cone', x: 7.4, y: 6.6 }] },
+            r: { role: 'STREET', cells: ['############', '############', '############', '############', '############', '#####.......', '#####.......', '#####..#####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'], marks: [{ k: 'prop', key: 'item_police_barricade', x: 5.4, y: 5.3, rot: 45 }] },
+            rb1: { role: 'RUBBLE', use: 'rubble' }, rb2: { role: 'RUBBLE', use: 'rubble' }, rb3: { role: 'RUBBLE', use: 'rubble' }, rb4: { role: 'RUBBLE', use: 'rubble' },
             refuge: { role: 'REFUGE', cells: ['############', '############', '############', '##.....#####', '##.....#####', '.......#####', '.......#####', '##.....#####', '##.....#####', '############', '############', '############'], marks: [{ k: 'exit', x: 4, y: 6 }, { k: 'prop', key: 'item_police_barricade', x: 6.5, y: 3.5 }] },
         },
-        board: { A1: 'rb1', A3: 'rb2', B0: 'overlook', B1: 'rb3', B2: 'st1', B3: 'st2', B4: 'refuge', C1: 'rb4', C2: 'st3', C3: 'rb5' },
-        vacant: ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'],
-        safe: ['overlook'], safeSay: 'GO BACK TO THE OVERLOOK FIRST',
-        entry: 'overlook', goal: { net: 'ground', from: 'overlook', to: ['refuge'] },
+        board: { A1: 'rb1', A2: 'rb2', A3: 'rb3', B0: 'overlook', B1: 'p', B2: 'rb4', B3: 'r', B4: 'refuge', C2: 'q' },
+        vacant: ['B1', 'C1', 'C2', 'C3'],
+        entry: 'overlook', goal: { net: 'ground', from: 'q', to: ['refuge'] },
     }] },
-    /* 5.7 SLIDE · two pipe plots and two gaps: join the channel from the inlet to the pump (3 slides), then open the water */
+    /* 5.7 SLIDE · the channel is missing two pieces. Ride the first into place; the lever at the far end pulls the second in
+       behind you; then go back and open the water */
     channel: { label: 'MISSING CHANNEL', verb: 'SLIDE', look: 'sewer', levels: [{
         title: 'MISSING CHANNEL',
         plots: {
-            inlet: { role: 'INLET', net: { pipe: 'n' }, cover: 'centrifugal_pump', cells: ['#####..#####', '##........##', '##........##', '##........##', '##...oo...##', '##...oo...##', '##........##', '##........##', '##........##', '##........##', '#####..#####', '#####..#####'],
-                marks: [{ k: 'spawn', x: 6, y: 10, face: 0 }, { k: 'console', x: 3.5, y: 8.5 },
+            inlet: { role: 'INLET', net: { pipe: 'n' }, cover: 'centrifugal_pump', cells: ['#####..#####', '##........##', '##........##', '##........##', '##.o....o.##', '##........##', '##........##', '##........##', '##........##', '##........##', '#####..#####', '#####..#####'],
+                marks: [{ k: 'spawn', x: 6, y: 10, face: 0 },
                     { k: 'fight', id: 'inlet', x: 6, y: 7, label: 'ZOMBIE ×2 + GANGSTER', enemies: [{ race: 'zombie', x: 3.5, y: 3.5 }, { race: 'zombie', x: 8.5, y: 3.5 }, { race: 'gangster', x: 6, y: 2.5 }] },
                     { k: 'act', id: 'valve', key: 'gate_valve', x: 8.5, y: 8.5, label: 'THE VALVE', verb: 'OPEN', needs: { net: 'pipe', from: 'inlet', to: ['pump'] }, no: 'THE CHANNEL IS NOT JOINED YET', set: { water: true }, say: 'WATER RUNS TO THE PUMP', show: { not: { var: 'water' } } },
                     { k: 'trace', layer: 'pipe', src: 'inlet', color: 0x3aa0ff, size: 0.5, th: 0.5, y3: 3.6, pts: [[4.3, 0], [4.3, 6]] }] },
             elbow1: { role: 'ELBOW', net: { pipe: 'se' }, cells: ['############', '############', '############', '############', '############', '#####.......', '#####.......', '#####..#####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'], marks: [{ k: 'trace', layer: 'pipe', src: 'inlet', color: 0x3aa0ff, size: 0.5, th: 0.5, y3: 3.6, pts: [[4.3, 12], [4.3, 4.3], [12, 4.3]] }] },
-            elbow2: { role: 'ELBOW', slide: true, slideWhen: { fight: 'inlet' }, net: { pipe: 'wn' }, cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '#####..#####', '.......#####', '.......#####', '############', '############', '############', '############', '############'], marks: [{ k: 'trace', layer: 'pipe', src: 'inlet', color: 0x3aa0ff, size: 0.5, th: 0.5, y3: 3.6, pts: [[0, 4.3], [4.3, 4.3], [4.3, 0]] }] },
-            straight: { role: 'STRAIGHT', slide: true, slideWhen: { fight: 'inlet' }, net: { pipe: 'we' }, cells: ['############', '############', '############', '############', '############', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'trace', layer: 'pipe', src: 'inlet', color: 0x3aa0ff, size: 0.5, th: 0.5, y3: 3.6, pts: [[0, 4.3], [12, 4.3]] }] },
+            elbow2: { role: 'ELBOW', slide: true, slideWhen: { fight: 'inlet' }, net: { pipe: 'wn' }, cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '#####..#####', '........####', '........####', '############', '############', '############', '############', '############'],
+                marks: [{ k: 'lever', x: 7.5, y: 5.5, rot: 90, track: ['B2', 'B3'], no: 'IT WILL NOT MOVE YET' }, { k: 'trace', layer: 'pipe', src: 'inlet', color: 0x3aa0ff, size: 0.5, th: 0.5, y3: 3.6, pts: [[0, 4.3], [4.3, 4.3], [4.3, 0]] }] },
+            straight: { role: 'STRAIGHT', slide: true, net: { pipe: 'we' }, cells: ['############', '############', '############', '############', '############', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'trace', layer: 'pipe', src: 'inlet', color: 0x3aa0ff, size: 0.5, th: 0.5, y3: 3.6, pts: [[0, 4.3], [12, 4.3]] }] },
             pump: { role: 'PUMP', net: { pipe: 's' }, cells: ['#####..#####', '#####..#####', '#####..#####', '###......###', '###......###', '###......###', '###......###', '###......###', '###......###', '#####..#####', '#####..#####', '#####..#####'],
-                marks: [{ k: 'prop', key: 'centrifugal_pump', x: 3.8, y: 5.5 }, { k: 'gate', id: 'pump', x: 6, y: 3, w: 2, auto: true, needs: { var: 'water' } }, { k: 'prop', key: 'light_shaft', x: 6, y: 1.5 }, { k: 'exit', x: 6, y: 1.5, r: 2 }, { k: 'trace', layer: 'pipe', src: 'inlet', color: 0x3aa0ff, size: 0.5, th: 0.5, y3: 3.6, pts: [[4.3, 12], [4.3, 6]] }] },
+                marks: [{ k: 'prop', key: 'centrifugal_pump', x: 3.8, y: 5.5 }, { k: 'lever', x: 7.5, y: 7.5, plot: 'straight', track: ['C3', 'C2', 'B2'] },
+                    { k: 'gate', id: 'pump', x: 6, y: 3, w: 2, auto: true, needs: { var: 'water' } }, { k: 'prop', key: 'light_shaft', x: 6, y: 1.5 }, { k: 'exit', x: 6, y: 1.5, r: 2 }, { k: 'trace', layer: 'pipe', src: 'inlet', color: 0x3aa0ff, size: 0.5, th: 0.5, y3: 3.6, pts: [[4.3, 12], [4.3, 6]] }] },
         },
         board: { A3: 'pump', B1: 'elbow1', B2: 'elbow2', C1: 'inlet', C3: 'straight' },
         vacant: ['B2', 'B3', 'C2', 'C3'], keep: ['water'],
         entry: 'inlet', goal: { var: 'water' },
     }] },
-    /* 5.8 SLIDE WITH HEIGHT · the stairwell is a plot: bring the hall, then the stairs, under the high exit (5 slides) */
+    /* 5.8 SLIDE WITH HEIGHT · the stairwell is a plot you ride: clear its way from the entry, climb it, and its lever at the top
+       carries you under the high exit */
     door: { label: 'TRAVELING DOOR', verb: 'SLIDE', look: 'works', levels: [{
         title: 'TRAVELING DOOR',
         plots: {
-            entry: { role: 'ENTRY', cover: 'retro_console', cells: ['############', '############', '##........##', '##........##', '##........##', '##...oo.....', '##..........', '##........##', '##........##', '##........##', '############', '############'],
-                marks: [{ k: 'spawn', x: 3.5, y: 8, face: 90 }, { k: 'console', x: 8.5, y: 8.5 },
+            entry: { role: 'ENTRY', cover: 'retro_console', cells: ['############', '############', '##........##', '##........##', '##.o....o.##', '##..........', '##..........', '##........##', '##........##', '##........##', '############', '############'],
+                marks: [{ k: 'spawn', x: 3.5, y: 8, face: 90 }, { k: 'lever', x: 8.5, y: 8.5, plot: 'passage', track: ['B2', 'C2'], no: 'NOT WHILE THEY ARE HERE' },
                     { k: 'fight', id: 'entry', x: 6, y: 6, label: 'MEN IN BLACK ×2 + DROID', enemies: [{ race: 'men_in_black', x: 7.5, y: 3.5 }, { race: 'men_in_black', x: 8.5, y: 7.5 }, { race: 'droid', x: 9.5, y: 5.5 }] }] },
-            hall: { role: 'T HALL', slide: true, slideWhen: { fight: 'entry' }, cells: ['#####..#####', '#####..#####', '#####..#####', '###......###', '###......###', '.........###', '.........###', '###......###', '###......###', '#####..#####', '#####..#####', '#####..#####'] },
             passage: { role: 'PASSAGE', slide: true, slideWhen: { fight: 'entry' }, cells: ['############', '############', '############', '############', '############', '............', '............', '############', '############', '############', '############', '############'] },
-            stairs: { role: 'STAIRWELL', slide: true, slideWhen: { fight: 'entry' }, cells: ['#####==#####', '#####==#####', '#####==#####', '#####==#####', '#####//#####', '#####//#####', '#####//#####', '#####//#####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'] },
+            stairs: { role: 'STAIRWELL', slide: true, cells: ['#####==#####', '#####==#####', '####====####', '####====####', '#####//#####', '....#//#####', '....#//#####', '#...#//#####', '#......#####', '#......#####', '############', '############'],
+                marks: [{ k: 'lever', x: 4.5, y: 2.5, y3: 7, track: ['C3', 'B3', 'B2'] }] },
             exit: { role: 'EXIT', cells: ['############', '############', '###======###', '###======###', '###======###', '###======###', '###======###', '#####==#####', '#####==#####', '#####==#####', '#####==#####', '#####==#####'], marks: [{ k: 'exit', x: 6, y: 4.5 }, { k: 'prop', key: 'light_shaft', x: 6, y: 4.5, y3: 7 }] },
         },
-        board: { A2: 'exit', B3: 'hall', C1: 'entry', C2: 'passage', C3: 'stairs' },
+        board: { A2: 'exit', B2: 'passage', C1: 'entry', C3: 'stairs' },
         vacant: ['B2', 'B3', 'C2', 'C3'],
-        entry: 'entry', goal: { all: [{ net: 'ground', from: 'entry', to: ['stairs'] }, { net: 'upper', from: 'stairs', to: ['exit'] }] },
+        entry: 'entry', goal: { net: 'upper', from: 'stairs', to: ['exit'] },
     }] },
-    /* 5.3 CONNECT · nobody rides: turn four plates from the gallery until the battery feeds both locks (4 presses) */
+    /* 5.3 CONNECT · four turning floors carry the power line from the battery to the two locks. You walk the floors themselves:
+       each one has its own two levers */
     connect: { label: 'TWO TO OPEN', verb: 'CONNECT', look: 'works', levels: [{
         title: 'TWO TO OPEN',
         plots: {
-            entry: { role: 'ENTRY', ports: { ground: 'e' }, cells: ['............', '............', '............', '............', '............', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'spawn', x: 3, y: 6, face: 90 }, { k: 'console', x: 6, y: 7.6 }, { k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }] },
-            battery: { role: 'BATTERY', ports: { ground: 'ew' }, net: { trace: 'n' }, cells: ['............', '............', '............', '............', '............', '............', '............', '############', '############', '############', '############', '############'],
-                marks: [{ k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 2.5]] }, { k: 'box', x: 6, y: 3.5, w: 3.5, d: 3.5, h: 2.2, color: 0x2a3136 }, { k: 'box', x: 6, y: 3.5, w: 3.7, d: 3.7, h: 0.3, y3: 1.2, color: 0x20262a, glow: 0x7dff9a }, { k: 'prop', key: 'cable_drum', x: 8.8, y: 3.3 }] },
-            exit: { role: 'EXIT', ports: { ground: 'w' }, cells: ['............', '............', '............', '............', '............', '............', '............', '############', '############', '############', '############', '############'],
-                marks: [{ k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'gate', id: 'exit', x: 7, y: 6, ax: 'z', w: 2, auto: true, needs: { net: 'trace', from: 'battery', to: ['lockl', 'lockr'] } },
-                    { k: 'lamp', x: 6.3, y: 4.7, lit: { net: 'trace', from: 'battery', to: ['lockl'] } }, { k: 'lamp', x: 6.3, y: 7.3, lit: { net: 'trace', from: 'battery', to: ['lockr'] } },
-                    { k: 'act', id: 'sign', x: 5, y: 7.3, label: 'THE SIGN', verb: 'READ', say: 'BOTH LIGHTS OPEN DOOR' }, { k: 'exit', x: 10, y: 6, r: 2 }] },
-            feed: { role: 'FEED', turn: true, ride: false, ports: { ground: '' }, net: { trace: 'ns' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 12]] }] },
-            splitter: { role: 'SPLITTER', turn: true, ride: false, ports: { ground: '' }, net: { trace: 'esw' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[0, 6], [12, 6]] }, { k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 6], [6, 12]] }] },
-            corner1: { role: 'CORNER', turn: true, ride: false, ports: { ground: '' }, net: { trace: 'es' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[12, 6], [6, 6], [6, 12]] }] },
-            corner3: { role: 'CORNER', turn: true, ride: false, ports: { ground: '' }, net: { trace: 'ws' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[0, 6], [6, 6], [6, 12]] }] },
-            lockl: { role: 'LOCK L', ports: { ground: '' }, net: { trace: 'n' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 6]] }, { k: 'lamp', x: 6, y: 6.6, h: 3, lit: { net: 'trace', from: 'battery', to: ['lockl'] } }, { k: 'box', x: 6, y: 6.6, w: 2.4, d: 2.4, h: 1.2, color: 0x2a3136 }] },
-            lockr: { role: 'LOCK R', ports: { ground: '' }, net: { trace: 'n' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 6]] }, { k: 'lamp', x: 6, y: 6.6, h: 3, lit: { net: 'trace', from: 'battery', to: ['lockr'] } }, { k: 'box', x: 6, y: 6.6, w: 2.4, d: 2.4, h: 1.2, color: 0x2a3136 }] },
+            entry: { role: 'ENTRY', cells: ['#####..#####', '#..........#', '#..........#', '#..........#', '#..........#', '#...........', '#...........', '#..........#', '#..........#', '#..........#', '#..........#', '############'], marks: [{ k: 'spawn', x: 3, y: 8, face: 90 }] },
+            battery: { role: 'BATTERY', net: { trace: 'n' }, cells: ['#####..#####', '#..........#', '#..........#', '#..........#', '#..........#', '............', '............', '#..........#', '#..........#', '#..........#', '#..........#', '############'],
+                marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 2]] }, { k: 'box', x: 6, y: 2.5, w: 7, d: 3.5, h: 2.0, color: 0x2a3136, block: true }, { k: 'box', x: 6, y: 2.5, w: 7.2, d: 3.7, h: 0.3, y3: 1.1, color: 0x20262a, glow: 0x7dff9a }, { k: 'prop', key: 'cable_drum', x: 8.6, y: 4.4 }] },
+            exit: { role: 'EXIT', cells: ['#####..#####', '#.......####', '#.......####', '#.......####', '#.......#..#', '...........#', '...........#', '#.......#..#', '#.......####', '#.......####', '#.......####', '############'],
+                marks: [{ k: 'gate', id: 'exit', x: 8.5, y: 6, ax: 'z', w: 2, auto: true, needs: { net: 'trace', from: 'battery', to: ['lockl', 'lockr'] } },
+                    { k: 'lamp', x: 7.6, y: 4.4, lit: { net: 'trace', from: 'battery', to: ['lockl'] } }, { k: 'lamp', x: 7.6, y: 7.6, lit: { net: 'trace', from: 'battery', to: ['lockr'] } },
+                    { k: 'act', id: 'sign', x: 6.5, y: 8.5, label: 'THE SIGN', verb: 'READ', say: 'BOTH LIGHTS OPEN THE DOOR' }, { k: 'exit', x: 10, y: 6, r: 2 }] },
+            feed: { role: 'FLOOR', turn: true, net: { trace: 'ns' }, use: 'plate', marks: [{ k: 'lever', id: 'l', x: 3.5, y: 3.5, by: 1 }, { k: 'lever', id: 'r', x: 8.5, y: 3.5, by: -1 }, { k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 12]] }] },
+            splitter: { role: 'FLOOR', turn: true, net: { trace: 'esw' }, use: 'plate', marks: [{ k: 'lever', id: 'l', x: 3.5, y: 3.5, by: 1 }, { k: 'lever', id: 'r', x: 8.5, y: 3.5, by: -1 }, { k: 'trace', layer: 'trace', src: 'battery', pts: [[0, 6], [12, 6]] }, { k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 6], [6, 12]] }] },
+            corner1: { role: 'FLOOR', turn: true, net: { trace: 'es' }, use: 'plate', marks: [{ k: 'lever', id: 'l', x: 3.5, y: 3.5, by: 1 }, { k: 'lever', id: 'r', x: 8.5, y: 3.5, by: -1 }, { k: 'trace', layer: 'trace', src: 'battery', pts: [[12, 6], [6, 6], [6, 12]] }] },
+            corner3: { role: 'FLOOR', turn: true, net: { trace: 'ws' }, use: 'plate', marks: [{ k: 'lever', id: 'l', x: 3.5, y: 3.5, by: 1 }, { k: 'lever', id: 'r', x: 8.5, y: 3.5, by: -1 }, { k: 'trace', layer: 'trace', src: 'battery', pts: [[0, 6], [6, 6], [6, 12]] }] },
+            lockl: { role: 'LOCK', net: { trace: 'n' }, use: 'plate', marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 2]] }, { k: 'box', x: 6, y: 2.5, w: 7, d: 3.5, h: 1.4, color: 0x2a3136, block: true }, { k: 'lamp', x: 6, y: 2.5, h: 3, lit: { net: 'trace', from: 'battery', to: ['lockl'] } }] },
+            lockr: { role: 'LOCK', net: { trace: 'n' }, use: 'plate', marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 2]] }, { k: 'box', x: 6, y: 2.5, w: 7, d: 3.5, h: 1.4, color: 0x2a3136, block: true }, { k: 'lamp', x: 6, y: 2.5, h: 3, lit: { net: 'trace', from: 'battery', to: ['lockr'] } }] },
         },
         board: { A1: 'corner1', A2: 'splitter', A3: 'corner3', B1: 'lockl', B2: 'feed', B3: 'lockr', C1: 'entry', C2: 'battery', C3: 'exit' },
         rot: { feed: 1, splitter: 1, corner1: 1, corner3: 3 },
         entry: 'entry', goal: { net: 'trace', from: 'battery', to: ['lockl', 'lockr'] },
     }] },
-    /* 5.9 ROTATE, NO RIDER, ELEVATED · line up three high pieces from the console, then climb and cross (launch, rail, landing) */
+    /* 5.9 ROTATE, ELEVATED · three high pieces, three levers, each one where the last piece leaves you: the first in the entry,
+       the second on the launch deck, the third on the rail */
     rail: { label: 'THREE-RAIL CROSSING', verb: 'ROTATE', look: 'city', levels: [{
         title: 'THREE-RAIL CROSSING',
         plots: {
-            entry: { role: 'ENTRY', cover: 'crashed_car_2', cells: ['#####..#####', '#####..#####', '##........##', '##........##', '##........##', '##..o.......', '##..o.......', '##......o.##', '##......o.##', '##........##', '##........##', '############'],
-                marks: [{ k: 'spawn', x: 6, y: 9.5, face: 0 }, { k: 'console', x: 3.5, y: 8.5 },
+            entry: { role: 'ENTRY', cover: 'item_police_barricade', cells: ['#####..#####', '#####..#####', '##........##', '##........##', '##.o......##', '##..........', '##..........', '##......o.##', '##........##', '##........##', '##........##', '############'],
+                marks: [{ k: 'spawn', x: 6, y: 9.5, face: 0 }, { k: 'lever', x: 3.5, y: 8.5, plot: 'launch', by: 1, no: 'NOT WHILE THEY ARE HERE' },
                     { k: 'fight', id: 'entry', x: 6, y: 6, label: 'GANGSTER ×2 + MARKSMAN', enemies: [{ race: 'gangster', x: 3.5, y: 3.5 }, { race: 'gangster', x: 8.5, y: 4.5 }, { race: 'marksman', x: 8.5, y: 2.5 }] }] },
-            launch: { role: 'LAUNCH', turn: true, ride: false, turnWhen: { fight: 'entry' }, ports: { ground: 's', upper: 'e' }, cells: ['############', '############', '############', '############', '############', '#####=======', '#####=======', '#####==#####', '#####//#####', '#####//#####', '#####//#####', '#####//#####'] },
-            mid: { role: 'RAIL', turn: true, ride: false, turnWhen: { fight: 'entry' }, cells: ['############', '############', '############', '############', '############', '============', '============', '############', '############', '############', '############', '############'] },
-            landing: { role: 'LANDING', turn: true, ride: false, turnWhen: { fight: 'entry' }, cells: ['############', '############', '############', '############', '############', '=======#####', '=======#####', '#####==#####', '#####==#####', '#####==#####', '#####==#####', '#####==#####'] },
+            launch: { role: 'LAUNCH', turn: true, ride: false, turnWhen: { fight: 'entry' }, ports: { ground: 's', upper: 'e' }, cells: ['############', '############', '############', '############', '########==##', '#####=======', '#####=======', '#####==#####', '#####//#####', '#####//#####', '#####//#####', '#####//#####'],
+                marks: [{ k: 'lever', x: 8.5, y: 4.5, y3: 7, plot: 'mid', by: 1 }] },
+            mid: { role: 'RAIL', turn: true, ride: false, cells: ['############', '############', '############', '############', '#####==#####', '============', '============', '############', '############', '############', '############', '############'],
+                marks: [{ k: 'lever', x: 5.5, y: 4.5, y3: 7, plot: 'landing', by: 1 }] },
+            landing: { role: 'LANDING', turn: true, ride: false, cells: ['############', '############', '############', '############', '############', '=======#####', '=======#####', '#####==#####', '#####==#####', '#####==#####', '#####==#####', '#####==#####'] },
             under: { role: 'UNDERPASS', cells: ['############', '############', '############', '############', '############', '.........###', '.........###', '############', '############', '############', '############', '############'], marks: [{ k: 'prop', key: 'crashed_car_2', x: 7, y: 6, rot: 90 }] },
             exit: { role: 'EXIT', cells: ['#####==#####', '#####==#####', '#####==#####', '#####==#####', '#####==#####', '###======###', '###======###', '###======###', '###======###', '###======###', '############', '############'], marks: [{ k: 'exit', x: 6, y: 7 }] },
         },
         board: { B1: 'launch', B2: 'mid', B3: 'landing', C1: 'entry', C2: 'under', C3: 'exit' },
-        rot: { launch: 2, mid: 1, landing: 2 },
+        rot: { launch: 3, mid: 1, landing: 3 },
         entry: 'entry', goal: { all: [{ net: 'ground', from: 'entry', to: ['launch'] }, { net: 'upper', from: 'launch', to: ['exit'] }] },
     }] },
-    /* 5.10 ROUTE · load a colour, aim the junction, release: each marble to its own world (3 releases) */
+    /* 5.10 ROUTE · pick a marble up at the start, walk on to the junction's levers and the release: each marble to its own world */
     worlds: { label: 'THREE LITTLE WORLDS', verb: 'ROUTE', look: 'forest', levels: [{
         title: 'THREE LITTLE WORLDS',
         plots: {
-            entry: { role: 'ENTRY', ports: { ground: 'e' }, cells: ['............', '............', '............', '............', '............', '............', '............', '############', '############', '############', '############', '############'],
-                marks: [{ k: 'spawn', x: 2.5, y: 6, face: 90 }, { k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'console', x: 4.5, y: 7.6, label: 'THE JUNCTION' },
-                    { k: 'act', id: 'blue', x: 6.5, y: 7.6, key: 'floating_orb', label: 'BLUE MARBLE', verb: 'LOAD', needs: { not: { var: 'got_blue' } }, no: 'ALREADY HOME', set: { marble: 'blue' }, say: 'BLUE IS IN THE BOWL' },
-                    { k: 'act', id: 'red', x: 8, y: 7.6, key: 'floating_orb', label: 'RED MARBLE', verb: 'LOAD', needs: { not: { var: 'got_red' } }, no: 'ALREADY HOME', set: { marble: 'red' }, say: 'RED IS IN THE BOWL' },
-                    { k: 'act', id: 'yellow', x: 9.5, y: 7.6, key: 'floating_orb', label: 'YELLOW MARBLE', verb: 'LOAD', needs: { not: { var: 'got_yellow' } }, no: 'ALREADY HOME', set: { marble: 'yellow' }, say: 'YELLOW IS IN THE BOWL' },
-                    { k: 'act', id: 'release', x: 11, y: 7.6, key: 'evac_button', label: 'RELEASE', verb: 'PRESS', no: 'NOTHING IS LOADED',
-                        route: { layer: 'track', from: 'junction', var: 'marble', sockets: { blue: 'blue', red: 'red', yellow: 'yellow' }, won: 'got_', yes: 'IT ROLLS HOME', back: 'WRONG WORLD. IT ROLLS BACK.' } }] },
-            dispenser: { role: 'DISPENSER', ports: { ground: '' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'box', x: 8, y: 6, w: 3, d: 3, h: 2.6, color: 0x4a4038 }, { k: 'box', x: 10.5, y: 6, w: 3.5, d: 0.6, h: 0.3, y3: 2.0, color: 0x4a4038 }] },
-            junction: { role: 'JUNCTION', turn: true, ride: false, ports: { ground: '' }, net: { track: 'n' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'],
+            entry: { role: 'ENTRY', use: 'gallery', ports: { ground: 'e' },
+                marks: [{ k: 'spawn', x: 2.5, y: 6.5, face: 90 }, { k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 },
+                    { k: 'box', x: 4.5, y: 7.5, w: 1.6, d: 1.6, h: 0.2, color: 0x101820, glow: 0x3a8cff }, { k: 'box', x: 6.5, y: 7.5, w: 1.6, d: 1.6, h: 0.2, color: 0x201010, glow: 0xff3a3a }, { k: 'box', x: 8.5, y: 7.5, w: 1.6, d: 1.6, h: 0.2, color: 0x202010, glow: 0xffd83a },
+                    { k: 'act', id: 'blue', x: 4.5, y: 7.5, key: 'floating_orb', label: 'BLUE MARBLE', verb: 'TAKE', needs: { not: { var: 'got_blue' } }, no: 'ALREADY HOME', set: { marble: 'blue' }, say: 'YOU CARRY THE BLUE MARBLE' },
+                    { k: 'act', id: 'red', x: 6.5, y: 7.5, key: 'floating_orb', label: 'RED MARBLE', verb: 'TAKE', needs: { not: { var: 'got_red' } }, no: 'ALREADY HOME', set: { marble: 'red' }, say: 'YOU CARRY THE RED MARBLE' },
+                    { k: 'act', id: 'yellow', x: 8.5, y: 7.5, key: 'floating_orb', label: 'YELLOW MARBLE', verb: 'TAKE', needs: { not: { var: 'got_yellow' } }, no: 'ALREADY HOME', set: { marble: 'yellow' }, say: 'YOU CARRY THE YELLOW MARBLE' }] },
+            dispenser: { role: 'DISPENSER', ports: { ground: '' }, use: 'open', marks: [{ k: 'box', x: 8, y: 6, w: 3, d: 3, h: 2.6, color: 0x4a4038 }, { k: 'box', x: 10.5, y: 6, w: 3.5, d: 0.6, h: 0.3, y3: 2.0, color: 0x4a4038 }] },
+            junction: { role: 'JUNCTION', turn: true, ride: false, ports: { ground: '' }, net: { track: 'n' }, use: 'open',
                 marks: [{ k: 'box', x: 6, y: 6, w: 4, d: 4, h: 1.6, color: 0x4a4038 }, { k: 'trace', layer: 'track', color: 0xff8ad0, size: 0.5, pts: [[6, 0], [6, 4]], lit: { joined: ['junction', 'n', 'track'] } },
                     { k: 'box', x: 6, y: 6, w: 1, d: 1, h: 1, y3: 1.6, color: 0x101820, glow: 0x3a8cff, show: { var: 'marble', eq: 'blue' } },
                     { k: 'box', x: 6, y: 6, w: 1, d: 1, h: 1, y3: 1.6, color: 0x201010, glow: 0xff3a3a, show: { var: 'marble', eq: 'red' } },
                     { k: 'box', x: 6, y: 6, w: 1, d: 1, h: 1, y3: 1.6, color: 0x202010, glow: 0xffd83a, show: { var: 'marble', eq: 'yellow' } }] },
-            blue: { role: 'BLUE WORLD', ports: { ground: '' }, net: { track: 's' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'track', color: 0x3a8cff, size: 0.5, pts: [[6, 12], [6, 7.5]], lit: { var: 'got_blue' } }, { k: 'box', x: 6, y: 6, w: 3, d: 3, h: 1.0, color: 0x3a3a3a }, { k: 'box', x: 6, y: 6, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0x3a8cff, lit: { var: 'got_blue' } }] },
-            red: { role: 'RED WORLD', ports: { ground: '' }, net: { track: 'w' }, cells: ['............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............', '............'], marks: [{ k: 'trace', layer: 'track', color: 0xff3a3a, size: 0.5, pts: [[0, 6], [4.5, 6]], lit: { var: 'got_red' } }, { k: 'box', x: 6, y: 6, w: 3, d: 3, h: 1.0, color: 0x3a3a3a }, { k: 'box', x: 6, y: 6, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0xff3a3a, lit: { var: 'got_red' } }] },
-            yellow: { role: 'YELLOW WORLD', ports: { ground: 'ew' }, net: { track: 'n' }, cells: ['............', '............', '............', '............', '............', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'trace', layer: 'track', color: 0xffd83a, size: 0.5, pts: [[6, 0], [6, 2]], lit: { var: 'got_yellow' } }, { k: 'box', x: 6, y: 3, w: 3, d: 3, h: 1.0, color: 0x3a3a3a }, { k: 'box', x: 6, y: 3, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0xffd83a, lit: { var: 'got_yellow' } }] },
-            exit: { role: 'EXIT WALK', ports: { ground: 'w' }, cells: ['............', '............', '............', '............', '............', '............', '............', '############', '############', '############', '############', '############'],
-                marks: [{ k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'gate', id: 'exit', x: 5, y: 6, ax: 'z', w: 2, auto: true, needs: [{ var: 'got_blue' }, { var: 'got_red' }, { var: 'got_yellow' }] },
-                    { k: 'lamp', x: 4.3, y: 4.6, color: 0x3a8cff, lit: { var: 'got_blue' } }, { k: 'lamp', x: 4.3, y: 7.4, color: 0xff3a3a, lit: { var: 'got_red' } }, { k: 'lamp', x: 5.7, y: 7.4, color: 0xffd83a, lit: { var: 'got_yellow' } },
-                    { k: 'exit', x: 9, y: 6, r: 2 }] },
+            blue: { role: 'BLUE WORLD', ports: { ground: '' }, net: { track: 's' }, use: 'open', marks: [{ k: 'trace', layer: 'track', color: 0x3a8cff, size: 0.5, pts: [[6, 12], [6, 7.5]], lit: { var: 'got_blue' } }, { k: 'box', x: 6, y: 6, w: 3, d: 3, h: 1.0, color: 0x3a3a3a }, { k: 'box', x: 6, y: 6, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0x3a8cff, lit: { var: 'got_blue' } }] },
+            red: { role: 'RED WORLD', ports: { ground: '' }, net: { track: 'w' }, use: 'open', marks: [{ k: 'trace', layer: 'track', color: 0xff3a3a, size: 0.5, pts: [[0, 6], [4.5, 6]], lit: { var: 'got_red' } }, { k: 'box', x: 6, y: 6, w: 3, d: 3, h: 1.0, color: 0x3a3a3a }, { k: 'box', x: 6, y: 6, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0xff3a3a, lit: { var: 'got_red' } }] },
+            yellow: { role: 'YELLOW WORLD', use: 'gallery', ports: { ground: 'ew' }, net: { track: 'n' },
+                marks: [{ k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'trace', layer: 'track', color: 0xffd83a, size: 0.5, pts: [[6, 0], [6, 2]], lit: { var: 'got_yellow' } }, { k: 'box', x: 6, y: 3, w: 3, d: 3, h: 1.0, color: 0x3a3a3a }, { k: 'box', x: 6, y: 3, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0xffd83a, lit: { var: 'got_yellow' } },
+                    { k: 'lever', id: 'l', x: 2.5, y: 7.5, plot: 'junction', by: 1 }, { k: 'lever', id: 'r', x: 9.5, y: 7.5, plot: 'junction', by: -1 },
+                    { k: 'act', id: 'release', x: 5.5, y: 7.5, key: 'evac_button', stand: true, label: 'RELEASE', verb: 'PRESS', no: 'YOU CARRY NO MARBLE',
+                        route: { layer: 'track', from: 'junction', var: 'marble', sockets: { blue: 'blue', red: 'red', yellow: 'yellow' }, won: 'got_', empty: 'YOU CARRY NO MARBLE', yes: 'IT ROLLS HOME', back: 'WRONG WORLD. IT ROLLS BACK TO THE START.' } }] },
+            exit: { role: 'EXIT WALK', use: 'gallery', ports: { ground: 'w' },
+                marks: [{ k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'gate', id: 'exit', x: 5, y: 6.5, ax: 'z', w: 3, auto: true, needs: [{ var: 'got_blue' }, { var: 'got_red' }, { var: 'got_yellow' }] },
+                    { k: 'lamp', x: 4.3, y: 4.6, color: 0x3a8cff, lit: { var: 'got_blue' } }, { k: 'lamp', x: 4.3, y: 3.8, color: 0xff3a3a, lit: { var: 'got_red' } }, { k: 'lamp', x: 4.3, y: 3.0, color: 0xffd83a, lit: { var: 'got_yellow' } },
+                    { k: 'exit', x: 9, y: 6.5, r: 2 }] },
         },
         board: { A2: 'blue', B1: 'dispenser', B2: 'junction', B3: 'red', C1: 'entry', C2: 'yellow', C3: 'exit' },
         rot: { junction: 1 },
         entry: 'entry', goal: [{ var: 'got_blue' }, { var: 'got_red' }, { var: 'got_yellow' }],
     }] },
-    /* 5.4 GROW AND CARRY · water the trellis and it grows a root ramp it keeps; turn the plot to carry the ramp to the high exit */
+    /* 5.4 GROW AND CARRY · water the trellis and it grows a root ramp it keeps; ride the plot round to carry the ramp to the high exit */
     root: { label: 'ROOT THAT REMEMBERS', verb: 'GROW', look: 'forest', levels: [{
         title: 'ROOT THAT REMEMBERS',
         plots: {
-            entry: { role: 'ENTRY', cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '###......###', '.........###', '.........###', '###......###', '###......###', '###......###', '###......###', '#####..#####'], marks: [{ k: 'spawn', x: 6, y: 9.5, face: 0 }, { k: 'model', x: 8, y: 8.5 }] },
+            entry: { role: 'ENTRY', cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '###......###', '.........###', '.........###', '###......###', '###......###', '###......###', '###......###', '#####..#####'], marks: [{ k: 'spawn', x: 6, y: 9.5, face: 0 }] },
             path: { role: 'PATH', cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '#####..#####', '#####.......', '#####.......', '############', '############', '############', '############', '############'], marks: [{ k: 'prop', key: 'fallen_log', x: 3.6, y: 7.6 }] },
             spring: { role: 'SPRING', cover: 'stump', cells: ['############', '############', '##........##', '##........##', '##........##', '##..........', '##..o..o....', '##........##', '##........##', '##........##', '#####..#####', '#####..#####'],
                 marks: [{ k: 'fight', id: 'spring', x: 6, y: 8, label: 'GOBLIN ×2 + SWAMP MONSTER', enemies: [{ race: 'goblin', x: 4.5, y: 4.5 }, { race: 'goblin', x: 7.5, y: 4.5 }, { race: 'swamp_monster', x: 6, y: 3 }] },
                     { k: 'act', id: 'valve', key: 'gate_valve', x: 8.5, y: 3.5, label: 'THE SPRING', verb: 'OPEN', needs: { fight: 'spring' }, no: 'NOT WHILE THEY GUARD IT', set: { watered: true }, say: 'WATER RUNS EAST. SOMETHING GROWS.', show: { not: { var: 'watered' } } }] },
-            trellis: { role: 'TRELLIS', turn: true, ride: true, cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '####....####', '............', '............', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'], marks: [{ k: 'dial', x: 7.5, y: 7.5 }, { k: 'prop', key: 'door_vine', x: 6, y: 1.5 }] },
-            grown: { role: 'ROOT RAMP', turn: true, ride: true, ports: { ground: 'esw', upper: 'n' }, climb: { '5,0': 'n' }, cells: ['#####//#####', '#####//#####', '#####//#####', '#####//#####', '####....####', '............', '............', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'], marks: [{ k: 'dial', x: 7.5, y: 7.5 }] },
+            trellis: { role: 'TRELLIS', turn: true, cells: ['#####..#####', '#####..#####', '#####..#####', '#####..#####', '####....####', '............', '............', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'], marks: [{ k: 'lever', id: 'l', x: 4.5, y: 4.5, by: 1 }, { k: 'lever', id: 'r', x: 7.5, y: 4.5, by: -1 }, { k: 'prop', key: 'door_vine', x: 6, y: 1.5 }] },
+            grown: { role: 'ROOT RAMP', turn: true, ports: { ground: 'esw', upper: 'n' }, climb: { '5,0': 'n' }, cells: ['#####//#####', '#####//#####', '#####//#####', '#####//#####', '####....####', '............', '............', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'], marks: [{ k: 'lever', id: 'l', x: 4.5, y: 4.5, by: 1 }, { k: 'lever', id: 'r', x: 7.5, y: 4.5, by: -1 }] },
             exit: { role: 'EXIT', cells: ['############', '############', '###======###', '###======###', '###======###', '###======###', '###======###', '#####==#####', '#####==#####', '#####==#####', '#####==#####', '#####==#####'], marks: [{ k: 'exit', x: 6, y: 4.5 }] },
             cache: { role: 'CACHE', cells: ['############', '############', '############', '######====##', '######====##', '==========##', '==========##', '######====##', '######====##', '############', '############', '############'], marks: [{ k: 'act', id: 'cache', key: 'candle_ring', x: 8, y: 6, label: 'THE CACHE', verb: 'TAKE', set: { cache: true }, say: 'THE CACHE IS YOURS', show: { not: { var: 'cache' } } }] },
         },
@@ -77285,15 +77310,16 @@ const PD_DUNGEONS = {
         grows: [{ when: { var: 'watered' }, from: 'trellis', to: 'grown' }],
         entry: 'entry', goal: { net: 'upper', from: 'grown', to: ['exit'] },
     }] },
-    /* 5.5 ESCORT · you never touch the guardian: ring it into the hub, turn the hub under it, ring it onto the plate */
+    /* 5.5 ESCORT · you never touch the guardian: ring it into the hub, walk on to the hub's lever and turn it, ring it onto the plate */
     escort: { label: 'THE PROCESSION', verb: 'ESCORT', look: 'hwing', levels: [{
         title: 'THE PROCESSION',
         plots: {
             entry: { role: 'ENTRY', cells: ['############', '############', '############', '############', '############', '#...........', '#...........', '#..........#', '#..........#', '############', '############', '############'],
-                marks: [{ k: 'spawn', x: 2.5, y: 6, face: 90 }, { k: 'console', x: 5, y: 7.6, label: 'THE HUB' },
-                    { k: 'act', id: 'bell', key: 'ships_bell', y3: 1.2, x: 7, y: 7.6, label: 'THE BELL', verb: 'RING', send: 'guard', no: 'IT HAS NOWHERE TO GO', say: 'THE GUARDIAN WALKS' },
-                    { k: 'act', id: 'recall', key: 'evac_button', x: 9, y: 7.6, label: 'RECALL', verb: 'PRESS', set: { tok_guard: 'bay' }, rotTo: { hub: 0 }, say: 'THE GUARDIAN IS BACK IN ITS BAY' }] },
-            bay: { role: 'GUARDIAN BAY', ports: { ground: 'new' }, cells: ['#####..#####', '####....####', '####....####', '####....####', '####....####', '............', '............', '############', '############', '############', '############', '############'], marks: [{ k: 'rail', x0: 4, y0: 5, x1: 8, y1: 5 }] },
+                marks: [{ k: 'spawn', x: 2.5, y: 6, face: 90 },
+                    { k: 'act', id: 'bell', key: 'ships_bell', stand: true, x: 5.5, y: 8.5, label: 'THE BELL', verb: 'RING', send: 'guard', no: 'IT HAS NOWHERE TO GO', say: 'THE GUARDIAN WALKS' },
+                    { k: 'act', id: 'recall', key: 'evac_button', stand: true, x: 8.5, y: 8.5, label: 'CALL IT BACK', verb: 'PRESS', set: { tok_guard: 'bay' }, rotTo: { hub: 0 }, say: 'THE GUARDIAN IS BACK IN ITS BAY' }] },
+            bay: { role: 'GUARDIAN BAY', ports: { ground: 'new' }, cells: ['#####..#####', '####....####', '####....####', '####....####', '####....####', '............', '............', '########...#', '############', '############', '############', '############'],
+                marks: [{ k: 'rail', x0: 4, y0: 5, x1: 8, y1: 5 }, { k: 'lever', x: 9.5, y: 7.5, plot: 'hub', by: 1, no: 'THE HUB IS EMPTY' }] },
             hub: { role: 'HUB', turn: { detents: [0, 2] }, ride: false, turnWhen: { var: 'tok_guard', eq: 'hub' }, cells: ['############', '############', '############', '############', '####....####', '........####', '........####', '####....####', '#####..#####', '#####..#####', '#####..#####', '#####..#####'] },
             branch: { role: 'CAPPED BRANCH', cells: ['############', '############', '############', '############', '####....####', '####........', '####........', '####....####', '############', '############', '############', '############'] },
             plate: { role: 'PLATE', cells: ['############', '############', '############', '###......###', '###......###', '.........###', '.........###', '###......###', '###......###', '############', '############', '############'], marks: [{ k: 'prop', key: 'trap_pressure_plate', x: 6, y: 6, h: 0.2 }] },
@@ -77439,6 +77465,22 @@ function pdDoAct(id, S, A) {
     if (A.fight) N.fights[A.fight] = true;
     if (A.swap) { const slot = pdSlotOf(N, A.swap[0]); if (slot) { N.slots[slot] = A.swap[1]; N.rot[A.swap[1]] = N.rot[A.swap[0]] || 0; } }
     if (A.rotTo) Object.keys(A.rotTo).forEach(p => { N.rot[p] = A.rotTo[p]; });
+    let moved = null;
+    if (A.move) {
+        /* a LEVER: one move of one plot. `by` = a quarter turn that way; `track: [slots]` = the plot runs along those slots, one
+           slot a pull, and turns back at the ends; `dir` = a slide that way; none of them = a slide into the one free slot beside it */
+        const mv = A.move, P = pdPlot(id, mv.plot), all = pdMoves(id, N).filter(x => x.plot === mv.plot);
+        if (mv.by != null) moved = all.find(x => x.t === 'turn' && (x.by === mv.by || (P && P.turn && P.turn.detents)));
+        else if (mv.track) {
+            const T = mv.track, i = T.indexOf(pdSlotOf(N, mv.plot)), k = 'trk_' + mv.plot; let d = N.vars[k] || 1;
+            if (i >= 0 && !T[i + d]) d = -d;
+            moved = i < 0 ? null : all.find(x => x.t === 'slide' && x.to === T[i + d]);
+            if (moved) N.vars[k] = d;
+        } else moved = all.find(x => x.t === 'slide' && (!mv.dir || x.side === mv.dir));
+        if (!moved) return { ok: false, say: A.no || 'IT WILL NOT MOVE' };
+        if (moved.t === 'turn') N.rot[moved.plot] = (((N.rot[moved.plot] || 0) + moved.by) % 4 + 4) % 4; else { delete N.slots[moved.from]; N.slots[moved.to] = moved.plot; }
+        N.moves = (N.moves || 0) + 1;
+    }
     if (A.send) {
         const T = (V.L.tokens || {})[A.send], k = 'tok_' + A.send, st = T && (T.steps || []).find(s => s.from === N.vars[k] && pdCheck(id, N, s.when));
         if (!st) return { ok: false, say: A.no || 'IT DOES NOT MOVE' };
@@ -77452,7 +77494,7 @@ function pdDoAct(id, S, A) {
     }
     pdGrow(id, N);
     if (A.solve || (V.L.solvedWhen && pdCheck(id, N, V.L.solvedWhen))) N.solved = true;
-    return { ok: true, S: N, say };
+    return { ok: true, S: N, say, move: moved };
 }
 /* a condition (a gate's `needs`, a move's `when`): { joined: [plot, side, layer] } | { link: [plotA, plotB], layer } | { has: item } | { fight: id } | { var: name, eq } | { net: layer, from, to: [plots] }
    | { all: [...] } | { any: [...] } | { not: cond } */
@@ -77514,15 +77556,31 @@ function pdWhere(S, gx, gz) {
     }
     return null;
 }
-/* why a move may not be made from where the officer stands (null = it may): a rider stays inside the chamber of a plot that turns
-   under them; nobody stands on a plot that slides, or on a plot whose row says `ride: false` */
+/* why a move may not be made from where the officer stands (null = it may). You RIDE a plot that turns or slides: the plot under
+   your feet is the frame you stand in, so the rest of the board moves round you. Only a plot whose row says `ride: false` asks
+   you to step off (its lever stands on another plot anyway). */
 function pdMoveBlocked(id, S, m, at) {
-    const P = pdPlot(id, m.plot), V = pdLevel(id); if (!P) return 'no such plot';
-    if (V.L.safe && at && V.L.safe.indexOf(at.plot) < 0) return V.L.safeSay || 'STEP OFF THE BOARD FIRST';
-    if (!at || at.plot !== m.plot) return null;
-    if (m.t === 'slide') return 'STEP OFF THE PLOT FIRST';
-    if (P.ride === false) return 'STEP OFF THE PLOT FIRST';
-    return at.chamber ? null : 'STAND IN THE MIDDLE OF THE PLOT';
+    const P = pdPlot(id, m.plot); if (!P) return 'no such plot';
+    if (at && at.plot === m.plot && P.ride === false) return 'STEP OFF IT FIRST';
+    return null;
+}
+/* how many of a level's props carry a light of their own (a candle ring, a console, a button): they share the lamp budget */
+function pdPropLights(id) {
+    const V = pdLevel(id); if (!V) return 0; if (V._lights != null) return V._lights;
+    const CAT = DOOR_HQ.catalogue || {}, lit = k => (k && CAT[k] && CAT[k].light) ? 1 : 0; let n = 0;
+    Object.keys(V.L.plots).forEach(pid => {
+        const P = pdPlot(id, pid);
+        (P.marks || []).forEach(m => { if (m.k === 'prop' || m.k === 'act') n += lit(m.key); });
+        if (lit(P.cover)) (P.cells || []).forEach(r => { n += r.split('o').length - 1; });
+    });
+    return (V._lights = n);
+}
+/* a moving plot's colour (PD_RULES.tints by its place among the level's moving plots; a grown plot wears its seed's) */
+function pdTint(id, plotId) {
+    const V = pdLevel(id); if (!V) return null;
+    const g = (V.L.grows || []).find(x => x.to === plotId), pid = g ? g.from : plotId;
+    const mv = Object.keys(V.L.plots).filter(p => { const Q = pdPlot(id, p); return Q && (Q.turn || Q.slide) && !(V.L.grows || []).some(x => x.to === p); });
+    const i = mv.indexOf(pid); return i < 0 ? null : PD_RULES.tints[i % PD_RULES.tints.length];
 }
 /* ── the rooms ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────── */
 /* a mask of a plot's squares merged into whole-square rectangles: [{ x0, y0, x1, y1 }] (squares, x1 / y1 exclusive) */
@@ -77557,18 +77615,18 @@ function pdEdgeBox(side, off, across, inset, deep, more) {
     return Object.assign({ k: 'box', x: g.x + g.nx * c + (g.ax === 'x' ? off : 0), z: g.z + g.nz * c + (g.ax === 'z' ? off : 0),
         w: g.ax === 'x' ? across : deep, d: g.ax === 'x' ? deep : across }, more);
 }
-/* the default objects of the controls (catalogue keys; a mark's own `key` wins, `key: false` = none) */
-const PD_CONTROL_KEYS = { dial: 'signal_lever_frame', console: 'retro_console', model: 'map_table' };
-const PD_CONTROL_LABELS = { dial: 'THE DIAL', console: 'THE CONSOLE', model: 'THE MODEL' };
 /* one plot's room row (a box room with a drawn floor plan), built from its cells, its marks and the look.
    THE MARKS ({ k, x, y } in squares from the plot's north-west corner; a square's centre is i + 0.5):
      spawn    { face }                                   where the level starts (the entry plot)
-     dial | console | model   { plots: [ids], label }    opens the board panel (a dial moves its own plot; a console the listed
-                                                         plots, or every moving plot; a model only shows + RESET)
+     lever    { plot, by | track | dir, key, needs, no }   a LEVER you pull (E): ONE move of ONE plot (its own unless `plot`
+                                                         names another): `by: 1 | -1` a quarter turn left | right, `track:
+                                                         ['C2', 'B2']` a slide along those slots (one slot a pull, back at the
+                                                         ends), `dir` a slide that way. Its lamp wears the plot's colour.
      prop     { key, rot, y3, h, show: cond }            a catalogue prop (decor off centre, a blocker centred on a square)
-     act      { id, label, verb, key, needs, no, say, set, toggle, give, fight, swap, rotTo, send, route, solve, show }
+     act      { id, label, verb, key, stand, needs, no, say, set, toggle, give, fight, swap, rotTo, send, route, move, solve, show }
                                                          a thing you press E on: `needs` (a condition) or it says `no`; then it
-                                                         writes the state (pdDoAct) and says `say`. `show` hides it (and its prop)
+                                                         writes the state (pdDoAct) and says `say`. `show` hides it (and its prop);
+                                                         `stand: true` = its object sits on a drawn stand (a button, a bell)
      take     { item, key, label }                       an item picked up once (a key)
      gate     { id, side | (x, y, ax), needs, auto, label, no }   bars across a port (or anywhere): opened with E when `needs`
                                                          holds, or by itself while it holds (`auto: true`)
@@ -77576,7 +77634,7 @@ const PD_CONTROL_LABELS = { dial: 'THE DIAL', console: 'THE CONSOLE', model: 'TH
      trace    { layer, src, pts: [[x, y] …], size, y3, color }   a lit line (a trace, a pipe, a rail) of a net layer, alight
                                                          while this plot is joined to the plot `src` on that layer
      lamp     { lit: cond, color }                       a signal lamp on a post
-     box      { w, d, h (metres), y3, tex, color, glow, show, lit, block }   a plain drawn box
+     box      { w, d, h (metres), y3, tex, color, glow, show, lit, block }   a drawn box (a machine: `block: true`, whole squares)
      rail     { x0, y0, x1, y1 }                         a railing (blocks the walk)
      fightSeat / anything else                           kept on the room (`pdMarks`) for the kinds map.js knows */
 function pdRoomDef(id, plotId) {
@@ -77590,8 +77648,10 @@ function pdRoomDef(id, plotId) {
         floorColor: S0.floorColor, wallColor: S0.wallColor, dadoColor: S0.dadoColor, ceilColor: S0.ceilColor, ceilTile: S0.ceilTile,
         pipes: false, strips: false, mood: S0.mood, fog: S0.fog, look: S0.look,
         lights: [],
-    }, K.open ? { open: true, sky: S0.sky, apron: S0.apron, skirt: S0.skirt } : null, K.shell || null, P.shell || null);
+    }, K.open ? { open: true, sky: Object.assign({}, K.skyFrom ? Object.assign({}, ((DOOR_HQ.rooms[K.skyFrom] || {}).shell || {}).sky, { scenery: (S0.sky || {}).scenery, landmarks: [] }) : S0.sky, { clock: true, lock: PD_RULES.hour }), apron: S0.apron, skirt: S0.skirt } : null, K.shell || null, P.shell || null);   // (a dungeon under the sky stands at one hour of the day: the light never changes under a puzzle)
     if (K.floor) shell.floor = K.floor;
+    if (!K.open) shell.mood = Object.assign({}, shell.mood, { ambient: Math.max(PD_RULES.ambient, (shell.mood && shell.mood.ambient) || 0) });
+    if (!K.open && shell.lampK == null) shell.lampK = PD_RULES.lampK;
     const features = [], draw = [], wallTex = (K.gen && K.gen.wallKey) || S0.wall || null, at = (x, y) => (cells[y] || '')[x] || '#';
     const open = ch => !!PD_WALK[ch] || ch === '=';
     /* the walked squares: `space` rows; a look with `paths` also lays a `path` row inside each (the field paints it with the
@@ -77613,6 +77673,26 @@ function pdRoomDef(id, plotId) {
         if (K.stairs !== false) Object.assign(f, { stairs: true, model: 'external' });
         features.push(f);
     });
+    /* a deck under the sky has a railing wherever it ends at a drop (a side that is neither deck nor stair), set a little inside */
+    if (K.open && hasUpper) {
+        const deck = (x, y) => at(x, y) === '=', drop = (x, y) => { const ch = at(x, y); return ch !== '=' && ch !== '/' && x >= 0 && y >= 0 && x < 12 && y < 12; };
+        for (let y = 0; y <= 12; y++) [[-1, 0], [0, -1]].forEach(d => {   // d = which side of the line the deck lies on: [−1, 0] the deck is north of it, [0, −1] south
+            let x0 = null;
+            for (let x = 0; x <= 12; x++) {
+                const on = x < 12 && deck(x, y + d[0]) && drop(x, y + d[1]);
+                if (on && x0 == null) x0 = x;
+                if (!on && x0 != null) { const zz = pdM(y) + (d[0] ? -0.3 : 0.3); features.push({ k: 'rail', x0: pdM(x0), z0: zz, x1: pdM(x), z1: zz }); x0 = null; }
+            }
+        });
+        for (let x = 0; x <= 12; x++) [[-1, 0], [0, -1]].forEach(d => {
+            let y0 = null;
+            for (let y = 0; y <= 12; y++) {
+                const on = y < 12 && deck(x + d[0], y) && drop(x + d[1], y);
+                if (on && y0 == null) y0 = y;
+                if (!on && y0 != null) { const xx = pdM(x) + (d[0] ? -0.3 : 0.3); features.push({ k: 'rail', x0: xx, z0: pdM(y0), x1: xx, z1: pdM(y) }); y0 = null; }
+            }
+        });
+    }
     const room = {
         label: (V.L.title || V.T.label) + ' · ' + (P.role || plotId.toUpperCase()), sub: V.T.verb || '', kind: 'box', pd: id, pdPlot: plotId,
         shell,
@@ -77632,30 +77712,53 @@ function pdRoomDef(id, plotId) {
         draw.push(pdEdgeBox(side, 0, SQ * 2, 0, 0.3, { id: 'cap_' + layer + side, y, h: hh, tex: wallTex, tu: 4, tv: hh / 1.75, color: K.capColor, block: true, show: { not: { joined: [plotId, side, layer] } } }));
         if (!K.open) [-1, 1].forEach(sg => draw.push(pdEdgeBox(side, sg * (SQ + 0.2), 0.4, 0, 1.0, { id: 'jamb_' + layer + side + sg, y, h: hh, tex: wallTex, tu: 0.5, tv: hh / 1.75, color: K.capColor })));
     }));
-    /* the whole-square blockers ('o'): the look's cover piece, one per run, and a blocker over the whole run */
-    pdRects(cells, ch => ch === 'o').forEach((r, i) => {
-        const m = pdRectM(r), key = P.cover || K.cover;
-        if (key) room.props.push(Object.assign({ key, x: m.x, z: m.z, rot: m.w > m.d ? 90 : 0 }, (P.coverH || K.coverH) ? { h: P.coverH || K.coverH } : null));
-        draw.push({ k: 'box', id: 'cover' + i, ghost: true, x: m.x, z: m.z, y: 0, w: m.w - 0.3, d: m.d - 0.3, h: 1.4, block: true });
+    /* the whole-square blockers ('o'): the look's cover piece, one on each square's centre. The piece's own blocker is the
+       collision (a piece that has none gets one of its own size): never a wall you cannot see */
+    const CAT = (DOOR_HQ.catalogue || {}), ckey = P.cover || K.cover, crow = CAT[ckey] || (typeof HQ_PROP_DEFS !== 'undefined' && HQ_PROP_DEFS[ckey]) || {};
+    cells.forEach((r, y) => r.split('').forEach((ch, x) => {
+        if (ch !== 'o' || !ckey) return;
+        const cx = pdM(x + 0.5), cz = pdM(y + 0.5);
+        room.props.push(Object.assign({ key: ckey, x: cx, z: cz, rot: P.coverRot || 0 }, (P.coverH || K.coverH) ? { h: P.coverH || K.coverH } : null));
+        if (!crow.block && !(crow.foot > 0)) { const sz = Math.min(3.2, (crow.span || 2.4) * 0.8); draw.push({ k: 'box', id: 'cover' + x + '_' + y, ghost: true, x: cx, z: cz, y: 0, w: sz, d: sz, h: 1.2, block: true }); }
+    }));
+    /* the ceiling lamps (a closed look only): PD_RULES.lamps shared by the level's plots, over each plot's largest floors, so
+       every lamp of the level is lit at once */
+    if (!K.open) {
+        const per = Math.max(1, Math.min(2, Math.floor((PD_RULES.lamps - pdPropLights(id)) / Math.max(1, Object.keys(V.L.board || {}).length))));
+        pdRects(cells, open).map(r => ({ r, a: (r.x1 - r.x0) * (r.y1 - r.y0) })).sort((a, b) => b.a - a.a).slice(0, per).forEach(o => { const m = pdRectM(o.r); shell.lights.push({ x: m.x, z: m.z }); });
+    }
+    /* a moving plot wears its colour: a lit strip on the floor inside each side (the deck's height where the side is a deck) */
+    const tint = pdTint(id, plotId);
+    if (tint != null) PD_SIDES.forEach(side => {
+        const q = pdPortSquares(side).map(p => at(p[0], p[1])); if (q.some(ch => ch === '#' || ch === ' ')) return;
+        draw.push(pdEdgeBox(side, 0, SQ * 2 - 0.6, 0.5, 0.35, { id: 'tint_' + side, y: (q[0] === '=' ? upper : 0) + 0.02, h: 0.05, color: 0x15181b, glow: tint }));
     });
-    /* a ceiling lamp over each open floor of 2 × 2 squares or more (a closed look only) */
-    if (!K.open) pdRects(cells, open).filter(r => (r.x1 - r.x0) >= 2 && (r.y1 - r.y0) >= 2).slice(0, 8).forEach(r => { const m = pdRectM(r); shell.lights.push({ x: m.x, z: m.z }); });
-    const counter = (m, x, z, more) => room.counters.push(Object.assign({ id: 'pd_' + m.k + '_' + (m.id || room.counters.length), x, z, face: m.face || 0, radius: m.r || 3, plateY: m.plateY || 1.7,
-        label: m.label || '', verb: m.verb || 'USE' }, m.show ? { pdShow: m.show } : null, more));
+    const counter = (m, x, z, more) => room.counters.push(Object.assign({ id: 'pd_' + m.k + '_' + (m.id || room.counters.length), x, z, face: m.face || 0, radius: m.r || 3.5, plateY: m.plateY || 1.7,
+        label: m.label || '', verb: m.verb || 'USE', pdY: m.y3 || 0 }, m.show ? { pdShow: m.show } : null, more));
     const prop = (key, x, z, m, show) => { if (key) room.props.push(Object.assign({ key, x, z }, m.rot != null ? { rot: m.rot } : null, m.y3 != null ? { y: m.y3 } : null, m.h != null ? { h: m.h } : null, show ? { pd: { show } } : null)); };
     (P.marks || []).forEach(m => {
         const x = pdM(m.x), z = pdM(m.y);
         if (m.k === 'spawn') room.pdSpawn = { x, z, face: m.face || 0 };
-        else if (m.k === 'dial' || m.k === 'console' || m.k === 'model') {
-            const all = Object.keys(V.L.plots).filter(p => { const Q = pdPlot(id, p); return Q.turn || Q.slide; });
-            counter(Object.assign({ label: PD_CONTROL_LABELS[m.k] }, m), x, z, { proc: 'pd_control', pdKind: m.k, pdPlots: m.plots || (m.k === 'dial' ? [plotId] : all) });
-            prop(m.key === false ? null : (m.key || PD_CONTROL_KEYS[m.k]), x, z, m, null);
+        else if (m.k === 'lever') {
+            /* THE LEVER: a lever frame on its square, a lamp of the colour of the plot it moves, one move a pull */
+            const tp = m.plot || plotId, mv = { plot: tp }, y0 = m.y3 || 0, col = pdTint(id, tp);
+            if (m.by != null) mv.by = m.by; if (m.track) mv.track = m.track; if (m.dir) mv.dir = m.dir;
+            counter(Object.assign({ label: 'LEVER', verb: 'PULL', r: 4 }, m, { id: m.id || ('lv' + room.counters.length) }), x, z, { proc: 'pd_act', pdLever: true, pdAct: { move: mv, needs: m.needs, no: m.no } });
+            prop(m.key || 'signal_lever_frame', x, z, Object.assign({ rot: 0 }, m), null);
+            draw.push({ k: 'box', id: 'lvb' + draw.length, ghost: true, x, z, y: y0, w: m.rot === 90 ? 0.9 : 3.0, d: m.rot === 90 ? 3.0 : 0.9, h: 1.2, block: true });
+            const lx = x + (m.rot === 90 ? 0.75 : 1.3), lz = z + (m.rot === 90 ? 1.3 : 0.75);
+            draw.push({ k: 'box', id: 'lvp' + draw.length, x: lx, z: lz, y: y0, w: 0.14, d: 0.14, h: 1.9, color: 0x2a2f33 });
+            draw.push({ k: 'box', id: 'lvl' + draw.length, x: lx, z: lz, y: y0 + 1.9, w: 0.3, d: 0.3, h: 0.3, color: 0x30363a, glow: col != null ? col : 0xffffff });
         }
         else if (m.k === 'prop') prop(m.key, x, z, m, m.show);
-        else if (m.k === 'act') { counter(m, x, z, { proc: 'pd_act', pdAct: m }); prop(m.key, x, z, m, m.show); }
+        else if (m.k === 'act') {
+            counter(m, x, z, { proc: 'pd_act', pdAct: m });
+            if (m.stand) { draw.push({ k: 'box', id: 'std_' + (m.id || draw.length), x, z, y: m.y3 || 0, w: 0.7, d: 0.7, h: 1.0, tex: S0.trim || wallTex, tu: 0.5, tv: 0.6, block: true, show: m.show || null }); prop(m.key, x, z, Object.assign({}, m, { y3: (m.y3 || 0) + 1.0 - (((DOOR_HQ.catalogue || {})[m.key] || {}).mount || 0) }), m.show); }   // (a wall piece hangs `mount` above its row's y)
+            else prop(m.key, x, z, m, m.show);
+        }
         else if (m.k === 'take') {
             const show = { not: { has: m.item } };
-            counter(Object.assign({ label: 'THE KEY', verb: 'TAKE' }, m, { show }), x, z, { proc: 'pd_act', pdAct: Object.assign({ give: m.item, say: 'TAKEN' }, m) });
+            counter(Object.assign({ label: 'THE KEY', verb: 'TAKE', r: 3.6 }, m, { show }), x, z, { proc: 'pd_act', pdAct: Object.assign({ give: m.item, say: 'TAKEN' }, m) });
             prop(m.key || 'key', x, z, Object.assign({ y3: 1.0 }, m), show);
             draw.push({ k: 'box', id: 'stand_' + m.item, x, z, y: 0, w: 0.7, d: 0.7, h: 0.95, tex: S0.trim || wallTex, tu: 0.5, tv: 0.6, block: true });
         }
@@ -77715,7 +77818,9 @@ function pdInstall() {
    port's 7 m span). The world index and the stage's caches are dropped so the stage's own readers see it. */
 function pdSync(id) {
     const V = pdLevel(id), Z = V && HQ_WORLD.zones[V.zone]; if (!Z) return false;
-    const S = pdState(id), parts = {}, half = PD_RULES.sq;
+    /* the joined span is the 7 m doorway + the stage's own margin each side (it keeps a walker `pad` metres inside a span's ends:
+       without it the outer metre of every doorway was a wall you could not see; the plot's own walls end the doorway) */
+    const S = pdState(id), parts = {}, half = PD_RULES.sq + PD_RULES.seamPad;
     Object.keys(V.L.plots || {}).forEach(pid => {
         const F = pdFrame(S, pid);
         /* a plot that stands in no slot (a variant waiting to be swapped in) is parked far under the board, never joined */

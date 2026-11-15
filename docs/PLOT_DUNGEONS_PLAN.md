@@ -740,4 +740,7 @@ Later, low priority (not for now): the names, wiring dungeons into story mode an
   rows in data.js `PD_DUNGEONS` (types → `levels[]`), `pdInstall()` builds their rooms and zones at load, `bake-dungeons.js` only
   CHECKS them and prints each shortest solution. All ten prototypes built and walked start to exit in the browser. Fights are
   stand-ins. The how-to and the honest limits: docs/notes/areas-complexes.md "PLOT DUNGEONS, THE BUILD".
-
+- 2026-11-15 THE SECOND PASS (mondo's review of the first four): the console panel and its move lists are gone; every move is a
+  lever in the world (one lever, one move, one plot), you ride the plot you stand on, a wide view of the whole board shows each
+  move, the skateboard crosses plots, every lamp stays lit, the seams are the whole doorway. Notes: areas-complexes.md "PLOT
+  DUNGEONS, THE SECOND PASS".
