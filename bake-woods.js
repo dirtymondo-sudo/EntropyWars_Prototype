@@ -38,8 +38,8 @@ function spur(id, wall) {   // from the plot's nearest open square straight to t
 function door(id, plotId, wall, o) { const a = spur(plotId, wall); doors.push(Object.assign({ id, wall }, (wall === 'w' || wall === 'e') ? { z: a } : { x: a }, o)); }
 door('clearing', 'P02-05', 's', { way: 'trail', label: 'THE WOODS · THE CLEARING', sub: 'THE OLD CLEARING · AS IT WAS', action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'plots' },
     desc: 'The trail south runs back to the clearing as it was before the woods were measured.' });
-door('camelot', 'P00-03', 'w', { way: 'trail', label: 'CAMELOT · THE OUTER WARD', sub: 'THE TRAIL · WEST TO CAMELOT', action: { room: 'site_prebuilt_camelot_ward', at: 'link_woods_camelot' },
-    desc: 'The path west does not stop; it goes on under the trees and comes out at the castle moat.' });
+/* the trail west to Camelot is the LINK `woods_camelot` (data.js DOOR_HQ.links, a two-way door at w, z 3.5); the HQ Stair is the LINK `woods_stair`: only the path is cut here */
+{ const z = spur('P00-03', 'w'); if (z !== 3.5) throw new Error('the Camelot trail moved to z ' + z + ': move the woods_camelot link end in data.js too'); }
 door('estate', 'P01-05', 's', { way: 'trail', label: 'THE ESTATE · THE CORN FIELDS', sub: 'THE FENCE LINE · THE GATE', action: { room: 'site_prebuilt_skinwalker_fields', at: 'bay' },
     desc: 'A fence, and a gate in it. The corn starts on the other side.' });
 door('gutter', 'P05-03', 'e', { way: 'trail', label: 'DISASTER CITY', sub: 'THE STORM DRAIN · UP TO THE STREET', action: { room: 'site_prebuilt_downtown_streets', at: 'link_streets_drain' },

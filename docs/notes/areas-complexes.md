@@ -3590,3 +3590,8 @@ mondo 11-15 16:08: "go for it. can you also change the disaster city hollywood s
   `_hqCityManholeTex` (iron disc, skyline, DISASTER CITY / SEWER), one canvas texture for all. Other cities keep the pack's cover.
 - Seen: both pieces of real code in a bare page (/mnt/project-files/city-sign-fonts/hill_sign_real_code.jpg on a stand-in slope,
   manhole_real_code.jpg), not in the game (RULE #1c).
+- **THE SWAP (2026-11-15, mondo: "i think its still loading the old woods, or i cant tell a difference")**: the new room was only behind a
+  new trail, so the normal ways in still loaded the old Clearing. Now the two links that lead INTO the Woods end in the 36-plot room:
+  `woods_stair` (the HQ Stair hall; free door on the marble flight at x -17.5, z 55.5, y 12.06) and `woods_camelot` (west wall, z 3.5; the tool
+  throws if its spur moves). `DOOR_HQ.hubs.woods.room` = the new room; it wears the woods' day look. The old Clearing keeps its rooms and is
+  reached by the trail south from the Clearing plot (and still by Room 420's hollow tree). The Stair top and the way back from Camelot are wired now.
