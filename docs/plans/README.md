@@ -53,3 +53,7 @@ read them. PROPOSALS are not approved until the owner says so; check the matchin
 Both are built. Mountains: `../areas/mountains/layout.json` + `bake-mountains.js`, notes "THE MOUNTAINS ON PLOTS".
 Woods: `../areas/woods/layout.json` + `bake-woods.js`, notes "THE WOODS ON PLOTS". What is left on each is listed at the
 end of its notes section and in `../project-memory/` (`mountains-plots-20261115.md`, `woods-*`, `camelot-kingdom-plots-20261115.md`).
+
+## Hand-off prompts (2026-11-15)
+`HANDOFF_PROMPTS.md`: one ready-to-paste prompt per piece of open work (zones, Disaster City districts, the first
+quest cutscenes, frame rate). Pictures they point at: `desert/`, `cutscenes/`, `door-hq/`, `disaster-city/civic-dc/`.
