@@ -3605,3 +3605,38 @@ mondo 11-15 16:08: "go for it. can you also change the disaster city hollywood s
   `woods_stair` (the HQ Stair hall; free door on the marble flight at x -17.5, z 55.5, y 12.06) and `woods_camelot` (west wall, z 3.5; the tool
   throws if its spur moves). `DOOR_HQ.hubs.woods.room` = the new room; it wears the woods' day look. The old Clearing keeps its rooms and is
   reached by the trail south from the Clearing plot (and still by Room 420's hollow tree). The Stair top and the way back from Camelot are wired now.
+
+## CAMELOT KINGDOM ON PLOTS, THE CASTLE — the second area of the world plan, first delivery (2026-11-15)
+mondo 11-15: "start ... another thread for the next most important zone" (Camelot Kingdom: the Woods' trail ends there) · 16:39 "i would want the
+old rooms to be redesigned too. Like camelot castle should be designed with the same level of architecture as the most complex buildings in
+disaster city ... exterior and interior" · 16:44 on the castle mock-up "okay that looks good for a start. ... i want camelot castle in the middle
+and for it to be surrounded by the other districts ... the north pole to the north of the castle would be good as a rival kingdom, or put more
+woods in between them" · 16:53 "okay" on plan 2.
+- **The approved plan**: project files `camelot-kingdom/camelot_plot_plan_2.png` + `camelot-layout-2.json` (draw-plan2.py) and
+  `camelot_castle_redesign.png` (draw-castle.py). 8 x 8 plots: THE CASTLE in the middle (cols 2-5, rows 3-5), THE NORTH POLE north (rows 0-1
+  + a four-plot snowy pine belt, "the woods between"; it leaves the polar area, Antarctica stands alone there), THE TOWN south (8 plots, new),
+  THE FAIRY FOREST east (12), THE LOOKING-GLASS GARDEN west (12). Plan 1 (`camelot_plot_plan.png`, castle in the north-west) is superseded.
+- **Built now, the castle only**: room `site_prebuilt_camelot_castle` ("CAMELOT · THE CASTLE", 4 x 3 plots = 168 x 126 m), written by
+  `node bake-camelot.js` between `CAMELOT-CASTLE-BEGIN/END` in data.js (before the old ward). Never hand-edit the block. Squares in the tool are
+  (sx 0..48, sy 0..36); `X()`/`Z()` turn them into metres. When the 64-plot kingdom room is built the castle moves into it (an origin shift).
+- **What stands**: THE MOAT all the way round (two `stream` rows; the north arm is narrower so a strip of bank is left at the room's edge), THE
+  DRAWBRIDGE (two squares wide) and the postern's footbridge; THE CURTAIN WALL at 7 m (hqCurtainWall runs split at every drum), four hollow corner
+  towers (hqCastleTower, the NW one's arcs worked out from the other three: door [120, 154], joins 90 + 180, a0 166), six solid drums
+  (two bastions on the south wall, one each on the west and east walls, the gatehouse's two) with crowns, decks over the three gates and the
+  postern, THE CROSS WALL (two wards) whose two ends carry no battlement because the two RAMPART STAIRS land there; five buildings.
+- **A building** = one hollow `texbuilding` (`skin: false`: ghost walls, doorway, city door leaf, inside, roof slab) + one `k: 'arch'` row
+  (`cam:<id>:look`) from the tool's `building(id, sx0, sy0, sx1, sy1, side, h, row, parts)`. `storeys` = floor(h / 3.5): the COLLISION roof is
+  storeys x 3.5, `h` is only the drawn height. THE KEEP (ground floor walked into, 24 m of drawn stone over it, four turrets with cones, flag),
+  THE GREAT HALL (buttresses, arched lights, gable, bell turret, rose light), THE KITCHEN, THE BARRACKS, THE STABLES. One more arch row
+  `cam:roofs` (room frame) = the cone roofs on posts over the corner towers and the gate drums, the gate's ridge, the raised portcullis, banners.
+- **The ways** (the rebuilt room takes the normal ways in): `hubs.kingdom.room`, `siteRooms.entry.prebuilt_camelot` (door `bay`, south wall,
+  x -17.5: the foot of the Crown's Road), links `woods_camelot.b` (east wall, the track outside the moat), `haunted_camelot.b` (west wall),
+  `well_camelot.a` (free, the outer ward), `northpole_camelot.b` (north wall, over the postern's footbridge). Room doors: `keep` (free, the back of
+  the guardroom → the old Keep room's `ward` door, which now returns here) and `postern` (free, the south bank → Merlin's Undercroft, same).
+  HQ_AREA_ENCOUNTERS: the castle reads the ward's table (one copy). The look row copies the ward's day.
+- **Kept**: every old room. THE OUTER WARD stays the site's battle board (HQ_ARENA_RULES) and keeps its tape; nothing walks into it now but
+  the old Great Hall's door. The old Great Hall is reached from the Keep's stable door and still holds the Lodge's door.
+- **NOT DONE**: the Keep's upper floors, Merlin's Undercroft and the Castle in the Sky are still the old rooms (their redesign is next); the
+  castle is flat (the plan's levels come with the kingdom room); no town, forest, garden or North Pole yet; the ward's tape was not moved.
+- **NOT SEEN ON SCREEN** (RULE #1c). Checked offline: data.js parses, the room compiles (1 109 wall rows, 5 buildings, 6 arch rows), every
+  link end resolves (hqLinkDoors), every catalogue key and race exists, a top-down drawing of the compiled rows matched the plan.
