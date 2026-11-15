@@ -181,7 +181,7 @@ R.guard('u', 1, 17, 20, LB); R.guard('u', 2, 17, 20, LB); R.guard('v', 20, 1, 2,
   for (let u = 14; u < 16; u++) for (let v = 6; v < 8; v++) R.block[R.sq(u, v)] = 'the orb';
   R.F.push({ k: 'wall', x0: r2(X(15) - 1), z0: Z(7), x1: r2(X(15) + 1), z1: Z(7), t: 2, ghost: true, rail: false, h: 2, y: 2 });
   B('cauldron', 12, 5, 0, L); B('library_shelf_full', 11, 9, 90, L); B('library_shelf', 18, 9, 270, L); B('psx_table_large_3', 17, 5, 0, L); B('lectern', 13, 8, 180, L); B('giant_hourglass', 18, 6, 0, L); B('star_projector', 12, 8, 0, L);
-  dec('crystalBall', 17.5, 5.5, 0, L, { y: 0.8 }); dec('item_potion_flask', 17.2, 5.4, 0, L, { y: 0.8 }); dec('psx_open_book_mp_1', 17.7, 5.7, 40, L, { y: 0.8 }); dec('candle_ring', 15, 9.4, 0, L); dec('psx_cobweb_4', 11.4, 4.4, 0, L, { y: 4 }); dec('crystal_cluster', 16.5, 9.3, 0, L); dec('owl_statue', 12.5, 4.5, 180, L);
+  dec('crystalBall', 17.5, 5.5, 0, L, { y: 0.8 }); dec('item_potion_flask', 17.2, 5.4, 0, L, { y: 0.8 }); dec('psx_open_book_mp_1', 17.7, 5.7, 40, L, { y: 0.8 }); dec('candle_ring', 15, 9.4, 0, L); dec('psx_cobweb_4', 11.4, 4.4, 0, L, { y: 4 }); dec('crystal_cluster', 16.5, 9.3, 0, L);
   who('wizard', 13.5, 6.5, 100, L, say(1, 'wizard'));
   /* the Gaoler's Room, the Cells, the antechamber, the Crypt of Kings, the Ossuary */
   B('psx_table_large_2', 10, 2, 0, L); B('dojo_weapon_rack', 12, 2, 270, L); dec('psx_chair_mp_1', 10.5, 3.3, 180, L); dec('wall_chains', 9.5, 2.25, 0, L, { y: 1.6 }); dec('cave_torch', 12.6, 2.4, 0, L);
@@ -282,7 +282,7 @@ R.guard('u', 1, 17, 20, LB); R.guard('u', 2, 17, 20, LB); R.guard('v', 20, 1, 2,
   for (const u of [9, 11, 13, 17, 19, 21]) for (const v of [6, 7, 9, 10]) B(v % 2 ? 'library_shelf' : 'library_shelf_full', u, v, 90, L);
   B('psx_table_large_2', 14, 8, 90, L); B('psx_table_large_2', 15, 8, 90, L); dec('psx_open_book_mp_1', 14.8, 8.4, 30, L, { y: 0.8 }); dec('psx_book_mp_3', 15.6, 8.6, 0, L, { y: 0.8 }); dec('globe_lamp', 15, 10.5, 0, L); dec('library_ladder', 12.4, 6.5, 90, L); dec('library_ladder', 17.6, 9.5, 270, L); dec('lectern', 15, 6, 180, L); dec('wingback_chair', 14, 11, 20, L); dec('wingback_chair', 16, 11, 340, L); dec('rug_round', 15, 11, 0, L);
   for (const m of [9.5, 12, 18, 20.5]) win('u', 12, m, L, -1, 4); R.P.push({ s: 'box', p: [X(15), L + 1.0, r2(Z(12) - 0.17)], size: [3.6, 4.6, 0.05], key: GLS, tint: 0xf4dc98, glow: 0.8 });
-  B('star_projector', 10, 3, 0, L); B('telescope', 8, 4, 135, L); B('library_shelf_full', 8, 2, 90, L); B('exec_desk', 11, 2, 180, L); dec('crystalBall', 11.5, 2.4, 0, L, { y: 0.8 }); dec('star_chart', 10, 2.25, 0, L, { y: 2.4 }); dec('owl_statue', 12.5, 4.5, 225, L); dec('astronomical_clock', 12.4, 2.6, 270, L); R.props.push({ key: 'star_dome', x: X(10.5), z: Z(3.5), ceil: true, y: L + SH - 0.2 });
+  B('star_projector', 10, 3, 0, L); B('telescope', 8, 4, 135, L); B('library_shelf_full', 8, 2, 90, L); B('exec_desk', 11, 2, 180, L); dec('crystalBall', 11.5, 2.4, 0, L, { y: 0.8 }); dec('star_chart', 10, 2.25, 0, L, { y: 2.4 }); dec('astronomical_clock', 12.4, 2.6, 270, L); R.props.push({ key: 'star_dome', x: X(10.5), z: Z(3.5), ceil: true, y: L + SH - 0.2 });
   B('map_table', 19, 3, 0, L, { nu: 2, nv: 1 }); B('armour_stand', 21, 2, 270, L); B('dojo_weapon_rack', 21, 4, 270, L); dec('banner', 19.5, 2.25, 0, L, { y: 3 }); dec('psx_chair_mp_1', 18.5, 4.3, 0, L); dec('psx_chair_mp_1', 20.5, 4.3, 0, L); dec('world_clocks', 17.25, 3.5, 90, L, { y: 2.4 });
   who('wizard', 10.6, 4.4, 20, L, say(0, 'wizard'));
 }
@@ -332,7 +332,8 @@ if (R.inner.length) F.push({ k: 'texbuilding', id: 'cam:palace:doors', x: 0, z: 
 M.push("        /* CAMELOT-PALACE-BEGIN — CAMELOT CASTLE, ONE STACKED BUILDING (2026-11-15): written by `node bake-camelot-castle.js` from the approved plan (docs/plans/camelot/camelot_castle_stacked_plan.png). Never hand-edit between the markers; edit the tool and rerun. */");
 M.push('        site_prebuilt_camelot_palace: {');
 ["label: 'CAMELOT CASTLE',", "sub: 'THE THRONE HALL · THE GREAT STAIR · THE ROYAL FLOOR · THE LIBRARY · THE BATTLEMENTS · MERLIN’S UNDERCROFT',", "kind: 'box', site: 'prebuilt_camelot', part: 'palace',",
- "shell: hqCastleShell({ w: " + R.W + ", d: " + R.D + ", plate: { x: " + R.spawn.x + ", z: " + r2(R.D / 2 - 1.2) + ", y: " + (L0 + 4.4) + " } }),",
+ "shell: hqCastleShell({ w: " + R.W + ", d: " + R.D + ", plate: { x: " + R.spawn.x + ", z: " + r2(R.D / 2 - 1.2) + ", y: " + (L0 + 4.4) + " },",
+ "                       sunShadow: false, mood: { lamp: 0xffd090, glow: 0xffb060, strip: 0xffe0b0, light: 0xfff2e0, ambient: 0.85 } }),   // no sun shadow: an open room (the roof walk needs the sky) whose floors would stand in the shadow of the floors over them (three-renderer.js _hqShadowArm)",
  "parti: 'One palace on six levels, every floor over the last: the cellar under the throne, the hall two floors high with a gallery round it, the royal rooms, the library, the roof walk; one long stair up the north wall joins them.',",
 ].forEach(l => M.push('            ' + l));
 M.push('            terrain: {'); M.push("                res: 0.4375, floor: 'cobblestone', cliff: 'castle_wall', path: 'cobblestone',"); M.push('                noise: { amp: 0, scale: 5 }, crag: false,');

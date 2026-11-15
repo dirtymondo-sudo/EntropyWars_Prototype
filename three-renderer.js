@@ -88067,7 +88067,10 @@ const ThreeRenderer = (function () {
         var LR = _hqLightRules(), SH = LR.shadows || {};
         var W = (typeof window !== 'undefined') ? window : {};
         var q = (typeof ThreePost !== 'undefined' && ThreePost.getShadowQuality) ? ThreePost.getShadowQuality() : 'high';
-        if (SH.on === false || q === 'off' || _polishOff('shadows', 'EW_HQ_NO_SHADOWS') || W.EW_PERF_LOW) { L.castShadow = false; return; }
+        /* A HOUSE UNDER THE SKY (2026-11-15, Camelot Castle's stacked floors): `shell.sunShadow: false` = the room's key light casts no shadow.
+           A building of floors over floors in an OPEN room (its roof walk needs the sky) stood in the shadow of its own slabs: every room
+           under one was black but for the hemisphere, and its furniture read as black blocks. */
+        if (SH.on === false || q === 'off' || _polishOff('shadows', 'EW_HQ_NO_SHADOWS') || W.EW_PERF_LOW || (room && room.shell && room.shell.sunShadow === false)) { L.castShadow = false; return; }
         var U = _hqUnits(), S = room.shell || {};
         var hx, hz, top;
         if (room.kind === 'box') { hx = (S.w || 10) / 2; hz = (S.d || 10) / 2; top = S.open ? Math.max(S.h || 9, 10) : (S.h || 3.4); }
