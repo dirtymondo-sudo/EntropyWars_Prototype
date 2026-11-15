@@ -1957,6 +1957,55 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE DOOR CHUNKS (2026-11-15, each door of a big room is its own chunk and recording)
+
+mondo's F3 after THE LOOSE PIECES (23:15 UTC): 43.2 FPS, frame 23.1 ms at 2,188 meshes (price line: 23.0, exact again),
+"shell rest 278" (was 851), "573 loose pieces stood in", 7 stacks. By kind: squares 1,138 (20 groups) · instance cells 311 ·
+shell rest 278 · doors 223 (1 group) · prop plots 148 · fences 53 · rooms 37. Squares: see-through / cut-out 295, no sheet
+lit 203, stacked 166, node terrain 146 (the ground's stand-ins), one paint 128, many looks 81, sign canvas 28.
+One GPU error that session ("In a execute_bundle command, Texture with 'PointSha...": a recording that still names a point
+shadow map that was freed; the same class as the older "Texture with '' label"). Not chased yet.
+- THE DOOR CHUNKS (three-renderer.js `_hqDoorChunks`, called from `_hqChunkTick`): in a big room every direct child group
+  of the door group (`hq_city_door` and the room doors: frame, leaves, plate) is registered as a chunk where it hangs
+  (`_ew_dChunk`, `_hqChunkReg(H, g, 1e12)` = frustum only, no far limit) and is a bundle target of its own
+  (`_ewBunTargets`; the door group itself is a target only when it has no door chunk). Nothing is reparented, so the door
+  group's still walk and THE DOORS REST work as before. The sun's render shows an off-camera door inside its box (as it does
+  a shell square). A door-gun door (`_ew_noDChunk`) is never one: it shows and hides itself. `_hqChunkHome` makes them plain
+  doors again. Off: `window.EW_HQ_NO_DOOR_CHUNKS` before the room. Lens: "Chunks: ... · doors a/b".
+- Cloud (WebGPU on SwiftShader, HEAD on 75ffb21 + this change): 132 door chunks, 45 off camera at the spawn, 125 recorded,
+  none left unchunked; walker teleported to a city door: its two leaves swing (pivot turn 0 -> +-0.026 and rising at the
+  cloud's 0.2 fps), the group stays drawn; 0 frame errors. A door whose model has not landed has no sphere yet and is
+  simply drawn (measured again every 2 s).
+- NEXT: the squares (1,138): lit no-sheet pieces 203 (glow into the point data), cut-outs 295 (mostly sign canvases with a
+  clear ground: 290 looks, one canvas each), the ground's 146 tiles (one look: could merge per square if the terrain look
+  reads no object-space position; needs a pixel proof); then instance cells 311 and what is left of shell rest 278.
+
+## THE LOOSE PIECES (2026-11-15, the shell pieces the merge refuses get a stand-in in their square)
+
+mondo's F3 (22:35 UTC, 41.1 FPS, 24.5 ms, 3,022 meshes) with the new lines: "squares 1166 (24 groups) · shell rest 851
+(1 groups) · instance cells 518 (49) · doors 223 (1 groups) · prop plots 152 · fences 84 · rooms 28". So 1,074 meshes (the
+shell's own group + every door of the city) are replayed wherever the camera looks, and again for the sun.
+Squares: stacked 277, alone no sheet lit 256, alone see-through / cut-out 251, one paint 147, alone sign canvas 104, alone
+1024 px sheet 53, alone 128 px 30.
+- THE LOOSE PIECES (three-renderer.js `_hqBatchLooseOk`, `_hqBatchSnapOf`, `c.loose` in `_hqBatchScan` / `_hqBatchBuild`): in
+  a big room's shell, a piece the merge refuses (several looks on one mesh, a geometry the merge cannot join, the ground's
+  `_ew_hqTerrain` look, a see-through sheet, a patched shader) is scanned as a LOOSE candidate with a key of its own, so it
+  takes the stand-in path of THE SHELL CELLS: a mesh on its own geometry and own look(s) in its 96 m square. Never: moving /
+  changing pieces (the watch breaks them back), children, own draw hooks, shader materials, every other off flag (cars,
+  signals, sea, mirrors, decals, LODs, text), a piece wider than 3/4 of a square (it would hold the square on camera).
+  Off: `window.EW_HQ_NO_LOOSE` before the room. Lens: "(N loose pieces stood in)" on the Static batch line.
+- Cloud (WebGPU on SwiftShader, counts; HEAD on 5b48248 + this change): 523 loose stand-ins (320 ground, 177 many looks, 26
+  see-through), every one checked against its piece: same geometry, look, shadow flags, layers, order, world matrix
+  difference 0; 0 frame errors. Expect his "shell rest" 851 -> ~330 and the ground culled per square.
+- NEXT by his numbers: doors 223 in one group (a group per plot, culled like props); instance cells 518; the squares' lit
+  no-sheet pieces 256 (glow in the point data like THE SHEET STACK's `ewSk`, they merge with one paint) and cut-outs 251.
+- THE HERO LAMP, where it is: the light is claimed by the FIRST prop whose key matches `shadows.hero.keys` and whose model
+  lands, so it differs per session and some sessions have none (his last three F3s: "Shadow casters 1: dir"). The city's
+  candidates: `lava_lamp` at room (175, -0.6) = a Bayside shop by the Mall door, ~60 m from the spawn (113.75, 22.75);
+  four `brazier` by the Tower lobby (-37..-25, 4..37); two `candelabra` at the Chapel (-237, 100). In the cloud browser the
+  lamp never claimed (teleport beside the lava lamp: `heroShadow().light` false). Do not send him to look for it: ask for a
+  Shift+F3 wherever he sees the FPS fall.
+
 ## SHIFT+F3 + WHERE THE LAMP STANDS (2026-11-15, the lens only; mondo: "where is the point lamp ... I can only copy the f3 data when I am paused")
 
 - **Shift+F3 copies the readout from the keyboard** (the lens's key handler; opens the lens first if it is closed). No pause,
@@ -2510,3 +2559,16 @@ cut at 240 chars (its patch is harmless and stays).
 - MEMORY, same trail (Camelot Keep 895 of 700 MB, 607 MB idle, "nothing idle long enough"): `_mmTick` over the budget at all waits
   30 s idle (was 120); `_mmLeaveSweep` goes down to 50 % of the budget (was 85 %), the next room loads on top of what is kept.
 - NOT TOUCHED: `computeBoundingSphere(): Computed radius is NaN` entering site_prebuilt_camelot_kingdom (the Camelot plot build).
+
+## THE NATURAL ROCK — cliffs and far mountains without the repeat (2026-11-15)
+mondo on the Hollywood Hills pictures: "the sides/cliffs texture looks too repeated, it needs to look more natural". Seen on screen after
+(playtest_city.js, the Hills' cove + canyon, the Mountains' lodge + scree).
+- CAUSE: the rock sheet (`rocks_5` = calm_rock) is one even pattern of cracks at one size. A steep face already read it without a repeat (ntRead),
+  but it was still a wall of same-size cells; rock PAINTED on a gentler slope (terrain.paint) was the plain sheet, a tile a square; the land past the
+  edge (_hqBuildEdgeLand) repeated one small sheet up a whole range.
+- three-renderer.js `_hqTerrainMat`: a natural cliff sheet (the calm table's `noTile` list) is mixed 42 % with itself read 3.4 x larger and its tone
+  drifts over the land (`natDrift`, two noises of about 40 m and 8 m); a painted natural sheet is read with ntRead and takes the same drift
+  (`palNt`, per palette sheet; a paved / urban sheet is untouched). The node renderer's twin reads `palNt` / `natC` off the terrain tag.
+- `_hqBuildEdgeLand` matFor: the far land's sheets drift in tone; rock and sea cliff are also mixed with themselves read 3.7 x larger (WebGL only:
+  an onBeforeCompile on the Lambert material; the node renderer keeps the plain sheet).
+- Every terrain room gets it (not only the Hills). Cost: up to three more plain reads on a cliff pixel. Kill switch `window.EW_NO_NATURAL_ROCK`.

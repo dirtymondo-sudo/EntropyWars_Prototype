@@ -1105,7 +1105,7 @@ lines.push("                busStops: " + J(busStops) + ",");
 lines.push("            },");
 const dj = o => "wall: 'free', x: " + o.x + ", z: " + o.z + ", face: " + o.face + (o.noEntrance ? ", noEntrance: true" : "");   // noEntrance: a door a district hung inside its own building (no sprite entrance building)
 lines.push("            doors: [");
-lines.push("                { id: 'harbour', " + dj(JOIN.harbour) + ", leaf: null, label: 'THE HARBOUR', sub: 'THE BOARDWALK · OUT ON THE PIER', action: { room: 'site_prebuilt_downtown_harbour', at: 'quay' },");
+lines.push("                { id: 'harbour', " + dj(JOIN.harbour) + ", leaf: null, label: 'THE HARBOUR', sub: 'THE BOARDWALK · OUT ON THE PIER', action: { room: 'site_prebuilt_bermuda_beach', at: 'quay' },");
 lines.push("                  desc: 'The quay stops and the water starts. A pier goes on out into it, with a skiff tied at the end that nobody is minding.' },");
 /* a district file may move one of these doors into its own building (`joins = { tower: { x, z, face, sub } }`): Hero Plaza stands THE TOWER at the
    lift bank of its walk-in lobby (mondo 11-13 22:30 "keep the new lobby"), so the plaza doorway is the lobby's own */
