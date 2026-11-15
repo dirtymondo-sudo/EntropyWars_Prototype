@@ -133,18 +133,11 @@ module.exports = function (K) {
             for (const s of [-1, 1]) lamp(P, lx + s * 4.4, 3.4, F + 0.06);
             pipe(P, W / 2 - 1, -F - 0.12, 14.6, 0xa8b09c); pipe(P, -W / 2 + 1, -F - 0.12, 14.6, 0xa8b09c);
         },
-        /* 4. the executive court: fins down the glass, a canopy on rods, a ceiling-tile soffit and its lamps under the slab, a louvred plant
-              yard, a rail and the helipad's lights on the roof */
+        /* 4. the executive court (LONDON: the curved glass tower, F.js): a canopy on rods over the lobby door (the slab's fins, soffit,
+              plant yard, rails and helipad lights went with the slab) */
         'P11-00-B1': (T, P) => {
-            const W = 28, D = 13, cz = 1.0, FR = cz + D / 2, LF = T.D / 2;
-            P.push(box(-W / 2 + 4.6, 5.25, FR + 0.2, 0.1, 17.5, 0.4, ALU, 0xe8eef2, { n: 12, step: [1.95, 0, 0], top: false }));
+            const LF = T.D / 2;
             P.push(box(0, 3.1, LF + 1.3, 6, 0.16, 2.6, ALU, 0xe8eef2, { under: true }), cyl(-2.6, 3.26, LF + 2.3, 0.03, 1.85, null, IRON, { seg: 4, n: 2, step: [5.2, 0, 0] }));
-            P.push(box(1.6, 5.19, cz, W - 3.6, 0.06, D - 0.4, FIBRE, 0xe8e8e4, { under: true, top: false, sides: false, uv: 1.75 }), box(-9, 5.08, cz + 3, 1.2, 0.1, 0.3, null, LAMP, { glow: 1, n: 6, step: [4, 0, 0], under: true }), box(-9, 5.08, cz - 3, 1.2, 0.1, 0.3, null, LAMP, { glow: 1, n: 6, step: [4, 0, 0], under: true }));
-            P.push(box(-6, 22.75, cz, 7.6, 2.4, 5.6, GRILL, 0x9aa0a6, { top: false, uv: 1.2 }), box(-6, 22.75, cz, 7.0, 1.7, 5.0, CORR2, ACG, RF), cyl(-7.6, 24.45, cz, 1.0, 0.12, null, IRON, { seg: 12, n: 2, step: [3.2, 0, 0] }));
-            railing(P, 3, 22.75, FR - 0.3, W - 7, false, 0xd0d6da, RF); railing(P, 3, 22.75, cz - D / 2 + 0.3, W - 7, false, 0xd0d6da, RF); railing(P, W / 2 - 0.3, 22.75, cz, D - 0.6, true, 0xd0d6da, RF);
-            P.push(box(3, 23.0, cz, 0.26, 0.16, 0.26, null, 0x40ff60, { glow: 1, ring: { n: 8, r: 4.5 } }));
-            acUnit(P, -W / 2 + 1.6, 26.5, cz - 3); roofVent(P, -W / 2 + 1.6, 26.5, cz + 3); P.push(cyl(-W / 2 + 1.6, 26.5, cz, 0.06, 5, null, 0xc0c0c0, { seg: 4 }));
-            for (const a of [-3, 0, 3]) grille(P, 'l', -W / 2 + 1.6, cz, 3.2, D + 0.2, a, 1.0, 1.8, 1.0);
         },
         /* 5. the members club: a belt course, a brass plate by the door, a checker step under the awning, caps and pots on the stacks, dentils,
               pipes, AC boxes on the back (the roof is walked: it stays clear) */
@@ -177,7 +170,7 @@ module.exports = function (K) {
             for (const a of [-9, -3, 3, 9]) wallAC(P, 'b', 0, 0, Wf + 0.1, nd + 0.1, a, 2.0);
             plate(P, 'f', 0, 0, Wf + 0.1, nd + 0.1, 0.5, 1.4, 0.5, S_HELM);
         },
-        /* 7. the bank offices: BANK in gold on the stone core, a canopy on rods, a cleaning cradle on its davits, a roof deck with a louvred
+        /* 7. the bank offices: BANK in gold on the clock tower's shaft, a canopy on rods, a cleaning cradle on its davits, a roof deck with a louvred
               plant room, chillers, ducts, a stair head, a parapet rail */
         'P10-01-B1': (T, P) => {
             const W = T.W, D = T.D, F = D / 2;
@@ -189,7 +182,6 @@ module.exports = function (K) {
             chiller(P, -5, 31.5, 3.6); chiller(P, -5, 31.5, -3.6); acUnit(P, 13, 31.5, 4); acUnit(P, 13, 31.5, 1.6); roofVent(P, 11, 31.5, -5.5); duct(P, -1, 31.5, 0, 4.5); stairHead(P, 13, 31.5, -4.2);
             railing(P, 2.4, 31.5, F + 0.4, W - 5.4, false, 0xd0d6da, RF); railing(P, 2.4, 31.5, -F - 0.4, W - 5.4, false, 0xd0d6da, RF); railing(P, W / 2 - 0.1, 31.5, 0, D + 0.8, true, 0xd0d6da, RF);
             for (const y of [1.0, 13, 25]) grille(P, 'b', -W / 2 + 2.4, 0, 4.8, D + 1.8, 0, y, 2.4, 1.0);
-            P.push(box(-W / 2 + 2.4, 35, 0, 5.0, 0.3, D + 2.0, CONC, 0xc8bca8, { under: true }));
         },
         /* 8. the vault annex: VAULT in gold on the portal, hazard plates on its piers, a rubber plinth, a rail on each step, grilles in the
               first step, cameras and floodlights on the front drums, plant on the cap, a red lamp over the door */
@@ -321,7 +313,7 @@ module.exports = function (K) {
         shop: (T, P) => {
             const W = T.W, D = T.D, H = T.H || 7, o = T.o || {}, gw = W - 4.2, m = Math.max(2, Math.round(gw / 1.6)) + 1;
             P.push(box(0, 2.75, D / 2 + 1.98, W - 0.4, 0.56, 0.06, null, o.trim));
-            if (o.sign) letters(P, o.sign, 0, 2.85, D / 2 + 2.01, 0.36, null, 0xf4ecd8, { depth: 0.05 });
+            if (o.sign) letters(P, o.sign, 0, 2.85, D / 2 + 2.01, 0.36, 'gold', 0xffffff, { depth: 0.05, gain: 1.5 });   // LONDON: gilt lettering
             P.push(box(0.9 - gw / 2, 0.5, D / 2 + 0.14, 0.09, 2.7, 0.09, null, IRON, { n: m, step: [gw / (m - 1), 0, 0] }), box(0.9, 0, D / 2 + 0.24, gw, 0.5, 0.06, TILER, WHITE, { uv: 0.5 }));
             P.push(box(0, 6.56, D / 2 + 0.1, W - 1.2, 0.12, 0.16, STONE, 0xd0c8b8), box(0, 4.2, D / 2 + 0.1, W - 1.2, 0.12, 0.2, STONE, 0xd0c8b8));
             lamp(P, -W / 2 + 0.5, 2.6, D / 2 + 0.1); pipe(P, W / 2 + 0.12, D / 2 - 0.5, H - 0.5);

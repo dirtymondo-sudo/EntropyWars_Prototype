@@ -1111,3 +1111,17 @@ hard green strips along every crater wall and bank; also water in a crater and s
   `GAME.state._terrainVersion`).
 - Proof (WebGL2 headless, not real WebGPU on screen): /mnt/project-files/terrain-slivers/. Left: the natural mound's cliff face
   shows the room's own cliff sheet as a stepped band (by design), two tiny leaf flecks at its crest.
+
+## THE FIGHT IS AS BRIGHT AS THE WALK (2026-11-15)
+mondo, Disaster City's metro platform: "i was started a battle in the subway/metro and the battle got brighter than the exploration mode".
+- The platform (`site_prebuilt_downtown_subway`) is its own CLOSED box room (h 4), not a pocket of the open city room, so the fight
+  already wore the closed-room rig (same hemisphere, key, fill and fluorescent as the walk). What differed was THE KEY LIGHT: the
+  fight hung it `battleUp` 7 m over the floor at `battleIntensity` 1.5 in every closed room. Under a 4 m ceiling that is 3 m above
+  the roof; it has no shadow, so it lit the whole floor from over the ceiling at about 1.15 where the walk's lamp gives about 0.8,
+  and only round the walker.
+- three-renderer.js `_fieldGroundDress` files the ceiling (`st.keyCeil`: shell.h, a bay's wallH; never a cave, a terrain room or an
+  outdoor room) and `_fieldKeyLampTick` hangs the lamp `battleCeilGap` under it when that is lower than battleUp, at a strength that
+  gives the floor under it what the walk's floor gets (`walkUp` 2.8 m = the walk's lamp over the floor), easing up to the old
+  strength as the ceiling reaches battleUp. Rooms 7.35 m or taller are untouched. HQ_LIGHT_RULES.keyLamp. Off: `window.EW_FIELD_KEY_HIGH = true`.
+- Also: the fight's fluorescents and desk lamps now take the room's `shell.lampK` as the walk's do (_hqBoxRoomLamps).
+- No lights added (the 60 FPS lamp cull is untouched). Drawn locally, so host and guest alike. Worked out from the light numbers; not run in a browser.

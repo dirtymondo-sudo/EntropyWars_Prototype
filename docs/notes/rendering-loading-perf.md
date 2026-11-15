@@ -1957,6 +1957,25 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE FIGHT'S OWN LAMPS + THE KEPT KEEP THEIR OWN + THE SUN'S OWN CHUNKS (2026-11-15, the walk to battle switch in Disaster City)
+
+mondo after #1416 (fight 4.8 -> 50 FPS): "the transition from explore to battle was still terrible, takes forever and drops to 0 fps".
+His two F3s: walk "rig 12/17", fight "Lights point 72 · rig 63/69", session builds 583/360 -> 875/522.
+
+- Reproduced in the cloud browser with a STRIKE (`window._hqEncounterFire({ target: { kind: 'npc', id, race, x, z, y }, x, z, y, gesture: 'attack' })`;
+  `_hqMarkerFight('tdm')` is NOT his path: it fights the old streets board, rebuilt). Census of the fight's scene: 67 lit point
+  lights under `hq_field_lights`, distance 5 m: `_fieldGroundDress` hung one on EVERY desk_lamp / table_lamp prop of the room, and
+  the city is one room. The rig grew 12 -> 64 at the switch, so every material of the fight was built again with 64 lamps.
+- THE FIGHT'S OWN LAMPS: a desk / table lamp gets its light only inside THE BATTLE RADIUS (keepM from the board's rim), the nearest
+  first (on the board first, the middle before the rim), HQ_PROP_LIGHT_MAX at most. Off: `window.EW_FIELD_LAMPS_ALL`.
+- THE KEPT KEEP THEIR OWN (`_hqBuildRoomInBattle` take): the hand-over keeps 1,942 pieces and leaves 13,457; a piece left behind was
+  disposed on the spot (geometry + material) and the city's copies share both, so the kept pieces made their buffers, pipelines
+  and bindings again. Now only what no kept piece uses is disposed. Off: `window.EW_FIELD_DISPOSE_ALL`.
+- THE SUN'S OWN CHUNKS (the walk, his F3 "shadow: bundle replays 8.7" ms): in the sun's shadow render a chunk whose sphere is
+  outside the shadow camera's box is hidden for that render. Lens: "N left out of the sun shadow". Off: `window.EW_SHADOW_CHUNK_ALL`.
+- NOT done: the way back still rebuilds the whole city (the hand-over disposes what it leaves); a hand-back that parks the left
+  pieces would make the return instant.
+
 ## THE LAMP'S REACH ON THE NODE RENDERER (2026-11-15, the fight on Disaster City: 4.8 FPS)
 
 mondo's battle F3 (Firefox, M1, WebGPU, 3456x1812): frame 210 ms, CPU 23.7 ms, "Lights point 72 · rig 63/70". The frame was the GPU's:

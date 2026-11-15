@@ -60253,6 +60253,18 @@
            things"): the journal's REPLAY of the aftermath alone. The fight's board is up with everybody seated; the enemies
            are taken off it, the scene plays as it does after a win, and its end goes straight back to the room: no turn is
            ever dealt, nothing is finalized, committed or filed (no result, no XP, no record). */
+        /* THE OPENING SCENE ALONE (2026-11-15, the cutscene editor's PLAY, mondo: "obviously if I need a cutscene editor i need to be
+           able to play the cutscenes from it"): the run's `sceneOnly: 'scene'` plays the fight's opening scene and goes straight
+           back to the room when it ends: no turn is dealt, nothing is finalized, committed or filed. */
+        function _questSceneOnlyBack() {
+            const er = _encRun(); if (!er) return false;
+            window._ewSceneHid = null; window._ewSceneCast = null;
+            try { _questDoorDrop(); } catch (e) {}
+            window._hqEncounterRun = null; _encMatch = null;
+            window._hqEncounterResult = { won: true, sceneOnly: true, site: er.site, room: er.room, race: er.race, label: er.label || er.race, walker: er.walker || null };
+            try { backToMainMenu(); } catch (e) { console.error('[SCENE] the scene could not go back to the room', e); }
+            return true;
+        }
         function _questAfterOnly() {
             const er = _encRun(), F = er && er.quest; if (!F || !F.after) return false;
             const seat = getViewerPlayer();
@@ -60731,7 +60743,7 @@
                     setTimeout(_mdStartFreeRoam, 450);
                 } else if (_qOnly && _questAfterOnly()) {
                     /* THE SCENE REPLAY: the aftermath alone, then straight back to the room */
-                } else if (_qScene && _questScenePlay(() => encounterOpening(() => maybeAdvanceTurn()))) {
+                } else if (_qScene && _questScenePlay(() => { if (_encRun() && _encRun().sceneOnly === 'scene' && _questSceneOnlyBack()) return; encounterOpening(() => maybeAdvanceTurn()); })) {
                     /* THE CUTSCENES: the scene plays, then the hard cut to the fight's frame and the first activation */
                 } else if (_encRun() && ((_qScene && (window._ewSceneHid = null), (window._ewSceneCast = null)), _encArrivalRound(() => encounterOpening(() => maybeAdvanceTurn())))) {
                     /* THE ARRIVAL: no ROUND 1 card (a card is a cut) — the letterbox rides the crane and the HUD
