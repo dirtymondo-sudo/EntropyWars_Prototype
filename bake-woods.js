@@ -344,10 +344,8 @@ sow('woods_healflower', 34, [18, 54], 60, { h: 0.7, r0: 0.3 }); sow('fern', 20, 
 DIST('C').forEach((id, i) => { fly(id, ['butterfly', 'monarch', 'blue_morpho', 'swallowtail'][i % 4], 1.2); fly(id, ['swallowtail', 'butterfly', 'monarch', 'blue_morpho'][i % 4], 1.6); fly(id, i % 2 ? 'bee' : 'bumblebee', 0.8); life(id, i % 3 ? 'ladybug' : 'grasshopper'); });
 ['P01-03', 'P02-03', 'P01-04', 'P02-04', 'P01-05'].forEach(id => { life(id, 'rabbit'); life(id, 'woods_healflower', { h: 0.9 }); life(id, 'woods_healflower', { h: 0.75 }); });
 /* THE REDWOOD TRAIL (the Snowline keeps its bare ground) */
-sow('woods_thornvine', 16, [22, 22], 38, { h: 1.5, r0: 0.5 }); sow('woods_thornvine', 6, [7, 27], 24, { h: 1.7, r0: 0.5 }); sow('mushroom2', 16, [22, 22], 38, { h: 0.45, r0: 0.25 }); sow('mushroom2', 6, [7, 27], 24, { h: 0.5, r0: 0.25 });
-sow('ocean_rock_5', 12, [20, 20], 40, { h: 0.7 }); sow('ocean_rock_6', 10, [20, 22], 40, { h: 0.9 }); sow('fern', 40, [20, 24], 42); sow('fallen_log', 8, [20, 24], 42, { r0: 1.9 }); sow('stump', 8, [20, 24], 42);
-features.filter(f => f.k === 'tree' && f.h >= 11 && f.r >= 1 && f.x < 0 && f.z < 0).forEach(t => { for (let i = 0; i < 3; i++) { const a = rnd() * 6.2832, d = t.r + 0.9;   // thorn vine at the feet of the giants
-        const x = t.x + Math.cos(a) * d, z = t.z + Math.sin(a) * d; if (softAt(Math.floor((x + HALF) / C), Math.floor((z + HALF) / C))) props.push({ key: 'woods_thornvine', x: r2(x), z: r2(z), h: 2.3, face: Math.round(rnd() * 360) }); } });
+sow('mushroom2', 16, [22, 22], 38, { h: 0.45, r0: 0.25 }); sow('mushroom2', 6, [7, 27], 24, { h: 0.5, r0: 0.25 });
+sow('cave_stone', 14, [20, 21], 40, { r0: 0.5 });   /* seen in the probe (11-15): the ocean pack's rocks draw as black blocks here, and the thorn vine model is a toothed man-eater on a mound, wrong for this wood: it lives in Dead Man's Cave only */ sow('fern', 40, [20, 24], 42); sow('fallen_log', 8, [20, 24], 42, { r0: 1.9 }); sow('stump', 8, [20, 24], 42);
 ['P00-01', 'P00-02', 'P01-02', 'P02-01', 'P02-02', 'P01-01'].forEach((id, i) => { fly(id, i % 2 ? 'luna_moth' : 'hawk_moth', 1.5); life(id, i % 2 ? 'crow' : 'grasshopper'); });
 fly('P00-02', 'eagle', 9); fly('P02-00', 'eagle', 8); life('P02-00', 'meshy_frog'); life('P02-00', 'meshy_frog'); life('P02-01', 'meshy_frog');
 /* THE RITUAL GROUND */
