@@ -263,7 +263,7 @@ const roadFollow = (cx, cy) => {   // a carriageway square, or the pavement squa
     return false;
 };
 const npcSpots = [];   // THE PEOPLE a district stands in the city (ctx.npcSpots: { x, z, face, race, say }), written to the room's npcSpots
-dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, npcSpots, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf, ROOM, paintCell };
+dcCtx = { marks: [], PLAN, plotOf, features, props, bInfo, lateRows, npcSpots, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf, ROOM, paintCell };
 dcRun('apply');
 
 /* ── THE DOORS (mondo 11-13 14:10, the decision card: "Replace today's streets with it"): this room IS `site_prebuilt_downtown_streets` now, so every
@@ -721,9 +721,11 @@ lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRes
 const lampLine = lines.length; lines.push("");   // written after the district files' build (a district may take a lamp off a square it built on: ctx.lamps)
 lines.push("                       open: [] },");
 const paintLine = lines.length; lines.push("");   // written last of all: THE TREES STAND IN SOIL may still lay a bed
+const marksLine = lines.length; lines.push("");   // THE PAINT (2026-11-15): a district's flat marks (ctx.marks: code that returns `terrain.marks` rows, e.g. the stadium's hqGridironMarks call), written after the build
 lines.push("                features: [");
 dcCtx.lamps = lamps;
 dcRun('build');
+if (dcCtx.marks.length) lines[marksLine] = "                marks: [" + dcCtx.marks.map(c => "..." + c).join(", ") + "],";
 /* A TREE NEVER LEANS INTO A ROOM (2026-11-13, Southside: street trees seen inside the boxing gym): a tree within 2.5 m of a walk-in building's
    walls (its crown is wider than the gap and shows indoors) MOVES to the nearest free yard square that is 2.5 m clear of every walk-in wall.
    Never dropped (mondo: never delete content he did not name): with no such square within 8 squares it stays where it is. `keep: true` = never moved. */
