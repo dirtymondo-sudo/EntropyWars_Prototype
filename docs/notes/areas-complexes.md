@@ -3723,6 +3723,48 @@ districts ... the north pole to the north of the castle would be good as a rival
   still the old rooms. No anvil, market stall, archery target or lamp post exists on R2 (tents, crates and sacks stand in). The old
   Fairy Forest glade has no door of its own, so nothing links to it. Town plot names are plain descriptions.
 
+## CAMELOT CASTLE, REDESIGN 2 — one palace on a hill (2026-11-15)
+mondo on the built plan 3: "this whole section i outlined needs to be the castle, like an epic fantasy dragon quest or final fantasy or medieval
+castle. Disney world cinderella's palace. Hogwarts ... the way it is now is stupid because it like a walled off region inside a walled off region.
+the castle should be in the center of the map and relatively symmetrical. higher elevation compared to the village". His OK on the mock-up
+`docs/plans/camelot/camelot_castle_redesign_2.png` ("Approved, build it"); the east lower-court building = "Armoury".
+- **Same room** `site_prebuilt_camelot_kingdom`, same tool (`node bake-camelot.js`, `buildCastle()`). This SUPERSEDES the castle of the
+  "THE CASTLE" and "PLAN 3" sections: no inner curtain wall, no cross wall, no gatehouse, no Great Hall building, no corner towers of its own.
+  The town wall, the moat and the woods are untouched.
+- **The squares** are `docs/areas/camelot/layout.json` `castle` (kingdom squares; `Q` in `cells` = the castle's own ground, the tool stops if the
+  two disagree): hill 28-68 x 32-58, upper court 31-65 x 34-52, Keep 41-55 x 37-49, wings 33-41 / 55-63 x 39-47, Stables 29-36 and Armoury
+  60-67 x 53-57, Grand Stair 45-51 x 58-61, court stair 46-50 x 52-55, back stair 47-49 x 28-34. West and east are mirror images about square 48.
+- **THE HILL** = two `plateau` rows (lower court +3.5 m, upper court +7 m) and three `ramp` rows with `stairs: true`. NEVER `slope.cells`
+  (hqCastleTower decks go NaN on a sloped room). **A stair here must rise no more than 1 in 3**: the room's lattice is 1.75 m and the
+  solver's climb is 0.62 m a node, so 3.5 m needs three squares (a 1-in-2 stair has good heights and `hqTerrainReach` still never climbs it).
+  Each flight's head runs 0.4 m into the step it climbs. `rail` rows (`model: 'parapet'`, `y` = the step's height) close every edge but the stairs.
+- **THE PALACE**: THE KEEP (hollow texbuilding 49 x 42 m, its ground floor = THE THRONE HALL with a 14 m ceiling; drawn 28 m to the battlements,
+  blue hip roof, portal between two turrets under a great lit window, a tower on each corner) with THE GREAT SPIRE out of its roof (top 79 m over
+  the village); THE WEST WING (the Kitchen) and THE EAST WING (the Barracks), 28 x 28 m, one tower on each outer corner (the rear ones taller).
+  Eight cone towers + two door turrets + the spire: `sheet().tower()`. A tower is drawn only; what it weighs is a solid square texbuilding
+  inside its round (`solid()`), the same for the hill's six drums (four corners, two beside the Grand Stair; their flat tops are walked onto).
+- **The lower court**: THE STABLES (west, front east) and THE ARMOURY (east, front west) from one `lodge()`; THE LISTS = two tilts (a default
+  `rail` row + drawn cloth + a sand mark); the Sword in the Stone on the middle line between the two stairs; the well (east of the court stair).
+- **The ways**: door `keep` (the Great Stair) in the Throne Hall's back wall, door `postern` (Merlin's Undercroft) in the foot of the hill west
+  of the Grand Stair; hand rows moved in data.js: `haunted_camelot.b` (the wardrobe, on the upper court before the West Wing's front),
+  `well_camelot.a`. The tool prints both (`ends`).
+- **The village round it**: 43 houses (two went for the Market); THE MARKET is rows 58-61 either side of the Grand Stair; the green's animals
+  moved north of the hill; the north road ends at the back stair's foot (row 28).
+- **Where it stands**: dead centre east-west; its middle is 3 squares (10 m) north of the room's centre line (the hill's middle is square 45,
+  the Keep's 43), because the south street, the Chapel, the Inn and the Smithy stay where plan 3 put them.
+- **A prop's `y` of 1 or more is a height from the ROOM's floor**, so on the hill a hung piece carries the step's height (the chandeliers:
+  `y: T2 + 11.4`); no `mount` banners inside (drawn ones only).
+- **NOT SEEN ON SCREEN** (RULE #1c). Checked offline: data.js parses; the room compiles in node (6.4 s), no NaN in walls / bridges / arch /
+  rails; heights 0 / 3.5 / 7 where planned; `hqTerrainReach` from the portcullis reaches the Market, both courts, all four sides of the hill, the
+  well and the wardrobe (no building's inside is reached by that solver in this room, the live Inn included: the doorways are narrower than
+  its lattice; the Keep's doorway line reads clear ground and no wall). Drawings of the baked rows: `docs/plans/camelot/castle2_built_rows_front.png`
+  and `castle2_built_rows_plan.png`.
+- **THE NEXT FOUR, PLAN POSTED, WAITS MONDO'S OK (nothing built)**: `docs/plans/camelot/camelot_castle2_next_plan.png` (draw-castle2-next.py):
+  the Keep room (floors 2-3, Battlements, Spire room), Merlin's Undercroft under the whole hill, the Castle in the Sky as the palace's twin,
+  five kinds of village house. Do not build any of the four before his yes on it.
+- **Not done**: the Keep's upper floors, Merlin's Undercroft and the Castle in the Sky are still the old rooms; the village houses' richer
+  outsides; nothing but the tilt's rail stops a walk through the drawn cloth; the Throne Hall has no columns (a drawn column has no weight).
+
 ## CAMELOT KINGDOM, PLAN 3 — castle, village, wall, moat, woods (2026-11-15)
 mondo: "the village is supposed to be inside the castle walls too. so castle in the middle. village. walls surrounding all that. moat
 surrounding all that. then woods surrounding all that" · "okay that looks better" on the plan picture (project files
@@ -3785,6 +3827,10 @@ REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in
 - **THE CABIN FLOOR**: the ground rolls a few cm under the cabin and came up through the hollow building's own thin floor. The arch row now has a real board slab, 16 cm
   proud of the ground, wall to wall, and the porch boards sit at the same height. A one-square alley joins the plot's path to the porch.
 - Not seen in game (no browser run). `WOODS_DUMP=1 node bake-woods.js --dry-run` prints the square map.
+- **MONDO'S ANSWERS (2026-11-15, late)**: the full trees: "Good, keep them" (the tree work is closed; do not change the Woods' trees unasked). The cabin's purpose: "Nothing yet": it stays a
+  furnished walk-in with no game role; do not tie a rest spot, a shop, a story beat or an NPC to it until he says what it is for.
+- **THE ESTATE DOOR** (same day): the `estate` door (P01-05, south) now targets the Estate's plot room, `{ room: 'site_prebuilt_skinwalker_estate', at: 'woods' }` (was the retired
+  `site_prebuilt_skinwalker_fields` at `bay`). The door did not move, so bake-estate.js needed no rerun.
 
 ## THE DESERT ON PLOTS — the third area of the world plan, first delivery (2026-11-15)
 
@@ -3908,6 +3954,9 @@ mondo 11-15 18:17: "there should be a mountain zone with 3 main trails/peaks you
 leads to north pole village, mountains and woods separate camelot from the north pole. and another mountain trail that leads to mount olympus. And there
 should be a ski loft and ski slopes, for skateboarding." Plan OK'd 19:37 ("okay that's good"; world layout 3, /mnt/project-files/world-zones-plan/).
 
+(11-15 later: plan 2 SWAPPED Shasta and Olympus and added a third room, the Hollywood Hills; see "THE HOLLYWOOD HILLS + THE SWAP" below. Plot ids and
+columns in this section are the first delivery's.)
+
 **Tool + source:** `node bake-mountains.js [--dry-run]` writes TWO rooms into data.js between `MOUNTAINS-BEGIN` / `MOUNTAINS-END` from
 `docs/areas/mountains/layout.json` (16x8 plan, 72 plots, 12x12 squares of 3.5 m a plot). `MTN_DUMP=mtn|pole` prints the walked map.
 - `site_prebuilt_northpole_plots` (plan columns 0-3, 16 plots): the North Pole village. Walk-in Workshop (the old hearth door to the Haunted Hall is
@@ -3941,6 +3990,38 @@ Continue / map land in the new rooms); their literals stay as PvP board sources 
 - No Meshy pieces, nothing new on R2: buildings are texbuilding + arch rows, the rest catalogue props.
 - The big room compiles in ~23 s in node (Woods / Camelot ~10 s; cost is hqTerrain ramps + bridges per node). Watch the load on his Mac.
 - The world plan's Ice Wall and the Deep-to-Area-51 way are still open with him.
+
+## THE HOLLYWOOD HILLS + THE SWAP + THE NORTH BEACH — built (2026-11-15, second side)
+
+mondo 11-15: "The disaster city version of the Hollywood sign needs to be part of the mountains, not just a weenie on the edge of the map. Beach needs
+to extend to the entertainment district, cliffs at that end of the beach. Basically just include the fake weenie mountains as part of this actual mountain
+plan, and rearrange them to whatever makes sense." On plan 1: buildings "fine for now"; "why is there a gap between the hills and mt Olympus ... we might
+need to move the Vatican and mt Olympus around, it would make more sense to have mt Shasta right there"; "yes extend the beach up north, but there would
+be cliffs at the north edge which is the hills"; residents "don't worry about it yet". Plan 2 (`docs/plans/world-zones/hollywood_hills_plot_plan.png`): "build it".
+
+- **THE HILLS** = room `site_prebuilt_shasta_hills` (site `prebuilt_shasta`, part `hills`; a link end finds a room as `site_<site>_<part>`, so the id is
+  fixed by that). 13 x 3 plots (`docs/areas/mountains/layout.json` `rooms[1]`, plot ids `H00-00`..`H12-02`), written by `node bake-mountains.js`.
+  Row 0 the ridge, row 1 the letters' slope, row 2 the canyon foot; the east column is sea cliffs (`z` squares = the sea: mass sunk to `seaBed` under
+  `terrain.sea` y -0.6; rock beside it keeps its height). `MTN_DUMP=hills` prints the walked map.
+- **THE SIGN**: twelve letters DISASTER CITY on plots H06-01..H09-01, each one `arch` plane cut from the typeface (`txt:<letter>|…||anton`, `ds`), two
+  steel legs behind; no collision, you walk under them. The ridge trail (row 0) runs behind. The city still shows its own sign on its north edge land
+  (E.js `edges.sign`): that is the far view of the same hill.
+- **Walk-in buildings** (plain labels, his "fine for now"): the Observatory (H10-01), the Hill House (H04-02), the Stilt House (H09-02). Also the radio mast,
+  the water tank, the reservoir + dam (two `pool` rows on levelled ground), a car park, three lookouts with telescopes. Nobody lives there yet (his word).
+- **THE SWAP**: in the Mountains room Olympus is plan columns 10-12 and Shasta 13-15 (trail 13-14); plot ids moved with them (the Trailhead is `P13-07`,
+  the Temple `P11-00`). New join: the Goat Track walks east to Bunny Flat (`extraPorts`); the Bunny Slope meets the Sacred Way by the plan's own ports.
+- **Ways**: Mountains `hills` (the Scree, east wall) <-> Hills `shasta`; Mountains `saddle` (the Glacier) <-> Hills `ridge`; link `downtown_mountains`
+  b end = the Hills' Canyon Road (south wall, H07-02; the Lodge Yard's road to the city is gone, the Lodge is reached over the range); NEW link
+  `downtown_cove`: the city boardwalk's north end (free door x 255.5 z -247.6) <-> the Hills' Cove (south wall, H12-02).
+- **THE NORTH BEACH** (the city): `docs/disaster-city/districts/B.js` beach(): boardwalk, sea wall, sand shelf and four ramps run on north of the mole along
+  Entertainment's four rows to the city's north line (was open water under a quay wall). `bake-disaster-city.js` EDGES.n.cap is `{ coast, at e, off 0,
+  len 36 }`: the north range runs across the beach strip and falls into the bay past the sand = the cliffs at the beach's north end.
+- **Not done / to know**: NOT SEEN ON SCREEN (headless: all three rooms compile, no NaN, every plot walked, both links live, heights sampled).
+  Entertainment stands 8.75 m over the boardwalk there (a tall sea wall) and has no way down of its own: you reach the north beach along the boardwalk
+  from Bayside or from the Cove. From the Hills you do not see the city below (the south edge is plain dry land: rooms are separate). The Shasta trail's
+  door still opens at the Woods' Snowline (the Woods are not changed). The city's closed VATICAN GATE is untouched (ask mondo when the Vatican is built).
+  The Vatican's and the Beach zone's plans (`docs/plans/world-zones/`) are not redrawn: Vatican = under Olympus, one step west; Beach = 24 more plots north
+  along Entertainment, the cliffs its north edge. No encounter tables, no residents.
 
 ## THE ESTATE ON PLOTS — the fifth area of the world plan, first delivery (2026-11-15)
 
@@ -4019,3 +4100,23 @@ update that rule" (CLAUDE.md RULE #1c + owner-rules.md rewritten: browser runs w
   the corn tracks, the Circles, the Iron Gate, the house's front, both graveyards, the crypt, the barn (out and in), the farmhouse, the Hay Field, the
   Windmill, the Lake from the dock. Probe tips are in PLAYTEST_NOTES.md "THE CITY PROBE".
 
+
+
+### THE FULL TREES (2026-11-15, mondo: "im not liking how these trees have the 2d cutouts for the leaves ... use the trunks and branches from the current trees ... make better leaves ... texture them with the current tree leaves ... just try to make them natural looking"; he picked row 2 of `woods_tree_leaves_3.jpg`)
+- **What they are**: `bake-trees.py` (repo root, Blender through `pip install bpy`) takes a Retro Tree Pack tree and bakes `<name>_full.glb` beside it on R2
+  (`Assets/world/nature/retrotreepack/GLB/`). The trunk and bark are the file's own. The two crossed whole-crown cards are gone; in their place are many small
+  sheets wearing pieces of THE SAME leaf picture (same material, MASK 0.5, so three-renderer.js treats them as leaves with no code change). Leafy tree: per bough a
+  small crossed core + 18 ragged sprays turned so the picture's solid side is inward and its real leaf edge is the outline. Fir / pine: 16 tiers of bough sheets, each a
+  slice of the picture from the stem to its real outline, + the picture's middle strip crossed up the stem. About 500-600 triangles a tree (the cards were ~100).
+- **Kinds** (data.js HQ_TREE_KINDS): tree_52 full oak, tree_53 full birch, tree_54 full tall birch, tree_55 full spruce, tree_56 full pine. ASSET_MANIFEST.json lists the five files.
+- **The Woods** wears them everywhere: bake-woods.js `FULL` maps tree / tree_2 / tree_3 / tree_4 / pine to the full twins (feature trees and the thicket's `kinds`).
+  The bare trees (tree_5, dead_tree) stay. No other room changed; the old kinds still draw the cards.
+- **Rejected on the way** (his words): solid low-poly clumps "too chunky and low poly"; domed spray balls "the silhouette of the leaves isn't right, especially for the
+  winter tree". Mock-up scripts: `/mnt/project-files/world-areas-plan/woods/draw-trees-leaves.py`.
+- Not seen in game (no browser run). Cost to watch: the Woods draws about 2,000 thicket trees, so roughly a million more triangles than before (instanced).
+- **THE LEAFY ONES AGAIN (same day, mondo: "the ones that are not the winter tree still look really rough, please fix")**: the sprayed leafy crowns are gone. A leafy
+  tree is now made exactly like the fir: ten tiers of slices of its own picture from the stem to the real outline (bake-trees.py `fir(..., leafy=True)`), about 300 leaf
+  triangles. Same three file names, new bytes; ASSET_MANIFEST.json carries the new shas (the `?h=` fetch). Lesson: slices of the whole picture read natural, loose sprays do not.
+- **THE OAK AGAIN (same day, mondo: "the one on the very left looks bad, the rest are good")**: the oak's picture is wider than tall, so whole stem-to-outline slices
+  were great flat boards. bake-trees.py form `oak`: twelve tiers, more boughs a tier standing steep, each slice cut into an inner and an outer sheet with their own
+  tilt and turn, the crown pulled in to 82 % and started 10 % higher so the trunk shows. About 470 leaf triangles. The other four trees are byte-identical.

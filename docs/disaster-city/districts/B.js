@@ -1200,7 +1200,14 @@ function beach(ctx, push, ghost) {
     rect(X0 + 0.4, Z0 - 0.5, XE + 2, Z1 + 2, 0, { sink: true, edge: 0.3 });   // (2026-11-15: half a metre past Z0, so this cut and the bay's cut north of it overlap: where the two met on z = Z0 exactly neither one cut, and a rim of the city's level, 5 m high, stood the whole length of the mole's north side)
     { const lv = (ctx.lvOf && ctx.plotOf['P11-08']) ? ctx.lvOf(ctx.plotOf['P11-08']) * ctx.LEVELS.M : 0;
       if (lv > 0) lateRows.push({ k: 'ramp', x0: r3(X0 + 0.2), z0: gx(8 * N + 6), x1: r3(XB - 0.4), z1: gx(8 * N + 6), w: 7, h0: lv, h1: 0, edge: 0.2, absY: true }); }
-    rect(X0 + 0.6, -ctx.HALF - 2, XE + 2, Z0, DEEP, { sink: true, edge: 0.4 });   // (THE NATURAL EDGES, 2026-11-13: to past the field's north edge, so no rim of the city's level stands across the north end of the bay)
+    /* THE NORTH BEACH (2026-11-15, mondo: "Beach needs to extend to the entertainment district, cliffs at that end of the beach"; his OK on the
+       Hollywood Hills plan 2): the boardwalk, the sea wall and the sand run on north of the mole, along Entertainment's four plot rows, to the
+       city's north line, where the hills fall into the bay (bake-disaster-city.js EDGES.n: the range runs across the strip now). ZNN = that line
+       in this file's frame (Entertainment stands straight north of Bayside: squares cy 4N..8N here). Was: open water under a quay wall. */
+    const ZNN = gx(4 * N);
+    rect(X0 + 0.4, ZNN - 2, XB + 0.2, Z0, 0, { sink: true, edge: 0.3 });        // the boardwalk on its sea wall (the city's level 0)
+    rect(XB, ZNN - 2, XE + 2, Z0, SHELF, { sink: true, edge: 0.3 });            // the sand shelf
+    rect(XD, ZNN - 16, XE + 16, Z0, DEEP, { sink: true, edge: 12 });            // …sloping under the water like Bayside's
     rect(XB, ZN, XE + 2, ZS, SHELF, { sink: true, edge: 0.3 });
     rect(XD, ZN, XE + 16, ZS, DEEP, { sink: true, edge: 12 });   // (THE NATURAL EDGES: the 12 m bank on its east side lies past the field, so no sand bar rises along the room's east edge)
     rect(gx(161), Z0 - 0.4, XE + 2, ZN + 0.4, DEEP, { sink: true, edge: 0.4 });
@@ -1210,6 +1217,8 @@ function beach(ctx, push, ghost) {
     lateRows.push({ k: 'plateau', x: gx(160), z: gx(105), r: 6.2, h: 0, edge: 0.4, absY: true });
     /* the ramps down to the sand, off the boardwalk at each way out of the city */
     const RAMPS = [gx(8 * N + 6), gx(9 * N + 10), gx(10 * N + 10), gx(11 * N + 3.5)];   // (the fourth one square south, 2026-11-15: THE CANAL's mouth runs through the sand on squares 133-134, districts/L.js)
+    const RAMPS_N = [4, 5, 6, 7].map(r => gx(r * N + 6));   // THE NORTH BEACH: a ramp down to the sand at each plot row
+    RAMPS_N.forEach(z => lateRows.push({ k: 'ramp', x0: XB - 0.2, z0: r3(z), x1: r3(XB + 7), z1: r3(z), w: 3.5, h0: 0, h1: SHELF, edge: 0.2, absY: true }));
     RAMPS.forEach(z => lateRows.push({ k: 'ramp', x0: XB - 0.2, z0: r3(z), x1: r3(XB + 7), z1: r3(z), w: 3.5, h0: 0, h1: SHELF, edge: 0.2, absY: true }));
     /* the pier (the mall's axis: rows 5-6 of the row-10 plots), its head, the bait hut's bit of deck */
     const ZP = gx(10 * N + 6), XH0 = gx(157), XH1 = gx(163);
@@ -1223,6 +1232,13 @@ function beach(ctx, push, ghost) {
         const deck = cx < 146 || (cy >= 136 && cx < 158);
         paintCell(cx, cy, mole && cx >= 146 ? 'urban:ConcreteStriped2a' : deck ? 'wood_planks' : 'desert');
     }
+    for (let cy = 4 * N; cy < 8 * N; cy++) for (let cx = 144; cx < 144 + EAST; cx++) paintCell(cx, cy, cx < 146 ? 'wood_planks' : 'desert');   // THE NORTH BEACH: planks and sand
+    { let z = ZNN; RAMPS_N.map(q => [q - 2, q + 2]).concat([[Z0, Z0]]).forEach(g => { if (g[0] - z > 1) lateRows.push({ k: 'rail', x0: r3(XB - 0.25), z0: r3(z), x1: r3(XB - 0.25), z1: r3(g[0]), model: 'spear' }); z = Math.max(z, g[1]); }); }
+    for (let cy = 4 * N + 2; cy < 8 * N; cy += 3) props.push({ key: 'palm_tree', x: r3(X0 + 0.9), z: gx(cy) });
+    for (let cy = 4 * N + 4; cy < 8 * N - 3; cy += 9) props.push({ key: 'city_bench', x: r3(XB - 1.0), z: gc(cy), face: 90 });
+    [[147, 52], [149, 58], [147, 66], [149, 73], [147, 81], [149, 88]].forEach(c => props.push({ key: 'pool_umbrella', x: gc(c[0]), z: gc(c[1]) }, { key: 'pool_lounger', x: gc(c[0] + 1), z: gc(c[1]), face: 90 }));
+    props.push({ key: 'lifeguard_chair', x: gc(150), z: gc(6 * N + 2), face: 90 }, { key: 'rowboat', x: gc(150), z: gc(4 * N + 3), face: 80 }, { key: 'signpost', x: gc(144), z: gc(4 * N + 2), face: 0 });
+    for (let i = 0; i < 6; i++) props.push({ key: 'sea_buoy', x: gx(156), z: gx(4 * N + 4 + i * 7.5) });
     /* the promenade's rail along the sea wall, open at the ramps, the pier and the mole */
     const gaps = RAMPS.map(z => [z - 2, z + 2]).concat([[ZP - 3.7, ZP + 3.7], [Z0, ZN + 0.2], [ZS, Z1]]);
     { let z = Z0; const cuts = gaps.slice().sort((a, b) => a[0] - b[0]); cuts.push([Z1, Z1]);

@@ -82,7 +82,7 @@ door('forest', 'P02-05', 's', { way: 'hollowtree', label: 'THE FAIRY FOREST', su
     desc: 'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.' });
 /* the trail west to Camelot is the LINK `woods_camelot` (data.js DOOR_HQ.links, a two-way door at w, z 3.5); the HQ Stair is the LINK `woods_stair`: only the path is cut here */
 { const z = spur('P00-03', 'w'); if (z !== 3.5) throw new Error('the Camelot trail moved to z ' + z + ': move the woods_camelot link end in data.js too'); }
-door('estate', 'P01-05', 's', { way: 'trail', label: 'THE ESTATE · THE CORN FIELDS', sub: 'THE FENCE LINE · THE GATE', action: { room: 'site_prebuilt_skinwalker_fields', at: 'bay' },
+door('estate', 'P01-05', 's', { way: 'trail', label: 'THE ESTATE · THE CORN FIELDS', sub: 'THE FENCE LINE · THE GATE', action: { room: 'site_prebuilt_skinwalker_estate', at: 'woods' },
     desc: 'A fence, and a gate in it. The corn starts on the other side.' });
 /* the storm drain's three ways are LINKS now, two-way (data.js DOOR_HQ.links; the tool writes their Woods ends at the end of the bake): `streets_drain`
    (Disaster City's gutter) on the Storm Drain plot, `sewers_drain` (the city sewers) on the Outfall, `woods_sewer` (the HQ tunnel) on the Tunnel Way */
@@ -176,7 +176,10 @@ function near(id, dx, dy) {   // the free, untaken clearing square nearest the p
     const q = f.sort((a, b) => Math.hypot(a[0] - c[0] - dx, a[1] - c[1] - dy) - Math.hypot(b[0] - c[0] - dx, b[1] - c[1] - dy))[0]; taken.add(q[0] + ':' + q[1]); return q; }
 function put(id, key, dx, dy, o) { const q = near(id, dx || 0, dy || 0); props.push(Object.assign({ key, x: gc(q[0]), z: gc(q[1]) }, o || {})); return q; }
 function dec(id, key, dx, dy, o) { const q = near(id, dx || 0, dy || 0); props.push(Object.assign({ key, x: r2(gc(q[0]) + (rnd() - 0.5) * 1.6), z: r2(gc(q[1]) + (rnd() - 0.5) * 1.6), face: Math.round(rnd() * 360) }, o || {})); return q; }
-function tree(id, kind, h, dx, dy, r) { const q = near(id, dx || 0, dy || 0); features.push({ k: 'tree', x: gc(q[0]), z: gc(q[1]), kind, h, r: r || 0.8 }); return q; }
+/* THE FULL TREES (2026-11-15, mondo): every leafy tree of the Woods is the pack's tree with a real crown (bake-trees.py, data.js HQ_TREE_KINDS
+   tree_52 … tree_56), never the two crossed cards. FULL maps the old kind to its full twin; the bare trees stay as they are. */
+const FULL = { tree: 'tree_53', tree_2: 'tree_55', tree_3: 'tree_52', tree_4: 'tree_54', pine: 'tree_56' }, full = k => FULL[k] || k;
+function tree(id, kind, h, dx, dy, r) { const q = near(id, dx || 0, dy || 0); features.push({ k: 'tree', x: gc(q[0]), z: gc(q[1]), kind: full(kind), h, r: r || 0.8 }); return q; }
 function native(id, race, dx, dy, face) { const q = near(id, dx || 0, dy || 0); npc.push({ x: gc(q[0]), z: gc(q[1]), face: face || 0, race }); }
 /* THE CLEARING */
 tree('P01-03', 'tree_4', 9.5, 0, 0, 1.0); tree('P01-03', 'tree_4', 8.0, 1, 1, 0.85); tree('P01-03', 'tree_4', 7.5, -1, 1, 0.8);              // THE OLD TREE (the district's landmark)
@@ -228,7 +231,7 @@ native('P04-05', 'swamp monster', -1, 1, 60); native('P04-05', 'mothman', 1, -1,
   for (let cy = 1; cy < W - 1; cy++) for (let cx = 1; cx < W - 1; cx++) { if (cell[cy][cx] !== 't') continue; const p = P(Math.floor(cx / N), Math.floor(cy / N)), wd = want[p.district];
       let deep = true; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (cell[cy + dy][cx + dx] !== 't') deep = false;
       if (!deep || rnd() > wd[2]) continue; const mountain = p.level >= 6;
-      features.push({ k: 'tree', x: r2(gc(cx) + (rnd() - 0.5) * 1.4), z: r2(gc(cy) + (rnd() - 0.5) * 1.4), kind: mountain ? 'pine' : wd[0], h: r2((mountain ? 7 : wd[1]) * (0.8 + rnd() * 0.4)), r: 0.7 }); count.bigTrees = (count.bigTrees || 0) + 1; } }
+      features.push({ k: 'tree', x: r2(gc(cx) + (rnd() - 0.5) * 1.4), z: r2(gc(cy) + (rnd() - 0.5) * 1.4), kind: full(mountain ? 'pine' : wd[0]), h: r2((mountain ? 7 : wd[1]) * (0.8 + rnd() * 0.4)), r: 0.7 }); count.bigTrees = (count.bigTrees || 0) + 1; } }
 features.push({ k: 'scatter', key: 'fern', n: 140, seed: 5 }, { k: 'scatter', key: 'stump', n: 18, seed: 6 }, { k: 'scatter', key: 'fallen_log', n: 10, seed: 7, r0: 1.9 });
 
 /* ── THE HORROR PASS (2026-11-15, mondo: "What can we do to give more of a horror element to the woods" + "yes you can do the yellow and pink too"):
@@ -350,7 +353,7 @@ L.push("                res: 0.875, floor: 'grass_2', cliff: 'rock_wall_1', path
 L.push("                noise: { amp: 0.12, scale: 8 },");
 L.push("                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gx(0) + ", nx: " + W + ", nz: " + W + ", d: '" + slope.toString('base64') + "' } },");
 L.push("                paint: { pal: " + J(PAL) + ", t: 'u8', res: " + C + ", x0: " + gc(0) + ", z0: " + gc(0) + ", nx: " + W + ", nz: " + W + ", d: '" + Buffer.from(paint).toString('base64') + "' },");
-L.push("                gen: { kind: 'plan', look: 'trees', seed: 36, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: 2400, treeH: [5.5, 8.5], kinds: ['tree', 'tree_2', 'tree_3', 'tree', 'tree_5', 'tree_2'] },");
+L.push("                gen: { kind: 'plan', look: 'trees', seed: 36, rim: 0, forceGrow: 0, treeGap: 2.6, treeIn: 0.9, spacing: 3.5, depth: 5.25, maxTrees: 2400, treeH: [5.5, 8.5], kinds: ['tree_53', 'tree_55', 'tree_52', 'tree_53', 'tree_5', 'tree_55'] },");
 L.push("                features: [");
 features.forEach(f => L.push("                    " + J(f) + ","));
 L.push("                ],");
