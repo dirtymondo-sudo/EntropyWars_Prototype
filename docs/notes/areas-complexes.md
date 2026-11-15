@@ -3723,6 +3723,39 @@ districts ... the north pole to the north of the castle would be good as a rival
   still the old rooms. No anvil, market stall, archery target or lamp post exists on R2 (tents, crates and sacks stand in). The old
   Fairy Forest glade has no door of its own, so nothing links to it. Town plot names are plain descriptions.
 
+## CAMELOT KINGDOM, PLAN 3 — castle, village, wall, moat, woods (2026-11-15)
+mondo: "the village is supposed to be inside the castle walls too. so castle in the middle. village. walls surrounding all that. moat
+surrounding all that. then woods surrounding all that" · "okay that looks better" on the plan picture (project files
+camelot-kingdom/plan3/camelot_plot_plan_3.png; draw-plan3.py there writes the picture AND `docs/areas/camelot/layout.json`).
+- **Same room id** `site_prebuilt_camelot_kingdom` (Continue, the map, `DOOR_HQ.retired` all still land in it), still 8 x 8 plots, rewritten
+  by `node bake-camelot.js`. This SUPERSEDES the "KINGDOM ROOM" section below wherever they differ.
+- **From the middle out** (kingdom squares 0..96): THE CASTLE = `buildCastle(0, true)` at squares (24, 30): the same build with `TOWN` set
+  (no moat of its own, no bridges, nothing on its old south bank; the Undercroft's door stands at the foot of its south wall, the wardrobe
+  against the stables' north wall). THE VILLAGE: a street loop (x 22-23 / 72-73, y 26-27 / 62-63), the Market at the castle gate, Chapel,
+  Inn, Smithy (walked into), 45 houses (their doors face the nearest street: `frontOf` looks three squares out). THE TOWN WALL on
+  x 18.5 / 77.5, y 21.5 / 73.5: `townSide()` = hqCurtainWall runs split at every drum + a deck, front, ridge roof and two cones a gate;
+  four hollow corner towers (the castle's own door / join tables); four gates (south 42-44, north 47-49, east and west y 47-49).
+  THE MOAT: two `stream` rows on the ring x 15.5 / 80.5, y 18.5 / 76.5, a bridge at each gate (`drawbridge` south). THE WOODS:
+  north the snowy pines + the sleigh road (the north wall, x 0), east the Fairy Forest (pond, ring, spring, knolls; the Woods trail on
+  the east wall, z 0), west the Looking-Glass Garden (hedges, chessboard, marble court, mirror, tea party), south the forest and the
+  road from DOOR HQ (the portcullis on the south wall, x -17.5). A track runs round the moat's outer bank.
+- **The North Pole is OUT of this room** (the world-layout thread moves it over the mountains; mondo 18:17 "mountains and woods separate
+  camelot from the north pole"): no pole, workshop, cottages or lake here. `northpole_camelot` still ends on the north wall and goes to
+  `site_prebuilt_northpole_village`, untouched.
+- **The town wall is 7 m like the castle's**: at 5.25 m the corner towers' decks left no headroom over their own spiral.
+- **No `slope` any more** (the room is flat). The old room's slope made every hollow tower's deck `y` NaN (an arc bridge on a sloped
+  room): mondo's crash trail showed "computeBoundingSphere(): Computed radius is NaN" on entering the kingdom. Do not put `slope.cells`
+  back on a room with hqCastleTower rows without fixing that first.
+- **The dressing is by square** (`put` / `dec` / `tree` / `native` (key, x, y)): the tool stops and lists every piece that stands on a
+  square that is not free ground or is taken twice.
+- **Known**: the four moat bridges print the same "leaves under 1.95 m of headroom" line the old drawbridge did (the bank under a bridge;
+  nothing walks there). Compile in node 11.6 s (was 8 s). Hand rows moved in data.js: `siteRooms.entry.prebuilt_camelot` (x -17.5), links
+  `woods_camelot.b` (z 0), `northpole_camelot.b` (x 0), `haunted_camelot.b`, `well_camelot.a`, the map anchor row.
+- **NOT SEEN ON SCREEN** (RULE #1c). Checked offline: data.js parses, the room compiles, no NaN in any compiled row or arch mesh, every
+  link end resolves, every plot is walked to from the portcullis, a top-down drawing of the compiled rows
+  (camelot-kingdom/plan3/kingdom_plan3_built_rows_topdown.png) matches the plan.
+- **Still old rooms**: the Keep's upper floors, Merlin's Undercroft, the Castle in the Sky.
+
 ### THE ROOFS' UNDERSIDES (2026-11-15)
 mondo: "There are gaps in the village buildings roofs." An `arch` roof part is drawn from outside only and had no underside, so from the
 street you looked up past the eaves, through the roof, at the sky. bake-camelot.js `sheet().roof` now writes one timber sheet facing down
