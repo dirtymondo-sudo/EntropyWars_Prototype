@@ -2510,3 +2510,16 @@ cut at 240 chars (its patch is harmless and stays).
 - MEMORY, same trail (Camelot Keep 895 of 700 MB, 607 MB idle, "nothing idle long enough"): `_mmTick` over the budget at all waits
   30 s idle (was 120); `_mmLeaveSweep` goes down to 50 % of the budget (was 85 %), the next room loads on top of what is kept.
 - NOT TOUCHED: `computeBoundingSphere(): Computed radius is NaN` entering site_prebuilt_camelot_kingdom (the Camelot plot build).
+
+## THE NATURAL ROCK — cliffs and far mountains without the repeat (2026-11-15)
+mondo on the Hollywood Hills pictures: "the sides/cliffs texture looks too repeated, it needs to look more natural". Seen on screen after
+(playtest_city.js, the Hills' cove + canyon, the Mountains' lodge + scree).
+- CAUSE: the rock sheet (`rocks_5` = calm_rock) is one even pattern of cracks at one size. A steep face already read it without a repeat (ntRead),
+  but it was still a wall of same-size cells; rock PAINTED on a gentler slope (terrain.paint) was the plain sheet, a tile a square; the land past the
+  edge (_hqBuildEdgeLand) repeated one small sheet up a whole range.
+- three-renderer.js `_hqTerrainMat`: a natural cliff sheet (the calm table's `noTile` list) is mixed 42 % with itself read 3.4 x larger and its tone
+  drifts over the land (`natDrift`, two noises of about 40 m and 8 m); a painted natural sheet is read with ntRead and takes the same drift
+  (`palNt`, per palette sheet; a paved / urban sheet is untouched). The node renderer's twin reads `palNt` / `natC` off the terrain tag.
+- `_hqBuildEdgeLand` matFor: the far land's sheets drift in tone; rock and sea cliff are also mixed with themselves read 3.7 x larger (WebGL only:
+  an onBeforeCompile on the Lambert material; the node renderer keeps the plain sheet).
+- Every terrain room gets it (not only the Hills). Cost: up to three more plain reads on a cliff pixel. Kill switch `window.EW_NO_NATURAL_ROCK`.
