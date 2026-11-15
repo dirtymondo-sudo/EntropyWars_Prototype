@@ -3671,6 +3671,7 @@ woods in between them" · 16:53 "okay" on plan 2.
   - NOT DONE: no meat hooks or hung lanterns (ceiling pieces, nothing to hang them from outdoors); no new lights (the level's lamp cap) and the
     day look is unchanged, so the dark comes from the night clock only; faces of the cabin / bus / board are unchecked. NOT SEEN ON SCREEN.
 >>>>>>> origin/main
+<<<<<<< HEAD
 - **THE CABIN, WALK-IN (2026-11-15, mondo: "would rather you architect a wooden cabin like the building's in disaster city so i can actually walk
   inside of it and it be useful to the game")**: the Meshy `woods_cabin` prop left the Gully (the model stays in the catalogue for the editor). In its
   place bake-woods.js builds the city's way: a hollow `texbuilding` `woods:cabin` (skin off, `leaf_shabby_wood` swinging in the doorway, wood walls +
@@ -3679,3 +3680,11 @@ woods in between them" · 16:53 "okay" on plan 2.
   3 x 2 squares (10.5 x 7 m) at the Gully's east pocket, front WEST to the path (rot 90). Inside: cot, sea chest, rocking chair, radio, rug, cauldron
   in the hearth, skull + candle + tape on the table, saw, sack, bucket, bear trap, cobwebs. Checked offline: the doorway's gap in the front wall
   (z 105.0-106.7 at x 31.65), ground walkable from the path to the inside. Nothing happens in it yet (no quest, find or fight is tied to it). NOT SEEN ON SCREEN.
+=======
+
+## DISASTER CITY, FINANCIAL'S BOX LETTERS ARE DRAWN SIGNS NOW (2026-11-15, mondo "the blocky 3d letters should become normal lettering")
+- docs/disaster-city/districts/F-detail.js `letters()` no longer builds 5 x 7 box glyphs: each word is ONE `txt:` quad (letters only, `kind:'over'`), same spot,
+  height and colour (gold key -> gilt `#e0c070`); a blade sign (`o.down`, the HOTEL blade) is one quad a letter with the face set in the key. Fewer triangles.
+- sign-fonts.js Financial rows: ARCHIVE / VAULT / ARCADE = Marcellus SC, TAXI / GARAGE = Oswald, the rest Playfair Display.
+- Not seen in the running game (no playtest asked); checked by the bake's sign list only.
+>>>>>>> origin/main

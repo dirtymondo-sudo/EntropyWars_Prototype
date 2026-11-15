@@ -40,11 +40,15 @@ module.exports = function (K) {
         }
     };
     /* `text` centred on x, its foot at y, on the plane z (facing +z), `h` tall; `o.down` = the letters stacked downward (a blade sign) */
+    /* 2026-11-15 (mondo: "the blocky 3d letters should become normal lettering"): the words are ONE drawn sign quad each now (`txt:` key, letters only,
+       the sign-font pass picks the face), same place, same height, same colour. The box glyphs above stay for reference; nothing calls them. */
+    const HEX = n => '#' + ('000000' + (n >>> 0).toString(16)).slice(-6);
     const letters = (P, text, x, y, z, h, key, tint, o) => {
         o = o || {}; const px = h / 7, dep = o.depth || 0.12, chars = String(text).split('').map(c => FONT[c] || FONT[' ']);
-        if (o.down) { chars.forEach((g, i) => glyph(P, g, x - g[0].length * px / 2, y - i * (h + px * 1.6), z, px, dep, key, tint, o)); return; }
-        const wide = chars.reduce((a, g) => a + (g[0].length + 1) * px, -px); let cx = x - wide / 2;
-        chars.forEach(g => { glyph(P, g, cx, y, z, px, dep, key, tint, o); cx += (g[0].length + 1) * px; });
+        const fg = key === 'gold' ? '#e0c070' : HEX(tint), extra = Object.assign({ uv: 'fit', kind: 'over' }, o.glow ? { glow: o.glow } : o.gain ? { gain: o.gain } : {}), zf = z + dep + 0.01;
+        if (o.down) { String(text).split('').forEach((c, i) => { if (c !== ' ') P.push(quad(x, y - i * (h + px * 1.6), zf, h * 0.9, h, 0, 'txt:' + c + '|' + fg + '||0.9||playfair', WHITE, extra)); }); return; }
+        const wide = chars.reduce((a, g) => a + (g[0].length + 1) * px, -px), hh = h * 1.12;
+        P.push(quad(x, y - h * 0.06, zf, wide, hh, 0, 'txt:' + text + '|' + fg + '||' + (Math.round(wide / hh * 100) / 100), WHITE, extra));
     };
 
     /* ── a face of a body w × d centred on (cx, cz): 'f' +z, 'b' -z, 'r' +x, 'l' -x; `a` = along the face ── */
