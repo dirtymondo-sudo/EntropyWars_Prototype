@@ -188,10 +188,14 @@
             };
             try {
                 var P0 = prev ? JSON.parse(prev) : null;
-                if (P0 && (!P0.clean || P0.frozen)) {
-                    hist.push(P0); while (hist.length > 3) hist.shift();
+                /* ALWAYS printed (mondo 11-15: his hall crash left the page alive, so the reload was a clean pagehide and the
+                   block never showed): the last session's trail is the first console line of every load; every session is kept
+                   (the last 4), so one extra reload no longer loses the crash */
+                if (P0) {
+                    hist.push(P0); while (hist.length > 4) hist.shift();
                     try { localStorage.setItem(HKEY, JSON.stringify(hist)); } catch (e) {}
-                    console.warn('[CRASH TRAIL] the session before this one did not end cleanly. Paste this block to Claude:\n  ' + diag.trailLines(P0).join('\n  '));
+                    var bad = !P0.clean || P0.frozen;
+                    console.warn('[CRASH TRAIL] the session before this one' + (bad ? ' did NOT end cleanly' : ' (the page was still alive when it was closed or reloaded)') + '. Paste this block to Claude:\n  ' + diag.trailLines(P0).join('\n  '));
                 }
             } catch (e) {}
             try { if (localStorage.getItem('ew_no_freeze_trail') === '1') return; } catch (e) { return; }
@@ -240,19 +244,16 @@
                     return s;
                 } catch (e) { return 'unreadable (' + (e && e.message) + ')'; }
             }
-            /* the building's own lines ([HQ] entered / left / landed, the lab sweep): where the session was, in its log */
-            (function () {
-                var o = console.log;
-                console.log = function () {
-                    try {
-                        var a = arguments[0];
-                        if (typeof a === 'string' && (a.indexOf('[HQ]') === 0 || a.indexOf('[MENU]') === 0 || a.indexOf('THE LAB SWEEP') > 0)) {
-                            push(T.logs, stamp() + ' log ' + Array.prototype.map.call(arguments, function (v) { return String(v); }).join(' ').slice(0, 200), 30);
-                        }
-                    } catch (x) {}
-                    return o.apply(console, arguments);
-                };
-            })();
+            /* the building's own lines are NOT wrapped (a console.log wrapper made every line in the console point at this page
+               instead of its own file, mondo's paste 11-15): the room comes from where(), read on every third save, and a room
+               change is noted in the log here */
+            var lastRoom = null;
+            function roomNote() {
+                try {
+                    var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, rm = (TR && TR.hq && TR.hq.room) ? TR.hq.room() : null;
+                    if (rm !== lastRoom) { lastRoom = rm; push(T.logs, stamp() + ' room ' + (rm || 'left the building'), 30); }
+                } catch (x) {}
+            }
             function save() { try { T.saved = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(T)); } catch (e) {} }
             window.addEventListener('pagehide', function () { T.clean = true; save(); });
             window.addEventListener('pageshow', function (e) { if (e && e.persisted) { T.clean = false; save(); } });
@@ -290,6 +291,7 @@
                     var ago = lastFrame ? Math.round(performance.now() - lastFrame) : 0;
                     T.lastFrameAgo = lastFrame ? ago + 'ms' : '?';
                     if (!document.hidden && ago > 5000) T.frozen = Math.max(T.frozen || 0, ago);
+                    roomNote();
                     if (!(saves++ % 3)) T.where = where();
                     localStorage.setItem(KEY, JSON.stringify(T));
                 } catch (e) {}
@@ -325,7 +327,7 @@
             } catch (e) { lines.push('PREVIOUS SESSION: unreadable (' + e.message + ')'); }
             try {
                 var HH = diag.trailHist || [];
-                for (var hi = HH.length - 1; hi >= 0; hi--) { lines.push(''); lines.push('UNCLEAN SESSION ' + (HH.length - hi) + ' of ' + HH.length + ' (newest first):'); lines = lines.concat(diag.trailLines(HH[hi]).map(function (x) { return '  ' + x; })); }
+                for (var hi = HH.length - 1; hi >= 0; hi--) { lines.push(''); lines.push('EARLIER SESSION ' + (HH.length - hi) + ' of ' + HH.length + ' (newest first):'); lines = lines.concat(diag.trailLines(HH[hi]).map(function (x) { return '  ' + x; })); }
             } catch (e) {}
             var report = lines.join('\n');
             var old = document.getElementById('ew-diag-overlay');
