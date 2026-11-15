@@ -79106,7 +79106,7 @@ const ThreeRenderer = (function () {
                 grp.add(pg);
                 if (cat.glow) { var pgl = _hzGlowSprite(cat.glow.size * U, cat.glow.color, 0.5, 0.05, 0.03, 0.4); pgl.position.y = cat.glow.y * U; grp.add(pgl); if (cat.light && cat.light.night) { pgl._ew_glowC = pgl.material.color.clone(); _hq.clockLamps.push(pgl); } }   // THE WORLD CLOCK: a night lamp's head dims by day
                 /* Phase 8 (2026-09-14): a proc may carry a POINT LIGHT (catalogue `light`: colour / intensity / dist / y) — the torches, the bulbs, the orb; capped at HQ_PROP_LIGHT_MAX per room */
-                if (cat.light && _hq.propLights < HQ_PROP_LIGHT_MAX && (!litRows || litRows.has(p))) {   // THE CEILING LAMPS FIRST
+                if (cat.light && !p.noLight && _hq.propLights < HQ_PROP_LIGHT_MAX && (!litRows || litRows.has(p))) {   // THE CEILING LAMPS FIRST
                     var ppl = new THREE.PointLight(cat.light.color != null ? cat.light.color : 0xffd9a0, (cat.light.intensity != null ? cat.light.intensity : 0.6) * _hqLampK(room), (cat.light.dist || 6) * U, 2);   // THE ROOM'S OWN LAMPS (shell.lampK)
                     ppl.position.y = (cat.light.y || 0) * U; grp.add(ppl); _hq.propLights++;
                     if (cat.light.night) { ppl._ew_lampI = ppl.intensity; _hq.clockLamps.push(ppl); }   // THE WORLD CLOCK (Phase 3): on at dusk, off at dawn
@@ -79121,7 +79121,7 @@ const ThreeRenderer = (function () {
                 _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` / `ramp`
                 /* the blocker's base is the prop's own `y` (Phase 8 stage 2: a stair step stacked by `y` is a column from its base, so the floor under a raised landing stays a floor) */
                 var pblk = null;
-                if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { pblk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(pblk); }   // `rect` (2026-09-14): a rectangular footprint in room axes
+                if (!flip && cat.foot > 0 && !kick && !p.noBlock && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { pblk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(pblk); }   // `rect` (2026-09-14): a rectangular footprint in room axes
                 if (_hqMcWants(p, cat, pblk, onWall, onCeil, flip, kick, tabletop, mount)) _mcFor(grp, pg, pblk, { H: _hq, y: y, need: !pblk });   // THE REAL COLLISION: the proc's own meshes
                 try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
                 return;
@@ -79136,7 +79136,7 @@ const ThreeRenderer = (function () {
                low enough, and its side is solid in the air (no more jumping
                into a cabinet and walking out through the wall of props) */
             var blk = null;
-            if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(blk); }
+            if (!flip && cat.foot > 0 && !kick && !p.noBlock && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(blk); }
             /* THE OCEAN PACK (2026-10-27): the row's clip (`anim`) and its swim (`swim`: { r, v, bob } metres — the row's own beats the
                catalogue's, `swim: false` holds it still); the catalogue `turn` doubles as the nose for the swim's heading */
             var swimM = (p.swim === false) ? null : (p.swim || cat.swim || null);
@@ -93399,6 +93399,23 @@ const ThreeRenderer = (function () {
         }
         if (k >= 1) { H.pd = null; H.pdCur = null; if (M.done) { try { M.done(true); } catch (err) { console.warn('[PD] the move\'s end threw', err); } } }
     }
+    /* THE LEVER's PULL (pd.pull(counterId)): the lever prop of that counter (row.pd.lever) throws its arm (the file's node
+       `pd_lever_arm`, hinged on the hub: it swings about the file's z) to the other end of its quadrant, ~0.4 s */
+    function _hqPdPull(cid) {
+        var H = _hq, hit = null; if (!H) return false;
+        (H.props || []).forEach(function (p) { if (p.row && p.row.pd && p.row.pd.lever === cid) hit = p; });
+        if (!hit) return false;
+        var arm = null; hit.grp.traverse(function (o) { if (!arm && o.name === 'pd_lever_arm') arm = o; });
+        if (!arm) return false;
+        var from = arm.rotation.z, to = (hit._pdThrown = !hit._pdThrown) ? -0.84 : 0, t0 = performance.now(), ms = 420;
+        var step = function () {
+            var k = Math.min(1, (performance.now() - t0) / ms), e = k < 0.8 ? (k / 0.8) * (k / 0.8) * 1.06 : 1.06 - 0.06 * (k - 0.8) / 0.2;   // a throw: it speeds up, strikes the stop, settles
+            arm.rotation.z = from + (to - from) * e; arm.updateMatrixWorld(true);
+            if (k < 1 && hit.grp.parent) requestAnimationFrame(step);
+        };
+        step();
+        return true;
+    }
     /* the board changed (map.js wrote it with pdSync): the stage re-reads its neighbours, their poses and the joined spans */
     function _hqPdRefresh() {
         var H = _hq, st = H && H.stage; if (!st) return false;
@@ -94207,7 +94224,7 @@ const ThreeRenderer = (function () {
         room: function () { return _hq ? (_hq.opts.room || 'central_egress') : null; },
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): { id, nbs, parts: { id: { built, step, attached, rel } }, crossed, lampN, skyYaw, blending } | null */
         stage: _hqStageStatus,
-        pd: { move: _hqPdMove, refresh: _hqPdRefresh, at: _hqPdAt, top: _hqPdTop, busy: function () { return !!(_hq && _hq.pd); }, wide: function () { return !!(_hq && _hq.pdWide); },
+        pd: { move: _hqPdMove, pull: _hqPdPull, levers: function () { var r = []; ((_hq && _hq.props) || []).forEach(function (p) { if (p.row && p.row.pd && p.row.pd.lever) p.grp.traverse(function (o) { if (o.name === 'pd_lever_arm') r.push([p.row.pd.lever, +o.rotation.z.toFixed(2)]); }); }); return r; }, refresh: _hqPdRefresh, at: _hqPdAt, top: _hqPdTop, busy: function () { return !!(_hq && _hq.pd); }, wide: function () { return !!(_hq && _hq.pdWide); },
               objs: function () { return (_hq && _hq.pdDrawn || []).map(function (o) { return { id: o.row.id, on: o.grp.visible, off: !!o.grp._ew_pdOff, lit: o.lit, solid: !!o.blk }; }); } },   // THE PLOT DUNGEONS
         batch: function () { return _hqBatchStats(_hq); },   // THE STATIC BATCH (Phase 11): per part { phase, batches, pieces, verts, broken, scanned }
         /* THE FAR SHELLS / THE LOD LEVELS (OPEN_WORLD_PLAN Phase 10): { parts, built, shown, tris, far (m), waiting: [ids] } and

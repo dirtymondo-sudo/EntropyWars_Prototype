@@ -2616,7 +2616,7 @@
         function _pdAct(C) {
             if (!_pd) return false;
             const id = _pd.id, S = pdState(id), A = C.pdAct || {};
-            try { if (ThreeRenderer.hq.pd.busy()) return false; } catch (e) { return false; }
+            try { if (ThreeRenderer.hq.pd.busy() || _pd.pulling) return false; } catch (e) { return false; }
             const R = pdDoAct(id, S, A);
             let say = R.say;
             /* THE FIGHT, for now a stand-in: the enemies are listed, the fight is counted as won (the real field fight is the next step) */
@@ -2628,7 +2628,13 @@
             if (!R.ok) { try { playSfx('uiButtonCancel'); } catch (e) {} return false; }
             try { playSfx('uiButtonClick'); } catch (e) {}
             const was = S.solved;
-            if (R.move) return _pdGo(R.S, R.move.t === 'turn' ? { by: { [R.move.plot]: R.move.by } } : {});
+            if (R.move) {
+                /* the arm is thrown first (you see your own pull), then the eye rises and the plot moves */
+                let thrown = false; try { thrown = !!ThreeRenderer.hq.pd.pull(C.id); } catch (e) {}
+                const go = () => { _pd && (_pd.pulling = false); if (_pd && _pd.id === id) _pdGo(R.S, R.move.t === 'turn' ? { by: { [R.move.plot]: R.move.by } } : {}); };
+                if (!thrown) { go(); return true; }
+                _pd.pulling = true; setTimeout(go, 460); return true;
+            }
             return _pdGo(R.S, { undo: false, quiet: true, then: () => { if (!was && pdState(id).solved) _pdSolvedSay(); } });
         }
         function _pdSolvedSay() {

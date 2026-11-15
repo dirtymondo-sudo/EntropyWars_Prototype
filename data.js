@@ -29824,6 +29824,7 @@ const DOOR_HQ = {
         aircraft_tug:             { file: 'world/props/meshy/aircraft_tug.glb',      base: 'asset', span: 3.0, foot: 0, palette: true, group: 'Meshy props' },   // a low yellow tow tractor, long along x
         maintenance_stairs:       { file: 'world/props/meshy/maintenance_stairs.glb', base: 'asset', h: 3.0, foot: 0, palette: true, group: 'Meshy props' },   // yellow wheeled platform steps, climbing along x
         rocket_engine:            { file: 'world/props/meshy/rocket_engine.glb',     base: 'asset', h: 3.0, foot: 0, palette: true, group: 'Meshy props' },   // a bell-nozzle rocket engine upright in a test frame
+        pd_lever:                 { file: 'world/props/meshy/pd_lever.glb',           base: 'asset', h: 1.6, foot: 0, palette: true, group: 'Meshy props' },   // THE PLOT DUNGEONS' lever: ONE floor lever (an iron pedestal, a notched quadrant, a red-gripped arm: the node `pd_lever_arm` swings about z)
         signal_lever_frame:       { file: 'world/props/meshy/signal_lever_frame.glb', base: 'asset', span: 3.0, foot: 0, palette: true, group: 'Meshy props' },   // twelve coloured signal levers in a floor frame, long along x
         railway_lantern:          { file: 'world/props/meshy/railway_lantern.glb',   base: 'asset', h: 0.4, foot: 0, palette: true, group: 'Meshy props' },   // a black hand lamp, red lens at +Z
         platform_scale:           { file: 'world/props/meshy/platform_scale.glb',    base: 'asset', h: 1.5, foot: 0.4, palette: true, group: 'Meshy props' },   // a green platform scale, its dial column at the back (-Z)
@@ -77300,13 +77301,54 @@ const PD_LOOKS = {
     crypt:  { from: 'site_prebuilt_vatican_catacombs', gen: { look: 'walls', wallKey: 'bricks_3' }, h: 6.6, path: 'dungeon' },
     city:   { from: 'site_prebuilt_downtown_streets', gen: { look: 'walls', wallKey: 'urban:ConcreteStriped2a', wallH: 1.4, pathGrow: 0 }, open: true, paths: true,
               floor: 'urban:TileGeneric1a', cliff: 'urban:ConcreteStriped2a', path: 'urban_street' },
-    works:  { from: 'works', gen: { look: 'walls', wallKey: 'drywall' }, h: 5.25, floor: 'concrete_floor', cliff: 'drywall', path: 'concrete_floor',
+    works:  { from: 'works', gen: { look: 'walls', wallKey: 'urban:MetalCorrugatedPainted3a' }, h: 5.25, floor: 'concrete_floor', cliff: 'urban:MetalCorrugatedPainted3a', path: 'concrete_floor',
               shell: { pipes: false, strips: false, mood: { light: 0xf4f0e8, ambient: 0.8 } } },
     forest: { from: 'site_prebuilt_fairy_forest_glade', skyFrom: 'site_prebuilt_downtown_streets', gen: { look: 'trees', kinds: ['tree_3', 'tree', 'tree_2'], treeGap: 2.5, depth: 3 }, open: true, stairs: false },
     hwing:  { from: 'hwing_floor', gen: { look: 'walls', wallKey: 'wallpaper' }, h: 3.5 },
     sewer:  { from: 'site_prebuilt_downtown_sewers', gen: { look: 'walls', wallKey: 'bricks_2' }, h: 5.5 },
     spike:  { from: 'hwing_floor', gen: { look: 'walls', wallKey: 'wallpaper' }, h: 3.5 },
 };
+/* THE DRESSING (the third pass, 2026-11-15): what a look's plots wear beside the puzzle's own marks. pdDress lays it by itself from
+   the plot's cells (the same plot always gets the same dressing), so a new level is dressed the day it is written:
+     hang    wall pieces, hung on a wall beside a floor square            stand   floor pieces set against a wall (rooms 3+ squares deep)
+     corner  a piece in an inside corner                                   litter  flat things lying anywhere on the floor
+   A row is [catalogue key, weight, { h | span, y, in (metres from the wall), rot }]; `…P` = the share of the free spots that get
+   one. Dressing is DECOR: never a blocker, never a light (the level's lamps are counted), never beside a mark, never in a doorway.
+   A plot row may wear `dress: false` (none) or its own table. */
+const PD_DRESS = {
+    crypt: { hangP: 0.42, hang: [['wall_torch', 5], ['wall_chains', 2], ['catacomb_wall', 2, { in: 0.25 }], ['wooden_cross', 1]],
+             bigP: 0.5, big: [['sarcophagus', 4, { rot: 90, in: 1.1 }], ['angel_statue', 2, { in: 1.0 }], ['demon_statue', 1, { in: 1.1 }], ['greek_column', 2, { in: 0.9 }], ['trap_coffin_wood', 2, { rot: 90, in: 1.0 }], ['brazier', 2, { in: 1.2 }]],
+             standP: 0.3, stand: [['stone_urn', 3], ['skull_pile', 2, { span: 1.0 }]],
+             cornerP: 0.8, corner: [['skull_pile', 2], ['stone_urn', 2], ['psx_cobweb_1', 2, { y: 2.2 }]],
+             litterP: 0.05, litter: [['floor_stain', 1]] },
+    sewer: { hangP: 0.36, hang: [['vent_grille', 2], ['breaker_panel', 2], ['radiation_sign', 1], ['pipe_run', 3, { y: 2.6, in: 0.2 }]],
+             bigP: 0.4, big: [['centrifugal_pump', 2, { in: 1.4 }], ['gas_cylinder_rack', 2, { in: 0.8 }], ['dumpster', 1, { in: 1.1 }], ['air_compressor', 2, { in: 1.0 }]],
+             standP: 0.34, stand: [['traffic_barrel', 2], ['psx_metal_barrel_mp_1', 3], ['psx_metal_barrel_mp_3', 2], ['cardboard_boxes', 2], ['wet_floor_sign', 1], ['psx_supply_crate_1', 2]],
+             cornerP: 0.7, corner: [['psx_metal_barrel_mp_2', 2], ['cardboard_boxes', 1], ['psx_wooden_crate_2', 2]],
+             litterP: 0.07, litter: [['floor_drain', 2], ['floor_stain', 2], ['paper_sheet', 1]] },
+    works: { hangP: 0.36, hang: [['breaker_panel', 3], ['vent_grille', 2], ['exit_sign', 1], ['fire_extinguisher', 2], ['gauge_board', 2]],
+             bigP: 0.45, big: [['centrifugal_pump', 2, { in: 1.4 }], ['air_compressor', 2, { in: 1.0 }], ['gas_cylinder_rack', 2, { in: 0.8 }], ['metal_lathe', 1, { in: 1.1 }], ['ind_panel', 2, { in: 0.7 }], ['retro_control_panel', 2, { in: 0.8 }]],
+             standP: 0.3, stand: [['psx_metal_barrel_mp_0', 2], ['psx_supply_crate_1', 3], ['psx_wooden_crate_2', 2], ['traffic_cone', 2], ['wet_floor_sign', 1]],
+             cornerP: 0.7, corner: [['psx_supply_crate_1_2', 2], ['psx_metal_barrel_mp_2', 2], ['cardboard_boxes', 1]],
+             litterP: 0.05, litter: [['floor_stain', 2], ['paper_sheet', 1]] },
+    hwing: { hangP: 0.36, hang: [['notice_board', 2], ['wall_clock', 1], ['exit_sign', 1], ['fire_extinguisher', 1], ['picture_round_a', 3]],
+             bigP: 0.45, big: [['square_cubicle', 3, { in: 1.2 }], ['library_shelf_full', 2, { in: 0.9 }], ['vending_machine', 2, { in: 0.7 }], ['tanker_desk', 2, { in: 0.7 }]],
+             standP: 0.3, stand: [['potted_plant', 3], ['filing_cabinet', 2, { in: 0.45 }], ['water_cooler', 1, { in: 0.45 }], ['trash_bin', 2], ['cardboard_boxes', 1], ['molded_chair', 2]],
+             cornerP: 0.7, corner: [['potted_plant', 3], ['cardboard_boxes', 1], ['trash_bin', 1]],
+             litterP: 0.06, litter: [['paper_sheet', 3], ['floor_stain', 1]] },
+    city:  { bigP: 0.35, big: [['dumpster', 2, { in: 1.1 }], ['planter', 2, { in: 0.9 }], ['city_bench', 2, { in: 0.8 }], ['newspaper_rack', 1, { in: 0.7 }]],
+             standP: 0.3, stand: [['traffic_cone', 3], ['traffic_barrel', 2], ['fire_hydrant', 2], ['tire_stack', 1], ['bus_stop_sign', 1], ['signpost', 1]],
+             cornerP: 0.5, corner: [['tire_stack', 1], ['traffic_barrel', 2], ['newspaper_bundles', 1], ['cardboard_boxes', 1]],
+             litterP: 0.05, litter: [['paper_sheet', 2], ['meshy_round_street_drain', 1], ['floor_stain', 1]],
+             topsP: 0.13, tops: [['garden_tree', 3], ['planter', 1]],
+             fieldP: 0.12, field: [['traffic_cone', 3], ['traffic_barrel', 2], ['tire_stack', 1], ['newspaper_bundles', 1]] },
+    forest: { bigP: 0.32, big: [['mushroom', 2, { in: 1.2 }], ['ocean_rock_2', 2, { in: 1.2, h: 1.8 }], ['meshy_stump', 1, { in: 1.2 }], ['meshy_fallen_log', 2, { in: 1.2, rot: 90 }]],
+             standP: 0.5, stand: [['fern', 5], ['mushroom2', 2], ['fae_toadstool', 2], ['ocean_rock_5', 1, { in: 1.0 }], ['ocean_rock_9', 1, { in: 1.0 }]],
+             cornerP: 0.7, corner: [['fern', 2], ['ocean_rock_10', 1], ['fae_toadstool', 1]],
+             litterP: 0.06, litter: [['fern', 3], ['mushroom2', 2], ['rabbit', 1], ['butterfly', 2, { y: 1.1 }]],
+             fieldP: 0.3, field: [['hollow_tree', 2], ['garden_tree', 2], ['mushroom', 2], ['ocean_rock_2', 2, { h: 1.8 }], ['fern', 5], ['fae_toadstool', 2], ['meshy_fallen_log', 1]] },
+};
+Object.keys(PD_LOOKS).forEach(k => { PD_LOOKS[k].name = k; });
 /* shared plot pieces (a level's `plots` may name one with `use`, and override any field) */
 const PD_PIECES = {
     mass: { role: 'MASS', cells: ['############', '############', '############', '############', '############', '############', '############', '############', '############', '############', '############', '############'] },
@@ -77446,7 +77488,7 @@ const PD_DUNGEONS = {
         plots: {
             entry: { role: 'ENTRY', cells: ['#####..#####', '#..........#', '#..........#', '#..........#', '#..........#', '#...........', '#...........', '#..........#', '#..........#', '#..........#', '#..........#', '############'], marks: [{ k: 'spawn', x: 3, y: 8, face: 90 }] },
             battery: { role: 'BATTERY', net: { trace: 'n' }, cells: ['#####..#####', '#..........#', '#..........#', '#..........#', '#..........#', '............', '............', '#..........#', '#..........#', '#..........#', '#..........#', '############'],
-                marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 2]] }, { k: 'box', x: 6, y: 2.5, w: 7, d: 3.5, h: 2.0, color: 0x2a3136, block: true }, { k: 'box', x: 6, y: 2.5, w: 7.2, d: 3.7, h: 0.3, y3: 1.1, color: 0x20262a, glow: 0x7dff9a }, { k: 'prop', key: 'cable_drum', x: 8.6, y: 4.4 }] },
+                marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 2]] }, { k: 'box', x: 6, y: 2.5, w: 7, d: 3.5, h: 2.0, ghost: true, block: true }, { k: 'box', x: 6, y: 2.5, w: 7.4, d: 3.9, h: 0.1, color: 0x20262a, glow: 0x7dff9a }, { k: 'box', x: 6, y: 2.5, w: 7.1, d: 3.6, h: 0.22, tex: 'urban:MetalCorrugatedPainted1a', tu: 4, tv: 2 }, { k: 'prop', key: 'steam_turbine', x: 6, y: 2.5, y3: 0.22 }, { k: 'prop', key: 'cable_drum', x: 8.6, y: 4.4 }] },
             exit: { role: 'EXIT', cells: ['#####..#####', '#.......####', '#.......####', '#.......####', '#.......#..#', '...........#', '...........#', '#.......#..#', '#.......####', '#.......####', '#.......####', '############'],
                 marks: [{ k: 'gate', id: 'exit', x: 8.5, y: 6, ax: 'z', w: 2, auto: true, needs: { net: 'trace', from: 'battery', to: ['lockl', 'lockr'] } },
                     { k: 'lamp', x: 7.6, y: 4.4, lit: { net: 'trace', from: 'battery', to: ['lockl'] } }, { k: 'lamp', x: 7.6, y: 7.6, lit: { net: 'trace', from: 'battery', to: ['lockr'] } },
@@ -77455,8 +77497,8 @@ const PD_DUNGEONS = {
             splitter: { role: 'FLOOR', turn: true, net: { trace: 'esw' }, use: 'plate', marks: [{ k: 'lever', id: 'l', x: 3.5, y: 3.5, by: 1 }, { k: 'lever', id: 'r', x: 8.5, y: 3.5, by: -1 }, { k: 'trace', layer: 'trace', src: 'battery', pts: [[0, 6], [12, 6]] }, { k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 6], [6, 12]] }] },
             corner1: { role: 'FLOOR', turn: true, net: { trace: 'es' }, use: 'plate', marks: [{ k: 'lever', id: 'l', x: 3.5, y: 3.5, by: 1 }, { k: 'lever', id: 'r', x: 8.5, y: 3.5, by: -1 }, { k: 'trace', layer: 'trace', src: 'battery', pts: [[12, 6], [6, 6], [6, 12]] }] },
             corner3: { role: 'FLOOR', turn: true, net: { trace: 'ws' }, use: 'plate', marks: [{ k: 'lever', id: 'l', x: 3.5, y: 3.5, by: 1 }, { k: 'lever', id: 'r', x: 8.5, y: 3.5, by: -1 }, { k: 'trace', layer: 'trace', src: 'battery', pts: [[0, 6], [6, 6], [6, 12]] }] },
-            lockl: { role: 'LOCK', net: { trace: 'n' }, use: 'plate', marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 2]] }, { k: 'box', x: 6, y: 2.5, w: 7, d: 3.5, h: 1.4, color: 0x2a3136, block: true }, { k: 'lamp', x: 6, y: 2.5, h: 3, lit: { net: 'trace', from: 'battery', to: ['lockl'] } }] },
-            lockr: { role: 'LOCK', net: { trace: 'n' }, use: 'plate', marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 2]] }, { k: 'box', x: 6, y: 2.5, w: 7, d: 3.5, h: 1.4, color: 0x2a3136, block: true }, { k: 'lamp', x: 6, y: 2.5, h: 3, lit: { net: 'trace', from: 'battery', to: ['lockr'] } }] },
+            lockl: { role: 'LOCK', net: { trace: 'n' }, use: 'plate', marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 2]] }, { k: 'box', x: 6, y: 2.5, w: 7, d: 3.5, h: 1.4, ghost: true, block: true }, { k: 'box', x: 6, y: 2.5, w: 7.1, d: 3.6, h: 0.22, tex: 'urban:MetalCorrugatedPainted1a', tu: 4, tv: 2 }, { k: 'prop', key: 'retro_control_panel', x: 5.1, y: 2.6, y3: 0.22, rot: 180 }, { k: 'prop', key: 'retro_control_panel', x: 6.9, y: 2.6, y3: 0.22, rot: 180 }, { k: 'lamp', x: 6, y: 2.1, y3: 0.22, h: 2.6, lit: { net: 'trace', from: 'battery', to: ['lockl'] } }] },
+            lockr: { role: 'LOCK', net: { trace: 'n' }, use: 'plate', marks: [{ k: 'trace', layer: 'trace', src: 'battery', pts: [[6, 0], [6, 2]] }, { k: 'box', x: 6, y: 2.5, w: 7, d: 3.5, h: 1.4, ghost: true, block: true }, { k: 'box', x: 6, y: 2.5, w: 7.1, d: 3.6, h: 0.22, tex: 'urban:MetalCorrugatedPainted1a', tu: 4, tv: 2 }, { k: 'prop', key: 'retro_control_panel', x: 5.1, y: 2.6, y3: 0.22, rot: 180 }, { k: 'prop', key: 'retro_control_panel', x: 6.9, y: 2.6, y3: 0.22, rot: 180 }, { k: 'lamp', x: 6, y: 2.1, y3: 0.22, h: 2.6, lit: { net: 'trace', from: 'battery', to: ['lockr'] } }] },
         },
         board: { A1: 'corner1', A2: 'splitter', A3: 'corner3', B1: 'lockl', B2: 'feed', B3: 'lockr', C1: 'entry', C2: 'battery', C3: 'exit' },
         rot: { feed: 1, splitter: 1, corner1: 1, corner3: 3 },
@@ -77492,16 +77534,16 @@ const PD_DUNGEONS = {
                     { k: 'act', id: 'blue', x: 4.5, y: 7.5, key: 'floating_orb', label: 'BLUE MARBLE', verb: 'TAKE', needs: { not: { var: 'got_blue' } }, no: 'ALREADY HOME', set: { marble: 'blue' }, say: 'YOU CARRY THE BLUE MARBLE' },
                     { k: 'act', id: 'red', x: 6.5, y: 7.5, key: 'floating_orb', label: 'RED MARBLE', verb: 'TAKE', needs: { not: { var: 'got_red' } }, no: 'ALREADY HOME', set: { marble: 'red' }, say: 'YOU CARRY THE RED MARBLE' },
                     { k: 'act', id: 'yellow', x: 8.5, y: 7.5, key: 'floating_orb', label: 'YELLOW MARBLE', verb: 'TAKE', needs: { not: { var: 'got_yellow' } }, no: 'ALREADY HOME', set: { marble: 'yellow' }, say: 'YOU CARRY THE YELLOW MARBLE' }] },
-            dispenser: { role: 'DISPENSER', ports: { ground: '' }, use: 'open', marks: [{ k: 'box', x: 8, y: 6, w: 3, d: 3, h: 2.6, color: 0x4a4038 }, { k: 'box', x: 10.5, y: 6, w: 3.5, d: 0.6, h: 0.3, y3: 2.0, color: 0x4a4038 }] },
+            dispenser: { role: 'DISPENSER', ports: { ground: '' }, use: 'open', marks: [{ k: 'box', x: 8, y: 6, w: 3, d: 3, h: 2.6, tex: 'bricks_3', tu: 1.71, tv: 1.49 }, { k: 'box', x: 10.5, y: 6, w: 3.5, d: 0.6, h: 0.3, y3: 2.0, tex: 'bricks_3', tu: 2, tv: 0.29 }] },
             junction: { role: 'JUNCTION', turn: true, ride: false, ports: { ground: '' }, net: { track: 'n' }, use: 'open',
-                marks: [{ k: 'box', x: 6, y: 6, w: 4, d: 4, h: 1.6, color: 0x4a4038 }, { k: 'trace', layer: 'track', color: 0xff8ad0, size: 0.5, pts: [[6, 0], [6, 4]], lit: { joined: ['junction', 'n', 'track'] } },
+                marks: [{ k: 'box', x: 6, y: 6, w: 4, d: 4, h: 1.6, tex: 'bricks_3', tu: 2.29, tv: 0.91 }, { k: 'trace', layer: 'track', color: 0xff8ad0, size: 0.5, pts: [[6, 0], [6, 4]], lit: { joined: ['junction', 'n', 'track'] } },
                     { k: 'box', x: 6, y: 6, w: 1, d: 1, h: 1, y3: 1.6, color: 0x101820, glow: 0x3a8cff, show: { var: 'marble', eq: 'blue' } },
                     { k: 'box', x: 6, y: 6, w: 1, d: 1, h: 1, y3: 1.6, color: 0x201010, glow: 0xff3a3a, show: { var: 'marble', eq: 'red' } },
                     { k: 'box', x: 6, y: 6, w: 1, d: 1, h: 1, y3: 1.6, color: 0x202010, glow: 0xffd83a, show: { var: 'marble', eq: 'yellow' } }] },
-            blue: { role: 'BLUE WORLD', ports: { ground: '' }, net: { track: 's' }, use: 'open', marks: [{ k: 'trace', layer: 'track', color: 0x3a8cff, size: 0.5, pts: [[6, 12], [6, 7.5]], lit: { var: 'got_blue' } }, { k: 'box', x: 6, y: 6, w: 3, d: 3, h: 1.0, color: 0x3a3a3a }, { k: 'box', x: 6, y: 6, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0x3a8cff, lit: { var: 'got_blue' } }] },
-            red: { role: 'RED WORLD', ports: { ground: '' }, net: { track: 'w' }, use: 'open', marks: [{ k: 'trace', layer: 'track', color: 0xff3a3a, size: 0.5, pts: [[0, 6], [4.5, 6]], lit: { var: 'got_red' } }, { k: 'box', x: 6, y: 6, w: 3, d: 3, h: 1.0, color: 0x3a3a3a }, { k: 'box', x: 6, y: 6, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0xff3a3a, lit: { var: 'got_red' } }] },
+            blue: { role: 'BLUE WORLD', ports: { ground: '' }, net: { track: 's' }, use: 'open', marks: [{ k: 'trace', layer: 'track', color: 0x3a8cff, size: 0.5, pts: [[6, 12], [6, 7.5]], lit: { var: 'got_blue' } }, { k: 'box', x: 6, y: 6, w: 3, d: 3, h: 1.0, tex: 'bricks_3', tu: 1.71, tv: 0.57 }, { k: 'box', x: 6, y: 6, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0x3a8cff, lit: { var: 'got_blue' } }] },
+            red: { role: 'RED WORLD', ports: { ground: '' }, net: { track: 'w' }, use: 'open', marks: [{ k: 'trace', layer: 'track', color: 0xff3a3a, size: 0.5, pts: [[0, 6], [4.5, 6]], lit: { var: 'got_red' } }, { k: 'box', x: 6, y: 6, w: 3, d: 3, h: 1.0, tex: 'bricks_3', tu: 1.71, tv: 0.57 }, { k: 'box', x: 6, y: 6, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0xff3a3a, lit: { var: 'got_red' } }] },
             yellow: { role: 'YELLOW WORLD', use: 'gallery', ports: { ground: 'ew' }, net: { track: 'n' },
-                marks: [{ k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'trace', layer: 'track', color: 0xffd83a, size: 0.5, pts: [[6, 0], [6, 2]], lit: { var: 'got_yellow' } }, { k: 'box', x: 6, y: 3, w: 3, d: 3, h: 1.0, color: 0x3a3a3a }, { k: 'box', x: 6, y: 3, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0xffd83a, lit: { var: 'got_yellow' } },
+                marks: [{ k: 'rail', x0: 0, y0: 5, x1: 12, y1: 5 }, { k: 'trace', layer: 'track', color: 0xffd83a, size: 0.5, pts: [[6, 0], [6, 2]], lit: { var: 'got_yellow' } }, { k: 'box', x: 6, y: 3, w: 3, d: 3, h: 1.0, tex: 'bricks_3', tu: 1.71, tv: 0.57 }, { k: 'box', x: 6, y: 3, w: 2, d: 2, h: 0.5, y3: 1.0, color: 0x222222, glow: 0xffd83a, lit: { var: 'got_yellow' } },
                     { k: 'lever', id: 'l', x: 2.5, y: 7.5, plot: 'junction', by: 1 }, { k: 'lever', id: 'r', x: 9.5, y: 7.5, plot: 'junction', by: -1 },
                     { k: 'act', id: 'release', x: 5.5, y: 7.5, key: 'evac_button', stand: true, label: 'RELEASE', verb: 'PRESS', no: 'YOU CARRY NO MARBLE',
                         route: { layer: 'track', from: 'junction', var: 'marble', sockets: { blue: 'blue', red: 'red', yellow: 'yellow' }, won: 'got_', empty: 'YOU CARRY NO MARBLE', yes: 'IT ROLLS HOME', back: 'WRONG WORLD. IT ROLLS BACK TO THE START.' } }] },
@@ -77838,6 +77880,68 @@ function pdEdgeBox(side, off, across, inset, deep, more) {
     return Object.assign({ k: 'box', x: g.x + g.nx * c + (g.ax === 'x' ? off : 0), z: g.z + g.nz * c + (g.ax === 'z' ? off : 0),
         w: g.ax === 'x' ? across : deep, d: g.ax === 'x' ? deep : across }, more);
 }
+/* THE DRESSING laid on one plot (see PD_DRESS). `face` = the heading a piece looks along, out of its wall. */
+function pdDress(id, plotId, P, K, room, draw) {
+    const D = P.dress != null ? P.dress : (K.dress != null ? K.dress : PD_DRESS[K.name]); if (!D) return 0;
+    const cells = P.cells || [], at = (x, y) => (x < 0 || y < 0 || x > 11 || y > 11) ? '' : ((cells[y] || '')[x] || '');
+    let h = 2166136261; const key = id + '/' + plotId; for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619); }
+    const rnd = () => { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const pick = (rows) => { let w = 0; rows.forEach(r => { w += r[1] || 1; }); let v = rnd() * w; for (let i = 0; i < rows.length; i++) { v -= rows[i][1] || 1; if (v <= 0) return rows[i]; } return rows[rows.length - 1]; };
+    const CAT = DOOR_HQ.catalogue || {}, SQ = PD_RULES.sq, V = pdLevel(id);
+    const marks = (P.marks || []).filter(m => m.x != null).concat(Object.keys((V && V.L.tokens) || {}).map(t => ((V.L.tokens[t].stops || {})[plotId])).filter(Boolean));
+    const busy = (x, y, r) => marks.some(m => Math.abs(m.x - (x + 0.5)) < r && Math.abs(m.y - (y + 0.5)) < r)
+        || (P.marks || []).some(m => m.k === 'trace' && (m.pts || []).some((q, i) => i && Math.min(m.pts[i - 1][0], q[0]) - 0.6 < x + 0.5 && Math.max(m.pts[i - 1][0], q[0]) + 0.6 > x + 0.5 && Math.min(m.pts[i - 1][1], q[1]) - 0.6 < y + 0.5 && Math.max(m.pts[i - 1][1], q[1]) + 0.6 > y + 0.5));
+    const edge = (x, y) => x === 0 || y === 0 || x === 11 || y === 11;
+    const DIRS = [[0, -1, 180], [1, 0, 270], [0, 1, 0], [-1, 0, 90]];   // the wall's side of the square → the heading out of that wall
+    let n = 0; const used = {};
+    const put = (row, x, z, face, more) => {
+        const o = row[2] || {}; if (!CAT[row[0]]) return;
+        room.props.push(Object.assign({ key: row[0], x: +x.toFixed(2), z: +z.toFixed(2), face, noBlock: true, noLight: true, mesh: false, scatter: true, pdDress: true },
+            o.h != null ? { h: o.h } : null, o.span != null ? { span: o.span } : null, o.y != null ? { y: o.y } : null, o.rot != null ? { rot: o.rot } : null, more)); n++;
+    };
+    for (let y = 0; y < 12; y++) for (let x = 0; x < 12; x++) {
+        if (at(x, y) !== '.' || edge(x, y)) continue;
+        const cx = pdM(x + 0.5), cz = pdM(y + 0.5), walls = DIRS.filter(d => at(x + d[0], y + d[1]) === '#');
+        const near = busy(x, y, 1.6);
+        if (walls.length >= 2 && D.corner && !near && rnd() < (D.cornerP || 0)) {
+            const a = walls[0], b = walls.find(d => d[0] !== -a[0] || d[1] !== -a[1]) && walls.find(d => d !== a && (d[0] !== -a[0] || d[1] !== -a[1]));
+            if (b) { const r = pick(D.corner), inn = (r[2] && r[2].in) || 0.75; put(r, cx + (a[0] + b[0]) * (SQ / 2 - inn), cz + (a[1] + b[1]) * (SQ / 2 - inn), a[2], { rot: Math.round(rnd() * 360) }); used[x + ',' + y] = 1; continue; }
+        }
+        /* a BIG piece: a whole-square blocker centred on a wall square of a deep room (never in a doorway's lane, never two in a row) */
+        const lane = x === 5 || x === 6 || y === 5 || y === 6, d0 = walls[0];
+        if (D.big && d0 && !near && !lane && !used[x + ',' + y] && !DIRS.some(q => '/='.indexOf(at(x + q[0], y + q[1]) || '#') >= 0) && at(x - d0[0], y - d0[1]) === '.' && at(x - 2 * d0[0], y - 2 * d0[1]) === '.'
+            && ![[-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1]].some(q => used[(x + q[0]) + ',' + (y + q[1]) + 'B']) && rnd() < (D.bigP || 0)) {
+            const r = pick(D.big), o = r[2] || {};
+            put(r, cx + d0[0] * (o.in != null ? SQ / 2 - o.in : 0.25), cz + d0[1] * (o.in != null ? SQ / 2 - o.in : 0.25), d0[2], null);
+            draw.push({ k: 'box', id: 'big' + x + '_' + y, ghost: true, x: cx, z: cz, y: 0, w: 2.9, d: 2.9, h: 1.3, block: true });
+            used[x + ',' + y] = 1; used[x + ',' + y + 'B'] = 1; continue;
+        }
+        walls.forEach(d => {
+            const lx = d[0] ? 0 : 1, lz = d[1] ? 0 : 1, nb = used[(x - lx) + ',' + (y - lz) + d[2]] || used[(x + lx) + ',' + (y + lz) + d[2]];
+            if (D.hang && !nb && !used[x + ',' + y + d[2]] && rnd() < (D.hangP || 0)) {
+                const r = pick(D.hang), inn = (r[2] && r[2].in) || 0.05;
+                put(r, cx + d[0] * (SQ / 2 - inn), cz + d[1] * (SQ / 2 - inn), d[2], null); used[x + ',' + y + d[2]] = 1; return;
+            }
+            const deep = at(x - d[0], y - d[1]) === '.' && at(x - 2 * d[0], y - 2 * d[1]) === '.';
+            if (D.stand && deep && !near && !used[x + ',' + y] && rnd() < (D.standP || 0)) {
+                const r = pick(D.stand), inn = (r[2] && r[2].in) || 0.6, j = (rnd() - 0.5) * 1.6;
+                put(r, cx + d[0] * (SQ / 2 - inn) + lx * j, cz + d[1] * (SQ / 2 - inn) + lz * j, d[2], { rot: ((r[2] && r[2].rot) || 0) + Math.round((rnd() - 0.5) * 40) }); used[x + ',' + y] = 1;
+            }
+        });
+        if (D.litter && !walls.length && !near && rnd() < (D.litterP || 0)) put(pick(D.litter), cx + (rnd() - 0.5) * 2.2, cz + (rnd() - 0.5) * 2.2, 0, { rot: Math.round(rnd() * 360) });
+    }
+    /* a plot nobody walks (no door at all: a machine's own ground) is strewn all over */
+    if (D.field && P.ports && P.ports.ground === '' && !P.ports.upper) for (let y = 0; y < 12; y++) for (let x = 0; x < 12; x++) {
+        if (at(x, y) !== '.' || busy(x, y, 2.4) || rnd() >= (D.fieldP || 0)) continue;
+        put(pick(D.field), pdM(x + 0.5) + (rnd() - 0.5) * 2.4, pdM(y + 0.5) + (rnd() - 0.5) * 2.4, 0, { rot: Math.round(rnd() * 360) });
+    }
+    /* an open look's solid blocks wear things on top (a street's blocks: trees, planters) */
+    if (D.tops && K.open) for (let y = 0; y < 12; y++) for (let x = 0; x < 12; x++) {
+        if (at(x, y) !== '#' || rnd() >= (D.topsP || 0)) continue;
+        const r = pick(D.tops); put(r, pdM(x + 0.5) + (rnd() - 0.5) * 1.4, pdM(y + 0.5) + (rnd() - 0.5) * 1.4, 0, { y: (K.gen && K.gen.wallH) || 1.4, rot: Math.round(rnd() * 360) });
+    }
+    return n;
+}
 /* one plot's room row (a box room with a drawn floor plan), built from its cells, its marks and the look.
    THE MARKS ({ k, x, y } in squares from the plot's north-west corner; a square's centre is i + 0.5):
      spawn    { face }                                   where the level starts (the entry plot)
@@ -77898,13 +78002,17 @@ function pdRoomDef(id, plotId) {
     });
     /* a deck under the sky has a railing wherever it ends at a drop (a side that is neither deck nor stair), set a little inside */
     if (K.open && hasUpper) {
+        /* a railing's end: where the deck goes on round an inside corner the two railings meet (0.3 m longer); at an outside corner
+           they meet too (0.3 m shorter); at the plot's edge it runs to the edge. (An open notch at an inside corner let a walker
+           wedge between the two ends, 2026-11-15.) */
+        const end = (inside, deckOn, sg) => !inside ? 0 : sg * (deckOn ? 0.3 : -0.3);
         const deck = (x, y) => at(x, y) === '=', drop = (x, y) => { const ch = at(x, y); return ch !== '=' && ch !== '/' && x >= 0 && y >= 0 && x < 12 && y < 12; };
         for (let y = 0; y <= 12; y++) [[-1, 0], [0, -1]].forEach(d => {   // d = which side of the line the deck lies on: [−1, 0] the deck is north of it, [0, −1] south
             let x0 = null;
             for (let x = 0; x <= 12; x++) {
                 const on = x < 12 && deck(x, y + d[0]) && drop(x, y + d[1]);
                 if (on && x0 == null) x0 = x;
-                if (!on && x0 != null) { const zz = pdM(y) + (d[0] ? -0.3 : 0.3); features.push({ k: 'rail', x0: pdM(x0), z0: zz, x1: pdM(x), z1: zz }); x0 = null; }
+                if (!on && x0 != null) { const zz = pdM(y) + (d[0] ? -0.3 : 0.3); features.push({ k: 'rail', x0: pdM(x0) + end(x0 > 0 && at(x0 - 1, y + d[0]) !== '/', deck(x0 - 1, y + d[0]), -1), z0: zz, x1: pdM(x) + end(x < 12 && at(x, y + d[0]) !== '/', deck(x, y + d[0]), 1), z1: zz }); x0 = null; }
             }
         });
         for (let x = 0; x <= 12; x++) [[-1, 0], [0, -1]].forEach(d => {
@@ -77912,7 +78020,7 @@ function pdRoomDef(id, plotId) {
             for (let y = 0; y <= 12; y++) {
                 const on = y < 12 && deck(x + d[0], y) && drop(x + d[1], y);
                 if (on && y0 == null) y0 = y;
-                if (!on && y0 != null) { const xx = pdM(x) + (d[0] ? -0.3 : 0.3); features.push({ k: 'rail', x0: xx, z0: pdM(y0), x1: xx, z1: pdM(y) }); y0 = null; }
+                if (!on && y0 != null) { const xx = pdM(x) + (d[0] ? -0.3 : 0.3); features.push({ k: 'rail', x0: xx, z0: pdM(y0) + end(y0 > 0 && at(x + d[0], y0 - 1) !== '/', deck(x + d[0], y0 - 1), -1), x1: xx, z1: pdM(y) + end(y < 12 && at(x + d[0], y) !== '/', deck(x + d[0], y), 1) }); y0 = null; }
             }
         });
     }
@@ -77956,6 +78064,12 @@ function pdRoomDef(id, plotId) {
         const q = pdPortSquares(side).map(p => at(p[0], p[1])); if (q.some(ch => ch === '#' || ch === ' ')) return;
         draw.push(pdEdgeBox(side, 0, SQ * 2 - 0.6, 0.5, 0.35, { id: 'tint_' + side, y: (q[0] === '=' ? upper : 0) + 0.02, h: 0.05, color: 0x15181b, glow: tint }));
     });
+    /* a PEDESTAL (a button, a bell, a key stand on one): a foot, a shaft in the look's trim, a cap */
+    const pedestal = (pid, x, z, y0, hh, show) => {
+        draw.push({ k: 'box', id: pid + '_f', x, z, y: y0, w: 0.96, d: 0.96, h: 0.14, color: 0x2a2d31, show: show || null });
+        draw.push({ k: 'box', id: pid, x, z, y: y0, w: 0.66, d: 0.66, h: hh - 0.08, tex: S0.trim || wallTex, tu: 0.5, tv: 0.6, block: true, show: show || null });
+        draw.push({ k: 'box', id: pid + '_c', x, z, y: y0 + hh - 0.08, w: 0.86, d: 0.86, h: 0.08, color: 0x2a2d31, show: show || null });
+    };
     const counter = (m, x, z, more) => room.counters.push(Object.assign({ id: 'pd_' + m.k + '_' + (m.id || room.counters.length), x, z, face: m.face || 0, radius: m.r || 3.5, plateY: m.plateY || 1.7,
         label: m.label || '', verb: m.verb || 'USE', pdY: m.y3 || 0 }, m.show ? { pdShow: m.show } : null, more));
     const prop = (key, x, z, m, show) => { if (key) room.props.push(Object.assign({ key, x, z }, m.rot != null ? { rot: m.rot } : null, m.y3 != null ? { y: m.y3 } : null, m.h != null ? { h: m.h } : null, show ? { pd: { show } } : null)); };
@@ -77963,27 +78077,28 @@ function pdRoomDef(id, plotId) {
         const x = pdM(m.x), z = pdM(m.y);
         if (m.k === 'spawn') room.pdSpawn = { x, z, face: m.face || 0 };
         else if (m.k === 'lever') {
-            /* THE LEVER: a lever frame on its square, a lamp of the colour of the plot it moves, one move a pull */
+            /* THE LEVER: ONE floor lever on its square, on a plate framed in the colour of the plot it moves, one move a pull */
             const tp = m.plot || plotId, mv = { plot: tp }, y0 = m.y3 || 0, col = pdTint(id, tp);
             if (m.by != null) mv.by = m.by; if (m.track) mv.track = m.track; if (m.dir) mv.dir = m.dir;
             counter(Object.assign({ label: 'LEVER', verb: 'PULL', r: 4 }, m, { id: m.id || ('lv' + room.counters.length) }), x, z, { proc: 'pd_act', pdLever: true, pdAct: { move: mv, needs: m.needs, no: m.no } });
-            prop(m.key || 'signal_lever_frame', x, z, Object.assign({ rot: 0 }, m), null);
-            draw.push({ k: 'box', id: 'lvb' + draw.length, ghost: true, x, z, y: y0, w: m.rot === 90 ? 0.9 : 3.0, d: m.rot === 90 ? 3.0 : 0.9, h: 1.2, block: true });
-            const lx = x + (m.rot === 90 ? 0.75 : 1.3), lz = z + (m.rot === 90 ? 1.3 : 0.75);
-            draw.push({ k: 'box', id: 'lvp' + draw.length, x: lx, z: lz, y: y0, w: 0.14, d: 0.14, h: 1.9, color: 0x2a2f33 });
-            draw.push({ k: 'box', id: 'lvl' + draw.length, x: lx, z: lz, y: y0 + 1.9, w: 0.3, d: 0.3, h: 0.3, color: 0x30363a, glow: col != null ? col : 0xffffff });
+            const cid = 'pd_lever_' + (m.id || ('lv' + (room.counters.length - 1)));
+            room.props.push({ key: m.key || 'pd_lever', x, z, rot: m.rot || 0, y: y0, pd: { lever: cid } });
+            draw.push({ k: 'box', id: 'lvb' + draw.length, ghost: true, x, z, y: y0, w: 0.9, d: 0.9, h: 1.2, block: true });
+            /* its plate: a dark iron plate in a lit frame of the plot's colour, flat on the floor under it */
+            draw.push({ k: 'box', id: 'lvl' + draw.length, x, z, y: y0 + 0.01, w: 1.5, d: 1.5, h: 0.04, color: 0x15181b, glow: col != null ? col : 0xffffff });
+            draw.push({ k: 'box', id: 'lvp' + draw.length, x, z, y: y0 + 0.01, w: 1.3, d: 1.3, h: 0.07, color: 0x23272b });
         }
         else if (m.k === 'prop') prop(m.key, x, z, m, m.show);
         else if (m.k === 'act') {
             counter(m, x, z, { proc: 'pd_act', pdAct: m });
-            if (m.stand) { draw.push({ k: 'box', id: 'std_' + (m.id || draw.length), x, z, y: m.y3 || 0, w: 0.7, d: 0.7, h: 1.0, tex: S0.trim || wallTex, tu: 0.5, tv: 0.6, block: true, show: m.show || null }); prop(m.key, x, z, Object.assign({}, m, { y3: (m.y3 || 0) + 1.0 - (((DOOR_HQ.catalogue || {})[m.key] || {}).mount || 0) }), m.show); }   // (a wall piece hangs `mount` above its row's y)
+            if (m.stand) { pedestal('std_' + (m.id || draw.length), x, z, m.y3 || 0, 1.0, m.show); prop(m.key, x, z, Object.assign({}, m, { y3: (m.y3 || 0) + 1.0 - (((DOOR_HQ.catalogue || {})[m.key] || {}).mount || 0) }), m.show); }   // (a wall piece hangs `mount` above its row's y)
             else prop(m.key, x, z, m, m.show);
         }
         else if (m.k === 'take') {
             const show = { not: { has: m.item } };
             counter(Object.assign({ label: 'THE KEY', verb: 'TAKE', r: 3.6 }, m, { show }), x, z, { proc: 'pd_act', pdAct: Object.assign({ give: m.item, say: 'TAKEN' }, m) });
             prop(m.key || 'key', x, z, Object.assign({ y3: 1.0 }, m), show);
-            draw.push({ k: 'box', id: 'stand_' + m.item, x, z, y: 0, w: 0.7, d: 0.7, h: 0.95, tex: S0.trim || wallTex, tu: 0.5, tv: 0.6, block: true });
+            pedestal('stand_' + m.item, x, z, 0, 0.95, null);
         }
         else if (m.k === 'gate') {
             const gv = 'gate_' + (m.id || 'a'), show = m.auto ? { not: m.needs } : { not: { var: gv } };
@@ -78007,13 +78122,31 @@ function pdRoomDef(id, plotId) {
             }
         }
         else if (m.k === 'lamp') {
-            draw.push({ k: 'box', id: 'lamp_post' + draw.length, x, z, y: 0, w: 0.16, d: 0.16, h: m.h || 2.4, color: 0x2a2f33 });
-            draw.push({ k: 'box', id: 'lamp' + draw.length, x, z, y: m.h || 2.4, w: 0.55, d: 0.55, h: 0.55, color: 0x30363a, glow: m.color != null ? m.color : 0x7dff9a, lit: m.lit || null });
+            /* a SIGNAL LANTERN: a foot, a post, a caged head whose glass is alight while `lit` holds */
+            const lh = m.h || 2.4, y0 = m.y3 || 0, n0 = draw.length;
+            draw.push({ k: 'box', id: 'lamp_f' + n0, x, z, y: y0, w: 0.5, d: 0.5, h: 0.16, color: 0x24282c });
+            draw.push({ k: 'box', id: 'lamp_p' + n0, x, z, y: y0, w: 0.12, d: 0.12, h: lh, color: 0x2a2f33 });
+            draw.push({ k: 'box', id: 'lamp_k' + n0, x, z, y: y0 + lh - 0.08, w: 0.56, d: 0.56, h: 0.08, color: 0x24282c });
+            draw.push({ k: 'box', id: 'lamp' + n0, x, z, y: y0 + lh, w: 0.4, d: 0.4, h: 0.5, color: 0x30363a, glow: m.color != null ? m.color : 0x7dff9a, lit: m.lit || null });
+            [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach((c, q) => draw.push({ k: 'box', id: 'lamp_b' + n0 + q, x: x + c[0] * 0.23, z: z + c[1] * 0.23, y: y0 + lh, w: 0.05, d: 0.05, h: 0.5, color: 0x24282c }));
+            draw.push({ k: 'box', id: 'lamp_c' + n0, x, z, y: y0 + lh + 0.5, w: 0.62, d: 0.62, h: 0.1, color: 0x24282c });
+            draw.push({ k: 'box', id: 'lamp_t' + n0, x, z, y: y0 + lh + 0.6, w: 0.3, d: 0.3, h: 0.1, color: 0x24282c });
         }
         else if (m.k === 'box') draw.push(Object.assign({}, m, { k: 'box', x, z, y: m.y3 || 0 }));
         else if (m.k === 'rail') features.push(Object.assign({ k: 'rail', x0: pdM(m.x0), z0: pdM(m.y0), x1: pdM(m.x1), z1: pdM(m.y1) }, m.model ? { model: m.model } : null));
         else room.pdMarks.push(Object.assign({}, m, { mx: x, mz: z }));
     });
+    pdDress(id, plotId, P, K, room, draw);
+    /* a closed look's solid mass is dark from above (the wide view looks down past the ceilings: the rooms read, not the stone between) */
+    if (!K.open) PD_SIDES.forEach(side => {
+        const sq = i => side === 'n' ? at(i, 0) : side === 's' ? at(i, 11) : side === 'w' ? at(0, i) : at(11, i);
+        for (let i = 0, i0 = null; i <= 12; i++) {
+            const on = i < 12 && sq(i) === '#';
+            if (on && i0 == null) i0 = i;
+            if (!on && i0 != null) { draw.push(pdEdgeBox(side, ((i0 + i) / 2 - 6) * SQ, (i - i0) * SQ, -0.06, 0.05, { id: 'skirt_' + side + i0, y: 0, h: h + 0.08, color: 0x0b0c0e })); i0 = null; }
+        }
+    });
+    if (!K.open) pdRects(cells, ch => ch === '#').forEach((r, i) => { const m = pdRectM(r); draw.push({ k: 'box', id: 'top' + i, x: m.x, z: m.z, y: h + 0.02, w: m.w + 0.7, d: m.d + 0.7, h: 0.06, color: 0x0b0c0e, top: true }); });
     /* a token (a guardian that is sent from stop to stop): its body stands at this plot's stop while the token is here */
     Object.keys(V.L.tokens || {}).forEach(tk => {
         const T = V.L.tokens[tk], st = (T.stops || {})[plotId]; if (!st || !T.key) return;
