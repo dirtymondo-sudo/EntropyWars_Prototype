@@ -45,6 +45,9 @@ function brassAndLamp(P, x, cw, y0, z) {
     P.push(box(x + cw / 2 + 0.62, y0 + 1.15, z + 0.02, 0.36, 0.48, 0.04, 'gold', WHITE, { gain: 1.5 }));
     P.push(box(x - cw / 2 - 0.75, y0 + 2.85, z + 0.25, 0.06, 0.06, 0.5, null, IRONK), box(x - cw / 2 - 0.75, y0 + 2.42, z + 0.5, 0.26, 0.36, 0.26, null, 0xffe0a0, { glow: 0.9 }), box(x - cw / 2 - 0.75, y0 + 2.78, z + 0.5, 0.34, 0.08, 0.34, null, IRONK));
 }
+/* a dial's lower half: a fan only draws the upper half disc (a negative h draws it dark), so the lower half is ten thin slices */
+const lowHalf = (P, x, y, z, r, ry, key, tint, o) => { const n = 10;
+    for (let i = 0; i < n; i++) { const m = (i + 0.5) * r / n; P.push(box(x, y - (i + 1) * r / n, z, 2 * Math.sqrt(r * r - m * m), r / n + 0.005, 0.06, key, tint, Object.assign({ ry }, o || {}))); } };
 /* LONDON: the gothic clock tower at the bank offices' end: a stone shaft (the slab's end bay below its roof), ribs and lancet panels, a
    clock stage with four lit drawn faces, a louvred belfry, corner pinnacles, a slate spire, a gilt finial (no sound: no new SFX) */
 const PORT = 0xeee6d2;
@@ -57,10 +60,9 @@ function clockTower(P, x, D) {
     const cs = 8, cy = top + 3.2;
     P.push(box(x, top, 0, cs, 6.4, cs, STONE, PORT, { uv: 3.2 }), box(x, top - 0.3, 0, cs + 0.5, 0.3, cs + 0.5, STONE, 0xe2d8c2, { under: true }), box(x, top + 6.4, 0, cs + 0.5, 0.35, cs + 0.5, STONE, 0xe2d8c2, { under: true }));
     for (const f of [[0, 1, 0], [0, -1, 180], [1, 0, 270], [-1, 0, 90]]) { const o = cs / 2, px = x + f[0] * o, pz = f[1] * o, along = f[2] % 180 !== 0;
-        P.push(fan(px, cy, pz, 2.75, f[2], 'gold', WHITE, { gain: 1.5 }), fan(px, cy, pz, 2.75, f[2] + 180, 'gold', WHITE, { gain: 1.5, h: -2.75 }));
-        /* the lower halves: a fan with a negative h is mirrored (its faces turn inward), so it is also turned half round to face out */
+        P.push(fan(px, cy, pz, 2.75, f[2], 'gold', WHITE, { gain: 1.5 })); lowHalf(P, px, cy, pz, 2.75, f[2], 'gold', WHITE, { gain: 1.5 });
         const e = 0.05, fx = px + f[0] * e, fz = pz + f[1] * e;
-        P.push(fan(fx, cy, fz, 2.45, f[2], null, 0xfff4d8, { glow: 0.85 }), fan(fx, cy, fz, 2.45, f[2] + 180, null, 0xfff4d8, { glow: 0.85, h: -2.45 }));
+        P.push(fan(fx, cy, fz, 2.45, f[2], null, 0xfff4d8, { glow: 0.85 })); lowHalf(P, fx, cy, fz, 2.45, f[2], null, 0xfff4d8, { glow: 0.85 });
         const hx = px + f[0] * 0.12, hz = pz + f[1] * 0.12;
         P.push(box(hx, cy - 0.08, hz, along ? 0.06 : 0.16, 1.9, along ? 0.16 : 0.06, null, 0x141414), box(hx + (along ? 0 : 0.6), cy - 0.08, hz + (along ? 0.6 : 0), along ? 0.06 : 1.3, 0.16, along ? 1.3 : 0.06, null, 0x141414)); }
     P.push(box(x, top + 6.75, 0, sh, 3.6, sh, STONE, PORT));
