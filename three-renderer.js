@@ -73529,7 +73529,7 @@ const ThreeRenderer = (function () {
     var HQ_ROAD = { dashLen: 1.6, dashGap: 1.6, dashW: 0.14, edgeIn: 0.35, edgeW: 0.12, zebraBar: 0.42, zebraGap: 0.42, zebraLen: 2.6, zebraBack: 1.0, stopW: 0.32,
                     kerbW: 0.3, kerbH: 0.13, manholeEvery: 19, manholeR: 0.42, signEvery: 27, signH: 2.3, cornerTrim: 0.6 };
     function _hqRoadTexKey(kind) {
-        var K = { asphalt: 'urban:PlasterWallPainted1b', pavement: 'urban:TileGeneric1a', kerb: 'urban:PlasterWallPainted1a', yard: 'urban:ConcreteStriped2a', manhole: 'urban:DecalManholeCover' };
+        var K = { asphalt: 'urban:PlasterWallPainted1b', pavement: 'urban:TileGeneric1a', kerb: 'urban:PlasterWallPainted1a', yard: 'urban:ConcreteStriped2a', manhole: 'urban:DecalManholeCover1', stain: 'urban:DecalStainOil1' };   // manhole + stain: the Urban Decay pack's (2026-11-15)
         return K[kind] || null;
     }
     /* THE HOARDING SIGNS (2026-09-17): the pack's DANGER / CAUTION / HAZARD plates on a yard wall's street face, one or two per run, seeded by the run's own coordinates */
@@ -73568,7 +73568,7 @@ const ThreeRenderer = (function () {
         var inOpenR = function (px, pz, m) { return opensR.some(function (o) { return (o.r != null) ? Math.hypot(px - o.x, pz - o.z) < o.r + m : _hqTPolyDist(px, pz, [[o.x0, o.z0], [o.x1, o.z1]]).d < (o.w || 0) / 2 + m; }); };
         /* the merged quad lists: flat quads on the ground (a, b, c, d in metres, y = the ground + lift), each with its own uv */
         var bucket = function () { return { pos: [], uv: [], idx: [], n: 0 }; };
-        var Bw = bucket(), Bk = bucket(), Bm = bucket();   // white paint · kerb stones · manholes
+        var Bw = bucket(), Bk = bucket(), Bm = bucket(), Bs = bucket();   // white paint · kerb stones · manholes · oil stains
         var quad = function (B, p, uvs, ny) {
             /* p = four [x, y, z] in metres (ccw seen from above), uvs = four [u, v] */
             for (var i = 0; i < 4; i++) { B.pos.push(p[i][0] * U, p[i][1] * U + 0.3, p[i][2] * U); B.uv.push(uvs[i][0], uvs[i][1]); }
@@ -73603,7 +73603,7 @@ const ThreeRenderer = (function () {
             }
         };
         var dir = function (a, b) { var dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1; return { x: dx / L, z: dz / L, L: L }; };
-        var manholes = 0, signs = 0, madeSigns = [], deadEnds = [];
+        var manholes = 0, stains = 0, signs = 0, madeSigns = [], deadEnds = [];
         streets.forEach(function (st, si) {
             var pts = st.pts, w = st.w, n = pts.length, loop = n > 2 && pts[0][0] === pts[n - 1][0] && pts[0][1] === pts[n - 1][1];
             var corner = {};
@@ -73704,6 +73704,13 @@ const ThreeRenderer = (function () {
                     if (inOther(hx, hz, si, 0.8) || inPad(hx, hz, 2.4) || nearFurn(hx, hz, 1.2)) continue;
                     flat(Bm, hx, hz, d.x, d.z, R.manholeR * 2, R.manholeR * 2, 0); manholes++;
                 }
+                /* THE OIL STAINS (2026-11-15, the Urban Decay pack; a room asks with gen.stains): a dark patch in a lane now and then, turned four ways, clear of the mouths and the manholes' rhythm */
+                if (info.gen && info.gen.stains) for (var s6 = 11 + (si * 7) % 13; s6 < L - 4; s6 += 23) {
+                    var lane6 = ((stains % 2) ? -1 : 1) * Math.min(w * 0.24, 2.4), ox6 = pts[k][0] + d.x * s6 + (-d.z) * lane6, oz6 = pts[k][1] + d.z * s6 + d.x * lane6;
+                    if (inOther(ox6, oz6, si, 1.4) || inPad(ox6, oz6, 2.8)) continue;
+                    var q6 = stains % 4, sz6 = 2.1 + (stains % 3) * 0.5;
+                    flat(Bs, ox6, oz6, (q6 & 1) ? -d.x : d.x, (q6 & 2) ? -d.z : d.z, sz6, sz6, 0); stains++;
+                }
                 /* THE SPEED SIGNS: on the sidewalk, alternating sides, facing the traffic */
                 for (var s5 = 9 + (si * 7) % 11; s5 < L - 4; s5 += R.signEvery) {
                     var sdS = (signs % 2) ? 1 : -1, sOff = w / 2 + Math.min(walk, 1.2) * 0.55 + 0.3;
@@ -73734,6 +73741,7 @@ const ThreeRenderer = (function () {
         var kerbTex = _hzTex(_hqRoadTexKey('kerb')), kerbMat = new THREE.MeshPhongMaterial({ map: kerbTex || null, color: neon ? 0x9a9ab0 : 0xc8c6c0, shininess: 4, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }); kerbMat.emissive = new THREE.Color(0x1a1a1a);
         var mhTex = _hzTex(_hqRoadTexKey('manhole')), mhMat = new THREE.MeshLambertMaterial({ map: mhTex || null, transparent: true, alphaTest: 0.3, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff });
         mk(Bk, kerbMat, 2); mk(Bw, paint, 3); if (mhTex) mk(Bm, mhMat, 3);
+        if (Bs.n) { var stTex = _hzTex(_hqRoadTexKey('stain')); if (stTex) mk(Bs, new THREE.MeshLambertMaterial({ map: stTex, transparent: true, opacity: 0.85, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, color: 0xffffff }), 2); }   // under the paint and the manholes
         /* the posts: a plate on a pole, a blocker under it */
         var poleMat = new THREE.MeshPhongMaterial({ color: 0x5a5e66, shininess: 40 });
         var placePlate = function (name, x, z, yaw, h, wM) {
@@ -82981,12 +82989,17 @@ const ThreeRenderer = (function () {
             if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
             var k = _hqKeyName(e);
             if (!k) return;
-            if (k === 'esc') { e.preventDefault(); e.stopPropagation(); if (H.opts.onEscape) H.opts.onEscape(); return; }
+            /* ESC CLOSES, IT NEVER LOOPS (mondo 11-15: "pressing escape just opens the pause menu again forever and ever"):
+               the press is stamped so the unpause it causes never takes the pointer lock (_hqTryLock) — a lock that lands on
+               an ESCAPE press is thrown out again by the browser on that same press (Firefox on the key's release), and the
+               lost lock read as a fresh ESC that opened the menu again. onEscape answers false when a screen over the walk
+               (the ID card, the trophies) owns the key: it is then left alone to reach that screen. */
+            if (k === 'esc') { _hqEscAt = performance.now(); _hqEscHeld = true; var escR = H.opts.onEscape ? H.opts.onEscape() : false; if (escR !== false) { e.preventDefault(); e.stopPropagation(); } return; }
             /* P = the same as ESC (Phase 8, 2026-09-14): with the pointer locked the
                browser eats ESC to release the cursor and the page never sees the
                key, so the settings could not be opened from the walk without a
                click on the strip — which the locked cursor could not make */
-            if (k === 'p') { e.preventDefault(); e.stopPropagation(); if (H.opts.onEscape) H.opts.onEscape(); return; }
+            if (k === 'p') { var pR = H.opts.onEscape ? H.opts.onEscape() : false; if (pR !== false) { e.preventDefault(); e.stopPropagation(); } return; }
             /* M = THE MAP (THE HQ HUD PASS, 2026-09-16): the directory from anywhere — before the pause
                gate so a second M closes the sheet it opened (map.js decides what is open) */
             if (k === 'm') { e.preventDefault(); e.stopPropagation(); if (!e.repeat && H.opts.onHotkey) H.opts.onHotkey('m'); return; }
@@ -82998,7 +83011,7 @@ const ThreeRenderer = (function () {
                 var nowL = performance.now();
                 if (!H._lockTryAt || nowL - H._lockTryAt > 1500) { H._lockTryAt = nowL; _hqTryLock(); }
             }
-            if (k === 'e') { e.preventDefault(); _hqInteract(); return; }
+            if (k === 'e') { e.preventDefault(); if (e.repeat || performance.now() < _hqInteractHoldUntil) return; _hqInteract(); return; }   // a held E (or the E that just closed a dialogue box, map.js) never talks again
             if (k === 'v') { e.preventDefault(); _hqToggleView(); return; }
             /* SKATEBOARDING (HQ plan 9.8): B drops the deck / picks it up */
             if (k === 'b') { e.preventDefault(); _hqRideToggle(); return; }
@@ -83141,6 +83154,10 @@ const ThreeRenderer = (function () {
                that request rode the click / the ENTER on a field. The editor takes the lock itself, only while the RIGHT button is
                held over the view (editor.js). */
             if (_hq && _hqEditing(_hq)) return;
+            /* ESC CLOSES, IT NEVER LOOPS: no lock on an ESCAPE press (the browser throws it out on the same press and that
+               read as a new ESC); hover-look covers the walk until the next movement key or click takes it */
+            if (_hqEscHeld && performance.now() - _hqEscAt < 5000) return;
+            if (performance.now() - _hqEscAt < 700) return;
             var p = canvas.requestPointerLock();
             if (p && typeof p.catch === 'function') p.catch(function () {});
         } catch (e) {}
@@ -83176,6 +83193,9 @@ const ThreeRenderer = (function () {
        (battle.js) owns its own locks: it is never live inside the 2.5 s
        stale window after a leave, and never while _hq exists. */
     var _hqLockStaleAt = 0;
+    var _hqEscAt = -1e9, _hqEscHeld = false;   // ESC CLOSES, IT NEVER LOOPS: the last ESCAPE the page saw, and whether it is still down
+    var _hqInteractHoldUntil = 0;              // E is deaf until then (the E / click that closed a dialogue box)
+    if (typeof window !== 'undefined') window.addEventListener('keyup', function (e) { if (e.key === 'Escape' || e.key === 'Esc') _hqEscHeld = false; }, true);
     var _hqHadLock = false;   // Phase 8: the lock was ours last time we looked
     var _hqRebuildAt = 0;     // 2026-09-14 rev 4: the last room-to-room rebuild (a door) — a lock loss inside its window is the swap's, never an ESC
     function _hqOnLockChange() {
@@ -83188,6 +83208,7 @@ const ThreeRenderer = (function () {
                    consumed it: treat it as ESC (the settings). A blur / alt-tab
                    lands here too, which is a pause as well. */
                 var esc = _hqHadLock && !!_hq && !_hq.paused && (performance.now() - _hqLockStaleAt > 2500);
+                if (esc && (_hqEscHeld || performance.now() - _hqEscAt < 1200)) esc = false;   // ESC CLOSES, IT NEVER LOOPS: the page already acted on that ESCAPE press
                 if (esc && _hqEditing(_hq)) esc = false;   // THE EDITOR (E0): its viewport never takes a lost lock for the walker's ESC
                 /* the swap between two rooms (2026-09-14 rev 4): the shared canvas is
                    re-parented / the old scene torn down and the browser may release
@@ -95052,6 +95073,8 @@ const ThreeRenderer = (function () {
         },
         /* the clock re-read NOW (map.js calls it when the hour is set by hand, so the room does not ease across half a day) */
         clockSnap: function () { var H = _hq; if (!H || !H.clock) return false; H.clock.at = 0; var V = _hqClockVals(H.room, H.clock.id, _hqClockHourNow()); if (!V) return false; H.clock.vals = V; H.clock.sunCur.copy(V.sunDome); H.clock.moonCur.copy(V.moonDome); H.clock.duskCur = V.dusk; if (!V.locked && !(H.stage && H.stage.blend)) _hqClockApply(H, V, true); _hqClockLamps(H, true); return true; },
+        /* E is deaf for `ms` (map.js: the key or click that closed a dialogue box is not a new talk) */
+        interactHold: function (ms) { _hqInteractHoldUntil = performance.now() + (ms || 300); },
         setPaused: function (on) {
             if (!_hq) return;
             _hq.paused = !!on;

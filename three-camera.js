@@ -2781,12 +2781,12 @@ var EWScene = (function () {
                 var n = S.row.beats[S.i].choice.options.length;
                 if (k === 'arrowleft' || k === 'arrowup' || k === 'a' || k === 'w') { S.choice.sel = (S.choice.sel + n - 1) % n; choiceShow(S.row.beats[S.i].choice, S.choice.sel); }
                 else if (k === 'arrowright' || k === 'arrowdown' || k === 'd' || k === 's' || k === 'tab') { S.choice.sel = (S.choice.sel + 1) % n; choiceShow(S.row.beats[S.i].choice, S.choice.sel); }
-                else if (!e.repeat && (k === ' ' || k === 'enter') && performance.now() - S.choice.at > 400) pick(S.choice.sel);
+                else if (!e.repeat && (k === ' ' || k === 'enter' || k === 'e') && performance.now() - S.choice.at > 400) pick(S.choice.sel);   // E too (mondo 11-15: the key that talks is the key that answers)
                 else if (/^[1-9]$/.test(k) && +k <= n) pick(+k - 1);
                 return;
             }
             if (k === 'escape') { if (!S.skipAt) { S.skipAt = performance.now(); var sk = document.getElementById('ewSceneSkip'); if (sk) sk.classList.add('on'); } return; }
-            if (!e.repeat && (k === ' ' || k === 'enter')) hurry();
+            if (!e.repeat && (k === ' ' || k === 'enter' || k === 'e')) hurry();   // E turns the line too
         } else if (k === 'escape') { S.skipAt = 0; var s2 = document.getElementById('ewSceneSkip'); if (s2) s2.classList.remove('on'); var fl = document.getElementById('ewSceneSkipFill'); if (fl) fl.style.width = '0'; }
     }
     function onClick(e) {
