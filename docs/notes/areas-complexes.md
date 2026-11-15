@@ -3349,3 +3349,61 @@ mondo 11-15: "do a font pass on all of the buildings that have text"; his OK on 
 - NOT changed: Financial's box-built 3D letters (F-detail.js `letters()`), the lamp-post district banners (field `v`), text painted on pack
   models. Seen: the real function on the real baked keys in a bare page (/mnt/project-files/city-sign-fonts/built_real_sign_code.jpg), not
   in the game (RULE #1c).
+
+## DISASTER CITY, THE ENTERTAINMENT DISTRICT — LOS ANGELES (2026-11-15)
+mondo 11-15 12:19: "I want each district to be based off of a major city ... entertainment or film could be LA"; he picked "Build it as drawn"
+on the real-cities plan (`/mnt/project-files/disaster-city-real-cities/plan.html` section d-e). All of it is in `docs/disaster-city/districts/E.js`.
+- **THE PAINTED STUCCO**: the stucco sheet is mid grey, so every pastel over it read as mud (the old ×1.7 lift clamps a pastel to white).
+  `P()` now gives every stucco part (`key === ST`, not a roof) its own colour and the arch row's `gain` (`STG` 2.2, Bayside's painted wall);
+  a roof with stucco gable ends takes the gain too and its own tint divided by it. `free()`'s P does the same.
+- **The palette**: cream / peach / salmon stucco and clay roofs (`CLAY`, the corrugated sheet tinted) on the pawn shop, costume shops, masks,
+  lofts, Comedy theater, canteen, Stage workshop, apartments, bakery, crew house; the backstage dock is a cream painted shed. The casino,
+  the arcade, the noodle bar, the cabaret, the drive-in keep their own looks (every building unique).
+- **`LA[id]`** (called after LETTERS in `B`): `arcade()` / `archw()` = arched openings from six thin boxes; `stageNo()` = big painted numbers
+  (Film studio 1, backstage dock 2, Stage workshop 3, prop store 4); the Recording studio's record stack + needle spire on its round lobby;
+  the Concert hall's band shell (five nested half domes, `arc: 180`, on the podium roof over the entrance, open north to its walk);
+  the Cinema's red columns, jade roof, purple blade 17 m with CINEMA down it.
+- **The street block** (foot of the file, squares as district columns/rows 0..47): THE HILL LETTERS = a dry headland of domes in the bay off the
+  east edge at x 300 (the city's east is the coast, there is no hill: the hill is built), DISASTER CITY in 5×7 block letters, three leaning or
+  slipped; one merged arch row, no light, no model. THE STAR WALK = a gold-sheet star in a terrazzo square in every square of the boulevard's two
+  walks. PALMS 11.5-15 m on free yard squares beside the walks (never on a walk: they block; the bake's soil rule beds them). THE STUDIO GATE on
+  row 12 over the walk to the Film studio's door (piers on squares 40 and 43, ghost blocks). THE CINEMA FORECOURT (squares 41..42 × rows 35..39):
+  red paving, eight handprint slabs, the temple gate, rope_stanchion ×6, studio_light ×2 as the searchlights, a popcorn cart. THE LANTERN LANE =
+  the walk of rows 29..30 in two stretches (noodle bar side, Arcade side; the Stage workshop stands between): paper_lantern props hung at y 3.45
+  on strings, a red gate at each west end, blade signs, four noodle stalls on yard squares (ghost blocks). Three TOUR MAP boards.
+- Not made: a Meshy searchlight and a Meshy studio water tower (concepts go to mondo first); the water tower is still the code-built one.
+- Proof: `/mnt/project-files/dc-entertainment/la_built.jpg` (offline render of the baked rows, not the running game).
+
+## DISASTER CITY, THE CITY MARKS (2026-11-15)
+mondo 11-15: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city branding/logo for certain
+buildings or props or banners"; he corrected shield B (bolt, not a crack) and the flag's star on the sheet, then "the rest looks good for now".
+- Marks, drawn on the sign's own canvas from the sheet's SVG paths (three-renderer.js `_hqSignMark`, no texture file): `seal` (navy + gold
+  city seal), `shield` (the DC bolt shield), `pd` (D.C.P.D. badge), `fd` (D.C.F.D. badge). A seventh key field names the mark left of the
+  words: `txt:WORDS|fg|bg|aspect|<v>|<font>|<mark>`. A lamp banner (field `v`) always carries the seal above its district's name.
+- Set at the bake by docs/disaster-city/sign-fonts.js `BRAND` (Civic): POLICE boards read D.C.P.D. (pd), FIRE STATION boards read D.C.F.D.
+  (fd), the boards of City Hall, Courthouse, Council annex, Permit offices and Civil records take the seal. The department names are his;
+  add no other department without his word.
+- NOT built yet: the shield on the bus / stops / bins / barriers, manhole covers, the flag (mark C; sheet
+  /mnt/project-files/city-sign-fonts/branding_mockup_v3.jpg + branding_mockup.html hold its shapes). Seen: the real function in a bare page
+  (branding_built_real_sign_code.jpg), not in the game (RULE #1c).
+
+**Civic Center = WASHINGTON DC (2026-11-15, mondo 12:19 "each district based off of a major city. Civic could be Washington DC"; his pick
+"Build it as drawn" 12:32 on the real-cities plan, /mnt/project-files/disaster-city-real-cities/plan.html section d-c):** all in C.js.
+- Materials: the public buildings are white marble / pale limestone (Police, Dispatch, Military, Library, the Council chamber, the Permit
+  rotunda retinted; the Library's brick sheet is now `marble_light`), roofs + domes copper green (`VERD`); the Fire Station keeps red brick.
+- City Hall: the drum is a ring of 20 columns under a taller copper dome, a lantern, a statue on top (three plain parts, 43.9 m); two
+  stair treads + a row of concrete bollards in front (drawn only, off the door's line).
+- Civic plaza: a white obelisk (29 m, 2 x 2 squares, north-east lawn) and the reflecting pool (3 x 2 squares, north-west lawn) either
+  side of the walk, flag rows down the walk, a black iron fence with stone posts on the lawns' outer sides. The tool's fountain lost its
+  square to the pool, so C.js stands the same fountain in the pool (`DRESS`); the angel statue keeps its square beside the obelisk.
+  The plot is crossed by the avenue (rows 4-7 are road), so the pool is 10.5 m long, not a long mall.
+- Courthouse: eight columns (`CCOL`, symmetric about the door at x 11.4, each with its ghost), a bronze door frame, a pediment panel.
+- Military offices: the walk-in block keeps its square foot (room + door); from 7 m up the building is a pentagon round it (cyl `seg: 5`,
+  `ry: 180`: toArch now passes a cyl's `ry`), three window bands, the courtyard lawn cut in its roof. A true five-sided ground plan would
+  need a new shell + room (the collision shell is a rectangle).
+- Records garden: the glasshouse's crown is the round domed memorial ringed by 12 columns (the plot has no free ground: path ring only).
+  No statue yet. Public library: limestone, arched ground-storey windows on three sides, a copper dome, a `lion` each side of the portal.
+- THE STREET (`DRESS` = [px, py, key, x, z, face, squares it needs, opts], `BARS` = unseen low walls on barrier squares): four black cars
+  on whole squares in the Service court's south-west yard, the lions, four newspaper racks, the pool's fountain.
+- NOT DONE (need mondo's OK on a Meshy concept first): the seated statue, the pink blossom trees. No lawn paint (the ground palette is
+  shared). No far version of the obelisk (it is three parts).
