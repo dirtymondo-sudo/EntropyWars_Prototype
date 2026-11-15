@@ -72319,6 +72319,21 @@ const ThreeRenderer = (function () {
     function _hqArchSignTex(key) {
         if (_hqArchSignCache[key]) return _hqArchSignCache[key];
         var q = String(key).slice(4).split('|'), words = q[0] || '', fg = q[1] || '#ffffff', bg = q[2] || '', asp = Math.max(0.2, Math.min(24, parseFloat(q[3]) || 4));
+        /* THE BANNER (2026-11-15, THE DISTRICT LOOKS): a fifth field 'v' = a hanging street banner. The canvas stands tall (128 wide), a dark
+           rod across its top, the cloth in `bg` with a swallow tail cut out of its foot (clear), the words running up it. */
+        if (q[4] === 'v') {
+            var bw = 128, bh = Math.max(128, Math.min(1024, Math.round(bw / asp))), bc = document.createElement('canvas'); bc.width = bw; bc.height = bh;
+            var bg2 = bc.getContext('2d'); bg2.clearRect(0, 0, bw, bh);
+            bg2.fillStyle = bg || '#333333'; bg2.beginPath(); bg2.moveTo(8, 6); bg2.lineTo(bw - 8, 6); bg2.lineTo(bw - 8, bh - 2); bg2.lineTo(bw / 2, bh - 30); bg2.lineTo(8, bh - 2); bg2.closePath(); bg2.fill();
+            bg2.fillStyle = 'rgba(255,255,255,0.16)'; bg2.fillRect(8, 14, bw - 16, 5); bg2.fillRect(8, bh - 58, bw - 16, 3);   // the cloth's two stitched bands
+            bg2.fillStyle = '#23262e'; bg2.fillRect(0, 0, bw, 9);                                                              // the rod (the lamp post's own dark grey)
+            var bpx = 78, bfont = function (v) { return '900 ' + v + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif'; }; bg2.font = bfont(bpx);
+            var btw = bg2.measureText(words).width || 1, room2 = bh - 30 - 34; bpx = Math.max(8, Math.floor(bpx * Math.min(1, room2 / btw)));
+            bg2.font = bfont(bpx); bg2.textAlign = 'center'; bg2.textBaseline = 'middle'; bg2.fillStyle = fg;
+            bg2.save(); bg2.translate(bw / 2 + bpx * 0.04, 24 + room2 / 2); bg2.rotate(-Math.PI / 2); bg2.fillText(words, 0, 0); bg2.restore();
+            var bt = new THREE.CanvasTexture(bc); bt.anisotropy = 4;
+            return (_hqArchSignCache[key] = bt);
+        }
         var H = 128, W = Math.max(32, Math.min(2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;
         var g = c.getContext('2d'); g.clearRect(0, 0, W, H);
         if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
@@ -73445,14 +73460,49 @@ const ThreeRenderer = (function () {
            parked car) — `n` points out of the road, the head hangs over it. A survey from before the table keeps the old walk below. */
         if (Array.isArray(info.lamps)) {
             var low = (typeof window !== 'undefined' && window.EW_PERF_LOW);
+            /* THE DISTRICT LOOKS (2026-11-15, mondo: "give each district its own vibe and atmosphere and aesthetic, while also making disaster
+               city as a whole feel connected"): the post is the same everywhere; a lamp's district (`d`, data.js gen.looks) gives its light
+               its colour (one shared glass material per colour, so THE INSTANCE PASS still batches a cell's lamps) and, on a lamp with
+               `b`, hangs the district's banner from the post: its name on its colour, along the kerb, both sides readable. Every banner
+               of a district is ONE mesh (nine draws for the whole city). window.EW_NO_DISTRICT_LOOKS = true: the old amber, no banners. */
+            var looks = (typeof window !== 'undefined' && window.EW_NO_DISTRICT_LOOKS) ? null : (info.lampLooks || null);
+            var _lk = _hqBuildStreetLamps._look || (_hqBuildStreetLamps._look = {});
+            var lookOf = function (hex) {
+                if (_lk[hex]) return _lk[hex];
+                var gm = new THREE.MeshBasicMaterial({ color: new THREE.Color(hex), fog: false }); gm._ew_shared = true;
+                return (_lk[hex] = { col: new THREE.Color(hex).getHex(), pick: function (node, srcMat) { return ((srcMat && srcMat.name) || '') === 'Glass' ? gm : _lampMats.post; } });
+            };
+            var flags = {};   // district → { pos, uv, idx } of all its banners
+            var BAN = { w: 0.56, h: 1.34, y0: 1.72, off: 0.1 };
             info.lamps.forEach(function (lp, li) {
                 if (low && (li % 2)) return;   // the low-power pass: every other lamp
                 var gyL = (lp.y != null) ? lp.y : hqTerrainHeight(info, lp.x, lp.z);
-                var lampL = _miscModelInstance(_R2_MISC + 'streetlamp/Street%20Lamp.obj', false, lampH, { matPick: lampMat });
+                var lk = looks && lp.d && looks[lp.d], lo = lk && lk.lamp ? lookOf(lk.lamp) : null, colL = lo ? lo.col : col;
+                var lampL = _miscModelInstance(_R2_MISC + 'streetlamp/Street%20Lamp.obj', false, lampH, { matPick: lo ? lo.pick : lampMat });
                 lampL.position.set(lp.x * U, gyL * U + 0.3, lp.z * U); lampL.rotation.y = Math.atan2(lp.nx, lp.nz) + Math.PI / 2; G.add(lampL);
-                var glowL = _hzGlowSprite(0.9 * U, col, 0.32, 0.0, 0.0, 0.0); glowL.position.set(lp.x * U, (gyL + 3.1) * U, lp.z * U); G.add(glowL);
+                var glowL = _hzGlowSprite(0.9 * U, colL, 0.32, 0.0, 0.0, 0.0); glowL.position.set(lp.x * U, (gyL + 3.1) * U, lp.z * U); G.add(glowL);
+                if (lk && lp.b && lk.name) {
+                    var nl = Math.hypot(lp.nx, lp.nz) || 1, ax = -lp.nz / nl, az = lp.nx / nl;   // along the kerb
+                    var fl = flags[lp.d] || (flags[lp.d] = { pos: [], uv: [], nor: [], idx: [], lk: lk });
+                    var x0 = lp.x + ax * BAN.off, z0 = lp.z + az * BAN.off, x1 = lp.x + ax * (BAN.off + BAN.w), z1 = lp.z + az * (BAN.off + BAN.w), y0 = gyL + BAN.y0, y1 = y0 + BAN.h;
+                    [1, -1].forEach(function (sd) {   // the two faces: each reads the right way round from its own side
+                        var b0 = fl.pos.length / 3, A = sd > 0 ? [x0, z0] : [x1, z1], B = sd > 0 ? [x1, z1] : [x0, z0];
+                        fl.pos.push(A[0] * U, y0 * U, A[1] * U, B[0] * U, y0 * U, B[1] * U, B[0] * U, y1 * U, B[1] * U, A[0] * U, y1 * U, A[1] * U);
+                        fl.uv.push(0, 0, 1, 0, 1, 1, 0, 1);
+                        for (var k4 = 0; k4 < 4; k4++) fl.nor.push(0, 1, 0);   // lit as the ground is: the cloth never goes black on its far side
+                        fl.idx.push(b0, b0 + 1, b0 + 2, b0, b0 + 2, b0 + 3);
+                    });
+                }
                 var blkL = new THREE.Object3D(); blkL.position.set(lp.x * U, gyL * U, lp.z * U); G.add(blkL);
                 _hq.blockers.push({ obj: blkL, y: gyL, top: null, rad: 0.22, lamp: true });
+            });
+            Object.keys(flags).forEach(function (d) {
+                var fl = flags[d], lk = fl.lk, bg = new THREE.BufferGeometry();
+                bg.setAttribute('position', new THREE.Float32BufferAttribute(fl.pos, 3)); bg.setAttribute('uv', new THREE.Float32BufferAttribute(fl.uv, 2));
+                bg.setAttribute('normal', new THREE.Float32BufferAttribute(fl.nor, 3)); bg.setIndex(fl.idx); bg.computeBoundingSphere();
+                var bm = new THREE.MeshLambertMaterial({ map: _hqArchSignTex('txt:' + lk.name + '|' + (lk.ink || '#ffffff') + '|' + (lk.bg || '#444444') + '|' + (Math.round(BAN.w / BAN.h * 100) / 100) + '|v'), alphaTest: 0.5 });   // two faces back to back, one side each
+                bm._ew_hzNear = true;
+                var bmesh = new THREE.Mesh(bg, bm); bmesh.name = 'districtBanners:' + d; G.add(bmesh);
             });
             return;
         }

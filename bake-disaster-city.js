@@ -733,7 +733,21 @@ dcRun('build');
       const cx0 = cellOfM(t.x), cy0 = cellOfM(t.z); let best = null;
       for (let dy = -8; dy <= 8; dy++) for (let dx = -8; dx <= 8; dx++) { const cx = cx0 + dx, cy = cy0 + dy; if (!free(cx, cy, '.#') || !clear(gc(cx), gc(cy))) continue; const d = Math.hypot(dx, dy); if (!best || d < best[0]) best = [d, cx, cy]; }
       if (best) { take(best[1], best[2]); t.x = gc(best[1]); t.z = gc(best[2]); count.treesMoved = (count.treesMoved || 0) + 1; } else count.treesStuck = (count.treesStuck || 0) + 1; }); }
-lines[lampLine] = "                    lamps: " + J(lamps) + ",";
+/* THE DISTRICT LOOKS (2026-11-15, mondo: "give each district its own vibe and atmosphere and aesthetic, while also making disaster city as a
+   whole feel connected"; the plan sheet he approved): ONE lamp post and ONE banner shape city-wide, and each district's own lamp light
+   colour + banner colour + name (`looks`, drawn by three-renderer.js _hqBuildStreetLamps). A lamp row carries its district `d`; every other
+   lamp of a district carries the banner (`b: 1`). The kerb's own piece per district: props.js KERB_LOOK. */
+const LOOKS = {
+    R: { lamp: '#ffb060', name: 'SOUTHSIDE', bg: '#b5533c', ink: '#ffffff' },        C: { lamp: '#fff0d2', name: 'CIVIC CENTER', bg: '#2c4a7c', ink: '#ffffff' },
+    F: { lamp: '#d2e4ff', name: 'FINANCIAL', bg: '#1f6e58', ink: '#ffffff' },        U: { lamp: '#ffe2ae', name: 'UNIVERSITY', bg: '#7a2a3c', ink: '#ffffff' },
+    H: { lamp: '#fff0b8', name: 'HERO PLAZA', bg: '#c22a2a', ink: '#ffffff' },       E: { lamp: '#ff7ad8', name: 'ENTERTAINMENT', bg: '#7a3cc8', ink: '#ffffff' },
+    I: { lamp: '#ff9a3c', name: 'INDUSTRIAL', bg: '#e0b020', ink: '#1c1a14' },       S: { lamp: '#f2faff', name: 'SPORTS + CULTURE', bg: '#2a8c4a', ink: '#ffffff' },
+    B: { lamp: '#8ce8dc', name: 'BAYSIDE', bg: '#1a8c9c', ink: '#ffffff' },
+};
+{ const seen = {}; count.banners = 0;
+  lamps.forEach(l => { const p = plotAtCell(Math.max(0, Math.min(N * 12 - 1, Math.floor((l.x + HALF) / C))), Math.max(0, Math.min(N * 12 - 1, Math.floor((l.z + HALF) / C))));
+      if (!p || !LOOKS[p.d]) return; l.d = p.d; seen[p.d] = (seen[p.d] || 0) + 1; if (seen[p.d] % 2) { l.b = 1; count.banners++; } }); }
+lines[lampLine] = "                    looks: " + J(LOOKS) + ",\n                    lamps: " + J(lamps) + ",";
 features.push(...lateRows);
 /* ── THE LEVELS, THE GROUND: every square's four corner heights (NW NE SW SE, centimetres) → `terrain.slope.cells`.
    - a BUILDING's squares are flat at its base: the plot's level, or the kerb walk's height at its door when its door opens on a sloping

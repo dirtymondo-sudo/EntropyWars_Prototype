@@ -3306,3 +3306,22 @@ One pass over every OUTDOOR prop of `site_prebuilt_downtown_streets` + the bare 
 - **THE BANKS WEAR THE WALL** (three-renderer.js `_hqTerrainMat` + `_ewNodeTerrain`, both renderers): the painted ground sheets are laid from above only, so a bank between two plots (up to 7 m) wore its yard's grass / paving as streaks stretched straight down (the "tall grass wall" in his screenshot). In a room whose ground is `terrain.slope` and painted, a steep face (the sharpened up-weight under 0.25 to 0.6) wears the room's CLIFF sheet (the city: `urban:ConcreteStriped2a`, a concrete retaining wall), read on the face's own axis. Streets, ramps and stair flights are too flat to count. `window.EW_NO_STEEP_CLIFF` = off.
 - **THE BARE PARTS WEAR A SURFACE** (three-renderer.js `_hqBuildArchRows` matOf, `HQ_ARCH_SURFACE`, `_hqArchSurface`): an arch part with no `key` was one flat Phong colour: 8,057 parts of the city (5,594 outdoors: frames, trims, awnings, plinths, posts; 2,463 indoors: counters, shelves, legs). The renderer reads the part's colour as a material and gives it that sheet, colour kept (the sheet's average is divided out): dark greys = plate steel `calm_rivets`, mid greys = `calm_concrete`, browns = `calm_planks`, everything else = painted plaster `urban:PlasterWallPainted1a`. Lit parts (`glow`), glass and decals stay. No data change, so every district's later parts get it too. The ladders' steel and the fire escapes' iron decks (`_hqBuildClimbs`) wear the plate sheet as well. `window.EW_ARCH_BARE = true` = the flat colours back.
 - All four sheets were on R2 and in use already: no new art, none of his textures touched, no gold.
+
+## DISASTER CITY, THE DISTRICT LOOKS (2026-11-15)
+mondo: "try to give each district its own vibe and atmosphere and aesthetic, while also making disaster city as a whole feel connected".
+Plan sheet `/mnt/project-files/disaster-city-exterior/district_looks_plan.jpg`, he chose "Build all of it".
+- ONE CITY KIT: the same lamp post, the same banner shape, kerbs, signs, bins and concrete banks everywhere. PER DISTRICT: the lamp's light
+  colour, the banner's colour + name, one kerb piece.
+- `bake-disaster-city.js` LOOKS (written to data.js `terrain.gen.looks`): R amber / SOUTHSIDE brick red, C warm white / CIVIC CENTER navy,
+  F cool white / FINANCIAL bank green, U ivory / UNIVERSITY maroon, H bright warm white / HERO PLAZA red, E pink / ENTERTAINMENT purple,
+  I deep orange / INDUSTRIAL hazard yellow (dark ink), S stadium white / SPORTS + CULTURE green, B aqua / BAYSIDE teal.
+  Every lamp row carries its district `d`; every other lamp of a district carries `b: 1` (137 banners on 272 lamps).
+- data.js compile: `info.lampLooks` = gen.looks, `info.lamps[]` keep `d` / `b`.
+- three-renderer.js `_hqBuildStreetLamps`: one shared glass material per light colour (the instance pass still batches), the glow sprite in
+  that colour, and all of a district's banners in ONE mesh (9 draws city-wide). The banner sheet is `_hqArchSignTex` with a fifth key field
+  `v` ('txt:NAME|ink|bg|aspect|v'): tall canvas, rod on top, swallow tail, the name running up. Two faces back to back so both sides read.
+  Kill switch `window.EW_NO_DISTRICT_LOOKS = true`.
+- props.js KERB_LOOK: beside every third lamp (i % 3 === 1), 1.3 m along the kerb and 0.5 m in, on a walk or yard square only: R trash can /
+  boxes, C newspaper rack, F stone urn, U iron bench, H globe lamp, E popcorn cart, I drums / tyres, S hot dog stand / cone, B lobster traps /
+  cone (89 pieces, all models the city already wore). They go through the prop check and the exterior polish like any prop.
+- NOT SEEN ON SCREEN (RULE #1c). Checked offline: 89 of 89 pieces on walk squares, none on a wall top or a step.

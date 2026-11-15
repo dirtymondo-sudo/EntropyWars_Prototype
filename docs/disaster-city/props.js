@@ -124,8 +124,21 @@ const DRESS = {
     R: ['ind_vent', 'barrels', 'crate', 'boxes'], C: ['utility_box', 'ind_panel', 'ind_vent'], F: ['utility_box', 'ind_vent', 'ind_panel'], U: ['utility_box', 'ind_panel'],
     H: ['utility_box', 'ind_vent'], E: ['ind_vent', 'crate', 'boxes', 'ind_panel'], I: ['barrels', 'crate', 'ind_vent', 'ind_panel', 'barrels', 'crates'], S: ['utility_box', 'ind_vent', 'crate'], B: ['ind_vent', 'utility_box', 'crate'],
 };
+/* THE DISTRICT LOOKS: the one thing a district's kerbs carry that no other district's do (all nine are models the city already wears).
+   face 'in' = its front to the walk, 'along' = its length along the kerb, none = any way round */
+const KERB_LOOK = {
+    R: { keys: ['metal_trash_can', 'cardboard_boxes'] },                                   // Southside: lived in
+    C: { keys: ['newspaper_rack'], face: 'in' },                                           // Civic Center: the day's paper
+    F: { keys: ['stone_urn'] },                                                            // Financial: stone urns, no green
+    U: { keys: ['iron_garden_bench'], face: 'in' },                                        // University: iron benches under the trees
+    H: { keys: ['globe_lamp'] },                                                           // Hero Plaza: globe lamps, bright
+    E: { keys: ['popcorn_cart'], face: 'along' },                                          // Entertainment: the strip's carts
+    I: { keys: ['psx_metal_barrel_mp_0', 'traffic_barrel', 'psx_metal_barrel_mp_2', 'tire_stack'] },   // Industrial: drums and tyres
+    S: { keys: ['hot_dog_stand', 'traffic_cone'], face: 'along' },                         // Sports + Culture: match-day food
+    B: { keys: ['lobster_traps', 'traffic_cone'] },                                        // Bayside: the harbour's traps, the cordon's cones
+};
 function dress(ctx) {
-    const { PLAN, props, cellAt, free, take, C, N, HALF, r3 } = ctx, n = { wall: 0, bins: 0, sandbags: 0, drains: 0, pots: 0, phones: 0, garbage: 0, poles: 0, play: 0 };
+    const { PLAN, props, cellAt, free, take, C, N, HALF, r3 } = ctx, n = { wall: 0, bins: 0, sandbags: 0, drains: 0, pots: 0, phones: 0, garbage: 0, poles: 0, play: 0, kerbLook: 0 };
     const gc = c => -HALF + (c + 0.5) * C;
     const faceZ = (dx, dz) => Math.round((Math.atan2(dx, -dz) / D2R + 360) % 360);     // a +z front looking (dx, dz)
     const faceX = (dx, dz) => Math.round((Math.atan2(-dz, -dx) / D2R + 360) % 360);    // a +x front looking (dx, dz)
@@ -188,6 +201,16 @@ function dress(ctx) {
     (ctx.lamps || []).forEach((l, i) => { const p = plotAt(l.x, l.z); if (!p || 'RI'.indexOf(p.d) < 0 || i % 3) return;
         const al = [-(l.nz || 0), l.nx || 0];                                             // along the kerb, a square on from the lamp
         props.push({ key: 'power_pole', x: r3(l.x + al[0] * C), z: r3(l.z + al[1] * C), face: l.nx ? 0 : 90 }); n.poles++; });
+    /* THE DISTRICT LOOKS, the kerb's own piece (2026-11-15, mondo: "give each district its own vibe ... while also making disaster city as a
+       whole feel connected"; the plan sheet he approved): beside every third lamp, 1.3 m along the kerb and half a metre in from it, stands
+       the district's own thing (KERB_LOOK). Decor: free on the walk, off the square's middle. The check below moves one that meets anything. */
+    (ctx.lamps || []).forEach((l, i) => { const p = plotAt(l.x, l.z), K = p && KERB_LOOK[p.d]; if (!K || i % 3 !== 1) return;
+        const al = [-(l.nz || 0), l.nx || 0], k = K.keys[((i - 1) / 3) % K.keys.length | 0], cellM = v => Math.floor((v + HALF) / C);
+        const spot = [-1.3, 1.3, -2.2, 2.2].map(t => [l.x + al[0] * t + (l.nx || 0) * 0.5, l.z + al[1] * t + (l.nz || 0) * 0.5]).find(q => 'P.'.indexOf(cellAt(cellM(q[0]), cellM(q[1]))) >= 0);   // on the walk or a yard, never the road
+        if (!spot) return; const x = spot[0], z = spot[1];
+        const row = { key: k, x: r3(x), z: r3(z) };
+        if (K.face === 'in') row.face = faceZ(l.nx || 0, l.nz || 0); else if (K.face === 'along') row.face = faceZ(al[0], al[1]); else row.face = (i * 53) % 360;
+        props.push(row); n.kerbLook++; });
     PLAN.plots.filter(p => /^(Townhouse court|Park west|Dorm court)$/.test(p.name)).forEach(p => {   // a 2 x 2 squares yard: the swing, the slide, the sandbox between
         for (let ly = 1; ly < N - 2; ly++) for (let lx = 1; lx < N - 2; lx++) { const cx = p.x * N + lx, cy = p.y * N + ly;
             if (![[0, 0], [1, 0], [0, 1], [1, 1]].every(d => free(cx + d[0], cy + d[1], '.'))) continue;
