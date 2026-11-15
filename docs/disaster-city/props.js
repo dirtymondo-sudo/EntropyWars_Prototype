@@ -36,7 +36,7 @@ for (let i = 0; i < 15; i++) SIZE['roads_g_sign_' + String(i).padStart(3, '0')] 
 /* a thing that does nothing in a fight stands OFF its square's middle (mondo 11-13) */
 const DECOR = /bench|_bin$|signpost|roads_g_sign|fire_hydrant|traffic_cone|cardboard|planter_pot|cactus|round_table|pool_umbrella|vending|utility_box|ind_vent|ind_panel|barrel|crate|sandbags|supply|public_phone|power_pole|garbage|trash_can|play_sandbox/;
 const WALLED = /vending_machine|utility_box|ind_vent|ind_panel|public_phone/;                    // stands with its back to a wall
-const FIXED = /^city_|babel_crane|lighthouse|fountain|^ind_container|^ind_silo|^ind_skip|street_drain|quarter_pipe|field_goal/;   // a landmark / a district's set piece / a flat decal: checked against nothing, never moved
+const FIXED = /^city_(?!bench$|bin$)|babel_crane|lighthouse|fountain|^ind_container|^ind_silo|^ind_skip|street_drain|quarter_pipe|field_goal/;   // a landmark / a district's set piece / a flat decal: checked against nothing, never moved
 
 let SRC = null; const catCache = {};
 function cat(REPO, k) {
@@ -268,6 +268,7 @@ function check(ctx) {
         else { drop.add(q); tally.left_out++; report.push([q.key, q.x, q.z, why, 'left out']); }
     }
     for (let i = props.length - 1; i >= 0; i--) { if (drop.has(props[i])) props.splice(i, 1); else delete props[i]._turned; }
-    return { tally, report };
+    drop.forEach(q => delete q._turned);
+    return { tally, report, dropped: [...drop] };   // `dropped`: the rows with no clear spot here; THE EXTERIOR POLISH (exterior-polish.js) finds each a place on the real ground, so none is lost
 }
-module.exports = { kerbSign, dress, check, SIZE, INDOOR };
+module.exports = { kerbSign, dress, check, SIZE, INDOOR, DECOR, WALLED, FIXED, solids, foot, sat, obb, circ, bbOf, rotP, Grid, cat };

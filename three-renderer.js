@@ -46393,7 +46393,8 @@ const ThreeRenderer = (function () {
             var tint = function (v, t) { return t ? v.mul(T.vec4(t.r, t.g, t.b, 1)) : v; };   // THE SHEET LOOKS (2026-10-24)
             var bl = T.attribute('aBlend', 'vec2');
             var c = tint(tri(map, 1, null, !!D.ntF), D.tFloor).toVar();
-            var cliff = tint(tri(D.cliff || map, D.cliffK || 1, bl.x, !!D.ntC), D.tCliff), path = tint(tri(D.path || map, 1, bl.y, !!D.ntP), D.tPath);
+            var cb = D.steep ? T.max(bl.x, T.float(1).sub(T.smoothstep(0.25, 0.6, w.y))).toVar() : bl.x;   // THE BANKS WEAR THE WALL (_hqTerrainMat)
+            var cliff = tint(tri(D.cliff || map, D.cliffK || 1, cb, !!D.ntC), D.tCliff), path = tint(tri(D.path || map, 1, bl.y, !!D.ntP), D.tPath);
             if (pal.length && builder.geometry && builder.geometry.hasAttribute('aPaintA')) {
                 var A = T.attribute('aPaintA', 'vec3'), B = T.attribute('aPaintB', 'vec3'), C = T.attribute('aPaintC', 'vec3');
                 var W = [A.x, A.y, A.z, B.x, B.y, B.z, C.x, C.y], pc = T.vec4(0).toVar(), pw = T.float(0).toVar();
@@ -46401,7 +46402,7 @@ const ThreeRenderer = (function () {
                 T.If(pw.greaterThan(0.001), function () { c.assign(T.mix(c, pc.div(pw), T.clamp(pw, 0, 1))); });
             }
             c.assign(T.mix(c, path, bl.y));
-            c.assign(T.mix(c, cliff.mul(T.vec4(0.92, 0.92, 0.92, 1)), bl.x));
+            c.assign(T.mix(c, cliff.mul(T.vec4(0.92, 0.92, 0.92, 1)), cb));
             c.rgb.mulAssign(T.attribute('aAO', 'float'));
             return c;
         })();
@@ -68450,6 +68451,12 @@ const ThreeRenderer = (function () {
         };
         var look = { cliffZoom: calmC ? 1 : L0.cliffZoom, floor: cTint('floor', calmF), cliff: cTint('cliff', calmC), path: cTint('path', calmP) };
         var ntF = _calmNoTile(info.floor) ? 1 : 0, ntP = _calmNoTile(info.path) ? 1 : 0, ntC = _calmNoTile(info.cliff) ? 1 : 0;   // THE CALM LOOK: no repeat on the natural sheets
+        /* THE BANKS WEAR THE WALL (2026-11-15, mondo's Disaster City screenshot: a bench against a tall bank of grass streaked straight
+           down): the painted ground sheets are laid from above only, so on a step of THE LEVELS (a retaining bank between two plots,
+           up to 7 m) the yard's grass / paving ran down the face as stretched streaks. In a room whose ground is `terrain.slope`
+           (the city's levels) a steep face wears the room's CLIFF sheet (the city: concrete, a retaining wall), read on the face's
+           own axis like any cliff; a street's slope, a ramp and a flight of stairs are far too flat to count. Both renderers. */
+        var steepCliff = !!(info.slope && info.paint && info.paint.pal && info.paint.pal.length) && !(typeof window !== 'undefined' && window.EW_NO_STEEP_CLIFF);
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
             sh.uniforms.uTriTM = { value: (info._TM || 1) };
@@ -68480,11 +68487,11 @@ const ThreeRenderer = (function () {
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvTriPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvTriN = normalize(mat3(modelMatrix) * objectNormal);');
             sh.uniforms.uTriCut = _hqTriCutU;   // THE WEIGHTED SHEETS (below)
             sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nuniform float uCliffK;\nuniform float uTriCut;\nuniform vec3 uFloorT;\nuniform vec3 uCliffT;\nuniform vec3 uPathT;\nuniform vec3 uNt;\n' + _CALM_NT_GLSL + 'varying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
-                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec2 triGyX = dFdx( triUy ); vec2 triGyY = dFdy( triUy ); vec2 triGxX = dFdx( triUx ); vec2 triGxY = dFdy( triUx ); vec2 triGzX = dFdx( triUz ); vec2 triGzY = dFdy( triUz );\n vec4 texelColor = vec4( 0.0 );\n if ( triW.y > uTriCut ) texelColor += ntRead( map, triUy, triGyX, triGyY, uNt.x ) * triW.y; if ( triW.x > uTriCut ) texelColor += ntRead( map, triUx, triGxX, triGxY, uNt.x ) * triW.x; if ( triW.z > uTriCut ) texelColor += ntRead( map, triUz, triGzX, triGzY, uNt.x ) * triW.z;\n texelColor.rgb *= uFloorT;\n vec4 cliffColor = vec4( 0.0 );\n if ( vBlend.x > uTriCut ) { if ( triW.y > uTriCut ) cliffColor += ntRead( tCliff, triUy * uCliffK, triGyX * uCliffK, triGyY * uCliffK, uNt.z ) * triW.y; if ( triW.x > uTriCut ) cliffColor += ntRead( tCliff, triUx * uCliffK, triGxX * uCliffK, triGxY * uCliffK, uNt.z ) * triW.x; if ( triW.z > uTriCut ) cliffColor += ntRead( tCliff, triUz * uCliffK, triGzX * uCliffK, triGzY * uCliffK, uNt.z ) * triW.z; }\n cliffColor.rgb *= uCliffT;\n vec4 pathColor = vec4( 0.0 );\n if ( vBlend.y > uTriCut ) { if ( triW.y > uTriCut ) pathColor += ntRead( tPath, triUy, triGyX, triGyY, uNt.y ) * triW.y; if ( triW.x > uTriCut ) pathColor += ntRead( tPath, triUx, triGxX, triGxY, uNt.y ) * triW.x; if ( triW.z > uTriCut ) pathColor += ntRead( tPath, triUz, triGzX, triGzY, uNt.y ) * triW.z; }\n pathColor.rgb *= uPathT;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), vBlend.x );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
+                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec2 triGyX = dFdx( triUy ); vec2 triGyY = dFdy( triUy ); vec2 triGxX = dFdx( triUx ); vec2 triGxY = dFdy( triUx ); vec2 triGzX = dFdx( triUz ); vec2 triGzY = dFdy( triUz );\n vec4 texelColor = vec4( 0.0 );\n if ( triW.y > uTriCut ) texelColor += ntRead( map, triUy, triGyX, triGyY, uNt.x ) * triW.y; if ( triW.x > uTriCut ) texelColor += ntRead( map, triUx, triGxX, triGxY, uNt.x ) * triW.x; if ( triW.z > uTriCut ) texelColor += ntRead( map, triUz, triGzX, triGzY, uNt.x ) * triW.z;\n texelColor.rgb *= uFloorT;\n vec4 cliffColor = vec4( 0.0 );\n float cliffB = vBlend.x;\n' + (steepCliff ? ' cliffB = max( cliffB, 1.0 - smoothstep( 0.25, 0.6, triW.y ) );\n' : '') + ' if ( cliffB > uTriCut ) { if ( triW.y > uTriCut ) cliffColor += ntRead( tCliff, triUy * uCliffK, triGyX * uCliffK, triGyY * uCliffK, uNt.z ) * triW.y; if ( triW.x > uTriCut ) cliffColor += ntRead( tCliff, triUx * uCliffK, triGxX * uCliffK, triGxY * uCliffK, uNt.z ) * triW.x; if ( triW.z > uTriCut ) cliffColor += ntRead( tCliff, triUz * uCliffK, triGzX * uCliffK, triGzY * uCliffK, uNt.z ) * triW.z; }\n cliffColor.rgb *= uCliffT;\n vec4 pathColor = vec4( 0.0 );\n if ( vBlend.y > uTriCut ) { if ( triW.y > uTriCut ) pathColor += ntRead( tPath, triUy, triGyX, triGyY, uNt.y ) * triW.y; if ( triW.x > uTriCut ) pathColor += ntRead( tPath, triUx, triGxX, triGxY, uNt.y ) * triW.x; if ( triW.z > uTriCut ) pathColor += ntRead( tPath, triUz, triGzX, triGzY, uNt.y ) * triW.z; }\n pathColor.rgb *= uPathT;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), cliffB );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
                 .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
         };
-        m.customProgramCacheKey = function () { return 'hqTerrainTri3' + (palTex.length ? 'P' + palTex.length : ''); };
-        _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex, cliffK: 1 / look.cliffZoom, tFloor: look.floor, tCliff: look.cliff, tPath: look.path, ntF: ntF, ntP: ntP, ntC: ntC });   // WEBGPU W1: the same sheets for the node renderer
+        m.customProgramCacheKey = function () { return 'hqTerrainTri3' + (palTex.length ? 'P' + palTex.length : '') + (steepCliff ? 'S' : ''); };
+        _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex, cliffK: 1 / look.cliffZoom, tFloor: look.floor, tCliff: look.cliff, tPath: look.path, ntF: ntF, ntP: ntP, ntC: ntC, steep: steepCliff });   // WEBGPU W1: the same sheets for the node renderer
         return m;
     }
     function _hqTerrainGround(x, z) {
@@ -72322,17 +72329,42 @@ const ThreeRenderer = (function () {
         var t = new THREE.CanvasTexture(c); t.anisotropy = 4;
         return (_hqArchSignCache[key] = t);
     }
+    /* THE BARE PARTS' SURFACES (see _hqBuildArchRows matOf): what a sheetless part is made of, read from its colour. `avg` = the
+       sheet's own average colour (0..1, measured on the files), divided out so the part keeps the colour its row gave it.
+       All four sheets are on R2 already and worn elsewhere in the city. */
+    var HQ_ARCH_SURFACE = {
+        paint:    { key: 'urban:PlasterWallPainted1a', avg: [0.525, 0.514, 0.494] },             // painted plaster / render: every light or coloured mass
+        metal:    { key: 'calm_rivets',                avg: [0.424, 0.431, 0.443], shine: 26 },  // plate steel: the dark greys (frames, posts, rails, grilles)
+        concrete: { key: 'calm_concrete',              avg: [0.365, 0.357, 0.345] },             // cast concrete: the mid greys (plinths, kerbs, slabs)
+        wood:     { key: 'calm_planks',                avg: [0.369, 0.298, 0.231] }              // boards: the browns (counters, shelves, benches, beams)
+    };
+    function _hqArchSurface(tint) {
+        var t = (tint == null) ? 0xffffff : (tint >>> 0), r = ((t >> 16) & 255) / 255, g = ((t >> 8) & 255) / 255, b = (t & 255) / 255;
+        var mx = Math.max(r, g, b), mn = Math.min(r, g, b), lum = 0.2126 * r + 0.7152 * g + 0.0722 * b, sat = mx > 0 ? (mx - mn) / mx : 0;
+        if (r > g && g >= b && g >= r * 0.5 && sat >= 0.28 && sat <= 0.8 && lum >= 0.06 && lum <= 0.45 && (r - b) > 0.07) return HQ_ARCH_SURFACE.wood;   // a brown, never a red or an orange (those are paint)
+        if ((sat < 0.24 && lum < 0.4) || lum < 0.12) return HQ_ARCH_SURFACE.metal;
+        if (sat < 0.14 && lum < 0.62) return HQ_ARCH_SURFACE.concrete;
+        return HQ_ARCH_SURFACE.paint;
+    }
     function _hqBuildArchRows(info, G, U) {
         var neon = !!(info.gen && info.gen.neon), mats = {}, made = 0;
         var matOf = function (b) {
             var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0, b.gain || 1].join('|'); if (mats[id]) return mats[id];
             var sign = !!b.key && String(b.key).indexOf('txt:') === 0;   // THE LETTERING: a sign's words, drawn once on a canvas
             var tex = b.key ? (sign ? _hqArchSignTex(b.key) : _hzTex(b.key)) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
+            /* THE BARE PARTS WEAR A SURFACE (2026-11-15, mondo: "Make sure any generated shapes for buildings and stuff have a
+               texture/material"): a part with no sheet of its own was one flat colour (a third of the city's parts: frames, trims,
+               awnings, plinths, counters). It reads its colour as a material now and wears that surface's sheet, its own colour kept
+               (HQ_ARCH_SURFACE: the sheet's average colour is divided out). A lit part (a lamp, a neon, a screen), glass and a
+               decal stay as they are. window.EW_ARCH_BARE = true: the flat colours back. */
+            var surf = (!b.key && !(b.glow > 0) && b.kind !== 'glass' && b.kind !== 'over' && !(typeof window !== 'undefined' && window.EW_ARCH_BARE)) ? _hqArchSurface(b.tint) : null;
+            if (surf) { var st = _hzTex(surf.key); if (st) { o.map = st; } else surf = null; }
             if (b.kind === 'over') { o.transparent = true; o.alphaTest = 0.35; o.polygonOffset = true; o.polygonOffsetFactor = -1; o.polygonOffsetUnits = -1; }
             var m = new THREE.MeshPhongMaterial(o);
             if (b.ds) m.side = THREE.DoubleSide;
             m.color = new THREE.Color(b.tint);
             if (tex && !sign) m.color.multiply(new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint));   // a sheet wears the city's building tint under its own
+            if (surf) { m.color.r /= surf.avg[0]; m.color.g /= surf.avg[1]; m.color.b /= surf.avg[2]; if (surf.shine) { m.shininess = surf.shine; m.specular = new THREE.Color(0x2a2a2a); } }   // the part's own colour, the sheet's grain
             if (b.gain && b.gain !== 1) m.color.multiplyScalar(b.gain);
             if (b.glow > 0) { m.emissive = m.color.clone(); if (tex) m.emissiveMap = tex; m.emissiveIntensity = b.glow; }
             else m.emissive = new THREE.Color(neon ? 0x08060e : 0x0a0a0a);
@@ -85884,6 +85916,9 @@ const ThreeRenderer = (function () {
         var steel = new THREE.MeshPhongMaterial({ color: 0x8e9399, shininess: 70, specular: 0xb9c0c6 }); steel.emissive = new THREE.Color(0x141618);
         var iron = new THREE.MeshPhongMaterial({ color: 0x4a4d52, shininess: 40, specular: 0x6b7076 }); iron.emissive = new THREE.Color(0x0e0f11);
         var wood = _hqMat('wood', 1, 1, { color: 0xb08a5a, shininess: 6 });
+        /* THE BARE PARTS WEAR A SURFACE (2026-11-15): the ladders' steel and the fire escapes' iron decks were flat colours; both wear the
+           plate-steel sheet now, their own colours kept (HQ_ARCH_SURFACE.metal: the sheet's average divided out) */
+        if (!(typeof window !== 'undefined' && window.EW_ARCH_BARE)) { var plateT = _hzTex(HQ_ARCH_SURFACE.metal.key); if (plateT) [steel, iron].forEach(function (mm) { mm.map = plateT; mm.color.r /= HQ_ARCH_SURFACE.metal.avg[0]; mm.color.g /= HQ_ARCH_SURFACE.metal.avg[1]; mm.color.b /= HQ_ARCH_SURFACE.metal.avg[2]; }); }
         var hemp = new THREE.MeshLambertMaterial({ color: 0xb59a6a }); hemp.emissive = new THREE.Color(0x1a1408);
         var vineMat = new THREE.MeshLambertMaterial({ color: 0x4f6a2e }); vineMat.emissive = new THREE.Color(0x0c1408);
         var leafMat = new THREE.MeshLambertMaterial({ color: 0x5e9a3a, side: THREE.DoubleSide }); leafMat.emissive = new THREE.Color(0x0e1c08);
