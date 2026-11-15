@@ -37,7 +37,10 @@ const roof = (shape, x0, z0, x1, z1, y0, h, key, tint, o) => push({ t: 'roof', s
 const vault = (x0, z0, x1, z1, y0, h, key, tint, o) => push({ t: 'roof', shape: 'barrel', x0, z0, x1, z1, y0, h, key, tint, o: o || {} });
 const door = (x, z, face) => push({ t: 'door', x, z, face });                       // a drawn (shut) door on a building with no inside
 const ring = (n, cx, cz, R, r, y0, y1, key, tint) => { for (let i = 0; i < n; i++) { const a = i * 2 * Math.PI / n; cyl(cx + R * Math.sin(a), cz + R * Math.cos(a), r, y0, y1, key, tint, { seg: 8 }); } };
-const flag = (x, z, h, tint) => { cyl(x, z, 0.09, 0, h, ALU, 0xdddddd, { seg: 6 }); box(x + 0.1, z - 0.03, x + 2.3, z + 0.03, h - 1.6, h - 0.2, null, tint); };
+/* THE CITY FLAG (2026-11-15, THE CITY MARKS, mondo's OK on the branding sheet + "go for it"): every pole flies the city's flag. The cloth
+   keeps its box; its two faces wear the renderer's 'mark:flag' sheet (three-renderer.js _hqArchSignTex). `tint` is kept for the cloth's edge. */
+const flag = (x, z, h, tint) => { cyl(x, z, 0.09, 0, h, ALU, 0xdddddd, { seg: 6 }); box(x + 0.1, z - 0.03, x + 2.3, z + 0.03, h - 1.6, h - 0.2, null, tint);
+    push({ t: 'flagq', x: x + 1.2, y: h - 1.6, z: z + 0.045, ry: 0 }); push({ t: 'flagq', x: x + 1.2, y: h - 1.6, z: z - 0.045, ry: 180 }); };
 const face = (x, z, r, y, side) => { const t = 0.12; if (side === 'W' || side === 'E') box(x - t, z - r, x + t, z + r, y - r, y + r, null, 0xfdfbf2); else box(x - r, z - t, x + r, z + t, y - r, y + r, null, 0xfdfbf2); };   // a clock's face (a square dial)
 
 /* ───────── row 0 ───────── */
@@ -295,6 +298,8 @@ function toArch(p, D) {   // D = the walk-in doorway of this building, or null: 
         out.push(clean(q));
     } else if (p.t === 'iq') {   // an inside wall panel (a quad facing into the room)
         out.push(clean({ s: 'quad', p: [r3(p.x), r3(p.y), r3(p.z)], ry: p.ry || undefined, size: [r3(p.w), r3(p.h)], key: KEY(p.key), tint: p.tint == null ? undefined : p.tint, uv: p.key ? UV(p.key) : undefined, kind: 'wall', gain: p.gain, glow: p.glow }));
+    } else if (p.t === 'flagq') {   // THE CITY FLAG: one face of a pole's cloth
+        out.push(clean({ s: 'quad', p: [r3(p.x), r3(p.y), r3(p.z)], ry: p.ry || undefined, size: [2.2, 1.4], key: 'mark:flag', uv: 'fit', kind: 'wall' }));
     } else if (p.t === 'sign') {   // THE LETTERING: a canvas sign sheet, fitted
         out.push({ s: 'quad', p: [r3(p.x), r3(p.y), r3(p.z)], ry: RY[p.face] || undefined, size: [r3(p.w), r3(p.h)], key: 'txt:' + p.text + '|' + p.fg + '|' + p.bg + '|' + r3(p.w / p.h), uv: 'fit', kind: 'wall' });
     } else if (p.t === 'door') {   // a drawn double door, shut (a building with no inside)

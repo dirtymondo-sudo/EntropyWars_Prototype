@@ -72035,6 +72035,7 @@ const ThreeRenderer = (function () {
         if (_hqSliceDue()) yield;
         if (info.signals && info.signals.length) { try { _hqBuildSignals(room, info, G); } catch (e) { console.warn('[HQ] the signals failed', e); } }   // THE CITY TRAFFIC (2026-11-13): before the cars, which read them
         if (info.busStops && info.busStops.length) { try { _hqBuildBusStops(room, info, G); } catch (e) { console.warn('[HQ] the bus stops failed', e); } }
+        try { _hqBuildCityMarks(room, info, G); } catch (e) { console.warn('[HQ] the city marks failed', e); }   // THE CITY MARKS ON THE STREET
         if (info.traffic && info.traffic.length) { try { _hqBuildTraffic(room, info, G, TM, rng); } catch (e) { console.warn('[HQ] the traffic failed', e); } }
         if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         if (_hqSliceDue()) yield;
@@ -72661,7 +72662,7 @@ const ThreeRenderer = (function () {
         if (_hqCityManholeT) return _hqCityManholeT;
         var S = 256, c = document.createElement('canvas'); c.width = S; c.height = S; var g = c.getContext('2d'), t = new THREE.CanvasTexture(c); t.anisotropy = 4;
         var paint = function () {
-            var IRON = '#54575c', DARK = '#2e3034', k = (S / 2 - 4) / 100;
+            var IRON = '#34363a', DARK = '#17181b', k = (S / 2 - 4) / 100;   // dark iron: seen in the game, a paler cover read as a white disc on the asphalt
             g.clearRect(0, 0, S, S); g.save(); g.translate(S / 2, S / 2); g.scale(k, k);
             g.fillStyle = DARK; g.beginPath(); g.arc(0, 0, 100, 0, Math.PI * 2); g.fill();
             g.fillStyle = IRON; g.beginPath(); g.arc(0, 0, 94, 0, Math.PI * 2); g.fill();
@@ -72678,10 +72679,84 @@ const ThreeRenderer = (function () {
         try { if (document.fonts && document.fonts.load && !document.fonts.check('700 20px "Oswald"', 'DISASTER')) document.fonts.load('700 20px "Oswald"', 'DISASTER CITY SEWER').then(function (ff) { if (ff && ff.length) { paint(); t.needsUpdate = true; } }, function () {}); } catch (e) {}
         return (_hqCityManholeT = t);
     }
+    /* THE CITY MARKS ON THE STREET (2026-11-15, mondo: "go for it", then "playtest city marks"): the DC bolt shield as a small plate on
+       the city's own street furniture, placed with the game on screen. HQ_CITY_PROP_MARKS: per catalogue key, `h` = the plate's centre above
+       the prop's foot, `s` = its size, `out` = how far from the prop's centre it stands (all metres), `at` = the headings it shows on,
+       relative to the prop's own facing. The bus stop signs carry one under the pictogram, on both faces. All the plates of a 42 m cell
+       are ONE mesh on ONE canvas texture, in a chunk that is dropped beyond 70 m: a few draw calls near the walker, none far off.
+       Off: window.EW_HQ_NO_CITY_MARKS. The bus's own plates: _hqCityBusMarks. */
+    var HQ_CITY_PROP_MARKS = {
+        city_bin:              { h: 0.5,  s: 0.22, out: 0.224, at: [0, 180] },
+        metro_bin:             { h: 0.52, s: 0.3,  out: 0.39,  at: [0, 180] },
+        item_police_barricade: { h: 0.78, s: 0.3,  out: 0.05,  at: [0, 180] }
+    };
+    var HQ_CITY_STOP_MARK = { h: 1.52, s: 0.34, out: 0.03 };
+    var _hqCityMarkTexs = {};
+    function _hqCityMarkTex(id, w, h, draw) {
+        if (_hqCityMarkTexs[id]) return _hqCityMarkTexs[id];
+        var c = document.createElement('canvas'); c.width = w; c.height = h; var g = c.getContext('2d'), t = new THREE.CanvasTexture(c); t.anisotropy = 4;
+        var paint = function () { g.clearRect(0, 0, w, h); draw(g, w, h); };
+        paint();
+        try { if (document.fonts && document.fonts.load) Promise.all(['20px "Archivo Black"', '700 20px "Oswald"'].map(function (sp) { return document.fonts.load(sp, 'DISASTER CITY TRANSIT').then(function () { return 1; }, function () { return 0; }); })).then(function () { paint(); t.needsUpdate = true; }); } catch (e) {}
+        return (_hqCityMarkTexs[id] = t);
+    }
+    function _hqCityShieldTex() { return _hqCityMarkTex('shield', 256, 256, function (g, w, h) { _hqSignMark(g, 'shield', w / 2, h / 2 - 2, w * 0.46, ''); }); }
+    function _hqBuildCityMarks(room, info, G) {
+        var H = _hq; if (!H || !_hqMarksCity || (typeof window !== 'undefined' && window.EW_HQ_NO_CITY_MARKS)) return;
+        if (H.cityMarks) { H.cityMarks.forEach(function (g) { if (g.parent) g.parent.remove(g); g.traverse(function (m) { if (m.geometry) m.geometry.dispose(); }); if (H.ckList) { var ix = H.ckList.indexOf(g); if (ix >= 0) H.ckList.splice(ix, 1); } }); }
+        H.cityMarks = [];
+        var U = _hqUnits(), CELL = 42, cells = {};
+        var plate = function (x, y, z, headDeg, out, s) {   // a square plate facing `headDeg` (0 = -z, 90 = +x), `out` metres from (x, z)
+            var a = _hqRad(headDeg), dx = Math.sin(a), dz = -Math.cos(a), cx = x + dx * out, cz = z + dz * out, rx = dz, rz = -dx, hs = s / 2;
+            var key = Math.floor(x / CELL) + ',' + Math.floor(z / CELL), c = cells[key] || (cells[key] = { q: [], n: 0, sx: 0, sy: 0, sz: 0 });
+            c.q.push([[cx - rx * hs, y - hs, cz - rz * hs, 0, 0], [cx + rx * hs, y - hs, cz + rz * hs, 1, 0], [cx + rx * hs, y + hs, cz + rz * hs, 1, 1], [cx - rx * hs, y + hs, cz - rz * hs, 0, 1]]);
+            c.n++; c.sx += x; c.sy += y; c.sz += z;
+        };
+        var gy = function (x, z) { try { return hqTerrainHeight(info, x, z) || 0; } catch (e) { return 0; } };
+        (room.props || []).forEach(function (p) {
+            var M = p && HQ_CITY_PROP_MARKS[p.key]; if (!M || !isFinite(p.x) || !isFinite(p.z) || p.floor) return;
+            var y0 = gy(p.x, p.z) + (+p.y || 0);
+            (M.at || [0]).forEach(function (off) { plate(p.x, y0 + M.h, p.z, (+p.face || 0) + off, M.out, M.s); });
+        });
+        (info.busStops || []).forEach(function (row) { (row.signs || []).forEach(function (sn) {
+            var y1 = gy(sn.x, sn.z) + HQ_CITY_STOP_MARK.h, hd = sn.ns ? 0 : 90;
+            plate(sn.x, y1, sn.z, hd, HQ_CITY_STOP_MARK.out, HQ_CITY_STOP_MARK.s); plate(sn.x, y1, sn.z, hd + 180, HQ_CITY_STOP_MARK.out, HQ_CITY_STOP_MARK.s);
+        }); });
+        var mat = new THREE.MeshLambertMaterial({ map: _hqCityShieldTex(), alphaTest: 0.5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 });
+        mat.emissive = new THREE.Color(0x2a2a2a);
+        Object.keys(cells).forEach(function (k) {
+            var c = cells[k], ox = c.sx / c.n, oy = c.sy / c.n, oz = c.sz / c.n, pos = [], uv = [];
+            c.q.forEach(function (Q) { [0, 1, 2, 0, 2, 3].forEach(function (i) { pos.push((Q[i][0] - ox) * U, (Q[i][1] - oy) * U, (Q[i][2] - oz) * U); uv.push(Q[i][3], Q[i][4]); }); });
+            var geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.computeVertexNormals();
+            var g = _hqSignalChunk(H, G, ox, oy, oz, CELL * 0.8, 70), m = new THREE.Mesh(geo, mat); m.name = 'hq_city_marks'; m.castShadow = false; g.add(m);
+            H.cityMarks.push(g);
+        });
+    }
+    /* the bus's plates: the shield and DISASTER CITY TRANSIT on the dark panel between its doors, on both sides (the group's +z is its nose) */
+    var HQ_CITY_BUS_MARK = { sideP: 1.57, sideN: 1.61, y: 1.05, shieldS: 0.7, textW: 2.3, textH: 0.28, shieldOff: 1.2, textOff: 0.4, midP: 0, midN: 0.15 };   // seen in the game 11-15: the group's -x is the nose, +-z its sides; the door side (-z) stands 4 cm further out
+    function _hqCityBusMarks(g, U) {
+        if (!_hqMarksCity || (typeof window !== 'undefined' && window.EW_HQ_NO_CITY_MARKS)) return;
+        var B = HQ_CITY_BUS_MARK;
+        var ttex = _hqCityMarkTex('transit', 1024, 128, function (c, w, h) { c.fillStyle = '#f4f1ea'; c.textAlign = 'center'; c.textBaseline = 'middle'; var px = 92; c.font = '700 ' + px + 'px "Oswald", "Arial Narrow", Arial, sans-serif';
+            var tw = c.measureText('DISASTER CITY TRANSIT').width || 1; if (tw > w * 0.96) { px = Math.floor(px * w * 0.96 / tw); c.font = '700 ' + px + 'px "Oswald", "Arial Narrow", Arial, sans-serif'; } c.fillText('DISASTER CITY TRANSIT', w / 2, h / 2 + px * 0.04); });
+        var mk = function (tex, w, h, along, sx) { var m = new THREE.Mesh(new THREE.PlaneGeometry(w * U, h * U), new THREE.MeshLambertMaterial({ map: tex, alphaTest: 0.5, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }));
+            m.material.emissive = new THREE.Color(0x2a2a2a); m.position.set(-along * U, B.y * U, sx * (sx > 0 ? B.sideP : B.sideN) * U); m.rotation.y = sx > 0 ? 0 : Math.PI; m.castShadow = false; m.name = 'hq_city_bus_mark'; g.add(m); };
+        [-1, 1].forEach(function (sx) { var r = sx > 0 ? -1 : 1, c = sx > 0 ? B.midP : B.midN;   // r: the way the words read along the bus on this side; the shield leads them
+            mk(_hqCityShieldTex(), B.shieldS, B.shieldS, c - r * B.shieldOff, sx); mk(ttex, B.textW, B.textH, c + r * B.textOff, sx); });
+    }
     function _hqSignTitleCase(s) { return String(s).toLowerCase().replace(/(^|[^a-z0-9])([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); }); }
     var _hqArchSignCache = {};
     function _hqArchSignTex(key) {
         if (_hqArchSignCache[key]) return _hqArchSignCache[key];
+        if (String(key).indexOf('mark:') === 0) {   // THE CITY MARKS: a whole-sheet mark for a part to wear ('mark:flag' = the city flag, 3 : 2)
+            return (_hqArchSignCache[key] = _hqCityMarkTex('flag', 300, 198, function (g, w, h) {
+                var k = w / 200; g.save(); g.translate(w / 2, h / 2); g.scale(k, k);
+                g.fillStyle = '#f4f1ea'; g.fillRect(-100, -66, 200, 132); g.fillStyle = '#1f6f78'; g.fillRect(-100, -66, 200, 34); g.fillRect(-100, 32, 200, 34);
+                g.fillStyle = '#c22a2a'; g.fill(new Path2D('M-66 -2 L-34 10 L-6 -12 L22 8 L50 -10 L100 4 L100 12 L50 -2 L22 16 L-6 -4 L-34 18 L-66 6 Z'));
+                g.fillStyle = '#14284a'; g.beginPath(); for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, r = (i % 2) ? 10.4 : 24.7; g[i ? 'lineTo' : 'moveTo'](-66 + Math.cos(a) * r, 2 + Math.sin(a) * r); } g.closePath(); g.fill();
+                g.restore();
+            }));
+        }
         var q = String(key).slice(4).split('|'), words = q[0] || '', fg = q[1] || '#ffffff', bg = q[2] || '', asp = Math.max(0.2, Math.min(24, parseFloat(q[3]) || 4));
         /* THE BANNER (2026-11-15, THE DISTRICT LOOKS): a fifth field 'v' = a hanging street banner. The canvas stands tall (128 wide), a dark
            rod across its top, the cloth in `bg` with a swallow tail cut out of its foot (clear), the words running up it. */
@@ -72752,7 +72827,7 @@ const ThreeRenderer = (function () {
         var neon = !!(info.gen && info.gen.neon), mats = {}, made = 0;
         var matOf = function (b) {
             var id = [b.key || '', b.tint, b.glow, b.kind, b.ds ? 1 : 0, b.gain || 1].join('|'); if (mats[id]) return mats[id];
-            var sign = !!b.key && String(b.key).indexOf('txt:') === 0;   // THE LETTERING: a sign's words, drawn once on a canvas
+            var sign = !!b.key && (String(b.key).indexOf('txt:') === 0 || String(b.key).indexOf('mark:') === 0);   // THE LETTERING: a sign's words, drawn once on a canvas (+ THE CITY MARKS: 'mark:flag' = the city flag's cloth)
             var tex = b.key ? (sign ? _hqArchSignTex(b.key) : _hzTex(b.key)) : null, o = { map: tex || null, shininess: b.kind === 'glass' ? 70 : 6, specular: b.kind === 'glass' ? 0x445566 : 0x151515 };
             /* THE BARE PARTS WEAR A SURFACE (2026-11-15, mondo: "Make sure any generated shapes for buildings and stuff have a
                texture/material"): a part with no sheet of its own was one flat colour (a third of the city's parts: frames, trims,
@@ -73370,7 +73445,8 @@ const ThreeRenderer = (function () {
                         var cur = -total / 2;
                         for (var li = 0; li < cells.length; li++) {
                             var c = cells[li]; if (!c) { cur += spx * 2.4 + gap; continue; }
-                            var lw = c.w * m2px, a0 = sat + runS * cur, a1 = sat + runS * (cur + lw), wp = wpt((a0 + a1) / 2, sd0), land = signLand.at(wp[0], wp[1]).y;
+                            var lw = c.w * m2px, a0 = sat + runS * cur, a1 = sat + runS * (cur + lw), land = -Infinity;
+                            for (var sk = 0; sk <= 4; sk++) { [0, -2.5].forEach(function (dq) { var wq = wpt(a0 + (a1 - a0) * sk / 4, sd0 + dq); land = Math.max(land, signLand.at(wq[0], wq[1]).y); }); }   // the highest land under the letter's width and just in front of it (seen in the game: a letter set on its middle's height sank into the slope at its ends)
                             var yb = land + spx * 0.6 - ((SG.drop && +SG.drop[li]) || 0), sh = ((SG.lean && +SG.lean[li]) || 0) * LH * runS;
                             var A = wpt(a0, sd0), B = wpt(a1, sd0), C2 = wpt(a1 + sh, sd0), D = wpt(a0 + sh, sd0);
                             var u0 = (c.x - 1) / cv.width, u1 = (c.x + c.w + 1) / cv.width, v0 = (PAD) / CH, v1 = (CH - PAD) / CH;
@@ -74203,6 +74279,7 @@ const ThreeRenderer = (function () {
                     /* the lamps: a pack car's own measured spots (THE CAR PACK, g._ew_lamps — world units), else the old guess */
                     var Lp = (g._ew_lamps !== undefined) ? g._ew_lamps : { hx: 0.6 * U, hy: 0.7 * U, hz: (len / 2 + 0.1) * U, tx: 0.6 * U, ty: 0.75 * U, tz: -(len / 2 + 0.05) * U };
                     if (Lp) [-1, 1].forEach(function (sx) { var hl = _hzGlowSprite(0.42 * U, 0xfff2c8, 0.55, 0.0, 0.0, 0.0); hl.position.set(sx * Lp.hx, Lp.hy, Lp.hz); g.add(hl); var tl = _hzGlowSprite(0.28 * U, 0xff3030, 0.5, 0.0, 0.0, 0.0); tl.position.set(sx * Lp.tx, Lp.ty, Lp.tz); g.add(tl); });
+                    if (kind === 'citybus') { try { _hqCityBusMarks(g, U); } catch (e) {} }   // THE CITY MARKS: Bus Line 1 wears the city's shield
                     g._ew_hqCar = kind; g._ew_bunOut = true; G.add(g);   // THE MOVERS OUT: a car drives; the shell's recording stays still
                     cars.push({ g: g, route: ri, pts: pts, cum: cum, L: L, loop: !!rt.loop, s: ((c + rng() * 0.6) / n) * L, v: (rt.speed || 7) * (0.9 + rng() * 0.2), v0: (rt.speed || 7), lane: rt.lane || 0, len: len, hitT: 0, stops: marks.stops, halts: marks.halts, lastHalt: -1, dwell: 0 });
                 }
@@ -95689,6 +95766,7 @@ const ThreeRenderer = (function () {
             hqText: function () { return _hqTextStats(); },   // R6: the HQ plates on the GPU vs CSS2D
             reflectors: function () { return (_hq && _hq.reflectors || []).map(function (r) { return { kind: r.kind, drawn: r.drawn, gain: r.mats[0] ? r.mats[0].uniforms.uGain.value : null }; }); },   // W4: the mirrored draws
             /* {deg, r} | {x, z}, level, y (extra), face (heading), pitch, dist, fp */
+            cityMarks: function (tbl, stop) { if (!_hq || !_hq.roomDef) return false; if (tbl) Object.keys(tbl).forEach(function (k) { HQ_CITY_PROP_MARKS[k] = tbl[k]; }); if (stop) HQ_CITY_STOP_MARK = stop; _hqBuildCityMarks(_hq.roomDef, _hq.terrain, _hq.shellGroup); return (_hq.cityMarks || []).length; },   // THE CITY MARKS: rebuild the street plates (tuning probe)
             teleport: function (o) {
                 if (!_hq || !_hq.player) return false;
                 o = o || {};
