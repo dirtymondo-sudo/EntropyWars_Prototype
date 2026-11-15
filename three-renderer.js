@@ -46717,11 +46717,15 @@ const ThreeRenderer = (function () {
             var bl = T.attribute('aBlend', 'vec2');
             var c = tint(tri(map, 1, null, !!D.ntF), D.tFloor).toVar();
             var cb = D.steep ? T.max(bl.x, T.float(1).sub(T.smoothstep(0.25, 0.6, w.y))).toVar() : bl.x;   // THE BANKS WEAR THE WALL (_hqTerrainMat)
-            var cliff = tint(tri(D.cliff || map, D.cliffK || 1, cb, !!D.ntC), D.tCliff), path = tint(tri(D.path || map, 1, bl.y, !!D.ntP), D.tPath);
+            /* THE NATURAL ROCK (= _hqTerrainMat): the land's tone drift; a natural cliff sheet mixed with itself read 3.4 x larger */
+            var natDrift = T.float(0.80).add(NZ.vnoise(uyv.mul(0.085).add(wp.y.div(TM).mul(0.05)).add(3.7)).mul(0.30)).add(NZ.vnoise(uyv.mul(0.41).add(19.1)).sub(0.5).mul(0.12)).toVar();
+            var cliffRaw = tri(D.cliff || map, D.cliffK || 1, cb, !!D.ntC);
+            if (D.natC) cliffRaw = T.mix(cliffRaw, tri(D.cliff || map, (D.cliffK || 1) * 0.29, cb, false), 0.42).mul(T.vec4(natDrift, natDrift, natDrift, 1));
+            var cliff = tint(cliffRaw, D.tCliff), path = tint(tri(D.path || map, 1, bl.y, !!D.ntP), D.tPath);
             if (pal.length && builder.geometry && builder.geometry.hasAttribute('aPaintA')) {
                 var A = T.attribute('aPaintA', 'vec3'), B = T.attribute('aPaintB', 'vec3'), C = T.attribute('aPaintC', 'vec3');
                 var W = [A.x, A.y, A.z, B.x, B.y, B.z, C.x, C.y], pc = T.vec4(0).toVar(), pw = T.float(0).toVar();
-                pal.forEach(function (t, i) { T.If(W[i].greaterThan(cut), function () { pc.addAssign(T.texture(t, uyv).grad(gyx, gyy).mul(W[i])); }); pw.addAssign(W[i]); });
+                pal.forEach(function (t, i) { var nat = !!(D.palNt && D.palNt[i]); T.If(W[i].greaterThan(cut), function () { var px = rd(t, uyv, gyx, gyy, nat); pc.addAssign((nat ? px.mul(T.vec4(natDrift, natDrift, natDrift, 1)) : px).mul(W[i])); }); pw.addAssign(W[i]); });
                 T.If(pw.greaterThan(0.001), function () { c.assign(T.mix(c, pc.div(pw), T.clamp(pw, 0, 1))); });
             }
             c.assign(T.mix(c, path, bl.y));
@@ -52522,7 +52526,7 @@ const ThreeRenderer = (function () {
         } catch (e) {}
         if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept');
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
-        if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ') + ((typeof _hqStk !== 'undefined' && _hqStk.arrays.length) ? ' · sheet stacks ' + _hqStk.arrays.length + ' (' + _hqStk.sheets + ' sheets)' : '')); }
+        if (S.batch) { var bl = []; for (var bid in S.batch) { var b = S.batch[bid]; bl.push(bid + ' ' + b.phase + ' ' + b.pieces + '→' + b.batches + (b.broken ? ' (' + b.broken + ' broken)' : '') + (b.loose ? ' (' + b.loose + ' loose pieces stood in)' : '')); } if (bl.length) L.push('Static batch (pieces→draws): ' + bl.join(' · ') + ((typeof _hqStk !== 'undefined' && _hqStk.arrays.length) ? ' · sheet stacks ' + _hqStk.arrays.length + ' (' + _hqStk.sheets + ' sheets)' : '')); }
         if (S.why && S.why.length) {
             L.push('Own draw calls, why not merged (scene pass, one frame):');
             S.why.forEach(function (r) { L.push('  ' + pad(r[1], 6) + r[0]); });
@@ -68956,6 +68960,14 @@ const ThreeRenderer = (function () {
            (the city's levels) a steep face wears the room's CLIFF sheet (the city: concrete, a retaining wall), read on the face's
            own axis like any cliff; a street's slope, a ramp and a flight of stairs are far too flat to count. Both renderers. */
         var steepCliff = !!(info.slope && info.paint && info.paint.pal && info.paint.pal.length) && !(typeof window !== 'undefined' && window.EW_NO_STEEP_CLIFF);
+        /* THE NATURAL ROCK (2026-11-15, mondo on the Hollywood Hills pictures: "the sides/cliffs texture looks too repeated, it needs to look more
+           natural"). The rock sheet is one even pattern of cracks at one size, so even read without a repeat (ntRead) a cliff was a wall of
+           same-size cells, and rock PAINTED on a gentler slope was the plain sheet, a tile a square. A natural cliff sheet (the calm noTile list)
+           is now (1) mixed 42 % with the same sheet read 3.4 x larger (big slabs under the small cracks), (2) drifted in tone over the land
+           (natDrift: two noises, about 40 m and 8 m, 0.74..1.16), and a painted natural sheet is read without a repeat and drifts the same.
+           Both renderers (_ewNodeTerrain reads palNt / ntC). Kill switch window.EW_NO_NATURAL_ROCK. */
+        var natOn = !(typeof window !== 'undefined' && window.EW_NO_NATURAL_ROCK);
+        var palNt = pal.map(function (k) { return (natOn && _calmNoTile(k)) ? 1 : 0; }), natC = (natOn && ntC) ? 1 : 0;
         m.onBeforeCompile = function (sh) {
             sh.uniforms.tCliff = { value: cliffTex }; sh.uniforms.tPath = { value: pathTex };
             sh.uniforms.uTriTM = { value: (info._TM || 1) };
@@ -68969,7 +68981,8 @@ const ThreeRenderer = (function () {
                 pf += 'varying vec3 vPaintA;\nvarying vec3 vPaintB;\nvarying vec3 vPaintC;\n';
                 var W = ['vPaintA.x', 'vPaintA.y', 'vPaintA.z', 'vPaintB.x', 'vPaintB.y', 'vPaintB.z', 'vPaintC.x', 'vPaintC.y'];
                 pb = ' float pW = 0.0; vec4 pCol = vec4(0.0);\n';
-                palTex.forEach(function (t, i) { pb += ' if ( ' + W[i] + ' > uTriCut ) pCol += textureGrad( tPaint' + i + ', triUy, triGyX, triGyY ) * ' + W[i] + '; pW += ' + W[i] + ';\n'; });
+                /* THE NATURAL ROCK (below): a painted NATURAL sheet (rock, dirt, grass, snow: the calm table's noTile list) is read without a repeat and takes the land's tone drift */
+                palTex.forEach(function (t, i) { pb += ' if ( ' + W[i] + ' > uTriCut ) pCol += ' + (palNt[i] ? 'ntRead( tPaint' + i + ', triUy, triGyX, triGyY, 1.0 ) * natDrift' : 'textureGrad( tPaint' + i + ', triUy, triGyX, triGyY )') + ' * ' + W[i] + '; pW += ' + W[i] + ';\n'; });
                 pb += ' if ( pW > 0.001 ) texelColor = mix( texelColor, pCol / pW, clamp( pW, 0.0, 1.0 ) );\n';
             }
             sh.vertexShader = pv + sh.vertexShader;
@@ -68986,11 +68999,11 @@ const ThreeRenderer = (function () {
                 .replace('#include <project_vertex>', '#include <project_vertex>\nvTriPos = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvTriN = normalize(mat3(modelMatrix) * objectNormal);');
             sh.uniforms.uTriCut = _hqTriCutU;   // THE WEIGHTED SHEETS (below)
             sh.fragmentShader = 'uniform sampler2D tCliff;\nuniform sampler2D tPath;\nuniform float uTriTM;\nuniform float uCliffK;\nuniform float uTriCut;\nuniform vec3 uFloorT;\nuniform vec3 uCliffT;\nuniform vec3 uPathT;\nuniform vec3 uNt;\n' + _CALM_NT_GLSL + 'varying float vAO;\nvarying vec2 vBlend;\nvarying vec3 vTriPos;\nvarying vec3 vTriN;\n' + sh.fragmentShader
-                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec2 triGyX = dFdx( triUy ); vec2 triGyY = dFdy( triUy ); vec2 triGxX = dFdx( triUx ); vec2 triGxY = dFdy( triUx ); vec2 triGzX = dFdx( triUz ); vec2 triGzY = dFdy( triUz );\n vec4 texelColor = vec4( 0.0 );\n if ( triW.y > uTriCut ) texelColor += ntRead( map, triUy, triGyX, triGyY, uNt.x ) * triW.y; if ( triW.x > uTriCut ) texelColor += ntRead( map, triUx, triGxX, triGxY, uNt.x ) * triW.x; if ( triW.z > uTriCut ) texelColor += ntRead( map, triUz, triGzX, triGzY, uNt.x ) * triW.z;\n texelColor.rgb *= uFloorT;\n vec4 cliffColor = vec4( 0.0 );\n float cliffB = vBlend.x;\n' + (steepCliff ? ' cliffB = max( cliffB, 1.0 - smoothstep( 0.25, 0.6, triW.y ) );\n' : '') + ' if ( cliffB > uTriCut ) { if ( triW.y > uTriCut ) cliffColor += ntRead( tCliff, triUy * uCliffK, triGyX * uCliffK, triGyY * uCliffK, uNt.z ) * triW.y; if ( triW.x > uTriCut ) cliffColor += ntRead( tCliff, triUx * uCliffK, triGxX * uCliffK, triGxY * uCliffK, uNt.z ) * triW.x; if ( triW.z > uTriCut ) cliffColor += ntRead( tCliff, triUz * uCliffK, triGzX * uCliffK, triGzY * uCliffK, uNt.z ) * triW.z; }\n cliffColor.rgb *= uCliffT;\n vec4 pathColor = vec4( 0.0 );\n if ( vBlend.y > uTriCut ) { if ( triW.y > uTriCut ) pathColor += ntRead( tPath, triUy, triGyX, triGyY, uNt.y ) * triW.y; if ( triW.x > uTriCut ) pathColor += ntRead( tPath, triUx, triGxX, triGxY, uNt.y ) * triW.x; if ( triW.z > uTriCut ) pathColor += ntRead( tPath, triUz, triGzX, triGzY, uNt.y ) * triW.z; }\n pathColor.rgb *= uPathT;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), cliffB );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
+                .replace('#include <map_fragment>', '#ifdef USE_MAP\n vec3 triW = abs( normalize( vTriN ) ); triW = triW * triW * triW * triW; triW /= ( triW.x + triW.y + triW.z + 0.0001 );\n vec2 triUy = vTriPos.xz / uTriTM; vec2 triUx = vTriPos.zy / uTriTM; vec2 triUz = vTriPos.xy / uTriTM;\n vec2 triGyX = dFdx( triUy ); vec2 triGyY = dFdy( triUy ); vec2 triGxX = dFdx( triUx ); vec2 triGxY = dFdy( triUx ); vec2 triGzX = dFdx( triUz ); vec2 triGzY = dFdy( triUz );\n vec4 texelColor = vec4( 0.0 );\n if ( triW.y > uTriCut ) texelColor += ntRead( map, triUy, triGyX, triGyY, uNt.x ) * triW.y; if ( triW.x > uTriCut ) texelColor += ntRead( map, triUx, triGxX, triGxY, uNt.x ) * triW.x; if ( triW.z > uTriCut ) texelColor += ntRead( map, triUz, triGzX, triGzY, uNt.x ) * triW.z;\n texelColor.rgb *= uFloorT;\n float natDrift = 0.80 + 0.30 * ntN( triUy * 0.085 + vTriPos.y / uTriTM * 0.05 + 3.7 ) + 0.12 * ( ntN( triUy * 0.41 + 19.1 ) - 0.5 );\n vec4 cliffColor = vec4( 0.0 );\n float cliffB = vBlend.x;\n' + (steepCliff ? ' cliffB = max( cliffB, 1.0 - smoothstep( 0.25, 0.6, triW.y ) );\n' : '') + ' if ( cliffB > uTriCut ) { if ( triW.y > uTriCut ) cliffColor += ntRead( tCliff, triUy * uCliffK, triGyX * uCliffK, triGyY * uCliffK, uNt.z ) * triW.y; if ( triW.x > uTriCut ) cliffColor += ntRead( tCliff, triUx * uCliffK, triGxX * uCliffK, triGxY * uCliffK, uNt.z ) * triW.x; if ( triW.z > uTriCut ) cliffColor += ntRead( tCliff, triUz * uCliffK, triGzX * uCliffK, triGzY * uCliffK, uNt.z ) * triW.z;' + (natC ? ' float natK = 0.29 * uCliffK; vec4 natBig = vec4( 0.0 ); if ( triW.y > uTriCut ) natBig += textureGrad( tCliff, triUy * natK + 0.37, triGyX * natK, triGyY * natK ) * triW.y; if ( triW.x > uTriCut ) natBig += textureGrad( tCliff, triUx * natK + 0.37, triGxX * natK, triGxY * natK ) * triW.x; if ( triW.z > uTriCut ) natBig += textureGrad( tCliff, triUz * natK + 0.37, triGzX * natK, triGzY * natK ) * triW.z; cliffColor = mix( cliffColor, natBig, 0.42 ); cliffColor.rgb *= natDrift;' : '') + ' }\n cliffColor.rgb *= uCliffT;\n vec4 pathColor = vec4( 0.0 );\n if ( vBlend.y > uTriCut ) { if ( triW.y > uTriCut ) pathColor += ntRead( tPath, triUy, triGyX, triGyY, uNt.y ) * triW.y; if ( triW.x > uTriCut ) pathColor += ntRead( tPath, triUx, triGxX, triGxY, uNt.y ) * triW.x; if ( triW.z > uTriCut ) pathColor += ntRead( tPath, triUz, triGzX, triGzY, uNt.y ) * triW.z; }\n pathColor.rgb *= uPathT;\n' + pb + ' texelColor = mix( texelColor, pathColor, vBlend.y );\n texelColor = mix( texelColor, cliffColor * vec4(0.92, 0.92, 0.92, 1.0), cliffB );\n texelColor.rgb *= vAO;\n diffuseColor *= texelColor;\n#endif')
                 .replace('#include <emissivemap_fragment>', '#ifdef USE_MAP\n totalEmissiveRadiance *= texelColor.rgb;\n#endif');
         };
-        m.customProgramCacheKey = function () { return 'hqTerrainTri3' + (palTex.length ? 'P' + palTex.length : '') + (steepCliff ? 'S' : ''); };
-        _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex, cliffK: 1 / look.cliffZoom, tFloor: look.floor, tCliff: look.cliff, tPath: look.path, ntF: ntF, ntP: ntP, ntC: ntC, steep: steepCliff });   // WEBGPU W1: the same sheets for the node renderer
+        m.customProgramCacheKey = function () { return 'hqTerrainTri4' + (palTex.length ? 'P' + palTex.length + 'n' + palNt.join('') : '') + (steepCliff ? 'S' : '') + (natC ? 'N' : ''); };
+        _ewNodeTag(m, { k: 'terrain', cliff: cliffTex, path: pathTex, TM: (info._TM || 1), pal: palTex, cliffK: 1 / look.cliffZoom, tFloor: look.floor, tCliff: look.cliff, tPath: look.path, ntF: ntF, ntP: ntP, ntC: ntC, steep: steepCliff, palNt: palNt, natC: natC });   // WEBGPU W1: the same sheets for the node renderer
         return m;
     }
     function _hqTerrainGround(x, z) {
@@ -73556,6 +73569,18 @@ const ThreeRenderer = (function () {
             if (mats[mk]) return mats[mk];
             var tex = key === 'snow' ? null : _hzTex(key === 'rock' ? 'mountain' : key === 'grass' ? 'grass' : key === 'cliff' ? 'cliff' : 'desert');
             var m = new THREE.MeshLambertMaterial({ map: tex || null, vertexColors: true, fog: !far });
+            /* THE NATURAL ROCK on the land past the edge (2026-11-15, see _hqTerrainMat): the far mountains and sea cliffs were one small sheet repeated
+               up a whole range. The sheet is mixed with itself read 3.7 x larger and its tone drifts over the land (WebGL; the node renderer keeps the plain sheet). */
+            if (tex && !(typeof window !== 'undefined' && window.EW_NO_NATURAL_ROCK)) {
+                var rocky = (key === 'rock' || key === 'cliff');
+                m.onBeforeCompile = function (sh) {
+                    sh.fragmentShader = _CALM_NT_GLSL + sh.fragmentShader.replace('#include <map_fragment>',
+                        '#ifdef USE_MAP\n vec4 sampledDiffuseColor = texture2D( map, vMapUv );\n' +
+                        (rocky ? ' sampledDiffuseColor = mix( sampledDiffuseColor, texture2D( map, vMapUv * 0.27 + 0.37 ), 0.45 );\n' : '') +
+                        ' sampledDiffuseColor.rgb *= 0.82 + 0.28 * ntN( vMapUv * 0.07 + 3.7 ) + 0.10 * ( ntN( vMapUv * 0.33 + 19.1 ) - 0.5 );\n diffuseColor *= sampledDiffuseColor;\n#endif');
+                };
+                m.customProgramCacheKey = function () { return 'hqEdgeLandNat' + (rocky ? 'R' : ''); };
+            }
             m._ew_hqEdgeLand = true; mats[mk] = m; return m;
         };
         var colOf = function (P) {   // the vertex tint by kind (the sheet's own colour is 1)
@@ -93885,6 +93910,30 @@ const ThreeRenderer = (function () {
         for (var q = o.parent; q; q = q.parent) if (q._ew_pd) return false;   // THE PLOT DUNGEONS: a piece the board shows and hides is never merged
         return true;
     }
+    /* THE LOOSE PIECES (2026-11-15, mondo's F3 in Disaster City: "shell rest 851 (1 groups)" of 3,022 replayed meshes): a
+       shell piece the merge refuses (several looks on one mesh, a geometry it cannot join, the ground's own look, a see-through
+       sheet, a patched shader) stayed in the shell group itself: one recording for the whole 504 m city, replayed wherever the
+       camera looks and again for the sun. In a big room such a piece now gets what a lone piece gets (THE SHELL CELLS): a
+       STAND-IN on its OWN geometry and its OWN look(s), placed exactly where it stands, hung in its square, so it is culled
+       with the square. Nothing is merged or copied, so none of the merge's reasons to refuse apply. Still never taken: a
+       piece that moves, changes, carries children, draws by its own hook, or wears a flag that keeps it out (cars, signals,
+       mirrors, decals, LODs, text ...). Off: window.EW_HQ_NO_LOOSE before the room. */
+    function _hqBatchLooseOff() { return typeof window !== 'undefined' && !!(window.EW_HQ_NO_LOOSE || window.EW_HQ_NO_SHELL_CELLS || window.EW_HQ_NO_SHELL_SINGLES); }
+    function _hqBatchLooseOk(o) {
+        if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || o.isBatchedMesh || o.morphTargetInfluences || o.children.length || o.frustumCulled === false) return false;
+        if (o._ew_bRec || o._ew_bAnc) return false;
+        if (o.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender || o.onAfterRender !== THREE.Object3D.prototype.onAfterRender) return false;
+        var g = o.geometry; if (!g || !g.isBufferGeometry || !g.attributes.position || !(g.attributes.position.count > 0)) return false;
+        var ms = Array.isArray(o.material) ? o.material : [o.material]; if (!ms.length) return false;
+        for (var a = 0; a < ms.length; a++) {
+            var m = ms[a]; if (!m || !m.isMaterial || m.isShaderMaterial || m.isRawShaderMaterial || !m.visible || m.wireframe) return false;
+            for (var i = 0; i < _HQ_BATCH_MAPS.length; i++) { var t = m[_HQ_BATCH_MAPS[i]]; if (t && (!t.image || !(t.version > 0) || t.isVideoTexture || t.isRenderTargetTexture)) return false; }
+        }
+        for (var k in o) if (_HQ_BATCH_FLAG_OFF[k] && k !== '_ew_hqTerrain') return false;
+        for (var q = o.parent; q; q = q.parent) if (q._ew_pd) return false;
+        return true;
+    }
+    function _hqBatchSnapOf(m) { if (!Array.isArray(m)) return _hqBatchMatSnap(m); var s = 'A' + m.length; for (var i = 0; i < m.length; i++) s += '/' + (m[i] ? _hqBatchMatSnap(m[i]) : ''); return s; }
     function _hqBatchRel(o, inv, out) { return out.multiplyMatrices(inv, o.matrixWorld); }
     function _hqBatchSame(a, b) { var x = a.elements, y = b.elements; for (var i = 0; i < 16; i++) if (Math.abs(x[i] - y[i]) > 1e-4 * (1 + Math.abs(y[i]))) return false; return true; }
     /* the scan (a generator, sliced): every piece of the record's shell that may merge, with what it looks like now */
@@ -93893,13 +93942,14 @@ const ThreeRenderer = (function () {
         var skip = {}; (R.reflectors || []).forEach(function (r) { (r.targets || []).forEach(function (t) { skip[t.id] = 1; }); });
         root.updateMatrixWorld(true);
         var inv = new THREE.Matrix4().copy(root.matrixWorld).invert(), list = [], n = 0;
+        var loose = !!(_hq && root === _hq.shellGroup && _hqChunkBig(_hq) && !_hqBatchLooseOff());   // THE LOOSE PIECES
         /* the pieces with their chain: an ancestor that is hidden or flagged off keeps everything under it out */
         (function walk(g, ok) {
             for (var i = 0; i < g.children.length; i++) {
-                var c = g.children[i], cok = ok && (c.visible !== false || !!c._ew_pChunk) && !skip[c.id];   // THE PROP CHUNKS: a chunk off the camera is still the room's
+                var c = g.children[i], vis = ok && (c.visible !== false || !!c._ew_pChunk) && !skip[c.id], cok = vis;   // THE PROP CHUNKS: a chunk off the camera is still the room's
                 if (cok) for (var k in c) if (_HQ_BATCH_FLAG_OFF[k]) { cok = false; break; }
                 if (c.children.length) walk(c, cok);
-                else if (cok && c.isMesh) list.push(c);
+                else if (c.isMesh && (cok || (loose && vis))) list.push(c);   // THE LOOSE PIECES: a flagged leaf is read too (_hqBatchLooseOk says which flags may stand in)
             }
         })(root, true);
         for (var j = 0; j < list.length; j++) {
@@ -93907,7 +93957,9 @@ const ThreeRenderer = (function () {
             if (_hqBatchPieceOk(o) && !(B.grp === 'propGroup' && (o._ew_noInstance || o._ew_instHidden || _hqInstKey(o)))) {   // a prop the instance pass can take is its
                 var sig = _hqBatchGeoSig(o.geometry);
                 if (sig) B.cands.push({ o: o, m: o.material, g: o.geometry, gv: o.geometry.attributes.position.version, snap: _hqBatchMatSnap(o.material), M: _hqBatchRel(o, inv, new THREE.Matrix4()), sig: sig, parent: o.parent });
+                else if (loose && _hqBatchLooseOk(o)) B.cands.push({ o: o, m: o.material, g: o.geometry, gv: o.geometry.attributes.position.version, snap: _hqBatchSnapOf(o.material), M: _hqBatchRel(o, inv, new THREE.Matrix4()), sig: 'loose', parent: o.parent, loose: true });
             }
+            else if (loose && _hqBatchLooseOk(o)) B.cands.push({ o: o, m: o.material, g: o.geometry, gv: o.geometry.attributes.position.version, snap: _hqBatchSnapOf(o.material), M: _hqBatchRel(o, inv, new THREE.Matrix4()), sig: 'loose', parent: o.parent, loose: true });   // THE LOOSE PIECES: a direct piece of the shell the merge refuses
             if ((++n & 63) === 0 && _hqSliceDue()) yield;
         }
     }
@@ -93916,7 +93968,7 @@ const ThreeRenderer = (function () {
         var o = c.o;
         if (o.material !== c.m || o.geometry !== c.g || o.parent !== c.parent || c.g.attributes.position.version !== c.gv) return false;
         for (var q = o; q && q !== root; q = q.parent) { if (q.visible === false && !(q === o && o._ew_bRec) && !q._ew_pChunk) return false; if (!q.parent) return false; }   // THE PROP CHUNKS: a culled chunk is not a hidden piece
-        if (_hqBatchMatSnap(c.m) !== c.snap) return false;
+        if (_hqBatchSnapOf(c.m) !== c.snap) return false;
         return _hqBatchSame(_hqBatchRel(o, inv, tmp), c.M);
     }
     /* the merge: one geometry in the shell group's space, positions and normals through each piece's matrix, the winding
@@ -94223,7 +94275,13 @@ const ThreeRenderer = (function () {
         B.vc = !!(_hq && root === _hq.shellGroup && _hqChunkBig(_hq) && !(typeof window !== 'undefined' && (window.EW_HQ_NO_SHELL_CELLS || window.EW_HQ_NO_ONE_PAINT)));   // THE ONE PAINT
         for (var i = 0; i < B.cands.length; i++) {
             var c = B.cands[i];
-            if (_hqBatchStill(c, root, inv, tmp) && _hqBatchPieceOk(c.o)) {
+            if (c.loose) {   // THE LOOSE PIECES: always alone (its own key), so it takes the stand-in path
+                if (!c.g.boundingSphere) c.g.computeBoundingSphere();
+                var lbs = c.g.boundingSphere, lsc = c.M.getMaxScaleOnAxis(), lcell = (HQ_BATCH.cellM || 96) * U;
+                if (!lbs || !isFinite(lbs.radius) || lbs.radius * lsc > lcell * 0.75) { /* a piece wider than a square would hold its whole square on camera: it stays where it is */ }
+                else if (_hqBatchStill(c, root, inv, tmp) && _hqBatchLooseOk(c.o)) { var lkey = 'loose#' + c.o.id; if (!groups[lkey]) { groups[lkey] = []; keys.push(lkey); } groups[lkey].push(c); }
+            }
+            else if (_hqBatchStill(c, root, inv, tmp) && _hqBatchPieceOk(c.o)) {
                 if (!c.g.boundingSphere) c.g.computeBoundingSphere();
                 sph.copy(c.g.boundingSphere.center).applyMatrix4(c.M);
                 var mkey = mk[c.m.uuid] || (mk[c.m.uuid] = _hqBatchMatKey(c.m, B.vc && _hqBatchVcOk(c.m), B.vc ? _hqStackOf(c.m) : null));
@@ -94250,7 +94308,7 @@ const ThreeRenderer = (function () {
             for (var j = 0; j <= cs.length; j++) {
                 var cc = cs[j], nv = cc ? cc.g.attributes.position.count : 0;
                 if (!cc || (run.length && verts + nv > HQ_BATCH.maxVerts)) {
-                    if (run.length >= minN) { var still = run.every(function (x) { return _hqBatchStill(x, root, inv, tmp); }); if (still) { var nrec = _hqBatchInstall(root, run, B); if (nrec) { nrec.key = keys[k]; if (nrec.single) B.stats.singles = (B.stats.singles || 0) + 1; } } }
+                    if (run.length >= minN) { var still = run.every(function (x) { return _hqBatchStill(x, root, inv, tmp); }); if (still) { var nrec = _hqBatchInstall(root, run, B); if (nrec) { nrec.key = keys[k]; if (nrec.single) B.stats.singles = (B.stats.singles || 0) + 1; if (run[0].loose) B.stats.loose = (B.stats.loose || 0) + 1; } } }
                     run = []; verts = 0;
                     if (_hqSliceDue()) yield;
                 }
@@ -94352,7 +94410,7 @@ const ThreeRenderer = (function () {
     function _hqBatchStats(H) {
         H = H || _hq; if (!H) return null;
         var out = {}, add = function (id, R) {
-            [R && R.batch, R && R.batchP].forEach(function (B) { if (B) out[id + (B.grp === 'propGroup' ? ' props' : '')] = { phase: B.phase, batches: B.stats.batches, pieces: B.stats.pieces, verts: B.stats.verts, broken: B.stats.broken, scanned: B.stats.scanned }; });
+            [R && R.batch, R && R.batchP].forEach(function (B) { if (B) out[id + (B.grp === 'propGroup' ? ' props' : '')] = { phase: B.phase, batches: B.stats.batches, pieces: B.stats.pieces, verts: B.stats.verts, broken: B.stats.broken, scanned: B.stats.scanned, loose: B.stats.loose | 0 }; });
         };
         add((H.opts && H.opts.room) || 'room', H);
         if (H.stage) for (var id in H.stage.parts) add(id, H.stage.parts[id].P);
