@@ -37,6 +37,20 @@ const DISTRICT = {
     I: { rows: [[one, 'stencil'], [num, 'stencil'],
                 [/^(WAREHOUSE|HANGAR|POWER STATION|FREIGHT GATE|CUSTOMS|WELDING|AEROSPACE LAB|FORKLIFT REPAIR|RAIL SERVICE|BOAT REPAIR|HARDWARE)$/, 'stencil']], base: 'way' }
 };
+/* THE CITY MARKS (2026-11-15, mondo: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city
+   branding/logo for certain buildings"; his OK on the branding sheet). The department names are HIS: D.C.P.D., D.C.F.D. A seventh field
+   on the key names the mark drawn left of the words (three-renderer.js _hqSignMark: seal, shield, pd, fd). Per district: [match, { words
+   = the board's new wording, mark, font, fg (only on a coloured board) }]. A boardless sign (letters alone) takes no seal. */
+const BRAND = {
+    C: [[/^POLICE$/, { words: 'D.C.P.D.', mark: 'pd', font: 'way' }],
+        [/^FIRE STATION$/, { words: 'D.C.F.D.', mark: 'fd', font: 'way' }],
+        [/^(CITY HALL|COURTHOUSE|COUNCIL ANNEX|PERMIT OFFICES|CIVIL RECORDS)$/, { mark: 'seal', board: true }]]
+};
+function brandFor(d, words, bg) {
+    const rows = BRAND[d] || [], w = String(words).trim();
+    for (const r of rows) if (r[0].test(w) && (!r[1].board || bg)) return r[1];
+    return null;
+}
 function fontFor(d, words) {
     const D = DISTRICT[d], w = String(words).trim();
     if (D) for (const r of D.rows) if (r[0].test(w)) return r[1];
@@ -53,11 +67,13 @@ function apply(rows, districtOf) {
             const v = o[k];
             if (typeof v === 'string' && v.indexOf('txt:') === 0) {
                 const q = v.slice(4).split('|'); while (q.length < 5) q.push('');
-                if (q[4] !== 'v') { if (!q[5]) q[5] = fontFor(d, q[0]); o[k] = 'txt:' + q.join('|'); out.signs++; out.byFont[q[5]] = (out.byFont[q[5]] || 0) + 1; }
+                if (q[4] !== 'v') { const br = q[6] ? null : brandFor(d, q[0], q[2]);
+                    if (br) { if (br.words) q[0] = br.words; if (br.font) q[5] = br.font; while (q.length < 7) q.push(''); q[6] = br.mark; out.marks = (out.marks || 0) + 1; }
+                    if (!q[5]) q[5] = fontFor(d, q[0]); o[k] = 'txt:' + q.join('|'); out.signs++; out.byFont[q[5]] = (out.byFont[q[5]] || 0) + 1; }
             } else if (v && typeof v === 'object') walk(v, d);
         }
     };
     for (const r of rows) walk(r, districtOf(r));
     return out;
 }
-module.exports = { apply, fontFor, DISTRICT, WAY };
+module.exports = { apply, fontFor, brandFor, DISTRICT, WAY, BRAND };

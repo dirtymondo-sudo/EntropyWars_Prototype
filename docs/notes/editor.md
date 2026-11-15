@@ -52,6 +52,13 @@ mondo's ruling (fork 4): his world starts FLAT AND EMPTY; the data.js rooms are 
   prefab's, so every tool works unchanged (`basePath()` = `['prefabs', id]`). `stepTouched` re-syncs every room placing a prefab.
   The survey worker gets `HQ_PREFABS` with each room (map.js).
 - **Texture picker** (`texPick`): TERRAIN_SPRITES, URBAN_TEX_FAMILIES (as `urban:<Name>`), DOOR_HQ.textures. Only existing sheets.
+  - **THE URBAN DECAY PACK, THE REST (2026-11-15, mondo's inbox upload `dirtymondo/inbox/Urban Decay/`, Strideh's Urban Decay Textures v1.4, 946 PNGs):**
+    the first 320 urban sheets were this pack box-halved (256 -> 128 px a sheet). The other 681 (roads, sidewalks, kerbs, bricks, carpets, wood,
+    concrete, metal, roofs, shutters, containers, fences, vents, lights, decals) are halved the same way, on R2 `Assets/world/terrain/urban/`, listed in
+    sprites.js `URBAN_DECAY_FAMILIES` (82 new families merged into URBAN_TEX_FAMILIES; a name whose family existed sits in `<Family>More` so no old
+    seeded pick changes). The picker's cap went 1200 -> 4000 rows. Search `road`, `carpet`, `wood`, `brick`. The roads are 512 px in the pack
+    (256 in game = two squares of 1.75 m a sheet). Licence: free + commercial with credit, no redistribution as assets (credit in data.js EW_CREDITS).
+    The originals: `/mnt/project-files/asset-packs/urban-decay/`.
 - **Probe:** the E1 sweep drives the palette with real mouse drags via `EWEditor.w2s(x, y, z)` and `EWEditor.cam({...})`.
 
 ## E2 — the palette and the door tool (2026-09-29, token 20260929-editor-03-cors)
