@@ -78976,6 +78976,7 @@ const EW_CREDITS = {
             { role: 'Bodies, faces, hair, clothes and skins', by: 'MakeHuman / MPFB2', license: 'CC0', source: 'http://www.makehumancommunity.org' },
         ] },
         { title: 'TEXTURES', rows: [
+            { role: 'Urban Decay Textures (the city\'s walls, roads, floors, doors, windows and signs)', by: 'Bradley D. (Strideh)', license: 'Free for commercial use, with credit', source: 'https://strideh.itch.io' },
             { role: '140+ Liquid Textures', by: 'Screaming Brain Studios', license: 'CC0', source: 'https://opengameart.org/users/screaming-brain-studios' },
         ] },
         /* THE CREATOR ICONS (2026-11-04): the creator's tab + body-part icons, cut from mondo's copy of the full pack (bake-creator-icons.py);
