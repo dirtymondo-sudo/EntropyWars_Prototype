@@ -165,9 +165,38 @@
             var KEY = 'ew_freeze_trail', prev = null;
             try { prev = localStorage.getItem(KEY); } catch (e) {}
             diag.prevTrail = prev;
+            /* THE CRASH TRAIL (2026-11-15, mondo: "Crashed inside the door main hall/lobby", Firefox WebGPU, a console with no
+               error in it). The trail was only readable through ?ewdiag=1 and only for ONE reload: the next load wrote over
+               it. Now a session says how it ended (`clean` is set on pagehide; a tab that crashed or hung never sets it;
+               `frozen` = the picture stopped for 5 s+ while the page still ran), where it was (the building's room, the
+               model memory, the renderer line), and the building's own [HQ] lines sit in its log. A session that did not
+               end cleanly is (a) printed at the top of the NEXT load's console as one [CRASH TRAIL] block, so a console
+               paste carries it, and (b) kept in `ew_freeze_trail_hist` (the last 3), listed by ?ewdiag=1. */
+            var HKEY = 'ew_freeze_trail_hist', hist = [];
+            try { hist = JSON.parse(localStorage.getItem(HKEY) || '[]') || []; } catch (e) { hist = []; }
+            diag.trailHist = hist;
+            diag.trailLines = function (P) {
+                var L = ['started ' + P.started + ', last alive ' + P.saved + ' (' + P.up + ' in), build ' + P.build,
+                    'ended: ' + (P.clean ? 'closed or reloaded normally' : 'NOT cleanly (crash, hang or killed tab)') + (P.frozen ? ' · the picture had stopped for ' + P.frozen + ' ms while the page still ran' : ''),
+                    'where: ' + (P.where || '?'),
+                    'state: ' + (P.game || '-') + ' · frames ' + P.frames + ' · last frame ' + P.lastFrameAgo + ' before the last save'], i;
+                var st = P.stalls || [], inp = P.inputs || [], lg = P.logs || [];
+                for (i = 0; i < Math.min(3, st.length); i++) L.push('stall ' + st[i].ms + ' ms at ' + st[i].at + ' | ' + st[i].last);
+                for (i = Math.max(0, inp.length - 12); i < inp.length; i++) L.push('input ' + inp[i]);
+                for (i = Math.max(0, lg.length - 16); i < lg.length; i++) L.push('log ' + lg[i]);
+                return L;
+            };
+            try {
+                var P0 = prev ? JSON.parse(prev) : null;
+                if (P0 && (!P0.clean || P0.frozen)) {
+                    hist.push(P0); while (hist.length > 3) hist.shift();
+                    try { localStorage.setItem(HKEY, JSON.stringify(hist)); } catch (e) {}
+                    console.warn('[CRASH TRAIL] the session before this one did not end cleanly. Paste this block to Claude:\n  ' + diag.trailLines(P0).join('\n  '));
+                }
+            } catch (e) {}
             try { if (localStorage.getItem('ew_no_freeze_trail') === '1') return; } catch (e) { return; }
             var T = { started: new Date().toISOString(), build: '', inputs: [], logs: [], stalls: [] };
-            var t0 = Date.now(), lastFrame = 0, frames = 0;
+            var t0 = Date.now(), lastFrame = 0, frames = 0, saves = 0;
             function stamp() { return ((Date.now() - t0) / 1000).toFixed(1) + 's'; }
             function push(arr, v, cap) { arr.push(v); if (arr.length > cap) arr.shift(); }
             function label(el) {
@@ -197,6 +226,36 @@
             window.addEventListener('keydown', function (e) {
                 try { if (!e.repeat) push(T.inputs, stamp() + ' key ' + e.key + ' | ' + game(), 40); } catch (x) {}
             }, true);
+            function where() {
+                try {
+                    var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, s = '';
+                    if (!TR) return 'the renderer is not up';
+                    if (TR.hq) {
+                        var rm = TR.hq.room ? TR.hq.room() : null;
+                        s += rm ? 'DOOR HQ room ' + rm : 'not in the building';
+                        var m = TR.hq.mem ? TR.hq.mem() : null;
+                        if (m && m.misc && m.rigs) s += ' · models ' + Math.round(m.misc.mb + m.rigs.mb) + '/' + m.budget + ' MB (' + (m.misc.n + m.rigs.n) + ' files)';
+                    }
+                    if (TR.gpuStatus) s += ' · ' + String(TR.gpuStatus()).slice(0, 200);
+                    return s;
+                } catch (e) { return 'unreadable (' + (e && e.message) + ')'; }
+            }
+            /* the building's own lines ([HQ] entered / left / landed, the lab sweep): where the session was, in its log */
+            (function () {
+                var o = console.log;
+                console.log = function () {
+                    try {
+                        var a = arguments[0];
+                        if (typeof a === 'string' && (a.indexOf('[HQ]') === 0 || a.indexOf('[MENU]') === 0 || a.indexOf('THE LAB SWEEP') > 0)) {
+                            push(T.logs, stamp() + ' log ' + Array.prototype.map.call(arguments, function (v) { return String(v); }).join(' ').slice(0, 200), 30);
+                        }
+                    } catch (x) {}
+                    return o.apply(console, arguments);
+                };
+            })();
+            function save() { try { T.saved = new Date().toISOString(); localStorage.setItem(KEY, JSON.stringify(T)); } catch (e) {} }
+            window.addEventListener('pagehide', function () { T.clean = true; save(); });
+            window.addEventListener('pageshow', function (e) { if (e && e.persisted) { T.clean = false; save(); } });
             ['warn', 'error'].forEach(function (k) {
                 var o = console[k];
                 console[k] = function () {
@@ -205,7 +264,7 @@
                         s = k + ' ' + s.slice(0, 240);
                         var L = T.logs[T.logs.length - 1];
                         if (L && L.slice(L.indexOf(' ') + 1) === s) return o.apply(console, arguments);   // (a repeat of the line before)
-                        push(T.logs, stamp() + ' ' + s, 20);
+                        push(T.logs, stamp() + ' ' + s, 30);
                     } catch (x) {}
                     return o.apply(console, arguments);
                 };
@@ -228,7 +287,10 @@
                 try {
                     T.build = window._EW_BUILD_TOKEN || '';
                     T.saved = new Date().toISOString(); T.up = stamp(); T.frames = frames; T.game = game();
-                    T.lastFrameAgo = lastFrame ? Math.round(performance.now() - lastFrame) + 'ms' : '?';
+                    var ago = lastFrame ? Math.round(performance.now() - lastFrame) : 0;
+                    T.lastFrameAgo = lastFrame ? ago + 'ms' : '?';
+                    if (!document.hidden && ago > 5000) T.frozen = Math.max(T.frozen || 0, ago);
+                    if (!(saves++ % 3)) T.where = where();
                     localStorage.setItem(KEY, JSON.stringify(T));
                 } catch (e) {}
             }, 1000);
@@ -255,11 +317,16 @@
                 else {
                     lines.push('PREVIOUS SESSION (started ' + P.started + ', last saved ' + P.saved + ' after ' + P.up + ', build ' + P.build + '):');
                     lines.push('  state at the last save: ' + (P.game || '?') + '  frames ' + P.frames + '  last frame ' + P.lastFrameAgo + ' before it');
+                    lines.push('  ended: ' + (P.clean ? 'cleanly' : 'NOT cleanly') + (P.frozen ? ' · picture stopped ' + P.frozen + ' ms' : '') + '  where: ' + (P.where || '?'));
                     section('  LONGEST STALLS (ms, when, state, last input)', (P.stalls || []).map(function (s) { return s.ms + ' at ' + s.at + ' | ' + s.game + ' | ' + s.last; }));
                     section('  LAST INPUTS', P.inputs || []);
                     section('  LAST WARNINGS / ERRORS', P.logs || []);
                 }
             } catch (e) { lines.push('PREVIOUS SESSION: unreadable (' + e.message + ')'); }
+            try {
+                var HH = diag.trailHist || [];
+                for (var hi = HH.length - 1; hi >= 0; hi--) { lines.push(''); lines.push('UNCLEAN SESSION ' + (HH.length - hi) + ' of ' + HH.length + ' (newest first):'); lines = lines.concat(diag.trailLines(HH[hi]).map(function (x) { return '  ' + x; })); }
+            } catch (e) {}
             var report = lines.join('\n');
             var old = document.getElementById('ew-diag-overlay');
             if (old && old.parentNode) old.parentNode.removeChild(old);
