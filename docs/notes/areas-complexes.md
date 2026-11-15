@@ -3606,6 +3606,23 @@ mondo 11-15 16:08: "go for it. can you also change the disaster city hollywood s
   throws if its spur moves). `DOOR_HQ.hubs.woods.room` = the new room; it wears the woods' day look. The old Clearing keeps its rooms and is
   reached by the trail south from the Clearing plot (and still by Room 420's hollow tree). The Stair top and the way back from Camelot are wired now.
 
+<<<<<<< HEAD
+## DISASTER CITY, THE CITY MARKS ON THE STREET (2026-11-15, mondo "go for it" + "playtest city marks")
+The bolt shield (mark B) now sits on the city's own street furniture, and the city flag (mark C) flies in Civic. All placed with the game on screen.
+- three-renderer.js `_hqBuildCityMarks` (called after `_hqBuildBusStops`, only in rooms whose label holds DISASTER CITY): one shield plate per face listed in
+  `HQ_CITY_PROP_MARKS[<prop key>] = { h, s, out, at:[headings] }` (metres: plate centre height, size, distance out from the prop's centre) for `city_bin`,
+  `metro_bin`, `item_police_barricade`, and one each way on every bus stop sign's pole (`HQ_CITY_STOP_MARK`). All plates of a 42 m cell are ONE merged mesh
+  `hq_city_marks` in a signal chunk (drawn to 70 m), one shared material, front side only. A new prop gets the shield with one table row. Off: `window.EW_HQ_NO_CITY_MARKS`.
+  Tuning probe: `ThreeRenderer.hq.dev.cityMarks({ city_bin: {...} }, stopRow)` rebuilds the plates live.
+- THE BUS: `_hqCityBusMarks` (from `_hqBuildTraffic`, kind `citybus`) adds the shield + DISASTER CITY TRANSIT (Oswald) on both sides, `HQ_CITY_BUS_MARK`.
+  Seen in the game: in the vehicle group the NOSE is -x and the sides are +-z; the door side (-z) stands 4 cm further out; the free navy panel between the
+  wheels (and between the doors) is 3.3 m long, so the pair is 3.1 m. The words read shield-first on both sides.
+- THE FLAG: arch key `mark:flag` (any `mark:<id>` key goes through `_hqArchSignTex`) draws the flag sheet; C.js `flag()` hangs two quads (one a side) on each
+  Civic flag pole. The old plain cloth box stays behind them.
+- THE MANHOLE reads darker (IRON / DARK in `_hqCityManholeTex`). THE HILL SIGN: a letter stands on the highest land under its width and 2.5 m in front,
+  so no foot sinks into the slope.
+- LESSON (headless): a prop's GLB can take minutes to arrive after a teleport; until then only its blob shadow is there. Wait and look again before judging a plate.
+=======
 ## CAMELOT KINGDOM ON PLOTS, THE CASTLE — the second area of the world plan, first delivery (2026-11-15)
 mondo 11-15: "start ... another thread for the next most important zone" (Camelot Kingdom: the Woods' trail ends there) · 16:39 "i would want the
 old rooms to be redesigned too. Like camelot castle should be designed with the same level of architecture as the most complex buildings in
@@ -3653,3 +3670,4 @@ woods in between them" · 16:53 "okay" on plan 2.
   - NEW UNITS here (his OK): scarecrow (Fence Line), skinwalker (the Shelf), ghoul + flesheater (Cave Mouth). Swamp monster + mothman moved to the Pool.
   - NOT DONE: no meat hooks or hung lanterns (ceiling pieces, nothing to hang them from outdoors); no new lights (the level's lamp cap) and the
     day look is unchanged, so the dark comes from the night clock only; faces of the cabin / bus / board are unchecked. NOT SEEN ON SCREEN.
+>>>>>>> origin/main
