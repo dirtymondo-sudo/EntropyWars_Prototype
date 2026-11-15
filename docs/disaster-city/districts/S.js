@@ -204,9 +204,12 @@ exports.apply = (ctx) => {
         o.push({ s: 'box', p: [-40.25, 11.5, 0], size: [1.2, 0.3, 14.4], tint: 0x444a52 }, signAt(-40.77, 8.2, 0, 90, 10, 1.6, 'CITY STADIUM', '#f4f4f4', '#1b1e24'));
         [-1, 1].forEach(dir => {
             /* the section boards on the back wall over the top row (the aisles are the stand's own: THE STANDS) */
-            [-30.6, -17.5, 0, 17.5, 30.6].forEach((x, i) => { if (dir > 0 && i === 2) return; o.push(signAt(x, 7.9, dir * 33.76, dir > 0 ? 180 : 0, 2.6, 0.7, 'SEC ' + (dir > 0 ? 101 + i : 201 + i), '#f4f4f4', '#1b1e24')); });
-            o.push({ s: 'box', p: [0, 2.1, dir * 21.05], size: [70, 0.08, 0.08], tint: 0xdddddd }, { s: 'box', p: [-34.9, 1.2, dir * 21.05], size: [0.08, 0.9, 0.08], tint: 0xdddddd, n: 21, step: [3.49, 0, 0] });
-            o.push({ s: 'box', p: [0, 0, dir * 35.06], size: [70.2, 1.1, 0.12], key: CONC }, { s: 'box', p: [0, 0, dir * 21.0], size: [70, 1.2, 0.06], key: PAVE, uv: 1.75 });
+            [-30.6, -17.5, 0, 17.5, 30.6].forEach((x, i) => { if (dir > 0 && i === 2) return; o.push(signAt(x, 7.4, dir * 33.76, dir > 0 ? 180 : 0, 2.6, 0.7, 'SEC ' + (dir > 0 ? 101 + i : 201 + i), '#f4f4f4', '#1b1e24')); });
+            /* the front rail and the fascia's facing, open at the four aisles (the walker's way onto the rows) */
+            [[-35, -27.125], [-25.375, -9.625], [-7.875, 7.875], [9.625, 25.375], [27.125, 35]].forEach(q => { const L = q[1] - q[0], c = (q[0] + q[1]) / 2, n = Math.max(2, Math.round(L / 3.5) + 1);
+                o.push({ s: 'box', p: [c, 2.0, dir * 21.05], size: [L, 0.08, 0.08], tint: 0xdddddd }, { s: 'box', p: [q[0] + 0.04, 1.1, dir * 21.05], size: [0.08, 0.9, 0.08], tint: 0xdddddd, n, step: [(L - 0.08) / (n - 1), 0, 0] });
+                o.push({ s: 'box', p: [c, 0, dir * 20.97], size: [L, 1.1, 0.06], key: PAVE, uv: 1.75 }); });
+            o.push({ s: 'box', p: [0, 0, dir * 35.06], size: [70.2, 1.1, 0.12], key: CONC });
             o.push({ s: 'box', p: [-35, 0, dir * 35.1], size: [1.0, 9.6, 0.3], key: T_RED, tint: 0xb07a68, n: 11, step: [7, 0, 0] });
             o.push({ s: 'cyl', p: [-31.5, 10.2, dir * 34.4], r: 0.06, h: 2.2, seg: 5, tint: 0xdddddd, n: 10, step: [7, 0, 0] });
             for (let i = 0; i < 10; i++) o.push({ s: 'quad', p: [-31.5 + i * 7 + 0.55, 11.6, dir * 34.4], size: [1.1, 0.7], tint: i % 2 ? 0x3b62c4 : 0xf4f4f4, ds: true });
@@ -439,16 +442,24 @@ exports.apply = (ctx) => {
       /* THE STANDS (same day): the old bowl's stand, straight: a fascia, FOURTEEN ROWS a step apart (rise 0.42, tread 0.875: two rows to a
          square) with a seat every 0.55 m (the engine's own instanced seats: three-renderer.js _hqBuildTierSeats; navy north, crimson south, as
          the bowl's east and west), four aisles on square middles (yellow half steps, the seats stop either side), a landing under the back wall.
-         The rows are tier WALL rows of the room (merged into one mesh a sheet); the stands stay solid for the walker (the blocks below). */
-      const ROWS = 14, RISE = 0.42, TREAD = 0.875, FOOT = 0.68, Z0 = 21.3, AISLES = [-26.25, -8.75, 8.75, 26.25];
+         The rows are tier WALL rows of the room (merged into one mesh a sheet).
+         WALKED (mondo 12:08 "yes the stands should be walkable"): the bowl's own way. Row 1 stands one step (0.42) over the sideline behind the
+         fascia (1.1, a wall row too), the fascia is open a half square wide at each aisle, every row is a step the walker takes, the landing
+         under the back wall is the top row. A ghost wall stands in the back wall; the stand's ends are open (step on or off any row there). */
+      const ROWS = 14, RISE = 0.42, TREAD = 0.875, FOOT = 0, Z0 = 21.3, GAP = 1.75, AISLES = [-26.25, -8.75, 8.75, 26.25];
       const rowTop = k => FOOT + k * RISE;   // over the ground (a wall row's `y` is lifted by the room's slope at the compile, as an arch row's by this tool)
       const stand = (dir) => { const o = [];
-        o.push({ s: 'box', p: [0, 0, dir * 21.15], size: [70, 1.1, 0.3], key: CONC, uv: 3.5 });
+        const sd = dir < 0 ? 'n' : 's', zf = SZ + dir * 21.15, cuts = [-35].concat(...AISLES.map(a => [a - GAP / 2, a + GAP / 2]), [35]);
+        for (let i = 0; i < cuts.length; i += 2) { const a = SX + cuts[i], b = SX + cuts[i + 1];
+          lateRows.push({ k: 'wall', id: 'dc:S-fascia-' + sd + (i / 2), x0: r3(a + 0.15), z0: r3(zf), x1: r3(b - 0.15), z1: r3(zf), y: 1.1, t: 0.3, key: 'concrete', tier: true, rail: false, front: [0, -dir],
+              quad: [[a, r3(zf - 0.15)], [b, r3(zf - 0.15)], [b, r3(zf + 0.15)], [a, r3(zf + 0.15)]] }); }
+        { const zc = SZ + dir * 33.675; lateRows.push({ k: 'wall', id: 'dc:S-landing-' + sd, x0: SX - 35, z0: r3(zc), x1: SX + 35, z1: r3(zc), y: r3(rowTop(ROWS + 1)), t: 0.25, key: 'concrete_floor', tier: true, rail: false, front: [0, -dir],
+              quad: [[SX - 35, r3(zc - 0.125)], [SX + 35, r3(zc - 0.125)], [SX + 35, r3(zc + 0.125)], [SX - 35, r3(zc + 0.125)]] });
+          lateRows.push({ k: 'wall', id: 'dc:S-back-' + sd, x0: SX - 34.4, z0: SZ + dir * 34.4, x1: SX + 34.4, z1: SZ + dir * 34.4, y: 9.6, t: 1.2, ghost: true, rail: false }); }
         for (let k = ROWS; k >= 1; k--) { const zc = SZ + dir * (Z0 + (k - 0.5) * TREAD), za = r3(zc - TREAD / 2), zb = r3(zc + TREAD / 2);
           lateRows.push({ k: 'wall', id: 'dc:S-row-' + (dir < 0 ? 'n' : 's') + k, x0: SX - 35, z0: r3(zc), x1: SX + 35, z1: r3(zc), y: r3(rowTop(k)), t: TREAD, key: 'concrete_floor', tier: true, rail: false,
               quad: [[SX - 35, za], [SX + 35, za], [SX + 35, zb], [SX - 35, zb]], front: [0, -dir], seat: dir < 0 ? 0x2a4ab0 : 0xb02a2a, gaps: AISLES.map(a => [a + 35 - 0.6, a + 35 + 0.6]) });
           o.push({ s: 'box', p: [AISLES[0], rowTop(k), dir * (Z0 + (k - 0.25) * TREAD)], size: [1.2, RISE / 2, TREAD / 2], key: RUB_Y, uv: 1.2, n: 4, step: [17.5, 0, 0] }); }
-        o.push({ s: 'box', p: [0, 0, dir * 33.675], size: [70, rowTop(ROWS + 1), 0.25], key: CONC, uv: 3.5 });
         o.push({ s: 'box', p: [0, 0, dir * 34.4], size: [70, 9.6, 1.2], key: T_RED, tint: 0xd9a08c, uv: 3.5 });
         o.push({ s: 'box', p: [0, 9.6, dir * 34.4], size: [70.4, 0.6, 1.6], key: BLUEP, tint: 0x3b62c4 });
         o.push({ s: 'quad', p: [dir > 0 ? -28 : 28, 5.2, dir * 35.03], ry: dir > 0 ? 0 : 180, size: [1.6, 1.8], key: G_RES, uv: 'fit', n: 9, step: [dir > 0 ? 7 : -7, 0, 0] });
@@ -474,10 +485,9 @@ exports.apply = (ctx) => {
         return o; };
       P.push(mast(-40.25, -26.25), mast(40.25, -26.25), mast(-40.25, 26.25), mast(40.25, 26.25));
       B('stadium', SX, SZ, 0, P);
-      block('stand-n', SX, SZ - 28, 70, 14, 3); block('stand-s', SX, SZ + 28, 70, 14, 3);
       [[-40.25, -26.25], [40.25, -26.25], [-40.25, 26.25], [40.25, 26.25], [-40.25, -5.25], [-40.25, 5.25]].forEach((q, i) => block('mast' + i, SX + q[0], SZ + q[1], 2, 2, 3));
       props.push({ key: 'field_goal_post', x: r3(SX - 38.5), z: SZ, face: 270 }, { key: 'field_goal_post', x: r3(SX + 38.5), z: SZ, face: 90 });
-      [-14, 0, 14].forEach(dx => { props.push({ key: 'park_bench', x: SX + dx, z: r3(SZ - 20.5), face: 0 }, { key: 'park_bench', x: SX + dx, z: r3(SZ + 20.5), face: 180 }); }); }
+      [-14, 0, 14].forEach(dx => { props.push({ key: 'park_bench', x: SX + dx, z: r3(SZ - 19.9), face: 0 }, { key: 'park_bench', x: SX + dx, z: r3(SZ + 19.9), face: 180 }); }); }
 
     /* ── P06-09 · ARENA SERVICE ── */
     /* THE LOADING DOCK: grey corrugated back-of-house, a hazard-yellow band, three roller doors under a dock canopy, a roof tank and ducts. Roof walked. */
