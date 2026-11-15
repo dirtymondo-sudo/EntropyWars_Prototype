@@ -2277,3 +2277,16 @@ Off: `window.EW_KEEP_PBR_MAPS = true`. NOT run in a browser (repo rule); whether
 memory his readout showed. The readers of a file material's normalMap are creator hair / wings (unit cache) and the gem / key
 picks (their own files), none of them a room prop. NEXT if the hall is still far over budget: the unit models (also three
 sheets each, also drawn as Lambert), and stripping the two sheets in the .opt.glb bake so they are never downloaded.
+
+## THE ROOM NEXT DOOR (2026-11-15, mondo: "the lighting isnt on at first and suddenly turns on as i walk through the door")
+- Seen: from the Foyer the Main Hall was dark with hard lit strips; one step through the door it was fully lit.
+- Cause: THE ROOM-BOX AO (`_hqAoHook` GLSL, `_ewNodeAo` node renderer). Its box is the room you STAND in (`_hqAoArm`,
+  re-armed at every `_hqStageSwap`), but the shader runs on everything drawn. A point outside the box read as hard
+  against both walls and the ceiling, so every joined room seen through a door was drawn at the clamp (0.3 of its
+  colour), bar the strips in line with the box's own walls. The crossing swapped the box and the room "turned on".
+  Not the lamps, the rig, the lamp budget, the key shadow, the look or the fog (all measured the same on both sides).
+- Fix: outside the box (past 0.15 of the reach, about 8 cm) the walls and ceiling shade nothing; the floor contact
+  term stays, as in a round room. No lights added, no memory touched. Applies to every box room on a stage.
+- Left as is: a box room's own corner shade only shows while you stand in it (small, near its walls).
+- Proof: /mnt/project-files/hall-light-pop/. Cloud repro: WebGPU harness, enter central_egress, wait for the foyer,
+  teleport {deg:195,r:22.5}, first person at {x:0,z:-3.05}, lookAt(4,-20,0).
