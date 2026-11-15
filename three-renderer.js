@@ -3258,14 +3258,19 @@ const ThreeRenderer = (function () {
        position against the room's box (uHqAo = halfW, halfD, ceiling y, strength; uHqAo2 = the radius, the floor y) —
        a floor darkens toward the walls, a wall toward the floor / the ceiling / its neighbours, and every PROP's vertical
        face darkens in the half metre over the floor (the contact that grounds a chair). A face's own plane never
-       occludes it (weighted by its normal). One shared function = one program per material kind; strength 0 = off. */
+       occludes it (weighted by its normal). One shared function = one program per material kind; strength 0 = off.
+       THE ROOM NEXT DOOR (2026-11-15, mondo: "the lighting isnt on at first and suddenly turns on as i walk through the
+       door"): the box is the room you STAND in, but the shader runs on everything drawn, and a point OUTSIDE the box read
+       as hard against two walls and the ceiling at once: the Main Hall seen from the Foyer was drawn at 0.3 of its
+       colour (bar the strips in line with the Foyer's own walls) until the crossing swapped the box. Outside the box
+       (past 0.15 of the reach) the walls and the ceiling shade nothing; the floor contact stays, as in a round room. */
     var _HQ_AO = { x: 1e6, y: 1e6, z: 1e6, w: 0 }, _HQ_AO2 = { x: 40, y: 0, z: 0, w: 0 };   // AO2: the reach, the floor, and (THE SEAMLESS FIELD) the box's centre x / z
     function _hqAoHook(shader) {
         shader.uniforms.uHqAo = { value: _HQ_AO }; shader.uniforms.uHqAo2 = { value: _HQ_AO2 };
         shader.vertexShader = 'varying vec3 vHqWp;\nvarying vec3 vHqWn;\n' + shader.vertexShader
             .replace('#include <project_vertex>', '#include <project_vertex>\n#ifdef USE_INSTANCING\nvHqWp = ( modelMatrix * instanceMatrix * vec4( transformed, 1.0 ) ).xyz;\nvHqWn = normalize( mat3( modelMatrix ) * mat3( instanceMatrix ) * objectNormal );\n#else\nvHqWp = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;\nvHqWn = normalize( mat3( modelMatrix ) * objectNormal );\n#endif');   // THE INSTANCE PASS: a batched copy's world point
         shader.fragmentShader = 'uniform vec4 uHqAo;\nuniform vec4 uHqAo2;\nvarying vec3 vHqWp;\nvarying vec3 vHqWn;\n' + shader.fragmentShader
-            .replace('#include <map_fragment>', '#include <map_fragment>\nif ( uHqAo.w > 0.0 ) {\n\tvec3 hqN = abs( normalize( vHqWn ) );\n\tfloat hqR = max( uHqAo2.x, 0.001 );\n\tfloat hqFx = 1.0 - smoothstep( 0.0, hqR, uHqAo.x - abs( vHqWp.x - uHqAo2.z ) );\n\tfloat hqFz = 1.0 - smoothstep( 0.0, hqR, uHqAo.y - abs( vHqWp.z - uHqAo2.w ) );\n\tfloat hqFy = 1.0 - smoothstep( 0.0, hqR, vHqWp.y - uHqAo2.y );\n\tfloat hqFc = 1.0 - smoothstep( 0.0, hqR, uHqAo.z - vHqWp.y );\n\tfloat hqAo = 1.0 - uHqAo.w * ( hqFx * ( 1.0 - hqN.x ) + hqFz * ( 1.0 - hqN.z ) + hqFy * ( 1.0 - hqN.y ) + hqFc * ( 1.0 - hqN.y ) * 0.6 );\n\tdiffuseColor.rgb *= clamp( hqAo, 0.3, 1.0 );\n}');
+            .replace('#include <map_fragment>', '#include <map_fragment>\nif ( uHqAo.w > 0.0 ) {\n\tvec3 hqN = abs( normalize( vHqWn ) );\n\tfloat hqR = max( uHqAo2.x, 0.001 );\n\tfloat hqFx = 1.0 - smoothstep( 0.0, hqR, uHqAo.x - abs( vHqWp.x - uHqAo2.z ) );\n\tfloat hqFz = 1.0 - smoothstep( 0.0, hqR, uHqAo.y - abs( vHqWp.z - uHqAo2.w ) );\n\tfloat hqFy = 1.0 - smoothstep( 0.0, hqR, vHqWp.y - uHqAo2.y );\n\tfloat hqFc = 1.0 - smoothstep( 0.0, hqR, uHqAo.z - vHqWp.y );\n\tfloat hqM = hqR * 0.15;\n\tfloat hqIn = step( -hqM, uHqAo.x - abs( vHqWp.x - uHqAo2.z ) ) * step( -hqM, uHqAo.y - abs( vHqWp.z - uHqAo2.w ) ) * step( -hqM, uHqAo.z - vHqWp.y );\n\thqFx *= hqIn; hqFz *= hqIn; hqFc *= hqIn;\n\tfloat hqAo = 1.0 - uHqAo.w * ( hqFx * ( 1.0 - hqN.x ) + hqFz * ( 1.0 - hqN.z ) + hqFy * ( 1.0 - hqN.y ) + hqFc * ( 1.0 - hqN.y ) * 0.6 );\n\tdiffuseColor.rgb *= clamp( hqAo, 0.3, 1.0 );\n}');
     }
     var _shadowsDirty = true;     // consumed when the depth pass re-renders
     var _shadowMotion = false;    // set by per-frame updaters that move casters
@@ -46578,6 +46583,10 @@ const ThreeRenderer = (function () {
             var fz = one.sub(T.smoothstep(0, R, A.y.sub(T.abs(wp.z.sub(A2.w)))));
             var fy = one.sub(T.smoothstep(0, R, wp.y.sub(A2.y)));
             var fc = one.sub(T.smoothstep(0, R, A.z.sub(wp.y)));
+            /* THE ROOM NEXT DOOR (2026-11-15): outside this room's box there is no wall of it to shade by (see _hqAoHook) */
+            var M = R.mul(-0.15), dX = A.x.sub(T.abs(wp.x.sub(A2.z))), dZ = A.y.sub(T.abs(wp.z.sub(A2.w))), dC = A.z.sub(wp.y);
+            var inB = T.step(M, dX).mul(T.step(M, dZ)).mul(T.step(M, dC));
+            fx = fx.mul(inB); fz = fz.mul(inB); fc = fc.mul(inB);
             var ao = one.sub(A.w.mul(fx.mul(n.x.oneMinus()).add(fz.mul(n.z.oneMinus())).add(fy.mul(n.y.oneMinus())).add(fc.mul(n.y.oneMinus()).mul(0.6))));
             return A.w.greaterThan(0).select(T.clamp(ao, 0.3, 1), one);
         });
@@ -73814,7 +73823,7 @@ const ThreeRenderer = (function () {
                 var c = [at(cuts[ci], -1), at(cuts[ci + 1], -1), at(cuts[ci + 1], 1), at(cuts[ci], 1)];
                 var p = c.map(function (q) { return [q[0], hAt(q[0], q[1]) + lift, q[1]]; });
                 if (cuts.length > 2 && Math.max(Math.abs(p[1][1] - p[0][1]), Math.abs(p[2][1] - p[3][1])) > 0.3 * (cuts[ci + 1] - cuts[ci]) + 0.02) continue;   // a step in the ground (a retaining wall's line): the line breaks there, never a strip up the step
-                quad(B, [p[0], p[3], p[2], p[1]], [[0, 0], [s, 0], [s, s], [0, s]]);
+                quad(B, [p[0], p[1], p[2], p[3]], [[0, 0], [0, s], [s, s], [s, 0]]);   // ccw seen from above (2026-11-15: the 11-13 rewrite wound these the other way, so the paint faced DOWN and was culled: no lane lines, no crossings)
             }
         };
         var dir = function (a, b) { var dx = b[0] - a[0], dz = b[1] - a[1], L = Math.hypot(dx, dz) || 1; return { x: dx / L, z: dz / L, L: L }; };
@@ -73920,7 +73929,7 @@ const ThreeRenderer = (function () {
                     flat(Bm, hx, hz, d.x, d.z, R.manholeR * 2, R.manholeR * 2, 0); manholes++;
                 }
                 /* THE OIL STAINS (2026-11-15, the Urban Decay pack; a room asks with gen.stains): a dark patch in a lane now and then, turned four ways, clear of the mouths and the manholes' rhythm */
-                if (info.gen && info.gen.stains) for (var s6 = 11 + (si * 7) % 13; s6 < L - 4; s6 += 23) {
+                if (room && room.terrain && room.terrain.gen && room.terrain.gen.stains) for (var s6 = 11 + (si * 7) % 13; s6 < L - 4; s6 += 23) {
                     var lane6 = ((stains % 2) ? -1 : 1) * Math.min(w * 0.24, 2.4), ox6 = pts[k][0] + d.x * s6 + (-d.z) * lane6, oz6 = pts[k][1] + d.z * s6 + d.x * lane6;
                     if (inOther(ox6, oz6, si, 1.4) || inPad(ox6, oz6, 2.8)) continue;
                     var q6 = stains % 4, sz6 = 2.1 + (stains % 3) * 0.5;
@@ -73977,7 +73986,7 @@ const ThreeRenderer = (function () {
             var yaw = Math.atan2(-de.dx, -de.dz);
             placePlate('SignProhibited1a', de.x - de.dx * 1.2 + (-de.dz) * (de.w / 2 + 0.5), de.z - de.dz * 1.2 + de.dx * (de.w / 2 + 0.5), yaw, R.signH, 0.7);
         });
-        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] road markings', 'paint quads', Bw.n / 4, 'kerb', Bk.n / 4, 'manholes', manholes, 'signs', madeSigns.length, 'dead ends', deadEnds.length);
+        if (typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ] road markings', 'paint quads', Bw.n / 4, 'kerb', Bk.n / 4, 'manholes', manholes, 'stains', stains, 'signs', madeSigns.length, 'dead ends', deadEnds.length);
     }
     /* THE STREET LAMPS: on the kerb of every street of the plan, alternating sides every `every` metres, clear of the doors' lanes */
     function _hqBuildStreetLamps(room, info, G, TM, rng) {
