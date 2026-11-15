@@ -30115,7 +30115,7 @@ const DOOR_HQ = {
         ladder_wall_rack:   { file: 'world/props/meshy/ladder_wall_rack.glb', base: 'asset', span: 3.4, foot: 0, palette: true, group: 'Meshy props' },   // two aluminium extension ladders on red wall brackets, long along x (hang it, 0.32 deep)
         card_catalog:       { file: 'world/props/meshy/card_catalog.glb', base: 'asset', h: 1.3, foot: 0, palette: true, group: 'Meshy props' },   // an oak library card catalogue, thirty brass-pulled drawers
         microfiche_reader:  { file: 'world/props/meshy/microfiche_reader.glb', base: 'asset', h: 0.5, foot: 0, palette: true, group: 'Meshy props' },   // a beige 1980s desktop microfiche reader (on a desk: y = the desk top)
-        city_scale_model:   { file: 'world/props/meshy/city_scale_model.glb', base: 'asset', span: 2.4, foot: 0, palette: true, group: 'Meshy props' },   // an architectural model of a city under a glass case on a dark wood base, long along x
+        city_scale_model:   { file: 'world/props/meshy/city_scale_model.glb', base: 'asset', span: 2.4, foot: 0, palette: true, group: 'Meshy props' },   // an architectural model of a city, open top, on a dark wood table with turned legs, long along x
         city_seal:          { file: 'world/props/meshy/city_seal.glb', base: 'asset', span: 1.6, foot: 0, palette: true, group: 'Meshy props' },   // a round bronze wall seal, an eagle over a skyline in a laurel ring, no letters (hang it, 0.1 deep)
         judges_bench:       { file: 'world/props/meshy/judges_bench.glb', base: 'asset', span: 3.0, foot: 0, palette: true, group: 'Meshy props' },   // a raised mahogany judges bench, panelled front +Z, a gavel on top
         witness_stand:      { file: 'world/props/meshy/witness_stand.glb', base: 'asset', h: 1.15, foot: 0, palette: true, group: 'Meshy props' },   // a mahogany witness box with a step, a gate, a chair and a microphone
@@ -30124,13 +30124,13 @@ const DOOR_HQ = {
         riot_gear_rack:     { file: 'world/props/meshy/riot_gear_rack.glb', base: 'asset', h: 2.0, foot: 0, palette: true, group: 'Meshy props' },   // a steel rack of clear riot shields, visored helmets on top, batons (back flat, 0.46 deep)
         steel_toilet:       { file: 'world/props/meshy/steel_toilet.glb', base: 'asset', h: 1.0, foot: 0, palette: true, group: 'Meshy props' },   // a stainless prison cell toilet + sink, back flat
         giant_hourglass:    { file: 'world/props/meshy/giant_hourglass.glb', base: 'asset', h: 1.8, foot: 0, palette: true, group: 'Meshy props' },   // a tall walnut + brass hourglass, gold sand half run through
-        astronomical_clock: { file: 'world/props/meshy/astronomical_clock.glb', base: 'asset', span: 1.8, foot: 0, palette: true, group: 'Meshy props' },   // a blue enamel + gilt astronomical clock face, zodiac ring, no numbers (hang it, 0.09 deep)
+        astronomical_clock: { file: 'world/props/meshy/astronomical_clock.glb', base: 'asset', span: 1.8, foot: 0, palette: true, group: 'Meshy props' },   // a square gilt panel with a blue enamel astronomical dial, zodiac ring, no numbers (hang it, 0.09 deep)
         rifle_rack:         { file: 'world/props/meshy/rifle_rack.glb', base: 'asset', h: 1.6, foot: 0, palette: true, group: 'Meshy props' },   // an olive wooden rack of six bolt-action rifles, a chain across (back flat, 0.57 deep)
         footlocker:         { file: 'world/props/meshy/footlocker.glb', base: 'asset', span: 0.85, foot: 0, palette: true, group: 'Meshy props' },   // an olive drab military footlocker, steel corners, padlock, no stencils
         field_radio:        { file: 'world/props/meshy/field_radio.glb', base: 'asset', h: 0.45, foot: 0, palette: true, group: 'Meshy props' },   // an olive vintage field radio, handset, whip antenna
         number_dispenser:   { file: 'world/props/meshy/number_dispenser.glb', base: 'asset', h: 1.4, foot: 0, palette: true, group: 'Meshy props' },   // a red take-a-number ticket dispenser on a chrome pole
         now_serving_sign:   { file: 'world/props/meshy/now_serving_sign.glb', base: 'asset', span: 0.9, foot: 0, palette: true, group: 'Meshy props' },   // a black now-serving box, red LED digits (hang it, 0.16 deep)
-        brochure_rack:      { file: 'world/props/meshy/brochure_rack.glb', base: 'asset', h: 1.0, foot: 0, palette: true, group: 'Meshy props' },   // a clear acrylic wall rack of leaflets + forms (hang it, 0.13 deep)
+        brochure_rack:      { file: 'world/props/meshy/brochure_rack.glb', base: 'asset', h: 1.0, foot: 0, palette: true, group: 'Meshy props' },   // a grey steel wall rack of leaflets + forms (hang it, 0.08 deep)
         form_counter:       { file: 'world/props/meshy/form_counter.glb', base: 'asset', h: 1.15, foot: 0, palette: true, group: 'Meshy props' },   // a grey stand-up form writing counter, form trays, pens on chains
         ballot_box:         { file: 'world/props/meshy/ballot_box.glb', base: 'asset', h: 1.0, foot: 0, palette: true, group: 'Meshy props' },   // an oak ballot box with a brass slot on a wooden stand
                 /* The elegantcrow Beach Props Pack (human-made, commercial use OK per the author; project files asset-packs/other/elegantcrow_beach-props-pack), OBJ -> GLB by Claude. */
@@ -44304,7 +44304,7 @@ const DOOR_HQ = {
                 {key:'wall_shelf',x:-10.975,z:-237.25,face:270,floor:true},
                 {key:'punch_clock',x:-17.04,z:-231.85,face:90,floor:true},
                 {key:'card_catalog',x:-11.13,z:-235.1,face:270,floor:true},
-                {key:'microfiche_reader',x:-12.25,z:-236.6,face:90,floor:true,y:0.76,mount:0},
+                {key:'crt_terminal',x:-12.25,z:-236.6,face:90,floor:true,y:0.76,mount:0},
                 {key:'reception_wedge',x:19.25,z:-229.25,face:180,floor:true},
                 {key:'reception_wedge',x:22.75,z:-229.25,face:180,floor:true},
                 {key:'tanker_desk',x:8.75,z:-236.25,face:90,floor:true},
@@ -44509,8 +44509,8 @@ const DOOR_HQ = {
                 {key:'now_serving_sign',x:64.75,z:-101.71,face:0,floor:true,y:18.1,mount:0},
                 {key:'now_serving_sign',x:68.25,z:-101.71,face:0,floor:true,y:18.1,mount:0},
                 {key:'number_dispenser',x:66.95,z:-115.05,face:180,floor:true},
-                {key:'brochure_rack',x:54.25,z:-118.58,face:180,floor:true,y:16.75,mount:0},
-                {key:'brochure_rack',x:57.75,z:-118.58,face:180,floor:true,y:16.75,mount:0},
+                {key:'brochure_rack',x:54.25,z:-118.605,face:180,floor:true,y:16.75,mount:0},
+                {key:'brochure_rack',x:57.75,z:-118.605,face:180,floor:true,y:16.75,mount:0},
                 {key:'form_counter',x:49.68,z:-103.25,face:90,floor:true},
                 {key:'form_counter',x:76.32,z:-106.75,face:270,floor:true},
                 {key:'photocopier',x:54.25,z:-96.25,face:90,floor:true},

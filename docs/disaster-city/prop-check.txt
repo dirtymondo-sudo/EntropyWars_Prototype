@@ -185,7 +185,7 @@ vault  -12.25  -232.75  building
 wall_shelf  -10.815  -237.25  building
 punch_clock  -17.2  -231.85  building
 card_catalog  -10.97  -235.1  building
-microfiche_reader  -12.25  -236.6  building
+crt_terminal  -12.25  -236.6  building
 reception_wedge  19.25  -229.25  building
 reception_wedge  22.75  -229.25  building
 tanker_desk  8.75  -236.25  building
