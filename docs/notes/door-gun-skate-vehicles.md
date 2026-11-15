@@ -166,6 +166,27 @@ knock). UNSEEN LIVE (RULE #1c): the clips at 60 fps (the slide's run-in, the
 get-up's speed — `bailFall` / `bailMs` are the edits), the jog stride's read
 against the deck, the fit on the CAST rigs (the probe posed the creator base).
 
+## SKATEBOARDING — THE WAY OUT OF A COLLIDER (stuck in a fence after a grind) — 2026-11-15
+mondo: "got stuck clipped inside this fence after i was grinding on it, i cant move" (Disaster City, a curved-top bars fence by the water).
+**Cause**: a blocking railing is a GRIND (its top, sloped y0 → y1 with the ground) plus a WALL to the walker (data.js hqTerrainCompile
+`pushRun`: 0.12 m thick, cut in 1.2 m pieces, each piece's top = the HIGHER of its two ends). Every grind exit left the body ON the
+rail's own line. Where the rail's height at that point is under the wall piece's top (any fence down a slope, a fence beside a taller
+wall), the landing's free ground read answers the wall's top, which is over the feet, so the landing falls back to the bare ground:
+the body comes down INSIDE the wall's reach (0.06 + body 0.34 m), where hqTerrainFeet refuses every step. A headless count over the
+city's blocking rails: 683 of 2,665 sample points along them did this.
+**Fix** (three-renderer.js, block "THE WAY OUT OF A COLLIDER" before `_hqTickRide`; nothing on `state`, nothing relayed):
+- `_hqRideClearSide(pl, R, rail, s)`: the side of the run with ground to come down on (least drop, never deep water). A grind that
+  ends ON the run leaves sideways by it: too slow (the hop turns across the run at 2.2 m/s), the balance bail (1.8 m/s), the board
+  put away on a rail (the body steps 0.8 m beside it). The end of the run and an ollie off keep going along the run as before.
+- `_hqStuckFree(pl)`: the body is put on the nearest spot it can stand and walk from (rings of 16 out to 8 m; first pass its own
+  level: not over +0.5 m (never up onto the fence's top), not under −2.5 m, dry ground; second pass anything standable).
+- `_hqStuckLanded(pl)`: every landing (the rider's `_hqRideGravity`, the walker's) whose spot refuses the body runs it at once.
+- `_hqStuckWatch(H, pl, dt)` (top of `_hqTickWalker`, so on foot and on the board, every room): a movement key / the touch pad held,
+  the body not moved 3 cm for 0.45 s, and its spot refused (`_hqSurface(x, z, y) === null`) runs it. Not in the air, swimming,
+  climbing, seated, dashing, at a helm, grinding or bailing. A body pressed against a wall on a valid spot costs one surface read.
+Covers every rail in `_hq.rails` (the pack fences, flights' handrails, escalators, guard rails, bridges, the gallery, the mezzanine arcs,
+prop rails) because the exits and the net read only `_hqRailAt` / `_hqSurface` / `_hqAirOK`. UNSEEN LIVE (RULE #1c).
+
 ## SKATEBOARDING rev 2 — THE RIDE STANCE, FAKIE, THE KICK, HOLD TO JUMP — 2026-09-15, local delivery
 The user's brief: Idle_10 on the deck with the feet on the board, the
 occasional run/kick, skate backwards with S, jump higher the longer SPACE is
