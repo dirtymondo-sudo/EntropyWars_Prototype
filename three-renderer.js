@@ -46121,7 +46121,7 @@ const ThreeRenderer = (function () {
             K.rateB = (K.builds - K.b0) / dt; K.rateP = (K.pipes - K.p0) / dt;
             K.at = now; K.b0 = K.builds; K.p0 = K.pipes;
         }
-        return { builds: K.builds, pipes: K.pipes, rateB: K.rateB, rateP: K.rateP, kept: K.kept.b.length + '/' + K.kept.p.length + '/' + K.kept.g.length, off: _ewKeepOff(), inst: K.inst, rig: _ewRigG ? { moves: _ewRigG.moves, grows: _ewRigG.grows, lamps: _ewRigG.group.children.length } : null };
+        return { builds: K.builds, pipes: K.pipes, rateB: K.rateB, rateP: K.rateP, kept: K.kept.b.length + '/' + K.kept.p.length + '/' + K.kept.g.length, off: _ewKeepOff(), inst: K.inst, reach: K.reach || 0, rig: _ewRigG ? { moves: _ewRigG.moves, grows: _ewRigG.grows, lamps: _ewRigG.group.children.length } : null };
     }
     /* ══ THE NODE LAYER (WEBGPU_PLAN W1, 2026-10-03) ══════════════════════════════════════════════════════════════════════
        The node renderer ignores ShaderChunk patches and onBeforeCompile, so on its path each classic effect is rebuilt
@@ -46147,11 +46147,39 @@ const ThreeRenderer = (function () {
         class EwAmbientLightNode extends G.AmbientLightNode { update(f) { super.update(f); this.color.multiplyScalar(PI); } }
         class EwDirectionalLightNode extends G.DirectionalLightNode { update(f) { super.update(f); this.color.multiplyScalar(PI); } }
         class EwHemisphereLightNode extends G.HemisphereLightNode { update(f) { super.update(f); this.color.multiplyScalar(PI); this.groundColorNode.value.multiplyScalar(PI); } }
+        /* THE LAMP'S REACH ON THE NODE RENDERER (2026-11-15, mondo's F3 in a fight on Disaster City: "4.8 FPS", frame 210 ms with
+           the CPU at 24 ms, "Lights point 72 · rig 63/70"). The node renderer ran the whole light maths (Lambert / Blinn-Phong /
+           the PBR lobes) for EVERY rig lamp on EVERY pixel: 64 lamps on 6.3 million pixels, though a street lamp reaches 20 m and a
+           pixel sits inside one or two of them. THE LIGHT'S REACH did this for the classic renderer only. Now a rig point lamp's
+           light maths runs for a pixel only when its colour after the fall-off is not black: past its `distance` the ramp is
+           exactly 0, and a dark spare is 0 everywhere, so what is skipped added exactly 0 and the picture is the same. Only the
+           rig's lamps (the sun lamps before them in the light list build the shared terms outside the branch) and only the plain
+           lit materials (Lambert / Phong / Standard / Physical: their direct term is maths alone; a toon ramp samples a texture,
+           which WGSL refuses inside a branch). Read at shader build: every lamp on every pixel again with localStorage
+           ew_lightsEveryPixel = '1' or window.EW_LIGHTS_EVERY_PIXEL = true before the game's scripts (the classic switch), reload. */
+        var everyPx = false;
+        try { everyPx = (typeof window !== 'undefined' && window.EW_LIGHTS_EVERY_PIXEL === true) || (typeof localStorage !== 'undefined' && localStorage.getItem('ew_lightsEveryPixel') === '1'); } catch (e0) {}
+        var reachOk = function (self, builder) {
+            if (everyPx || !T.If || !self.light || !self.light._ew_rigLamp || self.light.castShadow || self.shadowNode) return false;
+            var m = builder && builder.material;
+            if (!m || m.isMeshToonMaterial || m.isMeshToonNodeMaterial || m.gradientMap) return false;   // builder.material is the game's classic material (three dresses it as a node material per build)
+            if (!(m.isMeshStandardMaterial || m.isMeshPhysicalMaterial || m.isMeshPhongMaterial || m.isMeshLambertMaterial || m.isMeshStandardNodeMaterial || m.isMeshPhysicalNodeMaterial || m.isMeshPhongNodeMaterial || m.isMeshLambertNodeMaterial)) return false;
+            return !!(builder.lightsNode && builder.lightsNode.setupDirectLight);
+        };
         class EwPointLightNode extends G.PointLightNode {
             update(f) { super.update(f); this.color.multiplyScalar(PI); }
             setupDirect(builder) {
                 var lv = this.getLightVector(builder);
                 return { lightDirection: lv.normalize(), lightColor: this.colorNode.mul(ramp(lv.length(), this.cutoffDistanceNode, this.decayExponentNode)) };
+            }
+            setup(builder) {
+                if (!reachOk(this, builder)) return super.setup(builder);
+                this.colorNode = this.baseColorNode || this.colorNode;
+                var d = this.setupDirect(builder), self = this, lc = d.lightColor.toVar();
+                _ewKeep.reach = (_ewKeep.reach || 0) + 1;
+                T.If(T.dot(lc, lc).greaterThan(0), function () {
+                    builder.lightsNode.setupDirectLight(builder, self, { lightDirection: d.lightDirection, lightColor: lc });
+                });
             }
         }
         class EwSpotLightNode extends G.SpotLightNode {
@@ -46932,6 +46960,25 @@ const ThreeRenderer = (function () {
             if (t === 2 || t === 'full') { N.updateBefore(ro); R._geometries.updateForRender(ro); N.updateForRender(ro); R._bindings.updateForRender(ro); N.updateAfter(ro); }
             else if (t === 1 || t === 'shared') { N.updateBefore(ro); N.updateForRender(ro); R._bindings.updateSharedForRender(ro); N.updateAfter(ro); }
         };
+        var rpShared = function (R, held) {
+            var N = R._nodes, rid = N.nodeFrame ? N.nodeFrame.renderId : (_ewBun.frame | 0), i, k, ro, sb, need;
+            for (i = 0; i < held.length; i++) {
+                ro = held[i]; sb = ro._ew_rqS;
+                if (sb === undefined) {   // this object's shared bind groups, found once
+                    sb = null;
+                    var bg = ro.getBindings();
+                    for (k = 0; k < bg.length; k++) { var b0 = bg[k].bindings && bg[k].bindings[0], gn = b0 && b0.groupNode; if (gn && gn.shared === true) (sb || (sb = [])).push(bg[k]); }
+                    ro._ew_rqS = sb;
+                }
+                if (!sb) continue;
+                need = false;
+                for (k = 0; k < sb.length; k++) if (sb[k]._ew_rid !== rid) { need = true; break; }
+                if (!need) continue;
+                N.updateBefore(ro); N.updateForRender(ro); R._bindings.updateSharedForRender(ro); N.updateAfter(ro);
+                for (k = 0; k < sb.length; k++) sb[k]._ew_rid = rid;
+                _ewBun.rpShared = (_ewBun.rpShared | 0) + 1;
+            }
+        };
         var rpList = function (R, bd) {
             var ros = bd.renderObjects, reps = [], dyn = [], seen = new Set();
             for (var i = 0; i < ros.length; i++) {
@@ -46967,6 +47014,16 @@ const ThreeRenderer = (function () {
             /* a rested object wrote on its turn: what changed may be the same for all of them (the pass's camera in an object's
                own buffer) — every rested one is refreshed this frame, and rests again only after REST quiet frames */
             if (woke && held) { for (i = 0; i < held.length; i++) { held[i]._ew_rq = 0; rpStep(R, held[i]); asked++; } _ewBun.rpWoke = (_ewBun.rpWoke | 0) + 1; }
+            /* THE HELD KEEP THE CAMERA (2026-11-15, mondo: "trees and other props are moving when i move my camera ... its in door hq
+               too"): the frame's camera (and lamps, fog) sit in SHARED buffers, one per set of shared values a shader reads, and three
+               writes each when the first object that reads it is refreshed in a render. A held object is not refreshed, and the
+               instanced shaders read a set of their own: since THE COPIES REST held the batches too, on most frames nobody wrote
+               that buffer, so every instanced prop (trees, lamps, chairs, boxes) was drawn with the camera of up to REST frames
+               ago: glued to the view while it turned, then snapping home (measured in the main hall: the first frame after a
+               70 degree turn drew the lamps, boxes and chairs where they stood on screen before it). Now the first held object
+               of each shared buffer has its SHARED part refreshed in every render (what three does for a still object); the
+               rest stay held. Off: window.EW_BUN_HELD_NO_SHARED. Count: _ewBun.rpShared. */
+            else if (held && !(typeof window !== 'undefined' && window.EW_BUN_HELD_NO_SHARED)) rpShared(R, held);
             _ewBun.rpAsked = (_ewBun.rpAsked | 0) + asked; _ewBun.rpAll = (_ewBun.rpAll | 0) + bd.renderObjects.length;
         };
         var rb = r._renderBundle;
@@ -47092,7 +47149,8 @@ const ThreeRenderer = (function () {
                a layer, a light, a bundle group or a clipping group, with the layers they hold; the mask walks only those whose
                layers meet its camera's. Filed again when something joined the scene (at most once a second), the child count
                changed, or every 10 s. Off: window.EW_MASK_FULL_WALK. */
-            if (this._ew_sideRender && !this._ew_paneRender && (camera.layers.mask & 1) === 0 && object._ew_ckFar == null && object.children.length > 32 && object.visible !== false && (object.isGroup || object.type === 'Object3D') && !object.isClippingGroup && !window.EW_MASK_FULL_WALK) {
+            if (this._ew_maskUnit === true && object._ew_ckFar != null) return;   // THE UNIT MASK (three-post.js): a chunk holds props, fences, copies — never a unit's part
+            if (this._ew_sideRender && !this._ew_paneRender && (camera.layers.mask & 1) === 0 && (object._ew_ckFar == null || (!this._ew_maskBun && !window.EW_MASK_CHUNK_FULL_WALK)) && object.children.length > 32 && object.visible !== false && (object.isGroup || object.type === 'Object3D') && !object.isClippingGroup && !window.EW_MASK_FULL_WALK) {
                 var MI = maskFile(object);
                 if (MI) {
                     var cm = camera.layers.mask, mgo = object.isGroup ? object.renderOrder : groupOrder, ML = MI.list, MM = MI.ms;
@@ -70778,6 +70836,9 @@ const ThreeRenderer = (function () {
             var im = new THREE.InstancedMesh(seatGeo, mat, list.length);
             list.forEach(function (it, k) { q.setFromAxisAngle(up, it[3]); p3.set(it[0] * U, it[1] * U + 0.3, it[2] * U); m4.compose(p3, q, sc); im.setMatrixAt(k, m4); });
             im.instanceMatrix.needsUpdate = true; im.castShadow = false; im.receiveShadow = true; im.renderOrder = 1; im.frustumCulled = false; im._ew_hqSeats = true;
+            /* THE SEATS OUT OF VIEW (2026-11-15, Disaster City's stadium: thousands of seats in a 500 m city): a colour's seats carry their own
+               bounding sphere (every instance in it), so a stand behind the camera is not drawn; without one they stay always drawn as before */
+            try { if (typeof im.computeBoundingSphere === 'function') { im.computeBoundingSphere(); if (im.boundingSphere && im.boundingSphere.radius > 0) im.frustumCulled = true; } } catch (e) { im.frustumCulled = false; }
             G.add(im); made += list.length;
         });
         return made;
@@ -72312,9 +72373,75 @@ const ThreeRenderer = (function () {
         return G;
     }
     /* THE LETTERING (2026-11-13, mondo's polish pass: "go one or two more layers deep with the detail"; every district's signs were blank
-       panels): an arch part whose `key` is 'txt:WORDS|fg|bg|aspect' is a sign. The words are drawn once on a canvas of that aspect (width /
+       panels): an arch part whose `key` is 'txt:WORDS|fg|bg|aspect' (+ '|v|font', see THE SIGN FONTS) is a sign. The words are drawn once on a canvas of that aspect (width /
        height of the quad that wears it, uv 'fit'), bold capitals fitted to the panel, in `fg` (a CSS colour) on `bg` (empty = no board: the
        letters alone, on a `kind: 'over'` part). The part's `tint` stays white unless the letters are to be dimmed; `glow` lights the sign. */
+    /* THE SIGN FONTS (2026-11-15, mondo: "do a font pass on all of the buildings that have text"): a sixth field on the key names the
+       typeface, 'txt:WORDS|fg|bg|aspect|<v>|<font id>'. The ids are given by docs/disaster-city/sign-fonts.js at the city bake (by district
+       and by what the sign says); the families are Google Fonts (Open Font License) linked in index.html. f = the CSS family, w = weight,
+       ls = letter spacing (of the letter height), tc = a script, drawn in Title Case. No id / an unknown id = the old Arial Black. */
+    var HQ_SIGN_FONTS = {
+        way:       { f: '"Oswald"', w: 600, ls: 0.04 },               // citywide: exits, gates, sections, room names, warning plates
+        cinzel:    { f: '"Cinzel"', w: 700, ls: 0.06 },               // Civic: carved capitals on the institutions
+        bebas:     { f: '"Bebas Neue"', w: 400, ls: 0.04 },           // Civic: shop awnings
+        archivo:   { f: '"Archivo Black"', w: 400, ls: 0 },           // Hero Plaza: transit-style boards
+        bangers:   { f: '"Bangers"', w: 400, ls: 0.04 },              // Hero Plaza: the hero trade
+        playfair:  { f: '"Playfair Display"', w: 900, ls: 0.05 },     // Hero Plaza news office, Financial
+        monoton:   { f: '"Monoton"', w: 400, ls: 0 },                 // Bayside: neon
+        righteous: { f: '"Righteous"', w: 400, ls: 0.03 },            // Bayside: deco capitals
+        pacifico:  { f: '"Pacifico"', w: 400, ls: 0, tc: true },      // Bayside beach trade, Entertainment food
+        bungee:    { f: '"Bungee"', w: 400, ls: 0 },                  // Entertainment: marquees
+        limelight: { f: '"Limelight"', w: 400, ls: 0.03 },            // Entertainment: studio, casino; Hero Plaza coffee
+        alfa:      { f: '"Alfa Slab One"', w: 400, ls: 0.02 },        // Southside; market stalls
+        staat:     { f: '"Staatliches"', w: 400, ls: 0.05 },          // Southside: block lettering
+        fell:      { f: '"IM Fell English SC"', w: 400, ls: 0.04 },   // University: the halls
+        grad:      { f: '"Graduate"', w: 400, ls: 0.03 },             // University shops, the stadium and the gym
+        stencil:   { f: '"Saira Stencil One"', w: 400, ls: 0.03 },    // Industrial: painted on the sheds
+        dot:       { f: '"DotGothic16"', w: 400, ls: 0.06 },          // the scoreboard
+        marc:      { f: '"Marcellus SC"', w: 400, ls: 0.06 },         // the museum and the galleries
+        rye:       { f: '"Rye"', w: 400, ls: 0.02 }                   // fight posters
+    };
+    /* THE CITY MARKS (2026-11-15, mondo: "establish Disaster City as a municipality, like have D.C.P.D. and D.C.F.D. and a disaster city
+       branding/logo for certain buildings or props or banners"; his OK on the branding sheet): drawn from plain shapes on the sign's own
+       canvas, no texture file. A seventh field on the key names the mark that stands left of the words
+       ('txt:WORDS|fg|bg|aspect|<v>|<font>|<mark>'); a lamp banner (field `v`) always carries the seal above its district's name.
+         seal   = the city seal (navy + gold, the skyline split by the bolt)      shield = the DC bolt shield (black + hazard yellow)
+         pd     = the D.C.P.D. badge (a gold shield, DC)                           fd     = the D.C.F.D. badge (a gold cross, DC)
+       The shapes are the approved sheet's own SVG paths, on a 100-unit radius. */
+    var _HQ_MARK_SKY = 'M-62 30 V6 h14 V-10 h12 V-30 h16 V-4 h8 V-44 h18 V-18 h10 V-2 h14 V12 h12 V30 Z';
+    var _HQ_MARK_BOLT = 'M6 -52 L-8 -12 L4 -12 L-10 34 L14 -20 L2 -20 L12 -52 Z';
+    var _HQ_MARK_SHIELD = 'M-78 -92 H78 V10 C78 60 40 88 0 100 C-40 88 -78 60 -78 10 Z';
+    var _HQ_MARK_CROSS = 'M-28 -92 H28 L20 -24 L92 -28 V28 L20 24 L28 92 H-28 L-20 24 L-92 28 V-28 L-20 -24 Z';
+    var _HQ_MARK_FONTS = { seal: ['600 20px "Oswald"'], shield: ['20px "Archivo Black"'], pd: ['20px "Archivo Black"'], fd: ['20px "Archivo Black"'] };
+    function _hqSignMark(g, id, cx, cy, r, bg) {
+        var k = r / 100, P = function (d) { return new Path2D(d); }, NAVY = '#14284a', GOLD = '#e8c860', INK = '#14161a', HAZ = '#f2c230';
+        var star = function (x, y, q) { g.beginPath(); for (var i = 0; i < 10; i++) { var a = -Math.PI / 2 + i * Math.PI / 5, rr = (i % 2) ? q * 0.42 : q; g[i ? 'lineTo' : 'moveTo'](x + Math.cos(a) * rr, y + Math.sin(a) * rr); } g.closePath(); g.fill(); };
+        g.save(); g.translate(cx, cy); g.scale(k, k); g.textAlign = 'center'; g.textBaseline = 'alphabetic'; if ('letterSpacing' in g) g.letterSpacing = '0px';
+        if (id === 'seal') {
+            g.fillStyle = NAVY; g.beginPath(); g.arc(0, 0, 100, 0, Math.PI * 2); g.fill();
+            g.strokeStyle = GOLD; g.lineWidth = 3; g.beginPath(); g.arc(0, 0, 94, 0, Math.PI * 2); g.stroke();
+            g.fillStyle = GOLD; g.beginPath(); g.arc(0, 0, 66, 0, Math.PI * 2); g.fill();
+            g.save(); g.translate(0, 8); g.fillStyle = NAVY; g.fill(P(_HQ_MARK_SKY)); g.scale(0.95, 0.95); g.fillStyle = GOLD; g.fill(P(_HQ_MARK_BOLT)); g.restore();
+            g.fillStyle = GOLD;
+            if (r >= 44) {   // the ring's words, a letter at a time round the top (too small to read on a banner: the ring and stars alone)
+                var words = 'CITY OF DISASTER CITY', n = words.length, span = 2.5; g.font = '600 19px "Oswald", "Arial Narrow", Arial, sans-serif';
+                for (var i = 0; i < n; i++) { var a = -span / 2 + span * (i + 0.5) / n; g.save(); g.rotate(a); g.fillText(words.charAt(i), 0, -73); g.restore(); }
+            }
+            for (var j = -1; j <= 1; j++) { var b = j * 0.36; star(Math.sin(b) * 80, Math.cos(b) * 80, 8); }
+        } else if (id === 'shield') {
+            g.fillStyle = INK; g.strokeStyle = HAZ; g.lineWidth = 7; var sh = P(_HQ_MARK_SHIELD); g.fill(sh); g.stroke(sh);
+            g.fillStyle = HAZ; g.font = '74px "Archivo Black", "Arial Black", Arial, sans-serif'; g.fillText('D', -37, 24); g.fillText('C', 39, 24);
+            g.save(); g.translate(0, 6); g.scale(1.45, 1.45); var bo = P(_HQ_MARK_BOLT); g.lineJoin = 'round'; g.strokeStyle = INK; g.lineWidth = 5; g.stroke(bo); g.fillStyle = '#f4f1ea'; g.fill(bo); g.restore();
+        } else if (id === 'pd') {
+            g.fillStyle = bg || NAVY; g.strokeStyle = GOLD; g.lineWidth = 11; var ps = P(_HQ_MARK_SHIELD); g.fill(ps); g.stroke(ps);
+            g.fillStyle = GOLD; g.font = '62px "Archivo Black", "Arial Black", Arial, sans-serif'; g.fillText('DC', 0, 20);
+        } else if (id === 'fd') {
+            g.fillStyle = GOLD; g.fill(P(_HQ_MARK_CROSS)); g.fillStyle = bg || '#b3261e'; g.beginPath(); g.arc(0, 0, 36, 0, Math.PI * 2); g.fill();
+            g.fillStyle = GOLD; g.font = '40px "Archivo Black", "Arial Black", Arial, sans-serif'; g.fillText('DC', 0, 14);
+        }
+        g.restore();
+    }
+    function _hqSignTitleCase(s) { return String(s).toLowerCase().replace(/(^|[^a-z0-9])([a-z])/g, function (m, a, b) { return a + b.toUpperCase(); }); }
     var _hqArchSignCache = {};
     function _hqArchSignTex(key) {
         if (_hqArchSignCache[key]) return _hqArchSignCache[key];
@@ -72327,21 +72454,44 @@ const ThreeRenderer = (function () {
             bg2.fillStyle = bg || '#333333'; bg2.beginPath(); bg2.moveTo(8, 6); bg2.lineTo(bw - 8, 6); bg2.lineTo(bw - 8, bh - 2); bg2.lineTo(bw / 2, bh - 30); bg2.lineTo(8, bh - 2); bg2.closePath(); bg2.fill();
             bg2.fillStyle = 'rgba(255,255,255,0.16)'; bg2.fillRect(8, 14, bw - 16, 5); bg2.fillRect(8, bh - 58, bw - 16, 3);   // the cloth's two stitched bands
             bg2.fillStyle = '#23262e'; bg2.fillRect(0, 0, bw, 9);                                                              // the rod (the lamp post's own dark grey)
+            /* THE CITY MARKS: the seal hangs above the district's name (the name keeps the cloth below it) */
+            var bSeal = (bh >= 240) ? 34 : 0, bTop = bSeal ? (28 + bSeal * 2 + 6) : 24;
+            if (bSeal) _hqSignMark(bg2, 'seal', bw / 2, 28 + bSeal, bSeal, bg);
             var bpx = 78, bfont = function (v) { return '900 ' + v + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif'; }; bg2.font = bfont(bpx);
-            var btw = bg2.measureText(words).width || 1, room2 = bh - 30 - 34; bpx = Math.max(8, Math.floor(bpx * Math.min(1, room2 / btw)));
+            var btw = bg2.measureText(words).width || 1, room2 = bh - 30 - bTop - 10; bpx = Math.max(8, Math.floor(bpx * Math.min(1, room2 / btw)));
             bg2.font = bfont(bpx); bg2.textAlign = 'center'; bg2.textBaseline = 'middle'; bg2.fillStyle = fg;
-            bg2.save(); bg2.translate(bw / 2 + bpx * 0.04, 24 + room2 / 2); bg2.rotate(-Math.PI / 2); bg2.fillText(words, 0, 0); bg2.restore();
+            bg2.save(); bg2.translate(bw / 2 + bpx * 0.04, bTop + room2 / 2); bg2.rotate(-Math.PI / 2); bg2.fillText(words, 0, 0); bg2.restore();
             var bt = new THREE.CanvasTexture(bc); bt.anisotropy = 4;
             return (_hqArchSignCache[key] = bt);
         }
         var H = 128, W = Math.max(32, Math.min(2048, Math.round(H * asp))), c = document.createElement('canvas'); c.width = W; c.height = H;
-        var g = c.getContext('2d'); g.clearRect(0, 0, W, H);
-        if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
-        var px = 96; g.font = '900 ' + px + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif';
-        var tw = g.measureText(words).width || 1, sc = Math.min(1, (W * 0.9) / tw); px = Math.max(8, Math.floor(px * sc));
-        g.font = '900 ' + px + 'px "Arial Black", "Helvetica Neue", Arial, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = fg;
-        g.fillText(words, W / 2, H / 2 + px * 0.04);
+        var g = c.getContext('2d'), F = HQ_SIGN_FONTS[q[5]] || null, shown = (F && F.tc) ? _hqSignTitleCase(words) : words;
+        var fontOf = function (v, fam) { return (fam ? F.w : 900) + ' ' + v + 'px ' + (fam ? F.f + ', ' : '') + '"Arial Black", "Helvetica Neue", Arial, sans-serif'; };
+        /* the words fitted inside the board: 90% of its width and (a typeface of its own only) 80% of its height, measured on the glyphs
+           themselves, so a script's tails and a tall display face never touch the board's edge (mondo: text cut-off is high priority) */
+        var paint = function (fam) {
+            g.clearRect(0, 0, W, H); if (bg) { g.fillStyle = bg; g.fillRect(0, 0, W, H); }
+            var px = 96, ls = (fam && F.ls && ('letterSpacing' in g)) ? F.ls : 0, txt = fam ? shown : words;
+            var mk = _HQ_MARK_FONTS[q[6]] ? q[6] : '', mr = mk ? H * 0.42 : 0, mgap = mk ? H * 0.2 : 0, room = W * 0.9 - (mk ? mr * 2 + mgap : 0);   // THE CITY MARKS: the mark stands left of the words, the pair centred on the board
+            g.textAlign = 'center'; g.textBaseline = 'alphabetic'; g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (px * ls) + 'px';
+            var m = g.measureText(txt), tw = m.width || 1, th = ((m.actualBoundingBoxAscent || 0) + (m.actualBoundingBoxDescent || 0)) || px * 0.72;
+            px = Math.max(8, Math.floor(px * Math.min(1, room / tw, fam ? (H * 0.8) / th : 1)));
+            g.font = fontOf(px, fam); if ('letterSpacing' in g) g.letterSpacing = (px * ls) + 'px';
+            m = g.measureText(txt); g.fillStyle = fg;
+            var up = m.actualBoundingBoxAscent, dn = m.actualBoundingBoxDescent;
+            var tw2 = m.width || 1, left = (W - (mk ? mr * 2 + mgap : 0) - tw2) / 2, tcx = left + (mk ? mr * 2 + mgap : 0) + tw2 / 2;
+            g.fillText(txt, tcx + px * ls / 2, (up > 0 || dn > 0) ? H / 2 + (up - dn) / 2 : H / 2 + px * 0.36);
+            if (mk) _hqSignMark(g, mk, left + mr, H / 2, mr, bg);
+        };
         var t = new THREE.CanvasTexture(c); t.anisotropy = 4;
+        /* the typeface arrives from the font sheet index.html links; until it has, the sign stands in the old letters and is redrawn once */
+        var specs = (F ? [F.w + ' 96px ' + F.f] : []).concat(_HQ_MARK_FONTS[q[6]] || []), ready = !!F;
+        try { for (var si = 0; si < specs.length; si++) if (!(document.fonts && document.fonts.check(specs[si], shown + 'DC'))) ready = false; } catch (e) { ready = false; }
+        paint(ready);
+        if (specs.length && !ready && document.fonts && document.fonts.load) {
+            try { Promise.all(specs.map(function (sp) { return document.fonts.load(sp, shown + 'DC').then(function (ff) { return ff && ff.length; }, function () { return false; }); }))
+                .then(function (ok) { if (F ? ok[0] : ok.some(Boolean)) { paint(!!F); t.needsUpdate = true; } }); } catch (e) {}
+        }
         return (_hqArchSignCache[key] = t);
     }
     /* THE BARE PARTS' SURFACES (see _hqBuildArchRows matOf): what a sheetless part is made of, read from its colour. `avg` = the
@@ -72933,6 +73083,50 @@ const ThreeRenderer = (function () {
                 if (P.W.forest > 0.5) { if (c2 > thin * P.W.forest) continue; plantTree(kindsF[(d2 * kindsF.length) | 0], hOf(13 + d2 * 9), px, pz, P.y * U); planted++; }
                 else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
             }
+        }
+        /* THE HILL SIGN (2026-11-15, mondo: "the disaster city hollywood sign, there is already the mountains on one of the edges of disaster
+           city, use that/make that the hollywood hills"): `edges.sign = { side, at, d, text, px, lean: {i: k}, drop: {i: m} }` stands a word of
+           white block letters ON THE LAND, `d` metres past the edge of `side`, centred on `at` along it, every letter on the land's own height
+           under it, its face to the room. 5 x 7 blocks a letter, `px` metres a block; two legs behind each. ONE merged mesh, no light, no
+           fog (it stands in the far land's haze: its white is mixed toward the fog like the land's), so it costs the same far off as near. */
+        var SG = E.sign;
+        if (SG && SG.text) {
+            try {
+                var GL = { A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'], C: ['.####', '#....', '#....', '#....', '#....', '#....', '.####'], D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
+                    E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'], I: ['###', '.#.', '.#.', '.#.', '.#.', '.#.', '###'], R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
+                    S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'], T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'], Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
+                    O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'], L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'], H: ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+                    W: ['#...#', '#...#', '#...#', '#.#.#', '#.#.#', '##.##', '#...#'], N: ['#...#', '##..#', '#.#.#', '#..##', '#...#', '#...#', '#...#'] };
+                var spx = +SG.px || 2, sside = SG.side || 'e', sd0 = +SG.d || 30, sat = +SG.at || 0, gap = spx * 1.15, txt = String(SG.text).toUpperCase();
+                var total = 0; for (var si = 0; si < txt.length; si++) { var gq = GL[txt[si]]; total += (gq ? gq[0].length * spx : spx * 2.4) + gap; } total -= gap;
+                var vpos = [], vcol = [];
+                var horizS = (sside === 'n' || sside === 's'), outS = (sside === 'e' || sside === 's') ? 1 : -1, edgeS = sside === 'e' ? R.x1 : sside === 'w' ? R.x0 : sside === 's' ? R.z1 : R.z0;
+                var runS = (sside === 'e' || sside === 'n') ? 1 : -1;   // the word reads left to right for an eye inside the room: east side north -> south, north side west -> east
+                if (sside === 'n') runS = 1; if (sside === 's') runS = -1; if (sside === 'w') runS = -1;
+                var wpt = function (al, dd) { return horizS ? [al, edgeS + outS * dd] : [edgeS + outS * dd, al]; };
+                var boxS = function (al, dd, y, wAl, h, th, c) {   // a box: `wAl` along the side, `th` thick away from the room, on y .. y + h
+                    var a0 = al - wAl / 2, a1 = al + wAl / 2, p = [wpt(a0, dd), wpt(a1, dd), wpt(a1, dd + th), wpt(a0, dd + th)], y1 = y + h;
+                    var q = function (A, B, C2, D) { [A, B, C2, A, C2, D].forEach(function (v) { vpos.push(v[0] * U, v[1] * U, v[2] * U); vcol.push(c, c, c); }); };
+                    var lo = p.map(function (v) { return [v[0], y, v[1]]; }), hi = p.map(function (v) { return [v[0], y1, v[1]]; });
+                    q(lo[0], lo[1], hi[1], hi[0]); q(lo[1], lo[2], hi[2], hi[1]); q(lo[2], lo[3], hi[3], hi[2]); q(lo[3], lo[0], hi[0], hi[3]); q(hi[0], hi[1], hi[2], hi[3]);
+                };
+                var cur = -total / 2;
+                for (var li = 0; li < txt.length; li++) {
+                    var g = GL[txt[li]]; if (!g) { cur += spx * 2.4 + gap; continue; }
+                    var lw = g[0].length * spx, alC = sat + runS * (cur + lw / 2), wp = wpt(alC, sd0), land = F.at(wp[0], wp[1]).y;
+                    var yb = land + spx * 0.6 - ((SG.drop && +SG.drop[li]) || 0), ln = (SG.lean && +SG.lean[li]) || 0;
+                    for (var rr2 = 0; rr2 < g.length; rr2++) {
+                        var line = g[g.length - 1 - rr2], c0 = 0;
+                        while (c0 < line.length) { if (line[c0] !== '#') { c0++; continue; } var c1 = c0; while (c1 < line.length && line[c1] === '#') c1++;
+                            boxS(sat + runS * (cur + (c0 + c1) / 2 * spx + ln * rr2 * spx), sd0, yb + rr2 * spx, (c1 - c0) * spx, spx + 0.02, spx * 0.3, rr2 % 2 ? 0.95 : 1); c0 = c1; }
+                    }
+                    [0.5, g[0].length - 0.5].forEach(function (k) { var al2 = sat + runS * (cur + k * spx), w2 = wpt(al2, sd0 + spx * 0.9), l2 = F.at(w2[0], w2[1]).y; boxS(al2, sd0 + spx * 0.8, Math.min(l2, yb) - 1, spx * 0.22, Math.max(2, yb + g.length * spx * 0.7 - Math.min(l2, yb) + 1), spx * 0.22, 0.3); });
+                    cur += lw + gap;
+                }
+                var sgeo = new THREE.BufferGeometry(); sgeo.setAttribute('position', new THREE.Float32BufferAttribute(vpos, 3)); sgeo.setAttribute('color', new THREE.Float32BufferAttribute(vcol, 3)); sgeo.computeVertexNormals();
+                var smat = new THREE.MeshLambertMaterial({ color: new THREE.Color(0xffffff).lerp(fogC, 0.1), vertexColors: true, fog: false, side: THREE.DoubleSide }); smat._ew_hqEdgeLand = true;
+                var smesh = new THREE.Mesh(sgeo, smat); smesh.name = 'hq_edge_sign'; G.add(smesh);
+            } catch (e) { console.warn('[HQ] the hill sign failed', e); }
         }
         if (_hq) {
             _hq.edgeLand = { fn: F, pieces: pieces.length, trees: planted };
@@ -87227,9 +87421,9 @@ const ThreeRenderer = (function () {
        The fight never holds (renderFrame clears the hold).
        Off: window.EW_HERO_SHADOW_EVERY_FRAME = true (live). ThreeRenderer.hq.dev.heroShadow() = the counts. */
     var _heroFr = null, _heroFrM = null, _heroFrS = null;
-    var HERO_STILL_MS = 1500, HERO_REFRESH_MS = 1000, HERO_LIST_MS = 100, HERO_TEXEL = 0.25, HERO_FLESH_M = 0.35, HERO_RIGID_MS = 100, HERO_NEAR_MS = 500, HERO_NEAR_M = 6;
+    var HERO_STILL_MS = 1500, HERO_REFRESH_MS = 3000, HERO_LIST_MS = 100, HERO_TEXEL = 0.25, HERO_FLESH_M = 0.35, HERO_RIGID_MS = 100, HERO_NEAR_MS = 500, HERO_NEAR_M = 6;
     var _heroF64 = new Float64Array(1), _heroU32 = new Uint32Array(_heroF64.buffer);
-    var _heroStat = { frames: 0, held: 0, drawn: 0, moving: 0, changed: 0, drift: 0, inReach: 0, casters: 0, why: '' };
+    var _heroStat = { frames: 0, held: 0, drawn: 0, moving: 0, changed: 0, drift: 0, inReach: 0, casters: 0, why: '', sides: 63, sidesDrawn: 0, sidesSkipped: 0 };
     var _heroBodies = [];
     function _heroMix(h, f) { _heroF64[0] = f; h = Math.imul(h ^ _heroU32[0], 16777619); return Math.imul(h ^ _heroU32[1], 16777619); }
     /* THE LAMP'S TIGHT REACH (2026-11-15, mondo's F3 in Disaster City: "shadow 564 calls, 943K tris" beside a bedside lamp that
@@ -87318,8 +87512,76 @@ const ThreeRenderer = (function () {
         o._ew_heroSk = sk;
         for (var i = 0, j = 0; i < bones.length; i++, j += 12) _heroMatKeep(bones[i].matrixWorld.elements, snap, j);
     }
+    /* THE MOVING SIDES (2026-11-15, mondo's F3 in a Disaster City room: "shadow 405 calls, 834K tris", "shadow: projection walk 6.5 ·
+       classic draws 5.9" — a bedside lamp's six cube sides redrawn every frame because one body beside it breathes): a side of the
+       lamp's cube whose 90-degree pyramid holds no caster that moved shows exactly what it showed, so only the sides a moved body
+       touches (where it stands now AND where the map last drew it) are redrawn; the others keep their picture. Every side still
+       redraws when the list of casters changed, a live material is in reach, the lamp moved, on the refresh, and at least every
+       HERO_FULL_MS. The gate hands the sides to the frame's draw (L._ew_heroFaces, read once by the PointShadowNode wrapper).
+       Off: window.EW_HERO_ALL_SIDES = true. Counts: ThreeRenderer.hq.dev.heroShadow().sides. */
+    var HERO_FULL_MS = 4000, HERO_SIDE_PAD_M = 0.3;
+    var _heroMoved = [], _heroMovedR = [];
+    /* the cube sides (bit 0 +X, 1 -X, 2 +Y, 3 -Y, 4 +Z, 5 -Z) whose pyramid a sphere `r` wide at (x, y, z) from the lamp touches */
+    function _heroSideBits(x, y, z, r) {
+        if (!(r >= 0) || x !== x || y !== y || z !== z) return 63;
+        var k = r * 1.4143, ax = x < 0 ? -x : x, ay = y < 0 ? -y : y, az = z < 0 ? -z : z, m = 0;
+        if (x + k >= ay && x + k >= az && x + r > 0) m |= 1;
+        if (k - x >= ay && k - x >= az && r - x > 0) m |= 2;
+        if (y + k >= ax && y + k >= az && y + r > 0) m |= 4;
+        if (k - y >= ax && k - y >= az && r - y > 0) m |= 8;
+        if (z + k >= ax && z + k >= ay && z + r > 0) m |= 16;
+        if (k - z >= ax && k - z >= ay && r - z > 0) m |= 32;
+        return m;
+    }
+    /* the sides a moved body touches: now, and where its last drawn picture stands (its snapshot) */
+    function _heroBodySides(o, lx, ly, lz, rad, pad) {
+        var snap = o._ew_heroSnap, m = 0;
+        if (o.isSkinnedMesh) {
+            var bones = o.skeleton && o.skeleton.bones;
+            if (!bones || !snap || snap.length !== bones.length * 12) return 63;
+            for (var i = 0, j = 0; i < bones.length && m !== 63; i++, j += 12) {
+                var be = bones[i].matrixWorld.elements;
+                m |= _heroSideBits(be[12] - lx, be[13] - ly, be[14] - lz, rad + pad);
+                m |= _heroSideBits(snap[j + 9] - lx, snap[j + 10] - ly, snap[j + 11] - lz, rad + pad);
+            }
+            return m;
+        }
+        var g = o.geometry, bs = g && g.boundingSphere;
+        if (!bs || !snap || snap.length !== 12) return 63;
+        var e = o.matrixWorld.elements, c = bs.center;
+        m |= _heroSideBits(e[0] * c.x + e[4] * c.y + e[8] * c.z + e[12] - lx, e[1] * c.x + e[5] * c.y + e[9] * c.z + e[13] - ly, e[2] * c.x + e[6] * c.y + e[10] * c.z + e[14] - lz, rad + pad);
+        m |= _heroSideBits(snap[0] * c.x + snap[3] * c.y + snap[6] * c.z + snap[9] - lx, snap[1] * c.x + snap[4] * c.y + snap[7] * c.z + snap[10] - ly, snap[2] * c.x + snap[5] * c.y + snap[8] * c.z + snap[11] - lz, rad + pad);
+        return m;
+    }
+    function _heroSidesOff() { return typeof window !== 'undefined' && !!window.EW_HERO_ALL_SIDES; }
+    /* three's PointShadowNode draws its six sides in one loop (set the side, clear it, render): inside that loop a side the gate
+       did not ask for is neither cleared nor rendered */
+    function _heroSidesHook() {
+        var G = (typeof window !== 'undefined') ? window.THREE_GPU : null, C = G && G.PointShadowNode, P = C && C.prototype;
+        if (!P || P._ew_sidesHook || typeof P.renderShadow !== 'function') return;
+        var rs0 = P.renderShadow;
+        P.renderShadow = function (frame) {
+            var L = this.light, want = L ? L._ew_heroFaces : null, R = frame && frame.renderer;
+            if (L) L._ew_heroFaces = null;   // read once: a draw the gate did not prepare redraws every side
+            if (want == null || want === 63 || !R || _heroSidesOff() || R.coordinateSystem !== THREE.WebGPUCoordinateSystem) return rs0.apply(this, arguments);
+            /* three's side order on WebGPU: +X, -X, -Y, +Y, +Z, -Z */
+            var bitOf = [1, 2, 8, 4, 16, 32], face = -1, sm = this.shadowMap;
+            var srt = R.setRenderTarget, clr = R.clear, rnd = R.render, ownS = Object.prototype.hasOwnProperty.call(R, 'setRenderTarget'), ownC = Object.prototype.hasOwnProperty.call(R, 'clear'), ownR = Object.prototype.hasOwnProperty.call(R, 'render');
+            R.setRenderTarget = function (t, f) { face = (t === sm) ? (f | 0) : -1; return srt.apply(this, arguments); };
+            R.clear = function () { if (face >= 0 && !(want & bitOf[face])) return; return clr.apply(this, arguments); };
+            R.render = function () { if (face >= 0 && !(want & bitOf[face])) { _heroStat.sidesSkipped++; return; } if (face >= 0) _heroStat.sidesDrawn++; return rnd.apply(this, arguments); };
+            try { return rs0.apply(this, arguments); }
+            finally {
+                if (ownS) R.setRenderTarget = srt; else delete R.setRenderTarget;
+                if (ownC) R.clear = clr; else delete R.clear;
+                if (ownR) R.render = rnd; else delete R.render;
+            }
+        };
+        P._ew_sidesHook = true;
+    }
     function _hqHeroRelease(L) {
         if (!L) return;
+        L._ew_heroFaces = null;
         if (L._ew_heroHold) L._ew_heroHold = false;
         if (L.shadow && L.shadow.autoUpdate === false && L._ew_heroAuto) { L.shadow.autoUpdate = true; L._ew_heroAuto = false; }
     }
@@ -87344,7 +87606,7 @@ const ThreeRenderer = (function () {
             _heroFrS.center.set(le0[12], le0[13], le0[14]); _heroFrS.radius = L.distance * 1.15;
             if (!_heroFr.intersectsSphere(_heroFrS)) {
                 G.drawnAt = -1e9;   // back in view: the map draws that frame
-                L._ew_heroHold = true;
+                L._ew_heroHold = true; L._ew_heroFaces = null; G.fullAt = -1e9;
                 if (L.shadow.autoUpdate !== false) { L.shadow.autoUpdate = false; L._ew_heroAuto = true; }
                 L.shadow.needsUpdate = false;
                 ST.frames++; ST.held++; ST.why = 'off the camera';
@@ -87388,6 +87650,7 @@ const ThreeRenderer = (function () {
             G.near = nearL; G.nearOf = G.list; G.nearAt = now; G.nx = lx; G.ny = ly; G.nz = lz; G.nr = reach;
         }
         var h = 2166136261 | 0, moving = false, drift = false, driftSk = false, n = 0, list2 = window.EW_HERO_NO_NEAR ? G.list : G.near, bodies = _heroBodies; bodies.length = 0;
+        var sidesOn = !!L.isPointLight && !_heroSidesOff(), sides = 0, sidesR = 0, moved = _heroMoved, movedR = _heroMovedR, sidePad = HERO_SIDE_PAD_M * U; moved.length = 0; movedR.length = 0;   // THE MOVING SIDES
         h = _heroMix(h, lx); h = _heroMix(h, ly); h = _heroMix(h, lz); h = _heroMix(h, reach); h = _heroMix(h, mapW);
         for (var i = 0; i < list2.length; i++) {
             var o = list2[i], g2 = o.geometry, bs = g2 && g2.boundingSphere;
@@ -87414,7 +87677,7 @@ const ThreeRenderer = (function () {
                 if (o.morphTargetInfluences) for (var mi = 0; mi < o.morphTargetInfluences.length; mi++) h = _heroMix(h, o.morphTargetInfluences[mi]);
                 if (_heroLiveMat(o.material)) { moving = true; continue; }
                 bodies.push(o);
-                if (!driftSk && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(nearD, nearW, 0.05 * U), fleshW)) { drift = true; driftSk = true; }
+                if ((sidesOn || !driftSk) && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(nearD, nearW, 0.05 * U), fleshW)) { drift = true; driftSk = true; if (sidesOn) { sides |= _heroBodySides(o, lx, ly, lz, fleshW, sidePad); moved.push(o); } }
                 continue;
             }
             n++;
@@ -87423,7 +87686,7 @@ const ThreeRenderer = (function () {
             if (o.morphTargetInfluences) for (var mj = 0; mj < o.morphTargetInfluences.length; mj++) h = _heroMix(h, o.morphTargetInfluences[mj]);
             if (rad < 1e8) {
                 bodies.push(o);
-                if (!drift && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(Math.sqrt(dx * dx + dy * dy + dz * dz) - rad, nearW, 0.05 * U), rad + Math.sqrt((wx - e[12]) * (wx - e[12]) + (wy - e[13]) * (wy - e[13]) + (wz - e[14]) * (wz - e[14])))) drift = true;
+                if ((sidesOn || !drift) && _heroBodyMoved(o, HERO_TEXEL * texelPer * Math.max(Math.sqrt(dx * dx + dy * dy + dz * dz) - rad, nearW, 0.05 * U), rad + Math.sqrt((wx - e[12]) * (wx - e[12]) + (wy - e[13]) * (wy - e[13]) + (wz - e[14]) * (wz - e[14])))) { drift = true; if (sidesOn) { sidesR |= _heroBodySides(o, lx, ly, lz, rad, sidePad); movedR.push(o); } }   // a rigid piece: its sides at the slow pieces' pace (below)
                 continue;
             }
             for (var k = 0; k < 16; k++) h = _heroMix(h, e[k]);   // an instanced list: its own matrix exactly
@@ -87439,8 +87702,23 @@ const ThreeRenderer = (function () {
         if (slow) hold = true;
         /* the map draws this frame (the walk's pulse is up): this is where each body stands in it */
         var pulse = !renderer || !renderer.shadowMap || renderer.shadowMap.autoUpdate !== false || !!renderer.shadowMap.needsUpdate;
-        if (!hold && pulse) { G.drawnAt = now; for (var bi = 0; bi < bodies.length; bi++) _heroBodyKeep(bodies[bi]); }
-        bodies.length = 0;
+        /* THE MOVING SIDES: only a body's drift asked, and every side was drawn not long ago = the sides the moved bodies touch */
+        /* a rigid mover (a lava lamp's wax, a swinging door) asks for its sides at THE SLOW PIECES' pace, a body on bones every frame:
+           beside a lava lamp the wax (inside the lamp: every side) redraws ten times a second, the breathing body's sides each frame */
+        var rigidDue = sidesR !== 0 && ((now - (G.rigidAt || -1e9)) >= HERO_RIGID_MS || !!window.EW_HERO_RIGID_EVERY_FRAME);
+        if (rigidDue) sides |= sidesR;
+        var part = sidesOn && !hold && drift && !moving && !changed && (now - G.since) >= HERO_STILL_MS && (now - (G.fullAt || -1e9)) < HERO_FULL_MS && sides !== 63 && sides !== 0;
+        if (!hold && pulse) {
+            G.drawnAt = now;
+            if (part) {   // the others' pictures are the ones the map still holds
+                for (var bm = 0; bm < moved.length; bm++) _heroBodyKeep(moved[bm]);
+                if (rigidDue) { G.rigidAt = now; for (var br = 0; br < movedR.length; br++) _heroBodyKeep(movedR[br]); }
+            } else { G.fullAt = now; G.rigidAt = now; for (var bi = 0; bi < bodies.length; bi++) _heroBodyKeep(bodies[bi]); }
+        }
+        L._ew_heroFaces = hold ? null : (part ? sides : 63);
+        ST.sides = part ? sides : 63;
+        if (sidesOn) _heroSidesHook();
+        bodies.length = 0; moved.length = 0; movedR.length = 0;
         L._ew_heroHold = hold;
         /* the classic WebGL renderer reads the light's own switch: off + no pulse of its own = this light's map is skipped */
         if (hold) { if (L.shadow.autoUpdate !== false) { L.shadow.autoUpdate = false; L._ew_heroAuto = true; } L.shadow.needsUpdate = false; }
@@ -92701,7 +92979,7 @@ const ThreeRenderer = (function () {
        taken: props, doors, people (only the shell group), instanced / skinned / morphing / patched-shader / point / line
        pieces, a piece with children, a see-through piece that is not a cut-out, the terrain tiles, the outer ground, the
        sea, the traffic. The hand-over and the leave hand every piece back first. Off: window.EW_HQ_NO_BATCH. */
-    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, sliceMs: 3, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000 };
+    var HQ_BATCH = { waitMs: 1500, cardWaitMs: 200, checkMs: 500, rollMs: 0.35, sliceMs: 3, maxVerts: 200000, minN: 2, cellM: 96, props: true, rescanMs: 4000, rescanIdleMs: 30000 };
     /* THE PERF PASS 2 (2026-10-01, mondo's Downtown readout: 1,232 scene draws, 315 shell pieces alone in their look and 370
        procedural props each its own draw): the merge squares are HQ_BATCH.cellM (was the terrain's 32 m tile — most looks
        had one piece per square; 96 m took Downtown's shell 1,526 → 444 to 1,841 → 289 draws), a second batch runs on each
@@ -92943,18 +93221,38 @@ const ThreeRenderer = (function () {
         }
     }
     /* the watchdog: every piece of every live batch as it was */
-    function _hqBatchCheck(R, B) {
-        var root = R[B.grp]; if (!root) return;
-        /* THE STILL WALK: a chunked room's groups keep their own matrices current (a moved piece at once, a moved inner part within
-           its sweep) — the forced walk of the whole city twice a second is three's own only where nothing else walks */
-        if (!_hqStillOff() && (root._ew_st || (R.pChunks && root === R.propGroup && R.ckList && R.ckList.length))) root.updateWorldMatrix(true, false);
-        else root.updateMatrixWorld(true);
+    /* THE ROLLING WATCH (2026-11-15, mondo in Disaster City: "22 fps with lag and frame drops", worst frame 115 ms): the watchdog
+       read all 8,200 merged pieces of the city in ONE frame, twice a second (a material snapshot string + a matrix product per
+       piece: ~45 ms on his Mac, the lens's "tick: static batch 4.1 ms" average) = a dropped frame every half second. A round is
+       now spread over the frames, HQ_BATCH.rollMs of each; the next round starts HQ_BATCH.checkMs after the last one ended. A
+       write to `visible` or `parent` still breaks its batch at once. Returns true when the round is over.
+       Off (the whole round in one frame): window.EW_HQ_BATCH_CHECK_WHOLE = true. */
+    function _hqBatchCheck(R, B, rollMs) {
+        var root = R[B.grp]; if (!root) { B.ck = null; return true; }
+        var roll = rollMs > 0;
+        if (!roll) B.ck = null;
+        if (!B.ck) {
+            /* THE STILL WALK: a chunked room's groups keep their own matrices current (a moved piece at once, a moved inner part within
+               its sweep) — the forced walk of the whole city twice a second is three's own only where nothing else walks */
+            if (!_hqStillOff() && (root._ew_st || (R.pChunks && root === R.propGroup && R.ckList && R.ckList.length))) root.updateWorldMatrix(true, false);
+            else root.updateMatrixWorld(true);
+            B.ck = { list: B.batches.slice(), i: 0, j: 0 };
+        }
         var inv = _hqBatchM || (_hqBatchM = new THREE.Matrix4()), tmp = _hqBatchM2 || (_hqBatchM2 = new THREE.Matrix4());
         inv.copy(root.matrixWorld).invert();
-        B.batches.slice().forEach(function (rec) {
-            if (rec.mesh.parent !== (rec.host || root)) { _hqBatchBreak(rec, 'lost'); return; }
-            for (var i = 0; i < rec.cs.length; i++) if (!_hqBatchStill(rec.cs[i], root, inv, tmp)) { _hqBatchBreak(rec, 'changed'); return; }
-        });
+        var K = B.ck, list = K.list, i = K.i, j = K.j, n = 0, end = roll ? _alNow() + rollMs : 0;
+        for (; i < list.length; i++, j = 0) {
+            var rec = list[i];
+            if (!rec.live) continue;
+            if (j === 0 && rec.mesh.parent !== (rec.host || root)) { _hqBatchBreak(rec, 'lost'); continue; }
+            var cs = rec.cs;
+            for (; j < cs.length; j++) {
+                if (!_hqBatchStill(cs[j], root, inv, tmp)) { _hqBatchBreak(rec, 'changed'); break; }
+                if (roll && (++n & 15) === 0 && _alNow() >= end) { K.i = i; K.j = j + 1; return false; }
+            }
+        }
+        B.ck = null;
+        return true;
     }
     /* every frame of the walk (after the room is ready): the current part and the drawn neighbours, HQ_BATCH.sliceMs in all */
     function _hqBatchTick(H, now) {
@@ -92969,8 +93267,17 @@ const ThreeRenderer = (function () {
             for (var bi = 0; bi < BB.length; bi++) {
             var B = BB[bi]; if (!B) continue;
             if (B.phase === 'off') continue;
-            if (B.batches.length && now - B.checkAt >= HQ_BATCH.checkMs) { B.checkAt = now; try { _hqBatchCheck(R, B); } catch (e) { console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
-            if (B.phase === 'live') { if (now - B.at < HQ_BATCH.rescanMs) continue; B.phase = 'scan'; B.it = _hqBatchScan(R, B); }   // THE PERF PASS 2: the late pieces
+            if (B.batches.length && (B.ck || now - B.checkAt >= HQ_BATCH.checkMs)) { try { if (_hqBatchCheck(R, B, (typeof window !== 'undefined' && window.EW_HQ_BATCH_CHECK_WHOLE) ? 0 : HQ_BATCH.rollMs)) B.checkAt = now; } catch (e) { B.ck = null; console.warn('[HQ batch] the check failed — every piece handed back', e); _hqBatchDrop(R); continue; } }
+            if (B.phase === 'live') {
+                if (now - B.at < HQ_BATCH.rescanMs) continue;
+                /* THE RESCAN ON CHANGE (2026-11-15): the late-piece scan force-walked the matrices of the whole group and read every
+                   piece's keys every 4 s for good (the city: 40,000 objects). Once the room is ready it runs when something joined
+                   the scene since the last scan (every Object3D.add is counted), else every HQ_BATCH.rescanIdleMs (a sheet that
+                   landed late). Off: window.EW_HQ_BATCH_RESCAN_ALWAYS = true. */
+                var _bAn = _ewAddCount();
+                if (H.ready && B.lived && B.scanAn === _bAn && now - B.at < HQ_BATCH.rescanIdleMs && !(typeof window !== 'undefined' && window.EW_HQ_BATCH_RESCAN_ALWAYS)) continue;
+                B.scanAn = _bAn; B.phase = 'scan'; B.it = _hqBatchScan(R, B);   // THE PERF PASS 2: the late pieces
+            }
             if (B.phase === 'wait') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'scan'; B.it = _hqBatchScan(R, B); } else continue; }
             if (B.phase === 'watch') { if (now - B.at >= (H.ready ? HQ_BATCH.waitMs : HQ_BATCH.cardWaitMs)) { B.phase = 'build'; B.it = _hqBatchBuild(R, B); } else continue; }
             if (_alNow() >= end) return;

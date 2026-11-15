@@ -1957,6 +1957,60 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE LAMP'S REACH ON THE NODE RENDERER (2026-11-15, the fight on Disaster City: 4.8 FPS)
+
+mondo's battle F3 (Firefox, M1, WebGPU, 3456x1812): frame 210 ms, CPU 23.7 ms, "Lights point 72 · rig 63/70". The frame was the GPU's:
+the node renderer ran the whole light maths for all 64 rig point lamps on every pixel (the walk lights 12 to 14). THE LIGHT'S REACH
+(2026-11-10) skipped out-of-range lamps on the classic renderer only.
+
+- three-renderer.js `_ewNodeLights`, `EwPointLightNode.setup`: for a rig point lamp (no shadow) on a Lambert / Phong / Standard /
+  Physical material, the direct term is built inside `If(dot(lightColor, lightColor) > 0)`. lightColor = colour x the legacy ramp,
+  exactly 0 past `distance` and for a dark spare, so the skipped work added 0: same picture.
+- Only rig lamps: three sorts lights by id, the rig's sun lamps come first and build the shared terms (normalView, view direction)
+  outside any branch. Toon / gradientMap materials are left alone (their direct term samples a texture; WGSL refuses that in a branch).
+  `builder.material` is the game's CLASSIC material (type MeshPhongMaterial), not the node one: test the classic flags.
+- Switch (read at shader build, reload): localStorage `ew_lightsEveryPixel = '1'` or `window.EW_LIGHTS_EVERY_PIXEL = true` (the classic switch).
+- Cloud check (SwiftShader WebGPU, Main Hall): Phong, Lambert, Standard and Physical (clearcoat + sheen) compile with the branch, one
+  `if` per rig lamp in the WGSL, 0 frame errors. FPS is his Mac's to measure.
+- The rig is one per session and never shrinks, so after one 64-lamp fight every later scene carried 64 lamps a pixel too. With the
+  branch a dark spare costs one compare.
+- Still open in fights: shader builds 2.5/s mid-fight, 9 post passes at 6.3 M pixels, the props' 670K triangles.
+
+## THE ROLLING WATCH + THE UNIT MASK + THE MOVING SIDES (2026-11-15, the 60 FPS thread; mondo: "22 fps with lag and frame drops is a joke")
+His Mac (Firefox, WebGPU, 3456x1812): 21.9 FPS, frame 45.5 ms, CPU 31 ms; a second spot 20.8 FPS with "shadow 405 calls, 834K tris".
+- WHERE THE FRAME GOES: frame minus CPU is ~14 ms that no JS row owns. Firefox on macOS presents a WebGPU canvas by CPU READBACK
+  (Mozilla bug 1708023, open): 25 MB a frame at his canvas size. Asked him for three F3s (Chrome; Render Scale 67%; `?ew_gpu=webgl`).
+  His post chain reads "20 passes · A[smaa|off|BDSF]": B = bloom ON in his profile (11 of the 20; the shipped default is 0).
+- THE ROLLING WATCH (`_hqBatchCheck(R, B, rollMs)`, `HQ_BATCH.rollMs` 0.35): THE STATIC BATCH's watchdog read all ~8,200 merged pieces
+  in ONE frame every 500 ms (the lens's "tick: static batch 4.1" average = ~45 ms twice a second). A round is spread over the frames;
+  the next starts `checkMs` after the last ended. `visible` / `parent` writes still break a batch at once. Off (whole round in a frame):
+  `window.EW_HQ_BATCH_CHECK_WHOLE`. THE RESCAN ON CHANGE: the late-piece scan (a forced matrix walk + a key read of every piece, every
+  4 s for good) runs in a ready room only when something joined the scene (`_ewAddCount`) or every `rescanIdleMs` 30 s. Off:
+  `window.EW_HQ_BATCH_RESCAN_ALWAYS`.
+- THE UNIT MASK (three-post.js `_scanPixelMaskTargets`, `PIX_LAYER_UNIT` 9, `_renderPixelMask(..., unitOnly)`): with Pixelate off the
+  mask's only reader is THE BOLD UNIT LINE, yet its static pass drew every `_ew_pixelate` mesh = every Meshy prop (his lens "extra":
+  178 draws / 353K tris; props so wore the units' bold line, which his ask never wanted: "bolder lines on units, same thinness
+  everywhere else"). The scan tags the still meshes that ride a unit (under a bone, or under the group holding an `_ew_modelSkin`
+  body) on layer 9; the style's own mask draws layer 9, skips every chunk (`renderer._ew_maskUnit`, the `_projectObject` wrapper) and
+  draws nothing when the scene holds none. The skinned pass short-walks chunk groups too (was every child of every drawn chunk; off
+  `window.EW_MASK_CHUNK_FULL_WALK`). Pixelate "models" still draws every prop. LOOK CHANGE: props now take the map's ink width.
+  Old mask: `window.EW_STYLE_MASK_PROPS = true`. Main Hall, cloud browser: extra pass 6-8 draws (the bodies), 0 frame errors.
+- THE MOVING SIDES (`_hqHeroGate`, `_heroSideBits`, `_heroBodySides`, `_heroSidesHook`): a hero point lamp redrew all six cube sides
+  whenever one body in reach moved. Now only the sides whose 90-degree pyramid a moved body touches (now + where the map last drew
+  it); a body on bones asks every frame, a rigid mover (the lava lamp's wax: inside the lamp = every side) at THE SLOW PIECES' 10 Hz.
+  All six on a list change, a live material, the lamp moving, the refresh, and every `HERO_FULL_MS` 4 s. The gate hands the sides to
+  the draw (`L._ew_heroFaces`, read once); a wrapper on `THREE_GPU.PointShadowNode.prototype.renderShadow` leaves the other sides
+  uncleared and undrawn (WebGPU side order +X -X -Y +Y +Z -Z). `HERO_REFRESH_MS` 1000 -> 3000 (a held lamp in view redrew all six
+  once a second). Off: `window.EW_HERO_ALL_SIDES`. Counts: `heroShadow().sides / sidesDrawn / sidesSkipped`.
+  NOT EXERCISED in the cloud browser (its frames are seconds apart, so the wax is always due = all six): `_heroSideBits` was checked
+  against 20,000 random spheres (0 missed sides). Ask for his F3 beside a room lamp.
+- THE CLOUD BROWSER'S GPU: headless Chromium lost the WebGPU device at boot ("Could not find SharedImageBackingFactory ...
+  WebgpuSwapChainTexture", then "A valid external Instance reference no longer exists" and every createBuffer failing). Flags that
+  work: `--enable-unsafe-webgpu --use-webgpu-adapter=swiftshader --use-gl=angle --use-angle=swiftshader --enable-features=Vulkan
+  --use-vulkan=swiftshader --disable-vulkan-surface`. The picture is black there on main too: counts and errors only.
+- LEFT (structural): the shell as per-plot chunks (cull + own bundle; today one group of 10,000 pieces, 209 classic draws); merged
+  walls redrawn whole by a lamp's sides (a 96 m batch for a 3.5 m lamp); the pixel side (render scale by itself on Firefox + Mac).
+
 ## THE DOORS REST + THE COPIES REST + THE ADD'S OWN GROUP (2026-11-15, mondo's F3 after THE LAMP'S TIGHT REACH)
 His readout: 20.3 FPS, CPU 39.2; matrix walk 6.5 · bundle check 6.1 · scene replays 4.9 · shadow replays 2.4; "refreshed 1809 of 12710",
 "check 7.47 ms/frame (67 quiet skipped, 21 still-checked)", "Re-recorded most: doors (values 14, tree 17, demoted)".
@@ -2127,3 +2181,18 @@ onto the nearest game function) showed the 60 ms outside the draws was whole-sce
   (`_mmLive` every 4 s; now waits 30 s); the pixel mask's timed scan 400 -> 1500 ms (adds still re-scan at once).
 - Left, in order: the shell is ONE group of 10,000 pieces (matrix walk, bundle check 7 ms, every pass) -> chunk it like the
   props; the static batch's forced matrix walk every 500 ms; Firefox's cost per draw.
+
+## THE HELD KEEP THE CAMERA (2026-11-15, mondo: "trees and other props are moving when i move my camera ... its in door hq too")
+- **Cause**: THE COPIES REST (#1409) let instanced batches be HELD in the quiet replay (`rpReplay`). The frame's camera sits in
+  SHARED uniform buffers (one per set of shared values a shader reads); three writes each when the first object reading it is
+  refreshed in a render. The instanced shaders read a set of their own, so with every batch held nobody wrote it: instanced props
+  were drawn with the camera of up to 20 frames ago (glued to the view on a turn, then snapping home). Game-wide (HQ, city, sites).
+- **Fix**: `rpShared` — the first held object of each shared bind group gets its SHARED part refreshed in every render
+  (`updateSharedForRender`); the rest stay held. Off: `window.EW_BUN_HELD_NO_SHARED`. Count: `_ewBun.rpShared`.
+- **Proof** (cloud browser, WebGPU, main hall, camera turned 70 degrees, the FIRST drawn frame against the settled one):
+  fix off 1.8-2.3% of pixels differ (lamps, boxes, chairs at their old screen places); fix on 0.1%.
+  `/mnt/project-files/props-move-camera-20261115/`.
+- **How to test a camera-stale bug**: `teleport` `face` is in DEGREES. Rest 30 drawn frames, then in ONE eval teleport and
+  allow one drawn frame (harness `__ph.draw.mode='demand'; frames=2`), screenshot, draw 30 more, screenshot, diff. A test that
+  lets undrawn ticks pass, or a 1 degree turn, shows nothing.
+- **Rule**: anything that skips an object's refresh in a replayed bundle must still refresh the shared buffers it reads.

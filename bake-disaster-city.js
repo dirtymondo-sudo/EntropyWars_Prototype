@@ -263,7 +263,7 @@ const roadFollow = (cx, cy) => {   // a carriageway square, or the pavement squa
     return false;
 };
 const npcSpots = [];   // THE PEOPLE a district stands in the city (ctx.npcSpots: { x, z, face, race, say }), written to the room's npcSpots
-dcCtx = { PLAN, plotOf, features, props, bInfo, lateRows, npcSpots, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf, ROOM, paintCell };
+dcCtx = { marks: [], PLAN, plotOf, features, props, bInfo, lateRows, npcSpots, gx, gc, r3, take, free, cellAt, setCell, roofB, ROOF_H, C, N, HALF, LEVELS, lvOf, ROOM, paintCell };
 dcRun('apply');
 
 /* ── THE DOORS (mondo 11-13 14:10, the decision card: "Replace today's streets with it"): this room IS `site_prebuilt_downtown_streets` now, so every
@@ -713,6 +713,9 @@ lines.push("                /* THE NATURAL EDGES: no ring of backdrop buildings;
 /* the grown room (Bayside's beach, ROOM.east): the west strip the centred shell adds is under the forest (the land starts behind the ghost wall on
    the city's old edge); the bay lies past the city's east edge, so the mountains and the desert fall into it over the strip's width */
 if (ROOM.east) { const sw = ROOM.east * C; EDGES.w.inset = r3(sw - 0.1); EDGES.n.cap = { kind: 'coast', at: 'e', off: r3(sw), len: 60 }; EDGES.s.cap = { kind: 'coast', at: 'e', off: 25, len: 40 }; }
+/* a district's own say in the land past the edge (2026-11-15, Entertainment's Hollywood hills): a district file may export `edges`; a side's row
+   is laid over the room's (its `cap`), any other key (`sign`) is taken whole */
+for (const m of DISTRICTS) if (m.edges) for (const k of Object.keys(m.edges)) EDGES[k] = ('nsew'.indexOf(k) >= 0 && EDGES[k]) ? Object.assign({}, EDGES[k], m.edges[k]) : m.edges[k];
 lines.push("                backdrop: false, edges: " + J(EDGES) + ",");
 lines.push("                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
@@ -721,9 +724,11 @@ lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRes
 const lampLine = lines.length; lines.push("");   // written after the district files' build (a district may take a lamp off a square it built on: ctx.lamps)
 lines.push("                       open: [] },");
 const paintLine = lines.length; lines.push("");   // written last of all: THE TREES STAND IN SOIL may still lay a bed
+const marksLine = lines.length; lines.push("");   // THE PAINT (2026-11-15): a district's flat marks (ctx.marks: code that returns `terrain.marks` rows, e.g. the stadium's hqGridironMarks call), written after the build
 lines.push("                features: [");
 dcCtx.lamps = lamps;
 dcRun('build');
+if (dcCtx.marks.length) lines[marksLine] = "                marks: [" + dcCtx.marks.map(c => "..." + c).join(", ") + "],";
 /* A TREE NEVER LEANS INTO A ROOM (2026-11-13, Southside: street trees seen inside the boxing gym): a tree within 2.5 m of a walk-in building's
    walls (its crown is wider than the gap and shows indoors) MOVES to the nearest free yard square that is 2.5 m clear of every walk-in wall.
    Never dropped (mondo: never delete content he did not name): with no such square within 8 squares it stays where it is. `keep: true` = never moved. */
@@ -906,6 +911,11 @@ count.levels = lvCount;
    faces on one plane, rugs onto the floor sheet, props onto the raised floor they stand in. It moves rows, it never drops one. ── */
 if (!process.env.DC_NO_POLISH) count.interiorPolish = require(path.join(REPO, 'docs/disaster-city/interior-polish.js'))({ features, props, at: LV.at, REPO });   // DC_NO_POLISH=1: the room as the district files wrote it
 lines[lvLine] = "                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gx(0) + ", nx: 144, nz: 144, f: '" + LV.f64 + "', d: '" + LV.b64 + "' } },";
+/* ── THE SIGN FONTS (docs/disaster-city/sign-fonts.js; mondo 11-15: "do a font pass on all of the buildings that have text"): every
+   'txt:' sign gets its typeface by its district and what it says, as a sixth field on its key. A district file keeps writing the plain key. */
+{ const SIGN_FONTS = require(path.join(REPO, 'docs/disaster-city/sign-fonts.js')), cl = v => Math.max(0, Math.min(N * 12 - 1, Math.floor((v + HALF) / C)));
+  const dOf = f => { const m = /P\d\d-\d\d/.exec(String(f.id || '')), p = (m && plotOf[m[0]]) || (typeof f.x === 'number' && typeof f.z === 'number' ? plotAtCell(cl(f.x), cl(f.z)) : null); return p ? p.d : ''; };
+  const sf = SIGN_FONTS.apply(features, dOf), sp = SIGN_FONTS.apply(props, dOf); count.signFonts = sf.signs + sp.signs; }
 features.forEach(f => lines.push("                    " + J(f) + ","));
 lines.push("                ],");
 lines.push("                /* the cars: the ring (west avenue, the north street, the east avenue, the cross street), never the response streets round the mall */");
