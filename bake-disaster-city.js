@@ -713,6 +713,9 @@ lines.push("                /* THE NATURAL EDGES: no ring of backdrop buildings;
 /* the grown room (Bayside's beach, ROOM.east): the west strip the centred shell adds is under the forest (the land starts behind the ghost wall on
    the city's old edge); the bay lies past the city's east edge, so the mountains and the desert fall into it over the strip's width */
 if (ROOM.east) { const sw = ROOM.east * C; EDGES.w.inset = r3(sw - 0.1); EDGES.n.cap = { kind: 'coast', at: 'e', off: r3(sw), len: 60 }; EDGES.s.cap = { kind: 'coast', at: 'e', off: 25, len: 40 }; }
+/* a district's own say in the land past the edge (2026-11-15, Entertainment's Hollywood hills): a district file may export `edges`; a side's row
+   is laid over the room's (its `cap`), any other key (`sign`) is taken whole */
+for (const m of DISTRICTS) if (m.edges) for (const k of Object.keys(m.edges)) EDGES[k] = ('nsew'.indexOf(k) >= 0 && EDGES[k]) ? Object.assign({}, EDGES[k], m.edges[k]) : m.edges[k];
 lines.push("                backdrop: false, edges: " + J(EDGES) + ",");
 lines.push("                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");

@@ -3407,3 +3407,17 @@ buildings or props or banners"; he corrected shield B (bolt, not a crack) and th
   on whole squares in the Service court's south-west yard, the lions, four newspaper racks, the pool's fountain.
 - NOT DONE (need mondo's OK on a Meshy concept first): the seated statue, the pink blossom trees. No lawn paint (the ground palette is
   shared). No far version of the obelisk (it is three parts).
+
+## DISASTER CITY, THE HOLLYWOOD HILLS — the sign on the mountains (2026-11-15)
+mondo 11-15 12:55: "the disaster city hollywood sign, there is already the mountains on one of the edges of disaster city, use that/make that
+the hollywood hills. move whatever you have to." The mountains were the NORTH edge, with Financial between them and Entertainment; his pick
+12:57 "Run the mountains down the east". The hill of domes in the bay (PR #1422) is gone.
+- `docs/disaster-city/districts/E.js` exports `edges` (a new district export; bake-disaster-city.js lays a side's row over the room's EDGES and
+  takes any other key whole): `e.cap = { kind: 'mountain', at: 'n', off: 336, len: 70 }` = the east side is the mountain range from the north
+  corner to z +84 (Entertainment's south end), a 70 m fade to the open bay past it (Bayside keeps its horizon south of about z 150). The range
+  stands across the 70 m bay strip from the city (the land starts at x 322).
+- `edges.sign = { side, at, d, text, px, lean, drop }`: three-renderer.js `_hqBuildEdgeLand` THE HILL SIGN stands a word of 5×7 block letters on
+  the land `d` m past that side's edge, each letter on the land's own height (`F.at`), two legs behind each, its face to the room. One merged
+  mesh, Lambert, no fog (it stands in the far land's haze), no light. Letters known: A C D E H I L N O R S T W Y. The city's: 2.1 m blocks
+  (14.7 m letters), 30 m up the east mountainside (land about y 32..36 there), centred on z 0.
+- Proof: `/mnt/project-files/dc-entertainment/la_hills.jpg` (offline: the land's own arithmetic + the sign code, stand-in colours; not the game).
