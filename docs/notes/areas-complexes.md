@@ -3865,7 +3865,7 @@ mondo: "start a thread to start on the desert" · "put the circus in the desert 
 - **CHECKED OFFLINE ONLY** (no browser run): data.js parses, the room compiles (`hqTerrainInfo`), a flood fill on real heights reaches all 64 plots,
   the links / bay door / old doors resolve, every prop key and unit exists. NOT seen on screen: which way the gas station store / canopy / trailers
   face, sign sizes, the big top's cone, prop scale (`h` on the wheel, carousel, dish), the Disaster City gate's exact spot.
-- **NOT DONE:** the redesigned insides (Hangar 18, the White Rooms, a Great Pyramid inside, more town insides); no Meshy pieces (cactus, covered wagon,
+- **NOT DONE (first delivery; the three insides are built since, see "THE DESERT'S INSIDES" at the end of this file):** the redesigned insides (Hangar 18, the White Rooms, a Great Pyramid inside, more town insides); no Meshy pieces (cactus, covered wagon,
   water tower, hitching rail are not in the packs); the two Dig trenches have no ramp (a 1 m step); fights use the old plateau's table everywhere.
 
 ## DISASTER CITY, THE DISTRICT MOVE (2026-11-15)
@@ -4183,3 +4183,49 @@ new areas".
   - Not carried over from the old rooms, because the plan does not draw them: the Harbour's wharves, gantry, slipway and water steps; the old
     cay's Lookout and stair. The undersea coral and fish of the old dive route are only partly placed (the Reef, the Maelstrom).
   - No residents with routines, no fights set up in the room, no Deep-to-Area-51 way (still mondo's open question).
+
+## THE DESERT'S INSIDES — Hangar 18, the White Rooms, inside the Great Pyramid (2026-11-15, second side)
+
+The approved plan is `docs/plans/desert/insides_plan.png` (rectangles in `draw-insides.py`). Before this delivery NONE of it was in the game: the
+hangar and the ward were still the old BSP rooms and the pyramid had no inside. All three are built now, each exactly on the plan's squares.
+
+- **Tool:** `node bake-desert-insides.js [--dry-run]` writes three rooms into data.js between `DESERT-INSIDES-BEGIN / DESERT-INSIDES-END` (never
+  hand-edit between them). `INS_DUMP=1` prints each room's squares (X = a blocker, o = a doorway square that must stay clear). The tool refuses to
+  write when a blocker stands in a doorway square, a prop key or unit does not exist, or its walk check fails.
+- **How a room is made (no `gen`, a flat floor in a bunker shell the building's own size):** a WALL stands on a square line (a drawn box in one `arch`
+  row + a ghost `wall` row; `y` = its top, an upper floor's wall also carries `y0` = its foot); a DOORWAY is 1.75 m in the middle of one square's
+  edge with a frame and a swinging leaf; a BLOCKER (`R.B`) stands on a square's middle; decor (`R.dec`) stands off it; an UPPER FLOOR is a `bridge`
+  row (`rails: false, plain: true`) with its own guard rails (drawn bars + a hung ghost wall); a stair is a `ramp` whose head runs 0.4 m into the floor.
+  Two slabs that only touch leave a seam the walker falls through (each is read 0.12 m in from its edge): overlap them.
+- **THE SWINGING LEAVES IN A ROOM (engine, small):** a `texbuilding` row with `doorsOnly: true` is only a carrier for `inner` leaves: no walls, no
+  roof, not drawn, no front door (data.js `hqTexBuildingRows`, three-renderer.js `_hqBuildTexRows` / `_hqBuildTexDoors`). An inner leaf's `y` = its
+  sill (an upper floor's door). Any room can use it. Leaves that are not swing leaves in the catalogue (portcullis, vault, frosted) fall back to the
+  carrier's own leaf (`leaf_office`).
+- **HANGAR 18** `site_prebuilt_area51_hangar` (22 x 14, 14 m to the trusses): the floor; the saucer on its rig in a railed test pit 1.75 m down (the rig
+  is 4.6 m tall, so the pit is what lets the 3.5 m catwalk cross over it); engine shop, parts cage (chain-link), fuel store (the vent), crash tender
+  (the fire truck), crates, floor lift (the D.U.M.B. tunnel's door, `links.area51_dumb.a` now `wall: 'e', z: 5.25` on the floor); south row lockers,
+  briefing, office (the Room 51 man-door = the bay door, `siteRooms.entry.prebuilt_area51` x 1.75), lab, the white door's room. Up a steel stair along
+  the south wall: the mezzanine, the catwalk, the control room in dark glass. 13 leaves. The four people kept their lines word for word.
+- **THE WHITE ROOMS** `site_prebuilt_area51_ward` (16 x 12, two floors): eight padded cells (3.5 x 7 m, one standing open) on the cell row; quiet room
+  (the telepath), intake, yard lane (the yard gate), records, treatment, the nurses' station in glass, showers, service (the storm drain), doctor
+  (the vent, the hangar door), the dayroom. The observation floor (3.5 m) runs over the long hall and the cross hall behind one-way glass, up a stair
+  beside the station. 22 leaves. Two old room lines were dropped because they name things that are gone (the two cells, the cage).
+- **INSIDE THE GREAT PYRAMID** `site_prebuilt_giza_pyramid` (NEW room, site `prebuilt_giza`, part `pyramid`; 14 x 14): carved out of one mass by a
+  14 x 14 letter map in the tool (`#` stone to the roof, levels as plateaus: the Pit 0 m, level 1 3.5 m, level 2 10.5 m, the Relieving Chambers
+  14 m). Entrance (north) > the passage > the Descent (a slope down to the Pit, a well) / the Ascent > the Grand Gallery (a slope six squares long
+  under a corbelled roof) > the Antechamber (three stone gates) > the King's Chamber (the sarcophagus). The Queen's Chamber off the passage (gabled
+  roof); the Robbers' Cut from the west wall; a ladder up the King's west wall to the Relieving Chambers. Three doors in the Desert room
+  (bake-desert.js): `pyramid` (north face, beside the North Stair), `tombside` (west face, two squares south of the Tomb Door), `cut` (secret).
+  Room 444's Tomb Door is unchanged. A mummy and an anubis stand in the King's Chamber with no lines (none were written for them).
+- **MY READINGS OF THE PLAN (tell mondo, change on his word):** (1) the plan's red TOMB DOOR box touches no other room, so the Queen's "niche" is a
+  low doorway to a one-square passage that reaches it, and it lets out on the west face; (2) "8 padded cells" = one bank down the west wall;
+  (3) the hangar's test pit (see above); (4) the catwalk + mezzanine are one upper floor reached by one stair.
+- **NOT BUILT, WAITS MONDO:** a door from the King's Chamber to the puzzle dungeon THE TURNING TOMB (asked 11-15, never answered). More Western Town
+  insides beyond the plan picture (the nine walk-ins keep their first furnishing).
+- **Other rows touched:** `HQ_AREA_MARKERS` + `HQ_FINDS` tape spots for the hangar / ward; `HQ_ROOM_HOLES` rows of both dropped (`node bake-holes.js`
+  on the three rooms found 0 gaps).
+- **CHECKED OFFLINE ONLY (RULE #1c, no browser run):** data.js parses; each room compiles; a walk on the walker's own rule (`hqTerrainFeet`, 0.44 m
+  steps from the spawn) reaches every room, both upper floors, all three pyramid levels and every door pad; every door resolves both ways; at most
+  10 light props a room. The ladder is compiled (10.5 > 14 m) but not walked by the check. NOT SEEN ON SCREEN: which way models face, the leaves'
+  fit in their frames, the glass, how dark the pyramid is, the camera in the 7 m wide passages under 3.5 m roofs.
+
