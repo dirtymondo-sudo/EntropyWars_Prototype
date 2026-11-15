@@ -10,6 +10,8 @@ Read `docs/notes/onboarding.md` (access you need, how to work beside the owner's
 another account) and `docs/notes/owner-rules.md` (mondo's standing rules: what he wants and never wants; they bind
 every account). The owner project's memory as of 11-15 is frozen in `docs/project-memory/` (`INDEX.md` first). New
 lasting facts go in the matching docs/notes file in the same PR, never only in one account's memory.
+**TWO ACCOUNTS, ONE BOARD:** before starting on an area or system, read `docs/notes/claims.md` (who has what). Never
+work an area the other side holds; take or free a row in your own PR; leave notes for the other side at its bottom.
 
 ## NOTES INDEX — feature history lives in docs/notes/
 
