@@ -37458,6 +37458,59 @@ const ThreeRenderer = (function () {
         return t;
     }
 
+    /* THE SMALL PROPS (2026-11-15, the Main Hall's memory; mondo: "sure" to smaller sheets on small props): after THE UNDRAWN
+       MAPS the hall still drew 535 MB of colour sheets, because a stapler, a mug, a security camera (34 cm, three materials,
+       65 MB) and a chair each wear a 2048 x 2048 sheet, the size a whole wall gets. A catalogue file whose LARGEST placed size
+       is small has its colour sheet drawn down once, when the file lands: up to 0.6 m across -> 512 px (still over 850 px a
+       metre), up to 1.15 m -> 1024 px. Anything bigger (desks, couches, tables, trees, columns, statues, every building and
+       surface) keeps its full sheet. The size is the biggest any catalogue row OR any room's prop row gives that file (its
+       `h` / `span`, turned into the model's longest side), so one file placed small here and large there stays sharp. A file
+       that is one piece of a shared pack file (`node`) or has no size is left alone. His files on R2 are not touched: this is
+       the copy in memory. Off: window.EW_NO_SMALL_PROP_CAP = true before the room loads. Count: hq.mem().smallCapped. */
+    var _hqCapMap = null, _hqSmallCapped = 0;
+    function _hqCapMapBuild() {
+        var M = {}, D = (typeof _hqData === 'function') ? _hqData() : null, C = D && D.catalogue;
+        if (!C) return M;
+        var add = function (c, h, span) {
+            var u = null; try { u = _hqModelUrl(c); } catch (e) { u = null; }
+            if (!u) return;
+            var hash = u.indexOf('#'), file = hash > 0 ? u.slice(0, hash) : u;
+            var R = M[file] || (M[file] = { rows: [], none: false });
+            if (hash > 0 || c.node || (h == null && span == null)) { R.none = true; return; }
+            R.rows.push({ h: h, span: span });
+        };
+        for (var k in C) { var c = C[k]; if (c && c.file) add(c, c.h, c.span); }
+        var rooms = D.rooms || {};
+        for (var id in rooms) {
+            var ps = (rooms[id] && rooms[id].props) || [];
+            for (var i = 0; i < ps.length; i++) {
+                var p = ps[i], pc = p && p.key ? C[p.key] : null;
+                if (!pc || !pc.file) continue;
+                if (p.scale != null || p.s != null) { add(pc, null, null); continue; }   // a free scale: unknown size, never capped
+                if (p.h != null || p.span != null || p.size != null) add(pc, p.h != null ? p.h : null, p.h != null ? null : (p.span != null ? p.span : p.size));
+            }
+        }
+        return M;
+    }
+    function _hqSmallPropCap(url, root) {
+        if (typeof window !== 'undefined' && window.EW_NO_SMALL_PROP_CAP) return;
+        if (!root || !root._ew_bbox || typeof url !== 'string') return;
+        if (!_hqCapMap) _hqCapMap = _hqCapMapBuild();
+        var R = _hqCapMap[url]; if (!R || R.none || !R.rows.length) return;
+        var bb = root._ew_bbox, sx = bb.max.x - bb.min.x, sy = bb.max.y - bb.min.y, sz = bb.max.z - bb.min.z;
+        var longest = Math.max(sx, sy, sz), horiz = Math.max(sx, sz);
+        if (!(longest > 0)) return;
+        var m = 0;
+        R.rows.forEach(function (r) {
+            var big = (r.h != null) ? r.h * longest / Math.max(sy, 1e-6) : r.span * longest / Math.max(horiz, 1e-6);
+            if (!(big >= 0)) big = Infinity;
+            if (big > m) m = big;
+        });
+        var cap = (m <= 0.6) ? 512 : (m <= 1.15) ? 1024 : 0;
+        if (!cap) return;
+        _capModelTextures(root, cap, ['map', 'emissiveMap', 'alphaMap']);
+        _hqSmallCapped++;
+    }
     // One-time async load of a misc model. `cb(root)` fires once the normalized
     // root (with a cached _ew_bbox) is ready; ignored on failure.
     function _compactMobileModelTextures(root) {
@@ -37469,13 +37522,14 @@ const ThreeRenderer = (function () {
        spell library is held in memory for the whole match now (the loading card loads it all), and a Meshy prop ships four
        2048² sheets: the spells' props are capped at 512 / 1024 (three-vfx-effects.js _WPN_TEX_CAP), the misc models they
        clone at 1024. Idempotent (a sheet at or under the cap, or a KTX2 one, is left alone). */
-    function _capModelTextures(root, cap) {
+    function _capModelTextures(root, cap, only) {   // `only`: the material keys to cap (default every sheet)
         if (!root || !(cap > 0) || typeof document === 'undefined') return;
         var images = new Map(), olds = [];
         root.traverse(function (node) {
             var mats = node.material ? (Array.isArray(node.material) ? node.material : [node.material]) : [];
             mats.forEach(function (mat) {
                 Object.keys(mat).forEach(function (key) {
+                    if (only && only.indexOf(key) < 0) return;
                     var tex = mat[key], img = tex && tex.isTexture && tex.image;
                     if (tex && tex.isTexture && tex.isCompressedTexture) { _capCompressedTexture(tex, cap); return; }   // R3: KTX2 (no canvas can draw it) — its top mips go instead
                     if (!img || Math.max(img.width || 0, img.height || 0) <= cap) return;
@@ -37640,6 +37694,7 @@ const ThreeRenderer = (function () {
             if (_isTrapsUrl(url)) _trapsDress(obj);   // THE TRAPS PACK: the pack's one swatch sheet on every piece (the files carry none)
             obj.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
             obj._ew_bbox = new THREE.Box3().setFromObject(obj);
+            try { _hqSmallPropCap(url, obj); } catch (_c) {}   // THE SMALL PROPS
             e.root = obj; e.loading = false; e.at = Date.now(); e.pieces = null; e.fcbs = null;
             for (var i = 0; i < e.cbs.length; i++) { try { e.cbs[i](obj); } catch (_e) {} }
             e.cbs.length = 0;
@@ -37737,6 +37792,7 @@ const ThreeRenderer = (function () {
                     if (cap) _capModelTextures(root, cap);
                     root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
                     root._ew_bbox = new THREE.Box3().setFromObject(root);
+                    try { _hqSmallPropCap(url, root); } catch (_c) {}   // THE SMALL PROPS
                     e.root = root; e.loading = false; e.at = Date.now();
                     var cbs = e.cbs.splice(0);
                     for (var i = 0; i < cbs.length; i++) { try { cbs[i](root); } catch (_e) {} }
@@ -37860,7 +37916,7 @@ const ThreeRenderer = (function () {
         for (var u in _miscModelCache) { var e = _miscModelCache[u]; if (!e.root || e._ewPiece) continue; if (e.bytes == null) e.bytes = _mmBytes(e.root, {}); mb += e.bytes; n++; }
         for (var r in _unitGlbCache) { var ue = _unitGlbCache[r]; if (!ue || !ue.root) continue; if (ue._ew_mmBytes == null) ue._ew_mmBytes = _mmBytes(ue.root, seen); rb += ue._ew_mmBytes; rn++; }
         return { misc: { n: n, mb: +(mb / 1048576).toFixed(1) }, rigs: { n: rn, mb: +(rb / 1048576).toFixed(1) }, budget: _mmBudgetMB(),
-                 evicted: _mmEvicted, freedMB: +(_mmFreed / 1048576).toFixed(1), off: _mmOff(), undrawn: _hqPbrDropped };
+                 evicted: _mmEvicted, freedMB: +(_mmFreed / 1048576).toFixed(1), off: _mmOff(), undrawn: _hqPbrDropped, smallCapped: _hqSmallCapped };
     }
     /* THE HOLDERS (2026-11-15, mondo: "Crashed inside the door main hall/lobby"; his readout: MEM 1726/700 MB in the Foyer, 2047/700
        in the Main Hall, Firefox M1 WebGPU). The readout said how much, never WHAT: nothing could be checked from a console paste.

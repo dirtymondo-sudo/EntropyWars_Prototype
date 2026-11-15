@@ -2316,3 +2316,15 @@ live rig / parked rig / roster / `H.chars`, idle `cacheIdleMs` -> `_mmRigEvict`.
 STILL OVER after this: the 535 MB that IS drawn is 2048 x 2048 colour sheets on small props (camera_01 = 65 MB for three
 materials, each lava lamp part 21 MB). Getting under 700 needs smaller sheets on small props (a look decision, his) or a bigger
 budget. Spell props (Spear.fbx 22 MB, Christmas.dae 21 MB, halloween.fbx, top_fangs) are `_ewOneFile`, held by the weapon cache.
+
+## THE SMALL PROPS (2026-11-15, the main hall crash, fifth pass; mondo "sure")
+After THE UNDRAWN MAPS the hall still drew 535 MB of 2048 x 2048 colour sheets on small props. three-renderer.js
+`_hqSmallPropCap(url, root)` runs where a misc model lands (both landings): a DOOR_HQ.catalogue file whose largest placed
+size (max over its catalogue rows and every room prop row's `h` / `span` / `size`, turned into the model's longest side by
+its box) is up to 0.6 m gets its colour sheet drawn down to 512 px, up to 1.15 m to 1024 px (`_capModelTextures(root, cap,
+['map', 'emissiveMap', 'alphaMap'])`, new `only` argument). Bigger, a pack `node` piece, a row with a free `scale`, or no
+size: untouched. In the hall + foyer: 18 files to 512 (papers, mug, pen, stapler, folders, security camera, fan, nameplate,
+box, speakers, CRT, picture b, exit sign, hook rail), 11 to 1024 (pictures a/c, wet floor sign, folding / teal / office chair,
+mop bucket, boxes, coffee table, railing, plant, cabinet, long hook rail), desks and everything larger full (preview:
+scratch caps.js off the CDN files). R2 files untouched. Off: `window.EW_NO_SMALL_PROP_CAP`. `hq.mem().smallCapped`.
+Not browser-run. If he says a prop reads soft: raise its size class here, do not turn the cap off for all.
