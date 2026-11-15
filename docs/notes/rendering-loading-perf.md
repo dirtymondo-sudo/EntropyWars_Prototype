@@ -1957,6 +1957,16 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## SHIFT+F3 + WHERE THE LAMP STANDS (2026-11-15, the lens only; mondo: "where is the point lamp ... I can only copy the f3 data when I am paused")
+
+- **Shift+F3 copies the readout from the keyboard** (the lens's key handler; opens the lens first if it is closed). No pause,
+  no mouse. Never ask him again to "copy the F3" without naming this key.
+- Paused readings: a pause stops the walker, traffic, signals and doors (`H.paused`) but the room is drawn as before, so the
+  mesh count and the frame are valid; the tick rows read a little low. Prefer an unpaused Shift+F3.
+- The "Hero lamp" line ends with where it stands from the camera: "it stands 34 m ahead to the left" (`_lensLampWhere`).
+  A room has ONE hero lamp (`_hqHeroShadow`: the first prop whose key matches HQ light rules `shadows.hero.keys`), so that
+  line leads him to the 22.8 FPS spot. Never ask him to find a thing the lens can point at.
+
 ## THE FRAME IS THE CARD'S AGAIN + THE REPLAYED MESHES BY KIND (2026-11-15, the lens only)
 
 mondo's F3 after THE KEPT LIGHT LIST (22:12 UTC): "render: node + rig ticks" 3.0 -> 0.4 ms, CPU 20.6 -> 17.8 ms, but the

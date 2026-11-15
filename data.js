@@ -28473,7 +28473,7 @@ STORY_CUTSCENES.orientation_arrive = {
     /* REBUILT 2026-11-15 for the bigger foyer (mondo: "need a big closeup pan on a big DOOR logo or signage, like this is the god
        damn introduction to DOOR HQ, it needs to be an important moment"; his OK on plan_15nov_foyer.jpg): the lift opens on the
        logo wall, a crane up from the seal, the big close pan down his lockup, then over the recruit's shoulder. Every cut 30+ deg. */
-    end: [{ do: 'door', id: 'street', open: false, cab: false }, { do: 'show', who: 'player' }],
+    end: [{ do: 'door', id: 'street', open: false, cab: false }, { do: 'place', who: 'player', x: 0, z: 1.2, face: 0 }, { do: 'show', who: 'player' }],   // (a skip lands the recruit on the seal too, never in the lift's doorway)
     beats: [
         /* 16 · inside the front lift, through the recruit's eyes: the doors part, the logo wall framed in the opening, a slow step
            out towards it (the lift's cab stands behind the doors for the scene: three-renderer.js THE CAB) */
@@ -32121,7 +32121,7 @@ const DOOR_HQ = {
                    white plaster 3 m from every lamp needs far less than the hall's stone 20 m off */
                 lampK: 0.5, keyLamp: 0.3,
                 plate: { x: 6.2, z: -5.2, y: 3.4 },
-                clipBeside: { wall: 'n', above: 3.95 },   // THE CUT BESIDE (three-renderer.js): the hall's upper gallery runs past the tangent into the 7 m atrium
+                clipBeside: { wall: 'n', above: 3.75, reach: 2.9 },   // THE CUT BESIDE (three-renderer.js): the hall's mezzanine (its slab's underside is at 3.8 m) and gallery run 2.8 m past the tangent into the 7 m atrium; `reach` = that depth, cut from this room's own top while you stand in the hall
                 look: HQ_ROOM_LOOKS.retro,
             },
             doors: [
