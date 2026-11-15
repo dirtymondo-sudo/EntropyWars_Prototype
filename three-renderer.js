@@ -47618,9 +47618,9 @@ const ThreeRenderer = (function () {
         var ch = g.children, now = _ewBun.now || 0, watch = !S.noV && !!(_hq && _hq.ready) && !_ewBunNoOut(), cand = null;
         for (var i = 0; i < ch.length; i++) {
             var c = ch[i];
-            if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); continue; }
+            if (c.visible === false) { S.hs = _ewBunMix(S.hs, -c.id); S.cH = (S.cH | 0) + 1; continue; }
             if (c._ew_bunOut === true && !_ewBunNoOut()) { S.hs = _ewBunMix(S.hs, c.id ^ 0x6f2a); (S.outs || (S.outs = [])).push(c); continue; }
-            if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); continue; }
+            if (c._ew_bRec) { S.hs = _ewBunMix(S.hs, c.id ^ 0x2b1d); S.cB = (S.cB | 0) + 1; continue; }
             var v0 = S.hv; S.hv = 0;
             if (c.isMesh || c.isLine || c.isPoints || c.isSprite) _ewBunObj(c, S);
             else if (c.isLight) { S.hs = _ewBunMix(S.hs, c.id); S.lit = true; }
@@ -47723,6 +47723,7 @@ const ThreeRenderer = (function () {
             g._ew_bunOuts = S.outs || null;   // THE MOVERS OUT: the pieces the frame draws beside this group's recording
             var v0 = g.version, recs0 = _ewBun.recs;
             objs += S.n; st.n = S.n;
+            var cB0 = S.cB | 0, cH0 = S.cH | 0, cO0 = S.outs ? S.outs.length : 0, cN0 = g.children.length;
             var stat = !(S.dyn || st.dyn), miss = !!g._ew_bunMiss;
             g._ew_bunMiss = false;
             if (!g.isBundleGroup) {
@@ -47731,6 +47732,10 @@ const ThreeRenderer = (function () {
                 _ewBun.recs++;
             } else if (st.hs !== S.hs || (stat && st.hv !== S.hv)) {
                 st.why[st.hs !== S.hs ? 'tree' : 'values']++; W[st.hs !== S.hs ? 'tree' : 'values']++;
+                if (st.hs !== S.hs) {   // THE TREE'S WHY (lens): what changed the list of pieces — the merge taking or handing back pieces, a mover going out or coming back, a piece shown or hidden, a piece added or removed
+                    var tO = S.outs ? S.outs.length : 0, tw = ((S.cB | 0) !== (st.cB | 0)) ? 'tB' : (tO !== (st.cO | 0)) ? 'tO' : ((S.cH | 0) !== (st.cH | 0)) ? 'tH' : (g.children.length !== (st.cN | 0)) ? 'tN' : 'tX';
+                    st.why[tw] = (st.why[tw] | 0) + 1;
+                }
                 st.times.push(now);
                 while (st.times.length && now - st.times[0] > 2000) st.times.shift();
                 /* a slow churn (2 a second never makes 5 in 2 s): 8 value re-records within 20 s demote the group too */
@@ -47748,6 +47753,7 @@ const ThreeRenderer = (function () {
                 g.version++; st.hf = S.hf; st.softAt = now; _ewBun.recs++;
             }
             g._ew_bunFree = false;
+            st.cB = cB0; st.cH = cH0; st.cO = cO0; st.cN = cN0;
             st.quiet = (_ewBun.recs === recs0 && !miss) ? (st.quiet | 0) + 1 : 0;
             if (miss && g.isBundleGroup) { st.why.cold = (st.why.cold || 0) + 1; W.cold++; g.version++; _ewBun.recs++; }   // a pipeline was still compiling at the last recording
             g.static = stat;
@@ -52516,6 +52522,8 @@ const ThreeRenderer = (function () {
                     sq[why] = (sq[why] | 0) + 1;
                 }
             }
+            var LT = (_ewBun.last || []), nowL = performance.now();   // a big group drawn piece by piece right now: say so, the frame is not the usual one
+            for (var li = 0; li < LT.length; li++) { var lg = LT[li], ls = lg._ew_bun; if (ls && ls.until > nowL && lg.children.length > 200) L.push('SLOW RIGHT NOW: ' + String(lg._ew_bunName || lg.name).replace(/^site_prebuilt_/, '') + ' (' + lg.children.length + ' pieces) is drawn piece by piece for ' + ((ls.until - nowL) / 1000).toFixed(1) + ' s more: its list of pieces changed 5 times in 2 s. This readout is not the steady frame.'); }
             var bks = Object.keys(bk).sort(function (a, b) { return bk[b] - bk[a]; });
             if (bks.length) L.push('Replayed meshes by kind: ' + bks.map(function (k) { return k + ' ' + bk[k] + ' (' + bn[k] + ' groups)'; }).join(' · '));
             var sqs = Object.keys(sq).sort(function (a, b) { return sq[b] - sq[a]; });
@@ -52525,7 +52533,7 @@ const ThreeRenderer = (function () {
         } catch (eBK) {}
         try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
             var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
-            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0));
+            if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ((x.w.tree | 0) ? ' [merge ' + (x.w.tB | 0) + ', movers ' + (x.w.tO | 0) + ', shown/hidden ' + (x.w.tH | 0) + ', added/removed ' + (x.w.tN | 0) + ', other ' + (x.w.tX | 0) + ']' : '') + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0));
         } catch (e) {}
         if (S.still) L.push('Matrix walk ' + S.still.ms + ' ms/frame' + (S.still.off ? ' (still walk off)' : '') + ' · still groups ' + S.still.groups + ' (' + S.still.out + ' off the camera, ' + S.still.full + ' whole) · of ' + S.still.tops + ' pieces: ' + S.still.movers + ' moving, ' + S.still.fresh + ' new, ' + S.still.swept + ' swept');
         if (S.instPass) L.push('Instance pass ' + S.instPass.batches + ' batches · ' + S.instPass.copies + ' copies · ' + S.instPass.left + ' left alone');
