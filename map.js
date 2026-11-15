@@ -4402,7 +4402,7 @@
             const body = _hqEl('hqPanelBody');
             const t = _hqPanelTarget;
             if (!body || !t || t.kind !== 'counter' || !t.counter || !t.counter.action || t.counter.action.overlay !== 'pharmacy') return;
-            body.innerHTML = _hqPharmacyHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>';
+            body.innerHTML = _hqPharmacyHtml() + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>';
         }
         /* the Quartermaster's SUPPLIES shelf (ui.js _shopBuySupply) reads the hatch's last word */
         window._hqShopTakeMsg = function () { const m = _hqShopMsg; _hqShopMsg = null; return m; };
@@ -7492,7 +7492,7 @@
         /* a re-render of the directory in place (a node picked, a zoom button) */
         function _hqMapRerender() {
             const body = _hqEl('hqPanelBody'); if (!body) return;
-            body.innerHTML = _hqDirectoryHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>';
+            body.innerHTML = _hqDirectoryHtml() + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>';
             _hqMapAfterRender(body);
         }
         window._hqMapDev = function () { return { model: _hqMap.model, shown: _hqMapShown(), view: _hqMap.view, fit: _hqMap.fit }; };
@@ -8784,14 +8784,14 @@
             if (e.target.closest('[data-mapfit]')) { const svg = body.querySelector('svg.hq-map-svg'); if (svg) { _hqMap.anim++; _hqMap.view = null; svg.setAttribute('viewBox', svg.getAttribute('data-fit') || ''); _hqMapDetail(svg); } return; }
             /* THE NAV CONSOLE (THE SHIP'S ONE DOOR): SET COURSE — the console re-renders in place */
             const course = e.target.closest('[data-course]');
-            if (course && !course.disabled) { if (window._hqSetCourse(course.getAttribute('data-course'))) body.innerHTML = _hqNavHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>'; return; }
+            if (course && !course.disabled) { if (window._hqSetCourse(course.getAttribute('data-course'))) body.innerHTML = _hqNavHtml() + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>'; return; }
             /* THE DISPENSARY (Room 911): buy / sell — the hatch re-renders in place after the wallet answers */
             const buy = e.target.closest('[data-buy]');
             if (buy) { if (!buy.disabled) window._hqShopBuy(buy.getAttribute('data-buy'), parseInt(buy.getAttribute('data-n'), 10) || 1); return; }
             const sell = e.target.closest('[data-sell]');
             if (sell) { if (!sell.disabled) window._hqShopSell(sell.getAttribute('data-sell'), parseInt(sell.getAttribute('data-n'), 10) || 1); return; }
             const spine = e.target.closest('[data-tape]');
-            if (spine) { _hqTapeSel = spine.getAttribute('data-tape'); body.innerHTML = _hqTapesHtml() + '<p class="hq-panel-foot">ESC · CLOSE</p>'; try { playSfx('uiButtonConfirm'); } catch (err) {} return; }
+            if (spine) { _hqTapeSel = spine.getAttribute('data-tape'); body.innerHTML = _hqTapesHtml() + '<p class="hq-panel-foot">ESC · RIGHT CLICK · CLOSE</p>'; try { playSfx('uiButtonConfirm'); } catch (err) {} return; }
             /* THE STAR CHART (Room 360): a star opens its threshold's door panel; ◂ THE CHART comes back */
             /* EVACUATION (Room 4B, Phase 8 stage 2): the button rings every bell on the way to the foyer */
             if (e.target.closest('[data-evac]')) { try { if (typeof playDoorSfx === 'function') playDoorSfx('doorBuzz', { volume: 1 }); } catch (err) {} try { playSfx('codeRedSiren'); } catch (err) {} }
