@@ -52490,6 +52490,28 @@ const ThreeRenderer = (function () {
         if (S.text) L.push('Text (HQ plates) ' + (S.text.cv ? 'canvas (node renderer)' : S.text.on ? 'troika' : (S.text.lib ? 'CSS2D (switched off)' : 'CSS2D (troika not loaded)')) + ' · ' + S.text.gpu + ' on the GPU · ' + S.text.css + ' CSS2D');
         try { var _fs = (typeof ThreeVFX !== 'undefined' && ThreeVFX.fxStats) ? ThreeVFX.fxStats() : null; if (_fs && (_fs.live || _fs.groups)) L.push('Particles ' + _fs.live + ' live · ' + _fs.draws + ' draws' + (_fs.batched ? ' (batched, ' + _fs.groups + ' kinds seen)' : ' (one per particle)') + (_fs.quarks && (_fs.quarks.on || _fs.quarks.made) ? ' · quarks layer ' + (_fs.quarks.on ? _fs.quarks.state : 'off') + ', ' + _fs.quarks.live + ' systems live' : '')); } catch (e) {}   // R7
         if (S.chunks) L.push('Chunks' + (S.chunks.off ? ' (cull off)' : '') + ': fence plots ' + S.chunks.fencesDrawn + '/' + S.chunks.fences + ' drawn · prop cells ' + S.chunks.cellsDrawn + '/' + S.chunks.cells + ' drawn' + (S.chunks.props || S.chunks.rooms ? ' · prop plots ' + S.chunks.propsDrawn + '/' + S.chunks.props + ' · rooms ' + S.chunks.roomsDrawn + '/' + S.chunks.rooms : '') + (S.chunks.shell ? ' · ground + building squares ' + S.chunks.shellDrawn + '/' + S.chunks.shell : '') + (S.chunks.sunHid ? ' · ' + S.chunks.sunHid + ' left out of the sun shadow' : ''));
+        /* THE REPLAYED MESHES, BY KIND (2026-11-15: the frame on mondo's Mac follows the count of replayed meshes — 3 ms of JS
+           cut moved the frame 0.6 ms — and nothing said what the 3,230 are). Lens open only, read when the text is made. */
+        try {
+            var bk = {}, bn = {}, sq = {}, top = [], MK = (typeof _ewBun !== 'undefined' && _ewBun.marked) || [];
+            for (var mi = 0; mi < MK.length; mi++) {
+                var mg = MK[mi], mst = mg._ew_bun; if (!mst || mg._ew_ckOut || mg.visible === false) continue;
+                var nm = mg._ew_bunName || '', kd = mg._ew_sCell ? 'squares' : mg._ew_pChunk ? (mg._ew_pcBld ? 'rooms' : 'prop plots') : (nm === 'instance pass') ? 'instance cells' : / fences$/.test(nm) ? 'fences' : / shell$/.test(nm) ? 'shell rest' : / doors$/.test(nm) ? 'doors' : / props$/.test(nm) ? 'props rest' : 'other';
+                bk[kd] = (bk[kd] | 0) + (mst.n | 0); bn[kd] = (bn[kd] | 0) + 1; top.push([mst.n | 0, kd + ' ' + (mg._ew_chunk || (typeof mg._ew_pChunk === 'string' ? mg._ew_pChunk : '') || mg.name || '')]);
+                if (mg._ew_sCell) for (var ci2 = 0; ci2 < mg.children.length; ci2++) {
+                    var cm2 = mg.children[ci2], mm = cm2.material; if (!cm2.isMesh || !mm || cm2.visible === false) continue;
+                    var why = !cm2._ew_hqBatch ? 'not a batch' : mm._ew_stacked ? 'stacked' : !cm2._ew_bSingle ? (mm._ew_onePaint ? 'one paint' : 'merged') :
+                        ('alone: ' + (Array.isArray(mm) ? 'many looks' : mm._ewNode ? 'node ' + mm._ewNode.k : (mm.transparent || mm.alphaTest > 0) ? 'see-through / cut-out' : !mm.map ? ((mm.emissiveIntensity > 0 && mm.emissive && (mm.emissive.r + mm.emissive.g + mm.emissive.b) > 0.2) ? 'no sheet, lit' : 'no sheet') : mm.map.isCanvasTexture ? 'sign canvas' : mm.map.isCompressedTexture ? 'compressed sheet' : 'sheet ' + (mm.map.image ? mm.map.image.width + 'px' : '?')));
+                    sq[why] = (sq[why] | 0) + 1;
+                }
+            }
+            var bks = Object.keys(bk).sort(function (a, b) { return bk[b] - bk[a]; });
+            if (bks.length) L.push('Replayed meshes by kind: ' + bks.map(function (k) { return k + ' ' + bk[k] + ' (' + bn[k] + ' groups)'; }).join(' · '));
+            var sqs = Object.keys(sq).sort(function (a, b) { return sq[b] - sq[a]; });
+            if (sqs.length) L.push('  squares, what each mesh is: ' + sqs.slice(0, 14).map(function (k) { return k + ' ' + sq[k]; }).join(' · '));
+            top.sort(function (a, b) { return b[0] - a[0]; });
+            if (top.length) L.push('  biggest groups: ' + top.slice(0, 6).map(function (t) { return t[1] + ' ' + t[0]; }).join(' · '));
+        } catch (eBK) {}
         try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
             var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
             if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0));
@@ -93929,7 +93951,7 @@ const ThreeRenderer = (function () {
             c0.M.decompose(mesh.position, mesh.quaternion, mesh.scale); mesh.updateMatrix();
             if (!_hqBatchSame(mesh.matrix, c0.M)) return null;
         }
-        mesh.name = 'hq_batch'; mesh._ew_hqBatch = true; mesh._ew_occSkip = true; mesh._ew_shadowFlagged = true;
+        mesh.name = 'hq_batch'; mesh._ew_hqBatch = true; mesh._ew_bSingle = !!single; mesh._ew_occSkip = true; mesh._ew_shadowFlagged = true;
         mesh.castShadow = o0.castShadow; mesh.receiveShadow = o0.receiveShadow; mesh.renderOrder = o0.renderOrder; mesh.layers.mask = o0.layers.mask;
         mesh.raycast = function () {};   // the pieces answer the rays, as they always did
         var host = _hqBatchHost(o0, root);   // THE PROP CHUNKS: the merged mesh lives in its pieces' chunk (culled and bundled with them)

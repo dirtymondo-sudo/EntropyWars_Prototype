@@ -1957,6 +1957,24 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE FRAME IS THE CARD'S AGAIN + THE REPLAYED MESHES BY KIND (2026-11-15, the lens only)
+
+mondo's F3 after THE KEPT LIGHT LIST (22:12 UTC): "render: node + rig ticks" 3.0 -> 0.4 ms, CPU 20.6 -> 17.8 ms, but the
+frame only 27.2 -> 26.6 ms (37.5 FPS) at 3,230 meshes. **Lesson, measured: with the lamp off camera, cutting our JS does not
+move the frame.** 2.8 ms of JS bought 0.6 ms. The price line still holds (12.5 + 4.8 us x 3,230 = 28.0): the frame follows
+the count of replayed meshes (Firefox's GPU process), as THE SHELL CELLS said. Do not spend more turns on JS rows of 1-3 ms;
+cut meshes. (The JS rows matter only where JS exceeds the card's time: the hero lamp on camera.)
+- The lens now says what the replayed meshes are (three-renderer.js `_lensText`, read live from `_ewBun.marked`):
+  "Replayed meshes by kind: squares N (groups) · instance cells · fences · prop plots · rooms · doors · shell rest ...",
+  "squares, what each mesh is: stacked · one paint · merged · alone: no sheet / no sheet, lit / see-through / node wind /
+  sign canvas / sheet 128px ..." (a stand-in carries `mesh._ew_bSingle`), "biggest groups: ...".
+- NEXT: read those three lines on his next F3 and cut the biggest kind. Candidates already known: "alone" stand-ins with no
+  sheet (3,534 shell pieces wear no sheet; they merge by colour but glow and shine still split them), far squares as one
+  fused mesh, instance cells.
+- mondo 22:12: "the mountain walls ... look bad bc of repeated pattern". Not answered yet whether that is new today (the
+  stack) or the cliff sheet's tiling as built; asked him to compare with `EW_HQ_NO_STACK = true`. The Mountains rooms are
+  another thread's (claims.md).
+
 ## THE KEPT LIGHT LIST (2026-11-15, the rig's walk of the whole scene every frame)
 
 mondo's F3 after THE SPLIT STACK (21:54 UTC): 36.9 FPS, frame 27.2 ms, CPU 20.6 ms, 3,264 meshes (price line: 28.2), shell
