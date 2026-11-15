@@ -73084,6 +73084,50 @@ const ThreeRenderer = (function () {
                 else if (P.W.mountain > 0.5 && P.d > 5 && P.d < 46 && P.y - P.eH < 34) { if (c2 > 0.13 * thin) continue; plantTree(kindsM[(d2 * kindsM.length) | 0], hOf(8 + d2 * 6), px, pz, P.y * U); planted++; }
             }
         }
+        /* THE HILL SIGN (2026-11-15, mondo: "the disaster city hollywood sign, there is already the mountains on one of the edges of disaster
+           city, use that/make that the hollywood hills"): `edges.sign = { side, at, d, text, px, lean: {i: k}, drop: {i: m} }` stands a word of
+           white block letters ON THE LAND, `d` metres past the edge of `side`, centred on `at` along it, every letter on the land's own height
+           under it, its face to the room. 5 x 7 blocks a letter, `px` metres a block; two legs behind each. ONE merged mesh, no light, no
+           fog (it stands in the far land's haze: its white is mixed toward the fog like the land's), so it costs the same far off as near. */
+        var SG = E.sign;
+        if (SG && SG.text) {
+            try {
+                var GL = { A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'], C: ['.####', '#....', '#....', '#....', '#....', '#....', '.####'], D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
+                    E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'], I: ['###', '.#.', '.#.', '.#.', '.#.', '.#.', '###'], R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
+                    S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'], T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'], Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
+                    O: ['.###.', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'], L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'], H: ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+                    W: ['#...#', '#...#', '#...#', '#.#.#', '#.#.#', '##.##', '#...#'], N: ['#...#', '##..#', '#.#.#', '#..##', '#...#', '#...#', '#...#'] };
+                var spx = +SG.px || 2, sside = SG.side || 'e', sd0 = +SG.d || 30, sat = +SG.at || 0, gap = spx * 1.15, txt = String(SG.text).toUpperCase();
+                var total = 0; for (var si = 0; si < txt.length; si++) { var gq = GL[txt[si]]; total += (gq ? gq[0].length * spx : spx * 2.4) + gap; } total -= gap;
+                var vpos = [], vcol = [];
+                var horizS = (sside === 'n' || sside === 's'), outS = (sside === 'e' || sside === 's') ? 1 : -1, edgeS = sside === 'e' ? R.x1 : sside === 'w' ? R.x0 : sside === 's' ? R.z1 : R.z0;
+                var runS = (sside === 'e' || sside === 'n') ? 1 : -1;   // the word reads left to right for an eye inside the room: east side north -> south, north side west -> east
+                if (sside === 'n') runS = 1; if (sside === 's') runS = -1; if (sside === 'w') runS = -1;
+                var wpt = function (al, dd) { return horizS ? [al, edgeS + outS * dd] : [edgeS + outS * dd, al]; };
+                var boxS = function (al, dd, y, wAl, h, th, c) {   // a box: `wAl` along the side, `th` thick away from the room, on y .. y + h
+                    var a0 = al - wAl / 2, a1 = al + wAl / 2, p = [wpt(a0, dd), wpt(a1, dd), wpt(a1, dd + th), wpt(a0, dd + th)], y1 = y + h;
+                    var q = function (A, B, C2, D) { [A, B, C2, A, C2, D].forEach(function (v) { vpos.push(v[0] * U, v[1] * U, v[2] * U); vcol.push(c, c, c); }); };
+                    var lo = p.map(function (v) { return [v[0], y, v[1]]; }), hi = p.map(function (v) { return [v[0], y1, v[1]]; });
+                    q(lo[0], lo[1], hi[1], hi[0]); q(lo[1], lo[2], hi[2], hi[1]); q(lo[2], lo[3], hi[3], hi[2]); q(lo[3], lo[0], hi[0], hi[3]); q(hi[0], hi[1], hi[2], hi[3]);
+                };
+                var cur = -total / 2;
+                for (var li = 0; li < txt.length; li++) {
+                    var g = GL[txt[li]]; if (!g) { cur += spx * 2.4 + gap; continue; }
+                    var lw = g[0].length * spx, alC = sat + runS * (cur + lw / 2), wp = wpt(alC, sd0), land = F.at(wp[0], wp[1]).y;
+                    var yb = land + spx * 0.6 - ((SG.drop && +SG.drop[li]) || 0), ln = (SG.lean && +SG.lean[li]) || 0;
+                    for (var rr2 = 0; rr2 < g.length; rr2++) {
+                        var line = g[g.length - 1 - rr2], c0 = 0;
+                        while (c0 < line.length) { if (line[c0] !== '#') { c0++; continue; } var c1 = c0; while (c1 < line.length && line[c1] === '#') c1++;
+                            boxS(sat + runS * (cur + (c0 + c1) / 2 * spx + ln * rr2 * spx), sd0, yb + rr2 * spx, (c1 - c0) * spx, spx + 0.02, spx * 0.3, rr2 % 2 ? 0.95 : 1); c0 = c1; }
+                    }
+                    [0.5, g[0].length - 0.5].forEach(function (k) { var al2 = sat + runS * (cur + k * spx), w2 = wpt(al2, sd0 + spx * 0.9), l2 = F.at(w2[0], w2[1]).y; boxS(al2, sd0 + spx * 0.8, Math.min(l2, yb) - 1, spx * 0.22, Math.max(2, yb + g.length * spx * 0.7 - Math.min(l2, yb) + 1), spx * 0.22, 0.3); });
+                    cur += lw + gap;
+                }
+                var sgeo = new THREE.BufferGeometry(); sgeo.setAttribute('position', new THREE.Float32BufferAttribute(vpos, 3)); sgeo.setAttribute('color', new THREE.Float32BufferAttribute(vcol, 3)); sgeo.computeVertexNormals();
+                var smat = new THREE.MeshLambertMaterial({ color: new THREE.Color(0xffffff).lerp(fogC, 0.1), vertexColors: true, fog: false, side: THREE.DoubleSide }); smat._ew_hqEdgeLand = true;
+                var smesh = new THREE.Mesh(sgeo, smat); smesh.name = 'hq_edge_sign'; G.add(smesh);
+            } catch (e) { console.warn('[HQ] the hill sign failed', e); }
+        }
         if (_hq) {
             _hq.edgeLand = { fn: F, pieces: pieces.length, trees: planted };
             if (G === _hq.shellGroup) _hq.outer = { hx: info.halfW - 0.5, hz: info.halfD - 0.5, ext: F.reach, yAt: function (x, z) { return F.at(x, z).y; } };   // the ground past the field is this land (the walk's and the battle's ground lookups)

@@ -849,26 +849,10 @@ module.exports = { build: function (api) {
       const X = c => r3(84 + c * C), Z = r => r3(-84 + r * C), XC = c => X(c + 0.5), ZC = r => Z(r + 0.5);   // the district's own squares: column 0..47 west -> east, row 0..47 north -> south
       const near = (x, z, d) => props.some(q => Math.abs(q.x - x) < d && Math.abs(q.z - z) < d && !(q.y >= 1));
       const sq = (c, r) => { if (!api.free(96 + c, 48 + r) || near(XC(c), ZC(r), 1.7)) return false; api.take(96 + c, 48 + r); return true; };   // a free yard square for a thing that blocks (it stands on the square's middle)
-      /* ── THE HILL LETTERS: a dry headland in the bay off the district's east edge (the city's east is the coast: there is no hill behind the
-         district, so the hill is built), DISASTER CITY in white letters of plain blocks, three of them leaning or slipped. One merged row of
-         boxes with no light and no model: it costs the same far off as near (the 60 FPS thread). ── */
-      { const hx = 300, hz = 6, A = 34, Bh = 31, Cz = 92, y0 = -3.6, px = 1.15;
-        const F = { D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'], I: ['###', '.#.', '.#.', '.#.', '.#.', '.#.', '###'], S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'],
-                    A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'], T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'], E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'],
-                    R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'], C: ['.####', '#....', '#....', '#....', '#....', '#....', '.####'], Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'] };
-        const LEAN = { 2: 0.1, 6: -0.08, 11: 0.12 }, DROP = { 4: 1.0, 11: 0.7 }, word = 'DISASTER CITY';
-        free('hill', hx, hz, P => {
-          P('dome', 0, y0, 0, 'desert', '#5e5444', { r: A, h: Bh, rz: Cz, seg: 28, rings: 9 });
-          P('dome', 8, y0, -60, 'grass_2', '#4c5234', { r: 30, h: 24, rz: 46, seg: 20, rings: 7 }); P('dome', 10, y0, 66, 'grass_2', '#525636', { r: 28, h: 21, rz: 42, seg: 20, rings: 7 });
-          P('dome', -20, y0, 30, 'desert', '#524838', { r: 16, h: 11, rz: 30, seg: 16, rings: 5 }); P('dome', -18, y0, -34, 'desert', '#524838', { r: 15, h: 10, rz: 26, seg: 16, rings: 5 });
-          let wz = -44.5;
-          [...word].forEach((ch, i) => { const g = F[ch]; if (!g) { wz += 4.2; return; }
-            const zc = wz + g[0].length * px / 2, yb = 11 - (DROP[i] || 0), t = (yb - y0) / Bh, s2 = 1 - t * t - (zc / Cz) * (zc / Cz), lx = -A * Math.sqrt(Math.max(0.05, s2)) - 1.2, ln = LEAN[i] || 0;
-            for (let r = 0; r < g.length; r++) { const line = g[g.length - 1 - r]; let c = 0; while (c < line.length) { if (line[c] !== '#') { c++; continue; } let e = c; while (e < line.length && line[e] === '#') e++;
-                P('box', lx, yb + r * px, wz + (c + e) / 2 * px + ln * r * px, null, r % 2 ? '#f4f2ec' : '#ffffff', { size: [0.5, px + 0.01, (e - c) * px] }); c = e; } }
-            for (const k of [0.6, g[0].length * px - 0.6]) P('box', lx + 1.4, yb - 5, wz + k, null, '#4a4640', { size: [0.3, 5 + 7, 0.3] });   // the scaffold legs behind
-            wz += g[0].length * px + 1.35; });
-        }); }
+      /* ── THE HILL LETTERS stand on the MOUNTAINS now (mondo 11-15 12:55 "there is already the mountains on one of the edges of disaster city,
+         use that/make that the hollywood hills"; his pick 12:57 "Run the mountains down the east"): this file's `edges` export at its foot runs
+         the north range down the east side behind Financial and this district, and the land builder stands the sign on it. The hill of domes
+         that stood in the bay here is gone. ── */
       /* ── THE STAR WALK: a brass star (the gold terrain sheet) in a dark terrazzo square, in every square of the boulevard's two walks ── */
       { const star = (P, x, z, R) => { P('box', x, 0.03, z, TG, '#6a3040', { size: [1.6, 0.02, 1.6], sides: false });
           const o = [], n = []; for (let k = 0; k < 5; k++) { const a = (-90 + 72 * k) * D2R, a2 = (-54 + 72 * k) * D2R; o.push([r3(Math.cos(a) * R), r3(Math.sin(a) * R)]); n.push([r3(Math.cos(a2) * R * 0.4), r3(Math.sin(a2) * R * 0.4)]); }
@@ -941,4 +925,10 @@ module.exports = { build: function (api) {
     }
     features.push(...rows);
     return { arch: rows.length };
-} };
+},
+/* THE HOLLYWOOD HILLS: the city's east edge is the bay; from the north corner down to this district's south end (z +84) it is the mountain range
+   now (a 70 m fade to open water past it, so Bayside keeps its horizon), across the bay strip from the city. The sign: 2.1 m blocks = letters
+   14.7 m tall, 30 m up the mountainside, centred on the district, three letters leaning or slipped. (bake-disaster-city.js merges a district's
+   `edges` into the room's; three-renderer.js _hqBuildEdgeLand THE HILL SIGN builds it.) */
+edges: { e: { cap: { kind: 'mountain', at: 'n', off: 336, len: 70 } },
+         sign: { side: 'e', at: 0, d: 30, text: 'DISASTER CITY', px: 2.1, lean: { 2: 0.1, 6: -0.08, 11: 0.12 }, drop: { 4: 2, 11: 1.4 } } } };
