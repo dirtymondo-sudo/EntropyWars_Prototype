@@ -30115,7 +30115,7 @@ const DOOR_HQ = {
         ladder_wall_rack:   { file: 'world/props/meshy/ladder_wall_rack.glb', base: 'asset', span: 3.4, foot: 0, palette: true, group: 'Meshy props' },   // two aluminium extension ladders on red wall brackets, long along x (hang it, 0.32 deep)
         card_catalog:       { file: 'world/props/meshy/card_catalog.glb', base: 'asset', h: 1.3, foot: 0, palette: true, group: 'Meshy props' },   // an oak library card catalogue, thirty brass-pulled drawers
         microfiche_reader:  { file: 'world/props/meshy/microfiche_reader.glb', base: 'asset', h: 0.5, foot: 0, palette: true, group: 'Meshy props' },   // a beige 1980s desktop microfiche reader (on a desk: y = the desk top)
-        city_scale_model:   { file: 'world/props/meshy/city_scale_model.glb', base: 'asset', span: 2.4, foot: 0, palette: true, group: 'Meshy props' },   // an architectural model of a city under a glass case on a dark wood base, long along x
+        city_scale_model:   { file: 'world/props/meshy/city_scale_model.glb', base: 'asset', span: 2.4, foot: 0, palette: true, group: 'Meshy props' },   // an architectural model of a city, open top, on a dark wood table with turned legs, long along x
         city_seal:          { file: 'world/props/meshy/city_seal.glb', base: 'asset', span: 1.6, foot: 0, palette: true, group: 'Meshy props' },   // a round bronze wall seal, an eagle over a skyline in a laurel ring, no letters (hang it, 0.1 deep)
         judges_bench:       { file: 'world/props/meshy/judges_bench.glb', base: 'asset', span: 3.0, foot: 0, palette: true, group: 'Meshy props' },   // a raised mahogany judges bench, panelled front +Z, a gavel on top
         witness_stand:      { file: 'world/props/meshy/witness_stand.glb', base: 'asset', h: 1.15, foot: 0, palette: true, group: 'Meshy props' },   // a mahogany witness box with a step, a gate, a chair and a microphone
@@ -30124,13 +30124,13 @@ const DOOR_HQ = {
         riot_gear_rack:     { file: 'world/props/meshy/riot_gear_rack.glb', base: 'asset', h: 2.0, foot: 0, palette: true, group: 'Meshy props' },   // a steel rack of clear riot shields, visored helmets on top, batons (back flat, 0.46 deep)
         steel_toilet:       { file: 'world/props/meshy/steel_toilet.glb', base: 'asset', h: 1.0, foot: 0, palette: true, group: 'Meshy props' },   // a stainless prison cell toilet + sink, back flat
         giant_hourglass:    { file: 'world/props/meshy/giant_hourglass.glb', base: 'asset', h: 1.8, foot: 0, palette: true, group: 'Meshy props' },   // a tall walnut + brass hourglass, gold sand half run through
-        astronomical_clock: { file: 'world/props/meshy/astronomical_clock.glb', base: 'asset', span: 1.8, foot: 0, palette: true, group: 'Meshy props' },   // a blue enamel + gilt astronomical clock face, zodiac ring, no numbers (hang it, 0.09 deep)
+        astronomical_clock: { file: 'world/props/meshy/astronomical_clock.glb', base: 'asset', span: 1.8, foot: 0, palette: true, group: 'Meshy props' },   // a square gilt panel with a blue enamel astronomical dial, zodiac ring, no numbers (hang it, 0.09 deep)
         rifle_rack:         { file: 'world/props/meshy/rifle_rack.glb', base: 'asset', h: 1.6, foot: 0, palette: true, group: 'Meshy props' },   // an olive wooden rack of six bolt-action rifles, a chain across (back flat, 0.57 deep)
         footlocker:         { file: 'world/props/meshy/footlocker.glb', base: 'asset', span: 0.85, foot: 0, palette: true, group: 'Meshy props' },   // an olive drab military footlocker, steel corners, padlock, no stencils
         field_radio:        { file: 'world/props/meshy/field_radio.glb', base: 'asset', h: 0.45, foot: 0, palette: true, group: 'Meshy props' },   // an olive vintage field radio, handset, whip antenna
         number_dispenser:   { file: 'world/props/meshy/number_dispenser.glb', base: 'asset', h: 1.4, foot: 0, palette: true, group: 'Meshy props' },   // a red take-a-number ticket dispenser on a chrome pole
         now_serving_sign:   { file: 'world/props/meshy/now_serving_sign.glb', base: 'asset', span: 0.9, foot: 0, palette: true, group: 'Meshy props' },   // a black now-serving box, red LED digits (hang it, 0.16 deep)
-        brochure_rack:      { file: 'world/props/meshy/brochure_rack.glb', base: 'asset', h: 1.0, foot: 0, palette: true, group: 'Meshy props' },   // a clear acrylic wall rack of leaflets + forms (hang it, 0.13 deep)
+        brochure_rack:      { file: 'world/props/meshy/brochure_rack.glb', base: 'asset', h: 1.0, foot: 0, palette: true, group: 'Meshy props' },   // a grey steel wall rack of leaflets + forms (hang it, 0.08 deep)
         form_counter:       { file: 'world/props/meshy/form_counter.glb', base: 'asset', h: 1.15, foot: 0, palette: true, group: 'Meshy props' },   // a grey stand-up form writing counter, form trays, pens on chains
         ballot_box:         { file: 'world/props/meshy/ballot_box.glb', base: 'asset', h: 1.0, foot: 0, palette: true, group: 'Meshy props' },   // an oak ballot box with a brass slot on a wooden stand
                 /* The elegantcrow Beach Props Pack (human-made, commercial use OK per the author; project files asset-packs/other/elegantcrow_beach-props-pack), OBJ -> GLB by Claude. */
@@ -31037,7 +31037,7 @@ const DOOR_HQ = {
     hubs: {
         hq:      { label: 'D.O.O.R. HEADQUARTERS', room: 'central_egress', facility: true, color: '#f0e6c8' },
         cavern:  { label: 'THE CAVERN', room: 'site_prebuilt_hollow_earth_gallery', sites: ['prebuilt_hollow_earth'], color: '#c8a2e0' },
-        woods:   { label: 'THE WOODS', room: 'site_prebuilt_fairy_forest_clearing', sites: ['prebuilt_fairy_forest'], color: '#7fd98c' },
+        woods:   { label: 'THE WOODS', room: 'site_prebuilt_fairy_forest_plots', sites: ['prebuilt_fairy_forest'], color: '#7fd98c' },
         ranch:   { label: 'THE ESTATE', room: 'site_prebuilt_skinwalker_fields', sites: ['prebuilt_skinwalker'], color: '#d9b24c' },
         divine:  { label: 'HEAVEN + HELL + VATICAN', room: 'site_prebuilt_heaven_stair', sites: ['prebuilt_heaven', 'prebuilt_hell', 'prebuilt_vatican'], color: '#ffd28a' },
         city:    { label: 'DISASTER CITY', room: 'site_prebuilt_downtown_streets', sites: ['prebuilt_downtown', 'prebuilt_strip', 'prebuilt_cyberpunk'], color: '#ff9e6b' },
@@ -31205,7 +31205,7 @@ const DOOR_HQ = {
            the woods' marble flight in the north of the clearing climbs past the treeline into the dark (a `free` passage over its own
            last treads). The buffer room the woods end used to open on (THE STAIRCASE) is gone. */
         { id: 'woods_stair', route: 'woods', way: 'stairway',
-          a: { site: 'prebuilt_fairy_forest', part: 'clearing', wall: 'free', x: 8.75, z: -9.25, face: 180, y: 8.56, sub: 'THE STAIR · UP INTO THE BUILDING',
+          a: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'free', x: -17.5, z: 55.5, face: 180, y: 12.06, sub: 'THE STAIR · UP INTO THE BUILDING',   // THE WOODS ON PLOTS (2026-11-15, mondo: "i think its still loading the old woods"): the Stair lands in the 36-plot room now (was the old clearing: x 8.75, z -9.25, y 8.56)
                passage: { look: 'stair', w: 3.6, h: 4.5, len: 7, deep: 5, rise: 0.778, spread: 1.6, land: 3.2 } },
           b: { room: 'woodstair', wall: 'n', x: 0, y: 11.4, sub: 'THE STAIR · UP INTO THE WOODS',
                passage: { w: 7, h: 5.2, len: 10, deep: 6, rise: 0.4, tread: 'marble_light', runner: { w: 4.2, color: 0x2f58d0 }, land: 3.6 } },
@@ -31215,7 +31215,7 @@ const DOOR_HQ = {
            west between the trees into the dark and comes out on the track outside the moat, west of the castle (ZONES_PLAN §3: the
            forest leads to Camelot) */
         { id: 'woods_camelot', route: 'woods', way: 'trail',
-          a: { site: 'prebuilt_fairy_forest', part: 'clearing', wall: 'w', z: -4.4, sub: 'THE TRAIL · WEST TO CAMELOT' },
+          a: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'w', z: 3.5, sub: 'THE TRAIL · WEST TO CAMELOT' },   // THE WOODS ON PLOTS (2026-11-15): the 36-plot room's west trail (was the old clearing, z -4.4)
           b: { site: 'prebuilt_camelot', part: 'ward', wall: 'w', z: -12, sub: 'THE TRAIL · INTO THE WOODS' },
           why: 'the path west out of the clearing does not stop at the pasture; it goes on under the trees and comes out at the castle moat', note: 'on foot', draft: true },
         { id: 'woods_sewer', route: 'subway', leaf: 'leaf_cell', secret: true,   // ZONES_PLAN Z1: a DRAUGHT — found later
@@ -40291,7 +40291,6 @@ const DOOR_HQ = {
             },
             doors: [
                 {id:'clearing',wall:'s',x:-38.5,way:'trail',label:'THE WOODS · THE CLEARING',sub:'THE OLD CLEARING · AS IT WAS',action:{room:'site_prebuilt_fairy_forest_clearing',at:'plots'},desc:'The trail south runs back to the clearing as it was before the woods were measured.'},
-                {id:'camelot',wall:'w',z:3.5,way:'trail',label:'CAMELOT · THE OUTER WARD',sub:'THE TRAIL · WEST TO CAMELOT',action:{room:'site_prebuilt_camelot_ward',at:'link_woods_camelot'},desc:'The path west does not stop; it goes on under the trees and comes out at the castle moat.'},
                 {id:'estate',wall:'s',x:-63,way:'trail',label:'THE ESTATE · THE CORN FIELDS',sub:'THE FENCE LINE · THE GATE',action:{room:'site_prebuilt_skinwalker_fields',at:'bay'},desc:'A fence, and a gate in it. The corn starts on the other side.'},
                 {id:'gutter',wall:'e',z:17.5,way:'trail',label:'DISASTER CITY',sub:'THE STORM DRAIN · UP TO THE STREET',action:{room:'site_prebuilt_downtown_streets',at:'link_streets_drain'},desc:'The drain runs east under the last of the trees. There is traffic at the far end of it.'},
                 {id:'lemuria',wall:'n',x:-70,way:'trail',secret:true,label:'AGARTHA · THE CRYSTAL CITY',sub:'LEMURIA · THE ADIT UNDER THE MOUNTAIN',action:{room:'site_prebuilt_agartha_crystalcity',at:'link_shasta_lemuria'},desc:'A draught out of the rock shelf, warmer than the snow above it.'},
@@ -44362,7 +44361,7 @@ const DOOR_HQ = {
                 {key:'wall_shelf',x:-10.975,z:-237.25,face:270,floor:true},
                 {key:'punch_clock',x:-17.04,z:-231.85,face:90,floor:true},
                 {key:'card_catalog',x:-11.13,z:-235.1,face:270,floor:true},
-                {key:'microfiche_reader',x:-12.25,z:-236.6,face:90,floor:true,y:0.76,mount:0},
+                {key:'crt_terminal',x:-12.25,z:-236.6,face:90,floor:true,y:0.76,mount:0},
                 {key:'reception_wedge',x:19.25,z:-229.25,face:180,floor:true},
                 {key:'reception_wedge',x:22.75,z:-229.25,face:180,floor:true},
                 {key:'tanker_desk',x:8.75,z:-236.25,face:90,floor:true},
@@ -44567,8 +44566,8 @@ const DOOR_HQ = {
                 {key:'now_serving_sign',x:64.75,z:-101.71,face:0,floor:true,y:18.1,mount:0},
                 {key:'now_serving_sign',x:68.25,z:-101.71,face:0,floor:true,y:18.1,mount:0},
                 {key:'number_dispenser',x:66.95,z:-115.05,face:180,floor:true},
-                {key:'brochure_rack',x:54.25,z:-118.58,face:180,floor:true,y:16.75,mount:0},
-                {key:'brochure_rack',x:57.75,z:-118.58,face:180,floor:true,y:16.75,mount:0},
+                {key:'brochure_rack',x:54.25,z:-118.605,face:180,floor:true,y:16.75,mount:0},
+                {key:'brochure_rack',x:57.75,z:-118.605,face:180,floor:true,y:16.75,mount:0},
                 {key:'form_counter',x:49.68,z:-103.25,face:90,floor:true},
                 {key:'form_counter',x:76.32,z:-106.75,face:270,floor:true},
                 {key:'photocopier',x:54.25,z:-96.25,face:90,floor:true},
@@ -58335,6 +58334,7 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                              site_prebuilt_area51_gate: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },   // the gate wears the flight line's desert day
                              /* the woods' places (one shell): a sunlit green haze under the canopy */
                              site_prebuilt_fairy_forest_clearing: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
+                             site_prebuilt_fairy_forest_plots: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_redwoods: { fog: 0x94ac92, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_ritual: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_glade: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },   // THE FAIRY FOREST (2026-10-24): the clearing's day look
