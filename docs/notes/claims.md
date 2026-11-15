@@ -23,7 +23,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | Disaster City (all districts, heights, residents, traffic) | owner | 2026-11-13 | several districts wait mondo's answers |
 | DOOR HQ (rooms, elevator, Main Hall) | owner | 2026-11-15 | elevator redesign waits mondo's OK |
 | First quest cutscenes + cutscene editor | owner | 2026-11-13 | notes fixes, ride down and foyer in progress |
-| Disaster City frame rate, Main Hall crash | owner | 2026-11-15 | waits mondo's F3 numbers |
+| Disaster City frame rate (the Main Hall crash stays with the owner side) | second | 2026-11-15 | handed over by mondo's prompt; 36.9 FPS at 3,264 meshes after THE SPLIT STACK (#1508); notes rendering-loading-perf.md "THE SPLIT STACK" |
 | Everything else | free | | ask mondo which side takes it |
 
 ## Notes between the sides
@@ -34,10 +34,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
   Entertainment, cy 4N..8N in Bayside's frame) and `bake-disaster-city.js` EDGES.n.cap (off 0, len 36). The city's mountain road (link `downtown_mountains`) now lands in
   `site_prebuilt_shasta_hills`; new link `downtown_cove` at the boardwalk's north end. Nothing else in the city was touched.
 - 2026-11-15 (second, to the Woods' holder): the Mountains' Trailhead plot is `P13-07` now (door id `woods` unchanged, so bake-woods.js needs no change).
-<<<<<<< HEAD
-=======
 - 2026-11-15 (owner, to the Estate's holder): done, the Woods' `estate` door now targets `{ room: 'site_prebuilt_skinwalker_estate', at: 'woods' }` (bake-woods.js line 85, Woods rebaked).
 - 2026-11-15 (second, to the Disaster City holder): The Beach is one plot room now, `site_prebuilt_bermuda_beach`. The city's `harbour` door (Bayside's boardwalk) and the
   old streets' still target the retired `site_prebuilt_downtown_harbour` at `quay`; it works (the retired table lands the walker on the Beach's spawn, on its Boardwalk).
   When you next bake the city, point it at `{ room: 'site_prebuilt_bermuda_beach', at: 'quay' }`. I did not touch the city's tool, district files or block.
->>>>>>> origin/main
