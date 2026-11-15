@@ -1957,6 +1957,34 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE SHELL CELLS (2026-11-15, the city walk is the graphics card's: the count of pieces)
+
+mondo's tests after #1432: walk 20 FPS with CPU 20.8 ms (was 30); Render Scale at a quarter of the pixels = the SAME 21 FPS; his
+lobby (139 replayed meshes) = 80 FPS. So the walk's frame is not our JS and not pixels: it is what the GPU process is fed, ~7,000
+meshes replayed in the scene pass and again for the sun ("refreshed N of 12,591"). Every walk F3 of the day sat at 20-22 FPS
+whatever the CPU did, for that reason. LESSON: when frame minus CPU does not move with the CPU or the pixels, count the replayed
+meshes (the lens "bundles N groups, M meshes"), not the draw calls line (it leaves the bundles out).
+
+- The city's ground, roads and buildings merge into ~1,100 batches per 96 m square and look, and all of them hung in the shell
+  group: one recording for the whole 504 m city, never culled, drawn whole again for the sun.
+- `_hqShellCell` (three-renderer.js, by `_hqBatchHost`): in a big room (`_hqChunkBig`) a shell batch hangs in its square's group
+  `hq_shell_cell` under `H.chunks.root` (`_ew_chunk = 'shell:i,j'`, `_ew_sCell`, far 1e12 = frustum only, so a skyline stays).
+  `_hqChunkTick` culls it like a fence plot; `_hqChunkHome` puts its meshes back before the hand-over's `_hqBatchDropAll`.
+- A LONE piece (alone in its look + square: thousands in the city) gets a STAND-IN: a mesh on the piece's OWN geometry and
+  material, the piece's shell-relative matrix decomposed onto it, hung in the square; the piece hides behind the batch's
+  `visible` getter like any merged piece (`rec.single`: the break never disposes the shared geometry). minN is 1 for the shell of
+  a big room only.
+- THE SUN'S OWN CHUNKS also SHOWS a shell square that is off camera but inside the sun's box for the sun's render, so a tower
+  behind the camera still shades the street.
+- Lens: "ground + building squares a/b". Off (before entering the room): `window.EW_HQ_NO_SHELL_CELLS`, stand-ins only:
+  `window.EW_HQ_NO_SHELL_SINGLES`.
+- Cloud check (SwiftShader, the start corner, the batch stuck at 'scan' there as always): 38 squares, 26 drawn, bundles 8,306 ->
+  5,594 meshes, 4,075 stand-ins all exactly on their pieces (worst matrix difference 1e-16), a strike still hands over (0 squares
+  left in the fight), 0 frame errors. The log's 5 "Async render pipeline creation failed" lines (a missing sampler binding, one
+  on an unlit SpriteMaterial) are the cloud browser's shrunk textures, not this.
+- NEXT if his F3 is still short of 60: squares at 48 m, small far pieces of a square on a distance limit, the sun's map held
+  between frames, Chrome's readout (Dawn replays bundles far cheaper than Firefox's wgpu).
+
 ## THE FIGHT'S OWN LAMPS + THE KEPT KEEP THEIR OWN + THE SUN'S OWN CHUNKS (2026-11-15, the walk to battle switch in Disaster City)
 
 mondo after #1416 (fight 4.8 -> 50 FPS): "the transition from explore to battle was still terrible, takes forever and drops to 0 fps".
@@ -2215,3 +2243,37 @@ onto the nearest game function) showed the 60 ms outside the draws was whole-sce
   allow one drawn frame (harness `__ph.draw.mode='demand'; frames=2`), screenshot, draw 30 more, screenshot, diff. A test that
   lets undrawn ticks pass, or a 1 degree turn, shows nothing.
 - **Rule**: anything that skips an object's refresh in a replayed bundle must still refresh the shared buffers it reads.
+
+## THE CRASH TRAIL (2026-11-15, mondo: "Crashed inside the door main hall/lobby", Firefox M1 WebGPU, no error in the console)
+Not reproduced, cause NOT found. What was ruled out by reading: the `[terrain] bridge ... headroom` lines in his log are the
+survey worker warming every room's floor plan from the main menu (map.js `_hqSurveyWarmAround`, started by the arrival
+warm); Disaster City's plan compiles in 12 s and is 13 MB, so it is not a memory spike. The 681 Urban Decay sheets
+(PR #1426) are names for the editor's picker, loaded lazily. His log had no `[HQ] entered` line, so that console was
+either from before the hall landed or from the load after the crash.
+What shipped (index.html only, THE FREEZE TRAIL grown): a session records how it ended (`clean` on pagehide, `frozen`
+when the picture stops 5 s+ while timers run), where it was (`ThreeRenderer.hq.room()`, the model memory, `gpuStatus()`),
+and the `[HQ]` / `[MENU]` / lab sweep console.log lines. A session that did not end cleanly is printed at the top of the
+next load's console as one `[CRASH TRAIL]` block (so his usual console paste carries it) and kept in localStorage
+`ew_freeze_trail_hist` (last 3; ?ewdiag=1 lists them). Read the block first on any future crash / freeze report.
+
+## THE HOLDERS (2026-11-15, the main hall crash, second pass)
+His F3 in DOOR HQ: `MEM 1726/700 MB` in the Foyer, `2047/700 MB` in the Main Hall (Firefox M1 WebGPU): three times the budget
+and climbing through the door, the best lead for the crash. THE MEMORY BUDGET can only drop what nothing drawn wears, and in the
+walk it never drops unit models, so "over the budget with nothing free to drop" was silent. three-renderer.js `_mmReport`: once
+per room, when over the budget with nothing to drop, one `[MEM]` console.warn block: the props / unit-model split, how much is
+worn by something drawn, the built stage parts, the 14 biggest props and 10 biggest unit models (LIVE / idle).
+`ThreeRenderer.hq.memTop()` gives the lines on demand. Read-only; nothing is dropped differently yet. NEXT: read his block, then
+cut what holds the memory (candidates: unit models never dropped in the walk, too many stage parts built, the menu scene kept).
+
+## THE UNDRAWN MAPS (2026-11-15, the main hall crash, third pass: MEM 2047/700 MB)
+Measured off the CDN files (no browser): the Main Hall + the Foyer place 69 distinct prop keys; 45 are Meshy `_texture.glb`
+files that each ship three 2048 x 2048 sheets (colour, normal, metal + roughness) = 64 MB a file by the readout's count
+(the security camera: nine sheets, 193 MB). Sum about 2.86 GB counted, of which only the colour sheet (a third) is ever drawn:
+`_hqPropMatPick` draws a prop as a Lambert on `sm.map` alone. The loader still decoded all three and the cache held them.
+Fix: three-renderer.js `_hqPropDropPbr(sm)` runs once per file material right after its room material is made: normalMap,
+roughnessMap, metalnessMap, aoMap are set null, disposed, and their ImageBitmap closed (unless a kept sheet reads the same
+source); the file material becomes matte. `_mmStale` makes `_mmRead` count the cache again. `hq.mem().undrawn` = sheets let go.
+Off: `window.EW_KEEP_PBR_MAPS = true`. NOT run in a browser (repo rule); whether this was THE crash is not proven, it is the
+memory his readout showed. The readers of a file material's normalMap are creator hair / wings (unit cache) and the gem / key
+picks (their own files), none of them a room prop. NEXT if the hall is still far over budget: the unit models (also three
+sheets each, also drawn as Lambert), and stripping the two sheets in the .opt.glb bake so they are never downloaded.

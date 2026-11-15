@@ -37856,10 +37856,52 @@ const ThreeRenderer = (function () {
     /* the sums: { misc: { n, mb }, rigs: { n, mb }, budget, evicted, freedMB, off } */
     function _mmRead() {
         var seen = {}, mb = 0, n = 0, rb = 0, rn = 0;
+        if (_mmStale) { _mmStale = false; for (var u0 in _miscModelCache) _miscModelCache[u0].bytes = null; }   // THE UNDRAWN MAPS: sheets were let go, count again
         for (var u in _miscModelCache) { var e = _miscModelCache[u]; if (!e.root || e._ewPiece) continue; if (e.bytes == null) e.bytes = _mmBytes(e.root, {}); mb += e.bytes; n++; }
         for (var r in _unitGlbCache) { var ue = _unitGlbCache[r]; if (!ue || !ue.root) continue; if (ue._ew_mmBytes == null) ue._ew_mmBytes = _mmBytes(ue.root, seen); rb += ue._ew_mmBytes; rn++; }
         return { misc: { n: n, mb: +(mb / 1048576).toFixed(1) }, rigs: { n: rn, mb: +(rb / 1048576).toFixed(1) }, budget: _mmBudgetMB(),
-                 evicted: _mmEvicted, freedMB: +(_mmFreed / 1048576).toFixed(1), off: _mmOff() };
+                 evicted: _mmEvicted, freedMB: +(_mmFreed / 1048576).toFixed(1), off: _mmOff(), undrawn: _hqPbrDropped };
+    }
+    /* THE HOLDERS (2026-11-15, mondo: "Crashed inside the door main hall/lobby"; his readout: MEM 1726/700 MB in the Foyer, 2047/700
+       in the Main Hall, Firefox M1 WebGPU). The readout said how much, never WHAT: nothing could be checked from a console paste.
+       Once per room, when the sum is over the budget, one console.warn names the split (props / unit models), the built stage parts
+       and the biggest files of each cache with whether something drawn wears them (LIVE) or they only sit in the cache (idle).
+       Read-only: it drops nothing. ThreeRenderer.hq.memTop() gives the same lines on demand. */
+    var _mmToldRooms = {};
+    function _mmTopLines(H, R, list, live) {
+        var mbs = function (b) { return (b / 1048576).toFixed(0); }, short = function (u) { u = String(u); return u.length > 70 ? '…' + u.slice(-69) : u; };
+        var parts = 0, built = 0;
+        if (H && H.stage && H.stage.parts) for (var id in H.stage.parts) { parts++; var P = H.stage.parts[id]; if (P && (P.built || (P.P && P.P.partRoot))) built++; }
+        var liveN = 0, liveB = 0, idleB = 0;
+        list.forEach(function (r) { if (r.live) { liveN++; liveB += r.bytes; } else idleB += r.bytes; });
+        var top = list.slice().sort(function (a, b) { return b.bytes - a.bytes; }).slice(0, 14);
+        var rigs = [];
+        for (var r in _unitGlbCache) {
+            var ue = _unitGlbCache[r]; if (!ue || !ue.root) continue;
+            var hit = false; ue.root.traverse(function (o) { if (!hit && o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) hit = true; });
+            rigs.push({ url: r, bytes: ue._ew_mmBytes || 0, live: hit });
+        }
+        var rLive = 0; rigs.forEach(function (x) { if (x.live) rLive += x.bytes; });
+        rigs.sort(function (a, b) { return b.bytes - a.bytes; });
+        var L = ['room ' + ((H && H.opts && H.opts.room) || '?') + ' · props ' + R.misc.n + ' files ' + R.misc.mb + ' MB (worn by something drawn: ' + liveN + ' files ' + mbs(liveB) + ' MB, idle ' + mbs(idleB) + ' MB) · unit models ' + R.rigs.n + ' files ' + R.rigs.mb + ' MB (worn ' + mbs(rLive) + ' MB) · budget ' + R.budget + ' MB · stage parts ' + built + ' built of ' + parts + ' · dropped so far ' + R.evicted];
+        top.forEach(function (t) { L.push('prop ' + mbs(t.bytes) + ' MB ' + (t.live ? 'LIVE' : 'idle') + ' ' + short(t.url)); });
+        rigs.slice(0, 10).forEach(function (t) { L.push('unit ' + mbs(t.bytes) + ' MB ' + (t.live ? 'LIVE' : 'idle') + ' ' + short(t.url)); });
+        return L;
+    }
+    function _mmList(live) {
+        var list = [];
+        for (var u in _miscModelCache) {
+            var e = _miscModelCache[u], isLive = false; if (e._ewPiece) continue;
+            if (e.root) e.root.traverse(function (o) { if (!isLive && o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) isLive = true; });
+            list.push({ url: u, bytes: e.bytes || 0, live: isLive });
+        }
+        return list;
+    }
+    function _mmReport(H, R, list, live) {
+        var room = (H && H.opts && H.opts.room) || '?';
+        if (_mmToldRooms[room]) return;
+        _mmToldRooms[room] = 1;
+        console.warn('[MEM] ' + Math.round(R.misc.mb + R.rigs.mb) + ' of ' + R.budget + ' MB and nothing idle to drop. Paste this block to Claude:\n  ' + _mmTopLines(H, R, list, live).join('\n  '));
     }
     function _mmTick(H, now) {
         if (now - _mmAt < MM_EVERY_MS) return;
@@ -37876,6 +37918,7 @@ const ThreeRenderer = (function () {
         }
         var go = _mmPick(list, t, idle, tot - cap * MM_FLOOR, MM_MAX);
         if (!go.length) _mmAt = now + 26000;   // over the budget with nothing free to drop (it is all on the stage): the whole-scene read waits 30 s
+        try { _mmReport(H, R, list, live); } catch (x) {}
         go.forEach(_mmEvict);
         if (go.length) { _objectsDirty = true; try { console.log('[ThreeRenderer] THE MEMORY BUDGET: ' + go.length + ' idle model(s) dropped (' + (_mmFreed / 1048576).toFixed(1) + ' MB so far)'); } catch (x) {} }
     }
@@ -48883,7 +48926,7 @@ const ThreeRenderer = (function () {
                the frame): the sun's shadow replayed every chunk the CAMERA sees (out to 260 m) though its map covers the ground
                round the walker. A chunk whose sphere is outside the shadow camera's box is hidden for that one render: nothing in
                it can land in the map, so the shadow is the same. Every chunk again: window.EW_SHADOW_CHUNK_ALL. */
-            var sunHid = null;
+            var sunHid = null, sunShown = null;
             if (shadowPass && cam && cam.isOrthographicCamera && _hq && _hq.ckList && _hq.ckList.length && _hq.scene === sc && !window.EW_SHADOW_CHUNK_ALL) {
                 try {
                     var sfr = _ewSunFr || (_ewSunFr = new THREE.Frustum()), sm = _ewSunM || (_ewSunM = new THREE.Matrix4()), sL = _hq.ckList;
@@ -48893,6 +48936,7 @@ const ThreeRenderer = (function () {
                     for (var si = 0; si < sL.length; si++) {
                         var sg = sL[si];
                         if (sg.visible && sg._ew_ckSph && !sfr.intersectsSphere(sg._ew_ckSph)) { sg.visible = false; (sunHid || (sunHid = [])).push(sg); }
+                        else if (!sg.visible && sg._ew_sCell && sg._ew_ckOut && sg._ew_ckSph && sfr.intersectsSphere(sg._ew_ckSph)) { sg.visible = true; (sunShown || (sunShown = [])).push(sg); }   // THE SHELL CELLS: a tower behind the camera still shades the street
                     }
                     _ewSunStat.seen = sL.length; _ewSunStat.hid = sunHid ? sunHid.length : 0;
                 } catch (eS) { }
@@ -48900,6 +48944,7 @@ const ThreeRenderer = (function () {
             try { return rawRender.apply(this, arguments); }
             finally {
                 if (sunHid) for (var sj = 0; sj < sunHid.length; sj++) sunHid[sj].visible = true;
+                if (sunShown) for (var sk = 0; sk < sunShown.length; sk++) sunShown[sk].visible = false;
                 if (rearm) this._renderObjectFunction = null;
                 if (unb) for (var uj = 0; uj < unb.length; uj++) unb[uj].isBundleGroup = true;
                 if (!quad) depth--;
@@ -52170,7 +52215,7 @@ const ThreeRenderer = (function () {
         if (S.bvh) L.push('Pick (raycasts) ' + S.bvh.rays.toFixed(0) + '/s · ' + S.bvh.ms.toFixed(1) + ' ms/s · BVH ' + (S.bvh.on ? S.bvh.trees + ' trees (' + _lensFmtN(S.bvh.tris) + ' tris, ' + Math.round(S.bvh.buildMs) + ' ms to build)' + (S.bvh.slow ? ' · ' + S.bvh.slow + ' plain' : '') + (S.bvh.fails ? ' · ' + S.bvh.fails + ' failed' : '') : 'off') + ((S.bvh.skinOut || S.bvh.skinIn) ? ' · skinned ' + S.bvh.skinOut.toFixed(0) + '/s past their pose box, ' + S.bvh.skinIn.toFixed(0) + '/s tested' : ''));
         if (S.text) L.push('Text (HQ plates) ' + (S.text.cv ? 'canvas (node renderer)' : S.text.on ? 'troika' : (S.text.lib ? 'CSS2D (switched off)' : 'CSS2D (troika not loaded)')) + ' · ' + S.text.gpu + ' on the GPU · ' + S.text.css + ' CSS2D');
         try { var _fs = (typeof ThreeVFX !== 'undefined' && ThreeVFX.fxStats) ? ThreeVFX.fxStats() : null; if (_fs && (_fs.live || _fs.groups)) L.push('Particles ' + _fs.live + ' live · ' + _fs.draws + ' draws' + (_fs.batched ? ' (batched, ' + _fs.groups + ' kinds seen)' : ' (one per particle)') + (_fs.quarks && (_fs.quarks.on || _fs.quarks.made) ? ' · quarks layer ' + (_fs.quarks.on ? _fs.quarks.state : 'off') + ', ' + _fs.quarks.live + ' systems live' : '')); } catch (e) {}   // R7
-        if (S.chunks) L.push('Chunks' + (S.chunks.off ? ' (cull off)' : '') + ': fence plots ' + S.chunks.fencesDrawn + '/' + S.chunks.fences + ' drawn · prop cells ' + S.chunks.cellsDrawn + '/' + S.chunks.cells + ' drawn' + (S.chunks.props || S.chunks.rooms ? ' · prop plots ' + S.chunks.propsDrawn + '/' + S.chunks.props + ' · rooms ' + S.chunks.roomsDrawn + '/' + S.chunks.rooms : '') + (S.chunks.sunHid ? ' · ' + S.chunks.sunHid + ' left out of the sun shadow' : ''));
+        if (S.chunks) L.push('Chunks' + (S.chunks.off ? ' (cull off)' : '') + ': fence plots ' + S.chunks.fencesDrawn + '/' + S.chunks.fences + ' drawn · prop cells ' + S.chunks.cellsDrawn + '/' + S.chunks.cells + ' drawn' + (S.chunks.props || S.chunks.rooms ? ' · prop plots ' + S.chunks.propsDrawn + '/' + S.chunks.props + ' · rooms ' + S.chunks.roomsDrawn + '/' + S.chunks.rooms : '') + (S.chunks.shell ? ' · ground + building squares ' + S.chunks.shellDrawn + '/' + S.chunks.shell : '') + (S.chunks.sunHid ? ' · ' + S.chunks.sunHid + ' left out of the sun shadow' : ''));
         try {   // THE CHANGERS OUT: which recorded groups keep re-recording, and why (session counts)
             var bw = (_ewBun.last || []).map(function (g) { var w = (g._ew_bun && g._ew_bun.why) || {}; return { n: String(g._ew_bunName || g.name || g.type).replace(/^site_prebuilt_/, ''), k: g._ew_pChunk || g._ew_chunk || '', t: (w.values | 0) + (w.tree | 0) + (w.rests | 0) * 5 + (w.cold | 0), w: w, d: !!(g._ew_bun && g._ew_bun.dyn), b: !!g.isBundleGroup }; }).filter(function (x) { return x.t > 2; }).sort(function (x, y) { return y.t - x.t; }).slice(0, 4);
             if (bw.length || _ewBun.outV) L.push('Re-recorded most: ' + (bw.map(function (x) { return x.n + (x.k ? ' ' + x.k : '') + ' (values ' + (x.w.values | 0) + ', tree ' + (x.w.tree | 0) + ', rests ' + (x.w.rests | 0) + (x.w.cold ? ', cold ' + x.w.cold : '') + (x.d ? ', demoted' : '') + (x.b ? '' : ', classic now') + ')'; }).join(' · ') || 'none') + ' · changers moved out ' + (_ewBun.outV | 0));
@@ -66536,7 +66581,39 @@ const ThreeRenderer = (function () {
         lm.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: a prop's foot darkens over the floor, its back toward a wall
         lm._ew_shared = true;
         _hqPropMatCache.set(sm.uuid, lm);
+        _hqPropDropPbr(sm);
         return lm;
+    }
+    /* THE UNDRAWN MAPS (2026-11-15, mondo: "Crashed inside the door main hall/lobby", his readout MEM 2047/700 MB there).
+       Every Meshy prop file ships THREE 2048 x 2048 sheets (colour, normal, metal + roughness) and the loader decodes all
+       three: 64 MB a file by the readout's count, on a stapler as on a couch. The room draws a prop as a matte Lambert on
+       its COLOUR sheet alone (above), so the other two were decoded, held for the whole visit and never drawn once: the
+       Main Hall + the Foyer hold 45 such files, about 1.9 GB of sheets nothing shows (measured off the files on the CDN).
+       Once a prop's file material has its room material, the sheets that material does not wear (normal, roughness,
+       metalness, ao) are let go: the reference dropped, the GPU copy (if any) disposed, the decoded picture left to the
+       collector. The colour, emissive and alpha sheets are never touched, so the picture is the same. The file material
+       itself becomes matte (metalness 0, roughness 1), which is how the room drew it anyway. The memory readout is counted
+       again after. Off: window.EW_KEEP_PBR_MAPS = true before the room loads. Count: ThreeRenderer.hq.mem().undrawn. */
+    var _hqPbrDropped = 0, _mmStale = false;
+    function _hqPropDropPbr(sm) {
+        if (!sm || !sm.isMeshStandardMaterial) return;
+        if (typeof window !== 'undefined' && window.EW_KEEP_PBR_MAPS) return;
+        var keep = [sm.map, sm.emissiveMap, sm.alphaMap], gone = [];
+        ['roughnessMap', 'metalnessMap', 'aoMap', 'normalMap'].forEach(function (k) {
+            var t = sm[k]; if (!t || !t.isTexture) return;
+            if (keep.indexOf(t) >= 0) return;   // one sheet worn twice: the drawn use keeps it
+            sm[k] = null;
+            if (gone.indexOf(t) < 0) gone.push(t);
+        });
+        if (!gone.length) return;
+        var keptSrc = keep.map(function (t) { return t && t.source; });
+        gone.forEach(function (t) {
+            try { t.dispose(); } catch (e) {}
+            /* the decoded picture is handed back now (a browser collects a bitmap late), unless a kept sheet reads the same picture */
+            try { var src = t.source, im = src && src.data; if (im && keptSrc.indexOf(src) < 0 && typeof im.close === 'function') { im.close(); t._ew_undrawn = true; } } catch (e) {}
+        });
+        sm.metalness = 0; sm.roughness = 1; sm.needsUpdate = true;
+        _hqPbrDropped += gone.length; _mmStale = true;
     }
     /* THE STATUES (2026-11-15, the Chicago pass — the museum's bronze lions): a catalogue row's / a prop row's `statue: 0xRRGGBB`
        casts the model in that metal: the room's own lit Lambert's sheet kept (the fur / the folds still read) under the metal's
@@ -82287,7 +82364,7 @@ const ThreeRenderer = (function () {
        a span inside the body's disc that rises past a step and starts under the head is a wall; a jump lands on a span top; the
        airborne body never enters a span. Built a few ms a frame off a queue, cached per model + fit (every copy of a model shares
        one), the catalogue footprint standing in until it lands. Catalogue `mesh: false` keeps a prop on its footprint. ═════════ */
-    var HQ_MC = { cell: 0.25, maxCells: 90000, step: 0.15, gap: 0.3, head: 1.75, budgetMs: 5, maxTris: 400000, minSpan: 0.8, minH: 0.3 };
+    var HQ_MC = { cell: 0.25, maxCells: 90000, step: 0.15, gap: 0.3, head: 1.75, shoulder: 1.3, headR: 0.14, budgetMs: 5, maxTris: 400000, minSpan: 0.8, minH: 0.3 };
     var _mcCache = {}, _mcJobs = [], _mcTimer = 0, _mcL = { x: 0, z: 0 };
     /* a material a body can stand on / bump into: never a glow, a beam, a see-through sheet, a sprite */
     function _mcSolidMat(m) {
@@ -82462,6 +82539,17 @@ const ThreeRenderer = (function () {
         }
         return false;
     }
+    /* THE THIN BODY (2026-11-15, mondo: "make these lamp collision boxes thinner" — the Main Hall's globe lamps): the body is its full
+       disc up to the shoulders and a HEAD above them. A part of a model that starts over the shoulders (a lamp's globe on its thin
+       pole, a sign's board on its post, a parasol) used to be a wall as wide as itself PLUS the whole body disc down to the floor:
+       half a metre of nothing round a 2 cm pole. Over `shoulder` only the head's own width (`headR`) is solid, so such a prop blocks
+       like its pole. A span that reaches under the shoulders (a wall, a counter, a car) is the full disc as before. On foot, on the
+       board and in the air alike: `lo` = the lowest solid height asked, `feet` = the feet. */
+    function _mcBodySolid(b, x, z, lo, feet) {
+        var sh = feet + HQ_MC.shoulder;
+        if (lo < sh) { if (_mcSolid(b, x, z, lo, sh, HQ_BODY_R)) return true; lo = sh; }
+        return _mcSolid(b, x, z, lo, feet + HQ_MC.head, HQ_MC.headR);
+    }
     /* the highest span top under the body's centre at or under `under` (room metres) whose column leaves the head clear — null for none */
     function _mcTopUnder(b, x, z, under, over) {
         var M = b.mc, L = _mcLoc(b, x, z), lx = L.x, lz = L.z, P = HQ_BLK_STAND_PAD;
@@ -82484,7 +82572,7 @@ const ThreeRenderer = (function () {
         var M = b.mc, R = HQ_BODY_R; if (!_mcNear(b, x, z, R)) return y;
         var ref = (curY != null) ? curY : y;
         var t = _mcTopUnder(b, x, z, ref + HQ_STEP_TOL, y + 0.02), ny = (t !== null && t > y) ? t : y;
-        if (_mcSolid(b, x, z, Math.max(ny, ref) + HQ_STEP_TOL, ny + HQ_MC.head, R)) return null;   // (from up on it, what is under a step of the feet is walked off, never a wall)
+        if (_mcBodySolid(b, x, z, Math.max(ny, ref) + HQ_STEP_TOL, ny)) return null;   // (from up on it, what is under a step of the feet is walked off, never a wall)
         return ny;
     }
     function _hqBlkTop(b) { return (b.top != null) ? b.top : 1e9; }
@@ -82519,7 +82607,7 @@ const ThreeRenderer = (function () {
         var hits = _hqBlockersUnder(x, z);
         for (var i = 0; i < hits.length; i++) {
             var b = hits[i];
-            if (b.mc) { if (_mcSolid(b, x, z, y + 0.05, y + HQ_MC.head, HQ_BODY_R)) return false; continue; }   // THE REAL COLLISION: only the model's own spans
+            if (b.mc) { if (_mcBodySolid(b, x, z, y + 0.05, y)) return false; continue; }   // THE REAL COLLISION: only the model's own spans
             if (b.y != null && b.y > y + 1.2) continue;
             if (y < _hqBlkTop(b) - 0.05) return false;
         }
@@ -84583,6 +84671,34 @@ const ThreeRenderer = (function () {
             /* Keep the free tangential component after a brush. Head-on contact
                stops without a bail; round NPCs allow a gentle shoulder slide. */
             _hqRideObstacleSlide(pl, R, ox, oz, mx, mz, dt, S);
+            /* THE WAY ROUND (2026-11-15, mondo: "things will block my movement when skateboarding, but then when i get off and walk i
+               can walk past them just fine. Why are there invisible walls for skateboarding only?"): the board reads the SAME colliders
+               as the feet, but a walker brushing a prop's edge slides round it without a thought, while the board, which rolls on one
+               line, STOPPED DEAD on any touch (the wall scrub: 15% of the speed a frame) — at a collider's invisible edge, half a metre
+               from a lamp's pole, that is a wall. The slide above knows only the old disc footprints and people; every model with a
+               mesh collider (the lamps, most props) had none. A step that made no way now tries the same step turned a little to
+               either side (the keys' side first, up to ~70°); the first that is free is taken, the roll turns onto it and keeps the
+               share of its speed that points that way. A square-on hit finds no such step and still stops; a door ahead keeps its
+               press-in. Any collider, any room. */
+            if (!prof && !skipB && !pl.air && Math.abs(R.v) > 0.5) {
+                var stW = Math.hypot(mx, mz) * dt;
+                if (stW > 0.0005 && Math.hypot(pl.x - ox, pl.z - oz) < stW * 0.3) {
+                    var dW = _hqFindTarget();
+                    if (!(dW && dW.kind === 'door')) {
+                        var baseW = Math.atan2(mx, mz), s0W = wDelta < 0 ? -1 : 1, doneW = false;
+                        for (var aW = 0.3; aW < 1.25 && !doneW; aW += 0.3) {
+                            for (var qW = 0; qW < 2 && !doneW; qW++) {
+                                var sgW = qW ? -s0W : s0W, anW = baseW + sgW * aW;
+                                var xW = ox + Math.sin(anW) * stW, zW = oz + Math.cos(anW) * stW, yW = _hqSurface(xW, zW, pl.y, false);
+                                if (yW === null) continue;
+                                pl.x = xW; pl.z = zW; _hqRideSetY(pl, R, yW, S);
+                                _hqRideTurn(R, R.hd + sgW * aW); R.v *= Math.cos(aW);
+                                doneW = true;
+                            }
+                        }
+                    }
+                }
+            }
             var sgM = R.v < 0 ? -1 : 1, wantM = Math.abs(R.v) * cTm * dt, movedM = sgM * ((pl.x - ox) * Math.sin(R.hd) + (pl.z - oz) * Math.cos(R.hd));   // rev 8: the wanted step is the tangent's horizontal share (a climb is not a wall)
             var doorT = (wantM > 0.002 && movedM < wantM * 0.3) ? _hqFindTarget() : null;
             _hqRideSlide(R, S, sgM, wantM, pl.x - ox, pl.z - oz, !!(doorT && doorT.kind === 'door'));   // rev 3: a wall / a prop is a stop, never a bail
@@ -89047,14 +89163,15 @@ const ThreeRenderer = (function () {
     var _ewSunFr = null, _ewSunM = null, _ewSunStat = { seen: 0, hid: 0 };   // THE SUN'S OWN CHUNKS
     function _hqChunkStats(H) {
         var L = H && H.ckList; if (!L || !L.length) return null;
-        var f = 0, fd = 0, c = 0, cd = 0, p = 0, pd = 0, b = 0, bd = 0;
+        var f = 0, fd = 0, c = 0, cd = 0, p = 0, pd = 0, b = 0, bd = 0, sc = 0, scd = 0;
         for (var i = 0; i < L.length; i++) {
             var g = L[i];
-            if (g._ew_chunk != null) { f++; if (!g._ew_ckOut) fd++; }
+            if (g._ew_sCell) { sc++; if (!g._ew_ckOut) scd++; }
+            else if (g._ew_chunk != null) { f++; if (!g._ew_ckOut) fd++; }
             else if (g._ew_pChunk) { if (g._ew_pcBld) { b++; if (!g._ew_ckOut) bd++; } else { p++; if (!g._ew_ckOut) pd++; } }
             else { c++; if (!g._ew_ckOut) cd++; }
         }
-        return { fences: f, fencesDrawn: fd, cells: c, cellsDrawn: cd, props: p, propsDrawn: pd, rooms: b, roomsDrawn: bd, sunHid: _ewSunStat.hid, off: typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL };
+        return { fences: f, fencesDrawn: fd, cells: c, cellsDrawn: cd, props: p, propsDrawn: pd, rooms: b, roomsDrawn: bd, shell: sc, shellDrawn: scd, sunHid: _ewSunStat.hid, off: typeof window !== 'undefined' && !!window.EW_HQ_NO_CHUNK_CULL };
     }
     /* ══ THE PROP CHUNKS + THE CLOSED ROOMS (2026-11-14, mondo in Disaster City after the interior passes, WebGPU on the Mac: 6.8 fps,
        3748 draws, "2996 site props (outside its bundle)") ══
@@ -93240,13 +93357,23 @@ const ThreeRenderer = (function () {
     function _hqBatchParOn(o) { o._ew_bp = o.parent; Object.defineProperty(o, 'parent', { configurable: true, enumerable: true, get: _hqBatchParGet, set: _hqBatchParSet }); }
     function _hqBatchParOff(o) { var p = o._ew_bp; delete o.parent; o.parent = p; o._ew_bp = undefined; }
     function _hqBatchInstall(root, cs, B) {
-        var c0 = cs[0], o0 = c0.o, geo = _hqBatchMerge(cs);
+        var c0 = cs[0], o0 = c0.o, single = cs.length === 1;
+        /* THE SHELL CELLS, a piece alone in its look and square: no merge — a stand-in mesh on the piece's OWN geometry (nothing
+           copied), placed where the piece stands, hung in the square's group so it is culled with the square. Only when the
+           square's group exists and the piece's place splits cleanly into position / turn / scale. */
+        var geo = single ? c0.g : _hqBatchMerge(cs);
         var mesh = new THREE.Mesh(geo, c0.m);
+        if (single) {
+            c0.M.decompose(mesh.position, mesh.quaternion, mesh.scale); mesh.updateMatrix();
+            if (!_hqBatchSame(mesh.matrix, c0.M)) return null;
+        }
         mesh.name = 'hq_batch'; mesh._ew_hqBatch = true; mesh._ew_occSkip = true; mesh._ew_shadowFlagged = true;
         mesh.castShadow = o0.castShadow; mesh.receiveShadow = o0.receiveShadow; mesh.renderOrder = o0.renderOrder; mesh.layers.mask = o0.layers.mask;
         mesh.raycast = function () {};   // the pieces answer the rays, as they always did
         var host = _hqBatchHost(o0, root);   // THE PROP CHUNKS: the merged mesh lives in its pieces' chunk (culled and bundled with them)
-        var rec = { mesh: mesh, cs: cs, root: root, host: host, B: B, anc: [], live: true };
+        if (host === root) { var shc = null; try { shc = _hqShellCell(root, geo, single ? c0.M : null); } catch (eSC) { shc = null; } if (shc) host = shc; }   // THE SHELL CELLS
+        if (single && !host._ew_sCell) return null;   // a stand-in is only worth its square's cull
+        var rec = { mesh: mesh, cs: cs, root: root, host: host, B: B, anc: [], live: true, single: single };
         _hqBatchWrap();
         host.add(mesh);
         cs.forEach(function (c) {
@@ -93263,6 +93390,30 @@ const ThreeRenderer = (function () {
         B.batches.push(rec); B.stats.batches++; B.stats.pieces += cs.length; B.stats.verts += geo.attributes.position.count;
         return rec;
     }
+    /* THE SHELL CELLS (2026-11-15, mondo in Disaster City: 20 FPS with our code at 21 ms and a quarter of the pixels changing
+       nothing; his lobby, 139 replayed meshes, runs at 80). The frame is the graphics card's, and what it is fed is the count of
+       pieces: ~7,000 meshes replayed in the scene pass and again in the sun's shadow. The city's ground, roads and buildings merge
+       into ~1,100 batches (96 m squares, one per look), and every one of them hung in the SHELL group: one recording for the
+       whole 504 m city, replayed whole wherever the camera looks and whole again for the sun. Now, in a big room (THE CHUNKS'
+       rule), a shell batch hangs in its square's own group under the chunk root: a chunk like the fence plots, so it is left out
+       when its square is off camera (no far limit: a skyline stays) and out of the sun's box. A square behind the camera that
+       stands in the sun's box is drawn in the sun's shadow render all the same (THE SUN'S OWN CHUNKS), so a tower behind you
+       still shades the street. Off: window.EW_HQ_NO_SHELL_CELLS (before the room is entered). */
+    var _hqShellV = null;
+    function _hqShellCell(root, geo, M) {
+        var H = _hq; if (!H || root !== H.shellGroup || !H.partRoot || (typeof window !== 'undefined' && window.EW_HQ_NO_SHELL_CELLS) || !_hqChunkBig(H)) return null;
+        var C = H.chunks;
+        if (!C) { C = H.chunks = { root: new THREE.Group(), cells: {} }; C.root.name = 'hq_chunks'; H.partRoot.add(C.root); }
+        root.updateWorldMatrix(true, false); C.root.updateWorldMatrix(true, false);
+        if (!_hqBatchSame(root.matrixWorld, C.root.matrixWorld)) return null;   // the merged geometry is in the shell's frame
+        if (!geo.boundingSphere) geo.computeBoundingSphere();
+        var bs = geo.boundingSphere; if (!bs || !isFinite(bs.center.x) || !isFinite(bs.center.z)) return null;
+        var cv = (_hqShellV || (_hqShellV = new THREE.Vector3())).copy(bs.center); if (M) cv.applyMatrix4(M);
+        var T = (HQ_BATCH.cellM || 96) * _hqUnits(), key = 'shell:' + Math.floor(cv.x / T) + ',' + Math.floor(cv.z / T);
+        var g = C.cells[key];
+        if (!g) { g = C.cells[key] = new THREE.Group(); g.name = 'hq_shell_cell'; g._ew_chunk = key; g._ew_sCell = true; C.root.add(g); _hqChunkReg(H, g, 1e12); }
+        return g;
+    }
     /* where a merged mesh hangs: the prop chunk its pieces stand in, else the batch's root */
     function _hqBatchHost(o, root) {
         for (var q = o.parent; q && q !== root; q = q.parent) if (q._ew_pChunk) return q;
@@ -93278,7 +93429,7 @@ const ThreeRenderer = (function () {
             if (!L.length) { var v = q._ew_bv; delete q.visible; q.visible = v; q._ew_bAnc = null; _hqBatchParOff(q); }
         });
         if (rec.mesh.parent) rec.mesh.parent.remove(rec.mesh);
-        try { rec.mesh.geometry.dispose(); } catch (e) {}
+        if (!rec.single) { try { rec.mesh.geometry.dispose(); } catch (e) {} }   // a stand-in wears its piece's own geometry
         var B = rec.B, i2 = B.batches.indexOf(rec); if (i2 >= 0) B.batches.splice(i2, 1);
         B.stats.batches--; B.stats.pieces -= rec.cs.length; B.stats.verts -= rec.mesh.geometry.attributes.position.count; B.stats.broken++;
         if (why && typeof window !== 'undefined' && window.EW_HQ_DEBUG) console.log('[HQ batch] a batch of ' + rec.cs.length + ' handed back (' + why + ')');
@@ -93302,6 +93453,7 @@ const ThreeRenderer = (function () {
             if ((++n & 63) === 0 && _hqSliceDue()) yield;
         }
         B.cands = [];
+        var minN = (_hq && root === _hq.shellGroup && _hqChunkBig(_hq) && !(typeof window !== 'undefined' && (window.EW_HQ_NO_SHELL_CELLS || window.EW_HQ_NO_SHELL_SINGLES))) ? 1 : HQ_BATCH.minN;   // THE SHELL CELLS: a lone piece gets a stand-in in its square
         /* THE PERF PASS 2: a re-scan's late pieces (a kit that landed, a lot built after the first pass) join their look's batch
            in the same square — that batch is handed back and re-merged with them — instead of standing alone */
         var have = {};
@@ -93311,13 +93463,13 @@ const ThreeRenderer = (function () {
             var nvNew = 0; cs.forEach(function (x) { nvNew += x.g.attributes.position.count; });
             var ex = (have[keys[k]] || []).filter(function (r) { return r.live && r.mesh.geometry.attributes.position.count + nvNew <= HQ_BATCH.maxVerts; })[0];
             if (ex && ex.cs.every(function (x) { return _hqBatchStill(x, root, inv, tmp); })) { var old = ex.cs; _hqBatchBreak(ex, null); B.stats.broken--; cs = old.concat(cs); }
-            if (cs.length < HQ_BATCH.minN) continue;
+            if (cs.length < minN) continue;
             /* a group past maxVerts goes as several batches */
             var run = [], verts = 0;
             for (var j = 0; j <= cs.length; j++) {
                 var cc = cs[j], nv = cc ? cc.g.attributes.position.count : 0;
                 if (!cc || (run.length && verts + nv > HQ_BATCH.maxVerts)) {
-                    if (run.length >= HQ_BATCH.minN) { var still = run.every(function (x) { return _hqBatchStill(x, root, inv, tmp); }); if (still) _hqBatchInstall(root, run, B).key = keys[k]; }
+                    if (run.length >= minN) { var still = run.every(function (x) { return _hqBatchStill(x, root, inv, tmp); }); if (still) { var nrec = _hqBatchInstall(root, run, B); if (nrec) { nrec.key = keys[k]; if (nrec.single) B.stats.singles = (B.stats.singles || 0) + 1; } } }
                     run = []; verts = 0;
                     if (_hqSliceDue()) yield;
                 }
@@ -94855,6 +95007,7 @@ const ThreeRenderer = (function () {
            { misc: { n, mb }, rigs: { n, mb }, budget, evicted, freedMB, off } */
         cull: function () { return _hq ? _hqCullStats(_hq) : null; },
         mem: function () { return _mmRead(); },
+        memTop: function () { try { var R = _mmRead(), live = _mmLive(_hq); return _mmTopLines(_hq, R, _mmList(live), live); } catch (e) { return ['unreadable: ' + (e && e.message)]; } },
         /* THE WORLD CLOCK (OPEN_WORLD_PLAN Phase 3): the room's place on the clock — { hour, room, locked, day, dusk, lamp, sunAz,
            sunEl, moonEl, key: { x, y, z, i } } | null (an unclocked room). The hour itself is map.js's (window.hqClockSet(h) moves it) */
         clock: function () {

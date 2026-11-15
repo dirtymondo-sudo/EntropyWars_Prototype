@@ -127,6 +127,7 @@ Never deliver patches, diffs or loose files in place of the merged PR + upload (
 - `bake-cutscenes.js` (2026-11-15): `node bake-cutscenes.js <Entropy_Wars_Cutscene_Notes_….json> [--dry-run]` bakes mondo's CUTSCENE EDITOR export: changed
   lines into data.js STORY_CUTSCENES word for word; prints the cuts, added lines and notes to do by hand. Notes: story-party-progression.md "THE CUTSCENE EDITOR".
 - `bake-dungeons.js` (2026-11-14): checks the plot dungeons (data.js PD_DUNGEONS). Notes: areas-complexes.md "PLOT DUNGEONS, THE BUILD".
+- `bake-woods.js` (2026-11-15): writes The Woods on plots (`site_prebuilt_fairy_forest_plots`) from `docs/areas/woods/layout.json`. Notes: areas-complexes.md "THE WOODS ON PLOTS".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
   the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes
@@ -161,6 +162,21 @@ making changes: syntax-check the edited JS (`node --check <file>`), merge and
 write the sync zip — that's it. Only run the playtest harness / any browser automation
 when the user explicitly requests it (e.g. "playtest <mode>") or when a change
 is genuinely impossible to validate any other way AND the user has agreed.
+
+### RULE #1d — THE FRESH CHECK: NEVER BUILD OR TEST ON AN OLD COPY (mondo 11-15)
+A cloud container's clone is shallow and its local `origin/main` ref can be DAYS old. On 11-15 a thread ran
+`git checkout -B <branch> origin/main` without fetching, got the 11-09 game and posted a proof picture of it.
+- FIRST command of every thread, and again before any browser run or proof picture:
+  `git fetch origin main && git merge origin/main` (branch from the FETCHED ref only). "refusing to merge unrelated
+  histories" = shallow clone: `git fetch --deepen=300 origin main`, then merge.
+- `node fresh-check.js` prints `[EW BUILD] HEAD … · main … · N PRs behind · FRESH|STALE`; exit 1 when stale (a PR main
+  merged over 60 min ago is missing, no common history, or GitHub unreachable).
+- The local server (`npm start`, off Render) runs it on every page load: a stale checkout serves a red STALE CHECKOUT
+  page, not the game. A fresh page gets `window.EW_BUILD` + the `[EW BUILD]` console line and re-reads every game
+  script it loaded from cdn.entropywars.net; any that differs from the checkout (live R2 code in place of your edits, a
+  cached old file) covers the page in a red CODE MISMATCH screen. So a harness must serve the checkout's .js/.css
+  (playtest_hq.js does). Never work around either screen; fix the checkout. `EW_ALLOW_STALE=1` only for a bisect.
+- Every proof reply states the `[EW BUILD]` line's HEAD. `.claude/hooks/session-start.sh` fetches main at session start.
 
 ### RULE #1b — CACHE-BUSTING (MANDATORY on EVERY R2 file delivery)
 Assets are served with immutable long-cache headers, so an uploaded file does

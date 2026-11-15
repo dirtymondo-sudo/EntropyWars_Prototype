@@ -2452,6 +2452,13 @@
             if (_hqSuspended) return false;
             /* THE CAR (Phase 8, 2026-09-14): remember the floor it was boarded from — the panel marks it YOU ARE HERE */
             if (roomId === 'car' && _hqCurRoom && _hqCurRoom !== 'car') window._hqCarFrom = _hqCurRoom;
+            /* THE WAY OUT (2026-11-15): the car's own doors (`out`) open back onto that floor — at the door there that leads into the car */
+            if (roomId === 'car') { try {
+                const out = (DOOR_HQ.rooms.car.doors || []).find(d => d.id === 'out'), fr = window._hqCarFrom, R = fr && DOOR_HQ.rooms[fr];
+                const back = R && (R.doors || []).find(d => d.action && d.action.room === 'car' && !d.sealed);
+                if (out) out.action = back ? { room: fr, at: back.id } : { room: 'central_egress', at: 'elevator' };
+                if (out) out.label = String((DOOR_HQ.rooms[out.action.room] || {}).label || 'THE DOORS').toUpperCase();   // the plate over the doors names the floor (the replate rule)
+            } catch (e) { console.warn('[HQ] car way out', e); } }
             _hqLastRoom = roomId;
             _hqLastDoor = at || null;
             window._hqClosePanel();
@@ -6470,14 +6477,20 @@
             const el = (DOOR_HQ.rooms.central_egress.doors || []).find(d => d.id === 'elevator') || {};
             const floors = Array.isArray(el.floors) ? el.floors : [];
             const stopIds = new Set(rows.map(r => r.id));
+            const inCar = _hqCurRoom === 'car';
+            const outDoor = (DOOR_HQ.rooms.car && DOOR_HQ.rooms.car.doors || []).find(d => d.id === 'out');
+            const outAct = (outDoor && outDoor.action && _hqRoomExists(outDoor.action.room)) ? outDoor.action : { room: 'central_egress', at: 'elevator' };
             html += '<p class="hq-panel-desc">' + _hqEsc(c.desc || 'The panel by the car.') + '</p>';
             html += '<div class="hq-rows">' + rows.map(r => {
-                const chip = r.here ? '<i class="hq-lamp-chip st-stabilized">YOU ARE HERE</i>' : (r.locked ? `<i class="hq-lamp-chip st-clearance" title="${_hqEsc(r.gate)}">${_hqEsc(r.gate)}</i>` : `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.room)}" data-at="${_hqEsc(r.at)}">${_hqEsc(r.id)} ▸ GO</button>`);
-                return `<div class="hq-row hq-row-tray"><b>${_hqEsc(r.id)} · ${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}</span>${chip}</div>`;
+                /* THE WAY OUT (2026-11-15): inside the car, the floor it stands at is a button too — the doors open and you step out */
+                const chip = r.here ? (inCar ? `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(outAct.room)}" data-at="${_hqEsc(outAct.at || '')}">${_hqEsc(r.id)} ▸ STEP OUT</button>` : '<i class="hq-lamp-chip st-stabilized">YOU ARE HERE</i>') : (r.locked ? `<i class="hq-lamp-chip st-clearance" title="${_hqEsc(r.gate)}">${_hqEsc(r.gate)}</i>` : `<button class="hq-btn hq-btn-sm" data-room="${_hqEsc(r.room)}" data-at="${_hqEsc(r.at)}">${_hqEsc(r.id)} ▸ GO</button>`);
+                return `<div class="hq-row hq-row-tray"><b>${_hqEsc(r.id)} · ${_hqEsc(r.label)}</b><span>${_hqEsc(r.sub)}${(r.here && inCar) ? ' · YOU ARE HERE' : ''}</span>${chip}</div>`;
             }).join('') + '</div>';
             const others = floors.filter(f => !stopIds.has(f));
             if (others.length) html += '<div class="hq-chips"><span>THE OTHER BUTTONS</span>' + others.map(f => `<i class="hq-chip dim">${_hqEsc(f)}</i>`).join('') + '</div>';
-            html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">' + (_hqCurRoom === 'car' ? 'STAY IN THE ELEVATOR' : 'STEP BACK') + '</button></div>';
+            /* a floor that is on no button (H-Wing, the thirteenth): the way out is its own button under the rows */
+            const offPanel = inCar && !rows.some(r => r.here);
+            html += '<div class="hq-panel-actions"><button class="hq-btn" data-close="1">' + (inCar ? 'STAY IN THE ELEVATOR' : 'STEP BACK') + '</button>' + (offPanel ? `<button class="hq-btn hq-btn-primary" data-room="${_hqEsc(outAct.room)}" data-at="${_hqEsc(outAct.at || '')}">STEP OUT ▸ ${_hqEsc(String((DOOR_HQ.rooms[outAct.room] || {}).label || 'THIS FLOOR').toUpperCase())}</button>` : '') + '</div>';
             html += '<p class="hq-panel-note">There is no 13. There is no B2 on the panel either; the building has one.</p>';
             return html;
         }

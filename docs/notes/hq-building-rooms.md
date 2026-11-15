@@ -348,6 +348,14 @@ axes — place the prop at `face` 0 / 180) and both prop-blocker sites in
 #2). doorhq.test.js guards the ride, both rooms, the sky diff, the rect and
 the source sites. Still open in 7.4: the Fourier Foyer only.
 
+## THE CAR'S WAY OUT — 2026-11-15 (mondo: "once i walk into it i am stuck unless i pick a different floor")
+`DOOR_HQ.rooms.car` now has ONE door, `out` (south wall, `proc: 'elevator'`, walk-through). map.js `_hqGoRoom` retargets its
+`action` + plate `label` on every boarding to the floor the car was boarded from (`_hqCarFrom`; the door there whose action
+leads into the car; the mezzanine when unknown, e.g. the story ride). The floor panel's own row for that floor is a
+`▸ STEP OUT` button inside the car (it was a dead YOU ARE HERE chip); a floor on no button (H-Wing, the thirteenth) gets a
+STEP OUT button under the rows. Viewer-local (RULE #2). The door's frame covers the south wall's props (car_panel, camera,
+certificate) until the car's redesign (same thread) lays the wall out again.
+
 ## THE EXPLORATION FLOORS (HQ plan Phase 8 stage 1) — shipped 2026-09-14, local delivery
 The elevator is a ROOM: `DOOR_HQ.rooms.car` has no doors — its FLOOR
 PANEL (counter `panel` → map.js `_hqFloorPanelHtml`, shared with the
