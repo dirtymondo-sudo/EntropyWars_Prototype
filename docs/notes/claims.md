@@ -19,7 +19,7 @@ Sides: **owner** = mondo's Claude project (many threads). **second** = the other
 | The Desert | owner | 2026-11-15 | interiors build stopped partway |
 | The Woods | owner | 2026-11-15 | trees wait mondo's reaction |
 | The Mountains (+ the Hollywood Hills room, the city's north beach strip in B.js beach() and EDGES.n.cap) | second | 2026-11-15 | plan 2 built: Hills room, Shasta/Olympus swap, north beach; not seen on screen, waits mondo's look |
-| The Beach (plot build: the Shore, the Harbour, the Island; `docs/plans/world-zones/beach-layout.json`) | second | 2026-11-15 | plan 2 posted (the Long Pier starts on the sand; `beach-layout-2.json`, `beach_plot_plan_2.png`), waits mondo's OK; nothing built |
+| The Beach (plot build: the Shore, the Harbour, the Island; `docs/plans/world-zones/beach-layout.json`) | second | 2026-11-15 | plan 3 posted (14 x 10 plots, The Ocean + The Bermuda Triangle as districts; `beach-layout-3.json`, `beach_plot_plan_3.png`), waits mondo's OK; nothing built |
 | Disaster City (all districts, heights, residents, traffic) | owner | 2026-11-13 | several districts wait mondo's answers |
 | DOOR HQ (rooms, elevator, Main Hall) | owner | 2026-11-15 | elevator redesign waits mondo's OK |
 | First quest cutscenes + cutscene editor | owner | 2026-11-13 | notes fixes, ride down and foyer in progress |
