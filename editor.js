@@ -2616,7 +2616,7 @@
         var draw = function () {
             var q = ($('edSearch').value || '').toLowerCase(), h = '', fam = null, n = 0;
             all.forEach(function (t, i) {
-                if (q && (t.key + ' ' + t.fam + ' ' + (t.label || '') + ' ' + (t.tip || '')).toLowerCase().indexOf(q) < 0) return; if (n++ > 1200) return;   // every sheet (was 400: it cut off the tile / metro / liquid families and DOOR HQ's own)
+                if (q && (t.key + ' ' + t.fam + ' ' + (t.label || '') + ' ' + (t.tip || '')).toLowerCase().indexOf(q) < 0) return; if (n++ > 4000) return;   // every sheet (was 400, then 1200: the Urban Decay pack's 681 more went past it; the pictures load lazily)
                 if (t.fam !== fam) { fam = t.fam; h += '<div class="ed-sub ed-swfam">' + esc(fam) + '</div>'; }
                 h += '<button class="ed-sw' + (t.key === cur ? ' on' : '') + '" data-i="' + i + '" title="' + esc(t.tip || t.key) + '"><img loading="lazy" src="' + esc(t.url || '') + '" alt=""><span>' + esc(t.label || t.key.replace(/^urban:/, '')).replace(/_/g, '_<wbr>') + '</span></button>';   // names wrap at a word or an underscore
             });
