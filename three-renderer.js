@@ -45179,7 +45179,7 @@ const ThreeRenderer = (function () {
             if (_ewBun.rpShow) s += ' · refreshed ' + _ewBun.rpShow.asked + ' of ' + _ewBun.rpShow.all + ' a frame';
             var wr = _ewBun.whyRate, ws = []; if (wr) for (var wk in wr) ws.push(wk + ' ' + wr[wk]);
             if (ws.length) s += ' (' + ws.join(', ') + ')';
-            s += ' · check ' + _ewBun.msAvg.toFixed(2) + ' ms/frame';
+            s += ' · check ' + _ewBun.msAvg.toFixed(2) + ' ms/frame (' + (_ewBun.quietN | 0) + ' quiet skipped, ' + (_ewBun.noMShow | 0) + ' still-checked)';
         }
         else if (_ewGpu === 'webgpu' && _ewBunOff()) s += ' · bundles off';
         if (_ewGpuInfo.drawErrs) s += ' · skipped draws ' + _ewGpuInfo.drawErrs + ' (first: ' + _ewGpuInfo.drawErr + ')';
@@ -47179,6 +47179,7 @@ const ThreeRenderer = (function () {
         if (Array.isArray(ms)) { for (var i = 0; i < ms.length; i++) { var m = ms[i]; if (!m) continue; _ewBunMat(m, F); h = _ewBunMix(h, m._ew_bunHs); v = _ewBunMix(v, m._ew_bunHv); } }
         else if (ms) { _ewBunMat(ms, F); h = _ewBunMix(h, ms._ew_bunHs); v = _ewBunMix(v, ms._ew_bunHv); }
         if (S.noV) { S.hs = h; S.n++; return; }   // a demoted group: three checks its values itself, the matrices are not read
+        if (S.noM) { S.hs = h; S.hv = v; S.n++; return; }   // THE STILL CHECK: a still-walk group's pieces move only through its walk (a mover goes out)
         var e = o.matrixWorld.elements;
         v = _ewBunMix(v, Math.round(e[0] * 1000)); v = _ewBunMix(v, Math.round(e[1] * 1000)); v = _ewBunMix(v, Math.round(e[2] * 1000));
         v = _ewBunMix(v, Math.round(e[4] * 1000)); v = _ewBunMix(v, Math.round(e[5] * 1000)); v = _ewBunMix(v, Math.round(e[6] * 1000));
@@ -47289,9 +47290,16 @@ const ThreeRenderer = (function () {
             /* a demoted group is tried as a still recording again (30 s, then twice as long each time, 8 min at most): what made
                it churn may be out of it by now (THE CHANGERS OUT finds the pieces only while the values are hashed) */
             if (st.dyn && st.dynAt && walk && now - st.dynAt > Math.min(480000, 30000 * Math.pow(2, Math.max(0, (st.dynN | 0) - 1)))) { st.dyn = false; st.dynAt = 0; st.times = []; st.vt = []; }
-            var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false, lit: false, noV: !!st.dyn };
+            /* THE STILL CHECK (2026-11-14, Disaster City: "check 8.85 ms/frame" on mondo's Mac — twelve matrix numbers rounded and
+               mixed for each of 6,500 pieces every frame): in a group THE STILL WALK owns, a piece's matrix changes only through that
+               walk, and a piece the walk sees move is drawn outside the recording from that frame on (`_ew_bunOut`, THE MOVERS OUT)
+               and comes back (a tree change, so a re-record) once it rests. Its pieces' matrices are not hashed then; the group's own
+               matrix is. Off: window.EW_BUN_HASH_MATRICES. */
+            var noM = walk && !st.dyn && !!g._ew_st && !_hqStillOff() && !(typeof window !== 'undefined' && window.EW_BUN_HASH_MATRICES);
+            var S = { hs: 17, hv: 0, hf: 0, n: 0, dyn: false, lit: false, noV: !!st.dyn, noM: noM };
             _ewBun.now = now;
             if (walk) _ewBunWalkTop(g, S); else _ewBunWalk(g, S);
+            if (noM) { var ge = g.matrixWorld.elements; for (var gi = 0; gi < 16; gi++) S.hv = _ewBunMix(S.hv, Math.round(ge[gi] * 1000)); _ewBun.noMN = (_ewBun.noMN | 0) + 1; }
             g._ew_bunDirty = false;
             g._ew_bunOuts = S.outs || null;   // THE MOVERS OUT: the pieces the frame draws beside this group's recording
             var v0 = g.version, recs0 = _ewBun.recs;
@@ -47329,7 +47337,7 @@ const ThreeRenderer = (function () {
             if (g._ew_bunCull && stat && !S.lit && g.isBundleGroup) { if (!g._ew_bunSph || g.version !== v0) g._ew_bunSph = _ewBunSphere(g); }
             else g._ew_bunSph = null;
         }
-        _ewBun.objs = objs; _ewBun.quietN = quietN;
+        _ewBun.objs = objs; _ewBun.quietN = quietN; _ewBun.groupsN = T.length; _ewBun.noMShow = _ewBun.noMN | 0; _ewBun.noMN = 0;
         _ewBun.last = T;
         _ewBun.ms += performance.now() - t0; _ewBun.msN++;
         if (now - _ewBun.rateAt > 1000) {
@@ -48754,7 +48762,7 @@ const ThreeRenderer = (function () {
                model mask) is drawn before the frame and is not it either */
             var quad = !!(sc && sc.isQuadMesh), side = !!this._ew_sideRender;
             var outer = !depth && !shadowPass && !quad && !side;
-            if (outer) { this._ew_shadowFrame = true; _ewGpuFreeLater(this); _ewNodeTick(); _ewRigTick(sc, cam); _ewBunTick(this, sc, cam); }
+            if (outer) { this._ew_shadowFrame = true; var _nsp = _lensIn('render: node + rig ticks'); try { _ewGpuFreeLater(this); _ewNodeTick(); _ewRigTick(sc, cam); } finally { _lensOut(_nsp); } var _bsp = _lensIn('bundle check'); try { _ewBunTick(this, sc, cam); } finally { _lensOut(_bsp); } }
             /* THE RENDER BUNDLES (W6): a point light's six cube faces share one camera — they draw the groups the classic
                way, frustum-culled per face, instead of replaying a bundle recorded unculled */
             var unb = shadowPass && cam && cam.isPerspectiveCamera && _ewBun.marked.length ? _ewBun.marked : null;
@@ -51708,6 +51716,56 @@ const ThreeRenderer = (function () {
         if (F.detail && object && pass !== 'post') { var d = F.detail.get(object); if (!d) F.detail.set(object, d = [0, 0, kind]); d[0] += dc; d[1] += dt; }
         if (F.detail && object && pass === 'scene' && !object.isInstancedMesh) { var wy = null; try { wy = _lensWhy(object, kind); } catch (e) {} if (wy) F.why[wy] = (F.why[wy] || 0) + dc; }
     }
+    /* THE FRAME BREAKDOWN (2026-11-14, mondo in Disaster City: "CPU 70 ms (submit 40)" with 99 draw calls, and nothing in the
+       lens said where the 40 ms went): with the lens open, the frame's JS is split into named spans — each of the HQ frame's
+       ticks, and inside the renders, per pass (scene / shadow / mask / mirror / post), three's projection walk, the bundle
+       replays, the classic draws, the transparent draws, the pass begin and end (end = the GPU command submit), the output
+       pass. Each span counts its own time only (a shadow pass inside the scene's render is the shadow's). The lens prints the
+       biggest as "Frame JS". Lens closed: nothing is wrapped. */
+    var _lensTk = null, _lensPassK = 'scene';
+    function _lensIn(k) { var L = _lens; if (!L || !L.cur) return null; var sp = { k: k, t: performance.now(), c: 0, up: _lensTk, F: L.cur }; _lensTk = sp; return sp; }
+    function _lensOut(sp) {
+        if (!sp) return;
+        var d = performance.now() - sp.t; _lensTk = sp.up; if (sp.up) sp.up.c += d;
+        var P = sp.F.parts || (sp.F.parts = {}); P[sp.k] = (P[sp.k] || 0) + d - sp.c;
+    }
+    function _lensMark(k, t) { var L = _lens; if (!t || !L || !L.cur) return 0; var n = performance.now(), P = L.cur.parts || (L.cur.parts = {}); P[k] = (P[k] || 0) + n - t; return n; }
+    function _lensSpanHook(R, on) {
+        var W = R._ew_lensSpans;
+        if (!on || W) return;   // never unwrapped: other hooks (the bundles') may wrap over these later; closed, each is one check
+        W = R._ew_lensSpans = [];
+        var wrap = function (obj, name, key) {
+            var f = obj && obj[name]; if (typeof f !== 'function') return;
+            W.push([obj, name, f]);
+            obj[name] = function () { var sp = _lensIn(_lensPassK + ': ' + key); try { return f.apply(this, arguments); } finally { _lensOut(sp); } };
+        };
+        var rs = R._renderScene;
+        if (typeof rs === 'function') {
+            W.push([R, '_renderScene', rs]);
+            R._renderScene = function (sc, cam) {
+                if (!_lens || !_lens.cur) return rs.apply(this, arguments);
+                var pk = _lensPassK;
+                _lensPassK = (sc && sc.isQuadMesh) ? 'post' : (sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial) ? 'shadow'
+                    : this._ew_sideRender ? 'mask' : this._ew_paneRender ? 'pane' : (sc && _lensIsMain(sc) && cam !== _lensMainCam(sc)) ? 'mirror/extra' : (sc && _lensIsMain(sc)) ? 'scene' : 'other render';
+                var sp = _lensIn(_lensPassK + ': setup + lights + sort');
+                try { return rs.apply(this, arguments); } finally { _lensOut(sp); _lensPassK = pk; }
+            };
+        }
+        var po = R._projectObject, pd = 0;
+        if (typeof po === 'function') {
+            W.push([R, '_projectObject', po]);
+            R._projectObject = function () {
+                if (pd > 0 || !_lens || !_lens.cur) return po.apply(this, arguments);
+                pd++; var sp = _lensIn(_lensPassK + ': projection walk');
+                try { return po.apply(this, arguments); } finally { pd--; _lensOut(sp); }
+            };
+        }
+        wrap(R, '_renderBundles', 'bundle replays');
+        wrap(R, '_renderObjects', 'classic draws');
+        wrap(R, '_renderTransparents', 'transparent draws');
+        wrap(R, '_renderOutput', 'output pass');
+        if (R.backend) { wrap(R.backend, 'beginRender', 'pass begin'); wrap(R.backend, 'finishRender', 'pass end + submit'); }
+    }
     function _lensHook(on) {
         var L = _lens;
         if (on && renderer && renderer.isWebGPURenderer) {
@@ -51734,16 +51792,18 @@ const ThreeRenderer = (function () {
                 L2.pass = !main ? 'post' : (sc.overrideMaterial ? 'extra' : (cam === _lensMainCam(sc) ? 'scene' : 'extra'));
                 var hid = null;
                 if (main && L2.lights !== true && L2.lightList) hid = _lensLampCap(L2, cam);
-                var t = performance.now();
+                var t = performance.now(), sp = _lensIn('render: outside the passes');
                 L2.depth++;
                 try { return go.render.apply(this, arguments); }
                 finally {
+                    _lensOut(sp);
                     L2.depth--; L2.pass = prev;
                     if (!L2.depth) { F.submit += performance.now() - t; F.renders++; }
                     if (hid) for (var j = 0; j < hid.length; j++) hid[j].visible = true;
                 }
             };
             _ewGpuDraw = _lensGpuDraw;
+            _lensSpanHook(GR, true);
             return;
         }
         if (!on && L && L.orig && L.orig.gpu) {
@@ -51876,6 +51936,7 @@ const ThreeRenderer = (function () {
         L.lastT0 = F.t0;
         A.n++; A.cpu += F.cpu; A.submit += F.submit; A.anim += F.anim; A.renders += F.renders; A.shadowRuns += F.shadowRuns; A.calls += F.calls; A.tris += F.tris;
         A.meshes += F.meshes; A.skinned += F.skinned; A.inst += F.inst; A.instances += F.instances;
+        if (F.parts) { var AP = A.parts || (A.parts = {}); for (var pk in F.parts) AP[pk] = (AP[pk] || 0) + F.parts[pk]; }
         _LENS_PASSES.forEach(function (p) { A.pass[p][0] += F.pass[p][0]; A.pass[p][1] += F.pass[p][1]; });
         _LENS_KINDS.forEach(function (k) { A.kind[k][0] += F.kind[k][0]; A.kind[k][1] += F.kind[k][1]; });
         if (F.detail) { try { L.roots = _lensRoots(F.detail); } catch (e) { L.roots = null; } }
@@ -51911,6 +51972,7 @@ const ThreeRenderer = (function () {
         };
         _LENS_PASSES.forEach(function (p) { S.pass[p] = [avg(A.pass[p][0]), avg(A.pass[p][1])]; });
         _LENS_KINDS.forEach(function (k) { S.kind[k] = [avg(A.kind[k][0]), avg(A.kind[k][1])]; });
+        if (A.parts) { S.parts = []; var psum = 0; for (var pk2 in A.parts) { var pv = avg(A.parts[pk2]); psum += pv; S.parts.push([pk2, pv]); } S.parts.sort(function (a, b) { return b[1] - a[1]; }); S.partsOther = Math.max(0, S.cpuMs - psum); }
         L.worstHist.push(A.worst); if (L.worstHist.length > 4) L.worstHist.shift();
         S.worst2s = Math.max.apply(null, L.worstHist);
         var inf = renderer ? renderer.info : null;
@@ -51954,6 +52016,12 @@ const ThreeRenderer = (function () {
         if (S.backend) L.push('Renderer ' + S.backend);   // WEBGPU_PLAN W0
         L.push('FPS ' + S.fps.toFixed(1) + '  frame ' + _lensMs(S.frameMs) + '  worst ' + _lensMs(S.worst2s));
         L.push('CPU ' + _lensMs(S.cpuMs) + ' (submit ' + S.submitMs.toFixed(1) + ' · anim ' + S.animMs.toFixed(1) + ')  GPU ' + (S.gpuOk ? _lensMs(S.gpuMs) : (_ewGpu ? 'n/a (no timestamp query' + (/Firefox\//.test(navigator.userAgent || '') ? ' on Firefox' : '') + ')' : 'n/a (no timer query)')));
+        if (S.parts && S.parts.length) {   // THE FRAME BREAKDOWN: where the CPU ms go, biggest first
+            var pl = S.parts.filter(function (r) { return r[1] >= 0.05; }).slice(0, 24).map(function (r) { return r[0] + ' ' + r[1].toFixed(1); });
+            pl.push('rest of the frame ' + S.partsOther.toFixed(1));
+            L.push('Frame JS (ms/frame): ' + pl.slice(0, 9).join(' · '));
+            if (pl.length > 9) L.push('  ' + pl.slice(9).join(' · '));
+        }
         L.push('Draw calls ' + Math.round(S.calls) + '  Triangles ' + _lensFmtN(S.tris) + '  renders ' + S.renders.toFixed(1));
         L.push('  pass      calls     tris');
         _LENS_PASSES.forEach(function (p) { L.push('  ' + pad(p, 9) + pad(Math.round(S.pass[p][0]), 10) + _lensFmtN(S.pass[p][1]) + (p === 'shadow' ? '   (' + S.shadowRuns.toFixed(1) + ' depth renders / frame)' : '')); });
@@ -87747,7 +87815,9 @@ const ThreeRenderer = (function () {
         /* THE DOOR WHEEL (Phase 3): the room runs slowed while the wheel is open (never paused — the world keeps breathing) */
         var wdt = (H.gun && H.gun.wheel) ? dt * _hqGunWheelRules().slow : dt;
         var editing = _hqEditing(H);   // THE EDITOR (EDITOR_PLAN E0): the walker stands still, the editor's fly camera is the eye
+        var _lt = (_lens && _lens.cur) ? performance.now() : 0;   // THE FRAME BREAKDOWN: the ticks' own times
         if (!editing) _hqTickWalker(wdt);
+        _lt = _lensMark('tick: walker', _lt);
         /* THE FIELD stage B (2026-09-16, measured): THE SLIDE's callback runs inside the walker's tick and LEAVES the
            building (_hqEncounterStart → _hqLeave) — the frame must not tick a disposed room's characters; the same
            guard covers a portal step that re-enters another room from the crossing tick below */
@@ -87768,40 +87838,54 @@ const ThreeRenderer = (function () {
         if (_keyFxList.length) { try { _updateKeyFx(); } catch (e) {} }   // scene E's key (keyPickupFx opts.at) lives in the room
         if (H._sceneCastIds) _hqSceneCastApply();
         if (H._scenePlayerOut && H.player && H.player.entry && H.player.entry.group && H.player.entry.group.visible) H.player.entry.group.visible = false;   // a scene took the officer out of the picture   // after the rounds: a walker the rounds just brought back in is out again the same frame   /* THE ROUNDS (2026-09-19): the population walks its loops (the nav lattice builds here first, a few ms a frame) */
+        _lt = _lensMark('tick: doors + residents + scene', _lt);
         if (_lens && _lens.cur) { var _lensA = performance.now(); _hqTickChars(wdt); if (_lens && _lens.cur) _lens.cur.anim += performance.now() - _lensA; }   // THE PERF LENS: the mixers' share
         else _hqTickChars(wdt);
         if (window.EWCine) { try { window.EWCine.frame(_hqCine() ? H.camera : null, { kind: 'hq', unit: _hqUnits(), key: String(H.opts.room || ''), site: (H.room && H.room.site) ? ((typeof window.hqSiteId === 'function') ? window.hqSiteId(H.room.site) : H.room.site) : String(H.opts.room || '') }); } catch (e) {} }
+        _lt = _lensMark('tick: characters', _lt);
         if (!editing) _hqTickCamera(dt);
         else if (_hqCine()) { /* the free eye was placed above */ }
         else { try { H.opts.edit.tick(dt, H); } catch (e) { if (!H._editWarned) { H._editWarned = true; console.warn('[HQ] the editor tick', e); } } }
+        _lt = _lensMark('tick: camera', _lt);
         _hqTickWorld(dt, now);
+        _lt = _lensMark('tick: world', _lt);
         if (H.stage) { try { _hqStageTick(H, dt, now); } catch (e) { if (!H.stage.warnedTick) { H.stage.warnedTick = true; console.warn('[HQ stage] tick', e); } } if (_hq !== H) return; }
         if (H.stage) { try { _hqCullTick(H, now); } catch (e) { if (!H.stage.warnedCull) { H.stage.warnedCull = true; console.warn('[HQ portals] tick', e); } try { _hqCullReset(H); } catch (e2) {} } }   // THE PORTALS (G1): a room behind shut doors is not drawn
         try { _hqWarmTick(H, now); } catch (e) {}   // THE WARM (2026-09-26): the rooms behind the doors near you, the parts two joins away   // THE STAGE (OPEN_WORLD_PLAN Phase 1): the neighbours build, tick, light — and the crossing
+        _lt = _lensMark('tick: stage + portals + warm', _lt);
         _hqTickRipples(dt);   // THE RIPPLES (5.3): the wader's / the swimmer's / the skiff's rings
         if (!_polishOff('wind', 'EW_HQ_NO_WIND')) _EW_WIND.value = now * 0.001 * (((_hqLightRules().wind || {}).speed) || 1);   // THE WIND (5.1): the foliage's shared clock (a frozen clock = still trees)
         _hqTickMotionBlur(H);   // THE THIRD PASS 6.4: the deck at speed, the long fall
         if (!H.ready) _hqGateTick(H, now);
+        _lt = _lensMark('tick: ripples + wind + gate', _lt);
         if (H.ready || H.landed) { try { _hqPropChunkSweep(H, now); } catch (e) { if (!H._pcWarned) { H._pcWarned = true; console.warn('[HQ] the prop chunks failed — the props stay in one group', e); } try { _hqPropChunkHome(H); } catch (e2) {} } }   // THE PROP CHUNKS: before the instance pass reads where each copy stands
+        _lt = _lensMark('tick: prop chunk sweep', _lt);
         if (H.ready || H.landed) _hqInstTick(H, now);   // THE INSTANCE PASS (OPEN_WORLD_PLAN Phase 0): the repeated props draw as batches once the room has landed
+        _lt = _lensMark('tick: instance pass', _lt);
         if (H.ready || H.landed) { try { _hqLodTick(H, now); } catch (e) { if (!H._lodWarned) { H._lodWarned = true; console.warn('[HQ] the LOD tick failed — the props keep their full meshes', e); } try { _hqLodReset(H); } catch (e2) {} } }   // THE LOD LEVELS (Phase 10)
+        _lt = _lensMark('tick: LOD', _lt);
         if (H.ready || H.landed) { try { _hqBatchTick(H, now); } catch (e) { if (!H._batchWarned) { H._batchWarned = true; console.warn('[HQ] the static batch failed — the pieces draw one by one', e); } try { _hqBatchDropAll(H); } catch (e2) {} } }   // THE STATIC BATCH (Phase 11)
+        _lt = _lensMark('tick: static batch', _lt);
         try { _hqChunkTick(H, now); } catch (e) { if (!H._ckWarned) { H._ckWarned = true; console.warn('[HQ] the chunk tick failed — every chunk drawn', e); } try { _hqChunkHome(H); } catch (e2) {} }   // THE CHUNKS: after the camera, before the draw
+        _lt = _lensMark('tick: chunks', _lt);
         if (H.ready) { try { _mmTick(H, now); } catch (e) { if (!_mmWarned) { _mmWarned = true; console.warn('[ThreeRenderer] the memory budget failed', e); } } }   // THE MEMORY BUDGET (G1)
+        _lt = _lensMark('tick: memory budget', _lt);
         if (H.keyLamp) _hqKeyLampTick(H, dt);   // THE KEY LIGHT (2026-10-24): rides with the camera in an enclosed room
         _ewRimTick((H.sky && !_hqEnclosed(H.room)) ? Math.max(0, Math.min(1, +H.sky.night || 0)) : 0);   // THE UNIT RIM LIGHT + NIGHT FILL (2026-10-25): the walk's own night, as the fight reads its (they kept the last fight's)
         if (H.shadows) _hqShadowTick(H, dt);   // THE LIGHT PASS 2.1: the frustum follows the walker, the depth pass pulses (autoUpdate is off)
         if (H.heroLit && H.heroLit.isLight) { if (H.scene._ew_afterWalk === _hqHeroAfterWalk) { H.scene._ew_afterWalk = null; try { _hqHeroGate(H, performance.now()); } catch (e) { _hqHeroRelease(H.heroLit); } } H.scene._ew_afterWalk = _hqHeroAfterWalk; }   // THE STILL TORCH: read at the end of this frame's first matrix walk (a frame that never walked reads here)
         _hqFarTick(H);   // THE FAR PLANE: past the sky ring, and past the eye however far the cinematic camera flew
         _lightMatchWalk(H);   // THE SAME LIGHT COUNT: the walk carries the board's dark lights
+        _lt = _lensMark('tick: lights + shadow + far', _lt);
         var fogHold = _hqFogHold(H);   // THE FOG SETTING: Scene Fog off = a fog-free draw (the mirrors' too)
         /* THE ONE MATRIX WALK (2026-11-13, the 144-plot city: 20,700 objects): every render of the frame (the mirrors, the model
            mask's two, the shadow map, the picture) walked the whole scene's matrices again though nothing moves between them.
            The walk runs once here; the frame's renders skip theirs. Off: window.EW_HQ_MW_EVERY_RENDER. */
         var mwScene = H.scene, mwHold = mwScene.matrixWorldAutoUpdate === true && !(typeof window !== 'undefined' && window.EW_HQ_MW_EVERY_RENDER);
         try {
-            if (mwHold) { _hqStillSceneWalk(mwScene); mwScene.matrixWorldAutoUpdate = false; }   // THE STILL WALK: the still groups walk only what moved
-            if (H.reflectors && H.reflectors.length) _hqTickReflectors(H);   // THE THIRD PASS 5.4: the mirrored render before the frame
+            if (mwHold) { _hqStillSceneWalk(mwScene); mwScene.matrixWorldAutoUpdate = false; }
+            _lt = _lensMark('matrix walk', _lt);   // THE STILL WALK: the still groups walk only what moved
+            if (H.reflectors && H.reflectors.length) { var _rsp = _lensIn('mirrors'); try { _hqTickReflectors(H); } finally { _lensOut(_rsp); } }   // THE THIRD PASS 5.4: the mirrored render before the frame
             var noPost = (typeof window !== 'undefined' && window.EW_HQ_NO_POST) || (_lens && !_lens.post);   // THE PERF LENS: post off
             if (!noPost && ThreePost && ThreePost.renderScene) ThreePost.renderScene(H.scene, H.camera, _hqPostOpts(H));
             else renderer.render(H.scene, H.camera);

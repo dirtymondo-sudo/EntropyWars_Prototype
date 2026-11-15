@@ -1957,6 +1957,20 @@ mondo's Mac lens in `site_prebuilt_downtown_streets`: 6.8 FPS, CPU 140.8 ms (sub
   `rReach`, re-landed after a clean load + drawn frame in the cloud browser (no frame errors). RULE: a new hook inside
   `_ewBunSetup` gets a name grep-checked against the whole function.
 
+## THE STILL CHECK + THE FRAME BREAKDOWN (2026-11-15, Disaster City, after THE OUTS ON A REPLAY FRAME)
+
+mondo's Mac (#1393): CPU 70 ms of which submit 40 with 99 draws, "check 8.85 ms/frame", and the lens could not say where the rest went.
+- THE STILL CHECK (`_ewBunTick`, `S.noM`): in a group THE STILL WALK owns (`g._ew_st`: the shell, fence + prop chunks) the pieces' matrices
+  are no longer hashed every frame (12 rounded numbers x 6,500 pieces): a piece's matrix changes only through that walk, which turns a mover
+  `_ew_bunOut` the same frame and back (a tree change = re-record) at rest. The group's own matrix is hashed. Off
+  `window.EW_BUN_HASH_MATRICES`. Lens bundles line: "check X ms/frame (N quiet skipped, M still-checked)".
+- THE FRAME BREAKDOWN (lens open only): `_lensIn/_lensOut` spans (exclusive time) + `_lensMark` checkpoints. `_hqFrame`'s ticks each get a
+  "tick: …" row, "matrix walk", "mirrors", "bundle check", "render: node + rig ticks"; inside the renders `_lensSpanHook` wraps three's
+  `_renderScene` (sets the pass: scene / shadow / mask / pane / mirror/extra / post), the top `_projectObject` ("projection walk"),
+  `_renderBundles`, `_renderObjects`, `_renderTransparents`, `_renderOutput`, backend `beginRender` / `finishRender` ("pass end + submit").
+  Printed as "Frame JS (ms/frame): …" (biggest first, + "rest of the frame" = CPU minus the spans). Never unwrapped (other hooks wrap over).
+- Cloud browser cannot time a frame (software GPU, ~0.2 fps): ask mondo for the F3 with the Frame JS lines and cut the biggest row next.
+
 ## THE OUTS ON A REPLAY FRAME (2026-11-14, a bug shipped in #1391 / #1393, fixed the same day)
 
 three r186 `_projectObject` projects a BundleGroup's children ONLY when the bundle needs a new recording; on a replay frame it pushes the
