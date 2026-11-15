@@ -1,0 +1,7 @@
+---
+name: visual-rules
+description: mondo's visual rules (no grass blades, bloom/fog off, terrain textures, rain, spell blocks, light settings) moved from MEMORY.md
+metadata:
+  type: feedback
+---
+VISUALS: no grass blades; bloom + fog OFF by default; real lights; no placeholder geometry; no procedural stairs; textures in metres; PS1 window UI. Cliffs rocks_5 (cliff.png banned); lawns grass_2; forest floor grass_dark_fantasy/dirt_2. No platform under menu/intro door. Terrain skins drape on real ground. Rampart = dirt bank (cube on voxel boards). Key-find key glows gold without bloom. Most trees retro pixel trees. Close-ups use battle post pipeline. "Color Grade" toggle = tint + colour depth; Pixelate/Dither/Grain own sliders; user sliders win over map looks. Nexus/spawn zones paint on the ground under bridges, never on decks (PR #364). Spell-built blocks (e.g. Pyramid Protocol) use board texture scale, 1 copy per square, no stretch (PR #377). Light Rays/Filmic/Auto Exposure/Fog Density/Fog Horizon/Night Mood work on room maps + WebGPU, off by default (PR #380). Blood Rain = thick opaque bright red streaks + red splashes (PR #390). UNIT RIM LIGHT: PR #416 was too aggressive (mondo 10-23: white outline, black blobs at night). PR #428: soft rim tinted by the unit's albedo + UNIT NIGHT FILL (albedo x moonlight, units only) so bodies show colour at night; Graphics settings Unit Rim Light / Rim Strength / Rim Colour / Unit Night Fill (setUnitLight, ew_unitLight).

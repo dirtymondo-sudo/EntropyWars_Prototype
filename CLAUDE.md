@@ -5,6 +5,12 @@ socket.io) is only matchmaking/relay; ALL gameplay logic is client-side in
 `index.html` + ~35 scripts loaded from a Cloudflare R2 bucket (custom domain
 `cdn.entropywars.net`, brotli + long-cache edge) and CDNs.
 
+## NEW HERE? (a second developer / another Claude account, 2026-11-15)
+Read `docs/notes/onboarding.md` (access you need, how to work beside the owner's threads, what does not travel to
+another account) and `docs/notes/owner-rules.md` (mondo's standing rules: what he wants and never wants; they bind
+every account). The owner project's memory as of 11-15 is frozen in `docs/project-memory/` (`INDEX.md` first). New
+lasting facts go in the matching docs/notes file in the same PR, never only in one account's memory.
+
 ## NOTES INDEX — feature history lives in docs/notes/
 
 **Do not append feature notes here. Put new notes in the matching docs/notes file and keep this file under 20 KB.**
@@ -13,6 +19,8 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 
 | File | Covers | Read when |
 |---|---|---|
+| `docs/notes/owner-rules.md` | MONDO'S RULES: hard rules, world, visuals, combat, UI/input, camera, story, how to work with him. | Before ANY design decision; when unsure what he wants. |
+| `docs/notes/onboarding.md` | Second developer / other account: access, set-up, parallel work, where state lives. | First session on a new account. |
 | `docs/notes/door-docs.md` | Map of the DOOR design docs (DOOR_MASTER, HQ build plan, Phase 9 brief). | Before ANY DOOR / story / hub / HQ work. |
 | `docs/notes/hq-building-rooms.md` | HQ rooms, floors, wings, gallery, seams, directory map, floor plans. | HQ room / floor / link work. |
 | `docs/notes/areas-complexes.md` | Explorable areas, complexes, terrain rooms, Area Content Plan D1-D5, population. | Area / complex / site work. |

@@ -1,0 +1,20 @@
+---
+name: meshy-remake-batch1-20261112
+description: 11-12 PR #1170: demo starters remake batch one (zombie F, catgirl F, robinhood M, quarterback M clothes shipped); djinn refused by Meshy safety check; new bake-outfit.py rules; what is left
+metadata:
+  type: project
+  modified: 2026-11-12T05:50:29.903Z
+---
+Thread (thread in the owner project) ("Remake demo starter looks batch one"), plan [[meshy-remake-plan-20261112]].
+
+- SHIPPED PR #1170 (11-12 ~05:50Z): remade looks for zombie (F), catgirl (F; his saved catgirl look's body + face + hair, T2 ears kept as a separate Hats piece, not in the look), robinhood (M), quarterback (M). Pieces `ewm_t2<unit>_outfit/_hat` uploaded with `sync-zip.js --put`. Meshy models stay defaults.
+- DJINN: Meshy image-to-3d REFUSED twice (`provider_content_refused`, bare-chested render). Not worked around; told mondo, waits on his word.
+- bake-outfit.py new rules (all 7 remade units rebaked, cowboy/knight/wizard rechecked): glove on a bare hand, flake, `--headgear` (quarterback helmet), hand in a big shell (wrist seeds), scalp under a hood, torn face. Tried + dropped: "skin chip" rule (ate knight armour bits + zombie rags).
+- Lessons: T2 runs vary, a second run fixed robinhood (first fused a bow string into hand + skirt); crop the front render to the figure; look.js sheets time out past ~4 units per 10 min run; `hair: 'bald'` is the no-hair id; revert package.json after `npm install playwright`.
+- Open kinks told to mondo: skin flecks on robinhood's hood front, skin chip by catgirl's left boot, lacing patches on her sleeves, zombie/knight walk hunch (race walk clip).
+- PR #1171 (11-12 ~06:15Z): mondo 05:55Z "strip hanging off the back of the mummy's head and back" = the ZOMBIE (a leftover Meshy hair lock shell); fixed by A HAIR LOCK rule. Faces shipped: zombieFace/ew_face_zombie, robinhoodFace/ew_face_robinhood. NOT done: quarterback face (landmarker finds no face behind helmet), catgirl face (rough hair lines + she wears his saved face; asked him), djinn. bake-face needs apt libgles2 too. Manifest hash = sha1[:12] (manifest-assets.js).
+- PR #1178 (11-12 ~07:10Z): mondo 06:45Z "i want it anyway and for you to clean it up" -> catgirlFace + ew_face_catgirl on her remade look (saved look's FACE sliders zeroed on the remade look only via _ewFaceSlidersZeroed; his saved look untouched). bake-face.py new off-by-default knobs hairgrow/eyekeep/darkk/darkx for fringe + strand lines. Proof catgirl_face.jpg.
+- PR #1181 (11-12 ~07:35Z): mondo 06:58Z "the necklace looks messed up or painted on" (catgirl): bake-outfit.py `--neckline` cuts the neckline skin + painted cross + choker shards, look wears his saved look's ewm_crosspendant; hair fused to clothes above the chin cut. Left + told him: the top's neckline edge is jagged. Local npm server dies between tool calls: start it with setsid in the same command as the shots.
+- PR #1187 (11-12 ~08:40Z): mondo 07:10Z "what are all those jagged black spots around her neck" (catgirl). Causes: (a) her waist-long Meshy hair = one 2,580-face shell not read as hair (the bake's "hair shells" were her ears); (b) HOLES IN THE BODY: skin hidden under the jacket edge drops whole body triangles, the jacket's black inside shows as saw teeth. Fix in `--neckline`: throat cut, long hair dropped except its part down her back (no jacket modelled under it), straight re-cut of the opening, shown skin grows 3 rings under the edge. LESSON: render the outfit GLB alone first; teeth not in it = body holes, not cloth. Left + told him: few small notches right collar hair-off, one skin triangle left shoulder, pendant cross under the top's edge.
+- PR #1189 (11-12 ~10:45Z): mondo 10:30Z "she has her heel sticking out of the back of her boot" (catgirl) = the old 'skin chip by her left boot'. Body skin, not cloth: left calf 68 % under stocking (just under LEGHIDE 0.7) while right was 71 %. Fix: a leg is hidden with its pair from LEGPAIR 0.5. Only catgirl's file changed.
+- STILL OWED in that thread (after his look at batch one): batch two (mummy F, angel F), djinn on his word. Sources + sheets: /mnt/project-files/meshy-remake-batch1/.
