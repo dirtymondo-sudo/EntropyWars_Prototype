@@ -47311,6 +47311,9 @@ const ThreeRenderer = (function () {
         var G = _ewBunMix(LG, _ewBun.epoch);
         var objs = 0, quietN = 0, addNB = _ewAddCount(), addMovedB = addNB !== _ewBun.addN, bunEvery = typeof window !== 'undefined' && !!window.EW_BUN_CHECK_EVERY, addAll = typeof window !== 'undefined' && !!window.EW_BUN_ADD_ALL;
         var BUN_QUIET = 8, BUN_QUIET_LONG = 90;
+        /* THE QUIET GROUPS IN A FIGHT (2026-11-15, mondo: "make sure all of these fixes apply everywhere ... battles, all of it"): the battle's
+           room (each wall / piece a bundle, 400 on the Atlantis board) rests the same way. Off: window.EW_BUN_FIELD_CHECK_EVERY. */
+        var fieldEvery = typeof window !== 'undefined' && !!window.EW_BUN_FIELD_CHECK_EVERY;
         _ewBun.addN = addNB;
         for (i = 0; i < T.length; i++) {
             var g = T[i], st = g._ew_bun || (g._ew_bun = { hs: null, hv: null, times: [], until: 0, dyn: false, why: { tree: 0, values: 0, scene: 0, lod: 0, rests: 0 } });
@@ -47329,7 +47332,7 @@ const ThreeRenderer = (function () {
                the frames where they were not): quiet after BUN_QUIET still checks (was 40: every re-record anywhere bought the
                group two seconds of full checks); an add wakes only the group it lands under (`_ew_bunDirty`, set by the add
                hook; window.EW_BUN_ADD_ALL = the old rule); a group quiet for BUN_QUIET_LONG checks takes every fourth frame. */
-            if (walk && g.isBundleGroup && st.quiet >= BUN_QUIET && (!addMovedB || !addAll) && !g._ew_bunMiss && !g._ew_bunFree && !g._ew_bunDirty && st.G === G && ((FR + i) % (st.quiet >= BUN_QUIET_LONG ? 4 : 3)) !== 0 && !bunEvery) { objs += st.n | 0; quietN++; continue; }
+            if ((walk || (field && !fieldEvery)) && g.isBundleGroup && st.quiet >= BUN_QUIET && (!addMovedB || !addAll) && !g._ew_bunMiss && !g._ew_bunFree && !g._ew_bunDirty && st.G === G && ((FR + i) % (st.quiet >= BUN_QUIET_LONG ? 4 : 3)) !== 0 && !bunEvery) { objs += st.n | 0; quietN++; continue; }
             /* a demoted group is tried as a still recording again (30 s, then twice as long each time, 8 min at most): what made
                it churn may be out of it by now (THE CHANGERS OUT finds the pieces only while the values are hashed) */
             if (st.dyn && st.dynAt && walk && now - st.dynAt > Math.min(480000, 30000 * Math.pow(2, Math.max(0, (st.dynN | 0) - 1)))) { st.dyn = false; st.dynAt = 0; st.times = []; st.vt = []; }
