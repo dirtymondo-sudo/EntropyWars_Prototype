@@ -31037,7 +31037,7 @@ const DOOR_HQ = {
     hubs: {
         hq:      { label: 'D.O.O.R. HEADQUARTERS', room: 'central_egress', facility: true, color: '#f0e6c8' },
         cavern:  { label: 'THE CAVERN', room: 'site_prebuilt_hollow_earth_gallery', sites: ['prebuilt_hollow_earth'], color: '#c8a2e0' },
-        woods:   { label: 'THE WOODS', room: 'site_prebuilt_fairy_forest_clearing', sites: ['prebuilt_fairy_forest'], color: '#7fd98c' },
+        woods:   { label: 'THE WOODS', room: 'site_prebuilt_fairy_forest_plots', sites: ['prebuilt_fairy_forest'], color: '#7fd98c' },
         ranch:   { label: 'THE ESTATE', room: 'site_prebuilt_skinwalker_fields', sites: ['prebuilt_skinwalker'], color: '#d9b24c' },
         divine:  { label: 'HEAVEN + HELL + VATICAN', room: 'site_prebuilt_heaven_stair', sites: ['prebuilt_heaven', 'prebuilt_hell', 'prebuilt_vatican'], color: '#ffd28a' },
         city:    { label: 'DISASTER CITY', room: 'site_prebuilt_downtown_streets', sites: ['prebuilt_downtown', 'prebuilt_strip', 'prebuilt_cyberpunk'], color: '#ff9e6b' },
@@ -31205,7 +31205,7 @@ const DOOR_HQ = {
            the woods' marble flight in the north of the clearing climbs past the treeline into the dark (a `free` passage over its own
            last treads). The buffer room the woods end used to open on (THE STAIRCASE) is gone. */
         { id: 'woods_stair', route: 'woods', way: 'stairway',
-          a: { site: 'prebuilt_fairy_forest', part: 'clearing', wall: 'free', x: 8.75, z: -9.25, face: 180, y: 8.56, sub: 'THE STAIR · UP INTO THE BUILDING',
+          a: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'free', x: -17.5, z: 55.5, face: 180, y: 12.06, sub: 'THE STAIR · UP INTO THE BUILDING',   // THE WOODS ON PLOTS (2026-11-15, mondo: "i think its still loading the old woods"): the Stair lands in the 36-plot room now (was the old clearing: x 8.75, z -9.25, y 8.56)
                passage: { look: 'stair', w: 3.6, h: 4.5, len: 7, deep: 5, rise: 0.778, spread: 1.6, land: 3.2 } },
           b: { room: 'woodstair', wall: 'n', x: 0, y: 11.4, sub: 'THE STAIR · UP INTO THE WOODS',
                passage: { w: 7, h: 5.2, len: 10, deep: 6, rise: 0.4, tread: 'marble_light', runner: { w: 4.2, color: 0x2f58d0 }, land: 3.6 } },
@@ -31215,7 +31215,7 @@ const DOOR_HQ = {
            west between the trees into the dark and comes out on the track outside the moat, west of the castle (ZONES_PLAN §3: the
            forest leads to Camelot) */
         { id: 'woods_camelot', route: 'woods', way: 'trail',
-          a: { site: 'prebuilt_fairy_forest', part: 'clearing', wall: 'w', z: -4.4, sub: 'THE TRAIL · WEST TO CAMELOT' },
+          a: { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'w', z: 3.5, sub: 'THE TRAIL · WEST TO CAMELOT' },   // THE WOODS ON PLOTS (2026-11-15): the 36-plot room's west trail (was the old clearing, z -4.4)
           b: { site: 'prebuilt_camelot', part: 'ward', wall: 'w', z: -12, sub: 'THE TRAIL · INTO THE WOODS' },
           why: 'the path west out of the clearing does not stop at the pasture; it goes on under the trees and comes out at the castle moat', note: 'on foot', draft: true },
         { id: 'woods_sewer', route: 'subway', leaf: 'leaf_cell', secret: true,   // ZONES_PLAN Z1: a DRAUGHT — found later
@@ -40291,7 +40291,6 @@ const DOOR_HQ = {
             },
             doors: [
                 {id:'clearing',wall:'s',x:-38.5,way:'trail',label:'THE WOODS · THE CLEARING',sub:'THE OLD CLEARING · AS IT WAS',action:{room:'site_prebuilt_fairy_forest_clearing',at:'plots'},desc:'The trail south runs back to the clearing as it was before the woods were measured.'},
-                {id:'camelot',wall:'w',z:3.5,way:'trail',label:'CAMELOT · THE OUTER WARD',sub:'THE TRAIL · WEST TO CAMELOT',action:{room:'site_prebuilt_camelot_ward',at:'link_woods_camelot'},desc:'The path west does not stop; it goes on under the trees and comes out at the castle moat.'},
                 {id:'estate',wall:'s',x:-63,way:'trail',label:'THE ESTATE · THE CORN FIELDS',sub:'THE FENCE LINE · THE GATE',action:{room:'site_prebuilt_skinwalker_fields',at:'bay'},desc:'A fence, and a gate in it. The corn starts on the other side.'},
                 {id:'gutter',wall:'e',z:17.5,way:'trail',label:'DISASTER CITY',sub:'THE STORM DRAIN · UP TO THE STREET',action:{room:'site_prebuilt_downtown_streets',at:'link_streets_drain'},desc:'The drain runs east under the last of the trees. There is traffic at the far end of it.'},
                 {id:'lemuria',wall:'n',x:-70,way:'trail',secret:true,label:'AGARTHA · THE CRYSTAL CITY',sub:'LEMURIA · THE ADIT UNDER THE MOUNTAIN',action:{room:'site_prebuilt_agartha_crystalcity',at:'link_shasta_lemuria'},desc:'A draught out of the rock shelf, warmer than the snow above it.'},
@@ -58277,6 +58276,7 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                              site_prebuilt_area51_gate: { fog: 0xd6c9ae, tint: 0xa8c8e8, clouds: 0.12 },   // the gate wears the flight line's desert day
                              /* the woods' places (one shell): a sunlit green haze under the canopy */
                              site_prebuilt_fairy_forest_clearing: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
+                             site_prebuilt_fairy_forest_plots: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_redwoods: { fog: 0x94ac92, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_ritual: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_glade: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },   // THE FAIRY FOREST (2026-10-24): the clearing's day look
