@@ -70533,6 +70533,22 @@ const ThreeRenderer = (function () {
        merged mesh per material and never fade (_ew_occSkip), each mast's rig is its own piece that fades when it stands between the eye
        and a unit. `hull` keys: draft (m of hull under the sea's sheet; 3.8), bow (m the beakhead runs past the deck's east edge; 9.5),
        stern (m the transom stands past its west edge; 0.05). */
+    /* THE MOORED SHIP (2026-11-15, mondo on the Beach's hand-drawn Dutchman: "we literally have a dutchman ship from the dutchman pvp map. why not
+       just use that exact ship??"): `terrain.moored = [{ kind: 'galleon', room: <a room whose terrain.float.hull is a galleon>, x, z }]` draws THAT
+       room's own ship in this room: the same builder, on that room's own compiled field (its rim heights, its mast trees, its hull numbers), in a
+       group moved to (x, z) with its waterline on this room's sea. Bow east, as she is built. No wake (she is not under way). The decks
+       themselves are this room's ground (the tool writes her deck heights into the squares she stands on). */
+    function _hqBuildMoored(room, info, G, TM, rng, ms) {
+        if (!ms || ms.kind !== 'galleon' || !ms.room || typeof DOOR_HQ === 'undefined') return;
+        var sr = DOOR_HQ.rooms[ms.room], si = (sr && sr.terrain && typeof hqTerrainInfo === 'function') ? hqTerrainInfo(ms.room) : null;
+        var fl = sr ? _hqFieldFloats(ms.room, sr) : null;
+        if (!si || !fl || !fl.hull || fl.hull.kind !== 'galleon') return;
+        var U = _hqUnits(), sg = new THREE.Group(); sg.name = 'hqMoored:' + ms.room;
+        var seaOf = function (r, d) { var s = r && r.terrain && r.terrain.sea; return (s && typeof s.y === 'number') ? s.y : d; };
+        sg.position.set((+ms.x || 0) * U, (seaOf(room, 0) - seaOf(sr, -4.2)) * U, (+ms.z || 0) * U);
+        _hqBuildGalleon(sr, si, sg, TM, rng, Object.assign({}, fl.hull, { moored: true }));
+        G.add(sg);
+    }
     var _HQ_SHIP_TREES = { mast: 1, capstan: 1, helm: 1 };   // terrain trees the ship draws itself (three-renderer.js treeOne plants no foliage for them)
     var _hqSailTexCache = {};
     function _hqSailTex(seed) {
@@ -70873,11 +70889,13 @@ const ThreeRenderer = (function () {
             wakeTex.push({ tex: tx, per: 3.5 * U });
         };
         var hbW = hb0 * TUM, wakeL = stemX - sternX + 14;
+        if (!hl.moored) {   // THE MOORED SHIP (2026-11-15): the wake and the bow spray are the voyage's
         foam((stemX + sternX) / 2 - 7, zc - hbW - 1.3, wakeL, 2.8, 0.55, 1); foam((stemX + sternX) / 2 - 7, zc + hbW + 1.3, wakeL, 2.8, 0.55, 2);
         foam(sternX - 16, zc, 34, hbW * 1.7, 0.32, 3);
         for (var sp = 0; sp < 6; sp++) { var sps = _hzGlowSprite((1.6 + rng() * 1.6) * U, 0xe8f6ff, 0.5, 0.3, 0.2, 3 + rng() * 4); sps.position.set((stemX - 0.6 - rng() * 2.4) * U, Y(seaY + 0.3 + rng() * 0.9), (zc + (rng() - 0.5) * 3.2) * U); sps._ew_occSkip = true; hull.add(sps); }
         _hq.galleonWake = wakeTex;
         if (typeof _motionScroll !== 'undefined') wakeTex.forEach(function (w) { _motionScroll.push({ tex: w.tex, per: w.per, sign: 1 }); });
+        }
         /* ── one mesh per material ── */
         add(hull, _hqHullMerge(hullSkin), hullMat);
         add(hull, _hqHullMerge(bottom), bottomMat);
@@ -71961,6 +71979,7 @@ const ThreeRenderer = (function () {
            runs on past the shell to HQ_OUTER_M, matched to the field's own edge, rolling, swelling into low rises and
            then falling away under the fog (the sky's fog colour: scene.fog is the room's, _hqEnter). The treeline
            stands on it (_hqTerrainGround reads _hq.outer). Built in the field's own material. */
+        if (room.terrain && Array.isArray(room.terrain.moored)) room.terrain.moored.forEach(function (ms) { try { _hqBuildMoored(room, info, G, TM, rng, ms); } catch (e) { console.warn('[HQ] the moored ship failed', e); } });   // THE MOORED SHIP (2026-11-15): another room's ship drawn at its berth (the Dutchman at the Beach's Long Pier)
         var floatG = _hqFieldFloats(roomId, room);   // THE EDITOR (E3): a FLOATING ground (terrain.float, or a zone part with float) — no outer ground, a rock underside
         if (floatG && floatG.hull && floatG.hull.kind === 'galleon') { try { _hqBuildGalleon(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the galleon failed', e); } }   // THE GALLEON (2026-10-20): a sailing ship round the plate (the Flying Dutchman)
         else if (floatG && floatG.hull && floatG.hull.kind === 'starship') { try { _hqBuildStarship(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the starship failed', e); } }   // THE STARSHIP (2026-10-28): the ship under its own outline (the Spaceship's deck)
