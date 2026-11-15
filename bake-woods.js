@@ -36,14 +36,17 @@ function spur(id, wall) {   // from the plot's nearest open square straight to t
     return (wall === 'w' || wall === 'e') ? gx(y0 + Math.min(ly, N - 2) + 1) : gx(x0 + Math.min(lx, N - 2) + 1);   // the line between the two squares
 }
 function door(id, plotId, wall, o) { const a = spur(plotId, wall); doors.push(Object.assign({ id, wall }, (wall === 'w' || wall === 'e') ? { z: a } : { x: a }, o)); }
-door('clearing', 'P02-05', 's', { way: 'trail', label: 'THE WOODS · THE CLEARING', sub: 'THE OLD CLEARING · AS IT WAS', action: { room: 'site_prebuilt_fairy_forest_clearing', at: 'plots' },
-    desc: 'The trail south runs back to the clearing as it was before the woods were measured.' });
+/* THE OLD ROOMS ARE RETIRED (2026-11-15, data.js DOOR_HQ.retired): the trail back to the old Clearing went. In its place the hollow tree (the old Clearing's
+   `forest` door, DOOR_HQ.siteRooms.entry's bay door): the way back to Room 420 */
+door('forest', 'P02-05', 's', { way: 'hollowtree', label: 'THE FAIRY FOREST', sub: 'THE HOLLOW TREE · BACK · ROOM 420', action: { room: 'site_prebuilt_fairy_forest', at: 'woods' },
+    desc: 'The path back between two trees that lean in to hear you go. The forest proper is that way, and the crossing console, and the door that objected.' });
 /* the trail west to Camelot is the LINK `woods_camelot` (data.js DOOR_HQ.links, a two-way door at w, z 3.5); the HQ Stair is the LINK `woods_stair`: only the path is cut here */
 { const z = spur('P00-03', 'w'); if (z !== 3.5) throw new Error('the Camelot trail moved to z ' + z + ': move the woods_camelot link end in data.js too'); }
 door('estate', 'P01-05', 's', { way: 'trail', label: 'THE ESTATE · THE CORN FIELDS', sub: 'THE FENCE LINE · THE GATE', action: { room: 'site_prebuilt_skinwalker_fields', at: 'bay' },
     desc: 'A fence, and a gate in it. The corn starts on the other side.' });
-door('gutter', 'P05-03', 'e', { way: 'trail', label: 'DISASTER CITY', sub: 'THE STORM DRAIN · UP TO THE STREET', action: { room: 'site_prebuilt_downtown_streets', at: 'link_streets_drain' },
-    desc: 'The drain runs east under the last of the trees. There is traffic at the far end of it.' });
+/* the storm drain's three ways are LINKS now, two-way (data.js DOOR_HQ.links; the tool writes their Woods ends at the end of the bake): `streets_drain`
+   (Disaster City's gutter) on the Storm Drain plot, `sewers_drain` (the city sewers) on the Outfall, `woods_sewer` (the HQ tunnel) on the Tunnel Way */
+const LINK_ENDS = { streets_drain: ['b', spur('P05-03', 'e'), 'THE CULVERT · UP TO THE STREET'], sewers_drain: ['b', spur('P05-04', 'e'), 'THE CULVERT · INTO THE SEWERS'] };
 door('lemuria', 'P01-00', 'n', { way: 'trail', secret: true, label: 'AGARTHA · THE CRYSTAL CITY', sub: 'LEMURIA · THE ADIT UNDER THE MOUNTAIN', action: { room: 'site_prebuilt_agartha_crystalcity', at: 'link_shasta_lemuria' },
     desc: 'A draught out of the rock shelf, warmer than the snow above it.' });
 door('lodge', 'P05-00', 'e', { way: 'trail', secret: true, label: 'THE LODGE · THE HALLS', sub: 'THE MEMBERS’ TUNNEL · UNDER THE LAWN', action: { room: 'site_prebuilt_lodge_halls', at: 'link_grove_lodge' },
@@ -51,8 +54,7 @@ door('lodge', 'P05-00', 'e', { way: 'trail', secret: true, label: 'THE LODGE · 
 door('lookingglass', 'P05-02', 'e', { way: 'trail', secret: true, label: 'THE LOOKING-GLASS · THE GARDEN', sub: 'THE DEAD TREE · THE HOLE LOOKS ONTO MARBLE', action: { room: 'site_prebuilt_camelot_kingdom', at: 'deadtree' },   // CAMELOT KINGDOM ON PLOTS (2026-11-15): the garden is a district of the kingdom room now (was the old garden room)
    
     desc: 'Past the dead tree the ground is the wrong colour.' });
-door('sewers', 'P05-05', 'e', { way: 'trail', secret: true, label: 'THE TUNNEL', sub: 'THE DRAIN · INTO THE TUNNEL', action: { room: 'tunnel', at: 'link_woods_sewer' },
-    desc: 'The channel goes on into the dark, and the dark has a platform in it.' });
+LINK_ENDS.woods_sewer = ['a', spur('P05-05', 'e'), 'THE DRAIN · INTO THE TUNNEL'];
 
 /* THE HORROR PASS (2026-11-15): the Gully gets a yard off its path for the wreck, the trailer and the cabin (rows 9-10 along the south, a pocket on the east) */
 { const p = plot['P03-05']; for (let ly = 9; ly <= 10; ly++) for (let lx = 1; lx <= 10; lx++) cell[p.y * N + ly][p.x * N + lx] = 'g';
@@ -326,5 +328,10 @@ const file = path.join(REPO, 'data.js'); let src = fs.readFileSync(file, 'utf8')
 const END = '        /* WOODS36-END */\n', b0 = src.indexOf('        /* WOODS36-BEGIN'), b1 = src.indexOf(END);
 if (b0 >= 0 && b1 > b0) src = src.slice(0, b0) + block + src.slice(b1 + END.length);
 else { const anchor = '        /* ── THE CLEARING — the crossroads of the woods'; const a = src.indexOf(anchor); if (a < 0) throw new Error('anchor not found in data.js'); src = src.slice(0, a) + block + src.slice(a); }
+/* THE LINKS' WOODS ENDS: each link in LINK_ENDS gets its `a:` / `b:` line rewritten onto this room's east wall (a walked tunnel, no door: NO DOORS IN THE WOODS) */
+Object.keys(LINK_ENDS).forEach(id => { const [side, z, sub] = LINK_ENDS[id], i = src.indexOf("{ id: '" + id + "'"); if (i < 0) throw new Error('link not found: ' + id);
+    const re = new RegExp('\\n( +)' + side + ": \\{ site: 'prebuilt_fairy_forest'[^\\n]*"), m = re.exec(src.slice(i, i + 2500)); if (!m) throw new Error('no Woods end on link ' + id);
+    const line = '\n' + m[1] + side + ": { site: 'prebuilt_fairy_forest', part: 'plots', wall: 'e', z: " + z + ", way: 'tunnel', passage: { w: 2.4, h: 2.4, len: 9, deep: 6 }, sub: '" + sub + "' },   // THE WOODS ON PLOTS: written by bake-woods.js (was the old Dead Man's Cave room)";
+    src = src.slice(0, i + m.index) + line + src.slice(i + m.index + m[0].length); });
 fs.writeFileSync(file, src);
 console.log('data.js: site_prebuilt_fairy_forest_plots written (' + block.length + ' bytes)');

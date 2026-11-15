@@ -3668,6 +3668,14 @@ woods in between them" · 16:53 "okay" on plan 2.
   - NEW UNITS here (his OK): scarecrow (Fence Line), skinwalker (the Shelf), ghoul + flesheater (Cave Mouth). Swamp monster + mothman moved to the Pool.
   - NOT DONE: no meat hooks or hung lanterns (ceiling pieces, nothing to hang them from outdoors); no new lights (the level's lamp cap) and the
     day look is unchanged, so the dark comes from the night clock only; faces of the cabin / bus / board are unchecked. NOT SEEN ON SCREEN.
+- **THE OLD WOODS ROOMS ARE RETIRED (2026-11-15, the rule from mondo's Camelot words "we are making new maps. no reason why the old one should still be
+  loading at all")**: `DOOR_HQ.retired` sends the old Clearing, Redwood Trail, Dead Man's Cave and Ritual Ground to `site_prebuilt_fairy_forest_plots`
+  (a save's CONTINUE, the map's GO, any old door: map.js _hqEnter / _hqGoRoom). The four room literals STAY in data.js untouched (he did not name them
+  for deletion; the PvP Fairy Forest board is cut from `_glade`, not from them). Ways moved onto the new room: `siteRooms.entry.prebuilt_fairy_forest`
+  (the hollow tree `forest` on the south wall, back to Room 420; the trail to the old Clearing went), and three links whose Woods ends bake-woods.js
+  now writes (`LINK_ENDS`): `streets_drain` (Storm Drain plot), `sewers_drain` (the Outfall), `woods_sewer` (the Tunnel Way), all two-way walked tunnels
+  on the east wall. STILL ONE-WAY: `woods_ritual` (Room 333) and `deadtree_lookingglass` keep their ends on the retired Ritual Ground, so coming
+  through them lands at the Woods' spawn by the Stair, and the Woods has no way to Room 333 yet. `HQ_AREA_MARKERS` has the new room.
 - **THE CABIN, WALK-IN (2026-11-15, mondo: "would rather you architect a wooden cabin like the building's in disaster city so i can actually walk
   inside of it and it be useful to the game")**: the Meshy `woods_cabin` prop left the Gully (the model stays in the catalogue for the editor). In its
   place bake-woods.js builds the city's way: a hollow `texbuilding` `woods:cabin` (skin off, `leaf_shabby_wood` swinging in the doorway, wood walls +
