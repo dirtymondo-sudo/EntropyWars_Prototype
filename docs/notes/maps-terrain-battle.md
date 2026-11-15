@@ -2237,8 +2237,8 @@ Studios' CC0 packs (see spells-vfx.md THE NOISE PACKS).
 ## THE URBAN DECAY ON THE PVP MAPS (2026-11-15)
 mondo: "can we replace the calm wood texture with the wood planks from the urban decay texture pack, like we did in disaster city. Try to
 use the urban decay textures more across all of the PvP battle maps, or at least the ones that fit". Textures only: no board, pick or prop moved.
-- **THE WOOD, everywhere**: data.js CALM_TERRAIN.sheets `calm_planks` (what `wood_planks` + `bridge` wear) = the pack's `WoodGeneric1a`,
-  `calm_shipwood` (what `wood` wears) = `WoodGeneric2a` (the dark boards, the old sheet's value). A sheet's file may be a full URL now
+- **THE WOOD, everywhere**: data.js CALM_TERRAIN.sheets `calm_planks` (what `wood_planks` + `bridge` wear) = the pack's `WoodFlooring1a` (real boards; the first pick, WoodGeneric1a, read as bark: mondo "thats wood generic like tree bark, not wood planks"),
+  `calm_shipwood` (what `wood` wears) = `WoodFlooring2a` (the dark boards, the old sheet's value). A sheet's file may be a full URL now
   (`calmSheetUrl(key)` in data.js; three-renderer.js, editor.js, map.js read through it); an urban URL is read as pixels like every urban sheet.
   The two old sheets stay in the editor's CALM picker as `calm_planks_old` / `calm_shipwood_old`. Maps it shows on: Flying Dutchman, North
   Pole, Bermuda, Camelot, The Lodge, Haunted House (and every room / voxel board with wood).
