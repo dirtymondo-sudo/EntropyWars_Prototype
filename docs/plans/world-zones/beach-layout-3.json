@@ -1,0 +1,1490 @@
+{
+"area": "The Beach",
+"version": "plan-3",
+"squareMeters": 3.5,
+"plotCells": 12,
+"note": "North is up; Disaster City's coast is over the west edge. Plan 3 (mondo 11-15): a big ocean to sail, the Bermuda Triangle as its own district.",
+"districts": {
+"S": "The Shore",
+"H": "The Harbour",
+"O": "The Ocean (NEW)",
+"T": "The Bermuda Triangle"
+},
+"triangle": [
+[
+60,
+108
+],
+[
+156,
+108
+],
+[
+156,
+36
+]
+],
+"changes": [
+"The room grows from 6 x 4 to 14 x 10 plots.",
+"NEW district: The Ocean, open water you sail",
+"  by skiff and swim, like an overworld sea.",
+"The Bermuda Triangle is its own district:",
+"  a right triangle (the game's own rule),",
+"  sides 6, 8 and 10 plots (3-4-5).",
+"  Its corners: the Lighthouse Rock, the",
+"  Cay island, the Maelstrom.",
+"The Shore and the Harbour are as in plan 2,",
+"  three plots further south."
+],
+"rooms": [
+{
+"room": "The Beach",
+"cols": 14,
+"rows": 10,
+"plots": [
+{
+"id": "P00-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P01-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P02-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P03-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P04-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P05-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P06-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P07-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P08-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P09-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P10-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P11-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P12-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P13-00",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P00-01",
+"name": "The North Headland",
+"district": "The Shore",
+"level": 1,
+"what": "the sand runs out at a rock headland",
+"from": "NEW (label mine)",
+"exit": null
+},
+{
+"id": "P01-01",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P02-01",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P03-01",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P04-01",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P05-01",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P06-01",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P07-01",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P08-01",
+"name": "islet (no name)",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "a small islet to land on",
+"from": "NEW (label mine)",
+"exit": null
+},
+{
+"id": "P09-01",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P10-01",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P11-01",
+"name": "the waterspout",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "scenery: the waterspout",
+"from": "the game's `waterspout` landmark",
+"exit": null
+},
+{
+"id": "P12-01",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P13-01",
+"name": "islet (no name)",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "a small islet to land on",
+"from": "NEW (label mine)",
+"exit": null
+},
+{
+"id": "P00-02",
+"name": "",
+"district": "The Shore",
+"level": 0,
+"what": "sand",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P01-02",
+"name": "",
+"district": "The Shore",
+"level": 0,
+"what": "sand",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P02-02",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P03-02",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P04-02",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P05-02",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P06-02",
+"name": "the whale",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "scenery: the whale",
+"from": "the game's `whale` landmark",
+"exit": null
+},
+{
+"id": "P07-02",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P08-02",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P09-02",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P10-02",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P11-02",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P12-02",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P13-02",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P00-03",
+"name": "The Boardwalk",
+"district": "The Shore",
+"level": 1,
+"what": "the plank boardwalk on the sea wall, palms, benches",
+"from": "Bayside's beach strip (built 11-13): the boardwalk",
+"exit": [
+"Disaster City: Bayside (boardwalk)",
+"open"
+]
+},
+{
+"id": "P01-03",
+"name": "The Tide Pools",
+"district": "The Shore",
+"level": 0,
+"what": "rock pools, starfish",
+"from": "NEW (label mine)",
+"exit": null
+},
+{
+"id": "P02-03",
+"name": "The Quay",
+"district": "The Harbour",
+"level": 1,
+"what": "the stone quay, crates, nets",
+"from": "Harbour: THE QUAY",
+"exit": null
+},
+{
+"id": "P03-03",
+"name": "The Breakwater",
+"district": "The Harbour",
+"level": 1,
+"what": "the long rock arm",
+"from": "Harbour: THE BREAKWATER",
+"exit": null
+},
+{
+"id": "P04-03",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P05-03",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P06-03",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P07-03",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P08-03",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P09-03",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P10-03",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P11-03",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P12-03",
+"name": "The Maelstrom",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "the whirlpool at the north point: the way down",
+"from": "Bermuda: THE MAELSTROM",
+"exit": [
+"The Deep (the whirlpool)",
+"open"
+]
+},
+{
+"id": "P13-03",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P00-04",
+"name": "The Beach Huts",
+"district": "The Shore",
+"level": 1,
+"what": "a row of huts (insides: new)",
+"from": "NEW (label mine)",
+"exit": [
+"insides: the huts",
+"new"
+]
+},
+{
+"id": "P01-04",
+"name": "The Surf",
+"district": "The Shore",
+"level": 0,
+"what": "the break; wade and swim; the Long Pier starts on this sand",
+"from": "NEW (label mine)",
+"exit": null
+},
+{
+"id": "P02-04",
+"name": "The Long Pier",
+"district": "The Harbour",
+"level": 1,
+"what": "the pier from the beach out to the ship",
+"from": "Harbour: THE LONG PIER",
+"exit": null
+},
+{
+"id": "P03-04",
+"name": "The Flying Dutchman",
+"district": "The Harbour",
+"level": 1,
+"what": "LANDMARK: the ship at the pier head; four decks inside",
+"from": "The Flying Dutchman: Main Deck, Gun Deck, Cabin, Hold",
+"exit": [
+[
+"inside: the Flying Dutchman",
+"inside"
+],
+[
+"the hold hatch: Atlantis",
+"secret"
+]
+]
+},
+{
+"id": "P04-04",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P05-04",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P06-04",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P07-04",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P08-04",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P09-04",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P10-04",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P11-04",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P12-04",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P13-04",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P00-05",
+"name": "The Palms",
+"district": "The Shore",
+"level": 1,
+"what": "palm grove, hammocks",
+"from": "NEW (label mine)",
+"exit": null
+},
+{
+"id": "P01-05",
+"name": "The Lifeguard Hut",
+"district": "The Shore",
+"level": 1,
+"what": "LANDMARK: the lifeguard hut, chairs, the volleyball net",
+"from": "Bayside's beach strip (built 11-13): the lifeguard hut",
+"exit": null
+},
+{
+"id": "P02-05",
+"name": "The Skiff",
+"district": "The Harbour",
+"level": 0,
+"what": "the skiff that crosses to the island",
+"from": "Harbour: THE SKIFF",
+"exit": null
+},
+{
+"id": "P03-05",
+"name": "The Channel",
+"district": "The Harbour",
+"level": 0,
+"what": "the marked channel out",
+"from": "Harbour: THE CHANNEL",
+"exit": null
+},
+{
+"id": "P04-05",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P05-05",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P06-05",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P07-05",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P08-05",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P09-05",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P10-05",
+"name": "No Fixed Position",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water; the Flight 19 tape",
+"from": "Bermuda: NO FIXED POSITION",
+"exit": null
+},
+{
+"id": "P11-05",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P12-05",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P13-05",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P00-06",
+"name": "The Dunes",
+"district": "The Shore",
+"level": 2,
+"what": "high dunes, the sand runs on south",
+"from": "NEW (label mine)",
+"exit": null
+},
+{
+"id": "P01-06",
+"name": "The Sandbar",
+"district": "The Shore",
+"level": 0,
+"what": "a bar out into the bay at low water",
+"from": "NEW (label mine)",
+"exit": null
+},
+{
+"id": "P02-06",
+"name": "The Harbour Mouth",
+"district": "The Harbour",
+"level": 0,
+"what": "open water, buoys",
+"from": "NEW (label mine)",
+"exit": null
+},
+{
+"id": "P03-06",
+"name": "The Roads",
+"district": "The Harbour",
+"level": 0,
+"what": "open water where ships wait",
+"from": "NEW (label mine)",
+"exit": null
+},
+{
+"id": "P04-06",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P05-06",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P06-06",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P07-06",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P08-06",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P09-06",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P10-06",
+"name": "The Sandbar",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "the sandbar, the way over",
+"from": "Bermuda: the sandbar",
+"exit": null
+},
+{
+"id": "P11-06",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P12-06",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P13-06",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P00-07",
+"name": "",
+"district": "The Shore",
+"level": 0,
+"what": "sand",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P01-07",
+"name": "",
+"district": "The Shore",
+"level": 0,
+"what": "sand",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P02-07",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P03-07",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P04-07",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P05-07",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P06-07",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P07-07",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P08-07",
+"name": "The Wreck Islet",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "a scrap of sand and a wreck",
+"from": "Bermuda: the wreck islet",
+"exit": null
+},
+{
+"id": "P09-07",
+"name": "The Reef",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "shallows, coral",
+"from": "Bermuda: the reef",
+"exit": null
+},
+{
+"id": "P10-07",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P11-07",
+"name": "The Jetty",
+"district": "The Bermuda Triangle",
+"level": 1,
+"what": "the island's jetty; the skiff lands here",
+"from": "Bermuda: THE JETTY",
+"exit": null
+},
+{
+"id": "P12-07",
+"name": "The Cay",
+"district": "The Bermuda Triangle",
+"level": 2,
+"what": "LANDMARK: the cay, its dune and the lookout, at the right angle",
+"from": "Bermuda: THE CAY + THE LOOKOUT",
+"exit": null
+},
+{
+"id": "P13-07",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P00-08",
+"name": "The South Dunes",
+"district": "The Shore",
+"level": 2,
+"what": "the dunes run on south",
+"from": "NEW (label mine)",
+"exit": null
+},
+{
+"id": "P01-08",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P02-08",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P03-08",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P04-08",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P05-08",
+"name": "The Lighthouse Rock",
+"district": "The Bermuda Triangle",
+"level": 3,
+"what": "the lighthouse on its rock, at the west point",
+"from": "Bermuda: the lighthouse rock",
+"exit": null
+},
+{
+"id": "P06-08",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P07-08",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P08-08",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P09-08",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P10-08",
+"name": "",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "open water inside the Triangle",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P11-08",
+"name": "The Lagoon",
+"district": "The Bermuda Triangle",
+"level": 0,
+"what": "still green water inside the reef",
+"from": "Bermuda Island: THE LAGOON",
+"exit": [
+"DOOR HQ pool",
+"secret"
+]
+},
+{
+"id": "P12-08",
+"name": "The Island Beach",
+"district": "The Bermuda Triangle",
+"level": 1,
+"what": "white sand, wreckage",
+"from": "Bermuda Island: THE BEACH",
+"exit": null
+},
+{
+"id": "P13-08",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P00-09",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P01-09",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P02-09",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P03-09",
+"name": "islet (no name)",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "a small islet to land on",
+"from": "NEW (label mine)",
+"exit": null
+},
+{
+"id": "P04-09",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P05-09",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P06-09",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P07-09",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P08-09",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P09-09",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P10-09",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P11-09",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P12-09",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+},
+{
+"id": "P13-09",
+"name": "",
+"district": "The Ocean (NEW)",
+"level": 0,
+"what": "open ocean: sail, swim, the ocean pack animals",
+"from": "NEW",
+"exit": null
+}
+],
+"cells": [
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"rwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"rwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"rrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"drrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddwwwwww",
+"dddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddwwwww",
+"dddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddwwww",
+"ddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddwwwww",
+"dddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddwwwwww",
+"ddddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddddddddddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddwwwdddooooooooowwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwaaaaawwwwwwwwwwwwwww",
+"dddddddddddddddddwwwwwddooBBBoooowwwrrrrrrrrrrrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwaawwwaawwwwwwwwwwwwww",
+"jjjjjjjjdddddddddwwwwwddooBBBoooowwwrrrrrrrrrrrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwaawwwwwaawwwwwwwwwwwww",
+"jjjjjjjjdddddddddwwwwwddooBBBoooowwwwwwwwwwwwwrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwawwaaawwawwwwwwwwwwwww",
+"jjjjjjjjddddddddddwwwdddooooooooowwwwwwwwwwwwwrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwawwaaawwawwwwwwwwwwwww",
+"ddddddddddddddddddddwwwdwwwwjjwwwwwwwwwwwwwwwwrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwawwaaawwawwwwwwwwwwwww",
+"ddddddddddddddddddddwwwdwwwwjjwwwwwwwwwwwwwwwwrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwaawwwwwaawwwwwwwwwwwww",
+"ddddddddddddddddddddwwwdwwwwjjwwwwwwwwwwwwwwwwrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwaawwwaawwwwwwwwwwwwww",
+"ddddddddddddddddddddddddwwwwjjwwwwwwwwwwwwwwwwrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwaaaaawwwwwwwwwwwwwww",
+"ddddddddddddddddddddddddwwwwjjwwwwwwwwwwwwwwwwrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddBBdBBdBBddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddBBdBBdBBddddddddwwwwwwwwwwjjwwwwwwwwwBBBBBBBwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwBBBBBBBwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddjjjjjjjjjjjjjjjjjjjjjBBBBBBBwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddjjjjjjjjjjjjjjjjjjjjjBBBBBBBwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwBBBBBBBwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwBBBBBBBwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddTTTddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddTTTddddddddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"ddTTTddTTTdddddddddwwwwwwwwwwjjwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddTTTdddddBBddwwwwwwwwwwBBwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddTTTdddddBBddwwwwwwwwwwBBwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddddddddddddwwwwwwwwwwBBwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddTTTdddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddTTTdddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddTTTdddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"dddddddddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDddddddddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"DDDDDDDDDDDDdddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwddddddddddddddddwwwwwwwwwwww",
+"DDDDDDDDDDDDddrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwddddddddddddddddwwwwwwwwwwww",
+"DDDDDDDDDDDDdrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwuuuwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddddDDDddddwwwwwwwwwwww",
+"DDDDDDDDDDDDdrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwuuuuuwwwwwwwwwwwwwwwwwwwwwwwwwddddddddDDDDDdddwwwwwwwwwwww",
+"DDDDDDDDDDDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddwwwwwwwwwuuuuuwwwwwwwwwwwwwwwwwwwwwwwwwdddddddDDDDDDDddwwwwwwwwwwww",
+"DDDDDDDDDDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdBddwwwwwwwwuuuuuuuuwwwwwwwwwwwwwwjjjjjjjjdddddddDDDDDDDddwwwwwwwwwwww",
+"DDDDDDDDDDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwddwwwwwwwwwwuuuuuuuuwwwwwwwwwwwwwjjjjjjjjdddddddDDDDDDDddwwwwwwwwwwww",
+"DDDDDDDDDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwuuuuuwwwwwwwwwwwwwwwwwwwwwddddddddDDDDDdddwwwwwwwwwwww",
+"DDDDDDDDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwuuuuuwwwwwwwwwwwwwwwwwwwwwddddddTTTDDDddddwwwwwwwwwwww",
+"DDDDDDDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwuuuwwwwwwwwwwwwwwwwwwwwwwddddddTTTdddddddwwwwwwwwwwww",
+"DDDDDDDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwddddddTTTdddddddwwwwwwwwwwww",
+"DDDDDDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwddddddddddddddddwwwwwwwwwwww",
+"DDDDDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddddddddddddddddwwwwwwwwwwwwwww",
+"DDDDDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddddddddddddddddwwwwwwwwwwwwwww",
+"DDDDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwddddwwwddddddddddddddwwwwwwwwwwwwwww",
+"DDDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwrrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddwwwwwdddddddddddddwwwwwwwwwwwwwww",
+"DDDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwrrrrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwddwwwwwwwddddddddddddwwwwwwwwwwwwwww",
+"DDDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwrrBBrrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdwwwwwwwwwdddddddddddwwwwwwwwwwwwwww",
+"DDrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwrrBBrrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdwwwwwwwwwdddddddddddwwwwwwwwwwwwwww",
+"Drrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwrrrrrrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdwwwwwwwwwdddddddddddwwwwwwwwwwwwwww",
+"Drrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwrrrrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwddwwwwwwwddddddddddddwwwwwwwwwwwwwww",
+"rrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwrrrwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddwwwwwdddddddddddddwwwwwwwwwwwwwww",
+"rwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwddddwwwddddddddddddddwwwwwwwwwwwwwww",
+"rwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddddddddddddddddwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwdddwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww",
+"wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"
+]
+}
+],
+"legend": {
+"t": "trees (cannot walk)",
+"p": "dirt path",
+"g": "grass",
+"w": "water",
+"b": "bridge / deck over water",
+"s": "snow",
+"r": "rock (cannot walk)",
+"x": "solid rock / wall (cannot walk)",
+"f": "concrete floor",
+"c": "corn (cannot walk; the rows are the walls)",
+"d": "sand",
+"m": "stone / marble paving",
+"l": "lava (cannot walk)",
+"h": "scorched rock",
+"k": "cloud you walk on",
+"v": "open sky (a fall)",
+"u": "sea floor",
+"a": "the drop into the dark",
+"B": "building",
+"i": "ice",
+"o": "cobbles / worn stone",
+"y": "crystal",
+"q": "the collider ring corridor",
+"e": "grey dust",
+"n": "red ground",
+"z": "the Sea of Possibility (cannot walk)",
+"j": "plank pier / deck",
+"G": "the ley line",
+"V": "nothing (cannot walk)",
+"D": "dunes",
+"R": "red carpet / hot floor",
+"T": "hedge / kelp (cannot walk)",
+"S": "light",
+"N": "open space (fly the ship, or float)",
+"Q": "an orbit (a guide line, not a wall)",
+"E": "Earth",
+"A": "asteroid"
+}
+}

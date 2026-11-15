@@ -4086,3 +4086,6 @@ Then: "disaster city is the most complete area so far" (the standard the Estate 
 - **THE LEAFY ONES AGAIN (same day, mondo: "the ones that are not the winter tree still look really rough, please fix")**: the sprayed leafy crowns are gone. A leafy
   tree is now made exactly like the fir: ten tiers of slices of its own picture from the stem to the real outline (bake-trees.py `fir(..., leafy=True)`), about 300 leaf
   triangles. Same three file names, new bytes; ASSET_MANIFEST.json carries the new shas (the `?h=` fetch). Lesson: slices of the whole picture read natural, loose sprays do not.
+- **THE OAK AGAIN (same day, mondo: "the one on the very left looks bad, the rest are good")**: the oak's picture is wider than tall, so whole stem-to-outline slices
+  were great flat boards. bake-trees.py form `oak`: twelve tiers, more boughs a tier standing steep, each slice cut into an inner and an outer sheet with their own
+  tilt and turn, the crown pulled in to 82 % and started 10 % higher so the trunk shows. About 470 leaf triangles. The other four trees are byte-identical.

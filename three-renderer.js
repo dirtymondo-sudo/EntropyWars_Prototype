@@ -93906,24 +93906,39 @@ const ThreeRenderer = (function () {
     function _hqStackPrep(R, B, now) {
         if (_hqStackOff() || B.grp === 'propGroup' || !_hq || R[B.grp] !== _hq.shellGroup || !_hqChunkBig(_hq)) return true;
         try {
-            var groups = {}, seen = new Set(), K = _hqStk.skipped;
+            var groups = {}, seen = new Set(), K = _hqStk.skipped, uses = new Map();
             for (var i = 0; i < B.cands.length; i++) {
-                var t = _hqStackTex(B.cands[i].m); if (!t || seen.has(t.image)) continue;
+                var t = _hqStackTex(B.cands[i].m); if (!t) continue;
+                uses.set(t.image, (uses.get(t.image) | 0) + 1);
+                if (seen.has(t.image)) continue;
                 seen.add(t.image);
                 var e0 = _hqStk.byImg.get(t.image); if (e0 && !e0.arr._ew_dead && e0.ver === t.version) continue;
                 var k = _hqStackKey(t); (groups[k] || (groups[k] = [])).push(t);
             }
-            for (var k2 in groups) {
-                var G = groups[k2], t0 = G[0], w = t0.image.width, h = t0.image.height, n = G.length, sz = w * h * 4;
-                if (n < 2) { K.alone = (K.alone | 0) + 1; continue; }
-                if (sz * n > 100663296) { K.tooBig = (K.tooBig | 0) + n; continue; }
+            /* THE SPLIT STACK (2026-11-15, mondo's F3: "sheet stacks 3 (125 sheets)" — the city's 1024 px sheets, 25 of them by then =
+               105 MB, were one bucket over the 96 MB limit and the whole bucket was left out: 2,300 pieces kept a look per sheet).
+               A bucket over the limit is cut into the fewest stacks that each fit, the most worn sheets together in the first, so
+               the pieces still merge within each. A stack is a look, so nothing else changes. All stacks together stay under
+               320 MB. The whole bucket left out, as before: window.EW_HQ_STACK_NO_SPLIT before the room. */
+            var parts = [], LIM = 100663296, noSplit = (typeof window !== 'undefined' && !!window.EW_HQ_STACK_NO_SPLIT);
+            for (var kg in groups) {
+                var G0 = groups[kg], sz0 = G0[0].image.width * G0[0].image.height * 4, per = Math.floor(LIM / sz0);
+                if (G0.length < 2) { K.alone = (K.alone | 0) + 1; continue; }
+                if (sz0 * G0.length <= LIM) { parts.push([kg, G0]); continue; }
+                if (noSplit || per < 2) { K.tooBig = (K.tooBig | 0) + G0.length; continue; }
+                G0.sort(function (a, b) { return (uses.get(b.image) | 0) - (uses.get(a.image) | 0); });
+                for (var left = G0.length, at = 0, np = Math.ceil(G0.length / per); np > 0; np--) { var take = Math.ceil(left / np); if (take >= 2) parts.push([kg, G0.slice(at, at + take)]); else K.alone = (K.alone | 0) + take; at += take; left -= take; }
+            }
+            for (var pi = 0; pi < parts.length; pi++) {
+                var k2 = parts[pi][0], G = parts[pi][1], t0 = G[0], w = t0.image.width, h = t0.image.height, n = G.length, sz = w * h * 4;
+                if ((_hqStk.bytes | 0) + sz * n > 335544320) { K.tooBig = (K.tooBig | 0) + n; continue; }
                 var arr = new THREE.DataArrayTexture(new Uint8Array(sz * n), w, h, n);
                 arr.format = THREE.RGBAFormat; arr.type = THREE.UnsignedByteType; arr.wrapS = t0.wrapS; arr.wrapT = t0.wrapT; arr.magFilter = t0.magFilter; arr.minFilter = t0.minFilter;
                 arr.anisotropy = t0.anisotropy; arr.colorSpace = t0.colorSpace; arr.flipY = false; arr.premultiplyAlpha = t0.premultiplyAlpha; arr.generateMipmaps = t0.generateMipmaps;
                 arr.name = 'ew sheet stack ' + w + 'x' + h + ' x' + n; arr._ew_stack = true; arr._ew_srcs = G.slice(); arr.needsUpdate = true;
                 if (!_hqStackFill(arr)) { arr._ew_dead = true; try { arr.dispose(); } catch (eD) {} K.refused = (K.refused | 0) + n; continue; }
                 for (var j = 0; j < n; j++) _hqStk.byImg.set(G[j].image, { arr: arr, layer: j, key: k2, ver: G[j].version });
-                _hqStk.arrays.push(arr); _hqStk.sheets += n;
+                _hqStk.arrays.push(arr); _hqStk.sheets += n; _hqStk.bytes = (_hqStk.bytes | 0) + sz * n;
             }
         } catch (e) { console.warn('[HQ batch] the sheet stack failed, the sheets stay their own', e); }
         return true;

@@ -20,7 +20,7 @@ import numpy as np
 from mathutils import Vector
 
 TREES = {  # file stem -> (form, seed, crown width for a bare pole)
-    'tree_rt_4': ('leafy', 1, 1.0), 'tree_rt_2_1': ('leafy', 3, 0.8), 'tree_rt_2': ('leafy', 5, 0.8), 'tree_rt_3': ('fir', 2, 1.0), 'tree_rt_1': ('fir', 4, 1.0),
+    'tree_rt_4': ('oak', 1, 1.0), 'tree_rt_2_1': ('leafy', 3, 0.8), 'tree_rt_2': ('leafy', 5, 0.8), 'tree_rt_3': ('fir', 2, 1.0), 'tree_rt_1': ('fir', 4, 1.0),
 }
 
 def picture(mat):
@@ -87,8 +87,10 @@ def fir(L, vs, H, seed, leafy=False):
         for r in range(y1, y0, -1):
             if P['xr'][r] - P['xl'][r] > stem * 5 + ph * 0.05: foot = (y1 - r) / ph; break
         foot = min(0.6, foot + 0.04); n = 10; bh = 0.12; nbs = (8, 8, 6); tilt = (0.15, 0.75)
+        if leafy == 'oak':   # THE BROAD OAK (mondo 11-15 "the one on the very left looks bad"): its picture is wider than tall, so whole stem-to-outline
+            foot = min(0.6, foot + 0.1); n = 12; bh = 0.13; nbs = (11, 10, 7); tilt = (0.1, 0.6)   # slices were great flat boards. More boughs a tier, standing steep, and each slice cut in two (below).
     else: foot = 0.1; n = 16; bh = 0.085; nbs = (9, 7, 5); tilt = (0.5, 0.95)
-    hw = int(ph * 0.07)                 # the heart: the picture's own middle strip, crossed three ways up the stem (the pack's stem stops low)
+    hw = int(ph * (0.035 if leafy == 'oak' else 0.07))                 # the heart: the picture's own middle strip, crossed three ways up the stem (the pack's stem stops low)
     for j in range(3):
         a = j * math.pi / 3 + 0.3; t = Vector((math.cos(a), math.sin(a), 0)); zt = H * 0.985; zb = H * foot * (1.0 if leafy else 0.6)
         L.sheet(Vector((x, y, (zt + zb) / 2)), t * (hw / ppm), Vector((0, 0, -1)) * ((zt - zb) / 2), cxp - hw, y0, cxp + hw, int(y1 - zb * ppm), Vector((x, y, (zt + zb) / 2)))
@@ -102,6 +104,12 @@ def fir(L, vs, H, seed, leafy=False):
             if Ln < H * 0.01: continue
             a = a0 + j * 2 * math.pi / nb + rnd.uniform(-0.15, 0.15); r = Vector((math.cos(a), math.sin(a), 0)); tg = Vector((-math.sin(a), math.cos(a), 0)); tl = rnd.choice((-1, 1)) * rnd.uniform(*tilt)
             upv = Vector((0, 0, 1)) * math.cos(tl) + tg * math.sin(tl); hh = (v1 - v0) / ppm / 2 * 1.15
+            if leafy == 'oak':   # two shorter sheets, the inner and the outer half of the slice, each with its own tilt and a small turn, the crown pulled in a little
+                Ln *= 0.82; um = (cxp + xe) / 2; tl2 = rnd.choice((-1, 1)) * rnd.uniform(*tilt); up2 = Vector((0, 0, 1)) * math.cos(tl2) + tg * math.sin(tl2)
+                a2 = a + rnd.uniform(-0.3, 0.3); r2 = Vector((math.cos(a2), math.sin(a2), 0)); dz = rnd.uniform(-0.03, 0.03) * H
+                L.sheet(Vector((x, y, zc)) + r * Ln * 0.27, r * Ln * 0.27, -upv * hh, cxp, v0, um, v1, mid)
+                L.sheet(Vector((x, y, zc + dz)) + r * Ln * 0.5 + r2 * Ln * 0.25, r2 * Ln * 0.27, -up2 * hh, um, v0, xe, v1, mid)
+                continue
             L.sheet(Vector((x, y, zc)) + r * Ln / 2, r * Ln / 2, -upv * hh, cxp, v0, xe, v1, mid, nx=2)
 
 def bake(src, dst, form, seed, wide):
@@ -115,7 +123,7 @@ def bake(src, dst, form, seed, wide):
     vs = [o.matrix_world @ v.co for v in o.data.vertices]
     L = Leaves(P)
     if form == 'fir': fir(L, vs, H, seed)
-    else: fir(L, vs, H, seed, leafy=True)
+    else: fir(L, vs, H, seed, leafy=form)
     me = bpy.data.meshes.new('leaves'); me.from_pydata([tuple(v) for v in L.v], [], L.f); uv = me.uv_layers.new(name='UVMap')
     for p in me.polygons:
         for l in p.loop_indices: uv.data[l].uv = L.uv[me.loops[l].vertex_index]
