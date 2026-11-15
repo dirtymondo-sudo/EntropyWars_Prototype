@@ -18,6 +18,46 @@ const P = (x, y) => plot['P0' + x + '-0' + y];
 const at = (id, lx, ly) => [plot[id].x * N + lx, plot[id].y * N + ly];           // a plot-local square → the room's square
 const open = (cx, cy) => cx >= 0 && cy >= 0 && cx < W && cy < W && cell[cy][cx] !== 't';
 const features = [], props = [], doors = [], npc = [], count = {};
+
+/* ── THE TRAILS AND THE PATHS (2026-11-15, mondo: "make dirt trails like the main roads and smaller dirt paths be like alleyways from disaster city"):
+   the plan drew every path two squares wide. They are laid again here from the plan's own joins: a MAIN trail (the trunk from the Stair to each
+   district's heart and to the open ways out) is THREE squares wide, every other path is ONE square, an alley between the trees. Each plot keeps
+   the place on its border where the plan's path crossed (so neighbours still meet) and its own clearing as the hub. Water under a path = a bridge. ── */
+{ const MAIN = ['P02-04 P02-03', 'P02-03 P01-03', 'P01-03 P00-03', 'P02-03 P02-02', 'P02-02 P03-02', 'P03-02 P04-02', 'P02-02 P01-02', 'P01-02 P00-02', 'P00-02 P00-01', 'P00-01 P01-01',
+      'P02-03 P03-03', 'P03-03 P04-03', 'P04-03 P05-03', 'P03-03 P03-04', 'P01-03 P01-04', 'P01-04 P01-05', 'P03-02 P03-01', 'P03-01 P04-01', 'P05-01 P04-01'];
+  const isMain = (a, b) => MAIN.indexOf(a + ' ' + b) >= 0 || MAIN.indexOf(b + ' ' + a) >= 0;
+  const SIDE = { N: [0, -1], S: [0, 1], W: [-1, 0], E: [1, 0] }, isPath = ch => ch === 'p' || ch === 'b';
+  /* 1. where each plot's path crossed each of its borders, and its hub, read off the plan before anything is cleared */
+  const info = {};
+  PLAN.plots.forEach(p => { const x0 = p.x * N, y0 = p.y * N, at = {}, soft = [], pth = [];
+      for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { const ch = cell[y0 + ly][x0 + lx]; if (ch === 'g' || ch === 's' || ch === 'r') soft.push([lx, ly]); else if (isPath(ch)) pth.push([lx, ly]); }
+      (p.ports || []).forEach(sd => { for (let k = 0; k < N; k++) { const lx = sd === 'W' ? 0 : sd === 'E' ? N - 1 : k, ly = sd === 'N' ? 0 : sd === 'S' ? N - 1 : k; if (isPath(cell[y0 + ly][x0 + lx])) { at[sd] = k; break; } } });
+      const src = soft.length >= 8 ? soft : pth, mx = src.reduce((t, q) => t + q[0], 0) / src.length, my = src.reduce((t, q) => t + q[1], 0) / src.length;
+      const hub = src.slice().sort((a, b) => Math.hypot(a[0] - mx, a[1] - my) - Math.hypot(b[0] - mx, b[1] - my))[0];
+      info[p.id] = { at, hub: [Math.max(2, Math.min(N - 3, hub[0])), Math.max(2, Math.min(N - 3, hub[1]))] }; });
+  /* 2. the old paths go back to forest (a bridge square back to water) */
+  for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) { if (cell[cy][cx] === 'p') cell[cy][cx] = 't'; else if (cell[cy][cx] === 'b') cell[cy][cx] = 'w'; }
+  /* 3. laid again: hub -> border, a dog-leg, `wd` squares wide (1 = [0], 3 = [-1, 0, 1]) */
+  const lay = (cx, cy) => { if (cx < 0 || cy < 0 || cx >= W || cy >= W) return; const ch = cell[cy][cx]; if (ch === 't') cell[cy][cx] = 'p'; else if (ch === 'w') cell[cy][cx] = 'b'; };
+  const run = (x0, y0, x1, y1, wd) => { const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)), off = wd === 3 ? [-1, 0, 1] : [0];
+      for (let i = 0; i <= n; i++) { const x = n ? Math.round(x0 + (x1 - x0) * i / n) : x0, y = n ? Math.round(y0 + (y1 - y0) * i / n) : y0; off.forEach(a => off.forEach(b => lay(x + a, y + b))); } };
+  let nMain = 0, nSide = 0;
+  PLAN.plots.forEach(p => { const I = info[p.id], x0 = p.x * N, y0 = p.y * N, hx = x0 + I.hub[0], hy = y0 + I.hub[1];
+      Object.keys(I.at).forEach(sd => { const q = P(p.x + SIDE[sd][0], p.y + SIDE[sd][1]); if (!q) return; const main = isMain(p.id, q.id), wd = main ? 3 : 1;
+          let k = I.at[sd] + (main ? 0 : 0); k = Math.max(main ? 1 : 0, Math.min(N - (main ? 2 : 1), k));
+          const tx = sd === 'W' ? x0 : sd === 'E' ? x0 + N - 1 : x0 + k, ty = sd === 'N' ? y0 : sd === 'S' ? y0 + N - 1 : y0 + k;
+          if (sd === 'N' || sd === 'S') { run(hx, hy, tx, hy, wd); run(tx, hy, tx, ty, wd); } else { run(hx, hy, hx, ty, wd); run(hx, ty, tx, ty, wd); }
+          if (main) nMain++; else nSide++; }); });
+  /* 4. no clearing left cut off: any open pocket the new paths miss gets its own one-square path to the nearest path square */
+  const walk = ch => ch !== 't'; let tied = 0;
+  for (let pass = 0; pass < 60; pass++) { const seen = new Int16Array(W * W).fill(-1), q = [], hub0 = info['P02-04'].hub, sx = 2 * N + hub0[0], sy = 4 * N + hub0[1];
+      seen[sy * W + sx] = 0; q.push([sx, sy]);
+      for (let i = 0; i < q.length; i++) { const [x, y] = q[i]; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (X >= 0 && Y >= 0 && X < W && Y < W && walk(cell[Y][X]) && seen[Y * W + X] < 0) { seen[Y * W + X] = 0; q.push([X, Y]); } } }
+      let lost = null; for (let cy = 0; cy < W && !lost; cy++) for (let cx = 0; cx < W; cx++) { const ch = cell[cy][cx]; if ((ch === 'g' || ch === 's' || ch === 'r' || ch === 'p') && seen[cy * W + cx] < 0) { lost = [cx, cy]; break; } }
+      if (!lost) break;
+      let best = null, bd = 1e9; q.forEach(c => { if (cell[c[1]][c[0]] === 'w') return; const dd = Math.abs(c[0] - lost[0]) + Math.abs(c[1] - lost[1]); if (dd < bd) { bd = dd; best = c; } });
+      run(lost[0], lost[1], best[0], lost[1], 1); run(best[0], lost[1], best[0], best[1], 1); tied++; }
+  count.mainLegs = nMain; count.sideLegs = nSide; count.tiedPockets = tied; }
 /* a seeded roll (the room is the same every bake) */
 let seed = 36; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
 
@@ -58,7 +98,8 @@ LINK_ENDS.woods_sewer = ['a', spur('P05-05', 'e'), 'THE DRAIN · INTO THE TUNNEL
 
 /* THE HORROR PASS (2026-11-15): the Gully gets a yard off its path for the wreck, the trailer and the cabin (rows 9-10 along the south, a pocket on the east) */
 { const p = plot['P03-05']; for (let ly = 9; ly <= 10; ly++) for (let lx = 1; lx <= 10; lx++) cell[p.y * N + ly][p.x * N + lx] = 'g';
-  for (let ly = 5; ly <= 8; ly++) for (let lx = 8; lx <= 10; lx++) cell[p.y * N + ly][p.x * N + lx] = 'g'; }
+  for (let ly = 5; ly <= 8; ly++) for (let lx = 8; lx <= 10; lx++) cell[p.y * N + ly][p.x * N + lx] = 'g';
+  for (let lx = 4; lx <= 7; lx++) if (cell[p.y * N + 6][p.x * N + lx] === 't') cell[p.y * N + 6][p.x * N + lx] = 'p'; }   // the alley from the plot's path to the cabin porch
 /* a plot the plan drew as path only gets a small glade beside its path (somewhere for its pieces to stand, and for a fight to open out) */
 PLAN.plots.forEach(p => { let g = 0, best = null; for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) { const ch = cell[p.y * N + ly][p.x * N + lx]; if (ch === 'g' || ch === 's' || ch === 'r') g++;
         if (ch === 'p') { const d = Math.hypot(lx - 5.5, ly - 5.5); if (!best || d < best[0]) best = [d, lx, ly]; } }
@@ -253,7 +294,10 @@ hdec('P05-04', 'psx_fish_skeleton_mp_1', 0, 0, { y: 0.02 }); hput('P05-04', 'psx
         ...[-1, 1].flatMap(sd => [box(sd * (w / 2 + 0.06), 1.05, 0.6, 0.08, 1.2, 1.3, 'urban:GlassWindowResidentialShutter1', 0x8a8a80, { uv: 'fit', faces: sd > 0 ? 'r' : 'l', top: false }),
             box(sd * (w / 2 + 0.14), 1.45, 0.6, 0.06, 0.22, 1.7, WD2, 0x8a7d68)]),
         /* the porch: boards on the ground, four posts, a lean-to roof */
-        box(0, 0, d / 2 + 1.75, w, 0.06, 3.3, FL, 0x8c8172), ...[-w / 2 + 0.3, -1.9, 1.9, w / 2 - 0.3].map(x => box(x, 0, d / 2 + 3.2, 0.22, 2.55, 0.22, WD2, DARK)),
+        /* THE FLOOR (mondo 11-15 "the cabin has a grass floor"): the ground rolls a few cm under the cabin and came up through the building's own thin floor,
+           so the boards are a real slab now, 16 cm proud of the ground, wall to wall; the porch boards sit at the same height */
+        box(0, 0, 0, w - 0.1, 0.16, d - 0.1, FL, 0x8c8172, { uv: [1.75, 1.75] }),
+        box(0, 0, d / 2 + 1.75, w, 0.16, 3.3, FL, 0x8c8172), ...[-w / 2 + 0.3, -1.9, 1.9, w / 2 - 0.3].map(x => box(x, 0, d / 2 + 3.2, 0.22, 2.55, 0.22, WD2, DARK)),
         { s: 'roof', form: 'shed', p: [0, 2.55, r2(d / 2 + 1.85)], size: [w + 1.0, 0.95, 3.9], key: SH, tint: MOSS, roof: true },
         /* the stone chimney up the back wall, its hearth inside */
         box(3.4, 0, -d / 2 - 0.5, 1.6, 6.6, 1.1, 'rocks_5', STONE, { roof: true }), box(3.4, 0, -d / 2 + 0.75, 2.2, 1.5, 0.9, 'rocks_5', STONE), box(3.4, 1.5, -d / 2 + 0.75, 2.6, 0.18, 1.0, WD2, DARK),
@@ -282,7 +326,8 @@ npc.forEach(n => { if (RACES.indexOf(n.race) < 0) throw new Error('not a unit: '
   while (st.length) { const [x, y] = st.pop(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const X = x + dx, Y = y + dy; if (open(X, Y) && !seen[Y * W + X]) { seen[Y * W + X] = 1; st.push([X, Y]); } } }
   const cold = PLAN.plots.filter(p => { for (let ly = 0; ly < N; ly++) for (let lx = 0; lx < N; lx++) if (seen[(p.y * N + ly) * W + p.x * N + lx]) return false; return true; }).map(p => p.id);
   if (cold.length) throw new Error('plots not reached: ' + cold.join(' '));
-  let op = 0, un = 0; for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) if (open(cx, cy)) { op++; if (!seen[cy * W + cx]) un++; } count.openSquares = op; count.unreachedSquares = un; }
+  let op = 0, un = 0; for (let cy = 0; cy < W; cy++) for (let cx = 0; cx < W; cx++) if (open(cx, cy)) { op++; if (!seen[cy * W + cx]) un++; } count.openSquares = op; count.unreachedSquares = un; 
+  if (process.env.WOODS_DUMP) console.log(cell.map((r, cy) => r.map((ch, cx) => open(cx, cy) && !seen[cy * W + cx] ? '!' : ch === 't' ? ' ' : ch).join('')).join('\n')); }
 count.props = props.length; count.features = features.length; count.doors = doors.length; count.natives = npc.length;
 
 /* ── the room ── */

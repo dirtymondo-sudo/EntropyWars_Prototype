@@ -3736,3 +3736,12 @@ own first room; bake-camelot.js writes only the kingdom now), with the Keep's an
 (HQ_ARENA_RULES.picks; same as `site_prebuilt_downtown_oldstreets`). `DOOR_HQ.retired` (old room -> new room) is read by map.js
 `_hqEnter` + `_hqGoRoom` (`_hqRetiredTo`): a save's CONTINUE, the map, a return from a match all land in the kingdom. RULE FOR THE NEXT
 REBUILT AREA: when the new room ships, add the old rooms to `DOOR_HQ.retired` in the same PR; do not leave the old rooms walkable.
+
+### THE WOODS: THE TRAILS, THE PATHS, THE CABIN FLOOR (2026-11-15, mondo: "The cabin has a grass floor, please fix. Can you make dirt trails like the main roads and smaller dirt paths be like alleyways from disaster city")
+- **THE TRAILS AND THE PATHS** (bake-woods.js, the block right after `const features`): the plan's paths were all two squares wide. The bake now clears them and lays them
+  again from the plan's own joins. A MAIN trail is THREE squares wide: the trunk from the Stair to each district's heart and to the ways out (the `MAIN` list of plot pairs).
+  Every other path is ONE square, an alley between the trees. Each plot keeps the place on its border where the plan's path crossed and its clearing as the hub; a path over
+  water is a bridge; a clearing the new paths miss gets its own one-square path (`tiedPockets`). Door spurs stay two squares. To make a path a trail, add its plot pair to `MAIN`.
+- **THE CABIN FLOOR**: the ground rolls a few cm under the cabin and came up through the hollow building's own thin floor. The arch row now has a real board slab, 16 cm
+  proud of the ground, wall to wall, and the porch boards sit at the same height. A one-square alley joins the plot's path to the porch.
+- Not seen in game (no browser run). `WOODS_DUMP=1 node bake-woods.js --dry-run` prints the square map.
