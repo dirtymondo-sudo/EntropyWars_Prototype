@@ -366,7 +366,7 @@ module.exports = {
             P.push(quad(0, 4.5, F + 0.1, W - 1.2, 1.0, 0, GF, 0xd0dce0, { uv: [1.75, 1.0] }));
             fakeDoor(P, W / 2 - 1.8, 0, F + 0.12, 0, DP, 0xd8d0c0, 1.7, 2.5);
             emit(T, P);
-            prop(T, 'car_suv', -W / 2 + 9.8, F + 3.2, 20);
+            prop(T, 'car_suv', -W / 2 + 9.8, F + 1.75, 90);   // THE EXTERIOR POLISH (11-15): along the 3.5 m service lane, in its middle (at 20 degrees its tail stood in the terrace's wall)
         })();
         terrace('P11-02-B2', 4, [0xd09a80, 0xb8b0a0, 0xc8806c, 0xe0c0a0]);
 

@@ -860,7 +860,7 @@ count.levels = lvCount;
 {
     Object.assign(dcCtx, { own: dcOwn, at: LV.at, lamps, busStops, signals: SIGNALS, REPO });
     count.dressing = PROPS.dress(dcCtx);
-    const pc = PROPS.check(dcCtx); count.propCheck = pc.tally;
+    const pc = PROPS.check(dcCtx); count.propCheck = pc.tally; dcCtx.dropped = pc.dropped;
     fs.writeFileSync(path.join(REPO, 'docs/disaster-city/prop-check.txt'), 'THE PROP CHECK, written by node bake-disaster-city.js. A district file\'s own prop that stands in something is listed here for its thread; a shared prop with no clear spot is left out.\n' + JSON.stringify(pc.tally) + '\n' + pc.report.map(r => r.join('  ')).join('\n') + '\n');
 }
 /* ── THE TREES STAND IN SOIL (mondo 2026-11-15: "trees are only put on grass or dirt or in a pot ... trees coming out of concrete dont make
@@ -920,13 +920,31 @@ lines.push("                  desc: 'A pumping station at the end of an alley, i
 lines.push("            ],");
 lines.push("            counters: [],");
 lines.push("            props: [");
+const propsLine = lines.length, propsN = props.length;
 props.forEach(f => lines.push("                " + J(f) + ","));
 lines.push("            ],");
 lines.push("            agents: [], npcSpots: [" + npcSpots.map(J).join(", ") + "],");
 lines.push("            spawn: { x: " + r3(JOIN.bay.x - 3.5) + ", z: " + JOIN.bay.z + ", face: 270 },");
 lines.push("        },");
 lines.push("        /* DC144-END */");
-const block = lines.join('\n') + '\n';
+let block = lines.join('\n') + '\n';
+/* ── THE EXTERIOR POLISH (docs/disaster-city/exterior-polish.js; mondo 11-15: "do an exterior pass too ... Bench clipping through a wall or
+   curb, probably from the elevation pass"): the game stands a prop on the COMPILED ground, which no pass above can read (the room has to
+   exist first). So the room as written so far is compiled here, headless, from a scratch copy of data.js; every outdoor prop is then put
+   on the real ground (off the wall tops, off the steps of the levels, the left-out ones back in) and the props are written again.
+   It moves rows, it never drops one. DC_NO_EXT=1 = the room without it. ── */
+if (!process.env.DC_NO_EXT) {
+    const cur = fs.readFileSync(path.join(REPO, 'data.js'), 'utf8'), e0 = cur.indexOf('        /* DC144-BEGIN'), e1 = cur.indexOf('        /* DC144-END */\n');
+    if (e0 < 0 || e1 < e0) console.warn('THE EXTERIOR POLISH: no DC144 block in data.js yet, run the tool a second time');
+    else {
+        const tmp = path.join(require('os').tmpdir(), 'dc-ext-' + process.pid + '.js');
+        fs.writeFileSync(tmp, cur.slice(0, e0) + block + cur.slice(e1 + '        /* DC144-END */\n'.length));
+        let sb = null; try { sb = require(path.join(REPO, 'load-data.js')).loadGameData({ quiet: true, file: tmp }); } finally { try { fs.unlinkSync(tmp); } catch (e) {} }
+        count.exteriorPolish = require(path.join(REPO, 'docs/disaster-city/exterior-polish.js'))({ sb, props, ctx: dcCtx, dropped: dcCtx.dropped || [] });
+        lines.splice(propsLine, propsN, ...props.map(f => "                " + J(f) + ","));
+        block = lines.join('\n') + '\n';
+    }
+}
 console.log(JSON.stringify(Object.assign({ features: features.length, props: props.length, streets: streets.length, bytes: block.length }, count)));
 if (process.env.DC_DUMP) fs.writeFileSync(process.env.DC_DUMP, JSON.stringify({ C, HALF, PAL, NXP, paint: Array.from(paint), features, props, bInfo, streets, cells: Array.from({ length: 144 }, (_, cy) => Array.from({ length: 144 }, (_, cx) => cellAt(cx, cy)).join('')), plots: PLAN.plots.map(p => ({ id: p.id, x: p.x, y: p.y, d: p.d, name: p.name })), districts: Object.keys(D).map(k => ({ id: k, label: D[k].label })) }));
 if (DRY) process.exit(0);
