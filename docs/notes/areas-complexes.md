@@ -4014,3 +4014,16 @@ Then: "disaster city is the most complete area so far" (the standard the Estate 
     footbridge pond, balcony bridges. The three trailers moved to the Ranch (Pasture, Ranch Gate).
   - No encounter table (`HQ_AREA_ENCOUNTERS` had none for the old rooms; those are mondo's baked tables).
 
+
+### THE FULL TREES (2026-11-15, mondo: "im not liking how these trees have the 2d cutouts for the leaves ... use the trunks and branches from the current trees ... make better leaves ... texture them with the current tree leaves ... just try to make them natural looking"; he picked row 2 of `woods_tree_leaves_3.jpg`)
+- **What they are**: `bake-trees.py` (repo root, Blender through `pip install bpy`) takes a Retro Tree Pack tree and bakes `<name>_full.glb` beside it on R2
+  (`Assets/world/nature/retrotreepack/GLB/`). The trunk and bark are the file's own. The two crossed whole-crown cards are gone; in their place are many small
+  sheets wearing pieces of THE SAME leaf picture (same material, MASK 0.5, so three-renderer.js treats them as leaves with no code change). Leafy tree: per bough a
+  small crossed core + 18 ragged sprays turned so the picture's solid side is inward and its real leaf edge is the outline. Fir / pine: 16 tiers of bough sheets, each a
+  slice of the picture from the stem to its real outline, + the picture's middle strip crossed up the stem. About 500-600 triangles a tree (the cards were ~100).
+- **Kinds** (data.js HQ_TREE_KINDS): tree_52 full oak, tree_53 full birch, tree_54 full tall birch, tree_55 full spruce, tree_56 full pine. ASSET_MANIFEST.json lists the five files.
+- **The Woods** wears them everywhere: bake-woods.js `FULL` maps tree / tree_2 / tree_3 / tree_4 / pine to the full twins (feature trees and the thicket's `kinds`).
+  The bare trees (tree_5, dead_tree) stay. No other room changed; the old kinds still draw the cards.
+- **Rejected on the way** (his words): solid low-poly clumps "too chunky and low poly"; domed spray balls "the silhouette of the leaves isn't right, especially for the
+  winter tree". Mock-up scripts: `/mnt/project-files/world-areas-plan/woods/draw-trees-leaves.py`.
+- Not seen in game (no browser run). Cost to watch: the Woods draws about 2,000 thicket trees, so roughly a million more triangles than before (instanced).
