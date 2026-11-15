@@ -723,7 +723,7 @@ lines.push(UD ? "                floor: '" + UD.GROUND.floor + "', cliff: '" + U
               : "                floor: 'urban:PlasterWallPainted1b', cliff: 'urban:ConcreteStriped2a', path: 'urban:TileGeneric1a', floorTint: '#8a8a8e',");
 lines.push("                /* THE LEVELS: the ground's height, square by square (four corners each, cm): docs/disaster-city/levels.js through this tool */");
 const lvLine = lines.length; lines.push('');   // (written once the ground is known: THE LEVELS, THE GROUND)
-lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0, streets: " + J(streets) + ",");
+lines.push("                gen: { kind: 'city', seed: 144, allOpen: true, noRescue: true, walkW: 0, kerb: 0, prisms: false, yardsOpen: false, packP: 0," + (UD ? " stains: true," : "") + " streets: " + J(streets) + ",");
 const lampLine = lines.length; lines.push("");   // written after the district files' build (a district may take a lamp off a square it built on: ctx.lamps)
 lines.push("                       open: [] },");
 const paintLine = lines.length; lines.push("");   // written last of all: THE TREES STAND IN SOIL may still lay a bed
