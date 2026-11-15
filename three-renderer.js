@@ -60664,7 +60664,7 @@ const ThreeRenderer = (function () {
            radius (no change), follow 0.3 (jeans at the front pocket), "never tuck in under the widest point" on the lower bones (no
            change to the cassock's seat, more jeans through on the lab coat), a longer fade from the coat's weights onto the chains (no
            change). Measured: see docs/notes/character-creator.md "THE BAKED SHAPE". */
-        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: null, tdir: 1, follow: [0.5], followSide: true, jsym: true, jblend: 0.5, maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96 };
+        var COAT_HANG = { cols: 16, joints: 6, minDrop: 0.14, fade: 0.07, gap: 0.012, stiffness: 2.6, gravity: 0.2, drag: 0.5, rad: 0.03, limExtra: 0.008, limT: true, poseA: null, tdir: 1, follow: [0.5], followSide: true, jsym: true, jblend: 0.5, maxRoot: 40, maxBend: 45, maxPush: [30, 40], fall: 0, thighTop: 0.25, rootFollow: true, rootUp: 0.25, rootW: 0.01, samples: [0.15, 0.34, 0.67, 1], sect: [0.05, 0.45, 0.55, 0.95], pct: 0.96, hitch: 0.25, sub: 4, turnRate: 240 };
         function hangBonePos(sk, i, BMi) { return new THREE.Vector3().setFromMatrixPosition(new THREE.Matrix4().copy(sk.boneInverses[i]).invert()).applyMatrix4(BMi); }   // a bone's bind position in the mesh's own space
         function coatHang(part, P, si, sw, count) {
             var sk = part.body.skeleton; if (!sk || (typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) return null;
@@ -60852,7 +60852,7 @@ const ThreeRenderer = (function () {
             if (part.hangRun) part.hangRun.fresh = true;
         }
         var _hgA = null, _hgB = null, _hgC = null, _hgD = null, _hgE = null, _hgF = null, _hgG = null, _hgQ = null, _hgQ2 = null, _hgP = null, _hgS = null;
-        function hangTick(part, dt) {
+        function hangTick(part, dt, root) {
             var caps = part.hangCaps; if (!caps || !(dt > 0)) return;
             if (!_hgA) { _hgA = new THREE.Vector3(); _hgB = new THREE.Vector3(); _hgC = new THREE.Vector3(); _hgD = new THREE.Vector3(); _hgE = new THREE.Vector3(); _hgF = new THREE.Vector3(); _hgG = new THREE.Vector3(); _hgQ = new THREE.Quaternion(); _hgQ2 = new THREE.Quaternion(); _hgP = new THREE.Vector3(); _hgS = new THREE.Vector3(); }
             var O = COAT_HANG, R = part.hangRun;
@@ -60869,8 +60869,36 @@ const ThreeRenderer = (function () {
                     });
                 });
             }
-            dt = Math.min(dt, 1 / 30);
+            /* THE COAT IN THE WALK (2026-11-13): the chains ran ONE step of at most 1/30 s per drawn frame, so on a slow frame rate the
+               coat fell behind the body (in slow motion: a turn or the first stride left it standing out at the hips for seconds), and
+               they are simulated in world space, so a unit that SNAPS round to face a target left its skirt behind and it flared out
+               to the bend limits on one side. Now: a frame longer than 1/30 s runs up to `sub` steps; after a hitch (`hitch` s: a
+               stall, a hidden tab, a 2 fps stage) the coat simply hangs where its weights + the legs put it; and whatever the body
+               turns faster than `turnRate` deg/s is carried round with it (the skirt swings on a turn, it does not stay behind). */
+            var real = dt, steps = 1;
+            if (O.hitch > 0 && real > O.hitch) R.fresh = true;
+            if (real > 1 / 30) { steps = Math.max(1, Math.min(O.sub || 1, Math.ceil(real * 30 - 1e-6))); }
+            dt = Math.min(real / steps, 1 / 30);
             var fresh = R.fresh; R.fresh = false;
+            var tRoot = root || part.body;   // (the unit's own frame: what a facing change turns)
+            if (O.turnRate > 0 && tRoot && R.chains.length) {
+                var bq = R.bq || (R.bq = new THREE.Quaternion()), bqn = R.bqn || (R.bqn = new THREE.Quaternion()), bqd = R.bqd || (R.bqd = new THREE.Quaternion());
+                var bm = R.bm || (R.bm = new THREE.Matrix4()), bmd = R.bmd || (R.bmd = new THREE.Matrix4());
+                tRoot.matrixWorld.decompose(_hgP, bqn, _hgS);
+                if (R.bqSet && !fresh) {
+                    bqd.copy(bq).invert().premultiply(bqn);   // now . then^-1
+                    var tAng = 2 * Math.acos(Math.max(-1, Math.min(1, Math.abs(bqd.w)))), tOk = O.turnRate * Math.PI / 180 * Math.min(real, 0.1);
+                    if (tAng > tOk && tAng > 1e-4) {
+                        var tF = (tAng - tOk) / tAng;
+                        bmd.copy(bm).invert().premultiply(tRoot.matrixWorld);   // the whole move of the unit's frame since the last tick: where each point of the skirt would be had it stayed on the body
+                        for (var tc = 0; tc < R.chains.length; tc++) for (var tb = 0, TB = R.chains[tc].bones; tb < TB.length; tb++) {
+                            _hgA.copy(TB[tb].cur).applyMatrix4(bmd); TB[tb].cur.lerp(_hgA, tF);
+                            _hgA.copy(TB[tb].prev).applyMatrix4(bmd); TB[tb].prev.lerp(_hgA, tF);
+                        }
+                    }
+                }
+                bq.copy(bqn); bm.copy(tRoot.matrixWorld); R.bqSet = true;
+            }
             var NK = caps.length, NS = O.samples.length;
             var W = R.capW || (R.capW = caps.map(function () { return { a: new THREE.Vector3(), b: new THREE.Vector3(), s: 1 }; }));
             for (var ci = 0; ci < NK; ci++) {
@@ -60912,6 +60940,7 @@ const ThreeRenderer = (function () {
                     p.set(_hgF.x + px * r / d, _hgF.y + py * r / d, _hgF.z + pz * r / d);
                 }
             };
+            for (var st = 0; st < steps; st++) { if (st) fresh = false;
             for (var c = 0; c < R.chains.length; c++) {
                 var bones = R.chains[c].bones, C = R.chains[c].C;
                 for (var i = 0; i < bones.length; i++) {
@@ -60968,6 +60997,7 @@ const ThreeRenderer = (function () {
                     _hgQ.multiply(_hgQ2); _hgQ2.invert(); _hgQ.premultiply(_hgQ2);   // parent^-1 . turn . parent
                     j.quaternion.premultiply(_hgQ); j.updateWorldMatrix(false, false);
                 }
+            }
             }
         }
         function buildWear(part, root, id) {
@@ -63711,7 +63741,7 @@ const ThreeRenderer = (function () {
                 try { _ccArmClear(root, state, Math.min(0.1, sdt), state.shapeKey); } catch (e) { if (!state.clrWarned) { state.clrWarned = true; console.warn('[ThreeRenderer] arm clearance failed', e); } }   // THE ARM CLEARANCE (before the cloth reads the pose)
                 if (parts.some(function (p) { return p.hangCaps; })) {   // THE COAT HANG: the long coat's skirt off the legs (before anything reads the pose)
                     root.updateWorldMatrix(true, true);
-                    for (var hi = 0; hi < parts.length; hi++) if (parts[hi].hangCaps) { try { hangTick(parts[hi], sdt); } catch (e) { if (!state.hangWarned) { state.hangWarned = true; console.warn('[ThreeRenderer] coat hang failed', e); } } }
+                    for (var hi = 0; hi < parts.length; hi++) if (parts[hi].hangCaps) { try { hangTick(parts[hi], sdt, root); } catch (e) { if (!state.hangWarned) { state.hangWarned = true; console.warn('[ThreeRenderer] coat hang failed', e); } } }
                 }
                 if (parts.some(function (p) { return p.wearSway; })) {   // THE BLENDER CAPES: their chains on the cape's spring
                     if (!state.capeSway) state.capeSway = Object.assign({ key: {} }, CAPE_SWAY);
