@@ -162,6 +162,21 @@ write the sync zip — that's it. Only run the playtest harness / any browser au
 when the user explicitly requests it (e.g. "playtest <mode>") or when a change
 is genuinely impossible to validate any other way AND the user has agreed.
 
+### RULE #1d — THE FRESH CHECK: NEVER BUILD OR TEST ON AN OLD COPY (mondo 11-15)
+A cloud container's clone is shallow and its local `origin/main` ref can be DAYS old. On 11-15 a thread ran
+`git checkout -B <branch> origin/main` without fetching, got the 11-09 game and posted a proof picture of it.
+- FIRST command of every thread, and again before any browser run or proof picture:
+  `git fetch origin main && git merge origin/main` (branch from the FETCHED ref only). "refusing to merge unrelated
+  histories" = shallow clone: `git fetch --deepen=300 origin main`, then merge.
+- `node fresh-check.js` prints `[EW BUILD] HEAD … · main … · N PRs behind · FRESH|STALE`; exit 1 when stale (a PR main
+  merged over 60 min ago is missing, no common history, or GitHub unreachable).
+- The local server (`npm start`, off Render) runs it on every page load: a stale checkout serves a red STALE CHECKOUT
+  page, not the game. A fresh page gets `window.EW_BUILD` + the `[EW BUILD]` console line and re-reads every game
+  script it loaded from cdn.entropywars.net; any that differs from the checkout (live R2 code in place of your edits, a
+  cached old file) covers the page in a red CODE MISMATCH screen. So a harness must serve the checkout's .js/.css
+  (playtest_hq.js does). Never work around either screen; fix the checkout. `EW_ALLOW_STALE=1` only for a bisect.
+- Every proof reply states the `[EW BUILD]` line's HEAD. `.claude/hooks/session-start.sh` fetches main at session start.
+
 ### RULE #1b — CACHE-BUSTING (MANDATORY on EVERY R2 file delivery)
 Assets are served with immutable long-cache headers, so an uploaded file does
 NOTHING until `index.html`'s version token changes — players keep the cached old

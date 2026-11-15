@@ -107,6 +107,9 @@ app.get('/api/character-model/fabric/:key', limitRead, (req, res) => {
 // never be public: server.js itself (guard/anti-cheat logic), the internal
 // docs, the .git directory, and ./replays/ (per-match logs). Opt back into
 // full-directory serving for local tinkering with EW_DEV_STATIC=1.
+// THE FRESH CHECK (2026-11-15): off Render, a checkout that is behind main serves a red STALE CHECKOUT page in
+// place of the game, and a fresh one gets the [EW BUILD] stamp + code check (fresh-check.js). No-op on Render.
+try { app.use(require('./fresh-check.js').middleware()); } catch (e) { console.warn('[fresh-check] off:', e && e.message); }
 if (process.env.EW_DEV_STATIC === '1') {
     app.use(express.static(path.join(__dirname), {
         extensions: ['html'],
