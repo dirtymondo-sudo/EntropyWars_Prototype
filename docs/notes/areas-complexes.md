@@ -3434,3 +3434,9 @@ the hollywood hills. move whatever you have to." The mountains were the NORTH ed
   mesh, Lambert, no fog (it stands in the far land's haze), no light. Letters known: A C D E H I L N O R S T W Y. The city's: 2.1 m blocks
   (14.7 m letters), 30 m up the east mountainside (land about y 32..36 there), centred on z 0.
 - Proof: `/mnt/project-files/dc-entertainment/la_hills.jpg` (offline: the land's own arithmetic + the sign code, stand-in colours; not the game).
+
+## DISASTER CITY, THE HILL SIGN — on the NORTH mountains (2026-11-15, replaces the east range)
+mondo 11-15 13:18 on the east range of PR #1424: "that looks terrible. you just put a random mountain in the ocean ... just put the sign on the
+mountains in the north and remove the one you added". The east edge is the open bay again (E.js exports no `e.cap`); `edges.sign` is
+`{ side: 'n', at: 100, d: 30, ... }`: on the north range over the city's east half, land about y 55..59 there. The `edges` district export and
+the renderer's THE HILL SIGN stay as written above. LESSON: never add land he did not ask for; "use the mountains" meant the ones that exist.
