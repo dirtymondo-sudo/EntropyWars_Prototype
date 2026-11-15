@@ -2733,6 +2733,28 @@ block). 25 of them, city rooms only: `site_prebuilt_downtown_streets` 18 (bake-d
   `hard` flags in the three rooms; standing on each slab, the ground under it, every rail blocks. NOT SEEN ON SCREEN (RULE #1c).
 - After merging main in Disaster City: `node bake-disaster-city.js` (the tool writes the `landing` rows).
 
+### THE FLUSH LANDING — the platform is level with the roof, you walk straight on (2026-11-15)
+mondo: "They dont reach up all the way, so i cant even jump from the platform to the building to get on top. I should just be able to walk
+off the platform and on to the roof/floor. But when i walk off the platform now, i fall off and clip into the building." Three causes:
+the Disaster City platform was a HALFWAY landing (3.5 m, a second ladder on the wall went on to the 7 m roof); the hidden slab ended AT the
+wall and its rim is not stood on (`bridgeEdge`), so the walker dropped down the strip between slab and wall; and a yard hedge along a
+building's foot reached in over the roof's edge and set a roof walker down on the hedge's top, inside the building.
+- **`flush: true`** on a `landing` row (data.js `hqTerrainLandings`): its top = the tier behind its `back` (the roof), no back guard, the
+  result carries `flush`. With no tier behind it (the building became a walk-in: landings 0 and 10, P01-08-B1 and P06-05-B1) it keeps `h`.
+  bake-disaster-city.js writes every fire escape as ONE flush landing + ONE ladder from the yard (the second ladder is gone: it would rise 0 m).
+- **The lap**: every landing with a mass behind it runs its hidden slab 0.6 m into that mass (all three city rooms): a halfway landing's
+  walker stops at the wall, a flush landing's walks onto the roof.
+- **The mouth** (data.js `_hqTLandingMouths`, run on `info.arch` at compile, the room's rows never written): where a flush landing meets
+  its roof, plain `box` parts on the roof's edge (the landing's width, 0.5 m out to 0.6 m in, up to 1.3 m over the roof) are cut along the
+  edge (a parapet, a coping, a rail up to 0.7 m thick) or lose that stretch of one face (a roof-wide hollow rim, `top: false`). A district
+  needs no gap of its own. Not cut: masses, quads, rings, parts turned off the square.
+- **hqTerrainFeet**: a wall whose top is under the ground at that spot is no wall (the hedge under a roof's edge).
+- Southside P05-08-B1: one roof AC unit stood in the mouth, moved 0.9 m along the edge (districts/S.js).
+- Checked offline (node, the compiled room): all 16 flush landings are level with their roof, a walk off the back in 5 lanes reaches the roof
+  with no drop (one lane set stops 2.5 m in at University P01-04-B1's own roof structure), the three railed sides still block, every roof
+  is in the reach. Cyberpunk streets + the old streets keep their halfway landings and upper ladders (the stair heads need them); the
+  walker there now stops at the wall. NOT SEEN ON SCREEN (RULE #1c). Known: Industrial P01-08-B2's drawn roof cap is 0.25 m over its walked roof.
+
 ### THE PROP PASS, SECOND WAVE (2026-11-13, PR after #1315)
 Eight pieces cut from the packs by bake-pack-pieces.py and wired as catalogue rows (data.js, above ind_factory_red): `public_phone`, `power_pole` (Tacos),
 `garbage_bags` (6twelve), `garbage_bag`, `metal_trash_can` (Trailer Park), `play_slide`, `play_swing`, `play_sandbox` (Cursedlake PS1 Playground, R2
