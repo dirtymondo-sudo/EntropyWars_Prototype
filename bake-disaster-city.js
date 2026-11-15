@@ -908,6 +908,11 @@ count.levels = lvCount;
    faces on one plane, rugs onto the floor sheet, props onto the raised floor they stand in. It moves rows, it never drops one. ── */
 if (!process.env.DC_NO_POLISH) count.interiorPolish = require(path.join(REPO, 'docs/disaster-city/interior-polish.js'))({ features, props, at: LV.at, REPO });   // DC_NO_POLISH=1: the room as the district files wrote it
 lines[lvLine] = "                slope: { cells: { res: " + C + ", x0: " + gx(0) + ", z0: " + gx(0) + ", nx: 144, nz: 144, f: '" + LV.f64 + "', d: '" + LV.b64 + "' } },";
+/* ── THE SIGN FONTS (docs/disaster-city/sign-fonts.js; mondo 11-15: "do a font pass on all of the buildings that have text"): every
+   'txt:' sign gets its typeface by its district and what it says, as a sixth field on its key. A district file keeps writing the plain key. */
+{ const SIGN_FONTS = require(path.join(REPO, 'docs/disaster-city/sign-fonts.js')), cl = v => Math.max(0, Math.min(N * 12 - 1, Math.floor((v + HALF) / C)));
+  const dOf = f => { const m = /P\d\d-\d\d/.exec(String(f.id || '')), p = (m && plotOf[m[0]]) || (typeof f.x === 'number' && typeof f.z === 'number' ? plotAtCell(cl(f.x), cl(f.z)) : null); return p ? p.d : ''; };
+  const sf = SIGN_FONTS.apply(features, dOf), sp = SIGN_FONTS.apply(props, dOf); count.signFonts = sf.signs + sp.signs; }
 features.forEach(f => lines.push("                    " + J(f) + ","));
 lines.push("                ],");
 lines.push("                /* the cars: the ring (west avenue, the north street, the east avenue, the cross street), never the response streets round the mall */");
