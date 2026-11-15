@@ -3890,3 +3890,9 @@ the roads again. why ... would i want roads and a traffic system and cars if you
   the way), a straight avenue past the gym (needs the gym gone).
 - Checked offline: every route sampled on carriageway squares (only the pavement bands at junctions are not), no prop in a lane,
   44 residents place, nothing steep or closed. NOT seen in game.
+
+- **THE MESHY PIECES (second delivery, 2026-11-15, mondo 19:01 "okay go ahead"):** `saguaro_cactus`, `prickly_pear`, `covered_wagon`, `water_tower_west`,
+  `hitching_rail` (concept -> image-to-3D meshy-t2.5, base y 0, metallic 0, `.opt.glb` beside each on R2 `Assets/world/props/meshy/`, manifest rows,
+  MODEL_LIST; originals + `run.py` / `prep.mjs` in project files `desert-plots/meshy/`). Catalogue rows "THE DESERT'S PIECES". bake-desert.js places
+  9 hitching rails along Main Street, 2 wagons at the Wagon Camp, the water tower by the windmill and 80 cacti (46 saguaro, 34 prickly pear) seeded
+  on the plan's open sand only (never the base, the circus, Main Street or beside another piece). Not seen on screen.

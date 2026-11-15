@@ -1,0 +1,18 @@
+---
+name: camelot-kingdom-plots-20261115
+description: Camelot Kingdom on plots: castle PR #1460 + 64-plot kingdom room PR #1465 shipped 11-15, never seen on screen; Keep floors / Undercroft / Sky Castle still old
+metadata:
+  type: project
+  modified: 2026-11-15T16:36:07.699Z
+---
+Thread (thread in the owner project) "Build Camelot Kingdom on plots" (mondo 11-15 16:30: "another thread for the next most important zone"; Camelot picked because the Woods' west trail already ends there and it is the next stop on his zone graph). See [[world-areas-plan-20261115]].
+
+History: plan 1 + plan 2 (8x8, castle middle, approved 16:53), castle redesign mock-up approved "for a start" (camelot_castle_redesign.png), castle PR #1460.
+
+SHIPPED 11-15 PR #1465 (token 20261115-kingdom-01-cors, data.js 1dbf132a live): the 64-plot room `site_prebuilt_camelot_kingdom` (bake-camelot.js from docs/areas/camelot/layout.json; castle placed inside by buildCastle(DZ)). All ways in open on it (hub, HQ door = Town Gate, Woods trail, wardrobe, well, sleigh road, Woods dead tree door). Engine: `gen.zones` (tree kinds per district, `none` for hedges). res 1.75 because 0.875 took 32 s to compile. NOT SEEN ON SCREEN. Open: Keep upper floors / Undercroft / Sky Castle redesign; missing R2 pieces (anvil, market stall, archery target, lamp post); Town plot names are descriptions; old Fairy Forest glade has no door. Notes: areas-complexes.md "CAMELOT KINGDOM ON PLOTS, THE KINGDOM ROOM". Check picture: /mnt/project-files/camelot-kingdom/kingdom_built_rows_topdown.png.
+
+11-15 17:49 mondo, angry (still saw old Camelot from the map): "stop fucking around and just delete the old fucking camelot. we are making new maps. no reason why the old one should still be loading at all." DONE PR #1467 (map GO anchor) + PR #1468: old Great Hall + standalone castle room DELETED; old ward door-less, off the map, kept only as the Camelot PvP board source; data.js `DOOR_HQ.retired` (old room -> new) read by map.js _hqEnter/_hqGoRoom (Continue, map, match return all land in the kingdom). RULE (my reading of his words, applies to every rebuilt area): when a rebuilt area ships, retire/delete its old rooms in the same PR; never leave the old one loadable.
+
+NEW THREAD 11-15 18:29 (thread in the owner project) "Rework Camelot layout, exteriors and interiors" (replaces the old one). mondo: "the village is supposed to be inside the castle walls too. so castle in the middle. village. walls surrounding all that. moat surrounding all that. then woods surrounding all that." Roof gaps FIXED PR #1476 (roofs had no underside; bake-camelot.js sheet().roof adds one). PLAN 3 posted, WAITS HIS OK, nothing built: /mnt/project-files/camelot-kingdom/plan3/ (camelot_plot_plan_3.png, camelot-layout-3.json, draw-plan3.py): same room id, 8x8; castle (no own moat) centre, village loop + market, town wall 4 gates, moat, woods ring (N snowy pines + sleigh road, E Fairy Forest, W Looking-Glass Garden, S forest + HQ road). North Pole district leaves the room (old village room stays behind the sleigh road; Mountains zone = layout thread). After OK: rebuild via bake-camelot.js, then Keep floors / Undercroft / Sky Castle.
+
+11-15 18:39 mondo "okay that looks better" = plan 3 OK. BUILT + SHIPPED PR #1480 (same room id, flat, town wall 7 m, 45 houses, 4 gates, moat, woods ring; North Pole district out, village room untouched). Fixed NaN tower decks (old room's slope + hqCastleTower arc decks). Not seen on screen. Top-down check: camelot-kingdom/plan3/kingdom_plan3_built_rows_topdown.png. NEXT: Keep upper floors, Undercroft, Sky Castle; richer village exteriors.

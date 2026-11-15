@@ -1,0 +1,17 @@
+---
+name: cutscene-editor-20261115
+description: Cutscene editor (edit dialogue live, per-shot notes, export for Claude) SHIPPED PR #1413 + #1427 + #1472 11-15; how to bake his export;
+metadata:
+  type: project
+  modified: 2026-11-15T13:46:41.441Z
+---
+mondo asked 2026-11-15 for an in-game cutscene editor: change dialogue easily, give notes, export it all for Claude to implement. Thread (thread in the owner project). He OK'd the plan + mock-up ("okay") and it SHIPPED in PR #1413 (token 20261115-sceneed-01-cors, live on R2).
+
+- WHERE: Settings > Developer > Open Cutscene Editor; EDIT beside every REPLAY in Pause > QUESTS. PLAY works from anywhere (see PR #1427 below).
+- WHAT: lines typed in the editor show in the replay at once (his device, localStorage `ew_scene_editor_v1`, never IndexedDB); add / cut / split a line; notes per shot tagged CAMERA / ACTING / TIMING / DIALOGUE / OTHER + one per scene; in a playing scene PREV SHOT / NEXT SHOT / N = note (freezes the scene clock). EXPORT FOR CLAUDE = `Entropy_Wars_Cutscene_Notes_<stamp>.json` in his Downloads + readable text copied.
+- WHEN HE DROPS AN EXPORT (file or pasted text): `node bake-cutscenes.js <file> [--dry-run]` writes changed lines into data.js STORY_CUTSCENES word for word and prints the to-do list (cuts, added lines needing a shot, every note with the shot's camera). Do those by hand in the cutscene thread ([[first-quest-cutscenes-20261112]]). Baked lines clear themselves in his editor; he clears notes himself (CLEAR THIS SCENE'S NOTES).
+- Code map: docs/notes/story-party-progression.md "THE CUTSCENE EDITOR". Proof + sample export: /mnt/project-files/cutscene-editor/.
+- PLAY FROM ANYWHERE (PR #1427, same day, after he was angry that PLAY was greyed out outside story mode: "if I need a cutscene editor i need to be able to play the cutscenes from it"): PLAY in the editor works from the main menu, needs no quest progress, files nothing on the quest, ambush plays without its fight, editor comes back after the scene. All 8 scenes proven started + editor back from the main menu in the cloud browser (log in /mnt/project-files/cutscene-editor/tools/). LESSON: never ship him a tool button that is disabled behind another screen. BUG LESSON: in the building never call document.exitPointerLock() directly (reads as ESC -> pause menu); use ThreeRenderer.hq.sceneFreePointer().
+- PLAY REWRITE (PR #1472, token 20261115-sceneplay-02-cors, after his Mac test: foyer flashed then he landed in the desert, second PLAY dead): each opening scene now plays ALONE in its own room (map.js `_SED_OPENING`, no chain), entering for a scene is no arrival (no notices, CONTINUE spot untouched), a new PLAY or reopening the editor ends any pending run, a failed run shows "THE SCENE DID NOT PLAY: why" in the editor's top line. Proven in cloud: all 8 scenes twice in a row from the main menu on a finished-quest profile + switch-scene case (/mnt/project-files/cutscene-editor/proof_every_scene_twice.jpg, harness tools/menu2.js). LESSON: prove tools on a FINISHED-quest profile and press every button TWICE. From the menu, TV/desk/office scenes still load the foyer first, then their room (two load screens). Not yet confirmed on his Mac.
+- Not confirmed by him: the N key and the five tags (my picks, shipped as proposed). He has not tried it on his Mac yet.
+- Harness note: cloud browser runs take ~10 min each (cold HQ load); opening the editor in the building opens the pause menu under it; stub `window._tutorialStartFromHq` so the tape does not start after scene B.

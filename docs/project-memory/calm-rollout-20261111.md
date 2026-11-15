@@ -1,0 +1,22 @@
+---
+name: calm-rollout-20261111
+description: Calm terrain rollout game-wide (mondo approved 11-11): batches, sheet list, place sheets, calm liquids, editor CALM group, value-matching lesson
+metadata:
+  type: project
+  modified: 2026-11-11T19:42:34.590Z
+---
+mondo 11-11 approved the plan ("looks good to me") in (thread in the owner project). Files /mnt/project-files/calm-rollout-20261111/.
+- Calm = default look everywhere (boards, zones, HQ, team room, editor view); same terrain keys (rules unchanged); his sheets never edited; window.EW_NO_CALM_LOOK = true compares.
+- Editor: CALM group first in texture picker (lists every CALM_TERRAIN.sheets key automatically); his sheets stay listed; ROOM tab LOOK switch keeps a room on pixel sheets.
+- No-repeat (lava trick) on natural ground only; patterned sheets (bricks, planks, tiles, checker, damask, carpet) stay on the plain grid.
+- Batches: 1 = PvP demo arenas + spaceship metal + spell ground on batch-1 keys. 2 = other 27 arenas + spell ooze/poison/plague flesh/crystal/castle walls + the six liquids. 3 = DOOR HQ indoor (texture names concrete, training_floor, holo...). 4 = voxel boards + 2D view.
+- BATCH 1 SHIPPED PR #1136 (?v=20261111-calmroll-02-cors). Proof proof-batch1/.
+- BATCH 2 SHIPPED 11-11 PR #1137 (?v=20261111-calmroll-03-cors): 25 sheets on R2 Assets/world/terrain/calm/ (41 calm sheets total). PLACE SHEETS (CALM_TERRAIN.place + sites) where his room floorColor made the ground another colour: Mars moon_2 -> calm_marsdust, Singularity moon_3 -> calm_moonviolet, Babel bricks_1 -> calm_sandstone, Agartha marble_light -> calm_marblemint (North Pole/Antarctica marble -> snow from batch 1). Beach desert -> calm_sand_beach via _ewSandBeach(). CALM LIQUIDS in three-renderer _CALM.liquids [colour, opacity, glow] (poison acid green + glow). Proof proof-batch2/.
+- Left alone: urban:* pack (his, already muted).
+- OBSIDIAN VEINS APPROVED by mondo 11-11 22:20 ("lava veins in the obsidian are fine"): calm_obsidian -> calm_obsidian_2.png (lava in the joints); 'Obsidian, no veins' (calm_obsidian_plain -> _1) stays in the editor.
+- Calm ignores shell.floorColor; other tinted rooms not arena picks (atlantis_abyss desert x blue, downtown_harbour sand, hollow_earth_adit mint) not given place sheets.
+- VALUE LESSON: sample the floor on HIS board's screenshot and the calm one at the same spot before shipping (his sheet x room floorColor = his real albedo). Light sheets blew out (marble, beach), tinted rooms read wrong (Mars pale, Babel bright, Agartha grey, Heaven dusty). Time of day differs per run, so compare roughly.
+- PROOF GOTCHA: ?ew_gpu=webgl2 = node renderer on WebGL2; classic GLSL = ?ew_gpu=webgl (slow, often >900 s). Arena ids prebuilt_<site>_delta. Spell casts need tiles in caster vision. Headless WebGPU logs "Buffer used in submit while destroyed" sometimes = flake (ground still drew). Max 3 browsers.
+- BATCH 3 SHIPPED 11-11 PR #1138 (?v=20261111-calmroll-04-cors): 17 sheets (dungeon, tiles x2, plaster, wallpaper, patchwork x3 incl RETRO for carpet_4 = H-Wing, gold damask, leather, canopy, forest floor, purple grass tinted to LG sea violet, paving, ruins, void, obsidian_2). Proof proof-batch3/. Room proof: boot ?hq then _hqEnter({room,quiet:true,from:'walk'}); ThreeRenderer is a const (typeof, not window.). Retro carpet reads as carpet tiles in H-Wing: his to overturn.
+- BATCH 4 SHIPPED 11-11 PR #1139 (?v=20261111-calmroll-05-cors): rubble, ice blocks, copper, rubber mat, healing spring + voxel keys mapped (bridge->planks, tree->canopy, nexus->sandstone, sanctuary->flagstone...). Voxel editor 2D grid/palette (map.js _meTerrainBg) shows calm. Left pixel: liquids (calm via _CALM), holo, fog, barrier_passage, cloud_gap, unworn material sheets (fur, skin, floral...). ROLLOUT COMPLETE.
+- 11-12 LAVA + WATER BACK TO PIXEL (mondo: "keep all the new calm textures, but go back to the old lava and water, these new ones just arent looking good"): PR #1148 (?v=20261112-pixelliquid-02-cors), (thread in the owner project). data.js CALM_TERRAIN.pixelLiquids = lava, water, deep_water: his sheets + his liquid look everywhere. Calm versions kept (window.EW_CALM_LIQUIDS = true; calm_lava in editor picker). NOT reverted, his call: calm poison/bogs/ooze/oil/blood, calm_spring, obsidian veins (own sheet). Proof /mnt/project-files/pixel-lava-water-20261112/ (boot.js + shot.js). HARNESS GOTCHA: the proof browser loads JS from the CDN unless LOCAL_ASSETS=data.js,three-renderer.js is set; wait ~10 s after battle start or liquids shoot flat (sheet not in yet).
